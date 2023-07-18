@@ -229,6 +229,7 @@ typedef struct IttiMsgText_s {
 #endif
 #include <openair2/COMMON/s1ap_messages_types.h>
 #include <openair2/COMMON/x2ap_messages_types.h>
+#include <openair2/COMMON/xnap_messages_types.h>
 #include <openair2/COMMON/m2ap_messages_types.h>
 #include <openair2/COMMON/m3ap_messages_types.h>
 #include <openair2/COMMON/sctp_messages_types.h>
@@ -318,6 +319,7 @@ void *rrc_enb_process_msg(void *);
   TASK_DEF(TASK_S1AP, TASK_PRIORITY_MED, 200, NULL, NULL)            \
   TASK_DEF(TASK_NGAP, TASK_PRIORITY_MED, 200, NULL, NULL)            \
   TASK_DEF(TASK_X2AP, TASK_PRIORITY_MED, 200, NULL, NULL)            \
+  TASK_DEF(TASK_XNAP, TASK_PRIORITY_MED, 200, NULL, NULL)            \
   TASK_DEF(TASK_M2AP_ENB, TASK_PRIORITY_MED, 200, NULL, NULL)        \
   TASK_DEF(TASK_M2AP_MCE, TASK_PRIORITY_MED, 200, NULL, NULL)        \
   TASK_DEF(TASK_M3AP, TASK_PRIORITY_MED, 200, NULL, NULL)            \
@@ -346,7 +348,8 @@ void *rrc_enb_process_msg(void *);
   TASK_DEF(TASK_RRC_NSA_UE, TASK_PRIORITY_MED, 200, NULL, NULL)      \
   TASK_DEF(TASK_RRC_NSA_NRUE, TASK_PRIORITY_MED, 200, NULL, NULL)    \
   TASK_DEF(TASK_NAS_NRUE, TASK_PRIORITY_MED, 200, NULL, NULL)        \
-  TASK_DEF(TASK_MAX, TASK_PRIORITY_MED, 200, NULL, NULL)
+  TASK_DEF(TASK_MAX, TASK_PRIORITY_MED, 200, NULL, NULL)             
+   
 
 #define TASK_DEF(TaskID, pRIO, qUEUEsIZE, FuNc, ThreadFunc)          { pRIO, qUEUEsIZE, #TaskID, FuNc, ThreadFunc },
 

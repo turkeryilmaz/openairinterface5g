@@ -56,6 +56,8 @@
 #include "NR_RejectWaitTime.h"
 #include "NR_RRCSetup.h"
 
+//#include "xnap_gNB_task.h"
+
 #include "NR_CellGroupConfig.h"
 #include "NR_MeasResults.h"
 #include "NR_UL-CCCH-Message.h"
@@ -2334,6 +2336,9 @@ int rrc_gNB_process_e1_setup_req(e1ap_setup_req_t *req, instance_t instance) {
   return 0;
 }
 
+
+
+
 void prepare_and_send_ue_context_modification_f1(rrc_gNB_ue_context_t *ue_context_p, e1ap_bearer_setup_resp_t *e1ap_resp)
 {
   /* Generate a UE context modification request message towards the DU to
@@ -2632,6 +2637,12 @@ void *rrc_gnb_task(void *args_p) {
       case NGAP_PDUSESSION_RELEASE_COMMAND:
         rrc_gNB_process_NGAP_PDUSESSION_RELEASE_COMMAND(msg_p, instance);
         break;
+      //added
+     /* case XNAP_SETUP_REQ:
+        rrc_gNB_process_xn_setup_request(instance, &XNAP_SETUP_REQ(msg_p));
+        break; */
+
+
 
       /* Messages from F1AP task */
       case F1AP_SETUP_REQ:

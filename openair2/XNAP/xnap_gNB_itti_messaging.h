@@ -19,21 +19,20 @@
  *      contact@openairinterface.org
  */
 
-/*
-                                gnb_app.h
-                             -------------------
-  AUTHOR  : Laurent Winckel, Sebastien ROUX, Lionel GAUTHIER, Navid Nikaein, WEI-TAI CHEN
-  COMPANY : EURECOM, NTUST
-  EMAIL   : Lionel.Gauthier@eurecom.fr, kroempa@gmail.com
-*/
+/*! \file xnap_gNB_itti_messaging.h
+ * \brief xnap tasks for gNB
+ * \date 2023 July
+ * \version 1.0
+ */
 
-#ifndef GNB_APP_H_
-#define GNB_APP_H_
+#ifndef XNAP_GNB_ITTI_MESSAGING_H_
+#define XNAP_GNB_ITTI_MESSAGING_H_
 
-#include <stdint.h>
+void xnap_gNB_itti_send_sctp_data_req(instance_t instance, int32_t assoc_id, uint8_t *buffer,
+                                      uint32_t buffer_length, uint16_t stream);
 
-void *gNB_app_task(void *args_p);
-uint32_t gNB_app_register(uint32_t gnb_id_start, uint32_t gnb_id_end);
-uint32_t gNB_app_register_x2(uint32_t gnb_id_start, uint32_t gnb_id_end);
-uint32_t gNB_app_register_xn(uint32_t gnb_id_start, uint32_t gnb_id_end);
-#endif /* GNB_APP_H_ */
+
+void xnap_gNB_itti_send_sctp_close_association(instance_t instance, int32_t assoc_id);
+
+
+#endif /* XNAP_GNB_ITTI_MESSAGING_H_ */

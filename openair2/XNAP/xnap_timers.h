@@ -19,21 +19,33 @@
  *      contact@openairinterface.org
  */
 
-/*
-                                gnb_app.h
-                             -------------------
-  AUTHOR  : Laurent Winckel, Sebastien ROUX, Lionel GAUTHIER, Navid Nikaein, WEI-TAI CHEN
-  COMPANY : EURECOM, NTUST
-  EMAIL   : Lionel.Gauthier@eurecom.fr, kroempa@gmail.com
-*/
-
-#ifndef GNB_APP_H_
-#define GNB_APP_H_
+#ifndef XNAP_TIMERS_H_
+#define XNAP_TIMERS_H_
 
 #include <stdint.h>
+#include "platform_types.h"
 
-void *gNB_app_task(void *args_p);
-uint32_t gNB_app_register(uint32_t gnb_id_start, uint32_t gnb_id_end);
-uint32_t gNB_app_register_x2(uint32_t gnb_id_start, uint32_t gnb_id_end);
-uint32_t gNB_app_register_xn(uint32_t gnb_id_start, uint32_t gnb_id_end);
-#endif /* GNB_APP_H_ */
+typedef struct {
+  /* incremented every TTI (every millisecond when in realtime).
+   * Used to check timers.
+   * 64 bits gives us more than 500 million years of (realtime) processing.
+   * It should be enough.
+   */
+  uint64_t tti;
+
+  /* timer values (unit: TTI, ie. millisecond when in realtime) */
+  int      t_reloc_prep;
+  int      txn_reloc_overall;
+  int      t_dc_prep;
+  int      t_dc_overall;
+} xnap_timers_t;
+
+void xnap_timers_init(xnap_timers_t *t,
+    int t_reloc_prep,
+    int txn_reloc_overall,
+    int t_dc_prep,
+    int t_dc_overall);
+void xnap_check_timers(instance_t instance);
+uint64_t xnap_timer_get_tti(xnap_timers_t *t);
+
+#endif /* XNAP_TIMERS_H_ */

@@ -19,21 +19,20 @@
  *      contact@openairinterface.org
  */
 
-/*
-                                gnb_app.h
-                             -------------------
-  AUTHOR  : Laurent Winckel, Sebastien ROUX, Lionel GAUTHIER, Navid Nikaein, WEI-TAI CHEN
-  COMPANY : EURECOM, NTUST
-  EMAIL   : Lionel.Gauthier@eurecom.fr, kroempa@gmail.com
-*/
+/*! \file xnap_gNB_handler.h
+ * \brief xnap handler procedures for gNB
+ * \date 2023 July
+ * \version 1.0
+ */
 
-#ifndef GNB_APP_H_
-#define GNB_APP_H_
+#ifndef XNAP_GNB_HANDLERS_H_
+#define XNAP_GNB_HANDLERS_H_
 
-#include <stdint.h>
+#include "xnap_gNB_defs.h"
 
-void *gNB_app_task(void *args_p);
-uint32_t gNB_app_register(uint32_t gnb_id_start, uint32_t gnb_id_end);
-uint32_t gNB_app_register_x2(uint32_t gnb_id_start, uint32_t gnb_id_end);
-uint32_t gNB_app_register_xn(uint32_t gnb_id_start, uint32_t gnb_id_end);
-#endif /* GNB_APP_H_ */
+void xnap_handle_xn_setup_message(xnap_gNB_instance_t *instance_p, xnap_gNB_data_t *gNB_desc_p, int sctp_shutdown);
+
+int xnap_gNB_handle_message(instance_t instance, uint32_t assoc_id, int32_t stream,
+                            const uint8_t * const data, const uint32_t data_length);
+
+#endif /* XNAP_GNB_HANDLERS_H_ */

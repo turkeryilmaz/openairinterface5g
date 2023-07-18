@@ -34,6 +34,7 @@
 #include "X2AP_ProtocolExtensionContainer.h"
 #include "X2AP_asn_constant.h"
 #include "intertask_interface.h"
+//#include "X2AP_ServedCells-NR-Item.h"
 
 /** @defgroup _x2ap_impl_ X2AP Layer Reference Implementation
  * @ingroup _ref_implementation_

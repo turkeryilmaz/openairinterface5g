@@ -19,21 +19,31 @@
  *      contact@openairinterface.org
  */
 
-/*
-                                gnb_app.h
-                             -------------------
-  AUTHOR  : Laurent Winckel, Sebastien ROUX, Lionel GAUTHIER, Navid Nikaein, WEI-TAI CHEN
-  COMPANY : EURECOM, NTUST
-  EMAIL   : Lionel.Gauthier@eurecom.fr, kroempa@gmail.com
-*/
+/*! \file xnap_gNB_generate_messages.h
+ * \brief xnap procedures for gNB
+ * \date 2023 July
+ * \version 1.0
+ */
 
-#ifndef GNB_APP_H_
-#define GNB_APP_H_
+#ifndef XNAP_GNB_GENERATE_MESSAGES_H_
+#define XNAP_GNB_GENERATE_MESSAGES_H_
 
-#include <stdint.h>
+#include "xnap_gNB_defs.h"
+#include "xnap_common.h"
 
-void *gNB_app_task(void *args_p);
-uint32_t gNB_app_register(uint32_t gnb_id_start, uint32_t gnb_id_end);
-uint32_t gNB_app_register_x2(uint32_t gnb_id_start, uint32_t gnb_id_end);
-uint32_t gNB_app_register_xn(uint32_t gnb_id_start, uint32_t gnb_id_end);
-#endif /* GNB_APP_H_ */
+int xnap_gNB_generate_xn_setup_request(xnap_gNB_instance_t *instance_p,
+				       xnap_gNB_data_t *xnap_gNB_data_p);
+
+int xnap_gNB_generate_xn_setup_response(xnap_gNB_instance_t *instance_p, xnap_gNB_data_t *xnap_gNB_data_p);
+
+int xnap_gNB_generate_xn_setup_failure(instance_t instance,
+                                       uint32_t assoc_id,
+                                       XNAP_Cause_PR cause_type,
+                                       long cause_value,
+                                       long time_to_wait);
+
+int xnap_gNB_set_cause (XNAP_Cause_t * cause_p,
+                        XNAP_Cause_PR cause_type,
+                        long cause_value);
+
+#endif /*  XNAP_GNB_GENERATE_MESSAGES_H_ */

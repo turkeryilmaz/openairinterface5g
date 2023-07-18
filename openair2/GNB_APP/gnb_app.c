@@ -38,7 +38,7 @@
 #include "common/ran_context.h"
 
 #include "common/utils/LOG/log.h"
-
+#include "openair2/XNAP/xnap_gNB_task.h"
 #include "x2ap_eNB.h"
 #include "intertask_interface.h"
 #include "ngap_gNB.h"
@@ -116,6 +116,26 @@ uint32_t gNB_app_register_x2(uint32_t gnb_id_start, uint32_t gnb_id_end) {
 }
 
 /*------------------------------------------------------------------------------*/
+ 
+uint32_t gNB_app_register_xn(uint32_t gnb_id_start, uint32_t gnb_id_end) {
+  uint32_t         gnb_id;
+  MessageDef      *msg_p;
+  uint32_t         register_gnb_xn_pending = 0;
+
+  for (gnb_id = gnb_id_start; (gnb_id < gnb_id_end) ; gnb_id++) {
+    {
+      msg_p = itti_alloc_new_message (TASK_GNB_APP, 0, XNAP_REGISTER_GNB_REQ);
+      LOG_I(XNAP, "GNB_ID: %d \n", gnb_id);
+      RCconfig_NR_Xn(msg_p, gnb_id);
+      itti_send_msg_to_task (TASK_XNAP, GNB_MODULE_ID_TO_INSTANCE(gnb_id), msg_p);
+      register_gnb_xn_pending++;
+    }
+  }
+
+  return register_gnb_xn_pending;
+}
+
+/* added -------------------------------------------------------------------------------------*/
 
 void *gNB_app_task(void *args_p)
 {

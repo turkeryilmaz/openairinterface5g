@@ -74,6 +74,7 @@ unsigned short config_frames[4] = {2,9,11,13};
 #include "executables/thread-common.h"
 #include "NB_IoT_interface.h"
 #include "x2ap_eNB.h"
+#include "openair2/XNAP/xnap_gNB_task.h"
 #include "ngap_gNB.h"
 #include "gnb_paramdef.h"
 #include <openair3/ocp-gtpu/gtp_itf.h>
@@ -294,6 +295,7 @@ static int create_gNB_tasks(ngran_node_t node_type)
   uint32_t                        gnb_nb = RC.nb_nr_inst; 
   uint32_t                        gnb_id_start = 0;
   uint32_t                        gnb_id_end = gnb_id_start + gnb_nb;
+  int                             rc;
   LOG_D(GNB_APP, "%s(gnb_nb:%d)\n", __FUNCTION__, gnb_nb);
   itti_wait_ready(1);
   LOG_I(PHY, "%s() Task ready initialize structures\n", __FUNCTION__);
@@ -333,6 +335,7 @@ static int create_gNB_tasks(ngran_node_t node_type)
 	  LOG_I(X2AP, "X2AP enabled \n");
 	  __attribute__((unused)) uint32_t x2_register_gnb_pending = gNB_app_register_x2 (gnb_id_start, gnb_id_end);
   }
+  
 
   /* For the CU case the gNB registration with the AMF might have to take place after the F1 setup, as the PLMN info
      * can originate from the DU. Add check on whether x2ap is enabled to account for ENDC NSA scenario.*/
@@ -342,7 +345,15 @@ static int create_gNB_tasks(ngran_node_t node_type)
     //registered_gnb = 0;
     __attribute__((unused)) uint32_t register_gnb_pending = gNB_app_register (gnb_id_start, gnb_id_end);
   }
+/* added---------------------------------------------------------------------------------------------------------*/
+  if ((get_softmodem_params()->sa || is_xnap_enabled()) &&
+      !NODE_IS_DU(node_type)) {
+    /* Try to register each gNB */
+    //registered_gnb = 0;
+    __attribute__((unused)) uint32_t register_gnb_pending = gNB_app_register (gnb_id_start, gnb_id_end);
+  }
 
+/*--------------------------------------------------------------------------------------------------------------------*/
   if (gnb_nb > 0) {
     if(itti_create_task(TASK_SCTP, sctp_eNB_task, NULL) < 0) {
       LOG_E(SCTP, "Create task for SCTP failed\n");
@@ -356,7 +367,23 @@ static int create_gNB_tasks(ngran_node_t node_type)
     } else {
       LOG_I(X2AP, "X2AP is disabled.\n");
     }
+    
+    if (is_xnap_enabled()) {
+      rc=itti_create_task(TASK_XNAP, xnap_task, NULL);
+      if(rc < 0) {
+        LOG_E(XNAP, "Create task for XNAP failed\n");
+      }
+    } else {
+      LOG_I(XNAP, "XNAP is disabled.\n");
+    }
   }
+
+  /*------------------------------------------------------------------------------------------------------------------------added*/
+  if (is_xnap_enabled() ) { //&& !NODE_IS_DU(node_type)
+	  LOG_I(XNAP, "XNAP enabled \n");
+	  __attribute__((unused)) uint32_t xn_register_gnb_pending = gNB_app_register_xn (gnb_id_start, gnb_id_end);
+  }
+  /*-----------------------------------------------------------------------------------------------------------------------------*/
 
   if (get_softmodem_params()->sa &&
       !NODE_IS_DU(node_type)) {

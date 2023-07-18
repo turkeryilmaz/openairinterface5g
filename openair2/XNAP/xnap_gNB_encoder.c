@@ -19,21 +19,43 @@
  *      contact@openairinterface.org
  */
 
-/*
-                                gnb_app.h
-                             -------------------
-  AUTHOR  : Laurent Winckel, Sebastien ROUX, Lionel GAUTHIER, Navid Nikaein, WEI-TAI CHEN
-  COMPANY : EURECOM, NTUST
-  EMAIL   : Lionel.Gauthier@eurecom.fr, kroempa@gmail.com
-*/
+/*! \file x2ap_eNB_encoder.c
+ * \brief x2ap encoder procedures for eNB
+ * \author Konstantinos Alexandris <Konstantinos.Alexandris@eurecom.fr>, Cedric Roux <Cedric.Roux@eurecom.fr>, Navid Nikaein <Navid.Nikaein@eurecom.fr>
+ * \date 2018
+ * \version 1.0
+ */
 
-#ifndef GNB_APP_H_
-#define GNB_APP_H_
-
+#include <stdio.h>
+#include <string.h>
 #include <stdint.h>
 
-void *gNB_app_task(void *args_p);
-uint32_t gNB_app_register(uint32_t gnb_id_start, uint32_t gnb_id_end);
-uint32_t gNB_app_register_x2(uint32_t gnb_id_start, uint32_t gnb_id_end);
-uint32_t gNB_app_register_xn(uint32_t gnb_id_start, uint32_t gnb_id_end);
-#endif /* GNB_APP_H_ */
+#include "assertions.h"
+#include "conversions.h"
+#include "intertask_interface.h"
+#include "xnap_common.h"
+#include "xnap_gNB_encoder.h"
+
+int xnap_gNB_encode_pdu(XNAP_XnAP_PDU_t *pdu, uint8_t **buffer, uint32_t *len)
+{
+  ssize_t    encoded;
+
+  DevAssert(pdu != NULL);
+  DevAssert(buffer != NULL);
+  DevAssert(len != NULL);
+
+  // Can remove later
+  xer_fprint(stdout, &asn_DEF_XNAP_XnAP_PDU, (void *)pdu);
+  
+
+  encoded = aper_encode_to_new_buffer(&asn_DEF_XNAP_XnAP_PDU, 0, pdu, (void **)buffer);
+
+  if (encoded < 0) {
+    return -1;
+  }
+
+  *len = encoded;
+
+  ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_XNAP_XnAP_PDU, pdu);
+  return encoded;
+}
