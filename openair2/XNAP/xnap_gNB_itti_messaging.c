@@ -19,21 +19,22 @@
  *      contact@openairinterface.org
  */
 
-/*
-                                gnb_app.h
-                             -------------------
-  AUTHOR  : Laurent Winckel, Sebastien ROUX, Lionel GAUTHIER, Navid Nikaein, WEI-TAI CHEN
-  COMPANY : EURECOM, NTUST
-  EMAIL   : Lionel.Gauthier@eurecom.fr, kroempa@gmail.com
-*/
+#include "intertask_interface.h"
+#include "xnap_gNB_itti_messaging.h"
 
-#ifndef GNB_APP_H_
-#define GNB_APP_H_
+void xnap_gNB_itti_send_sctp_data_req(sctp_assoc_t assoc_id, uint8_t *buffer, uint32_t buffer_length, uint16_t stream)
+{
+  MessageDef *message_p;
+  sctp_data_req_t *sctp_data_req;
+  instance_t instance = 0; // we have only one instance
 
-#include <stdint.h>
+  message_p = itti_alloc_new_message(TASK_XNAP, 0, SCTP_DATA_REQ);
+  sctp_data_req = &message_p->ittiMsg.sctp_data_req;
 
-void *gNB_app_task(void *args_p);
-uint32_t gNB_app_register(uint32_t gnb_id_start, uint32_t gnb_id_end);
-uint32_t gNB_app_register_x2(uint32_t gnb_id_start, uint32_t gnb_id_end);
-void gNB_app_register_xn(uint32_t gnb_id_num);
-#endif /* GNB_APP_H_ */
+  sctp_data_req->assoc_id = assoc_id;
+  sctp_data_req->buffer = buffer;
+  sctp_data_req->buffer_length = buffer_length;
+  sctp_data_req->stream = stream;
+  itti_send_msg_to_task(TASK_SCTP, instance, message_p);
+}
+

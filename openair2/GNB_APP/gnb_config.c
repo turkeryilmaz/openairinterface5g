@@ -1086,7 +1086,7 @@ static int read_du_cell_info(configmodule_interface_t *cfg,
   }
 
   *name = strdup(*(GNBParamList.paramarray[0][GNB_GNB_NAME_IDX].strptr));
-  info->tac = malloc(sizeof(*info->tac));
+  info->tac = calloc(1,sizeof(*info->tac));
   AssertFatal(info->tac != NULL, "out of memory\n");
   *info->tac = *GNBParamList.paramarray[0][GNB_TRACKING_AREA_CODE_IDX].uptr;
   info->plmn.mcc = *PLMNParamList.paramarray[0][GNB_MOBILE_COUNTRY_CODE_IDX].uptr;
@@ -2225,6 +2225,147 @@ int gNB_app_handle_f1ap_gnb_cu_configuration_update(f1ap_gnb_cu_configuration_up
   }
 
   return(ret);
+}
+
+void read_xn_setup(uint64_t *id, char **name, xnap_setup_req_t *req)
+{
+  memset(req, 0, sizeof(*req));
+  xnap_served_cell_info_t *info = &req->info;
+  paramdef_t GNBSParams[] = GNBSPARAMS_DESC;
+  paramdef_t GNBParams[] = GNBPARAMS_DESC;
+  paramlist_def_t GNBParamList = {GNB_CONFIG_STRING_GNB_LIST, NULL, 0};
+  config_get(config_get_if(), GNBSParams, sizeofArray(GNBSParams), NULL);
+  int num_gnbs = GNBSParams[GNB_ACTIVE_GNBS_IDX].numelt;
+  AssertFatal(num_gnbs == 1, "Failed to parse config file\n");
+  // Output a list of all gNBs.
+  config_getlist(config_get_if(), &GNBParamList, GNBParams, sizeof(GNBParams) / sizeof(paramdef_t), NULL);
+  AssertFatal(config_isparamset(GNBParamList.paramarray[0], GNB_GNB_ID_IDX),
+              "%s is not defined in configuration file\n",
+              GNB_CONFIG_STRING_GNB_ID);
+  *id = *GNBParamList.paramarray[0][GNB_GNB_ID_IDX].uptr;
+  AssertFatal(strcmp(GNBSParams[GNB_ACTIVE_GNBS_IDX].strlistptr[0], *GNBParamList.paramarray[0][GNB_GNB_NAME_IDX].strptr) == 0,
+              "no active gNB found/mismatch of gNBs: %s vs %s\n",
+              GNBSParams[GNB_ACTIVE_GNBS_IDX].strlistptr[0],
+              *GNBParamList.paramarray[0][GNB_GNB_NAME_IDX].strptr);
+
+  char aprefix[MAX_OPTNAME_SIZE * 2 + 8];
+  sprintf(aprefix, "%s.[0]", GNB_CONFIG_STRING_GNB_LIST);
+  paramdef_t PLMNParams[] = GNBPLMNPARAMS_DESC;
+  /* map parameter checking array instances to parameter definition array instances */
+  checkedparam_t config_check_PLMNParams[] = PLMNPARAMS_CHECK;
+  for (int I = 0; I < sizeof(PLMNParams) / sizeof(paramdef_t); ++I)
+    PLMNParams[I].chkPptr = &(config_check_PLMNParams[I]);
+  paramlist_def_t PLMNParamList = {GNB_CONFIG_STRING_PLMN_LIST, NULL, 0};
+  config_getlist(config_get_if(), &PLMNParamList, PLMNParams, sizeofArray(PLMNParams), aprefix);
+  *name = strdup(*(GNBParamList.paramarray[0][GNB_GNB_NAME_IDX].strptr));
+  info->tac = *GNBParamList.paramarray[0][GNB_TRACKING_AREA_CODE_IDX].uptr;
+  info->plmn.mcc = *PLMNParamList.paramarray[0][GNB_MOBILE_COUNTRY_CODE_IDX].uptr;
+  info->plmn.mnc = *PLMNParamList.paramarray[0][GNB_MOBILE_NETWORK_CODE_IDX].uptr;
+  info->plmn.mnc_digit_length = *PLMNParamList.paramarray[0][GNB_MNC_DIGIT_LENGTH].u8ptr;
+  AssertFatal((info->plmn.mnc_digit_length == 2) || (info->plmn.mnc_digit_length == 3),
+              "BAD MNC DIGIT LENGTH %d",
+              info->plmn.mnc_digit_length);
+  info->nr_cellid = (uint64_t) * (GNBParamList.paramarray[0][GNB_NRCELLID_IDX].u64ptr);
+  paramdef_t SNSSAIParams[] = GNBSNSSAIPARAMS_DESC;
+  checkedparam_t config_check_SNSSAIParams[] = SNSSAIPARAMS_CHECK;
+  for (int J = 0; J < sizeofArray(SNSSAIParams); ++J)
+    SNSSAIParams[J].chkPptr = &(config_check_SNSSAIParams[J]);
+  paramlist_def_t SNSSAIParamList = {GNB_CONFIG_STRING_SNSSAI_LIST, NULL, 0};
+  config_getlist(config_get_if(), &SNSSAIParamList, SNSSAIParams, sizeofArray(SNSSAIParams), aprefix);
+  req->num_snssai = SNSSAIParamList.numelt;
+  for (int s = 0; s < SNSSAIParamList.numelt; ++s) {
+    req->snssai[s].sst = *SNSSAIParamList.paramarray[s][GNB_SLICE_SERVICE_TYPE_IDX].uptr;
+    req->snssai[s].sd = (*SNSSAIParamList.paramarray[s][GNB_SLICE_DIFFERENTIATOR_IDX].uptr & 0xffffff);
+  }
+  NR_ServingCellConfigCommon_t *scc = get_scc_config(config_get_if(), 6);
+  info->nr_pci = *scc->physCellId;
+  struct NR_FrequencyInfoDL *frequencyInfoDL = scc->downlinkConfigCommon->frequencyInfoDL;
+  if (scc->tdd_UL_DL_ConfigurationCommon) {
+    info->mode = XNAP_MODE_TDD;
+    xnap_tdd_info_t *tdd = &info->tdd;
+    tdd->freqinfo.arfcn = frequencyInfoDL->absoluteFrequencyPointA;
+    tdd->tbw.scs = frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing;
+    tdd->tbw.nrb = frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth;
+    tdd->freqinfo.band = *frequencyInfoDL->frequencyBandList.list.array[0];
+  } else {
+    info->mode = XNAP_MODE_FDD;
+    xnap_fdd_info_t *fdd = &info->fdd;
+    fdd->dl_freqinfo.arfcn = frequencyInfoDL->absoluteFrequencyPointA;
+    fdd->ul_freqinfo.arfcn = *scc->uplinkConfigCommon->frequencyInfoUL->absoluteFrequencyPointA;
+    fdd->dl_tbw.scs = frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing;
+    fdd->ul_tbw.scs = scc->uplinkConfigCommon->frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing;
+    fdd->dl_tbw.nrb = frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth;
+    fdd->ul_tbw.nrb = scc->uplinkConfigCommon->frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth;
+    fdd->dl_freqinfo.band = *frequencyInfoDL->frequencyBandList.list.array[0];
+    fdd->ul_freqinfo.band = *scc->uplinkConfigCommon->frequencyInfoUL->frequencyBandList->list.array[0];
+  }
+  info->measurement_timing_information = "0";
+  req->gNB_id = *id;
+  req->tai_support = info->tac;
+  req->plmn_support = info->plmn;
+}
+
+xnap_net_config_t Read_IPconfig_Xn(void)
+{
+  char *cidr = NULL;
+  char *address = NULL;
+  char *gnb_ipv4_address_for_NGU = NULL;
+  uint32_t gnb_port_for_NGU = 0;
+  char *gnb_ipv4_address_for_S1U = NULL;
+  uint32_t gnb_port_for_S1U = 0;
+  xnap_net_config_t nc = {0};
+  paramdef_t XnParams[] = XnPARAMS_DESC;
+  paramlist_def_t XnParamList = {GNB_CONFIG_STRING_TARGET_GNB_Xn_IP_ADDRESS, NULL, 0};
+  paramdef_t NETParams[] = GNBNETPARAMS_DESC;
+  paramdef_t SCTPParams[] = GNBSCTPPARAMS_DESC;
+  char aprefix[MAX_OPTNAME_SIZE * 2 + 8];
+  config_getlist(config_get_if(), &XnParamList, XnParams, sizeofArray(XnParams), aprefix);
+  AssertFatal(XnParamList.numelt <= XNAP_MAX_NB_GNB_IP_ADDRESS,
+              "value of XnParamList.numelt %d must be lower than XnAP_MAX_NB_GNB_IP_ADDRESS %d value: reconsider to increase "
+              "XNAP_MAX_NB_GNB_IP_ADDRESS\n",
+              XnParamList.numelt,
+              XNAP_MAX_NB_GNB_IP_ADDRESS);
+  for (int l = 0; l < XnParamList.numelt; l++) {
+    nc.nb_xn += 1;
+    strcpy(nc.target_gnb_xn_ip_address[l].ipv4_address, *(XnParamList.paramarray[l][GNB_Xn_IPV4_ADDRESS_IDX].strptr));
+    strcpy(nc.target_gnb_xn_ip_address[l].ipv6_address, *(XnParamList.paramarray[l][GNB_Xn_IPV6_ADDRESS_IDX].strptr));
+
+    if (strcmp(*(XnParamList.paramarray[l][GNB_Xn_IP_ADDRESS_PREFERENCE_IDX].strptr), "ipv4") == 0) {
+      nc.target_gnb_xn_ip_address[l].ipv4 = 1;
+      nc.target_gnb_xn_ip_address[l].ipv6 = 0;
+    } else if (strcmp(*(XnParamList.paramarray[l][GNB_Xn_IP_ADDRESS_PREFERENCE_IDX].strptr), "ipv6") == 0) {
+      nc.target_gnb_xn_ip_address[l].ipv4 = 0;
+      nc.target_gnb_xn_ip_address[l].ipv6 = 1;
+    } else if (strcmp(*(XnParamList.paramarray[l][GNB_Xn_IP_ADDRESS_PREFERENCE_IDX].strptr), "no") == 0) {
+      nc.target_gnb_xn_ip_address[l].ipv4 = 1;
+      nc.target_gnb_xn_ip_address[l].ipv6 = 1;
+    }
+  }
+  sprintf(aprefix, "%s.[%i].%s", GNB_CONFIG_STRING_GNB_LIST, 0, GNB_CONFIG_STRING_NETWORK_INTERFACES_CONFIG);
+  // NETWORK_INTERFACES
+  config_get(config_get_if(), NETParams, sizeofArray(NETParams), aprefix);
+  nc.gnb_port_for_XNC = (uint32_t) * (NETParams[GNB_PORT_FOR_XNC_IDX].uptr);
+  if ((NETParams[GNB_IPV4_ADDR_FOR_XNC_IDX].strptr == NULL) || (nc.gnb_port_for_XNC == 0)) {
+    LOG_E(RRC, "Add gNB IPv4 address and/or port for XNC in the CONF file!\n");
+    exit(1);
+  }
+  cidr = *(NETParams[GNB_IPV4_ADDR_FOR_XNC_IDX].strptr);
+  char *save = NULL;
+  address = strtok_r(cidr, "/", &save);
+  nc.gnb_xn_ip_address.ipv6 = 0;
+  nc.gnb_xn_ip_address.ipv4 = 1;
+  strcpy(nc.gnb_xn_ip_address.ipv4_address, address);
+
+  // SCTP SETTING
+  nc.sctp_streams.sctp_out_streams = SCTP_OUT_STREAMS;
+  nc.sctp_streams.sctp_in_streams = SCTP_IN_STREAMS;
+  if (get_softmodem_params()->sa) {
+    // sprintf(aprefix, "%s.[%i].%s", GNB_CONFIG_STRING_GNB_LIST, 0, GNB_CONFIG_STRING_SCTP_CONFIG);
+    config_get(config_get_if(), SCTPParams, sizeofArray(SCTPParams), aprefix);
+    nc.sctp_streams.sctp_in_streams = (uint16_t) * (SCTPParams[GNB_SCTP_INSTREAMS_IDX].uptr);
+    nc.sctp_streams.sctp_out_streams = (uint16_t) * (SCTPParams[GNB_SCTP_OUTSTREAMS_IDX].uptr);
+  }
+  return nc;
 }
 
 ngran_node_t get_node_type(void)
