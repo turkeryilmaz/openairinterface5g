@@ -45,7 +45,7 @@ const int get_ul_tda(gNB_MAC_INST *nrmac, const NR_ServingCellConfigCommon_t *sc
   NR_SCHED_ENSURE_LOCKED(&nrmac->sched_lock);
 
   /* there is a mixed slot only when in TDD */
-  const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
+  const NR_TDD_UL_DL_Pattern_t *tdd = scc && scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
   AssertFatal(tdd || nrmac->common_channels->frame_type == FDD, "Dynamic TDD not handled yet\n");
 
   if (tdd && tdd->nrofUplinkSymbols > 1) { // if there is uplink symbols in mixed slot
@@ -923,9 +923,15 @@ static uint8_t get_max_tpmi(const NR_PUSCH_Config_t *pusch_Config,
     return max_tpmi;
   }
 
-  long max_rank = *pusch_Config->maxRank;
-  long *ul_FullPowerTransmission = pusch_Config->ext1 ? pusch_Config->ext1->ul_FullPowerTransmission_r16 : NULL;
-  long *codebookSubset = pusch_Config->codebookSubset;
+  long max_rank = -1;
+  long *ul_FullPowerTransmission = NULL;
+  long *codebookSubset = NULL;
+
+  if (pusch_Config != NULL) {
+    max_rank = *pusch_Config->maxRank;
+    *ul_FullPowerTransmission = pusch_Config->ext1 ? pusch_Config->ext1->ul_FullPowerTransmission_r16 : NULL;
+    *codebookSubset = pusch_Config->codebookSubset;
+  }
 
   if (num_ue_srs_ports == 2) {
 
@@ -1911,7 +1917,7 @@ static bool nr_fr1_ulsch_preprocessor(module_id_t module_id, frame_t frame, sub_
   const NR_SIB1_t *sib1 = nr_mac->common_channels[0].sib1 ? nr_mac->common_channels[0].sib1->message.choice.c1->choice.systemInformationBlockType1 : NULL;
   NR_ServingCellConfigCommonSIB_t *scc_sib1 = sib1 ? sib1->servingCellConfigCommon : NULL;
 
-  AssertFatal(scc!=NULL || scc_sib1!=NULL,"We need one serving cell config common\n");
+  AssertFatal(scc || scc_sib1,"We need one serving cell config common\n");
 
   // no UEs
   if (nr_mac->UE_info.list[0] == NULL)

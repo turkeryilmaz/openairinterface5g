@@ -73,7 +73,8 @@ void init_RA(module_id_t mod_id,
   ra->RA_backoff_cnt       = 0;
 
   prach_resources->RA_PREAMBLE_BACKOFF = 0;
-  NR_SubcarrierSpacing_t prach_scs = *nr_rach_ConfigCommon->msg1_SubcarrierSpacing;
+  if(nr_rach_ConfigCommon != NULL)
+    NR_SubcarrierSpacing_t prach_scs = *nr_rach_ConfigCommon->msg1_SubcarrierSpacing;
   int n_prbs = get_N_RA_RB (prach_scs, mac->current_UL_BWP.scs);
   int start_prb = rach_ConfigGeneric->msg1_FrequencyStart + mac->current_UL_BWP.BWPStart;
   int carrier_bandwidth = mac->scc_SIB ? mac->scc_SIB->uplinkConfigCommon->frequencyInfoUL.scs_SpecificCarrierList.list.array[0]->carrierBandwidth :

@@ -641,7 +641,7 @@ bool nr_mac_update_cellgroup(gNB_MAC_INST *nrmac, uint32_t rnti, NR_CellGroupCon
   DevAssert(CellGroup != NULL);
 
   NR_UE_info_t *UE = find_nr_UE(&nrmac->UE_info, rnti);
-  AssertFatal(UE != NULL, "Can't find UE %04x for CellGroup update\n", rnti);
+  AssertFatal(UE, "Can't find UE %04x for CellGroup update\n", rnti);
 
   /* copy CellGroup by calling asn1c encode this is a temporary hack to avoid the gNB having a pointer to RRC CellGroup structure
    * (otherwise it would be applied to early)

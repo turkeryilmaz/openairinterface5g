@@ -782,7 +782,7 @@ int16_t do_RRCReconfiguration(
         ie->nonCriticalExtension->dedicatedNAS_MessageList = dedicatedNAS_MessageList;
     }
 
-    if(cellGroupConfig!=NULL){
+    if(cellGroupConfig!=NULL && ue_context_pP!=NULL){
       update_cellGroupConfig(cellGroupConfig, ue_context_pP->ue_context.gNB_ue_ngap_id, ue_context_pP ? ue_context_pP->ue_context.UE_Capability_nr : NULL, configuration);
 
       enc_rval = uper_encode_to_buffer(&asn_DEF_NR_CellGroupConfig,

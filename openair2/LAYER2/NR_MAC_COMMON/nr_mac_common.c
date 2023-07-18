@@ -2825,7 +2825,7 @@ long get_transformPrecoding(const NR_UE_UL_BWP_t *current_UL_BWP, nr_dci_format_
   if (dci_format == NR_UL_DCI_FORMAT_0_1 && current_UL_BWP && current_UL_BWP->pusch_Config && current_UL_BWP->pusch_Config->transformPrecoder)
     return *current_UL_BWP->pusch_Config->transformPrecoder;
 
-  if (current_UL_BWP->rach_ConfigCommon && current_UL_BWP->rach_ConfigCommon->msg3_transformPrecoder)
+  if (current_UL_BWP && current_UL_BWP->rach_ConfigCommon && current_UL_BWP->rach_ConfigCommon->msg3_transformPrecoder)
     return NR_PUSCH_Config__transformPrecoder_enabled;
 
   return NR_PUSCH_Config__transformPrecoder_disabled;
@@ -2850,7 +2850,7 @@ uint8_t get_pusch_nb_antenna_ports(NR_PUSCH_Config_t *pusch_Config,
         // shall be configured with the same value for all these SRS resources.
         if (srs_resource_set->usage == NR_SRS_ResourceSet__usage_codebook) {
           NR_SRS_Resource_t *srs_resource = srs_config->srs_ResourceToAddModList->list.array[sri];
-          AssertFatal(srs_resource != NULL, "SRS resource indicated by DCI does not exist\n");
+          AssertFatal(srs_resource, "SRS resource indicated by DCI does not exist\n");
           n_antenna_port = 1 << srs_resource->nrofSRS_Ports;
           break;
         }
@@ -2989,6 +2989,10 @@ uint8_t compute_precoding_information(NR_PUSCH_Config_t *pusch_Config,
                                       const uint8_t *nrOfLayers,
                                       uint32_t *val) {
 
+  long max_rank = -1;
+  long *ul_FullPowerTransmission = NULL;
+  long *codebookSubset = NULL;
+
   // It is only applicable to codebook based transmission. This field occupies 0 bits for non-codebook based
   // transmission. It also occupies 0 bits for codebook based transmission using a single antenna port.
   uint8_t nbits = 0;
@@ -2998,13 +3002,15 @@ uint8_t compute_precoding_information(NR_PUSCH_Config_t *pusch_Config,
 
   uint8_t pusch_antenna_ports = get_pusch_nb_antenna_ports(pusch_Config, srs_config, srs_resource_indicator);
   if ((pusch_Config && pusch_Config->txConfig != NULL && *pusch_Config->txConfig == NR_PUSCH_Config__txConfig_nonCodebook) ||
-      pusch_antenna_ports == 1) {
+    pusch_antenna_ports == 1) {
     return nbits;
   }
 
-  long max_rank = *pusch_Config->maxRank;
-  long *ul_FullPowerTransmission = pusch_Config->ext1 ? pusch_Config->ext1->ul_FullPowerTransmission_r16 : NULL;
-  long *codebookSubset = pusch_Config->codebookSubset;
+  if(pusch_Config != NULL) {
+    long max_rank = *pusch_Config->maxRank;
+    long *ul_FullPowerTransmission = pusch_Config->ext1 ? pusch_Config->ext1->ul_FullPowerTransmission_r16 : NULL;
+    long *codebookSubset = pusch_Config->codebookSubset;
+  }
 
   if (pusch_antenna_ports == 2) {
 

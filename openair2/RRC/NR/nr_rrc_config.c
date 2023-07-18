@@ -2553,7 +2553,8 @@ NR_CellGroupConfig_t *get_default_secondaryCellGroup(const NR_ServingCellConfigC
 
   uint64_t bitmap = get_ssb_bitmap(servingcellconfigcommon);
   // See comment at the end of this function regarding ServingCellConfig
-  fix_servingcellconfigdedicated(servingcellconfigdedicated);
+  if(servingcellconfigdedicated != NULL)
+    fix_servingcellconfigdedicated(servingcellconfigdedicated);
 
   NR_CellGroupConfig_t *secondaryCellGroup = calloc(1, sizeof(*secondaryCellGroup));
   secondaryCellGroup->cellGroupId = scg_id;
@@ -2655,74 +2656,76 @@ NR_CellGroupConfig_t *get_default_secondaryCellGroup(const NR_ServingCellConfigC
   initialUplinkBWP->pucch_Config = NULL;
 
   NR_PUSCH_Config_t *pusch_Config = NULL;
-  if (servingcellconfigdedicated->uplinkConfig->uplinkBWP_ToAddModList) {
-    pusch_Config =
-        servingcellconfigdedicated->uplinkConfig->uplinkBWP_ToAddModList->list.array[0]->bwp_Dedicated->pusch_Config->choice.setup;
-  }
-  initialUplinkBWP->pusch_Config = config_pusch(pusch_Config, servingcellconfigcommon, uecap);
-
-  long maxMIMO_Layers =
-      servingcellconfigdedicated->uplinkConfig && servingcellconfigdedicated->uplinkConfig->pusch_ServingCellConfig
-              && servingcellconfigdedicated->uplinkConfig->pusch_ServingCellConfig->choice.setup->ext1
-              && servingcellconfigdedicated->uplinkConfig->pusch_ServingCellConfig->choice.setup->ext1->maxMIMO_Layers
-          ? *servingcellconfigdedicated->uplinkConfig->pusch_ServingCellConfig->choice.setup->ext1->maxMIMO_Layers
-          : 1;
-
-  int curr_bwp = NRRIV2BW(servingcellconfigcommon->downlinkConfigCommon->initialDownlinkBWP->genericParameters.locationAndBandwidth,
-                          MAX_BWP_SIZE);
-  initialUplinkBWP->srs_Config = calloc(1, sizeof(*initialUplinkBWP->srs_Config));
-  config_srs(servingcellconfigcommon, initialUplinkBWP->srs_Config, NULL, curr_bwp, uid, 0, maxMIMO_Layers, configuration->do_SRS);
-
-  // Downlink BWPs
-  int n_dl_bwp = 1;
-  if (servingcellconfigdedicated && servingcellconfigdedicated->downlinkBWP_ToAddModList) {
-    n_dl_bwp = servingcellconfigdedicated->downlinkBWP_ToAddModList->list.count;
-  }
-  if (n_dl_bwp > 0) {
-    secondaryCellGroup->spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList =
-        calloc(1, sizeof(*secondaryCellGroup->spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList));
-    for (int bwp_loop = 0; bwp_loop < n_dl_bwp; bwp_loop++) {
-      NR_BWP_Downlink_t *bwp = calloc(1, sizeof(*bwp));
-      config_downlinkBWP(bwp,
-                         servingcellconfigcommon,
-                         servingcellconfigdedicated,
-                         uecap,
-                         dl_antenna_ports,
-                         configuration->force_256qam_off,
-                         bwp_loop,
-                         false);
-      asn1cSeqAdd(&secondaryCellGroup->spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList->list, bwp);
+  if(servingcellconfigdedicated != NULL) {
+    if (servingcellconfigdedicated->uplinkConfig->uplinkBWP_ToAddModList) {
+      pusch_Config =
+          servingcellconfigdedicated->uplinkConfig->uplinkBWP_ToAddModList->list.array[0]->bwp_Dedicated->pusch_Config->choice.setup;
     }
-    secondaryCellGroup->spCellConfig->spCellConfigDedicated->firstActiveDownlinkBWP_Id =
-        calloc(1, sizeof(*secondaryCellGroup->spCellConfig->spCellConfigDedicated->firstActiveDownlinkBWP_Id));
-    *secondaryCellGroup->spCellConfig->spCellConfigDedicated->firstActiveDownlinkBWP_Id =
-        servingcellconfigdedicated->firstActiveDownlinkBWP_Id ? *servingcellconfigdedicated->firstActiveDownlinkBWP_Id : 1;
-    secondaryCellGroup->spCellConfig->spCellConfigDedicated->defaultDownlinkBWP_Id =
-        calloc(1, sizeof(*secondaryCellGroup->spCellConfig->spCellConfigDedicated->defaultDownlinkBWP_Id));
-    *secondaryCellGroup->spCellConfig->spCellConfigDedicated->defaultDownlinkBWP_Id =
-        servingcellconfigdedicated->defaultDownlinkBWP_Id ? *servingcellconfigdedicated->defaultDownlinkBWP_Id : 1;
-  }
+    initialUplinkBWP->pusch_Config = config_pusch(pusch_Config, servingcellconfigcommon, uecap);
 
-  // Uplink BWPs
-  int n_ul_bwp = 1;
-  if (servingcellconfigdedicated && servingcellconfigdedicated->uplinkConfig
-      && servingcellconfigdedicated->uplinkConfig->uplinkBWP_ToAddModList) {
-    n_ul_bwp = servingcellconfigdedicated->uplinkConfig->uplinkBWP_ToAddModList->list.count;
-  }
-  if (n_ul_bwp > 0) {
-    secondaryCellGroup->spCellConfig->spCellConfigDedicated->uplinkConfig->uplinkBWP_ToAddModList =
-        calloc(1, sizeof(*secondaryCellGroup->spCellConfig->spCellConfigDedicated->uplinkConfig->uplinkBWP_ToAddModList));
-    for (int bwp_loop = 0; bwp_loop < n_ul_bwp; bwp_loop++) {
-      NR_BWP_Uplink_t *ubwp = calloc(1, sizeof(*ubwp));
-      config_uplinkBWP(ubwp, bwp_loop, false, uid, configuration, servingcellconfigdedicated, servingcellconfigcommon, uecap);
-      asn1cSeqAdd(&secondaryCellGroup->spCellConfig->spCellConfigDedicated->uplinkConfig->uplinkBWP_ToAddModList->list, ubwp);
-    }
-    secondaryCellGroup->spCellConfig->spCellConfigDedicated->uplinkConfig->firstActiveUplinkBWP_Id =
-        calloc(1, sizeof(*secondaryCellGroup->spCellConfig->spCellConfigDedicated->uplinkConfig->firstActiveUplinkBWP_Id));
-    *secondaryCellGroup->spCellConfig->spCellConfigDedicated->uplinkConfig->firstActiveUplinkBWP_Id =
-        servingcellconfigdedicated->uplinkConfig->firstActiveUplinkBWP_Id
-            ? *servingcellconfigdedicated->uplinkConfig->firstActiveUplinkBWP_Id
+    long maxMIMO_Layers =
+        servingcellconfigdedicated->uplinkConfig && servingcellconfigdedicated->uplinkConfig->pusch_ServingCellConfig
+                && servingcellconfigdedicated->uplinkConfig->pusch_ServingCellConfig->choice.setup->ext1
+                && servingcellconfigdedicated->uplinkConfig->pusch_ServingCellConfig->choice.setup->ext1->maxMIMO_Layers
+            ? *servingcellconfigdedicated->uplinkConfig->pusch_ServingCellConfig->choice.setup->ext1->maxMIMO_Layers
             : 1;
+
+    int curr_bwp = NRRIV2BW(servingcellconfigcommon->downlinkConfigCommon->initialDownlinkBWP->genericParameters.locationAndBandwidth,
+                            MAX_BWP_SIZE);
+    initialUplinkBWP->srs_Config = calloc(1, sizeof(*initialUplinkBWP->srs_Config));
+    config_srs(servingcellconfigcommon, initialUplinkBWP->srs_Config, NULL, curr_bwp, uid, 0, maxMIMO_Layers, configuration->do_SRS);
+
+    // Downlink BWPs
+    int n_dl_bwp = 1;
+    if (servingcellconfigdedicated && servingcellconfigdedicated->downlinkBWP_ToAddModList) {
+      n_dl_bwp = servingcellconfigdedicated->downlinkBWP_ToAddModList->list.count;
+    }
+    if (n_dl_bwp > 0) {
+      secondaryCellGroup->spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList =
+          calloc(1, sizeof(*secondaryCellGroup->spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList));
+      for (int bwp_loop = 0; bwp_loop < n_dl_bwp; bwp_loop++) {
+        NR_BWP_Downlink_t *bwp = calloc(1, sizeof(*bwp));
+        config_downlinkBWP(bwp,
+                           servingcellconfigcommon,
+                           servingcellconfigdedicated,
+                           uecap,
+                           dl_antenna_ports,
+                           configuration->force_256qam_off,
+                           bwp_loop,
+                           false);
+        asn1cSeqAdd(&secondaryCellGroup->spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList->list, bwp);
+      }
+      secondaryCellGroup->spCellConfig->spCellConfigDedicated->firstActiveDownlinkBWP_Id =
+          calloc(1, sizeof(*secondaryCellGroup->spCellConfig->spCellConfigDedicated->firstActiveDownlinkBWP_Id));
+      *secondaryCellGroup->spCellConfig->spCellConfigDedicated->firstActiveDownlinkBWP_Id =
+          servingcellconfigdedicated->firstActiveDownlinkBWP_Id ? *servingcellconfigdedicated->firstActiveDownlinkBWP_Id : 1;
+      secondaryCellGroup->spCellConfig->spCellConfigDedicated->defaultDownlinkBWP_Id =
+          calloc(1, sizeof(*secondaryCellGroup->spCellConfig->spCellConfigDedicated->defaultDownlinkBWP_Id));
+      *secondaryCellGroup->spCellConfig->spCellConfigDedicated->defaultDownlinkBWP_Id =
+          servingcellconfigdedicated->defaultDownlinkBWP_Id ? *servingcellconfigdedicated->defaultDownlinkBWP_Id : 1;
+    }
+
+    // Uplink BWPs
+    int n_ul_bwp = 1;
+    if (servingcellconfigdedicated && servingcellconfigdedicated->uplinkConfig
+        && servingcellconfigdedicated->uplinkConfig->uplinkBWP_ToAddModList) {
+      n_ul_bwp = servingcellconfigdedicated->uplinkConfig->uplinkBWP_ToAddModList->list.count;
+    }
+    if (n_ul_bwp > 0) {
+      secondaryCellGroup->spCellConfig->spCellConfigDedicated->uplinkConfig->uplinkBWP_ToAddModList =
+          calloc(1, sizeof(*secondaryCellGroup->spCellConfig->spCellConfigDedicated->uplinkConfig->uplinkBWP_ToAddModList));
+      for (int bwp_loop = 0; bwp_loop < n_ul_bwp; bwp_loop++) {
+        NR_BWP_Uplink_t *ubwp = calloc(1, sizeof(*ubwp));
+        config_uplinkBWP(ubwp, bwp_loop, false, uid, configuration, servingcellconfigdedicated, servingcellconfigcommon, uecap);
+        asn1cSeqAdd(&secondaryCellGroup->spCellConfig->spCellConfigDedicated->uplinkConfig->uplinkBWP_ToAddModList->list, ubwp);
+      }
+      secondaryCellGroup->spCellConfig->spCellConfigDedicated->uplinkConfig->firstActiveUplinkBWP_Id =
+          calloc(1, sizeof(*secondaryCellGroup->spCellConfig->spCellConfigDedicated->uplinkConfig->firstActiveUplinkBWP_Id));
+      *secondaryCellGroup->spCellConfig->spCellConfigDedicated->uplinkConfig->firstActiveUplinkBWP_Id =
+          servingcellconfigdedicated->uplinkConfig->firstActiveUplinkBWP_Id
+              ? *servingcellconfigdedicated->uplinkConfig->firstActiveUplinkBWP_Id
+              : 1;
+    }
   }
 
   secondaryCellGroup->spCellConfig->spCellConfigDedicated->bwp_InactivityTimer = NULL;
@@ -2862,10 +2865,12 @@ NR_CellGroupConfig_t *get_default_secondaryCellGroup(const NR_ServingCellConfigC
   secondaryCellGroup->spCellConfig->spCellConfigDedicated->pathlossReferenceLinking = NULL;
   secondaryCellGroup->spCellConfig->spCellConfigDedicated->servingCellMO = NULL;
 
-  // this is pure evil: We should only pass in a ServingCellConfig, without
-  // modifying it! TODO: make a separate function that creates a
-  // ServingCellConfig, and reuse it here
-  *servingcellconfigdedicated = *secondaryCellGroup->spCellConfig->spCellConfigDedicated;
+  if(servingcellconfigdedicated != NULL) {
+    // this is pure evil: We should only pass in a ServingCellConfig, without
+    // modifying it! TODO: make a separate function that creates a
+    // ServingCellConfig, and reuse it here
+    *servingcellconfigdedicated = *secondaryCellGroup->spCellConfig->spCellConfigDedicated;
+  }
 
   if (LOG_DEBUGFLAG(DEBUG_ASN1)) {
     xer_fprint(stdout, &asn_DEF_NR_SpCellConfig, (void *)secondaryCellGroup->spCellConfig);

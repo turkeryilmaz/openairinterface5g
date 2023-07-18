@@ -276,7 +276,7 @@ void config_common_ue(NR_UE_MAC_INST_t *mac,
   // carrier config
   LOG_D(MAC, "Entering UE Config Common\n");
 
-  AssertFatal(scc != NULL, "scc cannot be null\n");
+  AssertFatal(scc, "scc cannot be null\n");
 
   struct NR_FrequencyInfoDL *frequencyInfoDL = scc->downlinkConfigCommon->frequencyInfoDL;
   int bw_index = get_supported_band_index(frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing,

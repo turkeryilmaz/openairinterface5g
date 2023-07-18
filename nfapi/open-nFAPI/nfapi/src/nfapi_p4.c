@@ -1485,9 +1485,9 @@ static int check_unpack_length(nfapi_message_id_e msgId, uint32_t unpackedBufLen
 
 int nfapi_p4_message_pack(void *pMessageBuf, uint32_t messageBufLen, void *pPackedBuf, uint32_t packedBufLen, nfapi_p4_p5_codec_config_t *config) {
   nfapi_p4_p5_message_header_t *pMessageHeader = pMessageBuf;
-  uint8_t *end = pPackedBuf + packedBufLen;
-  uint8_t *pWritePackedMessage = pPackedBuf;
-  uint8_t *pPackedLengthField = &pWritePackedMessage[4];
+  uint8_t *end = (pPackedBuf == NULL) ? NULL : (uint8_t *)pPackedBuf + packedBufLen;
+  uint8_t *pWritePackedMessage = (pPackedBuf == NULL) ? NULL : (uint8_t *)pPackedBuf;
+  uint8_t *pPackedLengthField = (pPackedBuf == NULL) ? NULL : &pWritePackedMessage[4];
   uint32_t packedMsgLen;
   uint16_t packedMsgLen16;
 

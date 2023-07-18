@@ -162,7 +162,7 @@ void nr_decode_pucch0(PHY_VARS_gNB *gNB,
 	      pucch_pdu->bit_len_harq,pucch_pdu->sr_flag);
 
   NR_gNB_PHY_STATS_t *phy_stats = get_phy_stats(gNB, pucch_pdu->rnti);
-  AssertFatal(phy_stats != NULL, "phy_stats shouldn't be NULL\n");
+  AssertFatal(phy_stats, "phy_stats shouldn't be NULL\n");
   phy_stats->frame = frame;
   NR_gNB_UCI_STATS_t *uci_stats = &phy_stats->uci_stats;
 

@@ -1332,30 +1332,32 @@ void nr_ue_configure_pucch(NR_UE_MAC_INST_t *mac,
 
     NR_PUCCH_Resource_t *pucchres = pucch->pucch_resource;
 
-    if (current_UL_BWP->harq_ACK_SpatialBundlingPUCCH != NULL || *current_DL_BWP->pdsch_HARQ_ACK_Codebook != 1) {
-      LOG_E(MAC,"PUCCH Unsupported cell group configuration\n");
-      return;
-    } else if (current_DL_BWP && current_DL_BWP->pdsch_servingcellconfig && current_DL_BWP->pdsch_servingcellconfig->codeBlockGroupTransmission != NULL) {
-      LOG_E(MAC,"PUCCH Unsupported code block group for serving cell config\n");
-      return;
+    if (current_UL_BWP != NULL) {
+      if (current_UL_BWP->harq_ACK_SpatialBundlingPUCCH != NULL || (current_DL_BWP && *current_DL_BWP->pdsch_HARQ_ACK_Codebook != 1)) {
+        LOG_E(MAC,"PUCCH Unsupported cell group configuration\n");
+        return;
+      } else if (current_DL_BWP && current_DL_BWP->pdsch_servingcellconfig && current_DL_BWP->pdsch_servingcellconfig->codeBlockGroupTransmission != NULL) {
+        LOG_E(MAC,"PUCCH Unsupported code block group for serving cell config\n");
+        return;
+      }
+
+      NR_PUSCH_Config_t *pusch_Config = current_UL_BWP ? current_UL_BWP->pusch_Config : NULL;
+      if (pusch_Config) {
+        pusch_id = pusch_Config->dataScramblingIdentityPUSCH;
+        if (pusch_Config->dmrs_UplinkForPUSCH_MappingTypeA != NULL &&
+            pusch_Config->dmrs_UplinkForPUSCH_MappingTypeA->choice.setup->transformPrecodingDisabled != NULL)
+          id0 = pusch_Config->dmrs_UplinkForPUSCH_MappingTypeA->choice.setup->transformPrecodingDisabled->scramblingID0;
+        else if (pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB != NULL &&
+                 pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup->transformPrecodingDisabled != NULL)
+          id0 = pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup->transformPrecodingDisabled->scramblingID0;
+      }
+
+      NR_PUCCH_Config_t *pucch_Config = current_UL_BWP->pucch_Config;
+      AssertFatal(pucch_Config, "no pucch_Config\n");
+
+      pucch_pdu->bwp_size = current_UL_BWP->BWPSize;
+      pucch_pdu->bwp_start = current_UL_BWP->BWPStart;
     }
-
-    NR_PUSCH_Config_t *pusch_Config = current_UL_BWP ? current_UL_BWP->pusch_Config : NULL;
-    if (pusch_Config) {
-      pusch_id = pusch_Config->dataScramblingIdentityPUSCH;
-      if (pusch_Config->dmrs_UplinkForPUSCH_MappingTypeA != NULL &&
-          pusch_Config->dmrs_UplinkForPUSCH_MappingTypeA->choice.setup->transformPrecodingDisabled != NULL)
-        id0 = pusch_Config->dmrs_UplinkForPUSCH_MappingTypeA->choice.setup->transformPrecodingDisabled->scramblingID0;
-      else if (pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB != NULL &&
-               pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup->transformPrecodingDisabled != NULL)
-        id0 = pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup->transformPrecodingDisabled->scramblingID0;
-    }
-
-    NR_PUCCH_Config_t *pucch_Config = current_UL_BWP->pucch_Config;
-    AssertFatal(pucch_Config, "no pucch_Config\n");
-
-    pucch_pdu->bwp_size = current_UL_BWP->BWPSize;
-    pucch_pdu->bwp_start = current_UL_BWP->BWPStart;
     pucch_pdu->prb_start = pucchres->startingPRB;
     pucch_pdu->freq_hop_flag = pucchres->intraSlotFrequencyHopping!= NULL ?  1 : 0;
     pucch_pdu->second_hop_prb = pucchres->secondHopPRB!= NULL ?  *pucchres->secondHopPRB : 0;
