@@ -988,18 +988,18 @@ class OaiCiTest():
 		iperf_time = int(self.Iperf_ComputeTime())
 		port = f'-p {5001+idx}'
 		# hack: the ADB UEs don't have iperf in $PATH, so we need to hardcode for the moment
-		iperf_ue = '/data/local/tmp/iperf' if re.search('adb', ue.getName()) else 'iperf'
+		iperf_ue = '/data/local/tmp/iperf' if re.search('adb', ue.getName()) else 'iperf3'
 
 		if self.iperf_direction == "DL":
 			logging.debug("Iperf in DL requested")
 			cmd = cls_cmd.getConnection(ue.getHost())
 			cmd.run(f'rm {server_filename}')
-			cmd.run(f'{ue.getCmdPrefix()} {iperf_ue} -s -B {ue.getIP()} {udpSwitch} -i 1 -t {iperf_time * 1.5} {port} &> /tmp/{server_filename} &')
+			cmd.run(f'{ue.getCmdPrefix()} {iperf_ue} -s -B {ue.getIP()} {udpSwitch} -i 1 {port} &> /tmp/{server_filename} &')
 			cmd.close()
 
 			cmd = cls_cmd.getConnection(EPC.IPAddress)
 			cmd.run(f'rm {EPC.SourceCodePath}/{client_filename}')
-			cmd.run(f'{cn_iperf_prefix} iperf -c {ue.getIP()} {iperf_opt} {port} &> {EPC.SourceCodePath}/{client_filename}', timeout=iperf_time * 1.5)
+			cmd.run(f'{cn_iperf_prefix} iperf3 -c {ue.getIP()} {iperf_opt} {port} &> {EPC.SourceCodePath}/{client_filename}', timeout=iperf_time * 1.5)
 			cmd.copyin(f'{EPC.SourceCodePath}/{client_filename}', client_filename)
 			cmd.close()
 
@@ -1018,7 +1018,7 @@ class OaiCiTest():
 			logging.debug("Iperf in UL requested")
 			cmd = cls_cmd.getConnection(EPC.IPAddress)
 			cmd.run(f'rm {EPC.SourceCodePath}/{server_filename}')
-			cmd.run(f'{cn_iperf_prefix} iperf -s {udpSwitch} -t {iperf_time * 1.5} {port} &> {EPC.SourceCodePath}/{server_filename} &')
+			cmd.run(f'{cn_iperf_prefix} iperf -s {udpSwitch} {port} &> {EPC.SourceCodePath}/{server_filename} &')
 			cmd.close()
 
 			cmd = cls_cmd.getConnection(ue.getHost())
