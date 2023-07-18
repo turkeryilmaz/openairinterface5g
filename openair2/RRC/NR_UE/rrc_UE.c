@@ -2391,8 +2391,8 @@ nr_rrc_ue_establish_srb2(
          LOG_W(NR_RRC, "todo, sleep before removing UE\n");
          sleep(3);
 
-         NR_UE_MAC_INST_t *mac = get_mac_inst(ctxt_pP->module_id);
-         /* mac->ra.ra_state = RA_UE_IDLE; */
+         /* NR_UE_MAC_INST_t *mac = get_mac_inst(ctxt_pP->module_id);
+          mac->ra.ra_state = RA_UE_IDLE; */
 
          nr_rrc_set_state( ctxt_pP->module_id, RRC_STATE_IDLE_NR );
          nr_rrc_set_sub_state( ctxt_pP->module_id, RRC_SUB_STATE_IDLE_NR );

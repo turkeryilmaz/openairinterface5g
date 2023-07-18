@@ -249,7 +249,7 @@ static void do_pdcp_data_ind(
   mem_block_t *const sdu_buffer)
 {
   nr_pdcp_ue_t *ue;
-  nr_pdcp_entity_t *rb;
+  nr_pdcp_entity_t *rb = NULL;
   ue_id_t rntiMaybeUEid = ctxt_pP->rntiMaybeUEid;
 
   if (ctxt_pP->module_id != 0 ||
@@ -559,7 +559,7 @@ static void enqueue_pdcp_data_req(
   const mui_t muiP,
   const confirm_t confirmP,
   const sdu_size_t sdu_buffer_size,
-  unsigned char *const sdu_buffer,
+  char *const sdu_buffer,
   const pdcp_transmission_mode_t modeP)
 {
   if (!srb_flagP) {
@@ -968,7 +968,7 @@ void pdcp_run(const protocol_ctxt_t *const  ctxt_pP)
                                      0,
                                      NR_DTCH_DATA_REQ(msg_p).gNB_index);
 
-      LOG_A(PDCP, "Sending packet to PDCP, Calling pdcp_data_req ue %x drb id %ld len %u\n",
+      LOG_A(PDCP, "Sending packet to PDCP, Calling pdcp_data_req ue 0x%lx drb id %ld len %u\n",
             ctxt.rntiMaybeUEid, NR_DTCH_DATA_REQ(msg_p).rb_id, NR_DTCH_DATA_REQ(msg_p).sdu_size);
       result = pdcp_data_req(&ctxt,
                             SRB_FLAG_NO,
@@ -1354,7 +1354,7 @@ void pdcp_config_set_security(
     ciphering_algorithm = security_modeP & 0x0f;
     LOG_MSG(kRRCint_pP, 16, "%s: (%d) kRRCint_pP: ", __FUNCTION__, integrity_algorithm);
     LOG_MSG(kRRCenc_pP, 16, "%s: (%d) kRRCenc_pP: ", __FUNCTION__, ciphering_algorithm);
-    rb->set_security(rb, integrity_algorithm, kRRCint_pP, ciphering_algorithm, kRRCenc_pP);
+    rb->set_security(rb, integrity_algorithm, (char*)kRRCint_pP, ciphering_algorithm, (char*)kRRCenc_pP);
   } else {
     LOG_E(PDCP, "%s:%d:%s: TODO\n", __FILE__, __LINE__, __FUNCTION__);
     exit(1);
