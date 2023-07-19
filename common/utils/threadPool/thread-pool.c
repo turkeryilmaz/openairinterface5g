@@ -34,6 +34,9 @@
 #include <threadPool/thread-pool.h>
 
 void displayList(notifiedFIFO_t *nf) {
+  
+  ((notifiedFIFO_api_t *)nf->opaqueptr)->display(nf);
+  /*
   int n=0;
   notifiedFIFO_elt_t *ptr=nf->outF;
 
@@ -43,12 +46,23 @@ void displayList(notifiedFIFO_t *nf) {
   }
 
   printf("End of list: %d elements\n",n);
+   */
+}
+ 
+void initNotifiedFIFO_typeFIFO(notifiedFIFO_t *nf) {
+  nf->opaqueptr = (notifiedFIFO_typeFIFO_t *)malloc(sizeof(struct notifiedFIFO_typeFIFO_s));
+  AssertFatal(nf->opaqueptr != NULL, "createNotifiedFIFO_typeFIFO's opaqueptr is NULL");
+  ((notifiedFIFO_api_t *)nf->opaqueptr)->init = _initNotifiedFIFO_typeFIFO;
+  
+  _initNotifiedFIFO(nf);/* Now call the old init function */
 }
 
 static inline  notifiedFIFO_elt_t *pullNotifiedFifoRemember( notifiedFIFO_t *nf, struct one_thread *thr) {
+  notifiedFIFO_api_t* notifiedFIFO_api = (notifiedFIFO_api_t *)nf->opaqueptr;
+
   mutexlock(nf->lockF);
 
-  while(!nf->outF && !thr->terminate)
+  while(notifiedFIFO_api->empty(nf) && !thr->terminate)
     condwait(nf->notifF, nf->lockF);
 
   if (thr->terminate) {
@@ -56,11 +70,7 @@ static inline  notifiedFIFO_elt_t *pullNotifiedFifoRemember( notifiedFIFO_t *nf,
     return NULL;
   }
 
-  notifiedFIFO_elt_t *ret=nf->outF;
-  nf->outF=nf->outF->next;
-
-  if (nf->outF==NULL)
-    nf->inF=NULL;
+  notifiedFIFO_elt_t *ret=notifiedFIFO_api->pull(nf);
 
   // For abort feature
   thr->runningOnKey=ret->key;

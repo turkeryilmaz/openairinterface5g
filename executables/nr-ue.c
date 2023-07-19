@@ -769,7 +769,7 @@ void *UE_thread(void *arg) {
   initNotifiedFIFO(&txFifo);
 
   notifiedFIFO_t freeBlocks;
-  initNotifiedFIFO_nothreadSafe(&freeBlocks);
+  initNotifiedFIFO(&freeBlocks);
 
   int timing_advance = UE->timing_advance;
   NR_UE_MAC_INST_t *mac = get_mac_inst(0);

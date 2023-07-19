@@ -54,6 +54,9 @@
 #define condsignal(signal)    {int ret=pthread_cond_signal(&signal); \
                                AssertFatal(ret==0,"ret=%d\n",ret);}
 #define tpool_nbthreads(tpool)   (tpool.nbThreads)
+
+#define initNotifiedFIFO(nf)  initNotifiedFIFO_typeFIFO(nf)
+
 typedef struct notifiedFIFO_elt_s {
   struct notifiedFIFO_elt_s *next;
   uint64_t key; //To filter out elements
@@ -68,12 +71,21 @@ typedef struct notifiedFIFO_elt_s {
 }  notifiedFIFO_elt_t;
 
 typedef struct notifiedFIFO_s {
-  notifiedFIFO_elt_t *outF;
-  notifiedFIFO_elt_t *inF;
   pthread_mutex_t lockF;
   pthread_cond_t  notifF;
   bool abortFIFO; // if set, the FIFO always returns NULL -> abort condition
+  void *opaqueptr; 
 } notifiedFIFO_t;
+
+typedef struct notifiedFIFO_api_s {
+  void (*init)(notifiedFIFO_t *nf);
+  void (*push)(notifiedFIFO_t *nf, notifiedFIFO_elt_t *msg);
+  notifiedFIFO_elt_t* (*pull)(notifiedFIFO_t *nf);
+  int (*abort)(notifiedFIFO_t *nf);
+  bool (*empty)(notifiedFIFO_t *nf);
+
+  void (*display)(notifiedFIFO_t *nf);
+} notifiedFIFO_api_t; 
 
 // You can use this allocator or use any piece of memory
 static inline notifiedFIFO_elt_t *newNotifiedFIFO_elt(int size,
@@ -105,62 +117,125 @@ static inline void delNotifiedFIFO_elt(notifiedFIFO_elt_t *elt) {
    * the caller */
 }
 
-static inline void initNotifiedFIFO_nothreadSafe(notifiedFIFO_t *nf) {
-  nf->inF=NULL;
-  nf->outF=NULL;
-  nf->abortFIFO = false;
-}
-static inline void initNotifiedFIFO(notifiedFIFO_t *nf) {
-  mutexinit(nf->lockF);
-  condinit (nf->notifF);
-  initNotifiedFIFO_nothreadSafe(nf);
-  // No delete function: the creator has only to free the memory
+void initNotifiedFIFO_typeFIFO(notifiedFIFO_t *nf);
+
+typedef struct notifiedFIFO_typeFIFO_s {
+  notifiedFIFO_api_t api; // Public methods which work on opaqueptr impl
+  notifiedFIFO_elt_t *outF;
+  notifiedFIFO_elt_t *inF;
+
+} notifiedFIFO_typeFIFO_t;
+
+static inline void displayNotifiedFIFO_typeFIFO(notifiedFIFO_t *nf) {
+  notifiedFIFO_typeFIFO_t *nf_typeFIFO = ((notifiedFIFO_typeFIFO_t *)nf->opaqueptr);
+  int n=0;
+  notifiedFIFO_elt_t *ptr=nf_typeFIFO->outF;
+
+  while(ptr) {
+    printf("element: %d, key: %lu\n",++n,ptr->key);
+    ptr=ptr->next;
+  }
+
+  printf("End of list: %d elements\n",n);
 }
 
-static inline void pushNotifiedFIFO_nothreadSafe(notifiedFIFO_t *nf, notifiedFIFO_elt_t *msg) {
+static inline void pushNotifiedFIFO_typeFIFO(notifiedFIFO_t *nf, notifiedFIFO_elt_t *msg) {
+  notifiedFIFO_typeFIFO_t *nf_typeFIFO = ((notifiedFIFO_typeFIFO_t *)nf->opaqueptr);
+
   msg->next=NULL;
 
-  if (nf->outF == NULL)
-    nf->outF = msg;
+  if (nf_typeFIFO->outF == NULL)
+    nf_typeFIFO->outF = msg;
 
-  if (nf->inF != NULL)
-    nf->inF->next = msg;
+  if (nf_typeFIFO->inF != NULL)
+    nf_typeFIFO->inF->next = msg;
 
-  nf->inF = msg;
+  nf_typeFIFO->inF = msg;
 }
 
-static inline void pushNotifiedFIFO(notifiedFIFO_t *nf, notifiedFIFO_elt_t *msg) {
-  mutexlock(nf->lockF);
-  if (!nf->abortFIFO) {
-    pushNotifiedFIFO_nothreadSafe(nf,msg);
-    condsignal(nf->notifF);
-  }
-  mutexunlock(nf->lockF);
-}
+static inline  notifiedFIFO_elt_t *pullNotifiedFIFO_typeFIFO(notifiedFIFO_t *nf) {
+  notifiedFIFO_typeFIFO_t *nf_typeFIFO = ((notifiedFIFO_typeFIFO_t *)nf->opaqueptr);
 
-static inline  notifiedFIFO_elt_t *pullNotifiedFIFO_nothreadSafe(notifiedFIFO_t *nf) {
-  if (nf->outF == NULL)
+  if (nf_typeFIFO->outF == NULL)
     return NULL;
   if (nf->abortFIFO)
     return NULL;
 
-  notifiedFIFO_elt_t *ret=nf->outF;
+  notifiedFIFO_elt_t *ret=nf_typeFIFO->outF;
 
-  AssertFatal(nf->outF != nf->outF->next,"Circular list in thread pool: push several times the same buffer is forbidden\n");
+  AssertFatal(nf_typeFIFO->outF != nf_typeFIFO->outF->next,"Circular list in thread pool: push several times the same buffer is forbidden\n");
 
-  nf->outF=nf->outF->next;
+  nf_typeFIFO->outF=nf_typeFIFO->outF->next;
 
-  if (nf->outF==NULL)
-    nf->inF=NULL;
+  if (nf_typeFIFO->outF==NULL)
+    nf_typeFIFO->inF=NULL;
 
   return ret;
+}
+
+static inline int abortNotifiedFIFO_typeFIFO(notifiedFIFO_t *nf) {
+  notifiedFIFO_typeFIFO_t *nf_typeFIFO = ((notifiedFIFO_typeFIFO_t *)nf->opaqueptr);
+  int nbRemoved=0;
+  notifiedFIFO_elt_t **elt = &nf_typeFIFO->outF;
+  while(*elt != NULL) {
+    notifiedFIFO_elt_t *p = *elt;
+    *elt = (*elt)->next;
+    delNotifiedFIFO_elt(p);
+    nbRemoved++;
+  }
+
+  if (nf_typeFIFO->outF == NULL)
+    nf_typeFIFO->inF = NULL;
+
+  return nbRemoved;
+}
+
+static inline bool is_emptyNotifiedFIFO_typeFIFO(notifiedFIFO_t *nf) {
+    notifiedFIFO_typeFIFO_t *nf_typeFIFO = ((notifiedFIFO_typeFIFO_t *)nf->opaqueptr);
+
+    return (nf_typeFIFO->outF == NULL);
+}
+
+static inline void _initNotifiedFIFO_typeFIFO(notifiedFIFO_t *nf) {
+  notifiedFIFO_typeFIFO_t *nf_typeFIFO = ((notifiedFIFO_typeFIFO_t *)nf->opaqueptr);
+
+  nf_typeFIFO->inF=NULL;
+  nf_typeFIFO->outF=NULL;
+
+  nf_typeFIFO->api.push = pushNotifiedFIFO_typeFIFO;
+  nf_typeFIFO->api.pull = pullNotifiedFIFO_typeFIFO;
+  nf_typeFIFO->api.abort = abortNotifiedFIFO_typeFIFO;
+
+  nf_typeFIFO->api.display = displayNotifiedFIFO_typeFIFO;
+  nf_typeFIFO->api.empty = is_emptyNotifiedFIFO_typeFIFO;
+}
+
+static inline void _initNotifiedFIFO(notifiedFIFO_t *nf) {
+  mutexinit(nf->lockF);
+  condinit (nf->notifF);
+
+  nf->abortFIFO = false;
+  // The caller sets the init function in opaqueptr to avoid proto 
+  // changes
+  ((notifiedFIFO_api_t *)nf->opaqueptr)->init(nf);
+  // No delete function: the creator has only to free the memory
+}
+
+static inline void pushNotifiedFIFO(notifiedFIFO_t *nf, notifiedFIFO_elt_t *msg) {
+
+  mutexlock(nf->lockF);
+  if (!nf->abortFIFO) {
+    ((notifiedFIFO_api_t *)nf->opaqueptr)->push(nf,msg);
+    condsignal(nf->notifF);
+  }
+  mutexunlock(nf->lockF);
 }
 
 static inline  notifiedFIFO_elt_t *pullNotifiedFIFO(notifiedFIFO_t *nf) {
   mutexlock(nf->lockF);
   notifiedFIFO_elt_t *ret = NULL;
 
-  while((ret=pullNotifiedFIFO_nothreadSafe(nf)) == NULL && !nf->abortFIFO)
+  while((ret= ((notifiedFIFO_api_t *)nf->opaqueptr)->pull(nf)) == NULL && !nf->abortFIFO)
     condwait(nf->notifF, nf->lockF);
 
   mutexunlock(nf->lockF);
@@ -178,7 +253,7 @@ static inline  notifiedFIFO_elt_t *pollNotifiedFIFO(notifiedFIFO_t *nf) {
     return NULL;
   }
 
-  notifiedFIFO_elt_t *ret=pullNotifiedFIFO_nothreadSafe(nf);
+  notifiedFIFO_elt_t *ret=((notifiedFIFO_api_t *)nf->opaqueptr)->pull(nf);
   mutexunlock(nf->lockF);
   return ret;
 }
@@ -197,22 +272,19 @@ static inline time_stats_t exec_time_stats_NotifiedFIFO(const notifiedFIFO_elt_t
   return ts;
 }
 
+
 // This functions aborts all messages in the queue, and marks the queue as
 // "aborted", such that every call to it will return NULL
-static inline void abortNotifiedFIFO(notifiedFIFO_t *nf) {
+static inline int abortNotifiedFIFO(notifiedFIFO_t *nf) {
   mutexlock(nf->lockF);
+  int nbRemoved = 0;
   nf->abortFIFO = true;
-  notifiedFIFO_elt_t **elt = &nf->outF;
-  while(*elt != NULL) {
-    notifiedFIFO_elt_t *p = *elt;
-    *elt = (*elt)->next;
-    delNotifiedFIFO_elt(p);
-  }
 
-  if (nf->outF == NULL)
-    nf->inF = NULL;
+  nbRemoved = ((notifiedFIFO_api_t *)nf->opaqueptr)->abort(nf);
   condbroadcast(nf->notifF);
   mutexunlock(nf->lockF);
+
+  return nbRemoved;
 }
 
 struct one_thread {
@@ -300,7 +372,7 @@ static inline int abortTpool(tpool_t *t) {
   notifiedFIFO_t *nf=&t->incomingFifo;
   mutexlock(nf->lockF);
   nf->abortFIFO = true;
-  notifiedFIFO_elt_t **start=&nf->outF;
+  /* notifiedFIFO_elt_t **start=&nf->outF; */
 
   /* mark threads to abort them */
   struct one_thread *thread = t->allthreads;
@@ -311,7 +383,7 @@ static inline int abortTpool(tpool_t *t) {
     thread = thread->next;
   }
 
-  /* clear FIFOs */
+  /* clear FIFOs 
   while(*start!=NULL) {
     notifiedFIFO_elt_t **request=start;
     *start=(*start)->next;
@@ -326,6 +398,8 @@ static inline int abortTpool(tpool_t *t) {
   condbroadcast(t->incomingFifo.notifF);
   mutexunlock(nf->lockF);
 
+   */
+  nbRemoved = abortNotifiedFIFO(nf);
   /* join threads that are still runing */
   thread = t->allthreads;
   while (thread != NULL) {
