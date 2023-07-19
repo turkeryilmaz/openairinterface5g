@@ -9,7 +9,9 @@
 
 size_t get_number_drbs_per_ue(NR_UE_info_t * const UE);
 
-nr_rlc_statistics_t* rlc_stat_per_ue(NR_UE_info_t * const UE);
+// nr_rlc_statistics_t** rlc_stat_per_ue(NR_UE_info_t * const UE);
+nr_rlc_statistics_t active_avg_to_tx_per_drb(NR_UE_info_t * const UE, int const rb_id);
+
 
 uint32_t num_act_rb(NR_UEs_t* const UE_info);
 

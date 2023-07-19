@@ -11,8 +11,8 @@
 #include <assert.h>
 #include <stdio.h>
 
-static
-const int mod_id = 0;
+// static
+// const int mod_id = 0;
 
 static 
 gnb_e2sm_t fill_gnb_data(rrc_gNB_ue_context_t * ue_context_p)
@@ -23,7 +23,6 @@ gnb_e2sm_t fill_gnb_data(rrc_gNB_ue_context_t * ue_context_p)
   // Mandatory
   // AMF UE NGAP ID
   // fill with openair3/NGAP/ngap_gNB_ue_context.h:61
-  // struct rrc_gNB_ue_context_s *ue_context_p = rrc_gNB_get_ue_context_by_rnti(RC.nrrrc[mod_id], rnti);
   gnb.amf_ue_ngap_id = ue_context_p->ue_context.gNB_ue_ngap_id;
 
   // Mandatory
@@ -93,6 +92,12 @@ void cal_dl_thr_bps(uint64_t const dl_total_bytes, uint32_t const gran_period_ms
   }
 }
 
+
+// double cal_dl_thr(uint64_t const dl_total_bytes, uint32_t const gran_period_ms)
+// {
+//   double dl_thr_avg_val = 0;
+// }
+
 double ul_thr_st_val[MAX_MOBILES_PER_GNB] = {0};
 double ul_thr_avg_val[MAX_MOBILES_PER_GNB] = {0};
 int ul_thr_count[MAX_MOBILES_PER_GNB] = {0};
@@ -114,11 +119,10 @@ kpm_ind_msg_format_1_t fill_kpm_ind_msg_frm_1(NR_UE_info_t* const UE, size_t con
 {
   kpm_ind_msg_format_1_t msg_frm_1 = {0};
   
-  // msg_frm_1.meas_data_lst_len = num_drbs;  // number of DRBs per UE
-  msg_frm_1.meas_data_lst_len = get_number_drbs_per_ue(UE);  // number of DRBs per UE
-  nr_rlc_statistics_t* rlc_stat_list = rlc_stat_per_ue(UE);  // RLC statistics per UE
+  // Measurement Data list length is equal to number of DRBs
+  msg_frm_1.meas_data_lst_len = get_number_drbs_per_ue(UE);
   
-  printf("Number of DRBs per UE is %lu\n", msg_frm_1.meas_data_lst_len);
+  printf("UE with RNTI %x has %lu DRBs\n", UE->rnti, msg_frm_1.meas_data_lst_len);
 
   msg_frm_1.meas_data_lst = calloc(msg_frm_1.meas_data_lst_len, sizeof(*msg_frm_1.meas_data_lst));
   assert(msg_frm_1.meas_data_lst != NULL && "Memory exhausted" );
@@ -131,17 +135,17 @@ kpm_ind_msg_format_1_t fill_kpm_ind_msg_frm_1(NR_UE_info_t* const UE, size_t con
   {
     meas_data_lst_t* meas_data = &msg_frm_1.meas_data_lst[i];
     
-    // Measurement Record per UE
+    // Measurement Record
     meas_data->meas_record_len = rec_data_len;
 
     meas_data->meas_record_lst = calloc(meas_data->meas_record_len, sizeof(meas_record_lst_t));
     assert(meas_data->meas_record_lst != NULL && "Memory exhausted");
 
-    for (size_t j = 0; j < meas_data->meas_record_len; j++)
+    for (size_t j = 0; j < meas_data->meas_record_len; j++)  // each meas record corresponds to one meas type
     {
       meas_record_lst_t* meas_record = &meas_data->meas_record_lst[j];
 
-      // Measurement Type as requested in from Action Definition
+      // Measurement Type as requested in Action Definition
       meas_type_t meas_info_type = act_def_fr_1->meas_info_lst[j].meas_type;
 
       switch (meas_info_type.type)
@@ -167,8 +171,12 @@ kpm_ind_msg_format_1_t fill_kpm_ind_msg_frm_1(NR_UE_info_t* const UE, size_t con
         else if (strcmp(meas_info_name_str, "DRB.RlcSduDelayDl") == 0)
         {
           meas_record->value = REAL_MEAS_VALUE;
-          nr_rlc_activate_avg_time_to_tx(UE->rnti, i+4, 1);  // for specific DRB ID per UE
-          meas_record->real_val = rlc_stat_list[i].txsdu_avg_time_to_tx;
+
+          // Get RLC stats per DRB
+          nr_rlc_statistics_t rlc = active_avg_to_tx_per_drb(UE, i+1);
+
+          // Get the value of sojourn time at the RLC buffer
+          meas_record->real_val = rlc.txsdu_avg_time_to_tx;
         } 
 
         break;
@@ -278,25 +286,21 @@ static kpm_ind_msg_format_1_t fill_rnd_kpm_ind_msg_frm_1(void)
 }
 
 
-typedef struct pair {
-    NR_UE_info_t *selected_ue_list;
-    size_t num_selected_ues;
-} pair;
+typedef struct {
+    NR_UE_info_t *ue_list;
+    size_t num_ues;
+} selected_ues_t;
 
 static
-pair select_ue_list_by_s_nssai_criteria(test_cond_e const * condition, int64_t const value, NR_UE_info_t * ue_list, size_t const number_ues)
+selected_ues_t filter_ues_by_s_nssai_criteria(test_cond_e const * condition, int64_t const value, NR_UE_info_t * ue_list, size_t const num_connected_ues)
 {
-  pair pair;
-
+  selected_ues_t selected_ues = {.num_ues = 0, .ue_list = calloc(num_connected_ues, sizeof(NR_UE_info_t))};
+  assert(selected_ues.ue_list != NULL && "Memory exhausted");
+  
   assert(RC.nb_nr_inst == 1 && "Number of RRC instances greater than 1 not yet implemented");
-
-  printf("Condition is SST equal to %lu\n", value);
-
-  pair.num_selected_ues = 0;
-  pair.selected_ue_list = calloc(number_ues, sizeof(NR_UE_info_t));
-  assert(pair.selected_ue_list != NULL && "Memory exhausted");
-
-  for (size_t i = 0; i<number_ues; i++)
+  
+  // Check if each UE satisfies the given S-NSSAI criteria
+  for (size_t i = 0; i<num_connected_ues; i++)
   {
     rrc_gNB_ue_context_t *rrc_ue_context_list = rrc_gNB_get_ue_context_by_rnti(RC.nrrrc[0], ue_list[i].rnti);
     ngap_gNB_ue_context_t *ngap_ue_context_list = ngap_get_ue_context(rrc_ue_context_list->ue_context.gNB_ue_ngap_id);
@@ -304,9 +308,10 @@ pair select_ue_list_by_s_nssai_criteria(test_cond_e const * condition, int64_t c
     switch (*condition)
     {
     case EQUAL_TEST_COND:
+      printf("Condition is SST equal to %lu\n", value);
       assert(ngap_ue_context_list->gNB_instance[0].s_nssai[0][0].sST == value && "Please, check the condition for S-NSSAI. At the moment, OAI supports eMBB");
-      pair.selected_ue_list[pair.num_selected_ues] = ue_list[i];
-      pair.num_selected_ues++;
+      selected_ues.ue_list[selected_ues.num_ues] = ue_list[i];
+      selected_ues.num_ues++;
       break;
     
     default:
@@ -314,7 +319,7 @@ pair select_ue_list_by_s_nssai_criteria(test_cond_e const * condition, int64_t c
     }
   }
 
-  return pair;
+  return selected_ues;
 }
 
 static
@@ -331,7 +336,7 @@ kpm_ind_msg_format_3_t fill_kpm_ind_msg_frm_3(const kpm_act_def_format_4_t * act
 
 
     // Filter the UE by the test condition criteria
-    pair pair;
+    selected_ues_t selected_ues;
 
     for (size_t j = 0; j<act_def_fr_4->matching_cond_lst_len; j++)
     {
@@ -340,7 +345,8 @@ kpm_ind_msg_format_3_t fill_kpm_ind_msg_frm_3(const kpm_act_def_format_4_t * act
       case S_NSSAI_TEST_COND_TYPE:
         assert(act_def_fr_4->matching_cond_lst[j].test_info_lst.S_NSSAI == TRUE_TEST_COND_TYPE && "Must be true");
         
-        pair = select_ue_list_by_s_nssai_criteria(act_def_fr_4->matching_cond_lst[j].test_info_lst.test_cond, *act_def_fr_4->matching_cond_lst[j].test_info_lst.int_value, ue_list, msg_frm_3.ue_meas_report_lst_len);
+        printf("Condition for filtering matching UEs is S-NSSAI");
+        selected_ues = filter_ues_by_s_nssai_criteria(act_def_fr_4->matching_cond_lst[j].test_info_lst.test_cond, *act_def_fr_4->matching_cond_lst[j].test_info_lst.int_value, ue_list, msg_frm_3.ue_meas_report_lst_len);
         break;
       
       default:
@@ -349,18 +355,19 @@ kpm_ind_msg_format_3_t fill_kpm_ind_msg_frm_3(const kpm_act_def_format_4_t * act
 
     }
 
-
-    msg_frm_3.meas_report_per_ue = calloc(pair.num_selected_ues, sizeof(meas_report_per_ue_t));
+    // Fill UE Measurement Reports
+    assert(selected_ues.num_ues >= 1 && "The number of filtered UEs must be at least equal to 1");
+    msg_frm_3.meas_report_per_ue = calloc(selected_ues.num_ues, sizeof(meas_report_per_ue_t));
     assert(msg_frm_3.meas_report_per_ue != NULL && "Memory exhausted");
 
-    for (size_t i = 0; i<pair.num_selected_ues; i++)
+    for (size_t i = 0; i<selected_ues.num_ues; i++)
     {
       // Fill UE ID data
-      rrc_gNB_ue_context_t *rrc_ue_context_list = rrc_gNB_get_ue_context_by_rnti(RC.nrrrc[0], pair.selected_ue_list[i].rnti);
+      rrc_gNB_ue_context_t *rrc_ue_context_list = rrc_gNB_get_ue_context_by_rnti(RC.nrrrc[0], selected_ues.ue_list[i].rnti);
       msg_frm_3.meas_report_per_ue[i].ue_meas_report_lst = fill_ue_id_data(rrc_ue_context_list);
       
       // Fill UE related info
-      msg_frm_3.meas_report_per_ue[i].ind_msg_format_1 = fill_kpm_ind_msg_frm_1(&pair.selected_ue_list[i], i, &act_def_fr_4->action_def_format_1);
+      msg_frm_3.meas_report_per_ue[i].ind_msg_format_1 = fill_kpm_ind_msg_frm_1(&selected_ues.ue_list[i], i, &act_def_fr_4->action_def_format_1);
     }
 
   
@@ -406,16 +413,6 @@ kpm_ind_hdr_t fill_kpm_ind_hdr_sta(void)
   return hdr;
 }
 
-// static
-// kpm_ind_msg_t fill_ind_msg(void)
-// {
-//   kpm_ind_msg_t ind_msg = {0};
-
-//   ind_msg.type = FORMAT_3_INDICATION_MESSAGE;
-//   ind_msg.frm_3 = fill_kpm_ind_msg_frm_3();  //&kpm->act_def->frm_4);
-
-//   return ind_msg;
-// }
 
 void read_kpm_sm(void* data)
 {
@@ -426,12 +423,6 @@ void read_kpm_sm(void* data)
 
   assert(kpm->act_def!= NULL && "Cannot be NULL");
   if(kpm->act_def->type == FORMAT_4_ACTION_DEFINITION){
-
-    // this should be in fill_kpm_ind_msg_frm_3 function, to filter the corresponding UEs
-    if(kpm->act_def->frm_4.matching_cond_lst[0].test_info_lst.test_cond_type == CQI_TEST_COND_TYPE
-        && *kpm->act_def->frm_4.matching_cond_lst[0].test_info_lst.test_cond == GREATERTHAN_TEST_COND){
-      printf("Matching condition: UEs with CQI greater than %ld \n", *kpm->act_def->frm_4.matching_cond_lst[0].test_info_lst.int_value );
-    }
 
     for (size_t i = 0; i < kpm->act_def->frm_4.action_def_format_1.meas_info_lst_len; i++)
       printf("Parameter to report: %s \n", kpm->act_def->frm_4.action_def_format_1.meas_info_lst[i].meas_type.name.buf);
