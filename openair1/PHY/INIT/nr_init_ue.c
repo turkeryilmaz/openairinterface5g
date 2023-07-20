@@ -355,6 +355,9 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
     csiim_vars[gNB_id] = malloc16_clear(sizeof(NR_UE_CSI_IM));
     csirs_vars[gNB_id] = malloc16_clear(sizeof(NR_UE_CSI_RS));
     srs_vars[gNB_id] = malloc16_clear(sizeof(NR_UE_SRS));
+    if (get_softmodem_params()->sl_mode == SL_MODE_2) {
+      psbch_vars[gNB_id] = (NR_UE_PSBCH *)malloc16_clear(sizeof(NR_UE_PSBCH));
+    }
 
     csiim_vars[gNB_id]->active = false;
     csirs_vars[gNB_id]->active = false;
