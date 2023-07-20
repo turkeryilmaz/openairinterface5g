@@ -921,11 +921,15 @@ class OaiCiTest():
 		server_file.close()
 
 
-	def Iperf_analyzeV3Output(self, lock, UE_IPAddress, device_id, statusQueue,SSH):
+	def Iperf_analyzeV3Output(self, lock, UE_IPAddress, device_id, statusQueue, server_filename):
 
-		result = re.search('(?P<bitrate>[0-9\.]+ [KMG]bits\/sec) +(?:|[0-9\.]+ ms +\d+\/\d+ \((?P<packetloss>[0-9\.]+)%\)) +(?:|receiver)\r\n(?:|\[ *\d+\] Sent \d+ datagrams)\r\niperf Done\.', SSH.getBefore())
+		if (os.path.getsize(server_filename)==0):
+			self.ping_iperf_wrong_exit(lock, UE_IPAddress, device_id, statusQueue, 'Server Log File are empty')
+			return
+
+		result = re.search('(?P<bitrate>[0-9\.]+ [KMG]bits\/sec) +(?:|[0-9\.]+ ms +\d+\/\d+ \((?P<packetloss>[0-9\.]+)%\)) +(?:|receiver)\r\n(?:|\[ *\d+\] Sent \d+ datagrams)\r\niperf Done\.', server_filename)
 		if result is None:
-			result = re.search('(?P<error>iperf: error - [a-zA-Z0-9 :]+)', SSH.getBefore())
+			result = re.search('(?P<error>iperf: error - [a-zA-Z0-9 :]+)', server_filename)
 			lock.acquire()
 			statusQueue.put(-1)
 			statusQueue.put(device_id)
