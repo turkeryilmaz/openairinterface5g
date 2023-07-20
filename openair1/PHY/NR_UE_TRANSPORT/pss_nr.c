@@ -617,10 +617,8 @@ static int pss_search_time_nr(c16_t **rxdata, PHY_VARS_NR_UE *ue, int fo_flag, i
 
         /* perform correlation of rx data and pss sequence ie it is a dot product */
         int index = n + is * frame_parms->samples_per_frame;
-        const c32_t result = dot_product(primary_synchro_time_nr[pss_index],
-                                         &(rxdata[ar][index]),
-                                         frame_parms->ofdm_symbol_size,
-                                         shift);
+        const c32_t result =
+            dot_product(primary_synchro_time_nr[pss_index], &(rxdata[ar][index]), frame_parms->ofdm_symbol_size, shift);
         const c64_t r64 = {.r = result.r, .i = result.i};
         pss_corr_ue += squaredMod(r64);
         if (get_softmodem_params()->sl_mode > SL_MODE_NONE) {
