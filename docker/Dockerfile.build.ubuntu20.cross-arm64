@@ -1,0 +1,107 @@
+#/*
+# * Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
+# * contributor license agreements.  See the NOTICE file distributed with
+# * this work for additional information regarding copyright ownership.
+# * The OpenAirInterface Software Alliance licenses this file to You under
+# * the OAI Public License, Version 1.1  (the "License"); you may not use this file
+# * except in compliance with the License.
+# * You may obtain a copy of the License at
+# *
+# *      http://www.openairinterface.org/?page_id=698
+# *
+# * Unless required by applicable law or agreed to in writing, software
+# * distributed under the License is distributed on an "AS IS" BASIS,
+# * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# * See the License for the specific language governing permissions and
+# * limitations under the License.
+# *-------------------------------------------------------------------------------
+# * For more information about the OpenAirInterface (OAI) Software Alliance:
+# *      contact@openairinterface.org
+# */
+#---------------------------------------------------------------------
+#
+# Dockerfile for the Open-Air-Interface BUILD service
+#   Valid for Ubuntu 20.04 to cross-compile for ARM64
+#
+#---------------------------------------------------------------------
+
+FROM ran-base:develop-cross-arm64 as ran-build
+
+RUN rm -Rf /oai-ran
+WORKDIR /oai-ran
+COPY . .
+
+# build all targets so final targets can be created afterwards
+RUN /bin/sh oaienv && \
+    cd cmake_targets && \
+    mkdir -p ran_build/build ran_build/build-cross && \
+    cd ran_build/build && \
+    cmake ../../.. && \
+    echo "====== Start of log for ldpc_generators ======" && \
+    make -j`nproc` ldpc_generators && \
+    echo "====== End of log for ldpc_generators ======" && \
+    cd ../build-cross/ && \
+    cmake ../../.. -DCMAKE_TOOLCHAIN_FILE=../../../cross-arm.cmake && \
+    echo "====== Start of log for dlsim ======" && \
+    make -j`nproc` dlsim && \
+    echo "====== End of log for dlsim ======" && \
+    echo "====== Start of log for ulsim ======" && \
+    make -j`nproc` ulsim && \
+    echo "====== End of log for ulsim ======" && \
+    echo "====== Start of log for ldpctest ======" && \
+    make -j`nproc` ldpctest && \
+    echo "====== End of log for ldpctest ======" && \
+    echo "====== Start of log for polartest ======" && \
+    make -j`nproc` polartest && \
+    echo "====== End of log for polartest ======" && \
+    echo "====== Start of log for smallblocktest ======" && \
+    make -j`nproc` smallblocktest && \
+    echo "====== End of log for smallblocktest ======" && \
+    echo "====== Start of log for nr_pbchsim ======" && \
+    make -j`nproc` nr_pbchsim && \
+    echo "====== End of log for nr_pbchsim ======" && \
+    echo "====== Start of log for nr_dlschsim ======" && \
+    make -j`nproc` nr_dlschsim && \
+    echo "====== End of log for nr_dlschsim ======" && \
+    echo "====== Start of log for nr_ulschsim ======" && \
+    make -j`nproc` nr_ulschsim && \
+    echo "====== End of log for nr_ulschsim ======" && \
+    echo "====== Start of log for nr_dlsim ======" && \
+    make -j`nproc` nr_dlsim && \
+    echo "====== End of log for nr_dlsim ======" && \
+    echo "====== Start of log for nr_ulsim ======" && \
+    make -j`nproc` nr_ulsim && \
+    echo "====== End of log for nr_ulsim ======" && \
+    echo "====== Start of log for nr_pucchsim ======" && \
+    make -j`nproc` nr_pucchsim && \
+    echo "====== End of log for nr_pucchsim ======" && \
+    echo "====== Start of log for nr_prachsim ======" && \
+    make -j`nproc` nr_prachsim && \
+    echo "====== End of log for nr_prachsim ======" && \
+    echo "====== Start of log for lte-softmodem ======" && \
+    make -j`nproc` lte-softmodem && \
+    echo "====== End of log for lte-softmodem ======" && \
+    echo "====== Start of log for nr-softmodem ======" && \
+    make -j`nproc` nr-softmodem && \
+    echo "====== End of log for nr-softmodem ======" && \
+    echo "====== Start of log for nr-cuup ======" && \
+    make -j`nproc` nr-cuup && \
+    echo "====== End of log for nr-cuup ======" && \
+    echo "====== Start of log for oairu ======" && \
+    make -j`nproc` oairu && \
+    echo "====== End of log for oairu ======" && \
+    echo "====== Start of log for lte-uesoftmodem ======" && \
+    make -j`nproc` lte-uesoftmodem && \
+    echo "====== End of log for lte-uesoftmodem ======" && \
+    echo "====== Start of log for nr-uesoftmodem ======" && \
+    make -j`nproc` nr-uesoftmodem && \
+    echo "====== End of log for nr-uesoftmodem ======" && \
+    echo "====== Start of log for params_libconfig ======" && \
+    make -j`nproc` params_libconfig && \
+    echo "====== End of log for params_libconfig ======" && \
+    echo "====== Start of log for coding ======" && \
+    make -j`nproc` coding && \
+    echo "====== End of log for coding ======" && \
+    echo "====== Start of log for rfsimulator ======" && \
+    make -j`nproc` rfsimulator && \
+    echo "====== End of log for rfsimulator ======"
