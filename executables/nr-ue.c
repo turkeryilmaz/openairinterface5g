@@ -98,9 +98,7 @@
 #define TX_JOB_ID 100
 
 typedef enum {
-  SYNC_MODE_PSS = 0,
   SYNC_MODE_PBCH = 1,
-  SYNC_MODE_SI = 2,
   SYNC_MODE_PSBCH = 3,
 } sync_mode_t;
 
@@ -399,19 +397,6 @@ static void UE_synch(void *arg) {
 
     }
 
-  } else {
-    LOG_E(PHY,"Fixme!\n");
-    /*
-    for (i=0; i<openair0_cfg[UE->rf_map.card].rx_num_channels; i++) {
-      downlink_frequency[UE->rf_map.card][UE->rf_map.chain+i] = bands_to_scan.band_info[CC_id].dl_min;
-      uplink_frequency_offset[UE->rf_map.card][UE->rf_map.chain+i] =
-        bands_to_scan.band_info[CC_id].ul_min-bands_to_scan.band_info[CC_id].dl_min;
-      openair0_cfg[UE->rf_map.card].rx_freq[UE->rf_map.chain+i] = downlink_frequency[CC_id][i];
-      openair0_cfg[UE->rf_map.card].tx_freq[UE->rf_map.chain+i] =
-        downlink_frequency[CC_id][i]+uplink_frequency_offset[CC_id][i];
-      openair0_cfg[UE->rf_map.card].rx_gain[UE->rf_map.chain+i] = UE->rx_total_gain_dB;
-    }
-    */
   }
 
   if (UE->target_Nid_cell != -1) {
@@ -465,9 +450,6 @@ static void UE_synch(void *arg) {
           UE->rfdevice.trx_set_freq_func(&UE->rfdevice,&openair0_cfg[0]);
         }
       }
-      break;
-
-    case SYNC_MODE_SI:
       break;
 
     case SYNC_MODE_PSBCH:
