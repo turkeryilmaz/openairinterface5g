@@ -414,20 +414,21 @@ void NR_UL_indication(NR_UL_IND_t *UL_info) {
         LOG_E(NR_PHY, "[SS] Error in L1_Thread itti_send_msg_to_task");
       }
     }
-
-    message_p = itti_alloc_new_message(TASK_VTP, INSTANCE_DEFAULT, SS_NRUPD_TIM_INFO);
-    if (message_p)
-    {
-      SS_NRUPD_TIM_INFO(message_p).slot = UL_info->slot;
-      SS_NRUPD_TIM_INFO(message_p).sfn = UL_info->frame;
-
-      int send_res = itti_send_msg_to_task(TASK_VTP, INSTANCE_DEFAULT, message_p);
-      if (send_res < 0)
+    if(RC.ss.vtp_ready == 1){
+      message_p = itti_alloc_new_message(TASK_VTP, INSTANCE_DEFAULT, SS_NRUPD_TIM_INFO);
+      if (message_p)
       {
-        LOG_E(NR_PHY, "[SS] Error in L1_Thread itti_send_msg_to_task");
-      }
+        SS_NRUPD_TIM_INFO(message_p).slot = UL_info->slot;
+        SS_NRUPD_TIM_INFO(message_p).sfn = UL_info->frame;
 
-    }
+        int send_res = itti_send_msg_to_task(TASK_VTP, INSTANCE_DEFAULT, message_p);
+        if (send_res < 0)
+        {
+          LOG_E(NR_PHY, "[SS] Error in L1_Thread itti_send_msg_to_task");
+        }
+
+      }
+    }  
   }
 
   nfapi_nr_rach_indication_t *rach_ind = NULL;
