@@ -998,7 +998,7 @@ class OaiCiTest():
 			logging.debug("Iperf in DL requested")
 			cmd = cls_cmd.getConnection(ue.getHost())
 			cmd.run(f'rm {server_filename}')
-			cmd.run(f'{ue.getCmdPrefix()} {iperf_ue} -s -B {ue.getIP()} {udpSwitch} -i 1 {port} &> /tmp/{server_filename} &')
+			cmd.run(f'{ue.getCmdPrefix()} {iperf_ue} -s -B {ue.getIP()} -i 1 {port} &> /tmp/{server_filename} &')
 			cmd.close()
 
 			cmd = cls_cmd.getConnection(EPC.IPAddress)
@@ -1022,7 +1022,7 @@ class OaiCiTest():
 			logging.debug("Iperf in UL requested")
 			cmd = cls_cmd.getConnection(EPC.IPAddress)
 			cmd.run(f'rm {EPC.SourceCodePath}/{server_filename}')
-			cmd.run(f'{cn_iperf_prefix} iperf -s {udpSwitch} {port} &> {EPC.SourceCodePath}/{server_filename} &')
+			cmd.run(f'{cn_iperf_prefix} iperf3 -s  {port} &> {EPC.SourceCodePath}/{server_filename} &')
 			cmd.close()
 
 			cmd = cls_cmd.getConnection(ue.getHost())
