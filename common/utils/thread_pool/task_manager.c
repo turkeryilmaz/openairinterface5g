@@ -37,7 +37,7 @@ int64_t time_now_us(void)
   return micros;
 }
 */
-
+/*
 static
 void pin_thread_to_core(int core_num)
 {
@@ -48,7 +48,7 @@ void pin_thread_to_core(int core_num)
   assert(ret != -1); 
   printf("Pining into core %d id %ld \n", core_num, pthread_self());
 }
-
+*/
 
 //////////////////////////////
 //////////////////////////////
