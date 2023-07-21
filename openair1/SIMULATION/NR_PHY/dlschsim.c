@@ -50,6 +50,8 @@
 #include "executables/nr-uesoftmodem.h"
 #include "nfapi/oai_integration/vendor_ext.h"
 
+#include "common/utils/thread_pool/task_manager.h"
+
 //#define DEBUG_NR_DLSCHSIM
 
 THREAD_STRUCT thread_struct;
@@ -372,9 +374,16 @@ int main(int argc, char **argv)
 	RC.gNB = (PHY_VARS_gNB **) malloc(sizeof(PHY_VARS_gNB *));
 	RC.gNB[0] = calloc(1, sizeof(PHY_VARS_gNB));
 	gNB = RC.gNB[0];
-	initNamedTpool(gNBthreads, &gNB->threadPool, true, "gNB-tpool");
-        initFloatingCoresTpool(dlsch_threads, &nrUE_params.Tpool, false, "UE-tpool");
-	//gNB_config = &gNB->gNB_config;
+#ifdef TASK_MANAGER_SIM
+  int const log_cores = get_nprocs_conf();
+  assert(log_cores > 0);
+  init_task_manager(&gNB->man, log_cores);
+  init_task_manager(&nrUE_params.man, dlsch_threads);
+#else
+  initNamedTpool(gNBthreads, &gNB->threadPool, true, "gNB-tpool");
+  initFloatingCoresTpool(dlsch_threads, &nrUE_params.Tpool, false, "UE-tpool");
+#endif
+        //gNB_config = &gNB->gNB_config;
 	frame_parms = &gNB->frame_parms; //to be initialized I suppose (maybe not necessary for PBCH)
 	frame_parms->nb_antennas_tx = n_tx;
 	frame_parms->nb_antennas_rx = n_rx;

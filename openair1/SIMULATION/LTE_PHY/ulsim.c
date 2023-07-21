@@ -787,9 +787,16 @@ int main(int argc, char **argv) {
   proc_rxtx_ue->frame_rx = (subframe<4)?(proc_rxtx->frame_tx-1):(proc_rxtx->frame_tx);
   proc_rxtx_ue->subframe_tx = proc_rxtx->subframe_rx;
   proc_rxtx_ue->subframe_rx = (proc_rxtx->subframe_tx+6)%10;
+ 
+//#ifdef TASK_MANAGER
+//  int const log_cores = get_nprocs_conf();
+//  assert(log_cores > 0);
+//  init_task_manager(&proc_rxtx->man, log_cores);
+//#else
   proc_rxtx->threadPool = (tpool_t *)malloc(sizeof(tpool_t));
-  proc_rxtx->respDecode=(notifiedFIFO_t*) malloc(sizeof(notifiedFIFO_t));
   initTpool("n", proc_rxtx->threadPool, true);
+//#endif
+  proc_rxtx->respDecode=(notifiedFIFO_t*) malloc(sizeof(notifiedFIFO_t));
   initNotifiedFIFO(proc_rxtx->respDecode);
 
   printf("Init UL hopping UE\n");

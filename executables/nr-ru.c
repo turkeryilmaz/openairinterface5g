@@ -54,6 +54,8 @@
 
 #include <executables/softmodem-common.h>
 
+#include "common/utils/thread_pool/task_manager.h"
+
 #ifdef SMBV
 #include "PHY/TOOLS/smbv.h"
 unsigned short config_frames[4] = {2,9,11,13};
@@ -1341,12 +1343,14 @@ void *ru_thread( void *param ) {
 
     // At this point, all information for subframe has been received on FH interface
     if (!get_softmodem_params()->reorder_thread_disable) {
-      res = pullTpool(&gNB->resp_L1, &gNB->threadPool);
+      //res = pullTpool(&gNB->resp_L1, &gNB->threadPool);
+      res = pullNotifiedFIFO(&gNB->resp_L1);
       if (res == NULL)
         break; // Tpool has been stopped
-    } else  {
-      res=newNotifiedFIFO_elt(sizeof(processingData_L1_t),0, &gNB->resp_L1,NULL);
+    } else {
+      res = newNotifiedFIFO_elt(sizeof(processingData_L1_t), 0, &gNB->resp_L1, NULL);
     }
+
     syncMsg = (processingData_L1_t *)NotifiedFifoData(res);
     syncMsg->gNB = gNB;
     syncMsg->frame_rx = proc->frame_rx;
@@ -1355,8 +1359,17 @@ void *ru_thread( void *param ) {
     syncMsg->slot_tx = proc->tti_tx;
     syncMsg->timestamp_tx = proc->timestamp_tx;
     res->key = proc->tti_rx;
+#ifdef TASK_MANAGER_RU
+    if (!get_softmodem_params()->reorder_thread_disable) {
+      assert(res->processingFunc != NULL);
+      assert(res->reponseFifo != NULL);
+      res->processingFunc(NotifiedFifoData(res));
+      pushNotifiedFIFO(res->reponseFifo, res);
+    } 
+#else
     if (!get_softmodem_params()->reorder_thread_disable) 
       pushTpool(&gNB->threadPool, res);
+#endif
     else 
       pushNotifiedFIFO(&gNB->resp_L1, res);
   }
@@ -1862,8 +1875,15 @@ void init_NR_RU(configmodule_interface_t *cfg, char *rf_config_file)
          s_offset+=sprintf(pool+s_offset,",%d",ru->tpcores[icpu]);
       }
       LOG_I(PHY,"RU thread-pool core string %s\n",pool);
+#ifdef TASK_MANAGER_RU
+      int const log_cores = get_nprocs_conf();
+      assert(log_cores > 0);
+      // Assuming: Physical cores = Logical cores / 2
+      init_task_manager(&ru->man, log_cores/2); 
+#else
       ru->threadPool = (tpool_t*)malloc(sizeof(tpool_t));
       initTpool(pool, ru->threadPool, cpumeas(CPUMEAS_GETSTATE));
+#endif
       // FEP RX result FIFO
       ru->respfeprx = (notifiedFIFO_t*) malloc(sizeof(notifiedFIFO_t));
       initNotifiedFIFO(ru->respfeprx);

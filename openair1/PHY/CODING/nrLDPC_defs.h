@@ -24,6 +24,7 @@
 #define __NRLDPC_DEFS__H__
 #include <openair1/PHY/defs_nr_common.h>
 #include "openair1/PHY/CODING/nrLDPC_decoder/nrLDPC_types.h"
+#include "common/utils/thread_pool/task_manager.h"
 
 /**
    \brief LDPC encoder
@@ -63,6 +64,11 @@ typedef struct {
   unsigned int G;
   // Redundancy version index
   uint8_t rv;
+  /// LDPC-code outputs
+  uint8_t *d[MAX_NUM_NR_DLSCH_SEGMENTS_PER_LAYER*NR_MAX_NB_LAYERS];
+#ifdef TASK_MANAGER_CODING
+  _Atomic int* task_done; 
+#endif
 } encoder_implemparams_t;
 
 typedef int32_t(LDPC_initfunc_t)(void);

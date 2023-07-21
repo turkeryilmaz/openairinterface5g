@@ -39,10 +39,25 @@
 #include "executables/softmodem-common.h"
 #include "nfapi/oai_integration/vendor_ext.h"
 #include "NR_SRS-ResourceSet.h"
+#include "common/utils/thread_pool/task_manager.h"
 
 #include "assertions.h"
 
 #include <time.h>
+#include <stdint.h>
+
+/*
+static
+int64_t time_now_ns(void)
+{
+  struct timespec tms;
+  if (clock_gettime(CLOCK_MONOTONIC_RAW, &tms)) {
+    return -1;
+  }
+  int64_t nanos = tms.tv_sec * 1000000000 + tms.tv_nsec;
+  return nanos;
+}
+*/
 
 //#define DEBUG_RXDATA
 //#define SRS_IND_DEBUG
@@ -238,9 +253,14 @@ void phy_procedures_gNB_TX(processingData_L1tx_t *msgTx,
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_gNB_TX + gNB->CC_id, 0);
 }
 
+#ifdef TASK_MANAGER
+static void nr_postDecode(PHY_VARS_gNB *gNB, ldpcDecode_t *rdata)
+{
+#else
 static void nr_postDecode(PHY_VARS_gNB *gNB, notifiedFIFO_elt_t *req)
 {
   ldpcDecode_t *rdata = (ldpcDecode_t*) NotifiedFifoData(req);
+#endif
   NR_UL_gNB_HARQ_t *ulsch_harq = rdata->ulsch_harq;
   NR_gNB_ULSCH_t *ulsch = rdata->ulsch;
   int r = rdata->segment_r;
@@ -254,7 +274,6 @@ static void nr_postDecode(PHY_VARS_gNB *gNB, notifiedFIFO_elt_t *req)
         rdata->nbSegments);
   if (decodeSuccess) {
     memcpy(ulsch_harq->b + rdata->offset, ulsch_harq->c[r], rdata->Kr_bytes - (ulsch_harq->F >> 3) - ((ulsch_harq->C > 1) ? 3 : 0));
-
   } else {
     LOG_D(PHY, "ULSCH %d in error\n", rdata->ulsch_id);
   }
@@ -352,7 +371,11 @@ static void nr_postDecode(PHY_VARS_gNB *gNB, notifiedFIFO_elt_t *req)
   }
 }
 
+#ifdef TASK_MANAGER
+static int nr_ulsch_procedures(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, int ULSCH_id, uint8_t harq_pid, thread_info_tm_t* t_info)
+#else
 static int nr_ulsch_procedures(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, int ULSCH_id, uint8_t harq_pid)
+#endif
 {
   NR_DL_FRAME_PARMS *frame_parms = &gNB->frame_parms;
   nfapi_nr_pusch_pdu_t *pusch_pdu = &gNB->ulsch[ULSCH_id].harq_process->ulsch_pdu;
@@ -399,8 +422,12 @@ static int nr_ulsch_procedures(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, int
   //----------------------------------------------------------
 
   start_meas(&gNB->ulsch_decoding_stats);
-  int nbDecode =
-      nr_ulsch_decoding(gNB, ULSCH_id, gNB->pusch_vars[ULSCH_id].llr, frame_parms, pusch_pdu, frame_rx, slot_rx, harq_pid, G);
+#ifdef TASK_MANAGER
+  int const nbDecode = nr_ulsch_decoding(gNB, ULSCH_id, gNB->pusch_vars[ULSCH_id].llr, frame_parms, pusch_pdu, frame_rx, slot_rx, harq_pid, G, t_info);
+#else 
+  int nbDecode = nr_ulsch_decoding(gNB, ULSCH_id, gNB->pusch_vars[ULSCH_id].llr, frame_parms, pusch_pdu, frame_rx, slot_rx, harq_pid, G);
+#endif
+ 
 
   return nbDecode;
 }
@@ -728,8 +755,40 @@ int check_srs_pdu(const nfapi_nr_srs_pdu_t *srs_pdu, nfapi_nr_srs_pdu_t *saved_s
   return 0;
 }
 
+#ifdef TASK_MANAGER
+
+/*
+  static
+bool nr_ulsch_procedures_sched(PHY_VARS_gNB const* gNB, int frame_rx, int slot_rx)
+{
+  for (int ULSCH_id = 0; ULSCH_id < gNB->max_nb_pusch; ULSCH_id++) {
+    NR_gNB_ULSCH_t *ulsch = &gNB->ulsch[ULSCH_id];
+    if ((ulsch->active == true) && (ulsch->frame == frame_rx) && (ulsch->slot == slot_rx) && (ulsch->handled == 0)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static
+bool maybe_trigger_and_spin_threads(PHY_VARS_gNB* gNB, int frame_rx, int slot_rx)
+{
+  if(nr_ulsch_procedures_sched(gNB, frame_rx, slot_rx) == true){
+      // Wake up threads and spin in an atomic 
+      trigger_and_spin_task_manager(&gNB->man);
+      return true;
+  }
+  return false;
+}
+*/
+#endif
+
 int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
 {
+#ifdef TASK_MANAGER
+//  maybe_trigger_and_spin_threads(gNB, frame_rx, slot_rx);
+#endif
+
   /* those variables to log T_GNB_PHY_PUCCH_PUSCH_IQ only when we try to decode */
   int pucch_decode_done = 0;
   int pusch_decode_done = 0;
@@ -750,6 +809,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
     }
   else
     num_symb = NR_NUMBER_OF_SYMBOLS_PER_SLOT;
+
   gNB_I0_measurements(gNB,slot_rx,first_symb,num_symb);
 
   const int soffset = (slot_rx & 3) * gNB->frame_parms.symbols_per_slot * gNB->frame_parms.ofdm_symbol_size;
@@ -821,6 +881,13 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
     }
   }
 
+#ifdef TASK_MANAGER
+  ldpcDecode_t arr[64]; 
+  _Atomic int tasks_remaining[64] = {0};
+  thread_info_tm_t t_info = {.buf = (uint8_t*)arr, .len = 0, .tasks_remaining = tasks_remaining};
+#endif
+
+  //int64_t const t0 = time_now_ns();
   int totalDecode = 0;
   for (int ULSCH_id = 0; ULSCH_id < gNB->max_nb_pusch; ULSCH_id++) {
     NR_gNB_ULSCH_t *ulsch = &gNB->ulsch[ULSCH_id];
@@ -918,13 +985,30 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
       // LOG_M("rxdataF_comp.m","rxF_comp",gNB->pusch_vars[0]->rxdataF_comp[0],6900,1,1);
       // LOG_M("rxdataF_ext.m","rxF_ext",gNB->pusch_vars[0]->rxdataF_ext[0],6900,1,1);
       VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_ULSCH_PROCEDURES_RX, 1);
+#ifdef TASK_MANAGER
+      int tasks_added = nr_ulsch_procedures(gNB, frame_rx, slot_rx, ULSCH_id, ulsch->harq_pid, &t_info);
+      if(tasks_added > 0) {
+        totalDecode += tasks_added;
+//        atomic_fetch_add_explicit(t_info.tasks_remaining, totalDecode, memory_order_seq_cst); // atomic
+      }                                                                                            //
+#else                                                                                               //
       int const tasks_added = nr_ulsch_procedures(gNB, frame_rx, slot_rx, ULSCH_id, ulsch->harq_pid);
       if (tasks_added > 0)
         totalDecode += tasks_added; 
-
+#endif                                                                                      //
       VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_ULSCH_PROCEDURES_RX, 0);
     }
   }
+  
+#ifdef TASK_MANAGER
+  if (totalDecode > 0) {
+    wait_spin_all_atomics_one(t_info.len, t_info.tasks_remaining);
+    for(int i = 0; i < t_info.len; ++i){
+      nr_postDecode(gNB, &arr[i]); 
+    } 
+    //printf("Decoding time %ld \n", time_now_ns() - t0);
+  }
+#else
     while (totalDecode > 0) {
       notifiedFIFO_elt_t *req = pullTpool(&gNB->respDecode, &gNB->threadPool);
       if (req == NULL)
@@ -933,7 +1017,10 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
       delNotifiedFIFO_elt(req);
       totalDecode--;
     }
+  //printf("Decoding time %ld \n", time_now_ns() - t0);
+#endif
   stop_meas(&gNB->ulsch_decoding_stats);
+
   for (int i = 0; i < gNB->max_nb_srs; i++) {
     NR_gNB_SRS_t *srs = &gNB->srs[i];
     if (srs) {

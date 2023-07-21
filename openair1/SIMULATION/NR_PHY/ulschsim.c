@@ -25,6 +25,7 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
+#include <sys/sysinfo.h>
 #include "common/config/config_userapi.h"
 #include "common/utils/load_module_shlib.h"
 #include "common/utils/LOG/log.h"
@@ -49,6 +50,8 @@
 #include "openair2/LAYER2/NR_MAC_COMMON/nr_mac_common.h"
 #include "executables/nr-uesoftmodem.h"
 #include "nfapi/oai_integration/vendor_ext.h"
+
+#include "common/utils/thread_pool/task_manager.h"
 
 //#define DEBUG_NR_ULSCHSIM
 
@@ -91,9 +94,15 @@ void deref_sched_response(int _)
   exit(1);
 }
 
+#ifdef TASK_MANAGER 
+int nr_postDecode_sim(PHY_VARS_gNB *gNB, ldpcDecode_t *rdata , int *nb_ok)
+{
+#else
 int nr_postDecode_sim(PHY_VARS_gNB *gNB, notifiedFIFO_elt_t *req, int *nb_ok)
 {
   ldpcDecode_t *rdata = (ldpcDecode_t*) NotifiedFifoData(req);
+#endif
+
   NR_UL_gNB_HARQ_t *ulsch_harq = rdata->ulsch_harq;
   int r = rdata->segment_r;
 
@@ -407,7 +416,14 @@ int main(int argc, char **argv)
   gNB = RC.gNB[0];
   //gNB_config = &gNB->gNB_config;
 
+#ifdef TASK_MANAGER
+  int const log_cores = get_nprocs_conf();
+  assert(log_cores > 0);
+  init_task_manager(&gNB->man, log_cores);
+#else
   initTpool("n", &gNB->threadPool, true);
+#endif
+
   initNotifiedFIFO(&gNB->respDecode);
   frame_parms = &gNB->frame_parms; //to be initialized I suppose (maybe not necessary for PBCH)
   frame_parms->N_RB_DL = N_RB_DL;
@@ -587,8 +603,25 @@ int main(int argc, char **argv)
       exit(-1);
 #endif
 
+#ifdef TASK_MANAGER
+     ldpcDecode_t arr[64] = {0};
+     _Atomic int tasks_remaining[64] = {0};
+     thread_info_tm_t t_info = {.buf = (uint8_t*)arr, .len = 0, .tasks_remaining = tasks_remaining };
+     int nbDecode = nr_ulsch_decoding(gNB, UE_id, channel_output_fixed, frame_parms, rel15_ul, frame, subframe, harq_pid, G, &t_info);
+     assert(nbDecode > 0);
+#else
      int nbDecode = nr_ulsch_decoding(gNB, UE_id, channel_output_fixed, frame_parms, rel15_ul, frame, subframe, harq_pid, G);
+#endif
      int nb_ok = 0;
+#ifdef TASK_MANAGER
+    wait_spin_all_atomics_one(t_info.len, t_info.tasks_remaining);
+  if(nbDecode > 0){
+    for(size_t i = 0; i < nbDecode; ++i){
+      ret = nr_postDecode_sim(gNB, &arr[i], &nb_ok);
+    }
+    nbDecode = 0; 
+  }
+#else
      if (nbDecode > 0)
        while (nbDecode > 0) {
          notifiedFIFO_elt_t *req = pullTpool(&gNB->respDecode, &gNB->threadPool);
@@ -596,9 +629,9 @@ int main(int argc, char **argv)
          delNotifiedFIFO_elt(req);
          nbDecode--;
        }
-
-      if (ret)
-        n_errors++;
+#endif
+  if (ret)
+    n_errors++;
     }
     
     printf("*****************************************\n");

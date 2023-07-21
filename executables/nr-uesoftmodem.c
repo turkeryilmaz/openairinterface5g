@@ -32,7 +32,11 @@
 #include "SCHED_NR_UE/defs.h"
 #include "common/ran_context.h"
 #include "common/config/config_userapi.h"
-//#include "common/utils/threadPool/thread-pool.h"
+#include "common/utils/threadPool/thread-pool.h"
+#include "common/utils/thread_pool/task_manager.h"
+#include <sys/sysinfo.h>
+
+
 #include "common/utils/load_module_shlib.h"
 //#undef FRAME_LENGTH_COMPLEX_SAMPLES //there are two conflicting definitions, so we better make sure we don't use it at all
 #include "common/utils/nr/nr_common.h"
@@ -89,6 +93,8 @@ unsigned short config_frames[4] = {2,9,11,13};
 
 extern const char *duplex_mode[];
 THREAD_STRUCT thread_struct;
+
+static
 nrUE_params_t nrUE_params;
 
 // Thread variables
@@ -460,7 +466,14 @@ int main( int argc, char **argv ) {
 #if T_TRACER
   T_Config_Init();
 #endif
+
+#if defined TASK_MANAGER_UE || defined TASK_MANAGER_UE_DECODING 
+  int const log_cores = get_nprocs_conf();
+  assert(log_cores > 0);
+  init_task_manager(&nrUE_params.man, log_cores);
+#else
   initTpool(get_softmodem_params()->threadPoolConfig, &(nrUE_params.Tpool), cpumeas(CPUMEAS_GETSTATE));
+#endif
   //randominit (0);
   set_taus_seed (0);
 

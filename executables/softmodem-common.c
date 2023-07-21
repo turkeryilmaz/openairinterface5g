@@ -205,6 +205,8 @@ void signal_handler(int sig) {
   //void *array[10];
   //size_t size;
 
+  printf("[MIR]: Here we are!\n");
+
   if (sig==SIGSEGV) {
     // get void*'s for all entries on the stack
     /* backtrace uses malloc, that is not good in signal handlers

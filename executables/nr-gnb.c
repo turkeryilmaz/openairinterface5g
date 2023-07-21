@@ -52,6 +52,7 @@
 #include "PHY/MODULATION/nr_modulation.h"
 #include "PHY/NR_TRANSPORT/nr_dlsch.h"
 #include "openair2/NR_PHY_INTERFACE/nr_sched_response.h"
+#include "common/utils/thread_pool/task_manager.h"
 
 #undef MALLOC //there are two conflicting definitions, so we better make sure we don't use it at all
 //#undef FRAME_LENGTH_COMPLEX_SAMPLES //there are two conflicting definitions, so we better make sure we don't use it at all
@@ -269,25 +270,33 @@ void rx_func(void *param)
 
   int tx_slot_type = nr_slot_select(cfg,frame_tx,slot_tx);
   if ((tx_slot_type == NR_DOWNLINK_SLOT || tx_slot_type == NR_MIXED_SLOT) && NFAPI_MODE != NFAPI_MODE_PNF) {
-    notifiedFIFO_elt_t *res;
-    processingData_L1tx_t *syncMsg;
+    // notifiedFIFO_elt_t *res;
+    // processingData_L1tx_t *syncMsg;
     // Its a FIFO so it maitains the order in which the MAC fills the messages
     // so no need for checking for right slot
     if (get_softmodem_params()->reorder_thread_disable) {
       // call the TX function directly from this thread
-      syncMsg = gNB->msgDataTx;
+      processingData_L1tx_t *syncMsg = gNB->msgDataTx;
       syncMsg->gNB = gNB; 
       syncMsg->timestamp_tx = info->timestamp_tx;
       tx_func(syncMsg);
     } else {
-      res = pullTpool(&gNB->L1_tx_filled, &gNB->threadPool);
+      //notifiedFIFO_elt_t * res = pullTpool(&gNB->L1_tx_filled, &gNB->threadPool);
+      notifiedFIFO_elt_t* res = pullNotifiedFIFO(&gNB->L1_tx_filled);
       if (res == NULL)
         return; // Tpool has been stopped
-      syncMsg = (processingData_L1tx_t *)NotifiedFifoData(res);
+       processingData_L1tx_t* syncMsg = (processingData_L1tx_t *)NotifiedFifoData(res);
       syncMsg->gNB = gNB;
       syncMsg->timestamp_tx = info->timestamp_tx;
       res->key = slot_tx;
+#ifdef TASK_MANAGER
+      assert(res->processingFunc != NULL);
+      res->processingFunc(NotifiedFifoData(res));
+      if (res->reponseFifo)
+        pushNotifiedFIFO(res->reponseFifo, res);
+#else
       pushTpool(&gNB->threadPool, res);
+#endif
     }
   } else if (get_softmodem_params()->continuous_tx) {
     notifiedFIFO_elt_t *res = pullNotifiedFIFO(&gNB->L1_tx_free);
@@ -415,12 +424,11 @@ void *nrL1_stats_thread(void *param) {
   return(NULL);
 }
 
-// This thread reads the finished L1 tx jobs from threaPool
+// This thread reads the finished L1 tx jobs from threadPool
 // and pushes RU tx thread in the right order. It works only
 // two parallel L1 tx threads.
 void *tx_reorder_thread(void* param) {
   PHY_VARS_gNB *gNB = (PHY_VARS_gNB *)param;
-  
   notifiedFIFO_elt_t *resL1Reserve = pullNotifiedFIFO(&gNB->L1_tx_out);
   AssertFatal(resL1Reserve != NULL, "pullTpool() did not return start message in %s\n", __func__);
   int next_tx_slot=((processingData_L1tx_t *)NotifiedFifoData(resL1Reserve))->slot;
@@ -473,11 +481,19 @@ void init_gNB_Tpool(int inst) {
   PHY_VARS_gNB *gNB;
   gNB = RC.gNB[inst];
   gNB_L1_proc_t *proc = &gNB->proc;
+#ifdef TASK_MANAGER
+  int const log_cores = get_nprocs_conf();
+  assert(log_cores > 0);
+  printf("[MIR]: log cores %d \n", log_cores);
+  // Assuming: 2 x Physical cores = Logical cores
+  init_task_manager(&gNB->man, log_cores/2);
+#endif
   // PUSCH symbols per thread need to be calculated by how many threads we have
   gNB->num_pusch_symbols_per_thread = 1;
   // ULSCH decoding threadpool
   initTpool(get_softmodem_params()->threadPoolConfig, &gNB->threadPool, cpumeas(CPUMEAS_GETSTATE));
-  // ULSCH decoder result FIFO
+
+   // ULSCH decoder result FIFO
   initNotifiedFIFO(&gNB->respPuschSymb);
   initNotifiedFIFO(&gNB->respDecode);
 
@@ -531,7 +547,13 @@ void init_gNB_Tpool(int inst) {
 
 void term_gNB_Tpool(int inst) {
   PHY_VARS_gNB *gNB = RC.gNB[inst];
+ 
+#ifdef TASK_MANAGER
+  void (*clean)(task_t*) = NULL;
+  free_task_manager(&gNB->man , clean);
+#else
   abortTpool(&gNB->threadPool);
+#endif
   abortNotifiedFIFO(&gNB->respDecode);
   abortNotifiedFIFO(&gNB->resp_L1);
   abortNotifiedFIFO(&gNB->L1_tx_free);

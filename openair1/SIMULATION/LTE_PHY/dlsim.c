@@ -1254,10 +1254,16 @@ int main(int argc, char **argv) {
   }
 
   L1_rxtx_proc_t *proc_eNB = &eNB->proc.L1_proc;
-  proc_eNB->threadPool = (tpool_t *)malloc(sizeof(tpool_t));
   proc_eNB->respDecode=(notifiedFIFO_t*) malloc(sizeof(notifiedFIFO_t));
-  initTpool("n", proc_eNB->threadPool, true);
   initNotifiedFIFO(proc_eNB->respDecode);
+//#ifdef TASK_MANAGER
+//  int const log_cores = get_nprocs_conf();
+//  assert(log_cores > 0);
+//  init_task_manager(&proc_eNB->man, log_cores);
+//#else
+  proc_eNB->threadPool = (tpool_t *)malloc(sizeof(tpool_t));
+  initTpool("n", proc_eNB->threadPool, true);
+//#endif
 
   proc_eNB->frame_tx=0;
 

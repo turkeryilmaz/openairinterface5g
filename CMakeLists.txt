@@ -2053,6 +2053,7 @@ add_executable(nr-softmodem
   ${nr_rrc_h}
   ${s1ap_h}
 #  ${OPENAIR_BIN_DIR}/messages_xml.h
+  ${OPENAIR_DIR}/common/utils/thread_pool/task_manager.c
   ${OPENAIR_DIR}/executables/nr-gnb.c
   ${OPENAIR_DIR}/executables/nr-ru.c
   ${OPENAIR_DIR}/executables/nr-softmodem.c
@@ -2132,6 +2133,7 @@ add_executable(nr-uesoftmodem
   ${OPENAIR2_DIR}/RRC/NAS/rb_config.c
   ${OPENAIR3_DIR}/NAS/UE/nas_ue_task.c
   ${OPENAIR_DIR}/common/utils/nr/nr_common.c
+  ${OPENAIR_DIR}/common/utils/thread_pool/task_manager.c
   ${OPENAIR1_DIR}/PHY/TOOLS/phy_scope_interface.c
   )
 
@@ -2219,6 +2221,7 @@ target_link_libraries(ldpctest PRIVATE
   )
 
 add_executable(nr_dlschsim
+  ${OPENAIR_DIR}/common/utils/thread_pool/task_manager.c
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/dlschsim.c
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/nr_dummy_functions.c
   ${OPENAIR_DIR}/common/utils/nr/nr_common.c
@@ -2230,6 +2233,7 @@ target_link_libraries(nr_dlschsim PRIVATE
 target_link_libraries(nr_dlschsim PRIVATE asn1_nr_rrc_hdrs)
 
 add_executable(nr_pbchsim
+  ${OPENAIR_DIR}/common/utils/thread_pool/task_manager.c
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/pbchsim.c
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/nr_dummy_functions.c
   ${OPENAIR_DIR}/common/utils/nr/nr_common.c
@@ -2243,6 +2247,7 @@ target_link_libraries(nr_pbchsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
 #PUCCH ---> Prashanth
 add_executable(nr_pucchsim
+  ${OPENAIR_DIR}/common/utils/thread_pool/task_manager.c
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/pucchsim.c
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/nr_dummy_functions.c
   ${OPENAIR_DIR}/common/utils/nr/nr_common.c
@@ -2254,6 +2259,7 @@ target_link_libraries(nr_pucchsim PRIVATE
 target_link_libraries(nr_pucchsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
 add_executable(nr_dlsim
+  ${OPENAIR_DIR}/common/utils/thread_pool/task_manager.c
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/dlsim.c
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/nr_dummy_functions.c
   ${OPENAIR_DIR}/common/utils/nr/nr_common.c
@@ -2271,6 +2277,7 @@ target_link_libraries(nr_dlsim PRIVATE
 target_link_libraries(nr_dlsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
 add_executable(nr_prachsim
+  ${OPENAIR_DIR}/common/utils/thread_pool/task_manager.c
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/prachsim.c
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/nr_dummy_functions.c
   ${OPENAIR_DIR}/common/utils/nr/nr_common.c
@@ -2281,6 +2288,7 @@ target_link_libraries(nr_prachsim PRIVATE
 target_link_libraries(nr_prachsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
 add_executable(nr_ulschsim
+  ${OPENAIR_DIR}/common/utils/thread_pool/task_manager.c
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/ulschsim.c
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/nr_dummy_functions.c
   ${OPENAIR_DIR}/common/utils/nr/nr_common.c
@@ -2293,6 +2301,7 @@ target_link_libraries(nr_ulschsim PRIVATE
 target_link_libraries(nr_ulschsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
 add_executable(nr_ulsim
+  ${OPENAIR_DIR}/common/utils/thread_pool/task_manager.c
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/ulsim.c
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/nr_dummy_functions.c
   ${OPENAIR_DIR}/common/utils/nr/nr_common.c

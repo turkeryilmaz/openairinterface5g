@@ -66,7 +66,7 @@
 #include "PHY/LTE_TRANSPORT/transport_eNB.h"
 #include "openair2/PHY_INTERFACE/IF_Module.h"
 #include "common/openairinterface5g_limits.h"
-
+#include "common/utils/thread_pool/task_manager.h"
 
 #define PBCH_A 24
 #define MAX_NUM_RU_PER_eNB 64
@@ -252,7 +252,11 @@ typedef struct {
   pthread_cond_t cond_RUs;
   /// mutex for RXn-TXnp4 processing thread
   pthread_mutex_t mutex_RUs;
+//#ifdef TASK_MANAGER
+//  task_manager_t man;
+//#else
   tpool_t *threadPool;
+//#endif
   int nbDecode;
   notifiedFIFO_t *respDecode;
   pthread_mutex_t mutex_emulateRF;
