@@ -32,12 +32,6 @@
 #ifndef __PHY_DEFS_NR_UE__H__
 #define __PHY_DEFS_NR_UE__H__
 
-#ifdef __cplusplus
-#include <atomic>
-#define _Atomic(X) std::atomic< X >
-#endif
-
-
 #include "defs_nr_common.h"
 #include "CODING/nrPolar_tools/nr_polar_pbch_defs.h"
 #include "common/utils/thread_pool/task_manager.h"
@@ -687,7 +681,7 @@ typedef struct nr_rxtx_thread_data_s {
   nr_phy_data_t phy_data;
   int tx_wait_for_dlsch;
 #ifdef TASK_MANAGER_UE_DECODING
-  _Atomic int* task_done;
+  _Atomic(int)* task_done;
 #endif
 } nr_rxtx_thread_data_t;
 
@@ -716,7 +710,7 @@ typedef struct LDPCDecode_ue_s {
   time_stats_t ts_ldpc_decode;
   UE_nr_rxtx_proc_t *proc;
 #ifdef TASK_MANAGER_UE_DECODING
-  _Atomic int* task_done;
+  _Atomic(int)* task_done;
 #endif
 } ldpcDecode_ue_t;
 

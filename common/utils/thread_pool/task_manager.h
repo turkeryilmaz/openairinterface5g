@@ -13,8 +13,16 @@
 
 #include "task.h"
 
+
+#ifndef __cplusplus
+# include <stdatomic.h>
+#else
+# include <atomic>
+# define _Atomic(X) std::atomic< X >
+#endif
+
+
 #include <pthread.h>
-#include <stdatomic.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -29,7 +37,7 @@
 typedef struct{
   uint8_t* buf;
   size_t len;
-  _Atomic int* tasks_remaining;
+  _Atomic(int)* tasks_remaining;
 } thread_info_tm_t;
 
 typedef struct{
@@ -37,18 +45,18 @@ typedef struct{
   pthread_t* t_arr;
   size_t len_thr;
   
-  atomic_uint_fast64_t index;
+  _Atomic(uint64_t) index;
 
   void* q_arr;
 
-  atomic_uint_fast64_t num_task;
+  _Atomic(uint64_t) num_task;
 
   pthread_cond_t  wait_cv; 
   pthread_mutex_t wait_mtx;
 
-  _Atomic int32_t futex;
+  _Atomic(int32_t) futex;
 
-  _Atomic bool waiting;
+  _Atomic(bool) waiting;
 } task_manager_t;
 
 void init_task_manager(task_manager_t* man, uint32_t num_threads);
