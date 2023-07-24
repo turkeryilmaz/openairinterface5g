@@ -973,6 +973,9 @@ void init_NR_UE(int nb_inst,
     AssertFatal((mac_inst = nr_l2_init_ue(rrc_inst)) != NULL, "can not initialize L2 module\n");
     AssertFatal((mac_inst->if_module = nr_ue_if_module_init(inst)) != NULL, "can not initialize IF module\n");
   }
+  if (get_softmodem_params()->sl_mode) {
+    configure_NR_SL_Preconfig(0, get_softmodem_params()->sync_ref);
+  }
 }
 
 void init_NR_UE_threads(int nb_inst) {

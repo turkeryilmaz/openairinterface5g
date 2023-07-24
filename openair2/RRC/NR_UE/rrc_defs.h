@@ -53,6 +53,8 @@
 #include "NR_DL-DCCH-Message.h"
 #include "NR_SystemInformation.h"
 #include "NR_UE-NR-Capability.h"
+#include "NR_SL-PreconfigurationNR-r16.h"
+#include "NR_MasterInformationBlockSidelink.h"
 
 #include "RRC/NR/nr_rrc_common.h"
 #include "as_message.h"
@@ -254,6 +256,11 @@ typedef struct NR_UE_RRC_INST_s {
   Rrc_State_NR_t     nrRrcState;
   Rrc_Sub_State_NR_t nrRrcSubState;
   as_nas_info_t      initialNasMsg;
+
+  //Sidelink params
+  NR_SL_PreconfigurationNR_r16_t *sl_preconfig;
+  NR_MasterInformationBlockSidelink_t *sl_mib;
+
 } NR_UE_RRC_INST_t;
 
 #endif

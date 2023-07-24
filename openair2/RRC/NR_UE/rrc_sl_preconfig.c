@@ -27,6 +27,19 @@
 #include "common/utils/LOG/log.h"
 #include "sl_preconfig_paramvalues.h"
 #include "common/config/config_userapi.h"
+#include "rrc_defs.h"
+#include "rrc_vars.h"
+#include "LAYER2/NR_MAC_UE/mac_proto.h"
+
+#define GNSS_SUPPORT 0
+
+#define SL_SYNC_SOURCE_NONE  0 //No sync source selected
+#define SL_SYNC_SOURCE_GNBENB 1 // GNB/ENB as sync source
+#define SL_SYNC_SOURCE_GNSS 2 // GPS as sync source
+#define SL_SYNC_SOURCE_SYNC_REF_UE 3 // another SYNC REF UE as sync source
+#define SL_SYNC_SOURCE_LOCAL_TIMING 4 //UE acts as sync source
+
+
 
 static void prepare_NR_SL_SyncConfig(NR_SL_SyncConfig_r16_t *sl_syncconfig)
 {
@@ -399,8 +412,7 @@ NR_SL_PreconfigurationNR_r16_t *prepare_NR_SL_PRECONFIGURATION(uint16_t num_tx_p
   return sl_preconfiguration;
 }
 
-
-int configure_NR_SL_Preconfig(int sync_source)
+int configure_NR_SL_Preconfig(uint8_t id,int sync_source)
 {
 
   NR_SL_PreconfigurationNR_r16_t *sl_preconfig = NULL;
@@ -424,9 +436,155 @@ int configure_NR_SL_Preconfig(int sync_source)
     }
   }
 
-  ASN_STRUCT_FREE(asn_DEF_NR_SL_PreconfigurationNR_r16, sl_preconfig);
-  sl_preconfig = NULL;
-  //END.......
+  NR_UE_RRC_INST_t *rrc = &NR_UE_rrc_inst[id];
+  rrc->sl_preconfig = sl_preconfig;
 
   return 0;
+}
+
+/*
+* This functions configures SIdelink operation in the UE.
+* RRC configures MAC with sidelink parameters
+* In case UE is a sync source/Master UE - then sends transmit SLSS REQ
+*/
+void nr_UE_configure_Sidelink(uint8_t id, uint8_t is_sync_source) {
+
+  NR_UE_RRC_INST_t *rrc = &NR_UE_rrc_inst[id];
+
+  AssertFatal(rrc, "Check if rrc instance was created.");
+
+  NR_SL_PreconfigurationNR_r16_t *sl_preconfig = rrc->sl_preconfig;
+  AssertFatal(sl_preconfig, "Check if SL-preconfig was created.");
+
+  uint8_t sync_source = SL_SYNC_SOURCE_NONE;
+
+  if (is_sync_source) {
+    sync_source = (GNSS_SUPPORT) ? SL_SYNC_SOURCE_GNSS
+                                 : SL_SYNC_SOURCE_LOCAL_TIMING;
+  }
+
+  nr_rrc_mac_config_req_sl_preconfig(id, sl_preconfig, sync_source);
+
+  //TBD.. These should be chosen by RRC according to 3GPP 38.331 RRC specification.
+  //Currently hardcoding the values to these
+  uint16_t slss_id = 671, ssb_ta_index = 1;
+  //12 bits -sl-TDD-config will be filled by MAC
+  //Incoverage 1bit is FALSE
+  //DFN, sfn will be filled by PHY
+  uint8_t sl_mib_payload[4] = {0,0,0,0};
+
+  NR_SL_SSB_TimeAllocation_r16_t *ssb_ta = NULL;
+  NR_SL_FreqConfigCommon_r16_t *fcfg = NULL;
+  NR_SL_SyncConfig_r16_t *synccfg = NULL;
+  if (rrc->sl_preconfig->sidelinkPreconfigNR_r16.sl_PreconfigFreqInfoList_r16)
+    fcfg = rrc->sl_preconfig->sidelinkPreconfigNR_r16.sl_PreconfigFreqInfoList_r16->list.array[0];
+  AssertFatal(fcfg, "Fcfg cannot be NULL\n");
+  if (fcfg->sl_SyncConfigList_r16)
+    synccfg = fcfg->sl_SyncConfigList_r16->list.array[0];
+  AssertFatal(synccfg, "Synccfg cannot be NULL\n");
+
+  if (ssb_ta_index == 1)
+    ssb_ta = synccfg->sl_SSB_TimeAllocation1_r16;
+  else if (ssb_ta_index == 2)
+    ssb_ta = synccfg->sl_SSB_TimeAllocation2_r16;
+  else if (ssb_ta_index == 3)
+    ssb_ta = synccfg->sl_SSB_TimeAllocation3_r16;
+  else DevAssert(0);
+
+  AssertFatal(ssb_ta, "SSB_timeallocation cannot be NULL\n");
+
+  if (sync_source == SL_SYNC_SOURCE_LOCAL_TIMING || sync_source == SL_SYNC_SOURCE_GNSS)
+    nr_rrc_mac_transmit_slss_req(id,sl_mib_payload, slss_id, ssb_ta);
+
+}
+
+
+/*decode SL-BCH (SL-MIB) message*/
+static int8_t nr_sl_rrc_ue_decode_SL_MIB(const module_id_t module_id,
+                                          const uint8_t gNB_index,
+                                          uint8_t *const bufferP,
+                                          const uint8_t buffer_len)
+{
+  NR_MasterInformationBlockSidelink_t *sl_mib = NULL;
+
+  asn_dec_rval_t dec_rval = uper_decode_complete(NULL, &asn_DEF_NR_MasterInformationBlockSidelink,
+                                                 (void **)&sl_mib,
+                                                 (const void *)bufferP, buffer_len);
+
+  uint16_t val_fn = sl_mib->directFrameNumber_r16.buf[0];
+  val_fn = (val_fn << 2) + (sl_mib->directFrameNumber_r16.buf[1] >> sl_mib->directFrameNumber_r16.bits_unused);
+
+  uint8_t val_slot = sl_mib->slotIndex_r16.buf[0];
+
+  LOG_D(NR_RRC, "SL-MIB Contents - DFN:%d\n" , val_fn);
+  LOG_D(NR_RRC, "SL-MIB Contents - SLOT:%d\n" , val_slot >> 1);
+  LOG_D(NR_RRC, "SL-MIB Contents - Incoverage:%d\n", sl_mib->inCoverage_r16);
+  LOG_D(NR_RRC, "SL-MIB Contents - sl-TDD-Config:%x\n" , *((uint16_t *)(sl_mib->sl_TDD_Config_r16.buf)));
+
+  int ret = 1;
+  if ((dec_rval.code != RC_OK) || (dec_rval.consumed == 0)) {
+    LOG_E(NR_RRC, "SL-MIB decode error\n");
+    ret = -1;
+  } else  {
+    ret = 0;
+    if (NR_UE_rrc_inst[module_id].sl_mib == NULL) {
+      LOG_I(NR_RRC, "Sidelink RRC first MIB reception\n");
+    } else {
+      ASN_STRUCT_FREE(asn_DEF_NR_MasterInformationBlockSidelink, NR_UE_rrc_inst[module_id].sl_mib);
+    }
+    NR_UE_rrc_inst[module_id].sl_mib = sl_mib;
+  }
+
+  return ret;
+}
+
+
+
+void nr_mac_rrc_sl_mib_ind(const module_id_t module_id,
+                              const int CC_id,
+                              const uint8_t gNB_index,
+                              const frame_t frame,
+                              const int slot,
+                              const channel_t channel,
+                              uint8_t* pduP,
+                              const sdu_size_t pdu_len,
+                              const uint16_t rx_slss_id)
+{
+
+  nr_sl_rrc_ue_decode_SL_MIB(module_id, gNB_index, (uint8_t*)pduP, pdu_len);
+
+  DevAssert(NR_UE_rrc_inst[module_id].sl_preconfig);
+
+  NR_SL_FreqConfigCommon_r16_t *fcfg = NULL;
+  if (NR_UE_rrc_inst[module_id].sl_preconfig->sidelinkPreconfigNR_r16.sl_PreconfigFreqInfoList_r16)
+    fcfg = NR_UE_rrc_inst[module_id].sl_preconfig->sidelinkPreconfigNR_r16.sl_PreconfigFreqInfoList_r16->list.array[0];
+  DevAssert(fcfg);
+
+  NR_SL_SSB_TimeAllocation_r16_t *sl_SSB_TimeAllocation = NULL;
+
+  //Current implementation only supports one SSB Timeallocation
+  //Extend RRC to use multiple SSB Time allocations TBD....
+  if (fcfg->sl_SyncConfigList_r16)
+    sl_SSB_TimeAllocation = fcfg->sl_SyncConfigList_r16->list.array[0]->sl_SSB_TimeAllocation1_r16;
+  DevAssert(sl_SSB_TimeAllocation);
+
+  nr_rrc_mac_config_req_sl_mib(module_id,
+                               sl_SSB_TimeAllocation,
+                               rx_slss_id,
+                               pduP);
+
+  return;
+}
+
+
+void free_sl_rrc(uint8_t id) {
+
+  NR_UE_RRC_INST_t *rrc = &NR_UE_rrc_inst[id];
+
+  if (rrc->sl_preconfig) {
+    ASN_STRUCT_FREE(asn_DEF_NR_SL_PreconfigurationNR_r16, rrc->sl_preconfig);
+  }
+  if (rrc->sl_mib) {
+    ASN_STRUCT_FREE(asn_DEF_NR_MasterInformationBlockSidelink, rrc->sl_mib);
+  }
 }
