@@ -318,7 +318,7 @@ void nr_ue_rrc_measurements(PHY_VARS_NR_UE *ue,
 void nr_sl_psbch_rsrp_measurements(sl_nr_ue_phy_params_t *sl_phy_params,
                                    NR_DL_FRAME_PARMS *fp,
                                    c16_t rxdataF[][fp->samples_per_slot_wCP],
-                                   uint8_t use_SSS) {
+                                   bool use_SSS) {
 
   SL_NR_UE_PSBCH_RX_t *psbch_rx = &sl_phy_params->psbch_rx;
   uint8_t numsym = (fp->Ncp) ? SL_NR_NUM_SYMBOLS_SSB_EXT_CP

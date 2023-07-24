@@ -122,7 +122,7 @@ int nr_slot_fep_init_sync(PHY_VARS_NR_UE *ue,
                           c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP],
                           int link_type)
 {
-  NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
+  NR_DL_FRAME_PARMS *frame_parms = link_type == link_type_sl ? &ue->SL_UE_PHY_PARAMS.sl_frame_params : &ue->frame_parms;
   NR_UE_COMMON *common_vars   = &ue->common_vars;
   int Ns = proc->nr_slot_rx;
 

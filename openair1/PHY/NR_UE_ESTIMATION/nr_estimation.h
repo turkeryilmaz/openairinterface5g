@@ -147,5 +147,5 @@ float_t get_nr_RSRP(module_id_t Mod_id,uint8_t CC_id,uint8_t gNB_index);
 void nr_sl_psbch_rsrp_measurements(sl_nr_ue_phy_params_t *sl_phy_params,
                                    NR_DL_FRAME_PARMS *fp,
                                    c16_t rxdataF[][fp->samples_per_slot_wCP],
-                                   uint8_t use_SSS);
+                                   bool use_SSS);
 #endif

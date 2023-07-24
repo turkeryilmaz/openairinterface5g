@@ -247,6 +247,8 @@ typedef struct {
   int32_t freq_offset;
   /// nid2 is the PSS value, the PCI (physical cell id) will be: 3*NID1 (SSS value) + NID2 (PSS value)
   int32_t nid2;
+  /// In Sidelink nid2 is the PSS value (0 or 1), the PCI (physical cell id) will be: 336 * NID2 (PSS value) + NID1 (SSS value)
+  uint16_t nid2_sl;
 } NR_UE_COMMON;
 
 #define NR_PRS_IDFT_OVERSAMP_FACTOR 1  // IDFT oversampling factor for NR PRS channel estimates in time domain, ALLOWED value 16x, and 1x is default(ie. IDFT size is frame_params->ofdm_symbol_size)

@@ -561,8 +561,11 @@ int pss_synchro_nr(PHY_VARS_NR_UE *PHY_vars_UE, int is, int rate_change)
 
 static int pss_search_time_nr(c16_t **rxdata, PHY_VARS_NR_UE *ue, int fo_flag, int is)
 {
-  NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
+  NR_DL_FRAME_PARMS *frame_parms = get_softmodem_params()->sl_mode != 2 ? &ue->frame_parms : &ue->SL_UE_PHY_PARAMS.sl_frame_params;
   int *nid2 = (int *)&ue->common_vars.nid2;
+  if (get_softmodem_params()->sl_mode == 2) {
+    nid2 = (int *)&ue->common_vars.nid2_sl;
+  }
   int *f_off = (int *)&ue->common_vars.freq_offset;
   unsigned int n, ar, peak_position, pss_source;
   int64_t peak_value;
@@ -583,14 +586,14 @@ static int pss_search_time_nr(c16_t **rxdata, PHY_VARS_NR_UE *ue, int fo_flag, i
   peak_position = 0;
   pss_source = 0;
 
-  int maxval=0;
-  int max_size = get_softmodem_params()->sl_mode == 0 ?  NUMBER_PSS_SEQUENCE : NUMBER_PSS_SEQUENCE_SL;
+  int maxval = 0;
+  int max_size = get_softmodem_params()->sl_mode == 0 ? NUMBER_PSS_SEQUENCE : NUMBER_PSS_SEQUENCE_SL;
   for (int j = 0; j < max_size; j++)
     for (int i = 0; i < frame_parms->ofdm_symbol_size; i++) {
       maxval = max(maxval, abs(primary_synchro_time_nr[j][i].r));
       maxval = max(maxval, abs(primary_synchro_time_nr[j][i].i));
     }
-  int shift = log2_approx(maxval);//*(frame_parms->ofdm_symbol_size+frame_parms->nb_prefix_samples)*2);
+  int shift = log2_approx(maxval);
 
   /* Search pss in the received buffer each 4 samples which ensures a memory alignment on 128 bits (32 bits x 4 ) */
   /* This is required by SIMD (single instruction Multiple Data) Extensions of Intel processors. */
@@ -612,19 +615,25 @@ static int pss_search_time_nr(c16_t **rxdata, PHY_VARS_NR_UE *ue, int fo_flag, i
       for (ar=0; ar<frame_parms->nb_antennas_rx; ar++) {
 
         /* perform correlation of rx data and pss sequence ie it is a dot product */
+        int index = n + is * frame_parms->samples_per_frame;
         const c32_t result = dot_product(primary_synchro_time_nr[pss_index],
-                                         &(rxdata[ar][n + is * frame_parms->samples_per_frame]),
+                                         &(rxdata[ar][index]),
                                          frame_parms->ofdm_symbol_size,
                                          shift);
         const c64_t r64 = {.r = result.r, .i = result.i};
         pss_corr_ue += squaredMod(r64);
-        //((short*)pss_corr_ue[pss_index])[2*n] += ((short*) &result)[0];   /* real part */
-        //((short*)pss_corr_ue[pss_index])[2*n+1] += ((short*) &result)[1]; /* imaginary part */
-        //((short*)&synchro_out)[0] += ((int*) &result)[0];               /* real part */
-        //((short*)&synchro_out)[1] += ((int*) &result)[1];               /* imaginary part */
-
+        if (get_softmodem_params()->sl_mode == 2) {
+          // non-coherentely combine repeition of PSS
+          int shift_for_pss1 = frame_parms->ofdm_symbol_size + frame_parms->nb_prefix_samples;
+          const c32_t result = dot_product(primary_synchro_time_nr[pss_index],
+                                           &(rxdata[ar][index + shift_for_pss1]),
+                                           frame_parms->ofdm_symbol_size,
+                                           shift);
+          const c64_t r64 = {.r = result.r, .i = result.i};
+          pss_corr_ue += squaredMod(r64);
+        }
       }
-      
+
       /* calculate the absolute value of sync_corr[n] */
       avg[pss_index]+=pss_corr_ue;
       if (pss_corr_ue > peak_value) {

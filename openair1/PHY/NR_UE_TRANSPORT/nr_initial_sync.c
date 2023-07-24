@@ -44,6 +44,8 @@
 #include "PHY/NR_REFSIG/pss_nr.h"
 #include "PHY/NR_REFSIG/sss_nr.h"
 #include "PHY/NR_REFSIG/refsig_defs_ue.h"
+#include "executables/softmodem-common.h"
+#include "openair1/PHY/defs_nr_sl_UE.h"
 
 extern openair0_config_t openair0_cfg[];
 //static  nfapi_nr_config_request_t config_t;
@@ -197,8 +199,181 @@ int nr_pbch_detection(UE_nr_rxtx_proc_t * proc, PHY_VARS_NR_UE *ue, int pbch_ini
 
 }
 
+static int nr_psbch_detection(UE_nr_rxtx_proc_t *proc, PHY_VARS_NR_UE *ue, int psbch_initial_symbol,
+                              c16_t rxdataF[][ue->SL_UE_PHY_PARAMS.sl_frame_params.samples_per_slot_wCP])
+{
+  NR_DL_FRAME_PARMS *frame_parms = &ue->SL_UE_PHY_PARAMS.sl_frame_params;
+  int ret = -1;
+  NR_UE_SSB *best_ssb = NULL;
+  NR_UE_SSB *current_ssb;
+  uint8_t N_L = (frame_parms->Lmax == 4) ? 4 : 8;
+  uint8_t N_hf = (frame_parms->Lmax == 4) ? 2 : 1;
+  for (int l = 0; l < N_L; l++) {
+    current_ssb = create_ssb_node(l, N_hf);
+    start_meas(&ue->dlsch_channel_estimation_stats);
+    // computing correlation between received DMRS symbols and transmitted sequence for current i_ssb and n_hf
+    for (int i = psbch_initial_symbol; i < SL_NR_NUM_SYMBOLS_SSB_NORMAL_CP; i++) {
+      if (i >= 1 && i <= 4)
+        continue;
+      nr_pbch_dmrs_correlation(ue, proc, i, i - psbch_initial_symbol, current_ssb, rxdataF);
+    }
+    stop_meas(&ue->dlsch_channel_estimation_stats);
+
+    current_ssb->metric = current_ssb->c_re * current_ssb->c_re + current_ssb->c_im * current_ssb->c_im;
+
+    // generate a list of SSB structures
+    if (best_ssb == NULL)
+      best_ssb = current_ssb;
+    else
+      best_ssb = insert_into_list(best_ssb, current_ssb);
+  }
+  NR_UE_SSB *temp_ptr = best_ssb;
+  while (ret != 0 && temp_ptr != NULL) {
+    start_meas(&ue->dlsch_channel_estimation_stats);
+    const int estimateSz = frame_parms->symbols_per_slot * frame_parms->ofdm_symbol_size;
+    __attribute__((aligned(32))) struct complex16 dl_ch_estimates[frame_parms->nb_antennas_rx][estimateSz];
+    __attribute__((aligned(32))) struct complex16 dl_ch_estimates_time[frame_parms->nb_antennas_rx][frame_parms->ofdm_symbol_size];
+
+    for (int i = psbch_initial_symbol; i < SL_NR_NUM_SYMBOLS_SSB_NORMAL_CP; i++) {
+      if (i >= 1 && i <= 4)
+        continue;
+      nr_pbch_channel_estimation(ue, frame_parms, estimateSz, dl_ch_estimates, dl_ch_estimates_time,
+                                 proc, i, i-psbch_initial_symbol, temp_ptr->i_ssb, temp_ptr->n_hf, rxdataF, get_softmodem_params()->sl_mode == 2);
+    }
+    stop_meas(&ue->dlsch_channel_estimation_stats);
+    nr_sl_psbch_rsrp_measurements(&ue->SL_UE_PHY_PARAMS, frame_parms, rxdataF, false);
+    uint8_t decoded_pdu;
+    ret = nr_rx_psbch(ue,
+                      proc,
+                      estimateSz,
+                      dl_ch_estimates,
+                      frame_parms,
+                      &decoded_pdu,
+                      rxdataF,
+                      ue->SL_UE_PHY_PARAMS.sl_config.sl_sync_source.rx_slss_id);
+    temp_ptr = temp_ptr->next_ssb;
+  }
+  free_list(best_ssb);
+  return ret;
+}
+
 char duplex_string[2][4] = {"FDD","TDD"};
 char prefix_string[2][9] = {"NORMAL","EXTENDED"};
+
+int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc, PHY_VARS_NR_UE *ue, int n_frames)
+{
+  /*   Initial synchronisation
+   *
+   *     -----------------------------------------------------------------------------
+   *     |                                 Received UE data buffer                    |
+   *     ----------------------------------------------------------------------------
+   *     <-------------->-------------------------------------------------
+   *         ssb_start   | psbch | spss | spss | ssss | ssss | psbch |....
+   *                     -------------------------------------------------
+   *     <---------------------->
+   *             sync_pos            SL S-SSB/PSBCH block
+   */
+  VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_INITIAL_UE_SYNC, VCD_FUNCTION_IN);
+  NR_DL_FRAME_PARMS *fp = &ue->SL_UE_PHY_PARAMS.sl_frame_params;
+  LOG_D(NR_PHY, "nr_initial SL sync ue RB_SL %d\n", fp->N_RB_SL);
+  int ret = -1;
+  int32_t sync_pos = 0, sync_pos_frame;
+  for (int is = 0; is < n_frames; is++) {
+    sync_pos = pss_synchro_nr(ue, is, NO_RATE_CHANGE);
+    /* In 5G SL, the first SSB symbol is the PSBCH, so we need adjust the SSB
+        offset accordingly (psbch_plus_prefix_size). Additionally, there are 2
+        PSS symbols.
+        However, if we correlated on the second PSS, we do not need to include an offset
+        the size of the first PSS0, becasue the correlation occurs on each individual PSS.
+        The sync_pos will ALWAYS point at the start of the first PSS (PSS0) becasue
+        it is find the peak position. However, the correlation will be higher between
+        one of the PSS's, and this is how the Nid2 is set.
+        PSBCH PREFIX | PSBCH 0 | PSS 0 PREFIX | PSS 0 | PSS 1 PREFIX | PSS 1 |
+            176     |  2048   |      144     | 2048  |      144     | 2048  |
+            176     |  2048   |      144     |   -   |      -       |   X   | SSB Start = X - (176 + 2048 + 144)
+            176     |  2048   |      144     |   X   |      144     | 2048  | SSB Start = X - (176 + 2048 + 144) */
+    uint32_t psbch_plus_prefix_size = fp->ofdm_symbol_size + fp->nb_prefix_samples0;
+    uint32_t pss_plus_prefix_size = fp->nb_prefix_samples;
+    LOG_I(NR_PHY, "This is pss_plus_prefix_size %d, psbch_plus_prefix_size %d, sync_pos %d, Nid2 %d\n",
+          pss_plus_prefix_size, psbch_plus_prefix_size, sync_pos, ue->common_vars.nid2_sl);
+    if (sync_pos >= psbch_plus_prefix_size + pss_plus_prefix_size) {
+      ue->ssb_offset = sync_pos - (pss_plus_prefix_size + psbch_plus_prefix_size);
+    } else {
+      ue->ssb_offset = sync_pos + fp->samples_per_frame - (pss_plus_prefix_size + psbch_plus_prefix_size);
+    }
+    LOG_I(NR_PHY, "[UE%d] Initial SL sync : n_frames %d Estimated PSS position %d, Nid2 %d  ssb_offset %d\n",
+          ue->Mod_id, n_frames, sync_pos, ue->common_vars.nid2_sl, ue->ssb_offset);
+    if (sync_pos < (NR_NUMBER_OF_SUBFRAMES_PER_FRAME * fp->samples_per_subframe - (SL_NR_NUM_SYMBOLS_SSB_NORMAL_CP * fp->ofdm_symbol_size))) {
+      uint8_t phase_tdd_ncp;
+      int32_t metric_tdd_ncp = 0;
+      const uint32_t rxdataF_sz = ue->SL_UE_PHY_PARAMS.sl_frame_params.samples_per_slot_wCP;
+      __attribute__((aligned(32))) c16_t rxdataF[ue->SL_UE_PHY_PARAMS.sl_frame_params.nb_antennas_rx][rxdataF_sz];
+      for (int i = 0; i < SL_NR_NUM_SYMBOLS_SSB_NORMAL_CP; i++)
+        nr_slot_fep_init_sync(ue, proc, i, is * fp->samples_per_frame + ue->ssb_offset, false, rxdataF, link_type_sl);
+      LOG_I(NR_PHY, "Calling sss detection (normal CP)\n");
+      int freq_offset_sss = 0;
+      ret = rx_sss_sl_nr(ue, proc, &metric_tdd_ncp, &phase_tdd_ncp, &freq_offset_sss, rxdataF);
+      if (ue->UE_fo_compensation) {
+        double sampling_time = 1 / (1.0e3 * fp->samples_per_subframe);
+        double off_angle = -2 * M_PI * sampling_time * freq_offset_sss;
+        int start = is * fp->samples_per_frame + ue->ssb_offset;
+        int end = start + SL_NR_NUM_SYMBOLS_SSB_NORMAL_CP * (fp->ofdm_symbol_size + fp->nb_prefix_samples);
+        for (int n = start; n < end; n++) {
+          for (int ar = 0; ar < fp->nb_antennas_rx; ar++) {
+            double re = ((double)(((short *)ue->common_vars.rxdata[ar]))[2 * n]);
+            double im = ((double)(((short *)ue->common_vars.rxdata[ar]))[2 * n + 1]);
+            ((short *)ue->common_vars.rxdata[ar])[2 * n] = (short)(round(re * cos(n * off_angle) - im * sin(n * off_angle)));
+            ((short *)ue->common_vars.rxdata[ar])[2 * n + 1] = (short)(round(re * sin(n * off_angle) + im * cos(n * off_angle)));
+          }
+        }
+        ue->common_vars.freq_offset += freq_offset_sss;
+      }
+      if (ret == 0) {
+        ret = nr_psbch_detection(proc, ue, 0, rxdataF);
+      }
+      if (ret == 0) {
+        // sync at symbol ue->symbol_offset
+        // computing the offset wrt the beginning of the frame
+        int mu = fp->numerology_index;
+        int n_symb_prefix0 = (ue->symbol_offset / (7 * (1 << mu))) + 1;
+        sync_pos_frame = n_symb_prefix0 * (fp->ofdm_symbol_size + fp->nb_prefix_samples0)
+                         + (ue->symbol_offset - n_symb_prefix0) * (fp->ofdm_symbol_size + fp->nb_prefix_samples);
+        ue->init_sync_frame = n_frames - 1 - is;
+        if (ue->ssb_offset < sync_pos_frame) {
+          ue->rx_offset = fp->samples_per_frame - sync_pos_frame + ue->ssb_offset;
+          ue->init_sync_frame += 1;
+        } else {
+          ue->rx_offset = ue->ssb_offset - sync_pos_frame;
+        }
+      }
+      LOG_I(NR_PHY, "TDD Normal prefix: CellId %d metric %d, phase %d, psbch %d\n",
+            fp->Nid_cell, metric_tdd_ncp, phase_tdd_ncp, ret);
+    } else {
+      LOG_I(NR_PHY, "TDD Normal prefix: SSS error condition: sync_pos %d\n", sync_pos);
+    }
+    if (ret == 0)
+      break;
+  }
+  if (ret == 0) {
+    LOG_I(NR_PHY,
+          "[UE %d] rx_offset %d Measured Carrier Frequency %.0f Hz (offset %d Hz)\n",
+          ue->Mod_id,
+          ue->rx_offset,
+          openair0_cfg[0].rx_freq[0] + ue->common_vars.freq_offset,
+          ue->common_vars.freq_offset);
+  } else {
+    LOG_I(NR_PHY,
+          "[UE%d] Initial sync :  PSBCH not ok. Estimated PSS position %d, Nid1 %d, Nid2 %d, Frame_type %d\n",
+          ue->Mod_id,
+          sync_pos,
+          GET_NID1_SL(fp->Nid_cell),
+          GET_NID2_SL(fp->Nid_cell),
+          fp->frame_type);
+  }
+
+  VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_INITIAL_UE_SYNC, VCD_FUNCTION_OUT);
+  return ret;
+}
 
 int nr_initial_sync(UE_nr_rxtx_proc_t *proc,
                     PHY_VARS_NR_UE *ue,

@@ -224,7 +224,7 @@ void psbch_pscch_processing(PHY_VARS_NR_UE *ue,
       sym = (sym == 0) ? 5 : sym + 1;
     }
 
-    nr_sl_psbch_rsrp_measurements(sl_phy_params,fp, rxdataF,0);
+    nr_sl_psbch_rsrp_measurements(sl_phy_params, fp, rxdataF, false);
 
     LOG_D(PHY," ------  Decode SL-MIB: frame.slot %d.%d ------  \n",
                                                   frame_rx%1024, nr_slot_rx);
