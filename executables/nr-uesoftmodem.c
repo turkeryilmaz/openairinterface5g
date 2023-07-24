@@ -312,13 +312,15 @@ void set_options(int CC_id, PHY_VARS_NR_UE *UE){
 
 }
 
-void init_openair0(void) {
+void init_openair0(uint8_t is_sidelink) {
   int card;
   int freq_off = 0;
   NR_DL_FRAME_PARMS *frame_parms = &PHY_vars_UE_g[0][0]->frame_parms;
+  if (is_sidelink)
+    frame_parms = &PHY_vars_UE_g[0][0]->SL_UE_PHY_PARAMS.sl_frame_params;
 
   for (card=0; card<MAX_CARDS; card++) {
-    uint64_t dl_carrier, ul_carrier, sl_carrier;
+    uint64_t dl_carrier, ul_carrier;
     openair0_cfg[card].configFilename    = NULL;
     openair0_cfg[card].threequarter_fs   = frame_parms->threequarter_fs;
     openair0_cfg[card].sample_rate       = frame_parms->samples_per_subframe * 1e3;
@@ -344,14 +346,13 @@ void init_openair0(void) {
       openair0_cfg[card].rx_num_channels,
       duplex_mode[openair0_cfg[card].duplex_mode]);
 
-    nr_get_carrier_frequencies(PHY_vars_UE_g[0][0], &dl_carrier, &ul_carrier);
+    if (is_sidelink) {
+      dl_carrier = frame_parms->dl_CarrierFreq;
+      ul_carrier = frame_parms->ul_CarrierFreq;
+    } else
+      nr_get_carrier_frequencies(PHY_vars_UE_g[0][0], &dl_carrier, &ul_carrier);
 
     nr_rf_card_config_freq(&openair0_cfg[card], ul_carrier, dl_carrier, freq_off);
-
-    if (get_softmodem_params()->sl_mode == 2) {
-      nr_get_carrier_frequencies_sl(PHY_vars_UE_g[0][0], &sl_carrier);
-      nr_rf_card_config_freq(&openair0_cfg[card], sl_carrier, sl_carrier, freq_off);
-    }
 
     nr_rf_card_config_gain(&openair0_cfg[card], rx_gain_off);
 
@@ -503,10 +504,6 @@ int main( int argc, char **argv ) {
   if (!get_softmodem_params()->nsa && get_softmodem_params()->emulate_l1)
     start_oai_nrue_threads();
 
-  if (get_softmodem_params()->sl_mode) {
-    nr_UE_configure_Sidelink(0, get_softmodem_params()->sync_ref);
-  }
-
   if (!get_softmodem_params()->emulate_l1) {
     for (int CC_id=0; CC_id<MAX_NUM_CCs; CC_id++) {
       PHY_vars_UE_g[0][CC_id] = (PHY_VARS_NR_UE *)malloc(sizeof(PHY_VARS_NR_UE));
@@ -536,10 +533,26 @@ int main( int argc, char **argv ) {
         *mac->scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0]);
       }
 
+      UE[CC_id]->sl_mode = get_softmodem_params()->sl_mode;
       init_nr_ue_vars(UE[CC_id], 0, abstraction_flag);
+
+      if (UE[CC_id]->sl_mode) {
+        AssertFatal(UE[CC_id]->sl_mode == 2, "Only Sidelink mode 2 supported. Mode 1 not yet supported\n");
+        nr_UE_configure_Sidelink(0, get_softmodem_params()->sync_ref);
+        DevAssert(mac->if_module != NULL && mac->if_module->sl_phy_config_request != NULL);
+        sl_nr_ue_phy_params_t *sl_phy = &UE[CC_id]->SL_UE_PHY_PARAMS;
+        mac->if_module->sl_phy_config_request(&mac->SL_MAC_PARAMS->sl_phy_config);
+        nr_init_frame_parms_ue_sl(&sl_phy->sl_frame_params,&sl_phy->sl_config,
+                                  get_nrUE_params()->threequarter_fs,
+                                  get_nrUE_params()->ofdm_offset_divisor);
+        sl_ue_phy_init(UE[CC_id]);
+      }
+
     }
 
-    init_openair0();
+    uint8_t is_sl = (get_softmodem_params()->sl_mode) ? 1 : 0;
+
+    init_openair0(is_sl);
     // init UE_PF_PO and mutex lock
     pthread_mutex_init(&ue_pf_po_mutex, NULL);
     memset (&UE_PF_PO[0][0], 0, sizeof(UE_PF_PO_t)*NUMBER_OF_UE_MAX*MAX_NUM_CCs);

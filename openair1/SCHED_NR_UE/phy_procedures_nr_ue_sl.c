@@ -49,6 +49,7 @@ void nr_fill_sl_indication(nr_sidelink_indication_t *sl_ind,
   sl_ind->frame_tx  = proc->frame_tx;
   sl_ind->slot_tx   = proc->nr_slot_tx;
   sl_ind->phy_data  = phy_data;
+  sl_ind->slot_type = SIDELINK_SLOT_TYPE_RX;
 
   if (rx_ind) {
     sl_ind->rx_ind = rx_ind; //  hang on rx_ind instance

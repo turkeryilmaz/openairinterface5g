@@ -65,6 +65,10 @@ int8_t nr_mac_rrc_data_req_ue(const module_id_t Mod_idP,
 nr_bler_struct nr_bler_data[NR_NUM_MCS];
 void get_nrUE_params(void) { return;}
 uint8_t check_if_ue_is_sl_syncsource() {return 0;}
+void nr_rrc_mac_config_req_sl_mib(module_id_t module_id,
+                                  NR_SL_SSB_TimeAllocation_r16_t *ssb_ta,
+                                  uint16_t rx_slss_id,
+                                  uint8_t *sl_mib) {}
 //////////////////////////////////////////////////////////////////////////
 static void prepare_mib_bits(uint8_t *buf, uint32_t frame_tx, uint32_t slot_tx) {
 

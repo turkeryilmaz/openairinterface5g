@@ -362,7 +362,7 @@ void nr_sl_psbch_rsrp_measurements(sl_nr_ue_phy_params_t *sl_phy_params,
                               dB_fixed(fp->ofdm_symbol_size);
 
 
-  LOG_I(PHY, "PSBCH RSRP (DMRS REs): numREs:%d RSRP :%d dB/RE ,RSRP:%d dBm/RE\n",
+  LOG_D(PHY, "PSBCH RSRP (DMRS REs): numREs:%d RSRP :%d dB/RE ,RSRP:%d dBm/RE\n",
                               num_re, psbch_rx->rsrp_dB_per_RE, psbch_rx->rsrp_dBm_per_RE);
 
 }

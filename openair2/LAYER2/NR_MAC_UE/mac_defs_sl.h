@@ -33,9 +33,14 @@
 #define SL_NR_MAC_NUM_TX_RESOURCE_POOLS 1
 #define SL_NUM_BYTES_TIMERESOURCEBITMAP 20
 
+//every 16 frames, SSB is repeated.
+#define SL_NR_SSB_REPETITION_IN_FRAMES 16
+#define SL_FRAME_NUMBER_CYCLE 1024
+
 // Size of Fixed fields prio (3), sci_2ndstage(2),
 // betaoffsetindicator(2), num dmrs ports (1), mcs (5bits)
 #define SL_SCI_FORMAT_1A_LEN_IN_BITS_FIXED_FIELDS 13
+
 
 #define sci_field_t dci_field_t
 
@@ -149,6 +154,22 @@ typedef struct sl_nr_ue_mac_params {
   sl_bch_params_t tx_sl_bch;
   //Holds Broadcast params incase UE receives SL-SSB
   sl_bch_params_t rx_sl_bch;
+
+  //SSB RSRP in dBm
+  int16_t ssb_rsrp_dBm;
+
+  //Bitmap indicating which slots belong to sidelink
+  //Right now supports 30Khz and 15Khz
+  uint32_t sl_slot_bitmap;
+
+  //adjust timing after new timing from sync is acquired.
+  uint8_t adjust_timing;
+
+  //Sidelink slots per frame
+  uint16_t N_SL_SLOTS_perframe;
+
+  uint16_t decoded_DFN;
+  uint16_t decoded_slot;
 
 } sl_nr_ue_mac_params_t;
 

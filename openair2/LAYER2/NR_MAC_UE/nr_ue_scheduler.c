@@ -87,6 +87,8 @@ void fill_scheduled_response(nr_scheduled_response_t *scheduled_response,
                              fapi_nr_dl_config_request_t *dl_config,
                              fapi_nr_ul_config_request_t *ul_config,
                              fapi_nr_tx_request_t *tx_request,
+                             sl_nr_rx_config_request_t *sl_rx_config,
+                             sl_nr_tx_config_request_t *sl_tx_config,
                              module_id_t mod_id,
                              int cc_id,
                              frame_t frame,
@@ -101,6 +103,8 @@ void fill_scheduled_response(nr_scheduled_response_t *scheduled_response,
   scheduled_response->frame      = frame;
   scheduled_response->slot       = slot;
   scheduled_response->phy_data   = phy_data;
+  scheduled_response->sl_rx_config  = sl_rx_config;
+  scheduled_response->sl_tx_config  = sl_tx_config;
 
 }
 
@@ -970,7 +974,7 @@ void nr_ue_dl_scheduler(nr_downlink_indication_t *dl_info)
     }
     dcireq.dl_config_req = *dl_config;
 
-    fill_scheduled_response(&scheduled_response, &dcireq.dl_config_req, NULL, NULL, mod_id, cc_id, rx_frame, rx_slot, dl_info->phy_data);
+    fill_scheduled_response(&scheduled_response, &dcireq.dl_config_req, NULL, NULL, NULL, NULL,mod_id, cc_id, rx_frame, rx_slot, dl_info->phy_data);
     if(mac->if_module != NULL && mac->if_module->scheduled_response != NULL) {
       LOG_D(NR_MAC,"1# scheduled_response transmitted, %d, %d\n", rx_frame, rx_slot);
       mac->if_module->scheduled_response(&scheduled_response);
@@ -1079,7 +1083,7 @@ void nr_ue_ul_scheduler(nr_uplink_indication_t *ul_info)
         }
       }
       pthread_mutex_unlock(&ul_config->mutex_ul_config); // avoid double lock
-      fill_scheduled_response(&scheduled_response, NULL, ul_config, &tx_req, mod_id, cc_id, frame_tx, slot_tx, ul_info->phy_data);
+      fill_scheduled_response(&scheduled_response, NULL, ul_config, &tx_req, NULL, NULL,mod_id, cc_id, frame_tx, slot_tx, ul_info->phy_data);
       if(mac->if_module != NULL && mac->if_module->scheduled_response != NULL){
         LOG_D(NR_MAC,"3# scheduled_response transmitted,%d, %d\n", frame_tx, slot_tx);
         mac->if_module->scheduled_response(&scheduled_response);
@@ -2190,7 +2194,7 @@ void nr_ue_pucch_scheduler(module_id_t module_idP, frame_t frameP, int slotP, vo
                             &pucch[j],
                             pucch_pdu);
       nr_scheduled_response_t scheduled_response;
-      fill_scheduled_response(&scheduled_response, NULL, ul_config, NULL, module_idP, 0 /*TBR fix*/, frameP, slotP, phy_data);
+      fill_scheduled_response(&scheduled_response, NULL, ul_config, NULL, NULL, NULL,module_idP, 0 /*TBR fix*/, frameP, slotP, phy_data);
       if (mac->if_module != NULL && mac->if_module->scheduled_response != NULL)
         mac->if_module->scheduled_response(&scheduled_response);
       if (mac->state == UE_WAIT_TX_ACK_MSG4)
@@ -2639,7 +2643,7 @@ static void nr_ue_prach_scheduler(module_id_t module_idP, frame_t frameP, sub_fr
       prach_config_pdu->prach_tx_power = get_prach_tx_power(module_idP);
       set_ra_rnti(mac, prach_config_pdu);
 
-      fill_scheduled_response(&scheduled_response, NULL, ul_config, NULL, module_idP, 0 /*TBR fix*/, frameP, slotP, NULL);
+      fill_scheduled_response(&scheduled_response, NULL, ul_config, NULL, NULL, NULL,module_idP, 0 /*TBR fix*/, frameP, slotP, NULL);
       if(mac->if_module != NULL && mac->if_module->scheduled_response != NULL)
         mac->if_module->scheduled_response(&scheduled_response);
 
@@ -3115,4 +3119,299 @@ void schedule_ta_command(fapi_nr_dl_config_request_t *dl_config, NR_UL_TIME_ALIG
   dl_config->dl_config_list[dl_config->number_pdus].pdu_type = FAPI_NR_CONFIG_TA_COMMAND;
   dl_config->number_pdus += 1;
   ul_time_alignment->ta_apply = false;
+}
+
+uint16_t sl_adjust_ssb_indices(sl_ssb_timealloc_t *ssb_timealloc,
+                               uint32_t slot_in_16frames,
+                               uint16_t *ssb_slot_ptr) {
+
+  uint16_t ssb_slot = ssb_timealloc->sl_TimeOffsetSSB;
+  uint16_t numssb = 0;
+  *ssb_slot_ptr = 0;
+
+  if (ssb_timealloc->sl_NumSSB_WithinPeriod == 0) {
+    *ssb_slot_ptr = 0;
+    return 0;
+  }
+
+  while (slot_in_16frames > ssb_slot) {
+    numssb = numssb + 1;
+    if (numssb < ssb_timealloc->sl_NumSSB_WithinPeriod)
+      ssb_slot = ssb_slot + ssb_timealloc->sl_TimeInterval;
+    else
+      break;
+  }
+
+  *ssb_slot_ptr = ssb_slot;
+
+  return numssb;
+}
+
+/*
+* This function calculates the indices based on the new timing (frame,slot)
+* acquired by the UE.
+* NUM SSB, SLOT_SSB needs to be calculated based on current timing
+*/
+void sl_adjust_indices_based_on_timing(uint32_t frame, uint32_t slot,
+                                       uint32_t frame_tx, uint32_t slot_tx,
+                                       uint16_t mod_id, uint16_t slots_per_frame)
+{
+
+  NR_UE_MAC_INST_t *mac = get_mac_inst(mod_id);
+  sl_nr_ue_mac_params_t *sl_mac = mac->SL_MAC_PARAMS;
+
+  uint16_t frame_16 = frame % SL_NR_SSB_REPETITION_IN_FRAMES;
+  uint32_t slot_in_16frames = (frame_16 * slots_per_frame) + slot;
+  uint16_t frame_tx_16 = frame_tx % SL_NR_SSB_REPETITION_IN_FRAMES;
+  uint32_t slot_tx_in_16frames = (frame_tx_16 * slots_per_frame) + slot_tx;
+  LOG_I(NR_MAC,"[UE%d]PSBCH params adjusted based on RX current timing %d:%d. frame_16:%d, slot_in_16frames:%d\n",
+                                        mod_id, frame, slot, frame_16, slot_in_16frames);
+  LOG_I(NR_MAC,"[UE%d]PSBCH params adjusted based on TX current timing %d:%d. frame_16:%d, slot_in_16frames:%d\n",
+                                        mod_id, frame_tx, slot_tx, frame_tx_16, slot_tx_in_16frames);
+
+  //Adjust PSBCH Indices based on current RX timing
+  sl_ssb_timealloc_t *ssb_timealloc = &sl_mac->rx_sl_bch.ssb_time_alloc;
+  sl_mac->rx_sl_bch.num_ssb = sl_adjust_ssb_indices(ssb_timealloc, slot_in_16frames, &sl_mac->rx_sl_bch.ssb_slot);
+
+  //Adjust PSBCH Indices based on current TX timing
+  ssb_timealloc = &sl_mac->tx_sl_bch.ssb_time_alloc;
+  sl_mac->tx_sl_bch.num_ssb = sl_adjust_ssb_indices(ssb_timealloc, slot_tx_in_16frames, &sl_mac->tx_sl_bch.ssb_slot);
+
+  LOG_I(NR_MAC,"[UE%d]PSBCH params adjusted based on RX current timing %d:%d. NumSSB:%d, ssb_slot:%d\n",
+                                                            mod_id, frame, slot, sl_mac->rx_sl_bch.num_ssb,
+                                                            sl_mac->rx_sl_bch.ssb_slot);
+  LOG_I(NR_MAC,"[UE%d]PSBCH params adjusted based on TX current timing %d:%d. NumSSB:%d, ssb_slot:%d\n",
+                                                            mod_id, frame_tx, slot_tx, sl_mac->tx_sl_bch.num_ssb,
+                                                            sl_mac->tx_sl_bch.ssb_slot);
+
+}
+
+/*
+  DETERMINE IF SLOT IS MARKED AS SSB SLOT
+  ACCORDING TO THE SSB TIME ALLOCATION PARAMETERS.
+  sl_numSSB_withinPeriod - NUM SSBS in 16frames
+  sl_timeoffset_SSB - time offset for first SSB at start of 16 frames cycle
+  sl_timeinterval - distance in slots between 2 SSBs
+*/
+uint8_t sl_determine_if_SSB_slot(uint16_t frame, uint16_t slot, uint16_t slots_per_frame,
+                                 sl_bch_params_t *sl_bch,
+                                 sl_sidelink_slot_type_t slot_type) {
+
+  uint16_t frame_16 = frame % SL_NR_SSB_REPETITION_IN_FRAMES;
+  uint32_t slot_in_16frames = (frame_16 * slots_per_frame) + slot;
+  uint16_t sl_NumSSB_WithinPeriod = sl_bch->ssb_time_alloc.sl_NumSSB_WithinPeriod;
+  uint16_t sl_TimeOffsetSSB = sl_bch->ssb_time_alloc.sl_TimeOffsetSSB;
+  uint16_t sl_TimeInterval = sl_bch->ssb_time_alloc.sl_TimeInterval;
+  uint16_t num_ssb = sl_bch->num_ssb, ssb_slot = sl_bch->ssb_slot;
+
+  LOG_D(NR_MAC, "%d:%d. slot_type:%d, num_ssb:%d,ssb_slot:%d, %d-%d-%d, status:%d\n",
+                                             frame, slot, slot_type,
+                                             sl_bch->num_ssb,sl_bch->ssb_slot,
+                                             sl_NumSSB_WithinPeriod, sl_TimeOffsetSSB, sl_TimeInterval, sl_bch->status);
+
+  if (sl_NumSSB_WithinPeriod && sl_bch->status) {
+
+    if (slot_in_16frames == sl_TimeOffsetSSB) {
+      num_ssb = 0;
+      ssb_slot = sl_TimeOffsetSSB;
+    }
+
+    if (num_ssb < sl_NumSSB_WithinPeriod && slot_in_16frames == ssb_slot) {
+
+      num_ssb += 1;
+      ssb_slot = (num_ssb < sl_NumSSB_WithinPeriod)
+                ? (ssb_slot + sl_TimeInterval) : sl_TimeOffsetSSB;
+
+      //Update the time when the same slot with RX SLOT type is called
+      if (slot_type == SIDELINK_SLOT_TYPE_RX) {
+        sl_bch->ssb_slot = ssb_slot;
+        sl_bch->num_ssb = num_ssb;
+      }
+
+      LOG_D(NR_MAC, "%d:%d is a PSBCH SLOT. Slot type:%d Next PSBCH Slot:%d, num_ssb:%d\n",
+                                                frame, slot, slot_type,
+                                                sl_bch->ssb_slot,sl_bch->num_ssb);
+
+      return 1;
+    }
+  }
+
+  LOG_D(NR_MAC, "%d:%d is NOT a PSBCH SLOT. Next PSBCH Slot:%d, num_ssb:%d\n",
+                                             frame, slot, sl_bch->ssb_slot,sl_bch->num_ssb);
+  return 0;
+}
+
+/*
+*   determine if sidelink slot is a PSBCH slot
+*    If PSBCH rx slot and sync_source == SYNC_REF_UE
+*      TTI COMMAND = PSBCH RX
+*    if PSBCH tx slot and transmit SLSS == true
+*      TTI_COMMAND = PSBCH TX
+*   Sidelink UE can rx and tx a SSB however the SSB time
+*   allocation will be different
+*/
+uint8_t nr_ue_sl_psbch_scheduler(nr_sidelink_indication_t *sl_ind,
+                                 sl_nr_ue_mac_params_t *sl_mac_params,
+                                 sl_nr_rx_config_request_t *rx_config,
+                                 sl_nr_tx_config_request_t *tx_config,
+                                 uint8_t *config_type) {
+
+  uint8_t ret_status = 0, is_psbch_rx_slot = 0, is_psbch_tx_slot = 0;
+  uint16_t slot = sl_ind->slot_rx;
+  uint16_t frame = sl_ind->frame_rx;
+
+  // Schedule TX only if slot type is TX.
+  if (sl_ind->slot_type == SIDELINK_SLOT_TYPE_TX) {
+    slot = sl_ind->slot_tx;
+    frame = sl_ind->frame_tx;
+  }
+
+
+  sl_nr_phy_config_request_t *sl_cfg = &sl_mac_params->sl_phy_config.sl_config_req;
+  uint16_t scs = sl_cfg->sl_bwp_config.sl_scs;
+  uint16_t slots_per_frame = nr_slots_per_frame[scs];
+
+  LOG_D(NR_MAC,"[UE%d] SL-PSBCH SCHEDULER: Frame:SLOT %d:%d, slot_type:%d\n",
+                                      sl_ind->module_id, frame, slot,sl_ind->slot_type);
+
+  is_psbch_rx_slot = sl_determine_if_SSB_slot(frame, slot, slots_per_frame,
+                                              &sl_mac_params->rx_sl_bch,
+                                              sl_ind->slot_type);
+
+  if (is_psbch_rx_slot &&
+      sl_ind->slot_type == SIDELINK_SLOT_TYPE_RX) {
+
+    *config_type = SL_NR_CONFIG_TYPE_RX_PSBCH;
+    rx_config->number_pdus = 1;
+    rx_config->sfn = frame;
+    rx_config->slot = slot;
+    rx_config->sl_rx_config_list[0].pdu_type = *config_type;
+
+    LOG_I(NR_MAC, "[UE%d] TTI-%d:%d RX PSBCH REQ- rx_slss_id:%d, numSSB:%d, next slot_SSB:%d\n",
+                                                         sl_ind->module_id,frame, slot,
+                                                         sl_cfg->sl_sync_source.rx_slss_id,
+                                                         sl_mac_params->rx_sl_bch.num_ssb,
+                                                         sl_mac_params->rx_sl_bch.ssb_slot);
+
+  }
+  if (!is_psbch_rx_slot) {
+
+    is_psbch_tx_slot = sl_determine_if_SSB_slot(frame, slot, slots_per_frame,
+                                                &sl_mac_params->tx_sl_bch,
+                                                sl_ind->slot_type);
+
+    if (is_psbch_tx_slot &&
+        sl_ind->slot_type == SIDELINK_SLOT_TYPE_TX) {
+
+      *config_type = SL_NR_CONFIG_TYPE_TX_PSBCH;
+      tx_config->number_pdus = 1;
+      tx_config->sfn = frame;
+      tx_config->slot = slot;
+      tx_config->tx_config_list[0].pdu_type = *config_type;
+      tx_config->tx_config_list[0].tx_psbch_config_pdu.tx_slss_id = sl_mac_params->tx_sl_bch.slss_id;
+      tx_config->tx_config_list[0].tx_psbch_config_pdu.psbch_tx_power = 0;//TBD...
+      memcpy(tx_config->tx_config_list[0].tx_psbch_config_pdu.psbch_payload, sl_mac_params->tx_sl_bch.sl_mib, 4);
+
+      LOG_I(NR_MAC, "[UE%d] TTI-%d:%d TX PSBCH REQ- tx_slss_id:%d, sl-mib:%x, numSSB:%d, next SSB slot:%d\n",
+                                                            sl_ind->module_id,frame, slot,
+                                                            sl_mac_params->tx_sl_bch.slss_id,
+                                                            (*(uint32_t *)tx_config->tx_config_list[0].tx_psbch_config_pdu.psbch_payload),
+                                                            sl_mac_params->tx_sl_bch.num_ssb,
+                                                            sl_mac_params->tx_sl_bch.ssb_slot);
+    }
+
+  }
+
+  ret_status = is_psbch_rx_slot | is_psbch_tx_slot;
+
+  LOG_D(NR_MAC,"[UE%d] SL-PSBCH SCHEDULER: %d:%d,is psbch slot:%d, config type:%d\n",
+                                              sl_ind->module_id,frame, slot, ret_status, *config_type);
+  return ret_status;
+}
+
+/*
+  // This function will be called only for SIDELINK CAPABLE SLOTS.
+  // UPLINK SLOT OR MIXED SLOT which is SIDELINK SLOT
+
+  //Determine if PSBCH SLOT and if PSBCH RX/TX should be done
+  // IF NOT PSBCH SLOT continue ahead
+
+  // IF RX RES POOL CONFIGURED
+  // Determine if SLOT is a RX RES POOL RESERVED
+  // OR RX RES POOL RESOURCE SLOT according to time resource bitmap
+  // IF resource slot PSCCH RX action should be done
+
+  // IF TX RES POOL CONFIGURED
+  // Determine if SLOT is a TX RES POOL RESERVED
+  // OR RX RES POOL RESOURCE SLOT according to time resource bitmap
+  // IF resource slot PSCCH TX action should be done in case TX is scheduled
+  // ELSE SENSING SHOULD BE DONE
+
+  // IF TX/RX ACTION SHOULD BE DONE in this slot
+  // SEND SIDELINK TX/RX CONFIG REQUEST TO PHY
+*/
+void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind) {
+
+  AssertFatal(sl_ind != NULL, "sl_indication cannot be NULL\n");
+
+  module_id_t mod_id    = sl_ind->module_id;
+  frame_t frame     = sl_ind->frame_rx;
+  slot_t slot       = sl_ind->slot_rx;
+
+  if (sl_ind->slot_type == SIDELINK_SLOT_TYPE_TX) {
+    frame = sl_ind->frame_tx;
+    slot = sl_ind->slot_tx;
+  }
+
+  NR_UE_MAC_INST_t *mac = get_mac_inst(mod_id);
+  sl_nr_ue_mac_params_t *sl_mac = mac->SL_MAC_PARAMS;
+  sl_nr_phy_config_request_t *sl_cfg = &sl_mac->sl_phy_config.sl_config_req;
+
+  uint8_t mu = sl_cfg->sl_bwp_config.sl_scs;
+  uint8_t slots_per_frame = nr_slots_per_frame[mu];
+
+  //Adjust indices as new timing is acquired
+  if (sl_mac->adjust_timing) {
+    sl_adjust_indices_based_on_timing(sl_ind->frame_rx, sl_ind->slot_rx,
+                                      sl_ind->frame_tx, sl_ind->slot_tx,
+                                      mod_id, slots_per_frame);
+    sl_mac->adjust_timing = 0;
+  }
+
+  sl_nr_rx_config_request_t rx_config;
+  sl_nr_tx_config_request_t tx_config;
+
+  rx_config.number_pdus = 0;
+  tx_config.number_pdus = 0;
+
+  nr_scheduled_response_t scheduled_response;
+  memset(&scheduled_response,0, sizeof(nr_scheduled_response_t));
+
+  uint8_t tti_action = 0, is_psbch_slot = 0;
+
+  // Check if PSBCH slot and PSBCH should be transmitted or Received
+  is_psbch_slot = nr_ue_sl_psbch_scheduler(sl_ind, sl_mac, &rx_config, &tx_config, &tti_action);
+
+  if (!is_psbch_slot) {
+    //Check if reserved slot or a sidelink resource configured in Rx/Tx resource pool timeresource bitmap
+  }
+
+  if (tti_action == SL_NR_CONFIG_TYPE_RX_PSBCH) {
+    fill_scheduled_response(&scheduled_response, NULL, NULL, NULL, &rx_config, NULL, mod_id, 0,frame, slot, sl_ind->phy_data);
+  }
+  if (tti_action == SL_NR_CONFIG_TYPE_TX_PSBCH) {
+    fill_scheduled_response(&scheduled_response, NULL, NULL, NULL, NULL, &tx_config, mod_id, 0,frame, slot, sl_ind->phy_data);
+  }
+
+
+  LOG_D(NR_MAC,"[UE%d]SL-SCHEDULER: TTI-RX-%d:%d, TX-%d:%d is_psbch_slot:%d TTIaction:%d\n",
+                                                            mod_id,sl_ind->frame_rx, sl_ind->slot_rx,
+                                                            sl_ind->frame_tx, sl_ind->slot_tx,
+                                                            is_psbch_slot, tti_action);
+
+  if (tti_action) {
+    if ((mac->if_module != NULL) && (mac->if_module->scheduled_response != NULL))
+      mac->if_module->scheduled_response(&scheduled_response);
+  }
+
 }

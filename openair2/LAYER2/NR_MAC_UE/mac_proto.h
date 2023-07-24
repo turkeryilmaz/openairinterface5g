@@ -113,6 +113,8 @@ void nr_ue_dl_scheduler(nr_downlink_indication_t *dl_info);
    @param fapi_nr_dl_config_request_t* pointer to dl_config,
    @param fapi_nr_ul_config_request_t* pointer to ul_config,
    @param fapi_nr_tx_request_t*        pointer to tx_request;
+   @param sl_nr_rx_config_request_t*   pointer to sl_rx_config,
+   @param sl_nr_tx_config_request_t*   pointer to sl_tx_config,
    @param module_id_t mod_id           module ID
    @param int cc_id                    CC ID
    @param frame_t frame                frame number
@@ -122,6 +124,8 @@ void fill_scheduled_response(nr_scheduled_response_t *scheduled_response,
                              fapi_nr_dl_config_request_t *dl_config,
                              fapi_nr_ul_config_request_t *ul_config,
                              fapi_nr_tx_request_t *tx_request,
+                             sl_nr_rx_config_request_t *sl_rx_config,
+                             sl_nr_tx_config_request_t *sl_tx_config,
                              module_id_t mod_id,
                              int cc_id,
                              frame_t frame,
@@ -443,6 +447,7 @@ void nr_rrc_mac_config_req_sl_mib(module_id_t module_id,
                                   NR_SL_SSB_TimeAllocation_r16_t *ssb_ta,
                                   uint16_t rx_slss_id,
                                   uint8_t *sl_mib);
+
 void sl_prepare_psbch_payload(NR_TDD_UL_DL_ConfigCommon_t *TDD_UL_DL_Config,
                               uint8_t *bits_0_to_7, uint8_t *bits_8_to_11,
                               uint8_t mu, uint8_t L, uint8_t Y);
@@ -454,5 +459,26 @@ uint8_t sl_decode_sl_TDD_Config(NR_TDD_UL_DL_ConfigCommon_t *TDD_UL_DL_Config,
 uint8_t sl_determine_sci_1a_len(uint16_t *num_subchannels,
                                 NR_SL_ResourcePool_r16_t *rpool,
                                 sidelink_sci_format_1a_fields_t *sci_1a);
+/** \brief This function checks nr UE slot for Sidelink direction : Sidelink
+ *  @param cfg      : Sidelink config request
+ *  @param nr_frame : frame number
+ *  @param nr_slot  : slot number
+ *  @param frame duplex type  : Frame type
+    @returns int : 0 or Sidelink slot type */
+int sl_nr_ue_slot_select(sl_nr_phy_config_request_t *cfg,
+                         int nr_frame, int nr_slot,
+                         uint8_t frame_duplex_type);
+
+void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind);
+
+void nr_mac_rrc_sl_mib_ind(const module_id_t module_id,
+                              const int CC_id,
+                              const uint8_t gNB_index,
+                              const frame_t frame,
+                              const int slot,
+                              const channel_t channel,
+                              uint8_t* pduP,
+                              const sdu_size_t pdu_len,
+                              const uint16_t rx_slss_id);
 #endif
 /** @}*/
