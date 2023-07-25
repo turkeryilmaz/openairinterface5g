@@ -63,6 +63,7 @@ void xnap_gNB_handle_sctp_association_resp(instance_t instance, sctp_new_associa
   xnap_dump_trees();
   instance_p = xnap_gNB_get_instance(instance); //managementproc
   DevAssert(instance_p != NULL);
+  //printf("handle response");
 
   /* if the assoc_id is already known, it is certainly because an IND was received
    * before. In this case, just update streams and return
@@ -124,10 +125,10 @@ void xnap_gNB_handle_sctp_association_resp(instance_t instance, sctp_new_associa
   xnap_gnb_data_p->out_streams = sctp_new_association_resp->out_streams;
   xnap_dump_trees();
   /* Prepare new xn Setup Request */
-  if(instance_p->cell_type == CELL_MACRO_GNB)
+  /*if(instance_p->cell_type == CELL_MACRO_GNB)
 	  //xnap_gNB_generate_ENDC_xn_setup_request(instance_p, xnap_gnb_data_p); //not defined i guess
 	  LOG_E(XNAP, "CELL_MACRO_GNB ENDC not defined");
-  else
+  else*/
 	  xnap_gNB_generate_xn_setup_request(instance_p, xnap_gnb_data_p);
 }
 
@@ -223,6 +224,7 @@ int xnap_gNB_init_sctp (xnap_gNB_instance_t *instance_p,
   sctp_init_t                            *sctp_init  = NULL;
   DevAssert(instance_p != NULL);
   DevAssert(local_ip_addr != NULL);
+  XNAP_INFO("entered function init sctp\n");
   message = itti_alloc_new_message (TASK_XNAP, 0, SCTP_INIT_MSG_MULTI_REQ);
   sctp_init = &message->ittiMsg.sctp_init_multi;
   sctp_init->port = gnb_port_for_XNC;
@@ -261,6 +263,8 @@ static void xnap_gNB_register_gNB(xnap_gNB_instance_t *instance_p,
   sctp_new_association_req->ppid = XNAP_SCTP_PPID;
   sctp_new_association_req->in_streams  = in_streams;
   sctp_new_association_req->out_streams = out_streams;
+  
+
   memcpy(&sctp_new_association_req->remote_address,
          target_gNB_ip_address,
          sizeof(*target_gNB_ip_address));
@@ -282,6 +286,7 @@ static void xnap_gNB_register_gNB(xnap_gNB_instance_t *instance_p,
   instance_p->xn_target_gnb_nb ++;
   instance_p->xn_target_gnb_pending_nb ++;
   itti_send_msg_to_task(TASK_SCTP, instance_p->instance, message);
+  XNAP_INFO("entered function send to task sctp\n");
 }
 
 
@@ -308,6 +313,7 @@ void xnap_gNB_handle_sctp_init_msg_multi_cnf(
 
   for (index = 0; index < instance->nb_xn; index++) {
     XNAP_INFO("gNB[%ld] gNB id %u acting as an initiator (client)\n",instance_id, instance->gNB_id);
+    
     xnap_gNB_register_gNB(instance,
                           &instance->target_gnb_xn_ip_address[index],
                           &instance->gnb_xn_ip_address,
