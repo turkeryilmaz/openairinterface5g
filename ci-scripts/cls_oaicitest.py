@@ -1012,7 +1012,7 @@ class OaiCiTest():
 			cmd.close()
 
 			if udpIperf:
-				self.Iperf_analyzeV2Server(lock, ue.getIP(), ue.getName(), statusQueue, iperf_opt, server_filename, 1)
+				self.Iperf_analyzeV3Output(lock, ue.getIP(), ue.getName(), statusQueue, iperf_opt, server_filename)
 			else:
 				cmd = cls_cmd.getConnection(EPC.IPAddress)
 				self.Iperf_analyzeV2TCPOutput(lock, ue.getIP(), ue.getName(), statusQueue, iperf_opt, EPC, cmd, f"{EPC.SourceCodePath}/{client_filename}")
@@ -1036,7 +1036,7 @@ class OaiCiTest():
 			cmd.close()
 
 			if udpIperf:
-				self.Iperf_analyzeV2Server(lock, ue.getIP(), ue.getName(), statusQueue, iperf_opt, server_filename, 1)
+				self.Iperf_analyzeV3Output(lock, ue.getIP(), ue.getName(), statusQueue, iperf_opt, server_filename)
 			else:
 				cmd = cls_cmd.getConnection(ue.getHost())
 				self.Iperf_analyzeV2TCPOutput(lock, ue.getIP(), ue.getName(), statusQueue, iperf_opt, EPC, cmd, f"/tmp/{client_filename}")
