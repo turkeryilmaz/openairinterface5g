@@ -189,6 +189,7 @@ int xnap_gNB_generate_xn_setup_failure(instance_t instance,
   /* Prepare the X2AP message to encode */
   memset(&pdu, 0, sizeof(pdu));
   pdu.present = XNAP_XnAP_PDU_PR_unsuccessfulOutcome;
+  pdu.choice.unsuccessfulOutcome 	= (XNAP_UnsuccessfulOutcome_t *) calloc(1, sizeof(XNAP_UnsuccessfulOutcome_t)); 
   pdu.choice.unsuccessfulOutcome->procedureCode = XNAP_ProcedureCode_id_xnSetup;
   pdu.choice.unsuccessfulOutcome->criticality = XNAP_Criticality_reject;
   pdu.choice.unsuccessfulOutcome->value.present = XNAP_UnsuccessfulOutcome__value_PR_XnSetupFailure;
@@ -213,6 +214,234 @@ int xnap_gNB_generate_xn_setup_failure(instance_t instance,
 
   return ret;
 }
+
+int xnap_gNB_generate_xn_setup_response(xnap_gNB_instance_t *instance_p, xnap_gNB_data_t *xnap_gNB_data_p)
+{
+  XNAP_XnAP_PDU_t                     pdu;
+  XNAP_XnSetupResponse_t              *out;
+  XNAP_XnSetupResponse_IEs_t          *ie;
+  XNAP_PLMN_Identity_t                *plmn;
+  //ServedCells__Member                 *servedCellMember;
+  //X2AP_GU_Group_ID_t                  *gu;
+
+  uint8_t  *buffer;
+  uint32_t  len;
+  int       ret = 0;
+
+  DevAssert(instance_p != NULL);
+  DevAssert(xnap_gNB_data_p != NULL);
+
+  /* Prepare the XNAP message to encode */
+  memset(&pdu, 0, sizeof(pdu));
+  pdu.present = XNAP_XnAP_PDU_PR_successfulOutcome;
+  pdu.choice.successfulOutcome 	= (XNAP_SuccessfulOutcome_t *) calloc(1, sizeof(XNAP_SuccessfulOutcome_t)); 
+  pdu.choice.successfulOutcome->procedureCode = XNAP_ProcedureCode_id_xnSetup;
+  pdu.choice.successfulOutcome->criticality = XNAP_Criticality_reject;
+  pdu.choice.successfulOutcome->value.present = XNAP_SuccessfulOutcome__value_PR_XnSetupResponse;
+  out = &pdu.choice.successfulOutcome->value.choice.XnSetupResponse;
+
+  /* mandatory */
+  ie = (XNAP_XnSetupResponse_IEs_t *)calloc(1, sizeof(XNAP_XnSetupResponse_IEs_t));
+  ie->id = XNAP_ProtocolIE_ID_id_GlobalNG_RAN_node_ID;
+  ie->criticality = XNAP_Criticality_reject;
+  ie->value.present = XNAP_XnSetupResponse_IEs__value_PR_GlobalNG_RANNode_ID;
+  ie->value.choice.GlobalNG_RANNode_ID.present=XNAP_GlobalNG_RANNode_ID_PR_gNB;
+  ie->value.choice.GlobalNG_RANNode_ID.choice.gNB =(XNAP_GlobalgNB_ID_t *)calloc(1,sizeof(XNAP_GlobalgNB_ID_t));
+  MCC_MNC_TO_PLMNID(instance_p->mcc, instance_p->mnc, instance_p->mnc_digit_length,
+                    &ie->value.choice.GlobalNG_RANNode_ID.choice.gNB->plmn_id);
+  ie->value.choice.GlobalNG_RANNode_ID.choice.gNB->gnb_id.present=XNAP_GNB_ID_Choice_PR_gnb_ID;
+  MACRO_GNB_ID_TO_BIT_STRING(instance_p->gNB_id,
+                             &ie->value.choice.GlobalNG_RANNode_ID.choice.gNB->gnb_id.choice.gnb_ID);
+  XNAP_INFO("%d -> %02x%02x%02x\n", instance_p->gNB_id,
+            ie->value.choice.GlobalNG_RANNode_ID.choice.gNB->gnb_id.choice.gnb_ID.buf[0],
+            ie->value.choice.GlobalNG_RANNode_ID.choice.gNB->gnb_id.choice.gnb_ID.buf[1],
+            ie->value.choice.GlobalNG_RANNode_ID.choice.gNB->gnb_id.choice.gnb_ID.buf[2]);
+  asn1cSeqAdd(&out->protocolIEs.list, ie);
+
+  /* mandatory */
+  /*ie = (X2AP_X2SetupResponse_IEs_t *)calloc(1, sizeof(X2AP_X2SetupResponse_IEs_t));
+  ie->id = X2AP_ProtocolIE_ID_id_ServedCells;
+  ie->criticality = X2AP_Criticality_reject;
+  ie->value.present = X2AP_X2SetupResponse_IEs__value_PR_ServedCells;
+  {
+    for (int i = 0; i<instance_p->num_cc; i++){
+      servedCellMember = (ServedCells__Member *)calloc(1,sizeof(ServedCells__Member));
+      {
+        servedCellMember->servedCellInfo.pCI = instance_p->Nid_cell[i];
+
+        MCC_MNC_TO_PLMNID(instance_p->mcc, instance_p->mnc, instance_p->mnc_digit_length,
+                      &servedCellMember->servedCellInfo.cellId.pLMN_Identity);
+        MACRO_ENB_ID_TO_CELL_IDENTITY(instance_p->eNB_id,0,
+                                   &servedCellMember->servedCellInfo.cellId.eUTRANcellIdentifier);
+
+        INT16_TO_OCTET_STRING(instance_p->tac, &servedCellMember->servedCellInfo.tAC);
+        X2AP_INFO("TAC: %d -> %02x%02x\n", instance_p->tac,
+       		  	  servedCellMember->servedCellInfo.tAC.buf[0],
+				  servedCellMember->servedCellInfo.tAC.buf[1]);
+
+        plmn = (X2AP_PLMN_Identity_t *)calloc(1,sizeof(X2AP_PLMN_Identity_t));
+        {
+          MCC_MNC_TO_PLMNID(instance_p->mcc, instance_p->mnc, instance_p->mnc_digit_length, plmn);
+          asn1cSeqAdd(&servedCellMember->servedCellInfo.broadcastPLMNs.list, plmn);
+        }
+
+	if (instance_p->frame_type[i] == FDD) {
+          servedCellMember->servedCellInfo.eUTRA_Mode_Info.present = X2AP_EUTRA_Mode_Info_PR_fDD;
+          servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.fDD.dL_EARFCN = instance_p->fdd_earfcn_DL[i];
+          servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.fDD.uL_EARFCN = instance_p->fdd_earfcn_UL[i];
+          switch (instance_p->N_RB_DL[i]) {
+            case 6:
+              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.fDD.uL_Transmission_Bandwidth = X2AP_Transmission_Bandwidth_bw6;
+              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.fDD.dL_Transmission_Bandwidth = X2AP_Transmission_Bandwidth_bw6;
+              break;
+            case 15:
+              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.fDD.uL_Transmission_Bandwidth = X2AP_Transmission_Bandwidth_bw15;
+              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.fDD.dL_Transmission_Bandwidth = X2AP_Transmission_Bandwidth_bw15;
+              break;
+            case 25:
+              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.fDD.uL_Transmission_Bandwidth = X2AP_Transmission_Bandwidth_bw25;
+              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.fDD.dL_Transmission_Bandwidth = X2AP_Transmission_Bandwidth_bw25;
+              break;
+            case 50:
+              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.fDD.uL_Transmission_Bandwidth = X2AP_Transmission_Bandwidth_bw50;
+              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.fDD.dL_Transmission_Bandwidth = X2AP_Transmission_Bandwidth_bw50;
+              break;
+            case 75:
+              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.fDD.uL_Transmission_Bandwidth = X2AP_Transmission_Bandwidth_bw75;
+              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.fDD.dL_Transmission_Bandwidth = X2AP_Transmission_Bandwidth_bw75;
+              break;
+            case 100:
+              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.fDD.uL_Transmission_Bandwidth = X2AP_Transmission_Bandwidth_bw100;
+              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.fDD.dL_Transmission_Bandwidth = X2AP_Transmission_Bandwidth_bw100;
+              break;
+            default:
+              AssertFatal(0,"Failed: Check value for N_RB_DL/N_RB_UL");
+              break;
+          }
+        }
+        else {
+          servedCellMember->servedCellInfo.eUTRA_Mode_Info.present = X2AP_EUTRA_Mode_Info_PR_tDD;
+          servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.eARFCN = instance_p->fdd_earfcn_DL[i];
+          switch (instance_p->subframeAssignment[i]) {
+            case 0:
+              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.subframeAssignment = X2AP_SubframeAssignment_sa0;
+              break;
+            case 1:
+              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.subframeAssignment = X2AP_SubframeAssignment_sa1;
+              break;
+            case 2:
+              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.subframeAssignment = X2AP_SubframeAssignment_sa2;
+              break;
+            case 3:
+              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.subframeAssignment = X2AP_SubframeAssignment_sa3;
+              break;
+            case 4:
+              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.subframeAssignment = X2AP_SubframeAssignment_sa4;
+              break;
+            case 5:
+              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.subframeAssignment = X2AP_SubframeAssignment_sa5;
+              break;
+            case 6:
+              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.subframeAssignment = X2AP_SubframeAssignment_sa6;
+              break;
+            default:
+              AssertFatal(0,"Failed: Check value for subframeAssignment");
+              break;
+          }
+          switch (instance_p->specialSubframe[i]) {
+            case 0:
+              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.specialSubframe_Info.specialSubframePatterns = X2AP_SpecialSubframePatterns_ssp0;
+              break;
+            case 1:
+              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.specialSubframe_Info.specialSubframePatterns = X2AP_SpecialSubframePatterns_ssp1;
+              break;
+            case 2:
+              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.specialSubframe_Info.specialSubframePatterns = X2AP_SpecialSubframePatterns_ssp2;
+              break;
+            case 3:
+              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.specialSubframe_Info.specialSubframePatterns = X2AP_SpecialSubframePatterns_ssp3;
+              break;
+            case 4:
+              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.specialSubframe_Info.specialSubframePatterns = X2AP_SpecialSubframePatterns_ssp4;
+              break;
+            case 5:
+              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.specialSubframe_Info.specialSubframePatterns = X2AP_SpecialSubframePatterns_ssp5;
+              break;
+            case 6:
+              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.specialSubframe_Info.specialSubframePatterns = X2AP_SpecialSubframePatterns_ssp6;
+              break;
+            case 7:
+              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.specialSubframe_Info.specialSubframePatterns = X2AP_SpecialSubframePatterns_ssp7;
+              break;
+            case 8:
+              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.specialSubframe_Info.specialSubframePatterns = X2AP_SpecialSubframePatterns_ssp8;
+              break;
+            default:
+              AssertFatal(0,"Failed: Check value for subframeAssignment");
+              break;
+          }
+          servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.specialSubframe_Info.cyclicPrefixDL=X2AP_CyclicPrefixDL_normal;
+          servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.specialSubframe_Info.cyclicPrefixUL=X2AP_CyclicPrefixUL_normal;
+          
+          switch (instance_p->N_RB_DL[i]) {
+            case 6:
+              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.transmission_Bandwidth = X2AP_Transmission_Bandwidth_bw6;
+              break;
+            case 15:
+              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.transmission_Bandwidth = X2AP_Transmission_Bandwidth_bw15;
+              break;
+            case 25:
+              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.transmission_Bandwidth = X2AP_Transmission_Bandwidth_bw25;
+              break;
+            case 50:
+              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.transmission_Bandwidth = X2AP_Transmission_Bandwidth_bw50;
+              break;
+            case 75:
+              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.transmission_Bandwidth = X2AP_Transmission_Bandwidth_bw75;
+              break;
+            case 100:
+              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.transmission_Bandwidth = X2AP_Transmission_Bandwidth_bw100;
+              break;
+            default:
+              AssertFatal(0,"Failed: Check value for N_RB_DL/N_RB_UL");
+              break;
+          }
+        }
+      }
+      asn1cSeqAdd(&ie->value.choice.ServedCells.list, servedCellMember);
+    }
+  }
+  asn1cSeqAdd(&out->protocolIEs.list, ie);*/
+
+  /* mandatory */
+  /*ie = (X2AP_X2SetupResponse_IEs_t *)calloc(1, sizeof(X2AP_X2SetupResponse_IEs_t));
+  ie->id = X2AP_ProtocolIE_ID_id_GUGroupIDList;
+  ie->criticality = X2AP_Criticality_reject;
+  ie->value.present = X2AP_X2SetupResponse_IEs__value_PR_GUGroupIDList;
+  {
+    gu = (X2AP_GU_Group_ID_t *)calloc(1, sizeof(X2AP_GU_Group_ID_t));
+    {
+      MCC_MNC_TO_PLMNID(instance_p->mcc, instance_p->mnc, instance_p->mnc_digit_length,
+                    &gu->pLMN_Identity);
+      //@TODO: consider to update this value
+      INT16_TO_OCTET_STRING(0, &gu->mME_Group_ID);
+    }
+    asn1cSeqAdd(&ie->value.choice.GUGroupIDList.list, gu);
+  }
+  asn1cSeqAdd(&out->protocolIEs.list, ie); */
+
+  if (xnap_gNB_encode_pdu(&pdu, &buffer, &len) < 0) {
+    XNAP_ERROR("Failed to encode Xn setup response\n");
+    return -1;
+  }
+  LOG_I(XNAP, "encoded response");
+  xnap_gNB_data_p->state = XNAP_GNB_STATE_READY;
+
+  xnap_gNB_itti_send_sctp_data_req(instance_p->instance, xnap_gNB_data_p->assoc_id, buffer, len, 0);
+
+  return ret;
+}
+
 
 
 

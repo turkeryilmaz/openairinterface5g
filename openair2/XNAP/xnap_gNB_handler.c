@@ -74,8 +74,6 @@ int xnap_gNB_handle_xn_setup_failure (instance_t instance,
 
 /* Handlers matrix. Only gNB related procedure present here. Placement of callback functions according to XNAP_ProcedureCode.h */
 static const xnap_message_decoded_callback xnap_messages_callback[][3] = {
-    //{xnap_gNB_handle_handover_preparation, xnap_gNB_handle_handover_response, 0}, /* handoverPreparation */
-    //{xnap_gNB_handle_handover_cancel, 0, 0}, /* handoverCancel */
     {0, 0, 0},
     {0, 0, 0},
     {0, 0, 0}, /* loadIndication */
@@ -83,7 +81,6 @@ static const xnap_message_decoded_callback xnap_messages_callback[][3] = {
     {0, 0, 0}, /* snStatusTransfer */
     //{xnap_gNB_handle_ue_context_release, 0, 0}, /* uEContextRelease */
     {0, 0, 0},
-    {xnap_gNB_handle_xn_setup_request, xnap_gNB_handle_xn_setup_response, xnap_gNB_handle_xn_setup_failure}, /* xnSetup */
     //{xnap_gNB_handle_xn_reset_request, xnap_gNB_handle_xn_reset_response, 0}, /* reset */
     {0, 0, 0},
     {0, 0, 0}, /* gNBConfigurationUpdate */
@@ -95,6 +92,8 @@ static const xnap_message_decoded_callback xnap_messages_callback[][3] = {
     {0, 0, 0}, /* handoverReport */
     {0, 0, 0}, /* cellActivation */
     {0, 0, 0}, /* xnRelease */
+    {0, 0, 0},
+    {xnap_gNB_handle_xn_setup_request, xnap_gNB_handle_xn_setup_response, xnap_gNB_handle_xn_setup_failure}, /* xnSetup */
     {0, 0, 0}, /* xnAPMessageTransfer */
     {0, 0, 0}, /* xnRemoval */
     //{xnap_gNB_handle_sgnb_addition_request,
@@ -341,25 +340,17 @@ xnap_gNB_handle_xn_setup_request(instance_t instance,
     return -1;
   } else {
     if (ie->value.choice.GlobalNG_RANNode_ID.choice.gNB->gnb_id.present==XNAP_GNB_ID_Choice_PR_gnb_ID) {
-    // Home gNB ID = 28 bits
+    //gNB ID = 28 bits
       uint8_t  *gNB_id_buf = ie->value.choice.GlobalNG_RANNode_ID.choice.gNB->gnb_id.choice.gnb_ID.buf;
 
       if (ie->value.choice.GlobalNG_RANNode_ID.choice.gNB->gnb_id.choice.gnb_ID.size != 28) {
       //TODO: handle case were size != 28 -> notify ? reject ?
       }
-
       gNB_id = (gNB_id_buf[0] << 20) + (gNB_id_buf[1] << 12) + (gNB_id_buf[2] << 4) + ((gNB_id_buf[3] & 0xf0) >> 4);
-      XNAP_DEBUG("Home gNB id: %07x\n", gNB_id);
+      XNAP_DEBUG("gNB id: %07x\n", gNB_id);
     } else {
-    // Macro gNB = 20 bits
-      uint8_t *gNB_id_buf = ie->value.choice.GlobalNG_RANNode_ID.choice.gNB->gnb_id.choice.gnb_ID.buf;
-
-      if (ie->value.choice.GlobalNG_RANNode_ID.choice.gNB->gnb_id.choice.gnb_ID.size != 20) {
-      //TODO: handle case were size != 20 -> notify ? reject ?
-      }
-
-      gNB_id = (gNB_id_buf[0] << 12) + (gNB_id_buf[1] << 4) + ((gNB_id_buf[2] & 0xf0) >> 4);
-      XNAP_DEBUG("macro gNB id: %05x\n", gNB_id);
+    // Macro eNB = 20 bits
+    //TODO if NSA setup
     }
   }
 
@@ -423,14 +414,14 @@ xnap_gNB_handle_xn_setup_request(instance_t instance,
       XNAP_SETUP_REQ(msg).Nid_cell[i] = xnap_gNB_data->Nid_cell[i];
     }
   }
-
+*/
   instance_p = xnap_gNB_get_instance(instance);
   DevAssert(instance_p != NULL);
 
-  itti_send_msg_to_task(TASK_RRC_GNB, instance_p->instance, msg);
+ // itti_send_msg_to_task(TASK_RRC_GNB, instance_p->instance, msg);
 
-  return xnap_gNB_generate_xn_setup_response(instance_p, xnap_gNB_data);*/
-  printf("received");
+  return xnap_gNB_generate_xn_setup_response(instance_p, xnap_gNB_data);
+  //printf("Received Xn setup request");
 }
 
 int
