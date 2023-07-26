@@ -480,9 +480,9 @@ int main(int argc, char **argv)
       int max_symbol_size = slot_timestamp + UE->frame_parms.nb_prefix_samples0 + UE->frame_parms.ofdm_symbol_size;
       AssertFatal(max_symbol_size < frame_length_complex_samples, "Invalid index %d\n", max_symbol_size);
       for (int aa = 0; aa < UE->frame_parms.nb_antennas_tx; aa++) {
- /*       apply_nr_rotation(&UE->frame_parms,
+        apply_nr_rotation(&UE->frame_parms,
                           UE->common_vars.txdataF[aa],
-                          slot, 0, 1, NR_LINK_TYPE_SL); // Conducts rotation on 0th symbol*/
+                          slot, 0, 1, NR_LINK_TYPE_SL); // Conducts rotation on 0th symbol
 	LOG_I(NR_PHY,"slot %d, symbol 0, nb_prefix_samples0 %d\n",slot,UE->frame_parms.nb_prefix_samples0);      
         PHY_ofdm_mod((int*)UE->common_vars.txdataF[aa],
                      (int*)&txdata[aa][slot_timestamp],
@@ -490,11 +490,11 @@ int main(int argc, char **argv)
                      1, // Takes IDFT of 1st symbol (first PSBCH)
                      UE->frame_parms.nb_prefix_samples0,
                      CYCLIC_PREFIX);
-	/*
+	
         apply_nr_rotation(&UE->frame_parms,
                           UE->common_vars.txdataF[aa],
                           slot, 1, 13, NR_LINK_TYPE_SL); // Conducts rotation on symbols located 1 (PSS) to 13 (guard)
-*/
+
 	LOG_I(NR_PHY,"slot %d, symbols 1...13, nb_prefix_samples %d\n",slot,UE->frame_parms.nb_prefix_samples);      
         PHY_ofdm_mod((int*)&UE->common_vars.txdataF[aa][UE->frame_parms.ofdm_symbol_size], // Starting at PSS (in freq)
                      (int*)&txdata[aa][UE->frame_parms.ofdm_symbol_size +

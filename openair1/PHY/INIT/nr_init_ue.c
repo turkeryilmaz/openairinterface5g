@@ -35,6 +35,9 @@
 #include "PHY/MODULATION/nr_modulation.h"
 #include "openair2/COMMON/prs_nr_paramdef.h"
 #include "SCHED_NR_UE/harq_nr.h"
+#include <nr-uesoftmodem.h>
+
+
 
 void RCconfig_nrUE_prs(void *cfg)
 {
@@ -700,7 +703,12 @@ void phy_init_nr_top(PHY_VARS_NR_UE *ue) {
   crcTableInit();
   init_scrambling_luts();
   load_dftslib();
+  frame_parms->Nid_SL = 0;
   init_context_synchro_nr(frame_parms);
+  if (get_softmodem_params()->sl_mode>0) {
+    frame_parms->Nid_SL = 336;
+    init_context_synchro_nr(frame_parms);
+  }
   generate_ul_reference_signal_sequences(SHRT_MAX);
 }
 

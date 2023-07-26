@@ -31,6 +31,7 @@
 #include "PHY/NR_REFSIG/ss_pbch_nr.h"
 #include "PHY/NR_REFSIG/sss_nr.h"
 
+#define DEBUG_PLOT_SSS 1
 
 int nr_sl_generate_sss(c16_t *txdataF,
                        int16_t amp,
@@ -41,6 +42,8 @@ int nr_sl_generate_sss(c16_t *txdataF,
   int16_t x1[NR_SSS_LENGTH];
   const int x0_initial[7] = { 1, 0, 0, 0, 0, 0, 0 };
   const int x1_initial[7] = { 1, 0, 0, 0, 0, 0, 0 };
+
+  
 
   /// Sequence generation
   int Nid = frame_parms->Nid_SL;
@@ -224,8 +227,8 @@ int pss_sl_ch_est_nr(PHY_VARS_NR_UE *ue,
     c16_t *pss1_ext2 = &pss1_ext[aarx][0];
     for (uint8_t i = 0; i < LENGTH_PSS_NR; i++) {
       // This is H*(PSS) = R* \cdot PSS
-      tmp.r = pss1_ext2[i].r * pss[i].r;
-      tmp.i = -pss1_ext2[i].i * pss[i].i;
+      tmp.r = (int16_t)((((int32_t)pss1_ext2[i].r) * pss[i].r)>>15);
+      tmp.i = 0;//-pss1_ext2[i].i * pss[i].i;
       int32_t amp = (((int32_t)tmp.r) * tmp.r) + ((int32_t)tmp.i) * tmp.i;
       int shift = log2_approx(amp) / 2;
       // This is R(SSS) \cdot H*(PSS)
@@ -270,19 +273,22 @@ int rx_sss_sl_nr(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, int32_t *tot_metri
   pss_sss_sl_extract_nr(ue, proc, pss0_ext, sss0_ext, pss1_ext, sss1_ext);
 
 #ifdef DEBUG_PLOT_SSS
-  write_output("rxsig0.m","rxs0",&ue->common_vars.rxdata[0][0],ue->frame_parms.samples_per_subframe,1,1);
+  write_output("rxsig0.m","rxs0",&ue->common_vars.rxdata[0][0],ue->frame_parms.samples_per_frame,1,1);
   write_output("rxdataF0_pss.m","rxF0_pss",&ue->common_vars.rxdataF[0][0],frame_parms->ofdm_symbol_size,1,1);
   write_output("rxdataF0_sss.m","rxF0_sss",&ue->common_vars.rxdataF[0][(SSS_SYMBOL_NB-PSS_SYMBOL_NB)*frame_parms->ofdm_symbol_size],frame_parms->ofdm_symbol_size,1,1);
   write_output("pss0_ext.m","pss0_ext",pss0_ext,LENGTH_PSS_NR,1,1);
   write_output("pss1_ext.m","pss1_ext",pss1_ext,LENGTH_PSS_NR,1,1);
   write_output("sss0_ext.m","sss0_ext",sss0_ext,LENGTH_PSS_NR,1,1);
   write_output("sss1_ext.m","sss1_ext",sss1_ext,LENGTH_PSS_NR,1,1);
+  write_output("pss1_time.m","pss1_time",primary_synchro_time_nr[1],frame_parms->ofdm_symbol_size,1,1);
 #endif
 
   // get conjugated channel estimate from PSS, H* = R* \cdot PSS
   // and do channel estimation and compensation based on PSS
   pss_sl_ch_est_nr(ue, pss0_ext, sss0_ext, pss1_ext, sss1_ext);
 
+  write_output("sss0_comp.m","sss0_comp",sss0_ext,LENGTH_PSS_NR,1,1);
+  write_output("sss1_comp.m","sss1_comp",sss1_ext,LENGTH_PSS_NR,1,1);
   /* now do the SSS detection based on the precomputed sequences in PHY/LTE_TRANSPORT/sss.
      for phase evaluation, one uses an array of possible phase shifts
      then a correlation is done between received signal with a shift pĥase and the reference signal
@@ -323,11 +329,11 @@ int rx_sss_sl_nr(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, int32_t *tot_metri
     Nid1 = GET_NID1_SL(frame_parms->Nid_SL);
   }
 #if 1
-  LOG_D(NR_PHY, "Nid2 %d Nid1 %d tot_metric %d, phase_max %d \n", Nid2, Nid1, *tot_metric, *phase_max);
+  LOG_I(NR_PHY, "Nid2 %d Nid1 %d tot_metric %d, phase_max %d \n", Nid2, Nid1, *tot_metric, *phase_max);
 #endif
 
   if (Nid1 == N_ID_1_NUMBER) {
-    LOG_I(PHY,"Failled to detect SSS after PSS\n");
+    LOG_I(PHY,"Failled to detect SL SSS after PSS\n");
     return -1;
   }
 

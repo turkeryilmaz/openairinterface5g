@@ -318,7 +318,7 @@ int rx_sss_nr(PHY_VARS_NR_UE *ue,
   if (*tot_metric > SSS_METRIC_FLOOR_NR) {
     Nid2 = GET_NID2(ue->frame_parms.Nid_cell);
     Nid1 = GET_NID1(ue->frame_parms.Nid_cell);
-    LOG_D(NR_PHY,"Nid2 %d Nid1 %d tot_metric %d, phase_max %d \n", Nid2, Nid1, *tot_metric, *phase_max);
+    LOG_I(NR_PHY,"Nid2 %d Nid1 %d tot_metric %d, phase_max %d \n", Nid2, Nid1, *tot_metric, *phase_max);
   }
   if (Nid1 == N_ID_1_NUMBER) {
     LOG_I(NR_PHY,"Failed to detect SSS after PSS\n");
