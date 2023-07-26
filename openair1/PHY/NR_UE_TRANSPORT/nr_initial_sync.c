@@ -271,7 +271,7 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
   */
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_INITIAL_UE_SYNC, VCD_FUNCTION_IN);
   NR_DL_FRAME_PARMS *fp = &ue->frame_parms;
-  LOG_D(NR_PHY, "nr_initial SL sync ue RB_DL %d\n", fp->N_RB_DL);
+  LOG_I(NR_PHY, "nr_initial SL sync ue RB_DL %d prefix 0 %d\n", fp->N_RB_DL, fp->nb_prefix_samples0);
   int ret = -1;
   int32_t sync_pos = 0;
   for (int is = 0; is < n_frames; is++) {
@@ -297,8 +297,8 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
     } else {
       ue->ssb_offset = sync_pos + (fp->samples_per_subframe * 10) - fp->nb_prefix_samples;
     }
-    LOG_I(NR_PHY, "[UE%d] Initial SL sync : n_frames %d Estimated PSS position %d, Nid2 %d  ssb_offset %d\n",
-          ue->Mod_id, n_frames, sync_pos, ue->common_vars.N2_id, ue->ssb_offset);
+    LOG_I(NR_PHY, "[UE%d] Initial SL sync : n_frames %d Estimated PSS position %d, Nid2 %d  ssb_offset %d prefix0 %d\n",
+          ue->Mod_id, n_frames, sync_pos, ue->common_vars.N2_id, ue->ssb_offset,ue->frame_parms.nb_prefix_samples0);
     if (sync_pos < (NR_NUMBER_OF_SUBFRAMES_PER_FRAME * fp->samples_per_subframe - (NB_SYMBOLS_PBCH * fp->ofdm_symbol_size))) {
       uint8_t phase_tdd_ncp;
       int32_t metric_tdd_ncp = 0;
@@ -308,7 +308,7 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
         nr_slot_fep_init_sync(ue, proc, i, is * fp->samples_per_frame + ue->ssb_offset,
                               false, rxdataF);
       memcpy(ue->common_vars.rxdataF[0], rxdataF[0], rxdataF_sz * sizeof(int32_t));
-      LOG_I(NR_PHY, "Calling sss detection (normal CP)\n");
+      LOG_I(NR_PHY, "Calling sss detection (normal CP) prefix0 %d\n",ue->frame_parms.nb_prefix_samples0);
       int freq_offset_sss = 0;
       ret = rx_sss_sl_nr(ue, proc, &metric_tdd_ncp, &phase_tdd_ncp, &freq_offset_sss);
       if (ue->UE_fo_compensation) {
@@ -340,8 +340,8 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
   if (ret < 0) exit(-1);
   }
   if (ret == 0) {
-    LOG_I(NR_PHY, "[UE %d] rx_offset %d Measured Carrier Frequency %.0f Hz (offset %d Hz)\n",
-          ue->Mod_id, ue->rx_offset_sl, openair0_cfg[0].rx_freq[0] + ue->common_vars.freq_offset, ue->common_vars.freq_offset);
+    LOG_I(NR_PHY, "[UE %d] rx_offset %d Measured Carrier Frequency %.0f Hz (offset %d Hz) prefix0 %d\n",
+          ue->Mod_id, ue->rx_offset_sl, openair0_cfg[0].rx_freq[0] + ue->common_vars.freq_offset, ue->common_vars.freq_offset,ue->frame_parms.nb_prefix_samples0);
     if (ue->UE_scan_carrier == 0) {
       ue->psbch_vars[0]->pdu_errors_conseq = 0;
     }

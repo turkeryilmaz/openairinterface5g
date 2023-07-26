@@ -68,7 +68,6 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp, int N_ID_2, int pss_seq_offset)
 {
   AssertFatal(fp->ofdm_symbol_size > 127,"Illegal ofdm_symbol_size %d\n",fp->ofdm_symbol_size);
   AssertFatal(N_ID_2>=0 && N_ID_2 <=2,"Illegal N_ID_2 %d\n",N_ID_2);
-
   const int x_initial[INITIAL_PSS_NR] = {0, 1, 1, 0, 1, 1, 1};
   int16_t x[LENGTH_PSS_NR];
   for (int i = 0; i < INITIAL_PSS_NR; i++)
@@ -118,6 +117,7 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp, int N_ID_2, int pss_seq_offset)
   unsigned int  k = fp->first_carrier_offset + fp->ssb_start_subcarrier + subcarrier_start;
   if (k>= fp->ofdm_symbol_size) k-=fp->ofdm_symbol_size;
 
+  LOG_I(NR_PHY,"generate_pss_nr: subcarrier_start %d, k %d\n",subcarrier_start,k);
   c16_t in[sizeof(int16_t) * fp->ofdm_symbol_size] __attribute__((aligned(32)));
   memset(in, 0, sizeof(in));
   for (int i = 0; i < LENGTH_PSS_NR; i++) {
@@ -152,11 +152,15 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp, int N_ID_2, int pss_seq_offset)
 void init_context_pss_nr(NR_DL_FRAME_PARMS *frame_parms_ue)
 {
 
+  LOG_I(NR_PHY,"Calling init_context_pss_nr\n");	
   AssertFatal(frame_parms_ue->ofdm_symbol_size > 127, "illegal frame_parms_ue->ofdm_symbol_size %d\n",
               frame_parms_ue->ofdm_symbol_size);
   c16_t *p = NULL;
+  c16_t txdataF[4096*3];
   int pss_sequence = get_softmodem_params()->sl_mode == 0 ? NUMBER_PSS_SEQUENCE : NUMBER_PSS_SEQUENCE_SL;
-  for (int i = 0; i < pss_sequence; i++) {
+  c16_t txdataF[3*4096];
+  for (int i = 0; i < pss_sequence; i++) { 
+    LOG_I(NR_PHY,"Initializing PSS %d\n",i);
     p = malloc(LENGTH_PSS_NR * sizeof(c16_t));
     if (p != NULL) {
       primary_synchro_nr[i] = p;
@@ -182,7 +186,13 @@ void init_context_pss_nr(NR_DL_FRAME_PARMS *frame_parms_ue)
      assert(0);
     }
 
-    generate_pss_nr(frame_parms_ue, i, pss_sequence);
+    if (get_softmodem_params()->sl_mode==0 || get_softmodem_params()->sync_ref) generate_pss_nr(frame_parms_ue, i, pss_sequence);
+    else {
+	int tmp=frame_parms_ue->Nid_SL;
+	frame_parms_ue->Nid_SL = 336*i;
+	nr_sl_generate_pss(txdataF,AMP,0,frame_parms_ue);
+	frame_parms_ue->Nid_SL = tmp;
+    }
   }
 }
 
@@ -491,6 +501,7 @@ int pss_search_time_nr(c16_t **rxdata, PHY_VARS_NR_UE *ue, int fo_flag, int is)
     pss_index_end = pss_index_start + 1;
   }
   unsigned int step = get_softmodem_params()->sl_mode == 0 ? 8 : 4;
+  for (int i=0;i<10;i++) printf("pss1[%d] %d.%d\n",i,primary_synchro_time_nr[1][i].r,primary_synchro_time_nr[1][i].i);
   for (int pss_index = pss_index_start; pss_index < pss_index_end; pss_index++) {
     for (unsigned int n = 0; n < length; n += step) {
       int64_t pss_corr_ue = 0;
@@ -518,6 +529,7 @@ int pss_search_time_nr(c16_t **rxdata, PHY_VARS_NR_UE *ue, int fo_flag, int is)
         peak_value = pss_corr_ue;
         peak_position = n;
         pss_source = pss_index;
+	LOG_I(NR_PHY,"++++ peak_value %d, peak_pos %d, pss %d\n",dB_fixed64(peak_value),peak_position,pss_source);
       }
     }
   }

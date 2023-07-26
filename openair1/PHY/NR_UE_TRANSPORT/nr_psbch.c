@@ -78,7 +78,7 @@ static uint16_t nr_psbch_extract(c16_t **rxdataF,
     rx_offset = (rx_offset)%(frame_parms->ofdm_symbol_size);
     struct complex16 *rxF        = (struct complex16 *)&rxdataF[aarx][(symbol+s_offset)*frame_parms->ofdm_symbol_size];
     struct complex16 *rxF_ext    = rxdataF_ext[aarx];
-//#ifdef DEBUG_PSBCH
+#ifdef DEBUG_PSBCH
     LOG_I(NR_PHY,"extract_rbs (nushift %d): rx_offset=%d, symbol %u\n",frame_parms->nushift,
            (rx_offset + ((symbol+s_offset)*(frame_parms->ofdm_symbol_size))),symbol);
     int16_t *p = (int16_t *)rxF;
@@ -88,7 +88,7 @@ static uint16_t nr_psbch_extract(c16_t **rxdataF,
       LOG_I(NR_PHY,"psbch extract rxF  %d %d addr %p\n", p[2*i], p[2*i+1], &p[2*i]);
     }
 
-//#endif
+#endif
 
     for (rb=0; rb<11; rb++) {
       j=0;
@@ -99,12 +99,12 @@ static uint16_t nr_psbch_extract(c16_t **rxdataF,
               (i!=(nushiftmod4+4)) &&
               (i!=(nushiftmod4+8))) {
             rxF_ext[j]=rxF[rx_offset];
-//#ifdef DEBUG_PSBCH
+#ifdef DEBUG_PSBCH
             LOG_I(NR_PHY,"rxF ext[%d] = (%d,%d) rxF [%u]= (%d,%d)\n",  (9*rb) + j,
                    rxF_ext[j].r, rxF_ext[j].i,
                    rx_offset,
                    rxF[rx_offset].r,rxF[rx_offset].i);
-//#endif
+#endif
             j++;
           }
 

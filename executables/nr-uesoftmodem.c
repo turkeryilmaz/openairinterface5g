@@ -425,7 +425,7 @@ void init_openair0(void) {
       duplex_mode[openair0_cfg[card].duplex_mode]);
 
     nr_get_carrier_frequencies(PHY_vars_UE_g[0][0], &dl_carrier, &ul_carrier);
-
+    LOG_I(NR_PHY,"Configuring SL carrier for %llu Hz \n",sl_carrier);
     nr_rf_card_config_freq(&openair0_cfg[card], ul_carrier, dl_carrier, freq_off);
 
     if (get_softmodem_params()->sl_mode != 0) {

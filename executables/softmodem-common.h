@@ -221,6 +221,8 @@ extern int usrp_tx_thread;
     { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
+	{ .s5 = { NULL } },                     \
+    	{ .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
