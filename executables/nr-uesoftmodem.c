@@ -322,12 +322,12 @@ static void nr_phy_config_request_sl(PHY_VARS_NR_UE *ue,
     ue->slss->sl_mib[i] = 0;
   }
   ue->slss->sl_mib_length = 32;
-  ue->slss->sl_numssb_withinperiod_r16 = 2;
+  ue->slss->sl_numssb_withinperiod_r16 = 16;
   ue->slss->sl_timeinterval_r16 = 20;
-  ue->slss->sl_timeoffsetssb_r16 = 2;
-  ue->slss->sl_numssb_withinperiod_r16_copy = 2;
+  ue->slss->sl_timeoffsetssb_r16 = 0;
+  ue->slss->sl_numssb_withinperiod_r16_copy = 16;
   ue->slss->sl_timeinterval_r16_copy = 20;
-  ue->slss->sl_timeoffsetssb_r16_copy = 2;
+  ue->slss->sl_timeoffsetssb_r16_copy = 0;
   ue->slss->slss_id = get_softmodem_params()->nid1 + get_softmodem_params()->nid2 * NUMBER_SSS_SEQUENCE;;
   ue->is_synchronized_sl = 0;
   ue->UE_fo_compensation = 0;
@@ -430,6 +430,7 @@ void init_openair0(void) {
 
     if (get_softmodem_params()->sl_mode != 0) {
       nr_get_carrier_frequencies_sl(PHY_vars_UE_g[0][0], &sl_carrier);
+      LOG_I(NR_PHY,"Configuring SL carrier for %llu Hz \n",sl_carrier);
       nr_rf_card_config_freq(&openair0_cfg[card], sl_carrier, sl_carrier, freq_off);
     }
 
@@ -592,9 +593,11 @@ int main( int argc, char **argv ) {
       set_options(CC_id, UE[CC_id]);
       NR_UE_MAC_INST_t *mac = get_mac_inst(0);
       if (get_softmodem_params()->sl_mode != 0) {
+        uint16_t nr_band = get_band(sidelink_frequency[CC_id][0],0);
         mac->if_module = NULL;
         LOG_I(HW, "Setting mac->if_module = NULL b/c we config PHY in nr_phy_config_request_sl (for now - TODO)\n");
         nr_phy_config_request_sl(UE[CC_id], N_RB_DL, N_RB_DL, CC_id);
+        nr_init_frame_parms_ue_sl(&UE[CC_id]->frame_parms,sidelink_frequency[CC_id][0],nr_band);
       }
       if (get_softmodem_params()->sa) {
         uint16_t nr_band = get_band(downlink_frequency[CC_id][0],uplink_frequency_offset[CC_id][0]);
