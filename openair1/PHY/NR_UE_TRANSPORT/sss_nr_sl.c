@@ -282,7 +282,7 @@ int rx_sss_sl_nr(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, int32_t *tot_metri
   write_output("sss1_ext.m","sss1_ext",sss1_ext,LENGTH_PSS_NR,1,1);
   write_output("pss0_time.m","pss0_time",primary_synchro_time_nr[0],frame_parms->ofdm_symbol_size,1,1);
   write_output("pss1_time.m","pss1_time",primary_synchro_time_nr[1],frame_parms->ofdm_symbol_size,1,1);
-//#endif
+#endif
 
   // get conjugated channel estimate from PSS, H* = R* \cdot PSS
   // and do channel estimation and compensation based on PSS

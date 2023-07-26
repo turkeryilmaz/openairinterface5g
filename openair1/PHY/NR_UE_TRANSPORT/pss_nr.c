@@ -156,7 +156,6 @@ void init_context_pss_nr(NR_DL_FRAME_PARMS *frame_parms_ue)
   AssertFatal(frame_parms_ue->ofdm_symbol_size > 127, "illegal frame_parms_ue->ofdm_symbol_size %d\n",
               frame_parms_ue->ofdm_symbol_size);
   c16_t *p = NULL;
-  c16_t txdataF[4096*3];
   int pss_sequence = get_softmodem_params()->sl_mode == 0 ? NUMBER_PSS_SEQUENCE : NUMBER_PSS_SEQUENCE_SL;
   c16_t txdataF[3*4096];
   for (int i = 0; i < pss_sequence; i++) { 
