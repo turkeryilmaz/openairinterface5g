@@ -178,7 +178,7 @@ int nr_slot_fep_init_sync(PHY_VARS_NR_UE *ue,
   }
   else {
     nb_prefix_samples  = frame_parms->nb_prefix_samples;
-    nb_prefix_samples0 = frame_parms->nb_prefix_samples;
+    nb_prefix_samples0 = frame_parms->nb_prefix_samples0;
   }
   unsigned int frame_length_samples = frame_parms->samples_per_frame;
 
@@ -189,8 +189,8 @@ int nr_slot_fep_init_sync(PHY_VARS_NR_UE *ue,
   unsigned int slot_offset = frame_parms->get_samples_slot_timestamp(Ns,frame_parms,0);
   unsigned int rx_offset   = sample_offset + slot_offset;
   unsigned int abs_symbol  = Ns * frame_parms->symbols_per_slot + symbol;
-  for (int idx_symb = Ns*frame_parms->symbols_per_slot; idx_symb <= abs_symbol; idx_symb++)
-    rx_offset += (abs_symbol%(0x7<<frame_parms->numerology_index)) ? nb_prefix_samples : nb_prefix_samples0;
+  for (int idx_symb = Ns*frame_parms->symbols_per_slot; idx_symb <= abs_symbol; idx_symb++) 
+    rx_offset += (idx_symb%(0x7<<frame_parms->numerology_index)) ? nb_prefix_samples : nb_prefix_samples0;
   rx_offset += frame_parms->ofdm_symbol_size * symbol;
 
 #ifdef DEBUG_FEP
@@ -241,14 +241,14 @@ int nr_slot_fep_init_sync(PHY_VARS_NR_UE *ue,
     stop_meas(&ue->rx_dft_stats);
 
     int symb_offset = (Ns%frame_parms->slots_per_subframe)*frame_parms->symbols_per_slot;
-    c16_t rot2 = frame_parms->symbol_rotation[0][symbol + symb_offset];
+    c16_t rot2 = frame_parms->symbol_rotation[get_softmodem_params()->sl_mode == 2 ? NR_LINK_TYPE_SL : 0][symbol + symb_offset];
     rot2.i=-rot2.i;
 
-#ifdef DEBUG_FEP
+//#ifdef DEBUG_FEP
     //  if (ue->frame <100)
     printf("slot_fep: slot %d, symbol %d rx_offset %u, rotation symbol %d %d.%d\n", Ns,symbol, rx_offset,
 	   symbol+symb_offset,rot2.r,rot2.i);
-#endif
+//#endif
 
     c16_t *this_symbol = &rxdataF[aa][frame_parms->ofdm_symbol_size*symbol];
     rotate_cpx_vector(this_symbol, &rot2, this_symbol, frame_parms->ofdm_symbol_size, 15);

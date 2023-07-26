@@ -425,7 +425,7 @@ void init_openair0(void) {
       duplex_mode[openair0_cfg[card].duplex_mode]);
 
     nr_get_carrier_frequencies(PHY_vars_UE_g[0][0], &dl_carrier, &ul_carrier);
-
+    LOG_I(NR_PHY,"Configuring SL carrier for %llu Hz \n",sl_carrier);
     nr_rf_card_config_freq(&openair0_cfg[card], ul_carrier, dl_carrier, freq_off);
 
     if (get_softmodem_params()->sl_mode != 0) {
@@ -592,9 +592,11 @@ int main( int argc, char **argv ) {
       set_options(CC_id, UE[CC_id]);
       NR_UE_MAC_INST_t *mac = get_mac_inst(0);
       if (get_softmodem_params()->sl_mode != 0) {
+	int16_t nr_band = get_band(sidelink_frequency[CC_id][0],0);
         mac->if_module = NULL;
         LOG_I(HW, "Setting mac->if_module = NULL b/c we config PHY in nr_phy_config_request_sl (for now - TODO)\n");
         nr_phy_config_request_sl(UE[CC_id], N_RB_DL, N_RB_DL, CC_id);
+	nr_init_frame_parms_ue_sl(&UE[CC_id]->frame_parms,sidelink_frequency[CC_id][0],nr_band);
       }
       if (get_softmodem_params()->sa) {
         uint16_t nr_band = get_band(downlink_frequency[CC_id][0],uplink_frequency_offset[CC_id][0]);

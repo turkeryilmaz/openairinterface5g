@@ -106,6 +106,8 @@ int nr_sl_generate_pss(c16_t *txdataF,
                                        frame_parms->ofdm_symbol_size, buffer, sizeof(buffer)));
   }
 #endif
+  LOG_I(NR_PHY,"nr_sl_generate_pss : ssb_start_subcarrier %d, k %d\n",frame_parms->ssb_start_subcarrier,k);
+
   k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + PSS_SSS_SUB_CARRIER_START_SL;
   if (k >= frame_parms->ofdm_symbol_size) k-=frame_parms->ofdm_symbol_size;
   c16_t in[sizeof(int16_t) * frame_parms->ofdm_symbol_size] __attribute__((aligned(32)));
@@ -116,6 +118,7 @@ int nr_sl_generate_pss(c16_t *txdataF,
     if (k == frame_parms->ofdm_symbol_size) k = 0;
   }
 
+  LOG_I(NR_PHY,"filling pss synchro time arrays Nid %d\n",Nid2);
   c16_t out[sizeof(int16_t) * frame_parms->ofdm_symbol_size] __attribute__((aligned(32)));
   memset(out, 0, sizeof(out));
   memset(primary_synchro_time_nr[Nid2], 0, sizeof(int16_t) * frame_parms->ofdm_symbol_size);

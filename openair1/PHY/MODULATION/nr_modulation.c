@@ -611,7 +611,7 @@ void init_symbol_rotation(NR_DL_FRAME_PARMS *fp) {
   for (uint8_t ll = 0; ll < sizeof(f)/sizeof(f[0]); ll++){
 
     double f0 = f[ll];
-    LOG_D(PHY, "Doing symbol rotation calculation for gNB TX/RX, f0 %f Hz, Nsymb %d\n", f0, nsymb);
+    LOG_I(PHY, "Doing symbol rotation calculation for gNB TX/RX, f0 %f Hz, Nsymb %d\n", f0, nsymb);
     c16_t *symbol_rotation = fp->symbol_rotation[ll];
 
     double tl = 0.0;
