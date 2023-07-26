@@ -78,6 +78,7 @@ int nr_sl_generate_pss(c16_t *txdataF,
 
   // PSS occupies a predefined position (subcarriers 2-128, symbol 0) within the SSB block starting from
   k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + PSS_SSS_SUB_CARRIER_START_SL;
+  LOG_I(NR_PHY,"generate_pss_sl k %d,Nid2 %d,ssb_start_symbol %d\n",k,Nid2,ssb_start_symbol);
   if (k >= frame_parms->ofdm_symbol_size) k-=frame_parms->ofdm_symbol_size;
 
   l = ssb_start_symbol + 2;

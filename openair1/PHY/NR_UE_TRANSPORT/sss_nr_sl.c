@@ -269,15 +269,18 @@ int rx_sss_sl_nr(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, int32_t *tot_metri
 
   pss_sss_sl_extract_nr(ue, proc, pss0_ext, sss0_ext, pss1_ext, sss1_ext);
 
-#ifdef DEBUG_PLOT_SSS
-  write_output("rxsig0.m","rxs0",&ue->common_vars.rxdata[0][0],ue->frame_parms.samples_per_subframe,1,1);
+//#ifdef DEBUG_PLOT_SSS
+  write_output("rxsig0.m","rxs0",&ue->common_vars.rxdata[0][0],ue->frame_parms.samples_per_frame,1,1);
   write_output("rxdataF0_pss.m","rxF0_pss",&ue->common_vars.rxdataF[0][0],frame_parms->ofdm_symbol_size,1,1);
   write_output("rxdataF0_sss.m","rxF0_sss",&ue->common_vars.rxdataF[0][(SSS_SYMBOL_NB-PSS_SYMBOL_NB)*frame_parms->ofdm_symbol_size],frame_parms->ofdm_symbol_size,1,1);
   write_output("pss0_ext.m","pss0_ext",pss0_ext,LENGTH_PSS_NR,1,1);
   write_output("pss1_ext.m","pss1_ext",pss1_ext,LENGTH_PSS_NR,1,1);
   write_output("sss0_ext.m","sss0_ext",sss0_ext,LENGTH_PSS_NR,1,1);
   write_output("sss1_ext.m","sss1_ext",sss1_ext,LENGTH_PSS_NR,1,1);
-#endif
+  write_output("pss0_time.m","pss0_time",primary_synchro_time_nr[0],frame_parms->ofdm_symbol_size,1,1);
+  write_output("pss1_time.m","pss1_time",primary_synchro_time_nr[1],frame_parms->ofdm_symbol_size,1,1);
+  LOG_I(NR_PHY,"Running generate_pss_nr\n");
+//#endif
 
   // get conjugated channel estimate from PSS, H* = R* \cdot PSS
   // and do channel estimation and compensation based on PSS
