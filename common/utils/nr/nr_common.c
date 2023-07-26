@@ -232,6 +232,42 @@ int NRRIV2BW(int locationAndBandwidth,int N_RB) {
 
 }
 
+/* This function converts the FRIV to a start sub-channel and length in subchannels */
+/* for sl_MaxNumPerReserve = 2, the sequence from 38.214 for Lsc = 1,2,3, ... 
+ * goes like startsc + (0,N_subch,N_subch +(N_subch-1), N_subch + (N_subch-1) + (N_subch-2), ...) 
+ * 
+ * This is only done for sl_MaxNumPerReserve = 2
+ * */
+void convNRFRIV(int FRIV,
+                int N_subch, 
+                long sl_MaxNumPerReserve,
+                uint16_t *Lsc,
+                uint16_t *startsc,
+                uint16_t *startsc2) {
+  if (sl_MaxNumPerReserve == 2) {
+    *Lsc=1;
+    int prevN=0;
+    int N=N_subch;
+    while (FRIV>N) {
+      *Lsc = *Lsc+1;
+      prevN = N;
+      N += (N_subch - *Lsc + 1);
+    }
+    if (startsc) *startsc = FRIV-prevN;
+  } else {
+    *Lsc=1;
+    int prevN=0;
+    int N=N_subch;
+    while (FRIV>N) {
+      *Lsc = *Lsc + 1;
+      prevN = N;
+      N += ((N_subch - *Lsc + 1)*(N_subch - *Lsc + 1));
+    }
+    int tmp1 = FRIV - prevN; // This holds startsc1 + startsc2*(N_subch - *Lsc + 1)
+    if (startsc2) *startsc2 = tmp1 / (N_subch - *Lsc + 1);
+    if (startsc) *startsc = tmp1 % (N_subch - *Lsc + 1);
+  }
+}  
 int NRRIV2PRBOFFSET(int locationAndBandwidth,int N_RB) {
   int tmp = locationAndBandwidth/N_RB;
   int tmp2 = locationAndBandwidth%N_RB;

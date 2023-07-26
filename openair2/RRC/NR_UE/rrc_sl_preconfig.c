@@ -107,6 +107,15 @@ static void prepare_NR_SL_ResourcePool(NR_SL_ResourcePool_r16_t *sl_res_pool,
   sl_res_pool->sl_PSSCH_Config_r16 = calloc(1, sizeof(NR_SetupRelease_SL_PSSCH_Config_r16_t));
   sl_res_pool->sl_PSSCH_Config_r16->present = NR_SetupRelease_SL_PSSCH_Config_r16_PR_setup;
   sl_res_pool->sl_PSSCH_Config_r16->choice.setup = calloc(1, sizeof(NR_SL_PSSCH_Config_r16_t));
+
+  sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_BetaOffsets2ndSCI_r16 =
+                      calloc(1, sizeof(*sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_BetaOffsets2ndSCI_r16));
+  for(int i=0; i<4; i++) {
+    long *p = calloc(1, sizeof(long));
+    *p = i<<2; // valid values: 0...15, for the moment choose 0,4,8,12
+    ASN_SEQUENCE_ADD(&sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_BetaOffsets2ndSCI_r16->list, p);
+  }
+
   sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_PSSCH_DMRS_TimePatternList_r16 =
                       calloc(1, sizeof(*sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_PSSCH_DMRS_TimePatternList_r16));
   for(int i=0; i<3; i++) {
@@ -114,6 +123,10 @@ static void prepare_NR_SL_ResourcePool(NR_SL_ResourcePool_r16_t *sl_res_pool,
     *p = 2+i; // valid values: 2..4
     ASN_SEQUENCE_ADD(&sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_PSSCH_DMRS_TimePatternList_r16->list, p);
   }
+
+  // This should be added to configuration file
+  sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_Scaling_r16 = calloc(1,sizeof(*sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_Scaling_r16));
+  *sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_Scaling_r16 = NR_SL_PSSCH_Config_r16__sl_Scaling_r16_f0p5;
 
   //PSFCH configuration
   sl_res_pool->sl_PSFCH_Config_r16 = NULL;

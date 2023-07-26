@@ -5,7 +5,8 @@
 
 #define SL_NR_RX_CONFIG_LIST_NUM 1
 #define SL_NR_TX_CONFIG_LIST_NUM 1
-#define SL_NR_RX_IND_MAX_PDU 1
+#define SL_NR_RX_IND_MAX_PDU 2
+#define SL_NR_SCI_IND_MAX_PDU 2
 #define SL_NR_MAX_PSCCH_SCI_LENGTH_IN_BYTES 8
 #define SL_NR_MAX_PSSCH_SCI_LENGTH_IN_BYTES 8
 #define SL_NR_MAX_SCI_LENGTH_IN_BYTES 8
@@ -68,7 +69,7 @@ typedef struct {
   uint8_t sensing_result;
   //in case pssch sensing is requested.
   int16_t pssch_rsrp;
-  sl_nr_sci_indication_pdu_t sci_pdu;
+  sl_nr_sci_indication_pdu_t sci_pdu[SL_NR_SCI_IND_MAX_PDU];
 } sl_nr_sci_indication_t;
 
 // IF UE Rx PSBCH, PHY indicates MAC with received MIB and PSBCH RSRP
@@ -242,6 +243,9 @@ typedef struct sl_nr_tx_config_pscch_pssch_pdu {
   //Guard symbol + AGC symbol are also excluded
   //Indicates the number of symbols for PSCCH+PSSCH txn
   uint8_t pssch_numsym;
+
+  // start symbol of PSCCH/PSSCH (excluding AGC)
+  uint8_t pssch_startsym;
 
   //.... Other Parameters for SCI-2 and PSSCH
 

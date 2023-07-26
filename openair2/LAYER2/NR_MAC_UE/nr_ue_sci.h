@@ -1,11 +1,45 @@
-typedef enum {
-  NR_SL_SCI_FORMAT_1A = 0;
-  NR_SL_SCI_FORMAT_2A = 1;
-  NR_SL_SCI_FORMAT_2B = 2;
-  NR_SL_SCI_FORMAT_2C = 3;
-} sci_format_t;
+/*
+ * Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The OpenAirInterface Software Alliance licenses this file to You under
+ * the OAI Public License, Version 1.1  (the "License"); you may not use this file
+ * except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.openairinterface.org/?page_id=698
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *-------------------------------------------------------------------------------
+ * For more information about the OpenAirInterface (OAI) Software Alliance:
+ *      contact@openairinterface.org
+ */
 
-typedef {
+/* \file nr_ue_sci.h
+ * \brief Definitions and Structures for sci/slsch procedures for Sidelink UE
+ * \author R. Knopp
+ * \date 2023
+ * \version 0.1
+ * \company Eurecom
+ * \email: knopp@eurecom.fr
+ * \note
+ * \warning
+ */
+
+#include "NR_MAC_COMMON/nr_mac.h"
+
+typedef enum {
+  NR_SL_SCI_FORMAT_1A = 0,
+  NR_SL_SCI_FORMAT_2A = 1,
+  NR_SL_SCI_FORMAT_2B = 2,
+  NR_SL_SCI_FORMAT_2C = 3
+} nr_sci_format_t;
+
+typedef struct {
 	// 1st stage fields
 	uint8_t priority; // 3 bits
 	dci_field_t frequency_resource_assignment; // depending on sl-MaxNumPerReserve and N_subChannel^SL 
@@ -37,5 +71,5 @@ typedef {
 	dci_field_t reference_slot_location; // depending on mu, format 2C
 	uint8_t resource_set_type; // 1 bit, format 2C
 	dci_field_t lowest_subchannel_indices; // depending on n_subChannel^SL, format 2C
-} sci_pdu_t;
+} nr_sci_pdu_t;
 

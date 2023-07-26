@@ -86,6 +86,7 @@ void fill_ul_config(fapi_nr_ul_config_request_t *ul_config, frame_t frame_tx, in
 void fill_scheduled_response(nr_scheduled_response_t *scheduled_response,
                              fapi_nr_dl_config_request_t *dl_config,
                              fapi_nr_ul_config_request_t *ul_config,
+			     sl_nr_rx_config_request_t *sl_config,
                              fapi_nr_tx_request_t *tx_request,
                              module_id_t mod_id,
                              int cc_id,

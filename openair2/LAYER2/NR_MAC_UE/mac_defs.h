@@ -62,6 +62,7 @@
 #include "NR_ServingCellConfig.h"
 #include "NR_MeasConfig.h"
 #include "NR_ServingCellConfigCommonSIB.h"
+#include "NR_SL-BWP-ConfigCommon-r16.h"
 
 
 // ==========
@@ -454,6 +455,10 @@ typedef struct {
   NR_ControlResourceSet_t *coreset0;
   NR_SearchSpace_t *BWP_searchspaces[FAPI_NR_MAX_SS];
   NR_SearchSpace_t *search_space_zero;
+
+// sidelink
+  NR_SL_BWP_ConfigCommon_r16_t *sl_bwp;
+  NR_SL_ResourcePool_r16_t *sl_res_pool;
 
   bool phy_config_request_sent;
   frame_type_t frame_type;

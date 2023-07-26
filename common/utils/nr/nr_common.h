@@ -90,6 +90,7 @@ frame_type_t get_frame_type(uint16_t nr_bandP, uint8_t scs_index);
 uint16_t get_band(uint64_t downlink_frequency, int32_t delta_duplex);
 int NRRIV2BW(int locationAndBandwidth,int N_RB);
 int NRRIV2PRBOFFSET(int locationAndBandwidth,int N_RB);
+void convNRFRIV(int FRIV, int N_subch, long sl_MaxNumPerReserve, uint16_t *Lsc, uint16_t *startsc, uint16_t *startsc2); 
 int PRBalloc_to_locationandbandwidth0(int NPRB,int RBstart,int BWPsize);
 int PRBalloc_to_locationandbandwidth(int NPRB,int RBstart);
 int get_subband_size(int NPRB,int size);
