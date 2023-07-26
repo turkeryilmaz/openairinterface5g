@@ -36,6 +36,7 @@
 #include "openair2/COMMON/prs_nr_paramdef.h"
 #include "SCHED_NR_UE/harq_nr.h"
 #include "PHY/NR_REFSIG/nr_mod_table.h"
+#include "executables/softmodem-common.h"
 
 void RCconfig_nrUE_prs(void *cfg)
 {

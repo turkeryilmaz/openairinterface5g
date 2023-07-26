@@ -613,7 +613,7 @@ int nr_pbch_dmrs_correlation(PHY_VARS_NR_UE *ue,
 #endif
 
   // generate pilot
-  nr_pbch_dmrs_rx(dmrss, ue->nr_gold_pbch[n_hf][ssb_index], &pilot[0], 0);
+  nr_pbch_dmrs_rx(dmrss, ue->nr_gold_pbch[n_hf][ssb_index], &pilot[0], get_softmodem_params()->sl_mode == 2);
 
   for (int aarx=0; aarx<frame_params->nb_antennas_rx; aarx++) {
 

@@ -6,7 +6,7 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include "common/config/config_userapi.h"
-#include "common/ran_context.h" 
+#include "common/ran_context.h"
 #include "PHY/types.h"
 #include "PHY/defs_nr_common.h"
 #include "PHY/defs_nr_UE.h"
@@ -23,47 +23,23 @@
 #include "PHY/INIT/nr_phy_init.h"
 #include "SIMULATION/RF/rf.h"
 #include "common/utils/load_module_shlib.h"
-void exit_function(const char* file, const char* function, const int line, const char* s, const int assert) {
-  const char * msg= s==NULL ? "no comment": s;
-  printf("Exiting at: %s:%d %s(), %s\n", file, line, function, msg);
-  exit(-1);
-}
-int8_t nr_rrc_RA_succeeded(const module_id_t mod_id, const uint8_t gNB_index) { return 1; }
-// to solve link errors
-double cpuf;
-//void init_downlink_harq_status(NR_DL_UE_HARQ_t *dl_harq) {}
-void get_num_re_dmrs(nfapi_nr_ue_pusch_pdu_t *pusch_pdu,
-                     uint8_t *nb_dmrs_re_per_rb,
-                     uint16_t *number_dmrs_symbols){}
-uint64_t downlink_frequency[1][1];
-int32_t uplink_frequency_offset[1][1];
-THREAD_STRUCT thread_struct;
-instance_t DUuniqInstance=0;
-instance_t CUuniqInstance=0;
-openair0_config_t openair0_cfg[1];
+#include "openair1/PHY/NR_REFSIG/sss_nr.h"
+#include <executables/softmodem-common.h>
+#include "openair1/SCHED_NR_UE/defs.h"
+#include "openair1/SIMULATION/NR_PHY/nr_unitary_defs.h"
+#include "openair1/SIMULATION/NR_PHY/nr_dummy_functions.c"
+#include <executables/nr-uesoftmodem.h>
 
 RAN_CONTEXT_t RC;
-int oai_exit = 0;
-char *uecap_file;
-
-void nr_rrc_ue_generate_RRCSetupRequest(module_id_t module_id, const uint8_t gNB_index)
+double cpuf;
+openair0_config_t openair0_cfg[MAX_CARDS];
+uint8_t const nr_rv_round_map[4] = {0, 2, 3, 1};
+nrUE_params_t nrUE_params = {0};
+nrUE_params_t *get_nrUE_params(void)
 {
-  return;
+  return &nrUE_params;
 }
 
-int8_t nr_mac_rrc_data_req_ue(const module_id_t Mod_idP,
-                              const int         CC_id,
-                              const uint8_t     gNB_id,
-                              const frame_t     frameP,
-                              const rb_id_t     Srb_id,
-                              uint8_t           *buffer_pP)
-{
-  return 0;
-}
-
-nr_bler_struct nr_bler_data[NR_NUM_MCS];
-void get_nrUE_params(void) { return;}
-uint8_t check_if_ue_is_sl_syncsource() {return 0;}
 //////////////////////////////////////////////////////////////////////////
 static void prepare_mib_bits(uint8_t *buf, uint32_t frame_tx, uint32_t slot_tx) {
 
@@ -129,8 +105,10 @@ static void configure_NR_UE(PHY_VARS_NR_UE *UE, int mu, int N_RB) {
   config.cell_config.frame_duplex_type = TDD;
   config.carrier_config.dl_grid_size[mu]     = N_RB;
   config.carrier_config.ul_grid_size[mu]     = N_RB;
+  config.carrier_config.sl_grid_size[mu]     = N_RB;
   config.carrier_config.dl_frequency = 0;
   config.carrier_config.uplink_frequency = 0;
+  fp->N_RB_SL = N_RB;
 
   int band;
   if (mu == 1) band = 78;
@@ -153,7 +131,7 @@ static void configure_SL_UE(PHY_VARS_NR_UE *UE, int mu, int N_RB, int ssb_offset
   config->sl_bwp_config.sl_scs = mu;
   config->sl_bwp_config.sl_ssb_offset_point_a = ssb_offset;
   config->sl_carrier_config.sl_bandwidth = N_RB;
-  config->sl_carrier_config.sl_grid_size = 106;
+  config->sl_carrier_config.sl_grid_size = N_RB;
   config->sl_sync_source.rx_slss_id = slss_id;
 
   sl_init_frame_parameters(UE);
@@ -226,7 +204,6 @@ static int freq_domain_loopback(PHY_VARS_NR_UE *UE_tx, PHY_VARS_NR_UE *UE_rx, in
 
 PHY_VARS_NR_UE *UE_TX; // for tx
 PHY_VARS_NR_UE *UE_RX; // for rx
-double cpuf;
 
 int main(int argc, char **argv) {
 
@@ -249,8 +226,6 @@ int main(int argc, char **argv) {
   NR_DL_FRAME_PARMS *frame_parms;
 
   int seed = 0;
-
-  cpuf = get_cpu_freq_GHz();
 
   if ( load_configmodule(argc,argv,CONFIG_ENABLECMDLINEONLY) == 0 ) {
     exit_fun("SIDELINK PSBCH SIM Error, configuration module init failed\n");
@@ -445,6 +420,7 @@ int main(int argc, char **argv) {
   }
 
   /*****configure UE *************************/
+  get_softmodem_params()->sl_mode = 2;
   UE_TX = calloc(1, sizeof(PHY_VARS_NR_UE));
   UE_RX = calloc(1, sizeof(PHY_VARS_NR_UE));
   LOG_I(PHY, "Configure UE-TX and sidelink UE-TX.\n");
@@ -552,7 +528,7 @@ int main(int argc, char **argv) {
           }
         }
 
-      psbch_pscch_processing(UE_RX,&proc,&phy_data_rx);
+      nr_sl_initial_sync(&proc, UE_RX, 2);
 
     } //noise trials
 

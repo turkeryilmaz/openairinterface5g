@@ -3,6 +3,7 @@
 #include "openair2/NR_PHY_INTERFACE/NR_IF_Module.h"
 #include "openair2/NR_UE_PHY_INTERFACE/NR_IF_Module.h"
 #include "openair1/PHY/defs_nr_UE.h"
+#include "openair1/SCHED_NR_UE/defs.h"
 
 
 int oai_nfapi_dl_tti_req(nfapi_nr_dl_tti_request_t *dl_config_req) { return (0); }
@@ -49,3 +50,52 @@ int8_t nr_mac_rrc_data_ind_ue(const module_id_t module_id,
                               const channel_t channel,
                               const uint8_t* pduP,
                               const sdu_size_t pdu_len) { return 0; }
+
+uint64_t get_softmodem_optmask(void)
+{
+  return 0;
+}
+static softmodem_params_t softmodem_params;
+softmodem_params_t *get_softmodem_params(void)
+{
+  return &softmodem_params;
+}
+
+void init_downlink_harq_status(NR_DL_UE_HARQ_t *dl_harq)
+{
+}
+
+bool nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue,
+                            UE_nr_rxtx_proc_t *proc,
+                            NR_UE_DLSCH_t dlsch[2],
+                            int16_t* llr[2]) {return 0;}
+
+int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
+                           UE_nr_rxtx_proc_t *proc,
+                           NR_UE_DLSCH_t dlsch[2],
+                           int16_t *llr[2],
+                           c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP]) {return 0;}
+
+int nr_ue_pdcch_procedures(PHY_VARS_NR_UE *ue,
+                           UE_nr_rxtx_proc_t *proc,
+                           int32_t pdcch_est_size,
+                           int32_t pdcch_dl_ch_estimates[][pdcch_est_size],
+                           nr_phy_data_t *phy_data,
+                           int n_ss,
+                           c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP]) {return 0;}
+
+void nr_fill_dl_indication(nr_downlink_indication_t *dl_ind,
+                           fapi_nr_dci_indication_t *dci_ind,
+                           fapi_nr_rx_indication_t *rx_ind,
+                           UE_nr_rxtx_proc_t *proc,
+                           PHY_VARS_NR_UE *ue,
+                           void *phy_data) {}
+void nr_fill_rx_indication(fapi_nr_rx_indication_t *rx_ind,
+                           uint8_t pdu_type,
+                           PHY_VARS_NR_UE *ue,
+                           NR_UE_DLSCH_t *dlsch0,
+                           NR_UE_DLSCH_t *dlsch1,
+                           uint16_t n_pdus,
+                           UE_nr_rxtx_proc_t *proc,
+                           void *typeSpecific,
+                           uint8_t *b) {}
