@@ -500,7 +500,6 @@ int pss_search_time_nr(c16_t **rxdata, PHY_VARS_NR_UE *ue, int fo_flag, int is)
     pss_index_end = pss_index_start + 1;
   }
   unsigned int step = get_softmodem_params()->sl_mode == 0 ? 8 : 4;
-  for (int i=0;i<10;i++) printf("pss1[%d] %d.%d\n",i,primary_synchro_time_nr[1][i].r,primary_synchro_time_nr[1][i].i);
   for (int pss_index = pss_index_start; pss_index < pss_index_end; pss_index++) {
     for (unsigned int n = 0; n < length; n += step) {
       int64_t pss_corr_ue = 0;
@@ -528,7 +527,6 @@ int pss_search_time_nr(c16_t **rxdata, PHY_VARS_NR_UE *ue, int fo_flag, int is)
         peak_value = pss_corr_ue;
         peak_position = n;
         pss_source = pss_index;
-	LOG_I(NR_PHY,"++++ peak_value %d, peak_pos %d, pss %d\n",dB_fixed64(peak_value),peak_position,pss_source);
       }
     }
   }

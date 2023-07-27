@@ -31,7 +31,7 @@
 #include "PHY/NR_REFSIG/ss_pbch_nr.h"
 #include "PHY/NR_REFSIG/sss_nr.h"
 
-#define DEBUG_PLOT_SSS 1
+//#define DEBUG_PLOT_SSS 1
 
 int nr_sl_generate_sss(c16_t *txdataF,
                        int16_t amp,
@@ -197,7 +197,6 @@ int pss_sl_ch_est_nr(PHY_VARS_NR_UE *ue,
   c16_t *pss = primary_synchro_nr[id];
   c16_t tmp, tmp2;
   c16_t *sss0_ext3 = &sss0_ext[0][0];
-  LOG_I(NR_PHY,"pss_sl_ch_est_nr, using pss id %d\n",id);
   for (uint8_t aarx = 0; aarx < ue->frame_parms.nb_antennas_rx; aarx++) {
     c16_t *sss0_ext2 = &sss0_ext[aarx][0];
     c16_t *pss0_ext2 = &pss0_ext[aarx][0];

@@ -244,11 +244,11 @@ int nr_slot_fep_init_sync(PHY_VARS_NR_UE *ue,
     c16_t rot2 = frame_parms->symbol_rotation[get_softmodem_params()->sl_mode == 2 ? NR_LINK_TYPE_SL : 0][symbol + symb_offset];
     rot2.i=-rot2.i;
 
-//#ifdef DEBUG_FEP
+#ifdef DEBUG_FEP
     //  if (ue->frame <100)
     printf("slot_fep: slot %d, symbol %d rx_offset %u, rotation symbol %d %d.%d\n", Ns,symbol, rx_offset,
 	   symbol+symb_offset,rot2.r,rot2.i);
-//#endif
+#endif
 
     c16_t *this_symbol = &rxdataF[aa][frame_parms->ofdm_symbol_size*symbol];
     //rotate_cpx_vector(this_symbol, &rot2, this_symbol, frame_parms->ofdm_symbol_size, 15);
