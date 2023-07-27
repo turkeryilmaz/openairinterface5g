@@ -96,6 +96,8 @@
 #define NR_UE_MODULE_INVALID ((module_id_t) ~0) // FIXME attention! depends on type uint8_t!!!
 #define NR_UE_INDEX_INVALID  ((module_id_t) ~0) // FIXME attention! depends on type uint8_t!!! used to be -1
 
+#define MAX_NUM_NEIGH_CELLs 0 /* maximum neighbouring cells number */
+
 typedef enum {
   NR_RRC_OK=0,
   NR_RRC_ConnSetup_failed,
@@ -414,6 +416,16 @@ typedef struct gNB_RRC_INST_s {
   int srs_enable[MAX_NUM_CCs];
 
   char *uecap_file;
+  
+  // XN handover controlled by network
+ 
+
+  // Neighborouring cells id
+  int num_neigh_cells;
+  int num_neigh_cells_cc[MAX_NUM_CCs];
+  uint32_t neigh_cells_id[MAX_NUM_NEIGH_CELLs][MAX_NUM_CCs];
+
+
 
   // security configuration (preferred algorithms)
   nr_security_configuration_t security;

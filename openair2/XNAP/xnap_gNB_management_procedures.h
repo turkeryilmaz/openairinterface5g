@@ -4,7 +4,7 @@
 
 void xnap_gNB_prepare_internal_data(void);
 
-void dump_trees(void);
+void xnap_dump_trees(void);
 
 void xnap_gNB_insert_new_instance(xnap_gNB_instance_t *new_instance_p);
 

@@ -10,7 +10,7 @@
 #ifndef XNAP_H_
 #define XNAP_H_
 
-#define XNAP_SCTP_PPID   (27)    ///< XNAP SCTP Payload Protocol Identifier (PPID)
+#define XNAP_SCTP_PPID   (61)    ///< XNAP SCTP Payload Protocol Identifier (PPID)
 #include "xnap_gNB_defs.h"
 
 int xnap_gNB_init_sctp (xnap_gNB_instance_t *instance_p,

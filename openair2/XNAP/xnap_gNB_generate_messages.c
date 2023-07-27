@@ -7,11 +7,18 @@
 #include "xnap_gNB_encoder.h"
 #include "xnap_gNB_decoder.h"
 #include "XNAP_GlobalgNB-ID.h"
-
+#include "XNAP_ServedCells-NR-Item.h"
+#include "XNAP_ServedCellInformation-NR.h"
+#include "XNAP_NRFrequencyBandItem.h"
 #include "xnap_gNB_itti_messaging.h"
-
+#include "XNAP_ServedCells-NR.h"
 #include "assertions.h"
 #include "conversions.h"
+#include "XNAP_BroadcastPLMNinTAISupport-Item.h"
+#include "XNAP_TAISupport-Item.h"
+#include "XNAP_GlobalAMF-Region-Information.h"
+#include "XNAP_NRModeInfoFDD.h"
+#include "XNAP_NRModeInfoTDD.h"
 
 int xnap_gNB_generate_xn_setup_request(xnap_gNB_instance_t *instance_p, xnap_gNB_data_t *xnap_gNB_data_p)
 {
@@ -21,12 +28,17 @@ int xnap_gNB_generate_xn_setup_request(xnap_gNB_instance_t *instance_p, xnap_gNB
   //XNAP_PLMN_Identity_t               *e_BroadcastPLMN_ItemIE;;
   //XNAP_ServedCells_NR_Item_t   *ServedCells_NR_ItemIEs;
   //X2AP_GU_Group_ID_t                 *gu;
-  //XNAP_BroadcastPLMNinTAISupport_Item_t   *e_BroadcastPLMNinTAISupport_ItemIE;
-  //XNAP_TAISupport_Item_t      *TAISupport_ItemIEs;
-  //XNAP_S_NSSAI_t           *e_S_NSSAI_ItemIE ;
-  //GlobalAMF_Region_Information_t   *e_GlobalAMF_Region_Information_ItemIEs;
-  //XNAP_NRFrequencyBandItem_t    *e_ulNRFrequencyBand_ItemIE;
-  //XNAP_NRFrequencyBandItem_t    *e_dlNRFrequencyBand_ItemIE; 
+  XNAP_BroadcastPLMNinTAISupport_Item_t   *e_BroadcastPLMNinTAISupport_ItemIE;
+  XNAP_TAISupport_Item_t      *TAISupport_ItemIEs;
+  XNAP_S_NSSAI_t           *e_S_NSSAI_ItemIE ;
+  XNAP_GlobalAMF_Region_Information_t   *e_GlobalAMF_Region_Information_ItemIEs;
+  XNAP_ServedCells_NR_Item_t  *servedCellMember;
+  XNAP_ServedCells_NR_t       *ServedCells_NR;
+  XNAP_NRFrequencyBandItem_t  *nrfreqbanditemul;
+  XNAP_NRFrequencyBandItem_t  *nrfreqbanditemdl;
+  XNAP_NRFrequencyBandItem_t  *nrfreqbanditem;
+  XNAP_PLMN_Identity_t        *plmn ;
+  
 
   uint8_t  *buffer;
   uint32_t  len;
@@ -56,21 +68,10 @@ int xnap_gNB_generate_xn_setup_request(xnap_gNB_instance_t *instance_p, xnap_gNB
   ie->value.present = XNAP_XnSetupRequest_IEs__value_PR_GlobalNG_RANNode_ID;
   ie->value.choice.GlobalNG_RANNode_ID.present=XNAP_GlobalNG_RANNode_ID_PR_gNB;
   ie->value.choice.GlobalNG_RANNode_ID.choice.gNB =(XNAP_GlobalgNB_ID_t *)calloc(1,sizeof(XNAP_GlobalgNB_ID_t));
-  /*ie->value.choice.GlobalNG_RANNode_ID.choice.gNB->plmn_id.size=3;  //OCTET STRING (SIZE(3)) 
-  ie->value.choice.GlobalNG_RANNode_ID.choice.gNB->plmn_id.buf=calloc(ie->value.choice.GlobalNG_RANNode_ID.choice.gNB->plmn_id.size, sizeof(uint8_t)); 
-  ie->value.choice.GlobalNG_RANNode_ID.choice.gNB->plmn_id.buf[0]=208; 
-  ie->value.choice.GlobalNG_RANNode_ID.choice.gNB->plmn_id.buf[1]=95; 
-  ie->value.choice.GlobalNG_RANNode_ID.choice.gNB->plmn_id.buf[2]=2; */
   MCC_MNC_TO_PLMNID(instance_p->mcc, instance_p->mnc, instance_p->mnc_digit_length, &ie->value.choice.GlobalNG_RANNode_ID.choice.gNB->plmn_id);
   
   ie->value.choice.GlobalNG_RANNode_ID.choice.gNB->gnb_id.present=XNAP_GNB_ID_Choice_PR_gnb_ID;
-  /*ie->value.choice.GlobalNG_RANNode_ID.choice.gNB->gnb_id.choice.gnb_ID.size=4;  //BIT STRING (SIZE(22..32))
-  ie->value.choice.GlobalNG_RANNode_ID.choice.gNB->gnb_id.choice.gnb_ID.buf=calloc(1,ie->value.choice.GlobalNG_RANNode_ID.choice.gNB->gnb_id.choice.gnb_ID.size); 
-  ie->value.choice.GlobalNG_RANNode_ID.choice.gNB->gnb_id.choice.gnb_ID.buf[0]=3; 
-  ie->value.choice.GlobalNG_RANNode_ID.choice.gNB->gnb_id.choice.gnb_ID.buf[1]=3; 
-  ie->value.choice.GlobalNG_RANNode_ID.choice.gNB->gnb_id.choice.gnb_ID.buf[2]=1;
-  ie->value.choice.GlobalNG_RANNode_ID.choice.gNB->gnb_id.choice.gnb_ID.buf[3]=1;
-  ie->value.choice.GlobalNG_RANNode_ID.choice.gNB->gnb_id.choice.gnb_ID.bits_unused=2;*/
+
   MACRO_GNB_ID_TO_BIT_STRING(instance_p->gNB_id, &ie->value.choice.GlobalNG_RANNode_ID.choice.gNB->gnb_id.choice.gnb_ID); //28 bits
   XNAP_INFO("%d -> %02x%02x%02x\n", instance_p->gNB_id,
             ie->value.choice.GlobalNG_RANNode_ID.choice.gNB->gnb_id.choice.gnb_ID.buf[0],
@@ -81,7 +82,7 @@ int xnap_gNB_generate_xn_setup_request(xnap_gNB_instance_t *instance_p, xnap_gNB
 
 
   /* mandatory */ //TAI Support list
-  /*ie = (XNAP_XnSetupRequest_IEs_t *)calloc(1, sizeof(XNAP_XnSetupRequest_IEs_t));
+  ie = (XNAP_XnSetupRequest_IEs_t *)calloc(1, sizeof(XNAP_XnSetupRequest_IEs_t));
   ie->id = XNAP_ProtocolIE_ID_id_TAISupport_list ;
   ie->criticality = XNAP_Criticality_reject;
   ie->value.present = XNAP_XnSetupRequest_IEs__value_PR_TAISupport_List;
@@ -89,31 +90,26 @@ int xnap_gNB_generate_xn_setup_request(xnap_gNB_instance_t *instance_p, xnap_gNB
   	//{
     	//for (int i=0;i<1;i++)
     		{
-    		TAISupport_ItemIEs = (TAISupport_Item_t *)calloc(1,sizeof(TAISupport_Item_t));
+    		TAISupport_ItemIEs = (XNAP_TAISupport_Item_t *)calloc(1,sizeof(XNAP_TAISupport_Item_t));
       		/*TAISupport_ItemIEs->tac.size = 3;//octet string
       		
       		TAISupport_ItemIEs->tac.buf=calloc(TAISupport_ItemIEs->tac.size,sizeof(OCTET_STRING_t));
       		TAISupport_ItemIEs->tac.buf[0]=208;
       		TAISupport_ItemIEs->tac.buf[1]=95;
       		TAISupport_ItemIEs->tac.buf[2]=2;*/
-      		/*INT24_TO_OCTET_STRING(instance_p->tac, &TAISupport_ItemIEs->tac);
+      		INT24_TO_OCTET_STRING(instance_p->tac, &TAISupport_ItemIEs->tac);
 		// NR_FIVEGS_TAC_ID_TO_BIT_STRING	
 		{
 		for (int j=0; j<1; j++) 
 			{
-			e_BroadcastPLMNinTAISupport_ItemIE = (BroadcastPLMNinTAISupport_Item_t *)calloc(1, sizeof(BroadcastPLMNinTAISupport_Item_t));
-			/*e_BroadcastPLMNinTAISupport_ItemIE->plmn_id.size = 3;
-			//e_BroadcastPLMNinTAISupport_ItemIE->plmn_id.buf=calloc(1,e_BroadcastPLMNinTAISupport_ItemIE->plmn_id.size);
-			e_BroadcastPLMNinTAISupport_ItemIE->plmn_id.buf=calloc(e_BroadcastPLMNinTAISupport_ItemIE->plmn_id.size,sizeof(OCTET_STRING_t));
-			e_BroadcastPLMNinTAISupport_ItemIE->plmn_id.buf[0]=208;
-			e_BroadcastPLMNinTAISupport_ItemIE->plmn_id.buf[1]=95;
-			e_BroadcastPLMNinTAISupport_ItemIE->plmn_id.buf[2]=2;*/
-			/*MCC_MNC_TO_PLMNID(instance_p->mcc, instance_p->mnc, instance_p->mnc_digit_length, &e_BroadcastPLMNinTAISupport_ItemIE->plmn_id);
+			e_BroadcastPLMNinTAISupport_ItemIE = (XNAP_BroadcastPLMNinTAISupport_Item_t *)calloc(1, sizeof(XNAP_BroadcastPLMNinTAISupport_Item_t));
+			
+			MCC_MNC_TO_PLMNID(instance_p->mcc, instance_p->mnc, instance_p->mnc_digit_length, &e_BroadcastPLMNinTAISupport_ItemIE->plmn_id);
 			
 			{
 			for (int k=0;k<1;k++)
 				{
-				e_S_NSSAI_ItemIE = (S_NSSAI_t *)calloc(1, sizeof(S_NSSAI_t));
+				e_S_NSSAI_ItemIE = (XNAP_S_NSSAI_t *)calloc(1, sizeof(XNAP_S_NSSAI_t));
 				e_S_NSSAI_ItemIE->sst.size=1; //OCTET STRING(SIZE(1))
 				//e_S_NSSAI_ItemIE->sst.buf=calloc(1,e_S_NSSAI_ItemIE->sst.size);
 				e_S_NSSAI_ItemIE->sst.buf=calloc(e_S_NSSAI_ItemIE->sst.size,sizeof(OCTET_STRING_t));
@@ -129,29 +125,258 @@ int xnap_gNB_generate_xn_setup_request(xnap_gNB_instance_t *instance_p, xnap_gNB
   		}
   		//}
 	
-	asn1cSeqAdd(&out->protocolIEs.list, ie);*/
+	asn1cSeqAdd(&out->protocolIEs.list, ie);
+
+/* mandatory */
+  ie = (XNAP_XnSetupRequest_IEs_t *)calloc(1, sizeof(XNAP_XnSetupRequest_IEs_t));
+  ie->id = XNAP_ProtocolIE_ID_id_List_of_served_cells_NR;
+  ie->criticality = XNAP_Criticality_reject;
+  ie->value.present = XNAP_XnSetupRequest_IEs__value_PR_ServedCells_NR;
+  {
+    for (int i = 0; i<instance_p->num_cc; i++)
+    {
+      servedCellMember = (XNAP_ServedCells_NR_Item_t *)calloc(1,sizeof(XNAP_ServedCells_NR_Item_t));
+      {
+        servedCellMember->served_cell_info_NR.nrPCI = instance_p->Nid_cell[i]; //long
+
+        MCC_MNC_TO_PLMNID(instance_p->mcc, instance_p->mnc, instance_p->mnc_digit_length,
+                      &servedCellMember->served_cell_info_NR.cellID.plmn_id); //octet string
+        NR_CELL_ID_TO_BIT_STRING(instance_p->gNB_id,
+                                   &servedCellMember->served_cell_info_NR.cellID.nr_CI); //bit string
+
+        INT24_TO_OCTET_STRING(instance_p->tac, &servedCellMember->served_cell_info_NR.tac); //octet string
+        for (int k=0;k<1;k++)
+        {
+        	plmn = (XNAP_PLMN_Identity_t *)calloc(1,sizeof(XNAP_PLMN_Identity_t));
+        	{
+         	 MCC_MNC_TO_PLMNID(instance_p->mcc, instance_p->mnc, instance_p->mnc_digit_length, plmn);
+          	asn1cSeqAdd(&servedCellMember->served_cell_info_NR.broadcastPLMN.list, plmn);
+        	}
+	}
+	if (instance_p->frame_type[i] == FDD) 
+	{
+          servedCellMember->served_cell_info_NR.nrModeInfo.present = XNAP_NRModeInfo_PR_fdd;
+          servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd=(XNAP_NRModeInfoFDD_t *)calloc(1,sizeof(XNAP_NRModeInfoFDD_t));
+          servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRFrequencyInfo.nrARFCN= instance_p->fdd_earfcn_UL[i];
+	  for(int j=0;j<1;j++)
+	  {
+	  	nrfreqbanditemul=(XNAP_NRFrequencyBandItem_t *) calloc(1, sizeof(XNAP_NRFrequencyBandItem_t));
+	  	nrfreqbanditemul->nr_frequency_band=78; //how to fill ?
+	  	asn1cSeqAdd(&servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRFrequencyInfo.frequencyBand_List.list, nrfreqbanditemul);
+	  }
+	  
+	  servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->dlNRFrequencyInfo.nrARFCN= instance_p->fdd_earfcn_DL[i];
+	  for(int j=0;j<1;j++)
+	  {
+	  	nrfreqbanditemdl=(XNAP_NRFrequencyBandItem_t *) calloc(1, sizeof(XNAP_NRFrequencyBandItem_t));
+	  	nrfreqbanditemdl->nr_frequency_band=78; //how to fill ?
+	  	asn1cSeqAdd(&servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRFrequencyInfo.frequencyBand_List.list, nrfreqbanditemdl);
+	  }
+	  
+	  switch (instance_p->N_RB_DL[i]) 
+	  {
+	  case 15:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRTransmissonBandwidth.nRSCS =XNAP_NRSCS_scs15;
+          	break;  
+          	
+          case 30:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRTransmissonBandwidth.nRSCS =XNAP_NRSCS_scs30;
+          	break;
+          	
+          case 60:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRTransmissonBandwidth.nRSCS =XNAP_NRSCS_scs60;
+          	break;
+          	
+          case 120:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRTransmissonBandwidth.nRSCS =XNAP_NRSCS_scs120;
+          	break;
+          }
+          
+          
+          switch (instance_p->N_RB_DL[i]) 
+	  {
+	  case 11:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb11;
+          	break;  
+          	
+          case 18:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb18;
+          	break;
+          	
+          case 24:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb24;
+          	break;
+          	
+          case 78:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb78;
+          	break;
+          	
+          case 106:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb106;
+          	break;
+          	
+          case 162:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb162;
+          	break;
+          case 217:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb217;
+          	break;
+          case 273:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb273;
+          	break;
+          default:
+              AssertFatal(0,"Failed: Check value for N_RB_DL/N_RB_UL");
+              break;
+          }
+          switch (instance_p->N_RB_DL[i]) 
+	  {
+	  case 15:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->dlNRTransmissonBandwidth.nRSCS =XNAP_NRSCS_scs15;
+          	break;  
+          	
+          case 30:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->dlNRTransmissonBandwidth.nRSCS =XNAP_NRSCS_scs30;
+          	break;
+          	
+          case 60:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->dlNRTransmissonBandwidth.nRSCS =XNAP_NRSCS_scs60;
+          	break;
+          	
+          case 120:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->dlNRTransmissonBandwidth.nRSCS =XNAP_NRSCS_scs120;
+          	break;
+          }
+          
+          switch (instance_p->N_RB_DL[i]) 
+	  {
+	  case 11:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->dlNRTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb11;
+          	break;  
+          	
+          case 18:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->dlNRTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb18;
+          	break;
+          	
+          case 24:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->dlNRTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb24;
+          	break;
+          	
+          case 78:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->dlNRTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb78;
+          	break;
+          	
+          case 106:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->dlNRTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb106;
+          	break;
+          	
+          case 162:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->dlNRTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb162;
+          	break;
+          case 217:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->dlNRTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb217;
+          	break;
+          case 273:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->dlNRTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb273;
+          	break;
+          default:
+              AssertFatal(0,"Failed: Check value for N_RB_DL/N_RB_UL");
+              break;
+          }
+        }
+        else
+        {
+          servedCellMember->served_cell_info_NR.nrModeInfo.present = XNAP_NRModeInfo_PR_tdd;
+          servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd=(XNAP_NRModeInfoTDD_t *) calloc(1,sizeof(XNAP_NRModeInfoTDD_t));
+          servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd->nrFrequencyInfo.nrARFCN= 640008;//instance_p->nrARFCN[i];
+        for(int j=0;j<1;j++)
+	  {
+	  	nrfreqbanditem=(XNAP_NRFrequencyBandItem_t *) calloc(1, sizeof(XNAP_NRFrequencyBandItem_t));
+	  	nrfreqbanditem->nr_frequency_band=106;//instance_p->nr_band; //how to fill ?
+	  	asn1cSeqAdd(&servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd->nrFrequencyInfo.frequencyBand_List.list, nrfreqbanditem);
+	  }
+	  switch (instance_p->nr_SCS[i]) 
+	  {
+	  case 15:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd->nrTransmissonBandwidth.nRSCS =XNAP_NRSCS_scs15;
+          	break;  
+          	
+          case 30:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd->nrTransmissonBandwidth.nRSCS =XNAP_NRSCS_scs30;
+          	break;
+          	
+          case 60:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd->nrTransmissonBandwidth.nRSCS =XNAP_NRSCS_scs60;
+          	break;
+          	
+          case 120:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd->nrTransmissonBandwidth.nRSCS =XNAP_NRSCS_scs120;
+          	break;
+          }
+          
+          
+          switch (instance_p->N_RB_DL[i]) 
+	  {
+	  case 11:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd->nrTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb11;
+          	break;  
+          	
+          case 18:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd->nrTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb18;
+          	break;
+          	
+          case 24:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd->nrTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb24;
+          	break;
+          	
+          case 78:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd->nrTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb78;
+          	break;
+          	
+          case 106:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd->nrTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb106;
+          	break;
+          	
+          case 162:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd->nrTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb162;
+          	break;
+          case 217:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd->nrTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb217;
+          	break;
+          case 273:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd->nrTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb273;
+          	break;
+          default:
+              AssertFatal(0,"Failed: Check value for N_RB_DL/N_RB_UL");
+              break;
+          }
+        }
+        //Where to extract mtc from? setting it to 0 now.
+        INT8_TO_OCTET_STRING(0,&servedCellMember->served_cell_info_NR.measurementTimingConfiguration);
+        servedCellMember->served_cell_info_NR.connectivitySupport.eNDC_Support=1;
+      }
+      asn1cSeqAdd(&ie->value.choice.ServedCells_NR.list, servedCellMember);
+    }
+  }
+  asn1cSeqAdd(&out->protocolIEs.list, ie);
+
 
 
 	/* mandatory */ //AMFRegion
-/*  	ie = (XnSetupRequest_IEs_t *)calloc(1, sizeof(XnSetupRequest_IEs_t));
-  	ie->id = ProtocolIE_ID_id_AMF_Region_Information ;
-  	ie->criticality = Criticality_reject;
-  	ie->value.present = XnSetupRequest_IEs__value_PR_AMF_Region_Information;
+	ie = (XNAP_XnSetupRequest_IEs_t *)calloc(1, sizeof(XNAP_XnSetupRequest_IEs_t));
+  	ie->id = XNAP_ProtocolIE_ID_id_AMF_Region_Information ;
+  	ie->criticality = XNAP_Criticality_reject;
+  	ie->value.present = XNAP_XnSetupRequest_IEs__value_PR_AMF_Region_Information;
   	
 
   	//{
     	//for (int i=0;i<1;i++)
     		{
-    		e_GlobalAMF_Region_Information_ItemIEs = (GlobalAMF_Region_Information_t *)calloc(1,sizeof(GlobalAMF_Region_Information_t));
-      		/*e_GlobalAMF_Region_Information_ItemIEs->plmn_ID.size = 3;//octet string
-      		e_GlobalAMF_Region_Information_ItemIEs->plmn_ID.buf=calloc(1,e_GlobalAMF_Region_Information_ItemIEs->plmn_ID.size);
-      		e_GlobalAMF_Region_Information_ItemIEs->plmn_ID.buf[0]=208;
-      		e_GlobalAMF_Region_Information_ItemIEs->plmn_ID.buf[1]=95;
-      		e_GlobalAMF_Region_Information_ItemIEs->plmn_ID.buf[2]=2;*/ 
-/*      	MCC_MNC_TO_PLMNID(instance_p->mcc, instance_p->mnc, instance_p->mnc_digit_length, &e_GlobalAMF_Region_Information_ItemIEs->plmn_ID);
+    		e_GlobalAMF_Region_Information_ItemIEs = (XNAP_GlobalAMF_Region_Information_t *)calloc(1,sizeof(XNAP_GlobalAMF_Region_Information_t));
+      		
+      	MCC_MNC_TO_PLMNID(instance_p->mcc, instance_p->mnc, instance_p->mnc_digit_length, &e_GlobalAMF_Region_Information_ItemIEs->plmn_ID);
       		e_GlobalAMF_Region_Information_ItemIEs->amf_region_id.size=1;
       		e_GlobalAMF_Region_Information_ItemIEs->amf_region_id.buf=calloc(1,e_GlobalAMF_Region_Information_ItemIEs->amf_region_id.size);
-      		e_GlobalAMF_Region_Information_ItemIEs->amf_region_id.buf[0]=6;
+      		e_GlobalAMF_Region_Information_ItemIEs->amf_region_id.buf[0]=80;
       		e_GlobalAMF_Region_Information_ItemIEs->amf_region_id.bits_unused=0;
 			
     		asn1cSeqAdd(&ie->value.choice.AMF_Region_Information.list, e_GlobalAMF_Region_Information_ItemIEs);
@@ -160,7 +385,7 @@ int xnap_gNB_generate_xn_setup_request(xnap_gNB_instance_t *instance_p, xnap_gNB
 	
 	asn1cSeqAdd(&out->protocolIEs.list, ie);
 	
-*/
+
 
   if (xnap_gNB_encode_pdu(&pdu, &buffer, &len) < 0) {
     XNAP_ERROR("Failed to encode X2 setup request\n");
@@ -221,8 +446,15 @@ int xnap_gNB_generate_xn_setup_response(xnap_gNB_instance_t *instance_p, xnap_gN
   XNAP_XnSetupResponse_t              *out;
   XNAP_XnSetupResponse_IEs_t          *ie;
   XNAP_PLMN_Identity_t                *plmn;
-  //ServedCells__Member                 *servedCellMember;
-  //X2AP_GU_Group_ID_t                  *gu;
+  XNAP_BroadcastPLMNinTAISupport_Item_t   *e_BroadcastPLMNinTAISupport_ItemIE;
+  XNAP_TAISupport_Item_t      *TAISupport_ItemIEs;
+  XNAP_S_NSSAI_t           *e_S_NSSAI_ItemIE ;
+  XNAP_GlobalAMF_Region_Information_t   *e_GlobalAMF_Region_Information_ItemIEs;
+  XNAP_ServedCells_NR_Item_t  *servedCellMember;
+  XNAP_ServedCells_NR_t       *ServedCells_NR;
+  XNAP_NRFrequencyBandItem_t  *nrfreqbanditemul;
+  XNAP_NRFrequencyBandItem_t  *nrfreqbanditemdl;
+  XNAP_NRFrequencyBandItem_t  *nrfreqbanditem;
 
   uint8_t  *buffer;
   uint32_t  len;
@@ -258,185 +490,293 @@ int xnap_gNB_generate_xn_setup_response(xnap_gNB_instance_t *instance_p, xnap_gN
             ie->value.choice.GlobalNG_RANNode_ID.choice.gNB->gnb_id.choice.gnb_ID.buf[2]);
   asn1cSeqAdd(&out->protocolIEs.list, ie);
 
-  /* mandatory */
-  /*ie = (X2AP_X2SetupResponse_IEs_t *)calloc(1, sizeof(X2AP_X2SetupResponse_IEs_t));
-  ie->id = X2AP_ProtocolIE_ID_id_ServedCells;
-  ie->criticality = X2AP_Criticality_reject;
-  ie->value.present = X2AP_X2SetupResponse_IEs__value_PR_ServedCells;
+ /* mandatory */ //TAI Support list
+  ie = (XNAP_XnSetupResponse_IEs_t *)calloc(1, sizeof(XNAP_XnSetupResponse_IEs_t));
+  ie->id = XNAP_ProtocolIE_ID_id_TAISupport_list ;
+  ie->criticality = XNAP_Criticality_reject;
+  ie->value.present = XNAP_XnSetupResponse_IEs__value_PR_TAISupport_List;
+	
+  	//{
+    	//for (int i=0;i<1;i++)
+    		{
+    		TAISupport_ItemIEs = (XNAP_TAISupport_Item_t *)calloc(1,sizeof(XNAP_TAISupport_Item_t));
+      		/*TAISupport_ItemIEs->tac.size = 3;//octet string
+      		
+      		TAISupport_ItemIEs->tac.buf=calloc(TAISupport_ItemIEs->tac.size,sizeof(OCTET_STRING_t));
+      		TAISupport_ItemIEs->tac.buf[0]=208;
+      		TAISupport_ItemIEs->tac.buf[1]=95;
+      		TAISupport_ItemIEs->tac.buf[2]=2;*/
+      		INT24_TO_OCTET_STRING(instance_p->tac, &TAISupport_ItemIEs->tac);
+		// NR_FIVEGS_TAC_ID_TO_BIT_STRING	
+		{
+		for (int j=0; j<1; j++) 
+			{
+			e_BroadcastPLMNinTAISupport_ItemIE = (XNAP_BroadcastPLMNinTAISupport_Item_t *)calloc(1, sizeof(XNAP_BroadcastPLMNinTAISupport_Item_t));
+			
+			MCC_MNC_TO_PLMNID(instance_p->mcc, instance_p->mnc, instance_p->mnc_digit_length, &e_BroadcastPLMNinTAISupport_ItemIE->plmn_id);
+			
+			{
+			for (int k=0;k<1;k++)
+				{
+				e_S_NSSAI_ItemIE = (XNAP_S_NSSAI_t *)calloc(1, sizeof(XNAP_S_NSSAI_t));
+				e_S_NSSAI_ItemIE->sst.size=1; //OCTET STRING(SIZE(1))
+				//e_S_NSSAI_ItemIE->sst.buf=calloc(1,e_S_NSSAI_ItemIE->sst.size);
+				e_S_NSSAI_ItemIE->sst.buf=calloc(e_S_NSSAI_ItemIE->sst.size,sizeof(OCTET_STRING_t));
+				e_S_NSSAI_ItemIE->sst.buf[0]=1;
+				
+			        asn1cSeqAdd(&e_BroadcastPLMNinTAISupport_ItemIE->tAISliceSupport_List.list, e_S_NSSAI_ItemIE);
+				}
+			}
+			asn1cSeqAdd(&TAISupport_ItemIEs->broadcastPLMNs.list, e_BroadcastPLMNinTAISupport_ItemIE);
+      		        }
+      		}
+    		asn1cSeqAdd(&ie->value.choice.TAISupport_List.list, TAISupport_ItemIEs);
+  		}
+  		//}
+	
+	asn1cSeqAdd(&out->protocolIEs.list, ie);
+
+
+/* mandatory */
+  ie = (XNAP_XnSetupResponse_IEs_t *)calloc(1, sizeof(XNAP_XnSetupResponse_IEs_t));
+  ie->id = XNAP_ProtocolIE_ID_id_List_of_served_cells_NR;
+  ie->criticality = XNAP_Criticality_reject;
+  ie->value.present = XNAP_XnSetupResponse_IEs__value_PR_ServedCells_NR;
   {
-    for (int i = 0; i<instance_p->num_cc; i++){
-      servedCellMember = (ServedCells__Member *)calloc(1,sizeof(ServedCells__Member));
+    for (int i = 0; i<instance_p->num_cc; i++)
+    {
+      servedCellMember = (XNAP_ServedCells_NR_Item_t *)calloc(1,sizeof(XNAP_ServedCells_NR_Item_t));
       {
-        servedCellMember->servedCellInfo.pCI = instance_p->Nid_cell[i];
+        servedCellMember->served_cell_info_NR.nrPCI = instance_p->Nid_cell[i]; //long
 
         MCC_MNC_TO_PLMNID(instance_p->mcc, instance_p->mnc, instance_p->mnc_digit_length,
-                      &servedCellMember->servedCellInfo.cellId.pLMN_Identity);
-        MACRO_ENB_ID_TO_CELL_IDENTITY(instance_p->eNB_id,0,
-                                   &servedCellMember->servedCellInfo.cellId.eUTRANcellIdentifier);
+                      &servedCellMember->served_cell_info_NR.cellID.plmn_id); //octet string
+        NR_CELL_ID_TO_BIT_STRING(instance_p->gNB_id,
+                                   &servedCellMember->served_cell_info_NR.cellID.nr_CI); //bit string
 
-        INT16_TO_OCTET_STRING(instance_p->tac, &servedCellMember->servedCellInfo.tAC);
-        X2AP_INFO("TAC: %d -> %02x%02x\n", instance_p->tac,
-       		  	  servedCellMember->servedCellInfo.tAC.buf[0],
-				  servedCellMember->servedCellInfo.tAC.buf[1]);
-
-        plmn = (X2AP_PLMN_Identity_t *)calloc(1,sizeof(X2AP_PLMN_Identity_t));
+        INT24_TO_OCTET_STRING(instance_p->tac, &servedCellMember->served_cell_info_NR.tac); //octet string
+        for (int k=0;k<1;k++)
         {
-          MCC_MNC_TO_PLMNID(instance_p->mcc, instance_p->mnc, instance_p->mnc_digit_length, plmn);
-          asn1cSeqAdd(&servedCellMember->servedCellInfo.broadcastPLMNs.list, plmn);
-        }
-
-	if (instance_p->frame_type[i] == FDD) {
-          servedCellMember->servedCellInfo.eUTRA_Mode_Info.present = X2AP_EUTRA_Mode_Info_PR_fDD;
-          servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.fDD.dL_EARFCN = instance_p->fdd_earfcn_DL[i];
-          servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.fDD.uL_EARFCN = instance_p->fdd_earfcn_UL[i];
-          switch (instance_p->N_RB_DL[i]) {
-            case 6:
-              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.fDD.uL_Transmission_Bandwidth = X2AP_Transmission_Bandwidth_bw6;
-              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.fDD.dL_Transmission_Bandwidth = X2AP_Transmission_Bandwidth_bw6;
-              break;
-            case 15:
-              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.fDD.uL_Transmission_Bandwidth = X2AP_Transmission_Bandwidth_bw15;
-              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.fDD.dL_Transmission_Bandwidth = X2AP_Transmission_Bandwidth_bw15;
-              break;
-            case 25:
-              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.fDD.uL_Transmission_Bandwidth = X2AP_Transmission_Bandwidth_bw25;
-              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.fDD.dL_Transmission_Bandwidth = X2AP_Transmission_Bandwidth_bw25;
-              break;
-            case 50:
-              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.fDD.uL_Transmission_Bandwidth = X2AP_Transmission_Bandwidth_bw50;
-              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.fDD.dL_Transmission_Bandwidth = X2AP_Transmission_Bandwidth_bw50;
-              break;
-            case 75:
-              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.fDD.uL_Transmission_Bandwidth = X2AP_Transmission_Bandwidth_bw75;
-              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.fDD.dL_Transmission_Bandwidth = X2AP_Transmission_Bandwidth_bw75;
-              break;
-            case 100:
-              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.fDD.uL_Transmission_Bandwidth = X2AP_Transmission_Bandwidth_bw100;
-              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.fDD.dL_Transmission_Bandwidth = X2AP_Transmission_Bandwidth_bw100;
-              break;
-            default:
-              AssertFatal(0,"Failed: Check value for N_RB_DL/N_RB_UL");
-              break;
+        	plmn = (XNAP_PLMN_Identity_t *)calloc(1,sizeof(XNAP_PLMN_Identity_t));
+        	{
+         	 MCC_MNC_TO_PLMNID(instance_p->mcc, instance_p->mnc, instance_p->mnc_digit_length, plmn);
+          	asn1cSeqAdd(&servedCellMember->served_cell_info_NR.broadcastPLMN.list, plmn);
+        	}
+	}
+	if (instance_p->frame_type[i] == FDD) 
+	{
+          servedCellMember->served_cell_info_NR.nrModeInfo.present = XNAP_NRModeInfo_PR_fdd;
+          servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd=(XNAP_NRModeInfoFDD_t *)calloc(1,sizeof(XNAP_NRModeInfoFDD_t));
+          servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRFrequencyInfo.nrARFCN= instance_p->fdd_earfcn_UL[i];
+	  for(int j=0;j<1;j++)
+	  {
+	  	nrfreqbanditemul=(XNAP_NRFrequencyBandItem_t *) calloc(1, sizeof(XNAP_NRFrequencyBandItem_t));
+	  	nrfreqbanditemul->nr_frequency_band=78; //how to fill ?
+	  	asn1cSeqAdd(&servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRFrequencyInfo.frequencyBand_List.list, nrfreqbanditemul);
+	  }
+	  
+	  servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->dlNRFrequencyInfo.nrARFCN= instance_p->fdd_earfcn_DL[i];
+	  for(int j=0;j<1;j++)
+	  {
+	  	nrfreqbanditemdl=(XNAP_NRFrequencyBandItem_t *) calloc(1, sizeof(XNAP_NRFrequencyBandItem_t));
+	  	nrfreqbanditemdl->nr_frequency_band=78; //how to fill ?
+	  	asn1cSeqAdd(&servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRFrequencyInfo.frequencyBand_List.list, nrfreqbanditemdl);
+	  }
+	  
+	  switch (instance_p->N_RB_DL[i]) 
+	  {
+	  case 15:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRTransmissonBandwidth.nRSCS =XNAP_NRSCS_scs15;
+          	break;  
+          	
+          case 30:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRTransmissonBandwidth.nRSCS =XNAP_NRSCS_scs30;
+          	break;
+          	
+          case 60:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRTransmissonBandwidth.nRSCS =XNAP_NRSCS_scs60;
+          	break;
+          	
+          case 120:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRTransmissonBandwidth.nRSCS =XNAP_NRSCS_scs120;
+          	break;
           }
-        }
-        else {
-          servedCellMember->servedCellInfo.eUTRA_Mode_Info.present = X2AP_EUTRA_Mode_Info_PR_tDD;
-          servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.eARFCN = instance_p->fdd_earfcn_DL[i];
-          switch (instance_p->subframeAssignment[i]) {
-            case 0:
-              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.subframeAssignment = X2AP_SubframeAssignment_sa0;
-              break;
-            case 1:
-              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.subframeAssignment = X2AP_SubframeAssignment_sa1;
-              break;
-            case 2:
-              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.subframeAssignment = X2AP_SubframeAssignment_sa2;
-              break;
-            case 3:
-              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.subframeAssignment = X2AP_SubframeAssignment_sa3;
-              break;
-            case 4:
-              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.subframeAssignment = X2AP_SubframeAssignment_sa4;
-              break;
-            case 5:
-              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.subframeAssignment = X2AP_SubframeAssignment_sa5;
-              break;
-            case 6:
-              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.subframeAssignment = X2AP_SubframeAssignment_sa6;
-              break;
-            default:
-              AssertFatal(0,"Failed: Check value for subframeAssignment");
-              break;
-          }
-          switch (instance_p->specialSubframe[i]) {
-            case 0:
-              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.specialSubframe_Info.specialSubframePatterns = X2AP_SpecialSubframePatterns_ssp0;
-              break;
-            case 1:
-              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.specialSubframe_Info.specialSubframePatterns = X2AP_SpecialSubframePatterns_ssp1;
-              break;
-            case 2:
-              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.specialSubframe_Info.specialSubframePatterns = X2AP_SpecialSubframePatterns_ssp2;
-              break;
-            case 3:
-              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.specialSubframe_Info.specialSubframePatterns = X2AP_SpecialSubframePatterns_ssp3;
-              break;
-            case 4:
-              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.specialSubframe_Info.specialSubframePatterns = X2AP_SpecialSubframePatterns_ssp4;
-              break;
-            case 5:
-              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.specialSubframe_Info.specialSubframePatterns = X2AP_SpecialSubframePatterns_ssp5;
-              break;
-            case 6:
-              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.specialSubframe_Info.specialSubframePatterns = X2AP_SpecialSubframePatterns_ssp6;
-              break;
-            case 7:
-              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.specialSubframe_Info.specialSubframePatterns = X2AP_SpecialSubframePatterns_ssp7;
-              break;
-            case 8:
-              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.specialSubframe_Info.specialSubframePatterns = X2AP_SpecialSubframePatterns_ssp8;
-              break;
-            default:
-              AssertFatal(0,"Failed: Check value for subframeAssignment");
-              break;
-          }
-          servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.specialSubframe_Info.cyclicPrefixDL=X2AP_CyclicPrefixDL_normal;
-          servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.specialSubframe_Info.cyclicPrefixUL=X2AP_CyclicPrefixUL_normal;
           
-          switch (instance_p->N_RB_DL[i]) {
-            case 6:
-              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.transmission_Bandwidth = X2AP_Transmission_Bandwidth_bw6;
+          
+          switch (instance_p->N_RB_DL[i]) 
+	  {
+	  case 11:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb11;
+          	break;  
+          	
+          case 18:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb18;
+          	break;
+          	
+          case 24:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb24;
+          	break;
+          	
+          case 78:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb78;
+          	break;
+          	
+          case 106:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb106;
+          	break;
+          	
+          case 162:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb162;
+          	break;
+          case 217:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb217;
+          	break;
+          case 273:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb273;
+          	break;
+          default:
+              AssertFatal(0,"Failed: Check value for N_RB_DL/N_RB_UL");
               break;
-            case 15:
-              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.transmission_Bandwidth = X2AP_Transmission_Bandwidth_bw15;
-              break;
-            case 25:
-              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.transmission_Bandwidth = X2AP_Transmission_Bandwidth_bw25;
-              break;
-            case 50:
-              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.transmission_Bandwidth = X2AP_Transmission_Bandwidth_bw50;
-              break;
-            case 75:
-              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.transmission_Bandwidth = X2AP_Transmission_Bandwidth_bw75;
-              break;
-            case 100:
-              servedCellMember->servedCellInfo.eUTRA_Mode_Info.choice.tDD.transmission_Bandwidth = X2AP_Transmission_Bandwidth_bw100;
-              break;
-            default:
+          }
+          switch (instance_p->N_RB_DL[i]) 
+	  {
+	  case 15:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->dlNRTransmissonBandwidth.nRSCS =XNAP_NRSCS_scs15;
+          	break;  
+          	
+          case 30:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->dlNRTransmissonBandwidth.nRSCS =XNAP_NRSCS_scs30;
+          	break;
+          	
+          case 60:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->dlNRTransmissonBandwidth.nRSCS =XNAP_NRSCS_scs60;
+          	break;
+          	
+          case 120:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->dlNRTransmissonBandwidth.nRSCS =XNAP_NRSCS_scs120;
+          	break;
+          }
+          
+          switch (instance_p->N_RB_DL[i]) 
+	  {
+	  case 11:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->dlNRTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb11;
+          	break;  
+          	
+          case 18:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->dlNRTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb18;
+          	break;
+          	
+          case 24:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->dlNRTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb24;
+          	break;
+          	
+          case 78:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->dlNRTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb78;
+          	break;
+          	
+          case 106:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->dlNRTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb106;
+          	break;
+          	
+          case 162:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->dlNRTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb162;
+          	break;
+          case 217:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->dlNRTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb217;
+          	break;
+          case 273:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->dlNRTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb273;
+          	break;
+          default:
               AssertFatal(0,"Failed: Check value for N_RB_DL/N_RB_UL");
               break;
           }
         }
+        else
+        {
+          servedCellMember->served_cell_info_NR.nrModeInfo.present = XNAP_NRModeInfo_PR_tdd;
+          servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd=(XNAP_NRModeInfoTDD_t *) calloc(1,sizeof(XNAP_NRModeInfoTDD_t));
+          servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd->nrFrequencyInfo.nrARFCN= 640008;//instance_p->nrARFCN[i];
+        for(int j=0;j<1;j++)
+	  {
+	  	nrfreqbanditem=(XNAP_NRFrequencyBandItem_t *) calloc(1, sizeof(XNAP_NRFrequencyBandItem_t));
+	  	nrfreqbanditem->nr_frequency_band=106;//instance_p->nr_band; //how to fill ?
+	  	asn1cSeqAdd(&servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd->nrFrequencyInfo.frequencyBand_List.list, nrfreqbanditem);
+	  }
+	  switch (instance_p->nr_SCS[i]) 
+	  {
+	  case 15:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd->nrTransmissonBandwidth.nRSCS =XNAP_NRSCS_scs15;
+          	break;  
+          	
+          case 30:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd->nrTransmissonBandwidth.nRSCS =XNAP_NRSCS_scs30;
+          	break;
+          	
+          case 60:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd->nrTransmissonBandwidth.nRSCS =XNAP_NRSCS_scs60;
+          	break;
+          	
+          case 120:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd->nrTransmissonBandwidth.nRSCS =XNAP_NRSCS_scs120;
+          	break;
+          }
+          
+          
+          switch (instance_p->N_RB_DL[i]) 
+	  {
+	  case 11:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd->nrTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb11;
+          	break;  
+          	
+          case 18:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd->nrTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb18;
+          	break;
+          	
+          case 24:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd->nrTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb24;
+          	break;
+          	
+          case 78:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd->nrTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb78;
+          	break;
+          	
+          case 106:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd->nrTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb106;
+          	break;
+          	
+          case 162:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd->nrTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb162;
+          	break;
+          case 217:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd->nrTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb217;
+          	break;
+          case 273:
+          	servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd->nrTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb273;
+          	break;
+          default:
+              AssertFatal(0,"Failed: Check value for N_RB_DL/N_RB_UL");
+              break;
+          }
+        }
+        //Where to extract mtc from? setting it to 0 now.
+        INT8_TO_OCTET_STRING(0,&servedCellMember->served_cell_info_NR.measurementTimingConfiguration);
+        servedCellMember->served_cell_info_NR.connectivitySupport.eNDC_Support=1;
       }
-      asn1cSeqAdd(&ie->value.choice.ServedCells.list, servedCellMember);
+      asn1cSeqAdd(&ie->value.choice.ServedCells_NR.list, servedCellMember);
     }
   }
-  asn1cSeqAdd(&out->protocolIEs.list, ie);*/
+  asn1cSeqAdd(&out->protocolIEs.list, ie);
 
-  /* mandatory */
-  /*ie = (X2AP_X2SetupResponse_IEs_t *)calloc(1, sizeof(X2AP_X2SetupResponse_IEs_t));
-  ie->id = X2AP_ProtocolIE_ID_id_GUGroupIDList;
-  ie->criticality = X2AP_Criticality_reject;
-  ie->value.present = X2AP_X2SetupResponse_IEs__value_PR_GUGroupIDList;
-  {
-    gu = (X2AP_GU_Group_ID_t *)calloc(1, sizeof(X2AP_GU_Group_ID_t));
-    {
-      MCC_MNC_TO_PLMNID(instance_p->mcc, instance_p->mnc, instance_p->mnc_digit_length,
-                    &gu->pLMN_Identity);
-      //@TODO: consider to update this value
-      INT16_TO_OCTET_STRING(0, &gu->mME_Group_ID);
-    }
-    asn1cSeqAdd(&ie->value.choice.GUGroupIDList.list, gu);
-  }
-  asn1cSeqAdd(&out->protocolIEs.list, ie); */
+//done all IEs
+
 
   if (xnap_gNB_encode_pdu(&pdu, &buffer, &len) < 0) {
     XNAP_ERROR("Failed to encode Xn setup response\n");
     return -1;
   }
-  LOG_I(XNAP, "encoded response");
   xnap_gNB_data_p->state = XNAP_GNB_STATE_READY;
-
   xnap_gNB_itti_send_sctp_data_req(instance_p->instance, xnap_gNB_data_p->assoc_id, buffer, len, 0);
 
   return ret;

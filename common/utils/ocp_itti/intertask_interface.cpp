@@ -146,9 +146,7 @@ extern "C" {
 
   int itti_send_msg_to_task(task_id_t destination_task_id, instance_t destinationInstance, MessageDef *message) {
     task_list_t *t=tasks[destination_task_id];
-    printf("crashed after this 1\n");
     pthread_mutex_lock (&t->queue_cond_lock);
-    printf("crashed after this 2\n");
     int ret=itti_send_msg_to_task_locked(destination_task_id, destinationInstance, message);
 
     while ( t->message_queue.size()>0 && t->admin.func != NULL ) {
@@ -159,9 +157,9 @@ extern "C" {
       t->admin.func(NULL);
       pthread_mutex_lock (&t->queue_cond_lock);
     }
-
     pthread_mutex_unlock (&t->queue_cond_lock);
     return ret;
+    
   }
 
   void itti_subscribe_event_fd(task_id_t task_id, int fd) {

@@ -38,7 +38,7 @@
 #include "XNAP_GlobalgNB-ID.h"
 #include "xnap_gNB_management_procedures.h"
 #include "xnap_gNB_generate_messages.h"
-
+#include "XNAP_ServedCells-NR-Item.h"
 #include "assertions.h"
 #include "conversions.h"
 #include "XNAP_NRFrequencyBandItem.h"
@@ -310,6 +310,7 @@ xnap_gNB_handle_xn_setup_request(instance_t instance,
   xnap_gNB_data_t                    *xnap_gNB_data;
   MessageDef                         *msg;
   uint32_t                           gNB_id = 0;
+  XNAP_ServedCells_NR_Item_t         *servedCellMember;
 
   DevAssert (pdu != NULL);
   xnSetupRequest = &pdu->choice.initiatingMessage->value.choice.XnSetupRequest;
@@ -393,10 +394,9 @@ xnap_gNB_handle_xn_setup_request(instance_t instance,
      * TODO: call the reset procedure
      */
   }
-
+  
   /* Set proper pci */
- /* XNAP_FIND_PROTOCOLIE_BY_ID(XNAP_XnSetupRequest_IEs_t, ie, xnSetupRequest,
-                             XNAP_ProtocolIE_ID_id_ServedCells, true);
+  XNAP_FIND_PROTOCOLIE_BY_ID(XNAP_XnSetupRequest_IEs_t, ie, xnSetupRequest, XNAP_ProtocolIE_ID_id_List_of_served_cells_NR, true);
   if (ie == NULL ) {
     XNAP_ERROR("%s %d: ie is a NULL pointer \n",__FILE__,__LINE__);
     return -1;
@@ -404,22 +404,21 @@ xnap_gNB_handle_xn_setup_request(instance_t instance,
 
   msg = itti_alloc_new_message(TASK_XNAP, 0, XNAP_SETUP_REQ);
 
-  XNAP_SETUP_REQ(msg).num_cc = ie->value.choice.ServedCells.list.count;
-
-  if (ie->value.choice.ServedCells.list.count > 0) {
-    xnap_gNB_data->num_cc = ie->value.choice.ServedCells.list.count;
-    for (int i=0; i<ie->value.choice.ServedCells.list.count;i++) {
-      servedCellMember = (ServedCells__Member *)ie->value.choice.ServedCells.list.array[i];
-      xnap_gNB_data->Nid_cell[i] = servedCellMember->servedCellInfo.pCI;
+  XNAP_SETUP_REQ(msg).num_cc = ie->value.choice.ServedCells_NR.list.count;
+  printf("count %d \n", ie->value.choice.ServedCells_NR.list.count);
+  if (ie->value.choice.ServedCells_NR.list.count > 0) {
+    xnap_gNB_data->num_cc = ie->value.choice.ServedCells_NR.list.count;
+    for (int i=0; i<ie->value.choice.ServedCells_NR.list.count; i++) {
+      servedCellMember = (XNAP_ServedCells_NR_Item_t *)ie->value.choice.ServedCells_NR.list.array[i];
+      xnap_gNB_data->Nid_cell[i] = servedCellMember->served_cell_info_NR.nrPCI;
       XNAP_SETUP_REQ(msg).Nid_cell[i] = xnap_gNB_data->Nid_cell[i];
     }
   }
-*/
+
   instance_p = xnap_gNB_get_instance(instance);
   DevAssert(instance_p != NULL);
 
- // itti_send_msg_to_task(TASK_RRC_GNB, instance_p->instance, msg);
-
+  itti_send_msg_to_task(TASK_RRC_GNB, instance_p->instance, msg);
   return xnap_gNB_generate_xn_setup_response(instance_p, xnap_gNB_data);
   //printf("Received Xn setup request");
 }
@@ -445,12 +444,12 @@ int xnap_gNB_handle_xn_setup_response(instance_t instance,
 
   XNAP_XnSetupResponse_t              *xnSetupResponse;
   XNAP_XnSetupResponse_IEs_t          *ie;
-  //ServedCells__Member                 *servedCellMember;
 
   xnap_gNB_instance_t                 *instance_p;
   xnap_gNB_data_t                     *xnap_gNB_data;
   MessageDef                          *msg;
   uint32_t                            gNB_id = 0;
+  XNAP_ServedCells_NR_Item_t          *servedCellMember;
 
   DevAssert (pdu != NULL);
   xnSetupResponse = &pdu->choice.successfulOutcome->value.choice.XnSetupResponse;
@@ -533,25 +532,24 @@ int xnap_gNB_handle_xn_setup_response(instance_t instance,
   }
 
   /* Set proper pci */
-  /*XNAP_FIND_PROTOCOLIE_BY_ID(XNAP_XnSetupResponse_IEs_t, ie, xnSetupResponse,
-                             XNAP_ProtocolIE_ID_id_ServedCells, true);
+  XNAP_FIND_PROTOCOLIE_BY_ID(XNAP_XnSetupResponse_IEs_t, ie, xnSetupResponse, XNAP_ProtocolIE_ID_id_List_of_served_cells_NR, true);
   if (ie == NULL ) {
     XNAP_ERROR("%s %d: ie is a NULL pointer \n",__FILE__,__LINE__);
     return -1;
-  }*/
+  }
 
   msg = itti_alloc_new_message(TASK_XNAP, 0, XNAP_SETUP_RESP);
 
-  //XNAP_SETUP_RESP(msg).num_cc = ie->value.choice.ServedCells.list.count;
+  XNAP_SETUP_RESP(msg).num_cc = ie->value.choice.ServedCells_NR.list.count;
 
-  /*if (ie->value.choice.ServedCells.list.count > 0) {
-    xnap_gNB_data->num_cc = ie->value.choice.ServedCells.list.count;
-    for (int i=0; i<ie->value.choice.ServedCells.list.count;i++) {
-      servedCellMember = (ServedCells__Member *)ie->value.choice.ServedCells.list.array[i];
-      xnap_gNB_data->Nid_cell[i] = servedCellMember->servedCellInfo.pCI;
+  if (ie->value.choice.ServedCells_NR.list.count > 0) {
+    xnap_gNB_data->num_cc = ie->value.choice.ServedCells_NR.list.count;
+    for (int i=0; i<ie->value.choice.ServedCells_NR.list.count;i++) {
+      servedCellMember = (XNAP_ServedCells_NR_Item_t *)ie->value.choice.ServedCells_NR.list.array[i];
+      xnap_gNB_data->Nid_cell[i] = servedCellMember->served_cell_info_NR.nrPCI;
       XNAP_SETUP_RESP(msg).Nid_cell[i] = xnap_gNB_data->Nid_cell[i];
     }
-  }*/
+  }
 
   /* Optionaly set the target gNB name */
 

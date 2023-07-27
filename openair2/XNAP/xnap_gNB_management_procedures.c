@@ -80,8 +80,8 @@ void xnap_dump_tree(xnap_gNB_data_t *t)
   printf("nextstream %d\n", t->nextstream);
   printf("in_streams %d out_streams %d\n", t->in_streams, t->out_streams);
   printf("cnx_id %d assoc_id %d\n", t->cnx_id, t->assoc_id);
-  dump_tree(t->entry.rbe_left);
-  dump_tree(t->entry.rbe_right);
+  xnap_dump_tree(t->entry.rbe_left);
+  xnap_dump_tree(t->entry.rbe_right);
 }
 
 void xnap_dump_trees(void)

@@ -144,15 +144,17 @@ typedef struct xnap_gNB_instance_s {
   int16_t                 eutra_band[MAX_NUM_CCs];
   uint32_t                downlink_frequency[MAX_NUM_CCs];
   int32_t                 uplink_frequency_offset[MAX_NUM_CCs];
-  uint32_t                Nid_cell[MAX_NUM_CCs];
+  uint32_t                Nid_cell[MAX_NUM_CCs];;
   int16_t                 N_RB_DL[MAX_NUM_CCs];
+  int16_t                 N_RB_UL[MAX_NUM_CCs];
   frame_type_t            frame_type[MAX_NUM_CCs];
   uint32_t                fdd_earfcn_DL[MAX_NUM_CCs];
   uint32_t                fdd_earfcn_UL[MAX_NUM_CCs];
   uint32_t                subframeAssignment[MAX_NUM_CCs];
   uint32_t                specialSubframe[MAX_NUM_CCs];
-  int32_t                 nr_band[MAX_NUM_CCs];
-  uint32_t				  tdd_nRARFCN[MAX_NUM_CCs];
+  uint32_t                 nr_band[MAX_NUM_CCs];
+  uint32_t		  tdd_nRARFCN[MAX_NUM_CCs];
+  uint32_t		  nrARFCN[MAX_NUM_CCs];
   int16_t                 nr_SCS[MAX_NUM_CCs];
 
   int                     num_cc;
