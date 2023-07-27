@@ -1,8 +1,6 @@
 #include "ran_func_kpm.h"
 #include "openair2/E2AP/flexric/test/rnd/fill_rnd_data_kpm.h"
 #include "openair2/E2AP/flexric/src/util/time_now_us.h"
-// #include "common/ran_context.h"
-// #include "openair2/LAYER2/NR_MAC_gNB/mac_proto.h"
 #include "openair2/LAYER2/NR_MAC_gNB/nr_mac_gNB.h"
 #include "openair2/RRC/NR/rrc_gNB_UE_context.h"
 #include "openair3/NGAP/ngap_gNB_ue_context.h"
@@ -11,8 +9,6 @@
 #include <assert.h>
 #include <stdio.h>
 
-// static
-// const int mod_id = 0;
 
 static 
 gnb_e2sm_t fill_gnb_data(rrc_gNB_ue_context_t * ue_context_p)
@@ -93,11 +89,6 @@ void cal_dl_thr_bps(uint64_t const dl_total_bytes, uint32_t const gran_period_ms
 }
 
 
-// double cal_dl_thr(uint64_t const dl_total_bytes, uint32_t const gran_period_ms)
-// {
-//   double dl_thr_avg_val = 0;
-// }
-
 double ul_thr_st_val[MAX_MOBILES_PER_GNB] = {0};
 double ul_thr_avg_val[MAX_MOBILES_PER_GNB] = {0};
 int ul_thr_count[MAX_MOBILES_PER_GNB] = {0};
@@ -122,7 +113,7 @@ kpm_ind_msg_format_1_t fill_kpm_ind_msg_frm_1(NR_UE_info_t* const UE, size_t con
   // Measurement Data list length is equal to number of DRBs
   msg_frm_1.meas_data_lst_len = get_number_drbs_per_ue(UE);
   
-  printf("UE with RNTI %x has %lu DRBs\n", UE->rnti, msg_frm_1.meas_data_lst_len);
+  // printf("UE with RNTI %x has %lu DRBs\n", UE->rnti, msg_frm_1.meas_data_lst_len);
 
   msg_frm_1.meas_data_lst = calloc(msg_frm_1.meas_data_lst_len, sizeof(*msg_frm_1.meas_data_lst));
   assert(msg_frm_1.meas_data_lst != NULL && "Memory exhausted" );
@@ -156,19 +147,19 @@ kpm_ind_msg_format_1_t fill_kpm_ind_msg_frm_1(NR_UE_info_t* const UE, size_t con
         char meas_info_name_str[length + 1];
         copy_ba_to_str(meas_info_type.name.buf, length, meas_info_name_str);
 
-        if (strcmp(meas_info_name_str, "DRB.IPThpDl.QCI") == 0)
+        if (strcmp(meas_info_name_str, "DRB.UEThpDl") == 0)  //  3GPP TS 28.522 - section 5.1.1.3.1
         {
           meas_record->value = REAL_MEAS_VALUE;
           cal_dl_thr_bps(UE->mac_stats.dl.total_bytes, act_def_fr_1->gran_period_ms, ue_idx);
           meas_record->real_val = dl_thr_avg_val[ue_idx];
         }
-        else if (strcmp(meas_info_name_str, "DRB.IPThpUl.QCI") == 0)
+        else if (strcmp(meas_info_name_str, "DRB.UEThpUl") == 0)   //  3GPP TS 28.522 - section 5.1.1.3.3
         {
           meas_record->value = REAL_MEAS_VALUE;
           cal_ul_thr_bps(UE->mac_stats.ul.total_bytes, act_def_fr_1->gran_period_ms, ue_idx);
           meas_record->real_val = ul_thr_avg_val[ue_idx];
         }
-        else if (strcmp(meas_info_name_str, "DRB.RlcSduDelayDl") == 0)
+        else if (strcmp(meas_info_name_str, "DRB.RlcSduDelayDl") == 0)   //  3GPP TS 28.522 - section 5.1.3.3.3
         {
           meas_record->value = REAL_MEAS_VALUE;
 
@@ -289,13 +280,13 @@ static kpm_ind_msg_format_1_t fill_rnd_kpm_ind_msg_frm_1(void)
 typedef struct {
     NR_UE_info_t *ue_list;
     size_t num_ues;
-} selected_ues_t;
+} matched_ues_t;
 
 static
-selected_ues_t filter_ues_by_s_nssai_criteria(test_cond_e const * condition, int64_t const value, NR_UE_info_t * ue_list, size_t const num_connected_ues)
+matched_ues_t filter_ues_by_s_nssai_criteria(test_cond_e const * condition, int64_t const value, NR_UE_info_t * ue_list, size_t const num_connected_ues)
 {
-  selected_ues_t selected_ues = {.num_ues = 0, .ue_list = calloc(num_connected_ues, sizeof(NR_UE_info_t))};
-  assert(selected_ues.ue_list != NULL && "Memory exhausted");
+  matched_ues_t matched_ues = {.num_ues = 0, .ue_list = calloc(num_connected_ues, sizeof(NR_UE_info_t))};
+  assert(matched_ues.ue_list != NULL && "Memory exhausted");
   
   assert(RC.nb_nr_inst == 1 && "Number of RRC instances greater than 1 not yet implemented");
   
@@ -308,10 +299,10 @@ selected_ues_t filter_ues_by_s_nssai_criteria(test_cond_e const * condition, int
     switch (*condition)
     {
     case EQUAL_TEST_COND:
-      printf("Condition is SST equal to %lu\n", value);
+      printf("Condition is SST equal to %lu\r", value);
       assert(ngap_ue_context_list->gNB_instance[0].s_nssai[0][0].sST == value && "Please, check the condition for S-NSSAI. At the moment, OAI supports eMBB");
-      selected_ues.ue_list[selected_ues.num_ues] = ue_list[i];
-      selected_ues.num_ues++;
+      matched_ues.ue_list[matched_ues.num_ues] = ue_list[i];
+      matched_ues.num_ues++;
       break;
     
     default:
@@ -319,7 +310,7 @@ selected_ues_t filter_ues_by_s_nssai_criteria(test_cond_e const * condition, int
     }
   }
 
-  return selected_ues;
+  return matched_ues;
 }
 
 static
@@ -336,7 +327,7 @@ kpm_ind_msg_format_3_t fill_kpm_ind_msg_frm_3(const kpm_act_def_format_4_t * act
 
 
     // Filter the UE by the test condition criteria
-    selected_ues_t selected_ues;
+    matched_ues_t matched_ues;
 
     for (size_t j = 0; j<act_def_fr_4->matching_cond_lst_len; j++)
     {
@@ -345,8 +336,8 @@ kpm_ind_msg_format_3_t fill_kpm_ind_msg_frm_3(const kpm_act_def_format_4_t * act
       case S_NSSAI_TEST_COND_TYPE:
         assert(act_def_fr_4->matching_cond_lst[j].test_info_lst.S_NSSAI == TRUE_TEST_COND_TYPE && "Must be true");
         
-        printf("Condition for filtering matching UEs is S-NSSAI");
-        selected_ues = filter_ues_by_s_nssai_criteria(act_def_fr_4->matching_cond_lst[j].test_info_lst.test_cond, *act_def_fr_4->matching_cond_lst[j].test_info_lst.int_value, ue_list, msg_frm_3.ue_meas_report_lst_len);
+        printf("Condition for filtering matching UEs is S-NSSAI\n");
+        matched_ues = filter_ues_by_s_nssai_criteria(act_def_fr_4->matching_cond_lst[j].test_info_lst.test_cond, *act_def_fr_4->matching_cond_lst[j].test_info_lst.int_value, ue_list, msg_frm_3.ue_meas_report_lst_len);
         break;
       
       default:
@@ -356,18 +347,18 @@ kpm_ind_msg_format_3_t fill_kpm_ind_msg_frm_3(const kpm_act_def_format_4_t * act
     }
 
     // Fill UE Measurement Reports
-    assert(selected_ues.num_ues >= 1 && "The number of filtered UEs must be at least equal to 1");
-    msg_frm_3.meas_report_per_ue = calloc(selected_ues.num_ues, sizeof(meas_report_per_ue_t));
+    assert(matched_ues.num_ues >= 1 && "The number of filtered UEs must be at least equal to 1");
+    msg_frm_3.meas_report_per_ue = calloc(matched_ues.num_ues, sizeof(meas_report_per_ue_t));
     assert(msg_frm_3.meas_report_per_ue != NULL && "Memory exhausted");
 
-    for (size_t i = 0; i<selected_ues.num_ues; i++)
+    for (size_t i = 0; i<matched_ues.num_ues; i++)
     {
       // Fill UE ID data
-      rrc_gNB_ue_context_t *rrc_ue_context_list = rrc_gNB_get_ue_context_by_rnti(RC.nrrrc[0], selected_ues.ue_list[i].rnti);
+      rrc_gNB_ue_context_t *rrc_ue_context_list = rrc_gNB_get_ue_context_by_rnti(RC.nrrrc[0], matched_ues.ue_list[i].rnti);
       msg_frm_3.meas_report_per_ue[i].ue_meas_report_lst = fill_ue_id_data(rrc_ue_context_list);
       
       // Fill UE related info
-      msg_frm_3.meas_report_per_ue[i].ind_msg_format_1 = fill_kpm_ind_msg_frm_1(&selected_ues.ue_list[i], i, &act_def_fr_4->action_def_format_1);
+      msg_frm_3.meas_report_per_ue[i].ind_msg_format_1 = fill_kpm_ind_msg_frm_1(&matched_ues.ue_list[i], i, &act_def_fr_4->action_def_format_1);
     }
 
   
