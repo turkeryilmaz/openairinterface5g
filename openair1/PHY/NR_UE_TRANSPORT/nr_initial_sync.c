@@ -285,10 +285,10 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
       // the size of the first PSS0, becasue the correlation occurs on each individual PSS.
       // The sync position (sync_pos) is the start of the found PSS + nb_prefix_samples.
       // PSBCH PREFIX | PSBCH 0 | PSS 0 PREFIX | PSS 0 | PSS 1 PREFIX | PSS 1 |
-      //      144     |  2048   |      144     | 2048  |      144     | 2048  |
+      //      176     |  2048   |      144     | 2048  |      144     | 2048  |
       // ----------------------------------------------------------------------
-      //      144     |  2048   |      144     |   -   |      144     |   X   | SSB Offset = X - (144 + 144 + 2048 + 144)
-      //      144     |  2048   |      144     |   X   |      144     | 2048  | SSB Offset = X - (144 + 2048 + 144)
+      //      176     |  2048   |      144     |   -   |      144     |   X   | SSB Offset = X - (144 + 144 + 2048 + 144)
+      //      176     |  2048   |      144     |   X   |      144     | 2048  | SSB Offset = X - (144 + 2048 + 144)
       uint32_t psbch_plus_prefix_size = fp->ofdm_symbol_size + fp->nb_prefix_samples0;
       uint32_t num_pss_prefix_samples_size = fp->nb_prefix_samples;/*(ue->common_vars.N2_id + 1) * fp->nb_prefix_samples;*/
       LOG_I(NR_PHY, "This is num_pss_prefix_samples_size %d, psbch_plus_prefix_size %d, sync_pos %d, N2_id %d\n",
