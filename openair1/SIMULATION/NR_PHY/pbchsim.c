@@ -775,15 +775,14 @@ int main(int argc, char **argv)
       }
       if (UE->is_synchronized == 0) {
 	UE_nr_rxtx_proc_t proc={0};
-  nr_initial_sync_t ret = nr_initial_sync(&proc, UE, 1, 0);
-  printf("nr_initial_sync1 returns %d\n", ret.cell_notdetected);
-  if (ret.cell_notdetected)
-    n_errors++;
+     nr_initial_sync_t ret = nr_initial_sync(&proc, UE, 1, 0);
+   printf("nr_initial_sync1 returns %d\n", ret.cell_notdetected);
+   if (ret.cell_notdetected)
+     n_errors++;
       }
       else {
         UE_nr_rxtx_proc_t proc={0};
 
-        nr_phy_data_t phy_data = {0};
         uint8_t ssb_index = 0;
         const int estimateSz = frame_parms->symbols_per_slot * frame_parms->ofdm_symbol_size;
         __attribute__((aligned(32))) struct complex16 dl_ch_estimates[frame_parms->nb_antennas_rx][estimateSz];
@@ -817,7 +816,7 @@ int main(int argc, char **argv)
                          &result,
                          rxdataF);
 
-        if (ret) {
+	if (ret==0) {
           // UE->rx_ind.rx_indication_body->mib_pdu.ssb_index;  //not yet detected automatically
           // UE->rx_ind.rx_indication_body->mib_pdu.ssb_length; //Lmax, not yet detected automatically
           uint8_t gNB_xtra_byte = 0;
@@ -834,8 +833,7 @@ int main(int argc, char **argv)
             n_errors_payload++;
         }
 
-        if (!ret)
-          n_errors++;
+	if (ret!=0) n_errors++;
       }
     } //noise trials
     printf("SNR %f: trials %d, n_errors_crc = %d, n_errors_payload %d\n", SNR,n_trials,n_errors,n_errors_payload);

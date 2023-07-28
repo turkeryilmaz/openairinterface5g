@@ -291,8 +291,7 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
 
   unsigned char aatx=0,aarx=0;
 
-  int avgs = 0;// rb;
-  NR_DL_UE_HARQ_t *dlsch0_harq, *dlsch1_harq = NULL;
+  int avgs = 0; // rb;
 
   int32_t codeword_TB0 = -1;
   int32_t codeword_TB1 = -1;
@@ -308,8 +307,8 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
   uint16_t startSymbIdx=0;
   uint16_t nbSymb=0;
   uint16_t pduBitmap=0x0;
-
-  dlsch0_harq = &ue->dl_harq_processes[0][harq_pid];
+  NR_DL_UE_HARQ_t *dlsch0_harq = &ue->dl_harq_processes[0][harq_pid];
+  NR_DL_UE_HARQ_t *dlsch1_harq = NULL;
   if (NR_MAX_NB_LAYERS>4)
     dlsch1_harq = &ue->dl_harq_processes[1][harq_pid];
 
@@ -361,8 +360,8 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
         printf("[DEMOD] I am assuming only TB0 is active\n");
       #endif
     } else {
-      LOG_E(PHY,"[UE][FATAL] nr_slot_rx %d: no active DLSCH\n", nr_slot_rx);
-      return (-1);
+        LOG_E(PHY, "[UE][FATAL] nr_slot_rx %d: no active DLSCH\n", nr_slot_rx);
+        return (-1);
     }
   } else {
     LOG_E(PHY, "Done\n");

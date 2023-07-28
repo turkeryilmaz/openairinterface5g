@@ -260,7 +260,7 @@ rlc_buffer_occupancy_t mac_rlc_get_buffer_occupancy_ind(const module_id_t module
   /* TODO: handle time a bit more properly */
   if (nr_rlc_current_time_last_frame != frameP ||
       nr_rlc_current_time_last_subframe != subframeP) {
-    nr_rlc_current_time++;
+    __atomic_fetch_add(&nr_rlc_current_time, 1, __ATOMIC_SEQ_CST);
     nr_rlc_current_time_last_frame = frameP;
     nr_rlc_current_time_last_subframe = subframeP;
   }

@@ -535,12 +535,6 @@ int nr_rx_pbch(PHY_VARS_NR_UE *ue,
   if (frame_parms->half_frame_bit)
   ue->symbol_offset += (frame_parms->slots_per_frame>>1)*frame_parms->symbols_per_slot;
 
-  uint8_t frame_number_4lsb = 0;
-
-  for (int i=0; i<4; i++)
-    frame_number_4lsb |= ((result->xtra_byte>>i)&1)<<(3-i);
-
-  proc->decoded_frame_rx = frame_number_4lsb;
 #ifdef DEBUG_PBCH
   printf("xtra_byte %x payload %x\n", xtra_byte, payload);
 

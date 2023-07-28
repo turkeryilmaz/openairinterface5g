@@ -37,14 +37,7 @@
 #include "PHY/CODING/nrLDPC_decoder/nrLDPC_types.h"
 #include "nfapi/open-nFAPI/nfapi/public_inc/fapi_nr_ue_interface.h"
 #include "../NR_TRANSPORT/nr_transport_common_proto.h"
-#ifndef __cplusplus
-#include <stdatomic.h>
-#else
-#include <atomic>
-#ifndef _Atomic
-#define _Atomic(X) std::atomic<X>
-#endif
-#endif
+
 
 typedef enum {
  NEW_TRANSMISSION_HARQ,
@@ -57,7 +50,7 @@ typedef struct {
   /// HARQ tx status
   harq_result_t tx_status;
   /// Status Flag indicating for this ULSCH (idle,active,disabled)
-  _Atomic(SCH_status_t) status;
+  SCH_status_t status;
   /// Last TPC command
   uint8_t TPC;
   /// Length of ACK information (bits)

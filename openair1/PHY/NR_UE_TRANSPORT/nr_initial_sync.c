@@ -100,6 +100,7 @@ void free_list(NR_UE_SSB *node) {
   free(node);
 }
 
+
 int nr_pbch_detection(UE_nr_rxtx_proc_t * proc, PHY_VARS_NR_UE *ue, int pbch_initial_symbol, c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP])
 {
   NR_DL_FRAME_PARMS *frame_parms=&ue->frame_parms;
@@ -175,23 +176,16 @@ int nr_pbch_detection(UE_nr_rxtx_proc_t * proc, PHY_VARS_NR_UE *ue, int pbch_ini
 
   free_list(best_ssb);
 
-  
-  if (ret==0) {
-    
+  if (ret == 0)
     frame_parms->nb_antenna_ports_gNB = 1; //pbch_tx_ant;
-    
+
     // set initial transmission mode to 1 or 2 depending on number of detected TX antennas
-    //frame_parms->mode1_flag = (pbch_tx_ant==1);
+    // frame_parms->mode1_flag = (pbch_tx_ant==1);
     // openair_daq_vars.dlsch_transmission_mode = (pbch_tx_ant>1) ? 2 : 1;
 
-
 #ifdef DEBUG_INITIAL_SYNCH
-    LOG_I(PHY, "[UE%d] Initial sync: pbch decoded sucessfully, ssb index %d\n", ue->Mod_id, frame_parms->ssb_index);
+  LOG_I(PHY, "[UE%d] Initial sync: pbch decoded sucessfully, ssb index %d\n", ue->Mod_id, frame_parms->ssb_index);
 #endif
-    return(0);
-  } else {
-    return(-1);
-  }
   return ret;
 }
 
@@ -205,9 +199,6 @@ nr_initial_sync_t nr_initial_sync(UE_nr_rxtx_proc_t *proc, PHY_VARS_NR_UE *ue, i
 
   NR_DL_FRAME_PARMS *fp = &ue->frame_parms;
   nr_initial_sync_t ret = {true, 0};
-
-  nr_phy_data_t phy_data = {0};
-  NR_UE_PDCCH_CONFIG *phy_pdcch_config = &phy_data.phy_pdcch_config;
   
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_INITIAL_UE_SYNC, VCD_FUNCTION_IN);
 
@@ -309,7 +300,7 @@ nr_initial_sync_t nr_initial_sync(UE_nr_rxtx_proc_t *proc, PHY_VARS_NR_UE *ue, i
 
       if (ret.cell_notdetected==0) { //we got sss channel
       nr_gold_pbch(ue);
-        ret.cell_notdetected = nr_pbch_detection(proc, ue, 1, &phy_data, rxdataF);  // start pbch detection at first symbol after pss
+        ret.cell_notdetected = nr_pbch_detection(proc, ue, 1, rxdataF);  // start pbch detection at first symbol after pss
     }
 
       if (ret.cell_notdetected == 0) {

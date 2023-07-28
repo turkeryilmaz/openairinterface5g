@@ -502,7 +502,6 @@ static void RU_write(nr_rxtx_thread_data_t *rxtxD) {
   if (mac->phy_config_request_sent &&
       openair0_cfg[0].duplex_mode == duplex_mode_TDD &&
       !get_softmodem_params()->continuous_tx) {
-
     int slots_frame = UE->frame_parms.slots_per_frame;
     int curr_slot = nr_ue_slot_select(&UE->nrUE_config, slot);
     if (curr_slot != NR_DOWNLINK_SLOT) {
@@ -514,9 +513,9 @@ static void RU_write(nr_rxtx_thread_data_t *rxtxD) {
         flags = TX_BURST_END;
       else
         flags = TX_BURST_MIDDLE;
+    } else {
+      flags = TX_BURST_MIDDLE;
     }
-  } else {
-    flags = TX_BURST_MIDDLE;
   }
 
   AssertFatal(rxtxD->writeBlockSize
@@ -530,7 +529,6 @@ static void RU_write(nr_rxtx_thread_data_t *rxtxD) {
 
   for (int i=0; i<UE->frame_parms.nb_antennas_tx; i++)
     memset(txp[i], 0, rxtxD->writeBlockSize);
-
 }
 
 void processSlotTX(void *arg) {
@@ -577,6 +575,7 @@ void processSlotTX(void *arg) {
   // check we have not made mistake, the queue must be empty now
   res = pollNotifiedFIFO(&UE->tx_resume_ind_fifo[proc->nr_slot_tx]);
   AssertFatal(res == NULL, "");
+  // unblock next slot processing 
   int next_slot = (proc->nr_slot_tx + 1) % UE->frame_parms.slots_per_frame;
   send_slot_ind(&UE->tx_resume_ind_fifo[next_slot], next_slot);
   RU_write(rxtxD);
@@ -780,6 +779,8 @@ void *UE_thread(void *arg)
                 trashed_frames);
           // shift the frame index with all the frames we trashed meanwhile we perform the synch search
           decoded_frame_rx = (decoded_frame_rx + UE->init_sync_frame + trashed_frames) % MAX_FRAME_NUMBER;
+          syncData_t *syncMsg = (syncData_t *)NotifiedFifoData(res);
+          rx_offset = syncMsg->rx_offset;
         }
         delNotifiedFIFO_elt(res);
         start_rx_stream=0;
@@ -787,13 +788,13 @@ void *UE_thread(void *arg)
 	if (IS_SOFTMODEM_IQPLAYER || IS_SOFTMODEM_IQRECORDER) {
 	  // For IQ recorder/player we force synchronization to happen in 280 ms
 	  while (trashed_frames != 28) {
-      readFrame(UE, &sync_timestamp, true);
-      trashed_frames+=2;
-	  }
+            readFrame(UE, &sync_timestamp, true);
+            trashed_frames += 2;
+    }
 	} else {
     readFrame(UE, &sync_timestamp, true);
-    trashed_frames+=2;
-	}
+    trashed_frames += 2;
+  }
         continue;
       }
     }
@@ -911,36 +912,26 @@ void *UE_thread(void *arg)
     proc.nr_slot_tx = (absolute_slot + DURATION_RX_TO_TX) % nb_slot_frame;
     proc.frame_rx = (absolute_slot / nb_slot_frame) % MAX_FRAME_NUMBER;
     proc.frame_tx = ((absolute_slot + DURATION_RX_TO_TX) / nb_slot_frame) % MAX_FRAME_NUMBER;
-    proc.rx_slot_type = nr_ue_slot_select(cfg, proc.frame_rx, proc.nr_slot_rx);
-    proc.tx_slot_type = nr_ue_slot_select(cfg, proc.frame_tx, proc.nr_slot_tx);
-    proc.frame_number_4lsb = -1;
-
-    nr_ue_rrc_timer_trigger(UE->Mod_id, proc.frame_tx, proc.nr_slot_tx, 0);
+    proc.rx_slot_type = nr_ue_slot_select(cfg, proc.nr_slot_rx);
+    proc.tx_slot_type = nr_ue_slot_select(cfg, proc.nr_slot_tx);
+    //proc.frame_number_4lsb = -1;
 
     // LOG_I(PHY,"Process slot %d total gain %d\n", slot_nr, UE->rx_total_gain_dB);
     //  Decode DCI
     notifiedFIFO_elt_t *MsgRx = newNotifiedFIFO_elt(sizeof(nr_rxtx_thread_data_t), proc.nr_slot_rx, NULL, UE_dl_processing);
     nr_rxtx_thread_data_t *curMsgRx = (nr_rxtx_thread_data_t *)NotifiedFifoData(MsgRx);
+    memset(curMsgRx, 0, sizeof(*curMsgRx));
     int ret = UE_dl_preprocessing(UE, &proc, &curMsgRx->phy_data);
     if (ret)
       // if ret is 0, no rx_offset has been computed, or the computed value is 0 = no offset to do
       rx_offset = ret;
-    if (proc.frame_number_4lsb != -1 && proc.frame_number_4lsb != (proc.frame_rx & 0xF)) {
-      LOG_E(PHY, "Decoded frame 4lsb mismatch %d instead of %d\n", proc.frame_number_4lsb, proc.frame_rx & 0xF);
-      absolute_slot = proc.frame_number_4lsb * nb_slot_frame;
-    }
 
     // From DCI, note in future tx if we have to wait DL decode to be done
-    if (curMsgRx->phy_data.dlsch[0].active && curMsgRx->phy_data.dlsch[0].rnti_type != _RA_RNTI_) {
+    if (curMsgRx->phy_data.dlsch[0].active && curMsgRx->phy_data.dlsch[0].rnti_type != _RA_RNTI_ && curMsgRx->phy_data.dlsch[0].rnti_type != _SI_RNTI_ ) {
       // indicate to tx thread to wait for DLSCH decoding
       const int ack_nack_slot =
           (proc.nr_slot_rx + curMsgRx->phy_data.dlsch[0].dlsch_config.k1_feedback) % UE->frame_parms.slots_per_frame;
       tx_wait_for_dlsch[ack_nack_slot]++;
-      LOG_D(PHY,
-            "reading DL slot %d, adding one even for slot Tx %d, total to wait %d\n",
-            proc.nr_slot_rx,
-            ack_nack_slot,
-            tx_wait_for_dlsch[ack_nack_slot]);
     }
 
     // We have processed DCI
