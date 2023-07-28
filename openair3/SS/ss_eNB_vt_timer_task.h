@@ -41,11 +41,6 @@ void *ss_eNB_vt_timer_task(void *arg);
 int vt_timer_push_msg(struct TimingInfo_Type* at, task_id_t task_id,instance_t instance, MessageDef *msg_p);
 void vt_add_sf(struct TimingInfo_Type* at, int offset);
 
-
-uint8_t msg_can_be_queued(ss_set_timinfo_t req_tinfo, ss_set_timinfo_t *timer_tinfo);
-uint8_t vt_timer_setup(ss_set_timinfo_t tinfo, task_id_t task_id,instance_t instance,void *msg);
-
-
 typedef struct vt_timer_elm_s {
   //uint8_t msg_type;     ///MSG type
   task_id_t task_id;
