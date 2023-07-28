@@ -117,8 +117,8 @@ void vt_add_sf(struct TimingInfo_Type* at, int offset)
 {
 	if (at != NULL && at->d == TimingInfo_Type_SubFrame)
 	{
-		uint8_t sfn = SS_context.sfn;
-		uint16_t sf = SS_context.sf;
+		uint16_t sfn = SS_context.sfn;
+		uint8_t sf = SS_context.sf;
 		if (at->v.SubFrame.SFN.d == SystemFrameNumberInfo_Type_Number)
 		{
 			sfn = at->v.SubFrame.SFN.v.Number;
@@ -128,8 +128,8 @@ void vt_add_sf(struct TimingInfo_Type* at, int offset)
 		{
 			sf = at->v.SubFrame.Subframe.v.Number;
 		}
-
-		_vt_add_sf(&sf, &sfn, offset);
+		LOG_D(ENB_SS_VT_TIMER,"vt_add_sf SFN %d SF %d offset %d\n",sfn,sf,offset);
+		_vt_add_sf(&sfn, &sf, offset);
 		at->v.SubFrame.SFN.d = SystemFrameNumberInfo_Type_Number;
 		at->v.SubFrame.SFN.v.Number = sfn;
 		at->v.SubFrame.Subframe.d = SubFrameInfo_Type_Number;

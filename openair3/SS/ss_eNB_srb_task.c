@@ -257,7 +257,7 @@ static void ss_task_handle_rrc_pdu_req(struct EUTRA_RRC_PDU_REQ *req)
 
 		SS_RRC_PDU_REQ(message_p).rnti = rnti_g;
 
-		vt_add_sf(&req->Common.TimingInfo, -1); //RRC PDU schedule(if future timing) shall be ahead 1 subframe because of latency between RRC and PDCP
+		vt_add_sf(&req->Common.TimingInfo, -2); //RRC PDU schedule(if future timing) shall be ahead 2 subframe because of latency between VT_Timer_task --RRC -- PDCP
 		if (!vt_timer_push_msg(&req->Common.TimingInfo, TASK_RRC_ENB, instance_g, message_p))
 		{
 			itti_send_msg_to_task(TASK_RRC_ENB, instance_g, message_p);
