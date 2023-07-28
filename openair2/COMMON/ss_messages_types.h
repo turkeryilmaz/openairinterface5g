@@ -94,6 +94,7 @@ typedef struct ss_nr_sys_port_msg_cnf {
 
 /** SYS */
 typedef struct ss_set_timinfo_s {
+  uint16_t hsfn;
   uint16_t sfn;
   uint8_t  sf;
   int      cell_index;

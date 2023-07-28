@@ -98,7 +98,7 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind, int cell_index){
 	ind.Common.TimingInfo.v.SubFrame.Subframe.v.Number = pdu_ind->subframe;
 
 	ind.Common.TimingInfo.v.SubFrame.HSFN.d = SystemFrameNumberInfo_Type_Number;
-        ind.Common.TimingInfo.v.SubFrame.HSFN.v.Number = 0;
+        ind.Common.TimingInfo.v.SubFrame.HSFN.v.Number = SS_context.hsfn;
 
 	ind.Common.TimingInfo.v.SubFrame.Slot.d = SlotTimingInfo_Type_Any;
         ind.Common.TimingInfo.v.SubFrame.Slot.v.Any = true;
