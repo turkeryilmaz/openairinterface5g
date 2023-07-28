@@ -68,66 +68,31 @@ ue_id_e2sm_t fill_rnd_ue_id_data()
   return ue_id_data;
 }
 
-void copy_ba_to_str(const uint8_t* buffer, size_t length, char* str) {
-  memcpy(str, buffer, length);
-  str[length] = '\0';
-}
 
-double dl_thr_st_val[MAX_MOBILES_PER_GNB] = {0};
-double dl_thr_avg_val[MAX_MOBILES_PER_GNB] = {0};
-int dl_thr_count[MAX_MOBILES_PER_GNB] = {0};
-void cal_dl_thr_bps(uint64_t const dl_total_bytes, uint32_t const gran_period_ms, size_t const ue_idx) {
-  size_t count_max = 1000/gran_period_ms;
-  // DL
-  if (dl_thr_count[ue_idx] == 0)
-    dl_thr_st_val[ue_idx] = dl_total_bytes;
-  dl_thr_count[ue_idx] += 1;
-  if (dl_thr_count[ue_idx] == count_max) {
-    dl_thr_avg_val[ue_idx] = (dl_total_bytes - dl_thr_st_val[ue_idx])*8;
-    dl_thr_count[ue_idx] = 0;
-  }
-}
-
-
-double ul_thr_st_val[MAX_MOBILES_PER_GNB] = {0};
-double ul_thr_avg_val[MAX_MOBILES_PER_GNB] = {0};
-int ul_thr_count[MAX_MOBILES_PER_GNB] = {0};
-void cal_ul_thr_bps(uint64_t const ul_total_bytes, uint32_t const gran_period_ms, size_t const ue_idx) {
-  size_t count_max = 1000/gran_period_ms;
-  // UL
-  if (ul_thr_count[ue_idx] == 0)
-    ul_thr_st_val[ue_idx] = ul_total_bytes;
-  ul_thr_avg_val[ue_idx] += 1;
-  if (ul_thr_count[ue_idx] == count_max) {
-    ul_thr_avg_val[ue_idx] = (ul_total_bytes - ul_thr_st_val[ue_idx])*8;
-    ul_thr_count[ue_idx] = 0;
-  }
-}
-
+uint32_t last_dl_total_bytes[MAX_MOBILES_PER_GNB] = {0};
+uint32_t last_ul_total_bytes[MAX_MOBILES_PER_GNB] = {0};
 
 static 
 kpm_ind_msg_format_1_t fill_kpm_ind_msg_frm_1(NR_UE_info_t* const UE, size_t const ue_idx, kpm_act_def_format_1_t const * act_def_fr_1)
 {
   kpm_ind_msg_format_1_t msg_frm_1 = {0};
   
-  // Measurement Data list length is equal to number of DRBs
-  msg_frm_1.meas_data_lst_len = get_number_drbs_per_ue(UE);
+  // Measurement Data contains a set of Meas Records, each collected at each granularity period
+  msg_frm_1.meas_data_lst_len = 1;  // (rand() % 65535) + 1;
   
-  // printf("UE with RNTI %x has %lu DRBs\n", UE->rnti, msg_frm_1.meas_data_lst_len);
-
   msg_frm_1.meas_data_lst = calloc(msg_frm_1.meas_data_lst_len, sizeof(*msg_frm_1.meas_data_lst));
   assert(msg_frm_1.meas_data_lst != NULL && "Memory exhausted" );
 
 
-  size_t const rec_data_len = act_def_fr_1->meas_info_lst_len; // record data list length corresponds to info list length from action definition
-
-
-  for (size_t i = 0; i<msg_frm_1.meas_data_lst_len; i++)  // each meas data element corresponds to one DRB per UE
+  for (size_t i = 0; i<msg_frm_1.meas_data_lst_len; i++)
   {
     meas_data_lst_t* meas_data = &msg_frm_1.meas_data_lst[i];
+
+    // Get RLC stats per DRB
+    nr_rlc_statistics_t rlc = active_avg_to_tx_per_drb(UE, i+1);
     
     // Measurement Record
-    meas_data->meas_record_len = rec_data_len;
+    meas_data->meas_record_len = act_def_fr_1->meas_info_lst_len;  // record data list length corresponds to info list length from action definition
 
     meas_data->meas_record_lst = calloc(meas_data->meas_record_len, sizeof(meas_record_lst_t));
     assert(meas_data->meas_record_lst != NULL && "Memory exhausted");
@@ -137,37 +102,45 @@ kpm_ind_msg_format_1_t fill_kpm_ind_msg_frm_1(NR_UE_info_t* const UE, size_t con
       meas_record_lst_t* meas_record = &meas_data->meas_record_lst[j];
 
       // Measurement Type as requested in Action Definition
-      meas_type_t meas_info_type = act_def_fr_1->meas_info_lst[j].meas_type;
+      meas_type_t const meas_info_type = act_def_fr_1->meas_info_lst[j].meas_type;
 
       switch (meas_info_type.type)
       {
       case NAME_MEAS_TYPE:
       {
-        size_t length = meas_info_type.name.len;
-        char meas_info_name_str[length + 1];
-        copy_ba_to_str(meas_info_type.name.buf, length, meas_info_name_str);
+        char meas_info_name_str[meas_info_type.name.len + 1];
+        memcpy(meas_info_name_str, meas_info_type.name.buf, meas_info_type.name.len);
+        meas_info_name_str[meas_info_type.name.len] = '\0';
 
         if (strcmp(meas_info_name_str, "DRB.UEThpDl") == 0)  //  3GPP TS 28.522 - section 5.1.1.3.1
         {
           meas_record->value = REAL_MEAS_VALUE;
-          cal_dl_thr_bps(UE->mac_stats.dl.total_bytes, act_def_fr_1->gran_period_ms, ue_idx);
-          meas_record->real_val = dl_thr_avg_val[ue_idx];
+
+          // Calculate DL Thp
+          meas_record->real_val = (double)(rlc.txpdu_bytes - last_dl_total_bytes[ue_idx])*8/act_def_fr_1->gran_period_ms;  // [kbps]
+          last_dl_total_bytes[ue_idx] = rlc.txpdu_bytes;
         }
         else if (strcmp(meas_info_name_str, "DRB.UEThpUl") == 0)   //  3GPP TS 28.522 - section 5.1.1.3.3
         {
           meas_record->value = REAL_MEAS_VALUE;
-          cal_ul_thr_bps(UE->mac_stats.ul.total_bytes, act_def_fr_1->gran_period_ms, ue_idx);
-          meas_record->real_val = ul_thr_avg_val[ue_idx];
+
+          // Calculate UL Thp
+          meas_record->real_val = (double)(rlc.rxpdu_bytes - last_ul_total_bytes[ue_idx])*8/act_def_fr_1->gran_period_ms;  // [kbps]
+          last_ul_total_bytes[ue_idx] = rlc.rxpdu_bytes;         
         }
         else if (strcmp(meas_info_name_str, "DRB.RlcSduDelayDl") == 0)   //  3GPP TS 28.522 - section 5.1.3.3.3
         {
           meas_record->value = REAL_MEAS_VALUE;
 
-          // Get RLC stats per DRB
-          nr_rlc_statistics_t rlc = active_avg_to_tx_per_drb(UE, i+1);
-
           // Get the value of sojourn time at the RLC buffer
-          meas_record->real_val = rlc.txsdu_avg_time_to_tx;
+          if (act_def_fr_1->gran_period_ms == 100)
+          {
+            meas_record->real_val = rlc.txsdu_avg_time_to_tx;  // [μs]
+          }
+          else
+          {
+            assert(false && "Update the time window per packet sojourn time");
+          }
         } 
 
         break;
@@ -186,7 +159,7 @@ kpm_ind_msg_format_1_t fill_kpm_ind_msg_frm_1(NR_UE_info_t* const UE, size_t con
   }
 
   // Measurement Information - OPTIONAL
-  msg_frm_1.meas_info_lst_len = rec_data_len;
+  msg_frm_1.meas_info_lst_len = act_def_fr_1->meas_info_lst_len;
   msg_frm_1.meas_info_lst = calloc(msg_frm_1.meas_info_lst_len, sizeof(meas_info_format_1_lst_t));
   assert(msg_frm_1.meas_info_lst != NULL && "Memory exhausted" );
 

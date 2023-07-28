@@ -34,7 +34,7 @@ nr_rlc_statistics_t active_avg_to_tx_per_drb(NR_UE_info_t * const UE, int const 
 
   // Get RLC stats for specific DRB
   const bool rc = nr_rlc_get_statistics(UE->rnti, srb_flag, rb_id, &rlc);
-  assert(rc == true && "Cannot get RLC stats\n");  // should be LOG
+  assert(rc == true && "Cannot get RLC stats\n");
 
   // Activate average sojourn time at the RLC buffer for specific DRB
   nr_rlc_activate_avg_time_to_tx(UE->rnti, rb_id+3, 1);
