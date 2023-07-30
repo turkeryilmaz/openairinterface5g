@@ -38,16 +38,13 @@ import time
 import subprocess
 import sys
 
-import sshconnection as SSH
 import cls_oai_html
 import constants as CONST
 import helpreadme as HELP
-
+from cls_containerize import CreateWorkspace
 class PhySim:
 	def __init__(self):
 		self.eNBIpAddr = ""
-		self.eNBUserName = ""
-		self.eNBPassword = ""
 		self.OCUserName = ""
 		self.OCPassword = ""
 		self.OCProjectName = ""
@@ -70,19 +67,16 @@ class PhySim:
 			HELP.GenericHelp(CONST.Version)
 			sys.exit('Insufficient Parameter')
 		lIpAddr = self.eNBIPAddress
-		lUserName = self.eNBUserName
-		lPassWord = self.eNBPassword
 		lSourcePath = self.eNBSourceCodePath
 		ocUserName = self.OCUserName
 		ocPassword = self.OCPassword
 		ocProjectName = self.OCProjectName
 
-		if lIpAddr == '' or lUserName == '' or lPassWord == '' or lSourcePath == '' or ocUserName == '' or ocPassword == '' or ocProjectName == '':
+		if lIpAddr == '' or lSourcePath == '' or ocUserName == '' or ocPassword == '' or ocProjectName == '':
 			HELP.GenericHelp(CONST.Version)
 			sys.exit('Insufficient Parameter')
 		logging.debug('Building on server: ' + lIpAddr)
-		mySSH = SSH.SSHConnection()
-		mySSH.open(lIpAddr, lUserName, lPassWord)
+		cmd = cls_cmd.getConnection(lIpAddr)
 
 		self.testCase_id = HTML.testCase_id
 
@@ -92,45 +86,22 @@ class PhySim:
 			full_ran_repo_name = self.ranRepository.replace('git/', 'git')
 		else:
 			full_ran_repo_name = self.ranRepository + '.git'
-		mySSH.command('rm -Rf ' + lSourcePath, '\$', 30)
-		mySSH.command('mkdir -p ' + lSourcePath, '\$', 5)
-		mySSH.command('cd ' + lSourcePath, '\$', 5)
-		mySSH.command('if [ ! -e .git ]; then stdbuf -o0 git clone ' + full_ran_repo_name + ' .; else stdbuf -o0 git fetch --prune; fi', '\$', 600)
-		# Raphael: here add a check if git clone or git fetch went smoothly
-		mySSH.command('git config user.email "jenkins@openairinterface.org"', '\$', 5)
-		mySSH.command('git config user.name "OAI Jenkins"', '\$', 5)
-
-		mySSH.command('git clean -x -d -ff', '\$', 30)
-		mySSH.command('mkdir -p cmake_targets/log', '\$', 5)
-		# if the commit ID is provided use it to point to it
-		if self.ranCommitID != '':
-			mySSH.command('git checkout -f ' + self.ranCommitID, '\$', 30)
-		if self.ranAllowMerge:
-			imageTag = f'{self.ranBranch}-{self.ranCommitID[0:8]}'
-			if self.ranTargetBranch == '':
-				if (self.ranBranch != 'develop') and (self.ranBranch != 'origin/develop'):
-					mySSH.command('git merge --ff origin/develop -m "Temporary merge for CI"', '\$', 30)
-			else:
-				logging.debug('Merging with the target branch: ' + self.ranTargetBranch)
-				mySSH.command('git merge --ff origin/' + self.ranTargetBranch + ' -m "Temporary merge for CI"', '\$', 30)
-		else:
-			imageTag = f'develop-{self.ranCommitID[0:8]}'
-
+		CreateWorkspace(cmd, lSourcePath, full_ran_repo_name, self.ranCommitID, self.ranTargetBranch, self.ranAllowMerge)
 		# logging to OC Cluster and then switch to corresponding project
-		mySSH.command(f'oc login -u {ocUserName} -p {ocPassword} --server https://api.oai.cs.eurecom.fr:6443', '\$', 30)
-		if mySSH.getBefore().count('Login successful.') == 0:
+		cmd.run(f'oc login -u {ocUserName} -p {ocPassword} --server https://api.oai.cs.eurecom.fr:6443')
+		if cmd.getBefore().count('Login successful.') == 0:
 			logging.error('\u001B[1m OC Cluster Login Failed\u001B[0m')
-			mySSH.close()
+			cmd.close()
 			HTML.CreateHtmlTestRow('N/A', 'KO', CONST.OC_LOGIN_FAIL)
 			RAN.prematureExit = True
 			return
 		else:
 			logging.debug('\u001B[1m   Login to OC Cluster Successfully\u001B[0m')
-		mySSH.command(f'oc project {ocProjectName}', '\$', 30)
-		if mySSH.getBefore().count(f'Already on project "{ocProjectName}"') == 0 and mySSH.getBefore().count(f'Now using project "{self.OCProjectName}"') == 0:
+		cmd.run(f'oc project {ocProjectName}')
+		if cmd.getBefore().count(f'Already on project "{ocProjectName}"') == 0 and cmd.getBefore().count(f'Now using project "{self.OCProjectName}"') == 0:
 			logging.error(f'\u001B[1m Unable to access OC project {ocProjectName}\u001B[0m')
-			mySSH.command('oc logout', '\$', 30)
-			mySSH.close()
+			cmd.run('oc logout')
+			cmd.close()
 			HTML.CreateHtmlTestRow('N/A', 'KO', CONST.OC_PROJECT_FAIL)
 			RAN.prematureExit = True
 			return
@@ -138,20 +109,20 @@ class PhySim:
 			logging.debug(f'\u001B[1m   Now using project {ocProjectName}\u001B[0m')
 
 		# Using helm charts deployment
-		mySSH.command(f'grep -rl OAICICD_PROJECT ./charts/ | xargs sed -i -e "s#OAICICD_PROJECT#{ocProjectName}#"', '\$', 30)
-		mySSH.command(f'sed -i -e "s#TAG#{imageTag}#g" ./charts/physims/values.yaml', '\$', 6)
-		mySSH.command('helm install physim ./charts/physims/ --wait 2>&1 | tee -a cmake_targets/log/physim_helm_summary.txt', '\$', 30)
-		if mySSH.getBefore().count('STATUS: deployed') == 0:
+		cmd.run(f'grep -rl OAICICD_PROJECT ./charts/ | xargs sed -i -e "s#OAICICD_PROJECT#{ocProjectName}#"')
+		cmd.run(f'sed -i -e "s#TAG#{imageTag}#g" ./charts/physims/values.yaml')
+		cmd.run('helm install physim ./charts/physims/ --wait 2>&1 | tee -a cmake_targets/log/physim_helm_summary.txt')
+		if cmd.getBefore().count('STATUS: deployed') == 0:
 			logging.error('\u001B[1m Deploying PhySim Failed using helm chart on OC Cluster\u001B[0m')
-			mySSH.command('helm uninstall physim | tee -a cmake_targets/log/physim_helm_summary.txt 2>&1', '\$', 30)
+			cmd.run('helm uninstall physim | tee -a cmake_targets/log/physim_helm_summary.txt 2>&1')
 			isFinished1 = False
 			while(isFinished1 == False):
 				time.sleep(20)
-				mySSH.command('oc get pods -l app=physim', '\$', 6, resync=True)
-				if re.search('No resources found', mySSH.getBefore()):
+				cmd.run('oc get pods -l app=physim')
+				if re.search('No resources found', cmd.getBefore()):
 					isFinished1 = True
-			mySSH.command('oc logout', '\$', 30)
-			mySSH.close()
+			cmd.run('oc logout')
+			cmd.close()
 			self.AnalyzeLogFile_phySim()
 			RAN.prematureExit = True
 			return
@@ -162,27 +133,27 @@ class PhySim:
 		# Check whether the containers are in Running state or not under 2 mins
 		while(count < 2 and isRunning == False):
 			time.sleep(60)
-			mySSH.command('oc get pods -o wide -l app=physim | tee -a cmake_targets/log/physim_pods_summary.txt', '\$', 30, resync=True)
-			running_count = mySSH.getBefore().count('Running')
-			completed_count = mySSH.getBefore().count('Completed')
+			cmd.run('oc get pods -o wide -l app=physim | tee -a cmake_targets/log/physim_pods_summary.txt')
+			running_count = cmd.getBefore().count('Running')
+			completed_count = cmd.getBefore().count('Completed')
 			if (running_count + completed_count) == 21:
 				logging.debug('\u001B[1m Running the physim test Scenarios\u001B[0m')
 				isRunning = True
-				podNames = re.findall('oai-[\S\d\w]+', mySSH.getBefore())
+				podNames = re.findall('oai-[\S\d\w]+', cmd.getBefore())
 			count +=1
 		if isRunning == False:
 			logging.error('\u001B[1m Some pods are in Error state \u001B[0m')
-			mySSH.command('oc get pods -l app=physim 2>&1 | tee -a cmake_targets/log/physim_pods_summary.txt', '\$', 6)
-			mySSH.command('for pod in $(oc get pods | tail -n +2 | awk \'{print $1}\'); do oc describe pod $pod >> cmake_targets/log/physim_pods_summary.txt; done', '\$', 10)
-			mySSH.command('helm uninstall physim | tee -a cmake_targets/log/physim_helm_summary.txt 2>&1', '\$', 6)
+			cmd.run('oc get pods -l app=physim 2>&1 | tee -a cmake_targets/log/physim_pods_summary.txt')
+			cmd.run('for pod in $(oc get pods | tail -n +2 | awk \'{print $1}\'); do oc describe pod $pod >> cmake_targets/log/physim_pods_summary.txt; done')
+			cmd.run('helm uninstall physim | tee -a cmake_targets/log/physim_helm_summary.txt 2>&1')
 			self.AnalyzeLogFile_phySim()
 			isFinished1 = False
 			while(isFinished1 == False):
 				time.sleep(20)
-				mySSH.command('oc get pods -l app=physim', '\$', 6, resync=True)
-				if re.search('No resources found', mySSH.getBefore()):
+				cmd.run('oc get pods -l app=physim')
+				if re.search('No resources found', cmd.getBefore()):
 					isFinished1 = True
-			mySSH.command('oc logout', '\$', 30)
+			cmd.run('oc logout')
 			HTML.CreateHtmlTestRow('N/A', 'KO', CONST.OC_PHYSIM_DEPLOY_FAIL)
 			HTML.CreateHtmlTestRowPhySimTestResult(self.testSummary,self.testResult)
 			RAN.prematureExit = True
@@ -195,8 +166,8 @@ class PhySim:
 		while(count < 9 and isFinished == False):
 			time.sleep(60)
 			for podName in tmpPodNames:
-				mySSH.command2(f'oc logs --tail=1 {podName} 2>&1', 6, silent=True)
-				if mySSH.cmd2Results.count('FINISHED') != 0:
+				cmd.run2(f'oc logs --tail=1 {podName} 2>&1', 6, silent=True)
+				if cmd.cmd2Results.count('FINISHED') != 0:
 					logging.debug(podName + ' is finished')
 					tmpPodNames.remove(podName)
 			if not tmpPodNames:
@@ -209,9 +180,9 @@ class PhySim:
 
 		# Getting the logs of each executables running in individual pods
 		for podName in podNames:
-			mySSH.command(f'oc logs {podName} >> cmake_targets/log/physim_test.txt 2>&1', '\$', 15, resync=True)
-		mySSH.command('for pod in $(oc get pods | tail -n +2 | awk \'{print $1}\'); do oc describe pod $pod >> cmake_targets/log/physim_pods_summary.txt; done', '\$', 10)
-		mySSH.copyin(lIpAddr, lUserName, lPassWord, lSourcePath + '/cmake_targets/log/physim_test.txt', '.')
+			cmd.run(f'oc logs {podName} >> cmake_targets/log/physim_test.txt 2>&1')
+		cmd.run('for pod in $(oc get pods | tail -n +2 | awk \'{print $1}\'); do oc describe pod $pod >> cmake_targets/log/physim_pods_summary.txt; done')
+		cmd.copyin(f'{lSourcePath}/cmake_targets/log/physim_test.txt', 'physim_test.txt')
 		try:
 			listLogFiles =  subprocess.check_output('egrep --colour=never "Execution Log file|Linux oai-" physim_test.txt', shell=True, universal_newlines=True)
 			for line in listLogFiles.split('\n'):
@@ -224,23 +195,23 @@ class PhySim:
 					folderName = logFileInPod.replace('/opt/oai-physim/cmake_targets/autotests/log/', '')
 					folderName = re.sub('/test.*', '', folderName)
 					fileName = logFileInPod.replace('/opt/oai-physim/cmake_targets/autotests/log/' + folderName + '/', '')
-					mySSH.command('mkdir -p cmake_targets/log/' + folderName, '\$', 5, silent=True)
-					mySSH.command('oc cp ' + podName + ':' + logFileInPod + ' cmake_targets/log/' + folderName + '/' + fileName, '\$', 20, silent=True)
+					cmd.run(f'mkdir -p cmake_targets/log/{folderName}')
+					cmd.run(f'oc cp {podName}:{logFileInPod} cmake_targets/log/{folderName}/{fileName}')
 		except Exception as e:
 			pass
 
 		# UnDeploy the physical simulator pods
-		mySSH.command('helm uninstall physim | tee -a cmake_targets/log/physim_helm_summary.txt 2>&1', '\$', 6)
+		cmd.run('helm uninstall physim | tee -a cmake_targets/log/physim_helm_summary.txt 2>&1')
 		isFinished1 = False
 		while(isFinished1 == False):
 			time.sleep(20)
-			mySSH.command('oc get pods -l app=physim', '\$', 6, resync=True)
-			if re.search('No resources found', mySSH.getBefore()):
+			cmd.run('oc get pods -l app=physim')
+			if re.search('No resources found', cmd.getBefore()):
 				isFinished1 = True
 		if isFinished1 == True:
 			logging.debug('\u001B[1m UnDeployed PhySim Successfully on OC Cluster\u001B[0m')
-		mySSH.command('oc logout', '\$', 6)
-		mySSH.close()
+		cmd.run('oc logout')
+		cmd.close()
 		self.AnalyzeLogFile_phySim()
 		if self.testStatus and isFinished:
 			HTML.CreateHtmlTestRow('N/A', 'OK', CONST.ALL_PROCESSES_OK)
@@ -256,12 +227,11 @@ class PhySim:
 			logging.error('\u001B[1m Physical Simulator Fail\u001B[0m')
 
 	def AnalyzeLogFile_phySim(self):
-		mySSH = SSH.SSHConnection()
-		mySSH.open(self.eNBIPAddress, self.eNBUserName, self.eNBPassword)
+		cmd = cls_cmd.getConnection(self.eNBIPAddress)
 		dirToCopy = f'{self.eNBSourceCodePath}/cmake_targets/log/'
-		mySSH.copyin(self.eNBIPAddress, self.eNBUserName, self.eNBPassword, dirToCopy, f'./physim_test_logs_{self.testCase_id}/')
-		mySSH.command(f'rm -rf {dirToCopy}', '\$', 5)
-		mySSH.close()
+		cmd.copyin(dirToCopy, f'./physim_test_logs_{self.testCase_id}/', recursive=True)
+		cmd.run(f'rm -rf {dirToCopy}')
+		cmd.close()
 		# physim test log analysis
 		nextt = 0
 		nbTests = 0
@@ -271,7 +241,7 @@ class PhySim:
 				for line in logfile:
 					# the following regex would match the following line:
 					# execution nr_pbchsim.106rb.test1 {Test1: PBCH-only, 106 PRB} Run_Result = " Run_1 =PASS Run_2 =PASS Run_3 =PASS"  Result = PASS
-					#           ^testname               ^testdescription                                 ^test1      ^test2      ^test3          ^status
+					#	   ^testname	       ^testdescription				 ^test1      ^test2      ^test3	  ^status
 					ret = re.search('execution\s+(?P<name>[a-zA-Z0-9\._\-\+]+)\s+{(?P<desc>[A-Za-z0-9\.\_\-\+:,;\/\%\=\(\)\s]+)}\s+Run_Result\s*=\s*\"\s*Run_1\s*=\s*(?P<run1>[A-Za-z]+)\s*Run_2\s*=\s*(?P<run2>[A-Za-z]+)\s*Run_3\s*=\s*(?P<run3>[A-Za-z]+)\s*\"\s+Result\s*=\s*(?P<status>[A-Za-z]+)', line)
 					if ret is None:
 						continue
