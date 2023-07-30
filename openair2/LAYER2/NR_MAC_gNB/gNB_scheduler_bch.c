@@ -30,6 +30,7 @@
 
  */
 
+#include <stdlib.h>
 #include "GNB_APP/RRC_nr_paramsvalues.h"
 #include "assertions.h"
 #include "NR_MAC_gNB/nr_mac_gNB.h"
@@ -85,6 +86,13 @@ void schedule_ssb(frame_t frame, sub_frame_t slot,
   dl_config_pdu->ssb_pdu.ssb_pdu_rel15.precoding_and_beamforming.dig_bf_interfaces=1;
   dl_config_pdu->ssb_pdu.ssb_pdu_rel15.precoding_and_beamforming.prgs_list[0].pm_idx = 0;
   dl_config_pdu->ssb_pdu.ssb_pdu_rel15.precoding_and_beamforming.prgs_list[0].dig_bf_interface_list[0].beam_idx = beam_index;
+  dl_config_pdu->ssb_pdu.ssb_pdu_rel15.ssb_pbch_pdu_maintenance_fapiv3.ssbPduIndex = (uint8_t)rand(); // pdu will be unique in slot
+  dl_config_pdu->ssb_pdu.ssb_pdu_rel15.ssb_pbch_pdu_maintenance_fapiv3.caseType = 0;
+  dl_config_pdu->ssb_pdu.ssb_pdu_rel15.ssb_pbch_pdu_maintenance_fapiv3.SubcarrierSpacing = 0;
+  dl_config_pdu->ssb_pdu.ssb_pdu_rel15.ssb_pbch_pdu_maintenance_fapiv3.lMax = 0;
+  dl_config_pdu->ssb_pdu.ssb_pdu_rel15.ssb_pbch_pdu_maintenance_fapiv3.ssPbchBlockPowerScaling = -32768;
+  dl_config_pdu->ssb_pdu.ssb_pdu_rel15.ssb_pbch_pdu_maintenance_fapiv3.betaPSSProfileSSS = -32768;
+  
   dl_req->nPDUs++;
 
   LOG_D(MAC,"Scheduling ssb %d at frame %d and slot %d\n",i_ssb,frame,slot);

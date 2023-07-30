@@ -26,7 +26,7 @@
   COMPANY : EURECOM, NTUST
   EMAIL   : Lionel.Gauthier@eurecom.fr and Navid Nikaein, kroempa@gmail.com
 */
-
+#include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <nr_pdcp/nr_pdcp.h>
@@ -160,6 +160,7 @@ void *gNB_app_task(void *args_p)
   int cell_to_activate = 0;
   itti_mark_task_ready (TASK_GNB_APP);
   ngran_node_t node_type = get_node_type();
+  srand(time(NULL));
 
   if (RC.nb_nr_inst > 0) {
     if (node_type == ngran_gNB_CUCP ||
