@@ -30,20 +30,19 @@
 #to use logging.info()
 import logging
 #to create a SSH object locally in the methods
-import sshconnection
+import cls_cmd
 #to update the HTML object
 import cls_oai_html
 from multiprocessing import SimpleQueue
 #for log folder maintenance
 import os
+from cls_containerize import CreateWorkspace
 
 class PhySim:
 	def __init__(self):
 		self.buildargs = ""
 		self.runargs = ""
 		self.eNBIpAddr = ""
-		self.eNBUserName = ""
-		self.eNBPassWord = ""
 		self.eNBSourceCodePath = ""
 		self.ranRepository = ""
 		self.ranBranch = ""
@@ -64,11 +63,10 @@ class PhySim:
 #-----------------
 
 	def __CheckResults_LDPCTest(self,HTML,CONST,testcase_id):
-		mySSH = sshconnection.SSHConnection()
-		mySSH.open(self.eNBIpAddr, self.eNBUserName, self.eNBPassWord)
+		cmd = cls_cmd.getConnection(self.eNBIpAddr)
 		#retrieve run log file and store it locally$
-		mySSH.copyin(self.eNBIpAddr, self.eNBUserName, self.eNBPassWord, self.__workSpacePath+self.__runLogFile, '.')
-		mySSH.close()
+		cmd.copyin(self.__workSpacePath+self.__runLogFile, self.__runLogFile)
+		cmd.close()
 		#parse results looking for Encoding and Decoding mean values
 		runResults=[]
 		with open(self.__runLogFile) as f:
@@ -87,11 +85,10 @@ class PhySim:
 	def __CheckResults_LDPCt1Test(self,HTML,CONST,testcase_id):
 		thrs_NOK = 500
 		thrs_KO = 1000
-		mySSH = sshconnection.SSHConnection()
-		mySSH.open(self.eNBIpAddr, self.eNBUserName, self.eNBPassWord)
+		cmd = cls_cmd.getConnection(self.eNBIpAddr)
 		#retrieve run log file and store it locally$
-		mySSH.copyin(self.eNBIpAddr, self.eNBUserName, self.eNBPassWord, self.__workSpacePath+self.__runLogFile, '.')
-		mySSH.close()
+		cmd.copyin(self.__workSpacePath+self.__runLogFile, self.__runLogFile)
+		cmd.close()
 		#parse results looking for Decoding values
 		runResultsT1=[]
 		with open(self.__runLogFile) as g:
@@ -115,9 +112,9 @@ class PhySim:
 
 	def __CheckResults_NRulsimTest(self, HTML, CONST, testcase_id):
 		#retrieve run log file and store it locally
-		mySSH = sshconnection.SSHConnection()
+		cmd = cls_cmd.getConnection(self.eNBIpAddr)
 		filename = self.__workSpacePath + self.__runLogFile
-		ret = mySSH.copyin(self.eNBIpAddr, self.eNBUserName, self.eNBPassWord, filename, '.')
+		ret = cmd.copyin(filename, self.__runLogFile)
 		if ret != 0:
 			error_msg = f'could not recover test result file {filename}'
 			logging.error(error_msg)
@@ -144,13 +141,12 @@ class PhySim:
 
 	def __CheckBuild_PhySim(self, HTML, CONST):
 		self.__workSpacePath=self.eNBSourceCodePath+'/cmake_targets/'
-		mySSH = sshconnection.SSHConnection()
-		mySSH.open(self.eNBIpAddr, self.eNBUserName, self.eNBPassWord)
+		cmd = cls_cmd.getConnection(self.eNBIpAddr)
 		#retrieve compile log file and store it locally
-		mySSH.copyin(self.eNBIpAddr, self.eNBUserName, self.eNBPassWord, self.__workSpacePath+self.__buildLogFile, '.')
+		cmd.copyin(self.__workSpacePath+self.__buildLogFile, self.__buildLogFile)
 		#delete older run log file
-		mySSH.command('rm ' + self.__workSpacePath+self.__runLogFile, '\$', 5)
-		mySSH.close()
+		cmd.run(f'rm {self.__workSpacePath+self.__runLogFile}')
+		cmd.close()
 		#check build result from local compile log file
 		with open(self.__buildLogFile) as f:
 			if 'BUILD SHOULD BE SUCCESSFUL' in f.read():
@@ -170,49 +166,15 @@ class PhySim:
 #-----------------$
 
 	def Build_PhySim(self,htmlObj,constObj):
-		mySSH = sshconnection.SSHConnection()
-		mySSH.open(self.eNBIpAddr, self.eNBUserName, self.eNBPassWord)
-
-		#create working dir
-		mySSH.command('mkdir -p ' + self.eNBSourceCodePath, '\$', 5)
-		mySSH.command('cd ' + self.eNBSourceCodePath, '\$', 5)
-
-		if not self.ranRepository.lower().endswith('.git'):
-			self.ranRepository+='.git'
-
-		#git clone
-		mySSH.command('if [ ! -e .git ]; then stdbuf -o0 git clone '  + self.ranRepository + ' .; else stdbuf -o0 git fetch --prune; fi', '\$', 600)
-		#git config
-		mySSH.command('git config user.email "jenkins@openairinterface.org"', '\$', 5)
-		mySSH.command('git config user.name "OAI Jenkins"', '\$', 5)
-
-		#git clean depending on self.forced_workspace_cleanup captured in xml
-		if self.forced_workspace_cleanup==True:
-			logging.info('Cleaning workspace ...')
-			mySSH.command('echo ' + self.eNBPassWord + ' | sudo -S git clean -x -d -ff', '\$', 30)
-		else:
-			logging.info('Workspace cleaning was disabled')
-
-		# if the commit ID is provided, use it to point to it
-		if self.ranCommitID != '':
-			mySSH.command('git checkout -f ' + self.ranCommitID, '\$', 30)
-		# if the branch is not develop, then it is a merge request and we need to do
-		# the potential merge. Note that merge conflicts should have already been checked earlier
-		if (self.ranAllowMerge):
-			if self.ranTargetBranch == '':
-				if (self.ranBranch != 'develop') and (self.ranBranch != 'origin/develop'):
-					mySSH.command('git merge --ff origin/develop -m "Temporary merge for CI"', '\$', 30)
-			else:
-				logging.info('Merging with the target branch: ' + self.ranTargetBranch)
-				mySSH.command('git merge --ff origin/' + self.ranTargetBranch + ' -m "Temporary merge for CI"', '\$', 30)
-
+		cmd = cls_cmd.getConnection(self.eNBIpAddr)
+		CreateWorkspace(cmd, lSourcePath, full_ran_repo_name, self.ranCommitID, self.ranTargetBranch, self.ranAllowMerge)
 		#build
-		mySSH.command('source oaienv', '\$', 5)
-		mySSH.command('cd cmake_targets', '\$', 5)
-		mySSH.command('mkdir -p log', '\$', 5)
-		mySSH.command(f'./build_oai {self.buildargs} 2>&1 | tee {self.__buildLogFile}', '\$', 1500)
+		cmd.run('source oaienv')
+		cmd.cd('cmake_targets')
+		cmd.run('mkdir -p log')
+		cmd.run(f'./build_oai {self.buildargs} 2>&1 | tee {self.__buildLogFile}')
 
-		mySSH.close()
+		cmd.close()
 		#check build status and update HTML object
 		lHTML = cls_oai_html.HTMLManagement()
 		lHTML=self.__CheckBuild_PhySim(htmlObj,constObj)
@@ -226,30 +188,28 @@ class PhySim:
 		#log file is tc_<testcase_id>.log remotely
 		self.__runLogFile='physim_'+str(testcase_id)+'.log'
 		#open a session for test run
-		mySSH = sshconnection.SSHConnection()
-		mySSH.open(self.eNBIpAddr, self.eNBUserName, self.eNBPassWord)
-		mySSH.command('cd '+self.__workSpacePath,'\$',5)
+		cmd = cls_cmd.getConnection(self.eNBIpAddr)
+		cmd.cd(self.__workSpacePath)
 		#run and redirect the results to a log file
-		mySSH.command(self.__workSpacePath+'ran_build/build/ldpctest ' + self.runargs + ' >> '+self.__runLogFile, '\$', 30)
-		mySSH.close()
+		cmd.run(f'{self.__workSpacePath}/ran_build/build/ldpctest {self.runargs} >> {self.__runLogFile}')
+		cmd.close()
 		#return updated HTML to main
 		lHTML = cls_oai_html.HTMLManagement()
 		lHTML=self.__CheckResults_LDPCTest(htmlObj,constObj,testcase_id)
 		return lHTML
 
 	def Run_LDPCt1Test(self,htmlObj,constObj,testcase_id):
-		self.__workSpacePath = self.eNBSourceCodePath+'/cmake_targets/'
+		self.__workSpacePath = f'{self.eNBSourceCodePath}/cmake_targets/'
 		#create run logs folder locally
-		os.system('mkdir -p ./'+self.__runLogPath)
+		os.system(f'mkdir -p ./{self.__runLogPath}')
 		#log file is tc_<testcase_id>.log remotely
-		self.__runLogFile='physim_'+str(testcase_id)+'.log'
+		self.__runLogFile=f'physim_{testcase_id}.log'
 		#open a session for test run
-		mySSH = sshconnection.SSHConnection()
-		mySSH.open(self.eNBIpAddr, self.eNBUserName, self.eNBPassWord)
-		mySSH.command('cd '+self.__workSpacePath,'\$',5)
+		cmd = cls_cmd.getConnection(self.eNBIpAddr)
+		cmd.cd(self.__workSpacePath)
 		#run and redirect the results to a log file
-		mySSH.command(f'sudo {self.__workSpacePath}ran_build/build/nr_ulsim {self.runargs} > {self.__runLogFile} 2>&1', '\$', 30)
-		mySSH.close()
+		cmd.run(f'sudo {self.__workSpacePath}ran_build/build/nr_ulsim {self.runargs} > {self.__runLogFile} 2>&1')
+		cmd.close()
 		#return updated HTML to main
 		lHTML = cls_oai_html.HTMLManagement()
 		lHTML=self.__CheckResults_LDPCt1Test(htmlObj,constObj,testcase_id)
@@ -259,11 +219,10 @@ class PhySim:
 		self.__workSpacePath=self.eNBSourceCodePath+'/cmake_targets/'
 		os.system(f'mkdir -p ./{self.__runLogPath}')
 		self.__runLogFile = f'physim_{testcase_id}.log'
-		mySSH = sshconnection.SSHConnection()
-		mySSH.open(self.eNBIpAddr, self.eNBUserName, self.eNBPassWord)
-		mySSH.command(f'cd {self.__workSpacePath}', '\$', 5)
-		mySSH.command(f'sudo {self.__workSpacePath}ran_build/build/nr_ulsim {self.runargs} > {self.__runLogFile} 2>&1', '\$', 30)
-		mySSH.close()
+		cmd = cls_cmd.getConnection(self.eNBIpAddr)
+		cmd.cd(self.__workSpacePath)
+		cmd.run(f'sudo {self.__workSpacePath}ran_build/build/nr_ulsim {self.runargs} > {self.__runLogFile} 2>&1')
+		cmd.close()
 		#return updated HTML to main
 		lHTML = self.__CheckResults_NRulsimTest(htmlObj, constObj, testcase_id)
 		return lHTML
