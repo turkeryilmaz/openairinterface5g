@@ -45,6 +45,7 @@ import signal
 import statistics as stat
 from multiprocessing import Process, Lock, SimpleQueue
 import concurrent.futures
+import json
 
 #import our libs
 import helpreadme as HELP
@@ -87,6 +88,7 @@ class OaiCiTest():
 		self.iperf_profile = ''
 		self.iperf_options = ''
 		self.iperf_direction = ''
+		self.iperf_bitrate_check = ''
 		self.nbMaxUEtoAttach = -1
 		self.UEDevices = []
 		self.UEDevicesStatus = []
@@ -667,6 +669,34 @@ class OaiCiTest():
 
 		return 0
 
+	def Iperf_analyzeV3TCPJson(self, lock, statusQueue, filename, UEIpAddr, device):
+		with open(filename) as f:
+			 filename = json.load(f)
+		sender_bitrate = round(filename['end']['streams'][0]['sender']['bits_per_second']/1000000,2)
+		receiver_bitrate = round(filename['end']['streams'][0]['receiver']['bits_per_second']/1000000,2)
+		lock.acquire()
+		logging.debug(f'\u001B[1;37;44m TCP iperf result ({UEIpAddr}) \u001B[0m')
+		msg = 'TCP Statistics:\n'
+		if sender_bitrate is not None:
+		       logging.debug(f'\u001B[1;34m    Sender   Bitrate : {sender_bitrate} \u001B[0m')
+		       msg += f'Sender Bitrate: {sender_bitrate}\n'
+		if receiver_bitrate is not None:
+		       logging.debug(f'\u001B[1;34m    Receiver Bitrate : {receiver_bitrate} \u001B[0m')
+		       msg += f'Receiver Bitrate: {receiver_bitrate}\n'
+		if (int(receiver_bitrate) < int(self.iperf_bitrate_check)):
+			msg += f"Iperf FAILED! Required bitrate: {self.iperf_bitrate_check} Mbps\n"
+			logging.debug(f"\u001B[1;37;208m Iperf NOK! Target bitrate: {self.iperf_bitrate_check} Mbps \u001B[0m")
+			statusQueue.put(1)
+		else:
+			msg += f"Iperf OK! Target bitrate: {self.iperf_bitrate_check} Mbps\n"
+			logging.debug(f"\u001B[1;45;42m Iperf OK! Target bitrate: {self.iperf_bitrate_check} Mbps \u001B[0m")
+			statusQueue.put(0)
+		statusQueue.put(device)
+		statusQueue.put(UEIpAddr)
+		statusQueue.put(msg)
+		lock.release()
+		return 0
+
 	def Iperf_analyzeV2Output(self, lock, UE_IPAddress, device_id, statusQueue, iperf_real_options,EPC,SSH):
 
 		result = re.search('-u', str(iperf_real_options))
@@ -1058,16 +1088,13 @@ class OaiCiTest():
 			cmd = cls_cmd.getConnection(ue.getHost())
 			cmd.run(f'rm /tmp/{server_filename}', reportNonZero=False)
 			port = f'{5002+idx}'
-			cmd.run(f'{ue.getCmdPrefix()} iperf3 -B {ue.getIP()} -c {cn_target_ip} -p {port} {iperf_opt} --get-server-output &> /tmp/{server_filename}', timeout=iperf_time*1.5)
+			cmd.run(f'{ue.getCmdPrefix()} iperf3 -B {ue.getIP()} -c {cn_target_ip} -p {port} {iperf_opt} &> /tmp/{server_filename}', timeout=iperf_time*1.5)
 			cmd.copyin(f'/tmp/{server_filename}', server_filename)
 			cmd.close()
 			if udpIperf:
 				self.Iperf_analyzeV2Server(lock, ue.getIP(), ue.getName(), statusQueue, iperf_opt, server_filename, 1)
 			else:
-				cmd = cls_cmd.getConnection(EPC.IPAddress)
-				self.Iperf_analyzeV2TCPOutput(lock, ue.getIP(), ue.getName(), statusQueue, iperf_opt, EPC, cmd, f'/tmp/{server_filename}')
-				cmd.close()
-
+				self.Iperf_analyzeV3TCPJson(lock, statusQueue, server_filename, ue.getIP(), ue.getName())
 		else :
 			raise Exception("Incorrect or missing IPERF direction in XML")
 
