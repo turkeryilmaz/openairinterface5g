@@ -31,8 +31,8 @@
 #-----------------------------------------------------------
 # Import
 #-----------------------------------------------------------
-import sys              # arg
-import re               # reg
+import sys	         # arg
+import re	         # reg
 import logging
 import os
 from pathlib import Path
@@ -42,10 +42,9 @@ from multiprocessing import Process, Lock, SimpleQueue
 #-----------------------------------------------------------
 # OAI Testing modules
 #-----------------------------------------------------------
-import sshconnection as SSH
 import helpreadme as HELP
 import constants as CONST
-
+import cls_cmd
 #-----------------------------------------------------------
 # Class Declaration
 #-----------------------------------------------------------
@@ -95,11 +94,8 @@ class StaticCodeAnalysis():
 			HELP.GenericHelp(CONST.Version)
 			sys.exit('Insufficient Parameter')
 		logging.debug('Building on server: ' + lIpAddr)
-		mySSH = SSH.SSHConnection()
-		mySSH.open(lIpAddr, lUserName, lPassWord)
-
+		mySSH = cls_cmd.getConnection(lIpAddr)
 		self.testCase_id = HTML.testCase_id
-
 		# on RedHat/CentOS .git extension is mandatory
 		result = re.search('([a-zA-Z0-9\:\-\.\/])+\.git', self.ranRepository)
 		if result is not None:
@@ -139,9 +135,9 @@ class StaticCodeAnalysis():
 		mySSH.command('cd ' + lSourcePath + '/cmake_targets', '\$', 5)
 		mySSH.command('mkdir -p build_log_' + self.testCase_id, '\$', 5)
 		mySSH.command('mv log/* ' + 'build_log_' + self.testCase_id, '\$', 5)
+		mySSH.copyin(f'{lSourcePath}/cmake_targets/build_log_{self.testCase_id}/*', '.', recursive=True)
 		mySSH.close()
 
-		mySSH.copyin(lIpAddr, lUserName, lPassWord, lSourcePath + '/cmake_targets/build_log_' + self.testCase_id + '/*', '.')
 		CCR = CppCheckResults()
 		CCR_ref = CppCheckResults()
 		vId = 0
@@ -198,16 +194,16 @@ class StaticCodeAnalysis():
 			vMsg += '   ' + str(CCR.nbErrors[vId]) + ' errors\n'
 			vMsg += '   ' + str(CCR.nbWarnings[vId]) + ' warnings\n'
 			vMsg += '  -- Details --\n'
-			vMsg += '   Memory leak:                     ' + str(CCR.nbMemLeaks[vId]) + '\n'
+			vMsg += '   Memory leak:		     ' + str(CCR.nbMemLeaks[vId]) + '\n'
 			vMsg += '   Possible null pointer deference: ' + str(CCR.nbNullPtrs[vId]) + '\n'
-			vMsg += '   Uninitialized variable:          ' + str(CCR.nbUninitVars[vId]) + '\n'
+			vMsg += '   Uninitialized variable:	     ' + str(CCR.nbUninitVars[vId]) + '\n'
 			vMsg += '   Undefined behaviour shifting:    ' + str(CCR.nbTooManyBitsShift[vId]) + '\n'
-			vMsg += '   Signed integer overflow:         ' + str(CCR.nbIntegerOverflow[vId]) + '\n'
+			vMsg += '   Signed integer overflow:	     ' + str(CCR.nbIntegerOverflow[vId]) + '\n'
 			vMsg += '\n'
-			vMsg += '   Printf formatting issue:         ' + str(CCR.nbInvalidPrintf[vId]) + '\n'
+			vMsg += '   Printf formatting issue:	     ' + str(CCR.nbInvalidPrintf[vId]) + '\n'
 			vMsg += '   Modulo result is predetermined:  ' + str(CCR.nbModuloAlways[vId]) + '\n'
 			vMsg += '   Opposite Condition -> dead code: ' + str(CCR.nbOppoInnerCondition[vId]) + '\n'
-			vMsg += '   Wrong Scanf Nb Args:             ' + str(CCR.nbWrongScanfArg[vId]) + '\n'
+			vMsg += '   Wrong Scanf Nb Args:	     ' + str(CCR.nbWrongScanfArg[vId]) + '\n'
 			for vLine in vMsg.split('\n'):
 				logging.debug(vLine)
 			if self.ranAllowMerge and refAvailable:
@@ -251,11 +247,8 @@ class StaticCodeAnalysis():
 			HELP.GenericHelp(CONST.Version)
 			sys.exit('Insufficient Parameter')
 		logging.debug('Building on server: ' + lIpAddr)
-		mySSH = SSH.SSHConnection()
-		mySSH.open(lIpAddr, lUserName, lPassWord)
-
+		mySSH = cls_cmd.getConnection(lIpAddr)
 		self.testCase_id = HTML.testCase_id
-
 		# on RedHat/CentOS .git extension is mandatory
 		result = re.search('([a-zA-Z0-9\:\-\.\/])+\.git', self.ranRepository)
 		if result is not None:
@@ -299,9 +292,8 @@ class StaticCodeAnalysis():
 		mySSH.command('cd ' + lSourcePath + '/cmake_targets', '\$', 5)
 		mySSH.command('mkdir -p build_log_' + self.testCase_id, '\$', 5)
 		mySSH.command('mv log/* ' + 'build_log_' + self.testCase_id, '\$', 5)
+		mySSH.copyin(f'{lSourcePath}/cmake_targets/build_log_{self.testCase_id}/*', '.', recursive=True)
 		mySSH.close()
-
-		mySSH.copyin(lIpAddr, lUserName, lPassWord, lSourcePath + '/cmake_targets/build_log_' + self.testCase_id + '/*', '.')
 
 		finalStatus = 0
 		if (os.path.isfile('./oai-formatting-check.txt')):
