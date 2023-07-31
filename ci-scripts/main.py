@@ -44,8 +44,7 @@ import cls_containerize	 #class Containerize for all container-based operations 
 import cls_static_code_analysis  #class for static code analysis
 import cls_physim1		 #class PhySim for physical simulators deploy and run
 import cls_cluster		 # class for building/deploying on cluster
-
-import sshconnection 
+import cls_cmd
 import epc
 import ran
 import cls_oai_html
@@ -470,8 +469,6 @@ with open(yaml_file,'r') as f:
 mode = ''
 
 CiTestObj = cls_oaicitest.OaiCiTest()
- 
-SSH = sshconnection.SSHConnection()
 EPC = epc.EPCManagement()
 RAN = ran.RANManagement()
 HTML = cls_oai_html.HTMLManagement()
@@ -505,7 +502,7 @@ if py_param_file_present == True:
 cwd = os.getcwd()
 
 if re.match('^TerminateeNB$', mode, re.IGNORECASE):
-	if RAN.eNBIPAddress == '' or RAN.eNBUserName == '' or RAN.eNBPassword == '':
+	if RAN.eNBIPAddress == '':
 		HELP.GenericHelp(CONST.Version)
 		sys.exit('Insufficient Parameter')
 	if RAN.eNBIPAddress == 'none':
@@ -515,35 +512,35 @@ if re.match('^TerminateeNB$', mode, re.IGNORECASE):
 	RAN.eNBSourceCodePath='/tmp/'
 	RAN.TerminateeNB(HTML, EPC)
 elif re.match('^TerminateOAIUE$', mode, re.IGNORECASE):
-	if CiTestObj.UEIPAddress == '' or CiTestObj.UEUserName == '' or CiTestObj.UEPassword == '':
+	if CiTestObj.UEIPAddress == '':
 		HELP.GenericHelp(CONST.Version)
 		sys.exit('Insufficient Parameter')
 	signal.signal(signal.SIGUSR1, receive_signal)
 	CiTestObj.TerminateOAIUE(HTML,RAN,EPC,CONTAINERS)
 elif re.match('^TerminateHSS$', mode, re.IGNORECASE):
-	if EPC.IPAddress == '' or EPC.UserName == '' or EPC.Password == '' or EPC.Type == '' or EPC.SourceCodePath == '':
+	if EPC.IPAddress == '' or EPC.Type == '' or EPC.SourceCodePath == '':
 		HELP.GenericHelp(CONST.Version)
 		sys.exit('Insufficient Parameter')
 	EPC.TerminateHSS(HTML)
 elif re.match('^TerminateMME$', mode, re.IGNORECASE):
-	if EPC.IPAddress == '' or EPC.UserName == '' or EPC.Password == '' or EPC.Type == '' or EPC.SourceCodePath == '':
+	if EPC.IPAddress == '' or EPC.Type == '' or EPC.SourceCodePath == '':
 		HELP.GenericHelp(CONST.Version)
 		sys.exit('Insufficient Parameter')
 	EPC.TerminateMME(HTML)
 elif re.match('^TerminateSPGW$', mode, re.IGNORECASE):
-	if EPC.IPAddress == '' or EPC.UserName == '' or EPC.Password == '' or EPC.Type == '' or EPC.SourceCodePath== '':
+	if EPC.IPAddress == '' or EPC.Type == '' or EPC.SourceCodePath== '':
 		HELP.GenericHelp(CONST.Version)
 		sys.exit('Insufficient Parameter')
 	EPC.TerminateSPGW(HTML)
 elif re.match('^LogCollectBuild$', mode, re.IGNORECASE):
-	if (RAN.eNBIPAddress == '' or RAN.eNBUserName == '' or RAN.eNBPassword == '' or RAN.eNBSourceCodePath == '') and (CiTestObj.UEIPAddress == '' or CiTestObj.UEUserName == '' or CiTestObj.UEPassword == '' or CiTestObj.UESourceCodePath == ''):
+	if (RAN.eNBIPAddress == '' or RAN.eNBSourceCodePath == '') and (CiTestObj.UEIPAddress == '' or CiTestObj.UESourceCodePath == ''):
 		HELP.GenericHelp(CONST.Version)
 		sys.exit('Insufficient Parameter')
 	if RAN.eNBIPAddress == 'none':
 		sys.exit(0)
 	CiTestObj.LogCollectBuild(RAN)
 elif re.match('^LogCollecteNB$', mode, re.IGNORECASE):
-	if RAN.eNBIPAddress == '' or RAN.eNBUserName == '' or RAN.eNBPassword == '' or RAN.eNBSourceCodePath == '':
+	if RAN.eNBIPAddress == '' or RAN.eNBSourceCodePath == '':
 		HELP.GenericHelp(CONST.Version)
 		sys.exit('Insufficient Parameter')
 	if RAN.eNBIPAddress == 'none':
@@ -553,32 +550,32 @@ elif re.match('^LogCollecteNB$', mode, re.IGNORECASE):
 		sys.exit(0)
 	RAN.LogCollecteNB()
 elif re.match('^LogCollectHSS$', mode, re.IGNORECASE):
-	if EPC.IPAddress == '' or EPC.UserName == '' or EPC.Password == '' or EPC.Type == '' or EPC.SourceCodePath == '':
+	if EPC.IPAddress == '' or EPC.Type == '' or EPC.SourceCodePath == '':
 		HELP.GenericHelp(CONST.Version)
 		sys.exit('Insufficient Parameter')
 	EPC.LogCollectHSS()
 elif re.match('^LogCollectMME$', mode, re.IGNORECASE):
-	if EPC.IPAddress == '' or EPC.UserName == '' or EPC.Password == '' or EPC.Type == '' or EPC.SourceCodePath == '':
+	if EPC.IPAddress == '' or EPC.Type == '' or EPC.SourceCodePath == '':
 		HELP.GenericHelp(CONST.Version)
 		sys.exit('Insufficient Parameter')
 	EPC.LogCollectMME()
 elif re.match('^LogCollectSPGW$', mode, re.IGNORECASE):
-	if EPC.IPAddress == '' or EPC.UserName == '' or EPC.Password == '' or EPC.Type == '' or EPC.SourceCodePath == '':
+	if EPC.IPAddress == '' or EPC.Type == '' or EPC.SourceCodePath == '':
 		HELP.GenericHelp(CONST.Version)
 		sys.exit('Insufficient Parameter')
 	EPC.LogCollectSPGW()
 elif re.match('^LogCollectPing$', mode, re.IGNORECASE):
-	if EPC.IPAddress == '' or EPC.UserName == '' or EPC.Password == '' or EPC.SourceCodePath == '':
+	if EPC.IPAddress == '' or EPC.SourceCodePath == '':
 		HELP.GenericHelp(CONST.Version)
 		sys.exit('Insufficient Parameter')
 	CiTestObj.LogCollectPing(EPC)
 elif re.match('^LogCollectIperf$', mode, re.IGNORECASE):
-	if EPC.IPAddress == '' or EPC.UserName == '' or EPC.Password == '' or EPC.SourceCodePath == '':
+	if EPC.IPAddress == '' or EPC.SourceCodePath == '':
 		HELP.GenericHelp(CONST.Version)
 		sys.exit('Insufficient Parameter')
 	CiTestObj.LogCollectIperf(EPC)
 elif re.match('^LogCollectOAIUE$', mode, re.IGNORECASE):
-	if CiTestObj.UEIPAddress == '' or CiTestObj.UEUserName == '' or CiTestObj.UEPassword == '' or CiTestObj.UESourceCodePath == '':
+	if CiTestObj.UEIPAddress == '' or CiTestObj.UESourceCodePath == '':
 		HELP.GenericHelp(CONST.Version)
 		sys.exit('Insufficient Parameter')
 	CiTestObj.LogCollectOAIUE()
@@ -614,21 +611,22 @@ elif re.match('^TesteNB$', mode, re.IGNORECASE) or re.match('^TestUE$', mode, re
 	logging.info('\u001B[1m  Starting Scenario: ' + CiTestObj.testXMLfiles[0] + '\u001B[0m')
 	logging.info('\u001B[1m----------------------------------------\u001B[0m')
 	if re.match('^TesteNB$', mode, re.IGNORECASE):
-		if RAN.eNBIPAddress == '' or RAN.ranRepository == '' or RAN.ranBranch == '' or RAN.eNBUserName == '' or RAN.eNBPassword == '' or RAN.eNBSourceCodePath == '' or EPC.IPAddress == '' or EPC.UserName == '' or EPC.Password == '' or EPC.Type == '' or EPC.SourceCodePath == '':
+		if RAN.eNBIPAddress == '' or RAN.ranRepository == '' or RAN.ranBranch == '' or RAN.eNBSourceCodePath == '' or EPC.IPAddress == '' or EPC.Type == '' or EPC.SourceCodePath == '':
 			HELP.GenericHelp(CONST.Version)
-			if EPC.IPAddress == '' or EPC.UserName == '' or EPC.Password == '' or EPC.SourceCodePath == '' or EPC.Type == '':
-				HELP.EPCSrvHelp(EPC.IPAddress, EPC.UserName, EPC.Password, EPC.SourceCodePath, EPC.Type)
+			if EPC.IPAddress == '' or EPC.SourceCodePath == '' or EPC.Type == '':
+				HELP.EPCSrvHelp(EPC.IPAddress, EPC.SourceCodePath, EPC.Type)
 			if RAN.ranRepository == '':
 				HELP.GitSrvHelp(RAN.ranRepository, RAN.ranBranch, RAN.ranCommitID, RAN.ranAllowMerge, RAN.ranTargetBranch)
-			if RAN.eNBIPAddress == ''  or RAN.eNBUserName == '' or RAN.eNBPassword == '' or RAN.eNBSourceCodePath == '':
-				HELP.eNBSrvHelp(RAN.eNBIPAddress, RAN.eNBUserName, RAN.eNBPassword, RAN.eNBSourceCodePath)
+			if RAN.eNBIPAddress == '' or RAN.eNBSourceCodePath == '':
+				HELP.eNBSrvHelp(RAN.eNBIPAddress, RAN.eNBSourceCodePath)
 			sys.exit('Insufficient Parameter')
-
 		if (EPC.IPAddress!= '') and (EPC.IPAddress != 'none'):
-			SSH.copyout(EPC.IPAddress, EPC.UserName, EPC.Password, cwd + "/tcp_iperf_stats.awk", "/tmp")
-			SSH.copyout(EPC.IPAddress, EPC.UserName, EPC.Password, cwd + "/active_net_interfaces.awk", "/tmp")
+			cmd = cls_cmd.getConnection(EPC.IPAddress)
+			cmd.copyout(f"{cwd}/tcp_iperf_stats.awk", "/tmp/tcp_iperf_stats.awk")
+			cmd.copyout(f"{cwd}/tcp_iperf_stats.awk", "/tmp/tcp_iperf_stats.awk")
+			cmd.copyout(f"{cwd}/active_net_interfaces.awk", "/tmp/active_net_interfaces.awk")
 	else:
-		if CiTestObj.UEIPAddress == '' or CiTestObj.ranRepository == '' or CiTestObj.ranBranch == '' or CiTestObj.UEUserName == '' or CiTestObj.UEPassword == '' or CiTestObj.UESourceCodePath == '':
+		if CiTestObj.UEIPAddress == '' or CiTestObj.ranRepository == '' or CiTestObj.ranBranch == '' or CiTestObj.UESourceCodePath == '':
 			HELP.GenericHelp(CONST.Version)
 			sys.exit('UE: Insufficient Parameter')
 
@@ -700,23 +698,23 @@ elif re.match('^TesteNB$', mode, re.IGNORECASE) or re.match('^TestUE$', mode, re
 
 	# On CI bench w/ containers, we need to validate if IP routes are set
 	if EPC.IPAddress == '172.21.16.136':
-		CONTAINERS.CheckAndAddRoute('porcepix', EPC.IPAddress, EPC.UserName, EPC.Password)
+		CONTAINERS.CheckAndAddRoute('porcepix', EPC.IPAddress)
 	if EPC.IPAddress == '172.21.16.137':
-		CONTAINERS.CheckAndAddRoute('nepes', EPC.IPAddress, EPC.UserName, EPC.Password)
+		CONTAINERS.CheckAndAddRoute('nepes', EPC.IPAddress)
 	if CONTAINERS.eNBIPAddress == '172.21.16.127':
-		CONTAINERS.CheckAndAddRoute('asterix', CONTAINERS.eNBIPAddress, CONTAINERS.eNBUserName, CONTAINERS.eNBPassword)
+		CONTAINERS.CheckAndAddRoute('asterix', CONTAINERS.eNBIPAddress)
 	if CONTAINERS.eNB1IPAddress == '172.21.16.127':
-		CONTAINERS.CheckAndAddRoute('asterix', CONTAINERS.eNB1IPAddress, CONTAINERS.eNB1UserName, CONTAINERS.eNB1Password)
+		CONTAINERS.CheckAndAddRoute('asterix', CONTAINERS.eNB1IPAddress)
 	if CONTAINERS.eNBIPAddress == '172.21.16.128':
-		CONTAINERS.CheckAndAddRoute('obelix', CONTAINERS.eNBIPAddress, CONTAINERS.eNBUserName, CONTAINERS.eNBPassword)
+		CONTAINERS.CheckAndAddRoute('obelix', CONTAINERS.eNBIPAddress)
 	if CONTAINERS.eNB1IPAddress == '172.21.16.128':
-		CONTAINERS.CheckAndAddRoute('obelix', CONTAINERS.eNB1IPAddress, CONTAINERS.eNB1UserName, CONTAINERS.eNB1Password)
+		CONTAINERS.CheckAndAddRoute('obelix', CONTAINERS.eNB1IPAddress)
 	if CONTAINERS.eNBIPAddress == '172.21.16.109' or CONTAINERS.eNBIPAddress == 'ofqot':
-		CONTAINERS.CheckAndAddRoute('ofqot', CONTAINERS.eNBIPAddress, CONTAINERS.eNBUserName, CONTAINERS.eNBPassword)
+		CONTAINERS.CheckAndAddRoute('ofqot', CONTAINERS.eNBIPAddress)
 	if CONTAINERS.eNBIPAddress == '172.21.16.137':
-		CONTAINERS.CheckAndAddRoute('nepes', CONTAINERS.eNBIPAddress, CONTAINERS.eNBUserName, CONTAINERS.eNBPassword)
+		CONTAINERS.CheckAndAddRoute('nepes', CONTAINERS.eNBIPAddress)
 	if CONTAINERS.eNB1IPAddress == '172.21.16.137':
-		CONTAINERS.CheckAndAddRoute('nepes', CONTAINERS.eNB1IPAddress, CONTAINERS.eNB1UserName, CONTAINERS.eNB1Password)
+		CONTAINERS.CheckAndAddRoute('nepes', CONTAINERS.eNB1IPAddress)
 
 	CiTestObj.FailReportCnt = 0
 	RAN.prematureExit=True
