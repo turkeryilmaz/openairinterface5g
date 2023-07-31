@@ -194,35 +194,32 @@ class Module_UE:
 
 	def _enableTrace(self):
 		raise Exception("not implemented")
-		mySSH = sshconnection.SSHConnection()
-		mySSH.open(self.HostIPAddress, self.HostUsername, self.HostPassword)
+		cmd = cls_cmd.getConnection(self.HostIPAddress)
 		#delete old artifacts
-		mySSH.command('echo ' + ' '  + ' | sudo -S rm -rf ci_qlog','\$',5)
+		cmd.run('echo ' + ' '  + ' | sudo -S rm -rf ci_qlog')
 		#start Trace, artifact is created in home dir
-		mySSH.command('echo $USER; nohup sudo -E QLog/QLog -s ci_qlog -f NR5G.cfg > /dev/null 2>&1 &','\$', 5)
-		mySSH.close()
+		cmd.run('echo $USER; nohup sudo -E QLog/QLog -s ci_qlog -f NR5G.cfg > /dev/null 2>&1 &')
+		cmd.close()
 
 	def _disableTrace(self):
 		raise Exception("not implemented")
-		mySSH = sshconnection.SSHConnection()
-		mySSH.open(self.HostIPAddress, self.HostUsername, self.HostPassword)
-		mySSH.command('echo ' + ' '  + ' | sudo -S killall --signal=SIGINT *QLog*', '\$',5)
-		mySSH.close()
+		cmd = cls_cmd.getConnection(self.HostIPAddress)
+		cmd.run('echo ' + ' '  + ' | sudo -S killall --signal=SIGINT *QLog*')
+		cmd.close()
 
 
 	def _logCollect(self):
 		raise Exception("not implemented")
-		mySSH = sshconnection.SSHConnection()
-		mySSH.open(self.HostIPAddress, self.HostUsername, self.HostPassword)
+		cmd = cls_cmd.getConnection(self.HostIPAddress)
 		#archive qlog to USB stick in /media/usb-drive/ci_qlogs with datetime suffix
 		now=datetime.now()
 		now_string = now.strftime("%Y%m%d-%H%M")
 		source='ci_qlog'
 		destination= self.LogStore + '/ci_qlog_'+now_string+'.zip'
 		#qlog artifact is zipped into the target folder
-		mySSH.command('echo $USER; echo ' + ' '  + ' | nohup sudo -S zip -r '+destination+' '+source+' > /dev/null 2>&1 &','\$', 10)
-		mySSH.close()
+		cmd.run(f'echo $USER; echo ' + ' '  + ' | nohup sudo -S zip -r {destination} {source} > /dev/null 2>&1 &')
+		cmd.close()
 		#post action : log cleaning to make sure enough space is reserved for the next run
-		Log_Mgt=cls_log_mgt.Log_Mgt(self.HostUsername,self.HostIPAddress, self.HostPassword, self.LogStore)
+		Log_Mgt=cls_log_mgt.Log_Mgt(self.HostIPAddress, self.LogStore)
 		return destination
 
