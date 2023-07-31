@@ -38,6 +38,8 @@
     000100
     000010
     000020
+    000030
+    000040
     000200
     003000
     004000
@@ -100,7 +102,7 @@
   <testCase id="000010">
     <class>Iperf</class>
     <desc>iperf (DL/20Mbps/UDP)(30 sec)(multi-ue profile)</desc>
-    <iperf_args>-t 30 -i 1 -R</iperf_args>
+    <iperf_args>-t 30 -i 1 -R -u -b 60M</iperf_args>
     <direction>IPERF3</direction>
     <id>amarisoft_ue_1 amarisoft_ue_2 amarisoft_ue_3</id>
     <iperf_packetloss_threshold>25</iperf_packetloss_threshold>
@@ -111,12 +113,30 @@
   <testCase id="000020">
     <class>Iperf</class>
     <desc>iperf (UL/5Mbps/UDP)(30 sec)(multi-ue profile)</desc>
-    <iperf_args>-t 30 -i 1 </iperf_args>
+    <iperf_args>-t 30 -i 1 -u -b 15M</iperf_args>
     <direction>IPERF3</direction>
     <id>amarisoft_ue_1 amarisoft_ue_2 amarisoft_ue_3</id>
     <iperf_packetloss_threshold>25</iperf_packetloss_threshold>
     <iperf_bitrate_threshold>80</iperf_bitrate_threshold>
     <iperf_profile>balanced</iperf_profile>
+  </testCase>
+
+  <testCase id="000030">
+    <class>Iperf</class>
+    <desc>iperf (DL/TCP)(30 sec)(multi-ue profile)</desc>
+    <iperf_args>-t 30 -i 1 -R --json</iperf_args>
+    <direction>IPERF3</direction>
+    <id>amarisoft_ue_1 amarisoft_ue_2 amarisoft_ue_3</id>
+    <iperf_bitrate_check>15</iperf_bitrate_check>
+  </testCase>
+
+  <testCase id="000040">
+    <class>Iperf</class>
+    <desc>iperf (UL/TCP)(30 sec)(multi-ue profile)</desc>
+    <iperf_args>-t 30 -i 1 --json</iperf_args>
+    <direction>IPERF3</direction>
+    <id>amarisoft_ue_1 amarisoft_ue_2 amarisoft_ue_3</id>
+    <iperf_bitrate_check>5</iperf_bitrate_check>
   </testCase>
 
   <testCase id="000100">
