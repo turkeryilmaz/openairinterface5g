@@ -82,6 +82,7 @@ sudo apt install libsctp-dev python3.8 cmake-curses-gui libpcre2-dev python-dev
 ```bash
 git clone https://gitlab.eurecom.fr/oai/openairinterface5g oai
 cd oai/
+git checkout oran_jpn
 ```
 
 ### 2.1.2 Build OAI
@@ -109,12 +110,12 @@ git submodule update
 ```bash
 git clone https://gitlab.eurecom.fr/mosaic5g/flexric flexric
 cd flexric/
-git checkout mir_dev
+git checkout oran_jpn
 ```
 
 ### 2.2.2 Build FlexRIC
 ```bash
-mkdir build && cd build && cmake .. && make
+mkdir build && cd build && cmake .. && make -j8
 ```
 
 ### 2.2.3 Installation of Service Models (SMs)
@@ -124,7 +125,7 @@ sudo make install
 
 By default the service model libraries will be installed in the path /usr/local/lib/flexric while the configuration file in `/usr/local/etc/flexric`.
 
- * Note: currently, only xApp KPM v03.00 and RC v01.03 (xapp_kpm_rc) is supported to communicate with the integrated E2 agent in OAI. If you are interested in custom SMs (MAC, RLC, PDCP, GTP, TC and SLICE), please follow the instructions at https://gitlab.eurecom.fr/mosaic5g/flexric.
+ * Note: currently, only xApp KPM v03.00 ("DRB.RlcSduDelayDl" measurement from 3GPP TS 28.552) and RC v01.03 (adding/releasing of DRB RAN Function) is supported to communicate with the integrated E2 agent in OAI. If you are interested in custom SMs (MAC, RLC, PDCP, GTP, TC and SLICE), please follow the instructions at https://gitlab.eurecom.fr/mosaic5g/flexric.
 
 # 3. Start the process
 
@@ -149,7 +150,7 @@ cd flexric
 * start the KPM+RC xApp
 ```bash
 cd flexric
-./build/examples/xApp/c/kpm_rc/xapp_kpm_rc
+./build/examples/xApp/c/kpm_rc/mono_gnb_xapp_kpm_rc
 ```
 
 
