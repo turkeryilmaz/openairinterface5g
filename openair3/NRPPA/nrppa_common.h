@@ -38,7 +38,45 @@
 
 
 /* Start: ad**l todo add all nrppa ASN genrated header files here */
-//#include "NRPPA-PDU.h"
+#include "NRPPA_RequestedSRSTransmissionCharacteristics.h"
+
+#include "NRPPA_NRPPA-PDU.h"
+#include "NRPPA_InitiatingMessage.h"
+#include "NRPPA_SuccessfulOutcome.h"
+#include "NRPPA_UnsuccessfulOutcome.h"
+
+#include "NRPPA_ProtocolIE-ID.h"
+#include "NRPPA_ProtocolIE-Field.h"
+#include "NRPPA_ProtocolIE-Container.h"
+#include "NRPPA_ProtocolExtensionField.h"
+#include "NRPPA_ProtocolIE-ContainerList.h"
+#include "NRPPA_ProtocolExtensionContainer.h"
+#include "NRPPA_ProtocolIE-Single-Container.h"
+#include "NRPPA_asn_constant.h"
+
+
+// Position Information Transfer
+#include "NRPPA_PositioningActivationFailure.h"
+#include "NRPPA_PositioningActivationRequest.h"
+#include "NRPPA_PositioningActivationResponse.h"
+#include "NRPPA_PositioningBroadcastCells.h"
+#include "NRPPA_PositioningDeactivation.h"
+#include "NRPPA_PositioningInformationFailure.h"
+#include "NRPPA_PositioningInformationRequest.h"
+#include "NRPPA_PositioningInformationResponse.h"
+#include "NRPPA_PositioningInformationUpdate.h"
+
+/* Including external dependencies */
+#include "NRPPA_SRSCarrier-List-Item.h"
+#include "NRPPA_SRSResource-List.h"
+#include "NRPPA_SRSResource.h"
+#include "NRPPA_SRSResourceSet-List.h"
+#include "NRPPA_SRSResourceSet.h"
+#include "NRPPA_UplinkChannelBW-PerSCS-List.h"
+#include "NRPPA_SCS-SpecificCarrier.h"
+// TRP Information Transfer
+
+//
 /* END: ad**l todo add all nrppa ASN genrated header files here*/
 
 /* Checking version of ASN1C compiler */
@@ -87,14 +125,30 @@ extern int asn1_xer_print;
   if (mandatory && !ie)                                                                                                                 \
   return -1
 
+  /* ad**l todo */
+  /* gnb and ue related info in NRPPA emssage */
+typedef struct nrppa_gnb_ue_info_s{
+  instance_t instance;
+  uint32_t gNB_ue_ngap_id;
+  uint64_t amf_ue_ngap_id;
+  /* routing ID */
+  uint8_t  *routing_id_buffer;
+  uint32_t  routing_id_length;   /* Length of the octet string */
+   //ngap_routing_id_t routing_id;
+}nrppa_gnb_ue_info_t;
+
+
+
 /** \brief Function callback prototype.
  **/
-/* ad**l todo
-typedef int (*ngap_message_decoded_callback)(
-    uint32_t         assoc_id,
-    uint32_t         stream,
-    NGAP_NGAP_PDU_t *pdu
-);*/
+typedef int (*nrppa_message_decoded_callback)(
+   // uint32_t         assoc_id,
+   // uint32_t         stream,
+    nrppa_gnb_ue_info_t *nrppa_msg_info,
+    NRPPA_NRPPA_PDU_t *pdu
+);
+/* ad**l todo */
+
 
 
 /** \brief Handle criticality
@@ -102,8 +156,8 @@ typedef int (*ngap_message_decoded_callback)(
  @returns void
  **/
 
-/* ad**l
-void ngap_handle_criticality(NGAP_Criticality_t criticality);
+/* ad**l todo
+void nrppa_handle_criticality(NRPPA_Criticality_t criticality);
 */
 
 #endif /* NRPPA_COMMON_H_ */

@@ -535,7 +535,10 @@ void nr_schedule_srs(int module_id, frame_t frame, int slot)
     NR_SRS_Config_t *srs_config = current_BWP->srs_Config;
     if (!srs_config)
       continue;
-
+/* start: adeel debug*/
+printf("\n\n\n\n [NRRPA  debug adeel gNB schedular srs] srs_config->srs_ResourceSetToAddModList->list.count =%d \n\n\n\n", srs_config->srs_ResourceSetToAddModList->list.count);
+//printf("\n\n\n\n [NRRPA  debug adeel gNB schedular srs] gNB->max_nb_srs=%d \n\n\n\n", gNB->max_nb_srs);
+/* end: adeel debug */
     for(int rs = 0; rs < srs_config->srs_ResourceSetToAddModList->list.count; rs++) {
 
       // Find periodic resource set

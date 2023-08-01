@@ -19,24 +19,20 @@
  *      contact@openairinterface.org
  */
 
-/*! \file nrppa_gNB.h
- * \brief NRPPA gNB task
- * \author  Adeel Maik
- * \date 2023
- * \email: adeel.malik@eurecom.fr
+  /*! \file nrppa_gNB_handlers.h
+ * \brief NRPPA messages handlers for gNB
+ * \author Adeel Malik
+ * \email adeel.malik@eurecom.fr
+ *\date 2023
  * \version 1.0
  * @ingroup _nrppa
  */
 
+#ifndef NRPPA_GNB_HANDLERS_H_
+#define NRPPA_GNB_HANDLERS_H_
 
-#include <stdio.h>
-#include <stdint.h>
-
-#ifndef NRPPA_GNB_H_
-#define NRPPA_GNB_H_
-
-void nrppa_gNB_init(void);
-void *nrppa_gNB_process_itti_msg(void *notUsed);
-void *nrppa_gNB_task(void *arg);
-
-#endif /* NRPPA_GNB_H_ */
+int nrppa_handle_DownlinkUEAssociatedNRPPaTransport(instance_t instance, ngap_DownlinkUEAssociatedNRPPa_t *ngap_DownlinkUEAssociatedNRPPa_p);
+int nrppa_handle_DownlinkNonUEAssociatedNRPPaTransport(instance_t instance, ngap_DownlinkNonUEAssociatedNRPPa_t *ngap_DownlinkNonUEAssociatedNRPPa_p);
+//int nrppa_handle_DownlinkUEAssociatedNRPPaTransport(ngap_DownlinkUEAssociatedNRPPa_t *ngap_DownlinkUEAssociatedNRPPa_p);
+//int nrppa_handle_DownlinkNonUEAssociatedNRPPaTransport(ngap_DownlinkNonUEAssociatedNRPPa_t *ngap_DownlinkNonUEAssociatedNRPPa_p);
+#endif /* NRPPA_GNB_HANDLERS_H_ */

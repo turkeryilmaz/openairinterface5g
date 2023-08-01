@@ -67,69 +67,12 @@
 #include "nrppa_gNB.h"
 #include "nrppa_common.h"
 #include "nrppa_gNB_management_procedures.h"
+#include "nrppa_gNB_handlers.h"
 /* END: Adeel New added for NRPPA */
 
 
-//Processing DownLINK UE ASSOCIATED NRPPA TRANSPORT
-int nrppa_process_DownlinkUEAssociatedNRPPaTransport(instance_t instance, ngap_DownlinkUEAssociatedNRPPa_t *ngap_DownlinkUEAssociatedNRPPa_p){
-/* TODO
-NRPPA_NRPPA_PDU_t* nrppaPdu = &ngap_DownlinkUEAssociatedNRPPa_p->nrppa_pdu.buffer;
-//IE: 9.3.1.1 Message Type
-  message_type = &nrppaPdu->choice.initiatingMessage->procedureCode;*/
 
-
-/*Refer to ngap_handle_message
-int ngap_gNB_handle_message(uint32_t assoc_id, int32_t stream, const uint8_t *const data, const uint32_t data_length)
-uint8_t *const data = &ngap_DownlinkUEAssociatedNRPPa_p->nrppa_pdu.buffer;
-const uint32_t data_length= ngap_DownlinkUEAssociatedNRPPa_p->nrppa_pdu.length
-{
-  NRPPA_NRPPA_PDU_t pdu;
-  int ret;
-  DevAssert(data != NULL);
-  memset(&pdu, 0, sizeof(pdu));
-
-  if (nrppa_gNB_decode_pdu(&pdu, data, data_length) < 0) {
-    NRPPA_ERROR("Failed to decode PDU\n");
-    return -1;
-  }
-
-  /* Checking procedure Code and direction of message
-  if (pdu.choice.initiatingMessage->procedureCode >= sizeof(nrppa_messages_callback) / (3 * sizeof(nrppa_message_decoded_callback)) || (pdu.present > NRPPA_NRPPA_PDU_PR_unsuccessfulOutcome)) {
-    NRPPA_ERROR("[NGAP %d] Either procedureCode %ld or direction %d exceed expected\n", assoc_id, pdu.choice.initiatingMessage->procedureCode, pdu.present);
-    ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_NRPPA_NRPPA_PDU, &pdu);
-    return -1;
-  }
-
-  /* No handler present.
-   * This can mean not implemented or no procedure for gNB (wrong direction).
-
-  if (nrppa_messages_callback[pdu.choice.initiatingMessage->procedureCode][pdu.present - 1] == NULL) {
-    NRPPA_ERROR("[NGAP %d] No handler for procedureCode %ld in %s\n", assoc_id, pdu.choice.initiatingMessage->procedureCode, nrppa_direction2String(pdu.present - 1));
-    ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_NRPPA_NRPPA_PDU, &pdu);
-    return -1;
-  }
-
-  /* Calling the right handler
-  ret = (*nrppa_messages_callback[pdu.choice.initiatingMessage->procedureCode][pdu.present - 1])(assoc_id, stream, &pdu);
-  ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_NRPPA_NRPPA_PDU, &pdu);
-  return ret;
-}
-*/
-
-
-
-
-}
-
-
-//Processing DOWNLINK NON UE ASSOCIATED NRPPA TRANSPORT (9.2.9.4 of TS 38.413 Version 16.0.0.0 Release 16)
-int nrppa_process_DownlinkNonUEAssociatedNRPPaTransport(instance_t instance, ngap_DownlinkNonUEAssociatedNRPPa_t *ngap_DownlinkNonUEAssociatedNRPPa_p){
-/*TODO*/
-}
-
-
-
-void nrppa_gNB_init(void) {
+void nrppa_gNB_init(void){
   NRPPA_DEBUG("Starting NRPPA layer\n");
   //ngap_gNB_prepare_internal_data();
   itti_mark_task_ready(TASK_NRPPA);
@@ -152,11 +95,13 @@ void *nrppa_gNB_process_itti_msg(void *notUsed) {
 
 
       case NGAP_DOWNLINKUEASSOCIATEDNRPPA:
-       nrppa_process_DownlinkUEAssociatedNRPPaTransport(instance, &NGAP_DOWNLINKUEASSOCIATEDNRPPA(received_msg));   // adeel changes NRPPA
+       nrppa_handle_DownlinkUEAssociatedNRPPaTransport(instance, &NGAP_DOWNLINKUEASSOCIATEDNRPPA(received_msg));   // adeel changes NRPPA
+       // nrppa_handle_DownlinkUEAssociatedNRPPaTransport(&NGAP_DOWNLINKUEASSOCIATEDNRPPA(received_msg));
         break;
 
       case NGAP_DOWNLINKNONUEASSOCIATEDNRPPA:
-        nrppa_process_DownlinkUEAssociatedNRPPaTransport(instance, &NGAP_DOWNLINKNONUEASSOCIATEDNRPPA(received_msg));   // adeel changes NRPPA
+        nrppa_handle_DownlinkNonUEAssociatedNRPPaTransport(instance, &NGAP_DOWNLINKNONUEASSOCIATEDNRPPA(received_msg));   // adeel changes NRPPA
+       // nrppa_handle_DownlinkNonUEAssociatedNRPPaTransport(&NGAP_DOWNLINKNONUEASSOCIATEDNRPPA(received_msg));
         break;
 
       default:
@@ -183,6 +128,4 @@ printf("Test 1 Adeel: NRPPA Waiting for message\n");
 
   return NULL;
 }
-
-
 
