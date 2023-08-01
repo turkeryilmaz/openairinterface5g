@@ -24,6 +24,7 @@
 #include "SIMULATION/RF/rf.h"
 #include "common/utils/load_module_shlib.h"
 #include "PHY/MODULATION/nr_modulation.h"
+#include "NR_SL-SSB-TimeAllocation-r16.h"
 void exit_function(const char* file, const char* function, const int line, const char* s, const int assert) {
   const char * msg= s==NULL ? "no comment": s;
   printf("Exiting at: %s:%d %s(), %s\n", file, line, function, msg);
@@ -150,8 +151,7 @@ static void configure_NR_UE(PHY_VARS_NR_UE *UE, int mu, int N_RB) {
   }
 }
 
-static void sl_init_frame_parameters(PHY_VARS_NR_UE *UE)
-{
+static void sl_init_frame_parameters(PHY_VARS_NR_UE *UE) {
 
   NR_DL_FRAME_PARMS *nr_fp = &UE->frame_parms;
   NR_DL_FRAME_PARMS *sl_fp = &UE->SL_UE_PHY_PARAMS.sl_frame_params;
@@ -272,7 +272,7 @@ double cpuf;
 int main(int argc, char **argv) {
 
   char c;
-  int test_freqdomain_loopback = 0;
+  int test_freqdomain_loopback = 0,test_slss_search = 0;
   int frame = 5, slot = 10, frame_tx = 0, slot_tx = 0;
   int loglvl = OAILOG_INFO;
   uint16_t slss_id = 336, ssb_offset = 0;
@@ -299,7 +299,7 @@ int main(int argc, char **argv) {
 
   randominit(0);
 
-  while ((c = getopt(argc, argv, "c:hn:o:s:FL:N:R:S:T:")) != -1) {
+  while ((c = getopt(argc, argv, "c:hn:o:s:FIL:N:R:S:T:")) != -1) {
   
     printf("SIDELINK PSBCH SIM: handling optarg %c\n",c);
     switch (c) {
@@ -364,6 +364,11 @@ int main(int argc, char **argv) {
         test_freqdomain_loopback = 1;
         break;
 
+      case 'I':
+        test_slss_search = 1;
+        printf("SIDELINK PSBCH SIM: SLSS search will be tested\n");
+        break;
+
       case 'L':
         loglvl = atoi(optarg);
         break;
@@ -399,6 +404,7 @@ int main(int argc, char **argv) {
         printf("-o ssb offset from PointA - indicates ssb_start subcarrier\n");
         printf("-s: set Sidelink sync id slss_id. ex -s 100\n");
         printf("-F: Run PSBCH frequency domain loopback test of the samples\n");
+        printf("-I: Sidelink SLSS search will be tested.\n");
         printf("-L: Set Log Level.\n");
         printf("-N: Test with Noise. target SNR0 eg -N 10\n");
         printf("-R N_RB_DL\n");
@@ -494,6 +500,7 @@ int main(int argc, char **argv) {
 
   LOG_I(PHY, "Configure UE-RX and sidelink UE-RX.\n");
   configure_NR_UE(UE_RX, mu, N_RB_DL);
+  UE_RX->is_synchronized = (test_slss_search) ? 0 : 1;
   configure_SL_UE(UE_RX, mu, N_RB_DL,ssb_offset, slss_id);
   /*****************************************/
   sl_nr_ue_phy_params_t *sl_uetx = &UE_TX->SL_UE_PHY_PARAMS;
@@ -559,6 +566,8 @@ int main(int argc, char **argv) {
         }
       }
 
+      LOG_M("txData0.m","txd0", UE_TX->common_vars.txData[0],frame_parms->samples_per_frame,1,1);
+
       //AWGN
       sigma2_dB = 20*log10((double)AMP/4)-SNR;
       sigma2 = pow(10,sigma2_dB/10);
@@ -592,12 +601,26 @@ int main(int argc, char **argv) {
           }
         }
 
-      psbch_pscch_processing(UE_RX,&proc,&phy_data_rx);
+      if (UE_RX->is_synchronized == 0) {
+        int ret = -1;
+	      UE_nr_rxtx_proc_t proc={0};
+        //Should not have SLSS id configured. Search should find SLSS id from TX UE
+        UE_RX->SL_UE_PHY_PARAMS.sl_config.sl_sync_source.rx_slss_id = 0xFFFF;
+	      ret = sl_nr_slss_search(UE_RX, &proc, 1);
+	      printf("Sidelink SLSS search returns %d\n",ret);
+	      if (ret!=0) sl_uerx->psbch.rx_errors = 1;
+        else {
+          AssertFatal(UE_RX->SL_UE_PHY_PARAMS.sync_params.N_sl_id == slss_id,
+                        "DETECTED INCORRECT SLSS ID in SEARCH.CHECK id:%d\n", UE_RX->SL_UE_PHY_PARAMS.sync_params.N_sl_id);
+          sl_uerx->psbch.rx_ok = 1;
+        }
+      } else psbch_pscch_processing(UE_RX,&proc,&phy_data_rx);
 
     } //noise trials
 
-    printf("Runs:%d SNR %f: crc ERRORs = %d, OK = %d\n",
-                            n_trials, SNR,sl_uerx->psbch.rx_errors, sl_uerx->psbch.rx_ok);
+    printf("Runs:%d SNR %f: SLSS Search:%d crc ERRORs = %d, OK = %d\n",
+                                      n_trials, SNR, !UE_RX->is_synchronized,
+                                      sl_uerx->psbch.rx_errors, sl_uerx->psbch.rx_ok);
     errors += sl_uerx->psbch.rx_errors;
     sl_uerx->psbch.rx_errors = 0;
     sl_uerx->psbch.rx_ok = 0;
@@ -605,9 +628,9 @@ int main(int argc, char **argv) {
   } // NSR
 
   if (errors == 0)
-    printf("PSBCH test OK\n");
+    LOG_I(PHY,"PSBCH test OK\n");
   else
-    printf("PSBCH test NOT OK\n");
+    LOG_E(PHY,"PSBCH test NOT OK\n");
 
   free_channel_desc_scm(UE2UE);
 

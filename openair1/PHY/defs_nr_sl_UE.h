@@ -106,6 +106,24 @@ typedef struct SL_NR_UE_INIT_PARAMS {
 
 } SL_NR_UE_INIT_PARAMS_t;
 
+typedef struct SL_NR_SYNC_PARAMS {
+
+  // Indicating start of SSB block in the initial set of samples
+  uint32_t ssb_offset;
+  // Freq Offset calculated
+  int32_t freq_offset;
+
+  uint32_t remaining_frames;
+  uint32_t rx_offset;
+  uint32_t slot_offset;
+  uint16_t N_sl_id2; //id2 determined from PSS during sync ref UE selection
+  uint16_t N_sl_id1; //id2 determined from SSS during sync ref UE selection
+  uint16_t N_sl_id; //ID calculated from ID1 and ID2
+  int32_t  psbch_rsrp; //rsrp of the decoded psbch during sync ref ue selection
+  uint32_t DFN; // DFN calculated after sync ref UE search
+
+} SL_NR_SYNC_PARAMS_t;
+
 typedef struct SL_NR_UE_PSBCH {
 
   // AVG POWER OF PSBCH DMRS in dB/RE
@@ -127,6 +145,8 @@ typedef struct SL_NR_UE_PSBCH {
 typedef struct sl_nr_ue_phy_params {
 
   SL_NR_UE_INIT_PARAMS_t init_params;
+
+  SL_NR_SYNC_PARAMS_t sync_params;
 
   // Sidelink PHY PARAMETERS USED FOR PSBCH reception/Txn
   SL_NR_UE_PSBCH_t psbch;

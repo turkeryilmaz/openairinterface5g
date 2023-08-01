@@ -423,6 +423,8 @@ int nr_rx_psbch(PHY_VARS_NR_UE *ue,
 void nr_tx_psbch(PHY_VARS_NR_UE *UE, uint32_t frame_tx, uint32_t slot_tx,
                  sl_nr_tx_config_psbch_pdu_t *psbch_vars,
                  c16_t **txdataF);
+
+int sl_nr_slss_search(PHY_VARS_NR_UE *UE, UE_nr_rxtx_proc_t *proc, int num_frames);
 /**@}*/
 #endif
 

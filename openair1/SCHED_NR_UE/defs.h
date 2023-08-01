@@ -206,6 +206,13 @@ void nr_fill_sl_indication(nr_sidelink_indication_t *sl_ind,
                            UE_nr_rxtx_proc_t *proc,
                            PHY_VARS_NR_UE *ue,
                            void *phy_data);
+void nr_fill_sl_rx_indication(sl_nr_rx_indication_t *rx_ind,
+                              uint8_t pdu_type,
+                              PHY_VARS_NR_UE *ue,
+                              uint16_t n_pdus,
+                              UE_nr_rxtx_proc_t *proc,
+                              void *typeSpecific,
+                              uint16_t rx_slss_id);
 
 #endif
 
