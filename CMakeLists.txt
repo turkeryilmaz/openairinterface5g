@@ -372,6 +372,11 @@ set(NRPPA_DIR ${OPENAIR3_DIR}/NRPPA)
 include_directories ("${NRPPA_DIR}")
 add_library(nrppa
   ${NRPPA_DIR}/nrppa_gNB.c
+  ${NRPPA_DIR}/nrppa_gNB_decoder.c
+  ${NRPPA_DIR}/nrppa_gNB_encoder.c
+  ${NRPPA_DIR}/nrppa_gNB_handlers.c
+  ${NRPPA_DIR}/nrppa_gNB_itti_messaging.c
+  ${NRPPA_DIR}/nrppa_gNB_position_information_transfer_procedures.c
   )
 target_link_libraries(nrppa PUBLIC asn1_nrppa)
 target_link_libraries(nrppa PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)

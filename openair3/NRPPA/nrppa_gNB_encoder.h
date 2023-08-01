@@ -19,24 +19,19 @@
  *      contact@openairinterface.org
  */
 
-/*! \file nrppa_gNB.h
- * \brief NRPPA gNB task
- * \author  Adeel Maik
- * \date 2023
- * \email: adeel.malik@eurecom.fr
+/*! \file ngap_gNB_encoder.h
+ * \brief ngap pdu encode procedures for gNB
+ * \author Adeel Malik
+ * \email adeel.malik@eurecom.fr
+ *\date 2023
  * \version 1.0
  * @ingroup _nrppa
  */
 
+#ifndef NRPPA_GNB_ENCODER_H_
+#define NRPPA_GNB_ENCODER_H_
 
-#include <stdio.h>
-#include <stdint.h>
+int nrppa_gNB_encode_pdu(NRPPA_NRPPA_PDU_t *pdu, uint8_t **buffer, uint32_t *len)
+__attribute__ ((warn_unused_result));
 
-#ifndef NRPPA_GNB_H_
-#define NRPPA_GNB_H_
-
-void nrppa_gNB_init(void);
-void *nrppa_gNB_process_itti_msg(void *notUsed);
-void *nrppa_gNB_task(void *arg);
-
-#endif /* NRPPA_GNB_H_ */
+#endif /* NRPPA_GNB_ENCODER_H_ */
