@@ -260,6 +260,8 @@ void psbch_pscch_processing(PHY_VARS_NR_UE *ue,
       LOG_I(NR_PHY,"============================================\n");
     }
   }
+
+  UEscopeCopy(ue, commonRxdataF, rxdataF, sizeof(int32_t), fp->nb_antennas_rx, rxdataF_sz, 0);
 }
 
 int phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
