@@ -95,7 +95,7 @@ typedef struct ss_config_s {
   /** State info */
   int State;
   int vtp_ready;
-  int CBRA_flag;
+  int CBRA_flag[MAX_NUM_CCs];
   int mac_rlc_data_ind_frame;
   int mac_rlc_data_ind_subframe;
   ss_l1macind_ctrl_t l1macind[MAX_NUM_CCs];

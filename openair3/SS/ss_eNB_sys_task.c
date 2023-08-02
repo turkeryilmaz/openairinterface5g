@@ -800,7 +800,7 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
                 {
                   // RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Present[cell_index] = false;
                   if (SS_context.SSCell_list[cell_index].State == SS_STATE_NOT_CONFIGURED)
-                    RC.ss.CBRA_flag = true;
+                    RC.ss.CBRA_flag[cell_index] = true;
                 }
               }
             }
