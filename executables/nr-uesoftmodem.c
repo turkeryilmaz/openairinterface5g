@@ -312,7 +312,7 @@ void set_options(int CC_id, PHY_VARS_NR_UE *UE){
 
 }
 
-void init_openair0(uint8_t is_sidelink) {
+void init_openair0(bool is_sidelink) {
   int card;
   int freq_off = 0;
   NR_DL_FRAME_PARMS *frame_parms = &PHY_vars_UE_g[0][0]->frame_parms;
@@ -538,7 +538,7 @@ int main( int argc, char **argv ) {
 
       if (UE[CC_id]->sl_mode) {
         AssertFatal(UE[CC_id]->sl_mode == 2, "Only Sidelink mode 2 supported. Mode 1 not yet supported\n");
-        nr_UE_configure_Sidelink(0, get_softmodem_params()->sync_ref);
+        nr_UE_configure_Sidelink(0, get_nrUE_params()->sync_ref);
         DevAssert(mac->if_module != NULL && mac->if_module->sl_phy_config_request != NULL);
         sl_nr_ue_phy_params_t *sl_phy = &UE[CC_id]->SL_UE_PHY_PARAMS;
         mac->if_module->sl_phy_config_request(&mac->SL_MAC_PARAMS->sl_phy_config);
@@ -550,7 +550,7 @@ int main( int argc, char **argv ) {
 
     }
 
-    uint8_t is_sl = (get_softmodem_params()->sl_mode) ? 1 : 0;
+    bool is_sl = (get_softmodem_params()->sl_mode) ? 1 : 0;
 
     init_openair0(is_sl);
     // init UE_PF_PO and mutex lock
