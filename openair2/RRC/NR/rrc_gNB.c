@@ -200,6 +200,7 @@ static void init_NR_SI(gNB_RRC_INST *rrc, gNB_RrcConfigurationReq *configuration
         nr_mac_config_sib1(RC.nrmac[rrc->module_id], rrc->carrier.siblock1);
       mac_common_config_done = 1;
     }
+    rrc_mac_config_dedicate_scheduling(rrc->module_id, rrc->carrier.dcchDtchConfig);
   }
 
   /* set flag to indicate that cell information is configured. This is required

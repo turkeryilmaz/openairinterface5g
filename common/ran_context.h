@@ -37,6 +37,7 @@
 #include <stdint.h>
 
 #include "radio/SS/ss_config.h"
+#include "RRC/NR/nr_rrc_defs.h"
 
 // forward declarations to avoid including the full typess ***eNB;
 struct PHY_VARS_gNB_s;

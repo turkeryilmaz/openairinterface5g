@@ -440,6 +440,24 @@ void config_common(gNB_MAC_INST *nrmac, int pdsch_AntennaPorts, int pusch_Antenn
 
 }
 
+int rrc_mac_config_dedicate_scheduling(module_id_t Mod_idP, NR_DcchDtchConfig_t *dcchDtchConfig)
+{
+  gNB_MAC_INST *nrmac = RC.nrmac[Mod_idP];
+  if(dcchDtchConfig!=NULL){
+    if(dcchDtchConfig->ul && dcchDtchConfig->ul->dci_info){
+      NR_DciFormat_0_X_ResourceAssignment_t * dci0_resouceAssignment = dcchDtchConfig->ul->dci_info->resoure_assignment;
+      if(dci0_resouceAssignment){
+        nrmac->min_grant_prb = dci0_resouceAssignment->Nprb;
+        nrmac->grant_prb = dci0_resouceAssignment->Nprb;
+        nrmac->grant_mcs= dci0_resouceAssignment->transportBlock_scheduling.imcs;
+        nrmac->grant_rbStart = dci0_resouceAssignment->FirstRbIndex;
+        LOG_I(NR_MAC,"config mac PUSCH scheduler rbSize:%d, mcs:%d, rbStart:%d \n",nrmac->grant_prb,nrmac->grant_mcs,nrmac->grant_rbStart);
+      }
+    }
+  }
+  return 0;
+}
+
 int nr_mac_enable_ue_rrc_processing_timer(module_id_t Mod_idP, rnti_t rnti, NR_SubcarrierSpacing_t subcarrierSpacing, uint32_t rrc_reconfiguration_delay) {
 
   if (rrc_reconfiguration_delay == 0) {

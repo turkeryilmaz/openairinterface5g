@@ -1192,6 +1192,7 @@ rlc_op_status_t nr_rrc_rlc_config_asn1_req (const protocol_ctxt_t   * const ctxt
             if(rlc_bearer2add_list->list.array[j]->servedRadioBearer->present == NR_RLC_BearerConfig__servedRadioBearer_PR_drb_Identity){
               if(drb2add_listP->list.array[i]->drb_Identity == rlc_bearer2add_list->list.array[j]->servedRadioBearer->choice.drb_Identity){
                 add_drb(rnti, drb2add_listP->list.array[i], rlc_bearer2add_list->list.array[j]);
+                LOG_D(RLC, "Add drb %ld\n", drb2add_listP->list.array[i]->drb_Identity);
               }
             }
           }
