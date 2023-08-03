@@ -782,7 +782,6 @@ int main(int argc, char **argv)
       }
       else {
         UE_nr_rxtx_proc_t proc={0};
-        nr_phy_data_t phy_data={0};
 
 	UE->rx_offset=0;
 	uint8_t ssb_index = 0;
@@ -798,12 +797,13 @@ int main(int argc, char **argv)
         proc.gNB_id = 0;
 	for (int i=UE->symbol_offset+1; i<UE->symbol_offset+4; i++) {
           nr_slot_fep(UE,
+                      frame_parms,
                       &proc,
                       i%frame_parms->symbols_per_slot,
-                      rxdataF);
+                      rxdataF, link_type_dl);
 
-          nr_pbch_channel_estimation(UE,estimateSz, dl_ch_estimates, dl_ch_estimates_time, &proc, 
-				     i%frame_parms->symbols_per_slot,i-(UE->symbol_offset+1),ssb_index%8,n_hf,rxdataF);
+          nr_pbch_channel_estimation(UE,&UE->frame_parms, estimateSz, dl_ch_estimates, dl_ch_estimates_time, &proc, 
+				     i%frame_parms->symbols_per_slot,i-(UE->symbol_offset+1),ssb_index%8,n_hf,rxdataF,false,frame_parms->Nid_cell);
 
         }
 	fapiPbch_t result;
@@ -814,7 +814,6 @@ int main(int argc, char **argv)
                          frame_parms,
                          ssb_index%8,
                          SISO,
-                         &phy_data,
                          &result,
                          rxdataF);
 

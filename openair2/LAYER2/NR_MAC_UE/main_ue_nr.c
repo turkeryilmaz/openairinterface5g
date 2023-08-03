@@ -58,7 +58,7 @@ NR_UE_MAC_INST_t * nr_l2_init_ue(NR_UE_RRC_INST_t* rrc_inst) {
 
     int scs = get_softmodem_params()->sa ?
               get_softmodem_params()->numerology :
-              rrc_inst ?
+              rrc_inst && rrc_inst->scell_group_config ?
               *rrc_inst->scell_group_config->spCellConfig->reconfigurationWithSync->spCellConfigCommon->ssbSubcarrierSpacing :
               - 1;
     if (scs > -1)

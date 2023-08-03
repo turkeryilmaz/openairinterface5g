@@ -244,7 +244,7 @@ int nr_pbch_channel_level(struct complex16 dl_ch_estimates_ext[][PBCH_MAX_RE_PER
   return(avg2);
 }
 
-static void nr_pbch_channel_compensation(struct complex16 rxdataF_ext[][PBCH_MAX_RE_PER_SYMBOL],
+void nr_pbch_channel_compensation(struct complex16 rxdataF_ext[][PBCH_MAX_RE_PER_SYMBOL],
 					 struct complex16 dl_ch_estimates_ext[][PBCH_MAX_RE_PER_SYMBOL],
 					 int nb_re,
 					 struct complex16 rxdataF_comp[][PBCH_MAX_RE_PER_SYMBOL],
@@ -300,7 +300,7 @@ void nr_pbch_detection_mrc(NR_DL_FRAME_PARMS *frame_parms,
 #endif
 }
 
-static void nr_pbch_unscrambling(int16_t *demod_pbch_e,
+void nr_pbch_unscrambling(int16_t *demod_pbch_e,
                                  uint16_t Nid,
                                  uint8_t nushift,
                                  uint16_t M,
@@ -362,7 +362,7 @@ static void nr_pbch_unscrambling(int16_t *demod_pbch_e,
   }
 }
 
-static void nr_pbch_quantize(int16_t *pbch_llr8,
+void nr_pbch_quantize(int16_t *pbch_llr8,
                              int16_t *pbch_llr,
                              uint16_t len) {
   for (int i=0; i<len; i++) {
@@ -389,7 +389,6 @@ int nr_rx_pbch(PHY_VARS_NR_UE *ue,
                NR_DL_FRAME_PARMS *frame_parms,
                uint8_t i_ssb,
                MIMO_mode_t mimo_mode,
-               nr_phy_data_t *phy_data,
                fapiPbch_t *result,
                c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP])
 {
@@ -486,8 +485,8 @@ int nr_rx_pbch(PHY_VARS_NR_UE *ue,
   }
 
   // legacy code use int16, but it is complex16
-  UEscopeCopy(ue, pbchRxdataF_comp, pbch_unClipped, sizeof(struct complex16), frame_parms->nb_antennas_rx, pbch_e_rx_idx/2);
-  UEscopeCopy(ue, pbchLlr, pbch_e_rx, sizeof(int16_t), frame_parms->nb_antennas_rx, pbch_e_rx_idx);
+  UEscopeCopy(ue, pbchRxdataF_comp, pbch_unClipped, sizeof(struct complex16), frame_parms->nb_antennas_rx, pbch_e_rx_idx / 2, 0);
+  UEscopeCopy(ue, pbchLlr, pbch_e_rx, sizeof(int16_t), frame_parms->nb_antennas_rx, pbch_e_rx_idx, 0);
 #ifdef DEBUG_PBCH
   write_output("rxdataF_comp.m","rxFcomp",rxdataF_comp[0],240*3,1,1);
   short *p = (short *)rxdataF_comp[0]);
@@ -515,7 +514,7 @@ int nr_rx_pbch(PHY_VARS_NR_UE *ue,
   uint16_t number_pdus = 1;
 
   if(decoderState) {
-    nr_fill_dl_indication(&dl_indication, NULL, &rx_ind, proc, ue, phy_data);
+    nr_fill_dl_indication(&dl_indication, NULL, &rx_ind, proc, ue, NULL);
     nr_fill_rx_indication(&rx_ind, FAPI_NR_RX_PDU_TYPE_SSB, ue, NULL, NULL, number_pdus, proc, NULL, NULL);
     if (ue->if_inst && ue->if_inst->dl_indication)
       ue->if_inst->dl_indication(&dl_indication);
@@ -569,12 +568,6 @@ int nr_rx_pbch(PHY_VARS_NR_UE *ue,
   if (frame_parms->half_frame_bit)
   ue->symbol_offset += (frame_parms->slots_per_frame>>1)*frame_parms->symbols_per_slot;
 
-  uint8_t frame_number_4lsb = 0;
-
-  for (int i=0; i<4; i++)
-    frame_number_4lsb |= ((result->xtra_byte>>i)&1)<<(3-i);
-  
-  proc->decoded_frame_rx = frame_number_4lsb;
 #ifdef DEBUG_PBCH
   printf("xtra_byte %x payload %x\n", xtra_byte, payload);
 
@@ -585,7 +578,7 @@ int nr_rx_pbch(PHY_VARS_NR_UE *ue,
 
 #endif
 
-  nr_fill_dl_indication(&dl_indication, NULL, &rx_ind, proc, ue, phy_data);
+  nr_fill_dl_indication(&dl_indication, NULL, &rx_ind, proc, ue, NULL);
   nr_fill_rx_indication(&rx_ind, FAPI_NR_RX_PDU_TYPE_SSB, ue, NULL, NULL, number_pdus, proc, (void *)result, NULL);
 
   if (ue->if_inst && ue->if_inst->dl_indication)

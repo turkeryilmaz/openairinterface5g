@@ -53,6 +53,8 @@
 #include "NR_DL-DCCH-Message.h"
 #include "NR_SystemInformation.h"
 #include "NR_UE-NR-Capability.h"
+#include "NR_SL-PreconfigurationNR-r16.h"
+#include "NR_MasterInformationBlockSidelink.h"
 
 #include "RRC/NR/nr_rrc_common.h"
 #include "as_message.h"
@@ -134,6 +136,7 @@ typedef enum RA_trigger_e {
 } RA_trigger_t;
 
 typedef struct UE_RRC_SI_INFO_NR_s {
+  uint32_t default_otherSI_map;
   NR_SIB1_t *sib1;
   int sib1_timer;
   NR_SIB2_t *sib2;
@@ -253,6 +256,11 @@ typedef struct NR_UE_RRC_INST_s {
   Rrc_State_NR_t     nrRrcState;
   Rrc_Sub_State_NR_t nrRrcSubState;
   as_nas_info_t      initialNasMsg;
+
+  //Sidelink params
+  NR_SL_PreconfigurationNR_r16_t *sl_preconfig;
+  NR_MasterInformationBlockSidelink_t *sl_mib;
+
 } NR_UE_RRC_INST_t;
 
 #endif

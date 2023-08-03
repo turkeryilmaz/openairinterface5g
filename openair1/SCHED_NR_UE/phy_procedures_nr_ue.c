@@ -335,8 +335,7 @@ void nr_ue_measurement_procedures(uint16_t l,
         T_INT((int)(ue->measurements.rx_power_avg_dB[0] - ue->measurements.n0_power_avg_dB)),
         T_INT((int)ue->measurements.rx_power_avg_dB[0]),
         T_INT((int)ue->measurements.n0_power_avg_dB),
-        T_INT((int)ue->measurements.wideband_cqi_avg[0]),
-        T_INT((int)ue->common_vars.freq_offset));
+        T_INT((int)ue->measurements.wideband_cqi_avg[0]));
 #endif
   }
 
@@ -362,7 +361,6 @@ static int nr_ue_pbch_procedures(PHY_VARS_NR_UE *ue,
                                  UE_nr_rxtx_proc_t *proc,
                                  int estimateSz,
                                  struct complex16 dl_ch_estimates[][estimateSz],
-                                 nr_phy_data_t *phy_data,
                                  c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP]) {
 
   int ret = 0;
@@ -383,7 +381,6 @@ static int nr_ue_pbch_procedures(PHY_VARS_NR_UE *ue,
                    &ue->frame_parms,
                    (ue->frame_parms.ssb_index)&7,
                    SISO,
-                   phy_data,
                    &result,
                    rxdataF);
 
@@ -878,12 +875,15 @@ void pbch_pdcch_processing(PHY_VARS_NR_UE *ue,
 
           for (int i=1; i<4; i++) {
             nr_slot_fep(ue,
+                        fp,
                         proc,
                         (ssb_start_symbol+i)%(fp->symbols_per_slot),
-                        rxdataF);
+                        rxdataF,
+                        link_type_dl);
 
             start_meas(&ue->dlsch_channel_estimation_stats);
             nr_pbch_channel_estimation(ue,
+                                       &ue->frame_parms,
                                        estimateSz,
                                        dl_ch_estimates,
                                        dl_ch_estimates_time,
@@ -892,7 +892,9 @@ void pbch_pdcch_processing(PHY_VARS_NR_UE *ue,
                                        i-1,
                                        ssb_index&7,
                                        ssb_slot_2 == nr_slot_rx,
-                                       rxdataF);
+                                       rxdataF,
+                                       false,
+                                       fp->Nid_cell);
             stop_meas(&ue->dlsch_channel_estimation_stats);
           }
 
@@ -905,7 +907,7 @@ void pbch_pdcch_processing(PHY_VARS_NR_UE *ue,
           if(ssb_index == fp->ssb_index) {
 
             LOG_D(PHY," ------  Decode MIB: frame.slot %d.%d ------  \n", frame_rx%1024, nr_slot_rx);
-            const int pbchSuccess = nr_ue_pbch_procedures(ue, proc, estimateSz, dl_ch_estimates, phy_data, rxdataF);
+            const int pbchSuccess = nr_ue_pbch_procedures(ue, proc, estimateSz, dl_ch_estimates, rxdataF);
 
             if (ue->no_timing_correction==0 && pbchSuccess == 0) {
               LOG_D(PHY,"start adjust sync slot = %d no timing %d\n", nr_slot_rx, ue->no_timing_correction);
@@ -942,9 +944,11 @@ void pbch_pdcch_processing(PHY_VARS_NR_UE *ue,
           for(int j = prs_config->SymbolStart; j < (prs_config->SymbolStart+prs_config->NumPRSSymbols); j++)
           {
             nr_slot_fep(ue,
+                        fp,
                         proc,
                         (j%fp->symbols_per_slot),
-                        rxdataF);
+                        rxdataF,
+                        link_type_dl);
           }
           nr_prs_channel_estimation(rsc_id,
                                     i,
@@ -981,9 +985,11 @@ void pbch_pdcch_processing(PHY_VARS_NR_UE *ue,
 
     start_meas(&ue->ofdm_demod_stats);
     nr_slot_fep(ue,
+                fp,
                 proc,
                 l,
-                rxdataF);
+                rxdataF,
+                link_type_dl);
   }
 
     // Hold the channel estimates in frequency domain.
@@ -1042,9 +1048,11 @@ void pdsch_processing(PHY_VARS_NR_UE *ue,
 
     for (uint16_t m=start_symb_sch;m<(nb_symb_sch+start_symb_sch) ; m++){
       nr_slot_fep(ue,
+                  &ue->frame_parms,
                   proc,
                   m,  //to be updated from higher layer
-                  rxdataF);
+                  rxdataF,
+                  link_type_dl);
     }
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_UE_SLOT_FEP_PDSCH, VCD_FUNCTION_OUT);
 
@@ -1078,7 +1086,7 @@ void pdsch_processing(PHY_VARS_NR_UE *ue,
 
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PDSCH_PROC_C, VCD_FUNCTION_OUT);
 
-    UEscopeCopy(ue, pdschLlr, llr[0], sizeof(int16_t), 1, rx_llr_size);
+    UEscopeCopy(ue, pdschLlr, llr[0], sizeof(int16_t), 1, rx_llr_size, 0);
 
     LOG_D(PHY, "DLSCH data reception at nr_slot_rx: %d\n", nr_slot_rx);
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PDSCH_PROC, VCD_FUNCTION_IN);
@@ -1119,7 +1127,7 @@ void pdsch_processing(PHY_VARS_NR_UE *ue,
       }
       l_csiim[symb_idx] = ue->csiim_vars[gNB_id]->csiim_config_pdu.l_csiim[symb_idx];
       if(nr_slot_fep_done == false) {
-        nr_slot_fep(ue, proc, ue->csiim_vars[gNB_id]->csiim_config_pdu.l_csiim[symb_idx], rxdataF);
+        nr_slot_fep(ue, &ue->frame_parms, proc, ue->csiim_vars[gNB_id]->csiim_config_pdu.l_csiim[symb_idx], rxdataF, link_type_dl);
       }
     }
     nr_ue_csi_im_procedures(ue, proc, rxdataF);
@@ -1130,7 +1138,7 @@ void pdsch_processing(PHY_VARS_NR_UE *ue,
   if ((ue->csirs_vars[gNB_id]) && (ue->csirs_vars[gNB_id]->active == 1)) {
     for(int symb = 0; symb < NR_SYMBOLS_PER_SLOT; symb++) {
       if(is_csi_rs_in_symbol(ue->csirs_vars[gNB_id]->csirs_config_pdu,symb)) {
-        nr_slot_fep(ue, proc, symb, rxdataF);
+        nr_slot_fep(ue, &ue->frame_parms, proc, symb, rxdataF, link_type_dl);
       }
     }
     nr_ue_csi_rs_procedures(ue, proc, rxdataF);
@@ -1179,7 +1187,7 @@ void pdsch_processing(PHY_VARS_NR_UE *ue,
     LOG_D(PHY, "------FULL RX PROC [SFN %d]: %5.2f ------\n",nr_slot_rx,ue->phy_proc_rx.p_time/(cpuf*1000.0));
 
   LOG_D(PHY," ****** end RX-Chain  for AbsSubframe %d.%d ******  \n", frame_rx%1024, nr_slot_rx);
-  UEscopeCopy(ue, commonRxdataF, rxdataF, sizeof(int32_t), ue->frame_parms.nb_antennas_rx, rxdataF_sz);
+  UEscopeCopy(ue, commonRxdataF, rxdataF, sizeof(int32_t), ue->frame_parms.nb_antennas_rx, rxdataF_sz, 0);
 }
 
 

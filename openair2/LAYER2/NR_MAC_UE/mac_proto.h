@@ -47,27 +47,7 @@ void nr_ue_init_mac(module_id_t module_idP);
    \param mac           mac instance */
 void nr_ue_mac_default_configs(NR_UE_MAC_INST_t *mac);
 
-/**\brief decode mib pdu in NR_UE, from if_module ul_ind with P7 tx_ind message
-   \param module_id      module id
-   \param cc_id          component carrier id
-   \param gNB_index      gNB index
-   \param phy_data       PHY structure to be filled in by the callee in the FAPI call (L1 caller -> indication to L2 -> FAPI call to L1 callee)
-   \param extra_bits     extra bits for frame calculation
-   \param l_ssb_equal_64 check if ssb number of candicate is equal 64, 1=equal; 0=non equal. Reference 38.212 7.1.1
-   \param pduP           pointer to pdu
-   \param pdu_length     length of pdu
-   \param cell_id        cell id */
-int8_t nr_ue_decode_mib(
-    module_id_t module_id, 
-    int cc_id, 
-    uint8_t gNB_index,
-    void *phy_data, 
-    uint8_t extra_bits, 
-    uint32_t ssb_length, 
-    uint32_t ssb_index,
-    void *pduP,
-    uint16_t ssb_start_subcarrier,
-    uint16_t cell_id );
+int8_t nr_ue_decode_mib(module_id_t module_id, int cc_id);
 
 /**\brief decode SIB1 and other SIs pdus in NR_UE, from if_module dl_ind
    \param module_id      module id
@@ -133,6 +113,8 @@ void nr_ue_dl_scheduler(nr_downlink_indication_t *dl_info);
    @param fapi_nr_dl_config_request_t* pointer to dl_config,
    @param fapi_nr_ul_config_request_t* pointer to ul_config,
    @param fapi_nr_tx_request_t*        pointer to tx_request;
+   @param sl_nr_rx_config_request_t*   pointer to sl_rx_config,
+   @param sl_nr_tx_config_request_t*   pointer to sl_tx_config,
    @param module_id_t mod_id           module ID
    @param int cc_id                    CC ID
    @param frame_t frame                frame number
@@ -142,6 +124,8 @@ void fill_scheduled_response(nr_scheduled_response_t *scheduled_response,
                              fapi_nr_dl_config_request_t *dl_config,
                              fapi_nr_ul_config_request_t *ul_config,
                              fapi_nr_tx_request_t *tx_request,
+                             sl_nr_rx_config_request_t *sl_rx_config,
+                             sl_nr_tx_config_request_t *sl_tx_config,
                              module_id_t mod_id,
                              int cc_id,
                              frame_t frame,
@@ -341,16 +325,6 @@ void nr_ue_msg3_scheduler(NR_UE_MAC_INST_t *mac,
                           sub_frame_t current_slot,
                           uint8_t Msg3_tda_id);
 
-void nr_ue_sib1_scheduler(module_id_t module_idP,
-                          int cc_id,
-                          uint16_t ssb_start_symbol,
-                          uint16_t frame,
-                          uint8_t ssb_subcarrier_offset,
-                          uint32_t ssb_index,
-                          uint16_t ssb_start_subcarrier,
-                          frequency_range_t frequency_range,
-                          void *phy_data);
-
 /* \brief Function called by PHY to process the received RAR and check that the preamble matches what was sent by the gNB. It provides the timing advance and t-CRNTI.
 @param Mod_id Index of UE instance
 @param CC_id Index to a component carrier
@@ -460,5 +434,51 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
                         RAR_grant_t *rar_grant,
                         uint16_t rnti,
                         const nr_dci_format_t *dci_format);
+
+int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
+                                       NR_SL_PreconfigurationNR_r16_t *sl_preconfiguration,
+                                       uint8_t sync_source);
+
+void nr_rrc_mac_transmit_slss_req(module_id_t module_id,
+                                  uint8_t *sl_mib_payload,
+                                  uint16_t tx_slss_id,
+                                  NR_SL_SSB_TimeAllocation_r16_t *ssb_ta);
+void nr_rrc_mac_config_req_sl_mib(module_id_t module_id,
+                                  NR_SL_SSB_TimeAllocation_r16_t *ssb_ta,
+                                  uint16_t rx_slss_id,
+                                  uint8_t *sl_mib);
+
+void sl_prepare_psbch_payload(NR_TDD_UL_DL_ConfigCommon_t *TDD_UL_DL_Config,
+                              uint8_t *bits_0_to_7, uint8_t *bits_8_to_11,
+                              uint8_t mu, uint8_t L, uint8_t Y);
+
+uint8_t sl_decode_sl_TDD_Config(NR_TDD_UL_DL_ConfigCommon_t *TDD_UL_DL_Config,
+                                uint8_t bits_0_to_7, uint8_t bits_8_to_11,
+                                uint8_t mu, uint8_t L, uint8_t Y);
+
+uint8_t sl_determine_sci_1a_len(uint16_t *num_subchannels,
+                                NR_SL_ResourcePool_r16_t *rpool,
+                                sidelink_sci_format_1a_fields_t *sci_1a);
+/** \brief This function checks nr UE slot for Sidelink direction : Sidelink
+ *  @param cfg      : Sidelink config request
+ *  @param nr_frame : frame number
+ *  @param nr_slot  : slot number
+ *  @param frame duplex type  : Frame type
+    @returns int : 0 or Sidelink slot type */
+int sl_nr_ue_slot_select(sl_nr_phy_config_request_t *cfg,
+                         int nr_frame, int nr_slot,
+                         uint8_t frame_duplex_type);
+
+void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind);
+
+void nr_mac_rrc_sl_mib_ind(const module_id_t module_id,
+                              const int CC_id,
+                              const uint8_t gNB_index,
+                              const frame_t frame,
+                              const int slot,
+                              const channel_t channel,
+                              uint8_t* pduP,
+                              const sdu_size_t pdu_len,
+                              const uint16_t rx_slss_id);
 #endif
 /** @}*/

@@ -47,6 +47,7 @@
 #include "LAYER2/NR_MAC_COMMON/nr_mac_common.h"
 #include "LAYER2/MAC/mac.h"
 #include "NR_MAC_COMMON/nr_mac_extern.h"
+#include "mac_defs_sl.h"
 
 /* RRC */
 #include "NR_DRX-Config.h"
@@ -482,6 +483,8 @@ typedef struct {
   RA_config_t ra;
   /// SSB index from MIB decoding
   uint8_t mib_ssb;
+  uint32_t mib_additional_bits;
+  int mib_frame;
 
   nr_csi_report_t csi_report_template[MAX_CSI_REPORTCONFIG];
 
@@ -515,6 +518,7 @@ typedef struct {
   frequency_range_t frequency_range;
   uint16_t nr_band;
   uint8_t ssb_subcarrier_offset;
+  int ssb_start_subcarrier;
 
   NR_SSB_meas_t ssb_measurements;
 
@@ -527,6 +531,9 @@ typedef struct {
   nr_emulated_l1_t nr_ue_emul_l1;
 
   pthread_mutex_t mutex_dl_info;
+
+  //SIDELINK MAC PARAMETERS
+  sl_nr_ue_mac_params_t *SL_MAC_PARAMS;
 
 } NR_UE_MAC_INST_t;
 
