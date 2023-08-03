@@ -1018,14 +1018,19 @@ int nr_pbch_channel_estimation(PHY_VARS_NR_UE *ue,
     }
   }
 
-  if (!sidelink && dmrss == lastsymbol)
+  if (dmrss == lastsymbol) {
+
+    enum scopeDataType typ = (sidelink) ? psbchDlChEstimateTime
+                                        : pbchDlChEstimateTime;
+
     UEscopeCopy(ue,
-                pbchDlChEstimateTime,
+                typ,
                 (void *)dl_ch_estimates_time,
                 sizeof(c16_t),
                 fp->nb_antennas_rx,
                 fp->ofdm_symbol_size,
                 0);
+  }
 
   return(0);
 }
