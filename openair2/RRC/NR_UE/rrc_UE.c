@@ -655,7 +655,7 @@ static void nr_ue_check_paging(const module_id_t module_id, const uint8_t gNB_in
     }
 
     if (found) {
-        LOG_D(NR_RRC, "%s: found ue_Identity in PCCH\n", __FUNCTION__);
+        LOG_I(NR_RRC, "%s: found ue_Identity in PCCH\n", __FUNCTION__);
         NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
         mac->ra.ra_state = RA_UE_IDLE;
     }
@@ -675,7 +675,7 @@ int8_t nr_rrc_ue_decode_NR_PCCH_Message(const module_id_t module_id, const uint8
     } else {
         ret = 0;
 
-        LOG_D(NR_RRC, "[gNB %d] nr_rrc_ue_decode_NR_PCCH_Message: decoded PCCH Message\n", module_id);
+        LOG_I(NR_RRC, "[gNB %d] nr_rrc_ue_decode_NR_PCCH_Message: decoded PCCH Message\n", module_id);
         if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
             xer_fprint(stdout, &asn_DEF_NR_PCCH_Message, pcch_message);
         }
