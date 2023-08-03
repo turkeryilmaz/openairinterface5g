@@ -483,10 +483,11 @@ static void ss_gNB_wait_first_msg(void)
             if (virtualTime->Enable) {
                 ss_gNB_vt_ena();
             }
-			break;
+			
 
             _ss_log_vt(virtualTime, " => (enable message) ");
             acpSysVTEnquireTimingAckFreeSrv(virtualTime);
+            break;
 		}
         LOG_A(GNB_APP, "[SS_VTP] Waiting for First VT-ACK From Client(on-start) \n");
 	}
