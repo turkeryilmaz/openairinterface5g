@@ -86,7 +86,6 @@ void fill_ul_config(fapi_nr_ul_config_request_t *ul_config, frame_t frame_tx, in
 void fill_scheduled_response(nr_scheduled_response_t *scheduled_response,
                              fapi_nr_dl_config_request_t *dl_config,
                              fapi_nr_ul_config_request_t *ul_config,
-			     sl_nr_rx_config_request_t *sl_config,
                              fapi_nr_tx_request_t *tx_request,
                              sl_nr_rx_config_request_t *sl_rx_config,
                              sl_nr_tx_config_request_t *sl_tx_config,
@@ -975,7 +974,7 @@ void nr_ue_dl_scheduler(nr_downlink_indication_t *dl_info)
     }
     dcireq.dl_config_req = *dl_config;
 
-    fill_scheduled_response(&scheduled_response, &dcireq.dl_config_req, NULL, NULL, NULL, NULL,mod_id, cc_id, rx_frame, rx_slot, dl_info->phy_data);
+    fill_scheduled_response(&scheduled_response, &dcireq.dl_config_req, NULL, NULL, NULL, NULL, mod_id, cc_id, rx_frame, rx_slot, dl_info->phy_data);
     if(mac->if_module != NULL && mac->if_module->scheduled_response != NULL) {
       LOG_D(NR_MAC,"1# scheduled_response transmitted, %d, %d\n", rx_frame, rx_slot);
       mac->if_module->scheduled_response(&scheduled_response);
@@ -1084,7 +1083,7 @@ void nr_ue_ul_scheduler(nr_uplink_indication_t *ul_info)
         }
       }
       pthread_mutex_unlock(&ul_config->mutex_ul_config); // avoid double lock
-      fill_scheduled_response(&scheduled_response, NULL, ul_config, &tx_req, NULL, NULL,mod_id, cc_id, frame_tx, slot_tx, ul_info->phy_data);
+      fill_scheduled_response(&scheduled_response, NULL, ul_config, &tx_req, NULL,NULL,mod_id, cc_id, frame_tx, slot_tx, ul_info->phy_data);
       if(mac->if_module != NULL && mac->if_module->scheduled_response != NULL){
         LOG_D(NR_MAC,"3# scheduled_response transmitted,%d, %d\n", frame_tx, slot_tx);
         mac->if_module->scheduled_response(&scheduled_response);
@@ -2195,7 +2194,7 @@ void nr_ue_pucch_scheduler(module_id_t module_idP, frame_t frameP, int slotP, vo
                             &pucch[j],
                             pucch_pdu);
       nr_scheduled_response_t scheduled_response;
-      fill_scheduled_response(&scheduled_response, NULL, ul_config, NULL, NULL, NULL,module_idP, 0 /*TBR fix*/, frameP, slotP, phy_data);
+      fill_scheduled_response(&scheduled_response, NULL, ul_config, NULL, NULL,NULL,module_idP, 0 /*TBR fix*/, frameP, slotP, phy_data);
       if (mac->if_module != NULL && mac->if_module->scheduled_response != NULL)
         mac->if_module->scheduled_response(&scheduled_response);
       if (mac->state == UE_WAIT_TX_ACK_MSG4)
@@ -2644,7 +2643,7 @@ static void nr_ue_prach_scheduler(module_id_t module_idP, frame_t frameP, sub_fr
       prach_config_pdu->prach_tx_power = get_prach_tx_power(module_idP);
       set_ra_rnti(mac, prach_config_pdu);
 
-      fill_scheduled_response(&scheduled_response, NULL, ul_config, NULL, NULL, NULL,module_idP, 0 /*TBR fix*/, frameP, slotP, NULL);
+      fill_scheduled_response(&scheduled_response, NULL, ul_config, NULL, NULL,NULL,module_idP, 0 /*TBR fix*/, frameP, slotP, NULL);
       if(mac->if_module != NULL && mac->if_module->scheduled_response != NULL)
         mac->if_module->scheduled_response(&scheduled_response);
 
@@ -3398,7 +3397,7 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind) {
   }
 
   if (tti_action == SL_NR_CONFIG_TYPE_RX_PSBCH) {
-    fill_scheduled_response(&scheduled_response, NULL, NULL, NULL, &rx_config, NULL, mod_id, 0,frame, slot, sl_ind->phy_data);
+    fill_scheduled_response(&scheduled_response, NULL, NULL, NULL,  &rx_config, NULL, mod_id, 0,frame, slot, sl_ind->phy_data);
   }
   if (tti_action == SL_NR_CONFIG_TYPE_TX_PSBCH) {
     fill_scheduled_response(&scheduled_response, NULL, NULL, NULL, NULL, &tx_config, mod_id, 0,frame, slot, sl_ind->phy_data);

@@ -1299,7 +1299,7 @@ int nr_ue_dcireq(nr_dcireq_t *dcireq) {
 
   return 0;
 }
-
+/*
 int nr_ue_scireq(nr_scireq_t *scireq) {
 
   sl_nr_rx_config_request_t *sl_config = &scireq->sl_config_req;
@@ -1312,9 +1312,10 @@ int nr_ue_scireq(nr_scireq_t *scireq) {
 
   return 0;
 }
+*/
 
-
-int nr_ue_sl_indication(nr_sidelink_indication_t *sl_info)
+/*
+int nr_ue_sl_indication_rk(nr_sidelink_indication_t *sl_info)
 {
   pthread_mutex_lock(&mac_IF_mutex);
   uint32_t ret_mask = 0x0;
@@ -1375,7 +1376,7 @@ int nr_ue_sl_indication(nr_sidelink_indication_t *sl_info)
   pthread_mutex_unlock(&mac_IF_mutex);
   return ret_mask;
 }
-
+*/
 void RCconfig_nr_ue_macrlc(void) {
   int j;
   paramdef_t MACRLC_Params[] = MACRLCPARAMS_DESC;
