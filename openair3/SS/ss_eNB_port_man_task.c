@@ -257,9 +257,8 @@ void ss_port_man_send_data(
     cnf.Common.TimingInfo.v.SubFrame.Subframe.d = SubFrameInfo_Type_Number;
     cnf.Common.TimingInfo.v.SubFrame.Subframe.v.Number = tinfo->sf;
 
-    /** TODO: Always filling HSFN as 0, need to change this */
     cnf.Common.TimingInfo.v.SubFrame.HSFN.d = SystemFrameNumberInfo_Type_Number;
-    cnf.Common.TimingInfo.v.SubFrame.HSFN.v.Number = 0;
+    cnf.Common.TimingInfo.v.SubFrame.HSFN.v.Number = tinfo->hsfn;
 
     /** TODO: Always marking as first slot, need to change this */
     cnf.Common.TimingInfo.v.SubFrame.Slot.d = SlotTimingInfo_Type_FirstSlot;

@@ -88,15 +88,14 @@ void ss_vtp_send_tinfo(
     size_t msgSize = size;
     memset(&virtualTime, 0, sizeof(virtualTime));
     virtualTime.Enable = true;
-    virtualTime.TimingInfo.SFN.d = true;
+    virtualTime.TimingInfo.SFN.d = SystemFrameNumberInfo_Type_Number;
     virtualTime.TimingInfo.SFN.v.Number = tinfo->sfn;
 
-    virtualTime.TimingInfo.Subframe.d = true;
+    virtualTime.TimingInfo.Subframe.d = SubFrameInfo_Type_Number;
     virtualTime.TimingInfo.Subframe.v.Number = tinfo->sf;
 
-    /** TODO: Always filling HSFN as 0, need to check this */
-    virtualTime.TimingInfo.HSFN.d = false;
-    virtualTime.TimingInfo.HSFN.v.Number = 0;
+    virtualTime.TimingInfo.HSFN.d = SystemFrameNumberInfo_Type_Number;
+    virtualTime.TimingInfo.HSFN.v.Number = tinfo->hsfn;
 
     /** TODO: Always marking as first slot, need to check this */
     virtualTime.TimingInfo.Slot.d = SlotTimingInfo_Type_FirstSlot;
@@ -327,6 +326,7 @@ void *ss_eNB_vtp_process_itti_msg(void *notUsed)
         case SS_UPD_TIM_INFO:
         {
             ss_set_timinfo_t tinfo;
+            tinfo.hsfn = SS_context.hsfn; //it is supposed that SS_UPD_TIM_INFO processed by eNB_sys task firstly
             tinfo.sf = SS_UPD_TIM_INFO(received_msg).sf;
             tinfo.sfn = SS_UPD_TIM_INFO(received_msg).sfn;
             if(SS_UPD_TIM_INFO(received_msg).physCellId) {

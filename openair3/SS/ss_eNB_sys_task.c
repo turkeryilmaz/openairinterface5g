@@ -295,7 +295,8 @@ static void ss_task_sys_handle_timing_info(ss_set_timinfo_t *tinfo)
   MessageDef *message_p = itti_alloc_new_message(TASK_SYS, 0, SS_SET_TIM_INFO);
   if (message_p)
   {
-    LOG_A(ENB_SS_SYS_TASK, "Reporting info sfn:%d\t sf:%d.\n", tinfo->sfn, tinfo->sf);
+    LOG_A(ENB_SS_SYS_TASK, "Reporting info hsfn:%d sfn:%d\t sf:%d.\n",tinfo->hsfn, tinfo->sfn, tinfo->sf);
+    SS_SET_TIM_INFO(message_p).hsfn = tinfo->hsfn;
     SS_SET_TIM_INFO(message_p).sf = tinfo->sf;
     SS_SET_TIM_INFO(message_p).sfn = tinfo->sfn;
     SS_SET_TIM_INFO(message_p).cell_index = cell_index;
@@ -2190,6 +2191,7 @@ static void ss_task_sys_handle_req(struct SYSTEM_CTRL_REQ *req, ss_set_timinfo_t
         case SystemRequest_Type_Paging:
           LOG_A(ENB_SS_SYS_TASK, "SystemRequest_Type Paging received\n");
           ss_set_timinfo_t pg_timinfo ;
+          pg_timinfo.hsfn = req->Common.TimingInfo.v.SubFrame.HSFN.v.Number;
           pg_timinfo.sfn = req->Common.TimingInfo.v.SubFrame.SFN.v.Number;
           pg_timinfo.sf = req->Common.TimingInfo.v.SubFrame.Subframe.v.Number;
           sys_handle_paging_req(&(req->Request.v.Paging), pg_timinfo);
@@ -2373,7 +2375,8 @@ void *ss_eNB_sys_process_itti_msg(void *notUsed)
 {
   MessageDef *received_msg = NULL;
   int result;
-  static ss_set_timinfo_t tinfo = {.sfn = 0xFFFF, .sf = 0xFF};
+  static ss_set_timinfo_t tinfo = {.hsfn=0xFFFF, .sfn = 0xFFFF, .sf = 0xFF};
+  SS_context.hsfn = tinfo.hsfn;
   SS_context.sfn = tinfo.sfn;
   SS_context.sf  = tinfo.sf;
 
@@ -2402,17 +2405,26 @@ void *ss_eNB_sys_process_itti_msg(void *notUsed)
         }
       case SS_UPD_TIM_INFO:
         {
+          /*WA: calculate hsfn here */
+          if(tinfo.hsfn == 0xFFFF){
+            tinfo.hsfn = 0;
+          } else if(tinfo.sfn == 1023 && SS_UPD_TIM_INFO(received_msg).sfn == 0){
+            tinfo.hsfn++;
+            if(tinfo.hsfn == 1024){
+              tinfo.hsfn = 0;
+            }
+          }
           tinfo.sf = SS_UPD_TIM_INFO(received_msg).sf;
           tinfo.sfn = SS_UPD_TIM_INFO(received_msg).sfn;
 
           SS_context.sfn = tinfo.sfn;
           SS_context.sf  = tinfo.sf;
-          //      SS_context.hsfn  = tinfo.hsfn;
+          SS_context.hsfn  = tinfo.hsfn;
 
           g_log->sfn = tinfo.sfn;
           g_log->sf = (uint32_t)tinfo.sf;
           if (g_log->sfn % 64 == 0 && g_log->sf == 0) {
-            LOG_I(ENB_SS_SYS_TASK, "[SYS] received SS_UPD_TIM_INFO SFN: %d SF: %d\n", tinfo.sfn, tinfo.sf);
+            LOG_I(ENB_SS_SYS_TASK, "[SYS] received SS_UPD_TIM_INFO HSFN:%d SFN: %d SF: %d\n", tinfo.hsfn,tinfo.sfn, tinfo.sf);
           }
         }
         break;

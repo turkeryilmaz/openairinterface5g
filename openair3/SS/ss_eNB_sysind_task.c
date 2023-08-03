@@ -96,7 +96,7 @@ static void ss_send_sysind_data(ss_system_ind_t *p_ind,int cell_index)
         ind.Common.TimingInfo.v.SubFrame.Subframe.v.Number = p_ind->sf;
 
         ind.Common.TimingInfo.v.SubFrame.HSFN.d = SystemFrameNumberInfo_Type_Number;
-        ind.Common.TimingInfo.v.SubFrame.HSFN.v.Number = 0;
+        ind.Common.TimingInfo.v.SubFrame.HSFN.v.Number = SS_context.hsfn;
 
         ind.Common.TimingInfo.v.SubFrame.Slot.d = SlotTimingInfo_Type_Any;
         ind.Common.TimingInfo.v.SubFrame.Slot.v.Any = true;

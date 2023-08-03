@@ -123,8 +123,8 @@ static void ss_send_srb_data(ss_rrc_pdu_ind_t *pdu_ind,int cell_index)
 	ind.Common.TimingInfo.v.SubFrame.Subframe.d = SubFrameInfo_Type_Number;
 	ind.Common.TimingInfo.v.SubFrame.Subframe.v.Number = pdu_ind->subframe;
 
-	ind.Common.TimingInfo.v.SubFrame.HSFN.d = SystemFrameNumberInfo_Type_Any;
-	ind.Common.TimingInfo.v.SubFrame.HSFN.v.Number = 0;
+	ind.Common.TimingInfo.v.SubFrame.HSFN.d = SystemFrameNumberInfo_Type_Number;
+	ind.Common.TimingInfo.v.SubFrame.HSFN.v.Number = SS_context.hsfn;
 
 	ind.Common.TimingInfo.v.SubFrame.Slot.d = SlotTimingInfo_Type_Any;
 	ind.Common.TimingInfo.v.SubFrame.Slot.v.Any = true;
@@ -257,6 +257,7 @@ static void ss_task_handle_rrc_pdu_req(struct EUTRA_RRC_PDU_REQ *req)
 
 		SS_RRC_PDU_REQ(message_p).rnti = rnti_g;
 
+		vt_add_sf(&req->Common.TimingInfo, -2); //RRC PDU schedule(if future timing) shall be ahead 2 subframe because of latency between VT_Timer_task --RRC -- PDCP
 		if (!vt_timer_push_msg(&req->Common.TimingInfo, TASK_RRC_ENB, instance_g, message_p))
 		{
 			itti_send_msg_to_task(TASK_RRC_ENB, instance_g, message_p);
