@@ -84,6 +84,7 @@
     {"modelname",              "<channel model name>\n",              simOpt,  strptr:&modelname,                    defstrval:"AWGN",                TYPE_STRING,    0 },\
     {"ploss",                  "<channel path loss in dB>\n",         simOpt,  dblptr:&(rfsimulator->chan_pathloss),   defdblval:0,                     TYPE_DOUBLE,    0 },\
     {"forgetfact",             "<channel forget factor ((0 to 1)>\n", simOpt,  dblptr:&(rfsimulator->chan_forgetfact), defdblval:0,                     TYPE_DOUBLE,    0 },\
+    {"CFO",                    "<Carrier frequency offset (Hz)>\n"  , simOpt,  dblptr:&(rfsimulator->cfo)            , defdblval:0,                     TYPE_DOUBLE,    0 },\
     {"offset",                 "<channel offset in samps>\n",         simOpt,  iptr:&(rfsimulator->chan_offset),       defintval:0,                     TYPE_INT,       0 }\
   };
 
@@ -135,6 +136,7 @@ typedef struct {
   float  noise_power_dB;
   void *telnetcmd_qid;
   poll_telnetcmdq_func_t poll_telnetcmdq;
+  double cfo;
 } rfsimulator_state_t;
 
 
@@ -693,6 +695,10 @@ static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimest
 
       if (t->poll_telnetcmdq)
         t->poll_telnetcmdq(t->telnetcmd_qid,t);
+      double cfo = t->cfo;
+      //LOG_I(HW,"rfsimCFO is %f\n", cfo);
+      double phase_inc = 2*M_PI*cfo/122.88e6;
+      struct complexd rx_tmp= {0};
 
       for (int a=0; a<nbAnt; a++) {//loop over number of Rx antennas
         if ( ptr->channel_model != NULL ) { // apply a channel model
@@ -721,6 +727,15 @@ static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimest
             } // end for a_tx
           } // end for i (number of samps)
         } // end of no channel modeling
+        double phase = 0;
+        sample_t *outCFO=(sample_t *)samplesVoid[a];
+        for (int i=0; i < nsamps;  i++){
+          rx_tmp.r = outCFO[i].r * cos(phase) - outCFO[i].i * sin(phase);
+          rx_tmp.i = outCFO[i].r * sin(phase) + outCFO[i].i * cos(phase);
+          outCFO[i].r = lround(rx_tmp.r);
+          outCFO[i].i = lround(rx_tmp.i);
+          phase += phase_inc; 
+        }
       } // end for a (number of rx antennas)
     }
   }

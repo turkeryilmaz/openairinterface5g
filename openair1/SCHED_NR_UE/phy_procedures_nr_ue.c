@@ -313,7 +313,7 @@ void phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
 
   if (get_softmodem_params()->sl_mode == 2) {
     ue->tx_power_dBm[slot_tx] = -127;
-    int num_samples_per_slot = ue->frame_parms.slots_per_frame * ue->frame_parms.samples_per_slot_wCP;
+    int num_samples_per_slot = ue->frame_parms.slots_per_frame * ue->frame_parms.get_samples_per_slot(slot_tx, &ue->frame_parms);
     for(int i = 0; i < ue->frame_parms.nb_antennas_tx; ++i) {
       AssertFatal(i < sizeof(ue->common_vars.txdataF), "Array index %d is over the Array size %lu\n", i, sizeof(ue->common_vars.txdataF));
       memset(ue->common_vars.txdataF[i], 0, sizeof(int32_t) * num_samples_per_slot);
@@ -322,9 +322,8 @@ void phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
 
   if (ue->sync_ref && phy_ssb_slot_allocation_sl(ue, frame_tx, slot_tx)) {
     nr_sl_common_signal_procedures(ue, frame_tx, slot_tx);
-    const int txdataF_offset = slot_tx * ue->frame_parms.samples_per_slot_wCP;
+    const int txdataF_offset = slot_tx * ue->frame_parms.get_samples_per_slot(slot_tx, &ue->frame_parms);
     LOG_D(NR_PHY, "%s() %d. slot %d txdataF_offset %d\n", __FUNCTION__, __LINE__, slot_tx, txdataF_offset);
-    uint16_t nb_prefix_samples0 = ue->is_synchronized_sl ? ue->frame_parms.nb_prefix_samples0 : ue->frame_parms.nb_prefix_samples;
     int slot_timestamp = ue->frame_parms.get_samples_slot_timestamp(slot_tx, &ue->frame_parms, 0);
     for (int aa = 0; aa < ue->frame_parms.nb_antennas_tx; aa++) {
       apply_nr_rotation(&ue->frame_parms,
@@ -341,9 +340,8 @@ void phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
                        slot_tx, 1, 13, link_type_sl); // Conducts rotation on symbols located 1 (PSS) to 13 (guard)
       PHY_ofdm_mod(&ue->common_vars.txdataF[aa][ue->frame_parms.ofdm_symbol_size + txdataF_offset], // Starting at PSS (in freq)
                     (int*)&ue->common_vars.txdata[aa][ue->frame_parms.ofdm_symbol_size +
-                                      nb_prefix_samples0 +
-                                      ue->frame_parms.nb_prefix_samples +
-                                      slot_timestamp], // Starting output offset at CP0 + PSBCH0 + CP1
+                                                      ue->frame_parms.nb_prefix_samples0 +
+                                                      slot_timestamp], // Starting output offset at CP0 + PSBCH0
                     ue->frame_parms.ofdm_symbol_size,
                     13, // Takes IDFT of remaining 13 symbols (PSS to guard)... Notice the offset of the input and output above
                     ue->frame_parms.nb_prefix_samples,
