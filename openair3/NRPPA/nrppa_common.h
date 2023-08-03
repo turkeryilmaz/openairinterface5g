@@ -66,6 +66,9 @@
 #include "NRPPA_PositioningInformationResponse.h"
 #include "NRPPA_PositioningInformationUpdate.h"
 
+
+
+
 /* Including external dependencies */
 #include "NRPPA_SRSCarrier-List-Item.h"
 #include "NRPPA_SRSResource-List.h"
@@ -74,9 +77,16 @@
 #include "NRPPA_SRSResourceSet.h"
 #include "NRPPA_UplinkChannelBW-PerSCS-List.h"
 #include "NRPPA_SCS-SpecificCarrier.h"
-// TRP Information Transfer
 
+// TRP Information Transfer
+#include "NRPPA_TRPInformationFailure.h"
+#include "NRPPA_TRPInformationRequest.h"
+#include "NRPPA_TRPInformationResponse.h"
 //
+//#include ".h"
+#include "NRPPA_TRPInformationList.h"
+#include "NRPPA_TRPInformationItem.h"
+
 /* END: ad**l todo add all nrppa ASN genrated header files here*/
 
 /* Checking version of ASN1C compiler */

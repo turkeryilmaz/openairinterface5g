@@ -20,7 +20,7 @@
  */
 
 /*! \file nrppa_gNB_TRP_information_transfer_procedures.h
- * \brief NRPPA gNB tasks related to TRP information transfer 
+ * \brief NRPPA gNB tasks related to TRP information transfer
  * \author Adeel Malik
  * \email adeel.malik@eurecom.fr
  *\date 2023
@@ -32,4 +32,10 @@
 #ifndef NRPPA_GNB_TRP_INFORMATION_TRANSFER_PROCEDURES_H_
 #define NRPPA_GNB_TRP_INFORMATION_TRANSFER_PROCEDURES_H_
 
+int nrppa_gNB_handle_TRPInformationExchange(nrppa_gnb_ue_info_t *nrppa_msg_info , NRPPA_NRPPA_PDU_t *pdu);
+int nrppa_gNB_TRPInformationFailure(uint32_t nrppa_transaction_id, uint8_t *buffer);
+int nrppa_gNB_TRPInformationResponse(uint32_t nrppa_transaction_id, uint8_t *buffer);
+
 #endif /* NGAP_GNB_TRP_INFORMATION_TRANSFER_PROCEDURES_H_ */
+
+

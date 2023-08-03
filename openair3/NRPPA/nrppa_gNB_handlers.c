@@ -46,7 +46,7 @@
 #include "nrppa_gNB_decoder.h"
 #include "nrppa_common.h"
 #include "nrppa_gNB_position_information_transfer_procedures.h"
-
+#include "nrppa_gNB_TRP_information_transfer_procedures.h"
 
 static void allocCopy(ngap_pdu_t *out, OCTET_STRING_t in)
 {
@@ -80,7 +80,7 @@ nrppa_message_decoded_callback nrppa_messages_callback[][3] = {
     {nrppa_gNB_handle_PositioningActivation, 0, 0}, /* PositioningActivationRequest */ // todo  nrppa_gNB_handle_PositioningActivation
     {nrppa_gNB_handle_PositioningDeactivation, 0, 0}, /* PositioningDeactivation */ // todo  nrppa_gNB_handle_PositioningDeactivation
     {nrppa_gNB_handle_PositioningInformationExchange, 0, 0}, /* PositioningInformationRequest */  // todo  nrppa_gNB_handle_PositioningInformationExchange
-    {0, 0, 0}, /* TRPInformationRequest */  // todo  nrppa_gNB_handle_TRPInformationRequest
+    {nrppa_gNB_handle_TRPInformationExchange, 0, 0}, /* TRPInformationRequest */  // todo  nrppa_gNB_handle_TRPInformationExchange
     {0, 0, 0}, /* TRPInformationRequest */  // todo  nrppa_gNB_handle_
    };
 
@@ -126,9 +126,6 @@ const uint32_t data_length= ngap_DownlinkUEAssociatedNRPPa_p->nrppa_pdu.length;
   }
 
   /* Calling the right handler*/
-//  ret = (*nrppa_messages_callback[pdu.choice.initiatingMessage->procedureCode][pdu.present - 1])(assoc_id, stream, &pdu);
-  //ret = (*nrppa_messages_callback[pdu.choice.initiatingMessage->procedureCode][pdu.present - 1])(, &pdu); // ad**l
-
   nrppa_gnb_ue_info_t nrppa_msg_info;
   nrppa_msg_info.instance= instance;
   nrppa_msg_info.gNB_ue_ngap_id =ngap_DownlinkUEAssociatedNRPPa_p->gNB_ue_ngap_id;
