@@ -463,6 +463,7 @@ int main(int argc, char **argv)
       int frame = 0;
       int ssb_start_symbol_abs = (UE->slss->sl_timeoffsetssb_r16 + UE->slss->sl_timeinterval_r16 * i) * UE->frame_parms.symbols_per_slot;
       int slot = ssb_start_symbol_abs / 14;
+      const int txdataF_offset = slot * UE->frame_parms.get_samples_per_slot(slot, &UE->frame_parms);
       nr_sl_common_signal_procedures(UE, frame, slot);
 
       const int sc_offset = UE->frame_parms.freq_range == nr_FR1 ? ssb_subcarrier_offset << mu : ssb_subcarrier_offset;
@@ -473,42 +474,40 @@ int main(int argc, char **argv)
       msgDataTx.ssb[i].ssb_pdu.ssb_pdu_rel15.ssbOffsetPointA = prb_offset;
 
       int slot_timestamp = UE->frame_parms.get_samples_slot_timestamp(slot, &UE->frame_parms, 0);
-      UE->frame_parms.nb_prefix_samples0 = UE->is_synchronized_sl ? UE->frame_parms.nb_prefix_samples0 : UE->frame_parms.nb_prefix_samples;
       int max_symbol_size = slot_timestamp + UE->frame_parms.nb_prefix_samples0 + UE->frame_parms.ofdm_symbol_size;
       AssertFatal(max_symbol_size < frame_length_complex_samples, "Invalid index %d\n", max_symbol_size);
       for (int aa = 0; aa < UE->frame_parms.nb_antennas_tx; aa++) {
         apply_nr_rotation(&UE->frame_parms,
-                          (int16_t*)UE->common_vars.txdataF[aa],
+                          (int16_t*)&UE->common_vars.txdataF[aa][txdataF_offset],
                           slot, 0, 1, link_type_sl); // Conducts rotation on 0th symbol
-        PHY_ofdm_mod(UE->common_vars.txdataF[aa],
+        PHY_ofdm_mod(&UE->common_vars.txdataF[aa][txdataF_offset],
                      (int*)&txdata[aa][slot_timestamp],
                      UE->frame_parms.ofdm_symbol_size,
                      1, // Takes IDFT of 1st symbol (first PSBCH)
                      UE->frame_parms.nb_prefix_samples0,
                      CYCLIC_PREFIX);
         apply_nr_rotation(&UE->frame_parms,
-                          (int16_t*)UE->common_vars.txdataF[aa],
+                          (int16_t*)&UE->common_vars.txdataF[aa][txdataF_offset],
                           slot, 1, 13, link_type_sl); // Conducts rotation on symbols located 1 (PSS) to 13 (guard)
-        PHY_ofdm_mod(&UE->common_vars.txdataF[aa][UE->frame_parms.ofdm_symbol_size], // Starting at PSS (in freq)
-                     (int*)&txdata[aa][UE->frame_parms.ofdm_symbol_size +
-                                       UE->frame_parms.nb_prefix_samples0 +
-                                       UE->frame_parms.nb_prefix_samples], // Starting output offset at CP0 + PSBCH0 + CP1
+        PHY_ofdm_mod(&UE->common_vars.txdataF[aa][UE->frame_parms.ofdm_symbol_size + txdataF_offset], // Starting at PSS (in freq)
+                     (int*)&txdata[aa][slot_timestamp +
+                                       UE->frame_parms.ofdm_symbol_size +
+                                       UE->frame_parms.nb_prefix_samples0], // Starting output offset at CP0 + PSBCH0 + CP1
                      UE->frame_parms.ofdm_symbol_size,
                      13, // Takes IDFT of remaining 13 symbols (PSS to guard)... Notice the offset of the input and output above
                      UE->frame_parms.nb_prefix_samples,
                      CYCLIC_PREFIX);
       }
+      char buffer[1024];
+      printf("txdataF[0] = %s\n", hexdump(&UE->common_vars.txdataF[0][txdataF_offset], sizeof(UE->common_vars.txdataF[0]), buffer, sizeof(buffer)));
+      if (UE->frame_parms.nb_antennas_tx > 1)
+          printf("txdataF[1] = %s\n", hexdump(&UE->common_vars.txdataF[1][txdataF_offset], sizeof(UE->common_vars.txdataF[1]), buffer, sizeof(buffer)));
+
+      printf("txdata[0] = %s\n", hexdump(txdata[0], sizeof(txdata[0]), buffer, sizeof(buffer)));
+      if (UE->frame_parms.nb_antennas_tx > 1)
+        printf("txdata[0] = %s\n", hexdump(txdata[1], sizeof(txdata[1]), buffer, sizeof(buffer)));
     }
   }
-
-  char buffer[1024];
-  printf("txdataF[0] = %s\n", hexdump(UE->common_vars.txdataF[0], sizeof(UE->common_vars.txdataF[0]), buffer, sizeof(buffer)));
-  if (UE->frame_parms.nb_antennas_tx > 1)
-    printf("txdataF[1] = %s\n", hexdump(UE->common_vars.txdataF[1], sizeof(UE->common_vars.txdataF[1]), buffer, sizeof(buffer)));
-
-  printf("txdata[0] = %s\n", hexdump(txdata[0], sizeof(txdata[0]), buffer, sizeof(buffer)));
-  if (UE->frame_parms.nb_antennas_tx > 1)
-    printf("txdata[0] = %s\n", hexdump(txdata[1], sizeof(txdata[1]), buffer, sizeof(buffer)));
 
   AssertFatal((((frame_length_complex_samples - 1) << 1) + 1) < 2 * frame_length_complex_samples,
               "Invalid index %d >= %d\n", (((frame_length_complex_samples - 1)<< 1) + 1), 2 * frame_length_complex_samples);

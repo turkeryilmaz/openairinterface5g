@@ -47,37 +47,18 @@ int nr_slot_fep(PHY_VARS_NR_UE *ue,
   AssertFatal(symbol < frame_parms->symbols_per_slot, "slot_fep: symbol must be between 0 and %d\n", frame_parms->symbols_per_slot-1);
   AssertFatal(Ns < frame_parms->slots_per_frame, "slot_fep: Ns must be between 0 and %d\n", frame_parms->slots_per_frame-1);
 
-  unsigned int nb_prefix_samples;
-  unsigned int nb_prefix_samples0;
-  bool is_synced = ue->is_synchronized;
-  if(get_softmodem_params()->sl_mode == 2) {
-    is_synced = ue->is_synchronized_sl;
-  }
-  if (is_synced) {
-    nb_prefix_samples  = frame_parms->nb_prefix_samples;
-    nb_prefix_samples0 = frame_parms->nb_prefix_samples0;
-  } else {
-    nb_prefix_samples  = frame_parms->nb_prefix_samples;
-    nb_prefix_samples0 = frame_parms->nb_prefix_samples;
-  }
-
   dft_size_idx_t dftsize = get_dft(frame_parms->ofdm_symbol_size);
   // This is for misalignment issues
   int32_t tmp_dft_in[8192] __attribute__ ((aligned (32)));
 
   unsigned int rx_offset = frame_parms->get_samples_slot_timestamp(Ns,frame_parms,0);
-  unsigned int abs_symbol = Ns * frame_parms->symbols_per_slot + symbol;
-  for (int idx_symb = Ns*frame_parms->symbols_per_slot; idx_symb <= abs_symbol; idx_symb++)
-    rx_offset += (idx_symb%(0x7<<frame_parms->numerology_index)) ? nb_prefix_samples : nb_prefix_samples0;
-  rx_offset += frame_parms->ofdm_symbol_size * symbol;
-
-  // use OFDM symbol from within 1/8th of the CP to avoid ISI
-  rx_offset -= (nb_prefix_samples / frame_parms->ofdm_offset_divisor);
+  rx_offset += frame_parms->nb_prefix_samples0;
+  rx_offset += (frame_parms->ofdm_symbol_size + frame_parms->nb_prefix_samples) * symbol;
 
 //#ifdef DEBUG_FEP
   //  if (ue->frame <100)
   LOG_D(PHY,"slot_fep: slot %d, symbol %d, nb_prefix_samples %u, nb_prefix_samples0 %u, rx_offset %u energy %d\n",
-  Ns, symbol, nb_prefix_samples, nb_prefix_samples0, rx_offset, dB_fixed(signal_energy(&common_vars->rxdata[0][rx_offset],frame_parms->ofdm_symbol_size)));
+  Ns, symbol, frame_parms->nb_prefix_samples, frame_parms->nb_prefix_samples0, rx_offset, dB_fixed(signal_energy(&common_vars->rxdata[0][rx_offset],frame_parms->ofdm_symbol_size)));
   //#endif
 
   for (unsigned char aa=0; aa<frame_parms->nb_antennas_rx; aa++) {
@@ -165,20 +146,8 @@ int nr_slot_fep_init_sync(PHY_VARS_NR_UE *ue,
   AssertFatal(symbol < frame_parms->symbols_per_slot, "slot_fep: symbol must be between 0 and %d\n", frame_parms->symbols_per_slot-1);
   AssertFatal(Ns < frame_parms->slots_per_frame, "slot_fep: Ns must be between 0 and %d\n", frame_parms->slots_per_frame-1);
 
-  unsigned int nb_prefix_samples;
-  unsigned int nb_prefix_samples0;
-  bool is_synced = ue->is_synchronized;
-  if(get_softmodem_params()->sl_mode == 2) {
-    is_synced = ue->is_synchronized_sl;
-  }
-  if (is_synced) {
-    nb_prefix_samples  = frame_parms->nb_prefix_samples;
-    nb_prefix_samples0 = frame_parms->nb_prefix_samples0;
-  }
-  else {
-    nb_prefix_samples  = frame_parms->nb_prefix_samples;
-    nb_prefix_samples0 = frame_parms->nb_prefix_samples;
-  }
+  unsigned int nb_prefix_samples = frame_parms->nb_prefix_samples;
+  unsigned int nb_prefix_samples0 = frame_parms->nb_prefix_samples0;
   unsigned int frame_length_samples = frame_parms->samples_per_frame;
 
   dft_size_idx_t dftsize = get_dft(frame_parms->ofdm_symbol_size);
@@ -187,10 +156,8 @@ int nr_slot_fep_init_sync(PHY_VARS_NR_UE *ue,
 
   unsigned int slot_offset = frame_parms->get_samples_slot_timestamp(Ns,frame_parms,0);
   unsigned int rx_offset   = sample_offset + slot_offset;
-  unsigned int abs_symbol  = Ns * frame_parms->symbols_per_slot + symbol;
-  for (int idx_symb = Ns*frame_parms->symbols_per_slot; idx_symb <= abs_symbol; idx_symb++)
-    rx_offset += (abs_symbol%(0x7<<frame_parms->numerology_index)) ? nb_prefix_samples : nb_prefix_samples0;
-  rx_offset += frame_parms->ofdm_symbol_size * symbol;
+  rx_offset += nb_prefix_samples0;
+  rx_offset += (frame_parms->ofdm_symbol_size + nb_prefix_samples) * symbol;
 
 #ifdef DEBUG_FEP
   LOG_I(NR_PHY, "slot_fep: slot %d, symbol %d, nb_prefix_samples %u, nb_prefix_samples0 %u, slot_offset %u, sample_offset %d,rx_offset %u, frame_length_samples %u\n",

@@ -278,25 +278,25 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
   int32_t sync_pos = 0, sync_pos_frame;
   for (int is = 0; is < n_frames; is++) {
     sync_pos = pss_synchro_nr(ue, is, NO_RATE_CHANGE);
-    if (sync_pos >= fp->nb_prefix_samples) {
-      // In 5G SL, the first SSB symbol is the PSBCH, so we need adjust the SSB
-      // offset accordingly (psbch_plus_prefix_size). Additionally, there are 2
-      // PSS symbols. So in the case where we correlate on the second PSS,
-      // we need to adjust the SSB offset accordingly (subtracting first PSS prefix).
-      // However, if we correlated on the second PSS, we do not need to include
-      // the size of the first PSS0, becasue the correlation occurs on each individual PSS.
-      // The sync position (sync_pos) is the start of the found PSS + nb_prefix_samples.
-      // PSBCH PREFIX | PSBCH 0 | PSS 0 PREFIX | PSS 0 | PSS 1 PREFIX | PSS 1 |
-      //      144     |  2048   |      144     | 2048  |      144     | 2048  |
-      //      144     |  2048   |      144     |   -   |      144     |   X   | SSB Start = X - (144 + 144 + 2048 + 144)
-      //      144     |  2048   |      144     |   X   |      144     | 2048  | SSB Start = X - (144 + 2048 + 144)
-      uint32_t psbch_plus_prefix_size = fp->ofdm_symbol_size + fp->nb_prefix_samples;
-      uint32_t num_pss_prefix_samples_size = (ue->common_vars.N2_id + 1) * fp->nb_prefix_samples;
-      LOG_I(NR_PHY, "This is num_pss_prefix_samples_size %d, psbch_plus_prefix_size %d, sync_pos %d, N2_id %d\n",
-            num_pss_prefix_samples_size, psbch_plus_prefix_size, sync_pos, ue->common_vars.N2_id);
-      ue->ssb_offset = sync_pos - num_pss_prefix_samples_size - psbch_plus_prefix_size;
+    // In 5G SL, the first SSB symbol is the PSBCH, so we need adjust the SSB
+    // offset accordingly (psbch_plus_prefix_size). Additionally, there are 2
+    // PSS symbols.
+    // However, if we correlated on the second PSS, we do not need to include an offset
+    // the size of the first PSS0, becasue the correlation occurs on each individual PSS.
+    // The sync_pos will ALWAYS point at the start of the first PSS (PSS0) becasue
+    // it is just the peak position in the correlation related to the ref symbols.
+    // PSBCH PREFIX | PSBCH 0 | PSS 0 PREFIX | PSS 0 | PSS 1 PREFIX | PSS 1 |
+    //      176     |  2048   |      144     | 2048  |      144     | 2048  |
+    //      176     |  2048   |      144     |   -   |      -       |   X   | SSB Start = X - (176 + 2048 + 144)
+    //      176     |  2048   |      144     |   X   |      144     | 2048  | SSB Start = X - (176 + 2048 + 144)
+    uint32_t psbch_plus_prefix_size = fp->ofdm_symbol_size + fp->nb_prefix_samples0;
+    uint32_t pss_plus_prefix_size = fp->nb_prefix_samples;
+    if (sync_pos >= psbch_plus_prefix_size + pss_plus_prefix_size) {
+      LOG_I(NR_PHY, "This is pss_plus_prefix_size %d, psbch_plus_prefix_size %d, sync_pos %d, N2_id %d\n",
+            pss_plus_prefix_size, psbch_plus_prefix_size, sync_pos, ue->common_vars.N2_id);
+      ue->ssb_offset = sync_pos - (pss_plus_prefix_size + psbch_plus_prefix_size);
     } else {
-      ue->ssb_offset = sync_pos + (fp->samples_per_subframe * 10) - fp->nb_prefix_samples;
+      ue->ssb_offset = sync_pos + fp->samples_per_frame - (pss_plus_prefix_size + psbch_plus_prefix_size);
     }
     LOG_I(NR_PHY, "[UE%d] Initial sync : n_frames %d Estimated PSS position %d, Nid2 %d  ssb_offset %d\n",
           ue->Mod_id, n_frames, sync_pos, ue->common_vars.N2_id, ue->ssb_offset);
