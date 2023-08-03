@@ -308,8 +308,13 @@ static uint8_t pack_dl_tti_ssb_pdu_rel15_value(void *tlv, uint8_t **ppWritePacke
 		push16(value->ssbOffsetPointA, ppWritePackedMsg, end) &&
 		push8(value->bchPayloadFlag, ppWritePackedMsg, end) &&
 		push32(value->bchPayload, ppWritePackedMsg, end) &&
-		push8(value->ssbRsrp, ppWritePackedMsg, end)
-		// TODO: pack precoding_and_beamforming too
+		push8(value->ssbRsrp, ppWritePackedMsg, end) &&  		// TODO: pack precoding_and_beamforming too
+    push8(value->ssb_pbch_pdu_maintenance_fapiv3.ssbPduIndex, ppWritePackedMsg, end) &&
+    push8(value->ssb_pbch_pdu_maintenance_fapiv3.caseType, ppWritePackedMsg, end) &&
+    push8(value->ssb_pbch_pdu_maintenance_fapiv3.SubcarrierSpacing, ppWritePackedMsg, end) &&
+    push8(value->ssb_pbch_pdu_maintenance_fapiv3.lMax, ppWritePackedMsg, end) &&
+    push16(value->ssb_pbch_pdu_maintenance_fapiv3.ssPbchBlockPowerScaling, ppWritePackedMsg, end) &&
+    push16(value->ssb_pbch_pdu_maintenance_fapiv3.betaPSSProfileSSS, ppWritePackedMsg, end)
 	);
 
 }
@@ -3871,8 +3876,13 @@ static uint8_t unpack_dl_tti_ssb_pdu_rel15_value(void *tlv, uint8_t **ppReadPack
           pull16(ppReadPackedMsg, &value->ssbOffsetPointA, end) &&
           pull8(ppReadPackedMsg, &value->bchPayloadFlag, end) &&
           pull32(ppReadPackedMsg, &value->bchPayload, end) &&
-	  pull8(ppReadPackedMsg, &value->ssbRsrp, end)
-          // TODO: pack precoding_and_beamforming too
+	        pull8(ppReadPackedMsg, &value->ssbRsrp, end) && // TODO: pack precoding_and_beamforming too
+          pull8(ppReadPackedMsg, &value->ssb_pbch_pdu_maintenance_fapiv3.ssbPduIndex, end) &&
+          pull8(ppReadPackedMsg, &value->ssb_pbch_pdu_maintenance_fapiv3.caseType, end) &&
+          pull8(ppReadPackedMsg, &value->ssb_pbch_pdu_maintenance_fapiv3.SubcarrierSpacing, end) &&
+          pull8(ppReadPackedMsg, &value->ssb_pbch_pdu_maintenance_fapiv3.lMax, end) &&
+          pull16(ppReadPackedMsg, &value->ssb_pbch_pdu_maintenance_fapiv3.ssPbchBlockPowerScaling, end) &&
+          pull16(ppReadPackedMsg, &value->ssb_pbch_pdu_maintenance_fapiv3.betaPSSProfileSSS, end)
         );
 }
 
