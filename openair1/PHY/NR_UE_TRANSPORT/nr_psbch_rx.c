@@ -23,6 +23,7 @@
 #include "PHY/CODING/nrPolar_tools/nr_polar_psbch_defs.h"
 #include "PHY/CODING/nrPolar_tools/nr_polar_defs.h"
 #include "common/utils/LOG/log.h"
+#include "PHY/TOOLS/phy_scope_interface.h"
 
 
 //#define DEBUG_PSBCH
@@ -213,10 +214,8 @@ int nr_rx_psbch(PHY_VARS_NR_UE *ue,
 
 
 
-#if 0 //ENABLE SCOPE LATER
-  UEscopeCopy(ue, psbchRxdataF_comp, psbch_unClipped, sizeof(struct complex16), frame_parms->nb_antennas_rx, psbch_e_rx_idx/2);
-  UEscopeCopy(ue, psbchLlr, psbch_e_rx, sizeof(int16_t), frame_parms->nb_antennas_rx, psbch_e_rx_idx);
-#endif
+  UEscopeCopy(ue, psbchRxdataF_comp, psbch_unClipped, sizeof(struct complex16), frame_parms->nb_antennas_rx, psbch_e_rx_idx/2,0);
+  UEscopeCopy(ue, psbchLlr, psbch_e_rx, sizeof(int16_t), frame_parms->nb_antennas_rx, psbch_e_rx_idx,0);
 
 #ifdef DEBUG_PSBCH
   write_output("psbch_rxdataFcomp.m","psbch_rxFcomp",psbch_unClipped,SL_NR_NUM_PSBCH_DATA_RE_IN_ALL_SYMBOLS,1,1);
