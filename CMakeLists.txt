@@ -1124,8 +1124,8 @@ target_link_libraries(PHY_COMMON PRIVATE asn1_lte_rrc_hdrs)
 add_library(PHY ${PHY_SRC})
 target_link_libraries(PHY PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
 
-pkg_check_modules(blas REQUIRED blas)
-pkg_check_modules(lapacke REQUIRED lapacke)
+#pkg_check_modules(blas REQUIRED blas)
+#pkg_check_modules(lapacke REQUIRED lapacke)
 
 add_library(PHY_UE ${PHY_SRC_UE})
 target_link_libraries(PHY_UE PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)

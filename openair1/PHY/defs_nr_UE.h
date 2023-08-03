@@ -49,6 +49,7 @@
 #include "common_lib.h"
 #include "fapi_nr_ue_interface.h"
 #include "assertions.h"
+#include <stdbool.h>
 
 #ifdef MEX
   #define msg mexPrintf
@@ -654,6 +655,7 @@ typedef struct {
   //Sidelink parameters
   sl_nr_sidelink_mode_t sl_mode;
   sl_nr_ue_phy_params_t SL_UE_PHY_PARAMS;
+  bool phy_config_request_sent;
 } PHY_VARS_NR_UE;
 
 typedef struct {

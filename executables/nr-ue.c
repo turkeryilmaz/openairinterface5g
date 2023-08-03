@@ -622,7 +622,6 @@ void processSlotTX(void *arg) {
   nr_phy_data_tx_t phy_data = {0};
   int sl_tx_action = 0;
 
-  LOG_D(PHY,"%d.%d => slot type %d\n", proc->frame_tx, proc->nr_slot_tx, proc->tx_slot_type);
 
   if (proc->tx_slot_type == NR_SIDELINK_SLOT && UE->sl_mode == 2) {
 
@@ -1008,10 +1007,11 @@ void *UE_thread(void *arg)
     curMsg.proc.nr_slot_tx  = (absolute_slot + DURATION_RX_TO_TX) % nb_slot_frame;
     curMsg.proc.frame_rx    = (absolute_slot / nb_slot_frame) % MAX_FRAME_NUMBER;
     curMsg.proc.frame_tx    = ((absolute_slot + DURATION_RX_TO_TX) / nb_slot_frame) % MAX_FRAME_NUMBER;
-    if (mac->phy_config_request_sent) {
+    if (UE->phy_config_request_sent) {
       if (is_sidelink) {
         curMsg.proc.rx_slot_type = sl_nr_ue_slot_select(sl_cfg, curMsg.proc.frame_rx, curMsg.proc.nr_slot_rx, TDD);
         curMsg.proc.tx_slot_type = sl_nr_ue_slot_select(sl_cfg, curMsg.proc.frame_tx, curMsg.proc.nr_slot_tx, TDD);
+      LOG_D(NR_PHY,"Setting SL slot type to TX %d.%d %d, RX %d.%d %d\n",curMsg.proc.frame_tx, curMsg.proc.nr_slot_tx,curMsg.proc.tx_slot_type,curMsg.proc.frame_rx, curMsg.proc.nr_slot_rx,curMsg.proc.rx_slot_type);
       } else {
         curMsg.proc.rx_slot_type = nr_ue_slot_select(cfg, curMsg.proc.frame_rx, curMsg.proc.nr_slot_rx);
         curMsg.proc.tx_slot_type = nr_ue_slot_select(cfg, curMsg.proc.frame_tx, curMsg.proc.nr_slot_tx);

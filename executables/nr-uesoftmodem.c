@@ -523,7 +523,7 @@ int main( int argc, char **argv ) {
                                   get_softmodem_params()->numerology,
                                   nr_band);
       }
-      else{
+      else if (get_softmodem_params()->sl_mode != 2){
         DevAssert(mac->if_module != NULL && mac->if_module->phy_config_request != NULL);
         mac->if_module->phy_config_request(&mac->phy_config);
         mac->phy_config_request_sent = true;
@@ -547,7 +547,6 @@ int main( int argc, char **argv ) {
                                   get_nrUE_params()->ofdm_offset_divisor);
         sl_ue_phy_init(UE[CC_id]);
       }
-
     }
 
     bool is_sl = (get_softmodem_params()->sl_mode) ? 1 : 0;

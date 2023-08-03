@@ -671,7 +671,9 @@ int8_t nr_ue_sl_phy_config_request(nr_sl_phy_config_t *phy_config)
   sl_nr_phy_config_request_t *sl_config = &PHY_vars_UE_g[phy_config->Mod_id][phy_config->CC_id]->SL_UE_PHY_PARAMS.sl_config;
   if(phy_config != NULL) {
     memcpy(sl_config,&phy_config->sl_config_req,sizeof(sl_nr_phy_config_request_t));
+    PHY_vars_UE_g[phy_config->Mod_id][phy_config->CC_id]->phy_config_request_sent = true;
   }
+
   return 0;
 }
 /*
