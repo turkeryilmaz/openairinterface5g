@@ -805,7 +805,10 @@ void generateRegistrationRequest(as_nas_info_t *initialNasMsg, int Mod_id) {
   registration_request_len = initialNasMsg->length;
 
   LOG_D(NAS, "registration_request_len %d, msg: ", registration_request_len);
-  for (int i = 0; i < registration_request_len; ++i) printf("%02x", initialNasMsg->data[i]); printf("\n");
+  for (int i = 0; i < registration_request_len; ++i) {
+    printf("%02x ", initialNasMsg->data[i]);
+  }
+  printf("\n");
 
   LOG_FUNC_OUT;
 }
@@ -1016,7 +1019,7 @@ static void generateRegistrationComplete(int Mod_id, as_nas_info_t *initialNasMs
   int length = 0;
   int size = 0;
   fgs_nas_message_t nas_msg;
-  nas_stream_cipher_t stream_cipher;
+//  nas_stream_cipher_t stream_cipher;
   uint8_t             mac[4];
   _ul_nas_count = 1;
   memset(&nas_msg, 0, sizeof(fgs_nas_message_t));
@@ -1129,7 +1132,6 @@ static void generatePduSessionEstablishRequest(int Mod_id, uicc_t * uicc, as_nas
 
 
   MM_msg *mm_msg;
-  nas_stream_cipher_t stream_cipher;
   uint8_t             mac[4];
   nas_msg.header.protocol_discriminator = FGS_MOBILITY_MANAGEMENT_MESSAGE;
   nas_msg.header.security_header_type = INTEGRITY_PROTECTED_AND_CIPHERED;
@@ -1160,10 +1162,9 @@ static void generatePduSessionEstablishRequest(int Mod_id, uicc_t * uicc, as_nas
   mm_msg->uplink_nas_transport.pdusessionid = 10;
   mm_msg->uplink_nas_transport.requesttype = 1;
   size += 3;
+#if 0
   const bool has_nssai_sd = uicc->nssai_sd != 0xffffff; // 0xffffff means "no SD", TS 23.003
   const size_t nssai_len = has_nssai_sd ? 4 : 1;
-
-#if 0
   mm_msg->uplink_nas_transport.snssai.length = nssai_len;
   //Fixme: it seems there are a lot of memory errors in this: this value was on the stack, 
   // but pushed  in a itti message to another thread
@@ -1217,7 +1218,6 @@ static void generateActivateTestModeComplete(int Mod_id, as_nas_info_t *initialN
   int msg_len = 0;
 
   MM_msg *mm_msg;
-  nas_stream_cipher_t stream_cipher;
   uint8_t             mac[4];
   nas_msg.header.protocol_discriminator = FGS_MOBILITY_MANAGEMENT_MESSAGE;
   nas_msg.header.security_header_type = INTEGRITY_PROTECTED_AND_CIPHERED;
@@ -1269,7 +1269,6 @@ static void generateCloseUeTestLoopComplete(int Mod_id, as_nas_info_t *initialNa
   fgs_nas_message_t nas_msg={0};
 
   MM_msg *mm_msg;
-  nas_stream_cipher_t stream_cipher;
   uint8_t             mac[4];
   nas_msg.header.protocol_discriminator = FGS_MOBILITY_MANAGEMENT_MESSAGE;
   nas_msg.header.security_header_type = INTEGRITY_PROTECTED_AND_CIPHERED;
@@ -1316,8 +1315,7 @@ static void generateOpenUeTestLoopComplete(int Mod_id, as_nas_info_t *initialNas
   fgs_nas_message_t nas_msg={0};
 
   MM_msg *mm_msg;
-  nas_stream_cipher_t stream_cipher;
-  uint8_t             mac[4];
+  
   nas_msg.header.protocol_discriminator = FGS_MOBILITY_MANAGEMENT_MESSAGE;
   nas_msg.header.security_header_type = INTEGRITY_PROTECTED_AND_CIPHERED;
   size += 7;
@@ -1341,23 +1339,24 @@ static void generateOpenUeTestLoopComplete(int Mod_id, as_nas_info_t *initialNas
 
   initialNasMsg->length = security_header_len + mm_msg_encode(mm_msg, (uint8_t*)(initialNasMsg->data+security_header_len), size-security_header_len);
 
-  stream_cipher.key        = ue_security_key[Mod_id]->knas_int;
-  stream_cipher.key_length = 16;
-  stream_cipher.count      = 0;
-  stream_cipher.bearer     = 1;
-  stream_cipher.direction  = 0;
-  stream_cipher.message    = (unsigned char *)(initialNasMsg->data + 6);
-  /* length in bits */
-  stream_cipher.blength    = (initialNasMsg->length - 6) << 3;
+
 
 /* Workaround fix of bypassing security for the TTCN */
 #if 0
+    nas_stream_cipher_t stream_cipher;
+    stream_cipher.key        = ue_security_key[Mod_id]->knas_int;
+    stream_cipher.key_length = 16;
+    stream_cipher.count      = 0;
+    stream_cipher.bearer     = 1;
+    stream_cipher.direction  = 0;
+    stream_cipher.message    = (unsigned char *)(initialNasMsg->data + 6);
+    /* length in bits */
+    stream_cipher.blength    = (initialNasMsg->length - 6) << 3;
   // only for Type of integrity protection algorithm: 128-5G-IA2 (2)
   nas_stream_encrypt_eia2(
     &stream_cipher,
     mac);
 #endif
-  printf("xmac %02x%02x%02x%02x\n", mac[0], mac[1], mac[2], mac[3]);
   for(int i = 0; i < 4; i++){
      initialNasMsg->data[2+i] = 0;//mac[i];/* Workaround fix of bypassing security for the TTCN */
   }
@@ -1368,8 +1367,6 @@ static void generateDeactivateTestModeComplete(int Mod_id, as_nas_info_t *initia
   fgs_nas_message_t nas_msg={0};
 
   MM_msg *mm_msg;
-  nas_stream_cipher_t stream_cipher;
-  uint8_t             mac[4];
   nas_msg.header.protocol_discriminator = FGS_MOBILITY_MANAGEMENT_MESSAGE;
   nas_msg.header.security_header_type = INTEGRITY_PROTECTED_AND_CIPHERED;
   size += 7;
@@ -1392,7 +1389,9 @@ static void generateDeactivateTestModeComplete(int Mod_id, as_nas_info_t *initia
   int security_header_len = nas_protected_security_header_encode((char*)(initialNasMsg->data),&(nas_msg.header), size);
 
   initialNasMsg->length = security_header_len + mm_msg_encode(mm_msg, (uint8_t*)(initialNasMsg->data+security_header_len), size-security_header_len);
+#if 0
 
+  nas_stream_cipher_t stream_cipher;
   stream_cipher.key        = ue_security_key[Mod_id]->knas_int;
   stream_cipher.key_length = 16;
   stream_cipher.count      = 0;
@@ -1403,13 +1402,15 @@ static void generateDeactivateTestModeComplete(int Mod_id, as_nas_info_t *initia
   stream_cipher.blength    = (initialNasMsg->length - 6) << 3;
 
 /* Workaround fix of bypassing security for the TTCN */
-#if 0
+
   // only for Type of integrity protection algorithm: 128-5G-IA2 (2)
+  uint8_t             mac[4];
   nas_stream_encrypt_eia2(
     &stream_cipher,
     mac);
+    printf("xmac %02x%02x%02x%02x\n", mac[0], mac[1], mac[2], mac[3]);
 #endif
-  printf("xmac %02x%02x%02x%02x\n", mac[0], mac[1], mac[2], mac[3]);
+
   for(int i = 0; i < 4; i++){
      initialNasMsg->data[2+i] = 0;//mac[i];/* Workaround fix of bypassing security for the TTCN */
   }
@@ -1784,10 +1785,19 @@ void *nas_nrue_task(void *args_p)
 
 void updateKgNB(int Mod_id, uint8_t *kgnb)
 {
-  printf("%s: ulNasCount=%llu, kAMF: ", __FUNCTION__, _ul_nas_count);
-  for (int i = 0; i < 32; ++i) printf("%02x", ue_security_key[Mod_id]->kamf[i]); printf("\n");
+  printf("%s: ulNasCount=%d, kAMF: ", __FUNCTION__, _ul_nas_count);
+
+  for (int i = 0; i < 32; ++i) {
+    printf("%02x ", ue_security_key[Mod_id]->kamf[i]);
+  }
+  printf("\n");
+
   derive_kgnb(ue_security_key[Mod_id]->kamf, _ul_nas_count, ue_security_key[Mod_id]->kgnb);
-  printf("kgNB: "); for (int i = 0; i < 32; ++i) printf("%02x", ue_security_key[Mod_id]->kgnb[i]); printf("\n");
+
+  printf("kgNB: "); for (int i = 0; i < 32; ++i) {
+    printf("%02x ", ue_security_key[Mod_id]->kgnb[i]);
+  }
+  printf("\n");
 
   memcpy(kgnb, ue_security_key[Mod_id]->kgnb, 32);
 }

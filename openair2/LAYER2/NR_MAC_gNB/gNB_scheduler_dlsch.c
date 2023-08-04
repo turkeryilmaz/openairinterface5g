@@ -1677,11 +1677,11 @@ void schedule_nr_PCH(module_id_t module_idP,
 
         int startSymbolIndex = 0;
         int nrOfSymbols = 0;
-        bool is_typeA;
+        bool is_typeA = false;
 
         LOG_D(NR_MAC, "paging:type0_pdcch_ss_mux_pattern: %i\n", type0_PDCCH_CSS_config->type0_pdcch_ss_mux_pattern);
         LOG_D(NR_MAC, "paging:time_domain_allocation: %i\n", time_domain_allocation);
-        LOG_D(NR_MAC, "paging:dmrs_TypeA_Position: %i\n", scc->dmrs_TypeA_Position);
+        LOG_D(NR_MAC, "paging:dmrs_TypeA_Position: %li\n", scc->dmrs_TypeA_Position);
         get_info_from_tda_tables(type0_PDCCH_CSS_config->type0_pdcch_ss_mux_pattern,
                                  time_domain_allocation,
                                  gNB_mac->common_channels->ServingCellConfigCommon->dmrs_TypeA_Position,

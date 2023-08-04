@@ -536,7 +536,7 @@ nr_pdcp_entity_t *new_nr_pdcp_entity(
 
   ret->is_gnb = is_gnb;
 
-  nr_pdcp_entity_set_security(ret, integrity_algorithm, integrity_key, ciphering_algorithm, ciphering_key);
+  nr_pdcp_entity_set_security(ret, integrity_algorithm,  (char*)integrity_key,ciphering_algorithm, (char*)ciphering_key);
 
   FNOUT;
   return ret;

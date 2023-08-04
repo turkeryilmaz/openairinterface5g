@@ -733,9 +733,10 @@ discard:
 #undef R
 }
 
-void nr_rlc_entity_um_deliver_pdu(nr_rlc_entity_t *_entity, char *buffer, int size)
+int nr_rlc_entity_um_deliver_pdu(nr_rlc_entity_t *_entity, char *buffer, int size)
 {
   deliver_extra_pdu((nr_rlc_entity_um_t *)_entity, buffer, size);
+  return 0;
 }
 
 /*************************************************************************/

@@ -40,7 +40,7 @@
 #include "acpSocket.h"
 #include "adbg.h"
 
-static int acpSocketSetOpts(int sock, bool isServer)
+static int acpSocketSetOpts(int sock)
 {
 	SIDL_ASSERT(sock >= 0);
 	ACP_DEBUG_ENTER_LOG();
@@ -50,7 +50,6 @@ static int acpSocketSetOpts(int sock, bool isServer)
 	const int keepalive_intvl = 2;
 	const int keepalive_probes = 5;
 	const int reuse = 1;
-	const int syn_retries = 2; // Send a total of 3 SYN packets => Timeout ~7s
 	const int fcntl_args = O_NONBLOCK;
 
 	if (setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &keepalive, (socklen_t)sizeof(keepalive)) == -1) {
@@ -69,17 +68,11 @@ static int acpSocketSetOpts(int sock, bool isServer)
 		ACP_DEBUG_EXIT_LOG(strerror(errno));
 		return -1;
 	}
-	if (isServer) {
-		if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse, (socklen_t)sizeof(reuse)) == -1) {
-			ACP_DEBUG_EXIT_LOG(strerror(errno));
-			return -1;
-		}
-	} else {
-		if (setsockopt(sock, IPPROTO_TCP, TCP_SYNCNT, &syn_retries, (socklen_t)sizeof(syn_retries)) == -1) {
-			ACP_DEBUG_EXIT_LOG(strerror(errno));
-			return -1;
-		}
+	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse, (socklen_t)sizeof(reuse)) == -1) {
+		ACP_DEBUG_EXIT_LOG(strerror(errno));
+		return -1;
 	}
+
 
 	int arg = fcntl(sock, F_GETFL, NULL);
 	if (arg == -1) {
@@ -130,7 +123,7 @@ static int acpPrepareSocket(const char* host, int port, struct sockaddr ** sin, 
 
 		*sinsz = sizeof(struct sockaddr_in);
 
-		if (acpSocketSetOpts(sock, false) == -1) {
+		if (acpSocketSetOpts(sock) == -1) {
 			acpFree(*sin);
 			return -1;
 		}

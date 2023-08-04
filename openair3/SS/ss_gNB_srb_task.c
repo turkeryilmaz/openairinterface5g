@@ -342,7 +342,7 @@ ss_gNB_read_from_srb_socket(acpCtx_t ctx)
                 }
                 if (userId == 0)
                 {
-                        LOG_A(GNB_APP, "[SS_SRB] No message (timeout on socket\n)");
+                        //LOG_A(GNB_APP, "[SS_SRB] No message (timeout on socket\n)");
                         // No message (timeout on socket)
                         if (isConnected == true){
                                 break;

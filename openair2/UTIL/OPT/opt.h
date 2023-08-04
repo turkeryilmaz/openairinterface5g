@@ -154,6 +154,7 @@ static inline int map_nr_rnti_type(nr_rnti_type_t r_type)
 		case NR_RNTI_TPC_PUCCH:
 		case NR_RNTI_TPC_SRS:
 		case NR_RNTI_MCS_C:
+    default:
 			return WS_NO_RNTI;
 	}
 }

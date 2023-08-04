@@ -162,8 +162,7 @@ void mac_rlc_data_ind     (
     if ((tb_sizeP != 0) && (true == enb_flagP) && (channel_idP >= 4)) {
       int drb_id = channel_idP - 3;
       int result;
-      LOG_A(RLC, "Sending packet to SS, Calling SS_DRB_PDU_IND ue %x drb id %ld size %u\n",
-          rntiP, drb_id, tb_sizeP);
+      LOG_A(RLC, "Sending packet to SS, Calling SS_DRB_PDU_IND ue %x drb id %d size %u\n", rntiP, drb_id, tb_sizeP);
 
       MessageDef *message_p = itti_alloc_new_message (TASK_SS_DRB, 0, SS_DRB_PDU_IND);
       if (message_p) {

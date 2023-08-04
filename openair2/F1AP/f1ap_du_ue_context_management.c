@@ -673,7 +673,7 @@ int DU_handle_UE_CONTEXT_RELEASE_COMMAND(instance_t       instance,
                              F1AP_ProtocolIE_ID_id_gNB_DU_UE_F1AP_ID, true);
   const rnti_t rnti = f1ap_get_rnti_by_du_id(DUtype, instance,
                       ie->value.choice.GNB_DU_UE_F1AP_ID);
-  AssertFatal(f1ap_ue_context_release_cmd->rnti == rnti, "RNTI obtained through DU ID (%x) is different from CU ID (%#lx)\n", rnti, f1ap_ue_context_release_cmd->rnti);
+  AssertFatal(f1ap_ue_context_release_cmd->rnti == rnti, "RNTI obtained through DU ID (%x) is different from CU ID (%#x)\n", (int)rnti, (int)f1ap_ue_context_release_cmd->rnti);
 
   // We don't need the Cause
   // Optional RRC Container: if present, send to UE

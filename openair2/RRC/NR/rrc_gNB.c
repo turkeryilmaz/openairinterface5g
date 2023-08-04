@@ -148,9 +148,9 @@ bool DURecvCb(protocol_ctxt_t  *ctxt_pP,
   return true;
 }
 
-static void openair_nr_rrc_on(gNB_RRC_INST *rrc)
+static void openair_nr_rrc_on(protocol_ctxt_t *rrc)
 {
-  NR_SRB_INFO *si = &rrc->carrier.SI;
+  NR_SRB_INFO *si = &((gNB_RRC_INST *)rrc)->carrier.SI;
   si->Rx_buffer.payload_size = 0;
   si->Tx_buffer.payload_size = 0;
   si->Active = 1;
@@ -285,7 +285,6 @@ static void openair_rrc_gNB_configuration(const module_id_t gnb_mod_idP, gNB_Rrc
     rrc->carrier.sizeof_paging = 0;
     rrc->carrier.paging = (uint8_t *) malloc16(256);
   }
-  return 0;
 }//END openair_rrc_gNB_configuration
 
 char rrc_gNB_rblist_configuration(const module_id_t gnb_mod_idP,NRRrcRblistCfgReq *RblistConfig)
@@ -973,7 +972,7 @@ rrc_gNB_store_RRCReconfiguration(
 
   srb2addList = &ue_context_pP->ue_context.SRB_configList2[xid];
   drb2addList = &ue_context_pP->ue_context.DRB_configList2[xid];
-  drb2releaseList = &ue_context_pP->ue_context.DRB_Release_configList2[xid];
+  drb2releaseList = (NR_DRB_ToAddModList_t **) &ue_context_pP->ue_context.DRB_Release_configList2[xid];
 
   if(*srb2addList){
     LOG_D(NR_RRC, "%s free old SRB_configList2 \n",__FUNCTION__);
@@ -1007,7 +1006,7 @@ rrc_gNB_store_RRCReconfiguration(
       }
       if(ie->radioBearerConfig->drb_ToReleaseList){
         LOG_D(NR_RRC, "%s store drb_ToReleaseList\n",__FUNCTION__);
-        *drb2releaseList = ie->radioBearerConfig->drb_ToReleaseList;
+        *drb2releaseList =   (NR_DRB_ToAddModList_t*)ie->radioBearerConfig->drb_ToReleaseList;
         ie->radioBearerConfig->drb_ToReleaseList = NULL; /* to avoid the content be released externally*/
       }
     }
@@ -4594,7 +4593,7 @@ void *rrc_gnb_task(void *args_p) {
                       }
                       AssertFatal(enc_rval.encoded != -1, "[gNB AssertFatal]ASN1 message encoding CellGroupConfig failed (%s)!\n",enc_rval.failed_type->name);
 
-                      if (OCTET_STRING_fromBuf(ie->nonCriticalExtension->masterCellGroup, buff, (enc_rval.encoded+7)/8) == -1) {
+                      if (OCTET_STRING_fromBuf(ie->nonCriticalExtension->masterCellGroup, (const char*) buff, (enc_rval.encoded+7)/8) == -1) {
                         LOG_E(NR_RRC, "fatal: OCTET_STRING_fromBuf failed\n");
                         AssertFatal(0, "OCTET_STRING_fromBuf failed\n");
                       }
@@ -4628,7 +4627,7 @@ void *rrc_gnb_task(void *args_p) {
             {
               rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context(RC.nrrrc[ctxt.module_id], ctxt.rntiMaybeUEid);
               if (ue_context_p) {
-                LOG_I(NR_RRC, "rrcRelease UE rnti: %x \n", ctxt.rntiMaybeUEid);
+                LOG_I(NR_RRC, "rrcRelease UE rnti: %lx \n", ctxt.rntiMaybeUEid);
                 ue_context_p->ue_context.ue_reestablishment_timer = 0;
                 ue_context_p->ue_context.ue_release_timer = 0; /* TODO: ue_release_timer is not checked in nr_rrc_subframe_process */
                 ue_context_p->ue_context.ue_release_timer_thres = 0;
@@ -4673,7 +4672,7 @@ void *rrc_gnb_task(void *args_p) {
         _int_algo = (e_NR_IntegrityProtAlgorithm)RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.integrity_algorithm;
         _cip_algo = (NR_CipheringAlgorithm_t)RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.ciphering_algorithm;
 
-        LOG_I(NR_RRC,"[gNB %ld] Received %s: Int algo: %d, Cip algo: %d \n", instance, msg_name_p, _int_algo, _cip_algo);
+        LOG_I(NR_RRC,"[gNB %ld] Received %s: Int algo: %d, Cip algo: %ld \n", instance, msg_name_p, _int_algo, _cip_algo);
 
         PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt, instance, GNB_FLAG_YES, RRC_AS_SECURITY_CONFIG_REQ(msg_p).rnti,
           msg_p->ittiMsgHeader.lte_time.frame, msg_p->ittiMsgHeader.lte_time.slot);

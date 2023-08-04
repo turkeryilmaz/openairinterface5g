@@ -235,7 +235,7 @@ static inline void ss_gNB_read_from_socket(acpCtx_t ctx)
   const size_t size = 16 * 1024;
   size_t msgSize = size; //2
   unsigned char *buffer = (unsigned char *)acpMalloc(size);
-  assert(buffer);
+  DevAssert(buffer);
 
   int userId = acpRecvMsg(ctx, &msgSize, buffer);
 
@@ -372,6 +372,7 @@ void *ss_port_man_5G_NR_process_itti_msg(void *notUsed)
     received_msg = NULL;
   }
 
+  DevAssert(nrctx_g);
   ss_gNB_read_from_socket(nrctx_g);
 
   return NULL;
