@@ -1016,6 +1016,11 @@ generate_Msg4(module_id_t module_idP,
           // put HARQ process round to 0
           ra->harq_pid = frame_subframe2_dl_harq_pid(cc->tdd_Config,frameP,subframeP);
           UE_info->UE_sched_ctrl[UE_id].round[CC_idP][ra->harq_pid] = 0;
+          if(rrc_sdu_length > 0 &&  rrc_sdu_length <= 10 && RC.ss.mode > SS_ENB){
+            //This is simple condition to determine the rrc message is rrcConnectionReject
+            // UE would not send HARQ feedback as DL HARQ entity release when received rrcConnectionReject
+            UE_info->UE_sched_ctrl[UE_id].round[CC_idP][ra->harq_pid] = 8; /* fake ACK, No retransmission */
+          }
 
           if ((ra->msg4_TBsize - rrc_sdu_length - msg4_header) <= 2) {
             msg4_padding = ra->msg4_TBsize - rrc_sdu_length - msg4_header;

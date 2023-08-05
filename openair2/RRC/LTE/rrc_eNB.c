@@ -9627,6 +9627,8 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
             rrc_eNB_generate_RRCConnectionReject(&ctxt, ue_context_pP, cc_id);
             lchannelType = Bearer_CCCH_e;
             bcchTransportType = dlsch_TRANSPORT;
+            ue_context_pP->ue_context.ue_release_timer = 1;
+            ue_context_pP->ue_context.ue_release_timer_thres = 10;
           }
         }
       }
