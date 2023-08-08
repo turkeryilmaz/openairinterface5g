@@ -35,9 +35,10 @@
 #include "nrppa_gNB_TRP_information_transfer_procedures.h"
 #include "nrppa_gNB_itti_messaging.h"
 
+/* TRPInformationExchange (Parent) procedure for  TRPInformationRequest, TRPInformationResponse, and TRPInformationFailure*/
 int nrppa_gNB_handle_TRPInformationExchange(nrppa_gnb_ue_info_t *nrppa_msg_info, NRPPA_NRPPA_PDU_t *pdu)
 {
-LOG_D(NRPPA, "Processing Received TRPInformationRequest \n");
+    LOG_D(NRPPA, "Processing Received TRPInformationRequest \n");
 // Processing Received TRPInformationRequest
     NRPPA_TRPInformationRequest_t     *container;
     NRPPA_TRPInformationRequest_IEs_t *ie;
@@ -51,15 +52,13 @@ LOG_D(NRPPA, "Processing Received TRPInformationRequest \n");
     /* IE TRP List */
     NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_TRPInformationRequest_IEs_t, ie, container,
                                 NRPPA_ProtocolIE_ID_id_TRPList, true);
-
-    NRPPA_TRPList_t TRP_List = ie->value.choice.TRPList;
+//    NRPPA_TRPList_t TRP_List = ie->value.choice.TRPList;  // TODO process this information
 
 
     /* IE TRP Information Type List */
     NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_TRPInformationRequest_IEs_t, ie, container,
                                 NRPPA_ProtocolIE_ID_id_TRPInformationTypeList, true);
-
-    NRPPA_TRPInformationTypeList_t TRP_Info_Type_List= ie->value.choice.TRPInformationTypeList;
+    //NRPPA_TRPInformationTypeList_t TRP_Info_Type_List= ie->value.choice.TRPInformationTypeList; // TODO process this information
 
 
 // TODO process the received data generate corresponding request
@@ -140,7 +139,6 @@ int nrppa_gNB_TRPInformationResponse(uint32_t nrppa_transaction_id, uint8_t *buf
 
         // TODO Retrieve TRP information from RAN Context
 
-        /* IE 9.2.25 SRS Configuration Preparing SRS Configuration IE of PositioningInformationResponse*/
         int nb_of_TRP= 1;  // TODO find the acutal number for TRP and add here
         for (int i = 0; i < nb_of_TRP; i++)
         {
@@ -237,8 +235,12 @@ int nrppa_gNB_TRPInformationFailure(uint32_t nrppa_transaction_id, uint8_t *buff
         ie->criticality = NRPPA_Criticality_ignore;
         ie->value.present = NRPPA_TRPInformationFailure_IEs__value_PR_CriticalityDiagnostics;
         // TODO Retreive CriticalityDiagnostics information and assign
-        //ie->value.choice.CriticalityDiagnostics. = ;
-        //ie->value.choice.CriticalityDiagnostics. = ;
+        //ie->value.choice.CriticalityDiagnostics.procedureCode = ; //TODO adeel retrieve and add
+        //ie->value.choice.CriticalityDiagnostics.triggeringMessage; = ; //TODO adeel retrieve and add
+        //ie->value.choice.CriticalityDiagnostics.procedureCriticality; = ; //TODO adeel retrieve and add
+        ie->value.choice.CriticalityDiagnostics.nrppatransactionID =nrppa_transaction_id ;
+        //ie->value.choice.CriticalityDiagnostics.iEsCriticalityDiagnostics = ; //TODO adeel retrieve and add
+        //ie->value.choice.CriticalityDiagnostics.iE_Extensions = ; //TODO adeel retrieve and add
     }
 
 

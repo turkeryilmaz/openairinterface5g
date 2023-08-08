@@ -378,6 +378,7 @@ add_library(nrppa
   ${NRPPA_DIR}/nrppa_gNB_itti_messaging.c
   ${NRPPA_DIR}/nrppa_gNB_position_information_transfer_procedures.c
   ${NRPPA_DIR}/nrppa_gNB_TRP_information_transfer_procedures.c
+  ${NRPPA_DIR}/nrppa_gNB_measurement_information_transfer_procedures.c
   )
 target_link_libraries(nrppa PUBLIC asn1_nrppa)
 target_link_libraries(nrppa PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
