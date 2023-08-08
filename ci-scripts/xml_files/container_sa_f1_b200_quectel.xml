@@ -37,6 +37,12 @@
     150000
     150001
     110011
+    110001
+    150001
+    110011
+    110001
+    150000
+    110011
     110002
     100001
     130201
@@ -119,7 +125,7 @@
     <class>Ping</class>
     <desc>Ping: 20pings in 20sec</desc>
     <id>idefix</id>
-    <ping_args>-c 20</ping_args>
+    <ping_args>-c 20 %cn_ip%</ping_args>
     <ping_packetloss_threshold>1</ping_packetloss_threshold>
     <ping_rttavg_threshold>25</ping_rttavg_threshold>
   </testCase>
@@ -128,7 +134,7 @@
     <class>Ping</class>
     <desc>Ping: 100pings in 20sec</desc>
     <id>idefix</id>
-    <ping_args>-c 100 -i 0.2</ping_args>
+    <ping_args>-c 100 -i 0.2 %cn_ip%</ping_args>
     <ping_packetloss_threshold>1</ping_packetloss_threshold>
     <ping_rttavg_threshold>110</ping_rttavg_threshold>
   </testCase>
@@ -137,7 +143,7 @@
     <class>Ping</class>
     <desc>Ping: 20pings in 20sec</desc>
     <id>idefix</id>
-    <ping_args>-c 20</ping_args>
+    <ping_args>-c 20 %cn_ip%</ping_args>
     <ping_packetloss_threshold>1</ping_packetloss_threshold>
     <ping_rttavg_threshold>110</ping_rttavg_threshold>
   </testCase>
@@ -146,7 +152,7 @@
     <class>Ping</class>
     <desc>Ping: 100pings in 20sec</desc>
     <id>idefix</id>
-    <ping_args>-c 100 -i 0.2</ping_args>
+    <ping_args>-c 100 -i 0.2 %cn_ip%</ping_args>
     <ping_packetloss_threshold>1</ping_packetloss_threshold>
     <ping_rttavg_threshold>110</ping_rttavg_threshold>
   </testCase>

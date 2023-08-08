@@ -166,17 +166,15 @@ uint8_t get_pdsch_mcs_table(long *mcs_Table, int dci_format, int rnti_type, int 
 
 int get_format0(uint8_t index, uint8_t unpaired,frequency_range_t);
 
-int64_t *get_prach_config_info(frequency_range_t freq_range,
-                               uint8_t index,
-                               uint8_t unpaired);
+const int64_t *get_prach_config_info(frequency_range_t freq_range, uint8_t index, uint8_t unpaired);
 
 uint16_t get_NCS(uint8_t index, uint16_t format, uint8_t restricted_set_config);
-
+int compute_pucch_crc_size(int O_uci);
 uint8_t get_l0_ul(uint8_t mapping_type, uint8_t dmrs_typeA_position);
 int32_t get_l_prime(uint8_t duration_in_symbols, uint8_t mapping_type, pusch_dmrs_AdditionalPosition_t additional_pos, pusch_maxLength_t pusch_maxLength, uint8_t start_symbolt, uint8_t dmrs_typeA_position);
 
 uint8_t get_L_ptrs(uint8_t mcs1, uint8_t mcs2, uint8_t mcs3, uint8_t I_mcs, uint8_t mcs_table);
-uint8_t get_K_ptrs(uint16_t nrb0, uint16_t nrb1, uint16_t N_RB);
+uint8_t get_K_ptrs(uint32_t nrb0, uint32_t nrb1, uint32_t N_RB);
 
 uint32_t nr_compute_tbs(uint16_t Qm,
                         uint16_t R,
@@ -230,7 +228,9 @@ NR_tda_info_t get_info_from_tda_tables(default_table_type_t table_type,
 default_table_type_t get_default_table_type(int mux_pattern);
 
 void fill_coresetZero(NR_ControlResourceSet_t *coreset0, NR_Type0_PDCCH_CSS_config_t *type0_PDCCH_CSS_config);
-void fill_searchSpaceZero(NR_SearchSpace_t *ss0, NR_Type0_PDCCH_CSS_config_t *type0_PDCCH_CSS_config);
+void fill_searchSpaceZero(NR_SearchSpace_t *ss0,
+                          int slots_per_frame,
+                          NR_Type0_PDCCH_CSS_config_t *type0_PDCCH_CSS_config);
 
 uint8_t get_pusch_nb_antenna_ports(NR_PUSCH_Config_t *pusch_Config,
                                    NR_SRS_Config_t *srs_config,
@@ -238,8 +238,7 @@ uint8_t get_pusch_nb_antenna_ports(NR_PUSCH_Config_t *pusch_Config,
 
 uint16_t compute_pucch_prb_size(uint8_t format,
                                 uint8_t nr_prbs,
-                                uint16_t O_tot,
-                                uint16_t O_csi,
+                                uint16_t O_uci,
                                 NR_PUCCH_MaxCodeRate_t *maxCodeRate,
                                 uint8_t Qm,
                                 uint8_t n_symb,
@@ -273,17 +272,6 @@ bool set_ul_ptrs_values(NR_PTRS_UplinkConfig_t *ul_ptrs_config,
 @param    configuredGrant  indicates whether a configured grant was received or not
 @returns                   transformPrecoding value */
 long get_transformPrecoding(const NR_UE_UL_BWP_t *current_UL_BWP, nr_dci_format_t dci_format, uint8_t configuredGrant);
-
-void nr_mac_gNB_rrc_ul_failure(const module_id_t Mod_instP,
-                               const int CC_idP,
-                               const frame_t frameP,
-                               const sub_frame_t subframeP,
-                               const rnti_t rntiP);
-
-void nr_mac_gNB_rrc_ul_failure_reset(const module_id_t Mod_instP,
-                                     const frame_t frameP,
-                                     const sub_frame_t subframeP,
-                                     const rnti_t rntiP);
 
 uint8_t number_of_bits_set(uint8_t buf);
 

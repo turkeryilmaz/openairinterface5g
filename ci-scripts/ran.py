@@ -263,7 +263,7 @@ class RANManagement():
 		cmd = cls_cmd.getConnection(self.node)
 		ret = cmd.run(self.command)
 		cmd.close()
-		logging.debug(f'CustomCommand: {self.command} returnCode: {ret.returncode}')
+		logging.debug(f"Custum command : {self.command} on node : {self.node} returnCode : {ret.returncode}")
 		status = 'OK'
 		message = []
 		if ret.returncode != 0 and not self.command_fail:
@@ -895,7 +895,7 @@ class RANManagement():
 						htmleNBFailureMsg += '<span class="glyphicon glyphicon-ok-circle"></span> Command line option(s) correctly applied <span class="glyphicon glyphicon-arrow-right"></span> ' + self.eNBOptions[int(self.eNB_instance)] + '\n\n'
 					else:
 						htmleNBFailureMsg += '<span class="glyphicon glyphicon-ban-circle"></span> Command line option(s) NOT applied <span class="glyphicon glyphicon-arrow-right"></span> ' + self.eNBOptions[int(self.eNB_instance)] + '\n\n'
-			result = re.search('Exiting OAI softmodem', str(line))
+			result = re.search('Exiting OAI softmodem|Caught SIGTERM, shutting down', str(line))
 			if result is not None:
 				exitSignalReceived = True
 			result = re.search('[Ss]egmentation [Ff]ault', str(line))

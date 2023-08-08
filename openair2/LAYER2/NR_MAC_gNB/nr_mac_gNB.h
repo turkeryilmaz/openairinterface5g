@@ -41,6 +41,25 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
+
+#define NR_SCHED_LOCK(lock)                                        \
+  do {                                                             \
+    int rc = pthread_mutex_lock(lock);                             \
+    AssertFatal(rc == 0, "error while locking scheduler mutex\n"); \
+  } while (0)
+
+#define NR_SCHED_UNLOCK(lock)                                      \
+  do {                                                             \
+    int rc = pthread_mutex_unlock(lock);                           \
+    AssertFatal(rc == 0, "error while locking scheduler mutex\n"); \
+  } while (0)
+
+#define NR_SCHED_ENSURE_LOCKED(lock)\
+  do {\
+    int rc = pthread_mutex_trylock(lock); \
+    AssertFatal(rc == EBUSY, "this function should be called with the scheduler mutex locked\n");\
+  } while (0)
 
 /* Commmon */
 #include "radio/COMMON/common_lib.h"
@@ -448,10 +467,6 @@ typedef struct NR_bler_stats {
 */
 #define MAX_NR_OF_REPORTED_RS 4
 
-typedef enum NR_CSI_Report_Config {
-  CSI_Report_PR_cri_ri_li_pmi_cqi_report,
-  CSI_Report_PR_ssb_cri_report
-} NR_CSI_Report_Config_PR;
 struct CRI_RI_LI_PMI_CQI {
   uint8_t cri;
   uint8_t ri;
@@ -462,6 +477,7 @@ struct CRI_RI_LI_PMI_CQI {
   uint8_t wb_cqi_2tb;
   uint8_t cqi_table;
   uint8_t csi_report_id;
+  bool print_report;
 };
 
 typedef struct CRI_SSB_RSRP {
@@ -572,7 +588,9 @@ typedef struct {
   uint8_t current_harq_pid;
   int pusch_consecutive_dtx_cnt;
   int pucch_consecutive_dtx_cnt;
-  int ul_failure;
+  bool ul_failure;
+  int ul_failure_timer;
+  int release_timer;
   struct CSI_Report CSI_report;
   bool SR;
   /// information about every HARQ process
@@ -614,6 +632,7 @@ typedef struct NR_mac_dir_stats {
   uint64_t errors;
   uint64_t total_bytes;
   uint32_t current_bytes;
+  uint64_t total_sdu_bytes;
   uint32_t total_rbs;
   uint32_t total_rbs_retx;
   uint32_t num_mac_sdu;
@@ -639,7 +658,10 @@ typedef struct NR_bler_options {
 } NR_bler_options_t;
 
 typedef struct nr_mac_rrc_ul_if_s {
-  /* TODO add other message types as necessary */
+  ue_context_setup_response_func_t ue_context_setup_response;
+  ue_context_modification_response_func_t ue_context_modification_response;
+  ue_context_release_request_func_t ue_context_release_request;
+  ue_context_release_complete_func_t ue_context_release_complete;
   initial_ul_rrc_message_transfer_func_t initial_ul_rrc_message_transfer;
 } nr_mac_rrc_ul_if_t;
 
@@ -669,7 +691,8 @@ typedef struct {
   // last element always NULL
   pthread_mutex_t mutex;
   NR_UE_info_t *list[MAX_MOBILES_PER_GNB+1];
-  bool sched_csirs;
+  // bitmap of CSI-RS already scheduled in current slot
+  int sched_csirs;
   uid_allocator_t uid_allocator;
 } NR_UEs_t;
 
@@ -719,24 +742,15 @@ typedef struct gNB_MAC_INST_s {
   uint16_t ulprbbl[MAX_BWP_SIZE];
   /// NFAPI Config Request Structure
   nfapi_nr_config_request_scf_t     config[NFAPI_CC_MAX];
-  /// NFAPI DL Config Request Structure
-  nfapi_nr_dl_tti_request_t         DL_req[NFAPI_CC_MAX];
   /// a PDCCH PDU groups DCIs per BWP and CORESET. The following structure
   /// keeps pointers to PDCCH PDUs within DL_req so that we can easily track
   /// PDCCH PDUs per CC/BWP/CORESET
   nfapi_nr_dl_tti_pdcch_pdu_rel15_t *pdcch_pdu_idx[NFAPI_CC_MAX][MAX_NUM_CORESET];
-  /// NFAPI UL TTI Request Structure, simple pointer into structure
-  /// UL_tti_req_ahead for current frame/slot
-  nfapi_nr_ul_tti_request_t        *UL_tti_req[NFAPI_CC_MAX];
   /// NFAPI UL TTI Request Structure for future TTIs, dynamically allocated
   /// because length depends on number of slots
   nfapi_nr_ul_tti_request_t        *UL_tti_req_ahead[NFAPI_CC_MAX];
   int UL_tti_req_ahead_size;
   int vrb_map_UL_size;
-  /// NFAPI HI/DCI0 Config Request Structure
-  nfapi_nr_ul_dci_request_t         UL_dci_req[NFAPI_CC_MAX];
-  /// NFAPI DL PDU structure
-  nfapi_nr_tx_data_request_t        TX_req[NFAPI_CC_MAX];
 
   NR_UEs_t UE_info;
 
@@ -802,6 +816,8 @@ typedef struct gNB_MAC_INST_s {
 
   int16_t frame;
   int16_t slot;
+
+  pthread_mutex_t sched_lock;
 
 } gNB_MAC_INST;
 

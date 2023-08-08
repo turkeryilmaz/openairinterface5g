@@ -75,6 +75,7 @@
 #define NAS_CELL_SELECTION_REQ(mSGpTR)  (mSGpTR)->ittiMsg.nas_cell_selection_req
 #define NAS_CONN_ESTABLI_REQ(mSGpTR)    (mSGpTR)->ittiMsg.nas_conn_establi_req
 #define NAS_UPLINK_DATA_REQ(mSGpTR)     (mSGpTR)->ittiMsg.nas_ul_data_req
+#define NAS_DEREGISTRATION_REQ(mSGpTR)  (mSGpTR)->ittiMsg.nas_deregistration_req
 
 #define NAS_RAB_ESTABLI_RSP(mSGpTR)     (mSGpTR)->ittiMsg.nas_rab_est_rsp
 
@@ -87,6 +88,7 @@
 #define NAS_DOWNLINK_DATA_IND(mSGpTR)   (mSGpTR)->ittiMsg.nas_dl_data_ind
 
 #define RRC_SUBFRAME_PROCESS(mSGpTR)    (mSGpTR)->ittiMsg.rrc_subframe_process
+#define NRRRC_SLOT_PROCESS(mSGpTR)      (mSGpTR)->ittiMsg.nr_rrc_slot_process
 
 #define RLC_SDU_INDICATION(mSGpTR)      (mSGpTR)->ittiMsg.rlc_sdu_indication
 #define NRDuDlReq(mSGpTR)      (mSGpTR)->ittiMsg.nr_du_dl_req
@@ -441,6 +443,7 @@ typedef kenb_refresh_req_t      NasKenbRefreshReq;
 typedef cell_info_req_t         NasCellSelectionReq;
 typedef nas_establish_req_t     NasConnEstabliReq;
 typedef ul_info_transfer_req_t  NasUlDataReq;
+typedef nas_deregistration_req_t NasDeregistrationReq;
 
 typedef rab_establish_rsp_t     NasRabEstRsp;
 
@@ -458,8 +461,14 @@ typedef dl_info_transfer_ind_t  NasDlDataInd;
 // eNB: realtime -> RRC messages
 typedef struct rrc_subframe_process_s {
   protocol_ctxt_t ctxt;
-  int             CC_id;
+  int CC_id;
 } RrcSubframeProcess;
+
+typedef struct nrrrc_slot_process_s {
+  int frame;
+  int slot;
+  int gnb_id;
+} NRRrcSlotProcess;
 
 // eNB: RLC -> RRC messages
 typedef struct rlc_sdu_indication_s {

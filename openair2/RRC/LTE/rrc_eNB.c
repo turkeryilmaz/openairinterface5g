@@ -31,7 +31,8 @@
 #define RRC_ENB_C
 #include "oai_asn1.h"
 #include <asn_application.h>
-#include <per_encoder.h>
+#include "uper_encoder.h"
+#include "uper_decoder.h"
 #include "rrc_defs.h"
 #include "rrc_extern.h"
 #include "assertions.h"
@@ -44,7 +45,6 @@
 #include "RRC/LTE/MESSAGES/asn1_msg.h"
 #include "LTE_RRCConnectionRequest.h"
 #include "LTE_RRCConnectionReestablishmentRequest.h"
-//#include "ReestablishmentCause.h"
 #include "LTE_BCCH-BCH-Message.h"
 #include "LTE_UL-CCCH-Message.h"
 #include "LTE_DL-CCCH-Message.h"
@@ -81,15 +81,14 @@
 #include "RRC/NAS/nas_config.h"
 #include "RRC/NAS/rb_config.h"
 
-#include "UTIL/OSA/osa_defs.h"
-
 #include "rrc_eNB_S1AP.h"
 #include "rrc_eNB_GTPV1U.h"
 #include "rrc_eNB_M2AP.h"
 
 #include "pdcp.h"
+#include "openair3/SECU/key_nas_deriver.h"
+#include "openair3/SECU/secu_defs.h"
 #include "openair3/ocp-gtpu/gtp_itf.h"
-#include <openair3/ocp-gtpu/gtp_itf.h>
 
 #include "intertask_interface.h"
 #include "softmodem-common.h"
@@ -114,8 +113,9 @@ mui_t                               rrc_eNB_mui = 0;
 
 extern uint32_t to_earfcn_DL(int eutra_bandP, uint32_t dl_CarrierFreq, uint32_t bw);
 extern int rrc_eNB_process_security(const protocol_ctxt_t *const ctxt_pP, rrc_eNB_ue_context_t *const ue_context_pP, security_capabilities_t *security_capabilities_pP);
-extern void process_eNB_security_key (const protocol_ctxt_t *const ctxt_pP, rrc_eNB_ue_context_t *const ue_context_pP, uint8_t *security_key_pP);
-extern int derive_keNB_star(const uint8_t *kenb_32, const uint16_t pci, const uint32_t earfcn_dl, const bool is_rel8_only, uint8_t *kenb_star);
+extern void process_eNB_security_key(const protocol_ctxt_t *const ctxt_pP,
+                                     rrc_eNB_ue_context_t *const ue_context_pP,
+                                     uint8_t *security_key_pP);
 extern int rrc_eNB_generate_RRCConnectionReconfiguration_endc(protocol_ctxt_t *ctxt, rrc_eNB_ue_context_t *ue_context, unsigned char *buffer, int buffer_size, OCTET_STRING_t *scg_group_config,
     OCTET_STRING_t *scg_RB_config);
 extern struct rrc_eNB_ue_context_s *get_first_ue_context(eNB_RRC_INST *rrc_instance_pP);
@@ -1225,24 +1225,23 @@ rrc_eNB_generate_RRCConnectionReestablishment(
 
         if (SRB1_config->logicalChannelConfig) {
           if (SRB1_config->logicalChannelConfig->present == LTE_SRB_ToAddMod__logicalChannelConfig_PR_explicitValue) {
-            SRB1_logicalChannelConfig = &(SRB1_config->logicalChannelConfig->choice.explicitValue);
+            SRB1_logicalChannelConfig = &SRB1_config->logicalChannelConfig->choice.explicitValue;
           } else {
-            SRB1_logicalChannelConfig = &(SRB1_logicalChannelConfig_defaultValue);
+            SRB1_logicalChannelConfig = &SRB1_logicalChannelConfig_defaultValue;
           }
         } else {
-          SRB1_logicalChannelConfig = &(SRB1_logicalChannelConfig_defaultValue);
+          SRB1_logicalChannelConfig = &SRB1_logicalChannelConfig_defaultValue;
         }
 
         LOG_D(RRC, PROTOCOL_RRC_CTXT_UE_FMT" RRC_eNB --- MAC_CONFIG_REQ  (SRB1) ---> MAC_eNB\n",
               PROTOCOL_RRC_CTXT_UE_ARGS(ctxt_pP));
 
-        rrc_mac_config_req_eNB_t tmp = {0};
-        tmp.CC_id = ue_context->primaryCC_id;
-        tmp.physicalConfigDedicated = ue_context->physicalConfigDedicated;
-        tmp.mac_MainConfig = ue_context->mac_MainConfig;
-        tmp.logicalChannelIdentity = 1;
-        tmp.logicalChannelConfig = SRB1_logicalChannelConfig;
-        tmp.measGapConfig = ue_context->measGapConfig;
+        const rrc_mac_config_req_eNB_t tmp = {.CC_id = ue_context->primaryCC_id,
+                                              .physicalConfigDedicated = ue_context->physicalConfigDedicated,
+                                              .mac_MainConfig = ue_context->mac_MainConfig,
+                                              .logicalChannelIdentity = 1,
+                                              .logicalChannelConfig = SRB1_logicalChannelConfig,
+                                              .measGapConfig = ue_context->measGapConfig};
         rrc_mac_config_req_eNB(module_id, &tmp);
         break;
       }  // if ((*SRB_configList)->list.array[cnt]->srb_Identity == 1)
@@ -1928,7 +1927,7 @@ rrc_eNB_generate_RRCConnectionRelease(
                PDCP_TRANSMISSION_MODE_CONTROL);
 }
 
-uint8_t qci_to_priority[9]= {2,4,3,5,1,6,7,8,9};
+static const uint8_t qci_to_priority[9] = {2, 4, 3, 5, 1, 6, 7, 8, 9};
 
 // TBD: this directive can be remived if we create a similar e_rab_param_t structure in RRC context
 //-----------------------------------------------------------------------------
@@ -5146,9 +5145,9 @@ rrc_eNB_process_RRCConnectionReconfigurationComplete(
   int                                 drb_id;
   int                                 oip_ifup = 0;
   int                                 dest_ip_offset = 0;
-  uint8_t                            *kRRCenc = NULL;
-  uint8_t                            *kRRCint = NULL;
-  uint8_t                            *kUPenc = NULL;
+  uint8_t kRRCenc[32] = {0};
+  uint8_t kRRCint[32] = {0};
+  uint8_t kUPenc[32] = {0};
   LTE_DRB_ToAddModList_t             *DRB_configList = ue_context_pP->ue_context.DRB_configList2[xid];
   LTE_SRB_ToAddModList_t             *SRB_configList = ue_context_pP->ue_context.SRB_configList2[xid];
   LTE_DRB_ToReleaseList_t            *DRB_Release_configList2 = ue_context_pP->ue_context.DRB_Release_configList2[xid];
@@ -5179,17 +5178,11 @@ rrc_eNB_process_RRCConnectionReconfigurationComplete(
 
   /* Derive the keys from kenb */
   if (DRB_configList != NULL) {
-    derive_key_up_enc(ue_context_pP->ue_context.ciphering_algorithm,
-                      ue_context_pP->ue_context.kenb,
-                      &kUPenc);
+    derive_key_nas(UP_ENC_ALG, ue_context_pP->ue_context.ciphering_algorithm, ue_context_pP->ue_context.kenb, kUPenc);
   }
 
-  derive_key_rrc_enc(ue_context_pP->ue_context.ciphering_algorithm,
-                     ue_context_pP->ue_context.kenb,
-                     &kRRCenc);
-  derive_key_rrc_int(ue_context_pP->ue_context.integrity_algorithm,
-                     ue_context_pP->ue_context.kenb,
-                     &kRRCint);
+  derive_key_nas(RRC_ENC_ALG, ue_context_pP->ue_context.ciphering_algorithm, ue_context_pP->ue_context.kenb, kRRCenc);
+  derive_key_nas(RRC_INT_ALG, ue_context_pP->ue_context.integrity_algorithm, ue_context_pP->ue_context.kenb, kRRCint);
   /* Refresh SRBs/DRBs */
   rrc_pdcp_config_asn1_req(ctxt_pP,
                            SRB_configList, // NULL,
@@ -7222,12 +7215,12 @@ void rrc_subframe_process(protocol_ctxt_t *const ctxt_pP, const int CC_id) {
     if ((ctxt_pP->frame&127) == 0 && ctxt_pP->subframe ==0) {
       if (fd) {
         if (ue_context_p->ue_context.Initialue_identity_s_TMSI.presence == true) {
-          fprintf(fd,"RRC UE rnti %x: S-TMSI %x failure timer %d/8\n",
+          fprintf(fd,"RRC UE rnti %x: S-TMSI %x failure timer %u/8\n",
                 ue_context_p->ue_context.rnti,
                 ue_context_p->ue_context.Initialue_identity_s_TMSI.m_tmsi,
                 ue_context_p->ue_context.ul_failure_timer);
         } else {
-          fprintf(fd,"RRC UE rnti %x failure timer %d/8\n",
+          fprintf(fd,"RRC UE rnti %x failure timer %u/8\n",
                 ue_context_p->ue_context.rnti,
                 ue_context_p->ue_context.ul_failure_timer);
         }

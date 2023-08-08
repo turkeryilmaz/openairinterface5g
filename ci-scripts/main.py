@@ -38,12 +38,12 @@ import helpreadme as HELP
 import constants as CONST
 
 
-import cls_oaicitest            #main class for OAI CI test framework
-import cls_physim               #class PhySim for physical simulators build and test
-import cls_containerize         #class Containerize for all container-based operations on RAN/UE objects
-import cls_static_code_analysis #class for static code analysis
-import cls_physim1          #class PhySim for physical simulators deploy and run
-import cls_cluster              # class for building/deploying on cluster
+import cls_oaicitest		 #main class for OAI CI test framework
+import cls_physim		 #class PhySim for physical simulators build and test
+import cls_containerize	 #class Containerize for all container-based operations on RAN/UE objects
+import cls_static_code_analysis  #class for static code analysis
+import cls_physim1		 #class PhySim for physical simulators deploy and run
+import cls_cluster		 # class for building/deploying on cluster
 
 import sshconnection 
 import epc
@@ -374,17 +374,6 @@ def GetParametersFromXML(action):
 		if (string_field is not None):
 			CONTAINERS.ran_checkers['u_retx_th'] = [float(x) for x in string_field.split(',')]
 
-	elif action == 'PingFromContainer':
-		string_field = test.findtext('container_name')
-		if (string_field is not None):
-			CONTAINERS.pingContName = string_field
-		string_field = test.findtext('options')
-		if (string_field is not None):
-			CONTAINERS.pingOptions = string_field
-		string_field = test.findtext('loss_threshold')
-		if (string_field is not None):
-			CONTAINERS.pingLossThreshold = string_field
-
 	elif action == 'IperfFromContainer':
 		string_field = test.findtext('server_container_name')
 		if (string_field is not None):
@@ -430,7 +419,13 @@ def GetParametersFromXML(action):
 		RAN.node = test.findtext('node')
 		RAN.command = test.findtext('command')
 		RAN.command_fail = test.findtext('command_fail') in ['True', 'true', 'Yes', 'yes']
-
+	elif action == 'Pull_Cluster_Image':
+		string_field = test.findtext('images_to_pull')
+		if (string_field is not None):
+			CLUSTER.imageToPull = string_field.split()
+		string_field = test.findtext('test_svr_id')
+		if (string_field is not None):
+			CLUSTER.testSvrId = string_field
 	else:
 		logging.warning(f"unknown action {action} from option-parsing point-of-view")
 
@@ -829,6 +824,9 @@ elif re.match('^TesteNB$', mode, re.IGNORECASE) or re.match('^TestUE$', mode, re
 					HTML=ldpc.Run_NRulsimTest(HTML,CONST,id)
 					if ldpc.exitStatus==1:
 						RAN.prematureExit = True
+				elif action == 'Pull_Cluster_Image':
+					if not CLUSTER.PullClusterImage(HTML,RAN):
+						RAN.prematureExit = True
 				elif action == 'Build_Cluster_Image':
 					if not CLUSTER.BuildClusterImage(HTML):
 						RAN.prematureExit = True
@@ -872,10 +870,6 @@ elif re.match('^TesteNB$', mode, re.IGNORECASE) or re.match('^TestUE$', mode, re
 						RAN.prematureExit = True
 				elif action == 'UndeployGenObject':
 					CONTAINERS.UndeployGenObject(HTML, RAN, CiTestObj)
-					if CONTAINERS.exitStatus==1:
-						RAN.prematureExit = True
-				elif action == 'PingFromContainer':
-					CONTAINERS.PingFromContainer(HTML, RAN, CiTestObj)
 					if CONTAINERS.exitStatus==1:
 						RAN.prematureExit = True
 				elif action == 'IperfFromContainer':

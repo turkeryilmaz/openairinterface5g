@@ -80,16 +80,17 @@ char nr_dci_format_string[8][30] = {
 
 
 static void nr_pdcch_demapping_deinterleaving(uint32_t *llr,
-                                       uint32_t *e_rx,
-                                       uint8_t coreset_time_dur,
-                                       uint8_t start_symbol,
-                                       uint32_t coreset_nbr_rb,
-                                       uint8_t reg_bundle_size_L,
-                                       uint8_t coreset_interleaver_size_R,
-                                       uint8_t n_shift,
-                                       uint8_t number_of_candidates,
-                                       uint16_t *CCE,
-                                       uint8_t *L) {
+                                              uint32_t *e_rx,
+                                              uint8_t coreset_time_dur,
+                                              uint8_t start_symbol,
+                                              uint32_t coreset_nbr_rb,
+                                              uint8_t reg_bundle_size_L,
+                                              uint8_t coreset_interleaver_size_R,
+                                              uint8_t n_shift,
+                                              uint8_t number_of_candidates,
+                                              uint16_t *CCE,
+                                              uint8_t *L)
+{
   /*
    * This function will do demapping and deinterleaving from llr containing demodulated symbols
    * Demapping will regroup in REG and bundles
@@ -130,7 +131,7 @@ static void nr_pdcch_demapping_deinterleaving(uint32_t *llr,
   uint32_t coreset_C = 0;
   uint16_t index_z, index_llr;
   int coreset_interleaved = 0;
-  int N_regs = coreset_nbr_rb*coreset_time_dur;
+  int N_regs = coreset_nbr_rb * coreset_time_dur;
 
   if (reg_bundle_size_L != 0) { // interleaving will be done only if reg_bundle_size_L != 0
     coreset_interleaved = 1;
@@ -139,12 +140,11 @@ static void nr_pdcch_demapping_deinterleaving(uint32_t *llr,
     reg_bundle_size_L = 6;
   }
 
-  int B_rb = reg_bundle_size_L/coreset_time_dur; // nb of RBs occupied by each REG bundle
-  int num_bundles_per_cce = 6/reg_bundle_size_L;
-  int n_cce = N_regs/6;
-  int max_bundles = n_cce*num_bundles_per_cce;
+  int B_rb = reg_bundle_size_L / coreset_time_dur; // nb of RBs occupied by each REG bundle
+  int num_bundles_per_cce = 6 / reg_bundle_size_L;
+  int n_cce = N_regs / 6;
+  int max_bundles = n_cce * num_bundles_per_cce;
   int f_bundle_j_list[max_bundles];
-
   // for each bundle
   for (int nb = 0; nb < max_bundles; nb++) {
     if (coreset_interleaved == 0)
@@ -163,11 +163,11 @@ static void nr_pdcch_demapping_deinterleaving(uint32_t *llr,
   // Get cce_list indices by bundle index in ascending order
   int f_bundle_j_list_ord[number_of_candidates][max_bundles];
   for (int c_id = 0; c_id < number_of_candidates; c_id++ ) {
-    int start_bund_cand = CCE[c_id]*num_bundles_per_cce;
-    int max_bund_per_cand = L[c_id]*num_bundles_per_cce;
+    int start_bund_cand = CCE[c_id] * num_bundles_per_cce;
+    int max_bund_per_cand = L[c_id] * num_bundles_per_cce;
     int f_bundle_j_list_id = 0;
     for(int nb = 0; nb < max_bundles; nb++) {
-      for(int bund_cand = start_bund_cand; bund_cand < start_bund_cand+max_bund_per_cand; bund_cand++){
+      for(int bund_cand = start_bund_cand; bund_cand < start_bund_cand + max_bund_per_cand; bund_cand++){
         if (f_bundle_j_list[bund_cand] == nb) {
           f_bundle_j_list_ord[c_id][f_bundle_j_list_id] = nb;
           f_bundle_j_list_id++;
@@ -315,11 +315,10 @@ void nr_pdcch_channel_level(int32_t rx_size,
       */
     }
 
-    DevAssert( nb_rb );
-    avg[aarx] = (((int32_t *)&avg128P)[0] +
-                 ((int32_t *)&avg128P)[1] +
-                 ((int32_t *)&avg128P)[2] +
-                 ((int32_t *)&avg128P)[3])/(nb_rb*9);
+    DevAssert(nb_rb);
+    avg[aarx] = 0;
+    for (int i = 0; i < 4; i++)
+      avg[aarx] += ((int32_t *)&avg128P)[i] / (nb_rb * 9);
     LOG_DDD("Channel level : %d\n",avg[aarx]);
   }
 
@@ -365,7 +364,7 @@ void nr_pdcch_extract_rbs_single(uint32_t rxdataF_sz,
 #define NBR_RE_PER_RB_WITH_DMRS           12
   // after removing the 3 DMRS RE, the RB contains 9 RE with PDCCH
 #define NBR_RE_PER_RB_WITHOUT_DMRS         9
-  uint16_t c_rb, nb_rb = 0;
+  uint16_t c_rb;
   //uint8_t rb_count_bit;
   uint8_t i, j, aarx;
   int32_t *dl_ch0, *dl_ch0_ext, *rxF, *rxF_ext;
@@ -485,7 +484,6 @@ void nr_pdcch_extract_rbs_single(uint32_t rxdataF_sz,
           }
         }
 
-        nb_rb++;
         dl_ch0_ext += NBR_RE_PER_RB_WITHOUT_DMRS;
         rxF_ext += NBR_RE_PER_RB_WITHOUT_DMRS;
         dl_ch0 += 12;
@@ -507,7 +505,6 @@ void nr_pdcch_extract_rbs_single(uint32_t rxdataF_sz,
           }
         }
 
-        nb_rb++;
         dl_ch0_ext += NBR_RE_PER_RB_WITHOUT_DMRS;
         rxF_ext += NBR_RE_PER_RB_WITHOUT_DMRS;
         dl_ch0 += 12;
@@ -674,8 +671,6 @@ int32_t nr_rx_pdcch(PHY_VARS_NR_UE *ue,
                     fapi_nr_dl_config_dci_dl_pdu_rel15_t *rel15,
                     c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP]) {
 
-  uint32_t frame = proc->frame_rx;
-  uint32_t slot  = proc->nr_slot_rx;
   NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
 
   uint8_t log2_maxh, aarx;
@@ -733,11 +728,10 @@ int32_t nr_rx_pdcch(PHY_VARS_NR_UE *ue,
     log2_maxh = (log2_approx(avgs) / 2) + 5;  //+frame_parms->nb_antennas_rx;
 
 #ifdef UE_DEBUG_TRACE
-    LOG_D(PHY,"slot %d: pdcch log2_maxh = %d (%d,%d)\n",slot,log2_maxh,avgP[0],avgs);
+    LOG_D(PHY, "slot %d: pdcch log2_maxh = %d (%d,%d)\n", proc->nr_slot_rx, log2_maxh, avgP[0], avgs);
 #endif
 #if T_TRACER
-    T(T_UE_PHY_PDCCH_ENERGY, T_INT(0), T_INT(0), T_INT(frame%1024), T_INT(slot),
-      T_INT(avgP[0]), T_INT(avgP[1]), T_INT(avgP[2]), T_INT(avgP[3]));
+    T(T_UE_PHY_PDCCH_ENERGY, T_INT(0), T_INT(0), T_INT(proc->frame_rx % 1024), T_INT(proc->nr_slot_rx), T_INT(avgP[0]), T_INT(avgP[1]), T_INT(avgP[2]), T_INT(avgP[3]));
 #endif
     LOG_D(PHY,"we enter nr_pdcch_channel_compensation(log2_maxh=%d)\n",log2_maxh);
     LOG_D(PHY,"in nr_pdcch_channel_compensation(rxdataF_ext x dl_ch_estimates_ext -> rxdataF_comp)\n");
@@ -751,7 +745,7 @@ int32_t nr_rx_pdcch(PHY_VARS_NR_UE *ue,
                                   log2_maxh,
                                   n_rb); // log2_maxh+I0_shift
 
-    UEscopeCopy(ue, pdcchRxdataF_comp, rxdataF_comp, sizeof(struct complex16), frame_parms->nb_antennas_rx, rx_size);
+    UEscopeCopy(ue, pdcchRxdataF_comp, rxdataF_comp, sizeof(struct complex16), frame_parms->nb_antennas_rx, rx_size, 0);
 
     if (frame_parms->nb_antennas_rx > 1) {
       LOG_D(PHY,"we enter nr_pdcch_detection_mrc(frame_parms->nb_antennas_rx=%d)\n", frame_parms->nb_antennas_rx);
@@ -767,7 +761,7 @@ int32_t nr_rx_pdcch(PHY_VARS_NR_UE *ue,
                  s,
                  n_rb);
 
-    UEscopeCopy(ue, pdcchLlr, llr, sizeof(int16_t), 1, llr_size);
+    UEscopeCopy(ue, pdcchLlr, llr, sizeof(int16_t), 1, llr_size, 0);
 
 #if T_TRACER
     
@@ -777,7 +771,7 @@ int32_t nr_rx_pdcch(PHY_VARS_NR_UE *ue,
     
 #endif
 #ifdef DEBUG_DCI_DECODING
-    printf("demapping: slot %d, mi %d\n",slot,get_mi(frame_parms,slot));
+    printf("demapping: slot %u, mi %d\n",slot,get_mi(frame_parms,slot));
 #endif
   }
 
@@ -892,7 +886,8 @@ uint8_t nr_dci_decoding_procedure(PHY_VARS_NR_UE *ue,
            break;
         }
       }
-      if (dci_found==1) continue;
+      if (dci_found == 1)
+        continue;
       int dci_length = rel15->dci_length_options[k];
       uint64_t dci_estimation[2]= {0};
 
@@ -926,8 +921,7 @@ uint8_t nr_dci_decoding_procedure(PHY_VARS_NR_UE *ue,
         if (mb > (ue->dci_thres+30)) {
           LOG_W(PHY,"DCI false positive. Dropping DCI index %d. Mismatched bits: %d/%d. Current DCI threshold: %d\n",j,mb,L*108,ue->dci_thres);
           continue;
-        }
-        else {
+        } else {
           dci_ind->SFN = proc->frame_rx;
           dci_ind->slot = proc->nr_slot_rx;
           dci_ind->dci_list[dci_ind->number_of_dcis].rnti = n_rnti;

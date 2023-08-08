@@ -32,7 +32,8 @@ OS_DISTRO=$(grep "^ID=" /etc/os-release | sed "s/ID=//" | sed "s/\"//g")
 OS_RELEASE=$(grep "^VERSION_ID=" /etc/os-release | sed "s/VERSION_ID=//" | sed "s/\"//g")
 case "$OS_DISTRO" in
   fedora) OS_BASEDISTRO="fedora"; INSTALLER="dnf"; CMAKE="cmake" ;;
-  rhel)   OS_BASEDISTRO="fedora"; INSTALLER="yum"; CMAKE="cmake3" ;;
+  rhel)   OS_BASEDISTRO="fedora"; INSTALLER="dnf"; CMAKE="cmake" ;;
+  rocky)  OS_BASEDISTRO="fedora"; INSTALLER="dnf"; CMAKE="cmake" ;;
   centos) OS_BASEDISTRO="centos"; INSTALLER="yum"; CMAKE="cmake3" ;;
   debian) OS_BASEDISTRO="debian"; INSTALLER="apt-get"; CMAKE="cmake" ;;
   ubuntu) OS_BASEDISTRO="debian"; INSTALLER="apt-get"; CMAKE="cmake" ;;
@@ -102,6 +103,7 @@ get_distribution_release() {
 check_supported_distribution() {
     local distribution=$(get_distribution_release)
     case "$distribution" in
+        "ubuntu23.10") return 0 ;;
         "ubuntu22.04") return 0 ;;
         "ubuntu21.04") return 0 ;;
         "ubuntu20.04") return 0 ;;
@@ -120,12 +122,20 @@ check_supported_distribution() {
         "rhel8.5")     return 0 ;;
         "rhel8.6")     return 0 ;;
         "rhel8.7")     return 0 ;;
+        "rhel8.8")     return 0 ;;
+        "rhel8.9")     return 0 ;;
         "rhel9.0")     return 0 ;;
         "rhel9.1")     return 0 ;;
         "rhel9.2")     return 0 ;;
         "rhel9.3")     return 0 ;;
         "centos7")     return 0 ;;
         "centos8")     return 0 ;;
+        "rocky8.7")    return 0 ;;
+        "rocky8.8")    return 0 ;;
+        "rocky8.9")    return 0 ;;
+        "rocky9.1")    return 0 ;;
+        "rocky9.2")    return 0 ;;
+        "rocky9.3")    return 0 ;;
     esac
     return 1
 }
@@ -207,35 +217,26 @@ check_errors() {
 }
 
 compilations() {
+  [[ $# -gt 2 ]] || echo_fatal "compilations needs more than three arguments"
   local dir=$1
   shift 1
   local logfile=$1
   shift 1
   local targets=$@
+  local verbose=$([ "$VERBOSE_COMPILE" == "1" ] && echo "-v" || echo "")
+  echo cd $OPENAIR_DIR/cmake_targets/$dir/build
   cd $OPENAIR_DIR/cmake_targets/$dir/build
-  echo_info "Log file for compilation is being written to: $dlog/$logfile"
+  echo_info "Running \"cmake --build . $verbose --target $targets -- -j$(nproc)\"" $green
+  echo "Log file for compilation is being written to: $dlog/$logfile"
   set +e
   {
-    if [ "$BUILD_COVERITY_SCAN" == "1" ]; then
-        COV_SCAN_PREFIX="cov-build --dir cov-int"
-    else
-        COV_SCAN_PREFIX=""
-    fi
-    if [ "$MAKE_CMD" != "" ]; then
-       $MAKE_CMD $targets
-    else 
-    if [ "$VERBOSE_COMPILE" == "1" ]; then
-       $COV_SCAN_PREFIX make -j`nproc` $targets VERBOSE=$VERBOSE_COMPILE
-    else
-       $COV_SCAN_PREFIX make -j`nproc` $targets
-    fi
-    fi
+    cmake --build . $verbose --target $targets -- -j$(nproc)
     ret=$?
   } > $dlog/$logfile 2>&1
   if [ "$VERBOSE_CI" == "1" ]; then
-     echo_info "====== Start of log for $logfile ======"
+     echo "====== Start of log for $logfile ======"
      cat $dlog/$logfile
-     echo_info "====== End of log for $logfile ======"
+     echo "====== End of log for $logfile ======"
   fi
   check_warnings "$dlog/$logfile"
   if [[ $ret -eq 0 ]]; then
@@ -300,7 +301,7 @@ install_usrp_uhd_driver_from_source(){
         if [[ "$OS_DISTRO" == "ubuntu" ]]; then
             $SUDO /usr/local/lib/uhd/utils/uhd_images_downloader.py
         fi
-        if [[ "$OS_DISTRO" == "rhel" ]]; then
+        if [[ "$OS_DISTRO" == "rhel" ]] || [[ "$OS_DISTRO" == "rocky" ]]; then
             $SUDO /usr/local/lib64/uhd/utils/uhd_images_downloader.py
         fi
     fi
@@ -367,7 +368,7 @@ check_install_usrp_uhd_driver(){
             $SUDO $INSTALLER -y install $boost_libs_fedora $CMAKE
             $SUDO pip3 install mako requests
         fi
-        if [[ "$OS_DISTRO" == "rhel" ]] || [[ "$OS_DISTRO" == "centos" ]]; then
+        if [[ "$OS_DISTRO" == "rhel" ]] || [[ "$OS_DISTRO" == "centos" ]] || [[ "$OS_DISTRO" == "rocky" ]]; then
             if [ $IS_CONTAINER -eq 0 ]
             then
                 # until EPEL repo hasn't bumped UHD driver to >=3.10 in EPEL, build driver from source
@@ -389,13 +390,13 @@ install_usrp_uhd_driver() {
     # quick workaround for RHE7.6
     local distribution=$(get_distribution_release)
     if [ -z $1 ]; then
-      if [[ "$OS_DISTRO" == "rhel" ]]; then
+      if [[ "$OS_DISTRO" == "rhel" ]] || [[ "$OS_DISTRO" == "rocky" ]]; then
           $SUDO /usr/local/bin/uhd_images_downloader
       else
           $SUDO uhd_images_downloader
       fi
     else
-      if [[ "$OS_DISTRO" == "rhel" ]]; then
+      if [[ "$OS_DISTRO" == "rhel" ]] || [[ "$OS_DISTRO" == "rocky" ]]; then
           $SUDO /usr/local/bin/uhd_images_downloader -i $1
       else
           $SUDO uhd_images_downloader -i $1
@@ -553,28 +554,24 @@ check_install_additional_tools (){
             ;;
     esac
     PACKAGE_LIST="\
-	doxygen \
-	libpthread-stubs0-dev \
-	libqt5charts5-dev \
-	tshark \
-	uml-utilities \
+        doxygen \
+        libgnutls28-dev \
+        libpthread-stubs0-dev \
+        libqt5charts5-dev \
+        tshark \
+        uml-utilities \
         iperf3 \
         libforms-bin \
         libforms-dev \
+        libxft-dev \
         xmlstarlet"
-  elif [[ "$OS_DISTRO" == "rhel" ]] || [[ "$OS_DISTRO" == "centos" ]]; then
+  elif [[ "$OS_DISTRO" == "rhel" ]] || [[ "$OS_DISTRO" == "centos" ]] || [[ "$OS_DISTRO" == "rocky" ]] ||  [[ "$OS_DISTRO" == "fedora" ]]; then
     PACKAGE_LIST="\
       doxygen \
       ctags \
       iperf3 \
-      xforms \
-      xforms-devel \
-      xmlstarlet"
-  elif [[ "$OS_DISTRO" == "fedora" ]]; then
-    PACKAGE_LIST=" \
-      doxygen \
-      ctags \
-      iperf3 \
+      gnutls-devel \
+      libXft-devel \
       xforms \
       xforms-devel \
       xmlstarlet"
@@ -594,7 +591,7 @@ check_install_oai_software() {
     case "$(get_distribution_release)" in
         "ubuntu18.04")
             add_cmake_repo
-            specific_packages="libgcrypt11-dev"
+            specific_packages=""
             ;;
          "debian11")
             specific_packages="libz-dev"
@@ -613,22 +610,22 @@ check_install_oai_software() {
 	liblapack-dev \
 	liblapacke-dev \
 	libreadline-dev \
-	libgnutls28-dev \
 	libconfig-dev \
 	libsctp-dev  \
 	libssl-dev  \
 	libtool  \
 	patch \
 	openssl \
+        zlib1g-dev \
         xxd
 
   elif [[ "$OS_BASEDISTRO" == "fedora" ]]; then
-    if [[ "$OS_DISTRO" == "rhel" ]] || [[ "$OS_DISTRO" == "centos" ]]; then
+    if [[ "$OS_DISTRO" == "rhel" ]] || [[ "$OS_DISTRO" == "centos" ]] || [[ "$OS_DISTRO" == "rocky" ]]; then
       if rpm -q epel-release > /dev/null; then
         echo "EPEL repos already present. Good."
       else
         echo "EPEL repos not present. Installing them."
-        $SUDO $INSTALLER install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+        $SUDO $INSTALLER install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
       fi
     fi
 
@@ -642,7 +639,6 @@ check_install_oai_software() {
       pkgconfig \
       libconfig-devel \
       libffi-devel \
-      libgcrypt-devel \
       lksctp-tools \
       lksctp-tools-devel \
       libtool \
@@ -652,12 +648,12 @@ check_install_oai_software() {
       openssl-devel \
       patch \
       readline-devel \
-      gnutls-devel \
       lapack \
       lapack-devel \
       blas \
       blas-devel \
-      vim-common
+      vim-common \
+      zlib-devel
   fi
 
     install_asn1c_from_source $1
@@ -665,19 +661,18 @@ check_install_oai_software() {
 }
 
 install_asn1c_from_source(){
+    mkdir -p $OPENAIR_DIR/cmake_targets/log
     asn1_install_log=$OPENAIR_DIR/cmake_targets/log/asn1c_install_log.txt
     echo_info "\nInstalling ASN1. The log file for ASN1 installation is here: $asn1_install_log "
     (
+    $SUDO $INSTALLER -y install bison flex
     $SUDO rm -rf /tmp/asn1c
     # GIT_SSL_NO_VERIFY=true git clone https://gitlab.eurecom.fr/oai/asn1c.git /tmp/asn1c
-    git clone https://gitlab.eurecom.fr/oai/asn1c.git /tmp/asn1c
+    git clone https://github.com/mouse07410/asn1c /tmp/asn1c
     cd /tmp/asn1c
-    # better to use a given commit than a branch in case the branch
-    # is updated and requires modifications in the source of OAI
-    #git checkout velichkov_s1ap_plus_option_group
-    git checkout f12568d617dbf48497588f8e227d70388fa217c9
+    git checkout vlm_master
     autoreconf -iv
-    ./configure
+    ./configure --prefix /opt/asn1c/
     make -j`nproc`
     $SUDO make install
     cd -

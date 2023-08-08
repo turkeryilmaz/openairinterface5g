@@ -21,7 +21,7 @@
 
 /* from openair */
 #include "rlc.h"
-#include "pdcp.h"
+#include "LAYER2/nr_pdcp/nr_pdcp_oai_api.h"
 
 /* from nr rlc module */
 #include "nr_rlc_asn1_utils.h"
@@ -53,84 +53,6 @@ static uint64_t nr_rlc_current_time;
 static int      nr_rlc_current_time_last_frame;
 static int      nr_rlc_current_time_last_subframe;
 
-
-void nr_rlc_bearer_init(NR_RLC_BearerConfig_t *RLC_BearerConfig, NR_RLC_BearerConfig__servedRadioBearer_PR rb_type){
-
-  RLC_BearerConfig->servedRadioBearer                      = calloc(1, sizeof(*RLC_BearerConfig->servedRadioBearer));
-  RLC_BearerConfig->reestablishRLC                         = calloc(1, sizeof(*RLC_BearerConfig->reestablishRLC));
-  RLC_BearerConfig->rlc_Config                             = calloc(1, sizeof(*RLC_BearerConfig->rlc_Config));
-  RLC_BearerConfig->mac_LogicalChannelConfig               = calloc(1, sizeof(*RLC_BearerConfig->mac_LogicalChannelConfig));
-
-  *RLC_BearerConfig->reestablishRLC                        = NR_RLC_BearerConfig__reestablishRLC_true;
-  if(rb_type == NR_RLC_BearerConfig__servedRadioBearer_PR_drb_Identity){
-    RLC_BearerConfig->logicalChannelIdentity                 = 4;
-    RLC_BearerConfig->servedRadioBearer->present             = NR_RLC_BearerConfig__servedRadioBearer_PR_drb_Identity;
-    RLC_BearerConfig->servedRadioBearer->choice.drb_Identity = 1;
-  }
-  else{
-    RLC_BearerConfig->logicalChannelIdentity                 = 1;
-    RLC_BearerConfig->servedRadioBearer->present             = NR_RLC_BearerConfig__servedRadioBearer_PR_srb_Identity;
-    RLC_BearerConfig->servedRadioBearer->choice.srb_Identity = 1;
-  }
-
-}
-
-void nr_rlc_bearer_init_ul_spec(struct NR_LogicalChannelConfig *mac_LogicalChannelConfig){
-
-  mac_LogicalChannelConfig->ul_SpecificParameters                              = calloc(1, sizeof(*mac_LogicalChannelConfig->ul_SpecificParameters));
-  mac_LogicalChannelConfig->ul_SpecificParameters->priority                    = 1;
-  mac_LogicalChannelConfig->ul_SpecificParameters->prioritisedBitRate          = NR_LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_infinity;
-  mac_LogicalChannelConfig->ul_SpecificParameters->bucketSizeDuration          = NR_LogicalChannelConfig__ul_SpecificParameters__bucketSizeDuration_ms50;
-  mac_LogicalChannelConfig->ul_SpecificParameters->allowedServingCells         = NULL;
-  mac_LogicalChannelConfig->ul_SpecificParameters->allowedSCS_List             = NULL;
-  mac_LogicalChannelConfig->ul_SpecificParameters->maxPUSCH_Duration           = NULL;
-  mac_LogicalChannelConfig->ul_SpecificParameters->configuredGrantType1Allowed = NULL;
-
-  mac_LogicalChannelConfig->ul_SpecificParameters->logicalChannelGroup                = calloc(1,sizeof(*mac_LogicalChannelConfig->ul_SpecificParameters->logicalChannelGroup));
-  *mac_LogicalChannelConfig->ul_SpecificParameters->logicalChannelGroup               = 1;
-  mac_LogicalChannelConfig->ul_SpecificParameters->schedulingRequestID                = calloc(1,sizeof(*mac_LogicalChannelConfig->ul_SpecificParameters->schedulingRequestID));
-  *mac_LogicalChannelConfig->ul_SpecificParameters->schedulingRequestID               = 0;
-  mac_LogicalChannelConfig->ul_SpecificParameters->logicalChannelSR_Mask              = false;
-  mac_LogicalChannelConfig->ul_SpecificParameters->logicalChannelSR_DelayTimerApplied = false;
-  mac_LogicalChannelConfig->ul_SpecificParameters->bitRateQueryProhibitTimer          = NULL;
-
-}
-
-void nr_drb_config(struct NR_RLC_Config *rlc_Config, NR_RLC_Config_PR rlc_config_pr){
-
-  switch (rlc_config_pr){
-    case NR_RLC_Config_PR_um_Bi_Directional:
-      // RLC UM Bi-directional Bearer configuration
-      LOG_I(RLC, "RLC UM Bi-directional Bearer configuration selected \n");
-      rlc_Config->choice.um_Bi_Directional                            = calloc(1, sizeof(*rlc_Config->choice.um_Bi_Directional));
-      rlc_Config->choice.um_Bi_Directional->ul_UM_RLC.sn_FieldLength  = calloc(1, sizeof(*rlc_Config->choice.um_Bi_Directional->ul_UM_RLC.sn_FieldLength));
-      *rlc_Config->choice.um_Bi_Directional->ul_UM_RLC.sn_FieldLength = NR_SN_FieldLengthUM_size12;
-      rlc_Config->choice.um_Bi_Directional->dl_UM_RLC.sn_FieldLength  = calloc(1, sizeof(*rlc_Config->choice.um_Bi_Directional->dl_UM_RLC.sn_FieldLength));
-      *rlc_Config->choice.um_Bi_Directional->dl_UM_RLC.sn_FieldLength = NR_SN_FieldLengthUM_size12;
-      rlc_Config->choice.um_Bi_Directional->dl_UM_RLC.t_Reassembly    = NR_T_Reassembly_ms15;
-      break;
-    case NR_RLC_Config_PR_am:
-      // RLC AM Bearer configuration
-      rlc_Config->choice.am                             = calloc(1, sizeof(*rlc_Config->choice.am));
-      rlc_Config->choice.am->ul_AM_RLC.sn_FieldLength   = calloc(1, sizeof(*rlc_Config->choice.am->ul_AM_RLC.sn_FieldLength));
-      *rlc_Config->choice.am->ul_AM_RLC.sn_FieldLength  = NR_SN_FieldLengthAM_size18;
-      rlc_Config->choice.am->ul_AM_RLC.t_PollRetransmit = NR_T_PollRetransmit_ms45;
-      rlc_Config->choice.am->ul_AM_RLC.pollPDU          = NR_PollPDU_p64;
-      rlc_Config->choice.am->ul_AM_RLC.pollByte         = NR_PollByte_kB500;
-      rlc_Config->choice.am->ul_AM_RLC.maxRetxThreshold = NR_UL_AM_RLC__maxRetxThreshold_t32;
-      rlc_Config->choice.am->dl_AM_RLC.sn_FieldLength   = calloc(1, sizeof(*rlc_Config->choice.am->dl_AM_RLC.sn_FieldLength));
-      *rlc_Config->choice.am->dl_AM_RLC.sn_FieldLength  = NR_SN_FieldLengthAM_size18;
-      rlc_Config->choice.am->dl_AM_RLC.t_Reassembly     = NR_T_Reassembly_ms15;
-      rlc_Config->choice.am->dl_AM_RLC.t_StatusProhibit = NR_T_StatusProhibit_ms15;
-      break;
-    default:
-      AssertFatal(0, "RLC config type %d not handled\n", rlc_config_pr);
-      break;
-    }
-
-  rlc_Config->present = rlc_config_pr;
-
-}
 
 void mac_rlc_data_ind     (
   const module_id_t         module_idP,
@@ -257,7 +179,7 @@ mac_rlc_status_resp_t mac_rlc_status_ind(
   switch (channel_idP) {
   case 0:                          rb = ue->srb0;                 break;
   case 1 ... 3:                    rb = ue->srb[channel_idP - 1]; break;
-  case 4 ... NGAP_MAX_DRBS_PER_UE: rb = ue->drb[channel_idP - 4]; break;
+  case 4 ... MAX_DRBS_PER_UE:      rb = ue->drb[channel_idP - 4]; break;
   default:                         rb = NULL;                     break;
   }
 
@@ -319,9 +241,9 @@ rlc_buffer_occupancy_t mac_rlc_get_buffer_occupancy_ind(
   ue = nr_rlc_manager_get_ue(nr_rlc_ue_manager, rntiP);
 
   switch (channel_idP) {
-  case 1 ... 3: rb = ue->srb[channel_idP - 1]; break;
-  case 4 ... NGAP_MAX_DRBS_PER_UE: rb = ue->drb[channel_idP - 4]; break;
-  default:      rb = NULL;                     break;
+  case 1 ... 3:               rb = ue->srb[channel_idP - 1]; break;
+  case 4 ... MAX_DRBS_PER_UE: rb = ue->drb[channel_idP - 4]; break;
+  default:                    rb = NULL;                     break;
   }
 
   if (rb != NULL) {
@@ -411,9 +333,9 @@ int nr_rlc_get_available_tx_space(
   ue = nr_rlc_manager_get_ue(nr_rlc_ue_manager, rntiP);
 
   switch (channel_idP) {
-  case 1 ... 3: rb = ue->srb[channel_idP - 1]; break;
-  case 4 ... NGAP_MAX_DRBS_PER_UE: rb = ue->drb[channel_idP - 4]; break;
-  default:      rb = NULL;                     break;
+  case 1 ... 3:               rb = ue->srb[channel_idP - 1]; break;
+  case 4 ... MAX_DRBS_PER_UE: rb = ue->drb[channel_idP - 4]; break;
+  default:                    rb = NULL;                     break;
   }
 
   if (rb != NULL) {

@@ -105,7 +105,6 @@ typedef enum {
   MAX_RF_DEV_TYPE
 } dev_type_t;
 /* list of names of devices, needs to match dev_type_t */
-extern const char* devtype_names[MAX_RF_DEV_TYPE];
 
 /*!\brief transport protocol types
  */
@@ -174,6 +173,10 @@ typedef struct {
   notifiedFIFO_t *resp;
 } udp_ctx_t;
 
+typedef enum {
+  RU_GPIO_CONTROL_GENERIC,
+  RU_GPIO_CONTROL_INTERDIGITAL,
+} gpio_control_t;
 
 /*! \brief RF frontend parameters set by application */
 typedef struct {
@@ -276,6 +279,8 @@ typedef struct {
   int rxfh_cores[4];
   //! Core IDs for TX FH
   int txfh_cores[4];
+  //! select the GPIO control method
+  gpio_control_t gpio_controller;
 } openair0_config_t;
 
 /*! \brief RF mapping */

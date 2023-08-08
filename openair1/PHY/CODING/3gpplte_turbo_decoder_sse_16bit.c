@@ -982,7 +982,9 @@ uint8_t phy_threegpplte_turbo_decoder16(int16_t *y,
                                         time_stats_t *gamma_stats,
                                         time_stats_t *ext_stats,
                                         time_stats_t *intl1_stats,
-                                        time_stats_t *intl2_stats) {
+                                        time_stats_t *intl2_stats,
+                                        decode_abort_t *ab)
+{
   /*  y is a pointer to the input
       decoded_bytes is a pointer to the decoded output
       n is the size in bits of the coded block, with the tail */
@@ -1075,14 +1077,14 @@ uint8_t phy_threegpplte_turbo_decoder16(int16_t *y,
     yp1[j] = _mm_extract_epi16(tmpe,1);
     yp2[j] = _mm_extract_epi16(tmpe,2);
 #ifdef DEBUG_LOGMAP
-    fprintf(fdsse4,"init0: j %d, s[j] %d yp1[j] %d yp2[j] %d\n",j,s[j],yp1[j],yp2[j]);
+    fprintf(fdsse4,"init0: j %u, s[j] %d yp1[j] %d yp2[j] %d\n",j,s[j],yp1[j],yp2[j]);
 #endif
     j=pi2_p[1];
     s[j]   = _mm_extract_epi16(tmpe,3);
     yp1[j] = _mm_extract_epi16(tmpe,4);
     yp2[j] = _mm_extract_epi16(tmpe,5);
 #ifdef DEBUG_LOGMAP
-    fprintf(fdsse4,"init1: j %d, s[j] %d yp1[j] %d yp2[j] %d\n",j,s[j],yp1[j],yp2[j]);
+    fprintf(fdsse4,"init1: j %u, s[j] %d yp1[j] %d yp2[j] %d\n",j,s[j],yp1[j],yp2[j]);
 #endif
     j=pi2_p[2];
     s[j]   = _mm_extract_epi16(tmpe,6);
@@ -1090,21 +1092,21 @@ uint8_t phy_threegpplte_turbo_decoder16(int16_t *y,
     tmpe = _mm_load_si128(&yp128[1]);
     yp2[j] = _mm_extract_epi16(tmpe,0);
 #ifdef DEBUG_LOGMAP
-    fprintf(fdsse4,"init2: j %d, s[j] %d yp1[j] %d yp2[j] %d\n",j,s[j],yp1[j],yp2[j]);
+    fprintf(fdsse4,"init2: j %u, s[j] %d yp1[j] %d yp2[j] %d\n",j,s[j],yp1[j],yp2[j]);
 #endif
     j=pi2_p[3];
     s[j]   = _mm_extract_epi16(tmpe,1);
     yp1[j] = _mm_extract_epi16(tmpe,2);
     yp2[j] = _mm_extract_epi16(tmpe,3);
 #ifdef DEBUG_LOGMAP
-    fprintf(fdsse4,"init3: j %d, s[j] %d yp1[j] %d yp2[j] %d\n",j,s[j],yp1[j],yp2[j]);
+    fprintf(fdsse4,"init3: j %u, s[j] %d yp1[j] %d yp2[j] %d\n",j,s[j],yp1[j],yp2[j]);
 #endif
     j=pi2_p[4];
     s[j]   = _mm_extract_epi16(tmpe,4);
     yp1[j] = _mm_extract_epi16(tmpe,5);
     yp2[j] = _mm_extract_epi16(tmpe,6);
 #ifdef DEBUG_LOGMAP
-    fprintf(fdsse4,"init4: j %d, s[j] %d yp1[j] %d yp2[j] %d\n",j,s[j],yp1[j],yp2[j]);
+    fprintf(fdsse4,"init4: j %u, s[j] %d yp1[j] %d yp2[j] %d\n",j,s[j],yp1[j],yp2[j]);
 #endif
     j=pi2_p[5];
     s[j]   = _mm_extract_epi16(tmpe,7);
@@ -1112,21 +1114,21 @@ uint8_t phy_threegpplte_turbo_decoder16(int16_t *y,
     yp1[j] = _mm_extract_epi16(tmpe,0);
     yp2[j] = _mm_extract_epi16(tmpe,1);
 #ifdef DEBUG_LOGMAP
-    fprintf(fdsse4,"init5: j %d, s[j] %d yp1[j] %d yp2[j] %d\n",j,s[j],yp1[j],yp2[j]);
+    fprintf(fdsse4,"init5: j %u, s[j] %d yp1[j] %d yp2[j] %d\n",j,s[j],yp1[j],yp2[j]);
 #endif
     j=pi2_p[6];
     s[j]   = _mm_extract_epi16(tmpe,2);
     yp1[j] = _mm_extract_epi16(tmpe,3);
     yp2[j] = _mm_extract_epi16(tmpe,4);
 #ifdef DEBUG_LOGMAP
-    fprintf(fdsse4,"init6: j %d, s[j] %d yp1[j] %d yp2[j] %d\n",j,s[j],yp1[j],yp2[j]);
+    fprintf(fdsse4,"init6: j %u, s[j] %d yp1[j] %d yp2[j] %d\n",j,s[j],yp1[j],yp2[j]);
 #endif
     j=pi2_p[7];
     s[j]   = _mm_extract_epi16(tmpe,5);
     yp1[j] = _mm_extract_epi16(tmpe,6);
     yp2[j] = _mm_extract_epi16(tmpe,7);
 #ifdef DEBUG_LOGMAP
-    fprintf(fdsse4,"init7: j %d, s[j] %d yp1[j] %d yp2[j] %d\n",j,s[j],yp1[j],yp2[j]);
+    fprintf(fdsse4,"init7: j %u, s[j] %d yp1[j] %d yp2[j] %d\n",j,s[j],yp1[j],yp2[j]);
 #endif
 #elif defined(__arm__) || defined(__aarch64__)
     s[j]   = vgetq_lane_s16(yp128[0],0);
@@ -1356,7 +1358,8 @@ uint8_t phy_threegpplte_turbo_decoder16(int16_t *y,
         return(iteration_cnt);
       }
     }
-
+    if (check_abort(ab))
+      return max_iterations + 2;
     // do log_map from first parity bit
     if (iteration_cnt < max_iterations) {
       log_map16(systematic1,yparity1,m11,m10,alpha,beta,ext,n,0,F,offset8_flag,alpha_stats,beta_stats,gamma_stats,ext_stats);
@@ -1390,9 +1393,7 @@ uint8_t phy_threegpplte_turbo_decoder16(int16_t *y,
   _mm_empty();
   _m_empty();
 #endif
+  if (iteration_cnt > max_iterations)
+    set_abort(ab, true);
   return(iteration_cnt);
 }
-
-
-
-

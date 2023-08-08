@@ -902,7 +902,6 @@ int main(int argc, char **argv) {
   // moreover you need to init itti with the following line
   // however itti will catch all signals, so ctrl-c won't work anymore
   // alternatively you can disable ITTI completely in CMakeLists.txt
-  T_stdout = 1;
 
   if (common_flag == 0) {
     switch (N_RB_DL) {
@@ -1019,8 +1018,6 @@ int main(int argc, char **argv) {
     hostname[1023] = '\0';
     gethostname(hostname, 1023);
     printf("Hostname: %s\n", hostname);
-    //char dirname[FILENAME_MAX];
-    //sprintf(dirname, "%s/SIMU/USER/pre-ci-logs-%s", getenv("OPENAIR_TARGETS"),hostname );
     sprintf(time_meas_fname,"time_meas_prb%d_mcs%d_anttx%d_antrx%d_pdcch%d_channel%s_tx%d.csv",
             N_RB_DL,mcs1,n_tx_phy,n_rx,num_pdcch_symbols,channel_model_input,transmission_mode);
     //mkdir(dirname,0777);
@@ -2080,9 +2077,7 @@ int main(int argc, char **argv) {
                 squareRoot(&UE->dlsch_demodulation_stats),
                 median(table_rx_demod), q1(table_rx_demod), q3(table_rx_demod));
         //fprintf(time_meas_fd,"DEC;\n");
-        fprintf(time_meas_fd,"%f;%f;%f;%f\n",
-                squareRoot(&UE->dlsch_decoding_stats[subframe]),
-                median(table_rx_dec), q1(table_rx_dec), q3(table_rx_dec));
+        fprintf(time_meas_fd, "%f;%f;%f;%f\n", squareRoot(&UE->dlsch_decoding_stats[UE->current_thread_id[subframe]]), median(table_rx_dec), q1(table_rx_dec), q3(table_rx_dec));
         printf("[passed] effective rate : %f  (%2.1f%%,%f)): log and break \n",rate*effective_rate, 100*effective_rate, rate );
         test_passed = 1;
         break;

@@ -45,7 +45,7 @@
 #define MAX_NUM_SUBCARRIER_SPACING 5
 #define NR_MAX_OFDM_SYMBOL_SIZE 4096
 
-#define NR_SYMBOLS_PER_SLOT 14
+#define NR_SYMBOLS_PER_SLOT NR_NUMBER_OF_SYMBOLS_PER_SLOT
 
 #define ONE_OVER_SQRT2_Q15 23170
 #define ONE_OVER_TWO_Q15 16384
@@ -131,10 +131,10 @@ typedef struct {
 
 typedef struct NR_DL_FRAME_PARMS NR_DL_FRAME_PARMS;
 
-typedef uint32_t (*get_samples_per_slot_t)(int slot, NR_DL_FRAME_PARMS* fp);
-typedef uint32_t (*get_slot_from_timestamp_t)(openair0_timestamp timestamp_rx, NR_DL_FRAME_PARMS* fp);
+typedef uint32_t (*get_samples_per_slot_t)(int slot, const NR_DL_FRAME_PARMS *fp);
+typedef uint32_t (*get_slot_from_timestamp_t)(openair0_timestamp timestamp_rx, const NR_DL_FRAME_PARMS *fp);
 
-typedef uint32_t (*get_samples_slot_timestamp_t)(int slot, NR_DL_FRAME_PARMS* fp, uint8_t sl_ahead);
+typedef uint32_t (*get_samples_slot_timestamp_t)(int slot, const NR_DL_FRAME_PARMS *fp, uint8_t sl_ahead);
 
 struct NR_DL_FRAME_PARMS {
   /// frequency range
@@ -147,6 +147,8 @@ struct NR_DL_FRAME_PARMS {
   int N_RB_DL;
   /// Number of resource blocks (RB) in UL
   int N_RB_UL;
+  /// Number of resource blocks (RB) in SL
+  int N_RB_SL;
   ///  total Number of Resource Block Groups: this is ceil(N_PRB/P)
   uint8_t N_RBG;
   /// Total Number of Resource Block Groups SubSets: this is P
@@ -157,6 +159,8 @@ struct NR_DL_FRAME_PARMS {
   uint64_t dl_CarrierFreq;
   /// UL carrier frequency
   uint64_t ul_CarrierFreq;
+  /// SL carrier frequency
+  uint64_t sl_CarrierFreq;
   /// TX attenuation
   uint32_t att_tx;
   /// RX attenuation
@@ -165,6 +169,8 @@ struct NR_DL_FRAME_PARMS {
   /// Frame type (0 FDD, 1 TDD)
   frame_type_t frame_type;
   uint8_t tdd_config;
+  /// Sidelink Cell ID
+  uint16_t Nid_SL;
   /// Cell ID
   uint16_t Nid_cell;
   /// subcarrier spacing (15,30,60,120)
@@ -216,8 +222,8 @@ struct NR_DL_FRAME_PARMS {
   /// Cyclic Prefix for DL (0=Normal CP, 1=Extended CP)
   lte_prefix_type_t Ncp;
   /// sequence which is computed based on carrier frequency and numerology to rotate/derotate each OFDM symbol according to Section 5.3 in 38.211
-  /// First dimension is for the direction of the link (0 DL, 1 UL)
-  c16_t symbol_rotation[2][224];
+  /// First dimension is for the direction of the link (0 DL, 1 UL, 2 SL)
+  c16_t symbol_rotation[3][224];
   /// sequence used to compensate the phase rotation due to timeshifted OFDM symbols
   /// First dimenstion is for different CP lengths
   c16_t timeshift_symbol_rotation[4096*2] __attribute__ ((aligned (16)));
@@ -256,6 +262,8 @@ struct NR_DL_FRAME_PARMS {
   uint8_t ssb_index;
   /// OFDM symbol offset divisor for UL
   uint32_t ofdm_offset_divisor;
+  uint16_t tdd_slot_config;
+  uint8_t tdd_period;
 };
 
 // PRS config structures

@@ -51,10 +51,10 @@
 // #include "LAYER2/MAC/extern.h"
 // #include "LAYER2/MAC/proto.h"
 #include "PHY/INIT/nr_phy_init.h"
-#include "radio/ETHERNET/USERSPACE/LIB/ethernet_lib.h"
+#include "radio/ETHERNET/ethernet_lib.h"
 #include "nfapi_vnf.h"
 #include "nfapi_pnf.h"
-#include "pdcp.h"
+#include "nr_pdcp/nr_pdcp_oai_api.h"
 
 //#include "L1_paramdef.h"
 #include "prs_nr_paramdef.h"
@@ -83,6 +83,8 @@
 #include "NR_SearchSpace.h"
 #include "NR_ControlResourceSet.h"
 #include "NR_EUTRA-MBSFN-SubframeConfig.h"
+#include "uper_decoder.h"
+#include "uper_encoder.h"
 
 #include "RRC/NR/MESSAGES/asn1_msg.h"
 #include "RRC/NR/nr_rrc_extern.h"
@@ -91,6 +93,50 @@
 
 extern uint16_t sf_ahead;
 int macrlc_has_f1 = 0;
+
+// synchronization raster per band tables (Rel.15)
+// (38.101-1 Table 5.4.3.3-1 and 38.101-2 Table 5.4.3.3-1)
+// band nb, sub-carrier spacing index, Range of gscn (First, Step size, Last)
+const sync_raster_t sync_raster[] = {
+  {1, 0, 5279, 1, 5419},
+  {2, 0, 4829, 1, 4969},
+  {3, 0, 4517, 1, 4693},
+  {5, 0, 2177, 1, 2230},
+  {5, 1, 2183, 1, 2224},
+  {7, 0, 6554, 1, 6718},
+  {8, 0, 2318, 1, 2395},
+  {12, 0, 1828, 1, 1858},
+  {20, 0, 1982, 1, 2047},
+  {25, 0, 4829, 1, 4981},
+  {28, 0, 1901, 1, 2002},
+  {34, 0, 5030, 1, 5056},
+  {38, 0, 6431, 1, 6544},
+  {39, 0, 4706, 1, 4795},
+  {40, 1, 5762, 1, 5989},
+  {41, 0, 6246, 3, 6717},
+  {41, 1, 6252, 3, 6714},
+  {48, 1, 7884, 1, 7982},
+  {50, 0, 3584, 1, 3787},
+  {51, 0, 3572, 1, 3574},
+  {66, 0, 5279, 1, 5494},
+  {66, 1, 5285, 1, 5488},
+  {70, 0, 4993, 1, 5044},
+  {71, 0, 1547, 1, 1624},
+  {74, 0, 3692, 1, 3790},
+  {75, 0, 3584, 1, 3787},
+  {76, 0, 3572, 1, 3574},
+  {77, 1, 7711, 1, 8329},
+  {78, 1, 7711, 1, 8051},
+  {79, 1, 8480, 16, 8880},
+  {257, 3, 22388, 1, 22558},
+  {257, 4, 22390, 2, 22556},
+  {258, 3, 22257, 1, 22443},
+  {258, 4, 22258, 2, 22442},
+  {260, 3, 22995, 1, 23166},
+  {260, 4, 22996, 2, 23164},
+  {261, 3, 22446, 1, 22492},
+  {261, 4, 22446, 2, 22490},
+};
 
 extern int config_check_band_frequencies(int ind, int16_t band, uint64_t downlink_frequency,
                                          int32_t uplink_frequency_offset, uint32_t  frame_type);
@@ -691,7 +737,7 @@ void RCconfig_nr_prs(void)
   }
   else
   {
-    LOG_E(PHY,"No " CONFIG_STRING_PRS_CONFIG " configuration found..!!\n");
+    LOG_I(PHY,"No " CONFIG_STRING_PRS_CONFIG " configuration found..!!\n");
   }
 }
 
@@ -770,6 +816,12 @@ void RCconfig_NR_L1(void)
       RC.gNB[j]->pusch_thres = *(L1_ParamList.paramarray[j][L1_PUSCH_DTX_THRESHOLD].uptr);
       RC.gNB[j]->srs_thres = *(L1_ParamList.paramarray[j][L1_SRS_DTX_THRESHOLD].uptr);
       RC.gNB[j]->max_ldpc_iterations = *(L1_ParamList.paramarray[j][L1_MAX_LDPC_ITERATIONS].uptr);
+      RC.gNB[j]->L1_rx_thread_core = *(L1_ParamList.paramarray[j][L1_RX_THREAD_CORE].iptr);
+      RC.gNB[j]->L1_tx_thread_core = *(L1_ParamList.paramarray[j][L1_TX_THREAD_CORE].iptr);
+      LOG_I(PHY,"L1_RX_THREAD_CORE %d (%d)\n",*(L1_ParamList.paramarray[j][L1_RX_THREAD_CORE].iptr),L1_RX_THREAD_CORE);
+      RC.gNB[j]->TX_AMP = (int16_t)(32767.0 / pow(10.0, .05 * (double)(*L1_ParamList.paramarray[j][L1_TX_AMP_BACKOFF_dB].uptr)));
+      LOG_I(PHY, "TX_AMP = %d (-%d dBFS)\n", RC.gNB[j]->TX_AMP, *L1_ParamList.paramarray[j][L1_TX_AMP_BACKOFF_dB].uptr);
+      AssertFatal(RC.gNB[j]->TX_AMP > 300, "TX_AMP is too small, must be larger than 300 (is %d)\n", RC.gNB[j]->TX_AMP);
       if (strcmp(*(L1_ParamList.paramarray[j][L1_TRANSPORT_N_PREFERENCE_IDX].strptr), "local_mac") == 0) {
         // sf_ahead = 2; // Need 4 subframe gap between RX and TX
       } else if (strcmp(*(L1_ParamList.paramarray[j][L1_TRANSPORT_N_PREFERENCE_IDX].strptr), "nfapi") == 0) {
@@ -1065,12 +1117,63 @@ void config_security(gNB_RRC_INST *rrc)
   }
 }
 
-void RCconfig_NRRRC(MessageDef *msg_p, uint32_t i, gNB_RRC_INST *rrc) {
+// Section 5.4.3 of 38.101-1 and -2
+void check_ssb_raster(uint64_t freq, int band, int scs)
+{
+  int start_gscn = 0, step_gscn = 0, end_gscn = 0;
+  for (int i = 0; i < sizeof(sync_raster) / sizeof(sync_raster_t); i++) {
+    if (sync_raster[i].band == band &&
+        sync_raster[i].scs_index == scs) {
+      start_gscn = sync_raster[i].first_gscn;
+      step_gscn = sync_raster[i].step_gscn;
+      end_gscn = sync_raster[i].last_gscn;
+      break;
+    }
+  }
+  AssertFatal(start_gscn != 0, "Couldn't find band %d with SCS %d\n", band, scs);
+  int gscn;
+  if (freq < 3000000000) {
+    int N = 0;
+    int M = 0;
+    for (int k = 0; k < 3; k++) {
+      M = (k << 1) + 1;
+      if ((freq - M * 50000) % 1200000 == 0) {
+        N = (freq - M * 50000) / 1200000;
+        break;
+      }
+    }
+    AssertFatal(N != 0, "SSB frequency %lu Hz not on the synchronization raster (N * 1200kHz + M * 50 kHz)\n",
+                freq);
+    gscn = (3 * N) + (M - 3) / 2;
+  }
+  else if (freq < 24250000000) {
+    AssertFatal((freq - 3000000000) % 1440000 == 0,
+                "SSB frequency %lu Hz not on the synchronization raster (3000 MHz + N * 1.44 MHz)\n",
+                freq);
+    gscn = ((freq - 3000000000) / 1440000) + 7499;
+  }
+  else {
+    AssertFatal((freq - 24250080000) % 17280000 == 0,
+                "SSB frequency %lu Hz not on the synchronization raster (24250.08 MHz + N * 17.28 MHz)\n",
+                freq);
+    gscn = ((freq - 24250080000) / 17280000) + 22256;
+  }
+  AssertFatal(gscn >= start_gscn && gscn <= end_gscn,
+              "GSCN %d corresponding to SSB frequency %lu does not belong to GSCN range for band %d\n",
+              gscn, freq, band);
+  int rel_gscn = gscn - start_gscn;
+  AssertFatal(rel_gscn % step_gscn == 0,
+              "GSCN %d corresponding to SSB frequency %lu not in accordance with GSCN step for band %d\n",
+               gscn, freq, band);
+}
 
-  int                    num_gnbs                                                      = 0;
+void RCconfig_NRRRC(MessageDef *msg_p, uint32_t i, gNB_RRC_INST *rrc)
+{
+
+  int num_gnbs = 0;
   char aprefix[MAX_OPTNAME_SIZE*2 + 8];
-  int32_t                gnb_id                                                        = 0;
-  int                    k                                                             = 0;
+  int32_t gnb_id = 0;
+  int k = 0;
 
   paramdef_t GNBSParams[] = GNBSPARAMS_DESC;
   ////////// Identification parameters
@@ -1090,19 +1193,18 @@ void RCconfig_NRRRC(MessageDef *msg_p, uint32_t i, gNB_RRC_INST *rrc) {
   paramdef_t SCDsParams[] = SCDPARAMS_DESC(scd);
   paramlist_def_t SCDsParamList = {GNB_CONFIG_STRING_SERVINGCELLCONFIGDEDICATED, NULL, 0};
 
-   ////////// Physical parameters
+  ////////// Physical parameters
 
   /* get global parameters, defined outside any section in the config file */
  
   config_get( GNBSParams,sizeof(GNBSParams)/sizeof(paramdef_t),NULL); 
   num_gnbs = GNBSParams[GNB_ACTIVE_GNBS_IDX].numelt;
-  AssertFatal (i<num_gnbs,"Failed to parse config file no %ith element in %s \n",i, GNB_CONFIG_STRING_ACTIVE_GNBS);
+  AssertFatal (i<num_gnbs,"Failed to parse config file no %uth element in %s \n",i, GNB_CONFIG_STRING_ACTIVE_GNBS);
 
-  if (num_gnbs>0) {
+  if (num_gnbs > 0) {
 
     // Output a list of all gNBs. ////////// Identification parameters
     config_getlist( &GNBParamList,GNBParams,sizeof(GNBParams)/sizeof(paramdef_t),NULL); 
-    
     if (GNBParamList.paramarray[i][GNB_GNB_ID_IDX].uptr == NULL) {
     // Calculate a default gNB ID
       if (get_softmodem_params()->sa) { 
@@ -1121,7 +1223,7 @@ void RCconfig_NRRRC(MessageDef *msg_p, uint32_t i, gNB_RRC_INST *rrc) {
     config_getlist(&SCCsParamList, NULL, 0, aprefix);
     if (SCCsParamList.numelt > 0) {    
       sprintf(aprefix, "%s.[%i].%s.[%i]", GNB_CONFIG_STRING_GNB_LIST,0,GNB_CONFIG_STRING_SERVINGCELLCONFIGCOMMON, 0);
-      config_get( SCCsParams,sizeof(SCCsParams)/sizeof(paramdef_t),aprefix);  
+      config_get(SCCsParams,sizeof(SCCsParams) / sizeof(paramdef_t), aprefix);
       LOG_I(RRC,"Read in ServingCellConfigCommon (PhysCellId %d, ABSFREQSSB %d, DLBand %d, ABSFREQPOINTA %d, DLBW %d,RACH_TargetReceivedPower %d\n",
 	    (int)*scc->physCellId,
 	    (int)*scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB,
@@ -1129,7 +1231,17 @@ void RCconfig_NRRRC(MessageDef *msg_p, uint32_t i, gNB_RRC_INST *rrc) {
 	    (int)scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA,
 	    (int)scc->downlinkConfigCommon->frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth,
 	    (int)scc->uplinkConfigCommon->initialUplinkBWP->rach_ConfigCommon->choice.setup->rach_ConfigGeneric.preambleReceivedTargetPower);
-      fix_scc(scc,ssb_bitmap);
+      // SSB of the PCell is always on the sync raster
+      uint64_t ssb_freq = from_nrarfcn(*scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0],
+                                       *scc->ssbSubcarrierSpacing,
+                                       *scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB);
+      LOG_I(RRC, "absoluteFrequencySSB %ld corresponds to %lu Hz\n",
+            *scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB, ssb_freq);
+      if (get_softmodem_params()->sa)
+        check_ssb_raster(ssb_freq,
+                         *scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0],
+                         *scc->ssbSubcarrierSpacing);
+      fix_scc(scc, ssb_bitmap);
     }
 
     sprintf(aprefix, "%s.[%i]", GNB_CONFIG_STRING_GNB_LIST, 0);
@@ -1152,7 +1264,7 @@ void RCconfig_NRRRC(MessageDef *msg_p, uint32_t i, gNB_RRC_INST *rrc) {
     }
     fix_scd(scd);
 
-    printf("NRRRC %d: Southbound Transport %s\n",i,*(GNBParamList.paramarray[i][GNB_TRANSPORT_S_PREFERENCE_IDX].strptr));
+    printf("NRRRC %u: Southbound Transport %s\n",i,*(GNBParamList.paramarray[i][GNB_TRANSPORT_S_PREFERENCE_IDX].strptr));
 
     rrc->node_type = get_node_type();
     if (NODE_IS_CU(rrc->node_type)) {
@@ -1179,6 +1291,7 @@ void RCconfig_NRRRC(MessageDef *msg_p, uint32_t i, gNB_RRC_INST *rrc) {
    
 
     rrc->nr_cellid        = (uint64_t)*(GNBParamList.paramarray[i][GNB_NRCELLID_IDX].u64ptr);
+    rrc->carrier.physCellId = *scc->physCellId;
 
     rrc->um_on_default_drb = *(GNBParamList.paramarray[i][GNB_UMONDEFAULTDRB_IDX].uptr);
     if (strcmp(*(GNBParamList.paramarray[i][GNB_TRANSPORT_S_PREFERENCE_IDX].strptr), "local_mac") == 0) {
@@ -1357,7 +1470,7 @@ int RCconfig_NR_NG(MessageDef *msg_p, uint32_t i) {
               NGAP_REGISTER_GNB_REQ (msg_p).cell_type = CELL_HOME_ENB;
             } else {
               AssertFatal (0,
-              "Failed to parse gNB configuration file %s, gnb %d unknown value \"%s\" for cell_type choice: CELL_MACRO_GNB or CELL_HOME_GNB !\n",
+              "Failed to parse gNB configuration file %s, gnb %u unknown value \"%s\" for cell_type choice: CELL_MACRO_GNB or CELL_HOME_GNB !\n",
               RC.config_file_name, i, *(GNBParamList.paramarray[k][GNB_CELL_TYPE_IDX].strptr));
             }
             
@@ -1634,7 +1747,7 @@ int RCconfig_NR_X2(MessageDef *msg_p, uint32_t i) {
               X2AP_REGISTER_ENB_REQ (msg_p).cell_type = CELL_MACRO_GNB;
             }else {
               AssertFatal (0,
-                           "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for cell_type choice: CELL_MACRO_ENB or CELL_HOME_ENB !\n",
+                           "Failed to parse eNB configuration file %s, enb %u unknown value \"%s\" for cell_type choice: CELL_MACRO_ENB or CELL_HOME_ENB !\n",
                            RC.config_file_name, i, *(GNBParamList.paramarray[k][GNB_CELL_TYPE_IDX].strptr));
             }
 
@@ -1896,8 +2009,12 @@ int RCconfig_NR_DU_F1(MessageDef *msg_p, uint32_t i) {
 
         f1Setup->measurement_timing_information[k]             = "0";
         f1Setup->ranac[k]                                      = 0;
-        f1Setup->mib[k]                                        = rrc->carrier.MIB;
-        f1Setup->mib_length[k]                                 = rrc->carrier.sizeof_MIB;
+        DevAssert(rrc->carrier.mib != NULL);
+        int buf_len = 3; // this is what we assume in monolithic
+        f1Setup->mib[k]                                        = calloc(buf_len, sizeof(*f1Setup->mib[k]));
+        DevAssert(f1Setup->mib[k] != NULL);
+        f1Setup->mib_length[k]                                 = encode_MIB_NR(rrc->carrier.mib, 0, f1Setup->mib[k], buf_len);
+        DevAssert(f1Setup->mib_length[k] == buf_len);
 
         NR_BCCH_DL_SCH_Message_t *bcch_message = NULL;
         asn_codec_ctx_t st={100*1000};
@@ -2227,7 +2344,7 @@ void nr_read_config_and_init(void) {
   if (RC.nb_nr_L1_inst>0) AssertFatal(l1_north_init_gNB()==0,"could not initialize L1 north interface\n");
 
   AssertFatal (gnb_nb <= RC.nb_nr_inst,
-               "Number of gNB is greater than gNB defined in configuration file (%d/%d)!",
+               "Number of gNB is greater than gNB defined in configuration file (%u/%u)!",
                gnb_nb, RC.nb_nr_inst);
 
   LOG_I(GNB_APP,"Allocating gNB_RRC_INST for %d instances\n",RC.nb_nr_inst);
@@ -2244,6 +2361,29 @@ void nr_read_config_and_init(void) {
   }
 
   if (NODE_IS_CU(RC.nrrrc[0]->node_type) && RC.nrrrc[0]->node_type != ngran_gNB_CUCP) {
-    pdcp_layer_init();
+    nr_pdcp_layer_init();
   }
 }
+
+#ifdef E2_AGENT
+
+e2_agent_args_t RCconfig_NR_E2agent(void)
+{
+  paramdef_t e2agent_params[] = E2AGENT_PARAMS_DESC;
+  int ret = config_get(e2agent_params, sizeof(e2agent_params) / sizeof(paramdef_t), CONFIG_STRING_E2AGENT);
+  if (ret < 0) {
+    LOG_W(GNB_APP, "configuration file does not contain a \"%s\" section, applying default parameters from FlexRIC\n", CONFIG_STRING_E2AGENT);
+    return (e2_agent_args_t) { 0 };
+  }
+  e2_agent_args_t dst = {0};
+
+  if (e2agent_params[E2AGENT_CONFIG_SMDIR_IDX].strptr != NULL)
+    dst.sm_dir = *e2agent_params[E2AGENT_CONFIG_SMDIR_IDX].strptr;
+
+  if (e2agent_params[E2AGENT_CONFIG_IP_IDX].strptr != NULL)
+    dst.ip = *e2agent_params[E2AGENT_CONFIG_IP_IDX].strptr;
+
+  return dst;
+}
+
+#endif // E2_AGENT

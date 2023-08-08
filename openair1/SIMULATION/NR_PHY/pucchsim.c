@@ -48,6 +48,7 @@
 #include "openair1/SIMULATION/NR_PHY/nr_unitary_defs.h"
 #include "executables/nr-uesoftmodem.h"
 #include "nfapi/oai_integration/vendor_ext.h"
+#include "executables/softmodem-common.h"
 
 THREAD_STRUCT thread_struct;
 PHY_VARS_gNB *gNB;
@@ -67,11 +68,25 @@ const short conjugate2[8]__attribute__((aligned(16))) = {1,-1,1,-1,1,-1,1,-1};
 PHY_VARS_NR_UE * PHY_vars_UE_g[1][1]={{NULL}};
 
 uint64_t get_softmodem_optmask(void) {return 0;}
-softmodem_params_t *get_softmodem_params(void) {return 0;}
+static softmodem_params_t softmodem_params;
+softmodem_params_t *get_softmodem_params(void) {
+  return &softmodem_params;
+}
 
 void init_downlink_harq_status(NR_DL_UE_HARQ_t *dl_harq) {}
 NR_IF_Module_t *NR_IF_Module_init(int Mod_id) { return (NULL); }
 nfapi_mode_t nfapi_getmode(void) { return NFAPI_MODE_UNKNOWN; }
+
+void inc_ref_sched_response(int _)
+{
+  LOG_E(PHY, "fatal\n");
+  exit(1);
+}
+void deref_sched_response(int _)
+{
+  LOG_E(PHY, "fatal\n");
+  exit(1);
+}
 
 nrUE_params_t nrUE_params={0};
 
@@ -108,7 +123,7 @@ int main(int argc, char **argv)
   int16_t amp=0x7FFF;
   int nr_slot_tx=0;
   int nr_frame_tx=0;
-  uint64_t actual_payload=0,payload_received;
+  uint64_t actual_payload = 0, payload_received = 0;
   bool random_payload = true;
   int nr_bit=1; // maximum value possible is 2
   uint8_t m0=0;// higher layer paramater initial cyclic shift
@@ -390,9 +405,9 @@ int main(int argc, char **argv)
     srand(time(NULL));   // Initialization, should only be called once.
     actual_payload = rand();      // Returns a pseudo-random integer between 0 and RAND_MAX.
   }
-  actual_payload &= ((1<<nr_bit)-1);
+  actual_payload &= nr_bit < 64 ? (1UL << nr_bit) - 1: 0xffffffffffffffff;
 
-  printf("Transmitted payload is %ld, do_DTX = %d\n",actual_payload,do_DTX);
+  printf("Transmitted payload is %lu, do_DTX = %d\n",actual_payload,do_DTX);
 
   RC.gNB = calloc(1, sizeof(PHY_VARS_gNB *));
   RC.gNB[0] = calloc(1,sizeof(PHY_VARS_gNB));
@@ -623,7 +638,7 @@ int main(int argc, char **argv)
       if(format==0){
         nfapi_nr_uci_pucch_pdu_format_0_1_t uci_pdu;
         nfapi_nr_pucch_pdu_t pucch_pdu;
-        gNB->uci_stats[0].rnti          = 0x1234;
+        gNB->phy_stats[0].rnti = 0x1234;
         pucch_pdu.rnti                  = 0x1234;
         pucch_pdu.subcarrier_spacing    = 1;
         pucch_pdu.group_hop_flag        = PUCCH_GroupHopping&1;

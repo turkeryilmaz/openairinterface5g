@@ -59,6 +59,14 @@ typedef struct nr_bandentry_s {
   uint8_t deltaf_raster;
 } nr_bandentry_t;
 
+typedef struct {
+  int band;
+  int scs_index;
+  int first_gscn;
+  int step_gscn;
+  int last_gscn;
+} sync_raster_t;
+
 typedef enum frequency_range_e {
   FR1 = 0,
   FR2
@@ -76,7 +84,6 @@ int get_first_ul_slot(int nrofDownlinkSlots, int nrofDownlinkSymbols, int nrofUp
 int cce_to_reg_interleaving(const int R, int k, int n_shift, const int C, int L, const int N_regs);
 int get_SLIV(uint8_t S, uint8_t L);
 void get_coreset_rballoc(uint8_t *FreqDomainResource,int *n_rb,int *rb_offset);
-uint16_t config_bandwidth(int mu, int nb_rb, int nr_band);
 int get_nr_table_idx(int nr_bandP, uint8_t scs_index);
 int32_t get_delta_duplex(int nr_bandP, uint8_t scs_index);
 frame_type_t get_frame_type(uint16_t nr_bandP, uint8_t scs_index);
@@ -93,6 +100,8 @@ int get_nb_periods_per_frame(uint8_t tdd_period);
 int get_supported_band_index(int scs, int band, int n_rbs);
 long rrc_get_max_nr_csrs(const int max_rbs, long b_SRS);
 void get_K1_K2(int N1, int N2, int *K1, int *K2);
+bool compare_relative_ul_channel_bw(int nr_band, int scs, int nb_ul, frame_type_t frame_type);
+int get_supported_bw_mhz(frequency_range_t frequency_range, int bw_index);
 void get_samplerate_and_bw(int mu,
                            int n_rb,
                            int8_t threequarter_fs,
@@ -100,7 +109,11 @@ void get_samplerate_and_bw(int mu,
                            unsigned int *samples_per_frame,
                            double *tx_bw,
                            double *rx_bw);
-
+uint32_t get_ssb_offset_to_pointA(uint32_t absoluteFrequencySSB,
+                                  uint32_t absoluteFrequencyPointA,
+                                  int ssbSubcarrierSpacing,
+                                  int frequency_range);
+int get_ssb_subcarrier_offset(uint32_t absoluteFrequencySSB, uint32_t absoluteFrequencyPointA);
 #define CEILIDIV(a,b) ((a+b-1)/b)
 #define ROUNDIDIV(a,b) (((a<<1)+b)/(b<<1))
 

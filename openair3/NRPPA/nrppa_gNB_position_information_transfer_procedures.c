@@ -49,7 +49,7 @@ extern RAN_CONTEXT_t RC;
 //int nrppa_gNB_handle_PositioningInformationExchange(instance_t instance, uint32_t gNB_ue_ngap_id, uint64_t amf_ue_ngap_id,  uint8_t *routingId_buffer, uint32_t routingId_buffer_length, NRPPA_NRPPA_PDU_t *pdu){
 int nrppa_gNB_handle_PositioningInformationExchange( nrppa_gnb_ue_info_t *nrppa_msg_info, NRPPA_NRPPA_PDU_t *pdu)
 {
- LOG_D(NRPPA, "Processing Received PositioningInformationRequest \n");
+    LOG_D(NRPPA, "Processing Received PositioningInformationRequest \n");
 // Processing Received PositioningInformationRequest
     NRPPA_PositioningInformationRequest_t     *container;
     NRPPA_PositioningInformationRequest_IEs_t *ie;
@@ -87,7 +87,7 @@ int nrppa_gNB_handle_PositioningInformationExchange( nrppa_gnb_ue_info_t *nrppa_
     }
     else
     {
-       LOG_D(NRPPA, "Preparing PositioningInformationFailure  message\n");
+        LOG_D(NRPPA, "Preparing PositioningInformationFailure  message\n");
         nrppa_pdu_length= nrppa_gNB_PositioningInformationFailure(nrppa_transaction_id, nrppa_pdu);
     }
 
@@ -333,7 +333,7 @@ int nrppa_gNB_PositioningInformationFailure( uint32_t nrppa_transaction_id, uint
 
 int nrppa_gNB_PositioningInformationUpdate( uint32_t nrppa_transaction_id, uint8_t *buffer ) // TODO adeel define when and where to call this function and setup corresponding ITTI exchange to NGAP
 {
-LOG_D(NRPPA, "Preparing PositioningInformationUpdate \n");
+    LOG_D(NRPPA, "Preparing PositioningInformationUpdate \n");
     // Prepare NRPPA Position Information Update
     NRPPA_NRPPA_PDU_t pdu;  // TODO rename
     //uint8_t  *buffer;
@@ -475,7 +475,7 @@ LOG_D(NRPPA, "Preparing PositioningInformationUpdate \n");
 /* PositioningActivation (Parent) procedure for  PositioningActivationRequest, PositioningActivationResponse, and PositioningActivationFailure*/
 int nrppa_gNB_handle_PositioningActivation(nrppa_gnb_ue_info_t *nrppa_msg_info, NRPPA_NRPPA_PDU_t *pdu)
 {
-LOG_D(NRPPA, "Processing Received PositioningActivation \n");
+    LOG_D(NRPPA, "Processing Received PositioningActivation \n");
 // Processing Received PositioningActivation
     NRPPA_PositioningActivationRequest_t     *container;
     NRPPA_PositioningActivationRequestIEs_t *ie;
@@ -499,13 +499,13 @@ LOG_D(NRPPA, "Processing Received PositioningActivation \n");
     //srs_type = ie->value.choice.SRSType;
 
     //struct NRPPA_SemipersistentSRS	*semipersistentSRS;
-        //srs_resource_set_id = srs_type.present
-      //NRPPA_SpatialRelationInfo_t     spatial_relation_info;
+    //srs_resource_set_id = srs_type.present
+    //NRPPA_SpatialRelationInfo_t     spatial_relation_info;
 
     //struct NRPPA_AperiodicSRS	*aperiodicSRS;
-	//NRPPA_SRSResourceTrigger_t      srs_resource_trigger;
+    //NRPPA_SRSResourceTrigger_t      srs_resource_trigger;
 
-	//struct NRPPA_ProtocolIE_Single_Container	*sRSType_extension;
+    //struct NRPPA_ProtocolIE_Single_Container	*sRSType_extension;
 
     /* IE  Activation Time (O)*/
     NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_PositioningActivationRequestIEs_t, ie, container,
@@ -559,7 +559,8 @@ LOG_D(NRPPA, "Processing Received PositioningActivation \n");
 }
 
 
-int nrppa_gNB_PositioningActivationResponse(uint32_t nrppa_transaction_id, uint8_t *buffer){
+int nrppa_gNB_PositioningActivationResponse(uint32_t nrppa_transaction_id, uint8_t *buffer)
+{
 // Prepare NRPPA Positioning  Activation Response
     NRPPA_NRPPA_PDU_t pdu;  // TODO rename
     //uint8_t  *buffer;
@@ -608,7 +609,8 @@ int nrppa_gNB_PositioningActivationResponse(uint32_t nrppa_transaction_id, uint8
 
 
 }
-int nrppa_gNB_PositioningActivationFailure(uint32_t nrppa_transaction_id, uint8_t *buffer){
+int nrppa_gNB_PositioningActivationFailure(uint32_t nrppa_transaction_id, uint8_t *buffer)
+{
     // Prepare NRPPA Positioning Activation Failure
 
     NRPPA_NRPPA_PDU_t pdu;  // TODO rename
@@ -633,7 +635,7 @@ int nrppa_gNB_PositioningActivationFailure(uint32_t nrppa_transaction_id, uint8_
     NRPPA_PositioningInformationFailure_t *out = &head->value.choice.PositioningInformationFailure;
 
 
-   // TODO IE 9.2.1 Cause (M)
+    // TODO IE 9.2.1 Cause (M)
     {
         asn1cSequenceAdd(out->protocolIEs.list, NRPPA_PositioningActivationFailureIEs_t, ie);
         ie->id = NRPPA_ProtocolIE_ID_id_Cause;
@@ -677,7 +679,7 @@ int nrppa_gNB_PositioningActivationFailure(uint32_t nrppa_transaction_id, uint8_
 
 int nrppa_gNB_handle_PositioningDeactivation(nrppa_gnb_ue_info_t *nrppa_msg_info,NRPPA_NRPPA_PDU_t *pdu)
 {
-LOG_D(NRPPA, "Processing Received PositioningDeActivation \n");
+    LOG_D(NRPPA, "Processing Received PositioningDeActivation \n");
 // Processing Received PositioningDeActivation
     NRPPA_PositioningDeactivation_t     *container;
     NRPPA_PositioningDeactivationIEs_t *ie;
@@ -697,8 +699,8 @@ LOG_D(NRPPA, "Processing Received PositioningDeActivation \n");
                                 NRPPA_ProtocolIE_ID_id_AbortTransmission, true);
     // ie->value.choice.AbortTransmission
 
-      //srs_resource_set_id = ie->value.choice.AbortTransmission.S
-      //Release_all = ie->value.choice.AbortTransmission.Re
+    //srs_resource_set_id = ie->value.choice.AbortTransmission.S
+    //Release_all = ie->value.choice.AbortTransmission.Re
 
 
 // TODO process daactivation request and stop the corresponding positioning process

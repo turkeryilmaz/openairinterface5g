@@ -52,25 +52,20 @@ void multadd_complex_vector_real_scalar(int16_t *x,
 
 }
 
-
-void multadd_real_vector_complex_scalar(int16_t *x,
-                                        int16_t *alpha,
-                                        int16_t *y,
-                                        uint32_t N)
+void multadd_real_vector_complex_scalar(const int16_t *x, const int16_t *alpha, int16_t *y, uint32_t N)
 {
 
   uint32_t i;
 
   // do 8 multiplications at a time
-  simd_q15_t alpha_r_128, alpha_i_128, yr, yi, *x_128 = (simd_q15_t *)x, *y_128 = (simd_q15_t *)y;
+  simd_q15_t *x_128 = (simd_q15_t *)x, *y_128 = (simd_q15_t *)y;
 
   //  printf("alpha = %d,%d\n",alpha[0],alpha[1]);
-  alpha_r_128 = set1_int16(alpha[0]);
-  alpha_i_128 = set1_int16(alpha[1]);
+  const simd_q15_t alpha_r_128 = set1_int16(alpha[0]);
+  const simd_q15_t alpha_i_128 = set1_int16(alpha[1]);
   for (i=0; i<N>>3; i++) {
-
-    yr     = mulhi_s1_int16(alpha_r_128,x_128[i]);
-    yi     = mulhi_s1_int16(alpha_i_128,x_128[i]);
+    const simd_q15_t yr = mulhi_s1_int16(alpha_r_128, x_128[i]);
+    const simd_q15_t yi = mulhi_s1_int16(alpha_i_128, x_128[i]);
 #if defined(__x86_64__) || defined(__i386__)
     const simd_q15_t tmp = _mm_loadu_si128(y_128);
     _mm_storeu_si128(y_128++, _mm_adds_epi16(tmp, _mm_unpacklo_epi16(yr, yi)));
@@ -88,11 +83,7 @@ void multadd_real_vector_complex_scalar(int16_t *x,
   }
 }
 
-void rotate_cpx_vector(c16_t *x,
-                       c16_t *alpha,
-                       c16_t *y,
-                       uint32_t N,
-                       uint16_t output_shift)
+void rotate_cpx_vector(const c16_t *const x, const c16_t *const alpha, c16_t *y, uint32_t N, uint16_t output_shift)
 {
   // multiply a complex vector with a complex value (alpha)
   // stores result in y
@@ -103,12 +94,41 @@ void rotate_cpx_vector(c16_t *x,
     // output is 32 bytes aligned, but not the input
     
     const c16_t for_re={alpha->r, -alpha->i};
-    __m256i const alpha_for_real =  simde_mm256_set1_epi32(*(uint32_t*)&for_re);
+    const __m256i alpha_for_real = simde_mm256_set1_epi32(*(uint32_t *)&for_re);
     const c16_t for_im={alpha->i, alpha->r};
-    __m256i const alpha_for_im= simde_mm256_set1_epi32(*(uint32_t*)&for_im);
-    __m256i const perm_mask =
-      simde_mm256_set_epi8(31,30,23,22,29,28,21,20,27,26,19,18,25,24,17,16,
-			   15,14,7,6,13,12,5,4,11,10,3,2,9,8,1,0);
+    const __m256i alpha_for_im = simde_mm256_set1_epi32(*(uint32_t *)&for_im);
+    const __m256i perm_mask = simde_mm256_set_epi8(31,
+                                                   30,
+                                                   23,
+                                                   22,
+                                                   29,
+                                                   28,
+                                                   21,
+                                                   20,
+                                                   27,
+                                                   26,
+                                                   19,
+                                                   18,
+                                                   25,
+                                                   24,
+                                                   17,
+                                                   16,
+                                                   15,
+                                                   14,
+                                                   7,
+                                                   6,
+                                                   13,
+                                                   12,
+                                                   5,
+                                                   4,
+                                                   11,
+                                                   10,
+                                                   3,
+                                                   2,
+                                                   9,
+                                                   8,
+                                                   1,
+                                                   0);
     __m256i* xd= (__m256i*)x;
     const __m256i *end=xd+N/8;
     for( __m256i* yd = (__m256i *)y; xd<end ; yd++, xd++) {

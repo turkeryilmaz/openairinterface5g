@@ -48,7 +48,7 @@
 //#undef FRAME_LENGTH_COMPLEX_SAMPLES //there are two conflicting definitions, so we better make sure we don't use it at all
 
 #include "radio/COMMON/common_lib.h"
-#include "radio/ETHERNET/USERSPACE/LIB/if_defs.h"
+#include "radio/ETHERNET/if_defs.h"
 
 //#undef FRAME_LENGTH_COMPLEX_SAMPLES //there are two conflicting definitions, so we better make sure we don't use it at all
 
@@ -177,6 +177,21 @@ bool sdap_data_req(protocol_ctxt_t *ctxt_p,
                    const uint8_t qfi,
                    const bool rqi,
                    const int pdusession_id)
+{
+  abort();
+}
+
+/* hack: gtp_itf.cpp requires this empty function to be defined here */
+bool nr_pdcp_data_req_drb(protocol_ctxt_t *ctxt_pP,
+                          const srb_flag_t srb_flagP,
+                          const rb_id_t rb_id,
+                          const mui_t muiP,
+                          const confirm_t confirmP,
+                          const sdu_size_t sdu_buffer_size,
+                          unsigned char *const sdu_buffer,
+                          const pdcp_transmission_mode_t mode,
+                          const uint32_t *const sourceL2Id,
+                          const uint32_t *const destinationL2Id)
 {
   abort();
 }
@@ -614,7 +629,7 @@ int main ( int argc, char **argv )
   //getchar();
   if(IS_SOFTMODEM_DOSCOPE)
      load_softscope("enb",NULL);
-  itti_wait_tasks_end();
+  itti_wait_tasks_end(NULL);
 
 #if USING_GPROF
   // Save the gprof data now (rather than via atexit) in case we crash while shutting down

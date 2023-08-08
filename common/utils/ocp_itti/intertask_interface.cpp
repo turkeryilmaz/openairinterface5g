@@ -24,6 +24,7 @@
 #include <vector>
 #include <map>
 #include <sys/eventfd.h>
+#include <semaphore.h>
 
 
 extern "C" {
@@ -139,7 +140,7 @@ extern "C" {
     t->message_queue.insert(t->message_queue.begin(), message);
     eventfd_t sem_counter = 1;
     AssertFatal ( sizeof(sem_counter) == write(t->sem_fd, &sem_counter, sizeof(sem_counter)), "");
-    LOG_D(ITTI,"sent messages id=%d to %s\n",message_id, t->admin.name);
+    LOG_D(ITTI, "sent messages id=%s messages_info to %s\n", messages_info[message_id].name, t->admin.name);
     return 0;
   }
 
@@ -434,24 +435,32 @@ extern "C" {
   void itti_send_terminate_message(task_id_t task_id) {
   }
 
-  pthread_mutex_t signal_mutex;
+  sem_t itti_sem_block;
+  void itti_wait_tasks_unblock()
+  {
+    int rc = sem_post(&itti_sem_block);
+    AssertFatal(rc == 0, "error in sem_post(): %d %s\n", errno, strerror(errno));
+  }
 
   static void catch_sigterm(int) {
     static const char msg[] = "\n** Caught SIGTERM, shutting down\n";
     __attribute__((unused))
     int unused = write(STDOUT_FILENO, msg, sizeof(msg) - 1);
-    pthread_mutex_unlock(&signal_mutex);
+    itti_wait_tasks_unblock();
   }
 
-  void itti_wait_tasks_end(void) {
+  void itti_wait_tasks_end(void (*handler)(int))
+  {
+    int rc = sem_init(&itti_sem_block, 0, 0);
+    AssertFatal(rc == 0, "error in sem_init(): %d %s\n", errno, strerror(errno));
 
-    pthread_mutex_init(&signal_mutex, NULL);
-    pthread_mutex_lock(&signal_mutex);
+    if (handler == NULL) /* no handler given: install default */
+      handler = catch_sigterm;
+    signal(SIGTERM, handler);
+    signal(SIGINT, handler);
 
-    signal(SIGTERM, catch_sigterm);
-    signal(SIGINT, catch_sigterm);
-
-    pthread_mutex_lock(&signal_mutex);
+    rc = sem_wait(&itti_sem_block);
+    AssertFatal(rc == 0, "error in sem_wait(): %d %s\n", errno, strerror(errno));
   }
 
   void itti_update_lte_time(uint32_t frame, uint8_t slot) {}

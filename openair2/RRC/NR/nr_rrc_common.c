@@ -37,7 +37,6 @@
 #include "COMMON/mac_rrc_primitives.h"
 #include "common/utils/LOG/log.h"
 #include "asn1_msg.h"
-#include "pdcp.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "common/ran_context.h"
 
@@ -55,15 +54,3 @@ void rrc_init_nr_srb_param(NR_LCHAN_DESC *chan)
   chan->Delay_class = 1;
   return;
 }
-
-//-----------------------------------------------------------------------------
-void rrc_config_nr_buffer(NR_SRB_INFO* Srb_info,
-                          uint8_t Lchan_type,
-                          uint8_t Role
-                         ){
-
-  Srb_info->Rx_buffer.payload_size = 0;
-  Srb_info->Tx_buffer.payload_size = 0;
-}
-
-//-----------------------------------------------------------------------------
