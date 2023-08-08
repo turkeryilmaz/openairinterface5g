@@ -39,17 +39,4 @@
 #define NRPPA_GNB_DEFS_H_
 
 
-typedef struct {
-  /* List of served gNBs
-   * Only used for virtual mode
-   */
-  STAILQ_HEAD(ngap_gNB_instances_head_s, ngap_gNB_instance_s) ngap_gNB_instances_head;
-  /* Nb of registered gNBs */
-  uint8_t nb_registered_gNBs;
-
-  /* Generate a unique connexion id used between NGAP and SCTP */
-  uint16_t global_cnx_id;
-} ngap_gNB_internal_data_t;
-
-
 #endif /* NRPPA_GNB_DEFS_H_ */

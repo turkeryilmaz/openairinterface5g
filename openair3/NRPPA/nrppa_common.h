@@ -87,6 +87,24 @@
 #include "NRPPA_TRPInformationList.h"
 #include "NRPPA_TRPInformationItem.h"
 
+
+// Measurement Transfer
+#include "NRPPA_MeasurementRequest.h"
+#include "NRPPA_MeasurementFailure.h"
+#include "NRPPA_MeasurementResponse.h"
+#include "NRPPA_MeasurementReport.h"
+#include "NRPPA_MeasurementUpdate.h"
+#include "NRPPA_MeasurementAbort.h"
+#include "NRPPA_MeasurementFailureIndication.h"
+
+//#include ".h"
+#include "NRPPA_TRPMeasurementQuantities.h"
+#include "NRPPA_TRP-MeasurementRequestList.h"
+#include "NRPPA_TRP-MeasurementResponseList.h"
+#include "NRPPA_TRP-MeasurementResponseItem.h"
+#include "NRPPA_TrpMeasurementResult.h"
+#include "NRPPA_TrpMeasurementResultItem.h"
+#include "NRPPA_TrpMeasuredResultsValue.h"
 /* END: ad**l todo add all nrppa ASN genrated header files here*/
 
 /* Checking version of ASN1C compiler */

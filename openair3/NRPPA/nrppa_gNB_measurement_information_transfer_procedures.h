@@ -20,7 +20,7 @@
  */
 
 /*! \file nrppa_gNB_measurement_information_transfer_procedures.h
- * \brief NRPPA gNB tasks related to measurement information transfer 
+ * \brief NRPPA gNB tasks related to measurement information transfer
  * \author Adeel Malik
  * \email adeel.malik@eurecom.fr
  *\date 2023
@@ -32,4 +32,13 @@
 #ifndef NRPPA_GNB_MEASUREMENT_INFORMATION_TRANSFER_PROCEDURES_H_
 #define NRPPA_GNB_MEASUREMENT_INFORMATION_TRANSFER_PROCEDURES_H_
 
+int nrppa_gNB_handle_Measurement(nrppa_gnb_ue_info_t *nrppa_msg_info, NRPPA_NRPPA_PDU_t *pdu); /* Measurement (Parent) procedure for  MeasurementRequest, MeasurementResponse, and MeasurementFailure*/
+int nrppa_gNB_MeasurementFailure(uint32_t nrppa_transaction_id, uint8_t *buffer);
+int nrppa_gNB_MeasurementResponse(uint32_t nrppa_transaction_id, uint8_t *buffer);
+
+
+int nrppa_gNB_MeasurementReport(uint32_t nrppa_transaction_id, uint8_t *buffer);
+int nrppa_gNB_handle_MeasurementUpdate(nrppa_gnb_ue_info_t *nrppa_msg_info, NRPPA_NRPPA_PDU_t *pdu);
+int nrppa_gNB_handle_MeasurementAbort(nrppa_gnb_ue_info_t *nrppa_msg_info, NRPPA_NRPPA_PDU_t *pdu);
+int nrppa_gNB_MeasurementFailureIndication(uint32_t nrppa_transaction_id, uint8_t *buffer);
 #endif /* NGAP_GNB_MEASUREMENT_INFORMATION_TRANSFER_PROCEDURES_H_ */
