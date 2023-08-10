@@ -763,9 +763,10 @@ static void add_srb(int is_gnb, ue_id_t rntiMaybeUEid, struct NR_SRB_ToAddMod *s
   nr_pdcp_ue_t *ue;
   int t_Reordering=3000; // it was already hardcoded ?
 
+  t_Reordering =  decode_t_reordering(get_softmodem_params()->ntn_trd) +  get_softmodem_params()->ntn_trd_offset; 
   int srb_id = s->srb_Identity;
   if (s->pdcp_Config == NULL || s->pdcp_Config->t_Reordering == NULL) {
-    t_Reordering = 3000; //
+    //t_Reordering = 3000; //
     t_Reordering = decode_t_reordering(get_softmodem_params()->ntn_trd) + get_softmodem_params()->ntn_trd_offset; // #NTN
     LOG_I(PDCP,"Inside %s , case NULL and t_Reordering is %d ----> \n",__FUNCTION__,t_Reordering);
   } else {
@@ -779,6 +780,7 @@ static void add_srb(int is_gnb, ue_id_t rntiMaybeUEid, struct NR_SRB_ToAddMod *s
   if (ue->srb[srb_id-1] != NULL) {
     LOG_D(PDCP, "%s:%d:%s: warning SRB %d already exist for UE ID/RNTI %ld, do nothing\n", __FILE__, __LINE__, __FUNCTION__, srb_id, rntiMaybeUEid);
   } else {
+    t_Reordering = decode_t_reordering(get_softmodem_params()->ntn_trd) + get_softmodem_params()->ntn_trd_offset; //NTN
     pdcp_srb = new_nr_pdcp_entity(NR_PDCP_SRB, is_gnb, srb_id,
                                   0, false, false, // sdap parameters
                                   deliver_sdu_srb, ue, NULL, ue,
@@ -811,7 +813,7 @@ void add_drb_am(int is_gnb, ue_id_t rntiMaybeUEid, struct NR_DRB_ToAddMod *s, in
   int t_reordering = -1;
   if (s->pdcp_Config->t_Reordering != NULL) {
     //t_reordering = decode_t_reordering(*s->pdcp_Config->t_Reordering);
-    t_reordering = decode_t_reordering(get_softmodem_params()->ntn_trd) + get_softmodem_params()->ntn_trd_offset;
+    t_reordering = decode_t_reordering(get_softmodem_params()->ntn_trd) + get_softmodem_params()->ntn_trd_offset; //NTN
     //printf("\n\n\n\n Came to line 954 add_drb_am and t_reordering is %d\n\n\n\n", t_reordering);
   }
 
@@ -871,6 +873,7 @@ void add_drb_am(int is_gnb, ue_id_t rntiMaybeUEid, struct NR_DRB_ToAddMod *s, in
   if (ue->drb[drb_id-1] != NULL) {
     LOG_W(PDCP, "%s:%d:%s: warning DRB %d already exist for UE ID/RNTI %ld, do nothing\n", __FILE__, __LINE__, __FUNCTION__, drb_id, rntiMaybeUEid);
   } else {
+    t_reordering = decode_t_reordering(get_softmodem_params()->ntn_trd) + get_softmodem_params()->ntn_trd_offset; //NTN
     pdcp_drb = new_nr_pdcp_entity(NR_PDCP_DRB_AM, is_gnb, drb_id, pdusession_id,
                                   has_sdap_rx, has_sdap_tx, deliver_sdu_drb, ue,
                                   is_gnb ?
