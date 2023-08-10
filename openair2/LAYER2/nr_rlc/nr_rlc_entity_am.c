@@ -175,7 +175,10 @@ static int sdu_has_missing_bytes(nr_rlc_entity_am_t *entity, int sn)
 
   while (l != NULL && l->sn == sn) {
     if (l->so > last_byte + 1)
-      return 1;
+       {
+        LOG_I(RLC,"missing byte detected\n");
+        return 1;
+       }
     new_last_byte = l->so + l->size - 1;
     if (new_last_byte > last_byte)
       last_byte = new_last_byte;
@@ -187,6 +190,7 @@ static int sdu_has_missing_bytes(nr_rlc_entity_am_t *entity, int sn)
 
 static void reassemble_and_deliver(nr_rlc_entity_am_t *entity, int sn)
 {
+  //LOG_I(RLC,"Came inside %s in %s\n",__FUNCTION__, __FILE__);
   nr_rlc_pdu_t *pdu;
   char sdu[NR_SDU_MAX];
   int so = 0;
@@ -464,6 +468,7 @@ process_wait_list_head:
                                             + cur_wait_list->size;
         /* and go process the next pdu, still for the current nack */
         cur_wait_list = prev_wait_list->next;
+        //LOG_I(RLC, "cur_wait_list->sdu->retx_count %d, and Buffer Size %d\n", cur_wait_list->sdu->retx_count, entity->common.bstatus.retx_size);
         goto process_next_pdu;
       }
 
@@ -685,7 +690,7 @@ void nr_rlc_entity_am_recv_pdu(nr_rlc_entity_t *_entity,
   int data_size;
   int is_first;
   int is_last;
-
+  //LOG_I(RLC,"I am inside nr_rlc_entity_am_recv_pdu\n");
   entity->common.stats.rxpdu_pkts++;
   entity->common.stats.rxpdu_bytes += size;
 
@@ -1467,6 +1472,10 @@ static int generate_retx_pdu(nr_rlc_entity_am_t *entity, char *buffer,
   int pdu_size;
   int p;
 
+  static int retx_ctr = 0;
+  retx_ctr++;
+  //LOG_I(RLC,"%s in %s is called %d times\n",__FUNCTION__,__FILE__, retx_ctr);
+
   sdu = entity->retransmit_list;
 
   pdu_header_size = compute_pdu_header_size(entity, sdu);
@@ -1809,7 +1818,7 @@ static void check_t_poll_retransmit(nr_rlc_entity_am_t *entity)
 static void check_t_reassembly(nr_rlc_entity_am_t *entity)
 {
   int sn;
-
+  //LOG_I(RLC,"Came to %s in %s and t_reassembly is %d and current is %ld\n and start is %ld",__FUNCTION__, __FILE__,entity->t_reassembly,entity->t_current,entity->t_reassembly_start);
   /* is t_reassembly running and if yes has it expired? */
   if (entity->t_reassembly_start == 0 ||
       entity->t_current <= entity->t_reassembly_start + entity->t_reassembly)
@@ -1818,8 +1827,8 @@ static void check_t_reassembly(nr_rlc_entity_am_t *entity)
   /* stop timer */
   entity->t_reassembly_start = 0;
 
-  LOG_D(RLC, "%s:%d:%s: t_reassembly expired\n",
-        __FILE__, __LINE__, __FUNCTION__);
+  //LOG_I(RLC, "%s:%d:%s: t_reassembly expired, t_reassembly = %d\n",
+        __FILE__, __LINE__, __FUNCTION__,entity->t_reassembly);
 
   /* update RX_Highest_Status */
   sn = entity->rx_next_status_trigger;
