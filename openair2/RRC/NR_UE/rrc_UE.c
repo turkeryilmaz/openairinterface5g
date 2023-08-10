@@ -1784,8 +1784,8 @@ int8_t nr_rrc_ue_decode_ccch( const protocol_ctxt_t *const ctxt_pP, const NR_SRB
     if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
       xer_fprint(stdout, &asn_DEF_NR_UL_DCCH_Message, (void *)&ul_dcch_msg);
     }
-     log_dump(MAC, buffer, 16, LOG_DUMP_CHAR, "securityModeComplete payload: ");
-     LOG_D(NR_RRC, "securityModeComplete Encoded %zd bits (%zd bytes)\n", enc_rval.encoded, (enc_rval.encoded+7)/8);
+     log_dump(NR_RRC, buffer, (enc_rval.encoded+7)/8, LOG_DUMP_CHAR, "securityModeComplete payload: ");
+     LOG_I(NR_RRC, "securityModeComplete Encoded %zd bits (%zd bytes)\n", enc_rval.encoded, (enc_rval.encoded+7)/8);
 
      for (i = 0; i < (enc_rval.encoded + 7) / 8; i++) {
        LOG_I(NR_RRC, "%02x.", buffer[i]);
@@ -2325,14 +2325,7 @@ nr_rrc_ue_establish_srb2(
    NR_DL_DCCH_Message_t                *dl_dcch_msg  = NULL;
    MessageDef *msg_p;
 
-   if (Srb_id != 1) {
-     LOG_E(NR_RRC,"[UE %d] Frame %d: Received message on DL-DCCH (SRB%ld), should not have ...\n",
-           ctxt_pP->module_id, ctxt_pP->frame, Srb_id);
-   } else {
-     LOG_D(NR_RRC, "Received message on SRB%ld\n", Srb_id);
-   }
-
-   LOG_D(NR_RRC, "Decoding DL-DCCH Message\n");
+   LOG_D(NR_RRC, "Decoding DL-DCCH message received message on SRB%ld\n", Srb_id);
    dec_rval = uper_decode( NULL,
 			   &asn_DEF_NR_DL_DCCH_Message,
 			   (void **)&dl_dcch_msg,

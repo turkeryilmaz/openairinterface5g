@@ -283,7 +283,7 @@ static void ss_task_handle_rrc_pdu_req(struct NR_RRC_PDU_REQ *req)
 
                 }
 
-                LOG_A(GNB_APP, "[SS_SRB][NR_RRC_PDU_REQ] sending to TASK_RRC_GNB: {srb: %d, ch: %s, qty: %d }",
+                LOG_A(GNB_APP, "[SS_SRB][NR_RRC_PDU_REQ] sending to TASK_RRC_GNB: {srb: %d, ch: %s, qty: %d }\n",
                           SS_NRRRC_PDU_REQ(message_p).srb_id,
                           req->RrcPdu.d == NR_RRC_MSG_Request_Type_Ccch ? "CCCH" : "DCCH", SS_NRRRC_PDU_REQ(message_p).sdu_size);
 
@@ -294,7 +294,7 @@ static void ss_task_handle_rrc_pdu_req(struct NR_RRC_PDU_REQ *req)
                         LOG_A(GNB_APP, "[SS_SRB] Error in itti_send_msg_to_task");
                 }
 
-                LOG_A(GNB_APP, "Send res: %d", send_res);
+                LOG_A(GNB_APP, "Send res: %d\n", send_res);
         }
 }
 

@@ -17,7 +17,7 @@
  *-------------------------------------------------------------------------------
  * For more information about the OpenAirInterface (OAI) Software Alliance:
  *      contact@openairinterface.org
- */
+*/
 
 #include <errno.h>
 #include <fcntl.h>
@@ -37,8 +37,6 @@
 
 #include <netinet/in.h>
 #include <netinet/sctp.h>
-
-#include <arpa/inet.h>
 
 #include "assertions.h"
 #include "common/utils/system.h"
@@ -60,6 +58,8 @@ static unsigned char *buffer = NULL;
 static const size_t size = 16 * 1024;
 static instance_t instance_g = 0;
 
+static nr_drb_data_t _drb_data_type = DRB_data_type_qty;
+
 enum MsgUserId
 {
     // user defined IDs should be an int number >= 1
@@ -72,6 +72,8 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind)
     struct NR_DRB_COMMON_IND ind = {};
 
     LOG_A(GNB_APP, "[SS_DRB] Reported drb sdu_size:%d \t drb_id %d\n", pdu_ind->sdu_size, pdu_ind->drb_id);
+    LOG_E(GNB_APP, "[SS_DRB] ss_send_drb_data ss_send_drb_data\n");
+    for (uint32_t i = 0; i < pdu_ind->sdu_size; ++i) printf("%02x", pdu_ind->sdu[i]); printf("\n");
 
     DevAssert(pdu_ind != NULL);
     DevAssert(pdu_ind->sdu_size >= 0);
@@ -110,57 +112,90 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind)
     //TODO: Work Around till Sys port is implemented for 5G
     ind.Common.RlcBearerRouting.v.NR = nr_Cell1;
 
-    // Populating the PDU
-    ind.U_Plane.SlotData.NoOfTTIs = 1;
-    ind.U_Plane.SlotData.PduSduList.d = NR_L2DataList_Type_RlcPdu;
-    ind.U_Plane.SlotData.PduSduList.v.RlcPdu.d = 1;
-    ind.U_Plane.SlotData.PduSduList.v.RlcPdu.v = CALLOC(1, (ind.U_Plane.SlotData.PduSduList.v.RlcPdu.d) * (sizeof(struct NR_RLC_PDU_Type)));
-    DevAssert(ind.U_Plane.SlotData.PduSduList.v.RlcPdu.v != NULL);
-    for (int i = 0; i < ind.U_Plane.SlotData.PduSduList.v.RlcPdu.d; i++) {
-        struct NR_RLC_PDU_Type* rlcPdu = &ind.U_Plane.SlotData.PduSduList.v.RlcPdu.v[i];
+    switch(_drb_data_type) {
+    case DRB_PdcpSdu:
+    {
+        if (pdu_ind->sdu_size < 4) break;
+        LOG_A(GNB_APP, "[SS_DRB] PDCP SDU received in NR_DRB_COMMON_IND\n");
+        // Populating the SDU
+        ind.U_Plane.SlotData.NoOfTTIs = 1;
+        ind.U_Plane.SlotData.PduSduList.d = NR_L2DataList_Type_PdcpSdu;
+        ind.U_Plane.SlotData.PduSduList.v.PdcpSdu.d = 1;
+        ind.U_Plane.SlotData.PduSduList.v.PdcpSdu.v = CALLOC(1, ind.U_Plane.SlotData.PduSduList.v.PdcpSdu.d * sizeof(NR_PDCP_SDU_Type));
+        DevAssert(ind.U_Plane.SlotData.PduSduList.v.PdcpSdu.v != NULL);
 
-        // TODO: suppose, we have UMD NoSN/SN6Bit RLC PDU
-        rlcPdu->d = NR_RLC_PDU_Type_UMD;
-        rlcPdu->v.UMD.d = ((pdu_ind->sdu[0] & 0xC0) == 0) ? NR_RLC_UMD_PDU_Type_NoSN : NR_RLC_UMD_PDU_Type_SN6Bit;
+        for (int i = 0; i < ind.U_Plane.SlotData.PduSduList.v.PdcpSdu.d; i++) {
+            NR_PDCP_SDU_Type *pdcpSdu = &ind.U_Plane.SlotData.PduSduList.v.PdcpSdu.v[i];
 
-        if (rlcPdu->d == NR_RLC_PDU_Type_UMD && rlcPdu->v.UMD.d == NR_RLC_UMD_PDU_Type_NoSN)
-        {
-            struct NR_RLC_UMD_HeaderNoSN_Type *header = &rlcPdu->v.UMD.v.NoSN.Header;
-            NR_RLC_UMD_Data_Type *data = &rlcPdu->v.UMD.v.NoSN.Data;
-            int pdu_header_size = 1;
-            bits_copy_to_array((char *)header->SegmentationInfo, 0, (const char *)pdu_ind->sdu, 2);
-            bits_copy_to_array((char *)header->Reserved, 2, (const char *)pdu_ind->sdu, 6);
-            data->d = pdu_ind->sdu_size - pdu_header_size;
-            LOG_A(GNB_APP, "[SS_DRB] Length of RLC PDU received in NR_DRB_COMMON_IND: %d\n", pdu_ind->sdu_size);
-            data->v = CALLOC(1, data->d);
-            DevAssert(data->v != NULL);
-            memcpy(data->v, pdu_ind->sdu + pdu_header_size, data->d);
-        }
-        else if (rlcPdu->d == NR_RLC_PDU_Type_UMD && rlcPdu->v.UMD.d == NR_RLC_UMD_PDU_Type_SN6Bit)
-        {
-            struct NR_RLC_UMD_HeaderSN6Bit_Type *header = &rlcPdu->v.UMD.v.SN6Bit.Header;
-            NR_RLC_UMD_Data_Type *data = &rlcPdu->v.UMD.v.SN6Bit.Data;
-            int pdu_header_size = 1;
-            bits_copy_to_array((char *)header->SegmentationInfo, 0, (const char *)pdu_ind->sdu, 2);
-            bits_copy_to_array((char *)header->SequenceNumber, 2, (const char *)pdu_ind->sdu, 6);
-            if (pdu_ind->sdu[0] & 0x80)
-            {
-                pdu_header_size += 2;
-                header->SegmentOffset.d = true;
-                bits_copy_to_array((char *)header->SegmentOffset.v, 8, (const char *)pdu_ind->sdu, 16);
-            }
-            data->d = pdu_ind->sdu_size - pdu_header_size;
-            LOG_A(GNB_APP, "[SS_DRB] Length of RLC PDU received in NR_DRB_COMMON_IND: %d\n", pdu_ind->sdu_size);
-            data->v = CALLOC(1, data->d);
-            DevAssert(data->v != NULL);
-            memcpy(data->v, pdu_ind->sdu + pdu_header_size, data->d);
-        }
-        else
-        {
-            LOG_E(GNB_APP, "[SS_DRB] only UMD NoSN/SN6Bit are handled in RLC PDU in NR_DRB_COMMON_IND\n");
+            pdcpSdu->d = pdu_ind->sdu_size;
+            pdcpSdu->v = CALLOC(1, pdcpSdu->d);
+            DevAssert(pdcpSdu->v != NULL);
+            memcpy(pdcpSdu->v, pdu_ind->sdu, pdcpSdu->d);
+            printf("pdu_ind->sdu_size=%zu\n", pdu_ind->sdu_size);
+            for (uint32_t i = 0; i < pdcpSdu->d; ++i) printf("%02x", pdcpSdu->v[i]); printf("\n");
         }
     }
+    break;
 
+    case DRB_RlcPdu:
+    {
+        LOG_A(GNB_APP, "[SS_DRB] RLC PDU received in NR_DRB_COMMON_IND\n");
+        // Populating the PDU
+        ind.U_Plane.SlotData.NoOfTTIs = 1;
+        ind.U_Plane.SlotData.PduSduList.d = NR_L2DataList_Type_RlcPdu;
+        ind.U_Plane.SlotData.PduSduList.v.RlcPdu.d = 1;
+        ind.U_Plane.SlotData.PduSduList.v.RlcPdu.v = CALLOC(1, (ind.U_Plane.SlotData.PduSduList.v.RlcPdu.d) * (sizeof(struct NR_RLC_PDU_Type)));
+        DevAssert(ind.U_Plane.SlotData.PduSduList.v.RlcPdu.v != NULL);
+        for (int i = 0; i < ind.U_Plane.SlotData.PduSduList.v.RlcPdu.d; i++) {
+            struct NR_RLC_PDU_Type* rlcPdu = &ind.U_Plane.SlotData.PduSduList.v.RlcPdu.v[i];
+
+            // TODO: suppose, we have UMD NoSN/SN6Bit RLC PDU
+            rlcPdu->d = NR_RLC_PDU_Type_UMD;
+            rlcPdu->v.UMD.d = ((pdu_ind->sdu[0] & 0xC0) == 0) ? NR_RLC_UMD_PDU_Type_NoSN : NR_RLC_UMD_PDU_Type_SN6Bit;
+
+            if (rlcPdu->d == NR_RLC_PDU_Type_UMD && rlcPdu->v.UMD.d == NR_RLC_UMD_PDU_Type_NoSN)
+            {
+                struct NR_RLC_UMD_HeaderNoSN_Type *header = &rlcPdu->v.UMD.v.NoSN.Header;
+                NR_RLC_UMD_Data_Type *data = &rlcPdu->v.UMD.v.NoSN.Data;
+                int pdu_header_size = 1;
+                bits_copy_to_array((char *)header->SegmentationInfo, 0, (const char *)pdu_ind->sdu, 2);
+                bits_copy_to_array((char *)header->Reserved, 2, (const char *)pdu_ind->sdu, 6);
+                data->d = pdu_ind->sdu_size - pdu_header_size;
+                LOG_A(GNB_APP, "[SS_DRB] Length of RLC PDU received in NR_DRB_COMMON_IND: %d\n", pdu_ind->sdu_size);
+                data->v = CALLOC(1, data->d);
+                DevAssert(data->v != NULL);
+                memcpy(data->v, pdu_ind->sdu + pdu_header_size, data->d);
+            }
+            else if (rlcPdu->d == NR_RLC_PDU_Type_UMD && rlcPdu->v.UMD.d == NR_RLC_UMD_PDU_Type_SN6Bit)
+            {
+                struct NR_RLC_UMD_HeaderSN6Bit_Type *header = &rlcPdu->v.UMD.v.SN6Bit.Header;
+                NR_RLC_UMD_Data_Type *data = &rlcPdu->v.UMD.v.SN6Bit.Data;
+                int pdu_header_size = 1;
+                bits_copy_to_array((char *)header->SegmentationInfo, 0, (const char *)pdu_ind->sdu, 2);
+                bits_copy_to_array((char *)header->SequenceNumber, 2, (const char *)pdu_ind->sdu, 6);
+                if (pdu_ind->sdu[0] & 0x80)
+                {
+                    pdu_header_size += 2;
+                    header->SegmentOffset.d = true;
+                    bits_copy_to_array((char *)header->SegmentOffset.v, 8, (const char *)pdu_ind->sdu, 16);
+                }
+                data->d = pdu_ind->sdu_size - pdu_header_size;
+                LOG_A(GNB_APP, "[SS_DRB] Length of RLC PDU received in NR_DRB_COMMON_IND: %d\n", pdu_ind->sdu_size);
+                data->v = CALLOC(1, data->d);
+                DevAssert(data->v != NULL);
+                memcpy(data->v, pdu_ind->sdu + pdu_header_size, data->d);
+            }
+            else
+            {
+                LOG_E(GNB_APP, "[SS_DRB] only UMD NoSN/SN6Bit are handled in RLC PDU in NR_DRB_COMMON_IND\n");
+            }
+        }
+    }
+    break;
+
+    default:
+        LOG_E(GNB_APP, "[SS_DRB] %s requested NR_L2DataList_Type %d that is not yet implemented\n", _drb_data_type);
+    }
     // Encode Message
     size_t msgSize = size;
     if (acpNrDrbProcessToSSEncSrv(ctx_drb_g, buffer, &msgSize, &ind) != 0)
@@ -169,6 +204,8 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind)
         return;
     }
     LOG_A(GNB_APP, "[SS_DRB] NR_DRB_COMMON_IND buffer msgSize=%d to NRCell %d\n", (int)msgSize, SS_context.nr_cellId);
+
+    printf("acpSendMsg: "); for (size_t i = 0; i < msgSize; i++) printf("%02x", (uint8_t)buffer[i]); printf("\n");
 
     // Send Message
     int send_res = acpSendMsg(ctx_drb_g, msgSize, buffer);
@@ -187,62 +224,92 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind)
 static void ss_task_handle_drb_pdu_req(struct NR_DRB_COMMON_REQ *req)
 {
     assert(req);
-    MessageDef *message_p = itti_alloc_new_message(TASK_RLC_ENB, 0, SS_DRB_PDU_REQ);
-    assert(message_p);
-    if (message_p)
+    MessageDef *message_p = NULL;
+    task_id_t task_id = TASK_UNKNOWN;
+
+    /* Populate the message and send to gNB */
+    for (int i = 0; i < req->U_Plane.SlotDataList.d; i++)
     {
-        /* Populate the message and send to gNB */
-        SS_DRB_PDU_REQ(message_p).drb_id = req->Common.RoutingInfo.v.RadioBearerId.v.Drb;
-        memset(SS_DRB_PDU_REQ(message_p).sdu, 0, SDU_SIZE);
-
-        for (int i = 0; i < req->U_Plane.SlotDataList.d; i++)
+        if (req->U_Plane.SlotDataList.v[i].PduSduList.d == NR_L2DataList_Type_RlcPdu)
         {
-            if (req->U_Plane.SlotDataList.v[i].PduSduList.d == NR_L2DataList_Type_RlcPdu)
-            {
-                LOG_A(GNB_APP, "[SS_DRB] RLC PDU Received in NR_DRB_COMMON_REQ\n");
-                for (int j = 0; j < req->U_Plane.SlotDataList.v[i].PduSduList.v.RlcPdu.d; j++)
-                {
-                    struct NR_RLC_PDU_Type *rlcPdu = &req->U_Plane.SlotDataList.v[i].PduSduList.v.RlcPdu.v[j];
+            LOG_A(GNB_APP, "[SS_DRB] RLC PDU Received in NR_DRB_COMMON_REQ\n");
+            task_id = TASK_RLC_ENB;
+            _drb_data_type = DRB_RlcPdu;
+            RC.nr_drb_data_type = DRB_RlcPdu;
 
-                    if (rlcPdu->d == NR_RLC_PDU_Type_UMD && rlcPdu->v.UMD.d == NR_RLC_UMD_PDU_Type_NoSN)
+            message_p = itti_alloc_new_message(task_id, 0, SS_DRB_PDU_REQ);
+            assert(message_p);
+
+            memset(SS_DRB_PDU_REQ(message_p).sdu, 0, SDU_SIZE);
+
+            for (int j = 0; j < req->U_Plane.SlotDataList.v[i].PduSduList.v.RlcPdu.d; j++)
+            {
+                struct NR_RLC_PDU_Type *rlcPdu = &req->U_Plane.SlotDataList.v[i].PduSduList.v.RlcPdu.v[j];
+
+                if (rlcPdu->d == NR_RLC_PDU_Type_UMD && rlcPdu->v.UMD.d == NR_RLC_UMD_PDU_Type_NoSN)
+                {
+                    struct NR_RLC_UMD_HeaderNoSN_Type *header = &rlcPdu->v.UMD.v.NoSN.Header;
+                    NR_RLC_UMD_Data_Type *data = &rlcPdu->v.UMD.v.NoSN.Data;
+                    int pdu_header_size = 1;
+                    bits_copy_from_array((char *)SS_DRB_PDU_REQ(message_p).sdu, 0, (const char *)header->SegmentationInfo, 2);
+                    bits_copy_from_array((char *)SS_DRB_PDU_REQ(message_p).sdu, 2, (const char *)header->Reserved, 6);
+                    SS_DRB_PDU_REQ(message_p).sdu_size = pdu_header_size + data->d;
+                    LOG_A(GNB_APP, "[SS_DRB] Length of RLC PDU received in NR_DRB_COMMON_REQ: %lu\n", pdu_header_size + data->d);
+                    memcpy(SS_DRB_PDU_REQ(message_p).sdu + pdu_header_size, data->v, data->d);
+                }
+                else if (rlcPdu->d == NR_RLC_PDU_Type_UMD && rlcPdu->v.UMD.d == NR_RLC_UMD_PDU_Type_SN6Bit)
+                {
+                    struct NR_RLC_UMD_HeaderSN6Bit_Type *header = &rlcPdu->v.UMD.v.SN6Bit.Header;
+                    NR_RLC_UMD_Data_Type *data = &rlcPdu->v.UMD.v.SN6Bit.Data;
+                    int pdu_header_size = 1;
+                    bits_copy_from_array((char *)SS_DRB_PDU_REQ(message_p).sdu, 0, (const char *)header->SegmentationInfo, 2);
+                    bits_copy_from_array((char *)SS_DRB_PDU_REQ(message_p).sdu, 2, (const char *)header->SequenceNumber, 6);
+                    if (header->SegmentOffset.d)
                     {
-                        struct NR_RLC_UMD_HeaderNoSN_Type *header = &rlcPdu->v.UMD.v.NoSN.Header;
-                        NR_RLC_UMD_Data_Type *data = &rlcPdu->v.UMD.v.NoSN.Data;
-                        int pdu_header_size = 1;
-                        bits_copy_from_array((char *)SS_DRB_PDU_REQ(message_p).sdu, 0, (const char *)header->SegmentationInfo, 2);
-                        bits_copy_from_array((char *)SS_DRB_PDU_REQ(message_p).sdu, 2, (const char *)header->Reserved, 6);
-                        SS_DRB_PDU_REQ(message_p).sdu_size = pdu_header_size + data->d;
-                        LOG_A(GNB_APP, "[SS_DRB] Length of RLC PDU received in NR_DRB_COMMON_REQ: %lu\n", pdu_header_size + data->d);
-                        memcpy(SS_DRB_PDU_REQ(message_p).sdu + pdu_header_size, data->v, data->d);
+                        pdu_header_size += 2;
+                        bits_copy_from_array((char *)SS_DRB_PDU_REQ(message_p).sdu, 8, (const char *)header->SegmentOffset.v, 16);
+                        //we consider only RLC payload is there meaning that RLC packet is segmented
+                        RC.nr_drb_data_type = DRB_RlcSdu;
                     }
-                    else if (rlcPdu->d == NR_RLC_PDU_Type_UMD && rlcPdu->v.UMD.d == NR_RLC_UMD_PDU_Type_SN6Bit)
-                    {
-                        struct NR_RLC_UMD_HeaderSN6Bit_Type *header = &rlcPdu->v.UMD.v.SN6Bit.Header;
-                        NR_RLC_UMD_Data_Type *data = &rlcPdu->v.UMD.v.SN6Bit.Data;
-                        int pdu_header_size = 1;
-                        bits_copy_from_array((char *)SS_DRB_PDU_REQ(message_p).sdu, 0, (const char *)header->SegmentationInfo, 2);
-                        bits_copy_from_array((char *)SS_DRB_PDU_REQ(message_p).sdu, 2, (const char *)header->SequenceNumber, 6);
-                        if (header->SegmentOffset.d)
-                        {
-                            pdu_header_size += 2;
-                            bits_copy_from_array((char *)SS_DRB_PDU_REQ(message_p).sdu, 8, (const char *)header->SegmentOffset.v, 16);
-                        }
-                        SS_DRB_PDU_REQ(message_p).sdu_size = pdu_header_size + data->d;
-                        LOG_A(GNB_APP, "[SS_DRB] Length of RLC PDU received in NR_DRB_COMMON_REQ: %lu\n", pdu_header_size + data->d);
-                        memcpy(SS_DRB_PDU_REQ(message_p).sdu + pdu_header_size, data->v, data->d);
-                    }
-                    else
-                    {
-                        LOG_E(GNB_APP, "[SS_DRB] only UMD NoSN/SN6Bit are handled in RLC PDU in NR_DRB_COMMON_REQ\n");
-                    }
+                    SS_DRB_PDU_REQ(message_p).sdu_size = pdu_header_size + data->d;
+                    LOG_A(GNB_APP, "[SS_DRB] Length of RLC PDU received in NR_DRB_COMMON_REQ (SN6Bit): %lu\n", pdu_header_size + data->d);
+                    memcpy(SS_DRB_PDU_REQ(message_p).sdu + pdu_header_size, data->v, data->d);
+                }
+                else
+                {
+                    LOG_E(GNB_APP, "[SS_DRB] only UMD NoSN/SN6Bit are handled in RLC PDU in NR_DRB_COMMON_REQ\n");
                 }
             }
         }
+        else if (req->U_Plane.SlotDataList.v[i].PduSduList.d == NR_L2DataList_Type_PdcpSdu)
+        {
+            LOG_A(GNB_APP, "[SS_DRB] PDCP SDU Received in NR_DRB_COMMON_REQ\n");
+            _drb_data_type = DRB_PdcpSdu;
+            RC.nr_drb_data_type = DRB_PdcpSdu;
 
+            task_id = TASK_PDCP_ENB;
+            message_p = itti_alloc_new_message(task_id, 0, SS_DRB_PDU_REQ);
+            assert(message_p);
+
+            memset(SS_DRB_PDU_REQ(message_p).sdu, 0, SDU_SIZE);
+            for (int j = 0; j < req->U_Plane.SlotDataList.v[i].PduSduList.v.PdcpSdu.d; j++)
+            {
+                NR_PDCP_SDU_Type *pdcpSdu = &req->U_Plane.SlotDataList.v[i].PduSduList.v.PdcpSdu.v[j];
+                SS_DRB_PDU_REQ(message_p).sdu_size = pdcpSdu->d;
+                memcpy(SS_DRB_PDU_REQ(message_p).sdu, pdcpSdu->v, pdcpSdu->d);
+                LOG_A(GNB_APP, "[SS_DRB] Length of PDCP SDU received in NR_DRB_COMMON_REQ: %lu, SDU:\n", pdcpSdu->d);
+            }
+        }
+        else
+        {
+            LOG_E(GNB_APP, "[SS_DRB] NR_DRB_COMMON_REQ requested NR_L2DataList_Type %d that is not yet implemented\n", req->U_Plane.SlotDataList.v[i].PduSduList.d);
+        }
     }
+
+    SS_DRB_PDU_REQ(message_p).drb_id = req->Common.RoutingInfo.v.RadioBearerId.v.Drb;
     SS_DRB_PDU_REQ(message_p).rnti = SS_context.ss_rnti_g;
 
-    int send_res = itti_send_msg_to_task(TASK_RLC_ENB, instance_g, message_p);
+    int send_res = itti_send_msg_to_task(task_id, instance_g, message_p);
     if (send_res < 0)
     {
         LOG_E(GNB_APP, "[SS_DRB] Error in itti_send_msg_to_task\n");

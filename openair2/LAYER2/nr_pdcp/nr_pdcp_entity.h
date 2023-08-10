@@ -36,7 +36,7 @@ typedef enum {
 } nr_pdcp_entity_type_t;
 
 /**
- * 3GPP TS 33.501
+ * 3GPP TS 33.501 6.7.4
  * RRC downlink ciphering (encryption) at the gNB shall start after sending the AS security mode command message.
  * RRC uplink deciphering (decryption) at the gNB shall start after receiving and successful verification of the AS security mode complete message.
  *
