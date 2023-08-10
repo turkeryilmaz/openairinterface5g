@@ -926,40 +926,38 @@ class OaiCiTest():
 		if (os.path.getsize(server_filename)==0):
 			self.ping_iperf_wrong_exit(lock, UE_IPAddress, device_id, statusQueue, 'Server Log File are empty')
 			return
-
-		result = re.search('(?P<bitrate>[0-9\.]+ [KMG]bits\/sec) +(?:|[0-9\.]+ ms +\d+\/\d+ \((?P<packetloss>[0-9\.]+)%\)) +(?:|receiver)\r\n(?:|\[ *\d+\] Sent \d+ datagrams)\r\niperf Done\.', server_filename)
-		if result is None:
-			result = re.search('(?P<error>iperf: error - [a-zA-Z0-9 :]+)', server_filename)
-			lock.acquire()
-			statusQueue.put(-1)
-			statusQueue.put(device_id)
-			statusQueue.put(UE_IPAddress)
-			if result is not None:
-				logging.debug('\u001B[1;37;41m ' + result.group('error') + ' \u001B[0m')
-				statusQueue.put(result.group('error'))
+		with open (server_filename, 'r') as file:
+			content = file.read()
+			result = re.search(r"(?P<bitrate>[0-9\.]+ [KMG]bits/sec)\s+(?P<jitter>[0-9\.]+ ms)\s+(?P<Lost>[0-9]+)\/\s*(?P<Total>[0-9]+)\s+\((\d+)%\)\s+receiver", content)
+			if result:
+				bitrate = result.group('bitrate')
+				jitter = result.group('jitter')
+				packetloss = result.group('Lost')
+				total = result.group('Total')
+				lock.acquire()
+				logging.debug('\u001B[1;37;44m iperf result (' + UE_IPAddress + ') \u001B[0m')
+				logging.debug('\u001B[1;34m    Bitrate     : ' + bitrate + '\u001B[0m')
+				logging.debug('\u001B[1;34m    Jitter     : ' + jitter + '\u001B[0m')
+				logging.debug('\u001B[1;34m    PacketLoss     : ' + packetloss + '\u001B[0m')
+				logging.debug('\u001B[1;34m    Total Datagrams     : ' + total + '\u001B[0m')
+				msg = 'Bitrate     : ' + bitrate + '\n'
+				msg = 'Jitter     : ' + jitter + '\n'
+				msg = 'PacketLoss     : ' + packetloss + '\n'
+				msg = 'Total Datagrams     : ' + total + '\n'
+				iperfStatus = True
+				if packetloss is not None:
+					logging.debug('\u001B[1;34m    Packet Loss : ' + packetloss + '%\u001B[0m')
+					msg += 'Packet Loss : ' + packetloss + '%\n'
+				if float(packetloss) > float(self.iperf_packetloss_threshold):
+					logging.debug('\u001B[1;37;41m Packet Loss too high \u001B[0m')
+					msg += 'Packet Loss too high!\n'
+					iperfStatus = False
+				if (iperfStatus):
+					statusQueue.put(0)
+				else:
+					statusQueue.put(-1)
 			else:
-				logging.debug('\u001B[1;37;41m Bitrate and/or Packet Loss Not Found! \u001B[0m')
-				statusQueue.put('Bitrate and/or Packet Loss Not Found!')
-			lock.release()
-
-		bitrate = result.group('bitrate')
-		packetloss = result.group('packetloss')
-		lock.acquire()
-		logging.debug('\u001B[1;37;44m iperf result (' + UE_IPAddress + ') \u001B[0m')
-		logging.debug('\u001B[1;34m    Bitrate     : ' + bitrate + '\u001B[0m')
-		msg = 'Bitrate     : ' + bitrate + '\n'
-		iperfStatus = True
-		if packetloss is not None:
-			logging.debug('\u001B[1;34m    Packet Loss : ' + packetloss + '%\u001B[0m')
-			msg += 'Packet Loss : ' + packetloss + '%\n'
-			if float(packetloss) > float(self.iperf_packetloss_threshold):
-				logging.debug('\u001B[1;37;41m Packet Loss too high \u001B[0m')
-				msg += 'Packet Loss too high!\n'
-				iperfStatus = False
-		if (iperfStatus):
-			statusQueue.put(0)
-		else:
-			statusQueue.put(-1)
+				print("Pattern not found!!!!!!!!!")
 		statusQueue.put(device_id)
 		statusQueue.put(UE_IPAddress)
 		statusQueue.put(msg)
@@ -990,7 +988,7 @@ class OaiCiTest():
 			iperf_opt = self.Iperf_ComputeModifiedBW(idx, ue_num)
 			logging.info(f'iperf options modified from "{self.iperf_args}" to "{iperf_opt}" for {ue.getName()}')
 		iperf_time = int(self.Iperf_ComputeTime())
-		port = f'-p {5001+idx}'
+		port = f'-p {7001+idx}'
 		# hack: the ADB UEs don't have iperf in $PATH, so we need to hardcode for the moment
 		iperf_ue = '/data/local/tmp/iperf' if re.search('adb', ue.getName()) else 'iperf3'
 
@@ -1009,10 +1007,12 @@ class OaiCiTest():
 
 			cmd = cls_cmd.getConnection(ue.getHost())
 			cmd.copyin(f'/tmp/{server_filename}', server_filename)
+			tKill = 'ps aux | grep "iperf3" | awk \'{print $2}\' | xargs sudo kill -9'
+			cmd.run(tKill)
 			cmd.close()
 
 			if udpIperf:
-				self.Iperf_analyzeV3Output(lock, ue.getIP(), ue.getName(), statusQueue, iperf_opt, server_filename)
+				self.Iperf_analyzeV3Output(lock, ue.getIP(), ue.getName(), statusQueue, server_filename)
 			else:
 				cmd = cls_cmd.getConnection(EPC.IPAddress)
 				self.Iperf_analyzeV2TCPOutput(lock, ue.getIP(), ue.getName(), statusQueue, iperf_opt, EPC, cmd, f"{EPC.SourceCodePath}/{client_filename}")
@@ -1033,10 +1033,12 @@ class OaiCiTest():
 
 			cmd = cls_cmd.getConnection(EPC.IPAddress)
 			cmd.copyin(f'{EPC.SourceCodePath}/{server_filename}', server_filename)
+			tKill = 'ps aux | grep "iperf3" | awk \'{print $2}\' | xargs sudo kill -9'
+			cmd.run(tKill)
 			cmd.close()
 
 			if udpIperf:
-				self.Iperf_analyzeV3Output(lock, ue.getIP(), ue.getName(), statusQueue, iperf_opt, server_filename)
+				self.Iperf_analyzeV3Output(lock, ue.getIP(), ue.getName(), statusQueue, server_filename)
 			else:
 				cmd = cls_cmd.getConnection(ue.getHost())
 				self.Iperf_analyzeV2TCPOutput(lock, ue.getIP(), ue.getName(), statusQueue, iperf_opt, EPC, cmd, f"/tmp/{client_filename}")
@@ -1067,6 +1069,8 @@ class OaiCiTest():
 			port = f'{5002+idx}'
 			cmd.run(f'{ue.getCmdPrefix()} iperf3 -c {cn_target_ip} -p {port} {iperf_opt} --get-server-output &> /tmp/{server_filename}', timeout=iperf_time*1.5)
 			cmd.copyin(f'/tmp/{server_filename}', server_filename)
+			tKill = 'ps aux | grep "iperf3" | awk \'{print $2}\' | xargs sudo kill -9'
+			cmd.run(tKill)
 			cmd.close()
 			if udpIperf:
 				self.Iperf_analyzeV2Server(lock, ue.getIP(), ue.getName(), statusQueue, iperf_opt, server_filename, 1)
