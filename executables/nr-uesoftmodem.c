@@ -427,6 +427,9 @@ static void get_channel_model_mode() {
 
 int NB_UE_INST = 1;
 
+// A global var to reduce the changes size
+ldpc_interface_t ldpc_interface = {0}, ldpc_interface_offload = {0};
+
 int main( int argc, char **argv ) {
   int set_exe_prio = 1;
   if (checkIfFedoraDistribution())
@@ -466,8 +469,8 @@ int main( int argc, char **argv ) {
   itti_init(TASK_MAX, tasks_info);
 
   init_opt() ;
-  load_nrLDPClib(NULL);
- 
+  load_LDPClib(NULL, &ldpc_interface);
+
   if (ouput_vcd) {
     vcd_signal_dumper_init("/tmp/openair_dump_nrUE.vcd");
   }

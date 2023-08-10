@@ -286,7 +286,7 @@ uint32_t nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
   uint32_t ret,offset;
   uint32_t r,r_offset=0,Kr=8424,Kr_bytes;
   t_nrLDPC_dec_params decParams;
-  t_nrLDPC_dec_params *p_decParams = &decParams;
+  decParams.check_crc = check_crc;
 
   if (!harq_process) {
     LOG_E(PHY,"dlsch_decoding.c: NULL harq_process pointer\n");
@@ -387,11 +387,9 @@ uint32_t nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
   }
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_DLSCH_SEGMENTATION, VCD_FUNCTION_OUT);
-  p_decParams->Z = harq_process->Z;
-  //printf("dlsch decoding nr segmentation Z %d\n", p_decParams->Z);
-  //printf("coderate %f kc %d \n", Coderate, kc);
-  p_decParams->numMaxIter = dlsch->max_ldpc_iterations;
-  p_decParams->outMode= 0;
+  decParams.Z = harq_process->Z;
+  decParams.numMaxIter = dlsch->max_ldpc_iterations;
+  decParams.outMode = 0;
   r_offset = 0;
   uint16_t a_segments = MAX_NUM_NR_DLSCH_SEGMENTS_PER_LAYER*dlsch->Nl;  //number of segments to be allocated
 
@@ -408,7 +406,7 @@ uint32_t nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
   if (LOG_DEBUGFLAG(DEBUG_DLSCH_DECOD))
     LOG_I(PHY,"Segmentation: C %d, K %d\n",harq_process->C,harq_process->K);
 
-  Kr = harq_process->K; // [hna] overwrites this line "Kr = p_decParams->Z*kb"
+  Kr = harq_process->K;
   Kr_bytes = Kr>>3;
   offset = 0;
   notifiedFIFO_t nf;

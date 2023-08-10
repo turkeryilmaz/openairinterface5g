@@ -486,17 +486,18 @@ target_link_libraries(shlib_loader PRIVATE CONFIG_LIB)
 # LDPC offload library
 ##########################################################
 
-add_boolean_option(ENABLE_LDPC_T1 OFF "Build support for LDPC Offload to T1 library" OFF)
-if (ENABLE_LDPC_T1)
-  pkg_check_modules(LIBDPDK_T1 REQUIRED libdpdk=20.05.0)
-  find_library(T1 NAMES rte_pmd_hpac_sdfec_pmd REQUIRED)
-  if (NOT T1)
-    message(FATAL_ERROR "Library rte_pmd_hpac_sdfec_pmd for T1 offload not found")
-  endif()
-  add_library(ldpc_t1 MODULE ${OPENAIR1_DIR}/PHY/CODING/nrLDPC_decoder/nrLDPC_decoder_offload.c)
-  set_target_properties(ldpc_t1 PROPERTIES COMPILE_FLAGS "-DALLOW_EXPERIMENTAL_API")
-  target_compile_options(ldpc_t1 PRIVATE ${LIBDPDK_T1_CFLAGS})
-  target_link_libraries(ldpc_t1 ${LIBDPDK_T1_LDFLAGS} ${T1})
+add_boolean_option(ENABLE_LDPC_OFFLOAD OFF "Build support for LDPC Offload to T1 library" OFF)
+set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/home/eurecom/dpdk2011/libs/pkgconfig")
+if (ENABLE_LDPC_OFFLOAD)
+  pkg_check_modules(LIBDPDK_OFFLOAD REQUIRED libdpdk=20.11.3)
+  find_library(PMD NAMES rte_baseband_accl_ldpc HINTS "/home/eurecom/dpdk2011/libs")
+  add_library(ldpc_offload MODULE ${OPENAIR1_DIR}/PHY/CODING/nrLDPC_decoder/nrLDPC_decoder_offload.c)
+  set_target_properties(ldpc_offload PROPERTIES COMPILE_FLAGS "-DALLOW_EXPERIMENTAL_API")
+  target_link_libraries(ldpc_offload ${LIBDPDK_OFFLOAD_LDFLAGS} ${OFFLOAD})
+  #target_link_libraries(ldpc_offload /home/eurecom/jaroslava/T2_new/dpdk-stable/build/lib/librte_eal.so /home/eurecom/jaroslava/T2_new/dpdk-stable/build/lib/librte_mempool.so /home/eurecom/jaroslava/T2_new/dpdk-stable/build/lib/librte_bbdev.so /home/eurecom/jaroslava/T2_new/dpdk-stable/build/lib/librte_pdump.so)
+
+  #target_compile_options(ldpc_offload PRIVATE ${LIBDPDK_OFFLOAD_CFLAGS})
+  #target_link_libraries(ldpc_offload ${LIBDPDK_OFFLOAD_LDFLAGS} ${OFFLOAD})
 endif()
 
 ##########################################################
@@ -808,19 +809,30 @@ set(PHY_LDPC_ORIG_SRC
   ${OPENAIR1_DIR}/PHY/CODING/nrLDPC_decoder/nrLDPC_decoder.c
   ${OPENAIR1_DIR}/PHY/CODING/nrLDPC_encoder/ldpc_encoder.c
 )
+add_library(ldpc_orig MODULE ${PHY_LDPC_ORIG_SRC} )
+target_link_libraries(ldpc_orig PRIVATE ldpc_gen_HEADERS)
 
 set(PHY_LDPC_OPTIM_SRC
   ${OPENAIR1_DIR}/PHY/CODING/nrLDPC_decoder/nrLDPC_decoder.c
   ${OPENAIR1_DIR}/PHY/CODING/nrLDPC_encoder/ldpc_encoder_optim.c
-)
+  )
+add_library(ldpc_optim MODULE ${PHY_LDPC_OPTIM_SRC} )
+target_link_libraries(ldpc_optim PRIVATE ldpc_gen_HEADERS)
+
 set(PHY_LDPC_OPTIM8SEG_SRC
   ${OPENAIR1_DIR}/PHY/CODING/nrLDPC_decoder/nrLDPC_decoder.c
   ${OPENAIR1_DIR}/PHY/CODING/nrLDPC_encoder/ldpc_encoder_optim8seg.c
 )
+add_library(ldpc_optim8seg MODULE ${PHY_LDPC_OPTIM8SEG_SRC} )
+target_link_libraries(ldpc_optim8seg PRIVATE ldpc_gen_HEADERS)
+
 set(PHY_LDPC_OPTIM8SEGMULTI_SRC
   ${OPENAIR1_DIR}/PHY/CODING/nrLDPC_decoder/nrLDPC_decoder.c
   ${OPENAIR1_DIR}/PHY/CODING/nrLDPC_encoder/ldpc_encoder_optim8segmulti.c
-)
+  )
+add_library(ldpc MODULE ${PHY_LDPC_OPTIM8SEGMULTI_SRC} )
+target_link_libraries(ldpc PRIVATE ldpc_gen_HEADERS)
+
 set(PHY_LDPC_CUDA_SRC
   ${OPENAIR1_DIR}/PHY/CODING/nrLDPC_decoder_LYC/nrLDPC_decoder_LYC.cu
   ${OPENAIR1_DIR}/PHY/CODING/nrLDPC_encoder/ldpc_encoder_optim8segmulti.c
@@ -834,21 +846,13 @@ add_custom_target( nrLDPC_decoder_kernels_CL
                    COMMAND gcc ${OPENAIR1_DIR}/PHY/CODING/nrLDPC_decoder/nrLDPC_decoder_CL.c -dD -DNRLDPC_KERNEL_SOURCE -E -o ${CMAKE_CURRENT_BINARY_DIR}/nrLDPC_decoder_kernels_CL.clc
                    SOURCES ${OPENAIR1_DIR}/PHY/CODING/nrLDPC_decoder/nrLDPC_decoder_CL.c
 )
-
-set(PHY_NR_CODINGIF
-  ${OPENAIR1_DIR}/PHY/CODING/nrLDPC_load.c;
-)
-
-add_library(ldpc_orig MODULE ${PHY_LDPC_ORIG_SRC} )
-target_link_libraries(ldpc_orig PRIVATE ldpc_gen_HEADERS)
-add_library(ldpc_optim MODULE ${PHY_LDPC_OPTIM_SRC} )
-target_link_libraries(ldpc_optim PRIVATE ldpc_gen_HEADERS)
-add_library(ldpc_optim8seg MODULE ${PHY_LDPC_OPTIM8SEG_SRC} )
-target_link_libraries(ldpc_optim8seg PRIVATE ldpc_gen_HEADERS)
 add_library(ldpc_cl MODULE ${PHY_LDPC_CL_SRC} )
 target_link_libraries(ldpc_cl OpenCL)
 add_dependencies(ldpc_cl nrLDPC_decoder_kernels_CL)
 
+set(PHY_NR_CODINGIF
+  ${OPENAIR1_DIR}/PHY/CODING/nrLDPC_load.c
+)
 
 ##############################################
 # Base CUDA setting
@@ -865,13 +869,6 @@ if (ENABLE_LDPC_CUDA)
     message(FATAL_ERROR "no CUDA found")
   endif()
 endif()
-
-add_library(ldpc MODULE ${PHY_LDPC_OPTIM8SEGMULTI_SRC} )
-target_link_libraries(ldpc PRIVATE ldpc_gen_HEADERS)
-
-add_library(ldpc_parityCheck MODULE ${PHY_LDPC_OPTIM8SEGMULTI_SRC} )
-target_compile_definitions(ldpc_parityCheck PUBLIC NR_LDPC_ENABLE_PARITY_CHECK)
-target_link_libraries(ldpc_parityCheck  PRIVATE ldpc_gen_HEADERS)
 
 add_library(coding MODULE ${PHY_TURBOSRC} )
 
@@ -2081,8 +2078,8 @@ endif()
 
 add_dependencies(nr-softmodem ldpc_orig ldpc_optim ldpc_optim8seg ldpc)
 
-if (ENABLE_LDPC_T1)
-  add_dependencies(nr-softmodem ldpc_t1)
+if (ENABLE_LDPC_OFFLOAD)
+  add_dependencies(nr-softmodem ldpc_offload)
 endif()
 
 # force the generation of ASN.1 so that we don't need to wait during the build
@@ -2203,12 +2200,12 @@ add_executable(ldpctest
    ${OPENAIR1_DIR}/PHY/CODING/TESTBENCH/ldpctest.c
    )
 
-add_dependencies( ldpctest ldpc_orig ldpc_optim ldpc_optim8seg ldpc ldpc_parityCheck)
+add_dependencies(ldpctest ldpc_orig ldpc_optim ldpc_optim8seg ldpc)
 if (ENABLE_LDPC_CUDA)
   add_dependencies(ldpctest ldpc_cuda)
 endif()
 target_link_libraries(ldpctest PRIVATE
-  -Wl,--start-group UTIL SIMU PHY_NR PHY_COMMON PHY_NR_COMMON -Wl,--end-group
+  -Wl,--start-group UTIL SIMU PHY_COMMON PHY_NR_COMMON -Wl,--end-group
   m pthread dl shlib_loader ${T_LIB}
   )
 
@@ -2298,8 +2295,8 @@ add_executable(nr_ulsim
   ${PHY_INTERFACE_DIR}/queue_t.c
   )
 
-if (ENABLE_LDPC_T1)
-  add_dependencies(nr_ulsim ldpc_t1)
+if (ENABLE_LDPC_OFFLOAD)
+  add_dependencies(nr_ulsim ldpc_offload)
 endif()
 
 target_link_libraries(nr_ulsim PRIVATE

@@ -800,14 +800,12 @@ int main(int argc, char *argv[])
   printf("[ULSIM]: CDM groups: %u, dmrs_config_type: %d, num_rbs: %u, nb_symb_sch: %u\n", num_dmrs_cdm_grps_no_data, dmrs_config_type, nb_rb, nb_symb_sch);
   printf("[ULSIM]: MCS: %d, mod order: %u, code_rate: %u\n", Imcs, mod_order, code_rate);
   printf("[ULSIM]: VALUE OF G: %u, TBS: %u\n", available_bits, TBS);
-  
 
-  
   uint8_t ulsch_input_buffer[TBS/8];
 
   ulsch_input_buffer[0] = 0x31;
   for (i = 1; i < TBS/8; i++) {
-    ulsch_input_buffer[i] = (unsigned char) uniformrandom();
+    ulsch_input_buffer[i] = (uint8_t)rand();
   }
 
   uint8_t ptrs_time_density = get_L_ptrs(ptrs_mcs1, ptrs_mcs2, ptrs_mcs3, Imcs, mcs_table);
@@ -1624,7 +1622,7 @@ int main(int argc, char *argv[])
 
   free_MIB_NR(mib);
   if (gNB->ldpc_offload_flag)
-    free_nrLDPClib_offload();
+    free_LDPClib(&ldpc_interface_offload);
 
   if (output_fd)
     fclose(output_fd);

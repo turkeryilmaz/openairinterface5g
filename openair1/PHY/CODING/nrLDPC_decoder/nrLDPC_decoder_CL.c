@@ -47,8 +47,7 @@ typedef struct{
 #include <unistd.h>
 #include <sys/stat.h>
 #include <CL/opencl.h>
-#include "PHY/CODING/nrLDPC_decoder/nrLDPC_types.h"
-#include "PHY/CODING/nrLDPC_decoder/nrLDPCdecoder_defs.h"
+#include "openair1/PHY/CODING/nrLDPC_extern.h"
 #include "assertions.h"
 #include "common/utils/LOG/log.h"
 
@@ -328,18 +327,23 @@ int ldpc_autoinit(void) {   // called by the library loader
   return 0;  
 }
 
-
-void nrLDPC_initcall(t_nrLDPC_dec_params* p_decParams, int8_t* p_llr, int8_t* p_out) {
-	set_compact_BG(p_decParams->Z,p_decParams->BG);
-//	init_LLR_DMA(p_decParams, p_llr,  p_out);
+int32_t LDPCshutdown()
+{
+  return 0;
 }
 
-int32_t nrLDPC_decod(t_nrLDPC_dec_params *p_decParams,
-                     int8_t *p_llr,
-                     int8_t *p_out,
-                     t_nrLDPC_procBuf *p_procBuf,
-                     t_nrLDPC_time_stats *time_decoder,
-                     decode_abort_t *ab)
+int32_t LDPCinit()
+{
+  //	init_LLR_DMA(p_decParams, p_llr,  p_out);
+  return 0;
+}
+
+int32_t LDPCdecoder(t_nrLDPC_dec_params *p_decParams,
+                    int8_t *p_llr,
+                    int8_t *p_out,
+                    t_nrLDPC_procBuf *p_procBuf,
+                    t_nrLDPC_time_stats *time_decoder,
+                    decode_abort_t *ab)
 {
     uint16_t Zc          = p_decParams->Z;
     uint8_t  BG         = p_decParams->BG;
@@ -362,9 +366,11 @@ int32_t nrLDPC_decod(t_nrLDPC_dec_params *p_decParams,
 	int memorySize_llr = col * Zc * sizeof(char) * MC;
 //	cudaCheck( cudaMemcpyToSymbol(dev_const_llr, p_llr, memorySize_llr_cuda) );
 //	cudaCheck( cudaMemcpyToSymbol(dev_llr, p_llr, memorySize_llr_cuda) );
-    int rt = clEnqueueWriteBuffer(ocl.runtime[0].queue[0], ocl.runtime[0].dev_const_llr, CL_TRUE, 0,
-                               memorySize_llr, p_llr, 0, NULL, NULL);
-	AssertFatal(rt == CL_SUCCESS, "Error %d moving p_llr data to  read only memory in pltf %i dev %i\n" , (int)rt, 0,0); 
+  set_compact_BG(p_decParams->Z, p_decParams->BG);
+
+  int rt =
+      clEnqueueWriteBuffer(ocl.runtime[0].queue[0], ocl.runtime[0].dev_const_llr, CL_TRUE, 0, memorySize_llr, p_llr, 0, NULL, NULL);
+  AssertFatal(rt == CL_SUCCESS, "Error %d moving p_llr data to  read only memory in pltf %i dev %i\n" , (int)rt, 0,0); 
     rt = clEnqueueWriteBuffer(ocl.runtime[0].queue[0], ocl.runtime[0].dev_llr, CL_TRUE, 0,
                                memorySize_llr, p_llr, 0, NULL, NULL);
 	AssertFatal(rt == CL_SUCCESS, "Error %d moving p_llr data to  read-write memory in pltf %i dev %i\n" , (int)rt, 0,0); 	

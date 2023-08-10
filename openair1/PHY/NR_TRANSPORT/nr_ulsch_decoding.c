@@ -215,7 +215,10 @@ static void nr_processULSegment(void *arg)
   //////////////////////////////////////////////////////////////////////////////////////////
 
   ////////////////////////////////// pl =====> llrProcBuf //////////////////////////////////
-  rdata->decodeIterations = nrLDPC_decoder(p_decoderParms, l, llrProcBuf, p_procTime, &ulsch_harq->abort_decode);
+  p_decoderParms->E = length_dec;
+  p_decoderParms->crc_type = crc_type;
+  rdata->decodeIterations =
+      ldpc_interface.LDPCdecoder(p_decoderParms, l, llrProcBuf, p_procTime, &ulsch_harq->abort_decode);
 
   if (rdata->decodeIterations <= p_decoderParms->numMaxIter)
     memcpy(ulsch_harq->c[r],llrProcBuf,  Kr>>3);
