@@ -268,6 +268,8 @@ static void ss_task_handle_drb_pdu_req(struct NR_DRB_COMMON_REQ *req)
                     {
                         pdu_header_size += 2;
                         bits_copy_from_array((char *)SS_DRB_PDU_REQ(message_p).sdu, 8, (const char *)header->SegmentOffset.v, 16);
+                        //we consider only RLC payload is there meaning that RLC packet is segmented
+                        RC.nr_drb_data_type = DRB_RlcSdu;
                     }
                     SS_DRB_PDU_REQ(message_p).sdu_size = pdu_header_size + data->d;
                     LOG_A(GNB_APP, "[SS_DRB] Length of RLC PDU received in NR_DRB_COMMON_REQ (SN6Bit): %lu\n", pdu_header_size + data->d);
