@@ -161,7 +161,8 @@ void mac_rlc_data_ind     (
   LOG_UDUMPMSG(RLC, buffer_pP, tb_sizeP, LOG_DUMP_CHAR, "%s: ", __FUNCTION__);
 
   if (RC.ss.mode >= SS_SOFTMODEM) {
-    if ((tb_sizeP != 0) && (true == enb_flagP) && (channel_idP >= 4) && (RC.nr_drb_data_type == DRB_RlcPdu)) {
+    LOG_D(RLC, "Packet received over RLC layer, DRB data type == %d\n", RC.nr_drb_data_type);
+    if ((tb_sizeP != 0) && (true == enb_flagP) && (channel_idP >= 4) && ((RC.nr_drb_data_type == DRB_RlcPdu) || (RC.nr_drb_data_type == DRB_RlcSdu))) {
       int drb_id = channel_idP - 3;
       int result;
       LOG_A(RLC, "Sending packet to SS, Calling SS_DRB_PDU_IND ue %x drb id %d size %u\n", rntiP, drb_id, tb_sizeP);
@@ -181,7 +182,10 @@ void mac_rlc_data_ind     (
         }
       }
 
-      RC.nr_drb_data_type = DRB_data_type_qty;
+      //if RLC packet is segmented, we shall not "reset" RLC packet in progress
+      if (RC.nr_drb_data_type == DRB_RlcPdu) {
+          RC.nr_drb_data_type = DRB_data_type_qty;
+      }
       return;
     }
   }
