@@ -612,7 +612,11 @@ void nr_rlc_add_srb(int rnti, int srb_id, const NR_RLC_BearerConfig_t *rlc_Beare
   case NR_RLC_Config_PR_am: {
     struct NR_RLC_Config__am *am;
     am = r->choice.am;
-    t_reassembly       = decode_t_reassembly(am->dl_AM_RLC.t_Reassembly);
+    //t_reassembly       = decode_t_reassembly(am->dl_AM_RLC.t_Reassembly);
+    //t_reassembly       = decode_t_reassembly(am->dl_AM_RLC.t_Reassembly)  + get_softmodem_params()->ntn_trs_offset ;
+    //t_reassembly       = decode_t_reassembly(get_softmodem_params()->ntn_trs)   + get_softmodem_params()->ntn_trs_offset;
+    t_reassembly       =  get_softmodem_params()->ntn_trs + get_softmodem_params()->ntn_trs_offset;
+    //LOG_I(RLC,"Inside %s in %s and t_reassembly is %d\n",__FUNCTION__, __FILE__,t_reassembly);
     t_status_prohibit  = decode_t_status_prohibit(am->dl_AM_RLC.t_StatusProhibit);
     t_poll_retransmit  = decode_t_poll_retransmit(am->ul_AM_RLC.t_PollRetransmit);
     poll_pdu           = decode_poll_pdu(am->ul_AM_RLC.pollPDU);
@@ -644,7 +648,9 @@ void nr_rlc_add_srb(int rnti, int srb_id, const NR_RLC_BearerConfig_t *rlc_Beare
   } else {
     /* hack: hardcode values for NR */
     t_poll_retransmit = 4000;
-    t_reassembly = 35;
+    //t_reassembly = 35;
+    t_reassembly      =  get_softmodem_params()->ntn_trs + get_softmodem_params()->ntn_trs_offset;
+    //LOG_I(RLC,"Inside %s in %s and t_reassembly is %d\n",__FUNCTION__, __FILE__,t_reassembly);
     t_status_prohibit = 0;
     poll_pdu = -1;
     poll_byte = -1;
@@ -695,7 +701,10 @@ static void add_drb_am(int rnti, int drb_id, const NR_RLC_BearerConfig_t *rlc_Be
   case NR_RLC_Config_PR_am: {
     struct NR_RLC_Config__am *am;
     am = r->choice.am;
-    t_reassembly       = decode_t_reassembly(am->dl_AM_RLC.t_Reassembly);
+    //t_reassembly       = decode_t_reassembly(am->dl_AM_RLC.t_Reassembly);
+    //t_reassembly       = decode_t_reassembly(am->dl_AM_RLC.t_Reassembly) + get_softmodem_params()->ntn_trs_offset;
+    t_reassembly       = decode_t_reassembly(get_softmodem_params()->ntn_trs)   + get_softmodem_params()->ntn_trs_offset;
+    //LOG_I(RLC,"Inside %s in %s and t_reassembly is %d\n",__FUNCTION__, __FILE__,t_reassembly);
     t_status_prohibit  = decode_t_status_prohibit(am->dl_AM_RLC.t_StatusProhibit);
     t_poll_retransmit  = decode_t_poll_retransmit(am->ul_AM_RLC.t_PollRetransmit);
     poll_pdu           = decode_poll_pdu(am->ul_AM_RLC.pollPDU);
@@ -725,15 +734,16 @@ static void add_drb_am(int rnti, int drb_id, const NR_RLC_BearerConfig_t *rlc_Be
   if (ue->drb[drb_id-1] != NULL) {
     LOG_E(RLC, "%s:%d:%s: DRB %d already exists for UE with RNTI %04x, do nothing\n", __FILE__, __LINE__, __FUNCTION__, drb_id, rnti);
   } else {
-    nr_rlc_entity_t *nr_rlc_am = new_nr_rlc_entity_am(RLC_RX_MAXSIZE,
-                                                      RLC_TX_MAXSIZE,
-                                                      deliver_sdu, ue,
-                                                      successful_delivery, ue,
-                                                      max_retx_reached, ue,
-                                                      t_poll_retransmit,
-                                                      t_reassembly, t_status_prohibit,
-                                                      poll_pdu, poll_byte, max_retx_threshold,
-                                                      sn_field_length);
+    t_reassembly      =  get_softmodem_params()->ntn_trs + get_softmodem_params()->ntn_trs_offset;
+    nr_rlc_am = new_nr_rlc_entity_am(RLC_RX_MAXSIZE,
+                                     RLC_TX_MAXSIZE,
+                                     deliver_sdu, ue,
+                                     successful_delivery, ue,
+                                     max_retx_reached, ue,
+                                     t_poll_retransmit,
+                                     t_reassembly, t_status_prohibit,
+                                     poll_pdu, poll_byte, max_retx_threshold,
+                                     sn_field_length);
     nr_rlc_ue_add_drb_rlc_entity(ue, drb_id, nr_rlc_am);
 
     LOG_I(RLC, "%s:%d:%s: added drb %d to UE with RNTI 0x%x\n", __FILE__, __LINE__, __FUNCTION__, drb_id, rnti);
@@ -768,9 +778,10 @@ static void add_drb_um(int rnti, int drb_id, const NR_RLC_BearerConfig_t *rlc_Be
     um = r->choice.um_Bi_Directional;
     // FOLLOWING TO BE USED WHEN HARQ IS DISABLED
     {
-      t_reassembly = decode_t_reassembly(um->dl_UM_RLC.t_Reassembly); // THIS WILL COLLECT THE VALUE FROM ENUM CORRESPONDING
+      //t_reassembly = decode_t_reassembly(um->dl_UM_RLC.t_Reassembly); // THIS WILL COLLECT THE VALUE FROM ENUM CORRESPONDING
       // TO THE INDEX PROVIDED FROM CLP
-      t_reassembly = t_reassembly + get_softmodem_params()->ntn_trs_offset; // THIS WILL ADD THE OFFSET VALUE PROVIDED FROM CLP
+      t_reassembly =  get_softmodem_params()->ntn_trs + get_softmodem_params()->ntn_trs_offset; // THIS WILL ADD THE OFFSET VALUE PROVIDED FROM CLP
+      //LOG_I(RLC,"Inside %s in %s and t_reassembly is %d\n",__FUNCTION__, __FILE__,t_reassembly);
     }
 
     // FOLLOWING TO BE USED WHEN HARQ IS ENABLED DO AS 7.2.2.1 FROM 38.821
@@ -811,11 +822,12 @@ static void add_drb_um(int rnti, int drb_id, const NR_RLC_BearerConfig_t *rlc_Be
   if (ue->drb[drb_id-1] != NULL) {
     LOG_E(RLC, "DEBUG add_drb_um %s:%d:%s: warning DRB %d already exist for ue %d, do nothing\n", __FILE__, __LINE__, __FUNCTION__, drb_id, rnti);
   } else {
-    nr_rlc_entity_t *nr_rlc_um = new_nr_rlc_entity_um(RLC_RX_MAXSIZE,
-                                                      RLC_TX_MAXSIZE,
-                                                      deliver_sdu, ue,
-                                                      t_reassembly,
-                                                      sn_field_length);
+    t_reassembly =  get_softmodem_params()->ntn_trs + get_softmodem_params()->ntn_trs_offset;
+    nr_rlc_um = new_nr_rlc_entity_um(RLC_RX_MAXSIZE,
+                                     RLC_TX_MAXSIZE,
+                                     deliver_sdu, ue,
+                                     t_reassembly,
+                                     sn_field_length);
     nr_rlc_ue_add_drb_rlc_entity(ue, drb_id, nr_rlc_um);
 
     LOG_D(RLC, "%s:%d:%s: added drb %d to UE with RNTI 0x%x\n", __FILE__, __LINE__, __FUNCTION__, drb_id, rnti);

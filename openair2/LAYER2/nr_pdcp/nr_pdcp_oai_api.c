@@ -766,9 +766,11 @@ static void add_srb(int is_gnb, ue_id_t rntiMaybeUEid, struct NR_SRB_ToAddMod *s
   int srb_id = s->srb_Identity;
   if (s->pdcp_Config == NULL || s->pdcp_Config->t_Reordering == NULL) {
     t_Reordering = 3000; //
-    //t_Reordering = decode_t_reordering(get_softmodem_params()->ntn_trd) + get_softmodem_params()->ntn_trd_offset; // #NTN
+    t_Reordering = decode_t_reordering(get_softmodem_params()->ntn_trd) + get_softmodem_params()->ntn_trd_offset; // #NTN
+    LOG_I(PDCP,"Inside %s , case NULL and t_Reordering is %d ----> \n",__FUNCTION__,t_Reordering);
   } else {
-    t_Reordering = decode_t_reordering(*s->pdcp_Config->t_Reordering);
+    //t_Reordering = decode_t_reordering(*s->pdcp_Config->t_Reordering);
+    t_Reordering = decode_t_reordering(get_softmodem_params()->ntn_trd) + get_softmodem_params()->ntn_trd_offset;
     //t_Reordering = t_Reordering + get_softmodem_params()->ntn_trd_offset; // #NTN
   }
 
@@ -808,8 +810,9 @@ void add_drb_am(int is_gnb, ue_id_t rntiMaybeUEid, struct NR_DRB_ToAddMod *s, in
   /* if pdcp_Config->t_Reordering is not present, it means infinity (-1) */
   int t_reordering = -1;
   if (s->pdcp_Config->t_Reordering != NULL) {
-    t_reordering = decode_t_reordering(*s->pdcp_Config->t_Reordering);
-    printf("\n\n\n\n Came to line 954 add_drb_am and t_reordering is %d\n\n\n\n", t_reordering);
+    //t_reordering = decode_t_reordering(*s->pdcp_Config->t_Reordering);
+    t_reordering = decode_t_reordering(get_softmodem_params()->ntn_trd) + get_softmodem_params()->ntn_trd_offset;
+    //printf("\n\n\n\n Came to line 954 add_drb_am and t_reordering is %d\n\n\n\n", t_reordering);
   }
 
   if (s->pdcp_Config->drb != NULL

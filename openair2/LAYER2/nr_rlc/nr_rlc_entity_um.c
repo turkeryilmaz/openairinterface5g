@@ -606,7 +606,7 @@ void nr_rlc_entity_um_recv_sdu(nr_rlc_entity_t *_entity,
 static void check_t_reassembly(nr_rlc_entity_um_t *entity)
 {
   nr_rlc_pdu_t *cur;
-
+  //LOG_I(RLC,"Came to %s in %s and t_reassembly is %d\n",__FUNCTION__, __FILE__,entity->t_reassembly);
   /* is t_reassembly running and if yes has it expired? */
   if (entity->t_reassembly_start == 0 ||
       entity->t_current <= entity->t_reassembly_start + entity->t_reassembly)

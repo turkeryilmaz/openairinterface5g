@@ -22,7 +22,7 @@
 #include "nr_rlc_entity.h"
 
 #include <stdlib.h>
-
+#include "asn1_utils.h"
 #include "nr_rlc_entity_am.h"
 #include "nr_rlc_entity_um.h"
 #include "nr_rlc_entity_tm.h"
@@ -30,7 +30,7 @@
 #include "LOG/log.h"
 
 #include "common/utils/time_stat.h"
-
+#include <executables/softmodem-common.h>
 static void nr_rlc_entity_get_stats(
     nr_rlc_entity_t *entity,
     nr_rlc_statistics_t *out)
@@ -77,7 +77,8 @@ nr_rlc_entity_t *new_nr_rlc_entity_am(
   ret->rx_maxsize = rx_maxsize;
 
   ret->t_poll_retransmit  = t_poll_retransmit;
-  ret->t_reassembly       = t_reassembly;
+  //ret->t_reassembly       = t_reassembly;
+  ret->t_reassembly       = decode_t_reassembly(get_softmodem_params()->ntn_trs) + get_softmodem_params()->ntn_trs_offset;
   ret->t_status_prohibit  = t_status_prohibit;
   ret->poll_pdu           = poll_pdu;
   ret->poll_byte          = poll_byte;
@@ -116,7 +117,7 @@ nr_rlc_entity_t *new_nr_rlc_entity_am(
    * initial_size of 1024 is arbitrary
    */
   ret->common.txsdu_avg_time_to_tx = time_average_new(100 * 1000, 1024);
-
+  //LOG_I(RLC,"%s in %s is called with t_reassembly = %d\n",__FUNCTION__,__FILE__,ret->t_reassembly);
   return (nr_rlc_entity_t *)ret;
 }
 
