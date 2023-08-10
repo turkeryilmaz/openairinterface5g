@@ -22,7 +22,7 @@
 #include "nr_rlc_entity.h"
 
 #include <stdlib.h>
-#include "asn1_utils.h"
+#include "nr_rlc_asn1_utils.h"
 #include "nr_rlc_entity_am.h"
 #include "nr_rlc_entity_um.h"
 #include "nr_rlc_entity_tm.h"
