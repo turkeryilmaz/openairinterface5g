@@ -1833,9 +1833,6 @@ static void check_t_reassembly(nr_rlc_entity_am_t *entity)
   /* stop timer */
   entity->t_reassembly_start = 0;
 
-  //LOG_I(RLC, "%s:%d:%s: t_reassembly expired, t_reassembly = %d\n",
-        __FILE__, __LINE__, __FUNCTION__,entity->t_reassembly);
-
   /* update RX_Highest_Status */
   sn = entity->rx_next_status_trigger;
   while (sdu_delivered(entity, sn))
