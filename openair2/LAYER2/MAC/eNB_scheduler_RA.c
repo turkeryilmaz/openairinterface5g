@@ -922,7 +922,7 @@ generate_Msg4(module_id_t module_idP,
                                         UE_RNTI(module_idP,UE_id),1,  // 1 transport block
                                         &cc[CC_idP].CCCH_pdu.payload[0], 0);  // not used in this case
 
-      if ((rrc_sdu_length > 0) || (RC.ss.CBRA_flag && (RC.ss.mode >SS_ENB))) {
+      if ((rrc_sdu_length > 0) || (RC.ss.CBRA_flag[CC_idP] && (RC.ss.mode >SS_ENB))) {
         LOG_D(MAC,
               "[eNB %d][RAPROC] CC_id %d Frame %d, subframeP %d: UE_id %d, rrc_sdu_length %d\n",
               module_idP, CC_idP, frameP, subframeP, UE_id, rrc_sdu_length);

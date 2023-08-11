@@ -6352,40 +6352,59 @@ rrc_eNB_generate_RRCConnectionSetup(
   eNB_RRC_UE_t *ue_p = &ue_context_pP->ue_context;
   SRB_configList = &ue_p->SRB_configList;
 
-  if (is_mtc) {
-    ue_p->Srb0.Tx_buffer.payload_size =
-      do_RRCConnectionSetup_BR(ctxt_pP,
-                               ue_context_pP,
-                               CC_id,
-                               (uint8_t *) ue_p->Srb0.Tx_buffer.Payload,
-                               (const uint8_t) RC.rrc[ctxt_pP->module_id]->carrier[CC_id].p_eNB, //at this point we do not have the UE capability information, so it can only be TM1 or TM2
-                               0,//rrc_eNB_get_next_transaction_identifier(ctxt_pP->module_id),
-                               SRB_configList,
-                               &ue_context_pP->ue_context.physicalConfigDedicated);
+  if((RRCConnSetup_PDU_Present[CC_id] == true) && (RRCMsgOnSRB0_PDUSize[CC_id] > 0)){
+    LTE_DL_CCCH_Message_t *dl_ccch_msg=NULL;
+    uper_decode(NULL,
+                &asn_DEF_LTE_DL_CCCH_Message,
+                (void **)&dl_ccch_msg,
+                (uint8_t *)RRCMsgOnSRB0_PDU[CC_id],
+                RRCMsgOnSRB0_PDUSize[CC_id],0,0);
+
+    xer_fprint(stdout,&asn_DEF_LTE_DL_CCCH_Message,(void *)dl_ccch_msg);
+
+    LTE_RRCConnectionSetup_t * setup = &dl_ccch_msg->message.choice.c1.choice.rrcConnectionSetup;
+    AssertFatal(setup->criticalExtensions.present == LTE_RRCConnectionSetup__criticalExtensions_PR_c1 &&
+          setup->criticalExtensions.choice.c1.present == LTE_RRCConnectionSetup__criticalExtensions__c1_PR_rrcConnectionSetup_r8, "rrcConnectionSetup message not correct");
+    LTE_RadioResourceConfigDedicated_t *radioResourceConfigDedicated = &setup->criticalExtensions.choice.c1.choice.rrcConnectionSetup_r8.radioResourceConfigDedicated;
+
+    memcpy(ue_p->Srb0.Tx_buffer.Payload,RRCMsgOnSRB0_PDU[CC_id],RRCMsgOnSRB0_PDUSize[CC_id]);
+    LOG_A(RRC,"RRC CCCH PDU for rrcConnectionSetup , size: %d \n",RRCMsgOnSRB0_PDUSize[CC_id]);
+    ue_p->Srb0.Tx_buffer.payload_size=  RRCMsgOnSRB0_PDUSize[CC_id];
+
+    ue_p->SRB_configList = radioResourceConfigDedicated->srb_ToAddModList;
+    ue_p->physicalConfigDedicated = radioResourceConfigDedicated->physicalConfigDedicated;
+
+    radioResourceConfigDedicated->srb_ToAddModList = NULL;
+    radioResourceConfigDedicated->physicalConfigDedicated = NULL;
+    ASN_STRUCT_FREE(asn_DEF_LTE_DL_CCCH_Message,dl_ccch_msg);
   } else {
-    ue_p->Srb0.Tx_buffer.payload_size =
-      do_RRCConnectionSetup(ctxt_pP,
-                            ue_context_pP,
-                            CC_id,
-                            (uint8_t *) ue_p->Srb0.Tx_buffer.Payload,
-                            (uint8_t) RC.rrc[ctxt_pP->module_id]->carrier[CC_id].p_eNB, //at this point we do not have the UE capability information, so it can only be TM1 or TM2
-                            0,//rrc_eNB_get_next_transaction_identifier(ctxt_pP->module_id),
-                            SRB_configList,
-                            &ue_context_pP->ue_context.physicalConfigDedicated);
+    if (is_mtc) {
+      ue_p->Srb0.Tx_buffer.payload_size =
+        do_RRCConnectionSetup_BR(ctxt_pP,
+                                 ue_context_pP,
+                                 CC_id,
+                                 (uint8_t *) ue_p->Srb0.Tx_buffer.Payload,
+                                 (const uint8_t) RC.rrc[ctxt_pP->module_id]->carrier[CC_id].p_eNB, //at this point we do not have the UE capability information, so it can only be TM1 or TM2
+                                 0,//rrc_eNB_get_next_transaction_identifier(ctxt_pP->module_id),
+                                 SRB_configList,
+                                 &ue_context_pP->ue_context.physicalConfigDedicated);
+    } else {
+      ue_p->Srb0.Tx_buffer.payload_size =
+        do_RRCConnectionSetup(ctxt_pP,
+                              ue_context_pP,
+                              CC_id,
+                              (uint8_t *) ue_p->Srb0.Tx_buffer.Payload,
+                              (uint8_t) RC.rrc[ctxt_pP->module_id]->carrier[CC_id].p_eNB, //at this point we do not have the UE capability information, so it can only be TM1 or TM2
+                              0,//rrc_eNB_get_next_transaction_identifier(ctxt_pP->module_id),
+                              SRB_configList,
+                              &ue_context_pP->ue_context.physicalConfigDedicated);
+    }
 
-     if((RC.ss.mode != SS_ENB) && (RRCConnSetup_PDU_Present[CC_id] == true) && (RRCMsgOnSRB0_PDUSize[CC_id] > 0))
-     {
-       memcpy(ue_p->Srb0.Tx_buffer.Payload,RRCMsgOnSRB0_PDU[CC_id],RRCMsgOnSRB0_PDUSize[CC_id]);
-       LOG_A(RRC,"RRC CCCH PDU overwritten , size: %d \n",RRCMsgOnSRB0_PDUSize[CC_id]);
-       ue_p->Srb0.Tx_buffer.payload_size=  RRCMsgOnSRB0_PDUSize[CC_id];
-     }
+    LOG_DUMPMSG(RRC,DEBUG_RRC,
+                (char *)(ue_p->Srb0.Tx_buffer.Payload),
+                ue_p->Srb0.Tx_buffer.payload_size,
+                "[MSG] RRC Connection Setup\n");
   }
-
-  LOG_DUMPMSG(RRC,DEBUG_RRC,
-              (char *)(ue_p->Srb0.Tx_buffer.Payload),
-              ue_p->Srb0.Tx_buffer.payload_size,
-              "[MSG] RRC Connection Setup\n");
-
   // configure SRB1/SRB2, PhysicalConfigDedicated, MAC_MainConfig for UE
   if (*SRB_configList != NULL) {
     for (int cnt = 0; cnt < (*SRB_configList)->list.count; cnt++) {
@@ -6408,7 +6427,6 @@ rrc_eNB_generate_RRCConnectionSetup(
         tmp.CC_id = ue_context_pP->ue_context.primaryCC_id;
         tmp.rnti = ue_context_pP->ue_context.rnti;
         tmp.physicalConfigDedicated = ue_context_pP->ue_context.physicalConfigDedicated;
-        tmp.mac_MainConfig = ue_context_pP->ue_context.mac_MainConfig;
         tmp.logicalChannelIdentity = 1;
         tmp.logicalChannelConfig = SRB1_logicalChannelConfig;
         tmp.measGapConfig = ue_context_pP->ue_context.measGapConfig;
@@ -9550,7 +9568,7 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
               ue_context_pP->ue_context.ue_release_timer_rrc = 0;
               ue_context_pP->ue_context.ue_release_timer_thres_rrc = 0;
               }
-              if (RC.ss.CBRA_flag)
+              if (RC.ss.CBRA_flag[cc_id])
               {
                 RRCConnSetup_PDU_Present[cc_id] = false;
               }
@@ -9604,7 +9622,6 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
             bcchTransportType = dlsch_TRANSPORT;
             RRCConnSetup_PDU_Present[cc_id] = true;
             rrc_eNB_generate_RRCConnectionSetup(&ctxt, ue_context_pP, cc_id);
-
             LOG_I(RRC, PROTOCOL_RRC_CTXT_UE_FMT "CALLING RLC CONFIG SRB1 (rbid %d)\n",
                   PROTOCOL_RRC_CTXT_UE_ARGS(&ctxt),
                   Idx);
