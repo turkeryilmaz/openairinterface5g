@@ -452,6 +452,16 @@ void nr_mac_config_scc(gNB_MAC_INST *nrmac,
                        NR_ServingCellConfigCommon_t *scc)
 {
   DevAssert(nrmac != NULL);
+  //TODO: Firecell
+  // Uncomment the below line after providing a proper fix.
+  //AssertFatal(nrmac->common_channels[0].ServingCellConfigCommon == NULL, "logic error: multiple configurations of SCC\n");
+  if (nrmac->common_channels[0].ServingCellConfigCommon != NULL) {
+         free(nrmac->common_channels[0].ServingCellConfigCommon);
+         nrmac->common_channels[0].ServingCellConfigCommon = NULL;
+         LOG_I(NR_MAC, "Resetting Serving Cell Config\n");
+  }
+  //E.O. TODO
+
   AssertFatal(nrmac->common_channels[0].ServingCellConfigCommon == NULL, "logic error: multiple configurations of SCC\n");
   NR_SCHED_LOCK(&nrmac->sched_lock);
 
