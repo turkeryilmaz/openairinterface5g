@@ -928,7 +928,7 @@ class OaiCiTest():
 			return
 		with open (server_filename, 'r') as file:
 			content = file.read()
-			result = re.search(r"(?P<bitrate>[0-9\.]+ [KMG]bits/sec)\s+(?P<jitter>[0-9\.]+ ms)\s+(?P<Lost>[0-9]+)\/\s*(?P<Total>[0-9]+)\s+\((\d+)%\)\s+receiver", content)
+			result = re.search(r"(?P<bitrate>[0-9\.]+ [KMG]bits/sec)\s+(?P<jitter>[0-9\.]+ ms)\s+(?:[\d\.]+ ms\s+)?(?P<Lost>[0-9]+)\/\s*(?P<Total>[0-9]+)\s+\((?P<percent>[\d\.]+)%\)\s+receiver", content)
 			if result:
 				bitrate = result.group('bitrate')
 				jitter = result.group('jitter')
@@ -992,60 +992,8 @@ class OaiCiTest():
 		# hack: the ADB UEs don't have iperf in $PATH, so we need to hardcode for the moment
 		iperf_ue = '/data/local/tmp/iperf' if re.search('adb', ue.getName()) else 'iperf3'
 
-		if self.iperf_direction == "DL":
-			logging.debug("Iperf in DL requested")
-			cmd = cls_cmd.getConnection(ue.getHost())
-			cmd.run(f'rm {server_filename}')
-			cmd.run(f'{ue.getCmdPrefix()} {iperf_ue} -s -B {ue.getIP()} -i 1 {port} &> /tmp/{server_filename} &')
-			cmd.close()
-
-			cmd = cls_cmd.getConnection(EPC.IPAddress)
-			cmd.run(f'rm {EPC.SourceCodePath}/{client_filename}')
-			cmd.run(f'{cn_iperf_prefix} iperf3 -c {ue.getIP()} {iperf_opt} {port} &> {EPC.SourceCodePath}/{client_filename}', timeout=iperf_time * 1.5)
-			cmd.copyin(f'{EPC.SourceCodePath}/{client_filename}', client_filename)
-			cmd.close()
-
-			cmd = cls_cmd.getConnection(ue.getHost())
-			cmd.copyin(f'/tmp/{server_filename}', server_filename)
-			tKill = 'ps aux | grep "iperf3" | awk \'{print $2}\' | xargs sudo kill -9'
-			cmd.run(tKill)
-			cmd.close()
-
-			if udpIperf:
-				self.Iperf_analyzeV3Output(lock, ue.getIP(), ue.getName(), statusQueue, server_filename)
-			else:
-				cmd = cls_cmd.getConnection(EPC.IPAddress)
-				self.Iperf_analyzeV2TCPOutput(lock, ue.getIP(), ue.getName(), statusQueue, iperf_opt, EPC, cmd, f"{EPC.SourceCodePath}/{client_filename}")
-				cmd.close()
-
-		elif self.iperf_direction == "UL":
-			logging.debug("Iperf in UL requested")
-			cmd = cls_cmd.getConnection(EPC.IPAddress)
-			cmd.run(f'rm {EPC.SourceCodePath}/{server_filename}')
-			cmd.run(f'{cn_iperf_prefix} iperf3 -s  {port} &> {EPC.SourceCodePath}/{server_filename} &')
-			cmd.close()
-
-			cmd = cls_cmd.getConnection(ue.getHost())
-			cmd.run(f'rm /tmp/{client_filename}')
-			cmd.run(f'{ue.getCmdPrefix()} {iperf_ue} -B {ue.getIP()} -c {cn_target_ip} {iperf_opt} {port} &> /tmp/{client_filename}', timeout=iperf_time*1.5)
-			cmd.copyin(f'/tmp/{client_filename}', client_filename)
-			cmd.close()
-
-			cmd = cls_cmd.getConnection(EPC.IPAddress)
-			cmd.copyin(f'{EPC.SourceCodePath}/{server_filename}', server_filename)
-			tKill = 'ps aux | grep "iperf3" | awk \'{print $2}\' | xargs sudo kill -9'
-			cmd.run(tKill)
-			cmd.close()
-
-			if udpIperf:
-				self.Iperf_analyzeV3Output(lock, ue.getIP(), ue.getName(), statusQueue, server_filename)
-			else:
-				cmd = cls_cmd.getConnection(ue.getHost())
-				self.Iperf_analyzeV2TCPOutput(lock, ue.getIP(), ue.getName(), statusQueue, iperf_opt, EPC, cmd, f"/tmp/{client_filename}")
-				cmd.close()
-
-		elif self.iperf_direction=="BIDIR":
-			logging.debug("Bi-directional iperf requested")
+		if self.iperf_direction=="GEN":
+			#logging.debug("Bi-directional iperf requested")
 			cmd = cls_cmd.getConnection(EPC.IPAddress)
 			cmd.run(f'rm {EPC.SourceCodePath}/{server_filename}')
 			cmd.run(f'{cn_iperf_prefix} iperf3 -s -i 1 -1 {port} &> {EPC.SourceCodePath}/{server_filename} &')
@@ -1055,13 +1003,17 @@ class OaiCiTest():
 			cmd.run(f'rm /tmp/{client_filename}')
 			cmd.run(f'iperf3 -B {ue.getIP()} -c {cn_target_ip} {iperf_opt} {port} &> /tmp/{client_filename}', timeout=iperf_time*1.5)
 			cmd.copyin(f'/tmp/{client_filename}', client_filename)
+			tKill = 'ps aux | grep "iperf3" | awk \'{print $2}\' | xargs sudo kill -9'
+			cmd.run(tKill)
 			cmd.close()
 
 			cmd = cls_cmd.getConnection(EPC.IPAddress)
 			cmd.copyin(f'{EPC.SourceCodePath}/{server_filename}', server_filename)
+			tKill = 'ps aux | grep "iperf3" | awk \'{print $2}\' | xargs sudo kill -9'
+			cmd.run(tKill)
 			cmd.close()
 
-			self.Iperf_analyzeV2BIDIR(lock, ue.getHost(), ue.getName(), statusQueue, server_filename, client_filename)
+			self.Iperf_analyzeV3Output(lock, ue.getIP(), ue.getName(), statusQueue, server_filename)
 
 		elif self.iperf_direction == "IPERF3":
 			cmd = cls_cmd.getConnection(ue.getHost())
