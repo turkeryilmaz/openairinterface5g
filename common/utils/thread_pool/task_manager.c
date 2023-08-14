@@ -613,7 +613,7 @@ void wait_all_task_manager(task_manager_t* man)
 
 
 // This function does not belong here logically
-void wait_spin_all_atomics_one(size_t len, _Atomic int arr[len])
+void wait_spin_all_atomics_one(size_t len, _Atomic(int)* arr)
 {
   assert(len > 0);
   assert(arr != NULL);

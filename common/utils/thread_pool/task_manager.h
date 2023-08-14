@@ -15,10 +15,10 @@
 
 
 #ifndef __cplusplus
-# include <stdatomic.h>
+#include <stdatomic.h>
 #else
-# include <atomic>
-# define _Atomic(X) std::atomic< X >
+#include <atomic>
+#define _Atomic(X) std::atomic< X >
 #endif
 
 
@@ -75,11 +75,9 @@ void stop_spining_task_manager(task_manager_t* man);
 
 void wait_all_task_manager(task_manager_t* man);
 
-
-
 // This function does not belong here.
 // It should be in an algorithm file
-void wait_spin_all_atomics_one(size_t len, _Atomic int arr[len]); 
+void wait_spin_all_atomics_one(size_t len, _Atomic(int) * arr); 
 
 
 #endif
