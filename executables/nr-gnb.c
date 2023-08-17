@@ -114,7 +114,6 @@ time_stats_t softmodem_stats_rx_sf; // total rx time
 
 void tx_func(void *param) 
 {
-
   processingData_L1tx_t *info = (processingData_L1tx_t *) param;
 
   int frame_tx = info->frame;
@@ -195,11 +194,14 @@ void rx_func(void *param)
   int frame_tx = info->frame_tx;
   int slot_tx = info->slot_tx;
   nfapi_nr_config_request_scf_t *cfg = &gNB->gNB_config;
-
-  int absslot_tx = info->timestamp_tx/gNB->frame_parms.get_samples_per_slot(slot_rx,&gNB->frame_parms);
+  int cumul_samples = gNB->frame_parms.get_samples_per_slot(0, &gNB->frame_parms);
+  int i = 1;
+  for (; i < gNB->frame_parms.slots_per_subframe / 2; i++)
+    cumul_samples += gNB->frame_parms.get_samples_per_slot(i, &gNB->frame_parms);
+  int samples = cumul_samples / i;
+  int absslot_tx = info->timestamp_tx / samples;
   int absslot_rx = absslot_tx - gNB->RU_list[0]->sl_ahead;
   int rt_prof_idx = absslot_rx % RT_PROF_DEPTH;
-
   clock_gettime(CLOCK_MONOTONIC,&info->gNB->rt_L1_profiling.start_L1_RX[rt_prof_idx]);
   start_meas(&softmodem_stats_rxtx_sf);
 

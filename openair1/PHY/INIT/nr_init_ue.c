@@ -50,10 +50,8 @@ void RCconfig_nrUE_prs(void *cfg)
   if (gParamList.numelt > 0)
   {
     ue->prs_active_gNBs = *(gParamList.paramarray[j][PRS_ACTIVE_GNBS_IDX].uptr);
-  }
-  else
-  {
-    LOG_E(PHY,"%s configuration NOT found..!! Skipped configuring UE for the PRS reception\n", CONFIG_STRING_PRS_CONFIG);
+  } else {
+    LOG_I(PHY,"%s configuration NOT found..!! Skipped configuring UE for the PRS reception\n", CONFIG_STRING_PRS_CONFIG);
   }
 
   paramlist_def_t PRS_ParamList = {{0},NULL,0};
@@ -133,10 +131,8 @@ void RCconfig_nrUE_prs(void *cfg)
         LOG_I(PHY, "MutingPattern2 \t\t[%s\b\b]\n", str[6]);
         LOG_I(PHY, "-----------------------------------------\n");
       }
-    }
-    else
-    {
-      LOG_E(PHY,"No %s configuration found..!!\n", PRS_ParamList.listname);
+    } else {
+      LOG_I(PHY,"No %s configuration found..!!\n", PRS_ParamList.listname);
     }
   }
 }
@@ -299,11 +295,9 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
 
   // init RX buffers
   common_vars->rxdata = malloc16(fp->nb_antennas_rx * sizeof(c16_t *));
-  common_vars->rxdataF = malloc16(fp->nb_antennas_rx * sizeof(c16_t *));
 
   for (i=0; i<fp->nb_antennas_rx; i++) {
     common_vars->rxdata[i] = malloc16_clear((2 * (fp->samples_per_frame) + fp->ofdm_symbol_size) * sizeof(c16_t));
-    common_vars->rxdataF[i] = malloc16_clear((2 * (fp->samples_per_frame) + fp->ofdm_symbol_size) * sizeof(c16_t));
   }
 
   // ceil(((NB_RB<<1)*3)/32) // 3 RE *2(QPSK)
@@ -415,10 +409,8 @@ void term_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
 
   for (int i = 0; i < fp->nb_antennas_rx; i++) {
     free_and_zero(common_vars->rxdata[i]);
-    free_and_zero(common_vars->rxdataF[i]);
   }
   free_and_zero(common_vars->rxdata);
-  free_and_zero(common_vars->rxdataF);
 
   for (int slot = 0; slot < fp->slots_per_frame; slot++) {
     for (int symb = 0; symb < fp->symbols_per_slot; symb++)
