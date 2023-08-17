@@ -1213,8 +1213,10 @@ int DU_send_UE_CONTEXT_MODIFICATION_RESPONSE(instance_t instance, f1ap_ue_contex
     /* optional */
     /* procedureCode */
     if (0) {
+      /* For CPPcheck error: Disabling this code as of now it is not even executed. may be use in future. will free the memory if we use it in future
       ie11->value.choice.CriticalityDiagnostics.procedureCode = (F1AP_ProcedureCode_t *)calloc(1, sizeof(F1AP_ProcedureCode_t));
       ie11->value.choice.CriticalityDiagnostics.procedureCode = 0L;
+      */
     }
 
     /* optional */
@@ -1234,8 +1236,10 @@ int DU_send_UE_CONTEXT_MODIFICATION_RESPONSE(instance_t instance, f1ap_ue_contex
     /* optional */
     /* transactionID */
     if (0) {
+      /* For CPPcheck error: Disabling this code as of now it is not even executed. may be use in future. will free the memory if we use it in future
       ie11->value.choice.CriticalityDiagnostics.transactionID = (F1AP_TransactionID_t *)calloc(1, sizeof(F1AP_TransactionID_t));
       ie11->value.choice.CriticalityDiagnostics.transactionID = 0L;
+      */
     }
 
     /* optional */

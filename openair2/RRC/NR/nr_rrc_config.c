@@ -1199,13 +1199,15 @@ static void config_downlinkBWP(NR_BWP_Downlink_t *bwp,
   bwp->bwp_Common->pdcch_ConfigCommon->present = NR_SetupRelease_PDCCH_ConfigCommon_PR_setup;
   bwp->bwp_Common->pdcch_ConfigCommon->choice.setup = calloc(1,sizeof(*bwp->bwp_Common->pdcch_ConfigCommon->choice.setup));
   bwp->bwp_Common->pdcch_ConfigCommon->choice.setup->controlResourceSetZero=NULL;
-  bwp->bwp_Common->pdcch_ConfigCommon->choice.setup->commonControlResourceSet=calloc(1,sizeof(*bwp->bwp_Common->pdcch_ConfigCommon->choice.setup->commonControlResourceSet));
+  // for CPPCheck error: As of now this info not pushed to ASN packing. this allocation is being removed.
+  /*bwp->bwp_Common->pdcch_ConfigCommon->choice.setup->commonControlResourceSet=calloc(1,sizeof(*bwp->bwp_Common->pdcch_ConfigCommon->choice.setup->commonControlResourceSet));*/
 
   int curr_bwp = NRRIV2BW(bwp->bwp_Common->genericParameters.locationAndBandwidth,MAX_BWP_SIZE);
 
   uint64_t ssb_bitmap = get_ssb_bitmap(scc);
   NR_ControlResourceSet_t *coreset = get_coreset_config(bwp->bwp_Id, curr_bwp, ssb_bitmap);
-  bwp->bwp_Common->pdcch_ConfigCommon->choice.setup->commonControlResourceSet = coreset;
+  // for CPPCheck error: As of now this info not pushed to ASN packing. this allocation is being removed.
+  /*bwp->bwp_Common->pdcch_ConfigCommon->choice.setup->commonControlResourceSet = coreset;*/
 
   bwp->bwp_Common->pdcch_ConfigCommon->choice.setup->searchSpaceZero=NULL;
   bwp->bwp_Common->pdcch_ConfigCommon->choice.setup->commonSearchSpaceList=NULL;
@@ -1244,7 +1246,6 @@ static void config_downlinkBWP(NR_BWP_Downlink_t *bwp,
 
   asn1cSeqAdd(&bwp->bwp_Dedicated->pdcch_Config->choice.setup->controlResourceSetToAddModList->list, coreset);
 
-  bwp->bwp_Dedicated->pdcch_Config->choice.setup->searchSpacesToAddModList = calloc(1,sizeof(*bwp->bwp_Dedicated->pdcch_Config->choice.setup->searchSpacesToAddModList));
   NR_SearchSpace_t *ss2 = rrc_searchspace_config(false, 10+bwp->bwp_Id, coreset->controlResourceSetId);
   asn1cSeqAdd(&bwp->bwp_Dedicated->pdcch_Config->choice.setup->searchSpacesToAddModList->list, ss2);
 
@@ -2143,9 +2144,6 @@ static NR_SpCellConfig_t *get_initial_SpCellConfig(int uid,
   NR_ControlResourceSet_t *coreset = get_coreset_config(0, curr_bwp, bitmap);
 
   asn1cSeqAdd(&bwp_Dedicated->pdcch_Config->choice.setup->controlResourceSetToAddModList->list, coreset);
-
-  bwp_Dedicated->pdcch_Config->choice.setup->searchSpacesToAddModList =
-      calloc(1, sizeof(*bwp_Dedicated->pdcch_Config->choice.setup->searchSpacesToAddModList));
 
   NR_SearchSpace_t *ss2 = rrc_searchspace_config(false, 5, coreset->controlResourceSetId);
   asn1cSeqAdd(&bwp_Dedicated->pdcch_Config->choice.setup->searchSpacesToAddModList->list, ss2);
