@@ -446,7 +446,11 @@ void* worker_thread(void* arg)
 void init_task_manager(task_manager_t* man, uint32_t num_threads)
 {
   assert(man != NULL);
-  assert(num_threads > 0 && num_threads < 33 && "Do you have zero or more than 32 processors??");
+  assert(num_threads > 0); // && num_threads < 33 && "Do you have zero or more than 32 processors??");
+  if(num_threads > 8){
+    printf("[MIR]: number of threads clamped to 8. %d number of threads asked \n", num_threads);
+    num_threads = 8;
+  }
 
   man->q_arr = calloc(num_threads, sizeof(not_q_t));
   assert(man->q_arr != NULL && "Memory exhausted");
