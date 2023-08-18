@@ -1,6 +1,7 @@
 #ifndef TASK_MANAGER_WORKING_STEALING_H
 #define TASK_MANAGER_WORKING_STEALING_H 
 
+
 // Comment for deactivating ws tpool
 #define TASK_MANAGER
 #define TASK_MANAGER_CODING
