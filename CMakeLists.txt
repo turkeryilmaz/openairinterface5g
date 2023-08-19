@@ -1066,6 +1066,10 @@ set(PHY_SRC_UE
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_pbch.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_psbch_rx.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_psbch_tx.c
+  ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/psfch_nr.c
+  ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_dci.c
+  ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_ulsch_decoding.c
+  ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_ulsch.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_dlsch_demodulation.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_ulsch_coding.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_dlsch_decoding.c
@@ -1380,6 +1384,7 @@ set (MAC_NR_SRC_UE
   ${NR_UE_MAC_DIR}/nr_ra_procedures.c
   ${NR_UE_MAC_DIR}/nr_ue_power_procedures.c
   ${NR_UE_MAC_DIR}/nr_ue_sci_slsch.c
+  ${NR_UE_MAC_DIR}/nr_slsch_scheduler.c
 )
 
 set (ENB_APP_SRC

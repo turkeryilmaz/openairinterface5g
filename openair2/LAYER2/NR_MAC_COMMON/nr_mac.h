@@ -38,6 +38,8 @@
 #include <string.h>
 #include <stdbool.h>
 #include "common/utils/nr/nr_common.h"
+#include "common/utils/collection/linear_alloc.h"
+
 #include "NR_CellGroupConfig.h"
 
 #define NR_SHORT_BSR_TABLE_SIZE 32
@@ -404,6 +406,22 @@ typedef struct {
 
 #define NR_MAX_NUM_LCID                32
 #define NR_MAX_NUM_LCGID              8
+
+#define SL_SCH_LCID_SCCH_PC5_NOT_PROT              0	// SCCH carrying PC5-S messages that are not protected
+#define SL_SCH_LCID_SCCH_PC5_DSMC                  1    // SCCH carrying PC5-S messages "Direct Security Mode Command" and "Direct Security Mode Complete"
+#define SL_SCH_LCID_SCCH_PC5_PROT                  2	// SCCH carrying other PC5-S messages that are protected
+#define SL_SCH_LCID_SCCH_PC5_RRC                   3	// SCCH carrying PC5-RRC messages
+#define SL_SCH_LCID_4_19                           4    // 4–19	Identity of the logical channel
+#define SL_SCH_LCID_20_55                          20   // 20–55	Reserved
+#define SL_SCH_LCID_SCCH_RRC_SL_RLC0               56	// SCCH carrying RRC messages delivered via SL-RLC0 as specified in TS 38.331 [5]
+#define SL_SCH_LCID_SCCH_RRC_SL_RLC1               57	// SCCH carrying RRC message delivered via SL-RLC1 as specified in TS 38.331 [5]
+#define SL_SCH_LCID_SCCH_SL_DISCOVERY              58	// SCCH for Sidelink Discovery Messages
+#define SL_SCH_LCID_SL_INTER_UE_COORD_REQ          59	// Sidelink Inter-UE Coordination Request
+#define SL_SCH_LCID_SL_INTER_UE_COORD_INFO         60	// Sidelink Inter-UE Coordination Information
+#define SL_SCH_LCID_SL_DRX_CMD                     61	// Sidelink DRX Command
+#define SL_SCH_LCID_SL_CSI_REPORT                  62	// Sidelink CSI Reporting
+#define SL_SCH_LCID_SL_PADDING                     63	// Padding
+
 #define MAX_RLC_SDU_SUBHEADER_SIZE          3
 
 //===========
@@ -534,6 +552,11 @@ typedef struct nr_csi_report {
   int N2;
 } nr_csi_report_t;
 
+typedef struct {
+  int CQI;
+  int RI;
+} nr_sl_csi_report_t;
+
 typedef enum {
   NR_SRS_SRI_0 = 0,
   NR_SRS_SRI_1,
@@ -618,6 +641,22 @@ typedef struct NR_tda_info {
   int nrOfSymbols;
   long k2;
 } NR_tda_info_t;
+
+typedef struct NR_bler_stats {
+  frame_t last_frame;
+  float bler;
+  uint8_t mcs;
+  uint64_t rounds[8];
+} NR_bler_stats_t;
+
+/*! \brief NR_list_t is a "list" (of users, HARQ processes, slices, ...).
+ *  * Especially useful in the scheduler and to keep "classes" of users. */
+typedef struct {
+  int head;
+  int *next;
+  int tail;
+  int len;
+} NR_list_t;
 
 #endif /*__LAYER2_MAC_H__ */
 

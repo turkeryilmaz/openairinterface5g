@@ -285,7 +285,7 @@ int phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
   for(int i=0; i< fp->nb_antennas_tx; ++i)
     txdataF[i] = &txdataF_buf[i * samplesF_per_slot];
 
-  LOG_D(PHY,"****** start Sidelink TX-Chain for AbsSubframe %d.%d ******\n",
+  LOG_I(PHY,"****** start Sidelink TX-Chain for AbsSubframe %d.%d ******\n",
                                                                 frame_tx, slot_tx);
 
   start_meas(&sl_phy_params->phy_proc_sl_tx);
@@ -308,7 +308,12 @@ int phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
     }
     tx_action = 1;
   }
-
+  else if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH) {
+   LOG_I(NR_PHY,"Generating PSCCH ( )\n");
+  }
+  else if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSFCH) {
+   LOG_I(NR_PHY,"Generating PSFCH ( )\n");
+  }
   if (tx_action) {
     LOG_D(PHY, "Sending Uplink data \n");
     nr_ue_pusch_common_procedures(ue,

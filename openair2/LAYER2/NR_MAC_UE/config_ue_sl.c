@@ -20,6 +20,7 @@
  */
 
 #include "openair2/LAYER2/NR_MAC_UE/mac_defs.h"
+#include "openair2/LAYER2/NR_MAC_UE/nr_ue_sci.h"
 #include "NR_SidelinkPreconfigNR-r16.h"
 #include "mac_proto.h"
 
@@ -370,6 +371,7 @@ int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
   if (freqcfg->sl_BWP_List_r16 &&
       freqcfg->sl_BWP_List_r16->list.array[0])
     bwp = freqcfg->sl_BWP_List_r16->list.array[0];
+  mac->sl_bwp = bwp;
 
   AssertFatal(bwp!=NULL, "BWP config common cannot be NULL\n");
   if (bwp->sl_BWP_PoolConfigCommon_r16) {
@@ -380,6 +382,7 @@ int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
         if (rxpool) {
           if (sl_mac->sl_RxPool[i] == NULL)
             sl_mac->sl_RxPool[i] = malloc16_clear(sizeof(SL_ResourcePool_params_t));
+          mac->sl_rx_res_pool = rxpool;
           sl_mac->sl_RxPool[i]->respool = rxpool;
           uint16_t sci_1a_len = 0, num_subch = 0;
           sci_1a_len = sl_determine_sci_1a_len(&num_subch,
@@ -404,6 +407,7 @@ int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
                 bwp->sl_BWP_PoolConfigCommon_r16->sl_TxPoolSelectedNormal_r16->list.array[0]->sl_ResourcePool_r16;
 
         if (txpool) {
+          mac->sl_tx_res_pool = txpool;
           if (sl_mac->sl_TxPool[i] == NULL)
             sl_mac->sl_TxPool[i] = malloc16_clear(sizeof(SL_ResourcePool_params_t));
           sl_mac->sl_TxPool[i]->respool = txpool;

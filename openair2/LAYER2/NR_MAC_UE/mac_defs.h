@@ -48,7 +48,7 @@
 #include "LAYER2/MAC/mac.h"
 #include "NR_MAC_COMMON/nr_mac_extern.h"
 #include "mac_defs_sl.h"
-
+#include "LAYER2/RLC/rlc.h"
 /* RRC */
 #include "NR_DRX-Config.h"
 #include "NR_SchedulingRequestConfig.h"
@@ -421,6 +421,82 @@ typedef struct ssb_list_info {
   uint8_t   nb_tx_ssb;
 } ssb_list_info_t;
 
+
+typedef struct NR_sched_pssch {
+  int frame;
+  int slot;
+  int mu;
+
+  /// RB allocation within active uBWP
+  uint16_t rbSize;
+  uint16_t rbStart;
+
+  /// MCS
+  uint8_t mcs;
+
+  /// TBS-related info
+  uint16_t R;
+  uint8_t Qm;
+  uint32_t tb_size;
+
+  /// UL HARQ PID to use for this UE, or -1 for "any new"
+  int8_t sl_harq_pid;
+
+  uint8_t nrOfLayers;
+  //NR_pusch_dmrs_t dmrs_info;
+} NR_sched_pssch_t;
+
+typedef struct {
+  bool is_waiting;
+  uint8_t ndi;
+  uint8_t round;
+  uint16_t feedback_slot;
+
+  /// sched_pusch keeps information on MCS etc used for the initial transmission
+  NR_sched_pssch_t sched_pssch;
+} NR_UE_sl_harq_t;
+  //
+typedef struct {
+
+  /// Sched PSSCH: scheduling decisions, copied into HARQ and cleared every TTI
+  NR_sched_pssch_t sched_pssch;
+  //
+  NR_bler_stats_t sl_bler_stats;
+  /// per-LC status data
+  mac_rlc_status_resp_t rlc_status[NR_MAX_NUM_LCID];
+  //
+
+  /// information about every UL HARQ process
+  NR_UE_sl_harq_t sl_harq_processes[NR_MAX_HARQ_PROCESSES];
+  /// UL HARQ processes that are free
+  NR_list_t available_sl_harq;
+  /// UL HARQ processes that await feedback
+  NR_list_t feedback_sl_harq;
+  /// UL HARQ processes that await retransmission
+  NR_list_t retrans_sl_harq;
+  //
+//  NR_SLSCH 
+} NR_SL_UE_sched_ctrl_t;
+
+#define MAX_SL_UE_CONNECTIONS 8
+
+#define MAX_SL_CSI_REPORTCONFIG MAX_SL_UE_CONNECTIONS 
+
+typedef struct {
+  uint16_t dest_id;
+  uid_t uid; // unique ID of this UE
+  /// scheduling control info
+  nr_sl_csi_report_t csi_report_template[MAX_SL_CSI_REPORTCONFIG];
+  NR_SL_UE_sched_ctrl_t UE_sched_ctrl;
+} NR_SL_UE_info_t;
+
+
+typedef struct {
+
+  NR_SL_UE_info_t *list[MAX_SL_UE_CONNECTIONS+1];
+  uid_allocator_t ue_allocator;
+} NR_SL_UEs_t;
+
 /*!\brief Top level UE MAC structure */
 typedef struct {
   NR_UE_L2_STATE_t state;
@@ -459,7 +535,8 @@ typedef struct {
 
 // sidelink
   NR_SL_BWP_ConfigCommon_r16_t *sl_bwp;
-  NR_SL_ResourcePool_r16_t *sl_res_pool;
+  NR_SL_ResourcePool_r16_t *sl_rx_res_pool;
+  NR_SL_ResourcePool_r16_t *sl_tx_res_pool;
 
   bool phy_config_request_sent;
   frame_type_t frame_type;
@@ -534,6 +611,9 @@ typedef struct {
 
   //SIDELINK MAC PARAMETERS
   sl_nr_ue_mac_params_t *SL_MAC_PARAMS;
+
+  // SIDELINK Scheduling fields
+  NR_SL_UEs_t UE_info;
 
 } NR_UE_MAC_INST_t;
 

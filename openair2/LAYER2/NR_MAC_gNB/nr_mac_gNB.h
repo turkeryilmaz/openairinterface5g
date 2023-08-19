@@ -101,15 +101,6 @@
 
 extern const uint8_t nr_rv_round_map[4];
 
-/*! \brief NR_list_t is a "list" (of users, HARQ processes, slices, ...).
- * Especially useful in the scheduler and to keep "classes" of users. */
-typedef struct {
-  int head;
-  int *next;
-  int tail;
-  int len;
-} NR_list_t;
-
 typedef enum {
   RA_IDLE = 0,
   Msg2 = 1,
@@ -448,13 +439,6 @@ typedef struct NR_UE_harq {
 } NR_UE_harq_t;
 
 //! fixme : need to enhace for the multiple TB CQI report
-
-typedef struct NR_bler_stats {
-  frame_t last_frame;
-  float bler;
-  uint8_t mcs;
-  uint64_t rounds[8];
-} NR_bler_stats_t;
 
 //
 /*! As per spec 38.214 section 5.2.1.4.2

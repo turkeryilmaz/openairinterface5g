@@ -27,7 +27,7 @@
 #include "NR_TDD-UL-DL-ConfigCommon.h"
 #include "NR_MAC_COMMON/nr_mac.h"
 #include "NR_UE_PHY_INTERFACE/NR_IF_Module.h"
-
+#include "nr_ue_sci.h"
 
 #define SL_NR_MAC_NUM_RX_RESOURCE_POOLS 1
 #define SL_NR_MAC_NUM_TX_RESOURCE_POOLS 1

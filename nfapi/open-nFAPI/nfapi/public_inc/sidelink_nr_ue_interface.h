@@ -277,6 +277,8 @@ typedef struct sl_nr_tx_config_pscch_pssch_pdu {
   // from this value according to 38.213 section 16
   int16_t pssch_tx_power;
 
+  uint16_t slsch_payload_length;
+  uint8_t *slsch_payload;
 } sl_nr_tx_config_pscch_pssch_pdu_t;
 
 // MAC indicates PHY to send PSBCH.
@@ -287,6 +289,16 @@ typedef struct sl_nr_tx_config_psbch_pdu {
   int16_t psbch_tx_power; // TX Power used for sending PSBCH
 
 } sl_nr_tx_config_psbch_pdu_t;
+
+typedef struct sl_nr_tx_config_psfch_pdu {
+//  These fields map directly to the same fields in nfapi_nr_ul_config_pucch_pdu 
+  uint8_t start_symbol_index;
+  uint8_t hopping_id;
+  uint8_t prb;
+  uint16_t initial_cyclic_shift;
+  uint8_t mcs;
+  
+} sl_nr_tx_config_psfch_pdu_t;
 
 // MAC commands PHY to perform an action on TX RESOURCE POOL or TX PSBCH using this TX CONFIG
 typedef struct {

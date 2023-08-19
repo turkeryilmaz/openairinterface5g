@@ -30,6 +30,8 @@
  * \warning
  */
 
+#ifndef __LAYER2_NR_UE_SCI_H__
+#define __LAYER2_NR_UE_SCI_H__
 #include "NR_MAC_COMMON/nr_mac.h"
 
 typedef enum {
@@ -72,4 +74,4 @@ typedef struct {
 	uint8_t resource_set_type; // 1 bit, format 2C
 	dci_field_t lowest_subchannel_indices; // depending on n_subChannel^SL, format 2C
 } nr_sci_pdu_t;
-
+#endif

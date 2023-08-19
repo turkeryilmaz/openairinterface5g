@@ -73,7 +73,9 @@ uint32_t nr_sci_size(const NR_SL_ResourcePool_r16_t *sl_res_pool,
 	    size+=3;
 	    // frequency resource assignment
 	    long Nsc = *sl_res_pool->sl_NumSubchannel_r16;
-            if (*sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_MaxNumPerReserve_r16 == NR_SL_UE_SelectedConfigRP_r16__sl_MaxNumPerReserve_r16_n2)
+            if (sl_res_pool->sl_UE_SelectedConfigRP_r16 && 
+                sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_MaxNumPerReserve_r16 &&
+                *sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_MaxNumPerReserve_r16 == NR_SL_UE_SelectedConfigRP_r16__sl_MaxNumPerReserve_r16_n2)
 	      sci_pdu->frequency_resource_assignment.nbits =  (uint8_t)ceil(log2((Nsc * (Nsc + 1)) >>1));  
 	    else
 	      sci_pdu->frequency_resource_assignment.nbits =  (uint8_t)ceil(log2((Nsc * (Nsc + 1) * (2*Nsc + 1)) /6));  
@@ -214,6 +216,8 @@ void fill_pssch_pscch_pdu(sl_nr_tx_config_pscch_pssch_pdu_t *nr_sl_pssch_pscch_p
                           const NR_SL_ResourcePool_r16_t *sl_res_pool,
 		          nr_sci_pdu_t *sci_pdu, 
 		          nr_sci_pdu_t *sci2_pdu, 
+                          uint8_t *slsch_pdu,
+                          uint16_t slsch_pdu_length,
 		          const nr_sci_format_t format1,
 		          const nr_sci_format_t format2)  {
   int pos=0,fsize;
@@ -423,7 +427,10 @@ void fill_pssch_pscch_pdu(sl_nr_tx_config_pscch_pssch_pdu_t *nr_sl_pssch_pscch_p
           AssertFatal(1==0,"Unknown format %d for sci2\n",format2);
           break;
   }
-}
+  nr_sl_pssch_pscch_pdu->slsch_payload = slsch_pdu;
+  nr_sl_pssch_pscch_pdu->slsch_payload_length = slsch_pdu_length;
+};
+
 
 
 void config_pscch_pdu_rx(sl_nr_rx_config_pscch_pdu_t *nr_sl_pscch_pdu,
@@ -547,12 +554,12 @@ int nr_ue_process_sci1_indication_pdu(NR_UE_MAC_INST_t *mac,frame_t frame, int s
   nr_sci_pdu_t sci_pdu;  //&mac->def_sci_pdu[slot][sci->sci_format_type];
   sl_nr_rx_config_pssch_sci_pdu_t nr_sl_pssch_sci_pdu;
   const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp = mac->sl_bwp;
-  const NR_SL_ResourcePool_r16_t *sl_res_pool = mac->sl_res_pool; 
+  const NR_SL_ResourcePool_r16_t *sl_res_pool = mac->sl_rx_res_pool; 
 
   LOG_D(MAC,"Received sci indication (sci format %d, Nid %x, subChannelIndex %d, payloadSize %d,payload %llx)\n",
         sci->sci_format_type,sci->Nid,sci->subch_index,sci->sci_payloadlen,*(unsigned long long*)sci->sci_payloadBits);
-  AssertFatal(sci->sci_format_type == NR_SL_SCI_FORMAT_1A, "need to have format 1A here only\n");
-  nr_extract_pscch_pdu((uint64_t *)sci->sci_payloadBits, sl_bwp, sl_res_pool, &sci_pdu);
+  AssertFatal(sci->sci_format_type == SL_SCI_FORMAT_1A_ON_PSCCH, "need to have format 1A here only\n");
+  extract_pscch_pdu((uint64_t *)sci->sci_payloadBits, sl_bwp, sl_res_pool, &sci_pdu);
   config_pssch_sci_pdu_rx(&nr_sl_pssch_sci_pdu,
                           NR_SL_SCI_FORMAT_2A,
                           &sci_pdu,
@@ -569,6 +576,7 @@ const int sl_dmrs_mask2[2][8] = { {34,34,34,264,264,1032,1032,1032},
                                   {34,34,34,272,272,1040,1040,1040}};
 const int sl_dmrs_mask3[5]    = {146,146,546,546,2114};
 const int sl_dmrs_mask4[3]    = {1170,1170,1170};
+
 void config_pssch_sci_pdu_rx(sl_nr_rx_config_pssch_sci_pdu_t *nr_sl_pssch_sci_pdu,
                              nr_sci_format_t sci2_format,
 			     nr_sci_pdu_t *sci_pdu,
@@ -646,5 +654,6 @@ void config_pssch_sci_pdu_rx(sl_nr_rx_config_pssch_sci_pdu_t *nr_sl_pssch_sci_pd
   // is triggred as part of TX pool sensing procedure.
   nr_sl_pssch_sci_pdu->sense_pssch = 0;
 
-
 }
+
+

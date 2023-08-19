@@ -43,7 +43,7 @@
 #include "NR_MAC_COMMON/nr_mac_common.h"
 #include "NR_MAC_UE/mac_proto.h"
 #include "NR_MAC_UE/mac_extern.h"
-
+#include "NR_MAC_UE/nr_ue_sci.h"
 /* utils */
 #include "assertions.h"
 #include "oai_asn1.h"
@@ -3240,6 +3240,52 @@ uint8_t sl_determine_if_SSB_slot(uint16_t frame, uint16_t slot, uint16_t slots_p
                                              frame, slot, sl_bch->ssb_slot,sl_bch->num_ssb);
   return 0;
 }
+bool nr_ue_sl_pssch_scheduler(nr_sidelink_indication_t *sl_ind,
+                              const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp, 
+                              const NR_SL_ResourcePool_r16_t *sl_res_pool,
+                              sl_nr_tx_config_request_t *tx_config,
+                              uint8_t *config_type) {
+
+  uint8_t ret_status = 0;
+  uint16_t slot = sl_ind->slot_tx;
+  uint16_t frame = sl_ind->frame_tx;
+
+  if (sl_ind->slot_type != SIDELINK_SLOT_TYPE_TX) return false;
+
+
+  LOG_I(NR_MAC,"[UE%d] SL-PSSCH SCHEDULER: Frame:SLOT %d:%d, slot_type:%d\n",
+                                      sl_ind->module_id, frame, slot,sl_ind->slot_type);
+
+  nr_sci_pdu_t sci_pdu; 
+  nr_sci_pdu_t sci2_pdu; 
+  uint8_t *slsch_pdu;
+  uint16_t slsch_pdu_length;
+  bool schedule_slsch = nr_schedule_slsch(&sci_pdu,&sci2_pdu,&slsch_pdu,&slsch_pdu_length);
+
+  if (!schedule_slsch) return false;
+  *config_type = SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH;
+  tx_config->number_pdus = 1;
+  tx_config->sfn = frame;
+  tx_config->slot = slot;
+  tx_config->tx_config_list[0].pdu_type = *config_type;
+  fill_pssch_pscch_pdu(&tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu,
+                       sl_bwp,
+                       sl_res_pool,
+                       &sci_pdu,
+                       &sci2_pdu,
+                       slsch_pdu,
+		       slsch_pdu_length,
+                       NR_SL_SCI_FORMAT_1A, 
+                       NR_SL_SCI_FORMAT_2A);
+
+
+      LOG_I(NR_MAC, "[UE%d] TTI-%d:%d TX PSCCH_PSSCH REQ \n", sl_ind->module_id,frame, slot);
+
+
+  ret_status = schedule_slsch;
+
+  return ret_status;
+}
 
 /*
 *   determine if sidelink slot is a PSBCH slot
@@ -3392,14 +3438,29 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind) {
   // Check if PSBCH slot and PSBCH should be transmitted or Received
   is_psbch_slot = nr_ue_sl_psbch_scheduler(sl_ind, sl_mac, &rx_config, &tx_config, &tti_action);
 
-  if (!is_psbch_slot) {
+  bool tx_allowed=true,rx_allowed=true;
+  if (mac->sl_tx_res_pool && mac->sl_tx_res_pool->ext1 && mac->sl_tx_res_pool->ext1->sl_TimeResource_r16) {
+     int sl_tx_period = 8*mac->sl_tx_res_pool->ext1->sl_TimeResource_r16->size - mac->sl_tx_res_pool->ext1->sl_TimeResource_r16->bits_unused;
+     int slot_mod_period = sl_ind->slot_tx%sl_tx_period;
+     uint8_t mask = mac->sl_tx_res_pool->ext1->sl_TimeResource_r16->buf[slot_mod_period>>3];
+     if (((1<<slot_mod_period) % mask) == 0) tx_allowed=0;
+  }
+  if (mac->sl_rx_res_pool && mac->sl_rx_res_pool->ext1 && mac->sl_tx_res_pool->ext1->sl_TimeResource_r16) {
+     int sl_rx_period = 8*mac->sl_rx_res_pool->ext1->sl_TimeResource_r16->size - mac->sl_rx_res_pool->ext1->sl_TimeResource_r16->bits_unused;
+     int slot_mod_period = sl_ind->slot_rx%sl_rx_period;
+     uint8_t mask = mac->sl_rx_res_pool->ext1->sl_TimeResource_r16->buf[slot_mod_period>>3];
+     if (((1<<slot_mod_period) % mask) == 0) rx_allowed=0;
+  }
+  
+  if (!is_psbch_slot && tx_allowed) {
     //Check if reserved slot or a sidelink resource configured in Rx/Tx resource pool timeresource bitmap
+    nr_ue_sl_pssch_scheduler(sl_ind, mac->sl_bwp, mac->sl_tx_res_pool,&tx_config, &tti_action);
   }
 
-  if (tti_action == SL_NR_CONFIG_TYPE_RX_PSBCH) {
+  if (tti_action == SL_NR_CONFIG_TYPE_RX_PSBCH || tti_action == SL_NR_CONFIG_TYPE_RX_PSCCH || tti_action == SL_NR_CONFIG_TYPE_RX_PSSCH_SCI || tti_action == SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH) {
     fill_scheduled_response(&scheduled_response, NULL, NULL, NULL,  &rx_config, NULL, mod_id, 0,frame, slot, sl_ind->phy_data);
   }
-  if (tti_action == SL_NR_CONFIG_TYPE_TX_PSBCH) {
+  if (tti_action == SL_NR_CONFIG_TYPE_TX_PSBCH || tti_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH) {
     fill_scheduled_response(&scheduled_response, NULL, NULL, NULL, NULL, &tx_config, mod_id, 0,frame, slot, sl_ind->phy_data);
   }
 
