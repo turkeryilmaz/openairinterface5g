@@ -696,7 +696,7 @@ void *ss_gNB_sys_process_itti_msg(void *notUsed)
 {
 	MessageDef *received_msg = NULL;
 	int result;
-	static ss_nrset_timinfo_t tinfo = {.sfn = 0xFFFF, .slot = 0xFFFFFFFF};
+	static ss_nrset_timinfo_t tinfo = {.hsfn=0xFFFF, .sfn = 0xFFFF, .slot = 0xFFFFFFFF};
 
 	itti_receive_msg(TASK_SYS_GNB, &received_msg);
 
@@ -710,6 +710,18 @@ void *ss_gNB_sys_process_itti_msg(void *notUsed)
 					LOG_D(GNB_APP, "TASK_SYS_GNB received SS_NRUPD_TIM_INFO with sfn=%d slot=%d\n", SS_NRUPD_TIM_INFO(received_msg).sfn, SS_NRUPD_TIM_INFO(received_msg).slot);
 					tinfo.slot = SS_NRUPD_TIM_INFO(received_msg).slot;
 					tinfo.sfn = SS_NRUPD_TIM_INFO(received_msg).sfn;
+					/*WA: calculate hsfn here */
+					if(tinfo.hsfn == 0xFFFF){
+						tinfo.hsfn = 0;
+					} else if(tinfo.sfn == 1023 && SS_NRUPD_TIM_INFO(received_msg).slot == 0){
+						tinfo.hsfn++;
+						if(tinfo.hsfn == 1024){
+							tinfo.hsfn = 0;
+						}
+					}
+					SS_context.hsfn  = tinfo.hsfn;
+					SS_context.sfn = tinfo.sfn;
+					SS_context.slot  = tinfo.slot;
 					g_log->sfn = tinfo.sfn;
 					g_log->sf  = tinfo.slot;
 				}
@@ -1101,6 +1113,7 @@ bool ss_task_sys_nr_handle_cellConfig5G(struct NR_CellConfigRequest_Type *p_req,
 
       *RC.nrrrc[gnbId]->configuration.scc->ssbSubcarrierSpacing =
         RC.nrrrc[gnbId]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->scs_SpecificCarrierList.list.array[i]->subcarrierSpacing;
+      SS_context.mu = 	RC.nrrrc[gnbId]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->scs_SpecificCarrierList.list.array[i]->subcarrierSpacing;
 
 
       LOG_A(GNB_APP, "fxn:%s DL scs_SpecificCarrierList.offsetToCarrier :%ld subcarrierSpacing:%ld carrierBandwidth:%ld \n",
@@ -1422,6 +1435,26 @@ bool ss_task_sys_nr_handle_cellConfigRadioBearer(struct NR_SYSTEM_CTRL_REQ *req)
                 else if(BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.Rb.v.d == NR_RLC_RbConfig_Type_TM)
                 {
                   //TODO: TransparentMode
+                  // It is a workaround to provide SN size
+                  if (BearerList->v[i].Id.d == NR_RadioBearerId_Type_Drb)
+                  {
+                    if (BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.Rb.v.v.TM && BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.TestMode.d)
+                    {
+                      if (BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.TestMode.v.v.Info.d == NR_RLC_TestModeInfo_Type_TransparentMode)
+                      {
+                        if (BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.TestMode.v.v.Info.v.TransparentMode.d == NR_RLC_TransparentMode_Umd)
+                        {
+                          rlc->present = NR_RLC_Config_PR_um_Bi_Directional;
+                          rlc->choice.um_Bi_Directional = CALLOC(1,sizeof(*rlc->choice.um_Bi_Directional));
+                          NR_UL_UM_RLC_t *ul_UM_RLC = &rlc->choice.um_Bi_Directional->ul_UM_RLC;
+                          NR_DL_UM_RLC_t *dl_UM_RLC = &rlc->choice.um_Bi_Directional->dl_UM_RLC;
+                          ul_UM_RLC->sn_FieldLength = CALLOC(1,sizeof(long));
+                          dl_UM_RLC->sn_FieldLength = CALLOC(1,sizeof(long));
+                          *(ul_UM_RLC->sn_FieldLength) = *(dl_UM_RLC->sn_FieldLength) = BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.TestMode.v.v.Info.v.TransparentMode.v.Umd;
+                        }
+                      }
+                    }
+                  }
                 }
                 else
                 {

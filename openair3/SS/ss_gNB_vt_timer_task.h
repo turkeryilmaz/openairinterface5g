@@ -18,43 +18,30 @@
  * For more information about the OpenAirInterface (OAI) Software Alliance:
  *      contact@openairinterface.org
  */
-#ifndef _SS_GNB_CONTEXT_
-#define _SS_GNB_CONTEXT_
 
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+
+#include "hashtable.h"
+#include "intertask_interface.h"
 #include "SidlCommon.h"
 
-typedef struct SSConfigContext_s {
-  int State;	
-  uint16_t dl_earfcn;
-  uint16_t ul_earfcn;
-  uint32_t dl_freq;
-  uint32_t ul_freq;
-  uint16_t curr_attn;
-  uint16_t cellId;
-  int16_t maxRefPower;
-  //TO DO: Need to remove one of the following cellId
-  EUTRA_CellId_Type ttcn_cell_id;
-  uint16_t eutra_cellId;
-  uint16_t nr_cellId;
-  uint16_t ss_rnti_g;
-  uint8_t vtp_enabled;
-  ss_set_timinfo_t vtinfo;
-  hash_table_t *vt_timer_table   ; // key is SFN_SLOT
-  /** Timing info */
-  uint8_t mu;	 	/*subcarrierSpace*/
-  uint16_t hsfn;
-  uint16_t sfn;
-  uint8_t  slot;
-  /** TODO: To add more */
-} SSConfigContext_t;
+#ifndef SS_GNB_VT_TIMER_TASK_H_
+#define SS_GNB_VT_TIMER_TASK_H_
 
-typedef enum {
-  SS_STATE_NOT_CONFIGURED = 0,
-  SS_STATE_CELL_CONFIGURED,
-  SS_STATE_CELL_ACTIVE,
-  SS_STATE_AS_SECURITY_ACTIVE,
-  SS_STATE_AS_RBS_ACTIVE,
-  SS_STATE_CELL_BROADCASTING,
-  SS_STATE_MAX_STATE
-} SS_STATE_t;
-#endif /* _SS_GNB_CONTEXT_ */
+void *ss_gNB_vt_timer_process_itti_msg(void *);
+void *ss_gNB_vt_timer_task(void *arg);
+
+int nr_vt_timer_push_msg(struct TimingInfo_Type* at, int32_t slotOffset,task_id_t task_id,instance_t instance, MessageDef *msg_p);
+void nr_vt_add_slot(struct TimingInfo_Type* at, int offset);
+
+typedef struct vt_timer_elm_s {
+  task_id_t task_id;
+  instance_t instance;
+  void *msg; ///< Optional argument that will be passed when timer expires
+} vt_timer_elm_t ;
+
+
+#endif

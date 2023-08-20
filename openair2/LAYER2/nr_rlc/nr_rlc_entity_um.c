@@ -671,19 +671,21 @@ static void deliver_extra_pdu(nr_rlc_entity_um_t *entity, char *buffer, int size
   int data_size;
   int is_first;
   int is_last;
+  int sn_field_length;
 
   nr_rlc_pdu_decoder_init(&decoder, buffer, size);
 
   si = nr_rlc_pdu_decoder_get_bits(&decoder, 2); R(decoder);
+  sn_field_length = si ? entity->sn_field_length : 6;
 
   is_first = (si & 0x2) == 0;
   is_last = (si & 0x1) == 0;
 
-  if (entity->sn_field_length == 12) {
+  if (sn_field_length == 12) {
     nr_rlc_pdu_decoder_get_bits(&decoder, 2); R(decoder);
   }
 
-  sn = nr_rlc_pdu_decoder_get_bits(&decoder, entity->sn_field_length);
+  sn = nr_rlc_pdu_decoder_get_bits(&decoder, sn_field_length);
   R(decoder);
 
   if (!is_first) {

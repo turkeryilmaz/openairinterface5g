@@ -140,7 +140,9 @@ void ss_vtp_send_tinfo(
     virtualTime.TimingInfo.Slot.v.SlotOffset.d = (enum SlotOffset_Type_Sel) (tinfo->mu + 1);
 
     switch(virtualTime.TimingInfo.Slot.v.SlotOffset.d) {
-        case SlotOffset_Type_Numerology0: break;
+        case SlotOffset_Type_Numerology0:
+            virtualTime.TimingInfo.Slot.v.SlotOffset.v.Numerology0 = true;
+        break;
         case SlotOffset_Type_Numerology1:
             virtualTime.TimingInfo.Slot.v.SlotOffset.v.Numerology1 = tinfo->slot;
         break;
@@ -158,15 +160,14 @@ void ss_vtp_send_tinfo(
             break;;
     }
 
-    virtualTime.TimingInfo.SFN.d = true;
+    virtualTime.TimingInfo.SFN.d = SystemFrameNumberInfo_Type_Number;
     virtualTime.TimingInfo.SFN.v.Number = tinfo->sfn;
 
-    virtualTime.TimingInfo.Subframe.d = true;
+    virtualTime.TimingInfo.Subframe.d = SubFrameInfo_Type_Number;
     virtualTime.TimingInfo.Subframe.v.Number = tinfo->sf;
 
-    /** TODO: Always filling HSFN as 0, need to check this */
-    virtualTime.TimingInfo.HSFN.d = false;
-    virtualTime.TimingInfo.HSFN.v.Number = 0;
+    virtualTime.TimingInfo.HSFN.d = SystemFrameNumberInfo_Type_Number;
+    virtualTime.TimingInfo.HSFN.v.Number = tinfo->hsfn;
 
     if (((tinfo->sfn % 32) == 0) && (tinfo->sf == 0) && (tinfo->slot == 0))
     {
@@ -367,22 +368,15 @@ uint8_t ss_gNB_vtp_process_itti_msg(void)
     {
         switch (ITTI_MSG_ID(received_msg))
         {
-        case SS_UPD_TIM_INFO:
-        {
-            ss_set_timinfo_t tinfo;
-            tinfo.sf = SS_UPD_TIM_INFO(received_msg).sf;
-            tinfo.sfn = SS_UPD_TIM_INFO(received_msg).sfn;
-            if (SS_context.vtp_enabled == 1) {
-                ss_vtp_send_tinfo(TASK_VTP, &tinfo);
-            }
-        }; break;
         case SS_NRUPD_TIM_INFO:
         {
             ss_set_timinfo_t tinfo;
-            tinfo.slot = SS_NRUPD_TIM_INFO(received_msg).slot % 2;
-            tinfo.mu = 1;
-            tinfo.sf = SS_NRUPD_TIM_INFO(received_msg).slot / 2;
+            tinfo.mu = SS_context.mu;
+            uint8_t slotsPerSubFrame = 1<<tinfo.mu;
+            tinfo.slot = SS_NRUPD_TIM_INFO(received_msg).slot % slotsPerSubFrame;
+            tinfo.sf = SS_NRUPD_TIM_INFO(received_msg).slot /slotsPerSubFrame;
             tinfo.sfn = SS_NRUPD_TIM_INFO(received_msg).sfn;
+            tinfo.hsfn = SS_context.hsfn;
 
             if (SS_context.vtp_enabled == 1) {
                 ss_vtp_send_tinfo(TASK_VTP, &tinfo);
