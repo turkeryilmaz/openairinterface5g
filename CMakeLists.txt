@@ -1698,6 +1698,7 @@ set(SS_SRC
   ${OPENAIR3_DIR}/SS/ss_gNB_sys_task.c
   ${OPENAIR3_DIR}/SS/ss_gNB_vtp_task.c
   ${OPENAIR3_DIR}/SS/ss_gNB_drb_task.c
+  ${OPENAIR3_DIR}/SS/ss_gNB_vt_timer_task.c
   ${OPENAIR3_DIR}/SS/ss_utils.c
 )
 file(GLOB ss_sidl ${SIDL_CMPLR}/src/*.c)

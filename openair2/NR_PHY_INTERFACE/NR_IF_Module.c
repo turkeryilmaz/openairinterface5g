@@ -541,6 +541,22 @@ void NR_UL_indication(NR_UL_IND_t *UL_info) {
 		slot_ind.slot = sched_info->slot;
 		oai_nfapi_slot_ind(&slot_ind);
       }
+
+      if (RC.ss.mode >= SS_SOFTMODEM)
+      {
+        MessageDef *message_p = itti_alloc_new_message(TASK_VT_TIMER, INSTANCE_DEFAULT, SS_NRUPD_TIM_INFO);
+        if (message_p)
+        {
+          SS_NRUPD_TIM_INFO(message_p).slot = sched_info->slot;
+          SS_NRUPD_TIM_INFO(message_p).sfn = sched_info->frame;
+
+          int send_res = itti_send_msg_to_task(TASK_VT_TIMER, INSTANCE_DEFAULT, message_p);
+          if (send_res < 0)
+          {
+            LOG_E(NR_PHY, "[SS] Error in L1_Thread itti_send_msg_to_task");
+          }
+        }
+      }
     }
   }
   LOG_D(NR_MAC, "fxn:%s Exit\n", __FUNCTION__);

@@ -106,6 +106,7 @@ typedef struct ss_set_timinfo_s {
 typedef ss_set_timinfo_t ss_upd_timinfo_t;
 
 typedef struct ss_nrset_timinfo_s {
+  uint16_t hsfn;
   uint16_t sfn;
   uint32_t  slot;
 } ss_nrset_timinfo_t;

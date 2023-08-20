@@ -87,6 +87,7 @@ unsigned short config_frames[4] = {2,9,11,13};
 #include "udp_eNB_task.h"
 #include "ss_gNB_drb_task.h"
 #include "ss_gNB_vtp_task.h"
+#include "ss_gNB_vt_timer_task.h"
 
 pthread_cond_t nfapi_sync_cond;
 pthread_mutex_t nfapi_sync_mutex;
@@ -435,6 +436,11 @@ static int create_gNB_tasks(void) {
 
       if(itti_create_task(TASK_VTP, ss_gNB_vtp_task, NULL) < 0) {
         LOG_E(SCTP, "Create task for TASK_VTP failed\n");
+        return -1;
+      }
+
+      if(itti_create_task(TASK_VT_TIMER, ss_gNB_vt_timer_task, NULL) < 0) {
+        LOG_E(SCTP, "Create task for TASK_VT_TIMER failed\n");
         return -1;
       }
     }
