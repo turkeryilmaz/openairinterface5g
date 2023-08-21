@@ -1,6 +1,24 @@
-
+/* Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The OpenAirInterface Software Alliance licenses this file to You under
+ * the OAI Public License, Version 1.1  (the "License"); you may not use this file
+ * except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.openairinterface.org/?page_id=698
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *-------------------------------------------------------------------------------
+ * For more information about the OpenAirInterface (OAI) Software Alliance:
+ *      contact@openairinterface.org
+ */
+ 
 #include "intertask_interface.h"
-
 #include "xnap_common.h"
 #include "xnap_gNB_task.h"
 #include "xnap_gNB_generate_messages.h"
@@ -25,15 +43,12 @@ int xnap_gNB_generate_xn_setup_request(xnap_gNB_instance_t *instance_p, xnap_gNB
   XNAP_XnAP_PDU_t                     pdu;
   XNAP_XnSetupRequest_t              *out;
   XNAP_XnSetupRequest_IEs_t          *ie;
-  //XNAP_PLMN_Identity_t               *e_BroadcastPLMN_ItemIE;;
-  //XNAP_ServedCells_NR_Item_t   *ServedCells_NR_ItemIEs;
-  //X2AP_GU_Group_ID_t                 *gu;
   XNAP_BroadcastPLMNinTAISupport_Item_t   *e_BroadcastPLMNinTAISupport_ItemIE;
   XNAP_TAISupport_Item_t      *TAISupport_ItemIEs;
   XNAP_S_NSSAI_t           *e_S_NSSAI_ItemIE ;
   XNAP_GlobalAMF_Region_Information_t   *e_GlobalAMF_Region_Information_ItemIEs;
   XNAP_ServedCells_NR_Item_t  *servedCellMember;
-  XNAP_ServedCells_NR_t       *ServedCells_NR;
+ // XNAP_ServedCells_NR_t       *ServedCells_NR;
   XNAP_NRFrequencyBandItem_t  *nrfreqbanditemul;
   XNAP_NRFrequencyBandItem_t  *nrfreqbanditemdl;
   XNAP_NRFrequencyBandItem_t  *nrfreqbanditem;
@@ -49,7 +64,7 @@ int xnap_gNB_generate_xn_setup_request(xnap_gNB_instance_t *instance_p, xnap_gNB
 
   xnap_gNB_data_p->state = XNAP_GNB_STATE_WAITING;
 
-  /* Prepare the X2AP message to encode */
+  /* Prepare the XnAP message to encode */
   memset(&pdu, 0, sizeof(pdu));
   
   pdu.present = XNAP_XnAP_PDU_PR_initiatingMessage;
@@ -73,7 +88,7 @@ int xnap_gNB_generate_xn_setup_request(xnap_gNB_instance_t *instance_p, xnap_gNB
   ie->value.choice.GlobalNG_RANNode_ID.choice.gNB->gnb_id.present=XNAP_GNB_ID_Choice_PR_gnb_ID;
 
   MACRO_GNB_ID_TO_BIT_STRING(instance_p->gNB_id, &ie->value.choice.GlobalNG_RANNode_ID.choice.gNB->gnb_id.choice.gnb_ID); //28 bits
-  XNAP_INFO("%d -> %02x%02x%02x\n", instance_p->gNB_id,
+  LOG_I(XNAP, "%d -> %02x%02x%02x\n", instance_p->gNB_id,
             ie->value.choice.GlobalNG_RANNode_ID.choice.gNB->gnb_id.choice.gnb_ID.buf[0],
             ie->value.choice.GlobalNG_RANNode_ID.choice.gNB->gnb_id.choice.gnb_ID.buf[1],
             ie->value.choice.GlobalNG_RANNode_ID.choice.gNB->gnb_id.choice.gnb_ID.buf[2]);
@@ -91,14 +106,7 @@ int xnap_gNB_generate_xn_setup_request(xnap_gNB_instance_t *instance_p, xnap_gNB
     	//for (int i=0;i<1;i++)
     		{
     		TAISupport_ItemIEs = (XNAP_TAISupport_Item_t *)calloc(1,sizeof(XNAP_TAISupport_Item_t));
-      		/*TAISupport_ItemIEs->tac.size = 3;//octet string
-      		
-      		TAISupport_ItemIEs->tac.buf=calloc(TAISupport_ItemIEs->tac.size,sizeof(OCTET_STRING_t));
-      		TAISupport_ItemIEs->tac.buf[0]=208;
-      		TAISupport_ItemIEs->tac.buf[1]=95;
-      		TAISupport_ItemIEs->tac.buf[2]=2;*/
-      		INT24_TO_OCTET_STRING(instance_p->tac, &TAISupport_ItemIEs->tac);
-		// NR_FIVEGS_TAC_ID_TO_BIT_STRING	
+      		INT24_TO_OCTET_STRING(instance_p->tac, &TAISupport_ItemIEs->tac);	
 		{
 		for (int j=0; j<1; j++) 
 			{
@@ -111,7 +119,6 @@ int xnap_gNB_generate_xn_setup_request(xnap_gNB_instance_t *instance_p, xnap_gNB
 				{
 				e_S_NSSAI_ItemIE = (XNAP_S_NSSAI_t *)calloc(1, sizeof(XNAP_S_NSSAI_t));
 				e_S_NSSAI_ItemIE->sst.size=1; //OCTET STRING(SIZE(1))
-				//e_S_NSSAI_ItemIE->sst.buf=calloc(1,e_S_NSSAI_ItemIE->sst.size);
 				e_S_NSSAI_ItemIE->sst.buf=calloc(e_S_NSSAI_ItemIE->sst.size,sizeof(OCTET_STRING_t));
 				e_S_NSSAI_ItemIE->sst.buf[0]=1;
 				
@@ -133,11 +140,9 @@ int xnap_gNB_generate_xn_setup_request(xnap_gNB_instance_t *instance_p, xnap_gNB
   ie->criticality = XNAP_Criticality_reject;
   ie->value.present = XNAP_XnSetupRequest_IEs__value_PR_ServedCells_NR;
   {
-    for (int i = 0; i<instance_p->num_cc; i++)
-    {
       servedCellMember = (XNAP_ServedCells_NR_Item_t *)calloc(1,sizeof(XNAP_ServedCells_NR_Item_t));
       {
-        servedCellMember->served_cell_info_NR.nrPCI = instance_p->Nid_cell[i]; //long
+        servedCellMember->served_cell_info_NR.nrPCI = instance_p->Nid_cell; //long
 
         MCC_MNC_TO_PLMNID(instance_p->mcc, instance_p->mnc, instance_p->mnc_digit_length,
                       &servedCellMember->served_cell_info_NR.cellID.plmn_id); //octet string
@@ -153,11 +158,11 @@ int xnap_gNB_generate_xn_setup_request(xnap_gNB_instance_t *instance_p, xnap_gNB
           	asn1cSeqAdd(&servedCellMember->served_cell_info_NR.broadcastPLMN.list, plmn);
         	}
 	}
-	if (instance_p->frame_type[i] == FDD) 
+	if (instance_p->frame_type == FDD) 
 	{
           servedCellMember->served_cell_info_NR.nrModeInfo.present = XNAP_NRModeInfo_PR_fdd;
           servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd=(XNAP_NRModeInfoFDD_t *)calloc(1,sizeof(XNAP_NRModeInfoFDD_t));
-          servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRFrequencyInfo.nrARFCN= instance_p->fdd_earfcn_UL[i];
+          servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRFrequencyInfo.nrARFCN= instance_p->fdd_earfcn_UL;
 	  for(int j=0;j<1;j++)
 	  {
 	  	nrfreqbanditemul=(XNAP_NRFrequencyBandItem_t *) calloc(1, sizeof(XNAP_NRFrequencyBandItem_t));
@@ -165,7 +170,7 @@ int xnap_gNB_generate_xn_setup_request(xnap_gNB_instance_t *instance_p, xnap_gNB
 	  	asn1cSeqAdd(&servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRFrequencyInfo.frequencyBand_List.list, nrfreqbanditemul);
 	  }
 	  
-	  servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->dlNRFrequencyInfo.nrARFCN= instance_p->fdd_earfcn_DL[i];
+	  servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->dlNRFrequencyInfo.nrARFCN= instance_p->fdd_earfcn_DL;
 	  for(int j=0;j<1;j++)
 	  {
 	  	nrfreqbanditemdl=(XNAP_NRFrequencyBandItem_t *) calloc(1, sizeof(XNAP_NRFrequencyBandItem_t));
@@ -173,7 +178,7 @@ int xnap_gNB_generate_xn_setup_request(xnap_gNB_instance_t *instance_p, xnap_gNB
 	  	asn1cSeqAdd(&servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRFrequencyInfo.frequencyBand_List.list, nrfreqbanditemdl);
 	  }
 	  
-	  switch (instance_p->N_RB_DL[i]) 
+	  switch (instance_p->nr_SCS) 
 	  {
 	  case 15:
           	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRTransmissonBandwidth.nRSCS =XNAP_NRSCS_scs15;
@@ -193,7 +198,7 @@ int xnap_gNB_generate_xn_setup_request(xnap_gNB_instance_t *instance_p, xnap_gNB
           }
           
           
-          switch (instance_p->N_RB_DL[i]) 
+          switch (instance_p->N_RB_UL) 
 	  {
 	  case 11:
           	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb11;
@@ -228,7 +233,7 @@ int xnap_gNB_generate_xn_setup_request(xnap_gNB_instance_t *instance_p, xnap_gNB
               AssertFatal(0,"Failed: Check value for N_RB_DL/N_RB_UL");
               break;
           }
-          switch (instance_p->N_RB_DL[i]) 
+          switch (instance_p->nr_SCS) 
 	  {
 	  case 15:
           	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->dlNRTransmissonBandwidth.nRSCS =XNAP_NRSCS_scs15;
@@ -247,7 +252,7 @@ int xnap_gNB_generate_xn_setup_request(xnap_gNB_instance_t *instance_p, xnap_gNB
           	break;
           }
           
-          switch (instance_p->N_RB_DL[i]) 
+          switch (instance_p->N_RB_DL) 
 	  {
 	  case 11:
           	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->dlNRTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb11;
@@ -294,7 +299,7 @@ int xnap_gNB_generate_xn_setup_request(xnap_gNB_instance_t *instance_p, xnap_gNB
 	  	nrfreqbanditem->nr_frequency_band=106;//instance_p->nr_band; //how to fill ?
 	  	asn1cSeqAdd(&servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd->nrFrequencyInfo.frequencyBand_List.list, nrfreqbanditem);
 	  }
-	  switch (instance_p->nr_SCS[i]) 
+	  switch (instance_p->nr_SCS) 
 	  {
 	  case 15:
           	servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd->nrTransmissonBandwidth.nRSCS =XNAP_NRSCS_scs15;
@@ -314,7 +319,7 @@ int xnap_gNB_generate_xn_setup_request(xnap_gNB_instance_t *instance_p, xnap_gNB
           }
           
           
-          switch (instance_p->N_RB_DL[i]) 
+          switch (instance_p->N_RB_DL) 
 	  {
 	  case 11:
           	servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd->nrTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb11;
@@ -350,24 +355,19 @@ int xnap_gNB_generate_xn_setup_request(xnap_gNB_instance_t *instance_p, xnap_gNB
               break;
           }
         }
-        //Where to extract mtc from? setting it to 0 now.
+        //Setting MTC to 0 now. Will be handled later.
         INT8_TO_OCTET_STRING(0,&servedCellMember->served_cell_info_NR.measurementTimingConfiguration);
         servedCellMember->served_cell_info_NR.connectivitySupport.eNDC_Support=1;
       }
       asn1cSeqAdd(&ie->value.choice.ServedCells_NR.list, servedCellMember);
-    }
   }
   asn1cSeqAdd(&out->protocolIEs.list, ie);
-
-
 
 	/* mandatory */ //AMFRegion
 	ie = (XNAP_XnSetupRequest_IEs_t *)calloc(1, sizeof(XNAP_XnSetupRequest_IEs_t));
   	ie->id = XNAP_ProtocolIE_ID_id_AMF_Region_Information ;
   	ie->criticality = XNAP_Criticality_reject;
   	ie->value.present = XNAP_XnSetupRequest_IEs__value_PR_AMF_Region_Information;
-  	
-
   	//{
     	//for (int i=0;i<1;i++)
     		{
@@ -382,13 +382,12 @@ int xnap_gNB_generate_xn_setup_request(xnap_gNB_instance_t *instance_p, xnap_gNB
     		asn1cSeqAdd(&ie->value.choice.AMF_Region_Information.list, e_GlobalAMF_Region_Information_ItemIEs);
   		}
   	//}
-	
 	asn1cSeqAdd(&out->protocolIEs.list, ie);
 	
 
 
   if (xnap_gNB_encode_pdu(&pdu, &buffer, &len) < 0) {
-    XNAP_ERROR("Failed to encode X2 setup request\n");
+    LOG_E(XNAP, "Failed to encode Xn setup request\n");
     return -1;
   }
 
@@ -411,7 +410,7 @@ int xnap_gNB_generate_xn_setup_failure(instance_t instance,
   uint32_t  len;
   int       ret = 0;
 
-  /* Prepare the X2AP message to encode */
+  /* Prepare the XnAP message to encode */
   memset(&pdu, 0, sizeof(pdu));
   pdu.present = XNAP_XnAP_PDU_PR_unsuccessfulOutcome;
   pdu.choice.unsuccessfulOutcome 	= (XNAP_UnsuccessfulOutcome_t *) calloc(1, sizeof(XNAP_UnsuccessfulOutcome_t)); 
@@ -426,18 +425,50 @@ int xnap_gNB_generate_xn_setup_failure(instance_t instance,
   ie->criticality = XNAP_Criticality_ignore;
   ie->value.present = XNAP_XnSetupFailure_IEs__value_PR_Cause;
 
-  //xnap_gNB_set_cause (&ie->value.choice.Cause, cause_type, cause_value);
+  xnap_gNB_set_cause (&ie->value.choice.Cause, cause_type, cause_value);
 
-  //asn1cSeqAdd(&out->protocolIEs.list, ie);
+  asn1cSeqAdd(&out->protocolIEs.list, ie);
 
   if (xnap_gNB_encode_pdu(&pdu, &buffer, &len) < 0) {
-    XNAP_ERROR("Failed to encode Xn setup failure\n");
+    LOG_E(XNAP, "Failed to encode Xn setup failure\n");
     return -1;
   }
 
   xnap_gNB_itti_send_sctp_data_req(instance, assoc_id, buffer, len, 0);
 
   return ret;
+}
+
+int xnap_gNB_set_cause (XNAP_Cause_t * cause_p,
+                        XNAP_Cause_PR cause_type,
+                        long cause_value)
+{
+
+  DevAssert (cause_p != NULL);
+  cause_p->present = cause_type;
+
+  switch (cause_type) {
+  case XNAP_Cause_PR_radioNetwork:
+    cause_p->choice.misc = cause_value;
+    break;
+
+  case XNAP_Cause_PR_transport:
+    cause_p->choice.misc = cause_value;
+    break;
+
+  case XNAP_Cause_PR_protocol:
+    cause_p->choice.misc = cause_value;
+    break;
+
+  case XNAP_Cause_PR_misc:
+    cause_p->choice.misc = cause_value;
+    break;
+
+  default:
+    return -1;
+  }
+
+  return 0;
 }
 
 int xnap_gNB_generate_xn_setup_response(xnap_gNB_instance_t *instance_p, xnap_gNB_data_t *xnap_gNB_data_p)
@@ -449,9 +480,9 @@ int xnap_gNB_generate_xn_setup_response(xnap_gNB_instance_t *instance_p, xnap_gN
   XNAP_BroadcastPLMNinTAISupport_Item_t   *e_BroadcastPLMNinTAISupport_ItemIE;
   XNAP_TAISupport_Item_t      *TAISupport_ItemIEs;
   XNAP_S_NSSAI_t           *e_S_NSSAI_ItemIE ;
-  XNAP_GlobalAMF_Region_Information_t   *e_GlobalAMF_Region_Information_ItemIEs;
+  //XNAP_GlobalAMF_Region_Information_t   *e_GlobalAMF_Region_Information_ItemIEs;
   XNAP_ServedCells_NR_Item_t  *servedCellMember;
-  XNAP_ServedCells_NR_t       *ServedCells_NR;
+  //XNAP_ServedCells_NR_t       *ServedCells_NR;
   XNAP_NRFrequencyBandItem_t  *nrfreqbanditemul;
   XNAP_NRFrequencyBandItem_t  *nrfreqbanditemdl;
   XNAP_NRFrequencyBandItem_t  *nrfreqbanditem;
@@ -484,7 +515,7 @@ int xnap_gNB_generate_xn_setup_response(xnap_gNB_instance_t *instance_p, xnap_gN
   ie->value.choice.GlobalNG_RANNode_ID.choice.gNB->gnb_id.present=XNAP_GNB_ID_Choice_PR_gnb_ID;
   MACRO_GNB_ID_TO_BIT_STRING(instance_p->gNB_id,
                              &ie->value.choice.GlobalNG_RANNode_ID.choice.gNB->gnb_id.choice.gnb_ID);
-  XNAP_INFO("%d -> %02x%02x%02x\n", instance_p->gNB_id,
+  LOG_I(XNAP, "%d -> %02x%02x%02x\n", instance_p->gNB_id,
             ie->value.choice.GlobalNG_RANNode_ID.choice.gNB->gnb_id.choice.gnb_ID.buf[0],
             ie->value.choice.GlobalNG_RANNode_ID.choice.gNB->gnb_id.choice.gnb_ID.buf[1],
             ie->value.choice.GlobalNG_RANNode_ID.choice.gNB->gnb_id.choice.gnb_ID.buf[2]);
@@ -500,14 +531,7 @@ int xnap_gNB_generate_xn_setup_response(xnap_gNB_instance_t *instance_p, xnap_gN
     	//for (int i=0;i<1;i++)
     		{
     		TAISupport_ItemIEs = (XNAP_TAISupport_Item_t *)calloc(1,sizeof(XNAP_TAISupport_Item_t));
-      		/*TAISupport_ItemIEs->tac.size = 3;//octet string
-      		
-      		TAISupport_ItemIEs->tac.buf=calloc(TAISupport_ItemIEs->tac.size,sizeof(OCTET_STRING_t));
-      		TAISupport_ItemIEs->tac.buf[0]=208;
-      		TAISupport_ItemIEs->tac.buf[1]=95;
-      		TAISupport_ItemIEs->tac.buf[2]=2;*/
       		INT24_TO_OCTET_STRING(instance_p->tac, &TAISupport_ItemIEs->tac);
-		// NR_FIVEGS_TAC_ID_TO_BIT_STRING	
 		{
 		for (int j=0; j<1; j++) 
 			{
@@ -520,7 +544,6 @@ int xnap_gNB_generate_xn_setup_response(xnap_gNB_instance_t *instance_p, xnap_gN
 				{
 				e_S_NSSAI_ItemIE = (XNAP_S_NSSAI_t *)calloc(1, sizeof(XNAP_S_NSSAI_t));
 				e_S_NSSAI_ItemIE->sst.size=1; //OCTET STRING(SIZE(1))
-				//e_S_NSSAI_ItemIE->sst.buf=calloc(1,e_S_NSSAI_ItemIE->sst.size);
 				e_S_NSSAI_ItemIE->sst.buf=calloc(e_S_NSSAI_ItemIE->sst.size,sizeof(OCTET_STRING_t));
 				e_S_NSSAI_ItemIE->sst.buf[0]=1;
 				
@@ -543,11 +566,9 @@ int xnap_gNB_generate_xn_setup_response(xnap_gNB_instance_t *instance_p, xnap_gN
   ie->criticality = XNAP_Criticality_reject;
   ie->value.present = XNAP_XnSetupResponse_IEs__value_PR_ServedCells_NR;
   {
-    for (int i = 0; i<instance_p->num_cc; i++)
-    {
       servedCellMember = (XNAP_ServedCells_NR_Item_t *)calloc(1,sizeof(XNAP_ServedCells_NR_Item_t));
       {
-        servedCellMember->served_cell_info_NR.nrPCI = instance_p->Nid_cell[i]; //long
+        servedCellMember->served_cell_info_NR.nrPCI = instance_p->Nid_cell; //long
 
         MCC_MNC_TO_PLMNID(instance_p->mcc, instance_p->mnc, instance_p->mnc_digit_length,
                       &servedCellMember->served_cell_info_NR.cellID.plmn_id); //octet string
@@ -563,11 +584,11 @@ int xnap_gNB_generate_xn_setup_response(xnap_gNB_instance_t *instance_p, xnap_gN
           	asn1cSeqAdd(&servedCellMember->served_cell_info_NR.broadcastPLMN.list, plmn);
         	}
 	}
-	if (instance_p->frame_type[i] == FDD) 
+	if (instance_p->frame_type == FDD) 
 	{
           servedCellMember->served_cell_info_NR.nrModeInfo.present = XNAP_NRModeInfo_PR_fdd;
           servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd=(XNAP_NRModeInfoFDD_t *)calloc(1,sizeof(XNAP_NRModeInfoFDD_t));
-          servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRFrequencyInfo.nrARFCN= instance_p->fdd_earfcn_UL[i];
+          servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRFrequencyInfo.nrARFCN= instance_p->fdd_earfcn_UL;
 	  for(int j=0;j<1;j++)
 	  {
 	  	nrfreqbanditemul=(XNAP_NRFrequencyBandItem_t *) calloc(1, sizeof(XNAP_NRFrequencyBandItem_t));
@@ -575,7 +596,7 @@ int xnap_gNB_generate_xn_setup_response(xnap_gNB_instance_t *instance_p, xnap_gN
 	  	asn1cSeqAdd(&servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRFrequencyInfo.frequencyBand_List.list, nrfreqbanditemul);
 	  }
 	  
-	  servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->dlNRFrequencyInfo.nrARFCN= instance_p->fdd_earfcn_DL[i];
+	  servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->dlNRFrequencyInfo.nrARFCN= instance_p->fdd_earfcn_DL;
 	  for(int j=0;j<1;j++)
 	  {
 	  	nrfreqbanditemdl=(XNAP_NRFrequencyBandItem_t *) calloc(1, sizeof(XNAP_NRFrequencyBandItem_t));
@@ -583,7 +604,7 @@ int xnap_gNB_generate_xn_setup_response(xnap_gNB_instance_t *instance_p, xnap_gN
 	  	asn1cSeqAdd(&servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRFrequencyInfo.frequencyBand_List.list, nrfreqbanditemdl);
 	  }
 	  
-	  switch (instance_p->N_RB_DL[i]) 
+	  switch (instance_p->nr_SCS) 
 	  {
 	  case 15:
           	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRTransmissonBandwidth.nRSCS =XNAP_NRSCS_scs15;
@@ -603,7 +624,7 @@ int xnap_gNB_generate_xn_setup_response(xnap_gNB_instance_t *instance_p, xnap_gN
           }
           
           
-          switch (instance_p->N_RB_DL[i]) 
+          switch (instance_p->N_RB_UL) 
 	  {
 	  case 11:
           	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb11;
@@ -638,7 +659,7 @@ int xnap_gNB_generate_xn_setup_response(xnap_gNB_instance_t *instance_p, xnap_gN
               AssertFatal(0,"Failed: Check value for N_RB_DL/N_RB_UL");
               break;
           }
-          switch (instance_p->N_RB_DL[i]) 
+          switch (instance_p->nr_SCS) 
 	  {
 	  case 15:
           	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->dlNRTransmissonBandwidth.nRSCS =XNAP_NRSCS_scs15;
@@ -657,7 +678,7 @@ int xnap_gNB_generate_xn_setup_response(xnap_gNB_instance_t *instance_p, xnap_gN
           	break;
           }
           
-          switch (instance_p->N_RB_DL[i]) 
+          switch (instance_p->N_RB_DL) 
 	  {
 	  case 11:
           	servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->dlNRTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb11;
@@ -704,7 +725,7 @@ int xnap_gNB_generate_xn_setup_response(xnap_gNB_instance_t *instance_p, xnap_gN
 	  	nrfreqbanditem->nr_frequency_band=106;//instance_p->nr_band; //how to fill ?
 	  	asn1cSeqAdd(&servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd->nrFrequencyInfo.frequencyBand_List.list, nrfreqbanditem);
 	  }
-	  switch (instance_p->nr_SCS[i]) 
+	  switch (instance_p->nr_SCS) 
 	  {
 	  case 15:
           	servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd->nrTransmissonBandwidth.nRSCS =XNAP_NRSCS_scs15;
@@ -724,7 +745,7 @@ int xnap_gNB_generate_xn_setup_response(xnap_gNB_instance_t *instance_p, xnap_gN
           }
           
           
-          switch (instance_p->N_RB_DL[i]) 
+          switch (instance_p->N_RB_DL) 
 	  {
 	  case 11:
           	servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd->nrTransmissonBandwidth.nRNRB =XNAP_NRNRB_nrb11;
@@ -760,20 +781,17 @@ int xnap_gNB_generate_xn_setup_response(xnap_gNB_instance_t *instance_p, xnap_gN
               break;
           }
         }
-        //Where to extract mtc from? setting it to 0 now.
+        //Setting MTC to 0 now. Will be handled later.
         INT8_TO_OCTET_STRING(0,&servedCellMember->served_cell_info_NR.measurementTimingConfiguration);
         servedCellMember->served_cell_info_NR.connectivitySupport.eNDC_Support=1;
       }
       asn1cSeqAdd(&ie->value.choice.ServedCells_NR.list, servedCellMember);
-    }
   }
   asn1cSeqAdd(&out->protocolIEs.list, ie);
 
-//done all IEs
-
 
   if (xnap_gNB_encode_pdu(&pdu, &buffer, &len) < 0) {
-    XNAP_ERROR("Failed to encode Xn setup response\n");
+    LOG_E(XNAP, "Failed to encode Xn setup response\n");
     return -1;
   }
   xnap_gNB_data_p->state = XNAP_GNB_STATE_READY;

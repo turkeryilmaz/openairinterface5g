@@ -118,22 +118,18 @@ uint32_t gNB_app_register_x2(uint32_t gnb_id_start, uint32_t gnb_id_end) {
 
 /*------------------------------------------------------------------------------*/
  
-uint32_t gNB_app_register_xn(uint32_t gnb_id_start, uint32_t gnb_id_end) {
+void gNB_app_register_xn(uint32_t gnb_id_num) {
   uint32_t         gnb_id;
   MessageDef      *msg_p;
-  uint32_t         register_gnb_xn_pending = 0;
 
-  for (gnb_id = gnb_id_start; (gnb_id < gnb_id_end) ; gnb_id++) {
+  for (gnb_id = 0; (gnb_id < gnb_id_num) ; gnb_id++) {
     {
       msg_p = itti_alloc_new_message (TASK_GNB_APP, 0, XNAP_REGISTER_GNB_REQ);
       LOG_I(XNAP, "GNB_ID: %d \n", gnb_id);
       RCconfig_NR_Xn(msg_p, gnb_id);
       itti_send_msg_to_task (TASK_XNAP, GNB_MODULE_ID_TO_INSTANCE(gnb_id), msg_p);
-      register_gnb_xn_pending++;
     }
   }
-
-  return register_gnb_xn_pending;
 }
 
 /* added -------------------------------------------------------------------------------------*/
@@ -145,25 +141,15 @@ void *gNB_app_task(void *args_p)
   const char                      *msg_name        = NULL;
   instance_t                      instance;
   int                             result;
-  uint32_t                        gnb_nb = RC.nb_nr_inst; 
-  uint32_t                        gnb_id_start = 0;
-  uint32_t                        gnb_id_end = gnb_id_start + gnb_nb;
-  uint32_t                        register_gnb_pending=0;
-  uint32_t                        registered_gnb=0;
-  long                            gnb_register_retry_timer_id;
-  uint32_t                        xn_register_gnb_pending = 0;
-  uint32_t                        xn_registered_gnb = 0;
-  long                            xn_gnb_register_retry_timer_id;
   /* for no gcc warnings */
   (void)instance;
 
   int cell_to_activate = 0;
   
   if (is_xnap_enabled()) {
-    xn_register_gnb_pending = gNB_app_register_xn (gnb_id_start, gnb_id_end);
+    gNB_app_register_xn (RC.nb_nr_inst);
   }
 
-  
   itti_mark_task_ready (TASK_GNB_APP);
   ngran_node_t node_type = get_node_type();
 
@@ -298,37 +284,7 @@ void *gNB_app_task(void *args_p)
     case XNAP_REGISTER_GNB_CNF:
       LOG_I(GNB_APP, "[gNB %ld] Received %s: associated gNB %d\n", instance, ITTI_MSG_NAME (msg_p),
             XNAP_REGISTER_GNB_CNF(msg_p).nb_xn);
-      DevAssert(xn_register_gnb_pending > 0);
-      xn_register_gnb_pending--;
-
-      /* Check if at least gNB is registered with one target gNB */
-      if (XNAP_REGISTER_GNB_CNF(msg_p).nb_xn > 0) {
-        xn_registered_gnb++;
-      }
-
-      /* Check if all register gNB requests have been processed */
-      if (xn_register_gnb_pending == 0) {
-        if (xn_registered_gnb == gnb_nb) {
-          /* If all gNB are registered, start RRC HO task */
-          } else {
-          uint32_t xn_not_associated = gnb_nb - xn_registered_gnb;
-          LOG_W(GNB_APP, " %d gNB %s not associated with the target\n",
-                xn_not_associated, xn_not_associated > 1 ? "are" : "is");
-
-	  // timer to retry
-	  /* Restart the gNB registration process in GNB_REGISTER_RETRY_DELAY seconds */
-          if (timer_setup (XNAP_GNB_REGISTER_RETRY_DELAY, 0, TASK_GNB_APP,
-			   INSTANCE_DEFAULT, TIMER_ONE_SHOT, NULL,
-			   &xn_gnb_register_retry_timer_id) < 0) {
-            LOG_E(ENB_APP, " Can not start gNB XNAP register: retry timer, use \"sleep\" instead!\n");
-            sleep(XNAP_GNB_REGISTER_RETRY_DELAY);
-            /* Restart the registration process */
-            xn_registered_gnb = 0;
-            xn_register_gnb_pending = gNB_app_register_xn (gnb_id_start, gnb_id_end);
-          }
-        }
-      }
-
+      /*TODO Retries if no cnf recieved*/
       break;
     
     case TIMER_HAS_EXPIRED:

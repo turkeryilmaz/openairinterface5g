@@ -295,7 +295,6 @@ static int create_gNB_tasks(ngran_node_t node_type)
   uint32_t                        gnb_nb = RC.nb_nr_inst; 
   uint32_t                        gnb_id_start = 0;
   uint32_t                        gnb_id_end = gnb_id_start + gnb_nb;
-  int                             rc;
   LOG_D(GNB_APP, "%s(gnb_nb:%d)\n", __FUNCTION__, gnb_nb);
   itti_wait_ready(1);
   LOG_I(PHY, "%s() Task ready initialize structures\n", __FUNCTION__);
@@ -345,11 +344,10 @@ static int create_gNB_tasks(ngran_node_t node_type)
     //registered_gnb = 0;
     __attribute__((unused)) uint32_t register_gnb_pending = gNB_app_register (gnb_id_start, gnb_id_end);
   }
-/* added---------------------------------------------------------------------------------------------------------*/
+
   if ((get_softmodem_params()->sa || is_xnap_enabled()) &&
       !NODE_IS_DU(node_type)) {
     /* Try to register each gNB */
-    //registered_gnb = 0;
     __attribute__((unused)) uint32_t register_gnb_pending = gNB_app_register (gnb_id_start, gnb_id_end);
   }
 
@@ -369,8 +367,8 @@ static int create_gNB_tasks(ngran_node_t node_type)
     }
     
     if (is_xnap_enabled()) {
-      rc=itti_create_task(TASK_XNAP, xnap_task, NULL);
-      if(rc < 0) {
+      if(itti_create_task(TASK_XNAP, xnap_task, NULL)<0)
+      {
         LOG_E(XNAP, "Create task for XNAP failed\n");
       }
     } else {
@@ -378,12 +376,10 @@ static int create_gNB_tasks(ngran_node_t node_type)
     }
   }
 
-  /*------------------------------------------------------------------------------------------------------------------------added*/
   if (is_xnap_enabled() ) { //&& !NODE_IS_DU(node_type)
 	  LOG_I(XNAP, "XNAP enabled \n");
-	  __attribute__((unused)) uint32_t xn_register_gnb_pending = gNB_app_register_xn (gnb_id_start, gnb_id_end);
+	  gNB_app_register_xn (gnb_nb);
   }
-  /*-----------------------------------------------------------------------------------------------------------------------------*/
 
   if (get_softmodem_params()->sa &&
       !NODE_IS_DU(node_type)) {

@@ -1,14 +1,29 @@
-#include <stdint.h>
+/* Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The OpenAirInterface Software Alliance licenses this file to You under
+ * the OAI Public License, Version 1.1  (the "License"); you may not use this file
+ * except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.openairinterface.org/?page_id=698
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *-------------------------------------------------------------------------------
+ * For more information about the OpenAirInterface (OAI) Software Alliance:
+ *      contact@openairinterface.org
+ */
 
+
+#include <stdint.h>
 #include "queue.h"
 #include "tree.h"
-
 #include "sctp_eNB_defs.h"
-#include "s1ap_messages_types.h"
 #include "xnap_messages_types.h"
-
-#include "xnap_ids.h"
-#include "xnap_timers.h"
 
 #ifndef XNAP_GNB_DEFS_H_
 #define XNAP_GNB_DEFS_H_
@@ -46,13 +61,6 @@ typedef enum {
   STAILQ_ENTRY(plmn_identity_s) next;
 };*/
 
-/* Served group id element */
-/*struct served_group_id_s {
-  uint16_t gnb_group_id;
-  STAILQ_ENTRY(served_group_id_s) next;
-};*/
-
-/* Served enn code for a particular gNB */
 struct gnb_code_s {
   uint8_t gnb_code;
   STAILQ_ENTRY(gnb_code_s) next;
@@ -71,10 +79,10 @@ typedef struct xnap_gNB_data_s {
   /*  target eNB ID */
   uint32_t gNB_id;
 
-  /* Current eNB load information (if any). */
-  //x2ap_load_state_t overload_state;
+  /* Current gNB load information (if any). */
+  //xnap_load_state_t overload_state;
 
-  /* Current eNB->eNB X2AP association state */
+  /* Current gNB->gNB XnAP association state */
   xnap_gNB_state_t state;
 
   /* Next usable stream for UE signalling */
@@ -91,10 +99,10 @@ typedef struct xnap_gNB_data_s {
   int32_t  assoc_id;
 
   /* Nid cells */
-  uint32_t                Nid_cell[MAX_NUM_CCs];
+  uint32_t                Nid_cell;
   int                     num_cc;
   /*Frequency band of NR neighbor cell supporting ENDC NSA */
-  uint32_t                servedNrCell_band[MAX_NUM_CCs];
+  uint32_t                servedNrCell_band;
 
   /* Only meaningfull in virtual mode */
   struct xnap_gNB_instance_s *xnap_gNB_instance;
@@ -113,25 +121,18 @@ typedef struct xnap_gNB_instance_s {
   /* Tree of XNAP gNB associations ordered by association ID */
   RB_HEAD(xnap_gnb_map, xnap_gNB_data_s) xnap_gnb_head;
 
-  /* Tree of UE ordered by eNB_ue_x2ap_id's */
-  //  RB_HEAD(x2ap_ue_map, x2ap_eNB_ue_context_s) x2ap_ue_head;
-
-  /* For virtual mode, mod_id as defined in the rest of the L1/L2 stack */
   instance_t instance;
 
-  /* Displayable name of eNB */
+  /* Displayable name of gNB */
   char *gNB_name;
 
-  /* Unique eNB_id to identify the eNB within EPC.
-   * In our case the eNB is a macro eNB so the id will be 20 bits long.
-   * For Home eNB id, this field should be 28 bits long.
+  /* Unique gNB_id to identify the gNB within core.
+   * In our case the gNB id will be 28 bits long.
    */
   uint32_t gNB_id;
-  /* The type of the cell */
-  cell_type_t cell_type;
 
   /* Tracking area code */
-  uint16_t tac;
+  uint16_t tac;  //octet string of size 3
 
   /* Mobile Country Code
    * Mobile Network Code
@@ -141,45 +142,38 @@ typedef struct xnap_gNB_instance_s {
   uint8_t   mnc_digit_length;
 
   /* CC params */
-  int16_t                 eutra_band[MAX_NUM_CCs];
-  uint32_t                downlink_frequency[MAX_NUM_CCs];
-  int32_t                 uplink_frequency_offset[MAX_NUM_CCs];
-  uint32_t                Nid_cell[MAX_NUM_CCs];;
-  int16_t                 N_RB_DL[MAX_NUM_CCs];
-  int16_t                 N_RB_UL[MAX_NUM_CCs];
-  frame_type_t            frame_type[MAX_NUM_CCs];
-  uint32_t                fdd_earfcn_DL[MAX_NUM_CCs];
-  uint32_t                fdd_earfcn_UL[MAX_NUM_CCs];
-  uint32_t                subframeAssignment[MAX_NUM_CCs];
-  uint32_t                specialSubframe[MAX_NUM_CCs];
-  uint32_t                 nr_band[MAX_NUM_CCs];
-  uint32_t		  tdd_nRARFCN[MAX_NUM_CCs];
-  uint32_t		  nrARFCN[MAX_NUM_CCs];
-  int16_t                 nr_SCS[MAX_NUM_CCs];
-
+  uint32_t                downlink_frequency;
+  int32_t                 uplink_frequency_offset;
+  uint32_t                Nid_cell;
+  int16_t                 N_RB_DL;
+  int16_t                 N_RB_UL;
+  frame_type_t            frame_type;
+  uint32_t                fdd_earfcn_DL;
+  uint32_t                fdd_earfcn_UL;
+  uint32_t                subframeAssignment;
+  uint32_t                specialSubframe;
+  uint32_t                 nr_band;
+  uint32_t		  tdd_nRARFCN;
+  uint32_t		  nrARFCN;
+  int16_t                 nr_SCS;
+  int16_t                 eutra_band;
   int                     num_cc;
-
-  net_ip_address_t target_gnb_xn_ip_address[XNAP_MAX_NB_GNB_IP_ADDRESS];
+  gnb_ip_address_t target_gnb_xn_ip_address[XNAP_MAX_NB_GNB_IP_ADDRESS];
   uint8_t          nb_xn;
-  net_ip_address_t gnb_xn_ip_address;
+  gnb_ip_address_t gnb_xn_ip_address;
   uint16_t         sctp_in_streams;
   uint16_t         sctp_out_streams;
   uint32_t         gnb_port_for_XNC;
   int              multi_sd;
-
-  xnap_id_manager  id_manager;
-  xnap_timers_t    timers;
 } xnap_gNB_instance_t;
 
 typedef struct {
-  /* List of served eNBs
-   * Only used for virtual mode
-   */
+  /* List of served gNBs*/
   STAILQ_HEAD(xnap_gNB_instances_head_s, xnap_gNB_instance_s) xnap_gNB_instances_head;
-  /* Nb of registered eNBs */
+  /* Nb of registered gNBs */
   uint8_t nb_registered_gNBs;
 
-  /* Generate a unique connexion id used between X2AP and SCTP */
+  /* Generate a unique connexion id used between XnAP and SCTP */
   uint16_t global_cnx_id;
 } xnap_gNB_internal_data_t;
 

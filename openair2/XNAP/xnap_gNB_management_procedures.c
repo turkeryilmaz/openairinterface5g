@@ -1,13 +1,29 @@
-
+/*
+ * Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The OpenAirInterface Software Alliance licenses this file to You under
+ * the OAI Public License, Version 1.1  (the "License"); you may not use this file
+ * except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.openairinterface.org/?page_id=698
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *-------------------------------------------------------------------------------
+ * For more information about the OpenAirInterface (OAI) Software Alliance:
+ *      conmnc_digit_lengtht@openairinterface.org
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-
 #include "intertask_interface.h"
-
 #include "assertions.h"
 #include "conversions.h"
-
 #include "xnap_common.h"
 #include "xnap_gNB_defs.h"
 #include "xnap_gNB_task.h"
@@ -15,7 +31,7 @@
 
 #define XNAP_DEBUG_LIST
 #ifdef XNAP_DEBUG_LIST
-#  define XNAP_gNB_LIST_OUT(x, args...) XNAP_DEBUG("[gNB]%*s"x"\n", 4*indent, "", ##args)
+#  define XNAP_gNB_LIST_OUT(x, args...) LOG_I(XNAP, "[gNB]%*s"x"\n", 4*indent, "", ##args)
 #else
 #  define XNAP_gNB_LIST_OUT(x, args...)
 #endif
@@ -102,11 +118,7 @@ struct xnap_gNB_data_s *xnap_get_gNB(xnap_gNB_instance_t *instance_p,
   struct xnap_gNB_data_s  temp;
   struct xnap_gNB_data_s *found;
 
-//printf("x2ap_get_eNB at 1 (looking for assoc_id %d cnx_id %d)\n", assoc_id, cnx_id);
-//dump_trees();
-
   memset(&temp, 0, sizeof(struct xnap_gNB_data_s));
-
   temp.assoc_id = assoc_id;
   temp.cnx_id   = cnx_id;
 
@@ -185,11 +197,9 @@ xnap_gNB_data_t  * xnap_is_gNB_pci_in_list (const uint32_t pci)
 
   STAILQ_FOREACH(inst, &xnap_gNB_internal_data.xnap_gNB_instances_head, xnap_gNB_entries) {
     RB_FOREACH(elm, xnap_gnb_map, &inst->xnap_gnb_head) {
-      for (int i = 0; i<elm->num_cc; i++) {
-        if (elm->Nid_cell[i] == pci) {
-          return elm;
+    if (elm->Nid_cell== pci) {
+        return elm;
         }
-      }
     }
   }
   return NULL;

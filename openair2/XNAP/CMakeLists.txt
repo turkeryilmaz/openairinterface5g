@@ -3,9 +3,7 @@ add_library(xnap
               xnap_common.c 
               xnap_gNB_decoder.c 
               xnap_gNB_encoder.c 
-              xnap_gNB_task.c 
-              xnap_ids.c 
-              xnap_timers.c 
+              xnap_gNB_task.c
               xnap_gNB_management_procedures.c 
               xnap_gNB_itti_messaging.c
               xnap_gNB_handler.c

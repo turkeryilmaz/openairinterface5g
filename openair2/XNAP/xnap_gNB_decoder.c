@@ -25,71 +25,10 @@
  */
 
 #include <stdio.h>
-
 #include "assertions.h"
 #include "intertask_interface.h"
 #include "xnap_common.h"
 #include "xnap_gNB_decoder.h"
-
-static int xnap_gNB_decode_initiating_message(XNAP_XnAP_PDU_t *pdu)
-{
-  DevAssert(pdu != NULL);
-
-  switch(pdu->choice.initiatingMessage->procedureCode) {
-
-    case XNAP_ProcedureCode_id_xnSetup:
-      //asn_encode_to_new_buffer(NULL, ATS_CANONICAL_XER, &asn_DEF_X2AP_X2AP_PDU, pdu);
-      LOG_I(XNAP, "x2ap_eNB_decode_initiating_message!\n");
-      break;
-      
-    default:
-      LOG_E(XNAP, "Unknown procedure ID (%d) for initiating message\n",
-                  (int)pdu->choice.initiatingMessage->procedureCode);
-      AssertFatal( 0, "Unknown procedure ID (%d) for initiating message\n",
-                   (int)pdu->choice.initiatingMessage->procedureCode);
-      return -1;
-  }
-
-  return 0;
-}
-
-static int xnap_gNB_decode_successful_outcome(XNAP_XnAP_PDU_t *pdu)
-{
-  DevAssert(pdu != NULL);
-
-  switch(pdu->choice.successfulOutcome->procedureCode) {
-    case XNAP_ProcedureCode_id_xnSetup:
-      //asn_encode_to_new_buffer(NULL, ATS_CANONICAL_XER, &asn_DEF_X2AP_X2AP_PDU, pdu);
-      LOG_I(XNAP, "xnap_gNB_decode_successfuloutcome_message!\n");
-      break;
-
-    default:
-      LOG_E(XNAP, "Unknown procedure ID (%d) for successfull outcome message\n",
-                  (int)pdu->choice.successfulOutcome->procedureCode);
-      return -1;
-  }
-
-  return 0;
-}
-
-static int xnap_gNB_decode_unsuccessful_outcome(XNAP_XnAP_PDU_t *pdu)
-{
-  DevAssert(pdu != NULL);
-
-  switch(pdu->choice.unsuccessfulOutcome->procedureCode) {
-    case XNAP_ProcedureCode_id_xnSetup:
-      //asn_encode_to_new_buffer(NULL, ATS_CANONICAL_XER, &asn_DEF_X2AP_X2AP_PDU, pdu);
-      LOG_I(XNAP, "xnap_gNB_decode_unsuccessfuloutcome_message!\n");
-      break;
-
-    default:
-       LOG_E(XNAP, "Unknown procedure ID (%d) for unsuccessfull outcome message\n",
-                  (int)pdu->choice.unsuccessfulOutcome->procedureCode);
-      return -1;
-  }
-
-  return 0;
-}
 
 int xnap_gNB_decode_pdu(XNAP_XnAP_PDU_t *pdu, const uint8_t *const buffer, uint32_t length)
 {
@@ -104,10 +43,7 @@ int xnap_gNB_decode_pdu(XNAP_XnAP_PDU_t *pdu, const uint8_t *const buffer, uint3
                         length,
                         0,
                         0);
-  //can be removed later
   xer_fprint(stdout, &asn_DEF_XNAP_XnAP_PDU, pdu);
-  
-
   if (dec_ret.code != RC_OK) {
     LOG_E(XNAP, "Failed to decode PDU\n");
     return -1;
@@ -115,19 +51,18 @@ int xnap_gNB_decode_pdu(XNAP_XnAP_PDU_t *pdu, const uint8_t *const buffer, uint3
 
   switch(pdu->present) {
     case XNAP_XnAP_PDU_PR_initiatingMessage:
-      return xnap_gNB_decode_initiating_message(pdu);
-
+      LOG_I(XNAP, "xnap_gNB_decode_initiating_message!\n");
+      break;
     case XNAP_XnAP_PDU_PR_successfulOutcome:
-      return xnap_gNB_decode_successful_outcome(pdu);
-
+      LOG_I(XNAP, "xnap_gNB_decode_successfuloutcome_message!\n");
+      break;
     case XNAP_XnAP_PDU_PR_unsuccessfulOutcome:
-      return xnap_gNB_decode_unsuccessful_outcome(pdu);
-
+      LOG_I(XNAP, "xnap_gNB_decode_unsuccessfuloutcome_message!\n");
+      break;
     default:
       LOG_D(XNAP, "Unknown presence (%d) or not implemented\n", (int)pdu->present);
       break;
   }
-
-
-  return -1;
+  return 0;
 }
+

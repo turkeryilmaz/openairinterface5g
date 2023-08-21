@@ -419,13 +419,9 @@ typedef struct gNB_RRC_INST_s {
   
   // XN handover controlled by network
  
-
   // Neighborouring cells id
-  int num_neigh_cells;
-  int num_neigh_cells_cc[MAX_NUM_CCs];
-  uint32_t neigh_cells_id[MAX_NUM_NR_NEIGH_CELLs][MAX_NUM_CCs];
-
-
+  int num_nr_neigh_cells;
+  uint32_t nr_neigh_cells_id[MAX_NUM_NR_NEIGH_CELLs];
 
   // security configuration (preferred algorithms)
   nr_security_configuration_t security;

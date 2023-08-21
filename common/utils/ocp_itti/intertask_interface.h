@@ -350,7 +350,6 @@ void *rrc_enb_process_msg(void *);
   TASK_DEF(TASK_NAS_NRUE, TASK_PRIORITY_MED, 200, NULL, NULL)        \
   TASK_DEF(TASK_MAX, TASK_PRIORITY_MED, 200, NULL, NULL)             
    
-
 #define TASK_DEF(TaskID, pRIO, qUEUEsIZE, FuNc, ThreadFunc)          { pRIO, qUEUEsIZE, #TaskID, FuNc, ThreadFunc },
 
 /* Map task id to printable name. */

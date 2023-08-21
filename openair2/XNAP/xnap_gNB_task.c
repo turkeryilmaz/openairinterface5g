@@ -1,22 +1,43 @@
+/* Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The OpenAirInterface Software Alliance licenses this file to You under
+ * the OAI Public License, Version 1.1  (the "License"); you may not use this file
+ * except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.openairinterface.org/?page_id=698
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *-------------------------------------------------------------------------------
+ * For more information about the OpenAirInterface (OAI) Software Alliance:
+ *      contact@openairinterface.org
+ */
+ 
+ /*! \file XNAP/xnap_gNB_task.c
+* \brief XNAP tasks and functions definitions
+* \author Sreeshma Shiv
+* \date Aug 2023
+* \version 1.0
+* \email: sreeshmau@iisc.ac.in
+*/
+
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <arpa/inet.h>
-
 #include "intertask_interface.h"
-
-#include "xnap_common.h"
 #include <openair3/ocp-gtpu/gtp_itf.h>
 #include "xnap_gNB_task.h"
 #include "xnap_gNB_defs.h"
 #include "xnap_gNB_management_procedures.h"
 #include "xnap_gNB_handler.h"
 #include "xnap_gNB_generate_messages.h"
-#include "xnap_common.h"
-#include "xnap_ids.h"
-#include "xnap_timers.h"
-
 #include "queue.h"
 #include "assertions.h"
 #include "conversions.h"
@@ -37,8 +58,8 @@ void xnap_gNB_handle_register_gNB(instance_t instance, xnap_register_gnb_req_t *
 
 static
 void xnap_gNB_register_gNB(xnap_gNB_instance_t *instance_p,
-                           net_ip_address_t    *target_gNB_ip_addr,
-                           net_ip_address_t    *local_ip_addr,
+                           gnb_ip_address_t    *target_gNB_ip_addr,
+                           gnb_ip_address_t    *local_ip_addr,
                            uint16_t             in_streams,
                            uint16_t             out_streams,
                            uint32_t             gnb_port_for_XNC);
@@ -75,7 +96,7 @@ void xnap_gNB_handle_sctp_association_resp(instance_t instance, sctp_new_associa
     if (xnap_gnb_data_p != NULL) {
       /* some sanity check - to be refined at some point */
       if (sctp_new_association_resp->sctp_state != SCTP_STATE_ESTABLISHED) {
-        XNAP_ERROR("xnap_gnb_data_p not NULL and sctp state not SCTP_STATE_ESTABLISHED?\n");
+        LOG_E(XNAP, "xnap_gnb_data_p not NULL and sctp state not SCTP_STATE_ESTABLISHED?\n");
         if (sctp_new_association_resp->sctp_state == SCTP_STATE_SHUTDOWN){
           RB_REMOVE(xnap_gnb_map, &instance_p->xnap_gnb_head, xnap_gnb_data_p);
           return;
@@ -98,17 +119,17 @@ void xnap_gNB_handle_sctp_association_resp(instance_t instance, sctp_new_associa
   /* gNB: return if connection to gNB failed - to be modified if needed.
    * We may want to try to connect over and over again until we succeed
    * but the modifications to the code to get this behavior are complex.
-   * Exit on error is done in X2AP implementation */
+   * Exit on error is done in XnAP implementation */
   
-  if (instance_p->cell_type == CELL_MACRO_GNB  
-      && sctp_new_association_resp->sctp_state == SCTP_STATE_UNREACHABLE) {
-    XNAP_ERROR("association with gNB failed, is it running? If no, run it first. If yes, check IP addresses in your configuration file.\n");
+  if (sctp_new_association_resp->sctp_state == SCTP_STATE_UNREACHABLE) {
+    LOG_E(XNAP, "association with gNB failed, is it running? If no, run it first. If yes, check IP addresses in your configuration file.\n");
+    RB_REMOVE(xnap_gnb_map, &instance_p->xnap_gnb_head, xnap_gnb_data_p);
     return; 
   }
-  //cell_macro_gnb already using in x2ap,ngap,f1
+  //cell_macro_gnb already using in xnap,ngap,f1
 
   if (sctp_new_association_resp->sctp_state != SCTP_STATE_ESTABLISHED) {
-    XNAP_WARN("Received unsuccessful result for SCTP association (%u), instance %ld, cnx_id %u\n",
+    LOG_W(XNAP, "Received unsuccessful result for SCTP association (%u), instance %ld, cnx_id %u\n",
               sctp_new_association_resp->sctp_state,
               instance,
               sctp_new_association_resp->ulp_cnx_id);
@@ -124,11 +145,7 @@ void xnap_gNB_handle_sctp_association_resp(instance_t instance, sctp_new_associa
   xnap_gnb_data_p->out_streams = sctp_new_association_resp->out_streams;
   xnap_dump_trees();
   /* Prepare new xn Setup Request */
-  /*if(instance_p->cell_type == CELL_MACRO_GNB)
-	  //xnap_gNB_generate_ENDC_xn_setup_request(instance_p, xnap_gnb_data_p); //not defined i guess
-	  LOG_E(XNAP, "CELL_MACRO_GNB ENDC not defined");
-  else*/
-	  xnap_gNB_generate_xn_setup_request(instance_p, xnap_gnb_data_p);
+  xnap_gNB_generate_xn_setup_request(instance_p, xnap_gnb_data_p);
 }
 
 static
@@ -142,11 +159,10 @@ void xnap_gNB_handle_register_gNB(instance_t instance,
   if (new_instance != NULL) {
     /* Checks if it is a retry on the same gNB */
     DevCheck(new_instance->gNB_id == xnap_register_gNB->gNB_id, new_instance->gNB_id, xnap_register_gNB->gNB_id, 0);
-    DevCheck(new_instance->cell_type == xnap_register_gNB->cell_type, new_instance->cell_type, xnap_register_gNB->cell_type, 0);
     DevCheck(new_instance->tac == xnap_register_gNB->tac, new_instance->tac, xnap_register_gNB->tac, 0);
     DevCheck(new_instance->mcc == xnap_register_gNB->mcc, new_instance->mcc, xnap_register_gNB->mcc, 0);
     DevCheck(new_instance->mnc == xnap_register_gNB->mnc, new_instance->mnc, xnap_register_gNB->mnc, 0);
-    XNAP_WARN("gNB[%ld] already registered\n", instance);
+    LOG_W(XNAP, "gNB[%ld] already registered\n", instance);
   } else {
     new_instance = calloc(1, sizeof(xnap_gNB_instance_t));
     DevAssert(new_instance != NULL);
@@ -155,43 +171,22 @@ void xnap_gNB_handle_register_gNB(instance_t instance,
     new_instance->instance         = instance;
     new_instance->gNB_name         = xnap_register_gNB->gNB_name;
     new_instance->gNB_id           = xnap_register_gNB->gNB_id;
-    new_instance->cell_type        = xnap_register_gNB->cell_type;
     new_instance->tac              = xnap_register_gNB->tac;
     new_instance->mcc              = xnap_register_gNB->mcc;
     new_instance->mnc              = xnap_register_gNB->mnc;
     new_instance->mnc_digit_length = xnap_register_gNB->mnc_digit_length;
-    new_instance->num_cc           = xnap_register_gNB->num_cc;
-
-    xnap_id_manager_init(&new_instance->id_manager);
-    xnap_timers_init(&new_instance->timers,
-                     xnap_register_gNB->t_reloc_prep,
-                     xnap_register_gNB->txn_reloc_overall,
-                     xnap_register_gNB->t_dc_prep,
-                     xnap_register_gNB->t_dc_overall);
-
-    for (int i = 0; i< xnap_register_gNB->num_cc; i++) {
-      if(new_instance->cell_type == CELL_MACRO_GNB){
-        new_instance->nr_band[i]              = xnap_register_gNB->nr_band[i];
-        new_instance->tdd_nRARFCN[i]             = xnap_register_gNB->nrARFCN[i];
-      }
-      else{
-        new_instance->eutra_band[i]              = xnap_register_gNB->eutra_band[i];
-        new_instance->downlink_frequency[i]      = xnap_register_gNB->downlink_frequency[i];
-        new_instance->fdd_earfcn_DL[i]           = xnap_register_gNB->fdd_earfcn_DL[i];
-        new_instance->fdd_earfcn_UL[i]           = xnap_register_gNB->fdd_earfcn_UL[i];
-      }
-
-      new_instance->uplink_frequency_offset[i] = xnap_register_gNB->uplink_frequency_offset[i];
-      new_instance->Nid_cell[i]                = xnap_register_gNB->Nid_cell[i];
-      new_instance->N_RB_DL[i]                 = xnap_register_gNB->N_RB_DL[i];
-      new_instance->frame_type[i]              = xnap_register_gNB->frame_type[i];
-    }
-
+    new_instance->nr_band                 = xnap_register_gNB->nr_band;
+    new_instance->tdd_nRARFCN             = xnap_register_gNB->nrARFCN;
+    new_instance->uplink_frequency_offset = xnap_register_gNB->uplink_frequency_offset;
+    new_instance->Nid_cell                = xnap_register_gNB->Nid_cell;
+    new_instance->N_RB_DL                 = xnap_register_gNB->N_RB_DL;
+    new_instance->frame_type              = xnap_register_gNB->frame_type;
+    
     DevCheck(xnap_register_gNB->nb_xn <= XNAP_MAX_NB_GNB_IP_ADDRESS,
              XNAP_MAX_NB_GNB_IP_ADDRESS, xnap_register_gNB->nb_xn, 0);
     memcpy(new_instance->target_gnb_xn_ip_address,
            xnap_register_gNB->target_gnb_xn_ip_address,
-           xnap_register_gNB->nb_xn * sizeof(net_ip_address_t));
+           xnap_register_gNB->nb_xn * sizeof(gnb_ip_address_t));
     new_instance->nb_xn             = xnap_register_gNB->nb_xn;
     new_instance->gnb_xn_ip_address = xnap_register_gNB->gnb_xn_ip_address;
     new_instance->sctp_in_streams   = xnap_register_gNB->sctp_in_streams;
@@ -199,31 +194,30 @@ void xnap_gNB_handle_register_gNB(instance_t instance,
     new_instance->gnb_port_for_XNC  = xnap_register_gNB->gnb_port_for_XNC;
     /* Add the new instance to the list of gNB (meaningfull in virtual mode) */
     xnap_gNB_insert_new_instance(new_instance);
-    XNAP_INFO("Registered new gNB[%ld] and %s gNB id %u\n",
+    LOG_I(XNAP, "Registered new gNB[%ld] gNB id %u\n",
               instance,
-              xnap_register_gNB->cell_type == CELL_MACRO_GNB ? "macro" : "home",
               xnap_register_gNB->gNB_id);
 
     /* initiate the SCTP listener */
     if (xnap_gNB_init_sctp(new_instance,&xnap_register_gNB->gnb_xn_ip_address,xnap_register_gNB->gnb_port_for_XNC) <  0 ) {
-      XNAP_ERROR ("Error while sending SCTP_INIT_MSG to SCTP \n");
+      LOG_E(XNAP, "Error while sending SCTP_INIT_MSG to SCTP \n");
       return;
     }
 
-    XNAP_INFO("gNB[%ld] gNB id %u acting as a listner (server)\n",
+    LOG_I(XNAP, "gNB[%ld] gNB id %u acting as a listner (server)\n",
               instance, xnap_register_gNB->gNB_id);
   }
 }
 
 int xnap_gNB_init_sctp (xnap_gNB_instance_t *instance_p,
-                        net_ip_address_t    *local_ip_addr,
+                        gnb_ip_address_t    *local_ip_addr,
                         uint32_t gnb_port_for_XNC) {
   // Create and alloc new message
   MessageDef                             *message;
   sctp_init_t                            *sctp_init  = NULL;
   DevAssert(instance_p != NULL);
   DevAssert(local_ip_addr != NULL);
-  XNAP_INFO("entered function init sctp\n");
+  LOG_I(XNAP, "entered function init sctp\n");
   message = itti_alloc_new_message (TASK_XNAP, 0, SCTP_INIT_MSG_MULTI_REQ);
   sctp_init = &message->ittiMsg.sctp_init_multi;
   sctp_init->port = gnb_port_for_XNC;
@@ -247,8 +241,8 @@ int xnap_gNB_init_sctp (xnap_gNB_instance_t *instance_p,
 }
 
 static void xnap_gNB_register_gNB(xnap_gNB_instance_t *instance_p,
-                                  net_ip_address_t    *target_gNB_ip_address,
-                                  net_ip_address_t    *local_ip_addr,
+                                  gnb_ip_address_t    *target_gNB_ip_address,
+                                  gnb_ip_address_t    *local_ip_addr,
                                   uint16_t             in_streams,
                                   uint16_t             out_streams,
                                   uint32_t         gnb_port_for_XNC) {
@@ -285,9 +279,8 @@ static void xnap_gNB_register_gNB(xnap_gNB_instance_t *instance_p,
   instance_p->xn_target_gnb_nb ++;
   instance_p->xn_target_gnb_pending_nb ++;
   itti_send_msg_to_task(TASK_SCTP, instance_p->instance, message);
-  XNAP_INFO("entered function send to task sctp\n");
+  LOG_I(XNAP, "entered function send to task sctp\n");
 }
-
 
 static
 void xnap_gNB_handle_sctp_init_msg_multi_cnf(
@@ -304,14 +297,14 @@ void xnap_gNB_handle_sctp_init_msg_multi_cnf(
    * Failure means multi_sd < 0.
    */
   if (instance->multi_sd < 0) {
-    XNAP_ERROR("Error: be sure to properly configure XN in your configuration file.\n");
+    LOG_E(XNAP, "Error: be sure to properly configure XN in your configuration file.\n");
     DevAssert(instance->multi_sd >= 0);
   }
 
   /* Trying to connect to the provided list of gNB ip address */
 
   for (index = 0; index < instance->nb_xn; index++) {
-    XNAP_INFO("gNB[%ld] gNB id %u acting as an initiator (client)\n",instance_id, instance->gNB_id);
+    LOG_I(XNAP, "gNB[%ld] gNB id %u acting as an initiator (client)\n",instance_id, instance->gNB_id);
     
     xnap_gNB_register_gNB(instance,
                           &instance->target_gnb_xn_ip_address[index],
@@ -354,7 +347,7 @@ void xnap_gNB_handle_sctp_association_ind(instance_t instance, sctp_new_associat
       instance_p->xn_target_gnb_pending_nb--;
     }
   } else {
-    XNAP_WARN("xnap_gnb_data_p already exists\n");
+    LOG_W(XNAP, "xnap_gnb_data_p already exists\n");
   }
 
   printf("xnap_gNB_handle_sctp_association_ind at 2\n");
@@ -373,7 +366,7 @@ void xnap_gNB_handle_sctp_association_ind(instance_t instance, sctp_new_associat
 void *xnap_task(void *arg) {
   MessageDef *received_msg = NULL;
   int         result;
-  XNAP_DEBUG("Starting XNAP layer\n");
+  LOG_D(XNAP, "Starting XNAP layer\n");
   xnap_gNB_prepare_internal_data();   //management procedures
   itti_mark_task_ready(TASK_XNAP);
 
@@ -383,14 +376,10 @@ void *xnap_task(void *arg) {
 	       ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
     switch (ITTI_MSG_ID(received_msg)) {
       case TERMINATE_MESSAGE:
-        XNAP_WARN(" *** Exiting XNAP thread\n");
+        LOG_W(XNAP, "Exiting XNAP thread\n");
         itti_exit_task();
         break;
-
-      /*case XNAP_SUBFRAME_PROCESS:
-        xnap_check_timers(ITTI_MSG_DESTINATION_INSTANCE(received_msg)); //to be added in xnap_timers
-        break; */
-
+   
       case XNAP_REGISTER_GNB_REQ:
         xnap_gNB_handle_register_gNB(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
                                      &XNAP_REGISTER_GNB_REQ(received_msg));
@@ -417,7 +406,7 @@ void *xnap_task(void *arg) {
         break;
 
       default:
-        XNAP_ERROR("Received unhandled message: %d:%s\n",
+        LOG_E(XNAP, "Received unhandled message: %d:%s\n",
                    ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
         break;
     }
@@ -449,8 +438,8 @@ int is_xnap_enabled(void)
    { "enable_xn", "yes/no", 0, .strptr=&enable_xn, .defstrval="", TYPE_STRING, 0 }
   };
 
-  /* TODO: do it per module - we check only first eNB */
-  config_get(p, sizeof(p)/sizeof(paramdef_t), "eNBs.[0]");
+  /* TODO: do it per module - we check only first gNB */
+  config_get(p, sizeof(p)/sizeof(paramdef_t), "gNBs.[0]");
   if (enable_xn != NULL && strcmp(enable_xn, "yes") == 0){
 	  enabled = 1;
   }
