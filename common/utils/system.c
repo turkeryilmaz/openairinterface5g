@@ -231,8 +231,9 @@ void threadCreate(pthread_t* t, void * (*func)(void*), void * param, char* name,
   int settingPriority = 1;
   ret=pthread_attr_init(&attr);
   AssertFatal(ret==0,"ret: %d, errno: %d\n",ret, errno);
-
-  LOG_I(UTIL,"Creating thread %s with affinity %d and priority %d\n",name,affinity,priority);
+  size_t stacksize;
+  pthread_attr_getstacksize(&attr,&stacksize);
+  LOG_I(UTIL,"Creating thread %s with affinity %d and priority %d, stacksize %d\n",name,affinity,priority,(int) stacksize);
 
   if (checkIfFedoraDistribution())
     if (checkIfGenericKernelOnFedora())

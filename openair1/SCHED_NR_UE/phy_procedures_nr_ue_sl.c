@@ -283,7 +283,7 @@ int phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
   c16_t txdataF_buf[fp->nb_antennas_tx * samplesF_per_slot] __attribute__((aligned(32)));
   if (phy_data->nr_sl_pssch_pscch_pdu) LOG_I(NR_PHY,"phy_procedures 0: Received CONFIG_TYPE_TX_PSCCH_PSSCH, PSCCH startRB %d, PSCCH numRB %d\n",phy_data->nr_sl_pssch_pscch_pdu->startrb,phy_data->nr_sl_pssch_pscch_pdu->pscch_numrbs);
   printf("txdataF_buf size %d (nb_antennas_tx %d, samplesF_per_slot %d)\n",sizeof(txdataF_buf),fp->nb_antennas_tx,samplesF_per_slot);
-  //memset(txdataF_buf, 0, sizeof(txdataF_buf));
+  memset(txdataF_buf, 0, sizeof(txdataF_buf));
   if (phy_data->nr_sl_pssch_pscch_pdu) LOG_I(NR_PHY,"phy_procedures 2: Received CONFIG_TYPE_TX_PSCCH_PSSCH, PSCCH startRB %d, PSCCH numRB %d\n",phy_data->nr_sl_pssch_pscch_pdu->startrb,phy_data->nr_sl_pssch_pscch_pdu->pscch_numrbs);
   c16_t *txdataF[fp->nb_antennas_tx]; /* workaround to be compatible with current txdataF usage in all tx procedures. */
   for(int i=0; i< fp->nb_antennas_tx; ++i)
