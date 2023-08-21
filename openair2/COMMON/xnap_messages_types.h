@@ -25,7 +25,7 @@ typedef enum {
 #define XNAP_DEREGISTERED_GNB_IND(mSGpTR)                       (mSGpTR)->ittiMsg.xnap_deregistered_gnb_ind
 
 
-#define XNAP_MAX_NB_GNB_IP_ADDRESS 2
+#define XNAP_MAX_NB_GNB_IP_ADDRESS 6
 
 // gNB application layer -> XNAP messages
 

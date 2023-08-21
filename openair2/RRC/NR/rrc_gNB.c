@@ -1925,46 +1925,34 @@ static void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *req, sctp_assoc_t ass
 }
 
 void rrc_gNB_process_xn_setup_request(int mod_id, xnap_setup_req_t *m) {
-  if (RC.nrrrc[mod_id]->num_neigh_cells > MAX_NUM_NEIGH_CELLs) {
+  if (RC.nrrrc[mod_id]->num_neigh_cells > MAX_NUM_NR_NEIGH_CELLs) {
     LOG_E(NR_RRC, "Error: number of neighbouring cells is exceeded \n");
     return;
   }
-  printf("max_num_neigh_cells :%d \n",MAX_NUM_NEIGH_CELLs);
-  printf("num_neig_cells: %d \n", RC.nrrrc[mod_id]->num_neigh_cells);
-  printf("max_num_ccs: %d \n", MAX_NUM_CCs);
-  printf("num_cc: %d \n", m->num_cc);
   if (m->num_cc > MAX_NUM_CCs) {
     LOG_E(NR_RRC, "Error: number of neighbouring cells carriers is exceeded \n");
     return;
   }
   RC.nrrrc[mod_id]->num_neigh_cells++;
-  printf("num_neig_cells: %d \n", RC.nrrrc[mod_id]->num_neigh_cells);
   RC.nrrrc[mod_id]->num_neigh_cells_cc[RC.nrrrc[mod_id]->num_neigh_cells-1] = m->num_cc;
-  printf("what dont know :%d \n", RC.nrrrc[mod_id]->num_neigh_cells_cc[RC.nrrrc[mod_id]->num_neigh_cells-1]);
   for (int i=0; i<m->num_cc; i++) {
     RC.nrrrc[mod_id]->neigh_cells_id[RC.nrrrc[mod_id]->num_neigh_cells-1][i] = m->Nid_cell[i];
-  printf("in loop");
   }
 }
 
 
 
 void rrc_gNB_process_xn_setup_response(int mod_id, xnap_setup_resp_t *m) {
-  if (RC.nrrrc[mod_id]->num_neigh_cells > MAX_NUM_NEIGH_CELLs) {
+  if (RC.nrrrc[mod_id]->num_neigh_cells > MAX_NUM_NR_NEIGH_CELLs) {
     LOG_E(RRC, "Error: number of neighbouring cells is exceeded \n");
     return;
   }
-  printf("max_num_neigh_cells :%d \n",MAX_NUM_NEIGH_CELLs);
-  printf("num_neig_cells: %d \n", RC.nrrrc[mod_id]->num_neigh_cells);
-  printf("max_num_ccs: %d \n", MAX_NUM_CCs);
-  printf("num_cc: %d \n", m->num_cc);
+  
   if (m->num_cc > MAX_NUM_CCs) {
     LOG_E(RRC, "Error: number of neighbouring cells carriers is exceeded \n");
     return;
   }
-  printf("num_neig_cells before: %d \n", RC.nrrrc[mod_id]->num_neigh_cells);
   RC.nrrrc[mod_id]->num_neigh_cells++;
-  printf("num_neig_cells: %d \n", RC.nrrrc[mod_id]->num_neigh_cells);
   RC.nrrrc[mod_id]->num_neigh_cells_cc[RC.nrrrc[mod_id]->num_neigh_cells-1] = m->num_cc;
 
   for (int i=0; i<m->num_cc; i++) {

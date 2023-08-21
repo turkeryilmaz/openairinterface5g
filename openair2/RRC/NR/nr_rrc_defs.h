@@ -96,7 +96,7 @@
 #define NR_UE_MODULE_INVALID ((module_id_t) ~0) // FIXME attention! depends on type uint8_t!!!
 #define NR_UE_INDEX_INVALID  ((module_id_t) ~0) // FIXME attention! depends on type uint8_t!!! used to be -1
 
-#define MAX_NUM_NEIGH_CELLs 0 /* maximum neighbouring cells number */
+#define MAX_NUM_NR_NEIGH_CELLs 6 /* maximum neighbouring cells number */
 
 typedef enum {
   NR_RRC_OK=0,
@@ -423,7 +423,7 @@ typedef struct gNB_RRC_INST_s {
   // Neighborouring cells id
   int num_neigh_cells;
   int num_neigh_cells_cc[MAX_NUM_CCs];
-  uint32_t neigh_cells_id[MAX_NUM_NEIGH_CELLs][MAX_NUM_CCs];
+  uint32_t neigh_cells_id[MAX_NUM_NR_NEIGH_CELLs][MAX_NUM_CCs];
 
 
 

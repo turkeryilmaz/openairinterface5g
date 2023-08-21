@@ -95,16 +95,15 @@ void xnap_gNB_handle_sctp_association_resp(instance_t instance, sctp_new_associa
   DevAssert(xnap_gnb_data_p != NULL);
   xnap_dump_trees();
 
-  /* gNB: exit if connection to gNB failed - to be modified if needed.
+  /* gNB: return if connection to gNB failed - to be modified if needed.
    * We may want to try to connect over and over again until we succeed
    * but the modifications to the code to get this behavior are complex.
-   * Exit on error is a simple solution that can be caught by a script
-   * for example.
-   */
+   * Exit on error is done in X2AP implementation */
+  
   if (instance_p->cell_type == CELL_MACRO_GNB  
       && sctp_new_association_resp->sctp_state == SCTP_STATE_UNREACHABLE) {
     XNAP_ERROR("association with gNB failed, is it running? If no, run it first. If yes, check IP addresses in your configuration file.\n");
-    exit(1);
+    return; 
   }
   //cell_macro_gnb already using in x2ap,ngap,f1
 
@@ -344,10 +343,10 @@ void xnap_gNB_handle_sctp_association_ind(instance_t instance, sctp_new_associat
     DevAssert(xnap_gnb_data_p != NULL);
     xnap_gnb_data_p->cnx_id                = xnap_gNB_fetch_add_global_cnx_id();
     xnap_gnb_data_p->xnap_gNB_instance = instance_p;
-    /* Insert the new descriptor in list of known gNB
+    /* insert the new descriptor in list of known gNB
      * but not yet associated.
      */
-    RB_INSERT(xnap_gnb_map, &instance_p->xnap_gnb_head, xnap_gnb_data_p);
+    //RB_INSERT(xnap_gnb_map, &instance_p->xnap_gnb_head, xnap_gnb_data_p);
     xnap_gnb_data_p->state = XNAP_GNB_STATE_CONNECTED;
     instance_p->xn_target_gnb_nb++;
 
@@ -364,6 +363,7 @@ void xnap_gNB_handle_sctp_association_ind(instance_t instance, sctp_new_associat
   xnap_gnb_data_p->assoc_id    = sctp_new_association_ind->assoc_id;
   xnap_gnb_data_p->in_streams  = sctp_new_association_ind->in_streams;
   xnap_gnb_data_p->out_streams = sctp_new_association_ind->out_streams;
+  RB_INSERT(xnap_gnb_map, &instance_p->xnap_gnb_head, xnap_gnb_data_p);
   printf("xnap_gNB_handle_sctp_association_ind at 3\n");
   xnap_dump_trees();
 }
