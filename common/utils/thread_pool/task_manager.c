@@ -472,6 +472,7 @@ void init_task_manager(task_manager_t* man, uint32_t num_threads)
     args->idx = i;
     args->man = man;
 
+    /*
     pthread_attr_t attr = {0};
     int ret=pthread_attr_init(&attr);
     assert(ret == 0);
@@ -482,8 +483,9 @@ void init_task_manager(task_manager_t* man, uint32_t num_threads)
     struct sched_param sparam={0};
     sparam.sched_priority = 94;
     ret=pthread_attr_setschedparam(&attr, &sparam);
+    */
 
-    int rc = pthread_create(&man->t_arr[i], &attr, worker_thread, args);
+    int rc = pthread_create(&man->t_arr[i], NULL, worker_thread, args);
     assert(rc == 0);
   }
 
