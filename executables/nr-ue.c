@@ -641,7 +641,10 @@ void processSlotTX(void *arg) {
       sl_indication.phy_data  = &phy_data;
       sl_indication.slot_type = SIDELINK_SLOT_TYPE_TX;
 
+      LOG_I(NR_PHY,"Sending SL indication RX %d.%d TX %d.%d\n",proc->frame_rx,proc->nr_slot_rx,proc->frame_tx,proc->nr_slot_tx);
       UE->if_inst->sl_indication(&sl_indication);
+      if (phy_data.nr_sl_pssch_pscch_pdu) LOG_I(NR_PHY,"processSlotRX 1: Received CONFIG_TYPE_TX_PSCCH_PSSCH, PSCCH startRB %d, PSCCH numRB %d\n",phy_data.nr_sl_pssch_pscch_pdu->startrb,phy_data.nr_sl_pssch_pscch_pdu->pscch_numrbs);
+
       stop_meas(&UE->ue_ul_indication_stats);
     }
 

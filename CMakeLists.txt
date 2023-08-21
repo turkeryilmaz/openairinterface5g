@@ -1066,8 +1066,10 @@ set(PHY_SRC_UE
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_pbch.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_psbch_rx.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_psbch_tx.c
-  ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/psfch_nr.c
+  ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_psfch_tx.c
+  ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_pscch_tx.c
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_dci.c
+  ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_dci_tools.c
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_ulsch_decoding.c
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_ulsch.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_dlsch_demodulation.c
@@ -1089,6 +1091,7 @@ set(PHY_SRC_UE
   ${OPENAIR1_DIR}/PHY/NR_REFSIG/dmrs_nr.c
   ${OPENAIR1_DIR}/PHY/NR_REFSIG/ptrs_nr.c
   ${OPENAIR1_DIR}/PHY/NR_REFSIG/nr_gold_ue.c
+  ${OPENAIR1_DIR}/PHY/NR_REFSIG/nr_gold.c
   ${OPENAIR1_DIR}/PHY/NR_REFSIG/nr_gen_mod_table.c
   ${OPENAIR1_DIR}/PHY/NR_UE_ESTIMATION/nr_dl_channel_estimation.c
   ${OPENAIR1_DIR}/PHY/NR_UE_ESTIMATION/nr_adjust_synch_ue.c

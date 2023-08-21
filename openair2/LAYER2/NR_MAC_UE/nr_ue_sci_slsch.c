@@ -61,6 +61,11 @@
 #include "common/utils/LOG/vcd_signal_dumper.h"
 
 
+const int sl_dmrs_mask2[2][8] = { {34,34,34,264,264,1032,1032,1032},
+                                  {34,34,34,272,272,1040,1040,1040}};
+const int sl_dmrs_mask3[5]    = {146,146,546,546,2114};
+const int sl_dmrs_mask4[3]    = {1170,1170,1170};
+
 uint32_t nr_sci_size(const NR_SL_ResourcePool_r16_t *sl_res_pool,
 	             nr_sci_pdu_t *sci_pdu,
 	             const nr_sci_format_t format) {
@@ -241,7 +246,7 @@ void fill_pssch_pscch_pdu(sl_nr_tx_config_pscch_pssch_pdu_t *nr_sl_pssch_pscch_p
   nr_sl_pssch_pscch_pdu->num_subch = *sl_res_pool->sl_NumSubchannel_r16;
   // Size of subchannels in RBs
   nr_sl_pssch_pscch_pdu->subchannel_size = *sl_res_pool->sl_SubchannelSize_r16;
-  //PSCCH PSSCH TX: Size of subchannels in a PSSCH resource (l_subch)
+  //_PSCCH PSSCH TX: Size of subchannels in a PSSCH resource (l_subch)
   AssertFatal(sci_pdu->time_resource_assignment.val == 0, "need to handle a non-zero time_resource_assignment (2 or 3 time hops, N=2,3)\n");
   convNRFRIV(sci_pdu->frequency_resource_assignment.val,
              nr_sl_pssch_pscch_pdu->num_subch,
@@ -338,10 +343,31 @@ void fill_pssch_pscch_pdu(sl_nr_tx_config_pscch_pssch_pdu_t *nr_sl_pssch_pscch_p
   int N_REsci2  = get_NREsci2(sl_res_pool,nr_sl_pssch_pscch_pdu,mcs_tb_ind);
   int N_RE      = N_REprime*nr_sl_pssch_pscch_pdu->l_subch*nr_sl_pssch_pscch_pdu->subchannel_size - N_REsci1 - N_REsci2;
 
-  nr_sl_pssch_pscch_pdu->tbslbrm = nr_compute_tbs_sl(nr_get_Qm_ul(sci_pdu->mcs,mcs_tb_ind),
-                                                     nr_get_code_rate_ul(sci_pdu->mcs,mcs_tb_ind),
+  nr_sl_pssch_pscch_pdu->mod_order = nr_get_Qm_ul(sci_pdu->mcs,mcs_tb_ind);
+  nr_sl_pssch_pscch_pdu->target_coderate = nr_get_code_rate_ul(sci_pdu->mcs,mcs_tb_ind);
+  nr_sl_pssch_pscch_pdu->tbslbrm = nr_compute_tbs_sl(nr_sl_pssch_pscch_pdu->mod_order,
+                                                     nr_sl_pssch_pscch_pdu->target_coderate,
 						     N_RE,1+(sci_pdu->number_of_dmrs_port&1));
 
+  nr_sl_pssch_pscch_pdu->mcs = sci_pdu->mcs;
+  nr_sl_pssch_pscch_pdu->num_layers = sci_pdu->number_of_dmrs_port+1;
+  nr_sl_pssch_pscch_pdu->mcs_table=mcs_tb_ind;
+  nr_sl_pssch_pscch_pdu->rv_index = sci2_pdu->rv_index;
+  nr_sl_pssch_pscch_pdu->ndi = sci2_pdu->ndi;
+  int num_dmrs_symbols;
+  AssertFatal(sci_pdu->dmrs_pattern.val < sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_PSSCH_DMRS_TimePatternList_r16->list.count,"dmrs.pattern %d out of bounds for list size %d\n",sci_pdu->dmrs_pattern.val,sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_PSSCH_DMRS_TimePatternList_r16->list.count);
+  num_dmrs_symbols = *sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_PSSCH_DMRS_TimePatternList_r16->list.array[sci_pdu->dmrs_pattern.val];
+  if (num_dmrs_symbols == 2) {
+    AssertFatal(nr_sl_pssch_pscch_pdu->pssch_numsym>5, "num_pssch_ymbols %d is not ok for 2 DMRS (min 6)\n",nr_sl_pssch_pscch_pdu->pssch_numsym);
+    nr_sl_pssch_pscch_pdu->dmrs_symbol_position = sl_dmrs_mask2[nr_sl_pssch_pscch_pdu->pscch_numsym-2][nr_sl_pssch_pscch_pdu->pssch_numsym-6];
+  } else if (num_dmrs_symbols == 3) {
+    AssertFatal(nr_sl_pssch_pscch_pdu->pssch_numsym>8, "num_pssch_ymbols %d is not ok for 3 DMRS (min 9)\n",nr_sl_pssch_pscch_pdu->pssch_numsym);
+    nr_sl_pssch_pscch_pdu->dmrs_symbol_position = sl_dmrs_mask3[nr_sl_pssch_pscch_pdu->pssch_numsym-9];
+  } else if (num_dmrs_symbols == 4) {
+    AssertFatal(nr_sl_pssch_pscch_pdu->pssch_numsym>10, "num_pssch_ymbols %d is not ok for 4 DMRS (min 11)\n",nr_sl_pssch_pscch_pdu->pssch_numsym);
+    nr_sl_pssch_pscch_pdu->dmrs_symbol_position = sl_dmrs_mask4[nr_sl_pssch_pscch_pdu->pssch_numsym-11];
+  }
+  
   pos=0;
   switch(format2) {
     case NR_SL_SCI_FORMAT_2A:
@@ -572,10 +598,6 @@ int nr_ue_process_sci1_indication_pdu(NR_UE_MAC_INST_t *mac,frame_t frame, int s
 }
 
 
-const int sl_dmrs_mask2[2][8] = { {34,34,34,264,264,1032,1032,1032},
-                                  {34,34,34,272,272,1040,1040,1040}};
-const int sl_dmrs_mask3[5]    = {146,146,546,546,2114};
-const int sl_dmrs_mask4[3]    = {1170,1170,1170};
 
 void config_pssch_sci_pdu_rx(sl_nr_rx_config_pssch_sci_pdu_t *nr_sl_pssch_sci_pdu,
                              nr_sci_format_t sci2_format,
@@ -600,7 +622,7 @@ void config_pssch_sci_pdu_rx(sl_nr_rx_config_pssch_sci_pdu_t *nr_sl_pssch_sci_pd
 
   nr_sl_pssch_sci_pdu->targetCodeRate = nr_get_code_rate_ul(sci_pdu->mcs,mcs_tb_ind);
   nr_sl_pssch_sci_pdu->mod_order      = nr_get_Qm_ul(sci_pdu->mcs,mcs_tb_ind);
-  nr_sl_pssch_sci_pdu->num_layers     = sci_pdu->number_of_dmrs_port;
+  nr_sl_pssch_sci_pdu->num_layers     = 1+sci_pdu->number_of_dmrs_port;
 
   // Derived from PSCCH CRC Refer 38.211 section 8.3.1.1
   // to be used for PSSCH DMRS and PSSCH 38.211 Scrambling

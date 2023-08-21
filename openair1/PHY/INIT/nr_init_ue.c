@@ -937,6 +937,24 @@ void sl_ue_phy_init(PHY_VARS_NR_UE *UE) {
 
   // Generate psbch dmrs Gold Sequences and modulated dmrs symbols
   sl_init_psbch_dmrs_gold_sequences(UE);
+  // Generate pscch dmrs Gold Sequences
+  UE->nr_gold_pscch_dmrs = (uint32_t ***)malloc16(sl_fp->slots_per_frame*sizeof(uint32_t **));
+  uint32_t ***pscch_dmrs             = UE->nr_gold_pscch_dmrs;
+  AssertFatal(pscch_dmrs!=NULL, "NR init: pscch_dmrs malloc failed\n");
+  int pscch_dmrs_init_length =  (((sl_fp->N_RB_UL<<1)*3)>>5)+1;
+
+  for (int slot=0; slot<sl_fp->slots_per_frame; slot++) {
+    pscch_dmrs[slot] = (uint32_t **)malloc16(sl_fp->symbols_per_slot*sizeof(uint32_t *));
+    AssertFatal(pscch_dmrs[slot]!=NULL, "NR SL UE init: pscch_dmrs for slot %d - malloc failed\n", slot);
+
+    for (int symb=0; symb<sl_fp->symbols_per_slot; symb++) {
+      pscch_dmrs[slot][symb] = (uint32_t *)malloc16(pscch_dmrs_init_length*sizeof(uint32_t));
+      LOG_D(PHY,"pscch_dmrs[%d][%d] %p\n",slot,symb,pscch_dmrs[slot][symb]);
+      AssertFatal(pscch_dmrs[slot][symb]!=NULL, "NR SL UE init: pscch_dmrs for slot %d symbol %d - malloc failed\n", slot, symb);
+    }
+  }
+
+  nr_init_pdcch_dmrs(sl_fp,UE->nr_gold_pscch_dmrs, UE->SL_UE_PHY_PARAMS.sl_config.sl_DMRS_ScrambleId);
   for (int slss_id = 0; slss_id < SL_NR_NUM_SLSS_IDs; slss_id++) {
     sl_generate_psbch_dmrs_qpsk_sequences(UE, UE->SL_UE_PHY_PARAMS.init_params.psbch_dmrs_modsym[slss_id], slss_id);
     sl_generate_sss(&UE->SL_UE_PHY_PARAMS.init_params, slss_id, scaling_value);

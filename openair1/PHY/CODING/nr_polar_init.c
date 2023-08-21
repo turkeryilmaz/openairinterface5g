@@ -208,6 +208,21 @@ t_nrPolar_params *nr_polar_params(int8_t messageType, uint16_t messageLength, ui
     newPolarInitNode->crcCorrectionBits = SL_NR_POLAR_PSBCH_CRC_ERROR_CORRECTION_BITS;
     newPolarInitNode->crc_generator_matrix = crc24c_generator_matrix(newPolarInitNode->payloadBits);//G_P
     LOG_D(PHY,"SIDELINK: Initializing polar parameters for PSBCH (K %d, E %d)\n",newPolarInitNode->payloadBits,newPolarInitNode->encoderLength);
+  } else if (messageType == NR_POLAR_DCI_MESSAGE_TYPE || messageType == NR_POLAR_SCI_MESSAGE_TYPE) {
+    newPolarInitNode->n_max = NR_POLAR_DCI_N_MAX;
+    newPolarInitNode->i_il = NR_POLAR_DCI_I_IL;
+    newPolarInitNode->i_seg = NR_POLAR_DCI_I_SEG;
+    newPolarInitNode->n_pc = NR_POLAR_DCI_N_PC;
+    newPolarInitNode->n_pc_wm = NR_POLAR_DCI_N_PC_WM;
+    newPolarInitNode->i_bil = NR_POLAR_DCI_I_BIL;
+    newPolarInitNode->crcParityBits = NR_POLAR_DCI_CRC_PARITY_BITS;
+    newPolarInitNode->payloadBits = messageLength;
+    newPolarInitNode->encoderLength = messageType == NR_POLAR_DCI_MESSAGE_TYPE ? aggregation_level * 108 : aggregation_level * 18; // for SCI aggregartion_level helds the number of PRBs, so multiply by 9*2 bits per PRB (9 REs with PSCCH payload)
+    newPolarInitNode->crcCorrectionBits = NR_POLAR_DCI_CRC_ERROR_CORRECTION_BITS;
+    newPolarInitNode->crc_generator_matrix = crc24c_generator_matrix(newPolarInitNode->payloadBits + newPolarInitNode->crcParityBits); // G_P
+    //printf("Initializing polar parameters for DCI (K %d, E %d, L %d)\n",newPolarInitNode->payloadBits,newPolarInitNode->encoderLength,aggregation_level);
+
+  } else if (messageType == NR_POLAR_UCI_PUCCH_MESSAGE_TYPE) {
   } else {
     AssertFatal(1 == 0, "[nr_polar_init] Incorrect Message Type(%d)", messageType);
   }

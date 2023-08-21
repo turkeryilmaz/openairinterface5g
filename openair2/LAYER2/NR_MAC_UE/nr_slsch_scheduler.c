@@ -55,6 +55,7 @@ bool nr_schedule_slsch(nr_sci_pdu_t *sci_pdu,nr_sci_pdu_t *sci2_pdu,uint8_t *sls
    sci_pdu->psfch_overhead.val = 0;
    sci_pdu->reserved.val = 0;
    sci_pdu->conflict_information_receiver.val = 0;
+   sci_pdu->beta_offset_indicator = 0;
 
 // Fill SCI2A
    sci2_pdu->harq_pid = 0;

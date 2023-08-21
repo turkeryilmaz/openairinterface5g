@@ -656,6 +656,8 @@ typedef struct {
   sl_nr_sidelink_mode_t sl_mode;
   sl_nr_ue_phy_params_t SL_UE_PHY_PARAMS;
   bool phy_config_request_sent;
+  int pscch_dmrs_gold_init;
+  uint32_t ***nr_gold_pscch_dmrs;  
 } PHY_VARS_NR_UE;
 
 typedef struct {

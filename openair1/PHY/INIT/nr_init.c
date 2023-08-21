@@ -572,7 +572,7 @@ int phy_init_nr_gNB(PHY_VARS_gNB *gNB)
 
   nr_generate_modulation_table();
   gNB->pdcch_gold_init = cfg->cell_config.phy_cell_id.value;
-  nr_init_pdcch_dmrs(gNB, cfg->cell_config.phy_cell_id.value);
+  nr_init_pdcch_dmrs(&gNB->frame_parms,gNB->pdcch_dmrs, cfg->cell_config.phy_cell_id.value);
   nr_init_pbch_interleaver(gNB->nr_pbch_interleaver);
 
   //PDSCH DMRS init

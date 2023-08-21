@@ -278,15 +278,20 @@ int phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
 
   //VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_UE_TX_SL,VCD_FUNCTION_IN);
 
+  if (phy_data->nr_sl_pssch_pscch_pdu) LOG_I(NR_PHY,"phy_procedures 1: Received CONFIG_TYPE_TX_PSCCH_PSSCH, PSCCH startRB %d, PSCCH numRB %d\n",phy_data->nr_sl_pssch_pscch_pdu->startrb,phy_data->nr_sl_pssch_pscch_pdu->pscch_numrbs);
   const int samplesF_per_slot = NR_SYMBOLS_PER_SLOT * fp->ofdm_symbol_size;
   c16_t txdataF_buf[fp->nb_antennas_tx * samplesF_per_slot] __attribute__((aligned(32)));
-  memset(txdataF_buf, 0, sizeof(txdataF_buf));
+  if (phy_data->nr_sl_pssch_pscch_pdu) LOG_I(NR_PHY,"phy_procedures 0: Received CONFIG_TYPE_TX_PSCCH_PSSCH, PSCCH startRB %d, PSCCH numRB %d\n",phy_data->nr_sl_pssch_pscch_pdu->startrb,phy_data->nr_sl_pssch_pscch_pdu->pscch_numrbs);
+  printf("txdataF_buf size %d (nb_antennas_tx %d, samplesF_per_slot %d)\n",sizeof(txdataF_buf),fp->nb_antennas_tx,samplesF_per_slot);
+  //memset(txdataF_buf, 0, sizeof(txdataF_buf));
+  if (phy_data->nr_sl_pssch_pscch_pdu) LOG_I(NR_PHY,"phy_procedures 2: Received CONFIG_TYPE_TX_PSCCH_PSSCH, PSCCH startRB %d, PSCCH numRB %d\n",phy_data->nr_sl_pssch_pscch_pdu->startrb,phy_data->nr_sl_pssch_pscch_pdu->pscch_numrbs);
   c16_t *txdataF[fp->nb_antennas_tx]; /* workaround to be compatible with current txdataF usage in all tx procedures. */
   for(int i=0; i< fp->nb_antennas_tx; ++i)
     txdataF[i] = &txdataF_buf[i * samplesF_per_slot];
 
   LOG_I(PHY,"****** start Sidelink TX-Chain for AbsSubframe %d.%d ******\n",
                                                                 frame_tx, slot_tx);
+  if (phy_data->nr_sl_pssch_pscch_pdu) LOG_I(NR_PHY,"phy_procedures: Received CONFIG_TYPE_TX_PSCCH_PSSCH, PSCCH startRB %d, PSCCH numRB %d\n",phy_data->nr_sl_pssch_pscch_pdu->startrb,phy_data->nr_sl_pssch_pscch_pdu->pscch_numrbs);
 
   start_meas(&sl_phy_params->phy_proc_sl_tx);
 
@@ -309,7 +314,16 @@ int phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
     tx_action = 1;
   }
   else if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH) {
-   LOG_I(NR_PHY,"Generating PSCCH ( )\n");
+   LOG_I(NR_PHY,"Generating PSCCH (%d.%d)\n",frame_tx,slot_tx);
+
+        LOG_I(NR_PHY,"Received CONFIG_TYPE_TX_PSCCH_PSSCH, PSCCH startRB %d, PSCCH numRB %d\n",phy_data->nr_sl_pssch_pscch_pdu->startrb,phy_data->nr_sl_pssch_pscch_pdu->pscch_numrbs);
+        LOG_I(NR_PHY,"format 1A length %d :%llx, format 2x length %d : %llx, PSSCH mcs %d, PSSCH tbslrm %d\n",phy_data->nr_sl_pssch_pscch_pdu->pscch_sci_payload_len,
+              (unsigned long long)*phy_data->nr_sl_pssch_pscch_pdu->pscch_sci_payload,
+              phy_data->nr_sl_pssch_pscch_pdu->sci2_payload_len,
+              (unsigned long long)*phy_data->nr_sl_pssch_pscch_pdu->sci2_payload,
+              phy_data->nr_sl_pssch_pscch_pdu->mcs,
+              phy_data->nr_sl_pssch_pscch_pdu->tbslbrm);
+   nr_generate_sci1(ue,txdataF[0],fp,AMP,slot_tx,phy_data->nr_sl_pssch_pscch_pdu); 
   }
   else if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSFCH) {
    LOG_I(NR_PHY,"Generating PSFCH ( )\n");

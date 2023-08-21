@@ -53,12 +53,10 @@ void nr_init_pbch_dmrs(PHY_VARS_gNB* gNB)
 
 }
 
-void nr_init_pdcch_dmrs(PHY_VARS_gNB* gNB, uint32_t Nid)
+void nr_init_pdcch_dmrs(NR_DL_FRAME_PARMS *fp, uint32_t ***pdcch_dmrs, uint32_t Nid)
 {
   uint32_t x1 = 0, x2 = 0;
   uint8_t reset;
-  NR_DL_FRAME_PARMS *fp = &gNB->frame_parms;
-  uint32_t ***pdcch_dmrs = gNB->nr_gold_pdcch_dmrs;
   int pdcch_dmrs_init_length =  (((fp->N_RB_DL<<1)*3)>>5)+1;
 
   for (uint8_t slot=0; slot<fp->slots_per_frame; slot++) {
