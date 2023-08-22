@@ -635,7 +635,7 @@ add_boolean_option(LINUX_LIST              False "used only in lists.c: either u
 # PHY options
 ##########################
 add_boolean_option(LOCALIZATION            False "???" ON)
-add_integer_option(MAX_NUM_CCs             3     "????" ON)
+add_integer_option(MAX_NUM_CCs             1     "????" ON)
 add_boolean_option(SMBV                    False "Rohde&Schwarz SMBV100A vector signal generator" ON)
 add_boolean_option(DEBUG_PHY               False "Enable PHY layer debugging options" ON)
 add_boolean_option(DEBUG_PHY_PROC          False "Enable debugging of PHY layer procedures" ON)
