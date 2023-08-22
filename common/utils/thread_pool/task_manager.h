@@ -10,7 +10,7 @@
 #define TASK_MANAGER_UE
 #define TASK_MANAGER_UE_DECODING
 
-//#define TASK_MANAGER_SIM
+#define TASK_MANAGER_SIM
 
 #include "task.h"
 

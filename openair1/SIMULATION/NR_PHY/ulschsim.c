@@ -419,7 +419,7 @@ int main(int argc, char **argv)
 #ifdef TASK_MANAGER
   int const log_cores = get_nprocs_conf();
   assert(log_cores > 0);
-  init_task_manager(&gNB->man, log_cores);
+  init_task_manager(&gNB->man, log_cores/2);
 #else
   initTpool("n", &gNB->threadPool, true);
 #endif
@@ -656,6 +656,11 @@ int main(int argc, char **argv)
     free(gNB->gNB_config.tdd_table.max_tdd_periodicity_list[i].max_num_of_symbol_per_slot_list);
   free(gNB->gNB_config.tdd_table.max_tdd_periodicity_list);
 
+#ifdef TASK_MANAGER
+  void (*clean)(task_t* args) = NULL;
+  free_task_manager(&gNB->man, clean);
+#endif
+
   term_nr_ue_signal(UE, 1);
   free(UE);
 
@@ -673,6 +678,7 @@ int main(int argc, char **argv)
 
   loader_reset();
   logTerm();
+
 
   return (n_errors);
 }
