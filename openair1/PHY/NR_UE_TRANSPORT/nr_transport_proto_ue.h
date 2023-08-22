@@ -40,6 +40,7 @@
 
 #define NR_PUSCH_x 2 // UCI placeholder bit TS 38.212 V15.4.0 subclause 5.3.3.1
 #define NR_PUSCH_y 3 // UCI placeholder bit
+#define NR_PSSCH_x 4 // SCI2 placeholder bit
 
 // Functions below implement 36-211 and 36-212
 
@@ -254,6 +255,13 @@ uint8_t nr_ue_pusch_common_procedures(PHY_VARS_NR_UE *UE,
                                       const uint8_t n_antenna_ports,
                                       c16_t **txdataF);
 
+uint8_t nr_ue_pssch_common_procedures(PHY_VARS_NR_UE *UE,
+                                      uint8_t slot,
+                                      NR_DL_FRAME_PARMS *frame_parms,
+                                      uint8_t n_antenna_ports,
+                                      c16_t **txdataF,
+                                      int link_type);
+
 int8_t clean_UE_ulsch(PHY_VARS_NR_UE *UE, uint8_t gNB_id);
 
 void nr_dlsch_unscrambling(int16_t* llr,
@@ -423,6 +431,16 @@ int nr_rx_psbch(PHY_VARS_NR_UE *ue,
 void nr_tx_psbch(PHY_VARS_NR_UE *UE, uint32_t frame_tx, uint32_t slot_tx,
                  sl_nr_tx_config_psbch_pdu_t *psbch_vars,
                  c16_t **txdataF);
+
+void nr_tx_pssch(PHY_VARS_NR_UE *UE, uint32_t frame_tx, uint32_t slot_tx,
+                sl_nr_tx_config_pscch_pssch_pdu_t *pssch_pssch_vars,
+                c16_t **txdataF);
+
+int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
+                     sl_nr_tx_config_pscch_pssch_pdu_t *slsch,
+                     NR_DL_FRAME_PARMS* frame_parms,
+                     uint8_t harq_pid,
+                     unsigned int G);
 
 int sl_nr_slss_search(PHY_VARS_NR_UE *UE, UE_nr_rxtx_proc_t *proc, int num_frames);
 

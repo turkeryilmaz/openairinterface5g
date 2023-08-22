@@ -2,6 +2,7 @@
 #define _SIDELINK_NR_UE_INTERFACE_H_
 
 #include "fapi_nr_ue_interface.h"
+#include "openair1/PHY/NR_UE_TRANSPORT/nr_transport_ue.h"
 
 #define SL_NR_RX_CONFIG_LIST_NUM 1
 #define SL_NR_TX_CONFIG_LIST_NUM 1
@@ -211,7 +212,8 @@ typedef struct {
 
 //MAC commands PHY to transmit Data on PSCCH, PSSCH.
 typedef struct sl_nr_tx_config_pscch_pssch_pdu {
-
+  NR_DL_UE_HARQ_t harq_processes_dl[NR_MAX_SLSCH_HARQ_PROCESSES];
+  NR_UL_UE_HARQ_t harq_processes_ul[NR_MAX_SLSCH_HARQ_PROCESSES];
   //SCI 1A Payload Prepared by MAC, to be sent on PSCCH
   uint8_t pscch_sci_payload[SL_NR_MAX_PSCCH_SCI_LENGTH_IN_BYTES];
   //SCI 1A Payload Length in bits
@@ -226,6 +228,7 @@ typedef struct sl_nr_tx_config_pscch_pssch_pdu {
   //In Sym without PSCCH - Start of PSSCH
   // freq domain allocation starts
   uint16_t startrb;
+  uint16_t bwp_start;
   // Number of symbols used for PSCCH
   uint16_t pscch_numsym;
   // Number of  RBS used for PSCCH
@@ -243,17 +246,18 @@ typedef struct sl_nr_tx_config_pscch_pssch_pdu {
   //Guard symbol + AGC symbol are also excluded
   //Indicates the number of symbols for PSCCH+PSSCH txn
   uint8_t pssch_numsym;
-
   // start symbol of PSCCH/PSSCH (excluding AGC)
   uint8_t pssch_startsym;
-
+  // Number of  RBS used for PSSCH
+  uint16_t pssch_numrbs;
+  // Scrambling Id used for Generation of PSSCH DMRS Symbols
+  uint32_t pssch_dmrs_scrambling_id;
   //.... Other Parameters for SCI-2 and PSSCH
 
   // Used to determine number of SCI2 modulated symbols
   uint8_t sci2_beta_offset;
   //Values will be sl-scaling*100 (sl-scaling values 0.5, 0.65, 0.8, 1)
   uint8_t sci2_alpha_times_100;
-
   uint32_t tbslbrm;
   uint32_t tb_size;
   uint16_t target_coderate;
@@ -264,11 +268,15 @@ typedef struct sl_nr_tx_config_pscch_pssch_pdu {
   uint8_t  num_layers;
   uint8_t rv_index;
   uint8_t ndi;
+  uint8_t nid_x;
 
   //DMRS SYMBOL MASK. If bit set to 1 indicates it is a DMRS symbol. LSB is symbol 0
   // Table from SPEC 38.211, Table 8.4.1.1.2-1
   uint16_t dmrs_symbol_position;
 
+  // DMRS ports. [TS38.212 7.3.1.1.2] provides description between DCI 0-1 content and DMRS ports.
+  // Bitmap occupying the 11 LSBs with: bit 0: antenna port 1000 bit 11: antenna port 1011 and for each bit 0: DMRS port not used 1: DMRS port used
+  uint16_t dmrs_ports;
 
   //....TBD.. any additional parameters
 

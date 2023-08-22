@@ -311,19 +311,20 @@ int phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
 
       LOG_I(NR_PHY,"============================================\n");
     }
-    tx_action = 1;
-  }
-  else if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH) {
-   LOG_I(NR_PHY,"Generating PSCCH (%d.%d)\n",frame_tx,slot_tx);
-
-        LOG_I(NR_PHY,"Received CONFIG_TYPE_TX_PSCCH_PSSCH, PSCCH startRB %d, PSCCH numRB %d\n",phy_data->nr_sl_pssch_pscch_pdu->startrb,phy_data->nr_sl_pssch_pscch_pdu->pscch_numrbs);
-        LOG_I(NR_PHY,"format 1A length %d :%llx, format 2x length %d : %llx, PSSCH mcs %d, PSSCH tbslrm %d\n",phy_data->nr_sl_pssch_pscch_pdu->pscch_sci_payload_len,
-              (unsigned long long)*phy_data->nr_sl_pssch_pscch_pdu->pscch_sci_payload,
-              phy_data->nr_sl_pssch_pscch_pdu->sci2_payload_len,
-              (unsigned long long)*phy_data->nr_sl_pssch_pscch_pdu->sci2_payload,
-              phy_data->nr_sl_pssch_pscch_pdu->mcs,
-              phy_data->nr_sl_pssch_pscch_pdu->tbslbrm);
-   nr_generate_sci1(ue,txdataF[0],fp,AMP,slot_tx,phy_data->nr_sl_pssch_pscch_pdu); 
+    tx_action = SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH;
+  } else if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH) {
+    LOG_I(NR_PHY,"Generating PSCCH (%d.%d)\n",frame_tx,slot_tx);
+    LOG_I(NR_PHY,"Received CONFIG_TYPE_TX_PSCCH_PSSCH, PSCCH startRB %d, PSCCH numRB %d\n",phy_data->nr_sl_pssch_pscch_pdu->startrb,phy_data->nr_sl_pssch_pscch_pdu->pscch_numrbs);
+    LOG_I(NR_PHY,"format 1A length %d :%llx, format 2x length %d : %llx, PSSCH mcs %d, PSSCH tbslrm %d\n",phy_data->nr_sl_pssch_pscch_pdu->pscch_sci_payload_len,
+          (unsigned long long)*phy_data->nr_sl_pssch_pscch_pdu->pscch_sci_payload,
+          phy_data->nr_sl_pssch_pscch_pdu->sci2_payload_len,
+          (unsigned long long)*phy_data->nr_sl_pssch_pscch_pdu->sci2_payload,
+          phy_data->nr_sl_pssch_pscch_pdu->mcs,
+          phy_data->nr_sl_pssch_pscch_pdu->tbslbrm);
+    nr_generate_sci1(ue,txdataF[0],fp,AMP,slot_tx,phy_data->nr_sl_pssch_pscch_pdu);
+    sl_nr_tx_config_pscch_pssch_pdu_t *pssch_vars = &phy_data->nr_sl_pssch_pscch_pdu;
+    nr_tx_pssch(ue, frame_tx, slot_tx, pssch_vars, txdataF);
+    sl_phy_params->psbch.num_psbch_tx++;
   }
   else if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSFCH) {
    LOG_I(NR_PHY,"Generating PSFCH ( )\n");
