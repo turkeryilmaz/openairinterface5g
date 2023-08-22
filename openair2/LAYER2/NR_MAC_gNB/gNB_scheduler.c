@@ -217,9 +217,11 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP,
   nr_schedule_ue_spec(module_idP, frame, slot);
   stop_meas(&gNB->schedule_dlsch);
 
-  // This schedules Paging in slot
-  schedule_nr_PCH(module_idP, frame, slot);
-
+  if (RC.ss.mode >= SS_SOFTMODEM)
+  {
+    // This schedules Paging in slot
+    schedule_nr_PCH(module_idP, frame, slot);
+  }
   nr_sr_reporting(gNB, frame, slot);
 
   nr_schedule_pucch(gNB, frame, slot);
