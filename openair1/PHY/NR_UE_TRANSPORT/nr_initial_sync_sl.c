@@ -5,6 +5,7 @@
 #include "PHY/MODULATION/modulation_UE.h"
 #include "PHY/NR_UE_TRANSPORT/nr_transport_proto_ue.h"
 #include "SCHED_NR_UE/defs.h"
+#include "softmodem-common.h"
 
 //#define SL_DEBUG
 
@@ -18,23 +19,13 @@ static const int16_t sl_phase_im_nr[PHASE_HYPOTHESIS_NUMBER] // -pi/3 ---- pi/3
 
 static int sl_nr_pss_correlation(PHY_VARS_NR_UE *UE, int frame_index)
 {
-
   sl_nr_ue_phy_params_t *sl_ue = &UE->SL_UE_PHY_PARAMS;
   SL_NR_SYNC_PARAMS_t *sync_params = &sl_ue->sync_params;
   NR_DL_FRAME_PARMS *sl_fp = &UE->SL_UE_PHY_PARAMS.sl_frame_params;
   int16_t **pss_for_correlation = (int16_t **)sl_ue->init_params.sl_pss_for_correlation;
 
-  int maxval=0;
-  int32_t **rxdata = NULL;
-  unsigned int n, ar, peak_position = 0, pss_source = 0;
-  int64_t peak_value = 0;
-  double ffo_est=0;
-
-  int64_t avg[SL_NR_NUM_IDs_IN_PSS];
   uint32_t length = (frame_index == 0) ? sl_fp->samples_per_frame + (2 * sl_fp->ofdm_symbol_size) : sl_fp->samples_per_frame;
-  int64_t psss_corr_value = 0;
-  
-  rxdata = (int32_t **)UE->common_vars.rxdata;
+  int32_t **rxdata = (int32_t **)UE->common_vars.rxdata;
 
 #ifdef SL_DEBUG
   char fname[50], sname[25];
@@ -47,60 +38,46 @@ static int sl_nr_pss_correlation(PHY_VARS_NR_UE *UE, int frame_index)
   int64_t *pss_corr_debug_values[SL_NR_NUM_IDs_IN_PSS];
 #endif
 
-  for (int i=0;i<2*(sl_fp->ofdm_symbol_size);i++) {
+  int maxval = 0;
+  for (int i = 0; i < 2 * (sl_fp->ofdm_symbol_size); i++) {
     maxval = max(maxval,pss_for_correlation[0][i]);
     maxval = max(maxval,-pss_for_correlation[0][i]);
     maxval = max(maxval,pss_for_correlation[1][i]);
     maxval = max(maxval,-pss_for_correlation[1][i]);
   }
 
-  int shift = log2_approx(maxval);//*(sl_fp->ofdm_symbol_size + sl_fp->nb_prefix_samples)*2);
+  int shift = log2_approx(maxval);
+  LOG_D(NR_PHY, "SIDELINK SLSS SEARCH: Function:%s\n", __func__);
+  LOG_D(NR_PHY, "maxval:%d, shift:%d\n", maxval, shift);
 
-#ifdef SL_DEBUG
-  LOG_I(PHY,"SIDELINK SLSS SEARCH: Function:%s\n", __func__);
-  LOG_I(PHY,"maxval:%d, shift:%d\n", maxval, shift);
-#endif
+  int64_t avg[SL_NR_NUM_IDs_IN_PSS] = {0};
+  int64_t pss_corr_debug_values[SL_NR_NUM_IDs_IN_PSS][length];
+  memset(pss_corr_debug_values, 0, SL_NR_NUM_IDs_IN_PSS * length * sizeof(int64_t));
+  unsigned peak_position = 0, pss_source = 0;
+  int64_t peak_value = 0, psss_corr_value = 0;
 
-  for (int pss_index = 0; pss_index < SL_NR_NUM_IDs_IN_PSS; pss_index++) {
-    avg[pss_index]=0;
-
-#ifdef SL_DEBUG
-    pss_corr_debug_values[pss_index] = malloc16_clear(length*sizeof(int64_t));
-#endif
-
-  }
-
-
-
-  for (n=0; n < length - sl_fp->ofdm_symbol_size; n+=4) { //
-
+  for (int n = 0; n < length - sl_fp->ofdm_symbol_size; n +=4) {
     for (int pss_index = 0; pss_index < SL_NR_NUM_IDs_IN_PSS; pss_index++) {
       psss_corr_value = 0;
-
-
-      // calculate dot product of primary_synchro_time_nr and rxdata[ar][n] (ar=0..nb_ant_rx) and store the sum in temp[n];
-      for (ar=0; ar<sl_fp->nb_antennas_rx; ar++) {
-
-        /* perform correlation of rx data and pss sequence ie it is a dot product */
-        const c32_t result = dot_product((c16_t *)pss_for_correlation[pss_index],
-                                         (c16_t *)&(rxdata[ar][n + frame_index * sl_fp->samples_per_frame]),
+      for (int ar = 0; ar < sl_fp->nb_antennas_rx; ar++) {
+        int frame_samples_shift = frame_index * sl_fp->samples_per_frame;
+        const c32_t result_psss1 = dot_product((c16_t *)pss_for_correlation[pss_index],
+                                         (c16_t *)&(rxdata[ar][n + frame_samples_shift]),
                                          sl_fp->ofdm_symbol_size,
                                          shift);
 
-        const c64_t r64 = {.r = result.r, .i = result.i};
-        psss_corr_value += squaredMod(r64);
-
-#ifdef SL_DEBUG
-        pss_corr_debug_values[pss_index][n] = psss_corr_value;
-#endif
-
-#ifdef SL_DEBUG
-        printf("frame:%d n:%d, pss_index:%d, pss_for_correlation[pss_index][0]:%x, rxdata[n]:%x\n",
-                                frame_index, n, pss_index, pss_for_correlation[pss_index][0], rxdata[ar][n + frame_index * sl_fp->samples_per_frame]);
-        printf("result %lld, pss_corr_values[%d][%d]:%ld\n",result, pss_index, n, pss_corr_debug_values[pss_index][n]);
-        printf("pss_index %d: n %6u peak_value %15llu\n", pss_index, n, (unsigned long long)pss_corr_debug_values[pss_index][n]);
-        printf("peak_value:%ld, peak_position:%d, pss_source:%d\n", peak_value, peak_position, pss_source);
-#endif
+        const c64_t r64_psss1 = {.r = result_psss1.r, .i = result_psss1.i};
+        psss_corr_value += squaredMod(r64_psss1);
+        if (get_softmodem_params()->sl_mode > 0) {
+          //non-coherentely combine repetition of PSS
+          int psss1_shift = sl_fp->ofdm_symbol_size + sl_fp->nb_prefix_samples;
+          const c32_t result_psss2 = dot_product((c16_t *)pss_for_correlation[pss_index],
+                               (c16_t *)&(rxdata[ar][n + frame_samples_shift + psss1_shift]),
+                               sl_fp->ofdm_symbol_size,
+                               shift);
+          c64_t r64_psss2 = {.r = ((int*) &result_psss2)[0], .i = ((int*) &result_psss2)[1]};
+          psss_corr_value += squaredMod(r64_psss2);
+        }
       }
 
       // calculate the absolute value of sync_corr[n]
@@ -112,7 +89,14 @@ static int sl_nr_pss_correlation(PHY_VARS_NR_UE *UE, int frame_index)
 
 #ifdef SL_DEBUG
         printf("pss_index %d: n %6u peak_value %15llu\n", pss_index, n, (unsigned long long)psss_corr_value);
+        pss_corr_debug_values[pss_index][n] = psss_corr_value;
+        printf("frame:%d n:%d, pss_index:%d, pss_for_correlation[pss_index][0]:%x, rxdata[n]:%x\n",
+                                frame_index, n, pss_index, pss_for_correlation[pss_index][0], rxdata[ar][n + frame_index * sl_fp->samples_per_frame]);
+        printf("result %lld, pss_corr_values[%d][%d]:%ld\n",result, pss_index, n, pss_corr_debug_values[pss_index][n]);
+        printf("pss_index %d: n %6u peak_value %15llu\n", pss_index, n, (unsigned long long)pss_corr_debug_values[pss_index][n]);
+        printf("peak_value:%ld, peak_position:%d, pss_source:%d\n", peak_value, peak_position, pss_source);
 #endif
+
       }
     }
   }
@@ -125,25 +109,17 @@ static int sl_nr_pss_correlation(PHY_VARS_NR_UE *UE, int frame_index)
       free(pss_corr_debug_values[pss_index]);
     }
 #endif
-
-  if (UE->UE_fo_compensation) { // Not tested
-
-	  // fractional frequency offset computation according to Cross-correlation Synchronization Algorithm Using PSS
-	  // Shoujun Huang, Yongtao Su, Ying He and Shan Tang, "Joint time and frequency offset estimation in LTE downlink," 7th International Conference on Communications and Networking in China, 2012.
-
-    // Computing cross-correlation at peak on half the symbol size for first half of data
+  double ffo_est = 0.0;
+  if (UE->UE_fo_compensation) {
     c32_t r1 = dot_product((c16_t *)pss_for_correlation[pss_source],
                            (c16_t *)&(rxdata[0][peak_position + frame_index * sl_fp->samples_per_frame]),
 		                       sl_fp->ofdm_symbol_size>>1,
 				                   shift);
-    // Computing cross-correlation at peak on half the symbol size for data shifted by half symbol size
-    // as it is real and complex it is necessary to shift by a value equal to symbol size to obtain such shift
     c32_t r2 = dot_product((c16_t *)pss_for_correlation[pss_source] + (sl_fp->ofdm_symbol_size >> 1),
                            (c16_t *)&(rxdata[0][peak_position + frame_index * sl_fp->samples_per_frame]) + (sl_fp->ofdm_symbol_size >> 1),
                            sl_fp->ofdm_symbol_size >> 1,
                            shift);
     cd_t r1d = {r1.r, r1.i}, r2d = {r2.r, r2.i};
-    // estimation of fractional frequency offset: angle[(result1)'*(result2)]/pi
     ffo_est = atan2(r1d.r * r2d.i - r2d.r * r1d.i, r1d.r * r2d.r + r1d.i * r2d.i) / M_PI;
 
 #ifdef SL_DEBUG
@@ -151,18 +127,17 @@ static int sl_nr_pss_correlation(PHY_VARS_NR_UE *UE, int frame_index)
 #endif
   }
 
-
-  // computing absolute value of frequency offset
-  sync_params->freq_offset = ffo_est*sl_fp->subcarrier_spacing;
+  sync_params->freq_offset = ffo_est * sl_fp->subcarrier_spacing;
   UE->common_vars.freq_offset =   sync_params->freq_offset;
   for (int pss_index = 0; pss_index < SL_NR_NUM_IDs_IN_PSS; pss_index++) avg[pss_index]/=(length/4);
 
   sync_params->N_sl_id2 = pss_source;
 
   LOG_I(PHY,"PSS Source = %d, Peak found at pos %d, val = %llu (%d dB) avg %d dB, ffo %lf, freq offset:%d Hz\n",
-                pss_source, peak_position, (unsigned long long)peak_value, dB_fixed64(peak_value),dB_fixed64(avg[pss_source]),ffo_est, sync_params->freq_offset);
+        pss_source, peak_position, (unsigned long long)peak_value, dB_fixed64(peak_value),
+        dB_fixed64(avg[pss_source]), ffo_est, sync_params->freq_offset);
 
-  if (peak_value < 5*avg[pss_source])
+  if (peak_value < 5 * avg[pss_source])
     return(-1);
 
   return peak_position;
@@ -401,7 +376,7 @@ int sl_nr_slss_search(PHY_VARS_NR_UE *UE, UE_nr_rxtx_proc_t *proc, int num_frame
 
   int32_t sync_pos = -1;// sync_pos_frame = -1;
   int32_t metric_tdd_ncp=0;
-  uint8_t phase_tdd_ncp;
+  uint8_t phase_tdd_ncp=0;
   double im, re;
   int ret=-1;
   uint16_t rx_slss_id = 65535;
@@ -435,161 +410,157 @@ int sl_nr_slss_search(PHY_VARS_NR_UE *UE, UE_nr_rxtx_proc_t *proc, int num_frame
       continue;
     }
 
-    sync_pos += frame_index * sl_fp->samples_per_frame; // position in the num_frames frame samples
+    AssertFatal(sync_params->N_sl_id2 == 0 || sync_params->N_sl_id2 == 1,
+                "Invalid Nid2 value %d\n", sync_params->N_sl_id2);
 
-    for (int pss_sym = 1; pss_sym < 3;pss_sym++) {
-      // Now Sync pos can point to PSS 1st symbol or 2nd symbol.
-      // Right now implemented the strategy to try both locations for FFT
-      // Think about a better correlation strategy
-      if (pss_sym == 1) { // Check if sync pos points to SYMBOL1 - first symbol of PSS location
-        if (sync_pos > sl_fp->nb_prefix_samples0 + sl_fp->ofdm_symbol_size + sl_fp->nb_prefix_samples)
-          sync_params->ssb_offset = sync_pos - (sl_fp->nb_prefix_samples0 + sl_fp->ofdm_symbol_size + sl_fp->nb_prefix_samples);
-        else
-          sync_params->ssb_offset = sync_pos + sl_fp->samples_per_frame - (sl_fp->nb_prefix_samples0 + sl_fp->ofdm_symbol_size + sl_fp->nb_prefix_samples);
-      } else { // Check if sync pos points to SYMBOL2 - second symbol of PSS location
-        if (sync_pos >= sl_fp->nb_prefix_samples0 + 2*(sl_fp->ofdm_symbol_size + sl_fp->nb_prefix_samples))
-          sync_params->ssb_offset = sync_pos - (sl_fp->nb_prefix_samples0 + 2*(sl_fp->ofdm_symbol_size + sl_fp->nb_prefix_samples));
-        else
-          sync_params->ssb_offset = sync_pos + sl_fp->samples_per_frame - (sl_fp->nb_prefix_samples0 + 2*(sl_fp->ofdm_symbol_size + sl_fp->nb_prefix_samples));
-      }
+    sync_pos += frame_index * sl_fp->samples_per_frame; // position in the num_frames frame samples
+    int psbch0_offset = sl_fp->nb_prefix_samples0 + sl_fp->ofdm_symbol_size;
+    if (sync_params->N_sl_id2 == 0) {
+        sync_params->ssb_offset = sync_pos > psbch0_offset + sl_fp->nb_prefix_samples ?
+                                  sync_pos - (psbch0_offset + sl_fp->nb_prefix_samples) :
+                                  sync_pos + sl_fp->samples_per_frame - (psbch0_offset + sl_fp->nb_prefix_samples);
+    } else if (sync_params->N_sl_id2 == 1) {
+      int psss1_offset = sl_fp->nb_prefix_samples + sl_fp->ofdm_symbol_size;
+      sync_params->ssb_offset = sync_pos > (psbch0_offset + psss1_offset + sl_fp->nb_prefix_samples) ?
+                                sync_pos - (psbch0_offset + psss1_offset + sl_fp->nb_prefix_samples) :
+                                sync_pos + sl_fp->samples_per_frame - (psbch0_offset + psss1_offset + sl_fp->nb_prefix_samples);
+    }
 
 #define SL_NR_NUM_SYMBOLS_FOR_PSBCH_NORMAL_CP 14
 
-      LOG_I(PHY,"UE[%d]SIDELINK SEARCH SLSS: PSS Peak at %d, PSS sym:%d, Estimated PSS position %d\n",
-                                                                    UE->Mod_id,sync_pos,pss_sym,sync_params->ssb_offset);
+    LOG_I(PHY,"UE[%d]SIDELINK SEARCH SLSS: PSS Peak at %d, PSS sym:%d, Estimated PSS position %d\n",
+                                                                  UE->Mod_id,sync_pos, sync_params->N_sl_id2, sync_params->ssb_offset);
 
-      int slss_block_samples = (SL_NR_NUM_SYMBOLS_FOR_PSBCH_NORMAL_CP * sl_fp->ofdm_symbol_size) +
-                               (SL_NR_NUM_SYMBOLS_FOR_PSBCH_NORMAL_CP -1) * sl_fp->nb_prefix_samples + sl_fp->nb_prefix_samples0;
+    int slss_block_samples = (SL_NR_NUM_SYMBOLS_FOR_PSBCH_NORMAL_CP * sl_fp->ofdm_symbol_size) +
+                              (SL_NR_NUM_SYMBOLS_FOR_PSBCH_NORMAL_CP -1) * sl_fp->nb_prefix_samples + sl_fp->nb_prefix_samples0;
 
-      int ssb_end_position = sync_params->ssb_offset + slss_block_samples;
+    int ssb_end_position = sync_params->ssb_offset + slss_block_samples;
 
-      LOG_D(PHY, "ssb_end:%d ssb block samples:%d total samples: %d\n", ssb_end_position, slss_block_samples, num_frames * sl_fp->samples_per_frame);
-
-
-      /* check that SSS/PBCH block is continuous inside the received buffer */
-      if (ssb_end_position < num_frames * sl_fp->samples_per_frame) {
-
-        // digital compensation of FFO for SSB symbols
-        if (UE->UE_fo_compensation){  // This code to be checked. Why do we do this before PSS detection is successful?
-	        double s_time = 1/(1.0e3 * sl_fp->samples_per_subframe);  // sampling time
-	        double off_angle = -2 * M_PI * s_time * (sync_params->freq_offset);  // offset rotation angle compensation per sample
-
-	        int start = sync_params->ssb_offset;  // start for offset correction is at ssb_offset (pss time position)
-          // Adapt this for other numerologies number of symbols with larger cp increases TBD
-          int end = ssb_end_position; // loop over samples in all symbols (ssb size), including prefix
+    LOG_D(PHY, "ssb_end:%d ssb block samples:%d total samples: %d\n", ssb_end_position, slss_block_samples, num_frames * sl_fp->samples_per_frame);
 
 
-          LOG_I(PHY,"SLSS SEARCH: FREQ comp of SLSS samples. Freq_OFSET:%d, startpos:%d, end_pos:%d\n",
-                                  sync_params->freq_offset, start, end);
-          for(int n=start; n<end; n++) {
-            for (int ar=0; ar<sl_fp->nb_antennas_rx; ar++) {
-              re = ((double)(((short *)UE->common_vars.rxdata[ar]))[2*n]);
-              im = ((double)(((short *)UE->common_vars.rxdata[ar]))[2*n+1]);
-              ((short *)UE->common_vars.rxdata[ar])[2*n] = (short)(round(re*cos(n*off_angle) - im*sin(n*off_angle)));
-              ((short *)UE->common_vars.rxdata[ar])[2*n+1] = (short)(round(re*sin(n*off_angle) + im*cos(n*off_angle)));
-            }
+    /* check that SSS/PBCH block is continuous inside the received buffer */
+    if (ssb_end_position < num_frames * sl_fp->samples_per_frame) {
+
+      // digital compensation of FFO for SSB symbols
+      if (UE->UE_fo_compensation){  // This code to be checked. Why do we do this before PSS detection is successful?
+        double s_time = 1/(1.0e3 * sl_fp->samples_per_subframe);  // sampling time
+        double off_angle = -2 * M_PI * s_time * (sync_params->freq_offset);  // offset rotation angle compensation per sample
+
+        int start = sync_params->ssb_offset;  // start for offset correction is at ssb_offset (pss time position)
+        // Adapt this for other numerologies number of symbols with larger cp increases TBD
+        int end = ssb_end_position; // loop over samples in all symbols (ssb size), including prefix
+
+
+        LOG_I(PHY,"SLSS SEARCH: FREQ comp of SLSS samples. Freq_OFSET:%d, startpos:%d, end_pos:%d\n",
+                                sync_params->freq_offset, start, end);
+        for(int n=start; n<end; n++) {
+          for (int ar=0; ar<sl_fp->nb_antennas_rx; ar++) {
+            re = ((double)(((short *)UE->common_vars.rxdata[ar]))[2*n]);
+            im = ((double)(((short *)UE->common_vars.rxdata[ar]))[2*n+1]);
+            ((short *)UE->common_vars.rxdata[ar])[2*n] = (short)(round(re*cos(n*off_angle) - im*sin(n*off_angle)));
+            ((short *)UE->common_vars.rxdata[ar])[2*n+1] = (short)(round(re*sin(n*off_angle) + im*cos(n*off_angle)));
           }
         }
-
-        NR_DL_FRAME_PARMS *frame_parms = &UE->SL_UE_PHY_PARAMS.sl_frame_params;
-        const uint32_t rxdataF_sz = frame_parms->samples_per_slot_wCP;
-        __attribute__ ((aligned(32))) c16_t rxdataF[frame_parms->nb_antennas_rx][rxdataF_sz];
-
-        /* In order to achieve correct processing for NR prefix samples is forced to 0 and then restored after function call */
-        for(int symbol=0; symbol<SL_NR_NUM_SYMBOLS_FOR_PSBCH_NORMAL_CP;symbol++) {
-          sl_nr_slot_fep(UE,
-                         NULL,
-                         symbol,
-                         0,
-                         sync_params->ssb_offset,
-                         rxdataF);
-        }
-
-        sl_nr_extract_sss(UE, NULL, &metric_tdd_ncp, &phase_tdd_ncp, rxdataF);
-
-        // save detected cell id to psbch
-        rx_slss_id = UE->SL_UE_PHY_PARAMS.sync_params.N_sl_id;
-
-        __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates[frame_parms->nb_antennas_rx][rxdataF_sz];
-        __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates_time[frame_parms->nb_antennas_rx][frame_parms->ofdm_symbol_size];
-
-        uint8_t decoded_output[4];
-
-        for (int symbol = 0; symbol < SL_NR_NUM_SYMBOLS_FOR_PSBCH_NORMAL_CP-1;) {
-          nr_pbch_channel_estimation(UE,
-                                      frame_parms,
-                                      rxdataF_sz,
-                                      dl_ch_estimates,
-                                      dl_ch_estimates_time,
-                                      proc,
-                                      symbol,
-                                      symbol,
-                                      0,
-                                      0,
-                                      rxdataF,
-                                      1,
-                                      rx_slss_id);
-
-          symbol = (symbol == 0) ? 5 : symbol+1;
-        }
-
-        ret = nr_rx_psbch(UE,proc,
-                          rxdataF_sz,
-                          dl_ch_estimates,
-                          frame_parms,
-                          decoded_output,
-                          rxdataF,
-                          rx_slss_id);
-
-        if (ret == 0) { // Check this later TBD
-          // sync at symbol ue->symbol_offset
-          // computing the offset wrt the beginning of the frame
-          // SSB located at symbol 0
-          sync_params->remaining_frames = (num_frames * sl_fp->samples_per_frame - sync_params->ssb_offset)/sl_fp->samples_per_frame;
-          //ssb_offset points to start of sl-ssb
-          //rx_offset points to remaining samples needed to fill a frame
-          sync_params->rx_offset = sync_params->ssb_offset % sl_fp->samples_per_frame;
-
-          LOG_I(PHY,"UE[%d]SIDELINK SLSS SEARCH: PSBCH RX OK. Remainingframes:%d, rx_offset:%d\n",
-                                                              UE->Mod_id,sync_params->remaining_frames, sync_params->rx_offset);
-
-          uint32_t psbch_payload = (*(uint32_t *)decoded_output);
-          //retrieve DFN and slot number from SL-MIB
-          sync_params->DFN = (((psbch_payload & 0x0700) >> 1) | ((psbch_payload & 0xFE0000) >> 17));
-          sync_params->slot_offset = (((psbch_payload  & 0x010000) >> 10) | ((psbch_payload & 0xFC000000) >> 26));
-
-          LOG_I(PHY, "UE[%d]SIDELINK SLSS SEARCH: SL-MIB: DFN:%d, slot:%d.\n",
-                                          UE->Mod_id, sync_params->DFN, sync_params->slot_offset);
-
-          nr_sl_psbch_rsrp_measurements(sl_ue,frame_parms,rxdataF, false);
-
-          UE->init_sync_frame = sync_params->remaining_frames;
-          UE->rx_offset = sync_params->rx_offset;
-
-          nr_sidelink_indication_t sl_indication;
-          sl_nr_rx_indication_t rx_ind = {0};
-          uint16_t number_pdus = 1;
-          nr_fill_sl_indication(&sl_indication, &rx_ind, NULL, proc, UE, NULL);
-          nr_fill_sl_rx_indication(&rx_ind, SL_NR_RX_PDU_TYPE_SSB, UE, number_pdus, proc, (void *)decoded_output, rx_slss_id);
-
-
-          LOG_D(PHY,"Sidelink SLSS SEARCH PSBCH RX OK. Send SL-SSB TO MAC\n");
-
-          if (UE->if_inst && UE->if_inst->sl_indication)
-            UE->if_inst->sl_indication(&sl_indication);
-
-
-          break;
-        }
-
-        LOG_I(PHY,"SIDELINK SLSS SEARCH: SLSS ID: %d metric %d, phase %d, psbch CRC %s\n",
-                                  sl_ue->sync_params.N_sl_id,metric_tdd_ncp,phase_tdd_ncp,(ret == 0) ? "OK" : "NOT OK");
-
-      } else {
-        LOG_W(PHY,"SIDELINK SLSS SEARCH: Error: Not enough samples to process PSBCH. sync_pos %d\n", sync_pos);
       }
+
+      NR_DL_FRAME_PARMS *frame_parms = &UE->SL_UE_PHY_PARAMS.sl_frame_params;
+      const uint32_t rxdataF_sz = frame_parms->samples_per_slot_wCP;
+      __attribute__ ((aligned(32))) c16_t rxdataF[frame_parms->nb_antennas_rx][rxdataF_sz];
+
+      /* In order to achieve correct processing for NR prefix samples is forced to 0 and then restored after function call */
+      for(int symbol=0; symbol<SL_NR_NUM_SYMBOLS_FOR_PSBCH_NORMAL_CP;symbol++) {
+        sl_nr_slot_fep(UE,
+                        NULL,
+                        symbol,
+                        0,
+                        sync_params->ssb_offset,
+                        rxdataF);
+      }
+
+      sl_nr_extract_sss(UE, NULL, &metric_tdd_ncp, &phase_tdd_ncp, rxdataF);
+
+      // save detected cell id to psbch
+      rx_slss_id = UE->SL_UE_PHY_PARAMS.sync_params.N_sl_id;
+
+      __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates[frame_parms->nb_antennas_rx][rxdataF_sz];
+      __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates_time[frame_parms->nb_antennas_rx][frame_parms->ofdm_symbol_size];
+
+      uint8_t decoded_output[4];
+
+      for (int symbol = 0; symbol < SL_NR_NUM_SYMBOLS_FOR_PSBCH_NORMAL_CP-1;) {
+        nr_pbch_channel_estimation(UE,
+                                    frame_parms,
+                                    rxdataF_sz,
+                                    dl_ch_estimates,
+                                    dl_ch_estimates_time,
+                                    proc,
+                                    symbol,
+                                    symbol,
+                                    0,
+                                    0,
+                                    rxdataF,
+                                    1,
+                                    rx_slss_id);
+
+        symbol = (symbol == 0) ? 5 : symbol+1;
+      }
+
+      ret = nr_rx_psbch(UE,proc,
+                        rxdataF_sz,
+                        dl_ch_estimates,
+                        frame_parms,
+                        decoded_output,
+                        rxdataF,
+                        rx_slss_id);
+
+      if (ret == 0) { // Check this later TBD
+        // sync at symbol ue->symbol_offset
+        // computing the offset wrt the beginning of the frame
+        // SSB located at symbol 0
+        sync_params->remaining_frames = (num_frames * sl_fp->samples_per_frame - sync_params->ssb_offset)/sl_fp->samples_per_frame;
+        //ssb_offset points to start of sl-ssb
+        //rx_offset points to remaining samples needed to fill a frame
+        sync_params->rx_offset = sync_params->ssb_offset % sl_fp->samples_per_frame;
+
+        LOG_I(PHY,"UE[%d]SIDELINK SLSS SEARCH: PSBCH RX OK. Remainingframes:%d, rx_offset:%d\n",
+                                                            UE->Mod_id,sync_params->remaining_frames, sync_params->rx_offset);
+
+        uint32_t psbch_payload = (*(uint32_t *)decoded_output);
+        //retrieve DFN and slot number from SL-MIB
+        sync_params->DFN = (((psbch_payload & 0x0700) >> 1) | ((psbch_payload & 0xFE0000) >> 17));
+        sync_params->slot_offset = (((psbch_payload  & 0x010000) >> 10) | ((psbch_payload & 0xFC000000) >> 26));
+
+        LOG_I(PHY, "UE[%d]SIDELINK SLSS SEARCH: SL-MIB: DFN:%d, slot:%d.\n",
+                                        UE->Mod_id, sync_params->DFN, sync_params->slot_offset);
+
+        nr_sl_psbch_rsrp_measurements(sl_ue,frame_parms,rxdataF, false);
+
+        UE->init_sync_frame = sync_params->remaining_frames;
+        UE->rx_offset = sync_params->rx_offset;
+
+        nr_sidelink_indication_t sl_indication;
+        sl_nr_rx_indication_t rx_ind = {0};
+        uint16_t number_pdus = 1;
+        nr_fill_sl_indication(&sl_indication, &rx_ind, NULL, proc, UE, NULL);
+        nr_fill_sl_rx_indication(&rx_ind, SL_NR_RX_PDU_TYPE_SSB, UE, number_pdus, proc, (void *)decoded_output, rx_slss_id);
+
+
+        LOG_D(PHY,"Sidelink SLSS SEARCH PSBCH RX OK. Send SL-SSB TO MAC\n");
+
+        if (UE->if_inst && UE->if_inst->sl_indication)
+          UE->if_inst->sl_indication(&sl_indication);
+
+
+        break;
+      }
+
+      LOG_I(PHY,"SIDELINK SLSS SEARCH: SLSS ID: %d metric %d, phase %d, psbch CRC %s\n",
+                                sl_ue->sync_params.N_sl_id,metric_tdd_ncp,phase_tdd_ncp,(ret == 0) ? "OK" : "NOT OK");
+
+    } else {
+      LOG_W(PHY,"SIDELINK SLSS SEARCH: Error: Not enough samples to process PSBCH. sync_pos %d\n", sync_pos);
     }
-    if (ret == 0) break;
   }
 
   if (ret!=0) {  // PSBCH not found so indicate sync to higher layers and configure frame parameters
