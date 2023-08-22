@@ -916,7 +916,9 @@ int main(int argc, char **argv)
   int n_errs = 0;
 
 #ifdef TASK_MANAGER_SIM
-  init_task_manager(&gNB->man, gNBthreads);
+  int const log_cores = get_nprocs_conf();
+  assert(log_cores > 0);
+  init_task_manager(&gNB->man, log_cores/2);
 #else
   initNamedTpool(gNBthreads, &gNB->threadPool, true, "gNB-tpool");
 #endif
