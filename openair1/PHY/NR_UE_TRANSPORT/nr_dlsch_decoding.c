@@ -481,8 +481,9 @@ uint32_t nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
 #ifdef TASK_MANAGER_UE_DECODING
   trigger_all_task_manager(&get_nrUE_params()->man);
   wait_spin_all_atomics_one(nbDecode, task_done); 
-  for(size_t i = 0; i < nbDecode; ++i){
+  for(size_t i = 0; i < harq_process->C; ++i){
     nr_ue_postDecode(phy_vars_ue, &arr[i], nbDecode == 1, b_size, b, &num_seg_ok, proc);
+    nbDecode--;
   }
 #else
   while (nbDecode) {

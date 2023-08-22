@@ -652,6 +652,12 @@ int main(int argc, char **argv)
     free(gNB->gNB_config.tdd_table.max_tdd_periodicity_list[i].max_num_of_symbol_per_slot_list);
   free(gNB->gNB_config.tdd_table.max_tdd_periodicity_list);
 
+#ifdef TASK_MANAGER_SIM
+  void (*clean)(task_t*) = NULL;
+  free_task_manager(&gNB->man, clean);
+  free_task_manager(&nrUE_params.man, clean);
+#endif
+
   phy_free_nr_gNB(gNB);
   free(RC.gNB[0]);
   free(RC.gNB);

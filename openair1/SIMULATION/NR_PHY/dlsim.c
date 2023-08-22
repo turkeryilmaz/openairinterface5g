@@ -916,10 +916,7 @@ int main(int argc, char **argv)
   int n_errs = 0;
 
 #ifdef TASK_MANAGER_SIM
-  int const log_cores = get_nprocs_conf();
-  assert(log_cores > 0);
-  // Assuming: Physical cores = Logical cores / 2
-  init_task_manager(&gNB->man, log_cores/2);
+  init_task_manager(&gNB->man, gNBthreads);
 #else
   initNamedTpool(gNBthreads, &gNB->threadPool, true, "gNB-tpool");
 #endif
@@ -1329,6 +1326,12 @@ int main(int argc, char **argv)
     free(r_re[i]);
     free(r_im[i]);
   }
+
+#ifdef TASK_MANAGER_SIM
+  void (*clean)(task_t*) = NULL;
+  free_task_manager(&nrUE_params.man, clean);
+  free_task_manager(&gNB->man, clean);
+#endif
 
   free(s_re);
   free(s_im);
