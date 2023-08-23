@@ -90,6 +90,7 @@ bool nr_ue_sl_postDecode(PHY_VARS_NR_UE *phy_vars_ue, notifiedFIFO_elt_t *req, b
   merge_meas(&phy_vars_ue->dlsch_ldpc_decoding_stats, &rdata->ts_ldpc_decode);
 
   bool decodeSuccess = (rdata->decodeIterations < (1+dlsch->max_ldpc_iterations));
+  LOG_D(PHY, "rdata->decodeIterations %d\n", rdata->decodeIterations);
 
   if (1) {
     memcpy(harq_process->b+rdata->offset,

@@ -95,7 +95,8 @@
 /// suppress compiler warning for unused arguments
 #define UNUSED(x) (void)x;
 
-#define NB_RB_SCI1 20
+// Based on sl-FreqResourcePSCCH  TS 138331, it is one of {n10, n12, n15, n20, n25}.
+#define NB_RB_SCI1 10
 #include "impl_defs_top.h"
 #include "impl_defs_nr.h"
 #include "time_meas.h"

@@ -28,6 +28,7 @@ import re
 import glob
 import subprocess
 from subprocess import Popen
+from subprocess import check_output
 import threading
 from typing import Dict
 from queue import Queue
@@ -74,6 +75,10 @@ parser.add_argument('--message', '-m', type=str, default='EpiScience', help="""
 The message to send from SyncRef UE to Nearby UE
 """)
 
+parser.add_argument('--mcs', default=9, type=int, help="""
+The default mcs value (default: %(default)s)
+""")
+
 parser.add_argument('--commands', default='sl_cmds.txt', help="""
 The USRP Commands .txt file (default: %(default)s)
 """)
@@ -112,14 +117,14 @@ Enable debug logging (for this script only)
 """)
 
 parser.add_argument('--save', default=None, help="""
-The default Python log result with .txt extention (default: %(default)s)
+The default Python log result with .txt extension (default: %(default)s)
 """)
 
 parser.add_argument('--sci2', action='store_true', help="""
 Enable SCI2 log parsing (this will grep the logs for the SCI2 payload)
 """)
 
-parser.add_argument('--test', '-t', default='usrp_b210', choices='psbchsim psschsim rfsim usrp_b210 usrp_n310'.split(), help="""
+parser.add_argument('--test', '-t', default='usrp_n310', choices='psbchsim psschsim rfsim usrp_b210 usrp_n310'.split(), help="""
 The kind of test scenario to run. The options include psbchsim, psschsim, rfsim, or usrp_b210 usrp_n310. (default: %(default)s)
 """)
 
@@ -244,7 +249,7 @@ class TestThread(threading.Thread):
             while not self.queue.empty():
                 job = self.queue.get()
                 if "nearby" == job:
-                    thread_delay(delay = 3)
+                    thread_delay(delay = 5)
                     self.launch_nearby(job)
                 if "syncref" == job and not OPTS.no_run:
                     thread_delay(delay = self.delay)
@@ -257,21 +262,21 @@ class TestThread(threading.Thread):
         LOGGER.info('Launching SyncRef UE')
         if OPTS.basic: cmd = redirect_output('uname -a', self.log_file)
         else: cmd = self.commands.launch_cmds[job]
-        cmd = cmd[:-1] + f' --message {OPTS.message}'
+        cmd = cmd[:-1] + f' --message {OPTS.message}' + f' --mcs {OPTS.mcs}'
         proc = Popen(cmd, shell=True)
         LOGGER.info(f"syncref_proc = {proc}")
         if not OPTS.basic and not OPTS.no_run:
             LOGGER.info("Process running... %s", job)
-            time.sleep(OPTS.duration)
+            time.sleep(OPTS.duration + 10)
             self.kill_process("syncref", proc)
 
     def launch_nearby(self, job, host=OPTS.host, user=OPTS.user) -> Popen:
-        LOGGER.info('#' * 42)
         LOGGER.info('Launching Nearby UE')
         if OPTS.basic: cmd = redirect_output('uname -a', self.log_file)
         else: cmd = self.commands.launch_cmds[job]
         if 'usrp' in OPTS.test:
-            cmd = cmd[:-1] + f' -d {OPTS.duration} --nid1 {OPTS.nid1} --nid2 {OPTS.nid2}'
+            cmd = cmd[:-2] + f' --mcs {OPTS.mcs}'  + cmd[-2] # cmd[-2] is ' (end of cmd)
+            cmd = cmd + f' -d {OPTS.duration} --nid1 {OPTS.nid1} --nid2 {OPTS.nid2}'
             proc = Popen(["ssh", f"{user}@{host}", cmd],
                         shell=False,
                         stdout=subprocess.PIPE,
@@ -333,12 +338,15 @@ class TestThread(threading.Thread):
 
 # ----------------------------------------------------------------------------
 
-def set_attenuation(attenuation, host, user) -> Popen:
+def set_attenuation(attenuation, atten_host, user) -> Popen:
     if OPTS.att >= 0:
         LOGGER.info('Setting attenuation')
-        cmd = f'curl http://169.254.10.10/:CHAN:3:SETATT:{attenuation}'
-        Popen(["ssh", f"{user}@{host}", cmd],
-              shell=False,
+        atten_cmd = f"curl http://169.254.10.10/:CHAN:3:SETATT:{attenuation}"
+        LOCAL_IP = check_output(['hostname', '-I']).decode().strip().split()[0]
+        cmd = [atten_cmd] if atten_host == LOCAL_IP else ["ssh", f"{user}@{atten_host}", atten_cmd]
+        shell_flag = True if atten_host == LOCAL_IP else False
+        Popen(cmd,
+              shell=shell_flag,
               stdout=subprocess.PIPE,
               stderr=subprocess.PIPE)
         LOGGER.info(f"attenuation value = {attenuation}")
@@ -366,6 +374,7 @@ def main() -> int:
     sync_duration_list = []
     set_attenuation(OPTS.att, OPTS.att_host, OPTS.att_user)
     for i in range(OPTS.repeat):
+        LOGGER.info('-' * 42)
         threads = []
         queue = Queue()
         for job in jobs:
@@ -391,24 +400,27 @@ def main() -> int:
             else:
                 LOGGER.info(f"Failure detected during {i+1}/{OPTS.repeat} trial(s).")
             num_passed = len(passed_metric)
-
-    LOGGER.info('#' * 42)
-    if 'nearby' in jobs:
-        LOGGER.info(f"Number of passed = {len(passed_metric)}/{OPTS.repeat}")
-        if len(num_tx_ssb) > 0:
-            LOGGER.info(f"Avg number of SSB = {sum(num_tx_ssb) / len(num_tx_ssb)} ({num_tx_ssb})")
-        if len(passed_metric) > 0:
-            sum_nb_decoded, sum_total_rx = sum(nb_decoded_list), sum(total_rx_list)
-            avg_bler = (float) (sum_total_rx - sum_nb_decoded) / sum_total_rx if sum_total_rx > 0 else 1
-            LOGGER.info(f"Avg PSSCH RSRP = {sum(pssch_rsrp_list) / len(passed_metric):.2f}")
-            LOGGER.info(f"Avg SSB RSRP = {sum(ssb_rsrp_list) / len(passed_metric):.2f}")
-            LOGGER.info(f"Avg BLER = {avg_bler:.2f} with {sum_nb_decoded} / {sum_total_rx}")
-            LOGGER.info(f"Avg Sync duration (seconds) = {sum(sync_duration_list) / len(passed_metric):.2f}")
-            LOGGER.info(f"pssch_rsrp_list = {pssch_rsrp_list}")
-            LOGGER.info(f"ssb_rsrp_list = {ssb_rsrp_list}")
-            LOGGER.info(f"nb_decoded_list = {nb_decoded_list}")
-            LOGGER.info(f"total_rx_list = {total_rx_list}")
-            LOGGER.info('-' * 42)
-        return 0
+        LOGGER.info('#' * 42)
+        LOGGER.info(f"Attenuation value {OPTS.att}, MCS value {OPTS.mcs}")
+        if 'nearby' in jobs:
+            LOGGER.info(f"Number of synced = {len(passed_metric)}/{OPTS.repeat}")
+            if len(num_tx_ssb) > 0:
+                LOGGER.info(f"Avg number of SSB = {sum(num_tx_ssb) / len(num_tx_ssb)} ({num_tx_ssb})")
+            if len(passed_metric) > 0:
+                sum_nb_decoded, sum_total_rx = sum(nb_decoded_list), sum(total_rx_list)
+                avg_bler = (float) (sum_total_rx - sum_nb_decoded) / sum_total_rx if sum_total_rx > 0 else 1
+                avg_bldr = (float) (sum_nb_decoded) / sum_total_rx if sum_total_rx > 0 else 1
+                LOGGER.info(f"Avg PSSCH RSRP = {sum(pssch_rsrp_list) / len(passed_metric):.2f}")
+                LOGGER.info(f"Avg SSB RSRP = {sum(ssb_rsrp_list) / len(passed_metric):.2f}")
+                LOGGER.info(f"Avg BLER = {avg_bler:.3f} with {sum_total_rx - sum_nb_decoded} / {sum_total_rx}")
+                LOGGER.info(f"Avg BLDecodedRate = {avg_bldr:.3f} with {sum_nb_decoded} / {sum_total_rx}")
+                LOGGER.info(f"Avg Sync duration (seconds) = {sum(sync_duration_list) / len(passed_metric):.2f}")
+                LOGGER.info(f"pssch_rsrp_list = {pssch_rsrp_list}")
+                LOGGER.info(f"ssb_rsrp_list = {ssb_rsrp_list}")
+                LOGGER.info(f"nb_decoded_list = {nb_decoded_list}")
+                LOGGER.info(f"total_rx_list = {total_rx_list}")
+        LOGGER.info('-' * 42)
+        time.sleep(10)
+    return 0
 
 sys.exit(main())

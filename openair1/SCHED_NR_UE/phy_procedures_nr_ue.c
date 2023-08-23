@@ -61,7 +61,7 @@
 //#define NR_PUCCH_SCHED_DEBUG
 //#define NR_PDSCH_DEBUG
 #define HNA_SIZE 6 * 68 * 384 // [hna] 16 segments, 68*Zc
-
+#define LDPC_MAX_LIMIT 31
 #ifndef PUCCH
 #define PUCCH
 #endif
@@ -313,7 +313,7 @@ void phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
 
   if (get_softmodem_params()->sl_mode == 2) {
     ue->tx_power_dBm[slot_tx] = -127;
-    int num_samples_per_slot = ue->frame_parms.slots_per_frame * ue->frame_parms.get_samples_per_slot(slot_tx, &ue->frame_parms);
+    int num_samples_per_slot = ue->frame_parms.slots_per_frame * ue->frame_parms.samples_per_slot_wCP;
     for(int i = 0; i < ue->frame_parms.nb_antennas_tx; ++i) {
       AssertFatal(i < sizeof(ue->common_vars.txdataF), "Array index %d is over the Array size %lu\n", i, sizeof(ue->common_vars.txdataF));
       memset(ue->common_vars.txdataF[i], 0, sizeof(int32_t) * num_samples_per_slot);
@@ -322,8 +322,9 @@ void phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
 
   if (ue->sync_ref && phy_ssb_slot_allocation_sl(ue, frame_tx, slot_tx)) {
     nr_sl_common_signal_procedures(ue, frame_tx, slot_tx);
-    const int txdataF_offset = slot_tx * ue->frame_parms.get_samples_per_slot(slot_tx, &ue->frame_parms);
+    const int txdataF_offset = slot_tx * ue->frame_parms.samples_per_slot_wCP;
     LOG_D(NR_PHY, "%s() %d. slot %d txdataF_offset %d\n", __FUNCTION__, __LINE__, slot_tx, txdataF_offset);
+    uint16_t nb_prefix_samples0 = ue->is_synchronized_sl ? ue->frame_parms.nb_prefix_samples0 : ue->frame_parms.nb_prefix_samples;
     int slot_timestamp = ue->frame_parms.get_samples_slot_timestamp(slot_tx, &ue->frame_parms, 0);
     for (int aa = 0; aa < ue->frame_parms.nb_antennas_tx; aa++) {
       apply_nr_rotation(&ue->frame_parms,
@@ -340,8 +341,9 @@ void phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
                        slot_tx, 1, 13, link_type_sl); // Conducts rotation on symbols located 1 (PSS) to 13 (guard)
       PHY_ofdm_mod(&ue->common_vars.txdataF[aa][ue->frame_parms.ofdm_symbol_size + txdataF_offset], // Starting at PSS (in freq)
                     (int*)&ue->common_vars.txdata[aa][ue->frame_parms.ofdm_symbol_size +
-                                                      ue->frame_parms.nb_prefix_samples0 +
-                                                      slot_timestamp], // Starting output offset at CP0 + PSBCH0
+                                      nb_prefix_samples0 +
+                                      ue->frame_parms.nb_prefix_samples +
+                                      slot_timestamp], // Starting output offset at CP0 + PSBCH0 + CP1
                     ue->frame_parms.ofdm_symbol_size,
                     13, // Takes IDFT of remaining 13 symbols (PSS to guard)... Notice the offset of the input and output above
                     ue->frame_parms.nb_prefix_samples,
@@ -364,7 +366,7 @@ void phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
     }
 #endif
   }
-  else if (ue->sync_ref && ((slot_tx == 1) || (slot_tx == 4))) {
+  else if (ue->sync_ref && ((slot_tx == 1) || (slot_tx == 0))) {
     for (uint8_t harq_pid = 0; harq_pid < 1; harq_pid++) {
       nr_ue_set_slsch(&ue->frame_parms, harq_pid, ue->slsch[proc->thread_id][gNB_id], frame_tx, slot_tx);
       if (ue->slsch[proc->thread_id][gNB_id]->harq_processes[harq_pid]->status == ACTIVE) {
@@ -1424,7 +1426,7 @@ int phy_procedures_nrUE_SL_RX(PHY_VARS_NR_UE *ue,
                            uint8_t synchRefUE_id,
                            notifiedFIFO_t *txFifo) {
 
-  if (ue->sync_ref || ue->is_synchronized_sl == 0 || (proc->nr_slot_rx != 1 && proc->nr_slot_rx != 4)) {
+  if (ue->sync_ref || ue->is_synchronized_sl == 0 || (proc->nr_slot_rx != 1 && proc->nr_slot_rx != 0)) {
     return (0);
   }
 
@@ -1437,6 +1439,7 @@ int phy_procedures_nrUE_SL_RX(PHY_VARS_NR_UE *ue,
   uint64_t rx_offset = (slot_rx&3)*(ue->frame_parms.symbols_per_slot * ue->frame_parms.ofdm_symbol_size);
 
   bool payload_type_string = false;
+  uint32_t B_mul = get_B_multiplexed_value(&ue->frame_parms, slsch->harq_processes[0]);
   for (unsigned char harq_pid = 0; harq_pid < 1; harq_pid++) {
     nr_ue_set_slsch_rx(ue, harq_pid);
     if (slsch->harq_processes[harq_pid]->status == ACTIVE) {
@@ -1447,12 +1450,13 @@ int phy_procedures_nrUE_SL_RX(PHY_VARS_NR_UE *ue,
         }
         apply_nr_rotation_ul(&ue->frame_parms, rxdataF[aa], slot_rx, 0, NR_NUMBER_OF_SYMBOLS_PER_SLOT, link_type_sl);
       }
-      uint32_t ret = nr_ue_slsch_rx_procedures(ue, harq_pid, frame_rx, slot_rx, rxdataF, 29008, 45727, proc);
+      uint32_t ret = nr_ue_slsch_rx_procedures(ue, harq_pid, frame_rx, slot_rx, rxdataF, B_mul, 45727, proc);
       if (ret != -1) {
+        bool polar_decoded = (ret < LDPC_MAX_LIMIT) ? true : false;
         if (payload_type_string)
-          validate_rx_payload_str(harq, slot_rx);
+          validate_rx_payload_str(harq, slot_rx, polar_decoded);
         else
-          validate_rx_payload(harq, frame_rx, slot_rx);
+          validate_rx_payload(harq, frame_rx, slot_rx, polar_decoded);
       }
     }
   }
@@ -1460,55 +1464,70 @@ int phy_procedures_nrUE_SL_RX(PHY_VARS_NR_UE *ue,
   return (0);
 }
 
-void validate_rx_payload(NR_DL_UE_HARQ_t *harq, int frame_rx, int slot_rx) {
+void /* The above code is likely defining a function called "validate_rx_payload" in the C programming
+language. */
+/* The above code is likely a function or method called "validate_rx_payload" written in the C
+programming language. However, without the actual code implementation, it is not possible to
+determine what the function does. */
+validate_rx_payload(NR_DL_UE_HARQ_t *harq, int frame_rx, int slot_rx, bool polar_decoded) {
+#define DEBUG_NR_PSSCHSIM
   unsigned int errors_bit = 0;
+  unsigned int n_false_positive = 0;
+#ifdef DEBUG_NR_PSSCHSIM
   unsigned char estimated_output_bit[HNA_SIZE];
   unsigned char test_input_bit[HNA_SIZE];
-  unsigned int n_false_positive = 0;
-  unsigned char test_input[harq->TBS / 8];
+  unsigned char test_input[harq->TBS];
   uint32_t frame_tx = 0;
   uint32_t slot_tx = 0;
   unsigned char  randm_tx =0;
+  static uint16_t sum_passed = 0;
+  static uint16_t sum_failed = 0;
+  uint8_t comparison_beg_byte = 4;
+  uint8_t comparison_end_byte = 10;
 
+  if (polar_decoded == true) {
+    for (int i = 0; i < harq->TBS; i++)
+      test_input[i] = (unsigned char) (i + 3);
+    for (int i = 0; i < harq->TBS * 8; i++) {
+      estimated_output_bit[i] = (harq->b[i / 8] & (1 << (i & 7))) >> (i & 7);
+      test_input_bit[i] = (test_input[i / 8] & (1 << (i & 7))) >> (i & 7); // Further correct for multiple segments
+      if(i % 8 == 0){
+        if(i == 8 * 0) slot_tx = harq->b[0];
+        if(i == 8 * 1) frame_tx = harq->b[1];
+        if(i == 8 * 2) frame_tx += (harq->b[2] << 8);
+        if(i == 8 * 3) randm_tx = harq->b[3];
+        if(i >= 8 * comparison_beg_byte)
+            LOG_I(PHY,"TxByte : %4u  vs  %4u : RxByte\n", test_input[i / 8], harq->b[i / 8]);
+      }
 
-  for (int i = 0; i < harq->TBS / 8; i++)
-    test_input[i] = (unsigned char) (i + 3);
-#if DEBUG_NR_PSSCHSIM
-  for (int i = 0; i < min(80, harq->TBS); i++) {
-    estimated_output_bit[i] = (harq->b[i / 8] & (1 << (i & 7))) >> (i & 7);
-    test_input_bit[i] = (test_input[i / 8] & (1 << (i & 7))) >> (i & 7); // Further correct for multiple segments
-    if(i % 8 == 0){
-      if(i == 8 * 0) slot_tx = harq->b[0];
-      if(i == 8 * 1) frame_tx = harq->b[1];
-      if(i == 8 * 2) frame_tx += (harq->b[2] << 8);
-      if(i == 8 * 3) randm_tx = harq->b[3];
-      if(i  > 8 * 3)
-          LOG_D(PHY,"TxByte : %4u  vs  %4u : RxByte\n", test_input[i / 8], harq->b[i / 8]);
+      LOG_D(NR_PHY, "tx bit: %u, rx bit: %u\n", test_input_bit[i], estimated_output_bit[i]);
+      bool limited_input = (i  >= 8 * comparison_beg_byte);
+      if (i  >= 8 * comparison_end_byte)
+        break;
+      if ( limited_input && (estimated_output_bit[i] != test_input_bit[i])) {
+        errors_bit++;
+      }
     }
 
-    LOG_I(NR_PHY, "tx bit: %u, rx bit: %u\n", test_input_bit[i], estimated_output_bit[i]);
-
-    if ((i  >= 8 * 4) && (i  < 8 * 9) && (estimated_output_bit[i] != test_input_bit[i])) {
-      errors_bit++;
-    }
+    LOG_I(PHY,"TxRandm: %4u\n", randm_tx);
+    LOG_I(PHY,"TxFrame: %4u  vs  %4u : RxFrame\n", frame_tx, (uint32_t) frame_rx);
+    LOG_I(PHY,"TxSlot : %4u  vs  %4u : RxSlot \n", slot_tx,  (uint8_t) slot_rx);
   }
-
-  LOG_D(PHY,"TxRandm: %4u\n", randm_tx);
-  LOG_D(PHY,"TxFrame: %4u  vs  %4u : RxFrame\n", frame_tx, (uint32_t) frame_rx);
-  LOG_D(PHY,"TxSlot : %4u  vs  %4u : RxSlot \n", slot_tx,  (uint8_t) slot_rx);
 #endif
-  LOG_I(PHY,"RxSlot %4u\n", (uint8_t) slot_rx);
-  if (errors_bit > 0) {
+  if (errors_bit > 0 || polar_decoded == false) {
     n_false_positive++;
-    LOG_D(PHY,"errors_bit %u\n", errors_bit);
-    LOG_D(PHY,"We exit here for debugging  fn %s line %d\n", __FUNCTION__, __LINE__);
-  }
-  if (errors_bit == 0) {
-    LOG_D(PHY, "PSSCH test OK\n");
+    ++sum_failed;
+    LOG_I(PHY,"errors_bit %u, polar_decoded %d\n", errors_bit, polar_decoded);
+    LOG_I(PHY, "PSSCH test NG with %d / %d = %4.2f\n", sum_passed, (sum_passed + sum_failed), (float) sum_passed / (float) (sum_passed + sum_failed));
+  } else {
+    ++sum_passed;
+    LOG_I(PHY, "PSSCH test OK with %d / %d = %4.2f\n", sum_passed, (sum_passed + sum_failed), (float) sum_passed / (float) (sum_passed + sum_failed));
+    // if (slot_rx ==4)
+    //   exit(0);
   }
 }
 
-void validate_rx_payload_str(NR_DL_UE_HARQ_t *harq, int slot) {
+void validate_rx_payload_str(NR_DL_UE_HARQ_t *harq, int slot, bool polar_decoded) {
   unsigned int errors_bit = 0;
   unsigned char estimated_output_bit[HNA_SIZE];
   unsigned char test_input_bit[HNA_SIZE];
@@ -1516,23 +1535,28 @@ void validate_rx_payload_str(NR_DL_UE_HARQ_t *harq, int slot) {
   unsigned char test_input[] = "EpiScience";
   static uint16_t sum_passed = 0;
   static uint16_t sum_failed = 0;
+  uint8_t comparison_end_byte = 10;
 
-  for (int i = 0; i < min(80, harq->TBS); i++) {
-    estimated_output_bit[i] = (harq->b[i / 8] & (1 << (i & 7))) >> (i & 7);
-    test_input_bit[i] = (test_input[i / 8] & (1 << (i & 7))) >> (i & 7); // Further correct for multiple segments
-    if(i % 8 == 0){
-      LOG_D(PHY,"TxByte : %c  vs  %c : RxByte\n", test_input[i / 8], harq->b[i / 8]);
-    }
-#if DEBUG_NR_PSSCHSIM
-    LOG_I(NR_PHY, "tx bit: %u, rx bit: %u\n", test_input_bit[i], estimated_output_bit[i]);
-#endif
-    if (estimated_output_bit[i] != test_input_bit[i]) {
-      errors_bit++;
+  if (polar_decoded == true) {
+    for (int i = 0; i < min(32, harq->TBS) * 8; i++) { //max tx string size is 32 bytes
+      estimated_output_bit[i] = (harq->b[i / 8] & (1 << (i & 7))) >> (i & 7);
+      test_input_bit[i] = (test_input[i / 8] & (1 << (i & 7))) >> (i & 7); // Further correct for multiple segments
+      if(i % 8 == 0){
+        LOG_D(PHY,"TxByte : %c  vs  %c : RxByte\n", test_input[i / 8], harq->b[i / 8]);
+      }
+  #ifdef DEBUG_NR_PSSCHSIM
+      LOG_I(NR_PHY, "tx bit: %u, rx bit: %u\n", test_input_bit[i], estimated_output_bit[i]);
+  #endif
+      if (i  >= 8 * comparison_end_byte)
+        break;
+      if (estimated_output_bit[i] != test_input_bit[i]) {
+        errors_bit++;
+      }
     }
   }
-  if (errors_bit > 0) {
+  if (errors_bit > 0 || polar_decoded == false) {
     static unsigned char result[128];
-    for (int i = 0; i < min(128, harq->TBS/8); i++) {
+    for (int i = 0; i < min(128, harq->TBS); i++) {
       result[i] = harq->b[i];
       LOG_D(PHY, "result[%d]=%c\n", i, result[i]);
     }
@@ -1541,13 +1565,11 @@ void validate_rx_payload_str(NR_DL_UE_HARQ_t *harq, int slot) {
     LOG_I(PHY, "Decoded_payload for slot %d: %s\n", slot, result);
     n_false_positive++;
     ++sum_failed;
-    LOG_D(PHY,"errors_bit %u\n", errors_bit);
-    LOG_D(PHY,"We exit here for debugging  fn %s line %d\n", __FUNCTION__, __LINE__);
+    LOG_I(PHY,"errors_bit %u, polar_decoded %d\n", errors_bit, polar_decoded);
     LOG_I(PHY, "PSSCH test NG with %d / %d = %4.2f\n", sum_passed, (sum_passed + sum_failed), (float) sum_passed / (float) (sum_passed + sum_failed));
-  }
-  if (errors_bit == 0) {
+  } else {
     static unsigned char result[128];
-    for (int i = 0; i < min(128, harq->TBS/8); i++) {
+    for (int i = 0; i < min(128, harq->TBS); i++) {
       result[i] = harq->b[i];
       LOG_D(PHY, "result[%d]=%c\n", i, result[i]);
     }

@@ -146,29 +146,55 @@ void nr_pssch_data_control_multiplexing(uint8_t *in_slssh,
   }
 }
 
+uint32_t get_B_multiplexed_value(NR_DL_FRAME_PARMS* fp, NR_DL_UE_HARQ_t *harq) {
+
+  uint8_t number_of_symbols = harq->nb_symbols ;
+  uint16_t nb_rb            = harq->nb_rb;
+  uint8_t Nl                = harq->Nl;
+  uint8_t mod_order         = harq->Qm ;
+  uint16_t dmrs_pos         = harq->dlDmrsSymbPos ;
+
+  uint16_t length_dmrs = get_num_dmrs(dmrs_pos);
+  uint8_t nb_dmrs_re_per_rb = 6 * harq->n_dmrs_cdm_groups;
+
+
+  unsigned int G_slsch_bits = nr_get_G(nb_rb, number_of_symbols, nb_dmrs_re_per_rb, length_dmrs, mod_order, Nl);
+  uint32_t B_mul = G_slsch_bits + harq->B_sci2 * Nl;
+  return B_mul;
+}
+
+static int get_PRB(int nb_rb) {
+  if (nb_rb > 25)
+    return (nb_rb / 25) * 25;
+  if (nb_rb > 9)
+    return (nb_rb / 5) * 5;
+  else
+    AssertFatal(1 == 0, "Not supported PRB");
+}
+
 void nr_ue_set_slsch_rx(PHY_VARS_NR_UE *ue, unsigned char harq_pid)
 {
-  int nb_rb = ue->frame_parms.N_RB_SL;
+  int nb_rb = get_PRB(ue->frame_parms.N_RB_SL);
   uint16_t nb_symb_sch = 12;
+  uint16_t nb_symb_cch = 3; // Assumption there are three SLCCH symbols
   uint8_t dmrsConfigType = 0;
   uint8_t nb_re_dmrs = 6;
   uint8_t Nl = 1; // number of layers
-  uint8_t Imcs = 9;
+  uint8_t Imcs = ue->frame_parms.Imcs;
   uint16_t dmrsSymbPos = 16 + 1024; // symbol 4 and 10
   uint8_t length_dmrs = get_num_dmrs(dmrsSymbPos);
   uint16_t start_symbol = 1; // start from 0
+  uint8_t  SCI2_mod_order = 2;
 
   uint8_t mod_order = nr_get_Qm_ul(Imcs, 0);
   uint16_t code_rate = nr_get_code_rate_ul(Imcs, 0);
-  unsigned int TBS = 2048;//nr_compute_tbs(mod_order, code_rate, nb_rb, nb_symb_sch, nb_re_dmrs * length_dmrs, 0, 0, Nl);
-  LOG_D(NR_PHY, "\nTBS %u mod_order %d\n", TBS, mod_order);
+  LOG_D(NR_PHY, "\ncode_rate %u mod_order %d\n", code_rate, mod_order);
 
   NR_UE_DLSCH_t *slsch_ue_rx = ue->slsch_rx[0][0][0];
   NR_DL_UE_HARQ_t *harq = slsch_ue_rx->harq_processes[harq_pid];
   harq->Nl = Nl;
   harq->Qm = mod_order;
   harq->nb_rb = nb_rb;
-  harq->TBS = TBS >> 3;
   harq->n_dmrs_cdm_groups = 1;
   harq->dlDmrsSymbPos = dmrsSymbPos;
   harq->mcs = Imcs;
@@ -177,14 +203,25 @@ void nr_ue_set_slsch_rx(PHY_VARS_NR_UE *ue, unsigned char harq_pid)
   harq->nb_symbols = nb_symb_sch;
   harq->codeword = 0;
   harq->start_symbol = start_symbol;
-  harq->B_sci2 = 1024; // This should be updated from SCI1 parameter.
+
+  uint16_t nb_re_sci1 = nb_symb_cch * NB_RB_SCI1 * NR_NB_SC_PER_RB;
+  uint8_t N_PRB_oh = 0;
+  uint16_t nb_symb_psfch = 0;
+  uint8_t nb_codewords = 1;
+  uint16_t N_RE_prime = NR_NB_SC_PER_RB * (nb_symb_sch - nb_symb_psfch) - nb_re_dmrs - N_PRB_oh;
+  uint16_t num_of_mod_symbols = N_RE_prime * nb_rb * nb_codewords - nb_re_sci1;
+  harq->B_sci2 = polar_encoder_output_length(code_rate, num_of_mod_symbols);
+
+  uint16_t nb_re_sci2 = harq->B_sci2 / SCI2_mod_order;
+  unsigned int TBS = nr_compute_tbs_sl(mod_order, code_rate, nb_rb, nb_re_sci1, nb_re_sci2, nb_symb_sch, nb_re_dmrs * length_dmrs, 0, 0, Nl);
+  harq->TBS = TBS >> 3;
+  LOG_I(NR_PHY, "mcs %u polar_encoder_output_len %u, code_rate %d, TBS %d\n", Imcs, harq->B_sci2, code_rate, TBS);
   harq->status = ACTIVE;
 
   nfapi_nr_pssch_pdu_t *rel16_sl_rx = &harq->pssch_pdu;
   rel16_sl_rx->mcs_index            = Imcs;
   rel16_sl_rx->pssch_data.rv_index  = 0;
   rel16_sl_rx->target_code_rate     = code_rate;
-  rel16_sl_rx->pssch_data.tb_size   = TBS >> 3; // bytes
   rel16_sl_rx->pssch_data.sci2_size = SCI2_LEN_SIZE >> 3;
   rel16_sl_rx->maintenance_parms_v3.ldpcBaseGraph = get_BG(TBS, code_rate);
   rel16_sl_rx->nr_of_symbols  = nb_symb_sch; // number of symbols per slot
@@ -196,6 +233,7 @@ void nr_ue_set_slsch_rx(PHY_VARS_NR_UE *ue, unsigned char harq_pid)
   rel16_sl_rx->bwp_start = 0;
   rel16_sl_rx->rb_start = 0;
   rel16_sl_rx->dmrs_config_type = dmrsConfigType;
+  rel16_sl_rx->pssch_data.tb_size = TBS >> 3;
 }
 
 void nr_ue_set_slsch(NR_DL_FRAME_PARMS *fp,
@@ -207,9 +245,10 @@ void nr_ue_set_slsch(NR_DL_FRAME_PARMS *fp,
   uint8_t nb_codewords = 1;
   uint8_t N_PRB_oh = 0;
   uint16_t nb_symb_sch = 12;
+  uint16_t nb_symb_cch = 3; // Assumption there are three SLCCH symbols
   uint8_t nb_re_dmrs = 6;
-  int nb_rb = fp->N_RB_SL;
-  uint8_t Imcs = 9;
+  int nb_rb = get_PRB(fp->N_RB_SL);
+  uint8_t Imcs = fp->Imcs;
   uint8_t Nl = 1; // number of layers
   uint16_t start_symbol = 1; // start from 0
   SCI_1_A *sci1 = &harq->pssch_pdu.sci1;
@@ -226,8 +265,9 @@ void nr_ue_set_slsch(NR_DL_FRAME_PARMS *fp,
   uint8_t length_dmrs = get_num_dmrs(dmrsSymbPos);
   uint16_t code_rate = nr_get_code_rate_ul(Imcs, 0);
   uint8_t mod_order = nr_get_Qm_ul(Imcs, 0);
-  uint16_t N_RE_prime = NR_NB_SC_PER_RB * nb_symb_sch - nb_re_dmrs - N_PRB_oh;
-  unsigned int TBS = 2048;//nr_compute_tbs(mod_order, code_rate, nb_rb, nb_symb_sch, nb_re_dmrs * length_dmrs, 0, 0, Nl);
+  uint16_t nb_symb_psfch = 0;
+  uint16_t N_RE_prime = NR_NB_SC_PER_RB * (nb_symb_sch - nb_symb_psfch) - nb_re_dmrs - N_PRB_oh;
+  uint16_t nb_re_sci1 = nb_symb_cch * NB_RB_SCI1 * NR_NB_SC_PER_RB;
 
   harq->pssch_pdu.mcs_index = Imcs;
   harq->pssch_pdu.nrOfLayers = Nl;
@@ -236,7 +276,6 @@ void nr_ue_set_slsch(NR_DL_FRAME_PARMS *fp,
   harq->pssch_pdu.dmrs_config_type = dmrsConfigType;
   harq->num_of_mod_symbols = N_RE_prime * nb_rb * nb_codewords;
   harq->pssch_pdu.pssch_data.rv_index = 0;
-  harq->pssch_pdu.pssch_data.tb_size  = TBS >> 3;
   harq->pssch_pdu.pssch_data.sci2_size = SCI2_LEN_SIZE >> 3;
   harq->pssch_pdu.target_code_rate = code_rate;
   harq->pssch_pdu.qam_mod_order = mod_order;
@@ -245,6 +284,13 @@ void nr_ue_set_slsch(NR_DL_FRAME_PARMS *fp,
   harq->pssch_pdu.start_symbol_index = start_symbol;
   harq->pssch_pdu.transform_precoding = transformPrecoder_disabled;
   harq->first_tx = 1;
+
+  uint16_t polar_encoder_output_len = polar_encoder_output_length(code_rate, harq->num_of_mod_symbols);
+  uint8_t  SCI2_mod_order = 2;
+  uint16_t nb_re_sci2 = polar_encoder_output_len / SCI2_mod_order;
+  unsigned int TBS = nr_compute_tbs_sl(mod_order, code_rate, nb_rb, nb_re_sci1, nb_re_sci2, nb_symb_sch, nb_re_dmrs * length_dmrs, 0, 0, Nl);
+  LOG_D(NR_PHY, "mcs %u polar_encoder_output_len %u, code_rate %d, TBS %d\n", Imcs, polar_encoder_output_len, code_rate, TBS);
+  harq->pssch_pdu.pssch_data.tb_size  = TBS >> 3;
 
   harq->status = ACTIVE;
   unsigned char *test_input = harq->a;
