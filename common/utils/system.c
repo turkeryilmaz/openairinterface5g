@@ -45,6 +45,11 @@
 #include <pthread.h>
 #include <common/utils/assertions.h>
 #include <common/utils/LOG/log.h>
+
+
+#include <execinfo.h>
+#define BT_BUF_SIZE 1024
+
 #define MAX_COMMAND 4096
 
 static int command_pipe_read;
@@ -226,6 +231,12 @@ int rt_sleep_ns (uint64_t x)
 }
 
 void threadCreate(pthread_t* t, void * (*func)(void*), void * param, char* name, int affinity, int priority){
+
+  if(getuid()) 
+    puts("[MIR]: threadCreate function.  Not running with sudo \n");
+  else 
+    puts("[MIR]: threadCreate function. Running with sudo \n");
+
   pthread_attr_t attr;
   int ret;
   int settingPriority = 1;
@@ -262,6 +273,30 @@ void threadCreate(pthread_t* t, void * (*func)(void*), void * param, char* name,
   }
   
   ret=pthread_create(t, &attr, func, param);
+
+  if(ret != 0){
+    int nptrs;
+    void *buffer[BT_BUF_SIZE];
+    char **strings;
+
+    nptrs = backtrace(buffer, BT_BUF_SIZE);
+    printf("backtrace() returned %d addresses\n", nptrs);
+
+    /* The call backtrace_symbols_fd(buffer, nptrs, STDOUT_FILENO)
+       would produce similar output to the following: */
+
+    strings = backtrace_symbols(buffer, nptrs);
+    if (strings == NULL) {
+      perror("backtrace_symbols");
+      exit(EXIT_FAILURE);
+    }
+
+    for (int j = 0; j < nptrs; j++)
+      printf("%s\n", strings[j]);
+
+    free(strings);
+  }
+
   AssertFatal(ret==0,"ret: %d, errno: %d\n",ret, errno);
   
   pthread_setname_np(*t, name);
