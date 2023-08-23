@@ -36,35 +36,32 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include "common/config/config_userapi.h"
-#include "common/utils/load_module_shlib.h"
 #include "common/utils/LOG/log.h"
-#include "common/ran_context.h"
+#include "common/utils/load_module_shlib.h"
+#include "common/utils/nr/nr_common.h"
 #include "PHY/types.h"
 #include "PHY/defs_nr_common.h"
 #include "PHY/defs_nr_UE.h"
-#include "PHY/defs_gNB.h"
-#include "PHY/INIT/phy_init.h"
-#include "PHY/NR_REFSIG/refsig_defs_ue.h"
-#include "PHY/MODULATION/nr_modulation.h"
+#include "openair1/PHY/NR_REFSIG/refsig_defs_ue.h"
 #include "PHY/MODULATION/modulation_eNB.h"
 #include "PHY/MODULATION/modulation_UE.h"
-#include "PHY/NR_TRANSPORT/nr_transport_proto.h"
-#include "PHY/NR_TRANSPORT/nr_dlsch.h"
-#include "PHY/NR_TRANSPORT/nr_ulsch.h"
-#include "PHY/NR_UE_TRANSPORT/nr_transport_proto_ue.h"
-#include "PHY/phy_vars_nr_ue.h"
+#include "PHY/MODULATION/nr_modulation.h"
 #include "PHY/INIT/nr_phy_init.h"
-
+#include "PHY/NR_TRANSPORT/nr_transport_proto.h"
+#include "PHY/NR_UE_TRANSPORT/nr_transport_proto_ue.h"
+#include "PHY/NR_UE_ESTIMATION/nr_estimation.h"
+#include "PHY/phy_vars.h"
 #include "SCHED_NR/sched_nr.h"
 #include "openair1/SIMULATION/TOOLS/sim.h"
 #include "openair1/SIMULATION/RF/rf.h"
 #include "openair1/SIMULATION/NR_PHY/nr_unitary_defs.h"
 #include "openair1/SIMULATION/NR_PHY/nr_dummy_functions.c"
-#include "common/utils/threadPool/thread-pool.h"
-#include "openair2/LAYER2/NR_MAC_COMMON/nr_mac_common.h"
-#include "executables/nr-uesoftmodem.h"
-#include "PHY/impl_defs_top.h"
-#include "PHY/MODULATION/modulation_common.h"
+#include "openair1/PHY/MODULATION/nr_modulation.h"
+#include "openair1/PHY/NR_REFSIG/pss_nr.h"
+#include <executables/softmodem-common.h>
+#include <executables/nr-uesoftmodem.h>
+#include "openair1/SCHED_NR_UE/defs.h"
+#include "common/ran_context.h"
 
 #define DEBUG_NR_PSSCHSIM
 
@@ -86,6 +83,11 @@ uint64_t get_softmodem_optmask(void) {return 0;}
 static softmodem_params_t softmodem_params;
 softmodem_params_t *get_softmodem_params(void) {
   return &softmodem_params;
+}
+
+nrUE_params_t nrUE_params;
+nrUE_params_t *get_nrUE_params(void) {
+  return &nrUE_params;
 }
 
 void init_downlink_harq_status(NR_DL_UE_HARQ_t *dl_harq) {}
@@ -223,6 +225,88 @@ static void get_sim_cl_opts(int argc, char **argv)
   }
 }
 
+static uint16_t config_bandwidth(int mu, int nb_rb, int nr_band)
+{
+  switch(mu) {
+  case 0 :
+    if (nb_rb<=25)
+      return 5;
+    if (nb_rb<=52)
+      return 10;
+    if (nb_rb<=79)
+      return 15;
+    if (nb_rb<=106)
+      return 20;
+    if (nb_rb<=133)
+      return 25;
+    if (nb_rb<=160)
+      return 30;
+    if (nb_rb<=216)
+      return 40;
+    if (nb_rb<=270)
+      return 50;
+    AssertFatal(1==0,"Number of DL resource blocks %d undefined for mu %d and band %d\n", nb_rb, mu, nr_band);
+    break;
+  case 1 :
+    if (nb_rb<=11)
+      return 5;
+    if (nb_rb<=24)
+      return 10;
+    if (nb_rb<=38)
+      return 15;
+    if (nb_rb<=51)
+      return 20;
+    if (nb_rb<=65)
+      return 25;
+    if (nb_rb<=78)
+      return 30;
+    if (nb_rb<=106)
+      return 40;
+    if (nb_rb<=133)
+      return 50;
+    if (nb_rb<=162)
+      return 60;
+    if (nb_rb<=189)
+      return 70;
+    if (nb_rb<=217)
+      return 80;
+    if (nb_rb<=245)
+      return 90;
+    if (nb_rb<=273)
+      return 100;
+    AssertFatal(1==0,"Number of DL resource blocks %d undefined for mu %d and band %d\n", nb_rb, mu, nr_band);
+    break;
+  case 2 :
+    if (nb_rb<=11)
+      return 10;
+    if (nb_rb<=18)
+      return 15;
+    if (nb_rb<=24)
+      return 20;
+    if (nb_rb<=31)
+      return 25;
+    if (nb_rb<=38)
+      return 30;
+    if (nb_rb<=51)
+      return 40;
+    if (nb_rb<=65)
+      return 50;
+    if (nb_rb<=79)
+      return 60;
+    if (nb_rb<=93)
+      return 70;
+    if (nb_rb<=107)
+      return 80;
+    if (nb_rb<=121)
+      return 90;
+    if (nb_rb<=135)
+      return 100;
+    AssertFatal(1==0,"Number of DL resource blocks %d undefined for mu %d and band %d\n", nb_rb, mu, nr_band);
+    break;
+  default:
+    AssertFatal(1==0,"Numerology %d undefined for band %d in FR1\n", mu,nr_band);
+  }
+}
 
 void nr_phy_config_request_psschsim(PHY_VARS_NR_UE *ue,
                                     int N_RB_SL,
@@ -268,7 +352,7 @@ void nr_phy_config_request_psschsim(PHY_VARS_NR_UE *ue,
   nrUE_config->carrier_config.sl_bandwidth = config_bandwidth(mu, N_RB_SL, fp->nr_band);
   fp->ofdm_offset_divisor = UINT_MAX;
 
-  nr_init_frame_parms_ue_sl(fp, nrUE_config, fp->threequarter_fs, fp->ofdm_offset_divisor);
+  nr_init_frame_parms_ue_sl(fp, &ue->SL_UE_PHY_PARAMS.sl_config, fp->threequarter_fs, fp->ofdm_offset_divisor);
 
   LOG_I(NR_PHY, "tx UE configured\n");
 }
@@ -321,11 +405,6 @@ void set_fs_bw(PHY_VARS_NR_UE *UE, int mu, int N_RB, BW *bw_setting) {
   return;
 }
 
-nrUE_params_t nrUE_params;
-nrUE_params_t *get_nrUE_params(void) {
-  return &nrUE_params;
-}
-
 int main(int argc, char **argv)
 {
   get_softmodem_params()->sl_mode = 2;
@@ -356,13 +435,16 @@ int main(int argc, char **argv)
 
   int frame = 0;
   int slot = 0;
-  int32_t **txdata = txUE->common_vars.txData;
+  c16_t **txdata = txUE->common_vars.txData;
   nr_phy_data_tx_t phy_data_tx;
   phy_data_tx.sl_tx_action = SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH;
   UE_nr_rxtx_proc_t proc;
   proc.frame_tx = frame;
   proc.nr_slot_tx = slot;
   phy_procedures_nrUE_SL_TX(txUE, &proc, &phy_data_tx);
+  int tx_offset = txUE->frame_parms.get_samples_slot_timestamp(slot, &txUE->SL_UE_PHY_PARAMS.sl_frame_params, 0);
+  char tx_buffer[1024];
+  printf("txdata[0] = %s\n", hexdump(&txdata[0][tx_offset].r, sizeof(txdata[0]), tx_buffer, sizeof(tx_buffer)));
 
   printf("tx is done\n");
   //term_nr_ue_transport(txUE);
