@@ -401,6 +401,7 @@ struct NR_DL_FRAME_PARMS {
   uint8_t ssb_index;
   /// OFDM symbol offset divisor for UL
   uint32_t ofdm_offset_divisor;
+  uint32_t  Imcs;
 };
 
 /* NR Sidelink PSBCH payload fields */

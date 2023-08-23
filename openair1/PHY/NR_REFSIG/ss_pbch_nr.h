@@ -70,7 +70,7 @@
 #define  SSS_SYMBOL_NB                ((2) + OFFSET_SS_PBCH)
 #define  PBCH_LAST_SYMBOL_NB          ((3) + OFFSET_SS_PBCH)
 
-#define  OFFSET_SS_PSBCH              0
+#define  OFFSET_SS_PSBCH              -1
 #define  PSS0_SL_SYMBOL_NB            ((1) + OFFSET_SS_PSBCH)
 #define  PSS1_SL_SYMBOL_NB            ((2) + OFFSET_SS_PSBCH)
 #define  SSS0_SL_SYMBOL_NB            ((3) + OFFSET_SS_PSBCH)

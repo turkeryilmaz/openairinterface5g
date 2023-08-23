@@ -77,6 +77,8 @@ NR_UE_ULSCH_t *new_nr_ue_ulsch(uint16_t N_RB_UL, int number_of_harq_pids, NR_DL_
 
 NR_UE_ULSCH_t *new_nr_ue_slsch(uint16_t N_RB_UL, int number_of_harq_pids, NR_DL_FRAME_PARMS* frame_parms);
 
+uint16_t polar_encoder_output_length(uint16_t target_code_rate, uint32_t num_of_mod_symbols);
+
 /** \brief This function computes the LLRs for ML (max-logsum approximation) dual-stream QPSK/QPSK reception.
     @param stream0_in Input from channel compensated (MR combined) stream 0
     @param stream1_in Input from channel compensated (MR combined) stream 1
@@ -1869,6 +1871,7 @@ void nr_pssch_data_control_multiplexing(uint8_t *in_slssh,
                                         uint8_t Q_SCI2,
                                         uint8_t* out);
 
+uint32_t get_B_multiplexed_value(NR_DL_FRAME_PARMS* fp, NR_DL_UE_HARQ_t *harq);
 /**@}*/
 #endif
 

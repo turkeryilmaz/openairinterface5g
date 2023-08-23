@@ -300,7 +300,7 @@ void nr_sl_common_signal_procedures(PHY_VARS_NR_UE *ue, int frame, int slot)
   NR_DL_FRAME_PARMS *fp = &ue->frame_parms;
   int **txdataF = ue->common_vars.txdataF;
   uint8_t ssb_index = 0; //TODO: Need update to get 0 or 1 from parameter in case of mu = 1.
-  const int txdataF_offset = slot * ue->frame_parms.get_samples_per_slot(slot, &ue->frame_parms);
+  int txdataF_offset = slot * fp->samples_per_slot_wCP;
 
   uint16_t ssb_start_symbol = 0;
   LOG_D(NR_PHY, "common_signal_procedures: frame %d, slot %d ssb index %d, ssb_start_symbol %d, txdataF_offset %d\n",

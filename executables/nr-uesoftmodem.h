@@ -39,7 +39,7 @@
     {"uecap_file",               CONFIG_HLP_UECAP_FILE,  0,               strptr:&uecap_file,        defstrval:"./uecap.xml", TYPE_STRING, 0}, \
     {"rrc_config_path",          CONFIG_HLP_RRC_CFG_PATH,0,               strptr:&rrc_config_path,   defstrval:"./",  TYPE_STRING, 0}, \
     {"ue-idx-standalone",        NULL,                   0,               u16ptr:&ue_idx_standalone,          defuintval:0xFFFF,    TYPE_UINT16,   0}, \
-    {"SLC",                      CONFIG_HLP_SLF,         0,               u64ptr:&(sidelink_frequency[0][0]), defuintval:2600000000, TYPE_UINT64,  0}, \
+    {"SLC",                      CONFIG_HLP_SLF,         0,               u64ptr:&(sidelink_frequency[0][0]), defuintval:2570000000, TYPE_UINT64,  0}, \
 }
 
 
@@ -67,6 +67,7 @@
     {"E" ,                       CONFIG_HLP_TQFS,        PARAMFLAG_BOOL,  u8ptr:&(fp->threequarter_fs),       defintval:0,           TYPE_UINT8, 0}, \
     {"r"  ,                      CONFIG_HLP_PRB_SA,      0,               iptr:&(fp->N_RB_DL),                defintval:106,         TYPE_UINT,  0}, \
     {"rbsl",                     CONFIG_HLP_PRB_SL,      0,               iptr:&(fp->N_RB_SL),                defintval:106,         TYPE_UINT,  0}, \
+    {"mcs",                      CONFIG_HLP_PRB_IMCS,    0,               uptr:&(fp->Imcs),                   defintval:9,           TYPE_UINT,  0}, \
     {"ssb",                      CONFIG_HLP_SSC,         0,               u16ptr:&(fp->ssb_start_subcarrier), defintval:516,         TYPE_UINT16,0}, \
     {"T" ,                       CONFIG_HLP_TDD,         PARAMFLAG_BOOL,  iptr:&tddflag,                      defintval:0,           TYPE_INT,   0}, \
     {"if_freq" ,                 CONFIG_HLP_IF_FREQ,     0,               u64ptr:&(UE->if_freq),              defuintval:0,          TYPE_UINT64,0}, \

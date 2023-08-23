@@ -30,6 +30,7 @@
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include <openair2/UTIL/OPT/opt.h>
 #include <inttypes.h>
+#include "executables/softmodem-common.h"
 
 //#define DEBUG_SLSCH_CODING
 #define NR_POLAR_SCI2_MESSAGE_TYPE 4
@@ -167,14 +168,14 @@ NR_UE_ULSCH_t *new_nr_ue_slsch(uint16_t N_RB_UL, int number_of_harq_pids, NR_DL_
   return(slsch);
 }
 
-uint16_t polar_encoder_output_length(NR_UL_UE_HARQ_t *harq_process) {
+uint16_t polar_encoder_output_length(uint16_t target_code_rate, uint32_t num_of_mod_symbols) {
   // calculating length of sequence comming out of rate matching for SCI2 based on 8.4.4 TS38212
   uint8_t Osci2 = NR_POLAR_SCI2_PAYLOAD_BITS;
   uint8_t Lsci2 = 24;
   uint8_t Qmsci2 = 2; //modulation order of SCI2
-  double beta = 1.125; // harq_process->pssch_pdu.sci1.beta_offset;
-  double alpha = 1; // hardcoded for now
-  float R = (float)harq_process->pssch_pdu.target_code_rate / (1024*10);
+  double beta = 1.125; // TODO: harq_process->pssch_pdu.sci1.beta_offset;
+  double alpha = 1; // hardcoded sl-Scaling-r16 for now among {f0p5, f0p65, f0p8, f1}
+  float R = (float)target_code_rate / (1024 * 10);
 
   double tmp1 = (Osci2 + Lsci2) * beta / (Qmsci2 * R);
   /*
@@ -184,9 +185,10 @@ uint16_t polar_encoder_output_length(NR_UL_UE_HARQ_t *harq_process) {
   uint8_t N_pssch_symb = N_sh_sym - N_psfch_symb;
   */
 
-  double tmp2 = alpha * harq_process->num_of_mod_symbols; // it is assumed that number of RB for PSCCH is 0.
-  int gamma = 461;
-  uint16_t Qprime = min(ceil(tmp1), ceil(tmp2)) + gamma;
+  double tmp2 = alpha * num_of_mod_symbols; // it is assumed that number of RB for PSCCH is NB_RB_SCI1.
+  uint16_t Qprime = min(ceil(tmp1), ceil(tmp2));
+  int spare = 16 - Qprime % 16;
+  Qprime += spare;
   uint16_t Gsci2 = Qprime * Qmsci2;
   return Gsci2;
 }
@@ -199,6 +201,41 @@ void byte2bit(uint8_t *in_bytes, uint8_t *out_bits, uint16_t num_bytes) {
     }
   }
   return;
+}
+
+static void check_Nidx_value(uint32_t nidx, NR_DL_FRAME_PARMS* fp) {
+    switch(fp->Imcs) {
+    case 0:
+      AssertFatal(nidx == 45727, "Invalid nidx size %d for MCS %d!\n", nidx, fp->Imcs);
+      break;
+    case 1:
+      AssertFatal(nidx == 45727, "Invalid nidx size %d for MCS %d!\n", nidx, fp->Imcs);
+      break;
+    case 2:
+      AssertFatal(nidx == 45727, "Invalid nidx size %d for MCS %d!\n", nidx, fp->Imcs);
+      break;
+    case 3:
+      AssertFatal(nidx == 45727, "Invalid nidx size %d for MCS %d!\n", nidx, fp->Imcs);
+      break;
+    case 4:
+      AssertFatal(nidx == 45727, "Invalid nidx size %d for MCS %d!\n", nidx, fp->Imcs);
+      break;
+    case 5:
+      AssertFatal(nidx == 45727, "Invalid nidx size %d for MCS %d!\n", nidx, fp->Imcs);
+      break;
+    case 6:
+      AssertFatal(nidx == 45727, "Invalid nidx size %d for MCS %d!\n", nidx, fp->Imcs);
+      break;
+    case 7:
+      AssertFatal(nidx == 45727, "Invalid nidx size %d for MCS %d!\n", nidx, fp->Imcs);
+      break;
+    case 8:
+      AssertFatal(nidx == 45727, "Invalid nidx size %d for MCS %d!\n", nidx, fp->Imcs);
+      break;
+    case 9:
+      AssertFatal(nidx == 45727, "Invalid nidx size %d for MCS %d!\n", nidx, fp->Imcs);
+      break;
+  }
 }
 
 int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
@@ -237,7 +274,7 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
     LOG_D(NR_PHY, "encoding thinks this is a new packet \n");
 #endif
     int max_payload_bytes = MAX_NUM_NR_SLSCH_SEGMENTS_PER_LAYER * harq_process->pssch_pdu.nrOfLayers * 1056;
-    uint16_t polar_encoder_output_len = polar_encoder_output_length(harq_process);
+    uint16_t polar_encoder_output_len = polar_encoder_output_length(harq_process->pssch_pdu.target_code_rate, harq_process->num_of_mod_symbols);
     polar_encoder_fast(harq_process->a_sci2, (void*)harq_process->b_sci2, 0, 0,
                        NR_POLAR_SCI2_MESSAGE_TYPE,
                        polar_encoder_output_len,
@@ -246,6 +283,7 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
                                     NR_POLAR_SCI2_MESSAGE_TYPE,
                                     polar_encoder_output_len,
                                     NR_POLAR_SCI2_AGGREGATION_LEVEL);
+    check_Nidx_value(slsch->Nidx, frame_parms);
     harq_process->B_sci2 = polar_encoder_output_len;
     byte2bit(harq_process->b_sci2, harq_process->f_sci2, polar_encoder_output_len>>3);
     /*

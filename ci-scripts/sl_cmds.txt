@@ -33,7 +33,7 @@ nearby_usrp_n310_cmd = cd $HOME/openairinterface5g/ci-scripts; \
 python3 sl_rx_agent.py --cmd \
 'sudo -E LD_LIBRARY_PATH=$HOME/openairinterface5g/cmake_targets/ran_build/build:$LD_LIBRARY_PATH \
 $HOME/openairinterface5g/cmake_targets/ran_build/build/nr-uesoftmodem \
---sl-mode 2 --rbsl 106 --numerology 1 --band 38 --SLC 2600000000 --ue-rxgain 70 \
+--sl-mode 2 --rbsl 52 --numerology 1 --band 38 --SLC 2600000000 --ue-rxgain 20 \
 --usrp-args "type=n3xx,addr=192.168.20.2,subdev=A:0,master_clock_rate=122.88e6" \
 --log_config.global_log_options time,nocolor \
 > ~/rx.log 2>&1'
@@ -42,9 +42,9 @@ $HOME/openairinterface5g/cmake_targets/ran_build/build/nr-uesoftmodem \
 syncref_usrp_n310_cmd = \
 sudo -E LD_LIBRARY_PATH=$HOME/openairinterface5g/cmake_targets/ran_build/build:$LD_LIBRARY_PATH \
 $HOME/openairinterface5g/cmake_targets/ran_build/build/nr-uesoftmodem \
---sl-mode 2 --sync-ref --rbsl 106 --numerology 1 --band 38 --SLC 2600000000 --ue-txgain 8 \
+--sl-mode 2 --sync-ref --rbsl 52 --numerology 1 --band 38 --SLC 2600000000 --ue-txgain 0 \
 --usrp-args "type=n3xx,addr=192.168.10.2,subdev=A:0,master_clock_rate=122.88e6" \
---log_config.global_log_options time,nocolor\
+--log_config.global_log_options time,nocolor \
 > ~/tx.log 2>&1
 
 

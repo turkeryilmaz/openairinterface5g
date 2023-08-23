@@ -34,6 +34,68 @@ uint16_t Tbstable_nr[INDEX_MAX_TBS_TABLE] = {24,32,40,48,56,64,72,80,88,96,104,1
 
 uint16_t NPRB_LBRM[7] = {32,66,107,135,162,217,273};
 
+// Transport block size determination according to 8.1.3.2 of TS 38.214
+// returns the TBS in bits
+uint32_t nr_compute_tbs_sl(uint16_t Qm,
+                        uint16_t R,
+                        uint16_t nb_rb,
+                        uint16_t nb_re_sci1,
+                        uint16_t nb_re_sci2,
+                        uint16_t nb_symb_sch,
+                        uint16_t nb_dmrs_prb,
+                        uint16_t nb_rb_oh,
+                        uint8_t tb_scaling,
+                        uint8_t Nl)
+{
+
+  LOG_D(NR_MAC, "In %s: nb_symb_sch %d, nb_dmrs_prb %d, nb_rb %d, nb_rb_oh %d, tb_scaling %d Nl %d\n", __FUNCTION__, nb_symb_sch, nb_dmrs_prb, nb_rb, nb_rb_oh, tb_scaling, Nl);
+
+  uint16_t nb_symb_psfch = 0;
+  uint16_t nb_symb = nb_symb_sch - nb_symb_psfch;
+  const uint32_t nbp_re = NR_NB_SC_PER_RB * nb_symb - nb_dmrs_prb - nb_rb_oh;
+  const uint32_t nb_re = nbp_re * nb_rb - nb_re_sci1 - nb_re_sci2;
+
+  // Intermediate number of information bits
+  // Rx1024 is tabulated as 10 times the actual code rate
+  const uint32_t R_5 = R / 5; // R can be fractional so we can't divide by 10
+  // So we ned to right shift by 11 (10 for x1024 and 1 additional as above)
+  const uint32_t Ninfo = ((nb_re * R_5 * Qm * Nl) >> 11) >> tb_scaling;
+
+  uint32_t nr_tbs = 0;
+  uint32_t Np_info, C, n;
+
+  if (Ninfo <= 3824) {
+    n = max(3, floor(log2(Ninfo)) - 6);
+      Np_info = max(24, (Ninfo>>n)<<n);
+      for (int i = 0; i < INDEX_MAX_TBS_TABLE; i++) {
+        if (Tbstable_nr[i] >= Np_info){
+          nr_tbs = Tbstable_nr[i];
+          break;
+        }
+      }
+  } else {
+    n = log2(Ninfo - 24) - 5;
+    Np_info = max(3840, (ROUNDIDIV((Ninfo - 24), (1 << n))) << n);
+
+    if (R <= 2560) {
+        C = CEILIDIV((Np_info + 24), 3816);
+        nr_tbs = (C << 3) * CEILIDIV((Np_info + 24), (C << 3)) - 24;
+    } else {
+      if (Np_info > 8424){
+          C = CEILIDIV((Np_info + 24), 8424);
+          nr_tbs = (C << 3)*CEILIDIV((Np_info + 24), (C << 3)) - 24;
+      } else {
+        nr_tbs = ((CEILIDIV((Np_info + 24), 8)) << 3) - 24;
+      }
+    }
+  }
+
+  LOG_D(NR_MAC, "In %s: Ninfo %u nbp_re %d nb_re %d Qm %d, R %d, tbs %d bits\n", __FUNCTION__, Ninfo, nbp_re, nb_re, Qm, R, nr_tbs);
+
+  return nr_tbs;
+
+}
+
 // Transport block size determination according to 6.1.4.2 of TS 38.214
 // returns the TBS in bits
 uint32_t nr_compute_tbs(uint16_t Qm,

@@ -74,6 +74,7 @@
 #define CONFIG_HLP_ULBW_PHYTEST  "Set the number of PRBs used for ULSCH in PHYTEST mode\n"
 #define CONFIG_HLP_PRB_SA        "Set the number of PRBs for SA\n"
 #define CONFIG_HLP_PRB_SL        "Set the number of PRBs for Sidelink\n"
+#define CONFIG_HLP_PRB_IMCS      "Set the index of default MCS for Sidelink\n"
 #define CONFIG_HLP_DLBM_PHYTEST  "Bitmap for DLSCH slots (slot 0 starts at LSB)\n"
 #define CONFIG_HLP_ULBM_PHYTEST  "Bitmap for ULSCH slots (slot 0 starts at LSB)\n"
 #define CONFIG_HLP_SSC           "Set the start subcarrier \n"
