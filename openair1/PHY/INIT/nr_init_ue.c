@@ -860,62 +860,32 @@ static void sl_generate_sss(SL_NR_UE_INIT_PARAMS_t *sl_init_params, uint16_t sls
 
 // This cannot be done at init time as ofdm symbol size, ssb start subcarrier depends on configuration
 // done at SLSS read time.
-static void sl_generate_pss_ifft_samples(sl_nr_ue_phy_params_t *sl_ue_params, SL_NR_UE_INIT_PARAMS_t *sl_init_params) {
-
-  uint8_t id2 = 0;
-  int16_t *sl_pss = NULL;
+static void sl_generate_pss_ifft_samples(sl_nr_ue_phy_params_t *sl_ue_params, SL_NR_UE_INIT_PARAMS_t *sl_init_params)
+{
   NR_DL_FRAME_PARMS *sl_fp = &sl_ue_params->sl_frame_params;
-  int16_t scaling_factor = AMP;
+  c16_t pss_F[sl_fp->ofdm_symbol_size] __attribute__((aligned(32)));
 
-  int16_t *pss_F = NULL; // IQ samples in freq domain
-  int32_t *pss_T = NULL;
-
+  LOG_I(PHY, "SIDELINK INIT: Generation of PSS time domain samples. scaling_factor:%d\n", AMP);
   uint16_t k = 0;
-
-  pss_F = malloc16_clear(2*sizeof(int16_t) * sl_fp->ofdm_symbol_size);
-
-  LOG_I(PHY, "SIDELINK INIT: Generation of PSS time domain samples. scaling_factor:%d\n", scaling_factor);
-
-  for (id2 = 0; id2 < SL_NR_NUM_IDs_IN_PSS; id2++) {
-
+  for (uint8_t id2 = 0; id2 < SL_NR_NUM_IDs_IN_PSS; id2++) {
     k = sl_fp->first_carrier_offset + sl_fp->ssb_start_subcarrier + 2; // PSS in from REs 2-129
     if (k >= sl_fp->ofdm_symbol_size) k -= sl_fp->ofdm_symbol_size;
 
-    pss_T = &sl_init_params->sl_pss_for_correlation[id2][0];
-    sl_pss = sl_init_params->sl_pss[id2];
-
-    memset(pss_T, 0, sl_fp->ofdm_symbol_size * sizeof(pss_T[0]));
-    memset(pss_F, 0, sl_fp->ofdm_symbol_size * 2 * sizeof(pss_F[0]));
-
-    for (int i=0; i < SL_NR_PSS_SEQUENCE_LENGTH; i++) {
-
-      pss_F[2*k] = (sl_pss[i] * scaling_factor) >> 15;
-      //pss_F[2*k] = (sl_pss[i]/23170) * 4192;
-      //pss_F[2*k+1] = 0;
-
-#ifdef SL_DEBUG_INIT_DATA
-      printf("id:%d, k:%d, pss_F[%d]:%d, sl_pss[%d]:%d\n", id2, k, 2*k, pss_F[2*k], i, sl_pss[i]);
-#endif
-
+    memset(pss_F, 0, sizeof(pss_F));
+    for (int i = 0; i < SL_NR_PSS_SEQUENCE_LENGTH; i++) {
+      pss_F[k % sl_fp->ofdm_symbol_size].r = (sl_init_params->sl_pss[id2][i] * AMP) >> 15;
+      LOG_D(NR_PHY, "id:%d, k:%d, pss_F[%d]:%d, sl_pss[%d]:%d\n",
+            id2, k, 2*k, pss_F[k % sl_fp->ofdm_symbol_size].r, sl_init_params->sl_pss[id2][i]);
       k++;
-      if (k == sl_fp->ofdm_symbol_size) k=0;
-
+      if (k == sl_fp->ofdm_symbol_size) k = 0;
     }
-
-      idft((int16_t)get_idft(sl_fp->ofdm_symbol_size),
-                  pss_F,          /* complex input */
-                  (int16_t *)&pss_T[0],  /* complex output */
-                  1);                 /* scaling factor */
-
+    idft(IDFT_2048, (int16_t *)pss_F, (int16_t *)&sl_init_params->sl_pss_for_correlation[id2], 1);
   }
 
 #ifdef SL_DUMP_PSBCH_TX_SAMPLES
   LOG_M("sl_pss_TD_id0.m", "pss_TD_0", (void*)sl_init_params->sl_pss_for_correlation[0], sl_fp->ofdm_symbol_size, 1, 1);
   LOG_M("sl_pss_TD_id1.m", "pss_TD_1", (void*)sl_init_params->sl_pss_for_correlation[1], sl_fp->ofdm_symbol_size, 1, 1);
 #endif
-
-  free(pss_F);
-
 }
 
 void sl_ue_phy_init(PHY_VARS_NR_UE *UE) {
@@ -930,7 +900,8 @@ void sl_ue_phy_init(PHY_VARS_NR_UE *UE) {
     UE->SL_UE_PHY_PARAMS.init_params.sl_pss_for_correlation[1] = (int32_t *)malloc16_clear( sizeof(int32_t)*sl_fp->ofdm_symbol_size);
   }
   LOG_I(PHY, "SIDELINK INIT: GENERATE PSS, SSS, GOLD SEQUENCES AND PSBCH DMRS SEQUENCES FOR ALL possible SLSS IDs 0- 671\n");
-
+  crcTableInit();
+  init_scrambling_luts();
   // Generate PSS sequences for IDs 0,1 used in PSS
   sl_generate_pss(&UE->SL_UE_PHY_PARAMS.init_params,0, scaling_value);
   sl_generate_pss(&UE->SL_UE_PHY_PARAMS.init_params,1, scaling_value);

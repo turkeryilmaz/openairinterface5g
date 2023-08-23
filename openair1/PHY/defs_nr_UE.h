@@ -472,6 +472,9 @@ typedef struct {
   /// PUSCH DMRS sequence
   uint32_t ****nr_gold_pusch_dmrs;
 
+  /// PSSCH DMRS sequence
+  uint32_t ***nr_gold_pssch_dmrs;
+
   // PRS sequence per gNB, per resource
   uint32_t *****nr_gold_prs;
 
@@ -680,7 +683,7 @@ typedef struct nr_phy_data_tx_s {
   NR_UE_ULSCH_t ulsch;
   NR_UE_PUCCH pucch_vars;
 
-  //Sidelink Rx action decided by MAC 
+  // Sidelink Tx action decided by MAC
   sl_nr_tx_config_type_enum_t sl_tx_action;
   sl_nr_tx_config_psbch_pdu_t psbch_vars;
   sl_nr_tx_config_pscch_pssch_pdu_t *nr_sl_pssch_pscch_pdu;

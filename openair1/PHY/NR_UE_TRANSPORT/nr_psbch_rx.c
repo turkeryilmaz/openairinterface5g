@@ -61,62 +61,40 @@ static void nr_psbch_extract(uint32_t rxdataF_sz,
                                 uint32_t symbol,
                                 NR_DL_FRAME_PARMS *frame_params)
 {
-  uint16_t rb;
-  uint8_t i,j,aarx;
-  struct complex16 *dl_ch0,*dl_ch0_ext,*rxF,*rxF_ext;
-  
-  const uint8_t nb_rb = SL_NR_NUM_PSBCH_RBS_IN_ONE_SYMBOL; 
-
   AssertFatal((symbol == 0 || symbol >= 5), "SIDELINK: PSBCH DMRS not contained in symbol %d \n", symbol);
 
-  for (aarx=0; aarx<frame_params->nb_antennas_rx; aarx++) {
+  uint8_t j;
+  for (uint8_t aarx = 0; aarx < frame_params->nb_antennas_rx; aarx++) {
     unsigned int rx_offset = frame_params->first_carrier_offset + frame_params->ssb_start_subcarrier;
     rx_offset = rx_offset % frame_params->ofdm_symbol_size;
 
-    rxF        = &rxdataF[aarx][symbol*frame_params->ofdm_symbol_size];
-    rxF_ext    = &rxdataF_ext[aarx][0];
+    c16_t *rxF = &rxdataF[aarx][symbol * frame_params->ofdm_symbol_size];
+    c16_t *rxF_ext = &rxdataF_ext[aarx][0];
+    c16_t *dl_ch0 = &dl_ch_estimates[aarx][symbol * frame_params->ofdm_symbol_size];
+    c16_t *dl_ch0_ext = &dl_ch_estimates_ext[aarx][0];
 
-    dl_ch0 = &dl_ch_estimates[aarx][symbol*frame_params->ofdm_symbol_size];
-    dl_ch0_ext = &dl_ch_estimates_ext[aarx][0];
-
-#ifdef DEBUG_PSBCH
-    LOG_I(PHY, "extract_rbs: rx_offset=%d, symbol %u\n", (rx_offset + (symbol*frame_params->ofdm_symbol_size)),symbol);
-#endif
-
-    for (rb=0; rb<nb_rb; rb++) {
-        j=0;
-
-        for (i=0; i<NR_NB_SC_PER_RB; i++) {
-          
-            if (i%4 != 0) {
-            
-                rxF_ext[j]=rxF[rx_offset];
-                dl_ch0_ext[j]=dl_ch0[i];
-
+    for (uint16_t rb = 0; rb < SL_NR_NUM_PSBCH_RBS_IN_ONE_SYMBOL; rb++) {
+        j = 0;
+        for (uint8_t i = 0; i < NR_NB_SC_PER_RB; i++) {
+          if (i % 4 != 0) {
+            rxF_ext[j] = rxF[rx_offset];
+            dl_ch0_ext[j] = dl_ch0[i];
 #ifdef  DEBUG_PSBCH
+                LOG_I(NR_PHY, "rxF ext[%d] = (%d,%d) rxF [%u]= (%d,%d)\n", (9*rb) + j,
+                      ((int16_t *)&rxF_ext[j])[0], ((int16_t *)&rxF_ext[j])[1], rx_offset,
+                      ((int16_t *)&rxF[rx_offset])[0], ((int16_t *)&rxF[rx_offset])[1]);
 
-                LOG_I(PHY,"rxF ext[%d] = (%d,%d) rxF [%u]= (%d,%d)\n",(9*rb) + j,
-                                                                      ((int16_t *)&rxF_ext[j])[0],
-                                                                      ((int16_t *)&rxF_ext[j])[1],
-                                                                      rx_offset,
-                                                                      ((int16_t *)&rxF[rx_offset])[0],
-                                                                      ((int16_t *)&rxF[rx_offset])[1]);
-
-                LOG_I(PHY,"dl ch0 ext[%d] = (%d,%d)  dl_ch0 [%d]= (%d,%d)\n", (9*rb) + j,
-                                                                              ((int16_t *)&dl_ch0_ext[j])[0],
-                                                                              ((int16_t *)&dl_ch0_ext[j])[1],
-                                                                              i,
-                                                                              ((int16_t *)&dl_ch0[i])[0],
-                                                                              ((int16_t *)&dl_ch0[i])[1]);
+                LOG_I(NR_PHY, "dl ch0 ext[%d] = (%d,%d)  dl_ch0 [%d]= (%d,%d)\n", (9*rb) + j,
+                      ((int16_t *)&dl_ch0_ext[j])[0], ((int16_t *)&dl_ch0_ext[j])[1], i,
+                      ((int16_t *)&dl_ch0[i])[0], ((int16_t *)&dl_ch0[i])[1]);
 #endif
-                j++;
-            }
-            rx_offset=(rx_offset+1)%(frame_params->ofdm_symbol_size);
+            j++;
+          }
+          rx_offset = (rx_offset + 1) % (frame_params->ofdm_symbol_size);
         }
-
         rxF_ext += SL_NR_NUM_PSBCH_DATA_RE_IN_ONE_RB;
         dl_ch0_ext += SL_NR_NUM_PSBCH_DATA_RE_IN_ONE_RB;
-        dl_ch0 += NR_NB_SC_PER_RB; 
+        dl_ch0 += NR_NB_SC_PER_RB;
     }
 
 #ifdef DEBUG_PSBCH
@@ -130,9 +108,7 @@ static void nr_psbch_extract(uint32_t rxdataF_sz,
 #endif
 
   }
-
   return;
-
 }
 
 int nr_rx_psbch(PHY_VARS_NR_UE *ue,
@@ -145,27 +121,19 @@ int nr_rx_psbch(PHY_VARS_NR_UE *ue,
                 uint16_t slss_id)
 {
 
-  uint32_t decoderState=0;
-  int psbch_e_rx_idx = 0;
-  int16_t psbch_e_rx[SL_NR_POLAR_PSBCH_E_NORMAL_CP]= {0};
-  int16_t psbch_unClipped[SL_NR_POLAR_PSBCH_E_NORMAL_CP]= {0};
-
 #ifdef DEBUG_PSBCH
   write_output("psbch_rxdataF.m","psbchrxF",
-               &rxdataF[0][0],frame_parms->ofdm_symbol_size*SL_NR_NUM_SYMBOLS_SSB_NORMAL_CP,1,1);
+               &rxdataF[0][0],frame_parms->ofdm_symbol_size * SL_NR_NUM_SYMBOLS_SSB_NORMAL_CP, 1, 1);
 #endif
-  // symbol refers to symbol within SSB. symbol_offset is the offset of the SSB wrt start of slot
-  double log2_maxh = 0;
-
+  int psbch_e_rx_idx = 0;
+  int16_t psbch_e_rx[SL_NR_POLAR_PSBCH_E_NORMAL_CP] = {0};
   // 0 for Normal Cyclic Prefix and 1 for EXT CyclicPrefix
-  const int numsym = (frame_parms->Ncp) ? SL_NR_NUM_SYMBOLS_SSB_EXT_CP
-                                                             : SL_NR_NUM_SYMBOLS_SSB_NORMAL_CP;
-
-  for (int symbol=0; symbol<numsym;) {
+  const int numsym = (frame_parms->Ncp) ? SL_NR_NUM_SYMBOLS_SSB_EXT_CP : SL_NR_NUM_SYMBOLS_SSB_NORMAL_CP;
+  for (int symbol = 0; symbol < numsym;) {
     const uint16_t nb_re = SL_NR_NUM_PSBCH_DATA_RE_IN_ONE_SYMBOL;
     __attribute__ ((aligned(32))) struct complex16 rxdataF_ext[frame_parms->nb_antennas_rx][nb_re];
     __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates_ext[frame_parms->nb_antennas_rx][nb_re];
-    //memset(dl_ch_estimates_ext,0, sizeof  dl_ch_estimates_ext);
+
     nr_psbch_extract(frame_parms->samples_per_slot_wCP,
                      rxdataF,
                      estimateSz,
@@ -174,22 +142,17 @@ int nr_rx_psbch(PHY_VARS_NR_UE *ue,
                      dl_ch_estimates_ext,
                      symbol,
                      frame_parms);
-#ifdef DEBUG_PSBCH
-    LOG_I(PHY,"PSBCH RX Symbol %d ofdm size %d\n",symbol, frame_parms->ofdm_symbol_size );
-#endif
 
-    int max_h=0;
+    LOG_D(NR_PHY, "PSBCH RX Symbol %d ofdm size %d\n", symbol, frame_parms->ofdm_symbol_size );
+
+    double log2_maxh = 0;
     if (symbol == 0) {
-      max_h = nr_pbch_channel_level(dl_ch_estimates_ext,
+      int max_h = nr_pbch_channel_level(dl_ch_estimates_ext,
                                     frame_parms,
                                     nb_re);
-      //log2_maxh = 3+(log2_approx(max_h)/2);
-      log2_maxh = 5 +(log2_approx(max_h)/2);// LLR32 crc error. LLR 16 CRC works
-
+      log2_maxh = 5 +(log2_approx(max_h)/2); // LLR32 crc error. LLR 16 CRC works
+      LOG_D(NR_PHY, "PSBCH RX log2_maxh = %f (%d)\n", log2_maxh, max_h);
     }
-#ifdef DEBUG_PSBCH
-    LOG_I(PHY,"PSBCH RX log2_maxh = %f (%d)\n", log2_maxh, max_h);
-#endif
 
     __attribute__ ((aligned(32))) struct complex16 rxdataF_comp[frame_parms->nb_antennas_rx][nb_re];
     nr_pbch_channel_compensation(rxdataF_ext,
@@ -203,66 +166,56 @@ int nr_rx_psbch(PHY_VARS_NR_UE *ue,
 		                 (short *)rxdataF_comp[0],
 		                 SL_NR_NUM_PSBCH_DATA_BITS_IN_ONE_SYMBOL);
 
-    //Unnecessary copy. Used only for SCOPE ... TBD... to remove this.
-    memcpy(psbch_unClipped + psbch_e_rx_idx, rxdataF_comp[0], SL_NR_NUM_PSBCH_DATA_BITS_IN_ONE_SYMBOL*sizeof(int16_t));
-    psbch_e_rx_idx += SL_NR_NUM_PSBCH_DATA_BITS_IN_ONE_SYMBOL;
-
     //SKIP 2 SL-PSS AND 2 SL-SSS symbols
     //Symbols carrying PSBCH 0, 5-12
     symbol = (symbol == 0) ? 5 : symbol + 1;
   }
 
-
-
-  UEscopeCopy(ue, psbchRxdataF_comp, psbch_unClipped, sizeof(struct complex16), frame_parms->nb_antennas_rx, psbch_e_rx_idx/2,0);
-  UEscopeCopy(ue, psbchLlr, psbch_e_rx, sizeof(int16_t), frame_parms->nb_antennas_rx, psbch_e_rx_idx,0);
-
 #ifdef DEBUG_PSBCH
-  write_output("psbch_rxdataFcomp.m","psbch_rxFcomp",psbch_unClipped,SL_NR_NUM_PSBCH_DATA_RE_IN_ALL_SYMBOLS,1,1);
+  int16_t psbch_unClipped[SL_NR_POLAR_PSBCH_E_NORMAL_CP] = {0};
+  memcpy(psbch_unClipped + psbch_e_rx_idx, rxdataF_comp[0], SL_NR_NUM_PSBCH_DATA_BITS_IN_ONE_SYMBOL*sizeof(int16_t));
+  psbch_e_rx_idx += SL_NR_NUM_PSBCH_DATA_BITS_IN_ONE_SYMBOL;
+  UEscopeCopy(ue, psbchRxdataF_comp, psbch_unClipped, sizeof(struct complex16), frame_parms->nb_antennas_rx, psbch_e_rx_idx/2, 0);
+  UEscopeCopy(ue, psbchLlr, psbch_e_rx, sizeof(int16_t), frame_parms->nb_antennas_rx, psbch_e_rx_idx, 0);
+  write_output("psbch_rxdataFcomp.m","psbch_rxFcomp", psbch_unClipped, SL_NR_NUM_PSBCH_DATA_RE_IN_ALL_SYMBOLS, 1, 1);
 #endif
 
   //un-scrambling
   LOG_D(PHY, "PSBCH RX POLAR DECODING: total PSBCH bits:%d, rx_slss_id:%d\n", psbch_e_rx_idx, slss_id);
 
-  nr_pbch_unscrambling(psbch_e_rx, slss_id, 0, 0, psbch_e_rx_idx,
-		                   0, 0,  0, NULL);
+  nr_pbch_unscrambling(psbch_e_rx, slss_id, 0, 0, psbch_e_rx_idx, 0, 0,  0, NULL);
   //polar decoding de-rate matching
-  uint64_t tmp=0;
-  decoderState = polar_decoder_int16(psbch_e_rx,(uint64_t *)&tmp,0,
-                                     SL_NR_POLAR_PSBCH_MESSAGE_TYPE, SL_NR_POLAR_PSBCH_PAYLOAD_BITS, SL_NR_POLAR_PSBCH_AGGREGATION_LEVEL);
+  uint64_t tmp = 0;
+  uint32_t decoderState = polar_decoder_int16(psbch_e_rx, (uint64_t *)&tmp, 0,
+                                              SL_NR_POLAR_PSBCH_MESSAGE_TYPE,
+                                              SL_NR_POLAR_PSBCH_PAYLOAD_BITS,
+                                              SL_NR_POLAR_PSBCH_AGGREGATION_LEVEL);
 
 
   uint32_t psbch_payload = tmp;
-
   if(decoderState) {
     LOG_E(PHY,"%d:%d PSBCH RX: NOK \n",proc->frame_rx, proc->nr_slot_rx);
      return(decoderState);
   }
 
   // Decoder reversal
-  uint32_t a_reversed=0;
-
-  for (int i=0; i<SL_NR_POLAR_PSBCH_PAYLOAD_BITS; i++)
+  uint32_t a_reversed = 0;
+  for (int i = 0; i < SL_NR_POLAR_PSBCH_PAYLOAD_BITS; i++)
     a_reversed |= (((uint64_t)psbch_payload>>i)&1)<<(31-i);
-
   psbch_payload = a_reversed;
-
   *((uint32_t *)decoded_output) = psbch_payload;
 
-#ifdef DEBUG_PSBCH
-  for (int i=0; i<4; i++) {
-    LOG_I(PHY, "decoded_output[%d]:%x\n", i, decoded_output[i]);
+  for (int i = 0; i < 4; i++) {
+    LOG_D(NR_PHY, "decoded_output[%d]:%x\n", i, decoded_output[i]);
   }
-#endif
 
   ue->symbol_offset = 0;
 
   //retrieve DFN and slot number from SL-MIB
-  uint32_t DFN = 0, slot_offset = 0;
-  DFN = (((psbch_payload & 0x0700) >> 1) | ((psbch_payload & 0xFE0000) >> 17));
-  slot_offset = (((psbch_payload  & 0x010000) >> 10) | ((psbch_payload & 0xFC000000) >> 26));
+  uint32_t DFN = (((psbch_payload & 0x0700) >> 1) | ((psbch_payload & 0xFE0000) >> 17));
+  uint32_t slot_offset = (((psbch_payload  & 0x010000) >> 10) | ((psbch_payload & 0xFC000000) >> 26));
 
-  LOG_D(PHY, "PSBCH RX SL-MIB:%x, decoded DFN:slot %d:%d, %x\n",psbch_payload, DFN, slot_offset, *(uint32_t *)decoded_output);
+  LOG_D(NR_PHY, "PSBCH RX SL-MIB:%x, decoded DFN:slot %d:%d, %x\n",psbch_payload, DFN, slot_offset, *(uint32_t *)decoded_output);
 
   return 0;
 }
