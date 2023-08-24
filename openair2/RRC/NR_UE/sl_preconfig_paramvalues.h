@@ -148,7 +148,7 @@
 */
 #define SL_RESPOOLPARAMS_DESC(sl_res_pool) { \
 {SL_CONFIG_STRING_RESPOOL_PSCCH_NUMSYM,NULL,0,.i64ptr=sl_res_pool->sl_PSCCH_Config_r16->choice.setup->sl_TimeResourcePSCCH_r16,.defint64val=1,TYPE_INT64,0}, \
-{SL_CONFIG_STRING_RESPOOL_PSCCH_NUMRBS,NULL,0,.i64ptr=sl_res_pool->sl_PSCCH_Config_r16->choice.setup->sl_FreqResourcePSCCH_r16,.defint64val=4,TYPE_INT64,0}, \
+{SL_CONFIG_STRING_RESPOOL_PSCCH_NUMRBS,NULL,0,.i64ptr=sl_res_pool->sl_PSCCH_Config_r16->choice.setup->sl_FreqResourcePSCCH_r16,.defint64val=1,TYPE_INT64,0}, \
 {SL_CONFIG_STRING_RESPOOL_SUBCH_SIZE_IN_RBS,NULL,0,.i64ptr=sl_res_pool->sl_SubchannelSize_r16,.defint64val=0,TYPE_INT64,0},\
 {SL_CONFIG_STRING_RESPOOL_SUBCH_START_RB,NULL,0,.i64ptr=sl_res_pool->sl_StartRB_Subchannel_r16,.defint64val=0,TYPE_INT64,0},\
 {SL_CONFIG_STRING_RESPOOL_NUM_RBS,NULL,0,.i64ptr=sl_res_pool->sl_RB_Number_r16,.defint64val=106,TYPE_INT64,0},\

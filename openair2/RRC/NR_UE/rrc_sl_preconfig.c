@@ -439,9 +439,9 @@ int configure_NR_SL_Preconfig(uint8_t id,int sync_source)
     num_txpools = 1;
     sl_preconfig = prepare_NR_SL_PRECONFIGURATION(num_txpools,num_rxpools,sync_source);
 
-    if (LOG_DEBUGFLAG(DEBUG_ASN1)) {
+    //if (LOG_DEBUGFLAG(DEBUG_ASN1)) {
       xer_fprint(stdout, &asn_DEF_NR_SL_PreconfigurationNR_r16, sl_preconfig);
-    }
+    //}
   } else {
     //SL-Preconfiguration with 0 txpool, 1 rxpool if UE is not a syncsource
     num_rxpools = 1;

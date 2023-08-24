@@ -33,6 +33,7 @@
 #ifndef __LAYER2_MAC_UE_PROTO_H__
 #define __LAYER2_MAC_UE_PROTO_H__
 
+#include <stdbool.h>
 #include "mac_defs.h"
 #include "RRC/NR_UE/rrc_defs.h"
 
@@ -480,6 +481,15 @@ void nr_mac_rrc_sl_mib_ind(const module_id_t module_id,
                               uint8_t* pduP,
                               const sdu_size_t pdu_len,
                               const uint16_t rx_slss_id);
+bool nr_schedule_slsch(nr_sci_pdu_t *sci_pdu,
+                       nr_sci_pdu_t *sci2_pdu,
+                       uint8_t *slsch_pdu,
+                       nr_sci_format_t format2, 
+                       uint16_t *slsch_pdu_length);
+
+void config_pscch_pdu_rx(sl_nr_rx_config_pscch_pdu_t *nr_sl_pscch_pdu,
+                         const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp,
+                         const NR_SL_ResourcePool_r16_t *sl_res_pool);
 
 void config_pssch_sci_pdu_rx(sl_nr_rx_config_pssch_sci_pdu_t *nr_sl_pssch_sci_pdu,
                              nr_sci_format_t sci2_format,
@@ -494,7 +504,6 @@ void fill_pssch_pscch_pdu(sl_nr_tx_config_pscch_pssch_pdu_t *nr_sl_pssch_pscch_p
                           const NR_SL_ResourcePool_r16_t *sl_res_pool,
                           nr_sci_pdu_t *sci_pdu,
                           nr_sci_pdu_t *sci2_pdu,
-                          uint8_t *slsch_pdu,
                           uint16_t slsch_pdu_length,
                           const nr_sci_format_t format1,
                           const nr_sci_format_t format2);

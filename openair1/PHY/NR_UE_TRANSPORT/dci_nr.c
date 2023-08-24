@@ -79,7 +79,8 @@ char nr_dci_format_string[8][30] = {
 //static const int16_t conjugate[8]__attribute__((aligned(32))) = {-1,1,-1,1,-1,1,-1,1};
 
 
-static void nr_pdcch_demapping_deinterleaving(uint32_t *llr,
+static void nr_pdcch_demapping_deinterleaving(int pscch_flag,
+                                              uint32_t *llr,
                                               uint32_t *e_rx,
                                               uint8_t coreset_time_dur,
                                               uint8_t start_symbol,
@@ -181,23 +182,28 @@ static void nr_pdcch_demapping_deinterleaving(uint32_t *llr,
   int data_sc = 9; // 9 sub-carriers with data per PRB
   for (int c_id = 0; c_id < number_of_candidates; c_id++ ) {
     for (int symbol_idx = start_symbol; symbol_idx < start_symbol+coreset_time_dur; symbol_idx++) {
-      for (int cce_count = 0; cce_count < L[c_id]; cce_count ++) {
-        for (int k=0; k<NR_NB_REG_PER_CCE/reg_bundle_size_L; k++) { // loop over REG bundles
-          int f = f_bundle_j_list_ord[c_id][k+NR_NB_REG_PER_CCE*cce_count/reg_bundle_size_L];
-          for(int rb=0; rb<B_rb; rb++) { // loop over the RBs of the bundle
-            index_z = data_sc * rb_count;
-            index_llr = (uint16_t) (f*B_rb + rb + symbol_idx * coreset_nbr_rb) * data_sc;
-            for (int i = 0; i < data_sc; i++) {
-              e_rx[index_z + i] = llr[index_llr + i];
+      if (pscch_flag == 0) {
+        for (int cce_count = 0; cce_count < L[c_id]; cce_count ++) {
+          for (int k=0; k<NR_NB_REG_PER_CCE/reg_bundle_size_L; k++) { // loop over REG bundles
+            int f = f_bundle_j_list_ord[c_id][k+NR_NB_REG_PER_CCE*cce_count/reg_bundle_size_L];
+            for(int rb=0; rb<B_rb; rb++) { // loop over the RBs of the bundle
+              index_z = data_sc * rb_count;
+              index_llr = (uint16_t) (f*B_rb + rb + symbol_idx * coreset_nbr_rb) * data_sc;
+              for (int i = 0; i < data_sc; i++) {
+                e_rx[index_z + i] = llr[index_llr + i];
 #ifdef NR_PDCCH_DCI_DEBUG
-              LOG_I(PHY,"[candidate=%d,symbol_idx=%d,cce=%d,REG bundle=%d,PRB=%d] z[%d]=(%d,%d) <-> \t llr[%d]=(%d,%d) \n",
-                    c_id,symbol_idx,cce_count,k,f*B_rb + rb,(index_z + i),*(int16_t *) &e_rx[index_z + i],*(1 + (int16_t *) &e_rx[index_z + i]),
-                    (index_llr + i),*(int16_t *) &llr[index_llr + i], *(1 + (int16_t *) &llr[index_llr + i]));
+                LOG_I(PHY,"[candidate=%d,symbol_idx=%d,cce=%d,REG bundle=%d,PRB=%d] z[%d]=(%d,%d) <-> \t llr[%d]=(%d,%d) \n",
+                      c_id,symbol_idx,cce_count,k,f*B_rb + rb,(index_z + i),*(int16_t *) &e_rx[index_z + i],*(1 + (int16_t *) &e_rx[index_z + i]),
+                      (index_llr + i),*(int16_t *) &llr[index_llr + i], *(1 + (int16_t *) &llr[index_llr + i]));
 #endif
+              }
+              rb_count++;
             }
-            rb_count++;
           }
         }
+      } // pscch_flag == 0
+      else { //this will need to be changed a bit when we scan for multiple SCI
+        memcpy(e_rx,llr,coreset_nbr_rb*coreset_time_dur*data_sc*sizeof(uint32_t));
       }
     }
   }
@@ -665,6 +671,7 @@ void nr_pdcch_detection_mrc(NR_DL_FRAME_PARMS *frame_parms,
 
 int32_t nr_rx_pdcch(PHY_VARS_NR_UE *ue,
                     UE_nr_rxtx_proc_t *proc,
+                    int pscch_flag,
                     int32_t pdcch_est_size,
                     int32_t pdcch_dl_ch_estimates[][pdcch_est_size],
                     int16_t *pdcch_e_rx,
@@ -677,8 +684,11 @@ int32_t nr_rx_pdcch(PHY_VARS_NR_UE *ue,
   int32_t avgs;
   int32_t avgP[4];
   int n_rb,rb_offset;
-  get_coreset_rballoc(rel15->coreset.frequency_domain_resource,&n_rb,&rb_offset);
-
+  if (pscch_flag == 0) get_coreset_rballoc(rel15->coreset.frequency_domain_resource,&n_rb,&rb_offset);
+  else {
+   rb_offset = rel15->coreset.frequency_domain_resource[0];
+   n_rb = rel15->coreset.frequency_domain_resource[1];
+  }
   // Pointers to extracted PDCCH symbols in frequency-domain.
   int32_t rx_size = ((4 * frame_parms->N_RB_DL * 12 + 31) >> 5) << 5;
   __attribute__ ((aligned(32))) int32_t rxdataF_ext[frame_parms->nb_antennas_rx][rx_size];
@@ -776,7 +786,8 @@ int32_t nr_rx_pdcch(PHY_VARS_NR_UE *ue,
   }
 
   LOG_D(PHY,"we enter nr_pdcch_demapping_deinterleaving(), number of candidates %d\n",rel15->number_of_candidates);
-  nr_pdcch_demapping_deinterleaving((uint32_t *) llr,
+  nr_pdcch_demapping_deinterleaving(pscch_flag,
+                                    (uint32_t *) llr,
                                     (uint32_t *) pdcch_e_rx,
                                     rel15->coreset.duration,
                                     rel15->coreset.StartSymbolIndex,
@@ -860,6 +871,7 @@ static uint16_t nr_dci_false_detection(uint64_t *dci,
 
 uint8_t nr_dci_decoding_procedure(PHY_VARS_NR_UE *ue,
                                   UE_nr_rxtx_proc_t *proc,
+                                  int pscch_flag,
                                   int16_t *pdcch_e_rx,
                                   fapi_nr_dci_indication_t *dci_ind,
                                   fapi_nr_dl_config_dci_dl_pdu_rel15_t *rel15) {
@@ -908,7 +920,7 @@ uint8_t nr_dci_decoding_procedure(PHY_VARS_NR_UE *ue,
       uint16_t crc = polar_decoder_int16(tmp_e,
                                          dci_estimation,
                                          1,
-                                         NR_POLAR_DCI_MESSAGE_TYPE, dci_length, L);
+                                         pscch_flag == 0 ? NR_POLAR_DCI_MESSAGE_TYPE : NR_POLAR_SCI_MESSAGE_TYPE, dci_length, L);
 
       n_rnti = rel15->rnti;
       LOG_D(PHY, "(%i.%i) dci indication (rnti %x,dci format %s,n_CCE %d,payloadSize %d,payload %llx )\n",

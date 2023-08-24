@@ -680,11 +680,11 @@ typedef struct nr_phy_data_tx_s {
   NR_UE_ULSCH_t ulsch;
   NR_UE_PUCCH pucch_vars;
 
-  //Sidelink Rx action decided by MAC 
+  //Sidelink Tx action decided by MAC 
   sl_nr_tx_config_type_enum_t sl_tx_action;
   sl_nr_tx_config_psbch_pdu_t psbch_vars;
-  sl_nr_tx_config_pscch_pssch_pdu_t *nr_sl_pssch_pscch_pdu;
-  sl_nr_tx_config_psfch_pdu_t *nr_sl_psfch_pdu;
+  sl_nr_tx_config_pscch_pssch_pdu_t nr_sl_pssch_pscch_pdu;
+  sl_nr_tx_config_psfch_pdu_t nr_sl_psfch_pdu;
 } nr_phy_data_tx_t;
 
 typedef struct nr_phy_data_s {
@@ -693,7 +693,8 @@ typedef struct nr_phy_data_s {
 
   //Sidelink Rx action decided by MAC 
   sl_nr_rx_config_type_enum_t sl_rx_action;
-
+  sl_nr_rx_config_pscch_pdu_t nr_sl_pscch_pdu;
+  sl_nr_rx_config_pssch_sci_pdu_t nr_sl_pssch_sci_pdu;
 } nr_phy_data_t;
 /* this structure is used to pass both UE phy vars and
  * proc to the function UE_thread_rxn_txnp4

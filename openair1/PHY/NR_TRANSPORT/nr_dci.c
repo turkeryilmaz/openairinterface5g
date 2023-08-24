@@ -199,7 +199,6 @@ void nr_generate_dci(PHY_VARS_gNB *gNB, PHY_VARS_NR_UE *ue,
           k -= frame_parms->ofdm_symbol_size;
 
         l = cset_start_symb + symbol_idx;
-        LOG_I(NR_PHY,"pdcch symbol_idx %d, reg %d l %d, cset_start_symb %d\n",symbol_idx,reg_count,l,cset_start_symb);
         // dmrs index depends on reference point for k according to 38.211 7.4.1.3.2
         if (gNB && pdcch_pdu_rel15->CoreSetType == NFAPI_NR_CSET_CONFIG_PDCCH_CONFIG)
           dmrs_idx = (reg_list[d][reg_count] + pdcch_pdu_rel15->BWPStart) * 3;

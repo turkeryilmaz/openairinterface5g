@@ -52,6 +52,7 @@ void peak_estimator(int32_t *buffer, int32_t buf_len, int32_t *peak_idx, int32_t
 */
 void nr_pdcch_channel_estimation(PHY_VARS_NR_UE *ue,
                                  UE_nr_rxtx_proc_t *proc,
+                                 int pscch_flag,
                                  unsigned char symbol,
                                  fapi_nr_coreset_t *coreset,
                                  uint16_t first_carrier_offset,

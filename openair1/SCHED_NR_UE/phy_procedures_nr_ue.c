@@ -422,6 +422,7 @@ unsigned int nr_get_tx_amp(int power_dBm, int power_max_dBm, int N_RB_UL, int nb
 
 int nr_ue_pdcch_procedures(PHY_VARS_NR_UE *ue,
                            UE_nr_rxtx_proc_t *proc,
+                           int pscch_flag,
                            int32_t pdcch_est_size,
                            int32_t pdcch_dl_ch_estimates[][pdcch_est_size],
                            nr_phy_data_t *phy_data,
@@ -444,7 +445,7 @@ int nr_ue_pdcch_procedures(PHY_VARS_NR_UE *ue,
   int16_t pdcch_e_rx[pdcch_e_rx_size];
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_RX_PDCCH, VCD_FUNCTION_IN);
-  nr_rx_pdcch(ue, proc, pdcch_est_size, pdcch_dl_ch_estimates, pdcch_e_rx, rel15, rxdataF);
+  nr_rx_pdcch(ue, proc, pscch_flag, pdcch_est_size, pdcch_dl_ch_estimates, pdcch_e_rx, rel15, rxdataF);
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_RX_PDCCH, VCD_FUNCTION_OUT);
 
 
@@ -455,7 +456,7 @@ int nr_ue_pdcch_procedures(PHY_VARS_NR_UE *ue,
 	 n_ss);
 #endif
 
-  dci_cnt = nr_dci_decoding_procedure(ue, proc, pdcch_e_rx, &dci_ind, rel15);
+  dci_cnt = nr_dci_decoding_procedure(ue, proc, pscch_flag, pdcch_e_rx, &dci_ind, rel15);
 
 #ifdef NR_PDCCH_SCHED_DEBUG
   LOG_I(PHY,"<-NR_PDCCH_PHY_PROCEDURES_LTE_UE (nr_ue_pdcch_procedures)-> Ending function nr_dci_decoding_procedure() -> dci_cnt=%u\n",dci_cnt);
@@ -1004,6 +1005,7 @@ void pbch_pdcch_processing(PHY_VARS_NR_UE *ue,
 
       nr_pdcch_channel_estimation(ue,
                                   proc,
+                                  0,
                                   l,
                                   &phy_pdcch_config->pdcch_config[n_ss].coreset,
                                   fp->first_carrier_offset,
@@ -1015,7 +1017,7 @@ void pbch_pdcch_processing(PHY_VARS_NR_UE *ue,
       stop_meas(&ue->ofdm_demod_stats);
 
     }
-    dci_cnt = dci_cnt + nr_ue_pdcch_procedures(ue, proc, pdcch_est_size, pdcch_dl_ch_estimates, phy_data, n_ss, rxdataF);
+    dci_cnt = dci_cnt + nr_ue_pdcch_procedures(ue, proc, 0, pdcch_est_size, pdcch_dl_ch_estimates, phy_data, n_ss, rxdataF);
   }
   LOG_D(PHY,"[UE %d] Frame %d, nr_slot_rx %d: found %d DCIs\n", ue->Mod_id, frame_rx, nr_slot_rx, dci_cnt);
   phy_pdcch_config->nb_search_space = 0;

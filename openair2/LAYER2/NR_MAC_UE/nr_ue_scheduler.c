@@ -51,7 +51,7 @@
 #include "utils.h"
 
 #include <executables/softmodem-common.h>
-
+#include <executables/nr-uesoftmodem.h>
 #include "LAYER2/NR_MAC_COMMON/nr_mac_extern.h"
 #include "LAYER2/RLC/rlc.h"
 
@@ -3253,14 +3253,17 @@ bool nr_ue_sl_pssch_scheduler(nr_sidelink_indication_t *sl_ind,
   if (sl_ind->slot_type != SIDELINK_SLOT_TYPE_TX) return false;
 
 
+  if (slot > 9 && get_nrUE_params()->sync_ref) return false;
+
+  if (slot < 10 && !get_nrUE_params()->sync_ref) return false;
+
   LOG_I(NR_MAC,"[UE%d] SL-PSSCH SCHEDULER: Frame:SLOT %d:%d, slot_type:%d\n",
                                       sl_ind->module_id, frame, slot,sl_ind->slot_type);
 
   nr_sci_pdu_t sci_pdu; 
   nr_sci_pdu_t sci2_pdu; 
-  uint8_t *slsch_pdu;
   uint16_t slsch_pdu_length;
-  bool schedule_slsch = nr_schedule_slsch(&sci_pdu,&sci2_pdu,&slsch_pdu,&slsch_pdu_length);
+  bool schedule_slsch = nr_schedule_slsch(&sci_pdu,&sci2_pdu,tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu.slsch_payload,NR_SL_SCI_FORMAT_2A,&slsch_pdu_length);
 
   if (!schedule_slsch) return false;
   *config_type = SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH;
@@ -3273,7 +3276,6 @@ bool nr_ue_sl_pssch_scheduler(nr_sidelink_indication_t *sl_ind,
                        sl_res_pool,
                        &sci_pdu,
                        &sci2_pdu,
-                       slsch_pdu,
 		       slsch_pdu_length,
                        NR_SL_SCI_FORMAT_1A, 
                        NR_SL_SCI_FORMAT_2A);
@@ -3287,6 +3289,25 @@ bool nr_ue_sl_pssch_scheduler(nr_sidelink_indication_t *sl_ind,
   return ret_status;
 }
 
+void nr_ue_sl_pscch_rx_scheduler(nr_sidelink_indication_t *sl_ind,
+                              const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp,
+                              const NR_SL_ResourcePool_r16_t *sl_res_pool,
+                              sl_nr_rx_config_request_t *rx_config,
+                              uint8_t *config_type) {
+
+  *config_type = SL_NR_CONFIG_TYPE_RX_PSCCH;
+  rx_config->number_pdus = 1;
+  rx_config->sfn = sl_ind->frame_rx;
+  rx_config->slot = sl_ind->slot_rx;
+  rx_config->sl_rx_config_list[0].pdu_type = *config_type;
+  config_pscch_pdu_rx(&rx_config->sl_rx_config_list[0].rx_pscch_config_pdu,
+                       sl_bwp,
+                       sl_res_pool);
+
+
+   LOG_I(NR_MAC, "[UE%d] TTI-%d:%d RX PSCCH REQ \n", sl_ind->module_id,sl_ind->frame_rx, sl_ind->slot_rx);
+
+}
 /*
 *   determine if sidelink slot is a PSBCH slot
 *    If PSBCH rx slot and sync_source == SYNC_REF_UE
@@ -3449,9 +3470,14 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind) {
      int sl_rx_period = 8*mac->sl_rx_res_pool->ext1->sl_TimeResource_r16->size - mac->sl_rx_res_pool->ext1->sl_TimeResource_r16->bits_unused;
      int slot_mod_period = sl_ind->slot_rx%sl_rx_period;
      uint8_t mask = mac->sl_rx_res_pool->ext1->sl_TimeResource_r16->buf[slot_mod_period>>3];
-     if (((1<<slot_mod_period) % mask) == 0) rx_allowed=0;
+     if (((1<<slot_mod_period) % mask) == 0) rx_allowed=false;
   }
-  
+  if (sl_ind->slot_type==SIDELINK_SLOT_TYPE_TX) rx_allowed=false;
+  if (((get_nrUE_params()->sync_ref && sl_ind->slot_rx > 9) || 
+      (!get_nrUE_params()->sync_ref && sl_ind->slot_rx < 10)) && rx_allowed) {
+      LOG_I(NR_MAC,"Scheduling PSCCH RX processing slot %d, sync_ref %d\n",slot,get_nrUE_params()->sync_ref);
+      nr_ue_sl_pscch_rx_scheduler(sl_ind, mac->sl_bwp, mac->sl_rx_res_pool,&rx_config, &tti_action);
+    }
   if (!is_psbch_slot && tx_allowed) {
     //Check if reserved slot or a sidelink resource configured in Rx/Tx resource pool timeresource bitmap
     nr_ue_sl_pssch_scheduler(sl_ind, mac->sl_bwp, mac->sl_tx_res_pool,&tx_config, &tti_action);

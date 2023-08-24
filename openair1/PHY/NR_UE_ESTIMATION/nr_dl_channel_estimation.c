@@ -1037,6 +1037,7 @@ int nr_pbch_channel_estimation(PHY_VARS_NR_UE *ue,
 
 void nr_pdcch_channel_estimation(PHY_VARS_NR_UE *ue,
                                  UE_nr_rxtx_proc_t *proc,
+                                 int pscch_flag,
                                  unsigned char symbol,
                                  fapi_nr_coreset_t *coreset,
                                  uint16_t first_carrier_offset,

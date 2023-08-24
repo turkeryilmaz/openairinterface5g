@@ -65,6 +65,10 @@ const int sl_dmrs_mask2[2][8] = { {34,34,34,264,264,1032,1032,1032},
                                   {34,34,34,272,272,1040,1040,1040}};
 const int sl_dmrs_mask3[5]    = {146,146,546,546,2114};
 const int sl_dmrs_mask4[3]    = {1170,1170,1170};
+const int pscch_rb_table[5] = {10,12,15,20,25};
+const int pscch_tda[2] = {2,3};
+
+const int subch_to_rb[8] = {10,12,15,20,25,50,75,100};
 
 uint32_t nr_sci_size(const NR_SL_ResourcePool_r16_t *sl_res_pool,
 	             nr_sci_pdu_t *sci_pdu,
@@ -94,7 +98,7 @@ uint32_t nr_sci_size(const NR_SL_ResourcePool_r16_t *sl_res_pool,
 	    
 	    // resource reservation period
 	    
-	    if (0 /*!sl_res_pool->sl_MultiReserveResource*/) // not defined in 17.4 RRC
+	    if (1 /*!sl_res_pool->sl_MultiReserveResource*/) // not defined in 17.4 RRC
 	       sci_pdu->resource_reservation_period.nbits = 0;
             size += sci_pdu->resource_reservation_period.nbits;
 
@@ -178,8 +182,6 @@ uint32_t nr_sci_size(const NR_SL_ResourcePool_r16_t *sl_res_pool,
   return(size);
 }
 
-const int pscch_rb_table[5] = {10,12,15,20,25};
-const int pscch_tda[2] = {2,3};
 
 int get_nREDMRS(const NR_SL_ResourcePool_r16_t *sl_res_pool) {
 
@@ -221,7 +223,6 @@ void fill_pssch_pscch_pdu(sl_nr_tx_config_pscch_pssch_pdu_t *nr_sl_pssch_pscch_p
                           const NR_SL_ResourcePool_r16_t *sl_res_pool,
 		          nr_sci_pdu_t *sci_pdu, 
 		          nr_sci_pdu_t *sci2_pdu, 
-                          uint8_t *slsch_pdu,
                           uint16_t slsch_pdu_length,
 		          const nr_sci_format_t format1,
 		          const nr_sci_format_t format2)  {
@@ -245,7 +246,7 @@ void fill_pssch_pscch_pdu(sl_nr_tx_config_pscch_pssch_pdu_t *nr_sl_pssch_pscch_p
   // num subchannels in a resource pool
   nr_sl_pssch_pscch_pdu->num_subch = *sl_res_pool->sl_NumSubchannel_r16;
   // Size of subchannels in RBs
-  nr_sl_pssch_pscch_pdu->subchannel_size = *sl_res_pool->sl_SubchannelSize_r16;
+  nr_sl_pssch_pscch_pdu->subchannel_size = subch_to_rb[*sl_res_pool->sl_SubchannelSize_r16];
   //_PSCCH PSSCH TX: Size of subchannels in a PSSCH resource (l_subch)
   AssertFatal(sci_pdu->time_resource_assignment.val == 0, "need to handle a non-zero time_resource_assignment (2 or 3 time hops, N=2,3)\n");
   convNRFRIV(sci_pdu->frequency_resource_assignment.val,
@@ -453,7 +454,6 @@ void fill_pssch_pscch_pdu(sl_nr_tx_config_pscch_pssch_pdu_t *nr_sl_pssch_pscch_p
           AssertFatal(1==0,"Unknown format %d for sci2\n",format2);
           break;
   }
-  nr_sl_pssch_pscch_pdu->slsch_payload = slsch_pdu;
   nr_sl_pssch_pscch_pdu->slsch_payload_length = slsch_pdu_length;
 };
 
@@ -477,7 +477,7 @@ void config_pscch_pdu_rx(sl_nr_rx_config_pscch_pdu_t *nr_sl_pscch_pdu,
   // num subchannels in a resource pool
   nr_sl_pscch_pdu->num_subch=*sl_res_pool->sl_NumSubchannel_r16;
   // Size of subchannels in RBs
-  nr_sl_pscch_pdu->subchannel_size=*sl_res_pool->sl_SubchannelSize_r16;
+  nr_sl_pscch_pdu->subchannel_size=subch_to_rb[*sl_res_pool->sl_SubchannelSize_r16];
   // PSCCH PSSCH RX: this is set to 1 - Blind decoding for SCI1A done on every subchannel
   // PSCCH SENSING: this is equal to number of subchannels forming a resource.
 
@@ -498,6 +498,7 @@ void config_pscch_pdu_rx(sl_nr_rx_config_pscch_pdu_t *nr_sl_pscch_pdu,
   // as part of TX pool sensing procedure.
   nr_sl_pscch_pdu->sense_pscch=0;
 
+  LOG_I(NR_MAC,"Programming PSCCH reception (sci_1a_length %d)\n",nr_sl_pscch_pdu->sci_1a_length);
 
 }
 
@@ -641,7 +642,7 @@ void config_pssch_sci_pdu_rx(sl_nr_rx_config_pssch_sci_pdu_t *nr_sl_pssch_sci_pd
   // num subchannels in a resource pool
   nr_sl_pssch_sci_pdu->num_subch = *sl_res_pool->sl_NumSubchannel_r16;
   // Size of subchannels in RBs
-  nr_sl_pssch_sci_pdu->subchannel_size = *sl_res_pool->sl_SubchannelSize_r16;
+  nr_sl_pssch_sci_pdu->subchannel_size = subch_to_rb[*sl_res_pool->sl_SubchannelSize_r16];
   // In case of PSCCH PSSCH RX: this is always 1. Blind decoding done for every channel
   // In case of RESOURCE SENSING: this is equal to number of subchannels forming a resource.
   nr_sl_pssch_sci_pdu->l_subch = 1;
