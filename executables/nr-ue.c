@@ -905,9 +905,6 @@ void *UE_thread(void *arg) {
       UL_TO_Tx_ofs += 2*rx_offset_slot; //to adapt the UE's transmission time in order to get aligned at gNB
     }
 
-    LOG_I(PHY, "diff: %d, PI_Out: %d, offset_slot: %d, offset_UL: %d, TA: %d, TO_PScal: %f, TO_IScal: %f\n", 
-                UE->rx_offset, UE->rx_offset_TO, rx_offset_slot, UL_TO_Tx_ofs, UE->timing_advance, TO_PScaling, TO_IScaling);
-
     readBlockSize=get_readBlockSize(slot_nr, &UE->frame_parms) + rx_offset_slot;
     writeBlockSize=UE->frame_parms.get_samples_per_slot((slot_nr + DURATION_RX_TO_TX) % nb_slot_frame, &UE->frame_parms);
     /*
@@ -941,14 +938,16 @@ void *UE_thread(void *arg) {
       } else
         LOG_E(PHY,"can't compensate: diff =%d\n", first_symbols);
     }
-
-    printf("**** Option: 4 Activated \n");
-
+    
     //timing_advance += 1*rx_offset_slot;
     //timing_advance += 2*rx_offset_slot;
 
     //UE->timing_advance += 1*rx_offset_slot;
     UE->timing_advance += 2*rx_offset_slot;
+
+    extern uint64_t RFsim_PropDelay;
+    LOG_D(PHY, "RFsim_PropDelay: %lu,         TA: %d,         diff: %d,          PI_Out: %d,       offset_slot: %d,     offset_UL: %d\n", 
+                RFsim_PropDelay,         timing_advance,     UE->rx_offset,   UE->rx_offset_TO,    rx_offset_slot,       UL_TO_Tx_ofs);
 
     // use previous timing_advance value to compute writeTimestamp
     writeTimestamp = timestamp+

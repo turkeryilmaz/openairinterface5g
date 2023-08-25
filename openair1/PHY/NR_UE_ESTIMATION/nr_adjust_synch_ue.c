@@ -120,7 +120,7 @@ void nr_adjust_synch_ue(NR_DL_FRAME_PARMS *frame_parms,
     ue->rx_offset_comp = 0;
   }
 
-  LOG_I(PHY, "Frame: %u, diff: %d, rx_offset_TO: %d, PScaling: %f, IScaling: %f, TA: %d, TO_I_Ctrl: %ld \n", frame, ue->rx_offset, ue->rx_offset_TO, TO_PScaling, TO_IScaling, ue->timing_advance, TO_I_Ctrl);
+  LOG_D(PHY, "Frame: %u, diff: %d, rx_offset_TO: %d, PScaling: %f, IScaling: %f, TA: %d, TO_I_Ctrl: %ld \n", frame, ue->rx_offset, ue->rx_offset_TO, TO_PScaling, TO_IScaling, ue->timing_advance, TO_I_Ctrl);
 
   if(abs(diff)<5)
     count_max_pos_ok ++;
