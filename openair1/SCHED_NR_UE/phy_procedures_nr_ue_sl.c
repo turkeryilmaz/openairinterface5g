@@ -321,7 +321,6 @@ void psbch_pscch_processing(PHY_VARS_NR_UE *ue,
 
     nr_ue_pdcch_procedures(ue, proc, 1, pscch_est_size, pscch_dl_ch_estimates, phy_data, 0, rxdataF);
 
-    exit(-1);
   }
 
   UEscopeCopy(ue, commonRxdataF, rxdataF, sizeof(int32_t), fp->nb_antennas_rx, rxdataF_sz, 0);
