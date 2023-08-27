@@ -31,6 +31,7 @@
  */
 
 #include <softmodem-common.h>
+#include <nr-softmodem.h>
 #include "assertions.h"
 
 #include "NR_MAC_gNB/nr_mac_gNB.h"
@@ -2047,6 +2048,7 @@ void set_max_fb_time(NR_UE_UL_BWP_t *UL_BWP, const NR_UE_DL_BWP_t *DL_BWP)
       if(*fb_times->list.array[i] > UL_BWP->max_fb_time)
         UL_BWP->max_fb_time = *fb_times->list.array[i];
     }
+    UL_BWP->max_fb_time += NTN_gNB_k2;
   }
 }
 
@@ -2563,6 +2565,7 @@ int get_pdsch_to_harq_feedback(NR_PUCCH_Config_t *pucch_Config,
     AssertFatal(pucch_Config != NULL && pucch_Config->dl_DataToUL_ACK != NULL,"dl_DataToUL_ACK shouldn't be null here\n");
     for (int i = 0; i < pucch_Config->dl_DataToUL_ACK->list.count; i++) {
       pdsch_to_harq_feedback[i] = *pucch_Config->dl_DataToUL_ACK->list.array[i];
+      pdsch_to_harq_feedback[i] += NTN_gNB_k2;
     }
     return pucch_Config->dl_DataToUL_ACK->list.count;
   }
