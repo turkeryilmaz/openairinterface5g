@@ -71,6 +71,11 @@ static int get_stats(char *buf, int debug, telnet_printfunc_t prnt)
   frame_type_t frame_type = get_frame_type(*frequencyInfoDL->frequencyBandList.list.array[0], *scc->ssbSubcarrierSpacing);
   const NR_BWP_t *initialDL = &scc->downlinkConfigCommon->initialDownlinkBWP->genericParameters;
 
+  int num_ues = 0;
+  UE_iterator((NR_UE_info_t **)mac->UE_info.list, it) {
+    num_ues++;
+  }
+
   prnt("=== begin O1 stats ===\n");
   prnt("{\n");
 
@@ -95,7 +100,8 @@ static int get_stats(char *buf, int debug, telnet_printfunc_t prnt)
   prnt("===   end O1 stats ===\n");
   prnt("=== begin add stats ===\n");
   prnt("frame type %s\n", frame_type == TDD ? "tdd" : "fdd");
-  prnt("band %ld\n", *frequencyInfoDL->frequencyBandList.list.array[0]);
+  prnt("band number %ld\n", *frequencyInfoDL->frequencyBandList.list.array[0]);
+  prnt("no UEs %d\n", num_ues);
   prnt("===   end add stats ===\n");
   return 0;
 }
