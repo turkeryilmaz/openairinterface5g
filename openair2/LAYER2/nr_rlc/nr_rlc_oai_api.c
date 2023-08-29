@@ -60,7 +60,9 @@ nr_rlc_entity_t *get_rlc_entity_from_lcid(nr_rlc_ue_t *ue,
   if (channel_id == 0)
     return ue->srb0;
   nr_rlc_rb_t *rb = &ue->lcid2rb[channel_id - 1];
-  if (rb->type == NR_RLC_SRB)
+  if (rb->choice.srb_id == 0)
+    return ue->srb[0];
+  else if (rb->type == NR_RLC_SRB)
     return ue->srb[rb->choice.srb_id - 1];
   else {
     AssertFatal(rb->type == NR_RLC_DRB,
