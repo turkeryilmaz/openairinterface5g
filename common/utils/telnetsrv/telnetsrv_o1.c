@@ -76,33 +76,34 @@ static int get_stats(char *buf, int debug, telnet_printfunc_t prnt)
     num_ues++;
   }
 
-  prnt("=== begin O1 stats ===\n");
   prnt("{\n");
+    prnt("  \"O1\": {\n");
 
-    prnt("  \"BWP\": {\n");
-    prnt("    \"" ISINITBWP "\": true,\n");
-    //prnt("    \"" CYCLPREF "\": %ld,\n", *initialDL->cyclicPrefix);
-    prnt("    \"" NUMRBS "\": %ld,\n", NRRIV2BW(initialDL->locationAndBandwidth, MAX_BWP_SIZE));
-    prnt("    \"" STARTRB "\": %ld,\n", NRRIV2PRBOFFSET(initialDL->locationAndBandwidth, MAX_BWP_SIZE));
-    prnt("    \"" BWPSCS "\": %ld\n", initialDL->subcarrierSpacing);
+    prnt("    \"BWP\": {\n");
+    prnt("      \"" ISINITBWP "\": true,\n");
+    //prnt("      \"" CYCLPREF "\": %ld,\n", *initialDL->cyclicPrefix);
+    prnt("      \"" NUMRBS "\": %ld,\n", NRRIV2BW(initialDL->locationAndBandwidth, MAX_BWP_SIZE));
+    prnt("      \"" STARTRB "\": %ld,\n", NRRIV2PRBOFFSET(initialDL->locationAndBandwidth, MAX_BWP_SIZE));
+    prnt("      \"" BWPSCS "\": %ld\n", initialDL->subcarrierSpacing);
+    prnt("    },\n");
+
+    prnt("    \"NRCELLDU\": {\n");
+    prnt("      \"" SSBFREQ "\": %ld,\n", *scc->ssbSubcarrierSpacing);
+    prnt("      \"" ARFCNDL "\": %ld,\n", frequencyInfoDL->absoluteFrequencyPointA);
+    prnt("      \"" BWDL "\": %ld,\n", frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth);
+    prnt("      \"" ARFCNUL "\": %ld,\n", frequencyInfoUL->absoluteFrequencyPointA ? *frequencyInfoUL->absoluteFrequencyPointA : frequencyInfoDL->absoluteFrequencyPointA);
+    prnt("      \"" BWUL "\": %ld,\n", frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth);
+    prnt("      \"" PCI "\": %ld,\n", *scc->physCellId);
+    prnt("      \"" TAC "\": %ld\n", conf->tac);
+    prnt("    }\n");
     prnt("  },\n");
 
-    prnt("  \"NRCELLDU\": {\n");
-    prnt("    \"" SSBFREQ "\": %ld,\n", *scc->ssbSubcarrierSpacing);
-    prnt("    \"" ARFCNDL "\": %ld,\n", frequencyInfoDL->absoluteFrequencyPointA);
-    prnt("    \"" BWDL "\": %ld,\n", frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth);
-    prnt("    \"" ARFCNUL "\": %ld,\n", frequencyInfoUL->absoluteFrequencyPointA ? *frequencyInfoUL->absoluteFrequencyPointA : frequencyInfoDL->absoluteFrequencyPointA);
-    prnt("    \"" BWUL "\": %ld,\n", frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth);
-    prnt("    \"" PCI "\": %ld,\n", *scc->physCellId);
-    prnt("    \"" TAC "\": %ld\n", conf->tac);
+    prnt("  \"additional\": {\n");
+    prnt("    \"frame-type\": \"%s\",\n", frame_type == TDD ? "tdd" : "fdd");
+    prnt("    \"band-number\": %ld,\n", *frequencyInfoDL->frequencyBandList.list.array[0]);
+    prnt("    \"num-ues\": %d\n", num_ues);
     prnt("  }\n");
   prnt("}\n");
-  prnt("===   end O1 stats ===\n");
-  prnt("=== begin add stats ===\n");
-  prnt("frame type %s\n", frame_type == TDD ? "tdd" : "fdd");
-  prnt("band number %ld\n", *frequencyInfoDL->frequencyBandList.list.array[0]);
-  prnt("no UEs %d\n", num_ues);
-  prnt("===   end add stats ===\n");
   return 0;
 }
 
