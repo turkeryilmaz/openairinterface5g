@@ -157,9 +157,32 @@ static int set_config(char *buf, int debug, telnet_printfunc_t prnt)
   return 0;
 }
 
+bool running = true; // in the beginning, the softmodem is started automatically
+extern int stop_L1L2(module_id_t gnb_id);
+static int stop_modem(char *buf, int debug, telnet_printfunc_t prnt)
+{
+  if (!running)
+    ERROR_MSG_RET("cannot stop, nr-softmodem not running\n");
+  stop_L1L2(0);
+  running = false;
+  return 0;
+}
+
+extern int start_L1L2(module_id_t gnb_id);
+static int start_modem(char *buf, int debug, telnet_printfunc_t prnt)
+{
+  if (running)
+    ERROR_MSG_RET("cannot start, nr-softmodem already running\n");
+  start_L1L2(0);
+  running = true;
+  return 0;
+}
+
 static telnetshell_cmddef_t o1cmds[] = {
   {"stats", "", get_stats},
   {"config", "?", set_config},
+  {"stop_modem", "", stop_modem},
+  {"start_modem", "", start_modem},
   {"", "", NULL},
 };
 

@@ -569,6 +569,15 @@ static int startServer(openair0_device *device) {
   return 0;
 }
 
+static void rfsimulator_end(openair0_device *device);
+static void stopServer(openair0_device *device)
+{
+  rfsimulator_state_t *t = (rfsimulator_state_t *) device->priv;
+  DevAssert(t != NULL);
+  rfsimulator_end(device);
+  close(t->listen_sock);
+}
+
 static int startClient(openair0_device *device) {
   rfsimulator_state_t *t = device->priv;
   t->typeStamp=UE_MAGICDL;
@@ -921,10 +930,11 @@ static void rfsimulator_end(openair0_device *device) {
   rfsimulator_state_t* s = device->priv;
   for (int i = 0; i < FD_SETSIZE; i++) {
     buffer_t *b = &s->buf[i];
-    if (b->conn_sock >= 0 )
-      close(b->conn_sock);
+    if (b->conn_sock >= 0 ) {
+      removeCirBuf(s, b->conn_sock);
+    }
   }
-  close(s->epollfd);
+  //close(s->epollfd); // don't close as we cannot restart with startServer()/startClient()
 }
 static int rfsimulator_stop(openair0_device *device) {
   return 0;
@@ -957,7 +967,7 @@ int device_init(openair0_device *device, openair0_config_t *openair0_cfg) {
                                  startClient;
   device->trx_get_stats_func   = rfsimulator_get_stats;
   device->trx_reset_stats_func = rfsimulator_reset_stats;
-  device->trx_end_func         = rfsimulator_end;
+  device->trx_end_func         = rfsimulator->typeStamp == ENB_MAGICDL ? stopServer : rfsimulator_end;
   device->trx_stop_func        = rfsimulator_stop;
   device->trx_set_freq_func    = rfsimulator_set_freq;
   device->trx_set_gains_func   = rfsimulator_set_gains;
