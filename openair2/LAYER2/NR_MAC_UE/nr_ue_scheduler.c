@@ -3046,6 +3046,7 @@ void schedule_ta_command(fapi_nr_dl_config_request_t *dl_config, NR_UL_TIME_ALIG
   ta->ta_frame = ul_time_alignment->frame;
   ta->ta_slot = ul_time_alignment->slot;
   ta->ta_command = ul_time_alignment->ta_command;
+  LOG_D(NR_MAC, "ta_frame: %d, ta_slot: %d, ta_command: %d\n", ta->ta_frame, ta->ta_slot, ta->ta_command);
   dl_config->dl_config_list[dl_config->number_pdus].pdu_type = FAPI_NR_CONFIG_TA_COMMAND;
   dl_config->number_pdus += 1;
   ul_time_alignment->ta_apply = false;

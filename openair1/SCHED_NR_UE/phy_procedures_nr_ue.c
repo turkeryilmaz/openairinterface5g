@@ -233,9 +233,15 @@ int get_tx_amp_prach(int power_dBm, int power_max_dBm, int N_RB_UL){
 // - Application of timing adjustment according to TS 38.213 p4.2
 // todo:
 // - handle RAR TA application as per ch 4.2 TS 38.213
+static uint64_t idx = 0;
+static int lastFrame;
 void ue_ta_procedures(PHY_VARS_NR_UE *ue, int slot_tx, int frame_tx)
 {
-  if (frame_tx == ue->ta_frame && slot_tx == ue->ta_slot) {
+  if ( (frame_tx == ue->ta_frame && slot_tx == ue->ta_slot && idx == 0) ||
+       (frame_tx == ue->ta_frame && slot_tx == ue->ta_slot && (frame_tx - lastFrame) == 100) ) {
+        
+    lastFrame = frame_tx;
+    idx = 1;
 
     uint16_t ofdm_symbol_size = ue->frame_parms.ofdm_symbol_size;
 
