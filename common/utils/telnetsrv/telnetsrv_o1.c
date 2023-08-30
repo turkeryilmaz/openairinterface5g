@@ -132,32 +132,97 @@ static int read_long(const char *buf, const char *end, const char *id, long *val
   return curr - buf;
 }
 
+bool running = true; // in the beginning, the softmodem is started automatically
 static int set_config(char *buf, int debug, telnet_printfunc_t prnt)
 {
   if (!buf)
     ERROR_MSG_RET("need param: o1 config param1 val1 [param2 val2 ...]\n");
+  if (running)
+    ERROR_MSG_RET("cannot set parameters while L1 is running\n");
   const char *end = buf + strlen(buf);
+
+  /* we need to update the following fields to change frequency and/or
+   * bandwidth:
+   * --gNBs.[0].servingCellConfigCommon.[0].absoluteFrequencySSB 620736            -> SSBFREQ
+   * --gNBs.[0].servingCellConfigCommon.[0].dl_absoluteFrequencyPointA 620020      -> ARFCNDL
+   * --gNBs.[0].servingCellConfigCommon.[0].dl_carrierBandwidth 51                 -> BWDL
+   * --gNBs.[0].servingCellConfigCommon.[0].initialDLBWPlocationAndBandwidth 13750 -> NUMRBS + STARTRB
+   * --gNBs.[0].servingCellConfigCommon.[0].ul_carrierBandwidth 51                 -> BWUL?
+   * --gNBs.[0].servingCellConfigCommon.[0].initialULBWPlocationAndBandwidth 13750 -> ?
+   */
 
   int processed = 0;
   int pos = 0;
-  long arfcnDL;
-  processed = read_long(buf + pos, end, ARFCNDL, &arfcnDL);
+
+  long ssbfreq;
+  processed = read_long(buf + pos, end, SSBFREQ, &ssbfreq);
+  if (processed < 0)
+    ERROR_MSG_RET("could not read " SSBFREQ " at index %d\n", pos + processed);
+  pos += processed;
+  prnt("setting " SSBFREQ ":   %ld [len %d]\n", ssbfreq, pos);
+
+  long arfcn;
+  processed = read_long(buf + pos, end, ARFCNDL, &arfcn);
   if (processed < 0)
     ERROR_MSG_RET("could not read " ARFCNDL " at index %d\n", pos + processed);
   pos += processed;
-  prnt("setting " ARFCNDL " %ld len %d\n", arfcnDL, pos);
+  prnt("setting " ARFCNDL ":        %ld [len %d]\n", arfcn, pos);
 
-  long arfcnUL;
-  processed = read_long(buf + pos, end, ARFCNUL, &arfcnUL);
+  long bwdl;
+  processed = read_long(buf + pos, end, BWDL, &bwdl);
   if (processed < 0)
-    ERROR_MSG_RET("could not read " ARFCNUL " at index %d\n", pos + processed);
+    ERROR_MSG_RET("could not read " BWDL " at index %d\n", pos + processed);
   pos += processed;
-  prnt("setting " ARFCNUL " %ld len %d\n", arfcnUL, pos);
+  prnt("setting " BWDL ":  %ld [len %d]\n", bwdl, pos);
+
+  long numrbs;
+  processed = read_long(buf + pos, end, NUMRBS, &numrbs);
+  if (processed < 0)
+    ERROR_MSG_RET("could not read " NUMRBS " at index %d\n", pos + processed);
+  pos += processed;
+  prnt("setting " NUMRBS ":         %ld [len %d]\n", numrbs, pos);
+
+  long startrb;
+  processed = read_long(buf + pos, end, STARTRB, &startrb);
+  if (processed < 0)
+    ERROR_MSG_RET("could not read " STARTRB " at index %d\n", pos + processed);
+  pos += processed;
+  prnt("setting " STARTRB ":             %ld [len %d]\n", startrb, pos);
+
+  int locationAndBandwidth = PRBalloc_to_locationandbandwidth0(numrbs, startrb, MAX_BWP_SIZE);
+  prnt("inferred locationAndBandwidth:       %d\n", locationAndBandwidth);
+
+  gNB_RRC_INST *rrc = RC.nrrrc[0];
+  NR_ServingCellConfigCommon_t *scc = rrc->carrier.servingcellconfigcommon;
+  NR_FrequencyInfoDL_t *frequencyInfoDL = scc->downlinkConfigCommon->frequencyInfoDL;
+  NR_BWP_t *initialDL = &scc->downlinkConfigCommon->initialDownlinkBWP->genericParameters;
+  NR_FrequencyInfoUL_t *frequencyInfoUL = scc->uplinkConfigCommon->frequencyInfoUL;
+  NR_BWP_t *initialUL = &scc->uplinkConfigCommon->initialUplinkBWP->genericParameters;
+
+  //--gNBs.[0].servingCellConfigCommon.[0].absoluteFrequencySSB 620736            -> SSBFREQ
+  *scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB = ssbfreq;
+
+  //* --gNBs.[0].servingCellConfigCommon.[0].dl_absoluteFrequencyPointA 620020      -> ARFCNDL
+  frequencyInfoDL->absoluteFrequencyPointA = arfcn;
+  AssertFatal(frequencyInfoUL->absoluteFrequencyPointA == NULL, "only handle TDD\n");
+
+  //* --gNBs.[0].servingCellConfigCommon.[0].dl_carrierBandwidth 51                 -> BWDL
+  frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth = bwdl;
+
+  //* --gNBs.[0].servingCellConfigCommon.[0].initialDLBWPlocationAndBandwidth 13750 -> NUMRBS + STARTRB
+  initialDL->locationAndBandwidth = locationAndBandwidth;
+
+  //* --gNBs.[0].servingCellConfigCommon.[0].ul_carrierBandwidth 51                 -> BWUL?
+  // we assume the same BW as DL
+  frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth = bwdl;
+
+  //* --gNBs.[0].servingCellConfigCommon.[0].initialULBWPlocationAndBandwidth 13750 -> ?
+  // we assume same locationAndBandwidth as DL
+  initialUL->locationAndBandwidth = locationAndBandwidth;
 
   return 0;
 }
 
-bool running = true; // in the beginning, the softmodem is started automatically
 extern int stop_L1L2(module_id_t gnb_id);
 static int stop_modem(char *buf, int debug, telnet_printfunc_t prnt)
 {
