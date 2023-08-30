@@ -3726,6 +3726,7 @@ void nr_ue_process_mac_pdu(nr_downlink_indication_t *dl_info,
         ul_time_alignment->ta_command = ta;
         ul_time_alignment->frame = frameP;
         ul_time_alignment->slot = slot;
+        LOG_D(NR_MAC, "ul_time_alignment->frame: %d, ul_time_alignment->slot: %d\n", ul_time_alignment->frame, ul_time_alignment->slot);
         ul_time_alignment->ta_apply = true;
         /*
         #ifdef DEBUG_HEADER_PARSING

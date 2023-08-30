@@ -911,6 +911,7 @@ void nr_schedule_ue_spec(module_id_t module_id,
      * If such UE is not scheduled now, it will be by the preprocessor later.
      * If we add the CE, ta_apply will be reset */
     if (frame == (sched_ctrl->ta_frame + 100) % 1024) {
+      LOG_D(NR_MAC, "frame: %d, sched_ctrl->ta_frame: %d\n", frame, sched_ctrl->ta_frame);
       sched_ctrl->ta_apply = true; /* the timer is reset once TA CE is scheduled */
       LOG_D(NR_MAC, "[UE %04x][%d.%d] UL timing alignment procedures: setting flag for Timing Advance command\n", UE->rnti, frame, slot);
     }
