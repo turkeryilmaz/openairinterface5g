@@ -88,7 +88,7 @@ static int get_stats(char *buf, int debug, telnet_printfunc_t prnt)
     prnt("    },\n");
 
     prnt("    \"NRCELLDU\": {\n");
-    prnt("      \"" SSBFREQ "\": %ld,\n", *scc->ssbSubcarrierSpacing);
+    prnt("      \"" SSBFREQ "\": %ld,\n", *scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB);
     prnt("      \"" ARFCNDL "\": %ld,\n", frequencyInfoDL->absoluteFrequencyPointA);
     prnt("      \"" BWDL "\": %ld,\n", frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth);
     prnt("      \"" ARFCNUL "\": %ld,\n", frequencyInfoUL->absoluteFrequencyPointA ? *frequencyInfoUL->absoluteFrequencyPointA : frequencyInfoDL->absoluteFrequencyPointA);
