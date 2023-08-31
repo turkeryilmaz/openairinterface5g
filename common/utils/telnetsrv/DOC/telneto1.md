@@ -77,7 +77,8 @@ Use the `o1 stats` command. The output is in JSON format:
     "ues": [
       1717,
       28734
-    ]
+    ],
+    "load": 12
   }
 }
 ```

@@ -76,6 +76,13 @@ static int get_stats(char *buf, int debug, telnet_printfunc_t prnt)
     num_ues++;
   }
 
+  const mac_stats_t *stat = &mac->mac_stats;
+  static mac_stats_t last = {0};
+  int diff_used = stat->used_prb_aggregate - last.used_prb_aggregate;
+  int diff_total = stat->total_prb_aggregate - last.total_prb_aggregate;
+  int load = diff_total > 0 ? 100 * diff_used / diff_total : 0;
+  last = *stat;
+
   prnt("{\n");
     prnt("  \"O1\": {\n");
 
@@ -111,7 +118,8 @@ static int get_stats(char *buf, int debug, telnet_printfunc_t prnt)
         first = false;
       }
     }
-    prnt("]\n");
+    prnt("    ],\n");
+    prnt("    \"load\": %d\n", load);
     prnt("  }\n");
   prnt("}\n");
   prnt("OK\n");
