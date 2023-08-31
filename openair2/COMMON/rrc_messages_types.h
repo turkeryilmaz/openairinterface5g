@@ -516,6 +516,8 @@ typedef struct RrcConfigurationReq_s {
   uint8_t neighCellConfig[MAX_NUM_CCs];
   long     *sib3_q_QualMin[MAX_NUM_CCs];
   long     *sib3_threshServingLowQ[MAX_NUM_CCs];
+  long     *sib3_s_NonIntraSearchP[MAX_NUM_CCs];
+  long     *sib3_s_NonIntraSearchQ[MAX_NUM_CCs];
 
   //SIB4
   bool                       sib4_Present[MAX_NUM_CCs];

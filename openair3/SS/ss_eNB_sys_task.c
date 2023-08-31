@@ -65,6 +65,7 @@ extern pthread_mutex_t sys_confirm_done_mutex;
 extern int sys_confirm_done;
 extern RAN_CONTEXT_t RC;
 extern uint32_t from_earfcn(int eutra_bandP, uint32_t dl_earfcn);
+extern pthread_mutex_t lock_rrc_ttcn;
 
 #ifndef NR_RRC_VERSION
 extern pthread_cond_t cell_config_done_cond;
@@ -91,6 +92,11 @@ char *local_address = "127.0.0.1";
 int proxy_send_port = 7776;
 int proxy_recv_port = 7770;
 bool reqCnfFlag_g = false;
+
+static int cell_active_update_prohibition = 0;
+// This is counting per cell, if 3 cells count can be in fact done 3 times
+#define CELL_ACTIVE_UPDATE_PROHIBITION_COUNT 0
+
 
 void sys_handle_pdcch_order(struct RA_PDCCH_Order_Type *pdcchOrder);
 
@@ -504,9 +510,15 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
               count ++;
             }
           }
-
           RRC_CONFIGURATION_REQ(msg_p).schedulingInfo_count[cell_index] = count;
           RRC_CONFIGURATION_REQ(msg_p).num_plmn[cell_index] = SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.d;
+          if (RRC_CONFIGURATION_REQ(msg_p).systemInfoValueTag[cell_index] != SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.systemInfoValueTag){
+            RC.ss.CC_update_flag[cell_index] = 1;
+            RC.ss.rrc_sysinfo_value_tag_transition = true;
+            LOG_I (ENB_SS_SYS_TASK,"SystemInfo value tag has been updated old value: %d, new value: %d\n",
+            RRC_CONFIGURATION_REQ(msg_p).systemInfoValueTag[cell_index],
+            SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.systemInfoValueTag);
+          } 
           RRC_CONFIGURATION_REQ(msg_p).systemInfoValueTag[cell_index] = SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.systemInfoValueTag;
 
           RRC_CONFIGURATION_REQ(msg_p).num_plmn[cell_index] = SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.d;
@@ -581,6 +593,13 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
                         {
                           RRC_CONFIGURATION_REQ(msg_p).sib3_threshServingLowQ[cell_index] = calloc(1, sizeof(long));
                           *(RRC_CONFIGURATION_REQ(msg_p).sib3_threshServingLowQ[cell_index]) = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.threshServingLowQ_r9.v;
+                        }
+
+                        if (AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.s_NonIntraSearch_v920.d){
+                          RRC_CONFIGURATION_REQ(msg_p).sib3_s_NonIntraSearchP[cell_index] = calloc(1, sizeof(long));
+                          *(RRC_CONFIGURATION_REQ(msg_p).sib3_s_NonIntraSearchP[cell_index]) = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.s_NonIntraSearch_v920.v.s_NonIntraSearchP_r9;
+                          RRC_CONFIGURATION_REQ(msg_p).sib3_s_NonIntraSearchQ[cell_index] = calloc(1, sizeof(long));
+                          *(RRC_CONFIGURATION_REQ(msg_p).sib3_s_NonIntraSearchQ[cell_index]) = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.s_NonIntraSearch_v920.v.s_NonIntraSearchQ_r9;
                         }
                       }
                       /* SIB4: Received SIB4 from TTCN */
@@ -818,6 +837,10 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
     LOG_A(ENB_SS_SYS_TASK, "Sending Cell configuration to RRC from SYSTEM_CTRL_REQ \n");
     itti_send_msg_to_task(TASK_RRC_ENB, ENB_MODULE_ID_TO_INSTANCE(enb_id), msg_p);
 
+    if (RC.ss.CC_update_flag[cell_index] == 1){
+      pthread_mutex_lock(&lock_rrc_ttcn);
+      //RC.ss.CC_update_flag[cell_index] = 0;
+    }
     /* Active Config for ULGrant Params */
     bool destTaskMAC = false;
     for (int enb_id = 0; enb_id < RC.nb_inst; enb_id++)
@@ -1033,6 +1056,9 @@ int sys_handle_cell_config_req(struct SYSTEM_CTRL_REQ *req)
   assert(req);
   struct CellConfigRequest_Type *Cell=&(req->Request.v.Cell);
   assert(Cell);
+  struct CellConfigInfo_Type *AddOrReconfigure = &(Cell->v.AddOrReconfigure);
+  assert(AddOrReconfigure);
+
   switch (Cell->d)
   {
   case CellConfigRequest_Type_AddOrReconfigure:
@@ -1050,7 +1076,11 @@ int sys_handle_cell_config_req(struct SYSTEM_CTRL_REQ *req)
     {
        //The flag is used to initilize the cell in the RRC layer during init_SI funciton
         RC.ss.CC_conf_flag[cell_index] = 1;
-        RC.ss.CC_update_flag[cell_index] = 1;
+        
+        if (AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIB1.v.message.v.c1.v.systemInformationBlockType1.systemInfoValueTag == 0){
+          RC.ss.CC_update_flag[cell_index] = 1;
+          LOG_I (ENB_SS_SYS_TASK,"SYS task requests to update RRC configuration current cell:%d\n",cell_index);
+        } 
         returnState = SS_STATE_CELL_CONFIGURED;
       //Increment nb_cc only from 2nd cell as the initilization is done for 1 CC
       if (cell_index)
@@ -1070,12 +1100,20 @@ int sys_handle_cell_config_req(struct SYSTEM_CTRL_REQ *req)
     }
     else
     {
-      RC.ss.CC_update_flag[cell_index] = 1;
       LOG_I (ENB_SS_SYS_TASK,"[SYS] CC-MGMT configured RC.nb_CC %d current updated CC_index %d RC.nb_mac_CC %d\n",
                 RC.nb_CC[0],cell_index,*RC.nb_mac_CC);
+      if (RC.ss.rrc_sysinfo_value_tag_transition == false){
+        RC.ss.CC_update_flag[cell_index] = 1;
+      } else{
+        LOG_D (ENB_SS_SYS_TASK,"[SYS] CC-MGMT Updating SI processing... , count: %d\n", cell_active_update_prohibition);
+        if (cell_active_update_prohibition >= CELL_ACTIVE_UPDATE_PROHIBITION_COUNT) {
+          RC.ss.rrc_sysinfo_value_tag_transition = false;
+          cell_active_update_prohibition = 0;
+        } else{
+          cell_active_update_prohibition ++;
+        }
+      }
     }
-
-
     break;
   case CellConfigRequest_Type_Release: /**TODO: NOT IMPLEMNTED */
     LOG_A(ENB_SS_SYS_TASK, "CellConfigRequest_Type_Release receivied\n");

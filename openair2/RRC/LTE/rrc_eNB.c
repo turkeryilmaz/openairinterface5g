@@ -123,7 +123,6 @@ extern RAN_CONTEXT_t RC;
 extern eNB_MAC_INST                *eNB_mac_inst;
 extern UE_MAC_INST                 *UE_mac_inst;
 
-
 mui_t                               rrc_eNB_mui = 0;
 
 extern uint32_t to_earfcn_DL(int eutra_bandP, uint32_t dl_CarrierFreq, uint32_t bw);
@@ -134,9 +133,12 @@ extern int rrc_eNB_generate_RRCConnectionReconfiguration_endc(protocol_ctxt_t *c
     OCTET_STRING_t *scg_RB_config);
 extern struct rrc_eNB_ue_context_s *get_first_ue_context(eNB_RRC_INST *rrc_instance_pP);
 
+//there are batches of mutex in rrc eNB module which shall be reduced.
 pthread_mutex_t      rrc_release_freelist;
 RRC_release_list_t   rrc_release_info;
 pthread_mutex_t      lock_ue_freelist;
+pthread_mutex_t      lock_rrc_ttcn;
+
 
 uint8_t ul_sqn,dl_sqn;
 
@@ -6524,11 +6526,19 @@ char openair_rrc_eNB_configuration(
     }
   }
 
+  bool is_update_needed = false;
   for (CC_id = 0; CC_id < RC.nb_CC[0]; CC_id++) {
     if (RC.ss.CC_update_flag[CC_id]) {
-      init_SI(&ctxt, CC_id, configuration);
-      RC.ss.CC_update_flag[CC_id] = 0;
+      is_update_needed = true;
+      if (RC.ss.rrc_sysinfo_value_tag_transition == false){
+        init_SI(&ctxt, CC_id, configuration);
+        RC.ss.CC_update_flag[CC_id] = 0;
+      }
     }
+  }
+  if (RC.ss.mode >= SS_SOFTMODEM && is_update_needed == true){
+    //the mutex is there to notify TTCN SYS port that SIBxx have been processed
+    pthread_mutex_unlock(&lock_rrc_ttcn);
   }
 
   if(need_init) {
@@ -8515,6 +8525,7 @@ void rrc_eNB_reconfigure_DRBs (const protocol_ctxt_t *const ctxt_pP,
 void rrc_enb_init(void) {
   pthread_mutex_init(&lock_ue_freelist, NULL);
   pthread_mutex_init(&rrc_release_freelist, NULL);
+  pthread_mutex_init(&lock_rrc_ttcn, NULL);
   memset(&rrc_release_info,0,sizeof(RRC_release_list_t));
 }
 
