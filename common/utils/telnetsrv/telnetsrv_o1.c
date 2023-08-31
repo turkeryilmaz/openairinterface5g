@@ -101,7 +101,17 @@ static int get_stats(char *buf, int debug, telnet_printfunc_t prnt)
     prnt("  \"additional\": {\n");
     prnt("    \"frame-type\": \"%s\",\n", frame_type == TDD ? "tdd" : "fdd");
     prnt("    \"band-number\": %ld,\n", *frequencyInfoDL->frequencyBandList.list.array[0]);
-    prnt("    \"num-ues\": %d\n", num_ues);
+    prnt("    \"num-ues\": %d,\n", num_ues);
+    prnt("    \"ues\": [");
+    {
+      bool first = true;
+      UE_iterator((NR_UE_info_t **)mac->UE_info.list, it) {
+        if (!first) { prnt(", "); }
+        prnt("%d", it->rnti);
+        first = false;
+      }
+    }
+    prnt("]\n");
     prnt("  }\n");
   prnt("}\n");
   return 0;

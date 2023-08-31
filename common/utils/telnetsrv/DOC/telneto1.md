@@ -61,7 +61,7 @@ Use the `o1 stats` command. The output is in JSON format:
       "bwp3gpp:subCarrierSpacing": 1
     },
     "NRCELLDU": {
-      "nrcelldu3gpp:ssbFrequency": 1,
+      "nrcelldu3gpp:ssbFrequency": 641280,
       "nrcelldu3gpp:arfcnDL": 640008,
       "nrcelldu3gpp:bSChannelBwDL": 106,
       "nrcelldu3gpp:arfcnUL": 640008,
@@ -73,7 +73,11 @@ Use the `o1 stats` command. The output is in JSON format:
   "additional": {
     "frame-type": "tdd",
     "band-number": 78,
-    "num-ues": 0
+    "num-ues": 2,
+    "ues": [
+      1717,
+      28734
+    ]
   }
 }
 ```
