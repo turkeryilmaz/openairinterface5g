@@ -233,6 +233,48 @@ static int set_config(char *buf, int debug, telnet_printfunc_t prnt)
   return 0;
 }
 
+extern int8_t threequarter_fs;
+extern openair0_config_t openair0_cfg[MAX_CARDS];
+static int set_bwconfig(char *buf, int debug, telnet_printfunc_t prnt)
+{
+  if (running)
+    ERROR_MSG_RET("cannot set parameters while L1 is running\n");
+  if (!buf)
+    ERROR_MSG_RET("need param: o1 bwconfig <BW>\n");
+
+  gNB_RRC_INST *rrc = RC.nrrrc[0];
+  NR_ServingCellConfigCommon_t *scc = rrc->carrier.servingcellconfigcommon;
+  NR_FrequencyInfoDL_t *frequencyInfoDL = scc->downlinkConfigCommon->frequencyInfoDL;
+  NR_BWP_t *initialDL = &scc->downlinkConfigCommon->initialDownlinkBWP->genericParameters;
+  NR_FrequencyInfoUL_t *frequencyInfoUL = scc->uplinkConfigCommon->frequencyInfoUL;
+  NR_BWP_t *initialUL = &scc->uplinkConfigCommon->initialUplinkBWP->genericParameters;
+  if (strcmp(buf, "40") == 0) {
+    *scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB = 641280;
+    frequencyInfoDL->absoluteFrequencyPointA = 640008;
+    AssertFatal(frequencyInfoUL->absoluteFrequencyPointA == NULL, "only handle TDD\n");
+    frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth = 106;
+    initialDL->locationAndBandwidth = 28875;
+    frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth = 106;
+    initialUL->locationAndBandwidth = 28875;
+    threequarter_fs = 1;
+    openair0_cfg[0].threequarter_fs = 1;
+  } else if (strcmp(buf, "20") == 0) {
+    *scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB = 620736;
+    frequencyInfoDL->absoluteFrequencyPointA = 620020;
+    AssertFatal(frequencyInfoUL->absoluteFrequencyPointA == NULL, "only handle TDD\n");
+    frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth = 51;
+    initialDL->locationAndBandwidth = 13750;
+    frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth = 51;
+    initialUL->locationAndBandwidth = 13750;
+    threequarter_fs = 0;
+    openair0_cfg[0].threequarter_fs = 0;
+  } else {
+    ERROR_MSG_RET("unhandled option %s\n", buf);
+  }
+
+  return 0;
+}
+
 extern int stop_L1L2(module_id_t gnb_id);
 static int stop_modem(char *buf, int debug, telnet_printfunc_t prnt)
 {
@@ -255,7 +297,8 @@ static int start_modem(char *buf, int debug, telnet_printfunc_t prnt)
 
 static telnetshell_cmddef_t o1cmds[] = {
   {"stats", "", get_stats},
-  {"config", "?", set_config},
+  {"config", "[]", set_config},
+  {"bwconfig", "", set_bwconfig},
   {"stop_modem", "", stop_modem},
   {"start_modem", "", start_modem},
   {"", "", NULL},

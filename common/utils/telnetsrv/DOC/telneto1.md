@@ -109,6 +109,24 @@ Note that you cannot switch three-quarter sampling for this as of now.
 
 For values of the configuration, refer to the next section.
 
+# Use hardcoded configuration
+
+Use `o1 bwconfig` to write a hard-coded configuration for 20 or 40 MHz cells:
+```
+echo o1 bwconfig 20 | nc -N 127.0.0.1 9090
+echo o1 bwconfig 40 | nc -N 127.0.0.1 9090
+```
+
+The softmodem needs to be stopped; it will pick up the new configuration when
+starting the softmodem again.
+
+Use `o1 stats` to see which configurations are set by these commands for the
+parameters `nrcelldu3gpp:ssbFrequency`, `nrcelldu3gpp:arfcnDL`,
+`nrcelldu3gpp:arfcnUL`, `nrcelldu3gpp:bSChannelBwDL`,
+`nrcelldu3gpp:bSChannelBwUL`, and `bwp3gpp:numberOfRBsbwp3gpp:startRB`.
+Furthermore, for 20MHz, it *disables* three-quarter sampling, whereas it
+*enables* three-quarter sampling for 40MHz.
+
 # Restart the softmodem
 
 Use `o1 stop_modem` to stop the `nr-softmodem`. To restart the softmodem, use
