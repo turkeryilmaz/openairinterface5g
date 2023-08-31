@@ -1964,11 +1964,11 @@ uint8_t do_SIB23(uint8_t Mod_id,
   if(configuration->sib3_q_QualMin[CC_id] || configuration->sib3_threshServingLowQ[CC_id]){
     (*sib3)->ext1 = CALLOC(1, sizeof(struct LTE_SystemInformationBlockType3__ext1));
   }
-  /*
-  (*sib3)->ext1->s_IntraSearch_v920 = CALLOC(1, sizeof(struct LTE_SystemInformationBlockType3__ext1__s_IntraSearch_v920));
-  (*sib3)->ext1->s_IntraSearch_v920->s_IntraSearchP_r9 = 31; // FIXME
-  (*sib3)->ext1->s_IntraSearch_v920->s_IntraSearchQ_r9 = 4;
-  */
+  
+  /*(*sib3)->ext1->s_IntraSearch_v920 = CALLOC(1, sizeof(struct LTE_SystemInformationBlockType3__ext1__s_IntraSearch_v920));
+  (*sib3)->ext1->s_IntraSearch_v920->s_IntraSearchP_r9 = 0; // FIXME
+  (*sib3)->ext1->s_IntraSearch_v920->s_IntraSearchQ_r9 = 2;*/
+  
   if(configuration->sib3_q_QualMin[CC_id]){
     (*sib3)->ext1->q_QualMin_r9 = CALLOC(1,sizeof(LTE_Q_QualMin_r9_t));
     *((*sib3)->ext1->q_QualMin_r9) = *(configuration->sib3_q_QualMin[CC_id]);
@@ -1977,6 +1977,13 @@ uint8_t do_SIB23(uint8_t Mod_id,
     (*sib3)->ext1->threshServingLowQ_r9 = CALLOC(1,sizeof(LTE_ReselectionThresholdQ_r9_t));
     *((*sib3)->ext1->threshServingLowQ_r9) = *(configuration->sib3_threshServingLowQ[CC_id]);
   }
+
+  if (configuration->sib3_s_NonIntraSearchP[CC_id]){
+    (*sib3)->ext1->s_NonIntraSearch_v920 = CALLOC(1,sizeof(LTE_ReselectionThreshold_t)+sizeof(LTE_ReselectionThresholdQ_r9_t));
+    (*sib3)->ext1->s_NonIntraSearch_v920->s_NonIntraSearchP_r9=*(configuration->sib3_s_NonIntraSearchP[CC_id]);
+    (*sib3)->ext1->s_NonIntraSearch_v920->s_NonIntraSearchQ_r9=*(configuration->sib3_s_NonIntraSearchQ[CC_id]);
+  }
+
   (*sib3)->ext4 = CALLOC(1, sizeof(struct LTE_SystemInformationBlockType3__ext4));
   (*sib3)->ext4->cellSelectionInfoCE_r13 = CALLOC(1, sizeof(LTE_CellSelectionInfoCE_r13_t));
   (*sib3)->ext4->cellSelectionInfoCE_r13->q_RxLevMinCE_r13 = -70;
@@ -2334,7 +2341,7 @@ uint8_t do_SIB23(uint8_t Mod_id,
                                    NULL,
                                    (void *)bcch_message,
                                    buffer,
-                                   900);
+                                   1500);
   AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
                enc_rval.failed_type->name, enc_rval.encoded);
   LOG_D(RRC,"[eNB] SystemInformation Encoded %zd bits (%zd bytes)\n",enc_rval.encoded,(enc_rval.encoded+7)/8);

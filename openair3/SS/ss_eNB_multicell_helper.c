@@ -83,6 +83,7 @@ void init_ss_context(SS_Cell_Context_t SSCell_list[]){
   memset(SSCell_list, 0, (sizeof(SS_Cell_Context_t) * 8));
   memset(RC.ss.l1macind,0,sizeof(RC.ss.l1macind));
   memset(RC.ss.CC_update_flag,0, (sizeof(RC.ss.CC_update_flag)));
+  RC.ss.rrc_sysinfo_value_tag_transition = false;
   memset(RC.ss.CC_conf_flag,0, (sizeof(RC.ss.CC_conf_flag)));
   for(int Cell_idx = 0; Cell_idx < 8; Cell_idx++){
     SSCell_list[Cell_idx].eutra_cellId = -1;
