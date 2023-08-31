@@ -97,13 +97,17 @@ There are two sections:
 
 # Write a new configuration
 
-**This command is not fully implemented yet, and cannot be used to modify any configuration as of now.**
-
 Use `o1 config` to write a configuration:
 ```
-echo o1 config nrcelldu3gpp:arfcnDL 123 nrcelldu3gpp:arfcnUL 1231 | nc -N 127.0.0.1 9090
+echo o1 config nrcelldu3gpp:ssbFrequency 620736 nrcelldu3gpp:arfcnDL 620020 nrcelldu3gpp:bSChannelBwDL 51 bwp3gpp:numberOfRBs 51 bwp3gpp:startRB 0 | nc -N 127.0.0.1 9090
 ```
-You have to pass the above parameters in exactly this order.
+You have to pass the above parameters in exactly this order. The softmodem
+needs to be stopped; it will pick up the new configuration when starting the
+softmodem again.
+
+Note that you cannot switch three-quarter sampling for this as of now.
+
+For values of the configuration, refer to the next section.
 
 # Restart the softmodem
 
