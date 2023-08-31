@@ -35,7 +35,7 @@
 #include "openair2/LAYER2/NR_MAC_gNB/nr_mac_gNB.h"
 #include "common/utils/nr/nr_common.h"
 
-#define ERROR_MSG_RET(mSG, aRGS...) do { prnt("ERROR: " mSG, ##aRGS); return 1; } while (0)
+#define ERROR_MSG_RET(mSG, aRGS...) do { prnt("FAILURE: " mSG, ##aRGS); return 1; } while (0)
 
 #define ISINITBWP "bwp3gpp:isInitialBwp"
 //#define CYCLPREF  "bwp3gpp:cyclicPrefix"
@@ -114,6 +114,7 @@ static int get_stats(char *buf, int debug, telnet_printfunc_t prnt)
     prnt("]\n");
     prnt("  }\n");
   prnt("}\n");
+  prnt("OK\n");
   return 0;
 }
 
@@ -230,6 +231,7 @@ static int set_config(char *buf, int debug, telnet_printfunc_t prnt)
   // we assume same locationAndBandwidth as DL
   initialUL->locationAndBandwidth = locationAndBandwidth;
 
+  prnt("OK\n");
   return 0;
 }
 
@@ -272,6 +274,7 @@ static int set_bwconfig(char *buf, int debug, telnet_printfunc_t prnt)
     ERROR_MSG_RET("unhandled option %s\n", buf);
   }
 
+  prnt("OK\n");
   return 0;
 }
 
@@ -282,6 +285,7 @@ static int stop_modem(char *buf, int debug, telnet_printfunc_t prnt)
     ERROR_MSG_RET("cannot stop, nr-softmodem not running\n");
   stop_L1L2(0);
   running = false;
+  prnt("OK\n");
   return 0;
 }
 
@@ -292,6 +296,7 @@ static int start_modem(char *buf, int debug, telnet_printfunc_t prnt)
     ERROR_MSG_RET("cannot start, nr-softmodem already running\n");
   start_L1L2(0);
   running = true;
+  prnt("OK\n");
   return 0;
 }
 
