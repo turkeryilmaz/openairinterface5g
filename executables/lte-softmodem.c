@@ -33,6 +33,7 @@
 
 #define _GNU_SOURCE             /* See feature_test_macros(7) */
 #include <sched.h>
+#include <sys/sysinfo.h>
 
 #undef MALLOC //there are two conflicting definitions, so we better make sure we don't use it at all
 
@@ -549,6 +550,14 @@ int main ( int argc, char **argv )
     for (int CC_id=0; CC_id<RC.nb_L1_CC[x]; CC_id++) {
       L1_rxtx_proc_t *L1proc= &RC.eNB[x][CC_id]->proc.L1_proc;
       L1_rxtx_proc_t *L1proctx= &RC.eNB[x][CC_id]->proc.L1_proc_tx;
+#ifdef TASK_MANAGER_LTE
+      int const log_cores = get_nprocs_conf();
+      assert(log_cores > 0);
+      // Assuming: Physical cores = Logical cores / 2
+      init_task_manager(&RC.eNB[x][CC_id]->proc.man, log_cores); 
+      L1proc->man = &RC.eNB[x][CC_id]->proc.man;
+      L1proctx->man = &RC.eNB[x][CC_id]->proc.man;
+#else
       L1proc->respDecode=(notifiedFIFO_t*) malloc(sizeof(notifiedFIFO_t));
       // Most likely a bug. Do you want a thread pool per CC ?
       L1proc->threadPool = (tpool_t *)malloc(sizeof(tpool_t));
@@ -557,9 +566,9 @@ int main ( int argc, char **argv )
       else
         initTpool("n", L1proc->threadPool, true);
       L1proctx->threadPool = L1proc->threadPool;
-
-
       initNotifiedFIFO(L1proc->respDecode);
+#endif
+
   }
 
   printf("wait_eNBs()\n");

@@ -685,6 +685,7 @@ set(SCHED_SRC
   ${OPENAIR1_DIR}/SCHED/fapi_l1.c
   ${OPENAIR1_DIR}/SCHED/phy_procedures_lte_eNb.c
   ${OPENAIR1_DIR}/SCHED/phy_procedures_lte_common.c
+  ${OPENAIR_DIR}/common/utils/thread_pool/task_manager.c
 )
 add_library(SCHED_LIB ${SCHED_SRC})
 target_link_libraries(SCHED_LIB PRIVATE asn1_lte_rrc_hdrs)
@@ -934,6 +935,7 @@ set(PHY_SRC_COMMON
   ${OPENAIR1_DIR}/PHY/TOOLS/sqrt.c
   ${OPENAIR1_DIR}/PHY/TOOLS/lut.c
   ${OPENAIR1_DIR}/PHY/TOOLS/simde_operations.c
+  ${OPENAIR_DIR}/common/utils/thread_pool/task_manager.c
   )
 
 set(PHY_SRC

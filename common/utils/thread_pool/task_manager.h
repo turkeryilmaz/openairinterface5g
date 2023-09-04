@@ -13,6 +13,10 @@
 
 #define TASK_MANAGER_SIM
 
+// LTE
+#define TASK_MANAGER_LTE
+
+
 #include "task.h"
 
 

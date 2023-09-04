@@ -343,6 +343,7 @@ int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
                         uint8_t harq_pid,
                         uint32_t G
 #ifdef TASK_MANAGER
+                        // This is a broken idea. But so is the code arquitecture
                         , thread_info_tm_t* t_info
 #endif
                         )
