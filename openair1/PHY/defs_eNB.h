@@ -419,10 +419,6 @@ typedef struct L1_proc_t_s {
   /// for waking up tx procedure
   RU_proc_t *ru_proc;
   struct PHY_VARS_eNB_s *eNB;
-
-#ifdef TASK_MANAGER_LTE
-  task_manager_t man;
-#endif
 } L1_proc_t;
 
 

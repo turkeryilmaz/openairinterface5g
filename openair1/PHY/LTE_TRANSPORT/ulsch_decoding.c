@@ -390,6 +390,10 @@ static int ulsch_decoding_data(PHY_VARS_eNB *eNB, L1_rxtx_proc_t *proc, int UE_i
     r_offset+=E;
     offset+=sz;	    
   }
+
+#ifdef TASK_MANAGER_LTE
+  trigger_all_task_manager(proc->man);
+#endif
   return(ret);
 }
 

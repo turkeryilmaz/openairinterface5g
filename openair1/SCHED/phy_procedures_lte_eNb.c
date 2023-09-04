@@ -1418,10 +1418,11 @@ void pusch_procedures(PHY_VARS_eNB *eNB,L1_rxtx_proc_t *proc) {
     }
   }   //   for (i=0; i<NUMBER_OF_ULSCH_MAX; i++)
 
-
   const bool decode = proc->nbDecode;
 #ifdef TASK_MANAGER_LTE
   if (proc->nbDecode) {
+    // Not needed, but won't hurt performance
+    trigger_all_task_manager(proc->man);
     wait_spin_all_atomics_one(t_info.len, t_info.tasks_remaining);
     for(int i = 0; i < t_info.len; ++i){
       postDecode(proc, &arr[i]); 
@@ -1429,7 +1430,6 @@ void pusch_procedures(PHY_VARS_eNB *eNB,L1_rxtx_proc_t *proc) {
     //printf("Decoding time %ld \n", time_now_ns() - t0);
   }
 #else
-
   while (proc->nbDecode > 0) {
     notifiedFIFO_elt_t *req=pullTpool(proc->respDecode, proc->threadPool);
     if (req == NULL)
@@ -1439,14 +1439,10 @@ void pusch_procedures(PHY_VARS_eNB *eNB,L1_rxtx_proc_t *proc) {
     merge_meas(&eNB->ulsch_turbo_decoding_stats, &ts);
     delNotifiedFIFO_elt(req);
   }
- 
 #endif
 
   if (decode)
     stop_meas(&eNB->ulsch_decoding_stats);
-
-
-
 }
 
 extern int oai_exit;

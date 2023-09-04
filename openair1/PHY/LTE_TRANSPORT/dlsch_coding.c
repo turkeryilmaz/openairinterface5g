@@ -283,7 +283,7 @@ static void TPencode(void * arg) {
 
 #ifdef TASK_MANAGER_LTE
     assert(atomic_load(rdata->tasks_remaining) == 0);
-    atomic_store_explicit(rdata->tasks_remaining,1, memory_order_seq_cst);
+    atomic_store_explicit(rdata->tasks_remaining, 1, memory_order_seq_cst);
 #endif
 }
 
@@ -384,7 +384,7 @@ int dlsch_encoding(PHY_VARS_eNB *eNB,
     rdata->G=G;
 
 #ifdef TASK_MANAGER_LTE
-  task_t t = {.func =  TPencode, .args = rdata};
+  task_t t = {.func = TPencode, .args = rdata};
   async_task_manager(proc->man, t);
 #else
     pushTpool(proc->threadPool, req);
