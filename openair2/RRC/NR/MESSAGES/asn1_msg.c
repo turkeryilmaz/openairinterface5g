@@ -1368,7 +1368,9 @@ void fill_initial_cellGroupConfig(int uid,
 
   cellGroupConfig->cellGroupId = 0;
 
-  if (RC.ss.mode >= SS_SOFTMODEM) {
+  /* Rlc Bearer Config */
+  /* TS38.331 9.2.1	Default SRB configurations */
+  if (RC.ss.mode == SS_SOFTMODEM) {
     NR_RLC_BearerConfig_t * ss_rlc_BearerConfig = NULL;
     /*SRB1 SS RLC_BearerConfig */
     int rbIndex = 1;
@@ -1391,7 +1393,8 @@ void fill_initial_cellGroupConfig(int uid,
     cellGroupConfig->sCellToReleaseList                                       = NULL;
     return;
     */
-  }else {
+  } else {
+    /* We cover OAI native setup and TTCN SRB port "only" configuration */
     /* Rlc Bearer Config */
     /* TS38.331 9.2.1	Default SRB configurations */
     cellGroupConfig->rlc_BearerToAddModList                          = calloc(1, sizeof(*cellGroupConfig->rlc_BearerToAddModList));
