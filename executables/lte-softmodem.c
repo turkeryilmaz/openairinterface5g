@@ -551,7 +551,7 @@ int main ( int argc, char **argv )
       assert(log_cores > 0);
       task_manager_t man = {0};
       // Assuming: Physical cores = Logical cores / 2
-      init_task_manager(&man, log_cores); 
+      init_task_manager(&man, log_cores/2); 
 #endif 
 
   for (int x=0; x < RC.nb_L1_inst; x++)

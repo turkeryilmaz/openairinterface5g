@@ -20,7 +20,7 @@
 #include <sys/syscall.h>      /* Definition of SYS_* constants */
 #include <unistd.h>
 
-/*
+
 static
 int64_t time_now_us(void)
 {
@@ -36,7 +36,7 @@ int64_t time_now_us(void)
   }
   return micros;
 }
-*/
+
 /*
 static
 void pin_thread_to_core(int core_num)
@@ -390,6 +390,12 @@ typedef struct{
 } task_thread_args_t;
 
 
+// Just for debugging purposes, it is very slow!!!!
+static
+_Atomic int cnt_out = 0;
+
+static
+_Atomic int cnt_in = 0;
 
 static
 void* worker_thread(void* arg)
@@ -429,12 +435,14 @@ void* worker_thread(void* arg)
       if(pop_not_q(&q_arr[idx], &ret) == false)
         break;
     }
-
-    //int64_t now = time_now_us();
+        //int64_t now = time_now_us();
     //printf("Calling fuinc \n");
     ret.t.func(ret.t.args); 
     //printf("Returning from func \n");
     //int64_t stop = time_now_us(); 
+
+    cnt_out++;
+    printf("Tasks out %d %ld \n", cnt_out, time_now_us());
 
     acc_num_task +=1;
   }
@@ -549,12 +557,21 @@ void async_task_manager(task_manager_t* man, task_t t)
   for(uint32_t i = 0; i < len_thr ; ++i){
     if(try_push_not_q(&q_arr[(i+index) % len_thr], t)){
       man->num_task +=1;
+
+      // Debbugging purposes
+      cnt_in++;
+      printf("Tasks in %d %ld \n", cnt_in, time_now_us());
+
       return;
     }
   }
 
   push_not_q(&q_arr[index%len_thr], t);
   man->num_task +=1;
+
+  // Debbugging purposes
+  cnt_in++;
+  printf("Tasks in %d %ld \n", cnt_in, time_now_us());
 }
 
 void trigger_and_spin_task_manager(task_manager_t* man)

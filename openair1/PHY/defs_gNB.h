@@ -728,7 +728,6 @@ typedef struct PHY_VARS_gNB_s {
   notifiedFIFO_t L1_tx_filled;
   notifiedFIFO_t L1_tx_out;
   notifiedFIFO_t resp_RU_tx;
-  tpool_t threadPool;
   int nbSymb;
   int num_pusch_symbols_per_thread;
   pthread_t L1_rx_thread;
@@ -741,6 +740,8 @@ typedef struct PHY_VARS_gNB_s {
   rt_L1_profiling_t rt_L1_profiling; 
 #ifdef TASK_MANAGER
   task_manager_t man;
+#else
+  tpool_t threadPool;
 #endif
 } PHY_VARS_gNB;
 
