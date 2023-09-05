@@ -37,6 +37,7 @@
 #include "NR_RLC-Config.h"
 #include "common/ran_context.h"
 #include "NR_UL-CCCH-Message.h"
+#include "opt.h"
 
 #include "openair2/F1AP/f1ap_du_rrc_message_transfer.h"
 
@@ -157,6 +158,42 @@ void mac_rlc_data_ind     (
     T(T_ENB_RLC_MAC_UL, T_INT(module_idP), T_INT(rntiP),
       T_INT(channel_idP), T_INT(tb_sizeP));
 
+  LOG_UDUMPMSG(RLC, buffer_pP, tb_sizeP, LOG_DUMP_CHAR, "%s: ", __FUNCTION__);
+
+  if (RC.ss.mode >= SS_SOFTMODEM) {
+    LOG_D(RLC, "Packet received over RLC layer, DRB data type == %d\n", RC.nr_drb_data_type);
+    if ((tb_sizeP != 0) && (true == enb_flagP) && (channel_idP >= 4) && ((RC.nr_drb_data_type == DRB_RlcPdu) || (RC.nr_drb_data_type == DRB_RlcSdu))) {
+      int drb_id = channel_idP - 3;
+      int result;
+      LOG_A(RLC, "Sending packet to SS, Calling SS_DRB_PDU_IND ue %x drb id %d size %u\n", rntiP, drb_id, tb_sizeP);
+
+      MessageDef *message_p = itti_alloc_new_message (TASK_SS_DRB, 0, SS_DRB_PDU_IND);
+      if (message_p) {
+        SS_DRB_PDU_IND (message_p).drb_id = drb_id;
+        SS_DRB_PDU_IND (message_p).frame = frameP;
+        SS_DRB_PDU_IND (message_p).subframe = 0;
+        SS_DRB_PDU_IND (message_p).physCellId = RC.nrrrc[module_idP]->carrier.physCellId;
+        SS_DRB_PDU_IND (message_p).sdu_size = tb_sizeP;
+        memcpy(SS_DRB_PDU_IND (message_p).sdu, buffer_pP, tb_sizeP);
+
+        result = itti_send_msg_to_task (TASK_SS_DRB, ENB_MODULE_ID_TO_INSTANCE(module_idP), message_p);
+        if (result < 0) {
+          LOG_E(RLC, "Error in itti_send_msg_to_task!\n");
+        }
+      }
+
+      //if RLC packet is segmented, we shall not "reset" RLC packet in progress
+      if (RC.nr_drb_data_type == DRB_RlcPdu) {
+          RC.nr_drb_data_type = DRB_data_type_qty;
+      }
+      return;
+    }
+  }
+
+  nr_rlc_pkt_info_t rlc_pkt;
+  rlc_pkt.direction = DIRECTION_UPLINK;
+  rlc_pkt.ueid      = rntiP;
+
   nr_rlc_manager_lock(nr_rlc_ue_manager);
   ue = nr_rlc_manager_get_ue(nr_rlc_ue_manager, rntiP);
 
@@ -172,8 +209,14 @@ void mac_rlc_data_ind     (
 
   if (rb != NULL) {
 	LOG_D(RLC, "RB found! (channel ID %d) \n", channel_idP);
+
+    rlc_pkt.bearerType                    = -1; //To be filled
+    rlc_pkt.bearerId                      = -1; //To be filled
+
+    //LOG_RLC_P(OAILOG_INFO, "UL_RLC_AM_PDU", frameP, slotP, rlc_pkt, buffer, length);
+
     rb->set_time(rb, nr_rlc_current_time);
-    rb->recv_pdu(rb, buffer_pP, tb_sizeP);
+    rb->recv_pdu(rb, buffer_pP, tb_sizeP, &rlc_pkt);
   } else {
     LOG_E(RLC, "%s:%d:%s: fatal: no RB found (channel ID %d)\n",
           __FILE__, __LINE__, __FUNCTION__, channel_idP);
@@ -202,6 +245,10 @@ tbs_size_t mac_rlc_data_req(
   nr_rlc_entity_t *rb;
   int maxsize;
 
+  nr_rlc_pkt_info_t rlc_pkt;
+  rlc_pkt.direction = DIRECTION_DOWNLINK;
+  rlc_pkt.ueid      = rntiP;
+
   nr_rlc_manager_lock(nr_rlc_ue_manager);
   ue = nr_rlc_manager_get_ue(nr_rlc_ue_manager, rntiP);
 
@@ -219,14 +266,39 @@ tbs_size_t mac_rlc_data_req(
     LOG_D(RLC, "MAC PDU to get created for channel_idP:%d \n", channel_idP);
     rb->set_time(rb, nr_rlc_current_time);
     maxsize = tb_sizeP;
-    ret = rb->generate_pdu(rb, buffer_pP, maxsize);
+    ret = rb->generate_pdu(rb, buffer_pP, maxsize, &rlc_pkt);
   } else {
     LOG_D(RLC, "MAC PDU failed to get created for channel_idP:%d \n", channel_idP);
     ret = 0;
   }
 
   nr_rlc_manager_unlock(nr_rlc_ue_manager);
-
+  switch ((channel_idP)) {
+  case 1 ... 3:
+	  rlc_pkt.bearerType = CHANNEL_TYPE_SRB;
+	  rlc_pkt.bearerId   = channel_idP - 1;
+	  break;
+  case 4 ... 8:
+	  rlc_pkt.bearerType = CHANNEL_TYPE_DRB;
+	  rlc_pkt.bearerId   = channel_idP - 4;
+	  break;
+  }
+  if (ret!=0) {
+	  char *rlcstr;
+	  switch (rlc_pkt.rlcMode)
+	  {
+		  case 1:
+			  rlcstr = "DL_RLC_TM_PDU";
+			  break;
+                  case 2:
+			  rlcstr = "DL_RLC_UM_PDU";
+			  break;
+		  case 4:
+			  rlcstr = "DL_RLC_AM_PDU";
+			  break;
+	  }
+	  LOG_RLC_P(OAILOG_INFO, rlcstr, -1, -1, rlc_pkt, (unsigned char *)buffer_pP, ret);
+  }
   if (enb_flagP)
     T(T_ENB_RLC_MAC_DL, T_INT(module_idP), T_INT(rntiP),
       T_INT(channel_idP), T_INT(ret));
@@ -399,6 +471,59 @@ rlc_op_status_t rlc_data_req     (const protocol_ctxt_t *const ctxt_pP,
   return RLC_OP_STATUS_OK;
 }
 
+rlc_op_status_t enqueue_mac_rlc_data_req(
+  const protocol_ctxt_t *const ctxt_pP,
+  const srb_flag_t   srb_flagP,
+  const MBMS_flag_t  MBMS_flagP,
+  const rb_id_t      rb_idP,
+  const mui_t        muiP,
+  confirm_t    confirmP,
+  sdu_size_t   sdu_sizeP,
+  mem_block_t *sdu_pP,
+  const uint32_t *const sourceL2Id,
+  const uint32_t *const destinationL2Id
+   )
+{
+  int rnti = ctxt_pP->rntiMaybeUEid;
+  nr_rlc_ue_t *ue;
+  nr_rlc_entity_t *rb;
+
+  LOG_D(RLC, "%s rnti %d srb_flag %d rb_id %ld mui %d confirm %d sdu_size %d MBMS_flag %d\n",
+        __FUNCTION__, rnti, srb_flagP, rb_idP, muiP, confirmP, sdu_sizeP,
+        MBMS_flagP);
+
+  if (ctxt_pP->enb_flag)
+    T(T_ENB_RLC_DL, T_INT(ctxt_pP->module_id),
+      T_INT(ctxt_pP->rntiMaybeUEid), T_INT(rb_idP), T_INT(sdu_sizeP));
+
+  nr_rlc_manager_lock(nr_rlc_ue_manager);
+  ue = nr_rlc_manager_get_ue(nr_rlc_ue_manager, rnti);
+
+  rb = NULL;
+
+  if (srb_flagP) {
+    if (rb_idP >= 1 && rb_idP <= 2)
+      rb = ue->srb[rb_idP - 1];
+  } else {
+    if (rb_idP >= 1 && rb_idP <= 5)
+      rb = ue->drb[rb_idP - 1];
+  }
+
+  if (rb != NULL) {
+    DevAssert(rb->deliver_pdu != NULL);
+    rb->deliver_pdu(rb, (char *)sdu_pP->data, sdu_sizeP);
+  } else {
+    LOG_E(RLC, "%s:%d:%s: fatal: SDU sent to unknown RB\n", __FILE__, __LINE__, __FUNCTION__);
+    exit(1);
+  }
+
+  nr_rlc_manager_unlock(nr_rlc_ue_manager);
+
+  free_mem_block(sdu_pP, __func__);
+
+  return RLC_OP_STATUS_OK;
+}
+
 int nr_rlc_get_available_tx_space(
   const rnti_t            rntiP,
   const logical_chan_id_t channel_idP)
@@ -510,6 +635,8 @@ rb_found:
   is_enb = nr_rlc_manager_get_enb_flag(nr_rlc_ue_manager);
   ctx.enb_flag = is_enb;
 
+  LOG_UDUMPMSG(RLC, buf, size, LOG_DUMP_CHAR, "%s: ", __FUNCTION__);
+
   if (is_enb) {
     T(T_ENB_RLC_UL,
       T_INT(0 /*ctxt_pP->module_id*/),
@@ -561,7 +688,7 @@ rb_found:
     exit(1);
   }
   memcpy(memblock->data, buf, size);
-  LOG_D(PDCP, "Calling PDCP layer from RLC in %s\n", __FUNCTION__);
+  LOG_I(RLC, "Calling PDCP layer from RLC in %s\n", __FUNCTION__);
   if (!pdcp_data_ind(&ctx, is_srb, 0, rb_id, size, memblock, NULL, NULL)) {
     LOG_E(RLC, "%s:%d:%s: ERROR: pdcp_data_ind failed\n", __FILE__, __LINE__, __FUNCTION__);
     /* what to do in case of failure? for the moment: nothing */
@@ -602,7 +729,7 @@ static void successful_delivery(void *_ue, nr_rlc_entity_t *entity, int sdu_id)
   exit(1);
 
 rb_found:
-  LOG_D(RLC, "sdu %d was successfully delivered on %s %d\n",
+  LOG_I(RLC, "sdu %d was successfully delivered on %s %d\n",
         sdu_id,
         is_srb ? "SRB" : "DRB",
         rb_id);
@@ -683,6 +810,70 @@ rb_found:
 #endif
 }
 
+void *rlc_enb_task(void *arg)
+//-----------------------------------------------------------------------------
+{
+  MessageDef *received_msg = NULL;
+  int         result;
+
+  itti_mark_task_ready(TASK_RLC_ENB);
+  LOG_I(RLC, "Starting main loop of RLC message task\n");
+
+  while (1) {
+    itti_receive_msg(TASK_RLC_ENB, &received_msg);
+
+    switch (ITTI_MSG_ID(received_msg)) {
+      case SS_DRB_PDU_REQ:
+        if (RC.ss.mode >= SS_SOFTMODEM) {
+          protocol_ctxt_t ctxt;
+          instance_t instance = ITTI_MSG_DESTINATION_INSTANCE(received_msg);
+          LOG_I(RLC, "RLC received SS_DRB_PDU_REQ DRB_ID:%d SDU_SIZE:%d\n",
+              SS_DRB_PDU_REQ(received_msg).drb_id, SS_DRB_PDU_REQ(received_msg).sdu_size);
+          PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt,
+              instance,
+              GNB_FLAG_YES,
+              SS_DRB_PDU_REQ(received_msg).rnti,
+              received_msg->ittiMsgHeader.lte_time.frame,
+              received_msg->ittiMsgHeader.lte_time.slot);
+
+          mem_block_t *sdu = get_free_mem_block(SS_DRB_PDU_REQ(received_msg).sdu_size, __func__);
+          memcpy(sdu->data, SS_DRB_PDU_REQ(received_msg).sdu, SS_DRB_PDU_REQ(received_msg).sdu_size);
+          enqueue_mac_rlc_data_req(&ctxt,
+              SRB_FLAG_NO,
+              MBMS_FLAG_NO,
+              SS_DRB_PDU_REQ(received_msg).drb_id,
+              0,
+              0,
+              SS_DRB_PDU_REQ(received_msg).sdu_size,
+              sdu,
+              NULL,
+              NULL);
+
+          /* rlc_data_req(&ctxt, SRB_FLAG_NO, MBMS_FLAG_NO, SS_DRB_PDU_REQ(received_msg).drb_id, 0, 0, SS_DRB_PDU_REQ(received_msg).sdu_size, sdu, NULL, NULL); */
+        } else {
+          LOG_E(RLC, "Received unexpected message %s\n", ITTI_MSG_NAME(received_msg));
+        }
+        break;
+
+      case TERMINATE_MESSAGE:
+        LOG_W(RLC, " *** Exiting RLC thread\n");
+        itti_exit_task();
+        break;
+
+      default:
+        LOG_E(RLC, "Received unexpected message %s\n", ITTI_MSG_NAME(received_msg));
+        break;
+    } // end switch
+
+    result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
+    AssertFatal(result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
+
+    received_msg = NULL;
+  } // end while
+
+  return NULL;
+}
+
 static void add_rlc_srb(int rnti, struct NR_SRB_ToAddMod *s, NR_RLC_BearerConfig_t *rlc_BearerConfig)
 {
   nr_rlc_entity_t            *nr_rlc_am;
@@ -723,26 +914,30 @@ static void add_rlc_srb(int rnti, struct NR_SRB_ToAddMod *s, NR_RLC_BearerConfig
     exit(1);
   }
 
-  switch (r->present) {
-  case NR_RLC_Config_PR_am: {
-    struct NR_RLC_Config__am *am;
-    am = r->choice.am;
-    t_reassembly       = decode_t_reassembly(am->dl_AM_RLC.t_Reassembly);
-    t_status_prohibit  = decode_t_status_prohibit(am->dl_AM_RLC.t_StatusProhibit);
-    t_poll_retransmit  = decode_t_poll_retransmit(am->ul_AM_RLC.t_PollRetransmit);
-    poll_pdu           = decode_poll_pdu(am->ul_AM_RLC.pollPDU);
-    poll_byte          = decode_poll_byte(am->ul_AM_RLC.pollByte);
-    max_retx_threshold = decode_max_retx_threshold(am->ul_AM_RLC.maxRetxThreshold);
-    if (*am->dl_AM_RLC.sn_FieldLength != *am->ul_AM_RLC.sn_FieldLength) {
-      LOG_E(RLC, "%s:%d:%s: fatal\n", __FILE__, __LINE__, __FUNCTION__);
+  if (r) {
+    switch (r->present) {
+    case NR_RLC_Config_PR_am: {
+      struct NR_RLC_Config__am *am;
+      am = r->choice.am;
+      t_reassembly       = decode_t_reassembly(am->dl_AM_RLC.t_Reassembly);
+      t_status_prohibit  = decode_t_status_prohibit(am->dl_AM_RLC.t_StatusProhibit);
+      t_poll_retransmit  = decode_t_poll_retransmit(am->ul_AM_RLC.t_PollRetransmit);
+      poll_pdu           = decode_poll_pdu(am->ul_AM_RLC.pollPDU);
+      poll_byte          = decode_poll_byte(am->ul_AM_RLC.pollByte);
+      max_retx_threshold = decode_max_retx_threshold(am->ul_AM_RLC.maxRetxThreshold);
+      if (*am->dl_AM_RLC.sn_FieldLength != *am->ul_AM_RLC.sn_FieldLength) {
+        LOG_E(RLC, "%s:%d:%s: fatal\n", __FILE__, __LINE__, __FUNCTION__);
+        exit(1);
+      }
+      sn_field_length    = decode_sn_field_length_am(*am->dl_AM_RLC.sn_FieldLength);
+      break;
+    }
+    default:
+      LOG_E(RLC, "%s:%d:%s: fatal error\n", __FILE__, __LINE__, __FUNCTION__);
       exit(1);
     }
-    sn_field_length    = decode_sn_field_length_am(*am->dl_AM_RLC.sn_FieldLength);
-    break;
-  }
-  default:
-    LOG_E(RLC, "%s:%d:%s: fatal error\n", __FILE__, __LINE__, __FUNCTION__);
-    exit(1);
+  } else {
+    /* TODO: TTCN sends empty RLC config for SRB, need to use default values */
   }
 
   nr_rlc_manager_lock(nr_rlc_ue_manager);
@@ -794,7 +989,7 @@ static void add_drb_am(int rnti, struct NR_DRB_ToAddMod *s, NR_RLC_BearerConfig_
   int sn_field_length;
 
   if (!(drb_id >= 1 && drb_id <= MAX_DRBS_PER_UE)) {
-    LOG_E(RLC, "%s:%d:%s: fatal, bad srb id %d\n",
+    LOG_E(RLC, "%s:%d:%s: fatal, bad drb id %d\n",
           __FILE__, __LINE__, __FUNCTION__, drb_id);
     exit(1);
   }
@@ -871,7 +1066,7 @@ static void add_drb_um(int rnti, struct NR_DRB_ToAddMod *s, NR_RLC_BearerConfig_
   int t_reassembly;
 
   if (!(drb_id >= 1 && drb_id <= MAX_DRBS_PER_UE)) {
-    LOG_E(RLC, "%s:%d:%s: fatal, bad srb id %d\n",
+    LOG_E(RLC, "%s:%d:%s: fatal, bad drb id %d\n",
           __FILE__, __LINE__, __FUNCTION__, drb_id);
     exit(1);
   }
@@ -919,7 +1114,7 @@ static void add_drb_um(int rnti, struct NR_DRB_ToAddMod *s, NR_RLC_BearerConfig_
                                      sn_field_length);
     nr_rlc_ue_add_drb_rlc_entity(ue, drb_id, nr_rlc_um);
 
-    LOG_D(RLC, "%s:%d:%s: added drb %d to UE with RNTI 0x%x\n", __FILE__, __LINE__, __FUNCTION__, drb_id, rnti);
+    LOG_I(RLC, "%s:%d:%s: added drb %d to UE with RNTI 0x%x\n", __FILE__, __LINE__, __FUNCTION__, drb_id, rnti);
   }
   nr_rlc_manager_unlock(nr_rlc_ue_manager);
 }
@@ -1003,6 +1198,7 @@ rlc_op_status_t nr_rrc_rlc_config_asn1_req (const protocol_ctxt_t   * const ctxt
             if(rlc_bearer2add_list->list.array[j]->servedRadioBearer->present == NR_RLC_BearerConfig__servedRadioBearer_PR_drb_Identity){
               if(drb2add_listP->list.array[i]->drb_Identity == rlc_bearer2add_list->list.array[j]->servedRadioBearer->choice.drb_Identity){
                 add_drb(rnti, drb2add_listP->list.array[i], rlc_bearer2add_list->list.array[j]);
+                LOG_D(RLC, "Add drb %ld\n", drb2add_listP->list.array[i]->drb_Identity);
               }
             }
           }

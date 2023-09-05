@@ -41,6 +41,11 @@
 
 const int get_ul_tda(gNB_MAC_INST *nrmac, const NR_ServingCellConfigCommon_t *scc, int frame, int slot) {
 
+  if(nrmac->grant_prb){
+    /*If configured from SS, don't use mixed slot. Use default TDA */
+    return 0;
+  }
+
   /* there is a mixed slot only when in TDD */
   const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
   AssertFatal(tdd || nrmac->common_channels->frame_type == FDD, "Dynamic TDD not handled yet\n");
@@ -308,6 +313,9 @@ int nr_process_mac_pdu(instance_t module_idP,
           return 0;
         }
 
+        if (pdu_len < mac_subheader_len + mac_len)
+          return 0;
+
         rnti_t crnti = UE->rnti;
         NR_UE_info_t* UE_idx = UE;
         for (int i = 0; i < NR_NB_RA_PROC_MAX; i++) {
@@ -325,6 +333,10 @@ int nr_process_mac_pdu(instance_t module_idP,
 
         if (UE_idx->CellGroup) {
           LOG_D(NR_MAC, "Frame %d : ULSCH -> UL-DCCH %d (gNB %ld, %d bytes), rnti: 0x%04x \n", frameP, rx_lcid, module_idP, mac_len, crnti);
+
+          if (pdu_len < mac_subheader_len + mac_len)
+            return 0;
+
           mac_rlc_data_ind(module_idP,
                            crnti,
                            module_idP,
@@ -373,6 +385,9 @@ int nr_process_mac_pdu(instance_t module_idP,
         }
 
         nr_rlc_activate_srb0(UE->rnti, module_idP, CC_id, UE->uid, send_initial_ul_rrc_message);
+
+        if (pdu_len < mac_subheader_len + mac_len)
+          return 0;
 
         mac_rlc_data_ind(module_idP,
                          UE->rnti,
@@ -573,10 +588,20 @@ void nr_rx_sdu(const module_id_t gnb_mod_idP,
     NR_UE_sched_ctrl_t *UE_scheduling_control = &UE->UE_sched_ctrl;
     const int8_t harq_pid = UE_scheduling_control->feedback_ul_harq.head;
 
-    if (sduP)
+    if (sduP) {
       T(T_GNB_MAC_UL_PDU_WITH_DATA, T_INT(gnb_mod_idP), T_INT(CC_idP),
         T_INT(rntiP), T_INT(frameP), T_INT(slotP), T_INT(harq_pid),
         T_BUFFER(sduP, sdu_lenP));
+
+       // Trace MACPDU
+       mac_pkt_info_t mac_pkt;
+       mac_pkt.direction = DIR_UPLINK;
+       mac_pkt.rnti_type = map_nr_rnti_type(NR_RNTI_C);
+       mac_pkt.rnti      = current_rnti;
+       mac_pkt.harq_pid  = harq_pid;
+       mac_pkt.preamble  = -1; /* TODO */
+       LOG_MAC_P(OAILOG_DEBUG, "MAC_UL_PDU", frameP, slotP, mac_pkt, (uint8_t *)sduP, (int)sdu_lenP);
+    }
 
     UE->mac_stats.ul.total_bytes += sdu_lenP;
     LOG_D(NR_MAC, "[gNB %d][PUSCH %d] CC_id %d %d.%d Received ULSCH sdu from PHY (rnti %04x) ul_cqi %d TA %d sduP %p, rssi %d\n",
@@ -668,7 +693,16 @@ void nr_rx_sdu(const module_id_t gnb_mod_idP,
     T(T_GNB_MAC_UL_PDU_WITH_DATA, T_INT(gnb_mod_idP), T_INT(CC_idP),
       T_INT(rntiP), T_INT(frameP), T_INT(slotP), T_INT(-1) /* harq_pid */,
       T_BUFFER(sduP, sdu_lenP));
-    
+
+    // Trace MACPDU
+    mac_pkt_info_t mac_pkt;
+    mac_pkt.direction = DIR_UPLINK;
+    mac_pkt.rnti_type = map_nr_rnti_type(NR_RNTI_TC);
+    mac_pkt.rnti      = rntiP;
+    mac_pkt.harq_pid  = -1;
+    mac_pkt.preamble  = -1; /* TODO */
+    LOG_MAC_P(OAILOG_DEBUG, "MAC_UL_PDU", frameP, slotP, mac_pkt, (uint8_t *)sduP, (int)sdu_lenP);
+ 
     /* we don't know this UE (yet). Check whether there is a ongoing RA (Msg 3)
      * and check the corresponding UE's RNTI match, in which case we activate
      * it. */
@@ -1564,14 +1598,13 @@ void pf_ul(module_id_t module_id,
            NR_UE_info_t *UE_list[],
            int max_num_ue,
            int n_rb_sched,
-           uint16_t *rballoc_mask)
-{
+           uint16_t *rballoc_mask) {
 
   const int CC_id = 0;
   gNB_MAC_INST *nrmac = RC.nrmac[module_id];
   NR_ServingCellConfigCommon_t *scc = nrmac->common_channels[CC_id].ServingCellConfigCommon;
   
-  const int min_rb = 5;
+  int min_rb = nrmac->min_grant_prb? nrmac->min_grant_prb:5;
   // UEs that could be scheduled
   UEsched_t UE_sched[MAX_MOBILES_PER_GNB] = {0};
   int remainUEs = max_num_ue;
@@ -1587,7 +1620,7 @@ void pf_ul(module_id_t module_id,
     LOG_D(NR_MAC,"pf_ul: preparing UL scheduling for UE %04x\n",UE->rnti);
     NR_UE_UL_BWP_t *current_BWP = &UE->current_UL_BWP;
 
-    int rbStart = 0; // wrt BWP start
+    int rbStart = max(nrmac->grant_rbStart,0); // wrt BWP start
 
     const uint16_t bwpSize = current_BWP->BWPSize;
     NR_sched_pusch_t *sched_pusch = &sched_ctrl->sched_pusch;
@@ -1643,7 +1676,7 @@ void pf_ul(module_id_t module_id,
     }
 
     const NR_bler_options_t *bo = &nrmac->ul_bler;
-    const int max_mcs = bo->max_mcs; /* no per-user maximum MCS yet */
+    const int max_mcs = nrmac->grant_mcs? min(nrmac->grant_mcs, bo->max_mcs): (bo->max_mcs); /* no per-user maximum MCS yet */
     if (bo->harq_round_max == 1)
       sched_pusch->mcs = max_mcs;
     else
@@ -1680,16 +1713,16 @@ void pf_ul(module_id_t module_id,
       LOG_D(NR_MAC,"Looking for min_rb %d RBs, starting at %d num_dmrs_cdm_grps_no_data %d\n",
             min_rb, rbStart, sched_pusch->dmrs_info.num_dmrs_cdm_grps_no_data);
       const uint16_t slbitmap = SL_to_bitmap(sched_pusch->tda_info.startSymbolIndex, sched_pusch->tda_info.nrOfSymbols);
-      while (rbStart < bwpSize && (rballoc_mask[rbStart] & slbitmap) != slbitmap)
-        rbStart++;
+      if(nrmac->grant_prb){
+        /* use configured rbStart */
+        rbStart = nrmac->grant_rbStart;
+      }else {
+        while (rbStart < bwpSize && (rballoc_mask[rbStart] & slbitmap) != slbitmap)
+          rbStart++;
+      }
       if (rbStart + min_rb >= bwpSize) {
-        LOG_W(NR_MAC, "[UE %04x][%4d.%2d] could not allocate continuous UL data: no resources (rbStart %d, min_rb %d, bwpSize %d)\n",
-              UE->rnti,
-              frame,
-              slot,
-              rbStart,
-              min_rb,
-              bwpSize);
+        LOG_W(NR_MAC, "cannot allocate continuous UL data for RNTI %04x: no resources (rbStart %d, min_rb %d, bwpSize %d\n",
+              UE->rnti,rbStart,min_rb,bwpSize);
         continue;
       }
 
@@ -1701,7 +1734,7 @@ void pf_ul(module_id_t module_id,
                          sched_ctrl->aggregation_level);
 
       NR_sched_pusch_t *sched_pusch = &sched_ctrl->sched_pusch;
-      sched_pusch->mcs = min(nrmac->min_grant_mcs, sched_pusch->mcs);
+      sched_pusch->mcs = nrmac->grant_mcs?min(nrmac->grant_mcs, sched_pusch->mcs):(sched_pusch->mcs);
       update_ul_ue_R_Qm(sched_pusch->mcs, current_BWP->mcs_table, current_BWP->pusch_Config, &sched_pusch->R, &sched_pusch->Qm);
       sched_pusch->rbStart = rbStart;
       sched_pusch->rbSize = min_rb;
@@ -1777,24 +1810,27 @@ void pf_ul(module_id_t module_id,
                                                 &sched_pusch->tda_info,
                                                 sched_pusch->nrOfLayers);
 
-    int rbStart = 0;
+    int rbStart = max(nrmac->grant_rbStart,0);
     const uint16_t slbitmap = SL_to_bitmap(sched_pusch->tda_info.startSymbolIndex, sched_pusch->tda_info.nrOfSymbols);
     const uint16_t bwpSize = current_BWP->BWPSize;
-    while (rbStart < bwpSize && (rballoc_mask[rbStart] & slbitmap) != slbitmap)
-      rbStart++;
+    if(nrmac->grant_prb){
+        /* use configured rbStart */
+        rbStart = nrmac->grant_rbStart;
+    }else {
+      while (rbStart < bwpSize && (rballoc_mask[rbStart] & slbitmap) != slbitmap)
+        rbStart++;
+    }
     sched_pusch->rbStart = rbStart;
     uint16_t max_rbSize = 1;
-    while (rbStart + max_rbSize < bwpSize && (rballoc_mask[rbStart + max_rbSize] & slbitmap) == slbitmap)
-      max_rbSize++;
+    if(nrmac->grant_prb){
+      max_rbSize = nrmac->grant_prb;
+    } else {
+      while (rbStart + max_rbSize < bwpSize && (rballoc_mask[rbStart + max_rbSize] & slbitmap) == slbitmap)
+        max_rbSize++;
+    }
 
     if (rbStart + min_rb >= bwpSize || max_rbSize < min_rb) {
-      LOG_D(NR_MAC, "[UE %04x][%4d.%2d] could not allocate UL data: no resources (rbStart %d, min_rb %d, bwpSize %d)\n",
-            iterator->UE->rnti,
-            frame,
-            slot,
-            rbStart,
-            min_rb,
-            bwpSize);
+      LOG_D(NR_MAC, "cannot allocate UL data for RNTI %04x: no resources (rbStart %d, min_rb %d, bwpSize %d)\n", iterator->UE->rnti, rbStart, min_rb, bwpSize);
       iterator++;
       continue;
     } else

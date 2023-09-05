@@ -396,6 +396,11 @@ rrc_gNB_send_NGAP_NAS_FIRST_REQ(
   /* Forward NAS message */
   NGAP_NAS_FIRST_REQ(message_p).nas_pdu.buffer = rrcSetupComplete->dedicatedNAS_Message.buf;
   NGAP_NAS_FIRST_REQ(message_p).nas_pdu.length = rrcSetupComplete->dedicatedNAS_Message.size;
+
+  if(RC.ss.mode == SS_GNB)
+  {
+    LOG_NAS_P(OAILOG_INFO, "NR_NAS_PDU", rrcSetupComplete->dedicatedNAS_Message.buf, rrcSetupComplete->dedicatedNAS_Message.size);
+  }
   // extract_imsi(NGAP_NAS_FIRST_REQ (message_p).nas_pdu.buffer,
   //              NGAP_NAS_FIRST_REQ (message_p).nas_pdu.length,
   //              ue_context_pP);
@@ -558,6 +563,10 @@ rrc_gNB_process_NGAP_INITIAL_CONTEXT_SETUP_REQ(
         ue_context_p->ue_context.nas_pdu_flag   = NGAP_INITIAL_CONTEXT_SETUP_REQ(msg_p).nas_pdu_flag;
         ue_context_p->ue_context.nas_pdu.length = NGAP_INITIAL_CONTEXT_SETUP_REQ(msg_p).nas_pdu.length;
         ue_context_p->ue_context.nas_pdu.buffer = NGAP_INITIAL_CONTEXT_SETUP_REQ(msg_p).nas_pdu.buffer;
+        if(RC.ss.mode == SS_GNB)
+        {
+          LOG_NAS_P(OAILOG_INFO, "NR_NAS_PDU", NGAP_INITIAL_CONTEXT_SETUP_REQ(msg_p).nas_pdu.buffer, NGAP_INITIAL_CONTEXT_SETUP_REQ(msg_p).nas_pdu.length);
+        }
       }
         
       /* security */
@@ -778,6 +787,11 @@ rrc_gNB_process_NGAP_DOWNLINK_NAS(
         NGAP_NAS_NON_DELIVERY_IND (msg_fail_p).gNB_ue_ngap_id = gNB_ue_ngap_id;
         NGAP_NAS_NON_DELIVERY_IND (msg_fail_p).nas_pdu.length = NGAP_DOWNLINK_NAS (msg_p).nas_pdu.length;
         NGAP_NAS_NON_DELIVERY_IND (msg_fail_p).nas_pdu.buffer = NGAP_DOWNLINK_NAS (msg_p).nas_pdu.buffer;
+
+       if(RC.ss.mode == SS_GNB)
+       {
+          LOG_NAS_P(OAILOG_INFO, "NR_NAS_PDU", NGAP_DOWNLINK_NAS (msg_p).nas_pdu.buffer, NGAP_DOWNLINK_NAS (msg_p).nas_pdu.length);
+       }
         // TODO add failure cause when defined!
         itti_send_msg_to_task (TASK_NGAP, instance, msg_fail_p);
         return (-1);
@@ -789,6 +803,10 @@ rrc_gNB_process_NGAP_DOWNLINK_NAS(
             ue_context_p->ue_context.gNB_ue_ngap_id = NGAP_DOWNLINK_NAS (msg_p).gNB_ue_ngap_id;
         }
 
+        if(RC.ss.mode == SS_GNB)
+       {
+          LOG_NAS_P(OAILOG_INFO, "NR_NAS_PDU", NGAP_DOWNLINK_NAS (msg_p).nas_pdu.buffer, NGAP_DOWNLINK_NAS (msg_p).nas_pdu.length);
+       }
         /* Create message for PDCP (DLInformationTransfer_t) */
         length = do_NR_DLInformationTransfer (
                 instance,
@@ -861,6 +879,10 @@ rrc_gNB_send_NGAP_UPLINK_NAS(
         NGAP_UPLINK_NAS (msg_p).gNB_ue_ngap_id = ue_context_pP->ue_context.gNB_ue_ngap_id;
         NGAP_UPLINK_NAS (msg_p).nas_pdu.length = pdu_length;
         NGAP_UPLINK_NAS (msg_p).nas_pdu.buffer = pdu_buffer;
+        if(RC.ss.mode == SS_GNB)
+        {
+          LOG_NAS_P(OAILOG_INFO, "NR_NAS_PDU", pdu_buffer, pdu_length);
+        }
         // extract_imsi(NGAP_UPLINK_NAS (msg_p).nas_pdu.buffer,
         //               NGAP_UPLINK_NAS (msg_p).nas_pdu.length,
         //               ue_context_pP);
@@ -1163,6 +1185,11 @@ rrc_gNB_process_NGAP_PDUSESSION_MODIFY_REQ(
                 NGAP_PDUSESSION_MODIFY_REQ(msg_p).pdusession_modify_params[i].nas_pdu.buffer;
               ue_context_p->ue_context.modify_pdusession[i].param.nas_pdu.length =
                 NGAP_PDUSESSION_MODIFY_REQ(msg_p).pdusession_modify_params[i].nas_pdu.length;
+              if(RC.ss.mode == SS_GNB)
+              {
+                LOG_NAS_P(OAILOG_INFO, "NR_NAS_PDU", NGAP_PDUSESSION_MODIFY_REQ(msg_p).pdusession_modify_params[i].nas_pdu.buffer, 
+			      NGAP_PDUSESSION_MODIFY_REQ(msg_p).pdusession_modify_params[i].nas_pdu.length);
+              }
             }
             // Save new pdu session parameters, qos, upf addr, teid
             for (qos_flow_index = 0; qos_flow_index < NGAP_PDUSESSION_MODIFY_REQ(msg_p).pdusession_modify_params[i].nb_qos; qos_flow_index++) {
@@ -1674,6 +1701,10 @@ rrc_gNB_process_NGAP_PDUSESSION_RELEASE_COMMAND(
     if(pdusession_release_drb > 0) {
       //TODO RRCReconfiguration To UE
       LOG_I(NR_RRC, "Send RRCReconfiguration To UE \n");
+      if(RC.ss.mode == SS_GNB)
+      {
+        LOG_NAS_P(OAILOG_INFO, "NR_NAS_PDU", NGAP_PDUSESSION_RELEASE_COMMAND (msg_p).nas_pdu.buffer, NGAP_PDUSESSION_RELEASE_COMMAND (msg_p).nas_pdu.length);
+      }
       rrc_gNB_generate_dedicatedRRCReconfiguration_release(&ctxt, ue_context_p, xid, NGAP_PDUSESSION_RELEASE_COMMAND (msg_p).nas_pdu.length, NGAP_PDUSESSION_RELEASE_COMMAND (msg_p).nas_pdu.buffer);
     } else {
       //gtp tunnel delete

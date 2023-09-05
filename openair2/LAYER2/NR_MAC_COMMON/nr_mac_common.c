@@ -2240,7 +2240,9 @@ void get_delta_arfcn(int i, uint32_t nrarfcn, uint64_t N_OFFs){
   uint32_t delta_arfcn = nrarfcn - N_OFFs;
 
   if(delta_arfcn%(nr_bandtable[i].step_size)!=0)
-    AssertFatal(1==0, "nrarfcn %u is not on the channel raster for step size %lu", nrarfcn, nr_bandtable[i].step_size);
+//    AssertFatal(1 == 0, "nrarfcn %u is not on the channel raster for step size %lu", nrarfcn, nr_bandtable[i].step_size);
+    LOG_E(NR_MAC, "fxn:%s nrarfcn %u is not on the channel raster for step size %lu", 
+      __FUNCTION__, nrarfcn, nr_bandtable[i].step_size);
 
 }
 
@@ -3759,6 +3761,7 @@ int16_t fill_dmrs_mask(const NR_PDSCH_Config_t *pdsch_Config,
   // For TypeB, ld is the duration of the scheduled PDSCH resources
   ld = (mappingtype == typeA) ? (NrOfSymbols + startSymbol) : NrOfSymbols;
 
+  if (ld == 0) ld = 7; //TODO: ACHTUNG!!! Temporary W/A, need to fix the assert somewhere else.
   AssertFatal(ld > 2 && ld < 15,"Illegal NrOfSymbols according to Table 5.1.2.1-1 Spec 38.214 %d\n",ld);
   AssertFatal((NrOfSymbols + startSymbol) < 15,"Illegal S+L according to Table 5.1.2.1-1 Spec 38.214 S:%d L:%d\n",startSymbol, NrOfSymbols);
 
