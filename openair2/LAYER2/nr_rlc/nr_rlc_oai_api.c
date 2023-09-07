@@ -735,7 +735,7 @@ static void add_drb_am(int rnti, int drb_id, const NR_RLC_BearerConfig_t *rlc_Be
     LOG_E(RLC, "%s:%d:%s: DRB %d already exists for UE with RNTI %04x, do nothing\n", __FILE__, __LINE__, __FUNCTION__, drb_id, rnti);
   } else {
     t_reassembly      =  get_softmodem_params()->ntn_trs + get_softmodem_params()->ntn_trs_offset;
-    nr_rlc_am = new_nr_rlc_entity_am(RLC_RX_MAXSIZE,
+    nr_rlc_entity_t *nr_rlc_am = new_nr_rlc_entity_am(RLC_RX_MAXSIZE,
                                      RLC_TX_MAXSIZE,
                                      deliver_sdu, ue,
                                      successful_delivery, ue,
@@ -823,7 +823,7 @@ static void add_drb_um(int rnti, int drb_id, const NR_RLC_BearerConfig_t *rlc_Be
     LOG_E(RLC, "DEBUG add_drb_um %s:%d:%s: warning DRB %d already exist for ue %d, do nothing\n", __FILE__, __LINE__, __FUNCTION__, drb_id, rnti);
   } else {
     t_reassembly =  get_softmodem_params()->ntn_trs + get_softmodem_params()->ntn_trs_offset;
-    nr_rlc_um = new_nr_rlc_entity_um(RLC_RX_MAXSIZE,
+    nr_rlc_entity_t *nr_rlc_um = new_nr_rlc_entity_um(RLC_RX_MAXSIZE,
                                      RLC_TX_MAXSIZE,
                                      deliver_sdu, ue,
                                      t_reassembly,
