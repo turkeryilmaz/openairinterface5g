@@ -62,11 +62,13 @@ Tested libxran releases:
 
 ## 1.1 Configure your server
 
-We recommend you to start with a fresh installation of OS (either RHEL or Ubuntu). You have to install realtime kernel on your operating system. Based on your operating system you can search how to install realtime kernel. Once the realtime kernel is installed then you have to change the boot arguments. You can use `tuned` command for this or you can do it manually via re-building the grub. 
+1. Disable Hyperthreading (HT) in your BIOS. In all our servers HT is always disabled. 
+2. We recommend you to start with a fresh installation of OS (either RHEL or Ubuntu). You have to install realtime kernel on your OS (Operating System). Based on your OS you can search how to install realtime kernel. 
+3. Once the realtime kernel is installed then you have to change the boot arguments. You can use `tuned` command for this or you can do it manually via re-building the grub. 
 
-In below example we have shown the output of `/proc/cmdline` for two different servers, each of them have different numa nodes. Be careful in isolating the CPUs in your environment.
+In below example we have shown the output of `/proc/cmdline` for two different servers, each of them have different number of numa nodes. Be careful in isolating the CPUs in your environment.
 
-**NOTE**: The default OAI 7.2 configuration file requires isolated CPU 0-2 for DPDK/ORAN, CPU 6 for `ru_thread` and CPU 8 for `L1_rx_thread`.
+**NOTE**: The default OAI 7.2 configuration file requires isolated CPU 0,2,4 for DPDK/libXRAN, CPU 6 for `ru_thread` and CPU 8 for `L1_rx_thread`.
 
 
 ### 1.1.1 RHEL 9.2
@@ -87,7 +89,7 @@ mitigations=off usbcore.autosuspend=-1 intel_iommu=on intel_iommu=pt selinux=0 e
 
 Below is the output of `/proc/cmdline` of a single numa node server,
 
-```
+```bash
 NUMA:                    
   NUMA node(s):          1
   NUMA node0 CPU(s):     0-31
