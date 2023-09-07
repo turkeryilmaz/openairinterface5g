@@ -769,3 +769,35 @@ uint32_t get_ssb_offset_to_pointA(uint32_t absoluteFrequencySSB,
   AssertFatal(sco % scs_scaling == 0, "ssb offset %d can create frequency offset\n", sco);
   return ssb_offset_point_a;
 }
+
+#define MAX_EL_213_9_3_2 19
+const float tab38_213_9_3_2[MAX_EL_213_9_3_2] = {1.125,1.250,1.375,1.625,1.750,2.000,2.250,2.500,2.875,3.125,3.500,4.000,5.000,6.250,8.000,10.000,12.625,15.875,20.000};
+
+int get_NREsci2(const int sci2_alpha,
+                const int sci2_payload_len,
+                const int sci2_beta_offset,
+                const int pssch_numsym,
+                const int pscch_numsym,
+                const int pscch_numrbs,
+                const int l_subch,
+                const int subchannel_size,
+                const int mcs,                
+                const int mcs_tb_ind) {
+
+  float Osci2 = (float)sci2_payload_len;
+  AssertFatal(sci2_beta_offset < MAX_EL_213_9_3_2, "illegal sci2_beta_offset %d\n",sci2_beta_offset);
+  float beta_offset_sci2 = tab38_213_9_3_2[sci2_beta_offset];
+
+
+  uint32_t R10240 = nr_get_code_rate_ul(mcs,mcs_tb_ind);
+
+  uint32_t tmp  = (uint32_t)ceil((Osci2 + 24)*beta_offset_sci2/(R10240/5120));
+  float tmp2 = 12.0*pssch_numsym;
+  int N_REsci1  = 12*pscch_numrbs*pscch_numsym;
+  tmp2 *= l_subch*subchannel_size;
+  tmp2 -= N_REsci1;
+  tmp2 *= ((float)sci2_alpha/100.0);
+
+  return min(tmp,(int)ceil(tmp2));
+
+}

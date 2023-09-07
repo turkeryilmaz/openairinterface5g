@@ -31,6 +31,7 @@
 #include "PHY/MODULATION/modulation_UE.h"
 #include "PHY/NR_UE_ESTIMATION/nr_estimation.h"
 #include "PHY/NR_UE_TRANSPORT/nr_transport_proto_ue.h"
+#include "executables/nr-uesoftmodem.h"
 
 void nr_fill_sl_indication(nr_sidelink_indication_t *sl_ind,
                            sl_nr_rx_indication_t *rx_ind,
@@ -200,7 +201,7 @@ void psbch_pscch_processing(PHY_VARS_NR_UE *ue,
                   proc,
                   sym,
                   rxdataF,
-                  link_type_ul);
+                  link_type_sl);
 
       start_meas(&sl_phy_params->channel_estimation_stats);
       nr_pbch_channel_estimation(ue,
@@ -260,7 +261,7 @@ void psbch_pscch_processing(PHY_VARS_NR_UE *ue,
       LOG_I(NR_PHY,"============================================\n");
     }
   }
-  else if (phy_data->sl_rx_action == SL_NR_CONFIG_TYPE_RX_PSCCH){
+  else if (phy_data->sl_rx_action == SL_NR_CONFIG_TYPE_RX_PSCCH && !get_nrUE_params()->sync_ref){
 
     fapi_nr_dl_config_dci_dl_pdu_rel15_t *rel15 = &phy_data->phy_pdcch_config.pdcch_config[0];
     LOG_I(NR_PHY,"pscch_numsym = %d\n",phy_data->nr_sl_pscch_pdu.pscch_numsym);
@@ -285,12 +286,13 @@ void psbch_pscch_processing(PHY_VARS_NR_UE *ue,
     rel15->coreset.RegBundleSize = 0;
     rel15->coreset.duration = phy_data->nr_sl_pscch_pdu.pscch_numsym;
     rel15->coreset.pdcch_dmrs_scrambling_id = phy_data->nr_sl_pscch_pdu.pscch_dmrs_scrambling_id;
-    rel15->coreset.scrambling_rnti = 0;
+    rel15->coreset.scrambling_rnti = 1010;
     rel15->coreset.tci_present_in_dci = 0;
 
     rel15->number_of_candidates = phy_data->nr_sl_pscch_pdu.l_subch;
     rel15->num_dci_options = 1;
     rel15->dci_length_options[0] = phy_data->nr_sl_pscch_pdu.sci_1a_length;
+    LOG_I(NR_PHY,"PSCCH_PDU SCI 1A length %d\n",rel15->dci_length_options[0]);
     // L now provides the number of PRBs used by PSCCH instead of the number of CCEs
     rel15->L[0] = phy_data->nr_sl_pscch_pdu.pscch_numrbs * phy_data->nr_sl_pscch_pdu.pscch_numsym;
     // This provides the offset of the candidate of PSCCH in RBs instead of CCEs
@@ -306,7 +308,7 @@ void psbch_pscch_processing(PHY_VARS_NR_UE *ue,
                   proc,
                   1+sym,
                   rxdataF,
-                  link_type_ul);
+                  link_type_sl);
       nr_pdcch_channel_estimation(ue,
                                   proc,
                                   1,
@@ -319,10 +321,28 @@ void psbch_pscch_processing(PHY_VARS_NR_UE *ue,
                                   rxdataF);
     }
 
-    nr_ue_pdcch_procedures(ue, proc, 1, pscch_est_size, pscch_dl_ch_estimates, phy_data, 0, rxdataF);
-
+    nr_ue_pdcch_procedures(ue, proc, 1, pscch_est_size, pscch_dl_ch_estimates, phy_data, 0, rxdataF); 
+    LOG_I(NR_PHY,"returned from nr_ue_pdcch_procedures\n");
   }
+  if (phy_data->sl_rx_action == SL_NR_CONFIG_TYPE_RX_PSSCH_SCI && !get_nrUE_params()->sync_ref){
 
+    LOG_I(NR_PHY,"sci2_len = %d\n",phy_data->nr_sl_pssch_sci_pdu.sci2_len);
+    LOG_I(NR_PHY,"sci2_beta_offset = %d\n",phy_data->nr_sl_pssch_sci_pdu.sci2_beta_offset);
+    LOG_I(NR_PHY,"sci2_alpha_times_100= %d\n",phy_data->nr_sl_pssch_sci_pdu.sci2_alpha_times_100);
+    LOG_I(NR_PHY,"pssch_targetCodeRate = %d\n",phy_data->nr_sl_pssch_sci_pdu.targetCodeRate);
+    LOG_I(NR_PHY,"pssch_num_layers = %d\n",phy_data->nr_sl_pssch_sci_pdu.num_layers);
+    LOG_I(NR_PHY,"dmrs_symbol_position = %d\n",phy_data->nr_sl_pssch_sci_pdu.dmrs_symbol_position);
+    LOG_I(NR_PHY,"Nid = %x\n",phy_data->nr_sl_pssch_sci_pdu.Nid);
+
+    LOG_I(NR_PHY,"startrb = %d\n",phy_data->nr_sl_pssch_sci_pdu.startrb);
+    LOG_I(NR_PHY,"pscch_numsym = %d\n",phy_data->nr_sl_pssch_sci_pdu.pscch_numsym);
+    LOG_I(NR_PHY,"pscch_numrbs = %d\n",phy_data->nr_sl_pssch_sci_pdu.pscch_numrbs);
+    LOG_I(NR_PHY,"num_subch= %d\n",phy_data->nr_sl_pssch_sci_pdu.num_subch);
+    LOG_I(NR_PHY,"subchannel_size = %d\n",phy_data->nr_sl_pssch_sci_pdu.subchannel_size);
+    LOG_I(NR_PHY,"l_subch = %d\n",phy_data->nr_sl_pssch_sci_pdu.l_subch);
+    LOG_I(NR_PHY,"pssch_numsym = %d\n",phy_data->nr_sl_pssch_sci_pdu.pssch_numsym);
+    LOG_I(NR_PHY,"sense_pssch = %d\n",phy_data->nr_sl_pssch_sci_pdu.sense_pssch);
+  }
   UEscopeCopy(ue, commonRxdataF, rxdataF, sizeof(int32_t), fp->nb_antennas_rx, rxdataF_sz, 0);
 }
 
@@ -372,19 +392,24 @@ int phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
   }
   else if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH) {
    LOG_I(NR_PHY,"Generating PSCCH (%d.%d)\n",frame_tx,slot_tx);
+   
+   phy_data->pscch_Nid = nr_generate_sci1(ue,txdataF[0],fp,AMP,slot_tx,&phy_data->nr_sl_pssch_pscch_pdu) &0xFFFF; 
 
-   nr_generate_sci1(ue,txdataF[0],fp,AMP,slot_tx,&phy_data->nr_sl_pssch_pscch_pdu); 
+   nr_ue_ulsch_procedures(ue,0,frame_tx,slot_tx,0,phy_data,txdataF);
+
+   tx_action = 1;
   }
   else if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSFCH) {
    LOG_I(NR_PHY,"Generating PSFCH ( )\n");
   }
   if (tx_action) {
-    LOG_D(PHY, "Sending Uplink data \n");
+    LOG_D(PHY, "Sending SL data \n");
     nr_ue_pusch_common_procedures(ue,
                                   proc->nr_slot_tx,
                                   fp,
                                   fp->nb_antennas_tx,
-                                  txdataF);
+                                  txdataF, link_type_sl);
+
   }
 
   LOG_D(PHY,"****** end Sidelink TX-Chain for AbsSubframe %d.%d ******\n",

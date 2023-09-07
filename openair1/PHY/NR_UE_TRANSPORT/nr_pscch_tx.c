@@ -43,19 +43,19 @@
 
 #include "T.h"
 
-void nr_generate_dci(void *gNB, PHY_VARS_NR_UE *ue,
-                     nfapi_nr_dl_tti_pdcch_pdu_rel15_t *pdcch_pdu_rel15,
-                     int32_t *txdataF,
-                     int16_t amp,
-                     NR_DL_FRAME_PARMS *frame_parms,
-                     int slot);
+uint32_t nr_generate_dci(void *gNB, PHY_VARS_NR_UE *ue,
+                         nfapi_nr_dl_tti_pdcch_pdu_rel15_t *pdcch_pdu_rel15,
+                         int32_t *txdataF,
+                         int16_t amp,
+                         NR_DL_FRAME_PARMS *frame_parms,
+                         int slot);
 
-void nr_generate_sci1(const PHY_VARS_NR_UE *ue,
-                      c16_t *txdataF,
-                      const NR_DL_FRAME_PARMS *frame_parms,
-                      const int16_t amp,
-                      const int nr_slot_tx,
-                      const sl_nr_tx_config_pscch_pssch_pdu_t *pscch_pssch_pdu)
+uint32_t nr_generate_sci1(const PHY_VARS_NR_UE *ue,
+                          c16_t *txdataF,
+                          const NR_DL_FRAME_PARMS *frame_parms,
+                          const int16_t amp,
+                          const int nr_slot_tx,
+                          const sl_nr_tx_config_pscch_pssch_pdu_t *pscch_pssch_pdu)
 {
 
   nfapi_nr_dl_tti_pdcch_pdu_rel15_t pdcch_pdu_rel15={0};
@@ -68,8 +68,8 @@ void nr_generate_sci1(const PHY_VARS_NR_UE *ue,
   pdcch_pdu_rel15.dci_pdu[0].ScramblingId        = pscch_pssch_pdu->pscch_dmrs_scrambling_id;
   pdcch_pdu_rel15.dci_pdu[0].PayloadSizeBits     = pscch_pssch_pdu->pscch_sci_payload_len;
   // for SCI we put the number of PRBs in the FAPI AggregationLevel field
-  pdcch_pdu_rel15.dci_pdu[0].AggregationLevel    = pscch_pssch_pdu->pscch_numrbs;
+  pdcch_pdu_rel15.dci_pdu[0].AggregationLevel    = pscch_pssch_pdu->pscch_numrbs*pscch_pssch_pdu->pscch_numsym;
   pdcch_pdu_rel15.dci_pdu[0].ScramblingRNTI      = 1010;
   *(uint64_t*)pdcch_pdu_rel15.dci_pdu[0].Payload = *(uint64_t *)pscch_pssch_pdu->pscch_sci_payload; 
-  nr_generate_dci(NULL,(PHY_VARS_NR_UE *)ue,&pdcch_pdu_rel15,(int32_t *)txdataF,amp,(NR_DL_FRAME_PARMS*)frame_parms,nr_slot_tx); 
+  return(nr_generate_dci(NULL,(PHY_VARS_NR_UE *)ue,&pdcch_pdu_rel15,(int32_t *)txdataF,amp,(NR_DL_FRAME_PARMS*)frame_parms,nr_slot_tx)); 
 } 

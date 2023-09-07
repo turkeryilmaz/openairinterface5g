@@ -955,6 +955,25 @@ void sl_ue_phy_init(PHY_VARS_NR_UE *UE) {
   }
 
   nr_init_pdcch_dmrs(sl_fp,UE->nr_gold_pscch_dmrs, UE->SL_UE_PHY_PARAMS.sl_config.sl_DMRS_ScrambleId);
+
+  // PSCCH DMRS RX
+  UE->nr_gold_pscch = malloc16(sl_fp->slots_per_frame * sizeof(uint32_t **));
+  uint32_t ***pscch_dmrs_rx = UE->nr_gold_pscch;
+  AssertFatal(pscch_dmrs_rx!=NULL, "NR init: pscch_dmrs malloc failed\n");
+
+  for (int slot=0; slot<sl_fp->slots_per_frame; slot++) {
+    pscch_dmrs_rx[slot] = malloc16(sl_fp->symbols_per_slot * sizeof(uint32_t *));
+    AssertFatal(pscch_dmrs_rx[slot]!=NULL, "NR init: pscch_dmrs for slot %d - malloc failed\n", slot);
+
+    for (int symb=0; symb<sl_fp->symbols_per_slot; symb++) {
+      pscch_dmrs_rx[slot][symb] = malloc16(pscch_dmrs_init_length * sizeof(uint32_t));
+      AssertFatal(pscch_dmrs[slot][symb]!=NULL, "NR init: pscch_dmrs for slot %d symbol %d - malloc failed\n", slot, symb);
+    }
+  }
+
+  nr_gold_pdcch(sl_fp, pscch_dmrs_rx,UE->SL_UE_PHY_PARAMS.sl_config.sl_DMRS_ScrambleId);
+
+  // SSS
   for (int slss_id = 0; slss_id < SL_NR_NUM_SLSS_IDs; slss_id++) {
     sl_generate_psbch_dmrs_qpsk_sequences(UE, UE->SL_UE_PHY_PARAMS.init_params.psbch_dmrs_modsym[slss_id], slss_id);
     sl_generate_sss(&UE->SL_UE_PHY_PARAMS.init_params, slss_id, scaling_value);
@@ -962,5 +981,7 @@ void sl_ue_phy_init(PHY_VARS_NR_UE *UE) {
 
   // Generate PSS time domain samples used for correlation during SLSS reception.
   sl_generate_pss_ifft_samples(&UE->SL_UE_PHY_PARAMS, &UE->SL_UE_PHY_PARAMS.init_params);
+
+
 
 }

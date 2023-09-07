@@ -1691,7 +1691,7 @@ void nr_decode_pucch2(PHY_VARS_gNB *gNB,
     } // symb
 
     // run polar decoder on llrs
-    decoderState = polar_decoder_int16((int16_t *)llrs, decodedPayload, 0, NR_POLAR_UCI_PUCCH_MESSAGE_TYPE, nb_bit, pucch_pdu->prb_size);
+    decoderState = polar_decoder_int16((int16_t *)llrs, decodedPayload, NULL, 0, NR_POLAR_UCI_PUCCH_MESSAGE_TYPE, nb_bit, pucch_pdu->prb_size);
 
     LOG_D(PHY,"UCI decoderState %d, payload[0] %llu\n",decoderState,(unsigned long long)decodedPayload[0]);
     if (decoderState>0) decoderState=1;

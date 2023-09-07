@@ -330,7 +330,7 @@ int nr_initial_sync(UE_nr_rxtx_proc_t *proc,
 
         // compute the scramblingID_pdcch and the gold pdcch
         ue->scramblingID_pdcch = fp->Nid_cell;
-        nr_gold_pdcch(ue,fp->Nid_cell);
+        nr_gold_pdcch(&ue->frame_parms,ue->nr_gold_pdcch[0],fp->Nid_cell);
 
         // compute the scrambling IDs for PDSCH DMRS
         for (int i=0; i<NR_NB_NSCID; i++) {

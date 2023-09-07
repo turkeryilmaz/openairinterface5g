@@ -291,7 +291,7 @@ void phy_procedures_nrUE_TX(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, n
   pucch_procedures_ue_nr(ue, proc, phy_data, (c16_t **)&txdataF);
 
   LOG_D(PHY, "Sending Uplink data \n");
-  nr_ue_pusch_common_procedures(ue, proc->nr_slot_tx, &ue->frame_parms, ue->frame_parms.nb_antennas_tx, (c16_t **)txdataF);
+  nr_ue_pusch_common_procedures(ue, proc->nr_slot_tx, &ue->frame_parms, ue->frame_parms.nb_antennas_tx, (c16_t **)txdataF,link_type_ul);
 
   nr_ue_prach_procedures(ue, proc);
 
@@ -433,7 +433,10 @@ int nr_ue_pdcch_procedures(PHY_VARS_NR_UE *ue,
   int nr_slot_rx = proc->nr_slot_rx;
   unsigned int dci_cnt=0;
   fapi_nr_dci_indication_t dci_ind = {0};
+  sl_nr_sci_indication_t sci_ind = {0};
   nr_downlink_indication_t dl_indication;
+  nr_sidelink_indication_t sl_indication;
+
   NR_UE_PDCCH_CONFIG *phy_pdcch_config = &phy_data->phy_pdcch_config;
 
   fapi_nr_dl_config_dci_dl_pdu_rel15_t *rel15 = &phy_pdcch_config->pdcch_config[n_ss];
@@ -456,7 +459,7 @@ int nr_ue_pdcch_procedures(PHY_VARS_NR_UE *ue,
 	 n_ss);
 #endif
 
-  dci_cnt = nr_dci_decoding_procedure(ue, proc, pscch_flag, pdcch_e_rx, &dci_ind, rel15);
+  dci_cnt = nr_dci_decoding_procedure(ue, proc, pscch_flag, pdcch_e_rx, pscch_flag==0 ? (void*)&dci_ind : (void*)&sci_ind, rel15);
 
 #ifdef NR_PDCCH_SCHED_DEBUG
   LOG_I(PHY,"<-NR_PDCCH_PHY_PROCEDURES_LTE_UE (nr_ue_pdcch_procedures)-> Ending function nr_dci_decoding_procedure() -> dci_cnt=%u\n",dci_cnt);
@@ -465,21 +468,35 @@ int nr_ue_pdcch_procedures(PHY_VARS_NR_UE *ue,
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_DCI_DECODING, VCD_FUNCTION_OUT);
 
   for (int i=0; i<dci_cnt; i++) {
-    LOG_D(PHY,"[UE  %d] AbsSubFrame %d.%d: DCI %i of %d total DCIs found --> rnti %x : format %d\n",
-          ue->Mod_id,frame_rx%1024,nr_slot_rx,
-          i + 1,
-          dci_cnt,
-          dci_ind.dci_list[i].rnti,
-          dci_ind.dci_list[i].dci_format);
+    if (pscch_flag==0) 
+      LOG_D(PHY,"[UE  %d] AbsSubFrame %d.%d: DCI %i of %d total DCIs found --> rnti %x : format %d\n",
+            ue->Mod_id,frame_rx%1024,nr_slot_rx,
+            i + 1,
+            dci_cnt,
+            dci_ind.dci_list[i].rnti,
+            dci_ind.dci_list[i].dci_format);
+    else
+      LOG_D(PHY,"[UE  %d] AbsSubFrame %d.%d: SCI 1A %i of %d total SCIs found \n",
+            ue->Mod_id,frame_rx%1024,nr_slot_rx,
+            i + 1,
+            dci_cnt);
   }
 
-  dci_ind.number_of_dcis = dci_cnt;
+  if (pscch_flag == 0)  {
+    dci_ind.number_of_dcis = dci_cnt;
 
-  // fill dl_indication message
-  nr_fill_dl_indication(&dl_indication, &dci_ind, NULL, proc, ue, phy_data);
-  //  send to mac
-  ue->if_inst->dl_indication(&dl_indication);
-
+    // fill dl_indication message
+    nr_fill_dl_indication(&dl_indication, &dci_ind, NULL, proc, ue, phy_data);
+    //  send to mac
+    ue->if_inst->dl_indication(&dl_indication);
+  }
+  else  {
+    sci_ind.number_of_SCIs = dci_cnt;
+    // fill sl_indication message
+    nr_fill_sl_indication(&sl_indication, NULL, &sci_ind, proc, ue, phy_data);
+    //  send to mac
+    ue->if_inst->sl_indication(&sl_indication);
+  }
   stop_meas(&ue->dlsch_rx_pdcch_stats);
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_UE_PDCCH_PROCEDURES, VCD_FUNCTION_OUT);

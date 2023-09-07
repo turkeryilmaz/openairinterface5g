@@ -3472,7 +3472,7 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind) {
      uint8_t mask = mac->sl_rx_res_pool->ext1->sl_TimeResource_r16->buf[slot_mod_period>>3];
      if (((1<<slot_mod_period) % mask) == 0) rx_allowed=false;
   }
-  if (sl_ind->slot_type==SIDELINK_SLOT_TYPE_TX) rx_allowed=false;
+  if (sl_ind->slot_type==SIDELINK_SLOT_TYPE_TX || sl_ind->phy_data==NULL) rx_allowed=false;
   if (((get_nrUE_params()->sync_ref && sl_ind->slot_rx > 9) || 
       (!get_nrUE_params()->sync_ref && sl_ind->slot_rx < 10)) && rx_allowed) {
       LOG_I(NR_MAC,"Scheduling PSCCH RX processing slot %d, sync_ref %d\n",slot,get_nrUE_params()->sync_ref);

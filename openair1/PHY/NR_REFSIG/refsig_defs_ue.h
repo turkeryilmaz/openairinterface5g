@@ -57,8 +57,8 @@ int nr_pdsch_dmrs_rx(PHY_VARS_NR_UE *ue,
 
 void nr_gold_pbch(PHY_VARS_NR_UE* ue);
 
-void nr_gold_pdcch(PHY_VARS_NR_UE* ue,
-                   unsigned short n_idDMRS);
+void nr_gold_pdcch(NR_DL_FRAME_PARMS *fp, 
+                   uint32_t ***nr_gold, uint16_t nid); 
 
 void nr_gold_pdsch(PHY_VARS_NR_UE* ue,
                    int nscid,

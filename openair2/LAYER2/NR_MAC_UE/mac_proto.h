@@ -470,6 +470,8 @@ int sl_nr_ue_slot_select(sl_nr_phy_config_request_t *cfg,
                          int nr_frame, int nr_slot,
                          uint8_t frame_duplex_type);
 
+int nr_ue_process_sci1_indication_pdu(NR_UE_MAC_INST_t *mac,module_id_t mod_id,frame_t frame, int slot, sl_nr_sci_indication_pdu_t *sci,void *phy_data);
+
 void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind);
 
 void nr_mac_rrc_sl_mib_ind(const module_id_t module_id,

@@ -505,7 +505,7 @@ int nr_rx_pbch(PHY_VARS_NR_UE *ue,
 		       0, 0,  pbch_a_prime, &pbch_a_interleaved);
   //polar decoding de-rate matching
   uint64_t tmp=0;
-  decoderState = polar_decoder_int16(pbch_e_rx,(uint64_t *)&tmp,0,
+  decoderState = polar_decoder_int16(pbch_e_rx,(uint64_t *)&tmp,NULL,0,
                                      NR_POLAR_PBCH_MESSAGE_TYPE, NR_POLAR_PBCH_PAYLOAD_BITS, NR_POLAR_PBCH_AGGREGATION_LEVEL);
   pbch_a_prime = tmp;
 

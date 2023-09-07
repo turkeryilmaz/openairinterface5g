@@ -492,6 +492,7 @@ void build_polar_tables(t_nrPolar_params *polarParams) {
 
 void polar_encoder_fast(uint64_t *A,
                         void *out,
+                        uint32_t *crc,
                         int32_t crcmask,
                         uint8_t ones_flag,
                         int8_t messageType,
@@ -604,7 +605,7 @@ void polar_encoder_fast(uint64_t *A,
     else if (polarParams->crcParityBits == 11)
       tcrc = (uint64_t)((crcmask^(crc11(A128_flip,bitlen)>>21)))&0x7ff;
   }
-
+  if (crc) *crc = (uint32_t)tcrc;
   // this is number of quadwords in the bit string
   int quadwlen = (polarParams->K+63)/64;
 
@@ -717,6 +718,7 @@ void polar_encoder_fast(uint64_t *A,
 
 #ifdef POLAR_CODING_DEBUG
   uint64_t *out64 = (uint64_t *)out;
+  printf("N %d, encoderLength %d\n",polarParams->N,polarParams->encoderLength);
   printf("rm:");
   for (int n = 0; n < polarParams->encoderLength; n++) {
     if (n % 4 == 0) {

@@ -607,6 +607,7 @@ void init_polar_deinterleaver_table(t_nrPolar_params *polarParams) {
 
 uint32_t polar_decoder_int16(int16_t *input,
                              uint64_t *out,
+                             uint16_t *nid,
                              uint8_t ones_flag,
                              int8_t messageType,
                              uint16_t messageLength,
@@ -615,7 +616,7 @@ uint32_t polar_decoder_int16(int16_t *input,
   t_nrPolar_params *polarParams=nr_polar_params(messageType, messageLength, aggregation_level, true);
 
 #ifdef POLAR_CODING_DEBUG
-  printf("\nRX\n");
+  printf("\nRX N %d (messageType %d messageLength %d aggregation_level %d)\n",polarParams->N,messageType,messageLength,aggregation_level);
   printf("rm:");
   for (int i = 0; i < polarParams->N; i++) {
     if (i % 4 == 0) {
@@ -794,5 +795,6 @@ uint32_t polar_decoder_int16(int16_t *input,
 #endif
   out[0]=Ar;
 
+  if (nid) *nid=crc&65535;
   polarReturn crc^rxcrc;
 }

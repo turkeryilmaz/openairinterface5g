@@ -172,7 +172,7 @@ void sl_generate_and_map_psbch(struct complex16 *txF, uint32_t *payload, uint16_
 #endif
 
   /// CRC, coding and rate matching
-  polar_encoder_fast(&psbch_a_reversed, (void*)encoder_output, 0, 0,
+  polar_encoder_fast(&psbch_a_reversed, (void*)encoder_output, NULL, 0, 0,
                      SL_NR_POLAR_PSBCH_MESSAGE_TYPE,
                      SL_NR_POLAR_PSBCH_PAYLOAD_BITS,
                      SL_NR_POLAR_PSBCH_AGGREGATION_LEVEL);

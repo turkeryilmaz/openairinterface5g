@@ -1442,6 +1442,14 @@ static void handle_sl_bch(module_id_t module_id,uint8_t *const sl_mib,
 
   return ;
 }
+
+void handle_sl_sci1a(module_id_t module_id,uint32_t frame, uint32_t slot, sl_nr_sci_indication_pdu_t *const sci,void *phy_data) {
+
+
+  NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
+  nr_ue_process_sci1_indication_pdu(mac,module_id,frame,slot,sci,phy_data);
+}
+
 /*
 if PSBCH rx - handle_psbch()
   - Extract FN, Slot
@@ -1476,12 +1484,34 @@ void sl_nr_process_rx_ind(uint16_t mod_id,
 
       break;
     case SL_NR_RX_PDU_TYPE_SLSCH:
+
       break;
 
     default :
         AssertFatal(1==0, "Incorrect type received. %s\n", __FUNCTION__);
       break;
     }
+}
+
+/* Process SCI indication from PHY */
+
+void sl_nr_process_sci_ind(uint16_t module_id, uint32_t frame, uint32_t slot, sl_nr_ue_mac_params_t *sl_mac, sl_nr_sci_indication_t *sci_ind, void *phy_data) {
+
+
+  uint8_t num_SCIs = sci_ind->number_of_SCIs;
+ 
+  for (int idx=0;idx<num_SCIs;idx++) {
+
+    switch (sci_ind->sci_pdu[idx].sci_format_type) { 
+      case SL_SCI_FORMAT_1A_ON_PSCCH:
+         LOG_I(NR_MAC,"%d.%d Received PSCCH PDU %d/%d PSCCH RSRP %d, length %d, sub-channel index %d, Nid %x, payload %llx\n", sci_ind->sfn,sci_ind->slot,1+idx,num_SCIs,sci_ind->sci_pdu[idx].pscch_rsrp,sci_ind->sci_pdu[idx].sci_payloadlen,sci_ind->sci_pdu[idx].subch_index,sci_ind->sci_pdu[idx].Nid,*(unsigned long long*)sci_ind->sci_pdu[idx].sci_payloadBits);       
+         handle_sl_sci1a(module_id,frame,slot,&sci_ind->sci_pdu[idx],phy_data); 
+       break;
+      default:
+       AssertFatal(1==0,"Unhandled or unknown sci format %d\n",sci_ind->sci_pdu[idx].sci_format_type);
+       break;
+    }
+  }
 }
 
 /*
@@ -1504,10 +1534,12 @@ int nr_ue_sl_indication(nr_sidelink_indication_t *sl_indication)
 
   if (sl_indication->rx_ind) {
     sl_nr_process_rx_ind(module_id, frame, slot, sl_mac, sl_indication->rx_ind);
+  } if (sl_indication->sci_ind) {
+    sl_nr_process_sci_ind(module_id, frame, slot, sl_mac, sl_indication->sci_ind,sl_indication->phy_data);
   } else {
     nr_ue_sidelink_scheduler(sl_indication);
   }
-
+  LOG_I(NR_MAC,"returning from nr_sl_indication\n");
   return 0;
 }
 

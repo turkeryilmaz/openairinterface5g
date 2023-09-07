@@ -162,11 +162,12 @@ int nr_slot_fep(PHY_VARS_NR_UE *ue,
   rx_offset += frame_parms->ofdm_symbol_size * symbol;
 
   // use OFDM symbol from within 1/8th of the CP to avoid ISI
-  rx_offset -= (nb_prefix_samples / frame_parms->ofdm_offset_divisor);
+//  rx_offset -= (nb_prefix_samples / frame_parms->ofdm_offset_divisor);
+  rx_offset += 1;
 
 //#ifdef DEBUG_FEP
   //  if (ue->frame <100)
-  LOG_D(PHY,"slot_fep: slot %d, symbol %d, nb_prefix_samples %u, nb_prefix_samples0 %u, rx_offset %u energy %d\n",
+  LOG_I(PHY,"slot_fep: slot %d, symbol %d, nb_prefix_samples %u, nb_prefix_samples0 %u, rx_offset %u energy %d\n",
   Ns, symbol, nb_prefix_samples, nb_prefix_samples0, rx_offset, dB_fixed(signal_energy((int32_t *)&common_vars->rxdata[0][rx_offset],frame_parms->ofdm_symbol_size)));
   //#endif
 
@@ -191,6 +192,9 @@ int nr_slot_fep(PHY_VARS_NR_UE *ue,
 
     stop_meas(&ue->rx_dft_stats);
 
+/*
+    LOG_I(NR_PHY,"%d.%d Applying rotation for symbol %d, linktype %d\n",
+          proc->frame_rx,proc->nr_slot_rx,symbol,linktype);
     apply_nr_rotation_RX(frame_parms,
                          rxdataF[aa],
                          frame_parms->symbol_rotation[linktype],
@@ -198,7 +202,10 @@ int nr_slot_fep(PHY_VARS_NR_UE *ue,
                          frame_parms->N_RB_DL,
                          0,
                          symbol,
-                         1);
+                         linktype);
+*/ 
+   for (int i=1413;i<1422;i+=4)  
+     printf("i : %d,%d\n", rxdataF[aa][i + (frame_parms->ofdm_symbol_size*symbol)].r,rxdataF[aa][i+(frame_parms->ofdm_symbol_size*symbol)].i);
   }
 
 #ifdef DEBUG_FEP
@@ -392,7 +399,6 @@ void apply_nr_rotation_RX(NR_DL_FRAME_PARMS *frame_parms,
     
     c16_t rot2 = rot[symbol + symb_offset];
     rot2.i = -rot2.i;
-    LOG_D(PHY,"slot %d, symb_offset %d rotating by %d.%d\n", slot, symb_offset, rot2.r, rot2.i);
     c16_t *shift_rot = frame_parms->timeshift_symbol_rotation;
     c16_t *this_symbol = &rxdataF[soffset + (frame_parms->ofdm_symbol_size * symbol)];
 

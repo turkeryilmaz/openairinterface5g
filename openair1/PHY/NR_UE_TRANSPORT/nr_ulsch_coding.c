@@ -43,6 +43,7 @@
 
 int nr_ulsch_encoding(PHY_VARS_NR_UE *ue,
                       NR_UE_ULSCH_t *ulsch,
+                      sl_nr_tx_config_pscch_pssch_pdu_t *pscch_pssch_pdu,
                       NR_DL_FRAME_PARMS* frame_parms,
                       uint8_t harq_pid,
                       unsigned int G) {
@@ -54,28 +55,33 @@ int nr_ulsch_encoding(PHY_VARS_NR_UE *ue,
 
   unsigned int crc = 1;
   NR_UL_UE_HARQ_t *harq_process = &ue->ul_harq_processes[harq_pid];
-  uint16_t nb_rb = ulsch->pusch_pdu.rb_size;
-  uint32_t A = ulsch->pusch_pdu.pusch_data.tb_size<<3;
+  uint16_t nb_rb = pscch_pssch_pdu == NULL ? ulsch->pusch_pdu.rb_size : pscch_pssch_pdu->l_subch * pscch_pssch_pdu->subchannel_size;
+  uint32_t A = (pscch_pssch_pdu == NULL ? ulsch->pusch_pdu.pusch_data.tb_size : pscch_pssch_pdu->tb_size)<<3;
   uint32_t *pz = &harq_process->Z;
-  uint8_t mod_order = ulsch->pusch_pdu.qam_mod_order;
+  uint8_t mod_order = pscch_pssch_pdu == NULL ? ulsch->pusch_pdu.qam_mod_order : pscch_pssch_pdu->mod_order;
+  int ndi = pscch_pssch_pdu==NULL ? ulsch->pusch_pdu.pusch_data.new_data_indicator:pscch_pssch_pdu->ndi;
+  int num_layers = pscch_pssch_pdu == NULL ? ulsch->pusch_pdu.nrOfLayers:pscch_pssch_pdu->num_layers;
+  int rv_index = pscch_pssch_pdu == NULL ? ulsch->pusch_pdu.pusch_data.rv_index:pscch_pssch_pdu->rv_index;
+  int tbslbrm = pscch_pssch_pdu==NULL?ulsch->pusch_pdu.tbslbrm:pscch_pssch_pdu->tbslbrm;
+
   uint16_t Kr=0;
   uint32_t r_offset=0;
   uint32_t F=0;
   // target_code_rate is in 0.1 units
-  float Coderate = (float) ulsch->pusch_pdu.target_code_rate / 10240.0f;
+  float Coderate = (float) (pscch_pssch_pdu == NULL ? ulsch->pusch_pdu.target_code_rate : pscch_pssch_pdu->target_coderate) / 10240.0f;
 
 ///////////
 /////////////////////////////////////////////////////////////////////////////////////////  
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_UE_ULSCH_ENCODING, VCD_FUNCTION_IN);
 
-  LOG_D(NR_PHY, "ulsch coding nb_rb %d, Nl = %d\n", nb_rb, ulsch->pusch_pdu.nrOfLayers);
+  LOG_D(NR_PHY, "ulsch coding nb_rb %d, Nl = %d\n", nb_rb, num_layers);
   LOG_D(NR_PHY, "ulsch coding A %d G %d mod_order %d Coderate %f\n", A, G, mod_order, Coderate);
   LOG_D(NR_PHY, "harq_pid %d harq_process->ndi %d, pusch_data.new_data_indicator %d\n",
-        harq_pid,harq_process->ndi,ulsch->pusch_pdu.pusch_data.new_data_indicator);
+        harq_pid,harq_process->ndi,ndi);
 
   if (harq_process->first_tx == 1 ||
-      harq_process->ndi != ulsch->pusch_pdu.pusch_data.new_data_indicator) {  // this is a new packet
+      harq_process->ndi != ndi) {  // this is a new packet
 #ifdef DEBUG_ULSCH_CODING
   printf("encoding thinks this is a new packet \n");
 #endif
@@ -90,7 +96,7 @@ int nr_ulsch_encoding(PHY_VARS_NR_UE *ue,
     printf("\n");
    */ 
 
-    int max_payload_bytes = MAX_NUM_NR_ULSCH_SEGMENTS_PER_LAYER*ulsch->pusch_pdu.nrOfLayers*1056;
+    int max_payload_bytes = MAX_NUM_NR_ULSCH_SEGMENTS_PER_LAYER*num_layers*1056;
 
     if (A > 3824) {
       // Add 24-bit crc (polynomial A) to payload
@@ -145,7 +151,7 @@ int nr_ulsch_encoding(PHY_VARS_NR_UE *ue,
                                  &harq_process->F,
                                  harq_process->BG);
 
-    if (harq_process->C>MAX_NUM_NR_DLSCH_SEGMENTS_PER_LAYER*ulsch->pusch_pdu.nrOfLayers) {
+    if (harq_process->C>MAX_NUM_NR_DLSCH_SEGMENTS_PER_LAYER*num_layers) {
       LOG_E(PHY,"nr_segmentation.c: too many segments %d, B %d\n",harq_process->C,harq_process->B);
       return(-1);
     }
@@ -217,8 +223,8 @@ int nr_ulsch_encoding(PHY_VARS_NR_UE *ue,
 
 ///////////
 ///////////////////////////////////////////////////////////////////////////////
-    LOG_D(PHY,"setting ndi to %d from pusch_data\n", ulsch->pusch_pdu.pusch_data.new_data_indicator);
-    harq_process->ndi = ulsch->pusch_pdu.pusch_data.new_data_indicator;
+    LOG_D(PHY,"setting ndi to %d from pusch_data\n", ndi);
+    harq_process->ndi = ndi;
   }
   F = harq_process->F;
   Kr = harq_process->K;
@@ -238,17 +244,17 @@ int nr_ulsch_encoding(PHY_VARS_NR_UE *ue,
 	  G,
 	  Kr*3,
 	  mod_order,nb_rb,
-	  ulsch->pusch_pdu.pusch_data.rv_index);
+	  rv_index);
 
     //start_meas(rm_stats);
 ///////////////////////// d---->| Rate matching bit selection |---->e /////////////////////////
 ///////////
 
-    uint32_t E = nr_get_E(G, harq_process->C, mod_order, ulsch->pusch_pdu.nrOfLayers, r);
+    uint32_t E = nr_get_E(G, harq_process->C, mod_order, num_layers, r);
 
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_RATE_MATCHING_LDPC, VCD_FUNCTION_IN);
     start_meas(&ue->ulsch_rate_matching_stats);
-    if (nr_rate_matching_ldpc(ulsch->pusch_pdu.tbslbrm,
+    if (nr_rate_matching_ldpc(tbslbrm,
                               harq_process->BG,
                               *pz,
                               harq_process->d[r],

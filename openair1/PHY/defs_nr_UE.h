@@ -657,7 +657,10 @@ typedef struct {
   sl_nr_ue_phy_params_t SL_UE_PHY_PARAMS;
   bool phy_config_request_sent;
   int pscch_dmrs_gold_init;
+  /// PDCCH DMRS for TX
   uint32_t ***nr_gold_pscch_dmrs;  
+  /// PSCCH DMRS for RX
+  uint32_t ***nr_gold_pscch;
 } PHY_VARS_NR_UE;
 
 typedef struct {
@@ -684,6 +687,7 @@ typedef struct nr_phy_data_tx_s {
   sl_nr_tx_config_type_enum_t sl_tx_action;
   sl_nr_tx_config_psbch_pdu_t psbch_vars;
   sl_nr_tx_config_pscch_pssch_pdu_t nr_sl_pssch_pscch_pdu;
+  uint32_t pscch_Nid;
   sl_nr_tx_config_psfch_pdu_t nr_sl_psfch_pdu;
 } nr_phy_data_tx_t;
 

@@ -1061,12 +1061,16 @@ void nr_pdcch_channel_estimation(PHY_VARS_NR_UE *ue,
 
   int nb_rb_coreset=0;
   int coreset_start_rb=0;
-  get_coreset_rballoc(coreset->frequency_domain_resource,&nb_rb_coreset,&coreset_start_rb);
+  if (pscch_flag == 0) get_coreset_rballoc(coreset->frequency_domain_resource,&nb_rb_coreset,&coreset_start_rb);
+  else { 
+    coreset_start_rb = coreset->frequency_domain_resource[0];
+    nb_rb_coreset = coreset->frequency_domain_resource[1];
+  }
   if(nb_rb_coreset==0) return;
 
 #ifdef DEBUG_PDCCH
-  printf("pdcch_channel_estimation: first_carrier_offset %d, BWPStart %d, coreset_start_rb %d, coreset_nb_rb %d\n",
-         first_carrier_offset, BWPStart, coreset_start_rb, nb_rb_coreset);
+  printf("pdcch_channel_estimation: first_carrier_offset %d, BWPStart %d, coreset_start_rb %d, coreset_nb_rb %d, symbold %d\n",
+         first_carrier_offset, BWPStart, coreset_start_rb, nb_rb_coreset,symbol);
 #endif
 
   unsigned short coreset_start_subcarrier = first_carrier_offset+(BWPStart + coreset_start_rb)*12;
@@ -1084,17 +1088,20 @@ void nr_pdcch_channel_estimation(PHY_VARS_NR_UE *ue,
 
   unsigned short scrambling_id = coreset->pdcch_dmrs_scrambling_id;
   // checking if re-initialization of scrambling IDs is needed (should be done here but scrambling ID for PDCCH is not taken from RRC)
-  if (scrambling_id != ue->scramblingID_pdcch){
+  if (pscch_flag == 0 && scrambling_id != ue->scramblingID_pdcch){
     ue->scramblingID_pdcch = scrambling_id;
-    nr_gold_pdcch(ue,ue->scramblingID_pdcch);
+    nr_gold_pdcch(&ue->frame_parms,ue->nr_gold_pdcch[gNB_id],ue->scramblingID_pdcch);
   }
-
+ 
   int dmrs_ref = 0;
   if (coreset->CoreSetType == NFAPI_NR_CSET_CONFIG_PDCCH_CONFIG)
     dmrs_ref = BWPStart;
   // generate pilot
   int pilot[(nb_rb_coreset + dmrs_ref) * 3] __attribute__((aligned(16)));
-  nr_pdcch_dmrs_rx(ue,Ns,ue->nr_gold_pdcch[gNB_id][Ns][symbol], &pilot[0],2000,(nb_rb_coreset+dmrs_ref));
+  if (pscch_flag ==0) 
+    nr_pdcch_dmrs_rx(ue,Ns,ue->nr_gold_pdcch[gNB_id][Ns][symbol], &pilot[0],2000,(nb_rb_coreset+dmrs_ref));
+  else 
+    nr_pdcch_dmrs_rx(ue,Ns,ue->nr_gold_pscch[Ns][symbol], &pilot[0],2000,(nb_rb_coreset+dmrs_ref));
 
   for (aarx=0; aarx<ue->frame_parms.nb_antennas_rx; aarx++) {
 

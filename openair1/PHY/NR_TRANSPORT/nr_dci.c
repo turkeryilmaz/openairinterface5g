@@ -66,12 +66,12 @@ void nr_pdcch_scrambling(uint32_t *in,
   }
 }
 
-void nr_generate_dci(PHY_VARS_gNB *gNB, PHY_VARS_NR_UE *ue,
-                     nfapi_nr_dl_tti_pdcch_pdu_rel15_t *pdcch_pdu_rel15,
-                     int32_t *txdataF,
-                     int16_t amp,
-                     NR_DL_FRAME_PARMS *frame_parms,
-                     int slot) {
+uint32_t nr_generate_dci(PHY_VARS_gNB *gNB, PHY_VARS_NR_UE *ue,
+                         nfapi_nr_dl_tti_pdcch_pdu_rel15_t *pdcch_pdu_rel15,
+                         int32_t *txdataF,
+                         int16_t amp,
+                         NR_DL_FRAME_PARMS *frame_parms,
+                         int slot) {
 
   uint16_t cset_start_sc;
   uint8_t cset_start_symb, cset_nsymb;
@@ -93,6 +93,8 @@ void nr_generate_dci(PHY_VARS_gNB *gNB, PHY_VARS_NR_UE *ue,
   cset_start_sc = frame_parms->first_carrier_offset + (pdcch_pdu_rel15->BWPStart + rb_offset) * NR_NB_SC_PER_RB;
 
   int16_t mod_dmrs[pdcch_pdu_rel15->StartSymbolIndex+pdcch_pdu_rel15->DurationSymbols][(((n_rb+rb_offset+pdcch_pdu_rel15->BWPStart)*6+15)>>4)<<4] __attribute__((aligned(16))); // 3 for the max coreset duration
+
+  uint32_t tcrc[pdcch_pdu_rel15->numDlDci];
 
   for (int d=0;d<pdcch_pdu_rel15->numDlDci;d++) {
     /*The coreset is initialised
@@ -116,7 +118,7 @@ void nr_generate_dci(PHY_VARS_gNB *gNB, PHY_VARS_NR_UE *ue,
     LOG_D(PHY, "pdcch: Coreset starting subcarrier %d on symbol %d (%d symbols)\n", cset_start_sc, cset_start_symb, cset_nsymb);
     // DMRS length is per OFDM symbol
     uint32_t dmrs_length = (n_rb+pdcch_pdu_rel15->BWPStart)*6; //2(QPSK)*3(per RB)*6(REG per CCE)
-    uint32_t encoded_length = gNB ? dci_pdu->AggregationLevel*108:dci_pdu->AggregationLevel*18*cset_nsymb; //2(QPSK)*9(per RB)*6(REG per CCE)
+    uint32_t encoded_length = gNB ? dci_pdu->AggregationLevel*108:dci_pdu->AggregationLevel*18; //2(QPSK)*9(per RB)*6(REG per CCE)
     if (dci_pdu->RNTI != 0xFFFF)
       LOG_D(PHY, "DL_DCI : rb_offset %d, nb_rb %d, DMRS length per symbol %d\t DCI encoded length %d (precoder_granularity %d, reg_mapping %d), Scrambling_Id %d, ScramblingRNTI %x, PayloadSizeBits %d\n",
             rb_offset, n_rb,dmrs_length, encoded_length,pdcch_pdu_rel15->precoderGranularity,pdcch_pdu_rel15->CceRegMappingType,
@@ -144,8 +146,7 @@ void nr_generate_dci(PHY_VARS_gNB *gNB, PHY_VARS_NR_UE *ue,
     uint16_t n_RNTI = dci_pdu->RNTI;
     uint16_t Nid    = dci_pdu->ScramblingId;
     uint16_t scrambling_RNTI = dci_pdu->ScramblingRNTI;
-
-    polar_encoder_fast((uint64_t*)dci_pdu->Payload, (void*)encoder_output, n_RNTI, 1, 
+    polar_encoder_fast((uint64_t*)dci_pdu->Payload, (void*)encoder_output, &tcrc[d],n_RNTI, 1, 
                        gNB ? NR_POLAR_DCI_MESSAGE_TYPE : NR_POLAR_SCI_MESSAGE_TYPE, 
                        dci_pdu->PayloadSizeBits, dci_pdu->AggregationLevel);
 #ifdef DEBUG_CHANNEL_CODING
@@ -184,7 +185,7 @@ void nr_generate_dci(PHY_VARS_gNB *gNB, PHY_VARS_NR_UE *ue,
     if (cset_start_sc >= frame_parms->ofdm_symbol_size)
       cset_start_sc -= frame_parms->ofdm_symbol_size;
 
-    int num_regs = gNB ? dci_pdu->AggregationLevel * NR_NB_REG_PER_CCE / pdcch_pdu_rel15->DurationSymbols : dci_pdu->AggregationLevel;
+    int num_regs = gNB ? dci_pdu->AggregationLevel * NR_NB_REG_PER_CCE / pdcch_pdu_rel15->DurationSymbols : dci_pdu->AggregationLevel/pdcch_pdu_rel15->DurationSymbols;
 
     /*Mapping the encoded DCI along with the DMRS */
     for(int symbol_idx = 0; symbol_idx < pdcch_pdu_rel15->DurationSymbols; symbol_idx++) {
@@ -200,10 +201,10 @@ void nr_generate_dci(PHY_VARS_gNB *gNB, PHY_VARS_NR_UE *ue,
 
         l = cset_start_symb + symbol_idx;
         // dmrs index depends on reference point for k according to 38.211 7.4.1.3.2
-        if (gNB && pdcch_pdu_rel15->CoreSetType == NFAPI_NR_CSET_CONFIG_PDCCH_CONFIG)
-          dmrs_idx = (reg_list[d][reg_count] + pdcch_pdu_rel15->BWPStart) * 3;
+        if (pdcch_pdu_rel15->CoreSetType == NFAPI_NR_CSET_CONFIG_PDCCH_CONFIG)
+          dmrs_idx = (gNB ? reg_list[d][reg_count] + pdcch_pdu_rel15->BWPStart : reg_count) * 3;
         else
-          dmrs_idx = gNB ? ((reg_list[d][reg_count] + rb_offset) * 3) : (pdcch_pdu_rel15->dci_pdu[d].CceIndex + rb_offset) * 3;
+          dmrs_idx = gNB ? ((reg_list[d][reg_count] + rb_offset) * 3) : (pdcch_pdu_rel15->dci_pdu[d].CceIndex + rb_offset + reg_count) * 3;
 
         k_prime = 0;
 
@@ -253,6 +254,7 @@ void nr_generate_dci(PHY_VARS_gNB *gNB, PHY_VARS_NR_UE *ue,
           dci_pdu->PayloadSizeBits,
           *(unsigned long long *)dci_pdu->Payload);
   } // for (int d=0;d<pdcch_pdu_rel15->numDlDci;d++)
+  return(tcrc[0]); // this is for SCI, it should be passed in another way after so we can get more than 1
 }
 
 void nr_generate_dci_top(processingData_L1tx_t *msgTx,

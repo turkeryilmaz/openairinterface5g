@@ -183,7 +183,10 @@ static void prepare_NR_SL_ResourcePool(NR_SL_ResourcePool_r16_t *sl_res_pool,
   sl_res_pool->sl_PriorityThreshold_UL_URLLC_r16 = NULL;
   sl_res_pool->sl_PriorityThreshold_r16 = NULL;
   sl_res_pool->sl_X_Overhead_r16 = NULL;
-  sl_res_pool->sl_PowerControl_r16 = NULL;
+  sl_res_pool->sl_PowerControl_r16 = calloc(1,sizeof(*sl_res_pool->sl_PowerControl_r16));
+  sl_res_pool->sl_PowerControl_r16->sl_Alpha_PSSCH_PSCCH_r16 = calloc(1,sizeof(*sl_res_pool->sl_PowerControl_r16->sl_Alpha_PSSCH_PSCCH_r16));
+  *sl_res_pool->sl_PowerControl_r16->sl_Alpha_PSSCH_PSCCH_r16 = 0;
+  
   sl_res_pool->sl_TxPercentageList_r16 = NULL;
   sl_res_pool->sl_MinMaxMCS_List_r16 = NULL;
 

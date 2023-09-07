@@ -641,7 +641,7 @@ void processSlotTX(void *arg) {
       sl_indication.phy_data  = &phy_data;
       sl_indication.slot_type = SIDELINK_SLOT_TYPE_TX;
 
-      LOG_D(NR_PHY,"Sending SL indication RX %d.%d TX %d.%d\n",proc->frame_rx,proc->nr_slot_rx,proc->frame_tx,proc->nr_slot_tx);
+      LOG_I(NR_PHY,"Sending SL indication RX %d.%d TX %d.%d\n",proc->frame_rx,proc->nr_slot_rx,proc->frame_tx,proc->nr_slot_tx);
       UE->if_inst->sl_indication(&sl_indication);
 
       stop_meas(&UE->ue_ul_indication_stats);
