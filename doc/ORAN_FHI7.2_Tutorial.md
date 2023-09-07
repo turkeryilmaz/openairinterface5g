@@ -45,7 +45,7 @@ PTP enabled switches we have in are lab:
 |Qulsar Qg2 (Grandmaster)|12.1.27         |
 
 
-Radio units we are testing with:
+Radio units we are testing/integrating:
 
 |Vendor     |Firmware |
 |-----------|---------|
@@ -53,6 +53,12 @@ Radio units we are testing with:
 |LiteON RU  |01.00.08 |
 |Benetel 550|v0.6     |
 |Benetel 650|v0.6     |
+
+Tested libxran releases: 
+
+|Vendor                    |
+|--------------------------|
+|oran_release_bronze_v1.1  |
 
 ## 1.1 Configure your server
 
@@ -211,7 +217,10 @@ DPDK Compilation
 
 ```bash
 # Installing meson : it should pull ninja-build and compiler packages
-sudo apt/dnf install meson
+# on debian
+sudo apt install meson
+# on fedora
+sudo dnf install meson
 tar xvf dpdk-20.11.7.tar.xz && cd dpdk-stable-20.11.7
 
 meson build
@@ -274,7 +283,7 @@ export XRAN_LIB_DIR=~/phy/fhi_lib/lib/build
 export XRAN_DIR=~/phy/fhi_lib
 export RTE_SDK=~/dpdk-stable-20.11.7
 export RTE_TARGET=x86_64-native-linuxapp-gcc
-export RTE_INCLUDE=${RTE_SDK}/${RTE_TARGET}/include
+export RTE_INCLUDE=/usr/local/include
 ```
 
 Compile Fronthaul Interface Library
@@ -290,6 +299,8 @@ GTEST_ROOT is not set. Unit tests are not compiled
 "echo "GTEST_ROOT is not set. Unit tests are not compiled"" command exited with code 0.
 ```
 
+The shared library object `~/phy/fhi_lib/lib/build` SHALL be generated.
+
 ## 2.2 Build OAI gNB
 
 ```bash
@@ -300,12 +311,14 @@ sudo apt install -y libnuma-dev
 # on RHEL
 sudo dnf install -y numactl-devel
 ./build_oai --gNB --ninja -t oran_fhlib_5g (Add, -I if you are building for the first time on server for installing external dependencies)
+#check if all the libraries are properly linked to liboai_transpro.so
+ldd liboai_transpro.so
 ```
 
-Copy the XRAN shared library object here:
+In case `liboai_transpro.so` is missing `libxran.so` then you can copy XRAN shared library object:
 
 ```bash
-cp ~/phy/fhi_lib/lib/build/libxran.so ~/openairinterface5g/cmake_targets/ran_build/build
+sudo cp ~/phy/fhi_lib/lib/build/libxran.so /usr/local/lib
 ```
 
 # 3. Configure OAI gNB
@@ -351,9 +364,9 @@ Set the VLAN tags, mtu and
 
 Set the cores for DPDK
 
-* systemCore
-* ioWorker
-* ioCore  (same as ioWorker)
+* systemCore (absolute coreId)
+* ioWorker (it is a mask: 1<<coreid) (For example if you select core 2 then this value should be 4)
+* ioCore (absolute coreId)
 
 Adjust the frequency, bandwidth and any other parameter which is relevant to your environment.
 
