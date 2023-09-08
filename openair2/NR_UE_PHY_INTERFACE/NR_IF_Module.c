@@ -31,6 +31,8 @@
  */
 
 #include <sys/socket.h>
+#include <sys/un.h>
+#include <sys/types.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
@@ -48,6 +50,7 @@
 #include "radio/ETHERNET/USERSPACE/LIB/if_defs.h"
 #include <stdio.h>
 #include "openair2/GNB_APP/MACRLC_nr_paramdef.h"
+#include "vendor_ext.h"
 
 #define MAX_IF_MODULES 100
 
@@ -67,7 +70,14 @@ queue_t nr_tx_req_queue;
 queue_t nr_ul_dci_req_queue;
 queue_t nr_ul_tti_req_queue;
 
-void nrue_init_standalone_socket(int tx_port, int rx_port)
+static bool is_ipaddress(const char* s)
+{
+	struct sockaddr_in sa;
+	return 1 == inet_pton(AF_INET, s, &sa.sin_addr);
+}
+
+
+static void nrue_init_ip_socket(const char* addr, int tx_port, int rx_port)
 {
   {
     struct sockaddr_in server_address;
@@ -83,7 +93,7 @@ void nrue_init_standalone_socket(int tx_port, int rx_port)
       return;
     }
 
-    if (inet_pton(server_address.sin_family, stub_eth_params.remote_addr, &server_address.sin_addr) <= 0)
+    if (inet_pton(server_address.sin_family, addr, &server_address.sin_addr) <= 0)
     {
       LOG_E(NR_MAC, "Invalid standalone PNF Address\n");
       close(sd);
@@ -127,8 +137,88 @@ void nrue_init_standalone_socket(int tx_port, int rx_port)
     ue_rx_sock_descriptor = sd;
     LOG_T(NR_RRC, "Successfully set up rx_socket in %s.\n", __FUNCTION__);
   }
-  LOG_D(NR_RRC, "NRUE standalone socket info: tx_port %d  rx_port %d on %s.\n",
-        tx_port, rx_port, stub_eth_params.remote_addr);
+  LOG_I(NR_RRC, "NRUE standalone socket info: tx_port %d  rx_port %d on %s.\n",
+        tx_port, rx_port, addr);
+}
+
+static bool nrue_init_unixsocket(const char *addr)
+{
+	{
+		struct sockaddr_un server_address;
+		int addr_len = sizeof(server_address);
+
+		server_address.sun_family = AF_UNIX;
+		snprintf(server_address.sun_path, sizeof(server_address.sun_path), "%s.tx", addr);
+		LOG_I(NR_RRC,"Proxy::TX Socket address: %s \r\n", server_address.sun_path);
+		int sd = socket(server_address.sun_family, SOCK_DGRAM, 0);
+		if (sd < 0)
+		{
+			assert(false);
+		}
+
+		if (connect(sd, (struct sockaddr *)&server_address, addr_len) < 0)
+		{
+			LOG_E(NR_RRC,"Proxy::Connection TX to standalone PNF failed: %s\n", strerror(errno));
+			close(sd);
+			assert(false);
+		}
+
+		assert(ue_tx_sock_descriptor == -1);
+		ue_tx_sock_descriptor = sd;
+	}
+
+	{
+		struct sockaddr_un server_address;
+		struct sockaddr_un client_address;
+
+		server_address.sun_family = AF_UNIX;
+		snprintf(server_address.sun_path, sizeof(server_address.sun_path), "%s.rx", addr);
+		srand(0xdeadc0de);
+
+		client_address.sun_family = AF_UNIX;
+		snprintf(client_address.sun_path, sizeof(client_address.sun_path), "%s_%d.rx", addr, rand());
+		unlink(client_address.sun_path);
+		LOG_I(NR_RRC,"Proxy::RX Socket address: Proxy: %s UE: %s \r\n", server_address.sun_path, client_address.sun_path);
+
+		int sd = socket(server_address.sun_family, SOCK_DGRAM, 0);
+		if (sd < 0)
+		{
+			assert(false);
+		}
+
+		assert(sd);
+
+		if( 0 != (bind(sd, (struct sockaddr*)&client_address, sizeof(struct sockaddr_un))))
+		{
+			LOG_E(NR_RRC,"Proxy::Connection RX to standalone PNF failed: %d %s\n",errno, strerror(errno));
+			close(sd);
+			assert(false);
+		}
+
+		// handshake
+		uint8_t buffer[4] = {0xde,0xad,0xc0,0xde};
+		sendto(sd, buffer, sizeof(buffer), 0, (const struct sockaddr *)&server_address, sizeof(server_address));
+
+		assert(ue_rx_sock_descriptor == -1);
+		ue_rx_sock_descriptor = sd;
+	}
+
+	LOG_I(NR_RRC,"Proxy::NRUE standalone Unix socket, on %s.\n", addr);
+	return true;
+}
+
+void nrue_init_standalone_socket(int tx_port, int rx_port)
+{
+	printf("--- %s \n", getenv("PROXY_ADDR"));
+	const char *standalone_addr = getenv("PROXY_ADDR") ? getenv("PROXY_ADDR") : stub_eth_params.remote_addr;
+  if(is_ipaddress(standalone_addr))
+  {
+    nrue_init_ip_socket(standalone_addr, tx_port, rx_port);
+  }
+  else
+  {
+    nrue_init_unixsocket(standalone_addr);
+  }
 }
 
 void send_nsa_standalone_msg(NR_UL_IND_t *UL_INFO, uint16_t msg_id)
@@ -217,6 +307,31 @@ void send_nsa_standalone_msg(NR_UL_IND_t *UL_INFO, uint16_t msg_id)
     }
     case NFAPI_NR_PHY_MSG_TYPE_SRS_INDICATION:
     break;
+    case NFAPI_NR_PHY_MSG_TYPE_SLOT_INDICATION:
+    {
+        char buffer[NFAPI_MAX_PACKED_MESSAGE_SIZE];
+        LOG_T(NR_MAC, "SLOT IND header id :%d\n", UL_INFO->vt_ue_slot_ind.header.message_id);
+        int encoded_size = nfapi_nr_p7_message_pack(&UL_INFO->vt_ue_slot_ind, buffer, sizeof(buffer), NULL);
+        if (encoded_size <= 0)
+        {
+                LOG_E(NR_MAC, "nfapi_nr_p7_message_pack has failed. Encoded size = %d\n", encoded_size);
+                return;
+        }
+
+        LOG_D(NR_MAC, "SLOT_IND sent to Proxy, Size: %d Frame %d Slot %d\n", encoded_size,
+                UL_INFO->vt_ue_slot_ind.sfn, UL_INFO->vt_ue_slot_ind.slot);
+        if (send(ue_tx_sock_descriptor, buffer, encoded_size, 0) < 0)
+        {
+                LOG_E(NR_MAC, "Send Proxy NR_UE failed\n");
+                return;
+        }
+        else
+        {
+                LOG_D(NR_MAC, "Send Proxy SLOT_IND Success\n");
+        }
+        break;
+    }
+
     default:
     break;
   }
@@ -346,6 +461,8 @@ static bool is_my_dci(NR_UE_MAC_INST_t *mac, nfapi_nr_dl_dci_pdu_t *received_pdu
     }
     if (get_softmodem_params()->sa)
     {
+        if (received_pdu->RNTI == 0xFFFE)
+            return true;
         if (received_pdu->RNTI != mac->crnti && mac->ra.ra_state == RA_SUCCEEDED)
             return false;
         if (received_pdu->RNTI != mac->ra.t_crnti && mac->ra.ra_state == WAIT_CONTENTION_RESOLUTION)
@@ -365,6 +482,8 @@ static void copy_dl_tti_req_to_dl_info(nr_downlink_indication_t *dl_info, nfapi_
     memset(mac->nr_ue_emul_l1.index_has_sib, 0, sizeof(mac->nr_ue_emul_l1.index_has_sib));
     mac->nr_ue_emul_l1.expected_rar = false;
     memset(mac->nr_ue_emul_l1.index_has_rar, 0, sizeof(mac->nr_ue_emul_l1.index_has_rar));
+    mac->nr_ue_emul_l1.expected_paging = false;
+    memset(mac->nr_ue_emul_l1.index_has_paging, 0, sizeof(mac->nr_ue_emul_l1.index_has_paging));
     mac->nr_ue_emul_l1.expected_dci = false;
     memset(mac->nr_ue_emul_l1.index_has_dci, 0, sizeof(mac->nr_ue_emul_l1.index_has_dci));
     int pdu_idx = 0;
@@ -415,6 +534,12 @@ static void copy_dl_tti_req_to_dl_info(nr_downlink_indication_t *dl_info, nfapi_
                         mac->nr_ue_emul_l1.expected_rar = true;
                         mac->nr_ue_emul_l1.index_has_rar[j] = true;
                         LOG_T(NR_MAC, "Setting index_has_rar[%d] = true\n", j);
+                    }
+                    else if (dci_pdu_list->RNTI == 0xfffe)
+                    {
+                        mac->nr_ue_emul_l1.expected_paging = true;
+                        mac->nr_ue_emul_l1.index_has_paging[j] = true;
+                        LOG_T(NR_MAC, "Setting index_has_paging[%d] = true\n", j);
                     }
                     else
                     {
@@ -518,6 +643,11 @@ static void copy_tx_data_req_to_dl_info(nr_downlink_indication_t *dl_info, nfapi
         else if (mac->nr_ue_emul_l1.index_has_rar[i])
         {
             fill_rx_ind(pdu_list, rx_ind, pdu_idx, FAPI_NR_RX_PDU_TYPE_RAR);
+            pdu_idx++;
+        }
+        else if (mac->nr_ue_emul_l1.index_has_paging[i])
+        {
+            fill_rx_ind(pdu_list, rx_ind, pdu_idx, FAPI_NR_RX_PDU_TYPE_PCH);
             pdu_idx++;
         }
         else if (mac->nr_ue_emul_l1.index_has_dci[i])
@@ -676,6 +806,26 @@ static void fill_dci_from_dl_config(nr_downlink_indication_t*dl_ind, fapi_nr_dl_
   }
 }
 
+void check_and_process_slot_ind(nfapi_ue_slot_indication_vt_t *slot_ind, uint16_t frame, uint16_t slot)
+{
+    NR_UE_MAC_INST_t *mac = get_mac_inst(0);
+
+    if (pthread_mutex_lock(&mac->mutex_dl_info)) abort();
+
+    if (slot_ind)
+    {
+        slot_ind->header.message_id = NFAPI_NR_PHY_MSG_TYPE_SLOT_INDICATION;
+        slot_ind->header.message_length = sizeof(nfapi_ue_slot_indication_vt_t);
+        slot_ind->header.phy_id = 0;
+        slot_ind->sfn = frame;
+        slot_ind->slot = slot;
+        LOG_D(NR_PHY, "[%d, %d] SLOT Indication\n", frame, slot);
+    }
+
+    if (pthread_mutex_unlock(&mac->mutex_dl_info)) abort();
+}
+
+
 void check_and_process_dci(nfapi_nr_dl_tti_request_t *dl_tti_request,
                            nfapi_nr_tx_data_request_t *tx_data_request,
                            nfapi_nr_ul_dci_request_t *ul_dci_request,
@@ -700,8 +850,9 @@ void check_and_process_dci(nfapi_nr_dl_tti_request_t *dl_tti_request,
        RAR hasn't been processed yet, we do not want to be filtering the
        tx_data_requests. */
     if (tx_data_request) {
-        if (mac->nr_ue_emul_l1.expected_sib ||
-            mac->nr_ue_emul_l1.expected_rar ||
+        if (mac->nr_ue_emul_l1.expected_sib    ||
+            mac->nr_ue_emul_l1.expected_rar    ||
+            mac->nr_ue_emul_l1.expected_paging ||
             mac->nr_ue_emul_l1.expected_dci) {
             frame = tx_data_request->SFN;
             slot = tx_data_request->Slot;
@@ -903,7 +1054,41 @@ static void enqueue_nr_nfapi_msg(void *buffer, ssize_t len, nfapi_p7_message_hea
             }
             break;
         }
+        case P7_CELL_SEARCH_IND:
+		{
+			vendor_nfapi_cell_search_indication_t cell_ind;
+			LOG_D(NR_PHY, "CELL SEARCH IND Receievd\n");
+			if (nfapi_p7_message_unpack((void *)buffer, len, &cell_ind,
+						sizeof(vendor_nfapi_cell_search_indication_t), NULL) < 0)
+			{
+				LOG_E(NR_PHY, "Message cell_ind failed to unpack\n");
+				break;
+			}
 
+			MessageDef *message_p;
+			int         i;
+			message_p = itti_alloc_new_message(TASK_UNKNOWN, 0, PHY_FIND_CELL_IND);
+			for (i = 0 ; i <  cell_ind.lte_cell_search_indication.number_of_lte_cells_found; i++) {
+				// TO DO
+				PHY_FIND_CELL_IND (message_p).cell_nb = i+1;
+				/** FIXME: What we need is EARFCN not Freq Offset. */
+				PHY_FIND_CELL_IND (message_p).cells[i].earfcn = cell_ind.lte_cell_search_indication.lte_found_cells[i].frequency_offset;
+				// TO DO
+				PHY_FIND_CELL_IND (message_p).cells[i].cell_id = cell_ind.lte_cell_search_indication.lte_found_cells[i].pci;
+				PHY_FIND_CELL_IND (message_p).cells[i].rsrp = cell_ind.lte_cell_search_indication.lte_found_cells[i].rsrp;
+				PHY_FIND_CELL_IND (message_p).cells[i].rsrq = cell_ind.lte_cell_search_indication.lte_found_cells[i].rsrq;
+
+				LOG_D(NR_PHY, "Cell No: %d PCI: %d EARFCN: %d RSRP: %d RSRQ: %d \n", PHY_FIND_CELL_IND (message_p).cell_nb,
+						PHY_FIND_CELL_IND (message_p).cells[i].cell_id,
+						PHY_FIND_CELL_IND (message_p).cells[i].earfcn,
+						PHY_FIND_CELL_IND (message_p).cells[i].rsrp,
+						PHY_FIND_CELL_IND (message_p).cells[i].rsrq);
+				itti_send_msg_to_task(TASK_RRC_NRUE, INSTANCE_DEFAULT, message_p);
+			}
+
+			break;
+
+		}
         default:
             LOG_E(NR_PHY, "Invalid nFAPI message. Header ID %d\n",
                   header.message_id);
@@ -1049,7 +1234,7 @@ int handle_bcch_bch(module_id_t module_id, int cc_id,
 			  gNB_index,
 			  phy_data,
 			  additional_bits,
-			  ssb_length,  //  Lssb = 64 is not support    
+			  ssb_length,  //  Lssb = 64 is not support
 			  ssb_index,
 			  pduP,
 			  ssb_start_subcarrier,
@@ -1096,6 +1281,23 @@ int8_t handle_dlsch(nr_downlink_indication_t *dl_info, NR_UL_TIME_ALIGNMENT_t *u
 
 int8_t handle_csirs_measurements(module_id_t module_id, frame_t frame, int slot, fapi_nr_csirs_measurements_t *csirs_measurements) {
   return nr_ue_process_csirs_measurements(module_id, frame, slot, csirs_measurements);
+}
+
+int8_t handle_pch(nr_downlink_indication_t *dl_info, NR_UL_TIME_ALIGNMENT_t *ul_time_alignment, int pdu_id){
+  /* L1 assigns harq_pid, but in emulated L1 mode we need to assign
+     the harq_pid based on the saved global g_harq_pid. Because we are
+     emulating L1, no antenna measurements are conducted to calculate
+     a harq_pid, therefore we must set it here. */
+  if (get_softmodem_params()->emulate_l1)
+    dl_info->rx_ind->rx_indication_body[pdu_id].pdsch_pdu.harq_pid = g_harq_pid;
+
+  update_harq_status(dl_info->module_id,
+                     dl_info->rx_ind->rx_indication_body[pdu_id].pdsch_pdu.harq_pid,
+                     dl_info->rx_ind->rx_indication_body[pdu_id].pdsch_pdu.ack_nack);
+  if(dl_info->rx_ind->rx_indication_body[pdu_id].pdsch_pdu.ack_nack)
+    nr_ue_send_sdu(dl_info, ul_time_alignment, pdu_id);
+
+  return 0;
 }
 
 void update_harq_status(module_id_t module_id, uint8_t harq_pid, uint8_t ack_nack) {
@@ -1218,6 +1420,9 @@ int nr_ue_dl_indication(nr_downlink_indication_t *dl_info, NR_UL_TIME_ALIGNMENT_
                                                    dl_info->slot,
                                                    &(dl_info->rx_ind->rx_indication_body+i)->csirs_measurements)) << FAPI_NR_CSIRS_IND;
             break;
+          case FAPI_NR_RX_PDU_TYPE_PCH:
+            ret_mask |= (handle_pch(dl_info, ul_time_alignment, i)) << FAPI_NR_RX_PDU_TYPE_RAR;
+            break;
           default:
             break;
         }
@@ -1281,21 +1486,14 @@ void RCconfig_nr_ue_macrlc(void) {
   if (MACRLC_ParamList.numelt > 0) {
     for (j = 0; j < MACRLC_ParamList.numelt; j++) {
       if (strcmp(*(MACRLC_ParamList.paramarray[j][MACRLC_TRANSPORT_N_PREFERENCE_IDX].strptr), "nfapi") == 0) {
-        stub_eth_params.local_if_name = strdup(
-            *(MACRLC_ParamList.paramarray[j][MACRLC_LOCAL_N_IF_NAME_IDX].strptr));
-        stub_eth_params.my_addr = strdup(
-            *(MACRLC_ParamList.paramarray[j][MACRLC_LOCAL_N_ADDRESS_IDX].strptr));
-        stub_eth_params.remote_addr = strdup(
-            *(MACRLC_ParamList.paramarray[j][MACRLC_REMOTE_N_ADDRESS_IDX].strptr));
-        stub_eth_params.my_portc =
-            *(MACRLC_ParamList.paramarray[j][MACRLC_LOCAL_N_PORTC_IDX].iptr);
-        stub_eth_params.remote_portc =
-            *(MACRLC_ParamList.paramarray[j][MACRLC_REMOTE_N_PORTC_IDX].iptr);
-        stub_eth_params.my_portd =
-            *(MACRLC_ParamList.paramarray[j][MACRLC_LOCAL_N_PORTD_IDX].iptr);
-        stub_eth_params.remote_portd =
-            *(MACRLC_ParamList.paramarray[j][MACRLC_REMOTE_N_PORTD_IDX].iptr);
-        stub_eth_params.transp_preference = ETH_UDP_MODE;
+        stub_eth_params.local_if_name = strdup(*(MACRLC_ParamList.paramarray[j][MACRLC_LOCAL_N_IF_NAME_IDX].strptr));
+        stub_eth_params.my_addr =       strdup(*(MACRLC_ParamList.paramarray[j][MACRLC_LOCAL_N_ADDRESS_IDX].strptr));
+        stub_eth_params.remote_addr =   strdup(*(MACRLC_ParamList.paramarray[j][MACRLC_REMOTE_N_ADDRESS_IDX].strptr));
+        stub_eth_params.my_portc =           *(MACRLC_ParamList.paramarray[j][MACRLC_LOCAL_N_PORTC_IDX].iptr);
+        stub_eth_params.remote_portc =       *(MACRLC_ParamList.paramarray[j][MACRLC_REMOTE_N_PORTC_IDX].iptr);
+        stub_eth_params.my_portd =           *(MACRLC_ParamList.paramarray[j][MACRLC_LOCAL_N_PORTD_IDX].iptr);
+        stub_eth_params.remote_portd =       *(MACRLC_ParamList.paramarray[j][MACRLC_REMOTE_N_PORTD_IDX].iptr);
+        stub_eth_params.transp_preference =  ETH_UDP_MODE;
       }
     }
   }

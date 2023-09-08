@@ -448,8 +448,16 @@ int find_pdcch_candidate(const gNB_MAC_INST *mac,
         }
       }
     }
-    if(!taken)
+
+    if (RC.ss.mode == SS_SOFTMODEM)
+    {
+      taken = 0;
+      m = 0;
+      first_cce = 0;
+    }
+    if(!taken){
       return first_cce;
+    }
   }
   return -1;
 }
@@ -1758,6 +1766,35 @@ void fill_dci_pdu_rel15(const NR_ServingCellConfigCommon_t *scc,
     // DMRS sequence init
     pos += 1;
     *dci_pdu |= ((uint64_t)dci_pdu_rel15->dmrs_sequence_initialization.val & 0x1) << (dci_size - pos);
+
+    LOG_D(NR_MAC,"============= NR_UL_DCI_FORMAT_1_1 =============\n");
+    LOG_D(NR_MAC,"dci_pdu_rel15->format_indicator = %i\n", dci_pdu_rel15->format_indicator);
+    LOG_D(NR_MAC,"dci_pdu_rel15->carrier_indicator.val = %i bits_len=%d\n", dci_pdu_rel15->carrier_indicator.val,dci_pdu_rel15->carrier_indicator.nbits);
+    LOG_D(NR_MAC,"dci_pdu_rel15->bwp_indicator.val = %i bits_len=%d\n ", dci_pdu_rel15->bwp_indicator.val,dci_pdu_rel15->bwp_indicator.nbits);
+    LOG_D(NR_MAC,"dci_pdu_rel15->frequency_domain_assignment.val = %i bits_len=%d\n", dci_pdu_rel15->frequency_domain_assignment.val,dci_pdu_rel15->frequency_domain_assignment.nbits);
+    LOG_D(NR_MAC,"dci_pdu_rel15->time_domain_assignment.val = %i bits_len=%d\n", dci_pdu_rel15->time_domain_assignment.val,dci_pdu_rel15->time_domain_assignment.nbits);
+    LOG_D(NR_MAC,"dci_pdu_rel15->vrb_to_prb_mapping.val = %i bits_len=%d\n", dci_pdu_rel15->vrb_to_prb_mapping.val,dci_pdu_rel15->vrb_to_prb_mapping.nbits);
+    LOG_D(NR_MAC,"dci_pdu_rel15->prb_bundling_size_indicator.val = %i bits_len=%d\n", dci_pdu_rel15->prb_bundling_size_indicator.val,dci_pdu_rel15->prb_bundling_size_indicator.nbits);
+    LOG_D(NR_MAC,"dci_pdu_rel15->rate_matching_indicator.val = %i bits_len=%d\n", dci_pdu_rel15->rate_matching_indicator.val,dci_pdu_rel15->rate_matching_indicator.nbits);
+    LOG_D(NR_MAC,"dci_pdu_rel15->zp_csi_rs_trigger.val = %i bits_len=%d\n", dci_pdu_rel15->zp_csi_rs_trigger.val,dci_pdu_rel15->zp_csi_rs_trigger.nbits);
+    LOG_D(NR_MAC,"dci_pdu_rel15->mcs = %i bits_len=5\n", dci_pdu_rel15->mcs);
+    LOG_D(NR_MAC,"dci_pdu_rel15->ndi = %i bits_len=1\n", dci_pdu_rel15->ndi);
+    LOG_D(NR_MAC,"dci_pdu_rel15->rv= %i bits_len=2\n", dci_pdu_rel15->rv);
+    LOG_D(NR_MAC,"dci_pdu_rel15->mcs2 = %i bits_len=%d\n", dci_pdu_rel15->mcs2.val,dci_pdu_rel15->mcs2.nbits);
+    LOG_D(NR_MAC,"dci_pdu_rel15->ndi2 = %i bits_len=%d\n", dci_pdu_rel15->ndi2.val,dci_pdu_rel15->ndi2.nbits);
+    LOG_D(NR_MAC,"dci_pdu_rel15->rv2= %i bits_len=%d\n", dci_pdu_rel15->rv2.val,dci_pdu_rel15->rv2.nbits);
+    LOG_D(NR_MAC,"dci_pdu_rel15->harq_pid = %i bits_len=4\n", dci_pdu_rel15->harq_pid);
+    LOG_D(NR_MAC,"dci_pdu_rel15->dai[0].val = %i bits_len=%d\n", dci_pdu_rel15->dai[0].val,dci_pdu_rel15->dai[0].nbits);
+    LOG_D(NR_MAC,"dci_pdu_rel15->tpc = %i bits_len=2\n", dci_pdu_rel15->tpc);
+    LOG_D(NR_MAC,"dci_pdu_rel15->pucch_resource_indicator = %i bits_len=3\n", dci_pdu_rel15->pucch_resource_indicator);
+    LOG_D(NR_MAC,"dci_pdu_rel15->pdsch_to_harq_feedback_timing_indicator = %i bits_len=%d\n", dci_pdu_rel15->pdsch_to_harq_feedback_timing_indicator.val,dci_pdu_rel15->pdsch_to_harq_feedback_timing_indicator.nbits);
+    LOG_D(NR_MAC,"dci_pdu_rel15->antenna_ports.val = %i bits_len=%d\n", dci_pdu_rel15->antenna_ports.val,dci_pdu_rel15->antenna_ports.nbits);
+    LOG_D(NR_MAC,"dci_pdu_rel15->transmission_configuration_indication.val = %i bits_len=%d\n", dci_pdu_rel15->transmission_configuration_indication.val,dci_pdu_rel15->transmission_configuration_indication.nbits);
+    LOG_D(NR_MAC,"dci_pdu_rel15->srs_request.val = %i  bits_len=%d\n", dci_pdu_rel15->srs_request.val,dci_pdu_rel15->srs_request.nbits);
+    LOG_D(NR_MAC,"dci_pdu_rel15->cbgti.val = %i bits_len=%d\n", dci_pdu_rel15->cbgti.val,dci_pdu_rel15->cbgti.nbits);
+    LOG_D(NR_MAC,"dci_pdu_rel15->cbgfi.val = %i bits_len=%d\n", dci_pdu_rel15->cbgfi.val,dci_pdu_rel15->cbgfi.nbits);
+    LOG_D(NR_MAC,"dci_pdu_rel15->dmrs_sequence_initialization.val = %i bits_len=1\n", dci_pdu_rel15->dmrs_sequence_initialization.val);
+    break;
   }
   LOG_D(NR_MAC, "DCI has %d bits and the payload is %lx\n", dci_size, *dci_pdu);
 }
@@ -2947,7 +2984,7 @@ void prepare_initial_ul_rrc_message(gNB_MAC_INST *mac, NR_UE_info_t *UE)
   const NR_ServingCellConfig_t *sccd = rrc->configuration.scd;
   NR_CellGroupConfig_t *cellGroupConfig = calloc(1, sizeof(*cellGroupConfig));
   AssertFatal(cellGroupConfig != NULL, "out of memory\n");
-  fill_initial_cellGroupConfig(UE->uid, cellGroupConfig, scc, sccd, &rrc->configuration);
+  fill_initial_cellGroupConfig(UE->uid, cellGroupConfig, scc, sccd, &rrc->configuration, UE->CC_id);
 
   uint8_t du2cu_rrc_container[1024];
   asn_enc_rval_t enc_rval = uper_encode_to_buffer(&asn_DEF_NR_CellGroupConfig,
