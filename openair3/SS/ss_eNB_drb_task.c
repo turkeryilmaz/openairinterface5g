@@ -54,7 +54,6 @@
 #include "ss_eNB_vt_timer_task.h"
 
 extern RAN_CONTEXT_t RC;
-//extern uint16_t ss_rnti_g;
 static acpCtx_t ctx_drb_g = NULL;
 extern SSConfigContext_t SS_context;
 
