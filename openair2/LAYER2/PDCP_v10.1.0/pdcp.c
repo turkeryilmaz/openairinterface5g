@@ -2654,6 +2654,7 @@ uint64_t pdcp_module_init( uint64_t pdcp_optmask, int id) {
         ((LINK_ENB_PDCP_TO_GTPV1U)?"usegtp":""),
         ((PDCP_USE_NETLINK)?"usenetlink":""));
 
+  if (RC.ss.mode < SS_SOFTMODEM) {
   if (PDCP_USE_NETLINK) {
     nas_getparams();
 
@@ -2686,7 +2687,7 @@ uint64_t pdcp_module_init( uint64_t pdcp_optmask, int id) {
          }else
              LOG_E(PDCP, "ENB pdcp will not use tun interface\n");
    }
-
+  }
   pthread_create(&pdcp_stats_thread_desc,NULL,pdcp_stats_thread,NULL);
 
   return pdcp_params.optmask ;
