@@ -2831,6 +2831,7 @@ add_executable(nr-uesoftmodem
   ${OPENAIR_DIR}/executables/nr-ue.c
   ${OPENAIR_DIR}/executables/softmodem-common.c
   ${OPENAIR1_DIR}/SIMULATION/TOOLS/taus.c
+  ${OPENAIR1_DIR}/SIMULATION/TOOLS/rangen_double.c
   ${OPENAIR_DIR}/sdr/COMMON/common_lib.c
   ${OPENAIR_DIR}/sdr/COMMON/record_player.c
   ${OPENAIR2_DIR}/RRC/NAS/nas_config.c

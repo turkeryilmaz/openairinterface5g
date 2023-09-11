@@ -56,7 +56,7 @@ $HOME/openairinterface5g/cmake_targets/ran_build/build/nr-uesoftmodem \
 nearby_rfsim_cmd = \
 sudo -E RFSIMULATOR=127.0.0.1 \
 $HOME/openairinterface5g/cmake_targets/ran_build/build/nr-uesoftmodem \
---rfsim --sl-mode 2 --rfsimulator.serverport 4048 \
+--rfsim --sl-mode 2 --rbsl 106 --SLC 3300000000 --ue-rxgain 20 --rfsimulator.serverport 4048 \
 --log_config.global_log_options time,nocolor \
 > ~/rx.log 2>&1
 
@@ -64,6 +64,6 @@ $HOME/openairinterface5g/cmake_targets/ran_build/build/nr-uesoftmodem \
 syncref_rfsim_cmd = \
 sudo -E RFSIMULATOR=server \
 $HOME/openairinterface5g/cmake_targets/ran_build/build/nr-uesoftmodem \
---sync-ref --rfsim --sl-mode 2 --rfsimulator.serverport 4048 \
+--sync-ref --rfsim --sl-mode 2 --rbsl 106 --SLC 3300000000 --ue-txgain 0 --rfsimulator.serverport 4048 \
 --log_config.global_log_options time,nocolor \
 > ~/tx.log 2>&1
