@@ -82,7 +82,7 @@ void nr_slsch_extract_rbs(int32_t **rxdataF,
       for (aatx = 0; aatx < pssch_pdu->nrOfLayers; aatx++) {
         sl_ch0 = &pssch_vars->sl_ch_estimates[aatx * frame_parms->nb_antennas_rx + aarx][validDmrsEst * frame_parms->ofdm_symbol_size]; // update channel estimates if new dmrs symbol are available
         sl_ch0_ext = &pssch_vars->sl_ch_estimates_ext[aatx * frame_parms->nb_antennas_rx + aarx][symbol * nb_re_pssch2];
-        memcpy1((void*)sl_ch0_ext, (void*)sl_ch0, (nb_re_pssch - nb_re_sci1) * sizeof(int32_t));
+        memcpy1((void*)sl_ch0_ext, (void*)&sl_ch0[start_re], (nb_re_pssch - nb_re_sci1) * sizeof(int32_t));
       }
 
     } else { // DMRS case
