@@ -166,7 +166,13 @@ int write_file_matlab(const char *fname,
         fprintf(fp,"%"PRIu32"\n",((uint32_t *)data)[i]);
       }
       break;
+
     case 14:
+      for (i=0; i<length<<1; i+=(2*dec)) {
+        fprintf(fp,"%d+%dj\n",((short *)data)[i],((short *)data)[i+1]);
+      }
+      break;
+
     case 15:
       for (i=0; i<length<<1; i+=(2*dec)) {
         fprintf(fp,"%d + j*(%d)\n",((short *)data)[i],((short *)data)[i+1]);

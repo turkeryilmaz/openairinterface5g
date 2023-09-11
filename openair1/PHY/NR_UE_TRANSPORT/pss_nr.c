@@ -377,18 +377,10 @@ void free_context_synchro_nr(void)
     free(synchroF_tmp);
     synchroF_tmp = NULL;
   }
-  else {
-    LOG_E(PHY,"Fatal memory deallocation problem \n");
-    assert(0);
-  }
 
   if (synchro_tmp != NULL) {
     free(synchro_tmp);
     synchro_tmp = NULL;
-  }
-  else {
-    LOG_E(PHY,"Fatal memory deallocation problem \n");
-    assert(0);
   }
 
 #endif

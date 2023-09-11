@@ -55,6 +55,7 @@
 #include "PHY/impl_defs_top.h"
 #include "PHY/MODULATION/modulation_common.h"
 
+#define LDPC_MAX_LIMIT 31
 #define DEBUG_NR_PSSCHSIM
 
 // typedef struct {
@@ -108,11 +109,12 @@ int N_RB_SL = 106;
 int mu = 1;
 int loglvl = OAILOG_WARNING;
 int seed = 0;
+int mcs = 0;
 
 static void get_sim_cl_opts(int argc, char **argv)
 {
     char c;
-    while ((c = getopt(argc, argv, "F:g:hIL:l:m:M:n:N:o:O:p:P:r:R:s:S:x:y:z:")) != -1) {
+    while ((c = getopt(argc, argv, "F:g:hIL:l:m:M:n:N:o:O:p:P:r:R:s:S:t:x:y:z:")) != -1) {
     switch (c) {
       case 'F':
         input_fd = fopen(optarg, "r");
@@ -185,6 +187,10 @@ static void get_sim_cl_opts(int argc, char **argv)
       case 'S':
         snr1 = atof(optarg);
         snr1set = 1;
+        break;
+
+      case 't':
+        mcs = atoi(optarg);
         break;
 
       case 'y':
@@ -357,14 +363,19 @@ int main(int argc, char **argv)
   load_nrLDPClib(NULL);
 
   PHY_VARS_NR_UE *txUE = malloc(sizeof(PHY_VARS_NR_UE));
+  txUE->sync_ref= true;
   txUE->frame_parms.N_RB_SL = N_RB_SL;
   txUE->frame_parms.Ncp = NORMAL;
   txUE->frame_parms.nb_antennas_tx = 1;
   txUE->frame_parms.nb_antennas_rx = n_rx;
+  txUE->frame_parms.Imcs = mcs;
   txUE->max_ldpc_iterations = 5;
+
   PHY_VARS_NR_UE *rxUE = malloc(sizeof(PHY_VARS_NR_UE));
+  rxUE->sync_ref= false;
   rxUE->frame_parms.nb_antennas_tx = n_tx;
   rxUE->frame_parms.nb_antennas_rx = 1;
+  rxUE->frame_parms.Imcs = mcs;
   initTpool("n", &rxUE->threadPool, true);
   initNotifiedFIFO(&rxUE->respDecode);
 
@@ -433,6 +444,8 @@ int main(int argc, char **argv)
   unsigned int errors_bit = 0;
   unsigned int n_errors = 0;
   unsigned int n_false_positive = 0;
+  unsigned int errors_bit_delta = 0;
+  unsigned int num_bytes_to_check = 80;
   //double modulated_input[HNA_SIZE];
   unsigned char test_input_bit[HNA_SIZE];
   //short channel_output_uncoded[HNA_SIZE];
@@ -453,7 +466,6 @@ int main(int argc, char **argv)
     errors_bit = 0;
 
     for (int trial = 0; trial < n_trials; trial++) {
-
       for (int i = 0; i < frame_length_complex_samples; i++) {
         for (int aa = 0; aa < txUE->frame_parms.nb_antennas_tx; aa++) {
           r_re[aa][i] = ((double)(((short *)txdata[aa]))[(i << 1)]);
@@ -494,36 +506,41 @@ int main(int argc, char **argv)
                                                txUE->slsch[0][0]->Nidx,
                                                &proc);
 
-      if (ret)
-        n_errors++;
-
-      bool payload_type_string = true;
-      for (int i = 0; i < 200; i++) {
-        estimated_output_bit[i] = (harq_process_rxUE->b[i / 8] & (1 << (i & 7))) >> (i & 7);
-        test_input_bit[i] = (txUE->slsch[0][0]->harq_processes[harq_pid]->a[i / 8] & (1 << (i & 7))) >> (i & 7); // Further correct for multiple segments
+      bool polar_decoded = (ret < LDPC_MAX_LIMIT) ? true : false;
+      if (ret != -1) {
+        errors_bit_delta = 0;
+        bool payload_type_string = false;
+        for (int i = 0; i < num_bytes_to_check; i++) {
+          estimated_output_bit[i] = (harq_process_rxUE->b[i / 8] & (1 << (i & 7))) >> (i & 7);
+          test_input_bit[i] = (txUE->slsch[0][0]->harq_processes[harq_pid]->a[i / 8] & (1 << (i & 7))) >> (i & 7); // Further correct for multiple segments
 #ifdef DEBUG_NR_PSSCHSIM
-        if (i % 8 == 0) {
-          if (payload_type_string) {
-            printf("TxByte : %c  vs  %c : RxByte\n", txUE->slsch[0][0]->harq_processes[harq_pid]->a[i / 8], harq_process_rxUE->b[i / 8]);
-          } else {
-            printf("TxByte : %2u  vs  %2u : RxByte\n", txUE->slsch[0][0]->harq_processes[harq_pid]->a[i / 8], harq_process_rxUE->b[i / 8]);
+          if (i % 8 == 0) {
+            if (payload_type_string) {
+              printf("TxByte : %c  vs  %c : RxByte\n", txUE->slsch[0][0]->harq_processes[harq_pid]->a[i / 8], harq_process_rxUE->b[i / 8]);
+            } else {
+              printf("TxByte : %2u  vs  %2u : RxByte\n", txUE->slsch[0][0]->harq_processes[harq_pid]->a[i / 8], harq_process_rxUE->b[i / 8]);
+            }
+          }
+  #endif
+          if (estimated_output_bit[i] != test_input_bit[i]) {
+            errors_bit_delta++;
           }
         }
-#endif
-        if (estimated_output_bit[i] != test_input_bit[i]) {
-          errors_bit++;
+        if (errors_bit_delta > 0) {
+          n_false_positive++;
+          printf("errors_bit %u (trial %d)\n", errors_bit_delta, trial);
         }
-      }
-      if (errors_bit > 0) {
-        n_false_positive++;
-          printf("errors_bit %u (trial %d)\n", errors_bit, trial);
+        if ((errors_bit_delta > 0) || (polar_decoded == false)) {
+          n_errors++;
+        }
+        errors_bit += errors_bit_delta;
       }
     } // trial
 
     printf("*****************************************\n");
     printf("SNR %f, BLER %f BER %f\n", SNR,
           (float) n_errors / (float) n_trials,
-          (float) errors_bit / (float) (n_trials * 200));
+          (float) errors_bit / (float) (n_trials * num_bytes_to_check));
     printf("*****************************************\n");
     printf("\n");
 
@@ -532,11 +549,15 @@ int main(int argc, char **argv)
       printf("\n");
       break;
     }
+    else {
+      printf("PSSCH test NG due to number of error bits: %u\n", errors_bit);
+      printf("\n");
+    }
     printf("\n");
 
   } // snr
 
-  //term_nr_ue_transport(txUE);
+  term_nr_ue_transport(txUE);
   term_nr_ue_transport(rxUE);
   term_nr_ue_signal(rxUE, 1);
   term_nr_ue_signal(txUE, 1);

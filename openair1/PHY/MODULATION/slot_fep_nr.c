@@ -336,7 +336,7 @@ void apply_nr_rotation_ul(NR_DL_FRAME_PARMS *frame_parms,
 
     c16_t rot2 = frame_parms->symbol_rotation[link_type][symbol + symb_offset];
     rot2.i=-rot2.i;
-    LOG_I(PHY,"slot %d, symb_offset %d rotating by %d.%d\n",slot,symb_offset,rot2.r,rot2.i);
+    LOG_D(PHY,"slot %d, symb_offset %d rotating by %d.%d\n",slot,symb_offset,rot2.r,rot2.i);
 
     c16_t *shift_rot = frame_parms->timeshift_symbol_rotation;
     c16_t *this_symbol = (c16_t *)&rxdataF[soffset+(frame_parms->ofdm_symbol_size*symbol)];

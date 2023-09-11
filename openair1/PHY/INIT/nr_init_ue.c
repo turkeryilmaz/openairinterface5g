@@ -621,8 +621,10 @@ void term_nr_ue_transport(PHY_VARS_NR_UE *ue)
 {
   const int N_RB_DL = ue->frame_parms.N_RB_DL;
   const int N_RB_SL = ue->frame_parms.N_RB_SL;
+  int num_layers = get_softmodem_params()->sl_mode == 2 ?  NR_MAX_NB_LAYERS_SL : NR_MAX_NB_LAYERS;
+  int num_codeword = num_layers > 4 ? 2 : 1;
   for (int i = 0; i < NUMBER_OF_CONNECTED_gNB_MAX; i++) {
-    for (int j = 0; j < 2; j++) {
+    for (int j = 0; j < num_codeword; j++) {
       for (int k = 0; k < RX_NB_TH_MAX; k++) {
         free_nr_ue_dlsch(&ue->dlsch[k][i][j], N_RB_DL);
         if (get_softmodem_params()->sl_mode == 2 || get_softmodem_params()->sl_mode == 1) {
