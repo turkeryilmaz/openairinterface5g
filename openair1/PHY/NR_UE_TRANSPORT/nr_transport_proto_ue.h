@@ -238,20 +238,21 @@ void nr_pusch_codeword_scrambling(uint8_t *in,
 */
 
 void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
-                               unsigned char harq_pid,
-                               uint32_t frame,
-                               uint8_t slot,
-                               int gNB_id,
-                               nr_phy_data_tx_t *phy_data);
-
+                            const unsigned char harq_pid,
+                            const uint32_t frame,
+                            const uint8_t slot,
+                            const int gNB_id,
+                            nr_phy_data_tx_t *phy_data,
+                            c16_t **txdataF);
 
 /** \brief This function does IFFT for PUSCH
 */
 
 uint8_t nr_ue_pusch_common_procedures(PHY_VARS_NR_UE *UE,
-                                      uint8_t slot,
-                                      NR_DL_FRAME_PARMS *frame_parms,
-                                      uint8_t Nl);
+                                      const uint8_t slot,
+                                      const NR_DL_FRAME_PARMS *frame_parms,
+                                      const uint8_t n_antenna_ports,
+                                      c16_t **txdataF);
 
 int8_t clean_UE_ulsch(PHY_VARS_NR_UE *UE, uint8_t gNB_id);
 
@@ -290,14 +291,12 @@ int nr_rx_pbch(PHY_VARS_NR_UE *ue,
                NR_DL_FRAME_PARMS *frame_parms,
                uint8_t i_ssb,
                MIMO_mode_t mimo_mode,
-               nr_phy_data_t *phy_data,
                fapiPbch_t* result,
                c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP]);
 
 int nr_pbch_detection(UE_nr_rxtx_proc_t *proc,
                       PHY_VARS_NR_UE *ue,
                       int pbch_initial_symbol,
-                      nr_phy_data_t *phy_data,
                       c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP]);
 
 
@@ -405,7 +404,7 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
                 int32_t *log2_maxhrx_size_symbol,
                 int rx_size_symbol,
                 int nbRx,
-                int32_t rxdataF_comp[][nbRx][rx_size_symbol],
+                int32_t rxdataF_comp[][nbRx][rx_size_symbol * NR_SYMBOLS_PER_SLOT],
                 c16_t ptrs_phase_per_slot[][NR_SYMBOLS_PER_SLOT],
                 int32_t ptrs_re_per_slot[][NR_SYMBOLS_PER_SLOT]);
 
@@ -423,7 +422,7 @@ int nr_rx_psbch(PHY_VARS_NR_UE *ue,
                 c16_t rxdataF[][frame_parms->samples_per_slot_wCP],
                 uint16_t slss_id);
 
-void nr_tx_psbch(PHY_VARS_NR_UE *UE, uint32_t frame_tx, uint32_t slot_tx);
+void nr_tx_psbch(PHY_VARS_NR_UE *UE, uint32_t frame_tx, uint32_t slot_tx, c16_t **txF);
 /**@}*/
 #endif
 

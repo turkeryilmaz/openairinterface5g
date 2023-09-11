@@ -34,7 +34,6 @@
 #define __NR_IF_MODULE_H__
 
 #include "platform_types.h"
-#include <openair1/PHY/thread_NR_UE.h>
 #include <semaphore.h>
 #include "fapi_nr_ue_interface.h"
 #include "openair2/PHY_INTERFACE/queue_t.h"
@@ -119,7 +118,7 @@ typedef struct {
     uint32_t gNB_index;
     /// component carrier id
     int cc_id;
-    /// frame rx
+    /// frame
     frame_t frame_rx;
     /// slot rx
     uint32_t slot_rx;

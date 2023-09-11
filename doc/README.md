@@ -75,7 +75,7 @@ Legacy unmaintained files:
 
 ## General
 
-- The [T tracer](https://gitlab.eurecom.fr/oai/openairinterface5g/-/wikis/T/): a generic tracing tool (VCD, Wireshark, GUI, to save for later, ...)
+- The [T tracer](../common/utils/T/DOC/T.md): a generic tracing tool (VCD, Wireshark, GUI, to save for later, ...)
 - [OPT](../openair2/UTIL/OPT/README.txt): how to trace to wireshark
 - The [configuration module](../common/config/DOC/config.md)
 - The [logging module](../common/utils/LOG/DOC/log.md)
@@ -99,6 +99,7 @@ The other SDRs (AW2S, LimeSDR, ...) have no READMEs.
 - OAI comes with an integrated [telnet server](../common/utils/telnetsrv/DOC/telnethelp.md) to monitor and control
 - OAI comes with an integrated [web server](../common/utils/websrv/DOC/websrv.md)
 
-# CI
+# Testing
 
+- [UnitTests.md](./UnitTests.md) explains the unit testing setup
 - [TESTBenches.md](./TESTBenches.md) lists the CI setup and links to pipelines

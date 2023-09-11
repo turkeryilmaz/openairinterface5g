@@ -636,12 +636,12 @@ static void evaluate_rsrp_report(NR_UE_info_t *UE,
 
     if (NR_CSI_ReportConfig__reportQuantity_PR_ssb_Index_RSRP == reportQuantity_type) {
       sched_ctrl->CSI_report.ssb_cri_report.CRI_SSBRI[csi_ssb_idx] =
-        *(csi_report->SSB_Index_list[cri_ssbri_bitlen>0?((curr_payload)&~(~1<<(cri_ssbri_bitlen-1))):cri_ssbri_bitlen]);
+        *(csi_report->SSB_Index_list[cri_ssbri_bitlen>0?((curr_payload)&~(~1U<<(cri_ssbri_bitlen-1))):cri_ssbri_bitlen]);
       LOG_D(MAC,"SSB_index = %d\n",sched_ctrl->CSI_report.ssb_cri_report.CRI_SSBRI[csi_ssb_idx]);
     }
     else {
       sched_ctrl->CSI_report.ssb_cri_report.CRI_SSBRI[csi_ssb_idx] =
-        *(csi_report->CSI_Index_list[cri_ssbri_bitlen>0?((curr_payload)&~(~1<<(cri_ssbri_bitlen-1))):cri_ssbri_bitlen]);
+        *(csi_report->CSI_Index_list[cri_ssbri_bitlen>0?((curr_payload)&~(~1U<<(cri_ssbri_bitlen-1))):cri_ssbri_bitlen]);
       LOG_D(MAC,"CSI-RS Resource Indicator = %d\n",sched_ctrl->CSI_report.ssb_cri_report.CRI_SSBRI[csi_ssb_idx]);
     }
     *cumul_bits += cri_ssbri_bitlen;
@@ -1153,9 +1153,6 @@ int nr_acknack_scheduling(gNB_MAC_INST *mac,
       // if there is CSI but simultaneous HARQ+CSI is disable we can't schedule
       if(curr_pucch->csi_bits > 0 &&
          !curr_pucch->simultaneous_harqcsi)
-        continue;
-      // TODO we can't schedule more than 11 bits in PUCCH2 for now
-      if (curr_pucch->csi_bits + curr_pucch->dai_c >= 10)
         continue;
 
       // otherwise we can schedule in this active PUCCH

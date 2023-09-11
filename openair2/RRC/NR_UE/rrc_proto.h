@@ -56,16 +56,14 @@ extern queue_t nr_ul_tti_req_queue;
 //  main_rrc.c
 //
 /**\brief Layer 3 initialization*/
-NR_UE_RRC_INST_t* nr_l3_init_ue(char*,char*);
+NR_UE_RRC_INST_t *nr_l3_init_ue(char *, char *, char *);
 
 //
 //  UE_rrc.c
 //
 
 /**\brief Initial the top level RRC structure instance*/
-NR_UE_RRC_INST_t* openair_rrc_top_init_ue_nr(char*,char*);
-
-
+NR_UE_RRC_INST_t *openair_rrc_top_init_ue_nr(char *, char *, char *);
 
 /**\brief Decode RRC Connection Reconfiguration, sent from E-UTRA RRC Connection Reconfiguration v1510 carring EN-DC config
    \param buffer  encoded NR-RRC-Connection-Reconfiguration/Secondary-Cell-Group-Config message.
@@ -159,7 +157,9 @@ void process_lte_nsa_msg(nsa_msg_t *msg, int msg_len);
 
 int get_from_lte_ue_fd();
 
-void nr_ue_rrc_timer_trigger(int module_id, int frame, int slot);
+void nr_rrc_SI_timers(NR_UE_RRC_SI_INFO *SInfo);
+
+void nr_ue_rrc_timer_trigger(int module_id, int frame, int gnb_id);
 
 void configure_spcell(NR_UE_RRC_INST_t *rrc, NR_SpCellConfig_t *spcell_config);
 void reset_rlf_timers_and_constants(NR_UE_Timers_Constants_t *tac);
@@ -171,6 +171,7 @@ void handle_rlf_sync(NR_UE_Timers_Constants_t *tac,
 void nr_rrc_handle_SetupRelease_RLF_TimersAndConstants(NR_UE_RRC_INST_t *rrc,
                                                        struct NR_SetupRelease_RLF_TimersAndConstants *rlf_TimersAndConstants);
 
+int configure_NR_SL_Preconfig(int sync_source);
 /** @}*/
 #endif
 

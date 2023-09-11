@@ -274,7 +274,5 @@ int nr_rx_psbch(PHY_VARS_NR_UE *ue,
 
   LOG_D(PHY, "PSBCH RX SL-MIB:%x, decoded DFN:slot %d:%d, %x\n",psbch_payload, DFN, slot_offset, *(uint32_t *)decoded_output);
 
-  proc->decoded_frame_rx = DFN;
-
   return 0;
 }

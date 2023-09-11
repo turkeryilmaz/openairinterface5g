@@ -39,7 +39,53 @@ nrUE_params_t *get_nrUE_params(void)
 {
   return &nrUE_params;
 }
+uint64_t get_softmodem_optmask(void)
+{
+  return 0;
+}
+static softmodem_params_t softmodem_params;
+softmodem_params_t *get_softmodem_params(void)
+{
+  return &softmodem_params;
+}
+void init_downlink_harq_status(NR_DL_UE_HARQ_t *dl_harq)
+{
+}
 
+bool nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue,
+                            UE_nr_rxtx_proc_t *proc,
+                            NR_UE_DLSCH_t dlsch[2],
+                            int16_t* llr[2]) {return 0;}
+
+int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
+                           UE_nr_rxtx_proc_t *proc,
+                           NR_UE_DLSCH_t dlsch[2],
+                           int16_t *llr[2],
+                           c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP]) {return 0;}
+
+int nr_ue_pdcch_procedures(PHY_VARS_NR_UE *ue,
+                           UE_nr_rxtx_proc_t *proc,
+                           int32_t pdcch_est_size,
+                           int32_t pdcch_dl_ch_estimates[][pdcch_est_size],
+                           nr_phy_data_t *phy_data,
+                           int n_ss,
+                           c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP]) {return 0;}
+
+void nr_fill_dl_indication(nr_downlink_indication_t *dl_ind,
+                           fapi_nr_dci_indication_t *dci_ind,
+                           fapi_nr_rx_indication_t *rx_ind,
+                           UE_nr_rxtx_proc_t *proc,
+                           PHY_VARS_NR_UE *ue,
+                           void *phy_data) {}
+void nr_fill_rx_indication(fapi_nr_rx_indication_t *rx_ind,
+                           uint8_t pdu_type,
+                           PHY_VARS_NR_UE *ue,
+                           NR_UE_DLSCH_t *dlsch0,
+                           NR_UE_DLSCH_t *dlsch1,
+                           uint16_t n_pdus,
+                           UE_nr_rxtx_proc_t *proc,
+                           void *typeSpecific,
+                           uint8_t *b) {}
 //////////////////////////////////////////////////////////////////////////
 static void prepare_mib_bits(uint8_t *buf, uint32_t frame_tx, uint32_t slot_tx) {
 
@@ -148,16 +194,20 @@ static int freq_domain_loopback(PHY_VARS_NR_UE *UE_tx, PHY_VARS_NR_UE *UE_rx, in
   printf("\nPSBCH SIM -F: %d:%d slss id TX UE:%d, RX UE:%d\n",
                                         frame, slot,sl_ue1->psbch_tx.tx_slss_id,
                                         sl_ue2->sl_config.sl_sync_source.rx_slss_id);
-
-  nr_tx_psbch(UE_tx,frame, slot);
+  const int samplesF_per_slot = NR_SYMBOLS_PER_SLOT * sl_ue1->sl_frame_params.ofdm_symbol_size;
+  c16_t txdataF_buf[sl_ue1->sl_frame_params.nb_antennas_tx * samplesF_per_slot] __attribute__((aligned(32)));
+  memset(txdataF_buf, 0, sizeof(txdataF_buf));
+  c16_t *txdataF_ptr[sl_ue1->sl_frame_params.nb_antennas_tx];
+  for(int i=0; i< sl_ue1->sl_frame_params.nb_antennas_tx; ++i)
+    txdataF_ptr[i] = &txdataF_buf[i * samplesF_per_slot];
+  nr_tx_psbch(UE_tx,frame, slot, txdataF_ptr);
 
   int estimateSz = sl_ue2->sl_frame_params.samples_per_slot_wCP;
   __attribute__ ((aligned(32))) struct complex16 rxdataF[1][estimateSz];
   for (int i=0; i<sl_ue1->sl_frame_params.samples_per_slot_wCP; i++) {
-    struct complex16 *txdataF_ptr = (struct complex16 *)&UE_tx->common_vars.txdataF[0][i];
     struct complex16 *rxdataF_ptr = (struct complex16 *)&rxdataF[0][i];
-    rxdataF_ptr->r = txdataF_ptr->r;
-    rxdataF_ptr->i = txdataF_ptr->i;
+    rxdataF_ptr->r = txdataF_ptr[0]->r;
+    rxdataF_ptr->i = txdataF_ptr[0]->i;
     //printf("r,i TXDATAF[%d]-    %d:%d, RXDATAF[%d]-    %d:%d\n", 
     //                                  i, txdataF_ptr->r, txdataF_ptr->i, i, txdataF_ptr->r, txdataF_ptr->i);
   }
@@ -489,7 +539,7 @@ int main(int argc, char **argv) {
 
       for (int i=0; i<frame_length_complex_samples; i++) {
         for (int aa=0; aa<frame_parms->nb_antennas_tx; aa++) {
-          struct complex16 *txdata_ptr = (struct complex16 *)&UE_TX->common_vars.txdata[aa][i];
+          struct complex16 *txdata_ptr = (struct complex16 *)&UE_TX->common_vars.txData[aa][i];
           r_re[aa][i] = (double)txdata_ptr->r;
           r_im[aa][i] = (double)txdata_ptr->i;
         }

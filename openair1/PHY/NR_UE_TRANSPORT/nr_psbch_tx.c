@@ -277,7 +277,7 @@ Called by the L1 Scheduler when MAC triggers PHY to send PSBCH
 UE is the UE context.
 frame, slot points to the TTI in which PSBCH TX will be transmitted
 */
-void nr_tx_psbch(PHY_VARS_NR_UE *UE, uint32_t frame_tx, uint32_t slot_tx) {
+void nr_tx_psbch(PHY_VARS_NR_UE *UE, uint32_t frame_tx, uint32_t slot_tx, c16_t **txF) {
 
   sl_nr_ue_phy_params_t *sl_ue_phy_params = &UE->SL_UE_PHY_PARAMS;
   uint16_t slss_id = sl_ue_phy_params->psbch_tx.tx_slss_id;
@@ -310,8 +310,6 @@ void nr_tx_psbch(PHY_VARS_NR_UE *UE, uint32_t frame_tx, uint32_t slot_tx) {
   uint16_t symbol_size = sl_fp->ofdm_symbol_size;
   // TBD: Need to be replaced by function which calculates scaling factor based on psbch tx power
   uint16_t scaling_factor = AMP;
-
-  struct complex16 *txF = ((struct complex16 *)&UE->common_vars.txdataF[0][0]);
   uint16_t startsym = SL_NR_PSS_START_SYMBOL;
 
 

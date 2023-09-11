@@ -11,13 +11,15 @@
 #define SL_NR_MAX_SCI_LENGTH_IN_BYTES 8
 
 typedef enum sl_sci_format_type_enum {
-  SL_SCI_FORMAT_1A_ON_PSCCH = 1,
+  SL_SCI_INVALID_FORMAT,
+  SL_SCI_FORMAT_1A_ON_PSCCH,
   SL_SCI_FORMAT_2_ON_PSSCH,
 } sl_sci_format_type_enum_t;
 
 //Type of Contents of SL-RX indication from PHY to MAC
 typedef enum sl_rx_pdu_type_enum {
-  SL_NR_RX_PDU_TYPE_SSB = 1,
+  SL_NR_RX_PDU_TYPE_NONE,
+  SL_NR_RX_PDU_TYPE_SSB,
   SL_NR_RX_PDU_TYPE_SLSCH
 } sl_rx_pdu_type_enum_t;
 

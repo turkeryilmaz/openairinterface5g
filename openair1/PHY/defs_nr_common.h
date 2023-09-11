@@ -45,7 +45,7 @@
 #define MAX_NUM_SUBCARRIER_SPACING 5
 #define NR_MAX_OFDM_SYMBOL_SIZE 4096
 
-#define NR_SYMBOLS_PER_SLOT 14
+#define NR_SYMBOLS_PER_SLOT NR_NUMBER_OF_SYMBOLS_PER_SLOT
 
 #define ONE_OVER_SQRT2_Q15 23170
 #define ONE_OVER_TWO_Q15 16384
@@ -131,10 +131,10 @@ typedef struct {
 
 typedef struct NR_DL_FRAME_PARMS NR_DL_FRAME_PARMS;
 
-typedef uint32_t (*get_samples_per_slot_t)(int slot, NR_DL_FRAME_PARMS* fp);
-typedef uint32_t (*get_slot_from_timestamp_t)(openair0_timestamp timestamp_rx, NR_DL_FRAME_PARMS* fp);
+typedef uint32_t (*get_samples_per_slot_t)(int slot, const NR_DL_FRAME_PARMS *fp);
+typedef uint32_t (*get_slot_from_timestamp_t)(openair0_timestamp timestamp_rx, const NR_DL_FRAME_PARMS *fp);
 
-typedef uint32_t (*get_samples_slot_timestamp_t)(int slot, NR_DL_FRAME_PARMS* fp, uint8_t sl_ahead);
+typedef uint32_t (*get_samples_slot_timestamp_t)(int slot, const NR_DL_FRAME_PARMS *fp, uint8_t sl_ahead);
 
 struct NR_DL_FRAME_PARMS {
   /// frequency range
@@ -287,9 +287,11 @@ typedef struct {
     int32_t sfn;
     int8_t  slot;
     int8_t  rxAnt_idx;
-    int32_t dl_toa;
+    float dl_toa;
     int32_t dl_aoa;
-    int32_t snr;
+    float snr;
+    float rsrp;
+    float rsrp_dBm;
     int32_t reserved;
 } prs_meas_t;
 

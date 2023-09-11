@@ -123,6 +123,8 @@ char             *usrp_args = NULL;
 char             *tx_subdev = NULL;
 char             *rx_subdev = NULL;
 char       *rrc_config_path = NULL;
+char *reconfig_file = NULL;
+char *rbconfig_file = NULL;
 char            *uecap_file = NULL;
 int               dumpframe = 0;
 
@@ -261,6 +263,8 @@ static void get_options(void) {
   paramdef_t cmdline_params[] =CMDLINE_NRUEPARAMS_DESC ;
   int numparams = sizeof(cmdline_params)/sizeof(paramdef_t);
   config_get(cmdline_params,numparams,NULL);
+
+  AssertFatal(rrc_config_path == NULL, "the option \"rrc_config_path\" is deprecated. Please use --reconfig-file and --rbconfig-file separately to point to files reconfig.raw and rbconfig.raw\n");
 
   if (vcdflag > 0)
     ouput_vcd = 1;
@@ -472,7 +476,7 @@ int main( int argc, char **argv ) {
 #endif
   LOG_I(HW, "Version: %s\n", PACKAGE_VERSION);
 
-  init_NR_UE(1,uecap_file,rrc_config_path);
+  init_NR_UE(1, uecap_file, reconfig_file, rbconfig_file);
 
   int mode_offset = get_softmodem_params()->nsa ? NUMBER_OF_UE_MAX : 1;
   uint16_t node_number = get_softmodem_params()->node_number;
@@ -515,6 +519,7 @@ int main( int argc, char **argv ) {
       if (get_softmodem_params()->sa) { // set frame config to initial values from command line and assume that the SSB is centered on the grid
         uint16_t nr_band = get_softmodem_params()->band;
         mac->nr_band = nr_band;
+        mac->ssb_start_subcarrier = UE[CC_id]->frame_parms.ssb_start_subcarrier;
         nr_init_frame_parms_ue_sa(&UE[CC_id]->frame_parms,
                                   downlink_frequency[CC_id][0],
                                   uplink_frequency_offset[CC_id][0],
@@ -527,8 +532,7 @@ int main( int argc, char **argv ) {
         mac->phy_config_request_sent = true;
         fapi_nr_config_request_t *nrUE_config = &UE[CC_id]->nrUE_config;
 
-        nr_init_frame_parms_ue(&UE[CC_id]->frame_parms, nrUE_config,
-        *mac->scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0]);
+        nr_init_frame_parms_ue(&UE[CC_id]->frame_parms, nrUE_config, mac->nr_band);
       }
 
       init_nr_ue_vars(UE[CC_id], 0, abstraction_flag);

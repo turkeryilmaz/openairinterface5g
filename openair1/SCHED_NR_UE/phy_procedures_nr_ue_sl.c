@@ -274,17 +274,19 @@ void phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
   NR_DL_FRAME_PARMS *fp = &sl_phy_params->sl_frame_params;
 
   //VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_UE_TX_SL,VCD_FUNCTION_IN);
-
+  const int samplesF_per_slot = NR_SYMBOLS_PER_SLOT * fp->ofdm_symbol_size;
+  c16_t txdataF_buf[fp->nb_antennas_tx * samplesF_per_slot] __attribute__((aligned(32)));
+  memset(txdataF_buf, 0, sizeof(txdataF_buf));
+  c16_t *txdataF[fp->nb_antennas_tx];
   for(int i=0; i< fp->nb_antennas_tx; ++i)
-    memset(ue->common_vars.txdataF[i], 0, sizeof(int)*14*fp->ofdm_symbol_size);
-
+    txdataF[i] = &txdataF_buf[i * samplesF_per_slot];
   LOG_D(PHY,"****** start Sidelink TX-Chain for AbsSubframe %d.%d ******\n",
                                                                 frame_tx, slot_tx);
 
   start_meas(&sl_phy_params->phy_proc_sl_tx);
 
   if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSBCH) {
-    nr_tx_psbch(ue, frame_tx, slot_tx);
+    nr_tx_psbch(ue, frame_tx, slot_tx, txdataF);
     sl_phy_params->psbch_tx.num_psbch_tx ++;
 
     if (frame_tx%64 == 0) {
@@ -303,7 +305,8 @@ void phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
   nr_ue_pusch_common_procedures(ue,
                                 proc->nr_slot_tx,
                                 &sl_phy_params->sl_frame_params,
-                                sl_phy_params->sl_frame_params.nb_antennas_tx);
+                                sl_phy_params->sl_frame_params.nb_antennas_tx,
+                                txdataF);
 
   LOG_D(PHY,"****** end Sidelink TX-Chain for AbsSubframe %d.%d ******\n",
                                                                 frame_tx, slot_tx);
