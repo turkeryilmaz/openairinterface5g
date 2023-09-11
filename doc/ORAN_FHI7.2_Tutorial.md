@@ -54,7 +54,7 @@ Radio units we are testing/integrating:
 |Benetel 550|v0.6     |
 |Benetel 650|v0.6     |
 
-Tested libxran releases: 
+Tested libxran releases:
 
 |Vendor                    |
 |--------------------------|
@@ -62,9 +62,9 @@ Tested libxran releases:
 
 ## 1.1 Configure your server
 
-1. Disable Hyperthreading (HT) in your BIOS. In all our servers HT is always disabled. 
-2. We recommend you to start with a fresh installation of OS (either RHEL or Ubuntu). You have to install realtime kernel on your OS (Operating System). Based on your OS you can search how to install realtime kernel. 
-3. Once the realtime kernel is installed then you have to change the boot arguments. You can use `tuned` command for this or you can do it manually via re-building the grub. 
+1. Disable Hyperthreading (HT) in your BIOS. In all our servers HT is always disabled.
+2. We recommend you to start with a fresh installation of OS (either RHEL or Ubuntu). You have to install realtime kernel on your OS (Operating System). Based on your OS you can search how to install realtime kernel.
+3. Once the realtime kernel is installed then you have to change the boot arguments. You can use `tuned` command for this or you can do it manually via re-building the grub.
 
 In below example we have shown the output of `/proc/cmdline` for two different servers, each of them have different number of numa nodes. Be careful in isolating the CPUs in your environment.
 
@@ -76,7 +76,7 @@ In below example we have shown the output of `/proc/cmdline` for two different s
 Below is the output of `/proc/cmdline` of a two numa node server,
 
 ```
-NUMA:                    
+NUMA:
   NUMA node(s):          2
   NUMA node0 CPU(s):     0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34
   NUMA node1 CPU(s):     1,3,5,7,9,11,13,15,17,19,21,23,25,27,29,31,33,35
@@ -90,7 +90,7 @@ mitigations=off usbcore.autosuspend=-1 intel_iommu=on intel_iommu=pt selinux=0 e
 Below is the output of `/proc/cmdline` of a single numa node server,
 
 ```bash
-NUMA:                    
+NUMA:
   NUMA node(s):          1
   NUMA node0 CPU(s):     0-31
 ```
@@ -109,13 +109,13 @@ Configure your servers to maximum performance mode either via OS or in BIOS. If 
  sudo cpupower idle-set -E
 ```
 
- After the OS is installed change your kernel to Realtime and install `tuned-adm` command. 
+ After the OS is installed change your kernel to Realtime and install `tuned-adm` command.
 
 ```bash
 tuned-adm profile realtime
 ```
 
-The above information we have gathered either from O-RAN documents or via our own experiments. In case you would like to read the O-RAN documents then here are the links: 
+The above information we have gathered either from O-RAN documents or via our own experiments. In case you would like to read the O-RAN documents then here are the links:
 
 1. [O-RAN-SC O-DU Setup Configuration](https://docs.o-ran-sc.org/projects/o-ran-sc-o-du-phy/en/latest/Setup-Configuration_fh.html)
 2. [O-RAN Cloud Platform Reference Designs 2.0,O-RAN.WG6.CLOUD-REF-v02.00,February 2021](https://orandownloadsweb.azurewebsites.net/specifications)
@@ -123,9 +123,9 @@ The above information we have gathered either from O-RAN documents or via our ow
 
 ## 1.2 PTP configuration
 
-There are two ways of installing PTP, 
+There are two ways of installing PTP,
 
-1. You can refer to the [following o-ran link](https://docs.o-ran-sc.org/projects/o-ran-sc-o-du-phy/en/latest/PTP-configuration_fh.html) for PTP configuration. 
+1. You can refer to the [following o-ran link](https://docs.o-ran-sc.org/projects/o-ran-sc-o-du-phy/en/latest/PTP-configuration_fh.html) for PTP configuration.
 
 ```bash
 git clone http://git.code.sf.net/p/linuxptp/code linuxptp
@@ -154,9 +154,9 @@ time_stamping           hardware
 tx_timestamp_timeout    1
 logging_level           6
 summary_interval        0
-#priority1               127 
+#priority1               127
 
-[your_PTP_ENABLED_NIC] 
+[your_PTP_ENABLED_NIC]
 network_transport       L2
 hybrid_e2e              0
 ```
@@ -204,7 +204,7 @@ WantedBy=multi-user.target
 
 ## 1.4 DPDK(Data Plane Development Kit)
 
-Download DPDK version 20.11.7 
+Download DPDK version 20.11.7.
 
 ```bash
 # on debian
@@ -231,6 +231,13 @@ sudo ninja install -C build
 sudo ldconfig -v | grep rte ## this way you will see the dpdk libraries
 ```
 
+On Fedora-based OS, you may not have the `/usr/local/lib` or `/usr/local/lib64` paths in the LD_LIBRARY_PATH:
+
+```bash
+sudo echo "/usr/local/lib" > /etc/ld.so.conf.d/local-lib.conf
+sudo echo "/usr/local/lib64" >> /etc/ld.so.conf.d/local-lib.conf
+sudo ldconfig -v | grep rte ## this way you will see the dpdk libraries
+```
 
 # 2. Build OAI-FHI gNB
 
@@ -338,7 +345,7 @@ Edit the `targets/PROJECTS/GENERIC-NR-5GC/CONF/oran.fh.band78.fr1.273PRB.conf` w
 * `amf_ip_address` shall be the correct AMF IP address in your system
 * `GNB_INTERFACE_NAME_FOR_NG_AMF` and `GNB_IPV4_ADDRESS_FOR_NG_AMF` shall match your DU N2 interface name and IP address
 * `GNB_INTERFACE_NAME_FOR_NGU` and `GNB_IPV4_ADDRESS_FOR_NGU` shall match your DU N3 interface name and IP address
-* Adjust the frequency, bandwidth and SSB position 
+* Adjust the frequency, bandwidth and SSB position
 * Set an isolated core for L1 thread `L1_rx_thread_core` in our environment we are using CPU 8
 * Set an isolated core for RU thread `ru_thread_core` in our environment we are using CPU 6
 * `phase_compensation` should be set to 0 to disable when it is performed in the RU and set to 1 when it should be performed on the DU side
@@ -358,7 +365,7 @@ What you shall modify at the RU MAC address fields:
 * `ruMac0`
 * `ruMac1`
 
-Set the VLAN tags, mtu and 
+Set the VLAN tags, mtu and
 
 * `c_plane_vlan_tag`
 * `u_plane_vlan_tag`
@@ -390,7 +397,7 @@ For both the mac-addresses you can use mac-address which is pre-configured in th
 
 ```bash
 sudo sh -c echo "2" > /sys/class/net/<physical-interface>/device/sriov_numvfs
-sudo ip link set <physical-interface> vf 0 mac <du-c-plane-mac-addr> vlan <vlan> mtu <mtu> spoofchk off 
+sudo ip link set <physical-interface> vf 0 mac <du-c-plane-mac-addr> vlan <vlan> mtu <mtu> spoofchk off
 sudo ip link set <physical-interface> vf 1 mac <du-u-plane-mac-addr> vlan <vlan> mtu <mtu> spoofchk off
 ## you have to search for the created virtual interfaces and add their address lscpi | grep Virtual
 sudo modprobe vfio_pci
