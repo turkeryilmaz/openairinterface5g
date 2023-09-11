@@ -1190,6 +1190,7 @@ typedef struct {
   void* scopeData;
   uint32_t rx_ssb_slot;
   uint32_t rx_ssb_frame;
+  double snr;
 } PHY_VARS_NR_UE;
 
 /* this structure is used to pass both UE phy vars and

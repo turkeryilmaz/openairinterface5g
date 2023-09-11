@@ -128,6 +128,10 @@ parser.add_argument('--test', '-t', default='usrp_n310', choices='psbchsim pssch
 The kind of test scenario to run. The options include psbchsim, psschsim, rfsim, or usrp_b210 usrp_n310. (default: %(default)s)
 """)
 
+parser.add_argument('--snr', default='0.0', help="""
+Setting snr values (default: %(default)s)
+""")
+
 OPTS = parser.parse_args()
 del parser
 
@@ -263,6 +267,8 @@ class TestThread(threading.Thread):
         if OPTS.basic: cmd = redirect_output('uname -a', self.log_file)
         else: cmd = self.commands.launch_cmds[job]
         cmd = cmd[:-1] + f' --message {OPTS.message}' + f' --mcs {OPTS.mcs}'
+        if 'rfsim' in OPTS.test:
+            cmd += f' --snr {OPTS.snr}'
         proc = Popen(cmd, shell=True)
         LOGGER.info(f"syncref_proc = {proc}")
         if not OPTS.basic and not OPTS.no_run:
@@ -291,12 +297,18 @@ class TestThread(threading.Thread):
             if nearby_result:
                 self.find_nearby_result_metric(nearby_result)
         else:
+            if 'rfsim' in OPTS.test:
+                cmd = cmd[:-1] + f' --mcs {OPTS.mcs}' + f' --snr {OPTS.snr}'
+            else:
+                cmd = cmd[:-1] + f' --mcs {OPTS.mcs}'
             proc = Popen(cmd, shell=True)
             LOGGER.info(f"nearby_proc = {proc}")
             if not OPTS.basic and not OPTS.no_run:
                 LOGGER.info(f"Process running... {job}")
                 time.sleep(OPTS.duration)
                 self.kill_process("nearby", proc)
+                if proc:
+                    time.sleep(5)
             nearby_result, user_msg = self.log_agent.analyze_nearby_logs(OPTS.nid1, OPTS.nid2, OPTS.sci2)
             if nearby_result:
                 self.find_nearby_result_metric([nearby_result])
@@ -372,7 +384,8 @@ def main() -> int:
     pssch_rsrp_list = []
     ssb_rsrp_list = []
     sync_duration_list = []
-    set_attenuation(OPTS.att, OPTS.att_host, OPTS.att_user)
+    if 'usrp' in OPTS.test:
+        set_attenuation(OPTS.att, OPTS.att_host, OPTS.att_user)
     for i in range(OPTS.repeat):
         LOGGER.info('-' * 42)
         threads = []
@@ -401,7 +414,8 @@ def main() -> int:
                 LOGGER.info(f"Failure detected during {i+1}/{OPTS.repeat} trial(s).")
             num_passed = len(passed_metric)
         LOGGER.info('#' * 42)
-        LOGGER.info(f"Attenuation value {OPTS.att}, MCS value {OPTS.mcs}")
+        atten_snr = {"rfsim": f'SNR value {OPTS.snr}', "usrp_": f'Attenuation value {OPTS.att}'}
+        LOGGER.info(f"{atten_snr[OPTS.test[:5]]}, MCS value {OPTS.mcs}")
         if 'nearby' in jobs:
             LOGGER.info(f"Number of synced = {len(passed_metric)}/{OPTS.repeat}")
             if len(num_tx_ssb) > 0:
@@ -412,8 +426,8 @@ def main() -> int:
                 avg_bldr = (float) (sum_nb_decoded) / sum_total_rx if sum_total_rx > 0 else 1
                 LOGGER.info(f"Avg PSSCH RSRP = {sum(pssch_rsrp_list) / len(passed_metric):.2f}")
                 LOGGER.info(f"Avg SSB RSRP = {sum(ssb_rsrp_list) / len(passed_metric):.2f}")
-                LOGGER.info(f"Avg BLER = {avg_bler:.3f} with {sum_total_rx - sum_nb_decoded} / {sum_total_rx}")
-                LOGGER.info(f"Avg BLDecodedRate = {avg_bldr:.3f} with {sum_nb_decoded} / {sum_total_rx}")
+                LOGGER.info(f"Avg BLER = {avg_bler:.9f} with {sum_total_rx - sum_nb_decoded} / {sum_total_rx}")
+                LOGGER.info(f"Avg BLDecodedRate = {avg_bldr:.9f} with {sum_nb_decoded} / {sum_total_rx}")
                 LOGGER.info(f"Avg Sync duration (seconds) = {sum(sync_duration_list) / len(passed_metric):.2f}")
                 LOGGER.info(f"pssch_rsrp_list = {pssch_rsrp_list}")
                 LOGGER.info(f"ssb_rsrp_list = {ssb_rsrp_list}")

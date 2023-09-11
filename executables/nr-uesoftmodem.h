@@ -68,6 +68,7 @@
     {"r"  ,                      CONFIG_HLP_PRB_SA,      0,               iptr:&(fp->N_RB_DL),                defintval:106,         TYPE_UINT,  0}, \
     {"rbsl",                     CONFIG_HLP_PRB_SL,      0,               iptr:&(fp->N_RB_SL),                defintval:106,         TYPE_UINT,  0}, \
     {"mcs",                      CONFIG_HLP_PRB_IMCS,    0,               uptr:&(fp->Imcs),                   defintval:9,           TYPE_UINT,  0}, \
+    {"snr",                      CONFIG_HLP_UESNR,       0,               dblptr:&(UE->snr),                  defdblval:0.0,         TYPE_DOUBLE,0}, \
     {"ssb",                      CONFIG_HLP_SSC,         0,               u16ptr:&(fp->ssb_start_subcarrier), defintval:516,         TYPE_UINT16,0}, \
     {"T" ,                       CONFIG_HLP_TDD,         PARAMFLAG_BOOL,  iptr:&tddflag,                      defintval:0,           TYPE_INT,   0}, \
     {"if_freq" ,                 CONFIG_HLP_IF_FREQ,     0,               u64ptr:&(UE->if_freq),              defuintval:0,          TYPE_UINT64,0}, \

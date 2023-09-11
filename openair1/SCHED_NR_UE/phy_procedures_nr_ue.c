@@ -54,6 +54,7 @@
 #include "LAYER2/NR_MAC_UE/mac_proto.h"
 #include "LAYER2/NR_MAC_UE/nr_l1_helpers.h"
 #include "openair1/PHY/MODULATION/nr_modulation.h"
+#include "openair1/SIMULATION/TOOLS/sim.h"
 //#define DEBUG_PHY_PROC
 #define NR_PDCCH_SCHED
 //#define NR_PDCCH_SCHED_DEBUG
@@ -1420,7 +1421,6 @@ void *UE_thread_slot1_dl_processing(void *arg) {
   return &UE_dl_slot1_processing_retval;
 }
 #endif
-
 int phy_procedures_nrUE_SL_RX(PHY_VARS_NR_UE *ue,
                            UE_nr_rxtx_proc_t *proc,
                            uint8_t synchRefUE_id,
@@ -1433,6 +1433,19 @@ int phy_procedures_nrUE_SL_RX(PHY_VARS_NR_UE *ue,
   int frame_rx = proc->frame_rx;
   int slot_rx = proc->nr_slot_rx;
 
+if ( getenv("RFSIMULATOR") != NULL ) {
+  if (get_softmodem_params()->sl_mode == 2) {
+      int frame_length_complex_samples = ue->frame_parms.samples_per_subframe * NR_NUMBER_OF_SUBFRAMES_PER_FRAME;
+      for (int i = 0; i < frame_length_complex_samples; i++) {
+        double sigma2_dB = 20 * log10((double)AMP / 4) - ue->snr;
+        double sigma2 = pow(10, sigma2_dB / 10);
+        for (int aa = 0; aa < ue->frame_parms.nb_antennas_rx; aa++) {
+          ((short*) ue->common_vars.rxdata[aa])[2 * i] += (sqrt(sigma2 / 2) * gaussdouble(0.0, 1.0));
+          ((short*) ue->common_vars.rxdata[aa])[2 * i + 1] += (sqrt(sigma2 / 2) * gaussdouble(0.0, 1.0));
+        }
+      }
+    }
+}
   NR_UE_DLSCH_t   *slsch = ue->slsch_rx[proc->thread_id][synchRefUE_id][0];
   NR_DL_UE_HARQ_t *harq = NULL;
   int32_t **rxdataF = ue->common_vars.common_vars_rx_data_per_thread[0].rxdataF;
