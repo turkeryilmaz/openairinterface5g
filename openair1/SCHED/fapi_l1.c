@@ -791,8 +791,8 @@ void schedule_response(Sched_Rsp_t *Sched_INFO, void *arg) {
   eNB->pdcch_vars[subframe&1].num_dci           = 0;
   eNB->phich_vars[subframe&1].num_hi            = 0;
   eNB->mpdcch_vars[subframe&1].num_dci           = 0;
-  LOG_D(PHY,"NFAPI: Sched_INFO:SFN/SF:%04d%d DL_req:SFN/SF:%04d%d:dl_pdu:%d tx_req:SFN/SF:%04d%d:pdus:%d\n",
-        frame,subframe,
+  LOG_D(PHY,"NFAPI: Sched_INFO:SFN/SF:%04d%d CC_id:%d DL_req:SFN/SF:%04d%d:dl_pdu:%d tx_req:SFN/SF:%04d%d:pdus:%d\n",
+        frame,subframe,CC_id,
         NFAPI_SFNSF2SFN(DL_req->sfn_sf),NFAPI_SFNSF2SF(DL_req->sfn_sf),number_dl_pdu,
         NFAPI_SFNSF2SFN(TX_req->sfn_sf),NFAPI_SFNSF2SF(TX_req->sfn_sf),TX_req->tx_request_body.number_of_pdus
        );
@@ -841,6 +841,10 @@ void schedule_response(Sched_Rsp_t *Sched_INFO, void *arg) {
         break;
 
       case NFAPI_DL_CONFIG_BCH_PDU_TYPE:
+        /* MultiCell: Below condition added for Multiple CC */
+        if(TX_req->tx_request_body.number_of_pdus == 0) {
+          TX_req->tx_request_body.number_of_pdus = 1;
+        }
         AssertFatal(dl_config_pdu->bch_pdu.bch_pdu_rel8.pdu_index<TX_req->tx_request_body.number_of_pdus,
                     "bch_pdu_rel8.pdu_index>=TX_req->number_of_pdus (%d>%d)\n",
                     dl_config_pdu->bch_pdu.bch_pdu_rel8.pdu_index,
@@ -958,17 +962,21 @@ void schedule_response(Sched_Rsp_t *Sched_INFO, void *arg) {
   if ((NFAPI_MODE!=NFAPI_MONOLITHIC) && do_oai && !dont_send) {
     if(Sched_INFO->TX_req->tx_request_body.number_of_pdus > 0) {
       Sched_INFO->TX_req->sfn_sf = frame << 4 | subframe;
+      Sched_INFO->TX_req->header.phy_id = Sched_INFO->CC_id+1;
       oai_nfapi_tx_req(Sched_INFO->TX_req);
     }
 
     Sched_INFO->DL_req->sfn_sf = frame << 4 | subframe;
+    Sched_INFO->DL_req->header.phy_id = Sched_INFO->CC_id+1;
     oai_nfapi_dl_config_req(Sched_INFO->DL_req); // DJP - .dl_config_request_body.dl_config_pdu_list[0]); // DJP - FIXME TODO - yuk - only copes with 1 pdu
     Sched_INFO->UE_release_req->sfn_sf = frame << 4 | subframe;
+    Sched_INFO->UE_release_req->header.phy_id = Sched_INFO->CC_id+1;
     oai_nfapi_ue_release_req(Sched_INFO->UE_release_req);
   }
 
   if ((NFAPI_MODE!=NFAPI_MONOLITHIC) && number_hi_dci0_pdu!=0) {
     HI_DCI0_req->sfn_sf = frame << 4 | subframe;
+    HI_DCI0_req->header.phy_id =  Sched_INFO->CC_id+1;
     oai_nfapi_hi_dci0_req(HI_DCI0_req);
     eNB->pdcch_vars[NFAPI_SFNSF2SF(HI_DCI0_req->sfn_sf)&1].num_dci=0;
     eNB->pdcch_vars[NFAPI_SFNSF2SF(HI_DCI0_req->sfn_sf)&1].num_pdcch_symbols=0;
@@ -1010,12 +1018,14 @@ void schedule_response(Sched_Rsp_t *Sched_INFO, void *arg) {
       if (RC.mac[Mod_id]->scheduler_mode == SCHED_MODE_DEFAULT) {
         //LOG_D(PHY, "UL_CONFIG to send to PNF\n");
         UL_req->sfn_sf = frame << 4 | subframe;
+        UL_req->header.phy_id = Sched_INFO->CC_id+1;
         oai_nfapi_ul_config_req(UL_req);
         UL_req->ul_config_request_body.number_of_pdus=0;
         number_ul_pdu=0;
       }else if (RC.mac[Mod_id]->scheduler_mode == SCHED_MODE_FAIR_RR) {
-        if(ulsch_pdu_num <= fp->ue_multiple_max){
+        if(ulsch_pdu_num <= RC.rrc[Mod_id]->configuration.radioresourceconfig[CC_id].ue_multiple_max){
           UL_req->sfn_sf = frame << 4 | subframe;
+          UL_req->header.phy_id = Sched_INFO->CC_id+1;
           oai_nfapi_ul_config_req(UL_req);
           UL_req->ul_config_request_body.number_of_pdus=0;
           number_ul_pdu=0;

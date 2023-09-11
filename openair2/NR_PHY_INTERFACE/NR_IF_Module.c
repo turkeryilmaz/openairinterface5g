@@ -386,6 +386,7 @@ static void match_crc_rx_pdu(nfapi_nr_rx_data_indication_t *rx_ind, nfapi_nr_crc
 }
 
 void NR_UL_indication(NR_UL_IND_t *UL_info) {
+  LOG_D(NR_MAC, "fxn:%s Entry\n", __FUNCTION__);
   AssertFatal(UL_info!=NULL,"UL_info is null\n");
   module_id_t      module_id   = UL_info->module_id;
   int              CC_id       = UL_info->CC_id;
@@ -398,6 +399,37 @@ void NR_UL_indication(NR_UL_IND_t *UL_info) {
         gnb_rach_ind_queue.num_items,
         gnb_rx_ind_queue.num_items,
         gnb_crc_ind_queue.num_items);
+
+  if (RC.ss.mode >= SS_SOFTMODEM)
+  {
+    MessageDef *message_p = itti_alloc_new_message(TASK_SYS_GNB, INSTANCE_DEFAULT, SS_NRUPD_TIM_INFO);
+    if (message_p)
+    {
+      SS_NRUPD_TIM_INFO(message_p).slot = UL_info->slot;
+      SS_NRUPD_TIM_INFO(message_p).sfn = UL_info->frame;
+
+      int send_res = itti_send_msg_to_task(TASK_SYS_GNB, INSTANCE_DEFAULT, message_p);
+      if (send_res < 0)
+      {
+        LOG_E(NR_PHY, "[SS] Error in L1_Thread itti_send_msg_to_task");
+      }
+    }
+    if(RC.ss.vtp_ready == 1){
+      message_p = itti_alloc_new_message(TASK_VTP, INSTANCE_DEFAULT, SS_NRUPD_TIM_INFO);
+      if (message_p)
+      {
+        SS_NRUPD_TIM_INFO(message_p).slot = UL_info->slot;
+        SS_NRUPD_TIM_INFO(message_p).sfn = UL_info->frame;
+
+        int send_res = itti_send_msg_to_task(TASK_VTP, INSTANCE_DEFAULT, message_p);
+        if (send_res < 0)
+        {
+          LOG_E(NR_PHY, "[SS] Error in L1_Thread itti_send_msg_to_task");
+        }
+
+      }
+    }  
+  }
 
   nfapi_nr_rach_indication_t *rach_ind = NULL;
   nfapi_nr_uci_indication_t *uci_ind = NULL;
@@ -500,8 +532,34 @@ void NR_UL_indication(NR_UL_IND_t *UL_info) {
 	    sched_info->frame,
 	    sched_info->slot,
 	    sched_info->DL_req->dl_tti_request_body.nPDUs);
+
+      /* send DL slot indication */
+      if (NFAPI_MODE == NFAPI_MODE_VNF){
+		extern int oai_nfapi_slot_ind(nfapi_nr_slot_indication_scf_t * slot_ind);
+		nfapi_nr_slot_indication_scf_t slot_ind;
+		slot_ind.sfn = sched_info->frame;
+		slot_ind.slot = sched_info->slot;
+		oai_nfapi_slot_ind(&slot_ind);
+      }
+
+      if (RC.ss.mode >= SS_SOFTMODEM)
+      {
+        MessageDef *message_p = itti_alloc_new_message(TASK_VT_TIMER, INSTANCE_DEFAULT, SS_NRUPD_TIM_INFO);
+        if (message_p)
+        {
+          SS_NRUPD_TIM_INFO(message_p).slot = sched_info->slot;
+          SS_NRUPD_TIM_INFO(message_p).sfn = sched_info->frame;
+
+          int send_res = itti_send_msg_to_task(TASK_VT_TIMER, INSTANCE_DEFAULT, message_p);
+          if (send_res < 0)
+          {
+            LOG_E(NR_PHY, "[SS] Error in L1_Thread itti_send_msg_to_task");
+          }
+        }
+      }
     }
   }
+  LOG_D(NR_MAC, "fxn:%s Exit\n", __FUNCTION__);
 }
 
 NR_IF_Module_t *NR_IF_Module_init(int Mod_id) {
@@ -515,6 +573,7 @@ NR_IF_Module_t *NR_IF_Module_init(int Mod_id) {
     LOG_I(MAC,"Allocating shared L1/L2 interface structure for instance %d @ %p\n",Mod_id,nr_if_inst[Mod_id]);
 
     nr_if_inst[Mod_id]->CC_mask=0;
+    nr_if_inst[Mod_id]->sl_ahead = 1; /* schedule next slot */
     nr_if_inst[Mod_id]->NR_UL_indication = NR_UL_indication;
     AssertFatal(pthread_mutex_init(&nr_if_inst[Mod_id]->if_mutex,NULL)==0,
                 "allocation of nr_if_inst[%d]->if_mutex fails\n",Mod_id);
