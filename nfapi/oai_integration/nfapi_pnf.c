@@ -251,6 +251,7 @@ void *pnf_nr_p7_thread_start(void *ptr) {
   return 0;
 }
 
+#ifdef NFAPI_PRE_CLEANUP
 int pnf_nr_param_request(nfapi_pnf_config_t *config, nfapi_nr_pnf_param_request_t *req) {
   printf("[PNF] pnf param request\n");
   nfapi_nr_pnf_param_response_t resp;
@@ -1084,6 +1085,7 @@ int nr_config_request(nfapi_pnf_config_t *config, nfapi_pnf_phy_config_t *phy, n
  
   return 0;
 }
+#endif
 
 nfapi_p7_message_header_t *pnf_phy_allocate_p7_vendor_ext(uint16_t message_id, uint16_t *msg_size) {
   if(message_id == P7_VENDOR_EXT_REQ) {
@@ -1734,7 +1736,9 @@ int start_request(nfapi_pnf_config_t *config, nfapi_pnf_phy_config_t *phy, nfapi
   }
 
   printf("[PNF] Sending PNF_START_RESP\n");
+#ifdef NFAPI_PRE_CLEANUP
   nfapi_send_pnf_start_resp(config, p7_config->phy_id);
+#endif
   printf("[PNF] Sending first P7 subframe ind\n");
   nfapi_pnf_p7_subframe_ind(p7_config, p7_config->phy_id, 0); // SFN_SF set to zero - correct???
   printf("[PNF] Sent first P7 subframe ind\n");
@@ -1860,7 +1864,9 @@ int nr_start_request(nfapi_pnf_config_t *config, nfapi_pnf_phy_config_t *phy,  n
   }
 
   printf("[PNF] Sending PNF_START_RESP\n");
+#ifdef NFAPI_PRE_CLEANUP
   nfapi_nr_send_pnf_start_resp(config, p7_config->phy_id);
+#endif
   printf("[PNF] Sending first P7 slot indication\n");
 #if 1
   nfapi_pnf_p7_slot_ind(p7_config, p7_config->phy_id, 0, 0);
@@ -1874,6 +1880,7 @@ int nr_start_request(nfapi_pnf_config_t *config, nfapi_pnf_phy_config_t *phy,  n
   return 0;
 }
 
+#ifdef NFAPI_PRE_CLEANUP
 int measurement_request(nfapi_pnf_config_t *config, nfapi_pnf_phy_config_t *phy, nfapi_measurement_request_t *req) {
   nfapi_measurement_response_t resp;
   memset(&resp, 0, sizeof(resp));
@@ -2080,6 +2087,7 @@ int vendor_ext(nfapi_pnf_config_t *config, nfapi_p4_p5_message_header_t *msg) {
 
   return 0;
 }
+#endif
 
 nfapi_p4_p5_message_header_t *pnf_sim_allocate_p4_p5_vendor_ext(uint16_t message_id, uint16_t *msg_size) {
   if(message_id == P5_VENDOR_EXT_REQ) {
@@ -2119,21 +2127,29 @@ int pnf_sim_unpack_p4_p5_vendor_extension(nfapi_p4_p5_message_header_t *header, 
 /*------------------------------------------------------------------------------*/
 void *pnf_start_thread(void *ptr) {
   NFAPI_TRACE(NFAPI_TRACE_INFO, "[PNF] IN PNF NFAPI start thread %s\n", __FUNCTION__);
+#ifdef NFAPI_PRE_CLEANUP
   nfapi_pnf_config_t *config = (nfapi_pnf_config_t *)ptr;
+#endif
   struct sched_param sp;
   sp.sched_priority = 20;
   pthread_setschedparam(pthread_self(),SCHED_FIFO,&sp);
+#ifdef NFAPI_PRE_CLEANUP
   nfapi_pnf_start(config);
+#endif
   return (void *)0;
 }
 
 void *pnf_nr_start_thread(void *ptr) {
   NFAPI_TRACE(NFAPI_TRACE_INFO, "[PNF] IN PNF NFAPI start thread %s\n", __FUNCTION__);
+#ifdef NFAPI_PRE_CLEANUP
   nfapi_pnf_config_t *config = (nfapi_pnf_config_t *)ptr;
+#endif
   struct sched_param sp;
   sp.sched_priority = 20;
   pthread_setschedparam(pthread_self(),SCHED_FIFO,&sp);
+#ifdef NFAPI_PRE_CLEANUP
   nfapi_nr_pnf_start(config);
+#endif
   return (void *)0;
 }
 
@@ -2154,6 +2170,7 @@ void configure_nr_nfapi_pnf(char *vnf_ip_addr, int vnf_p5_port, char *pnf_ip_add
          pnf.phys[0].local_addr,
          pnf.phys[0].udp.tx_addr, pnf.phys[0].udp.tx_port,
          pnf.phys[0].udp.rx_port);
+#ifdef NFAPI_PRE_CLEANUP
   config->cell_search_req = &cell_search_request;
          
     
@@ -2164,7 +2181,9 @@ void configure_nr_nfapi_pnf(char *vnf_ip_addr, int vnf_p5_port, char *pnf_ip_add
   config->pnf_stop_req = &pnf_stop_request;
   config->nr_param_req = &nr_param_request;
   config->nr_config_req = &nr_config_request;
+#endif
   config->nr_start_req = &nr_start_request;
+#ifdef NFAPI_PRE_CLEANUP
   config->measurement_req = &measurement_request;
   config->rssi_req = &rssi_request;
   config->broadcast_detect_req = &broadcast_detect_request;
@@ -2172,6 +2191,7 @@ void configure_nr_nfapi_pnf(char *vnf_ip_addr, int vnf_p5_port, char *pnf_ip_add
   config->system_information_req = &system_information_request;
   config->nmm_stop_req = &nmm_stop_request;
   config->vendor_ext = &vendor_ext;
+#endif
   config->trace = &pnf_nfapi_trace;
   config->user_data = &pnf;
   // To allow custom vendor extentions to be added to nfapi
@@ -2206,13 +2226,16 @@ void configure_nfapi_pnf(char *vnf_ip_addr, int vnf_p5_port, char *pnf_ip_addr, 
          pnf.phys[0].local_addr,
          pnf.phys[0].udp.tx_addr, pnf.phys[0].udp.tx_port,
          pnf.phys[0].udp.rx_port);
+#ifdef NFAPI_PRE_CLEANUP
   config->pnf_param_req = &pnf_param_request;
   config->pnf_config_req = &pnf_config_request;
   config->pnf_start_req = &pnf_start_request;
   config->pnf_stop_req = &pnf_stop_request;
   config->param_req = &param_request;
   config->config_req = &config_request;
+#endif
   config->start_req = &start_request;
+#ifdef NFAPI_PRE_CLEANUP
   config->measurement_req = &measurement_request;
   config->rssi_req = &rssi_request;
   config->cell_search_req = &cell_search_request;
@@ -2221,6 +2244,7 @@ void configure_nfapi_pnf(char *vnf_ip_addr, int vnf_p5_port, char *pnf_ip_addr, 
   config->system_information_req = &system_information_request;
   config->nmm_stop_req = &nmm_stop_request;
   config->vendor_ext = &vendor_ext;
+#endif
   config->trace = &pnf_nfapi_trace;
   config->user_data = &pnf;
   // To allow custom vendor extentions to be added to nfapi

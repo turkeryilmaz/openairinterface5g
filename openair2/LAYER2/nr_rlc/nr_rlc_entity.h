@@ -23,6 +23,7 @@
 #define _NR_RLC_ENTITY_H_
 
 #include <stdint.h>
+#include "LOG/ss-log.h"
 #include "openair2/RRC/NR/rrc_gNB_radio_bearers.h"
 
 #include "common/utils/time_stat.h"
@@ -106,10 +107,12 @@ typedef struct {
 
 typedef struct nr_rlc_entity_t {
   /* functions provided by the RLC module */
-  void (*recv_pdu)(struct nr_rlc_entity_t *entity, char *buffer, int size);
+  void (*recv_pdu)(struct nr_rlc_entity_t *entity, char *buffer, int size,
+		  nr_rlc_pkt_info_t *rlc_info);
   nr_rlc_entity_buffer_status_t (*buffer_status)(
       struct nr_rlc_entity_t *entity, int maxsize);
-  int (*generate_pdu)(struct nr_rlc_entity_t *entity, char *buffer, int size);
+  int (*generate_pdu)(struct nr_rlc_entity_t *entity, char *buffer, int size,
+		  nr_rlc_pkt_info_t *rlc_info);
 
   void (*recv_sdu)(struct nr_rlc_entity_t *entity, char *buffer, int size,
                    int sdu_id);
@@ -121,6 +124,9 @@ typedef struct nr_rlc_entity_t {
   void (*reestablishment)(struct nr_rlc_entity_t *entity);
 
   void (*delete)(struct nr_rlc_entity_t *entity);
+
+  /* put RLC PDU into the queue to be sent to MAC directly */
+  int (*deliver_pdu)(struct nr_rlc_entity_t *entity, char *buffer, int size);
 
   int (*available_tx_space)(struct nr_rlc_entity_t *entity);
 

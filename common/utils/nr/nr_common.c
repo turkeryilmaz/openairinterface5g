@@ -49,8 +49,8 @@ int get_supported_band_index(int scs, int band, int n_rbs)
   int scs_index = scs;
   if (band > 256)
     scs_index++;
-  for (int i = 0; i < 11; i++) {
-    if(n_rbs == tables_5_3_2[scs][i])
+  for (int i = 0; i < 12; i++) {
+    if(n_rbs == tables_5_3_2[scs_index][i])
       return i;
   }
   return (-1); // not found
@@ -516,7 +516,7 @@ int get_nr_table_idx(int nr_bandP, uint8_t scs_index) {
          break;
   }
 
-  AssertFatal(i > 0 && i < sizeofArray(nr_bandtable), "band is not existing: %d\n",nr_bandP);
+  AssertFatal(i >= 0 && i < sizeofArray(nr_bandtable), "band is not existing: %d\n",nr_bandP);
   LOG_D(PHY, "NR band table index %d (Band %d, dl_min %lu, ul_min %lu)\n", i, nr_bandtable[i].band, nr_bandtable[i].dl_min,nr_bandtable[i].ul_min);
 
   return i;

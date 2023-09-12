@@ -440,6 +440,42 @@ typedef struct rrc_gNB_ue_context_s {
   struct gNB_RRC_UE_s   ue_context;
 } rrc_gNB_ue_context_t;
 
+/* PUSCH,PDSCH dedicated DCCH,DTCH scheduling configuration from external */
+typedef struct NR_DciFormat_0_X_ResourceAssignment {
+  int32_t FirstRbIndex;
+  int32_t Nprb;
+  struct NR_TransportBlockScheduling{
+    uint8_t imcs;
+    uint8_t RedundancyVersion;
+    bool ToggleNDI;
+  } transportBlock_scheduling;
+}NR_DciFormat_0_X_ResourceAssignment_t;
+
+typedef struct NR_DcchDtchConfig_UL {
+  struct NR_DciUlinfo {
+    NR_DciFormat_0_X_ResourceAssignment_t * resoure_assignment;
+
+    uint8_t * pusch_hopping_ctrl_flag;
+    uint8_t * tpc_command_pusch;
+    uint8_t * ul_sul_indicator;
+    //NR_DciFormat0_0 * dci0_0;
+    //NR_DciFormat0_1 * dci0_1;
+  } * dci_info;
+
+  /*TODO: other config */
+  //PUCCH_Synch
+  //GrantConfig
+
+} NR_DcchDtchConfig_UL_t;
+
+typedef struct NR_DcchDtchConfig {
+  /*TODO: define DL config for activeBWP */
+  //NR_DcchDtchConfig_DL_t * dl;
+
+  NR_DcchDtchConfig_UL_t    * ul;
+} NR_DcchDtchConfig_t;
+/*****************************************************************/
+
 typedef struct {
 
   uint8_t                                   *SIB1;
@@ -456,11 +492,32 @@ typedef struct {
   NR_SIB2_t                                *sib2;
   NR_SIB3_t                                *sib3;
   NR_BCCH_DL_SCH_Message_t                  systemInformation; // SIB23
+  int ssb_SubcarrierOffset;
+  int sib1_tda;
+  int pdsch_AntennaPorts;
+  int pusch_AntennaPorts;
+  int minRXTXTIME;
+  int do_CSIRS;
+  int do_SRS;
   NR_BCCH_DL_SCH_Message_t                  *siblock1;
   NR_ServingCellConfigCommon_t              *servingcellconfigcommon;
+  NR_ServingCellConfig_t                    *cellConfigDedicated;
+  NR_PDCCH_ConfigSIB1_t                     *pdcch_ConfigSIB1;
+  /* ServingCellConfig */
+  NR_CellGroupId_t                                cell_GroupId;
+  NR_MAC_CellGroupConfig_t                  *mac_cellGroupConfig;
+  NR_PhysicalCellGroupConfig_t               *physicalCellGroupConfig;
+
+  /* dedicate Scheduler Config */
+  NR_DcchDtchConfig_t                       *dcchDtchConfig;
+
   NR_CellGroupConfig_t                      *secondaryCellGroup[MAX_NR_RRC_UE_CONTEXTS];
+  NR_SRB_INFO                               SI;
+  NR_SRB_INFO                               Srb0;
   int                                       p_gNB;
 
+  uint8_t                           *paging;
+  uint32_t                           sizeof_paging;
 } rrc_gNB_carrier_data_t;
 //---------------------------------------------------
 
