@@ -102,20 +102,20 @@ uint16_t pdcp_get_next_tx_seq_number(pdcp_t* pdcp_entity)
 
   // Sequence number should be incremented after it is assigned for a PDU
   uint16_t pdcp_seq_num = pdcp_entity->next_pdcp_tx_sn;
-
+  uint16_t max_seq_num = pdcp_calculate_max_seq_num_for_given_size(pdcp_entity->seq_num_size);
   /*
    * Update sequence numbering state and Hyper Frame Number if SN has already reached
    * its max value (see 5.1 PDCP Data Transfer Procedures)
    */
-  if (pdcp_entity->next_pdcp_tx_sn == pdcp_calculate_max_seq_num_for_given_size(pdcp_entity->seq_num_size)) {
-    pdcp_entity->next_pdcp_tx_sn = 0;
+  if (pdcp_entity->next_pdcp_tx_sn > max_seq_num) {
+    pdcp_entity->next_pdcp_tx_sn = 1;
     pdcp_entity->tx_hfn++;
     LOG_D(PDCP,"Reseting the PDCP sequence number\n");
   } else {
     pdcp_entity->next_pdcp_tx_sn++;
   }
 
-  return pdcp_seq_num;
+  return pdcp_seq_num & max_seq_num;
 }
 
 bool pdcp_advance_rx_window(pdcp_t* pdcp_entity)

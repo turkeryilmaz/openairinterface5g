@@ -143,6 +143,7 @@ static void copy_ul_tti_req(nfapi_nr_ul_tti_request_t *to, nfapi_nr_ul_tti_reque
 
 void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, frame_t frame, sub_frame_t slot, NR_Sched_Rsp_t *sched_info)
 {
+  LOG_D(NR_MAC, "fxn:%s Entry\n", __FUNCTION__);
   protocol_ctxt_t ctxt = {0};
   PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, module_idP, ENB_FLAG_YES, NOT_A_RNTI, frame, slot,module_idP);
 
@@ -243,6 +244,11 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, frame_t frame, sub_frame_
   nr_schedule_ue_spec(module_idP, frame, slot, &sched_info->DL_req, &sched_info->TX_req);
   stop_meas(&gNB->schedule_dlsch);
 
+  if (RC.ss.mode >= SS_SOFTMODEM)
+  {
+    // This schedules Paging in slot
+    schedule_nr_PCH(module_idP, frame, slot, &sched_info->DL_req, &sched_info->TX_req);
+  }
   nr_sr_reporting(gNB, frame, slot);
 
   nr_schedule_pucch(gNB, frame, slot);
@@ -257,4 +263,5 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, frame_t frame, sub_frame_
   stop_meas(&gNB->eNB_scheduler);
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_gNB_DLSCH_ULSCH_SCHEDULER,VCD_FUNCTION_OUT);
+  LOG_D(NR_MAC, "fxn:%s Exit\n", __FUNCTION__);
 }

@@ -47,6 +47,8 @@ int nr_mac_enable_ue_rrc_processing_timer(module_id_t Mod_idP,
                                           NR_SubcarrierSpacing_t subcarrierSpacing,
                                           uint32_t rrc_reconfiguration_delay);
 
+int rrc_mac_config_dedicate_scheduling(module_id_t Mod_idP, NR_DcchDtchConfig_t *dcchDtchConfig);
+
 void nr_mac_config_scc(gNB_MAC_INST *nrmac,
                        rrc_pdsch_AntennaPorts_t pdsch_AntennaPorts,
                        int pusch_AntennaPorts,
@@ -114,6 +116,12 @@ void nr_schedule_ulsch(module_id_t module_id, frame_t frame, sub_frame_t slot, n
 
 /* \brief default FR1 UL preprocessor init routine, returns preprocessor to call */
 nr_pp_impl_ul nr_init_fr1_ulsch_preprocessor(int CC_id);
+
+void schedule_nr_PCH(module_id_t module_idP,
+                     frame_t frameP,
+                     sub_frame_t slotP,
+                     nfapi_nr_dl_tti_request_t *DL_req,
+                     nfapi_nr_tx_data_request_t *TX_req);
 
 /////// Random Access MAC-PHY interface functions and primitives ///////
 
