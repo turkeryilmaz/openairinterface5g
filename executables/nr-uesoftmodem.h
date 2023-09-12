@@ -67,6 +67,7 @@
   {"ue_slot_Rx_Tx" ,               CONFIG_HLP_UESLOTRXTX,      0,               .u16ptr=&NTN_UE_slot_Rx_to_Tx,               .defintval=0,      TYPE_UINT16,   0}, \
   {"ue_k2" ,                       CONFIG_HLP_UEK2,            0,               .u16ptr=&NTN_UE_k2,                          .defintval=0,      TYPE_UINT16,   0}, \
   {"FD" ,                          CONFIG_HLP_FDoppler,        0,               .iptr=&fdoppler,                             .defintval=1,      TYPE_INT,      0}, \
+  {"TS" ,                          CONFIG_HLP_TShift,          0,               .iptr=&tshift,                               .defintval=0,      TYPE_INT,      0}, \
   {"FC" ,                          CONFIG_HLP_FDopplerComp,    0,               .iptr=&fdopplerComp,                         .defintval=1,      TYPE_INT,      0}, \
   {"TD" ,                          CONFIG_HLP_TDRIFT,          0,               .iptr=&RFsim_DriftPerFrame,                  .defintval=0,      TYPE_INT,      0}, \
   {"PST" ,                         CONFIG_HLP_PathStart,       0,               .u16ptr=&pathStartingTime,                   .defintval=1050,   TYPE_UINT16,   0}, \

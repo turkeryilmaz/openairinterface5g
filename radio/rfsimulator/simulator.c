@@ -836,6 +836,7 @@ static bool flushInput(rfsimulator_state_t *t, int timeout, int nsamps_for_initi
 
 //Paramters for Doppler shift. Assume the Doppler frequency changes every frame
 extern int32_t fdoppler; // flag to simulate frequency offset (default active = 1, 0 = de-activate)
+extern int tshift;
 const uint32_t fsamp = 61440000; //sampling frequency
 extern uint16_t pathStartingTime;    // time [sec] at which satellite is becoming visible to the UE 
 extern uint16_t pathEndingTime;      // time [sec] at which satellite is no more visible to the UE
@@ -972,7 +973,8 @@ static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimest
             currDoppler =  (currDopplerTmp - initDoppler) ;
           }
 
-          RFsim_PropDelay = (2 * norm_d / c) * fsamp; 
+          if(tshift)
+            RFsim_PropDelay = (2 * norm_d / c) * fsamp; 
           //printf("**** counter: %lu, RFsim_PropDelay[Samp]: %lu , Doppler: %d, freqScale: %f ***** \n ", counter, RFsim_PropDelay, currDoppler, freqScale);        
 
           //LOG_I(HW, "nbAnt_tx %d\n",nbAnt_tx);
