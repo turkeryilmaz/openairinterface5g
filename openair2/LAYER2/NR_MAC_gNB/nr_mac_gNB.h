@@ -188,6 +188,7 @@ typedef struct {
   uint8_t msg3_cqireq;
   /// Round of Msg3 HARQ
   uint8_t msg3_round;
+  uint16_t *crnti;
   int msg3_startsymb;
   int msg3_nrsymb;
   /// TBS used for Msg4
