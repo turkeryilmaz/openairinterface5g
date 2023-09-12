@@ -314,18 +314,19 @@ static int create_gNB_tasks(void) {
 
   LOG_I(GNB_APP,"Allocating gNB_RRC_INST for %d instances\n",RC.nb_nr_inst);
 
-  RC.nrrrc = (gNB_RRC_INST **)malloc(RC.nb_nr_inst*sizeof(gNB_RRC_INST *));
-  LOG_I(PHY, "%s() RC.nb_nr_inst:%d RC.nrrrc:%p\n", __FUNCTION__, RC.nb_nr_inst, RC.nrrrc);
-  ngran_node_t node_type = get_node_type();
-  for (int gnb_id = gnb_id_start; (gnb_id < gnb_id_end) ; gnb_id++) {
-    RC.nrrrc[gnb_id] = (gNB_RRC_INST*)calloc(1,sizeof(gNB_RRC_INST));
-    LOG_I(PHY, "%s() Creating RRC instance RC.nrrrc[%d]:%p (%d of %d)\n", __FUNCTION__, gnb_id, RC.nrrrc[gnb_id], gnb_id+1, gnb_id_end);
-    configure_nr_rrc(gnb_id);
-  }
+  RC.nrrrc = (gNB_RRC_INST **)malloc(NUMBER_OF_DU_PER_CU_MAX * sizeof(gNB_RRC_INST *));
+  LOG_I(PHY, "%s() RC.nb_nr_inst:%d RC.nrrrc: %p\n", __FUNCTION__, RC.nb_nr_inst, RC.nrrrc);
 
-  if (RC.nb_nr_inst > 0 &&
-      !get_softmodem_params()->nsa &&
-      !(node_type == ngran_gNB_DU))  {
+  int gnb_id = gnb_id_start;
+  do {
+    RC.nrrrc[gnb_id] = (gNB_RRC_INST *)calloc(1, sizeof(gNB_RRC_INST));
+    LOG_I(PHY, "%s() Creating RRC instance RC.nrrrc[%d]: %p\n", __FUNCTION__, gnb_id, RC.nrrrc[gnb_id]);
+    configure_nr_rrc(gnb_id);
+    gnb_id++;
+  } while (gnb_id < NUMBER_OF_DU_PER_CU_MAX && NODE_IS_CU(RC.nrrrc[0]->node_type));
+
+  ngran_node_t node_type = get_node_type();
+  if (RC.nb_nr_inst > 0 && !get_softmodem_params()->nsa && !(node_type == ngran_gNB_DU)) {
     // we start pdcp in both cuup (for drb) and cucp (for srb)
     init_pdcp();
   }

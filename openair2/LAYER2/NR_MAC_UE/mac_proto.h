@@ -93,6 +93,8 @@ void nr_rrc_mac_config_req_sib1(module_id_t module_id,
                                 struct NR_SI_SchedulingInfo *si_SchedulingInfo,
                                 NR_ServingCellConfigCommonSIB_t *scc);
 
+void nr_rrc_mac_config_req_meas(module_id_t module_id, const NR_MeasConfig_t *measConfig);
+
 /**\brief initialization NR UE MAC instance(s), total number of MAC instance based on NB_NR_UE_MAC_INST*/
 NR_UE_MAC_INST_t * nr_l2_init_ue(NR_UE_RRC_INST_t* rrc_inst);
 
@@ -171,7 +173,7 @@ int nr_get_sf_retxBSRTimer(uint8_t retxBSR_Timer);
 
 int8_t nr_ue_process_dci(module_id_t module_id, int cc_id, uint8_t gNB_index, frame_t frame, int slot, dci_pdu_rel15_t *dci, fapi_nr_dci_indication_pdu_t *dci_ind);
 int nr_ue_process_dci_indication_pdu(module_id_t module_id, int cc_id, int gNB_index, frame_t frame, int slot, fapi_nr_dci_indication_pdu_t *dci);
-int8_t nr_ue_process_csirs_measurements(module_id_t module_id, frame_t frame, int slot, fapi_nr_csirs_measurements_t *csirs_measurements);
+int8_t nr_ue_process_l1_measurements(module_id_t module_id, frame_t frame, int slot, fapi_nr_l1_measurements_t *l1_measurements);
 
 uint32_t get_ssb_frame(uint32_t test);
 

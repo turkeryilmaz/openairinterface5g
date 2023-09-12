@@ -26,6 +26,8 @@
 #include "openair2/LAYER2/nr_rlc/nr_rlc_oai_api.h"
 #include "openair2/RRC/NR/MESSAGES/asn1_msg.h"
 #include "F1AP_CauseRadioNetwork.h"
+#include "SIMULATION/TOOLS/sim.h"
+#include <arpa/inet.h>
 
 #include "uper_decoder.h"
 #include "uper_encoder.h"
@@ -95,7 +97,16 @@ static int handle_ue_context_drbs_setup(int rnti,
   return drbs_len;
 }
 
-void ue_context_setup_request(const f1ap_ue_context_setup_t *req)
+rnti_t mac_new_rnti(gNB_MAC_INST *mac)
+{
+  rnti_t rnti = 0;
+  do {
+    rnti = (taus() % 65518) + 1;
+  } while (find_nr_UE(&mac->UE_info, rnti) != NULL);
+  return rnti;
+}
+
+void ue_context_setup_request(instance_t instance, const f1ap_ue_context_setup_t *req)
 {
   gNB_MAC_INST *mac = RC.nrmac[0];
   /* response has same type as request... */
@@ -113,22 +124,59 @@ void ue_context_setup_request(const f1ap_ue_context_setup_t *req)
   NR_SCHED_LOCK(&mac->sched_lock);
 
   NR_UE_info_t *UE = find_nr_UE(&RC.nrmac[0]->UE_info, req->gNB_DU_ue_id);
-  AssertFatal(UE != NULL, "did not find UE with RNTI %04x, but UE Context Setup Failed not implemented\n", req->gNB_DU_ue_id);
+  // AssertFatal(UE != NULL, "did not find UE with RNTI %04x, but UE Context Setup Failed not implemented\n", req->gNB_DU_ue_id);
+
+  NR_CellGroupConfig_t *CellGroup = NULL;
+  if (UE == NULL) {
+    asn_dec_rval_t dec_rval = uper_decode_complete(NULL,
+                                                   &asn_DEF_NR_CellGroupConfig,
+                                                   (void **)&CellGroup,
+                                                   (uint8_t *)req->cu_to_du_rrc_information->ie_extensions->cell_group_config,
+                                                   (int)req->cu_to_du_rrc_information->ie_extensions->cell_group_config_length);
+
+    AssertFatal(dec_rval.code == RC_OK, "could not decode cellGroupConfig\n");
+
+    rnti_t newUE_Identity = 0;
+    if (CellGroup->spCellConfig &&
+        CellGroup->spCellConfig->reconfigurationWithSync) {
+      newUE_Identity = CellGroup->spCellConfig->reconfigurationWithSync->newUE_Identity;
+    } else {
+      newUE_Identity = mac_new_rnti(mac);
+    }
+
+    resp.crnti = calloc(1, sizeof(uint16_t));
+    *resp.crnti = newUE_Identity;
+    resp.gNB_DU_ue_id = newUE_Identity;
+
+    asn_set_empty(&CellGroup->rlc_BearerToAddModList->list);
+    CellGroup->rlc_BearerToAddModList->list.count = 0;
+
+    if (!du_exists_f1_ue_data(resp.gNB_DU_ue_id)) {
+      LOG_I(NR_MAC, "No CU UE ID stored for UE RNTI %04x, adding CU UE ID %d\n", resp.gNB_DU_ue_id, resp.gNB_CU_ue_id);
+      f1_ue_data_t new_ue_data = {.secondary_ue = resp.gNB_CU_ue_id};
+      du_add_f1_ue_data(resp.gNB_DU_ue_id, &new_ue_data);
+    }
+
+    nr_mac_prepare_ra_ue(mac, newUE_Identity, CellGroup);
+
+  } else {
+    CellGroup = UE->CellGroup;
+  }
 
   if (req->srbs_to_be_setup_length > 0) {
-    resp.srbs_to_be_setup_length = handle_ue_context_srbs_setup(req->gNB_DU_ue_id,
+    resp.srbs_to_be_setup_length = handle_ue_context_srbs_setup(resp.gNB_DU_ue_id,
                                                                 req->srbs_to_be_setup_length,
                                                                 req->srbs_to_be_setup,
                                                                 &resp.srbs_to_be_setup,
-                                                                UE->CellGroup);
+                                                                CellGroup);
   }
 
   if (req->drbs_to_be_setup_length > 0) {
-    resp.drbs_to_be_setup_length = handle_ue_context_drbs_setup(req->gNB_DU_ue_id,
+    resp.drbs_to_be_setup_length = handle_ue_context_drbs_setup(resp.gNB_DU_ue_id,
                                                                 req->drbs_to_be_setup_length,
                                                                 req->drbs_to_be_setup,
                                                                 &resp.drbs_to_be_setup,
-                                                                UE->CellGroup);
+                                                                CellGroup);
   }
 
   if (req->rrc_container != NULL)
@@ -137,18 +185,20 @@ void ue_context_setup_request(const f1ap_ue_context_setup_t *req)
   //nr_mac_update_cellgroup()
   resp.du_to_cu_rrc_information = calloc(1, sizeof(du_to_cu_rrc_information_t));
   AssertFatal(resp.du_to_cu_rrc_information != NULL, "out of memory\n");
-  resp.du_to_cu_rrc_information->cellGroupConfig = calloc(1,1024);
+  resp.du_to_cu_rrc_information->cellGroupConfig = calloc(1, RRC_BUF_SIZE);
   AssertFatal(resp.du_to_cu_rrc_information->cellGroupConfig != NULL, "out of memory\n");
   asn_enc_rval_t enc_rval = uper_encode_to_buffer(&asn_DEF_NR_CellGroupConfig,
                                                   NULL,
-                                                  UE->CellGroup,
+                                                  CellGroup,
                                                   resp.du_to_cu_rrc_information->cellGroupConfig,
-                                                  1024);
+                                                  RRC_BUF_SIZE);
   AssertFatal(enc_rval.encoded > 0, "Could not encode CellGroup, failed element %s\n", enc_rval.failed_type->name);
   resp.du_to_cu_rrc_information->cellGroupConfig_length = (enc_rval.encoded + 7) >> 3;
 
   /* TODO: need to apply after UE context reconfiguration confirmed? */
-  process_CellGroup(UE->CellGroup, UE);
+  if (UE != NULL) {
+    process_CellGroup(UE->CellGroup, UE);
+  }
 
   NR_SCHED_UNLOCK(&mac->sched_lock);
 
@@ -157,7 +207,7 @@ void ue_context_setup_request(const f1ap_ue_context_setup_t *req)
   DevAssert(resp.du_to_cu_rrc_information != NULL);
   DevAssert(resp.rrc_container == NULL && resp.rrc_container_length == 0);
 
-  mac->mac_rrc.ue_context_setup_response(req, &resp);
+  mac->mac_rrc.ue_context_setup_response(instance, req, &resp);
 
   /* free the memory we allocated above */
   free(resp.srbs_to_be_setup);
@@ -226,6 +276,11 @@ void ue_context_modification_request(const f1ap_ue_context_modif_req_t *req)
     /* works? */
     nr_mac_update_cellgroup(RC.nrmac[0], req->gNB_DU_ue_id, UE->CellGroup);
   }
+
+  if (req->transmission_action_indicator != NULL) {
+    nr_transmission_action_indicator_stop(0, req->gNB_DU_ue_id);
+  }
+
   NR_SCHED_UNLOCK(&mac->sched_lock);
 
   /* some sanity checks, since we use the same type for request and response */
@@ -328,7 +383,7 @@ void ue_context_release_command(const f1ap_ue_context_release_cmd_t *cmd)
   du_remove_f1_ue_data(cmd->gNB_DU_ue_id);
 }
 
-void dl_rrc_message_transfer(const f1ap_dl_rrc_message_t *dl_rrc)
+void dl_rrc_message_transfer(int dest_itti, const f1ap_dl_rrc_message_t *dl_rrc)
 {
   LOG_D(NR_MAC,
         "DL RRC Message Transfer with %d bytes for RNTI %04x SRB %d\n",

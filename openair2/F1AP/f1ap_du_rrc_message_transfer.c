@@ -138,7 +138,7 @@ int DU_handle_DL_RRC_MESSAGE_TRANSFER(instance_t       instance,
     .rrc_container = ie->value.choice.RRCContainer.buf,
     .srb_id = srb_id
   };
-  dl_rrc_message_transfer(&dl_rrc);
+  dl_rrc_message_transfer(0, &dl_rrc);
   return 0;
 }
 

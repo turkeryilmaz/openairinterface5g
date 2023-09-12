@@ -24,7 +24,7 @@
 
 #include "mac_rrc_ul.h"
 
-static void ue_context_setup_response_direct(const f1ap_ue_context_setup_t *req, const f1ap_ue_context_setup_t *resp)
+static void ue_context_setup_response_direct(instance_t instance, const f1ap_ue_context_setup_t *req, const f1ap_ue_context_setup_t *resp)
 {
   DevAssert(req->drbs_to_be_setup_length == resp->drbs_to_be_setup_length);
   AssertFatal(req->drbs_to_be_setup_length == 0, "not implemented\n");

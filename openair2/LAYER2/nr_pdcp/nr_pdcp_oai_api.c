@@ -249,20 +249,12 @@ static void do_pdcp_data_ind(
   nr_pdcp_entity_t *rb;
   ue_id_t rntiMaybeUEid = ctxt_pP->rntiMaybeUEid;
 
-  if (ctxt_pP->module_id != 0 ||
-      //ctxt_pP->enb_flag != 1 ||
-      ctxt_pP->instance != 0 ||
-      ctxt_pP->eNB_index != 0 ||
-      ctxt_pP->brOption != 0) {
-    LOG_E(PDCP, "%s:%d:%s: fatal\n", __FILE__, __LINE__, __FUNCTION__);
-    exit(1);
-  }
-
   if (ctxt_pP->enb_flag)
     T(T_ENB_PDCP_UL, T_INT(ctxt_pP->module_id), T_INT(rntiMaybeUEid), T_INT(rb_id), T_INT(sdu_buffer_size));
 
   nr_pdcp_manager_lock(nr_pdcp_ue_manager);
   ue = nr_pdcp_manager_get_ue(nr_pdcp_ue_manager, rntiMaybeUEid);
+  ue->du_destination = ctxt_pP->instance;
 
   if (srb_flagP == 1) {
     if (rb_id < 1 || rb_id > 2)
@@ -733,7 +725,7 @@ srb_found:
     AssertFatal(ul_rrc->rrc_container != NULL, "OUT OF MEMORY\n");
     memcpy(ul_rrc->rrc_container, buf, size);
     ul_rrc->rrc_container_length = size;
-    itti_send_msg_to_task(TASK_RRC_GNB, 0, message_p);
+    itti_send_msg_to_task(TASK_RRC_GNB, ue->du_destination, message_p);
   } else {
     uint8_t *rrc_buffer_p = itti_malloc(TASK_PDCP_UE, TASK_RRC_NRUE, size);
     AssertFatal(rrc_buffer_p != NULL, "OUT OF MEMORY\n");
@@ -1122,16 +1114,6 @@ bool nr_pdcp_data_req_drb(protocol_ctxt_t *ctxt_pP,
   nr_pdcp_ue_t *ue;
   nr_pdcp_entity_t *rb;
   ue_id_t ue_id = ctxt_pP->rntiMaybeUEid;
-
-  if (ctxt_pP->module_id != 0 ||
-      //ctxt_pP->enb_flag != 1 ||
-      ctxt_pP->instance != 0 ||
-      ctxt_pP->eNB_index != 0 /*||
-      ctxt_pP->configured != 1 ||
-      ctxt_pP->brOption != 0*/) {
-    LOG_E(PDCP, "%s:%d:%s: fatal\n", __FILE__, __LINE__, __FUNCTION__);
-    exit(1);
-  }
 
   nr_pdcp_manager_lock(nr_pdcp_ue_manager);
 

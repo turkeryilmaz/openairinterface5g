@@ -1981,6 +1981,20 @@ void delete_nr_ue_data(NR_UE_info_t *UE, NR_COMMON_channels_t *ccPtr, uid_alloca
   destroy_nr_list(&sched_ctrl->feedback_ul_harq);
   destroy_nr_list(&sched_ctrl->retrans_ul_harq);
   uid_linear_allocator_free(uia, UE->uid);
+  const int CC_id = 0;
+  NR_COMMON_channels_t *cc = &RC.nrmac[0]->common_channels[CC_id];
+  for (int ra_index = 0; ra_index < NR_NB_RA_PROC_MAX; ra_index++) {
+    NR_RA_t *ra = &cc->ra[ra_index];
+    if (ra->cfra && ra->rnti == UE->rnti) {
+      ra->cfra = false;
+      ra->state = RA_IDLE;
+      ra->timing_offset = 0;
+      ra->RRC_timer = 20;
+      ra->msg3_round = 0;
+      ra->crnti = 0;
+      ra->rnti = 0;
+    }
+  }
   LOG_I(NR_MAC, "Remove NR rnti 0x%04x\n", UE->rnti);
   free(UE);
 }
@@ -2542,7 +2556,7 @@ void nr_csirs_scheduling(int Mod_idP, frame_t frame, sub_frame_t slot, int n_slo
     if (UE_info->sched_csirs & (1 << dl_bwp->bwp_id))
       continue;
     NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
-    if (sched_ctrl->rrc_processing_timer > 0) {
+    if ((sched_ctrl->rrc_processing_timer > 0) || sched_ctrl->transmission_stop) {
       continue;
     }
 

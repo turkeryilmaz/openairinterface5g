@@ -485,8 +485,8 @@ typedef struct {
 
   nr_csi_report_t csi_report_template[MAX_CSI_REPORTCONFIG];
 
-  /// measurements from CSI-RS
-  fapi_nr_csirs_measurements_t csirs_measurements;
+  /// measurements from SS or CSI-RS
+  fapi_nr_l1_measurements_t l1_measurements;
 
   /// Last NDI of UL HARQ processes
   uint8_t UL_ndi[NR_MAX_HARQ_PROCESSES];

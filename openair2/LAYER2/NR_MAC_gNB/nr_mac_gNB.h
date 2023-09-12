@@ -621,6 +621,9 @@ typedef struct {
 
   /// sri, ul_ri and tpmi based on SRS
   nr_srs_feedback_t srs_feedback;
+
+  /// Stop transmission when gNB-DU receives the transmission action indicator with value Stop
+  bool transmission_stop;
 } NR_UE_sched_ctrl_t;
 
 typedef struct {

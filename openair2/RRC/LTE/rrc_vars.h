@@ -86,5 +86,5 @@ MAC_AVG_T BCCH_MEAS_AVG, CCCH_MEAS_AVG,DCCH_MEAS_AVG, DTCH_MEAS_AVG;
 // insert one when eNB received RRCConnectionReestablishmentRequest message
 // delete one when eNB received RRCConnectionReestablishmentComplete message
 uint16_t reestablish_rnti_map[MAX_MOBILES_PER_ENB][2] = {{0}};
-
+uint16_t ho_rnti_map[NUMBER_OF_DU_PER_CU_MAX][4] = {{0}};
 #endif

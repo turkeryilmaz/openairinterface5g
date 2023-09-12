@@ -2,8 +2,8 @@
 #define OPENAIRINTERFACE5G_LIMITS_H_
 
 #        define MAX_MOBILES_PER_GNB 32
-#        define NUMBER_OF_eNB_MAX 1
-#        define NUMBER_OF_gNB_MAX 1
+#        define NUMBER_OF_eNB_MAX 2
+#        define NUMBER_OF_gNB_MAX 2
 #        define NUMBER_OF_RU_MAX 2
 #        define NUMBER_OF_NR_RU_MAX 2
 #        define NUMBER_OF_UCI_MAX 16
@@ -13,6 +13,8 @@
 #        define NUMBER_OF_SCH_STATS_MAX 16
 
 #define NUMBER_FRAMES_PHY_UE_INACTIVE 10
+
+#define NUMBER_OF_DU_PER_CU_MAX 2
 
 #define MAX_MANAGED_ENB_PER_MOBILE  2
 #define MAX_MANAGED_GNB_PER_MOBILE  2

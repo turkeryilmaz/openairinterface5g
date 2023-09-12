@@ -422,6 +422,7 @@ typedef struct NRRrcConfigurationReq_s {
   int                     sib1_tda;
   rrc_pdsch_AntennaPorts_t pdsch_AntennaPorts;
   int                     pusch_AntennaPorts;
+  int                     location_ho_trigger;
   int                     minRXTXTIME;
   int                     do_CSIRS;
   int                     do_SRS;

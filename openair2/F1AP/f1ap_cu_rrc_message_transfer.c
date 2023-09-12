@@ -225,7 +225,6 @@ int CU_handle_UL_RRC_MESSAGE_TRANSFER(instance_t       instance,
   F1AP_ULRRCMessageTransfer_t    *container;
   F1AP_ULRRCMessageTransferIEs_t *ie;
   uint64_t        cu_ue_f1ap_id;
-  uint64_t        du_ue_f1ap_id;
   uint64_t        srb_id;
   DevAssert(pdu != NULL);
 
@@ -243,15 +242,16 @@ int CU_handle_UL_RRC_MESSAGE_TRANSFER(instance_t       instance,
   /* GNB_DU_UE_F1AP_ID */
   F1AP_FIND_PROTOCOLIE_BY_ID(F1AP_ULRRCMessageTransferIEs_t, ie, container,
                              F1AP_ProtocolIE_ID_id_gNB_DU_UE_F1AP_ID, true);
-  du_ue_f1ap_id = ie->value.choice.GNB_DU_UE_F1AP_ID;
+  // uint64_t du_ue_f1ap_id = ie->value.choice.GNB_DU_UE_F1AP_ID;
   /* the RLC-PDCP does not transport the DU UE ID (yet), so we drop it here.
    * For the moment, let's hope this won't become relevant; to sleep in peace,
    * let's put an assert to check that it is the expected DU UE ID. */
-  f1_ue_data_t ue_data = cu_get_f1_ue_data(cu_ue_f1ap_id);
-  AssertFatal(ue_data.secondary_ue == du_ue_f1ap_id,
-              "unexpected DU UE ID %d received, expected it to be %ld\n",
-              ue_data.secondary_ue,
-              du_ue_f1ap_id);
+
+  //  f1_ue_data_t ue_data = cu_get_f1_ue_data(cu_ue_f1ap_id);
+  //  AssertFatal(ue_data.secondary_ue == du_ue_f1ap_id,
+  //              "unexpected DU UE ID %d received, expected it to be %ld\n",
+  //              ue_data.secondary_ue,
+  //              du_ue_f1ap_id);
 
   /* mandatory */
   /* SRBID */

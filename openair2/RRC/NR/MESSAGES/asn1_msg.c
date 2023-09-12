@@ -142,6 +142,7 @@
 
 #include "common/ran_context.h"
 #include "conversions.h"
+#include "NR_HandoverCommand.h"
 
 //#define XER_PRINT
 
@@ -1003,6 +1004,72 @@ uint8_t do_RRCSetupComplete(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size,
   return((enc_rval.encoded+7)/8);
 }
 
+// TODO: This function is only implemented for event A3
+uint16_t do_nrMeasurementReport_SA(NR_MeasurementReport_t *measurementReport, l3_measurements_t *l3_measurements, uint8_t *buffer, size_t buffer_size)
+{
+  asn_enc_rval_t enc_rval;
+  NR_UL_DCCH_Message_t ul_dcch_msg;
+  memset((void *)&ul_dcch_msg, 0, sizeof(NR_UL_DCCH_Message_t));
+
+  ul_dcch_msg.message.present = NR_UL_DCCH_MessageType_PR_c1;
+  ul_dcch_msg.message.choice.c1 = CALLOC(1, sizeof(struct NR_UL_DCCH_MessageType__c1));
+  ul_dcch_msg.message.choice.c1->present = NR_UL_DCCH_MessageType__c1_PR_measurementReport;
+
+  memset(measurementReport, 0, sizeof(struct NR_MeasurementReport));
+  ul_dcch_msg.message.choice.c1->choice.measurementReport = measurementReport;
+  measurementReport->criticalExtensions.present = NR_MeasurementReport__criticalExtensions_PR_measurementReport;
+
+  NR_MeasurementReport_IEs_t *measurementReport_ie = CALLOC(1, sizeof(struct NR_MeasurementReport_IEs));
+  measurementReport->criticalExtensions.choice.measurementReport = measurementReport_ie;
+  measurementReport_ie->measResults.measId = l3_measurements->trigger_to_measid;
+
+  NR_MeasResultServMO_t *measResultServMo = CALLOC(1, sizeof(struct NR_MeasResultServMO));
+
+  meas_t *active_cell = &l3_measurements->active_cell;
+  NR_MeasResultNR_t *measResultServingCell = &measResultServMo->measResultServingCell;
+  measResultServingCell->physCellId = CALLOC(1, sizeof(NR_PhysCellId_t));
+  *measResultServingCell->physCellId = active_cell->Nid_cell;
+
+  meas_t *neighboring_cell = &l3_measurements->neighboring_cell[0];
+  struct NR_MeasResultNR *measResultBestNeighCell = CALLOC(1, sizeof(struct NR_MeasResultNR));
+  measResultServMo->measResultBestNeighCell = measResultBestNeighCell;
+  measResultBestNeighCell->physCellId = CALLOC(1, sizeof(NR_PhysCellId_t));
+  *measResultBestNeighCell->physCellId = neighboring_cell->Nid_cell;
+
+  struct NR_MeasQuantityResults *active_mq_res = CALLOC(1, sizeof(struct NR_MeasQuantityResults));
+  struct NR_MeasQuantityResults *neighboring_mq_res = CALLOC(1, sizeof(struct NR_MeasQuantityResults));
+
+  if (l3_measurements->trigger_quantity == NR_MeasTriggerQuantityOffset_PR_rsrp) {
+
+    active_mq_res->rsrp = CALLOC(1, sizeof(NR_RSRP_Range_t));
+    neighboring_mq_res->rsrp = CALLOC(1, sizeof(NR_RSRP_Range_t));
+
+    if (l3_measurements->rs_type == NR_NR_RS_Type_ssb) {
+      *active_mq_res->rsrp = active_cell->ss_rsrp_dBm + 157;
+      measResultServingCell->measResult.cellResults.resultsSSB_Cell = active_mq_res;
+      *neighboring_mq_res->rsrp = neighboring_cell->ss_rsrp_dBm + 157;
+      measResultServMo->measResultBestNeighCell->measResult.cellResults.resultsSSB_Cell = neighboring_mq_res;
+    } else {
+      *active_mq_res->rsrp = active_cell->csi_rsrp_dBm + 157;
+      measResultServingCell->measResult.cellResults.resultsCSI_RS_Cell = active_mq_res;
+      *neighboring_mq_res->rsrp = neighboring_cell->csi_rsrp_dBm + 157;
+      measResultServMo->measResultBestNeighCell->measResult.cellResults.resultsCSI_RS_Cell = neighboring_mq_res;
+    }
+  }
+
+  ASN_SEQUENCE_ADD(&measurementReport_ie->measResults.measResultServingMOList.list, measResultServMo);
+
+  xer_fprint(stdout, &asn_DEF_NR_UL_DCCH_Message, (void *)&ul_dcch_msg);
+
+  enc_rval = uper_encode_to_buffer(&asn_DEF_NR_UL_DCCH_Message, NULL, (void *)&ul_dcch_msg, buffer, buffer_size);
+
+  AssertFatal(enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n", enc_rval.failed_type->name, enc_rval.encoded);
+
+  LOG_I(NR_RRC, "MeasurementReport Encoded %zd bits (%zd bytes)\n", enc_rval.encoded, (enc_rval.encoded + 7) / 8);
+
+  return ((enc_rval.encoded + 7) / 8);
+}
+
 //------------------------------------------------------------------------------
 uint8_t 
 do_NR_DLInformationTransfer(
@@ -1192,8 +1259,9 @@ int do_RRCReestablishmentComplete(uint8_t *buffer, size_t buffer_size, int64_t r
   return((enc_rval.encoded+7)/8);
 }
 
-NR_MeasConfig_t *get_defaultMeasConfig(const gNB_RrcConfigurationReq *conf)
+NR_MeasConfig_t *get_defaultMeasConfig(const module_id_t module_id)
 {
+  const gNB_RrcConfigurationReq *conf = &RC.nrrrc[module_id]->configuration;
   const NR_FrequencyInfoDL_t *freqInfoDL = conf->scc->downlinkConfigCommon->frequencyInfoDL;
   const NR_ARFCN_ValueNR_t absFreqSSB = *freqInfoDL->absoluteFrequencySSB;
   DevAssert(freqInfoDL->scs_SpecificCarrierList.list.count == 1);
@@ -1204,6 +1272,8 @@ NR_MeasConfig_t *get_defaultMeasConfig(const gNB_RrcConfigurationReq *conf)
   NR_MeasConfig_t *mc = calloc(1, sizeof(*mc));
   mc->measObjectToAddModList = calloc(1, sizeof(*mc->measObjectToAddModList));
   mc->reportConfigToAddModList = calloc(1, sizeof(*mc->reportConfigToAddModList));
+  mc->measIdToAddModList = calloc(1, sizeof(*mc->measIdToAddModList));
+  mc->quantityConfig = calloc(1, sizeof(*mc->quantityConfig));
 
   // Measurement Objects: Specifies what is to be measured. For NR and inter-RAT E-UTRA measurements, this may include
   // cell-specific offsets, blacklisted cells to be ignored and whitelisted cells to consider for measurements.
@@ -1227,12 +1297,33 @@ NR_MeasConfig_t *get_defaultMeasConfig(const gNB_RrcConfigurationReq *conf)
   asn1cCallocOne(monr1->ext1->freqBandIndicatorNR, band);
   mo1->measObject.choice.measObjectNR = monr1;
   asn1cSeqAdd(&mc->measObjectToAddModList->list, mo1);
-  
+
+  NR_MeasObjectToAddMod_t *mo3 = calloc(1, sizeof(*mo3));
+  mo3->measObjectId = 3;
+  mo3->measObject.present = NR_MeasObjectToAddMod__measObject_PR_measObjectNR;
+  NR_MeasObjectNR_t *monr3 = calloc(1, sizeof(*monr3));
+  asn1cCallocOne(monr3->ssbFrequency, absFreqSSB);
+  asn1cCallocOne(monr3->ssbSubcarrierSpacing, scs);
+  for (int i = 0; i < RC.nb_nr_inst; i++) {
+    if ((i != module_id) && RC.nrrrc[i] && RC.nrrrc[i]->configuration.scc && RC.nrrrc[i]->configuration.scc->physCellId) {
+        if (monr3->cellsToAddModList == NULL) {
+          monr3->cellsToAddModList = calloc(1, sizeof(*monr3->cellsToAddModList));
+        }
+        NR_CellsToAddMod_t *cell = calloc(1, sizeof(*cell));
+        cell->physCellId = *RC.nrrrc[i]->configuration.scc->physCellId;
+        ASN_SEQUENCE_ADD(&monr3->cellsToAddModList->list, cell);
+    }
+  }
+  monr3->quantityConfigIndex = 2;
+  monr3->ext1 = calloc(1, sizeof(*monr3->ext1));
+  asn1cCallocOne(monr3->ext1->freqBandIndicatorNR, band);
+  mo3->measObject.choice.measObjectNR = monr3;
+  asn1cSeqAdd(&mc->measObjectToAddModList->list, mo3);
+
   // Reporting Configuration: Specifies how reporting should be done. This could be periodic or event-triggered.
   NR_ReportConfigToAddMod_t *rc = calloc(1, sizeof(*rc));
   rc->reportConfigId = 1;
   rc->reportConfig.present = NR_ReportConfigToAddMod__reportConfig_PR_reportConfigNR;
-
   NR_PeriodicalReportConfig_t *prc = calloc(1, sizeof(*prc));
   prc->rsType = NR_NR_RS_Type_ssb;
   prc->reportInterval = NR_ReportInterval_ms1024;
@@ -1247,35 +1338,68 @@ NR_MeasConfig_t *get_defaultMeasConfig(const gNB_RrcConfigurationReq *conf)
   asn1cCallocOne(prc->maxNrofRS_IndexesToReport, 4);
   prc->maxReportCells = 4;
   prc->includeBeamMeasurements = true;
-
   NR_ReportConfigNR_t *rcnr = calloc(1, sizeof(*rcnr));
   rcnr->reportType.present = NR_ReportConfigNR__reportType_PR_periodical;
   rcnr->reportType.choice.periodical = prc;
-
-
   rc->reportConfig.choice.reportConfigNR = rcnr;
   asn1cSeqAdd(&mc->reportConfigToAddModList->list, rc);
+
+  NR_ReportConfigToAddMod_t *rc_A3 = calloc(1, sizeof(*rc_A3));
+  rc_A3->reportConfigId = 3;
+  rc_A3->reportConfig.present = NR_ReportConfigToAddMod__reportConfig_PR_reportConfigNR;
+  NR_EventTriggerConfig_t *etrc_A3 = calloc(1, sizeof(*etrc_A3));
+  etrc_A3->eventId.present = NR_EventTriggerConfig__eventId_PR_eventA3;
+  etrc_A3->eventId.choice.eventA3 = calloc(1, sizeof(*etrc_A3->eventId.choice.eventA3));
+  etrc_A3->eventId.choice.eventA3->a3_Offset.present = NR_MeasTriggerQuantityOffset_PR_rsrp;
+  etrc_A3->eventId.choice.eventA3->a3_Offset.choice.rsrp = 10; // 10 means 5 dB
+  etrc_A3->eventId.choice.eventA3->reportOnLeave = true;
+  etrc_A3->eventId.choice.eventA3->hysteresis = 0;
+  etrc_A3->eventId.choice.eventA3->timeToTrigger = NR_TimeToTrigger_ms2560;
+  etrc_A3->rsType = NR_NR_RS_Type_ssb;
+  etrc_A3->reportInterval = NR_ReportInterval_ms1024;
+  etrc_A3->reportAmount = NR_EventTriggerConfig__reportAmount_infinity;
+  etrc_A3->reportQuantityCell.rsrp = true;
+  etrc_A3->reportQuantityCell.rsrq = false;
+  etrc_A3->reportQuantityCell.sinr = false;
+  asn1cCallocOne(etrc_A3->maxNrofRS_IndexesToReport, 4);
+  etrc_A3->maxReportCells = 4;
+  etrc_A3->includeBeamMeasurements = false;
+  NR_ReportConfigNR_t *rcnr_A3 = calloc(1, sizeof(*rcnr_A3));
+  rcnr_A3->reportType.present = NR_ReportConfigNR__reportType_PR_eventTriggered;
+  rcnr_A3->reportType.choice.eventTriggered = etrc_A3;
+  rc_A3->reportConfig.choice.reportConfigNR = rcnr_A3;
+  asn1cSeqAdd(&mc->reportConfigToAddModList->list, rc_A3);
 
   // Measurement ID: Identifies how to report measurements of a specific object. This is a many-to-many mapping: a
   // measurement object could have multiple reporting configurations, a reporting configuration could apply to multiple
   // objects. A unique ID is used for each object-to-report-config association. When UE sends a MeasurementReport
   // message, a single ID and related measurements are included in the message.
-  mc->measIdToAddModList = calloc(1, sizeof(*mc->measIdToAddModList));
   NR_MeasIdToAddMod_t *measid = calloc(1, sizeof(*measid));
   measid->measId = 1;
   measid->measObjectId = 1;
   measid->reportConfigId = 1;
   asn1cSeqAdd(&mc->measIdToAddModList->list, measid);
 
+  NR_MeasIdToAddMod_t *measid_A3 = calloc(1, sizeof(*measid_A3));
+  measid_A3->measId = 3;
+  measid_A3->measObjectId = 3;
+  measid_A3->reportConfigId = 3;
+  asn1cSeqAdd(&mc->measIdToAddModList->list, measid_A3);
+
   // Quantity Configuration: Specifies parameters for layer 3 filtering of measurements. Only after filtering, reporting
   // criteria are evaluated. The formula used is F_n = (1-a)F_(n-1) + a*M_n, where M is the latest measurement, F is the
   // filtered measurement, and ais based on configured filter coefficient.
-  mc->quantityConfig = calloc(1, sizeof(*mc->quantityConfig));
   mc->quantityConfig->quantityConfigNR_List = calloc(1, sizeof(*mc->quantityConfig->quantityConfigNR_List));
-  NR_QuantityConfigNR_t *qcnr3 = calloc(1, sizeof(*qcnr3));
-  asn1cCallocOne(qcnr3->quantityConfigCell.ssb_FilterConfig.filterCoefficientRSRP, NR_FilterCoefficient_fc6);
-  asn1cCallocOne(qcnr3->quantityConfigCell.csi_RS_FilterConfig.filterCoefficientRSRP, NR_FilterCoefficient_fc6);
-  asn1cSeqAdd(&mc->quantityConfig->quantityConfigNR_List->list, qcnr3);
+  NR_QuantityConfigNR_t *qcnr = calloc(1, sizeof(*qcnr));
+  asn1cCallocOne(qcnr->quantityConfigCell.ssb_FilterConfig.filterCoefficientRSRP, NR_FilterCoefficient_fc6);
+  asn1cCallocOne(qcnr->quantityConfigCell.csi_RS_FilterConfig.filterCoefficientRSRP, NR_FilterCoefficient_fc6);
+  asn1cSeqAdd(&mc->quantityConfig->quantityConfigNR_List->list, qcnr);
+
+  NR_QuantityConfigNR_t *qcnr_A3 = calloc(1, sizeof(*qcnr_A3));
+  asn1cCallocOne(qcnr_A3->quantityConfigCell.csi_RS_FilterConfig.filterCoefficientRSRP, NR_FilterCoefficient_fc6);
+  asn1cCallocOne(qcnr_A3->quantityConfigCell.csi_RS_FilterConfig.filterCoefficientRSRQ, NR_FilterCoefficient_fc6);
+  asn1cCallocOne(qcnr_A3->quantityConfigCell.csi_RS_FilterConfig.filterCoefficientRS_SINR, NR_FilterCoefficient_fc6);
+  asn1cSeqAdd(&mc->quantityConfig->quantityConfigNR_List->list, qcnr_A3);
 
   return mc;
 }
@@ -1317,4 +1441,30 @@ uint8_t do_NR_Paging(uint8_t Mod_id, uint8_t *buffer, uint32_t tmsi) {
   }
 
   return((enc_rval.encoded+7)/8);
+}
+
+int16_t do_NR_HandoverCommand(uint8_t *ho_buf, int16_t ho_size, uint8_t *rrc_buffer, int16_t rrc_size) {
+
+  NR_HandoverCommand_t *ho_command = calloc(1,sizeof(NR_HandoverCommand_t));
+  ho_command->criticalExtensions.present = NR_HandoverCommand__criticalExtensions_PR_c1;
+  ho_command->criticalExtensions.choice.c1 = calloc(1,sizeof(struct NR_HandoverCommand__criticalExtensions__c1));
+  ho_command->criticalExtensions.choice.c1->present = NR_HandoverCommand__criticalExtensions__c1_PR_handoverCommand;
+  ho_command->criticalExtensions.choice.c1->choice.handoverCommand = calloc(1,sizeof(struct NR_HandoverCommand_IEs));
+
+  AssertFatal(OCTET_STRING_fromBuf(&ho_command->criticalExtensions.choice.c1->choice.handoverCommand->handoverCommandMessage, (char *)rrc_buffer, rrc_size) != -1,
+              "fatal: OCTET_STRING_fromBuf failed\n");
+
+
+  xer_fprint(stdout,&asn_DEF_NR_HandoverCommand, ho_command);
+
+  asn_enc_rval_t enc_rval = uper_encode_to_buffer(&asn_DEF_NR_HandoverCommand,
+                                                  NULL,
+                                                  ho_command,
+                                                  ho_buf,
+                                                  ho_size);
+
+  AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
+              enc_rval.failed_type->name, enc_rval.encoded);
+
+  return ((enc_rval.encoded+7)/8);
 }

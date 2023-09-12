@@ -162,10 +162,12 @@ static int drb_config_gtpu_create(const protocol_ctxt_t *const ctxt_p,
 
 static void cucp_cuup_bearer_context_setup_direct(e1ap_bearer_setup_req_t *const req, instance_t instance)
 {
-  rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context(RC.nrrrc[instance], req->gNB_cu_cp_ue_id);
+  gNB_RRC_INST *rrc = RC.nrrrc[instance];
+  rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context(rrc, req->gNB_cu_cp_ue_id);
   gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
+
   protocol_ctxt_t ctxt = {0};
-  PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, 0, GNB_FLAG_YES, UE->rrc_ue_id, 0, 0, 0);
+  PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, instance, GNB_FLAG_YES, UE->rrc_ue_id, 0, 0, 0);
 
   e1ap_bearer_setup_resp_t resp = {0};
   resp.numPDUSessions = req->numPDUSessions;
@@ -181,21 +183,20 @@ static void cucp_cuup_bearer_context_setup_direct(e1ap_bearer_setup_req_t *const
     }
   }
 
-  gNB_RRC_INST *rrc = RC.nrrrc[ctxt.module_id];
   // GTP tunnel for UL
   NR_DRB_ToAddModList_t *DRB_configList = fill_DRB_configList(UE);
   int ret = drb_config_gtpu_create(&ctxt, ue_context_p, req, DRB_configList, rrc->e1_inst);
   if (ret < 0) AssertFatal(false, "Unable to configure DRB or to create GTP Tunnel\n");
-  // the code is very badly organized, it is not possible here to call freeDRBlist() 
+  // the code is very badly organized, it is not possible here to call freeDRBlist()
   ASN_STRUCT_FREE(asn_DEF_NR_DRB_ToAddModList,DRB_configList );
 
   // Used to store teids: if monolithic, will simply be NULL
-  if(!NODE_IS_CU(RC.nrrrc[ctxt.module_id]->node_type)) {
+  if(!NODE_IS_CU(rrc->node_type)) {
     // intentionally empty
   } else {
-    int remote_port = RC.nrrrc[ctxt.module_id]->eth_params_s.remote_portd;
-    in_addr_t my_addr = inet_addr(RC.nrrrc[ctxt.module_id]->eth_params_s.my_addr);
-    instance_t gtpInst = getCxt(CUtype, instance)->gtpInst;
+    int remote_port = rrc->eth_params_s.remote_portd;
+    in_addr_t my_addr = inet_addr(rrc->eth_params_s.my_addr);
+    instance_t gtpInst = getCxt(CUtype, rrc->f1_instance)->gtpInst;
     // GTP tunnel for DL
     fill_e1ap_bearer_setup_resp(&resp, req, gtpInst, UE->rrc_ue_id, remote_port, my_addr);
   }
@@ -208,9 +209,9 @@ static void cucp_cuup_bearer_context_setup_direct(e1ap_bearer_setup_req_t *const
 static void cucp_cuup_bearer_context_mod_direct(e1ap_bearer_setup_req_t *const req, instance_t instance)
 {
   // only update GTP tunnels if it is really a CU
-  if (!NODE_IS_CU(RC.nrrrc[0]->node_type))
+  if (!NODE_IS_CU(RC.nrrrc[instance]->node_type))
     return;
-  instance_t gtpInst = getCxt(CUtype, instance)->gtpInst;
+  instance_t gtpInst = getCxt(CUtype, RC.nrrrc[instance]->f1_instance)->gtpInst;
   CU_update_UP_DL_tunnel(req, gtpInst, req->gNB_cu_cp_ue_id);
 }
 

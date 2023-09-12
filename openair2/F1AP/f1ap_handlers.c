@@ -140,6 +140,6 @@ int f1ap_handle_message(instance_t instance,
                                                                                                       pdu);
   }
 
-  ASN_STRUCT_FREE(asn_DEF_F1AP_F1AP_PDU, pdu);
+  //ASN_STRUCT_FREE(asn_DEF_F1AP_F1AP_PDU, pdu);
   return ret;
 }

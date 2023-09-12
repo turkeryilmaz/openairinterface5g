@@ -29,12 +29,13 @@
 
 #include "mac_rrc_ul.h"
 
-static void ue_context_setup_response_f1ap(const f1ap_ue_context_setup_t *req, const f1ap_ue_context_setup_t *resp)
+static void ue_context_setup_response_f1ap(instance_t instance,
+                                           const f1ap_ue_context_setup_t *req,
+                                           const f1ap_ue_context_setup_t *resp)
 {
   DevAssert(req->drbs_to_be_setup_length == resp->drbs_to_be_setup_length);
-  AssertFatal(req->drbs_to_be_setup_length == 0, "not implmented\n");
-
   DevAssert(req->srbs_to_be_setup_length == resp->srbs_to_be_setup_length);
+
   MessageDef *msg = itti_alloc_new_message (TASK_MAC_GNB, 0, F1AP_UE_CONTEXT_SETUP_RESP);
   f1ap_ue_context_setup_t *f1ap_msg = &F1AP_UE_CONTEXT_SETUP_RESP(msg);
   /* copy all fields, but reallocate rrc_containers! */
@@ -48,6 +49,15 @@ static void ue_context_setup_response_f1ap(const f1ap_ue_context_setup_t *req, c
       f1ap_msg->srbs_to_be_setup[i] = resp->srbs_to_be_setup[i];
   }
 
+  if (resp->drbs_to_be_setup_length > 0) {
+    DevAssert(resp->drbs_to_be_setup != NULL);
+    f1ap_msg->drbs_to_be_setup_length = resp->drbs_to_be_setup_length;
+    f1ap_msg->drbs_to_be_setup = calloc(f1ap_msg->drbs_to_be_setup_length, sizeof(*f1ap_msg->drbs_to_be_setup));
+    for (int i = 0; i < f1ap_msg->drbs_to_be_setup_length; ++i) {
+      f1ap_msg->drbs_to_be_setup[i] = resp->drbs_to_be_setup[i];
+    }
+  }
+
   f1ap_msg->du_to_cu_rrc_information = malloc(sizeof(*resp->du_to_cu_rrc_information));
   AssertFatal(f1ap_msg->du_to_cu_rrc_information != NULL, "out of memory\n");
   f1ap_msg->du_to_cu_rrc_information_length = resp->du_to_cu_rrc_information_length;
@@ -57,7 +67,7 @@ static void ue_context_setup_response_f1ap(const f1ap_ue_context_setup_t *req, c
   AssertFatal(du2cu->cellGroupConfig != NULL, "out of memory\n");
   memcpy(du2cu->cellGroupConfig, resp->du_to_cu_rrc_information->cellGroupConfig, du2cu->cellGroupConfig_length);
 
-  itti_send_msg_to_task(TASK_DU_F1, 0, msg);
+  itti_send_msg_to_task(TASK_DU_F1, instance, msg);
 }
 
 static void ue_context_modification_response_f1ap(const f1ap_ue_context_modif_req_t *req, const f1ap_ue_context_modif_resp_t *resp)

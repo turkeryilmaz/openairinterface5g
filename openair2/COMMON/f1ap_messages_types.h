@@ -351,6 +351,21 @@ typedef struct f1ap_rb_failed_to_be_setup_s {
   long           rb_id;
 } f1ap_rb_failed_to_be_setup_t;
 
+typedef struct protocol_extension_container_s {
+  uint8_t *handover_oreparation_information;
+  uint32_t handover_oreparation_information_length;
+  uint8_t *cell_group_config;
+  uint32_t cell_group_config_length;
+  uint8_t *measurement_timing_configuration;
+  uint32_t measurement_timing_configuration_length;
+  uint8_t *ue_assistance_information;
+  uint32_t ue_assistance_information_length;
+  uint8_t *cg_config;
+  uint32_t cg_config_length;
+  uint8_t *ue_ssistance_information_EUTRA;
+  uint32_t ue_ssistance_information_EUTRA_length;
+} protocol_extension_container_t;
+
 typedef struct cu_to_du_rrc_information_s {
   uint8_t * cG_ConfigInfo;
   uint32_t   cG_ConfigInfo_length;
@@ -358,16 +373,18 @@ typedef struct cu_to_du_rrc_information_s {
   uint32_t   uE_CapabilityRAT_ContainerList_length;
   uint8_t * measConfig;
   uint32_t   measConfig_length;
+  protocol_extension_container_t *ie_extensions;
+  uint32_t ie_extensions_length;
 }cu_to_du_rrc_information_t;
 
 typedef struct du_to_cu_rrc_information_s {
-  uint8_t * cellGroupConfig;
-  uint32_t  cellGroupConfig_length;
-  uint8_t * measGapConfig;
-  uint32_t  measGapConfig_length;
-  uint8_t * requestedP_MaxFR1;
-  uint32_t  requestedP_MaxFR1_length;
-}du_to_cu_rrc_information_t;
+  uint8_t *cellGroupConfig;
+  uint32_t cellGroupConfig_length;
+  uint8_t *measGapConfig;
+  uint32_t measGapConfig_length;
+  uint8_t *requestedP_MaxFR1;
+  uint32_t requestedP_MaxFR1_length;
+} du_to_cu_rrc_information_t;
 
 typedef enum QoS_information_e {
   NG_RAN_QoS    = 0,
@@ -396,6 +413,7 @@ typedef struct f1ap_ue_context_setup_s {
   //uint8_t *du_to_cu_rrc_information;
   du_to_cu_rrc_information_t *du_to_cu_rrc_information;
   uint32_t  du_to_cu_rrc_information_length;
+  uint16_t *crnti;
   f1ap_drb_to_be_setup_t *drbs_to_be_setup;
   uint8_t  drbs_to_be_setup_length;
   f1ap_drb_to_be_setup_t *drbs_to_be_modified;
@@ -410,6 +428,7 @@ typedef struct f1ap_ue_context_setup_s {
   ReconfigurationCompl_t ReconfigComplOutcome;
   uint8_t *rrc_container;
   int      rrc_container_length;
+  uint8_t *transmission_action_indicator;
 } f1ap_ue_context_setup_t, f1ap_ue_context_modif_req_t, f1ap_ue_context_modif_resp_t;
 
 typedef enum F1ap_Cause_e {

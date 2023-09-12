@@ -166,6 +166,7 @@ void *F1AP_DU_task(void *arg) {
         break;
 
       case F1AP_UE_CONTEXT_RELEASE_COMPLETE:
+        LOG_I(NR_RRC, "DU Task Received F1AP_UE_CONTEXT_RELEASE_COMPLETE\n");
         DU_send_UE_CONTEXT_RELEASE_COMPLETE(myInstance, &F1AP_UE_CONTEXT_RELEASE_COMPLETE(msg));
         break;
 

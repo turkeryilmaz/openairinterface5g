@@ -65,6 +65,27 @@ void nr_ue_dlsch_init(NR_UE_DLSCH_t *dlsch_list, int num_dlsch, uint8_t max_ldpc
   }
 }
 
+int8_t clean_UE_dlsch(PHY_VARS_NR_UE *UE, uint8_t gNB_id)
+{
+  for (int harq_pid = 0; harq_pid < NR_MAX_DLSCH_HARQ_PROCESSES; harq_pid++) {
+    for (int j = 0; j < 2; j++) {
+      NR_DL_UE_HARQ_t *dl_harq_process = &UE->dl_harq_processes[j][harq_pid];
+      dl_harq_process->status = SCH_IDLE;
+      dl_harq_process->first_rx = 1;
+      dl_harq_process->DLround = 0;
+      dl_harq_process->Ndi = 2;
+      dl_harq_process->ack = DL_ACKNACK_NO_SET;
+      dl_harq_process->TBS = 0;
+      dl_harq_process->B = 0;
+      dl_harq_process->C = 0;
+      dl_harq_process->Z = 0;
+      dl_harq_process->K = 0;
+      dl_harq_process->F = 0;
+    }
+  }
+  return 0;
+}
+
 void nr_dlsch_unscrambling(int16_t *llr, uint32_t size, uint8_t q, uint32_t Nid, uint32_t n_RNTI)
 {
   nr_codeword_unscrambling(llr, size, q, Nid, n_RNTI);

@@ -34,6 +34,7 @@
 #include "nr_rrc_defs.h"
 #include "openair2/RRC/NR/MESSAGES/asn1_msg.h"
 
+uint64_t get_ssb_bitmap(const NR_ServingCellConfigCommon_t *scc);
 void nr_rrc_config_dl_tda(struct NR_PDSCH_TimeDomainResourceAllocationList *pdsch_TimeDomainAllocationList,
                           frame_type_t frame_type,
                           NR_TDD_UL_DL_ConfigCommon_t *tdd_UL_DL_ConfigurationCommon,

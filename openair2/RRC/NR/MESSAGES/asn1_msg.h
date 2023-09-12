@@ -43,7 +43,7 @@
 
 #include "RRC/NR/nr_rrc_defs.h"
 #include "RRC/NR/nr_rrc_config.h"
-
+#include "RRC/NR_UE/rrc_defs.h"
 
 /*
  * The variant of the above function which dumps the BASIC-XER (XER_F_BASIC)
@@ -146,6 +146,11 @@ uint8_t do_RRCSetupComplete(uint8_t Mod_id,
                             const int dedicatedInfoNASLength,
                             const char *dedicatedInfoNAS);
 
+uint16_t do_nrMeasurementReport_SA(NR_MeasurementReport_t *measurementReport,
+                                   l3_measurements_t *l3_measurements,
+                                   uint8_t *buffer,
+                                   size_t buffer_size);
+
 uint8_t do_RRCSetupRequest(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size, uint8_t *rv);
 
 uint8_t do_NR_RRCReconfigurationComplete_for_nsa(uint8_t *buffer, size_t buffer_size, NR_RRC_TransactionIdentifier_t Transaction_id);
@@ -184,7 +189,9 @@ int do_RRCReestablishment(rrc_gNB_ue_context_t *const ue_context_pP,
 
 int do_RRCReestablishmentComplete(uint8_t *buffer, size_t buffer_size, int64_t rrc_TransactionIdentifier);
 
-NR_MeasConfig_t *get_defaultMeasConfig(const gNB_RrcConfigurationReq *conf);
+NR_MeasConfig_t *get_defaultMeasConfig(const module_id_t module_id);
 uint8_t do_NR_Paging(uint8_t Mod_id, uint8_t *buffer, uint32_t tmsi);
+
+int16_t do_NR_HandoverCommand(uint8_t *ho_buf, int16_t ho_size, uint8_t *rrc_buffer, int16_t rrc_size);
 
 #endif  /* __RRC_NR_MESSAGES_ASN1_MSG__H__ */

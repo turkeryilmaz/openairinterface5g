@@ -34,6 +34,7 @@
 #include "f1ap_encoder.h"
 #include "f1ap_itti_messaging.h"
 #include "f1ap_cu_interface_management.h"
+#include "f1ap_cu_task.h"
 
 int CU_send_RESET(instance_t instance, F1AP_Reset_t *Reset) {
   AssertFatal(1==0,"Not implemented yet\n");
@@ -80,7 +81,7 @@ int CU_handle_F1_SETUP_REQUEST(instance_t instance,
                                uint32_t assoc_id,
                                uint32_t stream,
                                F1AP_F1AP_PDU_t *pdu) {
-  LOG_D(F1AP, "CU_handle_F1_SETUP_REQUEST\n");
+  LOG_I(F1AP, "(instance %li) CU_handle_F1_SETUP_REQUEST\n", instance);
   MessageDef                         *message_p;
   F1AP_F1SetupRequest_t              *container;
   F1AP_F1SetupRequestIEs_t           *ie;
@@ -144,6 +145,16 @@ int CU_handle_F1_SETUP_REQUEST(instance_t instance,
     
     // LTS: FIXME cell_type is not a attribute of a cell in the data structure !!!!!!!!!!
     f1ap_req(true, instance)->cell_type = CELL_MACRO_GNB;
+
+    eth_params_t *IPaddrs = NULL;
+    for (int mod_id = 0; mod_id < RC.nb_nr_inst; mod_id++) {
+      if (req->cell[i].nr_pci == RC.nrrrc[mod_id]->carrier.physCellId) {
+        IPaddrs = &RC.nrrrc[mod_id]->eth_params_s;
+        break;
+      }
+    }
+    AssertFatal(IPaddrs != NULL, "IPaddrs is NULL!\n");
+    create_gtpInst(instance, IPaddrs);
 
     // FDD Cells
     if (servedCellInformation->nR_Mode_Info.present==F1AP_NR_Mode_Info_PR_fDD) {
@@ -571,7 +582,7 @@ int CU_handle_gNB_CU_CONFIGURATION_UPDATE_ACKNOWLEDGE(instance_t instance,
     uint32_t assoc_id,
     uint32_t stream,
     F1AP_F1AP_PDU_t *pdu) {
-  LOG_I(F1AP,"Cell Configuration ok (assoc_id %d)\n",assoc_id);
+  LOG_I(F1AP,"Cell Configuration ok (instance %li, assoc_id %d)\n", instance, assoc_id);
   return(0);
 }
 

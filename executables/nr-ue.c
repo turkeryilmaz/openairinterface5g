@@ -34,6 +34,7 @@
 #include "PHY/NR_REFSIG/refsig_defs_ue.h"
 #include "radio/COMMON/common_lib.h"
 #include "LAYER2/nr_pdcp/nr_pdcp_oai_api.h"
+#include "PHY/MODULATION/nr_modulation.h"
 
 /*
  *  NR SLOT PROCESSING SEQUENCE
@@ -590,8 +591,17 @@ nr_phy_data_t UE_dl_preprocessing(PHY_VARS_NR_UE *UE, UE_nr_rxtx_proc_t *proc)
 
     // Start synchronization with a target gNB
     if (UE->synch_request.received_synch_request == 1 && UE->target_Nid_cell == -1) {
+      fapi_nr_synch_request_t *synch_req = &UE->synch_request.synch_req;
+      if( synch_req->absoluteFrequencySSB != UINT64_MAX) {
+        UE->frame_parms.dl_CarrierFreq = synch_req->absoluteFrequencySSB;
+        UE->frame_parms.ul_CarrierFreq = synch_req->absoluteFrequencySSB;
+        nr_rf_card_config_freq(&openair0_cfg[UE->rf_map.card], UE->frame_parms.dl_CarrierFreq, UE->frame_parms.ul_CarrierFreq, 0);
+        UE->rfdevice.trx_set_freq_func(&UE->rfdevice, &openair0_cfg[0]);
+        init_symbol_rotation(&UE->frame_parms);
+      }
       UE->is_synchronized = 0;
-      UE->target_Nid_cell = UE->synch_request.synch_req.target_Nid_cell;
+      UE->target_Nid_cell = synch_req->target_Nid_cell;
+      clean_UE_dlsch(UE, proc->gNB_id);
       clean_UE_ulsch(UE, proc->gNB_id);
     } else if (UE->synch_request.received_synch_request == 1 && UE->target_Nid_cell != -1) {
       UE->synch_request.received_synch_request = 0;
@@ -670,13 +680,12 @@ void readFrame(PHY_VARS_NR_UE *UE,  openair0_timestamp *timestamp, bool toTrash)
                    4*((x*UE->frame_parms.samples_per_subframe)+
                    UE->frame_parms.get_samples_slot_timestamp(slot,&UE->frame_parms,0));
       }
-        
-      AssertFatal( UE->frame_parms.get_samples_per_slot(slot,&UE->frame_parms) ==
-                   UE->rfdevice.trx_read_func(&UE->rfdevice,
-                   timestamp,
-                   rxp,
-                   UE->frame_parms.get_samples_per_slot(slot,&UE->frame_parms),
-                   UE->frame_parms.nb_antennas_rx), "");
+
+      UE->rfdevice.trx_read_func(&UE->rfdevice,
+                                 timestamp,
+                                 rxp,
+                                 UE->frame_parms.get_samples_per_slot(slot, &UE->frame_parms),
+                                 UE->frame_parms.nb_antennas_rx);
 
       if (IS_SOFTMODEM_RFSIM)
         dummyWrite(UE,*timestamp, UE->frame_parms.get_samples_per_slot(slot,&UE->frame_parms));
