@@ -9,6 +9,9 @@
 
 static IF_Module_t *if_inst[MAX_IF_MODULES];
 static Sched_Rsp_t Sched_INFO[MAX_IF_MODULES][MAX_NUM_CCs];
+extern uint16_t pdcch_order_table[16];
+extern int cell_index;
+extern uint8_t pdcchOrder_rcvd;
 
 extern int oai_nfapi_harq_indication(nfapi_harq_indication_t *harq_ind);
 extern int oai_nfapi_crc_indication(nfapi_crc_indication_t *crc_ind);
@@ -17,38 +20,76 @@ extern int oai_nfapi_sr_indication(nfapi_sr_indication_t *ind);
 extern int oai_nfapi_rx_ind(nfapi_rx_indication_t *ind);
 
 int sf_ahead=4;
-extern UL_RCC_IND_t  UL_RCC_INFO;
+extern UL_RCC_IND_t  UL_RCC_INFO[MAX_NUM_CCs];
 
 extern RAN_CONTEXT_t RC;
 
 uint16_t frame_cnt=0;
+bool generate_mac_pdcch_order(UL_IND_t *UL_info, uint8_t dl_cqi, COMMON_channels_t *cc, rnti_t rnti);
 void handle_rach(UL_IND_t *UL_info) {
   int i;
   int j = UL_info->subframe;
-  AssertFatal(j < sizeof(UL_RCC_INFO.rach_ind) / sizeof(UL_RCC_INFO.rach_ind[0]), "j index out of range of index of rach_ind\n");
+  AssertFatal(j < sizeof(UL_RCC_INFO[UL_info->CC_id].rach_ind) / sizeof(UL_RCC_INFO[UL_info->CC_id].rach_ind[0]), "j index out of range of index of rach_ind\n");
   if (NFAPI_MODE == NFAPI_MODE_VNF)
   {
-    if (UL_RCC_INFO.rach_ind[j].rach_indication_body.number_of_preambles > 0)
+    if (UL_RCC_INFO[UL_info->CC_id].rach_ind[j].rach_indication_body.number_of_preambles > 0)
     {
-      if (UL_RCC_INFO.rach_ind[j].rach_indication_body.number_of_preambles > 1)
+      if (UL_RCC_INFO[UL_info->CC_id].rach_ind[j].rach_indication_body.number_of_preambles > 1)
       {
-        LOG_D(MAC, "handle_rach j: %d  UL_RCC_INFO.rach_ind[j].rach_indication_body.number_of_preambles: %d\n",
-          j, UL_RCC_INFO.rach_ind[j].rach_indication_body.number_of_preambles);
+        LOG_D(MAC, "handle_rach j: %d  UL_RCC_INFO[UL_info->CC_id].rach_ind[j].rach_indication_body.number_of_preambles: %d\n",
+          j, UL_RCC_INFO[UL_info->CC_id].rach_ind[j].rach_indication_body.number_of_preambles);
         LOG_D(MAC, "UL_info[Frame %d, Subframe %d] Calling initiate_ra_proc RACH:Frame: %d Subframe: %d\n",
-          UL_info->frame, UL_info->subframe, NFAPI_SFNSF2SFN(UL_RCC_INFO.rach_ind[j].sfn_sf), NFAPI_SFNSF2SF(UL_RCC_INFO.rach_ind[j].sfn_sf));
+          UL_info->frame, UL_info->subframe, NFAPI_SFNSF2SFN(UL_RCC_INFO[UL_info->CC_id].rach_ind[j].sfn_sf), NFAPI_SFNSF2SF(UL_RCC_INFO[UL_info->CC_id].rach_ind[j].sfn_sf));
       }
-      AssertFatal(UL_RCC_INFO.rach_ind[j].rach_indication_body.number_of_preambles == 1, "More than 1 preamble not supported\n"); // dump frame/sf and all things in UL_RCC_INFO
+      AssertFatal(UL_RCC_INFO[UL_info->CC_id].rach_ind[j].rach_indication_body.number_of_preambles == 1, "More than 1 preamble not supported\n"); // dump frame/sf and all things in UL_RCC_INFO
       initiate_ra_proc(UL_info->module_id,
                        UL_info->CC_id,
-                       NFAPI_SFNSF2SFN(UL_RCC_INFO.rach_ind[j].sfn_sf),
-                       NFAPI_SFNSF2SF(UL_RCC_INFO.rach_ind[j].sfn_sf),
-                       UL_RCC_INFO.rach_ind[j].rach_indication_body.preamble_list[0].preamble_rel8.preamble,
-                       UL_RCC_INFO.rach_ind[j].rach_indication_body.preamble_list[0].preamble_rel8.timing_advance,
-                       UL_RCC_INFO.rach_ind[j].rach_indication_body.preamble_list[0].preamble_rel8.rnti,
+                       NFAPI_SFNSF2SFN(UL_RCC_INFO[UL_info->CC_id].rach_ind[j].sfn_sf),
+                       NFAPI_SFNSF2SF(UL_RCC_INFO[UL_info->CC_id].rach_ind[j].sfn_sf),
+                       UL_RCC_INFO[UL_info->CC_id].rach_ind[j].rach_indication_body.preamble_list[0].preamble_rel8.preamble,
+                       UL_RCC_INFO[UL_info->CC_id].rach_ind[j].rach_indication_body.preamble_list[0].preamble_rel8.timing_advance,
+                       UL_RCC_INFO[UL_info->CC_id].rach_ind[j].rach_indication_body.preamble_list[0].preamble_rel8.rnti,
                        0);
-      free(UL_RCC_INFO.rach_ind[j].rach_indication_body.preamble_list);
-      UL_RCC_INFO.rach_ind[j].rach_indication_body.number_of_preambles = 0;
-      UL_RCC_INFO.rach_ind[j].header.message_id = 0;
+      free(UL_RCC_INFO[UL_info->CC_id].rach_ind[j].rach_indication_body.preamble_list);
+      UL_RCC_INFO[UL_info->CC_id].rach_ind[j].rach_indication_body.number_of_preambles = 0;
+      UL_RCC_INFO[UL_info->CC_id].rach_ind[j].header.message_id = 0;
+    }
+    /* PDCCHOrder */
+    else if (RC.ss.mode == SS_SOFTMODEM && pdcchOrder_rcvd ==1 )
+    {
+      LOG_I(MAC, "Scheduling PDCCHOrder \n");
+      eNB_MAC_INST *eNB = RC.mac[UL_info->module_id];
+      COMMON_channels_t *cc = eNB->common_channels;
+      rnti_t rnti = 0;
+      bool retVal = false;
+      for ( int UE_id = 0; UE_id < NUMBER_OF_UE_MAX; UE_id++ )
+      {
+        if (eNB->UE_info.active[UL_info->CC_id][UE_id] == false)
+          continue;
+
+        rnti = UE_RNTI(UL_info->module_id,UE_id);
+
+        if (rnti == NOT_A_RNTI)
+          continue;
+        if (UL_info->subframe == 4)
+        {
+          retVal = generate_mac_pdcch_order(UL_info,
+                                            eNB->UE_info.UE_sched_ctrl[UE_id].dl_cqi[UL_info->CC_id],
+                                            cc,
+                                            rnti);
+
+          if (retVal == false)
+          {
+            LOG_E(MAC, "Error sending MAC PDCCHOrder to UE \n");
+          }
+          else
+          {
+            LOG_I(MAC, "MAC PDCCHOrder Successfully sent to UE \n");
+          }
+          pdcchOrder_rcvd = 0;
+        }
+      }
+
     }
   } else {
     if (UL_info->rach_ind.rach_indication_body.number_of_preambles>0) {
@@ -99,20 +140,20 @@ void handle_sr(UL_IND_t *UL_info) {
     }
   } else if(NFAPI_MODE == NFAPI_MODE_VNF) {
     for(uint8_t j = 0; j < NUM_NFAPI_SUBFRAME; j++) {
-      if(UL_RCC_INFO.sr_ind[j].sr_indication_body.number_of_srs > 0) {
-        assert(UL_RCC_INFO.sr_ind[j].sr_indication_body.number_of_srs <= NFAPI_SR_IND_MAX_PDU);
-        for (i=0; i<UL_RCC_INFO.sr_ind[j].sr_indication_body.number_of_srs; i++) {
+      if(UL_RCC_INFO[UL_info->CC_id].sr_ind[j].sr_indication_body.number_of_srs > 0) {
+        assert(UL_RCC_INFO[UL_info->CC_id].sr_ind[j].sr_indication_body.number_of_srs <= NFAPI_SR_IND_MAX_PDU);
+        for (i=0; i<UL_RCC_INFO[UL_info->CC_id].sr_ind[j].sr_indication_body.number_of_srs; i++) {
           SR_indication(UL_info->module_id,
                         UL_info->CC_id,
-                        NFAPI_SFNSF2SFN(UL_RCC_INFO.sr_ind[j].sfn_sf),
-                        NFAPI_SFNSF2SF(UL_RCC_INFO.sr_ind[j].sfn_sf),
-                        UL_RCC_INFO.sr_ind[j].sr_indication_body.sr_pdu_list[i].rx_ue_information.rnti,
-                        UL_RCC_INFO.sr_ind[j].sr_indication_body.sr_pdu_list[i].ul_cqi_information.ul_cqi);
+                        NFAPI_SFNSF2SFN(UL_RCC_INFO[UL_info->CC_id].sr_ind[j].sfn_sf),
+                        NFAPI_SFNSF2SF(UL_RCC_INFO[UL_info->CC_id].sr_ind[j].sfn_sf),
+                        UL_RCC_INFO[UL_info->CC_id].sr_ind[j].sr_indication_body.sr_pdu_list[i].rx_ue_information.rnti,
+                        UL_RCC_INFO[UL_info->CC_id].sr_ind[j].sr_indication_body.sr_pdu_list[i].ul_cqi_information.ul_cqi);
         }
 
-        free(UL_RCC_INFO.sr_ind[j].sr_indication_body.sr_pdu_list);
-        UL_RCC_INFO.sr_ind[j].sr_indication_body.number_of_srs=0;
-        UL_RCC_INFO.sr_ind[j].header.message_id = 0;
+        free(UL_RCC_INFO[UL_info->CC_id].sr_ind[j].sr_indication_body.sr_pdu_list);
+        UL_RCC_INFO[UL_info->CC_id].sr_ind[j].sr_indication_body.number_of_srs=0;
+        UL_RCC_INFO[UL_info->CC_id].sr_ind[j].header.message_id = 0;
       }
     }
   } else {
@@ -142,23 +183,23 @@ void handle_cqi(UL_IND_t *UL_info) {
     }
   } else if (NFAPI_MODE == NFAPI_MODE_VNF) {
     for(uint8_t j = 0; j < NUM_NFAPI_SUBFRAME; j++) {
-      if(UL_RCC_INFO.cqi_ind[j].cqi_indication_body.number_of_cqis > 0) {
-        assert(UL_RCC_INFO.cqi_ind[j].cqi_indication_body.number_of_cqis <= NFAPI_CQI_IND_MAX_PDU);
-        for (i=0; i<UL_RCC_INFO.cqi_ind[j].cqi_indication_body.number_of_cqis; i++) {
+      if(UL_RCC_INFO[UL_info->CC_id].cqi_ind[j].cqi_indication_body.number_of_cqis > 0) {
+        assert(UL_RCC_INFO[UL_info->CC_id].cqi_ind[j].cqi_indication_body.number_of_cqis <= NFAPI_CQI_IND_MAX_PDU);
+        for (i=0; i<UL_RCC_INFO[UL_info->CC_id].cqi_ind[j].cqi_indication_body.number_of_cqis; i++) {
           cqi_indication(UL_info->module_id,
                          UL_info->CC_id,
-                         NFAPI_SFNSF2SFN(UL_RCC_INFO.cqi_ind[j].sfn_sf),
-                         NFAPI_SFNSF2SF(UL_RCC_INFO.cqi_ind[j].sfn_sf),
-                         UL_RCC_INFO.cqi_ind[j].cqi_indication_body.cqi_pdu_list[i].rx_ue_information.rnti,
-                         &UL_RCC_INFO.cqi_ind[j].cqi_indication_body.cqi_pdu_list[i].cqi_indication_rel9,
-                         UL_RCC_INFO.cqi_ind[j].cqi_indication_body.cqi_raw_pdu_list[i].pdu,
-                         &UL_RCC_INFO.cqi_ind[j].cqi_indication_body.cqi_pdu_list[i].ul_cqi_information);
+                         NFAPI_SFNSF2SFN(UL_RCC_INFO[UL_info->CC_id].cqi_ind[j].sfn_sf),
+                         NFAPI_SFNSF2SF(UL_RCC_INFO[UL_info->CC_id].cqi_ind[j].sfn_sf),
+                         UL_RCC_INFO[UL_info->CC_id].cqi_ind[j].cqi_indication_body.cqi_pdu_list[i].rx_ue_information.rnti,
+                         &UL_RCC_INFO[UL_info->CC_id].cqi_ind[j].cqi_indication_body.cqi_pdu_list[i].cqi_indication_rel9,
+                         UL_RCC_INFO[UL_info->CC_id].cqi_ind[j].cqi_indication_body.cqi_raw_pdu_list[i].pdu,
+                         &UL_RCC_INFO[UL_info->CC_id].cqi_ind[j].cqi_indication_body.cqi_pdu_list[i].ul_cqi_information);
         }
 
-        free(UL_RCC_INFO.cqi_ind[j].cqi_indication_body.cqi_pdu_list);
-        free(UL_RCC_INFO.cqi_ind[j].cqi_indication_body.cqi_raw_pdu_list);
-        UL_RCC_INFO.cqi_ind[j].cqi_indication_body.number_of_cqis=0;
-        UL_RCC_INFO.cqi_ind[j].header.message_id = 0;
+        free(UL_RCC_INFO[UL_info->CC_id].cqi_ind[j].cqi_indication_body.cqi_pdu_list);
+        free(UL_RCC_INFO[UL_info->CC_id].cqi_ind[j].cqi_indication_body.cqi_raw_pdu_list);
+        UL_RCC_INFO[UL_info->CC_id].cqi_ind[j].cqi_indication_body.number_of_cqis=0;
+        UL_RCC_INFO[UL_info->CC_id].cqi_ind[j].header.message_id = 0;
       }
     }
   } else {
@@ -189,19 +230,19 @@ void handle_harq(UL_IND_t *UL_info) {
     UL_info->harq_ind.harq_indication_body.number_of_harqs = 0;
   } else if(NFAPI_MODE == NFAPI_MODE_VNF) {
     for(uint8_t j = 0; j < NUM_NFAPI_SUBFRAME; j++) {
-      if(UL_RCC_INFO.harq_ind[j].harq_indication_body.number_of_harqs > 0) {
-        assert(UL_RCC_INFO.harq_ind[j].harq_indication_body.number_of_harqs <= NFAPI_HARQ_IND_MAX_PDU);
-        for (int i=0; i<UL_RCC_INFO.harq_ind[j].harq_indication_body.number_of_harqs; i++) {
+      if(UL_RCC_INFO[UL_info->CC_id].harq_ind[j].harq_indication_body.number_of_harqs > 0) {
+        assert(UL_RCC_INFO[UL_info->CC_id].harq_ind[j].harq_indication_body.number_of_harqs <= NFAPI_HARQ_IND_MAX_PDU);
+        for (int i=0; i<UL_RCC_INFO[UL_info->CC_id].harq_ind[j].harq_indication_body.number_of_harqs; i++) {
           harq_indication(UL_info->module_id,
                           UL_info->CC_id,
-                          NFAPI_SFNSF2SFN(UL_RCC_INFO.harq_ind[j].sfn_sf),
-                          NFAPI_SFNSF2SF(UL_RCC_INFO.harq_ind[j].sfn_sf),
-                          &UL_RCC_INFO.harq_ind[j].harq_indication_body.harq_pdu_list[i]);
+                          NFAPI_SFNSF2SFN(UL_RCC_INFO[UL_info->CC_id].harq_ind[j].sfn_sf),
+                          NFAPI_SFNSF2SF(UL_RCC_INFO[UL_info->CC_id].harq_ind[j].sfn_sf),
+                          &UL_RCC_INFO[UL_info->CC_id].harq_ind[j].harq_indication_body.harq_pdu_list[i]);
         }
 
-        free(UL_RCC_INFO.harq_ind[j].harq_indication_body.harq_pdu_list);
-        UL_RCC_INFO.harq_ind[j].harq_indication_body.number_of_harqs=0;
-        UL_RCC_INFO.harq_ind[j].header.message_id = 0;
+        free(UL_RCC_INFO[UL_info->CC_id].harq_ind[j].harq_indication_body.harq_pdu_list);
+        UL_RCC_INFO[UL_info->CC_id].harq_ind[j].harq_indication_body.number_of_harqs=0;
+        UL_RCC_INFO[UL_info->CC_id].harq_ind[j].header.message_id = 0;
       }
     }
   } else {
@@ -234,41 +275,41 @@ void handle_ulsch(UL_IND_t *UL_info) {
     }
   } else if(NFAPI_MODE == NFAPI_MODE_VNF) {
     for(uint8_t k = 0; k < NUM_NFAPI_SUBFRAME; k++) {
-      if((UL_RCC_INFO.rx_ind[k].rx_indication_body.number_of_pdus>0) && (UL_RCC_INFO.crc_ind[k].crc_indication_body.number_of_crcs>0)) {
-        assert(UL_RCC_INFO.rx_ind[k].rx_indication_body.number_of_pdus <= NFAPI_RX_IND_MAX_PDU);
-        for (i=0; i<UL_RCC_INFO.rx_ind[k].rx_indication_body.number_of_pdus; i++) {
-          assert(UL_RCC_INFO.crc_ind[k].crc_indication_body.number_of_crcs <= NFAPI_CRC_IND_MAX_PDU);
-          for (j=0; j<UL_RCC_INFO.crc_ind[k].crc_indication_body.number_of_crcs; j++) {
+      if((UL_RCC_INFO[UL_info->CC_id].rx_ind[k].rx_indication_body.number_of_pdus>0) && (UL_RCC_INFO[UL_info->CC_id].crc_ind[k].crc_indication_body.number_of_crcs>0)) {
+        assert(UL_RCC_INFO[UL_info->CC_id].rx_ind[k].rx_indication_body.number_of_pdus <= NFAPI_RX_IND_MAX_PDU);
+        for (i=0; i<UL_RCC_INFO[UL_info->CC_id].rx_ind[k].rx_indication_body.number_of_pdus; i++) {
+          assert(UL_RCC_INFO[UL_info->CC_id].crc_ind[k].crc_indication_body.number_of_crcs <= NFAPI_CRC_IND_MAX_PDU);
+          for (j=0; j<UL_RCC_INFO[UL_info->CC_id].crc_ind[k].crc_indication_body.number_of_crcs; j++) {
             // find crc_indication j corresponding rx_indication i
             LOG_D(PHY,"UL_info->crc_ind.crc_indication_body.crc_pdu_list[%d].rx_ue_information.rnti:%04x UL_info->rx_ind.rx_indication_body.rx_pdu_list[%d].rx_ue_information.rnti:%04x\n",
-                  j,UL_RCC_INFO.crc_ind[k].crc_indication_body.crc_pdu_list[j].rx_ue_information.rnti, i,UL_RCC_INFO.rx_ind[k].rx_indication_body.rx_pdu_list[i].rx_ue_information.rnti);
+                  j,UL_RCC_INFO[UL_info->CC_id].crc_ind[k].crc_indication_body.crc_pdu_list[j].rx_ue_information.rnti, i,UL_RCC_INFO[UL_info->CC_id].rx_ind[k].rx_indication_body.rx_pdu_list[i].rx_ue_information.rnti);
 
-            if (UL_RCC_INFO.crc_ind[k].crc_indication_body.crc_pdu_list[j].rx_ue_information.rnti == UL_RCC_INFO.rx_ind[k].rx_indication_body.rx_pdu_list[i].rx_ue_information.rnti) {
+            if (UL_RCC_INFO[UL_info->CC_id].crc_ind[k].crc_indication_body.crc_pdu_list[j].rx_ue_information.rnti == UL_RCC_INFO[UL_info->CC_id].rx_ind[k].rx_indication_body.rx_pdu_list[i].rx_ue_information.rnti) {
               LOG_D(PHY, "UL_info->crc_ind.crc_indication_body.crc_pdu_list[%d].crc_indication_rel8.crc_flag:%d\n",
-                    j, UL_RCC_INFO.crc_ind[k].crc_indication_body.crc_pdu_list[j].crc_indication_rel8.crc_flag);
+                    j, UL_RCC_INFO[UL_info->CC_id].crc_ind[k].crc_indication_body.crc_pdu_list[j].crc_indication_rel8.crc_flag);
 
-              if (UL_RCC_INFO.crc_ind[k].crc_indication_body.crc_pdu_list[j].crc_indication_rel8.crc_flag == 1) { // CRC error indication
+              if (UL_RCC_INFO[UL_info->CC_id].crc_ind[k].crc_indication_body.crc_pdu_list[j].crc_indication_rel8.crc_flag == 1) { // CRC error indication
                 LOG_D(MAC,"Frame %d, Subframe %d Calling rx_sdu (CRC error) \n",UL_info->frame,UL_info->subframe);
                 rx_sdu(UL_info->module_id,
                        UL_info->CC_id,
-                       NFAPI_SFNSF2SFN(UL_RCC_INFO.rx_ind[k].sfn_sf), //UL_info->frame,
-                       NFAPI_SFNSF2SF(UL_RCC_INFO.rx_ind[k].sfn_sf), //UL_info->subframe,
-                       UL_RCC_INFO.rx_ind[k].rx_indication_body.rx_pdu_list[i].rx_ue_information.rnti,
+                       NFAPI_SFNSF2SFN(UL_RCC_INFO[UL_info->CC_id].rx_ind[k].sfn_sf), //UL_info->frame,
+                       NFAPI_SFNSF2SF(UL_RCC_INFO[UL_info->CC_id].rx_ind[k].sfn_sf), //UL_info->subframe,
+                       UL_RCC_INFO[UL_info->CC_id].rx_ind[k].rx_indication_body.rx_pdu_list[i].rx_ue_information.rnti,
                        (uint8_t *)NULL,
-                       UL_RCC_INFO.rx_ind[k].rx_indication_body.rx_pdu_list[i].rx_indication_rel8.length,
-                       UL_RCC_INFO.rx_ind[k].rx_indication_body.rx_pdu_list[i].rx_indication_rel8.timing_advance,
-                       UL_RCC_INFO.rx_ind[k].rx_indication_body.rx_pdu_list[i].rx_indication_rel8.ul_cqi);
+                       UL_RCC_INFO[UL_info->CC_id].rx_ind[k].rx_indication_body.rx_pdu_list[i].rx_indication_rel8.length,
+                       UL_RCC_INFO[UL_info->CC_id].rx_ind[k].rx_indication_body.rx_pdu_list[i].rx_indication_rel8.timing_advance,
+                       UL_RCC_INFO[UL_info->CC_id].rx_ind[k].rx_indication_body.rx_pdu_list[i].rx_indication_rel8.ul_cqi);
               } else {
                 LOG_D(MAC,"Frame %d, Subframe %d Calling rx_sdu (CRC ok) \n",UL_info->frame,UL_info->subframe);
                 rx_sdu(UL_info->module_id,
                        UL_info->CC_id,
-                       NFAPI_SFNSF2SFN(UL_RCC_INFO.rx_ind[k].sfn_sf), //UL_info->frame,
-                       NFAPI_SFNSF2SF(UL_RCC_INFO.rx_ind[k].sfn_sf), //UL_info->subframe,
-                       UL_RCC_INFO.rx_ind[k].rx_indication_body.rx_pdu_list[i].rx_ue_information.rnti,
-                       UL_RCC_INFO.rx_ind[k].rx_indication_body.rx_pdu_list[i].rx_ind_data,
-                       UL_RCC_INFO.rx_ind[k].rx_indication_body.rx_pdu_list[i].rx_indication_rel8.length,
-                       UL_RCC_INFO.rx_ind[k].rx_indication_body.rx_pdu_list[i].rx_indication_rel8.timing_advance,
-                       UL_RCC_INFO.rx_ind[k].rx_indication_body.rx_pdu_list[i].rx_indication_rel8.ul_cqi);
+                       NFAPI_SFNSF2SFN(UL_RCC_INFO[UL_info->CC_id].rx_ind[k].sfn_sf), //UL_info->frame,
+                       NFAPI_SFNSF2SF(UL_RCC_INFO[UL_info->CC_id].rx_ind[k].sfn_sf), //UL_info->subframe,
+                       UL_RCC_INFO[UL_info->CC_id].rx_ind[k].rx_indication_body.rx_pdu_list[i].rx_ue_information.rnti,
+                       UL_RCC_INFO[UL_info->CC_id].rx_ind[k].rx_indication_body.rx_pdu_list[i].rx_ind_data,
+                       UL_RCC_INFO[UL_info->CC_id].rx_ind[k].rx_indication_body.rx_pdu_list[i].rx_indication_rel8.length,
+                       UL_RCC_INFO[UL_info->CC_id].rx_ind[k].rx_indication_body.rx_pdu_list[i].rx_indication_rel8.timing_advance,
+                       UL_RCC_INFO[UL_info->CC_id].rx_ind[k].rx_indication_body.rx_pdu_list[i].rx_indication_rel8.ul_cqi);
               }
 
               break;
@@ -276,12 +317,12 @@ void handle_ulsch(UL_IND_t *UL_info) {
           } //    for (j=0;j<UL_info->crc_ind.crc_indication_body.number_of_crcs;j++)
         } //   for (i=0;i<UL_info->rx_ind.number_of_pdus;i++)
 
-        free(UL_RCC_INFO.crc_ind[k].crc_indication_body.crc_pdu_list);
-        free(UL_RCC_INFO.rx_ind[k].rx_indication_body.rx_pdu_list);
-        UL_RCC_INFO.crc_ind[k].crc_indication_body.number_of_crcs = 0;
-        UL_RCC_INFO.crc_ind[k].header.message_id =0;
-        UL_RCC_INFO.rx_ind[k].rx_indication_body.number_of_pdus = 0;
-        UL_RCC_INFO.rx_ind[k].header.message_id = 0;
+        free(UL_RCC_INFO[UL_info->CC_id].crc_ind[k].crc_indication_body.crc_pdu_list);
+        free(UL_RCC_INFO[UL_info->CC_id].rx_ind[k].rx_indication_body.rx_pdu_list);
+        UL_RCC_INFO[UL_info->CC_id].crc_ind[k].crc_indication_body.number_of_crcs = 0;
+        UL_RCC_INFO[UL_info->CC_id].crc_ind[k].header.message_id =0;
+        UL_RCC_INFO[UL_info->CC_id].rx_ind[k].rx_indication_body.number_of_pdus = 0;
+        UL_RCC_INFO[UL_info->CC_id].rx_ind[k].header.message_id = 0;
       }
     }
   } else {
@@ -721,7 +762,8 @@ void UL_indication(UL_IND_t *UL_info, void *proc) {
   }
 
   if (NFAPI_MODE != NFAPI_MODE_PNF) {
-    if (ifi->CC_mask==0) {
+    /* MultiCell: Condition modified for Multiple CC */
+    if (ifi->CC_mask < ((1<<RC.nb_mac_CC[module_id])-1)) {
       ifi->current_frame    = UL_info->frame;
       ifi->current_subframe = UL_info->subframe;
     } else {
@@ -750,38 +792,42 @@ void UL_indication(UL_IND_t *UL_info, void *proc) {
   handle_ulsch(UL_info);
 
   if (NFAPI_MODE != NFAPI_MODE_PNF) {
-    if (ifi->CC_mask == ((1<<MAX_NUM_CCs)-1)) {
+    /* MultiCell: Condition modified for Multiple CC */
+    if (ifi->CC_mask == ((1<<RC.nb_mac_CC[module_id])-1)) {
       eNB_dlsch_ulsch_scheduler(module_id,
                                 (UL_info->frame+((UL_info->subframe>(9-sf_ahead))?1:0)) % 1024,
                                 (UL_info->subframe+sf_ahead)%10);
-      ifi->CC_mask            = 0;
-      sched_info->module_id   = module_id;
-      sched_info->CC_id       = CC_id;
-      sched_info->frame       = (UL_info->frame + ((UL_info->subframe>(9-sf_ahead)) ? 1 : 0)) % 1024;
-      sched_info->subframe    = (UL_info->subframe+sf_ahead)%10;
-      sched_info->DL_req      = &mac->DL_req[CC_id];
-      sched_info->HI_DCI0_req = &mac->HI_DCI0_req[CC_id][sched_info->subframe];
+      for (int CC_Id=0; CC_Id<RC.nb_mac_CC[module_id]; CC_Id++) {
+        ifi->CC_mask            = 0;
+        sched_info->module_id   = module_id;
+        sched_info->CC_id       = CC_Id;
+        sched_info->frame       = (UL_info->frame + ((UL_info->subframe>(9-sf_ahead)) ? 1 : 0)) % 1024;
+        sched_info->subframe    = (UL_info->subframe+sf_ahead)%10;
+        sched_info->DL_req      = &mac->DL_req[CC_Id];
+        sched_info->HI_DCI0_req = &mac->HI_DCI0_req[CC_Id][sched_info->subframe];
 
-      if ((mac->common_channels[CC_id].tdd_Config==NULL) ||
-          (is_UL_sf(&mac->common_channels[CC_id],sched_info->subframe)>0))
-        sched_info->UL_req      = &mac->UL_req[CC_id];
-      else
-        sched_info->UL_req      = NULL;
+        if ((mac->common_channels[CC_Id].tdd_Config==NULL) ||
+            (is_UL_sf(&mac->common_channels[CC_Id],sched_info->subframe)>0))
+          sched_info->UL_req      = &mac->UL_req[CC_Id];
+        else
+          sched_info->UL_req      = NULL;
 
-      sched_info->TX_req      = &mac->TX_req[CC_id];
-      pthread_mutex_lock(&lock_ue_freelist);
-      sched_info->UE_release_req = &mac->UE_release_req;
-      pthread_mutex_unlock(&lock_ue_freelist);
+        sched_info->TX_req      = &mac->TX_req[CC_Id];
+        pthread_mutex_lock(&lock_ue_freelist);
+        sched_info->UE_release_req = &mac->UE_release_req;
+        pthread_mutex_unlock(&lock_ue_freelist);
 #ifdef DUMP_FAPI
-      dump_dl(sched_info);
+        dump_dl(sched_info);
 #endif
 
-      if (ifi->schedule_response) {
-        AssertFatal(ifi->schedule_response!=NULL,
-                    "schedule_response is null (mod %d, cc %d)\n",
-                    module_id,
-                    CC_id);
-        ifi->schedule_response(sched_info, proc );
+        if (ifi->schedule_response) {
+          AssertFatal(ifi->schedule_response!=NULL,
+                      "schedule_response is null (mod %d, cc %d)\n",
+                      module_id,
+                      CC_Id);
+          ifi->schedule_response(sched_info, proc );
+        }
+        LOG_D(PHY,"Schedule_response: SFN_SF:%d%d dl_pdus:%d CC_id: %d \n",sched_info->frame,sched_info->subframe,sched_info->DL_req->dl_config_request_body.number_pdu,sched_info->CC_id);
       }
 
       LOG_D(PHY,"Schedule_response: SFN_SF:%d%d dl_pdus:%d\n",sched_info->frame,sched_info->subframe,sched_info->DL_req->dl_config_request_body.number_pdu);
@@ -811,3 +857,88 @@ void IF_Module_kill(int Mod_id) {
 
   if (if_inst[Mod_id]!=NULL) free(if_inst[Mod_id]);
 }
+
+bool generate_mac_pdcch_order(UL_IND_t *UL_info, uint8_t dl_cqi, COMMON_channels_t *cc, rnti_t rnti)
+{
+  nfapi_dl_config_request_t *dl_config_request = NULL;
+  nfapi_dl_config_request_pdu_t *dl_config_pdu = NULL;
+  nfapi_dl_config_request_body_t *dl_req_body = NULL;
+  uint8_t *vrb_map = NULL;
+  int N_RB_DL = to_prb(cc[UL_info->CC_id].mib->message.dl_Bandwidth);
+  int first_rb = 0;
+  eNB_MAC_INST *mac = RC.mac[UL_info->module_id];
+  dl_config_request = &mac->DL_req[UL_info->CC_id];
+  dl_req_body   = &dl_config_request->dl_config_request_body;
+  dl_config_pdu = &dl_req_body->dl_config_pdu_list[dl_req_body->number_pdu];
+  memset ((void *) dl_config_pdu, 0, sizeof (nfapi_dl_config_request_pdu_t));
+  printf("PDCCHOrder scheduled at Frame %d: Subframe %d : Adding common DCI for RNTI %d\n", UL_info->frame, UL_info->subframe, rnti);
+
+  vrb_map = cc[UL_info->CC_id].vrb_map;
+  vrb_map[first_rb] = 1;
+  vrb_map[first_rb + 1] = 1;
+  vrb_map[first_rb + 2] = 1;
+  vrb_map[first_rb + 3] = 1;
+
+  fill_nfapi_dl_dci_1A(
+      dl_config_pdu,
+      4,
+      0,//rnti,
+      1,
+      0,
+      1, // tpc, none
+      getRIV(N_RB_DL, 0, 4),  // resource_block_coding
+      1,  // mcs
+      1,
+      0, // rv
+      0);  // vrb_flag
+
+  dl_config_pdu->dci_dl_pdu.dci_dl_pdu_rel8.allocate_prach_flag = 1;
+  dl_config_pdu->dci_dl_pdu.dci_dl_pdu_rel8.preamble_index = RC.rrc[0]->configuration.radioresourceconfig[cell_index].prach_preambleIndex;
+  dl_config_pdu->dci_dl_pdu.dci_dl_pdu_rel8.prach_mask_index = RC.rrc[0]->configuration.radioresourceconfig[cell_index].prach_maskIndex;
+  printf("PDCCHOrder scheduled at Frame %d: Subframe %d : Adding common DCI for RNTI %d\n", UL_info->frame, UL_info->subframe, rnti);
+  LOG_I(MAC, "PDCCHOrder scheduled at Frame %d: Subframe %d : Adding common DCI for RNTI %d\n", UL_info->frame, UL_info->subframe, rnti);
+  // This checks if the above DCI allocation is feasible in current subframe
+  if (!CCE_allocation_infeasible(UL_info->module_id, UL_info->CC_id, 0, UL_info->subframe,
+        dl_config_pdu->dci_dl_pdu.dci_dl_pdu_rel8.aggregation_level, rnti))
+  {
+
+    printf("PDCCHOrder scheduled at Frame %d: Subframe %d : Adding common DCI for RNTI %d\n", UL_info->frame, UL_info->subframe, rnti);
+    LOG_D(MAC, "PDCCHOrder scheduled at Frame %d: Subframe %d : Adding common DCI for RNTI %d\n", UL_info->frame, UL_info->subframe, rnti);
+    dl_req_body->number_dci++;
+    dl_req_body->number_pdu++;
+    mac->DL_req[UL_info->CC_id].sfn_sf = UL_info->frame<<4 | UL_info->subframe;
+  }
+  else
+  {
+    printf("PDCCHOrder: CCE Allocation not feasible Frame %d: Subframe %d \n", UL_info->frame, UL_info->subframe);
+    LOG_D(MAC, "PDCCHOrder: CCE Allocation not feasible Frame %d: Subframe %d \n", UL_info->frame, UL_info->subframe);
+  }
+#if 0
+  dl_config_request.sfn_sf =  UL_info->frame<<4 | UL_info->subframe;
+  dl_config_request.dl_config_request_body.number_pdcch_ofdm_symbols = 1;
+  dl_config_request.dl_config_request_body.number_dci = 1;
+  dl_config_request.dl_config_request_body.number_pdu = 1;
+  dl_config_request.dl_config_request_body.number_pdsch_rnti = 0;
+  dl_config_request.dl_config_request_body.transmission_power_pcfich = 6000;
+  dl_config_request.dl_config_request_body.dl_config_pdu_list = &dl_config_pdu;
+  LOG_I(PHY,"Entry In function:%s\ module_id:%d CC_id:%d dl_cqi:%d dl_bw:%d rnti:%d\n",
+    __FUNCTION__,
+    UL_info->module_id,
+    UL_info->CC_id,
+    dl_cqi,
+    cc[UL_info->CC_id].mib->message.dl_Bandwidth,
+    rnti);
+#endif
+
+
+#if 0
+  if (oai_nfapi_dl_config_req(&dl_config_request) != 0)
+  {
+    LOG_E(PHY,"Error Sending DL_CONFIG_REQ to UE [rnti:%d] [CC_id:%d]\n", rnti, UL_info->CC_id);
+    return false;
+  }
+  LOG_D(PHY,"Successfully sent DL_CONFIG_REQ to UE [rnti:%d] [CC_id:%d]\n", rnti, UL_info->CC_id);
+#endif
+  return true;
+}
+

@@ -30,6 +30,7 @@
 
  */
 
+#include <stdlib.h>
 #include "GNB_APP/RRC_nr_paramsvalues.h"
 #include "assertions.h"
 #include "NR_MAC_gNB/nr_mac_gNB.h"
@@ -83,6 +84,13 @@ void schedule_ssb(frame_t frame, sub_frame_t slot,
   dl_config_pdu->ssb_pdu.ssb_pdu_rel15.precoding_and_beamforming.dig_bf_interfaces=1;
   dl_config_pdu->ssb_pdu.ssb_pdu_rel15.precoding_and_beamforming.prgs_list[0].pm_idx = 0;
   dl_config_pdu->ssb_pdu.ssb_pdu_rel15.precoding_and_beamforming.prgs_list[0].dig_bf_interface_list[0].beam_idx = beam_index;
+  dl_config_pdu->ssb_pdu.ssb_pdu_rel15.ssb_pbch_pdu_maintenance_fapiv3.ssbPduIndex = (uint8_t)rand(); // pdu will be unique in slot
+  dl_config_pdu->ssb_pdu.ssb_pdu_rel15.ssb_pbch_pdu_maintenance_fapiv3.caseType = 0;
+  dl_config_pdu->ssb_pdu.ssb_pdu_rel15.ssb_pbch_pdu_maintenance_fapiv3.SubcarrierSpacing = 0;
+  dl_config_pdu->ssb_pdu.ssb_pdu_rel15.ssb_pbch_pdu_maintenance_fapiv3.lMax = 0;
+  dl_config_pdu->ssb_pdu.ssb_pdu_rel15.ssb_pbch_pdu_maintenance_fapiv3.ssPbchBlockPowerScaling = -32768;
+  dl_config_pdu->ssb_pdu.ssb_pdu_rel15.ssb_pbch_pdu_maintenance_fapiv3.betaPSSProfileSSS = -32768;
+  
   dl_req->nPDUs++;
 
   LOG_D(MAC,"Scheduling ssb %d at frame %d and slot %d\n",i_ssb,frame,slot);
@@ -121,6 +129,15 @@ void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP, 
             CC_id,
             mib_sdu_length);
     }
+
+    // Trace MACPDU
+    mac_pkt_info_t mac_pkt;
+    mac_pkt.direction = DIRECTION_DOWNLINK;
+    mac_pkt.rnti_type = WS_NO_RNTI;
+    mac_pkt.rnti      = 0xFFFF;
+    mac_pkt.harq_pid  = 0;
+    mac_pkt.preamble  = -1; /* TODO */
+    LOG_MAC_P(OAILOG_INFO, "MAC_DL_PDU", frameP, slotP, mac_pkt, (uint8_t *)&cc->MIB_pdu.payload[0], (int)mib_sdu_length);
 
     int8_t ssb_period = *scc->ssb_periodicityServingCell;
     uint8_t ssb_frame_periodicity = 1;  // every how many frames SSB are generated
@@ -285,9 +302,14 @@ uint32_t schedule_control_sib1(module_id_t module_id,
   NR_COMMON_channels_t *cc = &gNB_mac->common_channels[CC_id];
   NR_ServingCellConfigCommon_t *scc = cc->ServingCellConfigCommon;
   uint16_t *vrb_map = cc->vrb_map;
+  LOG_D(NR_MAC," fxn:%s Entry \n", __FUNCTION__);
 
   if (gNB_mac->sched_ctrlCommon == NULL){
     LOG_D(NR_MAC,"schedule_control_common: Filling nr_mac->sched_ctrlCommon\n");
+    LOG_D(NR_MAC," fxn:%s gNB_mac->cset0_bwp_start=type0_PDCCH_CSS_config->cset_start_rb:%d gNB_mac->cset0_bwp_size=type0_PDCCH_CSS_config->num_rbs:%d \n", 
+        __FUNCTION__,
+        gNB_mac->cset0_bwp_start,
+        gNB_mac->cset0_bwp_size);
     gNB_mac->sched_ctrlCommon = calloc(1,sizeof(*gNB_mac->sched_ctrlCommon));
     gNB_mac->sched_ctrlCommon->search_space = calloc(1,sizeof(*gNB_mac->sched_ctrlCommon->search_space));
     gNB_mac->sched_ctrlCommon->coreset = calloc(1,sizeof(*gNB_mac->sched_ctrlCommon->coreset));
@@ -325,10 +347,13 @@ uint32_t schedule_control_sib1(module_id_t module_id,
                                                               gNB_mac->sched_ctrlCommon->coreset,
                                                               0);
 
+  LOG_D(MAC,"cce_index: %d\n", gNB_mac->sched_ctrlCommon->cce_index);
   AssertFatal(gNB_mac->sched_ctrlCommon->cce_index >= 0, "Could not find CCE for coreset0\n");
 
   const uint16_t bwpSize = type0_PDCCH_CSS_config->num_rbs;
   int rbStart = type0_PDCCH_CSS_config->cset_start_rb;
+  if(RC.ss.mode >= SS_SOFTMODEM)
+    rbStart = 27;
 
   // Calculate number of PRB_DMRS
   uint8_t N_PRB_DMRS = pdsch->dmrs_parms.N_PRB_DMRS;
@@ -374,6 +399,7 @@ uint32_t schedule_control_sib1(module_id_t module_id,
   for (int rb = 0; rb < pdsch->rbSize; rb++) {
     vrb_map[rb + rbStart] |= SL_to_bitmap(tda_info->startSymbolIndex, tda_info->nrOfSymbols);
   }
+  LOG_D(NR_MAC," fxn:%s Exit\n", __FUNCTION__);
   return TBS;
 }
 
@@ -607,6 +633,18 @@ void schedule_nr_sib1(module_id_t module_idP,
       TX_req->Slot = slotP;
 
       type0_PDCCH_CSS_config->active = false;
+
+      T(T_GNB_MAC_DL_PDU_WITH_DATA, T_INT(module_idP), T_INT(CC_id), T_INT(SI_RNTI),
+          T_INT(frameP), T_INT(slotP), T_INT(0), T_BUFFER(sib1_payload, sib1_sdu_length));
+
+      // Trace MACPDU
+      mac_pkt_info_t mac_pkt;
+      mac_pkt.direction = DIR_DOWNLINK;
+      mac_pkt.rnti_type = map_nr_rnti_type(NR_RNTI_SI);
+      mac_pkt.rnti      = SI_RNTI;
+      mac_pkt.harq_pid  = 0;
+      mac_pkt.preamble  = -1; /* TODO */
+      LOG_MAC_P(OAILOG_DEBUG, "MAC_DL_PDU", frameP, slotP, mac_pkt, (uint8_t *)sib1_payload, (int)sib1_sdu_length);
     }
   }
 }
