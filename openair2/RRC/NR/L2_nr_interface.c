@@ -71,6 +71,7 @@ uint16_t mac_rrc_nr_data_req(const module_id_t Mod_idP,
                              const uint8_t     Nb_tb,
                              uint8_t *const    buffer_pP)
 {
+  uint8_t Sdu_size = 0;
 
   LOG_D(RRC,"[eNB %d] mac_rrc_data_req to SRB ID=%ld\n",Mod_idP,Srb_id);
 
@@ -94,6 +95,20 @@ uint16_t mac_rrc_nr_data_req(const module_id_t Mod_idP,
   // CCCH
   if ((Srb_id & RAB_OFFSET) == CCCH) {
     AssertFatal(0, "CCCH is managed by rlc of srb 0, not anymore by mac_rrc_nr_data_req\n");
+  }
+
+  // PCCH
+  if ((Srb_id & RAB_OFFSET) == PCCH) {
+    LOG_T(NR_RRC, "[eNB %d] Frame %d PCCH request (Srb_id %ld)\n", Mod_idP, frameP, Srb_id);
+
+    if (RC.nrrrc[Mod_idP]->carrier.sizeof_paging > 0) {
+      LOG_D(NR_RRC, "[eNB %d] PCCH has %d bytes\n", Mod_idP, RC.nrrrc[Mod_idP]->carrier.sizeof_paging);
+      memcpy(buffer_pP, RC.nrrrc[Mod_idP]->carrier.paging, RC.nrrrc[Mod_idP]->carrier.sizeof_paging);
+      Sdu_size = RC.nrrrc[Mod_idP]->carrier.sizeof_paging;
+      RC.nrrrc[Mod_idP]->carrier.sizeof_paging = 0;
+    }
+
+    return (Sdu_size);
   }
 
   return 0;

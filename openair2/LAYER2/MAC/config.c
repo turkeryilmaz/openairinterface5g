@@ -787,7 +787,7 @@ int rrc_mac_config_req_eNB(const module_id_t Mod_idP, const rrc_mac_config_req_e
                param->dl_CarrierFreq,
                param->ul_CarrierFreq,
                param->pbch_repetition);
-    mac_init_cell_params(Mod_idP, param->CC_id);
+    //mac_init_cell_params(Mod_idP, param->CC_id); //This would reset UE info but if UE is RRC_Connected, rnti shall not reset
 
     if (param->schedulingInfoList != NULL) {
       eNB->common_channels[param->CC_id].tdd_Config = param->tdd_Config;
@@ -932,7 +932,7 @@ int rrc_mac_config_req_eNB(const module_id_t Mod_idP, const rrc_mac_config_req_e
           param->nonMBSFN_SubframeConfig->subframeAllocation_r14.buf[1],
           param->nonMBSFN_SubframeConfig->subframeAllocation_r14.buf[0] << 1 | param->nonMBSFN_SubframeConfig->subframeAllocation_r14.buf[1] >> 7);
     // eNB->common_channels[0].non_mbsfn_SubframeConfig = (int)(nonMBSFN_SubframeConfig->subframeAllocation_r14.buf[0]<<1) | (int)(nonMBSFN_SubframeConfig->subframeAllocation_r14.buf[1]>>7);
-    eNB->common_channels[0].non_mbsfn_SubframeConfig = param->nonMBSFN_SubframeConfig;
+    eNB->common_channels[param->CC_id].non_mbsfn_SubframeConfig = param->nonMBSFN_SubframeConfig;
     nfapi_config_request_t *cfg = &eNB->config[param->CC_id];
     cfg->fembms_config.non_mbsfn_config_flag.value   = 1;
     cfg->fembms_config.non_mbsfn_config_flag.tl.tag = NFAPI_FEMBMS_CONFIG_NON_MBSFN_FLAG_TAG;
@@ -948,34 +948,34 @@ int rrc_mac_config_req_eNB(const module_id_t Mod_idP, const rrc_mac_config_req_e
     cfg->num_tlv++;
     //We need to reuse current MCH scheduler
     //TOCHECK whether we can simply reuse current mbsfn_SubframeConfig stuff
-    eNB->common_channels[0].FeMBMS_flag = param->FeMBMS_Flag;
+    eNB->common_channels[param->CC_id].FeMBMS_flag = param->FeMBMS_Flag;
   }
 
   if (param->mbsfn_AreaInfoList != NULL) {
     // One eNB could be part of multiple mbsfn syc area, this could change over time so reset each time
     LOG_I(MAC, "[eNB %d][CONFIG] Received %d MBSFN Area Info\n", Mod_idP, param->mbsfn_AreaInfoList->list.count);
-    eNB->common_channels[0].num_active_mbsfn_area = param->mbsfn_AreaInfoList->list.count;
+    eNB->common_channels[param->CC_id].num_active_mbsfn_area = param->mbsfn_AreaInfoList->list.count;
 
     for (i = 0; i < param->mbsfn_AreaInfoList->list.count; i++) {
-      eNB->common_channels[0].mbsfn_AreaInfo[i] = param->mbsfn_AreaInfoList->list.array[i];
-      LOG_I(MAC, "[eNB %d][CONFIG] MBSFN_AreaInfo[%d]: MCCH Repetition Period = %ld\n", Mod_idP, i, eNB->common_channels[0].mbsfn_AreaInfo[i]->mcch_Config_r9.mcch_RepetitionPeriod_r9);
-      //      config_sib13(Mod_idP,0,i,eNB->common_channels[0].mbsfn_AreaInfo[i]->mbsfn_AreaId_r9);
-      config_sib13(Mod_idP, 0, i, eNB->common_channels[0].mbsfn_AreaInfo[i]->mbsfn_AreaId_r9);
+      eNB->common_channels[param->CC_id].mbsfn_AreaInfo[i] = param->mbsfn_AreaInfoList->list.array[i];
+      LOG_I(MAC, "[eNB %d][CONFIG] MBSFN_AreaInfo[%d]: MCCH Repetition Period = %ld\n", Mod_idP, i, eNB->common_channels[param->CC_id].mbsfn_AreaInfo[i]->mcch_Config_r9.mcch_RepetitionPeriod_r9);
+      //      config_sib13(Mod_idP,0,i,eNB->common_channels[param->CC_id].mbsfn_AreaInfo[i]->mbsfn_AreaId_r9);
+      config_sib13(Mod_idP, 0, i, eNB->common_channels[param->CC_id].mbsfn_AreaInfo[i]->mbsfn_AreaId_r9);
     }
   }
 
   if (param->mbms_AreaConfiguration != NULL) {
-    eNB->common_channels[0].commonSF_AllocPeriod_r9 = param->mbms_AreaConfiguration->commonSF_AllocPeriod_r9;
-    LOG_I(MAC, "[eNB %d][CONFIG] commonSF_AllocPeriod_r9(%d)\n", Mod_idP, eNB->common_channels[0].commonSF_AllocPeriod_r9);
+    eNB->common_channels[param->CC_id].commonSF_AllocPeriod_r9 = param->mbms_AreaConfiguration->commonSF_AllocPeriod_r9;
+    LOG_I(MAC, "[eNB %d][CONFIG] commonSF_AllocPeriod_r9(%d)\n", Mod_idP, eNB->common_channels[param->CC_id].commonSF_AllocPeriod_r9);
     for (i = 0; i < param->mbms_AreaConfiguration->commonSF_Alloc_r9.list.count; i++) {
-      eNB->common_channels[0].commonSF_Alloc_r9_mbsfn_SubframeConfig[i] = param->mbms_AreaConfiguration->commonSF_Alloc_r9.list.array[i];
+      eNB->common_channels[param->CC_id].commonSF_Alloc_r9_mbsfn_SubframeConfig[i] = param->mbms_AreaConfiguration->commonSF_Alloc_r9.list.array[i];
       LOG_I(RRC,
             "[eNB %d][CONFIG] MBSFNArea[%d] commonSF_Alloc_r9: radioframeAllocationPeriod(%ldn),radioframeAllocationOffset(%ld), subframeAllocation(%x)\n",
             Mod_idP,
             i,
-            eNB->common_channels[0].commonSF_Alloc_r9_mbsfn_SubframeConfig[i]->radioframeAllocationPeriod,
-            eNB->common_channels[0].commonSF_Alloc_r9_mbsfn_SubframeConfig[i]->radioframeAllocationOffset,
-            eNB->common_channels[0].commonSF_Alloc_r9_mbsfn_SubframeConfig[i]->subframeAllocation.choice.oneFrame.buf[0]);
+            eNB->common_channels[param->CC_id].commonSF_Alloc_r9_mbsfn_SubframeConfig[i]->radioframeAllocationPeriod,
+            eNB->common_channels[param->CC_id].commonSF_Alloc_r9_mbsfn_SubframeConfig[i]->radioframeAllocationOffset,
+            eNB->common_channels[param->CC_id].commonSF_Alloc_r9_mbsfn_SubframeConfig[i]->subframeAllocation.choice.oneFrame.buf[0]);
     }
   }
 
@@ -984,15 +984,15 @@ int rrc_mac_config_req_eNB(const module_id_t Mod_idP, const rrc_mac_config_req_e
     LOG_I(MAC, "[CONFIG] Number of PMCH in this MBSFN Area %d\n", param->pmch_InfoList->list.count);
 
     for (i = 0; i < param->pmch_InfoList->list.count; i++) {
-      eNB->common_channels[0].pmch_Config[i] = &param->pmch_InfoList->list.array[i]->pmch_Config_r9;
-      LOG_I(MAC, "[CONFIG] PMCH[%d]: This PMCH stop (sf_AllocEnd_r9) at subframe  %ldth\n", i, eNB->common_channels[0].pmch_Config[i]->sf_AllocEnd_r9);
-      LOG_I(MAC, "[CONFIG] PMCH[%d]: mch_Scheduling_Period = %ld\n", i, eNB->common_channels[0].pmch_Config[i]->mch_SchedulingPeriod_r9);
-      LOG_I(MAC, "[CONFIG] PMCH[%d]: dataMCS = %ld\n", i, eNB->common_channels[0].pmch_Config[i]->dataMCS_r9);
+      eNB->common_channels[param->CC_id].pmch_Config[i] = &param->pmch_InfoList->list.array[i]->pmch_Config_r9;
+      LOG_I(MAC, "[CONFIG] PMCH[%d]: This PMCH stop (sf_AllocEnd_r9) at subframe  %ldth\n", i, eNB->common_channels[param->CC_id].pmch_Config[i]->sf_AllocEnd_r9);
+      LOG_I(MAC, "[CONFIG] PMCH[%d]: mch_Scheduling_Period = %ld\n", i, eNB->common_channels[param->CC_id].pmch_Config[i]->mch_SchedulingPeriod_r9);
+      LOG_I(MAC, "[CONFIG] PMCH[%d]: dataMCS = %ld\n", i, eNB->common_channels[param->CC_id].pmch_Config[i]->dataMCS_r9);
       // MBMS session info list in each MCH
-      eNB->common_channels[0].mbms_SessionList[i] = &param->pmch_InfoList->list.array[i]->mbms_SessionInfoList_r9;
-      LOG_I(MAC, "PMCH[%d] Number of session (MTCH) is: %d\n", i, eNB->common_channels[0].mbms_SessionList[i]->list.count);
-      for (int ii = 0; ii < eNB->common_channels[0].mbms_SessionList[i]->list.count; ii++) {
-        LOG_I(MAC, "PMCH[%d] MBMS Session[%d] is: %lu\n", i, ii, eNB->common_channels[0].mbms_SessionList[i]->list.array[ii]->logicalChannelIdentity_r9);
+      eNB->common_channels[param->CC_id].mbms_SessionList[i] = &param->pmch_InfoList->list.array[i]->mbms_SessionInfoList_r9;
+      LOG_I(MAC, "PMCH[%d] Number of session (MTCH) is: %d\n", i, eNB->common_channels[param->CC_id].mbms_SessionList[i]->list.count);
+      for (int ii = 0; ii < eNB->common_channels[param->CC_id].mbms_SessionList[i]->list.count; ii++) {
+        LOG_I(MAC, "PMCH[%d] MBMS Session[%d] is: %lu\n", i, ii, eNB->common_channels[param->CC_id].mbms_SessionList[i]->list.array[ii]->logicalChannelIdentity_r9);
       }
     }
   }
@@ -1021,6 +1021,8 @@ int rrc_mac_config_req_eNB(const module_id_t Mod_idP, const rrc_mac_config_req_e
   }
 
   eNB->scheduler_mode = global_scheduler_mode;
+  //Set the number of MAC_CC to current configured CC value
+  *RC.nb_mac_CC= RC.nb_CC[0];
   return(0);
 }
 
@@ -1060,7 +1062,7 @@ void eNB_Config_Local_DRX(instance_t Mod_id,
     return;
   }
 
-  /* Modify scheduling control structure according to DRX configuration: doesn't support every configurations! */  
+  /* Modify scheduling control structure according to DRX configuration: doesn't support every configurations! */
   UE_scheduling_control->cdrx_configured = false; // will be set to true when receiving RRC Reconfiguration Complete
   UE_scheduling_control->cdrx_waiting_ack = true; // waiting for RRC Reconfiguration Complete message
   UE_scheduling_control->in_active_time = false;
