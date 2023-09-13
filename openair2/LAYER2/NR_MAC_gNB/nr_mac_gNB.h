@@ -666,6 +666,7 @@ typedef struct nr_mac_rrc_ul_if_s {
 
 /*! \brief UE list used by gNB to order UEs/CC for scheduling*/
 typedef struct {
+  int CC_id;
   rnti_t rnti;
   uid_t uid; // unique ID of this UE
   /// scheduling control info
@@ -683,6 +684,8 @@ typedef struct {
   uint32_t ra_timer;
   float ul_thr_ue;
   float dl_thr_ue;
+  bool rsrpReportStatus;
+  int ssb_rsrp;
 } NR_UE_info_t;
 
 typedef struct {
@@ -809,6 +812,9 @@ typedef struct gNB_MAC_INST_s {
   NR_bler_options_t ul_bler;
   uint8_t min_grant_prb;
   uint8_t min_grant_mcs;
+  uint8_t grant_prb;
+  uint8_t grant_mcs;
+  uint8_t grant_rbStart;
   bool identity_pm;
   nr_mac_rrc_ul_if_t mac_rrc;
 

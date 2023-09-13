@@ -40,7 +40,7 @@
 #include "pdcp_primitives.h"
 
 //-----------------------------------------------------------------------------
-static
+//static
 uint32_t pdcp_get_next_count_tx(
   pdcp_t * const pdcp_pP,
   const srb_flag_t srb_flagP,
@@ -67,7 +67,7 @@ uint32_t pdcp_get_next_count_tx(
 }
 
 //-----------------------------------------------------------------------------
-static
+//static
 uint32_t pdcp_get_next_count_rx(
   pdcp_t * const pdcp_pP,
   const srb_flag_t srb_flagP,
@@ -149,9 +149,12 @@ pdcp_apply_security(
 
     encrypt_params.key = pdcp_pP->kUPenc;//  + 128;
   }
+  LOG_D(PDCP, "[OSA][RB %ld] %s Applying ciphering security %d \n",
+          rb_id, (pdcp_pP->is_ue != 0) ? "UE -> eNB" : "eNB -> UE", pdcp_pP->cipheringAlgorithm);
+
 
   encrypt_params.message    = &pdcp_pdu_buffer[pdcp_header_len];
-  encrypt_params.blength    = sdu_buffer_size << 3;
+  encrypt_params.blength    = (sdu_buffer_size + 4)<< 3;
 
   buffer_encrypted = &pdcp_pdu_buffer[pdcp_header_len];
 
@@ -195,12 +198,12 @@ pdcp_validate_security(
   decrypt_params.bearer     = rb_id - 1;
   decrypt_params.count      = pdcp_get_next_count_rx(pdcp_pP, srb_flagP, hfn, sn);
   decrypt_params.message    = &pdcp_pdu_buffer[pdcp_header_len];
-  decrypt_params.blength    = (sdu_buffer_size - pdcp_header_len) << 3;
+  decrypt_params.blength    = ((sdu_buffer_size + 4) - pdcp_header_len) << 3;
   decrypt_params.key_length = 16;
 
   if (srb_flagP) {
-    LOG_D(PDCP, "[OSA][RB %ld] %s Validating control-plane security\n",
-          rb_id, (pdcp_pP->is_ue != 0) ? "eNB -> UE" : "UE -> eNB");
+    LOG_D(PDCP, "[OSA][RB %ld] %s Validating control-plane security: ciphering:%d integrity:%d\n",
+          rb_id, (pdcp_pP->is_ue != 0) ? "eNB -> UE" : "UE -> eNB", pdcp_pP->cipheringAlgorithm,pdcp_pP->integrityProtAlgorithm);
     decrypt_params.key = pdcp_pP->kRRCenc;// + 128;
   } else {
     LOG_D(PDCP, "[OSA][RB %ld] %s Validating user-plane security\n",
@@ -208,10 +211,13 @@ pdcp_validate_security(
     decrypt_params.key = pdcp_pP->kUPenc;// + 128;
   }
 
-  /* Uncipher the block */
-  stream_decrypt(pdcp_pP->cipheringAlgorithm,
-                 &decrypt_params,
-                 &buffer_decrypted);
+  /* Don't need to uncipher the block if sdu buffer is empty */
+  if((sdu_buffer_size - pdcp_header_len) != 0) {
+    /* Uncipher the block */
+    stream_decrypt(pdcp_pP->cipheringAlgorithm,
+                   &decrypt_params,
+                   &buffer_decrypted);
+  }
   if (!IS_SOFTMODEM_IQPLAYER) {
     if (srb_flagP) {
     /* Now check the integrity of the complete PDU */
