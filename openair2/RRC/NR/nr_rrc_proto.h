@@ -95,6 +95,8 @@ rrc_gNB_generate_SecurityModeCommand(
 
 unsigned int rrc_gNB_get_next_transaction_identifier(module_id_t gnb_mod_idP);
 
+unsigned int rrc_gNB_get_next_transaction_identifier_reset(module_id_t gnb_mod_idP, bool reset);
+
 void
 rrc_gNB_generate_UECapabilityEnquiry(
   const protocol_ctxt_t *const ctxt_pP,
