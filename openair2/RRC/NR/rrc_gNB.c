@@ -728,6 +728,8 @@ static void rrc_gNB_process_RRCSetupComplete(const protocol_ctxt_t *const ctxt_p
   ue_context_pP->ue_context.Srb2.Active = 0;
   ue_context_pP->ue_context.StatusRrc = NR_RRC_CONNECTED;
 
+  if (RC.ss.mode >= SS_SOFTMODEM) return;
+
   if (get_softmodem_params()->sa) {
     rrc_gNB_send_NGAP_NAS_FIRST_REQ(ctxt_pP, ue_context_pP, rrcSetupComplete);
   } else {
@@ -2662,6 +2664,9 @@ rrc_gNB_decode_dcch(
                 ctxt_pP,
                 ue_context_p,
                 ul_dcch_msg->message.choice.c1->choice.rrcReconfigurationComplete->rrc_TransactionIdentifier);
+        }
+        if(RC.ss.mode >= SS_SOFTMODEM){
+          break;
         }
 
         if (get_softmodem_params()->sa) {
