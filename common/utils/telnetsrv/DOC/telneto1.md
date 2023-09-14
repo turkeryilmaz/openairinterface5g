@@ -51,7 +51,7 @@ Note that only one telnet client can be connected at a time.
 # Get statistics
 
 Use the `o1 stats` command. The output is in JSON format:
-```
+```json
 {
   "o1-config": {
     "BWP": {
