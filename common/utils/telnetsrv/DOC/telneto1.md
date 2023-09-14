@@ -75,9 +75,9 @@ Use the `o1 stats` command. The output is in JSON format:
     "NRCELLDU": {
       "nrcelldu3gpp:ssbFrequency": 641280,
       "nrcelldu3gpp:arfcnDL": 640008,
-      "nrcelldu3gpp:bSChannelBwDL": 106,
+      "nrcelldu3gpp:bSChannelBwDL": 40,
       "nrcelldu3gpp:arfcnUL": 640008,
-      "nrcelldu3gpp:bSChannelBwUL": 106,
+      "nrcelldu3gpp:bSChannelBwUL": 40,
       "nrcelldu3gpp:nRPCI": 0,
       "nrcelldu3gpp:nRTAC": 1,
       "nrcelldu3gpp:mcc": "208",
@@ -116,7 +116,7 @@ There are two sections:
 1. `.o1-config` show some stats that map directly to the O1 Netconf model. Note
    that only one MCC/MNC/SD/SST (each) are supported right now. Also, note that
    as per 3GPP specifications, SD of value `0xffffff` (16777215 in decimal)
-   means "no SD".
+   means "no SD". `bSChannelBwDL/UL` is reported in MHz.
 2. `.O1-operational` output some statistics that do not map yet to any netconf
    parameters, but that might be useful nevertheless for a consumer.
 

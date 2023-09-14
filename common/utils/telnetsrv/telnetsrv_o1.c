@@ -74,6 +74,14 @@ static int get_stats(char *buf, int debug, telnet_printfunc_t prnt)
   const NR_BWP_t *initialDL = &scc->downlinkConfigCommon->initialDownlinkBWP->genericParameters;
   const NR_BWP_t *initialUL = &scc->uplinkConfigCommon->initialUplinkBWP->genericParameters;
 
+  int scs = initialDL->subcarrierSpacing;
+  AssertFatal(scs == initialUL->subcarrierSpacing, "different SCS for UL/DL not supported!\n");
+  int band = *frequencyInfoDL->frequencyBandList.list.array[0];
+  int nrb = frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth;
+  AssertFatal(nrb == frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth, "different BW for UL/DL not supported!\n");
+  int bw_index = get_supported_band_index(scs, band, nrb);
+  int bw_mhz = get_supported_bw_mhz(band > 256 ? FR2 : FR1, bw_index);
+
   int num_ues = 0;
   UE_iterator((NR_UE_info_t **)mac->UE_info.list, it) {
     num_ues++;
@@ -95,23 +103,23 @@ static int get_stats(char *buf, int debug, telnet_printfunc_t prnt)
     //prnt("      \"" CYCLPREF "\": %ld,\n", *initialDL->cyclicPrefix);
     prnt("        \"" NUMRBS "\": %ld,\n", NRRIV2BW(initialDL->locationAndBandwidth, MAX_BWP_SIZE));
     prnt("        \"" STARTRB "\": %ld,\n", NRRIV2PRBOFFSET(initialDL->locationAndBandwidth, MAX_BWP_SIZE));
-    prnt("        \"" BWPSCS "\": %ld\n", initialDL->subcarrierSpacing);
+    prnt("        \"" BWPSCS "\": %ld\n", scs);
     prnt("      }],\n");
     prnt("      \"ul\": [{\n");
     prnt("        \"" ISINITBWP "\": true,\n");
     //prnt("      \"" CYCLPREF "\": %ld,\n", *initialUL->cyclicPrefix);
     prnt("        \"" NUMRBS "\": %ld,\n", NRRIV2BW(initialUL->locationAndBandwidth, MAX_BWP_SIZE));
     prnt("        \"" STARTRB "\": %ld,\n", NRRIV2PRBOFFSET(initialUL->locationAndBandwidth, MAX_BWP_SIZE));
-    prnt("        \"" BWPSCS "\": %ld\n", initialUL->subcarrierSpacing);
+    prnt("        \"" BWPSCS "\": %ld\n", scs);
     prnt("      }]\n");
     prnt("    },\n");
 
     prnt("    \"NRCELLDU\": {\n");
     prnt("      \"" SSBFREQ "\": %ld,\n", *scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB);
     prnt("      \"" ARFCNDL "\": %ld,\n", frequencyInfoDL->absoluteFrequencyPointA);
-    prnt("      \"" BWDL "\": %ld,\n", frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth);
+    prnt("      \"" BWDL "\": %ld,\n", bw_mhz);
     prnt("      \"" ARFCNUL "\": %ld,\n", frequencyInfoUL->absoluteFrequencyPointA ? *frequencyInfoUL->absoluteFrequencyPointA : frequencyInfoDL->absoluteFrequencyPointA);
-    prnt("      \"" BWUL "\": %ld,\n", frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth);
+    prnt("      \"" BWUL "\": %ld,\n", bw_mhz);
     prnt("      \"" PCI "\": %ld,\n", *scc->physCellId);
     prnt("      \"" TAC "\": %ld,\n", conf->tac);
     prnt("      \"" MCC "\": \"%03d\",\n", conf->mcc[0]);
@@ -128,7 +136,7 @@ static int get_stats(char *buf, int debug, telnet_printfunc_t prnt)
 
     prnt("  \"O1-Operational\": {\n");
     prnt("    \"frame-type\": \"%s\",\n", frame_type == TDD ? "tdd" : "fdd");
-    prnt("    \"band-number\": %ld,\n", *frequencyInfoDL->frequencyBandList.list.array[0]);
+    prnt("    \"band-number\": %ld,\n", band);
     prnt("    \"num-ues\": %d,\n", num_ues);
     prnt("    \"ues\": [");
     {
