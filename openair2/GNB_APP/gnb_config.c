@@ -1274,7 +1274,6 @@ void RCconfig_NRRRC(MessageDef *msg_p, uint32_t i, gNB_RRC_INST *rrc)
       config_get(SCTPParams,sizeof(SCTPParams)/sizeof(paramdef_t),aprefix);
       rrc->node_id        = *(GNBParamList.paramarray[0][GNB_GNB_ID_IDX].uptr);
       LOG_I(GNB_APP,"F1AP: gNB_CU_id[%d] %d\n",k,rrc->node_id);
-      rrc->node_name = strdup(*(GNBParamList.paramarray[0][GNB_GNB_NAME_IDX].strptr));
       LOG_I(GNB_APP,"F1AP: gNB_CU_name[%d] %s\n",k,rrc->node_name);
       rrc->eth_params_s.local_if_name            = strdup(*(GNBParamList.paramarray[i][GNB_LOCAL_S_IF_NAME_IDX].strptr));
       rrc->eth_params_s.my_addr                  = strdup(*(GNBParamList.paramarray[i][GNB_LOCAL_S_ADDRESS_IDX].strptr));
@@ -1290,6 +1289,7 @@ void RCconfig_NRRRC(MessageDef *msg_p, uint32_t i, gNB_RRC_INST *rrc)
 
    
 
+    rrc->node_name = strdup(*(GNBParamList.paramarray[0][GNB_GNB_NAME_IDX].strptr));
     rrc->nr_cellid        = (uint64_t)*(GNBParamList.paramarray[i][GNB_NRCELLID_IDX].u64ptr);
     rrc->carrier.physCellId = *scc->physCellId;
 
@@ -1353,6 +1353,18 @@ void RCconfig_NRRRC(MessageDef *msg_p, uint32_t i, gNB_RRC_INST *rrc)
 	  AssertFatal((NRRRC_CONFIGURATION_REQ (msg_p).mnc_digit_length[l] == 2) ||
 		      (NRRRC_CONFIGURATION_REQ (msg_p).mnc_digit_length[l] == 3),"BAD MNC DIGIT LENGTH %d",
 		      NRRRC_CONFIGURATION_REQ (msg_p).mnc_digit_length[l]);
+
+          paramdef_t SNSSAIParams[] = GNBSNSSAIPARAMS_DESC;
+          checkedparam_t config_check_SNSSAIParams [] = SNSSAIPARAMS_CHECK;
+          for (int J = 0; J < sizeof(SNSSAIParams) / sizeof(paramdef_t); ++J)
+            SNSSAIParams[J].chkPptr = &(config_check_SNSSAIParams[J]);
+          paramlist_def_t SNSSAIParamList = {GNB_CONFIG_STRING_SNSSAI_LIST, NULL, 0};
+          char snssaistr[MAX_OPTNAME_SIZE*2 + 8];
+          sprintf(snssaistr, "%s.[%i].%s.[%i]", GNB_CONFIG_STRING_GNB_LIST, k, GNB_CONFIG_STRING_PLMN_LIST, l);
+          config_getlist(&SNSSAIParamList, SNSSAIParams, sizeof(SNSSAIParams)/sizeof(paramdef_t), snssaistr);
+          AssertFatal(SNSSAIParamList.numelt == 1, "cannot handle no NSSAI or more than 1\n");
+          NRRRC_CONFIGURATION_REQ (msg_p).sst = *SNSSAIParamList.paramarray[0][GNB_SLICE_SERVICE_TYPE_IDX].uptr;
+          NRRRC_CONFIGURATION_REQ (msg_p).sd = *SNSSAIParamList.paramarray[0][GNB_SLICE_DIFFERENTIATOR_IDX].uptr;
 	}
         LOG_I(GNB_APP,"pdsch_AntennaPorts N1 %d\n",*GNBParamList.paramarray[i][GNB_PDSCH_ANTENNAPORTS_N1_IDX].iptr);
         NRRRC_CONFIGURATION_REQ (msg_p).pdsch_AntennaPorts.N1 = *GNBParamList.paramarray[i][GNB_PDSCH_ANTENNAPORTS_N1_IDX].iptr;

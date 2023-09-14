@@ -53,12 +53,24 @@ Note that only one telnet client can be connected at a time.
 Use the `o1 stats` command. The output is in JSON format:
 ```
 {
-  "O1": {
+  "o1-config": {
     "BWP": {
-      "bwp3gpp:isInitialBwp": true,
-      "bwp3gpp:numberOfRBs": 106,
-      "bwp3gpp:startRB": 0,
-      "bwp3gpp:subCarrierSpacing": 1
+      "dl": [
+        {
+          "bwp3gpp:isInitialBwp": true,
+          "bwp3gpp:numberOfRBs": 106,
+          "bwp3gpp:startRB": 0,
+          "bwp3gpp:subCarrierSpacing": 1
+        }
+      ],
+      "ul": [
+        {
+          "bwp3gpp:isInitialBwp": true,
+          "bwp3gpp:numberOfRBs": 106,
+          "bwp3gpp:startRB": 0,
+          "bwp3gpp:subCarrierSpacing": 1
+        }
+      ]
     },
     "NRCELLDU": {
       "nrcelldu3gpp:ssbFrequency": 641280,
@@ -67,10 +79,19 @@ Use the `o1 stats` command. The output is in JSON format:
       "nrcelldu3gpp:arfcnUL": 640008,
       "nrcelldu3gpp:bSChannelBwUL": 106,
       "nrcelldu3gpp:nRPCI": 0,
-      "nrcelldu3gpp:nRTAC": 1
+      "nrcelldu3gpp:nRTAC": 1,
+      "nrcelldu3gpp:mcc": "208",
+      "nrcelldu3gpp:mnc": "95",
+      "nrcelldu3gpp:sd": 16777215,
+      "nrcelldu3gpp:sst": 1
+    },
+    "device": {
+      "gnbId": 3584,
+      "gnbName": "gNB-Eurecom-5GNRBox",
+      "vendor": "OpenAirInterface"
     }
   },
-  "additional": {
+  "O1-Operational": {
     "frame-type": "tdd",
     "band-number": 78,
     "num-ues": 2,
@@ -92,8 +113,11 @@ echo o1 stats | nc -N 127.0.0.1 9090 | awk '/^{$/, /^}$/' | jq .
 its corresponding `}` is printed).
 
 There are two sections:
-1. `.O1` show some stats that map directly to the O1 Netconf model.
-2. `.additional` output some statistics that do not map yet to any netconf
+1. `.o1-config` show some stats that map directly to the O1 Netconf model. Note
+   that only one MCC/MNC/SD/SST (each) are supported right now. Also, note that
+   as per 3GPP specifications, SD of value `0xffffff` (16777215 in decimal)
+   means "no SD".
+2. `.O1-operational` output some statistics that do not map yet to any netconf
    parameters, but that might be useful nevertheless for a consumer.
 
 # Write a new configuration

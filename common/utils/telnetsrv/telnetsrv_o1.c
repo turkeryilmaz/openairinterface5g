@@ -50,8 +50,10 @@
 #define BWUL    "nrcelldu3gpp:bSChannelBwUL"
 #define PCI     "nrcelldu3gpp:nRPCI"
 #define TAC     "nrcelldu3gpp:nRTAC"
-//#define MCC     "nrcelldu3gpp:mcc"
-//#define MNC     "nrcelldu3gpp:mnc"
+#define MCC     "nrcelldu3gpp:mcc"
+#define MNC     "nrcelldu3gpp:mnc"
+#define SD      "nrcelldu3gpp:sd"
+#define SST     "nrcelldu3gpp:sst"
 
 static int get_stats(char *buf, int debug, telnet_printfunc_t prnt)
 {
@@ -70,6 +72,7 @@ static int get_stats(char *buf, int debug, telnet_printfunc_t prnt)
   const NR_FrequencyInfoUL_t *frequencyInfoUL = scc->uplinkConfigCommon->frequencyInfoUL;
   frame_type_t frame_type = get_frame_type(*frequencyInfoDL->frequencyBandList.list.array[0], *scc->ssbSubcarrierSpacing);
   const NR_BWP_t *initialDL = &scc->downlinkConfigCommon->initialDownlinkBWP->genericParameters;
+  const NR_BWP_t *initialUL = &scc->uplinkConfigCommon->initialUplinkBWP->genericParameters;
 
   int num_ues = 0;
   UE_iterator((NR_UE_info_t **)mac->UE_info.list, it) {
@@ -84,14 +87,23 @@ static int get_stats(char *buf, int debug, telnet_printfunc_t prnt)
   last = *stat;
 
   prnt("{\n");
-    prnt("  \"O1\": {\n");
+    prnt("  \"o1-config\": {\n");
 
     prnt("    \"BWP\": {\n");
-    prnt("      \"" ISINITBWP "\": true,\n");
+    prnt("      \"dl\": [{\n");
+    prnt("        \"" ISINITBWP "\": true,\n");
     //prnt("      \"" CYCLPREF "\": %ld,\n", *initialDL->cyclicPrefix);
-    prnt("      \"" NUMRBS "\": %ld,\n", NRRIV2BW(initialDL->locationAndBandwidth, MAX_BWP_SIZE));
-    prnt("      \"" STARTRB "\": %ld,\n", NRRIV2PRBOFFSET(initialDL->locationAndBandwidth, MAX_BWP_SIZE));
-    prnt("      \"" BWPSCS "\": %ld\n", initialDL->subcarrierSpacing);
+    prnt("        \"" NUMRBS "\": %ld,\n", NRRIV2BW(initialDL->locationAndBandwidth, MAX_BWP_SIZE));
+    prnt("        \"" STARTRB "\": %ld,\n", NRRIV2PRBOFFSET(initialDL->locationAndBandwidth, MAX_BWP_SIZE));
+    prnt("        \"" BWPSCS "\": %ld\n", initialDL->subcarrierSpacing);
+    prnt("      }],\n");
+    prnt("      \"ul\": [{\n");
+    prnt("        \"" ISINITBWP "\": true,\n");
+    //prnt("      \"" CYCLPREF "\": %ld,\n", *initialUL->cyclicPrefix);
+    prnt("        \"" NUMRBS "\": %ld,\n", NRRIV2BW(initialUL->locationAndBandwidth, MAX_BWP_SIZE));
+    prnt("        \"" STARTRB "\": %ld,\n", NRRIV2PRBOFFSET(initialUL->locationAndBandwidth, MAX_BWP_SIZE));
+    prnt("        \"" BWPSCS "\": %ld\n", initialUL->subcarrierSpacing);
+    prnt("      }]\n");
     prnt("    },\n");
 
     prnt("    \"NRCELLDU\": {\n");
@@ -101,11 +113,20 @@ static int get_stats(char *buf, int debug, telnet_printfunc_t prnt)
     prnt("      \"" ARFCNUL "\": %ld,\n", frequencyInfoUL->absoluteFrequencyPointA ? *frequencyInfoUL->absoluteFrequencyPointA : frequencyInfoDL->absoluteFrequencyPointA);
     prnt("      \"" BWUL "\": %ld,\n", frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth);
     prnt("      \"" PCI "\": %ld,\n", *scc->physCellId);
-    prnt("      \"" TAC "\": %ld\n", conf->tac);
+    prnt("      \"" TAC "\": %ld,\n", conf->tac);
+    prnt("      \"" MCC "\": \"%03d\",\n", conf->mcc[0]);
+    prnt("      \"" MNC "\": \"%0*d\",\n", conf->mnc_digit_length[0], conf->mnc[0]);
+    prnt("      \"" SD  "\": %d,\n", conf->sd);
+    prnt("      \"" SST "\": %d\n", conf->sst);
+    prnt("    },\n");
+    prnt("    \"device\": {\n");
+    prnt("      \"gnbId\": %d,\n", conf->cell_identity);
+    prnt("      \"gnbName\": \"%s\",\n", rrc->node_name);
+    prnt("      \"vendor\": \"OpenAirInterface\"\n");
     prnt("    }\n");
     prnt("  },\n");
 
-    prnt("  \"additional\": {\n");
+    prnt("  \"O1-Operational\": {\n");
     prnt("    \"frame-type\": \"%s\",\n", frame_type == TDD ? "tdd" : "fdd");
     prnt("    \"band-number\": %ld,\n", *frequencyInfoDL->frequencyBandList.list.array[0]);
     prnt("    \"num-ues\": %d,\n", num_ues);
