@@ -220,7 +220,8 @@ void gNB_I0_measurements(PHY_VARS_gNB *gNB,int slot, int first_symb,int num_symb
 //
 // Todo:
 // - averaging IIR filter for RX power and noise
-void nr_gnb_measurements(PHY_VARS_gNB *gNB,
+void nr_gnb_measurements(PHY_MEASUREMENTS_gNB *meas,
+		         NR_DL_FRAME_PARMS *fp,
                          NR_gNB_ULSCH_t *ulsch,
                          NR_gNB_PUSCH *pusch_vars,
                          unsigned char symbol,
@@ -232,8 +233,6 @@ void nr_gnb_measurements(PHY_VARS_gNB *gNB,
 
   double             rx_gain = openair0_cfg[0].rx_gain[0];
   double      rx_gain_offset = openair0_cfg[0].rx_gain_offset[0];
-  PHY_MEASUREMENTS_gNB *meas = &gNB->measurements;
-  NR_DL_FRAME_PARMS      *fp = &gNB->frame_parms;
   int              ch_offset = fp->ofdm_symbol_size * symbol;
   int N_RB_UL = ulsch->harq_process->ulsch_pdu.rb_size;
   ulsch_measurements_gNB *ulsch_measurements = &ulsch->ulsch_measurements;

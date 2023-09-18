@@ -364,7 +364,7 @@ void nr_pdcch_unscrambling(int16_t *z,
                            uint16_t scrambling_RNTI,
                            uint32_t length,
                            uint16_t pdcch_DMRS_scrambling_id,
-                           int16_t *z2);
+                           int16_t *z2,int sci_flag);
 
 uint8_t nr_dci_decoding_procedure(PHY_VARS_NR_UE *ue,
                                   UE_nr_rxtx_proc_t *proc,

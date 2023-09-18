@@ -48,7 +48,7 @@
 #include "radio/ETHERNET/if_defs.h"
 #include <stdio.h>
 #include "openair2/GNB_APP/MACRLC_nr_paramdef.h"
-
+#include "common/utils/colors.h"
 #define MAX_IF_MODULES 100
 
 UL_IND_t *UL_INFO = NULL;
@@ -1430,7 +1430,7 @@ static void handle_sl_bch(module_id_t module_id,uint8_t *const sl_mib,
   uint16_t frame = frame_1 | frame_0;
   uint8_t slot =  ((sl_mib[2] & 0x01) << 6) | ((sl_mib[3] & 0xFC) >> 2);
 
-  LOG_I(NR_MAC, "[UE%d]In %d:%d Received SL-MIB:%x .Contents- SL-TDD config:%x, Incov:%d, FN:%d, Slot:%d\n",
+  LOG_I(NR_MAC, "%s[UE%d]In %d:%d Received SL-MIB:%x .Contents- SL-TDD config:%x, Incov:%d, FN:%d, Slot:%d\n",KRED,
                                       module_id, frame_rx, slot_rx,*((uint32_t *)sl_mib),
                                        *((uint16_t *)sl_tdd_config), incov,frame, slot);
 
@@ -1448,6 +1448,13 @@ void handle_sl_sci1a(module_id_t module_id,uint32_t frame, uint32_t slot, sl_nr_
 
   NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
   nr_ue_process_sci1_indication_pdu(mac,module_id,frame,slot,sci,phy_data);
+}
+
+void handle_sl_sci2(module_id_t module_id,uint32_t frame, uint32_t slot, sl_nr_sci_indication_pdu_t *const sci,void *phy_data) {
+
+
+  NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
+  nr_ue_process_sci2_indication_pdu(mac,module_id,frame,slot,sci,phy_data);
 }
 
 /*
@@ -1470,7 +1477,7 @@ void sl_nr_process_rx_ind(uint16_t mod_id,
     case SL_NR_RX_PDU_TYPE_SSB:
 
       if (rx_ind->rx_indication_body[num_pdus - 1].ssb_pdu.decode_status) {
-        LOG_I(NR_MAC, "[UE%d]SL-MAC Received SL-SSB: RSRP:%d dBm/RE, rx_psbch_payload:%x, rx_slss_id:%d\n",
+        LOG_I(NR_MAC, "%s[UE%d]SL-MAC Received SL-SSB: RSRP:%d dBm/RE, rx_psbch_payload:%x, rx_slss_id:%d\n",KRED,
                          mod_id,rx_ind->rx_indication_body[num_pdus - 1].ssb_pdu.rsrp_dbm,
                          *((uint32_t *)rx_ind->rx_indication_body[num_pdus - 1].ssb_pdu.psbch_payload),
                          rx_ind->rx_indication_body[num_pdus - 1].ssb_pdu.rx_slss_id);
@@ -1504,8 +1511,12 @@ void sl_nr_process_sci_ind(uint16_t module_id, uint32_t frame, uint32_t slot, sl
 
     switch (sci_ind->sci_pdu[idx].sci_format_type) { 
       case SL_SCI_FORMAT_1A_ON_PSCCH:
-         LOG_I(NR_MAC,"%d.%d Received PSCCH PDU %d/%d PSCCH RSRP %d, length %d, sub-channel index %d, Nid %x, payload %llx\n", sci_ind->sfn,sci_ind->slot,1+idx,num_SCIs,sci_ind->sci_pdu[idx].pscch_rsrp,sci_ind->sci_pdu[idx].sci_payloadlen,sci_ind->sci_pdu[idx].subch_index,sci_ind->sci_pdu[idx].Nid,*(unsigned long long*)sci_ind->sci_pdu[idx].sci_payloadBits);       
+         LOG_I(NR_MAC,"%s%d.%d Received PSCCH PDU %d/%d PSCCH RSRP %d, length %d, sub-channel index %d, Nid %x, payload %llx\n", KBLU,sci_ind->sfn,sci_ind->slot,1+idx,num_SCIs,sci_ind->sci_pdu[idx].pscch_rsrp,sci_ind->sci_pdu[idx].sci_payloadlen,sci_ind->sci_pdu[idx].subch_index,sci_ind->sci_pdu[idx].Nid,*(unsigned long long*)sci_ind->sci_pdu[idx].sci_payloadBits);       
          handle_sl_sci1a(module_id,frame,slot,&sci_ind->sci_pdu[idx],phy_data); 
+       break;
+      case SL_SCI_FORMAT_2_ON_PSSCH:
+         LOG_I(NR_MAC,"%s%d.%d Received PSSCH PDU %d/%d PSSCH RSRP %d, length %d, payload %llx\n", KBLU,sci_ind->sfn,sci_ind->slot,1+idx,num_SCIs,sci_ind->sci_pdu[idx].pscch_rsrp,sci_ind->sci_pdu[idx].sci_payloadlen,*(unsigned long long*)sci_ind->sci_pdu[idx].sci_payloadBits);       
+         handle_sl_sci2(module_id,frame,slot,&sci_ind->sci_pdu[idx],phy_data); 
        break;
       default:
        AssertFatal(1==0,"Unhandled or unknown sci format %d\n",sci_ind->sci_pdu[idx].sci_format_type);
@@ -1539,7 +1550,7 @@ int nr_ue_sl_indication(nr_sidelink_indication_t *sl_indication)
   } else {
     nr_ue_sidelink_scheduler(sl_indication);
   }
-  LOG_I(NR_MAC,"returning from nr_sl_indication\n");
+  LOG_D(NR_MAC,"returning from nr_sl_indication\n");
   return 0;
 }
 

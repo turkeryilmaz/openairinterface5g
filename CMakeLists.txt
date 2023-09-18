@@ -1072,6 +1072,8 @@ set(PHY_SRC_UE
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_dci_tools.c
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_ulsch_decoding.c
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_ulsch.c
+  ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_ulsch_llr_computation.c
+  ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_ulsch_demodulation.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_dlsch_demodulation.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_ulsch_coding.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_dlsch_decoding.c
@@ -1097,6 +1099,8 @@ set(PHY_SRC_UE
   ${OPENAIR1_DIR}/PHY/NR_UE_ESTIMATION/nr_adjust_synch_ue.c
   ${OPENAIR1_DIR}/PHY/NR_UE_ESTIMATION/nr_ue_measurements.c
   ${OPENAIR1_DIR}/PHY/NR_UE_ESTIMATION/nr_adjust_gain.c
+  ${OPENAIR1_DIR}/PHY/NR_ESTIMATION/nr_ul_channel_estimation.c
+  ${OPENAIR1_DIR}/PHY/NR_ESTIMATION/nr_measurements_gNB.c
   ${OPENAIR1_DIR}/PHY/TOOLS/file_output.c
   ${OPENAIR1_DIR}/PHY/TOOLS/cadd_vv.c
  # ${OPENAIR1_DIR}/PHY/TOOLS/lte_dfts.c
@@ -1363,7 +1367,7 @@ set (MAC_NR_SRC
 
 
 set (MAC_SRC_UE
-  ${PHY_INTERFACE_DIR}/phy_stub_UE.c
+	#  ${PHY_INTERFACE_DIR}/phy_stub_UE.c
   ${PHY_INTERFACE_DIR}/queue_t.c
   ${MAC_DIR}/main_ue.c
   ${MAC_DIR}/ue_procedures.c

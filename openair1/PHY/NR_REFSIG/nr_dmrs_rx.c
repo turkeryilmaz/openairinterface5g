@@ -63,7 +63,7 @@ int nr_pusch_dmrs_delta(uint8_t dmrs_config_type, unsigned short p) {
   }
 }
 
-int nr_pusch_dmrs_rx(PHY_VARS_gNB *gNB,
+int nr_pusch_dmrs_rx(int Ncp,
                      unsigned int Ns,
                      unsigned int *nr_gold_pusch,
                      int32_t *output,
@@ -86,7 +86,7 @@ int nr_pusch_dmrs_rx(PHY_VARS_gNB *gNB,
     LOG_E(PHY,"PUSCH DMRS config type %d not valid\n", dmrs_type+1);
 
   if ((p>=1000) && (p<((dmrs_type==pusch_dmrs_type1) ? 1008 : 1012))) {
-      if (gNB->frame_parms.Ncp == NORMAL) {
+      if (Ncp == NORMAL) {
         nb_dmrs = ((dmrs_type==pusch_dmrs_type1) ? 6:4);
         for (int i=dmrs_offset; i<dmrs_offset+(nb_pusch_rb*nb_dmrs); i++) {
           k = i-dmrs_offset;

@@ -75,9 +75,9 @@ int nr_ulsch_encoding(PHY_VARS_NR_UE *ue,
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_UE_ULSCH_ENCODING, VCD_FUNCTION_IN);
 
-  LOG_D(NR_PHY, "ulsch coding nb_rb %d, Nl = %d\n", nb_rb, num_layers);
-  LOG_D(NR_PHY, "ulsch coding A %d G %d mod_order %d Coderate %f\n", A, G, mod_order, Coderate);
-  LOG_D(NR_PHY, "harq_pid %d harq_process->ndi %d, pusch_data.new_data_indicator %d\n",
+  LOG_I(NR_PHY, "%s coding nb_rb %d, Nl = %d\n", pscch_pssch_pdu == NULL ? "ULSCH":"SLSCH",nb_rb, num_layers);
+  LOG_I(NR_PHY, "%s coding A %d G %d mod_order %d Coderate %f\n", pscch_pssch_pdu == NULL ? "ULSCH" : "SLSCH",A, G, mod_order, Coderate);
+  LOG_I(NR_PHY, "harq_pid %d harq_process->ndi %d, pusch_data.new_data_indicator %d\n",
         harq_pid,harq_process->ndi,ndi);
 
   if (harq_process->first_tx == 1 ||
@@ -239,7 +239,7 @@ int nr_ulsch_encoding(PHY_VARS_NR_UE *ue,
     }
 
 
-    LOG_D(PHY,"Rate Matching, Code segment %d (coded bits (G) %u, unpunctured/repeated bits per code segment %d, mod_order %d, nb_rb %d, rvidx %d)...\n",
+    LOG_I(PHY,"Rate Matching, Code segment %d (coded bits (G) %u, unpunctured/repeated bits per code segment %d, mod_order %d, nb_rb %d, rvidx %d)...\n",
 	  r,
 	  G,
 	  Kr*3,
@@ -262,7 +262,7 @@ int nr_ulsch_encoding(PHY_VARS_NR_UE *ue,
                               harq_process->C,
                               F,
                               Kr-F-2*(*pz),
-                              ulsch->pusch_pdu.pusch_data.rv_index,
+                              rv_index,
                               E) == -1)
       return -1;
 

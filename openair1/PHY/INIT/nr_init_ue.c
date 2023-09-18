@@ -28,6 +28,7 @@
 #include "PHY/MODULATION/nr_modulation.h"
 #include "PHY/NR_UE_TRANSPORT/nr_transport_ue.h"
 #include "PHY/NR_UE_TRANSPORT/nr_transport_proto_ue.h"
+#include "PHY/NR_TRANSPORT/nr_ulsch.h"
 #include "PHY/NR_REFSIG/pss_nr.h"
 #include "PHY/NR_REFSIG/ul_ref_seq_nr.h"
 #include "PHY/NR_REFSIG/refsig_defs_ue.h"
@@ -36,6 +37,8 @@
 #include "openair2/COMMON/prs_nr_paramdef.h"
 #include "SCHED_NR_UE/harq_nr.h"
 #include "PHY/NR_REFSIG/nr_mod_table.h"
+#include <math.h>
+#include <complex.h>
 
 void RCconfig_nrUE_prs(void *cfg)
 {
@@ -918,6 +921,18 @@ static void sl_generate_pss_ifft_samples(sl_nr_ue_phy_params_t *sl_ue_params, SL
 
 }
 
+void init_ul_delay_table(NR_DL_FRAME_PARMS *fp)
+{
+  for (int delay = -MAX_UL_DELAY_COMP; delay <= MAX_UL_DELAY_COMP; delay++) {
+    for (int k = 0; k < fp->ofdm_symbol_size; k++) {
+      double complex delay_cexp = cexp(I * (2.0 * M_PI * k * delay / fp->ofdm_symbol_size));
+      fp->ul_delay_table[MAX_UL_DELAY_COMP + delay][k].r = (int16_t)round(256 * creal(delay_cexp));
+      fp->ul_delay_table[MAX_UL_DELAY_COMP + delay][k].i = (int16_t)round(256 * cimag(delay_cexp));
+    }
+  }
+}
+
+
 void sl_ue_phy_init(PHY_VARS_NR_UE *UE) {
 
   uint16_t scaling_value = ONE_OVER_SQRT2_Q15;
@@ -983,5 +998,72 @@ void sl_ue_phy_init(PHY_VARS_NR_UE *UE) {
   sl_generate_pss_ifft_samples(&UE->SL_UE_PHY_PARAMS, &UE->SL_UE_PHY_PARAMS.init_params);
 
 
+  UE->max_nb_slsch = NR_SLSCH_RX_MAX;
+  UE->slsch = (NR_gNB_ULSCH_t *)malloc16(UE->max_nb_slsch * sizeof(NR_gNB_ULSCH_t));
+  for (int i = 0; i < UE->max_nb_slsch; i++) {
+    LOG_I(PHY, "Allocating Transport Channel Buffers for SLSCH %d/%d\n", i, UE->max_nb_slsch);
+    UE->slsch[i] = new_gNB_ulsch(UE->max_ldpc_iterations, sl_fp->N_RB_UL);
+  }
 
+  int Prx=sl_fp->nb_antennas_rx;
+  int Ptx=sl_fp->nb_antennas_tx;
+  int N_RB_UL = sl_fp->N_RB_UL;
+  int n_buf = 2*Prx;
+
+  int nb_re_pusch = N_RB_UL * NR_NB_SC_PER_RB;
+  int nb_re_pusch2 = nb_re_pusch + (nb_re_pusch&7);
+  UE->pssch_vars = (NR_gNB_PUSCH *)malloc16_clear(UE->max_nb_slsch * sizeof(NR_gNB_PUSCH));
+  for (int SLSCH_id = 0; SLSCH_id < NR_SLSCH_RX_MAX; SLSCH_id++) {
+    NR_gNB_PUSCH *pssch = &UE->pssch_vars[SLSCH_id];
+    pssch->rxdataF_ext = (int32_t **)malloc16(Prx * sizeof(int32_t *));
+    pssch->ul_ch_estimates = (int32_t **)malloc16(n_buf * sizeof(int32_t *));
+    pssch->ul_ch_estimates_ext = (int32_t **)malloc16(n_buf * sizeof(int32_t *));
+    pssch->ptrs_phase_per_slot = (int32_t **)malloc16(n_buf * sizeof(int32_t *));
+    pssch->ul_ch_estimates_time = (int32_t **)malloc16(n_buf * sizeof(int32_t *));
+    pssch->rxdataF_comp = (int32_t **)malloc16(n_buf * sizeof(int32_t *));
+    pssch->ul_ch_mag0 = (int32_t **)malloc16(n_buf * sizeof(int32_t *));
+    pssch->ul_ch_magb0 = (int32_t **)malloc16(n_buf * sizeof(int32_t *));
+    pssch->ul_ch_magc0 = (int32_t **)malloc16(n_buf * sizeof(int32_t *));
+    pssch->ul_ch_mag = (int32_t **)malloc16(n_buf * sizeof(int32_t *));
+    pssch->ul_ch_magb = (int32_t **)malloc16(n_buf * sizeof(int32_t *));
+    pssch->ul_ch_magc = (int32_t **)malloc16(n_buf * sizeof(int32_t *));
+    pssch->rho = (int32_t ***)malloc16(Prx * sizeof(int32_t **));
+    pssch->llr_layers = (int16_t **)malloc16(2 * sizeof(int32_t *));
+    for (int i = 0; i < Prx; i++) {
+      pssch->rxdataF_ext[i] = (int32_t *)malloc16_clear(sizeof(int32_t) * nb_re_pusch2 * sl_fp->symbols_per_slot);
+      pssch->rho[i] = (int32_t **)malloc16_clear(2 * 2 * sizeof(int32_t *));
+
+      for (int j = 0; j < 2; j++) {
+        for (int k = 0; k < 2; k++) {
+          pssch->rho[i][j * 2 + k] =
+              (int32_t *)malloc16_clear(sizeof(int32_t) * nb_re_pusch2 * sl_fp->symbols_per_slot);
+        }
+      }
+    }
+    for (int i = 0; i < n_buf; i++) {
+      pssch->ul_ch_estimates[i] = (int32_t *)malloc16_clear(sizeof(int32_t) * sl_fp->ofdm_symbol_size * sl_fp->symbols_per_slot);
+      pssch->ul_ch_estimates_ext[i] = (int32_t *)malloc16_clear(sizeof(int32_t) * nb_re_pusch2 * sl_fp->symbols_per_slot);
+      pssch->ul_ch_estimates_time[i] = (int32_t *)malloc16_clear(sizeof(int32_t) * sl_fp->ofdm_symbol_size);
+      pssch->ptrs_phase_per_slot[i] = (int32_t *)malloc16_clear(sizeof(int32_t) * sl_fp->symbols_per_slot); // symbols per slot
+      pssch->rxdataF_comp[i] = (int32_t *)malloc16_clear(sizeof(int32_t) * nb_re_pusch2 * sl_fp->symbols_per_slot);
+      pssch->ul_ch_mag0[i] = (int32_t *)malloc16_clear(sizeof(int32_t) * nb_re_pusch2 * sl_fp->symbols_per_slot);
+      pssch->ul_ch_magb0[i] = (int32_t *)malloc16_clear(sizeof(int32_t) * nb_re_pusch2 * sl_fp->symbols_per_slot);
+      pssch->ul_ch_magc0[i] = (int32_t *)malloc16_clear(sizeof(int32_t) * nb_re_pusch2 * sl_fp->symbols_per_slot);
+      pssch->ul_ch_mag[i] = (int32_t *)malloc16_clear(sizeof(int32_t) * nb_re_pusch2 * sl_fp->symbols_per_slot);
+      pssch->ul_ch_magb[i] = (int32_t *)malloc16_clear(sizeof(int32_t) * nb_re_pusch2 * sl_fp->symbols_per_slot);
+      pssch->ul_ch_magc[i] = (int32_t *)malloc16_clear(sizeof(int32_t) * nb_re_pusch2 * sl_fp->symbols_per_slot);
+    }
+
+    for (int i=0; i< 2; i++) {
+      pssch->llr_layers[i] = (int16_t *)malloc16_clear((8 * ((3 * 8 * 6144) + 12))
+                                                       * sizeof(int16_t)); // [hna] 6144 is LTE and (8*((3*8*6144)+12)) is not clear
+    }
+    pssch->llr = (int16_t *)malloc16_clear((8 * ((3 * 8 * 6144) + 12))
+                                           * sizeof(int16_t)); // [hna] 6144 is LTE and (8*((3*8*6144)+12)) is not clear
+    pssch->ul_valid_re_per_slot = (int16_t *)malloc16_clear(sizeof(int16_t) * sl_fp->symbols_per_slot);
+  } // ulsch_id
+  UE->sl_measurements = calloc(1,sizeof(struct PHY_MEASUREMENTS_gNB_s));
+
+
+  init_ul_delay_table(sl_fp);
 }

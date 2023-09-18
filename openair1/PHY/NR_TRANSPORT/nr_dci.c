@@ -45,12 +45,13 @@ void nr_pdcch_scrambling(uint32_t *in,
                          uint32_t size,
                          uint32_t Nid,
                          uint32_t scrambling_RNTI,
-                         uint32_t *out) {
+                         uint32_t *out,
+			 int sci_flag) {
   uint8_t reset;
   uint32_t x1 = 0, x2 = 0, s = 0;
   reset = 1;
-  x2 = (scrambling_RNTI<<16) + Nid;
-  LOG_D(PHY,"PDCCH Scrambling x2 %x : scrambling_RNTI %x \n", x2, scrambling_RNTI);
+  if (sci_flag==0) x2 = (scrambling_RNTI<<16) + Nid;
+  else             x2 = (Nid<<15) + 1010;
   for (int i=0; i<size; i++) {
     if ((i&0x1f)==0) {
       s = lte_gold_generic(&x1, &x2, reset);
@@ -114,8 +115,8 @@ uint32_t nr_generate_dci(PHY_VARS_gNB *gNB, PHY_VARS_NR_UE *ue,
     cset_start_symb = pdcch_pdu_rel15->StartSymbolIndex;
     cset_nsymb = pdcch_pdu_rel15->DurationSymbols;
     dci_idx = 0;
-    LOG_D(PHY, "pdcch: Coreset rb_offset %d, nb_rb %d BWP Start %d\n",rb_offset,n_rb,pdcch_pdu_rel15->BWPStart);
-    LOG_D(PHY, "pdcch: Coreset starting subcarrier %d on symbol %d (%d symbols)\n", cset_start_sc, cset_start_symb, cset_nsymb);
+    LOG_D(NR_PHY, "pdcch: Coreset rb_offset %d, nb_rb %d BWP Start %d\n",rb_offset,n_rb,pdcch_pdu_rel15->BWPStart);
+    LOG_D(NR_PHY, "pdcch: Coreset starting subcarrier %d on symbol %d (%d symbols)\n", cset_start_sc, cset_start_symb, cset_nsymb);
     // DMRS length is per OFDM symbol
     uint32_t dmrs_length = (n_rb+pdcch_pdu_rel15->BWPStart)*6; //2(QPSK)*3(per RB)*6(REG per CCE)
     uint32_t encoded_length = gNB ? dci_pdu->AggregationLevel*108:dci_pdu->AggregationLevel*18; //2(QPSK)*9(per RB)*6(REG per CCE)
@@ -163,9 +164,9 @@ uint32_t nr_generate_dci(PHY_VARS_gNB *gNB, PHY_VARS_NR_UE *ue,
 #endif
     /// Scrambling
     uint32_t scrambled_output[NR_MAX_DCI_SIZE_DWORD]= {0};
-    nr_pdcch_scrambling(encoder_output, encoded_length, Nid, scrambling_RNTI, scrambled_output);
+    nr_pdcch_scrambling(encoder_output, encoded_length, Nid, scrambling_RNTI, scrambled_output,0);
 #ifdef DEBUG_CHANNEL_CODING
-    printf("scrambled output: [0]->0x%08x \t [1]->0x%08x \t [2]->0x%08x \t [3]->0x%08x\t [4]->0x%08x\t [5]->0x%08x\t \
+    printf("scrambled output: [0]->0x%08x \t [1]->0x%08x \t [2]->0x%08x \t [3]->0x%08x\t [4]->0x%08x\t [5]->0x%08x\n \
 [6]->0x%08x \t [7]->0x%08x \t [8]->0x%08x \t [9]->0x%08x\t [10]->0x%08x\t [11]->0x%08x\n",
 	   scrambled_output[0], scrambled_output[1], scrambled_output[2], scrambled_output[3], scrambled_output[4],scrambled_output[5],
 	   scrambled_output[6], scrambled_output[7], scrambled_output[8], scrambled_output[9], scrambled_output[10],scrambled_output[11] );

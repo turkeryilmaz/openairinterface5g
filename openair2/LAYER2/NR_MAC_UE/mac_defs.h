@@ -474,8 +474,7 @@ typedef struct {
   NR_list_t feedback_sl_harq;
   /// UL HARQ processes that await retransmission
   NR_list_t retrans_sl_harq;
-  //
-//  NR_SLSCH 
+  //  NR_SLSCH 
 } NR_SL_UE_sched_ctrl_t;
 
 #define MAX_SL_UE_CONNECTIONS 8
@@ -615,6 +614,8 @@ typedef struct {
   // SIDELINK Scheduling fields
   NR_SL_UEs_t UE_info;
 
+  //  current SCI pdu build from SCI1 and SCI2
+  nr_sci_pdu_t sci_pdu_rx;
 } NR_UE_MAC_INST_t;
 
 /*@}*/

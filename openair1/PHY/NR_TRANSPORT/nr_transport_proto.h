@@ -35,6 +35,7 @@
 
 #include "PHY/defs_nr_common.h"
 #include "PHY/defs_gNB.h"
+#include "PHY/defs_nr_UE.h"
 
 #define NR_PBCH_PDU_BITS 24
 
@@ -126,6 +127,11 @@ void free_gNB_dlsch(NR_gNB_DLSCH_t *dlsch, uint16_t N_RB, const NR_DL_FRAME_PARM
     @param harq_pid HARQ process ID
 */
 void nr_rx_pusch(PHY_VARS_gNB *gNB,
+		 PHY_VARS_NR_UE *ue,
+		 UE_nr_rxtx_proc_t *proc,
+                 nr_phy_data_t *phy_data,
+		 int rxFSz,
+		 c16_t rxdataF[][rxFSz],
                  uint8_t UE_id,
                  uint32_t frame,
                  uint8_t slot,
@@ -140,12 +146,18 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
     @param nb_rb_pusch The number of RBs allocated (used for Resource Allocation Type 1 in NR)
     @param frame_parms, Pointer to frame descriptor structure
 */
-void nr_ulsch_extract_rbs(c16_t **rxdataF,
+void nr_ulsch_extract_rbs(int rxFSz,
+		          c16_t rxdataF[][rxFSz],
                           NR_gNB_PUSCH *pusch_vars,
                           int slot,
                           unsigned char symbol,
                           uint8_t is_dmrs_symbol,
-                          nfapi_nr_pusch_pdu_t *pusch_pdu,
+                          uint32_t bwp_start,
+			  uint32_t rb_start,
+			  uint32_t rb_size,
+			  uint32_t nrOfLayers,
+			  uint32_t num_dmrs_cdm_grps_no_data,
+			  uint32_t dmrs_config_type,
                           NR_DL_FRAME_PARMS *frame_parms);
 
 void nr_ulsch_scale_channel(int32_t **ul_ch_estimates_ext,

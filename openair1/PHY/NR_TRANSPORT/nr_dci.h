@@ -39,7 +39,8 @@ void nr_pdcch_scrambling(uint32_t *in,
                          uint32_t size,
                          uint32_t Nid,
                          uint32_t n_RNTI,
-                         uint32_t *out);
+                         uint32_t *out,
+			 int sci_flag);
 
 int16_t find_nr_pdcch(int frame,int slot, PHY_VARS_gNB *gNB,find_type_t type);
 

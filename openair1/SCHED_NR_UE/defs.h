@@ -30,7 +30,7 @@
 #define __openair_SCHED_H__
 
 #include "PHY/defs_nr_UE.h"
-
+#include <stdbool.h>
 
 /*enum THREAD_INDEX { OPENAIR_THREAD_INDEX = 0,
                     TOP_LEVEL_SCHEDULER_THREAD_INDEX,
@@ -193,9 +193,9 @@ int nr_ue_csi_im_procedures(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, c16_t r
 void nr_ue_csi_rs_procedures(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP]);
 
 
-void psbch_pscch_processing(PHY_VARS_NR_UE *ue,
-                            UE_nr_rxtx_proc_t *proc,
-                            nr_phy_data_t *phy_data);
+void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
+                                  UE_nr_rxtx_proc_t *proc,
+                                  nr_phy_data_t *phy_data);
 int phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
                             UE_nr_rxtx_proc_t *proc,
                             nr_phy_data_tx_t *phy_data);
@@ -215,5 +215,9 @@ void nr_fill_sl_rx_indication(sl_nr_rx_indication_t *rx_ind,
                               void *typeSpecific,
                               uint16_t rx_slss_id);
 
+typedef struct {
+  ldpcDecode_t *rdata;
+  bool rxok;
+} slsch_status_t;
 #endif
 

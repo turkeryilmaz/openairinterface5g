@@ -714,6 +714,11 @@ int8_t sl_handle_scheduled_response(nr_scheduled_response_t *scheduled_response)
         phy_data->nr_sl_pssch_sci_pdu = sl_rx_config->sl_rx_config_list[0].rx_sci2_config_pdu;
         LOG_I(NR_PHY, "Recvd CONFIG_TYPE_RX_PSSCH\n");
         break;
+      case SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH:
+        phy_data->sl_rx_action = SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH;
+        phy_data->nr_sl_pssch_pdu = sl_rx_config->sl_rx_config_list[0].rx_pssch_config_pdu;
+        LOG_I(NR_PHY, "Recvd CONFIG_TYPE_RX_PSSCH\n");
+        break;
       default:
         AssertFatal(0,"Incorrect sl_rx config req pdutype \n");
         break;

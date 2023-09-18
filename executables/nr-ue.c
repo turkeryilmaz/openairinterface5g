@@ -641,7 +641,7 @@ void processSlotTX(void *arg) {
       sl_indication.phy_data  = &phy_data;
       sl_indication.slot_type = SIDELINK_SLOT_TYPE_TX;
 
-      LOG_I(NR_PHY,"Sending SL indication RX %d.%d TX %d.%d\n",proc->frame_rx,proc->nr_slot_rx,proc->frame_tx,proc->nr_slot_tx);
+      LOG_D(NR_PHY,"Sending SL indication RX %d.%d TX %d.%d\n",proc->frame_rx,proc->nr_slot_rx,proc->frame_tx,proc->nr_slot_tx);
       UE->if_inst->sl_indication(&sl_indication);
 
       stop_meas(&UE->ue_ul_indication_stats);
@@ -722,7 +722,7 @@ nr_phy_data_t UE_dl_preprocessing(PHY_VARS_NR_UE *UE, UE_nr_rxtx_proc_t *proc)
         UE->if_inst->sl_indication(&sl_indication);
       }
       uint64_t a=rdtsc_oai();
-      psbch_pscch_processing(UE, proc, &phy_data);
+      psbch_pscch_pssch_processing(UE, proc, &phy_data);
       LOG_D(PHY, "In %s: slot %d:%d, time %llu\n", __FUNCTION__, proc->frame_rx, proc->nr_slot_rx, (rdtsc_oai()-a)/3500);
     }
   } else {

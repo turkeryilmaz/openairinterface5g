@@ -34,6 +34,7 @@
 #define __PHY_DEFS_GNB__H__
 
 #include "defs_nr_common.h"
+#include "defs_nr_UE.h"
 #include "CODING/nrPolar_tools/nr_polar_pbch_defs.h"
 #include "openair2/NR_PHY_INTERFACE/NR_IF_Module.h"
 #include "PHY/NR_TRANSPORT/nr_transport_common_proto.h"
@@ -43,6 +44,7 @@
 #include "PHY/CODING/nrLDPC_decoder/nrLDPC_types.h"
 #include "executables/rt_profiling.h"
 #include "nfapi_nr_interface_scf.h"
+#include "sidelink_nr_ue_interface.h"
 
 #define MAX_NUM_RU_PER_gNB 8
 #define MAX_PUCCH0_NID 8
@@ -188,6 +190,10 @@ typedef struct {
 typedef struct {
   /// Nfapi ULSCH PDU
   nfapi_nr_pusch_pdu_t ulsch_pdu;
+  /// PSSCH PDU
+  sl_nr_rx_config_pssch_sci_pdu_t *pssch_pdu;
+  /// SLSCH PDU
+  sl_nr_rx_config_pssch_pdu_t *slsch_pdu;
   /// Index of current HARQ round for this DLSCH
   uint8_t round;
   bool new_rx;
@@ -264,7 +270,7 @@ typedef struct {
   int pusch_delay_max_val;
 } NR_ULSCH_delay_t;
 
-typedef struct {
+typedef struct NR_gNB_ULSCH_s {
   uint32_t frame;
   uint32_t slot;
   /// Pointers to 16 HARQ processes for the ULSCH
@@ -325,7 +331,7 @@ typedef struct {
 } NR_gNB_COMMON;
 
 
-typedef struct {
+typedef struct NR_gNB_PUSCH_s {
   /// \brief Holds the received data in the frequency domain for the allocated RBs in repeated format.
   /// - first index: rx antenna id [0..nb_antennas_rx[
   /// - second index: ? [0..2*ofdm_symbol_size[
@@ -548,7 +554,7 @@ typedef struct gNB_L1_proc_t_s {
   gNB_L1_rxtx_proc_t L1_proc, L1_proc_tx;
 } gNB_L1_proc_t;
 
-typedef struct {
+typedef struct PHY_MEASUREMENTS_gNB_s {
   // common measurements
   //! estimated noise power (linear)
   unsigned int   n0_power[MAX_NUM_RU_PER_gNB];
@@ -782,6 +788,7 @@ typedef struct PHY_VARS_gNB_s {
 
 typedef struct LDPCDecode_s {
   PHY_VARS_gNB *gNB;
+  struct PHY_VARS_NR_UE_s *UE;
   NR_UL_gNB_HARQ_t *ulsch_harq;
   t_nrLDPC_dec_params decoderParms;
   NR_gNB_ULSCH_t *ulsch;

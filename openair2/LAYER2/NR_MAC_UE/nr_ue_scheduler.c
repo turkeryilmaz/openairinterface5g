@@ -3255,9 +3255,13 @@ bool nr_ue_sl_pssch_scheduler(nr_sidelink_indication_t *sl_ind,
 
   if (slot > 9 && get_nrUE_params()->sync_ref) return false;
 
-  if (slot < 10 && !get_nrUE_params()->sync_ref) return false;
+  if (/*slot < 10 &&*/ !get_nrUE_params()->sync_ref) return false;
 
-  LOG_I(NR_MAC,"[UE%d] SL-PSSCH SCHEDULER: Frame:SLOT %d:%d, slot_type:%d\n",
+  if ((frame&127) > 0) return false;
+
+  if ((slot % 10) != 6) return false;
+
+  LOG_D(NR_MAC,"[UE%d] SL-PSSCH SCHEDULER: Frame:SLOT %d:%d, slot_type:%d\n",
                                       sl_ind->module_id, frame, slot,sl_ind->slot_type);
 
   nr_sci_pdu_t sci_pdu; 
@@ -3305,7 +3309,7 @@ void nr_ue_sl_pscch_rx_scheduler(nr_sidelink_indication_t *sl_ind,
                        sl_res_pool);
 
 
-   LOG_I(NR_MAC, "[UE%d] TTI-%d:%d RX PSCCH REQ \n", sl_ind->module_id,sl_ind->frame_rx, sl_ind->slot_rx);
+   LOG_D(NR_MAC, "[UE%d] TTI-%d:%d RX PSCCH REQ \n", sl_ind->module_id,sl_ind->frame_rx, sl_ind->slot_rx);
 
 }
 /*
@@ -3354,7 +3358,7 @@ uint8_t nr_ue_sl_psbch_scheduler(nr_sidelink_indication_t *sl_ind,
     rx_config->slot = slot;
     rx_config->sl_rx_config_list[0].pdu_type = *config_type;
 
-    LOG_I(NR_MAC, "[UE%d] TTI-%d:%d RX PSBCH REQ- rx_slss_id:%d, numSSB:%d, next slot_SSB:%d\n",
+    LOG_D(NR_MAC, "[UE%d] TTI-%d:%d RX PSBCH REQ- rx_slss_id:%d, numSSB:%d, next slot_SSB:%d\n",
                                                          sl_ind->module_id,frame, slot,
                                                          sl_cfg->sl_sync_source.rx_slss_id,
                                                          sl_mac_params->rx_sl_bch.num_ssb,
@@ -3379,7 +3383,7 @@ uint8_t nr_ue_sl_psbch_scheduler(nr_sidelink_indication_t *sl_ind,
       tx_config->tx_config_list[0].tx_psbch_config_pdu.psbch_tx_power = 0;//TBD...
       memcpy(tx_config->tx_config_list[0].tx_psbch_config_pdu.psbch_payload, sl_mac_params->tx_sl_bch.sl_mib, 4);
 
-      LOG_I(NR_MAC, "[UE%d] TTI-%d:%d TX PSBCH REQ- tx_slss_id:%d, sl-mib:%x, numSSB:%d, next SSB slot:%d\n",
+      if ((frame&127) ==0 ) LOG_I(NR_MAC, "[SyncRefUE%d] TTI-%d:%d TX PSBCH REQ- tx_slss_id:%d, sl-mib:%x, numSSB:%d, next SSB slot:%d\n",
                                                             sl_ind->module_id,frame, slot,
                                                             sl_mac_params->tx_sl_bch.slss_id,
                                                             (*(uint32_t *)tx_config->tx_config_list[0].tx_psbch_config_pdu.psbch_payload),
@@ -3475,7 +3479,7 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind) {
   if (sl_ind->slot_type==SIDELINK_SLOT_TYPE_TX || sl_ind->phy_data==NULL) rx_allowed=false;
   if (((get_nrUE_params()->sync_ref && sl_ind->slot_rx > 9) || 
       (!get_nrUE_params()->sync_ref && sl_ind->slot_rx < 10)) && rx_allowed) {
-      LOG_I(NR_MAC,"Scheduling PSCCH RX processing slot %d, sync_ref %d\n",slot,get_nrUE_params()->sync_ref);
+      LOG_D(NR_MAC,"Scheduling PSCCH RX processing slot %d, sync_ref %d\n",slot,get_nrUE_params()->sync_ref);
       nr_ue_sl_pscch_rx_scheduler(sl_ind, mac->sl_bwp, mac->sl_rx_res_pool,&rx_config, &tti_action);
     }
   if (!is_psbch_slot && tx_allowed) {

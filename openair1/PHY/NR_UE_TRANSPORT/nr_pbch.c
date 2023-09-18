@@ -254,7 +254,6 @@ void nr_pbch_channel_compensation(struct complex16 rxdataF_ext[][PBCH_MAX_RE_PER
     vect128 *dl_ch128          = (vect128 *)dl_ch_estimates_ext[aarx];
     vect128 *rxdataF128        = (vect128 *)rxdataF_ext[aarx];
     vect128 *rxdataF_comp128   = (vect128 *)rxdataF_comp[aarx];
-
     for (int re=0; re<nb_re; re+=12) {
       *rxdataF_comp128++ = mulByConjugate128(rxdataF128++, dl_ch128++, output_shift);
       *rxdataF_comp128++ = mulByConjugate128(rxdataF128++, dl_ch128++, output_shift);

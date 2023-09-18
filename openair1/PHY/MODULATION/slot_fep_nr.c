@@ -27,7 +27,7 @@
 #include "PHY/NR_UE_ESTIMATION/nr_estimation.h"
 #include <common/utils/LOG/log.h>
 
-//#define DEBUG_FEP
+#define DEBUG_FEP
 
 /*#ifdef LOG_I
 #undef LOG_I
@@ -165,11 +165,11 @@ int nr_slot_fep(PHY_VARS_NR_UE *ue,
 //  rx_offset -= (nb_prefix_samples / frame_parms->ofdm_offset_divisor);
   rx_offset += 1;
 
-//#ifdef DEBUG_FEP
+#ifdef DEBUG_FEP
   //  if (ue->frame <100)
   LOG_I(PHY,"slot_fep: slot %d, symbol %d, nb_prefix_samples %u, nb_prefix_samples0 %u, rx_offset %u energy %d\n",
   Ns, symbol, nb_prefix_samples, nb_prefix_samples0, rx_offset, dB_fixed(signal_energy((int32_t *)&common_vars->rxdata[0][rx_offset],frame_parms->ofdm_symbol_size)));
-  //#endif
+#endif
 
   for (unsigned char aa=0; aa<frame_parms->nb_antennas_rx; aa++) {
     int16_t *rxdata_ptr = (int16_t *)&common_vars->rxdata[aa][rx_offset];
@@ -204,12 +204,10 @@ int nr_slot_fep(PHY_VARS_NR_UE *ue,
                          symbol,
                          linktype);
 */ 
-   for (int i=1413;i<1422;i+=4)  
-     printf("i : %d,%d\n", rxdataF[aa][i + (frame_parms->ofdm_symbol_size*symbol)].r,rxdataF[aa][i+(frame_parms->ofdm_symbol_size*symbol)].i);
   }
 
 #ifdef DEBUG_FEP
-  printf("slot_fep: done\n");
+  LOG_I(NR_PHY,"slot_fep: done for Ns %d symbol %d\n",Ns,symbol);
 #endif
 
   return 0;

@@ -24,6 +24,7 @@
 
 
 #include "PHY/defs_gNB.h"
+#include "PHY/defs_nr_UE.h"
 /** @addtogroup _PHY_PARAMETER_ESTIMATION_BLOCKS_
  * @{
  */
@@ -41,12 +42,16 @@
 */
 
 int nr_pusch_channel_estimation(PHY_VARS_gNB *gNB,
+		                PHY_VARS_NR_UE *ue,
+				int rxFSz,
+				c16_t rxdataF[][rxFSz],
                                 unsigned char Ns,
                                 unsigned short p,
                                 unsigned char symbol,
                                 int ul_id,
                                 unsigned short bwp_start_subcarrier,
                                 nfapi_nr_pusch_pdu_t *pusch_pdu,
+				sl_nr_rx_config_pssch_sci_pdu_t *pssch_pdu,
                                 int *max_ch,
                                 uint32_t *nvar);
 
@@ -54,7 +59,8 @@ void dump_nr_I0_stats(FILE *fd,PHY_VARS_gNB *gNB);
 
 void gNB_I0_measurements(PHY_VARS_gNB *gNB,int slot,int first_symb,int num_symb);
 
-void nr_gnb_measurements(PHY_VARS_gNB *gNB,
+void nr_gnb_measurements(PHY_MEASUREMENTS_gNB *meas,
+		         NR_DL_FRAME_PARMS *fp,
                          NR_gNB_ULSCH_t *ulsch,
                          NR_gNB_PUSCH *pusch_vars,
                          unsigned char symbol,
@@ -68,8 +74,10 @@ int nr_est_timing_advance_srs(const NR_DL_FRAME_PARMS *frame_parms,
                               const int32_t srs_estimated_channel_time[][frame_parms->ofdm_symbol_size]);
 
 void nr_pusch_ptrs_processing(PHY_VARS_gNB *gNB,
+		              struct PHY_VARS_NR_UE_s *ue,
                               NR_DL_FRAME_PARMS *frame_parms,
                               nfapi_nr_pusch_pdu_t *rel15_ul,
+                              sl_nr_rx_config_pssch_sci_pdu_t *pssch_pdu,
                               uint8_t ulsch_id,
                               uint8_t nr_tti_rx,
                               unsigned char symbol,

@@ -163,8 +163,9 @@ int nr_rx_psbch(PHY_VARS_NR_UE *ue,
 
   for (int symbol=0; symbol<numsym;) {
     const uint16_t nb_re = SL_NR_NUM_PSBCH_DATA_RE_IN_ONE_SYMBOL;
-    __attribute__ ((aligned(32))) struct complex16 rxdataF_ext[frame_parms->nb_antennas_rx][nb_re];
-    __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates_ext[frame_parms->nb_antennas_rx][nb_re];
+    uint16_t nb_re2 = (nb_re/12)*12 + ((nb_re % 12)>0 ? 12 : 0);
+    __attribute__ ((aligned(32))) struct complex16 rxdataF_ext[frame_parms->nb_antennas_rx][nb_re2];
+    __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates_ext[frame_parms->nb_antennas_rx][nb_re2];
     //memset(dl_ch_estimates_ext,0, sizeof  dl_ch_estimates_ext);
     nr_psbch_extract(frame_parms->samples_per_slot_wCP,
                      rxdataF,
@@ -191,7 +192,7 @@ int nr_rx_psbch(PHY_VARS_NR_UE *ue,
     LOG_I(PHY,"PSBCH RX log2_maxh = %f (%d)\n", log2_maxh, max_h);
 #endif
 
-    __attribute__ ((aligned(32))) struct complex16 rxdataF_comp[frame_parms->nb_antennas_rx][nb_re];
+    __attribute__ ((aligned(32))) struct complex16 rxdataF_comp[frame_parms->nb_antennas_rx][nb_re2];
     nr_pbch_channel_compensation(rxdataF_ext,
                                  dl_ch_estimates_ext,
                                  nb_re,

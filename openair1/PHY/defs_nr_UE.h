@@ -37,7 +37,8 @@
 #define _Atomic(X) std::atomic< X >
 #endif
 
-#include "defs_nr_common.h"
+#include "PHY/defs_nr_common.h"
+#include "PHY/defs_gNB.h"
 #include "CODING/nrPolar_tools/nr_polar_pbch_defs.h"
 #include "PHY/defs_nr_sl_UE.h"
 
@@ -96,6 +97,8 @@
 
 #include "impl_defs_top.h"
 #include "impl_defs_nr.h"
+// This is for ULSCH RX structures used for Sidelink
+#include "defs_gNB.h"
 #include "time_meas.h"
 #include "PHY/CODING/coding_defs.h"
 #include "PHY/TOOLS/tools_defs.h"
@@ -311,7 +314,7 @@ typedef struct {
 #define NR_PSBCH_MAX_NB_MOD_SYMBOLS 99
 #define NR_PSBCH_DMRS_LENGTH 297 // in mod symbols
 #define NR_PSBCH_DMRS_LENGTH_DWORD 20 // ceil(2(QPSK)*NR_PBCH_DMRS_LENGTH/32)
-
+#define NR_SLSCH_RX_MAX 2
 /* NR Sidelink PSBCH payload fields
    TODO: This will be removed in the future and
    filled in by the upper layers once developed. */
@@ -364,7 +367,7 @@ typedef struct UE_NR_SCAN_INFO_s {
 } UE_NR_SCAN_INFO_t;
 
 /// Top-level PHY Data Structure for UE
-typedef struct {
+typedef struct PHY_VARS_NR_UE_s {
   /// \brief Module ID indicator for this instance
   uint8_t Mod_id;
   /// \brief Component carrier ID for this PHY instance
@@ -437,7 +440,6 @@ typedef struct {
   uint8_t          prs_active_gNBs;
   NR_DL_UE_HARQ_t  dl_harq_processes[2][NR_MAX_DLSCH_HARQ_PROCESSES];
   NR_UL_UE_HARQ_t  ul_harq_processes[NR_MAX_ULSCH_HARQ_PROCESSES];
-  
   //Paging parameters
   uint32_t              IMSImod1024;
   uint32_t              PF;
@@ -655,6 +657,11 @@ typedef struct {
   //Sidelink parameters
   sl_nr_sidelink_mode_t sl_mode;
   sl_nr_ue_phy_params_t SL_UE_PHY_PARAMS;
+  struct PHY_MEASUREMENTS_gNB_s *sl_measurements;
+  int max_nb_slsch;
+  // we use the gNB ULSCH context for SLSCH reception
+  struct NR_gNB_ULSCH_s   *slsch; 
+  struct NR_gNB_PUSCH_s   *pssch_vars;
   bool phy_config_request_sent;
   int pscch_dmrs_gold_init;
   /// PDCCH DMRS for TX
@@ -699,6 +706,7 @@ typedef struct nr_phy_data_s {
   sl_nr_rx_config_type_enum_t sl_rx_action;
   sl_nr_rx_config_pscch_pdu_t nr_sl_pscch_pdu;
   sl_nr_rx_config_pssch_sci_pdu_t nr_sl_pssch_sci_pdu;
+  sl_nr_rx_config_pssch_pdu_t nr_sl_pssch_pdu;
 } nr_phy_data_t;
 /* this structure is used to pass both UE phy vars and
  * proc to the function UE_thread_rxn_txnp4

@@ -5,6 +5,7 @@
 #include "PHY/MODULATION/modulation_UE.h"
 #include "PHY/NR_UE_TRANSPORT/nr_transport_proto_ue.h"
 #include "SCHED_NR_UE/defs.h"
+#include "common/utils/colors.h"
 
 //#define SL_DEBUG
 
@@ -57,8 +58,8 @@ static int sl_nr_pss_correlation(PHY_VARS_NR_UE *UE, int frame_index)
   int shift = log2_approx(maxval);//*(sl_fp->ofdm_symbol_size + sl_fp->nb_prefix_samples)*2);
 
 #ifdef SL_DEBUG
-  LOG_I(PHY,"SIDELINK SLSS SEARCH: Function:%s\n", __func__);
-  LOG_I(PHY,"maxval:%d, shift:%d\n", maxval, shift);
+  LOG_I(NR_PHY,"SIDELINK SLSS SEARCH: Function:%s\n", __func__);
+  LOG_I(NR_PHY,"maxval:%d, shift:%d\n", maxval, shift);
 #endif
 
   for (int pss_index = 0; pss_index < SL_NR_NUM_IDs_IN_PSS; pss_index++) {
@@ -159,8 +160,8 @@ static int sl_nr_pss_correlation(PHY_VARS_NR_UE *UE, int frame_index)
 
   sync_params->N_sl_id2 = pss_source;
 
-  LOG_I(PHY,"PSS Source = %d, Peak found at pos %d, val = %llu (%d dB) avg %d dB, ffo %lf, freq offset:%d Hz\n",
-                pss_source, peak_position, (unsigned long long)peak_value, dB_fixed64(peak_value),dB_fixed64(avg[pss_source]),ffo_est, sync_params->freq_offset);
+  LOG_I(NR_PHY,"%sPSS Source = %d, Peak found at pos %d, val = %llu (%d dB) avg %d dB, ffo %lf, freq offset:%d Hz\n",
+                KRED,pss_source, peak_position, (unsigned long long)peak_value, dB_fixed64(peak_value),dB_fixed64(avg[pss_source]),ffo_est, sync_params->freq_offset);
 
   if (peak_value < 5*avg[pss_source])
     return(-1);
@@ -372,7 +373,7 @@ static void sl_nr_extract_sss(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc,
 
   ue->SL_UE_PHY_PARAMS.sync_params.N_sl_id1 = Nid1;
   ue->SL_UE_PHY_PARAMS.sync_params.N_sl_id = ue->SL_UE_PHY_PARAMS.sync_params.N_sl_id1 + 336 * ue->SL_UE_PHY_PARAMS.sync_params.N_sl_id2;
-  LOG_I(PHY, "UE[%d]NR-SL SLSS SEARCH: SSS Processing over. id2 from SSS:%d, id1 from PSS:%d, SLSS id:%d\n",
+  LOG_I(NR_PHY, "%sUE[%d]NR-SL SLSS SEARCH: SSS Processing over. id2 from SSS:%d, id1 from PSS:%d, SLSS id:%d\n",KRED,
                   ue->Mod_id, ue->SL_UE_PHY_PARAMS.sync_params.N_sl_id1, ue->SL_UE_PHY_PARAMS.sync_params.N_sl_id2,
                   ue->SL_UE_PHY_PARAMS.sync_params.N_sl_id);
 
@@ -431,7 +432,7 @@ int sl_nr_slss_search(PHY_VARS_NR_UE *UE, UE_nr_rxtx_proc_t *proc, int num_frame
     sync_pos = sl_nr_pss_correlation(UE, frame_index);
 
     if (sync_pos == -1) {
-      LOG_I(PHY,"SIDELINK SEARCH SLSS: No PSSS found in this frame\n");
+      LOG_I(NR_PHY,"SIDELINK SEARCH SLSS: No PSSS found in this frame\n");
       continue;
     }
 
@@ -455,7 +456,7 @@ int sl_nr_slss_search(PHY_VARS_NR_UE *UE, UE_nr_rxtx_proc_t *proc, int num_frame
 
 #define SL_NR_NUM_SYMBOLS_FOR_PSBCH_NORMAL_CP 14
 
-      LOG_I(PHY,"UE[%d]SIDELINK SEARCH SLSS: PSS Peak at %d, PSS sym:%d, Estimated PSS position %d\n",
+      LOG_I(NR_PHY,"%sUE[%d]SIDELINK SEARCH SLSS: PSS Peak at %d, PSS sym:%d, Estimated PSS position %d\n",KRED,
                                                                     UE->Mod_id,sync_pos,pss_sym,sync_params->ssb_offset);
 
       int slss_block_samples = (SL_NR_NUM_SYMBOLS_FOR_PSBCH_NORMAL_CP * sl_fp->ofdm_symbol_size) +
@@ -479,7 +480,7 @@ int sl_nr_slss_search(PHY_VARS_NR_UE *UE, UE_nr_rxtx_proc_t *proc, int num_frame
           int end = ssb_end_position; // loop over samples in all symbols (ssb size), including prefix
 
 
-          LOG_I(PHY,"SLSS SEARCH: FREQ comp of SLSS samples. Freq_OFSET:%d, startpos:%d, end_pos:%d\n",
+          LOG_I(NR_PHY,"%sSLSS SEARCH: FREQ comp of SLSS samples. Freq_OFSET:%d, startpos:%d, end_pos:%d\n",KRED,
                                   sync_params->freq_offset, start, end);
           for(int n=start; n<end; n++) {
             for (int ar=0; ar<sl_fp->nb_antennas_rx; ar++) {
@@ -550,7 +551,7 @@ int sl_nr_slss_search(PHY_VARS_NR_UE *UE, UE_nr_rxtx_proc_t *proc, int num_frame
           //rx_offset points to remaining samples needed to fill a frame
           sync_params->rx_offset = sync_params->ssb_offset % sl_fp->samples_per_frame;
 
-          LOG_I(PHY,"UE[%d]SIDELINK SLSS SEARCH: PSBCH RX OK. Remainingframes:%d, rx_offset:%d\n",
+          LOG_I(NR_PHY,"%sUE[%d]SIDELINK SLSS SEARCH: PSBCH RX OK. Remainingframes:%d, rx_offset:%d\n",KRED,
                                                               UE->Mod_id,sync_params->remaining_frames, sync_params->rx_offset);
 
           uint32_t psbch_payload = (*(uint32_t *)decoded_output);
@@ -558,7 +559,7 @@ int sl_nr_slss_search(PHY_VARS_NR_UE *UE, UE_nr_rxtx_proc_t *proc, int num_frame
           sync_params->DFN = (((psbch_payload & 0x0700) >> 1) | ((psbch_payload & 0xFE0000) >> 17));
           sync_params->slot_offset = (((psbch_payload  & 0x010000) >> 10) | ((psbch_payload & 0xFC000000) >> 26));
 
-          LOG_I(PHY, "UE[%d]SIDELINK SLSS SEARCH: SL-MIB: DFN:%d, slot:%d.\n",
+          LOG_I(NR_PHY, "%sUE[%d]SIDELINK SLSS SEARCH: SL-MIB: DFN:%d, slot:%d.\n",KRED,
                                           UE->Mod_id, sync_params->DFN, sync_params->slot_offset);
 
           nr_sl_psbch_rsrp_measurements(sl_ue,frame_parms,rxdataF, false);
@@ -582,7 +583,7 @@ int sl_nr_slss_search(PHY_VARS_NR_UE *UE, UE_nr_rxtx_proc_t *proc, int num_frame
           break;
         }
 
-        LOG_I(PHY,"SIDELINK SLSS SEARCH: SLSS ID: %d metric %d, phase %d, psbch CRC %s\n",
+        LOG_I(NR_PHY,"SIDELINK SLSS SEARCH: SLSS ID: %d metric %d, phase %d, psbch CRC %s\n",
                                   sl_ue->sync_params.N_sl_id,metric_tdd_ncp,phase_tdd_ncp,(ret == 0) ? "OK" : "NOT OK");
 
       } else {

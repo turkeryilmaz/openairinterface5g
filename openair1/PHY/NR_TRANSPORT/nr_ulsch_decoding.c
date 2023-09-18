@@ -31,6 +31,7 @@
 */
 
 
+#include "PHY/defs_nr_UE.h"
 // [from gNB coding]
 #include "PHY/defs_gNB.h"
 #include "PHY/CODING/coding_extern.h"
@@ -47,6 +48,8 @@
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "common/utils/LOG/log.h"
 #include <syscall.h>
+#include "executables/nr-uesoftmodem.h"
+
 //#define DEBUG_ULSCH_DECODING
 //#define gNB_DEBUG_TRACE
 
@@ -251,16 +254,23 @@ static void nr_processULSegment(void *arg)
   //stop_meas(&phy_vars_gNB->ulsch_ldpc_decoding_stats);
 }
 
+
+
+
 int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
-                        uint8_t ULSCH_id,
-                        short *ulsch_llr,
-                        NR_DL_FRAME_PARMS *frame_parms,
-                        nfapi_nr_pusch_pdu_t *pusch_pdu,
-                        uint32_t frame,
-                        uint8_t nr_tti_rx,
-                        uint8_t harq_pid,
-                        uint32_t G)
+		      struct PHY_VARS_NR_UE_s *UE,
+                      uint8_t ULSCH_id,
+                      short *ulsch_llr,
+                      NR_DL_FRAME_PARMS *frame_parms,
+                      nfapi_nr_pusch_pdu_t *pusch_pdu,
+                      uint32_t frame,
+                      uint8_t nr_tti_rx,
+                      uint8_t harq_pid,
+                      uint32_t G,
+		      UE_nr_rxtx_proc_t *proc,
+		      nr_phy_data_t *phy_data)
   {
+    AssertFatal((phy_vars_gNB && !UE) || (!phy_vars_gNB && UE),"Only one of gNB or UE must be non-null`");	  
     if (!ulsch_llr) {
       LOG_E(PHY, "ulsch_decoding.c: NULL ulsch_llr pointer\n");
       return -1;
@@ -268,8 +278,8 @@ int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
 
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_gNB_ULSCH_DECODING, 1);
 
-    NR_gNB_ULSCH_t *ulsch = &phy_vars_gNB->ulsch[ULSCH_id];
-    NR_gNB_PUSCH *pusch = &phy_vars_gNB->pusch_vars[ULSCH_id];
+    NR_gNB_ULSCH_t *ulsch = phy_vars_gNB ? &phy_vars_gNB->ulsch[ULSCH_id] : &UE->slsch[ULSCH_id];
+    NR_gNB_PUSCH *pusch = phy_vars_gNB ? &phy_vars_gNB->pusch_vars[ULSCH_id] : &UE->pssch_vars[ULSCH_id];
     NR_UL_gNB_HARQ_t *harq_process = ulsch->harq_process;
 
     if (!harq_process) {
@@ -382,7 +392,7 @@ int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
   Kr_bytes = Kr >> 3;
 
   uint32_t offset = 0;
-  if (phy_vars_gNB->ldpc_offload_flag && mcs > 9) {
+  if (phy_vars_gNB && phy_vars_gNB->ldpc_offload_flag && mcs > 9) {
     int8_t llrProcBuf[22 * 384];
     //  if (dtx_det==0) {
     int16_t z_ol[68 * 384];
@@ -464,7 +474,7 @@ int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_gNB_ULSCH_DECODING, 0);
 
     if (harq_process->processedSegments == harq_process->C) {
-      LOG_D(PHY, "[gNB %d] ULSCH: Setting ACK for slot %d TBS %d\n", phy_vars_gNB->Mod_id, ulsch->slot, harq_process->TBS);
+      LOG_D(PHY, "[%s %d] ULSCH: Setting ACK for slot %d TBS %d\n", phy_vars_gNB ? "gNB" : "UE", phy_vars_gNB ? phy_vars_gNB->Mod_id : 0, ulsch->slot, harq_process->TBS);
       ulsch->active = false;
       harq_process->round = 0;
 
@@ -473,8 +483,8 @@ int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
 
     } else {
       LOG_D(PHY,
-            "[gNB %d] ULSCH: Setting NAK for SFN/SF %d/%d (pid %d, status %d, round %d, TBS %d)\n",
-            phy_vars_gNB->Mod_id,
+            "[%s %d] ULSCH: Setting NAK for SFN/SF %d/%d (pid %d, status %d, round %d, TBS %d)\n",
+            phy_vars_gNB ? "gNB" : "UE", phy_vars_gNB ? phy_vars_gNB->Mod_id : 0,
             ulsch->frame,
             ulsch->slot,
             harq_pid,
@@ -492,13 +502,16 @@ int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
   else {
     dtx_det = 0;
     set_abort(&harq_process->abort_decode, false);
+    notifiedFIFO_t nf;
+    if (UE) initNotifiedFIFO(&nf);
     for (int r = 0; r < harq_process->C; r++) {
       int E = nr_get_E(G, harq_process->C, Qm, n_layers, r);
       union ldpcReqUnion id = {.s = {ulsch->rnti, frame, nr_tti_rx, 0, 0}};
-      notifiedFIFO_elt_t *req = newNotifiedFIFO_elt(sizeof(ldpcDecode_t), id.p, &phy_vars_gNB->respDecode, &nr_processULSegment);
+      notifiedFIFO_elt_t *req = newNotifiedFIFO_elt(sizeof(ldpcDecode_t), id.p, phy_vars_gNB ? &phy_vars_gNB->respDecode : &nf, &nr_processULSegment);
       ldpcDecode_t *rdata = (ldpcDecode_t *)NotifiedFifoData(req);
       decParams.R = nr_get_R_ldpc_decoder(pusch_pdu->pusch_data.rv_index, E, decParams.BG, decParams.Z, &harq_process->llrLen, harq_process->round);
       rdata->gNB = phy_vars_gNB;
+      rdata->UE  = UE;
       rdata->ulsch_harq = harq_process;
       rdata->decoderParms = decParams;
       rdata->ulsch_llr = ulsch_llr;
@@ -516,12 +529,25 @@ int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
       rdata->ulsch = ulsch;
       rdata->ulsch_id = ULSCH_id;
       rdata->tbslbrm = pusch_pdu->maintenance_parms_v3.tbSizeLbrmBytes;
-      pushTpool(&phy_vars_gNB->threadPool, req);
+      pushTpool(phy_vars_gNB ? &phy_vars_gNB->threadPool : &get_nrUE_params()->Tpool, req);
       LOG_D(PHY, "Added a block to decode, in pipe: %d\n", r);
       r_offset += E;
       offset += (Kr_bytes - (harq_process->F >> 3) - ((harq_process->C > 1) ? 3 : 0));
       //////////////////////////////////////////////////////////////////////////////////////////
     }
+    if (UE) {
+      int num_seg_ok = 0;
+      int nbDecode = harq_process->C;
+      while (nbDecode) {
+         notifiedFIFO_elt_t *req=pullTpool(&nf,  &get_nrUE_params()->Tpool);
+         if (req == NULL)
+           break; // Tpool has been stopped
+         nr_postDecode_slsch(UE, req,proc,phy_data);
+         delNotifiedFIFO_elt(req);
+         nbDecode--;
+      }
+  }
+
   }
   return harq_process->C;
 }

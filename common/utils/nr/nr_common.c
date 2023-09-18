@@ -790,7 +790,34 @@ int get_NREsci2(const int sci2_alpha,
 
 
   uint32_t R10240 = nr_get_code_rate_ul(mcs,mcs_tb_ind);
+  LOG_D(NR_PHY,"R10240 %d\n",R10240);
+  uint32_t tmp  = (uint32_t)ceil((Osci2 + 24)*beta_offset_sci2/(R10240/5120));
+  float tmp2 = 12.0*pssch_numsym;
+  int N_REsci1  = 12*pscch_numrbs*pscch_numsym;
+  tmp2 *= l_subch*subchannel_size;
+  tmp2 -= N_REsci1;
+  tmp2 *= ((float)sci2_alpha/100.0);
 
+  return min(tmp,(int)ceil(tmp2));
+
+}
+int get_NREsci2_2(const int sci2_alpha,
+                  const int sci2_payload_len,
+                  const int sci2_beta_offset,
+                  const int pssch_numsym,
+                  const int pscch_numsym,
+                  const int pscch_numrbs,
+                  const int l_subch,
+                  const int subchannel_size,
+		  const int target_coderate) { 
+
+  float Osci2 = (float)sci2_payload_len;
+  AssertFatal(sci2_beta_offset < MAX_EL_213_9_3_2, "illegal sci2_beta_offset %d\n",sci2_beta_offset);
+  float beta_offset_sci2 = tab38_213_9_3_2[sci2_beta_offset];
+
+
+  uint32_t R10240 = target_coderate;
+  LOG_D(NR_PHY,"R10240 = %d\n",R10240);
   uint32_t tmp  = (uint32_t)ceil((Osci2 + 24)*beta_offset_sci2/(R10240/5120));
   float tmp2 = 12.0*pssch_numsym;
   int N_REsci1  = 12*pscch_numrbs*pscch_numsym;

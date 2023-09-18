@@ -194,29 +194,6 @@ int get_nREDMRS(const NR_SL_ResourcePool_r16_t *sl_res_pool) {
   return(nREDMRS/cnt);
 }
 
-/*
-int get_NREsci2(const NR_SL_ResourcePool_r16_t *sl_res_pool,
-                const sl_nr_tx_config_pscch_pssch_pdu_t *nr_sl_pssch_pscch_pdu,
-                const int mcs_tb_ind) {
-
-  float Osci2 = (float)nr_sl_pssch_pscch_pdu->sci2_payload_len;
-  AssertFatal(nr_sl_pssch_pscch_pdu->sci2_beta_offset < MAX_EL_213_9_3_2, "illegal sci2_beta_offset %d\n",nr_sl_pssch_pscch_pdu->sci2_beta_offset);
-  float beta_offset_sci2 = tab38_213_9_3_2[nr_sl_pssch_pscch_pdu->sci2_beta_offset];
-
-
-  uint32_t R10240 = nr_get_code_rate_ul(nr_sl_pssch_pscch_pdu->mcs,mcs_tb_ind); 
-
-  uint32_t tmp  = (uint32_t)ceil((Osci2 + 24)*beta_offset_sci2/(R10240/5120));
-  float tmp2 = 12.0*nr_sl_pssch_pscch_pdu->pssch_numsym;
-  int N_REsci1  = 12*nr_sl_pssch_pscch_pdu->pscch_numrbs*nr_sl_pssch_pscch_pdu->pscch_numsym;
-  tmp2 *= nr_sl_pssch_pscch_pdu->l_subch*nr_sl_pssch_pscch_pdu->subchannel_size;
-  tmp2 -= N_REsci1;
-  AssertFatal(*sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_Scaling_r16 < 4, "Illegal index %d to alpha table\n",(int)*sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_Scaling_r16);
-  tmp2 *= alpha_tab[*sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_Scaling_r16];
-  return min(tmp,(int)ceil(tmp2)); 
- 
-}
-*/
 void fill_pssch_pscch_pdu(sl_nr_tx_config_pscch_pssch_pdu_t *nr_sl_pssch_pscch_pdu,
 			  const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp, 
                           const NR_SL_ResourcePool_r16_t *sl_res_pool,
@@ -258,6 +235,13 @@ void fill_pssch_pscch_pdu(sl_nr_tx_config_pscch_pssch_pdu_t *nr_sl_pssch_pscch_p
   //Guard symbol + AGC symbol are also excluded
   //Indicates the number of symbols for PSCCH+PSSCH txn
   int num_psfch_symbols=0;
+  LOG_D(NR_MAC,"startrb %d, pscch_numsym %d, pscch_numrbs %d,pscch_dmrs_scrambling_id %d,num_subch%d,subchannel_size%d\n",
+  nr_sl_pssch_pscch_pdu->startrb,
+  nr_sl_pssch_pscch_pdu->pscch_numsym,
+  nr_sl_pssch_pscch_pdu->pscch_numrbs,
+  nr_sl_pssch_pscch_pdu->pscch_dmrs_scrambling_id,
+  nr_sl_pssch_pscch_pdu->num_subch,
+  nr_sl_pssch_pscch_pdu->subchannel_size);
   if (sl_res_pool->sl_PSFCH_Config_r16 && sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16 && *sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16>0) {
      num_psfch_symbols = *sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16;
      if (num_psfch_symbols == 3) num_psfch_symbols++;
@@ -363,12 +347,13 @@ void fill_pssch_pscch_pdu(sl_nr_tx_config_pscch_pssch_pdu_t *nr_sl_pssch_pscch_p
 
   nr_sl_pssch_pscch_pdu->mod_order = nr_get_Qm_ul(sci_pdu->mcs,mcs_tb_ind);
   nr_sl_pssch_pscch_pdu->target_coderate = nr_get_code_rate_ul(sci_pdu->mcs,mcs_tb_ind);
-  nr_sl_pssch_pscch_pdu->tbslbrm = nr_compute_tbs_sl(nr_sl_pssch_pscch_pdu->mod_order,
+  nr_sl_pssch_pscch_pdu->tb_size = nr_compute_tbs_sl(nr_sl_pssch_pscch_pdu->mod_order,
                                                      nr_sl_pssch_pscch_pdu->target_coderate,
-						     N_RE,1+(sci_pdu->number_of_dmrs_port&1));
-
+						     N_RE,1+(sci_pdu->number_of_dmrs_port&1))>>3;
   nr_sl_pssch_pscch_pdu->mcs = sci_pdu->mcs;
   nr_sl_pssch_pscch_pdu->num_layers = sci_pdu->number_of_dmrs_port+1;
+  LOG_I(NR_MAC,"PSSCH: mcs %d, coderate %d, Nl %d => tbs %d\n",sci_pdu->mcs,nr_sl_pssch_pscch_pdu->target_coderate,nr_sl_pssch_pscch_pdu->num_layers,nr_sl_pssch_pscch_pdu->tb_size);
+  nr_sl_pssch_pscch_pdu->tbslbrm = nr_compute_tbslbrm(mcs_tb_ind,NRRIV2BW(sl_bwp->sl_BWP_Generic_r16->sl_BWP_r16->locationAndBandwidth,273),nr_sl_pssch_pscch_pdu->num_layers);
   nr_sl_pssch_pscch_pdu->mcs_table=mcs_tb_ind;
   nr_sl_pssch_pscch_pdu->rv_index = sci2_pdu->rv_index;
   nr_sl_pssch_pscch_pdu->ndi = sci2_pdu->ndi;
@@ -515,7 +500,7 @@ void config_pscch_pdu_rx(sl_nr_rx_config_pscch_pdu_t *nr_sl_pscch_pdu,
   // as part of TX pool sensing procedure.
   nr_sl_pscch_pdu->sense_pscch=0;
 
-  LOG_I(NR_MAC,"Programming PSCCH reception (sci_1a_length %d)\n",nr_sl_pscch_pdu->sci_1a_length);
+  LOG_D(NR_MAC,"Programming PSCCH reception (sci_1a_length %d)\n",nr_sl_pscch_pdu->sci_1a_length);
 
 }
 
@@ -607,16 +592,17 @@ void extract_pscch_pdu(uint64_t *sci1_payload, int len,
 
 int nr_ue_process_sci1_indication_pdu(NR_UE_MAC_INST_t *mac,module_id_t mod_id,frame_t frame, int slot, sl_nr_sci_indication_pdu_t *sci,void *phy_data) {
 
-  nr_sci_pdu_t sci_pdu;  //&mac->def_sci_pdu[slot][sci->sci_format_type];
+  nr_sci_pdu_t *sci_pdu = &mac->sci_pdu_rx;  //&mac->def_sci_pdu[slot][sci->sci_format_type];
+  memset(sci_pdu,0,sizeof(*sci_pdu));
   const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp = mac->sl_bwp;
   const NR_SL_ResourcePool_r16_t *sl_res_pool = mac->sl_rx_res_pool; 
 
   LOG_I(NR_MAC,"Received sci indication (sci format %d, Nid %x, subChannelIndex %d, payloadSize %d,payload %llx)\n",
         sci->sci_format_type,sci->Nid,sci->subch_index,sci->sci_payloadlen,*(unsigned long long*)sci->sci_payloadBits);
   AssertFatal(sci->sci_format_type == SL_SCI_FORMAT_1A_ON_PSCCH, "need to have format 1A here only\n");
-  extract_pscch_pdu((uint64_t *)sci->sci_payloadBits, sci->sci_payloadlen,sl_bwp, sl_res_pool, &sci_pdu);
+  extract_pscch_pdu((uint64_t *)sci->sci_payloadBits, sci->sci_payloadlen,sl_bwp, sl_res_pool, sci_pdu);
   LOG_I(NR_MAC,"SCI1A: frequency_resource %d, time_resource %d, dmrs_pattern %d, beta_offset_indicator %d, mcs %d, number_of_dmrs_port %d, 2nd stage SCI format %d\n",
-        sci_pdu.frequency_resource_assignment.val,sci_pdu.time_resource_assignment.val,sci_pdu.dmrs_pattern.val,sci_pdu.beta_offset_indicator,sci_pdu.mcs,sci_pdu.number_of_dmrs_port,sci_pdu.second_stage_sci_format);
+        sci_pdu->frequency_resource_assignment.val,sci_pdu->time_resource_assignment.val,sci_pdu->dmrs_pattern.val,sci_pdu->beta_offset_indicator,sci_pdu->mcs,sci_pdu->number_of_dmrs_port,sci_pdu->second_stage_sci_format);
   // send schedule response
 
   sl_nr_rx_config_request_t rx_config;
@@ -625,7 +611,7 @@ int nr_ue_process_sci1_indication_pdu(NR_UE_MAC_INST_t *mac,module_id_t mod_id,f
   rx_config.slot = slot;
   config_pssch_sci_pdu_rx(&rx_config.sl_rx_config_list[0].rx_sci2_config_pdu,
                           NR_SL_SCI_FORMAT_2A,
-                          &sci_pdu,
+                          sci_pdu,
                           sci->Nid,
                           sci->subch_index,
                           sl_bwp,
@@ -643,6 +629,28 @@ int nr_ue_process_sci1_indication_pdu(NR_UE_MAC_INST_t *mac,module_id_t mod_id,f
 }
 
 
+
+void config_pssch_slsch_pdu_rx(sl_nr_rx_config_pssch_pdu_t *nr_sl_pssch_pdu,
+			       nr_sci_pdu_t *sci_pdu,
+	  	               const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp, 
+                               const NR_SL_ResourcePool_r16_t *sl_res_pool){
+
+
+  nr_sl_pssch_pdu->target_coderate = nr_get_code_rate_ul(sci_pdu->mcs,sci_pdu->additional_mcs.val);
+  nr_sl_pssch_pdu->harq_pid=sci_pdu->harq_pid;
+  nr_sl_pssch_pdu->mod_order=nr_get_Qm_ul(sci_pdu->mcs,sci_pdu->additional_mcs.val);
+  nr_sl_pssch_pdu->mcs=sci_pdu->mcs;
+  nr_sl_pssch_pdu->mcs_table=sci_pdu->additional_mcs.val;
+  nr_sl_pssch_pdu->num_layers=1+(sci_pdu->number_of_dmrs_port&1);
+  nr_sl_pssch_pdu->rv_index=sci_pdu->rv_index;
+  nr_sl_pssch_pdu->ndi=sci_pdu->ndi;
+  nr_sl_pssch_pdu->tbslbrm = nr_compute_tbslbrm(sci_pdu->additional_mcs.val,
+		                                NRRIV2BW(sl_bwp->sl_BWP_Generic_r16->sl_BWP_r16->locationAndBandwidth,273),
+						nr_sl_pssch_pdu->num_layers);
+/*  nr_sl_pssch_pdu->tb_size = nr_compute_tbs_sl(nr_sl_pssch_pdu->mod_order,
+                                               nr_sl_pssch_pdu->target_coderate,
+                                               N_RE,1+(sci_pdu->number_of_dmrs_port&1))>>3; */
+}
 
 void config_pssch_sci_pdu_rx(sl_nr_rx_config_pssch_sci_pdu_t *nr_sl_pssch_sci_pdu,
                              nr_sci_format_t sci2_format,
@@ -724,4 +732,99 @@ void config_pssch_sci_pdu_rx(sl_nr_rx_config_pssch_sci_pdu_t *nr_sl_pssch_sci_pd
 
 }
 
+
+int nr_ue_process_sci2_indication_pdu(NR_UE_MAC_INST_t *mac,module_id_t mod_id,frame_t frame, int slot, sl_nr_sci_indication_pdu_t *sci,void *phy_data) {
+
+  nr_sci_pdu_t *sci_pdu = &mac->sci_pdu_rx;  //&mac->def_sci_pdu[slot][sci->sci_format_type];
+  const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp = mac->sl_bwp;
+  const NR_SL_ResourcePool_r16_t *sl_res_pool = mac->sl_rx_res_pool; 
+  static int ndi=0;
+  LOG_I(NR_MAC,"Received sci indication (sci format %d, Nid %x, subChannelIndex %d, payloadSize %d,payload %llx)\n",
+        sci->sci_format_type,sci->Nid,sci->subch_index,sci->sci_payloadlen,*(unsigned long long*)sci->sci_payloadBits);
+  AssertFatal(sci->sci_format_type == SL_SCI_FORMAT_2_ON_PSSCH, "need to have format 2 here only\n");
+  extract_pssch_sci_pdu((uint64_t *)sci->sci_payloadBits, sci->sci_payloadlen,sl_bwp, sl_res_pool, sci_pdu);
+  LOG_I(NR_MAC,"SCI2A: harq_pid %d ndi %d RV %d SRC %x DST %x HARQ_FB %d Cast %d CSI_Req %d\n", 0/*sci_pdu->harq_pid*/,ndi/*sci_pdu->ndi*/,0/*sci_pdu->rv_index*/,0x12/*sci_pdu->source_id*/,0xabdc/*sci_pdu->dest_id*/,1/*sci_pdu->harq_feedback*/,0/*sci_pdu->cast_type*/,1/*sci_pdu->csi_req*/);
+  ndi=1-ndi;
+  // send schedule response
+
+  sl_nr_rx_config_request_t rx_config;
+  rx_config.number_pdus = 1;
+  rx_config.sfn = frame;
+  rx_config.slot = slot;
+  config_pssch_slsch_pdu_rx(&rx_config.sl_rx_config_list[0].rx_pssch_config_pdu,
+                            sci_pdu,
+                            sl_bwp,
+                            sl_res_pool);
+  rx_config.sl_rx_config_list[0].pdu_type =  SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH;
+
+  nr_scheduled_response_t scheduled_response;
+  memset(&scheduled_response,0, sizeof(nr_scheduled_response_t));
+
+  fill_scheduled_response(&scheduled_response,NULL,NULL,NULL,&rx_config,NULL,mod_id,0,frame,slot,phy_data);
+  LOG_I(NR_MAC, "[UE%d] TTI-%d:%d RX PSSCH_SLSCH REQ \n", mod_id,frame, slot);
+  if ((mac->if_module != NULL) && (mac->if_module->scheduled_response != NULL))
+      mac->if_module->scheduled_response(&scheduled_response);
+  return 1;
+}
+extract_pssch_sci_pdu(uint64_t *sci2_payload, int len,
+	  	      const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp, 
+                      const NR_SL_ResourcePool_r16_t *sl_res_pool,
+		      nr_sci_pdu_t *sci_pdu) { 
+  int pos=0,fsize;
+  static ndi=1;
+  int sci2_size = nr_sci_size(sl_res_pool,sci_pdu,NR_SL_SCI_FORMAT_2A);
+  AssertFatal(sci2_size == len,"sci2a size %d is not the same sci_indication %d\n",sci2_size,len);
+
+
+  //harq_pid; // 4 bits
+  fsize=4;
+  pos=fsize;
+  sci_pdu->harq_pid = *sci2_payload>>(sci2_size-pos)&((1<<fsize)-1);
+  LOG_D(NR_MAC,"harq_pid (%d) in pos %d\n",sci_pdu->harq_pid,pos-fsize);
+
+
+  //ndi; // 1 bit
+  fsize = 1;
+  pos+=fsize;
+  sci_pdu->ndi = *sci2_payload>>(sci2_size-pos)&((1<<fsize)-1);
+  LOG_D(NR_MAC,"ndi (%d) in pos %d\n",sci_pdu->ndi,pos-fsize);
+
+  //rv_index; // 2 bits
+  fsize = 2;
+  pos+=fsize;
+  sci_pdu->rv_index = *sci2_payload>>(sci2_size-pos)&((1<<fsize)-1);
+  LOG_D(NR_MAC,"rv_index (%d) in pos %d\n",sci_pdu->rv_index,pos-fsize);
+
+  //source_id; // 8 bits
+  fsize = 8;
+  pos+=fsize;
+  sci_pdu->source_id = *sci2_payload>>(sci2_size-pos)&((1<<fsize)-1);
+  LOG_D(NR_MAC,"source_id (%d) in pos %d\n",sci_pdu->source_id,pos-fsize);
+
+  //dest_id; // 16 bits
+  fsize = 16;
+  pos+=fsize;
+  sci_pdu->dest_id = *sci2_payload>>(sci2_size-pos)&((1<<fsize)-1);
+  LOG_D(NR_MAC,"dest_id (%d) in pos %d\n",sci_pdu->dest_id,pos-fsize);
+
+  //harq_feedback; //1 bit
+  fsize = 1;
+  pos+=fsize;
+  sci_pdu->harq_feedback = *sci2_payload>>(sci2_size-pos)&((1<<fsize)-1);
+  LOG_D(NR_MAC,"harq_feedback (%d) in pos %d\n",sci_pdu->harq_feedback,pos-fsize);
+
+  //cast_type // 2 bits formac 2A
+  fsize = 2;
+  pos+=fsize;
+  sci_pdu->cast_type = *sci2_payload>>(sci2_size-pos)&((1<<fsize)-1);
+  LOG_D(NR_MAC,"cast_type (%d) in pos %d\n",sci_pdu->cast_type,pos-fsize);
+  
+  // csi_req // 1 bit format 2A, format 2C
+  fsize = 1;              
+  pos+=fsize;
+  sci_pdu->csi_req = *sci2_payload>>(sci2_size-pos)&((1<<fsize)-1);
+  LOG_D(NR_MAC,"csi_req (%d) in pos %d\n",sci_pdu->csi_req,pos-fsize);
+  
+
+}
 
