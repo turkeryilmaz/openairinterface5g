@@ -110,11 +110,12 @@ int mu = 1;
 int loglvl = OAILOG_WARNING;
 int seed = 0;
 int mcs = 0;
+uint16_t node_id = 0;
 
 static void get_sim_cl_opts(int argc, char **argv)
 {
     char c;
-    while ((c = getopt(argc, argv, "F:g:hIL:l:m:M:n:N:o:O:p:P:r:R:s:S:t:x:y:z:")) != -1) {
+    while ((c = getopt(argc, argv, "F:d:g:hIL:l:m:M:n:N:o:O:p:P:r:R:s:S:t:x:y:z:")) != -1) {
     switch (c) {
       case 'F':
         input_fd = fopen(optarg, "r");
@@ -122,6 +123,10 @@ static void get_sim_cl_opts(int argc, char **argv)
           printf("Problem with filename %s. Exiting.\n", optarg);
           exit(-1);
         }
+        break;
+
+      case 'd':
+        node_id = atoi(optarg);
         break;
 
       case 'g':
@@ -459,6 +464,7 @@ int main(int argc, char **argv)
     r_re[i] = malloc16_clear(frame_length_complex_samples * sizeof(double));
     r_im[i] = malloc16_clear(frame_length_complex_samples * sizeof(double));
   }
+  get_softmodem_params()->node_number = node_id;
   nr_ue_set_slsch_rx(rxUE, 0);
   for (double SNR = snr0; SNR < snr1; SNR += snr_step) {
     n_errors = 0;
@@ -485,7 +491,7 @@ int main(int argc, char **argv)
       char buffer1[rxUE->frame_parms.ofdm_symbol_size * 4];
       for (int i = 0; i < 13; i++) {
         bzero(buffer1, sizeof(buffer1));
-        printf("Slot %d, RXUE Symbol[%d]:  %s\n",
+        LOG_D(PHY, "Slot %d, RXUE Symbol[%d]:  %s\n",
               slot, rxUE->frame_parms.ofdm_symbol_size * i,
               hexdump((int16_t *)&rxUE->common_vars.rxdata[0][rxUE->frame_parms.ofdm_symbol_size * i],
                       rxUE->frame_parms.ofdm_symbol_size * 4, buffer1, sizeof(buffer1)));

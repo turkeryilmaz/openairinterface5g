@@ -60,6 +60,64 @@
 
 //extern int32_t uplink_counter;
 #define SCI2_LEN_SIZE 35
+#define HNA_SIZE 16 * 68 * 384 // [hna] 16 segments, 68*Zc
+#define MAX_RELAY_Q_SIZE 5
+
+pthread_mutex_t relay_mem_lock;
+uint8_t cirBufRelay[MAX_RELAY_Q_SIZE][HNA_SIZE];
+uint64_t cirBufRelaySCI2[MAX_RELAY_Q_SIZE];
+uint8_t cirBufReadInx;
+uint8_t cirBufWriteInx;
+uint32_t relay_data_to_send;
+
+void init_mutex_of_relay_data()
+{
+  pthread_mutex_init(&relay_mem_lock, NULL);
+}
+
+uint32_t qsize_of_relay_data()
+{
+  pthread_mutex_lock(&relay_mem_lock);
+  uint32_t temp = relay_data_to_send;
+  pthread_mutex_unlock(&relay_mem_lock);
+
+  return temp;
+}
+
+void get_relay_data_from_buffer(uint8_t *dest, uint64_t *sci2, uint32_t sz)
+{
+  pthread_mutex_lock(&relay_mem_lock);
+  for (int i = 0; i < sz; i++) {
+    dest[i] = cirBufRelay[cirBufReadInx][i];
+  }
+
+  *sci2 = cirBufRelaySCI2[cirBufReadInx];
+  cirBufReadInx = (cirBufReadInx + 1) % MAX_RELAY_Q_SIZE;
+  relay_data_to_send--;
+
+  LOG_D(PHY, "Decreased the number of relay_data_to_send %u\n", relay_data_to_send);
+  pthread_mutex_unlock(&relay_mem_lock);
+}
+
+void put_relay_data_to_buffer(uint8_t *src, uint64_t *sci2, uint32_t sz)
+{
+  pthread_mutex_lock(&relay_mem_lock);
+  if(relay_data_to_send >= MAX_RELAY_Q_SIZE) {
+    LOG_W(PHY, "Relay Buffer overflow: relay_data_to_send %u >= %u Capacity\n", relay_data_to_send, MAX_RELAY_Q_SIZE);
+  }
+
+  for (int i = 0; i < sz; i++) {
+    cirBufRelay[cirBufWriteInx][i] = src[i];
+  }
+
+  cirBufRelaySCI2[cirBufWriteInx] = *sci2;
+  cirBufWriteInx = (cirBufWriteInx + 1) % MAX_RELAY_Q_SIZE;
+  relay_data_to_send++;
+
+  LOG_D(PHY, "Increased the number of relay_data_to_send %u\n", relay_data_to_send);
+  pthread_mutex_unlock(&relay_mem_lock);
+}
+
 void nr_pusch_codeword_scrambling_sl(uint8_t *in,
                                      uint32_t size,
                                      uint32_t SCI2_bits,
@@ -312,22 +370,31 @@ void nr_ue_set_slsch(NR_DL_FRAME_PARMS *fp,
   uint64_t *sci_input = harq->a_sci2;
 
   bool payload_type_string = false;
-  if (payload_type_string) {
-    for (int i = 0; i < 32; i++) {
-      test_input[i] = get_softmodem_params()->sl_user_msg[i];
+  if(qsize_of_relay_data() == 0) {
+    if (payload_type_string) {
+      for (int i = 0; i < 32; i++) {
+        test_input[i] = get_softmodem_params()->sl_user_msg[i];
+      }
+    } else {
+      srand(time(NULL));
+      for (int i = 0; i < TBS / 8; i++)
+        test_input[i] = (unsigned char) (i+3);//rand();
+      test_input[0] = (unsigned char) (slot);
+      test_input[1] = (unsigned char) (frame & 0xFF); // 8 bits LSB
+      test_input[2] = (unsigned char) ((frame >> 8) & 0x3); //
+      test_input[3] = (unsigned char) ((frame & 0x111) << 5) + (unsigned char) (slot) + rand() % 256;
+      LOG_D(NR_PHY, "SLSCH_TX will send %u\n", test_input[3]);
     }
+    uint64_t u = 0;
+    uint64_t dest = 0;
+    dest = (0x2 + ((slot % 2) == 0 ? 1 : 0)) * get_softmodem_params()->node_number;
+    u ^= (dest << 32);
+    *sci_input = u;
   } else {
-    srand(time(NULL));
-    for (int i = 0; i < TBS / 8; i++)
-      test_input[i] = (unsigned char) (i+3);//rand();
-    // test_input[0] = (unsigned char) (slot);
-    // test_input[1] = (unsigned char) (frame & 0xFF); // 8 bits LSB
-    // test_input[2] = (unsigned char) ((frame >> 8) & 0x3); //
-    // test_input[3] = (unsigned char) ((frame & 0x111) << 5) + (unsigned char) (slot) + rand() % 256;
-    LOG_D(NR_PHY, "SLSCH_TX will send %u\n", test_input[3]);
+    get_relay_data_from_buffer(test_input, sci_input, TBS / 8);
+    uint64_t dest = (*sci_input >> 32) & 0xFFFF;
+    LOG_W(NR_PHY, "SLSCH_TX will forward with original slot index %u for dest %d\n", test_input[0], dest);
   }
-  uint64_t u = pow(2,SCI2_LEN_SIZE) - 1;
-  *sci_input = u;//rand() % (u - 0 + 1);
 }
 
 void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *txUE,

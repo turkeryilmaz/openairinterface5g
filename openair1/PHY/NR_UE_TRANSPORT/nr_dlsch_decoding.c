@@ -75,6 +75,10 @@ void free_nr_ue_dlsch(NR_UE_DLSCH_t **dlschptr, uint16_t N_RB_DL) {
           free16(dlsch->harq_processes[i]->b,a_segments*1056);
           dlsch->harq_processes[i]->b = NULL;
         }
+        if (dlsch->harq_processes[i]->b_sci2) {
+          free16(dlsch->harq_processes[i]->b_sci2, a_segments * 1056);
+          dlsch->harq_processes[i]->b_sci2 = NULL;
+        }
 
         for (int r=0; r<a_segments; r++) {
           free16(dlsch->harq_processes[i]->c[r],1056);
@@ -109,6 +113,7 @@ NR_UE_DLSCH_t *new_nr_ue_dlsch(uint8_t Kmimo,uint8_t Mdlharq,uint32_t Nsoft,uint
   }
 
   uint32_t dlsch_bytes = a_segments*1056;  // allocated bytes per segment
+  uint8_t  sci2_bytes  = 8;                // allocated bytes for SCI2
   dlsch = (NR_UE_DLSCH_t *)malloc16(sizeof(NR_UE_DLSCH_t));
 
   if (dlsch) {
@@ -130,6 +135,12 @@ NR_UE_DLSCH_t *new_nr_ue_dlsch(uint8_t Kmimo,uint8_t Mdlharq,uint32_t Nsoft,uint
 
         if (dlsch->harq_processes[i]->b)
           memset(dlsch->harq_processes[i]->b,0,dlsch_bytes);
+        else
+          exit_flag=3;
+
+        dlsch->harq_processes[i]->b_sci2 = malloc16(sci2_bytes);
+        if (dlsch->harq_processes[i]->b_sci2)
+          memset(dlsch->harq_processes[i]->b_sci2, 0, sci2_bytes);
         else
           exit_flag=3;
 
