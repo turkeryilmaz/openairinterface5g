@@ -443,7 +443,7 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
     }
 
     nr_ue_pdcch_procedures(ue, proc, 1, pscch_est_size, pscch_dl_ch_estimates, phy_data, 0, rxdataF); 
-    LOG_I(NR_PHY,"returned from nr_ue_pdcch_procedures\n");
+    LOG_D(NR_PHY,"returned from nr_ue_pdcch_procedures\n");
   }
   if (phy_data->sl_rx_action == SL_NR_CONFIG_TYPE_RX_PSSCH_SCI && !get_nrUE_params()->sync_ref){
 
@@ -474,7 +474,7 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
                                 phy_data->nr_sl_pssch_sci_pdu.l_subch,
                                 phy_data->nr_sl_pssch_sci_pdu.subchannel_size,
                                 phy_data->nr_sl_pssch_sci_pdu.targetCodeRate);
-    LOG_I(NR_PHY,"Starting slot FEP for SLSCH (symbol %d to %d) pscch_numsym %d pssch_numsym %d\n",1+phy_data->nr_sl_pssch_sci_pdu.pscch_numsym,phy_data->nr_sl_pssch_sci_pdu.pssch_numsym,phy_data->nr_sl_pssch_sci_pdu.pscch_numsym,phy_data->nr_sl_pssch_sci_pdu.pssch_numsym); 
+    LOG_D(NR_PHY,"Starting slot FEP for SLSCH (symbol %d to %d) pscch_numsym %d pssch_numsym %d\n",1+phy_data->nr_sl_pssch_sci_pdu.pscch_numsym,phy_data->nr_sl_pssch_sci_pdu.pssch_numsym,phy_data->nr_sl_pssch_sci_pdu.pscch_numsym,phy_data->nr_sl_pssch_sci_pdu.pssch_numsym); 
     for (int sym=1+phy_data->nr_sl_pssch_sci_pdu.pscch_numsym; sym<=phy_data->nr_sl_pssch_sci_pdu.pssch_numsym;sym++) {
       nr_slot_fep(ue,
                   fp,

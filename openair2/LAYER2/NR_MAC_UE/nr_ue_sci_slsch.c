@@ -738,13 +738,11 @@ int nr_ue_process_sci2_indication_pdu(NR_UE_MAC_INST_t *mac,module_id_t mod_id,f
   nr_sci_pdu_t *sci_pdu = &mac->sci_pdu_rx;  //&mac->def_sci_pdu[slot][sci->sci_format_type];
   const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp = mac->sl_bwp;
   const NR_SL_ResourcePool_r16_t *sl_res_pool = mac->sl_rx_res_pool; 
-  static int ndi=0;
   LOG_I(NR_MAC,"Received sci indication (sci format %d, Nid %x, subChannelIndex %d, payloadSize %d,payload %llx)\n",
         sci->sci_format_type,sci->Nid,sci->subch_index,sci->sci_payloadlen,*(unsigned long long*)sci->sci_payloadBits);
   AssertFatal(sci->sci_format_type == SL_SCI_FORMAT_2_ON_PSSCH, "need to have format 2 here only\n");
   extract_pssch_sci_pdu((uint64_t *)sci->sci_payloadBits, sci->sci_payloadlen,sl_bwp, sl_res_pool, sci_pdu);
-  LOG_I(NR_MAC,"SCI2A: harq_pid %d ndi %d RV %d SRC %x DST %x HARQ_FB %d Cast %d CSI_Req %d\n", 0/*sci_pdu->harq_pid*/,ndi/*sci_pdu->ndi*/,0/*sci_pdu->rv_index*/,0x12/*sci_pdu->source_id*/,0xabdc/*sci_pdu->dest_id*/,1/*sci_pdu->harq_feedback*/,0/*sci_pdu->cast_type*/,1/*sci_pdu->csi_req*/);
-  ndi=1-ndi;
+  LOG_I(NR_MAC,"SCI2A: harq_pid %d ndi %d RV %d SRC %x DST %x HARQ_FB %d Cast %d CSI_Req %d\n", sci_pdu->harq_pid,sci_pdu->ndi,sci_pdu->rv_index,sci_pdu->source_id,sci_pdu->dest_id,sci_pdu->harq_feedback,sci_pdu->cast_type,sci_pdu->csi_req);
   // send schedule response
 
   sl_nr_rx_config_request_t rx_config;

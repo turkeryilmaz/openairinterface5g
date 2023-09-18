@@ -36,7 +36,7 @@
 
 
 //#define DEBUG_CH
-#define DEBUG_PUSCH
+//#define DEBUG_PUSCH
 //#define SRS_DEBUG
 
 #define NO_INTERP 1

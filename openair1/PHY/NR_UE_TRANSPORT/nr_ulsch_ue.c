@@ -242,10 +242,12 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
 
   if (nr_ulsch_encoding(UE, ulsch_ue, pscch_pssch_pdu,frame_parms, harq_pid, G) == -1)
     return;
+ 
   
   uint32_t sci2_encoded_output[sci2_re*2];
   
   if (pscch_pssch_pdu) {
+    LOG_I(NR_PHY,"Generating SCI2/PSSCH with %d RE, payload %llx\n",sci2_re,*(unsigned long long*)pscch_pssch_pdu->sci2_payload);
     // do SCI2 encoding
     polar_encoder_fast((uint64_t*)pscch_pssch_pdu->sci2_payload, (void*)sci2_encoded_output, NULL,0, 1, 
                        NR_POLAR_SCI2_MESSAGE_TYPE, 
@@ -297,7 +299,7 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
                   Gsci2,
                   2,
                   (int16_t *)d_mod);
-    for (int i=0;i<Gsci2;i+=2) LOG_I(NR_PHY,"SCI2 RE %d/%d: (%d,%d)\n",i/2,Gsci2/2,((int16_t*)d_mod)[i],((int16_t*)d_mod)[i+1]);
+    //for (int i=0;i<Gsci2;i+=2) LOG_I(NR_PHY,"SCI2 RE %d/%d: (%d,%d)\n",i/2,Gsci2/2,((int16_t*)d_mod)[i],((int16_t*)d_mod)[i+1]);
     int32_t d_mod2[max_num_re] __attribute__ ((aligned(16)));
     nr_modulation(scrambled_output, // assume one codeword for the moment
                   available_bits,

@@ -27,7 +27,7 @@
 #include "PHY/NR_UE_ESTIMATION/nr_estimation.h"
 #include <common/utils/LOG/log.h>
 
-#define DEBUG_FEP
+//#define DEBUG_FEP
 
 /*#ifdef LOG_I
 #undef LOG_I

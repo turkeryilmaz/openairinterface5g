@@ -9,15 +9,15 @@
 #include "PHY/defs_nr_common.h"
 #include "common/utils/nr/nr_common.h"
 
-#define DEBUG_CH_COMP
-#define DEBUG_RB_EXT
+//#define DEBUG_CH_COMP
+//#define DEBUG_RB_EXT
 //#define DEBUG_CH_MAG
 //#define ML_DEBUG
 
 #define INVALID_VALUE 255
 
-void nr_idft(int32_t *z, uint32_t Msc_PUSCH)
-{
+void nr_idft(int32_t *z, uint32_t Msc_PUSCH) {
+
 
 #if defined(__x86_64__) || defined(__i386__)
   __m128i idft_in128[1][3240], idft_out128[1][3240];
@@ -341,7 +341,7 @@ void nr_ulsch_extract_rbs(int rxFSz,
 
     rxF = (int16_t *)&rxdataF[aarx][soffset+(symbol * frame_parms->ofdm_symbol_size)];
     rxF_ext = (int16_t *)&pusch_vars->rxdataF_ext[aarx][symbol * nb_re_pusch2]; // [hna] rxdataF_ext isn't contiguous in order to solve an alignment problem ib llr computation in case of mod_order = 4, 6
-    LOG_I(NR_PHY,"symbol %d : rxF energy %d\n",symbol,dB_fixed(signal_energy_nodc((int32_t*)rxF,frame_parms->ofdm_symbol_size))); 
+    LOG_D(NR_PHY,"symbol %d : rxF energy %d\n",symbol,dB_fixed(signal_energy_nodc((int32_t*)rxF,frame_parms->ofdm_symbol_size))); 
     if (is_dmrs_symbol == 0) {
       if (start_re + nb_re_pusch <= frame_parms->ofdm_symbol_size) {
         memcpy1((void*)rxF_ext, (void*)&rxF[start_re*2], nb_re_pusch*sizeof(int32_t));
@@ -2086,7 +2086,7 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
     //--------------------- RBs extraction ---------------------
     //----------------------------------------------------------
     if (nb_re_pusch > 0) {
-      LOG_I(NR_PHY,"extract RBs : frame   %d, slot %d symbol %d nb_re_pusch %d\n", frame,slot,symbol, nb_re_pusch);
+      LOG_D(NR_PHY,"extract RBs : frame   %d, slot %d symbol %d nb_re_pusch %d\n", frame,slot,symbol, nb_re_pusch);
       if (gNB) start_meas(&gNB->ulsch_rbs_extraction_stats);
       nr_ulsch_extract_rbs(rxFSz,rxdataF, pusch_vars, slot, symbol, dmrs_symbol_flag, bwp_start,rb_start,rb_size,nrOfLayers, num_dmrs_cdm_grps_no_data, dmrs_config_type, frame_parms);
       if (gNB) stop_meas(&gNB->ulsch_rbs_extraction_stats);
@@ -2238,7 +2238,7 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
 	       slsch_res_in_symbol=available_sci2_res_in_symb-sci2_left;
 	       LOG_I(NR_PHY,"SCI2 taking %d REs, SLSCH taking %d\n",sci2_left,slsch_res_in_symbol);
                sci2_left=0;
-	       for (int i=0;i<sci2_re;i++) LOG_I(NR_PHY,"sci2_llrs [%d] %d,%d\n",i,sci2_llrs[i<<1],sci2_llrs[1+(i<<1)]);
+	       //for (int i=0;i<sci2_re;i++) LOG_I(NR_PHY,"sci2_llrs [%d] %d,%d\n",i,sci2_llrs[i<<1],sci2_llrs[1+(i<<1)]);
 	       //unscramble the SCI2 payload
 	       nr_pdcch_unscrambling(sci2_llrs, 1010,sci2_re*2,pssch_pdu->Nid,unscrambled_sci2_llrs,1);
 	  //     for (int i=0;i<sci2_re;i++) LOG_I(NR_PHY,"sci2_llrs [%d] %d,%d\n",i,unscrambled_sci2_llrs[i<<1],unscrambled_sci2_llrs[1+(i<<1)]);
