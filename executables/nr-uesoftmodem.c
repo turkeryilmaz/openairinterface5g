@@ -312,14 +312,18 @@ static void nr_phy_config_request_sl(PHY_VARS_NR_UE *ue,
     ue->slss->sl_mib[i] = 0;
   }
   #if 1
+  uint16_t node_id = get_softmodem_params()->node_number;
   ue->slss->sl_mib_length = 32;
   ue->slss->sl_numssb_withinperiod_r16 = 2;
   ue->slss->sl_timeinterval_r16 = 20;
+  // TODO: The following setting needs update from MAC layer later.
   ue->slss->sl_timeoffsetssb_r16 = 2;
-
-  ue->slss->sl_numssb_withinperiod_r16_copy = 2;
-  ue->slss->sl_timeinterval_r16_copy = 20;
-  ue->slss->sl_timeoffsetssb_r16_copy = 2;
+  if (node_id == 3) {
+    ue->slss->sl_timeoffsetssb_r16 = 4;
+  }
+  ue->slss->sl_numssb_withinperiod_r16_copy = ue->slss->sl_numssb_withinperiod_r16;
+  ue->slss->sl_timeinterval_r16_copy = ue->slss->sl_timeinterval_r16;
+  ue->slss->sl_timeoffsetssb_r16_copy = ue->slss->sl_timeoffsetssb_r16;
   #endif
   ue->slss->slss_id = Nid_SL;
   ue->is_synchronized_sl = 0;

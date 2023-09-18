@@ -1872,6 +1872,14 @@ void nr_pssch_data_control_multiplexing(uint8_t *in_slssh,
                                         uint8_t* out);
 
 uint32_t get_B_multiplexed_value(NR_DL_FRAME_PARMS* fp, NR_DL_UE_HARQ_t *harq);
+
+void init_mutex_of_relay_data();
+
+uint32_t qsize_of_relay_data();
+
+void get_relay_data_from_buffer(uint8_t *dest, uint64_t *sci2, uint32_t sz);
+
+void put_relay_data_to_buffer(uint8_t *src, uint64_t *sci2, uint32_t sz);
 /**@}*/
 #endif
 

@@ -331,7 +331,7 @@ int nr_rx_psbch( PHY_VARS_NR_UE *ue,
 
   NR_UE_COMMON *nr_ue_common_vars = &ue->common_vars;
   uint8_t ssb_index = 0; //TODO: Need update to get 0 or 1 from parameter in case of mu = 1.
-  int symbol_offset = ue->is_synchronized > 0 ? (ue->slss->sl_timeoffsetssb_r16 + ue->slss->sl_timeinterval_r16 * ssb_index) * frame_parms->symbols_per_slot : 0;
+  int symbol_offset = ue->is_synchronized_sl > 0 ? (ue->slss->sl_timeoffsetssb_r16 + ue->slss->sl_timeinterval_r16 * ssb_index) * frame_parms->symbols_per_slot : 0;
   int psbch_e_rx_idx = 0;
   int16_t psbch_unClipped[NR_POLAR_PSBCH_E] = {0};
   int16_t psbch_e_rx[NR_POLAR_PSBCH_E] = {0};

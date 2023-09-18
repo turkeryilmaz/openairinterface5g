@@ -61,7 +61,7 @@
 //#define NR_PUCCH_SCHED
 //#define NR_PUCCH_SCHED_DEBUG
 //#define NR_PDSCH_DEBUG
-#define HNA_SIZE 6 * 68 * 384 // [hna] 16 segments, 68*Zc
+#define HNA_SIZE 16 * 68 * 384 // [hna] 16 segments, 68*Zc
 #define LDPC_MAX_LIMIT 31
 #ifndef PUCCH
 #define PUCCH
@@ -283,15 +283,22 @@ void ue_ta_procedures(PHY_VARS_NR_UE *ue, int slot_tx, int frame_tx){
 bool phy_ssb_slot_allocation_sl(PHY_VARS_NR_UE *ue, int frame, int slot)
 {
   NR_DL_FRAME_PARMS *fp = &ue->frame_parms;
+  static int sl_numssb_withinperiod_r16, sl_timeoffsetssb_r16, sl_timeoffsetssb_r16_copy;
+
+  if (sl_numssb_withinperiod_r16 == 0) {
+    sl_numssb_withinperiod_r16 = ue->slss->sl_numssb_withinperiod_r16;
+    sl_timeoffsetssb_r16 = ue->slss->sl_timeoffsetssb_r16;
+    sl_timeoffsetssb_r16_copy = sl_timeoffsetssb_r16;
+  }
 
   if ((frame * fp->slots_per_frame + slot) % (16 * fp->slots_per_frame) == 0) {
     ue->slss->sl_numssb_withinperiod_r16 = ue->slss->sl_numssb_withinperiod_r16_copy;
-    ue->slss->sl_timeoffsetssb_r16 = frame * fp->slots_per_frame + ue->slss->sl_timeoffsetssb_r16_copy;
+    sl_timeoffsetssb_r16 = frame * fp->slots_per_frame + sl_timeoffsetssb_r16_copy;
   }
 
   if (ue->slss->sl_numssb_withinperiod_r16 > 0) {
-    if (frame * fp->slots_per_frame + slot == ue->slss->sl_timeoffsetssb_r16) {
-      ue->slss->sl_timeoffsetssb_r16 = ue->slss->sl_timeoffsetssb_r16 + ue->slss->sl_timeinterval_r16;
+    if (frame * fp->slots_per_frame + slot == sl_timeoffsetssb_r16) {
+      sl_timeoffsetssb_r16 = sl_timeoffsetssb_r16 + ue->slss->sl_timeinterval_r16;
       ue->slss->sl_numssb_withinperiod_r16 = ue->slss->sl_numssb_withinperiod_r16 - 1;
       LOG_I(PHY,"*** SL-SSB slot allocation  %d.%d ***\n", frame, slot); 
     } else {
@@ -366,12 +373,17 @@ void phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
            hexdump((void *)&ue->common_vars.txdata[0][slot_timestamp + ue->frame_parms.ofdm_symbol_size * i], ue->frame_parms.ofdm_symbol_size, buffer0, sizeof(buffer0)));
     }
 #endif
-  }
-  else if (ue->sync_ref && ((slot_tx == 1) || (slot_tx == 0))) {
-    for (uint8_t harq_pid = 0; harq_pid < 1; harq_pid++) {
-      nr_ue_set_slsch(&ue->frame_parms, harq_pid, ue->slsch[proc->thread_id][gNB_id], frame_tx, slot_tx);
-      if (ue->slsch[proc->thread_id][gNB_id]->harq_processes[harq_pid]->status == ACTIVE) {
-        nr_ue_slsch_tx_procedures(ue, harq_pid, frame_tx, slot_tx);
+  } else {
+    uint32_t sl_bitmap_tx = 0x00000;
+    if(ue->sync_ref) {
+      sl_bitmap_tx = (ue->is_synchronized_sl == 0) ? 0x00001 : 0x00002;  // SyncRef UE tx slot 0, Relay UE B tx slot 1.
+    }
+    if ((sl_bitmap_tx >> slot_tx) & 1) {
+      for (uint8_t harq_pid = 0; harq_pid < 1; harq_pid++) {
+        nr_ue_set_slsch(&ue->frame_parms, harq_pid, ue->slsch[proc->thread_id][gNB_id], frame_tx, slot_tx);
+        if (ue->slsch[proc->thread_id][gNB_id]->harq_processes[harq_pid]->status == ACTIVE) {
+          nr_ue_slsch_tx_procedures(ue, harq_pid, frame_tx, slot_tx);
+        }
       }
     }
   }
@@ -1426,15 +1438,19 @@ int phy_procedures_nrUE_SL_RX(PHY_VARS_NR_UE *ue,
                            uint8_t synchRefUE_id,
                            notifiedFIFO_t *txFifo) {
 
-  if (ue->sync_ref || ue->is_synchronized_sl == 0 || (proc->nr_slot_rx != 1 && proc->nr_slot_rx != 0)) {
+  if (ue->is_synchronized_sl == 0)
     return (0);
-  }
+
+  // TODO: Need to add rx SSB slot 2 (to Relay UE) and rx SSB slot 4 (Nearby UE) for resync
+  uint32_t sl_bitmap_rx = ue->sync_ref ? 0x00001 : 0x00002; // Relay UE B rx slot 0, Nearby UE rx slot 1.
+  if (((sl_bitmap_rx >> proc->nr_slot_rx) & 1) == 0) 
+    return (0);
 
   int frame_rx = proc->frame_rx;
   int slot_rx = proc->nr_slot_rx;
 
-if ( getenv("RFSIMULATOR") != NULL ) {
-  if (get_softmodem_params()->sl_mode == 2) {
+  if ( getenv("RFSIMULATOR") != NULL ) {
+    if (get_softmodem_params()->sl_mode == 2) {
       int frame_length_complex_samples = ue->frame_parms.samples_per_subframe * NR_NUMBER_OF_SUBFRAMES_PER_FRAME;
       for (int i = 0; i < frame_length_complex_samples; i++) {
         double sigma2_dB = 20 * log10((double)AMP / 4) - ue->snr;
@@ -1445,14 +1461,18 @@ if ( getenv("RFSIMULATOR") != NULL ) {
         }
       }
     }
-}
+  }
+
   NR_UE_DLSCH_t   *slsch = ue->slsch_rx[proc->thread_id][synchRefUE_id][0];
   NR_DL_UE_HARQ_t *harq = NULL;
   int32_t **rxdataF = ue->common_vars.common_vars_rx_data_per_thread[0].rxdataF;
   uint64_t rx_offset = (slot_rx&3)*(ue->frame_parms.symbols_per_slot * ue->frame_parms.ofdm_symbol_size);
 
   bool payload_type_string = false;
+  static bool detect_new_dest;
+  uint16_t node_id = get_softmodem_params()->node_number;
   uint32_t B_mul = get_B_multiplexed_value(&ue->frame_parms, slsch->harq_processes[0]);
+  uint16_t Nidx = 1;
   for (unsigned char harq_pid = 0; harq_pid < 1; harq_pid++) {
     nr_ue_set_slsch_rx(ue, harq_pid);
     if (slsch->harq_processes[harq_pid]->status == ACTIVE) {
@@ -1463,13 +1483,29 @@ if ( getenv("RFSIMULATOR") != NULL ) {
         }
         apply_nr_rotation_ul(&ue->frame_parms, rxdataF[aa], slot_rx, 0, NR_NUMBER_OF_SYMBOLS_PER_SLOT, link_type_sl);
       }
-      uint32_t ret = nr_ue_slsch_rx_procedures(ue, harq_pid, frame_rx, slot_rx, rxdataF, B_mul, 45727, proc);
-      if (ret != -1) {
-        bool polar_decoded = (ret < LDPC_MAX_LIMIT) ? true : false;
+      uint32_t ret = nr_ue_slsch_rx_procedures(ue, harq_pid, frame_rx, slot_rx, rxdataF, B_mul, Nidx, proc);
+
+      bool polar_decoded = (ret < LDPC_MAX_LIMIT) ? true : false;
+      uint16_t dest = (*harq->b_sci2 >> 32) & 0xFFFF;
+      bool dest_matched = (dest == node_id);
+      LOG_I(PHY, "dest %u vs %u node_id for hex %lx\n", dest, node_id, *harq->b_sci2);
+      if ((ret != -1) && dest_matched) {
         if (payload_type_string)
           validate_rx_payload_str(harq, slot_rx, polar_decoded);
         else
           validate_rx_payload(harq, frame_rx, slot_rx, polar_decoded);
+      }
+      if ((dest_matched == false) && (ue->sync_ref == 0) && (detect_new_dest == false)) {
+        if(ue->slss->sl_timeoffsetssb_r16 == 2) {
+          detect_new_dest = true;
+          ue->sync_ref = 1;
+          ue->slss->sl_timeoffsetssb_r16 = (node_id - 1) * 2 + 2;
+          ue->slss->sl_timeoffsetssb_r16_copy = ue->slss->sl_timeoffsetssb_r16;
+          init_mutex_of_relay_data();
+        }
+      }
+      if ((dest_matched == false) && ue->sync_ref) {
+        put_relay_data_to_buffer(harq->b, harq->b_sci2, harq->TBS);
       }
     }
   }
@@ -1504,13 +1540,13 @@ validate_rx_payload(NR_DL_UE_HARQ_t *harq, int frame_rx, int slot_rx, bool polar
     for (int i = 0; i < harq->TBS * 8; i++) {
       estimated_output_bit[i] = (harq->b[i / 8] & (1 << (i & 7))) >> (i & 7);
       test_input_bit[i] = (test_input[i / 8] & (1 << (i & 7))) >> (i & 7); // Further correct for multiple segments
-      if(i % 8 == 0){
-        if(i == 8 * 0) slot_tx = harq->b[0];
-        if(i == 8 * 1) frame_tx = harq->b[1];
-        if(i == 8 * 2) frame_tx += (harq->b[2] << 8);
-        if(i == 8 * 3) randm_tx = harq->b[3];
-        if(i >= 8 * comparison_beg_byte)
-            LOG_I(PHY,"TxByte : %4u  vs  %4u : RxByte\n", test_input[i / 8], harq->b[i / 8]);
+      if (i % 8 == 0) {
+        if (i == 8 * 0) slot_tx = harq->b[0];
+        if (i == 8 * 1) frame_tx = harq->b[1];
+        if (i == 8 * 2) frame_tx += (harq->b[2] << 8);
+        if (i == 8 * 3) randm_tx = harq->b[3];
+        if (i >= 8 * comparison_beg_byte)
+          LOG_I(PHY,"TxByte : %4u  vs  %4u : RxByte\n", test_input[i / 8], harq->b[i / 8]);
       }
 
       LOG_D(NR_PHY, "tx bit: %u, rx bit: %u\n", test_input_bit[i], estimated_output_bit[i]);

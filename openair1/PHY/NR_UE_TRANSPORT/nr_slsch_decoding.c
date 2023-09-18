@@ -357,22 +357,21 @@ uint32_t nr_slsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
   short *data_llr = dlsch_llr + harq_process->B_sci2 * harq_process->Nl;
 
   #if 1
-  uint64_t tmp = 0;
   int16_t decoder_input[1792] = {0}; // 1792 = harq_process->B_sci2
   nr_sci2_quantize(decoder_input, sci2_llr, harq_process->B_sci2);
   uint32_t decoder_state = polar_decoder_int16(decoder_input,
-                                              (uint64_t *)&tmp,
+                                              harq_process->b_sci2,
                                               0,
                                               NR_POLAR_SCI2_MESSAGE_TYPE,
                                               harq_process->B_sci2,
                                               NR_POLAR_SCI2_AGGREGATION_LEVEL);
 
   if (decoder_state) {
-    LOG_E(NR_PHY, "polar_decoder_int16 failed with ret %d\n", decoder_state);
+    LOG_E(NR_PHY, "polar_decoder_int16 failed with ret %d for slot %d\n", decoder_state, nr_slot_rx);
     return(decoder_state);
   }
-  harq_process->b_sci2 = &tmp;
   #endif
+
   nb_rb = harq_process->nb_rb;
   A = (harq_process->TBS) << 3;
   ret = dlsch->max_ldpc_iterations + 1;
