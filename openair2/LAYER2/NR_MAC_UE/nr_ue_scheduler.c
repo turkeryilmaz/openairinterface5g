@@ -662,14 +662,13 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
       N_PRB_oh = 0;
 
     if (current_UL_BWP->pusch_servingcellconfig && current_UL_BWP->pusch_servingcellconfig->rateMatching) {
-      long *maxMIMO_Layers = current_UL_BWP->pusch_servingcellconfig->ext1->maxMIMO_Layers;
-      if (!maxMIMO_Layers)
-        maxMIMO_Layers = pusch_Config ? pusch_Config->maxRank : NULL;
-      AssertFatal (maxMIMO_Layers != NULL,"Option with max MIMO layers not configured is not supported\n");
+      long maxMIMO_Layers = 1;
+      if (current_UL_BWP->pusch_servingcellconfig->ext1)
+        maxMIMO_Layers = *current_UL_BWP->pusch_servingcellconfig->ext1->maxMIMO_Layers;
+      else if (pusch_Config)
+        maxMIMO_Layers = *pusch_Config->maxRank;
       int bw_tbslbrm = get_ulbw_tbslbrm(current_UL_BWP->initial_BWPSize, mac->cg);
-      pusch_config_pdu->tbslbrm = nr_compute_tbslbrm(pusch_config_pdu->mcs_table,
-                                                     bw_tbslbrm,
-                                                     *maxMIMO_Layers);
+      pusch_config_pdu->tbslbrm = nr_compute_tbslbrm(pusch_config_pdu->mcs_table, bw_tbslbrm, maxMIMO_Layers);
     } else
       pusch_config_pdu->tbslbrm = 0;
 

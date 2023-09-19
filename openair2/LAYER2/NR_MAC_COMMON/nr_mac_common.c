@@ -2928,16 +2928,12 @@ uint8_t compute_srs_resource_indicator(NR_PUSCH_ServingCellConfig_t *pusch_servi
       //
       // - otherwise, Lmax is given by the maximum number of layers for PUSCH supported by the UE for the serving cell
       // for non-codebook based operation.
-      int Lmax = 0;
-      if (pusch_servingcellconfig != NULL) {
-        if (pusch_servingcellconfig->ext1->maxMIMO_Layers != NULL) {
-          Lmax = *pusch_servingcellconfig->ext1->maxMIMO_Layers;
-        } else {
-          AssertFatal(1 == 0, "MIMO on PUSCH not supported, maxMIMO_Layers needs to be set to 1\n");
-        }
-      } else {
-        AssertFatal(1 == 0, "MIMO on PUSCH not supported, maxMIMO_Layers needs to be set to 1\n");
-      }
+      int Lmax = 1;
+      if (pusch_servingcellconfig && pusch_servingcellconfig->ext1)
+        Lmax = *pusch_servingcellconfig->ext1->maxMIMO_Layers;
+      else if (pusch_Config)
+        Lmax = *pusch_Config->maxRank;
+
       int lmin = 0;
       int lsum = 0;
       int count = 0;

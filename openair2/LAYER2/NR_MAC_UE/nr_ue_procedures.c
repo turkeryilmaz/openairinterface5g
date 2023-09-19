@@ -1113,9 +1113,10 @@ int8_t nr_ue_process_dci(module_id_t module_id, int cc_id, uint8_t gNB_index, fr
                                                  nb_rb_oh, 0, Nl);
 
     // TBS_LBRM according to section 5.4.2.1 of 38.212
-    long *maxMIMO_Layers = current_DL_BWP->pdsch_servingcellconfig->ext1->maxMIMO_Layers;
-    AssertFatal (maxMIMO_Layers != NULL,"Option with max MIMO layers not configured is not supported\n");
-    int nl_tbslbrm = *maxMIMO_Layers < 4 ? *maxMIMO_Layers : 4;
+    long maxMIMO_Layers = 1;
+    if (current_DL_BWP->pdsch_servingcellconfig->ext1)
+      maxMIMO_Layers = *current_DL_BWP->pdsch_servingcellconfig->ext1->maxMIMO_Layers;
+    int nl_tbslbrm = maxMIMO_Layers < 4 ? maxMIMO_Layers : 4;
     int bw_tbslbrm = get_dlbw_tbslbrm(current_DL_BWP->initial_BWPSize, mac->cg);
     dlsch_config_pdu_1_1->tbslbrm = nr_compute_tbslbrm(dlsch_config_pdu_1_1->mcs_table,
 			                               bw_tbslbrm,
