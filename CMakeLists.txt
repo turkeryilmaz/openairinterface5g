@@ -487,18 +487,26 @@ target_link_libraries(shlib_loader PRIVATE CONFIG_LIB)
 ##########################################################
 
 add_boolean_option(ENABLE_LDPC_OFFLOAD OFF "Build support for LDPC Offload to T1 library" OFF)
-set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/home/eurecom/dpdk2011/libs/pkgconfig")
 if (ENABLE_LDPC_OFFLOAD)
-  pkg_check_modules(LIBDPDK_OFFLOAD REQUIRED libdpdk=20.11.3)
-  find_library(PMD NAMES rte_baseband_accl_ldpc HINTS "/home/eurecom/dpdk2011/libs")
+  pkg_check_modules(LIBDPDK_OFFLOAD REQUIRED libdpdk=20.05.0)
+  find_library(T1 NAMES rte_pmd_hpac_sdfec_pmd REQUIRED)
   add_library(ldpc_offload MODULE ${OPENAIR1_DIR}/PHY/CODING/nrLDPC_decoder/nrLDPC_decoder_offload.c)
   set_target_properties(ldpc_offload PROPERTIES COMPILE_FLAGS "-DALLOW_EXPERIMENTAL_API")
-  target_link_libraries(ldpc_offload ${LIBDPDK_OFFLOAD_LDFLAGS} ${OFFLOAD})
-  #target_link_libraries(ldpc_offload /home/eurecom/jaroslava/T2_new/dpdk-stable/build/lib/librte_eal.so /home/eurecom/jaroslava/T2_new/dpdk-stable/build/lib/librte_mempool.so /home/eurecom/jaroslava/T2_new/dpdk-stable/build/lib/librte_bbdev.so /home/eurecom/jaroslava/T2_new/dpdk-stable/build/lib/librte_pdump.so)
-
-  #target_compile_options(ldpc_offload PRIVATE ${LIBDPDK_OFFLOAD_CFLAGS})
-  #target_link_libraries(ldpc_offload ${LIBDPDK_OFFLOAD_LDFLAGS} ${OFFLOAD})
+  target_link_libraries(ldpc_offload ${LIBDPDK_OFFLOAD_LDFLAGS} ${T1})
 endif()
+
+#add_boolean_option(ENABLE_LDPC_OFFLOAD OFF "Build support for LDPC Offload to T2 library" OFF)
+#set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/home/eurecom/dpdk2011/libs/pkgconfig")
+#if (ENABLE_LDPC_OFFLOAD)
+#  pkg_check_modules(LIBDPDK_OFFLOAD REQUIRED libdpdk=20.11.3)
+#  find_library(PMD NAMES rte_baseband_accl_ldpc HINTS "/home/eurecom/dpdk2011/libs")
+#  add_library(ldpc_offload MODULE ${OPENAIR1_DIR}/PHY/CODING/nrLDPC_decoder/nrLDPC_decoder_offload.c)
+#  set_target_properties(ldpc_offload PROPERTIES COMPILE_FLAGS "-DALLOW_EXPERIMENTAL_API")
+#  target_link_libraries(ldpc_offload ${LIBDPDK_OFFLOAD_LDFLAGS} ${OFFLOAD})
+#  #target_link_libraries(ldpc_offload /home/eurecom/jaroslava/T2_new/dpdk-stable/build/lib/librte_eal.so /home/eurecom/jaroslava/T2_new/dpdk-stable/build/lib/librte_mempool.so /home/eurecom/jaroslava/T2_new/dpdk-stable/build/lib/librte_bbdev.so /home/eurecom/jaroslava/T2_new/dpdk-stable/build/lib/librte_pdump.so)
+#  #target_compile_options(ldpc_offload PRIVATE ${LIBDPDK_OFFLOAD_CFLAGS})
+#  #target_link_libraries(ldpc_offload ${LIBDPDK_OFFLOAD_LDFLAGS} ${OFFLOAD})
+#endif()
 
 ##########################################################
 

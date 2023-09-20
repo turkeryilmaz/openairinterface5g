@@ -89,6 +89,7 @@ typedef struct nrLDPC_dec_params {
     uint8_t Qm; /**< Modulation */
     uint8_t rv;
     uint8_t numMaxIter; /**< Maximum number of iterations */
+    int block_length;
     int E;
     e_nrLDPC_outMode outMode; /**< Output format */
     int crc_type;

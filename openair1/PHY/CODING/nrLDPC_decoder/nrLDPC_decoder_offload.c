@@ -393,7 +393,7 @@ static int add_dev(uint8_t dev_id, struct rte_bbdev_info *info)
     if (ret == 0) {
       printf("Found LDCP decoding queue (id=%u) at prio%u on dev%u\n", queue_id, qconf.priority, dev_id);
       qconf.priority++;
-      ret = rte_bbdev_queue_configure(ad->dev_id, queue_id, &qconf);
+      //ret = rte_bbdev_queue_configure(ad->dev_id, queue_id, &qconf);
       ad->enc_queue = queue_id;
       ad->queue_ids[queue_id] = queue_id;
       break;
@@ -408,7 +408,7 @@ static int add_dev(uint8_t dev_id, struct rte_bbdev_info *info)
     if (ret == 0) {
       printf("Found LDCP encoding queue (id=%u) at prio%u on dev%u\n", queue_id, qconf.priority, dev_id);
       qconf.priority++;
-      ret = rte_bbdev_queue_configure(ad->dev_id, queue_id, &qconf);
+      //ret = rte_bbdev_queue_configure(ad->dev_id, queue_id, &qconf);
       ad->dec_queue = queue_id;
       ad->queue_ids[queue_id] = queue_id;
       break;
@@ -1120,7 +1120,7 @@ int start_pmd_dec(struct active_device *ad,
   t_params[0].ulsch_id = ulsch_id;
 
   // For now, we never enter here, we don't use the DPDK thread pool
-  RTE_LCORE_FOREACH_WORKER(lcore_id)
+  RTE_LCORE_FOREACH_SLAVE(lcore_id)
   {
     if (used_cores >= num_lcores)
       break;
@@ -1217,7 +1217,7 @@ int32_t start_pmd_enc(struct active_device *ad,
   t_params[0].p_offloadParams = p_offloadParams;
 
   // For now, we never enter here, we don't use the DPDK thread pool
-  RTE_LCORE_FOREACH_WORKER(lcore_id)
+  RTE_LCORE_FOREACH_SLAVE(lcore_id)
   {
     if (used_cores >= num_lcores)
       break;
