@@ -183,7 +183,7 @@ Some libraries have further dependencies and might not build on every system:
 - `enbscope`, `uescope`, `nrscope`: libforms/X
 - `nrqtscope`: Qt5
 - `ldpc_cuda`: CUDA
-- `ldpc_t1`: DPDK and VVDN T1
+- `ldpc_offload`: DPDK and VVDN T1
 - `websrv`: npm and others
 
 # Running `cmake` directly
