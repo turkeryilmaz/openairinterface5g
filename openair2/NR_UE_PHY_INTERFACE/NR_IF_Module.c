@@ -773,16 +773,19 @@ static void fill_dci_from_dl_config(nr_downlink_indication_t*dl_ind, fapi_nr_dl_
   AssertFatal(dl_config->number_pdus < sizeof(dl_config->dl_config_list) / sizeof(dl_config->dl_config_list[0]),
               "Too many dl_config pdus %d", dl_config->number_pdus);
   for (int i = 0; i < dl_config->number_pdus; i++) {
-    LOG_D(PHY, "In %s: filling DCI with a total of %d total DL PDUs (dl_config %p) \n",
-          __FUNCTION__, dl_config->number_pdus, dl_config);
+    LOG_D(PHY, "In %s: filling DCI with a total of %d total DL PDUs (dl_config %p), current dl_config->dl_config_list[%d].pdu_type=%d\n",
+          __FUNCTION__, dl_config->number_pdus, dl_config,i, dl_config->dl_config_list[i].pdu_type);
+    if(dl_config->dl_config_list[i].pdu_type != FAPI_NR_DL_CONFIG_TYPE_DCI &&
+          dl_config->dl_config_list[i].pdu_type!=FAPI_NR_DL_CONFIG_TYPE_DLSCH){
+      /* Why consider fapi_nr_dl_config_dlsch_pdu same as fapi_nr_dl_config_dci_pdu ?? */
+      continue;
+    }
     fapi_nr_dl_config_dci_dl_pdu_rel15_t *rel15_dci = &dl_config->dl_config_list[i].dci_config_pdu.dci_config_rel15;
     int num_dci_options = rel15_dci->num_dci_options;
     if (num_dci_options <= 0)
       LOG_D(NR_MAC, "num_dci_opts = %d for pdu[%d] in dl_config_list\n", rel15_dci->num_dci_options, i);
     AssertFatal(num_dci_options <= sizeof(rel15_dci->dci_length_options) / sizeof(rel15_dci->dci_length_options[0]),
                 "num_dci_options %d > dci_length_options array\n", num_dci_options);
-    AssertFatal(num_dci_options <= sizeof(rel15_dci->dci_format_options) / sizeof(rel15_dci->dci_format_options[0]),
-                "num_dci_options %d > dci_format_options array\n", num_dci_options);
 
     for (int j = 0; j < num_dci_options; j++) {
       int num_dcis = dl_ind->dci_ind->number_of_dcis;
