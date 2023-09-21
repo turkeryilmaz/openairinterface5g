@@ -514,6 +514,11 @@ add_boolean_option(ENABLE_VCD              False  "always true now, time measure
 add_boolean_option(ENABLE_VCD_FIFO         False  "time measurements of proc calls and var displays sent to FIFO (one more thread)" ON)
 
 ##########################
+# PRECISE LATENCY MEASUREMENT LATSEQ options
+##########################
+add_boolean_option(LATSEQ                  False "Activate Latency Sequence tool (LatSeq)" ON)
+
+##########################
 # PHY options
 ##########################
 add_boolean_option(LOCALIZATION            False "???" ON)
@@ -633,6 +638,7 @@ add_library(UTIL
   ${OPENAIR_DIR}/common/utils/system.c
   ${OPENAIR_DIR}/common/utils/time_meas.c
   ${OPENAIR_DIR}/common/utils/time_stat.c
+  ${OPENAIR_DIR}/common/utils/LATSEQ/latseq.c
 )
 target_link_libraries(UTIL PUBLIC ${T_LIB} pthread)
 

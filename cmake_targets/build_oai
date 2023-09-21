@@ -158,6 +158,8 @@ Options:
   Enable the memory sanitizer on all targets. Requires clang, and is
   incompatible with ASan/UBSan. To build, issue:
   CC=/usr/bin/clang CXX=/usr/bin/clang++ ./build_oai ... --sanitize-memory
+--enable-latseq
+  enables Latency Sequence tool, https://github.com/Orange-OpenSource/LatSeq
 -h | --help
    Print this help"
 }
@@ -414,6 +416,10 @@ function main() {
        --trace-asn1c-enc-dec)
             CMAKE_CMD="$CMAKE_CMD -DTRACE_ASN1C_ENC_DEC=ON"
             echo_info "Enabling asn1c internal traces via OAI logging system"
+            shift;;
+       --enable-latseq)
+            CMAKE_CMD="$CMAKE_CMD -DLATSEQ=ON"
+            echo_info "Enabling Latency Sequence measurement, https://github.com/Orange-OpenSource/LatSeq"
             shift 1;;
         -h | --help)
             print_help
