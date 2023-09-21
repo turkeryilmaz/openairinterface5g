@@ -2179,15 +2179,14 @@ nr_rrc_ue_establish_srb2(
        uint8_t *pdu_buffer;
        MessageDef *msg_p;
 
-       for (list_count = 0; list_count < ie->nonCriticalExtension->dedicatedNAS_MessageList->list.count; list_count++) {
-	 pdu_length = ie->nonCriticalExtension->dedicatedNAS_MessageList->list.array[list_count]->size;
-	 pdu_buffer = ie->nonCriticalExtension->dedicatedNAS_MessageList->list.array[list_count]->buf;
-	 msg_p = itti_alloc_new_message(TASK_RRC_NRUE, 0, NAS_CONN_ESTABLI_CNF);
-	 NAS_CONN_ESTABLI_CNF(msg_p).errCode = AS_SUCCESS;
-	 NAS_CONN_ESTABLI_CNF(msg_p).nasMsg.length = pdu_length;
-	 NAS_CONN_ESTABLI_CNF(msg_p).nasMsg.data = pdu_buffer;
-	 itti_send_msg_to_task(TASK_NAS_NRUE, ctxt_pP->instance, msg_p);
-       }
+      for (list_count = 0; list_count < ie->nonCriticalExtension->dedicatedNAS_MessageList->list.count; list_count++) {
+        pdu_length = ie->nonCriticalExtension->dedicatedNAS_MessageList->list.array[list_count]->size;
+        pdu_buffer = ie->nonCriticalExtension->dedicatedNAS_MessageList->list.array[list_count]->buf;
+        msg_p = itti_alloc_new_message(TASK_RRC_NRUE, 0, NAS_DOWNLINK_DATA_IND);
+        NAS_DOWNLINK_DATA_IND(msg_p).nasMsg.length = pdu_length;
+        NAS_DOWNLINK_DATA_IND(msg_p).nasMsg.data = pdu_buffer;
+        itti_send_msg_to_task(TASK_NAS_NRUE, ctxt_pP->instance, msg_p);
+      }
 
        free (ie->nonCriticalExtension->dedicatedNAS_MessageList);
      }
@@ -2350,12 +2349,15 @@ nr_rrc_ue_establish_srb2(
            NAS_DOWNLINK_DATA_IND(msg_p).nasMsg.data = dedicatedNAS_Message->buf;
            itti_send_msg_to_task(TASK_NAS_NRUE, ctxt_pP->instance, msg_p);
 
-           /*Send NAS_CONN_ESTABLI_CNF for handling Registration Accept in DL-Info transfer*/
-           msg_p = itti_alloc_new_message(TASK_RRC_NRUE, 0, NAS_CONN_ESTABLI_CNF);
-           NAS_CONN_ESTABLI_CNF(msg_p).errCode = AS_SUCCESS;
-           NAS_CONN_ESTABLI_CNF(msg_p).nasMsg.length = dedicatedNAS_Message->size;
-           NAS_CONN_ESTABLI_CNF(msg_p).nasMsg.data = dedicatedNAS_Message->buf;
-           itti_send_msg_to_task(TASK_NAS_NRUE, ctxt_pP->instance, msg_p);
+           /*Send NAS_CONN_ESTABLI_CNF for handling Registration Accept in DL-Info transfer.*/
+           /*It is not necessary to process the NAS message request with two request */
+           /*
+           message_p = itti_alloc_new_message(TASK_RRC_NRUE, 0, NAS_CONN_ESTABLI_CNF);
+           NAS_CONN_ESTABLI_CNF(message_p).errCode = AS_SUCCESS;
+           NAS_CONN_ESTABLI_CNF(message_p).nasMsg.length = dedicatedNAS_Message->size;
+           NAS_CONN_ESTABLI_CNF(message_p).nasMsg.data = dedicatedNAS_Message->buf;
+           itti_send_msg_to_task(TASK_NAS_NRUE, ctxt_pP->instance, message_p);
+           */
          }
        }
        break;
@@ -2535,6 +2537,31 @@ nr_rrc_ue_establish_srb2(
         }
 
         result = itti_free(ITTI_MSG_ORIGIN_ID(msg_p), NR_DTCH_DATA_REQ(msg_p).sdu_p);
+        AssertFatal(result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
+
+        break;
+      }
+
+      case NR_SDAP_DATA_REQ:
+      {
+        result = sdap_data_req(&ctxt,
+                        NR_SDAP_DATA_REQ(msg_p).rnti,
+                        SRB_FLAG_NO,
+                        NR_SDAP_DATA_REQ(msg_p).rb_id,
+                        NR_SDAP_DATA_REQ(msg_p).muip,
+                        NR_SDAP_DATA_REQ(msg_p).confirmp,
+                        NR_SDAP_DATA_REQ(msg_p).sdu_size,
+                        (unsigned char *)NR_SDAP_DATA_REQ(msg_p).sdu_p,
+                        NR_SDAP_DATA_REQ(msg_p).mode,
+                        NULL,
+                        NULL,
+                        NR_SDAP_DATA_REQ(msg_p).qfi,
+                        NR_SDAP_DATA_REQ(msg_p).rqi,
+                        NR_SDAP_DATA_REQ(msg_p).pdu_sessionId);
+        if (result != true) {
+          LOG_E(NR_RRC, "NR_SDAP_DATA_REQ data request failed!\n");
+        }
+        result = itti_free(ITTI_MSG_ORIGIN_ID(msg_p), NR_SDAP_DATA_REQ(msg_p).sdu_p);
         AssertFatal(result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
 
         break;

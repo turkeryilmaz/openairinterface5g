@@ -723,6 +723,8 @@ static void rrc_gNB_process_RRCSetupComplete(const protocol_ctxt_t *const ctxt_p
   ue_context_pP->ue_context.Srb[2].Active = 0;
   ue_context_pP->ue_context.StatusRrc = NR_RRC_CONNECTED;
 
+  if (RC.ss.mode >= SS_SOFTMODEM) return;
+
   if (get_softmodem_params()->sa) {
     rrc_gNB_send_NGAP_NAS_FIRST_REQ(ctxt_pP, ue_context_pP, rrcSetupComplete);
   } else {
@@ -3779,7 +3781,7 @@ void *rrc_gnb_task(void *args_p) {
                                         msg_p->ittiMsgHeader.lte_time.frame,
                                         msg_p->ittiMsgHeader.lte_time.slot);
 
-          if (RC.nr_drb_data_type == DRB_RlcPdu || RC.nr_drb_data_type == DRB_RlcSdu) {
+          if (SS_DRB_PDU_REQ(msg_p).data_type == DRB_RlcPdu || SS_DRB_PDU_REQ(msg_p).data_type == DRB_RlcSdu) {
             mem_block_t *sdu = get_free_mem_block(SS_DRB_PDU_REQ(msg_p).sdu_size, __func__);
             memcpy(sdu->data, SS_DRB_PDU_REQ(msg_p).sdu, SS_DRB_PDU_REQ(msg_p).sdu_size);
             enqueue_mac_rlc_data_req(&ctxt,
@@ -3792,7 +3794,7 @@ void *rrc_gnb_task(void *args_p) {
                                      sdu,
                                      NULL,
                                      NULL);
-          } else if (RC.nr_drb_data_type == DRB_PdcpSdu) {
+          } else if (SS_DRB_PDU_REQ(msg_p).data_type == DRB_PdcpSdu) {
             nr_pdcp_data_req_drb(&ctxt,
                                  SRB_FLAG_NO,
                                  SS_DRB_PDU_REQ(msg_p).drb_id,
@@ -3803,6 +3805,19 @@ void *rrc_gnb_task(void *args_p) {
                                  PDCP_TRANSMISSION_MODE_UNKNOWN,
                                  NULL,
                                  NULL);
+          } else if (SS_DRB_PDU_REQ(msg_p).data_type == DRB_SdapSdu){
+            sdap_data_req(&ctxt,
+                        SS_DRB_PDU_REQ(msg_p).rnti,
+                        SRB_FLAG_NO,
+                        SS_DRB_PDU_REQ(msg_p).drb_id,
+                        RLC_MUI_UNDEFINED,
+                        RLC_SDU_CONFIRM_NO,
+                        SS_DRB_PDU_REQ(msg_p).sdu_size,
+                        SS_DRB_PDU_REQ(msg_p).sdu,
+                        PDCP_TRANSMISSION_MODE_DATA, NULL, NULL,
+                        SS_DRB_PDU_REQ(msg_p).qfi,
+                        0,
+                        SS_DRB_PDU_REQ(msg_p).pdu_sessionId);
           } else {
             AssertFatal(RC.nr_drb_data_type != RC.nr_drb_data_type, "Invalid DRB data type (%d)!\n", RC.nr_drb_data_type);
           }

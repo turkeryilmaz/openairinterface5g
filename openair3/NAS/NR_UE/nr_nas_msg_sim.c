@@ -66,6 +66,155 @@ static int _dl_nas_count = 0;
 static int _nas_integrity_algo = NIA2_128_ALG_ID;
 static int _nas_ciphering_algo = NEA2_128_ALG_ID;
 
+typedef enum
+{
+  MM_TEST_LOOP_A = 0x00,
+  MM_TEST_LOOP_B = 0x01,
+  MM_TEST_LOOP_C = 0x02,
+  MM_TEST_LOOP_MODE_MAX,
+} MmTestMode;
+
+MmTestMode mm_activeTestLoop = MM_TEST_LOOP_MODE_MAX;
+
+typedef enum
+{
+  MM_TEST_LOOP_STATE_NULL,
+  MM_TEST_LOOP_STATE_ACTIVE,
+  MM_TEST_LOOP_STATE_CLOSE,
+  MM_TEST_LOOP_STATE_OPEN,
+}MmTestLoopState;
+
+MmTestLoopState mm_testLoopState = MM_TEST_LOOP_STATE_NULL;
+
+typedef enum
+{
+  MM_TEST_LOOP_EVENT_ACTIVE,
+  MM_TEST_LOOP_EVENT_DEACTIVE,
+  MM_TEST_LOOP_EVENT_CLOSE_LOOP,
+  MM_TEST_LOOP_EVENT_OPEN_LOOP,
+}MmTestLoopEvent;
+
+typedef struct MMCloseUeTestLoopMsgTag
+{
+  MmTestMode         ueTestLoopMode;
+  /* optional fields */
+  //MmUETestLoopDrbSetupList testLoopDrbSetupList;  // Mode A
+  u8                      testLoopIpPduDelayTimeSeconds; //Mode B
+  //MmUeTestLoopMchId	    testLoopMtchId;  //Mode C
+} MMCloseUeTestLoopMsg;
+
+void decodeCloseUeTestLoopMsg(MMCloseUeTestLoopMsg *closeUeTestLoopMsg, uint8_t *buffer, uint32_t len)
+{
+  uint8_t offset   = 0;
+  if (((nas_msg_header_t *)(buffer))->choice.security_protected_nas_msg_header_t.security_header_type > 0){
+    offset +=SECURITY_PROTECTED_5GS_NAS_MESSAGE_HEADER_LENGTH;
+    offset +=2; /* skipIndicator('0000'B) +protocolDiscriminator('1111'B) + messageType('10000000'B)  */
+  } else {
+    offset +=PLAIN_5GS_NAS_MESSAGE_HEADER_LENGTH;
+  }
+  closeUeTestLoopMsg->ueTestLoopMode = (uint8_t)(*(buffer+offset));
+  offset+=1;
+  switch(closeUeTestLoopMsg->ueTestLoopMode){
+    case MM_TEST_LOOP_A:
+      //should decode the modeA LB setup list. Do nothing here.
+      break;
+    case MM_TEST_LOOP_B:
+      closeUeTestLoopMsg->testLoopIpPduDelayTimeSeconds = (uint8_t)(*(buffer+offset));
+      break;
+    default:
+      break;
+  }
+}
+
+static void mm_setLoop(bool enable, MmTestMode mode, MMCloseUeTestLoopMsg * closeUeTestLoopMsg)
+{
+  extern void set_pdcp_loopback(bool enable);
+  extern void set_sdap_loopback(bool enable, uint8_t testLoopDelayTimeSeconds);
+
+  if(enable){
+    if(mode == MM_TEST_LOOP_A){
+      //pdcp above loopback
+      set_pdcp_loopback(true); //TODO: shall including bearer list parameter
+    }else if(mode == MM_TEST_LOOP_B){
+      //sdap above loopback
+      set_sdap_loopback(true,closeUeTestLoopMsg->testLoopIpPduDelayTimeSeconds);
+    }
+  } else {
+    if(mode == MM_TEST_LOOP_A){
+      //pdcp above loopback
+      set_pdcp_loopback(false);
+    }else if(mode == MM_TEST_LOOP_B){
+      //sdap above loopback
+      set_sdap_loopback(false,0);
+    }
+  }
+}
+
+static void mm_testLoop_action(MmTestLoopEvent event, MMCloseUeTestLoopMsg * closeUeTestLoopMsg)
+{
+  MmTestLoopState old_state = mm_testLoopState;
+  MmTestLoopState new_state = old_state;
+
+  switch(mm_testLoopState){
+    case MM_TEST_LOOP_STATE_NULL:
+    {
+      if(event == MM_TEST_LOOP_EVENT_ACTIVE){
+        new_state = MM_TEST_LOOP_STATE_ACTIVE;
+      }
+    }
+    break;
+
+    case MM_TEST_LOOP_STATE_ACTIVE:
+    {
+      if(event == MM_TEST_LOOP_EVENT_CLOSE_LOOP && closeUeTestLoopMsg){
+        mm_activeTestLoop = closeUeTestLoopMsg->ueTestLoopMode;
+        mm_setLoop(true,mm_activeTestLoop,closeUeTestLoopMsg);
+        new_state = MM_TEST_LOOP_STATE_CLOSE;
+      }
+    }
+    break;
+
+    case MM_TEST_LOOP_STATE_CLOSE:
+    {
+      if(event == MM_TEST_LOOP_EVENT_OPEN_LOOP || event == MM_TEST_LOOP_EVENT_DEACTIVE){
+        mm_setLoop(false,mm_activeTestLoop,closeUeTestLoopMsg);
+        if(event == MM_TEST_LOOP_EVENT_OPEN_LOOP){
+          new_state = MM_TEST_LOOP_STATE_OPEN;
+        } else {
+          new_state = MM_TEST_LOOP_STATE_NULL;
+          mm_activeTestLoop = MM_TEST_LOOP_MODE_MAX;
+        }
+      } else if (event == MM_TEST_LOOP_EVENT_CLOSE_LOOP && closeUeTestLoopMsg){
+        if(mm_activeTestLoop != closeUeTestLoopMsg->ueTestLoopMode){
+          mm_setLoop(false,mm_activeTestLoop,closeUeTestLoopMsg);
+          mm_activeTestLoop = closeUeTestLoopMsg->ueTestLoopMode;
+          mm_setLoop(true,mm_activeTestLoop,closeUeTestLoopMsg);
+        }
+      }
+    }
+    break;
+
+    case MM_TEST_LOOP_STATE_OPEN:
+    {
+      if(event == MM_TEST_LOOP_EVENT_CLOSE_LOOP && closeUeTestLoopMsg){
+        mm_activeTestLoop = closeUeTestLoopMsg->ueTestLoopMode;
+        mm_setLoop(true,mm_activeTestLoop,closeUeTestLoopMsg);
+        new_state = MM_TEST_LOOP_STATE_CLOSE;
+      } else if (event == MM_TEST_LOOP_EVENT_DEACTIVE){
+        new_state = MM_TEST_LOOP_STATE_NULL;
+        mm_activeTestLoop = MM_TEST_LOOP_MODE_MAX;
+      }
+    }
+    break;
+
+    default:
+      LOG_E(NAS, "wrong test loop state:%d\n", mm_testLoopState);
+      break;
+  }
+  mm_testLoopState = new_state;
+  LOG_D(NAS, "test loop state %d ==> %d  test loop mode:%d\n", old_state,new_state, mm_activeTestLoop);
+}
+
 static int nas_protected_security_header_encode(
   char                                       *buffer,
   const fgs_nas_message_security_header_t    *header,
@@ -1643,6 +1792,8 @@ void *nas_nrue_task(void *args_p)
           /* TODO not processed by NAS currently */
           break;
 
+        /* Do not use this message anymore, all the NAS DL message is processed in  NAS_DOWNLINK_DATA_IND*/
+#if 0
         case NAS_CONN_ESTABLI_CNF: {
           LOG_I(NAS, "[UE %ld] Received %s: errCode %u, length %u\n", instance, ITTI_MSG_NAME(msg_p), NAS_CONN_ESTABLI_CNF(msg_p).errCode, NAS_CONN_ESTABLI_CNF(msg_p).nasMsg.length);
 
@@ -1674,6 +1825,7 @@ void *nas_nrue_task(void *args_p)
 
           break;
       }
+#endif
 
       case NAS_CONN_RELEASE_IND:
         LOG_I(NAS, "[UE %ld] Received %s: cause %u\n", instance, ITTI_MSG_NAME (msg_p),
@@ -1723,15 +1875,6 @@ void *nas_nrue_task(void *args_p)
         if(_security_set) {
           _dl_nas_count++;
 
-          /* !!!HACK!!!
-            In order match DL NAS Count for the close_Ue_Test_Loop NAS msg from TTCN (TC 7.1.2.2.1),
-            need to increase nas counter to '5', otherwise deciphering fails.
-            Previous NAS message containing service_Accept piggypacked to rrcReconfiguration is not handled here.
-          */
-          if (_dl_nas_count == 3) {
-            _dl_nas_count = 5;
-          }
-
           // TODO: Integrity check
 
            LOG_I(NAS, "_dl_nas_count=%d\n", _dl_nas_count);
@@ -1740,7 +1883,7 @@ void *nas_nrue_task(void *args_p)
                            pdu_buffer_len - SECURITY_PROTECTED_5GS_NAS_MESSAGE_HEADER_LENGTH);
         }
         msg_type = get_msg_type(pdu_buffer, pdu_buffer_len);
-
+        LOG_I(NAS, "NAS msg type:%d\n",msg_type);
         switch(msg_type)
         {
           case FGS_IDENTITY_REQUEST:
@@ -1775,49 +1918,50 @@ void *nas_nrue_task(void *args_p)
           case FGS_DEREGISTRATION_ACCEPT:
             LOG_I(NAS, "received deregistration accept\n");
             break;
-          case FGS_PDU_SESSION_ESTABLISHMENT_ACC:
+          case REGISTRATION_ACCEPT:
           {
-            uint8_t offset = 0;
-            uint8_t *payload_container = pdu_buffer;
-            offset += SECURITY_PROTECTED_5GS_NAS_MESSAGE_HEADER_LENGTH;
-            uint16_t payload_container_length = htons(((dl_nas_transport_t *)(pdu_buffer + offset))->payload_container_length);
+            LOG_I(NAS, "[UE] Received REGISTRATION ACCEPT message\n");
 
-            if ((payload_container_length >= PAYLOAD_CONTAINER_LENGTH_MIN) && (payload_container_length <= PAYLOAD_CONTAINER_LENGTH_MAX)) {
-              offset += (PLAIN_5GS_NAS_MESSAGE_HEADER_LENGTH + 3);
+            generateRegistrationComplete(nas,&initialNasMsg, NULL);
+            if (initialNasMsg.length > 0) {
+              send_nas_uplink_data_req(instance, &initialNasMsg);
+              LOG_I(NAS, "Send NAS_UPLINK_DATA_REQ message(RegistrationComplete)\n");
+              initialNasMsg.length = 0; /*To avoid send again later*/
             }
 
-            if (offset < NAS_CONN_ESTABLI_CNF(msg_p).nasMsg.length) {
-              payload_container = pdu_buffer + offset;
+            as_nas_info_t pduEstablishMsg;
+            memset(&pduEstablishMsg, 0, sizeof(as_nas_info_t));
+            generatePduSessionEstablishRequest(nas, &pduEstablishMsg);
+            if (pduEstablishMsg.length > 0) {
+              send_nas_uplink_data_req(instance, &pduEstablishMsg);
+              LOG_I(NAS, "Send NAS_UPLINK_DATA_REQ message(PduSessionEstablishRequest)\n");
             }
-
-            while(offset < payload_container_length) {
-              if (*(payload_container + offset) == 0x29) { // PDU address IEI
-                if ((*(payload_container+offset+1) == 0x05) && (*(payload_container +offset+2) == 0x01)) { // IPV4
-                  nas_getparams();
-                  sprintf(baseNetAddress, "%d.%d", *(payload_container+offset+3), *(payload_container+offset+4));
-                  int third_octet = *(payload_container+offset+5);
-                  int fourth_octet = *(payload_container+offset+6);
-                  LOG_I(NAS, "Received PDU Session Establishment Accept, UE IP: %d.%d.%d.%d\n",
-                  *(payload_container+offset+3), *(payload_container+offset+4),
-                  *(payload_container+offset+5), *(payload_container+offset+6));
-                  nas_config(1,third_octet,fourth_octet,"oaitun_ue");
-                  break;
-                }
-              }
-              offset++;
-            }
+            break;
           }
+          case FGS_PDU_SESSION_ESTABLISHMENT_ACC:
+            LOG_I(NAS, "[UE] Received PDU_SESSION_ESTABLISHMENT_ACCEPT message\n");
+            capture_pdu_session_establishment_accept_msg(pdu_buffer,pdu_buffer_len);
             break;
           case ACTIVATE_TEST_MODE:
+            LOG_I(NAS, "[UE] Received ACTIVATE_TEST_MODE message\n");
+            mm_testLoop_action(MM_TEST_LOOP_EVENT_ACTIVE, NULL);
             generateActivateTestModeComplete(nas, &initialNasMsg);
             break;
           case NR_CLOSE_UE_TEST_LOOP:
+            LOG_I(NAS, "[UE] Received NR_CLOSE_UE_TEST_LOOP message\n");
+            MMCloseUeTestLoopMsg closeUeTestLoopMsg;
+            decodeCloseUeTestLoopMsg(&closeUeTestLoopMsg,pdu_buffer, pdu_buffer_len);
+            mm_testLoop_action(MM_TEST_LOOP_EVENT_CLOSE_LOOP, &closeUeTestLoopMsg);
             generateCloseUeTestLoopComplete(nas, &initialNasMsg);
             break;
           case OPEN_UE_TEST_LOOP:
+            LOG_I(NAS, "[UE] Received OPEN_UE_TEST_LOOP message\n");
+            mm_testLoop_action(MM_TEST_LOOP_EVENT_OPEN_LOOP,NULL);
             generateOpenUeTestLoopComplete(nas, &initialNasMsg);
             break;
           case DEACTIVATE_TEST_MODE:
+            LOG_I(NAS, "[UE] Received DEACTIVATE_TEST_MODE message\n");
+            mm_testLoop_action(MM_TEST_LOOP_EVENT_DEACTIVE,NULL);
             generateDeactivateTestModeComplete(nas, &initialNasMsg);
             break;
           default:
