@@ -86,15 +86,9 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind)
     ind.Common.CellId = nr_Cell1;
 
     // Populated the Routing Info
-    if(_drb_data_type == DRB_SdapSdu){
-        ind.Common.RoutingInfo.d = NR_RoutingInfo_Type_QosFlow;
-        ind.Common.RoutingInfo.v.QosFlow.PDU_SessionId = pdu_ind->pdu_sessionId;
-        ind.Common.RoutingInfo.v.QosFlow.QFI = pdu_ind->qfi;
-    } else {
-        ind.Common.RoutingInfo.d = NR_RoutingInfo_Type_RadioBearerId;
-        ind.Common.RoutingInfo.v.RadioBearerId.d = NR_RadioBearerId_Type_Drb;
-        ind.Common.RoutingInfo.v.RadioBearerId.v.Drb = pdu_ind->drb_id;
-    }
+    ind.Common.RoutingInfo.d = NR_RoutingInfo_Type_RadioBearerId;
+    ind.Common.RoutingInfo.v.RadioBearerId.d = NR_RadioBearerId_Type_Drb;
+    ind.Common.RoutingInfo.v.RadioBearerId.v.Drb = pdu_ind->drb_id;
 
     // Populated the Timing Info
     ind.Common.TimingInfo.d = TimingInfo_Type_SubFrame;
@@ -234,26 +228,6 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind)
     }
     break;
 
-    case DRB_SdapSdu:
-    {
-        LOG_A(GNB_APP, "[SS_DRB] SDAP SDU received in NR_DRB_COMMON_IND\n");
-        // Populating the SDU
-        ind.U_Plane.SlotData.NoOfTTIs = 1;
-        ind.U_Plane.SlotData.PduSduList.d = NR_L2DataList_Type_SdapSdu;
-        ind.U_Plane.SlotData.PduSduList.v.SdapSdu.d = 1;
-        ind.U_Plane.SlotData.PduSduList.v.SdapSdu.v = CALLOC(1, ind.U_Plane.SlotData.PduSduList.v.SdapSdu.d * sizeof(SDAP_SDU_Type));
-        DevAssert(ind.U_Plane.SlotData.PduSduList.v.SdapSdu.v != NULL);
-
-        for (int i = 0; i < ind.U_Plane.SlotData.PduSduList.v.SdapSdu.d; i++) {
-            SDAP_SDU_Type *sdapSdu = &ind.U_Plane.SlotData.PduSduList.v.SdapSdu.v[i];
-            sdapSdu->d = pdu_ind->sdu_size;
-            sdapSdu->v = CALLOC(1, sdapSdu->d);
-            DevAssert(sdapSdu->v != NULL);
-            memcpy(sdapSdu->v, pdu_ind->sdu, sdapSdu->d);
-        }
-    }
-    break;
-
     default:
         LOG_E(GNB_APP, "[SS_DRB] %s requested NR_L2DataList_Type %d that is not yet implemented\n", _drb_data_type);
     }
@@ -304,7 +278,7 @@ static void ss_task_handle_drb_pdu_req(struct NR_DRB_COMMON_REQ *req)
                 message_p = itti_alloc_new_message(task_id, 0, SS_DRB_PDU_REQ);
                 assert(message_p);
                 memset(SS_DRB_PDU_REQ(message_p).sdu, 0, SDU_SIZE);
-                SS_DRB_PDU_REQ(message_p).data_type = (uint8_t)DRB_RlcPdu;
+
                 if (rlcPdu->d == NR_RLC_PDU_Type_UMD && rlcPdu->v.UMD.d == NR_RLC_UMD_PDU_Type_NoSN)
                 {
                     struct NR_RLC_UMD_HeaderNoSN_Type *header = &rlcPdu->v.UMD.v.NoSN.Header;
@@ -323,14 +297,12 @@ static void ss_task_handle_drb_pdu_req(struct NR_DRB_COMMON_REQ *req)
                     int pdu_header_size = 1;
                     bits_copy_from_array((char *)SS_DRB_PDU_REQ(message_p).sdu, 0, (const char *)header->SegmentationInfo, 2);
                     bits_copy_from_array((char *)SS_DRB_PDU_REQ(message_p).sdu, 2, (const char *)header->SequenceNumber, 6);
-                    SS_DRB_PDU_REQ(message_p).data_type = (uint8_t)DRB_RlcPdu;
                     if (header->SegmentOffset.d)
                     {
                         pdu_header_size += 2;
                         bits_copy_from_array((char *)SS_DRB_PDU_REQ(message_p).sdu, 8, (const char *)header->SegmentOffset.v, 16);
                         //we consider only RLC payload is there meaning that RLC packet is segmented
                         RC.nr_drb_data_type = DRB_RlcSdu;
-                        SS_DRB_PDU_REQ(message_p).data_type = (uint8_t)DRB_RlcSdu;
                     }
                     SS_DRB_PDU_REQ(message_p).sdu_size = pdu_header_size + data->d;
                     LOG_A(GNB_APP, "[SS_DRB] Length of RLC PDU received in NR_DRB_COMMON_REQ (SN6Bit): %lu\n", pdu_header_size + data->d);
@@ -349,7 +321,6 @@ static void ss_task_handle_drb_pdu_req(struct NR_DRB_COMMON_REQ *req)
                         bits_copy_from_array((char *)SS_DRB_PDU_REQ(message_p).sdu, 16, (const char *)header->SegmentOffset.v, 16);
                         //we consider only RLC payload is there meaning that RLC packet is segmented
                         RC.nr_drb_data_type = DRB_RlcSdu;
-                        SS_DRB_PDU_REQ(message_p).data_type = (uint8_t)DRB_RlcSdu;
                     }
                     SS_DRB_PDU_REQ(message_p).sdu_size = pdu_header_size + data->d;
                     LOG_A(GNB_APP, "[SS_DRB] Length of RLC PDU received in NR_DRB_COMMON_REQ: %lu\n", pdu_header_size + data->d);
@@ -393,44 +364,6 @@ static void ss_task_handle_drb_pdu_req(struct NR_DRB_COMMON_REQ *req)
 
                 SS_DRB_PDU_REQ(message_p).drb_id = req->Common.RoutingInfo.v.RadioBearerId.v.Drb;
                 SS_DRB_PDU_REQ(message_p).rnti = SS_context.ss_rnti_g;
-                SS_DRB_PDU_REQ(message_p).data_type = (uint8_t)DRB_PdcpSdu;
-
-                if (!nr_vt_timer_push_msg(&req->Common.TimingInfo, req->U_Plane.SlotDataList.v[i].SlotOffset, task_id, instance_g, message_p))
-                {
-                    int send_res = itti_send_msg_to_task(task_id, instance_g, message_p);
-                    if (send_res < 0)
-                    {
-                        LOG_E(GNB_APP, "[SS_DRB] Error in itti_send_msg_to_task\n");
-                    }
-                    LOG_A(GNB_APP, "[SS_DRB] Send res: %d\n", send_res);
-                }
-            }
-        }
-        else if (req->U_Plane.SlotDataList.v[i].PduSduList.d == NR_L2DataList_Type_SdapSdu)
-        {
-            LOG_A(GNB_APP, "[SS_DRB] Sdap SDU Received in NR_DRB_COMMON_REQ\n");
-            _drb_data_type = DRB_SdapSdu;
-            RC.nr_drb_data_type = DRB_SdapSdu;
-
-            for (int j = 0; j < req->U_Plane.SlotDataList.v[i].PduSduList.v.SdapSdu.d; j++)
-            {
-                task_id = TASK_PDCP_ENB; /* reused the PDCP task intead of create a new SDAP task for SS_DRB_PDU_REQ message processing  */
-                message_p = itti_alloc_new_message(task_id, 0, SS_DRB_PDU_REQ);
-                assert(message_p);
-                memset(SS_DRB_PDU_REQ(message_p).sdu, 0, SDU_SIZE);
-
-                SDAP_SDU_Type *sdapSdu = &req->U_Plane.SlotDataList.v[i].PduSduList.v.SdapSdu.v[j];
-                SS_DRB_PDU_REQ(message_p).sdu_size = sdapSdu->d;
-                memcpy(SS_DRB_PDU_REQ(message_p).sdu, sdapSdu->v, sdapSdu->d);
-                LOG_A(GNB_APP, "[SS_DRB] Length of SDAP SDU received in NR_DRB_COMMON_REQ: %lu\n", sdapSdu->d);
-
-                SS_DRB_PDU_REQ(message_p).drb_id = 1; /* This parameter is not actually used in SDAP entity */
-                SS_DRB_PDU_REQ(message_p).rnti = SS_context.ss_rnti_g;
-                SS_DRB_PDU_REQ(message_p).data_type = (uint8_t)DRB_SdapSdu;
-                if(req->Common.RoutingInfo.d == NR_RoutingInfo_Type_QosFlow){
-                    SS_DRB_PDU_REQ(message_p).pdu_sessionId = req->Common.RoutingInfo.v.QosFlow.PDU_SessionId;
-                    SS_DRB_PDU_REQ(message_p).qfi = req->Common.RoutingInfo.v.QosFlow.QFI;
-                }
 
                 if (!nr_vt_timer_push_msg(&req->Common.TimingInfo, req->U_Plane.SlotDataList.v[i].SlotOffset, task_id, instance_g, message_p))
                 {

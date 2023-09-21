@@ -236,24 +236,18 @@ typedef struct ss_vng_proxy_resp_s {
 /** DRB **/
 typedef struct ss_drb_pdu_req_s {
   uint8_t   drb_id;
-  uint8_t   data_type;
   uint32_t  sdu_size;
   uint8_t   sdu[SDU_SIZE];
   uint16_t  rnti;
-  int32_t pdu_sessionId; /* for data_type=DRB_SdapSdu */
-  int32_t qfi;                  /* for data_type=DRB_SdapSdu */
 } ss_drb_pdu_req_t;
 
 typedef struct ss_drb_pdu_ind_s {
   uint8_t   drb_id;
-  uint8_t   data_type;
   uint32_t  sdu_size;
   uint8_t   sdu[SDU_SIZE];
   frame_t     frame;         /*!< \brief  LTE frame number.*/
   sub_frame_t subframe;      /*!< \brief  LTE sub frame number.*/
   int       physCellId;
-  int32_t pdu_sessionId; /* for data_type=DRB_SdapSdu */
-  int32_t qfi;                  /* for data_type=DRB_SdapSdu */
 } ss_drb_pdu_ind_t;
 
 typedef enum carrierBandwidthEUTRA_dl_Bandwidth_e {
