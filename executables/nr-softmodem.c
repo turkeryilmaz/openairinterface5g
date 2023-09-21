@@ -81,6 +81,7 @@ unsigned short config_frames[4] = {2,9,11,13};
 #include "gnb_config.h"
 #include "openair2/E1AP/e1ap_common.h"
 #include "openair2/E1AP/e1ap_api.h"
+#include "common/utils/LATSEQ/latseq.h"
 
 #ifdef E2_AGENT
 #include "openair2/E2AP/flexric/src/agent/e2_agent_api.h"
@@ -654,6 +655,7 @@ int main( int argc, char **argv ) {
     pthread_mutex_init(&sync_mutex, NULL);
   }
 
+  init_latseq("/tmp/latseq", (uint64_t)(cpuf*1000000000LL));
   printf("START MAIN THREADS\n");
   // start the main threads
   number_of_cards = 1;
@@ -787,6 +789,7 @@ int main( int argc, char **argv ) {
   printf("Returned from ITTI signal handler\n");
   oai_exit=1;
   printf("oai_exit=%d\n",oai_exit);
+  close_latseq(); //close before end of threads
 
   // cleanup
   if (RC.nb_nr_L1_inst > 0)
