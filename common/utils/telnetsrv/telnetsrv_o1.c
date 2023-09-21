@@ -281,6 +281,12 @@ static int set_bwconfig(char *buf, int debug, telnet_printfunc_t prnt)
   if (!buf)
     ERROR_MSG_RET("need param: o1 bwconfig <BW>\n");
 
+  char *end = NULL;
+  if (NULL != (end = strchr(buf, '\n')))
+    *end = 0;
+  if (NULL != (end = strchr(buf, '\r')))
+    *end = 0;
+
   gNB_RRC_INST *rrc = RC.nrrrc[0];
   NR_ServingCellConfigCommon_t *scc = rrc->carrier.servingcellconfigcommon;
   NR_FrequencyInfoDL_t *frequencyInfoDL = scc->downlinkConfigCommon->frequencyInfoDL;
