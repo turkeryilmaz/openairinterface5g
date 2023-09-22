@@ -33,6 +33,8 @@
 
 #include "openair2/RRC/NR/nr_rrc_defs.h"
 #include "openair2/LAYER2/NR_MAC_gNB/nr_mac_gNB.h"
+#include "openair2/RRC/NR/nr_rrc_config.h"
+#include "openair2/LAYER2/NR_MAC_gNB/mac_proto.h"
 #include "common/utils/nr/nr_common.h"
 
 #define ERROR_MSG_RET(mSG, aRGS...) do { prnt("FAILURE: " mSG, ##aRGS); return 1; } while (0)
@@ -316,6 +318,26 @@ static int set_bwconfig(char *buf, int debug, telnet_printfunc_t prnt)
   } else {
     ERROR_MSG_RET("unhandled option %s\n", buf);
   }
+
+
+  // due to outrightly CRAZY memory handling in get_SIB1_NR(), we need to set
+  // some structures to zero to prevent that we shoot ourselves into the foot
+  //struct NR_SIB1 *xyz = rrc->carrier.siblock1->message.choice.c1->choice.systemInformationBlockType1;
+  //xyz->servingCellConfigCommon = NULL;
+  //free_SIB1_NR(rrc->carrier.siblock1);
+  NR_BCCH_DL_SCH_Message_t *sib1 = get_SIB1_NR(&rrc->configuration);
+  rrc->carrier.SIB1 = calloc(NR_MAX_SIB_LENGTH / 8, sizeof(*rrc->carrier.SIB1));
+  AssertFatal(rrc->carrier.SIB1 != NULL, "out of memory\n");
+  rrc->carrier.sizeof_SIB1 = encode_SIB1_NR(sib1, rrc->carrier.SIB1, NR_MAX_SIB_LENGTH / 8);
+  rrc->carrier.siblock1 = sib1;
+  nr_mac_config_sib1(RC.nrmac[rrc->module_id], sib1);
+
+  nr_mac_config_scc(RC.nrmac[rrc->module_id],
+                    rrc->configuration.pdsch_AntennaPorts,
+                    rrc->configuration.pusch_AntennaPorts,
+                    rrc->configuration.sib1_tda,
+                    rrc->configuration.minRXTXTIME,
+                    rrc->carrier.servingcellconfigcommon);
 
   prnt("OK\n");
   return 0;
