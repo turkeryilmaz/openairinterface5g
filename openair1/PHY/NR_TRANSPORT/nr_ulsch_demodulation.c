@@ -10,6 +10,7 @@
 #include "common/utils/nr/nr_common.h"
 #include <openair1/PHY/TOOLS/phy_scope_interface.h>
 #include "PHY/sse_intrin.h"
+#include "common/utils/LATSEQ/latseq.h"
 
 //#define DEBUG_CH_COMP
 //#define DEBUG_RB_EXT
@@ -1620,6 +1621,7 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
   //--------------------- Channel estimation ---------------------
   //----------------------------------------------------------
   start_meas(&gNB->ulsch_channel_estimation_stats);
+  LATSEQ_P("U phy.prachpucch--phy.CHest", "::fm%u.sl%u.hqpid%u.rnti%u.qammod%u.hqround%u", frame, slot, harq_pid, rel15_ul->rnti, rel15_ul->qam_mod_order, ulsch->harq_process->round);
   int max_ch = 0;
   uint32_t nvar = 0;
   for(uint8_t symbol = rel15_ul->start_symbol_index; symbol < (rel15_ul->start_symbol_index + rel15_ul->nr_of_symbols); symbol++) {
@@ -1690,6 +1692,7 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
     pusch_vars->dmrs_symbol =
         get_next_dmrs_symbol_in_slot(rel15_ul->ul_dmrs_symb_pos, rel15_ul->start_symbol_index, rel15_ul->nr_of_symbols);
   }
+  LATSEQ_P("U phy.CHest--phy.CHrbscacompllr", "::fm%u.sl%u.hqpid%u.nbantrx%u.rnti%u", frame, slot, harq_pid, frame_parms->nb_antennas_rx, rel15_ul->rnti);
   stop_meas(&gNB->ulsch_channel_estimation_stats);
 
   int off = ((rel15_ul->rb_size&1) == 1)? 4:0;
@@ -1832,7 +1835,6 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
                               nb_re_pusch,
                               nvar);
       }
-
       stop_meas(&gNB->ulsch_mrc_stats);
 
       if (rel15_ul->transform_precoding == transformPrecoder_enabled) {
@@ -1913,6 +1915,7 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
       rxdataF_ext_offset += pusch_vars->ul_valid_re_per_slot[symbol];
     }
   } // symbol loop
+  LATSEQ_P("U phy.CHrbscacompllr--phy.layerdemapped", "::fm%u.sl%u.hqpid%u.rnti%u.nbsymbols%u", frame, slot, harq_pid, rel15_ul->rnti, rel15_ul->nr_of_symbols);
   if (!(frame % 128)) {
     int num_llr = num_re_total*rel15_ul->qam_mod_order;
     GnbScopeUpdate(gNB, puschLLRe, num_llr);

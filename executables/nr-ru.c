@@ -51,6 +51,7 @@
 
 #include "common/utils/LOG/log.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
+#include "common/utils/LATSEQ/latseq.h"
 
 #include <executables/softmodem-common.h>
 
@@ -726,6 +727,7 @@ void rx_rf(RU_t *ru,int *frame,int *slot) {
   }
 
   stop_meas(&ru->rx_fhaul);
+  LATSEQ_P("U phy.SOUTHend--phy.dft","samplesslot%u::fm%u.sl%u", samples_per_slot, *frame, *slot);
 }
 
 static radio_tx_gpio_flag_t get_gpio_flags(RU_t *ru, int slot)
@@ -1254,6 +1256,7 @@ void *ru_thread( void *param ) {
     // synchronization on input FH interface, acquire signals/data and block
     LOG_D(PHY,"[RU_thread] read data: frame_rx = %d, tti_rx = %d\n", frame, slot);
 
+    LATSEQ_P("U phy.SOUTHstart--phy.SOUTHend","::fm%u.sl%u", frame, slot);
     if (ru->fh_south_in) ru->fh_south_in(ru,&frame,&slot);
     else AssertFatal(1==0, "No fronthaul interface at south port");
 
@@ -1299,6 +1302,7 @@ void *ru_thread( void *param ) {
     if (slot_type == NR_UPLINK_SLOT || slot_type == NR_MIXED_SLOT) {
       if (ru->feprx) {
         ru->feprx(ru,proc->tti_rx);
+        LATSEQ_P("U phy.dft--phy.prachpucch","::fm%u.sl%u", frame, slot);
         clock_gettime(CLOCK_MONOTONIC,&ru->rt_ru_profiling.return_RU_feprx[rt_prof_idx]);
         //LOG_M("rxdata.m","rxs",ru->common.rxdata[0],1228800,1,1);
         LOG_D(PHY,"RU proc: frame_rx = %d, tti_rx = %d\n", proc->frame_rx, proc->tti_rx);

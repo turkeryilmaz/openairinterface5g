@@ -39,6 +39,7 @@
 #include "executables/softmodem-common.h"
 #include "nfapi/oai_integration/vendor_ext.h"
 #include "NR_SRS-ResourceSet.h"
+#include "common/utils/LATSEQ/latseq.h"
 
 #include "assertions.h"
 
@@ -253,6 +254,7 @@ static void nr_postDecode(PHY_VARS_gNB *gNB, notifiedFIFO_elt_t *req)
         ulsch_harq->processedSegments,
         rdata->nbSegments);
   if (decodeSuccess) {
+    LATSEQ_P("U mac.CBdec--mac.TBdec","::fm%u.sl%u.hqpid%u.ldpciter%u.segmentnb%u.rnti%u", ulsch->frame, ulsch->slot, rdata->harq_pid, rdata->decodeIterations, r, pusch_pdu->rnti);
     memcpy(ulsch_harq->b + rdata->offset, ulsch_harq->c[r], rdata->Kr_bytes - (ulsch_harq->F >> 3) - ((ulsch_harq->C > 1) ? 3 : 0));
 
   } else {
@@ -289,6 +291,7 @@ static void nr_postDecode(PHY_VARS_gNB *gNB, notifiedFIFO_elt_t *req)
             ulsch_harq->TBS,
             rdata->decodeIterations);
       ulsch->active = false;
+      LATSEQ_P("U mac.TBdec--mac.demuxed", "::fm%u.sl%u.hqpid%u.hqround%u.rnti%u.CBbits%u.Fbits%u.TBS%u", ulsch->frame, ulsch->slot, rdata->harq_pid, ulsch_harq->round, pusch_pdu->rnti, ulsch_harq->K, ulsch_harq->F, ulsch_harq->TBS);
       ulsch_harq->round = 0;
       LOG_D(PHY, "ULSCH received ok \n");
       nr_fill_indication(gNB, ulsch->frame, ulsch->slot, rdata->ulsch_id, rdata->harq_pid, 0, 0);
@@ -312,8 +315,15 @@ static void nr_postDecode(PHY_VARS_gNB *gNB, notifiedFIFO_elt_t *req)
       ulsch->handled = 1;
       LOG_D(PHY, "ULSCH %d in error\n",rdata->ulsch_id);
       nr_fill_indication(gNB, ulsch->frame, ulsch->slot, rdata->ulsch_id, rdata->harq_pid, 1, 0);
+      if (ulsch_harq->round == 3) {
+        LATSEQ_P("U mac.CBdec--mac.retxdrop","::fm%u.sl%u.hqpid%u.segmentnb%u.rnti%u", ulsch->frame, ulsch->slot, rdata->harq_pid, r, pusch_pdu->rnti);
+      } else {
+        LATSEQ_P("U mac.CBdec--mac.retxdecfail","::fm%u.sl%u.hqpid%u.segmentnb%u.rnti%u", ulsch->frame, ulsch->slot, rdata->harq_pid, r, pusch_pdu->rnti, ulsch_harq->round);
+        LATSEQ_P("U mac.retxdecfail--phy.prachpucch","::hqpid%u.rnti%u", rdata->harq_pid, pusch_pdu->rnti);
+      }
       //      dumpsig=1;
     }
+    
     ulsch->last_iteration_cnt = rdata->decodeIterations;
     /*
         if (ulsch_harq->ulsch_pdu.mcs_index == 0 && dumpsig==1) {
@@ -403,12 +413,14 @@ static int nr_ulsch_procedures(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, int
                            pusch_pdu->qam_mod_order,
                            G,
                            gNB->pusch_vars[ULSCH_id].llr_layers);
+  LATSEQ_P("U phy.layerdemapped--phy.unscrambled", "::fm%u.sl%u.hqpid%u.rnti%u", frame_rx, slot_rx, harq_pid, pusch_pdu->rnti);
 
   //----------------------------------------------------------
   //------------------- ULSCH unscrambling -------------------
   //----------------------------------------------------------
   start_meas(&gNB->ulsch_unscrambling_stats);
   nr_ulsch_unscrambling(gNB->pusch_vars[ULSCH_id].llr, G, pusch_pdu->data_scrambling_id, pusch_pdu->rnti);
+  LATSEQ_P("U phy.unscrambled--mac.CBdec", "::fm%u.sl%u.hqpid%u.rnti%u.mcs%u", frame_rx, slot_rx, harq_pid, pusch_pdu->rnti, pusch_pdu->mcs_index);
   stop_meas(&gNB->ulsch_unscrambling_stats);
   //----------------------------------------------------------
   //--------------------- ULSCH decoding ---------------------
@@ -928,6 +940,12 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
              Therefore, we don't yet call nr_fill_indication, it will be called later */
           nr_fill_indication(gNB, frame_rx, slot_rx, ULSCH_id, ulsch->harq_pid, 1, 1);
           pusch_DTX++;
+          if (ulsch_harq->round == 3) {
+            LATSEQ_P("U mac.CBdec--mac.retxdrop","::fm%u.sl%u.hqpid%u", frame_rx, slot_rx, ulsch->harq_pid);
+          } else {
+            LATSEQ_P("U mac.CBdec--mac.retxhighnoise","::fm%u.sl%u.hqpid%u.hqround%u.rnti%u", frame_rx, slot_rx, ulsch->harq_pid, ulsch_harq->round, ulsch->rnti);
+            LATSEQ_P("U mac.retxhighnoise--phy.prachpucch","::hqpid%u.rnti%u", ulsch->harq_pid, ulsch->rnti);
+          }
           continue;
         }
       } else {
