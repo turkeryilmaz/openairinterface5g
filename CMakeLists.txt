@@ -631,7 +631,7 @@ target_link_libraries(benetel_5g PRIVATE pthread dl rt m numa)
 
 # ORAN 5G library
 ######################################################################
-add_boolean_option(ORAN_BRONZE ON "Build support for Bronze version of ORAN FHI" ON)
+add_boolean_option(ORAN_BRONZE OFF "Build support for Bronze version of ORAN FHI" ON)
 if (ORAN_BRONZE)
   set(ORAN_FHLIB_5G_SOURCE
       ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/sample-app-bronze.c
@@ -642,10 +642,10 @@ if (ORAN_BRONZE)
       )
 else() 
   set(ORAN_FHLIB_5G_SOURCE
-      ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/sample-app-G.c
-      ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/app_io_fh_xran-G.c
-      ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/common-G.c
-      ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/config-G.c
+      ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/sample-app-E.c
+      ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/app_io_fh_xran-E.c
+      ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/common-E.c
+      ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/config-E.c
       ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/oran_isolate.c
       ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/oaioran.c
       )

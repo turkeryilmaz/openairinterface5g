@@ -2194,8 +2194,8 @@ void *oai_main(int argc,char *argv[])
         pRbMap->prbMap[0].nRBStart = 0;
         pRbMap->prbMap[0].nRBSize = pXranConf->nDLRBs;
         pRbMap->prbMap[0].nBeamIndex = 0;
-        pRbMap->prbMap[0].compMethod = XRAN_COMPMETHOD_NONE;
-        pRbMap->prbMap[0].iqWidth    = 16;
+        pRbMap->prbMap[0].compMethod = startupConfiguration.compression == 0 ? XRAN_COMPMETHOD_NONE : XRAN_COMPMETHOD_BLKFLOAT;
+        pRbMap->prbMap[0].iqWidth    = startupConfiguration.compression == 0 ? 16 : startupConfiguration.iqWidth;
 
         pRbMap = &startupConfiguration.PrbMapUl;
         pRbMap->dir = XRAN_DIR_UL;
@@ -2211,8 +2211,8 @@ void *oai_main(int argc,char *argv[])
         pRbMap->prbMap[0].nRBStart = 0;
         pRbMap->prbMap[0].nRBSize = pXranConf->nULRBs;
         pRbMap->prbMap[0].nBeamIndex = 0;
-        pRbMap->prbMap[0].compMethod = XRAN_COMPMETHOD_NONE;
-        pRbMap->prbMap[0].iqWidth    = 16;
+        pRbMap->prbMap[0].compMethod = startupConfiguration.compression == 0 ? XRAN_COMPMETHOD_NONE : XRAN_COMPMETHOD_BLKFLOAT;
+        pRbMap->prbMap[0].iqWidth    = startupConfiguration.compression == 0 ? 16 : startupConfiguration.iqWidth;	
     } else {
         struct xran_prb_map* pRbMap;
         pRbMap = &startupConfiguration.PrbMapDl;

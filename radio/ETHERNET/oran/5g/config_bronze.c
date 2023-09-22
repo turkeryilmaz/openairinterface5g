@@ -102,7 +102,7 @@
 #define KEY_HTONS_SWAP     "nebyteorderswap"
 #define KEY_COMPRESSION    "compression"
 #define KEY_COMP_TYPE      "compType"
-
+#define KEY_IQ_WIDTH       "iqWidth"
 
 #define KEY_BFW_NUM        "totalBFWeights"
 
@@ -271,6 +271,8 @@ static int fillConfigStruct(RuntimeConfig *config, const char *key, const char *
         config->compression = atoi(value);
     } else if (strcmp(key, KEY_COMP_TYPE) == 0) {
         config->CompHdrType = atoi(value);
+    } else if (strcmp(key, KEY_IQ_WIDTH) == 0) {
+        config->iqWidth = atoi(value);
     } else if (strcmp(key, KEY_MTU_SIZE) == 0) {
         config->mtu = atoi(value);
         printf("mtu %d\n", config->mtu);

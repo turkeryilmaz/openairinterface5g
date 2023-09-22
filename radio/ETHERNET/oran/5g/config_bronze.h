@@ -80,6 +80,7 @@ typedef struct _RuntimeConfig
     uint8_t nebyteorderswap; /**< do swap of byte order from host byte order to network byte order. ETH */
     uint8_t compression;     /**< enable use case with compression */
     uint8_t CompHdrType;     /**< dynamic or static compression header */
+    uint8_t iqWidth;         /**< width of I and Q samples in bits */
 
     uint16_t totalBfWeights; /**< The total number of beamforming weights on RU */
 
