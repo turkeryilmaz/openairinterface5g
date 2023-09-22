@@ -530,6 +530,10 @@ extern "C" void LDPCinit(t_nrLDPC_dec_params* p_decParams, int8_t* p_llr, int8_t
   init_LLR_DMA(p_decParams, p_llr, p_out);
 }
 
+extern "C" void LDPCshutdown()
+{
+}
+
 extern "C" int32_t LDPCdecoder(t_nrLDPC_dec_params* p_decParams,
                                int8_t* p_llr,
                                int8_t* p_out,
