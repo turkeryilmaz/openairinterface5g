@@ -1692,12 +1692,18 @@ void generateServiceRequest(as_nas_info_t *initialNasMsg, nr_ue_nas_t *nas) {
   /* _encrypt_nas_msg(nas, _ul_nas_count, initialNasMsg->data + 11, initialNasMsg->length - 11); */
 }
 
-uint8_t get_msg_type(uint8_t *pdu_buffer, uint32_t length) {
+uint8_t get_msg_type(uint8_t *pdu, uint32_t length) {
   uint8_t          pd = 0;
   uint8_t          msg_type = 0;
   uint8_t          offset   = 0;
+  uint8_t         *pdu_buffer = NULL;
 
-  if ((pdu_buffer != NULL) && (length > 0)) {
+  if ((pdu != NULL) && (length > 0)) {
+    pdu_buffer = malloc(length);
+    AssertFatal (pdu_buffer != NULL, "Failed to allocate memory\n");
+    memcpy(pdu_buffer, pdu, length);
+    printf("%s: pdu: ", __FUNCTION__); for(int i = 0; i < length; i++) printf("%02x", pdu_buffer[i]);printf("\n");
+
     if (((nas_msg_header_t *)(pdu_buffer))->choice.security_protected_nas_msg_header_t.security_header_type > 0) {
       offset += SECURITY_PROTECTED_5GS_NAS_MESSAGE_HEADER_LENGTH;
       if (offset < length) {
@@ -1705,9 +1711,7 @@ uint8_t get_msg_type(uint8_t *pdu_buffer, uint32_t length) {
         msg_type = ((mm_msg_header_t *)(pdu_buffer + offset))->message_type;
 
         if (msg_type == FGS_DOWNLINK_NAS_TRANSPORT) {
-          dl_nas_transport_t tmp;
-          memcpy(&tmp, pdu_buffer + offset, sizeof(tmp));
-          msg_type = tmp.sm_nas_msg_header.message_type;
+          msg_type = ((dl_nas_transport_t *)(pdu_buffer+ offset))->sm_nas_msg_header.message_type;
         } else if (pd == TEST_PD) {
           msg_type = *(pdu_buffer + offset + 1);
         }

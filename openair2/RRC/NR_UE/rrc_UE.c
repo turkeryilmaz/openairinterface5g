@@ -1710,11 +1710,11 @@ int8_t nr_rrc_ue_decode_ccch( const protocol_ctxt_t *const ctxt_pP, const NR_SRB
      }
 
      LOG_T(NR_RRC, "\n");
-     nr_pdcp_data_req_srb(ctxt_pP->rntiMaybeUEid, DCCH, nr_rrc_mui++, (enc_rval.encoded + 7) / 8, buffer, deliver_pdu_srb_rlc, NULL);
-      if (NR_UE_rrc_inst[ctxt_pP->module_id].cipheringAlgorithm != NR_CipheringAlgorithm_nea0) {
-        LOG_I(NR_RRC, "Calling nr_pdcp_config_set_smc");
-        nr_pdcp_config_set_smc(ctxt_pP->rntiMaybeUEid, false);
-      }
+      // if (NR_UE_rrc_inst[ctxt_pP->module_id].cipheringAlgorithm != NR_CipheringAlgorithm_nea0) {
+      //   LOG_I(NR_RRC, "A new Security Mode Command received, reset status\n");
+      //   nr_pdcp_config_set_smc(ctxt_pP->rntiMaybeUEid, false);
+      // } 
+      nr_pdcp_data_req_srb(ctxt_pP->rntiMaybeUEid, DCCH, nr_rrc_mui++, (enc_rval.encoded + 7) / 8, buffer, deliver_pdu_srb_rlc, NULL);
     } else {
       LOG_W(NR_RRC,"securityModeCommand->criticalExtensions.present (%d) != NR_SecurityModeCommand__criticalExtensions_PR_securityModeCommand\n",
 		   securityModeCommand->criticalExtensions.present);
