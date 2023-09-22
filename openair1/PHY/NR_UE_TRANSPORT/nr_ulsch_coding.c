@@ -203,6 +203,7 @@ int nr_ulsch_encoding(PHY_VARS_NR_UE *ue,
 
     start_meas(&ue->ulsch_ldpc_encoding_stats);
     // ldpc_interface_offload.LDPCencoder=NULL;
+#ifdef OFFLOAD_T2
     if (ldpc_interface_offload.LDPCencoder)
       for (int j = 0; j < harq_process->C; j++) {
         impp.macro_num = j;
@@ -211,6 +212,7 @@ int nr_ulsch_encoding(PHY_VARS_NR_UE *ue,
         ldpc_interface_offload.LDPCencoder(&harq_process->c[j], &harq_process->d[j], &impp);
       }
     else
+#endif
       for (int j = 0; j < (harq_process->C / 8 + 1); j++) {
         impp.macro_num = j;
         impp.E = nr_get_E(G, harq_process->C, mod_order, ulsch->pusch_pdu.nrOfLayers, j);

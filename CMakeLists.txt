@@ -486,27 +486,27 @@ target_link_libraries(shlib_loader PRIVATE CONFIG_LIB)
 # LDPC offload library
 ##########################################################
 
-add_boolean_option(ENABLE_LDPC_OFFLOAD OFF "Build support for LDPC Offload to T1 library" OFF)
-if (ENABLE_LDPC_OFFLOAD)
+add_boolean_option(ENABLE_LDPC_T1 OFF "Build support for LDPC Offload to T1 library" OFF)
+if (ENABLE_LDPC_T1)
   pkg_check_modules(LIBDPDK_OFFLOAD REQUIRED libdpdk=20.05.0)
-  find_library(T1 NAMES rte_pmd_hpac_sdfec_pmd REQUIRED)
-  add_library(ldpc_offload MODULE ${OPENAIR1_DIR}/PHY/CODING/nrLDPC_decoder/nrLDPC_decoder_offload.c)
-  set_target_properties(ldpc_offload PROPERTIES COMPILE_FLAGS "-DALLOW_EXPERIMENTAL_API")
-  target_link_libraries(ldpc_offload ${LIBDPDK_OFFLOAD_LDFLAGS} ${T1})
+  find_library(PMD_T1 NAMES rte_pmd_hpac_sdfec_pmd REQUIRED)
+  add_library(ldpc_t1 MODULE ${OPENAIR1_DIR}/PHY/CODING/nrLDPC_decoder/nrLDPC_decoder_offload.c)
+  set_target_properties(ldpc_t1 PROPERTIES COMPILE_FLAGS "-DALLOW_EXPERIMENTAL_API -DOFFLOAD_T1")
+  add_compile_options("-DOFFLOAD_T1")
+  target_link_libraries(ldpc_t1 ${LIBDPDK_OFFLOAD_LDFLAGS} ${PMD_T1})
 endif()
-
-#add_boolean_option(ENABLE_LDPC_OFFLOAD OFF "Build support for LDPC Offload to T2 library" OFF)
+add_boolean_option(ENABLE_LDPC_T2 OFF "Build support for LDPC Offload to T2 library" OFF)
 #set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/home/eurecom/dpdk2011/libs/pkgconfig")
-#if (ENABLE_LDPC_OFFLOAD)
-#  pkg_check_modules(LIBDPDK_OFFLOAD REQUIRED libdpdk=20.11.3)
-#  find_library(PMD NAMES rte_baseband_accl_ldpc HINTS "/home/eurecom/dpdk2011/libs")
-#  add_library(ldpc_offload MODULE ${OPENAIR1_DIR}/PHY/CODING/nrLDPC_decoder/nrLDPC_decoder_offload.c)
-#  set_target_properties(ldpc_offload PROPERTIES COMPILE_FLAGS "-DALLOW_EXPERIMENTAL_API")
-#  target_link_libraries(ldpc_offload ${LIBDPDK_OFFLOAD_LDFLAGS} ${OFFLOAD})
-#  #target_link_libraries(ldpc_offload /home/eurecom/jaroslava/T2_new/dpdk-stable/build/lib/librte_eal.so /home/eurecom/jaroslava/T2_new/dpdk-stable/build/lib/librte_mempool.so /home/eurecom/jaroslava/T2_new/dpdk-stable/build/lib/librte_bbdev.so /home/eurecom/jaroslava/T2_new/dpdk-stable/build/lib/librte_pdump.so)
-#  #target_compile_options(ldpc_offload PRIVATE ${LIBDPDK_OFFLOAD_CFLAGS})
-#  #target_link_libraries(ldpc_offload ${LIBDPDK_OFFLOAD_LDFLAGS} ${OFFLOAD})
-#endif()
+if (ENABLE_LDPC_T2)
+  pkg_check_modules(LIBDPDK_OFFLOAD REQUIRED libdpdk=20.11.3)
+  find_library(PMD_T2 NAMES rte_baseband_accl_ldpc HINTS "/home/eurecom/dpdk2011/libs")
+  add_library(ldpc_t2 MODULE ${OPENAIR1_DIR}/PHY/CODING/nrLDPC_decoder/nrLDPC_decoder_offload.c)
+  set_target_properties(ldpc_t2 PROPERTIES COMPILE_FLAGS "-DALLOW_EXPERIMENTAL_API -DOFFLOAD_T2")
+  add_compile_options("-DOFFLOAD_T2")
+  target_link_libraries(ldpc_t2 ${LIBDPDK_OFFLOAD_LDFLAGS} ${PMD_T2})
+#  #target_link_libraries(ldpc_t2 /home/eurecom/jaroslava/T2_new/dpdk-stable/build/lib/librte_eal.so /home/eurecom/jaroslava/T2_new/dpdk-stable/build/lib/librte_mempool.so /home/eurecom/jaroslava/T2_new/dpdk-stable/build/lib/librte_bbdev.so /home/eurecom/jaroslava/T2_new/dpdk-stable/build/lib/librte_pdump.so)
+#  #target_compile_options(ldpc_t2 PRIVATE ${LIBDPDK_OFFLOAD_CFLAGS})
+endif()
 
 ##########################################################
 
@@ -2086,8 +2086,12 @@ endif()
 
 add_dependencies(nr-softmodem ldpc_orig ldpc_optim ldpc_optim8seg ldpc)
 
-if (ENABLE_LDPC_OFFLOAD)
-  add_dependencies(nr-softmodem ldpc_offload)
+if (ENABLE_LDPC_T1)
+  add_dependencies(nr-softmodem ldpc_t1)
+endif()
+
+if (ENABLE_LDPC_T2)
+  add_dependencies(nr-softmodem ldpc_t2)
 endif()
 
 # force the generation of ASN.1 so that we don't need to wait during the build
@@ -2303,8 +2307,12 @@ add_executable(nr_ulsim
   ${PHY_INTERFACE_DIR}/queue_t.c
   )
 
-if (ENABLE_LDPC_OFFLOAD)
-  add_dependencies(nr_ulsim ldpc_offload)
+if (ENABLE_LDPC_T1)
+  add_dependencies(nr_ulsim ldpc_t1)
+endif()
+
+if (ENABLE_LDPC_T2)
+  add_dependencies(nr_ulsim ldpc_t2)
 endif()
 
 target_link_libraries(nr_ulsim PRIVATE

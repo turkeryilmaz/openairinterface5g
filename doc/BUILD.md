@@ -183,7 +183,8 @@ Some libraries have further dependencies and might not build on every system:
 - `enbscope`, `uescope`, `nrscope`: libforms/X
 - `nrqtscope`: Qt5
 - `ldpc_cuda`: CUDA
-- `ldpc_offload`: DPDK and VVDN T1
+- `ldpc_t1`: lib for LDPC decoding offload to AMD Xilinx T1
+- `ldpc_t2`: lib for LDPC encoding/decoding offload to AMD Xilinx T2
 - `websrv`: npm and others
 
 # Running `cmake` directly

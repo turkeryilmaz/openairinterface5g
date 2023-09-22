@@ -391,7 +391,7 @@ static int add_dev(uint8_t dev_id, struct rte_bbdev_info *info)
   for (queue_id = 0; queue_id < nb_queues; ++queue_id) {
     ret = rte_bbdev_queue_configure(dev_id, queue_id, &qconf);
     if (ret == 0) {
-      printf("Found LDCP decoding queue (id=%u) at prio%u on dev%u\n", queue_id, qconf.priority, dev_id);
+      printf("Found LDCP encoding queue (id=%u) at prio%u on dev%u\n", queue_id, qconf.priority, dev_id);
       qconf.priority++;
       //ret = rte_bbdev_queue_configure(ad->dev_id, queue_id, &qconf);
       ad->enc_queue = queue_id;
@@ -406,7 +406,7 @@ static int add_dev(uint8_t dev_id, struct rte_bbdev_info *info)
   for (queue_id++; queue_id < nb_queues; ++queue_id) {
     ret = rte_bbdev_queue_configure(dev_id, queue_id, &qconf);
     if (ret == 0) {
-      printf("Found LDCP encoding queue (id=%u) at prio%u on dev%u\n", queue_id, qconf.priority, dev_id);
+      printf("Found LDCP decoding queue (id=%u) at prio%u on dev%u\n", queue_id, qconf.priority, dev_id);
       qconf.priority++;
       //ret = rte_bbdev_queue_configure(ad->dev_id, queue_id, &qconf);
       ad->dec_queue = queue_id;
@@ -1120,8 +1120,11 @@ int start_pmd_dec(struct active_device *ad,
   t_params[0].ulsch_id = ulsch_id;
 
   // For now, we never enter here, we don't use the DPDK thread pool
-  RTE_LCORE_FOREACH_SLAVE(lcore_id)
-  {
+#ifdef OFFLOAD_T1
+  RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+#else
+  RTE_LCORE_FOREACH_WORKER(lcore_id) {
+#endif
     if (used_cores >= num_lcores)
       break;
     t_params[used_cores].dev_id = ad->dev_id;
@@ -1134,7 +1137,6 @@ int start_pmd_dec(struct active_device *ad,
     t_params[used_cores].r = r;
     t_params[used_cores].harq_pid = harq_pid;
     t_params[used_cores].ulsch_id = ulsch_id;
-
     rte_eal_remote_launch(pmd_lcore_ldpc_dec, &t_params[used_cores++], lcore_id);
   }
 
@@ -1217,17 +1219,18 @@ int32_t start_pmd_enc(struct active_device *ad,
   t_params[0].p_offloadParams = p_offloadParams;
 
   // For now, we never enter here, we don't use the DPDK thread pool
-  RTE_LCORE_FOREACH_SLAVE(lcore_id)
-  {
+#ifdef OFFLOAD_T1
+  RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+#else
+  RTE_LCORE_FOREACH_WORKER(lcore_id) {
+#endif
     if (used_cores >= num_lcores)
       break;
-
     t_params[used_cores].dev_id = ad->dev_id;
     t_params[used_cores].lcore_id = lcore_id;
     t_params[used_cores].op_params = op_params;
     t_params[used_cores].queue_id = ad->queue_ids[1];
     t_params[used_cores].iter_count = 0;
-
     rte_eal_remote_launch(pmd_lcore_ldpc_enc, &t_params[used_cores++], lcore_id);
   }
 

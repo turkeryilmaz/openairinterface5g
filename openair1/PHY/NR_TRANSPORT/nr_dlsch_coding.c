@@ -379,7 +379,7 @@ int nr_dlsch_encoding(PHY_VARS_gNB *gNB,
   impp.tparity = tparity;
   impp.toutput = toutput;
   impp.harq = harq;
-
+#ifdef OFFLOAD_T2
   if (gNB->ldpc_offload_flag) {
     impp.Qm = rel15->qamModOrder[0];
     impp.rv = rel15->rvIndex[0];
@@ -414,6 +414,7 @@ int nr_dlsch_encoding(PHY_VARS_gNB *gNB,
       r_offset += impp.E;
     }
   } else {
+#endif
     notifiedFIFO_t nf;
     initNotifiedFIFO(&nf);
     int nbJobs = 0;
@@ -432,7 +433,9 @@ int nr_dlsch_encoding(PHY_VARS_gNB *gNB,
       delNotifiedFIFO_elt(req);
       nbJobs--;
     }
+#ifdef OFFLOAD_T2
   }
+#endif
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_gNB_DLSCH_ENCODING, VCD_FUNCTION_OUT);
   return 0;
 }
