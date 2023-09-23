@@ -63,7 +63,6 @@ SSConfigContext_t SS_context;
 static acpCtx_t ctx_srb_g = NULL;
 static uint16_t rnti_g = 0;
 static instance_t instance_g = 0;
-//uint16_t ss_rnti_g = 0;
 
 enum MsgUserId
 {
@@ -105,7 +104,7 @@ static void ss_send_srb_data(ss_rrc_pdu_ind_t *pdu_ind,int cell_index)
 	DevAssert(pdu_ind->sdu_size >= 0);
 	DevAssert(pdu_ind->srb_id >= 0);
 	rnti_g = pdu_ind->rnti;
-	SS_context.SSCell_list[cell_index].ss_rnti_g = rnti_g;
+	SS_context.SSCell_list[cell_index].ss_rnti_g = rnti_g; /* Always update UE rnti with latest actual rnti */
 	size_t msgSize = size;
 	memset(&ind, 0, sizeof(ind));
 	ind.Common.CellId = SS_context.SSCell_list[cell_index].eutra_cellId;
