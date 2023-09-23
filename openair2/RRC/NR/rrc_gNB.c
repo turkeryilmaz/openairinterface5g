@@ -1459,13 +1459,13 @@ static void rrc_gNB_process_RRCReconfigurationComplete(const protocol_ctxt_t *co
     }
   }
 
-  nr_pdcp_add_srbs(ctxt_pP->enb_flag, ctxt_pP->rntiMaybeUEid, SRB_configList, (ue_p->integrity_algorithm << 4) | ue_p->ciphering_algorithm, kRRCenc, kRRCint);
+  nr_pdcp_add_srbs(ctxt_pP->enb_flag, ctxt_pP->rntiMaybeUEid, SRB_configList, (_int_algo << 4) | _cip_algo, kRRCenc, kRRCint);
 
   nr_pdcp_add_drbs(ctxt_pP->enb_flag,
                    ctxt_pP->rntiMaybeUEid,
                    reestablish_ue_id,
                    DRB_configList,
-                   (ue_p->integrity_algorithm << 4) | ue_p->ciphering_algorithm,
+                   (_int_algo << 4) | _cip_algo,
                    kUPenc,
                    kUPint,
                    get_softmodem_params()->sa ? ue_p->masterCellGroup->rlc_BearerToAddModList : NULL);
