@@ -59,8 +59,8 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx,
 
   PHY_VARS_gNB *gNB = msgTx->gNB;
   NR_gNB_DLSCH_t *dlsch;
-  int32_t** txdataF = gNB->common_vars.txdataF;
-  int16_t amp = AMP;
+  c16_t** txdataF = gNB->common_vars.txdataF;
+  int16_t amp = gNB->TX_AMP;
   int xOverhead = 0;
   NR_DL_FRAME_PARMS *frame_parms = &gNB->frame_parms;
   time_stats_t *dlsch_encoding_stats=&gNB->dlsch_encoding_stats;
@@ -75,7 +75,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx,
   time_stats_t *dlsch_segmentation_stats=&gNB->dlsch_segmentation_stats;
 
   for (int dlsch_id=0; dlsch_id<msgTx->num_pdsch_slot; dlsch_id++) {
-    dlsch = msgTx->dlsch[dlsch_id][0];
+    dlsch = &msgTx->dlsch[dlsch_id][0];
 
     NR_DL_gNB_HARQ_t *harq = &dlsch->harq_process;
     nfapi_nr_dl_tti_pdsch_pdu_rel15_t *rel15 = &harq->pdsch_pdu.pdsch_pdu_rel15;
@@ -404,43 +404,68 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx,
             }
           }
           else {
-            __m64 *txF=(__m64*)&txdataF_precoding[nl][((l*frame_parms->ofdm_symbol_size+start_sc)<<1)];
+            __m128i *txF = (__m128i *)&txdataF_precoding[nl][((l * frame_parms->ofdm_symbol_size + start_sc) << 1)];
 
-            __m64 *txl = (__m64*)&tx_layers[nl][m<<1];
-            __m64 amp64=_mm_set1_pi16(amp);
-            for (int i=0; i<(upper_limit>>1); i++) {
-
-              txF[i] = _mm_mulhrs_pi16(amp64,txl[i]);
+            __m128i *txl = (__m128i *)&tx_layers[nl][m << 1];
+            __m128i amp64 = _mm_set1_epi16(amp);
+            int i;
+            for (i = 0; i < (upper_limit >> 2); i++) {
+              const __m128i txL = _mm_loadu_si128(txl + i);
+              _mm_storeu_si128(txF + i, _mm_mulhrs_epi16(amp64, txL));
 #ifdef DEBUG_DLSCH_MAPPING
               if ((i&1) > 0)
-                  printf("m %d\t l %d \t k %d \t txdataF: %d %d\n",
-                         m, l, start_sc+(i>>1), txdataF_precoding[nl][((l*frame_parms->ofdm_symbol_size + start_sc+(i>>1))<<1)],
-                         txdataF_precoding[nl][((l*frame_parms->ofdm_symbol_size + start_sc+(i>>1))<<1) + 1]);
+                printf("m %d\t l %d \t k %d \t txdataF: %d %d\n",
+                       m,
+                       l,
+                       start_sc + (i >> 1),
+                       txdataF_precoding[nl][((l * frame_parms->ofdm_symbol_size + start_sc + (i >> 1)) << 1)],
+                       txdataF_precoding[nl][((l * frame_parms->ofdm_symbol_size + start_sc + (i >> 1)) << 1) + 1]);
 #endif
               /* handle this, mute RE */
               /*else {
                 txdataF_precoding[nl][((l*frame_parms->ofdm_symbol_size + k)<<1) ] = 0;
                 txdataF_precoding[anl][((l*frame_parms->ofdm_symbol_size + k)<<1) + 1] = 0;
-              }*/
-            } //RE loop, first part
+                }*/
+            }
+            if (i * 4 != upper_limit) {
+              c16_t *txFc = (c16_t *)&txdataF_precoding[nl][((l * frame_parms->ofdm_symbol_size + start_sc) << 1)];
+              c16_t *txlc = (c16_t *)&tx_layers[nl][m << 1];
+              for (i = (upper_limit >> 2) << 2; i < upper_limit; i++) {
+                txFc[i].r = ((txlc[i].r * amp) >> 14) + 1;
+                txFc[i].i = ((txlc[i].i * amp) >> 14) + 1;
+              }
+            }
             m+=upper_limit;
             if (remaining_re > 0) {
-               txF = (__m64*)&txdataF_precoding[nl][((l*frame_parms->ofdm_symbol_size)<<1)];
-               txl = (__m64*)&tx_layers[nl][m<<1];
-               for (int i=0; i<(remaining_re>>1); i++) {
-                 txF[i] = _mm_mulhrs_pi16(amp64,txl[i]);
+              txF = (__m128i *)&txdataF_precoding[nl][((l * frame_parms->ofdm_symbol_size) << 1)];
+              txl = (__m128i *)&tx_layers[nl][m << 1];
+              int i;
+              for (i = 0; i < (remaining_re >> 2); i++) {
+                const __m128i txL = _mm_loadu_si128(txl + i);
+                _mm_storeu_si128(txF + i, _mm_mulhrs_epi16(amp64, txL));
 #ifdef DEBUG_DLSCH_MAPPING
-                 if ((i&1) > 0)
-                   printf("m %d\t l %d \t k %d \t txdataF: %d %d\n",
-                          m, l, i>>1, txdataF_precoding[nl][((l*frame_parms->ofdm_symbol_size + (i>>1))<<1) ],
-                          txdataF_precoding[nl][((l*frame_parms->ofdm_symbol_size + (i>>1))<<1) + 1]);
+                if ((i & 1) > 0)
+                  printf("m %d\t l %d \t k %d \t txdataF: %d %d\n",
+                         m,
+                         l,
+                         i >> 1,
+                         txdataF_precoding[nl][((l * frame_parms->ofdm_symbol_size + (i >> 1)) << 1)],
+                         txdataF_precoding[nl][((l * frame_parms->ofdm_symbol_size + (i >> 1)) << 1) + 1]);
 #endif
-                 /* handle this, mute RE */
-                 /*else {
-                   txdataF_precoding[nl][((l*frame_parms->ofdm_symbol_size + k)<<1)    ] = 0;
-                   txdataF_precoding[nl][((l*frame_parms->ofdm_symbol_size + k)<<1) + 1] = 0;
-                 }*/
-               } //RE loop, second part
+                /* handle this, mute RE */
+                /*else {
+                  txdataF_precoding[nl][((l*frame_parms->ofdm_symbol_size + k)<<1)    ] = 0;
+                  txdataF_precoding[nl][((l*frame_parms->ofdm_symbol_size + k)<<1) + 1] = 0;
+                  }*/
+              } // RE loop, second part
+              if (i * 4 != remaining_re) {
+                c16_t *txFc = (c16_t *)&txdataF_precoding[nl][((l * frame_parms->ofdm_symbol_size) << 1)];
+                c16_t *txlc = (c16_t *)&tx_layers[nl][m << 1];
+                for (i = (remaining_re >> 2) << 2; i < remaining_re; i++) {
+                  txFc[i].r = ((txlc[i].r * amp) >> 14) + 1;
+                  txFc[i].i = ((txlc[i].i * amp) >> 14) + 1;
+                }
+              }
             } // 
             m+=remaining_re;
           } // N_RB_DL even
@@ -466,7 +491,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx,
         for (int rb=0; rb<rel15->rbSize; rb++) {
           //get pmi info
           uint8_t pmi;
-          if (rel15->precodingAndBeamforming.prg_size > 0)
+          if (0 /*rel15->precodingAndBeamforming.prg_size > 0*/)
             pmi = rel15->precodingAndBeamforming.prgs_list[(int)rb/rel15->precodingAndBeamforming.prg_size].pm_idx;
           else
             pmi = 0;//no precoding
@@ -567,21 +592,16 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx,
 }
 
 void dump_pdsch_stats(FILE *fd,PHY_VARS_gNB *gNB) {
-
-  for (int i=0;i<NUMBER_OF_NR_SCH_STATS_MAX;i++)
-    if (gNB->dlsch_stats[i].rnti > 0 && gNB->dlsch_stats[i].frame != gNB->dlsch_stats[i].dump_frame) {
-      gNB->dlsch_stats[i].dump_frame = gNB->dlsch_stats[i].frame;
-      fprintf(fd,"DLSCH RNTI %x: current_Qm %d, current_RI %d, total_bytes TX %d\n",
-	    gNB->dlsch_stats[i].rnti,
-	    gNB->dlsch_stats[i].current_Qm,
-	    gNB->dlsch_stats[i].current_RI,
-	    gNB->dlsch_stats[i].total_bytes_tx);
+  for (int i = 0; i < MAX_MOBILES_PER_GNB; i++) {
+    NR_gNB_PHY_STATS_t *stats = &gNB->phy_stats[i];
+    if (stats->active && stats->frame != stats->dlsch_stats.dump_frame) {
+      stats->dlsch_stats.dump_frame = stats->frame;
+      fprintf(fd,
+              "DLSCH RNTI %x: current_Qm %d, current_RI %d, total_bytes TX %d\n",
+              stats->rnti,
+              stats->dlsch_stats.current_Qm,
+              stats->dlsch_stats.current_RI,
+              stats->dlsch_stats.total_bytes_tx);
     }
-
-}
-
-void clear_pdsch_stats(PHY_VARS_gNB *gNB) {
-
-  for (int i = 0;i < NUMBER_OF_NR_SCH_STATS_MAX; i++)
-    memset((void*)&gNB->dlsch_stats[i],0,sizeof(gNB->dlsch_stats[i]));
+  }
 }

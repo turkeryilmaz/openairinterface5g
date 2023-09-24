@@ -35,7 +35,6 @@
 
 #include "LOG/log.h"
 
-// RLC to PDCP
 static void nr_pdcp_entity_recv_pdu(nr_pdcp_entity_t *entity,
                                     char *_buffer, int size)
 {
@@ -147,9 +146,9 @@ static void nr_pdcp_entity_recv_pdu(nr_pdcp_entity_t *entity,
 
     if (memcmp(xmaci, maci, 4) != 0) {
       LOG_E(PDCP, "%s: discard NR PDU, integrity failed\n", __FUNCTION__);
-       entity->stats.rxpdu_dd_pkts++;
-       entity->stats.rxpdu_dd_bytes += size;
-       exit(1);
+      entity->stats.rxpdu_dd_pkts++;
+      entity->stats.rxpdu_dd_bytes += size;
+      exit(1);
     }
   }
 
@@ -204,15 +203,19 @@ static void nr_pdcp_entity_recv_pdu(nr_pdcp_entity_t *entity,
   }
 }
 
-// RRC/SDAP to PDCP
-static void nr_pdcp_entity_recv_sdu(nr_pdcp_entity_t *entity,
-                                    char *buffer, int size, int sdu_id)
+static int nr_pdcp_entity_process_sdu(nr_pdcp_entity_t *entity,
+                                      char *buffer,
+                                      int size,
+                                      int sdu_id,
+                                      char *pdu_buffer,
+                                      int pdu_max_size)
 {
   uint32_t count;
   int      sn;
   int      header_size;
   int      integrity_size;
-  char     buf[size + 3 + 4];
+  char    *buf = pdu_buffer;
+  DevAssert(size + 3 + 4 <= pdu_max_size);
   int      dc_bit;
   entity->stats.rxsdu_pkts++;
   entity->stats.rxsdu_bytes += size;
@@ -300,11 +303,11 @@ static void nr_pdcp_entity_recv_sdu(nr_pdcp_entity_t *entity,
 
   entity->tx_next++;
 
-  entity->deliver_pdu(entity->deliver_pdu_data, entity, buf,
-                      header_size + size + integrity_size, sdu_id);
   entity->stats.txpdu_pkts++;
   entity->stats.txpdu_bytes += header_size + size + integrity_size;
   entity->stats.txpdu_sn = sn;
+
+  return header_size + size + integrity_size;
 }
 
 /* may be called several times, take care to clean previous settings */
@@ -395,7 +398,6 @@ static void nr_pdcp_entity_set_security(nr_pdcp_entity_t *entity,
       exit(1);
     }
   }
-
 }
 
 static void check_t_reordering(nr_pdcp_entity_t *entity)
@@ -458,12 +460,10 @@ void nr_pdcp_entity_delete(nr_pdcp_entity_t *entity)
     nr_pdcp_free_sdu(cur);
     cur = next;
   }
-  if (entity->free_security != NULL) {
+  if (entity->free_security != NULL)
     entity->free_security(entity->security_context);
-  }
-  if (entity->free_integrity != NULL) {
+  if (entity->free_integrity != NULL)
     entity->free_integrity(entity->integrity_context);
-  }
   free(entity);
 }
 
@@ -484,7 +484,7 @@ nr_pdcp_entity_t *new_nr_pdcp_entity(
     void (*deliver_sdu)(void *deliver_sdu_data, struct nr_pdcp_entity_t *entity,
                         char *buf, int size),
     void *deliver_sdu_data,
-    void (*deliver_pdu)(void *deliver_pdu_data, struct nr_pdcp_entity_t *entity,
+    void (*deliver_pdu)(void *deliver_pdu_data, ue_id_t ue_id, int rb_id,
                         char *buf, int size, int sdu_id),
     void *deliver_pdu_data,
     int sn_size,
@@ -506,7 +506,7 @@ nr_pdcp_entity_t *new_nr_pdcp_entity(
   ret->type = type;
 
   ret->recv_pdu     = nr_pdcp_entity_recv_pdu;
-  ret->recv_sdu     = nr_pdcp_entity_recv_sdu;
+  ret->process_sdu  = nr_pdcp_entity_process_sdu;
   ret->set_security = nr_pdcp_entity_set_security;
   ret->set_time     = nr_pdcp_entity_set_time;
 
@@ -532,7 +532,9 @@ nr_pdcp_entity_t *new_nr_pdcp_entity(
 
   ret->is_gnb = is_gnb;
 
-  nr_pdcp_entity_set_security(ret, integrity_algorithm,  (char*)integrity_key,ciphering_algorithm, (char*)ciphering_key);
+  nr_pdcp_entity_set_security(ret,
+                              integrity_algorithm, (char *)integrity_key,
+                              ciphering_algorithm, (char *)ciphering_key);
 
   return ret;
 }

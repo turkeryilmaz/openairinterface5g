@@ -58,6 +58,7 @@
 
 const int get_dl_tda(const gNB_MAC_INST *nrmac, const NR_ServingCellConfigCommon_t *scc, int slot) {
 
+  /* we assume that this function is mutex-protected from outside */
   const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
   AssertFatal(tdd || nrmac->common_channels->frame_type == FDD, "Dynamic TDD not handled yet\n");
 
@@ -79,8 +80,12 @@ int nr_write_ce_dlsch_pdu(module_id_t module_idP,
                           const NR_UE_sched_ctrl_t *ue_sched_ctl,
                           unsigned char *mac_pdu,
                           unsigned char drx_cmd,
-                          unsigned char *ue_cont_res_id) {
+                          unsigned char *ue_cont_res_id)
+{
   gNB_MAC_INST *gNB = RC.nrmac[module_idP];
+  /* already mutex protected: called below and in _RA.c */
+  NR_SCHED_ENSURE_LOCKED(&gNB->sched_lock);
+
   NR_MAC_SUBHEADER_FIXED *mac_pdu_ptr = (NR_MAC_SUBHEADER_FIXED *) mac_pdu;
   uint8_t last_size = 0;
   int offset = 0, mac_ce_size, i, timing_advance_cmd, tag_id = 0;
@@ -111,10 +116,8 @@ int nr_write_ce_dlsch_pdu(module_id_t module_idP,
     AssertFatal(timing_advance_cmd < 64, "timing_advance_cmd %d > 63\n", timing_advance_cmd);
     ((NR_MAC_CE_TA *) ce_ptr)->TA_COMMAND = timing_advance_cmd;    //(timing_advance_cmd+31)&0x3f;
 
-    if (gNB->tag->tag_Id != 0) {
-      tag_id = gNB->tag->tag_Id;
-      ((NR_MAC_CE_TA *) ce_ptr)->TAGID = tag_id;
-    }
+    tag_id = gNB->tag->tag_Id;
+    ((NR_MAC_CE_TA *) ce_ptr)->TAGID = tag_id;
 
     LOG_D(NR_MAC, "NR MAC CE timing advance command = %d (%d) TAG ID = %d\n", timing_advance_cmd, ((NR_MAC_CE_TA *) ce_ptr)->TA_COMMAND, tag_id);
     mac_ce_size = sizeof(NR_MAC_CE_TA);
@@ -316,10 +319,8 @@ int nr_write_ce_dlsch_pdu(module_id_t module_idP,
   return offset;
 }
 
-void nr_store_dlsch_buffer(module_id_t module_id,
-                           frame_t frame,
-                           sub_frame_t slot) {
-
+static void nr_store_dlsch_buffer(module_id_t module_id, frame_t frame, sub_frame_t slot)
+{
   UE_iterator(RC.nrmac[module_id]->UE_info.list, UE) {
     NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
     sched_ctrl->num_total_bytes = 0;
@@ -368,8 +369,9 @@ void nr_store_dlsch_buffer(module_id_t module_id,
   }
 }
 
-void abort_nr_dl_harq(NR_UE_info_t* UE, int8_t harq_pid) {
-
+void abort_nr_dl_harq(NR_UE_info_t* UE, int8_t harq_pid)
+{
+  /* already mutex protected through handle_dl_harq() */
   NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
   NR_UE_harq_t *harq = &sched_ctrl->harq_processes[harq_pid];
 
@@ -380,13 +382,13 @@ void abort_nr_dl_harq(NR_UE_info_t* UE, int8_t harq_pid) {
 
 }
 
-bool allocate_dl_retransmission(module_id_t module_id,
-                                frame_t frame,
-                                sub_frame_t slot,
-                                uint16_t *rballoc_mask,
-                                int *n_rb_sched,
-                                NR_UE_info_t *UE,
-                                int current_harq_pid)
+static bool allocate_dl_retransmission(module_id_t module_id,
+                                       frame_t frame,
+                                       sub_frame_t slot,
+                                       uint16_t *rballoc_mask,
+                                       int *n_rb_sched,
+                                       NR_UE_info_t *UE,
+                                       int current_harq_pid)
 {
 
   int CC_id = 0;
@@ -465,6 +467,7 @@ bool allocate_dl_retransmission(module_id_t module_id,
     uint16_t new_rbSize;
     bool success = nr_find_nb_rb(retInfo->Qm,
                                  retInfo->R,
+                                 1, // no transform precoding for DL
                                  layers,
                                  temp_tda.nrOfSymbols,
                                  temp_dmrs.N_PRB_DMRS * temp_dmrs.N_DMRS_SLOT,
@@ -553,15 +556,14 @@ static int comparator(const void *p, const void *q) {
   return ((UEsched_t*)p)->coef < ((UEsched_t*)q)->coef;
 }
 
-void pf_dl(module_id_t module_id,
-           frame_t frame,
-           sub_frame_t slot,
-           NR_UE_info_t **UE_list,
-           int max_num_ue,
-           int n_rb_sched,
-           uint16_t *rballoc_mask)
+static void pf_dl(module_id_t module_id,
+                  frame_t frame,
+                  sub_frame_t slot,
+                  NR_UE_info_t **UE_list,
+                  int max_num_ue,
+                  int n_rb_sched,
+                  uint16_t *rballoc_mask)
 {
-
   gNB_MAC_INST *mac = RC.nrmac[module_id];
   NR_ServingCellConfigCommon_t *scc=mac->common_channels[0].ServingCellConfigCommon;
   // UEs that could be scheduled
@@ -633,9 +635,7 @@ void pf_dl(module_id_t module_id,
       else
         sched_pdsch->mcs = get_mcs_from_bler(bo, stats, &sched_ctrl->dl_bler_stats, max_mcs, frame);
       sched_pdsch->nrOfLayers = get_dl_nrOfLayers(sched_ctrl, current_BWP->dci_format);
-      sched_pdsch->pm_index = get_pm_index(UE,
-                                           sched_pdsch->nrOfLayers,
-                                           mac->xp_pdsch_antenna_ports);
+      sched_pdsch->pm_index = mac->identity_pm ? 0 : get_pm_index(UE, sched_pdsch->nrOfLayers, mac->xp_pdsch_antenna_ports);
       const uint8_t Qm = nr_get_Qm_dl(sched_pdsch->mcs, current_BWP->mcsTableIdx);
       const uint16_t R = nr_get_code_rate_dl(sched_pdsch->mcs, current_BWP->mcsTableIdx);
       uint32_t tbs = nr_compute_tbs(Qm,
@@ -767,6 +767,7 @@ void pf_dl(module_id_t module_id,
     //const int oh = 3 * sched_ctrl->dl_pdus_total + 2 * (frame == (sched_ctrl->ta_frame + 10) % 1024);
     nr_find_nb_rb(sched_pdsch->Qm,
                   sched_pdsch->R,
+                  1, // no transform precoding for DL
                   sched_pdsch->nrOfLayers,
                   tda_info->nrOfSymbols,
                   sched_pdsch->dmrs_parms.N_PRB_DMRS * sched_pdsch->dmrs_parms.N_DMRS_SLOT,
@@ -789,7 +790,7 @@ void pf_dl(module_id_t module_id,
   }
 }
 
-void nr_fr1_dlsch_preprocessor(module_id_t module_id, frame_t frame, sub_frame_t slot)
+static void nr_fr1_dlsch_preprocessor(module_id_t module_id, frame_t frame, sub_frame_t slot)
 {
   NR_UEs_t *UE_info = &RC.nrmac[module_id]->UE_info;
 
@@ -848,6 +849,7 @@ void nr_fr1_dlsch_preprocessor(module_id_t module_id, frame_t frame, sub_frame_t
 }
 
 nr_pp_impl_dl nr_init_fr1_dlsch_preprocessor(int CC_id) {
+  /* during initialization: no mutex needed */
   /* in the PF algorithm, we have to use the TBsize to compute the coefficient.
    * This would include the number of DMRS symbols, which in turn depends on
    * the time domain allocation. In case we are in a mixed slot, we do not want
@@ -876,9 +878,14 @@ nr_pp_impl_dl nr_init_fr1_dlsch_preprocessor(int CC_id) {
 
 void nr_schedule_ue_spec(module_id_t module_id,
                          frame_t frame,
-                         sub_frame_t slot) {
-
+                         sub_frame_t slot,
+                         nfapi_nr_dl_tti_request_t *DL_req,
+                         nfapi_nr_tx_data_request_t *TX_req)
+{
   gNB_MAC_INST *gNB_mac = RC.nrmac[module_id];
+  /* already mutex protected: held in gNB_dlsch_ulsch_scheduler() */
+  AssertFatal(pthread_mutex_trylock(&gNB_mac->sched_lock) == EBUSY,
+              "this function should be called with the scheduler mutex locked\n");
 
   if (!is_xlsch_in_slot(gNB_mac->dlsch_slot_bitmap[slot / 64], slot))
     return;
@@ -888,7 +895,7 @@ void nr_schedule_ue_spec(module_id_t module_id,
   const int CC_id = 0;
   NR_ServingCellConfigCommon_t *scc = gNB_mac->common_channels[CC_id].ServingCellConfigCommon;
   NR_UEs_t *UE_info = &gNB_mac->UE_info;
-  nfapi_nr_dl_tti_request_body_t *dl_req = &gNB_mac->DL_req[CC_id].dl_tti_request_body;
+  nfapi_nr_dl_tti_request_body_t *dl_req = &DL_req->dl_tti_request_body;
 
   UE_iterator(UE_info->list, UE) {
     NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
@@ -1202,7 +1209,7 @@ void nr_schedule_ue_spec(module_id_t module_id,
       LOG_MAC_P(OAILOG_DEBUG, "MAC_RETRANSMISSION_DL_PDU", frame, slot, mac_pkt, (uint8_t *)harq->transportBlock, (int)TBS);
 
     } else { /* initial transmission */
-      LOG_D(NR_MAC, "[%s] Initial HARQ transmission in %d.%d\n", __FUNCTION__, frame, slot);
+      LOG_D(NR_MAC, "Initial HARQ transmission in %d.%d\n", frame, slot);
       uint8_t *buf = (uint8_t *) harq->transportBlock;
       /* first, write all CEs that might be there */
       int written = nr_write_ce_dlsch_pdu(module_id,
@@ -1286,7 +1293,6 @@ void nr_schedule_ue_spec(module_id_t module_id,
           header->LCID = DL_SCH_LCID_PADDING;
           buf += sizeof(NR_MAC_SUBHEADER_LONG);
           header->L = htons(bufEnd-buf);
-          dlsch_total_bytes += bufEnd-buf;
 
           for (; ((intptr_t)buf) % 4; buf++)
             *buf = lrand48() & 0xff;
@@ -1317,6 +1323,7 @@ void nr_schedule_ue_spec(module_id_t module_id,
       UE->mac_stats.dl.total_rbs += sched_pdsch->rbSize;
       UE->mac_stats.dl.num_mac_sdu += sdus;
       UE->mac_stats.dl.current_rbs = sched_pdsch->rbSize;
+      UE->mac_stats.dl.total_sdu_bytes += dlsch_total_bytes;
 
       /* save retransmission information */
       harq->sched_pdsch = *sched_pdsch;
@@ -1348,16 +1355,16 @@ void nr_schedule_ue_spec(module_id_t module_id,
       LOG_MAC_P(OAILOG_DEBUG, "MAC_DL_PDU", frame, slot, mac_pkt, (uint8_t *)harq->transportBlock, (int)TBS);
     }
 
-    const int ntx_req = gNB_mac->TX_req[CC_id].Number_of_PDUs;
-    nfapi_nr_pdu_t *tx_req = &gNB_mac->TX_req[CC_id].pdu_list[ntx_req];
+    const int ntx_req = TX_req->Number_of_PDUs;
+    nfapi_nr_pdu_t *tx_req = &TX_req->pdu_list[ntx_req];
     tx_req->PDU_length = TBS;
     tx_req->PDU_index  = pduindex;
     tx_req->num_TLV = 1;
     tx_req->TLVs[0].length = TBS + 2;
     memcpy(tx_req->TLVs[0].value.direct, harq->transportBlock, TBS);
-    gNB_mac->TX_req[CC_id].Number_of_PDUs++;
-    gNB_mac->TX_req[CC_id].SFN = frame;
-    gNB_mac->TX_req[CC_id].Slot = slot;
+    TX_req->Number_of_PDUs++;
+    TX_req->SFN = frame;
+    TX_req->Slot = slot;
     /* mark UE as scheduled */
     sched_pdsch->rbSize = 0;
   }
@@ -1620,34 +1627,28 @@ void nr_fill_nfapi_dl_paging_pdu(int Mod_idP,
 
 void schedule_nr_PCH(module_id_t module_idP,
                      frame_t frameP,
-                     sub_frame_t slotP) {
+                     sub_frame_t slotP,
+                     nfapi_nr_dl_tti_request_t *DL_req,
+                     nfapi_nr_tx_data_request_t *TX_req) {
   gNB_MAC_INST *gNB_mac = RC.nrmac[module_idP];
-  int CC_id;
-  uint16_t pcch_sdu_length;
-  uint8_t *pcch_sdu;
-  NR_COMMON_channels_t *cc;
-  NR_ServingCellConfigCommon_t *scc;
-  nfapi_nr_dl_tti_request_body_t *dl_req;
-  nfapi_nr_pdu_t *tx_req;
-  UE_PF_PO_t *ue_pf_po;
 
   start_meas(&gNB_mac->schedule_pch);
 
-  for (CC_id = 0; CC_id < RC.nb_nr_mac_CC[module_idP]; CC_id++) {
-    cc = &gNB_mac->common_channels[CC_id];
-    scc = cc->ServingCellConfigCommon;
-    pcch_sdu = &cc->PCCH_pdu.payload[0];
-    dl_req = &gNB_mac->DL_req[CC_id].dl_tti_request_body;
+  for (int CC_id = 0; CC_id < RC.nb_nr_mac_CC[module_idP]; CC_id++) {
+    NR_COMMON_channels_t *cc = &gNB_mac->common_channels[CC_id];
+    NR_ServingCellConfigCommon_t *scc = cc->ServingCellConfigCommon;
+    uint8_t *pcch_sdu = &cc->PCCH_pdu.payload[0];
+    nfapi_nr_dl_tti_request_body_t *dl_req = &DL_req->dl_tti_request_body;
 
     for (uint16_t i = 0; i < MAX_MOBILES_PER_GNB; i++) {
-      ue_pf_po = &UE_PF_PO[CC_id][i];
+      UE_PF_PO_t *ue_pf_po = &UE_PF_PO[CC_id][i];
 
       if (ue_pf_po->enable_flag != true) {
         continue;
       }
 
       if (frameP % ue_pf_po->T == ue_pf_po->PF_min && slotP == ue_pf_po->PO) {
-        pcch_sdu_length = mac_rrc_nr_data_req(module_idP,
+        uint16_t pcch_sdu_length = mac_rrc_nr_data_req(module_idP,
                                               CC_id,
                                               frameP,
                                               PCCH,
@@ -1727,7 +1728,8 @@ void schedule_nr_PCH(module_id_t module_idP,
           }
         }
 
-        tx_req = &gNB_mac->TX_req[CC_id].pdu_list[gNB_mac->TX_req[CC_id].Number_of_PDUs++];
+        const int ntx_req = TX_req->Number_of_PDUs;
+        nfapi_nr_pdu_t *tx_req = &TX_req->pdu_list[ntx_req];
 
         // Data to be transmitted
         memcpy(tx_req->TLVs[0].value.direct, pcch_sdu, TBS);
@@ -1735,9 +1737,10 @@ void schedule_nr_PCH(module_id_t module_idP,
         tx_req->PDU_length = TBS;
         tx_req->PDU_index  = pdu_index;
         tx_req->num_TLV = 1;
-        tx_req->TLVs[0].length = tx_req->PDU_length + 2;
-        gNB_mac->TX_req[CC_id].SFN = frameP;
-        gNB_mac->TX_req[CC_id].Slot = slotP;
+        tx_req->TLVs[0].length = TBS + 2;
+        TX_req->Number_of_PDUs++;
+        TX_req->SFN = frameP;
+        TX_req->Slot = slotP;
 
         // Trace MACPDU
         mac_pkt_info_t mac_pkt;

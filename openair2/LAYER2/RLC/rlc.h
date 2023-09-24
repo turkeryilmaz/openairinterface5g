@@ -184,13 +184,6 @@ rlc_op_status_t rrc_rlc_config_req(const protocol_ctxt_t *const, const srb_flag_
 */
 rlc_op_status_t rrc_rlc_data_req     (const protocol_ctxt_t *const, const  MBMS_flag_t, const  rb_id_t, mui_t, confirm_t, sdu_size_t, char *);
 
-/*! \fn void  rrc_rlc_register_rrc ( void (*rrc_data_indP)  (const protocol_ctxt_t* const ctxtP, const  rb_id_t rb_idP, sdu_size_t sdu_sizeP, char* sduP), void (*rrc_data_confP) (const protocol_ctxt_t* const ctxtP, const  rb_id_t rb_idP, mui_t muiP, rlc_tx_status_t statusP)
-* \brief  This function is called by RRC to register its DATA-INDICATE and DATA-CONFIRM handlers to RLC layer.
-* \param[in]  rrc_data_indP       Pointer on RRC data indicate function.
-* \param[in]  rrc_data_confP      Pointer on RRC data confirm callback function.
-*/
-void rrc_rlc_register_rrc (rrc_data_ind_cb_t rrc_data_indP, rrc_data_conf_cb_t rrc_data_confP);
-
 //-----------------------------------------------------------------------------
 //   PUBLIC INTERFACE WITH MAC
 //-----------------------------------------------------------------------------
@@ -454,10 +447,6 @@ rlc_op_status_t rlc_stat_req     (
   unsigned int *const stat_timer_reordering_timed_out,
   unsigned int *const stat_timer_poll_retransmit_timed_out,
   unsigned int *const stat_timer_status_prohibit_timed_out);
-
-/* RLC ITTI messaging related functions */
-/* Main loop of RLC itti message handling */
-void *rlc_enb_task(void *arg);
 
 /*! \fn int rlc_module_init(int enb_flag)
 * \brief    RAZ the memory of the RLC layer, initialize the memory pool manager (mem_block_t structures mainly used in RLC module).

@@ -548,7 +548,7 @@ init_SI(
       .physCellId = carrier->physCellId,
       .p_eNB = carrier->p_eNB,
       .Ncp = carrier->Ncp,
-      .eutra_band = carrier->sib1->freqBandIndicator,
+      .eutra_band = carrier->eutra_band,
       .dl_CarrierFreq = carrier->dl_CarrierFreq,
       .pbch_repetition = carrier->pbch_repetition,
       .mib = &carrier->mib,
@@ -1610,24 +1610,23 @@ rrc_eNB_generate_RRCConnectionReestablishment(
 
         if (SRB1_config->logicalChannelConfig) {
           if (SRB1_config->logicalChannelConfig->present == LTE_SRB_ToAddMod__logicalChannelConfig_PR_explicitValue) {
-            SRB1_logicalChannelConfig = &(SRB1_config->logicalChannelConfig->choice.explicitValue);
+            SRB1_logicalChannelConfig = &SRB1_config->logicalChannelConfig->choice.explicitValue;
           } else {
-            SRB1_logicalChannelConfig = &(SRB1_logicalChannelConfig_defaultValue);
+            SRB1_logicalChannelConfig = &SRB1_logicalChannelConfig_defaultValue;
           }
         } else {
-          SRB1_logicalChannelConfig = &(SRB1_logicalChannelConfig_defaultValue);
+          SRB1_logicalChannelConfig = &SRB1_logicalChannelConfig_defaultValue;
         }
 
         LOG_D(RRC, PROTOCOL_RRC_CTXT_UE_FMT" RRC_eNB --- MAC_CONFIG_REQ  (SRB1) ---> MAC_eNB\n",
               PROTOCOL_RRC_CTXT_UE_ARGS(ctxt_pP));
 
-        rrc_mac_config_req_eNB_t tmp = {0};
-        tmp.CC_id = ue_context->primaryCC_id;
-        tmp.physicalConfigDedicated = ue_context->physicalConfigDedicated;
-        tmp.mac_MainConfig = ue_context->mac_MainConfig;
-        tmp.logicalChannelIdentity = 1;
-        tmp.logicalChannelConfig = SRB1_logicalChannelConfig;
-        tmp.measGapConfig = ue_context->measGapConfig;
+        const rrc_mac_config_req_eNB_t tmp = {.CC_id = ue_context->primaryCC_id,
+                                              .physicalConfigDedicated = ue_context->physicalConfigDedicated,
+                                              .mac_MainConfig = ue_context->mac_MainConfig,
+                                              .logicalChannelIdentity = 1,
+                                              .logicalChannelConfig = SRB1_logicalChannelConfig,
+                                              .measGapConfig = ue_context->measGapConfig};
         rrc_mac_config_req_eNB(module_id, &tmp);
         break;
       }  // if ((*SRB_configList)->list.array[cnt]->srb_Identity == 1)
@@ -2318,7 +2317,7 @@ rrc_eNB_generate_RRCConnectionRelease(
                PDCP_TRANSMISSION_MODE_CONTROL);
 }
 
-uint8_t qci_to_priority[9]= {2,4,3,5,1,6,7,8,9};
+static const uint8_t qci_to_priority[9] = {2, 4, 3, 5, 1, 6, 7, 8, 9};
 
 // TBD: this directive can be remived if we create a similar e_rab_param_t structure in RRC context
 //-----------------------------------------------------------------------------
@@ -6429,6 +6428,7 @@ rrc_eNB_generate_RRCConnectionSetup(
         tmp.CC_id = ue_context_pP->ue_context.primaryCC_id;
         tmp.rnti = ue_context_pP->ue_context.rnti;
         tmp.physicalConfigDedicated = ue_context_pP->ue_context.physicalConfigDedicated;
+        tmp.mac_MainConfig = ue_context_pP->ue_context.mac_MainConfig;
         tmp.logicalChannelIdentity = 1;
         tmp.logicalChannelConfig = SRB1_logicalChannelConfig;
         tmp.measGapConfig = ue_context_pP->ue_context.measGapConfig;

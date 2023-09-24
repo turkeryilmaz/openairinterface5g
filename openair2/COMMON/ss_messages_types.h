@@ -22,6 +22,10 @@
 #ifndef SS_MESSAGES_TYPES_H_
 #define SS_MESSAGES_TYPES_H_
 
+#include <stdint.h>
+
+#include "rrc_messages_types.h"
+
 #define SS_SYS_PORT_MSG_IND(mSGpTR)            (mSGpTR)->ittiMsg.ss_sys_port_msg_ind
 #define SS_SYS_PORT_MSG_CNF(mSGpTR)            (mSGpTR)->ittiMsg.ss_sys_port_msg_cnf
 

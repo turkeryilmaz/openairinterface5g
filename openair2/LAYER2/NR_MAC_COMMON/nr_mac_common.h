@@ -160,23 +160,21 @@ uint8_t compute_nr_root_seq(NR_RACH_ConfigCommon_t *rach_config,
                             uint8_t unpaired,
                             frequency_range_t);
 
-int ul_ant_bits(NR_DMRS_UplinkConfig_t *NR_DMRS_UplinkConfig,long transformPrecoder);
+int ul_ant_bits(NR_DMRS_UplinkConfig_t *NR_DMRS_UplinkConfig, long transformPrecoder);
 
 uint8_t get_pdsch_mcs_table(long *mcs_Table, int dci_format, int rnti_type, int ss_type);
 
 int get_format0(uint8_t index, uint8_t unpaired,frequency_range_t);
 
-int64_t *get_prach_config_info(frequency_range_t freq_range,
-                               uint8_t index,
-                               uint8_t unpaired);
+const int64_t *get_prach_config_info(frequency_range_t freq_range, uint8_t index, uint8_t unpaired);
 
 uint16_t get_NCS(uint8_t index, uint16_t format, uint8_t restricted_set_config);
-
+int compute_pucch_crc_size(int O_uci);
 uint8_t get_l0_ul(uint8_t mapping_type, uint8_t dmrs_typeA_position);
 int32_t get_l_prime(uint8_t duration_in_symbols, uint8_t mapping_type, pusch_dmrs_AdditionalPosition_t additional_pos, pusch_maxLength_t pusch_maxLength, uint8_t start_symbolt, uint8_t dmrs_typeA_position);
 
 uint8_t get_L_ptrs(uint8_t mcs1, uint8_t mcs2, uint8_t mcs3, uint8_t I_mcs, uint8_t mcs_table);
-uint8_t get_K_ptrs(uint16_t nrb0, uint16_t nrb1, uint16_t N_RB);
+uint8_t get_K_ptrs(uint32_t nrb0, uint32_t nrb1, uint32_t N_RB);
 
 uint32_t nr_compute_tbs(uint16_t Qm,
                         uint16_t R,
@@ -238,8 +236,7 @@ uint8_t get_pusch_nb_antenna_ports(NR_PUSCH_Config_t *pusch_Config,
 
 uint16_t compute_pucch_prb_size(uint8_t format,
                                 uint8_t nr_prbs,
-                                uint16_t O_tot,
-                                uint16_t O_csi,
+                                uint16_t O_uci,
                                 NR_PUCCH_MaxCodeRate_t *maxCodeRate,
                                 uint8_t Qm,
                                 uint8_t n_symb,
@@ -268,13 +265,11 @@ bool set_ul_ptrs_values(NR_PTRS_UplinkConfig_t *ul_ptrs_config,
                         uint8_t NrOfSymbols);
 
 /* \brief Set the transform precoding according to 6.1.3 of 3GPP TS 38.214 version 16.3.0 Release 16
-@param    *pusch_config,   pointer to pusch config
-@param    *ubwp            pointer to uplink bwp
-@param    *dci_format      pointer to dci format
-@param    rnti_type        rnti type
+@param    *current_UL_BWP  pointer to uplink bwp
+@param    dci_format       dci format
 @param    configuredGrant  indicates whether a configured grant was received or not
 @returns                   transformPrecoding value */
-uint8_t get_transformPrecoding(const NR_UE_UL_BWP_t *current_UL_BWP, nr_dci_format_t dci_format, uint8_t configuredGrant);
+long get_transformPrecoding(const NR_UE_UL_BWP_t *current_UL_BWP, nr_dci_format_t dci_format, uint8_t configuredGrant);
 
 void nr_mac_gNB_rrc_ul_failure(const module_id_t Mod_instP,
                                const int CC_idP,

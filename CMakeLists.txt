@@ -194,12 +194,17 @@ elseif(${CPUARCH} NOT STREQUAL "x86_64")
   message(FATAL_ERROR "Cannot compile for CPU architecture ${CPUARCH}")
 endif()
 
-set(C_FLAGS_PROCESSOR "${C_FLAGS_PROCESSOR} -fno-var-tracking-assignments -march=native")
+set(C_FLAGS_PROCESSOR "${C_FLAGS_PROCESSOR} -march=native")
 
 # add autotools definitions that were maybe used!
 add_definitions("-DSTDC_HEADERS=1 -DHAVE_SYS_TYPES_H=1 -DHAVE_SYS_STAT_H=1 -DHAVE_STDLIB_H=1 -DHAVE_STRING_H=1 -DHAVE_MEMORY_H=1 -DHAVE_STRINGS_H=1 -DHAVE_INTTYPES_H=1 -DHAVE_STDINT_H=1 -DHAVE_UNISTD_H=1 -DHAVE_FCNTL_H=1 -DHAVE_ARPA_INET_H=1 -DHAVE_SYS_TIME_H=1 -DHAVE_SYS_SOCKET_H=1 -DHAVE_STRERROR=1 -DHAVE_SOCKET=1 -DHAVE_MEMSET=1 -DHAVE_GETTIMEOFDAY=1 -DHAVE_STDLIB_H=1 -DHAVE_MALLOC=1 -DHAVE_LIBSCTP")
 
-set(commonOpts "-pipe -Wno-packed-bitfield-compat -fPIC -Wall -fno-strict-aliasing -rdynamic")
+set(commonOpts "-pipe -fPIC -Wall -fno-strict-aliasing")
+# GNU C/C++ Compiler might throw many warnings without packed-bitfield-compat, see man page
+# also, we need -rdynamic to incorporate all symbols in shared objects, again, see man page
+if(CMAKE_C_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  set(commonOpts "${commonOpts} -Wno-packed-bitfield-compat -rdynamic")
+endif()
 
 set(CMAKE_C_FLAGS
   "${CMAKE_C_FLAGS} ${C_FLAGS_PROCESSOR} ${commonOpts} -std=gnu11 -funroll-loops")
@@ -779,7 +784,6 @@ target_link_libraries(UTIL PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
 set(SECU_OSA_SRC
   ${OPENAIR2_DIR}/UTIL/OSA/osa_key_deriver.c
-  ${OPENAIR2_DIR}/UTIL/OSA/osa_rijndael.c
   ${OPENAIR2_DIR}/UTIL/OSA/osa_snow3g.c
   ${OPENAIR2_DIR}/UTIL/OSA/osa_stream_eea.c
   ${OPENAIR2_DIR}/UTIL/OSA/osa_stream_eia.c
@@ -1196,7 +1200,6 @@ set(PHY_SRC_UE
   ${OPENAIR1_DIR}/PHY/NR_REFSIG/nr_gen_mod_table.c
   ${OPENAIR1_DIR}/PHY/NR_REFSIG/dmrs_nr.c
   ${OPENAIR1_DIR}/PHY/NR_REFSIG/ptrs_nr.c
-  ${OPENAIR1_DIR}/PHY/NR_UE_ESTIMATION/filt16a_32.c
   ${OPENAIR1_DIR}/PHY/NR_ESTIMATION/nr_ul_channel_estimation.c
   ${OPENAIR1_DIR}/PHY/NR_ESTIMATION/nr_measurements_gNB.c
   ${OPENAIR1_DIR}/PHY/TOOLS/file_output.c
@@ -1247,7 +1250,6 @@ set(PHY_SRC_UE
   ${OPENAIR1_DIR}/PHY/NR_REFSIG/ptrs_nr.c
   ${OPENAIR1_DIR}/PHY/NR_REFSIG/nr_gold_ue.c
   ${OPENAIR1_DIR}/PHY/NR_REFSIG/nr_gen_mod_table.c
-  ${OPENAIR1_DIR}/PHY/NR_UE_ESTIMATION/filt16a_32.c
   ${OPENAIR1_DIR}/PHY/NR_UE_ESTIMATION/nr_dl_channel_estimation.c
   ${OPENAIR1_DIR}/PHY/NR_UE_ESTIMATION/nr_adjust_synch_ue.c
   ${OPENAIR1_DIR}/PHY/NR_UE_ESTIMATION/nr_ue_measurements.c
@@ -1378,7 +1380,6 @@ set(NR_PDCP_SRC
   #of reusing code of osa_stream_eia.c
   ${OPENAIR2_DIR}/UTIL/OSA/osa_stream_eia.c
   ${OPENAIR2_DIR}/UTIL/OSA/osa_snow3g.c
-  ${OPENAIR2_DIR}/UTIL/OSA/osa_rijndael.c
   )
 
 set(NR_SDAP_SRC
@@ -1502,6 +1503,7 @@ set (MAC_SRC
 
 set (MAC_NR_SRC
   ${NR_PHY_INTERFACE_DIR}/NR_IF_Module.c
+  ${NR_PHY_INTERFACE_DIR}/nr_sched_response.c
   ${NR_GNB_MAC_DIR}/main.c
   ${NR_GNB_MAC_DIR}/config.c
   ${NR_GNB_MAC_DIR}/gNB_scheduler.c
@@ -1540,6 +1542,7 @@ set (MAC_NR_SRC_UE
   ${NR_UE_MAC_DIR}/nr_ue_scheduler.c
   ${NR_UE_MAC_DIR}/nr_ue_dci_configuration.c
   ${NR_UE_MAC_DIR}/nr_ra_procedures.c
+  ${NR_UE_MAC_DIR}/nr_ue_power_procedures.c
 )
 
 set (ENB_APP_SRC
@@ -1966,6 +1969,7 @@ set(libnrnas_emm_msg_OBJS
   ${NAS_SRC}COMMON/EMM/MSG/DeactivateTestModeComplete.c
   ${NAS_SRC}COMMON/ESM/MSG/PduSessionEstablishRequest.c
   ${NAS_SRC}COMMON/ESM/MSG/PduSessionEstablishmentAccept.c
+  ${NAS_SRC}COMMON/EMM/MSG/FGSDeregistrationRequestUEOriginating.c
   )
 
 set(libnrnas_ies_OBJS
@@ -2087,7 +2091,9 @@ add_boolean_option(ENABLE_NRQTSCOPE OFF "Build the Qt-Scope" OFF)
 if (ENABLE_NRQTSCOPE)
   find_package(Qt5 REQUIRED COMPONENTS Widgets Charts)
   message ("Qt5 Widgets and Charts found for nrqtscope")
-  set(QTSCOPE_SOURCE_NR ${OPENAIR1_DIR}/PHY/TOOLS/nr_phy_qt_scope.cpp)
+  set(QTSCOPE_SOURCE_NR
+    ${OPENAIR1_DIR}/PHY/TOOLS/nr_phy_qt_scope.cpp
+    ${OPENAIR1_DIR}/PHY/TOOLS/phy_scope_interface.c)
   # Creates rules for calling the Meta-Object Compiler (moc) on the given source files
   qt5_wrap_cpp(QTSCOPE_SOURCE_NR ${OPENAIR1_DIR}/PHY/TOOLS/nr_phy_qt_scope.h)
   add_library(nrqtscope MODULE ${QTSCOPE_SOURCE_NR})
@@ -2349,6 +2355,24 @@ endif()
 target_link_libraries(nr-softmodem PRIVATE
   asn1_lte_rrc asn1_nr_rrc asn1_s1ap asn1_ngap asn1_m2ap asn1_m3ap asn1_x2ap asn1_f1ap asn1_lpp)
 
+add_executable(nr-cuup
+  executables/nr-cuup.c
+  executables/softmodem-common.c
+  ${OPENAIR2_DIR}/RRC/NAS/nas_config.c
+  ${NR_RRC_DIR}/rrc_gNB_UE_context.c
+  ${OPENAIR2_DIR}/E1AP/e1ap_setup.c
+  ${NR_PDCP_SRC}
+  ${NR_SDAP_SRC}
+  ${T_SOURCE}
+  ${SHLIB_LOADER_SOURCES}
+  )
+
+target_link_libraries(nr-cuup PRIVATE
+                      CONFIG_LIB ITTI SCTP_CLIENT
+                      GTPV1U e1ap e1_pdcp_if f1ap SIMU_ETH
+                      SECU_OSA SECU_CN ${OPENSSL_LIBRARIES} crypt z sctp dl pthread)
+target_link_libraries(nr-cuup PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
+                      
 # nr-uesoftmodem is  UE implementation
 #######################################
 

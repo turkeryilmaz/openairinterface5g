@@ -48,6 +48,7 @@
 
 #include "acpNrDrb.h"
 #include "ss_gNB_context.h"
+#include "ss_gNB_vt_timer_task.h"
 #include "ss_utils.h"
 
 extern RAN_CONTEXT_t RC;
@@ -180,8 +181,8 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind)
                 struct NR_RLC_UMD_HeaderNoSN_Type *header = &rlcPdu->v.UMD.v.NoSN.Header;
                 NR_RLC_UMD_Data_Type *data = &rlcPdu->v.UMD.v.NoSN.Data;
                 int pdu_header_size = 1;
-                bits_copy_to_array((char *)header->SegmentationInfo, 0, (const char *)pdu_ind->sdu, 2);
-                bits_copy_to_array((char *)header->Reserved, 2, (const char *)pdu_ind->sdu, 6);
+                bits_copy_to_array(header->SegmentationInfo, 0, pdu_ind->sdu, 2);
+                bits_copy_to_array(header->Reserved, 2, pdu_ind->sdu, 6);
                 data->d = pdu_ind->sdu_size - pdu_header_size;
                 LOG_A(GNB_APP, "[SS_DRB] Length of RLC PDU received in NR_DRB_COMMON_IND: %d\n", pdu_ind->sdu_size);
                 data->v = CALLOC(1, data->d);
@@ -193,13 +194,13 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind)
                 struct NR_RLC_UMD_HeaderSN6Bit_Type *header = &rlcPdu->v.UMD.v.SN6Bit.Header;
                 NR_RLC_UMD_Data_Type *data = &rlcPdu->v.UMD.v.SN6Bit.Data;
                 int pdu_header_size = 1;
-                bits_copy_to_array((char *)header->SegmentationInfo, 0, (const char *)pdu_ind->sdu, 2);
-                bits_copy_to_array((char *)header->SequenceNumber, 2, (const char *)pdu_ind->sdu, 6);
+                bits_copy_to_array(header->SegmentationInfo, 0, pdu_ind->sdu, 2);
+                bits_copy_to_array(header->SequenceNumber, 2, pdu_ind->sdu, 6);
                 if (pdu_ind->sdu[0] & 0x80)
                 {
                     pdu_header_size += 2;
                     header->SegmentOffset.d = true;
-                    bits_copy_to_array((char *)header->SegmentOffset.v, 8, (const char *)pdu_ind->sdu, 16);
+                    bits_copy_to_array(header->SegmentOffset.v, 8, pdu_ind->sdu, 16);
                 }
                 data->d = pdu_ind->sdu_size - pdu_header_size;
                 LOG_A(GNB_APP, "[SS_DRB] Length of RLC PDU received in NR_DRB_COMMON_IND: %d\n", pdu_ind->sdu_size);
@@ -212,13 +213,13 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind)
                 struct NR_RLC_UMD_HeaderSN12Bit_Type *header = &rlcPdu->v.UMD.v.SN12Bit.Header;
                 NR_RLC_UMD_Data_Type *data = &rlcPdu->v.UMD.v.SN12Bit.Data;
                 int pdu_header_size = 2;
-                bits_copy_to_array((char *)header->SegmentationInfo, 0, (const char *)pdu_ind->sdu, 2);
-                bits_copy_to_array((char *)header->SequenceNumber, 4, (const char *)pdu_ind->sdu, 12);
+                bits_copy_to_array(header->SegmentationInfo, 0, pdu_ind->sdu, 2);
+                bits_copy_to_array(header->SequenceNumber, 4, pdu_ind->sdu, 12);
                 if (pdu_ind->sdu[0] & 0x80)
                 {
                     pdu_header_size += 2;
                     header->SegmentOffset.d = true;
-                    bits_copy_to_array((char *)header->SegmentOffset.v, 16, (const char *)pdu_ind->sdu, 16);
+                    bits_copy_to_array(header->SegmentOffset.v, 16, pdu_ind->sdu, 16);
                 }
                 data->d = pdu_ind->sdu_size - pdu_header_size;
                 LOG_A(GNB_APP, "[SS_DRB] Length of RLC PDU received in NR_DRB_COMMON_IND: %lu\n", pdu_ind->sdu_size);
@@ -286,7 +287,7 @@ static void ss_task_handle_drb_pdu_req(struct NR_DRB_COMMON_REQ *req)
 {
     assert(req);
     MessageDef *message_p = NULL;
-    task_id_t task_id = TASK_UNKNOWN;
+    task_id_t task_id = TASK_RRC_GNB;
 
     /* Populate the message and send to gNB */
     for (int i = 0; i < req->U_Plane.SlotDataList.d; i++)
@@ -294,7 +295,6 @@ static void ss_task_handle_drb_pdu_req(struct NR_DRB_COMMON_REQ *req)
         if (req->U_Plane.SlotDataList.v[i].PduSduList.d == NR_L2DataList_Type_RlcPdu)
         {
             LOG_A(GNB_APP, "[SS_DRB] RLC PDU Received in NR_DRB_COMMON_REQ\n");
-            task_id = TASK_RLC_ENB;
             _drb_data_type = DRB_RlcPdu;
             RC.nr_drb_data_type = DRB_RlcPdu;
 
@@ -310,8 +310,8 @@ static void ss_task_handle_drb_pdu_req(struct NR_DRB_COMMON_REQ *req)
                     struct NR_RLC_UMD_HeaderNoSN_Type *header = &rlcPdu->v.UMD.v.NoSN.Header;
                     NR_RLC_UMD_Data_Type *data = &rlcPdu->v.UMD.v.NoSN.Data;
                     int pdu_header_size = 1;
-                    bits_copy_from_array((char *)SS_DRB_PDU_REQ(message_p).sdu, 0, (const char *)header->SegmentationInfo, 2);
-                    bits_copy_from_array((char *)SS_DRB_PDU_REQ(message_p).sdu, 2, (const char *)header->Reserved, 6);
+                    bits_copy_from_array(SS_DRB_PDU_REQ(message_p).sdu, 0, header->SegmentationInfo, 2);
+                    bits_copy_from_array(SS_DRB_PDU_REQ(message_p).sdu, 2, header->Reserved, 6);
                     SS_DRB_PDU_REQ(message_p).sdu_size = pdu_header_size + data->d;
                     LOG_A(GNB_APP, "[SS_DRB] Length of RLC PDU received in NR_DRB_COMMON_REQ: %lu\n", pdu_header_size + data->d);
                     memcpy(SS_DRB_PDU_REQ(message_p).sdu + pdu_header_size, data->v, data->d);
@@ -321,13 +321,13 @@ static void ss_task_handle_drb_pdu_req(struct NR_DRB_COMMON_REQ *req)
                     struct NR_RLC_UMD_HeaderSN6Bit_Type *header = &rlcPdu->v.UMD.v.SN6Bit.Header;
                     NR_RLC_UMD_Data_Type *data = &rlcPdu->v.UMD.v.SN6Bit.Data;
                     int pdu_header_size = 1;
-                    bits_copy_from_array((char *)SS_DRB_PDU_REQ(message_p).sdu, 0, (const char *)header->SegmentationInfo, 2);
-                    bits_copy_from_array((char *)SS_DRB_PDU_REQ(message_p).sdu, 2, (const char *)header->SequenceNumber, 6);
+                    bits_copy_from_array(SS_DRB_PDU_REQ(message_p).sdu, 0, header->SegmentationInfo, 2);
+                    bits_copy_from_array(SS_DRB_PDU_REQ(message_p).sdu, 2, header->SequenceNumber, 6);
                     SS_DRB_PDU_REQ(message_p).data_type = (uint8_t)DRB_RlcPdu;
                     if (header->SegmentOffset.d)
                     {
                         pdu_header_size += 2;
-                        bits_copy_from_array((char *)SS_DRB_PDU_REQ(message_p).sdu, 8, (const char *)header->SegmentOffset.v, 16);
+                        bits_copy_from_array(SS_DRB_PDU_REQ(message_p).sdu, 8, header->SegmentOffset.v, 16);
                         //we consider only RLC payload is there meaning that RLC packet is segmented
                         RC.nr_drb_data_type = DRB_RlcSdu;
                         SS_DRB_PDU_REQ(message_p).data_type = (uint8_t)DRB_RlcSdu;
@@ -341,12 +341,12 @@ static void ss_task_handle_drb_pdu_req(struct NR_DRB_COMMON_REQ *req)
                     struct NR_RLC_UMD_HeaderSN12Bit_Type *header = &rlcPdu->v.UMD.v.SN12Bit.Header;
                     NR_RLC_UMD_Data_Type *data = &rlcPdu->v.UMD.v.SN12Bit.Data;
                     int pdu_header_size = 2;
-                    bits_copy_from_array((char *)SS_DRB_PDU_REQ(message_p).sdu, 0, (const char *)header->SegmentationInfo, 2);
-                    bits_copy_from_array((char *)SS_DRB_PDU_REQ(message_p).sdu, 4, (const char *)header->SequenceNumber, 12);
+                    bits_copy_from_array(SS_DRB_PDU_REQ(message_p).sdu, 0, header->SegmentationInfo, 2);
+                    bits_copy_from_array(SS_DRB_PDU_REQ(message_p).sdu, 4, header->SequenceNumber, 12);
                     if (header->SegmentOffset.d)
                     {
                         pdu_header_size += 2;
-                        bits_copy_from_array((char *)SS_DRB_PDU_REQ(message_p).sdu, 16, (const char *)header->SegmentOffset.v, 16);
+                        bits_copy_from_array(SS_DRB_PDU_REQ(message_p).sdu, 16, header->SegmentOffset.v, 16);
                         //we consider only RLC payload is there meaning that RLC packet is segmented
                         RC.nr_drb_data_type = DRB_RlcSdu;
                         SS_DRB_PDU_REQ(message_p).data_type = (uint8_t)DRB_RlcSdu;
@@ -381,7 +381,6 @@ static void ss_task_handle_drb_pdu_req(struct NR_DRB_COMMON_REQ *req)
 
             for (int j = 0; j < req->U_Plane.SlotDataList.v[i].PduSduList.v.PdcpSdu.d; j++)
             {
-                task_id = TASK_PDCP_ENB;
                 message_p = itti_alloc_new_message(task_id, 0, SS_DRB_PDU_REQ);
                 assert(message_p);
                 memset(SS_DRB_PDU_REQ(message_p).sdu, 0, SDU_SIZE);
@@ -414,7 +413,6 @@ static void ss_task_handle_drb_pdu_req(struct NR_DRB_COMMON_REQ *req)
 
             for (int j = 0; j < req->U_Plane.SlotDataList.v[i].PduSduList.v.SdapSdu.d; j++)
             {
-                task_id = TASK_PDCP_ENB; /* reused the PDCP task intead of create a new SDAP task for SS_DRB_PDU_REQ message processing  */
                 message_p = itti_alloc_new_message(task_id, 0, SS_DRB_PDU_REQ);
                 assert(message_p);
                 memset(SS_DRB_PDU_REQ(message_p).sdu, 0, SDU_SIZE);

@@ -151,6 +151,16 @@ typedef struct {
 
 } nr_phy_config_t;
 
+typedef struct {
+    /// module id
+    uint8_t Mod_id;
+    /// component carrier id
+    uint8_t CC_id;
+    /// Flag signaling that synch_request was received
+    uint8_t received_synch_request;
+    /// NR UE FAPI message
+    fapi_nr_synch_request_t synch_req;
+} nr_synch_request_t;
 
 /*
  * Generic type of an application-defined callback to return various
@@ -171,6 +181,12 @@ typedef int8_t (nr_ue_scheduled_response_f)(nr_scheduled_response_t *scheduled_r
  */
 typedef int8_t (nr_ue_phy_config_request_f)(nr_phy_config_t *phy_config);
 
+/*
+ * Generic type of an application-defined callback to return various
+ * types of data to the application.
+ */
+typedef void (nr_ue_synch_request_f)(nr_synch_request_t *synch_request);
+
 
 /*
  * Generic type of an application-defined callback to return various
@@ -179,7 +195,7 @@ typedef int8_t (nr_ue_phy_config_request_f)(nr_phy_config_t *phy_config);
  *  -1: Failed to consume bytes. Abort the mission.
  * Non-negative return values indicate success, and ignored.
  */
-typedef int (nr_ue_dl_indication_f)(nr_downlink_indication_t *dl_info, NR_UL_TIME_ALIGNMENT_t *ul_time_alignment);
+typedef int (nr_ue_dl_indication_f)(nr_downlink_indication_t *dl_info);
 
 /*
  * Generic type of an application-defined callback to return various
@@ -196,6 +212,7 @@ typedef int (nr_ue_dcireq_f)(nr_dcireq_t *ul_info);
 typedef struct nr_ue_if_module_s {
   nr_ue_scheduled_response_f *scheduled_response;
   nr_ue_phy_config_request_f *phy_config_request;
+  nr_ue_synch_request_f      *synch_request;
   nr_ue_dl_indication_f      *dl_indication;
   nr_ue_ul_indication_f      *ul_indication;
   //nr_ue_dcireq_f             *dcireq;
@@ -239,7 +256,7 @@ int nr_ue_if_module_kill(uint32_t module_id);
 
 /**\brief interface between L1/L2, indicating the downlink related information, like dci_ind and rx_req
    \param dl_info including dci_ind and rx_request messages*/
-int nr_ue_dl_indication(nr_downlink_indication_t *dl_info, NR_UL_TIME_ALIGNMENT_t *ul_time_alignment);
+int nr_ue_dl_indication(nr_downlink_indication_t *dl_info);
 
 int nr_ue_ul_indication(nr_uplink_indication_t *ul_info);
 

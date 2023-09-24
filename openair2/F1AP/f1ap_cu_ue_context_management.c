@@ -40,7 +40,7 @@
 #include "rrc_extern.h"
 #include "openair2/RRC/NR/rrc_gNB_NGAP.h"
 #include <openair3/ocp-gtpu/gtp_itf.h>
-#include "pdcp.h"
+#include "LAYER2/nr_pdcp/nr_pdcp_oai_api.h"
 
 static void setQos(F1AP_NonDynamic5QIDescriptor_t *toFill) {
   asn1cCalloc(toFill, tmp);
@@ -947,18 +947,18 @@ int CU_handle_UE_CONTEXT_RELEASE_COMPLETE(instance_t       instance,
   protocol_ctxt_t ctxt;
   PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, instance, GNB_FLAG_YES, rnti, 0, 0, instance);
 
-  struct rrc_gNB_ue_context_s *ue_context_p = rrc_gNB_get_ue_context(RC.nrrrc[instance], rnti);
+  rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context_by_rnti(RC.nrrrc[instance], rnti);
 
   if (ue_context_p) {
     MessageDef *msg = itti_alloc_new_message(TASK_CU_F1, 0, NGAP_UE_CONTEXT_RELEASE_COMPLETE);
     NGAP_UE_CONTEXT_RELEASE_COMPLETE(msg).gNB_ue_ngap_id = ue_context_p->ue_context.gNB_ue_ngap_id;
     itti_send_msg_to_task(TASK_NGAP, instance, msg);
-    rrc_gNB_remove_ue_context(&ctxt, RC.nrrrc[instance], ue_context_p);
+    rrc_gNB_remove_ue_context(RC.nrrrc[instance], ue_context_p);
   } else {
     LOG_E(F1AP, "could not find ue_context of UE RNTI %x\n", rnti);
   }
 
-  pdcp_remove_UE(&ctxt);
+  nr_pdcp_remove_UE(ctxt.rntiMaybeUEid);
 
   LOG_I(F1AP, "Received UE CONTEXT RELEASE COMPLETE: Removing CU UE entry for RNTI %x\n", rnti);
   f1ap_remove_ue(CUtype, instance, rnti);
@@ -1600,7 +1600,7 @@ int CU_handle_UE_CONTEXT_MODIFICATION_RESPONSE(instance_t       instance,
                                F1AP_ProtocolIE_ID_id_gNB_DU_UE_F1AP_ID, true);
     f1ap_ue_context_modification_resp->gNB_DU_ue_id = ie->value.choice.GNB_DU_UE_F1AP_ID;
 
-    LOG_D(F1AP, "f1ap_ue_context_setup_resp->gNB_DU_ue_id is: %d \n", f1ap_ue_context_modification_resp->gNB_DU_ue_id);
+    LOG_D(F1AP, "f1ap_ue_context_modification_resp->gNB_DU_ue_id is: %d \n", f1ap_ue_context_modification_resp->gNB_DU_ue_id);
 
     f1ap_ue_context_modification_resp->rnti =
           f1ap_get_rnti_by_du_id(CUtype, instance, f1ap_ue_context_modification_resp->gNB_DU_ue_id);

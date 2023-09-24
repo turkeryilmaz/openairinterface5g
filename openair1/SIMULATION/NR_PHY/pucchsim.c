@@ -73,6 +73,17 @@ void init_downlink_harq_status(NR_DL_UE_HARQ_t *dl_harq) {}
 NR_IF_Module_t *NR_IF_Module_init(int Mod_id) { return (NULL); }
 nfapi_mode_t nfapi_getmode(void) { return NFAPI_MODE_UNKNOWN; }
 
+void inc_ref_sched_response(int _)
+{
+  LOG_E(PHY, "fatal\n");
+  exit(1);
+}
+void deref_sched_response(int _)
+{
+  LOG_E(PHY, "fatal\n");
+  exit(1);
+}
+
 nrUE_params_t nrUE_params={0};
 
 nrUE_params_t *get_nrUE_params(void) {
@@ -390,7 +401,7 @@ int main(int argc, char **argv)
     srand(time(NULL));   // Initialization, should only be called once.
     actual_payload = rand();      // Returns a pseudo-random integer between 0 and RAND_MAX.
   }
-  actual_payload &= ((1<<nr_bit)-1);
+  actual_payload &= nr_bit < 64 ? (1UL << nr_bit) - 1: 0xffffffffffffffff;
 
   printf("Transmitted payload is %ld, do_DTX = %d\n",actual_payload,do_DTX);
 
@@ -415,7 +426,7 @@ int main(int argc, char **argv)
   /* RU handles rxdataF, and gNB just has a pointer. Here, we don't have an RU,
    * so we need to allocate that memory as well. */
   for (i = 0; i < n_rx; i++)
-    gNB->common_vars.rxdataF[i] = malloc16_clear(gNB->frame_parms.samples_per_frame_wCP*sizeof(int32_t));
+    gNB->common_vars.rxdataF[i] = malloc16_clear(gNB->frame_parms.samples_per_frame_wCP*sizeof(c16_t));
 
   double fs,txbw,rxbw;
   uint32_t samples;
@@ -523,7 +534,7 @@ int main(int argc, char **argv)
     ack_nack_errors=0;
     sr_errors=0;
     n_errors = 0;
-    int **txdataF = gNB->common_vars.txdataF;
+    c16_t **txdataF = gNB->common_vars.txdataF;
     for (trial=0; trial<n_trials; trial++) {
       for (int aatx=0;aatx<1;aatx++)
         bzero(txdataF[aatx],frame_parms->ofdm_symbol_size*sizeof(int));
@@ -538,7 +549,7 @@ int main(int argc, char **argv)
       // SNR Computation
       // standard says: SNR = S / N, where S is the total signal energy, N is the noise energy in the transmission bandwidth (i.e. N_RB_DL resource blocks)
       // txlev = S.
-      int txlev = signal_energy(&txdataF[0][startingSymbolIndex*frame_parms->ofdm_symbol_size], frame_parms->ofdm_symbol_size);
+      int txlev = signal_energy((int32_t *)&txdataF[0][startingSymbolIndex*frame_parms->ofdm_symbol_size], frame_parms->ofdm_symbol_size);
 
       // sigma2 is variance per dimension, so N/(N_RB*12)
       // so, sigma2 = N/(N_RB_DL*12) => (S/SNR)/(N_RB*12)
@@ -548,7 +559,7 @@ int main(int argc, char **argv)
 
       if (n_trials==1) printf("txlev %d (%f dB), offset %d, sigma2 %f ( %f dB)\n",txlev,10*log10(txlev),startingSymbolIndex*frame_parms->ofdm_symbol_size,sigma2,sigma2_dB);
 
-      c16_t **rxdataF =  (struct complex16 **)gNB->common_vars.rxdataF;
+      c16_t **rxdataF =  gNB->common_vars.rxdataF;
       for (int symb=0; symb<gNB->frame_parms.symbols_per_slot;symb++) {
         if (symb<startingSymbolIndex || symb >= startingSymbolIndex+nrofSymbols) {
           int i0 = symb*gNB->frame_parms.ofdm_symbol_size;
@@ -623,7 +634,7 @@ int main(int argc, char **argv)
       if(format==0){
         nfapi_nr_uci_pucch_pdu_format_0_1_t uci_pdu;
         nfapi_nr_pucch_pdu_t pucch_pdu;
-        gNB->uci_stats[0].rnti          = 0x1234;
+        gNB->phy_stats[0].rnti = 0x1234;
         pucch_pdu.rnti                  = 0x1234;
         pucch_pdu.subcarrier_spacing    = 1;
         pucch_pdu.group_hop_flag        = PUCCH_GroupHopping&1;
@@ -669,7 +680,7 @@ int main(int argc, char **argv)
         free(uci_pdu.harq);
       }
       else if (format==1) {
-        nr_decode_pucch1((int32_t **)rxdataF,PUCCH_GroupHopping,hopping_id,
+        nr_decode_pucch1((c16_t **)rxdataF,PUCCH_GroupHopping,hopping_id,
                          &(payload_received),frame_parms,amp,nr_slot_tx,
                          m0,nrofSymbols,startingSymbolIndex,startingPRB,
                          startingPRB_intraSlotHopping,timeDomainOCC,nr_bit);

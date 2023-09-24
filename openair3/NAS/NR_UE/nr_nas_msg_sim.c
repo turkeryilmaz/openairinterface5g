@@ -42,9 +42,10 @@
 #include "kdf.h"
 #include "PduSessionEstablishRequest.h"
 #include "PduSessionEstablishmentAccept.h"
+#include "RegistrationAccept.h"
+#include "FGSDeregistrationRequestUEOriginating.h"
 #include "intertask_interface.h"
 #include "openair2/RRC/NAS/nas_config.h"
-#include <openair3/UICC/usim_interface.h>
 #include <openair3/NAS/COMMON/NR_NAS_defs.h>
 #include <openair1/PHY/phy_extern_nr_ue.h>
 #include <openair1/SIMULATION/ETH_TRANSPORT/proto.h>
@@ -59,7 +60,7 @@ uint8_t  *registration_request_buf;
 uint32_t  registration_request_len;
 extern char *baseNetAddress;
 extern uint16_t NB_UE_INST;
-static ue_sa_security_key_t ** ue_security_key;
+static nr_ue_nas_t nr_ue_nas;
 static int _ul_nas_count = 0;
 static int _dl_nas_count = 0;
 static int _nas_integrity_algo = NIA2_128_ALG_ID;
@@ -265,6 +266,50 @@ static int _nas_mm_msg_encode_header(const mm_msg_header_t *header,
   return (size);
 }
 
+static int fill_suci(FGSMobileIdentity *mi, const uicc_t *uicc)
+{
+  mi->suci.typeofidentity = FGS_MOBILE_IDENTITY_SUCI;
+  mi->suci.mncdigit1 = uicc->nmc_size == 2 ? uicc->imsiStr[3] - '0' : uicc->imsiStr[4] - '0';
+  mi->suci.mncdigit2 = uicc->nmc_size == 2 ? uicc->imsiStr[4] - '0' : uicc->imsiStr[5] - '0';
+  mi->suci.mncdigit3 = uicc->nmc_size == 2 ? 0xF : uicc->imsiStr[3] - '0';
+  mi->suci.mccdigit1 = uicc->imsiStr[0] - '0';
+  mi->suci.mccdigit2 = uicc->imsiStr[1] - '0';
+  mi->suci.mccdigit3 = uicc->imsiStr[2] - '0';
+  memcpy(mi->suci.schemeoutput, uicc->imsiStr + 3 + uicc->nmc_size, strlen(uicc->imsiStr) - (3 + uicc->nmc_size));
+  return sizeof(Suci5GSMobileIdentity_t);
+}
+
+static int fill_guti(FGSMobileIdentity *mi, const Guti5GSMobileIdentity_t *guti)
+{
+  AssertFatal(guti != NULL, "UE has no GUTI\n");
+  mi->guti = *guti;
+  return 13;
+}
+
+static int fill_imeisv(FGSMobileIdentity *mi, const uicc_t *uicc)
+{
+  int i=0;
+  mi->imeisv.typeofidentity = FGS_MOBILE_IDENTITY_IMEISV;
+  mi->imeisv.digittac01 = getImeisvDigit(uicc, i++);
+  mi->imeisv.digittac02 = getImeisvDigit(uicc, i++);
+  mi->imeisv.digittac03 = getImeisvDigit(uicc, i++);
+  mi->imeisv.digittac04 = getImeisvDigit(uicc, i++);
+  mi->imeisv.digittac05 = getImeisvDigit(uicc, i++);
+  mi->imeisv.digittac06 = getImeisvDigit(uicc, i++);
+  mi->imeisv.digittac07 = getImeisvDigit(uicc, i++);
+  mi->imeisv.digittac08 = getImeisvDigit(uicc, i++);
+  mi->imeisv.digit09 = getImeisvDigit(uicc, i++);
+  mi->imeisv.digit10 = getImeisvDigit(uicc, i++);
+  mi->imeisv.digit11 = getImeisvDigit(uicc, i++);
+  mi->imeisv.digit12 = getImeisvDigit(uicc, i++);
+  mi->imeisv.digit13 = getImeisvDigit(uicc, i++);
+  mi->imeisv.digit14 = getImeisvDigit(uicc, i++);
+  mi->imeisv.digitsv1 = getImeisvDigit(uicc, i++);
+  mi->imeisv.digitsv2 = getImeisvDigit(uicc, i++);
+  mi->imeisv.spare  = 0x0f;
+  mi->imeisv.oddeven = 1;
+  return 19;
+}
 
 int mm_msg_encode(MM_msg *mm_msg, uint8_t *buffer, uint32_t len) {
   LOG_FUNC_IN;
@@ -300,6 +345,9 @@ int mm_msg_encode(MM_msg *mm_msg, uint8_t *buffer, uint32_t len) {
       break;
     case FGS_UPLINK_NAS_TRANSPORT:
       encode_result = encode_fgs_uplink_nas_transport(&mm_msg->uplink_nas_transport, buffer, len);
+      break;
+    case FGS_DEREGISTRATION_REQUEST_UE_ORIGINATING:
+      encode_result = encode_fgs_deregistration_request_ue_originating(&mm_msg->fgs_deregistration_request_ue_originating, buffer, len);
       break;
     case ACTIVATE_TEST_MODE_COMPLETE:
       encode_result = encode_activate_test_mode_complete(&mm_msg->activate_test_mode_complete, buffer, len);
@@ -401,26 +449,24 @@ void transferRES(uint8_t ck[16], uint8_t ik[16], uint8_t *input, uint8_t rand[16
   S[38 + netNamesize] = 0x10;
 #endif
 
-  uint8_t key[32];
+  uint8_t key[32] = {0};
   memcpy(&key[0], ck, 16);
   memcpy(&key[16], ik, 16);  //KEY
-  uint8_t out[32];
+  uint8_t out[32] = {0};
 
 #ifdef AUTH_ALGO_MILENAGE
-  byte_array_t data = {.buf = S, .len = 31 +  netNamesize};
+  byte_array_t data = {.buf = S, .len = 31 + netNamesize};
   kdf(key, data, 32, out);
 #else
-  byte_array_t data = {.buf = S, .len = 39 +  netNamesize};
+  byte_array_t data = {.buf = S, .len = 39 + netNamesize};
   kdf(key, data, 32, out);
 #endif
-  for (int i = 0; i < 16; i++) {
-    output[i] = out[16 + i];
-  }
+  memcpy(output, out + 16, 16);
 }
 
 void derive_kausf(uint8_t ck[16], uint8_t ik[16], uint8_t sqn[6], uint8_t kausf[32], uicc_t *uicc) {
   uint8_t S[100]={0};
-  uint8_t key[32];
+  uint8_t key[32] = {0};
   printf(">>> %s\n", __FUNCTION__);
 
   memcpy(&key[0], ck, 16);
@@ -657,7 +703,7 @@ void parse_eap_msg_autn(uint8_t *buf, uint8_t autn[6])
   }
 }
 
-void make_eap_msg(int Mod_id, OctetString *msg)
+static void make_eap_msg(nr_ue_nas_t *nas, OctetString *msg)
 {
   uint8_t tmpl[] = { 0x02, 0x00, // code & id
                      0x00 , 0x00, // len
@@ -682,10 +728,10 @@ void make_eap_msg(int Mod_id, OctetString *msg)
   lenPtr[1] = (uint8_t)(len & 0xFF);
 
   // set res attribute
-  memcpy(resPtr, ue_security_key[Mod_id]->res, 16);
+  memcpy(resPtr, nas->security.res, 16);
 
   // calc and set mac attribute
-  uint8_t *mk = ue_security_key[Mod_id]->mk; // EAP-AKA' master-key
+  uint8_t *mk = nas->security.mk; // EAP-AKA' master-key
   uint8_t kaut[32];
   uint8_t mac[32];
   memcpy(kaut, mk + 16, 32); // RFC 5448 cl. 3.3 K_aut to be used for computing MAC
@@ -698,28 +744,25 @@ void make_eap_msg(int Mod_id, OctetString *msg)
   memcpy(msg->value, tmpl, msg->length);
 }
 
-void derive_ue_keys(int Mod_id, uint8_t *buf, uicc_t *uicc) {
+static void derive_ue_keys(uint8_t *buf, nr_ue_nas_t *nas) {
   LOG_FUNC_IN;
   uint8_t ak[6];
   uint8_t sqn[6];
 
-  AssertFatal (Mod_id < NB_UE_INST, "Failed, Mod_id %d is over NB_UE_INST!\n", Mod_id);
-  if(ue_security_key[Mod_id]){
-    // clear old key
-    memset(ue_security_key[Mod_id],0,sizeof(ue_sa_security_key_t));
-  }else{
-    // Allocate new memory
-    ue_security_key[Mod_id]=(ue_sa_security_key_t *)calloc(1,sizeof(ue_sa_security_key_t));
-  }
-  uint8_t *mk       = ue_security_key[Mod_id]->mk; // EAP-AKA' master-key
-  uint8_t *kausf    = ue_security_key[Mod_id]->kausf;
-  uint8_t *kseaf    = ue_security_key[Mod_id]->kseaf;
-  uint8_t *kamf     = ue_security_key[Mod_id]->kamf;
-  uint8_t *knas_int = ue_security_key[Mod_id]->knas_int;
-  uint8_t *knas_enc = ue_security_key[Mod_id]->knas_enc;
-  uint8_t *xres     = ue_security_key[Mod_id]->res;
-  uint8_t *rand     = ue_security_key[Mod_id]->rand;
-  uint8_t *kgnb     = ue_security_key[Mod_id]->kgnb;
+  DevAssert(nas != NULL);
+
+  // clear old key
+  memset(&nas->security, 0, sizeof(nas->security));
+
+  uint8_t *mk       = nas->security.mk; // EAP-AKA' master-key
+  uint8_t *kausf    = nas->security.kausf;
+  uint8_t *kseaf    = nas->security.kseaf;
+  uint8_t *kamf     = nas->security.kamf;
+  uint8_t *knas_int = nas->security.knas_int;
+  uint8_t *knas_enc = nas->security.knas_enc;
+  uint8_t *xres     = nas->security.res;
+  uint8_t *rand     = nas->security.rand;
+  uint8_t *kgnb     = nas->security.kgnb;
 
   int eap_msg_offset = detect_eap_msg(buf);
   int eap_msg_len = 0;
@@ -752,24 +795,24 @@ void derive_ue_keys(int Mod_id, uint8_t *buf, uicc_t *uicc) {
   uint8_t ck[16], ik[16];
 
 #ifdef AUTH_ALGO_MILENAGE
-  f2345(uicc->key, rand, resTemp, ck, ik, ak, uicc->opc);
+  f2345(nas->uicc->key, rand, resTemp, ck, ik, ak, nas->uicc->opc);
 #else
-  derive_keys_xor(uicc->key, rand, ck, ik, ak, resTemp);
+  derive_keys_xor(nas->uicc->key, rand, ck, ik, ak, resTemp);
 #endif
 
   if (!eap_msg_offset) {
-    transferRES(ck, ik, resTemp, rand, xres, uicc); // calc XRES_Star
+    transferRES(ck, ik, resTemp, rand, xres, nas->uicc); // calc XRES_Star
 
-    derive_kausf(ck, ik, sqn, kausf, uicc);
+    derive_kausf(ck, ik, sqn, kausf, nas->uicc);
   } else {
     memcpy(xres, resTemp, 16); // no XRES_Star in EAP-AKA'
 
-    derive_mk(ck, ik, sqn, mk, uicc);
+    derive_mk(ck, ik, sqn, mk, nas->uicc);
     memcpy(kausf, mk + 144, 32); // KAUSF is EMSK in RFC 5448 cl. 3.3
   }
 
-  derive_kseaf(kausf, kseaf, uicc);
-  derive_kamf(kseaf, kamf, 0x0000, uicc);
+  derive_kseaf(kausf, kseaf, nas->uicc);
+  derive_kamf(kseaf, kamf, 0x0000, nas->uicc);
   derive_knas(0x02, _nas_integrity_algo, kamf, knas_int); // _nas_integrity_algo is unknown here
   derive_knas(0x01, _nas_ciphering_algo, kamf, knas_enc); // _nas_integrity_algo is unknown here
   derive_kgnb(kamf, 0, kgnb);
@@ -787,7 +830,7 @@ void derive_ue_keys(int Mod_id, uint8_t *buf, uicc_t *uicc) {
   LOG_FUNC_OUT;
 }
 
-static void _enc_dec_msg(int Mod_id, uint8_t dir, uint32_t count, uint8_t *msg, size_t size, uint8_t algo)
+static void _enc_dec_msg(nr_ue_nas_t *nas, uint8_t dir, uint32_t count, uint8_t *msg, size_t size, uint8_t algo)
 {
   uint8_t *buffer = NULL;
   nas_stream_cipher_t stream_cipher;
@@ -797,7 +840,7 @@ static void _enc_dec_msg(int Mod_id, uint8_t dir, uint32_t count, uint8_t *msg, 
   stream_cipher.bearer     = 1;
   stream_cipher.direction  = dir;
 
-  stream_cipher.key        = ue_security_key[Mod_id]->knas_enc;
+  stream_cipher.key        = nas->security.knas_enc;
   stream_cipher.message    = msg;
   /* length in bits */
   stream_cipher.blength    = size << 3;
@@ -826,17 +869,17 @@ static void _enc_dec_msg(int Mod_id, uint8_t dir, uint32_t count, uint8_t *msg, 
   }
 }
 
-static void _encrypt_nas_msg(int Mod_id, uint32_t count, uint8_t *msg, size_t size)
+static void _encrypt_nas_msg(nr_ue_nas_t *nas, uint32_t count, uint8_t *msg, size_t size)
 {
-  _enc_dec_msg(Mod_id, SECU_DIRECTION_UPLINK, count, msg, size, _nas_ciphering_algo);
+  _enc_dec_msg(nas, SECU_DIRECTION_UPLINK, count, msg, size, _nas_ciphering_algo);
 }
 
-static void _decrypt_nas_msg(int Mod_id, uint32_t count, uint8_t *msg, size_t size)
+static void _decrypt_nas_msg(nr_ue_nas_t *nas, uint32_t count, uint8_t *msg, size_t size)
 {
-  _enc_dec_msg(Mod_id, SECU_DIRECTION_DOWNLINK, count, msg, size, _nas_ciphering_algo);
+  _enc_dec_msg(nas, SECU_DIRECTION_DOWNLINK, count, msg, size, _nas_ciphering_algo);
 }
 
-static void _calculate_nas_maci(int Mod_id, uint8_t dir, uint32_t count, uint8_t *msg, size_t size, uint8_t *mac)
+static void _calculate_nas_maci(nr_ue_nas_t *nas, uint8_t dir, uint32_t count, uint8_t *msg, size_t size, uint8_t *mac)
 {
   nas_stream_cipher_t stream_cipher;
   uint8_t algo = _nas_integrity_algo;
@@ -845,7 +888,7 @@ static void _calculate_nas_maci(int Mod_id, uint8_t dir, uint32_t count, uint8_t
   stream_cipher.count      = count;
   stream_cipher.bearer     = 1;
   stream_cipher.direction  = dir;
-  stream_cipher.key        = ue_security_key[Mod_id]->knas_int;
+  stream_cipher.key        = nas->security.knas_int;
   stream_cipher.message    = msg;
   /* length in bits */
   stream_cipher.blength    = size << 3;
@@ -868,12 +911,18 @@ static void _calculate_nas_maci(int Mod_id, uint8_t dir, uint32_t count, uint8_t
   }
 }
 
-void generateRegistrationRequest(as_nas_info_t *initialNasMsg, int Mod_id) {
+nr_ue_nas_t *get_ue_nas_info(module_id_t module_id)
+{
+  DevAssert(module_id == 0);
+  return &nr_ue_nas;
+}
+
+void generateRegistrationRequest(as_nas_info_t *initialNasMsg, nr_ue_nas_t *nas)
+{
   LOG_FUNC_IN;
   int size = sizeof(mm_msg_header_t);
   fgs_nas_message_t nas_msg={0};
   MM_msg *mm_msg;
-  uicc_t * uicc=checkUicc(Mod_id);
 
   mm_msg = &nas_msg.plain.mm_msg;
   // set header
@@ -893,37 +942,10 @@ void generateRegistrationRequest(as_nas_info_t *initialNasMsg, int Mod_id) {
   /* Set naskeysetidentifier to 7 instead of 1 for the TTCN */
   mm_msg->registration_request.naskeysetidentifier.naskeysetidentifier = 7;
   size += 1;
-  if(0){
-    mm_msg->registration_request.fgsmobileidentity.guti.typeofidentity = FGS_MOBILE_IDENTITY_5G_GUTI;
-    mm_msg->registration_request.fgsmobileidentity.guti.amfregionid = 0xca;
-    mm_msg->registration_request.fgsmobileidentity.guti.amfpointer = 0;
-    mm_msg->registration_request.fgsmobileidentity.guti.amfsetid = 1016;
-    mm_msg->registration_request.fgsmobileidentity.guti.tmsi = 10;
-    mm_msg->registration_request.fgsmobileidentity.guti.mncdigit1 =
-      uicc->nmc_size==2 ? uicc->imsiStr[3]-'0' :  uicc->imsiStr[4]-'0';
-    mm_msg->registration_request.fgsmobileidentity.guti.mncdigit2 =
-      uicc->nmc_size==2 ? uicc->imsiStr[4]-'0' :  uicc->imsiStr[5]-'0';
-    mm_msg->registration_request.fgsmobileidentity.guti.mncdigit3 =
-      uicc->nmc_size==2 ? 0xf : uicc->imsiStr[3]-'0';
-    mm_msg->registration_request.fgsmobileidentity.guti.mccdigit1 = uicc->imsiStr[0]-'0';
-    mm_msg->registration_request.fgsmobileidentity.guti.mccdigit2 = uicc->imsiStr[1]-'0';
-    mm_msg->registration_request.fgsmobileidentity.guti.mccdigit3 = uicc->imsiStr[2]-'0';
-
-    size += 13;
-
+  if(nas->guti){
+    size += fill_guti(&mm_msg->registration_request.fgsmobileidentity, nas->guti);
   } else {
-    mm_msg->registration_request.fgsmobileidentity.suci.typeofidentity = FGS_MOBILE_IDENTITY_SUCI;
-    mm_msg->registration_request.fgsmobileidentity.suci.mncdigit1 =
-     uicc->nmc_size==2 ? uicc->imsiStr[3]-'0' :  uicc->imsiStr[4]-'0';
-    mm_msg->registration_request.fgsmobileidentity.suci.mncdigit2 =
-      uicc->nmc_size==2 ? uicc->imsiStr[4]-'0' :  uicc->imsiStr[5]-'0';
-    mm_msg->registration_request.fgsmobileidentity.suci.mncdigit3 =
-      uicc->nmc_size==2 ? 0xf : uicc->imsiStr[3]-'0';
-    mm_msg->registration_request.fgsmobileidentity.suci.mccdigit1 = uicc->imsiStr[0]-'0';
-    mm_msg->registration_request.fgsmobileidentity.suci.mccdigit2 = uicc->imsiStr[1]-'0';
-    mm_msg->registration_request.fgsmobileidentity.suci.mccdigit3 = uicc->imsiStr[2]-'0';
-    memcpy(mm_msg->registration_request.fgsmobileidentity.suci.schemeoutput, uicc->imsiStr+3+uicc->nmc_size, strlen(uicc->imsiStr) - (3+uicc->nmc_size));
-    size += sizeof(Suci5GSMobileIdentity_t);
+    size += fill_suci(&mm_msg->registration_request.fgsmobileidentity, nas->uicc);
   }
 
   /* Workaround fix for the issue in TTCN till gmmCapability is supported by TTCN */
@@ -983,18 +1005,7 @@ void generateIdentityResponse(as_nas_info_t *initialNasMsg, uint8_t identitytype
   mm_msg->fgs_identity_response.messagetype = FGS_IDENTITY_RESPONSE;
   size += 1;
   if(identitytype == FGS_MOBILE_IDENTITY_SUCI){
-    mm_msg->fgs_identity_response.fgsmobileidentity.suci.typeofidentity = FGS_MOBILE_IDENTITY_SUCI;
-    mm_msg->fgs_identity_response.fgsmobileidentity.suci.mncdigit1 =
-      uicc->nmc_size==2 ? uicc->imsiStr[3]-'0' :  uicc->imsiStr[4]-'0';
-    mm_msg->fgs_identity_response.fgsmobileidentity.suci.mncdigit2 =
-      uicc->nmc_size==2 ? uicc->imsiStr[4]-'0' :  uicc->imsiStr[5]-'0';
-    mm_msg->fgs_identity_response.fgsmobileidentity.suci.mncdigit3 =
-      uicc->nmc_size==2? 0xF : uicc->imsiStr[3]-'0';
-    mm_msg->fgs_identity_response.fgsmobileidentity.suci.mccdigit1 = uicc->imsiStr[0]-'0';
-    mm_msg->fgs_identity_response.fgsmobileidentity.suci.mccdigit2 = uicc->imsiStr[1]-'0';
-    mm_msg->fgs_identity_response.fgsmobileidentity.suci.mccdigit3 = uicc->imsiStr[2]-'0';
-    memcpy(mm_msg->registration_request.fgsmobileidentity.suci.schemeoutput, uicc->imsiStr+3+uicc->nmc_size, strlen(uicc->imsiStr) - (3+uicc->nmc_size));
-    size += sizeof(Suci5GSMobileIdentity_t);
+    size += fill_suci(&mm_msg->fgs_identity_response.fgsmobileidentity, uicc);
   }
 
   // encode the message
@@ -1004,11 +1015,12 @@ void generateIdentityResponse(as_nas_info_t *initialNasMsg, uint8_t identitytype
 
 }
 
-static void generateAuthenticationResp(int Mod_id,as_nas_info_t *initialNasMsg, uint8_t *buf, uicc_t *uicc){
+static void generateAuthenticationResp(nr_ue_nas_t *nas, as_nas_info_t *initialNasMsg, uint8_t *buf)
+{
   LOG_FUNC_IN;
   int eap_msg_offset = detect_eap_msg(buf);
 
-  derive_ue_keys(Mod_id,buf,uicc);
+  derive_ue_keys(buf, nas);
 
   int size = sizeof(mm_msg_header_t);
   fgs_nas_message_t nas_msg;
@@ -1034,14 +1046,14 @@ static void generateAuthenticationResp(int Mod_id,as_nas_info_t *initialNasMsg, 
     OctetString res;
     res.length = 16;
     res.value = calloc(1,16);
-    memcpy(res.value,ue_security_key[Mod_id]->res,16);
+    memcpy(res.value, nas->security.res, 16);
 
     mm_msg->fgs_auth_response.presencemask |= FGS_AUTHENTICATION_RESPONSE_AUTH_RESPONSE_PARAM_PRESENT;
     mm_msg->fgs_auth_response.authenticationresponseparameter.res = res;
     size += 18;
   } else {
     OctetString eapMsg;
-    make_eap_msg(Mod_id, &eapMsg);
+    make_eap_msg(nas, &eapMsg);
 
     mm_msg->fgs_auth_response.presencemask |= FGS_AUTHENTICATION_RESPONSE_EAP_MESSAGE_PRESENT;
     mm_msg->fgs_auth_response.eapmessage.eapMsg = eapMsg;
@@ -1056,44 +1068,20 @@ static void generateAuthenticationResp(int Mod_id,as_nas_info_t *initialNasMsg, 
   LOG_FUNC_OUT;
 }
 
-int nas_itti_kgnb_refresh_req(const uint8_t kgnb[32], int instance){
+int nas_itti_kgnb_refresh_req(const uint8_t kgnb[32])
+{
   LOG_FUNC_IN;
   MessageDef *message_p;
   message_p = itti_alloc_new_message(TASK_NAS_NRUE, 0, NAS_KENB_REFRESH_REQ);
   memcpy(NAS_KENB_REFRESH_REQ(message_p).kenb, kgnb, sizeof(NAS_KENB_REFRESH_REQ(message_p).kenb));
   LOG_FUNC_OUT;
-  return itti_send_msg_to_task(TASK_RRC_NRUE, instance, message_p);
+  return itti_send_msg_to_task(TASK_RRC_NRUE, 0, message_p);
 }
 
-static int addImeisv(int Mod_id, FGSMobileIdentity *fgsmobileidentity)
-{
-  int i=0;
-  fgsmobileidentity->imeisv.typeofidentity = FGS_MOBILE_IDENTITY_IMEISV;
-  fgsmobileidentity->imeisv.digittac01 = getImeisvDigit(Mod_id,i++);
-  fgsmobileidentity->imeisv.digittac02 = getImeisvDigit(Mod_id,i++);
-  fgsmobileidentity->imeisv.digittac03 = getImeisvDigit(Mod_id,i++);
-  fgsmobileidentity->imeisv.digittac04 = getImeisvDigit(Mod_id,i++);
-  fgsmobileidentity->imeisv.digittac05 = getImeisvDigit(Mod_id,i++);
-  fgsmobileidentity->imeisv.digittac06 = getImeisvDigit(Mod_id,i++);
-  fgsmobileidentity->imeisv.digittac07 = getImeisvDigit(Mod_id,i++);
-  fgsmobileidentity->imeisv.digittac08 = getImeisvDigit(Mod_id,i++);
-  fgsmobileidentity->imeisv.digit09    = getImeisvDigit(Mod_id,i++);
-  fgsmobileidentity->imeisv.digit10    = getImeisvDigit(Mod_id,i++);
-  fgsmobileidentity->imeisv.digit11    = getImeisvDigit(Mod_id,i++);
-  fgsmobileidentity->imeisv.digit12    = getImeisvDigit(Mod_id,i++);
-  fgsmobileidentity->imeisv.digit13    = getImeisvDigit(Mod_id,i++);
-  fgsmobileidentity->imeisv.digit14    = getImeisvDigit(Mod_id,i++);
-  fgsmobileidentity->imeisv.digitsv1   = getImeisvDigit(Mod_id,i++);
-  fgsmobileidentity->imeisv.digitsv2   = getImeisvDigit(Mod_id,i++);
-  fgsmobileidentity->imeisv.spare  = 0x0f;
-  fgsmobileidentity->imeisv.oddeven = 1;
-  return 19;
-}
-
-static void generateSecurityModeComplete(int Mod_id,as_nas_info_t *initialNasMsg)
+static void generateSecurityModeComplete(nr_ue_nas_t *nas, as_nas_info_t *initialNasMsg)
 {
   LOG_FUNC_IN;
-  int size = sizeof(mm_msg_header_t); // FIXME: A dirty hack of increasing the size by 3 only to pass header encoding below
+  int size = sizeof(mm_msg_header_t);
   MM_msg *mm_msg;
   fgs_nas_message_t nas_msg;
   _ul_nas_count = 0;
@@ -1127,7 +1115,7 @@ static void generateSecurityModeComplete(int Mod_id,as_nas_info_t *initialNasMsg
   /* Workaround fix for the issue in TTCN till imeisv is supported by TTCN */
   if(0)
   {
-    size += addImeisv(Mod_id, &mm_msg->fgs_security_mode_complete.fgsmobileidentity);
+    size += fill_imeisv(&mm_msg->fgs_security_mode_complete.fgsmobileidentity, nas->uicc);
   }
 
   mm_msg->fgs_security_mode_complete.fgsnasmessagecontainer.nasmessagecontainercontents.value  = registration_request_buf;
@@ -1145,10 +1133,10 @@ static void generateSecurityModeComplete(int Mod_id,as_nas_info_t *initialNasMsg
   printf("Before Security: "); for (int i = 0; i < initialNasMsg->length; ++i) printf("%02x", (initialNasMsg->data)[i]); printf("\n");
 
   // Ciphering
-  _encrypt_nas_msg(Mod_id, _ul_nas_count, initialNasMsg->data + security_header_len, msg_len);
+  _encrypt_nas_msg(nas, _ul_nas_count, initialNasMsg->data + security_header_len, msg_len);
 
   // Integrity
-  _calculate_nas_maci(Mod_id, SECU_DIRECTION_UPLINK, _ul_nas_count, initialNasMsg->data + security_header_len - 1, msg_len + 1,  mac);
+  _calculate_nas_maci(nas, SECU_DIRECTION_UPLINK, _ul_nas_count, initialNasMsg->data + security_header_len - 1, msg_len + 1,  mac);
 
   printf("xmac %02x%02x%02x%02x\n", mac[0], mac[1], mac[2], mac[3]);
   for(int i = 0; i < 4; i++) {
@@ -1161,7 +1149,32 @@ static void generateSecurityModeComplete(int Mod_id,as_nas_info_t *initialNasMsg
   LOG_FUNC_OUT;
 }
 
-static void generateRegistrationComplete(int Mod_id, as_nas_info_t *initialNasMsg, SORTransparentContainer               *sortransparentcontainer) {
+static void decodeRegistrationAccept(uint8_t *buf, int len, nr_ue_nas_t *nas)
+{
+  registration_accept_msg reg_acc = {0};
+  /* it seems there is no 5G corresponding emm_msg_decode() function, so here
+   * we just jump to the right decision */
+  buf += 7; /* skip security header */
+  buf += 2; /* skip prot discriminator, security header, half octet */
+  AssertFatal(*buf == 0x42, "this is not a NAS Registration Accept\n");
+  buf++;
+  int decoded = decode_registration_accept(&reg_acc, buf, len);
+  AssertFatal(decoded > 0, "could not decode registration accept\n");
+  if (reg_acc.guti) {
+     AssertFatal(reg_acc.guti->guti.typeofidentity == FGS_MOBILE_IDENTITY_5G_GUTI,
+                 "registration accept 5GS Mobile Identity is not GUTI, but %d\n",
+                 reg_acc.guti->guti.typeofidentity);
+     nas->guti = malloc(sizeof(*nas->guti));
+     AssertFatal(nas->guti, "out of memory\n");
+     *nas->guti = reg_acc.guti->guti;
+     free(reg_acc.guti); /* no proper memory management for NAS decoded messages */
+  } else {
+    LOG_W(NAS, "no GUTI in registration accept\n");
+  }
+}
+
+static void generateRegistrationComplete(nr_ue_nas_t *nas, as_nas_info_t *initialNasMsg, SORTransparentContainer *sortransparentcontainer)
+{
   LOG_FUNC_IN;
   //wait send RRCReconfigurationComplete and InitialContextSetupResponse
   sleep(1);
@@ -1227,10 +1240,10 @@ static void generateRegistrationComplete(int Mod_id, as_nas_info_t *initialNasMs
   printf("Before Security: "); for (int i = 0; i < length; ++i) printf("%02x", (initialNasMsg->data)[i]); printf("\n");
 
   // Ciphering
-  _encrypt_nas_msg(Mod_id, _ul_nas_count, initialNasMsg->data + 7, length - 7);
+  _encrypt_nas_msg(nas, _ul_nas_count, initialNasMsg->data + 7, length - 7);
 
   // Integrity
-  _calculate_nas_maci(Mod_id, SECU_DIRECTION_UPLINK, _ul_nas_count, initialNasMsg->data + 6, length - 6,  mac);
+  _calculate_nas_maci(nas, SECU_DIRECTION_UPLINK, _ul_nas_count, initialNasMsg->data + 6, length - 6,  mac);
 
   printf("xmac %02x%02x%02x%02x\n", mac[0], mac[1], mac[2], mac[3]);
   for(int i = 0; i < 4; i++) {
@@ -1254,7 +1267,54 @@ void decodeDownlinkNASTransport(as_nas_info_t *initialNasMsg, uint8_t * pdu_buff
   }
 }
 
-static void generatePduSessionEstablishRequest(int Mod_id, uicc_t * uicc, as_nas_info_t *initialNasMsg)
+static void generateDeregistrationRequest(nr_ue_nas_t *nas, as_nas_info_t *initialNasMsg, const nas_deregistration_req_t *req)
+{
+  fgs_nas_message_t nas_msg = {0};
+  fgs_nas_message_security_protected_t *sp_msg;
+  sp_msg = &nas_msg.security_protected;
+  sp_msg->header.protocol_discriminator = FGS_MOBILITY_MANAGEMENT_MESSAGE;
+  sp_msg->header.security_header_type = INTEGRITY_PROTECTED_AND_CIPHERED;
+  sp_msg->header.message_authentication_code = 0;
+  sp_msg->header.sequence_number = 2;
+  int size = sizeof(fgs_nas_message_security_header_t);
+
+  fgs_deregistration_request_ue_originating_msg *dereg_req = &sp_msg->plain.mm_msg.fgs_deregistration_request_ue_originating;
+  dereg_req->protocoldiscriminator = FGS_MOBILITY_MANAGEMENT_MESSAGE;
+  size += 1;
+  dereg_req->securityheadertype = INTEGRITY_PROTECTED_AND_CIPHERED_WITH_NEW_SECU_CTX;
+  size += 1;
+  dereg_req->messagetype = FGS_DEREGISTRATION_REQUEST_UE_ORIGINATING;
+  size += 1;
+  dereg_req->deregistrationtype.switchoff = NORMAL_DEREGISTRATION;
+  dereg_req->deregistrationtype.reregistration_required = REREGISTRATION_NOT_REQUIRED;
+  dereg_req->deregistrationtype.access_type = TGPP_ACCESS;
+  dereg_req->naskeysetidentifier.naskeysetidentifier = 1;
+  size += 1;
+  size += fill_guti(&dereg_req->fgsmobileidentity, nas->guti);
+
+  // encode the message
+  initialNasMsg->data = calloc(size, sizeof(Byte_t));
+  int security_header_len = nas_protected_security_header_encode((char *)(initialNasMsg->data), &nas_msg.header, size);
+
+  initialNasMsg->length = security_header_len + mm_msg_encode(&sp_msg->plain.mm_msg, (uint8_t *)(initialNasMsg->data + security_header_len), size - security_header_len);
+
+  nas_stream_cipher_t stream_cipher = {
+    .key = nas->security.knas_int,
+    .key_length = 16,
+    .count = nas->security.mm_counter++,
+    .bearer = 1,
+    .direction = 0,
+    .message = (unsigned char *)(initialNasMsg->data + 6),
+    .blength = (initialNasMsg->length - 6) << 3, /* length in bits */
+  };
+  uint8_t mac[4];
+  nas_stream_encrypt_eia2(&stream_cipher, mac);
+
+  for(int i = 0; i < 4; i++)
+    initialNasMsg->data[2 + i] = mac[i];
+}
+
+static void generatePduSessionEstablishRequest(nr_ue_nas_t *nas, as_nas_info_t *initialNasMsg)
 {
   LOG_FUNC_IN;
   //wait send RegistrationComplete
@@ -1312,25 +1372,25 @@ static void generatePduSessionEstablishRequest(int Mod_id, uicc_t * uicc, as_nas
   mm_msg->uplink_nas_transport.requesttype = 1;
   size += 3;
 #if 0
-  const bool has_nssai_sd = uicc->nssai_sd != 0xffffff; // 0xffffff means "no SD", TS 23.003
+  const bool has_nssai_sd = nas->uicc->nssai_sd != 0xffffff; // 0xffffff means "no SD", TS 23.003
   const size_t nssai_len = has_nssai_sd ? 4 : 1;
   mm_msg->uplink_nas_transport.snssai.length = nssai_len;
   //Fixme: it seems there are a lot of memory errors in this: this value was on the stack, 
   // but pushed  in a itti message to another thread
   // this kind of error seems in many places in 5G NAS
   mm_msg->uplink_nas_transport.snssai.value = calloc(1, nssai_len);
-  mm_msg->uplink_nas_transport.snssai.value[0] = uicc->nssai_sst;
+  mm_msg->uplink_nas_transport.snssai.value[0] = nas->uicc->nssai_sst;
   if (has_nssai_sd) {
-    mm_msg->uplink_nas_transport.snssai.value[1] = (uicc->nssai_sd >> 16) & 0xFF;
-    mm_msg->uplink_nas_transport.snssai.value[2] = (uicc->nssai_sd >> 8)  & 0xFF;
-    mm_msg->uplink_nas_transport.snssai.value[3] = (uicc->nssai_sd)       & 0xFF;
+    mm_msg->uplink_nas_transport.snssai.value[1] = (nas->uicc->nssai_sd >> 16) & 0xFF;
+    mm_msg->uplink_nas_transport.snssai.value[2] = (nas->uicc->nssai_sd >> 8)  & 0xFF;
+    mm_msg->uplink_nas_transport.snssai.value[3] = (nas->uicc->nssai_sd)       & 0xFF;
   }
   size += 1 + 1 + nssai_len;
-  int dnnSize=strlen(uicc->dnnStr);
+  int dnnSize=strlen(nas->uicc->dnnStr);
   mm_msg->uplink_nas_transport.dnn.value=calloc(1,dnnSize+1);
   mm_msg->uplink_nas_transport.dnn.length = dnnSize + 1;
   mm_msg->uplink_nas_transport.dnn.value[0] = dnnSize;
-  memcpy(mm_msg->uplink_nas_transport.dnn.value+1,uicc->dnnStr, dnnSize);
+  memcpy(mm_msg->uplink_nas_transport.dnn.value + 1, nas->uicc->dnnStr, dnnSize);
   size += (1+1+dnnSize+1);
 #endif
 
@@ -1344,10 +1404,10 @@ static void generatePduSessionEstablishRequest(int Mod_id, uicc_t * uicc, as_nas
   printf("Before Security: "); for (int i = 0; i < initialNasMsg->length; ++i) printf("%02x", (initialNasMsg->data)[i]); printf("\n");
 
   // Ciphering
-  _encrypt_nas_msg(Mod_id, _ul_nas_count, initialNasMsg->data + security_header_len, msg_len);
+  _encrypt_nas_msg(nas, _ul_nas_count, initialNasMsg->data + security_header_len, msg_len);
 
   // Integrity
-  _calculate_nas_maci(Mod_id, SECU_DIRECTION_UPLINK, _ul_nas_count, initialNasMsg->data + security_header_len - 1, msg_len +1,  mac);
+  _calculate_nas_maci(nas, SECU_DIRECTION_UPLINK, _ul_nas_count, initialNasMsg->data + security_header_len - 1, msg_len +1,  mac);
 
   printf("xmac %02x%02x%02x%02x\n", mac[0], mac[1], mac[2], mac[3]);
   for(int i = 0; i < 4; i++) {
@@ -1357,7 +1417,7 @@ static void generatePduSessionEstablishRequest(int Mod_id, uicc_t * uicc, as_nas
   LOG_FUNC_OUT;
 }
 
-static void generateActivateTestModeComplete(int Mod_id, as_nas_info_t *initialNasMsg) {
+static void generateActivateTestModeComplete(nr_ue_nas_t *nas, as_nas_info_t *initialNasMsg) {
   LOG_FUNC_IN;
 
   int size = sizeof(mm_msg_header_t);
@@ -1396,10 +1456,10 @@ static void generateActivateTestModeComplete(int Mod_id, as_nas_info_t *initialN
   _ul_nas_count = 0;
   printf("%d\n", _ul_nas_count);
   // Ciphering
-  _encrypt_nas_msg(Mod_id, _ul_nas_count, initialNasMsg->data + security_header_len, msg_len);
+  _encrypt_nas_msg(nas, _ul_nas_count, initialNasMsg->data + security_header_len, msg_len);
 
   // Integrity
-  _calculate_nas_maci(Mod_id, SECU_DIRECTION_UPLINK, _ul_nas_count, initialNasMsg->data + security_header_len - 1, msg_len +1,  mac);
+  _calculate_nas_maci(nas, SECU_DIRECTION_UPLINK, _ul_nas_count, initialNasMsg->data + security_header_len - 1, msg_len +1,  mac);
 
   printf("xmac %02x%02x%02x%02x\n", mac[0], mac[1], mac[2], mac[3]);
   for(int i = 0; i < 4; i++) {
@@ -1409,7 +1469,7 @@ static void generateActivateTestModeComplete(int Mod_id, as_nas_info_t *initialN
   LOG_FUNC_OUT;
 }
 
-static void generateCloseUeTestLoopComplete(int Mod_id, as_nas_info_t *initialNasMsg) {
+static void generateCloseUeTestLoopComplete(nr_ue_nas_t *nas, as_nas_info_t *initialNasMsg) {
   LOG_FUNC_IN;
   int size = sizeof(mm_msg_header_t);
   int security_header_len = 0;
@@ -1446,10 +1506,10 @@ static void generateCloseUeTestLoopComplete(int Mod_id, as_nas_info_t *initialNa
   printf("Before Security: "); for (int i = 0; i < initialNasMsg->length; ++i) printf("%02x", (initialNasMsg->data)[i]); printf("\n");
   _ul_nas_count = 256; /* HACK: Only to match expected TTCN value in TC 7.1.2.2.1*/
   // Ciphering
-  _encrypt_nas_msg(Mod_id, _ul_nas_count, initialNasMsg->data + security_header_len, msg_len);
+  _encrypt_nas_msg(nas, _ul_nas_count, initialNasMsg->data + security_header_len, msg_len);
 
   // Integrity
-  _calculate_nas_maci(Mod_id, SECU_DIRECTION_UPLINK, _ul_nas_count, initialNasMsg->data + security_header_len - 1, msg_len +1,  mac);
+  _calculate_nas_maci(nas, SECU_DIRECTION_UPLINK, _ul_nas_count, initialNasMsg->data + security_header_len - 1, msg_len +1,  mac);
 
   printf("xmac %02x%02x%02x%02x\n", mac[0], mac[1], mac[2], mac[3]);
   for(int i = 0; i < 4; i++) {
@@ -1459,7 +1519,7 @@ static void generateCloseUeTestLoopComplete(int Mod_id, as_nas_info_t *initialNa
   LOG_FUNC_OUT;
 }
 
-static void generateOpenUeTestLoopComplete(int Mod_id, as_nas_info_t *initialNasMsg) {
+static void generateOpenUeTestLoopComplete(nr_ue_nas_t *nas, as_nas_info_t *initialNasMsg) {
   LOG_FUNC_IN;
   int size = sizeof(mm_msg_header_t);
   fgs_nas_message_t nas_msg={0};
@@ -1495,10 +1555,10 @@ static void generateOpenUeTestLoopComplete(int Mod_id, as_nas_info_t *initialNas
   printf("Before Security: "); for (int i = 0; i < initialNasMsg->length; ++i) printf("%02x", (initialNasMsg->data)[i]); printf("\n");
   _ul_nas_count = 256; /* HACK: Only to match expected TTCN value in TC 7.1.3.x*/
   // Ciphering
-  _encrypt_nas_msg(Mod_id, _ul_nas_count, initialNasMsg->data + security_header_len, msg_len);
+  _encrypt_nas_msg(nas, _ul_nas_count, initialNasMsg->data + security_header_len, msg_len);
 
   // Integrity
-  _calculate_nas_maci(Mod_id, SECU_DIRECTION_UPLINK, _ul_nas_count, initialNasMsg->data + security_header_len - 1, msg_len +1,  mac);
+  _calculate_nas_maci(nas, SECU_DIRECTION_UPLINK, _ul_nas_count, initialNasMsg->data + security_header_len - 1, msg_len +1,  mac);
   printf("xmac %02x%02x%02x%02x\n", mac[0], mac[1], mac[2], mac[3]);
   for(int i = 0; i < 4; i++) {
     initialNasMsg->data[2+i] = mac[i];
@@ -1508,7 +1568,7 @@ static void generateOpenUeTestLoopComplete(int Mod_id, as_nas_info_t *initialNas
   LOG_FUNC_OUT;
 }
 
-static void generateDeactivateTestModeComplete(int Mod_id, as_nas_info_t *initialNasMsg) {
+static void generateDeactivateTestModeComplete(nr_ue_nas_t *nas, as_nas_info_t *initialNasMsg) {
   LOG_FUNC_IN;
   int size = sizeof(mm_msg_header_t);
   fgs_nas_message_t nas_msg={0};
@@ -1544,10 +1604,10 @@ static void generateDeactivateTestModeComplete(int Mod_id, as_nas_info_t *initia
   printf("Before Security: "); for (int i = 0; i < initialNasMsg->length; ++i) printf("%02x", (initialNasMsg->data)[i]); printf("\n");
   _ul_nas_count = 256; /* HACK: Only to match expected TTCN value in TC 7.1.3.x*/
   // Ciphering
-  _encrypt_nas_msg(Mod_id, _ul_nas_count, initialNasMsg->data + security_header_len, msg_len);
+  _encrypt_nas_msg(nas, _ul_nas_count, initialNasMsg->data + security_header_len, msg_len);
 
   // Integrity
-  _calculate_nas_maci(Mod_id, SECU_DIRECTION_UPLINK, _ul_nas_count, initialNasMsg->data + security_header_len - 1, msg_len +1,  mac);
+  _calculate_nas_maci(nas, SECU_DIRECTION_UPLINK, _ul_nas_count, initialNasMsg->data + security_header_len - 1, msg_len +1,  mac);
 
   printf("xmac %02x%02x%02x%02x\n", mac[0], mac[1], mac[2], mac[3]);
   for(int i = 0; i < 4; i++) {
@@ -1557,7 +1617,7 @@ static void generateDeactivateTestModeComplete(int Mod_id, as_nas_info_t *initia
   LOG_FUNC_OUT;
 }
 
-void generateServiceRequestInner(as_nas_info_t *initialNasMsg, int Mod_id) {
+void generateServiceRequestInner(as_nas_info_t *initialNasMsg, nr_ue_nas_t *nas) {
   int size = sizeof(mm_msg_header_t);
   fgs_nas_message_t nas_msg={0};
   MM_msg *mm_msg;
@@ -1580,7 +1640,7 @@ void generateServiceRequestInner(as_nas_info_t *initialNasMsg, int Mod_id) {
   mm_msg->fgs_service_request.naskeysetidentifier.naskeysetidentifier = 0;
   size += 1;
 
-  size += addImeisv(Mod_id, &mm_msg->fgs_service_request.fgsmobileidentity);
+  size += fill_imeisv(&mm_msg->fgs_service_request.fgsmobileidentity, nas->uicc);
 
   // encode the message
   initialNasMsg->data = (Byte_t *)malloc(size * sizeof(Byte_t));
@@ -1588,10 +1648,10 @@ void generateServiceRequestInner(as_nas_info_t *initialNasMsg, int Mod_id) {
 
   // HACK: TTCN decrypts the piggybacked msg. Thus, need to encrypt it using expected NAS Count == 2
   _ul_nas_count = 2;
-  _encrypt_nas_msg(Mod_id, _ul_nas_count, initialNasMsg->data, initialNasMsg->length);
+  _encrypt_nas_msg(nas, _ul_nas_count, initialNasMsg->data, initialNasMsg->length);
 }
 
-void generateServiceRequest(as_nas_info_t *initialNasMsg, int Mod_id) {
+void generateServiceRequest(as_nas_info_t *initialNasMsg, nr_ue_nas_t *nas) {
   int size = sizeof(mm_msg_header_t);
   fgs_nas_message_t nas_msg={0};
   MM_msg *mm_msg;
@@ -1614,10 +1674,10 @@ void generateServiceRequest(as_nas_info_t *initialNasMsg, int Mod_id) {
   mm_msg->fgs_service_request.naskeysetidentifier.naskeysetidentifier = 0;
   size += 1;
 
-  size += addImeisv(Mod_id, &mm_msg->fgs_service_request.fgsmobileidentity);
+  size += fill_imeisv(&mm_msg->fgs_service_request.fgsmobileidentity, nas->uicc);
 
   as_nas_info_t serviceRequestInnerNasMsg;
-  generateServiceRequestInner(&serviceRequestInnerNasMsg, Mod_id);
+  generateServiceRequestInner(&serviceRequestInnerNasMsg, nas);
   mm_msg->fgs_service_request.presencemask |= FGS_SERVICE_REQUEST_NAS_MESSAGE_CONTAINER_PRESENT;
   mm_msg->fgs_service_request.fgsnasmessagecontainer.nasmessagecontainercontents.value  = serviceRequestInnerNasMsg.data;
   mm_msg->fgs_service_request.fgsnasmessagecontainer.nasmessagecontainercontents.length = serviceRequestInnerNasMsg.length;
@@ -1629,7 +1689,7 @@ void generateServiceRequest(as_nas_info_t *initialNasMsg, int Mod_id) {
 
   // HACK: TTCN decrypts the piggybacked msg. Thus, need to encrypt it using expected NAS Count == 2
   /* _ul_nas_count = 2; */
-  /* _encrypt_nas_msg(Mod_id, _ul_nas_count, initialNasMsg->data + 11, initialNasMsg->length - 11); */
+  /* _encrypt_nas_msg(nas, _ul_nas_count, initialNasMsg->data + 11, initialNasMsg->length - 11); */
 }
 
 uint8_t get_msg_type(uint8_t *pdu, uint32_t length) {
@@ -1666,17 +1726,27 @@ uint8_t get_msg_type(uint8_t *pdu, uint32_t length) {
   return msg_type;
 }
 
+static void send_nas_uplink_data_req(instance_t instance, const as_nas_info_t *initial_nas_msg)
+{
+  MessageDef *msg = itti_alloc_new_message(TASK_NAS_NRUE, 0, NAS_UPLINK_DATA_REQ);
+  ul_info_transfer_req_t *req = &NAS_UPLINK_DATA_REQ(msg);
+  req->UEid = instance;
+  req->nasMsg.data = (uint8_t *) initial_nas_msg->data;
+  req->nasMsg.length = initial_nas_msg->length;
+  itti_send_msg_to_task(TASK_RRC_NRUE, instance, msg);
+}
+
 void *nas_nrue_task(void *args_p)
 {
   MessageDef           *msg_p;
   instance_t            instance;
-  unsigned int          Mod_id;
   int                   result;
   uint8_t               msg_type = 0;
   uint8_t              *pdu_buffer = NULL;
 
 
-  ue_security_key=(ue_sa_security_key_t **)calloc(1,sizeof(ue_sa_security_key_t*)*NB_UE_INST);
+  nr_ue_nas.uicc = checkUicc(0);
+  nr_ue_nas_t *nas = get_ue_nas_info(0);
   itti_mark_task_ready (TASK_NAS_NRUE);
   
   while(1) {
@@ -1685,119 +1755,118 @@ void *nas_nrue_task(void *args_p)
 
     if (msg_p != NULL) {
       instance = msg_p->ittiMsgHeader.originInstance;
-      Mod_id = instance ;
-      uicc_t *uicc=checkUicc(Mod_id);
-
-      if (instance == INSTANCE_DEFAULT) {
-        printf("%s:%d: FATAL: instance is INSTANCE_DEFAULT, should not happen.\n",
-               __FILE__, __LINE__);
-        exit_fun("exit... \n");
-      }
+      AssertFatal(instance == 0, "cannot handle more than one UE!\n");
 
       switch (ITTI_MSG_ID(msg_p)) {
-      case INITIALIZE_MESSAGE:
-        LOG_I(NAS, "[UE %d] Received %s\n", Mod_id,  ITTI_MSG_NAME (msg_p));
+        case INITIALIZE_MESSAGE:
 
-        break;
+          break;
 
-      case TERMINATE_MESSAGE:
-        itti_exit_task ();
-        break;
+        case TERMINATE_MESSAGE:
+          itti_exit_task();
+          break;
 
-      case MESSAGE_TEST:
-        LOG_I(NAS, "[UE %d] Received %s\n", Mod_id,  ITTI_MSG_NAME (msg_p));
-        break;
+        case MESSAGE_TEST:
+          break;
 
-      case NAS_CELL_SELECTION_CNF:
-        LOG_I(NAS, "[UE %d] Received %s: errCode %u, cellID %u, tac %u\n", Mod_id,  ITTI_MSG_NAME (msg_p),
-              NAS_CELL_SELECTION_CNF (msg_p).errCode, NAS_CELL_SELECTION_CNF (msg_p).cellID, NAS_CELL_SELECTION_CNF (msg_p).tac);
-        // as_stmsi_t s_tmsi={0, 0};
-        // as_nas_info_t nas_info;
-        // plmn_t plmnID={0, 0, 0, 0};
-        // generateRegistrationRequest(&nas_info);
-        // nr_nas_itti_nas_establish_req(0, AS_TYPE_ORIGINATING_SIGNAL, s_tmsi, plmnID, nas_info.data, nas_info.length, 0);
-        break;
+        case NAS_CELL_SELECTION_CNF:
+          LOG_I(NAS,
+                "[UE %ld] Received %s: errCode %u, cellID %u, tac %u\n",
+                instance,
+                ITTI_MSG_NAME(msg_p),
+                NAS_CELL_SELECTION_CNF(msg_p).errCode,
+                NAS_CELL_SELECTION_CNF(msg_p).cellID,
+                NAS_CELL_SELECTION_CNF(msg_p).tac);
+          // as_stmsi_t s_tmsi={0, 0};
+          // as_nas_info_t nas_info;
+          // plmn_t plmnID={0, 0, 0, 0};
+          // generateRegistrationRequest(&nas_info);
+          // nr_nas_itti_nas_establish_req(0, AS_TYPE_ORIGINATING_SIGNAL, s_tmsi, plmnID, nas_info.data, nas_info.length, 0);
+          break;
 
-      case NAS_CELL_SELECTION_IND:
-        LOG_I(NAS, "[UE %d] Received %s: cellID %u, tac %u\n", Mod_id,  ITTI_MSG_NAME (msg_p),
-              NAS_CELL_SELECTION_IND (msg_p).cellID, NAS_CELL_SELECTION_IND (msg_p).tac);
+        case NAS_CELL_SELECTION_IND:
+          LOG_I(NAS, "[UE %ld] Received %s: cellID %u, tac %u\n", instance, ITTI_MSG_NAME(msg_p), NAS_CELL_SELECTION_IND(msg_p).cellID, NAS_CELL_SELECTION_IND(msg_p).tac);
 
-        /* TODO not processed by NAS currently */
-        break;
+          /* TODO not processed by NAS currently */
+          break;
 
-      case NAS_PAGING_IND:
-        LOG_I(NAS, "[UE %d] Received %s: cause %u\n", Mod_id,  ITTI_MSG_NAME (msg_p),
-              NAS_PAGING_IND (msg_p).cause);
+        case NAS_PAGING_IND:
+          LOG_I(NAS, "[UE %ld] Received %s: cause %u\n", instance, ITTI_MSG_NAME(msg_p), NAS_PAGING_IND(msg_p).cause);
 
-        /* TODO not processed by NAS currently */
-        break;
+          /* TODO not processed by NAS currently */
+          break;
 
-      /* Do not use this message anymore, all the NAS DL message is processed in  NAS_DOWNLINK_DATA_IND*/
+        /* Do not use this message anymore, all the NAS DL message is processed in  NAS_DOWNLINK_DATA_IND*/
 #if 0
-      case NAS_CONN_ESTABLI_CNF:
-      {
-        LOG_I(NAS, "[UE %d] Received %s: errCode %u, length %u\n", Mod_id,  ITTI_MSG_NAME (msg_p),
-              NAS_CONN_ESTABLI_CNF (msg_p).errCode, NAS_CONN_ESTABLI_CNF (msg_p).nasMsg.length);
+        case NAS_CONN_ESTABLI_CNF: {
+          LOG_I(NAS, "[UE %ld] Received %s: errCode %u, length %u\n", instance, ITTI_MSG_NAME(msg_p), NAS_CONN_ESTABLI_CNF(msg_p).errCode, NAS_CONN_ESTABLI_CNF(msg_p).nasMsg.length);
 
-        pdu_buffer = NAS_CONN_ESTABLI_CNF (msg_p).nasMsg.data;
-        msg_type = get_msg_type(pdu_buffer, NAS_CONN_ESTABLI_CNF (msg_p).nasMsg.length);
+          pdu_buffer = NAS_CONN_ESTABLI_CNF(msg_p).nasMsg.data;
+          msg_type = get_msg_type(pdu_buffer, NAS_CONN_ESTABLI_CNF(msg_p).nasMsg.length);
 
-        if(msg_type == REGISTRATION_ACCEPT){
-          LOG_I(NAS, "[UE] Received REGISTRATION ACCEPT message\n");
+          if (msg_type == REGISTRATION_ACCEPT) {
+            LOG_I(NAS, "[UE] Received REGISTRATION ACCEPT message\n");
+            decodeRegistrationAccept(pdu_buffer, NAS_CONN_ESTABLI_CNF(msg_p).nasMsg.length, nas);
 
-          as_nas_info_t initialNasMsg;
-          memset(&initialNasMsg, 0, sizeof(as_nas_info_t));
-          generateRegistrationComplete(Mod_id,&initialNasMsg, NULL);
-          if(initialNasMsg.length > 0){
-            MessageDef *message_p;
-            message_p = itti_alloc_new_message(TASK_NAS_NRUE, 0, NAS_UPLINK_DATA_REQ);
-            NAS_UPLINK_DATA_REQ(message_p).UEid          = Mod_id;
-            NAS_UPLINK_DATA_REQ(message_p).nasMsg.data   = (uint8_t *)initialNasMsg.data;
-            NAS_UPLINK_DATA_REQ(message_p).nasMsg.length = initialNasMsg.length;
-            itti_send_msg_to_task(TASK_RRC_NRUE, instance, message_p);
-            LOG_I(NAS, "Send NAS_UPLINK_DATA_REQ message(RegistrationComplete)\n");
+            as_nas_info_t initialNasMsg;
+            memset(&initialNasMsg, 0, sizeof(as_nas_info_t));
+            generateRegistrationComplete(nas, &initialNasMsg, NULL);
+            if (initialNasMsg.length > 0) {
+              send_nas_uplink_data_req(instance, &initialNasMsg);
+              LOG_I(NAS, "Send NAS_UPLINK_DATA_REQ message(RegistrationComplete)\n");
+            }
+
+            as_nas_info_t pduEstablishMsg;
+            memset(&pduEstablishMsg, 0, sizeof(as_nas_info_t));
+            generatePduSessionEstablishRequest(nas, &pduEstablishMsg);
+            if (pduEstablishMsg.length > 0) {
+              send_nas_uplink_data_req(instance, &pduEstablishMsg);
+              LOG_I(NAS, "Send NAS_UPLINK_DATA_REQ message(PduSessionEstablishRequest)\n");
+            }
+          } else if (msg_type == FGS_PDU_SESSION_ESTABLISHMENT_ACC) {
+            capture_pdu_session_establishment_accept_msg(pdu_buffer, NAS_CONN_ESTABLI_CNF(msg_p).nasMsg.length);
           }
 
-          as_nas_info_t pduEstablishMsg;
-          memset(&pduEstablishMsg, 0, sizeof(as_nas_info_t));
-          generatePduSessionEstablishRequest(Mod_id, uicc, &pduEstablishMsg);
-          if(pduEstablishMsg.length > 0){
-            MessageDef *message_p;
-            message_p = itti_alloc_new_message(TASK_NAS_NRUE, 0, NAS_UPLINK_DATA_REQ);
-            NAS_UPLINK_DATA_REQ(message_p).UEid          = Mod_id;
-            NAS_UPLINK_DATA_REQ(message_p).nasMsg.data   = (uint8_t *)pduEstablishMsg.data;
-            NAS_UPLINK_DATA_REQ(message_p).nasMsg.length = pduEstablishMsg.length;
-            itti_send_msg_to_task(TASK_RRC_NRUE, instance, message_p);
-            LOG_I(NAS, "Send NAS_UPLINK_DATA_REQ message(PduSessionEstablishRequest)\n");
-          }
-        } else if(msg_type == FGS_PDU_SESSION_ESTABLISHMENT_ACC){
-          capture_pdu_session_establishment_accept_msg(pdu_buffer, NAS_CONN_ESTABLI_CNF (msg_p).nasMsg.length);
-        }
-
-        break;
+          break;
       }
-
 #endif
 
       case NAS_CONN_RELEASE_IND:
-        LOG_I(NAS, "[UE %d] Received %s: cause %u\n", Mod_id, ITTI_MSG_NAME (msg_p),
+        LOG_I(NAS, "[UE %ld] Received %s: cause %u\n", instance, ITTI_MSG_NAME (msg_p),
               NAS_CONN_RELEASE_IND (msg_p).cause);
-
+        // TODO: need to provide flag to recognize UE runs not under TTCN SS
+        if (0) {
+          itti_wait_tasks_unblock(); /* will unblock ITTI to stop nr-uesoftmodem */
+        }
         break;
 
       case NAS_UPLINK_DATA_CNF:
-        LOG_I(NAS, "[UE %d] Received %s: UEid %u, errCode %u\n", Mod_id, ITTI_MSG_NAME (msg_p),
+        LOG_I(NAS, "[UE %ld] Received %s: UEid %u, errCode %u\n", instance, ITTI_MSG_NAME (msg_p),
               NAS_UPLINK_DATA_CNF (msg_p).UEid, NAS_UPLINK_DATA_CNF (msg_p).errCode);
 
         break;
 
+      case NAS_DEREGISTRATION_REQ: {
+          LOG_I(NAS, "[UE %ld] Received %s\n", instance, ITTI_MSG_NAME(msg_p));
+          if (nas->guti) {
+            nas_deregistration_req_t *req = &NAS_DEREGISTRATION_REQ(msg_p);
+            as_nas_info_t initialNasMsg = {0};
+            generateDeregistrationRequest(nas, &initialNasMsg, req);
+            send_nas_uplink_data_req(instance, &initialNasMsg);
+          } else {
+            LOG_E(NAS, "no GUTI, cannot trigger deregistration request\n");
+          }
+        }
+        break;
+
       case NAS_DOWNLINK_DATA_IND:
       {
-        LOG_I(NAS, "[UE %d] Received %s: UEid %u, length %u , buffer %p\n", Mod_id,
-                                                                            ITTI_MSG_NAME (msg_p),
-                                                                            Mod_id,
-                                                                            NAS_DOWNLINK_DATA_IND(msg_p).nasMsg.length,
-                                                                            NAS_DOWNLINK_DATA_IND(msg_p).nasMsg.data);
+        LOG_I(NAS,
+              "[UE %ld] Received %s: length %u , buffer %p\n",
+              instance,
+              ITTI_MSG_NAME(msg_p),
+              NAS_DOWNLINK_DATA_IND(msg_p).nasMsg.length,
+              NAS_DOWNLINK_DATA_IND(msg_p).nasMsg.data);
         as_nas_info_t initialNasMsg={0};
         size_t pdu_buffer_len = 0;
 
@@ -1813,7 +1882,7 @@ void *nas_nrue_task(void *args_p)
           // TODO: Integrity check
 
            LOG_I(NAS, "_dl_nas_count=%d\n", _dl_nas_count);
-          _decrypt_nas_msg(Mod_id, _dl_nas_count,
+          _decrypt_nas_msg(nas, _dl_nas_count,
                            pdu_buffer + SECURITY_PROTECTED_5GS_NAS_MESSAGE_HEADER_LENGTH,
                            pdu_buffer_len - SECURITY_PROTECTED_5GS_NAS_MESSAGE_HEADER_LENGTH);
         }
@@ -1822,10 +1891,10 @@ void *nas_nrue_task(void *args_p)
         switch(msg_type)
         {
           case FGS_IDENTITY_REQUEST:
-              generateIdentityResponse(&initialNasMsg,*(pdu_buffer+3), uicc);
+            generateIdentityResponse(&initialNasMsg, *(pdu_buffer + 3), nas->uicc);
               break;
           case FGS_AUTHENTICATION_REQUEST:
-              generateAuthenticationResp(Mod_id,&initialNasMsg, pdu_buffer, uicc);
+            generateAuthenticationResp(nas, &initialNasMsg, pdu_buffer);
               break;
           case FGS_SECURITY_MODE_COMMAND:
           {
@@ -1838,46 +1907,37 @@ void *nas_nrue_task(void *args_p)
 
             LOG_I(NAS, "Security Mode Command: integrity=%d, ciphering=%d\n", _nas_integrity_algo, _nas_ciphering_algo);
 
-            derive_knas(0x02, _nas_integrity_algo, ue_security_key[Mod_id]->kamf, ue_security_key[Mod_id]->knas_int);
-            derive_knas(0x01, _nas_ciphering_algo, ue_security_key[Mod_id]->kamf, ue_security_key[Mod_id]->knas_enc);
-            printf("knas_int:"); for(int i = 0; i < 16; i++) printf("%02x", ue_security_key[Mod_id]->knas_int[i]); printf("\n");
-            printf("knas_enc:"); for(int i = 0; i < 16; i++) printf("%02x", ue_security_key[Mod_id]->knas_enc[i]); printf("\n");
+            derive_knas(0x02, _nas_integrity_algo, nas->security.kamf, nas->security.knas_int);
+            derive_knas(0x01, _nas_ciphering_algo, nas->security.kamf, nas->security.knas_enc);
+            printf("knas_int:"); for(int i = 0; i < 16; i++) printf("%02x", nas->security.knas_int[i]); printf("\n");
+            printf("knas_enc:"); for(int i = 0; i < 16; i++) printf("%02x", nas->security.knas_enc[i]); printf("\n");
 
-            nas_itti_kgnb_refresh_req(ue_security_key[Mod_id]->kgnb, instance);
-            generateSecurityModeComplete(Mod_id,&initialNasMsg);
+            nas_itti_kgnb_refresh_req(nas->security.kgnb);
+            generateSecurityModeComplete(nas, &initialNasMsg);
             break;
           }
           case FGS_DOWNLINK_NAS_TRANSPORT:
             decodeDownlinkNASTransport(&initialNasMsg, pdu_buffer);
             break;
-
+          case FGS_DEREGISTRATION_ACCEPT:
+            LOG_I(NAS, "received deregistration accept\n");
+            break;
           case REGISTRATION_ACCEPT:
           {
             LOG_I(NAS, "[UE] Received REGISTRATION ACCEPT message\n");
 
-            generateRegistrationComplete(Mod_id,&initialNasMsg, NULL);
-            if(initialNasMsg.length > 0){
-              MessageDef *message_p;
-              message_p = itti_alloc_new_message(TASK_NAS_NRUE, 0, NAS_UPLINK_DATA_REQ);
-              NAS_UPLINK_DATA_REQ(message_p).UEid          = Mod_id;
-              NAS_UPLINK_DATA_REQ(message_p).nasMsg.data   = (uint8_t *)initialNasMsg.data;
-              NAS_UPLINK_DATA_REQ(message_p).nasMsg.length = initialNasMsg.length;
-              itti_send_msg_to_task(TASK_RRC_NRUE, instance, message_p);
-
+            generateRegistrationComplete(nas,&initialNasMsg, NULL);
+            if (initialNasMsg.length > 0) {
+              send_nas_uplink_data_req(instance, &initialNasMsg);
               LOG_I(NAS, "Send NAS_UPLINK_DATA_REQ message(RegistrationComplete)\n");
               initialNasMsg.length = 0; /*To avoid send again later*/
             }
 
             as_nas_info_t pduEstablishMsg;
             memset(&pduEstablishMsg, 0, sizeof(as_nas_info_t));
-            generatePduSessionEstablishRequest(Mod_id, uicc, &pduEstablishMsg);
-            if(pduEstablishMsg.length > 0){
-              MessageDef *message_p;
-              message_p = itti_alloc_new_message(TASK_NAS_NRUE, 0, NAS_UPLINK_DATA_REQ);
-              NAS_UPLINK_DATA_REQ(message_p).UEid          = Mod_id;
-              NAS_UPLINK_DATA_REQ(message_p).nasMsg.data   = (uint8_t *)pduEstablishMsg.data;
-              NAS_UPLINK_DATA_REQ(message_p).nasMsg.length = pduEstablishMsg.length;
-              itti_send_msg_to_task(TASK_RRC_NRUE, instance, message_p);
+            generatePduSessionEstablishRequest(nas, &pduEstablishMsg);
+            if (pduEstablishMsg.length > 0) {
+              send_nas_uplink_data_req(instance, &pduEstablishMsg);
               LOG_I(NAS, "Send NAS_UPLINK_DATA_REQ message(PduSessionEstablishRequest)\n");
             }
             break;
@@ -1889,45 +1949,38 @@ void *nas_nrue_task(void *args_p)
           case ACTIVATE_TEST_MODE:
             LOG_I(NAS, "[UE] Received ACTIVATE_TEST_MODE message\n");
             mm_testLoop_action(MM_TEST_LOOP_EVENT_ACTIVE, NULL);
-            generateActivateTestModeComplete(Mod_id, &initialNasMsg);
+            generateActivateTestModeComplete(nas, &initialNasMsg);
             break;
           case NR_CLOSE_UE_TEST_LOOP:
             LOG_I(NAS, "[UE] Received NR_CLOSE_UE_TEST_LOOP message\n");
             MMCloseUeTestLoopMsg closeUeTestLoopMsg;
             decodeCloseUeTestLoopMsg(&closeUeTestLoopMsg,pdu_buffer, pdu_buffer_len);
             mm_testLoop_action(MM_TEST_LOOP_EVENT_CLOSE_LOOP, &closeUeTestLoopMsg);
-            generateCloseUeTestLoopComplete(Mod_id, &initialNasMsg);
+            generateCloseUeTestLoopComplete(nas, &initialNasMsg);
             break;
           case OPEN_UE_TEST_LOOP:
             LOG_I(NAS, "[UE] Received OPEN_UE_TEST_LOOP message\n");
             mm_testLoop_action(MM_TEST_LOOP_EVENT_OPEN_LOOP,NULL);
-            generateOpenUeTestLoopComplete(Mod_id, &initialNasMsg);
+            generateOpenUeTestLoopComplete(nas, &initialNasMsg);
             break;
           case DEACTIVATE_TEST_MODE:
             LOG_I(NAS, "[UE] Received DEACTIVATE_TEST_MODE message\n");
             mm_testLoop_action(MM_TEST_LOOP_EVENT_DEACTIVE,NULL);
-            generateDeactivateTestModeComplete(Mod_id, &initialNasMsg);
+            generateDeactivateTestModeComplete(nas, &initialNasMsg);
             break;
           default:
-            LOG_W(NAS,"unknow message type %d\n",msg_type);
+            LOG_W(NR_RRC,"unknown message type %d\n",msg_type);
             break;
         }
 
-        if(initialNasMsg.length > 0){
-          MessageDef *message_p;
-          message_p = itti_alloc_new_message(TASK_NAS_NRUE, 0, NAS_UPLINK_DATA_REQ);
-          NAS_UPLINK_DATA_REQ(message_p).UEid          = Mod_id;
-          NAS_UPLINK_DATA_REQ(message_p).nasMsg.data   = (uint8_t *)initialNasMsg.data;
-
-          NAS_UPLINK_DATA_REQ(message_p).nasMsg.length = initialNasMsg.length;
-          itti_send_msg_to_task(TASK_RRC_NRUE, instance, message_p);
-          LOG_I(NAS, "Send NAS_UPLINK_DATA_REQ message\n");
+          if (initialNasMsg.length > 0)
+            send_nas_uplink_data_req(instance, &initialNasMsg);
+          LOG_I(NAS, "Sent NAS_UPLINK_DATA_REQ message\n");
         }
-      }
-      break;
+        break;
 
       default:
-        LOG_E(NAS, "[UE %d] Received unexpected message %s\n", Mod_id,  ITTI_MSG_NAME (msg_p));
+        LOG_E(NAS, "[UE %ld] Received unexpected message %s\n", instance,  ITTI_MSG_NAME (msg_p));
         break;
       }
 
@@ -1940,21 +1993,21 @@ void *nas_nrue_task(void *args_p)
   return NULL;
 }
 
-void updateKgNB(int Mod_id, uint8_t *kgnb)
+void updateKgNB(nr_ue_nas_t *nas, uint8_t *kgnb)
 {
   printf("%s: ulNasCount=%d, kAMF: ", __FUNCTION__, _ul_nas_count);
 
   for (int i = 0; i < 32; ++i) {
-    printf("%02x ", ue_security_key[Mod_id]->kamf[i]);
+    printf("%02x ", nas->security.kamf[i]);
   }
   printf("\n");
 
-  derive_kgnb(ue_security_key[Mod_id]->kamf, _ul_nas_count, ue_security_key[Mod_id]->kgnb);
+  derive_kgnb(nas->security.kamf, _ul_nas_count, nas->security.kgnb);
 
   printf("kgNB: "); for (int i = 0; i < 32; ++i) {
-    printf("%02x ", ue_security_key[Mod_id]->kgnb[i]);
+    printf("%02x ", nas->security.kgnb[i]);
   }
   printf("\n");
 
-  memcpy(kgnb, ue_security_key[Mod_id]->kgnb, 32);
+  memcpy(kgnb, nas->security.kgnb, 32);
 }

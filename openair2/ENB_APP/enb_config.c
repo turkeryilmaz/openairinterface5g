@@ -276,6 +276,7 @@ void RCconfig_macrlc(void)
 int RCconfig_RRC(uint32_t i, eNB_RRC_INST *rrc) {
   int               num_enbs                      = 0;
   int               j,k                           = 0;
+  int32_t           enb_id                        = 0;
   int               nb_cc                         = 0;
   int32_t           offsetMaxLimit                = 0;
   int32_t           cycleNb                       = 0;
@@ -318,7 +319,7 @@ int RCconfig_RRC(uint32_t i, eNB_RRC_INST *rrc) {
   if (num_enbs>0) {
     // Output a list of all eNBs.
     config_getlist( &ENBParamList,ENBParams,sizeof(ENBParams)/sizeof(paramdef_t),NULL);
-    int enb_id = 0;
+
     if (ENBParamList.paramarray[i][ENB_ENB_ID_IDX].uptr == NULL) {
       // Calculate a default eNB ID
       if (EPC_MODE_ENABLED) {

@@ -28,7 +28,7 @@
 
 extern SSConfigContext_t SS_context;
 
-static inline uint32_t _vt_sfn_slot(uint16_t sfn, uint8_t slot)
+static inline uint32_t _vt_sfn_slot(uint16_t sfn, uint32_t slot)
 {
   return ((sfn << 8) | slot);
 }
@@ -37,7 +37,7 @@ static inline uint32_t _vt_sfn_slot(uint16_t sfn, uint8_t slot)
  * Function : _vt_subtract_slot
  * Description: Helper function to substract offset to SFN_SLOT
  */
-static void _vt_subtract_slot(uint16_t *frameP, uint8_t *slotP, int offset)
+static void _vt_subtract_slot(uint16_t *frameP, uint32_t *slotP, int offset)
 {
   if (*slotP < offset)
   {
@@ -52,14 +52,14 @@ static void _vt_subtract_slot(uint16_t *frameP, uint8_t *slotP, int offset)
  * Description: Helper function to add offset to SFN_SLOT
  */
 
-static void _vt_add_slot(uint16_t *frameP, uint8_t *slotP, int offset)
+static void _vt_add_slot(uint16_t *frameP, uint32_t *slotP, int offset)
 {
 	if (offset > 0) {
       uint8_t slotsPerFrame = 10 *(1<<SS_context.mu);
 		*frameP    = (*frameP + ((*slotP + offset) / slotsPerFrame)) % 1024;
 		*slotP = ((*slotP + offset) % slotsPerFrame);
 	} else {
-		_vt_subtract_slot(frameP,slotP,0-offset);
+		_vt_subtract_slot(frameP, slotP, 0-offset);
 	}
 }
 
@@ -79,7 +79,7 @@ uint8_t _nr_msg_can_be_queued(ss_nrset_timinfo_t * req_tinfo)
 	if(req_tinfo->sfn != curr_tinfo.sfn || ((req_tinfo->sfn == curr_tinfo.sfn) && (req_tinfo->slot - curr_tinfo.slot) > 0) )
 	{
 	   /* The actual DL message would be transfered in next slot after receiving SS_NRUPD_TIM_INFO(last DL slot TIME update) */
-		_vt_subtract_slot(&req_tinfo->sfn,&req_tinfo->slot, 1);
+		_vt_subtract_slot(&req_tinfo->sfn, &req_tinfo->slot, 1);
 		LOG_D(GNB_APP,"VT_TIMER MSG to be queued  TRUE for  SFN %d , SLOT %d\n",req_tinfo->sfn,req_tinfo->slot);
 		return true;
 	}
@@ -94,7 +94,7 @@ uint8_t _nr_msg_can_be_queued(ss_nrset_timinfo_t * req_tinfo)
  */
 static uint8_t _nr_vt_timer_setup(ss_nrset_timinfo_t* tinfo, task_id_t task_id,instance_t instance, void *msg)
 {
-	uint32_t sfnSlotKey =_vt_sfn_slot(tinfo->sfn,tinfo->slot);
+	uint32_t sfnSlotKey =_vt_sfn_slot(tinfo->sfn, tinfo->slot);
 
 	vt_timer_elm_t *timer_ele_p = calloc(1, sizeof(vt_timer_elm_t));
 	assert(timer_ele_p);
@@ -116,7 +116,7 @@ void nr_vt_add_slot(struct TimingInfo_Type* at, int offset)
   if (at!=NULL && at->d == TimingInfo_Type_SubFrame)
   {
     uint16_t sfn = SS_context.sfn;
-    uint8_t slot = SS_context.slot;
+    uint32_t slot = SS_context.slot;
     uint8_t slotsPerSubFrame = 1<<SS_context.mu;
 
     if (at->v.SubFrame.SFN.d == SystemFrameNumberInfo_Type_Number)
@@ -181,7 +181,7 @@ int nr_vt_timer_push_msg(struct TimingInfo_Type* at, int32_t slotOffset, task_id
       }
     }
 
-    _vt_add_slot(&timer_tinfo.sfn,&timer_tinfo.slot, slotOffset);
+    _vt_add_slot(&timer_tinfo.sfn, &timer_tinfo.slot, slotOffset);
     msg_queued = _nr_msg_can_be_queued(&timer_tinfo);
     if(msg_queued)
     {
@@ -202,7 +202,7 @@ static inline void ss_nr_vt_timer_check(ss_nrset_timinfo_t tinfo)
 {
   vt_timer_elm_t *timer_ele_p;
 
-  uint32_t sfnSlotKey =_vt_sfn_slot(tinfo.sfn,tinfo.slot);
+  uint32_t sfnSlotKey =_vt_sfn_slot(tinfo.sfn, tinfo.slot);
   while (hashtable_is_key_exists(SS_context.vt_timer_table, (hash_key_t)sfnSlotKey) == HASH_TABLE_OK)
   {
     LOG_D(GNB_APP,"VT_TIMER  Timeout sending  curr SFN %d SLOT %d\n",SS_context.sfn,SS_context.slot);

@@ -274,7 +274,7 @@ static void sys_handle_nr_as_security_req(struct NR_AS_Security_Type *ASSecurity
         RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.integrity_algorithm = ASSecurity->v.StartRestart.Integrity.v.Algorithm;
         RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint = CALLOC(1,16);
         memset(RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint,0,16);
-        bits_copy_from_array((char*)RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint, 0, (const char*)ASSecurity->v.StartRestart.Integrity.v.KRRCint, 128);
+        bits_copy_from_array(RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint, 0, ASSecurity->v.StartRestart.Integrity.v.KRRCint, 128);
         LOG_I(GNB_APP, "[SYS-GNB] kRRCint:\n");
         for(int i = 0; i < 16; i++) {
           LOG_I(GNB_APP, "%02x\n", RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint[i]);
@@ -329,7 +329,7 @@ static void sys_handle_nr_as_security_req(struct NR_AS_Security_Type *ASSecurity
         RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.ciphering_algorithm = ASSecurity->v.StartRestart.Ciphering.v.Algorithm;
         RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kRRCenc = CALLOC(1,16);
         memset(RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kRRCenc,0,16);
-        bits_copy_from_array((char*)RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kRRCenc, 0, (const char*)ASSecurity->v.StartRestart.Ciphering.v.KRRCenc, 128);
+        bits_copy_from_array(RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kRRCenc, 0, ASSecurity->v.StartRestart.Ciphering.v.KRRCenc, 128);
         LOG_E(GNB_APP, "[SYS-GNB] kRRCenc:\n");
         for(int i = 0; i < 16; i++) {
           LOG_E(GNB_APP, "%02x\n", RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kRRCenc[i]);
@@ -337,7 +337,7 @@ static void sys_handle_nr_as_security_req(struct NR_AS_Security_Type *ASSecurity
 
         RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kUPenc = CALLOC(1,16);
         memset(RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kUPenc,0,16);
-        bits_copy_from_array((char*)RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kUPenc, 0, (const char*)ASSecurity->v.StartRestart.Ciphering.v.KUPenc, 128);
+        bits_copy_from_array(RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kUPenc, 0, ASSecurity->v.StartRestart.Ciphering.v.KUPenc, 128);
         LOG_E(GNB_APP, "[SYS-GNB] kUPenc:\n");
         for(int i = 0; i < 16; i++) {
           LOG_E(GNB_APP, "%02x\n", RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kUPenc[i]);
@@ -665,6 +665,16 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
                 ss_nrset_timinfo_t pg_timinfo;
                 pg_timinfo.sfn = req->Common.TimingInfo.v.SubFrame.SFN.v.Number;
                 pg_timinfo.slot = req->Common.TimingInfo.v.SubFrame.Subframe.v.Number; //TODO
+
+                uint8_t slotsPerSubFrame = 1 << SS_context.mu;
+                pg_timinfo.slot *= slotsPerSubFrame;
+
+                if (req->Common.TimingInfo.v.SubFrame.Slot.d == SlotTimingInfo_Type_SlotOffset &&
+                  req->Common.TimingInfo.v.SubFrame.Slot.v.SlotOffset.d >= SlotOffset_Type_Numerology1)
+                {
+                  pg_timinfo.slot += req->Common.TimingInfo.v.SubFrame.Slot.v.SlotOffset.v.Numerology1;
+                }
+
                 sys_handle_nr_paging_req(&(req->Request.v.Paging), pg_timinfo);
             }
             break;

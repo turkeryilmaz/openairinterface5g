@@ -54,7 +54,7 @@
 #include "radio/ETHERNET/USERSPACE/LIB/ethernet_lib.h"
 #include "nfapi_vnf.h"
 #include "nfapi_pnf.h"
-#include "pdcp.h"
+#include "nr_pdcp/nr_pdcp_oai_api.h"
 
 //#include "L1_paramdef.h"
 #include "prs_nr_paramdef.h"
@@ -173,8 +173,8 @@ void prepare_scc(NR_ServingCellConfigCommon_t *scc) {
   scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon->present        = NR_SetupRelease_PUSCH_ConfigCommon_PR_setup;
   scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon->choice.setup   = CALLOC(1,sizeof(struct NR_PUSCH_ConfigCommon));
 
-  scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon->choice.setup->groupHoppingEnabledTransformPrecoding = CALLOC(1,sizeof(long));
-
+  scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon->choice.setup->groupHoppingEnabledTransformPrecoding = NULL;
+  
   scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList  = CALLOC(1,sizeof(struct NR_PUSCH_TimeDomainResourceAllocationList));
   scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon->choice.setup->msg3_DeltaPreamble              = CALLOC(1,sizeof(long));
   scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon->choice.setup->p0_NominalWithGrant             = CALLOC(1,sizeof(long));
@@ -691,7 +691,7 @@ void RCconfig_nr_prs(void)
   }
   else
   {
-    LOG_E(PHY,"No " CONFIG_STRING_PRS_CONFIG " configuration found..!!\n");
+    LOG_I(PHY,"No " CONFIG_STRING_PRS_CONFIG " configuration found..!!\n");
   }
 }
 
@@ -770,6 +770,12 @@ void RCconfig_NR_L1(void)
       RC.gNB[j]->pusch_thres = *(L1_ParamList.paramarray[j][L1_PUSCH_DTX_THRESHOLD].uptr);
       RC.gNB[j]->srs_thres = *(L1_ParamList.paramarray[j][L1_SRS_DTX_THRESHOLD].uptr);
       RC.gNB[j]->max_ldpc_iterations = *(L1_ParamList.paramarray[j][L1_MAX_LDPC_ITERATIONS].uptr);
+      RC.gNB[j]->L1_rx_thread_core = *(L1_ParamList.paramarray[j][L1_RX_THREAD_CORE].iptr);
+      RC.gNB[j]->L1_tx_thread_core = *(L1_ParamList.paramarray[j][L1_TX_THREAD_CORE].iptr);
+      LOG_I(PHY,"L1_RX_THREAD_CORE %d (%d)\n",*(L1_ParamList.paramarray[j][L1_RX_THREAD_CORE].iptr),L1_RX_THREAD_CORE);
+      RC.gNB[j]->TX_AMP = (int16_t)(32767.0 / pow(10.0, .05 * (double)(*L1_ParamList.paramarray[j][L1_TX_AMP_BACKOFF_dB].uptr)));
+      LOG_I(PHY, "TX_AMP = %d (-%d dBFS)\n", RC.gNB[j]->TX_AMP, *L1_ParamList.paramarray[j][L1_TX_AMP_BACKOFF_dB].uptr);
+      AssertFatal(RC.gNB[j]->TX_AMP > 300, "TX_AMP is too small, must be larger than 300 (is %d)\n", RC.gNB[j]->TX_AMP);
       if (strcmp(*(L1_ParamList.paramarray[j][L1_TRANSPORT_N_PREFERENCE_IDX].strptr), "local_mac") == 0) {
         // sf_ahead = 2; // Need 4 subframe gap between RX and TX
       } else if (strcmp(*(L1_ParamList.paramarray[j][L1_TRANSPORT_N_PREFERENCE_IDX].strptr), "nfapi") == 0) {
@@ -799,24 +805,23 @@ void RCconfig_NR_L1(void)
                                RC.gNB[j]->eth_params_n.my_addr,
                                RC.gNB[j]->eth_params_n.my_portd,
                                RC.gNB[j]->eth_params_n.remote_portd);
-      }else { // other midhaul
+      } else { // other midhaul
       }
-    }// for (j = 0; j < RC.nb_nr_L1_inst; j++)
+    } // for (j = 0; j < RC.nb_nr_L1_inst; j++)
     printf("Initializing northbound interface for L1\n");
     l1_north_init_gNB();
-  }else{
-    LOG_I(PHY,"No " CONFIG_STRING_L1_LIST " configuration found");
+  } else {
+    LOG_I(PHY, "No " CONFIG_STRING_L1_LIST " configuration found");
 
     // DJP need to create some structures for VNF
 
     j = 0;
 
-
     if (RC.gNB[j] == NULL) {
       RC.gNB[j] = (PHY_VARS_gNB *)malloc(sizeof(PHY_VARS_gNB));
-      memset((void*)RC.gNB[j],0,sizeof(PHY_VARS_gNB));
-      LOG_I(PHY,"RC.gNB[%d] = %p\n",j,RC.gNB[j]);
-      RC.gNB[j]->Mod_id  = j;
+      memset((void *)RC.gNB[j], 0, sizeof(PHY_VARS_gNB));
+      LOG_I(PHY, "RC.gNB[%d] = %p\n", j, RC.gNB[j]);
+      RC.gNB[j]->Mod_id = j;
     }
   }
 }
@@ -958,6 +963,7 @@ void RCconfig_nr_macrlc() {
       ul_bler_options->harq_round_max = *(MacRLC_ParamList.paramarray[j][MACRLC_UL_HARQ_ROUND_MAX_IDX].u8ptr);
       RC.nrmac[j]->min_grant_prb = *(MacRLC_ParamList.paramarray[j][MACRLC_MIN_GRANT_PRB_IDX].u8ptr);
       RC.nrmac[j]->min_grant_mcs = *(MacRLC_ParamList.paramarray[j][MACRLC_MIN_GRANT_MCS_IDX].u8ptr);
+      RC.nrmac[j]->identity_pm = *(MacRLC_ParamList.paramarray[j][MACRLC_IDENTITY_PM_IDX].u8ptr);
       RC.nrmac[j]->num_ulprbbl = num_prbbl;
       memcpy(RC.nrmac[j]->ulprbbl, prbbl, 275 * sizeof(prbbl[0]));
     } //  for (j=0;j<RC.nb_nr_macrlc_inst;j++)
@@ -1920,8 +1926,12 @@ int RCconfig_NR_DU_F1(MessageDef *msg_p, uint32_t i) {
 
         f1Setup->measurement_timing_information[k]             = "0";
         f1Setup->ranac[k]                                      = 0;
-        f1Setup->mib[k]                                        = rrc->carrier.MIB;
-        f1Setup->mib_length[k]                                 = rrc->carrier.sizeof_MIB;
+        DevAssert(rrc->carrier.mib != NULL);
+        int buf_len = 3; // this is what we assume in monolithic
+        f1Setup->mib[k]                                        = calloc(buf_len, sizeof(*f1Setup->mib[k]));
+        DevAssert(f1Setup->mib[k] != NULL);
+        f1Setup->mib_length[k]                                 = encode_MIB_NR(rrc->carrier.mib, 0, f1Setup->mib[k], buf_len);
+        DevAssert(f1Setup->mib_length[k] == buf_len);
 
         NR_BCCH_DL_SCH_Message_t *bcch_message = NULL;
         asn_codec_ctx_t st={100*1000};
@@ -1962,11 +1972,11 @@ int RCconfig_NR_DU_F1(MessageDef *msg_p, uint32_t i) {
 
 int du_check_plmn_identity(rrc_gNB_carrier_data_t *carrier,uint16_t mcc,uint16_t mnc,uint8_t mnc_digit_length) {
   NR_SIB1_t *sib1 = carrier->siblock1->message.choice.c1->choice.systemInformationBlockType1;
-  AssertFatal(sib1->cellAccessRelatedInfo.plmn_IdentityList.list.array[0]->plmn_IdentityList.list.count > 0,
+  AssertFatal(sib1->cellAccessRelatedInfo.plmn_IdentityInfoList.list.array[0]->plmn_IdentityList.list.count > 0,
               "plmn info isn't there\n");
   AssertFatal(mnc_digit_length == 2 || mnc_digit_length == 3,
               "impossible mnc_digit_length %d\n", mnc_digit_length);
-  NR_PLMN_Identity_t *plmn_Identity = sib1->cellAccessRelatedInfo.plmn_IdentityList.list.array[0]
+  NR_PLMN_Identity_t *plmn_Identity = sib1->cellAccessRelatedInfo.plmn_IdentityInfoList.list.array[0]
                                             ->plmn_IdentityList.list.array[0];
 
   // check if mcc is different and return failure if so
@@ -2269,6 +2279,6 @@ void nr_read_config_and_init(void) {
   }
 
   if (NODE_IS_CU(RC.nrrrc[0]->node_type) && RC.nrrrc[0]->node_type != ngran_gNB_CUCP) {
-    pdcp_layer_init();
+    nr_pdcp_layer_init();
   }
 }

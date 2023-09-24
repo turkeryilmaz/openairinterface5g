@@ -1424,7 +1424,13 @@ initiate_ra_proc(module_id_t module_idP,
           ra[i].rnti = drnti[nb_ue];
         } else if ((RC.ss.mode > SS_ENB) && RC.ss.ss_crnti[CC_id].b_Temp_RNTI_Present) {
           // SS_MODE configured setup the CRNTI from the Cell_config
-          ra[i].rnti = RC.ss.ss_crnti[CC_id].Temp_C_RNTI;
+          /* Since the configured Temp_C_RNTI always be same, it would cause many UE mac context conflict after when no UE release(rrcRelease) on eNB side.
+          Here we generate different RNTI if the UE with rnti already exist */
+          uint16_t new_rnti = RC.ss.ss_crnti[CC_id].Temp_C_RNTI;
+          while(-1 != find_UE_id(module_idP, new_rnti)){
+            new_rnti +=1;
+          }
+          ra[i].rnti = new_rnti;
           break;
         }else {
           ra[i].rnti = taus();

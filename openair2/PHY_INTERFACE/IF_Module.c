@@ -12,6 +12,7 @@ static Sched_Rsp_t Sched_INFO[MAX_IF_MODULES][MAX_NUM_CCs];
 extern uint16_t pdcch_order_table[16];
 extern int cell_index;
 extern uint8_t pdcchOrder_rcvd;
+
 extern int oai_nfapi_harq_indication(nfapi_harq_indication_t *harq_ind);
 extern int oai_nfapi_crc_indication(nfapi_crc_indication_t *crc_ind);
 extern int oai_nfapi_cqi_indication(nfapi_cqi_indication_t *cqi_ind);

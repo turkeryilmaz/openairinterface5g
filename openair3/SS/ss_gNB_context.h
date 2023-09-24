@@ -23,6 +23,9 @@
 
 #include "SidlCommon.h"
 
+#include "ss_messages_types.h"
+#include "hashtable.h"
+
 typedef struct SSConfigContext_s {
   int State;	
   uint16_t dl_earfcn;
@@ -44,7 +47,7 @@ typedef struct SSConfigContext_s {
   uint8_t mu;	 	/*subcarrierSpace*/
   uint16_t hsfn;
   uint16_t sfn;
-  uint8_t  slot;
+  uint32_t  slot;
   /** TODO: To add more */
 } SSConfigContext_t;
 

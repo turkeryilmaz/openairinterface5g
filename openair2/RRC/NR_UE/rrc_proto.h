@@ -40,6 +40,7 @@
 #include "NR_CellGroupConfig.h"
 #include "NR_RadioBearerConfig.h"
 #include "openair2/PHY_INTERFACE/queue_t.h"
+#include "common/utils/ocp_itti/intertask_interface.h"
 
 extern queue_t nr_rach_ind_queue;
 extern queue_t nr_rx_ind_queue;
@@ -81,11 +82,6 @@ int8_t nr_rrc_ue_process_rrcReconfiguration(const module_id_t module_id, NR_RRCR
 /**\prief Process measurement config from NR RRC connection reconfiguration message
    \param meas_config   measurement configuration*/
 int8_t nr_rrc_ue_process_meas_config(NR_MeasConfig_t *meas_config);
-
-/**\prief Process secondary cell group config from NR RRC connection reconfiguration message or EN-DC primitives
-   \param cell_group_config   secondary cell group configuration*/
-//TODO check EN-DC function call flow.
-int8_t nr_rrc_ue_process_scg_config(const module_id_t module_id, NR_CellGroupConfig_t *cell_group_config);
 
 /**\prief Process radio bearer config from NR RRC connection reconfiguration message
    \param radio_bearer_config    radio bearer configuration*/
@@ -152,20 +148,14 @@ int8_t nr_mac_rrc_data_req_ue(const module_id_t Mod_idP,
                               const rb_id_t     Srb_id,
                               uint8_t           *buffer_pP);
 
-uint8_t
-rrc_data_req_nr_ue(
-  const protocol_ctxt_t   *const ctxt_pP,
-  const rb_id_t                  rb_idP,
-  const mui_t                    muiP,
-  const confirm_t                confirmP,
-  const sdu_size_t               sdu_sizeP,
-  uint8_t                 *const buffer_pP,
-  const pdcp_transmission_mode_t modeP
-);
+int8_t nr_rrc_RA_succeeded(const module_id_t mod_id, const uint8_t gNB_index);
 
 /**\brief RRC UE task.
    \param void *args_p Pointer on arguments to start the task. */
 void *rrc_nrue_task(void *args_p);
+
+/**\brief RRC timers update at UE. */
+void *nr_rrc_timers_update();
 
 /**\brief RRC NSA UE task.
    \param void *args_p Pointer on arguments to start the task. */
@@ -173,7 +163,7 @@ void *recv_msgs_from_lte_ue(void *args_p);
 
 void init_connections_with_lte_ue(void);
 
-void nsa_sendmsg_to_lte_ue(const void *message, size_t msg_len, MessagesIds msg_type);
+void nsa_sendmsg_to_lte_ue(const void *message, size_t msg_len, Rrc_Msg_Type_t msg_type);
 
 void start_oai_nrue_threads(void);
 

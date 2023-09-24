@@ -51,34 +51,34 @@
 
 void fill_dci_search_candidates(NR_SearchSpace_t *ss,
                                 fapi_nr_dl_config_dci_dl_pdu_rel15_t *rel15,
-                                int slot, int rnti) {
-
+                                int slot, int rnti)
+{
   LOG_D(NR_MAC,"Filling search candidates for DCI\n");
 
   uint8_t aggregation;
-  uint8_t number_of_candidates=0;
-  rel15->number_of_candidates=0;
-  int i=0;
+  uint8_t number_of_candidates = 0;
+  rel15->number_of_candidates = 0;
   uint32_t Y = 0;
+  int i = 0;
   if (slot >= 0)
     Y = get_Y(ss, slot, rnti);
-  for (int maxL=16;maxL>0;maxL>>=1) {
+  for (int maxL = 16; maxL > 0; maxL >>= 1) {
     find_aggregation_candidates(&aggregation,
                                 &number_of_candidates,
                                 ss,maxL);
 
     if (number_of_candidates>0) {
-      LOG_D(NR_MAC,"L %d, number of candidates %d, aggregation %d\n",maxL,number_of_candidates,aggregation);
+      LOG_D(NR_MAC,"L %d, number of candidates %d, aggregation %d\n", maxL, number_of_candidates, aggregation);
       rel15->number_of_candidates += number_of_candidates;
       int N_cce_sym = 0; // nb of rbs of coreset per symbol
-      for (int i=0;i<6;i++) {
-        for (int t=0;t<8;t++) {
-          N_cce_sym+=((rel15->coreset.frequency_domain_resource[i]>>t)&1);
+      for (int f = 0; f < 6; f++) {
+        for (int t = 0; t < 8; t++) {
+          N_cce_sym += ((rel15->coreset.frequency_domain_resource[f] >> t) & 1);
         }
       }
-      int N_cces = N_cce_sym*rel15->coreset.duration;
-      for (int j=0; j<number_of_candidates; i++,j++) {
-        int first_cce = aggregation * (( Y + CEILIDIV((j*N_cces),(aggregation*number_of_candidates)) + 0 ) % CEILIDIV(N_cces,aggregation));
+      int N_cces = N_cce_sym * rel15->coreset.duration;
+      for (int j = 0; j < number_of_candidates; i++, j++) {
+        int first_cce = aggregation * ((Y + ((j * N_cces) / (aggregation * number_of_candidates)) + 0) % (N_cces / aggregation));
         LOG_D(NR_MAC,"Candidate %d of %d first_cce %d (L %d N_cces %d Y %d)\n", j, number_of_candidates, first_cce, aggregation, N_cces, Y);
         rel15->CCE[i] = first_cce;
         rel15->L[i] = aggregation;
@@ -172,7 +172,7 @@ void config_dci_pdu(NR_UE_MAC_INST_t *mac, fapi_nr_dl_config_dci_dl_pdu_rel15_t 
     rel15->dci_length_options[i] = nr_dci_size(current_DL_BWP,
                                                current_UL_BWP,
                                                mac->cg,
-                                               &mac->def_dci_pdu_rel15[dci_format],
+                                               &mac->def_dci_pdu_rel15[dl_config->slot][dci_format],
                                                dci_format,
                                                NR_RNTI_TC,
                                                coreset,
@@ -220,9 +220,8 @@ void config_dci_pdu(NR_UE_MAC_INST_t *mac, fapi_nr_dl_config_dci_dl_pdu_rel15_t 
 
         rel15->rnti = SI_RNTI; // SI-RNTI - 3GPP TS 38.321 Table 7.1-1: RNTI values
 
-        if(mac->frequency_range == FR1)
-          rel15->SubcarrierSpacing = mac->mib->subCarrierSpacingCommon;
-        else
+        rel15->SubcarrierSpacing = mac->mib->subCarrierSpacingCommon;
+        if(mac->frequency_range == FR2)
           rel15->SubcarrierSpacing = mac->mib->subCarrierSpacingCommon + 2;
         break;
       case NR_RNTI_SFI:
@@ -268,8 +267,8 @@ void ue_dci_configuration(NR_UE_MAC_INST_t *mac, fapi_nr_dl_config_request_t *dl
 
   uint8_t bwp_id = mac->current_DL_BWP.bwp_id;
   //NR_ServingCellConfig_t *scd = mac->scg->spCellConfig->spCellConfigDedicated;
-  NR_BWP_DownlinkDedicated_t *bwpd  = (bwp_id>0) ? mac->DLbwp[bwp_id-1]->bwp_Dedicated : mac->cg->spCellConfig->spCellConfigDedicated->initialDownlinkBWP;
-  NR_BWP_DownlinkCommon_t *bwp_Common = (bwp_id>0) ? mac->DLbwp[bwp_id-1]->bwp_Common : &mac->scc_SIB->downlinkConfigCommon.initialDownlinkBWP;
+  NR_BWP_DownlinkDedicated_t *bwpd  = (bwp_id>0) ? mac->DLbwp[bwp_id-1]->bwp_Dedicated : (mac->cg ? mac->cg->spCellConfig->spCellConfigDedicated->initialDownlinkBWP : NULL);
+  NR_BWP_DownlinkCommon_t *bwp_Common = get_bwp_downlink_common(mac, bwp_id);
 
   LOG_D(NR_MAC, "[DCI_CONFIG] ra_rnti %p (%x) crnti %p (%x) t_crnti %p (%x)\n", &ra->ra_rnti, ra->ra_rnti, &mac->crnti, mac->crnti, &ra->t_crnti, ra->t_crnti);
 
@@ -376,7 +375,7 @@ void ue_dci_configuration(NR_UE_MAC_INST_t *mac, fapi_nr_dl_config_request_t *dl
 	  // this is an USS
 	  if (ss->searchSpaceType->choice.ue_Specific &&
 	      ss->searchSpaceType->choice.ue_Specific->dci_Formats == NR_SearchSpace__searchSpaceType__ue_Specific__dci_Formats_formats0_1_And_1_1 &&
-	      (ra->ra_state == RA_SUCCEEDED || get_softmodem_params()->phy_test) &&
+	      mac->state == UE_CONNECTED &&
               mac->crnti > 0) {
 	      // Monitors DCI 01 and 11 scrambled with C-RNTI, or CS-RNTI(s), or SP-CSI-RNTI
             LOG_D(NR_MAC, "[DCI_CONFIG] Configure monitoring of PDCCH candidates in the user specific search space\n");
@@ -417,6 +416,6 @@ void ue_dci_configuration(NR_UE_MAC_INST_t *mac, fapi_nr_dl_config_request_t *dl
       } // for ss_id
   }
   else {
-    AssertFatal(1==0,"Handle DCI searching when CellGroup without dedicated BWP\n");
+    LOG_E(MAC,"Cannot handle DCI without dedicated BWP\n");
   }
 }

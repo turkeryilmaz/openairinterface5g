@@ -1,6 +1,6 @@
 #include "ss_utils.h"
 
-void bits_copy_from_array(char *dst, int off, const char* src, int len)
+void bits_copy_from_array(unsigned char *dst, int off, const unsigned char* src, int len)
 {
     while (len-- > 0)
     {
@@ -10,7 +10,7 @@ void bits_copy_from_array(char *dst, int off, const char* src, int len)
     }
 }
 
-void bits_copy_to_array(char *dst, int off, const char* src, int len)
+void bits_copy_to_array(unsigned char *dst, int off, const unsigned char* src, int len)
 {
     while (len-- > 0)
     {

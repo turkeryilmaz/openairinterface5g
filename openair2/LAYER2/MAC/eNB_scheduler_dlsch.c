@@ -1380,7 +1380,7 @@ schedule_ue_spec_br(module_id_t module_idP,
           ue_sched_ctl->ta_update_f = 31.0;
         } else {
           ta_update = 31;
-        } 
+        }
 
         ta_len = (ta_update != 31) ? 2 : 0;
         header_len_dcch = 2; // 2 bytes DCCH SDU subheader
