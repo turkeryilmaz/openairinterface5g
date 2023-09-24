@@ -157,9 +157,9 @@ extern "C" {
       t->admin.func(NULL);
       pthread_mutex_lock (&t->queue_cond_lock);
     }
-    
+
     pthread_mutex_unlock (&t->queue_cond_lock);
-    return ret; 
+    return ret;
   }
 
   void itti_subscribe_event_fd(task_id_t task_id, int fd) {

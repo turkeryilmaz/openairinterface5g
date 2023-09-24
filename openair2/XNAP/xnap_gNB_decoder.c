@@ -36,20 +36,14 @@ int xnap_gNB_decode_pdu(XNAP_XnAP_PDU_t *pdu, const uint8_t *const buffer, uint3
 
   DevAssert(buffer != NULL);
 
-  dec_ret = aper_decode(NULL,
-                        &asn_DEF_XNAP_XnAP_PDU,
-                        (void **)&pdu,
-                        buffer,
-                        length,
-                        0,
-                        0);
+  dec_ret = aper_decode(NULL, &asn_DEF_XNAP_XnAP_PDU, (void **)&pdu, buffer, length, 0, 0);
   xer_fprint(stdout, &asn_DEF_XNAP_XnAP_PDU, pdu);
   if (dec_ret.code != RC_OK) {
     LOG_E(XNAP, "Failed to decode PDU\n");
     return -1;
   }
 
-  switch(pdu->present) {
+  switch (pdu->present) {
     case XNAP_XnAP_PDU_PR_initiatingMessage:
       LOG_I(XNAP, "xnap_gNB_decode_initiating_message!\n");
       break;
@@ -65,4 +59,3 @@ int xnap_gNB_decode_pdu(XNAP_XnAP_PDU_t *pdu, const uint8_t *const buffer, uint3
   }
   return 0;
 }
-

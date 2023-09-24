@@ -29,11 +29,11 @@
 
 // Defines to access message fields.
 
-#define XNAP_REGISTER_GNB_REQ(mSGpTR)                           (mSGpTR)->ittiMsg.xnap_register_gnb_req
-#define XNAP_SETUP_REQ(mSGpTR)                                  (mSGpTR)->ittiMsg.xnap_setup_req
-#define XNAP_SETUP_RESP(mSGpTR)                                 (mSGpTR)->ittiMsg.xnap_setup_resp
-#define XNAP_REGISTER_GNB_CNF(mSGpTR)                           (mSGpTR)->ittiMsg.xnap_register_gnb_cnf
-#define XNAP_DEREGISTERED_GNB_IND(mSGpTR)                       (mSGpTR)->ittiMsg.xnap_deregistered_gnb_ind
+#define XNAP_REGISTER_GNB_REQ(mSGpTR)     (mSGpTR)->ittiMsg.xnap_register_gnb_req
+#define XNAP_SETUP_REQ(mSGpTR)            (mSGpTR)->ittiMsg.xnap_setup_req
+#define XNAP_SETUP_RESP(mSGpTR)           (mSGpTR)->ittiMsg.xnap_setup_resp
+#define XNAP_REGISTER_GNB_CNF(mSGpTR)     (mSGpTR)->ittiMsg.xnap_register_gnb_cnf
+#define XNAP_DEREGISTERED_GNB_IND(mSGpTR) (mSGpTR)->ittiMsg.xnap_deregistered_gnb_ind
 
 #define XNAP_MAX_NB_GNB_IP_ADDRESS 6
 
@@ -48,10 +48,10 @@ typedef struct xnap_setup_resp_s {
 } xnap_setup_resp_t;
 
 typedef struct gnb_ip_address_s {
-  unsigned ipv4:1;
-  unsigned ipv6:1;
-  char ipv4_address[16];
-  char ipv6_address[46];
+  unsigned ipv4: 1;
+  unsigned ipv6: 1;
+  char     ipv4_address[16];
+  char     ipv6_address[46];
 } gnb_ip_address_t;
 
 typedef struct xnap_register_gnb_req_s {
@@ -75,26 +75,26 @@ typedef struct xnap_register_gnb_req_s {
   /*
    * CC Params
    */
-  int16_t                 eutra_band;
-  int32_t                 nr_band;
-  int32_t                 nrARFCN;
-  uint32_t                downlink_frequency;
-  int32_t                 uplink_frequency_offset;
-  uint32_t                Nid_cell;
-  int16_t                 N_RB_DL;
-  frame_type_t            frame_type;
-  uint32_t                fdd_earfcn_DL;
-  uint32_t                fdd_earfcn_UL;
-  uint32_t                subframeAssignment;
-  uint32_t                specialSubframe;
-  uint16_t                tdd_nRARFCN;
-  uint16_t tdd_Transmission_Bandwidth;
+  int16_t      eutra_band;
+  int32_t      nr_band;
+  int32_t      nrARFCN;
+  uint32_t     downlink_frequency;
+  int32_t      uplink_frequency_offset;
+  uint32_t     Nid_cell;
+  int16_t      N_RB_DL;
+  frame_type_t frame_type;
+  uint32_t     fdd_earfcn_DL;
+  uint32_t     fdd_earfcn_UL;
+  uint32_t     subframeAssignment;
+  uint32_t     specialSubframe;
+  uint16_t     tdd_nRARFCN;
+  uint16_t     tdd_Transmission_Bandwidth;
 
   /* The local gNB IP address to bind */
   gnb_ip_address_t gnb_xn_ip_address;
 
   /* Nb of GNB to connect to */
-  uint8_t          nb_xn;
+  uint8_t nb_xn;
 
   /* List of target gNB to connect to for Xn*/
   gnb_ip_address_t target_gnb_xn_ip_address[XNAP_MAX_NB_GNB_IP_ADDRESS];
@@ -116,12 +116,12 @@ typedef struct xnap_register_gnb_req_s {
 // XNAP -> gNB application layer messages
 typedef struct xnap_register_gnb_cnf_s {
   /* Nb of connected gNBs*/
-  uint8_t          nb_xn;
+  uint8_t nb_xn;
 } xnap_register_gnb_cnf_t;
 
 typedef struct xnap_deregistered_gnb_ind_s {
   /* Nb of connected gNBs */
-  uint8_t          nb_xn;
+  uint8_t nb_xn;
 } xnap_deregistered_gnb_ind_t;
 
 // XNAP <-> RRC
@@ -131,7 +131,7 @@ typedef struct xnap_guami_s {
   uint8_t  mnc_len;
   uint8_t  amf_region_id;
   uint16_t amf_set_id;
-  uint8_t amf_pointer;
+  uint8_t  amf_pointer;
 } xnap_guami_t;
 
 #endif /* XNAP_MESSAGES_TYPES_H_ */

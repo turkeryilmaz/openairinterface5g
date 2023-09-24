@@ -27,7 +27,6 @@
 #ifndef XNAP_GNB_DECODER_H_
 #define XNAP_GNB_DECODER_H_
 
-int xnap_gNB_decode_pdu(XNAP_XnAP_PDU_t *pdu, const uint8_t *const buffer, uint32_t length)
-__attribute__ ((warn_unused_result));
+int xnap_gNB_decode_pdu(XNAP_XnAP_PDU_t *pdu, const uint8_t *const buffer, uint32_t length) __attribute__((warn_unused_result));
 
 #endif /* XNAP_GNB_DECODER_H_ */

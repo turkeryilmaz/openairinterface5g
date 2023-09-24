@@ -16,27 +16,26 @@
  * limitations under the License.
  *-------------------------------------------------------------------------------
  * For more information about the OpenAirInterface (OAI) Software Alliance:
- *      conmnc_digit_lengtht@openairinterface.org
+ *      contact@openairinterface.org
  */
 
 #include <stdint.h>
 #include "xnap_common.h"
 #include "XNAP_XnAP-PDU.h"
 
-ssize_t XNAP_generate_unsuccessfull_outcome(
-  uint8_t               **buffer,
-  uint32_t               *length,
-  XNAP_ProcedureCode_t         procedureCode,
-  XNAP_Criticality_t           criticality,
-  asn_TYPE_descriptor_t  *td,
-  void                   *sptr)
+ssize_t XNAP_generate_unsuccessfull_outcome(uint8_t **buffer,
+                                            uint32_t *length,
+                                            XNAP_ProcedureCode_t procedureCode,
+                                            XNAP_Criticality_t criticality,
+                                            asn_TYPE_descriptor_t *td,
+                                            void *sptr)
 {
   XNAP_XnAP_PDU_t pdu;
-  ssize_t    encoded;
+  ssize_t encoded;
   memset(&pdu, 0, sizeof(XNAP_XnAP_PDU_t));
   pdu.present = XNAP_XnAP_PDU_PR_unsuccessfulOutcome;
   pdu.choice.successfulOutcome->procedureCode = procedureCode;
-  pdu.choice.successfulOutcome->criticality   = criticality;
+  pdu.choice.successfulOutcome->criticality = criticality;
   ANY_fromType_aper((ANY_t *)&pdu.choice.successfulOutcome->value, td, sptr);
 
   if (asn1_xer_print) {
@@ -46,8 +45,7 @@ ssize_t XNAP_generate_unsuccessfull_outcome(
   /* We can safely free list of IE from sptr */
   ASN_STRUCT_FREE_CONTENTS_ONLY(*td, sptr);
 
-  if ((encoded = aper_encode_to_new_buffer(&asn_DEF_XNAP_XnAP_PDU, 0, &pdu,
-                 (void **)buffer)) < 0) {
+  if ((encoded = aper_encode_to_new_buffer(&asn_DEF_XNAP_XnAP_PDU, 0, &pdu, (void **)buffer)) < 0) {
     return -1;
   }
 
@@ -58,7 +56,3 @@ ssize_t XNAP_generate_unsuccessfull_outcome(
 void XNAP_handle_criticality(XNAP_Criticality_t criticality)
 {
 }
-
-
-
-

@@ -18,7 +18,6 @@
  *      contact@openairinterface.org
  */
 
-
 #include <stdint.h>
 #include "queue.h"
 #include "tree.h"
@@ -28,7 +27,7 @@
 #ifndef XNAP_GNB_DEFS_H_
 #define XNAP_GNB_DEFS_H_
 
-#define XNAP_GNB_NAME_LENGTH_MAX    (150)
+#define XNAP_GNB_NAME_LENGTH_MAX (150)
 
 typedef enum {
   /* Disconnected state: initial state for any association. */
@@ -37,17 +36,17 @@ typedef enum {
   /* State waiting for xn Setup response message if the target gNB accepts or
    * Xn Setup failure if rejects the gNB.
    */
-  XNAP_GNB_STATE_WAITING     = 0x1,
+  XNAP_GNB_STATE_WAITING = 0x1,
 
   /* The gNB is successfully connected to another gNB. */
-  XNAP_GNB_STATE_CONNECTED   = 0x2,
+  XNAP_GNB_STATE_CONNECTED = 0x2,
 
   /* XnAP is ready, and the gNB is successfully connected to another gNB. */
-  XNAP_GNB_STATE_READY             = 0x3,
+  XNAP_GNB_STATE_READY = 0x3,
 
-  XNAP_GNB_STATE_OVERLOAD          = 0x4,
+  XNAP_GNB_STATE_OVERLOAD = 0x4,
 
-  XNAP_GNB_STATE_RESETTING         = 0x5,
+  XNAP_GNB_STATE_RESETTING = 0x5,
 
   /* Max number of states available */
   XNAP_GNB_STATE_MAX,
@@ -80,7 +79,7 @@ typedef struct xnap_gNB_data_s {
   uint32_t gNB_id;
 
   /* Current gNB load information (if any). */
-  //xnap_load_state_t overload_state;
+  // xnap_load_state_t overload_state;
 
   /* Current gNB->gNB XnAP association state */
   xnap_gNB_state_t state;
@@ -96,13 +95,13 @@ typedef struct xnap_gNB_data_s {
   uint16_t cnx_id;
 
   /* SCTP association id */
-  int32_t  assoc_id;
+  int32_t assoc_id;
 
   /* Nid cells */
-  uint32_t                Nid_cell;
-  int                     num_cc;
+  uint32_t Nid_cell;
+  int num_cc;
   /*Frequency band of NR neighbor cell supporting ENDC NSA */
-  uint32_t                servedNrCell_band;
+  uint32_t servedNrCell_band;
 
   /* Only meaningfull in virtual mode */
   struct xnap_gNB_instance_s *xnap_gNB_instance;
@@ -132,39 +131,39 @@ typedef struct xnap_gNB_instance_s {
   uint32_t gNB_id;
 
   /* Tracking area code */
-  uint16_t tac;  //octet string of size 3
+  uint16_t tac; // octet string of size 3
 
   /* Mobile Country Code
    * Mobile Network Code
    */
-  uint16_t  mcc;
-  uint16_t  mnc;
-  uint8_t   mnc_digit_length;
+  uint16_t mcc;
+  uint16_t mnc;
+  uint8_t mnc_digit_length;
 
   /* CC params */
-  uint32_t                downlink_frequency;
-  int32_t                 uplink_frequency_offset;
-  uint32_t                Nid_cell;
-  int16_t                 N_RB_DL;
-  int16_t                 N_RB_UL;
-  frame_type_t            frame_type;
-  uint32_t                fdd_earfcn_DL;
-  uint32_t                fdd_earfcn_UL;
-  uint32_t                subframeAssignment;
-  uint32_t                specialSubframe;
-  uint32_t                 nr_band;
-  uint32_t		  tdd_nRARFCN;
-  uint32_t		  nrARFCN;
-  int16_t                 nr_SCS;
-  int16_t                 eutra_band;
-  int                     num_cc;
+  uint32_t     downlink_frequency;
+  int32_t      uplink_frequency_offset;
+  uint32_t     Nid_cell;
+  int16_t      N_RB_DL;
+  int16_t      N_RB_UL;
+  frame_type_t frame_type;
+  uint32_t     fdd_earfcn_DL;
+  uint32_t     fdd_earfcn_UL;
+  uint32_t     subframeAssignment;
+  uint32_t     specialSubframe;
+  uint32_t     nr_band;
+  uint32_t     tdd_nRARFCN;
+  uint32_t     nrARFCN;
+  int16_t      nr_SCS;
+  int16_t      eutra_band;
+  int          num_cc;
   gnb_ip_address_t target_gnb_xn_ip_address[XNAP_MAX_NB_GNB_IP_ADDRESS];
-  uint8_t          nb_xn;
+  uint8_t nb_xn;
   gnb_ip_address_t gnb_xn_ip_address;
-  uint16_t         sctp_in_streams;
-  uint16_t         sctp_out_streams;
-  uint32_t         gnb_port_for_XNC;
-  int              multi_sd;
+  uint16_t sctp_in_streams;
+  uint16_t sctp_out_streams;
+  uint32_t gnb_port_for_XNC;
+  int multi_sd;
 } xnap_gNB_instance_t;
 
 typedef struct {
@@ -183,6 +182,5 @@ int xnap_gNB_compare_assoc_id(struct xnap_gNB_data_s *p1, struct xnap_gNB_data_s
 struct xnap_gNB_map;
 struct xnap_gNB_data_s;
 RB_PROTOTYPE(xnap_gNB_map, xnap_gNB_data_s, entry, xnap_gNB_compare_assoc_id);
-
 
 #endif /* XNAP_GNB_DEFS_H_ */

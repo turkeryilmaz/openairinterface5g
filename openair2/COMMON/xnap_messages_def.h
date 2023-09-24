@@ -21,17 +21,16 @@
 
 /*! \file xnap_messages_def.h
  * \author Sreeshma Shiv <sreeshmau@iisc.ac.in>
- * \date August 2023 
+ * \date August 2023
  * \version 1.0
  */
 
 /* gNB application layer -> XNAP messages */
-MESSAGE_DEF(XNAP_REGISTER_GNB_REQ               , MESSAGE_PRIORITY_MED, xnap_register_gnb_req_t          , xnap_register_gnb_req)
+MESSAGE_DEF(XNAP_REGISTER_GNB_REQ, MESSAGE_PRIORITY_MED, xnap_register_gnb_req_t, xnap_register_gnb_req)
 /* XNAP -> gNB application layer messages */
-MESSAGE_DEF(XNAP_REGISTER_GNB_CNF               , MESSAGE_PRIORITY_MED, xnap_register_gnb_cnf_t          , xnap_register_gnb_cnf)
-MESSAGE_DEF(XNAP_DEREGISTERED_GNB_IND           , MESSAGE_PRIORITY_MED, xnap_deregistered_gnb_ind_t      , xnap_deregistered_gnb_ind)
+MESSAGE_DEF(XNAP_REGISTER_GNB_CNF, MESSAGE_PRIORITY_MED, xnap_register_gnb_cnf_t, xnap_register_gnb_cnf)
+MESSAGE_DEF(XNAP_DEREGISTERED_GNB_IND, MESSAGE_PRIORITY_MED, xnap_deregistered_gnb_ind_t, xnap_deregistered_gnb_ind)
 
 /* handover messages XNAP <-> RRC */
-MESSAGE_DEF(XNAP_SETUP_REQ                      , MESSAGE_PRIORITY_MED, xnap_setup_req_t                 , xnap_setup_req)
-MESSAGE_DEF(XNAP_SETUP_RESP                     , MESSAGE_PRIORITY_MED, xnap_setup_resp_t                , xnap_setup_resp)
-
+MESSAGE_DEF(XNAP_SETUP_REQ, MESSAGE_PRIORITY_MED, xnap_setup_req_t, xnap_setup_req)
+MESSAGE_DEF(XNAP_SETUP_RESP, MESSAGE_PRIORITY_MED, xnap_setup_resp_t, xnap_setup_resp)

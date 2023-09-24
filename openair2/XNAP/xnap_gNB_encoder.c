@@ -21,8 +21,8 @@
 
 /*! \file x2ap_eNB_encoder.c
  * \brief x2ap encoder procedures for eNB
- * \author Konstantinos Alexandris <Konstantinos.Alexandris@eurecom.fr>, Cedric Roux <Cedric.Roux@eurecom.fr>, Navid Nikaein <Navid.Nikaein@eurecom.fr>
- * \date 2018
+ * \author Sreeshma Shiv <sreeshmau@iisc.ac.in>
+ * \date August 2023
  * \version 1.0
  */
 
@@ -38,7 +38,7 @@
 
 int xnap_gNB_encode_pdu(XNAP_XnAP_PDU_t *pdu, uint8_t **buffer, uint32_t *len)
 {
-  ssize_t    encoded;
+  ssize_t encoded;
 
   DevAssert(pdu != NULL);
   DevAssert(buffer != NULL);
@@ -46,7 +46,6 @@ int xnap_gNB_encode_pdu(XNAP_XnAP_PDU_t *pdu, uint8_t **buffer, uint32_t *len)
 
   // Can remove later
   xer_fprint(stdout, &asn_DEF_XNAP_XnAP_PDU, (void *)pdu);
-  
 
   encoded = aper_encode_to_new_buffer(&asn_DEF_XNAP_XnAP_PDU, 0, pdu, (void **)buffer);
 

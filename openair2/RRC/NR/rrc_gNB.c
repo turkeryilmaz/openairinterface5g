@@ -1924,23 +1924,25 @@ static void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *req, sctp_assoc_t ass
   */
 }
 
-void rrc_gNB_process_xn_setup_request(int mod_id, xnap_setup_req_t *m) {
+void rrc_gNB_process_xn_setup_request(int mod_id, xnap_setup_req_t *m)
+{
   if (RC.nrrrc[mod_id]->num_nr_neigh_cells > MAX_NUM_NR_NEIGH_CELLs) {
     LOG_E(NR_RRC, "Error: number of neighbouring cells is exceeded \n");
     return;
   }
-  
+
   RC.nrrrc[mod_id]->num_nr_neigh_cells++;
-  RC.nrrrc[mod_id]->nr_neigh_cells_id[RC.nrrrc[mod_id]->num_nr_neigh_cells-1]= m->Nid_cell;
+  RC.nrrrc[mod_id]->nr_neigh_cells_id[RC.nrrrc[mod_id]->num_nr_neigh_cells - 1] = m->Nid_cell;
 }
 
-void rrc_gNB_process_xn_setup_response(int mod_id, xnap_setup_resp_t *m) {
+void rrc_gNB_process_xn_setup_response(int mod_id, xnap_setup_resp_t *m)
+{
   if (RC.nrrrc[mod_id]->num_nr_neigh_cells > MAX_NUM_NR_NEIGH_CELLs) {
     LOG_E(RRC, "Error: number of neighbouring cells is exceeded \n");
     return;
   }
   RC.nrrrc[mod_id]->num_nr_neigh_cells++;
-  RC.nrrrc[mod_id]->nr_neigh_cells_id[RC.nrrrc[mod_id]->num_nr_neigh_cells-1] = m->Nid_cell;
+  RC.nrrrc[mod_id]->nr_neigh_cells_id[RC.nrrrc[mod_id]->num_nr_neigh_cells - 1] = m->Nid_cell;
 }
 
 void rrc_gNB_process_initial_ul_rrc_message(const f1ap_initial_ul_rrc_message_t *ul_rrc)

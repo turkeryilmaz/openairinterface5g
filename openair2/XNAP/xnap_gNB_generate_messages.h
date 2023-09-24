@@ -31,8 +31,7 @@
 #include "xnap_gNB_defs.h"
 #include "xnap_common.h"
 
-int xnap_gNB_generate_xn_setup_request(xnap_gNB_instance_t *instance_p,
-				       xnap_gNB_data_t *xnap_gNB_data_p);
+int xnap_gNB_generate_xn_setup_request(xnap_gNB_instance_t *instance_p, xnap_gNB_data_t *xnap_gNB_data_p);
 
 int xnap_gNB_generate_xn_setup_response(xnap_gNB_instance_t *instance_p, xnap_gNB_data_t *xnap_gNB_data_p);
 
@@ -42,8 +41,6 @@ int xnap_gNB_generate_xn_setup_failure(instance_t instance,
                                        long cause_value,
                                        long time_to_wait);
 
-int xnap_gNB_set_cause (XNAP_Cause_t * cause_p,
-                        XNAP_Cause_PR cause_type,
-                        long cause_value);
+int xnap_gNB_set_cause(XNAP_Cause_t *cause_p, XNAP_Cause_PR cause_type, long cause_value);
 
 #endif /*  XNAP_GNB_GENERATE_MESSAGES_H_ */

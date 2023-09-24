@@ -32,7 +32,10 @@
 
 void xnap_handle_xn_setup_message(xnap_gNB_instance_t *instance_p, xnap_gNB_data_t *gNB_desc_p, int sctp_shutdown);
 
-int xnap_gNB_handle_message(instance_t instance, uint32_t assoc_id, int32_t stream,
-                            const uint8_t * const data, const uint32_t data_length);
+int xnap_gNB_handle_message(instance_t instance,
+                            uint32_t assoc_id,
+                            int32_t stream,
+                            const uint8_t *const data,
+                            const uint32_t data_length);
 
 #endif /* XNAP_GNB_HANDLERS_H_ */

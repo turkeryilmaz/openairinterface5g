@@ -35,30 +35,25 @@
 #include "XNAP_asn_constant.h"
 
 #ifndef XNAP_PORT
-# define XNAP_PORT 38423
+#define XNAP_PORT 38423
 #endif
 
 extern int asn1_xer_print;
 
-#define XNAP_FIND_PROTOCOLIE_BY_ID(IE_TYPE, ie, container, IE_ID, mandatory) \
-  do {\
-    IE_TYPE **ptr; \
-    ie = NULL; \
-    for (ptr = container->protocolIEs.list.array; \
-         ptr < &container->protocolIEs.list.array[container->protocolIEs.list.count]; \
-         ptr++) { \
-      if((*ptr)->id == IE_ID) { \
-        ie = *ptr; \
-        break; \
-      } \
-    } \
-    if (mandatory) DevAssert(ie != NULL); \
-  } while(0)
+#define XNAP_FIND_PROTOCOLIE_BY_ID(IE_TYPE, ie, container, IE_ID, mandatory)                                                   \
+  do {                                                                                                                         \
+    IE_TYPE **ptr;                                                                                                             \
+    ie = NULL;                                                                                                                 \
+    for (ptr = container->protocolIEs.list.array; ptr < &container->protocolIEs.list.array[container->protocolIEs.list.count]; \
+         ptr++) {                                                                                                              \
+      if ((*ptr)->id == IE_ID) {                                                                                               \
+        ie = *ptr;                                                                                                             \
+        break;                                                                                                                 \
+      }                                                                                                                        \
+    }                                                                                                                          \
+    if (mandatory)                                                                                                             \
+      DevAssert(ie != NULL);                                                                                                   \
+  } while (0)
 
-typedef int (*xnap_message_decoded_callback)(
-  instance_t instance,
-  uint32_t assocId,
-  uint32_t stream,
-  XNAP_XnAP_PDU_t *pdu);
+typedef int (*xnap_message_decoded_callback)(instance_t instance, uint32_t assocId, uint32_t stream, XNAP_XnAP_PDU_t *pdu);
 #endif /* XNAP_COMMON_H_ */
-
