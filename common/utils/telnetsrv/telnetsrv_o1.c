@@ -319,6 +319,8 @@ static int set_bwconfig(char *buf, int debug, telnet_printfunc_t prnt)
     ERROR_MSG_RET("unhandled option %s\n", buf);
   }
 
+  rrc->carrier.mib = get_new_MIB_NR(rrc->carrier.servingcellconfigcommon);
+  nr_mac_config_mib(RC.nrmac[rrc->module_id], rrc->carrier.mib);
 
   // due to outrightly CRAZY memory handling in get_SIB1_NR(), we need to set
   // some structures to zero to prevent that we shoot ourselves into the foot
