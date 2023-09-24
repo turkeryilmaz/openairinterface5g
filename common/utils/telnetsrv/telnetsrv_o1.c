@@ -319,6 +319,9 @@ static int set_bwconfig(char *buf, int debug, telnet_printfunc_t prnt)
     ERROR_MSG_RET("unhandled option %s\n", buf);
   }
 
+  free(RC.nrmac[0]->sched_ctrlCommon);
+  RC.nrmac[0]->sched_ctrlCommon = NULL;
+
   rrc->carrier.mib = get_new_MIB_NR(rrc->carrier.servingcellconfigcommon);
   nr_mac_config_mib(RC.nrmac[rrc->module_id], rrc->carrier.mib);
 
