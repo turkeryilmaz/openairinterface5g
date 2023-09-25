@@ -227,6 +227,15 @@ mac_rrc_data_req(
 
   if( (Srb_id & RAB_OFFSET ) == CCCH) {
     struct rrc_eNB_ue_context_s *ue_context_p = rrc_eNB_get_ue_context(RC.rrc[Mod_idP],rnti);
+    if(ue_context_p == NULL){
+      /* Check reestablishment context */
+      for (int i = 0; i < MAX_MOBILES_PER_ENB; i++) {
+        if (reestablish_rnti_map[i][0] == rnti) {
+          ue_context_p = rrc_eNB_get_ue_context(RC.rrc[Mod_idP], reestablish_rnti_map[i][1]);
+          break;
+        }
+      }
+    }
 
     if (ue_context_p == NULL) return(0);
 
