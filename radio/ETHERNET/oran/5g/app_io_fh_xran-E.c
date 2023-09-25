@@ -1988,6 +1988,7 @@ app_io_xran_fh_config_init(UsecaseConfig* p_use_cfg,  RuntimeConfig* p_o_xu_cfg,
     p_xran_fh_cfg->nDLRBs = app_xran_get_num_rbs(p_o_xu_cfg->xranTech, p_o_xu_cfg->mu_number, p_o_xu_cfg->nDLBandwidth, p_o_xu_cfg->nDLAbsFrePointA);
     p_xran_fh_cfg->nULRBs = app_xran_get_num_rbs(p_o_xu_cfg->xranTech, p_o_xu_cfg->mu_number, p_o_xu_cfg->nULBandwidth, p_o_xu_cfg->nULAbsFrePointA);
 
+    printf("FH init: nDLRBs %d, nULRBs %d\n", p_xran_fh_cfg->nDLRBs, p_xran_fh_cfg->nULRBs);
     if(p_o_xu_cfg->DynamicSectionEna == 0){
         pRbMap = p_o_xu_cfg->p_PrbMapDl;
 
@@ -2092,7 +2093,12 @@ app_io_xran_fh_config_init(UsecaseConfig* p_use_cfg,  RuntimeConfig* p_o_xu_cfg,
         p_o_xu_cfg->prachiqWidth = 16;
     p_xran_fh_cfg->ru_conf.iqWidth_PRACH            = p_o_xu_cfg->prachiqWidth;
         
-
+    printf("CompHdrType %s. iqWidth %d, compMeth %s, compMeth_PRACH %s, iqWidth_PRACH %d\n",
+	   p_xran_fh_cfg->ru_conf.xranCompHdrType==1?"Static":"Dynamic", 
+	   p_xran_fh_cfg->ru_conf.iqWidth,
+           p_xran_fh_cfg->ru_conf.compMeth==XRAN_COMPMETHOD_NONE?"NONE":"BFP",
+	   p_xran_fh_cfg->ru_conf.compMeth_PRACH==XRAN_COMPMETHOD_NONE?"PRACH NONE":"PRACH BFP",
+	   p_xran_fh_cfg->ru_conf.iqWidth_PRACH);
     p_xran_fh_cfg->ru_conf.fftSize                  = 0;
     while (p_o_xu_cfg->nULFftSize >>= 1)
         ++p_xran_fh_cfg->ru_conf.fftSize;
