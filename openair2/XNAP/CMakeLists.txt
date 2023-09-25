@@ -1,6 +1,5 @@
 add_subdirectory(MESSAGES)
 add_library(xnap 
-              xnap_common.c 
               xnap_gNB_decoder.c 
               xnap_gNB_encoder.c 
               xnap_gNB_task.c
