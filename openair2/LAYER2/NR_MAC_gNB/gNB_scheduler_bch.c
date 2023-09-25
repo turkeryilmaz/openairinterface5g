@@ -468,7 +468,7 @@ static void nr_fill_nfapi_dl_sib1_pdu(int Mod_idP,
   dci_pdu->AggregationLevel = gNB_mac->sched_ctrlCommon->aggregation_level;
   dci_pdu->CceIndex = gNB_mac->sched_ctrlCommon->cce_index;
   dci_pdu->beta_PDCCH_1_0 = 0;
-  dci_pdu->powerControlOffsetSS = 1;
+  dci_pdu->powerControlOffsetSS = 0;
 
   /* DCI payload */
   dci_pdu_rel15_t dci_payload;

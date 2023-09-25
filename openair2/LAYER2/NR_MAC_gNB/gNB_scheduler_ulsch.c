@@ -2237,6 +2237,7 @@ void nr_schedule_ulsch(module_id_t module_id, frame_t frame, sub_frame_t slot, n
     const NR_DMRS_UplinkConfig_t *NR_DMRS_UplinkConfig = get_DMRS_UplinkConfig(current_BWP->pusch_Config, &sched_pusch->tda_info);
     if (pusch_pdu->transform_precoding) { // transform precoding disabled
       long *scramblingid=NULL;
+      pusch_pdu->pusch_identity = *scc->physCellId;
       if (NR_DMRS_UplinkConfig && pusch_pdu->scid == 0)
         scramblingid = NR_DMRS_UplinkConfig->transformPrecodingDisabled->scramblingID0;
       else if (NR_DMRS_UplinkConfig)
@@ -2368,7 +2369,7 @@ void nr_schedule_ulsch(module_id_t module_id, frame_t frame, sub_frame_t slot, n
     dci_pdu->AggregationLevel = sched_ctrl->aggregation_level;
     dci_pdu->CceIndex = sched_ctrl->cce_index;
     dci_pdu->beta_PDCCH_1_0 = 0;
-    dci_pdu->powerControlOffsetSS = 1;
+    dci_pdu->powerControlOffsetSS = 0;
 
     dci_pdu_rel15_t uldci_payload;
     memset(&uldci_payload, 0, sizeof(uldci_payload));

@@ -820,7 +820,7 @@ static void nr_generate_Msg3_retransmission(module_id_t module_idP,
     dci_pdu->AggregationLevel = aggregation_level;
     dci_pdu->CceIndex = CCEIndex;
     dci_pdu->beta_PDCCH_1_0 = 0;
-    dci_pdu->powerControlOffsetSS = 1;
+    dci_pdu->powerControlOffsetSS = 0;
 
     dci_pdu_rel15_t uldci_payload;
     memset(&uldci_payload, 0, sizeof(uldci_payload));
@@ -1327,7 +1327,7 @@ static void nr_generate_Msg2(module_id_t module_idP,
     dci_pdu->AggregationLevel = aggregation_level;
     dci_pdu->CceIndex = CCEIndex;
     dci_pdu->beta_PDCCH_1_0 = 0;
-    dci_pdu->powerControlOffsetSS = 1;
+    dci_pdu->powerControlOffsetSS = 0;
 
     dci_pdu_rel15_t dci_payload;
     dci_payload.frequency_domain_assignment.val = PRBalloc_to_locationandbandwidth0(pdsch_pdu_rel15->rbSize,
@@ -1543,7 +1543,7 @@ static void prepare_dl_pdus(gNB_MAC_INST *nr_mac,
   dci_pdu->AggregationLevel = aggregation_level;
   dci_pdu->CceIndex = CCEIndex;
   dci_pdu->beta_PDCCH_1_0 = 0;
-  dci_pdu->powerControlOffsetSS = 1;
+  dci_pdu->powerControlOffsetSS = 0;
 
   dci_pdu_rel15_t dci_payload;
   dci_payload.frequency_domain_assignment.val = PRBalloc_to_locationandbandwidth0(pdsch_pdu_rel15->rbSize,

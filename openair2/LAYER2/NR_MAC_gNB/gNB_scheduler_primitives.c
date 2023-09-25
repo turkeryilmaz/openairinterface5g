@@ -2644,7 +2644,7 @@ void nr_csirs_scheduling(int Mod_idP, frame_t frame, sub_frame_t slot, int n_slo
           if (nzpcsi->powerControlOffsetSS)
             csirs_pdu_rel15->power_control_offset_ss = *nzpcsi->powerControlOffsetSS;
           else
-            csirs_pdu_rel15->power_control_offset_ss = 1; // 0 dB
+            csirs_pdu_rel15->power_control_offset_ss = 0; // -3 dB
           switch(resourceMapping.frequencyDomainAllocation.present){
             case NR_CSI_RS_ResourceMapping__frequencyDomainAllocation_PR_row1:
               csirs_pdu_rel15->row = 1;

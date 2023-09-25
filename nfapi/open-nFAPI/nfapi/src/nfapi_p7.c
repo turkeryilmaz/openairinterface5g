@@ -328,8 +328,8 @@ static uint8_t pack_dl_tti_pdsch_pdu_rel15_value(void *tlv, uint8_t **ppWritePac
   }
   // TODO Add TX power info
   // Hardcoded values that represent 0db
-  if (!(push8(8, ppWritePackedMsg, end) && // powerControlOffset
-        push8(1, ppWritePackedMsg, end))) { // powerControlOffsetSS
+  if (!(push8(0, ppWritePackedMsg, end) && // powerControlOffset
+        push8(0, ppWritePackedMsg, end))) { // powerControlOffsetSS
     return 0;
   }
   // TODO Add CBG Fields
