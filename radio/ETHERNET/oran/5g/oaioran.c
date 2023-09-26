@@ -33,7 +33,7 @@
 #include "xran_common.h"
 #include "common/utils/threadPool/thread-pool.h"
 #include "oaioran.h"
-
+#include <rte_ethdev.h>
 
 #define USE_POLLING 1
 // Declare variable useful for the send buffer function
@@ -55,7 +55,6 @@ volatile uint32_t rx_cb_slot = 0;
 #define GetFrameNum(tti,SFNatSecStart,numSubFramePerSystemFrame, numSlotPerSubFrame)  ((((uint32_t)tti / ((uint32_t)numSubFramePerSystemFrame * (uint32_t)numSlotPerSubFrame)) + SFNatSecStart) & 0x3FF)
 #define GetSlotNum(tti, numSlotPerSfn) ((uint32_t)tti % ((uint32_t)numSlotPerSfn))
 
-//#define ORAN_BRONZE 1
 #ifdef ORAN_BRONZE
 extern struct xran_fh_config  xranConf;
 extern void * xranHandle;
@@ -172,38 +171,37 @@ int read_prach_data(ru_info_t *ru, int frame, int slot)
         struct xran_device_ctx *xran_ctx = xran_dev_get_ctx();
 	struct xran_prach_cp_config *pPrachCPConfig = &(xran_ctx->PrachCPConfig);
         struct xran_ru_config *ru_conf=&(xran_ctx->fh_cfg.ru_conf);
+
 	/* If it is PRACH slot, copy prach IQ from XRAN PRACH buffer to OAI PRACH buffer */
 	if(is_prach_slot) {
 	  for(sym_idx = 0; sym_idx < pPrachCPConfig->numSymbol; sym_idx++) {
 		for (int aa=0;aa<ru->nb_rx;aa++) {
-/*	  	  mb = (struct rte_mbuf *) xran_ctx->sFHPrachRxBbuIoBufCtrl[tti % XRAN_N_FE_BUF_LEN][0][aa].sBufferList.pBuffers[sym_idx].pCtrl;
-		  if(mb) { */
-			uint16_t *dst, *src;
+			int16_t *dst, *src;
 			int idx = 0;
-			  dst = (uint16_t * )((uint8_t *)ru->prach_buf[aa]);// + (sym_idx*576));
-			  src = (uint16_t *) ((uint8_t *) xran_ctx->sFHPrachRxBbuIoBufCtrl[tti % XRAN_N_FE_BUF_LEN][0][aa].sBufferList.pBuffers[sym_idx].pData);
+			  dst = (int16_t *)((uint8_t *)ru->prach_buf[aa]);// + (sym_idx*576));
+			  src = (int16_t *)((uint8_t *) xran_ctx->sFHPrachRxBbuIoBufCtrlDecomp[tti % XRAN_N_FE_BUF_LEN][0][aa].sBufferList.pBuffers[sym_idx].pData);
 
 			/* convert Network order to host order */
-			  if (ru_conf->compMeth == XRAN_COMPMETHOD_NONE) {
+			  if (ru_conf->compMeth_PRACH == XRAN_COMPMETHOD_NONE) {
 			     if (sym_idx==0) {
 			        for (idx = 0; idx < 576/2; idx++)
 			        {
-			    	   ((int16_t*)dst)[idx] = ((int16_t)ntohs(src[idx]))>>2;
+			    	   dst[idx] = ((int16_t)ntohs(src[idx]))>>2;
 			        }
 			     }
 			     else {
 			       for (idx = 0; idx < 576/2; idx++)
 			       {
-			       	   ((int16_t*)dst)[idx] += ((int16_t)ntohs(src[idx]))>>2;
+			       	   dst[idx] += ((int16_t)ntohs(src[idx]))>>2;
 			       }
 			     }
-                          } else if (ru_conf->compMeth == XRAN_COMPMETHOD_BLKFLOAT) {
+                          } else if (ru_conf->compMeth_PRACH == XRAN_COMPMETHOD_BLKFLOAT) {
                                  struct xranlib_decompress_request  bfp_decom_req;
                                  struct xranlib_decompress_response bfp_decom_rsp;
 
-		                 int32_t local_dst[12*N_SC_PER_PRB] __attribute__((aligned(64)));	 
+		                 int16_t local_dst[12*2*N_SC_PER_PRB] __attribute__((aligned(64)));	 
 
-                                 int payload_len = (3* ru_conf->iqWidth + 1)*12; // 12 = closest number of PRBs to 139 REs
+                                 int payload_len = (3* ru_conf->iqWidth_PRACH + 1)*12; // 12 = closest number of PRBs to 139 REs
 
                                  memset(&bfp_decom_req, 0, sizeof(struct xranlib_decompress_request));
                                  memset(&bfp_decom_rsp, 0, sizeof(struct xranlib_decompress_response));
@@ -212,27 +210,19 @@ int read_prach_data(ru_info_t *ru, int frame, int slot)
                                  bfp_decom_req.numRBs     = 12;                // closest number of PRBs to 139 REs
                                  bfp_decom_req.len        = payload_len;
                                  bfp_decom_req.compMethod = XRAN_COMPMETHOD_BLKFLOAT;
-                                 bfp_decom_req.iqWidth    = ru_conf->iqWidth;
+                                 bfp_decom_req.iqWidth    = ru_conf->iqWidth_PRACH;
 
                                  bfp_decom_rsp.data_out   = (int16_t*)local_dst;
                                  bfp_decom_rsp.len        = 0;
-
                                  xranlib_decompress_avx512(&bfp_decom_req, &bfp_decom_rsp);
-		                 if (sym_idx == 0) memcpy((void*)dst,(void*)local_dst,576); // 576 is short PRACH 139 -> 144*4
-				 else
-	  			   for (idx = 0; idx < 576/2; idx++)
-                                     ((int16_t*)dst)[idx] += ((int16_t)local_dst[idx]);
-
-
-			  }
-
-/*	          } else {
-			  // TODO: Unlikely this code never gets executed
-			    printf("%s():%d, %d.%d There is no prach ctrl data for symb %d ant %d\n", __func__, __LINE__, frame, slot, sym_idx,aa);
-	          }*/
-		}
-	  }
-        }
+		                 if (sym_idx == 0) //memcpy((void*)dst,(void*)local_dst,576); // 576 is short PRACH 139 -> 144*4
+			         for (idx = 0; idx < (576/2); idx++) dst[idx]=local_dst[idx]>>2;
+			         else
+	  	                 for (idx = 0; idx < (576/2); idx++) dst[idx]+=(local_dst[idx]>>2);
+			  } // COMPMETHOD_BLKFLOAT
+		} //aa
+	  }// symb_indx
+        } // is_prach_slot
 	return(0);
 }
 
@@ -404,7 +394,7 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot){
 		       memcpy((void*)dst2,(void*)local_dst,neg_len*4);
 		       memcpy((void*)dst1,(void*)&local_dst[neg_len],pos_len*4);
 		       outcnt++;
-		       if (0/*outcnt==1000*/) {
+		       if (0 /*outcnt==1000*/) {
 			 LOG_I(NR_PHY,"bfp_decom_rsp.len %d, payload_len %d\n",bfp_decom_rsp.len,payload_len);
 		         for (int prb=0;prb<p_prbMapElm->nRBSize;prb++){
                            LOG_I(NR_PHY,"PRB%d exponent %u\n",prb,((uint8_t*)src)[25*prb]);    
@@ -435,7 +425,7 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot){
 #endif
 	{
             for (int o_xu_id = 0; o_xu_id <  1 /*p_usecaseConfiguration->oXuNum*/;  o_xu_id++) {
-                LOG_I(PHY,"[%s%d][rx %7ld pps %7ld kbps %7ld][tx %7ld pps %7ld kbps %7ld][Total Msgs_Rcvd %ld]\n",
+                LOG_I(NR_PHY,"[%s%d][rx %7ld pps %7ld kbps %7ld][tx %7ld pps %7ld kbps %7ld][Total Msgs_Rcvd %ld]\n",
                     "o-du ",
                     o_xu_id,
                     x_counters[o_xu_id].rx_counter,
@@ -446,7 +436,7 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot){
                     x_counters[o_xu_id].tx_bytes_per_sec*8/1000L,
                     x_counters[o_xu_id].Total_msgs_rcvd);
 		for (int rxant=0;rxant<xran_max_antenna_nr && rxant<ru->nb_rx;rxant++)
-		   LOG_I(PHY,"[%s%d][pusch%d %7ld prach%d %7ld]\n","o_du",o_xu_id,rxant,x_counters[o_xu_id].rx_pusch_packets[rxant],rxant,x_counters[o_xu_id].rx_prach_packets[rxant]);
+		   LOG_I(NR_PHY,"[%s%d][pusch%d %7ld prach%d %7ld]\n","o_du",o_xu_id,rxant,x_counters[o_xu_id].rx_pusch_packets[rxant],rxant,x_counters[o_xu_id].rx_prach_packets[rxant]);
                 if (x_counters[o_xu_id].rx_counter > old_rx_counter[o_xu_id])
                     old_rx_counter[o_xu_id] = x_counters[o_xu_id].rx_counter;
                 if (x_counters[o_xu_id].tx_counter > old_tx_counter[o_xu_id])
