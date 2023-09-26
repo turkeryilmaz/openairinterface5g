@@ -65,7 +65,8 @@ extern pthread_mutex_t sys_confirm_done_mutex;
 extern int sys_confirm_done;
 extern RAN_CONTEXT_t RC;
 extern uint32_t from_earfcn(int eutra_bandP, uint32_t dl_earfcn);
-extern pthread_mutex_t lock_rrc_ttcn;
+extern pthread_mutex_t lock_cell_si_config;
+extern pthread_mutex_t cond_cell_si_config;
 
 #ifndef NR_RRC_VERSION
 extern pthread_cond_t cell_config_done_cond;
@@ -93,10 +94,23 @@ int proxy_send_port = 7776;
 int proxy_recv_port = 7770;
 bool reqCnfFlag_g = false;
 
-static int cell_active_update_prohibition = 0;
-// This is counting per cell, if 3 cells count can be in fact done 3 times
-#define CELL_ACTIVE_UPDATE_PROHIBITION_COUNT 0
-
+/*
+ * Function : wait_cell_si_config
+ * Description: Waiting for SI cond_cell_si_config signal
+ * from rrc_eNB,  which indicate the cell system information
+ * configuration complete. After receiving the signal the SS
+ * ready to perform the next SystemRequest_Type_Cell request.
+ */
+static void wait_cell_si_config(int cell_index)
+{
+  LOG_D(ENB_SS_SYS_TASK, "Waiting the SI configuration complete for cell: %d\n", cell_index);
+  pthread_mutex_lock(&lock_cell_si_config);
+  while (RC.ss.CC_update_flag[cell_index] == 1)
+  {
+    pthread_cond_wait(&cond_cell_si_config, &lock_cell_si_config);
+  }
+  pthread_mutex_unlock(&lock_cell_si_config);
+}
 
 void sys_handle_pdcch_order(struct RA_PDCCH_Order_Type *pdcchOrder);
 
@@ -512,13 +526,6 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
           }
           RRC_CONFIGURATION_REQ(msg_p).schedulingInfo_count[cell_index] = count;
           RRC_CONFIGURATION_REQ(msg_p).num_plmn[cell_index] = SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.d;
-          if (RRC_CONFIGURATION_REQ(msg_p).systemInfoValueTag[cell_index] != SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.systemInfoValueTag){
-            RC.ss.CC_update_flag[cell_index] = 1;
-            RC.ss.rrc_sysinfo_value_tag_transition = true;
-            LOG_I (ENB_SS_SYS_TASK,"SystemInfo value tag has been updated old value: %d, new value: %d\n",
-            RRC_CONFIGURATION_REQ(msg_p).systemInfoValueTag[cell_index],
-            SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.systemInfoValueTag);
-          } 
           RRC_CONFIGURATION_REQ(msg_p).systemInfoValueTag[cell_index] = SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.systemInfoValueTag;
 
           RRC_CONFIGURATION_REQ(msg_p).num_plmn[cell_index] = SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.d;
@@ -837,10 +844,6 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
     LOG_A(ENB_SS_SYS_TASK, "Sending Cell configuration to RRC from SYSTEM_CTRL_REQ \n");
     itti_send_msg_to_task(TASK_RRC_ENB, ENB_MODULE_ID_TO_INSTANCE(enb_id), msg_p);
 
-    if (RC.ss.CC_update_flag[cell_index] == 1){
-      pthread_mutex_lock(&lock_rrc_ttcn);
-      //RC.ss.CC_update_flag[cell_index] = 0;
-    }
     /* Active Config for ULGrant Params */
     bool destTaskMAC = false;
     for (int enb_id = 0; enb_id < RC.nb_inst; enb_id++)
@@ -1056,8 +1059,6 @@ int sys_handle_cell_config_req(struct SYSTEM_CTRL_REQ *req)
   assert(req);
   struct CellConfigRequest_Type *Cell=&(req->Request.v.Cell);
   assert(Cell);
-  struct CellConfigInfo_Type *AddOrReconfigure = &(Cell->v.AddOrReconfigure);
-  assert(AddOrReconfigure);
 
   switch (Cell->d)
   {
@@ -1076,11 +1077,7 @@ int sys_handle_cell_config_req(struct SYSTEM_CTRL_REQ *req)
     {
        //The flag is used to initilize the cell in the RRC layer during init_SI funciton
         RC.ss.CC_conf_flag[cell_index] = 1;
-        
-        if (AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIB1.v.message.v.c1.v.systemInformationBlockType1.systemInfoValueTag == 0){
-          RC.ss.CC_update_flag[cell_index] = 1;
-          LOG_I (ENB_SS_SYS_TASK,"SYS task requests to update RRC configuration current cell:%d\n",cell_index);
-        } 
+        RC.ss.CC_update_flag[cell_index] = 1;
         returnState = SS_STATE_CELL_CONFIGURED;
       //Increment nb_cc only from 2nd cell as the initilization is done for 1 CC
       if (cell_index)
@@ -1100,19 +1097,13 @@ int sys_handle_cell_config_req(struct SYSTEM_CTRL_REQ *req)
     }
     else
     {
+      RC.ss.CC_update_flag[cell_index] = 1;
       LOG_I (ENB_SS_SYS_TASK,"[SYS] CC-MGMT configured RC.nb_CC %d current updated CC_index %d RC.nb_mac_CC %d\n",
                 RC.nb_CC[0],cell_index,*RC.nb_mac_CC);
-      if (RC.ss.rrc_sysinfo_value_tag_transition == false){
-        RC.ss.CC_update_flag[cell_index] = 1;
-      } else{
-        LOG_D (ENB_SS_SYS_TASK,"[SYS] CC-MGMT Updating SI processing... , count: %d\n", cell_active_update_prohibition);
-        if (cell_active_update_prohibition >= CELL_ACTIVE_UPDATE_PROHIBITION_COUNT) {
-          RC.ss.rrc_sysinfo_value_tag_transition = false;
-          cell_active_update_prohibition = 0;
-        } else{
-          cell_active_update_prohibition ++;
-        }
-      }
+    }
+    if (status)
+    {
+      wait_cell_si_config(cell_index);
     }
     break;
   case CellConfigRequest_Type_Release: /**TODO: NOT IMPLEMNTED */
