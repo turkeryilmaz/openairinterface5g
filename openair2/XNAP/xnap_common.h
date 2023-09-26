@@ -2,9 +2,9 @@
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.
  * The OpenAirInterface Software Alliance licenses this file to You under
- * the OAI Public License, Version 1.1  (the "License"); you may not use this file
- * except in compliance with the License.
- * You may obtain a copy of the License at
+ * the OAI Public License, Version 1.1  (the "License"); you may not use this
+ *file except in compliance with the License. You may obtain a copy of the
+ *License at
  *
  *      http://www.openairinterface.org/?page_id=698
  *
@@ -20,19 +20,19 @@
 
 #ifndef XNAP_COMMON_H_
 #define XNAP_COMMON_H_
-#include "common/openairinterface5g_limits.h"
-#include "oai_asn1.h"
-#include "XNAP_ProtocolIE-Field.h"
 #include "XNAP_InitiatingMessage.h"
+#include "XNAP_ProtocolExtensionContainer.h"
+#include "XNAP_ProtocolExtensionField.h"
+#include "XNAP_ProtocolIE-ContainerPair.h"
+#include "XNAP_ProtocolIE-Field.h"
+#include "XNAP_ProtocolIE-FieldPair.h"
 #include "XNAP_SuccessfulOutcome.h"
 #include "XNAP_UnsuccessfulOutcome.h"
 #include "XNAP_XnAP-PDU.h"
-#include "intertask_interface.h"
-#include "XNAP_ProtocolIE-FieldPair.h"
-#include "XNAP_ProtocolIE-ContainerPair.h"
-#include "XNAP_ProtocolExtensionField.h"
-#include "XNAP_ProtocolExtensionContainer.h"
 #include "XNAP_asn_constant.h"
+#include "common/openairinterface5g_limits.h"
+#include "intertask_interface.h"
+#include "oai_asn1.h"
 
 #ifndef XNAP_PORT
 #define XNAP_PORT 38423
