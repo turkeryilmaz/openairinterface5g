@@ -44,6 +44,7 @@
 #include "common/utils/nr/nr_common.h"
 #include <syscall.h>
 #include <openair2/UTIL/OPT/opt.h>
+#include "common/utils/LATSEQ/latseq.h"
 
 //#define DEBUG_DLSCH_CODING
 //#define DEBUG_DLSCH_FREE 1
@@ -329,11 +330,13 @@ int nr_dlsch_encoding(PHY_VARS_gNB *gNB,
                 max_bytes);
     memcpy(harq->b, a, (A / 8) + 3); // using 3 bytes to mimic the case of 24 bit crc
   }
+  LATSEQ_P("D phy.crc--phy.cbseg", "len%u::fm%u.sl%u.rnti%u", 1, frame, slot, rel15->rnti);
 
   impp.BG = rel15->maintenance_parms_v3.ldpcBaseGraph;
 
   start_meas(dlsch_segmentation_stats);
   impp.Kb = nr_segmentation(harq->b, harq->c, harq->B, &impp.n_segments, &impp.K, impp.Zc, &impp.F, impp.BG);
+  LATSEQ_P("D phy.cbseg--phy.ldcp", "len%u::fm%u.sl%u.nbseg%u.nbbitscb%u.rnti%u", 1, frame, slot, impp.n_segments, impp.K, rel15->rnti);
   stop_meas(dlsch_segmentation_stats);
 
   if (impp.n_segments>MAX_NUM_NR_DLSCH_SEGMENTS_PER_LAYER*rel15->nrOfLayers) {

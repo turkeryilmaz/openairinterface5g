@@ -31,6 +31,7 @@
 #include "nr_pdcp_sdu.h"
 
 #include "LOG/log.h"
+#include "common/utils/LATSEQ/latseq.h"
 
 static void nr_pdcp_entity_recv_pdu(nr_pdcp_entity_t *entity,
                                     char *_buffer, int size)
@@ -246,6 +247,7 @@ static int nr_pdcp_entity_process_sdu(nr_pdcp_entity_t *entity,
     entity->security_mode_completed = true;
   }
 
+  LATSEQ_P("D pdcp.hdr--pdcp.enqueue", "len%u::SPbuf%u.sn%u.Pbuf%u", header_size+size+integrity_size, buffer, sn, buf);
   entity->tx_next++;
 
   entity->stats.txpdu_pkts++;

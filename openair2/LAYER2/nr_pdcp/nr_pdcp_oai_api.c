@@ -31,6 +31,7 @@
 #include "NR_CellGroupConfig.h"
 #include "openair2/RRC/NR/nr_rrc_proto.h"
 #include <stdint.h>
+#include "common/utils/LATSEQ/latseq.h"
 
 /* from OAI */
 #include "oai_asn1.h"
@@ -697,6 +698,7 @@ static void deliver_pdu_drb_gnb(void *deliver_pdu_data, ue_id_t ue_id, int rb_id
     mem_block_t *memblock = get_free_mem_block(size, __FUNCTION__);
     memcpy(memblock->data, buf, size);
     LOG_D(PDCP, "%s(): (drb %d) calling rlc_data_req size %d\n", __func__, rb_id, size);
+    LATSEQ_P("D pdcp.enqueue--rlc.buf", "len%u::Pbuf%u.PRbuf%u.ueid%u", size, buf, memblock->data, ue_id);
     enqueue_rlc_data_req(&ctxt, 0, MBMS_FLAG_NO, rb_id, sdu_id, 0, size, memblock);
   }
 }
