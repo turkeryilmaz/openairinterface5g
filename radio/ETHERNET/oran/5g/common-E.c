@@ -631,7 +631,7 @@ void sys_save_buf_to_file_txt(char *filename, char *bufname, unsigned char *pBuf
                     /*      I data => Ramp data, from 1 to 792.
                             Q data => Contains time information of the current symbol:
                             Bits [15:14] = Antenna-ID
-                            Bits [13:12] = “00”
+                            Bits [13:12] = ï¿½00ï¿½
                             Bits [11:8]  = Subframe-ID
                             Bits [7:4]   = Slot-ID
                             Bits [3:0]   = Symbol-ID */

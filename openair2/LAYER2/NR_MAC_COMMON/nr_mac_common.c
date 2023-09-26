@@ -4338,7 +4338,13 @@ void get_type0_PDCCH_CSS_config_parameters(NR_Type0_PDCCH_CSS_config_t *type0_PD
     big_o = table_38213_13_12_c1[index_4lsb];
     type0_PDCCH_CSS_config->number_of_search_space_per_slot = table_38213_13_11_c2[index_4lsb];
     big_m = table_38213_13_12_c3[index_4lsb];
-
+    uint32_t temp = (uint32_t)(big_o*(1<<scs_pdcch)) + (uint32_t)(type0_PDCCH_CSS_config->ssb_index*big_m);
+    type0_PDCCH_CSS_config->n_c = temp / num_slot_per_frame;
+    if((temp/num_slot_per_frame) & 0x1){
+      type0_PDCCH_CSS_config->sfn_c = SFN_C_MOD_2_EQ_1;
+    }else{
+      type0_PDCCH_CSS_config->sfn_c = SFN_C_MOD_2_EQ_0;
+    }
     if((index_4lsb == 1 || index_4lsb == 3 || index_4lsb == 5 || index_4lsb == 10) && (type0_PDCCH_CSS_config->ssb_index&1)){
       type0_PDCCH_CSS_config->first_symbol_index = 7;
     }else if((index_4lsb == 6 || index_4lsb == 7 || index_4lsb == 8 || index_4lsb == 11) && (type0_PDCCH_CSS_config->ssb_index&1)){

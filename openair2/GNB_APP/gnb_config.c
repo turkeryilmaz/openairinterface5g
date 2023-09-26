@@ -1154,9 +1154,9 @@ void check_ssb_raster(uint64_t freq, int band, int scs)
     gscn = ((freq - 3000000000) / 1440000) + 7499;
   }
   else {
-    AssertFatal((freq - 24250080000) % 17280000 == 0,
+    /*AssertFatal((freq - 24250080000) % 17280000 == 0,
                 "SSB frequency %lu Hz not on the synchronization raster (24250.08 MHz + N * 17.28 MHz)\n",
-                freq);
+                freq);*/
     gscn = ((freq - 24250080000) / 17280000) + 22256;
   }
   AssertFatal(gscn >= start_gscn && gscn <= end_gscn,

@@ -60,7 +60,7 @@ static void schedule_ssb(frame_t frame,
                          uint16_t offset_pointa,
                          uint32_t payload)
 {
-  uint8_t beam_index = 0;
+  uint8_t beam_index = 1;
   nfapi_nr_dl_tti_request_pdu_t  *dl_config_pdu = &dl_req->dl_tti_pdu_list[dl_req->nPDUs];
   memset((void *) dl_config_pdu, 0,sizeof(nfapi_nr_dl_tti_request_pdu_t));
   dl_config_pdu->PDUType      = NFAPI_NR_DL_TTI_SSB_PDU_TYPE;

@@ -844,7 +844,7 @@ int xranLibWraper::Init(struct xran_fh_config *pCfg)
             pRbMap->prbMap[0].nStartSymb    = 0;
             pRbMap->prbMap[0].numSymb       = 14;
           }
-                        pRbMap->prbMap[0].nBeamIndex    = 0;
+                        pRbMap->prbMap[0].nBeamIndex    = 1;
                         /* Update according to the target compression in conf.json */
                         pRbMap->prbMap[0].compMethod = m_xranConf.ru_conf.compMeth; /* xran_compression_method */
                         /* Update according to the target compression in conf.json */
@@ -886,7 +886,7 @@ int xranLibWraper::Init(struct xran_fh_config *pCfg)
             pRbMap->prbMap[0].nStartSymb    = 0;
             pRbMap->prbMap[0].numSymb       = 14;
           }
-                        pRbMap->prbMap[0].nBeamIndex    = 0;
+                        pRbMap->prbMap[0].nBeamIndex    = 1;
                         /* xran_compression_method */
                         /* Modify according to the target compression from conf.json */
                         pRbMap->prbMap[0].compMethod = m_xranConf.ru_conf.compMeth;

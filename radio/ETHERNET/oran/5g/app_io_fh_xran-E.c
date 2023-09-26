@@ -908,7 +908,7 @@ app_io_xran_iq_content_init_cp_rb_map(struct xran_prb_map* pRbMap,
     pRbMap->prbMap[0].numSymb = 14;
     pRbMap->prbMap[0].p_sec_desc[sym_id][0]->iq_buffer_offset = 0;
     pRbMap->prbMap[0].p_sec_desc[sym_id][0]->iq_buffer_len    = nRBs *4L;
-    pRbMap->prbMap[0].nBeamIndex = 0;
+    pRbMap->prbMap[0].nBeamIndex = 1;
     pRbMap->prbMap[0].compMethod = XRAN_COMPMETHOD_NONE;
 
     return 0;
@@ -2004,7 +2004,7 @@ app_io_xran_fh_config_init(UsecaseConfig* p_use_cfg,  RuntimeConfig* p_o_xu_cfg,
         pRbMap->prbMap[0].numSymb = 14;
         pRbMap->prbMap[0].nRBStart = 0;
         pRbMap->prbMap[0].nRBSize = p_xran_fh_cfg->nDLRBs;
-        pRbMap->prbMap[0].nBeamIndex = 0;
+        pRbMap->prbMap[0].nBeamIndex = 1;
         pRbMap->prbMap[0].compMethod = p_o_xu_cfg->compression == 0 ? XRAN_COMPMETHOD_NONE : XRAN_COMPMETHOD_BLKFLOAT;
         pRbMap->prbMap[0].iqWidth    = p_o_xu_cfg->compression == 0 ? 16 : p_o_xu_cfg->iqWidth;
 
@@ -2021,7 +2021,7 @@ app_io_xran_fh_config_init(UsecaseConfig* p_use_cfg,  RuntimeConfig* p_o_xu_cfg,
         pRbMap->prbMap[0].numSymb = 14;
         pRbMap->prbMap[0].nRBStart = 0;
         pRbMap->prbMap[0].nRBSize = p_xran_fh_cfg->nULRBs;
-        pRbMap->prbMap[0].nBeamIndex = 0;
+        pRbMap->prbMap[0].nBeamIndex = 1;
         pRbMap->prbMap[0].compMethod = p_o_xu_cfg->compression == 0 ? XRAN_COMPMETHOD_NONE : XRAN_COMPMETHOD_BLKFLOAT;
         pRbMap->prbMap[0].iqWidth    = p_o_xu_cfg->compression == 0 ? 16 : p_o_xu_cfg->iqWidth;
     } else {
