@@ -2191,131 +2191,133 @@ int gNB_app_handle_f1ap_gnb_cu_configuration_update(f1ap_gnb_cu_configuration_up
   return(ret);
 }
 
-int RCconfig_NR_Xn(MessageDef *msg_p, uint32_t i) {
-  int   l=0;
+int RCconfig_NR_Xn(MessageDef *msg_p, uint32_t i)
+{
+  int l = 0;
   char *address = NULL;
-  char *cidr    = NULL;
-  int                    j,k                                                           = 0;
+  char *cidr = NULL;
+  int j, k = 0;
   paramdef_t GNBSParams[] = GNBSPARAMS_DESC;
-  paramdef_t GNBParams[]  = GNBPARAMS_DESC;
-  paramlist_def_t GNBParamList = {GNB_CONFIG_STRING_GNB_LIST,NULL,0};
-  config_get( GNBSParams,sizeof(GNBSParams)/sizeof(paramdef_t),NULL);
-  NR_ServingCellConfigCommon_t *scc = calloc(1,sizeof(NR_ServingCellConfigCommon_t));
-  uint64_t ssb_bitmap=0xff;
-  memset((void*)scc,0,sizeof(NR_ServingCellConfigCommon_t));
+  paramdef_t GNBParams[] = GNBPARAMS_DESC;
+  paramlist_def_t GNBParamList = {GNB_CONFIG_STRING_GNB_LIST, NULL, 0};
+  config_get(GNBSParams, sizeof(GNBSParams) / sizeof(paramdef_t), NULL);
+  NR_ServingCellConfigCommon_t *scc = calloc(1, sizeof(NR_ServingCellConfigCommon_t));
+  uint64_t ssb_bitmap = 0xff;
+  memset((void *)scc, 0, sizeof(NR_ServingCellConfigCommon_t));
   prepare_scc(scc);
   paramdef_t SCCsParams[] = SCCPARAMS_DESC(scc);
   paramlist_def_t SCCsParamList = {GNB_CONFIG_STRING_SERVINGCELLCONFIGCOMMON, NULL, 0};
 
   AssertFatal(i < GNBSParams[GNB_ACTIVE_GNBS_IDX].numelt,
               "Failed to parse config file %s, %uth attribute %s \n",
-              RC.config_file_name, i, GNB_CONFIG_STRING_ACTIVE_GNBS);
+              RC.config_file_name,
+              i,
+              GNB_CONFIG_STRING_ACTIVE_GNBS);
 
   if (GNBSParams[GNB_ACTIVE_GNBS_IDX].numelt > 0) {
     // Output a list of all gNBs.
-    config_getlist( &GNBParamList,GNBParams,sizeof(GNBParams)/sizeof(paramdef_t),NULL);
-    AssertFatal(GNBParamList.paramarray[k][GNB_GNB_ID_IDX].uptr != NULL,
-    "gNB id not defined in configuration file: %u \n",i);
-    xnap_register_gnb_req_t *xnap_reg_gnb= &XNAP_REGISTER_GNB_REQ (msg_p);
-        // search if in active list
+    config_getlist(&GNBParamList, GNBParams, sizeof(GNBParams) / sizeof(paramdef_t), NULL);
+    AssertFatal(GNBParamList.paramarray[k][GNB_GNB_ID_IDX].uptr != NULL, "gNB id not defined in configuration file: %u \n", i);
+    xnap_register_gnb_req_t *xnap_reg_gnb = &XNAP_REGISTER_GNB_REQ(msg_p);
+    // search if in active list
     for (j = 0; j < GNBSParams[GNB_ACTIVE_GNBS_IDX].numelt; j++) {
       if (strcmp(GNBSParams[GNB_ACTIVE_GNBS_IDX].strlistptr[j], *(GNBParamList.paramarray[k][GNB_GNB_NAME_IDX].strptr)) == 0) {
         paramdef_t PLMNParams[] = GNBPLMNPARAMS_DESC;
         paramlist_def_t PLMNParamList = {GNB_CONFIG_STRING_PLMN_LIST, NULL, 0};
-            /* map parameter checking array instances to parameter definition array instances */
-        checkedparam_t config_check_PLMNParams [] = PLMNPARAMS_CHECK;
+        checkedparam_t config_check_PLMNParams[] = PLMNPARAMS_CHECK;
         for (int I = 0; I < sizeof(PLMNParams) / sizeof(paramdef_t); ++I)
           PLMNParams[I].chkPptr = &(config_check_PLMNParams[I]);
-        paramdef_t XnParams[]  = XnPARAMS_DESC;
-        paramlist_def_t XnParamList = {GNB_CONFIG_STRING_TARGET_GNB_Xn_IP_ADDRESS,NULL,0};
-        paramdef_t SCTPParams[]  = GNBSCTPPARAMS_DESC;
-	char*             gnb_ipv4_address_for_NGU      = NULL;
-	uint32_t          gnb_port_for_NGU              = 0;
-	char*             gnb_ipv4_address_for_S1U      = NULL;
-	uint32_t          gnb_port_for_S1U              = 0;
-        paramdef_t NETParams[]  =  GNBNETPARAMS_DESC;
-        char aprefix[MAX_OPTNAME_SIZE*80 + 8];
-        sprintf(aprefix,"%s.[%i]",GNB_CONFIG_STRING_GNB_LIST,k);
+        paramdef_t XnParams[] = XnPARAMS_DESC;
+        paramlist_def_t XnParamList = {GNB_CONFIG_STRING_TARGET_GNB_Xn_IP_ADDRESS, NULL, 0};
+        paramdef_t SCTPParams[] = GNBSCTPPARAMS_DESC;
+        char *gnb_ipv4_address_for_NGU = NULL;
+        uint32_t gnb_port_for_NGU = 0;
+        char *gnb_ipv4_address_for_S1U = NULL;
+        uint32_t gnb_port_for_S1U = 0;
+        paramdef_t NETParams[] = GNBNETPARAMS_DESC;
+        char aprefix[MAX_OPTNAME_SIZE * 80 + 8];
+        sprintf(aprefix, "%s.[%i]", GNB_CONFIG_STRING_GNB_LIST, k);
         /* Some default/random parameters */
         xnap_reg_gnb->gNB_id = *(GNBParamList.paramarray[0][GNB_GNB_ID_IDX].uptr);
-        xnap_reg_gnb->gNB_name         = strdup(*(GNBParamList.paramarray[k][GNB_GNB_NAME_IDX].strptr));
-        xnap_reg_gnb->tac              = *GNBParamList.paramarray[k][GNB_TRACKING_AREA_CODE_IDX].uptr;
-        config_getlist(&PLMNParamList, PLMNParams, sizeof(PLMNParams)/sizeof(paramdef_t), aprefix);
+        xnap_reg_gnb->gNB_name = strdup(*(GNBParamList.paramarray[k][GNB_GNB_NAME_IDX].strptr));
+        xnap_reg_gnb->tac = *GNBParamList.paramarray[k][GNB_TRACKING_AREA_CODE_IDX].uptr;
+        config_getlist(&PLMNParamList, PLMNParams, sizeof(PLMNParams) / sizeof(paramdef_t), aprefix);
 
         if (PLMNParamList.numelt < 1 || PLMNParamList.numelt > 6)
-            AssertFatal(0, "The number of PLMN IDs must be in [1,6], but is %d\n",
-                          PLMNParamList.numelt);
+          AssertFatal(0, "The number of PLMN IDs must be in [1,6], but is %d\n", PLMNParamList.numelt);
 
         if (PLMNParamList.numelt > 1)
-            LOG_W(XNAP, "XNAP currently handles only one PLMN, ignoring the others!\n");
+          LOG_W(XNAP, "XNAP currently handles only one PLMN, ignoring the others!\n");
 
         xnap_reg_gnb->mcc = *PLMNParamList.paramarray[0][GNB_MOBILE_COUNTRY_CODE_IDX].uptr;
         xnap_reg_gnb->mnc = *PLMNParamList.paramarray[0][GNB_MOBILE_NETWORK_CODE_IDX].uptr;
         xnap_reg_gnb->mnc_digit_length = *PLMNParamList.paramarray[0][GNB_MNC_DIGIT_LENGTH].u8ptr;
-        AssertFatal(xnap_reg_gnb->mnc_digit_length == 3
-                        || xnap_reg_gnb->mnc < 100,
-                        "MNC %d cannot be encoded in two digits as requested (change mnc_digit_length to 3)\n",
-                        xnap_reg_gnb->mnc);
+        AssertFatal(xnap_reg_gnb->mnc_digit_length == 3 || xnap_reg_gnb->mnc < 100,
+                    "MNC %d cannot be encoded in two digits as requested (change mnc_digit_length to 3)\n",
+                    xnap_reg_gnb->mnc);
         sprintf(aprefix, "%s.[%i]", GNB_CONFIG_STRING_GNB_LIST, 0);
         config_getlist(&SCCsParamList, NULL, 0, aprefix);
         if (SCCsParamList.numelt > 0) {
-          sprintf(aprefix, "%s.[%i].%s.[%i]", GNB_CONFIG_STRING_GNB_LIST,0,GNB_CONFIG_STRING_SERVINGCELLCONFIGCOMMON, 0);
-          config_get( SCCsParams,sizeof(SCCsParams)/sizeof(paramdef_t),aprefix);
-          fix_scc(scc,ssb_bitmap);
-          }
-        xnap_reg_gnb->nr_band = *scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0]; //nr_band; //78
+          sprintf(aprefix, "%s.[%i].%s.[%i]", GNB_CONFIG_STRING_GNB_LIST, 0, GNB_CONFIG_STRING_SERVINGCELLCONFIGCOMMON, 0);
+          config_get(SCCsParams, sizeof(SCCsParams) / sizeof(paramdef_t), aprefix);
+          fix_scc(scc, ssb_bitmap);
+        }
+        xnap_reg_gnb->nr_band = *scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0]; // nr_band; //78
         xnap_reg_gnb->nrARFCN = scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA;
-        xnap_reg_gnb->uplink_frequency_offset = scc->uplinkConfigCommon->frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->offsetToCarrier; //0
-        xnap_reg_gnb->Nid_cell= *scc->physCellId; //0
-        xnap_reg_gnb->N_RB_DL=  scc->downlinkConfigCommon->frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth;//106
+        xnap_reg_gnb->uplink_frequency_offset =
+            scc->uplinkConfigCommon->frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->offsetToCarrier; // 0
+        xnap_reg_gnb->Nid_cell = *scc->physCellId; // 0
+        xnap_reg_gnb->N_RB_DL =
+            scc->downlinkConfigCommon->frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth; // 106
         xnap_reg_gnb->frame_type = TDD;
-        LOG_I(XNAP, "gNB configuration parameters: nr_band: %d, nr_ARFCN: %d, DL_RBs: %d \n",
+        LOG_I(XNAP,
+              "gNB configuration parameters: nr_band: %d, nr_ARFCN: %d, DL_RBs: %d \n",
               xnap_reg_gnb->nr_band,
               xnap_reg_gnb->nrARFCN,
               xnap_reg_gnb->N_RB_DL);
-        sprintf(aprefix,"%s.[%i]",GNB_CONFIG_STRING_GNB_LIST,k);
-        config_getlist( &XnParamList,XnParams,sizeof(XnParams)/sizeof(paramdef_t),aprefix);
+        sprintf(aprefix, "%s.[%i]", GNB_CONFIG_STRING_GNB_LIST, k);
+        config_getlist(&XnParamList, XnParams, sizeof(XnParams) / sizeof(paramdef_t), aprefix);
         AssertFatal(XnParamList.numelt <= XNAP_MAX_NB_GNB_IP_ADDRESS,
-                    "value of XnParamList.numelt %d must be lower than XnAP_MAX_NB_GNB_IP_ADDRESS %d value: reconsider to increase XNAP_MAX_NB_GNB_IP_ADDRESS\n",
-                    XnParamList.numelt,XNAP_MAX_NB_GNB_IP_ADDRESS);
+                    "value of XnParamList.numelt %d must be lower than XnAP_MAX_NB_GNB_IP_ADDRESS %d value: reconsider to increase "
+                    "XNAP_MAX_NB_GNB_IP_ADDRESS\n",
+                    XnParamList.numelt,
+                    XNAP_MAX_NB_GNB_IP_ADDRESS);
         xnap_reg_gnb->nb_xn = 0;
 
         for (l = 0; l < XnParamList.numelt; l++) {
           xnap_reg_gnb->nb_xn += 1;
-          strcpy(xnap_reg_gnb->target_gnb_xn_ip_address[l].ipv4_address,*(XnParamList.paramarray[l][GNB_Xn_IPV4_ADDRESS_IDX].strptr));
-          strcpy(xnap_reg_gnb->target_gnb_xn_ip_address[l].ipv6_address,*(XnParamList.paramarray[l][GNB_Xn_IPV6_ADDRESS_IDX].strptr));
+          strcpy(xnap_reg_gnb->target_gnb_xn_ip_address[l].ipv4_address,
+                 *(XnParamList.paramarray[l][GNB_Xn_IPV4_ADDRESS_IDX].strptr));
+          strcpy(xnap_reg_gnb->target_gnb_xn_ip_address[l].ipv6_address,
+                 *(XnParamList.paramarray[l][GNB_Xn_IPV6_ADDRESS_IDX].strptr));
 
           if (strcmp(*(XnParamList.paramarray[l][GNB_Xn_IP_ADDRESS_PREFERENCE_IDX].strptr), "ipv4") == 0) {
             xnap_reg_gnb->target_gnb_xn_ip_address[l].ipv4 = 1;
             xnap_reg_gnb->target_gnb_xn_ip_address[l].ipv6 = 0;
-            } 
-          else if (strcmp(*(XnParamList.paramarray[l][GNB_Xn_IP_ADDRESS_PREFERENCE_IDX].strptr), "ipv6") == 0) {
+          } else if (strcmp(*(XnParamList.paramarray[l][GNB_Xn_IP_ADDRESS_PREFERENCE_IDX].strptr), "ipv6") == 0) {
             xnap_reg_gnb->target_gnb_xn_ip_address[l].ipv4 = 0;
             xnap_reg_gnb->target_gnb_xn_ip_address[l].ipv6 = 1;
-            } 
-          else if (strcmp(*(XnParamList.paramarray[l][GNB_Xn_IP_ADDRESS_PREFERENCE_IDX].strptr), "no") == 0) {
+          } else if (strcmp(*(XnParamList.paramarray[l][GNB_Xn_IP_ADDRESS_PREFERENCE_IDX].strptr), "no") == 0) {
             xnap_reg_gnb->target_gnb_xn_ip_address[l].ipv4 = 1;
             xnap_reg_gnb->target_gnb_xn_ip_address[l].ipv6 = 1;
-            }
           }
+        }
         // timers
         {
           int t_reloc_prep = 0;
           int txn_reloc_overall = 0;
           int t_dc_prep = 0;
           int t_dc_overall = 0;
-          paramdef_t p[] = {
-            { "t_reloc_prep", "t_reloc_prep", 0, .iptr=&t_reloc_prep, .defintval=0, TYPE_INT, 0 },
-            { "txn_reloc_overall", "txn_reloc_overall", 0, .iptr=&txn_reloc_overall, .defintval=0, TYPE_INT, 0 },
-            { "t_dc_prep", "t_dc_prep", 0, .iptr=&t_dc_prep, .defintval=0, TYPE_INT, 0 },
-            { "t_dc_overall", "t_dc_overall", 0, .iptr=&t_dc_overall, .defintval=0, TYPE_INT, 0 }
-          };
-          config_get(p, sizeof(p)/sizeof(paramdef_t), aprefix);
-          if (t_reloc_prep <= 0 || t_reloc_prep > 10000 ||
-              txn_reloc_overall <= 0 || txn_reloc_overall > 20000 ||
-              t_dc_prep <= 0 || t_dc_prep > 10000 ||
-              t_dc_overall <= 0 || t_dc_overall > 20000) {
-            LOG_E(XNAP, "timers in configuration file have wrong values. We must have [0 < t_reloc_prep <= 10000] and [0 < txn_reloc_overall <= 20000] and [0 < t_dc_prep <= 10000] and [0 < t_dc_overall <= 20000]\n");
+          paramdef_t p[] = {{"t_reloc_prep", "t_reloc_prep", 0, .iptr = &t_reloc_prep, .defintval = 0, TYPE_INT, 0},
+                            {"txn_reloc_overall", "txn_reloc_overall", 0, .iptr = &txn_reloc_overall, .defintval = 0, TYPE_INT, 0},
+                            {"t_dc_prep", "t_dc_prep", 0, .iptr = &t_dc_prep, .defintval = 0, TYPE_INT, 0},
+                            {"t_dc_overall", "t_dc_overall", 0, .iptr = &t_dc_overall, .defintval = 0, TYPE_INT, 0}};
+          config_get(p, sizeof(p) / sizeof(paramdef_t), aprefix);
+          if (t_reloc_prep <= 0 || t_reloc_prep > 10000 || txn_reloc_overall <= 0 || txn_reloc_overall > 20000 || t_dc_prep <= 0
+              || t_dc_prep > 10000 || t_dc_overall <= 0 || t_dc_overall > 20000) {
+            LOG_E(XNAP,
+                  "timers in configuration file have wrong values. We must have [0 < t_reloc_prep <= 10000] and [0 < "
+                  "txn_reloc_overall <= 20000] and [0 < t_dc_prep <= 10000] and [0 < t_dc_overall <= 20000]\n");
             exit(1);
           }
           xnap_reg_gnb->t_reloc_prep = t_reloc_prep;
@@ -2325,21 +2327,21 @@ int RCconfig_NR_Xn(MessageDef *msg_p, uint32_t i) {
         }
         // SCTP SETTING
         xnap_reg_gnb->sctp_out_streams = SCTP_OUT_STREAMS;
-        xnap_reg_gnb->sctp_in_streams  = SCTP_IN_STREAMS;
+        xnap_reg_gnb->sctp_in_streams = SCTP_IN_STREAMS;
 
         if (get_softmodem_params()->sa) {
-          sprintf(aprefix,"%s.[%i].%s",GNB_CONFIG_STRING_GNB_LIST,k,GNB_CONFIG_STRING_SCTP_CONFIG);
-          config_get( SCTPParams,sizeof(SCTPParams)/sizeof(paramdef_t),aprefix);
-          xnap_reg_gnb->sctp_in_streams = (uint16_t)*(SCTPParams[GNB_SCTP_INSTREAMS_IDX].uptr);
-          xnap_reg_gnb->sctp_out_streams = (uint16_t)*(SCTPParams[GNB_SCTP_OUTSTREAMS_IDX].uptr);
+          sprintf(aprefix, "%s.[%i].%s", GNB_CONFIG_STRING_GNB_LIST, k, GNB_CONFIG_STRING_SCTP_CONFIG);
+          config_get(SCTPParams, sizeof(SCTPParams) / sizeof(paramdef_t), aprefix);
+          xnap_reg_gnb->sctp_in_streams = (uint16_t) * (SCTPParams[GNB_SCTP_INSTREAMS_IDX].uptr);
+          xnap_reg_gnb->sctp_out_streams = (uint16_t) * (SCTPParams[GNB_SCTP_OUTSTREAMS_IDX].uptr);
         }
-        sprintf(aprefix,"%s.[%i].%s",GNB_CONFIG_STRING_GNB_LIST,k,GNB_CONFIG_STRING_NETWORK_INTERFACES_CONFIG);
+        sprintf(aprefix, "%s.[%i].%s", GNB_CONFIG_STRING_GNB_LIST, k, GNB_CONFIG_STRING_NETWORK_INTERFACES_CONFIG);
         // NETWORK_INTERFACES
-        config_get( NETParams,sizeof(NETParams)/sizeof(paramdef_t),aprefix);
-        xnap_reg_gnb->gnb_port_for_XNC = (uint32_t)*(NETParams[GNB_PORT_FOR_XNC_IDX].uptr);
-        //temp out
+        config_get(NETParams, sizeof(NETParams) / sizeof(paramdef_t), aprefix);
+        xnap_reg_gnb->gnb_port_for_XNC = (uint32_t) * (NETParams[GNB_PORT_FOR_XNC_IDX].uptr);
+        // temp out
         if ((NETParams[GNB_IPV4_ADDR_FOR_XNC_IDX].strptr == NULL) || (xnap_reg_gnb->gnb_port_for_XNC == 0)) {
-          LOG_E(RRC,"Add gNB IPv4 address and/or port for XNC in the CONF file!\n");
+          LOG_E(RRC, "Add gNB IPv4 address and/or port for XNC in the CONF file!\n");
           exit(1);
         }
         cidr = *(NETParams[GNB_IPV4_ADDR_FOR_XNC_IDX].strptr);
@@ -2348,7 +2350,7 @@ int RCconfig_NR_Xn(MessageDef *msg_p, uint32_t i) {
         xnap_reg_gnb->gnb_xn_ip_address.ipv6 = 0;
         xnap_reg_gnb->gnb_xn_ip_address.ipv4 = 1;
         strcpy(xnap_reg_gnb->gnb_xn_ip_address.ipv4_address, address);
-      } 
+      }
     }
   }
   return 0;
