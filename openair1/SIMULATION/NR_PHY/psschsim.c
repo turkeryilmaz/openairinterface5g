@@ -111,6 +111,7 @@ int loglvl = OAILOG_WARNING;
 int seed = 0;
 int mcs = 0;
 uint16_t node_id = 0;
+char user_msg[128] = "";
 
 static void get_sim_cl_opts(int argc, char **argv)
 {
@@ -173,6 +174,10 @@ static void get_sim_cl_opts(int argc, char **argv)
         slot = atoi(optarg);
         break;
 
+      case 'M':
+        mcs = atoi(optarg);
+        break;
+
       case 'm':
         mu = atoi(optarg);
         break;
@@ -195,7 +200,7 @@ static void get_sim_cl_opts(int argc, char **argv)
         break;
 
       case 't':
-        mcs = atoi(optarg);
+        memcpy(user_msg, optarg, strlen(optarg)+1);
         break;
 
       case 'y':
@@ -216,7 +221,7 @@ static void get_sim_cl_opts(int argc, char **argv)
 
       default:
       case 'h':
-          printf("%s -h(elp) -g channel_model -n n_frames -s snr0 -S snr1 -p(extended_prefix) -y TXant -z RXant -M -N cell_id -R -F input_filename -m -l -r\n", argv[0]);
+          printf("%s -h(elp) -g channel_model -n n_frames -s snr0 -S snr1 -p(extended_prefix) -y TXant -z RXant -M MCS -N cell_id -R -F input_filename -m -l -r -t user_message_to_send\n", argv[0]);
           //printf("%s -h(elp) -p(extended_prefix) -N cell_id -f output_filename -F input_filename -g channel_model -n n_frames -t Delayspread -s snr0 -S snr1 -x transmission_mode -y TXant -z RXant -i Intefrence0 -j Interference1 -A interpolation_file -C(alibration offset dB) -N CellId\n", argv[0]);
           printf("-h This message\n");
           printf("-g [A,B,C,D,E,F,G] Use 3GPP SCM (A,B,C,D) or 36-101 (E-EPA,F-EVA,G-ETU) models (ignores delay spread and Ricean factor)\n");
@@ -229,9 +234,10 @@ static void get_sim_cl_opts(int argc, char **argv)
           printf("-W number of layer\n");
           printf("-r N_RB_SL\n");
           printf("-F Input filename (.txt format) for RX conformance testing\n");
-          printf("-m MCS\n");
+          printf("-M MCS\n");
           printf("-l number of symbol\n");
           printf("-r number of RB\n");
+          printf("-t User message to send\n");
         exit (-1);
         break;
     }
@@ -359,7 +365,6 @@ int main(int argc, char **argv)
     exit_fun("[NR_PSSCHSIM] Error, configuration module init failed\n");
   }
   get_sim_cl_opts(argc, argv);
-  char user_msg[128] = "EpiScience";
   get_softmodem_params()->sl_user_msg = user_msg;
   randominit(0);
   // logging initialization
@@ -450,7 +455,7 @@ int main(int argc, char **argv)
   unsigned int n_errors = 0;
   unsigned int n_false_positive = 0;
   unsigned int errors_bit_delta = 0;
-  unsigned int num_bytes_to_check = 80;
+  unsigned int num_bytes_to_check = 10;
   //double modulated_input[HNA_SIZE];
   unsigned char test_input_bit[HNA_SIZE];
   //short channel_output_uncoded[HNA_SIZE];
@@ -512,11 +517,14 @@ int main(int argc, char **argv)
                                                txUE->slsch[0][0]->Nidx,
                                                &proc);
 
+      uint32_t rx_msg_len = strlen((char *) harq_process_rxUE->b);
+      bool payload_type_string = rx_msg_len ? true : false;
+      num_bytes_to_check = payload_type_string ? min(rx_msg_len, harq_process_rxUE->TBS): min(num_bytes_to_check, harq_process_rxUE->TBS);
       bool polar_decoded = (ret < LDPC_MAX_LIMIT) ? true : false;
+
       if (ret != -1) {
         errors_bit_delta = 0;
-        bool payload_type_string = false;
-        for (int i = 0; i < num_bytes_to_check; i++) {
+        for (int i = 0; i < num_bytes_to_check * 8; i++) {
           estimated_output_bit[i] = (harq_process_rxUE->b[i / 8] & (1 << (i & 7))) >> (i & 7);
           test_input_bit[i] = (txUE->slsch[0][0]->harq_processes[harq_pid]->a[i / 8] & (1 << (i & 7))) >> (i & 7); // Further correct for multiple segments
 #ifdef DEBUG_NR_PSSCHSIM
@@ -546,7 +554,7 @@ int main(int argc, char **argv)
     printf("*****************************************\n");
     printf("SNR %f, BLER %f BER %f\n", SNR,
           (float) n_errors / (float) n_trials,
-          (float) errors_bit / (float) (n_trials * num_bytes_to_check));
+          (float) errors_bit / (float) (n_trials * num_bytes_to_check * 8));
     printf("*****************************************\n");
     printf("\n");
 

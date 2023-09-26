@@ -46,12 +46,24 @@ parser = argparse.ArgumentParser(description="""
 Automated tests for 5G NR Sidelink Rx simulations
 """)
 
-parser.add_argument('--duration', '-d', metavar='SECONDS', type=int, default=20, help="""
-How long to run the test before stopping to examine the logs
+parser.add_argument('--compress', '-c', action='store_true', help="""
+Compress the log files in the --log-dir
 """)
 
 parser.add_argument('--cmd', type=str, default=DEFAULT_USRP_CMD, help="""
 Commands
+""")
+
+parser.add_argument('--debug', action='store_true', help="""
+Enable debug logging (for this script only)
+""")
+
+parser.add_argument('--duration', '-d', metavar='SECONDS', type=int, default=20, help="""
+How long to run the test before stopping to examine the logs
+""")
+
+parser.add_argument('--log-dir', default=HOME_DIR, help="""
+Where to store log files
 """)
 
 parser.add_argument('--nid1', type=int, default=10, help="""
@@ -62,21 +74,9 @@ parser.add_argument('--nid2', type=int, default=1, help="""
 Nid2 value
 """)
 
-parser.add_argument('--log-dir', default=HOME_DIR, help="""
-Where to store log files
-""")
-
-parser.add_argument('--compress', '-c', action='store_true', help="""
-Compress the log files in the --log-dir
-""")
-
 parser.add_argument('--no-run', '-n', action='store_true', help="""
 Don't run the test, only examine the logs in the --log-dir
 directory from a previous run of the test
-""")
-
-parser.add_argument('--debug', action='store_true', help="""
-Enable debug logging (for this script only)
 """)
 
 parser.add_argument('--sci2', action='store_true', help="""
@@ -89,8 +89,6 @@ del parser
 logging.basicConfig(level=logging.DEBUG if OPTS.debug else logging.INFO,
                     format='>>> %(name)s: %(levelname)s: %(message)s')
 LOGGER = logging.getLogger(os.path.basename(sys.argv[0]))
-
-log_file_path = os.path.join(OPTS.log_dir, 'rx.log')
 
 # ----------------------------------------------------------------------------
 
@@ -159,69 +157,79 @@ class TestNearby():
     """
     Represents TestNearby
     """
-    def __init__(self):
-        self.cmd = None
-        self.delay = 0 # seconds
-
-    def run(self, cmd: str) -> bool:
+    def __init__(self, cmd: str):
         self.cmd = cmd
-        job = "nearby"
+        self.delay = 0 # seconds
+        self.id = self._get_id(cmd)
+        self.role = "nearby"
+        self.log_file_path = os.path.join(OPTS.log_dir, f'{self.role}{self.id}.log')
+
+    def __str__(self) -> str:
+        return f'{self.role}{self.id}'
+
+    def _get_id(self) -> str:
+        node_id = ''
+        if 'node-number' in self.cmd:
+            node_id = self.cmd.split('node-number')[-1].split()[0]
+        return node_id
+
+    def run(self) -> bool:
         time.sleep(self.delay)
-        proc = self.launch_nearby(job)
+        proc = self.launch_nearby()
         LOGGER.info(f"nearby_proc = {proc}")
-        LOGGER.info(f"Process running... {job}")
+        LOGGER.info(f"Process running... {self}")
         time.sleep(OPTS.duration)
-        passed = self.kill_process("nearby", proc)
+        passed = self.kill_process(proc)
         if OPTS.compress:
             self.compress_log_file(proc)
         return passed
 
-    def launch_nearby(self, job) -> Popen:
-        LOGGER.info('Launching Nearby UE: %s', log_file_path)
-        cmd = self.cmd
-        proc = Popen(cmd, shell=True)
+    def launch_nearby(self) -> Popen:
+        LOGGER.info('Launching Nearby UE')
+        proc = Popen(self.cmd, shell=True)
         time.sleep(1)
         return proc
 
-    def kill_process(self, job: str, proc: Popen) -> bool:
+    def kill_process(self, proc: Popen) -> bool:
         passed = True
         if proc:
             status = proc.poll()
             if status is None:
                 LOGGER.info('process is still running, which is good')
             else:
-                #passed = False
+                passed = False
                 LOGGER.info('process ended early: %r', status)
-        LOGGER.info(f'kill main simulation processes... {job}')
-        cmd = ['sudo', 'killall']
-        cmd.append('-KILL')
-        if proc:
+                LOGGER.info(f'{self} process ended early: {status}')
+        if proc and passed:
+            LOGGER.info(f'kill main simulation processes... {self}')
+            cmd = ['sudo', 'killall']
+            cmd.append('-KILL')
             cmd.append('nr-uesoftmodem')
-            if "nearby" == job:
+            if "nearby" == self.role:
                 subprocess.run(cmd)
-            LOGGER.info(f'Waiting for PID proc.pid for {job}')
+            LOGGER.info(f'Waiting for PID proc.pid for {self}')
             proc.kill()
             proc.wait()
-        LOGGER.info(f'kill main simulation processes...done for {job}')
+        LOGGER.info(f'kill main simulation processes...done for {self}')
         return passed
 
     def compress_log_file(self, proc: Popen):
         jobs = CompressJobs()
-        jobs.compress(log_file_path)
+        jobs.compress(self.log_file_path)
         jobs.wait()
 
 # ----------------------------------------------------------------------------
 
 def main(argv) -> int:
-    test_agent = TestNearby()
+    test_agent = TestNearby(OPTS.cmd)
     log_agent = LogChecker(OPTS, LOGGER)
 
     passed = True
     if not OPTS.no_run:
-        passed = test_agent.run(OPTS.cmd)
+        passed = test_agent.run()
 
     # Examine the logs to determine if the test passed
-    result, user_msg = log_agent.analyze_nearby_logs(exp_nid1=OPTS.nid1, exp_nid2=OPTS.nid2, sci2=OPTS.sci2)
+    result, user_msg = log_agent.analyze_nearby_logs(OPTS.nid1, OPTS.nid2, OPTS.sci2, test_agent.log_file_path)
     if not result or not user_msg:
         passed = False
 

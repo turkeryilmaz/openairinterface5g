@@ -206,16 +206,7 @@ void nr_pssch_data_control_multiplexing(uint8_t *in_slssh,
 
 uint32_t get_B_multiplexed_value(NR_DL_FRAME_PARMS* fp, NR_DL_UE_HARQ_t *harq) {
 
-  uint8_t number_of_symbols = harq->nb_symbols ;
-  uint16_t nb_rb            = harq->nb_rb;
   uint8_t Nl                = harq->Nl;
-  uint8_t mod_order         = harq->Qm ;
-  uint16_t dmrs_pos         = harq->dlDmrsSymbPos ;
-
-  uint16_t length_dmrs = get_num_dmrs(dmrs_pos);
-  uint8_t nb_dmrs_re_per_rb = 6 * harq->n_dmrs_cdm_groups;
-
-
   unsigned int G_slsch_bits = harq->G;
   uint32_t B_mul = G_slsch_bits + harq->B_sci2 * Nl;
   return B_mul;
@@ -280,7 +271,7 @@ void nr_ue_set_slsch_rx(PHY_VARS_NR_UE *ue, unsigned char harq_pid)
   unsigned int TBS = nr_compute_tbs_sl(mod_order, code_rate, nb_rb, nb_re_sci1, nb_re_sci2, nb_symb_sch, nb_re_dmrs * length_dmrs, 0, 0, Nl);
   harq->TBS = TBS >> 3;
   harq->G = nr_get_G_sl(nb_rb, nb_re_sci1, nb_re_sci2, harq->nb_symbols, nb_re_dmrs, length_dmrs, harq->Qm, harq->Nl);
-  LOG_I(NR_PHY, "mcs %u polar_encoder_output_len %u, code_rate %d, TBS %d\n", Imcs, harq->B_sci2, code_rate, TBS);
+  LOG_D(NR_PHY, "mcs %u polar_encoder_output_len %u, code_rate %d, TBS %d\n", Imcs, harq->B_sci2, code_rate, TBS);
   harq->status = ACTIVE;
 
   nfapi_nr_pssch_pdu_t *rel16_sl_rx = &harq->pssch_pdu;
@@ -309,7 +300,6 @@ void nr_ue_set_slsch(NR_DL_FRAME_PARMS *fp,
                      uint8_t slot) {
   NR_UL_UE_HARQ_t *harq = slsch->harq_processes[harq_pid];
   uint8_t nb_codewords = 1;
-  uint8_t N_PRB_oh = 0;
   uint16_t nb_symb_sch = 12;
   uint16_t nb_symb_cch = 3; // Assumption there are three SLCCH symbols
   int nb_rb = get_PRB(fp->N_RB_SL);
@@ -330,7 +320,6 @@ void nr_ue_set_slsch(NR_DL_FRAME_PARMS *fp,
   uint8_t length_dmrs = get_num_dmrs(dmrsSymbPos);
   uint16_t code_rate = nr_get_code_rate_ul(Imcs, 0);
   uint8_t mod_order = nr_get_Qm_ul(Imcs, 0);
-  uint16_t nb_symb_psfch = 0;
   harq->pssch_pdu.mcs_index = Imcs;
   harq->pssch_pdu.nrOfLayers = Nl;
   harq->pssch_pdu.rb_size = nb_rb;
@@ -354,7 +343,6 @@ void nr_ue_set_slsch(NR_DL_FRAME_PARMS *fp,
     nb_re_dmrs = 4 * harq->pssch_pdu.num_dmrs_cdm_grps_no_data;
   }
 
-  uint16_t N_RE_prime = NR_NB_SC_PER_RB * (nb_symb_sch - nb_symb_psfch) - nb_re_dmrs - N_PRB_oh;
   uint16_t nb_re_sci1 = nb_symb_cch * NB_RB_SCI1 * NR_NB_SC_PER_RB;
   uint16_t polar_encoder_output_len = polar_encoder_output_length(code_rate, harq->num_of_mod_symbols);
   uint8_t  SCI2_mod_order = 2;
@@ -369,31 +357,34 @@ void nr_ue_set_slsch(NR_DL_FRAME_PARMS *fp,
   unsigned char *test_input = harq->a;
   uint64_t *sci_input = harq->a_sci2;
 
-  bool payload_type_string = false;
+  char *sl_user_msg = get_softmodem_params()->sl_user_msg;
+  uint32_t  sl_user_msg_len = (sl_user_msg != NULL) ? strlen(sl_user_msg) : 0;
+  bool payload_type_string = (sl_user_msg_len > 0) ? true : false;
   if(qsize_of_relay_data() == 0) {
     if (payload_type_string) {
-      for (int i = 0; i < 32; i++) {
-        test_input[i] = get_softmodem_params()->sl_user_msg[i];
-      }
+      memcpy(test_input, sl_user_msg, sl_user_msg_len);
+      LOG_D(NR_PHY, "SLSCH_TX will send %s\n", test_input);
     } else {
       srand(time(NULL));
-      for (int i = 0; i < TBS / 8; i++)
-        test_input[i] = (unsigned char) (i+3);//rand();
-      test_input[0] = (unsigned char) (slot);
-      test_input[1] = (unsigned char) (frame & 0xFF); // 8 bits LSB
-      test_input[2] = (unsigned char) ((frame >> 8) & 0x3); //
-      test_input[3] = (unsigned char) ((frame & 0x111) << 5) + (unsigned char) (slot) + rand() % 256;
+      for (int i = 0; i < min(32, TBS / 8); i++)
+        test_input[i] = '0' + (unsigned char) (i + 3) % 10;//rand();
+      // test_input[0] = (unsigned char) (slot);
+      // test_input[1] = (unsigned char) (frame & 0xFF); // 8 bits LSB
+      // test_input[2] = (unsigned char) ((frame >> 8) & 0x3); //
+      // test_input[3] = (unsigned char) ((frame & 0x111) << 5) + (unsigned char) (slot) + rand() % 256;
       LOG_D(NR_PHY, "SLSCH_TX will send %u\n", test_input[3]);
     }
     uint64_t u = 0;
-    uint64_t dest = 0;
-    dest = (0x2 + ((slot % 2) == 0 ? 1 : 0)) * get_softmodem_params()->node_number;
-    u ^= (dest << 32);
+    uint64_t dest_id = (0x2 + ((slot % 2) == 0 ? 1 : 0)) * get_softmodem_params()->node_number;
+    dest_id = (0x2 + ((slot % 2) == 0 ? 1 : 0)) * get_softmodem_params()->node_number;
+    if (get_softmodem_params()->dest_id > 0)
+      dest_id = get_softmodem_params()->dest_id;
+    u ^= (dest_id << 32);
     *sci_input = u;
   } else {
     get_relay_data_from_buffer(test_input, sci_input, TBS / 8);
     uint64_t dest = (*sci_input >> 32) & 0xFFFF;
-    LOG_W(NR_PHY, "SLSCH_TX will forward with original slot index %u for dest %d\n", test_input[0], dest);
+    LOG_W(NR_PHY, "SLSCH_TX will forward with original slot index %u for dest %lu\n", test_input[0], dest);
   }
 }
 
@@ -404,7 +395,6 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *txUE,
 
   LOG_D(NR_PHY, "nr_ue_slsch_tx_procedures hard_id %d %d.%d\n", harq_pid, frame, slot);
 
-  uint8_t nb_dmrs_re_per_rb;
   NR_DL_FRAME_PARMS *frame_parms = &txUE->frame_parms;
   int32_t **txdataF = txUE->common_vars.txdataF;
 
@@ -416,11 +406,6 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *txUE,
   uint16_t nb_rb            = pssch_pdu->rb_size;
   uint8_t Nl                = pssch_pdu->nrOfLayers;
   uint8_t mod_order         = pssch_pdu->qam_mod_order;
-  uint8_t cdm_grps_no_data  = pssch_pdu->num_dmrs_cdm_grps_no_data;
-  uint16_t dmrs_pos         = pssch_pdu->sl_dmrs_symb_pos;
-
-  uint16_t length_dmrs = get_num_dmrs(dmrs_pos);
-  nb_dmrs_re_per_rb = 6 * cdm_grps_no_data;
 
   /////////////////////////SLSCH data and SCI2 encoding/////////////////////////
   unsigned int G_slsch_bits = harq_process_ul_ue->G;
@@ -808,12 +793,10 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
   int nb_re_SCI2 = slsch_ue_rx->harq_processes[0]->B_sci2/SCI2_mod_order;
   uint8_t nb_re_dmrs = 6 * slsch_ue_rx_harq->n_dmrs_cdm_groups;
   uint32_t dmrs_data_re = 12 - nb_re_dmrs;
-  uint16_t length_dmrs = get_num_dmrs(dmrs_pos);
   unsigned int G = slsch_ue_rx_harq->G;
   uint16_t num_data_symbs = (G << 1) / mod_order;
   uint32_t M_SCI2_bits = slsch_ue_rx->harq_processes[0]->B_sci2 * Nl;
   uint16_t num_sci2_symbs = (M_SCI2_bits << 1) / SCI2_mod_order;
-  uint16_t num_sci2_samples = num_sci2_symbs >> 1;
 
   int avgs = 0;
   int avg[16];
