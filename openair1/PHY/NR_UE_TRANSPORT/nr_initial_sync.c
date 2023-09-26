@@ -330,8 +330,7 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
       if (ret == 0) {
         nr_gold_psbch(ue);
         ret = nr_psbch_detection(proc, ue, 0, &phy_pdcch_config);
-
-        if ((proc->nr_slot_rx != ue->slss->sl_timeoffsetssb_r16) && (get_softmodem_params()->node_number)) {
+        if ((ret == 0) && (proc->nr_slot_rx != ue->slss->sl_timeoffsetssb_r16) && (get_softmodem_params()->node_number)) {
           LOG_I(PHY, "Filtering out the direct connection between SyncRef UE and Nearby UE when Relay UE exists.\n");
           return -1;
         }

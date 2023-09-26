@@ -138,6 +138,7 @@ extern "C"
 #define NFAPI               softmodem_params.nfapi
 #define NSA                 softmodem_params.nsa
 #define NODE_NUMBER         softmodem_params.node_number
+#define SL_DEST_ID          softmodem_params.dest_id
 #define NON_STOP            softmodem_params.non_stop
 #define EMULATE_L1          softmodem_params.emulate_l1
 #define CONTINUOUS_TX       softmodem_params.continuous_tx
@@ -182,6 +183,7 @@ extern int usrp_tx_thread;
     {"chest-time",           CONFIG_HLP_CHESTTIME,    0,              iptr:&CHEST_TIME,                   defintval:0,           TYPE_INT,    0},                     \
     {"nsa",                  CONFIG_HLP_NSA,          PARAMFLAG_BOOL, iptr:&NSA,                          defintval:0,           TYPE_INT,    0},                     \
     {"node-number",          NULL,                    0,              u16ptr:&NODE_NUMBER,                defuintval:0,          TYPE_UINT16, 0},                     \
+    {"dest",                 NULL,                    0,              u16ptr:&SL_DEST_ID,                 defuintval:0,          TYPE_UINT16, 0},                     \
     {"usrp-tx-thread-config", CONFIG_HLP_USRP_THREAD, 0,              iptr:&usrp_tx_thread,               defstrval:0,           TYPE_INT,    0},                     \
     {"nfapi",                CONFIG_HLP_NFAPI,        0,              u8ptr:&nfapi_mode,                  defintval:0,           TYPE_UINT8,  0},                     \
     {"non-stop",             CONFIG_HLP_NONSTOP,      PARAMFLAG_BOOL, iptr:&NON_STOP,                     defintval:0,           TYPE_INT,    0},                     \
@@ -191,7 +193,7 @@ extern int usrp_tx_thread;
     {"sync-ref",             CONFIG_HLP_SYNC_REF,     PARAMFLAG_BOOL, iptr:&SYNC_REF,                     defintval:0,           TYPE_INT,    0},                     \
     {"nid1",                 CONFIG_HLP_NID1,         0,              iptr:&NID1,                         defintval:10,          TYPE_INT,    0},                     \
     {"nid2",                 CONFIG_HLP_NID2,         0,              iptr:&NID2,                         defintval:1,           TYPE_INT,    0},                     \
-    {"message",              CONFIG_HLP_MSG,          0,              strptr:&SL_USER_MSG,                defstrval:"EpiScience",TYPE_STRING, 0},                     \
+    {"message",              CONFIG_HLP_MSG,          0,              strptr:&SL_USER_MSG,                defstrval:NULL,        TYPE_STRING, 0},                     \
   }
 
 #define CONFIG_HLP_NSA           "Enable NSA mode \n"
@@ -287,6 +289,7 @@ typedef struct {
   uint8_t        nfapi;
   int            nsa;
   uint16_t       node_number;
+  uint16_t       dest_id;
   int            non_stop;
   int            emulate_l1;
   int            continuous_tx;

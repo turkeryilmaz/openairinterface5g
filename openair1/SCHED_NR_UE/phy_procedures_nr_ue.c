@@ -1468,7 +1468,6 @@ int phy_procedures_nrUE_SL_RX(PHY_VARS_NR_UE *ue,
   int32_t **rxdataF = ue->common_vars.common_vars_rx_data_per_thread[0].rxdataF;
   uint64_t rx_offset = (slot_rx&3)*(ue->frame_parms.symbols_per_slot * ue->frame_parms.ofdm_symbol_size);
 
-  bool payload_type_string = false;
   static bool detect_new_dest;
   uint16_t node_id = get_softmodem_params()->node_number;
   uint32_t B_mul = get_B_multiplexed_value(&ue->frame_parms, slsch->harq_processes[0]);
@@ -1485,10 +1484,12 @@ int phy_procedures_nrUE_SL_RX(PHY_VARS_NR_UE *ue,
       }
       uint32_t ret = nr_ue_slsch_rx_procedures(ue, harq_pid, frame_rx, slot_rx, rxdataF, B_mul, Nidx, proc);
 
+      bool payload_type_string = true;
       bool polar_decoded = (ret < LDPC_MAX_LIMIT) ? true : false;
       uint16_t dest = (*harq->b_sci2 >> 32) & 0xFFFF;
       bool dest_matched = (dest == node_id);
-      LOG_I(PHY, "dest %u vs %u node_id for hex %lx\n", dest, node_id, *harq->b_sci2);
+      if (polar_decoded)
+        LOG_D(PHY, "dest %u vs %u node_id for hex %lx\n", dest, node_id, *harq->b_sci2);
       if ((ret != -1) && dest_matched) {
         if (payload_type_string)
           validate_rx_payload_str(harq, slot_rx, polar_decoded);
@@ -1513,13 +1514,13 @@ int phy_procedures_nrUE_SL_RX(PHY_VARS_NR_UE *ue,
   return (0);
 }
 
+#define DEBUG_NR_PSSCHSIM
 void /* The above code is likely defining a function called "validate_rx_payload" in the C programming
 language. */
 /* The above code is likely a function or method called "validate_rx_payload" written in the C
 programming language. However, without the actual code implementation, it is not possible to
 determine what the function does. */
 validate_rx_payload(NR_DL_UE_HARQ_t *harq, int frame_rx, int slot_rx, bool polar_decoded) {
-#define DEBUG_NR_PSSCHSIM
   unsigned int errors_bit = 0;
   unsigned int n_false_positive = 0;
 #ifdef DEBUG_NR_PSSCHSIM
@@ -1546,7 +1547,7 @@ validate_rx_payload(NR_DL_UE_HARQ_t *harq, int frame_rx, int slot_rx, bool polar
         if (i == 8 * 2) frame_tx += (harq->b[2] << 8);
         if (i == 8 * 3) randm_tx = harq->b[3];
         if (i >= 8 * comparison_beg_byte)
-          LOG_I(PHY,"TxByte : %4u  vs  %4u : RxByte\n", test_input[i / 8], harq->b[i / 8]);
+          LOG_I(NR_PHY, "TxByte : %4c  vs  %4c : RxByte\n", test_input[i / 8], harq->b[i / 8]);
       }
 
       LOG_D(NR_PHY, "tx bit: %u, rx bit: %u\n", test_input_bit[i], estimated_output_bit[i]);
@@ -1558,43 +1559,49 @@ validate_rx_payload(NR_DL_UE_HARQ_t *harq, int frame_rx, int slot_rx, bool polar
       }
     }
 
-    LOG_I(PHY,"TxRandm: %4u\n", randm_tx);
-    LOG_I(PHY,"TxFrame: %4u  vs  %4u : RxFrame\n", frame_tx, (uint32_t) frame_rx);
-    LOG_I(PHY,"TxSlot : %4u  vs  %4u : RxSlot \n", slot_tx,  (uint8_t) slot_rx);
+    LOG_I(NR_PHY, "TxRandm: %4u\n", randm_tx);
+    LOG_I(NR_PHY, "TxFrame: %4u  vs  %4u : RxFrame\n", frame_tx, (uint32_t) frame_rx);
+    LOG_I(NR_PHY, "TxSlot : %4u  vs  %4u : RxSlot \n", slot_tx,  (uint8_t) slot_rx);
   }
 #endif
   if (errors_bit > 0 || polar_decoded == false) {
     n_false_positive++;
     ++sum_failed;
-    LOG_I(PHY,"errors_bit %u, polar_decoded %d\n", errors_bit, polar_decoded);
-    LOG_I(PHY, "PSSCH test NG with %d / %d = %4.2f\n", sum_passed, (sum_passed + sum_failed), (float) sum_passed / (float) (sum_passed + sum_failed));
+    LOG_I(NR_PHY, "errors_bit %u, polar_decoded %d\n", errors_bit, polar_decoded);
+    LOG_I(NR_PHY, "PSSCH test NG with %d / %d = %4.2f\n", sum_passed, (sum_passed + sum_failed), (float) sum_passed / (float) (sum_passed + sum_failed));
   } else {
     ++sum_passed;
-    LOG_I(PHY, "PSSCH test OK with %d / %d = %4.2f\n", sum_passed, (sum_passed + sum_failed), (float) sum_passed / (float) (sum_passed + sum_failed));
+    LOG_I(NR_PHY, "PSSCH test OK with %d / %d = %4.2f\n", sum_passed, (sum_passed + sum_failed), (float) sum_passed / (float) (sum_passed + sum_failed));
     // if (slot_rx ==4)
     //   exit(0);
   }
 }
 
 void validate_rx_payload_str(NR_DL_UE_HARQ_t *harq, int slot, bool polar_decoded) {
+  #define MAX_MSG_SIZE 128
   unsigned int errors_bit = 0;
-  unsigned char estimated_output_bit[HNA_SIZE];
-  unsigned char test_input_bit[HNA_SIZE];
+  char estimated_output_bit[HNA_SIZE];
+  char test_input_bit[HNA_SIZE];
   unsigned int n_false_positive = 0;
-  unsigned char test_input[] = "EpiScience";
+  char default_input[MAX_MSG_SIZE] = "";
+  char *sl_user_msg = get_softmodem_params()->sl_user_msg;
+  char *test_input = (sl_user_msg != NULL) ? sl_user_msg : default_input;
+  uint32_t default_msg_len = (sl_user_msg != NULL) ? strlen(sl_user_msg) : MAX_MSG_SIZE;
+  uint32_t test_msg_len = min(max(10, strlen((char *) harq->b)), min(default_msg_len, harq->TBS));
+
   static uint16_t sum_passed = 0;
   static uint16_t sum_failed = 0;
-  uint8_t comparison_end_byte = 10;
+  uint8_t comparison_end_byte = test_msg_len;
 
   if (polar_decoded == true) {
-    for (int i = 0; i < min(32, harq->TBS) * 8; i++) { //max tx string size is 32 bytes
+    for (int i = 0; i < test_msg_len * 8; i++) { //max tx string size is 32 bytes
       estimated_output_bit[i] = (harq->b[i / 8] & (1 << (i & 7))) >> (i & 7);
       test_input_bit[i] = (test_input[i / 8] & (1 << (i & 7))) >> (i & 7); // Further correct for multiple segments
       if(i % 8 == 0){
-        LOG_D(PHY,"TxByte : %c  vs  %c : RxByte\n", test_input[i / 8], harq->b[i / 8]);
+        LOG_D(NR_PHY, "TxByte : %c  vs  %c : RxByte\n", test_input[i / 8], harq->b[i / 8]);
       }
   #ifdef DEBUG_NR_PSSCHSIM
-      LOG_I(NR_PHY, "tx bit: %u, rx bit: %u\n", test_input_bit[i], estimated_output_bit[i]);
+      LOG_D(NR_PHY, "tx bit: %u, rx bit: %u\n", test_input_bit[i], estimated_output_bit[i]);
   #endif
       if (i  >= 8 * comparison_end_byte)
         break;
@@ -1602,30 +1609,28 @@ void validate_rx_payload_str(NR_DL_UE_HARQ_t *harq, int slot, bool polar_decoded
         errors_bit++;
       }
     }
-  }
-  if (errors_bit > 0 || polar_decoded == false) {
-    static unsigned char result[128];
-    for (int i = 0; i < min(128, harq->TBS); i++) {
+
+    static char result[MAX_MSG_SIZE];
+    for (int i = 0; i < test_msg_len; i++) {
       result[i] = harq->b[i];
-      LOG_D(PHY, "result[%d]=%c\n", i, result[i]);
+      LOG_D(NR_PHY, "result[%d]=%c\n", i, result[i]);
     }
-    unsigned char *usr_msg_ptr = &result[0];
+    char *usr_msg_ptr = &result[0];
+    char tmp_flag[128];
+    memset(tmp_flag, '+', strlen("Received your text! It says: ") + test_msg_len);
+    LOG_I(NR_PHY, "%s\n", tmp_flag);
     LOG_I(NR_PHY, "Received your text! It says: %s\n", usr_msg_ptr);
-    LOG_I(PHY, "Decoded_payload for slot %d: %s\n", slot, result);
+    LOG_D(NR_PHY, "Decoded_payload for slot %d: %s\n", slot, result);
+    LOG_I(NR_PHY, "%s\n", tmp_flag);
+  }
+
+  if (errors_bit > 0 || polar_decoded == false) {
     n_false_positive++;
     ++sum_failed;
     LOG_I(PHY,"errors_bit %u, polar_decoded %d\n", errors_bit, polar_decoded);
     LOG_I(PHY, "PSSCH test NG with %d / %d = %4.2f\n", sum_passed, (sum_passed + sum_failed), (float) sum_passed / (float) (sum_passed + sum_failed));
   } else {
-    static unsigned char result[128];
-    for (int i = 0; i < min(128, harq->TBS); i++) {
-      result[i] = harq->b[i];
-      LOG_D(PHY, "result[%d]=%c\n", i, result[i]);
-    }
     ++sum_passed;
-    unsigned char *usr_msg_ptr = &result[0];
-    LOG_I(NR_PHY, "Received your text! It says: %s\n", usr_msg_ptr);
-    LOG_I(PHY, "Decoded_payload for slot %d: %s\n", slot, result);
     LOG_I(PHY, "PSSCH test OK with %d / %d = %4.2f\n", sum_passed, (sum_passed + sum_failed), (float) sum_passed / (float) (sum_passed + sum_failed));
   }
 }
