@@ -105,10 +105,6 @@ typedef struct ss_config_s {
   ss_crnti_config_t ss_crnti[MAX_NUM_CCs];
   RrcHOAsSecurityConfig_t HOASSecurityCOnfig;
   uint8_t CC_update_flag[MAX_NUM_CCs];
-  //We have a race when SIB needs to be updated from TTCN with system_info_value_tag updated. We need to wait that update operated at TTCN/SS level before updating SIB
-  //there is clearly better to do Memory access@SS level (RRC configuration) is not protected at all causing bad behaviour sometimes
-  //SS code and interactions with RRC will be updated in better manner
-  bool rrc_sysinfo_value_tag_transition;
 } ss_config_t;
 /**
 typedef enum {

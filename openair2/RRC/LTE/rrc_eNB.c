@@ -138,7 +138,8 @@ extern struct rrc_eNB_ue_context_s *get_first_ue_context(eNB_RRC_INST *rrc_insta
 pthread_mutex_t      rrc_release_freelist;
 RRC_release_list_t   rrc_release_info;
 pthread_mutex_t      lock_ue_freelist;
-pthread_mutex_t      lock_rrc_ttcn;
+pthread_mutex_t      lock_cell_si_config;
+pthread_mutex_t      cond_cell_si_config;
 
 
 uint8_t ul_sqn,dl_sqn;
@@ -6574,19 +6575,14 @@ char openair_rrc_eNB_configuration(
     }
   }
 
-  bool is_update_needed = false;
   for (CC_id = 0; CC_id < RC.nb_CC[0]; CC_id++) {
     if (RC.ss.CC_update_flag[CC_id]) {
-      is_update_needed = true;
-      if (RC.ss.rrc_sysinfo_value_tag_transition == false){
-        init_SI(&ctxt, CC_id, configuration);
-        RC.ss.CC_update_flag[CC_id] = 0;
-      }
+      pthread_mutex_lock(&lock_cell_si_config);
+      init_SI(&ctxt, CC_id, configuration);
+      RC.ss.CC_update_flag[CC_id] = 0;
+      pthread_cond_signal(&cond_cell_si_config);
+      pthread_mutex_unlock(&lock_cell_si_config);
     }
-  }
-  if (RC.ss.mode >= SS_SOFTMODEM && is_update_needed == true){
-    //the mutex is there to notify TTCN SYS port that SIBxx have been processed
-    pthread_mutex_unlock(&lock_rrc_ttcn);
   }
 
   if(need_init) {
@@ -8606,7 +8602,8 @@ void rrc_eNB_reconfigure_DRBs (const protocol_ctxt_t *const ctxt_pP,
 void rrc_enb_init(void) {
   pthread_mutex_init(&lock_ue_freelist, NULL);
   pthread_mutex_init(&rrc_release_freelist, NULL);
-  pthread_mutex_init(&lock_rrc_ttcn, NULL);
+  pthread_mutex_init(&lock_cell_si_config, NULL);
+  pthread_cond_init(&cond_cell_si_config, NULL);
   memset(&rrc_release_info,0,sizeof(RRC_release_list_t));
 }
 
