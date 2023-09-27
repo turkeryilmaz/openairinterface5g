@@ -199,6 +199,7 @@ int nr_pbch_detection(UE_nr_rxtx_proc_t * proc, PHY_VARS_NR_UE *ue, int pbch_ini
 }
 
 extern int commonDoppler;
+extern int fdopplerComp; 
 int nr_initial_sync(UE_nr_rxtx_proc_t *proc,
                     PHY_VARS_NR_UE *ue,
                     int n_frames, int sa)
@@ -242,8 +243,11 @@ int nr_initial_sync(UE_nr_rxtx_proc_t *proc,
    // initial sync performed on two successive frames, if pbch passes on first frame, no need to process second frame 
    // only one frame is used for symulation tools
    for (frame_id = 0; frame_id < n_frames; frame_id++) {
-    nr_apply_Doppler( &ue->common_vars.rxdata[0][frame_id*fp->samples_per_frame], fp->samples_per_frame,
-      -commonDoppler, &SampIdxUERxInitSync, fp);
+    if (fdopplerComp == 1)
+    {
+      nr_apply_Doppler( &ue->common_vars.rxdata[0][frame_id*fp->samples_per_frame], fp->samples_per_frame,
+        -commonDoppler, &SampIdxUERxInitSync, fp);
+    }
      /* process pss search on received buffer */
      sync_pos = pss_synchro_nr(ue, frame_id, NO_RATE_CHANGE);
      if (sync_pos < fp->nb_prefix_samples)
