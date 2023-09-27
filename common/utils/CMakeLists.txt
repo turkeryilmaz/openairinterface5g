@@ -9,3 +9,7 @@ if(ENABLE_WEBSRV)
 endif()
 
 add_subdirectory(T)
+
+if(ENABLE_TESTS)
+  add_subdirectory(nr/tests)
+endif()
