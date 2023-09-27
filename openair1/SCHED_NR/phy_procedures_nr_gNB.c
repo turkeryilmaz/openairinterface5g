@@ -450,7 +450,7 @@ void nr_fill_indication(PHY_VARS_gNB *gNB, int frame, int slot_rx, int ULSCH_id,
   int SNRtimes10 =
       dB_fixed_x10(gNB->pusch_vars[ULSCH_id].ulsch_power_tot) - dB_fixed_x10(gNB->pusch_vars[ULSCH_id].ulsch_noise_power_tot);
 
-  LOG_D(PHY,
+  LOG_I(PHY,
         "%d.%d: Estimated SNR for PUSCH is = %f dB (ulsch_power %f, noise %f) delay %d\n",
         frame,
         slot_rx,
@@ -900,7 +900,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
       if (dB_fixed_x10(pusch_vars->ulsch_power_tot) < dB_fixed_x10(pusch_vars->ulsch_noise_power_tot) + gNB->pusch_thres) {
         NR_gNB_PHY_STATS_t *stats = get_phy_stats(gNB, ulsch->rnti);
 
-        LOG_D(PHY,
+        LOG_I(PHY,
               "PUSCH not detected in %d.%d (%d,%d,%d)\n",
               frame_rx,
               slot_rx,

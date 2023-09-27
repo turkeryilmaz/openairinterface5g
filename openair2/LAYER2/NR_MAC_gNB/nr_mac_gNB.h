@@ -384,6 +384,7 @@ typedef struct NR_sched_pusch {
   int time_domain_allocation;
   NR_tda_info_t tda_info;
   NR_pusch_dmrs_t dmrs_info;
+  int phr_txpower_calc;
 } NR_sched_pusch_t;
 
 typedef struct NR_sched_srs {
