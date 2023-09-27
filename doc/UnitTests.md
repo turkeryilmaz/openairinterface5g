@@ -17,7 +17,7 @@ To compile only the tests, a special target `tests` is available. It has to be
 enabled with the special cmake variable `ENABLE_TESTS`:
 
 ```bash
-cd openairinterface5g
+cd ~/openairinterface5g
 mkdir build && cd build # you can also do that in cmake_targets/ran_build/build
 cmake .. -GNinja -DENABLE_TESTS=ON
 ninja tests
