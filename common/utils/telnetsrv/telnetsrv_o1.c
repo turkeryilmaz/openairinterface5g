@@ -27,6 +27,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <libconfig.h>
 
 #define TELNETSERVERCODE
 #include "telnetsrv.h"
@@ -345,6 +346,235 @@ static int set_bwconfig(char *buf, int debug, telnet_printfunc_t prnt)
                     rrc->carrier.servingcellconfigcommon);
 
   prnt("OK\n");
+  return 0;
+}
+
+/*
+ * This is just a function for demonstration purposes, instead of the on-the-fly changes.
+ * We change the parameters inside the configuration file, and then assert the gNB.
+ * So when the gNB restarts/crashes, the confs from O1 will be kept.
+ * We also need such functionality in a normal scenario.
+ * 
+ * To make it work 
+ * 1.) just have a file named nr.conf in the same dir as nr-softmodem,
+ * or change the nr.conf to match your conf file wherever it is used in the function below.
+ * In the future we should get the name and path of the conf file automatically.
+ * 
+ * 2.) Change the {"bwconfig", "", set_bwconfig}, to {"bwconfig", "", set_bwconfig_demo},
+ */
+static int set_bwconfig_demo(char *buf, int debug, telnet_printfunc_t prnt)
+{
+  if (!buf)
+    ERROR_MSG_RET("need param: o1 bwconfig <BW>\n");
+
+  char *end = NULL;
+  if (NULL != (end = strchr(buf, '\n')))
+    *end = 0;
+  if (NULL != (end = strchr(buf, '\r')))
+    *end = 0;
+
+  config_t cfg;
+  config_init(&cfg);
+  if (!config_read_file(&cfg, "nr.conf")) {
+    fprintf(stderr, "Error reading configuration file: %s\n", config_error_text(&cfg));
+    config_destroy(&cfg);
+    return 1;
+  }
+
+  int absoluteFrequencySSB;
+  int dl_absoluteFrequencyPointA;
+  int dl_carrierBandwidth;
+  int initialDLBWPlocationAndBandwidth;
+  int ul_carrierBandwidth;
+  int initialULBWPlocationAndBandwidth;
+
+  if (strcmp(buf, "40") == 0) {
+    if (config_lookup_int(&cfg, "gNBs.[0].servingCellConfigCommon.[0].absoluteFrequencySSB", &absoluteFrequencySSB)) {
+      printf("absoluteFrequencySSB: %d\n", absoluteFrequencySSB);
+      absoluteFrequencySSB = 641280;
+      config_setting_t *setting = config_lookup(&cfg, "gNBs.[0].servingCellConfigCommon.[0].absoluteFrequencySSB");
+      config_setting_set_int(setting, absoluteFrequencySSB);
+      if (config_write_file(&cfg, "nr.conf")) {
+        printf("Updated absoluteFrequencySSB: %d\n", absoluteFrequencySSB);
+      } else {
+        fprintf(stderr, "Error writing configuration file.\n");
+      }
+    } else {
+      fprintf(stderr, "Error: Could not read absoluteFrequencySSB from the configuration file.\n");
+    }
+
+    if (config_lookup_int(&cfg, "gNBs.[0].servingCellConfigCommon.[0].dl_absoluteFrequencyPointA", &dl_absoluteFrequencyPointA)) {
+      printf("dl_absoluteFrequencyPointA: %d\n", dl_absoluteFrequencyPointA);
+      dl_absoluteFrequencyPointA = 640008;
+      config_setting_t *setting = config_lookup(&cfg, "gNBs.[0].servingCellConfigCommon.[0].dl_absoluteFrequencyPointA");
+      config_setting_set_int(setting, dl_absoluteFrequencyPointA);
+      if (config_write_file(&cfg, "nr.conf")) {
+        printf("Updated dl_absoluteFrequencyPointA: %d\n", dl_absoluteFrequencyPointA);
+      } else {
+        fprintf(stderr, "Error writing configuration file.\n");
+      }
+    } else {
+      fprintf(stderr, "Error: Could not read dl_absoluteFrequencyPointA from the configuration file.\n");
+    }
+
+    if (config_lookup_int(&cfg, "gNBs.[0].servingCellConfigCommon.[0].dl_carrierBandwidth", &dl_carrierBandwidth)) {
+      printf("dl_carrierBandwidth: %d\n", dl_carrierBandwidth);
+      dl_carrierBandwidth = 106;
+      config_setting_t *setting = config_lookup(&cfg, "gNBs.[0].servingCellConfigCommon.[0].dl_carrierBandwidth");
+      config_setting_set_int(setting, dl_carrierBandwidth);
+      if (config_write_file(&cfg, "nr.conf")) {
+        printf("Updated dl_carrierBandwidth: %d\n", dl_carrierBandwidth);
+      } else {
+        fprintf(stderr, "Error writing configuration file.\n");
+      }
+    } else {
+      fprintf(stderr, "Error: Could not read dl_carrierBandwidth from the configuration file.\n");
+    }
+
+    if (config_lookup_int(&cfg,
+                          "gNBs.[0].servingCellConfigCommon.[0].initialDLBWPlocationAndBandwidth",
+                          &initialDLBWPlocationAndBandwidth)) {
+      printf("initialDLBWPlocationAndBandwidth: %d\n", initialDLBWPlocationAndBandwidth);
+      initialDLBWPlocationAndBandwidth = 28875;
+      config_setting_t *setting = config_lookup(&cfg, "gNBs.[0].servingCellConfigCommon.[0].initialDLBWPlocationAndBandwidth");
+      config_setting_set_int(setting, initialDLBWPlocationAndBandwidth);
+      if (config_write_file(&cfg, "nr.conf")) {
+        printf("Updated initialDLBWPlocationAndBandwidth: %d\n", initialDLBWPlocationAndBandwidth);
+      } else {
+        fprintf(stderr, "Error writing configuration file.\n");
+      }
+    } else {
+      fprintf(stderr, "Error: Could not read initialDLBWPlocationAndBandwidth from the configuration file.\n");
+    }
+
+    if (config_lookup_int(&cfg, "gNBs.[0].servingCellConfigCommon.[0].ul_carrierBandwidth", &ul_carrierBandwidth)) {
+      printf("ul_carrierBandwidth: %d\n", ul_carrierBandwidth);
+      ul_carrierBandwidth = 106;
+      config_setting_t *setting = config_lookup(&cfg, "gNBs.[0].servingCellConfigCommon.[0].ul_carrierBandwidth");
+      config_setting_set_int(setting, ul_carrierBandwidth);
+      if (config_write_file(&cfg, "nr.conf")) {
+        printf("Updated ul_carrierBandwidth: %d\n", ul_carrierBandwidth);
+      } else {
+        fprintf(stderr, "Error writing configuration file.\n");
+      }
+    } else {
+      fprintf(stderr, "Error: Could not read ul_carrierBandwidth from the configuration file.\n");
+    }
+
+    if (config_lookup_int(&cfg,
+                          "gNBs.[0].servingCellConfigCommon.[0].initialULBWPlocationAndBandwidth",
+                          &initialULBWPlocationAndBandwidth)) {
+      printf("initialULBWPlocationAndBandwidth: %d\n", initialULBWPlocationAndBandwidth);
+      initialULBWPlocationAndBandwidth = 28875;
+      config_setting_t *setting = config_lookup(&cfg, "gNBs.[0].servingCellConfigCommon.[0].initialULBWPlocationAndBandwidth");
+      config_setting_set_int(setting, initialULBWPlocationAndBandwidth);
+      if (config_write_file(&cfg, "nr.conf")) {
+        printf("Updated initialULBWPlocationAndBandwidth: %d\n", initialULBWPlocationAndBandwidth);
+      } else {
+        fprintf(stderr, "Error writing configuration file.\n");
+      }
+    } else {
+      fprintf(stderr, "Error: Could not read initialULBWPlocationAndBandwidth from the configuration file.\n");
+    }
+
+    config_destroy(&cfg);
+    AssertFatal(false, "Restarting...\n");
+
+  } else if (strcmp(buf, "20") == 0) {
+    if (config_lookup_int(&cfg, "gNBs.[0].servingCellConfigCommon.[0].absoluteFrequencySSB", &absoluteFrequencySSB)) {
+      printf("absoluteFrequencySSB: %d\n", absoluteFrequencySSB);
+      absoluteFrequencySSB = 620736;
+      config_setting_t *setting = config_lookup(&cfg, "gNBs.[0].servingCellConfigCommon.[0].absoluteFrequencySSB");
+      config_setting_set_int(setting, absoluteFrequencySSB);
+      if (config_write_file(&cfg, "nr.conf")) {
+        printf("Updated absoluteFrequencySSB: %d\n", absoluteFrequencySSB);
+      } else {
+        fprintf(stderr, "Error writing configuration file.\n");
+      }
+    } else {
+      fprintf(stderr, "Error: Could not read absoluteFrequencySSB from the configuration file.\n");
+    }
+
+    if (config_lookup_int(&cfg, "gNBs.[0].servingCellConfigCommon.[0].dl_absoluteFrequencyPointA", &dl_absoluteFrequencyPointA)) {
+      printf("dl_absoluteFrequencyPointA: %d\n", dl_absoluteFrequencyPointA);
+      dl_absoluteFrequencyPointA = 620020;
+      config_setting_t *setting = config_lookup(&cfg, "gNBs.[0].servingCellConfigCommon.[0].dl_absoluteFrequencyPointA");
+      config_setting_set_int(setting, dl_absoluteFrequencyPointA);
+      if (config_write_file(&cfg, "nr.conf")) {
+        printf("Updated dl_absoluteFrequencyPointA: %d\n", dl_absoluteFrequencyPointA);
+      } else {
+        fprintf(stderr, "Error writing configuration file.\n");
+      }
+    } else {
+      fprintf(stderr, "Error: Could not read dl_absoluteFrequencyPointA from the configuration file.\n");
+    }
+
+    if (config_lookup_int(&cfg, "gNBs.[0].servingCellConfigCommon.[0].dl_carrierBandwidth", &dl_carrierBandwidth)) {
+      printf("dl_carrierBandwidth: %d\n", dl_carrierBandwidth);
+      dl_carrierBandwidth = 51;
+      config_setting_t *setting = config_lookup(&cfg, "gNBs.[0].servingCellConfigCommon.[0].dl_carrierBandwidth");
+      config_setting_set_int(setting, dl_carrierBandwidth);
+      if (config_write_file(&cfg, "nr.conf")) {
+        printf("Updated dl_carrierBandwidth: %d\n", dl_carrierBandwidth);
+      } else {
+        fprintf(stderr, "Error writing configuration file.\n");
+      }
+    } else {
+      fprintf(stderr, "Error: Could not read dl_carrierBandwidth from the configuration file.\n");
+    }
+
+    if (config_lookup_int(&cfg,
+                          "gNBs.[0].servingCellConfigCommon.[0].initialDLBWPlocationAndBandwidth",
+                          &initialDLBWPlocationAndBandwidth)) {
+      printf("initialDLBWPlocationAndBandwidth: %d\n", initialDLBWPlocationAndBandwidth);
+      initialDLBWPlocationAndBandwidth = 13750;
+      config_setting_t *setting = config_lookup(&cfg, "gNBs.[0].servingCellConfigCommon.[0].initialDLBWPlocationAndBandwidth");
+      config_setting_set_int(setting, initialDLBWPlocationAndBandwidth);
+      if (config_write_file(&cfg, "nr.conf")) {
+        printf("Updated initialDLBWPlocationAndBandwidth: %d\n", initialDLBWPlocationAndBandwidth);
+      } else {
+        fprintf(stderr, "Error writing configuration file.\n");
+      }
+    } else {
+      fprintf(stderr, "Error: Could not read initialDLBWPlocationAndBandwidth from the configuration file.\n");
+    }
+
+    if (config_lookup_int(&cfg, "gNBs.[0].servingCellConfigCommon.[0].ul_carrierBandwidth", &ul_carrierBandwidth)) {
+      printf("ul_carrierBandwidth: %d\n", ul_carrierBandwidth);
+      ul_carrierBandwidth = 51;
+      config_setting_t *setting = config_lookup(&cfg, "gNBs.[0].servingCellConfigCommon.[0].ul_carrierBandwidth");
+      config_setting_set_int(setting, ul_carrierBandwidth);
+      if (config_write_file(&cfg, "nr.conf")) {
+        printf("Updated ul_carrierBandwidth: %d\n", ul_carrierBandwidth);
+      } else {
+        fprintf(stderr, "Error writing configuration file.\n");
+      }
+    } else {
+      fprintf(stderr, "Error: Could not read ul_carrierBandwidth from the configuration file.\n");
+    }
+
+    if (config_lookup_int(&cfg,
+                          "gNBs.[0].servingCellConfigCommon.[0].initialULBWPlocationAndBandwidth",
+                          &initialULBWPlocationAndBandwidth)) {
+      printf("initialULBWPlocationAndBandwidth: %d\n", initialULBWPlocationAndBandwidth);
+      initialULBWPlocationAndBandwidth = 13750;
+      config_setting_t *setting = config_lookup(&cfg, "gNBs.[0].servingCellConfigCommon.[0].initialULBWPlocationAndBandwidth");
+      config_setting_set_int(setting, initialULBWPlocationAndBandwidth);
+      if (config_write_file(&cfg, "nr.conf")) {
+        printf("Updated initialULBWPlocationAndBandwidth: %d\n", initialULBWPlocationAndBandwidth);
+      } else {
+        fprintf(stderr, "Error writing configuration file.\n");
+      }
+    } else {
+      fprintf(stderr, "Error: Could not read initialULBWPlocationAndBandwidth from the configuration file.\n");
+    }
+
+    config_destroy(&cfg);
+    AssertFatal(false, "Restarting...\n");
+
+  } else {
+    ERROR_MSG_RET("unhandled option %s\n", buf);
+  }
   return 0;
 }
 
