@@ -261,8 +261,20 @@ static void nr_postDecode(PHY_VARS_gNB *gNB, notifiedFIFO_elt_t *req)
 
   //int dumpsig=0;
   // if all segments are done
-  if (rdata->nbSegments == ulsch_harq->processedSegments) {
-    if (!check_abort(&ulsch_harq->abort_decode) && !gNB->pusch_vars[rdata->ulsch_id].DTX) {
+  if (ulsch_harq->processedSegments == ulsch_harq->C) {
+    // When the number of code blocks is 1 (C = 1) and ulsch_harq->processedSegments = 1, we can assume a good TB because of the
+    // CRC check made by the LDPC for early termination, so, no need to perform CRC check twice for a single code block
+    bool crc_valid = true;
+    if (ulsch_harq->C > 1) {
+      // Check ULSCH transport block CRC
+      int crc_type = CRC16;
+      if (rdata->A > 3824) {
+        crc_type = CRC24_A;
+      }
+      crc_valid = check_crc(ulsch_harq->b, ulsch_harq->B, crc_type);
+    }
+
+    if (crc_valid && !check_abort(&ulsch_harq->abort_decode) && !gNB->pusch_vars[rdata->ulsch_id].DTX) {
       LOG_D(PHY,
             "[gNB %d] ULSCH: Setting ACK for SFN/SF %d.%d (rnti %x, pid %d, ndi %d, status %d, round %d, TBS %d, Max interation "
             "(all seg) %d)\n",
@@ -412,8 +424,6 @@ static int nr_ulsch_procedures(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, int
 
 void nr_fill_indication(PHY_VARS_gNB *gNB, int frame, int slot_rx, int ULSCH_id, uint8_t harq_pid, uint8_t crc_flag, int dtx_flag)
 {
-  if (!get_softmodem_params()->reorder_thread_disable) 
-    pthread_mutex_lock(&gNB->UL_INFO_mutex);
 
   NR_gNB_ULSCH_t *ulsch = &gNB->ulsch[ULSCH_id];
   NR_UL_gNB_HARQ_t *harq_process = ulsch->harq_process;
@@ -572,8 +582,6 @@ void nr_fill_indication(PHY_VARS_gNB *gNB, int frame, int slot_rx, int ULSCH_id,
 
   gNB->UL_INFO.rx_ind.number_of_pdus++;
 
-  if (!get_softmodem_params()->reorder_thread_disable) 
-    pthread_mutex_unlock(&gNB->UL_INFO_mutex);
 }
 
 // Function to fill UL RB mask to be used for N0 measurements
@@ -582,7 +590,6 @@ void fill_ul_rb_mask(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx) {
   int rb = 0;
   int rb2 = 0;
   int prbpos = 0;
-
   for (int symbol=0;symbol<14;symbol++) {
     for (int m=0;m<9;m++) {
       gNB->rb_mask_ul[symbol][m] = 0;
@@ -590,12 +597,18 @@ void fill_ul_rb_mask(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx) {
         prbpos = (m*32)+i;
         if (prbpos>gNB->frame_parms.N_RB_UL) break;
         gNB->rb_mask_ul[symbol][m] |= (gNB->ulprbbl[prbpos]>0 ? 1 : 0)<<i;
+        //Remove:
+        //LOG_I(PHY, "frame_parms.N_RB_UL: %d, %d, %d, %d, %d, %d \n",gNB->frame_parms.N_RB_UL, symbol, m, i, prbpos, gNB->rb_mask_ul[symbol][m]);
       }
     }
   }
 
   for (int i = 0; i < gNB->max_nb_pucch; i++){
     NR_gNB_PUCCH_t *pucch = &gNB->pucch[i];
+    //Remove:
+    //LOG_I(PHY,"%d.%d pucch %d (max: %d)\n",frame_rx,slot_rx,i, gNB->max_nb_pucch);
+    //LOG_I(PHY,"PUCCH-ACT:%d, FR: %d, SL:%d\n",pucch->active, pucch->frame, pucch->slot);
+
     if (pucch) {
       if ((pucch->active == 1) &&
           (pucch->frame == frame_rx) &&
@@ -766,6 +779,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
     }
   else
     num_symb = NR_NUMBER_OF_SYMBOLS_PER_SLOT;
+
   gNB_I0_measurements(gNB,slot_rx,first_symb,num_symb);
 
   const int soffset = (slot_rx & 3) * gNB->frame_parms.symbols_per_slot * gNB->frame_parms.ofdm_symbol_size;

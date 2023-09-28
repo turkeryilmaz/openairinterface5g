@@ -202,7 +202,6 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, frame_t frame, sub_frame_
   nr_mac_update_timers(module_idP, frame, slot);
 
   schedule_nr_bwp_switch(module_idP, frame, slot);
-
   // This schedules MIB
   schedule_nr_mib(module_idP, frame, slot, &sched_info->DL_req);
 
@@ -240,14 +239,12 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, frame_t frame, sub_frame_
 
   // This schedules the DCI for Uplink and subsequently PUSCH
   nr_schedule_ulsch(module_idP, frame, slot, &sched_info->UL_dci_req);
-
   // This schedules the DCI for Downlink and PDSCH
   start_meas(&gNB->schedule_dlsch);
   nr_schedule_ue_spec(module_idP, frame, slot, &sched_info->DL_req, &sched_info->TX_req);
   stop_meas(&gNB->schedule_dlsch);
 
   nr_sr_reporting(gNB, frame, slot);
-
   nr_schedule_pucch(gNB, frame, slot);
 
   /* TODO: we copy from gNB->UL_tti_req_ahead[0][current_index], ie. CC_id == 0,

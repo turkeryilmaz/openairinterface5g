@@ -118,12 +118,11 @@ void L1_nr_prach_procedures(PHY_VARS_gNB *gNB,int frame,int slot) {
   ru=gNB->RU_list[0];
 
   int prach_id=find_nr_prach(gNB,frame,slot,SEARCH_EXIST);
-
   if (prach_id>=0) {
+    LOG_D(NR_PHY,"%d.%d Got prach entry id %d\n",frame,slot,prach_id);
     nfapi_nr_prach_pdu_t *prach_pdu = &gNB->prach_vars.list[prach_id].pdu;
     uint8_t prachStartSymbol;
     uint8_t N_dur = get_nr_prach_duration(prach_pdu->prach_format);
-
     for(int prach_oc = 0; prach_oc < prach_pdu->num_prach_ocas; prach_oc++) {
       for (ru_aa=0,aa=0;ru_aa<ru->nb_rx;ru_aa++,aa++) {
 	gNB->prach_vars.rxsigF[aa] = ru->prach_rxsigF[prach_oc][ru_aa];
@@ -140,9 +139,9 @@ void L1_nr_prach_procedures(PHY_VARS_gNB *gNB,int frame,int slot) {
 		  &max_preamble[0],
 		  &max_preamble_energy[0],
 		  &max_preamble_delay[0]);
-
+      LOG_D(NR_PHY,"Freeing PRACH entry %d\n",prach_id);
       free_nr_prach_entry(gNB,prach_id);
-      LOG_D(PHY,"[RAPROC] Frame %d, slot %d, occasion %d (prachStartSymbol %d) : Most likely preamble %d, energy %d.%d dB delay %d (prach_energy counter %d)\n",
+      LOG_D(NR_PHY,"[RAPROC] Frame %d, slot %d, occasion %d (prachStartSymbol %d) : Most likely preamble %d, energy %d.%d dB delay %d (prach_energy counter %d)\n",
 	    frame,slot,prach_oc,prachStartSymbol,
 	    max_preamble[0],
 	    max_preamble_energy[0]/10,
