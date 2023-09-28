@@ -27,6 +27,7 @@
 #include "common/ran_context.h"
 #include "nfapi/oai_integration/vendor_ext.h"
 #include "openair2/F1AP/f1ap_common.h"
+#include "openair2/F1AP/f1ap_ids.h"
 #include "openair2/GNB_APP/gnb_config.h"
 #include "nr_pdcp/nr_pdcp_oai_api.h"
 
@@ -105,7 +106,7 @@ void prepare_and_send_ue_context_modification_f1(rrc_gNB_ue_context_t *ue_contex
   abort();
 }
 
-f1ap_cudu_inst_t *getCxt(F1_t isCU, instance_t instanceP)
+f1ap_cudu_inst_t *getCxt(instance_t instanceP)
 {
   abort();
   return NULL;
@@ -134,6 +135,7 @@ int main(int argc, char **argv)
   rc = itti_create_task(TASK_CUUP_E1, E1AP_CUUP_task, NULL);
   AssertFatal(rc >= 0, "Create task for CUUP E1 failed\n");
   nr_pdcp_layer_init();
+  cu_init_f1_ue_data(); // for CU-UP/CP mapping: we use the same
   MessageDef *msg = RCconfig_NR_CU_E1(true);
   AssertFatal(msg != NULL, "Send init to task for E1AP UP failed\n");
   itti_send_msg_to_task(TASK_CUUP_E1, 0, msg);

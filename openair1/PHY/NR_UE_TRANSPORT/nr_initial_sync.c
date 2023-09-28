@@ -187,7 +187,7 @@ int nr_pbch_detection(UE_nr_rxtx_proc_t * proc, PHY_VARS_NR_UE *ue, int pbch_ini
 
 
 #ifdef DEBUG_INITIAL_SYNCH
-    LOG_I(PHY,"[UE%d] Initial sync: pbch decoded sucessfully\n",ue->Mod_id);
+    LOG_I(PHY, "[UE%d] Initial sync: pbch decoded sucessfully, ssb index %d\n", ue->Mod_id, frame_parms->ssb_index);
 #endif
     return(0);
   } else {
@@ -195,9 +195,6 @@ int nr_pbch_detection(UE_nr_rxtx_proc_t * proc, PHY_VARS_NR_UE *ue, int pbch_ini
   }
 
 }
-
-char duplex_string[2][4] = {"FDD","TDD"};
-char prefix_string[2][9] = {"NORMAL","EXTENDED"};
 
 int nr_initial_sync(UE_nr_rxtx_proc_t *proc,
                     PHY_VARS_NR_UE *ue,

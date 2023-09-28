@@ -207,18 +207,6 @@ void nr_ue_mac_default_configs(NR_UE_MAC_INST_t *mac)
   memset(&mac->ul_time_alignment, 0, sizeof(mac->ul_time_alignment));
 }
 
-NR_BWP_DownlinkCommon_t *get_bwp_downlink_common(NR_UE_MAC_INST_t *mac, NR_BWP_Id_t dl_bwp_id) {
-  NR_BWP_DownlinkCommon_t *bwp_Common = NULL;
-  if (dl_bwp_id > 0 && mac->cg->spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList) {
-    bwp_Common = mac->cg->spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList->list.array[dl_bwp_id-1]->bwp_Common;
-  } else if (mac->scc) {
-    bwp_Common = mac->scc->downlinkConfigCommon->initialDownlinkBWP;
-  } else if (mac->scc_SIB) {
-    bwp_Common = &mac->scc_SIB->downlinkConfigCommon.initialDownlinkBWP;
-  }
-  return bwp_Common;
-}
-
 int get_rnti_type(NR_UE_MAC_INST_t *mac, uint16_t rnti)
 {
 
@@ -244,13 +232,19 @@ int get_rnti_type(NR_UE_MAC_INST_t *mac, uint16_t rnti)
     return rnti_type;
 }
 
-
-int8_t nr_ue_decode_mib(module_id_t module_id,
-                        int cc_id)
+void nr_ue_decode_mib(module_id_t module_id, int cc_id)
 {
   LOG_D(MAC,"[L2][MAC] decode mib\n");
-
   NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
+
+  if (mac->mib->cellBarred == NR_MIB__cellBarred_barred) {
+    LOG_W(MAC, "Cell is barred. Going back to sync mode.\n");
+    mac->synch_request.Mod_id = module_id;
+    mac->synch_request.CC_id = cc_id;
+    mac->synch_request.synch_req.target_Nid_cell = -1;
+    mac->if_module->synch_request(&mac->synch_request);
+    return;
+  }
 
   uint16_t frame = (mac->mib->systemFrameNumber.buf[0] >> mac->mib->systemFrameNumber.bits_unused);
   uint16_t frame_number_4lsb = 0;
@@ -288,6 +282,7 @@ int8_t nr_ue_decode_mib(module_id_t module_id,
 #endif
 
   mac->ssb_subcarrier_offset = ssb_subcarrier_offset;
+  mac->dmrs_TypeA_Position = mac->mib->dmrs_TypeA_Position;
 
   if (mac->first_sync_frame == -1)
     mac->first_sync_frame = frame;
@@ -296,8 +291,6 @@ int8_t nr_ue_decode_mib(module_id_t module_id,
     mac->state = UE_CONNECTED;
   else if(mac->state == UE_NOT_SYNC)
     mac->state = UE_SYNC;
-
-  return 0;
 }
 
 int8_t nr_ue_decode_BCCH_DL_SCH(module_id_t module_id,
@@ -311,11 +304,11 @@ int8_t nr_ue_decode_BCCH_DL_SCH(module_id_t module_id,
   if(ack_nack) {
     LOG_D(NR_MAC, "Decoding NR-BCCH-DL-SCH-Message (SIB1 or SI)\n");
     nr_mac_rrc_data_ind_ue(module_id, cc_id, gNB_index, 0, 0, 0, NR_BCCH_DL_SCH, (uint8_t *) pduP, pdu_len);
+    mac->get_sib1 = false;
+    mac->get_otherSI = false;
   }
   else
     LOG_E(NR_MAC, "Got NACK on NR-BCCH-DL-SCH-Message (%s)\n", mac->get_sib1 ? "SIB1" : "other SI");
-  mac->get_sib1 = false;
-  mac->get_otherSI = false;
   return 0;
 }
 
@@ -647,7 +640,7 @@ int8_t nr_ue_process_dci(module_id_t module_id, int cc_id, uint8_t gNB_index, fr
       dlsch_config_pdu_1_0->rb_offset -= dlsch_config_pdu_1_0->BWPStart;
 
     /* TIME_DOM_RESOURCE_ASSIGNMENT */
-    int dmrs_typeA_pos = (mac->scc != NULL) ? mac->scc->dmrs_TypeA_Position : mac->mib->dmrs_TypeA_Position;
+    int dmrs_typeA_pos = mac->dmrs_TypeA_Position;
     NR_tda_info_t tda_info = get_dl_tda_info(current_DL_BWP, dci_ind->ss_type, dci->time_domain_assignment.val,
                                              dmrs_typeA_pos, mux_pattern, get_rnti_type(mac, rnti), coreset_type, mac->get_sib1);
 
@@ -669,7 +662,7 @@ int8_t nr_ue_process_dci(module_id_t module_id, int cc_id, uint8_t gNB_index, fr
     /* dmrs symbol positions*/
     dlsch_config_pdu_1_0->dlDmrsSymbPos = fill_dmrs_mask(pdsch_config,
                                                          NR_DL_DCI_FORMAT_1_0,
-                                                         mac->scc ? mac->scc->dmrs_TypeA_Position : mac->mib->dmrs_TypeA_Position,
+                                                         mac->dmrs_TypeA_Position,
                                                          dlsch_config_pdu_1_0->number_symbols,
                                                          dlsch_config_pdu_1_0->start_symbol,
                                                          tda_info.mapping_type,
@@ -690,28 +683,24 @@ int8_t nr_ue_process_dci(module_id_t module_id, int cc_id, uint8_t gNB_index, fr
     dlsch_config_pdu_1_0->mcs_table = (pdsch_config) ? ((pdsch_config->mcs_Table) ? (*pdsch_config->mcs_Table + 1) : 0) : 0;
     /* MCS */
     dlsch_config_pdu_1_0->mcs = dci->mcs;
-    // Basic sanity check for MCS value to check for a false or erroneous DCI
-    if (dlsch_config_pdu_1_0->mcs > 28) {
-      LOG_W(MAC, "[%d.%d] MCS value %d out of bounds! Possibly due to false DCI. Ignoring DCI!\n", frame, slot, dlsch_config_pdu_1_0->mcs);
-      return -1;
-    }
 
     dlsch_config_pdu_1_0->qamModOrder = nr_get_Qm_dl(dlsch_config_pdu_1_0->mcs, dlsch_config_pdu_1_0->mcs_table);
     int R = nr_get_code_rate_dl(dlsch_config_pdu_1_0->mcs, dlsch_config_pdu_1_0->mcs_table);
     dlsch_config_pdu_1_0->targetCodeRate = R;
-    if (dlsch_config_pdu_1_0->targetCodeRate == 0 || dlsch_config_pdu_1_0->qamModOrder == 0) {
+    if (dlsch_config_pdu_1_0->qamModOrder == 0) {
       LOG_W(MAC, "Invalid code rate or Mod order, likely due to unexpected DL DCI.\n");
       return -1;
     }
 
     int nb_rb_oh = 0; // it was not computed at UE side even before and set to 0 in nr_compute_tbs
     int nb_re_dmrs = ((dlsch_config_pdu_1_0->dmrsConfigType == NFAPI_NR_DMRS_TYPE1) ? 6:4)*dlsch_config_pdu_1_0->n_dmrs_cdm_groups;
-    dlsch_config_pdu_1_0->TBS = nr_compute_tbs(dlsch_config_pdu_1_0->qamModOrder,
-                                               R,
-                                               dlsch_config_pdu_1_0->number_rbs,
-                                               dlsch_config_pdu_1_0->number_symbols,
-                                               nb_re_dmrs*get_num_dmrs(dlsch_config_pdu_1_0->dlDmrsSymbPos),
-                                               nb_rb_oh, 0, 1);
+    if (R > 0)
+      dlsch_config_pdu_1_0->TBS = nr_compute_tbs(dlsch_config_pdu_1_0->qamModOrder,
+                                                 R,
+                                                 dlsch_config_pdu_1_0->number_rbs,
+                                                 dlsch_config_pdu_1_0->number_symbols,
+                                                 nb_re_dmrs*get_num_dmrs(dlsch_config_pdu_1_0->dlDmrsSymbPos),
+                                                 nb_rb_oh, 0, 1);
 
     int bw_tbslbrm;
     if (current_DL_BWP->initial_BWPSize > 0)
@@ -868,7 +857,7 @@ int8_t nr_ue_process_dci(module_id_t module_id, int cc_id, uint8_t gNB_index, fr
     }
     dlsch_config_pdu_1_1->rb_offset = dlsch_config_pdu_1_1->start_rb + dlsch_config_pdu_1_1->BWPStart;
     /* TIME_DOM_RESOURCE_ASSIGNMENT */
-    int dmrs_typeA_pos = (mac->scc != NULL) ? mac->scc->dmrs_TypeA_Position : mac->mib->dmrs_TypeA_Position;
+    int dmrs_typeA_pos = mac->dmrs_TypeA_Position;
     NR_tda_info_t tda_info = get_dl_tda_info(current_DL_BWP, dci_ind->ss_type, dci->time_domain_assignment.val,
                                              dmrs_typeA_pos, mux_pattern, get_rnti_type(mac, rnti), coreset_type, false);
 
@@ -914,22 +903,12 @@ int8_t nr_ue_process_dci(module_id_t module_id, int cc_id, uint8_t gNB_index, fr
     dlsch_config_pdu_1_1->zp_csi_rs_trigger = dci->zp_csi_rs_trigger.val;
     /* MCS (for transport block 1)*/
     dlsch_config_pdu_1_1->mcs = dci->mcs;
-    // Basic sanity check for MCS value to check for a false or erroneous DCI
-    if (dlsch_config_pdu_1_1->mcs > 28) {
-      LOG_W(MAC, "[%d.%d] MCS value %d out of bounds! Possibly due to false DCI. Ignoring DCI!\n", frame, slot, dlsch_config_pdu_1_1->mcs);
-      return -1;
-    }
     /* NDI (for transport block 1)*/
     dlsch_config_pdu_1_1->ndi = dci->ndi;
     /* RV (for transport block 1)*/
     dlsch_config_pdu_1_1->rv = dci->rv;
     /* MCS (for transport block 2)*/
     dlsch_config_pdu_1_1->tb2_mcs = dci->mcs2.val;
-    // Basic sanity check for MCS value to check for a false or erroneous DCI
-    if (dlsch_config_pdu_1_1->tb2_mcs > 28) {
-      LOG_W(MAC, "[%d.%d] MCS value %d out of bounds! Possibly due to false DCI. Ignoring DCI!\n", frame, slot, dlsch_config_pdu_1_1->tb2_mcs);
-      return -1;
-    }
     /* NDI (for transport block 2)*/
     dlsch_config_pdu_1_1->tb2_ndi = dci->ndi2.val;
     /* RV (for transport block 2)*/
@@ -1059,7 +1038,7 @@ int8_t nr_ue_process_dci(module_id_t module_id, int cc_id, uint8_t gNB_index, fr
     /* dmrs symbol positions*/
     dlsch_config_pdu_1_1->dlDmrsSymbPos = fill_dmrs_mask(pdsch_Config,
                                                          NR_DL_DCI_FORMAT_1_1,
-                                                         mac->scc? mac->scc->dmrs_TypeA_Position:mac->mib->dmrs_TypeA_Position,
+                                                         mac->dmrs_TypeA_Position,
                                                          dlsch_config_pdu_1_1->number_symbols,
                                                          dlsch_config_pdu_1_1->start_symbol,
                                                          tda_info.mapping_type,
@@ -1115,7 +1094,7 @@ int8_t nr_ue_process_dci(module_id_t module_id, int cc_id, uint8_t gNB_index, fr
     dlsch_config_pdu_1_1->qamModOrder = nr_get_Qm_dl(dlsch_config_pdu_1_1->mcs, dlsch_config_pdu_1_1->mcs_table);
     int R = nr_get_code_rate_dl(dlsch_config_pdu_1_1->mcs, dlsch_config_pdu_1_1->mcs_table);
     dlsch_config_pdu_1_1->targetCodeRate = R;
-    if (dlsch_config_pdu_1_1->targetCodeRate == 0 || dlsch_config_pdu_1_1->qamModOrder == 0) {
+    if (dlsch_config_pdu_1_1->qamModOrder == 0) {
       LOG_W(MAC, "Invalid code rate or Mod order, likely due to unexpected DL DCI.\n");
       return -1;
     }
@@ -1125,12 +1104,13 @@ int8_t nr_ue_process_dci(module_id_t module_id, int cc_id, uint8_t gNB_index, fr
     }
     int nb_rb_oh = 0; // it was not computed at UE side even before and set to 0 in nr_compute_tbs
     int nb_re_dmrs = ((dmrs_type == NULL) ? 6:4)*dlsch_config_pdu_1_1->n_dmrs_cdm_groups;
-    dlsch_config_pdu_1_1->TBS = nr_compute_tbs(dlsch_config_pdu_1_1->qamModOrder,
-                                               R,
-                                               dlsch_config_pdu_1_1->number_rbs,
-                                               dlsch_config_pdu_1_1->number_symbols,
-                                               nb_re_dmrs*get_num_dmrs(dlsch_config_pdu_1_1->dlDmrsSymbPos),
-                                               nb_rb_oh, 0, Nl);
+    if (R > 0)
+      dlsch_config_pdu_1_1->TBS = nr_compute_tbs(dlsch_config_pdu_1_1->qamModOrder,
+                                                 R,
+                                                 dlsch_config_pdu_1_1->number_rbs,
+                                                 dlsch_config_pdu_1_1->number_symbols,
+                                                 nb_re_dmrs*get_num_dmrs(dlsch_config_pdu_1_1->dlDmrsSymbPos),
+                                                 nb_rb_oh, 0, Nl);
 
     // TBS_LBRM according to section 5.4.2.1 of 38.212
     long *maxMIMO_Layers = current_DL_BWP->pdsch_servingcellconfig->ext1->maxMIMO_Layers;
@@ -1202,24 +1182,42 @@ void set_harq_status(NR_UE_MAC_INST_t *mac,
   current_harq->active = true;
   current_harq->ack_received = false;
   current_harq->pucch_resource_indicator = pucch_id;
-  current_harq->feedback_to_ul = data_toul_fb;
   current_harq->dai = dai;
+  current_harq->j_dai = 0;
   current_harq->n_CCE = n_CCE;
   current_harq->N_CCE = N_CCE;
   current_harq->delta_pucch = delta_pucch;
   // FIXME k0 != 0 currently not taken into consideration
-  current_harq->dl_frame = frame;
-  current_harq->dl_slot = slot;
-  int scs = get_softmodem_params()->numerology;
-  int slots_per_frame = nr_slots_per_frame[scs];
-  slot += data_toul_fb;
-  if (slot >= slots_per_frame) {
-    frame = (frame + 1) % 1024;
-    slot %= slots_per_frame;
+  int slots_per_frame = nr_slots_per_frame[mac->current_DL_BWP.scs];
+  current_harq->ul_frame = frame;
+  current_harq->ul_slot = slot + data_toul_fb;
+  if (current_harq->ul_slot >= slots_per_frame) {
+    current_harq->ul_frame = (frame + 1) % 1024;
+    current_harq->ul_slot %= slots_per_frame;
   }
-
-  LOG_D(NR_PHY,"Setting harq_status for harq_id %d, dl %d.%d, sched ul %d.%d\n",
-        harq_id, current_harq->dl_frame, current_harq->dl_slot, frame, slot);
+  // counter DAI in DCI ranges from 0 to 3
+  // we might have more than 4 HARQ processes to report per PUCCH
+  // we need to keep track of how many same DAI were received
+  int count = 0;
+  for (int i = 0; i < NR_MAX_HARQ_PROCESSES; i++) {
+    if (i == harq_id)
+      continue;
+    NR_UE_HARQ_STATUS_t *harq = &mac->dl_harq_info[i];
+    if (harq->active &&
+        harq->ul_frame == current_harq->ul_frame &&
+        harq->ul_slot == current_harq->ul_slot) {
+      if (harq->dai == dai) {
+        // need to take into account possible
+        // missed DCI detections
+        int missed_detections = count / (4 * (current_harq->j_dai + 1));
+        current_harq->j_dai += (missed_detections + 1);
+        count += missed_detections;
+      }
+      count++;
+    }
+  }
+  LOG_D(NR_PHY,"Setting harq_status for harq_id %d, dl %d.%d, sched ul %d.%d fb time %d\n",
+        harq_id, frame, slot, current_harq->ul_frame, current_harq->ul_slot, data_toul_fb);
 }
 
 void nr_ue_configure_pucch(NR_UE_MAC_INST_t *mac,
@@ -1276,6 +1274,7 @@ void nr_ue_configure_pucch(NR_UE_MAC_INST_t *mac,
     // Only HARQ transmitted in default PUCCH
     pucch_pdu->mcs = get_pucch0_mcs(pucch->n_harq, 0, pucch->ack_payload, 0);
     pucch_pdu->payload = pucch->ack_payload;
+    pucch_pdu->n_bit = 1;
   }
   else if (pucch->pucch_resource != NULL) {
 
@@ -1315,9 +1314,6 @@ void nr_ue_configure_pucch(NR_UE_MAC_INST_t *mac,
       LOG_E(MAC,"PUCCH number of UCI bits exceeds payload size\n");
       return;
     }
-    if (pucchres->format.present != NR_PUCCH_Resource__format_PR_format0)
-      pucch_pdu->payload =
-          (pucch->csi_part1_payload << (pucch->n_harq + pucch->n_sr)) | (pucch->sr_payload << pucch->n_harq) | pucch->ack_payload;
 
     switch(pucchres->format.present) {
       case NR_PUCCH_Resource__format_PR_format0 :
@@ -1333,6 +1329,18 @@ void nr_ue_configure_pucch(NR_UE_MAC_INST_t *mac,
         pucch_pdu->nr_of_symbols = pucchres->format.choice.format1->nrofSymbols;
         pucch_pdu->start_symbol_index = pucchres->format.choice.format1->startingSymbolIndex;
         pucch_pdu->time_domain_occ_idx = pucchres->format.choice.format1->timeDomainOCC;
+        if (pucch->n_harq > 0) {
+          // only HARQ bits are transmitted, resource selection depends on SR
+          // resource selection handled in function multiplex_pucch_resource
+          pucch_pdu->n_bit = pucch->n_harq;
+          pucch_pdu->payload = pucch->ack_payload;
+        }
+        else {
+          // For a positive SR transmission using PUCCH format 1,
+          // the UE transmits the PUCCH as described in 38.211 by setting b(0) = 0
+          pucch_pdu->n_bit = pucch->n_sr;
+          pucch_pdu->payload = 0;
+        }
         break;
       case NR_PUCCH_Resource__format_PR_format2 :
         pucch_pdu->format_type = 2;
@@ -1348,6 +1356,7 @@ void nr_ue_configure_pucch(NR_UE_MAC_INST_t *mac,
                                                      2,
                                                      pucchres->format.choice.format2->nrofSymbols,
                                                      8);
+        pucch_pdu->payload = (pucch->csi_part1_payload << (pucch->n_harq + pucch->n_sr)) | (pucch->sr_payload << pucch->n_harq) | pucch->ack_payload;
         break;
       case NR_PUCCH_Resource__format_PR_format3 :
         pucch_pdu->format_type = 3;
@@ -1380,6 +1389,7 @@ void nr_ue_configure_pucch(NR_UE_MAC_INST_t *mac,
                                                      2 - pucch_pdu->pi_2bpsk,
                                                      pucchres->format.choice.format3->nrofSymbols - f3_dmrs_symbols,
                                                      12);
+        pucch_pdu->payload = (pucch->csi_part1_payload << (pucch->n_harq + pucch->n_sr)) | (pucch->sr_payload << pucch->n_harq) | pucch->ack_payload;
         break;
       case NR_PUCCH_Resource__format_PR_format4 :
         pucch_pdu->format_type = 4;
@@ -1397,6 +1407,7 @@ void nr_ue_configure_pucch(NR_UE_MAC_INST_t *mac,
           pucch_pdu->pi_2bpsk = pucchfmt->pi2BPSK!= NULL ?  1 : 0;
           pucch_pdu->add_dmrs_flag = pucchfmt->additionalDMRS!= NULL ?  1 : 0;
         }
+        pucch_pdu->payload = (pucch->csi_part1_payload << (pucch->n_harq + pucch->n_sr)) | (pucch->sr_payload << pucch->n_harq) | pucch->ack_payload;
         break;
       default :
         AssertFatal(1==0,"Undefined PUCCH format \n");
@@ -2106,60 +2117,42 @@ void multiplex_pucch_resource(NR_UE_MAC_INST_t *mac, PUCCH_sched_t *pucch, int n
 
 bool get_downlink_ack(NR_UE_MAC_INST_t *mac, frame_t frame, int slot, PUCCH_sched_t *pucch)
 {
-  uint32_t ack_data[NR_DL_MAX_NB_CW][NR_DL_MAX_DAI] = {{0},{0}};
-  uint32_t dai[NR_DL_MAX_NB_CW][NR_DL_MAX_DAI] = {{0},{0}};       /* for serving cell */
-  uint32_t dai_total[NR_DL_MAX_NB_CW][NR_DL_MAX_DAI] = {{0},{0}}; /* for multiple cells */
+  uint32_t ack_data[NR_DL_MAX_NB_CW][NR_MAX_HARQ_PROCESSES] = {{0},{0}};
+  uint32_t dai[NR_DL_MAX_NB_CW][NR_MAX_HARQ_PROCESSES] = {{0},{0}};       /* for serving cell */
+  uint32_t dai_total[NR_DL_MAX_NB_CW][NR_MAX_HARQ_PROCESSES] = {{0},{0}}; /* for multiple cells */
   int number_harq_feedback = 0;
-  uint32_t dai_current = 0;
   uint32_t dai_max = 0;
-  bool two_transport_blocks = false;
-  int number_of_code_word = 1;
-  int U_DAI_c = 0;
-  int N_m_c_rx = 0;
-  int V_DAI_m_DL = 0;
-  NR_UE_HARQ_STATUS_t *current_harq;
-  int sched_frame,sched_slot;
-  int slots_per_frame;
 
   NR_UE_DL_BWP_t *current_DL_BWP = &mac->current_DL_BWP;
   NR_UE_UL_BWP_t *current_UL_BWP = &mac->current_UL_BWP;
 
+  bool two_transport_blocks = false;
+  int number_of_code_word = 1;
   if (current_DL_BWP && current_DL_BWP->pdsch_Config && current_DL_BWP->pdsch_Config->maxNrofCodeWordsScheduledByDCI && current_DL_BWP->pdsch_Config->maxNrofCodeWordsScheduledByDCI[0] == 2) {
     two_transport_blocks = true;
     number_of_code_word = 2;
   }
 
-  int scs = current_UL_BWP->scs;
-
-  slots_per_frame = nr_slots_per_frame[scs];
   int res_ind = -1;
 
   /* look for dl acknowledgment which should be done on current uplink slot */
   for (int code_word = 0; code_word < number_of_code_word; code_word++) {
 
-    for (int dl_harq_pid = 0; dl_harq_pid < 16; dl_harq_pid++) {
+    for (int dl_harq_pid = 0; dl_harq_pid < NR_MAX_HARQ_PROCESSES; dl_harq_pid++) {
 
-      current_harq = &mac->dl_harq_info[dl_harq_pid];
+      NR_UE_HARQ_STATUS_t *current_harq = &mac->dl_harq_info[dl_harq_pid];
 
       if (current_harq->active) {
-
-        sched_slot = current_harq->dl_slot + current_harq->feedback_to_ul;
-        sched_frame = current_harq->dl_frame;
-        if (sched_slot >= slots_per_frame) {
-          sched_slot %= slots_per_frame;
-          sched_frame = (sched_frame + 1) % 1024;
-        }
-        AssertFatal(sched_slot < slots_per_frame, "sched_slot was calculated incorrect %d\n", sched_slot);
-        LOG_D(PHY, "HARQ pid %d is active for %d.%d (dl_slot %d, feedback_to_ul %d\n", dl_harq_pid, sched_frame, sched_slot, current_harq->dl_slot, current_harq->feedback_to_ul);
+        LOG_D(PHY, "HARQ pid %d is active for %d.%d\n",
+              dl_harq_pid, current_harq->ul_frame, current_harq->ul_slot);
         /* check if current tx slot should transmit downlink acknowlegment */
-        if (sched_frame == frame && sched_slot == slot) {
+        if (current_harq->ul_frame == frame && current_harq->ul_slot == slot) {
           if (get_softmodem_params()->emulate_l1) {
             mac->nr_ue_emul_l1.harq[dl_harq_pid].active = true;
             mac->nr_ue_emul_l1.harq[dl_harq_pid].active_dl_harq_sfn = frame;
             mac->nr_ue_emul_l1.harq[dl_harq_pid].active_dl_harq_slot = slot;
           }
-
-          if (current_harq->dai > NR_DL_MAX_DAI) {
+          if (current_harq->dai >= NR_DL_MAX_DAI) {
             LOG_E(MAC,"PUCCH Downlink DAI has an invalid value of %d\n", current_harq->dai);
           }
           else {
@@ -2169,7 +2162,7 @@ bool get_downlink_ack(NR_UE_MAC_INST_t *mac, frame_t frame, int slot, PUCCH_sche
                     current_harq->pucch_resource_indicator,
                     res_ind);
             else{
-              dai_current = current_harq->dai + 1; // DCI DAI to counter DAI conversion
+              int dai_current = current_harq->dai + (current_harq->j_dai * 4) + 1; // DCI DAI to counter DAI conversion
 
               if (dai_current == 0) {
                 LOG_E(MAC,"PUCCH Downlink dai is invalid\n");
@@ -2184,10 +2177,10 @@ bool get_downlink_ack(NR_UE_MAC_INST_t *mac, frame_t frame, int slot, PUCCH_sche
                 current_harq->active = false;
                 current_harq->ack_received = false;
               } else {
-                LOG_W(NR_MAC, "DLSCH ACK/NACK reporting initiated for harq pid %d before DLSCH decoding completed\n", dl_harq_pid);
+                LOG_E(NR_MAC, "DLSCH ACK/NACK reporting initiated for harq pid %d before DLSCH decoding completed\n", dl_harq_pid);
                 ack_data[code_word][dai_current - 1] = 0;
               }
-              dai[code_word][dai_current - 1] = dai_current;
+              dai[code_word][dai_current - 1] = current_harq->dai + 1;
               int temp_ind = current_harq->pucch_resource_indicator;
               AssertFatal(res_ind == -1 || res_ind == temp_ind,
                           "Current resource index %d does not match with previous resource index %d\n",
@@ -2214,37 +2207,11 @@ bool get_downlink_ack(NR_UE_MAC_INST_t *mac, frame_t frame, int slot, PUCCH_sche
     return false;
   }
 
-  /* for computing n_HARQ_ACK for power */
-  V_DAI_m_DL = dai_max;
-  U_DAI_c = number_harq_feedback/number_of_code_word;
-  N_m_c_rx = number_harq_feedback;
-  int N_SPS_c = 0; /* FFS TODO_NR multicells and SPS are not supported at the moment */
-  int n_HARQ_ACK = 0;
-  if (current_UL_BWP->harq_ACK_SpatialBundlingPUCCH != NULL) {
-    int N_TB_max_DL = current_DL_BWP->pdsch_Config->maxNrofCodeWordsScheduledByDCI[0];
-    n_HARQ_ACK = (((V_DAI_m_DL - U_DAI_c) % 4) * N_TB_max_DL) + N_m_c_rx + N_SPS_c;
-    LOG_D(MAC,
-          "PUCCH power n(%d) = ( V(%d) - U(%d) )mod4 * N_TB(%d) + N(%d) \n",
-          n_HARQ_ACK,
-          V_DAI_m_DL,
-          U_DAI_c,
-          N_TB_max_DL,
-          N_m_c_rx);
-  }
-
-  /*
-  * For a monitoring occasion of a PDCCH with DCI format 1_0 or DCI format 1_1 in at least one serving cell,
-  * when a UE receives a PDSCH with one transport block and the value of higher layer parameter maxNrofCodeWordsScheduledByDCI is 2,
-  * the HARQ-ACK response is associated with the first transport block and the UE generates a NACK for the second transport block
-  * if spatial bundling is not applied (HARQ-ACK-spatial-bundling-PUCCH = false) and generates HARQ-ACK value of ACK for the second
-  * transport block if spatial bundling is applied.
-  */
-
   for (int code_word = 0; code_word < number_of_code_word; code_word++) {
     for (uint32_t i = 0; i < dai_max ; i++ ) {
-      if (dai[code_word][i] != i + 1) { /* fill table with consistent value for each dai */
-        dai[code_word][i] = i + 1;      /* it covers case for which PDCCH DCI has not been successfully decoded and so it has been missed */
-        ack_data[code_word][i] = 0;     /* nack data transport block which has been missed */
+      if (dai[code_word][i] == 0) {
+        dai[code_word][i] = (i % 4) + 1; // it covers case for which PDCCH DCI has not been successfully decoded and so it has been missed
+        ack_data[code_word][i] = 0;      // nack data transport block which has been missed
         number_harq_feedback++;
       }
       if (two_transport_blocks == true) {
@@ -2263,7 +2230,6 @@ bool get_downlink_ack(NR_UE_MAC_INST_t *mac, frame_t frame, int slot, PUCCH_sche
   int O_bit_number_cw1 = 0;
 
   for (int m = 0; m < M ; m++) {
-
     if (dai[0][m] <= V_temp) {
       j = j + 1;
     }
@@ -4138,17 +4104,13 @@ int nr_ue_process_rar(nr_downlink_indication_t *dl_info, int pdu_id)
 // - referenceSignalPower:   dBm/RE (average EPRE of the resources elements that carry secondary synchronization signals in dBm)
 int16_t compute_nr_SSB_PL(NR_UE_MAC_INST_t *mac, short ssb_rsrp_dBm)
 {
-
-  long referenceSignalPower;
+  fapi_nr_config_request_t *cfg = &mac->phy_config.config_req;
+  int referenceSignalPower = cfg->ssb_config.ss_pbch_power;
   //TODO improve PL measurements. Probably not correct as it is.
-  if (mac->scc)
-    referenceSignalPower = mac->scc->ss_PBCH_BlockPower;
-  else
-    referenceSignalPower = mac->scc_SIB->ss_PBCH_BlockPower;
 
   int16_t pathloss = (int16_t)(referenceSignalPower - ssb_rsrp_dBm);
 
-  LOG_D(NR_MAC, "pathloss %d dB, referenceSignalPower %ld dBm/RE (%f mW), RSRP %d dBm (%f mW)\n",
+  LOG_D(NR_MAC, "pathloss %d dB, referenceSignalPower %d dBm/RE (%f mW), RSRP %d dBm (%f mW)\n",
         pathloss,
         referenceSignalPower,
         pow(10, referenceSignalPower/10),

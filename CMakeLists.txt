@@ -102,21 +102,23 @@ add_list_string_option(CMAKE_BUILD_TYPE "RelWithDebInfo" "Choose the type of bui
 # in case /proc/cpuinfo exists we want to inspect available Intrinsics
 # -so not to go always through SIMDE emulation
 # -so to avoid AVX512 instructions generation by gcc   
-execute_process(COMMAND uname -m OUTPUT_VARIABLE CPUARCH OUTPUT_STRIP_TRAILING_WHITESPACE)
-message(STATUS "CPUARCH ${CPUARCH}")
-if(EXISTS "/proc/cpuinfo")
+if(EXISTS "/proc/cpuinfo" AND NOT CROSS_COMPILE)
   file(STRINGS "/proc/cpuinfo" CPUFLAGS REGEX flags LIMIT_COUNT 1)
 else()
   message(WARNING "did not find /proc/cpuinfo -- not setting any x86-specific compilation variables")
 endif()
-
+ 
 eval_boolean(AUTODETECT_AVX512 DEFINED CPUFLAGS AND CPUFLAGS MATCHES "avx512")
 add_boolean_option(AVX512 ${AUTODETECT_AVX512} "Whether AVX512 intrinsics is available on the host processor" ON)
 
 eval_boolean(AUTODETECT_AVX2 DEFINED CPUFLAGS AND CPUFLAGS MATCHES "avx2")
 add_boolean_option(AVX2 ${AUTODETECT_AVX2} "Whether AVX2 intrinsics is available on the host processor" ON)
 
-if(${CPUARCH} STREQUAL "x86_64" AND DEFINED CPUFLAGS)
+message(STATUS "CPU architecture is ${CMAKE_SYSTEM_PROCESSOR}")
+if (CROSS_COMPILE)
+  message(STATUS "setting as aarch64")
+  set(C_FLAGS_PROCESSOR "${C_FLAGS_PROCESSOR} -gdwarf-2 -lgcc -lrt")
+elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
   # The following intrinsics are assumed to be available on any x86 system
   # (avx, f16c, fma, gnfi, mmx, pclmul, sse, sse2, sse3, xop)
   set(C_FLAGS_PROCESSOR "${C_FLAGS_PROCESSOR} -DSIMDE_X86_AVX_NATIVE -DSIMDE_X86_AVX_NATIVE -DSIMDE_X86_F16C_NATIVE -DSIMDE_X86_FMA_NATIVE -DSIMDE_X86_GFNI_NATIVE -DSIMDE_X86_MMX_NATIVE -DSIMDE_X86_PCLMUL_NATIVE -DSIMDE_X86_SSE2_NATIVE -DSIMDE_X86_SSE3_NATIVE -DSIMDE_X86_SSE_NATIVE -DSIMDE_X86_XOP_HAVE_COM_ -DSIMDE_X86_XOP_NATIVE")
@@ -139,11 +141,19 @@ if(${CPUARCH} STREQUAL "x86_64" AND DEFINED CPUFLAGS)
   if(CPUINFO MATCHES "ssse3")
     set(C_FLAGS_PROCESSOR "${C_FLAGS_PROCESSOR} -DSIMDE_X86_SSSE3_NATIVE")
   endif()
-elseif(${CPUARCH} NOT STREQUAL "x86_64")
-  message(FATAL_ERROR "Cannot compile for CPU architecture ${CPUARCH}")
+elseif (CMAKE_SYSTEM_PROCESSOR STREQUAL "armv7l")
+  set(C_FLAGS_PROCESSOR "${C_FLAGS_PROCESSOR} -gdwarf-2 -mfloat-abi=hard -mfpu=neon -lgcc -lrt")
+elseif (CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
+  set(C_FLAGS_PROCESSOR "${C_FLAGS_PROCESSOR} -gdwarf-2 -lgcc -lrt")
+else()
+  message(FATAL_ERROR "compile for CPU architecture ${CPUARCH}, CMAKE_SYSTEM_PROCESSOR ${CMAKE_SYSTEM_PROCESSOR}")
 endif()
 
-set(C_FLAGS_PROCESSOR "${C_FLAGS_PROCESSOR} -march=native")
+if (NOT CROSS_COMPILE)
+  set(C_FLAGS_PROCESSOR "${C_FLAGS_PROCESSOR} -march=native")
+else ()
+  set(C_FLAGS_PROCESSOR "${C_FLAGS_PROCESSOR} -march=armv8-a")
+endif()
 
 # add autotools definitions that were maybe used!
 add_definitions("-DSTDC_HEADERS=1 -DHAVE_SYS_TYPES_H=1 -DHAVE_SYS_STAT_H=1 -DHAVE_STDLIB_H=1 -DHAVE_STRING_H=1 -DHAVE_MEMORY_H=1 -DHAVE_STRINGS_H=1 -DHAVE_INTTYPES_H=1 -DHAVE_STDINT_H=1 -DHAVE_UNISTD_H=1 -DHAVE_FCNTL_H=1 -DHAVE_ARPA_INET_H=1 -DHAVE_SYS_TIME_H=1 -DHAVE_SYS_SOCKET_H=1 -DHAVE_STRERROR=1 -DHAVE_SOCKET=1 -DHAVE_MEMSET=1 -DHAVE_GETTIMEOFDAY=1 -DHAVE_STDLIB_H=1 -DHAVE_MALLOC=1 -DHAVE_LIBSCTP")
@@ -256,8 +266,11 @@ add_definitions("-DPACKAGE_BUGREPORT=\"openair4g-devel@lists.eurecom.fr\"")
 
 # Debug related options
 #########################################
-add_boolean_option(DEBUG_ASN1      False "ASN1 coder/decoder Debug" OFF)
-#add_boolean_option(DEBUG_MAC_INTERFACE False "print MAC-RLC PDU exchange to stdout") # if true, make sure that global and PDCP log levels are trace, not found in code, commented out, to be removed
+add_boolean_option(DEBUG_ASN1 False "Enable ASN1 debug logs" OFF)
+# asn1c skeletons have hardcoded this flag to make customized debug logs
+# OAI uses this feature to re-use OAI LOG_I(ASN1, ...)
+# see common/utils/config.h
+add_boolean_option(TRACE_ASN1C_ENC_DEC OFF "Enable ASN1 encoder/decoder debug traces via OAI logging system" ON)
 add_boolean_option(T_TRACER            True  "Activate the T tracer, a debugging/monitoring framework" ON)
 add_boolean_option(UE_AUTOTEST_TRACE   False "Activate UE autotest specific logs" ON)
 add_boolean_option(UE_DEBUG_TRACE      False "Activate UE debug trace" ON)
@@ -266,12 +279,6 @@ add_boolean_option(UE_TIMING_TRACE     False "Activate UE timing trace" ON)
 set (OCP_ITTI ${OPENAIR_DIR}/common/utils/ocp_itti)
 add_library(ITTI ${OCP_ITTI}/intertask_interface.cpp)
 target_link_libraries(ITTI PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
-
-# asn1c skeletons have hardcoded this flag to make customized debug logs
-# OAI uses this feature to re-use OAI LOG_I(ASN1, ...)
-if (DEBUG_ASN1C)
-  add_definitions(-DHAVE_CONFIG_H)
-endif()
 
 # asn1c skeletons need this
 add_definitions(-DHAVE_NETINET_IN_H)
@@ -416,6 +423,7 @@ target_link_libraries(x2ap PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
 set(F1AP_DIR ${OPENAIR2_DIR}/F1AP)
 add_library(f1ap
             ${F1AP_DIR}/f1ap_common.c
+            ${F1AP_DIR}/f1ap_ids.c
             ${F1AP_DIR}/f1ap_cu_interface_management.c
             ${F1AP_DIR}/f1ap_cu_paging.c
             ${F1AP_DIR}/f1ap_cu_rrc_message_transfer.c
@@ -434,7 +442,7 @@ add_library(f1ap
             ${F1AP_DIR}/f1ap_itti_messaging.c)
 target_include_directories(f1ap PUBLIC F1AP_DIR)
 target_link_libraries(f1ap PUBLIC asn1_f1ap)
-target_link_libraries(f1ap PRIVATE ngap nr_rrc)
+target_link_libraries(f1ap PRIVATE ngap nr_rrc HASHTABLE)
 
 # LPP
 ##############
@@ -626,7 +634,7 @@ add_library(UTIL
   ${OPENAIR_DIR}/common/utils/time_meas.c
   ${OPENAIR_DIR}/common/utils/time_stat.c
 )
-target_link_libraries(UTIL PUBLIC ${T_LIB})
+target_link_libraries(UTIL PUBLIC ${T_LIB} pthread)
 
 set(SECURITY_SRC
   ${OPENAIR3_DIR}/SECU/secu_defs.c
@@ -858,7 +866,7 @@ target_link_libraries(ldpc_parityCheck  PRIVATE ldpc_gen_HEADERS)
 
 add_library(coding MODULE ${PHY_TURBOSRC} )
 
-add_library(dfts MODULE ${OPENAIR1_DIR}/PHY/TOOLS/oai_dfts.c )
+add_library(dfts MODULE ${OPENAIR1_DIR}/PHY/TOOLS/oai_dfts.c ${OPENAIR1_DIR}/PHY/TOOLS/oai_dfts_neon.c)
 
 
 set(PHY_SRC_COMMON
@@ -1111,9 +1119,9 @@ if (${SMBV})
 endif  (${SMBV})
 
 set(PHY_SRC_UE ${PHY_SRC_UE} ${OPENAIR1_DIR}/PHY/LTE_UE_TRANSPORT/dlsch_llr_computation_avx2.c)
-set(PHY_NR_UE_SRC ${PHY_NR_UE_SRC} ${OPENAIR1_DIR}/PHY/LTE_UE_TRANSPORT/dlsch_llr_computation_avx2.c)
 
 add_library(PHY_COMMON ${PHY_SRC_COMMON})
+target_link_libraries(PHY_COMMON PRIVATE shlib_loader)
 add_dependencies(PHY_COMMON dfts)
 target_link_libraries(PHY_COMMON PRIVATE asn1_lte_rrc_hdrs)
 
@@ -1187,18 +1195,6 @@ set(RLC_V2
   ${OPENAIR2_DIR}/LAYER2/rlc_v2/rlc_sdu.c
   )
 
-set(NR_RLC_SRC
-  ${OPENAIR2_DIR}/LAYER2/nr_rlc/asn1_utils.c
-  ${OPENAIR2_DIR}/LAYER2/nr_rlc/nr_rlc_entity.c
-  ${OPENAIR2_DIR}/LAYER2/nr_rlc/nr_rlc_entity_am.c
-  ${OPENAIR2_DIR}/LAYER2/nr_rlc/nr_rlc_entity_tm.c
-  ${OPENAIR2_DIR}/LAYER2/nr_rlc/nr_rlc_entity_um.c
-  ${OPENAIR2_DIR}/LAYER2/nr_rlc/nr_rlc_oai_api.c
-  ${OPENAIR2_DIR}/LAYER2/nr_rlc/nr_rlc_pdu.c
-  ${OPENAIR2_DIR}/LAYER2/nr_rlc/nr_rlc_sdu.c
-  ${OPENAIR2_DIR}/LAYER2/nr_rlc/nr_rlc_ue_manager.c
-  )
-
 set(NR_PDCP_SRC
   ${OPENAIR2_DIR}/LAYER2/nr_pdcp/nr_pdcp_oai_api.c
   ${OPENAIR2_DIR}/LAYER2/nr_pdcp/nr_pdcp_ue_manager.c
@@ -1256,7 +1252,6 @@ set(L2_LTE_SRC
   )
 
 set(L2_NR_SRC
-  ${NR_RLC_SRC}
   ${NR_PDCP_SRC}
   ${NR_SDAP_SRC}
   ${NR_RRC_DIR}/rrc_gNB.c
@@ -1294,7 +1289,6 @@ set(L2_RRC_SRC_UE
   )
 
 set(NR_L2_SRC_UE
-  ${NR_RLC_SRC}
   ${NR_PDCP_SRC}
   ${NR_SDAP_SRC}
   ${NR_UE_RRC_DIR}/L2_interface_ue.c
@@ -1419,9 +1413,6 @@ if(E2_AGENT)
 endif()
 
 
-add_library(MAC_NR ${MAC_NR_SRC})
-target_link_libraries(MAC_NR PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
-
 add_library(MAC_UE_NR ${MAC_NR_SRC_UE})
 target_link_libraries(MAC_UE_NR PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
 
@@ -1447,12 +1438,11 @@ add_library(e1_pdcp_if
 
 target_link_libraries(e1_pdcp_if PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
-target_link_libraries(L2_NR PRIVATE f1ap x2ap s1ap ngap nr_rrc e1ap)
+target_link_libraries(L2_NR PRIVATE f1ap x2ap s1ap ngap nr_rrc e1ap nr_rlc)
 if(E2_AGENT)
   target_link_libraries(L2_NR PUBLIC e2_agent e2_ran_func)
   target_compile_definitions(L2_NR PRIVATE E2_AGENT)
 endif()
-
 
 add_library(L2_LTE_NR
   ${L2_RRC_SRC}
@@ -1482,7 +1472,7 @@ endif()
 target_link_libraries(L2_UE PRIVATE asn1_lte_rrc_hdrs)
 
 add_library( NR_L2_UE ${NR_L2_SRC_UE} ${MAC_NR_SRC_UE} )
-target_link_libraries(NR_L2_UE PRIVATE f1ap)
+target_link_libraries(NR_L2_UE PRIVATE f1ap nr_rlc)
 target_link_libraries(NR_L2_UE PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
 add_library(MAC_NR_COMMON
@@ -2250,7 +2240,7 @@ add_executable(nr_dlsim
   ${PHY_INTERFACE_DIR}/queue_t.c
   )
 target_link_libraries(nr_dlsim PRIVATE
-  -Wl,--start-group UTIL SIMU SIMU_ETH PHY_COMMON PHY_NR_COMMON PHY_NR PHY_NR_UE SCHED_NR_LIB SCHED_NR_UE_LIB MAC_NR MAC_UE_NR MAC_NR_COMMON nr_rrc CONFIG_LIB L2_NR HASHTABLE x2ap SECURITY ngap -lz -Wl,--end-group
+  -Wl,--start-group UTIL SIMU SIMU_ETH PHY_COMMON PHY_NR_COMMON PHY_NR PHY_NR_UE SCHED_NR_LIB SCHED_NR_UE_LIB MAC_UE_NR MAC_NR_COMMON nr_rrc CONFIG_LIB L2_NR HASHTABLE x2ap SECURITY ngap -lz -Wl,--end-group
   m pthread ${T_LIB} ITTI dl shlib_loader
   )
 target_link_libraries(nr_dlsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
@@ -2294,7 +2284,7 @@ if (ENABLE_LDPC_T1)
 endif()
 
 target_link_libraries(nr_ulsim PRIVATE
-  -Wl,--start-group UTIL SIMU SIMU_ETH PHY_COMMON PHY_NR_COMMON PHY_NR PHY_NR_UE SCHED_NR_LIB SCHED_NR_UE_LIB MAC_NR MAC_UE_NR MAC_NR_COMMON nr_rrc CONFIG_LIB L2_NR HASHTABLE x2ap SECURITY ngap -lz -Wl,--end-group
+  -Wl,--start-group UTIL SIMU SIMU_ETH PHY_COMMON PHY_NR_COMMON PHY_NR PHY_NR_UE SCHED_NR_LIB SCHED_NR_UE_LIB MAC_UE_NR MAC_NR_COMMON nr_rrc CONFIG_LIB L2_NR HASHTABLE x2ap SECURITY ngap -lz -Wl,--end-group
   m pthread ${T_LIB} ITTI dl shlib_loader
   )
 target_link_libraries(nr_ulsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
@@ -2356,7 +2346,7 @@ if (${T_TRACER})
         NFAPI_COMMON_LIB NFAPI_LIB NFAPI_PNF_LIB NFAPI_VNF_LIB NFAPI_USER_LIB
         MISC_NFAPI_LTE_LIB MISC_NFAPI_NR_LIB
         PHY_COMMON PHY PHY_UE PHY_NR PHY_NR_COMMON PHY_NR_UE PHY_RU PHY_MEX
-        L2 L2_LTE L2_NR L2_LTE_NR L2_UE NR_L2_UE L2_UE_LTE_NR MAC_NR_COMMON MAC_NR MAC_UE_NR ngap
+        L2 L2_LTE L2_NR L2_LTE_NR L2_UE NR_L2_UE L2_UE_LTE_NR MAC_NR_COMMON MAC_UE_NR ngap
         CN_UTILS GTPV1U SCTP_CLIENT MME_APP LIB_NAS_UE NB_IoT SIMU SIMU_ETH OPENAIR0_LIB
         ldpc_orig ldpc_optim ldpc_optim8seg ldpc dfts)
     if (TARGET ${i})
@@ -2449,6 +2439,16 @@ endif()
 make_driver(ue_ip ${OPENAIR2_DIR}/NETWORK_DRIVER/UE_IP ${ue_ip_src})
 
 include(${OPENAIR1_DIR}/PHY/CODING/nrLDPC_decoder/nrLDPC_tools/CMakeLists.txt)
+
+set(ENABLE_TESTS OFF CACHE STRING "Activate build of tests")
+set_property(CACHE ENABLE_TESTS PROPERTY TYPE BOOL)
+if(ENABLE_TESTS)
+  # activates globally adding tests such that they can be run using ctest
+  enable_testing()
+  # meta-target: each test is supposed to add_dependencies(tests ${NEWTEST})
+  # then, it is possible to build and execute all tests using "ninja tests && ctest"
+  add_custom_target(tests)
+endif()
 
 add_subdirectory(common)
 add_subdirectory(doc)

@@ -21,11 +21,11 @@ In this tutorial we describe how to configure and run a 5G end-to-end setup with
 
 Minimum hardware requirements:
 - Laptop/Desktop/Server for OAI CN5G and OAI gNB
-    - Operating System: [Ubuntu 22.04 LTS](https://releases.ubuntu.com/22.04/ubuntu-22.04.2-desktop-amd64.iso)
+    - Operating System: [Ubuntu 22.04 LTS](https://releases.ubuntu.com/22.04/ubuntu-22.04.3-desktop-amd64.iso)
     - CPU: 8 cores x86_64 @ 3.5 GHz
     - RAM: 32 GB
 - Laptop for UE
-    - Operating System: [Ubuntu 22.04 LTS](https://releases.ubuntu.com/22.04/ubuntu-22.04.2-desktop-amd64.iso)
+    - Operating System: [Ubuntu 22.04 LTS](https://releases.ubuntu.com/22.04/ubuntu-22.04.3-desktop-amd64.iso)
     - CPU: 8 cores x86_64 @ 3.5 GHz
     - RAM: 8 GB
 - [USRP B210](https://www.ettus.com/all-products/ub210-kit/), [USRP N300](https://www.ettus.com/all-products/USRP-N300/) or [USRP X300](https://www.ettus.com/all-products/x300-kit/)
@@ -50,7 +50,7 @@ sudo apt install -y libboost-all-dev libusb-1.0-0-dev doxygen python3-docutils p
 
 git clone https://github.com/EttusResearch/uhd.git ~/uhd
 cd ~/uhd
-git checkout v4.4.0.0
+git checkout v4.5.0.0
 cd host
 mkdir build
 cd build
@@ -81,7 +81,7 @@ sudo apt install -y libforms-dev libforms-bin
 cd ~/openairinterface5g
 source oaienv
 cd cmake_targets
-./build_oai -w USRP --ninja --nrUE --gNB --build-lib "nrscope" -c
+./build_oai -w USRP --ninja --nrUE --gNB --build-lib "nrscope" -C
 ```
 
 # 4. Run OAI CN5G and OAI gNB

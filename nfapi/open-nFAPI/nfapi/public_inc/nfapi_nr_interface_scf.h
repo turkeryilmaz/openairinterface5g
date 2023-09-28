@@ -474,7 +474,8 @@ typedef struct {
 
 typedef struct {
 	nfapi_p4_p5_message_header_t header;
-	uint32_t error_code;
+	uint8_t error_code;
+  uint8_t num_tlvs;
 	nfapi_pnf_param_general_t pnf_param_general;
 	nfapi_pnf_phy_t pnf_phy;
 	nfapi_vendor_extension_tlv_t vendor_extension;
@@ -489,7 +490,7 @@ typedef struct {
 
 typedef struct {
 	nfapi_p4_p5_message_header_t header;
-	uint32_t error_code;
+	uint8_t error_code;
 	nfapi_vendor_extension_tlv_t vendor_extension;
 } nfapi_nr_pnf_config_response_t;
 
@@ -566,7 +567,10 @@ typedef struct {
 typedef struct {
   nfapi_p4_p5_message_header_t  header;
   uint8_t error_code;
-  //uint8_t num_invalid_tlvs;
+  uint8_t num_invalid_tlvs;
+  uint8_t num_invalid_tlvs_configured_in_idle;
+  uint8_t num_invalid_tlvs_configured_in_running;
+  uint8_t num_missing_tlvs;
   // TODO: add list of invalid/unsupported TLVs (see Table 3.18)
    nfapi_vendor_extension_tlv_t  vendor_extension;
 } nfapi_nr_config_response_scf_t;
@@ -1580,7 +1584,7 @@ typedef struct
 {
   uint8_t num_harq;
   uint8_t harq_confidence_level;
-  nfapi_nr_harq_t* harq_list;
+  nfapi_nr_harq_t harq_list[2];
 
 } nfapi_nr_harq_pdu_0_1_t;
 
@@ -1628,8 +1632,8 @@ typedef struct
   uint8_t  ul_cqi;
   uint16_t timing_advance;
   uint16_t rssi;
-  nfapi_nr_sr_pdu_0_1_t *sr;//67
-  nfapi_nr_harq_pdu_0_1_t *harq;//68
+  nfapi_nr_sr_pdu_0_1_t  sr;//67
+  nfapi_nr_harq_pdu_0_1_t harq;//68
   
 
 }nfapi_nr_uci_pucch_pdu_format_0_1_t;

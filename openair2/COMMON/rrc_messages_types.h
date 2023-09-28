@@ -69,8 +69,6 @@
 
 #define NBIOTRRC_CONFIGURATION_REQ(mSGpTR)   (mSGpTR)->ittiMsg.nbiotrrc_configuration_req
 
-#define NRRRC_CONFIGURATION_REQ(mSGpTR)   (mSGpTR)->ittiMsg.nrrrc_configuration_req
-
 #define NAS_KENB_REFRESH_REQ(mSGpTR)    (mSGpTR)->ittiMsg.nas_kenb_refresh_req
 #define NAS_CELL_SELECTION_REQ(mSGpTR)  (mSGpTR)->ittiMsg.nas_cell_selection_req
 #define NAS_CONN_ESTABLI_REQ(mSGpTR)    (mSGpTR)->ittiMsg.nas_conn_establi_req
@@ -88,7 +86,7 @@
 #define NAS_DOWNLINK_DATA_IND(mSGpTR)   (mSGpTR)->ittiMsg.nas_dl_data_ind
 
 #define RRC_SUBFRAME_PROCESS(mSGpTR)    (mSGpTR)->ittiMsg.rrc_subframe_process
-#define NRRRC_SLOT_PROCESS(mSGpTR)      (mSGpTR)->ittiMsg.nr_rrc_slot_process
+#define NRRRC_FRAME_PROCESS(mSGpTR)     (mSGpTR)->ittiMsg.nr_rrc_frame_process
 
 #define RLC_SDU_INDICATION(mSGpTR)      (mSGpTR)->ittiMsg.rlc_sdu_indication
 #define NRDuDlReq(mSGpTR)      (mSGpTR)->ittiMsg.nr_du_dl_req
@@ -403,12 +401,6 @@ typedef struct NbIoTRrcConfigurationReq_s {
   long                    ue_TimersAndConstants_n311_NB;
 } NbIoTRrcConfigurationReq;
 
-typedef struct {
-  int N1;
-  int N2;
-  int XP;
-} rrc_pdsch_AntennaPorts_t;
-
 // gNB: GNB_APP -> RRC messages
 typedef struct NRRrcConfigurationReq_s {
   uint64_t                cell_identity;
@@ -417,17 +409,7 @@ typedef struct NRRrcConfigurationReq_s {
   uint16_t                mnc[PLMN_LIST_MAX_SIZE];
   uint8_t                 mnc_digit_length[PLMN_LIST_MAX_SIZE];
   uint8_t                 num_plmn;
-  NR_ServingCellConfigCommon_t *scc;
-  NR_ServingCellConfig_t  *scd;
-  int                     sib1_tda;
-  rrc_pdsch_AntennaPorts_t pdsch_AntennaPorts;
-  int                     pusch_AntennaPorts;
-  int                     minRXTXTIME;
-  int                     do_CSIRS;
-  int                     do_SRS;
-  bool                    force_256qam_off;
-  int                     pusch_TargetSNRx10;
-  int                     pucch_TargetSNRx10;
+
   bool                    enable_sdap;
   int                     drbs;
 } gNB_RrcConfigurationReq;
@@ -464,11 +446,10 @@ typedef struct rrc_subframe_process_s {
   int CC_id;
 } RrcSubframeProcess;
 
-typedef struct nrrrc_slot_process_s {
+typedef struct nrrrc_frame_process_s {
   int frame;
-  int slot;
   int gnb_id;
-} NRRrcSlotProcess;
+} NRRrcFrameProcess;
 
 // eNB: RLC -> RRC messages
 typedef struct rlc_sdu_indication_s {

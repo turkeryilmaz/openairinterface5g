@@ -43,10 +43,13 @@
 #include "UTIL/OPT/opt.h"
 
 #include "openair2/LAYER2/nr_rlc/nr_rlc_oai_api.h"
+#include "F1AP_CauseRadioNetwork.h"
 
 #include "RRC/NR/MESSAGES/asn1_msg.h"
 
 #include "intertask_interface.h"
+#include "openair2/F1AP/f1ap_ids.h"
+#include "F1AP_CauseRadioNetwork.h"
 
 #include "T.h"
 
@@ -811,23 +814,19 @@ int nr_get_pucch_resource(NR_ControlResourceSet_t *coreset,
 }
 
 // This function configures pucch pdu fapi structure
-void nr_configure_pucch(nfapi_nr_pucch_pdu_t* pucch_pdu,
+void nr_configure_pucch(nfapi_nr_pucch_pdu_t *pucch_pdu,
                         NR_ServingCellConfigCommon_t *scc,
                         NR_UE_info_t *UE,
                         uint8_t pucch_resource,
                         uint16_t O_csi,
                         uint16_t O_ack,
                         uint8_t O_sr,
-                        int r_pucch) {
-
+                        int r_pucch)
+{
   NR_PUCCH_Resource_t *pucchres;
-  NR_PUCCH_ResourceSet_t *pucchresset;
   NR_PUCCH_FormatConfig_t *pucchfmt;
-  NR_PUCCH_ResourceId_t *resource_id = NULL;
   NR_UE_UL_BWP_t *current_BWP = &UE->current_UL_BWP;
 
-  int n_list, n_set;
-  uint16_t N2,N3;
   int res_found = 0;
 
   pucch_pdu->bit_len_harq = O_ack;
@@ -883,60 +882,27 @@ void nr_configure_pucch(nfapi_nr_pucch_pdu_t* pucch_pdu,
   pucch_pdu->cyclic_prefix = (current_BWP->cyclicprefix==NULL) ? 0 : *current_BWP->cyclicprefix;
 
   NR_PUCCH_Config_t *pucch_Config = current_BWP->pucch_Config;
-  if (r_pucch<0 || pucch_Config) {
-      LOG_D(NR_MAC,"pucch_acknak: Filling dedicated configuration for PUCCH\n");
+  if (r_pucch < 0 || pucch_Config) {
+    LOG_D(NR_MAC, "pucch_acknak: Filling dedicated configuration for PUCCH\n");
 
-      AssertFatal(pucch_Config->resourceSetToAddModList!=NULL,
-		    "PUCCH resourceSetToAddModList is null\n");
-
-      n_set = pucch_Config->resourceSetToAddModList->list.count;
-      AssertFatal(n_set>0,"PUCCH resourceSetToAddModList is empty\n");
-
-      LOG_D(NR_MAC, "UCI n_set= %d\n", n_set);
-
-      N2 = 2;
-	// procedure to select pucch resource id from resource sets according to
-	// number of uci bits and pucch resource indicator pucch_resource
-	// ( see table 9.2.3.2 in 38.213)
-      for (int i=0; i<n_set; i++) {
-	pucchresset = pucch_Config->resourceSetToAddModList->list.array[i];
-	n_list = pucchresset->resourceList.list.count;
-	if (pucchresset->pucch_ResourceSetId == 0 && O_uci<3) {
-	  if (pucch_resource < n_list)
-            resource_id = pucchresset->resourceList.list.array[pucch_resource];
-          else
-            AssertFatal(1==0,"Couldn't fine pucch resource indicator %d in PUCCH resource set %d for %d UCI bits",pucch_resource,i,O_uci);
-        }
-        if (pucchresset->pucch_ResourceSetId == 1 && O_uci>2) {
-        N3 = pucchresset->maxPayloadSize!= NULL ?  *pucchresset->maxPayloadSize : 1706;
-        if (N2<O_uci && N3>O_uci) {
-          if (pucch_resource < n_list)
-            resource_id = pucchresset->resourceList.list.array[pucch_resource];
-          else
-            AssertFatal(1==0,"Couldn't fine pucch resource indicator %d in PUCCH resource set %d for %d UCI bits",pucch_resource,i,O_uci);
-        }
-        else N2 = N3;
-      }
-    }
-
-    AssertFatal(resource_id!=NULL,"Couldn-t find any matching PUCCH resource in the PUCCH resource sets");
+    int resource_id = get_pucch_resourceid(pucch_Config, O_uci, pucch_resource);
 
     AssertFatal(pucch_Config->resourceToAddModList!=NULL,
                 "PUCCH resourceToAddModList is null\n");
 
-    n_list = pucch_Config->resourceToAddModList->list.count;
-    AssertFatal(n_list>0,"PUCCH resourceToAddModList is empty\n");
+    int n_list = pucch_Config->resourceToAddModList->list.count;
+    AssertFatal(n_list > 0, "PUCCH resourceToAddModList is empty\n");
 
     // going through the list of PUCCH resources to find the one indexed by resource_id
-    for (int i=0; i<n_list; i++) {
+    for (int i = 0; i < n_list; i++) {
       pucchres = pucch_Config->resourceToAddModList->list.array[i];
-      if (pucchres->pucch_ResourceId == *resource_id) {
+      if (pucchres->pucch_ResourceId == resource_id) {
         res_found = 1;
         pucch_pdu->prb_start = pucchres->startingPRB;
         pucch_pdu->rnti = UE->rnti;
         // FIXME why there is only one frequency hopping flag
         // what about inter slot frequency hopping?
-        pucch_pdu->freq_hop_flag = pucchres->intraSlotFrequencyHopping!= NULL ?  1 : 0;
+        pucch_pdu->freq_hop_flag = pucchres->intraSlotFrequencyHopping ? 1 : 0;
         pucch_pdu->second_hop_prb = pucchres->secondHopPRB!= NULL ?  *pucchres->secondHopPRB : 0;
         switch(pucchres->format.present) {
           case NR_PUCCH_Resource__format_PR_format0 :
@@ -961,8 +927,8 @@ void nr_configure_pucch(nfapi_nr_pucch_pdu_t* pucch_pdu,
             pucch_pdu->sr_flag = O_sr;
             pucch_pdu->nr_of_symbols = pucchres->format.choice.format2->nrofSymbols;
             pucch_pdu->start_symbol_index = pucchres->format.choice.format2->startingSymbolIndex;
-            pucch_pdu->data_scrambling_id = pusch_id!= NULL ? *pusch_id : *scc->physCellId;
-            pucch_pdu->dmrs_scrambling_id = id0!= NULL ? *id0 : *scc->physCellId;
+            pucch_pdu->data_scrambling_id = pusch_id ? *pusch_id : *scc->physCellId;
+            pucch_pdu->dmrs_scrambling_id = id0 ? *id0 : *scc->physCellId;
             pucch_pdu->prb_size = compute_pucch_prb_size(2,
                                                          pucchres->format.choice.format2->nrofPRBs,
                                                          O_uci + O_sr,
@@ -976,25 +942,17 @@ void nr_configure_pucch(nfapi_nr_pucch_pdu_t* pucch_pdu,
             pucch_pdu->format_type = 3;
             pucch_pdu->nr_of_symbols = pucchres->format.choice.format3->nrofSymbols;
             pucch_pdu->start_symbol_index = pucchres->format.choice.format3->startingSymbolIndex;
-            pucch_pdu->data_scrambling_id = pusch_id!= NULL ? *pusch_id : *scc->physCellId;
+            pucch_pdu->data_scrambling_id = pusch_id ? *pusch_id : *scc->physCellId;
             if (pucch_Config->format3 == NULL) {
               pucch_pdu->pi_2bpsk = 0;
               pucch_pdu->add_dmrs_flag = 0;
             }
             else {
               pucchfmt = pucch_Config->format3->choice.setup;
-              pucch_pdu->pi_2bpsk = pucchfmt->pi2BPSK!= NULL ?  1 : 0;
-              pucch_pdu->add_dmrs_flag = pucchfmt->additionalDMRS!= NULL ?  1 : 0;
+              pucch_pdu->pi_2bpsk = pucchfmt->pi2BPSK ? 1 : 0;
+              pucch_pdu->add_dmrs_flag = pucchfmt->additionalDMRS ? 1 : 0;
             }
-            int f3_dmrs_symbols;
-            if (pucchres->format.choice.format3->nrofSymbols==4)
-              f3_dmrs_symbols = 1<<pucch_pdu->freq_hop_flag;
-            else {
-              if(pucchres->format.choice.format3->nrofSymbols<10)
-                f3_dmrs_symbols = 2;
-              else
-                f3_dmrs_symbols = 2<<pucch_pdu->add_dmrs_flag;
-            }
+            int f3_dmrs_symbols = get_f3_dmrs_symbols(pucchres, pucch_Config);
             pucch_pdu->prb_size = compute_pucch_prb_size(3,
                                                          pucchres->format.choice.format3->nrofPRBs,
                                                          O_uci + O_sr,
@@ -1017,8 +975,8 @@ void nr_configure_pucch(nfapi_nr_pucch_pdu_t* pucch_pdu,
             }
             else {
               pucchfmt = pucch_Config->format3->choice.setup;
-              pucch_pdu->pi_2bpsk = pucchfmt->pi2BPSK!= NULL ?  1 : 0;
-              pucch_pdu->add_dmrs_flag = pucchfmt->additionalDMRS!= NULL ?  1 : 0;
+              pucch_pdu->pi_2bpsk = pucchfmt->pi2BPSK != NULL;
+              pucch_pdu->add_dmrs_flag = pucchfmt->additionalDMRS != NULL;
             }
             pucch_pdu->bit_len_csi_part1 = O_csi;
             break;
@@ -1027,11 +985,17 @@ void nr_configure_pucch(nfapi_nr_pucch_pdu_t* pucch_pdu,
         }
       }
     }
-    AssertFatal(res_found==1,"No PUCCH resource found corresponding to id %ld\n",*resource_id);
-    LOG_D(NR_MAC,"Configure pucch: pucch_pdu->format_type %d pucch_pdu->bit_len_harq %d, pucch->pdu->bit_len_csi %d\n",pucch_pdu->format_type,pucch_pdu->bit_len_harq,pucch_pdu->bit_len_csi_part1);
-  }
-  else { // this is the default PUCCH configuration, PUCCH format 0 or 1
-    LOG_D(NR_MAC,"pucch_acknak: Filling default PUCCH configuration from Tables (r_pucch %d, pucch_Config %p)\n",r_pucch,pucch_Config);
+    AssertFatal(res_found == 1, "No PUCCH resource found corresponding to id %d\n", resource_id);
+    LOG_D(NR_MAC,
+          "Configure pucch: pucch_pdu->format_type %d pucch_pdu->bit_len_harq %d, pucch->pdu->bit_len_csi %d\n",
+          pucch_pdu->format_type,
+          pucch_pdu->bit_len_harq,
+          pucch_pdu->bit_len_csi_part1);
+  } else { // this is the default PUCCH configuration, PUCCH format 0 or 1
+    LOG_D(NR_MAC,
+          "pucch_acknak: Filling default PUCCH configuration from Tables (r_pucch %d, pucch_Config %p)\n",
+          r_pucch,
+          pucch_Config);
     int rsetindex = *pucch_ConfigCommon->pucch_ResourceCommon;
     int prb_start, second_hop_prb, nr_of_symb, start_symb;
     set_r_pucch_parms(rsetindex,
@@ -1058,7 +1022,6 @@ void nr_configure_pucch(nfapi_nr_pucch_pdu_t* pucch_pdu,
     pucch_pdu->prb_size=1;
   }
 }
-
 
 void set_r_pucch_parms(int rsetindex,
                        int r_pucch,
@@ -1983,6 +1946,9 @@ int get_nrofHARQ_ProcessesForPDSCH(e_NR_PDSCH_ServingCellConfig__nrofHARQ_Proces
 
 void delete_nr_ue_data(NR_UE_info_t *UE, NR_COMMON_channels_t *ccPtr, uid_allocator_t *uia)
 {
+  ASN_STRUCT_FREE(asn_DEF_NR_CellGroupConfig, UE->CellGroup);
+  ASN_STRUCT_FREE(asn_DEF_NR_CellGroupConfig, UE->reconfigCellGroup);
+  ASN_STRUCT_FREE(asn_DEF_NR_UE_NR_Capability, UE->capability);
   NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
   destroy_nr_list(&sched_ctrl->available_dl_harq);
   destroy_nr_list(&sched_ctrl->feedback_dl_harq);
@@ -1990,24 +1956,10 @@ void delete_nr_ue_data(NR_UE_info_t *UE, NR_COMMON_channels_t *ccPtr, uid_alloca
   destroy_nr_list(&sched_ctrl->available_ul_harq);
   destroy_nr_list(&sched_ctrl->feedback_ul_harq);
   destroy_nr_list(&sched_ctrl->retrans_ul_harq);
+  free_sched_pucch_list(sched_ctrl);
   uid_linear_allocator_free(uia, UE->uid);
   LOG_I(NR_MAC, "Remove NR rnti 0x%04x\n", UE->rnti);
-  const rnti_t rnti = UE->rnti;
   free(UE);
-
-  /* clear RA process(es?) associated to the UE */
-  for (int cc_id = 0; cc_id < NFAPI_CC_MAX; cc_id++) {
-    for (int i = 0; i < NR_NB_RA_PROC_MAX; i++) {
-      NR_COMMON_channels_t *cc = &ccPtr[cc_id];
-      if (cc->ra[i].rnti == rnti) {
-        LOG_D(NR_MAC, "free RA process %d for rnti %04x\n", i, rnti);
-        /* is it enough? */
-        cc->ra[i].cfra = false;
-        cc->ra[i].rnti = 0;
-        cc->ra[i].crnti = 0;
-      }
-    }
-  }
 }
 
 
@@ -2413,6 +2365,11 @@ void set_sched_pucch_list(NR_UE_sched_ctrl_t *sched_ctrl,
   }
 }
 
+void free_sched_pucch_list(NR_UE_sched_ctrl_t *sched_ctrl)
+{
+  free(sched_ctrl->sched_pucch);
+}
+
 void create_dl_harq_list(NR_UE_sched_ctrl_t *sched_ctrl,
                          const NR_PDSCH_ServingCellConfig_t *pdsch) {
   const int nrofHARQ = pdsch && pdsch->nrofHARQ_ProcessesForPDSCH ?
@@ -2779,20 +2736,80 @@ void nr_csirs_scheduling(int Mod_idP, frame_t frame, sub_frame_t slot, int n_slo
   }
 }
 
+static void nr_mac_apply_cellgroup(gNB_MAC_INST *mac, NR_UE_info_t *UE, frame_t frame, sub_frame_t slot)
+{
+  LOG_I(NR_MAC, "%4d.%2d RNTI %04x: RRC processing timer expired\n", frame, slot, UE->rnti);
+
+  /* check if there is a new CellGroupConfig to be applied */
+  if (UE->apply_cellgroup && UE->reconfigCellGroup != NULL) {
+    LOG_I(NR_MAC, "%4d.%2d RNTI %04x: Apply CellGroupConfig after RRC processing timer expiry\n", frame, slot, UE->rnti);
+    ASN_STRUCT_FREE(asn_DEF_NR_CellGroupConfig, UE->CellGroup);
+    UE->CellGroup = UE->reconfigCellGroup;
+    UE->reconfigCellGroup = NULL;
+    UE->apply_cellgroup = false;
+
+    if (LOG_DEBUGFLAG(DEBUG_ASN1))
+      xer_fprint(stdout, &asn_DEF_NR_CellGroupConfig, (const void *)UE->CellGroup);
+  }
+
+  NR_ServingCellConfigCommon_t *scc = mac->common_channels[0].ServingCellConfigCommon;
+
+  /* Note! we already did process_CellGroup(), so no need to do this again */
+  NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
+  configure_UE_BWP(mac, scc, sched_ctrl, NULL, UE, -1, -1);
+
+  reset_srs_stats(UE);
+
+  if (get_softmodem_params()->sa) {
+    // add all available DL HARQ processes for this UE in SA
+    create_dl_harq_list(sched_ctrl, UE->current_DL_BWP.pdsch_servingcellconfig);
+  }
+}
+
+int nr_mac_enable_ue_rrc_processing_timer(gNB_MAC_INST *mac, NR_UE_info_t *UE, bool apply_cellgroup)
+{
+  DevAssert(mac != NULL);
+  DevAssert(UE != NULL);
+  NR_SCHED_ENSURE_LOCKED(&mac->sched_lock);
+
+  const uint16_t sl_ahead = mac->if_inst->sl_ahead;
+  // TODO: account for BWP switch with NR_RRC_BWP_SWITCHING_DELAY_MS
+  int delay = NR_RRC_RECONFIGURATION_DELAY_MS;
+  NR_SubcarrierSpacing_t scs = UE->current_UL_BWP.scs;
+
+  UE->UE_sched_ctrl.rrc_processing_timer = (delay << scs) + sl_ahead;
+  UE->apply_cellgroup = apply_cellgroup;
+  AssertFatal(!UE->apply_cellgroup || (UE->apply_cellgroup && UE->reconfigCellGroup),
+              "logic bug: apply_cellgroup %d and UE->reconfigCellGroup %p: did you try to apply a cellGroup, while none is deposited?\n",
+              UE->apply_cellgroup,
+              UE->reconfigCellGroup);
+
+  // it might happen that timing advance command should be sent during the RRC
+  // processing timer. To prevent this, set a variable as if we would have just
+  // sent it. This way, another TA command will for sure be sent in some
+  // frames, after RRC processing timer.
+  UE->UE_sched_ctrl.ta_frame = (mac->frame - 1 + 1024) % 1024;
+
+  LOG_I(NR_MAC, "%4d.%2d UE %04x: Activate RRC processing timer (%d ms)\n", mac->frame, mac->slot, UE->rnti, delay);
+  return 0;
+}
+
 void nr_mac_update_timers(module_id_t module_id,
                           frame_t frame,
                           sub_frame_t slot)
 {
-  /* already mutex protected: held in gNB_dlsch_ulsch_scheduler() */
-  NR_SCHED_ENSURE_LOCKED(&RC.nrmac[module_id]->sched_lock);
+  gNB_MAC_INST *mac = RC.nrmac[module_id];
 
-  NR_UEs_t *UE_info = &RC.nrmac[module_id]->UE_info;
+  /* already mutex protected: held in gNB_dlsch_ulsch_scheduler() */
+  NR_SCHED_ENSURE_LOCKED(&mac->sched_lock);
+
+  NR_UEs_t *UE_info = &mac->UE_info;
   UE_iterator(UE_info->list, UE) {
     NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
 
     if (nr_mac_check_release(sched_ctrl, UE->rnti)) {
       nr_rlc_remove_ue(UE->rnti);
-      mac_remove_nr_ue(RC.nrmac[module_id], UE->rnti);
+      mac_remove_nr_ue(mac, UE->rnti);
       // go back to examine the next UE, which is at the position the
       // current UE was
       UE--;
@@ -2800,41 +2817,12 @@ void nr_mac_update_timers(module_id_t module_id,
     }
 
     /* check if UL failure and trigger release request if necessary */
-    nr_mac_check_ul_failure(RC.nrmac[module_id], UE->rnti, sched_ctrl);
+    nr_mac_check_ul_failure(mac, UE->rnti, sched_ctrl);
 
     if (sched_ctrl->rrc_processing_timer > 0) {
       sched_ctrl->rrc_processing_timer--;
-      if (sched_ctrl->rrc_processing_timer == 0) {
-        LOG_I(NR_MAC, "(%d.%d) De-activating RRC processing timer for UE %04x\n", frame, slot, UE->rnti);
-
-        reset_srs_stats(UE);
-
-        NR_CellGroupConfig_t *cg = NULL;
-        uper_decode(NULL,
-                    &asn_DEF_NR_CellGroupConfig, // might be added prefix later
-                    (void **)&cg,
-                    (uint8_t *)UE->cg_buf,
-                    (UE->enc_rval.encoded + 7) / 8,
-                    0,
-                    0);
-        UE->CellGroup = cg;
-
-        if (LOG_DEBUGFLAG(DEBUG_ASN1)) {
-          xer_fprint(stdout, &asn_DEF_NR_CellGroupConfig, (const void *) UE->CellGroup);
-        }
-
-        NR_ServingCellConfigCommon_t *scc = RC.nrmac[module_id]->common_channels[0].ServingCellConfigCommon;
-
-        LOG_I(NR_MAC,"Modified rnti %04x with CellGroup\n", UE->rnti);
-        process_CellGroup(cg, UE);
-        NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
-        configure_UE_BWP(RC.nrmac[module_id], scc, sched_ctrl, NULL, UE, -1, -1);
-
-        if (get_softmodem_params()->sa) {
-          // add all available DL HARQ processes for this UE in SA
-          create_dl_harq_list(sched_ctrl, UE->current_DL_BWP.pdsch_servingcellconfig);
-        }
-      }
+      if (sched_ctrl->rrc_processing_timer == 0)
+        nr_mac_apply_cellgroup(mac, UE, frame, slot);
     }
 
     // RA timer
@@ -2842,7 +2830,7 @@ void nr_mac_update_timers(module_id_t module_id,
       UE->ra_timer--;
       if (UE->ra_timer == 0) {
         LOG_W(NR_MAC, "Removing UE %04x because RA timer expired\n", UE->rnti);
-        mac_remove_nr_ue(RC.nrmac[module_id], UE->rnti);
+        mac_remove_nr_ue(mac, UE->rnti);
       }
     }
   }
@@ -2922,6 +2910,7 @@ void send_initial_ul_rrc_message(gNB_MAC_INST *mac, int rnti, const uint8_t *sdu
 
   const f1ap_initial_ul_rrc_message_t ul_rrc_msg = {
     /* TODO: add mcc, mnc, cell_id, ..., is not available at MAC yet */
+    .gNB_DU_ue_id = rnti,
     .crnti = rnti,
     .rrc_container = (uint8_t *) sdu,
     .rrc_container_length = sdu_len,
@@ -2935,16 +2924,13 @@ void prepare_initial_ul_rrc_message(gNB_MAC_INST *mac, NR_UE_info_t *UE)
 {
   NR_SCHED_ENSURE_LOCKED(&mac->sched_lock);
   /* create this UE's initial CellGroup */
-  /* Note: relying on the RRC is a hack, as we are in the DU; there should be
-   * no RRC, remove in the future */
-  module_id_t mod_id = 0;
-  gNB_RRC_INST *rrc = RC.nrrrc[mod_id];
-  const NR_ServingCellConfigCommon_t *scc = rrc->carrier.servingcellconfigcommon;
-  const NR_ServingCellConfig_t *sccd = rrc->configuration.scd;
-  NR_CellGroupConfig_t *cellGroupConfig = get_initial_cellGroupConfig(UE->uid, scc, sccd, &rrc->configuration);
+  int CC_id = 0;
+  const NR_ServingCellConfigCommon_t *scc = mac->common_channels[CC_id].ServingCellConfigCommon;
+  const NR_ServingCellConfig_t *sccd = mac->common_channels[CC_id].pre_ServingCellConfig;
+  NR_CellGroupConfig_t *cellGroupConfig = get_initial_cellGroupConfig(UE->uid, scc, sccd, &mac->radio_config);
 
   UE->CellGroup = cellGroupConfig;
-  nr_mac_update_cellgroup(mac, UE->rnti, cellGroupConfig);
+  process_CellGroup(cellGroupConfig, UE);
 
   /* activate SRB0 */
   nr_rlc_activate_srb0(UE->rnti, mac, UE, send_initial_ul_rrc_message);
@@ -2997,11 +2983,34 @@ void nr_mac_check_ul_failure(const gNB_MAC_INST *nrmac, int rnti, NR_UE_sched_ct
   /* to trigger only once: trigger when ul_failure_timer == 1, but timer will
    * stop at 0 and we wait for a UE release command from upper layers */
   if (sched_ctrl->ul_failure_timer == 1) {
-    f1ap_ue_context_release_complete_t complete = {
-      .rnti = rnti,
+    f1_ue_data_t ue_data = du_get_f1_ue_data(rnti);
+    f1ap_ue_context_release_req_t request = {
+      .gNB_CU_ue_id = ue_data.secondary_ue,
+      .gNB_DU_ue_id = rnti,
       .cause = F1AP_CAUSE_RADIO_NETWORK,
-      .cause_value = 12, // F1AP_CauseRadioNetwork_rl_failure_others
+      .cause_value = F1AP_CauseRadioNetwork_rl_failure_others,
     };
-    nrmac->mac_rrc.ue_context_release_request(&complete);
+    nrmac->mac_rrc.ue_context_release_request(&request);
   }
+}
+
+void nr_mac_trigger_reconfiguration(const gNB_MAC_INST *nrmac, const NR_UE_info_t *UE)
+{
+  DevAssert(UE->CellGroup != NULL);
+  uint8_t buf[2048];
+  asn_enc_rval_t enc_rval = uper_encode_to_buffer(&asn_DEF_NR_CellGroupConfig, NULL, UE->CellGroup, buf, sizeof(buf));
+  AssertFatal(enc_rval.encoded > 0, "ASN1 encoding of CellGroupConfig failed, failed type %s\n", enc_rval.failed_type->name);
+  du_to_cu_rrc_information_t du2cu = {
+    .cellGroupConfig = buf,
+    .cellGroupConfig_length = (enc_rval.encoded + 7) >> 3,
+  };
+  f1_ue_data_t ue_data = du_get_f1_ue_data(UE->rnti);
+  f1ap_ue_context_modif_required_t required = {
+    .gNB_CU_ue_id = ue_data.secondary_ue,
+    .gNB_DU_ue_id = UE->rnti,
+    .du_to_cu_rrc_information = &du2cu,
+    .cause = F1AP_CAUSE_RADIO_NETWORK,
+    .cause_value = F1AP_CauseRadioNetwork_action_desirable_for_radio_reasons,
+  };
+  nrmac->mac_rrc.ue_context_modification_required(&required);
 }

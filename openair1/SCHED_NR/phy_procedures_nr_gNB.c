@@ -47,8 +47,6 @@
 //#define DEBUG_RXDATA
 //#define SRS_IND_DEBUG
 
-uint8_t SSB_Table[38]={0,2,4,6,8,10,12,14,254,254,16,18,20,22,24,26,28,30,254,254,32,34,36,38,40,42,44,46,254,254,48,50,52,54,56,58,60,62};
-
 extern uint8_t nfapi_mode;
 
 void nr_common_signal_procedures (PHY_VARS_gNB *gNB,int frame,int slot,nfapi_nr_dl_tti_ssb_pdu ssb_pdu) {
@@ -263,8 +261,20 @@ static void nr_postDecode(PHY_VARS_gNB *gNB, notifiedFIFO_elt_t *req)
 
   //int dumpsig=0;
   // if all segments are done
-  if (rdata->nbSegments == ulsch_harq->processedSegments) {
-    if (!check_abort(&ulsch_harq->abort_decode) && !gNB->pusch_vars[rdata->ulsch_id].DTX) {
+  if (ulsch_harq->processedSegments == ulsch_harq->C) {
+    // When the number of code blocks is 1 (C = 1) and ulsch_harq->processedSegments = 1, we can assume a good TB because of the
+    // CRC check made by the LDPC for early termination, so, no need to perform CRC check twice for a single code block
+    bool crc_valid = true;
+    if (ulsch_harq->C > 1) {
+      // Check ULSCH transport block CRC
+      int crc_type = CRC16;
+      if (rdata->A > 3824) {
+        crc_type = CRC24_A;
+      }
+      crc_valid = check_crc(ulsch_harq->b, ulsch_harq->B, crc_type);
+    }
+
+    if (crc_valid && !check_abort(&ulsch_harq->abort_decode) && !gNB->pusch_vars[rdata->ulsch_id].DTX) {
       LOG_D(PHY,
             "[gNB %d] ULSCH: Setting ACK for SFN/SF %d.%d (rnti %x, pid %d, ndi %d, status %d, round %d, TBS %d, Max interation "
             "(all seg) %d)\n",
@@ -422,7 +432,7 @@ void nr_fill_indication(PHY_VARS_gNB *gNB, int frame, int slot_rx, int ULSCH_id,
   nfapi_nr_pusch_pdu_t *pusch_pdu = &harq_process->ulsch_pdu;
 
   // Get estimated timing advance for MAC
-  int sync_pos = ulsch->delay.pusch_est_delay;
+  int sync_pos = ulsch->delay.est_delay;
 
   // scale the 16 factor in N_TA calculation in 38.213 section 4.2 according to the used FFT size
   uint16_t bw_scaling = 16 * gNB->frame_parms.ofdm_symbol_size / 2048;
