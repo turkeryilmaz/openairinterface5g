@@ -668,6 +668,8 @@ typedef struct PHY_VARS_NR_UE_s {
   uint32_t ***nr_gold_pscch_dmrs;  
   /// PSCCH DMRS for RX
   uint32_t ***nr_gold_pscch;
+  /// PSSCH signal detection threshold
+  int pssch_thres;
 } PHY_VARS_NR_UE;
 
 typedef struct {

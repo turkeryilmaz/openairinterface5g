@@ -616,6 +616,8 @@ typedef struct {
 
   //  current SCI pdu build from SCI1 and SCI2
   nr_sci_pdu_t sci_pdu_rx;
+  nr_sci_pdu_t sci1_pdu;
+  nr_sci_pdu_t sci2_pdu;
 } NR_UE_MAC_INST_t;
 
 /*@}*/

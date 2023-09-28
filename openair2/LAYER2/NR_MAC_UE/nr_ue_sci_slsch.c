@@ -380,74 +380,74 @@ void fill_pssch_pscch_pdu(sl_nr_tx_config_pscch_pssch_pdu_t *nr_sl_pssch_pscch_p
 	    //harq_pid; // 4 bits
             fsize = 4;
 	    for (int i = 0; i < fsize; i++)
-		   *sci2_payload |= (((uint64_t)sci2_pdu->harq_pid >> (fsize - i - 1)) & 1) << (sci2_size - pos++);
+		   *sci2_payload |= (((uint64_t)sci2_pdu->harq_pid >> (fsize - i - 1)) & 1) << (sci2_size - pos++ -1);
 	    //ndi; // 1 bit
-	    *sci2_payload |= ((uint64_t)sci2_pdu->ndi  & 1) << (sci2_size - pos++);
+	    *sci2_payload |= ((uint64_t)sci2_pdu->ndi  & 1) << (sci2_size - pos++ -1);
 	    //rv_index; // 2 bits
             fsize = 2;
 	    for (int i = 0; i < fsize; i++)
-		   *sci2_payload |= (((uint64_t)sci2_pdu->rv_index >> (fsize - i - 1)) & 1) << (sci2_size - pos++);
+		   *sci2_payload |= (((uint64_t)sci2_pdu->rv_index >> (fsize - i - 1)) & 1) << (sci2_size - pos++ -1);
 	    //source_id; // 8 bits
             fsize = 8;
 	    for (int i = 0; i < fsize; i++)
-		   *sci2_payload |= (((uint64_t)sci2_pdu->source_id >> (fsize - i - 1)) & 1) << (sci2_size - pos++);
+		   *sci2_payload |= (((uint64_t)sci2_pdu->source_id >> (fsize - i - 1)) & 1) << (sci2_size - pos++ -1);
 	    //dest_id; // 16 bits
             fsize = 16;
 	    for (int i = 0; i < fsize; i++)
-		   *sci2_payload |= (((uint64_t)sci2_pdu->dest_id >> (fsize - i - 1)) & 1) << (sci2_size - pos++);
+		   *sci2_payload |= (((uint64_t)sci2_pdu->dest_id >> (fsize - i - 1)) & 1) << (sci2_size - pos++ -1);
 	    //harq_feedback; //1 bit
-	    *sci2_payload |= ((uint64_t)sci2_pdu->harq_feedback  & 1) << (sci2_size - pos++);
+	    *sci2_payload |= ((uint64_t)sci2_pdu->harq_feedback  & 1) << (sci2_size - pos++ -1);
 	    if (format2==NR_SL_SCI_FORMAT_2A) {
 	      //cast_type // 2 bits formac 2A
 	      fsize = 2;
 	      for (int i = 0; i < fsize; i++)
-	  	   *sci2_payload |= (((uint64_t)sci2_pdu->cast_type >> (fsize - i - 1)) & 1) << (sci2_size - pos++);
+	  	   *sci2_payload |= (((uint64_t)sci2_pdu->cast_type >> (fsize - i - 1)) & 1) << (sci2_size - pos++ -1);
             }
 	    if (format2==NR_SL_SCI_FORMAT_2C || format2==NR_SL_SCI_FORMAT_2A)
 	      // csi_req // 1 bit format 2A, format 2C
-	      *sci2_payload |= ((uint64_t)sci2_pdu->csi_req  & 1) << (sci2_size - pos++);
+	      *sci2_payload |= ((uint64_t)sci2_pdu->csi_req  & 1) << (sci2_size - pos++ -1);
               
 	    if (format2==NR_SL_SCI_FORMAT_2B) { 
 	      // zone_id // 12 bits format 2B
 	      fsize = 12;
 	      for (int i = 0; i < fsize; i++)
-	  	   *sci2_payload |= (((uint64_t)sci2_pdu->zone_id >> (fsize - i - 1)) & 1) << (sci2_size - pos++);
+	  	   *sci2_payload |= (((uint64_t)sci2_pdu->zone_id >> (fsize - i - 1)) & 1) << (sci2_size - pos++ -1);
 
 	      // communication_range; // 4 bits depending on sl-ZoneConfigMCR-Index, format 2B
 	      // note fill in for R17
 	      if (0) {
 	        fsize = 4;
 	        for (int i = 0; i < fsize; i++)
-	  	     *sci2_payload |= (((uint64_t)sci2_pdu->communication_range.val >> (fsize - i - 1)) & 1) << (sci2_size - pos++);
+	  	     *sci2_payload |= (((uint64_t)sci2_pdu->communication_range.val >> (fsize - i - 1)) & 1) << (sci2_size - pos++ -1);
               } 
 	    }
 	    else if (format2==NR_SL_SCI_FORMAT_2C) {
 
        	     // providing_req_ind; // 1 bit, format 2C
-	     *sci2_payload |= ((uint64_t)sci2_pdu->providing_req_ind  & 1) << (sci2_size - pos++);
+	     *sci2_payload |= ((uint64_t)sci2_pdu->providing_req_ind  & 1) << (sci2_size - pos++ -1);
              // resource_combinations; // depending on n_subChannel^SL (sl-NumSubchennel), N_rsv_period (sl-ResourceReservePeriodList) and sl-MultiReservedResource, format 2C
              if (0) {
                fsize = 0; 
 	       for (int i = 0; i < fsize; i++)
-	          *sci2_payload |= (((uint64_t)sci2_pdu->resource_combinations.val >> (fsize - i - 1)) & 1) << (sci2_size - pos++);
+	          *sci2_payload |= (((uint64_t)sci2_pdu->resource_combinations.val >> (fsize - i - 1)) & 1) << (sci2_size - pos++ -1);
              }
 	     // first_resource_location; // 8 bits, format 2C
 	     fsize = 8;
 	     for (int i = 0; i < fsize; i++)
-	        *sci2_payload |= (((uint64_t)sci2_pdu->first_resource_location >> (fsize - i - 1)) & 1) << (sci2_size - pos++);
+	        *sci2_payload |= (((uint64_t)sci2_pdu->first_resource_location >> (fsize - i - 1)) & 1) << (sci2_size - pos++ -1);
 	     // reference_slot_location; // depending on mu, format 2C
 	     if (0) {
                fsize = 0;
 	       for (int i = 0; i < fsize; i++)
-	          *sci2_payload |= (((uint64_t)sci2_pdu->reference_slot_location.val >> (fsize - i - 1)) & 1) << (sci2_size - pos++);
+	          *sci2_payload |= (((uint64_t)sci2_pdu->reference_slot_location.val >> (fsize - i - 1)) & 1) << (sci2_size - pos++ -1);
              }
              // resource_set_type; // 1 bit, format 2C
-	     *sci2_payload |= ((uint64_t)sci2_pdu->resource_set_type  & 1) << (sci2_size - pos++);
+	     *sci2_payload |= ((uint64_t)sci2_pdu->resource_set_type  & 1) << (sci2_size - pos++ -1);
 	     //	lowest_subchannel_indices; // depending on n_subChannel^SL, format 2C
 	     if (0) {
 	       fsize = 0;
 	       for (int i = 0; i < fsize; i++)
-	          *sci2_payload |= (((uint64_t)sci2_pdu->lowest_subchannel_indices.val >> (fsize - i - 1)) & 1) << (sci2_size - pos++);
+	          *sci2_payload |= (((uint64_t)sci2_pdu->lowest_subchannel_indices.val >> (fsize - i - 1)) & 1) << (sci2_size - pos++ -1);
              }
 	     //
 	    }
@@ -769,7 +769,6 @@ extract_pssch_sci_pdu(uint64_t *sci2_payload, int len,
                       const NR_SL_ResourcePool_r16_t *sl_res_pool,
 		      nr_sci_pdu_t *sci_pdu) { 
   int pos=0,fsize;
-  static ndi=1;
   int sci2_size = nr_sci_size(sl_res_pool,sci_pdu,NR_SL_SCI_FORMAT_2A);
   AssertFatal(sci2_size == len,"sci2a size %d is not the same sci_indication %d\n",sci2_size,len);
 

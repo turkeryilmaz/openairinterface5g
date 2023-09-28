@@ -2060,6 +2060,7 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
 
   for(uint8_t symbol = start_symbol_index; symbol < (start_symbol_index + nr_of_symbols); symbol++) {
     uint8_t dmrs_symbol_flag = (ul_dmrs_symb_pos >> symbol) & 0x01;
+    int sci2_cnt_thissymb=0;
     if (dmrs_symbol_flag == 1) {
       if ((ul_dmrs_symb_pos >> ((symbol + 1) % frame_parms->symbols_per_slot)) & 0x01)
         AssertFatal(1==0,"Double DMRS configuration is not yet supported\n");
@@ -2213,11 +2214,11 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
       /*--------------------  LLRs computation  -------------------------------------------------------------*/
       /*-----------------------------------------------------------------------------------------------------*/
       if (gNB) start_meas(&gNB->ulsch_llr_stats);
-      if (ml_rx == false || nrOfLayers == 1) { 
+      int sci1_offset=0;
+      if (ml_rx == false || nrOfLayers == 1) {       
         if (pssch_pdu && sci2_left>0){
 	  LOG_I(NR_PHY,"valid_re_per_slot[%d] %d\n",symbol,pusch_vars->ul_valid_re_per_slot[symbol]);
 	  int available_sci2_res_in_symb = pusch_vars->ul_valid_re_per_slot[symbol];
-          int sci1_offset=0;
 	  int slsch_res_in_symbol;
 	  if (symbol <= pssch_pdu->pscch_numsym) { 
             available_sci2_res_in_symb = pusch_vars->ul_valid_re_per_slot[symbol] - sci1_re_per_symb;
@@ -2231,12 +2232,16 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
 	                       available_sci2_res_in_symb*sizeof(int32_t));
              sci2_left-= available_sci2_res_in_symb;
 	     LOG_I(NR_PHY,"SCI2 taking all available REs. sci2_left %d\n",sci2_left);
+	     pusch_vars->ul_valid_re_per_slot[symbol] = 0;
+	     sci2_cnt_thissymb=available_sci2_res_in_symb;
 	  }
 	  else { // we finish SCI2 off here
 	       memcpy(&sci2_llrs[2*sci2_cnt_prev],&pusch_vars->rxdataF_comp[0][(symbol * (off + rb_size * NR_NB_SC_PER_RB))+sci1_re_per_symb],
 			         sci2_left*sizeof(int32_t));
 	       slsch_res_in_symbol=available_sci2_res_in_symb-sci2_left;
 	       LOG_I(NR_PHY,"SCI2 taking %d REs, SLSCH taking %d\n",sci2_left,slsch_res_in_symbol);
+	       pusch_vars->ul_valid_re_per_slot[symbol]=slsch_res_in_symbol;
+	       sci2_cnt_thissymb=sci2_left;
                sci2_left=0;
 	       //for (int i=0;i<sci2_re;i++) LOG_I(NR_PHY,"sci2_llrs [%d] %d,%d\n",i,sci2_llrs[i<<1],sci2_llrs[1+(i<<1)]);
 	       //unscramble the SCI2 payload
@@ -2273,21 +2278,20 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
 	       LOG_I(NR_PHY,"Returning from SCI2 SL indication\n");
                //
 	  }
+        } // (not ML || nrOfLayers==1 ) AND pssch and sci2 REs to handle	
+	if (pssch_pdu) LOG_D(NR_PHY,"symbol %d: PSSCH REs %d (sci1 %d,sci2 %d)\n",symbol,pusch_vars->ul_valid_re_per_slot[symbol],sci1_offset,sci2_cnt_thissymb); 
+        for (aatx=0; aatx < nrOfLayers; aatx++) {
+          nr_ulsch_compute_llr(&pusch_vars->rxdataF_comp[aatx * frame_parms->nb_antennas_rx][symbol * (off + rb_size * NR_NB_SC_PER_RB)+sci1_offset+sci2_cnt_thissymb],
+                               pusch_vars->ul_ch_mag0[aatx * frame_parms->nb_antennas_rx],
+                               pusch_vars->ul_ch_magb0[aatx * frame_parms->nb_antennas_rx],
+                               pusch_vars->ul_ch_magc0[aatx * frame_parms->nb_antennas_rx],
+                               &pusch_vars->llr_layers[aatx][rxdataF_ext_offset * qam_mod_order],
+                               rb_size,
+                               pusch_vars->ul_valid_re_per_slot[symbol],
+                               symbol,
+                               qam_mod_order);
         }
-	else {
-          for (aatx=0; aatx < nrOfLayers; aatx++) {
-            nr_ulsch_compute_llr(&pusch_vars->rxdataF_comp[aatx * frame_parms->nb_antennas_rx][symbol * (off + rb_size * NR_NB_SC_PER_RB)],
-                                 pusch_vars->ul_ch_mag0[aatx * frame_parms->nb_antennas_rx],
-                                 pusch_vars->ul_ch_magb0[aatx * frame_parms->nb_antennas_rx],
-                                 pusch_vars->ul_ch_magc0[aatx * frame_parms->nb_antennas_rx],
-                                 &pusch_vars->llr_layers[aatx][rxdataF_ext_offset * qam_mod_order],
-                                 rb_size,
-                                 pusch_vars->ul_valid_re_per_slot[symbol],
-                                 symbol,
-                                 qam_mod_order);
-          }
-	}
-      } else {
+      } else { // this is MIMO case with ML
 	if (pssch_pdu) AssertFatal(1==0,"We need to handle the MIMO case for SCI2\n");      
         nr_ulsch_compute_ML_llr(pusch_vars->rxdataF_comp,
                                 pusch_vars->ul_ch_mag0,

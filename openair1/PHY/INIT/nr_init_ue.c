@@ -1012,6 +1012,7 @@ void sl_ue_phy_init(PHY_VARS_NR_UE *UE) {
 
   int nb_re_pusch = N_RB_UL * NR_NB_SC_PER_RB;
   int nb_re_pusch2 = nb_re_pusch + (nb_re_pusch&7);
+  UE->pssch_thres = 10;
   UE->pssch_vars = (NR_gNB_PUSCH *)malloc16_clear(UE->max_nb_slsch * sizeof(NR_gNB_PUSCH));
   for (int SLSCH_id = 0; SLSCH_id < NR_SLSCH_RX_MAX; SLSCH_id++) {
     NR_gNB_PUSCH *pssch = &UE->pssch_vars[SLSCH_id];

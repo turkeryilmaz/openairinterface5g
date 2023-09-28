@@ -3240,7 +3240,8 @@ uint8_t sl_determine_if_SSB_slot(uint16_t frame, uint16_t slot, uint16_t slots_p
                                              frame, slot, sl_bch->ssb_slot,sl_bch->num_ssb);
   return 0;
 }
-bool nr_ue_sl_pssch_scheduler(nr_sidelink_indication_t *sl_ind,
+bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
+		              nr_sidelink_indication_t *sl_ind,
                               const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp, 
                               const NR_SL_ResourcePool_r16_t *sl_res_pool,
                               sl_nr_tx_config_request_t *tx_config,
@@ -3264,10 +3265,8 @@ bool nr_ue_sl_pssch_scheduler(nr_sidelink_indication_t *sl_ind,
   LOG_D(NR_MAC,"[UE%d] SL-PSSCH SCHEDULER: Frame:SLOT %d:%d, slot_type:%d\n",
                                       sl_ind->module_id, frame, slot,sl_ind->slot_type);
 
-  nr_sci_pdu_t sci_pdu; 
-  nr_sci_pdu_t sci2_pdu; 
   uint16_t slsch_pdu_length;
-  bool schedule_slsch = nr_schedule_slsch(&sci_pdu,&sci2_pdu,tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu.slsch_payload,NR_SL_SCI_FORMAT_2A,&slsch_pdu_length);
+  bool schedule_slsch = nr_schedule_slsch(&mac->sci1_pdu,&mac->sci2_pdu,tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu.slsch_payload,NR_SL_SCI_FORMAT_2A,&slsch_pdu_length);
 
   if (!schedule_slsch) return false;
   *config_type = SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH;
@@ -3278,8 +3277,8 @@ bool nr_ue_sl_pssch_scheduler(nr_sidelink_indication_t *sl_ind,
   fill_pssch_pscch_pdu(&tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu,
                        sl_bwp,
                        sl_res_pool,
-                       &sci_pdu,
-                       &sci2_pdu,
+                       &mac->sci1_pdu,
+                       &mac->sci2_pdu,
 		       slsch_pdu_length,
                        NR_SL_SCI_FORMAT_1A, 
                        NR_SL_SCI_FORMAT_2A);
@@ -3484,7 +3483,7 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind) {
     }
   if (!is_psbch_slot && tx_allowed) {
     //Check if reserved slot or a sidelink resource configured in Rx/Tx resource pool timeresource bitmap
-    nr_ue_sl_pssch_scheduler(sl_ind, mac->sl_bwp, mac->sl_tx_res_pool,&tx_config, &tti_action);
+    nr_ue_sl_pssch_scheduler(mac,sl_ind, mac->sl_bwp, mac->sl_tx_res_pool,&tx_config, &tti_action);
   }
 
   if (tti_action == SL_NR_CONFIG_TYPE_RX_PSBCH || tti_action == SL_NR_CONFIG_TYPE_RX_PSCCH || tti_action == SL_NR_CONFIG_TYPE_RX_PSSCH_SCI || tti_action == SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH) {
