@@ -19,33 +19,11 @@
  *      contact@openairinterface.org
  */
 
-#include <stdio.h>
+#ifndef __COMMON_UTILS_NR_REVERSE_BITS__H__
+#define __COMMON_UTILS_NR_REVERSE_BITS__H__
+
 #include <stdint.h>
-#include <stddef.h>
-#include "common/utils/assertions.h"
-#include "../reverse_bits.h"
 
-int main()
-{
-  uint64_t in = 0x1;
-  uint64_t out = reverse_bits(in, 0);
-  if (out != 0x0)
-    return -1;
+uint64_t reverse_bits(uint64_t in, int n_bits);
 
-  in = 0x1;
-  out = reverse_bits(in, 1);
-  if (out != 0x1)
-    return -1;
-
-  in = 0x1;
-  out = reverse_bits(in, 64);
-  if (out != 0x8000000000000000)
-    return -1;
-
-  in = 0x20F;
-  out = reverse_bits(in, 10);
-  if (out != 0x3C1)
-    return -1;
-
-  return 0;
-}
+#endif
