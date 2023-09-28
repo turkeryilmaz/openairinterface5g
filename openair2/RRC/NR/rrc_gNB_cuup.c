@@ -35,6 +35,27 @@ static int cuup_compare(const nr_rrc_cuup_container_t *a, const nr_rrc_cuup_cont
 /* Tree management functions */
 RB_GENERATE/*_STATIC*/(rrc_cuup_tree, nr_rrc_cuup_container_t, entries, cuup_compare);
 
+static const nr_rrc_cuup_container_t *select_cuup_slice(const struct rrc_cuup_tree *t, const gNB_RRC_UE_t *ue, int sst, int sd)
+{
+  nr_rrc_cuup_container_t *second_best_match = NULL; /* if no NSSAI matches exactly */
+  nr_rrc_cuup_container_t *cuup = NULL;
+  RB_FOREACH(cuup, rrc_cuup_tree, (struct rrc_cuup_tree *)&t) {
+    e1ap_setup_req_t *sr = cuup->setup_req;
+    for (int p = 0; p < sr->supported_plmns; ++p) {
+      /* actually we should also check that the PLMN selected by the UE matches */
+      for (int s = 0; s < sr->plmn[p].supported_slices; ++s) {
+        e1ap_nssai_t *nssai = &sr->plmn[p].slice[s];
+        if (nssai->sst == sst && nssai->sd == sd) {
+          return cuup; /* exact match */
+        } else if (nssai->sst == sst && second_best_match == NULL) {
+          second_best_match = cuup; /* only the SST matches -> "good enough" */
+        }
+      }
+    }
+  }
+  return second_best_match;
+}
+
 static const nr_rrc_cuup_container_t *select_cuup_round_robin(size_t n_t, const struct rrc_cuup_tree *t, const gNB_RRC_UE_t *ue)
 {
   /* pick the CU-UP following a "round-robin" fashion: select CU-UP M = RRC UE
@@ -55,18 +76,19 @@ sctp_assoc_t get_existing_cuup_for_ue(const gNB_RRC_INST *rrc, const gNB_RRC_UE_
   f1_ue_data_t ue_data = cu_get_f1_ue_data(ue->rrc_ue_id);
   if (ue_data.e1_assoc_id == 0) {
     LOG_W(RRC, "UE %d should be associated to CU-UP, but is not\n", ue->rrc_ue_id);
-    return get_new_cuup_for_ue(rrc, ue);
+    /* we could possibly check the SST/SD from the PDU session */
+    return get_new_cuup_for_ue(rrc, ue, 0, 0);
   }
   LOG_D(RRC, "UE %d using CU-UP assoc_id %d\n", ue->rrc_ue_id, ue_data.e1_assoc_id);
   return ue_data.e1_assoc_id;
 }
 
-sctp_assoc_t get_new_cuup_for_ue(const gNB_RRC_INST *rrc, const gNB_RRC_UE_t *ue)
+sctp_assoc_t get_new_cuup_for_ue(const gNB_RRC_INST *rrc, const gNB_RRC_UE_t *ue, int sst, int sd)
 {
   /* check if there is already a UE associated */
   f1_ue_data_t ue_data = cu_get_f1_ue_data(ue->rrc_ue_id);
   if (ue_data.e1_assoc_id != 0) {
-    LOG_D(RRC, "UE %d using CU-UP assoc_id %d\n", ue->rrc_ue_id, ue_data.e1_assoc_id);
+    LOG_I(RRC, "UE %d using CU-UP assoc_id %d\n", ue->rrc_ue_id, ue_data.e1_assoc_id);
     return ue_data.e1_assoc_id;
   }
 
@@ -77,7 +99,11 @@ sctp_assoc_t get_new_cuup_for_ue(const gNB_RRC_INST *rrc, const gNB_RRC_UE_t *ue
     return 0; /* no CUUP connected */
   }
 
-  const nr_rrc_cuup_container_t *selected = select_cuup_round_robin(rrc->num_cuups, &rrc->cuups, ue);
+  const nr_rrc_cuup_container_t *selected = NULL;
+  if (sst != 0) /* only do if there is slice information */
+    selected = select_cuup_slice(&rrc->cuups, ue, sst, sd);
+  if (selected == NULL) /* nothing found yet */
+    selected = select_cuup_round_robin(rrc->num_cuups, &rrc->cuups, ue);
   if (selected == NULL)
     selected = RB_ROOT(&rrc->cuups);
   AssertFatal(selected != NULL, "logic error: could not select CU-UP\n");
