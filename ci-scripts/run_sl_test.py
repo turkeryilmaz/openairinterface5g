@@ -16,7 +16,7 @@
 #
 # python3 run_sl_test.py -l nearby --user account --host 10.1.1.68 -r 2 --test usrp
 #
-# To run usrp test in the net 1 speficifed in sl_cmds.txt, the following will be used.
+# To run usrp test in the net 1 specified in sl_net_config.json, the following will be used.
 #
 # python3 run_sl_test.py --test usrp --net 1
 #
@@ -30,6 +30,7 @@ import logging
 import time
 import re
 import glob
+import json
 import subprocess, shlex
 from subprocess import Popen
 from subprocess import check_output
@@ -76,8 +77,8 @@ parser.add_argument('--basic', '-b', action='store_true', help="""
 Basic test with basic shell commands
 """)
 
-parser.add_argument('--commands', default='sl_cmds.txt', help="""
-The USRP Commands .txt file (default: %(default)s)
+parser.add_argument('--config', default='sl_net_config.json', help="""
+The network configurations .json file (default: %(default)s)
 """)
 
 parser.add_argument('--compress', action='store_true', help="""
@@ -166,14 +167,15 @@ def thread_delay(delay: int) -> None:
         time.sleep(delay)
         count += 1
 
-class Command:
+class Config:
     """
-    Parsing USRP commands file
+    Parsing config file
     """
     def __init__(self, filename) -> None:
         self.check_user()
         self.filename = self.check_file(filename)
-        self.parse_commands()
+        self.test = OPTS.test.lower()
+        self.parse_config_json()
 
     def check_user(self) -> None:
         if 'usrp' != OPTS.test:
@@ -189,77 +191,30 @@ class Command:
         LOGGER.error('The file %s does not exist!', filename)
         sys.exit(1)
 
-    def parse_commands(self) -> None:
+    def parse_config_json(self) -> None:
         """
-        Scan the provided commands file.
+        Parse configurations from the json file
         """
-        if OPTS.test.lower() == 'usrp':
-            launch_cmds_re = re.compile(r'^\s*(\S*)_usrp_\S+_(\S*)_cmd\s*=\s*((\S+\s*)*)')
-        elif OPTS.test.lower() == 'rfsim':
-            launch_cmds_re = re.compile(r'^\s*(\S*)_rfsim_(\S*)_cmd\s*=\s*((\S+\s*)*)')
-        elif OPTS.test.lower() == 'psbchsim':
-            launch_cmds_re = re.compile(r'^\s*(\S*)_psbchsim_(\S*)_cmd\s*=\s*((\S+\s*)*)')
-        elif OPTS.test.lower() == 'psschsim':
-            launch_cmds_re = re.compile(r'^\s*(\S*)_psschsim_(\S*)_cmd\s*=\s*((\S+\s*)*)')
-        else:
-            LOGGER.error("Provided test option not valid! %s", OPTS.test)
-            sys.exit(1)
-        nearby_host_re = re.compile(r'^\s*(\S*)_usrp_\S*_(\S*)_hostIP\s*=\s*((\S+\s*)*)')
-
         self.launch_cmds = defaultdict(list)
         self.hosts = defaultdict(list)
-        with open(self.filename, 'rt') as in_fh:
-            nearby_cmd_continued = False
-            syncref_cmd_continued = False
-            target_netid = f'net{OPTS.net}'
-            for line in in_fh:
-                if line == '\n':
-                    continue
-                match = launch_cmds_re.match(line)
-                if match:
-                    host_role = match.group(1)
-                    netid = match.group(2)
-                    matched_cmd = match.group(3)
-                    match = match and (netid == target_netid)
-                if match:
-                    if host_role.lower() == 'nearby':
-                        nearby_cmd_continued = True
-                        continue
-                    if host_role.lower() == 'syncref':
-                        syncref_cmd_continued = True
-                        continue
-                elif nearby_cmd_continued:
-                    matched_cmd += line
-                    if not line.strip().endswith('\\'):
-                        self.launch_cmds['nearby'].append(matched_cmd)
-                        LOGGER.debug('Nearby cmd is %s', matched_cmd)
-                        nearby_cmd_continued = False
-                    continue
-                elif syncref_cmd_continued:
-                    matched_cmd += line
-                    if not line.strip().endswith('\\'):
-                        self.launch_cmds['syncref'].append(matched_cmd)
-                        LOGGER.debug('Syncref cmd is %s', matched_cmd)
-                        syncref_cmd_continued = False
-                    continue
-                else:
-                    host_match = nearby_host_re.match(line)
-                    if host_match:
-                        host_role = host_match.group(1)
-                        netid = host_match.group(2)
-                        matched_host_ip = host_match.group(3)
-                        if host_role.lower() == 'nearby' and netid == target_netid:
-                            self.hosts['nearby'].append(matched_host_ip.strip())
-                            LOGGER.debug('Nearby host is %s\n', matched_host_ip.strip())
-                        continue
-                    else:
-                        LOGGER.debug('Unmatched line %r', line)
-                        continue
+
+        with open(self.filename) as in_fh:
+            json_data = json.load(in_fh)
+            if f"net_{OPTS.net}" in json_data[self.test].keys():
+                net_config = json_data[self.test][f"net_{OPTS.net}"]
+            else:
+                LOGGER.error('net %d configuration does not exist.', OPTS.net)
+                sys.exit(1)
+            for net in net_config:
+                role = net['role']
+                self.launch_cmds[role].append(net["cmd"])
+                self.hosts[role].append(net["ip"])
+
         if not self.launch_cmds:
-            LOGGER.error('usrp commands are not found in file: %s', self.filename)
+            LOGGER.error('%s commands are not found in file: %s', self.test, self.filename)
             sys.exit(1)
         if OPTS.test.lower() == 'usrp' and not self.hosts['nearby']:
-            LOGGER.error(f'Nearby host IP is expected. Add nearby host IP to {OPTS.commands}')
+            LOGGER.error(f'Nearby host IP is expected. Add nearby host IP to {OPTS.config}')
             sys.exit(1)
 
 class Node:
@@ -299,15 +254,15 @@ class Node:
         dest = '' if '--dest' in cmd or OPTS.dest == '' else f' --dest {OPTS.dest}'
         tx_msg = f' --message "{OPTS.message}"' if len(OPTS.message) > 0 else ''
         if role == 'syncref':
-            cmd = cmd[:-1] + tx_msg + f' --mcs {OPTS.mcs}' + dest
+            cmd = cmd + tx_msg + f' --mcs {OPTS.mcs}' + dest
             if 'rfsim' == OPTS.test:
                 cmd += f' --snr {OPTS.snr}'
         if role == 'nearby':
             if 'usrp' == OPTS.test:
-                cmd = cmd[:-2] + tx_msg + f' --mcs {OPTS.mcs}' + cmd[-2] # cmd[-2] is ' (end of cmd)
+                cmd = cmd[:-1] + tx_msg + f' --mcs {OPTS.mcs}' + cmd[-1] # -1 is ' index (end of cmd)
                 cmd = cmd + f' -d {OPTS.duration} --nid1 {OPTS.nid1} --nid2 {OPTS.nid2}'
             else:
-                cmd = cmd[:-1] + tx_msg + f' --mcs {OPTS.mcs}'
+                cmd = cmd + tx_msg + f' --mcs {OPTS.mcs}'
                 if 'rfsim' == OPTS.test:
                     cmd += f' --snr {OPTS.snr}'
         return cmd
@@ -486,15 +441,15 @@ def set_attenuation(attenuation: int, atten_host: str, user: str) -> None:
         LOGGER.info(f"attenuation value {attenuation} among: {out}")
         time.sleep(1)
 
-def generate_jobs(commands: Command) -> list:
+def generate_jobs(config: Config) -> list:
     jobs, node_id, host = [], '', OPTS.host
-    if commands.launch_cmds is not None:
-        for role, cmd_list in commands.launch_cmds.items():
+    if config.launch_cmds is not None:
+        for role, cmd_list in config.launch_cmds.items():
             for cmd in cmd_list:
                 if 'node-number' in cmd:
                     node_id = cmd.split('node-number', 1)[-1].split(maxsplit=1)[0]
                 if role == 'nearby' and OPTS.host == '':
-                    host = commands.hosts[role].pop(0)
+                    host = config.hosts[role].pop(0)
                 if OPTS.launch == 'all':
                     jobs.append(Node(node_id, role, host, cmd))
                 elif role == OPTS.launch:
@@ -508,10 +463,10 @@ def main() -> int:
     """
     Main function to run sidelink test repeatedly for a given attenuation value.
     """
-    commands = Command(OPTS.commands)
+    config = Config(OPTS.config)
     log_agent = LogChecker(OPTS, LOGGER)
     LOGGER.debug(f'Number of iterations {OPTS.repeat}')
-    jobs = generate_jobs(commands)
+    jobs = generate_jobs(config)
     if 'usrp' == OPTS.test:
         set_attenuation(OPTS.att, OPTS.att_host, OPTS.att_user)
     for i in range(OPTS.repeat):

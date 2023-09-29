@@ -160,7 +160,7 @@ class TestNearby():
     def __init__(self, cmd: str):
         self.cmd = cmd
         self.delay = 0 # seconds
-        self.id = self._get_id(cmd)
+        self.id = self._get_id()
         self.role = "nearby"
         self.log_file_path = os.path.join(OPTS.log_dir, f'{self.role}{self.id}.log')
 
