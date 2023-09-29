@@ -1,0 +1,102 @@
+{
+    "usrp": {
+        "net_0": [
+            {
+                "id": "",
+                "role": "syncref",
+                "ip": "",
+                "cmd": "sudo -E LD_LIBRARY_PATH=$HOME/openairinterface5g/cmake_targets/ran_build/build:$LD_LIBRARY_PATH $HOME/openairinterface5g/cmake_targets/ran_build/build/nr-uesoftmodem --sl-mode 2 --sync-ref --rbsl 52 --numerology 1 --band 38 --SLC 2600000000 --ue-txgain 0 --usrp-args type=b200,serial=3150384,clock_source=external --log_config.global_log_options time,nocolor > ~/syncref.log 2>&1"
+            },
+            {
+                "role": "nearby",
+                "id": "",
+                "ip": "10.1.1.61",
+                "cmd": "cd $HOME/openairinterface5g/ci-scripts; python3 sl_rx_agent.py --cmd \"sudo -E LD_LIBRARY_PATH=$HOME/openairinterface5g/cmake_targets/ran_build/build:$LD_LIBRARY_PATH $HOME/openairinterface5g/cmake_targets/ran_build/build/nr-uesoftmodem --sl-mode 2 --rbsl 52 --numerology 1 --band 38 --SLC 2600000000 --ue-rxgain 90 --usrp-args type=b200,serial=3150361,clock_source=external --log_config.global_log_options time,nocolor > ~/nearby.log 2>&1\""
+            }
+        ],
+        "net_1": [
+            {
+                "role": "syncref",
+                "id": "",
+                "ip": "",
+                "cmd": "sudo -E LD_LIBRARY_PATH=$HOME/openairinterface5g/cmake_targets/ran_build/build:$LD_LIBRARY_PATH $HOME/openairinterface5g/cmake_targets/ran_build/build/nr-uesoftmodem --sl-mode 2 --sync-ref --rbsl 52 --numerology 1 --band 78 --SLC 3600000000 --ue-txgain 0 --usrp-args type=n3xx,addr=192.168.10.2,subdev=A:0,master_clock_rate=122.88e6 --log_config.global_log_options time,nocolor > ~/syncref.log 2>&1"
+            },
+            {
+                "role": "nearby",
+                "id": "",
+                "ip": "10.1.1.80",
+                "cmd": "cd $HOME/openairinterface5g/ci-scripts; python3 sl_rx_agent.py --cmd \"sudo -E LD_LIBRARY_PATH=$HOME/openairinterface5g/cmake_targets/ran_build/build:$LD_LIBRARY_PATH $HOME/openairinterface5g/cmake_targets/ran_build/build/nr-uesoftmodem --sl-mode 2 --rbsl 52 --numerology 1 --band 78 --SLC 3600000000 --ue-rxgain 75 --usrp-args type=n3xx,addr=192.168.10.2,subdev=A:0,master_clock_rate=122.88e6 --log_config.global_log_options time,nocolor > ~/nearby.log 2>&1\""
+            }
+        ],
+        "net_2": [
+            {
+                "role": "syncref",
+                "id": "1",
+                "ip": "",
+                "cmd": "sudo -E LD_LIBRARY_PATH=$HOME/openairinterface5g/cmake_targets/ran_build/build:$LD_LIBRARY_PATH $HOME/openairinterface5g/cmake_targets/ran_build/build/nr-uesoftmodem --sl-mode 2 --sync-ref --rbsl 52 --numerology 1 --band 78 --SLC 3600000000 --ue-txgain 0 --usrp-args type=n3xx,addr=192.168.10.2,subdev=A:0,master_clock_rate=122.88e6 --log_config.global_log_options time,nocolor --node-number 1 > ~/syncref1.log 2>&1"
+            },
+            {
+                "role": "nearby",
+                "id": "2",
+                "ip": "10.1.1.80",
+                "cmd": "cd $HOME/openairinterface5g/ci-scripts; python3 sl_rx_agent.py --cmd \"sudo -E LD_LIBRARY_PATH=$HOME/openairinterface5g/cmake_targets/ran_build/build:$LD_LIBRARY_PATH $HOME/openairinterface5g/cmake_targets/ran_build/build/nr-uesoftmodem --sl-mode 2 --rbsl 52 --numerology 1 --band 78 --SLC 3600000000 --ue-txgain 0 --ue-rxgain 75 --usrp-args type=n3xx,addr=192.168.10.2,subdev=A:0,master_clock_rate=122.88e6 --log_config.global_log_options time,nocolor --node-number 2 > ~/nearby2.log 2>&1\""
+            },
+            {
+                "role": "nearby",
+                "id": "3",
+                "ip": "10.1.1.63",
+                "cmd": "cd $HOME/openairinterface5g/ci-scripts; python3 sl_rx_agent.py --cmd \"sudo -E LD_LIBRARY_PATH=$HOME/openairinterface5g/cmake_targets/ran_build/build:$LD_LIBRARY_PATH $HOME/openairinterface5g/cmake_targets/ran_build/build/nr-uesoftmodem --sl-mode 2 --rbsl 52 --numerology 1 --band 78 --SLC 3600000000 --ue-rxgain 100 --usrp-args type=b200,serial=3150384,clock_source=external --log_config.global_log_options time,nocolor --node-number 3 > ~/nearby3.log 2>&1\""
+            }
+        ],
+        "net_3": [
+            {
+                "role": "syncref",
+                "id": "1",
+                "ip": "",
+                "cmd": "sudo -E LD_LIBRARY_PATH=$HOME/openairinterface5g/cmake_targets/ran_build/build:$LD_LIBRARY_PATH $HOME/openairinterface5g/cmake_targets/ran_build/build/nr-uesoftmodem --sl-mode 2 --sync-ref --rbsl 52 --numerology 1 --band 78 --SLC 3600000000 --ue-txgain 0 --usrp-args type=n3xx,addr=192.168.10.2,subdev=A:0,master_clock_rate=122.88e6 --log_config.global_log_options time,nocolor > ~/syncref.log 2>&1"
+            },
+            {
+                "role": "nearby",
+                "id": "3",
+                "ip": "10.1.1.63",
+                "cmd": "cd $HOME/openairinterface5g/ci-scripts; python3 sl_rx_agent.py --cmd \"sudo -E LD_LIBRARY_PATH=$HOME/openairinterface5g/cmake_targets/ran_build/build:$LD_LIBRARY_PATH $HOME/openairinterface5g/cmake_targets/ran_build/build/nr-uesoftmodem --sl-mode 2 --rbsl 52 --numerology 1 --band 78 --SLC 3600000000 --ue-rxgain 100 --usrp-args type=b200,serial=3150384,clock_source=external --log_config.global_log_options time,nocolor > ~/nearby.log 2>&1\""
+            }
+        ]
+    },
+    "rfsim": {
+        "net_1": [
+            {
+                "role": "syncref",
+                "id": "",
+                "ip": "",
+                "cmd": "sudo -E RFSIMULATOR=server $HOME/openairinterface5g/cmake_targets/ran_build/build/nr-uesoftmodem --sync-ref --rfsim --sl-mode 2 --rbsl 106 --SLC 3300000000 --ue-txgain 0 --rfsimulator.serverport 4048 --log_config.global_log_options time,nocolor > ~/syncref.log 2>&1"
+            },
+            {
+                "role": "nearby",
+                "id": "",
+                "ip": "",
+                "cmd": "sudo -E RFSIMULATOR=127.0.0.1 $HOME/openairinterface5g/cmake_targets/ran_build/build/nr-uesoftmodem --rfsim --sl-mode 2 --rbsl 106 --SLC 3300000000 --ue-rxgain 90 --rfsimulator.serverport 4048 --log_config.global_log_options time,nocolor > ~/nearby.log 2>&1"
+            }
+        ],
+        "net_2": [
+            {
+                "role": "syncref",
+                "id": "1",
+                "ip": "",
+                "cmd": "sudo -E RFSIMULATOR=127.0.0.1 $HOME/openairinterface5g/cmake_targets/ran_build/build/nr-uesoftmodem --sync-ref --rfsim --sl-mode 2 --rbsl 52 --SLC 2600000000 --ue-txgain 0 --node-number 1 --rfsimulator.serverport 4048 --log_config.global_log_options time,nocolor > ~/syncref1.log 2>&1"
+            },
+            {
+                "role": "nearby",
+                "id": "2",
+                "ip": "",
+                "cmd": "sudo -E RFSIMULATOR=server $HOME/openairinterface5g/cmake_targets/ran_build/build/nr-uesoftmodem --rfsim --sl-mode 2 --rbsl 52 --SLC 2600000000 --ue-txgain 0 --ue-rxgain 90 --node-number 2 --rfsimulator.serverport 4048 --log_config.global_log_options time,nocolor > ~/nearby2.log 2>&1"
+            },
+            {
+                "role": "nearby",
+                "id": "3",
+                "ip": "",
+                "cmd": "sudo -E RFSIMULATOR=127.0.0.1 $HOME/openairinterface5g/cmake_targets/ran_build/build/nr-uesoftmodem --rfsim --sl-mode 2 --rbsl 52 --SLC 2600000000 --ue-rxgain 90 --node-number 3 --rfsimulator.serverport 4048 --log_config.global_log_options time,nocolor > ~/nearby3.log 2>&1"
+            }
+        ]
+    }
+}
