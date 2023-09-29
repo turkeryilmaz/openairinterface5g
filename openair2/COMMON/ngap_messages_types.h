@@ -503,13 +503,21 @@ typedef struct ngap_routing_id_s {
   uint32_t  length;
 } ngap_routing_id_t;
 
+typedef struct ngap_nrppa_pdu_s {
+  /* Octet string data */
+  uint8_t  *buffer;
+  /* Length of the octet string */
+  uint32_t  length;
+} ngap_nrppa_pdu_t;
+
+
 typedef struct ngap_UplinkUEAssociatedNRPPa_s {
    /* Unique UE identifier within an gNB */
   uint32_t gNB_ue_ngap_id;
   /* routing ID */
   ngap_routing_id_t routing_id;
   /* NRPPa pdu */
-  ngap_pdu_t nrppa_pdu;
+  ngap_nrppa_pdu_t nrppa_pdu;
 } ngap_UplinkUEAssociatedNRPPa_t;
 
 typedef struct ngap_UplinkNonUEAssociatedNRPPa_s {

@@ -43,7 +43,7 @@ void ngap_handle_criticality(NGAP_Criticality_t criticality)
 
 /* todo ad**l */
 #include "nrppa_common.h"
-#include "NRPPA-PDU.h"
+//#include "NRPPA_NRPPA-PDU.h"
 
 
 /* todo ad**l */

@@ -47,7 +47,8 @@ static inline int nrppa_gNB_encode_initiating(NRPPA_NRPPA_PDU_t *pdu, uint8_t **
   DevAssert(pdu != NULL);
 
   const NRPPA_ProcedureCode_t tmp[] = {NRPPA_ProcedureCode_id_positioningInformationExchange,  // Parent procedure for  PositioningInformationRequest, PositioningInformationResponse, and PositioningInformationFailure
-                                       NRPPA_ProcedureCode_id_positioningInformationUpdate};
+                                       NRPPA_ProcedureCode_id_positioningInformationUpdate,
+                                       NRPPA_ProcedureCode_id_positioningActivation};
                                       // TODO ad**l add remaining UPLINK type NRPPA Procedure codes with message type Initiating
                                       // For other procedures  check TABLE 8.1-2 and TABLE 8.1-1 of NRPPA TS38.455 v16
 
@@ -60,6 +61,7 @@ static inline int nrppa_gNB_encode_initiating(NRPPA_NRPPA_PDU_t *pdu, uint8_t **
     return -1;
   }
 
+  //asn_encode_to_new_buffer_result_t res = asn_encode_to_new_buffer(NULL, ATS_ALIGNED_CANONICAL_PER, &asn_DEF_NRPPA_NRPPA_PDU, pdu);
   asn_encode_to_new_buffer_result_t res = asn_encode_to_new_buffer(NULL, ATS_ALIGNED_CANONICAL_PER, &asn_DEF_NRPPA_NRPPA_PDU, pdu);
   AssertFatal(res.result.encoded > 0, "failed to encode NRPPA msg\n");
   *buffer = res.buffer;
@@ -72,10 +74,10 @@ static inline int nrppa_gNB_encode_successfull_outcome(NRPPA_NRPPA_PDU_t *pdu, u
 
 DevAssert(pdu != NULL);
   const NRPPA_ProcedureCode_t tmp[] = {NRPPA_ProcedureCode_id_positioningInformationExchange, // Parent procedure for PositioningInformationRequest, PositioningInformationResponse, and PositioningInformationFailure
-                                     };
+                                       NRPPA_ProcedureCode_id_positioningActivation};
                                       // TODO ad**l add remaining UPLINK type NRPPA Procedure codes with message type successful
                                       // For other procedures  check TABLE 8.1-2 and TABLE 8.1-1 of NRPPA TS38.455 v16
-
+printf("Test 1 Adeel:  nrppa_gNB_encode_successfull_outcome\n");
   int i;
   for (i = 0; i < sizeofArray(tmp); i++)
     if (pdu->choice.successfulOutcome->procedureCode == tmp[i])
@@ -84,8 +86,10 @@ DevAssert(pdu != NULL);
     NRPPA_WARN("Unknown procedure ID (%ld) for successfull outcome message\n", pdu->choice.successfulOutcome->procedureCode);
     return -1;
   }
-
+  printf("Test 1.1 Adeel:  nrppa_gNB_encode_successfull_outcome i=%d, \n",i);
+printf("Test 2 Adeel:  nrppa_gNB_encode_successfull_outcome\n");
   asn_encode_to_new_buffer_result_t res = asn_encode_to_new_buffer(NULL, ATS_ALIGNED_CANONICAL_PER, &asn_DEF_NRPPA_NRPPA_PDU, pdu);
+printf("Test 3 Adeel:  nrppa_gNB_encode_successfull_outcome res.result.encoded=%d\n", res.result.encoded);
   AssertFatal(res.result.encoded > 0, "failed to encode NRPPA msg\n");
   *buffer = res.buffer;
   *len = res.result.encoded;
@@ -99,7 +103,7 @@ static inline int nrppa_gNB_encode_unsuccessfull_outcome(NRPPA_NRPPA_PDU_t *pdu,
   DevAssert(pdu != NULL);
 
   const NRPPA_ProcedureCode_t tmp[] = {NRPPA_ProcedureCode_id_positioningInformationExchange, // Parent procedure for PositioningInformationRequest, PositioningInformationResponse, and PositioningInformationFailure
-                                     };
+                                       NRPPA_ProcedureCode_id_positioningActivation};
                                       // TODO ad**l add remaining UPLINK type NRPPA Procedure codes with message type unsuccessful
                                       // For other procedures  check TABLE 8.1-2 and TABLE 8.1-1 of NRPPA TS38.455 v16
 
@@ -111,7 +115,6 @@ static inline int nrppa_gNB_encode_unsuccessfull_outcome(NRPPA_NRPPA_PDU_t *pdu,
     NRPPA_WARN("Unknown procedure ID (%ld) for unsuccessfull outcome message\n", pdu->choice.unsuccessfulOutcome->procedureCode);
     return -1;
   }
-
 
   asn_encode_to_new_buffer_result_t res = asn_encode_to_new_buffer(NULL, ATS_ALIGNED_CANONICAL_PER, &asn_DEF_NRPPA_NRPPA_PDU, pdu);
   AssertFatal(res.result.encoded > 0, "failed to encode NRPPA msg\n");
@@ -129,15 +132,17 @@ int nrppa_gNB_encode_pdu(NRPPA_NRPPA_PDU_t *pdu, uint8_t **buffer, uint32_t *len
   if (asn1_xer_print) {
     xer_fprint(stdout, &asn_DEF_NRPPA_NRPPA_PDU, (void *)pdu);
   }
+  xer_fprint(stdout, &asn_DEF_NRPPA_NRPPA_PDU, (void *)pdu); // test adeel
+  printf("\n Test 1 Adeel:  nrppa_gNB_encode_pdu \n");
   switch (pdu->present) {
     case NRPPA_NRPPA_PDU_PR_initiatingMessage:
       ret = nrppa_gNB_encode_initiating(pdu, buffer, len);
       break;
-
+//printf("Test 2 Adeel:  nrppa_gNB_encode_pdu \n");
     case NRPPA_NRPPA_PDU_PR_successfulOutcome:
       ret = nrppa_gNB_encode_successfull_outcome(pdu, buffer, len);
       break;
-
+//printf("Test 3 Adeel:  nrppa_gNB_encode_pdu \n");
     case NRPPA_NRPPA_PDU_PR_unsuccessfulOutcome:
       ret = nrppa_gNB_encode_unsuccessfull_outcome(pdu, buffer, len);
       break;
@@ -146,6 +151,7 @@ int nrppa_gNB_encode_pdu(NRPPA_NRPPA_PDU_t *pdu, uint8_t **buffer, uint32_t *len
       NRPPA_DEBUG("Unknown message outcome (%d) or not implemented", (int)pdu->present);
       return -1;
   }
+  //printf("Test 3 Adeel:  nrppa_gNB_encode_pdu \n");
   ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_NRPPA_NRPPA_PDU, pdu);
   return ret;
 }
