@@ -1985,7 +1985,7 @@ static int get_nr_prach_info_from_ssb_index(uint8_t ssb_idx,
   for (uint8_t n_mapped_ro=0; n_mapped_ro<ssb_info_p->nb_mapped_ro; n_mapped_ro++) {
     LOG_D(NR_MAC,"%d.%d: mapped_ro[%d]->frame.slot %d.%d, prach_assoc_pattern.nb_of_frame %d\n",
           frame,slot,n_mapped_ro,ssb_info_p->mapped_ro[n_mapped_ro]->frame,ssb_info_p->mapped_ro[n_mapped_ro]->slot,prach_assoc_pattern.nb_of_frame);
-    if ((slot == ssb_info_p->mapped_ro[n_mapped_ro]->slot) &&
+    if ((slot == ssb_info_p->mapped_ro[n_mapped_ro]->slot) && prach_assoc_pattern.prach_conf_period_list[0].nb_of_frame != 0 &&
         (ssb_info_p->mapped_ro[n_mapped_ro]->frame == (frame % prach_assoc_pattern.nb_of_frame))) {
 
       uint8_t prach_config_period_nb = ssb_info_p->mapped_ro[n_mapped_ro]->frame / prach_assoc_pattern.prach_conf_period_list[0].nb_of_frame;

@@ -342,7 +342,7 @@ static uint32_t schedule_control_sib1(module_id_t module_id,
     if(rbSize < bwpSize && !(vrb_map[rbStart + rbSize]&SL_to_bitmap(tda_info->startSymbolIndex, tda_info->nrOfSymbols)))
       rbSize++;
     else{
-      if (pdsch->mcs<10)
+      if (pdsch->mcs<27)
         pdsch->mcs++;
       else
         break;
