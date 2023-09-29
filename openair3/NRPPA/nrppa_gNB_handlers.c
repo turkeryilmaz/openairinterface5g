@@ -19,14 +19,6 @@
  *      contact@openairinterface.org
  */
 
-/*! \file ngap_gNB_handlers.c
- * \brief ngap messages handlers for gNB part
- * \author Yoshio INOUE, Masayuki HARADA
- * \email yoshio.inoue@fujitsu.com,masayuki.harada@fujitsu.com (yoshio.inoue%40fujitsu.com%2cmasayuki.harada%40fujitsu.com)
- * \date 2020
- * \version 0.1
- */
-
 /*! \file nrppa_gNB_handlers.c
 * \brief NRPPA messages handlers for gNB
 * \author Adeel Malik
@@ -82,14 +74,25 @@ char *nrppa_direction2String(int nrppa_dir)
 /* Handlers matrix. Only gNB related procedure present here */
 nrppa_message_decoded_callback nrppa_messages_callback[][3] =
 {
-    {nrppa_gNB_handle_PositioningActivation, 0, 0}, /* PositioningActivationRequest */ // todo  nrppa_gNB_handle_PositioningActivation
-    {nrppa_gNB_handle_PositioningDeactivation, 0, 0}, /* PositioningDeactivation */ // todo  nrppa_gNB_handle_PositioningDeactivation
-    {nrppa_gNB_handle_PositioningInformationExchange, 0, 0}, /* PositioningInformationRequest */  // todo  nrppa_gNB_handle_PositioningInformationExchange
-    {nrppa_gNB_handle_TRPInformationExchange, 0, 0}, /* TRPInformationRequest */  // todo  nrppa_gNB_handle_TRPInformationExchange
-    {nrppa_gNB_handle_Measurement, 0, 0}, /* MeasurementRequest */  // todo  nrppa_gNB_handle_Measurement
-    {nrppa_gNB_handle_MeasurementUpdate, 0, 0}, /* TRPInformationRequest */  // todo  nrppa_gNB_handle_MeasurementUpdate
-    {nrppa_gNB_handle_MeasurementAbort, 0, 0}, /* TRPInformationRequest */  // todo  nrppa_gNB_handle_Abort
-    {0, 0, 0}, /* TRPInformationRequest */  // todo  nrppa_gNB_handle_
+    {0, 0, 0}, // NRPPA_ProcedureCode_id_errorIndication	((NRPPA_ProcedureCode_t)0)
+    {0, 0, 0}, // NRPPA_ProcedureCode_id_privateMessage	((NRPPA_ProcedureCode_t)1)
+    {0, 0, 0}, // NRPPA_ProcedureCode_id_e_CIDMeasurementInitiation	((NRPPA_ProcedureCode_t)2)
+    {0, 0, 0}, // NRPPA_ProcedureCode_id_e_CIDMeasurementFailureIndication	((NRPPA_ProcedureCode_t)3)
+    {0, 0, 0}, // NRPPA_ProcedureCode_id_e_CIDMeasurementReport	((NRPPA_ProcedureCode_t)4)
+    {0, 0, 0}, // NRPPA_ProcedureCode_id_e_CIDMeasurementTermination	((NRPPA_ProcedureCode_t)5)
+    {0, 0, 0}, // NRPPA_ProcedureCode_id_oTDOAInformationExchange	((NRPPA_ProcedureCode_t)6)
+    {0, 0, 0}, // NRPPA_ProcedureCode_id_assistanceInformationControl	((NRPPA_ProcedureCode_t)7)
+    {0, 0, 0}, // NRPPA_ProcedureCode_id_assistanceInformationFeedback	((NRPPA_ProcedureCode_t)8)
+    {nrppa_gNB_handle_PositioningInformationExchange, 0, 0}, // NRPPA_ProcedureCode_id_positioningInformationExchange	((NRPPA_ProcedureCode_t)9) /* PositioningInformationRequest */  // todo  nrppa_gNB_handle_PositioningInformationExchange
+    {0, 0, 0}, // NRPPA_ProcedureCode_id_positioningInformationUpdate	((NRPPA_ProcedureCode_t)10)
+    {nrppa_gNB_handle_Measurement, 0, 0}, // NRPPA_ProcedureCode_id_Measurement	((NRPPA_ProcedureCode_t)11) /* MeasurementRequest */  // todo  nrppa_gNB_handle_Measurement
+    {0, 0, 0},// NRPPA_ProcedureCode_id_MeasurementReport	((NRPPA_ProcedureCode_t)12)
+    {nrppa_gNB_handle_MeasurementUpdate, 0, 0},  // NRPPA_ProcedureCode_id_MeasurementUpdate	((NRPPA_ProcedureCode_t)13) // todo  nrppa_gNB_handle_MeasurementUpdate
+    {nrppa_gNB_handle_MeasurementAbort, 0, 0},  // NRPPA_ProcedureCode_id_MeasurementAbort	((NRPPA_ProcedureCode_t)14) // todo  nrppa_gNB_handle_MeasurementAbort
+    {0, 0, 0},// NRPPA_ProcedureCode_id_MeasurementFailureIndication	((NRPPA_ProcedureCode_t)15)
+    {nrppa_gNB_handle_TRPInformationExchange, 0, 0}, // NRPPA_ProcedureCode_id_tRPInformationExchange	((NRPPA_ProcedureCode_t)16) /* TRPInformationRequest */  // todo  nrppa_gNB_handle_TRPInformationExchange
+    {nrppa_gNB_handle_PositioningActivation, 0, 0},// NRPPA_ProcedureCode_id_positioningActivation	((NRPPA_ProcedureCode_t)17) /* PositioningActivationRequest */ // todo  nrppa_gNB_handle_PositioningActivation
+    {nrppa_gNB_handle_PositioningDeactivation, 0, 0}, // NRPPA_ProcedureCode_id_positioningDeactivation	((NRPPA_ProcedureCode_t)18) /* PositioningDeactivation */ // todo  nrppa_gNB_handle_PositioningDeactivation
 };
 
 
@@ -103,21 +106,32 @@ int nrppa_handle_DownlinkUEAssociatedNRPPaTransport(instance_t instance, ngap_Do
 //ngap_DownlinkUEAssociatedNRPPa_p->gNB_ue_ngap_id //uint64_t                         amf_ue_ngap_id;
 //uint8_t *const routing_id_buff = ngap_DownlinkUEAssociatedNRPPa_p-->routing_id.buffer;
 //const uint32_t routing_id_buff_len = ngap_DownlinkUEAssociatedNRPPa_p-->routing_id.length;
-
-    uint8_t *const data = &ngap_DownlinkUEAssociatedNRPPa_p->nrppa_pdu.buffer;
+ printf("[NRPPA] Test 3 Adeel:  nrppa_handle_DownlinkUEAssociatedNRPPaTransport Handling case NGAP_DOWNLINKUEASSOCIATEDNRPPA \n");
+    uint8_t *const data = ngap_DownlinkUEAssociatedNRPPa_p->nrppa_pdu.buffer;
     const uint32_t data_length= ngap_DownlinkUEAssociatedNRPPa_p->nrppa_pdu.length;
     NRPPA_NRPPA_PDU_t pdu;
     int ret;
     DevAssert(data != NULL);
     memset(&pdu, 0, sizeof(pdu));
 
+printf("\n TEST 3: nrppa_handle_DownlinkUEAssociatedNRPPaTransport Nrppa pdu size =%d and value is \n ", data_length);
+/*uint8_t *nrppa_pdu_buffer= ngap_DownlinkUEAssociatedNRPPa_p->nrppa_pdu.buffer;
+for (int i = 0; i < data_length; i++){
+printf("%02x ", *nrppa_pdu_buffer++);
+//printf("%d ", *nrppa_pdu_buffer++);
+//printf("%p ", nrppa_pdu_buffer++);
+}*/
+printf("\n");
+
     if (nrppa_gNB_decode_pdu(&pdu, data, data_length) < 0)    // todo nrppa_gNB_decode_pdu
     {
         NRPPA_ERROR("Failed to decode PDU\n");
         return -1;
     }
-
+//printf("Test 3 Adeel:  nrppa_handle_DownlinkUEAssociatedNRPPaTransport calling right handler \n");
     /* Checking procedure Code and direction of message*/
+    //printf("Test 4 Adeel:  nrppa_handle_DownlinkUEAssociatedNRPPaTransport  calling right handler sizeof(nrppa_messages_callback)%d (3 * sizeof(nrppaa_message_decoded_callback)%d \n", sizeof(nrppa_messages_callback), 3*sizeof(nrppa_message_decoded_callback));
+    printf("[NRPPA] Test 4 Adeel: procedureCode is %ld and direction %d is \n", pdu.choice.initiatingMessage->procedureCode, pdu.present);
     if (pdu.choice.initiatingMessage->procedureCode >= sizeof(nrppa_messages_callback) / (3 * sizeof(nrppa_message_decoded_callback)) || (pdu.present > NRPPA_NRPPA_PDU_PR_unsuccessfulOutcome))
     {
 //    NRPPA_ERROR("[NGAP %d] Either procedureCode %ld or direction %d exceed expected\n", assoc_id, pdu.choice.initiatingMessage->procedureCode, pdu.present); ad**l todo
@@ -128,7 +142,7 @@ int nrppa_handle_DownlinkUEAssociatedNRPPaTransport(instance_t instance, ngap_Do
 
     /* No handler present.
      * This can mean not implemented or no procedure for gNB (wrong direction).*/
-
+     printf("Test 5 Adeel: procedureCode is %ld and direction %d is \n", pdu.choice.initiatingMessage->procedureCode, pdu.present);
     if (nrppa_messages_callback[pdu.choice.initiatingMessage->procedureCode][pdu.present - 1] == NULL)
     {
 //    NRPPA_ERROR("[NGAP %d] No handler for procedureCode %ld in %s\n", assoc_id, pdu.choice.initiatingMessage->procedureCode, nrppa_direction2String(pdu.present - 1));  ad**l todo
@@ -136,7 +150,6 @@ int nrppa_handle_DownlinkUEAssociatedNRPPaTransport(instance_t instance, ngap_Do
         ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_NRPPA_NRPPA_PDU, &pdu);
         return -1;
     }
-
     /* Calling the right handler*/
     nrppa_gnb_ue_info_t nrppa_msg_info;
     nrppa_msg_info.instance= instance;
@@ -153,6 +166,7 @@ int nrppa_handle_DownlinkUEAssociatedNRPPaTransport(instance_t instance, ngap_Do
                                                                                                      ngap_DownlinkUEAssociatedNRPPa_p->routing_id.buffer,
                                                                                                      ngap_DownlinkUEAssociatedNRPPa_p->routing_id.length,
                                                                                                      &pdu); // ad**l*/
+    printf("Test 8 Adeel: procedureCode is %ld and direction %d is \n", pdu.choice.initiatingMessage->procedureCode, pdu.present);
     ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_NRPPA_NRPPA_PDU, &pdu);
     return ret;
 }
@@ -212,8 +226,8 @@ int nrppa_handle_DownlinkNonUEAssociatedNRPPaTransport(instance_t instance, ngap
                                                                                                    &pdu); // ad**l*/
     nrppa_gnb_ue_info_t nrppa_msg_info;
     nrppa_msg_info.instance= instance;
-    nrppa_msg_info.gNB_ue_ngap_id =0;
-    nrppa_msg_info.amf_ue_ngap_id =0;
+    nrppa_msg_info.gNB_ue_ngap_id =-1;//%0; TODO check
+    nrppa_msg_info.amf_ue_ngap_id =-1;//%0;
     nrppa_msg_info.routing_id_buffer =ngap_DownlinkNonUEAssociatedNRPPa_p->routing_id.buffer;
     nrppa_msg_info.routing_id_length =ngap_DownlinkNonUEAssociatedNRPPa_p->routing_id.length;
 

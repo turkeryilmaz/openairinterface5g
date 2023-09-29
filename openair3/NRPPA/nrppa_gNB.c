@@ -80,7 +80,7 @@ void nrppa_gNB_init(void){
 
 
 void *nrppa_gNB_process_itti_msg(void *notUsed) {
-  printf("Test 2 Adeel: NRPPA Waiting for message\n");
+  printf("Test 1 Adeel: NRPPA Waiting for message\n");
   MessageDef *received_msg = NULL;
   int         result;
   itti_receive_msg(TASK_NRPPA, &received_msg);
@@ -95,6 +95,7 @@ void *nrppa_gNB_process_itti_msg(void *notUsed) {
 
 
       case NGAP_DOWNLINKUEASSOCIATEDNRPPA:
+       printf("\n[NRPPA] Test Adeel: calling handler case NGAP_DOWNLINKUEASSOCIATEDNRPPA\n");
        nrppa_handle_DownlinkUEAssociatedNRPPaTransport(instance, &NGAP_DOWNLINKUEASSOCIATEDNRPPA(received_msg));   // adeel changes NRPPA
        // nrppa_handle_DownlinkUEAssociatedNRPPaTransport(&NGAP_DOWNLINKUEASSOCIATEDNRPPA(received_msg));
         break;

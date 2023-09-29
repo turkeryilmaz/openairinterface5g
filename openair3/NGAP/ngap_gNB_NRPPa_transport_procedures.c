@@ -53,6 +53,8 @@
 
 //UPLINK UE ASSOCIATED NRPPA TRANSPORT (9.2.9.2 of TS 38.413 Version 16.0.0.0 Release 16)
 int ngap_gNB_UplinkUEAssociatedNRPPaTransport(instance_t instance, ngap_UplinkUEAssociatedNRPPa_t *ngap_UplinkUEAssociatedNRPPa_p){
+
+  printf("[NGAP] Test 1 Adeel: initiating ngap_gNB_UplinkUEAssociatedNRPPaTransport \n");
   struct ngap_gNB_ue_context_s   *ue_context_p;
   ngap_gNB_instance_t            *ngap_gNB_instance_p;
   NGAP_NGAP_PDU_t pdu;
@@ -99,6 +101,16 @@ int ngap_gNB_UplinkUEAssociatedNRPPaTransport(instance_t instance, ngap_UplinkUE
     ie->value.choice.RAN_UE_NGAP_ID = ue_context_p->gNB_ue_ngap_id;
   }
 
+  //IE: 9.3.3.14 NRPPa-PDU   /* mandatory */
+  {
+    asn1cSequenceAdd(out->protocolIEs.list, NGAP_UplinkUEAssociatedNRPPaTransportIEs_t, ie);
+    ie->id = NGAP_ProtocolIE_ID_id_NRPPa_PDU;
+    ie->criticality = NGAP_Criticality_reject;
+    ie->value.present = NGAP_UplinkUEAssociatedNRPPaTransportIEs__value_PR_NRPPa_PDU;
+    ie->value.choice.NRPPa_PDU.buf = ngap_UplinkUEAssociatedNRPPa_p->nrppa_pdu.buffer;
+    ie->value.choice.NRPPa_PDU.size = ngap_UplinkUEAssociatedNRPPa_p->nrppa_pdu.length;
+  }
+
   //IE: 9.3.3.13 Routing ID  /* mandatory */
   /* TODO get Routing ID from downlink*/
   // store this routing ID in
@@ -111,15 +123,6 @@ int ngap_gNB_UplinkUEAssociatedNRPPaTransport(instance_t instance, ngap_UplinkUE
     ie->value.choice.RoutingID.size = ngap_UplinkUEAssociatedNRPPa_p->routing_id.length;
   }
 
-  //IE: 9.3.3.14 NRPPa-PDU   /* mandatory */
-  {
-    asn1cSequenceAdd(out->protocolIEs.list, NGAP_UplinkUEAssociatedNRPPaTransportIEs_t, ie);
-    ie->id = NGAP_ProtocolIE_ID_id_NRPPa_PDU;
-    ie->criticality = NGAP_Criticality_reject;
-    ie->value.present = NGAP_UplinkUEAssociatedNRPPaTransportIEs__value_PR_NRPPa_PDU;
-    ie->value.choice.NRPPa_PDU.buf = ngap_UplinkUEAssociatedNRPPa_p->nrppa_pdu.buffer;
-    ie->value.choice.NRPPa_PDU.size = ngap_UplinkUEAssociatedNRPPa_p->nrppa_pdu.length;
-  }
 
   /* Encode NGAP message */
   if (ngap_gNB_encode_pdu(&pdu, &buffer, &length) < 0) {
@@ -128,7 +131,7 @@ int ngap_gNB_UplinkUEAssociatedNRPPaTransport(instance_t instance, ngap_UplinkUE
     return -1;
   }
 
-
+ printf("[NGAP] Test 2 Adeel: sending_sctp_data_req for ngap_gNB_UplinkUEAssociatedNRPPaTransport \n");
   /* UE associated signalling -> use the allocated stream */
   ngap_gNB_itti_send_sctp_data_req(ngap_gNB_instance_p->instance,
                                    ue_context_p->amf_ref->assoc_id, buffer,
@@ -213,6 +216,12 @@ int ngap_gNB_handle_DownlinkUEAssociatedNRPPaTransport(uint32_t assoc_id, uint32
   NGAP_DownlinkUEAssociatedNRPPaTransportIEs_t *ie;
   NGAP_RAN_UE_NGAP_ID_t            gnb_ue_ngap_id;
   uint64_t                         amf_ue_ngap_id;
+  uint8_t *routingId_buffer= NULL;
+  uint32_t routingId_buffer_length= NULL;
+  uint8_t *nrppa_pdu_buffer= NULL;
+  uint32_t nrppa_pdu_length= NULL;
+
+
   DevAssert(pdu != NULL);
 
   if ((amf_desc_p = ngap_gNB_get_AMF(NULL, assoc_id, 0)) == NULL) {
@@ -243,7 +252,8 @@ int ngap_gNB_handle_DownlinkUEAssociatedNRPPaTransport(uint32_t assoc_id, uint32
                gnb_ue_ngap_id);
     return -1;
   }
-
+//printf("Test 1 [NGAP]Adeel: NGAP handel_DownlinkUEAssociatedNRPPa gNB_UE_NGAP_ID= %d\n", gnb_ue_ngap_id);
+//printf("Test 1 [NGAP]Adeel: NGAP handel_DownlinkUEAssociatedNRPPa gNB_UE_NGAP_ID: 0x%lx\n", gnb_ue_ngap_id);
 /* todo ad**l
   if (0 == ue_desc_p->rx_stream) {
     ue_desc_p->rx_stream = stream;
@@ -267,15 +277,56 @@ int ngap_gNB_handle_DownlinkUEAssociatedNRPPaTransport(uint32_t assoc_id, uint32
   }
 
 //IE: 9.3.3.13 Routing ID
-   NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_DownlinkUEAssociatedNRPPaTransportIEs_t, ie, container,
+  NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_DownlinkUEAssociatedNRPPaTransportIEs_t, ie, container,
                              NGAP_ProtocolIE_ID_id_RoutingID, true);
+  routingId_buffer=  ie->value.choice.RoutingID.buf;
+  routingId_buffer_length= ie->value.choice.RoutingID.size;
+/*printf("Test 1 Adeel: NGAP itti send_DownlinkUEAssociatedNRPPa Routing pdu buffer size =%d and buffer is \n ", ie->value.choice.RoutingID.size);
+uint8_t *rId_buffer= ie->value.choice.RoutingID.buf ;
+printf("Routing ID buffer startind addr %p  and value \n", rId_buffer);
+for (int i = 0; i < ie->value.choice.RoutingID.size; i++){
+printf("%02x ", *rId_buffer++);
+//printf("%d ", *rId_buffer++);
+//printf("%p ", rId_buffer++);
+}*/
+
 
 //IE: 9.3.3.14 NRPPa-PDU
   NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_DownlinkUEAssociatedNRPPaTransportIEs_t, ie, container,
                              NGAP_ProtocolIE_ID_id_NRPPa_PDU, true);
+  nrppa_pdu_buffer = ie->value.choice.NRPPa_PDU.buf;
+  nrppa_pdu_length= ie->value.choice.NRPPa_PDU.size;
 
-  /* Forward the NRPPA PDU to NRPPA */
-ngap_gNB_itti_send_DownlinkUEAssociatedNRPPa(ngap_gNB_instance->instance, gnb_ue_ngap_id, amf_ue_ngap_id, ie->value.choice.RoutingID.buf, ie->value.choice.RoutingID.size,ie->value.choice.NRPPa_PDU.buf, ie->value.choice.NRPPa_PDU.size); //ad**l todo
+// ie->value.choice.NRPPa_PDU.buf, ie->value.choice.NRPPa_PDU.size);
+//printf("Test 1 Adeel: NGAP itti send_DownlinkUEAssociatedNRPPa Nrppa pdu buffer size =%d and buffer is \n ", ie->value.choice.NRPPa_PDU.size);
+/*uint8_t *nrp_buffer= ie->value.choice.NRPPa_PDU.buf ;
+printf("Nrppa pdu buffer startind addr %p and value \n", nrp_buffer);
+for (int i = 0; i < ie->value.choice.NRPPa_PDU.size; i++){
+printf("%02x ", *nrp_buffer++);
+//printf("%d ", *nrp_buffer++);
+//printf("%p ", nrp_buffer++);
+}*/
+
+/*printf("Test 1 Adeel: NGAP itti send_DownlinkUEAssociatedNRPPa Routing pdu buffer size =%d and buffer is \n ", routingId_buffer_length);
+printf("[NGAP] Routing ID buffer startind addr %p  and value \n", routingId_buffer);
+for (int i = 0; i < routingId_buffer_length; i++){
+printf("%02x ", *routingId_buffer++);
+//printf("%d ", *rId_buffer++);
+//printf("%p ", rId_buffer++);
+}*/
+
+/*printf("Test 1 Adeel: NGAP itti send_DownlinkUEAssociatedNRPPa Nrppa pdu buffer size =%d and buffer is \n ", ie->value.choice.NRPPa_PDU.size);
+printf("[NGAP] Nrppa pdu buffer startind addr %p and value \n", nrppa_pdu_buffer);
+for (int i = 0; i < nrppa_pdu_length; i++){
+printf("%02x ", *nrppa_pdu_buffer++);
+//printf("%d ", *nrppa_pdu_buffer++);
+//printf("%p ", nrppa_pdu_buffer++);
+}*/
+
+/* Forward the NRPPA PDU to NRPPA */
+//ngap_gNB_itti_send_DownlinkUEAssociatedNRPPa(ngap_gNB_instance->instance, gnb_ue_ngap_id, amf_ue_ngap_id, ie->value.choice.RoutingID.buf, ie->value.choice.RoutingID.size,ie->value.choice.NRPPa_PDU.buf, ie->value.choice.NRPPa_PDU.size); //ad**l todo
+ngap_gNB_itti_send_DownlinkUEAssociatedNRPPa(ngap_gNB_instance->instance, gnb_ue_ngap_id, amf_ue_ngap_id, routingId_buffer, routingId_buffer_length,nrppa_pdu_buffer, nrppa_pdu_length); //ad**l todo
+
 return 0;
 }
 
@@ -286,6 +337,10 @@ int ngap_gNB_handle_DownlinkNonUEAssociatedNRPPaTransport(uint32_t assoc_id, uin
   ngap_gNB_instance_t             *ngap_gNB_instance = NULL;
   NGAP_DownlinkNonUEAssociatedNRPPaTransport_t     *container;
   NGAP_DownlinkNonUEAssociatedNRPPaTransportIEs_t *ie;
+  uint8_t *routingId_buffer= NULL;
+  uint32_t routingId_buffer_length= NULL;
+  uint8_t *nrppa_pdu_buffer= NULL;
+  uint32_t nrppa_pdu_length= NULL;
 
   DevAssert(pdu != NULL);
 
@@ -304,12 +359,18 @@ int ngap_gNB_handle_DownlinkNonUEAssociatedNRPPaTransport(uint32_t assoc_id, uin
 //IE: 9.3.3.13 Routing ID
   NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_DownlinkNonUEAssociatedNRPPaTransportIEs_t, ie, container,
                              NGAP_ProtocolIE_ID_id_RoutingID, true);
+  routingId_buffer=  ie->value.choice.RoutingID.buf;
+  routingId_buffer_length= ie->value.choice.RoutingID.size;
+
 //IE: 9.3.3.14 NRPPa-PDU
   NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_DownlinkNonUEAssociatedNRPPaTransportIEs_t, ie, container,
                              NGAP_ProtocolIE_ID_id_NRPPa_PDU, true);
+  nrppa_pdu_buffer = ie->value.choice.NRPPa_PDU.buf;
+  nrppa_pdu_length= ie->value.choice.NRPPa_PDU.size;
 
 /* Forward the NRPPA PDU to NRPPA */
-ngap_gNB_itti_send_DownlinkNonUEAssociatedNRPPa(ngap_gNB_instance->instance, ie->value.choice.RoutingID.buf, ie->value.choice.RoutingID.size, ie->value.choice.NRPPa_PDU.buf, ie->value.choice.NRPPa_PDU.size); //ad**l todo
+//ngap_gNB_itti_send_DownlinkNonUEAssociatedNRPPa(ngap_gNB_instance->instance, ie->value.choice.RoutingID.buf, ie->value.choice.RoutingID.size, ie->value.choice.NRPPa_PDU.buf, ie->value.choice.NRPPa_PDU.size); //ad**l todo
+ngap_gNB_itti_send_DownlinkNonUEAssociatedNRPPa(ngap_gNB_instance->instance, routingId_buffer, routingId_buffer_length, nrppa_pdu_buffer, nrppa_pdu_length); //ad**l todo
 
 return 0;
 }

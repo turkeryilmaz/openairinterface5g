@@ -37,9 +37,61 @@
 #include "oai_asn1.h"
 
 
-/* Start: ad**l todo add all nrppa ASN genrated header files here */
-#include "NRPPA_RequestedSRSTransmissionCharacteristics.h"
 
+/*#include "NRPPA_ProtocolIE-ID.h"
+#include "NRPPA_Criticality.h"
+#include <ANY.h>
+#include <asn_ioc.h>
+#include "NRPPA_OTDOA-Information-Type-Item.h"
+#include "NRPPA_Presence.h"
+#include <OPEN_TYPE.h>
+#include <constr_CHOICE.h>
+#include <constr_SEQUENCE.h>
+#include "NRPPA_MeasurementQuantities-Item.h"
+#include "NRPPA_ResultSS-RSRP.h"
+#include "NRPPA_ResultSS-RSRQ.h"
+#include "NRPPA_ResultCSI-RSRP.h"
+#include "NRPPA_ResultCSI-RSRQ.h"
+#include "NRPPA_UL-AoA.h"
+#include "NRPPA_TDD-Config-EUTRA-Item.h"
+#include "NRPPA_OtherRATMeasurementQuantities-Item.h"
+#include "NRPPA_ResultNR.h"
+#include "NRPPA_ResultEUTRA.h"
+#include "NRPPA_WLANMeasurementQuantities-Item.h"
+#include "NRPPA_UE-Measurement-ID.h"
+#include "NRPPA_ReportCharacteristics.h"
+#include "NRPPA_MeasurementPeriodicity.h"
+#include "NRPPA_MeasurementQuantities.h"
+#include "NRPPA_OtherRATMeasurementQuantities.h"
+#include "NRPPA_WLANMeasurementQuantities.h"
+#include "NRPPA_E-CID-MeasurementResult.h"
+
+#include "NRPPA_Cell-Portion-ID.h"
+#include "NRPPA_OtherRATMeasurementResult.h"
+#include "NRPPA_WLANMeasurementResult.h"
+
+#include "NRPPA_OTDOA-Information-Type.h"
+#include "NRPPA_OTDOACells.h"
+#include "NRPPA_Assistance-Information.h"
+#include "NRPPA_Broadcast.h"
+#include "NRPPA_PositioningBroadcastCells.h"
+#include "NRPPA_AssistanceInformationFailureList.h"
+
+#include "NRPPA_Measurement-ID.h"
+#include "NRPPA_TRP-MeasurementRequestList.h"
+#include "NRPPA_TRPMeasurementQuantities.h"
+#include "NRPPA_MeasurementBeamInfoRequest.h"
+#include "NRPPA_SystemFrameNumber.h"
+#include "NRPPA_SlotNumber.h"
+#include "NRPPA_TRP-MeasurementResponseList.h"
+#include "NRPPA_TRPList.h"
+#include "NRPPA_TRPInformationTypeList.h"
+#include "NRPPA_TRPInformationList.h"
+#include "NRPPA_SRSType.h"
+#include "NRPPA_ActivationTime.h"
+#include "NRPPA_AbortTransmission.h"*/
+
+/* Start: ad**l todo add all nrppa ASN genrated header files here */
 #include "NRPPA_NRPPA-PDU.h"
 #include "NRPPA_InitiatingMessage.h"
 #include "NRPPA_SuccessfulOutcome.h"
@@ -54,6 +106,11 @@
 #include "NRPPA_ProtocolIE-Single-Container.h"
 #include "NRPPA_asn_constant.h"
 
+#include "NRPPA_Cause.h"
+#include "NRPPA_RequestedSRSTransmissionCharacteristics.h"
+#include "NRPPA_SRSConfiguration.h"
+#include "NRPPA_SFNInitialisationTime.h"
+#include "NRPPA_CriticalityDiagnostics.h"
 
 // Position Information Transfer
 #include "NRPPA_PositioningActivationFailure.h"
@@ -65,7 +122,7 @@
 #include "NRPPA_PositioningInformationRequest.h"
 #include "NRPPA_PositioningInformationResponse.h"
 #include "NRPPA_PositioningInformationUpdate.h"
-
+#include "NRPPA_RequestedSRSTransmissionCharacteristics.h"
 
 
 
