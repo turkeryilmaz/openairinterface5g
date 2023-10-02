@@ -209,6 +209,7 @@ int main(int argc, char *argv[])
   double effTP;
   float eff_tp_check = 100;
   int ldpc_offload_flag = 0;
+  int fpga_optional = 0; // FPGA 8038
   uint8_t max_rounds = 4;
   int chest_type[2] = {0};
   int enable_ptrs = 0;
@@ -361,8 +362,12 @@ int main(int argc, char *argv[])
       n_trials = atoi(optarg);
       break;
 
+//    case 'o':
+//      ldpc_offload_flag = 1;
+//      break;
+
     case 'o':
-      ldpc_offload_flag = 1;
+      fpga_optional = 1;
       break;
       
     case 'p':
@@ -688,6 +693,7 @@ int main(int argc, char *argv[])
 
 //  nr_phy_config_request_sim(gNB,N_RB_DL,N_RB_DL,mu,0,0x01);
   gNB->ldpc_offload_flag = ldpc_offload_flag;
+  gNB->ldpc_fpga_flag = fpga_optional; // FPGA Xilinx 8038
   gNB->chest_freq = chest_type[0];
   gNB->chest_time = chest_type[1];
 
@@ -880,7 +886,8 @@ int main(int argc, char *argv[])
 
   ulsch_input_buffer[0] = 0x31;
   for (i = 1; i < TBS/8; i++) {
-    ulsch_input_buffer[i] = (unsigned char) rand();
+    //ulsch_input_buffer[i] = (unsigned char) rand();
+    ulsch_input_buffer[i] = i & 0xff;
   }
 
   uint8_t ptrs_time_density = get_L_ptrs(ptrs_mcs1, ptrs_mcs2, ptrs_mcs3, Imcs, mcs_table);

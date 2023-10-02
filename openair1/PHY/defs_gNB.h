@@ -685,6 +685,7 @@ typedef struct PHY_VARS_gNB_s {
   uint32_t ofdm_offset_divisor;
 
   int ldpc_offload_flag;
+  int ldpc_fpga_flag; // Xilinx 8038 FPGA Hardware(by VT)
 
   int max_ldpc_iterations;
   /// indicate the channel estimation technique in time domain
@@ -750,6 +751,7 @@ typedef struct PHY_VARS_gNB_s {
   time_stats_t ulsch_rbs_extraction_stats;
   time_stats_t ulsch_mrc_stats;
   time_stats_t ulsch_llr_stats;
+  time_stats_t ulsch_ldpc_fpga_time_stats;
   time_stats_t rx_srs_stats;
   time_stats_t generate_srs_stats;
   time_stats_t get_srs_signal_stats;

@@ -66,6 +66,9 @@
 
 #include <omp.h>
 
+#include "nr_ldpc_decoding_pym.h" // XDMA header file
+#define NUM_THREADS_PREPARE 5
+
 static inline
 int64_t time_now_us(void)
 {
@@ -310,6 +313,205 @@ NR_gNB_ULSCH_t new_gNB_ulsch(uint8_t max_ldpc_iterations, uint16_t N_RB_UL)
 
   //stop_meas(&phy_vars_gNB->ulsch_ldpc_decoding_stats);
   }
+
+/*!
+ * \typedef args_fpga_decode_prepare_t
+ * \struct args_fpga_decode_prepare_s
+ * \brief arguments structure for passing arguments to the nr_ulsch_FPGA_decoding_prepare_blocks function
+ *
+ * \var multi_indata
+ * pointer to the head of the block destination array that is then passed to the FPGA decoding
+ * \var no_iteration_ldpc
+ * pointer to the number of iteration set by this function
+ * \var r_first
+ * index of the first block to be prepared within this function
+ * \var r_span
+ * number of blocks to be prepared within this function
+ * \var n_layers
+ * number of MIMO layers
+ * \var G
+ * number of soft channel bits
+ * \var decode
+ * ldpcDecode_t structure containing required information for decoding
+ *
+ */
+typedef struct args_fpga_decode_prepare_s
+{
+  int8_t *multi_indata;
+  int no_iteration_ldpc;
+  uint32_t r_first;
+  uint32_t r_span;
+  uint8_t n_layers;
+  uint32_t G;
+  ldpcDecode_t decode;
+  
+} args_fpga_decode_prepare_t;
+
+/*!
+ * \fn nr_ulsch_FPGA_decoding_prepare_blocks(void *args)
+ * \brief prepare blocks for LDPC decoding on FPGA
+ *
+ * \param args pointer to the arguments of the function in a structure of type args_fpga_decode_prepare_t
+ *
+ */
+void nr_ulsch_FPGA_decoding_prepare_blocks(void *args)
+{
+  //extract the arguments
+  args_fpga_decode_prepare_t *arguments = (args_fpga_decode_prepare_t *)args;
+  int8_t *multi_indata = arguments->multi_indata;
+  int no_iteration_ldpc = arguments->no_iteration_ldpc;
+  uint32_t r_first = arguments->r_first;
+  uint32_t r_span = arguments->r_span;
+  uint8_t n_layers = arguments->n_layers;
+  uint32_t G = arguments->G;
+  ldpcDecode_t *decode = &arguments->decode;
+
+  /* 
+   * extract all required information from decode
+   *
+   * ulsch_llr pointer to the head of the block source array
+   * harq_process harq process information
+   * decParams decoder parameters
+   * phy_vars_gNB informations on the gNB
+   * ulsch uplink shared channel information
+   * E size of the block between deinterleaving and rate matching
+   * Qm modulation order
+   * G total number of coded bits available for transmission of the transport block
+   * Kr number of bits per block
+   * r_offset r index expressed in bits
+   *
+   * initialise other required variables
+   *
+   * dtx_det
+   * input_CBoffset
+   * kc
+   * K_bits_F
+   *
+   */
+  short* ulsch_llr = decode->ulsch_llr;
+  NR_UL_gNB_HARQ_t *harq_process = decode->ulsch_harq;
+  t_nrLDPC_dec_params decParams = decode->decoderParms;
+  //PHY_VARS_gNB *phy_vars_gNB = decode->gNB;
+  NR_gNB_ULSCH_t *ulsch = decode->ulsch;
+  int E = decode->E;
+  int Qm = decode->Qm;
+  int Kr = harq_process->K;
+  uint32_t r_offset = decode->r_offset;
+
+  uint8_t dtx_det = 0;
+
+  int mbmb = 0;
+  if (decParams.BG == 1)
+    mbmb = 68;
+  else
+    mbmb = 52;
+
+  // Calc input CB offset
+  int input_CBoffset = decParams.Z * mbmb * 8;
+  if ((input_CBoffset & 0x7F) == 0)
+    input_CBoffset = input_CBoffset / 8;
+  else
+    input_CBoffset = 16 * ((input_CBoffset / 128) + 1);
+
+  int kc;
+  if (decParams.BG == 2) {
+    kc = 52;
+  } else {
+    kc = 68;
+  }
+
+  int K_bits_F = Kr - harq_process->F;
+
+  int16_t z[68 * 384 + 16] __attribute__((aligned(16)));
+  simde__m128i *pv = (simde__m128i *)&z;
+
+  /*
+   * the function processes r_span blocks starting from block at index r_first in ulsch_llr 
+   */
+  for(uint32_t r = r_first; r < ( r_first + r_span ); r++)
+  {
+
+    E = nr_get_E(G, harq_process->C, Qm, n_layers, r);
+    memset(harq_process->c[r], 0, Kr >> 3);
+    // ----------------------- FPGA pre process ------------------------
+    simde__m128i ones = simde_mm_set1_epi8(255); // Generate a vector with all elements set to 255
+    simde__m128i *temp_multi_indata = (simde__m128i *)&multi_indata[r * input_CBoffset];
+    // -----------------------------------------------------------------
+
+    decParams.R = nr_get_R_ldpc_decoder(decode->rv_index, E, decParams.BG, decParams.Z, &harq_process->llrLen, harq_process->round);
+
+    if ((dtx_det == 0) && (decode->rv_index == 0)) {
+
+      /// code blocks after bit selection in rate matching for LDPC code (38.212 V15.4.0 section 5.4.2.1)
+      int16_t harq_e[E];
+      // -------------------------------------------------------------------------------------------
+      // deinterleaving
+      // -------------------------------------------------------------------------------------------
+      //start_meas(&phy_vars_gNB->ulsch_deinterleaving_stats);
+      nr_deinterleaving_ldpc(E, Qm, harq_e, ulsch_llr + r_offset);
+      //stop_meas(&phy_vars_gNB->ulsch_deinterleaving_stats);
+
+      // -------------------------------------------------------------------------------------------
+      // dematching
+      // -------------------------------------------------------------------------------------------
+      //start_meas(&phy_vars_gNB->ulsch_rate_unmatching_stats);
+      if (nr_rate_matching_ldpc_rx(decode->tbslbrm,
+                                   decParams.BG,
+                                   decParams.Z,
+                                   harq_process->d[r],
+                                   harq_e,
+                                   harq_process->C,
+                                   decode->rv_index,
+                                   harq_process->d_to_be_cleared[r],
+                                   E,
+                                   harq_process->F,
+                                   Kr - harq_process->F - 2 * (decParams.Z)
+                                  ) == -1) 
+      {
+          //stop_meas(&phy_vars_gNB->ulsch_rate_unmatching_stats);
+          LOG_E(PHY, "ulsch_decoding.c: Problem in rate_matching\n");
+          no_iteration_ldpc = ulsch->max_ldpc_iterations + 1;
+          return;
+      } else {
+        //stop_meas(&phy_vars_gNB->ulsch_rate_unmatching_stats);
+      }
+
+      harq_process->d_to_be_cleared[r] = false;
+
+      // set first 2*Z_c bits to zeros
+      memset(&z[0], 0, 2 * harq_process->Z * sizeof(int16_t));
+      // set Filler bits
+      memset((&z[0] + K_bits_F), 127, harq_process->F * sizeof(int16_t));
+      // Move coded bits before filler bits
+      memcpy((&z[0] + 2 * harq_process->Z), harq_process->d[r], (K_bits_F - 2 * harq_process->Z) * sizeof(int16_t));
+      // skip filler bits
+      memcpy((&z[0] + Kr), harq_process->d[r] + (Kr - 2 * harq_process->Z), (kc * harq_process->Z - Kr) * sizeof(int16_t));
+
+      // Saturate coded bits before decoding into 8 bits values
+
+      for (int i = 0, j = 0; j < ((kc * harq_process->Z) >> 4); i += 2, j++) {
+        temp_multi_indata[j] = simde_mm_xor_si128(simde_mm_packs_epi16(pv[i], pv[i + 1]), simde_mm_cmpeq_epi32(ones, ones)); // Perform NOT operation and write the result to temp_multi_indata[j]
+      }
+
+      // the last bytes before reaching "kc * harq_process->Z" should not be written 128 bits at a time to avoid overwritting the following block in multi_indata
+      simde__m128i tmp = simde_mm_xor_si128(simde_mm_packs_epi16(pv[2*((kc * harq_process->Z) >> 4)], pv[2*((kc * harq_process->Z) >> 4) + 1]), simde_mm_cmpeq_epi32(ones, ones)); // Perform NOT operation and write the result to temp_multi_indata[j]
+      int8_t *tmp_p = (int8_t *)&tmp;
+      for (int i = 0, j = ((kc * harq_process->Z)&0xfffffff0); j < kc * harq_process->Z; i++, j++) {
+        multi_indata[r * input_CBoffset + j] = tmp_p[i];
+      }
+
+      r_offset += E;
+
+    } else {
+      dtx_det = 0;
+      no_iteration_ldpc = ulsch->max_ldpc_iterations + 1;
+    }
+
+  }
+
+  arguments->no_iteration_ldpc=no_iteration_ldpc;
+
+}
 
 uint32_t nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
                            uint8_t ULSCH_id,
@@ -632,6 +834,276 @@ uint32_t nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
       nr_fill_indication(phy_vars_gNB, ulsch->frame, ulsch->slot, ULSCH_id, harq_pid, 1, 0);
     }
     ulsch->last_iteration_cnt = no_iteration_ldpc;
+
+  } else if (phy_vars_gNB->ldpc_fpga_flag) {
+    //LDPC decode is offloaded to FPGA using the xdma driver
+
+    K_bits_F = Kr - harq_process->F;
+    //-------------------- FPGA parameter preprocessing ---------------------
+    static int8_t multi_indata[27000 * 25]; // FPGA input data
+    static int8_t multi_outdata[1100 * 25]; // FPGA output data
+
+    int mbmb = 0;
+    if (decParams.BG == 1)
+      mbmb = 68;
+    else
+      mbmb = 52;
+
+    int bg_len = 0;
+    if (decParams.BG == 1)
+      bg_len = 22;
+    else
+      bg_len = 10;
+
+    // Calc input CB offset
+    int input_CBoffset = decParams.Z * mbmb * 8;
+    if ((input_CBoffset & 0x7F) == 0)
+      input_CBoffset = input_CBoffset / 8;
+    else
+      input_CBoffset = 16 * ((input_CBoffset / 128) + 1);
+
+    DecIFConf dec_conf;
+    dec_conf.Zc = decParams.Z;
+    dec_conf.BG = decParams.BG;
+    dec_conf.max_iter = decParams.numMaxIter;
+    dec_conf.numCB = harq_process->C;
+    dec_conf.numChannelLls = (K_bits_F - 2 * harq_process->Z) + (kc * harq_process->Z - Kr); // input soft bits length, Zc x 66 - length of filler bits
+    dec_conf.numFillerBits = harq_process->F; // filler bits length
+
+    dec_conf.max_iter = 8;
+    dec_conf.max_schedule = 0;
+    dec_conf.SetIdx = 12;
+    // dec_conf.max_iter = 8;
+    if (dec_conf.BG == 1)
+      dec_conf.nRows = 46;
+    else
+      dec_conf.nRows = 42;
+
+    int out_CBoffset = dec_conf.Zc * bg_len;
+    if ((out_CBoffset & 0x7F) == 0)
+      out_CBoffset = out_CBoffset / 8;
+    else
+      out_CBoffset = 16 * ((out_CBoffset / 128) + 1);
+
+#ifdef LDPC_DATA
+    printf("\n------------------------\n");
+    printf("BG:\t\t%d\n", dec_conf.BG);
+    printf("harq_process->B: %d\n", harq_process->B);
+    printf("harq_process->C: %d\n", harq_process->C);
+    printf("harq_process->K: %d\n", harq_process->K);
+    printf("harq_process->Z: %d\n", harq_process->Z);
+    printf("harq_process->F: %d\n", harq_process->F);
+    printf("numChannelLls:\t %d = (%d - 2 * %d) + (%d * %d - %d)\n", dec_conf.numChannelLls, K_bits_F, harq_process->Z, kc, harq_process->Z, Kr);
+    printf("numFillerBits:\t %d\n", harq_process->F);
+    printf("------------------------\n");
+    // ===================================
+    // debug mode
+    // ===================================
+    FILE *fptr_llr, *fptr_ldpc;
+    fptr_llr = fopen("../../../cmake_targets/log/ulsim_ldpc_llr.txt", "w");
+    fptr_ldpc = fopen("../../../cmake_targets/log/ulsim_ldpc_output.txt", "w");
+    // ===================================
+#endif
+    //----------------------------------------------------------------------
+
+    if (harq_process->C == 1) {
+      if (A > 3824)
+        crc_type = CRC24_A;
+      else
+        crc_type = CRC16;
+
+      length_dec = harq_process->B;
+    } else {
+      crc_type = CRC24_B;
+      length_dec = (harq_process->B + 24 * harq_process->C) / harq_process->C;
+    }
+    no_iteration_ldpc = 2;
+
+    dtx_det = 0;
+    uint32_t num_threads_prepare_max = NUM_THREADS_PREPARE;
+    uint32_t num_threads_prepare = 0;
+    uint32_t r_remaining = 0;
+    //start the prepare jobs
+
+#ifdef TASK_MANAGER
+    args_fpga_decode_prepare_t* arr = calloc(harq_process->C, sizeof(args_fpga_decode_prepare_t)); 
+    int idx_arr = 0;
+    _Atomic int cancel_decoding = 0;
+#elif OMP_TP 
+    args_fpga_decode_prepare_t* arr = calloc(harq_process->C, sizeof(args_fpga_decode_prepare_t)); 
+    int idx_arr = 0;
+    omp_set_num_threads(4);
+#pragma omp parallel
+{
+#pragma omp single
+{
+
+#endif
+
+    for (r = 0; r < harq_process->C; r++) {
+      E = nr_get_E(G, harq_process->C, Qm, n_layers, r);
+      if (r_remaining == 0 ) {
+#ifdef TASK_MANAGER
+        args_fpga_decode_prepare_t* args = &arr[idx_arr]; 
+        ++idx_arr; 
+#elif OMP_TP 
+        args_fpga_decode_prepare_t* args = &arr[idx_arr]; 
+        ++idx_arr; 
+#else
+        void (*nr_ulsch_FPGA_decoding_prepare_blocks_ptr)(void *) = &nr_ulsch_FPGA_decoding_prepare_blocks;
+        union ldpcReqUnion id = {.s={ulsch->rnti,frame,nr_tti_rx,0,0}};
+        notifiedFIFO_elt_t *req = newNotifiedFIFO_elt(sizeof(args_fpga_decode_prepare_t), id.p, &phy_vars_gNB->respDecode, nr_ulsch_FPGA_decoding_prepare_blocks_ptr);
+        args_fpga_decode_prepare_t * args = (args_fpga_decode_prepare_t *) NotifiedFifoData(req);
+#endif
+
+        args->multi_indata = multi_indata;
+        args->no_iteration_ldpc = 2;
+        args->r_first = r;
+        uint32_t r_span_max = ((harq_process->C-r)%(num_threads_prepare_max-num_threads_prepare))==0 ? (harq_process->C-r)/(num_threads_prepare_max-num_threads_prepare) : ((harq_process->C-r)/(num_threads_prepare_max-num_threads_prepare))+1 ;
+        uint32_t r_span = harq_process->C-r<r_span_max ? harq_process->C-r : r_span_max;
+        args->r_span = r_span;
+        r_remaining = r_span;
+        args->n_layers = n_layers;
+        args->G = G;
+        ldpcDecode_t *rdata = &args->decode;
+#ifdef TASK_MANAGER
+        rdata->cancel_decoding = &cancel_decoding;
+#endif
+
+        rdata->gNB = phy_vars_gNB;
+        rdata->ulsch_harq = harq_process;
+        rdata->decoderParms = decParams;
+        rdata->ulsch_llr = ulsch_llr;
+        rdata->Kc = kc;
+        rdata->harq_pid = harq_pid;
+        rdata->segment_r = r;
+        rdata->nbSegments = harq_process->C;
+        rdata->E = E;
+        rdata->A = A;
+        rdata->Qm = Qm;
+        rdata->r_offset = r_offset;
+        rdata->Kr_bytes = Kr_bytes;
+        rdata->rv_index = pusch_pdu->pusch_data.rv_index;
+        rdata->offset = offset;
+        rdata->ulsch = ulsch;
+        rdata->ulsch_id = ULSCH_id;
+        rdata->tbslbrm = pusch_pdu->maintenance_parms_v3.tbSizeLbrmBytes;
+#ifdef TASK_MANAGER
+        task_t t = { .args = args, .func =  &nr_ulsch_FPGA_decoding_prepare_blocks };
+        async_task_manager(&phy_vars_gNB->man, t);
+#elif OMP_TP 
+#pragma omp task
+        nr_ulsch_FPGA_decoding_prepare_blocks(args); 
+#else
+        pushTpool(&phy_vars_gNB->threadPool, req);
+#endif
+        LOG_D(PHY, "Added %d block(s) to prepare for decoding, in pipe: %d to %d\n", r_span, r, r+r_span-1);
+        num_threads_prepare++;
+      }
+      r_offset += E;
+      offset += (Kr_bytes - (harq_process->F >> 3) - ((harq_process->C > 1) ? 3 : 0));
+      r_remaining -= 1;
+      //////////////////////////////////////////////////////////////////////////////////////////
+    }
+    
+    //reset offset in order to properly fill the output array later
+    offset = 0;
+
+#ifdef OMP_TP
+}
+}
+#endif
+
+
+#ifdef TASK_MANAGER
+    stop_spin_task_manager(&phy_vars_gNB->man);
+    wait_all_spin_task_manager(&phy_vars_gNB->man);
+    free(arr); 
+#elif OMP_TP
+#pragma omp taskwait
+    free(arr); 
+#else
+
+    //wait for the prepare jobs to complete
+    while(num_threads_prepare>0){
+      notifiedFIFO_elt_t *req = (notifiedFIFO_elt_t *)pullTpool(&phy_vars_gNB->respDecode, &phy_vars_gNB->threadPool);
+      if (req == NULL)
+        LOG_E(PHY, "FPGA decoding preparation: pullTpool returned NULL\n");
+      args_fpga_decode_prepare_t *args = (args_fpga_decode_prepare_t *)NotifiedFifoData(req);
+      if (args->no_iteration_ldpc > ulsch->max_ldpc_iterations)
+        no_iteration_ldpc = ulsch->max_ldpc_iterations + 1;
+      num_threads_prepare -= 1;
+    }
+#endif
+
+    //launch decode with FPGA
+    // printf("Run the LDPC ------[FPGA version]------\n");
+    //==================================================================
+    // Xilinx FPGA LDPC decoding function -> nrLDPC_decoder_FPGA_PYM()
+    //==================================================================
+    //start_meas(&phy_vars_gNB->ulsch_ldpc_fpga_time_stats);
+    nrLDPC_decoder_FPGA_PYM((int8_t *)&multi_indata[0], (int8_t *)&multi_outdata[0], dec_conf);
+    // printf("Xilinx FPGA -> CB = %d\n", harq_process->C);
+    // nrLDPC_decoder_FPGA_PYM((int8_t *)&temp_multi_indata[0], (int8_t *)&multi_outdata[0], dec_conf);
+    //stop_meas(&phy_vars_gNB->ulsch_ldpc_fpga_time_stats);
+
+    for (r = 0; r < harq_process->C; r++) {
+      // -----------------------------------------------------------------------------------------------
+      // --------------------- copy FPGA output to harq_process->c[r][i] -------------------------------
+      // -----------------------------------------------------------------------------------------------
+      if (check_crc((uint8_t *)multi_outdata, length_dec, harq_process->F, crc_type)) {
+#ifdef PRINT_CRC_CHECK
+        LOG_I(PHY, "Segment %d CRC OK\n", r);
+#endif
+        no_iteration_ldpc = 2;
+      } else {
+#ifdef PRINT_CRC_CHECK
+        LOG_I(PHY, "segment %d CRC NOK\n", r);
+#endif
+        no_iteration_ldpc = ulsch->max_ldpc_iterations + 1;
+      }
+      for (int i = 0; i < out_CBoffset; i++) {
+        harq_process->c[r][i] = (uint8_t)multi_outdata[i + r * out_CBoffset];
+      }
+      bool decodeSuccess = (no_iteration_ldpc <= ulsch->max_ldpc_iterations);
+      if (decodeSuccess) {
+        memcpy(harq_process->b + offset, harq_process->c[r], Kr_bytes - (harq_process->F >> 3) - ((harq_process->C > 1) ? 3 : 0));
+        offset += (Kr_bytes - (harq_process->F >> 3) - ((harq_process->C > 1) ? 3 : 0));
+        harq_process->processedSegments++;
+      } else {
+        LOG_D(PHY, "uplink segment error %d/%d\n", r, harq_process->C);
+        LOG_D(PHY, "ULSCH %d in error\n", ULSCH_id);
+        break; // don't even attempt to decode other segments
+      }
+    }
+
+    VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_gNB_ULSCH_DECODING, 0);
+
+    if (harq_process->processedSegments == harq_process->C) {
+      LOG_D(PHY, "[gNB %d] ULSCH: Setting ACK for slot %d TBS %d\n", phy_vars_gNB->Mod_id, ulsch->slot, harq_process->TBS);
+      ulsch->active = false;
+      harq_process->round = 0;
+
+      LOG_D(PHY, "ULSCH received ok \n");
+      nr_fill_indication(phy_vars_gNB, ulsch->frame, ulsch->slot, ULSCH_id, harq_pid, 0, 0);
+
+    } else {
+      LOG_D(PHY,
+            "[gNB %d] ULSCH: Setting NAK for SFN/SF %d/%d (pid %d, status %d, round %d, TBS %d)\n",
+            phy_vars_gNB->Mod_id,
+            ulsch->frame,
+            ulsch->slot,
+            harq_pid,
+            ulsch->active,
+            harq_process->round,
+            harq_process->TBS);
+      ulsch->handled = 1;
+      no_iteration_ldpc = ulsch->max_ldpc_iterations + 1;
+      LOG_D(PHY, "ULSCH %d in error\n", ULSCH_id);
+      nr_fill_indication(phy_vars_gNB, ulsch->frame, ulsch->slot, ULSCH_id, harq_pid, 1, 0);
+    }
+    ulsch->last_iteration_cnt = no_iteration_ldpc;
+
   }
 
   else {
