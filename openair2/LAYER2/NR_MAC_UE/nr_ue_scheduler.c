@@ -3263,9 +3263,10 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
   if ((slot % 10) != 6) return false;
 
   LOG_D(NR_MAC,"[UE%d] SL-PSSCH SCHEDULER: Frame:SLOT %d:%d, slot_type:%d\n",
-                                      sl_ind->module_id, frame, slot,sl_ind->slot_type);
+        sl_ind->module_id, frame, slot,sl_ind->slot_type);
 
   uint16_t slsch_pdu_length;
+  tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu.slsch_payload = mac->slsch_payload;
   bool schedule_slsch = nr_schedule_slsch(&mac->sci1_pdu,&mac->sci2_pdu,tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu.slsch_payload,NR_SL_SCI_FORMAT_2A,&slsch_pdu_length);
 
   if (!schedule_slsch) return false;

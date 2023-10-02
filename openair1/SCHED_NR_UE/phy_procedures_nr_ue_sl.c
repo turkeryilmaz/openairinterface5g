@@ -38,7 +38,7 @@ void nr_fill_indication(PHY_VARS_gNB *gNB, int frame, int slot_rx, int ULSCH_id,
   AssertFatal(1==0,"Should never get here\n"); 
 }
 NR_gNB_PHY_STATS_t *get_phy_stats(PHY_VARS_gNB *gNB, uint16_t rnti) {
-  AssertFatal(1==0,"Should never get here\n");
+  return(NULL); 
 }
 void nr_fill_sl_indication(nr_sidelink_indication_t *sl_ind,
                            sl_nr_rx_indication_t *rx_ind,
@@ -86,7 +86,12 @@ void nr_fill_sl_rx_indication(sl_nr_rx_indication_t *rx_ind,
 
   switch (pdu_type){
     case SL_NR_RX_PDU_TYPE_SLSCH:
-	AssertFatal(1==0,"fill this in\n");	    
+      sl_nr_slsch_pdu_t *rx_slsch_pdu = &rx_ind->rx_indication_body[n_pdus - 1].rx_slsch_pdu;
+      slsch_status_t *slsch_status = (slsch_status_t *)typeSpecific;
+      rx_slsch_pdu->pdu        = slsch_status->rdata->ulsch_harq->b;
+      rx_slsch_pdu->pdu_length = slsch_status->rdata->ulsch_harq->TBS;
+      rx_slsch_pdu->harq_pid   = slsch_status->rdata->harq_pid;
+      rx_slsch_pdu->ack_nack   = (slsch_status->rxok==true) ? 1 : 0;
       break;
     case FAPI_NR_RX_PDU_TYPE_SSB: {
         sl_nr_ssb_pdu_t *ssb_pdu = &rx_ind->rx_indication_body[n_pdus - 1].ssb_pdu;
@@ -114,17 +119,18 @@ void nr_fill_sl_rx_indication(sl_nr_rx_indication_t *rx_ind,
 }
 
 extern int dmrs_pscch_mask[2];
-int nr_slsch_procedures(PHY_VARS_NR_UE *ue, int frame_rx, int slot_rx, int SLSCH_id, uint8_t harq_pid,UE_nr_rxtx_proc_t *proc,nr_phy_data_t *phy_data) {
+int nr_slsch_procedures(PHY_VARS_NR_UE *ue, int frame_rx, int slot_rx, int SLSCH_id, UE_nr_rxtx_proc_t *proc,nr_phy_data_t *phy_data) {
+
 
   sl_nr_ue_phy_params_t *sl_phy_params = &ue->SL_UE_PHY_PARAMS;
   NR_DL_FRAME_PARMS *fp = &sl_phy_params->sl_frame_params;
-  sl_nr_rx_config_pssch_pdu_t *slsch_pdu = ue->slsch[SLSCH_id].harq_process->slsch_pdu;
-  sl_nr_rx_config_pssch_sci_pdu_t *pssch_pdu = ue->slsch[SLSCH_id].harq_process->pssch_pdu;
-
+  sl_nr_rx_config_pssch_pdu_t *slsch_pdu = &phy_data->nr_sl_pssch_pdu; //ue->slsch[SLSCH_id].harq_process->slsch_pdu;
+  sl_nr_rx_config_pssch_sci_pdu_t *pssch_pdu = &phy_data->nr_sl_pssch_sci_pdu; //ue->slsch[SLSCH_id].harq_process->pssch_pdu;
+  int harq_pid = slsch_pdu->harq_pid;
   uint16_t nb_re_dmrs;
   uint16_t start_symbol = 1;
   uint16_t number_symbols = pssch_pdu->pssch_numsym;
-
+  ue->slsch[SLSCH_id].harq_process->harq_to_be_cleared=true;
   uint8_t number_dmrs_symbols = 0;
   for (int l = start_symbol; l < start_symbol + number_symbols; l++)
     number_dmrs_symbols += ((pssch_pdu->dmrs_symbol_position)>>l)&0x01;
@@ -133,16 +139,15 @@ int nr_slsch_procedures(PHY_VARS_NR_UE *ue, int frame_rx, int slot_rx, int SLSCH
 
   uint32_t rb_size                   = pssch_pdu->num_subch*pssch_pdu->subchannel_size;
   int sci1_dmrs_overlap = pssch_pdu->dmrs_symbol_position & dmrs_pscch_mask[pssch_pdu->pscch_numsym-2];
-  int sci2_re = get_NREsci2(pssch_pdu->sci2_alpha_times_100,
-                            pssch_pdu->sci2_payload_len,
-                            pssch_pdu->sci2_beta_offset,
-                            pssch_pdu->pssch_numsym,
-                            pssch_pdu->pscch_numsym,
-                            pssch_pdu->pscch_numrbs,
-                            pssch_pdu->l_subch,
-                            pssch_pdu->subchannel_size,
-                            pssch_pdu->mcs,
-                            pssch_pdu->mcs_table);
+  int sci2_re = get_NREsci2_2(pssch_pdu->sci2_alpha_times_100,
+                              pssch_pdu->sci2_len,
+                              pssch_pdu->sci2_beta_offset,
+                              pssch_pdu->pssch_numsym,
+                              pssch_pdu->pscch_numsym,
+                              pssch_pdu->pscch_numrbs,
+                              pssch_pdu->l_subch,
+                              pssch_pdu->subchannel_size,
+			      pssch_pdu->targetCodeRate);
   uint32_t G = nr_get_G_SL(rb_size,
                            number_symbols,
                            nb_re_dmrs,
@@ -151,15 +156,15 @@ int nr_slsch_procedures(PHY_VARS_NR_UE *ue, int frame_rx, int slot_rx, int SLSCH
 			   pssch_pdu->pscch_numsym,
 			   pssch_pdu->pscch_numrbs,
 			   sci2_re,
-                           pssch_pdu->qam_mod_order,
-                           pusch_pdu->nrOfLayers);
+                           pssch_pdu->mod_order,
+                           pssch_pdu->num_layers);
 
   AssertFatal(G>0,"G is 0 : rb_size %u, number_symbols %d, nb_re_dmrs %d, number_dmrs_symbols %d, qam_mod_order %u, nrOfLayer %u\n",
 	      rb_size,
 	      number_symbols,
 	      nb_re_dmrs,
 	      number_dmrs_symbols, // number of dmrs symbols irrespective of single or double symbol dmrs
-	      pssch_pdu->qam_mod_order,
+	      pssch_pdu->mod_order,
 	      pssch_pdu->num_layers);
   LOG_I(NR_PHY,"rb_size %d, number_symbols %d, nb_re_dmrs %d, dmrs symbol positions %d, number_dmrs_symbols %d, qam_mod_order %d, nrOfLayer %d\n",
 	rb_size,
@@ -167,19 +172,22 @@ int nr_slsch_procedures(PHY_VARS_NR_UE *ue, int frame_rx, int slot_rx, int SLSCH
 	nb_re_dmrs,
         pssch_pdu->dmrs_symbol_position,
 	number_dmrs_symbols, // number of dmrs symbols irrespective of single or double symbol dmrs
-	pssch_pdu->qam_mod_order,
+	pssch_pdu->mod_order,
 	pssch_pdu->num_layers);
 
   nr_ulsch_layer_demapping(ue->pssch_vars[SLSCH_id].llr,
                            pssch_pdu->num_layers,
-                           pssch_pdu->qam_mod_order,
+                           pssch_pdu->mod_order,
                            G,
                            ue->pssch_vars[SLSCH_id].llr_layers);
 
+  //for (int g=0;g<G;g++) LOG_I(NR_PHY,"prescrambling_llr[%d] %d\n",g,ue->pssch_vars[SLSCH_id].llr[g]);
   //----------------------------------------------------------
   //------------------- ULSCH unscrambling -------------------
   //----------------------------------------------------------
-  nr_ulsch_unscrambling(ue->pssch_vars[SLSCH_id].llr, G, phy_data->Nid, 1010);
+  //LOG_I(NR_PHY,"SLSCH, unscrambling with Nid %x\n",pssch_pdu->Nid);
+  nr_ulsch_unscrambling(ue->pssch_vars[SLSCH_id].llr, G, pssch_pdu->Nid, 1010);
+//  for (int g=0;g<32;g++) LOG_I(NR_PHY,"unscrambling_llr[%d] %d\n",g,ue->pssch_vars[SLSCH_id].llr[g]);
   //----------------------------------------------------------
   //--------------------- ULSCH decoding ---------------------
   //----------------------------------------------------------
@@ -188,14 +196,14 @@ int nr_slsch_procedures(PHY_VARS_NR_UE *ue, int frame_rx, int slot_rx, int SLSCH
   nfapi_nr_pusch_pdu_t pusch_pdu;
 
   pusch_pdu.rb_size = rb_size;
-  pusch_pdu.qam_mod_order = qam_mod_order;
-  pusch_pdu.mcs_index = pssch_pdu->mcs;
+  pusch_pdu.qam_mod_order = pssch_pdu->mod_order;
+  pusch_pdu.mcs_index = slsch_pdu->mcs;
   pusch_pdu.nrOfLayers = pssch_pdu->num_layers;
-  pusch_pdu.pusch_data.tb_size=pssch_pdu->tb_size;
-  uint32_t A = pssch_pdu->tb_size<<3;
-  pusch_pdu.target_code_rate=pssch_pdu->target_coderate;
-  float Coderate = (float) (pssch_pdu->target_coderate) / 10240.0f;
-  pusch_pdu.pusch_data.rv_index=pssch_pdu->rv_index;
+  pusch_pdu.pusch_data.tb_size=slsch_pdu->tb_size;
+  uint32_t A = slsch_pdu->tb_size<<3;
+  pusch_pdu.target_code_rate=slsch_pdu->target_coderate;
+  float Coderate = (float) (slsch_pdu->target_coderate) / 10240.0f;
+  pusch_pdu.pusch_data.rv_index=slsch_pdu->rv_index;
   
   if ((A <=292) || ((A<=3824) && (Coderate <= 0.6667)) || Coderate <= 0.25){
     pusch_pdu.maintenance_parms_v3.ldpcBaseGraph=2;
@@ -203,10 +211,10 @@ int nr_slsch_procedures(PHY_VARS_NR_UE *ue, int frame_rx, int slot_rx, int SLSCH
   else{
     pusch_pdu.maintenance_parms_v3.ldpcBaseGraph=1;
   }
-  pusch_pdu.maintenance_parms_v3.tbSizeLbrmBytes=nr_sl_pssch_pdu->tbslbrm>>3;
+  pusch_pdu.maintenance_parms_v3.tbSizeLbrmBytes=slsch_pdu->tbslbrm>>3;
 
   int nbDecode =
-      nr_ulsch_decoding(gNB, NULL, SLSCH_id, ue->pssch_vars[SLSCH_id].llr, frame_parms, &pusch_pdu, frame_rx, slot_rx, harq_pid, G,proc,phy_data);
+      nr_ulsch_decoding(NULL, ue, SLSCH_id, ue->pssch_vars[SLSCH_id].llr, fp, &pusch_pdu, frame_rx, slot_rx, harq_pid, G,proc,phy_data);
   return nbDecode;
 }
 
@@ -216,7 +224,7 @@ void nr_postDecode_slsch(PHY_VARS_NR_UE *UE, notifiedFIFO_elt_t *req,UE_nr_rxtx_
   NR_UL_gNB_HARQ_t *slsch_harq = rdata->ulsch_harq;
   NR_gNB_ULSCH_t *slsch = rdata->ulsch;
   int r = rdata->segment_r;
-  sl_nr_rx_config_pssch_pdu_t *slsch_pdu = UE->slsch[rdata->ulsch_id].harq_process->slsch_pdu;
+  sl_nr_rx_config_pssch_pdu_t *slsch_pdu = &phy_data->nr_sl_pssch_pdu;//UE->slsch[rdata->ulsch_id].harq_process->slsch_pdu;
   bool decodeSuccess = (rdata->decodeIterations <= rdata->decoderParms.numMaxIter);
   slsch_harq->processedSegments++;
   LOG_D(NR_PHY,
@@ -236,8 +244,9 @@ void nr_postDecode_slsch(PHY_VARS_NR_UE *UE, notifiedFIFO_elt_t *req,UE_nr_rxtx_
   if (rdata->nbSegments == slsch_harq->processedSegments) {
     sl_nr_rx_indication_t sl_rx_indication;	  
     nr_sidelink_indication_t sl_indication;	  
+    slsch_status_t slsch_status;
     if (!check_abort(&slsch_harq->abort_decode) && !UE->pssch_vars[rdata->ulsch_id].DTX) {
-      LOG_D(NR_PHY,
+      LOG_I(NR_PHY,
             "[UE] SLSCH: Setting ACK for SFN/SF %d.%d (pid %d, ndi %d, status %d, round %d, TBS %d, Max interation "
             "(all seg) %d)\n",
             slsch->frame,
@@ -250,15 +259,12 @@ void nr_postDecode_slsch(PHY_VARS_NR_UE *UE, notifiedFIFO_elt_t *req,UE_nr_rxtx_
             rdata->decodeIterations);
       slsch->active = false;
       slsch_harq->round = 0;
-      LOG_D(PHY, "SLSCH received ok \n");
-      slsch_status_t slsch_status;
+      LOG_I(NR_PHY, "SLSCH received ok \n");
       slsch_status.rdata = rdata;
       slsch_status.rxok = true;
-      nr_fill_sl_rx_indication(&sl_rx_indication,SL_NR_RX_PDU_TYPE_SLSCH,UE,1,proc,(void*)&slsch_status,0);
-      nr_fill_sl_indication(&sl_indication,&sl_rx_indication,NULL,proc,UE,phy_data);
       //dumpsig=1;
     } else {
-      LOG_D(NR_PHY,
+      LOG_I(NR_PHY,
             "[UE] SLSCH: Setting NAK for SFN/SF %d/%d (pid %d, ndi %d, status %d, round %d, RV %d, prb_start %d, prb_size %d, "
             "TBS %d) r %d\n",
             slsch->frame,
@@ -273,15 +279,16 @@ void nr_postDecode_slsch(PHY_VARS_NR_UE *UE, notifiedFIFO_elt_t *req,UE_nr_rxtx_
             slsch_harq->TBS,
             r);
       slsch->handled = 1;
-      LOG_D(PHY, "SLSCH %d in error\n",rdata->ulsch_id);
-      slsch_status_t slsch_status;
+      LOG_I(NR_PHY, "SLSCH %d in error\n",rdata->ulsch_id);
       slsch_status.rdata = rdata;
       slsch_status.rxok = false;
-      nr_fill_sl_rx_indication(&sl_rx_indication,SL_NR_RX_PDU_TYPE_SLSCH,UE,1,proc,(void*)&slsch_status,0);
-      nr_fill_sl_indication(&sl_indication,&sl_rx_indication,NULL,proc,UE,phy_data);
       //      dumpsig=1;
     }
     slsch->last_iteration_cnt = rdata->decodeIterations;
+    nr_fill_sl_rx_indication(&sl_rx_indication,SL_NR_RX_PDU_TYPE_SLSCH,UE,1,proc,(void*)&slsch_status,0);
+    nr_fill_sl_indication(&sl_indication,&sl_rx_indication,NULL,proc,UE,phy_data);
+    if (UE->if_inst && UE->if_inst->sl_indication)
+      UE->if_inst->sl_indication(&sl_indication);
     /*
         if (ulsch_harq->ulsch_pdu.mcs_index == 0 && dumpsig==1) {
           int off = ((ulsch_harq->ulsch_pdu.rb_size&1) == 1)? 4:0;
@@ -631,17 +638,7 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
               ue->pssch_thres);
 
         pssch_vars->DTX = 0;
-        notifiedFIFO_t nf;
-        initNotifiedFIFO(&nf);
-        int totalDecode = nr_slsch_procedures(gNB, frame_rx, slot_rx, ULSCH_id, ulsch->harq_pid,proc,phy_data);
-        while (totalDecode > 0) {
-           notifiedFIFO_elt_t *req = pullTpool(&gNB->respDecode, &get_nrUE_params()->Tpool);
-           if (req == NULL)
-              break; // Tpool has been stopped
-           nr_postDecode_slsch(ue, proc, req);
-           delNotifiedFIFO_elt(req);
-           totalDecode--;
-	}
+        int totalDecode = nr_slsch_procedures(ue, frame_rx, nr_slot_rx, 0, proc,phy_data);
       }
   }
 

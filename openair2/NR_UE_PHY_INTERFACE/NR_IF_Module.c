@@ -1443,6 +1443,12 @@ static void handle_sl_bch(module_id_t module_id,uint8_t *const sl_mib,
   return ;
 }
 
+int8_t handle_slsch(int module_idP,sl_nr_rx_indication_t *rx_ind,int pdu_id)
+{
+    nr_ue_process_mac_sl_pdu(module_idP,rx_ind,pdu_id);
+
+  return 0;
+}
 void handle_sl_sci1a(module_id_t module_id,uint32_t frame, uint32_t slot, sl_nr_sci_indication_pdu_t *const sci,void *phy_data) {
 
 
@@ -1492,6 +1498,13 @@ void sl_nr_process_rx_ind(uint16_t mod_id,
       break;
     case SL_NR_RX_PDU_TYPE_SLSCH:
 
+        LOG_I(NR_MAC, "%s[UE%d]SL-MAC Received SLSCH: rx_slsch_pdu:%p, rx_slsch_len %d, ack_nack %d, harq_pid %d\n",KGRN,
+                         mod_id,rx_ind->rx_indication_body[num_pdus - 1].rx_slsch_pdu.pdu,
+                         rx_ind->rx_indication_body[num_pdus - 1].rx_slsch_pdu.pdu_length,
+  		         rx_ind->rx_indication_body[num_pdus - 1].rx_slsch_pdu.ack_nack,
+		         rx_ind->rx_indication_body[num_pdus - 1].rx_slsch_pdu.harq_pid);
+
+        handle_slsch(mod_id,rx_ind,0); 
       break;
 
     default :

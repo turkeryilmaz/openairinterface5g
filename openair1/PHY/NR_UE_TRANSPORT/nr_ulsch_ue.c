@@ -268,7 +268,8 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
 
   
 //  for (int i=0;i<(Gsci2>>5)+1;i++) LOG_I(NR_PHY,"sci2_encoded[%d] %x\n",i,sci2_encoded_output[i]); 
-
+//  for (int g=0;g<G;g++) LOG_I(NR_PHY,"coded_output_f[%d] %d\n",g,harq_process_ul_ue->f[g]);
+//  LOG_I(NR_PHY,"Scrambling with Nid %x\n",phy_data->pscch_Nid);
   nr_pusch_codeword_scrambling(harq_process_ul_ue->f,
                                G,
                                pscch_pssch_pdu==NULL ? ulsch_ue->Nid_cell : phy_data->pscch_Nid,
@@ -305,7 +306,6 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
                   available_bits,
                   mod_order,
                   (int16_t *)d_mod2);
-    //for (int i=0;i<100;i+=2) LOG_D(NR_PHY,"SLSCH RE %d/%d: (%d,%d)\n",i/2,available_bits/2,((int16_t*)d_mod2)[i],((int16_t*)d_mod2)[i+1]);
     LOG_D(NR_PHY,"SCI bits %d (sci2_re %d), PSSCH bits %d (PSCCH RE %d), max_re %d\n",Gsci2,sci2_re,available_bits,available_bits/mod_order,max_num_re);
     memcpy(d_mod+sci2_re,d_mod2,available_bits*sizeof(int32_t)/mod_order);
   }

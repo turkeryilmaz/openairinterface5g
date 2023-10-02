@@ -70,6 +70,7 @@ int nr_ulsch_encoding(PHY_VARS_NR_UE *ue,
   // target_code_rate is in 0.1 units
   float Coderate = (float) (pscch_pssch_pdu == NULL ? ulsch->pusch_pdu.target_code_rate : pscch_pssch_pdu->target_coderate) / 10240.0f;
 
+  if (pscch_pssch_pdu) memcpy(harq_process->a,pscch_pssch_pdu->slsch_payload,A>>3);
 ///////////
 /////////////////////////////////////////////////////////////////////////////////////////  
 

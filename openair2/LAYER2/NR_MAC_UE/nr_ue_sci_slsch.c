@@ -647,9 +647,47 @@ void config_pssch_slsch_pdu_rx(sl_nr_rx_config_pssch_pdu_t *nr_sl_pssch_pdu,
   nr_sl_pssch_pdu->tbslbrm = nr_compute_tbslbrm(sci_pdu->additional_mcs.val,
 		                                NRRIV2BW(sl_bwp->sl_BWP_Generic_r16->sl_BWP_r16->locationAndBandwidth,273),
 						nr_sl_pssch_pdu->num_layers);
-/*  nr_sl_pssch_pdu->tb_size = nr_compute_tbs_sl(nr_sl_pssch_pdu->mod_order,
+  int num_psfch_symbols=0;
+  if (sl_res_pool->sl_PSFCH_Config_r16 && sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16 && *sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16>0) {
+     num_psfch_symbols = *sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16;
+     if (num_psfch_symbols == 3) num_psfch_symbols++;
+  }
+  int pssch_numsym=7+*sl_bwp->sl_BWP_Generic_r16->sl_LengthSymbols_r16-num_psfch_symbols-2;
+  int l_subch;
+  convNRFRIV(sci_pdu->frequency_resource_assignment.val,
+	     *sl_res_pool->sl_NumSubchannel_r16,
+	     *sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_MaxNumPerReserve_r16,
+	     &l_subch,
+	     NULL,NULL);
+  int subchannel_size=subch_to_rb[*sl_res_pool->sl_SubchannelSize_r16];
+  int nohPRB    = (sl_res_pool->sl_X_Overhead_r16) ? 3*(*sl_res_pool->sl_X_Overhead_r16) : 0;
+  int nREDMRS   = get_nREDMRS(sl_res_pool);  
+  int pscch_numsym = pscch_tda[*sl_res_pool->sl_PSCCH_Config_r16->choice.setup->sl_TimeResourcePSCCH_r16];
+  int pscch_numrbs = pscch_rb_table[*sl_res_pool->sl_PSCCH_Config_r16->choice.setup->sl_FreqResourcePSCCH_r16];
+  int N_REprime = 12*pssch_numsym - nohPRB - nREDMRS;
+  int N_REsci1  = 12*pscch_numrbs*pscch_numsym;
+  AssertFatal(*sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_Scaling_r16 < 4, "Illegal index %d to alpha table\n",(int)*sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_Scaling_r16);
+  int sci2_beta_offset = *sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_BetaOffsets2ndSCI_r16->list.array[sci_pdu->beta_offset_indicator];
+  int sci2_alpha_times_100=0;
+  if (sl_res_pool->sl_PowerControl_r16) {
+    sci2_alpha_times_100=50 + (*sl_res_pool->sl_PowerControl_r16->sl_Alpha_PSSCH_PSCCH_r16)*15;
+    if (*sl_res_pool->sl_PowerControl_r16->sl_Alpha_PSSCH_PSCCH_r16 == 3) sci2_alpha_times_100=100;
+  } else sci2_alpha_times_100 = 100;
+  int sci2_payload_len = nr_sci_size(sl_res_pool,sci_pdu,format2);
+  int N_REsci2  = get_NREsci2(sci2_alpha_times_100,
+                              sci2_payload_len,
+                              sci2_beta_offset,
+                              pssch_numsym,
+                              pscch_numsym,
+                              pscch_numrbs,
+                              l_subch,
+                              subchannel_size,
+                              nr_sl_pssch_pdu->mcs,
+                              nr_sl_pssch_pdu->mcs_table);
+  int N_RE      = N_REprime*l_subch*subchannel_size - N_REsci1 - N_REsci2;
+  nr_sl_pssch_pdu->tb_size = nr_compute_tbs_sl(nr_sl_pssch_pdu->mod_order,
                                                nr_sl_pssch_pdu->target_coderate,
-                                               N_RE,1+(sci_pdu->number_of_dmrs_port&1))>>3; */
+                                               N_RE,1+(sci_pdu->number_of_dmrs_port&1))>>3; 
 }
 
 void config_pssch_sci_pdu_rx(sl_nr_rx_config_pssch_sci_pdu_t *nr_sl_pssch_sci_pdu,

@@ -85,7 +85,7 @@ bool nr_schedule_slsch(nr_sci_pdu_t *sci_pdu,nr_sci_pdu_t *sci2_pdu,uint8_t *sls
 
 // Set SLSCH
    *slsch_pdu_length = 1024;
-    
+   for (uint32_t n=0;n<*slsch_pdu_length;n++) slsch_pdu[n]=(uint8_t)(n&255);
    return true; 
 }
 

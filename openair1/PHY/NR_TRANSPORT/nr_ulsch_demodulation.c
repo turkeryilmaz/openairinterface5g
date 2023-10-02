@@ -2215,16 +2215,16 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
       /*-----------------------------------------------------------------------------------------------------*/
       if (gNB) start_meas(&gNB->ulsch_llr_stats);
       int sci1_offset=0;
+      if (symbol <= pssch_pdu->pscch_numsym) { 
+        pusch_vars->ul_valid_re_per_slot[symbol] -= sci1_re_per_symb;
+        sci1_offset=sci1_re_per_symb;
+      }
       if (ml_rx == false || nrOfLayers == 1) {       
         if (pssch_pdu && sci2_left>0){
 	  LOG_I(NR_PHY,"valid_re_per_slot[%d] %d\n",symbol,pusch_vars->ul_valid_re_per_slot[symbol]);
 	  int available_sci2_res_in_symb = pusch_vars->ul_valid_re_per_slot[symbol];
 	  int slsch_res_in_symbol;
-	  if (symbol <= pssch_pdu->pscch_numsym) { 
-            available_sci2_res_in_symb = pusch_vars->ul_valid_re_per_slot[symbol] - sci1_re_per_symb;
-	    sci1_offset=sci1_re_per_symb;
-	    LOG_I(NR_PHY,"available_sci2_res_in_symb[%d] %d (sci1_re %d)\n",symbol,available_sci2_res_in_symb,sci1_re_per_symb);
-	  }
+	  LOG_I(NR_PHY,"available_sci2_res_in_symb[%d] %d (sci1_re %d)\n",symbol,available_sci2_res_in_symb,sci1_re_per_symb);
 	  int sci2_cnt_prev = sci2_cnt;
 	  if (available_sci2_res_in_symb < sci2_left) {
 	     sci2_cnt += available_sci2_res_in_symb; // take all of the PSSCH REs for SCI2
@@ -2279,7 +2279,7 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
                //
 	  }
         } // (not ML || nrOfLayers==1 ) AND pssch and sci2 REs to handle	
-	if (pssch_pdu) LOG_D(NR_PHY,"symbol %d: PSSCH REs %d (sci1 %d,sci2 %d)\n",symbol,pusch_vars->ul_valid_re_per_slot[symbol],sci1_offset,sci2_cnt_thissymb); 
+	if (pssch_pdu) LOG_I(NR_PHY,"symbol %d: PSSCH REs %d (sci1 %d,sci2 %d)\n",symbol,pusch_vars->ul_valid_re_per_slot[symbol],sci1_offset,sci2_cnt_thissymb); 
         for (aatx=0; aatx < nrOfLayers; aatx++) {
           nr_ulsch_compute_llr(&pusch_vars->rxdataF_comp[aatx * frame_parms->nb_antennas_rx][symbol * (off + rb_size * NR_NB_SC_PER_RB)+sci1_offset+sci2_cnt_thissymb],
                                pusch_vars->ul_ch_mag0[aatx * frame_parms->nb_antennas_rx],

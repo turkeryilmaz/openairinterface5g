@@ -50,7 +50,7 @@
 #include <syscall.h>
 #include "executables/nr-uesoftmodem.h"
 
-//#define DEBUG_ULSCH_DECODING
+#define DEBUG_ULSCH_DECODING
 //#define gNB_DEBUG_TRACE
 
 #define OAI_UL_LDPC_MAX_NUM_LLR 27000//26112 // NR_LDPC_NCOL_BG1*NR_LDPC_ZMAX = 68*384
@@ -171,6 +171,7 @@ static void nr_processULSegment(void *arg)
   int16_t harq_e[E];
 
   nr_deinterleaving_ldpc(E, Qm, harq_e, ulsch_llr + r_offset);
+
 
   // for (int i =0; i<16; i++)
   //          printf("rx output deinterleaving w[%d]= %d r_offset %d\n", i,ulsch_harq->w[r][i], r_offset);
@@ -309,7 +310,7 @@ int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
   // target_code_rate is in 0.1 units
   float Coderate = (float) pusch_pdu->target_code_rate / 10240.0f;
 
-  LOG_D(PHY,"ULSCH Decoding, harq_pid %d rnti %x TBS %d G %d mcs %d Nl %d nb_rb %d, Qm %d, Coderate %f RV %d round %d new RX %d\n",
+  LOG_I(PHY,"ULSCH Decoding, harq_pid %d rnti %x TBS %d G %d mcs %d Nl %d nb_rb %d, Qm %d, Coderate %f RV %d round %d new RX %d\n",
         harq_pid, ulsch->rnti, A, G, mcs, n_layers, nb_rb, Qm, Coderate, pusch_pdu->pusch_data.rv_index, harq_process->round, harq_process->harq_to_be_cleared);
   t_nrLDPC_dec_params decParams = {0};
   decParams.BG = pusch_pdu->maintenance_parms_v3.ldpcBaseGraph;
@@ -530,7 +531,7 @@ int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
       rdata->ulsch_id = ULSCH_id;
       rdata->tbslbrm = pusch_pdu->maintenance_parms_v3.tbSizeLbrmBytes;
       pushTpool(phy_vars_gNB ? &phy_vars_gNB->threadPool : &get_nrUE_params()->Tpool, req);
-      LOG_D(PHY, "Added a block to decode, in pipe: %d\n", r);
+      LOG_I(PHY, "Added a block to decode, in pipe: %d\n", r);
       r_offset += E;
       offset += (Kr_bytes - (harq_process->F >> 3) - ((harq_process->C > 1) ? 3 : 0));
       //////////////////////////////////////////////////////////////////////////////////////////

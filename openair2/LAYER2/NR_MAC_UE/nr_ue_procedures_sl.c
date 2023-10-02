@@ -575,3 +575,62 @@ uint32_t sl_determine_num_sidelink_slots(uint8_t mod_id, uint16_t *N_SSB_16frame
   return N_SL_SLOTS;
 }
 
+void nr_ue_process_mac_sl_pdu(int module_idP,
+		              sl_nr_rx_indication_t *rx_ind,
+                              int pdu_id)
+{
+
+  uint8_t *pduP          = (rx_ind->rx_indication_body + pdu_id)->rx_slsch_pdu.pdu;
+  int32_t pdu_len        = (int32_t)(rx_ind->rx_indication_body + pdu_id)->rx_slsch_pdu.pdu_length;
+  uint8_t done           = 0;
+  NR_UE_MAC_INST_t *mac = get_mac_inst(module_idP);
+
+  if (!pduP){
+    return;
+  }
+
+  LOG_I(NR_MAC, "In %s : processing PDU %d (with length %d) of %d total number of PDUs...\n", __FUNCTION__, pdu_id, pdu_len, rx_ind->number_pdus);
+/*
+  while (!done && pdu_len > 0){
+    uint16_t mac_len = 0x0000;
+    uint16_t mac_subheader_len = 0x0001; //  default to fixed-length subheader = 1-oct
+    uint8_t rx_lcid = ((NR_MAC_SUBHEADER_FIXED *)pduP)->LCID;
+
+    LOG_I(NR_MAC, "[UE] LCID %d, PDU length %d\n", rx_lcid, pdu_len);
+    bool ret;
+    switch(rx_lcid){
+      //  MAC CE
+      case SL_SCH_LCID_CCCH:
+        //  MSG4 RRC Setup 38.331
+        //  variable length
+        ret=get_mac_len(pduP, pdu_len, &mac_len, &mac_subheader_len);
+        AssertFatal(ret, "The mac_len (%d) has an invalid size. PDU len = %d! \n",
+                    mac_len, pdu_len);
+
+        // Check if it is a valid CCCH message, we get all 00's messages very often
+        int i = 0;
+        for(i=0; i<(mac_subheader_len+mac_len); i++) {
+          if(pduP[i] != 0) {
+            break;
+          }
+        }
+        if (i == (mac_subheader_len+mac_len)) {
+          LOG_D(NR_MAC, "%s() Invalid CCCH message!, pdu_len: %d\n", __func__, pdu_len);
+          done = 1;
+          break;
+        }
+
+        if ( mac_len > 0 ) {
+          LOG_D(NR_MAC,"DL_SCH_LCID_CCCH (e.g. RRCSetup) with payload len %d\n", mac_len);
+          for (int i = 0; i < mac_subheader_len; i++) {
+            LOG_D(NR_MAC, "MAC header %d: 0x%x\n", i, pduP[i]);
+          }
+          for (int i = 0; i < mac_len; i++) {
+            LOG_D(NR_MAC, "%d: 0x%x\n", i, pduP[mac_subheader_len + i]);
+          }
+          nr_mac_rrc_data_ind_ue(module_idP, CC_id, gNB_index, frameP, 0, mac->crnti, CCCH, pduP+mac_subheader_len, mac_len);
+        }
+        break;
+      case DL_SCH_LCID_TCI_STATE_ACT_UE_SPEC_PDSCH:
+      */
+}
