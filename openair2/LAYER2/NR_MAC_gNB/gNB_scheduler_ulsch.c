@@ -272,10 +272,11 @@ static int nr_process_mac_pdu(instance_t module_idP,
                                            sched_pusch->tda_info.nrOfSymbols, //n_symbols
                                            sched_pusch->dmrs_info.num_dmrs_symb*sched_pusch->dmrs_info.N_PRB_DMRS, //n_dmrs
                                            deltaMCS,1);
+	sched_ctrl->ph0 = PH;
         /* 38.133 Table10.1.18.1-1 */
         sched_ctrl->pcmax = PCMAX - 29;
-        LOG_D(NR_MAC, "SINGLE ENTRY PHR R1 %d PH %d (%d dB) R2 %d PCMAX %d (%d dBm)\n",
-              phr->R1, PH, sched_ctrl->ph, phr->R2, PCMAX, sched_ctrl->pcmax);
+        LOG_D(NR_MAC, "SINGLE ENTRY PHR R1 %d PH %d (%d dB) PH0 %d R2 %d PCMAX %d (%d dBm) pusch mcs %d, pusch->rbSize %d, pusch->tb_size %d\n",
+              phr->R1, PH, sched_ctrl->ph, sched_ctrl->ph0, phr->R2, PCMAX, sched_ctrl->pcmax,sched_pusch->mcs,sched_pusch->rbSize,sched_pusch->tb_size);
         break;
 
       case UL_SCH_LCID_MULTI_ENTRY_PHR_1_OCT:
@@ -629,9 +630,10 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
       if (timing_advance != 0xffff)
         UE_scheduling_control->ta_update = timing_advance;
       UE_scheduling_control->raw_rssi = rssi;
-      UE_scheduling_control->pusch_snrx10 = ul_cqi * 5 - 640 - txpower_calc;
+      UE_scheduling_control->pusch_snrx10 = ul_cqi * 5 - 640 - (txpower_calc*10);
 
-      LOG_D(NR_MAC, "[UE %04x] PUSCH TPC %d and TA %d pusch_snrx10 %d rssi %d i phrx_tx_power %d\n",UE->rnti,UE_scheduling_control->tpc0,UE_scheduling_control->ta_update,UE_scheduling_control->pusch_snrx10,UE_scheduling_control->raw_rssi,txpower_calc);
+      LOG_D(NR_MAC, "[UE %04x] PUSCH TPC %d and TA %d pusch_snrx10 %d rssi %d phrx_tx_power %d PHR (1PRB) %d mcs %d, nb_rb %d\n",UE->rnti,UE_scheduling_control->tpc0,UE_scheduling_control->ta_update,UE_scheduling_control->pusch_snrx10,UE_scheduling_control->raw_rssi,txpower_calc,UE_scheduling_control->ph0,UE_scheduling_control->ul_harq_processes[harq_pid].sched_pusch.mcs,UE_scheduling_control->ul_harq_processes[harq_pid].sched_pusch.rbSize);
+      UE->mac_stats.pusch_snrx10 = UE_scheduling_control->pusch_snrx10;
     }
     else{
       LOG_D(NR_MAC,"[UE %04x] Detected DTX : increasing UE TX power\n",UE->rnti);
@@ -759,7 +761,7 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
           UE_scheduling_control->ta_update = timing_advance;
         UE_scheduling_control->raw_rssi = rssi;
         UE_scheduling_control->pusch_snrx10 = ul_cqi * 5 - 640;
-        LOG_D(NR_MAC, "[UE %04x] PUSCH TPC %d and TA %d\n", UE_msg3_stage->rnti, UE_scheduling_control->tpc0, UE_scheduling_control->ta_update);
+        LOG_I(NR_MAC, "[UE %04x] PUSCH TPC %d and TA %d\n", UE_msg3_stage->rnti, UE_scheduling_control->tpc0, UE_scheduling_control->ta_update);
         if (ra->cfra) {
           LOG_A(NR_MAC, "(rnti 0x%04x) CFRA procedure succeeded!\n", ra->rnti);
           nr_mac_reset_ul_failure(UE_scheduling_control);
@@ -1628,6 +1630,46 @@ static int comparator(const void *p, const void *q) {
   return ((UEsched_t*)p)->coef < ((UEsched_t*)q)->coef;
 }
 
+int one_PRB_mcs(gNB_MAC_INST *nrmac,int frame, int slot, int max_mcs,NR_UE_sched_ctrl_t *sched_ctrl,long *deltaMCS,NR_UE_UL_BWP_t *current_BWP,NR_ServingCellConfigCommon_t *scc) {
+
+    int ph=sched_ctrl->ph;
+    uint8_t *tpc0=&sched_ctrl->tpc0;
+    int mcs=max_mcs;
+    int tb_size;
+    uint8_t Qm;
+    uint16_t R;
+    int nrOfLayers = sched_ctrl->srs_feedback.ul_ri + 1;
+    int phr_mcs_offset;
+    int time_domain_allocation = get_ul_tda(nrmac, scc, frame, slot);
+    NR_tda_info_t tda_info = get_ul_tda_info(current_BWP, sched_ctrl->coreset->controlResourceSetId, sched_ctrl->search_space->searchSpaceType->present, NR_RNTI_C, time_domain_allocation);
+    NR_pusch_dmrs_t dmrs_info = get_ul_dmrs_params(scc,
+                                   current_BWP,
+                                   &tda_info,
+                                   nrOfLayers);
+    do {
+      update_ul_ue_R_Qm(mcs, current_BWP->mcs_table, current_BWP->pusch_Config, &R, &Qm);
+      tb_size = nr_compute_tbs(Qm,
+                               R,
+                               1,
+                               tda_info.nrOfSymbols,
+                               dmrs_info.N_PRB_DMRS * dmrs_info.num_dmrs_symb,
+                               0, // nb_rb_oh
+                               0,
+                               nrOfLayers);
+      phr_mcs_offset = compute_ph_factor(current_BWP->scs,
+                                         tb_size,
+                                         1,
+                                         nrOfLayers,
+                                         tda_info.nrOfSymbols,
+                                         dmrs_info.N_PRB_DMRS*dmrs_info.num_dmrs_symb,
+                                         deltaMCS,0);
+      mcs--;
+    } while (phr_mcs_offset>ph && mcs>=0);
+    mcs++; 
+    LOG_I(NR_MAC,"one_PRB_mcs: phr_mcs_offset %d ph %d mcs %d\n",phr_mcs_offset,ph,mcs);
+    return(mcs);
+}
+
 static void pf_ul(module_id_t module_id,
                   frame_t frame,
                   sub_frame_t slot,
@@ -1715,11 +1757,25 @@ static void pf_ul(module_id_t module_id,
     const NR_bler_options_t *bo = &nrmac->ul_bler;
     const int max_mcs_table = (current_BWP->mcs_table == 0 || current_BWP->mcs_table == 2) ? 28 : 27;
     const int max_mcs = min(bo->max_mcs, max_mcs_table); /* no per-user maximum MCS yet */
+    long *deltaMCS = current_BWP->pusch_Config ? current_BWP->pusch_Config->pusch_PowerControl->deltaMCS : NULL;
     if (bo->harq_round_max == 1)
       sched_pusch->mcs = max_mcs;
-    else
-      sched_pusch->mcs = get_mcs_from_bler(bo, stats, &sched_ctrl->ul_bler_stats, max_mcs, frame);
-
+    else { 
+      if (0/*deltaMCS*/) { // This needs more testing
+         sched_pusch->mcs = one_PRB_mcs(nrmac,frame,slot,max_mcs,sched_ctrl,deltaMCS,current_BWP,scc);
+	 if (sched_ctrl->ul_bler_stats.last_frame == 0 && sched_ctrl->ul_bler_stats.mcs == 0) {
+	     sched_ctrl->ul_bler_stats.last_frame = frame;
+	     sched_ctrl->ul_bler_stats.bler = (bo->lower + bo->upper) / 2.0f;
+	 }	   
+	 sched_ctrl->ul_bler_stats.mcs = sched_pusch->mcs;
+         int dummy_mcs = get_mcs_from_bler(bo, stats, &sched_ctrl->ul_bler_stats, max_mcs, frame);
+	 LOG_I(NR_MAC,"pf_ul: Initial MCS %d (dummy_mcs %d)\n",sched_pusch->mcs,dummy_mcs);
+	 sched_pusch->mcs = dummy_mcs;
+      }
+      else {
+         sched_pusch->mcs = get_mcs_from_bler(bo, stats, &sched_ctrl->ul_bler_stats, max_mcs, frame);
+      }
+    }
     /* Schedule UE on SR or UL inactivity and no data (otherwise, will be scheduled
      * based on data to transmit) */
     if (B == 0 && do_sched) {
@@ -1748,8 +1804,8 @@ static void pf_ul(module_id_t module_id,
                                                   &sched_pusch->tda_info,
                                                   sched_pusch->nrOfLayers);
 
-      LOG_D(NR_MAC,"no data: Looking for min_rb %d RBs, starting at %d num_dmrs_cdm_grps_no_data %d\n",
-            min_rb, rbStart, sched_pusch->dmrs_info.num_dmrs_cdm_grps_no_data);
+      LOG_D(NR_MAC,"pf_ul no data: 1PRB mcs %d Looking for min_rb %d RBs, starting at %d num_dmrs_cdm_grps_no_data %d\n",
+            sched_pusch->mcs,min_rb, rbStart, sched_pusch->dmrs_info.num_dmrs_cdm_grps_no_data);
       const uint16_t slbitmap = SL_to_bitmap(sched_pusch->tda_info.startSymbolIndex, sched_pusch->tda_info.nrOfSymbols);
       while (rbStart < bwpSize && (rballoc_mask[rbStart] & slbitmap) != slbitmap)
         rbStart++;
@@ -1794,7 +1850,7 @@ static void pf_ul(module_id_t module_id,
                                  sched_pusch->tda_info.nrOfSymbols,
                                  sched_pusch->dmrs_info.N_PRB_DMRS*sched_pusch->dmrs_info.num_dmrs_symb,
                                  deltaMCS,0);
-      LOG_D(NR_MAC,"%d.%d UE %x Scheduling PUSCH (no data) nrb %d tbs %d bits phr_txpower %d\n",frame,slot,UE->rnti,sched_pusch->rbSize,sched_pusch->tb_size<<3,sched_pusch->phr_txpower_calc);
+      LOG_D(NR_MAC,"pf_ul %d.%d UE %x Scheduling PUSCH (no data) nrb %d mcs %d tbs %d bits phr_txpower %d\n",frame,slot,UE->rnti,sched_pusch->rbSize,sched_pusch->mcs,sched_pusch->tb_size<<3,sched_pusch->phr_txpower_calc);
       /* Mark the corresponding RBs as used */
       n_rb_sched -= sched_pusch->rbSize;
       for (int rb = 0; rb < sched_ctrl->sched_pusch.rbSize; rb++)
@@ -1879,7 +1935,7 @@ static void pf_ul(module_id_t module_id,
       iterator++;
       continue;
     } else
-      LOG_D(NR_MAC, "allocating UL data for RNTI %04x (rbStart %d, min_rb %d, max_rbSize %d, bwpSize %d)\n", iterator->UE->rnti, rbStart, min_rb, max_rbSize, bwpSize);
+      LOG_D(NR_MAC, "pf_ul: allocating UL data for RNTI %04x (rbStart %d, min_rb %d, max_rbSize %d, bwpSize %d)\n", iterator->UE->rnti, rbStart, min_rb, max_rbSize, bwpSize);
 
     /* Calculate the current scheduling bytes */
     const int B = cmax(sched_ctrl->estimated_ul_buffer - sched_ctrl->sched_ul_bytes, 0);
@@ -1919,8 +1975,8 @@ static void pf_ul(module_id_t module_id,
                                  deltaMCS,0);
     sched_pusch->rbSize = rbSize;
     sched_pusch->tb_size = TBS;
-    LOG_D(NR_MAC,"rbSize %d (max_rbSize %d), TBS %d, est buf %d, sched_ul %d, B %d, CCE %d, num_dmrs_symb %d, N_PRB_DMRS %d phr_tx_power %d\n",
-          rbSize, max_rbSize,sched_pusch->tb_size, sched_ctrl->estimated_ul_buffer, sched_ctrl->sched_ul_bytes, B,
+    LOG_D(NR_MAC,"pf_ul: rbSize %d (max_rbSize %d), mcs %d, TBS %d, est buf %d, sched_ul %d, B %d, CCE %d, num_dmrs_symb %d, N_PRB_DMRS %d phr_tx_power %d\n",
+          rbSize, max_rbSize,sched_pusch->mcs,sched_pusch->tb_size, sched_ctrl->estimated_ul_buffer, sched_ctrl->sched_ul_bytes, B,
           sched_ctrl->cce_index,sched_pusch->dmrs_info.num_dmrs_symb,sched_pusch->dmrs_info.N_PRB_DMRS, sched_pusch->phr_txpower_calc);
 
     /* Mark the corresponding RBs as used */

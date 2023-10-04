@@ -1016,7 +1016,7 @@ void handle_nr_uci_pucch_0_1(module_id_t mod_id,
 
     // tpc (power control) only if we received AckNack
     if (uci_01->harq.harq_confidence_level==0)
-      sched_ctrl->tpc1 = nr_get_tpc(nrmac->pucch_target_snrx10, uci_01->ul_cqi, 30,sched_ctrl->sched_pusch.phr_txpower_calc);
+      sched_ctrl->tpc1 = nr_get_tpc(nrmac->pucch_target_snrx10, uci_01->ul_cqi, 30,0);
     else
       sched_ctrl->tpc1 = 3;
     sched_ctrl->pucch_snrx10 = uci_01->ul_cqi * 5 - 640;
@@ -1209,7 +1209,7 @@ int nr_acknack_scheduling(gNB_MAC_INST *mac,
    * called often, don't try to lock every time */
 
   const int CC_id = 0;
-  const int minfbtime = mac->minRXTXTIMEpdsch;
+  const int minfbtime = mac->radio_config.minRXTXTIME;
   const NR_ServingCellConfigCommon_t *scc = mac->common_channels[CC_id].ServingCellConfigCommon;
   const NR_UE_UL_BWP_t *ul_bwp = &UE->current_UL_BWP;
   const int n_slots_frame = nr_slots_per_frame[ul_bwp->scs];
