@@ -66,7 +66,7 @@
 
 #include <omp.h>
 
-#include "nr_ldpc_decoding_pym.h" // XDMA header file
+#include "PHY/CODING/nrLDPC_decoder_offload_xdma/nrLDPC_decoder_offload_xdma.h" // XDMA header file
 #define NUM_THREADS_PREPARE 5
 
 static inline
