@@ -1479,7 +1479,7 @@ static void nr_ue_max_mcs_min_rb(int mu,
                                  sched_pusch->tda_info.nrOfSymbols,
                                  sched_pusch->dmrs_info.N_PRB_DMRS*sched_pusch->dmrs_info.num_dmrs_symb,
                                  deltaMCS,0);*/
-  //if (ph_limit < tx_power)
+  if (ph_limit < tx_power)
     LOG_W(NR_MAC, "Normalized power %d based on current resources (RBs %d, MCS %d) exceed reported PHR %d (normalized value)\n",
           tx_power, *Rb, *mcs, ph_limit,sched_pusch->phr_txpower_calc);
 }
