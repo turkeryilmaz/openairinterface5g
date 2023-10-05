@@ -412,6 +412,8 @@ typedef struct NRRrcConfigurationReq_s {
   uint16_t                mnc[PLMN_LIST_MAX_SIZE];
   uint8_t                 mnc_digit_length[PLMN_LIST_MAX_SIZE];
   uint8_t                 num_plmn;
+  int sd;
+  int sst;
 
   bool um_on_default_drb;
   bool                    enable_sdap;
