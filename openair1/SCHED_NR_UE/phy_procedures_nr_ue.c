@@ -1616,7 +1616,7 @@ void validate_rx_payload_str(NR_DL_UE_HARQ_t *harq, int slot, bool polar_decoded
       LOG_D(NR_PHY, "result[%d]=%c\n", i, result[i]);
     }
     char *usr_msg_ptr = &result[0];
-    char tmp_flag[128];
+    char tmp_flag[128] = {};
     memset(tmp_flag, '+', strlen("Received your text! It says: ") + test_msg_len);
     LOG_I(NR_PHY, "%s\n", tmp_flag);
     LOG_I(NR_PHY, "Received your text! It says: %s\n", usr_msg_ptr);
