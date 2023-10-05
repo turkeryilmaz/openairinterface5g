@@ -252,7 +252,7 @@ class Node:
     def _update_cmd(self, role:str, cmd:str) -> str:
         if OPTS.basic: return redirect_output('uname -a', self.log_file_path)
         dest = '' if '--dest' in cmd or OPTS.dest == '' else f' --dest {OPTS.dest}'
-        tx_msg = f' --message "{OPTS.message}"' if len(OPTS.message) > 0 else ''
+        tx_msg = f" --message '{OPTS.message}'" if len(OPTS.message) > 0 else ""
         if role == 'syncref':
             cmd = cmd + tx_msg + f' --mcs {OPTS.mcs}' + dest
             if 'rfsim' == OPTS.test:
@@ -426,7 +426,7 @@ def set_attenuation(attenuation: int, atten_host: str, user: str) -> None:
     """
     if OPTS.att >= 0:
         LOGGER.info('Setting attenuation')
-        atten_set_cmd = f"curl http://169.254.10.10/:CHAN:3:SETATT:{attenuation}" #CHAN:1:2:3:4:SETATT:25.5
+        atten_set_cmd = f"curl http://169.254.10.10/:CHAN:1:2:3:4:SETATT:{attenuation}" #CHAN:1:2:3:4:SETATT:25.5
         atten_get_cmd = f"curl http://169.254.10.10/:ATT?"
         host_IPs = check_output(['hostname', '-I']).decode().strip().split()
         LOCAL_IP = host_IPs[1] if len(host_IPs) > 1 else host_IPs[0]
