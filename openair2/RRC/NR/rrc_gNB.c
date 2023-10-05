@@ -2392,6 +2392,22 @@ void rrc_gNB_process_e1_bearer_context_setup_resp(e1ap_bearer_setup_resp_t *resp
   rrc->mac_rrc.ue_context_modification_request(&ue_context_modif_req);
 }
 
+void rrc_gNB_process_e1_bearer_context_modif_resp(const e1ap_bearer_modif_resp_t *resp)
+{
+  gNB_RRC_INST *rrc = RC.nrrrc[0];
+  rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context(rrc, resp->gNB_cu_cp_ue_id);
+  if (ue_context_p == NULL) {
+    LOG_E(RRC, "no UE with CU-CP UE ID %d found\n", resp->gNB_cu_cp_ue_id);
+    return;
+  }
+
+  // there is not really anything to do here as of now
+  for (int i = 0; i < resp->numPDUSessionsMod; ++i) {
+    const pdu_session_modif_t *pdu = &resp->pduSessionMod[i];
+    LOG_I(RRC, "UE %d: PDU session ID %ld modified %d bearers\n", resp->gNB_cu_cp_ue_id, pdu->id, pdu->numDRBModified);
+  }
+}
+
 static void rrc_CU_process_f1_lost_connection(gNB_RRC_INST *rrc, f1ap_lost_connection_t *lc, sctp_assoc_t assoc_id)
 {
   AssertFatal(rrc->du != NULL, "no DU connected, cannot received F1 lost connection\n");
@@ -2669,6 +2685,9 @@ void *rrc_gnb_task(void *args_p) {
 
       case E1AP_BEARER_CONTEXT_SETUP_RESP:
         rrc_gNB_process_e1_bearer_context_setup_resp(&E1AP_BEARER_CONTEXT_SETUP_RESP(msg_p), instance);
+
+      case E1AP_BEARER_CONTEXT_MODIFICATION_RESP:
+        rrc_gNB_process_e1_bearer_context_modif_resp(&E1AP_BEARER_CONTEXT_MODIFICATION_RESP(msg_p));
 
       case NGAP_PAGING_IND:
         rrc_gNB_process_PAGING_IND(msg_p, instance);
