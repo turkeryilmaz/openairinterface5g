@@ -1575,8 +1575,7 @@ void RCconfig_NRRRC(gNB_RRC_INST *rrc)
       char aprefix[MAX_OPTNAME_SIZE*2 + 8];
       sprintf(aprefix,"%s.[%d].%s", GNB_CONFIG_STRING_GNB_LIST, i, GNB_CONFIG_STRING_SCTP_CONFIG);
       config_get(config_get_if(), SCTPParams, sizeofArray(SCTPParams), aprefix);
-      LOG_I(GNB_APP,"F1AP: gNB_CU_id[%d] %d\n", k, rrc->node_id);
-      rrc->node_name = strdup(*(GNBParamList.paramarray[0][GNB_GNB_NAME_IDX].strptr));
+      LOG_I(GNB_APP, "F1AP: gNB_CU_id[%d] %d\n", k, rrc->node_id);
       LOG_I(GNB_APP,"F1AP: gNB_CU_name[%d] %s\n", k, rrc->node_name);
       rrc->eth_params_s.my_addr                  = strdup(*(GNBParamList.paramarray[i][GNB_LOCAL_S_ADDRESS_IDX].strptr));
       rrc->eth_params_s.remote_addr              = strdup(*(GNBParamList.paramarray[i][GNB_REMOTE_S_ADDRESS_IDX].strptr));
@@ -1587,8 +1586,7 @@ void RCconfig_NRRRC(gNB_RRC_INST *rrc)
       rrc->eth_params_s.transp_preference        = ETH_UDP_MODE;
     }
 
-   
-
+    rrc->node_name = strdup(*(GNBParamList.paramarray[0][GNB_GNB_NAME_IDX].strptr));
     rrc->nr_cellid        = (uint64_t)*(GNBParamList.paramarray[i][GNB_NRCELLID_IDX].u64ptr);
 
     if (strcmp(*(GNBParamList.paramarray[i][GNB_TRANSPORT_S_PREFERENCE_IDX].strptr), "local_mac") == 0) {
@@ -1649,6 +1647,17 @@ void RCconfig_NRRRC(gNB_RRC_INST *rrc)
 	  AssertFatal((nrrrc_config.mnc_digit_length[l] == 2) ||
 		      (nrrrc_config.mnc_digit_length[l] == 3),"BAD MNC DIGIT LENGTH %d",
 		      nrrrc_config.mnc_digit_length[l]);
+          paramdef_t SNSSAIParams[] = GNBSNSSAIPARAMS_DESC;
+          checkedparam_t config_check_SNSSAIParams[] = SNSSAIPARAMS_CHECK;
+          for (int J = 0; J < sizeof(SNSSAIParams) / sizeof(paramdef_t); ++J)
+      SNSSAIParams[J].chkPptr = &(config_check_SNSSAIParams[J]);
+          paramlist_def_t SNSSAIParamList = {GNB_CONFIG_STRING_SNSSAI_LIST, NULL, 0};
+          char snssaistr[MAX_OPTNAME_SIZE * 2 + 8];
+          sprintf(snssaistr, "%s.[%i].%s.[%i]", GNB_CONFIG_STRING_GNB_LIST, k, GNB_CONFIG_STRING_PLMN_LIST, l);
+          config_getlist(config_get_if(), &SNSSAIParamList, SNSSAIParams, sizeof(SNSSAIParams) / sizeof(paramdef_t), snssaistr);
+          AssertFatal(SNSSAIParamList.numelt == 1, "cannot handle no NSSAI or more than 1\n");
+          nrrrc_config.sst = *SNSSAIParamList.paramarray[0][GNB_SLICE_SERVICE_TYPE_IDX].uptr;
+          nrrrc_config.sd = *SNSSAIParamList.paramarray[0][GNB_SLICE_DIFFERENTIATOR_IDX].uptr;
         }
         nrrrc_config.enable_sdap = *GNBParamList.paramarray[i][GNB_ENABLE_SDAP_IDX].iptr;
         LOG_I(GNB_APP, "SDAP layer is %s\n", nrrrc_config.enable_sdap ? "enabled" : "disabled");
