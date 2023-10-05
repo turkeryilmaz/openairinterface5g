@@ -590,7 +590,8 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
   }
 
   LOG_I(NR_MAC, "In %s : processing PDU %d (with length %d) of %d total number of PDUs...\n", __FUNCTION__, pdu_id, pdu_len, rx_ind->number_pdus);
-/*
+  mac->sl_info
+
   while (!done && pdu_len > 0){
     uint16_t mac_len = 0x0000;
     uint16_t mac_subheader_len = 0x0001; //  default to fixed-length subheader = 1-oct
@@ -600,37 +601,39 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
     bool ret;
     switch(rx_lcid){
       //  MAC CE
-      case SL_SCH_LCID_CCCH:
-        //  MSG4 RRC Setup 38.331
-        //  variable length
-        ret=get_mac_len(pduP, pdu_len, &mac_len, &mac_subheader_len);
-        AssertFatal(ret, "The mac_len (%d) has an invalid size. PDU len = %d! \n",
-                    mac_len, pdu_len);
+      case SL_SCH_LCID_4_19:
+        if (!get_mac_len(pduP, pdu_len, &mac_len, &mac_subheader_len))
+          return;
+        LOG_D(NR_MAC, "%4d.%2d : SLSCH -> LCID %d %d bytes\n", frameP, slot, rx_lcid, mac_len);
 
-        // Check if it is a valid CCCH message, we get all 00's messages very often
-        int i = 0;
-        for(i=0; i<(mac_subheader_len+mac_len); i++) {
-          if(pduP[i] != 0) {
-            break;
-          }
-        }
-        if (i == (mac_subheader_len+mac_len)) {
-          LOG_D(NR_MAC, "%s() Invalid CCCH message!, pdu_len: %d\n", __func__, pdu_len);
-          done = 1;
-          break;
-        }
-
-        if ( mac_len > 0 ) {
-          LOG_D(NR_MAC,"DL_SCH_LCID_CCCH (e.g. RRCSetup) with payload len %d\n", mac_len);
-          for (int i = 0; i < mac_subheader_len; i++) {
-            LOG_D(NR_MAC, "MAC header %d: 0x%x\n", i, pduP[i]);
-          }
-          for (int i = 0; i < mac_len; i++) {
-            LOG_D(NR_MAC, "%d: 0x%x\n", i, pduP[mac_subheader_len + i]);
-          }
-          nr_mac_rrc_data_ind_ue(module_idP, CC_id, gNB_index, frameP, 0, mac->crnti, CCCH, pduP+mac_subheader_len, mac_len);
-        }
-        break;
-      case DL_SCH_LCID_TCI_STATE_ACT_UE_SPEC_PDSCH:
-      */
+        mac_rlc_data_ind(module_idP,
+                         0,
+                         0,
+                         frameP,
+                         ENB_FLAG_NO,
+                         MBMS_FLAG_NO,
+                         rx_lcid,
+                         (char *)(pduP + mac_subheader_len),
+                         mac_len,
+                         1,
+                         NULL);
+	      break;
+      case SL_SCH_LCID_SL_CSI_REPORT:
+	      break;
+      case SL_SCH_LCID_SL_PADDING:
+	      done = 1;
+	      break;
+      case SL_SCH_LCID_SCCH_PC5_NOT_PROT:
+      case SL_SCH_LCID_SCCH_PC5_DSMC:
+      case SL_SCH_LCID_SCCH_PC5_PROT:
+      case SL_SCH_LCID_SCCH_PC5_RRC:
+      case SL_SCH_LCID_20_55:
+      case SL_SCH_LCID_SCCH_RRC_SL_RLC0:
+      case SL_SCH_LCID_SCCH_RRC_SL_RLC1:
+      case SL_SCH_LCID_SCCH_SL_DISCOVERY:
+      case SL_SCH_LCID_SL_INTER_UE_COORD_REQ:
+      case SL_SCH_LCID_SL_INTER_UE_COORD_INFO:
+      case SL_SCH_LCID_SL_DRX_CMD:
+	      LOG_W(NR_MAC,"Received unsupported SL LCID %d\n",rx_lcid);
+	      break;
 }

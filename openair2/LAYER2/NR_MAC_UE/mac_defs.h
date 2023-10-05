@@ -612,7 +612,7 @@ typedef struct {
   sl_nr_ue_mac_params_t *SL_MAC_PARAMS;
 
   // SIDELINK Scheduling fields
-  NR_SL_UEs_t UE_info;
+  NR_SL_UEs_t sl_info;
 
   //  current SCI pdu build from SCI1 and SCI2
   nr_sci_pdu_t sci_pdu_rx;

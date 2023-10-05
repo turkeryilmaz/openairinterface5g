@@ -3265,11 +3265,15 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
   LOG_D(NR_MAC,"[UE%d] SL-PSSCH SCHEDULER: Frame:SLOT %d:%d, slot_type:%d\n",
         sl_ind->module_id, frame, slot,sl_ind->slot_type);
 
-  uint16_t slsch_pdu_length;
+  uint16_t slsch_pdu_length_max;
   tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu.slsch_payload = mac->slsch_payload;
-  bool schedule_slsch = nr_schedule_slsch(&mac->sci1_pdu,&mac->sci2_pdu,tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu.slsch_payload,NR_SL_SCI_FORMAT_2A,&slsch_pdu_length);
+  bool schedule_slsch = nr_schedule_slsch(&mac->sci1_pdu,&mac->sci2_pdu,tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu.slsch_payload,NR_SL_SCI_FORMAT_2A,&slsch_pdu_length_max);
 
   if (!schedule_slsch) return false;
+
+  const uint8_t sh_size = sizeof(NR_MAC_SUBHEADER_LONG);
+  uint8_t *pdu = tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu.slsch_payload;
+
   *config_type = SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH;
   tx_config->number_pdus = 1;
   tx_config->sfn = frame;
@@ -3280,17 +3284,104 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
                        sl_res_pool,
                        &mac->sci1_pdu,
                        &mac->sci2_pdu,
-		       slsch_pdu_length,
+		       slsch_pdu_length_max,
                        NR_SL_SCI_FORMAT_1A, 
                        NR_SL_SCI_FORMAT_2A);
 
+  int buflen = tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu.tb_size;
 
-      LOG_I(NR_MAC, "[UE%d] TTI-%d:%d TX PSCCH_PSSCH REQ \n", sl_ind->module_id,frame, slot);
+  NR_UE_MAC_CE_INFO mac_ce_info;
+  NR_UE_MAC_CE_INFO *mac_ce_p=&mac_ce_info;
+  mac_ce_p->bsr_len = 0;
+  mac_ce_p->bsr_ce_len = 0;
+  mac_ce_p->bsr_header_len = 0;
+  mac_ce_p->phr_len = 0;
+  LOG_I(NR_MAC, "[UE%d] TTI-%d:%d TX PSCCH_PSSCH REQ  TBS %d\n", sl_ind->module_id,frame, slot,buflen);
+  
+   
+  //nr_ue_get_sdu_mac_ce_pre updates all mac_ce related header field related to length
+  mac_ce_p->tot_mac_ce_len = nr_ue_get_sdu_mac_ce_pre(module_idP, CC_id, frameP, subframe, gNB_index, ulsch_buffer, buflen, mac_ce_p);
+  mac_ce_p->total_mac_pdu_header_len = mac_ce_p->tot_mac_ce_len;
 
 
-  ret_status = schedule_slsch;
+  buflen_remain = buflen - (mac_ce_p->total_mac_pdu_header_len + mac_ce_p->sdu_length_total + sh_size);
 
-  return ret_status;
+  LOG_D(NR_MAC, "In %s: [UE %d] [%d.%d] SL-DXCH -> SLSCH, RLC with LCID 0x%02x (TBS %d bytes, sdu_length_total %d bytes, MAC header len %d bytes, buflen_remain %d bytes)\n",
+          __FUNCTION__,
+          module_idP,
+          frameP,
+          subframe,
+          lcid,
+          buflen,
+          mac_ce_p->sdu_length_total,
+          mac_ce_p->tot_mac_ce_len,
+          buflen_remain);
+
+    while (buflen_remain > 0){
+
+      // Pointer used to build the MAC sub-PDU headers in the ULSCH buffer for each SDU
+      NR_MAC_SUBHEADER_LONG *header = (NR_MAC_SUBHEADER_LONG *) pdu;
+
+      pdu += sh_size;
+
+      sdu_length = mac_rlc_data_req(module_idP,
+                                    0,
+                                    0,
+                                    frameP,
+                                    ENB_FLAG_NO,
+                                    MBMS_FLAG_NO,
+                                    lcid,
+                                    buflen_remain,
+                                    (char *)pdu,
+                                    0,
+                                    0);
+
+      AssertFatal(buflen_remain >= sdu_length, "In %s: LCID = 0x%02x RLC has segmented %d bytes but MAC has max %d remaining bytes\n",
+                  __FUNCTION__,
+                  lcid,
+                  sdu_length,
+                  buflen_remain);
+
+      if (sdu_length > 0) {
+
+        LOG_D(NR_MAC, "In %s: [UE %d] [%d.%d] SL-DXCH -> SLSCH, Generating SL MAC sub-PDU for SDU %d, length %d bytes, RB with LCID 0x%02x (buflen (TBS) %d bytes)\n",
+          __FUNCTION__,
+          module_idP,
+          frameP,
+          subframe,
+          num_sdus + 1,
+          sdu_length,
+          lcid,
+          buflen);
+
+        header->R = 0;
+        header->F = 1;
+        header->LCID = lcid;
+        header->L = htons(sdu_length);
+
+        #ifdef ENABLE_SLMAC_PAYLOAD_DEBUG
+        LOG_I(NR_MAC, "In %s: dumping MAC sub-header with length %d: \n", __FUNCTION__, sh_size);
+        log_dump(NR_MAC, header, sh_size, LOG_DUMP_CHAR, "\n");
+        LOG_I(NR_MAC, "In %s: dumping MAC SDU with length %d \n", __FUNCTION__, sdu_length);
+        log_dump(NR_MAC, pdu, sdu_length, LOG_DUMP_CHAR, "\n");
+        #endif
+
+        pdu += sdu_length;
+        mac_ce_p->sdu_length_total += sdu_length;
+        mac_ce_p->total_mac_pdu_header_len += sh_size;
+
+        num_sdus++;
+
+      } else {
+        pdu -= sh_size;
+        LOG_D(NR_MAC, "In %s: no data to transmit for RB with LCID 0x%02x\n", __FUNCTION__, lcid);
+        break;
+      }
+
+      buflen_remain = buflen - (mac_ce_p->total_mac_pdu_header_len + mac_ce_p->sdu_length_total + sh_size);
+    }
+  }
+  return true;
 }
 
 void nr_ue_sl_pscch_rx_scheduler(nr_sidelink_indication_t *sl_ind,
