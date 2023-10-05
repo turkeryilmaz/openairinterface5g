@@ -600,7 +600,7 @@ endif()
 
 ##########################################################
 
-# LDPC offload xdma driver
+# LDPC offload with xdma driver
 ##########################################################
 
 add_library(ldpc_xdma STATIC ${OPENAIR1_DIR}/PHY/CODING/nrLDPC_decoder_offload_xdma/nrLDPC_decoder_offload_xdma.c)

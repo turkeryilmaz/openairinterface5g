@@ -224,6 +224,7 @@ static int timespec_check(struct timespec* t)
   return 0;
 }
 
+/*
 void timespec_sub(struct timespec* t1, struct timespec* t2)
 {
   if (timespec_check(t1) < 0) {
@@ -244,6 +245,7 @@ void timespec_sub(struct timespec* t1, struct timespec* t2)
     t1->tv_nsec += 1000000000;
   }
 }
+*/
 
 // [End] #include "dma_utils.c" ===================================
 
