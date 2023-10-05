@@ -935,6 +935,29 @@ int DU_handle_UE_CONTEXT_MODIFICATION_REQUEST(instance_t instance, sctp_assoc_t 
     LOG_D(F1AP, "can't find RRCContainer in UEContextModificationRequestIEs by id %ld \n", F1AP_ProtocolIE_ID_id_RRCContainer);
   }
 
+  /* CU2DU Information */
+  F1AP_UEContextModificationRequestIEs_t *ieCU2DU = NULL;
+  F1AP_FIND_PROTOCOLIE_BY_ID(F1AP_UEContextModificationRequestIEs_t,
+                             ieCU2DU,
+                             container,
+                             F1AP_ProtocolIE_ID_id_CUtoDURRCInformation,
+                             false);
+  if (ieCU2DU != NULL) {
+    f1ap_ue_context_modification_req->cu_to_du_rrc_information =
+        calloc(1, sizeof(*f1ap_ue_context_modification_req->cu_to_du_rrc_information));
+    AssertFatal(f1ap_ue_context_modification_req->cu_to_du_rrc_information != NULL, "out of memory\n");
+    cu_to_du_rrc_information_t *cu2du = f1ap_ue_context_modification_req->cu_to_du_rrc_information;
+    const F1AP_CUtoDURRCInformation_t *cu2duie = &ieCU2DU->value.choice.CUtoDURRCInformation;
+    AssertFatal(cu2duie->cG_ConfigInfo == NULL, "cg_ConfigInfo not implemented\n");
+    AssertFatal(cu2duie->measConfig == NULL, "measConfig not implemented\n");
+    AssertFatal(cu2duie->uE_CapabilityRAT_ContainerList != NULL, "uE_CapabilityRAT_ContainerList must be present\n");
+    F1AP_UE_CapabilityRAT_ContainerList_t *uecap = cu2duie->uE_CapabilityRAT_ContainerList;
+    cu2du->uE_CapabilityRAT_ContainerList = calloc(uecap->size, sizeof(*cu2du->uE_CapabilityRAT_ContainerList));
+    AssertFatal(cu2du->uE_CapabilityRAT_ContainerList != NULL, "out of memory\n");
+    cu2du->uE_CapabilityRAT_ContainerList_length = uecap->size;
+    memcpy(cu2du->uE_CapabilityRAT_ContainerList, uecap->buf, uecap->size);
+  }
+
   ue_context_modification_request(f1ap_ue_context_modification_req);
   return 0;
 }
