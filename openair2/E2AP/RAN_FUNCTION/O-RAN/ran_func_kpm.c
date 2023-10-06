@@ -39,14 +39,15 @@ matched_ues_mac_t filter_ues_by_s_nssai_in_du_or_monolithic(test_cond_e const co
       // note: not possible to filter 
       switch (condition)
       {
-      case EQUAL_TEST_COND:
-      {
-        if (NODE_IS_MONOLITHIC(RC.nrrrc[0]->node_type))
+        case GREATERTHAN_TEST_COND:
+        case EQUAL_TEST_COND:
         {
-          rrc_gNB_ue_context_t *rrc_ue_context_list = rrc_gNB_get_ue_context_by_rnti(RC.nrrrc[0], ue->rnti);
-          ngap_ue_context_list = ngap_get_ue_context(rrc_ue_context_list->ue_context.rrc_ue_id);
-          assert(ngap_ue_context_list->gNB_instance[0].s_nssai[0][0].sST == value && "Please, check the condition for S-NSSAI. At the moment, OAI supports eMBB");
-        }
+          if (NODE_IS_MONOLITHIC(RC.nrrrc[0]->node_type))
+          {
+            rrc_gNB_ue_context_t *rrc_ue_context_list = rrc_gNB_get_ue_context_by_rnti(RC.nrrrc[0], ue->rnti);
+            ngap_ue_context_list = ngap_get_ue_context(rrc_ue_context_list->ue_context.rrc_ue_id);
+            assert(ngap_ue_context_list->gNB_instance[0].s_nssai[0][0].sST == value && "Please, check the condition for S-NSSAI. At the moment, OAI supports eMBB");
+          }
           matched_ues.ue_list[matched_ues.num_ues] = *ue;
           matched_ues.num_ues++;
           break;
@@ -726,12 +727,12 @@ void read_kpm_sm(void* data)
             break;
           }
 
-          case CQI_TEST_COND_TYPE: {
-            // This is a bad idea. Done only to check FlexRIC xAPP
-            printf("CQI not implemented!. Randomly filling the data \n");
-            goto rnd_data_label;
-            break;
-          }
+          //case CQI_TEST_COND_TYPE: {
+          //  // This is a bad idea. Done only to check FlexRIC xAPP
+          //  printf("CQI not implemented!. Randomly filling the data \n");
+          //  goto rnd_data_label;
+          //  break;
+          //}
 
           case fiveQI_TEST_COND_TYPE: {
             assert(0 != 0 && "Not implemented");
@@ -743,6 +744,7 @@ void read_kpm_sm(void* data)
             assert(0 != 0 && "Not implemented");
             break;
           }
+          case CQI_TEST_COND_TYPE:
           case S_NSSAI_TEST_COND_TYPE: {
             assert(frm_4->matching_cond_lst[i].test_info_lst.S_NSSAI == TRUE_TEST_COND_TYPE && "Must be true");
             assert(frm_4->matching_cond_lst[i].test_info_lst.test_cond != NULL && "Even though is optional..");
