@@ -916,16 +916,7 @@ include_directories(${NFAPI_USER_DIR})
 
 # nFAPI lib selection based on the flag
 ############################################
-add_boolean_option(NFAPI_PRE_CLEANUP   True  "Flag for compilation without nFAPI Static lib" ON)
-message("NFAPI_PRE_CLEANUP flag is ${NFAPI_PRE_CLEANUP}")
-
-if (NFAPI_PRE_CLEANUP)
-  message("NFAPI_PRE_CLEANUP flag defined, Compile without nFAPI P7 Static Lib")
-  set (NFAPI_STATIC_LIB NFAPI_LIB NFAPI_PNF_LIB)
-else()
-  message("NFAPI_PRE_CLEANUP flag not defined, Compile with nFAPI P7 Static Lib")
-  set (NFAPI_STATIC_LIB  ${OPENAIR_DIR}/../../../Multi-Ue-Proxy/static-lib/libNFAPI-P7.a)
-endif()
+set (NFAPI_STATIC_LIB  ${OPENAIR_DIR}/../../../Multi-Ue-Proxy/static-lib/libNFAPI-P7.a)
 
 # Layer 1
 #############################
