@@ -199,6 +199,8 @@ typedef struct {
   uint8_t *b;
   /// Pointers to code blocks after code block segmentation and CRC attachment (38.212 V15.4.0 section 5.2.2)
   uint8_t **c;
+  /// array to indicate that a segment has a valid CRC from a previous transmission to not run LDPC decoder again in a retransmission
+  bool *crc_ok;
   /// Number of bits in each code block (38.212 V15.4.0 section 5.2.2)
   uint32_t K;
   /// Number of "Filler" bits added in the code block segmentation (38.212 V15.4.0 section 5.2.2)
@@ -221,6 +223,11 @@ typedef struct {
   /// Last index of LLR buffer that contains information.
   /// Used for computing LDPC decoder R
   int llrLen;
+  /// used to indicate to remaining threads that LDPC decoding has to be skipped
+  /// this is set to true when a crc fails to avoid unnecessary computation
+  /// all accesses must be done with __atomic operations
+  /// (we can't use bool, it does not work with __atomic operations)
+  uint8_t skip_ldpc_decoding;
   //////////////////////////////////////////////////////////////
 } NR_UL_gNB_HARQ_t;
 static inline int lenWithCrc(int nbSeg, int len)
@@ -644,7 +651,7 @@ typedef struct PHY_VARS_gNB_s {
   /// CSI variables
   nr_csi_info_t *nr_csi_info;
 
-  // reference amplitude for TX
+  // reference amplitude for TX 
   int16_t TX_AMP;
  
   // flag to activate 3GPP phase symbolwise rotation

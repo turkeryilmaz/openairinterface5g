@@ -138,6 +138,7 @@ void nr_modulation(uint32_t *in,
     out128 = (simde__m128i *)out;
     for (i=0; i<length/8; i++)
       out128[i] = nr_mod_table128[in_bytes[i]];
+
     // the bits that are left out
     i = i*8/2;
     nr_mod_table32 = (int32_t*) nr_qpsk_mod_table;
