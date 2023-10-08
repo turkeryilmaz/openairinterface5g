@@ -60,6 +60,7 @@ unsigned short config_frames[4] = {2,9,11,13};
 #endif
 
 
+
 /* these variables have to be defined before including ENB_APP/enb_paramdef.h and GNB_APP/gnb_paramdef.h */
 static int DEFBANDS[] = {7};
 static int DEFENBS[] = {0};
@@ -1041,9 +1042,9 @@ void *ru_stats_thread(void *param) {
         print_meas(&ru->txdataF_copy_stats,"txdataF_copy",NULL,NULL);
         print_meas(&ru->ofdm_total_stats,"feptx_total",NULL,NULL);
       }
-      //print_meas(&ru->rx_fhaul,"rx_fhaul",NULL,NULL);
+      print_meas(&ru->rx_fhaul,"rx_fhaul",NULL,NULL);
       if (ru->if_south == REMOTE_IF5) print_meas(&ru->ifdevice.tx_fhaul,"tx_fhaul (IF5)",NULL,NULL); 
-      //else print_meas(&ru->tx_fhaul,"tx_fhaul",NULL,NULL);
+      else print_meas(&ru->tx_fhaul,"tx_fhaul",NULL,NULL);
 
       if (ru->fh_north_out) {
         print_meas(&ru->compression,"compression",NULL,NULL);

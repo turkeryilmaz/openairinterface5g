@@ -462,6 +462,11 @@ void NR_UL_indication(NR_UL_IND_t *UL_info) {
     ifi->CC_mask |= (1<<CC_id);
 
     if (ifi->CC_mask == ((1<<MAX_NUM_CCs)-1)) {
+      /*
+      eNB_dlsch_ulsch_scheduler(module_id,
+          (UL_info->frame+((UL_info->slot>(9-sl_ahead))?1:0)) % 1024,
+          (UL_info->slot+sl_ahead)%10);
+      */
       nfapi_nr_config_request_scf_t *cfg = &mac->config[CC_id];
       int spf = get_spf(cfg);
       sched_info = allocate_sched_response();

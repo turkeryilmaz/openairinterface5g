@@ -38,7 +38,6 @@
 #include "openair2/NR_PHY_INTERFACE/nr_sched_response.h"
 
 
-
 extern int oai_nfapi_dl_tti_req(nfapi_nr_dl_tti_request_t *dl_config_req);
 extern int oai_nfapi_tx_data_req(nfapi_nr_tx_data_request_t *tx_data_req);
 extern int oai_nfapi_ul_dci_req(nfapi_nr_ul_dci_request_t *ul_dci_req);
@@ -226,6 +225,7 @@ void nr_schedule_response(NR_Sched_Rsp_t *Sched_INFO)
       if (!gNB->reorder_thread_disable)
 	pushNotifiedFIFO(&gNB->L1_tx_filled,res);
     }
+
     for (int i = 0; i < number_ul_tti_pdu; i++) {
       switch (UL_tti_req->pdus_list[i].pdu_type) {
         case NFAPI_NR_UL_CONFIG_PUSCH_PDU_TYPE:

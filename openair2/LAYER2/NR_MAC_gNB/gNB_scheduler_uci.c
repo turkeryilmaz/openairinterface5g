@@ -237,7 +237,7 @@ void nr_csi_meas_reporting(int Mod_idP,
       if ((sched_frame * n_slots_frame + sched_slot - offset) % period != 0)
         continue;
 
-      AssertFatal(is_xlsch_in_slot(nrmac->ulsch_slot_bitmap[sched_slot / 64], sched_slot), "CSI reporting slot %d is not set for an uplink slot, period %d, offset %d\n", sched_slot,period,offset);
+      AssertFatal(is_xlsch_in_slot(nrmac->ulsch_slot_bitmap[sched_slot / 64], sched_slot), "CSI reporting slot %d is not set for an uplink slot\n", sched_slot);
       LOG_D(NR_MAC, "CSI reporting in frame %d slot %d CSI report ID %ld\n", sched_frame, sched_slot, csirep->reportConfigId);
 
       const NR_PUCCH_ResourceSet_t *pucchresset = pucch_Config->resourceSetToAddModList->list.array[1]; // set with formats >1
@@ -1131,7 +1131,6 @@ static bool test_pucch0_vrb_occupation(const NR_sched_pucch_t *pucch, uint16_t *
     else
       prb = pucch->prb_start;
     if ((vrb_map_UL[bwp_start+prb] & symb) != 0) {
-      LOG_I(NR_MAC,"pucch0_vrb %d symb %d vrb_map %x\n",bwp_start+prb,symb,vrb_map_UL[bwp_start+prb]);
       return false;
       break;
     }

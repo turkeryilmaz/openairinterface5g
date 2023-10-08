@@ -583,7 +583,7 @@ void rx_nr_prach(PHY_VARS_gNB *gNB,
     // Compute DFT of RX signal (conjugate input, results in conjugate output) for each new rootSequenceIndex
     if (LOG_DEBUGFLAG(PRACH)) {
       int en = dB_fixed(signal_energy((int32_t*)&rxsigF[0][0],840));
-      if (en>30) LOG_I(PHY,"frame %d, slot %d : preamble index %d, NCS %d, N_ZC/NCS %d: offset %d, preamble shift %d , en %d)\n",
+      if (en>60) LOG_D(PHY,"frame %d, slot %d : preamble index %d, NCS %d, N_ZC/NCS %d: offset %d, preamble shift %d , en %d)\n",
 		       frame,slot,preamble_index,NCS,N_ZC/NCS,preamble_offset,preamble_shift,en);
     }
 
@@ -630,8 +630,8 @@ void rx_nr_prach(PHY_VARS_gNB *gNB,
          }
 
         if (LOG_DUMPFLAG(PRACH)) {
-          if (aa==0) LOG_M("prach_rxF_comp0.m","prach_rxF_comp0",prachF,N_ZC == 839 ? 1024 : 256,1,1);
-          if (aa==1) {LOG_M("prach_rxF_comp1.m","prach_rxF_comp1",prachF,N_ZC == 839 ? 1024 : 256,1,1);exit(-1);}
+          if (aa==0) LOG_M("prach_rxF_comp0.m","prach_rxF_comp0",prachF,1024,1,1);
+          if (aa==1) LOG_M("prach_rxF_comp1.m","prach_rxF_comp1",prachF,1024,1,1);
         }
 
       }// antennas_rx
@@ -690,7 +690,7 @@ void rx_nr_prach(PHY_VARS_gNB *gNB,
   else *TA = *TA/2;
 
 
-  if (/*levdB>200*/LOG_DUMPFLAG(PRACH)) {
+  if (LOG_DUMPFLAG(PRACH)) {
     //int en = dB_fixed(signal_energy((int32_t*)&rxsigF[0][0],840));
     //    if (en>60) {
       int k = (12*n_ra_prb) - 6*fp->N_RB_UL;
@@ -702,11 +702,10 @@ void rx_nr_prach(PHY_VARS_gNB *gNB,
       k*=2;
       
 
-      LOG_M("rxsigF.m","prach_rxF",&rxsigF[0][0],N_ZC,1,1);
-      LOG_M("prach_rxF_comp0.m","prach_rxF_comp0",prachF,N_ZC==839?1024:256,1,1);
+      LOG_M("rxsigF.m","prach_rxF",&rxsigF[0][0],12288,1,1);
+      LOG_M("prach_rxF_comp0.m","prach_rxF_comp0",prachF,1024,1,1);
       LOG_M("Xu.m","xu",Xu,N_ZC,1,1);
-      LOG_M("prach_ifft0.m","prach_t0",prach_ifft,N_ZC=839?1024:256,1,1);
-      exit(-1);
+      LOG_M("prach_ifft0.m","prach_t0",prach_ifft,1024,1,1);
       //    }
   } /* LOG_DUMPFLAG(PRACH) */
   stop_meas(&gNB->rx_prach);
