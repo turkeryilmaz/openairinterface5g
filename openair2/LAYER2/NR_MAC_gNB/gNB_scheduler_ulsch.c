@@ -1516,8 +1516,7 @@ static void nr_ue_max_mcs_min_rb(int mu,
           tx_power,
           *Rb,
           *mcs,
-          ph_limit,
-          sched_pusch->phr_txpower_calc);
+          ph_limit);
 }
 
 static bool allocate_ul_retransmission(gNB_MAC_INST *nrmac,
@@ -1674,7 +1673,6 @@ static int one_PRB_mcs(gNB_MAC_INST *nrmac,
                        NR_ServingCellConfigCommon_t *scc)
 {
   int ph = sched_ctrl->ph;
-  uint8_t *tpc0 = &sched_ctrl->tpc0;
   int mcs = max_mcs;
   int tb_size;
   uint8_t Qm;
