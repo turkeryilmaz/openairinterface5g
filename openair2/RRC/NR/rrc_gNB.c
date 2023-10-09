@@ -432,7 +432,8 @@ static void rrc_gNB_generate_RRCSetup(instance_t instance,
                                       rnti_t rnti,
                                       rrc_gNB_ue_context_t *const ue_context_pP,
                                       const uint8_t *masterCellGroup,
-                                      int masterCellGroup_len)
+                                      int masterCellGroup_len,
+                                      rnti_t *old_rnti)
 //-----------------------------------------------------------------------------
 {
   LOG_I(NR_RRC, "rrc_gNB_generate_RRCSetup for RNTI %04x\n", rnti);
@@ -455,13 +456,18 @@ static void rrc_gNB_generate_RRCSetup(instance_t instance,
   nr_pdcp_add_srbs(true, ue_p->rrc_ue_id, SRBs, 0, NULL, NULL);
 
   freeSRBlist(SRBs);
+  uint32_t *old_gNB_DU_ue_id =  NULL;
+  if (old_rnti) {
+     old_gNB_DU_ue_id = old_rnti;
+  }
   f1_ue_data_t ue_data = cu_get_f1_ue_data(ue_p->rrc_ue_id);
   f1ap_dl_rrc_message_t dl_rrc = {
     .gNB_CU_ue_id = ue_p->rrc_ue_id,
     .gNB_DU_ue_id = ue_data.secondary_ue,
     .rrc_container = buf,
     .rrc_container_length = size,
-    .srb_id = CCCH
+    .srb_id = CCCH,
+    .old_gNB_DU_ue_id = old_gNB_DU_ue_id
   };
   rrc->mac_rrc.dl_rrc_message_transfer(&dl_rrc);
 }
@@ -1166,6 +1172,7 @@ static int nr_rrc_gNB_decode_ccch(module_id_t module_id, const f1ap_initial_ul_r
   NR_RRCSetupRequest_IEs_t                         *rrcSetupRequest = NULL;
   NR_RRCReestablishmentRequest_IEs_t rrcReestablishmentRequest;
   rnti_t rnti = msg->crnti;
+  rnti_t *old_rnti = NULL;
 
   /* look up corresponding DU. For the moment, there is only one */
   const nr_rrc_du_container_t *du = gnb_rrc_inst->du;
@@ -1207,7 +1214,16 @@ static int nr_rrc_gNB_decode_ccch(module_id_t module_id, const f1ap_initial_ul_r
              */
             if ((ue_context_p = rrc_gNB_ue_context_random_exist(gnb_rrc_inst, random_value))) {
               LOG_W(NR_RRC, "new UE rnti (coming with random value) is already there, removing UE %x from MAC/PHY\n", rnti);
-              AssertFatal(false, "not implemented\n");
+
+	      gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
+
+	      //Send the old_rnti in the dl_rrc message so that MAC will remove the UE context for new and replace rnti in old context
+              if (UE->rnti != rnti){
+                old_rnti= &UE->rnti;
+              }
+
+              /* replace rnti in the context */
+              UE->rnti = rnti;
             }
 
             ue_context_p = rrc_gNB_create_ue_context(rnti, gnb_rrc_inst, random_value, msg->gNB_DU_ue_id);
@@ -1226,12 +1242,15 @@ static int nr_rrc_gNB_decode_ccch(module_id_t module_id, const f1ap_initial_ul_r
             // memcpy(((uint8_t *) & random_value) + 3,
             //         rrcSetupRequest->ue_Identity.choice.ng_5G_S_TMSI_Part1.buf,
             //         rrcSetupRequest->ue_Identity.choice.ng_5G_S_TMSI_Part1.size);
-
             if ((ue_context_p = rrc_gNB_ue_context_5g_s_tmsi_exist(gnb_rrc_inst, s_tmsi_part1))) {
               gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
-              LOG_I(NR_RRC, " 5G-S-TMSI-Part1 exists, old rnti %04x => %04x\n", UE->rnti, rnti);
-              AssertFatal(false, "not implemented\n");
-
+             
+              LOG_I(NR_RRC, " 5G-S-TMSI-Part1 exists, old rnti %04x RELEASED => NEW rnti %04x context is created\n", UE->rnti, rnti);
+              
+	      //Send the old_rnti in the dl_rrc message so that MAC will remove the UE context for new and replace rnti in old context
+	      if (UE->rnti != rnti){
+                old_rnti= &UE->rnti;
+	      }
               /* replace rnti in the context */
               UE->rnti = rnti;
             } else {
@@ -1261,7 +1280,8 @@ static int nr_rrc_gNB_decode_ccch(module_id_t module_id, const f1ap_initial_ul_r
                                     rnti,
                                     ue_context_p,
                                     msg->du2cu_rrc_container,
-                                    msg->du2cu_rrc_container_length);
+                                    msg->du2cu_rrc_container_length,
+                                    old_rnti);
         }
         break;
 
@@ -1317,7 +1337,7 @@ static int nr_rrc_gNB_decode_ccch(module_id_t module_id, const f1ap_initial_ul_r
           LOG_E(NR_RRC, "NR_RRCReestablishmentRequest without UE context, fallback to RRC setup\n");
           ue_context_p = rrc_gNB_create_ue_context(rnti, gnb_rrc_inst, random_value, msg->gNB_DU_ue_id);
           ue_context_p->ue_context.Srb[1].Active = 1;
-          rrc_gNB_generate_RRCSetup(module_id, rnti, ue_context_p, msg->du2cu_rrc_container, msg->du2cu_rrc_container_length);
+          rrc_gNB_generate_RRCSetup(module_id, rnti, ue_context_p, msg->du2cu_rrc_container, msg->du2cu_rrc_container_length,NULL);
           break;
         }
 
@@ -1329,7 +1349,7 @@ static int nr_rrc_gNB_decode_ccch(module_id_t module_id, const f1ap_initial_ul_r
                 rrcReestablishmentRequest.ue_Identity.c_RNTI);
           ue_context_p = rrc_gNB_create_ue_context(rnti, gnb_rrc_inst, random_value, msg->gNB_DU_ue_id);
           ue_context_p->ue_context.Srb[1].Active = 1;
-          rrc_gNB_generate_RRCSetup(module_id, rnti, ue_context_p, msg->du2cu_rrc_container, msg->du2cu_rrc_container_length);
+          rrc_gNB_generate_RRCSetup(module_id, rnti, ue_context_p, msg->du2cu_rrc_container, msg->du2cu_rrc_container_length,NULL);
           break;
         }
 

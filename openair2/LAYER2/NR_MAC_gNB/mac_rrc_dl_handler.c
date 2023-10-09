@@ -547,6 +547,7 @@ void dl_rrc_message_transfer(const f1ap_dl_rrc_message_t *dl_rrc)
     pthread_mutex_unlock(&mac->sched_lock);
     nr_rlc_remove_ue(dl_rrc->gNB_DU_ue_id);
     nr_rlc_update_rnti(*dl_rrc->old_gNB_DU_ue_id, dl_rrc->gNB_DU_ue_id);
+    LOG_I(NR_MAC, "Removed MAC context for UE RNTI %04x, adding context for RNTI %d\n", dl_rrc->old_gNB_DU_ue_id, dl_rrc->gNB_DU_ue_id);
   }
 
   /* the DU ue id is the RNTI */
