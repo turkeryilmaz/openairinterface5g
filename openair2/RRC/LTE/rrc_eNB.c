@@ -9641,21 +9641,24 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
             {
               struct rrc_eNB_ue_context_s *ue_context_pP = NULL;
 
-              ue_context_pP = rrc_eNB_get_ue_context(RC.rrc[instance], SS_RRC_PDU_REQ(msg_p).rnti);
+              //ue_context_pP = rrc_eNB_get_ue_context(RC.rrc[instance], SS_RRC_PDU_REQ(msg_p).rnti);
               uint8_t cc_id = 0;
               LOG_A(RRC, "RRC Connection Release message received \n");
-              if (NULL == ue_context_pP)
-              {
-                LOG_W(RRC, "ue_context_pP is already NULL \n");
-              }
-              else {
-              cc_id = ue_context_pP->ue_context.primaryCC_id;
-              ue_context_pP->ue_context.ue_reestablishment_timer = 0;
-              ue_context_pP->ue_context.ue_release_timer = 1;
-              ue_context_pP->ue_context.ue_release_timer_thres = 10;
-              ue_context_pP->ue_context.ue_rrc_inactivity_timer = 0;
-              ue_context_pP->ue_context.ue_release_timer_rrc = 0;
-              ue_context_pP->ue_context.ue_release_timer_thres_rrc = 0;
+              /* Since TTCN test only support one UE(rrc connection) at a time,
+              we can release all pending unused UE context(no release from TTCN) here to avoid unused resource allocation */
+              RB_FOREACH(ue_context_pP, rrc_ue_tree_s, &(RC.rrc[instance]->rrc_ue_head)) {
+                if (ue_context_pP->ue_context.rnti == SS_RRC_PDU_REQ(msg_p).rnti) {
+                  cc_id = ue_context_pP->ue_context.primaryCC_id;
+                  ue_context_pP->ue_context.ue_reestablishment_timer = 0;
+                  ue_context_pP->ue_context.ue_release_timer = 1;
+                  ue_context_pP->ue_context.ue_release_timer_thres = 10;
+                  ue_context_pP->ue_context.ue_rrc_inactivity_timer = 0;
+                  ue_context_pP->ue_context.ue_release_timer_rrc = 0;
+                  ue_context_pP->ue_context.ue_release_timer_thres_rrc = 0;
+                } else {
+                  ue_context_pP->ue_context.ue_release_timer = 1;
+                  ue_context_pP->ue_context.ue_release_timer_thres = 0; /* release in next sf immediately */
+                }
               }
               if (RC.ss.CBRA_flag[cc_id])
               {
