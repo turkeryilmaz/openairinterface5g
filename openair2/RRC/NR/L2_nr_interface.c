@@ -50,21 +50,21 @@
 
 extern RAN_CONTEXT_t RC;
 
-void nr_rrc_mac_remove_ue(rnti_t rntiMaybeUEid)
+void nr_rrc_mac_remove_ue(int CC_id, rnti_t rntiMaybeUEid)
 {
   nr_rlc_remove_ue(rntiMaybeUEid);
 
   gNB_MAC_INST *nrmac = RC.nrmac[0];
   NR_SCHED_LOCK(&nrmac->sched_lock);
-  mac_remove_nr_ue(nrmac, rntiMaybeUEid);
+  mac_remove_nr_ue(nrmac, CC_id, rntiMaybeUEid);
   NR_SCHED_UNLOCK(&nrmac->sched_lock);
 }
 
-void nr_rrc_mac_update_cellgroup(rnti_t rntiMaybeUEid, NR_CellGroupConfig_t *cgc)
+void nr_rrc_mac_update_cellgroup(int CC_id, rnti_t rntiMaybeUEid, NR_CellGroupConfig_t *cgc)
 {
   gNB_MAC_INST *nrmac = RC.nrmac[0];
   NR_SCHED_LOCK(&nrmac->sched_lock);
-  nr_mac_update_cellgroup(nrmac, rntiMaybeUEid, cgc);
+  nr_mac_update_cellgroup(nrmac, CC_id, rntiMaybeUEid, cgc);
   NR_SCHED_UNLOCK(&nrmac->sched_lock);
 }
 
@@ -84,7 +84,7 @@ uint16_t mac_rrc_nr_data_req(const module_id_t Mod_idP,
   if ((Srb_id & RAB_OFFSET) == MIBCH) {
 
     int encode_size = 3;
-    rrc_gNB_carrier_data_t *carrier = &RC.nrrrc[Mod_idP]->carrier;
+    rrc_gNB_carrier_data_t *carrier = &RC.nrrrc[Mod_idP]->carrier[CC_id];
     int encoded = encode_MIB_NR(carrier->mib, frameP, buffer_pP, encode_size);
     DevAssert(encoded == encode_size);
     LOG_D(NR_RRC, "MIB PDU buffer_pP[0]=%x , buffer_pP[1]=%x, buffer_pP[2]=%x\n", buffer_pP[0], buffer_pP[1],
@@ -93,8 +93,8 @@ uint16_t mac_rrc_nr_data_req(const module_id_t Mod_idP,
   }
 
   if ((Srb_id & RAB_OFFSET) == BCCH) {
-    memcpy(&buffer_pP[0], RC.nrrrc[Mod_idP]->carrier.SIB1, RC.nrrrc[Mod_idP]->carrier.sizeof_SIB1);
-    return RC.nrrrc[Mod_idP]->carrier.sizeof_SIB1;
+    memcpy(&buffer_pP[0], RC.nrrrc[Mod_idP]->carrier[CC_id].SIB1, RC.nrrrc[Mod_idP]->carrier[CC_id].sizeof_SIB1);
+    return RC.nrrrc[Mod_idP]->carrier[CC_id].sizeof_SIB1;
   }
 
   // CCCH
@@ -106,11 +106,11 @@ uint16_t mac_rrc_nr_data_req(const module_id_t Mod_idP,
   if ((Srb_id & RAB_OFFSET) == PCCH) {
     LOG_T(NR_RRC, "[eNB %d] Frame %d PCCH request (Srb_id %ld)\n", Mod_idP, frameP, Srb_id);
 
-    if (RC.nrrrc[Mod_idP]->carrier.sizeof_paging > 0) {
-      LOG_D(NR_RRC, "[eNB %d] PCCH has %d bytes\n", Mod_idP, RC.nrrrc[Mod_idP]->carrier.sizeof_paging);
-      memcpy(buffer_pP, RC.nrrrc[Mod_idP]->carrier.paging, RC.nrrrc[Mod_idP]->carrier.sizeof_paging);
-      Sdu_size = RC.nrrrc[Mod_idP]->carrier.sizeof_paging;
-      RC.nrrrc[Mod_idP]->carrier.sizeof_paging = 0;
+    if (RC.nrrrc[Mod_idP]->carrier[CC_id].sizeof_paging > 0) {
+      LOG_D(NR_RRC, "[eNB %d] PCCH has %d bytes\n", Mod_idP, RC.nrrrc[Mod_idP]->carrier[CC_id].sizeof_paging);
+      memcpy(buffer_pP, RC.nrrrc[Mod_idP]->carrier[CC_id].paging, RC.nrrrc[Mod_idP]->carrier[CC_id].sizeof_paging);
+      Sdu_size = RC.nrrrc[Mod_idP]->carrier[CC_id].sizeof_paging;
+      RC.nrrrc[Mod_idP]->carrier[CC_id].sizeof_paging = 0;
     }
 
     return (Sdu_size);

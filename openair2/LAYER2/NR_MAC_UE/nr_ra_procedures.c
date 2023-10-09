@@ -669,7 +669,7 @@ uint8_t nr_ue_get_rach(module_id_t mod_id,
   NR_PRACH_RESOURCES_t *prach_resources = &ra->prach_resources;
 
   // Delay init RA procedure to allow the convergence of the IIR filter on PRACH noise measurements at gNB side
-  if (ra->ra_state == RA_UE_IDLE) {
+  if (ra->ra_state == WAIT_SIB) {
     if ((mac->first_sync_frame > -1 || get_softmodem_params()->do_ra || get_softmodem_params()->nsa) &&
        ((MAX_FRAME_NUMBER + frame - mac->first_sync_frame) % MAX_FRAME_NUMBER) > 150) {
       ra->ra_state = GENERATE_PREAMBLE;

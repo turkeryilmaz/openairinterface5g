@@ -142,7 +142,6 @@
 #include "conversions.h"
 
 //#define XER_PRINT
-
 typedef struct xer_sprint_string_s {
   char *string;
   size_t string_size;
@@ -217,7 +216,7 @@ uint8_t do_SIB23_NR(rrc_gNB_carrier_data_t *carrier,
   sib2->choice.sib2->cellReselectionInfoCommon.q_Hyst = NR_SIB2__cellReselectionInfoCommon__q_Hyst_dB1;
   sib2->choice.sib2->cellReselectionServingFreqInfo.threshServingLowP = 2; // INTEGER (0..31)
   sib2->choice.sib2->cellReselectionServingFreqInfo.cellReselectionPriority =  2; // INTEGER (0..7)
-  sib2->choice.sib2->intraFreqCellReselectionInfo.q_RxLevMin = -50; // INTEGER (-70..-22)
+  sib2->choice.sib2->intraFreqCellReselectionInfo.q_RxLevMin = (long)configuration->q_RxLevMinSIB2;
   sib2->choice.sib2->intraFreqCellReselectionInfo.s_IntraSearchP = 2; // INTEGER (0..31)
   sib2->choice.sib2->intraFreqCellReselectionInfo.t_ReselectionNR = 2; // INTEGER (0..7)
   sib2->choice.sib2->intraFreqCellReselectionInfo.deriveSSB_IndexFromCell = true;
@@ -230,6 +229,7 @@ uint8_t do_SIB23_NR(rrc_gNB_carrier_data_t *carrier,
 
   //encode SIB to data
   // carrier->SIB23 = (uint8_t *) malloc16(128);
+  xer_fprint(stdout, &asn_DEF_NR_BCCH_DL_SCH_Message, (void*)sib_message);
   enc_rval = uper_encode_to_buffer(&asn_DEF_NR_BCCH_DL_SCH_Message,
                                    NULL,
                                    (void *)sib_message,
@@ -1433,7 +1433,7 @@ int do_RRCReestablishment(const protocol_ctxt_t *const ctxt_pP,
   rrcReestablishment->criticalExtensions.present = NR_RRCReestablishment__criticalExtensions_PR_rrcReestablishment;
   rrcReestablishment->criticalExtensions.choice.rrcReestablishment = CALLOC(1, sizeof(NR_RRCReestablishment_IEs_t));
 
-  uint16_t pci = RC.nrrrc[ctxt_pP->module_id]->carrier.physCellId;
+  uint16_t pci = RC.nrrrc[ctxt_pP->module_id]->carrier[CC_id].physCellId;
   uint32_t nr_arfcn_dl = (uint64_t)*scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB;
   LOG_I(NR_RRC, "Reestablishment update key pci=%d, earfcn_dl=%u\n", pci, nr_arfcn_dl);
 

@@ -53,6 +53,7 @@
 
 #include "acpNrSysSrb.h"
 #include "ss_gNB_context.h"
+#include "ss_gNB_multicell_helper.h"
 
 extern RAN_CONTEXT_t RC;
 SSConfigContext_t SS_context;
@@ -73,24 +74,24 @@ uint8_t lttng_sdu[SDU_SIZE];
 
 //------------------------------------------------------------------------------
 // Function to send response to the SIDL client
-static void ss_send_srb_data(ss_nrrrc_pdu_ind_t *pdu_ind)
+static void ss_send_srb_data(ss_nrrrc_pdu_ind_t *pdu_ind, int cell_index)
 {
         struct NR_RRC_PDU_IND ind = {};
         uint32_t status = 0;
         NR_UL_DCCH_Message_t               *ul_dcch_msg = NULL;
         NR_UL_CCCH_Message_t               *ul_ccch_msg = NULL;
 
-        LOG_A(GNB_APP, "[SS_SRB] Reported rrc sdu_size:%d \t srb_id %d\n", pdu_ind->sdu_size, pdu_ind->srb_id);
-
+        LOG_A(GNB_APP, "[SS_SRB] Reported rrc sdu_size:%d \t srb_id %d  cell_index%d\n", pdu_ind->sdu_size, pdu_ind->srb_id,cell_index);
+        
         DevAssert(pdu_ind != NULL);
         DevAssert(pdu_ind->sdu_size >= 0);
         DevAssert(pdu_ind->srb_id >= 0);
         rnti_g = pdu_ind->rnti;
-        SS_context.ss_rnti_g = rnti_g;
+        SS_context.SSCell_list[cell_index].ss_rnti_g = rnti_g;
         size_t msgSize = size;
         memset(&ind, 0, sizeof(ind));
         //TODO: Work Around till Sys port is implemented for 5G
-	ind.Common.CellId = nr_Cell1;
+      	ind.Common.CellId = SS_context.SSCell_list[cell_index].nr_cellId;
 
         // Populated the Routing Info
         ind.Common.RoutingInfo.d = NR_RoutingInfo_Type_RadioBearerId;
@@ -116,7 +117,7 @@ static void ss_send_srb_data(ss_nrrrc_pdu_ind_t *pdu_ind)
 
         ind.Common.RlcBearerRouting.d = RlcBearerRouting_Type_NR;
 	//TODO: Work Around till Sys port is implemented for 5G
-        ind.Common.RlcBearerRouting.v.NR = nr_Cell1;
+        ind.Common.RlcBearerRouting.v.NR = SS_context.SSCell_list[cell_index].nr_cellId;
 
         /* Populate and Send the EUTRA RRC PDU IND to Client */
         if (pdu_ind->srb_id == 0)
@@ -196,7 +197,7 @@ static void ss_send_srb_data(ss_nrrrc_pdu_ind_t *pdu_ind)
                 LOG_A(GNB_APP, "[SS_SRB][NR_RRC_PDU_IND] acpNrSysSrbProcessToSSEncSrv Failure\n");
                 return;
         }
-        LOG_A(GNB_APP, "[SS_SRB][NR_RRC_PDU_IND] Buffer msgSize=%d (!!2) to EUTRACell %d", (int)msgSize,SS_context.nr_cellId);
+        LOG_A(GNB_APP, "[SS_SRB][NR_RRC_PDU_IND] Buffer msgSize=%d (!!2) to EUTRACell %d", (int)msgSize, SS_context.SSCell_list[cell_index].nr_cellId);
 
         /* Send message
    */
@@ -306,7 +307,7 @@ static inline void
 ss_gNB_read_from_srb_socket(acpCtx_t ctx)
 {
         size_t msgSize = size; //2
-
+        int cell_index = 0;
         while (1)
         {
                 int userId = acpRecvMsg(ctx, &msgSize, buffer);
@@ -361,15 +362,23 @@ ss_gNB_read_from_srb_socket(acpCtx_t ctx)
                                 LOG_A(GNB_APP, "[SS_SRB][NR_RRC_PDU_REQ] acpNrSysSrbProcessFromSSDecSrv Failed\n");
                                 break;
                         }
-                        if (SS_context.State >= SS_STATE_CELL_ACTIVE)
+                        if(req->Common.CellId)
+                        {
+                          cell_index = get_gNB_cell_index(req->Common.CellId, SS_context.SSCell_list);
+                          SS_context.SSCell_list[cell_index].nr_cellId = req->Common.CellId;
+                          LOG_A(GNB_APP,"[SS_SRB] cell_index: %d nr_cellId: %d PhysicalCellId: %d\n",
+                            cell_index,
+                            SS_context.SSCell_list[cell_index].nr_cellId,
+                            SS_context.SSCell_list[cell_index].PhysicalCellId);
+                        }
+                        if (SS_context.SSCell_list[cell_index].State >= SS_STATE_CELL_ACTIVE)
                         {
                                 ss_task_handle_rrc_pdu_req(req);
                         }
                         else
                         {
-                                LOG_A(GNB_APP, "ERROR [SS_SRB][NR_RRC_PDU_REQ] received in SS state %d \n", SS_context.State);
+                                LOG_A(GNB_APP, "ERROR in fxn:%s [SS_SRB][NR_RRC_PDU_REQ] received in SS state %d \n", __FUNCTION__, SS_context.SSCell_list[cell_index].State);
                         }
-
                         acpNrSysSrbProcessFromSSFreeSrv(req);
                         return;
                 }
@@ -422,8 +431,11 @@ void ss_gNB_srb_init(void)
 
   if (RC.ss.mode == SS_SOFTMODEM_SRB)
   {
-    SS_context.State = SS_STATE_CELL_ACTIVE;
+    for(int idx=0; idx<8; idx++){
+       SS_context.SSCell_list[idx].State = SS_STATE_CELL_ACTIVE;
+    }
   }
+
   itti_subscribe_event_fd(TASK_SS_SRB_GNB, fd1);
   itti_mark_task_ready(TASK_SS_SRB_GNB);
 }
@@ -433,6 +445,7 @@ void *ss_gNB_srb_process_itti_msg(void *notUsed)
 {
   MessageDef *received_msg = NULL;
   int result = 0;
+   int cell_index = 0;
 
   itti_receive_msg(TASK_SS_SRB_GNB, &received_msg);
 
@@ -444,22 +457,27 @@ void *ss_gNB_srb_process_itti_msg(void *notUsed)
       case SS_NRRRC_PDU_IND:
         {
           task_id_t origin_task = ITTI_MSG_ORIGIN_ID(received_msg);
+          LOG_I(ENB_SS, "received msg from %s pci:%d \n", ITTI_MSG_ORIGIN_NAME(received_msg), received_msg->ittiMsg.ss_nrrrc_pdu_ind.physCellId);
+//          if(received_msg->ittiMsg.ss_rrc_pdu_ind.physCellId){
+            cell_index = get_gNB_cell_index_pci(received_msg->ittiMsg.ss_nrrrc_pdu_ind.physCellId, SS_context.SSCell_list);
+            LOG_A(ENB_SS,"[SS_SRB] cell_index in SS_NR_RRC_PDU_IND: %d PhysicalCellId: %d \n",cell_index, SS_context.SSCell_list[cell_index].PhysicalCellId);
+//          }
 
           if (origin_task == TASK_SS_PORTMAN)
           {
-            LOG_D(GNB_APP, "[SS_SRB] DUMMY WAKEUP receviedfrom PORTMAN state %d \n", SS_context.State);
+            LOG_D(GNB_APP, "[SS_SRB] DUMMY WAKEUP receviedfrom PORTMAN\n");
           }
           else
           {
             LOG_A(GNB_APP, "[SS_SRB] Received SS_NRRRC_PDU_IND from RRC\n");
-            if (SS_context.State >= SS_STATE_CELL_ACTIVE)
+            if (SS_context.SSCell_list[cell_index].State >= SS_STATE_CELL_ACTIVE)
             {
               instance_g = ITTI_MSG_DESTINATION_INSTANCE(received_msg);
-              ss_send_srb_data(&received_msg->ittiMsg.ss_nrrrc_pdu_ind);
+              ss_send_srb_data(&received_msg->ittiMsg.ss_nrrrc_pdu_ind, cell_index);
             }
             else
             {
-              LOG_A(GNB_APP, "ERROR [SS_SRB][NR_RRC_PDU_IND] received in SS state %d \n", SS_context.State);
+              LOG_A(GNB_APP, "ERROR in fxn:%s [SS_SRB][NR_RRC_PDU_IND] received in SS state %d \n", __FUNCTION__, SS_context.SSCell_list[cell_index].State);
             }
           }
 
@@ -491,7 +509,7 @@ void *ss_gNB_srb_task(void *arg)
 	while (1)
         {
                 //LOG_A(GNB_APP,"[SS_SRB] Inside ss_gNB_srb_task \n");
-                (void)ss_gNB_srb_process_itti_msg(NULL);
+                ss_gNB_srb_process_itti_msg(NULL);
         }
         acpFree(buffer);
 

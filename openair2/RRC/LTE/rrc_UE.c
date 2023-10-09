@@ -5396,7 +5396,7 @@ void *rrc_ue_task( void *args_p ) {
                 /** TODO: Store for all reported cells, currently storing only one */
 		rsrp_cell = PHY_FIND_CELL_IND(msg_p).cells[i].rsrp;
 		rsrq_cell = PHY_FIND_CELL_IND(msg_p).cells[i].rsrq;
-                LOG_A (RRC, "PHY_FIND_CELL_IND Cell: %d RSRP: %d RSRQ: %d \n", PHY_FIND_CELL_IND(msg_p).cell_nb, rsrp_cell, rsrq_cell);
+                LOG_D(RRC, "PHY_FIND_CELL_IND Cell: %d RSRP: %d RSRQ: %d \n", PHY_FIND_CELL_IND(msg_p).cell_nb, rsrp_cell, rsrq_cell);
 	}
 
         break;

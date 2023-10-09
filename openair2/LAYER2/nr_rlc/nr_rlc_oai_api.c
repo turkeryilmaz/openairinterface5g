@@ -94,7 +94,7 @@ void mac_rlc_data_ind     (
         SS_DRB_PDU_IND (message_p).drb_id = drb_id;
         SS_DRB_PDU_IND (message_p).frame = frameP;
         SS_DRB_PDU_IND (message_p).subframe = 0;
-        SS_DRB_PDU_IND (message_p).physCellId = RC.nrrrc[module_idP]->carrier.physCellId;
+        SS_DRB_PDU_IND (message_p).physCellId = RC.nrrrc[module_idP]->carrier[0].physCellId;
         SS_DRB_PDU_IND (message_p).sdu_size = tb_sizeP;
         memcpy(SS_DRB_PDU_IND (message_p).sdu, buffer_pP, tb_sizeP);
 

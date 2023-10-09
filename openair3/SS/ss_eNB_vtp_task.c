@@ -32,7 +32,6 @@
 #include "acpSysVT.h"
 #include "enb_config.h"
 
-extern SSConfigContext_t SS_context;
 extern RAN_CONTEXT_t RC;
 int cellIndex = 0;
 

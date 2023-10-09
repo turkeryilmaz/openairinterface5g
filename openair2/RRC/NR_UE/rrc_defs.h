@@ -232,6 +232,8 @@ typedef struct NR_UE_RRC_INST_s {
     e_NR_IntegrityProtAlgorithm  integrityProtAlgorithm;
 
     long               selected_plmn_identity;
+    uint16_t           serving_cellId;
+    uint32_t           tac;
     Rrc_State_NR_t     nrRrcState;
     Rrc_Sub_State_NR_t nrRrcSubState;
     as_nas_info_t      initialNasMsg;

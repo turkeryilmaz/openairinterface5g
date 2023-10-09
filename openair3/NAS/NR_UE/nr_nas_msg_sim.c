@@ -923,6 +923,8 @@ void generateRegistrationRequest(as_nas_info_t *initialNasMsg, nr_ue_nas_t *nas)
   int size = sizeof(mm_msg_header_t);
   fgs_nas_message_t nas_msg={0};
   MM_msg *mm_msg;
+  static initial_registration= 1;
+ 
 
   mm_msg = &nas_msg.plain.mm_msg;
   // set header
@@ -938,7 +940,13 @@ void generateRegistrationRequest(as_nas_info_t *initialNasMsg, nr_ue_nas_t *nas)
   size += 1;
   mm_msg->registration_request.messagetype = REGISTRATION_REQUEST;
   size += 1;
-  mm_msg->registration_request.fgsregistrationtype = INITIAL_REGISTRATION;
+  if( initial_registration== 1){
+    mm_msg->registration_request.fgsregistrationtype = INITIAL_REGISTRATION;
+    initial_registration=0;
+  }else{
+    mm_msg->registration_request.fgsregistrationtype = MOBILITY_REGISTRATION_UPDATING;
+  }
+  
   /* Set naskeysetidentifier to 7 instead of 1 for the TTCN */
   mm_msg->registration_request.naskeysetidentifier.naskeysetidentifier = 7;
   size += 1;

@@ -692,17 +692,19 @@ typedef struct {
   /// scheduling control info
   // last element always NULL
   pthread_mutex_t mutex;
-  NR_UE_info_t *list[MAX_MOBILES_PER_GNB+1];
+  NR_UE_info_t *list[MAX_NUM_CCs][MAX_MOBILES_PER_GNB+1];
   bool sched_csirs;
-  uid_allocator_t uid_allocator;
+  uid_allocator_t uid_allocator[MAX_NUM_CCs];
 } NR_UEs_t;
 
 #define UE_iterator(BaSe, VaR) NR_UE_info_t ** VaR##pptr=BaSe, *VaR; while ((VaR=*(VaR##pptr++)))
 
 typedef void (*nr_pp_impl_dl)(module_id_t mod_id,
+                              int CC_id,
                               frame_t frame,
                               sub_frame_t slot);
 typedef bool (*nr_pp_impl_ul)(module_id_t mod_id,
+                              int CC_id,
                               frame_t frame,
                               sub_frame_t slot);
 
@@ -800,10 +802,10 @@ typedef struct gNB_MAC_INST_s {
   /// UL preprocessor for differentiated scheduling
   nr_pp_impl_ul pre_processor_ul;
 
-  NR_UE_sched_ctrl_t *sched_ctrlCommon;
+  NR_UE_sched_ctrl_t *sched_ctrlCommon[MAX_NUM_CCs];
   uint16_t cset0_bwp_start;
   uint16_t cset0_bwp_size;
-  NR_Type0_PDCCH_CSS_config_t type0_PDCCH_CSS_config[64];
+  NR_Type0_PDCCH_CSS_config_t type0_PDCCH_CSS_config[MAX_NUM_CCs][64];
 
   int xp_pdsch_antenna_ports;
 

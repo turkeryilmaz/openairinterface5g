@@ -218,6 +218,7 @@ static void process_queued_nr_nfapi_msgs(NR_UE_MAC_INST_t *mac, int sfn_slot)
       free_and_zero(rach_ind->pdu_list);
       free_and_zero(rach_ind);
   }
+  // LOG_D(NR_MAC, "dl tti request of cell id %d, camped cell id %d", dl_tti_request->header.phy_id,mac->physCellId);
   if (dl_tti_request) {
     int dl_tti_sfn_slot = NFAPI_SFNSLOT2HEX(dl_tti_request->SFN, dl_tti_request->Slot);
     LOG_A(NR_MAC, "[%d %d] sfn/slot dl_tti_request received \n",
@@ -291,7 +292,7 @@ static void *NRUE_phy_stub_standalone_pnf_task(void *arg)
       mac->nr_ue_emul_l1.harq[i].active = false;
       mac->nr_ue_emul_l1.harq[i].active_ul_harq_sfn_slot = -1;
   }
-
+  mac->physCellId = NR_INVALID_CELL_ID;
   while (!oai_exit) {
     if (sem_wait(&sfn_slot_semaphore) != 0) {
       LOG_E(NR_MAC, "sem_wait() error\n");
@@ -327,7 +328,7 @@ static void *NRUE_phy_stub_standalone_pnf_task(void *arg)
     LOG_D(NR_MAC, "The received sfn/slot [%d %d] from proxy\n",
           frame, slot);
 
-    if (get_softmodem_params()->sa && mac->mib == NULL) {
+    if (get_softmodem_params()->sa && mac->mib == NULL && mac->physCellId !=NR_INVALID_CELL_ID) {
       LOG_D(NR_MAC, "We haven't gotten MIB. Lets see if we received it\n");
       nr_ue_dl_indication(&mac->dl_info);
       process_queued_nr_nfapi_msgs(mac, sfn_slot);

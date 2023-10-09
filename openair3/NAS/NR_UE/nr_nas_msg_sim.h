@@ -83,7 +83,7 @@
 #define FGS_PDU_SESSION_ESTABLISHMENT_ACC                  0b11000010 /* 194= 0xc2 */
 
 #define INITIAL_REGISTRATION                               0b001
-
+#define MOBILITY_REGISTRATION_UPDATING                     0b010
 #define PLAIN_5GS_NAS_MESSAGE_HEADER_LENGTH                3
 #define SECURITY_PROTECTED_5GS_NAS_MESSAGE_HEADER_LENGTH   7
 #define PAYLOAD_CONTAINER_LENGTH_MIN                       3

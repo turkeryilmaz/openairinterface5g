@@ -698,7 +698,15 @@ typedef struct NRRrcConfigurationReq_s {
   int                     pucch_TargetSNRx10;
   bool                    enable_sdap;
   int                     drbs;
+  long                     q_RxLevMinSIB1;
+  long                     q_RxLevMinSIB2;
+  long                 cellBarred;
 } gNB_RrcConfigurationReq;
+
+
+typedef struct _NRRrcConfigurationReqList {
+  gNB_RrcConfigurationReq configuration[MAX_NUM_CCs];
+}NRRrcConfigurationReqList;
 
 typedef struct NRDuDlReq_s {
   rnti_t rnti;

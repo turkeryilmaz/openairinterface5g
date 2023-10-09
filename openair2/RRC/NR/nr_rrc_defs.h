@@ -469,14 +469,14 @@ typedef struct gNB_RRC_INST_s {
   char                                               *node_name;
   int                                                 module_id;
   eth_params_t                                        eth_params_s;
-  rrc_gNB_carrier_data_t                              carrier;
+  rrc_gNB_carrier_data_t                              carrier[MAX_NUM_CCs];
   uid_allocator_t                                     uid_allocator;
   RB_HEAD(rrc_nr_ue_tree_s, rrc_gNB_ue_context_s) rrc_ue_head; // ue_context tree key search by rnti
   /// NR cell id
   uint64_t nr_cellid;
 
   // RRC configuration
-  gNB_RrcConfigurationReq configuration;
+  gNB_RrcConfigurationReq configuration[MAX_NUM_CCs];
 
   // gNB N3 GTPU instance
   instance_t e1_inst;
@@ -513,6 +513,7 @@ typedef struct gNB_RRC_INST_s {
   nr_mac_rrc_dl_if_t mac_rrc;
   cucp_cuup_if_t cucp_cuup;
 
+  int rrc_configuration_flag[MAX_NUM_CCs];
 } gNB_RRC_INST;
 
 #include "nr_rrc_proto.h" //should be put here otherwise compilation error

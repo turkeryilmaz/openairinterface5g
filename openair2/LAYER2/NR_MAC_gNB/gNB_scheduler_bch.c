@@ -113,18 +113,18 @@ static void fill_ssb_vrb_map(NR_COMMON_channels_t *cc, int rbStart, int ssb_subc
     vrb_map[rbStart + rb] = SL_to_bitmap(symStart, 4);
 }
 
-void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP, nfapi_nr_dl_tti_request_t *DL_req)
+void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP, nfapi_nr_dl_tti_request_t *DL_req, int CC_id)
 {
   gNB_MAC_INST *gNB = RC.nrmac[module_idP];
   /* already mutex protected: held in gNB_dlsch_ulsch_scheduler() */
   NR_COMMON_channels_t *cc;
   nfapi_nr_dl_tti_request_body_t *dl_req;
-  NR_MIB_t *mib = RC.nrrrc[module_idP]->carrier.mib->message.choice.mib;
+  NR_MIB_t *mib = RC.nrrrc[module_idP]->carrier[CC_id].mib->message.choice.mib;
   uint8_t num_tdd_period,num_ssb;
   int mib_sdu_length;
-  int CC_id;
+  //int CC_id;
 
-  for (CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
+  /*for (CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++)*/ {
     cc = &gNB->common_channels[CC_id];
     NR_ServingCellConfigCommon_t *scc = cc->ServingCellConfigCommon;
     const int slots_per_frame = nr_slots_per_frame[*scc->ssbSubcarrierSpacing];
@@ -195,7 +195,7 @@ void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP, 
                 schedule_ssb(frameP, slotP, scc, dl_req, i_ssb, ssbSubcarrierOffset, offset_pointa, (*(uint32_t*)cc->MIB_pdu.payload) & ((1<<24)-1));
                 fill_ssb_vrb_map(cc, prb_offset, ssbSubcarrierOffset, ssb_start_symbol, CC_id);
                 if (get_softmodem_params()->sa == 1) {
-                  get_type0_PDCCH_CSS_config_parameters(&gNB->type0_PDCCH_CSS_config[i_ssb],
+                  get_type0_PDCCH_CSS_config_parameters(&(gNB->type0_PDCCH_CSS_config[CC_id][i_ssb]),
                                                         frameP,
                                                         mib,
                                                         slots_per_frame,
@@ -207,7 +207,7 @@ void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP, 
                                                         i_ssb,
                                                         ssb_frame_periodicity,
                                                         prb_offset);
-                  gNB->type0_PDCCH_CSS_config[i_ssb].active = true;
+                  gNB->type0_PDCCH_CSS_config[CC_id][i_ssb].active = true;
                 }
               }
             }
@@ -224,7 +224,7 @@ void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP, 
                 schedule_ssb(frameP, slotP, scc, dl_req, i_ssb, ssbSubcarrierOffset, offset_pointa, (*(uint32_t*)cc->MIB_pdu.payload) & ((1<<24)-1));
                 fill_ssb_vrb_map(cc, prb_offset, ssbSubcarrierOffset, ssb_start_symbol, CC_id);
                 if (get_softmodem_params()->sa == 1) {
-                  get_type0_PDCCH_CSS_config_parameters(&gNB->type0_PDCCH_CSS_config[i_ssb],
+                  get_type0_PDCCH_CSS_config_parameters(&gNB->type0_PDCCH_CSS_config[CC_id][i_ssb],
                                                         frameP,
                                                         mib,
                                                         slots_per_frame,
@@ -236,7 +236,7 @@ void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP, 
                                                         i_ssb,
                                                         ssb_frame_periodicity,
                                                         prb_offset);
-                  gNB->type0_PDCCH_CSS_config[i_ssb].active = true;
+                  gNB->type0_PDCCH_CSS_config[CC_id][i_ssb].active = true;
                 }
               }
             }
@@ -262,7 +262,7 @@ void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP, 
                 num_ssb++;
                 AssertFatal(num_ssb<2,"beamforming currently not supported for more than one SSB per slot\n");
                 if (get_softmodem_params()->sa == 1) {
-                  get_type0_PDCCH_CSS_config_parameters(&gNB->type0_PDCCH_CSS_config[i_ssb],
+                  get_type0_PDCCH_CSS_config_parameters(&(gNB->type0_PDCCH_CSS_config[CC_id][i_ssb]),
                                                         frameP,
                                                         mib,
                                                         slots_per_frame,
@@ -274,7 +274,7 @@ void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP, 
                                                         i_ssb,
                                                         ssb_frame_periodicity,
                                                         prb_offset);
-                  gNB->type0_PDCCH_CSS_config[i_ssb].active = true;
+                  gNB->type0_PDCCH_CSS_config[CC_id][i_ssb].active = true;
                 }
               }
             }
@@ -303,51 +303,51 @@ static uint32_t schedule_control_sib1(module_id_t module_id,
   uint16_t *vrb_map = cc->vrb_map;
   LOG_D(NR_MAC," fxn:%s Entry \n", __FUNCTION__);
 
-  if (gNB_mac->sched_ctrlCommon == NULL){
-    LOG_D(NR_MAC,"schedule_control_common: Filling nr_mac->sched_ctrlCommon\n");
+  if (gNB_mac->sched_ctrlCommon[CC_id] == NULL){
+    LOG_D(NR_MAC,"schedule_control_common: Filling nr_mac->sched_ctrlCommon[CC_id]\n");
     LOG_D(NR_MAC," fxn:%s gNB_mac->cset0_bwp_start=type0_PDCCH_CSS_config->cset_start_rb:%d gNB_mac->cset0_bwp_size=type0_PDCCH_CSS_config->num_rbs:%d \n", 
         __FUNCTION__,
         gNB_mac->cset0_bwp_start,
         gNB_mac->cset0_bwp_size);
-    gNB_mac->sched_ctrlCommon = calloc(1,sizeof(*gNB_mac->sched_ctrlCommon));
-    gNB_mac->sched_ctrlCommon->search_space = calloc(1,sizeof(*gNB_mac->sched_ctrlCommon->search_space));
-    gNB_mac->sched_ctrlCommon->coreset = calloc(1,sizeof(*gNB_mac->sched_ctrlCommon->coreset));
-    fill_searchSpaceZero(gNB_mac->sched_ctrlCommon->search_space,type0_PDCCH_CSS_config);
-    fill_coresetZero(gNB_mac->sched_ctrlCommon->coreset,type0_PDCCH_CSS_config);
+    gNB_mac->sched_ctrlCommon[CC_id] = calloc(1,sizeof(*gNB_mac->sched_ctrlCommon[CC_id]));
+    gNB_mac->sched_ctrlCommon[CC_id]->search_space = calloc(1,sizeof(*gNB_mac->sched_ctrlCommon[CC_id]->search_space));
+    gNB_mac->sched_ctrlCommon[CC_id]->coreset = calloc(1,sizeof(*gNB_mac->sched_ctrlCommon[CC_id]->coreset));
+    fill_searchSpaceZero(gNB_mac->sched_ctrlCommon[CC_id]->search_space,type0_PDCCH_CSS_config);
+    fill_coresetZero(gNB_mac->sched_ctrlCommon[CC_id]->coreset,type0_PDCCH_CSS_config);
     gNB_mac->cset0_bwp_start = type0_PDCCH_CSS_config->cset_start_rb;
     gNB_mac->cset0_bwp_size = type0_PDCCH_CSS_config->num_rbs;
-    gNB_mac->sched_ctrlCommon->sched_pdcch = set_pdcch_structure(NULL,
-                                                                 gNB_mac->sched_ctrlCommon->search_space,
-                                                                 gNB_mac->sched_ctrlCommon->coreset,
+    gNB_mac->sched_ctrlCommon[CC_id]->sched_pdcch = set_pdcch_structure(NULL,
+                                                                 gNB_mac->sched_ctrlCommon[CC_id]->search_space,
+                                                                 gNB_mac->sched_ctrlCommon[CC_id]->coreset,
                                                                  scc,
                                                                  NULL,
                                                                  type0_PDCCH_CSS_config);
   }
 
-  NR_sched_pdsch_t *pdsch = &gNB_mac->sched_ctrlCommon->sched_pdsch;
+  NR_sched_pdsch_t *pdsch = &gNB_mac->sched_ctrlCommon[CC_id]->sched_pdsch;
   pdsch->time_domain_allocation = time_domain_allocation;
   pdsch->dmrs_parms = *dmrs_parms;
   pdsch->tda_info = *tda_info;
   pdsch->mcs = 0; // starting from mcs 0
-  gNB_mac->sched_ctrlCommon->num_total_bytes = num_total_bytes;
+  gNB_mac->sched_ctrlCommon[CC_id]->num_total_bytes = num_total_bytes;
 
   uint8_t nr_of_candidates;
 
   for (int i=0; i<3; i++) {
-    find_aggregation_candidates(&gNB_mac->sched_ctrlCommon->aggregation_level, &nr_of_candidates, gNB_mac->sched_ctrlCommon->search_space,4<<i);
+    find_aggregation_candidates(&gNB_mac->sched_ctrlCommon[CC_id]->aggregation_level, &nr_of_candidates, gNB_mac->sched_ctrlCommon[0]->search_space,4<<i);
     if (nr_of_candidates>0) break; // choosing the lower value of aggregation level available
   }
   AssertFatal(nr_of_candidates>0,"nr_of_candidates is 0\n");
-  gNB_mac->sched_ctrlCommon->cce_index = find_pdcch_candidate(gNB_mac,
+  gNB_mac->sched_ctrlCommon[CC_id]->cce_index = find_pdcch_candidate(gNB_mac,
                                                               CC_id,
-                                                              gNB_mac->sched_ctrlCommon->aggregation_level,
+                                                              gNB_mac->sched_ctrlCommon[CC_id]->aggregation_level,
                                                               nr_of_candidates,
-                                                              &gNB_mac->sched_ctrlCommon->sched_pdcch,
-                                                              gNB_mac->sched_ctrlCommon->coreset,
+                                                              &gNB_mac->sched_ctrlCommon[CC_id]->sched_pdcch,
+                                                              gNB_mac->sched_ctrlCommon[CC_id]->coreset,
                                                               0);
 
-  LOG_D(MAC,"cce_index: %d\n", gNB_mac->sched_ctrlCommon->cce_index);
-  AssertFatal(gNB_mac->sched_ctrlCommon->cce_index >= 0, "Could not find CCE for coreset0\n");
+  LOG_D(MAC,"cce_index: %d\n", gNB_mac->sched_ctrlCommon[CC_id]->cce_index);
+  AssertFatal(gNB_mac->sched_ctrlCommon[CC_id]->cce_index >= 0, "Could not find CCE for coreset0\n");
 
   const uint16_t bwpSize = type0_PDCCH_CSS_config->num_rbs;
   int rbStart = type0_PDCCH_CSS_config->cset_start_rb;
@@ -373,10 +373,11 @@ static uint32_t schedule_control_sib1(module_id_t module_id,
     TBS = nr_compute_tbs(nr_get_Qm_dl(pdsch->mcs, mcsTableIdx),
                          nr_get_code_rate_dl(pdsch->mcs, mcsTableIdx),
                          rbSize, tda_info->nrOfSymbols, N_PRB_DMRS * dmrs_length,0, 0,1) >> 3;
-  } while (TBS < gNB_mac->sched_ctrlCommon->num_total_bytes);
+  } while (TBS < gNB_mac->sched_ctrlCommon[CC_id]->num_total_bytes);
 
-  AssertFatal(TBS>=gNB_mac->sched_ctrlCommon->num_total_bytes,"Couldn't allocate enough resources for %d bytes in SIB1 PDSCH\n",
-              gNB_mac->sched_ctrlCommon->num_total_bytes);
+
+  AssertFatal(TBS>=gNB_mac->sched_ctrlCommon[CC_id]->num_total_bytes,"Couldn't allocate enough resources for %d bytes in SIB1 PDSCH\n",
+              gNB_mac->sched_ctrlCommon[CC_id]->num_total_bytes);
 
   pdsch->rbSize = rbSize;
   pdsch->rbStart = 0;
@@ -392,17 +393,18 @@ static uint32_t schedule_control_sib1(module_id_t module_id,
   // Mark the corresponding RBs as used
   fill_pdcch_vrb_map(gNB_mac,
                      CC_id,
-                     &gNB_mac->sched_ctrlCommon->sched_pdcch,
-                     gNB_mac->sched_ctrlCommon->cce_index,
-                     gNB_mac->sched_ctrlCommon->aggregation_level);
+                     &gNB_mac->sched_ctrlCommon[CC_id]->sched_pdcch,
+                     gNB_mac->sched_ctrlCommon[CC_id]->cce_index,
+                     gNB_mac->sched_ctrlCommon[CC_id]->aggregation_level);
   for (int rb = 0; rb < pdsch->rbSize; rb++) {
     vrb_map[rb + rbStart] |= SL_to_bitmap(tda_info->startSymbolIndex, tda_info->nrOfSymbols);
   }
-  LOG_D(NR_MAC," fxn:%s Exit\n", __FUNCTION__);
+    LOG_D(NR_MAC," fxn:%s Exit\n", __FUNCTION__);
   return TBS;
 }
 
 static void nr_fill_nfapi_dl_sib1_pdu(int Mod_idP,
+                                      int CC_id,
                                       nfapi_nr_dl_tti_request_body_t *dl_req,
                                       int pdu_index,
                                       NR_Type0_PDCCH_CSS_config_t *type0_PDCCH_CSS_config,
@@ -411,10 +413,10 @@ static void nr_fill_nfapi_dl_sib1_pdu(int Mod_idP,
                                       int NrOfSymbols)
 {
   gNB_MAC_INST *gNB_mac = RC.nrmac[Mod_idP];
-  NR_COMMON_channels_t *cc = gNB_mac->common_channels;
+  NR_COMMON_channels_t *cc = &gNB_mac->common_channels[CC_id];
   NR_ServingCellConfigCommon_t *scc = cc->ServingCellConfigCommon;
   int mcsTableIdx = 0;
-  NR_sched_pdsch_t *pdsch = &gNB_mac->sched_ctrlCommon->sched_pdsch;
+  NR_sched_pdsch_t *pdsch = &gNB_mac->sched_ctrlCommon[CC_id]->sched_pdsch;
   nfapi_nr_dl_tti_request_pdu_t *dl_tti_pdcch_pdu = &dl_req->dl_tti_pdu_list[dl_req->nPDUs];
   memset((void*)dl_tti_pdcch_pdu,0,sizeof(nfapi_nr_dl_tti_request_pdu_t));
   dl_tti_pdcch_pdu->PDUType = NFAPI_NR_DL_TTI_PDCCH_PDU_TYPE;
@@ -422,9 +424,9 @@ static void nr_fill_nfapi_dl_sib1_pdu(int Mod_idP,
   dl_req->nPDUs += 1;
   nfapi_nr_dl_tti_pdcch_pdu_rel15_t *pdcch_pdu_rel15 = &dl_tti_pdcch_pdu->pdcch_pdu.pdcch_pdu_rel15;
   nr_configure_pdcch(pdcch_pdu_rel15,
-                     gNB_mac->sched_ctrlCommon->coreset,
+                     gNB_mac->sched_ctrlCommon[CC_id]->coreset,
                      true, // sib1
-                     &gNB_mac->sched_ctrlCommon->sched_pdcch);
+                     &gNB_mac->sched_ctrlCommon[CC_id]->sched_pdcch);
 
   nfapi_nr_dl_tti_request_pdu_t *dl_tti_pdsch_pdu = &dl_req->dl_tti_pdu_list[dl_req->nPDUs];
   memset((void*)dl_tti_pdsch_pdu,0,sizeof(nfapi_nr_dl_tti_request_pdu_t));
@@ -483,8 +485,8 @@ static void nr_fill_nfapi_dl_sib1_pdu(int Mod_idP,
   dci_pdu->RNTI = SI_RNTI;
   dci_pdu->ScramblingId = *scc->physCellId;
   dci_pdu->ScramblingRNTI = 0;
-  dci_pdu->AggregationLevel = gNB_mac->sched_ctrlCommon->aggregation_level;
-  dci_pdu->CceIndex = gNB_mac->sched_ctrlCommon->cce_index;
+  dci_pdu->AggregationLevel = gNB_mac->sched_ctrlCommon[CC_id]->aggregation_level;
+  dci_pdu->CceIndex = gNB_mac->sched_ctrlCommon[CC_id]->cce_index;
   dci_pdu->beta_PDCCH_1_0 = 0;
   dci_pdu->powerControlOffsetSS = 1;
 
@@ -498,7 +500,7 @@ static void nr_fill_nfapi_dl_sib1_pdu(int Mod_idP,
   dci_payload.frequency_domain_assignment.val = PRBalloc_to_locationandbandwidth0(
       pdsch_pdu_rel15->rbSize, pdsch_pdu_rel15->rbStart, type0_PDCCH_CSS_config->num_rbs);
 
-  dci_payload.time_domain_assignment.val = gNB_mac->sched_ctrlCommon->sched_pdsch.time_domain_allocation;
+  dci_payload.time_domain_assignment.val = gNB_mac->sched_ctrlCommon[CC_id]->sched_pdsch.time_domain_allocation;
   dci_payload.mcs = pdsch->mcs;
   dci_payload.rv = pdsch_pdu_rel15->rvIndex[0];
   dci_payload.harq_pid = 0;
@@ -522,8 +524,8 @@ static void nr_fill_nfapi_dl_sib1_pdu(int Mod_idP,
                      dci_format,
                      rnti_type,
                      0,
-                     gNB_mac->sched_ctrlCommon->search_space,
-                     gNB_mac->sched_ctrlCommon->coreset,
+                     gNB_mac->sched_ctrlCommon[CC_id]->search_space,
+                     gNB_mac->sched_ctrlCommon[CC_id]->coreset,
                      gNB_mac->cset0_bwp_size);
 
   LOG_D(MAC,"BWPSize: %i\n", pdcch_pdu_rel15->BWPSize);
@@ -546,11 +548,12 @@ void schedule_nr_sib1(module_id_t module_idP,
                       frame_t frameP,
                       sub_frame_t slotP,
                       nfapi_nr_dl_tti_request_t *DL_req,
-                      nfapi_nr_tx_data_request_t *TX_req)
+                      nfapi_nr_tx_data_request_t *TX_req,
+                      int CC_id)
 {
   /* already mutex protected: held in gNB_dlsch_ulsch_scheduler() */
   // TODO: Get these values from RRC
-  const int CC_id = 0;
+  //const int CC_id = 0;
   uint8_t candidate_idx = 0;
 
   gNB_MAC_INST *gNB_mac = RC.nrmac[module_idP];
@@ -576,7 +579,7 @@ void schedule_nr_sib1(module_id_t module_idP,
 
   for (int i=0; i<L_max; i++) {
 
-    NR_Type0_PDCCH_CSS_config_t *type0_PDCCH_CSS_config = &gNB_mac->type0_PDCCH_CSS_config[i];
+    NR_Type0_PDCCH_CSS_config_t *type0_PDCCH_CSS_config = &(gNB_mac->type0_PDCCH_CSS_config[CC_id][i]);
 
     if((frameP%2 == type0_PDCCH_CSS_config->sfn_c) &&
        (slotP == type0_PDCCH_CSS_config->n_0) &&
@@ -595,7 +598,7 @@ void schedule_nr_sib1(module_id_t module_idP,
 
       default_table_type_t table_type = get_default_table_type(type0_PDCCH_CSS_config->type0_pdcch_ss_mux_pattern);
       // assuming normal CP
-      NR_tda_info_t tda_info = get_info_from_tda_tables(table_type, time_domain_allocation, gNB_mac->common_channels->ServingCellConfigCommon->dmrs_TypeA_Position, true);
+      NR_tda_info_t tda_info = get_info_from_tda_tables(table_type, time_domain_allocation, gNB_mac->common_channels[CC_id].ServingCellConfigCommon->dmrs_TypeA_Position, true);
 
       AssertFatal((tda_info.startSymbolIndex + tda_info.nrOfSymbols) < 14, "SIB1 TDA %d would cause overlap with CSI-RS. Please select a different SIB1 TDA.\n", time_domain_allocation);
 
@@ -615,7 +618,7 @@ void schedule_nr_sib1(module_id_t module_idP,
 
       nfapi_nr_dl_tti_request_body_t *dl_req = &DL_req->dl_tti_request_body;
       int pdu_index = gNB_mac->pdu_index[0]++;
-      nr_fill_nfapi_dl_sib1_pdu(module_idP, dl_req, pdu_index, type0_PDCCH_CSS_config, TBS, tda_info.startSymbolIndex, tda_info.nrOfSymbols);
+      nr_fill_nfapi_dl_sib1_pdu(module_idP, CC_id, dl_req, pdu_index, type0_PDCCH_CSS_config, TBS, tda_info.startSymbolIndex, tda_info.nrOfSymbols);
 
       const int ntx_req = TX_req->Number_of_PDUs;
       nfapi_nr_pdu_t *tx_req = &TX_req->pdu_list[ntx_req];

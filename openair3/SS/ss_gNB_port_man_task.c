@@ -32,6 +32,7 @@
 #include "acpNrSys.h"
 
 extern RAN_CONTEXT_t RC;
+extern int nr_cell_index;
 
 acpCtx_t nrctx_g = NULL;
 
@@ -142,7 +143,7 @@ void ss_nr_port_man_send_data(
     size_t msgSize = size;
     memset(&cnf, 0, sizeof(cnf));
 	/*TODO: */
-    cnf.Common.CellId = SS_context.eutra_cellId;
+    cnf.Common.CellId = SS_context.SSCell_list[nr_cell_index].nr_cellId;
     cnf.Common.RoutingInfo.d = NR_RoutingInfo_Type_None;
     cnf.Common.RoutingInfo.v.None = true;
     cnf.Common.TimingInfo.d = TimingInfo_Type_Now;
@@ -274,7 +275,7 @@ static inline void ss_gNB_read_from_socket(acpCtx_t ctx)
   else if (userId == 0)
   {
     // No message (timeout on socket)
-    if (RC.ss.mode >= SS_SOFTMODEM && RC.ss.State >= SS_STATE_CELL_ACTIVE)
+    if (RC.ss.mode >= SS_SOFTMODEM && SS_context.SSCell_list[nr_cell_index].State >= SS_STATE_CELL_ACTIVE)
     {
       LOG_A(ENB_SS,"[SS-PORTMAN] Sending Wake up signal/SS_NRRRC_PDU_IND (msg_Id:%d) to TASK_SS_SRB task \n", SS_NRRRC_PDU_IND);
       MessageDef *message_p = itti_alloc_new_message(TASK_SS_PORTMAN, 0, SS_NRRRC_PDU_IND);

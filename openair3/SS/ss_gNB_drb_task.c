@@ -50,6 +50,7 @@
 #include "ss_gNB_context.h"
 #include "ss_gNB_vt_timer_task.h"
 #include "ss_utils.h"
+#include "ss_gNB_multicell_helper.h"
 
 extern RAN_CONTEXT_t RC;
 extern SSConfigContext_t SS_context;
@@ -68,7 +69,7 @@ enum MsgUserId
     MSG_NrDrbProcessToSS_userId,
 };
 
-static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind)
+static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind, int cell_index)
 {
     struct NR_DRB_COMMON_IND ind = {};
 
@@ -84,7 +85,7 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind)
 
     /* ind.Common.CellId = SS_context.nr_cellId; */
     //TODO: Work Around till Sys port is implemented for 5G
-    ind.Common.CellId = nr_Cell1;
+    ind.Common.CellId = SS_context.SSCell_list[cell_index].nr_cellId;
 
     // Populated the Routing Info
     if(_drb_data_type == DRB_SdapSdu){
@@ -117,7 +118,7 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind)
     ind.Common.RlcBearerRouting.d = RlcBearerRouting_Type_NR;
     /* ind.Common.RlcBearerRouting.v.NR = SS_context.nr_cellId; */
     //TODO: Work Around till Sys port is implemented for 5G
-    ind.Common.RlcBearerRouting.v.NR = nr_Cell1;
+    ind.Common.RlcBearerRouting.v.NR = SS_context.SSCell_list[cell_index].nr_cellId;
 
     switch(_drb_data_type) {
     case DRB_PdcpSdu:
@@ -265,7 +266,7 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind)
         LOG_E(GNB_APP, "[SS_DRB] acpNrDrbProcessToSSEncSrv Failed\n");
         return;
     }
-    LOG_A(GNB_APP, "[SS_DRB] NR_DRB_COMMON_IND buffer msgSize=%d to NRCell %d\n", (int)msgSize, SS_context.nr_cellId);
+    LOG_A(GNB_APP, "[SS_DRB] NR_DRB_COMMON_IND buffer msgSize=%d to NRCell %d\n", (int)msgSize, SS_context.SSCell_list[cell_index].nr_cellId);
 
     printf("acpSendMsg: "); for (size_t i = 0; i < msgSize; i++) printf("%02x", (uint8_t)buffer[i]); printf("\n");
 
@@ -283,7 +284,7 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind)
     /* acpNrDrbProcessToSSFree0SrvClt(&ind); */
 }
 
-static void ss_task_handle_drb_pdu_req(struct NR_DRB_COMMON_REQ *req)
+static void ss_task_handle_drb_pdu_req(struct NR_DRB_COMMON_REQ *req, int cell_index)
 {
     assert(req);
     MessageDef *message_p = NULL;
@@ -360,7 +361,7 @@ static void ss_task_handle_drb_pdu_req(struct NR_DRB_COMMON_REQ *req)
                     LOG_E(GNB_APP, "[SS_DRB] only UMD NoSN/SN6Bit/SN12Bit are handled in RLC PDU in NR_DRB_COMMON_REQ\n");
                 }
                 SS_DRB_PDU_REQ(message_p).drb_id = req->Common.RoutingInfo.v.RadioBearerId.v.Drb;
-                SS_DRB_PDU_REQ(message_p).rnti = SS_context.ss_rnti_g;
+                SS_DRB_PDU_REQ(message_p).rnti = SS_context.SSCell_list[cell_index].ss_rnti_g;
 
                 if (!nr_vt_timer_push_msg(&req->Common.TimingInfo, req->U_Plane.SlotDataList.v[i].SlotOffset, task_id, instance_g, message_p))
                 {
@@ -391,7 +392,7 @@ static void ss_task_handle_drb_pdu_req(struct NR_DRB_COMMON_REQ *req)
                 LOG_A(GNB_APP, "[SS_DRB] Length of PDCP SDU received in NR_DRB_COMMON_REQ: %lu, SDU:\n", pdcpSdu->d);
 
                 SS_DRB_PDU_REQ(message_p).drb_id = req->Common.RoutingInfo.v.RadioBearerId.v.Drb;
-                SS_DRB_PDU_REQ(message_p).rnti = SS_context.ss_rnti_g;
+                SS_DRB_PDU_REQ(message_p).rnti = SS_context.SSCell_list[cell_index].ss_rnti_g;
                 SS_DRB_PDU_REQ(message_p).data_type = (uint8_t)DRB_PdcpSdu;
 
                 if (!nr_vt_timer_push_msg(&req->Common.TimingInfo, req->U_Plane.SlotDataList.v[i].SlotOffset, task_id, instance_g, message_p))
@@ -423,7 +424,7 @@ static void ss_task_handle_drb_pdu_req(struct NR_DRB_COMMON_REQ *req)
                 LOG_A(GNB_APP, "[SS_DRB] Length of SDAP SDU received in NR_DRB_COMMON_REQ: %lu\n", sdapSdu->d);
 
                 SS_DRB_PDU_REQ(message_p).drb_id = 1; /* This parameter is not actually used in SDAP entity */
-                SS_DRB_PDU_REQ(message_p).rnti = SS_context.ss_rnti_g;
+                SS_DRB_PDU_REQ(message_p).rnti = SS_context.SSCell_list[cell_index].ss_rnti_g;
                 SS_DRB_PDU_REQ(message_p).data_type = (uint8_t)DRB_SdapSdu;
                 if(req->Common.RoutingInfo.d == NR_RoutingInfo_Type_QosFlow){
                     SS_DRB_PDU_REQ(message_p).pdu_sessionId = req->Common.RoutingInfo.v.QosFlow.PDU_SessionId;
@@ -450,6 +451,7 @@ static void ss_task_handle_drb_pdu_req(struct NR_DRB_COMMON_REQ *req)
 
 static void ss_gNB_read_from_drb_socket(acpCtx_t ctx)
 {
+    int cell_index = 0;
     while (1)
     {
         size_t msgSize = size;
@@ -501,14 +503,22 @@ static void ss_gNB_read_from_drb_socket(acpCtx_t ctx)
                 LOG_E(GNB_APP, "[SS_DRB] acpNrDrbProcessFromSSDecSrv Failed\n");
                 break;
             }
-            if (SS_context.State >= SS_STATE_CELL_ACTIVE)
+            if(req->Common.CellId)
+            {
+              cell_index = get_gNB_cell_index(req->Common.CellId, SS_context.SSCell_list);
+              SS_context.SSCell_list[cell_index].nr_cellId = req->Common.CellId;
+              LOG_A(ENB_SS,"[SS_DRB] cell_index: %d nr_cellId: %d PhysicalCellId: %d \n",
+                cell_index,SS_context.SSCell_list[cell_index].nr_cellId,SS_context.SSCell_list[cell_index].PhysicalCellId);
+            }
+
+            if (SS_context.SSCell_list[cell_index].State >= SS_STATE_CELL_ACTIVE)
             {
                 LOG_A(GNB_APP, "[SS_DRB] NR_DRB_COMMON_REQ received in CELL_ACTIVE\n");
-                ss_task_handle_drb_pdu_req(req);
+                ss_task_handle_drb_pdu_req(req, cell_index);
             }
             else
             {
-                LOG_W(GNB_APP, "[SS_DRB] NR_DRB_COMMON_REQ received in SS state %d \n", SS_context.State);
+                LOG_W(GNB_APP, "[SS_DRB] NR_DRB_COMMON_REQ received in SS state %d \n", SS_context.SSCell_list[cell_index].State);
             }
 
             acpNrDrbProcessFromSSFreeSrv(req);
@@ -537,24 +547,30 @@ void *ss_gNB_drb_process_itti_msg(void *notUsed)
         {
             case SS_DRB_PDU_IND:
                 {
+                    int cell_index = 0;
+                    if(received_msg->ittiMsg.ss_drb_pdu_ind.physCellId) 
+                    {
+                      cell_index = get_gNB_cell_index_pci(received_msg->ittiMsg.ss_drb_pdu_ind.physCellId, SS_context.SSCell_list);
+                      LOG_A(ENB_SS,"[SS_DRB] cell_index in SS_DRB_PDU_IND: %d PhysicalCellId: %d \n",cell_index,SS_context.SSCell_list[cell_index].PhysicalCellId);
+                    }
                     task_id_t origin_task = ITTI_MSG_ORIGIN_ID(received_msg);
 
                     if (origin_task == TASK_SS_PORTMAN)
                     {
-                        LOG_D(GNB_APP, "[SS_DRB] DUMMY WAKEUP recevied from PORTMAN state %d\n", SS_context.State);
+                        LOG_D(GNB_APP, "[SS_DRB] DUMMY WAKEUP recevied from PORTMAN state %d\n", SS_context.SSCell_list[cell_index].State);
                     }
                     else
                     {
                         LOG_A(GNB_APP, "[SS_DRB] Received SS_DRB_PDU_IND from PDCP\n");
-                        if (SS_context.State >= SS_STATE_CELL_ACTIVE)
+                        if (SS_context.SSCell_list[cell_index].State >= SS_STATE_CELL_ACTIVE)
                         {
                             LOG_A(GNB_APP, "[SS_DRB] NR_DRB_COMMON_IND received in CELL_ACTIVE\n");
                             instance_g = ITTI_MSG_DESTINATION_INSTANCE(received_msg);
-                            ss_send_drb_data(&received_msg->ittiMsg.ss_drb_pdu_ind);
+                            ss_send_drb_data(&received_msg->ittiMsg.ss_drb_pdu_ind, cell_index);
                         }
                         else
                         {
-                            LOG_W(GNB_APP, "[SS_DRB] NR_DRB_COMMON_IND received in SS state %d\n", SS_context.State);
+                            LOG_W(GNB_APP, "[SS_DRB] NR_DRB_COMMON_IND received in SS state %d\n", SS_context.SSCell_list[cell_index].State);
                         }
                     }
                 };
