@@ -2958,8 +2958,9 @@ void rrc_gNB_trigger_release_bearer(int rnti)
 
   // don't use E1: bearer release is not implemented, call directly
   // into PDCP/SDAP and then send corresponding message via F1
-
   int drb_id = 2;
+  nr_pdcp_release_drb(ue->rrc_ue_id, drb_id);
+
   ue->established_drbs[1].status = DRB_INACTIVE;
   ue->DRB_ReleaseList = calloc(1, sizeof(*ue->DRB_ReleaseList));
   AssertFatal(ue->DRB_ReleaseList != NULL, "out of memory\n");
