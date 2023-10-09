@@ -195,7 +195,7 @@ static void  sl_prepare_phy_config(int module_id,
   phycfg->sl_carrier_config.sl_bandwidth = get_supported_bw_mhz(FR1, bw_index);
 
   phycfg->sl_carrier_config.sl_frequency =
-              from_nrarfcn(sl_band,carriercfg->subcarrierSpacing,pointA_ARFCN); // freq in kHz
+              from_nrarfcn(sl_band,carriercfg->subcarrierSpacing,pointA_ARFCN)/1000; // freq in kHz
 
   phycfg->sl_carrier_config.sl_grid_size = carriercfg->carrierBandwidth;
   //For sidelink offset to carrier is 0. hence not used
@@ -326,7 +326,8 @@ static void  sl_prepare_phy_config(int module_id,
 // RRC calls this API when RRC is configured with Sidelink PRE-configuration I.E
 int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
                                        NR_SL_PreconfigurationNR_r16_t *sl_preconfiguration,
-                                       uint8_t sync_source)
+                                       uint8_t sync_source,
+				       int src_id)
 {
 
   LOG_I(NR_MAC,"[UE%d] SL RRC->MAC CONFIG RECEIVED. Syncsource:%d\n",

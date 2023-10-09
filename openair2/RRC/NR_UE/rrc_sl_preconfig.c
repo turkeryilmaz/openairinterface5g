@@ -373,11 +373,47 @@ NR_SL_PreconfigurationNR_r16_t *prepare_NR_SL_PRECONFIGURATION(uint16_t num_tx_p
   sl_preconfig->sl_PreconfigEUTRA_AnchorCarrierFreqList_r16 = NULL;
 
   // NR sidelink radio bearer(s) configuration(s)
-  sl_preconfig->sl_RadioBearerPreConfigList_r16 = NULL; // fill later
+  sl_preconfig->sl_RadioBearerPreConfigList_r16 = calloc(1,sizeof(*sl_preconfig->sl_RadioBearerPreConfigList_r16)); // fill later
+  struct NR_SL_RadioBearerConfig_r16 *sl_RadioBearerConfig_r16 = calloc(1,sizeof(*sl_RadioBearerConfig_r16));
 
+  sl_RadioBearerConfig_r16->slrb_Uu_ConfigIndex_r16 = 1;
+  sl_RadioBearerConfig_r16->sl_SDAP_Config_r16 = NULL;
+  sl_RadioBearerConfig_r16->sl_TransRange_r16 = NULL;
+  sl_RadioBearerConfig_r16->sl_PDCP_Config_r16 = calloc(1,sizeof(*sl_RadioBearerConfig_r16));
+  sl_RadioBearerConfig_r16->sl_PDCP_Config_r16->sl_DiscardTimer_r16 = calloc(1,sizeof(*sl_RadioBearerConfig_r16->sl_PDCP_Config_r16->sl_DiscardTimer_r16));
+  *sl_RadioBearerConfig_r16->sl_PDCP_Config_r16->sl_DiscardTimer_r16 = NR_SL_PDCP_Config_r16__sl_DiscardTimer_r16_infinity;
+  sl_RadioBearerConfig_r16->sl_PDCP_Config_r16->sl_PDCP_SN_Size_r16 = calloc(1,sizeof(*sl_RadioBearerConfig_r16->sl_PDCP_Config_r16->sl_PDCP_SN_Size_r16));
+  *sl_RadioBearerConfig_r16->sl_PDCP_Config_r16->sl_PDCP_SN_Size_r16 = NR_SL_PDCP_Config_r16__sl_PDCP_SN_Size_r16_len12bits;
+  sl_RadioBearerConfig_r16->sl_PDCP_Config_r16->sl_OutOfOrderDelivery = NULL;
+  ASN_SEQUENCE_ADD(&sl_preconfig->sl_RadioBearerPreConfigList_r16->list,sl_RadioBearerConfig_r16);
+   
   // NR sidelink RLC bearer(s) configuration(s)
-  sl_preconfig->sl_RLC_BearerPreConfigList_r16 = NULL; // fill later
+  sl_preconfig->sl_RLC_BearerPreConfigList_r16 = calloc(1,sizeof(*sl_preconfig->sl_RLC_BearerPreConfigList_r16)); 
+  struct NR_SL_RLC_BearerConfig_r16 *sl_RLC_BearerConfig_r16 = calloc(1,sizeof(*sl_RLC_BearerConfig_r16));
+  // initialize with UM for now
+  sl_RLC_BearerConfig_r16->sl_RLC_BearerConfigIndex_r16 = 0;
+  sl_RLC_BearerConfig_r16->sl_ServedRadioBearer_r16 = NULL;
+  sl_RLC_BearerConfig_r16->sl_RLC_Config_r16 = calloc(1,sizeof(*sl_RLC_BearerConfig_r16->sl_RLC_Config_r16));
+  sl_RLC_BearerConfig_r16->sl_RLC_Config_r16->present = NR_SL_RLC_Config_r16_PR_sl_UM_RLC_r16;
+  sl_RLC_BearerConfig_r16->sl_RLC_Config_r16->choice.sl_UM_RLC_r16 = calloc(1,sizeof(*sl_RLC_BearerConfig_r16->sl_RLC_Config_r16->choice.sl_UM_RLC_r16));
+  sl_RLC_BearerConfig_r16->sl_RLC_Config_r16->choice.sl_UM_RLC_r16->sl_SN_FieldLengthUM_r16=calloc(1,sizeof(*sl_RLC_BearerConfig_r16->sl_MAC_LogicalChannelConfig_r16));  
 
+  *sl_RLC_BearerConfig_r16->sl_RLC_Config_r16->choice.sl_UM_RLC_r16->sl_SN_FieldLengthUM_r16=NR_SN_FieldLengthUM_size6;  
+  // Logical Channel Config for default link
+  sl_RLC_BearerConfig_r16->sl_MAC_LogicalChannelConfig_r16 = calloc(1,sizeof(*sl_RLC_BearerConfig_r16->sl_MAC_LogicalChannelConfig_r16));
+  sl_RLC_BearerConfig_r16->sl_MAC_LogicalChannelConfig_r16->sl_Priority_r16 = 1;
+  sl_RLC_BearerConfig_r16->sl_MAC_LogicalChannelConfig_r16->sl_PrioritisedBitRate_r16 = NR_SL_LogicalChannelConfig_r16__sl_PrioritisedBitRate_r16_infinity;
+  sl_RLC_BearerConfig_r16->sl_MAC_LogicalChannelConfig_r16->sl_BucketSizeDuration_r16 = NR_SL_LogicalChannelConfig_r16__sl_BucketSizeDuration_r16_ms5;
+  sl_RLC_BearerConfig_r16->sl_MAC_LogicalChannelConfig_r16->sl_ConfiguredGrantType1Allowed_r16 = NULL;
+  sl_RLC_BearerConfig_r16->sl_MAC_LogicalChannelConfig_r16->sl_HARQ_FeedbackEnabled_r16 = calloc(1,sizeof(*sl_RLC_BearerConfig_r16->sl_MAC_LogicalChannelConfig_r16->sl_HARQ_FeedbackEnabled_r16));
+  *sl_RLC_BearerConfig_r16->sl_MAC_LogicalChannelConfig_r16->sl_HARQ_FeedbackEnabled_r16 = NR_SL_LogicalChannelConfig_r16__sl_HARQ_FeedbackEnabled_r16_enabled;
+  sl_RLC_BearerConfig_r16->sl_MAC_LogicalChannelConfig_r16->sl_AllowedCG_List_r16 = NULL;
+  sl_RLC_BearerConfig_r16->sl_MAC_LogicalChannelConfig_r16->sl_AllowedSCS_List_r16 = NULL; 
+  sl_RLC_BearerConfig_r16->sl_MAC_LogicalChannelConfig_r16->sl_LogicalChannelGroup_r16 = calloc(1,sizeof(*sl_RLC_BearerConfig_r16->sl_MAC_LogicalChannelConfig_r16->sl_LogicalChannelGroup_r16)); 
+  *sl_RLC_BearerConfig_r16->sl_MAC_LogicalChannelConfig_r16->sl_LogicalChannelGroup_r16 = 4; 
+  sl_RLC_BearerConfig_r16->sl_MAC_LogicalChannelConfig_r16->sl_SchedulingRequestId_r16 = NULL;
+  sl_RLC_BearerConfig_r16->sl_MAC_LogicalChannelConfig_r16->sl_LogicalChannelSR_DelayTimerApplied_r16 = NULL;
+  ASN_SEQUENCE_ADD(&sl_preconfig->sl_RLC_BearerPreConfigList_r16->list,sl_RLC_BearerConfig_r16);
   //Measurement and reporting configuration
   sl_preconfig->sl_MeasPreConfig_r16 = NULL;
 
@@ -482,8 +518,32 @@ void nr_UE_configure_Sidelink(uint8_t id, uint8_t is_sync_source) {
                                  : SL_SYNC_SOURCE_LOCAL_TIMING;
   }
 
-  nr_rrc_mac_config_req_sl_preconfig(id, sl_preconfig, sync_source);
+  struct { 
+	  int srcid;
+	  int thirdOctet;
+	  int fourthOctet;
+  } ueinfo;
 
+  char aprefix[MAX_OPTNAME_SIZE*2 + 8];
+  paramdef_t SL_UEINFO[] = SL_UEINFO_DESC(ueinfo);
+  paramlist_def_t SL_UEINFOList = {SL_CONFIG_STRING_UEINFO, NULL, 0};
+  sprintf(aprefix, "%s.[%d]", SL_CONFIG_STRING_SL_PRECONFIGURATION,0);
+  config_getlist(&SL_UEINFOList,NULL,0,aprefix);
+  sprintf(aprefix, "%s.[%i].%s.[%i]", SL_CONFIG_STRING_SL_PRECONFIGURATION, 0, SL_CONFIG_STRING_UEINFO, 0);
+  config_get(SL_UEINFO,sizeof(SL_UEINFO)/sizeof(paramdef_t),aprefix);
+  LOG_I(NR_RRC,"SL L2 SRCid %x, SL ipv4 addr X.X.%d.%d\n",ueinfo.srcid,ueinfo.thirdOctet,ueinfo.fourthOctet);
+  nas_config(1,ueinfo.thirdOctet,ueinfo.fourthOctet,"oai_sl_tun");
+  nr_rrc_mac_config_req_sl_preconfig(id, sl_preconfig, sync_source, ueinfo.srcid);
+
+
+  // SL RadioBearers
+  for (int i=0;i<sl_preconfig->sidelinkPreconfigNR_r16.sl_RadioBearerPreConfigList_r16->list.count;i++) {
+    add_drb_sl(ueinfo.srcid,(NR_SL_RadioBearerConfig_r16_t *)sl_preconfig->sidelinkPreconfigNR_r16.sl_RadioBearerPreConfigList_r16->list.array[i],0,0,NULL,NULL);
+  }
+  // configure RLC
+  for (int i=0;i<sl_preconfig->sidelinkPreconfigNR_r16.sl_RLC_BearerPreConfigList_r16->list.count;i++) {
+    nr_rlc_add_drb_sl(ueinfo.srcid,1,(NR_SL_RLC_BearerConfig_r16_t *)sl_preconfig->sidelinkPreconfigNR_r16.sl_RLC_BearerPreConfigList_r16->list.array[i]);
+  }
   //TBD.. These should be chosen by RRC according to 3GPP 38.331 RRC specification.
   //Currently hardcoding the values to these
   uint16_t slss_id = 671, ssb_ta_index = 1;

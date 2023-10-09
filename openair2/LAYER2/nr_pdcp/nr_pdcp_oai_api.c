@@ -467,7 +467,7 @@ static void *ue_tun_read_thread(void *_)
       exit(1);
     }
 
-    LOG_D(PDCP, "%s(): nas_sock_fd read returns len %d\n", __func__, len);
+    LOG_I(PDCP, "%s(): nas_sock_fd read returns len %d\n", __func__, len);
 
     nr_pdcp_manager_lock(nr_pdcp_ue_manager);
     has_ue = nr_pdcp_get_first_ue_id(nr_pdcp_ue_manager, &rntiMaybeUEid);
@@ -884,6 +884,54 @@ void add_drb_am(int is_gnb, ue_id_t rntiMaybeUEid, ue_id_t reestablish_ue_id, st
   nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
 }
 
+void add_drb_sl(ue_id_t srcid, NR_SL_RadioBearerConfig_r16_t *s, int ciphering_algorithm, int integrity_algorithm, unsigned char *ciphering_key, unsigned char *integrity_key)
+{
+  nr_pdcp_entity_t *pdcp_drb;
+  nr_pdcp_ue_t *ue;
+
+  AssertFatal(s->sl_PDCP_Config_r16 != NULL, "SL PDCP config is not there!\n");
+  int slrb_id = s->slrb_Uu_ConfigIndex_r16;
+  int sn_size = decode_sn_size_ul(*s->sl_PDCP_Config_r16->sl_PDCP_SN_Size_r16);
+  int discard_timer = decode_discard_timer_sl(*s->sl_PDCP_Config_r16->sl_DiscardTimer_r16);
+
+  // these 3 are configured differently in Sidelink 
+  int has_integrity=0;
+  int has_ciphering=0;
+  int has_rohc=0;
+
+  int t_reordering = 20;
+
+
+
+  bool has_sdap = false;
+  bool is_sdap_DefaultDRB = false;
+  has_sdap = s->sl_SDAP_Config_r16 && s->sl_SDAP_Config_r16->sl_SDAP_Header_r16 == NR_SL_SDAP_Config_r16__sl_SDAP_Header_r16_present;
+
+  int is_sdap_DefaultRB = s->sl_SDAP_Config_r16 && s->sl_SDAP_Config_r16->sl_DefaultRB_r16 == true ? 1 : 0;
+  /* TODO(?): accept different UL and DL SN sizes? */
+
+
+  nr_pdcp_manager_lock(nr_pdcp_ue_manager);
+  ue = nr_pdcp_manager_get_ue(nr_pdcp_ue_manager, srcid);
+  if (ue->drb[slrb_id-1] != NULL) {
+    LOG_W(PDCP, "%s:%d:%s: warning DRB %d already exist for UE ID/RNTI %ld, do nothing\n", __FILE__, __LINE__, __FUNCTION__, slrb_id, srcid);
+  } else {
+    pdcp_drb = new_nr_pdcp_entity(NR_PDCP_DRB_AM, 0, slrb_id, 0,
+                                  has_sdap, has_sdap,
+                                  deliver_sdu_drb, ue, deliver_pdu_drb, ue,
+                                  sn_size, t_reordering, discard_timer,
+                                  has_ciphering ? ciphering_algorithm : 0,
+                                  has_integrity ? integrity_algorithm : 0,
+                                  has_ciphering ? ciphering_key : NULL,
+                                  has_integrity ? integrity_key : NULL);
+    nr_pdcp_ue_add_drb_pdcp_entity(ue, slrb_id, pdcp_drb);
+
+    LOG_I(PDCP, "%s:%d:%s: added slrb %d to UE ID %ld\n", __FILE__, __LINE__, __FUNCTION__, slrb_id, srcid);
+
+    new_nr_sdap_entity(0, has_sdap, has_sdap, srcid, 0, is_sdap_DefaultRB, slrb_id, 0, 0);
+  }
+  nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
+}
 static void add_drb(int is_gnb,
                     ue_id_t rntiMaybeUEid,
                     ue_id_t reestablish_ue_id,
@@ -1078,7 +1126,7 @@ bool nr_pdcp_data_req_drb(protocol_ctxt_t *ctxt_pP,
 {
   DevAssert(srb_flagP == SRB_FLAG_NO);
 
-  LOG_D(PDCP, "%s() called, size %d\n", __func__, sdu_buffer_size);
+  LOG_I(PDCP, "%s() called, size %d\n", __func__, sdu_buffer_size);
   nr_pdcp_ue_t *ue;
   nr_pdcp_entity_t *rb;
   ue_id_t ue_id = ctxt_pP->rntiMaybeUEid;

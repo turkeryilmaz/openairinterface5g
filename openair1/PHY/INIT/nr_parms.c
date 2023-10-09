@@ -424,7 +424,7 @@ int nr_init_frame_parms_ue_sl(NR_DL_FRAME_PARMS *fp,
   fp->ofdm_offset_divisor = ofdm_offset_divisor;
   fp->threequarter_fs = threequarter_fs;
 
-  fp->nr_band = get_band(config->sl_carrier_config.sl_frequency, 0);
+  fp->nr_band = get_band(config->sl_carrier_config.sl_frequency*1000, 0);
 
   fp->att_rx = config->sl_carrier_config.sl_num_rx_ant;
   fp->att_tx = config->sl_carrier_config.sl_num_tx_ant;

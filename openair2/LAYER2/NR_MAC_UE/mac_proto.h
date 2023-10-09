@@ -438,7 +438,8 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
 
 int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
                                        NR_SL_PreconfigurationNR_r16_t *sl_preconfiguration,
-                                       uint8_t sync_source);
+                                       uint8_t sync_source, 
+				       int srcid);
 
 void nr_rrc_mac_transmit_slss_req(module_id_t module_id,
                                   uint8_t *sl_mib_payload,
