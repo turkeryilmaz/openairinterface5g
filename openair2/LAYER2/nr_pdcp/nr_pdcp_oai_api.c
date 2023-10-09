@@ -1103,8 +1103,12 @@ void nr_pdcp_release_drb(ue_id_t ue_id, int drb_id)
     drb->release_entity(drb);
     drb->delete_entity(drb);
     ue->drb[drb_id - 1] = NULL;
-    nr_sdap_entity_t *sdap = nr_sdap_get_entity(ue_id, 10); /* default */
-    sdap->has_second_bearer = 0;
+    int sessionId = 1;
+    nr_sdap_entity_t *sdap = nr_sdap_get_entity(ue_id, sessionId); /* default */
+    if (sdap == NULL)
+      LOG_E(PDCP, "no SDAP entity for UE %ld PDU session ID %d\n", ue_id, sessionId);
+    else
+      sdap->has_second_bearer = 0;
   }
   else
     LOG_E(PDCP, "Attempting to release DRB%d but it is not configured\n", drb_id);
