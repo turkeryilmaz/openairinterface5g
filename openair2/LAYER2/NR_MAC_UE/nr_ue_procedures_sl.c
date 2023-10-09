@@ -584,13 +584,13 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
   int32_t pdu_len        = (int32_t)(rx_ind->rx_indication_body + pdu_id)->rx_slsch_pdu.pdu_length;
   uint8_t done           = 0;
   NR_UE_MAC_INST_t *mac = get_mac_inst(module_idP);
-
+  int frame = rx_ind->sfn;
+  int slot = rx_ind->slot;
   if (!pduP){
     return;
   }
 
   LOG_I(NR_MAC, "In %s : processing PDU %d (with length %d) of %d total number of PDUs...\n", __FUNCTION__, pdu_id, pdu_len, rx_ind->number_pdus);
-  mac->sl_info
 
   while (!done && pdu_len > 0){
     uint16_t mac_len = 0x0000;
@@ -604,12 +604,12 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
       case SL_SCH_LCID_4_19:
         if (!get_mac_len(pduP, pdu_len, &mac_len, &mac_subheader_len))
           return;
-        LOG_D(NR_MAC, "%4d.%2d : SLSCH -> LCID %d %d bytes\n", frameP, slot, rx_lcid, mac_len);
+        LOG_D(NR_MAC, "%4d.%2d : SLSCH -> LCID %d %d bytes\n", frame, slot, rx_lcid, mac_len);
 
         mac_rlc_data_ind(module_idP,
                          0,
                          0,
-                         frameP,
+                         frame,
                          ENB_FLAG_NO,
                          MBMS_FLAG_NO,
                          rx_lcid,
@@ -636,4 +636,6 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
       case SL_SCH_LCID_SL_DRX_CMD:
 	      LOG_W(NR_MAC,"Received unsupported SL LCID %d\n",rx_lcid);
 	      break;
+    }
+  }
 }

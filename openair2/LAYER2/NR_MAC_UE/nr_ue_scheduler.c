@@ -3250,24 +3250,26 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
   uint8_t ret_status = 0;
   uint16_t slot = sl_ind->slot_tx;
   uint16_t frame = sl_ind->frame_tx;
+  int lcid = 4;
+  int sdu_length = 0;
 
   if (sl_ind->slot_type != SIDELINK_SLOT_TYPE_TX) return false;
 
-
+/*
   if (slot > 9 && get_nrUE_params()->sync_ref) return false;
 
-  if (/*slot < 10 &&*/ !get_nrUE_params()->sync_ref) return false;
+  if (!get_nrUE_params()->sync_ref) return false;
 
   if ((frame&127) > 0) return false;
 
   if ((slot % 10) != 6) return false;
-
+*/
   LOG_D(NR_MAC,"[UE%d] SL-PSSCH SCHEDULER: Frame:SLOT %d:%d, slot_type:%d\n",
         sl_ind->module_id, frame, slot,sl_ind->slot_type);
 
   uint16_t slsch_pdu_length_max;
   tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu.slsch_payload = mac->slsch_payload;
-  bool schedule_slsch = nr_schedule_slsch(&mac->sci1_pdu,&mac->sci2_pdu,tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu.slsch_payload,NR_SL_SCI_FORMAT_2A,&slsch_pdu_length_max);
+  bool schedule_slsch = nr_schedule_slsch(frame,slot,&mac->sci1_pdu,&mac->sci2_pdu,tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu.slsch_payload,NR_SL_SCI_FORMAT_2A,&slsch_pdu_length_max);
 
   if (!schedule_slsch) return false;
 
@@ -3300,34 +3302,33 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
   
    
   //nr_ue_get_sdu_mac_ce_pre updates all mac_ce related header field related to length
-  mac_ce_p->tot_mac_ce_len = nr_ue_get_sdu_mac_ce_pre(module_idP, CC_id, frameP, subframe, gNB_index, ulsch_buffer, buflen, mac_ce_p);
+  mac_ce_p->tot_mac_ce_len = nr_ue_get_sdu_mac_ce_pre(0, 0, frame, slot, 0, pdu, buflen, mac_ce_p);
   mac_ce_p->total_mac_pdu_header_len = mac_ce_p->tot_mac_ce_len;
 
 
-  buflen_remain = buflen - (mac_ce_p->total_mac_pdu_header_len + mac_ce_p->sdu_length_total + sh_size);
+  int buflen_remain = buflen - (mac_ce_p->total_mac_pdu_header_len + mac_ce_p->sdu_length_total + sh_size);
 
-  LOG_D(NR_MAC, "In %s: [UE %d] [%d.%d] SL-DXCH -> SLSCH, RLC with LCID 0x%02x (TBS %d bytes, sdu_length_total %d bytes, MAC header len %d bytes, buflen_remain %d bytes)\n",
+  LOG_I(NR_MAC, "In %s: [UE] [%d.%d] SL-DXCH -> SLSCH, RLC with LCID 0x%02x (TBS %d bytes, sdu_length_total %d bytes, MAC header len %d bytes, buflen_remain %d bytes)\n",
           __FUNCTION__,
-          module_idP,
-          frameP,
-          subframe,
-          lcid,
+          slot,
+          frame,
+          4,
           buflen,
           mac_ce_p->sdu_length_total,
           mac_ce_p->tot_mac_ce_len,
           buflen_remain);
-
-    while (buflen_remain > 0){
+  int num_sdus=0;
+  while (buflen_remain > 0){
 
       // Pointer used to build the MAC sub-PDU headers in the ULSCH buffer for each SDU
       NR_MAC_SUBHEADER_LONG *header = (NR_MAC_SUBHEADER_LONG *) pdu;
 
       pdu += sh_size;
 
-      sdu_length = mac_rlc_data_req(module_idP,
+      sdu_length = mac_rlc_data_req(0,
                                     0,
                                     0,
-                                    frameP,
+                                    frame,
                                     ENB_FLAG_NO,
                                     MBMS_FLAG_NO,
                                     lcid,
@@ -3344,11 +3345,11 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
 
       if (sdu_length > 0) {
 
-        LOG_D(NR_MAC, "In %s: [UE %d] [%d.%d] SL-DXCH -> SLSCH, Generating SL MAC sub-PDU for SDU %d, length %d bytes, RB with LCID 0x%02x (buflen (TBS) %d bytes)\n",
+        LOG_I(NR_MAC, "In %s: [UE %d] [%d.%d] SL-DXCH -> SLSCH, Generating SL MAC sub-PDU for SDU %d, length %d bytes, RB with LCID 0x%02x (buflen (TBS) %d bytes)\n",
           __FUNCTION__,
-          module_idP,
-          frameP,
-          subframe,
+          0,
+          frame,
+          slot,
           num_sdus + 1,
           sdu_length,
           lcid,
@@ -3379,7 +3380,6 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
       }
 
       buflen_remain = buflen - (mac_ce_p->total_mac_pdu_header_len + mac_ce_p->sdu_length_total + sh_size);
-    }
   }
   return true;
 }
