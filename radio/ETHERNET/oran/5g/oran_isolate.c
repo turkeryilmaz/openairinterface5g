@@ -303,7 +303,7 @@ void make_args(char **argv, int *argc, char *string)
   {
     p=strchr(tmp, '\n');
     if (p!=NULL) *p=0x0;
-    argv[i] = strdup(tmp);
+    argv[i++] = strdup(tmp);
   }
   *argc=i;
 }
