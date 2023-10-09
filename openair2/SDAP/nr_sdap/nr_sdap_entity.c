@@ -101,7 +101,7 @@ static bool nr_sdap_tx_entity(nr_sdap_entity_t *entity,
     LOG_D(SDAP, "TX - DRB ID: %ld does not have SDAP\n", entity->qfi2drb_table[qfi].drb_id);
 
 // Flag only for the gNB defined
-#ifdef MIR_FLAG
+//#ifdef MIR_FLAG
   // mir 
   // Naive L4/L3 packet classifier
   struct iphdr* hdr = (struct iphdr*)sdu_buffer;
@@ -112,25 +112,29 @@ static bool nr_sdap_tx_entity(nr_sdap_entity_t *entity,
     uint16_t const dst_port = ntohs(tcp->dest);
     //printf("TCP pkt src_port %d dst_port %d \n", src_port, dst_port);
     
-    if (entity->is_gnb && entity->has_second_bearer && dst_port != 10101) {
+    if (entity->is_gnb && entity->has_second_bearer && dst_port != 10101 && dst_port != 5201) {
       sdap_drb_id += 1;  
     }                  
+    //printf("TCP to bearer %ld\n", sdap_drb_id);
   } else if(hdr->protocol == IPPROTO_UDP){
       struct udphdr *udp = (struct udphdr *)((uint32_t*)hdr + hdr->ihl);
       uint16_t const src_port = ntohs(udp->source);
       uint16_t const dst_port = ntohs(udp->dest);
      // printf("UDP pkt src_port %d dst_port %d \n", src_port, dst_port);
+    if (entity->is_gnb && entity->has_second_bearer && dst_port != 10101 && dst_port != 5201 && dst_port != 2154 && dst_port != 2153) {
+      sdap_drb_id += 1;
+    }
 
   } else if(hdr->protocol == IPPROTO_ICMP){
     //printf("Ping packet detected \n");
     if (entity->is_gnb && entity->has_second_bearer) {
-      sdap_drb_id += 1; 
+      sdap_drb_id += 1;
     }
-    printf("ping to bearer %ld\n", sdap_drb_id);
+    //printf("ping to bearer %ld\n", sdap_drb_id);
     //cnt++;
   }
 
-#endif
+//#endif
 
 //label:
   ret = nr_pdcp_data_req_drb(ctxt_p,
