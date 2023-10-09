@@ -560,6 +560,7 @@ typedef struct {
 
   // Estimated Doppler frequency shift from the DMRS
   int32_t DopplerEst;
+  float DopplerEstTot;
 
   /// Timing Advance updates variables
   /// Timing advance update computed from the TA command signalled from gNB

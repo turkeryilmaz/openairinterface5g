@@ -946,7 +946,7 @@ float PainterWidgetUE::getValue()
       return (float)getKPIUE()->nofRBs;
 
     case PlotTypeUE::frequencyOffset:
-      return (float)this->ue->common_vars.freq_offset;
+      return (float)this->ue->DopplerEstTot;        //common_vars.freq_offset;
 
     case PlotTypeUE::timingAdvance:
       return (float)this->ue->timing_advance;

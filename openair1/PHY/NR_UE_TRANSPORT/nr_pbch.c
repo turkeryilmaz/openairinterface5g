@@ -414,7 +414,6 @@ unsigned char sign(int8_t x) {
 
 const uint8_t pbch_deinterleaving_pattern[32] = {28, 0, 31, 30, 7,  29, 25, 27, 5,  8,  24, 9,  10, 11, 12, 13,
                                                  1,  4, 3,  14, 15, 16, 17, 2,  26, 18, 19, 20, 21, 22, 6,  23};
-
 int nr_rx_pbch(PHY_VARS_NR_UE *ue,
                UE_nr_rxtx_proc_t *proc,
                int estimateSz,
@@ -532,6 +531,10 @@ int nr_rx_pbch(PHY_VARS_NR_UE *ue,
       //   (DopplerErr-DopplerErrLast)*D_ScalingFN/D_ScalingFD); //PID controller
       ue->DopplerEst = (int32_t)( (DopplerErr * FO_PScaling) + (Doppler_I_Ctrl * FO_IScaling) ); //PI controller
       DopplerErrLast = DopplerErr;
+	  ue->DopplerEstTot += (float)ue->DopplerEst;
+	  
+	  //extern int commonDoppler;
+	  //LOG_A(PHY, "commonDoppler: %d, DopplerEst: %f, ue->DopplerEst: %d, ue->DopplerEstTot: %f\n", commonDoppler, DopplerEst, ue->DopplerEst, ue->DopplerEstTot);
 
 #ifdef DEBUG_PBCH
       double rx_gain = openair0_cfg[0].rx_gain[0];

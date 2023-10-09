@@ -74,8 +74,8 @@
   {"PET" ,                         CONFIG_HLP_PathEnd,         0,               .u16ptr=&pathEndingTime,                     .defintval=1280,   TYPE_UINT16,   0}, \
   {"ue_PosY" ,                     CONFIG_HLP_uePosY,          0,               .iptr=&uePosY,                               .defintval=0,      TYPE_INT,      0}, \
   {"TC" ,                          CONFIG_HLP_TDriftComp,      0,               .iptr=&tdriftComp,                           .defintval=1,      TYPE_INT,      0}, \
-  {"FOP" ,                         CONFIG_HLP_FO_PScaling,     0,               .dblptr=&FO_PScaling,                        .defdblval=0.33,   TYPE_DOUBLE,   0}, \
-  {"FOI" ,                         CONFIG_HLP_FO_IScaling,     0,               .dblptr=&FO_IScaling,                        .defdblval=0.5,    TYPE_DOUBLE,   0}, \
+  {"FOP" ,                         CONFIG_HLP_FO_PScaling,     0,               .dblptr=&FO_PScaling,                        .defdblval=0,   TYPE_DOUBLE,   0}, \
+  {"FOI" ,                         CONFIG_HLP_FO_IScaling,     0,               .dblptr=&FO_IScaling,                        .defdblval=0,    TYPE_DOUBLE,   0}, \
   {"TOP" ,                         CONFIG_HLP_TP_Scaling,      0,               .dblptr=&TO_PScaling,                        .defdblval=1.0,    TYPE_DOUBLE,   0}, \
   {"TOI" ,                         CONFIG_HLP_TI_Scaling,      0,               .dblptr=&TO_IScaling,                        .defdblval=0.1,    TYPE_DOUBLE,   0}, \
   {"TOII",                         CONFIG_HLP_TO_Iinit,        0,               .iptr=&TO_IScalingInit,                      .defintval=0,      TYPE_INT,      0},  \

@@ -190,6 +190,7 @@ void init_nr_prs_ue_vars(PHY_VARS_NR_UE *ue)
   init_nr_gold_prs(ue);
 }
 
+extern int commonDoppler;
 int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
 {
   // create shortcuts
@@ -383,6 +384,7 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
 
   // set the initial frequency offset to 0
   ue->DopplerEst = 0;
+  ue->DopplerEstTot = (float)commonDoppler;
   
   return 0;
 }
