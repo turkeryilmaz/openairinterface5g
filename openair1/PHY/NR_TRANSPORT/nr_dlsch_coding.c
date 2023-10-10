@@ -349,7 +349,7 @@ int nr_dlsch_encoding(PHY_VARS_gNB *gNB,
   impp.BG = rel15->maintenance_parms_v3.ldpcBaseGraph;
 
   start_meas(dlsch_segmentation_stats);
-  impp.Kb = nr_segmentation(harq->b, harq->c, B, &impp.n_segments, &impp.K, impp.Zc, &impp.F, impp.BG);
+  impp.Kb = nr_segmentation(harq->b, harq->c, B, &impp.n_segments, &impp.K, &impp.Zc, &impp.F, impp.BG);
   stop_meas(dlsch_segmentation_stats);
 
   if (impp.n_segments>MAX_NUM_NR_DLSCH_SEGMENTS_PER_LAYER*rel15->nrOfLayers) {
