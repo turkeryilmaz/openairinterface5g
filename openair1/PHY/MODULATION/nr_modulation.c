@@ -23,6 +23,10 @@
 #include "PHY/NR_REFSIG/nr_mod_table.h"
 #include "executables/softmodem-common.h"
 
+#if defined(__SSE2__)
+#include <immintrin.h>
+#endif
+
 //Table 6.3.1.5-1 Precoding Matrix W 1 layer 2 antenna ports 'n' = -1 and 'o' = -j
 const char nr_W_1l_2p[6][2][1] = {
     {{'1'}, {'0'}}, // pmi 0
@@ -110,6 +114,50 @@ const char nr_W_4l_4p[5][4][4] = {
     {{'1', '1', '1', '1'}, {'1', 'n', '1', 'n'}, {'j', 'j', 'o', 'o'}, {'j', 'o', 'o', 'j'}} // pmi 4
 };
 
+
+
+#if defined(__SSE2__)
+static
+__m256i unpack12to16(const uint8_t *addr)
+{
+  // It start loading from addr-4. It consumes 24 bytes starting from addr
+  // Don't use this for the first vector of a page-aligned array, or the last
+  __m256i v = _mm256_loadu_si256( (const __m256i*)(addr-4) );
+  // v = [ x H G F E | D C B A x ]   where each letter is a 3-byte pair of two 12-bytes fields, and x is 4 bytes of garbage we load but ignore
+
+  // From 3 bytes, expand to 4 bytes i.e., 4,5,6 -> 4,5,5,6 
+  const __m256i bytegrouping =
+    _mm256_setr_epi8(4,5, 5,6, 7,8, 8,9, 10,11, 11,12, 13,14, 14,15, // low half uses last 12B
+        0,1, 1,2, 3,4, 4,5, 6,7, 7,8, 9,10, 10,11); // high half uses first 12B
+                                                    //
+  v = _mm256_shuffle_epi8(v, bytegrouping);
+  // each 16-bit chunk has the bits it needs, but not in the right position
+
+  // in each chunk of 8 nibbles (4 bytes): e.g., 4,5,5,6 -> [ f e d c | d c b a ]
+  __m256i hi = _mm256_srli_epi16(v, 4);                              // [ 0 f e d | xxxx ]
+  __m256i lo = _mm256_and_si256(v, _mm256_set1_epi32(0x00000FFF));  // [ 0000 | 0 c b a ]
+
+  return _mm256_blend_epi16(lo, hi, 0b10101010);
+  // nibbles in each pair of epi16: [ 0 f e d | 0 c b a ] 
+}
+
+// consumes 24 bytes starting at addr. 
+static
+__m256i unpack6to8(const uint8_t *addr)
+{
+  __m256i const v = unpack12to16(addr); // [ 0000 cccc | ccaa aaaa] in every epi16 bits positions
+
+  __m256i const m0 = _mm256_set1_epi16(0b00000000000111111);
+  __m256i const lo = v & m0; // [ 0000 0000 | 00aa aaaa ]
+  __m256i const hi = _mm256_slli_epi16(v, 2);       // [ 00cc cccc | aaaa aa00 ]
+
+  __m256i const m1 = _mm256_set1_epi16(0xFF00);
+  return _mm256_blendv_epi8(lo, hi, m1); // [00cc cccc | 00aa aaaa]
+}
+#endif
+
+
+
 void nr_modulation(uint32_t *in,
                    uint32_t length,
                    uint16_t mod_order,
@@ -171,6 +219,15 @@ void nr_modulation(uint32_t *in,
     return;
 
   case 6:
+#if defined(__SSE2__)
+    for(i =0 ; i < length - 3 * 64; i += 3 * 64 ){
+       // Consume 24 bytes and unpack them in 32 bytes.
+       __m256i const v = unpack12to16((uint8_t*)&in[i/8]);
+       for(int j = 0; j < 16; ++j){
+         *out64++ = nr_64qam_mod_table[((int16_t*)&v)[j]];
+       } 
+    } 
+#else
     for (i = 0; i < length - 3 * 64; i += 3 * 64) {
       uint64_t x = *in64++;
       uint64_t x1 = x & 0xfff;
@@ -212,6 +269,7 @@ void nr_modulation(uint32_t *in,
       x2 = ((x>>52)&0xff0) | (x2>>60);
       *out64++ = nr_64qam_mod_table[x2];
     }
+#endif  
     while (i + 24 <= length) {
       uint32_t xx = 0;
       memcpy(&xx, in_bytes + i / 8, 3);
