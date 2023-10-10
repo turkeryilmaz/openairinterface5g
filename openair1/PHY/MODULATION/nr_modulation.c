@@ -141,6 +141,7 @@ __m256i unpack12to16(const uint8_t *addr)
   // nibbles in each pair of epi16: [ 0 f e d | 0 c b a ] 
 }
 
+/*
 // consumes 24 bytes starting at addr. 
 static
 __m256i unpack6to8(const uint8_t *addr)
@@ -154,6 +155,7 @@ __m256i unpack6to8(const uint8_t *addr)
   __m256i const m1 = _mm256_set1_epi16(0xFF00);
   return _mm256_blendv_epi8(lo, hi, m1); // [00cc cccc | 00aa aaaa]
 }
+*/
 #endif
 
 
@@ -167,7 +169,9 @@ void nr_modulation(uint32_t *in,
   int32_t* nr_mod_table32;
   int32_t* out32 = (int32_t*) out;
   uint8_t* in_bytes = (uint8_t*) in;
+#ifndef __SSE2__
   uint64_t* in64 = (uint64_t*) in;
+#endif
   int64_t* out64 = (int64_t*) out;
   uint32_t i;
 
