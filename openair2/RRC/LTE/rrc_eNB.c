@@ -7432,6 +7432,10 @@ rrc_eNB_decode_ccch(
 
                 LOG_I(PHY, "remove RNTI %04x\n", ue_context_p->ue_context.rnti);
                 rrc_mac_remove_ue(ctxt_pP->module_id, ue_context_p->ue_context.rnti);
+                protocol_ctxt_t  ctxt = *ctxt_pP;
+                ctxt.rntiMaybeUEid = ue_context_p->ue_context.rnti;
+                rrc_rlc_remove_ue(&ctxt);
+                pdcp_remove_UE(&ctxt);
 
                 stmsi_received=1;
                 /* replace rnti in the context */
