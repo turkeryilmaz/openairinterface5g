@@ -511,11 +511,7 @@ static void rrc_gNB_process_RRCSetupComplete(const protocol_ctxt_t *const ctxt_p
   ue_context_pP->ue_context.StatusRrc = NR_RRC_CONNECTED;
   AssertFatal(ctxt_pP->rntiMaybeUEid == ue_context_pP->ue_context.rrc_ue_id, "logic bug: inconsistent IDs, must use CU UE ID!\n");
 
-  if (get_softmodem_params()->sa) {
-    rrc_gNB_send_NGAP_NAS_FIRST_REQ(ctxt_pP, ue_context_pP, rrcSetupComplete);
-  } else {
-    rrc_gNB_generate_SecurityModeCommand(ctxt_pP, ue_context_pP);
-  }
+  rrc_gNB_send_NGAP_NAS_FIRST_REQ(ctxt_pP, ue_context_pP, rrcSetupComplete);
 }
 
 //-----------------------------------------------------------------------------
