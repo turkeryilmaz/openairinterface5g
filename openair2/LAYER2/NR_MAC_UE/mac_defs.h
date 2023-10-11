@@ -621,6 +621,7 @@ typedef struct {
   nr_sci_pdu_t sci2_pdu;
   uint8_t slsch_payload[16384];
   time_stats_t rlc_data_req;
+  int src_id;
 } NR_UE_MAC_INST_t;
 
 /*@}*/

@@ -3271,7 +3271,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
 
   uint16_t slsch_pdu_length_max;
   tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu.slsch_payload = mac->slsch_payload;
-  bool schedule_slsch = nr_schedule_slsch(frame,slot,&mac->sci1_pdu,&mac->sci2_pdu,tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu.slsch_payload,NR_SL_SCI_FORMAT_2A,&slsch_pdu_length_max);
+  bool schedule_slsch = nr_schedule_slsch(mac,frame,slot,&mac->sci1_pdu,&mac->sci2_pdu,tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu.slsch_payload,NR_SL_SCI_FORMAT_2A,&slsch_pdu_length_max);
 
   if (!schedule_slsch) return false;
 

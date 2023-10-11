@@ -334,6 +334,7 @@ int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
                                                 module_id, sync_source);
 
   NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
+  mac->src_id = src_id;
   AssertFatal(sl_preconfiguration !=NULL,"SL-Preconfig Cannot be NULL");
   AssertFatal(mac, "mac should have an instance");
 
