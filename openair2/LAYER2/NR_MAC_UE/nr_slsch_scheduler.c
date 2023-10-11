@@ -42,7 +42,7 @@
 
 bool nr_schedule_slsch(int frameP,int slotP, nr_sci_pdu_t *sci_pdu,nr_sci_pdu_t *sci2_pdu,uint8_t *slsch_pdu,nr_sci_format_t format2, uint16_t *slsch_pdu_length_max) {
 
-   mac_rlc_status_resp_t rlc_status = mac_rlc_status_ind(0, 0, 0,frameP,slotP,ENB_FLAG_NO,MBMS_FLAG_NO, 4, 0, 0);
+   mac_rlc_status_resp_t rlc_status = mac_rlc_status_ind(0, 0, 0,frameP,slotP,ENB_FLAG_NO,MBMS_FLAG_NO, 5, 0, 0);
 
 //   rlc_status.bytes_in_buffer = 0;
    *slsch_pdu_length_max = 0;

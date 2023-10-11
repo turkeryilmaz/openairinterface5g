@@ -771,7 +771,7 @@ static void add_drb_am(int rnti, int drb_id, const NR_RLC_BearerConfig_t *rlc_Be
                                      sn_field_length);
     nr_rlc_ue_add_drb_rlc_entity(ue, drb_id, nr_rlc_am);
 
-    LOG_I(RLC, "%s:%d:%s: added drb %d to UE with RNTI 0x%x\n", __FILE__, __LINE__, __FUNCTION__, drb_id, rnti);
+    LOG_I(RLC, "%s:%d:%s: added drb %d to UE with RNTI 0x%x\n", __FILE__, __LINE__, __FUNCTION__, drb_id,rnti);
   }
   nr_rlc_manager_unlock(nr_rlc_ue_manager);
 }
@@ -925,7 +925,7 @@ static void add_drb_um_sl(int src_id, int drb_id, const NR_SL_RLC_BearerConfig_r
   logical_channel_group = *l->sl_LogicalChannelGroup_r16;
 
   /* TODO: accept other values? */
-  if (logical_channel_group != 4) {
+  if (logical_channel_group != 1) {
     LOG_E(RLC, "%s:%d:%s: fatal error\n", __FILE__, __LINE__, __FUNCTION__);
     exit(1);
   }
@@ -983,7 +983,7 @@ void nr_rlc_add_drb_sl(int srcid, int drb_id, const NR_SL_RLC_BearerConfig_r16_t
           __FILE__, __LINE__, __FUNCTION__);
     exit(1);
   }
-  LOG_I(RLC, "%s:%s:%d: added SL_DRB to UE with SRCID 0x%x\n", __FILE__, __FUNCTION__, __LINE__, srcid);
+  LOG_I(RLC, "%s:%s:%d: added SL_DRB %d to UE with SRCID 0x%x\n", __FILE__, __FUNCTION__, __LINE__, drb_id,srcid);
 }
 /* Dummy function due to dependency from LTE libraries */
 rlc_op_status_t rrc_rlc_config_asn1_req (const protocol_ctxt_t   * const ctxt_pP,

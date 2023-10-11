@@ -392,7 +392,8 @@ NR_SL_PreconfigurationNR_r16_t *prepare_NR_SL_PRECONFIGURATION(uint16_t num_tx_p
   struct NR_SL_RLC_BearerConfig_r16 *sl_RLC_BearerConfig_r16 = calloc(1,sizeof(*sl_RLC_BearerConfig_r16));
   // initialize with UM for now
   sl_RLC_BearerConfig_r16->sl_RLC_BearerConfigIndex_r16 = 0;
-  sl_RLC_BearerConfig_r16->sl_ServedRadioBearer_r16 = NULL;
+  sl_RLC_BearerConfig_r16->sl_ServedRadioBearer_r16 = calloc(1,sizeof(*sl_RLC_BearerConfig_r16->sl_ServedRadioBearer_r16));
+  *sl_RLC_BearerConfig_r16->sl_ServedRadioBearer_r16 = 1;
   sl_RLC_BearerConfig_r16->sl_RLC_Config_r16 = calloc(1,sizeof(*sl_RLC_BearerConfig_r16->sl_RLC_Config_r16));
   sl_RLC_BearerConfig_r16->sl_RLC_Config_r16->present = NR_SL_RLC_Config_r16_PR_sl_UM_RLC_r16;
   sl_RLC_BearerConfig_r16->sl_RLC_Config_r16->choice.sl_UM_RLC_r16 = calloc(1,sizeof(*sl_RLC_BearerConfig_r16->sl_RLC_Config_r16->choice.sl_UM_RLC_r16));
@@ -410,7 +411,7 @@ NR_SL_PreconfigurationNR_r16_t *prepare_NR_SL_PRECONFIGURATION(uint16_t num_tx_p
   sl_RLC_BearerConfig_r16->sl_MAC_LogicalChannelConfig_r16->sl_AllowedCG_List_r16 = NULL;
   sl_RLC_BearerConfig_r16->sl_MAC_LogicalChannelConfig_r16->sl_AllowedSCS_List_r16 = NULL; 
   sl_RLC_BearerConfig_r16->sl_MAC_LogicalChannelConfig_r16->sl_LogicalChannelGroup_r16 = calloc(1,sizeof(*sl_RLC_BearerConfig_r16->sl_MAC_LogicalChannelConfig_r16->sl_LogicalChannelGroup_r16)); 
-  *sl_RLC_BearerConfig_r16->sl_MAC_LogicalChannelConfig_r16->sl_LogicalChannelGroup_r16 = 4; 
+  *sl_RLC_BearerConfig_r16->sl_MAC_LogicalChannelConfig_r16->sl_LogicalChannelGroup_r16 = 1; 
   sl_RLC_BearerConfig_r16->sl_MAC_LogicalChannelConfig_r16->sl_SchedulingRequestId_r16 = NULL;
   sl_RLC_BearerConfig_r16->sl_MAC_LogicalChannelConfig_r16->sl_LogicalChannelSR_DelayTimerApplied_r16 = NULL;
   ASN_SEQUENCE_ADD(&sl_preconfig->sl_RLC_BearerPreConfigList_r16->list,sl_RLC_BearerConfig_r16);
