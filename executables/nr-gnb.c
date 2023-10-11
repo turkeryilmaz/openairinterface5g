@@ -506,7 +506,11 @@ void init_eNB_afterRU(void) {
     LOG_I(PHY,"RC.nb_nr_CC[inst:%d]:%p\n", inst, RC.gNB[inst]);
 
     gNB = RC.gNB[inst];
+#if 1
+    gNB->ldpc_fpga_flag = ldpc_offload_flag;
+#else
     gNB->ldpc_offload_flag = ldpc_offload_flag;
+#endif
 
     phy_init_nr_gNB(gNB);
 

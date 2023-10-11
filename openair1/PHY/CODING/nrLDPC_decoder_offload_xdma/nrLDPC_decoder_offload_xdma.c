@@ -787,8 +787,14 @@ int nrLDPC_decoder_FPGA_PYM(int8_t* buf_in, int8_t* buf_out, DecIFConf dec_conf)
 
   uint8_t i_LS;
 
-  /*Init*/
-  test_dma_init();
+  static int init_flag = 0;
+  if (init_flag == 0) {
+    /*Init*/
+    test_dma_init();
+    init_flag = 1;
+  } else {
+    dma_reset();
+  }
 
   clock_gettime(CLOCK_MONOTONIC, &ts_start0); // time start0
   // LDPC input parameter
