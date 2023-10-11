@@ -3355,13 +3355,6 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
         header->LCID = lcid;
         header->L = htons(sdu_length);
 
-        #ifdef ENABLE_SLMAC_PAYLOAD_DEBUG
-        LOG_I(NR_MAC, "In %s: dumping MAC sub-header with length %d: \n", __FUNCTION__, sh_size);
-        log_dump(NR_MAC, header, sh_size, LOG_DUMP_CHAR, "\n");
-        LOG_I(NR_MAC, "In %s: dumping MAC SDU with length %d \n", __FUNCTION__, sdu_length);
-        log_dump(NR_MAC, pdu, sdu_length, LOG_DUMP_CHAR, "\n");
-        #endif
-
         pdu += sdu_length;
         mac_ce_p->sdu_length_total += sdu_length;
         mac_ce_p->total_mac_pdu_header_len += sh_size;
@@ -3375,6 +3368,20 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
       }
 
       buflen_remain = buflen - (mac_ce_p->total_mac_pdu_header_len + mac_ce_p->sdu_length_total + sh_size);
+  if (buflen_remain > 0) {  
+     LOG_D(NR_MAC, "In %s filling remainder %d bytes to the UL PDU \n", __FUNCTION__, buflen_remain);
+     ((NR_MAC_SUBHEADER_FIXED *) pdu)->R = 0;
+     ((NR_MAC_SUBHEADER_FIXED *) pdu)->LCID = SL_SCH_LCID_SL_PADDING;
+     pdu++;
+     buflen_remain--;
+
+     if (IS_SOFTMODEM_RFSIM) {
+       for (int j = 0; j < buflen_remain; j++) {
+          pdu[j] = (unsigned char) rand();
+       }
+     } else {
+       memset(pdu, 0, buflen_remain);
+     }						     }
   }
   return true;
 }
