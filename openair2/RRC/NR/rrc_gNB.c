@@ -2093,7 +2093,6 @@ static void rrc_CU_process_ue_context_modification_response(MessageDef *msg_p, i
     }
 
     // send the F1 response message up to update F1-U tunnel info
-    // it seems the rrc transaction id (xid) is not needed here
     rrc->cucp_cuup.bearer_context_mod(&req, instance);
   }
 

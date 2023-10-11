@@ -476,10 +476,8 @@ int rrc_gNB_process_NGAP_INITIAL_CONTEXT_SETUP_REQ(MessageDef *msg_p, instance_t
     rrc_gNB_generate_SecurityModeCommand(&ctxt, ue_context_p, 0, NULL);
   }
 
-  // in case, send the S1SP initial context response if it is not sent with the attach complete message
   if (UE->StatusRrc == NR_RRC_RECONFIGURED) {
-    LOG_I(NR_RRC, "Sending rrc_gNB_send_NGAP_INITIAL_CONTEXT_SETUP_RESP, cause %ld\n", UE->reestablishment_cause);
-    rrc_gNB_send_NGAP_INITIAL_CONTEXT_SETUP_RESP(&ctxt, ue_context_p);
+    AssertFatal(false, "for Robert: rrc_gNB_send_NGAP_INITIAL_CONTEXT_SETUP_RESP() here?");
   }
 
   return 0;
