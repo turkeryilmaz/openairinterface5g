@@ -712,12 +712,12 @@ int8_t sl_handle_scheduled_response(nr_scheduled_response_t *scheduled_response)
       case SL_NR_CONFIG_TYPE_RX_PSSCH_SCI:
         phy_data->sl_rx_action = SL_NR_CONFIG_TYPE_RX_PSSCH_SCI;
         phy_data->nr_sl_pssch_sci_pdu = sl_rx_config->sl_rx_config_list[0].rx_sci2_config_pdu;
-        LOG_I(NR_PHY, "Recvd CONFIG_TYPE_RX_PSSCH\n");
+        LOG_D(NR_PHY, "Recvd CONFIG_TYPE_RX_PSSCH\n");
         break;
       case SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH:
         phy_data->sl_rx_action = SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH;
         phy_data->nr_sl_pssch_pdu = sl_rx_config->sl_rx_config_list[0].rx_pssch_config_pdu;
-        LOG_I(NR_PHY, "Recvd CONFIG_TYPE_RX_PSSCH\n");
+        LOG_D(NR_PHY, "Recvd CONFIG_TYPE_RX_PSSCH\n");
         break;
       default:
         AssertFatal(0,"Incorrect sl_rx config req pdutype \n");
@@ -751,8 +751,8 @@ int8_t sl_handle_scheduled_response(nr_scheduled_response_t *scheduled_response)
       case SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH:
         phy_data_tx->sl_tx_action = SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH;
         phy_data_tx->nr_sl_pssch_pscch_pdu = sl_tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu;
-        LOG_I(NR_PHY,"sl_handle_scheduled_response: Received CONFIG_TYPE_TX_PSCCH_PSSCH, PSCCH startRB %d, PSCCH numRB %d\n",phy_data_tx->nr_sl_pssch_pscch_pdu.startrb,phy_data_tx->nr_sl_pssch_pscch_pdu.pscch_numrbs);
-        LOG_I(NR_PHY,"format 1A length %d :%llx, format 2x length %d : %llx, PSSCH mcs %d, PSSCH tbslrm %d\n",phy_data_tx->nr_sl_pssch_pscch_pdu.pscch_sci_payload_len,
+        LOG_D(NR_PHY,"sl_handle_scheduled_response: Received CONFIG_TYPE_TX_PSCCH_PSSCH, PSCCH startRB %d, PSCCH numRB %d\n",phy_data_tx->nr_sl_pssch_pscch_pdu.startrb,phy_data_tx->nr_sl_pssch_pscch_pdu.pscch_numrbs);
+        LOG_D(NR_PHY,"format 1A length %d :%llx, format 2x length %d : %llx, PSSCH mcs %d, PSSCH tbslrm %d\n",phy_data_tx->nr_sl_pssch_pscch_pdu.pscch_sci_payload_len,
               (unsigned long long)*phy_data_tx->nr_sl_pssch_pscch_pdu.pscch_sci_payload,
               phy_data_tx->nr_sl_pssch_pscch_pdu.sci2_payload_len,
               (unsigned long long)*phy_data_tx->nr_sl_pssch_pscch_pdu.sci2_payload,

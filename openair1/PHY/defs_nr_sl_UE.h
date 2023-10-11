@@ -124,6 +124,47 @@ typedef struct SL_NR_SYNC_PARAMS {
 
 } SL_NR_SYNC_PARAMS_t;
 
+typedef struct SL_NR_UE_PSSCH {
+
+  // AVG POWER OF PSSCH DMRS in dB/RE
+  int16_t rsrp_dB_per_RE;
+  // AVG POWER OF PSSCH DMRS in dBm/RE
+  int16_t rsrp_dBm_per_RE;
+
+  // STATS - CRC Errors observed during PSSCH reception (per HARQ round)
+  uint16_t rx_errors[8];
+
+  // STATS - CRC Errors observed during PSSCH SCI2 reception
+  uint16_t rx_sci2_errors;
+
+  // STATS - Receptions with CRC OK
+  uint16_t rx_ok;
+
+  // STATS - Receptions with CRC OK
+  uint16_t rx_sci2_ok;
+
+  // STATS - transmissions of PSSCH by the UE
+  uint16_t num_pssch_tx;
+
+  // STATS - transmissions of PSSCH by the UE
+  uint16_t num_pssch_sci2_tx;
+} SL_NR_UE_PSSCH_t;
+
+typedef struct SL_NR_UE_PSCCH {
+
+  // AVG POWER OF PSCCH DMRS in dB/RE
+  int16_t rsrp_dB_per_RE;
+  // AVG POWER OF PSCCH DMRS in dBm/RE
+  int16_t rsrp_dBm_per_RE;
+
+  // STATS - Receptions with CRC OK
+  uint16_t rx_ok;
+
+  // STATS - transmissions of PSBCH by the UE
+  uint16_t num_pscch_tx;
+
+} SL_NR_UE_PSCCH_t;
+
 typedef struct SL_NR_UE_PSBCH {
 
   // AVG POWER OF PSBCH DMRS in dB/RE
@@ -148,8 +189,14 @@ typedef struct sl_nr_ue_phy_params {
 
   SL_NR_SYNC_PARAMS_t sync_params;
 
-  // Sidelink PHY PARAMETERS USED FOR PSBCH reception/Txn
+  // sidelink phy parameters used for psbch reception/txn
   SL_NR_UE_PSBCH_t psbch;
+
+  // sidelink phy parameters used for pscch reception/txn
+  SL_NR_UE_PSCCH_t pscch;
+  
+  // sidelink phy parameters used for pssch reception/txn
+  SL_NR_UE_PSSCH_t pssch;
 
   //Configuration parameters from MAC
   sl_nr_phy_config_request_t sl_config;

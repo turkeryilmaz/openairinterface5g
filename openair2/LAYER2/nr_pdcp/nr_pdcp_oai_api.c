@@ -110,6 +110,7 @@ static void *rlc_data_req_thread(void *_)
 {
   int i;
 
+  LOG_I(RLC,"rlc_data_req_thread created on core %d\n",sched_getcpu());
   pthread_setname_np(pthread_self(), "RLC queue");
   while (1) {
     if (pthread_mutex_lock(&q.m) != 0) abort();
@@ -146,10 +147,12 @@ static void init_nr_rlc_data_req_queue(void)
   pthread_mutex_init(&q.m, NULL);
   pthread_cond_init(&q.c, NULL);
 
-  if (pthread_create(&t, NULL, rlc_data_req_thread, NULL) != 0) {
+  /*if (pthread_create(&t, NULL, rlc_data_req_thread, NULL) != 0) {
     LOG_E(PDCP, "%s:%d:%s: fatal\n", __FILE__, __LINE__, __FUNCTION__);
     exit(1);
-  }
+  }*/
+
+  threadCreate(&t,rlc_data_req_thread,NULL,"rlc_data_req_thread",7,OAI_PRIORITY_RT_MAX-1);
 }
 
 static void enqueue_rlc_data_req(const protocol_ctxt_t *const ctxt_pP,
@@ -414,7 +417,6 @@ static void *enb_tun_read_thread(void *_)
 
   int rb_id = 1;
   pthread_setname_np( pthread_self(),"enb_tun_read");
-
   while (1) {
     len = read(nas_sock_fd[0], &rx_buf, NL_MAX_PAYLOAD);
     if (len == -1) {
@@ -460,6 +462,7 @@ static void *ue_tun_read_thread(void *_)
 
   int rb_id = 1;
   pthread_setname_np( pthread_self(),"ue_tun_read"); 
+  LOG_I(PDCP,"ue_tun_read_thread created on core %d\n",sched_getcpu());
   while (1) {
     len = read(nas_sock_fd[0], &rx_buf, NL_MAX_PAYLOAD);
     if (len == -1) {
@@ -511,11 +514,12 @@ static void start_pdcp_tun_ue(void)
   pthread_t t;
 
   reblock_tun_socket();
-
+/*
   if (pthread_create(&t, NULL, ue_tun_read_thread, NULL) != 0) {
     LOG_E(PDCP, "%s:%d:%s: fatal\n", __FILE__, __LINE__, __FUNCTION__);
     exit(1);
-  }
+  }*/
+  threadCreate(&t,ue_tun_read_thread,NULL,"ue_tun_read_thread",7,OAI_PRIORITY_RT_MAX-1);
 }
 
 /****************************************************************************/

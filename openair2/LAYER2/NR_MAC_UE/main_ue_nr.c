@@ -94,6 +94,7 @@ NR_UE_MAC_INST_t * nr_l2_init_ue(NR_UE_RRC_INST_t* rrc_inst) {
       }
     }
 
+    reset_meas(&nr_ue_mac_inst->rlc_data_req);
     return (nr_ue_mac_inst);
 }
 

@@ -166,7 +166,7 @@ int nr_slsch_procedures(PHY_VARS_NR_UE *ue, int frame_rx, int slot_rx, int SLSCH
 	      number_dmrs_symbols, // number of dmrs symbols irrespective of single or double symbol dmrs
 	      pssch_pdu->mod_order,
 	      pssch_pdu->num_layers);
-  LOG_I(NR_PHY,"rb_size %d, number_symbols %d, nb_re_dmrs %d, dmrs symbol positions %d, number_dmrs_symbols %d, qam_mod_order %d, nrOfLayer %d\n",
+  LOG_D(NR_PHY,"rb_size %d, number_symbols %d, nb_re_dmrs %d, dmrs symbol positions %d, number_dmrs_symbols %d, qam_mod_order %d, nrOfLayer %d\n",
 	rb_size,
 	number_symbols,
 	nb_re_dmrs,
@@ -246,7 +246,7 @@ void nr_postDecode_slsch(PHY_VARS_NR_UE *UE, notifiedFIFO_elt_t *req,UE_nr_rxtx_
     nr_sidelink_indication_t sl_indication;	  
     slsch_status_t slsch_status;
     if (!check_abort(&slsch_harq->abort_decode) && !UE->pssch_vars[rdata->ulsch_id].DTX) {
-      LOG_I(NR_PHY,
+      LOG_D(NR_PHY,
             "[UE] SLSCH: Setting ACK for SFN/SF %d.%d (pid %d, ndi %d, status %d, round %d, TBS %d, Max interation "
             "(all seg) %d)\n",
             slsch->frame,
@@ -259,12 +259,12 @@ void nr_postDecode_slsch(PHY_VARS_NR_UE *UE, notifiedFIFO_elt_t *req,UE_nr_rxtx_
             rdata->decodeIterations);
       slsch->active = false;
       slsch_harq->round = 0;
-      LOG_I(NR_PHY, "SLSCH received ok \n");
+      LOG_D(NR_PHY, "SLSCH received ok \n");
       slsch_status.rdata = rdata;
       slsch_status.rxok = true;
       //dumpsig=1;
     } else {
-      LOG_I(NR_PHY,
+      LOG_D(NR_PHY,
             "[UE] SLSCH: Setting NAK for SFN/SF %d/%d (pid %d, ndi %d, status %d, round %d, RV %d, prb_start %d, prb_size %d, "
             "TBS %d) r %d\n",
             slsch->frame,
@@ -279,7 +279,7 @@ void nr_postDecode_slsch(PHY_VARS_NR_UE *UE, notifiedFIFO_elt_t *req,UE_nr_rxtx_
             slsch_harq->TBS,
             r);
       slsch->handled = 1;
-      LOG_I(NR_PHY, "SLSCH %d in error\n",rdata->ulsch_id);
+      LOG_D(NR_PHY, "SLSCH %d in error\n",rdata->ulsch_id);
       slsch_status.rdata = rdata;
       slsch_status.rxok = false;
       //      dumpsig=1;
@@ -405,6 +405,36 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
   const uint32_t rxdataF_sz = fp->samples_per_slot_wCP;
   __attribute__ ((aligned(32))) c16_t rxdataF[fp->nb_antennas_rx][rxdataF_sz];
 
+  if ((frame_rx&127) == 0  && nr_slot_rx==19) {
+      LOG_I(NR_PHY,"============================================\n");
+
+      LOG_I(NR_PHY,"%s[UE%d] %d:%d PSBCH Stats: TX %d, RX ok %d, RX not ok %d\n",KGRN,
+                                                      ue->Mod_id, frame_rx, nr_slot_rx,
+                                                      sl_phy_params->psbch.num_psbch_tx,
+                                                      sl_phy_params->psbch.rx_ok,
+                                                      sl_phy_params->psbch.rx_errors);
+
+      LOG_I(NR_PHY,"%s[UE%d] %d:%d PSCCH Stats: TX %d, RX ok %d\n",KGRN,
+                                                      ue->Mod_id, frame_rx, nr_slot_rx,
+                                                      sl_phy_params->pscch.num_pscch_tx,
+                                                      sl_phy_params->pscch.rx_ok);
+
+      LOG_I(NR_PHY,"%s[UE%d] %d:%d PSSCH/SCI2 Stats: TX %d, RX ok %d, RX not ok %d\n",KGRN,
+                                                      ue->Mod_id, frame_rx, nr_slot_rx,
+                                                      sl_phy_params->pssch.num_pssch_sci2_tx,
+                                                      sl_phy_params->pssch.rx_sci2_ok,
+                                                      sl_phy_params->pssch.rx_sci2_errors);
+      LOG_I(NR_PHY,"%s[UE%d] %d:%d PSSCH Stats: TX %d, RX ok %d, RX not ok (%d/%d/%d/%d)\n",KGRN,
+                                                      ue->Mod_id, frame_rx, nr_slot_rx,
+                                                      sl_phy_params->pssch.num_pssch_tx,
+                                                      sl_phy_params->pssch.rx_ok,
+                                                      sl_phy_params->pssch.rx_errors[0],
+                                                      sl_phy_params->pssch.rx_errors[1],
+                                                      sl_phy_params->pssch.rx_errors[2],
+                                                      sl_phy_params->pssch.rx_errors[3]);
+      LOG_I(NR_PHY,"============================================\n");
+  }
+
   if (phy_data->sl_rx_action == SL_NR_CONFIG_TYPE_RX_PSBCH){
 
     const int estimateSz = fp->symbols_per_slot * fp->ofdm_symbol_size;
@@ -474,17 +504,6 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
 //    nr_ue_rrc_measurements(ue, proc, rxdataF);
     //VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_UE_SLOT_FEP_PSBCH, VCD_FUNCTION_OUT);
 
-    if (frame_rx%128 == 0) {
-      LOG_I(NR_PHY,"============================================\n");
-
-      LOG_I(NR_PHY,"%s[UE%d] %d:%d PSBCH Stats: TX %d, RX ok %d, RX not ok %d\n",KGRN,
-                                                      ue->Mod_id, frame_rx, nr_slot_rx,
-                                                      sl_phy_params->psbch.num_psbch_tx,
-                                                      sl_phy_params->psbch.rx_ok,
-                                                      sl_phy_params->psbch.rx_errors);
-
-      LOG_I(NR_PHY,"============================================\n");
-    }
   }
   else if (phy_data->sl_rx_action == SL_NR_CONFIG_TYPE_RX_PSCCH && !get_nrUE_params()->sync_ref){
 
@@ -614,7 +633,7 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
       }
       if (dB_fixed_x10(pssch_vars->ulsch_power_tot) < dB_fixed_x10(pssch_vars->ulsch_noise_power_tot) + ue->pssch_thres) {
 
-        LOG_I(NR_PHY,
+        LOG_D(NR_PHY,
               "PSSCH not detected in %d.%d (%d,%d,%d)\n",
               frame_rx,
               nr_slot_rx,
@@ -629,7 +648,7 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
         //pssch_DTX++;
         //  continue;
       } else {
-        LOG_I(NR_PHY,
+        LOG_D(NR_PHY,
               "PSSCH detected in %d.%d (%d,%d,%d)\n",
               frame_rx,
               nr_slot_rx,
@@ -681,26 +700,18 @@ int phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
     nr_tx_psbch(ue, frame_tx, slot_tx, psbch_vars, txdataF);
     sl_phy_params->psbch.num_psbch_tx ++;
 
-    if (frame_tx%64 == 0) {
-      LOG_I(NR_PHY,"============================================\n");
-
-      LOG_I(NR_PHY,"[UE%d] %d:%d PSBCH Stats: TX %d, RX ok %d, RX not ok %d\n",
-                                                        ue->Mod_id, frame_tx, slot_tx,
-                                                        sl_phy_params->psbch.num_psbch_tx,
-                                                        sl_phy_params->psbch.rx_ok,
-                                                        sl_phy_params->psbch.rx_errors);
-
-      LOG_I(NR_PHY,"============================================\n");
-     }
     tx_action = 1;
   }
   else if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH) {
-   LOG_I(NR_PHY,"Generating PSCCH (%d.%d)\n",frame_tx,slot_tx);
+   LOG_D(NR_PHY,"Generating PSCCH (%d.%d)\n",frame_tx,slot_tx);
    
    phy_data->pscch_Nid = nr_generate_sci1(ue,txdataF[0],fp,AMP,slot_tx,&phy_data->nr_sl_pssch_pscch_pdu) &0xFFFF; 
 
    nr_ue_ulsch_procedures(ue,0,frame_tx,slot_tx,0,phy_data,txdataF);
 
+   sl_phy_params->pscch.num_pscch_tx ++;
+   sl_phy_params->pssch.num_pssch_sci2_tx ++;
+   sl_phy_params->pssch.num_pssch_tx ++;
    tx_action = 1;
   }
   else if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSFCH) {

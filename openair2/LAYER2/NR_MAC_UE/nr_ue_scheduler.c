@@ -3253,11 +3253,13 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
   int lcid = 4;
   int sdu_length = 0;
 
+  if ((frame & 127) == 0 && slot == 0) {
+    print_meas(&mac->rlc_data_req,"rlc_data_req",NULL,NULL);
+  }
   if (sl_ind->slot_type != SIDELINK_SLOT_TYPE_TX) return false;
 
-/*
   if (slot > 9 && get_nrUE_params()->sync_ref) return false;
-
+/*
   if (!get_nrUE_params()->sync_ref) return false;
 
   if ((frame&127) > 0) return false;
@@ -3292,13 +3294,13 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
 
   int buflen = tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu.tb_size;
 
-  NR_UE_MAC_CE_INFO mac_ce_info;
+  NR_UE_MAC_CE_INFO mac_ce_info = {0};
   NR_UE_MAC_CE_INFO *mac_ce_p=&mac_ce_info;
   mac_ce_p->bsr_len = 0;
   mac_ce_p->bsr_ce_len = 0;
   mac_ce_p->bsr_header_len = 0;
   mac_ce_p->phr_len = 0;
-  LOG_I(NR_MAC, "[UE%d] TTI-%d:%d TX PSCCH_PSSCH REQ  TBS %d\n", sl_ind->module_id,frame, slot,buflen);
+  LOG_D(NR_MAC, "[UE%d] TTI-%d:%d TX PSCCH_PSSCH REQ  TBS %d\n", sl_ind->module_id,frame, slot,buflen);
   
    
   //nr_ue_get_sdu_mac_ce_pre updates all mac_ce related header field related to length
@@ -3308,15 +3310,6 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
 
   int buflen_remain = buflen - (mac_ce_p->total_mac_pdu_header_len + mac_ce_p->sdu_length_total + sh_size);
 
-  LOG_I(NR_MAC, "In %s: [UE] [%d.%d] SL-DXCH -> SLSCH, RLC with LCID 0x%02x (TBS %d bytes, sdu_length_total %d bytes, MAC header len %d bytes, buflen_remain %d bytes)\n",
-          __FUNCTION__,
-          slot,
-          frame,
-          4,
-          buflen,
-          mac_ce_p->sdu_length_total,
-          mac_ce_p->tot_mac_ce_len,
-          buflen_remain);
   int num_sdus=0;
   while (buflen_remain > 0){
 
@@ -3325,6 +3318,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
 
       pdu += sh_size;
 
+      start_meas(&mac->rlc_data_req);
       sdu_length = mac_rlc_data_req(0,
                                     0,
                                     0,
@@ -3337,6 +3331,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
                                     0,
                                     0);
 
+      stop_meas(&mac->rlc_data_req);
       AssertFatal(buflen_remain >= sdu_length, "In %s: LCID = 0x%02x RLC has segmented %d bytes but MAC has max %d remaining bytes\n",
                   __FUNCTION__,
                   lcid,

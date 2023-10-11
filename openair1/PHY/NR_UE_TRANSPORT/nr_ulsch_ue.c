@@ -247,7 +247,7 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
   uint32_t sci2_encoded_output[sci2_re*2];
   
   if (pscch_pssch_pdu) {
-    LOG_I(NR_PHY,"Generating SCI2/PSSCH with %d RE, payload %llx\n",sci2_re,*(unsigned long long*)pscch_pssch_pdu->sci2_payload);
+    LOG_D(NR_PHY,"Generating SCI2/PSSCH with %d RE, payload %llx\n",sci2_re,*(unsigned long long*)pscch_pssch_pdu->sci2_payload);
     // do SCI2 encoding
     polar_encoder_fast((uint64_t*)pscch_pssch_pdu->sci2_payload, (void*)sci2_encoded_output, NULL,0, 1, 
                        NR_POLAR_SCI2_MESSAGE_TYPE, 

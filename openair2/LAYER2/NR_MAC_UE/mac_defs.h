@@ -41,6 +41,7 @@
 /* IF */
 #include "NR_IF_Module.h"
 #include "fapi_nr_ue_interface.h"
+#include "time_meas.h"
 
 /* MAC */
 #include "LAYER2/NR_MAC_COMMON/nr_mac.h"
@@ -619,6 +620,7 @@ typedef struct {
   nr_sci_pdu_t sci1_pdu;
   nr_sci_pdu_t sci2_pdu;
   uint8_t slsch_payload[16384];
+  time_stats_t rlc_data_req;
 } NR_UE_MAC_INST_t;
 
 /*@}*/
