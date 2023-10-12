@@ -567,7 +567,7 @@ uint32_t sl_determine_num_sidelink_slots(uint8_t mod_id, uint16_t *N_SSB_16frame
   //Determine total number of Valid Sidelink slots which can be used for Respool in a SFN cycle (1024 frames)
   N_SL_SLOTS = (*N_SL_SLOTS_perframe * SL_FRAME_NUMBER_CYCLE) - N_SSB_1024frames;
 
-  LOG_I(MAC, "[UE%d]SL-MAC:SSB slots in 1024 frames:%d, N_SL_SLOTS_perframe:%d, N_SL_SLOTs in 1024 frames:%d, SL SLOT bitmap:%x\n",
+  LOG_D(MAC, "[UE%d]SL-MAC:SSB slots in 1024 frames:%d, N_SL_SLOTS_perframe:%d, N_SL_SLOTs in 1024 frames:%d, SL SLOT bitmap:%x\n",
                                                                   mod_id,N_SSB_1024frames, *N_SL_SLOTS_perframe,
                                                                   N_SL_SLOTS, sl_mac->sl_slot_bitmap);
 
@@ -590,7 +590,7 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
     return;
   }
 
-  LOG_I(NR_MAC, "In %s : processing PDU %d (with length %d) of %d total number of PDUs...\n", __FUNCTION__, pdu_id, pdu_len, rx_ind->number_pdus);
+  LOG_D(NR_MAC, "In %s : processing PDU %d (with length %d) of %d total number of PDUs...\n", __FUNCTION__, pdu_id, pdu_len, rx_ind->number_pdus);
 
   while (!done && pdu_len > 0){
     uint16_t mac_len = 0x0000;
@@ -604,7 +604,7 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
       case SL_SCH_LCID_4_19:
         if (!get_mac_len(pduP, pdu_len, &mac_len, &mac_subheader_len))
           return;
-        LOG_I(NR_MAC, "%4d.%2d : SLSCH -> LCID %d %d bytes\n", frame, slot, rx_lcid, mac_len);
+        LOG_D(NR_MAC, "%4d.%2d : SLSCH -> LCID %d %d bytes\n", frame, slot, rx_lcid, mac_len);
 
         mac_rlc_data_ind(module_idP,
                          mac->src_id,

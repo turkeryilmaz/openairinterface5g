@@ -470,7 +470,7 @@ static void *ue_tun_read_thread(void *_)
       exit(1);
     }
 
-    LOG_I(PDCP, "%s(): nas_sock_fd read returns len %d\n", __func__, len);
+    LOG_D(PDCP, "%s(): nas_sock_fd read returns len %d\n", __func__, len);
 
     nr_pdcp_manager_lock(nr_pdcp_ue_manager);
     has_ue = nr_pdcp_get_first_ue_id(nr_pdcp_ue_manager, &rntiMaybeUEid);
@@ -635,7 +635,7 @@ static void deliver_sdu_drb(void *_ue, nr_pdcp_entity_t *entity,
   int i;
 
   if (IS_SOFTMODEM_NOS1 || UE_NAS_USE_TUN) {
-    LOG_I(PDCP, "IP packet received with size %d, to be sent to SDAP interface, UE ID/RNTI: %ld\n", size, ue->rntiMaybeUEid);
+    LOG_D(PDCP, "IP packet received with size %d, to be sent to SDAP interface, UE ID/RNTI: %ld\n", size, ue->rntiMaybeUEid);
     sdap_data_ind(entity->rb_id, entity->is_gnb, entity->has_sdap_rx, entity->pdusession_id, ue->rntiMaybeUEid, buf, size);
   }
   else{
@@ -685,7 +685,7 @@ static void deliver_pdu_drb(void *deliver_pdu_data, ue_id_t ue_id, int rb_id,
   } else {
     mem_block_t *memblock = get_free_mem_block(size, __FUNCTION__);
     memcpy(memblock->data, buf, size);
-    LOG_I(PDCP, "%s(): (drb %d) calling rlc_data_req size %d\n", __func__, rb_id, size);
+    LOG_D(PDCP, "%s(): (drb %d) calling rlc_data_req size %d\n", __func__, rb_id, size);
     //for (i = 0; i < size; i++) printf(" %2.2x", (unsigned char)memblock->data[i]);
     //printf("\n");
     enqueue_rlc_data_req(&ctxt, 0, MBMS_FLAG_NO, rb_id, sdu_id, 0, size, memblock);
@@ -1130,7 +1130,7 @@ bool nr_pdcp_data_req_drb(protocol_ctxt_t *ctxt_pP,
 {
   DevAssert(srb_flagP == SRB_FLAG_NO);
 
-  LOG_I(PDCP, "%s() called, size %d\n", __func__, sdu_buffer_size);
+  LOG_D(PDCP, "%s() called, size %d\n", __func__, sdu_buffer_size);
   nr_pdcp_ue_t *ue;
   nr_pdcp_entity_t *rb;
   ue_id_t ue_id = ctxt_pP->rntiMaybeUEid;

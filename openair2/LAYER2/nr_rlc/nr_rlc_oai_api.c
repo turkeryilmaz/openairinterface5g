@@ -287,7 +287,7 @@ rlc_op_status_t rlc_data_req     (const protocol_ctxt_t *const ctxt_pP,
   nr_rlc_ue_t *ue;
   nr_rlc_entity_t *rb;
 
-  LOG_I(RLC, "%s rnti %d srb_flag %d rb_id %ld mui %d confirm %d sdu_size %d MBMS_flag %d\n",
+  LOG_D(RLC, "%s rnti %d srb_flag %d rb_id %ld mui %d confirm %d sdu_size %d MBMS_flag %d\n",
         __FUNCTION__, rnti, srb_flagP, rb_idP, muiP, confirmP, sdu_sizeP,
         MBMS_flagP);
 
@@ -483,7 +483,7 @@ rb_found:
     exit(1);
   }
   memcpy(memblock->data, buf, size);
-  LOG_I(PDCP, "Calling PDCP layer from RLC in %s\n", __FUNCTION__);
+  LOG_D(PDCP, "Calling PDCP layer from RLC in %s\n", __FUNCTION__);
   if (!pdcp_data_ind(&ctx, is_srb, 0, rb_id, size, memblock, NULL, NULL)) {
     LOG_E(RLC, "%s:%d:%s: ERROR: pdcp_data_ind failed\n", __FILE__, __LINE__, __FUNCTION__);
     /* what to do in case of failure? for the moment: nothing */

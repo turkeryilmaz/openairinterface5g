@@ -2221,17 +2221,17 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
       }
       if (ml_rx == false || nrOfLayers == 1) {       
         if (pssch_pdu && sci2_left>0){
-	  LOG_I(NR_PHY,"valid_re_per_slot[%d] %d\n",symbol,pusch_vars->ul_valid_re_per_slot[symbol]);
+	  LOG_D(NR_PHY,"valid_re_per_slot[%d] %d\n",symbol,pusch_vars->ul_valid_re_per_slot[symbol]);
 	  int available_sci2_res_in_symb = pusch_vars->ul_valid_re_per_slot[symbol];
 	  int slsch_res_in_symbol;
-	  LOG_I(NR_PHY,"available_sci2_res_in_symb[%d] %d (sci1_re %d)\n",symbol,available_sci2_res_in_symb,sci1_re_per_symb);
+	  LOG_D(NR_PHY,"available_sci2_res_in_symb[%d] %d (sci1_re %d)\n",symbol,available_sci2_res_in_symb,sci1_re_per_symb);
 	  int sci2_cnt_prev = sci2_cnt;
 	  if (available_sci2_res_in_symb < sci2_left) {
 	     sci2_cnt += available_sci2_res_in_symb; // take all of the PSSCH REs for SCI2
 	     memcpy(&sci2_llrs[2*sci2_cnt_prev],&pusch_vars->rxdataF_comp[0][(symbol * (off + rb_size * NR_NB_SC_PER_RB))+sci1_offset],
 	                       available_sci2_res_in_symb*sizeof(int32_t));
              sci2_left-= available_sci2_res_in_symb;
-	     LOG_I(NR_PHY,"SCI2 taking all available REs. sci2_left %d\n",sci2_left);
+	     LOG_D(NR_PHY,"SCI2 taking all available REs. sci2_left %d\n",sci2_left);
 	     pusch_vars->ul_valid_re_per_slot[symbol] = 0;
 	     sci2_cnt_thissymb=available_sci2_res_in_symb;
 	  }
@@ -2239,7 +2239,7 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
 	       memcpy(&sci2_llrs[2*sci2_cnt_prev],&pusch_vars->rxdataF_comp[0][(symbol * (off + rb_size * NR_NB_SC_PER_RB))+sci1_re_per_symb],
 			         sci2_left*sizeof(int32_t));
 	       slsch_res_in_symbol=available_sci2_res_in_symb-sci2_left;
-	       LOG_I(NR_PHY,"SCI2 taking %d REs, SLSCH taking %d\n",sci2_left,slsch_res_in_symbol);
+	       LOG_D(NR_PHY,"SCI2 taking %d REs, SLSCH taking %d\n",sci2_left,slsch_res_in_symbol);
 	       pusch_vars->ul_valid_re_per_slot[symbol]=slsch_res_in_symbol;
 	       sci2_cnt_thissymb=sci2_left;
                sci2_left=0;
@@ -2258,7 +2258,7 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
 						pssch_pdu->sci2_len,
 						sci2_re);
 	       // send SCI indication with SCI2 payload and get SLSCH information if CRC is OK
-	       LOG_I(NR_PHY,"SCI indication (crc %x)\n",crc);
+	       LOG_D(NR_PHY,"SCI indication (crc %x)\n",crc);
 	       sl_nr_sci_indication_t sci_ind={0}; 
                sci_ind.sfn = frame;
                sci_ind.slot = slot;
@@ -2275,11 +2275,11 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
 	       nr_sidelink_indication_t sl_indication;
 	       nr_fill_sl_indication(&sl_indication, NULL, &sci_ind, proc, ue, phy_data);
 	       ue->if_inst->sl_indication(&sl_indication);
-	       LOG_I(NR_PHY,"Returning from SCI2 SL indication\n");
+	       LOG_D(NR_PHY,"Returning from SCI2 SL indication\n");
                //
 	  }
         } // (not ML || nrOfLayers==1 ) AND pssch and sci2 REs to handle	
-	if (pssch_pdu) LOG_I(NR_PHY,"symbol %d: PSSCH REs %d (sci1 %d,sci2 %d)\n",symbol,pusch_vars->ul_valid_re_per_slot[symbol],sci1_offset,sci2_cnt_thissymb); 
+	if (pssch_pdu) LOG_D(NR_PHY,"symbol %d: PSSCH REs %d (sci1 %d,sci2 %d)\n",symbol,pusch_vars->ul_valid_re_per_slot[symbol],sci1_offset,sci2_cnt_thissymb); 
         for (aatx=0; aatx < nrOfLayers; aatx++) {
           nr_ulsch_compute_llr(&pusch_vars->rxdataF_comp[aatx * frame_parms->nb_antennas_rx][symbol * (off + rb_size * NR_NB_SC_PER_RB)+sci1_offset+sci2_cnt_thissymb],
                                pusch_vars->ul_ch_mag0[aatx * frame_parms->nb_antennas_rx],
