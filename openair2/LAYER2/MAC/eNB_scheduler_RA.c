@@ -589,7 +589,7 @@ generate_Msg4(module_id_t module_idP,
   int UE_id = -1;
   int first_rb = 0;
   int N_RB_DL = 0;
-  uint8_t lcid = 0;
+  unsigned char sdu_lcids[NB_RB_MAX] = {0};
   uint8_t offset = 0;
   uint8_t *vrb_map = NULL;
   nfapi_dl_config_request_pdu_t   *dl_config_pdu = NULL;
@@ -824,7 +824,8 @@ generate_Msg4(module_id_t module_idP,
       dl_config_pdu->dlsch_pdu.dlsch_pdu_rel13.drms_table_flag = 0;
       dl_req_body->number_pdu++;
       ra->state = WAITMSG4ACK;
-      lcid = 0;
+     // lcid = 0;
+      sdu_lcids[0] = (RC.RB_Config[CC_idP][0].isMacTestModeValid) ? (RC.RB_Config[CC_idP][0].MacTestModeLogicalChannelId): 0 ;
       UE_info->UE_sched_ctrl[UE_id].round[CC_idP][ra->harq_pid] = 0;
       msg4_header = 1 + 6 + 1;        // CR header, CR CE, SDU header
       AssertFatal((ra->msg4_TBsize - ra->msg4_rrc_sdu_length - msg4_header)>=0,
@@ -844,7 +845,7 @@ generate_Msg4(module_id_t module_idP,
       // CHECK THIS: &cc[CC_idP].CCCH_pdu.payload[0]
       offset = generate_dlsch_header ((unsigned char *) mac->UE_info.DLSCH_pdu[CC_idP][0][(unsigned char) UE_id].payload[0], 1,       //num_sdus
                                       (unsigned short *) &ra->msg4_rrc_sdu_length,     //
-                                      &lcid,  // sdu_lcid
+                                      sdu_lcids,  // sdu_lcid
                                       255,    // no drx
                                       31,     // no timing advance
                                       ra->cont_res_id,       // contention res id
@@ -1012,7 +1013,8 @@ generate_Msg4(module_id_t module_idP,
                 "Frame %d, Subframe %d: Msg4 retransmission in %d.%d\n",
                 frameP, subframeP, ra->Msg4_frame,
                 ra->Msg4_subframe);
-          lcid = 0;
+          //lcid = 0;
+          sdu_lcids[0] = (RC.RB_Config[CC_idP][0].isMacTestModeValid) ? (RC.RB_Config[CC_idP][0].MacTestModeLogicalChannelId): 0 ;
           // put HARQ process round to 0
           ra->harq_pid = frame_subframe2_dl_harq_pid(cc->tdd_Config,frameP,subframeP);
           UE_info->UE_sched_ctrl[UE_id].round[CC_idP][ra->harq_pid] = 0;
@@ -1041,7 +1043,7 @@ generate_Msg4(module_id_t module_idP,
           offset = generate_dlsch_header((unsigned char *) mac->UE_info.DLSCH_pdu[CC_idP][0][(unsigned char) UE_id].payload[0],
                                          num_sdus,  //num_sdus
                                          (unsigned short *) &rrc_sdu_length,  //
-                                         &lcid, // sdu_lcid
+                                         sdu_lcids, // sdu_lcid
                                          255, // no drx
                                          31,  // no timing advance
                                          ra->cont_res_id, // contention res id

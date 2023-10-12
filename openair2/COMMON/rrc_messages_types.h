@@ -182,7 +182,6 @@ enum ue_CategoryDL_v1310_e {
         ue_CategoryDL_v1310_e_n17 = 0,
         ue_CategoryDL_v1310_e_m1 = 1,
 };
-
 typedef enum ue_CategoryDL_v1310_e ue_CategoryDL_v1310_e;
 
 enum ue_CategoryDL_v1350_e {
@@ -215,15 +214,18 @@ typedef struct rrcUECatInfo_s {
         uint8_t ue_CategoryDL_v1460;
 }rrcUECatInfo;
 
+
 typedef struct RadioBearerConfig_s {
         bool isPDCPConfigValid;
         bool isRLCConfigValid;
         bool isLogicalChannelIdValid;
         bool isMacConfigValid;
         bool isDiscardULDataValid;
+        bool isMacTestModeValid;
         LTE_PDCP_Config_t Pdcp;
         LTE_RLC_Config_t  Rlc;
         long LogicalChannelId;
+        long MacTestModeLogicalChannelId;
         LTE_LogicalChannelConfig_t Mac;
         bool DiscardULData;
 }RadioBearerConfig;

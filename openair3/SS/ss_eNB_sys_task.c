@@ -1469,6 +1469,15 @@ static int sys_handle_radiobearer_list(struct SYSTEM_CTRL_REQ *req)
               *(RRC_RBLIST_CFG_REQ(msg_p).rb_list[i].RbConfig.Mac.ext3->laa_UL_Allowed_r14) = BearerList->v[i].Config.v.AddOrReconfigure.Mac.v.LogicalChannel.v.LAA_UL_Allowed.v;
             }
           }
+          RRC_RBLIST_CFG_REQ(msg_p).rb_list[i].RbConfig.isMacTestModeValid = false;
+	  if(BearerList->v[i].Config.v.AddOrReconfigure.Mac.v.TestMode.d)
+	  {
+	    if(BearerList->v[i].Config.v.AddOrReconfigure.Mac.v.TestMode.v.d == MAC_TestModeConfig_Type_Info)
+	    {
+              RRC_RBLIST_CFG_REQ(msg_p).rb_list[i].RbConfig.isMacTestModeValid = true;
+              RRC_RBLIST_CFG_REQ(msg_p).rb_list[i].RbConfig.MacTestModeLogicalChannelId = BearerList->v[i].Config.v.AddOrReconfigure.Mac.v.TestMode.v.v.Info.DiffLogChId.LogChId;
+	    }
+	  }
         }
 
         if (BearerList->v[i].Config.v.AddOrReconfigure.DiscardULData.d)
@@ -2163,6 +2172,11 @@ static void ss_task_sys_handle_req(struct SYSTEM_CTRL_REQ *req, ss_set_timinfo_t
         SS_context.SSCell_list[cell_index].State = exitState;
         if(RC.ss.State <= SS_STATE_CELL_CONFIGURED)
           RC.ss.State = exitState;
+      }
+      else if (req->Request.d == SystemRequest_Type_L1MacIndCtrl)
+      {
+        LOG_A(ENB_SS_SYS_TASK, "SystemRequest_Type L1MacIndCtrl received\n");
+        sys_handle_l1macind_ctrl(req);
       }
       else
       {
