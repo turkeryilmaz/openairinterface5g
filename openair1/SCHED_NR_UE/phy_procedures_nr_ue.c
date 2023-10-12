@@ -1578,16 +1578,17 @@ validate_rx_payload(NR_DL_UE_HARQ_t *harq, int frame_rx, int slot_rx, bool polar
 }
 
 void validate_rx_payload_str(NR_DL_UE_HARQ_t *harq, int slot, bool polar_decoded) {
-  #define MAX_MSG_SIZE 128
+  #define MAX_MSG_SIZE 1024
+  #define AVG_MSG_SIZE 32
   unsigned int errors_bit = 0;
   char estimated_output_bit[HNA_SIZE];
   char test_input_bit[HNA_SIZE];
   unsigned int n_false_positive = 0;
-  char default_input[MAX_MSG_SIZE] = "";
+  char default_input[MAX_MSG_SIZE] = {};
   char *sl_user_msg = get_softmodem_params()->sl_user_msg;
   char *test_input = (sl_user_msg != NULL) ? sl_user_msg : default_input;
   uint32_t default_msg_len = (sl_user_msg != NULL) ? strlen(sl_user_msg) : MAX_MSG_SIZE;
-  uint32_t test_msg_len = min(max(10, strlen((char *) harq->b)), min(default_msg_len, harq->TBS));
+  uint32_t test_msg_len = min(strlen((char *) harq->b), min(default_msg_len, harq->TBS));
 
   static uint16_t sum_passed = 0;
   static uint16_t sum_failed = 0;
@@ -1606,7 +1607,8 @@ void validate_rx_payload_str(NR_DL_UE_HARQ_t *harq, int slot, bool polar_decoded
       if (i  >= 8 * comparison_end_byte)
         break;
       if (estimated_output_bit[i] != test_input_bit[i]) {
-        errors_bit++;
+        if (sl_user_msg != NULL)
+          errors_bit++;
       }
     }
 
@@ -1616,12 +1618,12 @@ void validate_rx_payload_str(NR_DL_UE_HARQ_t *harq, int slot, bool polar_decoded
       LOG_D(NR_PHY, "result[%d]=%c\n", i, result[i]);
     }
     char *usr_msg_ptr = &result[0];
-    char tmp_flag[128] = {};
-    memset(tmp_flag, '+', strlen("Received your text! It says: ") + test_msg_len);
-    LOG_I(NR_PHY, "%s\n", tmp_flag);
+    char msg_head_tail[128] = "Received your text! It says: ";
+    memset(msg_head_tail, '+', min(128, strlen(msg_head_tail) + AVG_MSG_SIZE));
+    LOG_I(NR_PHY, "%s\n", msg_head_tail);
     LOG_I(NR_PHY, "Received your text! It says: %s\n", usr_msg_ptr);
     LOG_D(NR_PHY, "Decoded_payload for slot %d: %s\n", slot, result);
-    LOG_I(NR_PHY, "%s\n", tmp_flag);
+    LOG_I(NR_PHY, "%s\n", msg_head_tail);
   }
 
   if (errors_bit > 0 || polar_decoded == false) {
@@ -1629,7 +1631,7 @@ void validate_rx_payload_str(NR_DL_UE_HARQ_t *harq, int slot, bool polar_decoded
     ++sum_failed;
     LOG_I(PHY,"errors_bit %u, polar_decoded %d\n", errors_bit, polar_decoded);
     LOG_I(PHY, "PSSCH test NG with %d / %d = %4.2f\n", sum_passed, (sum_passed + sum_failed), (float) sum_passed / (float) (sum_passed + sum_failed));
-  } else {
+  } else if (sl_user_msg != NULL) {
     ++sum_passed;
     LOG_I(PHY, "PSSCH test OK with %d / %d = %4.2f\n", sum_passed, (sum_passed + sum_failed), (float) sum_passed / (float) (sum_passed + sum_failed));
   }
