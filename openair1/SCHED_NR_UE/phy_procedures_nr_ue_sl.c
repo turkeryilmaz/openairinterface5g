@@ -92,6 +92,9 @@ void nr_fill_sl_rx_indication(sl_nr_rx_indication_t *rx_ind,
       rx_slsch_pdu->pdu_length = slsch_status->rdata->ulsch_harq->TBS;
       rx_slsch_pdu->harq_pid   = slsch_status->rdata->harq_pid;
       rx_slsch_pdu->ack_nack   = (slsch_status->rxok==true) ? 1 : 0;
+      
+      if (slsch_status->rxok==true) ue->SL_UE_PHY_PARAMS.pssch.rx_ok++;   
+      else                          ue->SL_UE_PHY_PARAMS.pssch.rx_errors[0]++;   
       break;
     case FAPI_NR_RX_PDU_TYPE_SSB: {
         sl_nr_ssb_pdu_t *ssb_pdu = &rx_ind->rx_indication_body[n_pdus - 1].ssb_pdu;
@@ -658,6 +661,7 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
 
         pssch_vars->DTX = 0;
         int totalDecode = nr_slsch_procedures(ue, frame_rx, nr_slot_rx, 0, proc,phy_data);
+	if (totalDecode > 0) sl_phy_params->pssch.rx_ok++;
       }
   }
 

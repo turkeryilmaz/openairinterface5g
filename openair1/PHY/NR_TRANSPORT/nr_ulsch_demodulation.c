@@ -2259,6 +2259,8 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
 						sci2_re);
 	       // send SCI indication with SCI2 payload and get SLSCH information if CRC is OK
 	       LOG_D(NR_PHY,"SCI indication (crc %x)\n",crc);
+	       if (crc==0) ue->SL_UE_PHY_PARAMS.pssch.rx_sci2_ok++;   
+	       else        ue->SL_UE_PHY_PARAMS.pssch.rx_sci2_errors++;   
 	       sl_nr_sci_indication_t sci_ind={0}; 
                sci_ind.sfn = frame;
                sci_ind.slot = slot;

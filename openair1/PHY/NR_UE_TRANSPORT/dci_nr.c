@@ -973,7 +973,7 @@ uint8_t nr_dci_decoding_procedure(PHY_VARS_NR_UE *ue,
 
             memcpy(sci_ind->sci_pdu[sci_ind->number_of_SCIs].sci_payloadBits,&dci_estimation,8);
             sci_ind->number_of_SCIs++;
-	    
+	    ue->SL_UE_PHY_PARAMS.pscch.rx_ok++;   
           }
           break;    // If DCI is found, no need to check for remaining DCI lengths
         }
