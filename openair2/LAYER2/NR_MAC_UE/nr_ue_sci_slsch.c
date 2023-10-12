@@ -210,6 +210,8 @@ void fill_pssch_pscch_pdu(sl_nr_tx_config_pscch_pssch_pdu_t *nr_sl_pssch_pscch_p
   int sci_size  = nr_sl_pssch_pscch_pdu->pscch_sci_payload_len;
   int sci2_size = nr_sl_pssch_pscch_pdu->sci2_payload_len;
 
+  *sci_payload = 0;
+  *sci2_payload = 0;
 
   // freq domain allocation starts
   nr_sl_pssch_pscch_pdu->startrb=*sl_res_pool->sl_StartRB_Subchannel_r16;
@@ -280,7 +282,7 @@ void fill_pssch_pscch_pdu(sl_nr_tx_config_pscch_pssch_pdu_t *nr_sl_pssch_pscch_p
 		   *sci_payload |= (((uint64_t)sci_pdu->resource_reservation_period.val >> (fsize - i - 1)) & 1) << (sci_size - pos++ -1);
 	    // DMRS pattern
 	    fsize = sci_pdu->dmrs_pattern.nbits;
-            LOG_D(NR_MAC,"SCI1A: dmrs_pattern (%d,%d) in position %d\n",sci_pdu->dmrs_pattern.val,fsize,pos);
+            LOG_I(NR_MAC,"SCI1A: dmrs_pattern (%d,%d) in position %d\n",sci_pdu->dmrs_pattern.val,fsize,pos);
 	    for (int i = 0; i < fsize; i++)
 		   *sci_payload |= (((uint64_t)sci_pdu->dmrs_pattern.val >> (fsize - i - 1)) & 1) << (sci_size - pos++ -1);
             // second_stage_sci_format // 2 bits - Table 8.3.1.1-1
@@ -323,6 +325,7 @@ void fill_pssch_pscch_pdu(sl_nr_tx_config_pscch_pssch_pdu_t *nr_sl_pssch_pscch_p
             AssertFatal(1==0,"Unknown format1 %d\n",format1);
             break;
   }
+  LOG_D(NR_MAC,"SCI1 payload : %x\n",*sci_payload);
 
   int mcs_tb_ind = 0;
   if (sci_pdu->additional_mcs.nbits > 0)
@@ -352,7 +355,7 @@ void fill_pssch_pscch_pdu(sl_nr_tx_config_pscch_pssch_pdu_t *nr_sl_pssch_pscch_p
 						     N_RE,1+(sci_pdu->number_of_dmrs_port&1))>>3;
   nr_sl_pssch_pscch_pdu->mcs = sci_pdu->mcs;
   nr_sl_pssch_pscch_pdu->num_layers = sci_pdu->number_of_dmrs_port+1;
-  LOG_D(NR_MAC,"PSSCH: mcs %d, coderate %d, Nl %d => tbs %d\n",sci_pdu->mcs,nr_sl_pssch_pscch_pdu->target_coderate,nr_sl_pssch_pscch_pdu->num_layers,nr_sl_pssch_pscch_pdu->tb_size);
+  LOG_I(NR_MAC,"PSSCH: mcs %d, coderate %d, Nl %d => tbs %d\n",sci_pdu->mcs,nr_sl_pssch_pscch_pdu->target_coderate,nr_sl_pssch_pscch_pdu->num_layers,nr_sl_pssch_pscch_pdu->tb_size);
   nr_sl_pssch_pscch_pdu->tbslbrm = nr_compute_tbslbrm(mcs_tb_ind,NRRIV2BW(sl_bwp->sl_BWP_Generic_r16->sl_BWP_r16->locationAndBandwidth,273),nr_sl_pssch_pscch_pdu->num_layers);
   nr_sl_pssch_pscch_pdu->mcs_table=mcs_tb_ind;
   nr_sl_pssch_pscch_pdu->rv_index = sci2_pdu->rv_index;

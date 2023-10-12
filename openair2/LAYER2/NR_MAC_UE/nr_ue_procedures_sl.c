@@ -597,17 +597,17 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
     uint16_t mac_subheader_len = 0x0001; //  default to fixed-length subheader = 1-oct
     uint8_t rx_lcid = ((NR_MAC_SUBHEADER_FIXED *)pduP)->LCID;
 
-    LOG_I(NR_MAC, "[UE] LCID %d, PDU length %d\n", rx_lcid, pdu_len);
+    LOG_I(NR_MAC, "[UE %x] LCID %d, PDU length %d\n", mac->src_id,rx_lcid, pdu_len);
     bool ret;
     switch(rx_lcid){
       //  MAC CE
       case SL_SCH_LCID_4_19:
         if (!get_mac_len(pduP, pdu_len, &mac_len, &mac_subheader_len))
           return;
-        LOG_D(NR_MAC, "%4d.%2d : SLSCH -> LCID %d %d bytes\n", frame, slot, rx_lcid, mac_len);
+        LOG_I(NR_MAC, "%4d.%2d : SLSCH -> LCID %d %d bytes\n", frame, slot, rx_lcid, mac_len);
 
         mac_rlc_data_ind(module_idP,
-                         0,
+                         mac->src_id,
                          0,
                          frame,
                          ENB_FLAG_NO,
@@ -637,5 +637,9 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
 	      LOG_W(NR_MAC,"Received unsupported SL LCID %d\n",rx_lcid);
 	      break;
     }
+    pduP += ( mac_subheader_len + mac_len );
+    pdu_len -= ( mac_subheader_len + mac_len );
+    if (pdu_len < 0)
+      LOG_E(NR_MAC, "[UE %d][%d.%d] nr_ue_process_mac_pdu_sl, residual mac pdu length %d < 0!\n", module_idP, frame, slot, pdu_len);
   }
 }
