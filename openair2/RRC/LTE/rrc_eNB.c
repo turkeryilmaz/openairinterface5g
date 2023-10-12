@@ -6931,6 +6931,12 @@ char rrc_eNB_rblist_configuration(
         RC.RB_Config[CC_id][rbIndex].Mac.ul_SpecificParameters->prioritisedBitRate = RblistConfig->rb_list[i].RbConfig.Mac.ul_SpecificParameters->prioritisedBitRate;
         free(RblistConfig->rb_list[i].RbConfig.Mac.ul_SpecificParameters);
      }
+     RC.RB_Config[CC_id][rbIndex].isMacTestModeValid = false;
+     if(RblistConfig->rb_list[i].RbConfig.isMacTestModeValid)
+     {
+       RC.RB_Config[CC_id][rbIndex].isMacTestModeValid = true;
+       RC.RB_Config[CC_id][rbIndex].MacTestModeLogicalChannelId = RblistConfig->rb_list[i].RbConfig.MacTestModeLogicalChannelId;
+     }
 
      if(RblistConfig->rb_list[i].RbConfig.Mac.ext3 != NULL) {
        if(RC.RB_Config[CC_id][rbIndex].Mac.ext3 == NULL) {

@@ -64,9 +64,11 @@ struct RU_t_s;
 
 typedef struct RBConfig_s {
         bool isRBConfigValid;
+        bool isMacTestModeValid;
         LTE_PDCP_Config_t PdcpCfg;
         LTE_RLC_Config_t  RlcCfg;
         long LogicalChannelId;
+        long MacTestModeLogicalChannelId;
         LTE_LogicalChannelConfig_t Mac;
         bool DiscardULData;
 }RBConfig;
