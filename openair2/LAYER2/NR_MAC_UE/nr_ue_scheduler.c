@@ -3320,7 +3320,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
 
       start_meas(&mac->rlc_data_req);
       sdu_length = mac_rlc_data_req(0,
-                                    0,
+                                    mac->src_id,
                                     0,
                                     frame,
                                     ENB_FLAG_NO,
