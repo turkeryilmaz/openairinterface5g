@@ -505,7 +505,7 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
     //VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_UE_SLOT_FEP_PSBCH, VCD_FUNCTION_OUT);
 
   }
-  else if (phy_data->sl_rx_action == SL_NR_CONFIG_TYPE_RX_PSCCH && !get_nrUE_params()->sync_ref){
+  else if (phy_data->sl_rx_action == SL_NR_CONFIG_TYPE_RX_PSCCH){
 
     fapi_nr_dl_config_dci_dl_pdu_rel15_t *rel15 = &phy_data->phy_pdcch_config.pdcch_config[0];
     LOG_D(NR_PHY,"pscch_numsym = %d\n",phy_data->nr_sl_pscch_pdu.pscch_numsym);
@@ -568,7 +568,7 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
     nr_ue_pdcch_procedures(ue, proc, 1, pscch_est_size, pscch_dl_ch_estimates, phy_data, 0, rxdataF); 
     LOG_D(NR_PHY,"returned from nr_ue_pdcch_procedures\n");
   }
-  if (phy_data->sl_rx_action == SL_NR_CONFIG_TYPE_RX_PSSCH_SCI && !get_nrUE_params()->sync_ref){
+  if (phy_data->sl_rx_action == SL_NR_CONFIG_TYPE_RX_PSSCH_SCI){
 
     LOG_D(NR_PHY,"sci2_len = %d\n",phy_data->nr_sl_pssch_sci_pdu.sci2_len);
     LOG_D(NR_PHY,"sci2_beta_offset = %d\n",phy_data->nr_sl_pssch_sci_pdu.sci2_beta_offset);

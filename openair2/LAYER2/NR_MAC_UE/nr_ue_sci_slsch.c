@@ -760,7 +760,7 @@ void config_pssch_sci_pdu_rx(sl_nr_rx_config_pssch_sci_pdu_t *nr_sl_pssch_sci_pd
     AssertFatal(nr_sl_pssch_sci_pdu->pssch_numsym>8, "num_pssch_ymbols %d is not ok for 3 DMRS (min 9)\n",nr_sl_pssch_sci_pdu->pssch_numsym);
     nr_sl_pssch_sci_pdu->dmrs_symbol_position = sl_dmrs_mask3[nr_sl_pssch_sci_pdu->pssch_numsym-9];
   } else if (num_dmrs_symbols == 4) {
-    AssertFatal(nr_sl_pssch_sci_pdu->pssch_numsym>10, "num_pssch_ymbols %d is not ok for 4 DMRS (min 11)\n",nr_sl_pssch_sci_pdu->pssch_numsym);
+    AssertFatal(nr_sl_pssch_sci_pdu->pssch_numsym>10, "num_pssch_ymbols %d is not ok for 4 DMRS (min 11) sci_pdu->dmrs_pattern.val %d\n",nr_sl_pssch_sci_pdu->pssch_numsym,sci_pdu->dmrs_pattern.val);
     nr_sl_pssch_sci_pdu->dmrs_symbol_position = sl_dmrs_mask4[nr_sl_pssch_sci_pdu->pssch_numsym-11];
   }
 
