@@ -661,7 +661,6 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
 
         pssch_vars->DTX = 0;
         int totalDecode = nr_slsch_procedures(ue, frame_rx, nr_slot_rx, 0, proc,phy_data);
-	if (totalDecode > 0) sl_phy_params->pssch.rx_ok++;
       }
   }
 

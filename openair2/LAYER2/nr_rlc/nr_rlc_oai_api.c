@@ -93,7 +93,7 @@ void mac_rlc_data_ind     (
   }
 
   if (rb != NULL) {
-    LOG_I(RLC, "RB found! (channel ID %d) \n", channel_idP);
+    LOG_D(RLC, "RB found! (channel ID %d) \n", channel_idP);
     rb->set_time(rb, nr_rlc_current_time);
     rb->recv_pdu(rb, buffer_pP, tb_sizeP);
   } else {

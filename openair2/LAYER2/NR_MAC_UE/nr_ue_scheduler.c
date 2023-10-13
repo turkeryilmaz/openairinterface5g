@@ -3259,9 +3259,9 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
   if (sl_ind->slot_type != SIDELINK_SLOT_TYPE_TX) return false;
 
   if (slot > 9 && get_nrUE_params()->sync_ref) return false;
-/*
-  if (!get_nrUE_params()->sync_ref) return false;
 
+  if (slot < 10 && !get_nrUE_params()->sync_ref) return false;
+/*
   if ((frame&127) > 0) return false;
 
   if ((slot % 10) != 6) return false;
