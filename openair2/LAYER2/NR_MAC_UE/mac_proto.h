@@ -494,7 +494,7 @@ void config_pscch_pdu_rx(sl_nr_rx_config_pscch_pdu_t *nr_sl_pscch_pdu,
                          const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp,
                          const NR_SL_ResourcePool_r16_t *sl_res_pool);
 
-void config_pssch_sci_pdu_rx(sl_nr_rx_config_pssch_sci_pdu_t *nr_sl_pssch_sci_pdu,
+int config_pssch_sci_pdu_rx(sl_nr_rx_config_pssch_sci_pdu_t *nr_sl_pssch_sci_pdu,
                              nr_sci_format_t sci2_format,
                              nr_sci_pdu_t *sci_pdu,
                              uint32_t pscch_Nid,

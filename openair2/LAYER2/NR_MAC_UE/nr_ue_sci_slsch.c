@@ -612,13 +612,14 @@ int nr_ue_process_sci1_indication_pdu(NR_UE_MAC_INST_t *mac,module_id_t mod_id,f
   rx_config.number_pdus = 1;
   rx_config.sfn = frame;
   rx_config.slot = slot;
-  config_pssch_sci_pdu_rx(&rx_config.sl_rx_config_list[0].rx_sci2_config_pdu,
+  int ret = config_pssch_sci_pdu_rx(&rx_config.sl_rx_config_list[0].rx_sci2_config_pdu,
                           NR_SL_SCI_FORMAT_2A,
                           sci_pdu,
                           sci->Nid,
                           sci->subch_index,
                           sl_bwp,
                           sl_res_pool);
+  if (ret<0) return(ret);
   rx_config.sl_rx_config_list[0].pdu_type =  SL_NR_CONFIG_TYPE_RX_PSSCH_SCI;
 
   nr_scheduled_response_t scheduled_response;
@@ -693,7 +694,7 @@ void config_pssch_slsch_pdu_rx(sl_nr_rx_config_pssch_pdu_t *nr_sl_pssch_pdu,
                                                N_RE,1+(sci_pdu->number_of_dmrs_port&1))>>3; 
 }
 
-void config_pssch_sci_pdu_rx(sl_nr_rx_config_pssch_sci_pdu_t *nr_sl_pssch_sci_pdu,
+int config_pssch_sci_pdu_rx(sl_nr_rx_config_pssch_sci_pdu_t *nr_sl_pssch_sci_pdu,
                              nr_sci_format_t sci2_format,
 			     nr_sci_pdu_t *sci_pdu,
 			     uint32_t pscch_Nid,
@@ -754,7 +755,10 @@ void config_pssch_sci_pdu_rx(sl_nr_rx_config_pssch_sci_pdu_t *nr_sl_pssch_sci_pd
   //DMRS SYMBOL MASK. If bit set to 1 indicates it is a DMRS symbol. LSB is symbol 0
   // Table from SPEC 38.211, Table 8.4.1.1.2-1
   int num_dmrs_symbols;
-  AssertFatal(sci_pdu->dmrs_pattern.val < sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_PSSCH_DMRS_TimePatternList_r16->list.count,"dmrs.pattern %d out of bounds for list size %d\n",sci_pdu->dmrs_pattern.val,sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_PSSCH_DMRS_TimePatternList_r16->list.count);
+  if (sci_pdu->dmrs_pattern.val >= sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_PSSCH_DMRS_TimePatternList_r16->list.count) {
+	  LOG_W(NR_MAC,"dmrs.pattern %d out of bounds for list size %d\n",sci_pdu->dmrs_pattern.val,sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_PSSCH_DMRS_TimePatternList_r16->list.count);
+	  sci_pdu->dmrs_pattern.val = 0;
+  }
   num_dmrs_symbols = *sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_PSSCH_DMRS_TimePatternList_r16->list.array[sci_pdu->dmrs_pattern.val];
   if (num_dmrs_symbols == 2) {
     AssertFatal(nr_sl_pssch_sci_pdu->pssch_numsym>5, "num_pssch_ymbols %d is not ok for 2 DMRS (min 6)\n",nr_sl_pssch_sci_pdu->pssch_numsym);
