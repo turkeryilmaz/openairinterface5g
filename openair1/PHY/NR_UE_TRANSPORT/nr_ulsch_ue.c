@@ -467,6 +467,7 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
 #endif
 
     int dmrs_port = get_dmrs_port(nl,pscch_pssch_pdu ? nl : pusch_pdu->dmrs_ports);
+    if (dmrs_port < 0) return;
     // DMRS params for this dmrs port
     get_Wt(Wt, dmrs_port, dmrs_type);
     get_Wf(Wf, dmrs_port, dmrs_type);

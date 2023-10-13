@@ -1976,9 +1976,11 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
 
       for (int nl=0; nl<nrOfLayers; nl++) {
         uint32_t nvar_tmp = 0;
+	int dmrs_port = get_dmrs_port(nl,dmrs_ports);
+	if (dmrs_port<0) return;
         nr_pusch_channel_estimation(gNB,ue,rxFSz,rxdataF,
                                     slot,
-                                    get_dmrs_port(nl,dmrs_ports),
+                                    dmrs_port,
                                     symbol,
                                     ulsch_id,
                                     bwp_start_subcarrier,

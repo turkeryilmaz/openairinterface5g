@@ -387,7 +387,7 @@ int get_dmrs_port(int nl, uint16_t dmrs_ports)
       }
     }
   }
-  AssertFatal(p>-1,"No dmrs port corresponding to layer %d found\n",nl);
+  if (p==-1) LOG_E(NR_PHY,"No dmrs port corresponding to layer %d found\n",nl);
   return p;
 }
 

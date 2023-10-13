@@ -722,12 +722,13 @@ int32_t nr_rx_pdcch(PHY_VARS_NR_UE *ue,
                                 n_rb,
                                 rel15->BWPStart);
 
-    if (pscch_flag == 1 && dB_fixed(signal_energy_nodc(&pdcch_dl_ch_estimates_ext[0][s*n_rb*NBR_RE_PER_RB_WITH_DMRS],n_rb*NBR_RE_PER_RB_WITH_DMRS)) > 40) {
+ /*   if (pscch_flag == 1 && dB_fixed(signal_energy_nodc(&pdcch_dl_ch_estimates_ext[0][s*n_rb*NBR_RE_PER_RB_WITH_DMRS],n_rb*NBR_RE_PER_RB_WITH_DMRS)) > 40) {
       LOG_I(NR_PHY,"PSCCH: %d.%d rx level0_%d %d ch_level0_%d %d\n",proc->frame_rx,proc->nr_slot_rx, s, dB_fixed(signal_energy_nodc(&rxdataF_ext[0][s*n_rb*NBR_RE_PER_RB_WITH_DMRS],n_rb*NBR_RE_PER_RB_WITH_DMRS)),s,dB_fixed(signal_energy_nodc(&pdcch_dl_ch_estimates_ext[0][s*n_rb*NBR_RE_PER_RB_WITH_DMRS],n_rb*NBR_RE_PER_RB_WITH_DMRS)));
       LOG_M("sciF.m","scisF0",&rxdataF_ext[0][s*n_rb*NBR_RE_PER_RB_WITH_DMRS],n_rb*NBR_RE_PER_RB_WITH_DMRS,1,1);
       LOG_M("scicF.m","scicF0",&pdcch_dl_ch_estimates_ext[0][s*n_rb*NBR_RE_PER_RB_WITH_DMRS],n_rb*NBR_RE_PER_RB_WITH_DMRS,1,1);
       exit(-1);
     }
+    */
     LOG_D(PHY,"we enter nr_pdcch_channel_level(avgP=%d) => compute channel level based on ofdm symbol 0, pdcch_vars[eNB_id]->dl_ch_estimates_ext\n",*avgP);
     LOG_D(PHY,"in nr_pdcch_channel_level(dl_ch_estimates_ext -> dl_ch_estimates_ext)\n");
     // compute channel level based on ofdm symbol 0
