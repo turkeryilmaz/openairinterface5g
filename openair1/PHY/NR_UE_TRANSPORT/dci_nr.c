@@ -938,10 +938,10 @@ uint8_t nr_dci_decoding_procedure(PHY_VARS_NR_UE *ue,
                                          pscch_flag == 0 ? NR_POLAR_DCI_MESSAGE_TYPE : NR_POLAR_SCI_MESSAGE_TYPE, dci_length, L);
 
       n_rnti = rel15->rnti;
-      if (crc == 0) LOG_I(PHY, "(%i.%i) %s indication (rnti %x,format %s,n_CCE %d,payloadSize %d,payload %llx )\n",
+      if (crc == 0) LOG_D(PHY, "(%i.%i) %s indication (rnti %x,format %s,n_CCE %d,payloadSize %d,payload %llx )\n",
             proc->frame_rx, proc->nr_slot_rx,pscch_flag==0?"dci":"sci",n_rnti,pscch_flag==0?nr_dci_format_string[rel15->dci_format_options[k]]:"1A",CCEind,dci_length, *(unsigned long long*)dci_estimation);
       if (crc == n_rnti) {
-        LOG_I(PHY, "(%i.%i) Received %s indication (rnti %x,dci format %s,n_CCE %d,payloadSize %d,payload %llx)\n",
+        LOG_D(PHY, "(%i.%i) Received %s indication (rnti %x,dci format %s,n_CCE %d,payloadSize %d,payload %llx)\n",
               proc->frame_rx, proc->nr_slot_rx,pscch_flag==0?"dci":"sci",n_rnti,pscch_flag==0?nr_dci_format_string[rel15->dci_format_options[k]]:"1A",CCEind,dci_length,*(unsigned long long*)dci_estimation);
         uint16_t mb = nr_dci_false_detection(dci_estimation,tmp_e,pscch_flag==0?L*108:L*18,n_rnti, pscch_flag==0?NR_POLAR_DCI_MESSAGE_TYPE:NR_POLAR_SCI_MESSAGE_TYPE, dci_length, L);
         ue->dci_thres = (ue->dci_thres + mb) / 2;
