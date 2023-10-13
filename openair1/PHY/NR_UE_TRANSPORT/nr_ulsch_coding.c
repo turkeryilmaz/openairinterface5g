@@ -89,14 +89,7 @@ int nr_ulsch_encoding(PHY_VARS_NR_UE *ue,
     harq_process->first_tx = 0;
 ///////////////////////// a---->| add CRC |---->b /////////////////////////
 ///////////
-   /* 
-    int i;
-    printf("ulsch (tx): \n");
-    for (i=0;i<(A>>3);i++)
-      printf("%02x.",harq_process->a[i]);
-    printf("\n");
-   */ 
-
+    
     int max_payload_bytes = MAX_NUM_NR_ULSCH_SEGMENTS_PER_LAYER*num_layers*1056;
 
     if (A > 3824) {

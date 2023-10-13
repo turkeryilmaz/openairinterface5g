@@ -539,7 +539,6 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
     rel15->number_of_candidates = phy_data->nr_sl_pscch_pdu.l_subch;
     rel15->num_dci_options = 1;
     rel15->dci_length_options[0] = phy_data->nr_sl_pscch_pdu.sci_1a_length;
-    LOG_D(NR_PHY,"PSCCH_PDU SCI 1A length %d\n",rel15->dci_length_options[0]);
     // L now provides the number of PRBs used by PSCCH instead of the number of CCEs
     rel15->L[0] = phy_data->nr_sl_pscch_pdu.pscch_numrbs * phy_data->nr_sl_pscch_pdu.pscch_numsym;
     // This provides the offset of the candidate of PSCCH in RBs instead of CCEs
