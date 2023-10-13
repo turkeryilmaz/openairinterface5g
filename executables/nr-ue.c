@@ -890,6 +890,7 @@ void *UE_thread(void *arg)
   if (is_sidelink) {
     fp = &UE->SL_UE_PHY_PARAMS.sl_frame_params;
     sl_cfg = &UE->SL_UE_PHY_PARAMS.sl_config;
+    openair0_cfg[0].gpio_controller = RU_GPIO_CONTROL_GENERIC;
   }
   AssertFatal(0== openair0_device_load(&(UE->rfdevice), &openair0_cfg[0]), "");
   UE->rfdevice.host_type = RAU_HOST;

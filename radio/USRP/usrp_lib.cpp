@@ -261,8 +261,8 @@ static int sync_to_gps(openair0_device *device) {
 }
 
 #define ATR_MASK 0x7f //pins controlled by ATR
-#define ATR_RX   0x50 //data[4] and data[6]
-#define ATR_XX   0x20 //data[5]
+#define ATR_RX   0x70 //data[4],data[5] and data[6]
+#define ATR_XX   0x08 //data[3]
 #define MAN_MASK ATR_MASK ^ 0xFFF // manually controlled pins
 
 static void trx_usrp_start_interdigital_gpio(openair0_device *device, usrp_state_t *s)
@@ -286,6 +286,7 @@ static void trx_usrp_start_interdigital_gpio(openair0_device *device, usrp_state
 
 static void trx_usrp_start_generic_gpio(openair0_device *device, usrp_state_t *s)
 {
+  LOG_I(HW,"Setting Generic GPIO\n");	
   // setup GPIO for TDD, GPIO(4) = ATR_RX
   // set data direction register (DDR) to output
   s->usrp->set_gpio_attr(s->gpio_bank, "DDR", 0xfff, 0xfff);
