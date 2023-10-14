@@ -157,11 +157,12 @@ size_t dump_mac_stats(gNB_MAC_INST *gNB, char *output, size_t strlen, bool reset
 
     output += snprintf(output,
                        end - output,
-                       ", ulsch_DTX %d, ulsch_errors %" PRIu64 ", BLER %.5f MCS %d SNR %d.%d dB\n",
+                       ", ulsch_DTX %d, ulsch_errors %" PRIu64 ", BLER %.5f MCS %d (Qm %d) SNR %d.%d dB\n",
                        stats->ulsch_DTX,
                        stats->ul.errors,
                        sched_ctrl->ul_bler_stats.bler,
                        sched_ctrl->ul_bler_stats.mcs,
+                       nr_get_Qm_ul(sched_ctrl->ul_bler_stats.mcs,UE->current_UL_BWP.mcs_table),
                        sched_ctrl->pusch_snrx10 / 10,
                        sched_ctrl->pusch_snrx10 % 10);
     output += snprintf(output,
