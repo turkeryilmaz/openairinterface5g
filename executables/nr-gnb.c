@@ -244,20 +244,20 @@ void rx_func(void *param)
       }
     }
     phy_procedures_gNB_uespec_RX(gNB, frame_rx, slot_rx);
+
+    // Call the scheduler
+    start_meas(&gNB->ul_indication_stats);
+    gNB->UL_INFO.frame     = frame_rx;
+    gNB->UL_INFO.slot      = slot_rx;
+    gNB->UL_INFO.module_id = gNB->Mod_id;
+    gNB->UL_INFO.CC_id     = gNB->CC_id;
+    gNB->if_inst->NR_UL_indication(&gNB->UL_INFO);
+    stop_meas(&gNB->ul_indication_stats);
   }
 
   stop_meas( &softmodem_stats_rxtx_sf );
   LOG_D(PHY,"%s() Exit proc[rx:%d%d tx:%d%d]\n", __FUNCTION__, frame_rx, slot_rx, frame_tx, slot_tx);
   clock_gettime(CLOCK_MONOTONIC,&info->gNB->rt_L1_profiling.return_L1_RX[rt_prof_idx]);
-
-  // Call the scheduler
-  start_meas(&gNB->ul_indication_stats);
-  gNB->UL_INFO.frame     = frame_rx;
-  gNB->UL_INFO.slot      = slot_rx;
-  gNB->UL_INFO.module_id = gNB->Mod_id;
-  gNB->UL_INFO.CC_id     = gNB->CC_id;
-  gNB->if_inst->NR_UL_indication(&gNB->UL_INFO);
-  stop_meas(&gNB->ul_indication_stats);
 }
 
 static size_t dump_L1_meas_stats(PHY_VARS_gNB *gNB, RU_t *ru, char *output, size_t outputlen) {
