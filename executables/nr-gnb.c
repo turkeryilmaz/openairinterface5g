@@ -252,13 +252,11 @@ void rx_func(void *param)
 
   // Call the scheduler
   start_meas(&gNB->ul_indication_stats);
-//  pthread_mutex_lock(&gNB->UL_INFO_mutex);
   gNB->UL_INFO.frame     = frame_rx;
   gNB->UL_INFO.slot      = slot_rx;
   gNB->UL_INFO.module_id = gNB->Mod_id;
   gNB->UL_INFO.CC_id     = gNB->CC_id;
   gNB->if_inst->NR_UL_indication(&gNB->UL_INFO);
-//  pthread_mutex_unlock(&gNB->UL_INFO_mutex);
   stop_meas(&gNB->ul_indication_stats);
 }
 
@@ -394,10 +392,6 @@ void kill_gNB_proc(int inst) {
   PHY_VARS_gNB *gNB;
 
   gNB=RC.gNB[inst];
-  
-  LOG_I(PHY, "Destroying UL_INFO mutex\n");
-  pthread_mutex_destroy(&gNB->UL_INFO_mutex);
-  
 }
 
 void reset_opp_meas(void) {
