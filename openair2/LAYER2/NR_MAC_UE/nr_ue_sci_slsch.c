@@ -325,7 +325,6 @@ void fill_pssch_pscch_pdu(sl_nr_tx_config_pscch_pssch_pdu_t *nr_sl_pssch_pscch_p
             AssertFatal(1==0,"Unknown format1 %d\n",format1);
             break;
   }
-  LOG_D(NR_MAC,"SCI1 payload : %x\n",*sci_payload);
 
   int mcs_tb_ind = 0;
   if (sci_pdu->additional_mcs.nbits > 0)
@@ -657,7 +656,7 @@ void config_pssch_slsch_pdu_rx(sl_nr_rx_config_pssch_pdu_t *nr_sl_pssch_pdu,
      if (num_psfch_symbols == 3) num_psfch_symbols++;
   }
   int pssch_numsym=7+*sl_bwp->sl_BWP_Generic_r16->sl_LengthSymbols_r16-num_psfch_symbols-2;
-  int l_subch;
+  uint16_t l_subch;
   convNRFRIV(sci_pdu->frequency_resource_assignment.val,
 	     *sl_res_pool->sl_NumSubchannel_r16,
 	     *sl_res_pool->sl_UE_SelectedConfigRP_r16->sl_MaxNumPerReserve_r16,
@@ -758,22 +757,33 @@ int config_pssch_sci_pdu_rx(sl_nr_rx_config_pssch_sci_pdu_t *nr_sl_pssch_sci_pdu
   if (sci_pdu->dmrs_pattern.val >= sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_PSSCH_DMRS_TimePatternList_r16->list.count) {
 	  LOG_W(NR_MAC,"dmrs.pattern %d out of bounds for list size %d\n",sci_pdu->dmrs_pattern.val,sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_PSSCH_DMRS_TimePatternList_r16->list.count);
 	  sci_pdu->dmrs_pattern.val = 0;
+	  return(-1);
   }
   num_dmrs_symbols = *sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_PSSCH_DMRS_TimePatternList_r16->list.array[sci_pdu->dmrs_pattern.val];
   if (num_dmrs_symbols == 2) {
-    AssertFatal(nr_sl_pssch_sci_pdu->pssch_numsym>5, "num_pssch_ymbols %d is not ok for 2 DMRS (min 6)\n",nr_sl_pssch_sci_pdu->pssch_numsym);
+    if (nr_sl_pssch_sci_pdu->pssch_numsym<=5){
+        LOG_I(NR_MAC,"num_pssch_ymbols %d is not ok for 2 DMRS (min 6)\n",nr_sl_pssch_sci_pdu->pssch_numsym);
+	return(-1);
+    }
     nr_sl_pssch_sci_pdu->dmrs_symbol_position = sl_dmrs_mask2[nr_sl_pssch_sci_pdu->pscch_numsym-2][nr_sl_pssch_sci_pdu->pssch_numsym-6];
   } else if (num_dmrs_symbols == 3) {
-    AssertFatal(nr_sl_pssch_sci_pdu->pssch_numsym>8, "num_pssch_ymbols %d is not ok for 3 DMRS (min 9)\n",nr_sl_pssch_sci_pdu->pssch_numsym);
+    if (nr_sl_pssch_sci_pdu->pssch_numsym<=8) {
+	LOG_I(NR_MAC,"num_pssch_ymbols %d is not ok for 3 DMRS (min 9)\n",nr_sl_pssch_sci_pdu->pssch_numsym);
+        return(-1);
+    }
     nr_sl_pssch_sci_pdu->dmrs_symbol_position = sl_dmrs_mask3[nr_sl_pssch_sci_pdu->pssch_numsym-9];
   } else if (num_dmrs_symbols == 4) {
-    AssertFatal(nr_sl_pssch_sci_pdu->pssch_numsym>10, "num_pssch_ymbols %d is not ok for 4 DMRS (min 11) sci_pdu->dmrs_pattern.val %d\n",nr_sl_pssch_sci_pdu->pssch_numsym,sci_pdu->dmrs_pattern.val);
+    if (nr_sl_pssch_sci_pdu->pssch_numsym<=10) {
+	LOG_I(NR_MAC,"num_pssch_ymbols %d is not ok for 4 DMRS (min 11) sci_pdu->dmrs_pattern.val %d\n",nr_sl_pssch_sci_pdu->pssch_numsym,sci_pdu->dmrs_pattern.val);
+        return(-1);
+    }
     nr_sl_pssch_sci_pdu->dmrs_symbol_position = sl_dmrs_mask4[nr_sl_pssch_sci_pdu->pssch_numsym-11];
   }
 
   //This paramter is set if PSSCH sensing (PSSCH DMRS RSRP measurement)
   // is triggred as part of TX pool sensing procedure.
   nr_sl_pssch_sci_pdu->sense_pssch = 0;
+  return(0);
 
 }
 
@@ -795,9 +805,9 @@ int nr_ue_process_sci2_indication_pdu(NR_UE_MAC_INST_t *mac,module_id_t mod_id,f
   rx_config.sfn = frame;
   rx_config.slot = slot;
   config_pssch_slsch_pdu_rx(&rx_config.sl_rx_config_list[0].rx_pssch_config_pdu,
-                            sci_pdu,
-                            sl_bwp,
-                            sl_res_pool);
+                                  sci_pdu,
+                                  sl_bwp,
+                                  sl_res_pool);
   rx_config.sl_rx_config_list[0].pdu_type =  SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH;
 
   nr_scheduled_response_t scheduled_response;
