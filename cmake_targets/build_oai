@@ -300,7 +300,7 @@ function main() {
                 TARGET_LIST="$TARGET_LIST oai_eth_transpro"
                 CMAKE_CMD="$CMAKE_CMD -DOAI_${2^^}=ON" # ^^ makes uppercase
                 ;;
-              "benetel4g" | "benetel5g")
+              "benetel4g" | "benetel5g" | "oran_fhlib_5g" | "oran_fhlib_4g")
                 TARGET_LIST="$TARGET_LIST $2"
                 CMAKE_CMD="$CMAKE_CMD -DOAI_${2^^}=ON" # ^^ makes uppercase
                 ;;
