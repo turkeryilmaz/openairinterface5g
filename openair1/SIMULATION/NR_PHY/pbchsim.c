@@ -478,7 +478,6 @@ int main(int argc, char **argv)
 
   logInit();
   set_glog(loglvl);
-  T_stdout = 1;
 
   if (snr1set==0)
     snr1 = snr0+10;
@@ -496,7 +495,6 @@ int main(int argc, char **argv)
   frame_parms->nb_antenna_ports_gNB = n_tx;
   frame_parms->N_RB_DL = N_RB_DL;
   frame_parms->Nid_cell = Nid_cell;
-  frame_parms->nushift = Nid_cell%4;
   frame_parms->ssb_type = nr_ssb_type_C;
   frame_parms->freq_range = mu<2 ? nr_FR1 : nr_FR2;
 
@@ -783,7 +781,6 @@ int main(int argc, char **argv)
       }
       else {
         UE_nr_rxtx_proc_t proc={0};
-        nr_phy_data_t phy_data={0};
 
 	UE->rx_offset=0;
 	uint8_t ssb_index = 0;
@@ -815,7 +812,6 @@ int main(int argc, char **argv)
                          frame_parms,
                          ssb_index%8,
                          SISO,
-                         &phy_data,
                          &result,
                          rxdataF);
 

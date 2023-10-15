@@ -24,9 +24,7 @@
 short nr_qpsk_mod_table[8];
 
 int32_t nr_16qam_mod_table[16];
-#if defined(__SSE2__)
-__m128i nr_qpsk_byte_mod_table[2048];
-#endif
+simde__m128i nr_qpsk_byte_mod_table[2048];
 
 int64_t nr_16qam_byte_mod_table[1024];
 
@@ -50,7 +48,6 @@ void nr_generate_modulation_table() {
     //printf("QPSK : %d j%d\n",nr_qpsk_mod_table[i*2],nr_qpsk_mod_table[i*2+1]);
   }
 
-#if defined(__SSE2__)
   //QPSK m128
   table = (short*) nr_qpsk_byte_mod_table;
   for (i=0; i<256; i++) {
@@ -59,7 +56,6 @@ void nr_generate_modulation_table() {
       table[i*8+(j*2)+1] = (short)(1-2*((i>>(j*2+1))&1))*val*sqrt2*sqrt2;
     }
   }
-#endif
 
   //16QAM
   table = (short*) nr_16qam_byte_mod_table;

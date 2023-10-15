@@ -23,7 +23,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "common_lib.h"
-#include "ethernet_lib.h"
+#include "radio/ETHERNET/ethernet_lib.h"
 #include "oran_isolate.h"
 #include "xran_fh_o_du.h"
 
@@ -290,7 +290,7 @@ void *get_internal_parameter(char *name)
 
 
 
-void make_args(char **argv, int *argc, char *string)
+void make_args(char *argv[20], int *argc, char *string)
 {
   char tmp[1024]={0x0};
   FILE *cmd=NULL;
@@ -303,7 +303,7 @@ void make_args(char **argv, int *argc, char *string)
   {
     p=strchr(tmp, '\n');
     if (p!=NULL) *p=0x0;
-    argv[i] = malloc(strlen(tmp));
+    argv[i] = malloc(strlen(tmp)+1);
     strcpy(argv[i++], tmp);
   }
   *argc=i;

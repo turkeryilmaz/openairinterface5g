@@ -588,24 +588,7 @@ int main(int argc, char **argv) {
   nfapi_tx_request_t TX_req;
   Sched_Rsp_t sched_resp;
   int pa=dB0;
-#if defined(__arm__) || defined(__aarch64__)
-  FILE    *proc_fd = NULL;
-  char buf[64];
-  memset(buf,0,sizeof(buf));
-  proc_fd = fopen("/sys/devices/system/cpu/cpu4/cpufreq/cpuinfo_cur_freq", "r");
-
-  if(!proc_fd)
-    printf("cannot open /sys/devices/system/cpu/cpu4/cpufreq/cpuinfo_cur_freq");
-  else {
-    while(fgets(buf, 63, proc_fd))
-      printf("%s", buf);
-  }
-
-  fclose(proc_fd);
-  cpu_freq_GHz = ((double)atof(buf))/1e6;
-#else
   cpu_freq_GHz = get_cpu_freq_GHz();
-#endif
   printf("Detected cpu_freq %f GHz\n",cpu_freq_GHz);
   memset((void *)&sched_resp,0,sizeof(sched_resp));
   sched_resp.DL_req = &DL_req;
@@ -902,7 +885,6 @@ int main(int argc, char **argv) {
   // moreover you need to init itti with the following line
   // however itti will catch all signals, so ctrl-c won't work anymore
   // alternatively you can disable ITTI completely in CMakeLists.txt
-  T_stdout = 1;
 
   if (common_flag == 0) {
     switch (N_RB_DL) {
@@ -1019,8 +1001,6 @@ int main(int argc, char **argv) {
     hostname[1023] = '\0';
     gethostname(hostname, 1023);
     printf("Hostname: %s\n", hostname);
-    //char dirname[FILENAME_MAX];
-    //sprintf(dirname, "%s/SIMU/USER/pre-ci-logs-%s", getenv("OPENAIR_TARGETS"),hostname );
     sprintf(time_meas_fname,"time_meas_prb%d_mcs%d_anttx%d_antrx%d_pdcch%d_channel%s_tx%d.csv",
             N_RB_DL,mcs1,n_tx_phy,n_rx,num_pdcch_symbols,channel_model_input,transmission_mode);
     //mkdir(dirname,0777);

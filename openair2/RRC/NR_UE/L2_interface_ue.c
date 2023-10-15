@@ -61,11 +61,8 @@ int8_t nr_mac_rrc_data_ind_ue(const module_id_t module_id,
 {
   sdu_size_t sdu_size = 0;
 
-  switch(channel){
+  switch(channel) {
     case NR_BCCH_BCH:
-      AssertFatal(nr_rrc_ue_decode_NR_BCCH_BCH_Message(module_id, gNB_index, (uint8_t*)pduP, pdu_len) == 0, "UE decode BCCH-BCH error!\n");
-      break;
-
     case NR_BCCH_DL_SCH:
       if (pdu_len>0) {
         LOG_T(NR_RRC, "[UE %d] Received SDU for NR-BCCH-DL-SCH on SRB %u from gNB %d\n", module_id, channel & RAB_OFFSET,
@@ -88,6 +85,7 @@ int8_t nr_mac_rrc_data_ind_ue(const module_id_t module_id,
         NR_RRC_MAC_BCCH_DATA_IND (message_p).slot = slot;
         NR_RRC_MAC_BCCH_DATA_IND (message_p).sdu_size = sdu_size;
         NR_RRC_MAC_BCCH_DATA_IND (message_p).gnb_index = gNB_index;
+        NR_RRC_MAC_BCCH_DATA_IND (message_p).is_bch = (channel == NR_BCCH_BCH);
         itti_send_msg_to_task(TASK_RRC_NRUE, GNB_MODULE_ID_TO_INSTANCE(module_id), message_p);
       }
       break;
@@ -135,14 +133,16 @@ int8_t nr_mac_rrc_data_req_ue(const module_id_t Mod_idP,
   switch(Srb_id) {
 
     case CCCH:
-
-      LOG_D(NR_RRC, "nr_mac_rrc_data_req_ue: Payload size = %i\n", NR_UE_rrc_inst[Mod_idP].Srb0[gNB_id].Tx_buffer.payload_size);
-      memcpy(buffer_pP, (uint8_t*)NR_UE_rrc_inst[Mod_idP].Srb0[gNB_id].Tx_buffer.Payload, NR_UE_rrc_inst[Mod_idP].Srb0[gNB_id].Tx_buffer.payload_size);
-      for(int i = 0; i<NR_UE_rrc_inst[Mod_idP].Srb0[gNB_id].Tx_buffer.payload_size; i++) {
+      LOG_D(NR_RRC,
+            "nr_mac_rrc_data_req_ue: Payload size = %i\n",
+            NR_UE_rrc_inst[Mod_idP].Srb[gNB_id][0].srb_buffers.Tx_buffer.payload_size);
+      NR_UE_RRC_SRB_INFO_t *Srb0 = &NR_UE_rrc_inst[Mod_idP].Srb[gNB_id][0];
+      memcpy(buffer_pP, (uint8_t *)Srb0->srb_buffers.Tx_buffer.Payload, Srb0->srb_buffers.Tx_buffer.payload_size);
+      for (int i = 0; i < Srb0->srb_buffers.Tx_buffer.payload_size; i++) {
         LOG_D(NR_RRC,"(%i): %i\n", i, buffer_pP[i]);
       }
 
-      return NR_UE_rrc_inst[Mod_idP].Srb0[gNB_id].Tx_buffer.payload_size;
+      return Srb0->srb_buffers.Tx_buffer.payload_size;
 
     case DCCH:
       AssertFatal(1==0, "SRB1 not implemented yet!\n");
@@ -155,12 +155,10 @@ int8_t nr_mac_rrc_data_req_ue(const module_id_t Mod_idP,
   return 0;
 }
 
-int8_t nr_rrc_RA_succeeded(const module_id_t mod_id, const uint8_t gNB_index)
+void nr_mac_rrc_ra_ind(const module_id_t mod_id, int frame, bool success)
 {
-  if (NR_UE_rrc_inst[mod_id].timers_and_constants.T304_active == true) {
-    LOG_W(NR_RRC, "T304 was stoped with value %i\n", NR_UE_rrc_inst[mod_id].timers_and_constants.T304_cnt);
-    NR_UE_rrc_inst[mod_id].timers_and_constants.T304_active = false;
-    NR_UE_rrc_inst[mod_id].timers_and_constants.T304_cnt = 0;
-  }
-  return 0;
+  MessageDef *message_p = itti_alloc_new_message(TASK_MAC_UE, 0, NR_RRC_MAC_RA_IND);
+  NR_RRC_MAC_RA_IND (message_p).frame = frame;
+  NR_RRC_MAC_RA_IND (message_p).RA_succeeded = success;
+  itti_send_msg_to_task(TASK_RRC_NRUE, GNB_MODULE_ID_TO_INSTANCE(mod_id), message_p);
 }

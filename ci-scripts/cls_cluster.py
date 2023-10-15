@@ -82,6 +82,7 @@ class Cluster:
 		self.ranTargetBranch = ""
 		self.cmd = None
 		self.imageToPull = ''
+		self.testSvrId = None
 
 	def _recreate_entitlements(self):
 		# recreating entitlements, don't care if deletion fails
@@ -195,12 +196,13 @@ class Cluster:
 		self.cmd.run(f'oc delete -f {filename}')
 
 	def PullClusterImage(self, HTML, RAN):
+		if self.testSvrId == None: self.testSvrId = self.eNBIPAddress
 		if self.imageToPull == '':
 			HELP.GenericHelp(CONST.Version)
-			HELP.EPCSrvHelp(self.imageToPull)
-			sys.exit('Insufficient eNB Parameters')
+			sys.exit('Insufficient Parameter')
+		logging.debug(f'Pull OC image {self.imageToPull} to server {self.testSvrId}')
 		self.testCase_id = HTML.testCase_id
-		cmd = cls_cmd.getConnection(self.eNBIPAddress)
+		cmd = cls_cmd.getConnection(self.testSvrId)
 		succeeded = OC_login(cmd, self.OCUserName, self.OCPassword, CI_OC_RAN_NAMESPACE)
 		if not succeeded:
 			logging.error('\u001B[1m OC Cluster Login Failed\u001B[0m')
@@ -264,7 +266,8 @@ class Cluster:
 		baseTag = 'develop'
 		forceBaseImageBuild = False
 		if self.ranAllowMerge: # merging MR branch into develop -> temporary image
-			imageTag = f'{self.ranBranch}-{self.ranCommitID[0:8]}'
+			branchName = self.ranBranch.replace('/','-')
+			imageTag = f'{branchName}-{self.ranCommitID[0:8]}'
 			if self.ranTargetBranch == 'develop':
 				ret = self.cmd.run(f'git diff HEAD..origin/develop -- cmake_targets/build_oai cmake_targets/tools/build_helper docker/Dockerfile.base.rhel9 | grep --colour=never -i INDEX')
 				result = re.search('index', ret.stdout)
@@ -410,7 +413,6 @@ class Cluster:
 		imageSize = {}
 		for image in attemptedImages:
 			self.cmd.run(f'mkdir -p cmake_targets/log/{image}')
-			self.cmd.run(f'python3 ci-scripts/docker_log_split.py --logfilename=cmake_targets/log/{image}.log')
 			tag = imageTag if image != 'ran-base' else baseTag
 			size = self._get_image_size(image, tag)
 			if size <= 0:

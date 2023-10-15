@@ -377,7 +377,6 @@ int main(int argc, char **argv)
 
   logInit();
   set_glog(loglvl);
-  T_stdout = 1;
 
   if (snr1set == 0)
     snr1 = snr0 + 10;
@@ -428,7 +427,7 @@ int main(int argc, char **argv)
   phy_init_nr_gNB(gNB);
 
   //configure UE
-  UE = malloc(sizeof(PHY_VARS_NR_UE));
+  UE = calloc(1, sizeof(*UE));
   memcpy(&UE->frame_parms, frame_parms, sizeof(NR_DL_FRAME_PARMS));
 
   UE->frame_parms.nb_antennas_tx = n_tx;
@@ -523,7 +522,7 @@ int main(int argc, char **argv)
   unsigned int G = nr_get_G(nb_rb, nb_symb_sch, nb_re_dmrs, length_dmrs, mod_order, Nl);
 
   if (input_fd == NULL) {
-    nr_ulsch_encoding(UE, ulsch_ue, frame_parms, harq_pid, G);
+    nr_ulsch_encoding(UE, ulsch_ue, frame_parms, harq_pid, TBS>>3, G);
   }
   
   printf("\n");

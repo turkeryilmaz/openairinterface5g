@@ -52,11 +52,14 @@ import cls_cmd
 import sshconnection as SSH
 import helpreadme as HELP
 import constants as CONST
+import cls_oaicitest
 
 #-----------------------------------------------------------
 # Helper functions used here and in other classes
 # (e.g., cls_cluster.py)
 #-----------------------------------------------------------
+IMAGES = ['oai-enb', 'oai-lte-ru', 'oai-lte-ue', 'oai-gnb', 'oai-nr-cuup', 'oai-gnb-aw2s', 'oai-nr-ue']
+
 def CreateWorkspace(sshSession, sourcePath, ranRepository, ranCommitID, ranTargetBranch, ranAllowMerge):
 	if ranCommitID == '':
 		logging.error('need ranCommitID in CreateWorkspace()')
@@ -94,7 +97,9 @@ def CreateWorkspace(sshSession, sourcePath, ranRepository, ranCommitID, ranTarge
 def ImageTagToUse(imageName, ranCommitID, ranBranch, ranAllowMerge):
 	shortCommit = ranCommitID[0:8]
 	if ranAllowMerge:
-		tagToUse = f'{ranBranch}-{shortCommit}'
+		# Allowing contributor to have a name/branchName format
+		branchName = ranBranch.replace('/','-')
+		tagToUse = f'{branchName}-{shortCommit}'
 	else:
 		tagToUse = f'develop-{shortCommit}'
 	fullTag = f'{imageName}:{tagToUse}'
@@ -150,17 +155,13 @@ def AnalyzeBuildLogs(buildRoot, images, globalStatus):
 			committed = False
 			tagged = False
 			with open(f'{buildRoot}/{image}.log', mode='r') as inputfile:
-				startOfTargetImageCreation = False # check for tagged/committed only after image created
 				for line in inputfile:
-					result = re.search(f'FROM .* [aA][sS] {image}$', str(line))
-					if result is not None:
-						startOfTargetImageCreation = True
-					if startOfTargetImageCreation:
-						lineHasTag = re.search(f'Successfully tagged {image}:', str(line)) is not None
-						tagged = tagged or lineHasTag
-						# the OpenShift Cluster builder prepends image registry URL
-						lineHasCommit = re.search(f'COMMIT [a-zA-Z0-9\.:/\-]*{image}', str(line)) is not None
-						committed = committed or lineHasCommit
+					lineHasTag = re.search(f'Successfully tagged {image}:', str(line)) is not None
+					lineHasTag2 = re.search(f'naming to docker.io/library/{image}:', str(line)) is not None
+					tagged = tagged or lineHasTag or lineHasTag2
+					# the OpenShift Cluster builder prepends image registry URL
+					lineHasCommit = re.search(f'COMMIT [a-zA-Z0-9\.:/\-]*{image}', str(line)) is not None
+					committed = committed or lineHasCommit
 			errorandwarnings['errors'] = 0 if committed or tagged else 1
 			errorandwarnings['warnings'] = 0
 			errorandwarnings['status'] = committed or tagged
@@ -367,22 +368,23 @@ class Containerize():
 		# Creating a tupple with the imageName and the DockerFile prefix pattern on obelix
 		if result is not None:
 			imageNames.append(('oai-enb', 'eNB'))
-		else:
-			result = re.search('gNB', self.imageKind)
-			if result is not None:
-				imageNames.append(('oai-gnb', 'gNB'))
-			else:
-				result = re.search('all', self.imageKind)
-				if result is not None:
-					imageNames.append(('oai-enb', 'eNB'))
-					imageNames.append(('oai-gnb', 'gNB'))
-					imageNames.append(('oai-nr-cuup', 'nr-cuup'))
-					imageNames.append(('oai-lte-ue', 'lteUE'))
-					imageNames.append(('oai-nr-ue', 'nrUE'))
-					if self.host == 'Red Hat':
-						imageNames.append(('oai-physim', 'phySim'))
-					if self.host == 'Ubuntu':
-						imageNames.append(('oai-lte-ru', 'lteRU'))
+		result = re.search('gNB', self.imageKind)
+		if result is not None:
+			imageNames.append(('oai-gnb', 'gNB'))
+		result = re.search('all', self.imageKind)
+		if result is not None:
+			imageNames.append(('oai-enb', 'eNB'))
+			imageNames.append(('oai-gnb', 'gNB'))
+			imageNames.append(('oai-nr-cuup', 'nr-cuup'))
+			imageNames.append(('oai-lte-ue', 'lteUE'))
+			imageNames.append(('oai-nr-ue', 'nrUE'))
+			if self.host == 'Red Hat':
+				imageNames.append(('oai-physim', 'phySim'))
+			if self.host == 'Ubuntu':
+				imageNames.append(('oai-lte-ru', 'lteRU'))
+		result = re.search('build_cross_arm64', self.imageKind)
+		if result is not None:
+			self.dockerfileprefix = '.ubuntu20.cross-arm64'
 		
 		# Workaround for some servers, we need to erase completely the workspace
 		if self.forcedWorkspaceCleanup:
@@ -465,9 +467,12 @@ class Containerize():
 			if image != 'ran-build':
 				cmd.run(f'sed -i -e "s#ran-build:latest#ran-build:{imageTag}#" docker/Dockerfile.{pattern}{self.dockerfileprefix}')
 			cmd.run(f'{self.cli} build {self.cliBuildOptions} --target {image} --tag {image}:{imageTag} --file docker/Dockerfile.{pattern}{self.dockerfileprefix} . > cmake_targets/log/{image}.log 2>&1', timeout=1200)
-			# split the log
-			cmd.run(f"mkdir -p cmake_targets/log/{image}")
-			cmd.run(f"python3 ci-scripts/docker_log_split.py --logfilename=cmake_targets/log/{image}.log")
+			if image == 'ran-build':
+				cmd.run(f"docker run --name test-log -d {image}:{imageTag} /bin/true")
+				cmd.run(f"docker cp test-log:/oai-ran/cmake_targets/log/ cmake_targets/log/{image}/")
+				cmd.run(f"docker rm -f test-log")
+			else:
+				cmd.run(f"mkdir -p cmake_targets/log/{image}")
 			# check the status of the build
 			ret = cmd.run(f"{self.cli} image inspect --format=\'Size = {{{{.Size}}}} bytes\' {image}:{imageTag}")
 			if ret.returncode != 0:
@@ -739,6 +744,7 @@ class Containerize():
 		if lIpAddr == '' or lUserName == '' or lPassWord == '' or lSourcePath == '':
 			HELP.GenericHelp(CONST.Version)
 			sys.exit('Insufficient Parameter')
+		logging.debug('\u001B[1m Pulling image(s) on server: ' + lIpAddr + '\u001B[0m')
 		myCmd = cls_cmd.getConnection(lIpAddr)
 		imagePrefix = 'porcepix.sboai.cs.eurecom.fr'
 		response = myCmd.run(f'docker login -u oaicicd -p oaicicd {imagePrefix}')
@@ -800,8 +806,7 @@ class Containerize():
 			logging.debug('Removing test images locally')
 			myCmd = cls_cmd.LocalCmd()
 
-		imageNames = ['oai-enb', 'oai-gnb', 'oai-lte-ue', 'oai-nr-ue', 'oai-lte-ru', 'oai-nr-cuup', 'oai-gnb-aw2s']
-		for image in imageNames:
+		for image in IMAGES:
 			imageTag = ImageTagToUse(image, self.ranCommitID, self.ranBranch, self.ranAllowMerge)
 			cmd = f'docker rmi oai-ci/{imageTag}'
 			myCmd.run(cmd, reportNonZero=False)
@@ -838,12 +843,9 @@ class Containerize():
 
 		mySSH.command('cd ' + lSourcePath + '/' + self.yamlPath[self.eNB_instance], '\$', 5)
 		mySSH.command('cp docker-compose.y*ml ci-docker-compose.yml', '\$', 5)
-		imagesList = ['oai-enb', 'oai-gnb', 'oai-nr-cuup', 'oai-gnb-aw2s']
-		for image in imagesList:
+		for image in IMAGES:
 			imageTag = ImageTagToUse(image, self.ranCommitID, self.ranBranch, self.ranAllowMerge)
 			mySSH.command(f'sed -i -e "s#image: {image}:latest#image: oai-ci/{imageTag}#" ci-docker-compose.yml', '\$', 2)
-		localMmeIpAddr = EPC.MmeIPAddress
-		mySSH.command('sed -i -e "s/CI_MME_IP_ADDR/' + localMmeIpAddr + '/" ci-docker-compose.yml', '\$', 2)
 
 		# Currently support only one
 		svcName = self.services[self.eNB_instance]
@@ -877,6 +879,7 @@ class Containerize():
 				else:
 					time.sleep(10)
 					cnt += 1
+
 			mySSH.command('docker inspect --format="ImageUsed: {{.Config.Image}}" ' + containerName, '\$', 5)
 			for stdoutLine in mySSH.getBefore().split('\n'):
 				if stdoutLine.count('ImageUsed: oai-ci'):
@@ -903,7 +906,7 @@ class Containerize():
 			cnt = 0
 			while (cnt < 20):
 				mySSH.command('docker logs ' + containerName + ' | egrep --text --color=never -i "wait|sync|Starting"', '\$', 30)
-				result = re.search('got sync|Starting F1AP at CU', mySSH.getBefore())
+				result = re.search('got sync|Starting E1AP at CU UP|Starting F1AP at CU|Got sync|Waiting for RUs to be configured', mySSH.getBefore())
 				if result is None:
 					time.sleep(6)
 					cnt += 1
@@ -985,13 +988,9 @@ class Containerize():
 		for svcName in services:
 			# head -n -1 suppresses the final "X exited with status code Y"
 			filename = f'{svcName}-{HTML.testCase_id}.log'
-			#mySSH.command(f'docker-compose -f ci-docker-compose.yml logs --no-log-prefix -- {svcName} | head -n -1 &> {lSourcePath}/cmake_targets/log/{filename}', '\$', 30)
 			mySSH.command(f'docker-compose -f ci-docker-compose.yml logs --no-log-prefix -- {svcName} &> {lSourcePath}/cmake_targets/log/{filename}', '\$', 120)
 
-		mySSH.command('docker-compose -f ci-docker-compose.yml down', '\$', 5)
-		# Cleaning any created tmp volume
-		mySSH.command('docker volume prune --force', '\$', 20)
-
+		mySSH.command('docker-compose -f ci-docker-compose.yml down -v', '\$', 5)
 		mySSH.close()
 
 		# Analyzing log file!
@@ -1005,6 +1004,16 @@ class Containerize():
 			HTML.htmleNBFailureMsg='Could not copy logfile to analyze it!'
 			HTML.CreateHtmlTestRow('N/A', 'KO', CONST.ENB_PROCESS_NOLOGFILE_TO_ANALYZE)
 			self.exitStatus = 1
+		# use function for UE log analysis, when oai-nr-ue container is used
+		elif 'oai-nr-ue' in services or 'lte_ue0' in services:
+			self.exitStatus == 0
+			logging.debug('\u001B[1m Analyzing UE logfile ' + filename + ' \u001B[0m')
+			logStatus = cls_oaicitest.OaiCiTest().AnalyzeLogFile_UE(f'{filename}', HTML, RAN)
+			if (logStatus < 0):
+				fullStatus = False
+				HTML.CreateHtmlTestRow('UE log Analysis', 'KO', logStatus)
+			else:
+				HTML.CreateHtmlTestRow('UE log Analysis', 'OK', CONST.ALL_PROCESSES_OK)
 		else:
 			for svcName in services:
 				filename = f'{svcName}-{HTML.testCase_id}.log'
@@ -1188,8 +1197,7 @@ class Containerize():
 		myCmd = cls_cmd.LocalCmd(d = self.yamlPath[0])
 		cmd = 'cp docker-compose.y*ml docker-compose-ci.yml'
 		myCmd.run(cmd, silent=self.displayedNewTags)
-		imageNames = ['oai-enb', 'oai-gnb', 'oai-lte-ue', 'oai-nr-ue', 'oai-lte-ru', 'oai-nr-cuup']
-		for image in imageNames:
+		for image in IMAGES:
 			tagToUse = ImageTagToUse(image, self.ranCommitID, self.ranBranch, self.ranAllowMerge)
 			cmd = f'sed -i -e "s@oaisoftwarealliance/{image}:develop@oai-ci/{tagToUse}@" docker-compose-ci.yml'
 			myCmd.run(cmd, silent=self.displayedNewTags)
@@ -1287,7 +1295,7 @@ class Containerize():
 
 		logging.debug('\u001B[1m Undeploying \u001B[0m')
 		logging.debug(f'Working dir is back {self.yamlPath[0]}')
-		cmd = 'docker-compose -f docker-compose-ci.yml down'
+		cmd = 'docker-compose -f docker-compose-ci.yml down -v'
 		deployStatus = myCmd.run(cmd, timeout=100)
 		if deployStatus.returncode != 0:
 			myCmd.close()
@@ -1298,9 +1306,6 @@ class Containerize():
 			return
 
 		self.deployedContainers = []
-		# Cleaning any created tmp volume
-		cmd = 'docker volume prune --force'
-		deployStatus = myCmd.run(cmd, timeout=100, reportNonZero=False)
 		myCmd.close()
 
 		if fullStatus:
@@ -1340,62 +1345,6 @@ class Containerize():
 		myCmd.close()
 
 		HTML.CreateHtmlTestRowQueue(self.pingOptions, 'OK', [message])
-
-	def PingFromContainer(self, HTML, RAN, UE):
-		myCmd = cls_cmd.LocalCmd()
-		self.exitStatus = 0
-		ymlPath = self.yamlPath[0].split('/')
-		logPath = '../cmake_targets/log/' + ymlPath[1]
-		cmd = f'mkdir -p {logPath}'
-		myCmd.run(cmd, silent=True)
-
-		cmd = f'docker exec {self.pingContName} /bin/bash -c "ping {self.pingOptions}" 2>&1 | tee {logPath}/ping_{HTML.testCase_id}.log'
-		pingStatus = myCmd.run(cmd, timeout=100, reportNonZero=False)
-		myCmd.close()
-
-		result = re.search(', (?P<packetloss>[0-9\.]+)% packet loss, time [0-9\.]+ms', pingStatus.stdout)
-		if result is None:
-			self.PingExit(HTML, RAN, UE, False, 'Packet Loss Not Found')
-			return
-
-		packetloss = result.group('packetloss')
-		if float(packetloss) == 100:
-			self.PingExit(HTML, RAN, UE, False, 'Packet Loss is 100%')
-			return
-
-		result = re.search('rtt min\/avg\/max\/mdev = (?P<rtt_min>[0-9\.]+)\/(?P<rtt_avg>[0-9\.]+)\/(?P<rtt_max>[0-9\.]+)\/[0-9\.]+ ms', pingStatus.stdout)
-		if result is None:
-			self.PingExit(HTML, RAN, UE, False, 'Ping RTT_Min RTT_Avg RTT_Max Not Found!')
-			return
-
-		rtt_min = result.group('rtt_min')
-		rtt_avg = result.group('rtt_avg')
-		rtt_max = result.group('rtt_max')
-		pal_msg = 'Packet Loss : ' + packetloss + '%'
-		min_msg = 'RTT(Min)    : ' + rtt_min + ' ms'
-		avg_msg = 'RTT(Avg)    : ' + rtt_avg + ' ms'
-		max_msg = 'RTT(Max)    : ' + rtt_max + ' ms'
-
-		message = 'ping result\n'
-		message += '    ' + pal_msg + '\n'
-		message += '    ' + min_msg + '\n'
-		message += '    ' + avg_msg + '\n'
-		message += '    ' + max_msg + '\n'
-		packetLossOK = True
-		if float(packetloss) > float(self.pingLossThreshold):
-			message += '\nPacket Loss too high'
-			packetLossOK = False
-		elif float(packetloss) > 0:
-			message += '\nPacket Loss is not 0%'
-		self.PingExit(HTML, RAN, UE, packetLossOK, message)
-
-		if packetLossOK:
-			logging.debug('\u001B[1;37;44m ping result \u001B[0m')
-			logging.debug('\u001B[1;34m    ' + pal_msg + '\u001B[0m')
-			logging.debug('\u001B[1;34m    ' + min_msg + '\u001B[0m')
-			logging.debug('\u001B[1;34m    ' + avg_msg + '\u001B[0m')
-			logging.debug('\u001B[1;34m    ' + max_msg + '\u001B[0m')
-			logging.info('\u001B[1m Ping Test PASS\u001B[0m')
 
 	def PingExit(self, HTML, RAN, UE, status, message):
 		if status:

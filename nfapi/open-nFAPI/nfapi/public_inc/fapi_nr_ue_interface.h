@@ -425,7 +425,7 @@ typedef struct {
   uint8_t num_dci_options;  // Num DCIs the UE actually needs to decode (1 or 2)
   uint8_t dci_length_options[2];
   uint8_t dci_format_options[2];
-  uint8_t dci_type_options[2];
+  uint8_t ss_type_options[2];
 } fapi_nr_dl_config_dci_dl_pdu_rel15_t;
 
 typedef struct {
@@ -442,6 +442,9 @@ typedef struct {
   uint16_t start_rb;
   uint16_t number_symbols;
   uint16_t start_symbol;
+  // TODO this is a workaround to make it work
+  // implementation is also a bunch of workarounds
+  uint16_t rb_offset;
   uint16_t dlDmrsSymbPos;  
   uint8_t dmrsConfigType;
   uint8_t prb_bundling_size_ind;
@@ -633,13 +636,12 @@ typedef struct
 
 typedef struct 
 {
-  fapi_nr_max_num_of_symbol_per_slot_t* max_num_of_symbol_per_slot_list;
+  fapi_nr_max_num_of_symbol_per_slot_t *max_num_of_symbol_per_slot_list;
 
 } fapi_nr_max_tdd_periodicity_t;
 
 typedef struct 
 {
-  uint8_t tdd_period;//DL UL Transmission Periodicity. Value:0: ms0p5 1: ms0p625 2: ms1 3: ms1p25 4: ms2 5: ms2p5 6: ms5 7: ms10 8: ms3 9: ms4
   uint8_t tdd_period_in_slots;
   fapi_nr_max_tdd_periodicity_t* max_tdd_periodicity_list;
 
@@ -680,7 +682,8 @@ typedef struct {
   fapi_nr_cell_config_t cell_config;
   fapi_nr_ssb_config_t ssb_config;
   fapi_nr_ssb_table_t ssb_table;
-  fapi_nr_tdd_table_t tdd_table;
+  fapi_nr_tdd_table_t tdd_table_1;
+  fapi_nr_tdd_table_t *tdd_table_2;
   fapi_nr_prach_config_t prach_config;
 
 } fapi_nr_config_request_t;
