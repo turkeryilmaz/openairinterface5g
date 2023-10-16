@@ -673,6 +673,8 @@ typedef struct NR_mac_stats {
   uint8_t num_rsrp_meas;
   char srs_stats[50]; // Statistics may differ depending on SRS usage
   int pusch_snrx10;
+  int deltaMCS;
+  int NPRB;
 } NR_mac_stats_t;
 
 typedef struct NR_bler_options {
