@@ -240,7 +240,6 @@ int decode_offload(PHY_VARS_gNB *phy_vars_gNB,
   const int Kr_bytes = Kr >> 3;
   const int kc = decParams->BG == 2 ? 52 : 68;
   int decodeIterations = 2;
-  int dtx_det = 0;
   int r_offset = 0, offset = 0;
   for (int r = 0; r < harq_process->C; r++) {
     int E = nr_get_E(G, harq_process->C, Qm, n_layers, r);
@@ -253,7 +252,6 @@ int decode_offload(PHY_VARS_gNB *phy_vars_gNB,
                                          &harq_process->llrLen,
                                          harq_process->round);
 
-    if ((dtx_det == 0) && (pusch_pdu->pusch_data.rv_index == 0)) {
       memcpy(z_ol, ulsch_llr + r_offset, E * sizeof(short));
       simde__m128i *pv_ol128 = (simde__m128i *)&z_ol;
       simde__m128i *pl_ol128 = (simde__m128i *)&l_ol;
@@ -269,10 +267,6 @@ int decode_offload(PHY_VARS_gNB *phy_vars_gNB,
               .LDPCdecoder(decParams, harq_pid, ULSCH_id, r, (int8_t *)&pl_ol128[0], (int8_t *)harq_process->c[r], NULL, NULL);
       if (decodeIterations < 20) // hardcoded iterations to fix
         decodeIterations = min(decodeIterations, ulsch->max_ldpc_iterations - 1);
-    } else {
-      dtx_det = 0;
-      decodeIterations = ulsch->max_ldpc_iterations + 1;
-    }
     bool decodeSuccess = (decodeIterations <= ulsch->max_ldpc_iterations);
     if (decodeSuccess) {
       memcpy(harq_process->b + offset, harq_process->c[r], Kr_bytes - (harq_process->F >> 3) - ((harq_process->C > 1) ? 3 : 0));
