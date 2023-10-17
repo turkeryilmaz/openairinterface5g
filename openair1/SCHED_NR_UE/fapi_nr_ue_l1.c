@@ -377,11 +377,13 @@ void configure_ta_command(PHY_VARS_NR_UE *ue, fapi_nr_ta_command_pdu *ta_command
 
   int ta_slot_temp = ta_command_pdu->ta_slot + ul_tx_timing_adjustment + NTN_UE_slot_Rx_to_Tx;
   ue->ta_slot =  ta_slot_temp % slots_per_frame;
+  /*
   if (ta_slot_temp > slots_per_frame)
     ue->ta_frame = (ta_command_pdu->ta_frame + ta_slot_temp/slots_per_frame) % 1024;
   else
     ue->ta_frame = ta_command_pdu->ta_frame;
-
+  */
+  ue->ta_frame = (ta_command_pdu->ta_frame + ta_slot_temp/slots_per_frame) % 1024;
   ue->ta_command = ta_command_pdu->ta_command;
   LOG_D(PHY,"TA command received in Frame.Slot %d.%d -- Starting UL time alignment procedures. TA update will be applied at frame %d slot %d\n",
         ta_command_pdu->ta_frame, ta_command_pdu->ta_slot, ue->ta_frame, ue->ta_slot);

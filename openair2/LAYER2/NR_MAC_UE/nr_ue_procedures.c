@@ -3685,25 +3685,31 @@ void nr_ue_process_mac_pdu(nr_downlink_indication_t *dl_info,
         const int ta = ((NR_MAC_CE_TA *)pduP)[1].TA_COMMAND;
         const int tag = ((NR_MAC_CE_TA *)pduP)[1].TAGID;
 
+        
         NR_UL_TIME_ALIGNMENT_t *ul_time_alignment = &mac->ul_time_alignment;
-        ul_time_alignment->ta_total += ta - 31;
-        ul_time_alignment->tag_id = tag;
-        ul_time_alignment->ta_command = ta;
-        ul_time_alignment->frame = frameP;
-        ul_time_alignment->slot = slot;
-        LOG_D(NR_MAC, "ul_time_alignment->frame: %d, ul_time_alignment->slot: %d\n", ul_time_alignment->frame, ul_time_alignment->slot);
-        ul_time_alignment->ta_apply = true;
+        static int firstTime = 0;
+        if ((frameP == (ul_time_alignment->frame + 100)%1024) || firstTime == 0 )
+        { 
+          firstTime = 1;
+          ul_time_alignment->ta_total += ta - 31;
+          ul_time_alignment->tag_id = tag;
+          ul_time_alignment->ta_command = ta;
+          ul_time_alignment->frame = frameP;
+          ul_time_alignment->slot = slot;
+          LOG_D(NR_MAC, "ul_time_alignment->frame: %d, ul_time_alignment->slot: %d\n", ul_time_alignment->frame, ul_time_alignment->slot);
+          ul_time_alignment->ta_apply = true;
+        
         /*
         #ifdef DEBUG_HEADER_PARSING
         LOG_D(MAC, "[UE] CE %d : UE Timing Advance : %d\n", i, pduP[1]);
         #endif
         */
 
-        if (ta == 31)
-          LOG_D(NR_MAC, "[%d.%d] Received TA_COMMAND %u TAGID %u CC_id %d TA total %d\n", frameP, slot, ta, tag, CC_id, ul_time_alignment->ta_total);
-        else
-          LOG_I(NR_MAC, "[%d.%d] Received TA_COMMAND %u TAGID %u CC_id %d TA total %d\n", frameP, slot, ta, tag, CC_id, ul_time_alignment->ta_total);
-
+          if (ta == 31)
+            LOG_D(NR_MAC, "[%d.%d] Received TA_COMMAND %u TAGID %u CC_id %d TA total %d\n", frameP, slot, ta, tag, CC_id, ul_time_alignment->ta_total);
+          else
+            LOG_I(NR_MAC, "[%d.%d] Received TA_COMMAND %u TAGID %u CC_id %d TA total %d\n", frameP, slot, ta, tag, CC_id, ul_time_alignment->ta_total);
+        } 
         break;
       case DL_SCH_LCID_CON_RES_ID:
         //  Clause 5.1.5 and 6.1.3.3 of 3GPP TS 38.321 version 16.2.1 Release 16
