@@ -416,5 +416,6 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
                         RAR_grant_t *rar_grant,
                         uint16_t rnti,
                         const nr_dci_format_t *dci_format);
+void nr_mac_process_rrc_msg(instance_t instance);
 #endif
 /** @}*/

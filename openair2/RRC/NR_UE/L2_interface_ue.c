@@ -36,6 +36,7 @@
 #include "rrc_vars.h"
 #include "MAC/mac.h"
 #include "LAYER2/NR_MAC_COMMON/nr_mac.h"
+#include "openair2/LAYER2/NR_MAC_UE/mac_proto.h"
 
 typedef uint32_t channel_t;
 
@@ -153,6 +154,36 @@ int8_t nr_mac_rrc_data_req_ue(const module_id_t Mod_idP,
   }
 
   return 0;
+}
+
+void nr_mac_process_rrc_msg(instance_t instance)
+{
+  MessageDef *msg;
+  do {
+    // Checks if a message has been sent to MAC sub-task
+    itti_poll_msg(TASK_MAC_UE, &msg);
+    if (!msg)
+      return;
+
+    LOG_I(NR_MAC,
+          "Received %s from %s: instance %ld\n",
+          ITTI_MSG_NAME(msg),
+          ITTI_MSG_ORIGIN_NAME(msg),
+          ITTI_MSG_DESTINATION_INSTANCE(msg));
+    switch (ITTI_MSG_ID(msg)) {
+      case MAC_MIB_REQ: {
+        mac_mib_req_t *req = &msg->ittiMsg.macMibReq;
+        nr_rrc_mac_config_req_mib(req->module_id, req->cc_idP, req->mib, req->sched_sib);
+      } break;
+
+      default:
+        LOG_E(NR_MAC, "Received unexpected message %s\n", ITTI_MSG_NAME(msg));
+        break;
+    }
+
+    int result = itti_free(ITTI_MSG_ORIGIN_ID(msg), msg);
+    AssertFatal(result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
+  } while (msg != NULL);
 }
 
 void nr_mac_rrc_ra_ind(const module_id_t mod_id, int frame, bool success)

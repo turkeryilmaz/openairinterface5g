@@ -351,21 +351,6 @@ NR_UE_RRC_INST_t* openair_rrc_top_init_ue_nr(char* uecap_file, char* reconfig_fi
   return NR_UE_rrc_inst;
 }
 
-int8_t nr_ue_process_secondary_cell_list(NR_CellGroupConfig_t *cell_group_config){
-
-    return 0;
-}
-
-int8_t nr_ue_process_mac_cell_group_config(NR_MAC_CellGroupConfig_t *mac_cell_group_config){
-
-    return 0;
-}
-
-int8_t nr_ue_process_physical_cell_group_config(NR_PhysicalCellGroupConfig_t *phy_cell_group_config){
-
-    return 0;
-}
-
 bool check_si_validity(NR_UE_RRC_SI_INFO *SI_info, int si_type)
 {
   switch (si_type) {
@@ -478,7 +463,17 @@ int8_t nr_rrc_ue_decode_NR_BCCH_BCH_Message(const module_id_t module_id, const u
       // to schedule MAC to get SI if required
       get_sib = check_si_status(SI_info);
     }
-    nr_rrc_mac_config_req_mib(module_id, 0, NR_UE_rrc_inst[module_id].mib, get_sib);
+    NR_BCCH_BCH_Message_t *reDecode = NULL;
+    uper_decode_complete(NULL, &asn_DEF_NR_BCCH_BCH_Message, (void **)&reDecode, (const void *)bufferP, buffer_len);
+    MessageDef *msg = itti_alloc_new_message(TASK_RRC_NRUE, 0, MAC_MIB_REQ);
+    mac_mib_req_t *req = &msg->ittiMsg.macMibReq;
+    req->module_id = module_id;
+    req->cc_idP = 0;
+    req->mib = reDecode->message.choice.mib;
+    req->sched_sib = get_sib;
+    itti_send_msg_to_task(TASK_MAC_UE, module_id, msg);
+    reDecode->message.choice.mib = NULL;
+    ASN_STRUCT_FREE(asn_DEF_NR_BCCH_BCH_Message, reDecode);
     ret = 0;
   }
   ASN_STRUCT_FREE(asn_DEF_NR_BCCH_BCH_Message, bcch_message);

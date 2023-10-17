@@ -459,4 +459,11 @@ typedef struct rlc_sdu_indication_s {
   int message_id;
 } RlcSduIndication;
 
+typedef struct {
+  instance_t module_id;
+  int cc_idP;
+  void *mib;
+  int sched_sib;
+} mac_mib_req_t;
+
 #endif /* RRC_MESSAGES_TYPES_H_ */

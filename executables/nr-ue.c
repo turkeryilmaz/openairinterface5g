@@ -599,6 +599,7 @@ nr_phy_data_t UE_dl_preprocessing(PHY_VARS_NR_UE *UE, UE_nr_rxtx_proc_t *proc)
       UE->target_Nid_cell = -1;
     }
 
+    nr_mac_process_rrc_msg(0);
     /* send tick to RLC and PDCP every ms */
     if (proc->nr_slot_rx % UE->frame_parms.slots_per_subframe == 0) {
       void nr_rlc_tick(int frame, int subframe);
