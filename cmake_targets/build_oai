@@ -246,7 +246,7 @@ function main() {
             RU=1
             TARGET_LIST="$TARGET_LIST oairu"
             echo_info "Will compile RRU"
-	    shift;;
+            shift;;
        --UE)
             UE=1
             TARGET_LIST="$TARGET_LIST lte-uesoftmodem"
@@ -300,14 +300,13 @@ function main() {
                 TARGET_LIST="$TARGET_LIST oai_eth_transpro"
                 CMAKE_CMD="$CMAKE_CMD -DOAI_${2^^}=ON" # ^^ makes uppercase
                 ;;
-              "benetel4g" | "benetel5g" | "oran_fhlib_5g" | "oran_fhlib_4g")
+              "benetel4g" | "benetel5g" | "oran_fhlib_4g")
                 TARGET_LIST="$TARGET_LIST $2"
                 CMAKE_CMD="$CMAKE_CMD -DOAI_${2^^}=ON" # ^^ makes uppercase
                 ;;
-	      "oran_fhlib_5g")
-	        TARGET_LIST="$TARGET_LIST $2"
-  		CMAKE_CMD="$CMAKE_CMD -DOAI_${2^^}=ON"
-		;;		
+              "oran_fhlib_5g")
+                TARGET_LIST="$TARGET_LIST $2"
+                ;;
               "None")
                 ;;
               *)
@@ -388,7 +387,7 @@ function main() {
                 echo_info "Enabling build of optional shared library $lib"
               done
             fi
-            shift 2;;		
+            shift 2;;
         --noavx512)
             CMAKE_CMD="$CMAKE_CMD -DAVX512=OFF"
             echo_info "Disabling AVX512 instructions"
@@ -422,8 +421,8 @@ function main() {
         -h | --help)
             print_help
             exit 1;;
-	*)
-	    print_help
+        *)
+            print_help
             echo_fatal "Unknown option $1"
             break;;
    esac
@@ -494,6 +493,12 @@ function main() {
     echo_info "Running \"$CMAKE_CMD\""
     eval $CMAKE_CMD
     compilations $BUILD_DIR all.txt $TARGET_LIST
+
+    # TODO: once we got the CMakeLists.txt file done for the ORAN files, remove the following lines
+    if [[ $TARGET_LIST =~ "oran_fhlib_5g" ]]; then
+      rm -f liboai_transpro.so
+      ln -s liboran_fhlib_5g.so liboai_transpro.so
+    fi
 
     if [ "$UE" = 1 ] ; then
 

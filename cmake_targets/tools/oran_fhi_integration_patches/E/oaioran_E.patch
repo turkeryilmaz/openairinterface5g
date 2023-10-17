@@ -52,8 +52,8 @@ index de141bf..96572e4 100644
  #-qopt-report=5 -qopt-matmul -qopt-report-phase=all
 -CPP_COMP       := -O3 -DNDEBUG  -xcore-avx512 -fPIE -restrict -fasm-blocks
 -CPP_COMP_SNC   := -O3 -DNDEBUG -march=icelake-server -fPIE -restrict -fasm-blocks
-+CPP_COMP       := -O3 -DNDEBUG  -fPIE 
-+CPP_COMP_SNC   := -O3 -DNDEBUG -march=icelake-server -fPIE 
++CPP_COMP       := -O3 -DNDEBUG  -fPIE
++CPP_COMP_SNC   := -O3 -DNDEBUG -march=icelake-server -fPIE
  CC_FLAGS_FULL  := $(CC_FLAGS)  $(INC) $(DEF)
  CPP_FLAGS_FULL := $(CPP_FLAGS) $(CPP_COMP) $(INC) $(DEF)
  CPP_FLAGS_FULL_SNC := $(CPP_FLAGS) $(CPP_COMP_SNC) $(INC) $(DEF)
@@ -180,7 +180,7 @@ index baa673f..bf89bc7 100644
 -            return 0;
 +            /*if (process_ring(ctx->rx_ring[i][qi], i, qi))
 +            return 0;*/
-+            process_ring(ctx->rx_ring[i][qi],i,qi);		
++            process_ring(ctx->rx_ring[i][qi],i,qi);
          }
      }
  

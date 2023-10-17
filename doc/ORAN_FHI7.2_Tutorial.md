@@ -51,14 +51,15 @@ Radio units we are testing/integrating:
 |-----------|---------|
 |VVDN LPRU  |06-v1.0.9|
 |LiteON RU  |01.00.08 |
-|Benetel 550|v0.6     |
-|Benetel 650|v0.6     |
+|Benetel 550|v0.8.1   |
+|Benetel 650|v0.8.1   |
 
 Tested libxran releases:
 
-|Vendor                    |
-|--------------------------|
-|oran_release_bronze_v1.1  |
+| Vendor                          |
+|---------------------------------|
+| oran_release_bronze_v1.1        |
+| oran_e_maintenance_release_v1.0 |
 
 ## 1.1 Configure your server
 
@@ -215,6 +216,8 @@ cd
 wget http://fast.dpdk.org/rel/dpdk-20.11.7.tar.xz
 ```
 
+Note tht you can also use a more recent version of DPDK: `wget http://fast.dpdk.org/rel/dpdk-20.11.8.tar.xz`.
+
 ### DPDK Compilation and Installation
 
 ```bash
@@ -271,6 +274,15 @@ export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/local/lib64/pkgconfig/
 pkg-config --libs libdpdk --static
 ```
 
+### If you want to de-install this version of DPDK
+
+Go back to the version folder you used to build and install
+
+```
+cd ~/dpdk-stable-20.11.7
+sudo ninja deinstall -C build
+```
+
 # 2. Build OAI-FHI gNB
 
 Clone OAI code base in a suitable repository, here we are cloning in `~/openairinterface5g` directory,
@@ -286,29 +298,34 @@ We have made patches for the different releases of the FHI library:
 
 ```bash
 # TODO when merging: remove the 2 following lines
-# At the time of writing, the `use_msgq_new_fhidriver_build_fix` was not yet merged into `develop`
-git checkout use_msgq_new_fhidriver_build_fix
-# If the `use_msgq_new_fhidriver_build_fix` does not exist anymore, then they are in `develop` branch
+# At the time of writing, the `fhidriver_E_rk` was not yet merged into `develop`
+git checkout fhidriver_E_rk
+# If the `fhidriver_E_rk` does not exist anymore, then they are in `develop` branch
 git checkout develop
-# TODO: if we have different versions of patches per O-RAN releases
+# We have different versions of patches per O-RAN releases
 ls cmake_targets/tools/oran_fhi_integration_patches/
+E  bronze
 ```
 
 ## 2.1 Build ORAN Fronthaul Interface Library
 
-Download ORAN FHI library
+Download ORAN FHI DU library
 
 ```bash
 git clone https://gerrit.o-ran-sc.org/r/o-du/phy.git ~/phy
 cd ~/phy
-# If you want to use the Bronze release
+```
+
+### 2.1.1. Using the Bronze Release
+
+```bash
 git checkout oran_release_bronze_v1.1
 ```
 
-Apply patches (available in `oai_folder/cmake_targets/tools/oran_fhi_integration_patches/`)
+Apply patches (available in `oai_folder/cmake_targets/tools/oran_fhi_integration_patches/bronze`)
 
 ```bash
-cp ~/openairinterface5g/cmake_targets/tools/oran_fhi_integration_patches/oran-fhi-*.patch .
+cp ~/openairinterface5g/cmake_targets/tools/oran_fhi_integration_patches/bronze/oran-fhi-*.patch .
 
 git apply oran-fhi-1-compile-libxran-using-gcc-and-disable-avx512.patch
 git apply oran-fhi-2-return-correct-slot_id.patch
@@ -316,6 +333,22 @@ git apply oran-fhi-3-disable-pkt-validate-at-process_mbuf.patch
 git apply oran-fhi-4-process_all_rx_ring.patch
 git apply oran-fhi-5-remove-not-used-dependencies.patch
 ```
+
+### 2.1.2. Using the E Release
+
+```bash
+git checkout oran_e_maintenance_release_v1.0
+```
+
+Apply patches (available in `oai_folder/cmake_targets/tools/oran_fhi_integration_patches/E`)
+
+```bash
+cp ~/openairinterface5g/cmake_targets/tools/oran_fhi_integration_patches/bronze/*.patch .
+
+git apply oaioran_E.patch
+```
+
+### 2.1.3. Build (valid for any release)
 
 Set up the environment (change the path if you use different folders). We recommend you copy all variables in a file and then you source that file evertime you compile the source code.
 
@@ -332,15 +365,21 @@ Compile Fronthaul Interface Library
 ```bash
 cd ~/phy/fhi_lib/lib
 make clean
-make LIB_XRAN_SO=1
+make XRAN_LIB_SO=1
 ...
 [AR] build/libxran.so
 ./build/libxran.so
-GTEST_ROOT is not set. Unit tests are not compiled
-"echo "GTEST_ROOT is not set. Unit tests are not compiled"" command exited with code 0.
 ```
 
 The shared library object `~/phy/fhi_lib/lib/build` SHALL be generated.
+
+Copy it to `/usr/local/lib`:
+
+```bash
+sudo cp ~/phy/fhi_lib/lib/build/libxran.so /usr/local/lib
+sudo ldconfig -v | grep libxran
+	libxran.so -> libxran.so
+```
 
 ## 2.2 Build OAI gNB
 
@@ -371,7 +410,7 @@ ldd ran_build/build/lliboran_fhlib_5g.so
     /lib64/ld-linux-x86-64.so.2 (0x00007f2da93d3000)
 ```
 
-In case `liboai_transpro.so` is missing `libxran.so` then you can copy XRAN shared library object:
+In case `liboai_transpro.so` does not find `libxran.so`, then you can copy XRAN shared library object:
 
 ```bash
 sudo cp ~/phy/fhi_lib/lib/build/libxran.so /usr/local/lib
@@ -380,12 +419,16 @@ sudo ldconfig
 
 # 3. Configure OAI gNB
 
-On this source branch (ie `use_msgq_new_fhidriver_build_fix`) and later on for `develop` branch, the configuration of the OAI-DU is based on 2 files:
+On this source branch (ie `fhidriver_E_rk`) and later on for `develop` branch, the configuration of the OAI-DU is based on 2 files:
 
 1. the usual OAI gNB/DU configuration file: `~/openairinterface5g/targets/PROJECTS/GENERIC-NR-5GC/CONF/oran.fh.band78.fr1.273PRB.conf`
 2. a fronthaul interface configuration dat file: for example: `~/openairinterface5g/targets/PROJECTS/GENERIC-NR-5GC/CONF/o-ran-dat-files/config_o_du_static_vvdn.dat`
 
 ## 3.1. Adapt the OAI-DU configuration file to your system/workspace
+
+**CAUTION: this section is correct for the Bronze Release support.**
+
+**TODO: update for E Release.**
 
 Edit the `targets/PROJECTS/GENERIC-NR-5GC/CONF/oran.fh.band78.fr1.273PRB.conf` with:
 
@@ -469,4 +512,4 @@ cd ran_build/build
 sudo ./nr-softmodem -O ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/oran.fh.band78.fr1.273PRB.conf --sa --reorder-thread-disable --thread-pool <list of non isolated cpus>
 ```
 
-For example if you have two numa nodes (for example 18 CPU per socket) in your system and odd cores are non isolated then you can put the thread-pool on `1,3,5,7,9,11,13,15`. Else if you have 1 numa node either you can use isolated cores or non isolated. Just make sure that isolated cores are not the ones defined earlier. 
+For example if you have two numa nodes (for example 18 CPU per socket) in your system and odd cores are non isolated then you can put the thread-pool on `1,3,5,7,9,11,13,15`. Else if you have 1 numa node either you can use isolated cores or non isolated. Just make sure that isolated cores are not the ones defined earlier.
