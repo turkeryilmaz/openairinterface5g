@@ -216,9 +216,9 @@ typedef struct nrppa_gnb_ue_info_s{
   instance_t instance;
   uint32_t gNB_ue_ngap_id;
   uint64_t amf_ue_ngap_id;
-  /* routing ID */
+  // routing ID
   uint8_t  *routing_id_buffer;
-  uint32_t  routing_id_length;   /* Length of the octet string */
+  uint32_t  routing_id_length;   // Length of the octet string
    //ngap_routing_id_t routing_id;
 }nrppa_gnb_ue_info_t;
 

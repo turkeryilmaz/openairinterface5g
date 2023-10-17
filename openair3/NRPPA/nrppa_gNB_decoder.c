@@ -134,9 +134,9 @@ int nrppa_gNB_decode_pdu(NRPPA_NRPPA_PDU_t *pdu, const uint8_t *const buffer, co
   DevAssert(buffer != NULL);
   asn_codec_ctx_t st = {.max_stack_size = 100 * 1000}; // if we enable asn1c debug the stack size become large  // ad**l todo
   dec_ret = aper_decode(&st, &asn_DEF_NRPPA_NRPPA_PDU, (void **)&pdu, buffer, length, 0, 0);
-printf("Test 4 Adeel:  nrppa_gNB_decode_pdu Handling \n");
+//printf("Test 4 Adeel:  nrppa_gNB_decode_pdu Handling \n");
   if (dec_ret.code != RC_OK) {
-  printf("Test 5 Adeel:  dec_ret.code != RC_OK nrppa_gNB_decode_pdu Handling \n");
+ // printf("Test 5 Adeel:  dec_ret.code != RC_OK nrppa_gNB_decode_pdu Handling \n");
     NRPPA_ERROR("Failed to decode pdu\n");
     return -1;
   }

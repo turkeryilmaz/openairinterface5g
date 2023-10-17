@@ -57,3 +57,11 @@ MESSAGE_DEF(F1AP_UE_CONTEXT_MODIFICATION_REFUSE, MESSAGE_PRIORITY_MED, f1ap_ue_c
 
 /* CU -> DU*/
 MESSAGE_DEF(F1AP_PAGING_IND, MESSAGE_PRIORITY_MED, f1ap_paging_ind_t, f1ap_paging_ind)
+
+
+/*NRPPa CU -> DU */  // adeel
+MESSAGE_DEF(F1AP_POSITIONING_INFORMATION_REQ,  MESSAGE_PRIORITY_MED, f1ap_positioning_information_req_t, f1ap_positioning_information_req)
+
+/*NRPPa DU -> CU */  // adeel
+MESSAGE_DEF(F1AP_POSITIONING_INFORMATION_RESP, MESSAGE_PRIORITY_MED, f1ap_positioning_information_resp_t, f1ap_positioning_information_resp)
+MESSAGE_DEF(F1AP_POSITIONING_INFORMATION_FAILURE , MESSAGE_PRIORITY_MED, f1ap_positioning_information_failure_t, f1ap_positioning_information_failure)

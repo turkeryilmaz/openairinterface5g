@@ -82,4 +82,5 @@ void mac_rrc_dl_direct_init(nr_mac_rrc_dl_if_t *mac_rrc)
   mac_rrc->ue_context_modification_refuse = ue_context_modification_refuse_direct;
   mac_rrc->ue_context_release_command = ue_context_release_command_direct;
   mac_rrc->dl_rrc_message_transfer = dl_rrc_message_transfer_direct;
+  mac_rrc->positioning_information_request = positioning_information_request;
 }
