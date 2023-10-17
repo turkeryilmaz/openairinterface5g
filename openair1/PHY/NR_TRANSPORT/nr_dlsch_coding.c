@@ -380,7 +380,7 @@ int nr_dlsch_encoding(PHY_VARS_gNB *gNB,
   impp.toutput = toutput;
   impp.harq = harq;
 #ifdef OFFLOAD_T2
-  if (gNB->ldpc_offload_flag) {
+  if (gNB->ldpc_offload_flag && *rel15->mcsIndex > 0) {
     impp.Qm = rel15->qamModOrder[0];
     impp.rv = rel15->rvIndex[0];
     int nb_re_dmrs =
