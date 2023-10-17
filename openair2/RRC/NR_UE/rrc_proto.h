@@ -65,27 +65,6 @@ NR_UE_RRC_INST_t *nr_l3_init_ue(char *, char *, char *);
 /**\brief Initial the top level RRC structure instance*/
 NR_UE_RRC_INST_t *openair_rrc_top_init_ue_nr(char *, char *, char *);
 
-/**\brief Process NR RRC connection reconfiguration via SRB3
-   \param rrcReconfiguration  decoded rrc connection reconfiguration*/
-int8_t nr_rrc_ue_process_rrcReconfiguration(const module_id_t module_id, NR_RRCReconfiguration_t *rrcReconfiguration);
-
-/**\prief Process measurement config from NR RRC connection reconfiguration message
-   \param meas_config   measurement configuration*/
-int8_t nr_rrc_ue_process_meas_config(NR_MeasConfig_t *meas_config);
-
-void nr_rrc_ue_process_RadioBearerConfig(const protocol_ctxt_t *const ctxt_pP,
-                                         const uint8_t gNB_index,
-                                         NR_RadioBearerConfig_t *const radioBearerConfig);
-
-/**\brief decode NR BCCH-BCH (MIB) message
-   \param module_idP    module id
-   \param gNB_index     gNB index
-   \param sduP          pointer to buffer of ASN message BCCH-BCH
-   \param sdu_len       length of buffer*/
-int8_t nr_rrc_ue_decode_NR_BCCH_BCH_Message(const module_id_t module_id, const uint8_t gNB_index, uint8_t *const bufferP, const uint8_t buffer_len);
-
-int8_t nr_rrc_ue_decode_NR_DL_DCCH_Message(const module_id_t module_id, const uint8_t gNB_index, const uint8_t *buffer, const uint32_t size);
-
 /**\brief interface between MAC and RRC thru SRB0 (RLC TM/no PDCP)
    \param module_id  module id
    \param CC_id      component carrier id
@@ -143,9 +122,7 @@ void start_oai_nrue_threads(void);
 /**\brief RRC UE generate RRCSetupRequest message.
    \param module_id  module id
    \param gNB_index  gNB index  */
-void nr_rrc_ue_generate_RRCSetupRequest(module_id_t module_id, const uint8_t gNB_index);
-
-void process_lte_nsa_msg(nsa_msg_t *msg, int msg_len);
+void nr_rrc_ue_generate_ra_msg(instance_t instance, RA_trigger_t trigger, uint8_t gNB_index);
 
 int get_from_lte_ue_fd();
 
@@ -163,13 +140,10 @@ void handle_rlf_sync(NR_UE_Timers_Constants_t *tac,
 void nr_rrc_handle_SetupRelease_RLF_TimersAndConstants(NR_UE_RRC_INST_t *rrc,
                                                        struct NR_SetupRelease_RLF_TimersAndConstants *rlf_TimersAndConstants);
 
-void nr_rrc_manage_rlc_bearers(const NR_CellGroupConfig_t *cellGroupConfig,
-                               NR_UE_RRC_INST_t *rrc,
-                               int gNB_index,
-                               module_id_t module_id,
-                               int rnti);
-
 int configure_NR_SL_Preconfig(int sync_source);
+
+int mac_rrc_srb0_req(const instance_t Mod_idP, const uint8_t gNB_id, uint8_t *output);
+
 /** @}*/
 #endif
 

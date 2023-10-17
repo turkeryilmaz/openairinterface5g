@@ -102,8 +102,7 @@ void deref_sched_response(int _)
 void nr_derive_key_ng_ran_star(uint16_t pci, uint64_t nr_arfcn_dl, const uint8_t key[32], uint8_t *key_ng_ran_star)
 {
 }
-
-void nr_rrc_ue_generate_RRCSetupRequest(module_id_t module_id, const uint8_t gNB_index)
+void nr_rrc_ue_generate_ra_msg(instance_t instance, RA_trigger_t trigger, uint8_t gNB_index)
 {
   return;
 }

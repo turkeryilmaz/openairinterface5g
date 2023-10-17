@@ -98,8 +98,7 @@ void nr_derive_key_ng_ran_star(uint16_t pci, uint64_t nr_arfcn_dl, const uint8_t
 }
 
 extern void fix_scd(NR_ServingCellConfig_t *scd);// forward declaration
-
-void nr_rrc_ue_generate_RRCSetupRequest(module_id_t module_id, const uint8_t gNB_index)
+void nr_rrc_ue_generate_ra_msg(instance_t instance, RA_trigger_t trigger, uint8_t gNB_index)
 {
   return;
 }
@@ -701,7 +700,6 @@ int main(int argc, char *argv[])
 
   //Configure UE
   NR_UE_RRC_INST_t rrcue = {0};
-  rrcue.mib = mib->message.choice.mib;
   rrcue.scell_group_config = secondaryCellGroup;
   nr_l2_init_ue(&rrcue);
 

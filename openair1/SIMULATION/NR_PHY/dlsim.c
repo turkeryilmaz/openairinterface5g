@@ -102,8 +102,7 @@ void nr_derive_key_ng_ran_star(uint16_t pci, uint64_t nr_arfcn_dl, const uint8_t
 }
 
 int dummy_nr_ue_ul_indication(nr_uplink_indication_t *ul_info) { return(0);  }
-
-void nr_rrc_ue_generate_RRCSetupRequest(module_id_t module_id, const uint8_t gNB_index)
+void nr_rrc_ue_generate_ra_msg(instance_t instance, RA_trigger_t trigger, uint8_t gNB_index)
 {
   return;
 }

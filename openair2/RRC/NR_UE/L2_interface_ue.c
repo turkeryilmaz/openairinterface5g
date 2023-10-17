@@ -33,9 +33,9 @@
 #include "rrc_defs.h"
 #include "rrc_proto.h"
 #include "assertions.h"
-#include "rrc_vars.h"
 #include "MAC/mac.h"
 #include "LAYER2/NR_MAC_COMMON/nr_mac.h"
+#include "openair2/LAYER2/NR_MAC_UE/mac_proto.h"
 
 typedef uint32_t channel_t;
 
@@ -133,17 +133,7 @@ int8_t nr_mac_rrc_data_req_ue(const module_id_t Mod_idP,
   switch(Srb_id) {
 
     case CCCH:
-      LOG_D(NR_RRC,
-            "nr_mac_rrc_data_req_ue: Payload size = %i\n",
-            NR_UE_rrc_inst[Mod_idP].Srb[gNB_id][0].srb_buffers.Tx_buffer.payload_size);
-      NR_UE_RRC_SRB_INFO_t *Srb0 = &NR_UE_rrc_inst[Mod_idP].Srb[gNB_id][0];
-      memcpy(buffer_pP, (uint8_t *)Srb0->srb_buffers.Tx_buffer.Payload, Srb0->srb_buffers.Tx_buffer.payload_size);
-      for (int i = 0; i < Srb0->srb_buffers.Tx_buffer.payload_size; i++) {
-        LOG_D(NR_RRC,"(%i): %i\n", i, buffer_pP[i]);
-      }
-
-      return Srb0->srb_buffers.Tx_buffer.payload_size;
-
+      return mac_rrc_srb0_req(Mod_idP, gNB_id, buffer_pP);
     case DCCH:
       AssertFatal(1==0, "SRB1 not implemented yet!\n");
     case DCCH1:
@@ -153,6 +143,36 @@ int8_t nr_mac_rrc_data_req_ue(const module_id_t Mod_idP,
   }
 
   return 0;
+}
+
+void nr_mac_process_rrc_msg(instance_t instance)
+{
+  MessageDef *msg;
+  do {
+    // Checks if a message has been sent to MAC sub-task
+    itti_poll_msg(TASK_MAC_UE, &msg);
+    if (!msg)
+      return;
+
+    LOG_I(NR_MAC,
+          "Received %s from %s: instance %ld\n",
+          ITTI_MSG_NAME(msg),
+          ITTI_MSG_ORIGIN_NAME(msg),
+          ITTI_MSG_DESTINATION_INSTANCE(msg));
+    switch (ITTI_MSG_ID(msg)) {
+      case MAC_MIB_REQ: {
+        mac_mib_req_t *req = &msg->ittiMsg.macMibReq;
+        nr_rrc_mac_config_req_mib(req->module_id, req->cc_idP, req->mib, req->sched_sib);
+      } break;
+
+      default:
+        LOG_E(NR_MAC, "Received unexpected message %s\n", ITTI_MSG_NAME(msg));
+        break;
+    }
+
+    int result = itti_free(ITTI_MSG_ORIGIN_ID(msg), msg);
+    AssertFatal(result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
+  } while (msg != NULL);
 }
 
 void nr_mac_rrc_ra_ind(const module_id_t mod_id, int frame, bool success)

@@ -676,7 +676,7 @@ uint8_t nr_ue_get_rach(module_id_t mod_id,
         pdu += sh_size;
 
         // initialisation by RRC
-        nr_rrc_ue_generate_RRCSetupRequest(mod_id,gNB_id);
+        nr_rrc_ue_generate_ra_msg(mod_id, INITIAL_ACCESS_FROM_RRC_IDLE, gNB_id);
 
         // CCCH PDU
         size_sdu = nr_mac_rrc_data_req_ue(mod_id, CC_id, gNB_id, frame, CCCH, pdu);
