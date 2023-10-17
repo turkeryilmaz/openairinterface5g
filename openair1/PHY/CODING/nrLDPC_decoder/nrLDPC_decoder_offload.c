@@ -695,9 +695,13 @@ set_ldpc_dec_op(struct rte_bbdev_dec_op **ops, unsigned int n,
     ops[i]->ldpc_dec.n_cb = p_offloadParams->n_cb;
     ops[i]->ldpc_dec.iter_max = 20;
     ops[i]->ldpc_dec.rv_index = p_offloadParams->rv;
-    ops[i]->ldpc_dec.op_flags = RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE | RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_IN_ENABLE
-                                | RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE; //|RTE_BBDEV_LDPC_DEINTERLEAVER_BYPASS;
-                                                                                  ////|RTE_BBDEV_LDPC_CRC_TYPE_24B_DROP;
+    ops[i]->ldpc_dec.op_flags = RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE |
+                                RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_IN_ENABLE |
+                                RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE |
+                                RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE;
+    if (ops[i]->ldpc_dec.rv_index != 0) {
+                                ops[i]->ldpc_dec.op_flags |= RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE;
+    }
     ops[i]->ldpc_dec.code_block_mode = 1; // ldpc_dec->code_block_mode;
     // printf("set ldpc ulsch_id %d\n",ulsch_id);
     ops[i]->ldpc_dec.harq_combined_input.offset = ulsch_id * (32 * 1024 * 1024) + harq_pid * (2 * 1024 * 1024) + r * (1024 * 32);
@@ -834,8 +838,9 @@ create_reference_ldpc_dec_op(struct rte_bbdev_dec_op *op, t_nrLDPCoffload_params
   op->ldpc_dec.z_c = p_offloadParams->Z;
   op->ldpc_dec.n_filler = p_offloadParams->F;
   op->ldpc_dec.code_block_mode = 1;
-  op->ldpc_dec.op_flags = RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE | RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_IN_ENABLE
-                          | RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE | RTE_BBDEV_LDPC_CRC_TYPE_24B_DROP;
+  op->ldpc_dec.op_flags = RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE |
+                          RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_IN_ENABLE |
+                          RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE ;
 }
 // DPDK BBDEV modified - parameters to be checked, based on the test vector
 static void create_reference_ldpc_enc_op(struct rte_bbdev_enc_op *op, t_nrLDPCoffload_params *p_offloadParams)
