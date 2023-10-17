@@ -148,6 +148,24 @@ static void initial_ul_rrc_message_transfer_direct(module_id_t module_id, const 
   itti_send_msg_to_task(TASK_RRC_GNB, module_id, msg);
 }
 
+static void positioning_information_response(const f1ap_positioning_information_resp_t *resp)
+{
+ LOG_I(MAC, "Prepring PositioningInformationResponse gNB_CU_ue_id=%d, gNB_DU_ue_id=%d \n", resp->gNB_CU_ue_id, resp->gNB_DU_ue_id);
+  MessageDef *msg = itti_alloc_new_message (TASK_MAC_GNB, 0, F1AP_POSITIONING_INFORMATION_RESP);
+  f1ap_positioning_information_resp_t *f1ap_msg = &F1AP_POSITIONING_INFORMATION_RESP(msg);
+  /* copy all fields, but reallocate memory buffers! */
+  *f1ap_msg = *resp;
+  f1ap_msg->gNB_CU_ue_id = resp->gNB_CU_ue_id;
+  f1ap_msg->gNB_DU_ue_id = resp->gNB_CU_ue_id;
+  f1ap_msg->nrppa_msg_info.nrppa_transaction_id=resp->nrppa_msg_info.nrppa_transaction_id;
+  f1ap_msg->nrppa_msg_info.instance=resp->nrppa_msg_info.instance;
+  f1ap_msg->nrppa_msg_info.gNB_ue_ngap_id=resp->nrppa_msg_info.gNB_ue_ngap_id;
+  f1ap_msg->nrppa_msg_info.amf_ue_ngap_id=resp->nrppa_msg_info.amf_ue_ngap_id;
+  f1ap_msg->nrppa_msg_info.routing_id_buffer=resp->nrppa_msg_info.routing_id_buffer;
+  f1ap_msg->nrppa_msg_info.routing_id_length=resp->nrppa_msg_info.routing_id_length;
+  itti_send_msg_to_task(TASK_RRC_GNB, 0, msg);
+}
+
 void mac_rrc_ul_direct_init(struct nr_mac_rrc_ul_if_s *mac_rrc)
 {
   mac_rrc->ue_context_setup_response = ue_context_setup_response_direct;
@@ -155,4 +173,5 @@ void mac_rrc_ul_direct_init(struct nr_mac_rrc_ul_if_s *mac_rrc)
   mac_rrc->ue_context_release_request = ue_context_release_request_direct;
   mac_rrc->ue_context_release_complete = ue_context_release_complete_direct;
   mac_rrc->initial_ul_rrc_message_transfer = initial_ul_rrc_message_transfer_direct;
+  mac_rrc->positioning_information_response= positioning_information_response; // nrppa adeel
 }

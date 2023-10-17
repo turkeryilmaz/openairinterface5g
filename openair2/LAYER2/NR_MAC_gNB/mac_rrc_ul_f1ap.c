@@ -134,6 +134,11 @@ static void initial_ul_rrc_message_transfer_f1ap(module_id_t module_id, const f1
   itti_send_msg_to_task(TASK_DU_F1, module_id, msg);
 }
 
+static void positioning_information_response_f1ap(const f1ap_positioning_information_resp_t *resp)
+{
+ AssertFatal(false, "not implemented\n");
+}
+
 void mac_rrc_ul_f1ap_init(struct nr_mac_rrc_ul_if_s *mac_rrc)
 {
   mac_rrc->ue_context_setup_response = ue_context_setup_response_f1ap;
@@ -141,5 +146,6 @@ void mac_rrc_ul_f1ap_init(struct nr_mac_rrc_ul_if_s *mac_rrc)
   mac_rrc->ue_context_release_request = ue_context_release_request_f1ap;
   mac_rrc->ue_context_release_complete = ue_context_release_complete_f1ap;
   mac_rrc->initial_ul_rrc_message_transfer = initial_ul_rrc_message_transfer_f1ap;
+  mac_rrc->positioning_information_response= positioning_information_response_f1ap; // nrppa adeel
 }
 

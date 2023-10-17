@@ -19,19 +19,25 @@
  *      contact@openairinterface.org
  */
 
-#ifndef MAC_RRC_DL_HANDLER_H
-#define MAC_RRC_DL_HANDLER_H
+/*! \file f1ap_cu_position_information_transfer.h
+ * \brief F1AP tasks related to position information transfer , CU side
+ * \author EURECOM
+ * \date 2023
+ * \version 0.1
+ * \company Eurecom
+ * \email: adeel.malik@eurecom.fr
+ * \note
+ * \warning
+ */
 
-#include "platform_types.h"
-#include "f1ap_messages_types.h"
-
-void ue_context_setup_request(const f1ap_ue_context_setup_t *req);
-void ue_context_modification_request(const f1ap_ue_context_modif_req_t *req);
-void ue_context_release_command(const f1ap_ue_context_release_cmd_t *cmd);
-
-int dl_rrc_message(module_id_t module_id, const f1ap_dl_rrc_message_t *dl_rrc);
+#ifndef F1AP_CU_POSITION_INFORMATION_TRANSFER_H_
+#define F1AP_CU_POSITION_INFORMATION_TRANSFER_H_
 
 
-void positioning_information_request(const f1ap_positioning_information_req_t *req);
+int CU_send_POSITIONING_INFORMATION_REQUEST(instance_t instance, f1ap_positioning_information_req_t *f1ap_positioning_information_req);
 
-#endif /* MAC_RRC_DL_HANDLER_H */
+int CU_handle_POSITIONING_INFORMATION_RESPONSE(instance_t instance, uint32_t  assoc_id,  uint32_t  stream, F1AP_F1AP_PDU_t *pdu) ;
+
+int CU_handle_POSITIONING_INFORMATION_FAILURE(instance_t  instance, uint32_t  assoc_id,  uint32_t  stream, F1AP_F1AP_PDU_t *pdu);
+
+#endif /* F1AP_CU_POSITION_INFORMATION_TRANSFER_H_ */

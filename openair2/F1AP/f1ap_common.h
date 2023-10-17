@@ -342,6 +342,29 @@
 
 #include "f1ap_default_values.h"
 
+/* NRPPA*/
+
+#include "F1AP_TRPInformationResponse.h"
+#include "F1AP_TRPInformationRequest.h"
+#include "F1AP_TRPInformationRequest.h"
+
+#include "F1AP_PositioningInformationRequest.h"
+#include "F1AP_PositioningInformationResponse.h"
+#include "F1AP_PositioningInformationFailure.h"
+#include "F1AP_PositioningActivationRequest.h"
+#include "F1AP_PositioningActivationResponse.h"
+#include "F1AP_PositioningActivationFailure.h"
+#include "F1AP_PositioningInformationUpdate.h"
+#include "F1AP_PositioningDeactivation.h"
+
+#include "F1AP_PositioningMeasurementRequest.h"
+#include "F1AP_PositioningMeasurementResponse.h"
+#include "F1AP_PositioningMeasurementFailure.h"
+#include "F1AP_PositioningMeasurementReport.h"
+#include "F1AP_PositioningMeasurementUpdate.h"
+#include "F1AP_PositioningMeasurementFailureIndication.h"
+#include "F1AP_PositioningMeasurementAbort.h"
+
 #include "conversions.h"
 #include "platform_types.h"
 #include "common/utils/LOG/log.h"

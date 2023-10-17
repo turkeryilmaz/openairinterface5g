@@ -39,6 +39,10 @@
 #include "f1ap_du_ue_context_management.h"
 #include "f1ap_du_paging.h"
 
+/*NRPPA*/
+#include "f1ap_cu_position_information_transfer.h"
+#include "f1ap_du_position_information_transfer.h"
+
 /* Handlers matrix. Only f1 related procedure present here */
 static const f1ap_message_processing_t f1ap_messages_processing[][3] = {
 
@@ -68,6 +72,42 @@ static const f1ap_message_processing_t f1ap_messages_processing[][3] = {
     {0, 0, 0}, /* PWSCancel */
     {0, 0, 0}, /* PWSRestartIndication */
     {0, 0, 0}, /* PWSFailureIndication */
+    {0, 0, 0}, /*GNBDUStatusIndication */
+    {0, 0, 0}, /*RRCDeliveryReport */
+    {0, 0, 0}, /*UEContextModificationRefuse*/
+    {0, 0, 0}, /*F1RemovalRequest*/ /*F1RemovalResponse*/ /*F1RemovalFailure*/
+    {0, 0, 0}, /*NetworkAccessRateReduction,*/
+    {0, 0, 0}, /*TraceStart,*/
+    {0, 0, 0}, /*DeactivateTrace,*/
+    {0, 0, 0}, /*DUCURadioInformationTransfer,*/
+    {0, 0, 0}, /*CUDURadioInformationTransfer,*/
+    {0, 0, 0}, /*BAPMappingConfiguration,*/ /*BAPMappingConfigurationAcknowledge,*/
+    {0, 0, 0}, /*GNBDUResourceConfiguration,*//*GNBDUResourceConfigurationAcknowledge,*/
+    {0, 0, 0}, /*IABTNLAddressRequest,*//*IABTNLAddressResponse,*/
+    {0, 0, 0}, /*IABUPConfigurationUpdateRequest,*/ /*IABUPConfigurationUpdateResponse,*//*IABUPConfigurationUpdateFailure,*/
+    {0, 0, 0}, /*ResourceStatusRequest,*//*ResourceStatusResponse,*//*ResourceStatusFailure,*/
+    {0, 0, 0}, /*ResourceStatusUpdate,*/
+    {0, 0, 0}, /*AccessAndMobilityIndication,*/
+    {0, 0, 0}, /*ReferenceTimeInformationReportingControl,*/
+    {0, 0, 0}, /*ReferenceTimeInformationReport,*/
+    {0, 0, 0}, /*AccessSuccess,*/
+    {0, 0, 0}, /*CellTrafficTrace,*/
+    {0, 0, 0}, /*PositioningMeasurementRequest,*//*PositioningMeasurementResponse,*//*PositioningMeasurementFailure,*/
+    {0, 0, 0}, /*PositioningAssistanceInformationControl,*/
+    {0, 0, 0}, /*PositioningAssistanceInformationFeedback,*/
+    {0, 0, 0}, /*PositioningMeasurementReport,*/
+    {0, 0, 0}, /*PositioningMeasurementAbort,*/
+    {0, 0, 0}, /*PositioningMeasurementFailureIndication,*/
+    {0, 0, 0}, /*PositioningMeasurementUpdate,*/
+    {0, 0, 0}, /*TRPInformationRequest,*/ /*TRPInformationResponse,*//*TRPInformationFailure,*/
+    {0, CU_handle_POSITIONING_INFORMATION_RESPONSE, CU_handle_POSITIONING_INFORMATION_FAILURE}, /*PositioningInformationRequest,*//*PositioningInformationResponse,*//*PositioningInformationFailure,*/
+    {0, 0, 0}, /*PositioningActivationRequest,*//*PositioningActivationResponse,*//*PositioningActivationFailure,*/
+    {0, 0, 0}, /*PositioningDeactivation,*/
+    {0, 0, 0}, /*PositioningInformationUpdate,*/
+    {0, 0, 0}, /*E-CIDMeasurementInitiationRequest,*//*E-CIDMeasurementInitiationResponse,*//*E-CIDMeasurementInitiationFailure,*/
+    {0, 0, 0}, /*E-CIDMeasurementFailureIndication,*/
+    {0, 0, 0}, /*E-CIDMeasurementReport,*/
+    {0, 0, 0}, /*E-CIDMeasurementTerminationCommand*/
 };
 
 const char *f1ap_direction2String(int f1ap_dir) {

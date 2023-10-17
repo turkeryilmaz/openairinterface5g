@@ -95,10 +95,32 @@ static void dl_rrc_message_transfer_f1ap(module_id_t module_id, const f1ap_dl_rr
   itti_send_msg_to_task (TASK_CU_F1, module_id, message_p);
 }
 
+
+static void positioning_information_request_f1ap(const f1ap_positioning_information_req_t *req)
+{
+ printf("[NRPPA]Split CU-DU Mode :Processing Received PositioningInformationRequest \n");
+//TODO forward task to CU
+//        MessageDef *msg = itti_alloc_new_message(TASK_NRPPA, 0, F1AP_POSITIONING_INFORMATION_REQ);
+ MessageDef *msg = itti_alloc_new_message(TASK_RRC_GNB, 0, F1AP_POSITIONING_INFORMATION_REQ);
+ //f1ap_positioning_information_req_t *f1ap_msg = &msg->ittiMsg.f1ap_positioning_information_req;
+ f1ap_positioning_information_req_t *f1ap_msg = &F1AP_POSITIONING_INFORMATION_REQ(msg);
+
+ f1ap_msg->gNB_CU_ue_id = 0; // TODO retrieve and add
+ LOG_D(NRPPA, "f1ap_positioning_information_req->gNB_CU_ue_id is: %d \n", f1ap_msg->gNB_CU_ue_id);
+ f1ap_msg->gNB_DU_ue_id = 0; // TODO retrieve and add
+ LOG_D(NRPPA, "f1ap_positioning_information_req->gNB_DU_ue_id is: %d \n", f1ap_msg->gNB_DU_ue_id);
+
+//        itti_send_msg_to_task(TASK_CU_F1, 0, msg);
+ itti_send_msg_to_task(TASK_CU_F1, 0, msg);
+ printf("[NRPPA]Split CU-DU Mode Test 2:Processing Received PositioningInformationRequest \n");
+
+}
+
 void mac_rrc_dl_f1ap_init(nr_mac_rrc_dl_if_t *mac_rrc)
 {
   mac_rrc->ue_context_setup_request = ue_context_setup_request_f1ap;
   mac_rrc->ue_context_modification_request = ue_context_modification_request_f1ap;
   mac_rrc->ue_context_release_command = ue_context_release_command_f1ap;
   mac_rrc->dl_rrc_message_transfer = dl_rrc_message_transfer_f1ap;
+  mac_rrc->positioning_information_request = positioning_information_request_f1ap;
 }

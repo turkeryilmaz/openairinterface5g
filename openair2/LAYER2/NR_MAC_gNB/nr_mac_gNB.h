@@ -306,7 +306,7 @@ typedef struct SPCSIReportingpucch {
   bool s0tos3_actDeact[4];
 } SPCSIReportingpucch_t;
 
-#define MAX_APERIODIC_TRIGGER_STATES 128 //38.331                               
+#define MAX_APERIODIC_TRIGGER_STATES 128 //38.331
 typedef struct aperiodicCSI_triggerStateSelection {
   bool is_scheduled;
   uint8_t servingCellId;
@@ -315,7 +315,7 @@ typedef struct aperiodicCSI_triggerStateSelection {
   bool triggerStateSelection[MAX_APERIODIC_TRIGGER_STATES];
 } aperiodicCSI_triggerStateSelection_t;
 
-#define MAX_TCI_STATES 128 //38.331                                             
+#define MAX_TCI_STATES 128 //38.331
 typedef struct pdschTciStatesActDeact {
   bool is_scheduled;
   uint8_t servingCellId;
@@ -494,9 +494,9 @@ struct CSI_Report {
 
 #define MAX_SR_BITLEN 8
 
-/*! As per the spec 38.212 and table:  6.3.1.1.2-12 in a single UCI sequence we can have multiple CSI_report 
+/*! As per the spec 38.212 and table:  6.3.1.1.2-12 in a single UCI sequence we can have multiple CSI_report
   the number of CSI_report will depend on number of CSI resource sets that are configured in CSI-ResourceConfig RRC IE
-  From spec 38.331 from the IE CSI-ResourceConfig for SSB RSRP reporting we can configure only one resource set 
+  From spec 38.331 from the IE CSI-ResourceConfig for SSB RSRP reporting we can configure only one resource set
   From spec 38.214 section 5.2.1.2 For periodic and semi-persistent CSI Resource Settings, the number of CSI-RS Resource Sets configured is limited to S=1
  */
 #define MAX_CSI_RESOURCE_SET_IN_CSI_RESOURCE_CONFIG 16
@@ -663,6 +663,7 @@ typedef struct nr_mac_rrc_ul_if_s {
   ue_context_release_request_func_t ue_context_release_request;
   ue_context_release_complete_func_t ue_context_release_complete;
   initial_ul_rrc_message_transfer_func_t initial_ul_rrc_message_transfer;
+  positioning_information_response_func_t positioning_information_response; //nrppa adeel
 } nr_mac_rrc_ul_if_t;
 
 /*! \brief UE list used by gNB to order UEs/CC for scheduling*/

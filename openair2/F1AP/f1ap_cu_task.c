@@ -25,7 +25,7 @@
 * \date 2018
 * \version 0.1
 * \company Eurecom
-* \email: navid.nikaein@eurecom.fr, raymond.knopp@eurecom.fr, bing-kai.hong@eurecom.fr
+* \email: navid.nikaein@eurecom.fr, raymond.knopp@eurecom.fr, bing-kai.hong@eurecom.fr, adeel.malik@eurecom.fr
 * \note
 * \warning
 */
@@ -34,6 +34,7 @@
 #include "f1ap_cu_interface_management.h"
 #include "f1ap_cu_rrc_message_transfer.h"
 #include "f1ap_cu_ue_context_management.h"
+#include "f1ap_cu_position_information_transfer.h"
 #include "f1ap_cu_paging.h"
 #include "f1ap_cu_task.h"
 #include <openair3/ocp-gtpu/gtp_itf.h>
@@ -129,6 +130,7 @@ void *F1AP_CU_task(void *arg) {
 
   while (1) {
     itti_receive_msg(TASK_CU_F1, &received_msg);
+     printf("CU Task Received %s for instance %ld\n", ITTI_MSG_NAME(received_msg), ITTI_MSG_DESTINATION_INSTANCE(received_msg));
     LOG_D(F1AP, "CU Task Received %s for instance %ld\n",
           ITTI_MSG_NAME(received_msg), ITTI_MSG_DESTINATION_INSTANCE(received_msg));
     switch (ITTI_MSG_ID(received_msg)) {
@@ -191,6 +193,11 @@ void *F1AP_CU_task(void *arg) {
       //    case F1AP_SETUP_FAILURE: // This is from RRC
       //    CU_send_F1_SETUP_FAILURE(instance, *f1ap_setup_ind, &(F1AP_SETUP_FAILURE) f1ap_setup_failure)
       //       break;
+
+      case F1AP_POSITIONING_INFORMATION_REQ: // from NRPPA  // adeel
+        CU_send_POSITIONING_INFORMATION_REQUEST(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
+                                         &F1AP_POSITIONING_INFORMATION_REQ(received_msg));
+        break;
 
       case TERMINATE_MESSAGE:
         LOG_W(F1AP, " *** Exiting F1AP thread\n");

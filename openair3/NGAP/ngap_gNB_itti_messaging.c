@@ -126,13 +126,13 @@ printf("%02x ", *nrppa_pdu++);
 //printf("%p ", nrppa_pdu_buffer++);
 }*/
 
-printf("\n [NGAP] Ngap_gNB_itti_send_DownlinkUEAssociatedNRPPa Nrppa pdu size =%d and pdu is \n ", ngap_DownlinkUEAssociatedNRPPa->nrppa_pdu.length);
+/*printf("\n [NGAP] Ngap_gNB_itti_send_DownlinkUEAssociatedNRPPa Nrppa pdu size =%d and pdu is \n ", ngap_DownlinkUEAssociatedNRPPa->nrppa_pdu.length);
 uint8_t *n_pdu_buffer= ngap_DownlinkUEAssociatedNRPPa->nrppa_pdu.buffer;
 for (int i = 0; i < ngap_DownlinkUEAssociatedNRPPa->nrppa_pdu.length; i++){
 printf("%02x ", *n_pdu_buffer++);
 //printf("%d ", *nrppa_pdu_buffer++);
 //printf("%p ", nrppa_pdu_buffer++);
-}
+}*/
 
   itti_send_msg_to_task(TASK_NRPPA, instance, message_p);
 }

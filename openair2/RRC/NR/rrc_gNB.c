@@ -2351,6 +2351,39 @@ static void rrc_CU_process_ue_context_modification_response(MessageDef *msg_p, i
   }
 }
 
+
+static void rrc_CU_process_positioning_information_request(f1ap_positioning_information_req_t *req){
+
+//rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context(RC.nrrrc[req->nrppa_msg_info.instance], req->nrppa_msg_info.gNB_ue_ngap_id);
+//const gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
+//  f1_ue_data_t ue_data = cu_get_f1_ue_data(UE->rrc_ue_id);
+
+  gNB_RRC_INST *rrc = RC.nrrrc[req->nrppa_msg_info.instance];
+  LOG_I(RRC, "Processing Received PositioningInformationRequest gNB_CU_ue_id=%d, gNB_DU_ue_id=%d \n", req->gNB_CU_ue_id, req->gNB_DU_ue_id);
+  rrc->mac_rrc.positioning_information_request(req);
+}
+static void rrc_CU_process_positioning_information_response(MessageDef *msg_p, instance_t instance)
+{
+  f1ap_positioning_information_resp_t *resp = &F1AP_POSITIONING_INFORMATION_RESP(msg_p);
+//  gNB_RRC_INST *rrc = RC.nrrrc[instance];
+LOG_I(RRC, "Processing Received PositioningInformationResponse gNB_CU_ue_id=%d, gNB_DU_ue_id=%d \n", resp->gNB_CU_ue_id, resp->gNB_DU_ue_id);
+
+MessageDef *msg = itti_alloc_new_message (TASK_RRC_GNB, 0, F1AP_POSITIONING_INFORMATION_RESP);
+f1ap_positioning_information_resp_t *f1ap_msg = &F1AP_POSITIONING_INFORMATION_RESP(msg);
+/* copy all fields, but reallocate memory buffers! */
+*f1ap_msg = *resp;
+f1ap_msg->gNB_CU_ue_id = resp->gNB_CU_ue_id;
+f1ap_msg->gNB_DU_ue_id = resp->gNB_CU_ue_id;
+f1ap_msg->nrppa_msg_info.nrppa_transaction_id=resp->nrppa_msg_info.nrppa_transaction_id;
+f1ap_msg->nrppa_msg_info.instance=resp->nrppa_msg_info.instance;
+f1ap_msg->nrppa_msg_info.gNB_ue_ngap_id=resp->nrppa_msg_info.gNB_ue_ngap_id;
+f1ap_msg->nrppa_msg_info.amf_ue_ngap_id=resp->nrppa_msg_info.amf_ue_ngap_id;
+f1ap_msg->nrppa_msg_info.routing_id_buffer=resp->nrppa_msg_info.routing_id_buffer;
+f1ap_msg->nrppa_msg_info.routing_id_length=resp->nrppa_msg_info.routing_id_length;
+itti_send_msg_to_task(TASK_NRPPA, instance, msg);
+
+}
+
 unsigned int mask_flip(unsigned int x) {
   return((((x>>8) + (x<<8))&0xffff)>>6);
 }
@@ -2677,7 +2710,7 @@ void *rrc_gnb_task(void *args_p) {
     /* timer to write stats to file */
     timer_setup(1, 0, TASK_RRC_GNB, 0, TIMER_PERIODIC, NULL, &stats_timer_id);
   }
-  
+
   itti_mark_task_ready(TASK_RRC_GNB);
   LOG_I(NR_RRC,"Entering main loop of NR_RRC message task\n");
 
@@ -2774,6 +2807,13 @@ void *rrc_gnb_task(void *args_p) {
         rrc_CU_process_ue_context_release_complete(msg_p);
         break;
 
+      case F1AP_POSITIONING_INFORMATION_RESP:
+        rrc_CU_process_positioning_information_response(msg_p, instance); // nrppa adeel
+        break;
+
+      case F1AP_POSITIONING_INFORMATION_REQ:
+        rrc_CU_process_positioning_information_request(&F1AP_POSITIONING_INFORMATION_REQ(msg_p));
+        break;
       /* Messages from X2AP */
       case X2AP_ENDC_SGNB_ADDITION_REQ:
         LOG_I(NR_RRC, "Received ENDC sgNB addition request from X2AP \n");

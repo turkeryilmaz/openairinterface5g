@@ -80,22 +80,21 @@ void nrppa_gNB_init(void){
 
 
 void *nrppa_gNB_process_itti_msg(void *notUsed) {
-  printf("Test 1 Adeel: NRPPA Waiting for message\n");
+  //printf("Test 1 Adeel: NRPPA Waiting for message\n");
   MessageDef *received_msg = NULL;
   int         result;
   itti_receive_msg(TASK_NRPPA, &received_msg);
   if (received_msg) {
     instance_t instance = ITTI_MSG_DESTINATION_INSTANCE(received_msg);
-    LOG_D(NRPPA, "Received message %s\n", ITTI_MSG_NAME(received_msg));
+    LOG_I(NRPPA, "Received message %s\n", ITTI_MSG_NAME(received_msg));
     switch (ITTI_MSG_ID(received_msg)) {
       case TERMINATE_MESSAGE:
         NRPPA_WARN(" *** Exiting NRPPA thread\n"); // to be implemented // ad**l
         itti_exit_task();
         break;
 
-
       case NGAP_DOWNLINKUEASSOCIATEDNRPPA:
-       printf("\n[NRPPA] Test Adeel: calling handler case NGAP_DOWNLINKUEASSOCIATEDNRPPA\n");
+    //   printf("\n[NRPPA] Test Adeel: calling handler case NGAP_DOWNLINKUEASSOCIATEDNRPPA\n");
        nrppa_handle_DownlinkUEAssociatedNRPPaTransport(instance, &NGAP_DOWNLINKUEASSOCIATEDNRPPA(received_msg));   // adeel changes NRPPA
        // nrppa_handle_DownlinkUEAssociatedNRPPaTransport(&NGAP_DOWNLINKUEASSOCIATEDNRPPA(received_msg));
         break;
@@ -103,6 +102,10 @@ void *nrppa_gNB_process_itti_msg(void *notUsed) {
       case NGAP_DOWNLINKNONUEASSOCIATEDNRPPA:
         nrppa_handle_DownlinkNonUEAssociatedNRPPaTransport(instance, &NGAP_DOWNLINKNONUEASSOCIATEDNRPPA(received_msg));   // adeel changes NRPPA
        // nrppa_handle_DownlinkNonUEAssociatedNRPPaTransport(&NGAP_DOWNLINKNONUEASSOCIATEDNRPPA(received_msg));
+        break;
+
+      case F1AP_POSITIONING_INFORMATION_RESP:
+        nrppa_gNB_PositioningInformationResponse(instance, received_msg); // adeel changes NRPPA
         break;
 
       default:
@@ -120,7 +123,7 @@ void *nrppa_gNB_process_itti_msg(void *notUsed) {
 
 
 void *nrppa_gNB_task(void *arg) {
-printf("Test 1 Adeel: NRPPA Waiting for message\n");
+//printf("Test 1 Adeel: NRPPA Waiting for message\n");
   nrppa_gNB_init();
 
   while (1) {

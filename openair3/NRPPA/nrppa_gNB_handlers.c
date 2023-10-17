@@ -106,7 +106,7 @@ int nrppa_handle_DownlinkUEAssociatedNRPPaTransport(instance_t instance, ngap_Do
 //ngap_DownlinkUEAssociatedNRPPa_p->gNB_ue_ngap_id //uint64_t                         amf_ue_ngap_id;
 //uint8_t *const routing_id_buff = ngap_DownlinkUEAssociatedNRPPa_p-->routing_id.buffer;
 //const uint32_t routing_id_buff_len = ngap_DownlinkUEAssociatedNRPPa_p-->routing_id.length;
- printf("[NRPPA] Test 3 Adeel:  nrppa_handle_DownlinkUEAssociatedNRPPaTransport Handling case NGAP_DOWNLINKUEASSOCIATEDNRPPA \n");
+ LOG_D(NRPPA, "nrppa_handle_DownlinkUEAssociatedNRPPaTransport Handling case NGAP_DOWNLINKUEASSOCIATEDNRPPA \n");
     uint8_t *const data = ngap_DownlinkUEAssociatedNRPPa_p->nrppa_pdu.buffer;
     const uint32_t data_length= ngap_DownlinkUEAssociatedNRPPa_p->nrppa_pdu.length;
     NRPPA_NRPPA_PDU_t pdu;
@@ -114,14 +114,14 @@ int nrppa_handle_DownlinkUEAssociatedNRPPaTransport(instance_t instance, ngap_Do
     DevAssert(data != NULL);
     memset(&pdu, 0, sizeof(pdu));
 
-printf("\n TEST 3: nrppa_handle_DownlinkUEAssociatedNRPPaTransport Nrppa pdu size =%d and value is \n ", data_length);
+//printf("\n TEST 3: nrppa_handle_DownlinkUEAssociatedNRPPaTransport Nrppa pdu size =%d and value is \n ", data_length);
 /*uint8_t *nrppa_pdu_buffer= ngap_DownlinkUEAssociatedNRPPa_p->nrppa_pdu.buffer;
 for (int i = 0; i < data_length; i++){
 printf("%02x ", *nrppa_pdu_buffer++);
 //printf("%d ", *nrppa_pdu_buffer++);
 //printf("%p ", nrppa_pdu_buffer++);
 }*/
-printf("\n");
+//printf("\n");
 
     if (nrppa_gNB_decode_pdu(&pdu, data, data_length) < 0)    // todo nrppa_gNB_decode_pdu
     {
@@ -131,7 +131,7 @@ printf("\n");
 //printf("Test 3 Adeel:  nrppa_handle_DownlinkUEAssociatedNRPPaTransport calling right handler \n");
     /* Checking procedure Code and direction of message*/
     //printf("Test 4 Adeel:  nrppa_handle_DownlinkUEAssociatedNRPPaTransport  calling right handler sizeof(nrppa_messages_callback)%d (3 * sizeof(nrppaa_message_decoded_callback)%d \n", sizeof(nrppa_messages_callback), 3*sizeof(nrppa_message_decoded_callback));
-    printf("[NRPPA] Test 4 Adeel: procedureCode is %ld and direction %d is \n", pdu.choice.initiatingMessage->procedureCode, pdu.present);
+    //printf("[NRPPA] Test 4 Adeel: procedureCode is %ld and direction %d is \n", pdu.choice.initiatingMessage->procedureCode, pdu.present);
     if (pdu.choice.initiatingMessage->procedureCode >= sizeof(nrppa_messages_callback) / (3 * sizeof(nrppa_message_decoded_callback)) || (pdu.present > NRPPA_NRPPA_PDU_PR_unsuccessfulOutcome))
     {
 //    NRPPA_ERROR("[NGAP %d] Either procedureCode %ld or direction %d exceed expected\n", assoc_id, pdu.choice.initiatingMessage->procedureCode, pdu.present); ad**l todo
@@ -142,7 +142,7 @@ printf("\n");
 
     /* No handler present.
      * This can mean not implemented or no procedure for gNB (wrong direction).*/
-     printf("Test 5 Adeel: procedureCode is %ld and direction %d is \n", pdu.choice.initiatingMessage->procedureCode, pdu.present);
+     //printf("Test 5 Adeel: procedureCode is %ld and direction %d is \n", pdu.choice.initiatingMessage->procedureCode, pdu.present);
     if (nrppa_messages_callback[pdu.choice.initiatingMessage->procedureCode][pdu.present - 1] == NULL)
     {
 //    NRPPA_ERROR("[NGAP %d] No handler for procedureCode %ld in %s\n", assoc_id, pdu.choice.initiatingMessage->procedureCode, nrppa_direction2String(pdu.present - 1));  ad**l todo
@@ -166,7 +166,7 @@ printf("\n");
                                                                                                      ngap_DownlinkUEAssociatedNRPPa_p->routing_id.buffer,
                                                                                                      ngap_DownlinkUEAssociatedNRPPa_p->routing_id.length,
                                                                                                      &pdu); // ad**l*/
-    printf("Test 8 Adeel: procedureCode is %ld and direction %d is \n", pdu.choice.initiatingMessage->procedureCode, pdu.present);
+    //printf("Test 8 Adeel: procedureCode is %ld and direction %d is \n", pdu.choice.initiatingMessage->procedureCode, pdu.present);
     ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_NRPPA_NRPPA_PDU, &pdu);
     return ret;
 }

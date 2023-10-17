@@ -54,7 +54,7 @@
 //UPLINK UE ASSOCIATED NRPPA TRANSPORT (9.2.9.2 of TS 38.413 Version 16.0.0.0 Release 16)
 int ngap_gNB_UplinkUEAssociatedNRPPaTransport(instance_t instance, ngap_UplinkUEAssociatedNRPPa_t *ngap_UplinkUEAssociatedNRPPa_p){
 
-  printf("[NGAP] Test 1 Adeel: initiating ngap_gNB_UplinkUEAssociatedNRPPaTransport \n");
+  LOG_I(NGAP, "Initiating ngap_gNB_UplinkUEAssociatedNRPPaTransport \n");
   struct ngap_gNB_ue_context_s   *ue_context_p;
   ngap_gNB_instance_t            *ngap_gNB_instance_p;
   NGAP_NGAP_PDU_t pdu;
@@ -131,7 +131,7 @@ int ngap_gNB_UplinkUEAssociatedNRPPaTransport(instance_t instance, ngap_UplinkUE
     return -1;
   }
 
- printf("[NGAP] Test 2 Adeel: sending_sctp_data_req for ngap_gNB_UplinkUEAssociatedNRPPaTransport \n");
+ LOG_I(NGAP,"Sending sctp_data_req for ngap_gNB_UplinkUEAssociatedNRPPaTransport \n");
   /* UE associated signalling -> use the allocated stream */
   ngap_gNB_itti_send_sctp_data_req(ngap_gNB_instance_p->instance,
                                    ue_context_p->amf_ref->assoc_id, buffer,
