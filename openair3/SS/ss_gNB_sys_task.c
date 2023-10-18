@@ -1357,14 +1357,11 @@ bool ss_task_sys_nr_handle_cellConfig5G(struct NR_CellConfigRequest_Type *p_req,
 
    
     /*****************************************************************************/
-    if(cell_State == SS_STATE_NOT_CONFIGURED ) 
-    {
-      MessageDef *msg_p = NULL;
-      msg_p = itti_alloc_new_message (TASK_SYS_GNB, 0, NRRRC_CONFIGURATION_REQ);
-      LOG_I(GNB_APP,"ss_gNB Sending configuration message to NR_RRC task for cell other than 1st %lx\n", &RC.nrrrc[gnbId]->configuration);
-      memcpy(&NRRRC_CONFIGURATION_REQ(msg_p), &RC.nrrrc[gnbId]->configuration,sizeof(NRRRC_CONFIGURATION_REQ(msg_p)));
-      itti_send_msg_to_task (TASK_RRC_GNB, GNB_MODULE_ID_TO_INSTANCE(gnbId), msg_p);
-    }
+    MessageDef *msg_p = NULL;
+    msg_p = itti_alloc_new_message (TASK_SYS_GNB, 0, NRRRC_CONFIGURATION_REQ);
+    LOG_I(GNB_APP,"ss_gNB Sending configuration message to NR_RRC task for cell other than 1st %lx\n", &RC.nrrrc[gnbId]->configuration);
+    memcpy(&NRRRC_CONFIGURATION_REQ(msg_p), &RC.nrrrc[gnbId]->configuration,sizeof(NRRRC_CONFIGURATION_REQ(msg_p)));
+    itti_send_msg_to_task (TASK_RRC_GNB, GNB_MODULE_ID_TO_INSTANCE(gnbId), msg_p);
   }
   return true;
 }
