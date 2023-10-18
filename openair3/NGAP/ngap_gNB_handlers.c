@@ -106,10 +106,8 @@ void ngap_handle_ng_setup_message(ngap_gNB_amf_data_t *amf_desc_p, int sctp_shut
   }
 }
 
-static
-int ngap_gNB_handle_ng_setup_failure(uint32_t               assoc_id,
-                                     uint32_t               stream,
-                                     NGAP_NGAP_PDU_t       *pdu) {
+static int ngap_gNB_handle_ng_setup_failure(sctp_assoc_t assoc_id, uint32_t stream, NGAP_NGAP_PDU_t *pdu)
+{
   NGAP_NGSetupFailure_t      *container;
   NGAP_NGSetupFailureIEs_t   *ie;
   ngap_gNB_amf_data_t        *amf_desc_p;
@@ -143,10 +141,8 @@ int ngap_gNB_handle_ng_setup_failure(uint32_t               assoc_id,
   return 0;
 }
 
-static
-int ngap_gNB_handle_ng_setup_response(uint32_t               assoc_id,
-                                      uint32_t               stream,
-                                      NGAP_NGAP_PDU_t       *pdu) {
+static int ngap_gNB_handle_ng_setup_response(sctp_assoc_t assoc_id, uint32_t stream, NGAP_NGAP_PDU_t *pdu)
+{
   NGAP_NGSetupResponse_t    *container;
   NGAP_NGSetupResponseIEs_t *ie;
   ngap_gNB_amf_data_t       *amf_desc_p;
@@ -298,12 +294,8 @@ int ngap_gNB_handle_ng_setup_response(uint32_t               assoc_id,
   return 0;
 }
 
-
-static
-int ngap_gNB_handle_error_indication(uint32_t         assoc_id,
-                                     uint32_t         stream,
-                                     NGAP_NGAP_PDU_t *pdu) {
-
+static int ngap_gNB_handle_error_indication(sctp_assoc_t assoc_id, uint32_t stream, NGAP_NGAP_PDU_t *pdu)
+{
   NGAP_ErrorIndication_t    *container;
   NGAP_ErrorIndicationIEs_t *ie;
   ngap_gNB_amf_data_t        *amf_desc_p;
@@ -679,7 +671,7 @@ int ngap_gNB_handle_error_indication(uint32_t         assoc_id,
   return 0;
 }
 
-static int ngap_gNB_handle_initial_context_request(uint32_t assoc_id, uint32_t stream, NGAP_NGAP_PDU_t *pdu)
+static int ngap_gNB_handle_initial_context_request(sctp_assoc_t assoc_id, uint32_t stream, NGAP_NGAP_PDU_t *pdu)
 {
   int i;
   ngap_gNB_amf_data_t *amf_desc_p = NULL;
@@ -839,10 +831,8 @@ static int ngap_gNB_handle_initial_context_request(uint32_t assoc_id, uint32_t s
   return 0;
 }
 
-static
-int ngap_gNB_handle_ue_context_release_command(uint32_t   assoc_id,
-    uint32_t               stream,
-    NGAP_NGAP_PDU_t       *pdu) {
+static int ngap_gNB_handle_ue_context_release_command(sctp_assoc_t assoc_id, uint32_t stream, NGAP_NGAP_PDU_t *pdu)
+{
   ngap_gNB_amf_data_t *amf_desc_p = NULL;
   MessageDef            *message_p        = NULL;
   uint64_t                            amf_ue_ngap_id;
@@ -907,11 +897,9 @@ int ngap_gNB_handle_ue_context_release_command(uint32_t   assoc_id,
   return 0;
 }
 
-static
-int ngap_gNB_handle_pdusession_setup_request(uint32_t         assoc_id,
-                                        uint32_t         stream,
-                                        NGAP_NGAP_PDU_t *pdu) {
-//  NGAP_AMF_UE_NGAP_ID_t       amf_ue_ngap_id;
+static int ngap_gNB_handle_pdusession_setup_request(sctp_assoc_t assoc_id, uint32_t stream, NGAP_NGAP_PDU_t *pdu)
+{
+  //  NGAP_AMF_UE_NGAP_ID_t       amf_ue_ngap_id;
   uint64_t                      amf_ue_ngap_id;
   NGAP_RAN_UE_NGAP_ID_t         ran_ue_ngap_id;
   ngap_gNB_amf_data_t          *amf_desc_p       = NULL;
@@ -990,12 +978,8 @@ int ngap_gNB_handle_pdusession_setup_request(uint32_t         assoc_id,
   return 0;
 }
 
-
-static
-int ngap_gNB_handle_paging(uint32_t               assoc_id,
-                           uint32_t               stream,
-                           NGAP_NGAP_PDU_t       *pdu) {
-
+static int ngap_gNB_handle_paging(sctp_assoc_t assoc_id, uint32_t stream, NGAP_NGAP_PDU_t *pdu)
+{
   ngap_gNB_amf_data_t   *amf_desc_p        = NULL;
   ngap_gNB_instance_t   *ngap_gNB_instance = NULL;
   NGAP_Paging_t         *container;
@@ -1083,7 +1067,7 @@ int ngap_gNB_handle_paging(uint32_t               assoc_id,
   return 0;
 }
 
-static int ngap_gNB_handle_pdusession_modify_request(uint32_t assoc_id, uint32_t stream, NGAP_NGAP_PDU_t *pdu)
+static int ngap_gNB_handle_pdusession_modify_request(sctp_assoc_t assoc_id, uint32_t stream, NGAP_NGAP_PDU_t *pdu)
 {
   ngap_gNB_amf_data_t *amf_desc_p = NULL;
   NGAP_PDUSessionResourceModifyRequest_t     *container;
@@ -1177,11 +1161,8 @@ static int ngap_gNB_handle_pdusession_modify_request(uint32_t assoc_id, uint32_t
 }
 
 // handle pdu session release command and send it to rrc_end
-static
-int ngap_gNB_handle_pdusession_release_command(uint32_t               assoc_id,
-    uint32_t               stream,
-    NGAP_NGAP_PDU_t       *pdu) {
-
+static int ngap_gNB_handle_pdusession_release_command(sctp_assoc_t assoc_id, uint32_t stream, NGAP_NGAP_PDU_t *pdu)
+{
   int i;
   ngap_gNB_amf_data_t *amf_desc_p = NULL;
   NGAP_PDUSessionResourceReleaseCommand_t     *container;
@@ -1264,34 +1245,26 @@ int ngap_gNB_handle_pdusession_release_command(uint32_t               assoc_id,
   return 0;
 }
 
-static
-int ngap_gNB_handle_ng_path_switch_request_ack(uint32_t               assoc_id,
-    uint32_t               stream,
-    NGAP_NGAP_PDU_t       *pdu) {
+static int ngap_gNB_handle_ng_path_switch_request_ack(sctp_assoc_t assoc_id, uint32_t stream, NGAP_NGAP_PDU_t *pdu)
+{
   // TODO
   return 0;
 }
 
-static
-int ngap_gNB_handle_ng_path_switch_request_failure(uint32_t               assoc_id,
-    uint32_t               stream,
-    NGAP_NGAP_PDU_t       *pdu) {
-
+static int ngap_gNB_handle_ng_path_switch_request_failure(sctp_assoc_t assoc_id, uint32_t stream, NGAP_NGAP_PDU_t *pdu)
+{
   // TODO
   return 0;
 }
 
-static
-int ngap_gNB_handle_ng_ENDC_pdusession_modification_confirm(uint32_t               assoc_id,
-    uint32_t               stream,
-    NGAP_NGAP_PDU_t       *pdu){
-
-	LOG_W(NGAP, "Implementation of NGAP Pdusession Modification confirm handler is pending...\n");
+static int ngap_gNB_handle_ng_ENDC_pdusession_modification_confirm(sctp_assoc_t assoc_id, uint32_t stream, NGAP_NGAP_PDU_t *pdu)
+{
+  LOG_W(NGAP, "Implementation of NGAP Pdusession Modification confirm handler is pending...\n");
 	return 0;
 }
 
 /* Handlers matrix. Only gNB related procedure present here */
-ngap_message_decoded_callback ngap_messages_callback[][3] = {
+const ngap_message_decoded_callback ngap_messages_callback[][3] = {
     {0, 0, 0}, /* AMFConfigurationUpdate */
     {0, 0, 0}, /* AMFStatusIndication */
     {0, 0, 0}, /* CellTrafficTrace */
@@ -1348,7 +1321,7 @@ ngap_message_decoded_callback ngap_messages_callback[][3] = {
 
 };
 
-int ngap_gNB_handle_message(uint32_t assoc_id, int32_t stream, const uint8_t *const data, const uint32_t data_length)
+int ngap_gNB_handle_message(sctp_assoc_t assoc_id, int32_t stream, const uint8_t *const data, const uint32_t data_length)
 {
   NGAP_NGAP_PDU_t pdu;
   int ret;

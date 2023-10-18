@@ -39,6 +39,7 @@
 
 #include "platform_types.h"
 #include "commonDef.h"
+#include "common/platform_constants.h"
 
 #include "NR_asn_constant.h"
 #include "NR_MeasConfig.h"
@@ -56,11 +57,10 @@
 
 #include "RRC/NR/nr_rrc_common.h"
 #include "as_message.h"
+#include "common/utils/nr/nr_common.h"
 
 #define NB_NR_UE_INST 1
 #define NB_CNX_UE 2//MAX_MANAGED_RG_PER_MOBILE
-#define NB_SIG_CNX_UE 2 //MAX_MANAGED_RG_PER_MOBILE
-
 #define MAX_MEAS_OBJ 7
 #define MAX_MEAS_CONFIG 7
 #define MAX_MEAS_ID 7
@@ -80,34 +80,13 @@ typedef struct OAI_NR_UECapability_s {
 } OAI_NR_UECapability_t;
 
 typedef enum Rrc_State_NR_e {
-  RRC_STATE_IDLE_NR=0,
+  RRC_STATE_IDLE_NR = 0,
   RRC_STATE_INACTIVE_NR,
   RRC_STATE_CONNECTED_NR,
 
   RRC_STATE_FIRST_NR = RRC_STATE_IDLE_NR,
   RRC_STATE_LAST_NR = RRC_STATE_CONNECTED_NR,
 } Rrc_State_NR_t;
-
-typedef enum Rrc_Sub_State_NR_e {
-  RRC_SUB_STATE_INACTIVE_NR=0,
-
-  RRC_SUB_STATE_IDLE_SEARCHING_NR,
-  RRC_SUB_STATE_IDLE_RECEIVING_SIB_NR,
-  RRC_SUB_STATE_IDLE_SIB_COMPLETE_NR,
-  RRC_SUB_STATE_IDLE_CONNECTING_NR,
-  RRC_SUB_STATE_IDLE_NR,
-
-  RRC_SUB_STATE_CONNECTED_NR,
-
-  RRC_SUB_STATE_INACTIVE_FIRST_NR = RRC_SUB_STATE_INACTIVE_NR,
-  RRC_SUB_STATE_INACTIVE_LAST_NR = RRC_SUB_STATE_INACTIVE_NR,
-
-  RRC_SUB_STATE_IDLE_FIRST_NR = RRC_SUB_STATE_IDLE_SEARCHING_NR,
-  RRC_SUB_STATE_IDLE_LAST_NR = RRC_SUB_STATE_IDLE_NR,
-
-  RRC_SUB_STATE_CONNECTED_FIRST_NR = RRC_SUB_STATE_CONNECTED_NR,
-  RRC_SUB_STATE_CONNECTED_LAST_NR = RRC_SUB_STATE_CONNECTED_NR,
-} Rrc_Sub_State_NR_t;
 
 typedef enum requested_SI_List_e {
   SIB2  = 1,
@@ -199,6 +178,13 @@ typedef enum {
   IN_SYNC = 1
 } nr_sync_msg_t;
 
+typedef enum { RB_NOT_PRESENT, RB_ESTABLISHED, RB_SUSPENDED } NR_RB_status_t;
+
+typedef struct NR_UE_RRC_SRB_INFO_s {
+  NR_RB_status_t status;
+  NR_SRB_INFO srb_buffers;
+} NR_UE_RRC_SRB_INFO_t;
+
 typedef struct NR_UE_RRC_INST_s {
   NR_MeasConfig_t        *meas_config;
   NR_CellGroupConfig_t   *cell_group_config;
@@ -212,17 +198,13 @@ typedef struct NR_UE_RRC_INST_s {
   NR_MeasIdToAddMod_t            *MeasId[NB_CNX_UE][MAX_MEAS_ID];
   NR_MeasGapConfig_t             *measGapConfig[NB_CNX_UE];
   NR_RSRP_Range_t                s_measure;
-  NR_SRB_ToAddMod_t              *SRB1_config[NB_CNX_UE];
-  NR_SRB_ToAddMod_t              *SRB2_config[NB_CNX_UE];
-  NR_DRB_ToAddMod_t              *DRB_config[NB_CNX_UE][8];
-  rb_id_t                        *defaultDRB; // remember the ID of the default DRB
 
   char                           *uecap_file;
   rnti_t                         rnti;
 
-  NR_SRB_INFO                    Srb0[NB_SIG_CNX_UE];
-  NR_SRB_INFO_TABLE_ENTRY        Srb1[NB_CNX_UE];
-  NR_SRB_INFO_TABLE_ENTRY        Srb2[NB_CNX_UE];
+  NR_UE_RRC_SRB_INFO_t Srb[NB_CNX_UE][NR_NUM_SRB];
+  bool active_DRBs[NB_CNX_UE][MAX_DRBS_PER_UE];
+  bool active_RLC_entity[NB_CNX_UE][NR_MAX_NUM_LCID];
 
   OAI_NR_UECapability_t          *UECap;
   uint8_t                        *UECapability;
@@ -234,7 +216,7 @@ typedef struct NR_UE_RRC_INST_s {
 
   plmn_t                         plmnID;
 
-  NR_UE_RRC_SI_INFO              SInfo[NB_SIG_CNX_UE];
+  NR_UE_RRC_SI_INFO SInfo[NB_CNX_UE];
 
   NR_MIB_t *mib;
 
@@ -248,11 +230,11 @@ typedef struct NR_UE_RRC_INST_s {
   //RRC_LIST_TYPE(NR_SecurityAlgorithmConfig_t, NR_SecurityAlgorithmConfig) SecurityAlgorithmConfig_list;
   NR_CipheringAlgorithm_t  cipheringAlgorithm;
   e_NR_IntegrityProtAlgorithm  integrityProtAlgorithm;
+  long keyToUse;
   bool as_security_activated;
 
   long               selected_plmn_identity;
   Rrc_State_NR_t     nrRrcState;
-  Rrc_Sub_State_NR_t nrRrcSubState;
   as_nas_info_t      initialNasMsg;
 } NR_UE_RRC_INST_t;
 

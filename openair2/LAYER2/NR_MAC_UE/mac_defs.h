@@ -332,23 +332,21 @@ typedef struct {
   bool active;
   bool ack_received;
   uint8_t  pucch_resource_indicator;
-  uint16_t feedback_to_ul;
-  frame_t dl_frame;
-  int dl_slot;
+  frame_t ul_frame;
+  int ul_slot;
   uint8_t ack;
   uint8_t dai;
   int n_CCE;
   int N_CCE;
+  int j_dai;
   int8_t delta_pucch;
 } NR_UE_HARQ_STATUS_t;
 
 typedef struct {
-
   uint8_t freq_hopping;
   uint8_t mcs;
   uint8_t Msg3_t_alloc;
   uint16_t Msg3_f_alloc;
-
 } RAR_grant_t;
 
 typedef struct {
@@ -422,8 +420,6 @@ typedef struct ssb_list_info {
 /*!\brief Top level UE MAC structure */
 typedef struct {
   NR_UE_L2_STATE_t state;
-  NR_ServingCellConfigCommon_t    *scc;
-  NR_ServingCellConfigCommonSIB_t *scc_SIB;
   NR_CellGroupConfig_t            *cg;
   int                             servCellIndex;
   NR_CSI_ReportConfig_t           *csirc;
@@ -445,6 +441,9 @@ typedef struct {
 
   NR_UE_DL_BWP_t current_DL_BWP;
   NR_UE_UL_BWP_t current_UL_BWP;
+  NR_BWP_DownlinkCommon_t *bwp_dlcommon;
+  NR_BWP_UplinkCommon_t *bwp_ulcommon;
+
   NR_UL_TIME_ALIGNMENT_t ul_time_alignment;
 
   NR_SearchSpace_t *otherSI_SS;
@@ -454,6 +453,8 @@ typedef struct {
   NR_ControlResourceSet_t *coreset0;
   NR_SearchSpace_t *BWP_searchspaces[FAPI_NR_MAX_SS];
   NR_SearchSpace_t *search_space_zero;
+
+  NR_TDD_UL_DL_ConfigCommon_t *tdd_UL_DL_ConfigurationCommon;
 
   bool phy_config_request_sent;
   frame_type_t frame_type;
@@ -502,11 +503,14 @@ typedef struct {
   uint8_t BSR_reporting_active;
 
   /// LogicalChannelConfig has bearer.
-  bool logicalChannelBearer_exist[NR_MAX_NUM_LCID];
-  NR_UE_SCHEDULING_INFO   scheduling_info;
+  bool active_RLC_bearer[NR_MAX_NUM_LCID];
+  NR_UE_SCHEDULING_INFO scheduling_info;
 
   /// PHR
   uint8_t PHR_reporting_active;
+
+  int dmrs_TypeA_Position;
+  NR_P_Max_t *p_Max;
 
   NR_Type0_PDCCH_CSS_config_t type0_PDCCH_CSS_config;
   frequency_range_t frequency_range;

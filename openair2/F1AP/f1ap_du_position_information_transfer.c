@@ -169,7 +169,8 @@ F1AP_F1AP_PDU_t                  pdu= {0};
     return -1;
   }
 
-  f1ap_itti_send_sctp_data_req(false, instance, buffer, len, getCxt(false, instance)->default_sctp_stream_id);
+//  f1ap_itti_send_sctp_data_req(false, instance, buffer, len, getCxt(false, instance)->default_sctp_stream_id);
+  f1ap_itti_send_sctp_data_req(instance, buffer, len);
   return 0;
 
 
@@ -241,6 +242,7 @@ int DU_send_POSITIONING_INFORMATION_FAILURE(instance_t instance, f1ap_positionin
     return -1;
   }
 
-  f1ap_itti_send_sctp_data_req(false, instance, buffer, len, getCxt(false, instance)->default_sctp_stream_id);
+//  f1ap_itti_send_sctp_data_req(false, instance, buffer, len, getCxt(false, instance)->default_sctp_stream_id);
+  f1ap_itti_send_sctp_data_req(instance, buffer, len);
   return 0;
  }

@@ -28,6 +28,7 @@
 #include "PHY/CODING/nrPolar_tools/nr_polar_pbch_defs.h"
 #include "PHY/NR_TRANSPORT/nr_transport_proto.h"
 #include "PHY/NR_TRANSPORT/nr_transport_common_proto.h"
+#include "PHY/NR_ESTIMATION/nr_ul_estimation.h"
 #include "openair1/PHY/MODULATION/nr_modulation.h"
 #include "openair1/PHY/defs_RU.h"
 #include "openair1/PHY/CODING/nrLDPC_extern.h"
@@ -64,17 +65,6 @@ int l1_north_init_gNB() {
   }
 
   return(0);
-}
-
-void init_ul_delay_table(NR_DL_FRAME_PARMS *fp)
-{
-  for (int delay = -MAX_UL_DELAY_COMP; delay <= MAX_UL_DELAY_COMP; delay++) {
-    for (int k = 0; k < fp->ofdm_symbol_size; k++) {
-      double complex delay_cexp = cexp(I * (2.0 * M_PI * k * delay / fp->ofdm_symbol_size));
-      fp->ul_delay_table[MAX_UL_DELAY_COMP + delay][k].r = (int16_t)round(256 * creal(delay_cexp));
-      fp->ul_delay_table[MAX_UL_DELAY_COMP + delay][k].i = (int16_t)round(256 * cimag(delay_cexp));
-    }
-  }
 }
 
 NR_gNB_PHY_STATS_t *get_phy_stats(PHY_VARS_gNB *gNB, uint16_t rnti)
@@ -536,6 +526,8 @@ int phy_init_nr_gNB(PHY_VARS_gNB *gNB)
   init_scrambling_luts();
   init_pucch2_luts();
 
+  nr_init_fde(); // Init array for frequency equalization of transform precoding of PUSCH
+
   load_nrLDPClib(NULL);
 
   if (gNB->ldpc_offload_flag)
@@ -544,7 +536,7 @@ int phy_init_nr_gNB(PHY_VARS_gNB *gNB)
   gNB->max_nb_pdsch = MAX_MOBILES_PER_GNB;
 
   init_codebook_gNB(gNB);
-  init_ul_delay_table(fp);
+  init_delay_table(fp->ofdm_symbol_size, MAX_DELAY_COMP, NR_MAX_OFDM_SYMBOL_SIZE, fp->delay_table);
 
   // PBCH DMRS gold sequences generation
   nr_init_pbch_dmrs(gNB);
@@ -694,7 +686,7 @@ int phy_init_nr_gNB(PHY_VARS_gNB *gNB)
   int n_buf = Prx*max_ul_mimo_layers;
 
   int nb_re_pusch = N_RB_UL * NR_NB_SC_PER_RB;
-  int nb_re_pusch2 = nb_re_pusch + (nb_re_pusch&7);
+  int nb_re_pusch2 = (nb_re_pusch + 15) & ~15;
 
   gNB->pusch_vars = (NR_gNB_PUSCH *)malloc16_clear(gNB->max_nb_pusch * sizeof(NR_gNB_PUSCH));
   for (int ULSCH_id = 0; ULSCH_id < gNB->max_nb_pusch; ULSCH_id++) {
@@ -705,24 +697,9 @@ int phy_init_nr_gNB(PHY_VARS_gNB *gNB)
     pusch->ptrs_phase_per_slot = (int32_t **)malloc16(n_buf * sizeof(int32_t *));
     pusch->ul_ch_estimates_time = (int32_t **)malloc16(n_buf * sizeof(int32_t *));
     pusch->rxdataF_comp = (int32_t **)malloc16(n_buf * sizeof(int32_t *));
-    pusch->ul_ch_mag0 = (int32_t **)malloc16(n_buf * sizeof(int32_t *));
-    pusch->ul_ch_magb0 = (int32_t **)malloc16(n_buf * sizeof(int32_t *));
-    pusch->ul_ch_magc0 = (int32_t **)malloc16(n_buf * sizeof(int32_t *));
-    pusch->ul_ch_mag = (int32_t **)malloc16(n_buf * sizeof(int32_t *));
-    pusch->ul_ch_magb = (int32_t **)malloc16(n_buf * sizeof(int32_t *));
-    pusch->ul_ch_magc = (int32_t **)malloc16(n_buf * sizeof(int32_t *));
-    pusch->rho = (int32_t ***)malloc16(Prx * sizeof(int32_t **));
     pusch->llr_layers = (int16_t **)malloc16(max_ul_mimo_layers * sizeof(int32_t *));
     for (i = 0; i < Prx; i++) {
       pusch->rxdataF_ext[i] = (int32_t *)malloc16_clear(sizeof(int32_t) * nb_re_pusch2 * fp->symbols_per_slot);
-      pusch->rho[i] = (int32_t **)malloc16_clear(NR_MAX_NB_LAYERS * NR_MAX_NB_LAYERS * sizeof(int32_t *));
-
-      for (int j = 0; j < max_ul_mimo_layers; j++) {
-        for (int k = 0; k < max_ul_mimo_layers; k++) {
-          pusch->rho[i][j * max_ul_mimo_layers + k] =
-              (int32_t *)malloc16_clear(sizeof(int32_t) * nb_re_pusch2 * fp->symbols_per_slot);
-        }
-      }
     }
     for (i = 0; i < n_buf; i++) {
       pusch->ul_ch_estimates[i] = (int32_t *)malloc16_clear(sizeof(int32_t) * fp->ofdm_symbol_size * fp->symbols_per_slot);
@@ -730,12 +707,6 @@ int phy_init_nr_gNB(PHY_VARS_gNB *gNB)
       pusch->ul_ch_estimates_time[i] = (int32_t *)malloc16_clear(sizeof(int32_t) * fp->ofdm_symbol_size);
       pusch->ptrs_phase_per_slot[i] = (int32_t *)malloc16_clear(sizeof(int32_t) * fp->symbols_per_slot); // symbols per slot
       pusch->rxdataF_comp[i] = (int32_t *)malloc16_clear(sizeof(int32_t) * nb_re_pusch2 * fp->symbols_per_slot);
-      pusch->ul_ch_mag0[i] = (int32_t *)malloc16_clear(sizeof(int32_t) * nb_re_pusch2 * fp->symbols_per_slot);
-      pusch->ul_ch_magb0[i] = (int32_t *)malloc16_clear(sizeof(int32_t) * nb_re_pusch2 * fp->symbols_per_slot);
-      pusch->ul_ch_magc0[i] = (int32_t *)malloc16_clear(sizeof(int32_t) * nb_re_pusch2 * fp->symbols_per_slot);
-      pusch->ul_ch_mag[i] = (int32_t *)malloc16_clear(sizeof(int32_t) * nb_re_pusch2 * fp->symbols_per_slot);
-      pusch->ul_ch_magb[i] = (int32_t *)malloc16_clear(sizeof(int32_t) * nb_re_pusch2 * fp->symbols_per_slot);
-      pusch->ul_ch_magc[i] = (int32_t *)malloc16_clear(sizeof(int32_t) * nb_re_pusch2 * fp->symbols_per_slot);
     }
 
     for (i=0; i< max_ul_mimo_layers; i++) {
@@ -859,11 +830,6 @@ void phy_free_nr_gNB(PHY_VARS_gNB *gNB)
       free_and_zero(pusch_vars->llr_layers[i]);
     for (int i = 0; i < Prx; i++) {
       free_and_zero(pusch_vars->rxdataF_ext[i]);
-      for (int j=0; j< max_ul_mimo_layers; j++) {
-        for (int k=0; k<max_ul_mimo_layers; k++)
-          free_and_zero(pusch_vars->rho[i][j * max_ul_mimo_layers + k]);
-      }
-      free_and_zero(pusch_vars->rho[i]);
     }
     for (int i = 0; i < n_buf; i++) {
       free_and_zero(pusch_vars->ul_ch_estimates[i]);
@@ -871,12 +837,6 @@ void phy_free_nr_gNB(PHY_VARS_gNB *gNB)
       free_and_zero(pusch_vars->ul_ch_estimates_time[i]);
       free_and_zero(pusch_vars->ptrs_phase_per_slot[i]);
       free_and_zero(pusch_vars->rxdataF_comp[i]);
-      free_and_zero(pusch_vars->ul_ch_mag0[i]);
-      free_and_zero(pusch_vars->ul_ch_magb0[i]);
-      free_and_zero(pusch_vars->ul_ch_magc0[i]);
-      free_and_zero(pusch_vars->ul_ch_mag[i]);
-      free_and_zero(pusch_vars->ul_ch_magb[i]);
-      free_and_zero(pusch_vars->ul_ch_magc[i]);
     }
     free_and_zero(pusch_vars->llr_layers);
     free_and_zero(pusch_vars->rxdataF_ext);
@@ -886,13 +846,6 @@ void phy_free_nr_gNB(PHY_VARS_gNB *gNB)
     free_and_zero(pusch_vars->ul_ch_estimates_time);
     free_and_zero(pusch_vars->ul_valid_re_per_slot);
     free_and_zero(pusch_vars->rxdataF_comp);
-    free_and_zero(pusch_vars->ul_ch_mag0);
-    free_and_zero(pusch_vars->ul_ch_magb0);
-    free_and_zero(pusch_vars->ul_ch_magc0);
-    free_and_zero(pusch_vars->ul_ch_mag);
-    free_and_zero(pusch_vars->ul_ch_magb);
-    free_and_zero(pusch_vars->ul_ch_magc);
-    free_and_zero(pusch_vars->rho);
 
     free_and_zero(pusch_vars->llr);
   } // ULSCH_id

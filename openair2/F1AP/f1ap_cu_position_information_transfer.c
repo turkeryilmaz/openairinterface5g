@@ -63,10 +63,12 @@ int CU_send_POSITIONING_INFORMATION_REQUEST(instance_t instance,
   ie1->id                             = F1AP_ProtocolIE_ID_id_gNB_CU_UE_F1AP_ID;
   ie1->criticality                    = F1AP_Criticality_reject;
   ie1->value.present                  = F1AP_PositioningInformationRequestIEs__value_PR_GNB_CU_UE_F1AP_ID;
-  ie1->value.choice.GNB_CU_UE_F1AP_ID = f1ap_get_cu_ue_f1ap_id(CUtype, instance, f1ap_positioning_information_req->gNB_CU_ue_id); //f1ap_ue_context_setup_req->gNB_CU_ue_id;
+  // TODO check CPtype /
+  ie1->value.choice.GNB_CU_UE_F1AP_ID = 0; //f1ap_get_cu_ue_f1ap_id(CPtype, instance, f1ap_positioning_information_req->gNB_CU_ue_id); //f1ap_ue_context_setup_req->gNB_CU_ue_id;
+//  ie1->value.choice.GNB_CU_UE_F1AP_ID = f1ap_get_cu_ue_f1ap_id(CUtype, instance, f1ap_positioning_information_req->gNB_CU_ue_id); //f1ap_ue_context_setup_req->gNB_CU_ue_id;
 //  ie1->value.choice.GNB_CU_UE_F1AP_ID = f1ap_get_cu_ue_f1ap_id(CUtype, instance, f1ap_ue_context_setup_req->rnti); //f1ap_ue_context_setup_req->gNB_CU_ue_id;
 
-  /* mandatory */
+  /* mandatory  TODO*/
   /* c2. GNB_DU_UE_F1AP_ID */
 //  if (f1ap_ue_context_setup_req->gNB_DU_ue_id) {
   if (1) {
@@ -74,7 +76,7 @@ int CU_send_POSITIONING_INFORMATION_REQUEST(instance_t instance,
     ie2->id                             = F1AP_ProtocolIE_ID_id_gNB_DU_UE_F1AP_ID;
     ie2->criticality                    = F1AP_Criticality_ignore;
     ie2->value.present                  = F1AP_PositioningInformationRequestIEs__value_PR_GNB_DU_UE_F1AP_ID;
-    ie2->value.choice.GNB_DU_UE_F1AP_ID = f1ap_get_du_ue_f1ap_id(CUtype, instance, f1ap_positioning_information_req->gNB_DU_ue_id); //*f1ap_ue_context_setup_req->gNB_DU_ue_id;
+    ie2->value.choice.GNB_DU_UE_F1AP_ID = 0; //f1ap_get_du_ue_f1ap_id(CUtype, instance, f1ap_positioning_information_req->gNB_DU_ue_id); //*f1ap_ue_context_setup_req->gNB_DU_ue_id;
   }
 
   /* OPTIONAL */
@@ -97,7 +99,8 @@ int CU_send_POSITIONING_INFORMATION_REQUEST(instance_t instance,
   }
 
   LOG_D(F1AP,"F1AP PositioningInformationRequest Encoded %u bits\n", len);
-  f1ap_itti_send_sctp_data_req(true, instance, buffer, len, 0 /* BK: fix me*/);
+//  f1ap_itti_send_sctp_data_req(true, instance, buffer, len, 0 /* BK: fix me*/);
+  f1ap_itti_send_sctp_data_req(instance, buffer, len);
   return 0;
 }
 

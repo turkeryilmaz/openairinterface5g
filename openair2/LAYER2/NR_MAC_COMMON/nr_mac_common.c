@@ -32,6 +32,7 @@
 
 #include "LAYER2/NR_MAC_gNB/mac_proto.h"
 #include "common/utils/nr/nr_common.h"
+#include "openair1/PHY/defs_nr_common.h"
 #include <limits.h>
 #include <executables/softmodem-common.h>
 
@@ -2401,55 +2402,58 @@ void nr_get_tbs_dl(nfapi_nr_dl_tti_pdsch_pdu *pdsch_pdu,
 
 // the following tables contain 10 times the value reported in 214 (in line with SCF specification and to avoid fractional values)
 //Table 5.1.3.1-1 of 38.214
-static const uint16_t Table_51311[29][2] = {{2, 1200}, {2, 1570}, {2, 1930}, {2, 2510}, {2, 3080}, {2, 3790}, {2, 4490}, {2, 5260},
+static const uint16_t Table_51311[32][2] = {{2, 1200}, {2, 1570}, {2, 1930}, {2, 2510}, {2, 3080}, {2, 3790}, {2, 4490}, {2, 5260},
                                             {2, 6020}, {2, 6790}, {4, 3400}, {4, 3780}, {4, 4340}, {4, 4900}, {4, 5530}, {4, 6160},
                                             {4, 6580}, {6, 4380}, {6, 4660}, {6, 5170}, {6, 5670}, {6, 6160}, {6, 6660}, {6, 7190},
-                                            {6, 7720}, {6, 8220}, {6, 8730}, {6, 9100}, {6, 9480}};
+                                            {6, 7720}, {6, 8220}, {6, 8730}, {6, 9100}, {6, 9480}, {2, 0}, {4, 0}, {6, 0}};
 
 //Table 5.1.3.1-2 of 38.214
 // Imcs values 20 and 26 have been multiplied by 2 to avoid the floating point
-static const uint16_t Table_51312[28][2] = {{2, 1200}, {2, 1930}, {2, 3080}, {2, 4490}, {2, 6020}, {4, 3780}, {4, 4340},
+static const uint16_t Table_51312[32][2] = {{2, 1200}, {2, 1930}, {2, 3080}, {2, 4490}, {2, 6020}, {4, 3780}, {4, 4340},
                                             {4, 4900}, {4, 5530}, {4, 6160}, {4, 6580}, {6, 4660}, {6, 5170}, {6, 5670},
                                             {6, 6160}, {6, 6660}, {6, 7190}, {6, 7720}, {6, 8220}, {6, 8730}, {8, 6825},
-                                            {8, 7110}, {8, 7540}, {8, 7970}, {8, 8410}, {8, 8850}, {8, 9165}, {8, 9480}};
+                                            {8, 7110}, {8, 7540}, {8, 7970}, {8, 8410}, {8, 8850}, {8, 9165}, {8, 9480},
+                                            {2, 0}, {4, 0}, {6, 0}, {8, 0}};
 
 //Table 5.1.3.1-3 of 38.214
-static const uint16_t Table_51313[29][2] = {{2, 300},  {2, 400},  {2, 500},  {2, 640},  {2, 780},  {2, 990},  {2, 1200}, {2, 1570},
+static const uint16_t Table_51313[32][2] = {{2, 300},  {2, 400},  {2, 500},  {2, 640},  {2, 780},  {2, 990},  {2, 1200}, {2, 1570},
                                             {2, 1930}, {2, 2510}, {2, 3080}, {2, 3790}, {2, 4490}, {2, 5260}, {2, 6020}, {4, 3400},
                                             {4, 3780}, {4, 4340}, {4, 4900}, {4, 5530}, {4, 6160}, {6, 4380}, {6, 4660}, {6, 5170},
-                                            {6, 5670}, {6, 6160}, {6, 6660}, {6, 7190}, {6, 7720}};
+                                            {6, 5670}, {6, 6160}, {6, 6660}, {6, 7190}, {6, 7720}, {2, 0}, {4, 0}, {6, 0}};
 
-static const uint16_t Table_61411[28][2] = {{2, 1200}, {2, 1570}, {2, 1930}, {2, 2510}, {2, 3080}, {2, 3790}, {2, 4490},
+static const uint16_t Table_61411[32][2] = {{2, 1200}, {2, 1570}, {2, 1930}, {2, 2510}, {2, 3080}, {2, 3790}, {2, 4490},
                                             {2, 5260}, {2, 6020}, {2, 6790}, {4, 3400}, {4, 3780}, {4, 4340}, {4, 4900},
                                             {4, 5530}, {4, 6160}, {4, 6580}, {6, 4660}, {6, 5170}, {6, 5670}, {6, 6160},
-                                            {6, 6660}, {6, 7190}, {6, 7720}, {6, 8220}, {6, 8730}, {6, 9100}, {6, 9480}};
+                                            {6, 6660}, {6, 7190}, {6, 7720}, {6, 8220}, {6, 8730}, {6, 9100}, {6, 9480},
+                                            {2, 0}, {2, 0}, {4, 0}, {6, 0}};
 
-static const uint16_t Table_61412[28][2] = {{2, 300},  {2, 400},  {2, 500},  {2, 640},  {2, 780},  {2, 990},  {2, 1200},
+static const uint16_t Table_61412[32][2] = {{2, 300},  {2, 400},  {2, 500},  {2, 640},  {2, 780},  {2, 990},  {2, 1200},
                                             {2, 1570}, {2, 1930}, {2, 2510}, {2, 3080}, {2, 3790}, {2, 4490}, {2, 5260},
                                             {2, 6020}, {2, 6790}, {4, 3780}, {4, 4340}, {4, 4900}, {4, 5530}, {4, 6160},
-                                            {4, 6580}, {4, 6990}, {4, 7720}, {6, 5670}, {6, 6160}, {6, 6660}, {6, 7720}};
+                                            {4, 6580}, {4, 6990}, {4, 7720}, {6, 5670}, {6, 6160}, {6, 6660}, {6, 7720},
+                                            {2, 0}, {2, 0}, {4, 0}, {6, 0}};
 
 uint8_t nr_get_Qm_dl(uint8_t Imcs, uint8_t table_idx) {
   switch(table_idx) {
     case 0:
-      if (Imcs > 28) {
-        LOG_E(MAC, "Invalid MCS index %d for MCS table 0 (expected range [0,28])\n", Imcs);
+      if (Imcs > 31) {
+        LOG_E(MAC, "Invalid MCS index %d for MCS table 0 (expected range [0,31])\n", Imcs);
         return 0;
       }
       return (Table_51311[Imcs][0]);
     break;
 
     case 1:
-      if (Imcs > 27) {
-        LOG_E(MAC, "Invalid MCS index %d for MCS table 1 (expected range [0,27])\n", Imcs);
+      if (Imcs > 31) {
+        LOG_E(MAC, "Invalid MCS index %d for MCS table 1 (expected range [0,31])\n", Imcs);
         return 0;
       }
       return (Table_51312[Imcs][0]);
     break;
 
     case 2:
-      if (Imcs > 28) {
-        LOG_E(MAC, "Invalid MCS index %d for MCS table 2 (expected range [0,28])\n", Imcs);
+      if (Imcs > 31) {
+        LOG_E(MAC, "Invalid MCS index %d for MCS table 2 (expected range [0,31])\n", Imcs);
         return 0;
       }
       return (Table_51313[Imcs][0]);
@@ -2464,24 +2468,24 @@ uint8_t nr_get_Qm_dl(uint8_t Imcs, uint8_t table_idx) {
 uint32_t nr_get_code_rate_dl(uint8_t Imcs, uint8_t table_idx) {
   switch(table_idx) {
     case 0:
-      if (Imcs > 28) {
-        LOG_E(MAC, "Invalid MCS index %d for MCS table 0 (expected range [0,28])\n", Imcs);
+      if (Imcs > 31) {
+        LOG_E(MAC, "Invalid MCS index %d for MCS table 0 (expected range [0,31])\n", Imcs);
         return 0;
       }
       return (Table_51311[Imcs][1]);
     break;
 
     case 1:
-      if (Imcs > 27) {
-        LOG_E(MAC, "Invalid MCS index %d for MCS table 1 (expected range [0,27])\n", Imcs);
+      if (Imcs > 31) {
+        LOG_E(MAC, "Invalid MCS index %d for MCS table 1 (expected range [0,31])\n", Imcs);
         return 0;
       }
       return (Table_51312[Imcs][1]);
     break;
 
     case 2:
-      if (Imcs > 28) {
-        LOG_E(MAC, "Invalid MCS index %d for MCS table 2 (expected range [0,28])\n", Imcs);
+      if (Imcs > 31) {
+        LOG_E(MAC, "Invalid MCS index %d for MCS table 2 (expected range [0,31])\n", Imcs);
         return 0;
       }
       return (Table_51313[Imcs][1]);
@@ -2496,40 +2500,40 @@ uint32_t nr_get_code_rate_dl(uint8_t Imcs, uint8_t table_idx) {
 uint8_t nr_get_Qm_ul(uint8_t Imcs, uint8_t table_idx) {
   switch(table_idx) {
     case 0:
-      if (Imcs > 28) {
-        LOG_E(MAC, "Invalid MCS index %d for MCS table 0 (expected range [0,28])\n", Imcs);
+      if (Imcs > 31) {
+        LOG_E(MAC, "Invalid MCS index %d for MCS table 0 (expected range [0,31])\n", Imcs);
         return 0;
       }
       return (Table_51311[Imcs][0]);
     break;
 
     case 1:
-      if (Imcs > 27) {
-        LOG_E(MAC, "Invalid MCS index %d for MCS table 1 (expected range [0,27])\n", Imcs);
+      if (Imcs > 31) {
+        LOG_E(MAC, "Invalid MCS index %d for MCS table 1 (expected range [0,31])\n", Imcs);
         return 0;
       }
       return (Table_51312[Imcs][0]);
     break;
 
     case 2:
-      if (Imcs > 28) {
-        LOG_E(MAC, "Invalid MCS index %d for MCS table 2 (expected range [0,28])\n", Imcs);
+      if (Imcs > 31) {
+        LOG_E(MAC, "Invalid MCS index %d for MCS table 2 (expected range [0,31])\n", Imcs);
         return 0;
       }
       return (Table_51313[Imcs][0]);
     break;
 
     case 3:
-      if (Imcs > 27) {
-        LOG_E(MAC, "Invalid MCS index %d for MCS table 3 (expected range [0,27])\n", Imcs);
+      if (Imcs > 31) {
+        LOG_E(MAC, "Invalid MCS index %d for MCS table 3 (expected range [0,31])\n", Imcs);
         return 0;
       }
       return (Table_61411[Imcs][0]);
     break;
 
     case 4:
-      if (Imcs > 27) {
-        LOG_E(MAC, "Invalid MCS index %d for MCS table 4 (expected range [0,27])\n", Imcs);
+      if (Imcs > 31) {
+        LOG_E(MAC, "Invalid MCS index %d for MCS table 4 (expected range [0,31])\n", Imcs);
         return 0;
       }
       return (Table_61412[Imcs][0]);
@@ -2544,40 +2548,40 @@ uint8_t nr_get_Qm_ul(uint8_t Imcs, uint8_t table_idx) {
 uint32_t nr_get_code_rate_ul(uint8_t Imcs, uint8_t table_idx) {
   switch(table_idx) {
     case 0:
-      if (Imcs > 28) {
-        LOG_E(MAC, "Invalid MCS index %d for MCS table 0 (expected range [0,28])\n", Imcs);
+      if (Imcs > 31) {
+        LOG_E(MAC, "Invalid MCS index %d for MCS table 0 (expected range [0,31])\n", Imcs);
         return 0;
       }
       return (Table_51311[Imcs][1]);
     break;
 
     case 1:
-      if (Imcs > 27) {
-        LOG_E(MAC, "Invalid MCS index %d for MCS table 1 (expected range [0,27])\n", Imcs);
+      if (Imcs > 31) {
+        LOG_E(MAC, "Invalid MCS index %d for MCS table 1 (expected range [0,31])\n", Imcs);
         return 0;
       }
       return (Table_51312[Imcs][1]);
     break;
 
     case 2:
-      if (Imcs > 28) {
-        LOG_E(MAC, "Invalid MCS index %d for MCS table 2 (expected range [0,28])\n", Imcs);
+      if (Imcs > 31) {
+        LOG_E(MAC, "Invalid MCS index %d for MCS table 2 (expected range [0,31])\n", Imcs);
         return 0;
       }
       return (Table_51313[Imcs][1]);
     break;
 
     case 3:
-      if (Imcs > 27) {
-        LOG_E(MAC, "Invalid MCS index %d for MCS table 3 (expected range [0,27])\n", Imcs);
+      if (Imcs > 31) {
+        LOG_E(MAC, "Invalid MCS index %d for MCS table 3 (expected range [0,31])\n", Imcs);
         return 0;
       }
       return (Table_61411[Imcs][1]);
     break;
 
     case 4:
-      if (Imcs > 27) {
-        LOG_E(MAC, "Invalid MCS index %d for MCS table 4 (expected range [0,27])\n", Imcs);
+      if (Imcs > 31) {
+        LOG_E(MAC, "Invalid MCS index %d for MCS table 4 (expected range [0,31])\n", Imcs);
         return 0;
       }
       return (Table_61412[Imcs][1]);
@@ -2899,7 +2903,7 @@ uint8_t compute_srs_resource_indicator(NR_PUSCH_ServingCellConfig_t *pusch_servi
       }
       if (count>0) {
         nbits = ceil(log2(count));
-        if (val && srs_feedback && nbits > 0) {
+        if (val && srs_feedback && count > 1) {
           *val = table_7_3_1_1_2_32[count-2][srs_feedback->sri];
         }
       }
@@ -3633,14 +3637,14 @@ int ul_ant_bits(NR_DMRS_UplinkConfig_t *NR_DMRS_UplinkConfig, long transformPrec
   }
 }
 
-int tdd_period_to_num[8] = {500,625,1000,1250,2000,2500,5000,10000};
+static const int tdd_period_to_num[8] = {500, 625, 1000, 1250, 2000, 2500, 5000, 10000};
 
-int is_nr_DL_slot(NR_TDD_UL_DL_ConfigCommon_t *tdd_UL_DL_ConfigurationCommon,slot_t slot) {
+bool is_nr_DL_slot(NR_TDD_UL_DL_ConfigCommon_t *tdd_UL_DL_ConfigurationCommon, slot_t slot)
+{
+  if (tdd_UL_DL_ConfigurationCommon == NULL)
+    return true;
 
-  int period,period1,period2=0;
-
-  if (tdd_UL_DL_ConfigurationCommon==NULL) return(1);
-
+  int period1, period2 = 0;
   if (tdd_UL_DL_ConfigurationCommon->pattern1.ext1 &&
       tdd_UL_DL_ConfigurationCommon->pattern1.ext1->dl_UL_TransmissionPeriodicity_v1530)
     period1 = 3000+*tdd_UL_DL_ConfigurationCommon->pattern1.ext1->dl_UL_TransmissionPeriodicity_v1530;
@@ -3650,49 +3654,54 @@ int is_nr_DL_slot(NR_TDD_UL_DL_ConfigCommon_t *tdd_UL_DL_ConfigurationCommon,slo
   if (tdd_UL_DL_ConfigurationCommon->pattern2) {
     if (tdd_UL_DL_ConfigurationCommon->pattern2->ext1 &&
         tdd_UL_DL_ConfigurationCommon->pattern2->ext1->dl_UL_TransmissionPeriodicity_v1530)
-      period2 = 3000+*tdd_UL_DL_ConfigurationCommon->pattern2->ext1->dl_UL_TransmissionPeriodicity_v1530;
+      period2 = 3000 + *tdd_UL_DL_ConfigurationCommon->pattern2->ext1->dl_UL_TransmissionPeriodicity_v1530;
     else
       period2 = tdd_period_to_num[tdd_UL_DL_ConfigurationCommon->pattern2->dl_UL_TransmissionPeriodicity];
   }    
-  period = period1+period2;
-  int scs=tdd_UL_DL_ConfigurationCommon->referenceSubcarrierSpacing;
-  int slots=period*(1<<scs)/1000;
-  int slots1=period1*(1<<scs)/1000;
+  int period = period1+period2;
+  int scs = tdd_UL_DL_ConfigurationCommon->referenceSubcarrierSpacing;
+  int slots = period * (1 << scs) / 1000;
+  int slots1 = period1 * (1 << scs) / 1000;
   int slot_in_period = slot % slots;
-  if (slot_in_period < slots1) return(slot_in_period <= tdd_UL_DL_ConfigurationCommon->pattern1.nrofDownlinkSlots ? 1 : 0);
-  else return(slot_in_period <= slots1+tdd_UL_DL_ConfigurationCommon->pattern2->nrofDownlinkSlots ? 1 : 0);    
+  if (slot_in_period < slots1)
+    return slot_in_period <= tdd_UL_DL_ConfigurationCommon->pattern1.nrofDownlinkSlots;
+  else
+    return slot_in_period <= slots1 + tdd_UL_DL_ConfigurationCommon->pattern2->nrofDownlinkSlots;
 }
 
-int is_nr_UL_slot(NR_TDD_UL_DL_ConfigCommon_t	*tdd_UL_DL_ConfigurationCommon, slot_t slot, frame_type_t frame_type) {
-
-  int period,period1,period2=0;
-
+bool is_nr_UL_slot(NR_TDD_UL_DL_ConfigCommon_t *tdd_UL_DL_ConfigurationCommon, slot_t slot, frame_type_t frame_type)
+{
   // Note: condition on frame_type
   // goal: the UL scheduler assumes mode is TDD therefore this hack is needed to make FDD work
-  if (tdd_UL_DL_ConfigurationCommon == NULL || frame_type == FDD) {
-    return(1);
-  }
+  if (frame_type == FDD)
+    return true;
+  if (tdd_UL_DL_ConfigurationCommon == NULL)
+    // before receiving TDD information all slots should be considered to be DL
+    return false;
 
+  int period1, period2 = 0;
   if (tdd_UL_DL_ConfigurationCommon->pattern1.ext1 &&
       tdd_UL_DL_ConfigurationCommon->pattern1.ext1->dl_UL_TransmissionPeriodicity_v1530)
-    period1 = 3000+*tdd_UL_DL_ConfigurationCommon->pattern1.ext1->dl_UL_TransmissionPeriodicity_v1530;
+    period1 = 3000 + *tdd_UL_DL_ConfigurationCommon->pattern1.ext1->dl_UL_TransmissionPeriodicity_v1530;
   else
     period1 = tdd_period_to_num[tdd_UL_DL_ConfigurationCommon->pattern1.dl_UL_TransmissionPeriodicity];
 			       
   if (tdd_UL_DL_ConfigurationCommon->pattern2) {
     if (tdd_UL_DL_ConfigurationCommon->pattern2->ext1 &&
 	      tdd_UL_DL_ConfigurationCommon->pattern2->ext1->dl_UL_TransmissionPeriodicity_v1530)
-      period2 = 3000+*tdd_UL_DL_ConfigurationCommon->pattern2->ext1->dl_UL_TransmissionPeriodicity_v1530;
+      period2 = 3000 + *tdd_UL_DL_ConfigurationCommon->pattern2->ext1->dl_UL_TransmissionPeriodicity_v1530;
     else
       period2 = tdd_period_to_num[tdd_UL_DL_ConfigurationCommon->pattern2->dl_UL_TransmissionPeriodicity];
   }    
-  period = period1+period2;
-  int scs=tdd_UL_DL_ConfigurationCommon->referenceSubcarrierSpacing;
-  int slots=period*(1<<scs)/1000;
-  int slots1=period1*(1<<scs)/1000;
+  int period = period1+period2;
+  int scs = tdd_UL_DL_ConfigurationCommon->referenceSubcarrierSpacing;
+  int slots = period * (1 << scs) / 1000;
+  int slots1 = period1 * (1 << scs) / 1000;
   int slot_in_period = slot % slots;
-  if (slot_in_period < slots1) return(slot_in_period >= tdd_UL_DL_ConfigurationCommon->pattern1.nrofDownlinkSlots ? 1 : 0);
-  else return(slot_in_period >= slots1+tdd_UL_DL_ConfigurationCommon->pattern2->nrofDownlinkSlots ? 1 : 0);    
+  if (slot_in_period < slots1)
+    return slot_in_period >= tdd_UL_DL_ConfigurationCommon->pattern1.nrofDownlinkSlots;
+  else
+    return slot_in_period >= slots1+tdd_UL_DL_ConfigurationCommon->pattern2->nrofDownlinkSlots;
 }
 
 int16_t fill_dmrs_mask(const NR_PDSCH_Config_t *pdsch_Config,
@@ -4072,7 +4081,7 @@ void csi_period_offset(NR_CSI_ReportConfig_t *csirep,
 uint8_t get_BG(uint32_t A, uint16_t R) {
 
   float code_rate = (float) R / 10240.0f;
-  if ((A <=292) || ((A<=3824) && (code_rate <= 0.6667)) || code_rate <= 0.25)
+  if ((A <= 292) || ((A <= NR_MAX_PDSCH_TBS) && (code_rate <= 0.6667)) || code_rate <= 0.25)
     return 2;
   else
     return 1;
@@ -4097,7 +4106,7 @@ uint32_t get_Y(const NR_SearchSpace_t *ss, int slot, rnti_t rnti) {
 
 void get_type0_PDCCH_CSS_config_parameters(NR_Type0_PDCCH_CSS_config_t *type0_PDCCH_CSS_config,
                                            frame_t frameP,
-                                           NR_MIB_t *mib,
+                                           const NR_MIB_t *mib,
                                            uint8_t num_slot_per_frame,
                                            uint8_t ssb_subcarrier_offset,
                                            uint16_t ssb_start_symbol,
@@ -4549,13 +4558,12 @@ void fill_searchSpaceZero(NR_SearchSpace_t *ss0,
     ss0->monitoringSymbolsWithinSlot->buf[0] |= ((symbols>>i)&0x01)<<(7-i);
   }
 
-  const uint16_t max_agg = (type0_PDCCH_CSS_config->num_symbols*type0_PDCCH_CSS_config->num_rbs)/6;
   // max values are set according to TS38.213 Section 10.1 Table 10.1-1
   ss0->nrofCandidates->aggregationLevel1 = NR_SearchSpace__nrofCandidates__aggregationLevel1_n0;
   ss0->nrofCandidates->aggregationLevel2 = NR_SearchSpace__nrofCandidates__aggregationLevel2_n0;
-  ss0->nrofCandidates->aggregationLevel4 = (((max_agg>>2) > 4)? 4 : max_agg>>2);
-  ss0->nrofCandidates->aggregationLevel8 = (((max_agg>>3) > 2)? 2 : max_agg>>3);
-  ss0->nrofCandidates->aggregationLevel16 = (((max_agg>>4) > 1)? 1 : max_agg>>4);
+  ss0->nrofCandidates->aggregationLevel4 = 4;
+  ss0->nrofCandidates->aggregationLevel8 = 2;
+  ss0->nrofCandidates->aggregationLevel16 = 1;
 
   ss0->searchSpaceType->present = NR_SearchSpace__searchSpaceType_PR_common;
 }
@@ -4637,17 +4645,8 @@ int compute_pucch_crc_size(int O_uci)
   }
 }
 
-uint16_t compute_pucch_prb_size(uint8_t format,
-                                uint8_t nr_prbs,
-                                uint16_t O_uci,
-                                NR_PUCCH_MaxCodeRate_t *maxCodeRate,
-                                uint8_t Qm,
-                                uint8_t n_symb,
-                                uint8_t n_re_ctrl)
+float get_max_code_rate(NR_PUCCH_MaxCodeRate_t *maxCodeRate)
 {
-  int O_crc = compute_pucch_crc_size(O_uci);
-  int O_tot = O_uci + O_crc;
-
   int rtimes100;
   switch(*maxCodeRate){
     case NR_PUCCH_MaxCodeRate_zeroDot08 :
@@ -4675,12 +4674,46 @@ uint16_t compute_pucch_prb_size(uint8_t format,
     AssertFatal(1==0,"Invalid MaxCodeRate");
   }
 
-  float r = (float)rtimes100/100;
+  float r = (float)rtimes100 / 100;
+  return r;
+}
+
+int get_f3_dmrs_symbols(NR_PUCCH_Resource_t *pucchres, NR_PUCCH_Config_t *pucch_Config)
+{
+  int f3_dmrs_symbols;
+  int add_dmrs_flag;
+  if (pucch_Config->format3 == NULL)
+    add_dmrs_flag = 0;
+  else
+    add_dmrs_flag = pucch_Config->format3->choice.setup->additionalDMRS ? 1 : 0;
+  if (pucchres->format.choice.format3->nrofSymbols == 4)
+    f3_dmrs_symbols = 1 << (pucchres->intraSlotFrequencyHopping ? 1 : 0);
+  else {
+    if (pucchres->format.choice.format3->nrofSymbols < 10)
+      f3_dmrs_symbols = 2;
+    else
+      f3_dmrs_symbols = 2 << add_dmrs_flag;
+  }
+  return f3_dmrs_symbols;
+}
+
+uint16_t compute_pucch_prb_size(uint8_t format,
+                                uint8_t nr_prbs,
+                                uint16_t O_uci,
+                                NR_PUCCH_MaxCodeRate_t *maxCodeRate,
+                                uint8_t Qm,
+                                uint8_t n_symb,
+                                uint8_t n_re_ctrl)
+{
+  int O_crc = compute_pucch_crc_size(O_uci);
+  int O_tot = O_uci + O_crc;
+
+  float r = get_max_code_rate(maxCodeRate);
 
   AssertFatal(O_tot <= (nr_prbs * n_re_ctrl * n_symb * Qm * r),
               "MaxCodeRate %.2f can't support %d UCI bits and %d CRC bits with %d PRBs",
               r,
-              O_tot,
+              O_uci,
               O_crc,
               nr_prbs);
 

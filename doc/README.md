@@ -19,6 +19,7 @@
 - [FEATURE_SET.md](./FEATURE_SET.md): lists supported features
 - [GET_SOURCES.md](./GET_SOURCES.md): how to download the sources
 - [BUILD.md](./BUILD.md): how to build the sources
+- [cross-compile.md](./cross-compile.md): how to cross-compile OAI for ARM
 - [clang-format.md](./clang-format.md): how to format the code
 - [environment-variables.md](./environment-variables.md): the environment variables used by OAI
 
@@ -81,6 +82,7 @@ Legacy unmaintained files:
 - The [logging module](../common/utils/LOG/DOC/log.md)
 - The [shared object loader](../common/utils/DOC/loader.md)
 - The [threadpool](../common/utils/threadPool/thread-pool.md) used in L1
+- The [LDPC implementation](../openair1/PHY/CODING/DOC/LDPCImplementation.md) is a shared library
 
 ## SDRs
 
@@ -99,6 +101,7 @@ The other SDRs (AW2S, LimeSDR, ...) have no READMEs.
 - OAI comes with an integrated [telnet server](../common/utils/telnetsrv/DOC/telnethelp.md) to monitor and control
 - OAI comes with an integrated [web server](../common/utils/websrv/DOC/websrv.md)
 
-# CI
+# Testing
 
+- [UnitTests.md](./UnitTests.md) explains the unit testing setup
 - [TESTBenches.md](./TESTBenches.md) lists the CI setup and links to pipelines

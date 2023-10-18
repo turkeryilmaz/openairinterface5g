@@ -47,7 +47,7 @@ void nr_ue_init_mac(module_id_t module_idP);
    \param mac           mac instance */
 void nr_ue_mac_default_configs(NR_UE_MAC_INST_t *mac);
 
-int8_t nr_ue_decode_mib(module_id_t module_id, int cc_id);
+void nr_ue_decode_mib(module_id_t module_id, int cc_id);
 
 /**\brief decode SIB1 and other SIs pdus in NR_UE, from if_module dl_ind
    \param module_id      module id
@@ -63,17 +63,9 @@ int8_t nr_ue_decode_BCCH_DL_SCH(module_id_t module_id,
                                 uint8_t *pduP,
                                 uint32_t pdu_len);
 
-/**\brief primitive from RRC layer to MAC layer to set if bearer exists for a logical channel. todo handle mac_LogicalChannelConfig
-   \param module_id                 module id
-   \param cc_id                     component carrier id
-   \param gNB_index                 gNB index
-   \param long                      logicalChannelIdentity
-   \param bool                      status*/
-int nr_rrc_mac_config_req_ue_logicalChannelBearer(module_id_t module_id,
-                                                  int         cc_idP,
-                                                  uint8_t     gNB_index,
-                                                  long        logicalChannelIdentity,
-                                                  bool        status);
+void nr_rrc_mac_config_req_ue_logicalChannelBearer(module_id_t module_id,
+                                                   struct NR_CellGroupConfig__rlc_BearerToAddModList *rlc_toadd_list,
+                                                   struct NR_CellGroupConfig__rlc_BearerToReleaseList *rlc_torelease_list);
 
 void nr_rrc_mac_config_req_scg(module_id_t module_id,
                                int cc_idP,
@@ -169,12 +161,17 @@ int nr_get_sf_periodicBSRTimer(uint8_t bucketSize);
 */
 int nr_get_sf_retxBSRTimer(uint8_t retxBSR_Timer);
 
-int8_t nr_ue_process_dci(module_id_t module_id, int cc_id, uint8_t gNB_index, frame_t frame, int slot, dci_pdu_rel15_t *dci, fapi_nr_dci_indication_pdu_t *dci_ind);
+int8_t nr_ue_process_dci(module_id_t module_id,
+                         int cc_id,
+                         frame_t frame,
+                         int slot,
+                         dci_pdu_rel15_t *dci,
+                         fapi_nr_dci_indication_pdu_t *dci_ind);
 int nr_ue_process_dci_indication_pdu(module_id_t module_id, int cc_id, int gNB_index, frame_t frame, int slot, fapi_nr_dci_indication_pdu_t *dci);
-int8_t nr_ue_process_csirs_measurements(module_id_t module_id, frame_t frame, int slot, fapi_nr_csirs_measurements_t *csirs_measurements);
-
-uint32_t get_ssb_frame(uint32_t test);
-
+int8_t nr_ue_process_csirs_measurements(module_id_t module_id,
+                                        frame_t frame,
+                                        int slot,
+                                        fapi_nr_csirs_measurements_t *csirs_measurements);
 void nr_ue_aperiodic_srs_scheduling(NR_UE_MAC_INST_t *mac, long resource_trigger, int frame, int slot);
 
 bool trigger_periodic_scheduling_request(NR_UE_MAC_INST_t *mac,
@@ -238,8 +235,6 @@ void config_dci_pdu(NR_UE_MAC_INST_t *mac,
 
 void ue_dci_configuration(NR_UE_MAC_INST_t *mac, fapi_nr_dl_config_request_t *dl_config, const frame_t frame, const int slot);
 
-NR_BWP_DownlinkCommon_t *get_bwp_downlink_common(NR_UE_MAC_INST_t *mac, NR_BWP_Id_t dl_bwp_id);
-
 uint8_t nr_ue_get_sdu(module_id_t module_idP,
                       int cc_id,
                       frame_t frameP,
@@ -247,10 +242,6 @@ uint8_t nr_ue_get_sdu(module_id_t module_idP,
                       uint8_t gNB_index,
                       uint8_t *ulsch_buffer,
                       uint16_t buflen);
-
-void set_tdd_config_nr_ue(fapi_nr_config_request_t *cfg,
-                          int mu,
-                          NR_TDD_UL_DL_ConfigCommon_t *tdd_config);
 
 void set_harq_status(NR_UE_MAC_INST_t *mac,
                      uint8_t pucch_id,
@@ -429,6 +420,6 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
                         dci_pdu_rel15_t *dci,
                         RAR_grant_t *rar_grant,
                         uint16_t rnti,
-                        const nr_dci_format_t *dci_format);
+                        const nr_dci_format_t dci_format);
 #endif
 /** @}*/

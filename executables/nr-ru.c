@@ -95,8 +95,8 @@ extern void  nr_phy_config_request(NR_PHY_Config_t *gNB);
 //extern WORKER_CONF_t   get_thread_worker_conf(void);
 
 void init_NR_RU(char *);
+void start_NR_RU();
 void stop_RU(int nb_ru);
-void do_ru_sync(RU_t *ru);
 
 void configure_ru(int idx, void *arg);
 void configure_rru(int idx, void *arg);
@@ -338,7 +338,9 @@ void fh_if5_south_in(RU_t *ru,
 
     if (proc->frame_rx != *frame) {
       LOG_E(PHY,"Received Timestamp doesn't correspond to the time we think it is (proc->frame_rx %d frame %d proc->tti_rx %d tti %d)\n",proc->frame_rx,*frame,proc->tti_rx,*tti);
-      exit_fun("Exiting");
+      if (!oai_exit)
+        exit_fun("Exiting");
+      return;
     }
   } else {
     proc->first_rx = 0;
@@ -777,8 +779,13 @@ void tx_rf(RU_t *ru,int frame,int slot, uint64_t timestamp) {
   void *txp[ru->nb_tx];
   unsigned int txs;
   int i;
-  T(T_ENB_PHY_OUTPUT_SIGNAL, T_INT(0), T_INT(0), T_INT(frame), T_INT(slot),
-    T_INT(0), T_BUFFER(&ru->common.txdata[0][fp->get_samples_slot_timestamp(slot,fp,0)], fp->samples_per_subframe * 4));
+  T(T_ENB_PHY_OUTPUT_SIGNAL,
+    T_INT(0),
+    T_INT(0),
+    T_INT(frame),
+    T_INT(slot),
+    T_INT(0),
+    T_BUFFER(&ru->common.txdata[0][fp->get_samples_slot_timestamp(slot, fp, 0)], fp->get_samples_per_slot(slot, fp) * 4));
   int sf_extension = 0;
   int siglen=fp->get_samples_per_slot(slot,fp);
   radio_tx_burst_flag_t flags_burst = TX_BURST_INVALID;
@@ -1391,7 +1398,6 @@ int start_write_thread(RU_t *ru) {
 void init_RU_proc(RU_t *ru) {
   int i=0;
   RU_proc_t *proc;
-  LOG_I(PHY,"Initializing RU proc %d (%s,%s),\n",ru->idx,NB_functions[ru->function],NB_timing[ru->if_timing]);
   proc = &ru->proc;
   memset((void *)proc,0,sizeof(RU_proc_t));
   proc->ru = ru;
@@ -1406,7 +1412,6 @@ void init_RU_proc(RU_t *ru) {
 
   pthread_mutex_init( &proc->mutex_emulateRF,NULL);
   pthread_cond_init( &proc->cond_emulateRF, NULL);
-  threadCreate( &proc->pthread_FH, ru_thread, (void *)ru, "ru_thread", ru->ru_thread_core, OAI_PRIORITY_RT_MAX );
 
   if(emulate_rf)
     threadCreate( &proc->pthread_emulateRF, emulatedRF_thread, (void *)proc, "emulateRF", -1, OAI_PRIORITY_RT );
@@ -1414,7 +1419,12 @@ void init_RU_proc(RU_t *ru) {
     threadCreate( &ru->ru_stats_thread, ru_stats_thread, (void *)ru,"ru_stats", -1, OAI_PRIORITY_RT );
   if (get_thread_worker_conf() == WORKER_ENABLE) {
   }
+  LOG_I(PHY, "Initialized RU proc %d (%s,%s),\n", ru->idx, NB_functions[ru->function], NB_timing[ru->if_timing]);
+}
 
+void start_RU_proc(RU_t *ru)
+{
+  threadCreate(&ru->proc.pthread_FH, ru_thread, (void *)ru, "ru_thread", ru->ru_thread_core, OAI_PRIORITY_RT_MAX);
 }
 
 
@@ -1499,11 +1509,10 @@ int check_capabilities(RU_t *ru,RRU_capabilities_t *cap) {
   return(-1);
 }
 
+const char rru_format_options[4][20] = {"OAI_IF5_only", "OAI_IF4p5_only", "OAI_IF5_and_IF4p5", "MBP_IF5"};
 
-char rru_format_options[4][20] = {"OAI_IF5_only","OAI_IF4p5_only","OAI_IF5_and_IF4p5","MBP_IF5"};
-
-char rru_formats[3][20] = {"OAI_IF5","MBP_IF5","OAI_IF4p5"};
-char ru_if_formats[4][20] = {"LOCAL_RF","REMOTE_OAI_IF5","REMOTE_MBP_IF5","REMOTE_OAI_IF4p5"};
+const char rru_formats[3][20] = {"OAI_IF5", "MBP_IF5", "OAI_IF4p5"};
+const char ru_if_formats[4][20] = {"LOCAL_RF", "REMOTE_OAI_IF5", "REMOTE_MBP_IF5", "REMOTE_OAI_IF4p5"};
 
 void configure_ru(int idx,
                   void *arg) {
@@ -1867,6 +1876,12 @@ void init_NR_RU(char *rf_config_file) {
 
   //  sleep(1);
   LOG_D(HW,"[nr-softmodem.c] RU threads created\n");
+}
+
+void start_NR_RU()
+{
+  RU_t *ru = RC.ru[0];
+  start_RU_proc(ru);
 }
 
 
