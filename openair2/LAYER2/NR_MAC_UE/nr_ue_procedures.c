@@ -812,8 +812,14 @@ int8_t nr_ue_process_dci(module_id_t module_id, int cc_id, uint8_t gNB_index, fr
     }
 
     if(rnti != ra->ra_rnti && rnti != SI_RNTI && rnti != P_RNTI)
-      AssertFatal(1 + dci->pdsch_to_harq_feedback_timing_indicator.val >= DURATION_RX_TO_TX, "PDSCH to HARQ feedback time (%d) cannot be less than DURATION_RX_TO_TX (%d).\n",
+      //AssertFatal(1 + dci->pdsch_to_harq_feedback_timing_indicator.val >= DURATION_RX_TO_TX, "PDSCH to HARQ feedback time (%d) cannot be less than DURATION_RX_TO_TX (%d).\n",
+      //            1 + dci->pdsch_to_harq_feedback_timing_indicator.val, DURATION_RX_TO_TX);
+      // if we observe delay on HARQ processing, let's not generate Fatal
+      if (1 + dci->pdsch_to_harq_feedback_timing_indicator.val < DURATION_RX_TO_TX) {
+	      LOG_E(MAC,"PDSCH to HARQ feedback time (%d) cannot be less than DURATION_RX_TO_TX (%d).\n",
                   1 + dci->pdsch_to_harq_feedback_timing_indicator.val, DURATION_RX_TO_TX);
+	      return -1;
+      }
 
     // set the harq status at MAC for feedback
     set_harq_status(mac,
@@ -1124,7 +1130,13 @@ int8_t nr_ue_process_dci(module_id_t module_id, int cc_id, uint8_t gNB_index, fr
       dlsch_config_pdu_1_1->tci_state = dci->transmission_configuration_indication.val;
     }
     /* SRS_REQUEST */
-    AssertFatal(dci->srs_request.nbits == 2, "If SUL is supported in the cell, there is an additional bit in SRS request field\n");
+    //AssertFatal(dci->srs_request.nbits == 2, "If SUL is supported in the cell, there is an additional bit in SRS request field\n");
+    if (dci->srs_request.nbits !=2){
+      LOG_E(MAC, "If SUL is supported in the cell, there is an additional bit in SRS request field\n");
+      return -1;
+    }
+
+
     if(dci->srs_request.val > 0 )
       nr_ue_aperiodic_srs_scheduling(mac, dci->srs_request.val, frame, slot);
     /* CBGTI */
