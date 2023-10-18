@@ -779,12 +779,6 @@ static int nr_ue_process_dci_dl_10(module_id_t module_id,
     return -1;
   }
 
-  if (dci_ind->rnti != mac->ra.ra_rnti && dci_ind->rnti != SI_RNTI)
-    AssertFatal(1 + dci->pdsch_to_harq_feedback_timing_indicator.val > DURATION_RX_TO_TX,
-                "PDSCH to HARQ feedback time (%d) needs to be higher than DURATION_RX_TO_TX (%d).\n",
-                1 + dci->pdsch_to_harq_feedback_timing_indicator.val,
-                DURATION_RX_TO_TX);
-
   // set the harq status at MAC for feedback
   set_harq_status(mac,
                   dci->pucch_resource_indicator,
@@ -1096,12 +1090,6 @@ static int nr_ue_process_dci_dl_11(module_id_t module_id,
   /* PDSCH_TO_HARQ_FEEDBACK_TIME_IND */
   // according to TS 38.213 Table 9.2.3-1
   uint8_t feedback_ti = pucch_Config->dl_DataToUL_ACK->list.array[dci->pdsch_to_harq_feedback_timing_indicator.val][0];
-
-  AssertFatal(feedback_ti > DURATION_RX_TO_TX,
-              "PDSCH to HARQ feedback time (%d) needs to be higher than DURATION_RX_TO_TX (%d). Min feedback time set in config "
-              "file (min_rxtxtime).\n",
-              feedback_ti,
-              DURATION_RX_TO_TX);
 
   // set the harq status at MAC for feedback
   set_harq_status(mac,
