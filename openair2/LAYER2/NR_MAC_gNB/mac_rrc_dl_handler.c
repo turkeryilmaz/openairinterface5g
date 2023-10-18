@@ -108,7 +108,7 @@ void ue_context_setup_request(const f1ap_ue_context_setup_t *req)
 
   NR_SCHED_LOCK(&mac->sched_lock);
 
-  NR_UE_info_t *UE = find_nr_UE(&RC.nrmac[0]->UE_info, req->rnti);
+  NR_UE_info_t *UE = find_nr_UE(&RC.nrmac[0]->UE_info, 0, req->rnti); //TODO to check if 0 ok
   AssertFatal(UE != NULL, "did not find UE with RNTI %04x, but UE Context Setup Failed not implemented\n", req->rnti);
 
   if (req->srbs_to_be_setup_length > 0) {
@@ -178,7 +178,7 @@ void ue_context_modification_request(const f1ap_ue_context_modif_req_t *req)
   }
 
   NR_SCHED_LOCK(&mac->sched_lock);
-  NR_UE_info_t *UE = find_nr_UE(&RC.nrmac[0]->UE_info, req->rnti);
+  NR_UE_info_t *UE = find_nr_UE(&RC.nrmac[0]->UE_info, 0, req->rnti); //TODO to check if 0 ok
 
   if (req->srbs_to_be_setup_length > 0) {
     resp.srbs_to_be_setup_length = handle_ue_context_srbs_setup(req->rnti,
@@ -221,7 +221,7 @@ void ue_context_modification_request(const f1ap_ue_context_modif_req_t *req)
     resp.du_to_cu_rrc_information->cellGroupConfig_length = (enc_rval.encoded + 7) >> 3;
 
     /* works? */
-    nr_mac_update_cellgroup(RC.nrmac[0], req->rnti, UE->CellGroup);
+    nr_mac_update_cellgroup(RC.nrmac[0], 0, req->rnti, UE->CellGroup);
   }
   NR_SCHED_UNLOCK(&mac->sched_lock);
 
@@ -246,11 +246,11 @@ void ue_context_release_command(const f1ap_ue_context_release_cmd_t *cmd)
   /* mark UE as to be deleted after PUSCH failure */
   gNB_MAC_INST *mac = RC.nrmac[0];
   pthread_mutex_lock(&mac->sched_lock);
-  NR_UE_info_t *UE = find_nr_UE(&mac->UE_info, cmd->rnti);
+  NR_UE_info_t *UE = find_nr_UE(&mac->UE_info, 0, cmd->rnti); //TODO to check if 0 ok
   if (UE->UE_sched_ctrl.ul_failure || cmd->rrc_container_length == 0) {
     /* The UE is already not connected anymore or we have nothing to forward*/
     nr_rlc_remove_ue(cmd->rnti);
-    mac_remove_nr_ue(mac, cmd->rnti);
+    mac_remove_nr_ue(mac, 0, cmd->rnti); //TODO to check if 0 ok
   } else {
     /* UE is in sync: forward release message and mark to be deleted
      * after UL failure */
