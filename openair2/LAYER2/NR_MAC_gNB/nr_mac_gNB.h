@@ -135,6 +135,8 @@ typedef struct nr_mac_config_t {
   int do_CSIRS;
   int do_SRS;
   bool force_256qam_off;
+  bool force_UL256qam_off;
+  bool use_deltaMCS;
   //int pusch_TargetSNRx10;
   //int pucch_TargetSNRx10;
 } nr_mac_config_t;
