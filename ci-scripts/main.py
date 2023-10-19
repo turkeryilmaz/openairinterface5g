@@ -45,7 +45,7 @@ import cls_static_code_analysis  #class for static code analysis
 import cls_physim1		 #class PhySim for physical simulators deploy and run
 import cls_cluster		 # class for building/deploying on cluster
 
-import sshconnection 
+import sshconnection
 import epc
 import ran
 import cls_oai_html
@@ -138,6 +138,9 @@ def GetParametersFromXML(action):
 		proxy_commit = test.findtext('proxy_commit')
 		if proxy_commit is not None:
 			CONTAINERS.proxyCommit = proxy_commit
+		extra_env_vars = test.findtext('extra_env_vars')
+		if extra_env_vars is not None:
+			RAN.extra_env_vars = extra_env_vars
 
 	elif action == 'WaitEndBuild_eNB':
 		RAN.Build_eNB_args=test.findtext('Build_eNB_args')
@@ -176,9 +179,9 @@ def GetParametersFromXML(action):
 			RAN.eNB_serverId[RAN.eNB_instance]='0'
 		else:
 			RAN.eNB_serverId[RAN.eNB_instance]=eNB_serverId
-			
+
 		#local variable air_interface
-		air_interface = test.findtext('air_interface')		
+		air_interface = test.findtext('air_interface')
 		if (air_interface is None) or (air_interface.lower() not in ['nr','lte']):
 			RAN.air_interface[RAN.eNB_instance] = 'lte-softmodem'
 		else:
@@ -208,7 +211,7 @@ def GetParametersFromXML(action):
 			RAN.ran_checkers['u_retx_th'] = [float(x) for x in string_field.split(',')]
 
 		#local variable air_interface
-		air_interface = test.findtext('air_interface')		
+		air_interface = test.findtext('air_interface')
 		if (air_interface is None) or (air_interface.lower() not in ['nr','lte']):
 			RAN.air_interface[RAN.eNB_instance] = 'lte-softmodem'
 		else:
@@ -232,9 +235,9 @@ def GetParametersFromXML(action):
 			CiTestObj.UE_instance = 0
 		else:
 			CiTestObj.UE_instance = UE_instance
-			
+
 		#local variable air_interface
-		air_interface = test.findtext('air_interface')		
+		air_interface = test.findtext('air_interface')
 		if (air_interface is None) or (air_interface.lower() not in ['nr','lte']):
 			CiTestObj.air_interface = 'lte-uesoftmodem'
 		elif (air_interface.lower() in ['nr','lte']):
@@ -250,9 +253,9 @@ def GetParametersFromXML(action):
 			CiTestObj.UE_instance = '0'
 		else:
 			CiTestObj.UE_instance = int(UE_instance)
-		
+
 		#local variable air_interface
-		air_interface = test.findtext('air_interface')		
+		air_interface = test.findtext('air_interface')
 		if (air_interface is None) or (air_interface.lower() not in ['nr','lte']):
 			CiTestObj.air_interface = 'lte-uesoftmodem'
 		else:
@@ -326,12 +329,12 @@ def GetParametersFromXML(action):
 	elif action == 'Initialize_5GCN':
 		string_field = test.findtext('args')
 		if (string_field is not None):
-			EPC.cfgDeploy = string_field	
+			EPC.cfgDeploy = string_field
 
 	elif action == 'Terminate_5GCN':
 		string_field = test.findtext('args')
 		if (string_field is not None):
-			EPC.cfgUnDeploy = string_field	
+			EPC.cfgUnDeploy = string_field
 
 	elif action == 'Deploy_Object' or action == 'Undeploy_Object':
 		eNB_instance=test.findtext('eNB_instance')
@@ -470,7 +473,7 @@ with open(yaml_file,'r') as f:
 mode = ''
 
 CiTestObj = cls_oaicitest.OaiCiTest()
- 
+
 SSH = sshconnection.SSHConnection()
 EPC = epc.EPCManagement()
 RAN = ran.RANManagement()
@@ -601,7 +604,7 @@ elif re.match('^InitiateHtml$', mode, re.IGNORECASE):
 		count += 1
 	if foundCount != HTML.nbTestXMLfiles:
 		HTML.nbTestXMLfiles=foundCount
-	
+
 	HTML.CreateHtmlHeader()
 elif re.match('^FinalizeHtml$', mode, re.IGNORECASE):
 	logging.info('\u001B[1m----------------------------------------\u001B[0m')

@@ -54,7 +54,7 @@ import constants as CONST
 class RANManagement():
 
 	def __init__(self):
-		
+
 		self.prematureExit = False
 		self.ranRepository = ''
 		self.ranBranch = ''
@@ -92,7 +92,7 @@ class RANManagement():
 		self.datalog_rt_stats={}
 		self.datalog_rt_stats_file='datalog_rt_stats.default.yaml'
 		self.eNB_Trace = '' #if 'yes', Tshark will be launched at initialization
-		self.eNB_Stats = '' #if 'yes', Statistics Monitor will be launched at initialization		
+		self.eNB_Stats = '' #if 'yes', Statistics Monitor will be launched at initialization
 		self.USRPIPAddress = ''
 		#checkers from xml
 		self.ran_checkers={}
@@ -100,6 +100,7 @@ class RANManagement():
 		self.node = ''
 		self.command = ''
 		self.command_fail = False
+		self.extra_env_vars = ''
 
 
 #-----------------------------------------------------------
@@ -131,7 +132,7 @@ class RANManagement():
 		logging.debug('Building on server: ' + lIpAddr)
 		mySSH = SSH.SSHConnection()
 		mySSH.open(lIpAddr, lUserName, lPassWord)
-		
+
 		# Check if we build an 5G-NR gNB or an LTE eNB
 		result = re.search('--RU', self.Build_eNB_args)
 		if result is not None:
@@ -142,7 +143,7 @@ class RANManagement():
 				self.air_interface[self.eNB_instance] = 'nr-softmodem'
 			else:
 				self.air_interface[self.eNB_instance] = 'lte-softmodem'
-		
+
 		# Worakround for some servers, we need to erase completely the workspace
 		if self.Build_eNB_forced_workspace_cleanup:
 			mySSH.command('echo ' + lPassWord + ' | sudo -S rm -Rf ' + lSourcePath, '\$', 15)
@@ -195,7 +196,7 @@ class RANManagement():
 		# if the commit ID is provided use it to point to it
 		if self.ranCommitID != '':
 			mySSH.command('git checkout -f ' + self.ranCommitID, '\$', 30)
-		# if the branch is not develop, then it is a merge request and we need to do 
+		# if the branch is not develop, then it is a merge request and we need to do
 		# the potential merge. Note that merge conflicts should already been checked earlier
 		if (self.ranAllowMerge):
 			if self.ranTargetBranch == '':
@@ -204,8 +205,13 @@ class RANManagement():
 			else:
 				logging.debug('Merging with the target branch: ' + self.ranTargetBranch)
 				mySSH.command('git merge --ff origin/' + self.ranTargetBranch + ' -m "Temporary merge for CI"', '\$', 30)
-		logging.debug(mySSH.getBefore()) # print what git said when merging/checking out
+		#logging.debug(mySSH.getBefore()) # print what git said when merging/checking out
 		mySSH.command('source oaienv', '\$', 5)
+		# TODO: once we got a stable environment and better CMake management, remove next few lines
+		if self.extra_env_vars != '':
+			mySSH.copyout(self.eNBIPAddress, self.eNBUserName, self.eNBPassword, f'./bash_files/{self.extra_env_vars}', '/tmp')
+			mySSH.command(f'source /tmp/{self.extra_env_vars}', '\$', 5)
+
 		mySSH.command('cd cmake_targets', '\$', 5)
 		mySSH.command('mkdir -p log', '\$', 5)
 		mySSH.command('chmod 777 log', '\$', 5)
@@ -286,6 +292,14 @@ class RANManagement():
 		mySSH = SSH.SSHConnection()
 		mySSH.open(lIpAddr, lUserName, lPassWord)
 		mySSH.command('cd ' + lSourcePath + '/cmake_targets', '\$', 3)
+
+		# TODO: when stable environment for FHI integration, remove next few lines
+		if re.search('-t oran_fhlib_5g', self.Build_eNB_args) is not None:
+			if self.extra_env_vars != '':
+				mySSH.command(f'source /tmp/{self.extra_env_vars}', '\$', 5)
+				mySSH.command(f'rm -f /tmp/{self.extra_env_vars}', '\$', 5)
+			mySSH.command('cp $XRAN_LIB_DIR/libxran.so ran_build/build', '\$', 5)
+
 		mySSH.command('ls ran_build/build', '\$', 3)
 		mySSH.command('ls ran_build/build', '\$', 3)
 
@@ -295,7 +309,7 @@ class RANManagement():
 		if result is None:
 			buildStatus = False #if not, build failed
 		else:
-			buildStatus = True 
+			buildStatus = True
 			# Generating a BUILD INFO file
 			mySSH.command('echo "SRC_BRANCH: ' + self.ranBranch + '" > ../LAST_BUILD_INFO.txt', '\$', 2)
 			mySSH.command('echo "SRC_COMMIT: ' + self.ranCommitID + '" >> ../LAST_BUILD_INFO.txt', '\$', 2)
@@ -307,8 +321,8 @@ class RANManagement():
 					mySSH.command('echo "TGT_BRANCH: ' + self.ranTargetBranch + '" >> ../LAST_BUILD_INFO.txt', '\$', 2)
 			else:
 				mySSH.command('echo "MERGED_W_TGT_BRANCH: NO" >> ../LAST_BUILD_INFO.txt', '\$', 2)
-				
-				
+
+
 		mySSH.command('mkdir -p build_log_' + testcaseId, '\$', 5)
 		mySSH.command('mv log/* ' + 'build_log_' + testcaseId, '\$', 5)
 		mySSH.command('mv compile_oai_enb.log ' + 'build_log_' + testcaseId, '\$', 5)
@@ -367,8 +381,8 @@ class RANManagement():
 		mySSH = SSH.SSHConnection()
 		cwd = os.getcwd()
 		mySSH.copyout(lIpAddr,lUserName,lPassWord, cwd + "/active_net_interfaces.awk", "/tmp")
-		
-		#Get pcap on enb and/or gnb if enabled in the xml 
+
+		#Get pcap on enb and/or gnb if enabled in the xml
 		if self.eNB_Trace=='yes':
 			if self.air_interface[self.eNB_instance] == 'lte-softmodem':
 				pcapfile_prefix="enb_"
@@ -382,8 +396,6 @@ class RANManagement():
 			mySSH.command('echo ' + lPassWord + ' | sudo -S rm -f /tmp/' + pcapfile , '\$', 5)
 			mySSH.command('echo $USER; nohup sudo -E tshark  -i ' + eth_interface + ' -f "' + fltr + '" -w /tmp/' + pcapfile + ' > /dev/null 2>&1 &','\$', 5)
 			mySSH.close()
-			
-
 
 		# If tracer options is on, running tshark on EPC side and capture traffic b/ EPC and eNB
 		if EPC.IPAddress != "none":
@@ -825,7 +837,7 @@ class RANManagement():
 		nrRrcRcfgComplete = 0
 		harqFeedbackPast = 0
 		showedByeMsg = False # last line is Bye. -> stopped properly
-	
+
 		line_cnt=0 #log file line counter
 		for line in enb_log_file.readlines():
 			line_cnt+=1
@@ -1053,7 +1065,7 @@ class RANManagement():
 
 		with open(yaml_file,'r') as f:
 			datalog_rt_stats = yaml.load(f,Loader=yaml.FullLoader)
-		rt_keys = datalog_rt_stats['Ref'] #we use the keys from the Ref field  
+		rt_keys = datalog_rt_stats['Ref'] #we use the keys from the Ref field
 
 		if os.path.isfile('./nrL1_stats.log') and os.path.isfile('./nrMAC_stats.log'):
 			# don't use CI-nrL1_stats.log, as this will increase the processing time for
@@ -1062,19 +1074,19 @@ class RANManagement():
 			nrMAC_stats = open('./nrMAC_stats.log', 'r')
 			for line in nrL1_stats.readlines():
 				for k in rt_keys:
-					result = re.search(k, line)     
+					result = re.search(k, line)
 					if result is not None:
 						#remove 1- all useless char before relevant info  2- trailing char
 						tmp=re.match(rf'^.*?(\b{k}\b.*)',line.rstrip()) #from python 3.6 we can use literal string interpolation for the variable k, using rf' in the regex
-						if tmp!=None: 
+						if tmp!=None:
 							real_time_stats[k]=tmp.group(1)
 			for line in nrMAC_stats.readlines():
 				for k in rt_keys:
-					result = re.search(k, line)     
+					result = re.search(k, line)
 					if result is not None:
 						#remove 1- all useless char before relevant info  2- trailing char
 						tmp=re.match(rf'^.*?(\b{k}\b.*)',line.rstrip()) #from python 3.6 we can use literal string interpolation for the variable k, using rf' in the regex
-						if tmp!=None: 
+						if tmp!=None:
 							real_time_stats[k]=tmp.group(1)
 			nrL1_stats.close()
 			nrMAC_stats.close()
@@ -1127,14 +1139,14 @@ class RANManagement():
 			logging.debug(statMsg)
 			htmleNBFailureMsg += htmlMsg
 			#gnb markers
-			statMsg = 'logfile line count = ' + str(line_cnt)			
+			statMsg = 'logfile line count = ' + str(line_cnt)
 			htmlMsg = statMsg+'\n'
 			logging.debug(statMsg)
 			htmleNBFailureMsg += htmlMsg
 			if len(gnb_markers['SgNBReleaseRequestAcknowledge'])!=0:
 				statMsg = 'SgNBReleaseRequestAcknowledge = ' + str(len(gnb_markers['SgNBReleaseRequestAcknowledge'])) + ' occurences , starting line ' + str(gnb_markers['SgNBReleaseRequestAcknowledge'][0])
 			else:
-				statMsg = 'SgNBReleaseRequestAcknowledge = ' + str(len(gnb_markers['SgNBReleaseRequestAcknowledge'])) + ' occurences' 
+				statMsg = 'SgNBReleaseRequestAcknowledge = ' + str(len(gnb_markers['SgNBReleaseRequestAcknowledge'])) + ' occurences'
 			htmlMsg = statMsg+'\n'
 			logging.debug(statMsg)
 			htmleNBFailureMsg += htmlMsg
@@ -1206,7 +1218,7 @@ class RANManagement():
 			logging.debug(statMsg)
 			htmleNBFailureMsg += htmlMsg
 			#nsa markers
-			statMsg = 'logfile line count = ' + str(line_cnt)			
+			statMsg = 'logfile line count = ' + str(line_cnt)
 			htmlMsg = statMsg+'\n'
 			logging.debug(statMsg)
 			htmleNBFailureMsg += htmlMsg
@@ -1220,7 +1232,7 @@ class RANManagement():
 			statMsg = 'scgFailureInformationNR-r15 = ' + str(len(gnb_markers['scgFailureInformationNR-r15'])) + ' occurences'
 			htmlMsg = statMsg+'\n'
 			logging.debug(statMsg)
-			htmleNBFailureMsg += htmlMsg			
+			htmleNBFailureMsg += htmlMsg
 
 		for ue in retx_status:
 			msg = f"retransmissions for UE {ue}: DL {retx_status[ue]['dl']} UL {retx_status[ue]['ul']}"
