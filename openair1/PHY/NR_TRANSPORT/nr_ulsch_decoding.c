@@ -278,43 +278,41 @@ int decode_offload(PHY_VARS_gNB *phy_vars_gNB,
     } else {
       LOG_D(PHY, "uplink segment error %d/%d\n", r, harq_process->C);
       LOG_D(PHY, "ULSCH %d in error\n", ULSCH_id);
-      ulsch->handled = 1;
-      decodeIterations = ulsch->max_ldpc_iterations + 1;
-      nr_fill_indication(phy_vars_gNB, ulsch->frame, ulsch->slot, ULSCH_id, harq_pid, 1, 0);
       break; // don't even attempt to decode other segments
     }
     r_offset += E;
   }
-
+  bool crc_valid = false;
   if (harq_process->processedSegments == harq_process->C) {
     // When the number of code blocks is 1 (C = 1) and ulsch_harq->processedSegments = 1, we can assume a good TB because of the
     // CRC check made by the LDPC for early termination, so, no need to perform CRC check twice for a single code block
-    bool crc_valid = true;
+    crc_valid = true;
     if (harq_process->C > 1) {
       crc_valid = check_crc(harq_process->b, lenWithCrc(1, A), crcType(1, A));
     }
-    if (crc_valid) {
-      LOG_D(PHY, "ULSCH: Setting ACK for slot %d TBS %d\n", ulsch->slot, harq_process->TBS);
-      ulsch->active = false;
-      harq_process->round = 0;
-      LOG_D(PHY, "ULSCH received ok \n");
-      nr_fill_indication(phy_vars_gNB, ulsch->frame, ulsch->slot, ULSCH_id, harq_pid, 0, 0);
-    } else {
-      LOG_D(PHY,
-          "[gNB %d] ULSCH: Setting NAK for SFN/SF %d/%d (pid %d, status %d, round %d, TBS %d)\n",
-          phy_vars_gNB->Mod_id,
-          ulsch->frame,
-          ulsch->slot,
-          harq_pid,
-          ulsch->active,
-          harq_process->round,
-          harq_process->TBS);
-      ulsch->handled = 1;
-      decodeIterations = ulsch->max_ldpc_iterations + 1;
-      LOG_D(PHY, "ULSCH %d in error\n", ULSCH_id);
-      nr_fill_indication(phy_vars_gNB, ulsch->frame, ulsch->slot, ULSCH_id, harq_pid, 1, 0);
-    }
   }
+  if (crc_valid) {
+    LOG_D(PHY, "ULSCH: Setting ACK for slot %d TBS %d\n", ulsch->slot, harq_process->TBS);
+    ulsch->active = false;
+    harq_process->round = 0;
+    LOG_D(PHY, "ULSCH received ok \n");
+    nr_fill_indication(phy_vars_gNB, ulsch->frame, ulsch->slot, ULSCH_id, harq_pid, 0, 0);
+  } else {
+    LOG_D(PHY,
+        "[gNB %d] ULSCH: Setting NAK for SFN/SF %d/%d (pid %d, status %d, round %d, TBS %d)\n",
+        phy_vars_gNB->Mod_id,
+        ulsch->frame,
+        ulsch->slot,
+        harq_pid,
+        ulsch->active,
+        harq_process->round,
+        harq_process->TBS);
+    ulsch->handled = 1;
+    decodeIterations = ulsch->max_ldpc_iterations + 1;
+    LOG_D(PHY, "ULSCH %d in error\n", ULSCH_id);
+    nr_fill_indication(phy_vars_gNB, ulsch->frame, ulsch->slot, ULSCH_id, harq_pid, 1, 0);
+  }
+
   ulsch->last_iteration_cnt = decodeIterations;
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_gNB_ULSCH_DECODING,0);
   return 0;
