@@ -158,12 +158,8 @@ void nr_schedule_response(NR_Sched_Rsp_t *Sched_INFO)
   if (NFAPI_MODE == NFAPI_MONOLITHIC){
 
     if (slot_type == NR_DOWNLINK_SLOT || slot_type == NR_MIXED_SLOT) {
-      notifiedFIFO_elt_t *res=NULL;
       processingData_L1tx_t *msgTx=NULL;
-      msgTx = gNB->msgDataTx; // newNotifiedFIFO_elt(sizeof(processingData_L1tx_t),0, &gNB->L1_tx_out,NULL);
-      /*const time_stats_t ts = exec_time_stats_NotifiedFIFO(res);
-      merge_meas(&gNB->phy_proc_tx, &ts);
-*/
+      msgTx = gNB->msgDataTx;
       msgTx->num_pdsch_slot = 0;
       msgTx->num_dl_pdcch = 0;
       msgTx->num_ul_pdcch = number_ul_dci_pdu;
