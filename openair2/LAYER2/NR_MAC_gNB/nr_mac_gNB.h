@@ -101,6 +101,7 @@
 #define MIN_NUM_PRBS_TO_SCHEDULE  5
 
 extern const uint8_t nr_rv_round_map[4];
+extern bool sps_active;
 
 /*! \brief NR_list_t is a "list" (of users, HARQ processes, slices, ...).
  * Especially useful in the scheduler and to keep "classes" of users. */
@@ -465,6 +466,7 @@ typedef struct NR_UE_harq {
 
   /// sched_pdsch keeps information on MCS etc used for the initial transmission
   NR_sched_pdsch_t sched_pdsch;
+  bool is_sps_transmission;
 } NR_UE_harq_t;
 
 //! fixme : need to enhace for the multiple TB CQI report
@@ -537,6 +539,11 @@ typedef struct NR_UE_ul_harq {
   NR_sched_pusch_t sched_pusch;
 } NR_UE_ul_harq_t;
 
+typedef struct NR_sched_sps {
+  nr_sps_assignemnt_t *sps_assign;
+  NR_sched_pdsch_t *initial_sched_pdsch;
+} NR_sched_sps_t;
+
 /*! \brief scheduling control information set through an API */
 #define MAX_CSI_REPORTS 48
 typedef struct {
@@ -581,7 +588,7 @@ typedef struct {
   NR_sched_pdsch_t sched_pdsch;
 
   // sched sps: scheduling decisions, copied into HARQ and cleared only upon sps deactivation is active
-  NR_sched_pdsch_t sched_sps;
+  NR_sched_sps_t sched_sps;
 
   /// UE-estimated maximum MCS (from CSI-RS)
   uint8_t dl_max_mcs;

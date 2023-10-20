@@ -34,6 +34,7 @@
 #include "common/utils/nr/nr_common.h"
 #include "openair1/PHY/defs_nr_common.h"
 #include <limits.h>
+#include <math.h>
 #include <executables/softmodem-common.h>
 
 #define reserved 0xffff
@@ -3669,23 +3670,55 @@ bool is_nr_DL_slot(NR_TDD_UL_DL_ConfigCommon_t *tdd_UL_DL_ConfigurationCommon, s
     return slot_in_period <= slots1 + tdd_UL_DL_ConfigurationCommon->pattern2->nrofDownlinkSlots;
 }
 
-int is_nr_SPS_DL_slot(frame_t frame, slot_t slot, uint16_t sps_period, uint8_t scs, nr_ue_sps_ctrl_t sps_info) {
+bool is_nr_SPS_DL_slot(frame_t frame, slot_t slot, NR_SPS_Config_t *sps_config, long *cs_rnti, uint8_t scs, nr_sps_assignemnt_t *sps_info) {
   const uint16_t num_slots_per_frame = nr_slots_per_frame[scs];
   int slot_num = num_slots_per_frame * frame + slot;
+  bool status = false;
+  
+  if (sps_config && cs_rnti && sps_info) {
+    int previous_slot_num = num_slots_per_frame * sps_info->previous_frame + sps_info->previous_slot;
+    LOG_D(NR_MAC, "previous slot num at frame = %d, slot = %d is %d\n", frame, slot, previous_slot_num);
+    LOG_D(NR_MAC, "current slot num at frame = %d, slot = %d is %d\n", frame, slot, slot_num);
 
-  // SPS DL assignment occurs in the slot for which the below condition is satisfied as specified in 3GPP TS 38.321 sec 5.8.1
-  int sps_slot = ((sps_info.sps_start_frame * num_slots_per_frame + sps_info.sps_start_slot) 
-                  + (sps_period * sps_info.sps_assisgnment_index * num_slots_per_frame/10)) 
-                  % (1024 * num_slots_per_frame);
-  if (slot_num == sps_slot) {
-    sps_info.sps_assisgnment_index++;
-    return true;
+    /* perodicity in slots as per bwp scs */
+    int slots_in_period = num_slots_per_frame * (nr_get_periodicity_sps(sps_config->periodicity)/10);
+    /* the same function can be used at multiple files. So to not wrongly use the index of next occasion of sps, check should be
+       done to know if the corresponding slot is already checked before or not
+    */
+    LOG_D(NR_MAC, "are the two numbers %d and %d equal?%d\n", slot_num, previous_slot_num, slot_num == previous_slot_num);
+    sps_info->sps_assisgnment_index = (slot_num == previous_slot_num) ? sps_info->sps_assisgnment_index - 1 : sps_info->sps_assisgnment_index;
+    AssertFatal(sps_info->sps_assisgnment_index >= 0 , "Implementation issue for SPS slot check when same slot is checked more than once\n");
+    
+    // SPS DL assignment occurs in the slot for which the below condition is satisfied as specified in 3GPP TS 38.321 sec 5.8.1
+    int sps_slot = ((sps_info->sps_start_frame * num_slots_per_frame + sps_info->sps_start_slot) 
+                    + (slots_in_period * sps_info->sps_assisgnment_index * num_slots_per_frame/10)) 
+                    % (1024 * num_slots_per_frame);
+    if (slot_num == sps_slot) {
+      sps_info->previous_frame = frame;
+      sps_info->previous_slot = slot;
+      sps_info->sps_assisgnment_index++;
+      status = true;
+      LOG_D(NR_MAC, "sps indication is incremented at frame = %d, slot = %d\n", frame, slot);
+    }
   }
-  return false;
+  return status;
 } 
 
-bool is_nr_UL_slot(NR_TDD_UL_DL_ConfigCommon_t *tdd_UL_DL_ConfigurationCommon, slot_t slot, frame_type_t frame_type)
-{
+/*
+In the case of dynamic resource allocations, the HARQ process identity is specified within the DCl associated with each individual
+resource allocation. A UE docs not receive DCl for each individual transmission when using semi-persistent scheduling so 3GPP 
+(TS 38.321 sec 5.3.1) has specified a calculation to determine the HAR Process Identity
+*/
+int get_harq_processid_sps(frame_t frame, slot_t slot, uint8_t scs, NR_SPS_Config_t *sps_config) {
+  const uint16_t num_slots_per_frame = nr_slots_per_frame[scs];
+  int current_slot = num_slots_per_frame * frame + slot;
+  int slots_in_period = num_slots_per_frame * (nr_get_periodicity_sps(sps_config->periodicity)/10);
+  int harq_processid_offset = sps_config->ext1->harq_ProcID_Offset_r16 ? *sps_config->ext1->harq_ProcID_Offset_r16 : 0;
+  int harq_processid = ((int)(floor(current_slot * 10/(num_slots_per_frame * slots_in_period))) % (int)sps_config->nrofHARQ_Processes) + harq_processid_offset;
+  return harq_processid;
+}
+
+bool is_nr_UL_slot(NR_TDD_UL_DL_ConfigCommon_t	*tdd_UL_DL_ConfigurationCommon, slot_t slot, frame_type_t frame_type) {
   // Note: condition on frame_type
   // goal: the UL scheduler assumes mode is TDD therefore this hack is needed to make FDD work
   if (frame_type == FDD)
@@ -3825,11 +3858,11 @@ uint8_t get_pdsch_mcs_table(long *mcs_Table, int dci_format, int rnti_type, int 
     mcsTableIdx = 2;
   else if (rnti_type == NR_RNTI_MCS_C)
     mcsTableIdx = 2;
-  else if ((sps_config->mcs_Table == NULL && *mcs_Table == NR_PDSCH_Config__mcs_Table_qam256) &&
-           ((dci_format == NR_DL_DCI_FORMAT_1_1 && rnti_type == NR_RNTI_CS) || sps_config)
+  else if (((dci_format == NR_DL_DCI_FORMAT_1_1 && rnti_type == NR_RNTI_CS) || sps_config) &&
+            (sps_config && sps_config->mcs_Table == NULL && *mcs_Table == NR_PDSCH_Config__mcs_Table_qam256)
            )
     mcsTableIdx = 1;
-  else if (sps_config->mcs_Table == NR_PDSCH_Config__mcs_Table_qam64LowSE &&
+  else if (sps_config && *sps_config->mcs_Table == NR_PDSCH_Config__mcs_Table_qam64LowSE &&
            (rnti_type == NR_RNTI_CS || sps_config)
            )
     mcsTableIdx = 2;
@@ -5387,4 +5420,32 @@ uint16_t nr_get_csi_bitlen(nr_csi_report_t *csi_report_template, uint8_t csi_rep
   }
 
   return csi_bitlen;
+}
+
+uint32_t nr_get_periodicity_sps(long periodicity) {
+  /* return periodicity in ms */
+  switch(periodicity) {
+    case NR_SPS_Config__periodicity_ms10:
+      return 10;
+    case NR_SPS_Config__periodicity_ms20:
+      return 20;
+    case NR_SPS_Config__periodicity_ms32:
+      return 32;
+    case NR_SPS_Config__periodicity_ms40:
+      return 40;
+    case NR_SPS_Config__periodicity_ms64:
+      return 64;
+    case NR_SPS_Config__periodicity_ms80:
+      return 80;
+    case NR_SPS_Config__periodicity_ms128:
+      return 128;
+    case NR_SPS_Config__periodicity_ms160:
+      return 160;
+    case NR_SPS_Config__periodicity_ms320:
+      return 320;
+    case NR_SPS_Config__periodicity_ms640:
+      return 640;
+    default:
+      AssertFatal(1==0, "Undefined SPS Periodicity\n");
+  }
 }

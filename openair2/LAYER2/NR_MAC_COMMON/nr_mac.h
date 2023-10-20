@@ -560,16 +560,22 @@ typedef struct nr_srs_feedback {
 typedef struct nr_sps_ctrl {
   bool send_sps_activation;
   bool send_sps_deactivation; 
+  bool sps_active;
   bool avoid_sps_pdcch_pdu;  // for sps once pdcch is sent for activation, no need to sent pdcch until sps release
 } nr_sps_ctrl_t;
 
 typedef struct nr_ue_sps_ctrl {
   bool valid_activate_ind_rec;
   bool valid_deactivate_ind_rec; 
+} nr_ue_sps_ctrl_t;
+
+typedef struct nr_sps_assignment {
   int sps_start_frame;
   int sps_start_slot;
-  int sps_assisgnment_index;
-} nr_ue_sps_ctrl_t;
+  int sps_assisgnment_index;    
+  int previous_frame;
+  int previous_slot;
+} nr_sps_assignemnt_t;
 
 typedef struct NR_UE_DL_BWP {
   NR_BWP_Id_t bwp_id;

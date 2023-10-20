@@ -71,6 +71,12 @@ bool is_nr_DL_slot(NR_TDD_UL_DL_ConfigCommon_t *tdd_UL_DL_ConfigurationCommon, s
 
 bool is_nr_UL_slot(NR_TDD_UL_DL_ConfigCommon_t *tdd_UL_DL_ConfigurationCommon, slot_t slotP, frame_type_t frame_type);
 
+bool is_nr_SPS_DL_slot(frame_t frame, slot_t slot, NR_SPS_Config_t *sps_config, long *cs_rnti, uint8_t scs, nr_sps_assignemnt_t *sps_info);
+
+int get_harq_processid_sps(frame_t frame, slot_t slot, uint8_t scs, NR_SPS_Config_t *sps_config);
+
+uint32_t nr_get_periodicity_sps(long periodicity);
+
 uint8_t compute_srs_resource_indicator(NR_PUSCH_ServingCellConfig_t *pusch_servingcellconfig,
                                        NR_PUSCH_Config_t *pusch_Config,
                                        NR_SRS_Config_t *srs_config,
@@ -162,7 +168,7 @@ uint8_t compute_nr_root_seq(NR_RACH_ConfigCommon_t *rach_config,
 
 int ul_ant_bits(NR_DMRS_UplinkConfig_t *NR_DMRS_UplinkConfig, long transformPrecoder);
 
-uint8_t get_pdsch_mcs_table(long *mcs_Table, int dci_format, int rnti_type, int ss_type);
+uint8_t get_pdsch_mcs_table(long *mcs_Table, int dci_format, int rnti_type, int ss_type, NR_SPS_Config_t *sps_config);
 
 int get_format0(uint8_t index, uint8_t unpaired,frequency_range_t);
 

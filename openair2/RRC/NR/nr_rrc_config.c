@@ -1123,10 +1123,10 @@ static struct NR_SetupRelease_SPS_Config *config_sps() {
   setup_sps_config->present = NR_SetupRelease_SPS_Config_PR_setup;
   NR_SPS_Config_t *sps_config = calloc(1, sizeof(NR_SPS_Config_t));
   setup_sps_config->choice.setup = sps_config;
-  sps_config->periodicity = NR_SPS_Config__periodicity_ms80;
+  sps_config->periodicity = NR_SPS_Config__periodicity_ms10;
   sps_config->mcs_Table = NULL;
   sps_config->n1PUCCH_AN = NULL;
-  sps_config->nrofHARQ_Processes = 2;
+  sps_config->nrofHARQ_Processes = 8;
   sps_config->ext1 = calloc(1, sizeof(*sps_config->ext1));
   sps_config->ext1->harq_CodebookID_r16 = NULL;
   sps_config->ext1->harq_ProcID_Offset_r16 = NULL;
@@ -2052,8 +2052,8 @@ int encode_SIB1_NR(NR_BCCH_DL_SCH_Message_t *sib1, uint8_t *buffer, int max_buff
 
 static NR_PhysicalCellGroupConfig_t *configure_phy_cellgroup(NR_PhysicalCellGroupConfig_t *physicalCellGroupConfig, const NR_UE_NR_Capability_t *uecap)
 {
-  LOG_I(NR_RRC, "Configuring physical cell group\n");
   if (physicalCellGroupConfig == NULL) {
+    LOG_I(NR_RRC, "Configuring physical cell group\n");
     physicalCellGroupConfig = calloc(1, sizeof(*physicalCellGroupConfig));
     AssertFatal(physicalCellGroupConfig != NULL, "Couldn't allocate physicalCellGroupConfig. Out of memory!\n");
     physicalCellGroupConfig->pdsch_HARQ_ACK_Codebook = NR_PhysicalCellGroupConfig__pdsch_HARQ_ACK_Codebook_dynamic;
@@ -2368,7 +2368,7 @@ NR_CellGroupConfig_t *get_initial_cellGroupConfig(int uid,
   /* mac CellGroup Config */
   cellGroupConfig->mac_CellGroupConfig = configure_mac_cellgroup();
   
-  cellGroupConfig->physicalCellGroupConfig = configure_phy_cellgroup(NULL, NULL);
+  cellGroupConfig->physicalCellGroupConfig = configure_phy_cellgroup(cellGroupConfig->physicalCellGroupConfig, NULL);
 
   cellGroupConfig->spCellConfig = get_initial_SpCellConfig(uid, scc, servingcellconfigdedicated, configuration);
 
@@ -2391,7 +2391,7 @@ void update_cellGroupConfig(NR_CellGroupConfig_t *cellGroupConfig,
   DevAssert(scc != NULL);
 
   NR_SpCellConfig_t *SpCellConfig = cellGroupConfig->spCellConfig;
-
+  cellGroupConfig->physicalCellGroupConfig = configure_phy_cellgroup(cellGroupConfig->physicalCellGroupConfig, uecap);
   SpCellConfig->spCellConfigDedicated->initialDownlinkBWP->sps_Config = config_sps();  //todo: need to see how to take the parameters from config file or if core allocates them in sa
 
   int curr_bwp = NRRIV2BW(scc->downlinkConfigCommon->initialDownlinkBWP->genericParameters.locationAndBandwidth, MAX_BWP_SIZE);

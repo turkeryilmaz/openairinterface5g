@@ -374,6 +374,7 @@ void abort_nr_dl_harq(NR_UE_info_t* UE, int8_t harq_pid)
 
   harq->ndi ^= 1;
   harq->round = 0;
+  harq->is_sps_transmission = false;
   UE->mac_stats.dl.errors++;
   add_tail_nr_list(&sched_ctrl->available_dl_harq, harq_pid);
 
@@ -421,8 +422,12 @@ static bool allocate_dl_retransmission(module_id_t module_id,
   NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
   NR_UE_DL_BWP_t *dl_bwp = &UE->current_DL_BWP;
   NR_UE_UL_BWP_t *ul_bwp = &UE->current_UL_BWP;
-  NR_sched_pdsch_t *retInfo = &sched_ctrl->harq_processes[current_harq_pid].sched_pdsch;
+  NR_UE_harq_t *harq = &sched_ctrl->harq_processes[current_harq_pid];
+  NR_sched_pdsch_t *retInfo = &harq->sched_pdsch;
   NR_sched_pdsch_t *curInfo = &sched_ctrl->sched_pdsch;
+  nr_sps_ctrl_t *sps_ctrl = &sched_ctrl->sps_ctrl;
+  NR_sched_sps_t *sched_sps = &sched_ctrl->sched_sps;
+  bool is_slot_sps = is_nr_SPS_DL_slot(frame, slot, dl_bwp->sps_config, dl_bwp->cs_rnti, dl_bwp->scs, sched_sps->sps_assign);
 
   // If the RI changed between current rtx and a previous transmission
   // we need to verify if it is not decreased
@@ -442,8 +447,9 @@ static bool allocate_dl_retransmission(module_id_t module_id,
 
   /* Check first whether the old TDA can be reused
   * this helps allocate retransmission when TDA changes (e.g. new nrOfSymbols > old nrOfSymbols) */
+  rnti_t rnti_type = harq->is_sps_transmission ? NR_RNTI_CS : NR_RNTI_C;
   NR_tda_info_t temp_tda = get_dl_tda_info(dl_bwp, sched_ctrl->search_space->searchSpaceType->present, tda,
-                                           scc->dmrs_TypeA_Position, 1, NR_RNTI_C, coresetid, false);
+                                           scc->dmrs_TypeA_Position, 1, rnti_type, coresetid, false);
 
   bool reuse_old_tda = (retInfo->tda_info.startSymbolIndex == temp_tda.startSymbolIndex) && (retInfo->tda_info.nrOfSymbols <= temp_tda.nrOfSymbols);
   LOG_D(NR_MAC, "[UE %x] %s old TDA, %s number of layers\n",
@@ -605,6 +611,8 @@ static void pf_dl(module_id_t module_id,
 
     NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
     NR_UE_DL_BWP_t *current_BWP = &UE->current_DL_BWP;
+    nr_sps_ctrl_t *sps_ctrl = &sched_ctrl->sps_ctrl;
+    NR_sched_sps_t *sched_sps = &sched_ctrl->sched_sps;
 
     if (sched_ctrl->ul_failure)
       continue;
@@ -682,6 +690,16 @@ static void pf_dl(module_id_t module_id,
             UE->dl_thr_ue,
             tbs,
             coeff_ue);
+      
+      if (sps_ctrl->send_sps_activation) {
+        /* need to change if K0 is great than 0 */
+        sched_sps->sps_assign = calloc(1, sizeof(*sched_sps->sps_assign));
+        sched_sps->sps_assign->sps_start_frame = frame;
+        sched_sps->sps_assign->sps_start_slot = slot;
+        sps_active = true;
+        LOG_I(NR_MAC, "sps activation signal is sent at frame = %d and slot = %d\n", frame, slot);
+      }
+
       /* Create UE_sched list for UEs eligible for new transmission*/
       UE_sched[curUE].coef=coeff_ue;
       UE_sched[curUE].UE=UE;
@@ -702,6 +720,11 @@ static void pf_dl(module_id_t module_id,
 
     NR_UE_DL_BWP_t *dl_bwp = &iterator->UE->current_DL_BWP;
     NR_UE_UL_BWP_t *ul_bwp = &iterator->UE->current_UL_BWP;
+    NR_sched_pdsch_t *sched_pdsch = &sched_ctrl->sched_pdsch;
+    NR_sched_sps_t *sched_sps = &sched_ctrl->sched_sps;
+    nr_sps_ctrl_t *sps_ctrl = &sched_ctrl->sps_ctrl;
+    bool is_slot_sps = is_nr_SPS_DL_slot(frame, slot, dl_bwp->sps_config, dl_bwp->cs_rnti, dl_bwp->scs, sched_sps->sps_assign);
+
 
     if (sched_ctrl->available_dl_harq.head < 0) {
       LOG_D(NR_MAC, "[UE %04x][%4d.%2d] UE has no free DL HARQ process, skipping\n",
@@ -729,8 +752,10 @@ static void pf_dl(module_id_t module_id,
     }
 
     /* Find PUCCH occasion: if it fails, undo CCE allocation (undoing PUCCH
-    * allocation after CCE alloc fail would be more complex) */
-
+    * allocation after CCE alloc fail would be more complex) 
+    For sps, the n1PUCCH-AN does not make any impact because it is always assumed that
+    all PUCCH resources are configured to be same??
+    */
     int r_pucch = nr_get_pucch_resource(sched_ctrl->coreset, ul_bwp->pucch_Config, CCEIndex);
     const int alloc = nr_acknack_scheduling(mac, iterator->UE, frame, slot, r_pucch, 0);
 
@@ -751,13 +776,14 @@ static void pf_dl(module_id_t module_id,
                        sched_ctrl->aggregation_level);
 
     /* MCS has been set above */
-    NR_sched_pdsch_t *sched_pdsch = &sched_ctrl->sched_pdsch;
     sched_pdsch->time_domain_allocation = get_dl_tda(mac, scc, slot);
     AssertFatal(sched_pdsch->time_domain_allocation>=0,"Unable to find PDSCH time domain allocation in list\n");
-
+    
     const int coresetid = sched_ctrl->coreset->controlResourceSetId;
+    /* for new transmissons if sps activation signal is assigned */
+    rnti_t rnti_type = sps_ctrl->send_sps_activation || is_slot_sps ? NR_RNTI_CS : NR_RNTI_C;
     sched_pdsch->tda_info = get_dl_tda_info(dl_bwp, sched_ctrl->search_space->searchSpaceType->present, sched_pdsch->time_domain_allocation,
-                                            scc->dmrs_TypeA_Position, 1, NR_RNTI_C, coresetid, false);
+                                            scc->dmrs_TypeA_Position, 1, rnti_type, coresetid, false);
 
     NR_tda_info_t *tda_info = &sched_pdsch->tda_info;
 
@@ -812,6 +838,17 @@ static void pf_dl(module_id_t module_id,
 
     remainUEs--;
     iterator++;
+
+    /*
+    store the initial allocation for sps and use the same allocations in all further transmissions untill sps release/ new activation indication 
+    only for initial transmissions and for retransmissions the scheduling decisions need to be sent via DCI 
+    */
+    if (sps_ctrl->send_sps_activation) {
+      sched_sps->initial_sched_pdsch = calloc(1, sizeof(*sched_sps->initial_sched_pdsch));
+      memcpy(sched_sps->initial_sched_pdsch, sched_pdsch, sizeof(NR_sched_pdsch_t));
+    }
+    else if (is_slot_sps) 
+      memcpy(sched_pdsch, sched_sps->initial_sched_pdsch, sizeof(NR_sched_pdsch_t));
   }
 }
 
@@ -839,7 +876,6 @@ static void sps_dl(module_id_t module_id,
 
     NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
     NR_UE_DL_BWP_t *current_BWP = &UE->current_DL_BWP;
-    NR_SPS_Config_t *config_sps = current_BWP->sps_config;
 
     if (sched_ctrl->ul_failure)
       continue;
@@ -899,7 +935,7 @@ static void sps_dl(module_id_t module_id,
       else
         sched_pdsch->mcs = get_mcs_from_bler(bo, stats, &sched_ctrl->dl_bler_stats, max_mcs, frame);
       sched_pdsch->nrOfLayers = get_dl_nrOfLayers(sched_ctrl, current_BWP->dci_format);
-      sched_pdsch->pm_index = mac->identity_pm ? 0 : get_pm_index(UE, sched_pdsch->nrOfLayers, mac->xp_pdsch_antenna_ports);
+      sched_pdsch->pm_index = mac->identity_pm ? 0 : get_pm_index(UE, sched_pdsch->nrOfLayers, mac->radio_config.pdsch_AntennaPorts.XP);
       const uint8_t Qm = nr_get_Qm_dl(sched_pdsch->mcs, current_BWP->mcsTableIdx);
       const uint16_t R = nr_get_code_rate_dl(sched_pdsch->mcs, current_BWP->mcsTableIdx);
       uint32_t tbs = nr_compute_tbs(Qm,
@@ -1165,10 +1201,12 @@ void nr_schedule_ue_spec(module_id_t module_id,
     NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
     NR_UE_DL_BWP_t *current_BWP = &UE->current_DL_BWP;
     NR_SPS_Config_t *sps_config = current_BWP->sps_config;
+    NR_sched_sps_t *sched_sps = &sched_ctrl->sched_sps;
+    nr_sps_ctrl_t *sps_ctrl = &sched_ctrl->sps_ctrl;
+    bool is_slot_sps = is_nr_SPS_DL_slot(frame, slot, sps_config, current_BWP->cs_rnti, current_BWP->scs, sched_sps->sps_assign);
 
     if (sched_ctrl->ul_failure && !get_softmodem_params()->phy_test)
       continue;
-
     NR_sched_pdsch_t *sched_pdsch = &sched_ctrl->sched_pdsch;
     UE->mac_stats.dl.current_bytes = 0;
     UE->mac_stats.dl.current_rbs = 0;
@@ -1185,7 +1223,7 @@ void nr_schedule_ue_spec(module_id_t module_id,
 
     if (sched_pdsch->rbSize <= 0)
       continue;
-
+    
     const rnti_t rnti = UE->rnti;
     const rnti_t cs_rnti = current_BWP->cs_rnti ? *current_BWP->cs_rnti : 0 ;  // -1 sps not supported by UE
 
@@ -1194,15 +1232,25 @@ void nr_schedule_ue_spec(module_id_t module_id,
     const uint16_t R = sched_pdsch->R;
     const uint8_t Qm = sched_pdsch->Qm;
     const uint32_t TBS = sched_pdsch->tb_size;
+    NR_tda_info_t *tda_info = &sched_pdsch->tda_info;
+    NR_pdsch_dmrs_t *dmrs_parms = &sched_pdsch->dmrs_parms;
     int8_t current_harq_pid = sched_pdsch->dl_harq_pid;
 
     if (current_harq_pid < 0) {
       /* PP has not selected a specific HARQ Process, get a new one */
-      current_harq_pid = sched_ctrl->available_dl_harq.head;
-      AssertFatal(current_harq_pid >= 0,
-                  "no free HARQ process available for UE %04x\n",
-                  UE->rnti);
-      remove_front_nr_list(&sched_ctrl->available_dl_harq);
+      if (sps_ctrl->send_sps_activation || is_slot_sps) {
+        current_harq_pid = get_harq_processid_sps(frame, slot, current_BWP->scs, sps_config);
+        LOG_I(NR_MAC, "creation of Harq process for sps is %d\n", current_harq_pid);
+        AssertFatal(current_harq_pid <= 7, "Harq process id should not be greater than 8\n");
+        remove_nr_list(&sched_ctrl->available_dl_harq, current_harq_pid);
+      }
+      else {
+        current_harq_pid = sched_ctrl->available_dl_harq.head;
+        AssertFatal(current_harq_pid >= 0,
+                    "no free HARQ process available for UE %04x\n",
+                    UE->rnti);
+        remove_front_nr_list(&sched_ctrl->available_dl_harq);
+      }
       sched_pdsch->dl_harq_pid = current_harq_pid;
     } else {
       /* PP selected a specific HARQ process. Check whether it will be a new
@@ -1214,8 +1262,6 @@ void nr_schedule_ue_spec(module_id_t module_id,
         remove_nr_list(&sched_ctrl->retrans_dl_harq, current_harq_pid);
     }
 
-    NR_tda_info_t *tda_info = &sched_pdsch->tda_info;
-    NR_pdsch_dmrs_t *dmrs_parms = &sched_pdsch->dmrs_parms;
     NR_UE_harq_t *harq = &sched_ctrl->harq_processes[current_harq_pid];
     DevAssert(!harq->is_waiting);
     add_tail_nr_list(&sched_ctrl->feedback_dl_harq, current_harq_pid);
@@ -1223,12 +1269,13 @@ void nr_schedule_ue_spec(module_id_t module_id,
     harq->feedback_frame = pucch->frame;
     harq->feedback_slot = pucch->ul_slot;
     harq->is_waiting = true;
+    harq->is_sps_transmission = sched_ctrl->harq_processes[current_harq_pid].round == 0 ? is_slot_sps : harq->is_sps_transmission;
     UE->mac_stats.dl.rounds[harq->round]++;
     LOG_D(NR_MAC,
           "%4d.%2d [DLSCH/PDSCH/PUCCH] RNTI %04x DCI L %d start %3d RBs %3d startSymbol %2d nb_symbol %2d dmrspos %x MCS %2d nrOfLayers %d TBS %4d HARQ PID %2d round %d RV %d NDI %d dl_data_to_ULACK %d (%d.%d) PUCCH allocation %d TPC %d\n",
           frame,
           slot,
-          rnti,
+          is_slot_sps || harq->is_sps_transmission  || sps_ctrl->send_sps_activation  ? cs_rnti : rnti,
           sched_ctrl->aggregation_level,
           sched_pdsch->rbStart,
           sched_pdsch->rbSize,
@@ -1266,10 +1313,25 @@ void nr_schedule_ue_spec(module_id_t module_id,
       nr_configure_pdcch(pdcch_pdu, coreset, false, &sched_ctrl->sched_pdcch);
       gNB_mac->pdcch_pdu_idx[CC_id][coresetid] = pdcch_pdu;
     }
-
-    if (sps_config && !sched_ctrl->sps_ctrl.send_sps_activation && !sched_ctrl->sps_ctrl.send_sps_deactivation) {
-      LOG_I(NR_MAC, "avoid sending the pdcch for sps after activation until sps release\n");
-      sched_ctrl->sps_ctrl.avoid_sps_pdcch_pdu = true; 
+    
+    /* current implementation is once sps is activated until sps release no new dynamic transmissions with C-RNTI are scheduled */
+    /* for now enable_sps is hardcoded to 1, later it should be a command parameter*/
+    LOG_I(NR_MAC, "whether the current transmission is sps transmission %d and harq round is %d for processid %d and is sps slot %d\n", harq->is_sps_transmission, harq->round, current_harq_pid, is_slot_sps);
+    LOG_I(NR_MAC, "creation of Harq process for (sps/dynamic) %d\n", current_harq_pid);
+    LOG_I(NR_MAC, "is sps active ? %d\n", sps_active);
+    
+    const int rnti_type = sched_ctrl->sps_ctrl.send_sps_activation || is_slot_sps || harq->is_sps_transmission ? NR_RNTI_CS : NR_RNTI_C;
+    sps_ctrl->avoid_sps_pdcch_pdu = false;
+    if (!sps_ctrl->send_sps_activation) {
+      if (sps_active && ((harq->is_sps_transmission && harq->round==0) || rnti_type == NR_RNTI_C)) {
+        LOG_I(NR_MAC, "avoid sending the pdcch for sps after activation until sps release for original transmissions\n");
+        sps_ctrl->avoid_sps_pdcch_pdu = true;
+      }
+      else {
+        LOG_I(NR_MAC, "sending the pdcch for sps after activation or for (sps/dynamic) retransmissions or for dynamic initial transmissions \n");
+        LOG_I(NR_MAC, "sending the pdcch for rnti type %s scheduling\n", rnti_type == 4 ? "semi-persistent" : "dynamic");
+        sps_ctrl->avoid_sps_pdcch_pdu = false;
+      }
     }
 
     nfapi_nr_dl_tti_request_pdu_t *dl_tti_pdsch_pdu = &dl_req->dl_tti_pdu_list[dl_req->nPDUs];
@@ -1365,8 +1427,10 @@ void nr_schedule_ue_spec(module_id_t module_id,
     nfapi_nr_dl_dci_pdu_t *dci_pdu = &pdcch_pdu->dci_pdu[pdcch_pdu->numDlDci];
     pdcch_pdu->avoid_pdcch_pdu = sched_ctrl->sps_ctrl.avoid_sps_pdcch_pdu;
     pdcch_pdu->numDlDci++;
-    dci_pdu->RNTI = sps_config && current_BWP->cs_rnti ? cs_rnti : rnti;
-    if (sps_config && current_BWP->cs_rnti && (sched_ctrl->sps_ctrl.send_sps_activation || sched_ctrl->sps_ctrl.send_sps_deactivation)) {
+    dci_pdu->RNTI = is_slot_sps || harq->is_sps_transmission || sps_ctrl->send_sps_activation ? cs_rnti : rnti;
+    
+    /* print a debug statement here*/
+    if (sched_ctrl->sps_ctrl.send_sps_activation || sched_ctrl->sps_ctrl.send_sps_deactivation) {
       LOG_I(NR_MAC, "(%4d.%2d) should send sps indication to UE with cs-rnti %x\n", frame, slot, (uint16_t)dci_pdu->RNTI);
     }
 
@@ -1437,7 +1501,7 @@ void nr_schedule_ue_spec(module_id_t module_id,
           dci_payload.tpc,
           pucch->timing_indicator);
 
-    const int rnti_type = current_BWP->sps_config && current_BWP->cs_rnti  ? NR_RNTI_CS : NR_RNTI_C;
+    // const int rnti_type = sched_ctrl->sps_ctrl.send_sps_activation || is_slot_sps || harq->is_sps_transmission ? NR_RNTI_CS : NR_RNTI_C;
     fill_dci_pdu_rel15(scc,
                        cg,
                        current_BWP,
@@ -1466,7 +1530,7 @@ void nr_schedule_ue_spec(module_id_t module_id,
             "%d.%2d DL retransmission RNTI %04x HARQ PID %d round %d NDI %d\n",
             frame,
             slot,
-            rnti,
+            harq->is_sps_transmission ? cs_rnti : rnti,
             current_harq_pid,
             harq->round,
             harq->ndi);
@@ -1474,7 +1538,7 @@ void nr_schedule_ue_spec(module_id_t module_id,
                   "UE %04x mismatch between scheduled TBS and buffered TB for HARQ PID %d\n",
                   UE->rnti,
                   current_harq_pid);
-      T(T_GNB_MAC_RETRANSMISSION_DL_PDU_WITH_DATA, T_INT(module_id), T_INT(CC_id), T_INT(rnti),
+      T(T_GNB_MAC_RETRANSMISSION_DL_PDU_WITH_DATA, T_INT(module_id), T_INT(CC_id), T_INT(is_slot_sps ? cs_rnti : rnti),
         T_INT(frame), T_INT(slot), T_INT(current_harq_pid), T_INT(harq->round), T_BUFFER(harq->transportBlock, TBS));
       UE->mac_stats.dl.total_rbs_retx += sched_pdsch->rbSize;
     } else { /* initial transmission */

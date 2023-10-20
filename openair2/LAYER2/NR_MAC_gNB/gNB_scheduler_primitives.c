@@ -64,6 +64,7 @@
 //#define DEBUG_DCI
 
 extern RAN_CONTEXT_t RC;
+bool sps_active = false;
 
 // CQI TABLES (10 times the value in 214 to adequately compare with R)
 // Table 1 (38.214 5.2.2.1-2)
@@ -1048,7 +1049,7 @@ void set_r_pucch_parms(int rsetindex,
   *start_symbol_index = default_pucch_firstsymb[rsetindex];
 }
 
-static void nr_prepare_sps_indication(dci_pdu_rel15_t *dci_pdu_rel15, const NR_UE_DL_BWP_t *current_DL_BWP, int rnti_type, nr_sps_ctrl_t *sps_ctrl) {
+static void nr_prepare_sps_dci(dci_pdu_rel15_t *dci_pdu_rel15, const NR_UE_DL_BWP_t *current_DL_BWP, int rnti_type, nr_sps_ctrl_t *sps_ctrl) {
   if (current_DL_BWP->sps_config && rnti_type == NR_RNTI_CS) {  // sps is configured by RRC
     
     if (sps_ctrl->send_sps_activation) {
@@ -1059,7 +1060,9 @@ static void nr_prepare_sps_indication(dci_pdu_rel15_t *dci_pdu_rel15, const NR_U
       sps_ctrl->send_sps_activation = 0; // reset sps activation
     }
     
-    if (sps_ctrl->send_sps_deactivation && !sps_ctrl->send_sps_activation) {
+    if (sps_ctrl->send_sps_deactivation) {
+      if (!sps_ctrl->send_sps_activation) 
+        AssertFatal(0, "[SPS]SPS Deactivation is not possible with out an SPS activation\n");
       LOG_I(NR_MAC, "[SPS]Configure the pdcch dci with RNTI %x to send SPS activation\n", (uint16_t)*current_DL_BWP->cs_rnti);
       memset(dci_pdu_rel15, 0, sizeof(*dci_pdu_rel15));
       dci_pdu_rel15->ndi = 0;
@@ -1068,7 +1071,6 @@ static void nr_prepare_sps_indication(dci_pdu_rel15_t *dci_pdu_rel15, const NR_U
       dci_pdu_rel15->frequency_domain_assignment.val = (1 << dci_pdu_rel15->frequency_domain_assignment.nbits)-1;
       dci_pdu_rel15->mcs = (1<<5) - 1;
       sps_ctrl->send_sps_deactivation = 0;
-
     }
   }
 }
@@ -1239,8 +1241,8 @@ void fill_dci_pdu_rel15(const NR_ServingCellConfigCommon_t *scc,
 
     case NR_RNTI_C:
     case NR_RNTI_CS:
-      // modify the dci fields for sending sps activation or release scrambled with cs-rnti
-      nr_prepare_sps_indication(dci_pdu_rel15, current_DL_BWP, rnti_type, sps);
+      // modify the dci fields for sending sps activation retransmission or release scrambled with cs-rnti
+      nr_prepare_sps_dci(dci_pdu_rel15, current_DL_BWP, rnti_type, sps);
 
       // indicating a DL DCI format 1bit
       pos++;
@@ -1673,8 +1675,8 @@ void fill_dci_pdu_rel15(const NR_ServingCellConfigCommon_t *scc,
     break;
 
   case NR_DL_DCI_FORMAT_1_1:
-    // modify the dci fields for sending sps activation or release scrambled with cs-rnti
-    nr_prepare_sps_indication(dci_pdu_rel15, current_DL_BWP, rnti_type, sps);
+    // modify the dci fields for sending sps activation retransmission or release scrambled with cs-rnti
+    nr_prepare_sps_dci(dci_pdu_rel15, current_DL_BWP, rnti_type, sps);
       
     // Indicating a DL DCI format 1bit
     LOG_D(NR_MAC,"Filling Format 1_1 DCI of size %d\n",dci_size);
@@ -2040,6 +2042,7 @@ void configure_UE_BWP(gNB_MAC_INST *nr_mac,
     UL_BWP = &UE->current_UL_BWP;
     sched_ctrl->next_dl_bwp_id = -1;
     sched_ctrl->next_ul_bwp_id = -1;
+    memset(&sched_ctrl->sps_ctrl, 0, sizeof(sched_ctrl->sps_ctrl));
     CellGroup = UE->CellGroup;
   }
   NR_BWP_Downlink_t *dl_bwp = NULL;
@@ -2123,8 +2126,9 @@ void configure_UE_BWP(gNB_MAC_INST *nr_mac,
       ubwpd = servingCellConfig->uplinkConfig->initialUplinkBWP;
 
     DL_BWP->pdsch_Config = bwpd->pdsch_Config->choice.setup;
-    DL_BWP->sps_config = bwpd->sps_Config->choice.setup; // bwpd->sps_Config ? bwpd->sps_Config->choice.setup : NULL;
-    sched_ctrl->sps_ctrl.send_sps_activation = bwpd->sps_Config ? true : false;   //todo: when to send activation signal??
+    DL_BWP->sps_config = bwpd->sps_Config ? bwpd->sps_Config->choice.setup : NULL;
+    sched_ctrl->sps_ctrl.send_sps_activation = false;//bwpd->sps_Config && DL_BWP->cs_rnti ? true : false;   //todo: when to send activation signal??
+    LOG_I(NR_MAC, "Initial sps activation is %d\n", sched_ctrl->sps_ctrl.send_sps_activation);
     UL_BWP->configuredGrantConfig = ubwpd->configuredGrantConfig ? ubwpd->configuredGrantConfig->choice.setup : NULL;
     UL_BWP->pusch_Config = ubwpd->pusch_Config->choice.setup;
     UL_BWP->pucch_Config = ubwpd->pucch_Config->choice.setup;
@@ -2141,8 +2145,6 @@ void configure_UE_BWP(gNB_MAC_INST *nr_mac,
     UL_BWP->csi_MeasConfig = NULL;
     UL_BWP->configuredGrantConfig = NULL;
     DL_BWP->sps_config = NULL;
-    if (sched_ctrl)
-      sched_ctrl->sps_ctrl.send_sps_activation = false;
   }
 
   if (old_dl_bwp_id != DL_BWP->bwp_id)
@@ -2267,7 +2269,7 @@ void configure_UE_BWP(gNB_MAC_INST *nr_mac,
 
   // Set MCS tables
   long *dl_mcs_Table = DL_BWP->pdsch_Config ? DL_BWP->pdsch_Config->mcs_Table : NULL;
-  DL_BWP->mcsTableIdx = get_pdsch_mcs_table(dl_mcs_Table, DL_BWP->dci_format, NR_RNTI_C, target_ss);
+  DL_BWP->mcsTableIdx = get_pdsch_mcs_table(dl_mcs_Table, DL_BWP->dci_format, NR_RNTI_C, target_ss, NULL);
 
   // 0 precoding enabled 1 precoding disabled
   UL_BWP->transform_precoding = get_transformPrecoding(UL_BWP, UL_BWP->dci_format, 0);
@@ -2415,8 +2417,11 @@ void free_sched_pucch_list(NR_UE_sched_ctrl_t *sched_ctrl)
 void create_dl_harq_list(NR_UE_sched_ctrl_t *sched_ctrl,
                          const NR_PDSCH_ServingCellConfig_t *pdsch,
                          const NR_SPS_Config_t *sps_config) {
-  const int nrofHARQ = pdsch && pdsch->nrofHARQ_ProcessesForPDSCH ?
-                       get_nrofHARQ_ProcessesForPDSCH(*pdsch->nrofHARQ_ProcessesForPDSCH) : 8;
+  const int nrofHARQDynamic = pdsch && pdsch->nrofHARQ_ProcessesForPDSCH ?
+                              get_nrofHARQ_ProcessesForPDSCH(*pdsch->nrofHARQ_ProcessesForPDSCH) : 8;
+  const int nrofHARQSPS = sps_config ? sps_config->nrofHARQ_Processes : 0;
+  const int nrofHARQ = max(nrofHARQDynamic, nrofHARQSPS);
+
   // add all available DL HARQ processes for this UE
   AssertFatal(sched_ctrl->available_dl_harq.len == sched_ctrl->feedback_dl_harq.len
               && sched_ctrl->available_dl_harq.len == sched_ctrl->retrans_dl_harq.len,
@@ -2442,7 +2447,7 @@ void create_dl_harq_list(NR_UE_sched_ctrl_t *sched_ctrl,
       add_tail_nr_list(&sched_ctrl->available_dl_harq, harq);
     resize_nr_list(&sched_ctrl->feedback_dl_harq, nrofHARQ);
     resize_nr_list(&sched_ctrl->retrans_dl_harq, nrofHARQ);
-  }
+  } 
 }
 
 void reset_dl_harq_list(NR_UE_sched_ctrl_t *sched_ctrl) {
@@ -2461,6 +2466,7 @@ void reset_dl_harq_list(NR_UE_sched_ctrl_t *sched_ctrl) {
     sched_ctrl->harq_processes[i].feedback_slot = -1;
     sched_ctrl->harq_processes[i].round = 0;
     sched_ctrl->harq_processes[i].is_waiting = false;
+    sched_ctrl->harq_processes[i].is_sps_transmission = false;
   }
 }
 
@@ -2814,7 +2820,7 @@ static void nr_mac_apply_cellgroup(gNB_MAC_INST *mac, NR_UE_info_t *UE, frame_t 
 
   if (get_softmodem_params()->sa) {
     // add all available DL HARQ processes for this UE in SA
-    create_dl_harq_list(sched_ctrl, UE->current_DL_BWP.pdsch_servingcellconfig);
+    create_dl_harq_list(sched_ctrl, UE->current_DL_BWP.pdsch_servingcellconfig, UE->current_DL_BWP.sps_config);
   }
 }
 
