@@ -579,6 +579,10 @@ typedef struct {
 
   /// Sched PDSCH: scheduling decisions, copied into HARQ and cleared every TTI
   NR_sched_pdsch_t sched_pdsch;
+
+  // sched sps: scheduling decisions, copied into HARQ and cleared only upon sps deactivation is active
+  NR_sched_pdsch_t sched_sps;
+
   /// UE-estimated maximum MCS (from CSI-RS)
   uint8_t dl_max_mcs;
 
@@ -619,6 +623,8 @@ typedef struct {
   NR_list_t available_dl_harq;
   /// HARQ processes that await feedback
   NR_list_t feedback_dl_harq;
+  // HARQ processes that awaits feedback for sps (todo: separte queue for sps required??)
+  NR_list_t feedback_dl_harq_sps;
   /// HARQ processes that await retransmission
   NR_list_t retrans_dl_harq;
   /// information about every UL HARQ process
@@ -640,6 +646,9 @@ typedef struct {
 
   /// sri, ul_ri and tpmi based on SRS
   nr_srs_feedback_t srs_feedback;
+
+  // sps ctrl like pdcch to send or not, sps activation/release
+  nr_sps_ctrl_t sps_ctrl;
 } NR_UE_sched_ctrl_t;
 
 typedef struct {

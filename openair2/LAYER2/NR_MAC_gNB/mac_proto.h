@@ -241,6 +241,7 @@ void fill_dci_pdu_rel15(const NR_ServingCellConfigCommon_t *scc,
                         int bwp_id,
                         NR_SearchSpace_t *ss,
                         NR_ControlResourceSet_t *coreset,
+                        nr_sps_ctrl_t *sps,
                         uint16_t cset0_bwp_size);
 
 void prepare_dci(const NR_CellGroupConfig_t *CellGroup, const NR_UE_DL_BWP_t *current_BWP, const NR_ControlResourceSet_t *coreset, dci_pdu_rel15_t *dci_pdu_rel15, nr_dci_format_t format);
@@ -356,7 +357,8 @@ void nr_rx_sdu(const module_id_t gnb_mod_idP,
                const uint16_t rssi);
 
 void create_dl_harq_list(NR_UE_sched_ctrl_t *sched_ctrl,
-                         const NR_PDSCH_ServingCellConfig_t *pdsch);
+                         const NR_PDSCH_ServingCellConfig_t *pdsch,
+                         const NR_SPS_Config_t *sps_config);
 
 void reset_dl_harq_list(NR_UE_sched_ctrl_t *sched_ctrl);
 

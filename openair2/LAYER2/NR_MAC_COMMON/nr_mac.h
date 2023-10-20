@@ -557,6 +557,12 @@ typedef struct nr_srs_feedback {
   uint8_t tpmi;
 } nr_srs_feedback_t;
 
+typedef struct nr_sps_ctrl {
+  bool send_sps_activation;
+  bool send_sps_deactivation; 
+  bool avoid_sps_pdcch_pdu;  // for sps once pdcch is sent for activation, no need to sent pdcch until sps release
+} nr_sps_ctrl_t;
+
 typedef struct NR_UE_DL_BWP {
   NR_BWP_Id_t bwp_id;
   int n_dl_bwp;
@@ -572,6 +578,9 @@ typedef struct NR_UE_DL_BWP {
   long *pdsch_HARQ_ACK_Codebook;
   uint8_t mcsTableIdx;
   nr_dci_format_t dci_format;
+
+  // sps config
+  NR_SPS_Config_t *sps_config;
 } NR_UE_DL_BWP_t;
 
 typedef struct NR_UE_UL_BWP {

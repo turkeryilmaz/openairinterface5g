@@ -1118,6 +1118,30 @@ static struct NR_SetupRelease_PUSCH_Config *config_pusch(NR_PUSCH_Config_t *pusc
   return setup_puschconfig;
 }
 
+static struct NR_SetupRelease_SPS_Config *config_sps() {
+  struct NR_SetupRelease_SPS_Config *setup_sps_config = calloc(1, sizeof(*setup_sps_config));
+  setup_sps_config->present = NR_SetupRelease_SPS_Config_PR_setup;
+  NR_SPS_Config_t *sps_config = calloc(1, sizeof(NR_SPS_Config_t));
+  setup_sps_config->choice.setup = sps_config;
+  sps_config->periodicity = NR_SPS_Config__periodicity_ms80;
+  sps_config->mcs_Table = NULL;
+  sps_config->n1PUCCH_AN = NULL;
+  sps_config->nrofHARQ_Processes = 2;
+  sps_config->ext1 = calloc(1, sizeof(*sps_config->ext1));
+  sps_config->ext1->harq_CodebookID_r16 = NULL;
+  sps_config->ext1->harq_ProcID_Offset_r16 = NULL;
+  sps_config->ext1->pdsch_AggregationFactor_r16 = NULL;
+  sps_config->ext1->periodicityExt_r16 = NULL;
+  sps_config->ext1->sps_ConfigIndex_r16 = NULL;
+  sps_config->ext2 = calloc(1, sizeof(*sps_config->ext2));
+  sps_config->ext2->harq_ProcID_Offset_v1700 = NULL;
+  sps_config->ext2->n1PUCCH_AN_PUCCHsSCell_r17 = NULL;
+  sps_config->ext2->nrofHARQ_Processes_v1710 = NULL;
+  sps_config->ext2->sps_HARQ_Deferral_r17 = NULL;
+
+  return setup_sps_config;
+}
+
 static struct NR_SetupRelease_PDSCH_Config *config_pdsch(uint64_t ssb_bitmap, int bwp_Id, int dl_antenna_ports)
 {
   struct NR_SetupRelease_PDSCH_Config *setup_pdsch_Config = calloc(1,sizeof(*setup_pdsch_Config));
@@ -1240,6 +1264,8 @@ static void config_downlinkBWP(NR_BWP_Downlink_t *bwp,
 
   bwp->bwp_Dedicated->pdcch_Config->choice.setup->searchSpacesToReleaseList = NULL;
   bwp->bwp_Dedicated->pdsch_Config = config_pdsch(ssb_bitmap, bwp->bwp_Id, dl_antenna_ports);
+
+  bwp->bwp_Dedicated->sps_Config = config_sps();  //todo: should sps config lists be added here?
 
   set_dl_mcs_table(bwp->bwp_Common->genericParameters.subcarrierSpacing,
                    force_256qam_off ? NULL : uecap,
@@ -2024,11 +2050,18 @@ int encode_SIB1_NR(NR_BCCH_DL_SCH_Message_t *sib1, uint8_t *buffer, int max_buff
   return (enc_rval.encoded + 7) / 8;
 }
 
-static NR_PhysicalCellGroupConfig_t *configure_phy_cellgroup(void)
+static NR_PhysicalCellGroupConfig_t *configure_phy_cellgroup(const NR_UE_NR_Capability_t *uecap)
 {
   NR_PhysicalCellGroupConfig_t *physicalCellGroupConfig = calloc(1, sizeof(*physicalCellGroupConfig));
   AssertFatal(physicalCellGroupConfig != NULL, "Couldn't allocate physicalCellGroupConfig. Out of memory!\n");
   physicalCellGroupConfig->pdsch_HARQ_ACK_Codebook = NR_PhysicalCellGroupConfig__pdsch_HARQ_ACK_Codebook_dynamic;
+  if(uecap){
+    if(uecap->phy_Parameters.phy_ParametersCommon && *uecap->phy_Parameters.phy_ParametersCommon->downlinkSPS==0 && physicalCellGroupConfig->cs_RNTI) {
+      physicalCellGroupConfig->cs_RNTI = calloc(1, sizeof(physicalCellGroupConfig->cs_RNTI));
+      physicalCellGroupConfig->cs_RNTI->present =  NR_SetupRelease_RNTI_Value_PR_setup;
+      physicalCellGroupConfig->cs_RNTI->choice.setup = get_softmodem_params()->phy_test == 1 ? 0x3456 : (taus() & 0xffff);
+    }
+  }
   return physicalCellGroupConfig;
 }
 
@@ -2330,7 +2363,7 @@ NR_CellGroupConfig_t *get_initial_cellGroupConfig(int uid,
   /* mac CellGroup Config */
   cellGroupConfig->mac_CellGroupConfig = configure_mac_cellgroup();
   
-  cellGroupConfig->physicalCellGroupConfig = configure_phy_cellgroup();
+  cellGroupConfig->physicalCellGroupConfig = configure_phy_cellgroup(NULL);
 
   cellGroupConfig->spCellConfig = get_initial_SpCellConfig(uid, scc, servingcellconfigdedicated, configuration);
 
@@ -2353,6 +2386,8 @@ void update_cellGroupConfig(NR_CellGroupConfig_t *cellGroupConfig,
   DevAssert(scc != NULL);
 
   NR_SpCellConfig_t *SpCellConfig = cellGroupConfig->spCellConfig;
+
+  SpCellConfig->spCellConfigDedicated->initialDownlinkBWP->sps_Config = config_sps();  //todo: need to see how to take the parameters from config file or if core allocates them in sa
 
   int curr_bwp = NRRIV2BW(scc->downlinkConfigCommon->initialDownlinkBWP->genericParameters.locationAndBandwidth, MAX_BWP_SIZE);
   NR_UplinkConfig_t *uplinkConfig =
@@ -2544,7 +2579,7 @@ NR_CellGroupConfig_t *get_default_secondaryCellGroup(const NR_ServingCellConfigC
   asn1cSeqAdd(&secondaryCellGroup->rlc_BearerToAddModList->list, RLC_BearerConfig);
 
   secondaryCellGroup->mac_CellGroupConfig = configure_mac_cellgroup();
-  secondaryCellGroup->physicalCellGroupConfig = configure_phy_cellgroup();
+  secondaryCellGroup->physicalCellGroupConfig = configure_phy_cellgroup(uecap);
   secondaryCellGroup->spCellConfig = calloc(1, sizeof(*secondaryCellGroup->spCellConfig));
   secondaryCellGroup->spCellConfig->servCellIndex = calloc(1, sizeof(*secondaryCellGroup->spCellConfig->servCellIndex));
   *secondaryCellGroup->spCellConfig->servCellIndex = servCellIndex;
@@ -2618,8 +2653,9 @@ NR_CellGroupConfig_t *get_default_secondaryCellGroup(const NR_ServingCellConfigC
   secondaryCellGroup->spCellConfig->spCellConfigDedicated->initialDownlinkBWP->pdcch_Config = NULL;
   secondaryCellGroup->spCellConfig->spCellConfigDedicated->initialDownlinkBWP->pdsch_Config =
       config_pdsch(bitmap, 0, dl_antenna_ports);
-  secondaryCellGroup->spCellConfig->spCellConfigDedicated->initialDownlinkBWP->sps_Config =
-      NULL; // calloc(1,sizeof(struct NR_SetupRelease_SPS_Config));
+  //secondaryCellGroup->spCellConfig->spCellConfigDedicated->initialDownlinkBWP->sps_Config =
+  //    calloc(1,sizeof(struct NR_SetupRelease_SPS_Config));
+  secondaryCellGroup->spCellConfig->spCellConfigDedicated->initialDownlinkBWP->sps_Config = config_sps(); //todo: need to be modified when taking from RRC
 
   secondaryCellGroup->spCellConfig->spCellConfigDedicated->initialDownlinkBWP->radioLinkMonitoringConfig = NULL;
 

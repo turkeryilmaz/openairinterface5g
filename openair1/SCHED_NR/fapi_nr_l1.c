@@ -190,8 +190,10 @@ void nr_schedule_response(NR_Sched_Rsp_t *Sched_INFO)
 
           case NFAPI_NR_DL_TTI_PDCCH_PDU_TYPE:
             LOG_D(PHY,"frame %d, slot %d, Got NFAPI_NR_DL_TTI_PDCCH_PDU_TYPE for %d.%d\n",frame,slot,DL_req->SFN,DL_req->Slot);
-            msgTx->pdcch_pdu[msgTx->num_dl_pdcch] = dl_tti_pdu->pdcch_pdu;
-            msgTx->num_dl_pdcch++;
+            if (!dl_tti_pdu->pdcch_pdu.pdcch_pdu_rel15.avoid_pdcch_pdu) {
+              msgTx->pdcch_pdu[msgTx->num_dl_pdcch] = dl_tti_pdu->pdcch_pdu;
+              msgTx->num_dl_pdcch++;
+            }
             break;
 
           case NFAPI_NR_DL_TTI_CSI_RS_PDU_TYPE:

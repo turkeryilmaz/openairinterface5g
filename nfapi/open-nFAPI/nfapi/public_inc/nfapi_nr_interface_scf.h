@@ -778,6 +778,7 @@ typedef struct {
   uint16_t numDlDci;
   ///DL DCI PDU
   nfapi_nr_dl_dci_pdu_t dci_pdu[MAX_DCI_CORESET];
+  uint8_t avoid_pdcch_pdu;  // for sps once pdcch is sent for activation, no need to sent pdcch until sps release
 }  nfapi_nr_dl_tti_pdcch_pdu_rel15_t;
 
 typedef struct {

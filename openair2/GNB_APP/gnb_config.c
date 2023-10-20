@@ -474,7 +474,11 @@ void prepare_scd(NR_ServingCellConfig_t *scd) {
     bwp->bwp_Dedicated->pdsch_Config->choice.setup = calloc(1, sizeof(*bwp->bwp_Dedicated->pdsch_Config->choice.setup));
     bwp->bwp_Dedicated->pdsch_Config->choice.setup->dmrs_DownlinkForPDSCH_MappingTypeA = calloc(1, sizeof(*bwp->bwp_Dedicated->pdsch_Config->choice.setup->dmrs_DownlinkForPDSCH_MappingTypeA));
     bwp->bwp_Dedicated->pdsch_Config->choice.setup->dmrs_DownlinkForPDSCH_MappingTypeA->present = NR_SetupRelease_DMRS_DownlinkConfig_PR_setup;
-
+    
+    bwp->bwp_Dedicated->sps_Config = calloc(1, sizeof(bwp->bwp_Dedicated->sps_Config));
+    bwp->bwp_Dedicated->sps_Config->present = NR_SetupRelease_SPS_Config_PR_setup;
+    bwp->bwp_Dedicated->sps_Config->choice.setup = calloc(1, sizeof(*bwp->bwp_Dedicated->sps_Config->choice.setup));
+    
     // Allocate DL DMRS and PTRS configuration
     bwp->bwp_Dedicated->pdsch_Config->choice.setup->dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup = calloc(1, sizeof(*bwp->bwp_Dedicated->pdsch_Config->choice.setup->dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup));
     NR_DMRS_DownlinkConfig_t *NR_DMRS_DownlinkCfg = bwp->bwp_Dedicated->pdsch_Config->choice.setup->dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup;

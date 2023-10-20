@@ -1048,6 +1048,22 @@ void set_r_pucch_parms(int rsetindex,
   *start_symbol_index = default_pucch_firstsymb[rsetindex];
 }
 
+static void modify_dci_sps(dci_pdu_rel15_t *dci_pdu_rel15, const NR_UE_DL_BWP_t *current_DL_BWP, int rnti_type, nr_sps_ctrl_t *sps_ctrl) {
+  if (current_DL_BWP->sps_config && rnti_type == NR_RNTI_CS) {  // sps is configured by RRC
+    LOG_I(NR_MAC, "Modify the pdcch dci\n");
+    dci_pdu_rel15->ndi = 0;
+    dci_pdu_rel15->harq_pid = 0;
+    dci_pdu_rel15->rv = 0;
+    sps_ctrl->send_sps_activation = 0; // reset sps activation
+
+    if (sps_ctrl->send_sps_deactivation) {
+      dci_pdu_rel15->frequency_domain_assignment.val = (1 << dci_pdu_rel15->frequency_domain_assignment.nbits)-1;
+      dci_pdu_rel15->mcs = (1<<5) - 1;
+      sps_ctrl->send_sps_deactivation = 0;
+    }
+  }
+}
+
 void prepare_dci(const NR_CellGroupConfig_t *CellGroup, const NR_UE_DL_BWP_t *current_BWP, const NR_ControlResourceSet_t *coreset, dci_pdu_rel15_t *dci_pdu_rel15, nr_dci_format_t format)
 {
   AssertFatal(CellGroup!=NULL,"CellGroup shouldn't be null here\n");
@@ -1134,6 +1150,7 @@ void fill_dci_pdu_rel15(const NR_ServingCellConfigCommon_t *scc,
                         int bwp_id,
                         NR_SearchSpace_t *ss,
                         NR_ControlResourceSet_t *coreset,
+                        nr_sps_ctrl_t *sps,
                         uint16_t cset0_bwp_size)
 {
 
@@ -1212,6 +1229,10 @@ void fill_dci_pdu_rel15(const NR_ServingCellConfigCommon_t *scc,
       break;
 
     case NR_RNTI_C:
+    case NR_RNTI_CS:
+      // modify the dci fields for sending sps activation or release scrambled with cs-rnti
+      modify_dci_sps(dci_pdu_rel15, current_DL_BWP, rnti_type, sps);
+
       // indicating a DL DCI format 1bit
       pos++;
       *dci_pdu |= ((uint64_t)1) << (dci_size - pos);
@@ -1643,6 +1664,9 @@ void fill_dci_pdu_rel15(const NR_ServingCellConfigCommon_t *scc,
     break;
 
   case NR_DL_DCI_FORMAT_1_1:
+    // modify the dci fields for sending sps activation or release scrambled with cs-rnti
+    modify_dci_sps(dci_pdu_rel15, current_DL_BWP, rnti_type, sps);
+      
     // Indicating a DL DCI format 1bit
     LOG_D(NR_MAC,"Filling Format 1_1 DCI of size %d\n",dci_size);
     pos = 1;
@@ -1993,7 +2017,6 @@ void configure_UE_BWP(gNB_MAC_INST *nr_mac,
                       int ul_bwp_switch)
 {
   AssertFatal((ra != NULL && UE == NULL) || (ra == NULL && UE != NULL), "RA and UE structures are mutually exlusive in BWP configuration\n");
-
   NR_CellGroupConfig_t *CellGroup;
   NR_UE_DL_BWP_t *DL_BWP;
   NR_UE_UL_BWP_t *UL_BWP;
@@ -2086,6 +2109,8 @@ void configure_UE_BWP(gNB_MAC_INST *nr_mac,
       ubwpd = servingCellConfig->uplinkConfig->initialUplinkBWP;
 
     DL_BWP->pdsch_Config = bwpd->pdsch_Config->choice.setup;
+    DL_BWP->sps_config = bwpd->sps_Config ? bwpd->sps_Config->choice.setup : NULL;
+    sched_ctrl->sps_ctrl.send_sps_activation = bwpd->sps_Config ? true : false;   //todo: when to send activation signal??
     UL_BWP->configuredGrantConfig = ubwpd->configuredGrantConfig ? ubwpd->configuredGrantConfig->choice.setup : NULL;
     UL_BWP->pusch_Config = ubwpd->pusch_Config->choice.setup;
     UL_BWP->pucch_Config = ubwpd->pucch_Config->choice.setup;
@@ -2097,6 +2122,8 @@ void configure_UE_BWP(gNB_MAC_INST *nr_mac,
     UL_BWP->bwp_id = 0;
     target_ss = NR_SearchSpace__searchSpaceType_PR_common;
     DL_BWP->pdsch_Config = NULL;
+    DL_BWP->sps_config = NULL;
+    sched_ctrl->sps_ctrl.send_sps_activation = false;
     UL_BWP->pusch_Config = NULL;
     UL_BWP->pucch_Config = NULL;
     UL_BWP->csi_MeasConfig = NULL;
@@ -2308,7 +2335,7 @@ NR_UE_info_t *add_new_nr_ue(gNB_MAC_INST *nr_mac, rnti_t rntiP, NR_CellGroupConf
 
   /* get Number of HARQ processes for this UE */
   // pdsch_servingcellconfig == NULL in SA -> will create default (8) number of HARQ processes
-  create_dl_harq_list(sched_ctrl, dl_bwp->pdsch_servingcellconfig);
+  create_dl_harq_list(sched_ctrl, dl_bwp->pdsch_servingcellconfig, dl_bwp->sps_config);
   // add all available UL HARQ processes for this UE
   // nb of ul harq processes not configurable
   create_nr_list(&sched_ctrl->available_ul_harq, 16);
@@ -2371,7 +2398,8 @@ void free_sched_pucch_list(NR_UE_sched_ctrl_t *sched_ctrl)
 }
 
 void create_dl_harq_list(NR_UE_sched_ctrl_t *sched_ctrl,
-                         const NR_PDSCH_ServingCellConfig_t *pdsch) {
+                         const NR_PDSCH_ServingCellConfig_t *pdsch,
+                         const NR_SPS_Config_t *sps_config) {
   const int nrofHARQ = pdsch && pdsch->nrofHARQ_ProcessesForPDSCH ?
                        get_nrofHARQ_ProcessesForPDSCH(*pdsch->nrofHARQ_ProcessesForPDSCH) : 8;
   // add all available DL HARQ processes for this UE

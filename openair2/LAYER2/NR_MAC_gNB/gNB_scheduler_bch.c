@@ -508,6 +508,7 @@ static void nr_fill_nfapi_dl_sib1_pdu(int Mod_idP,
                      0,
                      gNB_mac->sched_ctrlCommon->search_space,
                      gNB_mac->sched_ctrlCommon->coreset,
+                     (nr_sps_ctrl_t*)NULL,
                      gNB_mac->cset0_bwp_size);
 
   LOG_D(MAC,"BWPSize: %i\n", pdcch_pdu_rel15->BWPSize);

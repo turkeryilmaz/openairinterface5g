@@ -847,6 +847,7 @@ static void nr_generate_Msg3_retransmission(module_id_t module_idP,
                        ul_bwp->bwp_id,
                        ss,
                        coreset,
+                       (nr_sps_ctrl_t*)NULL,
                        nr_mac->cset0_bwp_size);
 
     // Mark the corresponding RBs as used
@@ -1374,6 +1375,7 @@ static void nr_generate_Msg2(module_id_t module_idP,
                        dl_bwp->bwp_id,
                        ss,
                        coreset,
+                       (nr_sps_ctrl_t*)NULL,
                        nr_mac->cset0_bwp_size);
 
     // DL TX request
@@ -1597,6 +1599,7 @@ static void prepare_dl_pdus(gNB_MAC_INST *nr_mac,
                      dl_bwp->bwp_id,
                      ss,
                      coreset,
+                     (nr_sps_ctrl_t*)NULL,
                      nr_mac->cset0_bwp_size);
 
     LOG_D(NR_MAC,"BWPSize: %i\n", pdcch_pdu_rel15->BWPSize);
