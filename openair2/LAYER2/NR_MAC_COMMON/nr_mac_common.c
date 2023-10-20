@@ -3669,6 +3669,21 @@ bool is_nr_DL_slot(NR_TDD_UL_DL_ConfigCommon_t *tdd_UL_DL_ConfigurationCommon, s
     return slot_in_period <= slots1 + tdd_UL_DL_ConfigurationCommon->pattern2->nrofDownlinkSlots;
 }
 
+int is_nr_SPS_DL_slot(frame_t frame, slot_t slot, uint16_t sps_period, uint8_t scs, nr_ue_sps_ctrl_t sps_info) {
+  const uint16_t num_slots_per_frame = nr_slots_per_frame[scs];
+  int slot_num = num_slots_per_frame * frame + slot;
+
+  // SPS DL assignment occurs in the slot for which the below condition is satisfied as specified in 3GPP TS 38.321 sec 5.8.1
+  int sps_slot = ((sps_info.sps_start_frame * num_slots_per_frame + sps_info.sps_start_slot) 
+                  + (sps_period * sps_info.sps_assisgnment_index * num_slots_per_frame/10)) 
+                  % (1024 * num_slots_per_frame);
+  if (slot_num == sps_slot) {
+    sps_info.sps_assisgnment_index++;
+    return true;
+  }
+  return false;
+} 
+
 bool is_nr_UL_slot(NR_TDD_UL_DL_ConfigCommon_t *tdd_UL_DL_ConfigurationCommon, slot_t slot, frame_type_t frame_type)
 {
   // Note: condition on frame_type
@@ -3793,7 +3808,7 @@ int16_t fill_dmrs_mask(const NR_PDSCH_Config_t *pdsch_Config,
   return l_prime;
 }
 
-uint8_t get_pdsch_mcs_table(long *mcs_Table, int dci_format, int rnti_type, int ss_type)
+uint8_t get_pdsch_mcs_table(long *mcs_Table, int dci_format, int rnti_type, int ss_type, NR_SPS_Config_t *sps_config)
 {
 
   // Set downlink MCS table (Semi-persistent scheduling ignored for now)
@@ -3810,6 +3825,15 @@ uint8_t get_pdsch_mcs_table(long *mcs_Table, int dci_format, int rnti_type, int 
     mcsTableIdx = 2;
   else if (rnti_type == NR_RNTI_MCS_C)
     mcsTableIdx = 2;
+  else if ((sps_config->mcs_Table == NULL && *mcs_Table == NR_PDSCH_Config__mcs_Table_qam256) &&
+           ((dci_format == NR_DL_DCI_FORMAT_1_1 && rnti_type == NR_RNTI_CS) || sps_config)
+           )
+    mcsTableIdx = 1;
+  else if (sps_config->mcs_Table == NR_PDSCH_Config__mcs_Table_qam64LowSE &&
+           (rnti_type == NR_RNTI_CS || sps_config)
+           )
+    mcsTableIdx = 2;
+  
 
   LOG_D(NR_MAC,"DL MCS Table Index: %d\n", mcsTableIdx);
   return mcsTableIdx;

@@ -563,6 +563,14 @@ typedef struct nr_sps_ctrl {
   bool avoid_sps_pdcch_pdu;  // for sps once pdcch is sent for activation, no need to sent pdcch until sps release
 } nr_sps_ctrl_t;
 
+typedef struct nr_ue_sps_ctrl {
+  bool valid_activate_ind_rec;
+  bool valid_deactivate_ind_rec; 
+  int sps_start_frame;
+  int sps_start_slot;
+  int sps_assisgnment_index;
+} nr_ue_sps_ctrl_t;
+
 typedef struct NR_UE_DL_BWP {
   NR_BWP_Id_t bwp_id;
   int n_dl_bwp;
@@ -581,6 +589,8 @@ typedef struct NR_UE_DL_BWP {
 
   // sps config
   NR_SPS_Config_t *sps_config;
+  nr_ue_sps_ctrl_t *sps_ue_ctrl;
+  long *cs_rnti;
 } NR_UE_DL_BWP_t;
 
 typedef struct NR_UE_UL_BWP {

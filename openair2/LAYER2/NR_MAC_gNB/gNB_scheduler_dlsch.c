@@ -1187,7 +1187,7 @@ void nr_schedule_ue_spec(module_id_t module_id,
       continue;
 
     const rnti_t rnti = UE->rnti;
-    const rnti_t cs_rnti = cg->physicalCellGroupConfig->cs_RNTI ? cg->physicalCellGroupConfig->cs_RNTI->choice.setup : -1 ;  // -1 sps not supported by UE
+    const rnti_t cs_rnti = current_BWP->cs_rnti ? *current_BWP->cs_rnti : 0 ;  // -1 sps not supported by UE
 
     /* POST processing */
     const uint8_t nrOfLayers = sched_pdsch->nrOfLayers;
@@ -1365,7 +1365,10 @@ void nr_schedule_ue_spec(module_id_t module_id,
     nfapi_nr_dl_dci_pdu_t *dci_pdu = &pdcch_pdu->dci_pdu[pdcch_pdu->numDlDci];
     pdcch_pdu->avoid_pdcch_pdu = sched_ctrl->sps_ctrl.avoid_sps_pdcch_pdu;
     pdcch_pdu->numDlDci++;
-    dci_pdu->RNTI = sps_config ? cs_rnti : rnti;
+    dci_pdu->RNTI = sps_config && current_BWP->cs_rnti ? cs_rnti : rnti;
+    if (sps_config && current_BWP->cs_rnti && (sched_ctrl->sps_ctrl.send_sps_activation || sched_ctrl->sps_ctrl.send_sps_deactivation)) {
+      LOG_I(NR_MAC, "(%4d.%2d) should send sps indication to UE with cs-rnti %x\n", frame, slot, (uint16_t)dci_pdu->RNTI);
+    }
 
     if (sched_ctrl->coreset &&
         sched_ctrl->search_space &&
@@ -1434,7 +1437,7 @@ void nr_schedule_ue_spec(module_id_t module_id,
           dci_payload.tpc,
           pucch->timing_indicator);
 
-    const int rnti_type = current_BWP->sps_config ? NR_RNTI_CS : NR_RNTI_C;
+    const int rnti_type = current_BWP->sps_config && current_BWP->cs_rnti  ? NR_RNTI_CS : NR_RNTI_C;
     fill_dci_pdu_rel15(scc,
                        cg,
                        current_BWP,

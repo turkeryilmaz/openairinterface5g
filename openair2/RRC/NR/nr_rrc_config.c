@@ -2050,13 +2050,18 @@ int encode_SIB1_NR(NR_BCCH_DL_SCH_Message_t *sib1, uint8_t *buffer, int max_buff
   return (enc_rval.encoded + 7) / 8;
 }
 
-static NR_PhysicalCellGroupConfig_t *configure_phy_cellgroup(const NR_UE_NR_Capability_t *uecap)
+static NR_PhysicalCellGroupConfig_t *configure_phy_cellgroup(NR_PhysicalCellGroupConfig_t *physicalCellGroupConfig, const NR_UE_NR_Capability_t *uecap)
 {
-  NR_PhysicalCellGroupConfig_t *physicalCellGroupConfig = calloc(1, sizeof(*physicalCellGroupConfig));
-  AssertFatal(physicalCellGroupConfig != NULL, "Couldn't allocate physicalCellGroupConfig. Out of memory!\n");
-  physicalCellGroupConfig->pdsch_HARQ_ACK_Codebook = NR_PhysicalCellGroupConfig__pdsch_HARQ_ACK_Codebook_dynamic;
+  LOG_I(NR_RRC, "Configuring physical cell group\n");
+  if (physicalCellGroupConfig == NULL) {
+    physicalCellGroupConfig = calloc(1, sizeof(*physicalCellGroupConfig));
+    AssertFatal(physicalCellGroupConfig != NULL, "Couldn't allocate physicalCellGroupConfig. Out of memory!\n");
+    physicalCellGroupConfig->pdsch_HARQ_ACK_Codebook = NR_PhysicalCellGroupConfig__pdsch_HARQ_ACK_Codebook_dynamic;
+  }
+  // should the CS_RNTI generation depend on UE Capabilities?? 
   if(uecap){
-    if(uecap->phy_Parameters.phy_ParametersCommon && *uecap->phy_Parameters.phy_ParametersCommon->downlinkSPS==0 && physicalCellGroupConfig->cs_RNTI) {
+    if(uecap->phy_Parameters.phy_ParametersCommon && *uecap->phy_Parameters.phy_ParametersCommon->downlinkSPS==0 && !physicalCellGroupConfig->cs_RNTI) {
+      LOG_I(NR_RRC, "Configured CS-RNTI\n");
       physicalCellGroupConfig->cs_RNTI = calloc(1, sizeof(physicalCellGroupConfig->cs_RNTI));
       physicalCellGroupConfig->cs_RNTI->present =  NR_SetupRelease_RNTI_Value_PR_setup;
       physicalCellGroupConfig->cs_RNTI->choice.setup = get_softmodem_params()->phy_test == 1 ? 0x3456 : (taus() & 0xffff);
@@ -2363,7 +2368,7 @@ NR_CellGroupConfig_t *get_initial_cellGroupConfig(int uid,
   /* mac CellGroup Config */
   cellGroupConfig->mac_CellGroupConfig = configure_mac_cellgroup();
   
-  cellGroupConfig->physicalCellGroupConfig = configure_phy_cellgroup(NULL);
+  cellGroupConfig->physicalCellGroupConfig = configure_phy_cellgroup(NULL, NULL);
 
   cellGroupConfig->spCellConfig = get_initial_SpCellConfig(uid, scc, servingcellconfigdedicated, configuration);
 
@@ -2579,7 +2584,7 @@ NR_CellGroupConfig_t *get_default_secondaryCellGroup(const NR_ServingCellConfigC
   asn1cSeqAdd(&secondaryCellGroup->rlc_BearerToAddModList->list, RLC_BearerConfig);
 
   secondaryCellGroup->mac_CellGroupConfig = configure_mac_cellgroup();
-  secondaryCellGroup->physicalCellGroupConfig = configure_phy_cellgroup(uecap);
+  secondaryCellGroup->physicalCellGroupConfig = configure_phy_cellgroup(NULL, uecap);
   secondaryCellGroup->spCellConfig = calloc(1, sizeof(*secondaryCellGroup->spCellConfig));
   secondaryCellGroup->spCellConfig->servCellIndex = calloc(1, sizeof(*secondaryCellGroup->spCellConfig->servCellIndex));
   *secondaryCellGroup->spCellConfig->servCellIndex = servCellIndex;

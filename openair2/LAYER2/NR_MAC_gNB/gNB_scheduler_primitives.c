@@ -1048,18 +1048,27 @@ void set_r_pucch_parms(int rsetindex,
   *start_symbol_index = default_pucch_firstsymb[rsetindex];
 }
 
-static void modify_dci_sps(dci_pdu_rel15_t *dci_pdu_rel15, const NR_UE_DL_BWP_t *current_DL_BWP, int rnti_type, nr_sps_ctrl_t *sps_ctrl) {
+static void nr_prepare_sps_indication(dci_pdu_rel15_t *dci_pdu_rel15, const NR_UE_DL_BWP_t *current_DL_BWP, int rnti_type, nr_sps_ctrl_t *sps_ctrl) {
   if (current_DL_BWP->sps_config && rnti_type == NR_RNTI_CS) {  // sps is configured by RRC
-    LOG_I(NR_MAC, "Modify the pdcch dci\n");
-    dci_pdu_rel15->ndi = 0;
-    dci_pdu_rel15->harq_pid = 0;
-    dci_pdu_rel15->rv = 0;
-    sps_ctrl->send_sps_activation = 0; // reset sps activation
-
-    if (sps_ctrl->send_sps_deactivation) {
+    
+    if (sps_ctrl->send_sps_activation) {
+      LOG_I(NR_MAC, "[SPS]Configure the pdcch dci with RNTI %x to send SPS activation\n", (uint16_t)*current_DL_BWP->cs_rnti);
+      dci_pdu_rel15->ndi = 0;
+      dci_pdu_rel15->harq_pid = 0;
+      dci_pdu_rel15->rv = 0;
+      sps_ctrl->send_sps_activation = 0; // reset sps activation
+    }
+    
+    if (sps_ctrl->send_sps_deactivation && !sps_ctrl->send_sps_activation) {
+      LOG_I(NR_MAC, "[SPS]Configure the pdcch dci with RNTI %x to send SPS activation\n", (uint16_t)*current_DL_BWP->cs_rnti);
+      memset(dci_pdu_rel15, 0, sizeof(*dci_pdu_rel15));
+      dci_pdu_rel15->ndi = 0;
+      dci_pdu_rel15->harq_pid = 0;
+      dci_pdu_rel15->rv = 0;
       dci_pdu_rel15->frequency_domain_assignment.val = (1 << dci_pdu_rel15->frequency_domain_assignment.nbits)-1;
       dci_pdu_rel15->mcs = (1<<5) - 1;
       sps_ctrl->send_sps_deactivation = 0;
+
     }
   }
 }
@@ -1231,7 +1240,7 @@ void fill_dci_pdu_rel15(const NR_ServingCellConfigCommon_t *scc,
     case NR_RNTI_C:
     case NR_RNTI_CS:
       // modify the dci fields for sending sps activation or release scrambled with cs-rnti
-      modify_dci_sps(dci_pdu_rel15, current_DL_BWP, rnti_type, sps);
+      nr_prepare_sps_indication(dci_pdu_rel15, current_DL_BWP, rnti_type, sps);
 
       // indicating a DL DCI format 1bit
       pos++;
@@ -1665,7 +1674,7 @@ void fill_dci_pdu_rel15(const NR_ServingCellConfigCommon_t *scc,
 
   case NR_DL_DCI_FORMAT_1_1:
     // modify the dci fields for sending sps activation or release scrambled with cs-rnti
-    modify_dci_sps(dci_pdu_rel15, current_DL_BWP, rnti_type, sps);
+    nr_prepare_sps_indication(dci_pdu_rel15, current_DL_BWP, rnti_type, sps);
       
     // Indicating a DL DCI format 1bit
     LOG_D(NR_MAC,"Filling Format 1_1 DCI of size %d\n",dci_size);
@@ -2045,8 +2054,13 @@ void configure_UE_BWP(gNB_MAC_INST *nr_mac,
 
   int target_ss;
 
-  if (CellGroup && CellGroup->physicalCellGroupConfig)
+  if (CellGroup && CellGroup->physicalCellGroupConfig) {
     DL_BWP->pdsch_HARQ_ACK_Codebook = &CellGroup->physicalCellGroupConfig->pdsch_HARQ_ACK_Codebook;
+    if (CellGroup->physicalCellGroupConfig->cs_RNTI) {
+      LOG_I(NR_MAC, "Added CS_RNTI\n");
+      DL_BWP->cs_rnti = &CellGroup->physicalCellGroupConfig->cs_RNTI->choice.setup;
+    }
+  }
 
   if (CellGroup &&
       CellGroup->spCellConfig &&
@@ -2109,7 +2123,7 @@ void configure_UE_BWP(gNB_MAC_INST *nr_mac,
       ubwpd = servingCellConfig->uplinkConfig->initialUplinkBWP;
 
     DL_BWP->pdsch_Config = bwpd->pdsch_Config->choice.setup;
-    DL_BWP->sps_config = bwpd->sps_Config ? bwpd->sps_Config->choice.setup : NULL;
+    DL_BWP->sps_config = bwpd->sps_Config->choice.setup; // bwpd->sps_Config ? bwpd->sps_Config->choice.setup : NULL;
     sched_ctrl->sps_ctrl.send_sps_activation = bwpd->sps_Config ? true : false;   //todo: when to send activation signal??
     UL_BWP->configuredGrantConfig = ubwpd->configuredGrantConfig ? ubwpd->configuredGrantConfig->choice.setup : NULL;
     UL_BWP->pusch_Config = ubwpd->pusch_Config->choice.setup;
@@ -2122,12 +2136,13 @@ void configure_UE_BWP(gNB_MAC_INST *nr_mac,
     UL_BWP->bwp_id = 0;
     target_ss = NR_SearchSpace__searchSpaceType_PR_common;
     DL_BWP->pdsch_Config = NULL;
-    DL_BWP->sps_config = NULL;
-    sched_ctrl->sps_ctrl.send_sps_activation = false;
     UL_BWP->pusch_Config = NULL;
     UL_BWP->pucch_Config = NULL;
     UL_BWP->csi_MeasConfig = NULL;
     UL_BWP->configuredGrantConfig = NULL;
+    DL_BWP->sps_config = NULL;
+    if (sched_ctrl)
+      sched_ctrl->sps_ctrl.send_sps_activation = false;
   }
 
   if (old_dl_bwp_id != DL_BWP->bwp_id)
