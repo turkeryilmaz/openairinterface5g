@@ -29,9 +29,9 @@
 #include "ss_gNB_proxy_iface.h"
 #include "SIDL_VIRTUAL_TIME_PORT.h"
 #include "acpSysVT.h"
-#include "enb_config.h"
-
-extern SSConfigContext_t SS_context;
+#include "ss_gNB_multicell_helper.h"
+#include "enb_config.h"//bugz128620 gnb_config.h?
+int nrcellIndex = 0;
 extern RAN_CONTEXT_t RC;
 
 static acpCtx_t ctx_vtp_g = NULL;
@@ -255,7 +255,8 @@ static void ss_send_vtp_resp(struct VirtualTimeInfo_Type *virtualTime)
     req->header.preamble = 0xFEEDC0DE;
     req->header.msg_id = SS_VTP_RESP;
     req->header.length = sizeof(proxy_ss_header_t);
-    req->header.cell_id = SS_context.cellId;
+    req->header.cell_id = SS_context.SSCell_list[nrcellIndex].PhysicalCellId;
+    req->header.cell_index = 0;
 
     req->tinfo.mu = -1;
 
@@ -284,6 +285,9 @@ static void ss_send_vtp_resp(struct VirtualTimeInfo_Type *virtualTime)
 
     req->tinfo.sfn = virtualTime->TimingInfo.SFN.v.Number;
     req->tinfo.sf = virtualTime->TimingInfo.Subframe.v.Number;
+    
+    LOG_A(GNB_APP, "VTP_ACK Command to proxy sent for cell_id: %d SFN: %d SF: %d mu: %d slot: %d cell_index: %d\n",
+        req->header.cell_id,req->tinfo.sfn ,req->tinfo.sf, req->tinfo.mu, req->tinfo.slot,req->header.cell_index);
 
     vtp_send_proxy((void *)req, sizeof(VtpCmdReq_t));
 
@@ -376,8 +380,8 @@ uint8_t ss_gNB_vtp_process_itti_msg(void)
             tinfo.slot = SS_NRUPD_TIM_INFO(received_msg).slot % slotsPerSubFrame;
             tinfo.sf = SS_NRUPD_TIM_INFO(received_msg).slot /slotsPerSubFrame;
             tinfo.sfn = SS_NRUPD_TIM_INFO(received_msg).sfn;
-            tinfo.hsfn = SS_context.hsfn;
-
+	    tinfo.hsfn = SS_context.hsfn;
+            nrcellIndex = get_cell_index_pci(SS_UPD_TIM_INFO(received_msg).physCellId, SS_context.SSCell_list);
             if (SS_context.vtp_enabled == 1) {
                 ss_vtp_send_tinfo(TASK_VTP, &tinfo);
             }
@@ -445,11 +449,12 @@ static void ss_gNB_vt_ena(void) {
     req->header.preamble = 0xFEEDC0DE;
     req->header.msg_id = SS_VTP_ENABLE;
     req->header.length = sizeof(proxy_ss_header_t);
-    req->header.cell_id = SS_context.cellId;
+    req->header.cell_id = SS_context.SSCell_list[nrcellIndex].PhysicalCellId;
     req->tinfo.mu = -1;
     req->tinfo.sfn = 0;
     req->tinfo.sf = 0;
     req->tinfo.slot = 0;
+    req->header.cell_index = nrcellIndex;
     LOG_A(GNB_APP, "[SS-VTP] VT enable sent \n");
     vtp_send_proxy((void *)req, sizeof(VtpCmdReq_t));
 }

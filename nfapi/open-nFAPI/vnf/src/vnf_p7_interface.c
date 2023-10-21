@@ -193,9 +193,13 @@ int nfapi_nr_vnf_p7_start(nfapi_vnf_p7_config_t* config)
 				//Call the scheduler
 				gNB->UL_INFO.module_id = gNB->Mod_id;
 				gNB->UL_INFO.CC_id     = gNB->CC_id;
-				NFAPI_TRACE(NFAPI_TRACE_DEBUG, "Calling NR_UL_indication for gNB->UL_INFO.frame = %d and slot %d\n",
-					    gNB->UL_INFO.frame, gNB->UL_INFO.slot);
-				gNB->if_inst->NR_UL_indication(&gNB->UL_INFO);
+				NFAPI_TRACE(NFAPI_TRACE_DEBUG, "Calling NR_UL_indication for gNB->UL_INFO.frame = %d and slot %d RC.nb_nr_CC%d\n",
+					    gNB->UL_INFO.frame, gNB->UL_INFO.slot,RC.nb_nr_CC[0]);
+				for (int CC_id=0; CC_id<RC.nb_nr_CC[0]; CC_id++) {
+					NFAPI_TRACE(NFAPI_TRACE_DEBUG, "Calling NR_UL_indication  CC_id= %d and RC.nb_CC %d\n",	CC_id,RC.nb_CC);
+					gNB->UL_INFO.CC_id     = CC_id;
+					gNB->if_inst->NR_UL_indication(&gNB->UL_INFO);
+				}
 				prev_slot = gNB->UL_INFO.slot;
 			}
 			pthread_mutex_unlock(&gNB->UL_INFO_mutex);

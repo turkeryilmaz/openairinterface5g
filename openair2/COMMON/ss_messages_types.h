@@ -225,6 +225,7 @@ typedef struct ss_nrrrc_pdu_ind_s {
   uint16_t  rnti;
   frame_t     frame;         /*!< \brief  NR frame number.*/
   sub_frame_t subframe;      /*!< \brief  NR sub frame number.*/
+  int       physCellId;
 } ss_nrrrc_pdu_ind_t;
 
 /** VNG */

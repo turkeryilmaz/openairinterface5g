@@ -75,8 +75,8 @@
 #include "nr_nas_msg_sim.h"
 
 /* Cell_Search_5G s */
-int8_t rsrp_cell = -128;
-int8_t rsrq_cell = -128;
+int16_t rsrp_cell = -128;
+int16_t rsrq_cell = -128;
 /* Cell_Search_5G e */
 
 NR_UE_RRC_INST_t *NR_UE_rrc_inst;
@@ -95,6 +95,7 @@ static const char  nr_nas_attach_req_imsi[] = {
 };
 
 static size_t nr_rrc_ue_RRCSetupRequest_count = 0;
+static bool need_registration = true;
 
 void
 nr_rrc_ue_process_ueCapabilityEnquiry(
@@ -426,6 +427,7 @@ NR_UE_RRC_INST_t* openair_rrc_top_init_ue_nr(char* uecap_file, char* rrc_config_
       NR_UE_rrc_inst[nr_ue].requested_SI_List.bits_unused= 0;
 
       NR_UE_rrc_inst[nr_ue].ra_trigger = RA_NOT_RUNNING;
+      NR_UE_rrc_inst[nr_ue].tac = 0xffffffE; // before received a SIB1, an invalid tac(24 bit tac => the biggest TAC = 0xffffff)
     }
 
     NR_UE_rrc_inst->uecap_file = uecap_file;
@@ -585,7 +587,7 @@ static void nr_ue_check_paging(const module_id_t module_id, const uint8_t gNB_in
     if (found) {
         LOG_I(NR_RRC, "%s: found ue_Identity in PCCH\n", __FUNCTION__);
         NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
-        mac->ra.ra_state = RA_UE_IDLE;
+        mac->ra.ra_state = WAIT_SIB;
     }
 }
 
@@ -1165,10 +1167,32 @@ int8_t nr_rrc_ue_decode_NR_BCCH_DL_SCH_Message(module_id_t module_id,
     switch (bcch_message->message.choice.c1->present) {
       case NR_BCCH_DL_SCH_MessageType__c1_PR_systemInformationBlockType1:
         if ((SI_info->SIStatus & 1) == 0) {
-          if(sib1 != NULL){
-            SEQUENCE_free(&asn_DEF_NR_SIB1, (void *)sib1, 1 );
+            if(sib1 != NULL){ // SIB1 recieved from ex-serving cell already 
+            NR_SIB1_t *new_sib1 = bcch_message->message.choice.c1->choice.systemInformationBlockType1;
+            if (passes_cell_selection_criteria_nr(new_sib1) == false)
+            {
+              LOG_E(NR_RRC, "Cell Selection Crieteria not met \n");
+              SEQUENCE_free(&asn_DEF_NR_SIB1, (void *)new_sib1, 1 );
+              break;
+            }else{
+              NR_UE_MAC_INST_t *mac = get_mac_inst(0);
+              if( mac->ra.ra_state == RA_UE_IDLE){
+                mac->ra.ra_state = GENERATE_PREAMBLE;
+              }
+              
+              if( new_sib1->cellAccessRelatedInfo.plmn_IdentityInfoList.list.array[0]->trackingAreaCode != NULL &&
+                  BIT_STRING_to_uint32(new_sib1->cellAccessRelatedInfo.plmn_IdentityInfoList.list.array[0]->trackingAreaCode) !=  NR_UE_rrc_inst[0].tac){
+                  NR_UE_rrc_inst[0].tac = BIT_STRING_to_uint32(new_sib1->cellAccessRelatedInfo.plmn_IdentityInfoList.list.array[0]->trackingAreaCode);
+                  need_registration = true;
+                  LOG_D(NR_RRC,"tac is %d\n",NR_UE_rrc_inst[0].tac);
+                  SEQUENCE_free(&asn_DEF_NR_SIB1, (void *)new_sib1, 1 );
+              }
+           // SEQUENCE_free(&asn_DEF_NR_SIB1, (void *)sib1, 1 );
+           SI_info->SIStatus |=1;
+           break;
           }
-          SI_info->SIStatus |= 1;
+        }
+	        SI_info->SIStatus |=1;
           sib1 = bcch_message->message.choice.c1->choice.systemInformationBlockType1;
           if (*(int64_t*)sib1 != 1) {
             SI_info->sib1 = sib1;
@@ -1184,6 +1208,23 @@ int8_t nr_rrc_ue_decode_NR_BCCH_DL_SCH_Message(module_id_t module_id,
             {
               LOG_E(NR_RRC, "Cell Selection Crieteria not met \n");
               break;
+            }else{
+              NR_UE_MAC_INST_t *mac = get_mac_inst(0);
+              if( mac->ra.ra_state == RA_UE_IDLE){
+                mac->ra.ra_state = GENERATE_PREAMBLE;
+                LOG_D(NR_RRC,"  ra_state is set to  %d\n",GENERATE_PREAMBLE);
+              }
+              
+              if( sib1->cellAccessRelatedInfo.plmn_IdentityInfoList.list.array[0]->trackingAreaCode != NULL &&
+                  BIT_STRING_to_uint32(sib1->cellAccessRelatedInfo.plmn_IdentityInfoList.list.array[0]->trackingAreaCode) !=  NR_UE_rrc_inst[0].tac){
+                  
+                  NR_UE_rrc_inst[0].tac = BIT_STRING_to_uint32(sib1->cellAccessRelatedInfo.plmn_IdentityInfoList.list.array[0]->trackingAreaCode);
+                  need_registration = true;
+                  LOG_D(NR_RRC,"tac is %d\n",NR_UE_rrc_inst[0].tac);
+
+              }
+              
+              
             }
             /* Cell_Search_5G e */
 
@@ -1376,10 +1417,10 @@ static void rrc_ue_generate_RRCSetupComplete(
   if (get_softmodem_params()->sa) {
     as_nas_info_t initialNasMsg;
     nr_ue_nas_t *nas = get_ue_nas_info(ctxt_pP->module_id);
-    if (nr_rrc_ue_RRCSetupRequest_count > 1) {
-      generateServiceRequest(&initialNasMsg, nas);
-    } else {
+    if(need_registration == true){
       generateRegistrationRequest(&initialNasMsg, nas);
+    } else {
+      generateServiceRequest(&initialNasMsg, nas);
     }
     nas_msg = (char*)initialNasMsg.data;
     nas_msg_length = initialNasMsg.length;
@@ -1451,19 +1492,30 @@ int8_t nr_rrc_ue_decode_ccch( const protocol_ctxt_t *const ctxt_pP, const NR_SRB
 	 break;
 
        case NR_DL_CCCH_MessageType__c1_PR_rrcSetup:
-         LOG_I(NR_RRC, "[UE%d][RAPROC] Frame %d : Logical Channel DL-CCCH (SRB0), Received NR_RRCSetup RNTI %lx\n", ctxt_pP->module_id, ctxt_pP->frame, ctxt_pP->rntiMaybeUEid);
-
+       if(dl_ccch_msg->message.choice.c1->choice.rrcSetup->criticalExtensions.choice.rrcSetup->radioBearerConfig.securityConfig !=NULL){
+         LOG_I(NR_RRC, "[UE%d][RAPROC] Frame %d : Logical Channel DL-CCCH (SRB0), Received NR_RRCSetup RNTI %lx ci %d  in %d\n", ctxt_pP->module_id, ctxt_pP->frame, ctxt_pP->rntiMaybeUEid,
+          dl_ccch_msg->message.choice.c1->choice.rrcSetup->criticalExtensions.choice.rrcSetup->radioBearerConfig.securityConfig->securityAlgorithmConfig->cipheringAlgorithm,
+          dl_ccch_msg->message.choice.c1->choice.rrcSetup->criticalExtensions.choice.rrcSetup->radioBearerConfig.securityConfig->securityAlgorithmConfig->integrityProtAlgorithm);
+       }else{
+           LOG_I(NR_RRC, "mark: [UE%d][RAPROC] Frame %d : Logical Channel DL-CCCH (SRB0), Received NR_RRCSetup RNTI %lx\n", ctxt_pP->module_id, ctxt_pP->frame, ctxt_pP->rntiMaybeUEid);
+       }
+        //   NR_UE_rrc_inst[ctxt_pP->module_id].cipheringAlgorithm = radioBearerConfig->securityConfig->securityAlgorithmConfig->cipheringAlgorithm;
+	      // NR_UE_rrc_inst[ctxt_pP->module_id].integrityProtAlgorithm = *radioBearerConfig->securityConfig->securityAlgorithmConfig->integrityProtAlgorithm;
          // Get configuration
          // Release T300 timer
          NR_UE_rrc_inst[ctxt_pP->module_id].timers_and_constants.T300_active = 0;
 
          nr_rrc_ue_process_masterCellGroup(ctxt_pP, gNB_index, &dl_ccch_msg->message.choice.c1->choice.rrcSetup->criticalExtensions.choice.rrcSetup->masterCellGroup);
+         LOG_D(NR_RRC,"mark: line %d:radioBearerConfig %lx, radioBearerConfig->securityConfig %lx \n", __LINE__,
+         &dl_ccch_msg->message.choice.c1->choice.rrcSetup->criticalExtensions.choice.rrcSetup->radioBearerConfig,
+         dl_ccch_msg->message.choice.c1->choice.rrcSetup->criticalExtensions.choice.rrcSetup->radioBearerConfig.securityConfig);
          nr_rrc_ue_process_RadioBearerConfig(ctxt_pP, gNB_index, &dl_ccch_msg->message.choice.c1->choice.rrcSetup->criticalExtensions.choice.rrcSetup->radioBearerConfig);
          nr_rrc_set_state(ctxt_pP->module_id, RRC_STATE_CONNECTED_NR);
          nr_rrc_set_sub_state(ctxt_pP->module_id, RRC_SUB_STATE_CONNECTED_NR);
          NR_UE_rrc_inst[ctxt_pP->module_id].rnti = ctxt_pP->rntiMaybeUEid;
          rrc_ue_generate_RRCSetupComplete(ctxt_pP, gNB_index, dl_ccch_msg->message.choice.c1->choice.rrcSetup->rrc_TransactionIdentifier, NR_UE_rrc_inst[ctxt_pP->module_id].selected_plmn_identity);
          rval = 0;
+         need_registration = false; //quick fix. better fix is NAS to handle this, and pass tac to NAS.
          break;
 
        default:
@@ -2002,6 +2054,9 @@ nr_rrc_ue_establish_srb2(
 	      ue_rrc->cipheringAlgorithm = radioBearerConfig->securityConfig->securityAlgorithmConfig->cipheringAlgorithm;
 	      ue_rrc->integrityProtAlgorithm = *radioBearerConfig->securityConfig->securityAlgorithmConfig->integrityProtAlgorithm;
        }
+     }else{
+      NR_UE_rrc_inst[ctxt_pP->module_id].cipheringAlgorithm = NR_CipheringAlgorithm_nea0;
+      NR_UE_rrc_inst[ctxt_pP->module_id].integrityProtAlgorithm = NR_IntegrityProtAlgorithm_nia0;
      }
 
      uint8_t *kRRCenc = NULL;
@@ -2509,11 +2564,30 @@ nr_rrc_ue_establish_srb2(
 
         for (int i = 0 ; i < nb_cells; i++)
         {
-          rsrp_cell = PHY_FIND_CELL_IND(msg_p).cells[i].rsrp;
-          rsrq_cell = PHY_FIND_CELL_IND(msg_p).cells[i].rsrq;
-          LOG_D(RRC, "PHY_FIND_CELL_IND Cell: %d RSRP: %d RSRQ: %d \n",
-              PHY_FIND_CELL_IND(msg_p).cell_nb, rsrp_cell, rsrq_cell);
+          rsrp_cell = PHY_FIND_CELL_IND(msg_p).cells[i].rsrp-141;
+          rsrq_cell = (PHY_FIND_CELL_IND(msg_p).cells[i].rsrq-39)/2;
+          LOG_I(RRC, "PHY_FIND_CELL_IND CellId: %d EARFCN: %d RSRP: %d RSRQ: %d \n", PHY_FIND_CELL_IND(msg_p).cells[i].cell_id, PHY_FIND_CELL_IND(msg_p).cells[i].earfcn,rsrp_cell, rsrq_cell);
+          if (rsrp_cell <= -141 && NR_UE_rrc_inst[0].serving_cellId == PHY_FIND_CELL_IND(msg_p).cells[i].cell_id && NR_UE_rrc_inst[0].nrRrcState == RRC_STATE_IDLE_NR){
+            NR_UE_MAC_INST_t *mac = get_mac_inst(0);
+            mac->ra.ra_state = RA_UE_IDLE;
+            NR_UE_rrc_inst[0].SInfo[0].SIStatus &= 0xfffffffe; // lost serving cell, force UE receive SIB1 and trigger RA
+            NR_UE_rrc_inst[0].ra_trigger = INITIAL_ACCESS_FROM_RRC_IDLE;
+          }                 
         }
+
+        for (int i = 0 ; i < nb_cells; i++)
+        {
+          rsrp_cell = PHY_FIND_CELL_IND(msg_p).cells[i].rsrp-141;
+          rsrq_cell = (PHY_FIND_CELL_IND(msg_p).cells[i].rsrq-39)/2;
+          LOG_I(RRC, "PHY_FIND_CELL_IND CellId: %d EARFCN: %d RSRP: %d RSRQ: %d \n", PHY_FIND_CELL_IND(msg_p).cells[i].cell_id, PHY_FIND_CELL_IND(msg_p).cells[i].earfcn,rsrp_cell, rsrq_cell);
+                    
+          if (rsrp_cell > -141){
+            nr_rrc_mac_config_req_ue_cell_selection(0,0,0,(uint16_t)(PHY_FIND_CELL_IND(msg_p).cells[i].cell_id),i+1);
+            NR_UE_rrc_inst[0].serving_cellId = PHY_FIND_CELL_IND(msg_p).cells[i].cell_id;
+          }
+
+        }
+
         break;
       }
       /* Cell_Search_5G e*/

@@ -63,7 +63,7 @@ MESSAGE_DEF(RRC_AS_SECURITY_CONFIG_CNF, MESSAGE_PRIORITY_MED,       RrcAsSecurit
 MESSAGE_DEF(NBIOTRRC_CONFIGURATION_REQ, MESSAGE_PRIORITY_MED,       NbIoTRrcConfigurationReq,   nbiotrrc_configuration_req)
 
 // gNB: gNB_APP -> RRC messages
-MESSAGE_DEF(NRRRC_CONFIGURATION_REQ,    MESSAGE_PRIORITY_MED,       gNB_RrcConfigurationReq,    nrrrc_configuration_req)
+MESSAGE_DEF(NRRRC_CONFIGURATION_REQ,    MESSAGE_PRIORITY_MED,       NRRrcConfigurationReqList,    nrrrc_configuration_req)
 MESSAGE_DEF(NRRRC_RBLIST_CFG_REQ,    MESSAGE_PRIORITY_MED,  NRRrcRblistCfgReq,    nrrrc_rblist_cfg_req)
 
 // UE: NAS -> RRC messages

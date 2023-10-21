@@ -50,6 +50,7 @@ typedef struct proxy_ss_header_s {
   proxy_ss_msgs_e  msg_id;
   uint8_t  cell_id;
   uint16_t length; /** NOTE: Not needed */
+  uint8_t  cell_index;
 } proxy_ss_header_t,
  *proxy_ss_header_p;
 
@@ -72,6 +73,15 @@ typedef struct CellConfigReq_s
     uint8_t initialAttenuation;
     uint16_t dl_earfcn;
 } CellConfigReq_t;
+
+typedef struct CellConfig5GReq_s
+{
+    proxy_ss_header_t header;
+    int16_t maxRefPower;
+    uint8_t initialAttenuation;
+    uint16_t dl_earfcn;
+    long absoluteFrequencyPointA;
+} CellConfig5GReq_t;
 
 typedef struct CellConfigCnf_s
 {

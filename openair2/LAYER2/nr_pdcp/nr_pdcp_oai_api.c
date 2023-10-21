@@ -31,7 +31,9 @@
 #include "NR_CellGroupConfig.h"
 #include "openair2/RRC/NR/nr_rrc_proto.h"
 #include <stdint.h>
-
+#include <netinet/ip.h> 
+#include <netinet/ip_icmp.h>
+#include "LAYER2/NR_MAC_gNB/mac_proto.h"
 /* from OAI */
 #include "oai_asn1.h"
 #include "nr_pdcp_oai_api.h"
@@ -475,7 +477,38 @@ static void *enb_tun_read_thread(void *_)
 
   return NULL;
 }
+// Function to check if the packet is an IP packet and its type is ICMP
+static int isICMPPacket(const uint8_t *packet, size_t length) {
+    // Check if the packet is large enough to contain an IP header
+    if (length < sizeof(struct ip)) {
+        
+        return 0;
+    }
 
+    // Get a pointer to the IP header
+    struct ip *ip_header = (struct ip *)packet;
+
+    // Check if the packet is an IPv4 packet
+    if (ip_header->ip_v != 4) {
+        LOG_D(PDCP,"Not an IPv4 packet\n");
+        return 0;
+    }
+
+    // Check if the protocol is ICMP
+    if (ip_header->ip_p != IPPROTO_ICMP) {
+        LOG_D(PDCP, "Not an ICMP packet\n");
+        return 0;
+    }
+
+    // Check if the packet is large enough to contain an ICMP header
+    if (length < (size_t)(ip_header->ip_hl * 4 + sizeof(struct icmphdr))) {
+        LOG_D(PDCP, "Packet is too small to be an ICMP packet\n");
+        return 0;
+    }
+
+    // If we reached here, the packet is an IPv4 ICMP packet
+    return 1;
+}
 static void *ue_tun_read_thread(void *_)
 {
   extern int nas_sock_fd[];
@@ -514,6 +547,10 @@ static void *ue_tun_read_thread(void *_)
     bool dc = SDAP_HDR_UL_DATA_PDU;
     extern uint8_t nas_qfi;
     extern uint8_t nas_pduid;
+    if(!isICMPPacket(rx_buf, len)) {
+      continue;
+    }
+
 
     sdap_data_req(&ctxt, rntiMaybeUEid, SRB_FLAG_NO, rb_id, RLC_MUI_UNDEFINED, RLC_SDU_CONFIRM_NO, len, (unsigned char *)rx_buf, PDCP_TRANSMISSION_MODE_DATA, NULL, NULL, nas_qfi, dc, nas_pduid);
   }
@@ -888,6 +925,33 @@ static void deliver_pdu_drb(void *deliver_pdu_data, ue_id_t ue_id, int rb_id,
   }
 }
 
+static NR_UE_info_t *pdcp_find_nr_UE(NR_UEs_t *UEs, int CC_id, rnti_t rntiP)
+{
+   NR_UE_info_t ** ue_pptr=UEs->list[CC_id], *ue;
+  while (ue=*ue_pptr++) {
+    if (ue->rnti == rntiP) {
+      LOG_D(NR_MAC,"Search and found rnti: %04x,ccid %d\n", rntiP,CC_id);
+      return ue;
+    }
+  }
+  LOG_W(NR_MAC,"Search for not existing rnti (ignore for RA): %04x  ccid %d\n", rntiP,CC_id);
+  return NULL;
+}
+
+static int pdcp_find_nr_cell( ue_id_t rntiP){
+
+  int  CC_id;
+  if(RC.nrrrc != NULL){  
+    for ( CC_id=0; CC_id<MAX_NUM_CCs;CC_id++){
+      void *UE_info = pdcp_find_nr_UE(&RC.nrmac[0]->UE_info, CC_id, rntiP);
+      if (UE_info!=NULL){
+        return CC_id;
+      }
+    }
+  }
+  return -1;
+  
+}
 static void deliver_sdu_srb(void *_ue, nr_pdcp_entity_t *entity,
                             char *buf, int size)
 {
@@ -916,7 +980,12 @@ srb_found:
         SS_NRRRC_PDU_IND (message_p).srb_id = srb_id;
         SS_NRRRC_PDU_IND (message_p).frame = nr_pdcp_current_time_last_frame;
         SS_NRRRC_PDU_IND (message_p).rnti = ue->rntiMaybeUEid;
+        if(RC.nrrrc != NULL){  /* RC.nrrrc => this instance is nr_ue instead of gNB*/
+          int CC_id = pdcp_find_nr_cell(ue->rntiMaybeUEid);
+         SS_NRRRC_PDU_IND (message_p).physCellId = RC.nrrrc[0]->carrier[CC_id].physCellId;
+        }
         SS_NRRRC_PDU_IND (message_p).subframe = nr_pdcp_current_time_last_subframe;
+        
         memset (SS_NRRRC_PDU_IND (message_p).sdu, 0, SDU_SIZE);
         memcpy (SS_NRRRC_PDU_IND (message_p).sdu, buf, size);
 

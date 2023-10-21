@@ -925,7 +925,7 @@ void save_nr_measurement_info(nfapi_nr_dl_tti_request_t *dl_tti_request)
         nfapi_nr_dl_tti_request_pdu_t *pdu_list = &dl_tti_request->dl_tti_request_body.dl_tti_pdu_list[i];
         if (pdu_list->PDUType == NFAPI_NR_DL_TTI_SSB_PDU_TYPE)
         {
-            LOG_T(NR_PHY, "Cell_id: %d, the ssb_block_idx %d, sc_offset: %d and payload %d\n",
+            LOG_I(NR_PHY, "Cell_id: %d, the ssb_block_idx %d, sc_offset: %d and payload %d\n",
                 pdu_list->ssb_pdu.ssb_pdu_rel15.PhysCellId,
                 pdu_list->ssb_pdu.ssb_pdu_rel15.SsbBlockIndex,
                 pdu_list->ssb_pdu.ssb_pdu_rel15.SsbSubcarrierOffset,
@@ -950,6 +950,10 @@ void save_nr_measurement_info(nfapi_nr_dl_tti_request_t *dl_tti_request)
 static void enqueue_nr_nfapi_msg(void *buffer, ssize_t len, nfapi_p7_message_header_t header)
 {
     NR_UE_MAC_INST_t *mac = get_mac_inst(0);
+    if (header.message_id != P7_CELL_SEARCH_IND && header.phy_id != mac->phy_id){
+        LOG_D(NR_PHY,"A nfapi message is skipped msg id %d, phyid%d   mac phycell id %d mac phyid %d\n",header.message_id,header.phy_id,mac->physCellId,mac->phy_id);      
+       return 0;
+     }
     switch (header.message_id)
     {
         case NFAPI_NR_PHY_MSG_TYPE_DL_TTI_REQUEST:
@@ -1073,16 +1077,16 @@ static void enqueue_nr_nfapi_msg(void *buffer, ssize_t len, nfapi_p7_message_hea
 				PHY_FIND_CELL_IND (message_p).cells[i].earfcn = cell_ind.lte_cell_search_indication.lte_found_cells[i].frequency_offset;
 				// TO DO
 				PHY_FIND_CELL_IND (message_p).cells[i].cell_id = cell_ind.lte_cell_search_indication.lte_found_cells[i].pci;
-				PHY_FIND_CELL_IND (message_p).cells[i].rsrp = cell_ind.lte_cell_search_indication.lte_found_cells[i].rsrp;
-				PHY_FIND_CELL_IND (message_p).cells[i].rsrq = cell_ind.lte_cell_search_indication.lte_found_cells[i].rsrq;
+				PHY_FIND_CELL_IND (message_p).cells[i].rsrp = 141-cell_ind.lte_cell_search_indication.lte_found_cells[i].rsrp;
+				PHY_FIND_CELL_IND (message_p).cells[i].rsrq = 39-2*cell_ind.lte_cell_search_indication.lte_found_cells[i].rsrq;
 
 				LOG_D(NR_PHY, "Cell No: %d PCI: %d EARFCN: %d RSRP: %d RSRQ: %d \n", PHY_FIND_CELL_IND (message_p).cell_nb,
 						PHY_FIND_CELL_IND (message_p).cells[i].cell_id,
 						PHY_FIND_CELL_IND (message_p).cells[i].earfcn,
-						PHY_FIND_CELL_IND (message_p).cells[i].rsrp,
-						PHY_FIND_CELL_IND (message_p).cells[i].rsrq);
-				itti_send_msg_to_task(TASK_RRC_NRUE, INSTANCE_DEFAULT, message_p);
+						PHY_FIND_CELL_IND (message_p).cells[i].rsrp-141,
+	 					(PHY_FIND_CELL_IND (message_p).cells[i].rsrq-39)/2);
 			}
+			itti_send_msg_to_task(TASK_RRC_NRUE, INSTANCE_DEFAULT, message_p);
 
 			break;
 
@@ -1215,6 +1219,7 @@ void *nrue_standalone_pnf_task(void *context)
         LOG_E(NR_PHY, "Header unpack failed for nrue_standalone pnf\n");
         continue;
       }
+      LOG_D(NR_PHY, "recieved nfapi_p7_message from phy %d, msgid %d\n",header.phy_id,header.message_id);
       enqueue_nr_nfapi_msg(buffer, len, header);
     }
   } //while(true)
