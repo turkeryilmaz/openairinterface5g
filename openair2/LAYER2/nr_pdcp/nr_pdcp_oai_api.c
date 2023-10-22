@@ -31,7 +31,8 @@
 #include "NR_CellGroupConfig.h"
 #include "openair2/RRC/NR/nr_rrc_proto.h"
 #include <stdint.h>
-
+#include <netinet/ip.h> 
+#include <netinet/ip_icmp.h>
 #include "LAYER2/NR_MAC_gNB/mac_proto.h"
 /* from OAI */
 #include "oai_asn1.h"
@@ -476,7 +477,38 @@ static void *enb_tun_read_thread(void *_)
 
   return NULL;
 }
+// Function to check if the packet is an IP packet and its type is ICMP
+static int isICMPPacket(const uint8_t *packet, size_t length) {
+    // Check if the packet is large enough to contain an IP header
+    if (length < sizeof(struct ip)) {
+        
+        return 0;
+    }
 
+    // Get a pointer to the IP header
+    struct ip *ip_header = (struct ip *)packet;
+
+    // Check if the packet is an IPv4 packet
+    if (ip_header->ip_v != 4) {
+        LOG_D(PDCP,"Not an IPv4 packet\n");
+        return 0;
+    }
+
+    // Check if the protocol is ICMP
+    if (ip_header->ip_p != IPPROTO_ICMP) {
+        LOG_D(PDCP, "Not an ICMP packet\n");
+        return 0;
+    }
+
+    // Check if the packet is large enough to contain an ICMP header
+    if (length < (size_t)(ip_header->ip_hl * 4 + sizeof(struct icmphdr))) {
+        LOG_D(PDCP, "Packet is too small to be an ICMP packet\n");
+        return 0;
+    }
+
+    // If we reached here, the packet is an IPv4 ICMP packet
+    return 1;
+}
 static void *ue_tun_read_thread(void *_)
 {
   extern int nas_sock_fd[];
@@ -515,6 +547,10 @@ static void *ue_tun_read_thread(void *_)
     bool dc = SDAP_HDR_UL_DATA_PDU;
     extern uint8_t nas_qfi;
     extern uint8_t nas_pduid;
+    if(!isICMPPacket(rx_buf, len)) {
+      continue;
+    }
+
 
     sdap_data_req(&ctxt, rntiMaybeUEid, SRB_FLAG_NO, rb_id, RLC_MUI_UNDEFINED, RLC_SDU_CONFIRM_NO, len, (unsigned char *)rx_buf, PDCP_TRANSMISSION_MODE_DATA, NULL, NULL, nas_qfi, dc, nas_pduid);
   }
