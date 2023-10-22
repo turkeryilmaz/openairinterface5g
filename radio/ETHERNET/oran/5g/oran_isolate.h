@@ -41,7 +41,7 @@ typedef struct ru_info_s{
 	int32_t **txdataF_BF;
 
         // Needed for Prach
-        int **prach_buf;
+        int16_t **prach_buf;
 } ru_info_t;
 
 int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot);

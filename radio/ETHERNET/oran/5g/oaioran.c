@@ -178,7 +178,7 @@ int read_prach_data(ru_info_t *ru, int frame, int slot)
 		for (int aa=0;aa<ru->nb_rx;aa++) {
 			int16_t *dst, *src;
 			int idx = 0;
-			  dst = (int16_t *)((uint8_t *)ru->prach_buf[aa]);// + (sym_idx*576));
+			  dst = ru->prach_buf[aa];// + (sym_idx*576));
 			  src = (int16_t *)((uint8_t *) xran_ctx->sFHPrachRxBbuIoBufCtrlDecomp[tti % XRAN_N_FE_BUF_LEN][0][aa].sBufferList.pBuffers[sym_idx].pData);
 
 			/* convert Network order to host order */
@@ -301,7 +301,7 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot){
          // This loop would better be more inner to avoid confusion and maybe also errors.
          for(int32_t sym_idx = 0; sym_idx < XRAN_NUM_OF_SYMBOL_PER_SLOT; sym_idx++) {
 
-            LOG_D(PHY,"ORAN RX %d.%d: CC %d, ant %d, sym %d, tti %d (mod %d)\n",*frame,*slot,cc_id,ant_id,sym_idx,tti,tti % XRAN_N_FE_BUF_LEN);
+            if (sym_idx ==0) LOG_D(PHY,"ORAN RX %d.%d: CC %d, ant %d, sym %d, tti %d (mod %d) rxF %p\n",*frame,*slot,cc_id,ant_id,sym_idx,tti,tti % XRAN_N_FE_BUF_LEN,rx_data);
             uint8_t *pData = xran_ctx->sFrontHaulRxBbuIoBufCtrl[tti % XRAN_N_FE_BUF_LEN][cc_id][ant_id].sBufferList.pBuffers[sym_idx%XRAN_NUM_OF_SYMBOL_PER_SLOT].pData;
             uint8_t *pPrbMapData = xran_ctx->sFrontHaulRxPrbMapBbuIoBufCtrl[tti % XRAN_N_FE_BUF_LEN][cc_id][ant_id].sBufferList.pBuffers->pData;
             struct xran_prb_map *pPrbMap = (struct xran_prb_map *)pPrbMapData;
