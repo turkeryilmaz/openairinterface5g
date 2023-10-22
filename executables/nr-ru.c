@@ -284,7 +284,7 @@ void fh_if5_south_out(RU_t *ru, int frame, int slot, uint64_t timestamp) {
   for (int aid=0;aid<ru->nb_tx;aid++) buffs[aid] = (void*)&ru->common.txdata[aid][offset]; 
   struct timespec txmeas;
   clock_gettime(CLOCK_MONOTONIC, &txmeas);
-  LOG_D(PHY,"IF5 TX %d.%d, TS %llu, buffs[0] %p, buffs[1] %p ener0 %f dB, tx start %d\n",frame,slot,(unsigned long long)timestamp,buffs[0],buffs[1],
+  LOG_D(NR_PHY,"IF5 TX %d.%d, TS %llu, buffs[0] %p, buffs[1] %p ener0 %f dB, tx start %d\n",frame,slot,(unsigned long long)timestamp,buffs[0],buffs[1],
   10*log10((double)signal_energy(buffs[0],ru->nr_frame_parms->get_samples_per_slot(slot,ru->nr_frame_parms))),(int)txmeas.tv_nsec);
   ru->ifdevice.trx_write_func2(&ru->ifdevice,
   		               timestamp,
@@ -1075,7 +1075,6 @@ void ru_tx_func(void *param) {
   clock_gettime(CLOCK_MONOTONIC,&ru->rt_ru_profiling.start_RU_TX[rt_prof_idx]);
   // do TX front-end processing if needed (precoding and/or IDFTs)
   if (ru->feptx_prec) ru->feptx_prec(ru,frame_tx,slot_tx);
-
   // do OFDM with/without TX front-end processing  if needed
   if ((ru->fh_north_asynch_in == NULL) && (ru->feptx_ofdm)) ru->feptx_ofdm(ru,frame_tx,slot_tx);
 
@@ -1191,7 +1190,9 @@ void *ru_thread( void *param ) {
   wait_sync("ru_thread");
 
   processingData_L1_t *syncMsg;
-  notifiedFIFO_elt_t *res;
+  processingData_L1tx_t *syncMsgTx;
+
+  notifiedFIFO_elt_t *res, *resTx=NULL;
 
   if(!emulate_rf) {
     // Start RF device if any
@@ -1257,7 +1258,7 @@ void *ru_thread( void *param ) {
     else AssertFatal(1==0, "No fronthaul interface at south port");
 
 
-    if (initial_wait == 1 && proc->frame_rx < 300 && ru->fh_south_in == rx_rf) {
+    if (initial_wait == 1 && proc->frame_rx < 300 /*&& ru->fh_south_in == rx_rf*/) {
        if (proc->frame_rx>0 && ((proc->frame_rx % 100) == 0) && proc->tti_rx==0) {
           LOG_I(PHY,"delay processing to let RX stream settle, frame %d (trials %d)\n",proc->frame_rx,ru->rx_fhaul.trials);
           print_meas(&ru->rx_fhaul,"rx_fhaul",NULL,NULL);
@@ -1341,13 +1342,8 @@ void *ru_thread( void *param ) {
     } // end if (slot_type == NR_UPLINK_SLOT || slot_type == NR_MIXED_SLOT) {
 
     // At this point, all information for subframe has been received on FH interface
-    if (!get_softmodem_params()->reorder_thread_disable) {
-      res = pullTpool(&gNB->resp_L1, &gNB->threadPool);
-      if (res == NULL)
-        break; // Tpool has been stopped
-    } else  {
-      res=newNotifiedFIFO_elt(sizeof(processingData_L1_t),0, &gNB->resp_L1,NULL);
-    }
+    res=newNotifiedFIFO_elt(sizeof(processingData_L1_t),0, &gNB->resp_L1,NULL);
+    resTx=newNotifiedFIFO_elt(sizeof(processingData_L1tx_t),0, &gNB->L1_tx_out,NULL);
     syncMsg = (processingData_L1_t *)NotifiedFifoData(res);
     syncMsg->gNB = gNB;
     syncMsg->frame_rx = proc->frame_rx;
@@ -1356,10 +1352,15 @@ void *ru_thread( void *param ) {
     syncMsg->slot_tx = proc->tti_tx;
     syncMsg->timestamp_tx = proc->timestamp_tx;
     res->key = proc->tti_rx;
-    if (!get_softmodem_params()->reorder_thread_disable) 
-      pushTpool(&gNB->threadPool, res);
-    else 
-      pushNotifiedFIFO(&gNB->resp_L1, res);
+
+    syncMsgTx = (processingData_L1tx_t *)NotifiedFifoData(resTx);
+    syncMsgTx->gNB = gNB;
+    syncMsgTx->frame = proc->frame_tx;
+    syncMsgTx->slot = proc->tti_tx;
+    syncMsgTx->timestamp_tx = ru->if_south == REMOTE_IF4p5 ? 999999999999L : proc->timestamp_tx;
+    resTx->key = proc->tti_tx;
+    pushNotifiedFIFO(&gNB->resp_L1, res);
+    pushNotifiedFIFO(&gNB->L1_tx_out, resTx);
   }
 
   printf( "Exiting ru_thread \n");

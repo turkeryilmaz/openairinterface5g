@@ -406,6 +406,7 @@ typedef struct NR_sched_pusch {
   int time_domain_allocation;
   NR_tda_info_t tda_info;
   NR_pusch_dmrs_t dmrs_info;
+  int phr_txpower_calc;
 } NR_sched_pusch_t;
 
 typedef struct NR_sched_srs {
@@ -574,6 +575,9 @@ typedef struct {
 
   /// PHR info: power headroom level (dB)
   int ph;
+  /// PHR info: power headroom level (dB) for 1 PRB
+  int ph0;
+
   /// PHR info: nominal UE transmit power levels (dBm)
   int pcmax;
 
@@ -668,6 +672,7 @@ typedef struct NR_mac_stats {
   int cumul_rsrp;
   uint8_t num_rsrp_meas;
   char srs_stats[50]; // Statistics may differ depending on SRS usage
+  int pusch_snrx10;
 } NR_mac_stats_t;
 
 typedef struct NR_bler_options {
