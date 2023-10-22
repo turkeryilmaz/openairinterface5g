@@ -40,7 +40,7 @@
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "UTIL/OPT/opt.h"
 
-#include "RRC/NR/nr_rrc_extern.h"
+#include "openair2/X2AP/x2ap_eNB.h"
 
 #include "nr_pdcp/nr_pdcp_oai_api.h"
 
@@ -176,7 +176,8 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, frame_t frame, sub_frame_
     void nr_pdcp_tick(int frame, int subframe);
     nr_rlc_tick(frame, slot >> *scc->ssbSubcarrierSpacing);
     nr_pdcp_tick(frame, slot >> *scc->ssbSubcarrierSpacing);
-    nr_rrc_trigger(&ctxt, 0 /*CC_id*/, frame, slot >> *scc->ssbSubcarrierSpacing);
+    if (is_x2ap_enabled())
+      x2ap_trigger();
   }
 
  //LOG_I(NR_MAC, "LINE: %d nb_nr_CC %d ,module_idP %d MAX_NUM_CCs %d ccid %d\n", __LINE__,RC.nb_nr_CC[module_idP],module_idP, MAX_NUM_CCs,CC_id);  

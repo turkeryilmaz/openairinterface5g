@@ -50,7 +50,6 @@
 #include "common/openairinterface5g_limits.h"
 #include "executables/lte-softmodem.h"
 #include "SIMULATION/ETH_TRANSPORT/proto.h"
-#include "UTIL/OSA/osa_defs.h"
 #include "openair2/RRC/NAS/nas_config.h"
 #include "intertask_interface.h"
 #include "openair3/S1AP/s1ap_eNB.h"
@@ -58,7 +57,7 @@
 #include "LTE_DL-DCCH-Message.h"
 #include "pdcp.h"
 
-#  include "openair3/ocp-gtpu/gtp_itf.h"
+#include "openair3/ocp-gtpu/gtp_itf.h"
 #include <openair3/ocp-gtpu/gtp_itf.h>
 
 #include "ENB_APP/enb_config.h"
@@ -2384,6 +2383,8 @@ pdcp_config_req_asn1(const protocol_ctxt_t *const  ctxt_pP,
         // pdcp_remove_UE(ctxt_pP);
       }
 
+#if 0
+AGP - sqn
       /* Security keys */
       if (pdcp_pP->kUPenc != NULL) {
         free(pdcp_pP->kUPenc);
@@ -2399,7 +2400,7 @@ pdcp_config_req_asn1(const protocol_ctxt_t *const  ctxt_pP,
         free(pdcp_pP->kRRCenc);
         pdcp_pP->kRRCenc = NULL;
       }
-
+#endif
       memset(pdcp_pP, 0, sizeof(pdcp_t));
       break;
 
@@ -2477,12 +2478,14 @@ pdcp_config_set_security(
           PROTOCOL_PDCP_CTXT_ARGS(ctxt_pP,pdcp_pP),
           pdcp_pP->cipheringAlgorithm,
           pdcp_pP->integrityProtAlgorithm);
-    if(kRRCenc != NULL) pdcp_pP->kRRCenc = kRRCenc;
-    if(kRRCint != NULL) pdcp_pP->kRRCint = kRRCint;
-    if(kUPenc != NULL)  pdcp_pP->kUPenc  = kUPenc;
+
+    kRRCenc != NULL ? memcpy(pdcp_pP->kRRCenc, kRRCenc, 32) : memset(pdcp_pP->kRRCenc, 0, 32);
+    kRRCint != NULL ? memcpy(pdcp_pP->kRRCint, kRRCint, 32) : memset(pdcp_pP->kRRCint, 0, 32);
+    kUPenc != NULL ? memcpy(pdcp_pP->kUPenc, kUPenc, 32) : memset(pdcp_pP->kUPenc, 0, 32);
+
     /* Activate security */
     pdcp_pP->security_activated = 1;
-  LOG_D(PDCP, "fxn:%s security_activated = 1\n", __FUNCTION__);
+    LOG_D(PDCP, "fxn:%s security_activated = 1\n", __FUNCTION__);
   }
 }
 
@@ -2703,6 +2706,8 @@ pdcp_free (
   pdcp_t *pdcp_p = (pdcp_t *)pdcp_pP;
 
   if (pdcp_p != NULL) {
+#if 0
+AGP - SQN
     if (pdcp_p->kUPenc != NULL) {
       free(pdcp_p->kUPenc);
       pdcp_p->kUPenc = NULL;
@@ -2717,7 +2722,7 @@ pdcp_free (
       free(pdcp_p->kRRCenc);
       pdcp_p->kRRCenc = NULL;
     }
-
+#endif
     memset(pdcp_pP, 0, sizeof(pdcp_t));
     free(pdcp_pP);
     pdcp_pP = NULL;

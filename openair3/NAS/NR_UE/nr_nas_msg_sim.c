@@ -40,6 +40,7 @@
 #include "aka_functions.h"
 #include "secu_defs.h"
 #include "kdf.h"
+#include "key_nas_deriver.h"
 #include "PduSessionEstablishRequest.h"
 #include "PduSessionEstablishmentAccept.h"
 #include "RegistrationAccept.h"
@@ -51,6 +52,10 @@
 #include <openair1/SIMULATION/ETH_TRANSPORT/proto.h>
 #include "openair2/SDAP/nr_sdap/nr_sdap.h"
 #include <openair3/NAS/COMMON/EMM/MSG/NASSecurityModeCommand.h>
+#include "nas_stream_eea1.h"
+#include "nas_stream_eea2.h"
+#include "nas_stream_eia1.h"
+#include "nas_stream_eia2.h"
 
 // #define AUTH_ALGO_MILENAGE
 
@@ -923,9 +928,8 @@ void generateRegistrationRequest(as_nas_info_t *initialNasMsg, nr_ue_nas_t *nas)
   int size = sizeof(mm_msg_header_t);
   fgs_nas_message_t nas_msg={0};
   MM_msg *mm_msg;
-  static initial_registration= 1;
- 
-
+  static int initial_registration= 1;
+  
   mm_msg = &nas_msg.plain.mm_msg;
   // set header
   mm_msg->header.ex_protocol_discriminator = FGS_MOBILITY_MANAGEMENT_MESSAGE;
@@ -1143,8 +1147,14 @@ static void generateSecurityModeComplete(nr_ue_nas_t *nas, as_nas_info_t *initia
   // Ciphering
   _encrypt_nas_msg(nas, _ul_nas_count, initialNasMsg->data + security_header_len, msg_len);
 
+#if 0
+AGP -OAI
+  // only for Type of integrity protection algorithm: 128-5G-IA2 (2)
+  stream_compute_integrity(EIA2_128_ALG_ID, &stream_cipher, mac);
+#else
   // Integrity
   _calculate_nas_maci(nas, SECU_DIRECTION_UPLINK, _ul_nas_count, initialNasMsg->data + security_header_len - 1, msg_len + 1,  mac);
+#endif
 
   printf("xmac %02x%02x%02x%02x\n", mac[0], mac[1], mac[2], mac[3]);
   for(int i = 0; i < 4; i++) {
@@ -1250,8 +1260,14 @@ static void generateRegistrationComplete(nr_ue_nas_t *nas, as_nas_info_t *initia
   // Ciphering
   _encrypt_nas_msg(nas, _ul_nas_count, initialNasMsg->data + 7, length - 7);
 
+#if 0
+AGP - OAI
+  // only for Type of integrity protection algorithm: 128-5G-IA2 (2)
+  stream_compute_integrity(EIA2_128_ALG_ID, &stream_cipher, mac);
+#else
   // Integrity
   _calculate_nas_maci(nas, SECU_DIRECTION_UPLINK, _ul_nas_count, initialNasMsg->data + 6, length - 6,  mac);
+#endif
 
   printf("xmac %02x%02x%02x%02x\n", mac[0], mac[1], mac[2], mac[3]);
   for(int i = 0; i < 4; i++) {
@@ -1614,9 +1630,14 @@ static void generateDeactivateTestModeComplete(nr_ue_nas_t *nas, as_nas_info_t *
   // Ciphering
   _encrypt_nas_msg(nas, _ul_nas_count, initialNasMsg->data + security_header_len, msg_len);
 
+#if 0
+AGP - OAI
+  // only for Type of integrity protection algorithm: 128-5G-IA2 (2)
+  stream_compute_integrity(EIA2_128_ALG_ID, &stream_cipher, mac);
+#else
   // Integrity
   _calculate_nas_maci(nas, SECU_DIRECTION_UPLINK, _ul_nas_count, initialNasMsg->data + security_header_len - 1, msg_len +1,  mac);
-
+#endif
   printf("xmac %02x%02x%02x%02x\n", mac[0], mac[1], mac[2], mac[3]);
   for(int i = 0; i < 4; i++) {
     initialNasMsg->data[2+i] = mac[i];
@@ -1844,6 +1865,11 @@ void *nas_nrue_task(void *args_p)
               NAS_CONN_RELEASE_IND (msg_p).cause);
         // TODO: need to provide flag to recognize UE runs not under TTCN SS
         if (0) {
+          /* the following is not clean, but probably necessary: we need to give
+          * time to RLC to Ack the SRB1 PDU which contained the RRC release
+          * message. Hence, we just below wait some time, before finally
+          * unblocking the nr-uesoftmodem, which will terminate the process. */
+          usleep(100000);
           itti_wait_tasks_unblock(); /* will unblock ITTI to stop nr-uesoftmodem */
         }
         break;
@@ -1882,7 +1908,9 @@ void *nas_nrue_task(void *args_p)
         pdu_buffer_len = NAS_DOWNLINK_DATA_IND(msg_p).nasMsg.length;
 
         LOG_I(NAS, "NAS_DOWNLINK_DATA_IND msg: ");
-        for(int i = 0; i < pdu_buffer_len; i++) printf("%02x", pdu_buffer[i]);printf("\n");
+        for(int i = 0; i < pdu_buffer_len; i++) {
+          printf("%02x", pdu_buffer[i]);
+        } printf("\n");
 
         if(_security_set) {
           _dl_nas_count++;

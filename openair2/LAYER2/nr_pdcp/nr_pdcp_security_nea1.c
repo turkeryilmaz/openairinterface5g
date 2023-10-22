@@ -22,15 +22,14 @@
 #include "common/utils/assertions.h"
 
 #include "nr_pdcp_security_nea1.h"
+#include "openair3/SECU/secu_defs.h"
+#include "openair3/SECU/key_nas_deriver.h"
 
 #include <arpa/inet.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "UTIL/OSA/osa_defs.h"
-
-int stream_encrypt_eea1(stream_cipher_t *stream_cipher, uint8_t **out);
 
 void *nr_pdcp_security_nea1_init(unsigned char *ciphering_key)
 {
@@ -49,9 +48,10 @@ void nr_pdcp_security_nea1_cipher(void *security_context, unsigned char *buffer,
   DevAssert(count > -1);
 
   uint8_t *ciphering_key = (uint8_t *)security_context;
+  uint8_t out[length];
+  memset(out, 0, length);
 
-  uint8_t *out = NULL;
-  stream_cipher_t stream_cipher;
+  nas_stream_cipher_t stream_cipher;
 
   stream_cipher.key_length = 16;
   stream_cipher.count      = count;
@@ -63,8 +63,8 @@ void nr_pdcp_security_nea1_cipher(void *security_context, unsigned char *buffer,
   /* length in bits */
   stream_cipher.blength    = length << 3;
 
-	// out will be set to stream_cipher.message, no need to free it
-	stream_encrypt_eea1(&stream_cipher, &out);
+  // out will be set to stream_cipher.message, no need to free it
+  stream_compute_encrypt(EEA1_128_ALG_ID, &stream_cipher, out);
 
   memmove(buffer, out, length);
 }
