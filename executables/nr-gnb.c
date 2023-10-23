@@ -175,6 +175,8 @@ void *L1_tx_thread(void *arg) {
 
   while (oai_exit == 0) {
      notifiedFIFO_elt_t *res = pullNotifiedFIFO(&gNB->L1_tx_out);
+     if (res == NULL) // stopping condition, happens only when queue is freed
+       break;
      processingData_L1tx_t *info = (processingData_L1tx_t *)NotifiedFifoData(res);
      tx_func(info);
      delNotifiedFIFO_elt(res);
