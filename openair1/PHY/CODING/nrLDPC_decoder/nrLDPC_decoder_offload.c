@@ -408,39 +408,6 @@ static int add_dev(uint8_t dev_id, struct rte_bbdev_info *info)
   return TEST_SUCCESS;
 }
 
-// DPDK BBDEV copy
-static void
-testsuite_teardown(void)
-{
-  uint8_t dev_id;
-  /* Unconfigure devices */
-  RTE_BBDEV_FOREACH(dev_id)
-  rte_bbdev_close(dev_id);
-
-  /* Clear active devices structs. */
-  memset(active_devs, 0, sizeof(active_devs));
-  nb_active_devs = 0;
-
-  /* Disable interrupts */
-  intr_enabled = false;
-}
-
-// DPDK BBDEV copy
-static void
-ut_teardown(void)
-{
-  uint8_t i, dev_id;
-  struct rte_bbdev_stats stats;
-
-  for (i = 0; i < nb_active_devs; i++) {
-    dev_id = active_devs[i].dev_id;
-    /* read stats and print */
-    rte_bbdev_stats_get(dev_id, &stats);
-    /* Stop the device */
-    rte_bbdev_stop(dev_id);
-  }
-}
-
 // DPDK BBDEV modified - nb_segments used, we are not using struct op_data_entries *ref_entries, but struct rte_mbuf *m_head,
 // rte_pktmbuf_reset(m_head) added?  if ((op_type == DATA_INPUT) || (op_type == DATA_HARQ_INPUT)) -> no code in else?
 static int init_op_data_objs(struct rte_bbdev_op_data *bufs,
@@ -1292,11 +1259,17 @@ int32_t LDPCinit()
 int32_t LDPCshutdown()
 {
   struct active_device *ad = active_devs;
-  // this should be modified
+  int dev_id = 0;
+  struct rte_bbdev_stats stats;
   free_buffers(ad, op_params);
   rte_free(op_params);
-  ut_teardown();
-  testsuite_teardown();
+  // Stop and close bbdev
+  rte_bbdev_stats_get(dev_id, &stats);
+  rte_bbdev_stop(dev_id);
+  rte_bbdev_close(dev_id);
+  memset(active_devs, 0, sizeof(active_devs));
+  nb_active_devs = 0;
+  intr_enabled = false;
   return 0;
 }
 
