@@ -1125,11 +1125,7 @@ int start_pmd_dec(struct active_device *ad,
   t_params[0].ulsch_id = ulsch_id;
 
   // For now, we never enter here, we don't use the DPDK thread pool
-#ifdef OFFLOAD_T1
-  RTE_LCORE_FOREACH_SLAVE(lcore_id) {
-#else
   RTE_LCORE_FOREACH_WORKER(lcore_id) {
-#endif
     if (used_cores >= num_lcores)
       break;
     t_params[used_cores].dev_id = ad->dev_id;
@@ -1224,11 +1220,7 @@ int32_t start_pmd_enc(struct active_device *ad,
   t_params[0].p_offloadParams = p_offloadParams;
 
   // For now, we never enter here, we don't use the DPDK thread pool
-#ifdef OFFLOAD_T1
-  RTE_LCORE_FOREACH_SLAVE(lcore_id) {
-#else
   RTE_LCORE_FOREACH_WORKER(lcore_id) {
-#endif
     if (used_cores >= num_lcores)
       break;
     t_params[used_cores].dev_id = ad->dev_id;

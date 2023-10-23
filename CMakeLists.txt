@@ -483,29 +483,21 @@ target_link_libraries(shlib_loader PRIVATE CONFIG_LIB)
 
 ##########################################################
 
-# LDPC offload library
+# LDPC offload library - AMD T2 Accelerator Card
 ##########################################################
 
-add_boolean_option(ENABLE_LDPC_T1 OFF "Build support for LDPC Offload to T1 library" OFF)
-if (ENABLE_LDPC_T1)
-  pkg_check_modules(LIBDPDK_OFFLOAD REQUIRED libdpdk=20.05.0)
-  find_library(PMD_T1 NAMES rte_pmd_hpac_sdfec_pmd REQUIRED)
-  add_library(ldpc_t1 MODULE ${OPENAIR1_DIR}/PHY/CODING/nrLDPC_decoder/nrLDPC_decoder_offload.c)
-  set_target_properties(ldpc_t1 PROPERTIES COMPILE_FLAGS "-DALLOW_EXPERIMENTAL_API -DOFFLOAD_T1")
-  add_compile_options("-DOFFLOAD_T1")
-  target_link_libraries(ldpc_t1 ${LIBDPDK_OFFLOAD_LDFLAGS} ${PMD_T1})
-endif()
 add_boolean_option(ENABLE_LDPC_T2 OFF "Build support for LDPC Offload to T2 library" OFF)
-#set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/home/eurecom/dpdk2011/libs/pkgconfig")
+set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/usr/local/lib/x86_64-linux-gnu/pkgconfig")
 if (ENABLE_LDPC_T2)
-  pkg_check_modules(LIBDPDK_OFFLOAD REQUIRED libdpdk=20.11.3)
-  find_library(PMD_T2 NAMES rte_baseband_accl_ldpc HINTS "/home/eurecom/dpdk2011/libs")
+  pkg_check_modules(LIBDPDK_OFFLOAD REQUIRED libdpdk=20.11.7)
+  find_library(PMD_T2 NAMES rte_baseband_accl_ldpc HINTS "/opt/dpdk-t2/lib/x86_64-linux-gnu/")
+  if (NOT PMD_T2)
+    message(FATAL_ERROR "could not find PMD T2")
+  endif()
+  message(STATUS "T2 build: use ${PMD_T2}")
   add_library(ldpc_t2 MODULE ${OPENAIR1_DIR}/PHY/CODING/nrLDPC_decoder/nrLDPC_decoder_offload.c)
   set_target_properties(ldpc_t2 PROPERTIES COMPILE_FLAGS "-DALLOW_EXPERIMENTAL_API -DOFFLOAD_T2")
-  add_compile_options("-DOFFLOAD_T2")
   target_link_libraries(ldpc_t2 ${LIBDPDK_OFFLOAD_LDFLAGS} ${PMD_T2})
-#  #target_link_libraries(ldpc_t2 /home/eurecom/jaroslava/T2_new/dpdk-stable/build/lib/librte_eal.so /home/eurecom/jaroslava/T2_new/dpdk-stable/build/lib/librte_mempool.so /home/eurecom/jaroslava/T2_new/dpdk-stable/build/lib/librte_bbdev.so /home/eurecom/jaroslava/T2_new/dpdk-stable/build/lib/librte_pdump.so)
-#  #target_compile_options(ldpc_t2 PRIVATE ${LIBDPDK_OFFLOAD_CFLAGS})
 endif()
 
 ##########################################################
