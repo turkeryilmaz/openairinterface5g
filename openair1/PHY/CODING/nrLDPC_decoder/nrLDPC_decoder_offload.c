@@ -727,22 +727,6 @@ static int retrieve_ldpc_enc_op(struct rte_bbdev_enc_op **ops, const uint16_t n,
   return TEST_SUCCESS;
   }
 */
-// DPDK BBDEV modified (a lot) - don't use struct op_data_entries *entry - test vector, instead we are using params in
-// t_nrLDPCoffload_params *p_offloadParams
-static void
-create_reference_ldpc_dec_op(struct rte_bbdev_dec_op *op, t_nrLDPCoffload_params *p_offloadParams)
-{
-  // unsigned int i;
-  // for (i = 0; i < entry->nb_segments; ++i)
-  op->ldpc_dec.input.length = p_offloadParams->E;
-  op->ldpc_dec.basegraph = p_offloadParams->BG;
-  op->ldpc_dec.z_c = p_offloadParams->Z;
-  op->ldpc_dec.n_filler = p_offloadParams->F;
-  op->ldpc_dec.code_block_mode = 1;
-  op->ldpc_dec.op_flags = RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE |
-                          RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_IN_ENABLE |
-                          RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE ;
-}
 // DPDK BBDEV modified - parameters to be checked, based on the test vector
 static void create_reference_ldpc_enc_op(struct rte_bbdev_enc_op *op, t_nrLDPCoffload_params *p_offloadParams)
 {
@@ -1295,8 +1279,6 @@ int32_t LDPCdecoder(struct nrLDPC_dec_params *p_decParams,
   struct rte_bbdev_info info;
   rte_bbdev_info_get(ad->dev_id, &info);
   int socket_id = GET_SOCKET(info.socket_id);
-  // no need to use create_reference_ldpc_dec_op?
-  create_reference_ldpc_dec_op(op_params->ref_dec_op, &offloadParams);
   // fill_queue_buffers -> init_op_data_objs
   struct rte_mempool *in_mp = ad->in_mbuf_pool;
   struct rte_mempool *hard_out_mp = ad->hard_out_mbuf_pool;
