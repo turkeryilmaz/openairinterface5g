@@ -1113,7 +1113,7 @@ int start_pmd_dec(struct active_device *ad,
 
   /* Master core is set at first entry */
   t_params[0].dev_id = ad->dev_id;
-  t_params[0].lcore_id = rte_lcore_id();
+  t_params[0].lcore_id = 15;
   t_params[0].op_params = op_params;
   t_params[0].queue_id = ad->dec_queue;
   used_cores++;
@@ -1210,7 +1210,7 @@ int32_t start_pmd_enc(struct active_device *ad,
 
   /* Master core is set at first entry */
   t_params[0].dev_id = ad->dev_id;
-  t_params[0].lcore_id = rte_lcore_id();
+  t_params[0].lcore_id = 14;
   t_params[0].op_params = op_params;
   // t_params[0].queue_id = ad->queue_ids[used_cores++];
   used_cores++;
@@ -1277,11 +1277,16 @@ int32_t LDPCinit()
 {
   int ret;
   struct rte_bbdev_info info;
-  char *argv_re[] = {"bbdev", "-l", "30-31", "--file-prefix=b6", "--"};
+  char *dpdk_dev = "41:00.0";
+  char *argv_re[] = {"bbdev", "-l", "14-15", "--file-prefix=b6", "--"};
+  // EAL initialization, if already initialized (init in xran lib) try to probe DPDK device
   ret = rte_eal_init(5, argv_re);
   if (ret < 0) {
-    printf("Could not init EAL, ret %d\n", ret);
-    return (-1);
+    printf("EAL initialization failed, probing DPDK device %s\n", dpdk_dev);
+    if (rte_dev_probe(dpdk_dev) != 0) {
+      LOG_E(PHY, "T2 card %s not found\n", dpdk_dev);
+      return (-1);
+    }
   }
   ret = populate_active_devices();
   if (ret == 0) {
