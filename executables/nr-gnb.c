@@ -385,15 +385,6 @@ void term_gNB_Tpool(int inst) {
      pthread_join(proc->L1_stats_thread, NULL);
 }
 
-/*!
- * \brief Terminate gNB TX and RX threads.
- */
-void kill_gNB_proc(int inst) {
-  PHY_VARS_gNB *gNB;
-
-  gNB=RC.gNB[inst];
-}
-
 void reset_opp_meas(void) {
   int sfn;
   reset_meas(&softmodem_stats_mt);
@@ -521,6 +512,5 @@ void stop_gNB(int nb_inst) {
   for (int inst=0; inst<nb_inst; inst++) {
     LOG_I(PHY,"Killing gNB %d processing threads\n",inst);
     term_gNB_Tpool(inst);
-    kill_gNB_proc(inst);
   }
 }
