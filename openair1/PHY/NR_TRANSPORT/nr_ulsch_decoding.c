@@ -428,7 +428,7 @@ int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
     harq_process->harq_to_be_cleared = false;
   }
 
-  if (phy_vars_gNB->ldpc_offload_flag && mcs > 9)
+  if (phy_vars_gNB->ldpc_offload_flag)
     return decode_offload(phy_vars_gNB, ULSCH_id, ulsch_llr, pusch_pdu, &decParams, harq_pid, G);
 
   uint32_t offset = 0, r_offset = 0;

@@ -379,7 +379,7 @@ int nr_dlsch_encoding(PHY_VARS_gNB *gNB,
   impp.tparity = tparity;
   impp.toutput = toutput;
   impp.harq = harq;
-  if (gNB->ldpc_offload_flag && *rel15->mcsIndex > 0) {
+  if (gNB->ldpc_offload_flag && *rel15->mcsIndex > 2 && *rel15->mcsIndex != 10) {
     impp.Qm = rel15->qamModOrder[0];
     impp.rv = rel15->rvIndex[0];
     int nb_re_dmrs =

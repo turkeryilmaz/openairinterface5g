@@ -1453,11 +1453,10 @@ int32_t LDPCencoder(unsigned char **input, unsigned char **output, encoder_imple
                                           .n_cb = (BG == 1) ? (66 * Zc) : (50 * Zc),
                                           .BG = BG,
                                           .Z = Zc,
-                                          .rv = impp->rv,
-                                          .F = 0,
+                                          .rv = 0,// impp->rv,
+                                          .F = 0, //impp->F,
                                           .Qm = impp->Qm,
                                           .Kr = impp->Kr};
-
   struct rte_bbdev_info info;
   rte_bbdev_info_get(ad->dev_id, &info);
   int socket_id = GET_SOCKET(info.socket_id);
