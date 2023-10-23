@@ -368,17 +368,6 @@ static int add_dev(uint8_t dev_id, struct rte_bbdev_info *info)
     return TEST_FAILED;
   }
 
-  /* configure interrupts if needed */
-  /*if (intr_enabled) {
-    ret = rte_bbdev_intr_enable(dev_id);
-    if (ret < 0) {
-    printf("rte_bbdev_intr_enable(%u) ret %i\n", dev_id,
-    ret);
-    return TEST_FAILED;
-    }
-    }
-  */
-
   /* setup device queues */
   struct rte_bbdev_queue_conf qconf = {
       .socket = info->socket_id,
@@ -419,45 +408,6 @@ static int add_dev(uint8_t dev_id, struct rte_bbdev_info *info)
   return TEST_SUCCESS;
 }
 
-// DPDK BBDEV modified - without struct test_bbdev_vector *vector, we are calling add_dev from here
-static int
-add_active_device(uint8_t dev_id, struct rte_bbdev_info *info)
-{
-  int ret;
-
-  active_devs[nb_active_devs].driver_name = info->drv.driver_name;
-  active_devs[nb_active_devs].dev_id = dev_id;
-
-  ret = add_dev(dev_id, info);
-  if (ret == TEST_SUCCESS)
-    ++nb_active_devs;
-  return ret;
-}
-
-// DPDK BBDEV copy
-static uint8_t
-populate_active_devices(void)
-{
-  int ret;
-  uint8_t dev_id;
-  uint8_t nb_devs_added = 0;
-  struct rte_bbdev_info info;
-
-  RTE_BBDEV_FOREACH(dev_id)
-  {
-    rte_bbdev_info_get(dev_id, &info);
-
-    ret = add_active_device(dev_id, &info);
-    if (ret != 0) {
-      printf("Adding active bbdev %s skipped\n", info.dev_name);
-      continue;
-    }
-    nb_devs_added++;
-  }
-
-  return nb_devs_added;
-}
-
 // DPDK BBDEV copy
 static void
 testsuite_teardown(void)
@@ -475,22 +425,6 @@ testsuite_teardown(void)
   intr_enabled = false;
 }
 
-// DPDK BBDEV copy
-static int
-ut_setup(void)
-{
-  uint8_t i, dev_id;
-
-  for (i = 0; i < nb_active_devs; i++) {
-    dev_id = active_devs[i].dev_id;
-    /* reset bbdev stats */
-    TEST_ASSERT_SUCCESS(rte_bbdev_stats_reset(dev_id), "Failed to reset stats of bbdev %u", dev_id);
-    /* start the device */
-    TEST_ASSERT_SUCCESS(rte_bbdev_start(dev_id), "Failed to start bbdev %u", dev_id);
-  }
-
-  return TEST_SUCCESS;
-}
 // DPDK BBDEV copy
 static void
 ut_teardown(void)
@@ -1276,9 +1210,11 @@ struct rte_mbuf *m_head[DATA_NUM_TYPES];
 int32_t LDPCinit()
 {
   int ret;
+  int dev_id = 0;
   struct rte_bbdev_info info;
-  char *dpdk_dev = "41:00.0";
-  char *argv_re[] = {"bbdev", "-l", "14-15", "--file-prefix=b6", "--"};
+  struct active_device *ad = active_devs;
+  char *dpdk_dev = "41:00.0"; //PCI address of the card
+  char *argv_re[] = {"bbdev", "-a", dpdk_dev, "-l", "14-15", "--file-prefix=b6", "--"};
   // EAL initialization, if already initialized (init in xran lib) try to probe DPDK device
   ret = rte_eal_init(5, argv_re);
   if (ret < 0) {
@@ -1288,45 +1224,27 @@ int32_t LDPCinit()
       return (-1);
     }
   }
-  ret = populate_active_devices();
-  if (ret == 0) {
-    printf("No suitable devices found!\n");
-    return -1;
-  }
+  // Use only device 0 - first detected device
+  rte_bbdev_info_get(0, &info);
+  // Set number of queues based on number of initialized cores (-l option) and driver
+  // capabilities
+  TEST_ASSERT_SUCCESS(add_dev(dev_id, &info), "Failed to setup bbdev");
+  TEST_ASSERT_SUCCESS(rte_bbdev_stats_reset(dev_id), "Failed to reset stats of bbdev %u", dev_id);
+  TEST_ASSERT_SUCCESS(rte_bbdev_start(dev_id), "Failed to start bbdev %u", dev_id);
 
-  if (ret != 1) {
-    printf("More than one offload card found, not supported with this SW version!\n");
-    return -1;
-  }
-
-  ret = ut_setup();
-  if (ret != TEST_SUCCESS) {
-    printf("Couldn't setup and start the board\n");
-    return (-1);
-  }
-
-  // pdump is a trace facility, usage not discovered yet
-  rte_pdump_init();
-
-  // We will use only device 0 (first device detected)
-  //  the previous calls have populated this global variable (beurk)
-  struct active_device *ad = active_devs;
+  //the previous calls have populated this global variable (beurk)
   // One more global to remove, not thread safe global op_params
   op_params = rte_zmalloc(NULL, sizeof(struct test_op_params), RTE_CACHE_LINE_SIZE);
   TEST_ASSERT_NOT_NULL(op_params,
                        "Failed to alloc %zuB for op_params",
                        RTE_ALIGN(sizeof(struct test_op_params), RTE_CACHE_LINE_SIZE));
 
-  // Get the board HW capabilities
-  rte_bbdev_info_get(ad->dev_id, &info);
   int socket_id = GET_SOCKET(info.socket_id);
-
   enum rte_bbdev_op_type op_type = RTE_BBDEV_OP_NONE;
-  int BG = 1;
-  int Z = 384;
-  int data_len = BG == 1 ? 22 * Z : 10 * Z;
-  // get_num_ops() replaced by 1 (4th parameter)
-  int f_ret = create_mempools(ad, socket_id, 1, data_len, 25344);
+  int out_max_sz = 8448; // max code block size (for BG1), 22 * 384
+  int in_max_sz = 25344; // max number of encoded bits (for BG1), 66 * 384
+  int num_ops = 1;
+  int f_ret = create_mempools(ad, socket_id, num_ops, out_max_sz, in_max_sz);
   if (f_ret != TEST_SUCCESS) {
     printf("Couldn't create mempools");
     return -1;
@@ -1339,9 +1257,6 @@ int32_t LDPCinit()
     printf("Couldn't init test op params");
     return -1;
   }
-
-  // const struct rte_bbdev_op_cap *capabilities = NULL;
-  rte_bbdev_info_get(ad->dev_id, &info);
 
   // fill_queue_buffers -> allocate_buffers_on_socket
   for (int i = 0; i < ad->nb_queues; ++i) {
