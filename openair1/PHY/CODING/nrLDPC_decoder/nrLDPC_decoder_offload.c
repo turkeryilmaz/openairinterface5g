@@ -71,9 +71,6 @@
 /* Headroom for filler LLRs insertion in HARQ buffer */
 #define FILLER_HEADROOM 1024
 
-/* Switch between PMD and Interrupt for throughput TC */
-static bool intr_enabled;
-
 /* Represents tested active devices */
 struct active_device {
   const char *driver_name;
@@ -939,48 +936,16 @@ int start_pmd_dec(struct active_device *ad,
     return ret;
   }
 
-  /* Print throughput if interrupts are disabled and test passed */
-  if (!intr_enabled) {
-    /// print_dec_throughput(t_params, num_lcores);
-    rte_free(t_params);
-    return ret;
-  }
-  /* In interrupt TC we need to wait for the interrupt callback to deqeue
-   * all pending operations. Skip waiting for queues which reported an
-   * error using processing_status variable.
-   * Wait for master lcore operations.
-   */
-  tp = &t_params[0];
-  while ((rte_atomic16_read(&tp->nb_dequeued) < op_params->num_to_process)
-         && (rte_atomic16_read(&tp->processing_status) != TEST_FAILED))
-    rte_pause();
-  ret |= (int)rte_atomic16_read(&tp->processing_status);
-
-  for (used_cores = 1; used_cores < num_lcores; used_cores++) {
-    tp = &t_params[used_cores];
-
-    while ((rte_atomic16_read(&tp->nb_dequeued) < op_params->num_to_process)
-           && (rte_atomic16_read(&tp->processing_status) != TEST_FAILED))
-      rte_pause();
-    ret |= (int)rte_atomic16_read(&tp->processing_status);
-  }
-
-  /* Print throughput if test passed */
-  if (!ret) {
-    print_dec_throughput(t_params, num_lcores);
-  }
-
   rte_free(t_params);
-
   return ret;
 }
+
 int32_t start_pmd_enc(struct active_device *ad,
                       struct test_op_params *op_params,
                       t_nrLDPCoffload_params *p_offloadParams,
                       uint8_t *p_out)
 {
   int ret;
-  struct thread_params *tp;
   unsigned int lcore_id, used_cores = 0;
 
   uint16_t num_lcores;
@@ -1021,33 +986,7 @@ int32_t start_pmd_enc(struct active_device *ad,
     rte_free(t_params);
     return ret;
   }
-  /* Print throughput if interrupts are disabled and test passed */
-  if (!intr_enabled) {
-    /// print_dec_throughput(t_params, num_lcores);
-    rte_free(t_params);
-    return ret;
-  }
-  /* In interrupt TC we need to wait for the interrupt callback to deqeue
-   * all pending operations. Skip waiting for queues which reported an
-   * error using processing_status variable.
-   * Wait for master lcore operations.
-   */
-  tp = &t_params[0];
-  while ((rte_atomic16_read(&tp->nb_dequeued) < op_params->num_to_process)
-         && (rte_atomic16_read(&tp->processing_status) != TEST_FAILED))
-    rte_pause();
 
-  ret |= (int)rte_atomic16_read(&tp->processing_status);
-
-  for (used_cores = 1; used_cores < num_lcores; used_cores++) {
-    tp = &t_params[used_cores];
-
-    while ((rte_atomic16_read(&tp->nb_dequeued) < op_params->num_to_process)
-           && (rte_atomic16_read(&tp->processing_status) != TEST_FAILED))
-      rte_pause();
-
-    ret |= (int)rte_atomic16_read(&tp->processing_status);
-  }
   rte_free(t_params);
   return ret;
 }
@@ -1152,7 +1091,6 @@ int32_t LDPCshutdown()
   rte_bbdev_close(dev_id);
   memset(active_devs, 0, sizeof(active_devs));
   nb_active_devs = 0;
-  intr_enabled = false;
   return 0;
 }
 
