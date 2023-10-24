@@ -112,12 +112,14 @@ time_stats_t softmodem_stats_rx_sf; // total rx time
 #define L1STATSSTRLEN 16384
 
 
-void tx_func(void *param) 
+static void tx_func(void *param)
 {
   processingData_L1tx_t *info = (processingData_L1tx_t *) param;
 
   int frame_tx = info->frame;
   int slot_tx = info->slot;
+  int frame_rx = info->frame_rx;
+  int slot_rx = info->slot_rx;
   int absslot_tx = info->timestamp_tx / info->gNB->frame_parms.get_samples_per_slot(slot_tx, &info->gNB->frame_parms);
   int absslot_rx = absslot_tx - info->gNB->RU_list[0]->sl_ahead;
   int rt_prof_idx = absslot_rx % RT_PROF_DEPTH;
@@ -129,11 +131,25 @@ void tx_func(void *param)
   NR_IF_Module_t *ifi = gNB->if_inst;
   nfapi_nr_config_request_scf_t *cfg = &gNB->gNB_config;
 
-  if (absslot_tx >= 2000) {
+  T(T_GNB_PHY_DL_TICK, T_INT(gNB->Mod_id), T_INT(frame_tx), T_INT(slot_tx));
+
+  if (1) {
     ifi->NR_mac_scheduler(module_id, CC_id, frame_tx, slot_tx);
     gNB->msgDataTx->timestamp_tx = info->timestamp_tx;
     info = gNB->msgDataTx;
     info->gNB = gNB;
+
+    // At this point, MAC scheduler just ran, including scheduling
+    // PRACH/PUCCH/PUSCH, so trigger RX chain processing
+    LOG_I(NR_PHY, "%s() trigger RX\n", __func__);
+    notifiedFIFO_elt_t *res = newNotifiedFIFO_elt(sizeof(processingData_L1_t), 0, &gNB->resp_L1, NULL);
+    processingData_L1_t *syncMsg = NotifiedFifoData(res);
+    syncMsg->gNB = gNB;
+    syncMsg->frame_rx = frame_rx;
+    syncMsg->slot_rx = slot_rx;
+    syncMsg->timestamp_tx = info->timestamp_tx;
+    res->key = slot_rx;
+    pushNotifiedFIFO(&gNB->resp_L1, res);
 
     int tx_slot_type = nr_slot_select(cfg, frame_tx, slot_tx);
     if ((tx_slot_type == NR_DOWNLINK_SLOT || tx_slot_type == NR_MIXED_SLOT) && NFAPI_MODE != NFAPI_MODE_PNF) {
@@ -163,6 +179,8 @@ void *L1_rx_thread(void *arg)
 
   while (oai_exit == 0) {
      notifiedFIFO_elt_t *res = pullNotifiedFIFO(&gNB->resp_L1);
+     if (res == NULL) // stopping condition, happens only when queue is freed
+       break;
      processingData_L1_t *info = (processingData_L1_t *)NotifiedFifoData(res);
      rx_func(info);
      delNotifiedFIFO_elt(res);
@@ -190,8 +208,6 @@ void rx_func(void *param)
   PHY_VARS_gNB *gNB = info->gNB;
   int frame_rx = info->frame_rx;
   int slot_rx = info->slot_rx;
-  int frame_tx = info->frame_tx;
-  int slot_tx = info->slot_tx;
   nfapi_nr_config_request_scf_t *cfg = &gNB->gNB_config;
   int cumul_samples = gNB->frame_parms.get_samples_per_slot(0, &gNB->frame_parms);
   int i = 1;
@@ -216,10 +232,8 @@ void rx_func(void *param)
   }
   // ****************************************
 
-  T(T_GNB_PHY_DL_TICK, T_INT(gNB->Mod_id), T_INT(frame_tx), T_INT(slot_tx));
-
-  reset_active_stats(gNB, frame_tx);
-  reset_active_ulsch(gNB, frame_tx);
+  reset_active_stats(gNB, frame_rx);
+  reset_active_ulsch(gNB, frame_rx);
 
   // RX processing
   int rx_slot_type = nr_slot_select(cfg, frame_rx, slot_rx);
@@ -258,7 +272,6 @@ void rx_func(void *param)
   }
 
   stop_meas( &softmodem_stats_rxtx_sf );
-  LOG_D(PHY,"%s() Exit proc[rx:%d%d tx:%d%d]\n", __FUNCTION__, frame_rx, slot_rx, frame_tx, slot_tx);
   clock_gettime(CLOCK_MONOTONIC,&info->gNB->rt_L1_profiling.return_L1_RX[rt_prof_idx]);
 }
 

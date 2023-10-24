@@ -1197,11 +1197,6 @@ void *ru_thread( void *param ) {
   pthread_mutex_unlock(&RC.ru_mutex);
   wait_sync("ru_thread");
 
-  processingData_L1_t *syncMsg;
-  processingData_L1tx_t *syncMsgTx;
-
-  notifiedFIFO_elt_t *res, *resTx = NULL;
-
   if(!emulate_rf) {
     // Start RF device if any
     if (ru->start_rf) {
@@ -1348,25 +1343,15 @@ void *ru_thread( void *param ) {
       }
     } // end if (slot_type == NR_UPLINK_SLOT || slot_type == NR_MIXED_SLOT) {
 
-    // At this point, all information for subframe has been received on FH interface
-    res = newNotifiedFIFO_elt(sizeof(processingData_L1_t), 0, &gNB->resp_L1, NULL);
-    resTx = newNotifiedFIFO_elt(sizeof(processingData_L1tx_t), 0, &gNB->L1_tx_out, NULL);
-    syncMsg = (processingData_L1_t *)NotifiedFifoData(res);
-    syncMsg->gNB = gNB;
-    syncMsg->frame_rx = proc->frame_rx;
-    syncMsg->slot_rx = proc->tti_rx;
-    syncMsg->frame_tx = proc->frame_tx;
-    syncMsg->slot_tx = proc->tti_tx;
-    syncMsg->timestamp_tx = proc->timestamp_tx;
-    res->key = proc->tti_rx;
-
-    syncMsgTx = (processingData_L1tx_t *)NotifiedFifoData(resTx);
+    notifiedFIFO_elt_t *resTx = newNotifiedFIFO_elt(sizeof(processingData_L1tx_t), 0, &gNB->L1_tx_out, NULL);
+    processingData_L1tx_t *syncMsgTx = NotifiedFifoData(resTx);
     syncMsgTx->gNB = gNB;
     syncMsgTx->frame = proc->frame_tx;
     syncMsgTx->slot = proc->tti_tx;
+    syncMsgTx->frame_rx = proc->frame_rx;
+    syncMsgTx->slot_rx = proc->tti_rx;
     syncMsgTx->timestamp_tx = proc->timestamp_tx;
     resTx->key = proc->tti_tx;
-    pushNotifiedFIFO(&gNB->resp_L1, res);
     pushNotifiedFIFO(&gNB->L1_tx_out, resTx);
   }
 

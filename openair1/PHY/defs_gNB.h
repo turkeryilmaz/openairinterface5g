@@ -789,9 +789,7 @@ union ldpcReqUnion {
 
 typedef struct processingData_L1 {
   int frame_rx;
-  int frame_tx;
   int slot_rx;
-  int slot_tx;
   openair0_timestamp timestamp_tx;
   PHY_VARS_gNB *gNB;
 } processingData_L1_t;
@@ -805,6 +803,8 @@ typedef enum {
 typedef struct processingData_L1tx {
   int frame;
   int slot;
+  int frame_rx;
+  int slot_rx;
   openair0_timestamp timestamp_tx;
   PHY_VARS_gNB *gNB;
   nfapi_nr_dl_tti_pdcch_pdu pdcch_pdu[NFAPI_NR_MAX_NB_CORESETS];

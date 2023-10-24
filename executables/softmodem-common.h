@@ -375,7 +375,6 @@ extern uint16_t sl_ahead;
 extern uint16_t sf_ahead;
 extern int oai_exit;
 
-void tx_func(void *param);
 void rx_func(void *param);
 void ru_tx_func(void *param);
 extern uint8_t nfapi_mode;
