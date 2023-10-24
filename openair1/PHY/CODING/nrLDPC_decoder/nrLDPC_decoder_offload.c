@@ -425,12 +425,6 @@ static int init_op_data_objs(struct rte_bbdev_op_data *bufs,
   uint8_t nb_segments = 1;
   for (i = 0; i < n; ++i) {
     char *data;
-    /*struct rte_mbuf *m_head = rte_pktmbuf_alloc(mbuf_pool);
-      TEST_ASSERT_NOT_NULL(m_head,
-      "Not enough mbufs in %d data type mbuf pool (needed %u, available %u)",
-      op_type, n * nb_segments,
-      mbuf_pool->size);
-    */
     if (data_len > RTE_BBDEV_LDPC_E_MAX_MBUF) {
       /*
        * Special case when DPDK mbuf cannot handle
@@ -476,7 +470,6 @@ static int init_op_data_objs(struct rte_bbdev_op_data *bufs,
                              op_type,
                              n * nb_segments,
                              mbuf_pool->size);
-        // seg += 1;
 
         data = rte_pktmbuf_append(m_tail, data_len);
         TEST_ASSERT_NOT_NULL(data, "Couldn't append %u bytes to mbuf from %d data type mbuf pool", data_len, op_type);
@@ -571,24 +564,8 @@ set_ldpc_dec_op(struct rte_bbdev_dec_op **ops, unsigned int n,
 		t_nrLDPCoffload_params *p_offloadParams)
 {
   unsigned int i;
-  // struct rte_bbdev_op_ldpc_dec *ldpc_dec = &ref_op->ldpc_dec;
   for (i = 0; i < n; ++i) {
-    /*	if (ldpc_dec->code_block_mode == 0) {
-  ops[i]->ldpc_dec.tb_params.ea =
-  ldpc_dec->tb_params.ea;
-  ops[i]->ldpc_dec.tb_params.eb =
-  ldpc_dec->tb_params.eb;
-  ops[i]->ldpc_dec.tb_params.c =
-  ldpc_dec->tb_params.c;
-  ops[i]->ldpc_dec.tb_params.cab =
-  ldpc_dec->tb_params.cab;
-  ops[i]->ldpc_dec.tb_params.r =
-  ldpc_dec->tb_params.r;
-  printf("code block ea %d eb %d c %d cab %d r %d\n",ldpc_dec->tb_params.ea,ldpc_dec->tb_params.eb,ldpc_dec->tb_params.c,
-  ldpc_dec->tb_params.cab, ldpc_dec->tb_params.r); } else { */
     ops[i]->ldpc_dec.cb_params.e = p_offloadParams->E;
-    //}
-
     ops[i]->ldpc_dec.basegraph = p_offloadParams->BG;
     ops[i]->ldpc_dec.z_c = p_offloadParams->Z;
     ops[i]->ldpc_dec.q_m = p_offloadParams->Qm;
@@ -604,7 +581,6 @@ set_ldpc_dec_op(struct rte_bbdev_dec_op **ops, unsigned int n,
                                 ops[i]->ldpc_dec.op_flags |= RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE;
     }
     ops[i]->ldpc_dec.code_block_mode = 1; // ldpc_dec->code_block_mode;
-    // printf("set ldpc ulsch_id %d\n",ulsch_id);
     ops[i]->ldpc_dec.harq_combined_input.offset = ulsch_id * (32 * 1024 * 1024) + harq_pid * (2 * 1024 * 1024) + r * (1024 * 32);
     ops[i]->ldpc_dec.harq_combined_output.offset = ulsch_id * (32 * 1024 * 1024) + harq_pid * (2 * 1024 * 1024) + r * (1024 * 32);
 
@@ -665,14 +641,6 @@ static int retrieve_ldpc_dec_op(struct rte_bbdev_dec_op **ops,
     ops_td = &ops[i]->ldpc_dec;
     hard_output = &ops_td->hard_output;
     m = hard_output->data;
-    /*	ret = check_dec_status_and_ordering(ops[i], i, ref_op->status);
-  TEST_ASSERT_SUCCESS(ret,
-  "Checking status and ordering for decoder failed");
-  if (vector_mask & TEST_BBDEV_VF_EXPECTED_ITER_COUNT)
-  TEST_ASSERT(ops_td->iter_count <= ref_td->iter_count,
-  "Returned iter_count (%d) > expected iter_count (%d)",
-  ops_td->iter_count, ref_td->iter_count);
-    */
     uint16_t offset = hard_output->offset;
     uint16_t data_len = rte_pktmbuf_data_len(m) - offset;
 
@@ -703,33 +671,7 @@ static int retrieve_ldpc_enc_op(struct rte_bbdev_enc_op **ops, const uint16_t n,
   return TEST_SUCCESS;
 }
 
-// This could be with modifs used for encoder.
-/*static int
-  validate_ldpc_enc_op(struct rte_bbdev_enc_op **ops, const uint16_t n,
-  struct rte_bbdev_enc_op *ref_op)
-  {
-  unsigned int i;
-  int ret;
-  struct op_data_entries *hard_data_orig =
-  &test_vector.entries[DATA_HARD_OUTPUT];
-
-  for (i = 0; i < n; ++i) {
-  ret = check_enc_status_and_ordering(ops[i], i, ref_op->status);
-  TEST_ASSERT_SUCCESS(ret,
-  "Checking status and ordering for encoder failed");
-  TEST_ASSERT_SUCCESS(validate_op_chain(
-  &ops[i]->ldpc_enc.output,
-  hard_data_orig),
-  "Output buffers (CB=%u) are not equal",
-  i);
-  }
-
-  return TEST_SUCCESS;
-  }
-*/
-
 // DPDK BBDEV copy
-// OK for encoding
 static int init_test_op_params(struct test_op_params *op_params,
                                enum rte_bbdev_op_type op_type,
                                const int expected_status,
@@ -775,12 +717,6 @@ pmd_lcore_ldpc_dec(void *arg)
   uint16_t num_to_enq;
   uint8_t *p_out = tp->p_out;
   t_nrLDPCoffload_params *p_offloadParams = tp->p_offloadParams;
-
-  // struct rte_bbdev_op_data *hard_output;
-
-  // bool extDdr = check_bit(ldpc_cap_flags,
-  //		RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE);
-  // start_time = rte_rdtsc_precise();
   bool loopback = check_bit(ref_op->ldpc_dec.op_flags, RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_LOOPBACK);
   bool hc_out = check_bit(ref_op->ldpc_dec.op_flags, RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE);
 
@@ -928,32 +864,6 @@ static int pmd_lcore_ldpc_enc(void *arg)
   return ret;
 }
 
-/* Aggregate the performance results over the number of cores used */
-// DPDK BBDEV copy - could be deleted?
-static void
-print_dec_throughput(struct thread_params *t_params, unsigned int used_cores)
-{
-  unsigned int core_idx = 0;
-  double total_mops = 0, total_mbps = 0;
-  uint8_t iter_count = 0;
-
-  for (core_idx = 0; core_idx < used_cores; core_idx++) {
-    printf("Throughput for core (%u): %.8lg Ops/s, %.8lg Mbps @ max %u iterations\n",
-           t_params[core_idx].lcore_id,
-           t_params[core_idx].ops_per_sec,
-           t_params[core_idx].mbps,
-           t_params[core_idx].iter_count);
-    total_mops += t_params[core_idx].ops_per_sec;
-    total_mbps += t_params[core_idx].mbps;
-    iter_count = RTE_MAX(iter_count, t_params[core_idx].iter_count);
-  }
-  printf("\nTotal throughput for %u cores: %.8lg MOPS, %.8lg Mbps @ max %u iterations\n",
-         used_cores,
-         total_mops,
-         total_mbps,
-         iter_count);
-}
-
 
 /*
  * Test function that determines how long an enqueue + dequeue of a burst
@@ -973,7 +883,6 @@ int start_pmd_dec(struct active_device *ad,
 {
   int ret;
   unsigned int lcore_id, used_cores = 0;
-  struct thread_params *tp;
   // struct rte_bbdev_info info;
   uint16_t num_lcores;
   // rte_bbdev_info_get(ad->dev_id, &info);
