@@ -727,16 +727,6 @@ static int retrieve_ldpc_enc_op(struct rte_bbdev_enc_op **ops, const uint16_t n,
   return TEST_SUCCESS;
   }
 */
-// DPDK BBDEV modified - parameters to be checked, based on the test vector
-static void create_reference_ldpc_enc_op(struct rte_bbdev_enc_op *op, t_nrLDPCoffload_params *p_offloadParams)
-{
-  op->ldpc_enc.input.length = (p_offloadParams->Kr + 7) / 8;
-  op->ldpc_enc.basegraph = p_offloadParams->BG;
-  op->ldpc_enc.z_c = p_offloadParams->Z;
-  op->ldpc_enc.n_filler = p_offloadParams->F;
-  op->ldpc_enc.code_block_mode = 1;
-  op->ldpc_enc.op_flags = RTE_BBDEV_LDPC_INTERLEAVER_BYPASS; // RTE_BBDEV_LDPC_RATE_MATCH;
-}
 
 // DPDK BBDEV copy
 // OK for encoding
@@ -1323,15 +1313,13 @@ int32_t LDPCencoder(unsigned char **input, unsigned char **output, encoder_imple
                                           .n_cb = (BG == 1) ? (66 * Zc) : (50 * Zc),
                                           .BG = BG,
                                           .Z = Zc,
-                                          .rv = 0,// impp->rv,
+                                          .rv = 0, //impp->rv,
                                           .F = 0, //impp->F,
                                           .Qm = impp->Qm,
                                           .Kr = impp->Kr};
   struct rte_bbdev_info info;
   rte_bbdev_info_get(ad->dev_id, &info);
   int socket_id = GET_SOCKET(info.socket_id);
-  // no need to use create_reference_ldpc_dec_op?
-  create_reference_ldpc_enc_op(op_params->ref_enc_op, &offloadParams);
   // fill_queue_buffers -> init_op_data_objs
   struct rte_mempool *in_mp = ad->in_mbuf_pool;
   struct rte_mempool *hard_out_mp = ad->hard_out_mbuf_pool;
