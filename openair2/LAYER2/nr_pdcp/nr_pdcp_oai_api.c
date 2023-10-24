@@ -624,8 +624,6 @@ void enqueue_sdap_data_req(
           SS_DRB_PDU_IND(message_p).pdu_sessionId = pdu_sessionId;
           SS_DRB_PDU_IND(message_p).qfi = qfi;
 
-          itti_send_msg_to_task(TASK_SS_DRB, 0, message_p);
-
           result = itti_send_msg_to_task(TASK_SS_DRB, ctxt.module_id, message_p);
           if (result < 0) {
             LOG_E(SDAP, "Error in itti_send_msg_to_task!\n");
