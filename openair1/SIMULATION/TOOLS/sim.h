@@ -22,6 +22,7 @@
 #ifndef __SIMULATION_TOOLS_DEFS_H__
 #define __SIMULATION_TOOLS_DEFS_H__
 #include "PHY/defs_common.h"
+#include "common/utils/telnetsrv/telnetsrv.h"
 #include <pthread.h>
 /** @defgroup _numerical_ Useful Numerical Functions
  *@{
@@ -56,6 +57,51 @@ typedef enum {
   CORR_LEVEL_MEDIUM,
   CORR_LEVEL_HIGH
 } corr_level_t;
+
+typedef struct pathloss_model_variable_t_s{
+  //antenna height for BS in meters
+  double h_bs;
+  //antenna height for UT (User Terminal) in meters
+  double h_ut;
+  //H = avg. building height in meters
+  double H ;
+  //W = avg. street width in meters
+  double W ;
+  //2D distance between Tx and Rx in meters
+  double d_2d;
+}pathloss_model_variable_t;
+
+
+typedef enum {
+  //No Pathloss model selected user can set Pathloss.
+  None,
+  //Rural Macro Line of Sight
+  RMa_LOS,
+  //Rural Macro Non-Line of Sight
+  RMa_NLOS,
+  //Urban Macro Line of Sight
+  UMa_LOS,
+  //Urban Macro Non-Line of Sight
+  UMa_NLOS,
+  //Urabn Micro Street Canyon Line of Sight
+  UMi_SC_LOS,
+  //Urabn Micro Street Canyon Non-Line of Sight
+  UMi_SC_NLOS,
+  //Indoor Hotspot Office Line of Sight
+  InH_Office_LOS,
+  //Indoor Hotspot Office Non-Line of Sight
+  InH_Office_NLOS,
+  //Indoor Factory Line of Sight
+  InF_LOS,
+  //Indoor Factory with Dense clutter and Low base station height (both Tx and Rx are below the average height of the clutter)
+  InF_NLOS_DL,
+  //Indoor Factory with Dense clutter and High base station height (Tx or Rx elevated above the clutter)
+  InF_NLOS_DH,
+  //Indoor Factory with Sparse clutter and Low base station height (both Tx and Rx are below the average height of the clutter)
+  InF_NLOS_SL,
+  //Indoor Factory with Sparse clutter and High base station height (Tx or Rx elevated above the clutter)
+  InF_NLOS_SH
+} pathloss_model_t;
 
 typedef struct {
   ///Number of tx antennas
@@ -123,9 +169,15 @@ typedef struct {
   /// identifies channel descriptor owner (the module which created this descriptor
   channelmod_moduleid_t module_id;
   /// name of this descriptor,used for model created from config file at init time
-  char *model_name;  
+  char *model_name;
   /// flags to properly trigger memory free
   unsigned int free_flags;
+  /// Pathloss Models as defined by TR 38.901 version 16.1.0 Release 16
+  pathloss_model_t pathloss_model;
+  /// Variables required for pathloss models
+  pathloss_model_variable_t pathloss_model_var;
+  ///Pathloss Model Flag doesn't let the user change the pathloss directly when Pathloss Model is set
+  int PM_Flag;
 } channel_desc_t;
 
 typedef struct {
@@ -258,6 +310,23 @@ typedef enum {
 #define CONFIG_HLP_SNR     "Set average SNR in dB (for --siml1 option)\n"
 #define CHANNELMOD_SECTION "channelmod"
 
+#define PLMOD_MAP_INIT \
+  {"None",None},\
+  {"RMa_LOS",RMa_LOS},\
+  {"RMa_NLOS",RMa_NLOS},\
+  {"UMa_LOS",UMa_LOS},\
+  {"UMa_NLOS",UMa_NLOS},\
+  {"UMi_SC_LOS",UMi_SC_LOS},\
+  {"UMi_SC_NLOS",UMi_SC_NLOS},\
+  {"InH_Office_LOS",InH_Office_LOS},\
+  {"InH_Office_NLOS",InH_Office_NLOS},\
+  {"InF_LOS",InF_LOS},\
+  {"InF_NLOS_DL",InF_NLOS_DL},\
+  {"InF_NLOS_DH",InF_NLOS_DH},\
+  {"InF_NLOS_SL",InF_NLOS_SL},\
+  {"InF_NLOS_SH",InF_NLOS_SH},\
+  {NULL, -1}
+
 /* global channel modelization parameters */
 #define CHANNELMOD_MODELLIST_PARANAME "modellist"
 
@@ -271,9 +340,10 @@ typedef enum {
 }
 // clang-format on
 
-/* parameters for one model */ 
+/* parameters for one model */
 #define CHANNELMOD_MODEL_NAME_PNAME "model_name"
 #define CHANNELMOD_MODEL_TYPE_PNAME "type"
+#define CHANNELMOD_MODEL_PLM_PNAME "pathloss_model"
 #define CHANNELMOD_MODEL_PL_PNAME "ploss_dB"
 #define CHANNELMOD_MODEL_NP_PNAME "noise_power_dB"
 #define CHANNELMOD_MODEL_FF_PNAME "forgetfact"
@@ -284,6 +354,7 @@ typedef enum {
 #define CHANNELMOD_MODEL_PARAMS_DESC {  \
     {CHANNELMOD_MODEL_NAME_PNAME, "name of the model\n",               0,  .strptr=NULL ,            .defstrval="",                    TYPE_STRING,    0 }, \
     {CHANNELMOD_MODEL_TYPE_PNAME, "name of the model type\n",          0,  .strptr=NULL ,            .defstrval="AWGN",                TYPE_STRING,    0 }, \
+    {CHANNELMOD_MODEL_PLM_PNAME,  "name of the pathloss Model\n",      0,  .strptr=NULL ,            .defstrval="None",                TYPE_STRING,    0 }, \
     {CHANNELMOD_MODEL_PL_PNAME,   "channel path loss in dB\n",         0,  .dblptr=NULL,             .defdblval=0,                     TYPE_DOUBLE,    0 }, \
     {CHANNELMOD_MODEL_NP_PNAME,   "channel noise in dB\n",             0,  .dblptr=NULL,             .defdblval=-50,                   TYPE_DOUBLE,    0 }, \
     {CHANNELMOD_MODEL_FF_PNAME,   "channel forget factor ((0 to 1)\n", 0,  .dblptr=NULL,             .defdblval=0,                     TYPE_DOUBLE,    0 }, \
@@ -320,6 +391,7 @@ typedef struct {
 channel_desc_t *new_channel_desc_scm(uint8_t nb_tx,
                                      uint8_t nb_rx,
                                      SCM_t channel_model,
+                                     pathloss_model_t pathloss_model,
                                      double sampling_rate,
                                      uint64_t center_freq,
                                      double channel_bandwidth,
@@ -333,6 +405,7 @@ channel_desc_t *new_channel_desc_scm(uint8_t nb_tx,
 
 channel_desc_t *find_channel_desc_fromname( char *modelname );
 
+int calculate_pathloss_cmd(channel_desc_t *chan_desc);
 
 /**
 \brief free memory allocated for a model descriptor
@@ -553,14 +626,14 @@ int modelid_fromstrtype(char *modeltype);
 double channelmod_get_snr_dB(void);
 double channelmod_get_sinr_dB(void);
 void init_channelmod(void) ;
-int load_channellist(uint8_t nb_tx, uint8_t nb_rx, double sampling_rate, double channel_bandwidth) ;
+int load_channellist(uint8_t nb_tx, uint8_t nb_rx, double sampling_rate, double channel_bandwidth, uint64_t fc) ;
 double N_RB2sampling_rate(uint16_t N_RB);
 double N_RB2channel_bandwidth(uint16_t N_RB);
 
 /* Linear phase noise model */
 /*!
   \brief This function produce phase noise and add to input signal
-  \param ts Sampling time 
+  \param ts Sampling time
   \param *Re *Im Real and Imag part of the signal
 */
 //look-up table for the sine (cosine) function

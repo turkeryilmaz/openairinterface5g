@@ -120,6 +120,7 @@ typedef enum { SIMU_ROLE_SERVER = 1, SIMU_ROLE_CLIENT } simuRole;
 
 static void getset_currentchannels_type(char *buf, int debug, webdatadef_t *tdata, telnet_printfunc_t prnt);
 extern int get_currentchannels_type(char *buf, int debug, webdatadef_t *tdata, telnet_printfunc_t prnt); // in random_channel.c
+extern void display_channelmodel(channel_desc_t *cd,int debug, telnet_printfunc_t prnt); // in randon_channel.c
 static int rfsimu_setchanmod_cmd(char *buff, int debug, telnet_printfunc_t prnt, void *arg);
 static int rfsimu_setdistance_cmd(char *buff, int debug, telnet_printfunc_t prnt, void *arg);
 static int rfsimu_getdistance_cmd(char *buff, int debug, telnet_printfunc_t prnt, void *arg);
@@ -160,6 +161,7 @@ typedef struct {
   simuRole role;
   char *ip;
   uint16_t port;
+  uint64_t fc; //center frequency
   int saveIQfile;
   buffer_t buf[MAX_FD_RFSIMU];
   int rx_num_channels;
@@ -167,6 +169,7 @@ typedef struct {
   double sample_rate;
   double tx_bw;
   int channelmod;
+  int pathlossmod;
   double chan_pathloss;
   double chan_forgetfact;
   int    chan_offset;
@@ -354,7 +357,7 @@ static void rfsimulator_readconfig(rfsimulator_state_t *rfsimulator) {
       break;
     } else if (strcmp(rfsimu_params[p].strlistptr[i],"chanmod") == 0) {
       init_channelmod();
-      load_channellist(rfsimulator->tx_num_channels, rfsimulator->rx_num_channels, rfsimulator->sample_rate, rfsimulator->tx_bw);
+      load_channellist(rfsimulator->tx_num_channels, rfsimulator->rx_num_channels, rfsimulator->sample_rate, rfsimulator->tx_bw, rfsimulator->fc);
       rfsimulator->channelmod=true;
     } else {
       fprintf(stderr, "unknown rfsimulator option: %s\n", rfsimu_params[p].strlistptr[i]);
@@ -411,6 +414,7 @@ static int rfsimu_setchanmod_cmd(char *buff, int debug, telnet_printfunc_t prnt,
           channel_desc_t *newmodel = new_channel_desc_scm(t->tx_num_channels,
                                                           t->rx_num_channels,
                                                           channelmod,
+                                                          t->pathlossmod,
                                                           t->sample_rate,
                                                           0,
                                                           t->tx_bw,
@@ -567,6 +571,9 @@ static int rfsimu_setdistance_cmd(char *buff, int debug, telnet_printfunc_t prnt
     const int nbTx = cd->nb_tx;
     prnt("  %s: Modifying model %s...\n", __func__, modelname);
     rfsimu_offset_change_cirBuf(b->circularBuf, t->nextRxTstamp, CirSize, old_offset, new_offset, nbTx);
+    cd->pathloss_model_var.d_2d = new_distance;
+    calculate_pathloss_cmd(cd);
+    display_channelmodel(cd,debug,prnt);
   }
 
   free(modelname);
@@ -1077,7 +1084,8 @@ int device_init(openair0_device *device, openair0_config_t *openair0_cfg) {
   rfsimulator->tx_num_channels=openair0_cfg->tx_num_channels;
   rfsimulator->rx_num_channels=openair0_cfg->rx_num_channels;
   rfsimulator->sample_rate=openair0_cfg->sample_rate;
-  rfsimulator->tx_bw=openair0_cfg->tx_bw;  
+  rfsimulator->fc=openair0_cfg->tx_freq[0];
+  rfsimulator->tx_bw=openair0_cfg->tx_bw;
   rfsimulator_readconfig(rfsimulator);
   LOG_W(HW, "sample_rate %f\n", rfsimulator->sample_rate);
   pthread_mutex_init(&Sockmutex, NULL);
