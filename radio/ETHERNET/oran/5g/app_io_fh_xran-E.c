@@ -2092,7 +2092,7 @@ app_io_xran_fh_config_init(UsecaseConfig* p_use_cfg,  RuntimeConfig* p_o_xu_cfg,
     if (p_o_xu_cfg->prachCompMethod == 0)
         p_o_xu_cfg->prachiqWidth = 16;
     p_xran_fh_cfg->ru_conf.iqWidth_PRACH            = p_o_xu_cfg->prachiqWidth;
-        
+    p_xran_fh_cfg->prach_eAxc_offset                = p_o_xu_cfg->prach_eAxc_off; 
     printf("CompHdrType %s. iqWidth %d, compMeth %s, compMeth_PRACH %s, iqWidth_PRACH %d\n",
 	   p_xran_fh_cfg->ru_conf.xranCompHdrType==1?"Static":"Dynamic", 
 	   p_xran_fh_cfg->ru_conf.iqWidth,

@@ -40,6 +40,7 @@ typedef struct _RuntimeConfig
     uint8_t numCC;        /**< Number of CC per ports supported by RU */
     uint8_t numAxc;       /**< Number of Antenna Carriers per CC */
     uint8_t numUlAxc;     /**< Number of Antenna Carriers per CC for UL (Cat B) */
+    uint8_t prach_eAxc_off;     /**< PRACH eAxC offset  */
     uint32_t antElmTRx;   /**< Number of antenna elements for TX and RX */
     uint32_t muMimoUEs;   /**< Number of UEs (with 1 RX ant)/beams */
 

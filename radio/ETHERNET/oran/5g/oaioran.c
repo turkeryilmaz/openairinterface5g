@@ -215,10 +215,10 @@ int read_prach_data(ru_info_t *ru, int frame, int slot)
                                  bfp_decom_rsp.data_out   = (int16_t*)local_dst;
                                  bfp_decom_rsp.len        = 0;
                                  xranlib_decompress_avx512(&bfp_decom_req, &bfp_decom_rsp);
-		                 if (sym_idx == 0) //memcpy((void*)dst,(void*)local_dst,576); // 576 is short PRACH 139 -> 144*4
-			         for (idx = 0; idx < (576/2); idx++) dst[idx]=local_dst[idx]>>2;
+		                 if (sym_idx == 0)  // 576 is short PRACH 139 -> 144*4
+			           for (idx = 0; idx < (576/2); idx++) dst[idx]=local_dst[idx]>>2;
 			         else
-	  	                 for (idx = 0; idx < (576/2); idx++) dst[idx]+=(local_dst[idx]>>2);
+	  	                   for (idx = 0; idx < (576/2); idx++) dst[idx]+=(local_dst[idx]>>2);*/
 			  } // COMPMETHOD_BLKFLOAT
 		} //aa
 	  }// symb_indx

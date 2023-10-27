@@ -584,7 +584,7 @@ void rx_nr_prach(PHY_VARS_gNB *gNB,
     // Compute DFT of RX signal (conjugate input, results in conjugate output) for each new rootSequenceIndex
     if (LOG_DEBUGFLAG(PRACH)) {
       int en = dB_fixed(signal_energy((int32_t*)&rxsigF[0][0],840));
-      if (en>30) LOG_I(PHY,"frame %d, slot %d : preamble index %d, NCS %d, N_ZC/NCS %d: offset %d, preamble shift %d , en %d)\n",
+      if (en>30) LOG_D(PHY,"frame %d, slot %d : preamble index %d, NCS %d, N_ZC/NCS %d: offset %d, preamble shift %d , en %d)\n",
 		       frame,slot,preamble_index,NCS,N_ZC/NCS,preamble_offset,preamble_shift,en);
     }
 

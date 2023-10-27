@@ -73,6 +73,7 @@
 #define KEY_CC_PER_PORT_NUM "ccNum"
 #define KEY_ANT_NUM         "antNum"
 #define KEY_UL_ANT_NUM      "antNumUL"
+#define KEY_PRACH_EAXC_OFF  "prach_eAxc_offset"
 
 #define KEY_ANT_ELM_TRX_NUM "antElmTRx"
 
@@ -306,6 +307,9 @@ static int fillConfigStruct(RuntimeConfig *config, const char *key, const char *
         config->numAxc = atoi(value);
     } else if (strcmp(key, KEY_UL_ANT_NUM) == 0) {
         config->numUlAxc = atoi(value);
+    } else if (strcmp(key, KEY_PRACH_EAXC_OFF) == 0) {
+        config->prach_eAxc_off = atoi(value);
+        printf("prach_eAxc_off %d\n", config->prach_eAxc_off);
     }else if (strcmp(key, KEY_ANT_ELM_TRX_NUM) == 0) {
         config->antElmTRx = atoi(value);
         printf("antElmTRx %d\n", config->antElmTRx);
