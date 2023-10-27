@@ -141,7 +141,7 @@ static void tx_func(void *param)
 
     // At this point, MAC scheduler just ran, including scheduling
     // PRACH/PUCCH/PUSCH, so trigger RX chain processing
-    LOG_I(NR_PHY, "%s() trigger RX\n", __func__);
+    LOG_D(NR_PHY, "%s() trigger RX\n", __func__);
     notifiedFIFO_elt_t *res = newNotifiedFIFO_elt(sizeof(processingData_L1_t), 0, &gNB->resp_L1, NULL);
     processingData_L1_t *syncMsg = NotifiedFifoData(res);
     syncMsg->gNB = gNB;
