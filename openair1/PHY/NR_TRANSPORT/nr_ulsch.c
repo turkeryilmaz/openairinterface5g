@@ -101,7 +101,7 @@ void reset_active_ulsch(PHY_VARS_gNB *gNB, int frame)
     int diff = (frame - ulsch->frame + 1024) & 1023;
     if (ulsch->active && diff > NUMBER_FRAMES_PHY_UE_INACTIVE && diff < 100) {
       ulsch->active = false;
-      LOG_W(NR_PHY,"Frame %d: resetting ulsch %d harq %d (programmed in %d.%d)\n",frame,i,ulsch->harq_pid,ulsch->frame,ulsch->slot);
+      LOG_D(NR_PHY,"Frame %d: resetting ulsch %d harq %d (programmed in %d.%d)\n",frame,i,ulsch->harq_pid,ulsch->frame,ulsch->slot);
     }
   }
 }
