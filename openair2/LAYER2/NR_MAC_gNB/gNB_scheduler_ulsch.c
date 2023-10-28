@@ -607,7 +607,7 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
 
     if (sduP)
       T(T_GNB_MAC_UL_PDU_WITH_DATA, T_INT(gnb_mod_idP), T_INT(CC_idP),
-        T_INT(rntiP), T_INT(frameP), T_INT(slotP), T_INT(harq_pid),
+       T_INT(rntiP), T_INT(frameP), T_INT(slotP), T_INT(harq_pid),
         T_BUFFER(sduP, sdu_lenP));
 
     UE->mac_stats.ul.total_bytes += sdu_lenP;

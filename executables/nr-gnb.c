@@ -133,6 +133,9 @@ static void tx_func(void *param)
 
   T(T_GNB_PHY_DL_TICK, T_INT(gNB->Mod_id), T_INT(frame_tx), T_INT(slot_tx));
 
+  reset_active_stats(gNB, frame_rx);
+  reset_active_ulsch(gNB, frame_rx);
+
   if (1) {
     ifi->NR_mac_scheduler(module_id, CC_id, frame_tx, slot_tx);
     gNB->msgDataTx->timestamp_tx = info->timestamp_tx;
@@ -141,7 +144,7 @@ static void tx_func(void *param)
 
     // At this point, MAC scheduler just ran, including scheduling
     // PRACH/PUCCH/PUSCH, so trigger RX chain processing
-    LOG_D(NR_PHY, "%s() trigger RX\n", __func__);
+    LOG_D(NR_PHY, "%s() trigger RX for %d.%d\n", __func__,frame_rx,slot_rx);
     notifiedFIFO_elt_t *res = newNotifiedFIFO_elt(sizeof(processingData_L1_t), 0, &gNB->resp_L1, NULL);
     processingData_L1_t *syncMsg = NotifiedFifoData(res);
     syncMsg->gNB = gNB;
@@ -232,12 +235,11 @@ void rx_func(void *param)
   }
   // ****************************************
 
-  reset_active_stats(gNB, frame_rx);
-  reset_active_ulsch(gNB, frame_rx);
 
   // RX processing
   int rx_slot_type = nr_slot_select(cfg, frame_rx, slot_rx);
   if (rx_slot_type == NR_UPLINK_SLOT || rx_slot_type == NR_MIXED_SLOT) {
+
     // UE-specific RX processing for subframe n
     // TODO: check if this is correct for PARALLEL_RU_L1_TRX_SPLIT
 
