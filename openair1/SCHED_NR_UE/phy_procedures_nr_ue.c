@@ -294,7 +294,7 @@ void phy_procedures_nrUE_TX(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, n
         fapi_nr_config_request_t *cfg = &mac->phy_config.config_req;
         NR_UE_ULSCH_t *ulsch_ue = &phy_data->ulsch;
          const nfapi_nr_ue_pusch_pdu_t *pusch_pdu = &ulsch_ue->pusch_pdu;
-        ue->tx_power_max_dBm = nr_get_Pcmax(mac, pusch_pdu->qam_mod_order, false, frame_parms->subcarrier_spacing, cfg->carrier_config.dl_grid_size[frame_parms->numerology_index], pusch_pdu->transform_precoding, pusch_pdu->rb_size, pusch_pdu->bwp_start);
+        ue->tx_power_max_dBm = nr_get_Pcmax(mac, pusch_pdu->qam_mod_order, false, frame_parms->numerology_index, cfg->carrier_config.dl_grid_size[frame_parms->numerology_index], pusch_pdu->transform_precoding, pusch_pdu->rb_size, pusch_pdu->bwp_start);
       } 
       nr_ue_ulsch_procedures(ue, harq_pid, frame_tx, slot_tx, gNB_id, phy_data, (c16_t **)&txdataF);
     }
