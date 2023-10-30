@@ -50,7 +50,7 @@ void phy_adjust_gain_nr(PHY_VARS_NR_UE *ue) {
     ue->measurements.rx_gain_update = 1;
   }
 
-  LOG_D(PHY,
+  LOG_I(PHY,
         "Gain Control: Flag %d, n0_dB : %3d (dB) Old Rx Gain: %3.2f (dB) New Rx Gain %3.2f\n",
         ue->measurements.rx_gain_update, n0_dB,
         ue->rfdevice.app_rx_gain[0], ue->rfdevice.openair0_cfg[0].rx_gain[0]);
