@@ -133,7 +133,6 @@ ssize_t read_to_buffer(char* fname, int fd, char* buffer, uint64_t size, uint64_
 
   while (count < size) {
     uint64_t bytes = size - count;
-    printf("[read_buf]size = %d, count = %d, bytes = %d\n", size, count, bytes);
 
     if (bytes > RW_MAX_SIZE)
       bytes = RW_MAX_SIZE;
@@ -176,8 +175,6 @@ ssize_t write_from_buffer(char* fname, int fd, char* buffer, uint64_t size, uint
 
   while (count < size) {
     uint64_t bytes = size - count;
-    printf("[write_buf]size = %d, count = %d, bytes = %d\n", size, count, bytes);
-
 
     if (bytes > RW_MAX_SIZE)
       bytes = RW_MAX_SIZE;
@@ -193,7 +190,6 @@ ssize_t write_from_buffer(char* fname, int fd, char* buffer, uint64_t size, uint
 
     /* write data to file from memory buffer */
     rc = write(fd, buf, bytes);
-    printf("bytes = %d\n", bytes);
     if (rc != bytes) {
       fprintf(stderr, "%s, W off 0x%lx, 0x%lx != 0x%lx.\n", fname, offset, rc, bytes);
       perror("write file");
@@ -693,11 +689,6 @@ void test_dma_init()
   fd_enc_read = open(DEVICE_NAME_DEFAULT_ENC_READ, O_RDWR);
   fd_dec_write = open(DEVICE_NAME_DEFAULT_DEC_WRITE, O_RDWR);
   fd_dec_read = open(DEVICE_NAME_DEFAULT_DEC_READ, O_RDWR);
-  printf("----------\ntest_dma_init\n----------\n");
-  printf("fd_enc_write = %d\n", fd_enc_write);
-  printf("fd_enc_read = %d\n", fd_enc_read);
-  printf("fd_dec_write = %d\n", fd_dec_write);
-  printf("fd_dec_read = %d\n", fd_dec_read);
 
   fflush(stdout);
 
@@ -802,7 +793,6 @@ int nrLDPC_decoder_FPGA_PYM(int8_t* buf_in, int8_t* buf_out, DecIFConf dec_conf)
   nRows = dec_conf.nRows; // number of Rows
   baseGraph = dec_conf.BG; // base graph
   CB_num = dec_conf.numCB; // 31 number of code block
-  printf("CB_num = %d\n", CB_num);
   numChannelLlrs = dec_conf.numChannelLls; // input soft bits length, Zc x 66 - length of filler bits
   numFillerBits = dec_conf.numFillerBits; // filler bits length
 
