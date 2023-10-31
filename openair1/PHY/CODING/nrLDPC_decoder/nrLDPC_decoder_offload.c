@@ -71,6 +71,9 @@
 /* Headroom for filler LLRs insertion in HARQ buffer */
 #define FILLER_HEADROOM 1024
 
+pthread_mutex_t encode_mutex;
+pthread_mutex_t decode_mutex;
+
 /* Represents tested active devices */
 struct active_device {
   const char *driver_name;
@@ -998,6 +1001,8 @@ struct rte_mbuf *m_head[DATA_NUM_TYPES];
 // OAI CODE
 int32_t LDPCinit()
 {
+  pthread_mutex_init(&encode_mutex, NULL);
+  pthread_mutex_init(&decode_mutex, NULL);
   int ret;
   int dev_id = 0;
   struct rte_bbdev_info info;
@@ -1103,6 +1108,8 @@ int32_t LDPCdecoder(struct nrLDPC_dec_params *p_decParams,
                     t_nrLDPC_time_stats *p_profiler,
                     decode_abort_t *ab)
 {
+  pthread_mutex_lock(&decode_mutex);
+
   // hardcoded we use first device
   struct active_device *ad = active_devs;
   t_nrLDPCoffload_params offloadParams = {.E = p_decParams->E,
@@ -1145,13 +1152,16 @@ int32_t LDPCdecoder(struct nrLDPC_dec_params *p_decParams,
   int ret = start_pmd_dec(ad, op_params, &offloadParams, C, harq_pid, ulsch_id, (uint8_t *)p_out);
   if (ret < 0) {
     printf("Couldn't start pmd dec");
+    pthread_mutex_unlock(&decode_mutex);
     return (20); // Fix me: we should propoagate max_iterations properly in the call (impp struct)
   }
+  pthread_mutex_unlock(&decode_mutex);
   return ret;
 }
 
 int32_t LDPCencoder(unsigned char **input, unsigned char **output, encoder_implemparams_t *impp)
 {
+  pthread_mutex_lock(&encode_mutex);
   // hardcoded to use the first found board
   struct active_device *ad = active_devs;
   int Zc = impp->Zc;
@@ -1191,5 +1201,7 @@ int32_t LDPCencoder(unsigned char **input, unsigned char **output, encoder_imple
                                 info.drv.min_alignment);
     TEST_ASSERT_SUCCESS(ret, "Couldn't init rte_bbdev_op_data structs");
   }
-  return start_pmd_enc(ad, op_params, &offloadParams, *output);
+  int ret=start_pmd_enc(ad, op_params, &offloadParams, *output);
+  pthread_mutex_unlock(&encode_mutex);
+  return ret;
 }
