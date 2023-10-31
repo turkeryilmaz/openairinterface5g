@@ -426,46 +426,47 @@ void transferRES(uint8_t ck[16], uint8_t ik[16], uint8_t *input, uint8_t rand[16
   S[19 + netNamesize] = 0x00;
   S[20 + netNamesize] = 0x10;
 
-#ifdef AUTH_ALGO_MILENAGE
-  for (int i = 0; i < 8; i++)
-    S[21 + netNamesize + i] = input[i];
-  S[29 + netNamesize] = 0x00;
-  S[30 + netNamesize] = 0x08;
+  if (uicc->use_milenage) {
+    for (int i = 0; i < 8; i++)
+      S[21 + netNamesize + i] = input[i];
+    S[29 + netNamesize] = 0x00;
+    S[30 + netNamesize] = 0x08;
 
-  uint8_t plmn[3] = { 0x02, 0xf8, 0x39 };
-  uint8_t oldS[100];
-  oldS[0] = 0x6B;
-  memcpy(&oldS[1], plmn, 3);
-  oldS[4] = 0x00;
-  oldS[5] = 0x03;
-  for (int i = 0; i < 16; i++)
-    oldS[6 + i] = rand[i];
-  oldS[22] = 0x00;
-  oldS[23] = 0x10;
-  for (int i = 0; i < 8; i++)
-    oldS[24 + i] = input[i];
-  oldS[32] = 0x00;
-  oldS[33] = 0x08;
-#else
-  for (int i = 0; i < 16; i++) {
-    S[21 + netNamesize + i] = input[i];
+    uint8_t plmn[3] = { 0x02, 0xf8, 0x39 };
+    uint8_t oldS[100];
+    oldS[0] = 0x6B;
+    memcpy(&oldS[1], plmn, 3);
+    oldS[4] = 0x00;
+    oldS[5] = 0x03;
+    for (int i = 0; i < 16; i++)
+      oldS[6 + i] = rand[i];
+    oldS[22] = 0x00;
+    oldS[23] = 0x10;
+    for (int i = 0; i < 8; i++)
+      oldS[24 + i] = input[i];
+    oldS[32] = 0x00;
+    oldS[33] = 0x08;
+  } else {
+    for (int i = 0; i < 16; i++) {
+      S[21 + netNamesize + i] = input[i];
+    }
+    S[37 + netNamesize] = 0x00;
+    S[38 + netNamesize] = 0x10;
   }
-  S[37 + netNamesize] = 0x00;
-  S[38 + netNamesize] = 0x10;
-#endif
 
   uint8_t key[32] = {0};
   memcpy(&key[0], ck, 16);
   memcpy(&key[16], ik, 16);  //KEY
   uint8_t out[32] = {0};
 
-#ifdef AUTH_ALGO_MILENAGE
-  byte_array_t data = {.buf = S, .len = 31 + netNamesize};
-  kdf(key, data, 32, out);
-#else
-  byte_array_t data = {.buf = S, .len = 39 + netNamesize};
-  kdf(key, data, 32, out);
-#endif
+  if (uicc->use_milenage) {
+    byte_array_t data = {.buf = S, .len = 31 + netNamesize};
+    kdf(key, data, 32, out);
+  } else {
+    byte_array_t data = {.buf = S, .len = 39 + netNamesize};
+    kdf(key, data, 32, out);
+  }
+
   memcpy(output, out + 16, 16);
 }
 
@@ -799,11 +800,11 @@ static void derive_ue_keys(uint8_t *buf, nr_ue_nas_t *nas) {
   uint8_t resTemp[16];
   uint8_t ck[16], ik[16];
 
-#ifdef AUTH_ALGO_MILENAGE
-  f2345(nas->uicc->key, rand, resTemp, ck, ik, ak, nas->uicc->opc);
-#else
-  derive_keys_xor(nas->uicc->key, rand, ck, ik, ak, resTemp);
-#endif
+  if (nas->uicc->use_milenage) {
+    f2345(nas->uicc->key, rand, resTemp, ck, ik, ak, nas->uicc->opc);
+  } else {
+    derive_keys_xor(nas->uicc->key, rand, ck, ik, ak, resTemp);
+  }
 
   if (!eap_msg_offset) {
     transferRES(ck, ik, resTemp, rand, xres, nas->uicc); // calc XRES_Star
