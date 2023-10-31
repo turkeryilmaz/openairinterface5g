@@ -757,6 +757,9 @@ typedef struct puschSymbolProc_s {
   int16_t **llr_layers;
   int16_t *s;
   uint32_t nvar;
+#ifdef TASK_MANAGER
+ _Atomic(int)* task_finished;
+#endif
 } puschSymbolProc_t;
 
 struct puschSymbolReqId {

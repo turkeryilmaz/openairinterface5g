@@ -487,14 +487,14 @@ void init_gNB_Tpool(int inst) {
   printf("[MIR]: log cores %d \n", log_cores);
   // Assuming: 2 x Physical cores = Logical cores
   init_task_manager(&gNB->man, log_cores/2);
-#endif
-  // PUSCH symbols per thread need to be calculated by how many threads we have
-  gNB->num_pusch_symbols_per_thread = 1;
-  // ULSCH decoding threadpool
 #else
   initTpool(get_softmodem_params()->threadPoolConfig, &gNB->threadPool, cpumeas(CPUMEAS_GETSTATE));
 #endif
-   // ULSCH decoder result FIFO
+  
+  // PUSCH symbols per thread need to be calculated by how many threads we have
+  gNB->num_pusch_symbols_per_thread = 1;
+
+  // ULSCH decoder result FIFO
   initNotifiedFIFO(&gNB->respPuschSymb);
   initNotifiedFIFO(&gNB->respDecode);
 
