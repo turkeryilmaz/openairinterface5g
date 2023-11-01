@@ -432,52 +432,9 @@ static void reblock_tun_socket(void)
     exit(1);
   }
 }
-
-static void *enb_tun_read_thread(void *_)
-{
-  extern int nas_sock_fd[];
-  char rx_buf[NL_MAX_PAYLOAD];
-  int len;
-  protocol_ctxt_t ctxt;
-  ue_id_t rntiMaybeUEid;
-
-  int rb_id = 1;
-  pthread_setname_np( pthread_self(),"enb_tun_read");
-
-  while (1) {
-    len = read(nas_sock_fd[0], &rx_buf, NL_MAX_PAYLOAD);
-    if (len == -1) {
-      LOG_E(PDCP, "%s:%d:%s: fatal\n", __FILE__, __LINE__, __FUNCTION__);
-      exit(1);
-    }
-
-    LOG_D(PDCP, "%s(): nas_sock_fd read returns len %d\n", __func__, len);
-
-    nr_pdcp_manager_lock(nr_pdcp_ue_manager);
-    const bool has_ue = nr_pdcp_get_first_ue_id(nr_pdcp_ue_manager, &rntiMaybeUEid);
-    nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
-
-    if (!has_ue) continue;
-
-    ctxt.module_id = 0;
-    ctxt.enb_flag = 1;
-    ctxt.instance = 0;
-    ctxt.frame = 0;
-    ctxt.subframe = 0;
-    ctxt.eNB_index = 0;
-    ctxt.brOption = 0;
-    ctxt.rntiMaybeUEid = rntiMaybeUEid;
-
-    uint8_t qfi = 7;
-    bool rqi = 0;
-    int pdusession_id = 10;
-
-    sdap_data_req(&ctxt, rntiMaybeUEid, SRB_FLAG_NO, rb_id, RLC_MUI_UNDEFINED, RLC_SDU_CONFIRM_NO, len, (unsigned char *)rx_buf, PDCP_TRANSMISSION_MODE_DATA, NULL, NULL, qfi, rqi, pdusession_id);
-  }
-
-  return NULL;
-}
-// Function to check if the packet is an IP packet and its type is ICMP
+/****************************************************************************/
+/* Function to check if the packet is an IP packet and its type is ICMP     */
+/****************************************************************************/
 static int isICMPPacket(const uint8_t *packet, size_t length) {
     // Check if the packet is large enough to contain an IP header
     if (length < sizeof(struct ip)) {
@@ -509,6 +466,56 @@ static int isICMPPacket(const uint8_t *packet, size_t length) {
     // If we reached here, the packet is an IPv4 ICMP packet
     return 1;
 }
+
+static void *enb_tun_read_thread(void *_)
+{
+  extern int nas_sock_fd[];
+  char rx_buf[NL_MAX_PAYLOAD];
+  int len;
+  protocol_ctxt_t ctxt;
+  ue_id_t rntiMaybeUEid;
+
+  int rb_id = 1;
+  pthread_setname_np( pthread_self(),"enb_tun_read");
+
+  while (1) {
+    len = read(nas_sock_fd[0], &rx_buf, NL_MAX_PAYLOAD);
+    if (len == -1) {
+      LOG_E(PDCP, "%s:%d:%s: fatal\n", __FILE__, __LINE__, __FUNCTION__);
+      exit(1);
+    }
+
+    LOG_D(PDCP, "%s(): nas_sock_fd read returns len %d\n", __func__, len);
+
+    nr_pdcp_manager_lock(nr_pdcp_ue_manager);
+    const bool has_ue = nr_pdcp_get_first_ue_id(nr_pdcp_ue_manager, &rntiMaybeUEid);
+    nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
+
+    if (!has_ue) continue;
+    
+    if(!isICMPPacket(rx_buf, len)) {
+      continue;
+    }
+
+    ctxt.module_id = 0;
+    ctxt.enb_flag = 1;
+    ctxt.instance = 0;
+    ctxt.frame = 0;
+    ctxt.subframe = 0;
+    ctxt.eNB_index = 0;
+    ctxt.brOption = 0;
+    ctxt.rntiMaybeUEid = rntiMaybeUEid;
+
+    uint8_t qfi = 7;
+    bool rqi = 0;
+    int pdusession_id = 10;
+
+    sdap_data_req(&ctxt, rntiMaybeUEid, SRB_FLAG_NO, rb_id, RLC_MUI_UNDEFINED, RLC_SDU_CONFIRM_NO, len, (unsigned char *)rx_buf, PDCP_TRANSMISSION_MODE_DATA, NULL, NULL, qfi, rqi, pdusession_id);
+  }
+
+  return NULL;
+}
+
 static void *ue_tun_read_thread(void *_)
 {
   extern int nas_sock_fd[];
