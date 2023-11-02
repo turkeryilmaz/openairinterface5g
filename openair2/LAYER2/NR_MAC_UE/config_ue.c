@@ -742,7 +742,10 @@ void nr_rrc_mac_config_req_sib1(module_id_t module_id,
   // configure BWP only if it is a SIB1 detection in non connected state (after sync)
   // not if it is a periodical update of SIB1 (no change of BWP in that case)
   if(mac->state < UE_CONNECTED)
+  { 
     configure_current_BWP(mac, scc, NULL);
+    mac->current_UL_BWP.pusch_Config = NULL;
+  } 
 
   // Setup the SSB to Rach Occasionsif (cell_group_config->spCellConfig) { mapping according to the config
   build_ssb_to_ro_map(mac);

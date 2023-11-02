@@ -4312,12 +4312,13 @@ void nr_get_pusch_tx_power_ue_parameters(NR_UE_MAC_INST_t *mac,
 
   NR_PUSCH_PowerControl_t *pusch_pc_cfg = NULL;
   NR_SRI_PUSCH_PowerControl_t *SRI_PUSCH_PowerControl = NULL;
-
-  if (pusch_Config->pusch_PowerControl)
-    pusch_pc_cfg = pusch_Config->pusch_PowerControl;
-  else
-    LOG_W(MAC, "%s:NR_PUSCH_PowerControl Not present\n",__FUNCTION__);
-
+  if (pusch_Config)
+  { 
+    if (pusch_Config->pusch_PowerControl)
+      pusch_pc_cfg = pusch_Config->pusch_PowerControl;
+    else
+      LOG_W(MAC, "%s:NR_PUSCH_PowerControl Not present\n",__FUNCTION__);
+  } 
   int P0_UE_PUSCH = 0, P0_NOMINAL_PUSCH = 0;
   P0_NOMINAL_PUSCH = nr_get_Po_NOMINAL_PUSCH_for_ULPC(mac);
 
@@ -4400,18 +4401,18 @@ void nr_get_pusch_tx_power_ue_parameters(NR_UE_MAC_INST_t *mac,
                                         P0_NOMINAL_PUSCH, P0_UE_PUSCH,alpha_val, alpha, pathloss);
 
   pusch_pdu->P0_PUSCH = P0_NOMINAL_PUSCH + P0_UE_PUSCH;
-
   //if IE tpc_accumulation is NULL, tpc accumulation is enabled. if IE present, tpc accumulation is disabled.
   pusch_pdu->tpc_accumulation_enabled = ((pusch_pc_cfg) && (pusch_pc_cfg->tpc_Accumulation == NULL)) ? 1 : 0;
   //if IE deltaMCS is NULL, deltaMCS is disabled. if IE present, tpc accumulation is enabled.
-  pusch_pdu->deltaMCS = (pusch_pc_cfg->deltaMCS) ? 1 : 0;
+  //pusch_pdu->deltaMCS = (pusch_pc_cfg && pusch_pc_cfg->deltaMCS) ? 1 : 0;
+  pusch_pdu->deltaMCS = 1;
   //MAC pdu includes ULSCH data then beta offset = 1
   //Else if includes CSI and no ULSCH data then TBD...
   pusch_pdu->beta_offset = 1;
 
   /////////////////////////////////////////////  f_pusch  ///////////////////////////////////////////////
   /// assume tpc-Accumulation is not provided!
-  if (pusch_pc_cfg->twoPUSCH_PC_AdjustmentStates) {
+  if (pusch_pc_cfg && pusch_pc_cfg->twoPUSCH_PC_AdjustmentStates) {
 
     LOG_W(PHY, "In %s: missing implementation for twopusch_pc_cfg_AdjustmentStates\n", __FUNCTION__);
 
