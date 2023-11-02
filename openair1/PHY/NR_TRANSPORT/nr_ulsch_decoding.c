@@ -67,7 +67,7 @@
 #include <omp.h>
 
 #include "PHY/CODING/nrLDPC_decoder_offload_xdma/nrLDPC_decoder_offload_xdma.h" // XDMA header file
-#define NUM_THREADS_PREPARE 5
+#define NUM_THREADS_PREPARE 8
 
 static inline
 int64_t time_now_us(void)
@@ -1041,11 +1041,11 @@ uint32_t nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
     //==================================================================
     // Xilinx FPGA LDPC decoding function -> nrLDPC_decoder_FPGA_PYM()
     //==================================================================
-    //start_meas(&phy_vars_gNB->ulsch_ldpc_fpga_time_stats);
+    start_meas(&phy_vars_gNB->ulsch_ldpc_decoding_stats);
     nrLDPC_decoder_FPGA_PYM((int8_t *)&multi_indata[0], (int8_t *)&multi_outdata[0], dec_conf);
     // printf("Xilinx FPGA -> CB = %d\n", harq_process->C);
     // nrLDPC_decoder_FPGA_PYM((int8_t *)&temp_multi_indata[0], (int8_t *)&multi_outdata[0], dec_conf);
-    //stop_meas(&phy_vars_gNB->ulsch_ldpc_fpga_time_stats);
+    stop_meas(&phy_vars_gNB->ulsch_ldpc_decoding_stats);
 
     for (r = 0; r < harq_process->C; r++) {
       // -----------------------------------------------------------------------------------------------

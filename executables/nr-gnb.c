@@ -541,6 +541,10 @@ void init_eNB_afterRU(void) {
      */
     //init_precoding_weights(RC.gNB[inst]);
     init_gNB_Tpool(inst);
+#ifdef TASK_MANAGER
+    init_task_manager(&gNB->man, gNB->threadPool.nbThreads);
+#endif
+
   }
 
 }

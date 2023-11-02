@@ -1662,9 +1662,9 @@ int main(int argc, char *argv[])
       printStatIndent2(&UE->ulsch_ldpc_encoding_stats,"ULSCH LDPC encoder time");
       printStatIndent2(&UE->ulsch_rate_matching_stats,"ULSCH rate-matching time");
       printStatIndent2(&UE->ulsch_interleaving_stats,"ULSCH interleaving time");
-      //printStatIndent2(&gNB->ulsch_deinterleaving_stats,"ULSCH deinterleaving");
-      //printStatIndent2(&gNB->ulsch_rate_unmatching_stats,"ULSCH rate matching rx");
-      //printStatIndent2(&gNB->ulsch_ldpc_decoding_stats,"ULSCH ldpc decoding");
+      printStatIndent2(&gNB->ulsch_deinterleaving_stats,"ULSCH deinterleaving");
+      printStatIndent2(&gNB->ulsch_rate_unmatching_stats,"ULSCH rate matching rx");
+      printStatIndent2(&gNB->ulsch_ldpc_decoding_stats,"ULSCH ldpc decoding");
       printStatIndent(&gNB->rx_srs_stats,"RX SRS time");
       printStatIndent2(&gNB->generate_srs_stats,"Generate SRS sequence time");
       printStatIndent2(&gNB->get_srs_signal_stats,"Get SRS signal time");
