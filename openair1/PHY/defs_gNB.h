@@ -712,6 +712,7 @@ typedef struct PHY_VARS_gNB_s {
   notifiedFIFO_t L1_tx_free;
   notifiedFIFO_t L1_tx_filled;
   notifiedFIFO_t L1_tx_out;
+  notifiedFIFO_t L1_rx_out;
   notifiedFIFO_t resp_RU_tx;
   tpool_t threadPool;
   int nbSymb;
@@ -819,4 +820,9 @@ typedef struct processingData_L1tx {
   int sched_response_id;
 } processingData_L1tx_t;
 
+typedef struct processingData_L1rx {
+  int frame_rx;
+  int slot_rx;
+  PHY_VARS_gNB *gNB;
+} processingData_L1rx_t;
 #endif

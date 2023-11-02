@@ -239,6 +239,7 @@ void rx_func(void *param)
   // RX processing
   int rx_slot_type = nr_slot_select(cfg, frame_rx, slot_rx);
   if (rx_slot_type == NR_UPLINK_SLOT || rx_slot_type == NR_MIXED_SLOT) {
+    LOG_D(NR_PHY,"%d.%d Starting RX processing\n",frame_rx,slot_rx); 	  
 
     // UE-specific RX processing for subframe n
     // TODO: check if this is correct for PARALLEL_RU_L1_TRX_SPLIT
@@ -271,6 +272,15 @@ void rx_func(void *param)
     gNB->UL_INFO.CC_id     = gNB->CC_id;
     gNB->if_inst->NR_UL_indication(&gNB->UL_INFO);
     stop_meas(&gNB->ul_indication_stats);
+
+    notifiedFIFO_elt_t *res = newNotifiedFIFO_elt(sizeof(processingData_L1_t), 0, &gNB->L1_rx_out, NULL);
+    processingData_L1_t *syncMsg = NotifiedFifoData(res);
+    syncMsg->gNB = gNB;
+    syncMsg->frame_rx = frame_rx;
+    syncMsg->slot_rx = slot_rx;
+    res->key = slot_rx;
+    LOG_D(NR_PHY,"Signaling completion for %d.%d (mod_slot %d) on L1_rx_out\n",frame_rx,slot_rx,slot_rx % RU_RX_SLOT_DEPTH);
+    pushNotifiedFIFO(&gNB->L1_rx_out, res);
   }
 
   stop_meas( &softmodem_stats_rxtx_sf );
@@ -368,6 +378,7 @@ void init_gNB_Tpool(int inst) {
   initNotifiedFIFO(&gNB->L1_tx_free);
   initNotifiedFIFO(&gNB->L1_tx_filled);
   initNotifiedFIFO(&gNB->L1_tx_out);
+  initNotifiedFIFO(&gNB->L1_rx_out);
 
   // create the RX thread responsible for triggering RX processing and then TX processing if a single thread is used
   threadCreate(&gNB->L1_rx_thread, L1_rx_thread, (void *)gNB, "L1_rx_thread", gNB->L1_rx_thread_core, OAI_PRIORITY_RT_MAX);
@@ -396,6 +407,7 @@ void term_gNB_Tpool(int inst) {
   abortNotifiedFIFO(&gNB->L1_tx_free);
   abortNotifiedFIFO(&gNB->L1_tx_filled);
   abortNotifiedFIFO(&gNB->L1_tx_out);
+  abortNotifiedFIFO(&gNB->L1_rx_out);
 
   gNB_L1_proc_t *proc = &gNB->proc;
   if (!get_softmodem_params()->emulate_l1)
