@@ -38,6 +38,8 @@
 
 //main.c
 int rrc_init_global_param(void);
+void rrc_init_global_cc_context(int CC_id, module_id_t module_id);
+
 int L3_xface_init(void);
 void openair_rrc_top_init(int eMBMS_active, char *uecap_xer, uint8_t cba_group_active,uint8_t HO_enabled);
 
@@ -659,7 +661,7 @@ long binary_search_int(const int elements[], long numElem, int value);
 
 long binary_search_float(const float elements[], long numElem, float value);
 
-void openair_rrc_top_init_eNB(int eMBMS_active,uint8_t HO_active);
+void openair_rrc_top_init_eNB(int CC_id,int eMBMS_active,uint8_t HO_active);
 
 void openair_rrc_top_init_ue(
   int eMBMS_active,

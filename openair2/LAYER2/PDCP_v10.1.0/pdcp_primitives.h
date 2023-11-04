@@ -164,6 +164,10 @@ int pdcp_netlink_dequeue_element(const protocol_ctxt_t* const  ctxt_pP,
 void pdcp_config_set_security(const protocol_ctxt_t* const  ctxt_pP, pdcp_t *pdcp_pP, rb_id_t rb_idP,
                               uint16_t lc_idP, uint8_t security_modeP, uint8_t *kRRCenc_pP, uint8_t *kRRCint_pP, uint8_t *kUPenc_pP);
 
+int pdcp_fill_ss_pdcp_cnt (pdcp_t *pdcp_p, uint32_t rb_id, ss_get_pdcp_cnt_t *pc);
+
+void pdcp_config_set_security_cipher(pdcp_t          *pdcp_pP,uint8_t         security_modeP);
+
 int pdcp_apply_security(const protocol_ctxt_t* const  ctxt_pP,
                         pdcp_t     *pdcp_entity,
                         srb_flag_t  srb_flagP,

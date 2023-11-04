@@ -81,6 +81,13 @@ unsigned short config_frames[4] = {2,9,11,13};
 #include "gnb_config.h"
 #include "openair2/E1AP/e1ap_common.h"
 #include "openair2/E1AP/e1ap_api.h"
+#include "ss_gNB_sys_task.h"
+#include "ss_gNB_port_man_task.h"
+#include "ss_gNB_srb_task.h"
+#include "udp_eNB_task.h"
+#include "ss_gNB_drb_task.h"
+#include "ss_gNB_vtp_task.h"
+#include "ss_gNB_vt_timer_task.h"
 
 pthread_cond_t nfapi_sync_cond;
 pthread_mutex_t nfapi_sync_mutex;
@@ -175,6 +182,11 @@ eth_params_t *eth_params;
 openair0_config_t openair0_cfg[MAX_CARDS];
 
 double cpuf;
+
+/** FC Cell config */
+pthread_cond_t cell_config_done_cond;
+pthread_mutex_t cell_config_done_mutex;
+int cell_config_done=-1;
 
 /* hack: pdcp_run() is required by 4G scheduler which is compiled into
  * nr-softmodem because of linker issues */
@@ -389,9 +401,50 @@ static int create_gNB_tasks(void) {
   }
 
   if (gnb_nb > 0) {
+    RCconfig_nr_ssparam();
     if (itti_create_task (TASK_GNB_APP, gNB_app_task, NULL) < 0) {
       LOG_E(GNB_APP, "Create task for gNB APP failed\n");
       return -1;
+    }
+    if (RC.ss.mode >= SS_SOFTMODEM)
+    {
+      if(itti_create_task(TASK_SS_PORTMAN_GNB, ss_gNB_port_man_task, NULL) < 0)
+      {
+        LOG_E(GNB_APP, "Create task for SS Port manager GNB failed\n");
+        return -1;
+      }
+      /* This sleep is for gNB_app_task to load the RRC configuration */
+      usleep(1000);
+      if(itti_create_task(TASK_SYS_GNB, ss_gNB_sys_task, NULL) < 0)
+      {
+        LOG_E(GNB_APP, "Create task for SS GNB failed\n");
+        return -1;
+      }
+
+      if(itti_create_task(TASK_UDP, udp_eNB_task, NULL) < 0) {
+        LOG_E(SCTP, "Create task for UDP failed\n");
+        return -1;
+      }
+
+      if(itti_create_task(TASK_SS_SRB_GNB, ss_gNB_srb_task, NULL) < 0) {
+        LOG_E(SCTP, "Create task for SS SRB GNB failed\n");
+        return -1;
+      }
+
+      if(itti_create_task(TASK_SS_DRB, ss_gNB_drb_task, NULL) < 0) {
+        LOG_E(SCTP, "Create task for SS DRB failed\n");
+        return -1;
+      }
+
+      if(itti_create_task(TASK_VTP, ss_gNB_vtp_task, NULL) < 0) {
+        LOG_E(SCTP, "Create task for TASK_VTP failed\n");
+        return -1;
+      }
+
+      if(itti_create_task(TASK_VT_TIMER, ss_gNB_vt_timer_task, NULL) < 0) {
+        LOG_E(SCTP, "Create task for TASK_VT_TIMER failed\n");
+        return -1;
+      }
     }
 
     LOG_I(NR_RRC, "Creating NR RRC gNB Task, that will also create TASKS\n");
