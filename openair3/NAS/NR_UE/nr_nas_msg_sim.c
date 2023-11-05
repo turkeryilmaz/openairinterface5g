@@ -1148,15 +1148,8 @@ static void generateSecurityModeComplete(nr_ue_nas_t *nas, as_nas_info_t *initia
   // Ciphering
   _encrypt_nas_msg(nas, _ul_nas_count, initialNasMsg->data + security_header_len, msg_len);
 
-#if 0
-AGP -OAI
-  // only for Type of integrity protection algorithm: 128-5G-IA2 (2)
-  stream_compute_integrity(EIA2_128_ALG_ID, &stream_cipher, mac);
-#else
   // Integrity
   _calculate_nas_maci(nas, SECU_DIRECTION_UPLINK, _ul_nas_count, initialNasMsg->data + security_header_len - 1, msg_len + 1,  mac);
-#endif
-
   printf("xmac %02x%02x%02x%02x\n", mac[0], mac[1], mac[2], mac[3]);
   for(int i = 0; i < 4; i++) {
     initialNasMsg->data[2+i] = mac[i];
@@ -1261,14 +1254,8 @@ static void generateRegistrationComplete(nr_ue_nas_t *nas, as_nas_info_t *initia
   // Ciphering
   _encrypt_nas_msg(nas, _ul_nas_count, initialNasMsg->data + 7, length - 7);
 
-#if 0
-AGP - OAI
-  // only for Type of integrity protection algorithm: 128-5G-IA2 (2)
-  stream_compute_integrity(EIA2_128_ALG_ID, &stream_cipher, mac);
-#else
   // Integrity
   _calculate_nas_maci(nas, SECU_DIRECTION_UPLINK, _ul_nas_count, initialNasMsg->data + 6, length - 6,  mac);
-#endif
 
   printf("xmac %02x%02x%02x%02x\n", mac[0], mac[1], mac[2], mac[3]);
   for(int i = 0; i < 4; i++) {
@@ -1631,14 +1618,8 @@ static void generateDeactivateTestModeComplete(nr_ue_nas_t *nas, as_nas_info_t *
   // Ciphering
   _encrypt_nas_msg(nas, _ul_nas_count, initialNasMsg->data + security_header_len, msg_len);
 
-#if 0
-AGP - OAI
-  // only for Type of integrity protection algorithm: 128-5G-IA2 (2)
-  stream_compute_integrity(EIA2_128_ALG_ID, &stream_cipher, mac);
-#else
   // Integrity
   _calculate_nas_maci(nas, SECU_DIRECTION_UPLINK, _ul_nas_count, initialNasMsg->data + security_header_len - 1, msg_len +1,  mac);
-#endif
   printf("xmac %02x%02x%02x%02x\n", mac[0], mac[1], mac[2], mac[3]);
   for(int i = 0; i < 4; i++) {
     initialNasMsg->data[2+i] = mac[i];

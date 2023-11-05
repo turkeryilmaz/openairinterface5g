@@ -136,4 +136,3 @@ void nrrrc_init_global_cc_context(int CC_id, module_id_t module_id)
 
   }
 }
-

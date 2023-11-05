@@ -1102,10 +1102,13 @@ void configure_nr_nfapi_pnf(char *vnf_ip_addr, int vnf_p5_port, char *pnf_ip_add
   pnf.phys[0].udp.tx_port = vnf_p7_port;
   strcpy(pnf.phys[0].udp.tx_addr, vnf_ip_addr);
   strcpy(pnf.phys[0].local_addr, pnf_ip_addr);
-  printf("%s() VNF:%s:%d PNF_PHY[addr:%s UDP:tx_addr:%s:%d rx:%d]\n",
-         __FUNCTION__,config->vnf_ip_addr, config->vnf_p5_port,
+  printf("%s() VNF:%s:%d PNF_PHY[addr:%s UDP:tx_addr:%s:%u rx:%u]\n",
+         __FUNCTION__,
+         config->vnf_ip_addr,
+         config->vnf_p5_port,
          pnf.phys[0].local_addr,
-         pnf.phys[0].udp.tx_addr, pnf.phys[0].udp.tx_port,
+         pnf.phys[0].udp.tx_addr,
+         pnf.phys[0].udp.tx_port,
          pnf.phys[0].udp.rx_port);
   config->nr_start_req = &nr_start_request;
   config->trace = &pnf_nfapi_trace;
@@ -1136,11 +1139,13 @@ void configure_nfapi_pnf(char *vnf_ip_addr, int vnf_p5_port, char *pnf_ip_addr, 
   pnf.phys[0].udp.tx_port = vnf_p7_port;
   strcpy(pnf.phys[0].udp.tx_addr, vnf_ip_addr);
   strcpy(pnf.phys[0].local_addr, pnf_ip_addr);
-  printf("%s() VNF:%s:%d PNF_PHY[addr:%s UDP:tx_addr:%s:%d rx:%d]\n",
+  printf("%s() VNF:%s:%d PNF_PHY[addr:%s UDP:tx_addr:%s:%u rx:%u]\n",
          __FUNCTION__,
-         config->vnf_ip_addr, config->vnf_p5_port,
+         config->vnf_ip_addr,
+         config->vnf_p5_port,
          pnf.phys[0].local_addr,
-         pnf.phys[0].udp.tx_addr, pnf.phys[0].udp.tx_port,
+         pnf.phys[0].udp.tx_addr,
+         pnf.phys[0].udp.tx_port,
          pnf.phys[0].udp.rx_port);
   config->start_req = &start_request;
   config->trace = &pnf_nfapi_trace;

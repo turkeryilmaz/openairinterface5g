@@ -104,12 +104,13 @@ bool update_rrcReconfig_cellGroupConfig(const protocol_ctxt_t     *const ctxt_pP
             rrc_gNB_ue_context_t      *ue_context_pP,
             NR_CellGroupConfig_t *cellGroupConfig);
 
-int do_RRCSetup(rrc_gNB_ue_context_t         *const ue_context_pP,
-                uint8_t                      *const buffer,
-                const uint8_t                transaction_id,
-                const uint8_t                *masterCellGroup,
-                int                          masterCellGroup_len,
-                const gNB_RrcConfigurationReq *configuration);
+int do_RRCSetup(rrc_gNB_ue_context_t *const ue_context_pP,
+                uint8_t *const buffer,
+                const uint8_t transaction_id,
+                const uint8_t *masterCellGroup,
+                int masterCellGroup_len,
+                const gNB_RrcConfigurationReq *configuration,
+                NR_SRB_ToAddModList_t *SRBs);
 
 uint8_t do_NR_SecurityModeCommand(
                     const protocol_ctxt_t *const ctxt_pP,
@@ -177,15 +178,15 @@ uint8_t do_NR_ULInformationTransfer(uint8_t **buffer,
 uint8_t do_RRCReestablishmentRequest(uint8_t Mod_id, uint8_t *buffer, uint16_t c_rnti);
 
 int do_RRCReestablishment(const protocol_ctxt_t *const ctxt_pP,
-                              rrc_gNB_ue_context_t *const ue_context_pP,
-                              int CC_id,
-                              uint8_t *const buffer,
-                              size_t buffer_size,
-                              const uint8_t Transaction_id,
-                              NR_SRB_ToAddModList_t **SRB_configList,
-                              const uint8_t *masterCellGroup_from_DU,
-                              NR_ServingCellConfigCommon_t *scc,
-                              rrc_gNB_carrier_data_t *carrier);
+                          rrc_gNB_ue_context_t *const ue_context_pP,
+                          int CC_id,
+                          uint8_t *const buffer,
+                          size_t buffer_size,
+                          const uint8_t Transaction_id,
+                          NR_SRB_ToAddModList_t *SRB_configList,
+                          const uint8_t *masterCellGroup_from_DU,
+                          NR_ServingCellConfigCommon_t *scc,
+                          rrc_gNB_carrier_data_t *carrier);
 
 int do_RRCReestablishmentComplete(uint8_t *buffer, size_t buffer_size, int64_t rrc_TransactionIdentifier);
 
