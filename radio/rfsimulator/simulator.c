@@ -924,7 +924,7 @@ static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimest
     if ( t->nextRxTstamp == 0)
       LOG_W(HW, "No connected device, generating void samples...\n");
 
-    if (!flushInput(t, t->wait_timeout,  nsamps)) {
+    if (!flushInput(t, 1/*t->wait_timeout*/,  nsamps)) {
       for (int x=0; x < nbAnt; x++)
         memset(samplesVoid[x],0,sampleToByte(nsamps,1));
 

@@ -1296,26 +1296,26 @@ void *ru_thread( void *param ) {
 
     if (ru->idx!=0) proc->frame_tx = (proc->frame_tx+proc->frame_offset)&1023;
 
+    LOG_D(NR_PHY,"In %d.%d: Checking L1 status\n",proc->frame_rx,proc->tti_rx);
+    for (int n=0;n<RU_RX_SLOT_DEPTH;n++)
+       LOG_D(NR_PHY,"slot n %d => %d\n",n,rx_tti_busy[n]);	
+    // handle potential race by blocking if rxdataF is being used by L1      
+    // first empty L1 return fifo and block on current slot if needed	
+    notifiedFIFO_elt_t *res = pollNotifiedFIFO(&gNB->L1_rx_out);
+    LOG_D(NR_PHY,"%d.%d Polling L1_rx_out %p\n",proc->frame_rx,proc->tti_rx,res);
+    while (res) {
+       processingData_L1_t *info = (processingData_L1_t*)NotifiedFifoData(res);
+       LOG_D(NR_PHY,"%d.%d res %d.%d completed, clearing %d\n",proc->frame_rx,proc->tti_rx,info->frame_rx,info->slot_rx,info->slot_rx%RU_RX_SLOT_DEPTH);
+
+       rx_tti_busy[info->slot_rx%RU_RX_SLOT_DEPTH] = false;
+       res = pollNotifiedFIFO(&gNB->L1_rx_out); 
+    }
+
+    LOG_D(NR_PHY,"%d.%d Done polling\n",proc->frame_rx,proc->tti_rx);
     // do RX front-end processing (frequency-shift, dft) if needed
     int slot_type = nr_slot_select(cfg,proc->frame_rx,proc->tti_rx);
     if (slot_type == NR_UPLINK_SLOT || slot_type == NR_MIXED_SLOT) {
       if (ru->feprx) {
-	LOG_D(NR_PHY,"In %d.%d: Checking L1 status\n",proc->frame_rx,proc->tti_rx);
-        for (int n=0;n<RU_RX_SLOT_DEPTH;n++)
-	  LOG_D(NR_PHY,"slot n %d => %d\n",n,rx_tti_busy[n]);	
-	// handle potential race by blocking if rxdataF is being used by L1      
-        // first empty L1 return fifo and block on current slot if needed	
-	notifiedFIFO_elt_t *res = pollNotifiedFIFO(&gNB->L1_rx_out);
-	LOG_D(NR_PHY,"%d.%d Polling L1_rx_out %p\n",proc->frame_rx,proc->tti_rx,res);
-	while (res) {
-           processingData_L1_t *info = (processingData_L1_t*)NotifiedFifoData(res);
-	   LOG_D(NR_PHY,"%d.%d res %d.%d completed, clearing %d\n",proc->frame_rx,proc->tti_rx,info->frame_rx,info->slot_rx,info->slot_rx%RU_RX_SLOT_DEPTH);
-
-	   rx_tti_busy[info->slot_rx%RU_RX_SLOT_DEPTH] = false;
-	   res = pollNotifiedFIFO(&gNB->L1_rx_out); 
-	}
-
-	LOG_D(NR_PHY,"%d.%d Done polling\n",proc->frame_rx,proc->tti_rx);
 	if (rx_tti_busy[proc->tti_rx%RU_RX_SLOT_DEPTH]) {
 	    bool not_done=true;	
 	    LOG_D(NR_PHY,"%d.%d Waiting to access RX slot %d\n",proc->frame_rx,proc->tti_rx,proc->tti_rx%RU_RX_SLOT_DEPTH);
