@@ -204,6 +204,7 @@ hashtable_rc_t hashtable_dump_content (const hash_table_t *const hashtblP, char 
  */
 hashtable_rc_t hashtable_insert(hash_table_t *const hashtblP, const hash_key_t keyP, void *dataP) {
   hash_node_t *node = NULL;
+  hash_node_t *node_prev = NULL;
   hash_size_t  hash = 0;
 
   if (hashtblP == NULL) {
@@ -211,6 +212,7 @@ hashtable_rc_t hashtable_insert(hash_table_t *const hashtblP, const hash_key_t k
   }
 
   hash=hashtblP->hashfunc(keyP)%hashtblP->size;
+/*
   node=hashtblP->nodes[hash];
 
   while(node) {
@@ -238,6 +240,23 @@ hashtable_rc_t hashtable_insert(hash_table_t *const hashtblP, const hash_key_t k
   }
 
   hashtblP->nodes[hash]=node;
+*/
+
+  /* insert the new node to tail of the node list with same key */
+  if(!(node=malloc(sizeof(hash_node_t)))) return -1;
+  node->key=keyP;
+  node->data=dataP;
+  node->next = NULL;
+
+  node_prev = hashtblP->nodes[hash];
+  if(!node_prev){
+    hashtblP->nodes[hash] = node;
+  } else {
+    while(node_prev->next){
+      node_prev = node_prev->next;
+    }
+    node_prev->next = node;
+  }
   return HASH_TABLE_OK;
 }
 //-------------------------------------------------------------------------------------------------------------------------------

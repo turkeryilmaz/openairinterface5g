@@ -596,4 +596,30 @@ do {                                                    \
 #define GTP_TEID_TO_ASN1 INT32_TO_OCTET_STRING
 #define OCTET_STRING_TO_TAC OCTET_STRING_TO_INT16
 
+#define OCTET_STRING_TO_BIT_STRING(dST, sRC, lEN)      \
+do {                                                   \
+    const char *src = (sRC);                           \
+    char *dst = (dST);                                 \
+    int len = (lEN);                                   \
+    int off = 0;                                       \
+    while (len-- > 0) {                                \
+        int bit = *src++ ? 1 : 0;                      \
+        dst[off / 8] |= bit << (7 - off % 8);          \
+        off++;                                         \
+    }                                                  \
+} while(0)
+
+#define BIT_STRING_TO_OCTET_STRING(dST, sRC, lEN)      \
+do {                                                   \
+    const char *src = (sRC);                           \
+    char *dst = (dST);                                 \
+    int len = (lEN);                                   \
+    int off = 0;                                       \
+    while (len-- > 0) {                                \
+        int bit = src[off / 8] & (1 << (7 - off % 8)); \
+        *dst++ = bit ? 0x01 : 0x00;                    \
+        off++;                                         \
+    }                                                  \
+} while(0)
+
 #endif /* CONVERSIONS_H_ */

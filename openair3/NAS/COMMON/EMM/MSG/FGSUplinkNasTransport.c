@@ -134,6 +134,7 @@ int encode_fgs_uplink_nas_transport(fgs_uplink_nas_transport_msg *fgs_up_nas_tra
     *(buffer + encoded) = (0x8<<4)|(fgs_up_nas_transport->requesttype &0x7);
     encoded++;
 
+#if 0
     if ((encode_result = encode_nssai(&fgs_up_nas_transport->snssai, 0x22, buffer +encoded)) < 0) {
       return encode_result;
     } else {
@@ -145,7 +146,7 @@ int encode_fgs_uplink_nas_transport(fgs_uplink_nas_transport_msg *fgs_up_nas_tra
     } else {
       encoded += encode_result;
     }
-
+#endif
     return encoded;
 }
 

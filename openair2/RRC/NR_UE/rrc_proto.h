@@ -96,6 +96,13 @@ int8_t nr_rrc_ue_decode_NR_BCCH_BCH_Message(const module_id_t module_id, const u
 
 int8_t nr_rrc_ue_decode_NR_DL_DCCH_Message(const module_id_t module_id, const uint8_t gNB_index, const uint8_t *buffer, const uint32_t size);
 
+/**\brief decode NR PCCH (Paging) message
+   \param module_id    module id
+   \param gNB_index    gNB index
+   \param buffer       pointer to buffer of ASN message PCCH-PCH
+   \param size         length of buffer*/
+int8_t nr_rrc_ue_decode_NR_PCCH_Message(const module_id_t module_id, const uint8_t gNB_index, uint8_t *const buffer, const uint16_t size);
+
 /**\brief interface between MAC and RRC thru SRB0 (RLC TM/no PDCP)
    \param module_id  module id
    \param CC_id      component carrier id
