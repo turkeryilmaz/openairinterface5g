@@ -552,11 +552,7 @@ free_buffers(struct active_device *ad, struct test_op_params *op_params)
 static void
 set_ldpc_dec_op(struct rte_bbdev_dec_op **ops, unsigned int n,
 		unsigned int start_idx,
-		struct rte_bbdev_op_data *inputs,
-		struct rte_bbdev_op_data *hard_outputs,
-		struct rte_bbdev_op_data *soft_outputs,
-		struct rte_bbdev_op_data *harq_inputs,
-		struct rte_bbdev_op_data *harq_outputs,
+		struct test_buffers *bufs,
 		struct rte_bbdev_dec_op *ref_op,
 		uint8_t r,
 		uint8_t harq_pid,
@@ -584,16 +580,16 @@ set_ldpc_dec_op(struct rte_bbdev_dec_op **ops, unsigned int n,
     ops[i]->ldpc_dec.harq_combined_input.offset = ulsch_id * (32 * 1024 * 1024) + harq_pid * (2 * 1024 * 1024) + r * (1024 * 32);
     ops[i]->ldpc_dec.harq_combined_output.offset = ulsch_id * (32 * 1024 * 1024) + harq_pid * (2 * 1024 * 1024) + r * (1024 * 32);
 
-    if (hard_outputs != NULL)
-      ops[i]->ldpc_dec.hard_output = hard_outputs[start_idx + i];
-    if (inputs != NULL)
-      ops[i]->ldpc_dec.input = inputs[start_idx + i];
-    if (soft_outputs != NULL)
-      ops[i]->ldpc_dec.soft_output = soft_outputs[start_idx + i];
-    if (harq_inputs != NULL)
-      ops[i]->ldpc_dec.harq_combined_input = harq_inputs[start_idx + i];
-    if (harq_outputs != NULL)
-      ops[i]->ldpc_dec.harq_combined_output = harq_outputs[start_idx + i];
+    if (bufs->hard_outputs != NULL)
+      ops[i]->ldpc_dec.hard_output = bufs->hard_outputs[start_idx + i];
+    if (bufs->inputs != NULL)
+      ops[i]->ldpc_dec.input = bufs->inputs[start_idx + i];
+    if (bufs->soft_outputs != NULL)
+      ops[i]->ldpc_dec.soft_output = bufs->soft_outputs[start_idx + i];
+    if (bufs->harq_inputs != NULL)
+      ops[i]->ldpc_dec.harq_combined_input = bufs->harq_inputs[start_idx + i];
+    if (bufs->harq_outputs != NULL)
+      ops[i]->ldpc_dec.harq_combined_output = bufs->harq_outputs[start_idx + i];
   }
 }
 
@@ -629,46 +625,36 @@ static int retrieve_ldpc_dec_op(struct rte_bbdev_dec_op **ops,
                                 const int vector_mask,
                                 uint8_t *p_out)
 {
-  unsigned int i;
-  // int ret;
-  struct rte_bbdev_op_ldpc_dec *ops_td;
   struct rte_bbdev_op_data *hard_output;
-  // struct rte_bbdev_op_ldpc_dec *ref_td = &ref_op->ldpc_dec;
   struct rte_mbuf *m;
+  unsigned int i;
   char *data;
-
   for (i = 0; i < n; ++i) {
-    ops_td = &ops[i]->ldpc_dec;
-    hard_output = &ops_td->hard_output;
+    hard_output = &ops[i]->ldpc_dec.hard_output;
     m = hard_output->data;
-    uint16_t offset = hard_output->offset;
-    uint16_t data_len = rte_pktmbuf_data_len(m) - offset;
-
+    uint16_t data_len = rte_pktmbuf_data_len(m) - hard_output->offset;
     data = m->buf_addr;
     memcpy(p_out, data + m->data_off, data_len);
   }
-
-  return TEST_SUCCESS;
+  return 0;
 }
 
 static int retrieve_ldpc_enc_op(struct rte_bbdev_enc_op **ops, const uint16_t n, struct rte_bbdev_enc_op *ref_op, uint8_t *p_out)
 {
   struct rte_bbdev_op_data *output;
-  unsigned int i;
   struct rte_mbuf *m;
+  unsigned int i;
   char *data;
   for (i = 0; i < n; ++i) {
     output = &ops[i]->ldpc_enc.output;
     m = output->data;
-    // uint16_t offset = output->offset;
     uint16_t data_len = min((384 * 68) / 8, rte_pktmbuf_data_len(m)); // fix me
-    // printf("%d %d\n", rte_pktmbuf_data_len(m), (384*68)/8);
     data = m->buf_addr;
     for (int byte = 0; byte < data_len; byte++)
       for (int bit = 0; bit < 8; bit++)
         p_out[byte * 8 + bit] = (data[m->data_off + byte] >> (7 - bit)) & 1;
   }
-  return TEST_SUCCESS;
+  return 0;
 }
 
 // DPDK BBDEV copy
@@ -717,17 +703,11 @@ pmd_lcore_ldpc_dec(void *arg)
   uint16_t num_to_enq;
   uint8_t *p_out = tp->p_out;
   t_nrLDPCoffload_params *p_offloadParams = tp->p_offloadParams;
-  bool loopback = check_bit(ref_op->ldpc_dec.op_flags, RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_LOOPBACK);
-  bool hc_out = check_bit(ref_op->ldpc_dec.op_flags, RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE);
 
   TEST_ASSERT_SUCCESS((burst_sz > MAX_BURST), "BURST_SIZE should be <= %u", MAX_BURST);
-
   rte_bbdev_info_get(tp->dev_id, &info);
 
-  TEST_ASSERT_SUCCESS((num_ops > info.drv.queue_size_lim), "NUM_OPS cannot exceed %u for this device", info.drv.queue_size_lim);
-
   bufs = &tp->op_params->q_bufs[GET_SOCKET(info.socket_id)][queue_id];
-
   while (rte_atomic16_read(&tp->op_params->sync) == SYNC_WAIT)
     rte_pause();
   ret = rte_mempool_get_bulk(tp->op_params->mp, (void **)ops_enq, num_ops);
@@ -736,17 +716,10 @@ pmd_lcore_ldpc_dec(void *arg)
   // ret = rte_bbdev_dec_op_alloc_bulk(tp->op_params->mp, ops_enq, num_ops);
   TEST_ASSERT_SUCCESS(ret, "Allocation failed for %d ops", num_ops);
 
-  ref_op->ldpc_dec.iter_max = 20; // get_iter_max();
-  ref_op->ldpc_dec.iter_count = ref_op->ldpc_dec.iter_max;
-
   set_ldpc_dec_op(ops_enq,
                   num_ops,
                   0,
-                  bufs->inputs,
-                  bufs->hard_outputs,
-                  bufs->soft_outputs,
-                  bufs->harq_inputs,
-                  bufs->harq_outputs,
+                  bufs,
                   ref_op,
                   r,
                   harq_pid,
@@ -756,13 +729,6 @@ pmd_lcore_ldpc_dec(void *arg)
   /* Set counter to validate the ordering */
   for (j = 0; j < num_ops; ++j)
     ops_enq[j]->opaque_data = (void *)(uintptr_t)j;
-
-  for (j = 0; j < num_ops; ++j) {
-    if (!loopback)
-      mbuf_reset(ops_enq[j]->ldpc_dec.hard_output.data);
-    if (hc_out || loopback)
-      mbuf_reset(ops_enq[j]->ldpc_dec.harq_combined_output.data);
-  }
 
   for (enq = 0, deq = 0; enq < num_ops;) {
     num_to_enq = burst_sz;
@@ -1122,7 +1088,7 @@ int32_t LDPCdecoder(struct nrLDPC_dec_params *p_decParams,
                                           .rv = p_decParams->rv,
                                           .F = p_decParams->F,
                                           .Qm = p_decParams->Qm};
-
+  LOG_D(PHY,"E %d\n",p_decParams->E);
   struct rte_bbdev_info info;
   rte_bbdev_info_get(ad->dev_id, &info);
   int socket_id = GET_SOCKET(info.socket_id);
@@ -1144,7 +1110,7 @@ int32_t LDPCdecoder(struct nrLDPC_dec_params *p_decParams,
   for (enum op_data_type type = DATA_INPUT; type < 3; type += 2) {
     int ret = init_op_data_objs(*queue_ops[type],
                                 (uint8_t *)p_llr,
-                                offloadParams.E,
+                                p_decParams->E,
                                 m_head[type],
                                 mbuf_pools[type],
                                 1,
@@ -1154,7 +1120,7 @@ int32_t LDPCdecoder(struct nrLDPC_dec_params *p_decParams,
   }
   int ret = start_pmd_dec(ad, op_params, &offloadParams, C, harq_pid, ulsch_id, (uint8_t *)p_out);
   if (ret < 0) {
-    printf("Couldn't start pmd dec");
+    printf("Couldn't start pmd dec\n");
     pthread_mutex_unlock(&decode_mutex);
     return (20); // Fix me: we should propoagate max_iterations properly in the call (impp struct)
   }
