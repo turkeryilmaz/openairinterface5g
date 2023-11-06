@@ -64,7 +64,7 @@
 #define SYNC_WAIT 0
 #define SYNC_START 1
 #define INVALID_OPAQUE -1
-
+#define TIME_OUT_POLL 1e8
 #define INVALID_QUEUE_ID -1
 /* Increment for next code block in external HARQ memory */
 #define HARQ_INCR 32768
@@ -774,25 +774,24 @@ pmd_lcore_ldpc_dec(void *arg)
   }
 
   /* dequeue the remaining */
+  int time_out = 0;
   while (deq < enq) {
     deq += rte_bbdev_dequeue_ldpc_dec_ops(tp->dev_id, queue_id, &ops_deq[deq], enq - deq);
+    time_out++;
+    DevAssert(time_out <= TIME_OUT_POLL);
   }
 
   // This if statement is not in DPDK
   if (deq == enq) {
     tp->iter_count = 0;
-
     /* get the max of iter_count for all dequeued ops */
     for (i = 0; i < num_ops; ++i) {
       tp->iter_count = RTE_MAX(ops_enq[i]->ldpc_dec.iter_count, tp->iter_count);
     }
-
     ret = retrieve_ldpc_dec_op(ops_deq, num_ops, ref_op, tp->op_params->vector_mask, p_out);
     TEST_ASSERT_SUCCESS(ret, "Validation failed!");
-  } else {
-    printf("ERRORORORO\n");
-    ret = TEST_FAILED;
   }
+
   if (num_ops > 0)
     rte_mempool_put_bulk(ops_enq[0]->mempool, (void **)ops_enq, num_ops);
 
@@ -851,8 +850,12 @@ static int pmd_lcore_ldpc_enc(void *arg)
     deq += rte_bbdev_dequeue_ldpc_enc_ops(tp->dev_id, queue_id, &ops_deq[deq], enq - deq);
   }
   /* dequeue the remaining */
-  while (deq < enq)
+  int time_out = 0;
+  while (deq < enq) {
     deq += rte_bbdev_dequeue_ldpc_enc_ops(tp->dev_id, queue_id, &ops_deq[deq], enq - deq);
+    time_out++;
+    DevAssert(time_out <= TIME_OUT_POLL);
+  }
 
   ret = retrieve_ldpc_enc_op(ops_deq, num_ops, ref_op, p_out);
   TEST_ASSERT_SUCCESS(ret, "Validation failed!");
