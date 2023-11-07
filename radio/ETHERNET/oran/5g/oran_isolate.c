@@ -231,8 +231,8 @@ void oran_fh_if4p5_south_in(RU_t *ru,
 
   proc->tti_rx       = sl;
   proc->frame_rx     = f;
-  proc->tti_tx       = (sl+sl_ahead)%80;
-  proc->frame_tx     = (sl>(79-sl_ahead)) ? (f+1)&1023 : f;
+  proc->tti_tx       = (sl+sl_ahead)%20;
+  proc->frame_tx     = (sl>(19-sl_ahead)) ? (f+1)&1023 : f;
 
   if (proc->first_rx == 0) {
     if (proc->tti_rx != *slot) {
@@ -261,11 +261,19 @@ void oran_fh_if4p5_south_out(RU_t *ru,
                                 uint64_t timestamp)
 {
   openair0_device *device = &ru->ifdevice;
-  oran_eth_state_t *s = device->priv;
-  start_meas(&ru->tx_fhaul);
+  PHY_VARS_gNB **gNB_list = ru->gNB_list, *gNB;
   ru_info_t ru_info;
+  oran_eth_state_t *s = device->priv;
+
+    if (ru->num_gNB == 1){
+    gNB = gNB_list[0];
+    ru_info.beam_id = gNB->common_vars.beam_id;
+    }
+  start_meas(&ru->tx_fhaul);
   ru_info.nb_tx = ru->nb_tx;
   ru_info.txdataF_BF = ru->common.txdataF_BF;
+  //if (ru_info.beam_id)
+  //printf("slot %d beam %d\n", slot, ru_info.beam_id[0][slot*14]);
 //printf("south_out:\tframe=%d\tslot=%d\ttimestamp=%ld\n",frame,slot,timestamp);
 
   int ret = xran_fh_tx_send_slot(&ru_info, frame, slot, timestamp);

@@ -2089,8 +2089,8 @@ app_io_xran_fh_config_init(UsecaseConfig* p_use_cfg,  RuntimeConfig* p_o_xu_cfg,
         p_xran_fh_cfg->ru_conf.compMeth                 = XRAN_COMPMETHOD_BLKFLOAT;
         
     p_xran_fh_cfg->ru_conf.compMeth_PRACH           = p_o_xu_cfg->prachCompMethod;
-    if (p_o_xu_cfg->prachCompMethod == 0)
-        p_o_xu_cfg->prachiqWidth = 16;
+    /*if (p_o_xu_cfg->prachCompMethod == 0)
+        p_o_xu_cfg->prachiqWidth = 16;*/
     p_xran_fh_cfg->ru_conf.iqWidth_PRACH            = p_o_xu_cfg->prachiqWidth;
         
     printf("CompHdrType %s. iqWidth %d, compMeth %s, compMeth_PRACH %s, iqWidth_PRACH %d\n",

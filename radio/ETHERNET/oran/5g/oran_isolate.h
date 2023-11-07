@@ -42,6 +42,9 @@ typedef struct ru_info_s{
 
         // Needed for Prach
         int **prach_buf;
+
+        //needed for beam managment
+        u_int8_t **beam_id;
 } ru_info_t;
 
 int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot);

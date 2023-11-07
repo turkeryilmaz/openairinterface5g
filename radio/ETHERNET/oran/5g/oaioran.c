@@ -461,6 +461,7 @@ return(0);
 
 int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp){
 
+
 #ifdef ORAN_BRONZE       
   uint16_t mu = xranConf.frame_conf.nNumerology;
 #else
@@ -474,6 +475,8 @@ int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp)
 
 
   struct xran_device_ctx *xran_ctx = xran_dev_get_ctx();
+
+
 #ifdef ORAN_BRONZE
   int num_eaxc = xranConf.neAxc;
   int num_eaxc_ul = xranConf.neAxcUl;
@@ -515,6 +518,8 @@ int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp)
                uint8_t *dst = (uint8_t *)u8dptr;
 
                struct xran_prb_elm* p_prbMapElm = &pRbMap->prbMap[idxElm];
+               if (ru->beam_id[0][slot*14]!=255) p_prbMapElm->nBeamIndex = ru->beam_id[0][slot*14];
+               //printf("beam id %u\n",p_prbMapElm->nBeamIndex);
 
                for (idxElm = 0;  idxElm < pRbMap->nPrbElm; idxElm++) {
                   struct xran_section_desc *p_sec_desc = NULL;

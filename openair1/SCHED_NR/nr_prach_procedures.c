@@ -152,7 +152,7 @@ void L1_nr_prach_procedures(PHY_VARS_gNB *gNB,int frame,int slot) {
 
       if ((gNB->prach_energy_counter == 100) && (max_preamble_energy[0] > gNB->measurements.prach_I0+gNB->prach_thres)) {
 	
-	LOG_I(NR_PHY,"[gNB %d][RAPROC] Frame %d, slot %d Initiating RA procedure with preamble %d, energy %d.%d dB (I0 %d, thres %d), delay %d start symbol %u freq index %u\n",
+	LOG_I(NR_PHY,"[gNB %d][RAPROC] Frame %d, slot %d Initiating RA procedure with preamble %d, energy %d.%d dB (I0 %d, thres %d), delay %d start symbol %u freq index %u diff %d\n",
 	      gNB->Mod_id,
 	      frame,
 	      slot,
@@ -162,7 +162,8 @@ void L1_nr_prach_procedures(PHY_VARS_gNB *gNB,int frame,int slot) {
               gNB->measurements.prach_I0,gNB->prach_thres,
 	      max_preamble_delay[0],
 	      prachStartSymbol,
-	      prach_pdu->num_ra);
+	      prach_pdu->num_ra,
+         max_preamble_energy[0] - gNB->measurements.prach_I0-gNB->prach_thres);
 	
 	T(T_ENB_PHY_INITIATE_RA_PROCEDURE, T_INT(gNB->Mod_id), T_INT(frame), T_INT(slot),
 	  T_INT(max_preamble[0]), T_INT(max_preamble_energy[0]), T_INT(max_preamble_delay[0]));
