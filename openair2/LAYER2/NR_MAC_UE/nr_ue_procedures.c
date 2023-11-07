@@ -819,15 +819,20 @@ int8_t nr_ue_process_dci(module_id_t module_id, int cc_id, uint8_t gNB_index, fr
       return -1;
     }
 
-    if(rnti != ra->ra_rnti && rnti != SI_RNTI && rnti != P_RNTI)
-      //AssertFatal(1 + dci->pdsch_to_harq_feedback_timing_indicator.val >= DURATION_RX_TO_TX, "PDSCH to HARQ feedback time (%d) cannot be less than DURATION_RX_TO_TX (%d).\n",
-      //            1 + dci->pdsch_to_harq_feedback_timing_indicator.val, DURATION_RX_TO_TX);
+    if(rnti != ra->ra_rnti && rnti != SI_RNTI && rnti != P_RNTI) {
+#if 0
+      AssertFatal(1 + dci->pdsch_to_harq_feedback_timing_indicator.val > DURATION_RX_TO_TX,
+                 "PDSCH to HARQ feedback time (%d) needs to be higher than DURATION_RX_TO_TX (%d).\n",
+                 1 + dci->pdsch_to_harq_feedback_timing_indicator.val, DURATION_RX_TO_TX);
+#else
       // if we observe delay on HARQ processing, let's not generate Fatal
-      if (1 + dci->pdsch_to_harq_feedback_timing_indicator.val < DURATION_RX_TO_TX) {
-	      LOG_E(MAC,"PDSCH to HARQ feedback time (%d) cannot be less than DURATION_RX_TO_TX (%d).\n",
-                  1 + dci->pdsch_to_harq_feedback_timing_indicator.val, DURATION_RX_TO_TX);
-	      return -1;
+      if (1 + dci->pdsch_to_harq_feedback_timing_indicator.val <= DURATION_RX_TO_TX) {
+        LOG_E(MAC, "PDSCH to HARQ feedback time (%d) needs to be higher than DURATION_RX_TO_TX (%d).\n",
+              1 + dci->pdsch_to_harq_feedback_timing_indicator.val, DURATION_RX_TO_TX);
+        return -1;
       }
+#endif
+    }
 
     // set the harq status at MAC for feedback
     set_harq_status(mac,
@@ -1158,8 +1163,9 @@ int8_t nr_ue_process_dci(module_id_t module_id, int cc_id, uint8_t gNB_index, fr
     // according to TS 38.213 Table 9.2.3-1
     uint8_t feedback_ti = pucch_Config->dl_DataToUL_ACK->list.array[dci->pdsch_to_harq_feedback_timing_indicator.val][0];
 
-    AssertFatal(feedback_ti>=DURATION_RX_TO_TX,"PDSCH to HARQ feedback time (%d) cannot be less than DURATION_RX_TO_TX (%d). Min feedback time set in config file (min_rxtxtime).\n",
-                feedback_ti,DURATION_RX_TO_TX);
+    AssertFatal(feedback_ti > DURATION_RX_TO_TX,
+                "PDSCH to HARQ feedback time (%d) needs to be higher than DURATION_RX_TO_TX (%d). Min feedback time set in config file (min_rxtxtime).\n",
+                feedback_ti, DURATION_RX_TO_TX);
 
     // set the harq status at MAC for feedback
     set_harq_status(mac,
