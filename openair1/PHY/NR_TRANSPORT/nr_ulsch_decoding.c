@@ -278,7 +278,6 @@ int decode_offload(PHY_VARS_gNB *phy_vars_gNB,
     } else {
       LOG_D(PHY, "uplink segment error %d/%d\n", r, harq_process->C);
       LOG_D(PHY, "ULSCH %d in error\n", ULSCH_id);
-      break; // don't even attempt to decode other segments
     }
     r_offset += E;
   }
