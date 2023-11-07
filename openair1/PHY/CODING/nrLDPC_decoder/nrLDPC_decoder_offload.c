@@ -74,6 +74,15 @@
 pthread_mutex_t encode_mutex;
 pthread_mutex_t decode_mutex;
 
+const char *typeStr[] = {
+    "RTE_BBDEV_OP_NONE", /**< Dummy operation that does nothing */
+    "RTE_BBDEV_OP_TURBO_DEC", /**< Turbo decode */
+    "RTE_BBDEV_OP_TURBO_ENC", /**< Turbo encode */
+    "RTE_BBDEV_OP_LDPC_DEC", /**< LDPC decode */
+    "RTE_BBDEV_OP_LDPC_ENC", /**< LDPC encode */
+    "RTE_BBDEV_OP_TYPE_COUNT", /**< Count of different op types */
+};
+
 /* Represents tested active devices */
 struct active_device {
   const char *driver_name;
@@ -82,7 +91,8 @@ struct active_device {
   int enc_queue;
   uint16_t queue_ids[MAX_QUEUES];
   uint16_t nb_queues;
-  struct rte_mempool *ops_mempool;
+  struct rte_mempool *bbdev_dec_op_pool;
+  struct rte_mempool *bbdev_enc_op_pool;
   struct rte_mempool *in_mbuf_pool;
   struct rte_mempool *hard_out_mbuf_pool;
   struct rte_mempool *soft_out_mbuf_pool;
@@ -102,7 +112,8 @@ struct test_buffers {
 
 /* Operation parameters specific for given test case */
 struct test_op_params {
-  struct rte_mempool *mp;
+  struct rte_mempool *mp_dec;
+  struct rte_mempool *mp_enc;
   struct rte_bbdev_dec_op *ref_dec_op;
   struct rte_bbdev_enc_op *ref_enc_op;
   uint16_t burst_sz;
@@ -165,92 +176,45 @@ optimal_mempool_size(unsigned int val)
   return rte_align32pow2(val + 1) - 1;
 }
 
-/* allocates mbuf mempool for inputs and outputs */
-// DPDK BBDEV modified - commented for loop, max_seg_sz set to lenght, struct op_data_entries *entries in DPDK x uint32_t length
-static struct rte_mempool *create_mbuf_pool(uint32_t length,
-                                            uint8_t dev_id,
-                                            int socket_id,
-                                            unsigned int mbuf_pool_size,
-                                            const char *op_type_str)
-{
-  uint32_t max_seg_sz = 0;
-  char pool_name[RTE_MEMPOOL_NAMESIZE];
-
-  /* find max input segment size */
-  // for (i = 0; i < entries->nb_segments; ++i)
-  if (length > max_seg_sz)
-    max_seg_sz = length;
-
-  snprintf(pool_name, sizeof(pool_name), "%s_pool_%u", op_type_str, dev_id);
-  return rte_pktmbuf_pool_create(
-      pool_name,
-      mbuf_pool_size,
-      0,
-      0,
-      RTE_MAX(max_seg_sz + RTE_PKTMBUF_HEADROOM + FILLER_HEADROOM, (unsigned int)RTE_MBUF_DEFAULT_BUF_SIZE),
-      socket_id);
-}
 // DPDK BBDEV modified - sizes passed to the function, use of data_len and nb_segments, remove code related to Soft outputs, HARQ
 // inputs, HARQ outputs
 static int create_mempools(struct active_device *ad, int socket_id, uint16_t num_ops, int out_buff_sz, int in_max_sz)
 {
-  struct rte_mempool *mp;
-  unsigned int ops_pool_size, mbuf_pool_size = 0;
+  unsigned int ops_pool_size, mbuf_pool_size, data_room_size = 0;
   uint8_t nb_segments = 1;
-  /* allocate ops mempool */
   ops_pool_size = optimal_mempool_size(RTE_MAX(
       /* Ops used plus 1 reference op */
       RTE_MAX((unsigned int)(ad->nb_queues * num_ops + 1),
               /* Minimal cache size plus 1 reference op */
               (unsigned int)(1.5 * rte_lcore_count() * OPS_CACHE_SIZE + 1)),
       OPS_POOL_SIZE_MIN));
-  mp = rte_bbdev_op_pool_create("oai",
-                                RTE_BBDEV_OP_NONE, // NONE for all types
-                                ops_pool_size,
-                                OPS_CACHE_SIZE,
-                                socket_id);
-  TEST_ASSERT_NOT_NULL(mp,
-                       "ERROR Failed to create %u items ops pool for dev %u on socket %d.",
-                       ops_pool_size,
-                       ad->dev_id,
-                       socket_id);
-  ad->ops_mempool = mp;
+
+  /* Decoder ops mempool */
+  ad->bbdev_dec_op_pool = rte_bbdev_op_pool_create("bbdev_op_pool_dec", RTE_BBDEV_OP_LDPC_DEC,
+  /* Encoder ops mempool */                         ops_pool_size, OPS_CACHE_SIZE, socket_id);
+  ad->bbdev_enc_op_pool = rte_bbdev_op_pool_create("bbdev_op_pool_enc", RTE_BBDEV_OP_LDPC_ENC,
+                                                    ops_pool_size, OPS_CACHE_SIZE, socket_id);
+
+  if ((ad->bbdev_dec_op_pool == NULL) || (ad->bbdev_enc_op_pool == NULL))
+    TEST_ASSERT_NOT_NULL(NULL, "ERROR Failed to create %u items ops pool for dev %u on socket %d.",
+                         ops_pool_size, ad->dev_id, socket_id);
 
   /* Inputs */
-  if (nb_segments > 0) {
-    mbuf_pool_size = optimal_mempool_size(ops_pool_size * nb_segments);
-    mp = create_mbuf_pool(in_max_sz, ad->dev_id, socket_id, mbuf_pool_size, "in");
-    TEST_ASSERT_NOT_NULL(mp,
-                         "ERROR Failed to create %u items input pktmbuf pool for dev %u on socket %d.",
-                         mbuf_pool_size,
-                         ad->dev_id,
-                         socket_id);
-    ad->in_mbuf_pool = mp;
-  }
+  mbuf_pool_size = optimal_mempool_size(ops_pool_size * nb_segments);
+  data_room_size = RTE_MAX(in_max_sz + RTE_PKTMBUF_HEADROOM + FILLER_HEADROOM, (unsigned int)RTE_MBUF_DEFAULT_BUF_SIZE);
+  ad->in_mbuf_pool = rte_pktmbuf_pool_create("in_mbuf_pool", mbuf_pool_size, 0, 0, data_room_size, socket_id);
+  TEST_ASSERT_NOT_NULL(ad->in_mbuf_pool,
+                       "ERROR Failed to create %u items input pktmbuf pool for dev %u on socket %d.",
+                       mbuf_pool_size, ad->dev_id, socket_id);
 
   /* Hard outputs */
-  if (nb_segments > 0) {
-    mbuf_pool_size = optimal_mempool_size(ops_pool_size * nb_segments);
-    mp = create_mbuf_pool(out_buff_sz, ad->dev_id, socket_id, mbuf_pool_size, "hard_out");
-    TEST_ASSERT_NOT_NULL(mp,
-                         "ERROR Failed to create %u items hard output pktmbuf pool for dev %u on socket %d.",
-                         mbuf_pool_size,
-                         ad->dev_id,
-                         socket_id);
-    ad->hard_out_mbuf_pool = mp;
-  }
-
-  return TEST_SUCCESS;
+  data_room_size = RTE_MAX(out_buff_sz + RTE_PKTMBUF_HEADROOM + FILLER_HEADROOM, (unsigned int)RTE_MBUF_DEFAULT_BUF_SIZE);
+  ad->hard_out_mbuf_pool = rte_pktmbuf_pool_create("hard_out_mbuf_pool", mbuf_pool_size, 0, 0, data_room_size, socket_id);
+  TEST_ASSERT_NOT_NULL(ad->hard_out_mbuf_pool,
+                       "ERROR Failed to create %u items hard output pktmbuf pool for dev %u on socket %d.",
+                       mbuf_pool_size, ad->dev_id, socket_id);
+  return 0;
 }
-
-const char *typeStr[] = {
-    "RTE_BBDEV_OP_NONE", /**< Dummy operation that does nothing */
-    "RTE_BBDEV_OP_TURBO_DEC", /**< Turbo decode */
-    "RTE_BBDEV_OP_TURBO_ENC", /**< Turbo encode */
-    "RTE_BBDEV_OP_LDPC_DEC", /**< LDPC decode */
-    "RTE_BBDEV_OP_LDPC_ENC", /**< LDPC encode */
-    "RTE_BBDEV_OP_TYPE_COUNT", /**< Count of different op types */
-};
 
 const char *ldpcenc_flag_bitmask[] = {
     /** Set for bit-level interleaver bypass on output stream. */
@@ -529,7 +493,8 @@ static int allocate_buffers_on_socket(struct rte_bbdev_op_data **buffers, const 
 static void
 free_buffers(struct active_device *ad, struct test_op_params *op_params)
 {
-  rte_mempool_free(ad->ops_mempool);
+  rte_mempool_free(ad->bbdev_dec_op_pool);
+  rte_mempool_free(ad->bbdev_enc_op_pool);
   rte_mempool_free(ad->in_mbuf_pool);
   rte_mempool_free(ad->hard_out_mbuf_pool);
   rte_mempool_free(ad->soft_out_mbuf_pool);
@@ -660,25 +625,25 @@ static int retrieve_ldpc_enc_op(struct rte_bbdev_enc_op **ops, const uint16_t n,
 // DPDK BBDEV copy
 static int init_test_op_params(struct test_op_params *op_params,
                                enum rte_bbdev_op_type op_type,
-                               const int expected_status,
-                               const int vector_mask,
                                struct rte_mempool *ops_mp,
                                uint16_t burst_sz,
                                uint16_t num_to_process,
                                uint16_t num_lcores)
 {
-  int ret = rte_mempool_get_bulk(ops_mp, (void **)&op_params->ref_dec_op, 1);
-  TEST_ASSERT_SUCCESS(ret, "rte_bbdev_op_alloc_bulk() failed");
-  ret = rte_mempool_get_bulk(ops_mp, (void **)&op_params->ref_enc_op, 1);
+  int ret = 0;
+  if (op_type == RTE_BBDEV_OP_LDPC_DEC) {
+    ret = rte_bbdev_dec_op_alloc_bulk(ops_mp, &op_params->ref_dec_op, 1);
+    op_params->mp_dec = ops_mp;
+  } else {
+    ret = rte_bbdev_enc_op_alloc_bulk(ops_mp, &op_params->ref_enc_op, 1);
+    op_params->mp_enc = ops_mp;
+  }
+
   TEST_ASSERT_SUCCESS(ret, "rte_bbdev_op_alloc_bulk() failed");
 
-  op_params->mp = ops_mp;
   op_params->burst_sz = burst_sz;
   op_params->num_to_process = num_to_process;
   op_params->num_lcores = num_lcores;
-  op_params->vector_mask = vector_mask;
-  op_params->ref_dec_op->status = expected_status;
-  op_params->ref_enc_op->status = expected_status;
   return 0;
 }
 
@@ -710,9 +675,9 @@ pmd_lcore_ldpc_dec(void *arg)
   bufs = &tp->op_params->q_bufs[GET_SOCKET(info.socket_id)][queue_id];
   while (rte_atomic16_read(&tp->op_params->sync) == SYNC_WAIT)
     rte_pause();
-  ret = rte_mempool_get_bulk(tp->op_params->mp, (void **)ops_enq, num_ops);
+  ret = rte_mempool_get_bulk(tp->op_params->mp_dec, (void **)ops_enq, num_ops);
   // looks like a bbdev internal error for the free operation, workaround here
-  ops_enq[0]->mempool = tp->op_params->mp;
+  ops_enq[0]->mempool = tp->op_params->mp_dec;
   // ret = rte_bbdev_dec_op_alloc_bulk(tp->op_params->mp, ops_enq, num_ops);
   TEST_ASSERT_SUCCESS(ret, "Allocation failed for %d ops", num_ops);
 
@@ -793,10 +758,10 @@ static int pmd_lcore_ldpc_enc(void *arg)
   while (rte_atomic16_read(&tp->op_params->sync) == SYNC_WAIT)
     rte_pause();
 
-  ret = rte_mempool_get_bulk(tp->op_params->mp, (void **)ops_enq, num_ops);
+  ret = rte_mempool_get_bulk(tp->op_params->mp_enc, (void **)ops_enq, num_ops);
   // ret = rte_bbdev_enc_op_alloc_bulk(tp->op_params->mp, ops_enq, num_ops);
   TEST_ASSERT_SUCCESS(ret, "Allocation failed for %d ops", num_ops);
-  ops_enq[0]->mempool = tp->op_params->mp;
+  ops_enq[0]->mempool = tp->op_params->mp_enc;
 
   set_ldpc_enc_op(ops_enq, num_ops, 0, bufs->inputs, bufs->hard_outputs, ref_op, p_offloadParams);
 
@@ -998,12 +963,10 @@ int32_t LDPCinit()
   //the previous calls have populated this global variable (beurk)
   // One more global to remove, not thread safe global op_params
   op_params = rte_zmalloc(NULL, sizeof(struct test_op_params), RTE_CACHE_LINE_SIZE);
-  TEST_ASSERT_NOT_NULL(op_params,
-                       "Failed to alloc %zuB for op_params",
+  TEST_ASSERT_NOT_NULL(op_params, "Failed to alloc %zuB for op_params",
                        RTE_ALIGN(sizeof(struct test_op_params), RTE_CACHE_LINE_SIZE));
 
   int socket_id = GET_SOCKET(info.socket_id);
-  enum rte_bbdev_op_type op_type = RTE_BBDEV_OP_NONE;
   int out_max_sz = 8448; // max code block size (for BG1), 22 * 384
   int in_max_sz = 25344; // max number of encoded bits (for BG1), 66 * 384
   int num_ops = 1;
@@ -1015,7 +978,8 @@ int32_t LDPCinit()
   // get_num_lcores() hardcoded to 1: we use one core for decode, and another for encode
   // this code from bbdev test example is not considering encode and decode test
   // get_num_ops() replaced by 1: LDPC decode and ldpc encode (7th param)
-  f_ret = init_test_op_params(op_params, op_type, 0, 0, ad->ops_mempool, 1, 1, 1);
+  f_ret = init_test_op_params(op_params, RTE_BBDEV_OP_LDPC_DEC, ad->bbdev_dec_op_pool, 1, 1, 1);
+  f_ret |= init_test_op_params(op_params, RTE_BBDEV_OP_LDPC_ENC, ad->bbdev_enc_op_pool, 1, 1, 1);
   if (f_ret != TEST_SUCCESS) {
     printf("Couldn't init test op params");
     return -1;
@@ -1043,7 +1007,7 @@ int32_t LDPCinit()
       m_head[type] = rte_pktmbuf_alloc(mbuf_pools[type]);
       TEST_ASSERT_NOT_NULL(m_head[type],
                            "Not enough mbufs in %d data type mbuf pool (needed %d, available %u)",
-                           op_type,
+                           type,
                            1,
                            mbuf_pools[type]->size);
     }
