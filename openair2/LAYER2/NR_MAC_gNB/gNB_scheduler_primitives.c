@@ -2347,13 +2347,20 @@ NR_UE_info_t *add_new_nr_ue(gNB_MAC_INST *nr_mac, rnti_t rntiP, NR_CellGroupConf
   /* get Number of HARQ processes for this UE */
   // pdsch_servingcellconfig == NULL in SA -> will create default (8) number of HARQ processes
   create_dl_harq_list(sched_ctrl, dl_bwp->pdsch_servingcellconfig);
+
+  int nrofHARQ = 16;
+  if (ul_bwp && ul_bwp->pusch_servingcellconfig)
+    nrofHARQ = get_nrofHARQ_ProcessesForPUSCH(ul_bwp->pusch_servingcellconfig->ext3);
+
+  LOG_D(NR_MAC,"Num UL HARQ: %d\n",nrofHARQ);
+
   // add all available UL HARQ processes for this UE
   // nb of ul harq processes not configurable
-  create_nr_list(&sched_ctrl->available_ul_harq, 16);
-  for (int harq = 0; harq < 16; harq++)
+  create_nr_list(&sched_ctrl->available_ul_harq, nrofHARQ);
+  for (int harq = 0; harq < nrofHARQ; harq++)
     add_tail_nr_list(&sched_ctrl->available_ul_harq, harq);
-  create_nr_list(&sched_ctrl->feedback_ul_harq, 16);
-  create_nr_list(&sched_ctrl->retrans_ul_harq, 16);
+  create_nr_list(&sched_ctrl->feedback_ul_harq, nrofHARQ);
+  create_nr_list(&sched_ctrl->retrans_ul_harq, nrofHARQ);
 
   reset_srs_stats(UE);
 
@@ -2407,6 +2414,8 @@ void create_dl_harq_list(NR_UE_sched_ctrl_t *sched_ctrl,
                          const NR_PDSCH_ServingCellConfig_t *pdsch) {
   const int nrofHARQ = pdsch && pdsch->nrofHARQ_ProcessesForPDSCH ?
                        get_nrofHARQ_ProcessesForPDSCH(*pdsch->nrofHARQ_ProcessesForPDSCH, pdsch->ext3) : 8;
+  
+  LOG_I(NR_MAC,"Num DL HARQ:%d\n",nrofHARQ);
   // add all available DL HARQ processes for this UE
   AssertFatal(sched_ctrl->available_dl_harq.len == sched_ctrl->feedback_dl_harq.len
               && sched_ctrl->available_dl_harq.len == sched_ctrl->retrans_dl_harq.len,
