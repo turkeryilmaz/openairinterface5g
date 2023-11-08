@@ -2520,7 +2520,7 @@ int get_pdsch_to_harq_feedback(NR_PUCCH_Config_t *pucch_Config,
 
   if (dci_format == NR_DL_DCI_FORMAT_1_0) {
     for (int i = 0; i < 8; i++)
-      pdsch_to_harq_feedback[i] = i + 1;
+      pdsch_to_harq_feedback[i] = i + 1 + NTN_gNB_k2;
     return 8;
   }
   else {

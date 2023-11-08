@@ -27,6 +27,7 @@
  */
 
 #include <softmodem-common.h>
+#include <nr-softmodem.h>
 #include "NR_MAC_gNB/nr_mac_gNB.h"
 #include "NR_MAC_COMMON/nr_mac_extern.h"
 #include "NR_MAC_gNB/mac_proto.h"
@@ -188,6 +189,12 @@ void nr_schedule_pucch(gNB_MAC_INST *nrmac,
     NR_sched_pucch_t *curr_pucch = &UE->UE_sched_ctrl.sched_pucch[pucch_index];
     if (!curr_pucch->active)
       continue;
+    if (!UE->Msg4_ACKed)
+    {
+      const NR_UE_UL_BWP_t *ul_bwp = &UE->current_UL_BWP;
+      const int n_slots_frame = nr_slots_per_frame[ul_bwp->scs]; 
+      frameP += NTN_gNB_k2 / n_slots_frame;
+    } 
     DevAssert(frameP == curr_pucch->frame && slotP == curr_pucch->ul_slot);
 
     const uint16_t O_ack = curr_pucch->dai_c;
@@ -1225,7 +1232,7 @@ int nr_acknack_scheduling(gNB_MAC_INST *mac,
    * called often, don't try to lock every time */
 
   const int CC_id = 0;
-  const int minfbtime = mac->minRXTXTIMEpdsch;
+  const int minfbtime = mac->minRXTXTIMEpdsch + NTN_gNB_k2;
   const NR_ServingCellConfigCommon_t *scc = mac->common_channels[CC_id].ServingCellConfigCommon;
   const NR_UE_UL_BWP_t *ul_bwp = &UE->current_UL_BWP;
   const int n_slots_frame = nr_slots_per_frame[ul_bwp->scs];

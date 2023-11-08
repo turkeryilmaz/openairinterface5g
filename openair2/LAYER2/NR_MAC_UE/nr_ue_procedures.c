@@ -755,9 +755,12 @@ int8_t nr_ue_process_dci(module_id_t module_id, int cc_id, uint8_t gNB_index, fr
     }
 
     if(rnti != ra->ra_rnti && rnti != SI_RNTI && !get_softmodem_params()->no_harq)
+    { 
+      dci->pdsch_to_harq_feedback_timing_indicator.val = dci->pdsch_to_harq_feedback_timing_indicator.val + NTN_UE_slot_Rx_to_Tx;
       AssertFatal(1 + dci->pdsch_to_harq_feedback_timing_indicator.val > DURATION_RX_TO_TX,
                   "PDSCH to HARQ feedback time (%d) needs to be higher than DURATION_RX_TO_TX (%d).\n",
                   1 + dci->pdsch_to_harq_feedback_timing_indicator.val, DURATION_RX_TO_TX);
+    } 
 
     // set the harq status at MAC for feedback
     set_harq_status(mac,
@@ -2168,10 +2171,14 @@ bool get_downlink_ack(NR_UE_MAC_INST_t *mac, frame_t frame, int slot, PUCCH_sche
       if (current_harq->active) {
 
         sched_slot = current_harq->dl_slot + current_harq->feedback_to_ul;
+        int frame_offset = 1;
+        if (NTN_UE_k2 > 0)
+          frame_offset = NTN_UE_k2/slots_per_frame;
+
         sched_frame = current_harq->dl_frame;
         if (sched_slot >= slots_per_frame) {
           sched_slot %= slots_per_frame;
-          sched_frame = (sched_frame + 1) % 1024;
+          sched_frame = (sched_frame + frame_offset) % 1024;
         }
         AssertFatal(sched_slot < slots_per_frame, "sched_slot was calculated incorrect %d\n", sched_slot);
         LOG_D(PHY, "HARQ pid %d is active for %d.%d (dl_slot %d, feedback_to_ul %d\n", dl_harq_pid, sched_frame, sched_slot, current_harq->dl_slot, current_harq->feedback_to_ul);
