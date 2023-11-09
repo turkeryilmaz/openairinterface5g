@@ -811,6 +811,10 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
                   }
                 }
               }
+              else if(RandomAccessResponse_Type_None == AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.v[i].RAResponse.v.Ctrl.Rar.d)
+              {
+                RRC_CONFIGURATION_REQ(msg_p).ActiveParam[cell_index].numRar = 0; /* Indicate non RAR response: do not initate RA procedure */
+              }
             }
             if (AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.v[i].ContentionResolutionCtrl.d == ContentionResolutionCtrl_Type_TCRNTI_Based)
             {
@@ -841,8 +845,11 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
     LOG_A(ENB_SS_SYS_TASK, "SS: ActiveParamPresent: %d, RlcPduCCCH_Present: %d, RLC Container PDU size: %d \n", RRC_CONFIGURATION_REQ(msg_p).ActiveParamPresent[cell_index], RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Present[cell_index], RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Size[cell_index]);
     // store the modified cell config back
     memcpy(&(RC.rrc[enb_id]->configuration), &RRC_CONFIGURATION_REQ(msg_p), sizeof(RRC_CONFIGURATION_REQ(msg_p)));
-    LOG_A(ENB_SS_SYS_TASK, "Sending Cell configuration to RRC from SYSTEM_CTRL_REQ \n");
-    itti_send_msg_to_task(TASK_RRC_ENB, ENB_MODULE_ID_TO_INSTANCE(enb_id), msg_p);
+    if (!vt_timer_push_msg(&req->Common.TimingInfo, TASK_RRC_ENB,ENB_MODULE_ID_TO_INSTANCE(enb_id), msg_p))
+    {
+      LOG_A(ENB_SS_SYS_TASK, "Sending Cell configuration to RRC from SYSTEM_CTRL_REQ \n");
+      itti_send_msg_to_task(TASK_RRC_ENB, ENB_MODULE_ID_TO_INSTANCE(enb_id), msg_p);
+    }
 
     /* Active Config for ULGrant Params */
     bool destTaskMAC = false;

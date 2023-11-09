@@ -6633,7 +6633,7 @@ char openair_rrc_eNB_configuration(
     if(configuration->ActiveParamPresent[CC_id] == true)
     {
       LOG_A(RRC,"CRNTI present=%d %d numRar=%d",configuration->ActiveParam[CC_id].b_C_RNTI_Present, configuration->ActiveParam[CC_id].C_RNTI, configuration->ActiveParam[CC_id].numRar);
-
+      RC.ss.ss_crnti[CC_id].b_rarResponse = configuration->ActiveParam[CC_id].numRar > 0? true: false;
       RC.ss.ss_crnti[CC_id].b_C_RNTI_Present = configuration->ActiveParam[CC_id].b_C_RNTI_Present;
       RC.ss.ss_crnti[CC_id].b_Temp_RNTI_Present = configuration->ActiveParam[CC_id].b_C_RNTI_Present;
 
@@ -7252,12 +7252,24 @@ rrc_eNB_decode_ccch(
           }
 
           //c-plane not end
-          if((ue_context_p->ue_context.StatusRrc != RRC_RECONFIGURED) && (ue_context_p->ue_context.reestablishment_cause == LTE_ReestablishmentCause_spare1)) {
+          if((ue_context_p->ue_context.StatusRrc != RRC_RECONFIGURED && ue_context_p->ue_context.StatusRrc != RRC_HO_EXECUTION) && (ue_context_p->ue_context.reestablishment_cause == LTE_ReestablishmentCause_spare1)) {
             LOG_E(RRC,
                   PROTOCOL_RRC_CTXT_UE_FMT" LTE_RRCConnectionReestablishmentRequest (UE %x c-plane is not end), let's reject the UE\n",
                   PROTOCOL_RRC_CTXT_UE_ARGS(ctxt_pP),c_rnti);
             rrc_eNB_generate_RRCConnectionReestablishmentReject(ctxt_pP, ue_context_p, CC_id);
             break;
+          }
+
+          if(ue_context_p->ue_context.StatusRrc == RRC_HO_EXECUTION && ue_context_p->ue_context.handover_info && rrcConnectionReestablishmentRequest->reestablishmentCause == LTE_ReestablishmentCause_handoverFailure){
+            /* resume the old context because of HO failure, we need remove HO info and the failed target HO context */
+            struct rrc_eNB_ue_context_s *ho_target_ue_context_p = rrc_eNB_get_ue_context(RC.rrc[ctxt_pP->module_id], ue_context_p->ue_context.handover_info->ss_target_ue_rnti);
+            if(ho_target_ue_context_p){
+              ho_target_ue_context_p->ue_context.ue_release_timer_rrc = 1;
+              ho_target_ue_context_p->ue_context.ue_release_timer_thres_rrc = 1;
+            }
+            free(ue_context_p->ue_context.handover_info);
+            ue_context_p->ue_context.handover_info = NULL;
+            ue_context_p->ue_context.StatusRrc = RRC_IDLE;
           }
 
           if(ue_context_p->ue_context.ue_reestablishment_timer > 0) {
@@ -8665,6 +8677,12 @@ void process_unsuccessful_rlc_sdu_indication(int instance, int rnti) {
   int release_num;
   int release_total;
   RRC_release_ctrl_t *release_ctrl;
+
+  int CC_id = UE_PCCID(ENB_INSTANCE_TO_MODULE_ID(instance), rnti);
+  if(RC.ss.mode >= SS_SOFTMODEM && (!RC.ss.ss_crnti[CC_id].b_rarResponse)){
+    LOG_I(RRC, "process_unsuccessful_rlc_sdu_indication:Special SS config no RAR,Do not consider as radio link failure\n");
+    return;
+  }
   LOG_I(RRC, "process_unsuccessful_rlc_sdu_indication: radio link failure detected by RLC layer, remove UE\n");
   /* radio link failure detected by RLC layer, remove UE properly */
   pthread_mutex_lock(&rrc_release_freelist);

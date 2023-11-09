@@ -1326,6 +1326,12 @@ initiate_ra_proc(module_id_t module_idP,
   RA_t *ra = &cc->ra[0];
   struct LTE_PRACH_ConfigSIB_v1310 *ext4_prach = NULL;
   LTE_PRACH_ParametersListCE_r13_t *prach_ParametersListCE_r13 = NULL;
+  if(RC.ss.mode >= SS_SOFTMODEM && (!RC.ss.ss_crnti[CC_id].b_rarResponse)){
+    LOG_D(MAC,
+        "[eNB %d][RAPROC] CC_id %d Frame %d, Subframe %d  SS mode Do not Initate RA procedure for preamble index %d, timing offset %d\n",
+        module_idP, CC_id, frameP, subframeP, preamble_index, timing_offset);
+    return;
+  }
 
   if (cc->mib->message.schedulingInfoSIB1_BR_r13>0) {
     AssertFatal(cc->radioResourceConfigCommon_BR != NULL,"radioResourceConfigCommon_BR is null\n");

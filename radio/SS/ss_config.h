@@ -46,6 +46,7 @@ typedef enum ss_mode {
 #define SS_SOFTMODEM_SRB        (0x02)
 #endif
 typedef struct ss_crnti_config_s {
+  bool b_rarResponse;
   bool b_C_RNTI_Present;
   uint16_t C_RNTI;
   bool b_Temp_RNTI_Present;
