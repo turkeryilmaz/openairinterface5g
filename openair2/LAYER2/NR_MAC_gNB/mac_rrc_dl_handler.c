@@ -554,11 +554,9 @@ void dl_rrc_message_transfer(const f1ap_dl_rrc_message_t *dl_rrc)
   nr_rlc_srb_recv_sdu(dl_rrc->gNB_DU_ue_id, dl_rrc->srb_id, dl_rrc->rrc_container, dl_rrc->rrc_container_length);
 }
 
-void positioning_information_request(const f1ap_positioning_information_req_t *req)
-{
-    LOG_I(MAC, "Processing Received PositioningInformationRequest gNB_CU_ue_id=%d, gNB_DU_ue_id=%d \n", req->gNB_CU_ue_id, req->gNB_DU_ue_id);
-
-    gNB_MAC_INST *mac = RC.nrmac[0];
+/* handlers of Position Information Transfer related NRPPA DL messages */
+void positioning_information_request(const f1ap_positioning_information_req_t *req) {
+    LOG_I(MAC, "DL Processing Received PositioningInformationRequest gNB_CU_ue_id=%d, gNB_DU_ue_id=%d \n", req->gNB_CU_ue_id, req->gNB_DU_ue_id);
 
     /* response has same type as request... */
     f1ap_positioning_information_resp_t resp =
@@ -569,24 +567,51 @@ void positioning_information_request(const f1ap_positioning_information_req_t *r
         .nrppa_msg_info.instance=req->nrppa_msg_info.instance,
         .nrppa_msg_info.gNB_ue_ngap_id=req->nrppa_msg_info.gNB_ue_ngap_id,
         .nrppa_msg_info.amf_ue_ngap_id=req->nrppa_msg_info.amf_ue_ngap_id,
+        .nrppa_msg_info.ue_rnti=req->nrppa_msg_info.ue_rnti,
         .nrppa_msg_info.routing_id_buffer=req->nrppa_msg_info.routing_id_buffer,
         .nrppa_msg_info.routing_id_length=req->nrppa_msg_info.routing_id_length,
     };
 
+//printf("[MAC] PIE Test Adeel:  RequestedSRSTransmissionCharacteristics \n");
+    //xer_fprint(stdout, &asn_DEF_F1AP_RequestedSRSTransmissionCharacteristics, &f1ap_req->req_SRS_info); // test adeel //look UE
 
-//look UE
-    //NR_UE_info_t *UE = find_nr_UE(&RC.nrmac[0]->UE_info, req->gNB_DU_ue_id); //uncomment after synch with latest develop
-    //AssertFatal(UE != NULL, "did not find UE with RNTI %04x, but UE Context Setup Failed not implemented\n", req->rnti); //uncomment after synch with latest develop
-// gNB_MAC_INST *mac = RC.nrmac[req->nrppa_msg_info.instance];
-// struct PHY_VARS_gNB_s *gNB = RC.gNB[0];
-// int module_id= gNB->Mod_id;
-// gNB_MAC_INST *nrmac = RC.nrmac[module_id];
-// NR_UEs_t *UE_info =&mac->UE_info;
-// gNB_MAC_INST *mac = RC.nrmac[0];
-// pthread_mutex_lock(&mac->sched_lock);
-// NR_UE_info_t *UE = find_nr_UE(&mac->UE_info, cmd->rnti);
-
-//read SRS config
-// fill f1ap_positioning_information_resp_t *resp;
+//gNB_MAC_INST *mac = RC.nrmac[req->nrppa_msg_info.instance];
+    gNB_MAC_INST *mac = RC.nrmac[req->nrppa_msg_info.instance];
     mac->mac_rrc.positioning_information_response(&resp);
 }
+
+void positioning_activation_request(const f1ap_positioning_activation_req_t *req){
+    LOG_I(MAC, "DL Processing Received PositioningactivationRequest gNB_CU_ue_id=%d, gNB_DU_ue_id=%d \n", req->gNB_CU_ue_id, req->gNB_DU_ue_id);
+    AssertFatal(false, " Not Implemented \n");
+}
+
+void positioning_deactivation(const f1ap_positioning_deactivation_t *req){
+    LOG_I(MAC, "DL Processing Received PositioningDeactivation gNB_CU_ue_id=%d, gNB_DU_ue_id=%d \n", req->gNB_CU_ue_id, req->gNB_DU_ue_id);
+    AssertFatal(false, " Not Implemented \n");
+}
+
+/* handlers of TRP Information Transfer related NRPPA DL messages */
+void trp_information_request(const f1ap_trp_information_req_t *req){
+    LOG_I(MAC, "DL Processing Received TRPInformationRequest transaction_id=%d \n", req->transaction_id);
+    AssertFatal(false, " Not Implemented \n");
+}
+
+/* handlers of Measurement Information Transfer related NRPPA DL messages */
+/* handlers of Position Information Transfer related NRPPA UL messages */
+void positioning_measurement_request(const f1ap_measurement_req_t *req){
+    LOG_I(MAC, "DL Processing Received measurement_Request transaction_id=%d, lmf_measurement_id=%d \n", req->transaction_id, req->lmf_measurement_id);
+    AssertFatal(false, " Not Implemented \n");
+}
+
+void positioning_measurement_update(const f1ap_measurement_update_t *update){
+    LOG_I(MAC, "DL Processing Received measurement_Update transaction_id=%d, lmf_measurement_id=%d \n", update->transaction_id, update->lmf_measurement_id);
+    AssertFatal(false, " Not Implemented \n");
+}
+
+void positioning_measurement_abort(const f1ap_measurement_abort_t *meas_abort){
+    LOG_I(MAC, "DL Processing Received measurement_Abort transaction_id=%d, lmf_measurement_id=%d \n", meas_abort->transaction_id,  meas_abort->lmf_measurement_id);
+    AssertFatal(false, " Not Implemented \n");
+}
+
+
+

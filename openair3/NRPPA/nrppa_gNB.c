@@ -40,25 +40,6 @@
 
 #include "intertask_interface.h"
 
-//#include "ngap_gNB_default_values.h"
-
-//#include "ngap_common.h"
-
-//#include "ngap_gNB_defs.h"
-//#include "ngap_gNB.h"
-//#include "ngap_gNB_encoder.h"
-//#include "ngap_gNB_handlers.h"
-//#include "ngap_gNB_nnsf.h"
-
-//#include "ngap_gNB_nas_procedures.h"
-//#include "ngap_gNB_management_procedures.h"
-//#include "ngap_gNB_context_management_procedures.h"
-
-//#include "ngap_gNB_itti_messaging.h"
-
-//#include "ngap_gNB_ue_context.h" // test, to be removed
-//#include "ngap_gNB_NRPPa_transport_procedures.h" //adeel nrppa
-
 #include "assertions.h"
 #include "conversions.h"
 
@@ -105,8 +86,51 @@ void *nrppa_gNB_process_itti_msg(void *notUsed) {
         break;
 
       case F1AP_POSITIONING_INFORMATION_RESP:
-        nrppa_gNB_PositioningInformationResponse(instance, received_msg); // adeel changes NRPPA
+        nrppa_gNB_PositioningInformationResponse(instance, received_msg);
         break;
+
+      case F1AP_POSITIONING_INFORMATION_FAILURE:
+        nrppa_gNB_PositioningInformationFailure(instance, received_msg);
+        break;
+
+      case F1AP_POSITIONING_INFORMATION_UPDATE:
+        nrppa_gNB_PositioningInformationUpdate(instance, received_msg);
+        break;
+
+      case F1AP_POSITIONING_ACTIVATION_RESP:
+        nrppa_gNB_PositioningActivationResponse(instance, received_msg);
+        break;
+
+      case F1AP_POSITIONING_ACTIVATION_FAILURE:
+        nrppa_gNB_PositioningActivationFailure(instance, received_msg);
+        break;
+
+      case F1AP_MEASUREMENT_RESP:
+        nrppa_gNB_MeasurementResponse(instance, received_msg);
+        break;
+
+      case F1AP_MEASUREMENT_FAILURE:
+        nrppa_gNB_MeasurementFailure(instance, received_msg);
+        break;
+
+      case F1AP_MEASUREMENT_REPORT:
+        nrppa_gNB_MeasurementReport(instance, received_msg);
+        break;
+
+      case F1AP_MEASUREMENT_FAILURE_IND:
+        nrppa_gNB_MeasurementFailureIndication(instance, received_msg);
+        break;
+
+      case F1AP_TRP_INFORMATION_RESP:
+        nrppa_gNB_TRPInformationResponse(instance, received_msg);
+        break;
+
+      case F1AP_TRP_INFORMATION_FAILURE:
+        nrppa_gNB_TRPInformationFailure(instance, received_msg);
+        break;
+
+
+
 
       default:
         NRPPA_ERROR("Received unhandled message: %d:%s\n", ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));

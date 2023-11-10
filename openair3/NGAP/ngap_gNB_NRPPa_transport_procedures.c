@@ -21,9 +21,9 @@
 
 /*! \file ngap_gNB_NRPPa_transport_procedures.c
  * \brief NGAP gNb  procedure handler
- * \author  Yoshio INOUE, Masayuki HARADA
- * \date 2020
- * \email: yoshio.inoue@fujitsu.com,masayuki.harada@fujitsu.com (yoshio.inoue%40fujitsu.com%2cmasayuki.harada%40fujitsu.com)
+ * \author  Adeel Malik
+ * \date 2023
+ * \email: adeel.malik@eurecom.fr
  * \version 1.0
  * @ingroup _ngap
  */
@@ -217,9 +217,9 @@ int ngap_gNB_handle_DownlinkUEAssociatedNRPPaTransport(uint32_t assoc_id, uint32
   NGAP_RAN_UE_NGAP_ID_t            gnb_ue_ngap_id;
   uint64_t                         amf_ue_ngap_id;
   uint8_t *routingId_buffer= NULL;
-  uint32_t routingId_buffer_length= NULL;
+  uint32_t routingId_buffer_length= 0;
   uint8_t *nrppa_pdu_buffer= NULL;
-  uint32_t nrppa_pdu_length= NULL;
+  uint32_t nrppa_pdu_length= 0;
 
 
   DevAssert(pdu != NULL);
@@ -338,9 +338,9 @@ int ngap_gNB_handle_DownlinkNonUEAssociatedNRPPaTransport(uint32_t assoc_id, uin
   NGAP_DownlinkNonUEAssociatedNRPPaTransport_t     *container;
   NGAP_DownlinkNonUEAssociatedNRPPaTransportIEs_t *ie;
   uint8_t *routingId_buffer= NULL;
-  uint32_t routingId_buffer_length= NULL;
+  uint32_t routingId_buffer_length= 0;
   uint8_t *nrppa_pdu_buffer= NULL;
-  uint32_t nrppa_pdu_length= NULL;
+  uint32_t nrppa_pdu_length= 0;
 
   DevAssert(pdu != NULL);
 

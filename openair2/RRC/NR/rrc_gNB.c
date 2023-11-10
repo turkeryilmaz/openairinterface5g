@@ -2161,14 +2161,18 @@ static void rrc_CU_process_ue_modification_required(MessageDef *msg_p)
 
 static void rrc_CU_process_positioning_information_request(f1ap_positioning_information_req_t *req){
 
-//rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context(RC.nrrrc[req->nrppa_msg_info.instance], req->nrppa_msg_info.gNB_ue_ngap_id);
-//const gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
+rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context(RC.nrrrc[req->nrppa_msg_info.instance], req->nrppa_msg_info.gNB_ue_ngap_id);
+gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
+req->nrppa_msg_info.ue_rnti=UE->rnti;
+ printf(" TEST 0 [rrc_CU_process_positioning_information_request] Positioning_information_request(); rnti= %04x\n", req->nrppa_msg_info.ue_rnti); ////uid_t uid = &UE->uid;
 //  f1_ue_data_t ue_data = cu_get_f1_ue_data(UE->rrc_ue_id);
 
   gNB_RRC_INST *rrc = RC.nrrrc[req->nrppa_msg_info.instance];
+  printf("Testing Processing Received PositioningInformationRequest gNB_ue_ngap_id=UE->rrc_ue_id=%dn", UE->rrc_ue_id );
   LOG_I(RRC, "Processing Received PositioningInformationRequest gNB_CU_ue_id=%d, gNB_DU_ue_id=%d \n", req->gNB_CU_ue_id, req->gNB_DU_ue_id);
   rrc->mac_rrc.positioning_information_request(req);
 }
+
 static void rrc_CU_process_positioning_information_response(MessageDef *msg_p, instance_t instance)
 {
   f1ap_positioning_information_resp_t *resp = &F1AP_POSITIONING_INFORMATION_RESP(msg_p);
@@ -2179,14 +2183,16 @@ MessageDef *msg = itti_alloc_new_message (TASK_RRC_GNB, 0, F1AP_POSITIONING_INFO
 f1ap_positioning_information_resp_t *f1ap_msg = &F1AP_POSITIONING_INFORMATION_RESP(msg);
 /* copy all fields, but reallocate memory buffers! */
 *f1ap_msg = *resp;
-f1ap_msg->gNB_CU_ue_id = resp->gNB_CU_ue_id;
-f1ap_msg->gNB_DU_ue_id = resp->gNB_CU_ue_id;
-f1ap_msg->nrppa_msg_info.nrppa_transaction_id=resp->nrppa_msg_info.nrppa_transaction_id;
-f1ap_msg->nrppa_msg_info.instance=resp->nrppa_msg_info.instance;
-f1ap_msg->nrppa_msg_info.gNB_ue_ngap_id=resp->nrppa_msg_info.gNB_ue_ngap_id;
-f1ap_msg->nrppa_msg_info.amf_ue_ngap_id=resp->nrppa_msg_info.amf_ue_ngap_id;
-f1ap_msg->nrppa_msg_info.routing_id_buffer=resp->nrppa_msg_info.routing_id_buffer;
-f1ap_msg->nrppa_msg_info.routing_id_length=resp->nrppa_msg_info.routing_id_length;
+f1ap_msg->gNB_CU_ue_id                        = resp->gNB_CU_ue_id;
+f1ap_msg->gNB_DU_ue_id                        = resp->gNB_CU_ue_id;
+f1ap_msg->nrppa_msg_info.nrppa_transaction_id =resp->nrppa_msg_info.nrppa_transaction_id;
+f1ap_msg->nrppa_msg_info.instance             =resp->nrppa_msg_info.instance;
+f1ap_msg->nrppa_msg_info.gNB_ue_ngap_id       =resp->nrppa_msg_info.gNB_ue_ngap_id;
+f1ap_msg->nrppa_msg_info.amf_ue_ngap_id       =resp->nrppa_msg_info.amf_ue_ngap_id;
+f1ap_msg->nrppa_msg_info.ue_rnti              =resp->nrppa_msg_info.ue_rnti;
+f1ap_msg->nrppa_msg_info.routing_id_buffer    =resp->nrppa_msg_info.routing_id_buffer;
+f1ap_msg->nrppa_msg_info.routing_id_length    =resp->nrppa_msg_info.routing_id_length;
+
 itti_send_msg_to_task(TASK_NRPPA, instance, msg);
 
 }
@@ -2704,7 +2710,7 @@ void *rrc_gnb_task(void *args_p) {
         rrc_CU_process_positioning_information_response(msg_p, instance); // nrppa adeel
         break;
 
-      case F1AP_POSITIONING_INFORMATION_REQ:
+      case F1AP_POSITIONING_INFORMATION_REQ: // ADEEL TODO add other NRPPA messages
         rrc_CU_process_positioning_information_request(&F1AP_POSITIONING_INFORMATION_REQ(msg_p));
         break;
 
