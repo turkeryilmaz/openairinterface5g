@@ -36,6 +36,7 @@
 #include "nrppa_gNB_itti_messaging.h"
 
 /* TRPInformationExchange (Parent) procedure for  TRPInformationRequest, TRPInformationResponse, and TRPInformationFailure*/
+// adeel TODO fill F1AP msg for rrc
 int nrppa_gNB_handle_TRPInformationExchange(nrppa_gnb_ue_info_t *nrppa_msg_info, NRPPA_NRPPA_PDU_t *pdu)
 {
     LOG_D(NRPPA, "Processing Received TRPInformationRequest \n");
@@ -61,58 +62,34 @@ int nrppa_gNB_handle_TRPInformationExchange(nrppa_gnb_ue_info_t *nrppa_msg_info,
     //NRPPA_TRPInformationTypeList_t TRP_Info_Type_List= ie->value.choice.TRPInformationTypeList; // TODO process this information
 
 
-// TODO process the received data generate corresponding request
-// Preparing Response for the Received TRPInformationRequest
 
-    /*TODO define conditions that will decide the response_type_indicator */
+    // Forward request to RRC
+    MessageDef *msg = itti_alloc_new_message (TASK_RRC_GNB, 0, F1AP_TRP_INFORMATION_REQ);
+    f1ap_trp_information_req_t *f1ap_req = &F1AP_TRP_INFORMATION_REQ(msg);
+    f1ap_req->transaction_id = 0;
+    f1ap_req->nrppa_msg_info.nrppa_transaction_id=nrppa_transaction_id;
+    f1ap_req->nrppa_msg_info.instance=nrppa_msg_info->instance;
+    f1ap_req->nrppa_msg_info.gNB_ue_ngap_id=nrppa_msg_info->gNB_ue_ngap_id;
+    f1ap_req->nrppa_msg_info.amf_ue_ngap_id=nrppa_msg_info->amf_ue_ngap_id;
+    f1ap_req->nrppa_msg_info.routing_id_buffer=nrppa_msg_info->routing_id_buffer;
+    f1ap_req->nrppa_msg_info.routing_id_length=nrppa_msg_info->routing_id_length;
 
-    bool response_type_indicator = 1;  // 1 = send TRP Information transfer Response, 0 = send TRP Information transfer Failure
-
-    uint8_t *nrppa_pdu;
-    uint32_t nrppa_pdu_length;
-
-    if (response_type_indicator)
-    {
-        LOG_D(NRPPA, "Preparing TRPInformationResponse message \n");
-        nrppa_pdu_length= nrppa_gNB_TRPInformationResponse(nrppa_transaction_id, nrppa_pdu);
-    }
-    else
-    {
-        LOG_D(NRPPA, "Preparing TRPInformationFailure message \n");
-        nrppa_pdu_length= nrppa_gNB_TRPInformationFailure(nrppa_transaction_id, nrppa_pdu);
-    }
-
-    /* Forward the NRPPA PDU to NGAP */
-
-    if (nrppa_msg_info->gNB_ue_ngap_id >0 && nrppa_msg_info->amf_ue_ngap_id > 0)   // TODO ad**l check if the condition is valid
-    {
-        LOG_D(NRPPA, "Sending UplinkUEAssociatedNRPPa (TRPInformationResponse/Failure) to NGAP  \n");
-        nrppa_gNB_itti_send_UplinkUEAssociatedNRPPa(nrppa_msg_info->instance,
-                nrppa_msg_info->gNB_ue_ngap_id,
-                nrppa_msg_info->amf_ue_ngap_id,
-                nrppa_msg_info->routing_id_buffer,
-                nrppa_msg_info->routing_id_length,
-                nrppa_pdu, nrppa_pdu_length);
-    }
-    else
-    {
-        LOG_D(NRPPA, "Sending UplinkUEAssociatedNRPPa (TRPInformationResponse/Failure) to NGAP  \n");
-        nrppa_gNB_itti_send_UplinkNonUEAssociatedNRPPa(nrppa_msg_info->instance,
-                nrppa_msg_info->routing_id_buffer,
-                nrppa_msg_info->routing_id_length,
-                nrppa_pdu, nrppa_pdu_length);
-    }
-
-    return 0;
-
+    LOG_I(NRPPA,"Forwarding to RRC TRPInformationRequest transaction_id=%d\n", f1ap_req->transaction_id);
+    itti_send_msg_to_task(TASK_RRC_GNB, 0, msg);
 }
-int nrppa_gNB_TRPInformationResponse(uint32_t nrppa_transaction_id, uint8_t *buffer)
+
+
+// adeel TODO fill F1AP msg for rrc
+
+int nrppa_gNB_TRPInformationResponse(instance_t instance, MessageDef *msg_p)//(uint32_t nrppa_transaction_id, uint8_t *buffer)
 {
-// Prepare NRPPA TRP Information transfer Response
+    f1ap_trp_information_resp_t *resp = &F1AP_TRP_INFORMATION_RESP(msg_p);
+    LOG_I(NRPPA, "Received TRPInformationResponse info from RRC  transaction_id=%d,  rnti= %04x\n", resp->transaction_id, resp->nrppa_msg_info.ue_rnti);
 
-    NRPPA_NRPPA_PDU_t pdu;
-    uint32_t  length;
-
+    // Prepare NRPPA TRP Information transfer Response
+    NRPPA_NRPPA_PDU_t pdu;  // TODO rename
+    uint8_t  *buffer= NULL;
+    uint32_t  length=0;
     /* Prepare the NRPPA message to encode for successfulOutcome TRPInformationResponse */
 
     //IE: 9.2.3 Message Type successfulOutcome TRPInformationResponse /* mandatory */
@@ -124,7 +101,7 @@ int nrppa_gNB_TRPInformationResponse(uint32_t nrppa_transaction_id, uint8_t *buf
     head->value.present = NRPPA_SuccessfulOutcome__value_PR_TRPInformationResponse;
 
     //IE 9.2.4 nrppatransactionID  /* mandatory */
-    head->nrppatransactionID =nrppa_transaction_id;
+    head->nrppatransactionID =resp->nrppa_msg_info.nrppa_transaction_id;
 
 
 
@@ -173,7 +150,7 @@ int nrppa_gNB_TRPInformationResponse(uint32_t nrppa_transaction_id, uint8_t *buf
         //ie->value.choice.CriticalityDiagnostics.procedureCode = ; //TODO adeel retrieve and add
         //ie->value.choice.CriticalityDiagnostics.triggeringMessage; = ; //TODO adeel retrieve and add
         //ie->value.choice.CriticalityDiagnostics.procedureCriticality; = ; //TODO adeel retrieve and add
-        ie->value.choice.CriticalityDiagnostics.nrppatransactionID =nrppa_transaction_id ;
+        ie->value.choice.CriticalityDiagnostics.nrppatransactionID =resp->nrppa_msg_info.nrppa_transaction_id ;
         //ie->value.choice.CriticalityDiagnostics.iEsCriticalityDiagnostics = ; //TODO adeel retrieve and add
         //ie->value.choice.CriticalityDiagnostics.iE_Extensions = ; //TODO adeel retrieve and add
     }
@@ -187,15 +164,48 @@ int nrppa_gNB_TRPInformationResponse(uint32_t nrppa_transaction_id, uint8_t *buf
         return -1;
     }
 
-    return length;
+    /* Forward the NRPPA PDU to NGAP */
+    if (resp->nrppa_msg_info.gNB_ue_ngap_id >0 && resp->nrppa_msg_info.amf_ue_ngap_id >0) //( 1) // TODO
+    {
+        LOG_D(NRPPA, "Sending UplinkUEAssociatedNRPPa (TRPInformationResponse) to NGAP (gNB_ue_ngap_id= %d, amf_ue_ngap_id =%ld)  \n", resp->nrppa_msg_info.gNB_ue_ngap_id, resp->nrppa_msg_info.amf_ue_ngap_id);
+        nrppa_gNB_itti_send_UplinkUEAssociatedNRPPa(resp->nrppa_msg_info.instance,
+                resp->nrppa_msg_info.gNB_ue_ngap_id,
+                resp->nrppa_msg_info.amf_ue_ngap_id,
+                resp->nrppa_msg_info.routing_id_buffer,
+                resp->nrppa_msg_info.routing_id_length,
+                buffer, length);
+        return length;
+    }
+    else if (resp->nrppa_msg_info.gNB_ue_ngap_id ==-1 && resp->nrppa_msg_info.amf_ue_ngap_id == -1) //
+    {
+        LOG_D(NRPPA, "Sending UplinkNonUEAssociatedNRPPa (TRPInformationResponse) to NGAP (gNB_ue_ngap_id= %d, amf_ue_ngap_id =%ld)  \n", resp->nrppa_msg_info.gNB_ue_ngap_id, resp->nrppa_msg_info.amf_ue_ngap_id);
+        nrppa_gNB_itti_send_UplinkNonUEAssociatedNRPPa(resp->nrppa_msg_info.instance,
+                resp->nrppa_msg_info.routing_id_buffer,
+                resp->nrppa_msg_info.routing_id_length,
+                buffer, length);
+        return length;
+    }
+    else
+    {
+        NRPPA_ERROR("Failed to find context for Uplink NonUE/UE Associated NRPPa TRPInformationResponse\n");
+        return -1;
+    }
 }
 
-int nrppa_gNB_TRPInformationFailure(uint32_t nrppa_transaction_id, uint8_t *buffer)
+
+// adeel TODO fill F1AP msg for rrc
+int nrppa_gNB_TRPInformationFailure(instance_t instance, MessageDef *msg_p)//(uint32_t nrppa_transaction_id, uint8_t *buffer)
 {
 
-// Prepare NRPPA TRP Information Failure
-    NRPPA_NRPPA_PDU_t pdu;
-    uint32_t  length;
+    f1ap_trp_information_failure_t *failure_msg = &F1AP_TRP_INFORMATION_FAILURE(msg_p);
+    LOG_I(NRPPA, "Received TrpInformationFailure info from RRC  transaction_id=%d,  rnti= %04x\n", failure_msg->transaction_id, failure_msg->nrppa_msg_info.ue_rnti);
+
+    // TODO UPDATE data from F1AP Message
+
+// Prepare NRPPA Position Information failure
+    NRPPA_NRPPA_PDU_t pdu;  // TODO rename
+    uint8_t  *buffer= NULL;
+    uint32_t  length=0;;
     /* Prepare the NRPPA message to encode for unsuccessfulOutcome TRPInformationFailure */
 
     //IE: 9.2.3 Message Type unsuccessfulOutcome TRPInformationFaliure /* mandatory */
@@ -208,7 +218,7 @@ int nrppa_gNB_TRPInformationFailure(uint32_t nrppa_transaction_id, uint8_t *buff
     head->value.present = NRPPA_UnsuccessfulOutcome__value_PR_TRPInformationFailure;
 
     //IE 9.2.4 nrppatransactionID  /* mandatory */
-    head->nrppatransactionID =nrppa_transaction_id;
+    head->nrppatransactionID =failure_msg->nrppa_msg_info.nrppa_transaction_id;
 
     NRPPA_TRPInformationFailure_t *out = &head->value.choice.TRPInformationFailure;
 // TODO IE 9.2.1 Cause (M)
@@ -238,7 +248,7 @@ int nrppa_gNB_TRPInformationFailure(uint32_t nrppa_transaction_id, uint8_t *buff
         //ie->value.choice.CriticalityDiagnostics.procedureCode = ; //TODO adeel retrieve and add
         //ie->value.choice.CriticalityDiagnostics.triggeringMessage; = ; //TODO adeel retrieve and add
         //ie->value.choice.CriticalityDiagnostics.procedureCriticality; = ; //TODO adeel retrieve and add
-        ie->value.choice.CriticalityDiagnostics.nrppatransactionID =nrppa_transaction_id ;
+        ie->value.choice.CriticalityDiagnostics.nrppatransactionID =failure_msg->nrppa_msg_info.nrppa_transaction_id ;
         //ie->value.choice.CriticalityDiagnostics.iEsCriticalityDiagnostics = ; //TODO adeel retrieve and add
         //ie->value.choice.CriticalityDiagnostics.iE_Extensions = ; //TODO adeel retrieve and add
     }
@@ -252,5 +262,33 @@ int nrppa_gNB_TRPInformationFailure(uint32_t nrppa_transaction_id, uint8_t *buff
         return -1;
     }
 
-    return length;
+
+    /* Forward the NRPPA PDU to NGAP */
+    if(failure_msg->nrppa_msg_info.gNB_ue_ngap_id >0 && failure_msg->nrppa_msg_info.amf_ue_ngap_id >0)
+    {
+        LOG_D(NRPPA, "Sending UplinkUEAssociatedNRPPa (TRPInformationFailure) to NGAP (gNB_ue_ngap_id= %d, amf_ue_ngap_id =%ld)  \n", failure_msg->nrppa_msg_info.gNB_ue_ngap_id, failure_msg->nrppa_msg_info.amf_ue_ngap_id);
+        nrppa_gNB_itti_send_UplinkUEAssociatedNRPPa(failure_msg->nrppa_msg_info.instance,
+                failure_msg->nrppa_msg_info.gNB_ue_ngap_id,
+                failure_msg->nrppa_msg_info.amf_ue_ngap_id,
+                failure_msg->nrppa_msg_info.routing_id_buffer,
+                failure_msg->nrppa_msg_info.routing_id_length,
+                buffer, length); //tx_nrppa_pdu=buffer, nrppa_pdu_length=length
+        return length;
+    }
+    else if (failure_msg->nrppa_msg_info.gNB_ue_ngap_id ==-1 && failure_msg->nrppa_msg_info.amf_ue_ngap_id == -1) //
+    {
+        LOG_D(NRPPA, "Sending UplinkNonUEAssociatedNRPPa (TRPInformationFailure) to NGAP (gNB_ue_ngap_id= %d, amf_ue_ngap_id =%ld)  \n", failure_msg->nrppa_msg_info.gNB_ue_ngap_id, failure_msg->nrppa_msg_info.amf_ue_ngap_id);
+        nrppa_gNB_itti_send_UplinkNonUEAssociatedNRPPa(failure_msg->nrppa_msg_info.instance,
+                failure_msg->nrppa_msg_info.routing_id_buffer,
+                failure_msg->nrppa_msg_info.routing_id_length,
+                buffer, length);
+        return length;
+    }
+    else
+    {
+        NRPPA_ERROR("Failed to find context for Uplink NonUE/UE Associated NRPPa PositioningInformationFailure\n");
+
+        return -1;
+    }
+
 }

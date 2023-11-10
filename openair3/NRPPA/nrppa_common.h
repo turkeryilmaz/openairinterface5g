@@ -106,13 +106,9 @@
 #include "NRPPA_ProtocolIE-Single-Container.h"
 #include "NRPPA_asn_constant.h"
 
-#include "NRPPA_Cause.h"
-#include "NRPPA_RequestedSRSTransmissionCharacteristics.h"
-#include "NRPPA_SRSConfiguration.h"
-#include "NRPPA_SFNInitialisationTime.h"
-#include "NRPPA_CriticalityDiagnostics.h"
 
-// Position Information Transfer
+
+// Position Information Transfer Procedures
 #include "NRPPA_PositioningActivationFailure.h"
 #include "NRPPA_PositioningActivationRequest.h"
 #include "NRPPA_PositioningActivationResponse.h"
@@ -122,18 +118,57 @@
 #include "NRPPA_PositioningInformationRequest.h"
 #include "NRPPA_PositioningInformationResponse.h"
 #include "NRPPA_PositioningInformationUpdate.h"
+
+// IEs of Position Information Transfer Procedures
+#include "NRPPA_Cause.h"
 #include "NRPPA_RequestedSRSTransmissionCharacteristics.h"
 
-
-
-/* Including external dependencies */
+#include "NRPPA_SRSConfiguration.h"
+#include "NRPPA_SRSCarrier-List.h"
 #include "NRPPA_SRSCarrier-List-Item.h"
-#include "NRPPA_SRSResource-List.h"
-#include "NRPPA_SRSResource.h"
-#include "NRPPA_SRSResourceSet-List.h"
-#include "NRPPA_SRSResourceSet.h"
 #include "NRPPA_UplinkChannelBW-PerSCS-List.h"
 #include "NRPPA_SCS-SpecificCarrier.h"
+#include "NRPPA_ActiveULBWP.h"
+#include "NRPPA_SRSConfig.h"
+#include "NRPPA_SRSResource-List.h"
+#include "NRPPA_SRSResource.h"
+
+#include "NRPPA_ResourceType.h"
+#include "NRPPA_ResourceTypePeriodic.h"
+#include "NRPPA_ResourceTypeAperiodic.h"
+#include "NRPPA_ResourceTypeSemi-persistent.h"
+
+#include "NRPPA_SRSResourceSet-List.h"
+#include "NRPPA_SRSResourceSet.h"
+#include "NRPPA_SRSResourceID-List.h"
+#include "NRPPA_SRSResourceSetID.h"
+#include "NRPPA_ResourceSetType.h"
+#include "NRPPA_ResourceSetTypePeriodic.h"
+#include "NRPPA_ResourceSetTypeAperiodic.h"
+#include "NRPPA_ResourceSetTypeSemi-persistent.h"
+
+#include "NRPPA_PosSRSResource-List.h"
+#include "NRPPA_PosSRSResource-Item.h"
+#include "NRPPA_PosSRSResourceID-List.h"
+#include "NRPPA_SRSPosResourceID.h"
+#include "NRPPA_ResourceTypePos.h"
+#include "NRPPA_ResourceTypePeriodicPos.h"
+#include "NRPPA_ResourceTypeAperiodicPos.h"
+#include "NRPPA_ResourceTypeSemi-persistentPos.h"
+
+
+#include "NRPPA_PosSRSResourceSet-List.h"
+#include "NRPPA_PosSRSResourceSet-Item.h"
+#include "NRPPA_PosResourceSetType.h"
+#include "NRPPA_PosResourceSetTypePeriodic.h"
+#include "NRPPA_PosResourceSetTypeAperiodic.h"
+#include "NRPPA_PosResourceSetTypeSemi-persistent.h"
+
+
+
+#include "NRPPA_SFNInitialisationTime.h"
+#include "NRPPA_CriticalityDiagnostics.h"
+#include "NRPPA_Criticality.h"
 
 // TRP Information Transfer
 #include "NRPPA_TRPInformationFailure.h"
@@ -214,8 +249,8 @@ extern int asn1_xer_print;
   /* gnb and ue related info in NRPPA emssage */
 typedef struct nrppa_gnb_ue_info_s{
   instance_t instance;
-  uint32_t gNB_ue_ngap_id;
-  uint64_t amf_ue_ngap_id;
+  int32_t gNB_ue_ngap_id;
+  int64_t amf_ue_ngap_id;
   // routing ID
   uint8_t  *routing_id_buffer;
   uint32_t  routing_id_length;   // Length of the octet string

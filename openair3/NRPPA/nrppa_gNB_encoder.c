@@ -85,6 +85,8 @@ DevAssert(pdu != NULL);
     NRPPA_WARN("Unknown procedure ID (%ld) for successfull outcome message\n", pdu->choice.successfulOutcome->procedureCode);
     return -1;
   }
+   // printf("TEST 1 nrppa encoder for PositioningInformationResponse \n");
+   // xer_fprint(stdout, &asn_DEF_NRPPA_NRPPA_PDU, pdu); // test adeel
   asn_encode_to_new_buffer_result_t res = asn_encode_to_new_buffer(NULL, ATS_ALIGNED_CANONICAL_PER, &asn_DEF_NRPPA_NRPPA_PDU, pdu);
   AssertFatal(res.result.encoded > 0, "failed to encode NRPPA msg\n");
   *buffer = res.buffer;

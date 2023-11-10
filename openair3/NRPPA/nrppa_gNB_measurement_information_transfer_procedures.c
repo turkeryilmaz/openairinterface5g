@@ -36,8 +36,9 @@
 #include "nrppa_gNB_itti_messaging.h"
 
 
+// DOWLINK
 
-
+// adeel TODO fill F1AP msg for rrc
 int nrppa_gNB_handle_Measurement(nrppa_gnb_ue_info_t *nrppa_msg_info, NRPPA_NRPPA_PDU_t *pdu) /* Measurement (Parent) procedure for  MeasurementRequest, MeasurementResponse, and MeasurementFailure*/
 {
     LOG_D(NRPPA, "Processing Received MeasurementRequest \n");
@@ -100,53 +101,132 @@ int nrppa_gNB_handle_Measurement(nrppa_gnb_ue_info_t *nrppa_msg_info, NRPPA_NRPP
 
 
 // TODO process the received data  and generate the corresponding request
-// Preparing Response for the Received MeasurementRequest
+    // Forward request to RRC
+    MessageDef *msg = itti_alloc_new_message (TASK_RRC_GNB, 0, F1AP_MEASUREMENT_REQ);
+    f1ap_measurement_req_t *f1ap_req = &F1AP_MEASUREMENT_REQ(msg);
+    f1ap_req->transaction_id                      =0;
+    f1ap_req->lmf_measurement_id                  =0;
+    f1ap_req->ran_measurement_id                  =0;
+    f1ap_req->nrppa_msg_info.nrppa_transaction_id=nrppa_transaction_id;
+    f1ap_req->nrppa_msg_info.instance            =nrppa_msg_info->instance;
+    f1ap_req->nrppa_msg_info.gNB_ue_ngap_id      =nrppa_msg_info->gNB_ue_ngap_id;
+    f1ap_req->nrppa_msg_info.amf_ue_ngap_id      =nrppa_msg_info->amf_ue_ngap_id;
+    f1ap_req->nrppa_msg_info.routing_id_buffer   =nrppa_msg_info->routing_id_buffer;
+    f1ap_req->nrppa_msg_info.routing_id_length   =nrppa_msg_info->routing_id_length;
 
-    /*TODO define conditions that will decide the response_type_indicator */
-    bool response_type_indicator = 1;  // 1 = send Measurement Response, 0 = send Measurement Failure
-    uint8_t *nrppa_pdu;
-    uint32_t nrppa_pdu_length;
-
-    if (response_type_indicator)
-    {
-        LOG_D(NRPPA, "Preparing MeasurementResponse message \n");
-        nrppa_pdu_length= nrppa_gNB_MeasurementResponse(nrppa_transaction_id, nrppa_pdu);
-    }
-    else
-    {
-        LOG_D(NRPPA, "Preparing MeasurementFailure message \n");
-        nrppa_pdu_length= nrppa_gNB_MeasurementFailure(nrppa_transaction_id, nrppa_pdu);
-    }
-
-    /* Forward the NRPPA PDU to NGAP */
-    if (nrppa_msg_info->gNB_ue_ngap_id >0 && nrppa_msg_info->amf_ue_ngap_id > 0)   // TODO ad**l check if the condition is valid
-    {
-        LOG_D(NRPPA, "Sending UplinkUEAssociatedNRPPa (MeasurementResponse/Failure) to NGAP  \n");
-        nrppa_gNB_itti_send_UplinkUEAssociatedNRPPa(nrppa_msg_info->instance,
-                nrppa_msg_info->gNB_ue_ngap_id,
-                nrppa_msg_info->amf_ue_ngap_id,
-                nrppa_msg_info->routing_id_buffer,
-                nrppa_msg_info->routing_id_length,
-                nrppa_pdu, nrppa_pdu_length);
-    }
-    else
-    {
-        LOG_D(NRPPA, "Sending UplinkNonUEAssociatedNRPPa (MeasurementResponse/Failure) to NGAP  \n");
-        nrppa_gNB_itti_send_UplinkNonUEAssociatedNRPPa(nrppa_msg_info->instance,
-                nrppa_msg_info->routing_id_buffer,
-                nrppa_msg_info->routing_id_length,
-                nrppa_pdu, nrppa_pdu_length);
-    }
-
+    LOG_I(NRPPA,"Procesing MeasurementRequest lmf_measurement_id=%d, ran_measurement_id=%d \n", f1ap_req->lmf_measurement_id, f1ap_req->ran_measurement_id);
+    itti_send_msg_to_task(TASK_RRC_GNB, 0, msg);
     return 0;
 }
 
-int nrppa_gNB_MeasurementResponse(uint32_t nrppa_transaction_id, uint8_t *buffer)
+
+// adeel TODO fill F1AP msg for rrc
+int nrppa_gNB_handle_MeasurementUpdate(nrppa_gnb_ue_info_t *nrppa_msg_info, NRPPA_NRPPA_PDU_t *pdu)  // called via handler
 {
+    LOG_D(NRPPA, "Processing Received MeasurementUpdate \n");
+// Processing Received MeasurementUpdate
+    NRPPA_MeasurementUpdate_t     *container;
+    NRPPA_MeasurementUpdate_IEs_t *ie;
+    uint32_t                         nrppa_transaction_id;
+
+    DevAssert(pdu != NULL);
+
+    container = &pdu->choice.initiatingMessage->value.choice.MeasurementUpdate; //IE 9.2.3 Message type (M)
+    nrppa_transaction_id = pdu->choice.initiatingMessage->nrppatransactionID; // IE 9.2.4 nrppatransactionID (M)
+
+    /* IE LMF_Measurement_ID */
+    NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_MeasurementUpdate_IEs_t, ie, container,
+                                NRPPA_ProtocolIE_ID_id_LMF_Measurement_ID, true);
+    NRPPA_Measurement_ID_t LMF_Meas_ID = ie->value.choice.Measurement_ID; // TODO process this information
+
+    /* IE RAN_Measurement_ID */
+    NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_MeasurementUpdate_IEs_t, ie, container,
+                                NRPPA_ProtocolIE_ID_id_RAN_Measurement_ID, true);
+    NRPPA_Measurement_ID_t RAN_Meas_ID = ie->value.choice.Measurement_ID_1; // TODO process this information  //TODO adeel check if it is with Measurement_ID_1 or Measurement_ID
+
+    /* IE SRSConfiguration*/
+    NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_MeasurementRequest_IEs_t, ie, container,
+                                NRPPA_ProtocolIE_ID_id_SRSConfiguration, true);
+    NRPPA_SRSConfiguration_t srs_config = ie->value.choice.SRSConfiguration; // TODO process this information
+
+
+// TODO process the received data  and Overwrite the previously received measurement configuration
+    // Forward request to RRC
+    MessageDef *msg = itti_alloc_new_message (TASK_RRC_GNB, 0, F1AP_MEASUREMENT_UPDATE);
+    f1ap_measurement_update_t *f1ap_req = &F1AP_MEASUREMENT_UPDATE(msg);
+    f1ap_req->transaction_id                      =0;
+    f1ap_req->lmf_measurement_id                  =0;
+    f1ap_req->ran_measurement_id                  =0;
+    f1ap_req->nrppa_msg_info.nrppa_transaction_id=nrppa_transaction_id;
+    f1ap_req->nrppa_msg_info.instance            =nrppa_msg_info->instance;
+    f1ap_req->nrppa_msg_info.gNB_ue_ngap_id      =nrppa_msg_info->gNB_ue_ngap_id;
+    f1ap_req->nrppa_msg_info.amf_ue_ngap_id      =nrppa_msg_info->amf_ue_ngap_id;
+    f1ap_req->nrppa_msg_info.routing_id_buffer   =nrppa_msg_info->routing_id_buffer;
+    f1ap_req->nrppa_msg_info.routing_id_length   =nrppa_msg_info->routing_id_length;
+
+    LOG_I(NRPPA,"Procesing MeasurementUpdate lmf_measurement_id=%d, ran_measurement_id=%d \n", f1ap_req->lmf_measurement_id, f1ap_req->ran_measurement_id);
+    itti_send_msg_to_task(TASK_RRC_GNB, 0, msg);
+    return 0;
+}
+
+// adeel TODO fill F1AP msg for rrc
+int nrppa_gNB_handle_MeasurementAbort(nrppa_gnb_ue_info_t *nrppa_msg_info, NRPPA_NRPPA_PDU_t *pdu)  // called via handler
+{
+    LOG_D(NRPPA, "Processing Received MeasurementAbort \n");
+// Processing Received MeasurementAbort
+    NRPPA_MeasurementAbort_t     *container;
+    NRPPA_MeasurementAbort_IEs_t *ie;
+    uint32_t                         nrppa_transaction_id;
+
+    DevAssert(pdu != NULL);
+
+    container = &pdu->choice.initiatingMessage->value.choice.MeasurementAbort; //IE 9.2.3 Message type (M)
+    nrppa_transaction_id = pdu->choice.initiatingMessage->nrppatransactionID; // IE 9.2.4 nrppatransactionID (M)
+
+    /* IE LMF_Measurement_ID */
+    NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_MeasurementAbort_IEs_t, ie, container,
+                                NRPPA_ProtocolIE_ID_id_LMF_Measurement_ID, true);
+    NRPPA_Measurement_ID_t LMF_Meas_ID = ie->value.choice.Measurement_ID; // TODO process this information
+
+    /* IE RAN_Measurement_ID */
+    NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_MeasurementAbort_IEs_t, ie, container,
+                                NRPPA_ProtocolIE_ID_id_RAN_Measurement_ID, true);
+    NRPPA_Measurement_ID_t RAN_Meas_ID = ie->value.choice.Measurement_ID; // TODO process this information
+
+
+    // Forward request to RRC
+    MessageDef *msg = itti_alloc_new_message (TASK_RRC_GNB, 0, F1AP_MEASUREMENT_ABORT);
+    f1ap_measurement_abort_t *f1ap_req = &F1AP_MEASUREMENT_ABORT(msg);
+    f1ap_req->transaction_id                      =0;
+    f1ap_req->lmf_measurement_id                  =0;
+    f1ap_req->ran_measurement_id                  =0;
+    f1ap_req->nrppa_msg_info.nrppa_transaction_id=nrppa_transaction_id;
+    f1ap_req->nrppa_msg_info.instance            =nrppa_msg_info->instance;
+    f1ap_req->nrppa_msg_info.gNB_ue_ngap_id      =nrppa_msg_info->gNB_ue_ngap_id;
+    f1ap_req->nrppa_msg_info.amf_ue_ngap_id      =nrppa_msg_info->amf_ue_ngap_id;
+    f1ap_req->nrppa_msg_info.routing_id_buffer   =nrppa_msg_info->routing_id_buffer;
+    f1ap_req->nrppa_msg_info.routing_id_length   =nrppa_msg_info->routing_id_length;
+
+    LOG_I(NRPPA,"Procesing MeasurementABORT lmf_measurement_id=%d, ran_measurement_id=%d \n", f1ap_req->lmf_measurement_id, f1ap_req->ran_measurement_id);
+    itti_send_msg_to_task(TASK_RRC_GNB, 0, msg);
+    return 0;
+}
+
+
+
+// UPLINK
+
+// adeel TODO fill F1AP msg for rrc
+
+int nrppa_gNB_MeasurementResponse(instance_t instance, MessageDef *msg_p)//(uint32_t nrppa_transaction_id, uint8_t *buffer)
+{
+    f1ap_measurement_resp_t *resp = &F1AP_MEASUREMENT_RESP(msg_p);
+    LOG_I(NRPPA, "Received MEASUREMENTResponse info from RRC  lmf_measurement_id=%d, ran_measurement_id=%d  rnti= %04x\n", resp->lmf_measurement_id, resp->ran_measurement_id, resp->nrppa_msg_info.ue_rnti);
 
     // Prepare NRPPA Measurement Response
     NRPPA_NRPPA_PDU_t pdu;
-    uint32_t  length;
+    uint8_t  *buffer= NULL;
+    uint32_t  length=0;
 
     /* Prepare the NRPPA message to encode for successfulOutcome MeasurementResponse */
 
@@ -159,7 +239,7 @@ int nrppa_gNB_MeasurementResponse(uint32_t nrppa_transaction_id, uint8_t *buffer
     head->value.present = NRPPA_SuccessfulOutcome__value_PR_MeasurementResponse;
 
     //IE 9.2.4 nrppatransactionID  /* mandatory */
-    head->nrppatransactionID =nrppa_transaction_id;
+    head->nrppatransactionID =resp->nrppa_msg_info.nrppa_transaction_id;
 
 
     NRPPA_MeasurementResponse_t *out = &head->value.choice.MeasurementResponse;
@@ -258,7 +338,7 @@ int nrppa_gNB_MeasurementResponse(uint32_t nrppa_transaction_id, uint8_t *buffer
         //ie->value.choice.CriticalityDiagnostics.procedureCode = ; //TODO adeel retrieve and add
         //ie->value.choice.CriticalityDiagnostics.triggeringMessage; = ; //TODO adeel retrieve and add
         //ie->value.choice.CriticalityDiagnostics.procedureCriticality; = ; //TODO adeel retrieve and add
-        ie->value.choice.CriticalityDiagnostics.nrppatransactionID =nrppa_transaction_id ;
+        ie->value.choice.CriticalityDiagnostics.nrppatransactionID =resp->nrppa_msg_info.nrppa_transaction_id;
         //ie->value.choice.CriticalityDiagnostics.iEsCriticalityDiagnostics = ; //TODO adeel retrieve and add
         //ie->value.choice.CriticalityDiagnostics.iE_Extensions = ; //TODO adeel retrieve and add
     }
@@ -272,16 +352,45 @@ int nrppa_gNB_MeasurementResponse(uint32_t nrppa_transaction_id, uint8_t *buffer
         return -1;
     }
 
-    return length;
+    /* Forward the NRPPA PDU to NGAP */
+    if (resp->nrppa_msg_info.gNB_ue_ngap_id >0 && resp->nrppa_msg_info.amf_ue_ngap_id >0) //( 1) // TODO
+    {
+        LOG_D(NRPPA, "Sending UplinkUEAssociatedNRPPa (MeasurementResponse) to NGAP (gNB_ue_ngap_id= %d, amf_ue_ngap_id =%ld)  \n", resp->nrppa_msg_info.gNB_ue_ngap_id, resp->nrppa_msg_info.amf_ue_ngap_id);
+        nrppa_gNB_itti_send_UplinkUEAssociatedNRPPa(resp->nrppa_msg_info.instance,
+                resp->nrppa_msg_info.gNB_ue_ngap_id,
+                resp->nrppa_msg_info.amf_ue_ngap_id,
+                resp->nrppa_msg_info.routing_id_buffer,
+                resp->nrppa_msg_info.routing_id_length,
+                buffer, length);
+        return length;
+    }
+    else if (resp->nrppa_msg_info.gNB_ue_ngap_id ==-1 && resp->nrppa_msg_info.amf_ue_ngap_id == -1) //
+    {
+        LOG_D(NRPPA, "Sending UplinkNonUEAssociatedNRPPa (MeasurementResponse) to NGAP (gNB_ue_ngap_id= %d, amf_ue_ngap_id =%ld)  \n", resp->nrppa_msg_info.gNB_ue_ngap_id, resp->nrppa_msg_info.amf_ue_ngap_id);
+        nrppa_gNB_itti_send_UplinkNonUEAssociatedNRPPa(resp->nrppa_msg_info.instance,
+                resp->nrppa_msg_info.routing_id_buffer,
+                resp->nrppa_msg_info.routing_id_length,
+                buffer, length);
+        return length;
+    }
+    else
+    {
+        NRPPA_ERROR("Failed to find context for Uplink NonUE/UE Associated NRPPa MeasurementResponse\n");
+        return -1;
+    }
 }
 
-
-int nrppa_gNB_MeasurementFailure(uint32_t nrppa_transaction_id, uint8_t *buffer)
+// adeel TODO fill F1AP msg for rrc
+int nrppa_gNB_MeasurementFailure(instance_t instance, MessageDef *msg_p)//(uint32_t nrppa_transaction_id, uint8_t *buffer)
 {
+    f1ap_measurement_failure_t *failure_msg = &F1AP_MEASUREMENT_FAILURE(msg_p);
+    LOG_I(NRPPA, "Received MEASUREMENTFailure info from RRC  lmf_measurement_id=%d, ran_measurement_id=%d  rnti= %04x\n", failure_msg->lmf_measurement_id, failure_msg->ran_measurement_id, failure_msg->nrppa_msg_info.ue_rnti);
+
 
     // Prepare NRPPA Measurement Failure
     NRPPA_NRPPA_PDU_t pdu;
-    uint32_t  length;
+    uint8_t  *buffer= NULL;
+    uint32_t  length=0;
     /* Prepare the NRPPA message to encode for unsuccessfulOutcome MeasurementFailure */
 
     //IE: 9.2.3 Message Type unsuccessfulOutcome MeasurementFaliure /* mandatory */
@@ -294,7 +403,7 @@ int nrppa_gNB_MeasurementFailure(uint32_t nrppa_transaction_id, uint8_t *buffer)
     head->value.present = NRPPA_UnsuccessfulOutcome__value_PR_MeasurementFailure;
 
     //IE 9.2.4 nrppatransactionID  /* mandatory */
-    head->nrppatransactionID =nrppa_transaction_id;
+    head->nrppatransactionID =failure_msg->nrppa_msg_info.nrppa_transaction_id;
 
     NRPPA_MeasurementFailure_t *out = &head->value.choice.MeasurementFailure;
 
@@ -334,7 +443,7 @@ int nrppa_gNB_MeasurementFailure(uint32_t nrppa_transaction_id, uint8_t *buffer)
         //ie->value.choice.CriticalityDiagnostics.procedureCode = ; //TODO adeel retrieve and add
         //ie->value.choice.CriticalityDiagnostics.triggeringMessage; = ; //TODO adeel retrieve and add
         //ie->value.choice.CriticalityDiagnostics.procedureCriticality; = ; //TODO adeel retrieve and add
-        ie->value.choice.CriticalityDiagnostics.nrppatransactionID =nrppa_transaction_id ;
+        ie->value.choice.CriticalityDiagnostics.nrppatransactionID =failure_msg->nrppa_msg_info.nrppa_transaction_id;
         //ie->value.choice.CriticalityDiagnostics.iEsCriticalityDiagnostics = ; //TODO adeel retrieve and add
         //ie->value.choice.CriticalityDiagnostics.iE_Extensions = ; //TODO adeel retrieve and add
     }
@@ -348,15 +457,47 @@ int nrppa_gNB_MeasurementFailure(uint32_t nrppa_transaction_id, uint8_t *buffer)
         return -1;
     }
 
-    return length;
+    /* Forward the NRPPA PDU to NGAP */
+    if(failure_msg->nrppa_msg_info.gNB_ue_ngap_id >0 && failure_msg->nrppa_msg_info.amf_ue_ngap_id >0)
+    {
+        LOG_D(NRPPA, "Sending UplinkUEAssociatedNRPPa (MeasurementFailure) to NGAP (gNB_ue_ngap_id= %d, amf_ue_ngap_id =%ld)  \n", failure_msg->nrppa_msg_info.gNB_ue_ngap_id, failure_msg->nrppa_msg_info.amf_ue_ngap_id);
+        nrppa_gNB_itti_send_UplinkUEAssociatedNRPPa(failure_msg->nrppa_msg_info.instance,
+                failure_msg->nrppa_msg_info.gNB_ue_ngap_id,
+                failure_msg->nrppa_msg_info.amf_ue_ngap_id,
+                failure_msg->nrppa_msg_info.routing_id_buffer,
+                failure_msg->nrppa_msg_info.routing_id_length,
+                buffer, length); //tx_nrppa_pdu=buffer, nrppa_pdu_length=length
+        return length;
+    }
+    else if (failure_msg->nrppa_msg_info.gNB_ue_ngap_id ==-1 && failure_msg->nrppa_msg_info.amf_ue_ngap_id == -1) //
+    {
+        LOG_D(NRPPA, "Sending UplinkNonUEAssociatedNRPPa (MeasurementFailure) to NGAP (gNB_ue_ngap_id= %d, amf_ue_ngap_id =%ld)  \n", failure_msg->nrppa_msg_info.gNB_ue_ngap_id, failure_msg->nrppa_msg_info.amf_ue_ngap_id);
+        nrppa_gNB_itti_send_UplinkNonUEAssociatedNRPPa(failure_msg->nrppa_msg_info.instance,
+                failure_msg->nrppa_msg_info.routing_id_buffer,
+                failure_msg->nrppa_msg_info.routing_id_length,
+                buffer, length);
+        return length;
+    }
+    else
+    {
+        NRPPA_ERROR("Failed to find context for Uplink NonUE/UE Associated NRPPa MeasurementFailure \n");
+
+        return -1;
+    }
 }
 
-int nrppa_gNB_MeasurementReport(uint32_t nrppa_transaction_id, uint8_t *buffer)  // adeel TODO when and where to call this function
+// adeel TODO fill F1AP msg for rrc
+int nrppa_gNB_MeasurementReport(instance_t instance, MessageDef *msg_p)//(uint32_t nrppa_transaction_id, uint8_t *buffer)  // adeel TODO when and where to call this function
 {
+    f1ap_measurement_report_t *report_msg = &F1AP_MEASUREMENT_REPORT(msg_p);
+    LOG_I(NRPPA, "Received MeasurementReport info from RRC  lmf_measurement_id=%d, ran_measurement_id=%d  rnti= %04x\n", report_msg->lmf_measurement_id, report_msg->ran_measurement_id, report_msg->nrppa_msg_info.ue_rnti);
+
+
 // Prepare NRPPA Measurement Report
-LOG_D(NRPPA, "Preparing MeasurementReport message \n");
     NRPPA_NRPPA_PDU_t pdu;
-    uint32_t  length;
+    uint8_t  *buffer= NULL;
+    uint32_t  length=0;
+
 
     /* Prepare the NRPPA message to encode for initiatingMessage MeasurementReport */
 
@@ -369,7 +510,7 @@ LOG_D(NRPPA, "Preparing MeasurementReport message \n");
     head->value.present = NRPPA_InitiatingMessage__value_PR_MeasurementReport;
 
     //IE 9.2.4 nrppatransactionID  /* mandatory */
-    head->nrppatransactionID =nrppa_transaction_id;
+    head->nrppatransactionID =report_msg->nrppa_msg_info.nrppa_transaction_id;
 
 
     NRPPA_MeasurementReport_t *out = &head->value.choice.MeasurementReport;
@@ -392,6 +533,7 @@ LOG_D(NRPPA, "Preparing MeasurementReport message \n");
         ie->value.present = NRPPA_MeasurementReport_IEs__value_PR_Measurement_ID_1; //TODO adeel check if it is with Measurement_ID_1 or Measurement_ID
         ie->value.choice.Measurement_ID_1=0;   //dummy value TODO  define and change
     }
+
     //IE = TRP Measurement Report List  (= TRP_MeasurementResponseList)
     {
         asn1cSequenceAdd(out->protocolIEs.list, NRPPA_MeasurementReport_IEs_t, ie);
@@ -467,84 +609,45 @@ LOG_D(NRPPA, "Preparing MeasurementReport message \n");
         return -1;
     }
 
-    return length;
+
+    /* Forward the NRPPA PDU to NGAP */
+    if(report_msg->nrppa_msg_info.gNB_ue_ngap_id >0 && report_msg->nrppa_msg_info.amf_ue_ngap_id >0)
+    {
+        LOG_D(NRPPA, "Sending UplinkUEAssociatedNRPPa (MeasurementReport) to NGAP (gNB_ue_ngap_id= %d, amf_ue_ngap_id =%ld)  \n", report_msg->nrppa_msg_info.gNB_ue_ngap_id, report_msg->nrppa_msg_info.amf_ue_ngap_id);
+        nrppa_gNB_itti_send_UplinkUEAssociatedNRPPa(report_msg->nrppa_msg_info.instance,
+                report_msg->nrppa_msg_info.gNB_ue_ngap_id,
+                report_msg->nrppa_msg_info.amf_ue_ngap_id,
+                report_msg->nrppa_msg_info.routing_id_buffer,
+                report_msg->nrppa_msg_info.routing_id_length,
+                buffer, length); //tx_nrppa_pdu=buffer, nrppa_pdu_length=length
+        return length;
+    }
+    else if (report_msg->nrppa_msg_info.gNB_ue_ngap_id ==-1 && report_msg->nrppa_msg_info.amf_ue_ngap_id == -1) //
+    {
+        LOG_D(NRPPA, "Sending UplinkNonUEAssociatedNRPPa (MeasurementReport) to NGAP (gNB_ue_ngap_id= %d, amf_ue_ngap_id =%ld)  \n", report_msg->nrppa_msg_info.gNB_ue_ngap_id, report_msg->nrppa_msg_info.amf_ue_ngap_id);
+        nrppa_gNB_itti_send_UplinkNonUEAssociatedNRPPa(report_msg->nrppa_msg_info.instance,
+                report_msg->nrppa_msg_info.routing_id_buffer,
+                report_msg->nrppa_msg_info.routing_id_length,
+                buffer, length);
+        return length;
+    }
+    else
+    {
+        NRPPA_ERROR("Failed to find context for Uplink NonUE/UE Associated NRPPa MeasurementReport\n");
+
+        return -1;
+    }
 }
 
-int nrppa_gNB_handle_MeasurementUpdate(nrppa_gnb_ue_info_t *nrppa_msg_info, NRPPA_NRPPA_PDU_t *pdu)  // called via handler
+// adeel TODO fill F1AP msg for rrc
+int nrppa_gNB_MeasurementFailureIndication(instance_t instance, MessageDef *msg_p)//(uint32_t nrppa_transaction_id, uint8_t *buffer)  // adeel TODO fill F1AP msg for rrc
 {
-    LOG_D(NRPPA, "Processing Received MeasurementUpdate \n");
-// Processing Received MeasurementUpdate
-    NRPPA_MeasurementUpdate_t     *container;
-    NRPPA_MeasurementUpdate_IEs_t *ie;
-    uint32_t                         nrppa_transaction_id;
-
-    DevAssert(pdu != NULL);
-
-    container = &pdu->choice.initiatingMessage->value.choice.MeasurementUpdate; //IE 9.2.3 Message type (M)
-    nrppa_transaction_id = pdu->choice.initiatingMessage->nrppatransactionID; // IE 9.2.4 nrppatransactionID (M)
-
-    /* IE LMF_Measurement_ID */
-    NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_MeasurementUpdate_IEs_t, ie, container,
-                                NRPPA_ProtocolIE_ID_id_LMF_Measurement_ID, true);
-    NRPPA_Measurement_ID_t LMF_Meas_ID = ie->value.choice.Measurement_ID; // TODO process this information
-
-    /* IE RAN_Measurement_ID */
-    NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_MeasurementUpdate_IEs_t, ie, container,
-                                NRPPA_ProtocolIE_ID_id_RAN_Measurement_ID, true);
-    NRPPA_Measurement_ID_t RAN_Meas_ID = ie->value.choice.Measurement_ID_1; // TODO process this information  //TODO adeel check if it is with Measurement_ID_1 or Measurement_ID
-
-    /* IE SRSConfiguration*/
-    NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_MeasurementRequest_IEs_t, ie, container,
-                                NRPPA_ProtocolIE_ID_id_SRSConfiguration, true);
-    NRPPA_SRSConfiguration_t srs_config = ie->value.choice.SRSConfiguration; // TODO process this information
-
-
-// TODO process the received data  and Overwrite the previously received measurement configuration
-
-    LOG_D(NRPPA, "MeasurementUpdate: Overwriting Previously received measurement configuration \n");
-// NO response to LMF required
-    return 0;
-
-}
-
-int nrppa_gNB_handle_MeasurementAbort(nrppa_gnb_ue_info_t *nrppa_msg_info, NRPPA_NRPPA_PDU_t *pdu)  // called via handler
-{
-    LOG_D(NRPPA, "Processing Received MeasurementAbort \n");
-// Processing Received MeasurementAbort
-    NRPPA_MeasurementAbort_t     *container;
-    NRPPA_MeasurementAbort_IEs_t *ie;
-    uint32_t                         nrppa_transaction_id;
-
-    DevAssert(pdu != NULL);
-
-    container = &pdu->choice.initiatingMessage->value.choice.MeasurementAbort; //IE 9.2.3 Message type (M)
-    nrppa_transaction_id = pdu->choice.initiatingMessage->nrppatransactionID; // IE 9.2.4 nrppatransactionID (M)
-
-    /* IE LMF_Measurement_ID */
-    NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_MeasurementAbort_IEs_t, ie, container,
-                                NRPPA_ProtocolIE_ID_id_LMF_Measurement_ID, true);
-    NRPPA_Measurement_ID_t LMF_Meas_ID = ie->value.choice.Measurement_ID; // TODO process this information
-
-    /* IE RAN_Measurement_ID */
-    NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_MeasurementAbort_IEs_t, ie, container,
-                                NRPPA_ProtocolIE_ID_id_RAN_Measurement_ID, true);
-    NRPPA_Measurement_ID_t RAN_Meas_ID = ie->value.choice.Measurement_ID; // TODO process this information
-
-
-// TODO process the received data  and Release the previously allocated resource for measurement
-
-    LOG_D(NRPPA, "MeasurementAbort: Releasing previously allocated resource for measurement %d\n", LMF_Meas_ID );
-// NO response to LMF required
-    return 0;
-
-}
-
-int nrppa_gNB_MeasurementFailureIndication(uint32_t nrppa_transaction_id, uint8_t *buffer)  // adeel TODO when and where to call this function
-{
-    LOG_D(NRPPA, "Preparing Measurement Failure Indication message \n");
+    f1ap_measurement_failure_ind_t *failure_msg = &F1AP_MEASUREMENT_FAILURE_IND(msg_p);
+    LOG_I(NRPPA, "Received MEASUREMENTFailureIndication info from RRC  lmf_measurement_id=%d, ran_measurement_id=%d  rnti= %04x\n", failure_msg->lmf_measurement_id, failure_msg->ran_measurement_id, failure_msg->nrppa_msg_info.ue_rnti);
     // Prepare NRPPA Measurement Failure Indication
     NRPPA_NRPPA_PDU_t pdu;
-    uint32_t  length;
+    uint8_t  *buffer= NULL;
+    uint32_t  length=0;
     /* Prepare the NRPPA message to encode for initiatingMessage MeasurementFailureIndication */
 
     //IE: 9.2.3 Message Type initiatingMessage MeasurementFaliureIndication /* mandatory */
@@ -557,7 +660,7 @@ int nrppa_gNB_MeasurementFailureIndication(uint32_t nrppa_transaction_id, uint8_
     head->value.present = NRPPA_InitiatingMessage__value_PR_MeasurementFailureIndication;
 
     //IE 9.2.4 nrppatransactionID  /* mandatory */
-    head->nrppatransactionID =nrppa_transaction_id;
+    head->nrppatransactionID =failure_msg->nrppa_msg_info.nrppa_transaction_id;
 
     NRPPA_MeasurementFailureIndication_t *out = &head->value.choice.MeasurementFailureIndication;
 
@@ -604,7 +707,33 @@ int nrppa_gNB_MeasurementFailureIndication(uint32_t nrppa_transaction_id, uint8_
         return -1;
     }
 
-    return length;
+    /* Forward the NRPPA PDU to NGAP */
+    if(failure_msg->nrppa_msg_info.gNB_ue_ngap_id >0 && failure_msg->nrppa_msg_info.amf_ue_ngap_id >0)
+    {
+        LOG_D(NRPPA, "Sending UplinkUEAssociatedNRPPa (MeasurementFailureIndication) to NGAP (gNB_ue_ngap_id= %d, amf_ue_ngap_id =%ld)  \n", failure_msg->nrppa_msg_info.gNB_ue_ngap_id, failure_msg->nrppa_msg_info.amf_ue_ngap_id);
+        nrppa_gNB_itti_send_UplinkUEAssociatedNRPPa(failure_msg->nrppa_msg_info.instance,
+                failure_msg->nrppa_msg_info.gNB_ue_ngap_id,
+                failure_msg->nrppa_msg_info.amf_ue_ngap_id,
+                failure_msg->nrppa_msg_info.routing_id_buffer,
+                failure_msg->nrppa_msg_info.routing_id_length,
+                buffer, length); //tx_nrppa_pdu=buffer, nrppa_pdu_length=length
+        return length;
+    }
+    else if (failure_msg->nrppa_msg_info.gNB_ue_ngap_id ==-1 && failure_msg->nrppa_msg_info.amf_ue_ngap_id == -1) //
+    {
+        LOG_D(NRPPA, "Sending UplinkNonUEAssociatedNRPPa (MeasurementFailureIndication) to NGAP (gNB_ue_ngap_id= %d, amf_ue_ngap_id =%ld)  \n", failure_msg->nrppa_msg_info.gNB_ue_ngap_id, failure_msg->nrppa_msg_info.amf_ue_ngap_id);
+        nrppa_gNB_itti_send_UplinkNonUEAssociatedNRPPa(failure_msg->nrppa_msg_info.instance,
+                failure_msg->nrppa_msg_info.routing_id_buffer,
+                failure_msg->nrppa_msg_info.routing_id_length,
+                buffer, length);
+        return length;
+    }
+    else
+    {
+        NRPPA_ERROR("Failed to find context for Uplink NonUE/UE Associated NRPPa MeasurementFailureIndication \n");
+
+        return -1;
+    }
 }
 
 

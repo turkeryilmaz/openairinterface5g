@@ -342,8 +342,10 @@
 
 #include "f1ap_default_values.h"
 
-/* NRPPA*/
+/* NRPPA IE*/
+#include "F1AP_SRSConfiguration.h"
 
+/* NRPPA Procedures*/
 #include "F1AP_TRPInformationResponse.h"
 #include "F1AP_TRPInformationRequest.h"
 #include "F1AP_TRPInformationRequest.h"

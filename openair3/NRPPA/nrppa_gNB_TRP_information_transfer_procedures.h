@@ -33,8 +33,8 @@
 #define NRPPA_GNB_TRP_INFORMATION_TRANSFER_PROCEDURES_H_
 
 int nrppa_gNB_handle_TRPInformationExchange(nrppa_gnb_ue_info_t *nrppa_msg_info, NRPPA_NRPPA_PDU_t *pdu); /* TRPInformationExchange (Parent) procedure for  TRPInformationRequest, TRPInformationResponse, and TRPInformationFailure*/
-int nrppa_gNB_TRPInformationFailure(uint32_t nrppa_transaction_id, uint8_t *buffer);
-int nrppa_gNB_TRPInformationResponse(uint32_t nrppa_transaction_id, uint8_t *buffer);
+int nrppa_gNB_TRPInformationFailure(instance_t instance, MessageDef *msg_p);//(uint32_t nrppa_transaction_id, uint8_t *buffer);
+int nrppa_gNB_TRPInformationResponse(instance_t instance, MessageDef *msg_p);//(uint32_t nrppa_transaction_id, uint8_t *buffer);
 
 #endif /* NGAP_GNB_TRP_INFORMATION_TRANSFER_PROCEDURES_H_ */
 

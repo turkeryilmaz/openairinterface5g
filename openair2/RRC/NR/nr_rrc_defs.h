@@ -357,7 +357,13 @@ typedef struct nr_mac_rrc_dl_if_s {
   ue_context_modification_refuse_func_t ue_context_modification_refuse;
   ue_context_release_command_func_t ue_context_release_command;
   dl_rrc_message_transfer_func_t dl_rrc_message_transfer;
-  positioning_information_request_func_t positioning_information_request; //nrppa adeel
+  positioning_information_request_func_t  positioning_information_request; //nrppa adeel
+  positioning_activation_request_func_t   positioning_activation_request;
+  positioning_deactivation_func_t         positioning_deactivation;
+  trp_information_request_func_t          trp_information_request;
+  positioning_measurement_request_func_t  positioning_measurement_request;
+  positioning_measurement_update_func_t   positioning_measurement_update;
+  positioning_measurement_abort_func_t    positioning_measurement_abort;
 } nr_mac_rrc_dl_if_t;
 
 typedef struct cucp_cuup_if_s {
