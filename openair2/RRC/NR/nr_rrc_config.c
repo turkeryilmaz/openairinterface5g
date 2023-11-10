@@ -1865,8 +1865,10 @@ NR_BCCH_DL_SCH_Message_t *get_SIB1_NR(const gNB_RrcConfigurationReq *configurati
   AssertFatal(nr_plmn_info->cellIdentity.buf != NULL, "out of memory\n");
   nr_plmn_info->cellIdentity.size = 5;
   nr_plmn_info->cellIdentity.bits_unused = 4;
-  uint64_t tmp = htobe64(configuration->cell_identity) << 4;
-  memcpy(nr_plmn_info->cellIdentity.buf, ((char *)&tmp) + 3, 5);
+  uint64_t tmp = configuration->cell_identity <<4;
+  for(int ii=4;ii>=0;ii--){
+     nr_plmn_info->cellIdentity.buf[4-ii]=(tmp >>(ii*8))  & 0xff;
+  }
   nr_plmn_info->cellReservedForOperatorUse = NR_PLMN_IdentityInfo__cellReservedForOperatorUse_notReserved;
 
   nr_plmn_info->trackingAreaCode = CALLOC(1, sizeof(NR_TrackingAreaCode_t));
@@ -2151,9 +2153,10 @@ reconfig_SIB1_NR(NR_BCCH_DL_SCH_Message_t *sib1_message,  gNB_RrcConfigurationRe
   nr_plmn_info->cellIdentity.size = 5;
   nr_plmn_info->cellIdentity.bits_unused = 4;
  //configuration->cell_identity =512;
-  uint64_t tmp = htobe64(configuration->cell_identity) << 4;
-  
-  memcpy(nr_plmn_info->cellIdentity.buf, ((char *)&tmp) + 3, 5);
+  uint64_t tmp = configuration->cell_identity <<4;
+  for(int ii=4;ii>=0;ii--){
+     nr_plmn_info->cellIdentity.buf[4-ii]=(tmp >>(ii*8))  & 0xff;
+  }
   nr_plmn_info->cellReservedForOperatorUse = NR_PLMN_IdentityInfo__cellReservedForOperatorUse_notReserved;
  
   // nr_plmn_info->trackingAreaCode = CALLOC(1, sizeof(NR_TrackingAreaCode_t));

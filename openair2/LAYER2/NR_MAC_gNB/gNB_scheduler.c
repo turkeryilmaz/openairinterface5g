@@ -143,7 +143,7 @@ static void copy_ul_tti_req(nfapi_nr_ul_tti_request_t *to, nfapi_nr_ul_tti_reque
 
 void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, frame_t frame, sub_frame_t slot, NR_Sched_Rsp_t *sched_info, int CC_id)
 {
-  LOG_D(NR_MAC, "fxn:%s Entry\n", __FUNCTION__);
+  LOG_D(NR_MAC, "fxn:%s Entry CC_id: %d\n", __FUNCTION__,CC_id);
   protocol_ctxt_t ctxt = {0};
   PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, module_idP, ENB_FLAG_YES, NOT_A_RNTI, frame, slot,module_idP);
 
@@ -260,9 +260,10 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, frame_t frame, sub_frame_
   nr_schedule_pucch(gNB, CC_id, frame,  slot);
 
   /* TODO: we copy from gNB->UL_tti_req_ahead[0][current_index], ie. CC_id == 0,
-   * is more than 1 CC supported?
+   * is more than 1 CC supported? 
+   * yes
    */
-  AssertFatal(MAX_NUM_CCs == 1, "only 1 CC supported\n");
+  
   const int current_index = ul_buffer_index(frame, slot, *scc->ssbSubcarrierSpacing, gNB->UL_tti_req_ahead_size);
   copy_ul_tti_req(&(sched_info->UL_tti_req), &gNB->UL_tti_req_ahead[CC_id][current_index]);
 

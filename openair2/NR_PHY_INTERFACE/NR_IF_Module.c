@@ -500,7 +500,7 @@ void NR_UL_indication(NR_UL_IND_t *UL_info) {
 
     ifi->CC_mask |= (1<<CC_id);
 
-    if (ifi->CC_mask == ((1<<MAX_NUM_CCs)-1)) {
+    if (ifi->CC_mask <= ((1<<MAX_NUM_CCs)-1)) {
       /*
       eNB_dlsch_ulsch_scheduler(module_id,
           (UL_info->frame+((UL_info->slot>(9-sl_ahead))?1:0)) % 1024,
@@ -523,9 +523,9 @@ void NR_UL_indication(NR_UL_IND_t *UL_info) {
       sched_info->frame       = (UL_info->frame + ((UL_info->slot>(spf-1-ifi->sl_ahead)) ? 1 : 0)) % 1024;
       sched_info->slot        = (UL_info->slot+ifi->sl_ahead)%spf;
 
-#ifdef DUMP_FAPI
+      #ifdef DUMP_FAPI
       dump_dl(sched_info);
-#endif
+      #endif
 
       AssertFatal(ifi->NR_Schedule_response!=NULL,
                   "nr_schedule_response is null (mod %d, cc %d)\n",
@@ -540,8 +540,7 @@ void NR_UL_indication(NR_UL_IND_t *UL_info) {
             sched_info->DL_req.dl_tti_request_body.nPDUs);
 
       /* send DL slot indication */      
-
-      
+      if(CC_id == RC.nb_nr_CC[0]-1){
         if (NFAPI_MODE == NFAPI_MODE_VNF){
           extern int oai_nfapi_slot_ind(nfapi_nr_slot_indication_scf_t * slot_ind);
           nfapi_nr_slot_indication_scf_t slot_ind;
@@ -564,9 +563,8 @@ void NR_UL_indication(NR_UL_IND_t *UL_info) {
               LOG_E(NR_PHY, "[SS] Error in L1_Thread itti_send_msg_to_task");
             }
           }
-
-
-      }
+        }
+      } 
     }
   }
   LOG_D(NR_MAC, "fxn:%s Exit\n", __FUNCTION__);

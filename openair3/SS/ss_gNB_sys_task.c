@@ -1047,7 +1047,6 @@ bool ss_task_sys_nr_handle_cellConfig5G(struct NR_CellConfigRequest_Type *p_req,
         {
           RC.nrrrc[gnbId]->configuration[nr_cell_index].cell_identity += 
           (uint64_t)(p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.SIB1.v.message.v.c1.v.systemInformationBlockType1.cellAccessRelatedInfo.plmn_IdentityList.v->cellIdentity[i])<<(35-i);
-           LOG_I(GNB_APP, "calc cellidentify:i %d cell identify %d\n", i, RC.nrrrc[gnbId]->configuration[nr_cell_index].cell_identity );
         }
         
         if( p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.SIB1.v.message.v.c1.v.systemInformationBlockType1.cellAccessRelatedInfo.plmn_IdentityList.v->trackingAreaCode.d == true )
@@ -1359,7 +1358,7 @@ bool ss_task_sys_nr_handle_cellConfig5G(struct NR_CellConfigRequest_Type *p_req,
     /*****************************************************************************/
     MessageDef *msg_p = NULL;
     msg_p = itti_alloc_new_message (TASK_SYS_GNB, 0, NRRRC_CONFIGURATION_REQ);
-    LOG_I(GNB_APP,"ss_gNB Sending configuration message to NR_RRC task for cell other than 1st %lx\n", &RC.nrrrc[gnbId]->configuration);
+    LOG_I(GNB_APP,"ss_gNB Sending configuration message to NR_RRC task for cells\n");
     memcpy(&NRRRC_CONFIGURATION_REQ(msg_p), &RC.nrrrc[gnbId]->configuration,sizeof(NRRRC_CONFIGURATION_REQ(msg_p)));
     itti_send_msg_to_task (TASK_RRC_GNB, GNB_MODULE_ID_TO_INSTANCE(gnbId), msg_p);
   }

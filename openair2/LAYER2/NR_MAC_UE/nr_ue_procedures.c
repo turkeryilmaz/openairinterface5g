@@ -264,7 +264,7 @@ int8_t nr_ue_decode_mib(module_id_t module_id,
   LOG_D(MAC,"[L2][MAC] decode mib %d\n",cell_id);
 
   NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
-  AssertFatal(mac->physCellId == cell_id,"recieved mib from a cell not being camped%d %d",mac->physCellId,cell_id);
+  AssertFatal(mac->physCellId == cell_id,"camped at cell %d  but received mib from cell %d",mac->physCellId,cell_id);
   mac->physCellId = cell_id;
 
   nr_mac_rrc_data_ind_ue(module_id, cc_id, gNB_index, 0, 0, 0, NR_BCCH_BCH, (uint8_t *) pduP, 3);    //  fixed 3 bytes MIB PDU
