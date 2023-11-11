@@ -24,6 +24,9 @@
 uint8_t nas_qfi;
 uint8_t nas_pduid;
 
+bool sdap_test_loop = false;
+uint8_t sdap_testLoopDelayTimeSeconds = 0;
+
 bool sdap_data_req(protocol_ctxt_t *ctxt_p,
                    const ue_id_t ue_id,
                    const srb_flag_t srb_flag,
@@ -90,5 +93,11 @@ void sdap_data_ind(rb_id_t pdcp_entity,
 void set_qfi_pduid(uint8_t qfi, uint8_t pduid){
   nas_qfi = qfi;
   nas_pduid = pduid;
+  return;
+}
+
+void set_sdap_loopback(bool enable, uint8_t testLoopDelayTimeSeconds){
+  sdap_test_loop = enable;
+  sdap_testLoopDelayTimeSeconds = testLoopDelayTimeSeconds;
   return;
 }

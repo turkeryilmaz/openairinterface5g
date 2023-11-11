@@ -1,0 +1,63 @@
+/*
+ * Copyright 2022 Sequans Communications.
+ *
+ * Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The OpenAirInterface Software Alliance licenses this file to You under
+ * the OAI Public License, Version 1.0  (the "License"); you may not use this file
+ * except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.openairinterface.org/?page_id=698
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * For more information about the OpenAirInterface (OAI) Software Alliance:
+ *      contact@openairinterface.org
+ */
+
+#pragma once
+
+// SIDL keywords.
+#include "msg.sidl"
+
+// SIDL commons.
+#include "SidlNrCommon.sidl"
+
+typedef SIDL_DYNAMIC(NR_CellId_Type, NR_CellIdList_Type);
+
+struct NR_SpCell_CellGroupConfig_Type {
+	SIDL_OPTIONAL(ASN_NR_NAME(CellGroupId), CellGroupId);
+	SIDL_OPTIONAL(NR_CellIdList_Type, SCellList);
+	SIDL_OPTIONAL_OF_STRUCT(NR_ASN1_MAC_CellGroupConfig_Type, MAC_CellGroupConfig);
+	SIDL_OPTIONAL_OF_STRUCT(NR_ASN1_PhysicalCellGroupConfig_Type, PhysicalCellGroupConfig);
+};
+
+struct NR_SpCellConfig_Type {
+	SIDL_OPTIONAL_WITH_PFX(NR_SpCellConfig_Type, NR_ServingCellIndex_Type, ServingCellIndex);
+	SIDL_OPTIONAL_OF_STRUCT(NR_SpCell_CellGroupConfig_Type, CellGroupConfig);
+};
+
+struct NR_SCellConfig_Type {
+	SIDL_OPTIONAL_WITH_PFX(NR_SCellConfig_Type, NR_ServingCellIndex_Type, ServingCellIndex);
+	SIDL_OPTIONAL(ASN_NR_NAME(TAG_Id), TAG_Id);
+};
+
+SIDL_UNION_ENUM(NR_ServingCellConfig_Type) {
+	NR_ServingCellConfig_Type_UNBOUND_VALUE,
+	NR_ServingCellConfig_Type_SpCell,
+	NR_ServingCellConfig_Type_SCell,
+	NR_ServingCellConfig_Type_None
+};
+SIDL_UNION_BEGIN(NR_ServingCellConfig_Type) {
+	SIDL_UNION_CASE(NR_ServingCellConfig_Type_SpCell)
+		struct NR_SpCellConfig_Type SpCell;
+	SIDL_UNION_CASE(NR_ServingCellConfig_Type_SCell)
+		struct NR_SCellConfig_Type SCell;
+	SIDL_UNION_CASE(NR_ServingCellConfig_Type_None)
+		Null_Type None;
+} SIDL_UNION_END;
