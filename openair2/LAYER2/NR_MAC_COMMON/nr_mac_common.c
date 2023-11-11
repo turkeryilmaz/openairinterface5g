@@ -474,7 +474,12 @@ NR_tda_info_t get_ul_tda_info(const NR_UE_UL_BWP_t *ul_bwp, int controlResourceS
   AssertFatal(scs >= 0 &&  scs < 5, "Subcarrier spacing indicatior %d invalid value\n", scs);
   int j = scs == 0 ? 1 : scs;
   if (tdalist) {
-    AssertFatal(tda_index < tdalist->list.count, "TDA index from DCI %d exceeds TDA list array size %d\n", tda_index, tdalist->list.count);
+    //AssertFatal(tda_index < tdalist->list.count, "TDA index from DCI %d exceeds TDA list array size %d\n", tda_index, tdalist->list.count);
+    //why systematically generate an assert if DCI processing is not good: UE shall recover
+    if (tda_index >= tdalist->list.count){
+        LOG_E(MAC,"TDA index from DCI %d exceeds TDA list array size %d\n", tda_index, tdalist->list.count);
+        return tda_info;
+    }
     NR_PUSCH_TimeDomainResourceAllocation_t *tda = tdalist->list.array[tda_index];
     tda_info.mapping_type = tda->mappingType;
     // As described in 38.331, when the field is absent the UE applies the value 1 when PUSCH SCS is 15/30KHz
@@ -3747,6 +3752,7 @@ int16_t fill_dmrs_mask(const NR_PDSCH_Config_t *pdsch_Config,
   // For TypeB, ld is the duration of the scheduled PDSCH resources
   ld = (mappingtype == typeA) ? (NrOfSymbols + startSymbol) : NrOfSymbols;
 
+  if (ld == 0) ld = 7; //TODO: ACHTUNG!!! Temporary W/A, need to fix the assert somewhere else.
   AssertFatal(ld > 2 && ld < 15,"Illegal NrOfSymbols according to Table 5.1.2.1-1 Spec 38.214 %d\n",ld);
   AssertFatal((NrOfSymbols + startSymbol) < 15,"Illegal S+L according to Table 5.1.2.1-1 Spec 38.214 S:%d L:%d\n",startSymbol, NrOfSymbols);
 

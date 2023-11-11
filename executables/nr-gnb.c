@@ -253,9 +253,11 @@ void rx_func(void *param)
   gNB->UL_INFO.frame     = frame_rx;
   gNB->UL_INFO.slot      = slot_rx;
   gNB->UL_INFO.module_id = gNB->Mod_id;
-  gNB->UL_INFO.CC_id     = gNB->CC_id;
-  gNB->if_inst->NR_UL_indication(&gNB->UL_INFO);
-//  pthread_mutex_unlock(&gNB->UL_INFO_mutex);
+  for (int CC_id =0 ; CC_id < RC.nb_nr_CC[0];CC_id++) {
+    gNB->UL_INFO.CC_id     = CC_id;
+    gNB->if_inst->NR_UL_indication(&gNB->UL_INFO);
+  }
+  // pthread_mutex_unlock(&gNB->UL_INFO_mutex);
   stop_meas(&gNB->ul_indication_stats);
 
   int tx_slot_type = nr_slot_select(cfg,frame_tx,slot_tx);
