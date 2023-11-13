@@ -749,7 +749,6 @@ int8_t clean_UE_ulsch(PHY_VARS_NR_UE *UE, uint8_t gNB_id)
     ul_harq_process->tx_status = NEW_TRANSMISSION_HARQ;
     ul_harq_process->status = SCH_IDLE;
     ul_harq_process->round = 0;
-    ul_harq_process->first_tx = 1;
   }
   return 0;
 }

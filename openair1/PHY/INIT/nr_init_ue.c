@@ -621,7 +621,6 @@ void nr_init_ul_harq_processes(NR_UL_UE_HARQ_t harq_list[NR_MAX_ULSCH_HARQ_PROCE
     DevAssert(harq_list[i].f);
     bzero(harq_list[i].f,14*num_rb*12*16);
 
-    harq_list[i].first_tx = 1;
     harq_list[i].round = 0;
   }
 }
