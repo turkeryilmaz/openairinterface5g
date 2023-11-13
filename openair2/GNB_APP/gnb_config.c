@@ -1991,7 +1991,7 @@ int RCconfig_NR_DU_F1(MessageDef *msg_p, uint32_t i) {
           LOG_I(GNB_APP,"ngran_DU: Configuring Cell %d for FDD\n",k);
           f1Setup->fdd_flag = 1;
           f1Setup->nr_mode_info[k].fdd.dl_nr_arfcn             = rrc->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA;
-          f1Setup->nr_mode_info[k].fdd.ul_nr_arfcn             = rrc->configuration.scc->uplinkConfigCommon->frequencyInfoUL->absoluteFrequencyPointA;
+          f1Setup->nr_mode_info[k].fdd.ul_nr_arfcn             = *rrc->configuration.scc->uplinkConfigCommon->frequencyInfoUL->absoluteFrequencyPointA;
           // For LTE use scs field to carry prefix type and number of antennas
           f1Setup->nr_mode_info[k].fdd.dl_scs                  = 0;
           f1Setup->nr_mode_info[k].fdd.ul_scs                  = 0;

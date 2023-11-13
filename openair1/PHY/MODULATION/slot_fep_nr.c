@@ -421,7 +421,7 @@ void apply_nr_rotation_RX(NR_DL_FRAME_PARMS *frame_parms,
 
 typedef struct complex16 sample_t; // 2*16 bits complex number
 //Apply the givin Doppler shift to the input signal with a fixed number of samples
-void nr_apply_Doppler( void *in, uint32_t len, int32_t fDoppler, uint32_t *SampIdxDoppler, NR_DL_FRAME_PARMS *fp ) {
+void nr_apply_Doppler( void *in, uint32_t len, int32_t fDoppler, uint32_t *SampIdxDoppler, const NR_DL_FRAME_PARMS *fp ) {
 
   int16_t SinDopper, CosDopper; // sine/cosine value from the LUT
   sample_t *sigComp = (sample_t *)in;

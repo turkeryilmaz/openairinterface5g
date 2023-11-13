@@ -493,7 +493,7 @@ int nr_rx_pbch(PHY_VARS_NR_UE *ue,
                                     frame_parms,
                                     nb_re);
       log2_maxh = 3+(log2_approx(max_h)/2);
-      memcpy(&dl_ch_estimates_dmrs_symb1[0], &dl_ch_estimates_dmrs[0], sizeof dl_ch_estimates_dmrs[0]);
+      memcpy(&dl_ch_estimates_dmrs_symb1[0][0], &dl_ch_estimates_dmrs[0][0], sizeof dl_ch_estimates_dmrs[0]);
     }
 
     if (symbol == 3){
@@ -502,8 +502,8 @@ int nr_rx_pbch(PHY_VARS_NR_UE *ue,
       static int64_t DopplerErrLast = (int64_t)1<<60; //Doppler from last estimation
       int64_t DopplerErr = 0;
 
-      int16_t *dlChEstSymb1 = (int16_t*)&dl_ch_estimates_dmrs_symb1[0];
-      int16_t *dlChEstSymb3 = (int16_t*)&dl_ch_estimates_dmrs[0];
+      c16_t *dlChEstSymb1 = &dl_ch_estimates_dmrs_symb1[0][0];
+      c16_t *dlChEstSymb3 = &dl_ch_estimates_dmrs[0][0];
 
       int nbRE = PBCH_DMRS_PER_SYMBOL;
       int channelLevel = nr_pbch_channel_level(dl_ch_estimates_ext, frame_parms, nbRE);
@@ -512,11 +512,6 @@ int nr_rx_pbch(PHY_VARS_NR_UE *ue,
       uint8_t outputShift = (uint8_t)((float)channelLevelLog*0.8 - 2.75);
       nbRE = 56;   // multiple of 8, as implemnted at the dot product function
       const c32_t Dot_Prod_Res = dot_product( dlChEstSymb1, dlChEstSymb3, nbRE, outputShift);
-      //int32_t Dot_Prod_Res = dot_product( dlChEstSymb1, dlChEstSymb3, nbRE, outputShift);
-      //struct complex16 Res_cpx;
-      //Res_cpx.r = ((struct complex16*) &Dot_Prod_Res)->r;
-      //Res_cpx.i = ((struct complex16*) &Dot_Prod_Res)->i;
-      //double Res_phase = atan2( (double)Res_cpx.i, (double)Res_cpx.r);
       double Res_phase = atan2( (double)Dot_Prod_Res.i, (double)Dot_Prod_Res.r);
       double slotDuration = 0.01/((double)ue->frame_parms.slots_per_frame);       // slot duration in sec
       double TOfdm = slotDuration / ((double)ue->frame_parms.symbols_per_slot);   // symbol duration in sec

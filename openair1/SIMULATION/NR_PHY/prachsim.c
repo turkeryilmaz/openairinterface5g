@@ -67,6 +67,10 @@ uint16_t NTN_UE_slot_Rx_to_Tx = 0;
 uint16_t NTN_gNB_k2 = 0;
 uint16_t max_ul_sched_frame = 1;
 
+int fdopplerComp = 1;
+int32_t fdopplerPrePost = 0; //pre/post compensation of the Doppler shift at the gNB side
+int commonDoppler = 0;  // common doppler to be compensated at UE
+
 PHY_VARS_gNB *gNB;
 PHY_VARS_NR_UE *UE;
 RAN_CONTEXT_t RC;

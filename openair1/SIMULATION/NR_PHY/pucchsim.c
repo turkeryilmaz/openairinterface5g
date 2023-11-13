@@ -51,6 +51,9 @@
 #include "executables/softmodem-common.h"
 
 THREAD_STRUCT thread_struct;
+
+int commonDoppler = 0; //421528;
+
 PHY_VARS_gNB *gNB;
 PHY_VARS_NR_UE *UE;
 RAN_CONTEXT_t RC;

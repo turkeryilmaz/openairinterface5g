@@ -4239,7 +4239,7 @@ int nr_get_Po_NOMINAL_PUSCH_for_ULPC(NR_UE_MAC_INST_t *mac) {
 
   if (mac->current_UL_BWP.msg3_DeltaPreamble) {
     deltaPreamble_Msg3 = (*mac->current_UL_BWP.msg3_DeltaPreamble) * 2; // dB
-    LOG_D(MAC, "In %s: deltaPreamble_Msg3 set to %ld\n", __FUNCTION__, deltaPreamble_Msg3);
+    LOG_D(MAC, "In %s: deltaPreamble_Msg3 set to %d\n", __FUNCTION__, deltaPreamble_Msg3);
   }
 
   /*

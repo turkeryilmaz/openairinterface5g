@@ -24,9 +24,9 @@
 #include <math.h>
 #include <time.h>
 #include  "sim.h"
+#include "common/utils/nr/nr_common.h"
+#include "nfapi_nr_interface_scf.h"
 
-
-static uint16_t LUTSin[ResolSinCos+1];
 /* linear phase noise model */
 void phase_noise(double ts, int16_t * InRe, int16_t * InIm)
 {
@@ -64,9 +64,27 @@ void phase_noise(double ts, int16_t * InRe, int16_t * InIm)
   InIm[0]= (int16_t)(y>>14);
   i++;
 }
-/* Initialisation function for SIN table values */
-void InitSinLUT( void ) {
-  for ( int i=0; i<(ResolSinCos+1); i++ ) {
-    LUTSin[i] = sin((double)(M_PI*i)/(2*ResolSinCos)) * (1<<14); //Format: Q14
+
+void add_noise(c16_t **rxdata,
+               const double **r_re,
+               const double **r_im,
+               const double sigma,
+               const int length,
+               const int slot_offset,
+               const double ts,
+               const int delay,
+               const uint16_t pdu_bit_map,
+               const uint8_t nb_antennas_rx)
+{
+  for (int i = 0; i < length; i++) {
+    for (int ap = 0; ap < nb_antennas_rx; ap++) {
+      c16_t *rxd = &rxdata[ap][slot_offset + i + delay];
+      rxd->r = r_re[ap][i] + sqrt(sigma / 2) * gaussZiggurat(0.0, 1.0); // convert to fixed point
+      rxd->i = r_im[ap][i] + sqrt(sigma / 2) * gaussZiggurat(0.0, 1.0);
+      /* Add phase noise if enabled */
+      if (pdu_bit_map & PUSCH_PDU_BITMAP_PUSCH_PTRS) {
+        phase_noise(ts, &rxdata[ap][slot_offset + i + delay].r, &rxdata[ap][slot_offset + i + delay].i);
+      }
+    }
   }
 }

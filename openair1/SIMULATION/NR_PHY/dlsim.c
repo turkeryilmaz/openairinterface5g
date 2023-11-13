@@ -86,6 +86,18 @@ uint16_t NTN_UE_slot_Rx_to_Tx = 0;
 uint16_t NTN_gNB_k2 = 0;
 uint16_t max_ul_sched_frame = 1;
 
+int fdopplerComp = 1; // flag to activate continous frequency offset compensation (=0 deacticated, =1 activated (default case))
+int tdriftComp = 1;
+int32_t fdopplerPrePost = 0; //pre/post compensation of the Doppler shift at the gNB side
+double FO_PScaling = 0.33;   // P scaling factor of the PID controller for the Doppler compensation at UE side
+double FO_IScaling = 0.5;    // I scaling factor of the PID controller for the Doppler compensation at UE side
+
+double TO_PScaling = 1;
+double TO_IScaling = 0.1;
+int TO_IScalingInit = 0;
+
+int commonDoppler = 0; //421528;
+
 PHY_VARS_gNB *gNB;
 PHY_VARS_NR_UE *UE;
 RAN_CONTEXT_t RC;
@@ -1017,7 +1029,6 @@ int main(int argc, char **argv)
         NR_SCHED_LOCK(&gNB_mac->sched_lock);
         nr_schedule_ue_spec(0, frame, slot, &Sched_INFO->DL_req, &Sched_INFO->TX_req);
         NR_SCHED_UNLOCK(&gNB_mac->sched_lock);
-        Sched_INFO.UL_tti_req  = &Sched_INFO->UL_tti_req_ahead[0][frame%MAX_NUM_UL_SCHED_FRAME][slot];
         Sched_INFO->module_id = 0;
         Sched_INFO->CC_id = 0;
         Sched_INFO->frame = frame;

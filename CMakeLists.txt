@@ -1849,7 +1849,6 @@ set (SIMUSRC
   ${OPENAIR1_DIR}/SIMULATION/TOOLS/channel_sim.c
   ${OPENAIR1_DIR}/SIMULATION/TOOLS/random_channel.c
   ${OPENAIR1_DIR}/SIMULATION/TOOLS/rangen_double.c
-  ${OPENAIR1_DIR}/SIMULATION/TOOLS/phase_noise.c
   ${OPENAIR1_DIR}/SIMULATION/RF/rf.c
   ${OPENAIR1_DIR}/SIMULATION/RF/dac.c
   ${OPENAIR1_DIR}/SIMULATION/RF/adc.c
@@ -2221,6 +2220,7 @@ target_link_libraries(nr_pucchsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 add_executable(nr_dlsim
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/dlsim.c
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/nr_dummy_functions.c
+  ${OPENAIR1_DIR}/SIMULATION/TOOLS/phase_noise.c
   ${OPENAIR_DIR}/common/utils/nr/nr_common.c
   ${OPENAIR_DIR}/executables/softmodem-common.c
   ${OPENAIR2_DIR}/RRC/NAS/nas_config.c
@@ -2260,6 +2260,7 @@ target_link_libraries(nr_ulschsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 add_executable(nr_ulsim
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/ulsim.c
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/nr_dummy_functions.c
+  ${OPENAIR1_DIR}/SIMULATION/TOOLS/phase_noise.c
   ${OPENAIR_DIR}/common/utils/nr/nr_common.c
   ${OPENAIR_DIR}/executables/softmodem-common.c
   ${OPENAIR2_DIR}/RRC/NAS/nas_config.c

@@ -145,6 +145,6 @@ int nr_layer_precoder_cm(int16_t **datatx_F_precoding,
 
 
 // apply frequency offset compensation
-void nr_apply_Doppler( void *in, uint32_t len, int32_t fDoppler, uint32_t *SampIdxDoppler, NR_DL_FRAME_PARMS *fp );
+void nr_apply_Doppler( void *in, uint32_t len, int32_t fDoppler, uint32_t *SampIdxDoppler, const NR_DL_FRAME_PARMS *fp );
 
 #endif
