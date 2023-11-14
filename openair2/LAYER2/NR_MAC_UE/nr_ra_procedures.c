@@ -593,13 +593,14 @@ void nr_Msg3_transmitted(module_id_t mod_id, uint8_t CC_id, frame_t frameP, slot
   RA_config_t *ra = &mac->ra;
   NR_RACH_ConfigCommon_t *nr_rach_ConfigCommon = mac->current_UL_BWP.rach_ConfigCommon;
   long mu = mac->current_UL_BWP.scs;
-  int subframes_per_slot = nr_slots_per_frame[mu]/10;
+  int slots_per_subframe = nr_slots_per_frame[mu]/10;
 
   // start contention resolution timer (cnt in slots)
   int RA_contention_resolution_timer_subframes = (nr_rach_ConfigCommon->ra_ContentionResolutionTimer + 1)<<3;
+  int RA_contention_resolution_abs_slot = slotP + NTN_UE_k2 + (RA_contention_resolution_timer_subframes * slots_per_subframe);
 
-  ra->RA_contention_resolution_target_frame = frameP + NTN_UE_k2 + (RA_contention_resolution_timer_subframes/10);
-  ra->RA_contention_resolution_target_slot = (slotP + (RA_contention_resolution_timer_subframes * subframes_per_slot)) % nr_slots_per_frame[mu];
+  ra->RA_contention_resolution_target_frame = (frameP + RA_contention_resolution_abs_slot / nr_slots_per_frame[mu]) % MAX_FRAME_NUMBER;
+  ra->RA_contention_resolution_target_slot = RA_contention_resolution_abs_slot % nr_slots_per_frame[mu];
 
   LOG_D(MAC,"In %s: [UE %d] CB-RA: contention resolution timer set in frame.slot %d.%d and expiring in %d.%d\n",
        __FUNCTION__, mod_id, frameP, slotP, ra->RA_contention_resolution_target_frame, ra->RA_contention_resolution_target_slot);
