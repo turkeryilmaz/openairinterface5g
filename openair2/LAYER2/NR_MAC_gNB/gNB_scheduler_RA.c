@@ -708,7 +708,6 @@ static void nr_generate_Msg3_retransmission(module_id_t module_idP,
   NR_PUSCH_TimeDomainResourceAllocationList_t *pusch_TimeDomainAllocationList = ul_bwp->tdaList_Common;
   int mu = ul_bwp->scs;
   uint16_t K2 = *pusch_TimeDomainAllocationList->list.array[ra->Msg3_tda_id]->k2 + NTN_gNB_k2;
-  //const int sched_frame = (frame + (slot + K2 >= nr_slots_per_frame[mu])) % 1024;
   const int sched_frame = (frame + (slot + K2) / nr_slots_per_frame[mu]) % MAX_FRAME_NUMBER;
   const int sched_slot = (slot + K2) % nr_slots_per_frame[mu];
 
@@ -915,7 +914,7 @@ static void nr_get_Msg3alloc(module_id_t module_id,
     for (int i=0; i<pusch_TimeDomainAllocationList->list.count; i++) {
       startSymbolAndLength = pusch_TimeDomainAllocationList->list.array[i]->startSymbolAndLength;
       SLIV2SL(startSymbolAndLength, &StartSymbolIndex, &NrOfSymbols);
-      k2 = *pusch_TimeDomainAllocationList->list.array[i]->k2  + NTN_gNB_k2;
+      k2 = *pusch_TimeDomainAllocationList->list.array[i]->k2 + NTN_gNB_k2;
       LOG_D(NR_MAC,"Checking Msg3 TDA %d for Msg3_slot %d Msg3_start %d Msg3_nsymb %d: k2 %d, sliv %d,S %d L %d\n",
             i, msg3_slot, Msg3start, Msg3maxsymb, (int)k2, (int)pusch_TimeDomainAllocationList->list.array[i]->startSymbolAndLength, StartSymbolIndex, NrOfSymbols);
       // we want to transmit in the uplink symbols of mixed slot or the first uplink slot

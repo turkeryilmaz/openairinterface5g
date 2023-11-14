@@ -1470,7 +1470,7 @@ int nr_ue_pusch_scheduler(NR_UE_MAC_INST_t *mac, uint8_t is_Msg3, frame_t curren
                 DURATION_RX_TO_TX);
 
     *slot_tx = (current_slot + k2 + delta) % nr_slots_per_frame[mu];
-    *frame_tx = (current_frame + (current_slot + k2 + delta)/nr_slots_per_frame[mu]) % 1024;
+    *frame_tx = (current_frame + (current_slot + k2 + delta)/nr_slots_per_frame[mu]) % MAX_FRAME_NUMBER;
 
   } else {
 
@@ -1481,7 +1481,7 @@ int nr_ue_pusch_scheduler(NR_UE_MAC_INST_t *mac, uint8_t is_Msg3, frame_t curren
 
     // Calculate TX slot and frame
     *slot_tx = (current_slot + k2) % nr_slots_per_frame[mu];
-    *frame_tx = (current_frame + (current_slot + k2)/nr_slots_per_frame[mu]) % 1024;
+    *frame_tx = (current_frame + (current_slot + k2)/nr_slots_per_frame[mu]) % MAX_FRAME_NUMBER;
 
   }
 

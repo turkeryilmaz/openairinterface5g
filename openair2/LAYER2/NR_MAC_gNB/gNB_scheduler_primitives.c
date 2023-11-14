@@ -2535,8 +2535,7 @@ int get_pdsch_to_harq_feedback(NR_PUCCH_Config_t *pucch_Config,
   else {
     AssertFatal(pucch_Config != NULL && pucch_Config->dl_DataToUL_ACK != NULL,"dl_DataToUL_ACK shouldn't be null here\n");
     for (int i = 0; i < pucch_Config->dl_DataToUL_ACK->list.count; i++) {
-      pdsch_to_harq_feedback[i] = *pucch_Config->dl_DataToUL_ACK->list.array[i];
-      pdsch_to_harq_feedback[i] += NTN_gNB_k2;
+      pdsch_to_harq_feedback[i] = *pucch_Config->dl_DataToUL_ACK->list.array[i] + NTN_gNB_k2;
     }
     return pucch_Config->dl_DataToUL_ACK->list.count;
   }

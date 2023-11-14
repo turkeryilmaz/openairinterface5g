@@ -813,7 +813,6 @@ uint8_t nr_ue_get_rach(module_id_t mod_id,
   return ra->ra_state;
 }
 
-extern uint16_t NTN_UE_k2; //the additional k2 value at UE
 void nr_get_RA_window(NR_UE_MAC_INST_t *mac)
 {
   RA_config_t *ra = &mac->ra;

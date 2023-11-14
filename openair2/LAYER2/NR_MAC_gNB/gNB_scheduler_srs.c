@@ -308,7 +308,7 @@ void nr_schedule_srs(int module_id, frame_t frame, int slot)
       // we are sheduling SRS max_k2 slot in advance for the presence of SRS to be taken into account when scheduling PUSCH
       const int n_slots_frame = nr_slots_per_frame[current_BWP->scs];
       const int sched_slot = (slot + max_k2) % n_slots_frame;
-      const int sched_frame = (frame + ((slot + max_k2) / n_slots_frame)) % 1024;
+      const int sched_frame = (frame + ((slot + max_k2) / n_slots_frame)) % MAX_FRAME_NUMBER;
 
       const uint16_t period = srs_period[srs_resource->resourceType.choice.periodic->periodicityAndOffset_p.present];
       const uint16_t offset = get_nr_srs_offset(srs_resource->resourceType.choice.periodic->periodicityAndOffset_p);
