@@ -21,7 +21,7 @@
 
 /*! \file nrppa_gNB_itti_messaging.h
  * \brief nrppa itti messages handlers for gNB
-* \author Adeel Malik
+ * \author Adeel Malik
  * \email adeel.malik@eurecom.fr
  *\date 2023
  * \version 1.0
@@ -31,9 +31,18 @@
 #ifndef NRPPA_GNB_ITTI_MESSAGING_H_
 #define NRPPA_GNB_ITTI_MESSAGING_H_
 
+void nrppa_gNB_itti_send_UplinkUEAssociatedNRPPa(instance_t instance,
+                                                 uint32_t gNB_ue_ngap_id,
+                                                 uint32_t amf_ue_ngap_id,
+                                                 uint8_t *routingId_buffer,
+                                                 uint32_t routingId_buffer_length,
+                                                 uint8_t *nrppa_pdu,
+                                                 uint32_t nrppa_pdu_length);
 
-void nrppa_gNB_itti_send_UplinkUEAssociatedNRPPa(instance_t instance, uint32_t gNB_ue_ngap_id, uint32_t amf_ue_ngap_id,  uint8_t *routingId_buffer, uint32_t routingId_buffer_length, uint8_t *nrppa_pdu, uint32_t nrppa_pdu_length);
-
-void nrppa_gNB_itti_send_UplinkNonUEAssociatedNRPPa(instance_t instance, uint8_t *routingId_buffer, uint32_t routingId_buffer_length, uint8_t *nrppa_pdu, uint32_t nrppa_pdu_length);
+void nrppa_gNB_itti_send_UplinkNonUEAssociatedNRPPa(instance_t instance,
+                                                    uint8_t *routingId_buffer,
+                                                    uint32_t routingId_buffer_length,
+                                                    uint8_t *nrppa_pdu,
+                                                    uint32_t nrppa_pdu_length);
 
 #endif /* NRPPA_GNB_ITTI_MESSAGING_H_ */

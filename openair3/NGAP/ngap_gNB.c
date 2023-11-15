@@ -118,7 +118,7 @@ static void ngap_gNB_register_amf(ngap_gNB_instance_t *instance_p,
   /* Create new AMF descriptor */
   ngap_amf_data_p = calloc(1, sizeof(*ngap_amf_data_p));
   DevAssert(ngap_amf_data_p != NULL);
-  ngap_amf_data_p->cnx_id                = ngap_gNB_fetch_add_global_cnx_id();
+  ngap_amf_data_p->cnx_id = ngap_gNB_fetch_add_global_cnx_id();
   sctp_new_association_req_p->ulp_cnx_id = ngap_amf_data_p->cnx_id;
   ngap_amf_data_p->assoc_id          = -1;
   ngap_amf_data_p->broadcast_plmn_num = broadcast_plmn_num;
@@ -387,15 +387,15 @@ static int ngap_gNB_generate_ng_setup_request(
   ngap_gNB_amf_data_t *ngap_amf_data_p)
 //-----------------------------------------------------------------------------
 {
-  NGAP_NGAP_PDU_t            pdu;
-  NGAP_NGSetupRequest_t      *out = NULL;
-  NGAP_NGSetupRequestIEs_t   *ie = NULL;
-  NGAP_SupportedTAItem_t     *ta = NULL;
-  NGAP_BroadcastPLMNItem_t   *plmn = NULL;
-  NGAP_SliceSupportItem_t    *ssi = NULL;
-  uint8_t  *buffer = NULL;
-  uint32_t  len = 0;
-  int       ret = 0;
+  NGAP_NGAP_PDU_t pdu;
+  NGAP_NGSetupRequest_t *out = NULL;
+  NGAP_NGSetupRequestIEs_t *ie = NULL;
+  NGAP_SupportedTAItem_t *ta = NULL;
+  NGAP_BroadcastPLMNItem_t *plmn = NULL;
+  NGAP_SliceSupportItem_t *ssi = NULL;
+  uint8_t *buffer = NULL;
+  uint32_t len = 0;
+  int ret = 0;
   DevAssert(instance_p != NULL);
   DevAssert(ngap_amf_data_p != NULL);
   ngap_amf_data_p->state = NGAP_GNB_STATE_WAITING;
@@ -495,7 +495,3 @@ static int ngap_gNB_generate_ng_setup_request(
   ngap_gNB_itti_send_sctp_data_req(instance_p->instance, ngap_amf_data_p->assoc_id, buffer, len, 0);
   return ret;
 }
-
-
-
-

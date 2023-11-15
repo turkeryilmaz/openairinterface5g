@@ -27,16 +27,11 @@
  * \version 0.1
  */
 
-
-
 #ifndef NRPPA_COMMON_H_
 #define NRPPA_COMMON_H_
 
-
 #include "common/utils/LOG/log.h"
 #include "oai_asn1.h"
-
-
 
 /*#include "NRPPA_ProtocolIE-ID.h"
 #include "NRPPA_Criticality.h"
@@ -106,8 +101,6 @@
 #include "NRPPA_ProtocolIE-Single-Container.h"
 #include "NRPPA_asn_constant.h"
 
-
-
 // Position Information Transfer Procedures
 #include "NRPPA_PositioningActivationFailure.h"
 #include "NRPPA_PositioningActivationRequest.h"
@@ -156,15 +149,12 @@
 #include "NRPPA_ResourceTypeAperiodicPos.h"
 #include "NRPPA_ResourceTypeSemi-persistentPos.h"
 
-
 #include "NRPPA_PosSRSResourceSet-List.h"
 #include "NRPPA_PosSRSResourceSet-Item.h"
 #include "NRPPA_PosResourceSetType.h"
 #include "NRPPA_PosResourceSetTypePeriodic.h"
 #include "NRPPA_PosResourceSetTypeAperiodic.h"
 #include "NRPPA_PosResourceSetTypeSemi-persistent.h"
-
-
 
 #include "NRPPA_SFNInitialisationTime.h"
 #include "NRPPA_CriticalityDiagnostics.h"
@@ -178,7 +168,6 @@
 //#include ".h"
 #include "NRPPA_TRPInformationList.h"
 #include "NRPPA_TRPInformationItem.h"
-
 
 // Measurement Transfer
 #include "NRPPA_MeasurementRequest.h"
@@ -201,75 +190,85 @@
 
 /* Checking version of ASN1C compiler */
 #if (ASN1C_ENVIRONMENT_VERSION < ASN1C_MINIMUM_VERSION)
-# error "You are compiling nrppa with the wrong version of ASN1C"
+#error "You are compiling nrppa with the wrong version of ASN1C"
 #endif
 
 extern int asn_debug;
 extern int asn1_xer_print;
 
 #if defined(ENB_MODE)
-# include "common/utils/LOG/log.h"
-# include "ngap_gNB_default_values.h"
-# define NRPPA_ERROR(x, args...) LOG_E(NRPPA, x, ##args)
-# define NRPPA_WARN(x, args...)  LOG_W(NRPPA, x, ##args)
-# define NRPPA_TRAF(x, args...)  LOG_I(NRPPA, x, ##args)
-# define NRPPA_INFO(x, args...) LOG_I(NRPPA, x, ##args)
-# define NRPPA_DEBUG(x, args...) LOG_I(NRPPA, x, ##args)
+#include "common/utils/LOG/log.h"
+#include "ngap_gNB_default_values.h"
+#define NRPPA_ERROR(x, args...) LOG_E(NRPPA, x, ##args)
+#define NRPPA_WARN(x, args...) LOG_W(NRPPA, x, ##args)
+#define NRPPA_TRAF(x, args...) LOG_I(NRPPA, x, ##args)
+#define NRPPA_INFO(x, args...) LOG_I(NRPPA, x, ##args)
+#define NRPPA_DEBUG(x, args...) LOG_I(NRPPA, x, ##args)
 #else
-# define NRPPA_ERROR(x, args...) do { fprintf(stdout, "[NRPPA][E]"x, ##args); } while(0)
-# define NRPPA_WARN(x, args...)  do { fprintf(stdout, "[NRPPA][W]"x, ##args); } while(0)
-# define NRPPA_TRAF(x, args...)  do { fprintf(stdout, "[NRPPA][T]"x, ##args); } while(0)
-# define NRPPA_INFO(x, args...) do { fprintf(stdout, "[NRPPA][I]"x, ##args); } while(0)
-# define NRPPA_DEBUG(x, args...) do { fprintf(stdout, "[NRPPA][D]"x, ##args); } while(0)
+#define NRPPA_ERROR(x, args...)              \
+  do {                                       \
+    fprintf(stdout, "[NRPPA][E]" x, ##args); \
+  } while (0)
+#define NRPPA_WARN(x, args...)               \
+  do {                                       \
+    fprintf(stdout, "[NRPPA][W]" x, ##args); \
+  } while (0)
+#define NRPPA_TRAF(x, args...)               \
+  do {                                       \
+    fprintf(stdout, "[NRPPA][T]" x, ##args); \
+  } while (0)
+#define NRPPA_INFO(x, args...)               \
+  do {                                       \
+    fprintf(stdout, "[NRPPA][I]" x, ##args); \
+  } while (0)
+#define NRPPA_DEBUG(x, args...)              \
+  do {                                       \
+    fprintf(stdout, "[NRPPA][D]" x, ##args); \
+  } while (0)
 #endif
 
-
-#define NRPPA_FIND_PROTOCOLIE_BY_ID(IE_TYPE, ie, container, IE_ID, mandatory)                                                            \
-  do {                                                                                                                                  \
-    IE_TYPE **ptr;                                                                                                                      \
-    ie = NULL;                                                                                                                          \
-    for (ptr = container->protocolIEs.list.array; ptr < &container->protocolIEs.list.array[container->protocolIEs.list.count]; ptr++) { \
-      if ((*ptr)->id == IE_ID) {                                                                                                        \
-        ie = *ptr;                                                                                                                      \
-        break;                                                                                                                          \
-      }                                                                                                                                 \
-    }                                                                                                                                   \
-    if (ie == NULL) {                                                                                                                   \
-      if (mandatory) {                                                                                                                  \
-        AssertFatal(NRPPA, "NRPPA_FIND_PROTOCOLIE_BY_ID ie is NULL (searching for ie: %ld)\n", IE_ID);                                    \
-      } else {                                                                                                                          \
-        NRPPA_INFO("NRPPA_FIND_PROTOCOLIE_BY_ID ie is NULL (searching for ie: %ld)\n", IE_ID);                                            \
-      }                                                                                                                                 \
-    }                                                                                                                                   \
-  } while (0);                                                                                                                          \
-  if (mandatory && !ie)                                                                                                                 \
+#define NRPPA_FIND_PROTOCOLIE_BY_ID(IE_TYPE, ie, container, IE_ID, mandatory)                                                  \
+  do {                                                                                                                         \
+    IE_TYPE **ptr;                                                                                                             \
+    ie = NULL;                                                                                                                 \
+    for (ptr = container->protocolIEs.list.array; ptr < &container->protocolIEs.list.array[container->protocolIEs.list.count]; \
+         ptr++) {                                                                                                              \
+      if ((*ptr)->id == IE_ID) {                                                                                               \
+        ie = *ptr;                                                                                                             \
+        break;                                                                                                                 \
+      }                                                                                                                        \
+    }                                                                                                                          \
+    if (ie == NULL) {                                                                                                          \
+      if (mandatory) {                                                                                                         \
+        AssertFatal(NRPPA, "NRPPA_FIND_PROTOCOLIE_BY_ID ie is NULL (searching for ie: %ld)\n", IE_ID);                         \
+      } else {                                                                                                                 \
+        NRPPA_INFO("NRPPA_FIND_PROTOCOLIE_BY_ID ie is NULL (searching for ie: %ld)\n", IE_ID);                                 \
+      }                                                                                                                        \
+    }                                                                                                                          \
+  } while (0);                                                                                                                 \
+  if (mandatory && !ie)                                                                                                        \
   return -1
 
-  /* ad**l todo */
-  /* gnb and ue related info in NRPPA emssage */
-typedef struct nrppa_gnb_ue_info_s{
+/* ad**l todo */
+/* gnb and ue related info in NRPPA emssage */
+typedef struct nrppa_gnb_ue_info_s {
   instance_t instance;
   int32_t gNB_ue_ngap_id;
   int64_t amf_ue_ngap_id;
   // routing ID
-  uint8_t  *routing_id_buffer;
-  uint32_t  routing_id_length;   // Length of the octet string
-   //ngap_routing_id_t routing_id;
-}nrppa_gnb_ue_info_t;
-
-
+  uint8_t *routing_id_buffer;
+  uint32_t routing_id_length; // Length of the octet string
+                              // ngap_routing_id_t routing_id;
+} nrppa_gnb_ue_info_t;
 
 /** \brief Function callback prototype.
  **/
 typedef int (*nrppa_message_decoded_callback)(
-   // uint32_t         assoc_id,
-   // uint32_t         stream,
+    // uint32_t         assoc_id,
+    // uint32_t         stream,
     nrppa_gnb_ue_info_t *nrppa_msg_info,
-    NRPPA_NRPPA_PDU_t *pdu
-);
+    NRPPA_NRPPA_PDU_t *pdu);
 /* ad**l todo */
-
-
 
 /** \brief Handle criticality
  \param criticality Criticality of the IE

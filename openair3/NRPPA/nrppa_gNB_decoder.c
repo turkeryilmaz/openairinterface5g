@@ -19,7 +19,7 @@
  *      contact@openairinterface.org
  */
 
- /*! \file nrppa_gNB_decoder.c
+/*! \file nrppa_gNB_decoder.c
  * \brief NRPPA pdu decode procedures for gNB
  * \author Adeel Malik
  * \email adeel.malik@eurecom.fr
@@ -28,120 +28,184 @@
  * @ingroup _nrppa
  */
 
-
 #include <stdio.h>
-
 #include "assertions.h"
-
 #include "intertask_interface.h"
-
-/* ad**l todo */
 #include "nrppa_common.h"
 #include "nrppa_gNB_decoder.h"
-/* ad**l todo */
 
-
-static int nrppa_gNB_decode_initiating_message(NRPPA_NRPPA_PDU_t *pdu) {
-  asn_encode_to_new_buffer_result_t res = { NULL, {0, NULL, NULL} };
+static int nrppa_gNB_decode_initiating_message(NRPPA_NRPPA_PDU_t *pdu)
+{
+  asn_encode_to_new_buffer_result_t res = {NULL, {0, NULL, NULL}};
   DevAssert(pdu != NULL);
 
-  switch(pdu->choice.initiatingMessage->procedureCode) {
-
-   case NRPPA_ProcedureCode_id_positioningActivation:
-      res = asn_encode_to_new_buffer(NULL, ATS_CANONICAL_XER, &asn_DEF_NRPPA_NRPPA_PDU, pdu);
-      NRPPA_INFO("Positioning Activation Request initiating message\n");
-      free(res.buffer);
-      break;
-
-   case NRPPA_ProcedureCode_id_positioningDeactivation:
-      res = asn_encode_to_new_buffer(NULL, ATS_CANONICAL_XER, &asn_DEF_NRPPA_NRPPA_PDU, pdu);
-      NRPPA_INFO("Positioning Deactivation Request initiating message\n");
-      free(res.buffer);
-      break;
-
-   case NRPPA_ProcedureCode_id_positioningInformationExchange:   // Parent procedure for PositioningInformationRequest, PositioningInformationResponse, and PositioningInformationFailure
+  switch (pdu->choice.initiatingMessage->procedureCode) {
+    case NRPPA_ProcedureCode_id_positioningInformationExchange: // Parent procedure for PositioningInformationRequest,
       res = asn_encode_to_new_buffer(NULL, ATS_CANONICAL_XER, &asn_DEF_NRPPA_NRPPA_PDU, pdu);
       NRPPA_INFO("Positioning Information Request initiating message\n");
       free(res.buffer);
       break;
 
-/* ad**l TODO add other procedures  check TABLE 8.1-2 and TABLE 8.1-1 of NRPPA TS38.455 v16*/
-// TODO ad**l add remaining DOWNLINK type NRPPA Procedure code
-
-    default:
-      NRPPA_ERROR("Unknown procedure ID (%d) for initiating message\n",
-                 (int)pdu->choice.initiatingMessage->procedureCode);
-      AssertFatal( 0, "Unknown procedure ID (%d) for initiating message\n",
-                   (int)pdu->choice.initiatingMessage->procedureCode);
-      return -1;
-  }
-
-  return 0;
-}
-
-static int nrppa_gNB_decode_successful_outcome(NRPPA_NRPPA_PDU_t *pdu) {
-  /* TODO
-  asn_encode_to_new_buffer_result_t res = { NULL, {0, NULL, NULL} };
-  DevAssert(pdu != NULL);
-
-  switch(pdu->choice.successfulOutcome->procedureCode) {
-
-    case NGAP_ProcedureCode_id_NGSetup:
-      res = asn_encode_to_new_buffer(NULL, ATS_CANONICAL_XER, &asn_DEF_NGAP_NGAP_PDU, pdu);
+    case NRPPA_ProcedureCode_id_positioningActivation:
+      res = asn_encode_to_new_buffer(NULL, ATS_CANONICAL_XER, &asn_DEF_NRPPA_NRPPA_PDU, pdu);
+      NRPPA_INFO("Positioning Activation Request initiating message\n");
       free(res.buffer);
       break;
 
-   // ad**l TODO add other procedures  check TABLE 8.1-2 and TABLE 8.1-1 of NRPPA TS38.455 v16
-
-
-    default:
-      NGAP_ERROR("Unknown procedure ID (%d) for successfull outcome message\n",
-                 (int)pdu->choice.successfulOutcome->procedureCode);
-      return -1;
-
-  }
-*/
-  return 0;
-}
-
-static int nrppa_gNB_decode_unsuccessful_outcome(NRPPA_NRPPA_PDU_t *pdu) {
-
-/* TODO
-  asn_encode_to_new_buffer_result_t res = { NULL, {0, NULL, NULL} };
-  DevAssert(pdu != NULL);
-
-  switch(pdu->choice.unsuccessfulOutcome->procedureCode) {
-
-    case NGAP_ProcedureCode_id_NGSetup: //  ad**l sample case
-       res = asn_encode_to_new_buffer(NULL, ATS_CANONICAL_XER, &asn_DEF_NGAP_NGAP_PDU, pdu);
+    case NRPPA_ProcedureCode_id_positioningInformationUpdate:
+      res = asn_encode_to_new_buffer(NULL, ATS_CANONICAL_XER, &asn_DEF_NRPPA_NRPPA_PDU, pdu);
+      NRPPA_INFO("Positioning Information Update initiating message\n");
       free(res.buffer);
       break;
 
-  // ad**l TODO add other procedures  check TABLE 8.1-2 and TABLE 8.1-1 of NRPPA TS38.455 v16
+    case NRPPA_ProcedureCode_id_positioningDeactivation:
+      res = asn_encode_to_new_buffer(NULL, ATS_CANONICAL_XER, &asn_DEF_NRPPA_NRPPA_PDU, pdu);
+      NRPPA_INFO("Positioning Deactivation Request initiating message\n");
+      free(res.buffer);
+      break;
 
-      default:
+    case NRPPA_ProcedureCode_id_tRPInformationExchange: // Parent procedure for TRPInformationRequest,
+      res = asn_encode_to_new_buffer(NULL, ATS_CANONICAL_XER, &asn_DEF_NRPPA_NRPPA_PDU, pdu);
+      NRPPA_INFO("TRP Information Request initiating message\n");
+      free(res.buffer);
+      break;
+
+    case NRPPA_ProcedureCode_id_Measurement: // Parent procedure for Measurement Request,
+      res = asn_encode_to_new_buffer(NULL, ATS_CANONICAL_XER, &asn_DEF_NRPPA_NRPPA_PDU, pdu);
+      NRPPA_INFO("Measurement Request initiating message\n");
+      free(res.buffer);
+      break;
+
+    case NRPPA_ProcedureCode_id_MeasurementReport:
+      res = asn_encode_to_new_buffer(NULL, ATS_CANONICAL_XER, &asn_DEF_NRPPA_NRPPA_PDU, pdu);
+      NRPPA_INFO("Measurement Report initiating message\n");
+      free(res.buffer);
+      break;
+
+    case NRPPA_ProcedureCode_id_MeasurementFailureIndication:
+      res = asn_encode_to_new_buffer(NULL, ATS_CANONICAL_XER, &asn_DEF_NRPPA_NRPPA_PDU, pdu);
+      NRPPA_INFO("Measurement Failure Indication initiating message\n");
+      free(res.buffer);
+      break;
+
+    case NRPPA_ProcedureCode_id_MeasurementAbort:
+      res = asn_encode_to_new_buffer(NULL, ATS_CANONICAL_XER, &asn_DEF_NRPPA_NRPPA_PDU, pdu);
+      NRPPA_INFO("Measurement Abort initiating message\n");
+      free(res.buffer);
+      break;
+
+    case NRPPA_ProcedureCode_id_MeasurementUpdate:
+      res = asn_encode_to_new_buffer(NULL, ATS_CANONICAL_XER, &asn_DEF_NRPPA_NRPPA_PDU, pdu);
+      NRPPA_INFO("Measurement Update initiating message\n");
+      free(res.buffer);
+      break;
+      /*TODO add other procedures  check TABLE 8.1-2 and TABLE 8.1-1 of NRPPA TS38.455 v16*/
+      // TODO ad**l add remaining DOWNLINK type NRPPA Procedure code
+
+    default:
+      NRPPA_ERROR("Unknown procedure ID (%d) for initiating message\n", (int)pdu->choice.initiatingMessage->procedureCode);
+      AssertFatal(0, "Unknown procedure ID (%d) for initiating message\n", (int)pdu->choice.initiatingMessage->procedureCode);
+      return -1;
+  }
+  return 0;
+}
+
+static int nrppa_gNB_decode_successful_outcome(NRPPA_NRPPA_PDU_t *pdu)
+{
+  asn_encode_to_new_buffer_result_t res = {NULL, {0, NULL, NULL}};
+  DevAssert(pdu != NULL);
+
+  switch (pdu->choice.successfulOutcome->procedureCode) {
+    case NRPPA_ProcedureCode_id_positioningInformationExchange:
+      res = asn_encode_to_new_buffer(NULL, ATS_CANONICAL_XER, &asn_DEF_NRPPA_NRPPA_PDU, pdu);
+      NRPPA_INFO("Positioning Information Response successfull outcome message\n");
+      free(res.buffer);
+      break;
+
+    case NRPPA_ProcedureCode_id_positioningActivation:
+      res = asn_encode_to_new_buffer(NULL, ATS_CANONICAL_XER, &asn_DEF_NRPPA_NRPPA_PDU, pdu);
+      NRPPA_INFO("Positioning Activation Response successfull outcome message\n");
+      free(res.buffer);
+      break;
+
+    case NRPPA_ProcedureCode_id_tRPInformationExchange:
+      res = asn_encode_to_new_buffer(NULL, ATS_CANONICAL_XER, &asn_DEF_NRPPA_NRPPA_PDU, pdu);
+      NRPPA_INFO("TRP Information Response successfull outcome message\n");
+      free(res.buffer);
+      break;
+
+    case NRPPA_ProcedureCode_id_Measurement:
+      res = asn_encode_to_new_buffer(NULL, ATS_CANONICAL_XER, &asn_DEF_NRPPA_NRPPA_PDU, pdu);
+      NRPPA_INFO("Measurement Response successfull outcome message\n");
+      free(res.buffer);
+      break;
+      // ad**l TODO add other procedures  check TABLE 8.1-2 and TABLE 8.1-1 of NRPPA TS38.455 v16
+
+    default:
+      NRPPA_ERROR("Unknown procedure ID (%d) for successfull outcome message\n", (int)pdu->choice.initiatingMessage->procedureCode);
+      AssertFatal(0,
+                  "Unknown procedure ID (%d) for successfull outcome message\n",
+                  (int)pdu->choice.initiatingMessage->procedureCode);
+      return -1;
+  }
+  return 0;
+}
+
+static int nrppa_gNB_decode_unsuccessful_outcome(NRPPA_NRPPA_PDU_t *pdu)
+{
+  asn_encode_to_new_buffer_result_t res = {NULL, {0, NULL, NULL}};
+  DevAssert(pdu != NULL);
+
+  switch (pdu->choice.unsuccessfulOutcome->procedureCode) {
+    case NRPPA_ProcedureCode_id_positioningInformationExchange:
+      res = asn_encode_to_new_buffer(NULL, ATS_CANONICAL_XER, &asn_DEF_NRPPA_NRPPA_PDU, pdu);
+      NRPPA_INFO("Positioning Information Failure unsuccessfull outcome message\n");
+      free(res.buffer);
+      break;
+
+    case NRPPA_ProcedureCode_id_positioningActivation:
+      res = asn_encode_to_new_buffer(NULL, ATS_CANONICAL_XER, &asn_DEF_NRPPA_NRPPA_PDU, pdu);
+      NRPPA_INFO("Positioning Activation Failure unsuccessfull outcome message\n");
+      free(res.buffer);
+      break;
+
+    case NRPPA_ProcedureCode_id_tRPInformationExchange:
+      res = asn_encode_to_new_buffer(NULL, ATS_CANONICAL_XER, &asn_DEF_NRPPA_NRPPA_PDU, pdu);
+      NRPPA_INFO("TRP Information Failure unsuccessfull outcome message\n");
+      free(res.buffer);
+      break;
+
+    case NRPPA_ProcedureCode_id_Measurement:
+      res = asn_encode_to_new_buffer(NULL, ATS_CANONICAL_XER, &asn_DEF_NRPPA_NRPPA_PDU, pdu);
+      NRPPA_INFO("Measurement Failure unsuccessfull outcome message\n");
+      free(res.buffer);
+      break;
+      // ad**l TODO add other procedures  check TABLE 8.1-2 and TABLE 8.1-1 of NRPPA TS38.455 v16
+
+    default:
       NRPPA_ERROR("Unknown procedure ID (%d) for unsuccessfull outcome message\n",
-                 (int)pdu->choice.unsuccessfulOutcome->procedureCode);
+                  (int)pdu->choice.initiatingMessage->procedureCode);
+      AssertFatal(0,
+                  "Unknown procedure ID (%d) for unsuccessfull outcome message\n",
+                  (int)pdu->choice.initiatingMessage->procedureCode);
       return -1;
   }
-*/
   return 0;
 }
 
-int nrppa_gNB_decode_pdu(NRPPA_NRPPA_PDU_t *pdu, const uint8_t *const buffer, const uint32_t length) {
+int nrppa_gNB_decode_pdu(NRPPA_NRPPA_PDU_t *pdu, const uint8_t *const buffer, const uint32_t length)
+{
   asn_dec_rval_t dec_ret;
   DevAssert(pdu != NULL);
   DevAssert(buffer != NULL);
   asn_codec_ctx_t st = {.max_stack_size = 100 * 1000}; // if we enable asn1c debug the stack size become large  // ad**l todo
   dec_ret = aper_decode(&st, &asn_DEF_NRPPA_NRPPA_PDU, (void **)&pdu, buffer, length, 0, 0);
-//printf("Test 4 Adeel:  nrppa_gNB_decode_pdu Handling \n");
   if (dec_ret.code != RC_OK) {
- // printf("Test 5 Adeel:  dec_ret.code != RC_OK nrppa_gNB_decode_pdu Handling \n");
     NRPPA_ERROR("Failed to decode pdu\n");
     return -1;
   }
 
-  switch(pdu->present) {
+  switch (pdu->present) {
     case NRPPA_NRPPA_PDU_PR_initiatingMessage:
       return nrppa_gNB_decode_initiating_message(pdu);
 

@@ -19,8 +19,7 @@
  *      contact@openairinterface.org
  */
 
-
- /*! \file ngap_gNB_defs.h
+/*! \file ngap_gNB_defs.h
  * \brief NRPPA define procedures for gNB
  * \author Adeel Malik
  * \email adeel.malik@eurecom.fr
@@ -29,7 +28,6 @@
  * @ingroup _nrppa
  */
 
-
 #include <stdint.h>
 
 #include "queue.h"
@@ -37,6 +35,5 @@
 
 #ifndef NRPPA_GNB_DEFS_H_
 #define NRPPA_GNB_DEFS_H_
-
 
 #endif /* NRPPA_GNB_DEFS_H_ */

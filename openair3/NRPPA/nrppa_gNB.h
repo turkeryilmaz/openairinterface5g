@@ -28,7 +28,6 @@
  * @ingroup _nrppa
  */
 
-
 #include <stdio.h>
 #include <stdint.h>
 

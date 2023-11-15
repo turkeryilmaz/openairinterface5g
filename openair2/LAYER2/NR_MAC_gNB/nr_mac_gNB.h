@@ -43,22 +43,24 @@
 #include <string.h>
 #include <pthread.h>
 
-#define NR_SCHED_LOCK(lock)                                        \
-  do {                                                             \
-    int rc = pthread_mutex_lock(lock);                             \
+#define NR_SCHED_LOCK(lock)                                                                              \
+  do {                                                                                                   \
+    int rc = pthread_mutex_lock(lock);                                                                   \
     AssertFatal(rc == 0, "error while locking scheduler mutex, pthread_mutex_lock() returned %d\n", rc); \
   } while (0)
 
-#define NR_SCHED_UNLOCK(lock)                                      \
-  do {                                                             \
-    int rc = pthread_mutex_unlock(lock);                           \
+#define NR_SCHED_UNLOCK(lock)                                                                              \
+  do {                                                                                                     \
+    int rc = pthread_mutex_unlock(lock);                                                                   \
     AssertFatal(rc == 0, "error while locking scheduler mutex, pthread_mutex_unlock() returned %d\n", rc); \
   } while (0)
 
-#define NR_SCHED_ENSURE_LOCKED(lock)\
-  do {\
-    int rc = pthread_mutex_trylock(lock); \
-    AssertFatal(rc == EBUSY, "this function should be called with the scheduler mutex locked, pthread_mutex_trylock() returned %d\n", rc);\
+#define NR_SCHED_ENSURE_LOCKED(lock)                                                                                     \
+  do {                                                                                                                   \
+    int rc = pthread_mutex_trylock(lock);                                                                                \
+    AssertFatal(rc == EBUSY,                                                                                             \
+                "this function should be called with the scheduler mutex locked, pthread_mutex_trylock() returned %d\n", \
+                rc);                                                                                                     \
   } while (0)
 
 /* Commmon */
@@ -89,7 +91,6 @@
 
 #include <openair3/UICC/usim_interface.h>
 
-
 /* Defs */
 #define MAX_NUM_BWP 5
 #define MAX_NUM_CORESET 12
@@ -98,7 +99,7 @@
 #define NR_NB_RA_PROC_MAX 4
 #define MAX_NUM_OF_SSB 64
 #define MAX_NUM_NR_PRACH_PREAMBLES 64
-#define MIN_NUM_PRBS_TO_SCHEDULE  5
+#define MIN_NUM_PRBS_TO_SCHEDULE 5
 
 extern const uint8_t nr_rv_round_map[4];
 
@@ -135,8 +136,8 @@ typedef struct nr_mac_config_t {
   int do_CSIRS;
   int do_SRS;
   bool force_256qam_off;
-  //int pusch_TargetSNRx10;
-  //int pucch_TargetSNRx10;
+  // int pusch_TargetSNRx10;
+  // int pucch_TargetSNRx10;
 } nr_mac_config_t;
 
 typedef struct NR_preamble_ue {
@@ -265,31 +266,30 @@ typedef struct {
   uint16_t *vrb_map_UL;
   /// number of subframe allocation pattern available for MBSFN sync area
   uint8_t num_sf_allocation_pattern;
-  ///Number of active SSBs
+  /// Number of active SSBs
   uint8_t num_active_ssb;
-  //Total available prach occasions per configuration period
+  // Total available prach occasions per configuration period
   uint32_t total_prach_occasions_per_config_period;
-  //Total available prach occasions
+  // Total available prach occasions
   uint32_t total_prach_occasions;
-  //Max Association period
+  // Max Association period
   uint8_t max_association_period;
-  //SSB index
+  // SSB index
   uint8_t ssb_index[MAX_NUM_OF_SSB];
-  //CB preambles for each SSB
+  // CB preambles for each SSB
   uint8_t cb_preambles_per_ssb;
 } NR_COMMON_channels_t;
 
-
 // SP ZP CSI-RS Resource Set Activation/Deactivation MAC CE
 typedef struct sp_zp_csirs {
-  bool is_scheduled;     //ZP CSI-RS ACT/Deact MAC CE is scheduled
-  bool act_deact;        //Activation/Deactivation indication
-  uint8_t serv_cell_id;  //Identity of Serving cell for which MAC CE applies
-  uint8_t bwpid;         //Downlink BWP id
-  uint8_t rsc_id;        //SP ZP CSI-RS resource set
+  bool is_scheduled; // ZP CSI-RS ACT/Deact MAC CE is scheduled
+  bool act_deact; // Activation/Deactivation indication
+  uint8_t serv_cell_id; // Identity of Serving cell for which MAC CE applies
+  uint8_t bwpid; // Downlink BWP id
+  uint8_t rsc_id; // SP ZP CSI-RS resource set
 } sp_zp_csirs_t;
 
-//SP CSI-RS / CSI-IM Resource Set Activation/Deactivation MAC CE
+// SP CSI-RS / CSI-IM Resource Set Activation/Deactivation MAC CE
 #define MAX_CSI_RESOURCE_SET 64
 typedef struct csi_rs_im {
   bool is_scheduled;
@@ -300,7 +300,7 @@ typedef struct csi_rs_im {
   uint8_t csi_im_rsc_id;
   uint8_t nzp_csi_rsc_id;
   uint8_t nb_tci_resource_set_id;
-  uint8_t tci_state_id [ MAX_CSI_RESOURCE_SET ];
+  uint8_t tci_state_id[MAX_CSI_RESOURCE_SET];
 } csi_rs_im_t;
 
 typedef struct pdcchStateInd {
@@ -326,7 +326,7 @@ typedef struct SPCSIReportingpucch {
   bool s0tos3_actDeact[4];
 } SPCSIReportingpucch_t;
 
-#define MAX_APERIODIC_TRIGGER_STATES 128 //38.331
+#define MAX_APERIODIC_TRIGGER_STATES 128 // 38.331
 typedef struct aperiodicCSI_triggerStateSelection {
   bool is_scheduled;
   uint8_t servingCellId;
@@ -335,7 +335,7 @@ typedef struct aperiodicCSI_triggerStateSelection {
   bool triggerStateSelection[MAX_APERIODIC_TRIGGER_STATES];
 } aperiodicCSI_triggerStateSelection_t;
 
-#define MAX_TCI_STATES 128 //38.331
+#define MAX_TCI_STATES 128 // 38.331
 typedef struct pdschTciStatesActDeact {
   bool is_scheduled;
   uint8_t servingCellId;
@@ -516,15 +516,12 @@ struct CSI_Report {
 /*! As per the spec 38.212 and table:  6.3.1.1.2-12 in a single UCI sequence we can have multiple CSI_report
   the number of CSI_report will depend on number of CSI resource sets that are configured in CSI-ResourceConfig RRC IE
   From spec 38.331 from the IE CSI-ResourceConfig for SSB RSRP reporting we can configure only one resource set
-  From spec 38.214 section 5.2.1.2 For periodic and semi-persistent CSI Resource Settings, the number of CSI-RS Resource Sets configured is limited to S=1
+  From spec 38.214 section 5.2.1.2 For periodic and semi-persistent CSI Resource Settings, the number of CSI-RS Resource Sets
+  configured is limited to S=1
  */
 #define MAX_CSI_RESOURCE_SET_IN_CSI_RESOURCE_CONFIG 16
 
-typedef enum {
-  INACTIVE = 0,
-  ACTIVE_NOT_SCHED,
-  ACTIVE_SCHED
-} NR_UL_harq_states_t;
+typedef enum { INACTIVE = 0, ACTIVE_NOT_SCHED, ACTIVE_SCHED } NR_UL_harq_states_t;
 
 typedef struct NR_UE_ul_harq {
   bool is_waiting;
@@ -688,17 +685,17 @@ typedef struct nr_mac_rrc_ul_if_s {
   ue_context_release_request_func_t ue_context_release_request;
   ue_context_release_complete_func_t ue_context_release_complete;
   initial_ul_rrc_message_transfer_func_t initial_ul_rrc_message_transfer;
-  positioning_information_response_func_t             positioning_information_response; //nrppa adeel
-  positioning_information_failure_func_t              positioning_information_failure;
-  positioning_information_update_func_t               positioning_information_update;
-  positioning_activation_response_func_t              positioning_activation_response;
-  positioning_activation_failure_func_t               positioning_activation_failure;
-  trp_information_response_func_t                     trp_information_response;
-  trp_information_failure_func_t                      trp_information_failure;
-  positioning_measurement_response_func_t             positioning_measurement_response;
-  positioning_measurement_failure_func_t              positioning_measurement_failure;
-  positioning_measurement_report_func_t               positioning_measurement_report;
-  positioning_measurement_failure_indication_func_t   positioning_measurement_failure_indication;
+  positioning_information_response_func_t positioning_information_response; // nrppa adeel
+  positioning_information_failure_func_t positioning_information_failure;
+  positioning_information_update_func_t positioning_information_update;
+  positioning_activation_response_func_t positioning_activation_response;
+  positioning_activation_failure_func_t positioning_activation_failure;
+  trp_information_response_func_t trp_information_response;
+  trp_information_failure_func_t trp_information_failure;
+  positioning_measurement_response_func_t positioning_measurement_response;
+  positioning_measurement_failure_func_t positioning_measurement_failure;
+  positioning_measurement_report_func_t positioning_measurement_report;
+  positioning_measurement_failure_indication_func_t positioning_measurement_failure_indication;
 } nr_mac_rrc_ul_if_t;
 
 /*! \brief UE list used by gNB to order UEs/CC for scheduling*/
@@ -731,20 +728,18 @@ typedef struct {
   /// scheduling control info
   // last element always NULL
   pthread_mutex_t mutex;
-  NR_UE_info_t *list[MAX_MOBILES_PER_GNB+1];
+  NR_UE_info_t *list[MAX_MOBILES_PER_GNB + 1];
   // bitmap of CSI-RS already scheduled in current slot
   int sched_csirs;
   uid_allocator_t uid_allocator;
 } NR_UEs_t;
 
-#define UE_iterator(BaSe, VaR) NR_UE_info_t ** VaR##pptr=BaSe, *VaR; while ((VaR=*(VaR##pptr++)))
+#define UE_iterator(BaSe, VaR)           \
+  NR_UE_info_t **VaR##pptr = BaSe, *VaR; \
+  while ((VaR = *(VaR##pptr++)))
 
-typedef void (*nr_pp_impl_dl)(module_id_t mod_id,
-                              frame_t frame,
-                              sub_frame_t slot);
-typedef bool (*nr_pp_impl_ul)(module_id_t mod_id,
-                              frame_t frame,
-                              sub_frame_t slot);
+typedef void (*nr_pp_impl_dl)(module_id_t mod_id, frame_t frame, sub_frame_t slot);
+typedef bool (*nr_pp_impl_ul)(module_id_t mod_id, frame_t frame, sub_frame_t slot);
 
 typedef struct f1_config_t {
   f1ap_setup_req_t *setup_req;
@@ -755,29 +750,29 @@ typedef struct f1_config_t {
 /*! \brief top level eNB MAC structure */
 typedef struct gNB_MAC_INST_s {
   /// Ethernet parameters for northbound midhaul interface
-  eth_params_t                    eth_params_n;
+  eth_params_t eth_params_n;
   /// Ethernet parameters for fronthaul interface
-  eth_params_t                    eth_params_s;
+  eth_params_t eth_params_s;
   /// Module
-  module_id_t                     Mod_id;
+  module_id_t Mod_id;
   /// timing advance group
-  NR_TAG_t                        *tag;
+  NR_TAG_t *tag;
   /// Pointer to IF module instance for PHY
-  NR_IF_Module_t                  *if_inst;
-  pthread_t                       stats_thread;
+  NR_IF_Module_t *if_inst;
+  pthread_t stats_thread;
   /// Pusch target SNR
-  int                             pusch_target_snrx10;
+  int pusch_target_snrx10;
   /// Pucch target SNR
-  int                             pucch_target_snrx10;
+  int pucch_target_snrx10;
   /// SNR threshold needed to put or not a PRB in the black list
-  int                             ul_prbblack_SNR_threshold;
+  int ul_prbblack_SNR_threshold;
   /// PUCCH Failure threshold (compared to consecutive PUCCH DTX)
-  int                             pucch_failure_thres;
+  int pucch_failure_thres;
   /// PUSCH Failure threshold (compared to consecutive PUSCH DTX)
-  int                             pusch_failure_thres;
+  int pusch_failure_thres;
   /// Subcarrier Offset
-  int                             ssb_SubcarrierOffset;
-  int                             ssb_OffsetPointA;
+  int ssb_SubcarrierOffset;
+  int ssb_OffsetPointA;
 
   /// Common cell resources
   NR_COMMON_channels_t common_channels[NFAPI_CC_MAX];
@@ -786,14 +781,14 @@ typedef struct gNB_MAC_INST_s {
   int num_ulprbbl;
   uint16_t ulprbbl[MAX_BWP_SIZE];
   /// NFAPI Config Request Structure
-  nfapi_nr_config_request_scf_t     config[NFAPI_CC_MAX];
+  nfapi_nr_config_request_scf_t config[NFAPI_CC_MAX];
   /// a PDCCH PDU groups DCIs per BWP and CORESET. The following structure
   /// keeps pointers to PDCCH PDUs within DL_req so that we can easily track
   /// PDCCH PDUs per CC/BWP/CORESET
   nfapi_nr_dl_tti_pdcch_pdu_rel15_t *pdcch_pdu_idx[NFAPI_CC_MAX][MAX_NUM_CORESET];
   /// NFAPI UL TTI Request Structure for future TTIs, dynamically allocated
   /// because length depends on number of slots
-  nfapi_nr_ul_tti_request_t        *UL_tti_req_ahead[NFAPI_CC_MAX];
+  nfapi_nr_ul_tti_request_t *UL_tti_req_ahead[NFAPI_CC_MAX];
   int UL_tti_req_ahead_size;
   int vrb_map_UL_size;
 
@@ -801,7 +796,7 @@ typedef struct gNB_MAC_INST_s {
 
   /// UL handle
   uint32_t ul_handle;
-  //UE_info_t UE_info;
+  // UE_info_t UE_info;
 
   // MAC function execution peformance profiler
   /// processing time of eNB scheduler
@@ -817,7 +812,7 @@ typedef struct gNB_MAC_INST_s {
   /// processing time of eNB MAC preprocessor
   time_stats_t schedule_dlsch_preprocessor;
   /// processing time of eNB DLSCH scheduler
-  time_stats_t schedule_dlsch;  // include rlc_data_req + MAC header + preprocessor
+  time_stats_t schedule_dlsch; // include rlc_data_req + MAC header + preprocessor
   /// processing time of rlc_data_req
   time_stats_t rlc_data_req;
   /// processing time of rlc_status_ind
@@ -829,7 +824,7 @@ typedef struct gNB_MAC_INST_s {
   /// processing time of eNB MCH scheduler
   time_stats_t schedule_mch;
   /// processing time of eNB ULSCH reception
-  time_stats_t rx_ulsch_sdu;  // include rlc_data_ind
+  time_stats_t rx_ulsch_sdu; // include rlc_data_ind
   /// processing time of eNB PCH scheduler
   time_stats_t schedule_pch;
   /// list of allocated beams per period

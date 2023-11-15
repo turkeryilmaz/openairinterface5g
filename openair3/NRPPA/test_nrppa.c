@@ -45,10 +45,10 @@ protocolIEs  ProtocolIE-Container {{MeasurementRequest-IEs}},
   ID id-MeasurementPeriodicity		ProtocolIE-ID ::= 4
   ID id-TRPMeasurementQuantities		ProtocolIE-ID ::= 52
   */
-  //NRPPA_MeasurementRequest->protocolIEs;
+  // NRPPA_MeasurementRequest->protocolIEs;
 
   /* Context for parsing across buffer boundaries */
-  //NRPPA_MeasurementRequest->_asn_ctx;
+  // NRPPA_MeasurementRequest->_asn_ctx;
 
   /* BER encode the data if filename is given */
   if (ac < 2) {

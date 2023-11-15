@@ -33,11 +33,12 @@
 #ifndef F1AP_DU_POSITION_INFORMATION_TRANSFER_H_
 #define F1AP_DU_POSITION_INFORMATION_TRANSFER_H_
 
+int DU_handle_POSITIONING_INFORMATION_REQUEST(instance_t instance, uint32_t assoc_id, uint32_t stream, F1AP_F1AP_PDU_t *pdu);
 
-int DU_handle_POSITIONING_INFORMATION_REQUEST(instance_t instance, uint32_t  assoc_id,  uint32_t  stream, F1AP_F1AP_PDU_t *pdu) ;
+int DU_send_POSITIONING_INFORMATION_RESPONSE(instance_t instance,
+                                             f1ap_positioning_information_resp_t *f1ap_positioning_information_resp);
 
-int DU_send_POSITIONING_INFORMATION_RESPONSE(instance_t instance, f1ap_positioning_information_resp_t *f1ap_positioning_information_resp);
-
-int DU_send_POSITIONING_INFORMATION_FAILURE(instance_t instance, f1ap_positioning_information_failure_t *f1ap_positioning_information_failure);
+int DU_send_POSITIONING_INFORMATION_FAILURE(instance_t instance,
+                                            f1ap_positioning_information_failure_t *f1ap_positioning_information_failure);
 
 #endif /* F1AP_DU_POSITION_INFORMATION_TRANSFER_H_ */

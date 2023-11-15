@@ -67,7 +67,10 @@ void f1_setup_response(const f1ap_setup_resp_t *resp)
   AssertFatal(resp->num_cells_to_activate == 1, "can only handle one cell, but %d activated\n", resp->num_cells_to_activate);
   const served_cells_to_activate_t *cu_cell = &resp->cells_to_activate[0];
 
-  AssertFatal(du_cell->nr_cellid  == cu_cell->nr_cellid, "CellID mismatch: DU %ld vs CU %ld\n", du_cell->nr_cellid, cu_cell->nr_cellid);
+  AssertFatal(du_cell->nr_cellid == cu_cell->nr_cellid,
+              "CellID mismatch: DU %ld vs CU %ld\n",
+              du_cell->nr_cellid,
+              cu_cell->nr_cellid);
   AssertFatal(check_plmn_identity(&du_cell->plmn, &cu_cell->plmn), "PLMN mismatch\n");
   AssertFatal(du_cell->nr_pci == cu_cell->nrpci, "PCI mismatch: DU %d vs CU %d\n", du_cell->nr_pci, cu_cell->nrpci);
 
@@ -296,8 +299,8 @@ void ue_context_setup_request(const f1ap_ue_context_setup_t *req)
   gNB_MAC_INST *mac = RC.nrmac[0];
   /* response has same type as request... */
   f1ap_ue_context_setup_t resp = {
-    .gNB_CU_ue_id = req->gNB_CU_ue_id,
-    .gNB_DU_ue_id = req->gNB_DU_ue_id,
+      .gNB_CU_ue_id = req->gNB_CU_ue_id,
+      .gNB_DU_ue_id = req->gNB_DU_ue_id,
   };
 
   NR_UE_NR_Capability_t *ue_cap = NULL;
@@ -347,7 +350,7 @@ void ue_context_setup_request(const f1ap_ue_context_setup_t *req)
 
   resp.du_to_cu_rrc_information = calloc(1, sizeof(du_to_cu_rrc_information_t));
   AssertFatal(resp.du_to_cu_rrc_information != NULL, "out of memory\n");
-  resp.du_to_cu_rrc_information->cellGroupConfig = calloc(1,1024);
+  resp.du_to_cu_rrc_information->cellGroupConfig = calloc(1, 1024);
   AssertFatal(resp.du_to_cu_rrc_information->cellGroupConfig != NULL, "out of memory\n");
   asn_enc_rval_t enc_rval =
       uper_encode_to_buffer(&asn_DEF_NR_CellGroupConfig, NULL, new_CellGroup, resp.du_to_cu_rrc_information->cellGroupConfig, 1024);
@@ -383,8 +386,8 @@ void ue_context_modification_request(const f1ap_ue_context_modif_req_t *req)
 {
   gNB_MAC_INST *mac = RC.nrmac[0];
   f1ap_ue_context_modif_resp_t resp = {
-    .gNB_CU_ue_id = req->gNB_CU_ue_id,
-    .gNB_DU_ue_id = req->gNB_DU_ue_id,
+      .gNB_CU_ue_id = req->gNB_CU_ue_id,
+      .gNB_DU_ue_id = req->gNB_DU_ue_id,
   };
 
   NR_UE_NR_Capability_t *ue_cap = NULL;
@@ -535,10 +538,10 @@ void ue_context_modification_refuse(const f1ap_ue_context_modif_refuse_t *refuse
   NR_SCHED_UNLOCK(&mac->sched_lock);
 
   f1ap_ue_context_release_req_t request = {
-    .gNB_CU_ue_id = refuse->gNB_CU_ue_id,
-    .gNB_DU_ue_id = refuse->gNB_DU_ue_id,
-    .cause = F1AP_CAUSE_RADIO_NETWORK,
-    .cause_value = F1AP_CauseRadioNetwork_procedure_cancelled,
+      .gNB_CU_ue_id = refuse->gNB_CU_ue_id,
+      .gNB_DU_ue_id = refuse->gNB_DU_ue_id,
+      .cause = F1AP_CAUSE_RADIO_NETWORK,
+      .cause_value = F1AP_CauseRadioNetwork_procedure_cancelled,
   };
   mac->mac_rrc.ue_context_release_request(&request);
 }
@@ -564,7 +567,19 @@ void ue_context_release_command(const f1ap_ue_context_release_cmd_t *cmd)
     nr_rlc_srb_recv_sdu(cmd->gNB_DU_ue_id, cmd->srb_id, cmd->rrc_container, cmd->rrc_container_length);
     nr_mac_trigger_release_timer(&UE->UE_sched_ctrl, UE->current_UL_BWP.scs);
   }
+<<<<<<< HEAD
   NR_SCHED_UNLOCK(&mac->sched_lock);
+=======
+  pthread_mutex_unlock(&mac->sched_lock);
+
+  f1ap_ue_context_release_complete_t complete = {
+      .gNB_CU_ue_id = cmd->gNB_CU_ue_id,
+      .gNB_DU_ue_id = cmd->gNB_DU_ue_id,
+  };
+  mac->mac_rrc.ue_context_release_complete(&complete);
+
+  du_remove_f1_ue_data(cmd->gNB_DU_ue_id);
+>>>>>>> adding handlers of NRRPPA msg in rrc_cu and adopting clang format
 }
 
 void dl_rrc_message_transfer(const f1ap_dl_rrc_message_t *dl_rrc)
@@ -604,8 +619,7 @@ void dl_rrc_message_transfer(const f1ap_dl_rrc_message_t *dl_rrc)
   }
 
   if (dl_rrc->old_gNB_DU_ue_id != NULL) {
-    AssertFatal(*dl_rrc->old_gNB_DU_ue_id != dl_rrc->gNB_DU_ue_id,
-                "logic bug: current and old gNB DU UE ID cannot be the same\n");
+    AssertFatal(*dl_rrc->old_gNB_DU_ue_id != dl_rrc->gNB_DU_ue_id, "logic bug: current and old gNB DU UE ID cannot be the same\n");
     /* 38.401 says: "Find UE context based on old gNB-DU UE F1AP ID, replace
      * old C-RNTI/PCI with new C-RNTI/PCI". Below, we do the inverse: we keep
      * the new UE context (with new C-RNTI), but set up everything to reuse the
@@ -639,64 +653,85 @@ void dl_rrc_message_transfer(const f1ap_dl_rrc_message_t *dl_rrc)
 =======
 
 /* handlers of Position Information Transfer related NRPPA DL messages */
-void positioning_information_request(const f1ap_positioning_information_req_t *req) {
-    LOG_I(MAC, "DL Processing Received PositioningInformationRequest gNB_CU_ue_id=%d, gNB_DU_ue_id=%d \n", req->gNB_CU_ue_id, req->gNB_DU_ue_id);
+void positioning_information_request(const f1ap_positioning_information_req_t *req)
+{
+  LOG_I(MAC,
+        "DL Processing Received PositioningInformationRequest gNB_CU_ue_id=%d, gNB_DU_ue_id=%d \n",
+        req->gNB_CU_ue_id,
+        req->gNB_DU_ue_id);
 
-    /* response has same type as request... */
-    f1ap_positioning_information_resp_t resp =
-    {
-        .gNB_CU_ue_id = req->gNB_CU_ue_id,
-        .gNB_DU_ue_id = req->gNB_DU_ue_id,
-        .nrppa_msg_info.nrppa_transaction_id=req->nrppa_msg_info.nrppa_transaction_id,
-        .nrppa_msg_info.instance=req->nrppa_msg_info.instance,
-        .nrppa_msg_info.gNB_ue_ngap_id=req->nrppa_msg_info.gNB_ue_ngap_id,
-        .nrppa_msg_info.amf_ue_ngap_id=req->nrppa_msg_info.amf_ue_ngap_id,
-        .nrppa_msg_info.ue_rnti=req->nrppa_msg_info.ue_rnti,
-        .nrppa_msg_info.routing_id_buffer=req->nrppa_msg_info.routing_id_buffer,
-        .nrppa_msg_info.routing_id_length=req->nrppa_msg_info.routing_id_length,
-    };
+  /* response has same type as request... */
+  f1ap_positioning_information_resp_t resp = {
+      .gNB_CU_ue_id = req->gNB_CU_ue_id,
+      .gNB_DU_ue_id = req->gNB_DU_ue_id,
+      .nrppa_msg_info.nrppa_transaction_id = req->nrppa_msg_info.nrppa_transaction_id,
+      .nrppa_msg_info.instance = req->nrppa_msg_info.instance,
+      .nrppa_msg_info.gNB_ue_ngap_id = req->nrppa_msg_info.gNB_ue_ngap_id,
+      .nrppa_msg_info.amf_ue_ngap_id = req->nrppa_msg_info.amf_ue_ngap_id,
+      .nrppa_msg_info.ue_rnti = req->nrppa_msg_info.ue_rnti,
+      .nrppa_msg_info.routing_id_buffer = req->nrppa_msg_info.routing_id_buffer,
+      .nrppa_msg_info.routing_id_length = req->nrppa_msg_info.routing_id_length,
+  };
 
-//printf("[MAC] PIE Test Adeel:  RequestedSRSTransmissionCharacteristics \n");
-    //xer_fprint(stdout, &asn_DEF_F1AP_RequestedSRSTransmissionCharacteristics, &f1ap_req->req_SRS_info); // test adeel //look UE
+  // printf("[MAC] PIE Test Adeel:  RequestedSRSTransmissionCharacteristics \n");
+  // xer_fprint(stdout, &asn_DEF_F1AP_RequestedSRSTransmissionCharacteristics, &f1ap_req->req_SRS_info); // test adeel //look UE
 
-//gNB_MAC_INST *mac = RC.nrmac[req->nrppa_msg_info.instance];
-    gNB_MAC_INST *mac = RC.nrmac[req->nrppa_msg_info.instance];
-    mac->mac_rrc.positioning_information_response(&resp);
+  // gNB_MAC_INST *mac = RC.nrmac[req->nrppa_msg_info.instance];
+  gNB_MAC_INST *mac = RC.nrmac[req->nrppa_msg_info.instance];
+  mac->mac_rrc.positioning_information_response(&resp);
 }
 
-void positioning_activation_request(const f1ap_positioning_activation_req_t *req){
-    LOG_I(MAC, "DL Processing Received PositioningactivationRequest gNB_CU_ue_id=%d, gNB_DU_ue_id=%d \n", req->gNB_CU_ue_id, req->gNB_DU_ue_id);
-    AssertFatal(false, " Not Implemented \n");
+void positioning_activation_request(const f1ap_positioning_activation_req_t *req)
+{
+  LOG_I(MAC,
+        "DL Processing Received PositioningactivationRequest gNB_CU_ue_id=%d, gNB_DU_ue_id=%d \n",
+        req->gNB_CU_ue_id,
+        req->gNB_DU_ue_id);
+  AssertFatal(false, " Not Implemented \n");
 }
 
-void positioning_deactivation(const f1ap_positioning_deactivation_t *req){
-    LOG_I(MAC, "DL Processing Received PositioningDeactivation gNB_CU_ue_id=%d, gNB_DU_ue_id=%d \n", req->gNB_CU_ue_id, req->gNB_DU_ue_id);
-    AssertFatal(false, " Not Implemented \n");
+void positioning_deactivation(const f1ap_positioning_deactivation_t *req)
+{
+  LOG_I(MAC,
+        "DL Processing Received PositioningDeactivation gNB_CU_ue_id=%d, gNB_DU_ue_id=%d \n",
+        req->gNB_CU_ue_id,
+        req->gNB_DU_ue_id);
+  AssertFatal(false, " Not Implemented \n");
 }
 
 /* handlers of TRP Information Transfer related NRPPA DL messages */
-void trp_information_request(const f1ap_trp_information_req_t *req){
-    LOG_I(MAC, "DL Processing Received TRPInformationRequest transaction_id=%d \n", req->transaction_id);
-    AssertFatal(false, " Not Implemented \n");
+void trp_information_request(const f1ap_trp_information_req_t *req)
+{
+  LOG_I(MAC, "DL Processing Received TRPInformationRequest transaction_id=%d \n", req->transaction_id);
+  AssertFatal(false, " Not Implemented \n");
 }
 
 /* handlers of Measurement Information Transfer related NRPPA DL messages */
 /* handlers of Position Information Transfer related NRPPA UL messages */
-void positioning_measurement_request(const f1ap_measurement_req_t *req){
-    LOG_I(MAC, "DL Processing Received measurement_Request transaction_id=%d, lmf_measurement_id=%d \n", req->transaction_id, req->lmf_measurement_id);
-    AssertFatal(false, " Not Implemented \n");
+void positioning_measurement_request(const f1ap_measurement_req_t *req)
+{
+  LOG_I(MAC,
+        "DL Processing Received measurement_Request transaction_id=%d, lmf_measurement_id=%d \n",
+        req->transaction_id,
+        req->lmf_measurement_id);
+  AssertFatal(false, " Not Implemented \n");
 }
 
-void positioning_measurement_update(const f1ap_measurement_update_t *update){
-    LOG_I(MAC, "DL Processing Received measurement_Update transaction_id=%d, lmf_measurement_id=%d \n", update->transaction_id, update->lmf_measurement_id);
-    AssertFatal(false, " Not Implemented \n");
+void positioning_measurement_update(const f1ap_measurement_update_t *update)
+{
+  LOG_I(MAC,
+        "DL Processing Received measurement_Update transaction_id=%d, lmf_measurement_id=%d \n",
+        update->transaction_id,
+        update->lmf_measurement_id);
+  AssertFatal(false, " Not Implemented \n");
 }
 
-void positioning_measurement_abort(const f1ap_measurement_abort_t *meas_abort){
-    LOG_I(MAC, "DL Processing Received measurement_Abort transaction_id=%d, lmf_measurement_id=%d \n", meas_abort->transaction_id,  meas_abort->lmf_measurement_id);
-    AssertFatal(false, " Not Implemented \n");
+void positioning_measurement_abort(const f1ap_measurement_abort_t *meas_abort)
+{
+  LOG_I(MAC,
+        "DL Processing Received measurement_Abort transaction_id=%d, lmf_measurement_id=%d \n",
+        meas_abort->transaction_id,
+        meas_abort->lmf_measurement_id);
+  AssertFatal(false, " Not Implemented \n");
 }
-
-
-
->>>>>>> Defination of NRRPA related F1AP structure and declaration/integration of F1AP positioning messages for UL TDOA
+>>>>>>> adding handlers of NRRPPA msg in rrc_cu and adopting clang format

@@ -38,7 +38,7 @@ typedef void (*dl_rrc_message_transfer_func_t)(sctp_assoc_t assoc_id, const f1ap
 
 /* handlers of Position Information Transfer related NRPPA DL messages */
 typedef void (*positioning_information_request_func_t)(const f1ap_positioning_information_req_t *pos_req);
-typedef void (*positioning_activation_request_func_t)(const f1ap_positioning_information_req_t *act_req);
+typedef void (*positioning_activation_request_func_t)(const f1ap_positioning_activation_req_t *act_req);
 typedef void (*positioning_deactivation_func_t)(const f1ap_positioning_deactivation_t *deact_req);
 
 /* handlers of TRP Information Transfer related NRPPA DL messages */
@@ -48,7 +48,6 @@ typedef void (*trp_information_request_func_t)(const f1ap_trp_information_req_t 
 typedef void (*positioning_measurement_request_func_t)(const f1ap_measurement_req_t *meas_req);
 typedef void (*positioning_measurement_update_func_t)(const f1ap_measurement_update_t *meas_update);
 typedef void (*positioning_measurement_abort_func_t)(const f1ap_measurement_abort_t *meas_abort);
-
 
 struct nr_mac_rrc_dl_if_s;
 void mac_rrc_dl_direct_init(struct nr_mac_rrc_dl_if_s *mac_rrc);
