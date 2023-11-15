@@ -27,5 +27,3 @@
  * \version 1.0
  * @ingroup _nrppa
  */
-
-

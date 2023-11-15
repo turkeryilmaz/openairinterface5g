@@ -18,7 +18,7 @@
  * For more information about the OpenAirInterface (OAI) Software Alliance:
  *      contact@openairinterface.org
  */
-  /*! \file nrppa_gNB_decoder.h
+/*! \file nrppa_gNB_decoder.h
  * \brief NRPPA pdu decode procedures for gNB
  * \author Adeel Malik
  * \email adeel.malik@eurecom.fr
@@ -33,12 +33,12 @@
 #include "nrppa_common.h"
 /* ad**l todo */
 
-
-
 #ifndef NRPPA_GNB_DECODER_H_
 #define NRPPA_GNB_DECODER_H_
 
-//int nrppa_gNB_decode_pdu(NRPPA_NRPPA_PDU_t *pdu, const uint8_t *const buffer, const uint32_t length) __attribute__ ((warn_unused_result)); // to check ad**l __attribute__ ((warn_unused_result))
+// int nrppa_gNB_decode_pdu(NRPPA_NRPPA_PDU_t *pdu, const uint8_t *const buffer, const uint32_t length) __attribute__
+// ((warn_unused_result)); // to check ad**l __attribute__ ((warn_unused_result))
 
-int nrppa_gNB_decode_pdu(NRPPA_NRPPA_PDU_t *pdu, const uint8_t *const buffer, const uint32_t length) __attribute__ ((warn_unused_result));
+int nrppa_gNB_decode_pdu(NRPPA_NRPPA_PDU_t *pdu, const uint8_t *const buffer, const uint32_t length)
+    __attribute__((warn_unused_result));
 #endif /* NRPPA_GNB_DECODER_H_ */

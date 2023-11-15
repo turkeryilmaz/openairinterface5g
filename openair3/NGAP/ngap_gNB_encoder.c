@@ -27,7 +27,6 @@
  * \version 0.1
  */
 
-
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
@@ -97,7 +96,8 @@ static inline int ngap_gNB_encode_unsuccessfull_outcome(NGAP_NGAP_PDU_t *pdu, ui
   DevAssert(pdu != NULL);
 
   if (pdu->choice.unsuccessfulOutcome->procedureCode != NGAP_ProcedureCode_id_InitialContextSetup) {
-    NGAP_DEBUG("Unknown procedure ID (%d) for unsuccessfull outcome message\n", (int)pdu->choice.unsuccessfulOutcome->procedureCode);
+    NGAP_DEBUG("Unknown procedure ID (%d) for unsuccessfull outcome message\n",
+               (int)pdu->choice.unsuccessfulOutcome->procedureCode);
     return -1;
   }
 

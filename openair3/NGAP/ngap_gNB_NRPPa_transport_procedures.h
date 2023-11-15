@@ -31,19 +31,17 @@
 #ifndef NGAP_GNB_NRPPA_PROCEDURES_H_
 #define NGAP_GNB_NRPPA_PROCEDURES_H_
 
-
-//UPLINK UE ASSOCIATED NRPPA TRANSPORT (9.2.9.2 of TS 38.413 Version 16.0.0.0 Release 16)
+// UPLINK UE ASSOCIATED NRPPA TRANSPORT (9.2.9.2 of TS 38.413 Version 16.0.0.0 Release 16)
 int ngap_gNB_UplinkUEAssociatedNRPPaTransport(instance_t instance, ngap_UplinkUEAssociatedNRPPa_t *ngap_UplinkUEAssociatedNRPPa_p);
 
-
-//UPLINK NON UE ASSOCIATED NRPPA TRANSPORT (9.2.9.4 of TS 38.413 Version 16.0.0.0 Release 16)
-int ngap_gNB_UplinkNonUEAssociatedNRPPaTransport(instance_t instance, ngap_UplinkNonUEAssociatedNRPPa_t *ngap_UplinkNonUEAssociatedNRPPa_p);
+// UPLINK NON UE ASSOCIATED NRPPA TRANSPORT (9.2.9.4 of TS 38.413 Version 16.0.0.0 Release 16)
+int ngap_gNB_UplinkNonUEAssociatedNRPPaTransport(instance_t instance,
+                                                 ngap_UplinkNonUEAssociatedNRPPa_t *ngap_UplinkNonUEAssociatedNRPPa_p);
 
 // DOWNLINK UE ASSOCIATED NRPPA TRANSPORT (9.2.9.1 of TS 38.413 Version 16.0.0.0 Release 16)
 int ngap_gNB_handle_DownlinkUEAssociatedNRPPaTransport(uint32_t assoc_id, uint32_t stream, NGAP_NGAP_PDU_t *pdu);
 
-//DOWNLINK NON UE ASSOCIATED NRPPA TRANSPORT (9.2.9.3 of TS 38.413 Version 16.0.0.0 Release 16)
+// DOWNLINK NON UE ASSOCIATED NRPPA TRANSPORT (9.2.9.3 of TS 38.413 Version 16.0.0.0 Release 16)
 int ngap_gNB_handle_DownlinkNonUEAssociatedNRPPaTransport(uint32_t assoc_id, uint32_t stream, NGAP_NGAP_PDU_t *pdu);
-
 
 #endif /* NGAP_GNB_NRPPA_PROCEDURES_H_ */

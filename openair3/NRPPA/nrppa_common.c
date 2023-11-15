@@ -29,10 +29,7 @@
 
 #include <stdint.h>
 
-
-
 int asn1_xer_print = 0;
-
 
 /* ad**l todo
 void ngap_handle_criticality(NGAP_Criticality_t criticality)
@@ -40,10 +37,8 @@ void ngap_handle_criticality(NGAP_Criticality_t criticality)
 }
 */
 
-
 /* todo ad**l */
 #include "nrppa_common.h"
 //#include "NRPPA_NRPPA-PDU.h"
-
 
 /* todo ad**l */

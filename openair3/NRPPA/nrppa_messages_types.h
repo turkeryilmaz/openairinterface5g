@@ -19,7 +19,6 @@
  *      contact@openairinterface.org
  */
 
-
 /*! \file nrppa_messages_types.h
  * \brief NRPPA Messages
  * \author  Adeel Maik
@@ -28,7 +27,6 @@
  * \version 1.0
  * @ingroup _nrppa
  */
-
 
 #ifndef NRPPA_MESSAGES_TYPES_H_
 #define NRPPA_MESSAGES_TYPES_H_

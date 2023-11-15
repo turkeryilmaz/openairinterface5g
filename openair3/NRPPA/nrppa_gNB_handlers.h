@@ -19,7 +19,7 @@
  *      contact@openairinterface.org
  */
 
-  /*! \file nrppa_gNB_handlers.h
+/*! \file nrppa_gNB_handlers.h
  * \brief NRPPA messages handlers for gNB
  * \author Adeel Malik
  * \email adeel.malik@eurecom.fr
@@ -31,8 +31,8 @@
 #ifndef NRPPA_GNB_HANDLERS_H_
 #define NRPPA_GNB_HANDLERS_H_
 
-int nrppa_handle_DownlinkUEAssociatedNRPPaTransport(instance_t instance, ngap_DownlinkUEAssociatedNRPPa_t *ngap_DownlinkUEAssociatedNRPPa_p);
-int nrppa_handle_DownlinkNonUEAssociatedNRPPaTransport(instance_t instance, ngap_DownlinkNonUEAssociatedNRPPa_t *ngap_DownlinkNonUEAssociatedNRPPa_p);
-//int nrppa_handle_DownlinkUEAssociatedNRPPaTransport(ngap_DownlinkUEAssociatedNRPPa_t *ngap_DownlinkUEAssociatedNRPPa_p);
-//int nrppa_handle_DownlinkNonUEAssociatedNRPPaTransport(ngap_DownlinkNonUEAssociatedNRPPa_t *ngap_DownlinkNonUEAssociatedNRPPa_p);
+int nrppa_handle_DownlinkUEAssociatedNRPPaTransport(instance_t instance,
+                                                    ngap_DownlinkUEAssociatedNRPPa_t *ngap_DownlinkUEAssociatedNRPPa_p);
+int nrppa_handle_DownlinkNonUEAssociatedNRPPaTransport(instance_t instance,
+                                                       ngap_DownlinkNonUEAssociatedNRPPa_t *ngap_DownlinkNonUEAssociatedNRPPa_p);
 #endif /* NRPPA_GNB_HANDLERS_H_ */

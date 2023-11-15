@@ -29,7 +29,7 @@
 
 #include "mac_rrc_ul.h"
 
-static f1ap_net_config_t read_DU_IP_config(const eth_params_t* f1_params)
+static f1ap_net_config_t read_DU_IP_config(const eth_params_t *f1_params)
 {
   f1ap_net_config_t nc = {0};
 
@@ -46,15 +46,11 @@ static f1ap_net_config_t read_DU_IP_config(const eth_params_t* f1_params)
   nc.DU_f1_ip_address.ipv4 = 1;
   strcpy(nc.DU_f1_ip_address.ipv4_address, f1_params->my_addr);
   nc.DUport = f1_params->my_portd;
-  LOG_I(GNB_APP,
-        "FIAP: DU_ip4_address in DU %p, strlen %ld\n",
-        nc.DU_f1_ip_address.ipv4_address,
-        strlen(f1_params->my_addr));
+  LOG_I(GNB_APP, "FIAP: DU_ip4_address in DU %p, strlen %ld\n", nc.DU_f1_ip_address.ipv4_address, strlen(f1_params->my_addr));
 
   // sctp_in_streams/sctp_out_streams are given by SCTP layer
   return nc;
 }
-
 
 static void f1_setup_request_f1ap(const f1ap_setup_req_t *req)
 {
@@ -105,7 +101,7 @@ static void ue_context_setup_response_f1ap(const f1ap_ue_context_setup_t *req, c
   AssertFatal(req->drbs_to_be_setup_length == 0, "not implmented\n");
 
   DevAssert(req->srbs_to_be_setup_length == resp->srbs_to_be_setup_length);
-  MessageDef *msg = itti_alloc_new_message (TASK_MAC_GNB, 0, F1AP_UE_CONTEXT_SETUP_RESP);
+  MessageDef *msg = itti_alloc_new_message(TASK_MAC_GNB, 0, F1AP_UE_CONTEXT_SETUP_RESP);
   f1ap_ue_context_setup_t *f1ap_msg = &F1AP_UE_CONTEXT_SETUP_RESP(msg);
   /* copy all fields, but reallocate rrc_containers! */
   *f1ap_msg = *resp;
@@ -177,21 +173,26 @@ static void ue_context_modification_required_f1ap(const f1ap_ue_context_modif_re
     f1ap_msg->du_to_cu_rrc_information = calloc(1, sizeof(*f1ap_msg->du_to_cu_rrc_information));
     AssertFatal(f1ap_msg->du_to_cu_rrc_information != NULL, "out of memory\n");
     du_to_cu_rrc_information_t *du2cu = f1ap_msg->du_to_cu_rrc_information;
-    AssertFatal(required->du_to_cu_rrc_information->cellGroupConfig != NULL && required->du_to_cu_rrc_information->cellGroupConfig_length > 0,
+    AssertFatal(required->du_to_cu_rrc_information->cellGroupConfig != NULL
+                    && required->du_to_cu_rrc_information->cellGroupConfig_length > 0,
                 "cellGroupConfig is mandatory\n");
     du2cu->cellGroupConfig_length = required->du_to_cu_rrc_information->cellGroupConfig_length;
     du2cu->cellGroupConfig = malloc(du2cu->cellGroupConfig_length * sizeof(*du2cu->cellGroupConfig));
     AssertFatal(du2cu->cellGroupConfig != NULL, "out of memory\n");
     memcpy(du2cu->cellGroupConfig, required->du_to_cu_rrc_information->cellGroupConfig, du2cu->cellGroupConfig_length);
-    AssertFatal(required->du_to_cu_rrc_information->measGapConfig == NULL && required->du_to_cu_rrc_information->measGapConfig_length == 0, "not handled yet\n");
-    AssertFatal(required->du_to_cu_rrc_information->requestedP_MaxFR1 == NULL && required->du_to_cu_rrc_information->requestedP_MaxFR1_length == 0, "not handled yet\n");
+    AssertFatal(
+        required->du_to_cu_rrc_information->measGapConfig == NULL && required->du_to_cu_rrc_information->measGapConfig_length == 0,
+        "not handled yet\n");
+    AssertFatal(required->du_to_cu_rrc_information->requestedP_MaxFR1 == NULL
+                    && required->du_to_cu_rrc_information->requestedP_MaxFR1_length == 0,
+                "not handled yet\n");
   }
   f1ap_msg->cause = required->cause;
   f1ap_msg->cause_value = required->cause_value;
   itti_send_msg_to_task(TASK_DU_F1, 0, msg);
 }
 
-static void ue_context_release_request_f1ap(const f1ap_ue_context_release_req_t* req)
+static void ue_context_release_request_f1ap(const f1ap_ue_context_release_req_t *req)
 {
   MessageDef *msg = itti_alloc_new_message(TASK_MAC_GNB, 0, F1AP_UE_CONTEXT_RELEASE_REQ);
   f1ap_ue_context_release_req_t *f1ap_msg = &F1AP_UE_CONTEXT_RELEASE_REQ(msg);
@@ -229,54 +230,63 @@ static void initial_ul_rrc_message_transfer_f1ap(module_id_t module_id, const f1
   itti_send_msg_to_task(TASK_DU_F1, module_id, msg);
 }
 
-
-static void positioning_information_response_f1ap(const f1ap_positioning_information_resp_t *resp){
- AssertFatal(false, "not implemented\n");
+static void positioning_information_response_f1ap(const f1ap_positioning_information_resp_t *resp)
+{
+  AssertFatal(false, "not implemented\n");
 }
 
-static void positioning_information_failure_f1ap(const f1ap_positioning_information_failure_t *failure){
- AssertFatal(false, "not implemented\n");
+static void positioning_information_failure_f1ap(const f1ap_positioning_information_failure_t *failure)
+{
+  AssertFatal(false, "not implemented\n");
 }
 
-static void positioning_information_update_f1ap(const f1ap_positioning_information_update_t *update){
- AssertFatal(false, "not implemented\n");
+static void positioning_information_update_f1ap(const f1ap_positioning_information_update_t *update)
+{
+  AssertFatal(false, "not implemented\n");
 }
 
 /* handlers of Positioning Information Transfer related NRPPA UL messages */
-static void positioning_activation_response_f1ap(const f1ap_positioning_activation_resp_t *resp){
- AssertFatal(false, "not implemented\n");
+static void positioning_activation_response_f1ap(const f1ap_positioning_activation_resp_t *resp)
+{
+  AssertFatal(false, "not implemented\n");
 }
 
-static void positioning_activation_failure_f1ap(const f1ap_positioning_activation_failure_t *failure){
- AssertFatal(false, "not implemented\n");
+static void positioning_activation_failure_f1ap(const f1ap_positioning_activation_failure_t *failure)
+{
+  AssertFatal(false, "not implemented\n");
 }
 
 /* handlers of TRP Information Transfer related NRPPA UL messages */
-static void trp_information_response_f1ap(const f1ap_trp_information_resp_t *resp){
- AssertFatal(false, "not implemented\n");
+static void trp_information_response_f1ap(const f1ap_trp_information_resp_t *resp)
+{
+  AssertFatal(false, "not implemented\n");
 }
 
-static void trp_information_failure_f1ap(const f1ap_trp_information_failure_t *failure){
- AssertFatal(false, "not implemented\n");
+static void trp_information_failure_f1ap(const f1ap_trp_information_failure_t *failure)
+{
+  AssertFatal(false, "not implemented\n");
 }
 
 /* handlers of Measurement Information Transfer related NRPPA UL messages */
-static void positioning_measurement_response_f1ap(const f1ap_measurement_resp_t *resp){
- AssertFatal(false, "not implemented\n");
+static void positioning_measurement_response_f1ap(const f1ap_measurement_resp_t *resp)
+{
+  AssertFatal(false, "not implemented\n");
 }
 
-static void positioning_measurement_failure_f1ap(const f1ap_measurement_failure_t *failure){
- AssertFatal(false, "not implemented\n");
+static void positioning_measurement_failure_f1ap(const f1ap_measurement_failure_t *failure)
+{
+  AssertFatal(false, "not implemented\n");
 }
 
-static void positioning_measurement_report_f1ap(const f1ap_measurement_report_t *report){
- AssertFatal(false, "not implemented\n");
+static void positioning_measurement_report_f1ap(const f1ap_measurement_report_t *report)
+{
+  AssertFatal(false, "not implemented\n");
 }
 
-static void positioning_measurement_failure_indication_f1ap(const f1ap_measurement_failure_ind_t *failure_ind){
- AssertFatal(false, "not implemented\n");
+static void positioning_measurement_failure_indication_f1ap(const f1ap_measurement_failure_ind_t *failure_ind)
+{
+  AssertFatal(false, "not implemented\n");
 }
-
 
 void mac_rrc_ul_f1ap_init(struct nr_mac_rrc_ul_if_s *mac_rrc)
 {
@@ -287,16 +297,15 @@ void mac_rrc_ul_f1ap_init(struct nr_mac_rrc_ul_if_s *mac_rrc)
   mac_rrc->ue_context_release_request = ue_context_release_request_f1ap;
   mac_rrc->ue_context_release_complete = ue_context_release_complete_f1ap;
   mac_rrc->initial_ul_rrc_message_transfer = initial_ul_rrc_message_transfer_f1ap;
-  mac_rrc->positioning_information_response             = positioning_information_response_f1ap; // nrppa adeel
-  mac_rrc->positioning_information_failure              = positioning_information_failure_f1ap;
-  mac_rrc->positioning_information_update               = positioning_information_update_f1ap;
-  mac_rrc->positioning_activation_response              = positioning_activation_response_f1ap;
-  mac_rrc->positioning_activation_failure               = positioning_activation_failure_f1ap;
-  mac_rrc->trp_information_response                     = trp_information_response_f1ap;
-  mac_rrc->trp_information_failure                      = trp_information_failure_f1ap;
-  mac_rrc->positioning_measurement_response             = positioning_measurement_response_f1ap;
-  mac_rrc->positioning_measurement_failure              = positioning_measurement_failure_f1ap;
-  mac_rrc->positioning_measurement_report               = positioning_measurement_report_f1ap;
-  mac_rrc->positioning_measurement_failure_indication   = positioning_measurement_failure_indication_f1ap;
+  mac_rrc->positioning_information_response = positioning_information_response_f1ap; // nrppa adeel
+  mac_rrc->positioning_information_failure = positioning_information_failure_f1ap;
+  mac_rrc->positioning_information_update = positioning_information_update_f1ap;
+  mac_rrc->positioning_activation_response = positioning_activation_response_f1ap;
+  mac_rrc->positioning_activation_failure = positioning_activation_failure_f1ap;
+  mac_rrc->trp_information_response = trp_information_response_f1ap;
+  mac_rrc->trp_information_failure = trp_information_failure_f1ap;
+  mac_rrc->positioning_measurement_response = positioning_measurement_response_f1ap;
+  mac_rrc->positioning_measurement_failure = positioning_measurement_failure_f1ap;
+  mac_rrc->positioning_measurement_report = positioning_measurement_report_f1ap;
+  mac_rrc->positioning_measurement_failure_indication = positioning_measurement_failure_indication_f1ap;
 }
-
