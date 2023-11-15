@@ -379,6 +379,8 @@ static void nr_pdcp_entity_set_security(nr_pdcp_entity_t *entity,
   if (ciphering_algorithm != 0 && ciphering_algorithm != -1) {
     if (entity->type == NR_PDCP_SRB && entity->rb_id == DCCH && entity->has_ciphering == NR_PDCP_ENTITY_CIPHERING_OFF) {
       entity->has_ciphering = NR_PDCP_ENTITY_CIPHERING_SMC;
+    } else if (entity->type == NR_PDCP_SRB && entity->rb_id > DCCH) {
+      entity->has_ciphering = NR_PDCP_ENTITY_CIPHERING_ON;
     }
     LOG_I(PDCP, "%s: entity->has_ciphering %d\n", __FUNCTION__, entity->has_ciphering);
     if (entity->free_security != NULL) {
