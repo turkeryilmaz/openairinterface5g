@@ -1304,9 +1304,7 @@ void nr_pdcp_config_set_security(ue_id_t ue_id,
   int ciphering_algorithm;
 
   nr_pdcp_manager_lock(nr_pdcp_ue_manager);
-
   ue = nr_pdcp_manager_get_ue(nr_pdcp_ue_manager, ue_id);
-
   /* TODO: proper handling of DRBs, for the moment only SRBs are handled */
 
   if (rb_id >= 1 && rb_id <= 2) {
@@ -1317,11 +1315,17 @@ void nr_pdcp_config_set_security(ue_id_t ue_id,
       nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
       return;
     }
-
     integrity_algorithm = (security_modeP>>4) & 0xf;
     ciphering_algorithm = security_modeP & 0x0f;
-    LOG_DUMPMSG(PDCP, DEBUG_PDCP, kRRCint_pP, 16, "%s: (%d) kRRCint_pP: ", __FUNCTION__, integrity_algorithm);
-    LOG_DUMPMSG(PDCP, DEBUG_PDCP, kRRCenc_pP, 16, "%s: (%d) kRRCenc_pP: ", __FUNCTION__, ciphering_algorithm);
+    
+    if (integrity_algorithm) {
+      LOG_DUMPMSG(PDCP, DEBUG_PDCP, kRRCint_pP, 16, "%s: (%d) kRRCint_pP: ", __FUNCTION__, integrity_algorithm);
+    }
+
+    if (ciphering_algorithm) {
+      LOG_DUMPMSG(PDCP, DEBUG_PDCP, kRRCenc_pP, 16, "%s: (%d) kRRCenc_pP: ", __FUNCTION__, ciphering_algorithm);
+    }
+
     rb->set_security(rb, integrity_algorithm, (char *)kRRCint_pP,
                      ciphering_algorithm, (char *)kRRCenc_pP);
   } else {

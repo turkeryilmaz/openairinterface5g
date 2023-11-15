@@ -2655,7 +2655,7 @@ void *ss_eNB_sys_task(void *arg)
   sleep(5);
 
   // Set the state to NOT_CONFIGURED for Cell Config processing mode
-  if (RC.ss.mode == SS_SOFTMODEM)
+  if (RC.ss.mode == SS_SOFTMODEM || RC.ss.mode == SS_SOFTMODEM_L3LESS)
   {
     init_ss_context(SS_context.SSCell_list);
     //SS_context.SSCell_list[cell_index].State = SS_STATE_NOT_CONFIGURED;
