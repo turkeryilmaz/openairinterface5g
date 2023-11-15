@@ -398,10 +398,6 @@ void ss_gNB_srb_init(void)
 
   // Port number
   int port = RC.ss.Srbport;
-  if (RC.ss.mode == SS_SOFTMODEM_SRB)
-  {
-    acpInit(malloc, free, 1000);
-  }
 
   // Register user services/notifications in message table
   const struct acpMsgTable msgTable[] = {
