@@ -601,12 +601,13 @@ void nr_initiate_ra_proc(module_id_t module_idP,
 
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_INITIATE_RA_PROC, 1);
 
-    LOG_D(NR_MAC,
-          "[gNB %d][RAPROC] CC_id %d Frame %d, Slot %d  Initiating RA procedure for preamble index %d\n",
+    LOG_I(NR_MAC,
+          "[gNB %d][RAPROC] CC_id %d Frame %d, Slot %d RA proc %d Initiating RA procedure for preamble index %d\n",
           module_idP,
           CC_id,
           frameP,
           slotP,
+	  i,
           preamble_index);
 
     uint8_t beam_index = ssb_index_from_prach(module_idP, frameP, slotP, preamble_index, freq_index, symbol);
@@ -670,8 +671,8 @@ void nr_initiate_ra_proc(module_id_t module_idP,
     ra->beam_id = cc->ssb_index[beam_index];
 
     LOG_I(NR_MAC,
-          "[gNB %d][RAPROC] CC_id %d Frame %d Activating Msg2 generation in frame %d, slot %d using RA rnti %x SSB, new rnti %04x "
-          "index %u RA index %d\n",
+          "[gNB %d][RAPROC] CC_id %d Frame %d Activating Msg2 generation in frame %d, slot %d using RA rnti %x, new rnti %04x "
+          "preamble_index %d ssb_index %u RA index %d\n",
           module_idP,
           CC_id,
           frameP,
@@ -679,6 +680,7 @@ void nr_initiate_ra_proc(module_id_t module_idP,
           ra->Msg2_slot,
           ra->RA_rnti,
           ra->rnti,
+	  preamble_index,
           cc->ssb_index[beam_index],
           i);
 

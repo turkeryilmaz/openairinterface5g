@@ -150,7 +150,7 @@ int main(int argc, char **argv){
   uint8_t snr1set = 0, ue_speed1set = 0, transmission_mode = 1, n_tx = 1, n_rx = 1, awgn_flag = 0, msg1_frequencystart = 0, num_prach_fd_occasions = 1, prach_format=0;
   uint8_t config_index = 98, prach_sequence_length = 1, restrictedSetConfig = 0, N_dur, N_t_slot, start_symbol;
   uint16_t Nid_cell = 0, preamble_tx = 0, preamble_delay, format, format0, format1;
-  uint32_t tx_lev = 10000, prach_errors = 0; //,tx_lev_dB;
+  uint32_t tx_lev = (uint32_t)1e6, prach_errors = 0; //,tx_lev_dB;
   uint64_t SSB_positions = 0x01;
   uint16_t RA_sfn_index;
   uint8_t N_RA_slot;

@@ -412,6 +412,8 @@ void rx_nr_prach_ru(RU_t *ru,
 
 }
 
+uint32_t prach_ifft_max[1024] = {0};
+
 void rx_nr_prach(PHY_VARS_gNB *gNB,
                  nfapi_nr_prach_pdu_t *prach_pdu,
                  int prachOccasion,
@@ -501,6 +503,7 @@ void rx_nr_prach(PHY_VARS_gNB *gNB,
   *max_preamble_delay=0;
   *max_preamble=0;
 
+  
   for (preamble_index=0 ; preamble_index<64 ; preamble_index++) {
 
     if (LOG_DEBUGFLAG(PRACH)){
@@ -661,7 +664,9 @@ void rx_nr_prach(PHY_VARS_gNB *gNB,
         LOG_D(PHY,"preamble_index %d, delay %d en %d dB > %d dB\n",preamble_index,i,levdB,*max_preamble_energy);
         *max_preamble_energy  = levdB;
         *max_preamble_delay   = i; // Note: This has to be normalized to the 30.72 Ms/s sampling rate
+
         *max_preamble         = preamble_index;
+	memcpy(prach_ifft_max,prach_ifft,4*(1<<log2_ifft_size));
       }
     }
   }// preamble_index

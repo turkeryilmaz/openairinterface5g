@@ -293,7 +293,7 @@ int config_process_cmdline(paramdef_t *cfgoptions,int numoptions, char *prefix) 
       } /* for n... */
     } /* if (oneargv[0] == '-') */
 
-    free(oneargv);
+   // free(oneargv);
     i++;
     c--;
   }   /* fin du while */

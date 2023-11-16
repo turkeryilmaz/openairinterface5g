@@ -98,6 +98,8 @@ uint8_t get_nr_prach_duration(uint8_t prach_format){
   }
 }
 
+extern uint32_t prach_ifft_max[1024];
+
 void L1_nr_prach_procedures(PHY_VARS_gNB *gNB,int frame,int slot) {
 
   uint16_t max_preamble[4]={0},max_preamble_energy[4]={0},max_preamble_delay[4]={0};
@@ -162,7 +164,8 @@ void L1_nr_prach_procedures(PHY_VARS_gNB *gNB,int frame,int slot) {
 	      max_preamble_delay[0],
 	      prachStartSymbol,
 	      prach_pdu->num_ra);
-	
+        /*LOG_M("prach_corr.m","prachcorr",prach_ifft_max,256,1,2);	
+	exit(-1);*/
 	T(T_ENB_PHY_INITIATE_RA_PROCEDURE, T_INT(gNB->Mod_id), T_INT(frame), T_INT(slot),
 	  T_INT(max_preamble[0]), T_INT(max_preamble_energy[0]), T_INT(max_preamble_delay[0]));
 	

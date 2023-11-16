@@ -859,12 +859,12 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
       }
 
       if (ra->msg3_round >= gNB_mac->ul_bler.harq_round_max - 1) {
-        LOG_W(NR_MAC, "Random Access %i failed at state %i (Reached msg3 max harq rounds)\n", i, ra->state);
+        LOG_W(NR_MAC, "Random Access %i failed at state %i (Reached msg3 max harq rounds) cqi %d, TA %d\n", i, ra->state,((int)ul_cqi * 5) - 640, timing_advance);
         nr_clear_ra_proc(gnb_mod_idP, CC_idP, frameP, ra);
         return;
       }
 
-      LOG_D(NR_MAC, "Random Access %i Msg3 CRC did not pass)\n", i);
+      LOG_I(NR_MAC, "Random Access %i Msg3 CRC did not pass cqi %d, TA %d\n", i,  ((int)ul_cqi * 5) - 640, timing_advance);
 
       ra->msg3_round++;
       ra->state = Msg3_retransmission;

@@ -32,8 +32,10 @@
 #include "oran_isolate.h"
 #include "xran_common.h"
 #include "common/utils/threadPool/thread-pool.h"
+#include "openair1/PHY/TOOLS/tools_defs.h"
 #include "oaioran.h"
 #include <rte_ethdev.h>
+#include <math.h>
 
 #define USE_POLLING 1
 // Declare variable useful for the send buffer function
@@ -183,7 +185,7 @@ int read_prach_data(ru_info_t *ru, int frame, int slot)
 
 			/* convert Network order to host order */
 			  if (ru_conf->compMeth_PRACH == XRAN_COMPMETHOD_NONE) {
-			     if (sym_idx==0) {
+			     if (1 /*sym_idx==0*/) {
 			        for (idx = 0; idx < 576/2; idx++)
 			        {
 			    	   dst[idx] = ((int16_t)ntohs(src[idx]))>>2;
@@ -217,7 +219,7 @@ int read_prach_data(ru_info_t *ru, int frame, int slot)
                                  xranlib_decompress_avx512(&bfp_decom_req, &bfp_decom_rsp);
 		                 if (sym_idx == 0)  // 576 is short PRACH 139 -> 144*4
 			           for (idx = 0; idx < (576/2); idx++) dst[idx]=local_dst[idx]>>2;
-			         else
+			         /*else
 	  	                   for (idx = 0; idx < (576/2); idx++) dst[idx]+=(local_dst[idx]>>2);*/
 			  } // COMPMETHOD_BLKFLOAT
 		} //aa
@@ -393,17 +395,10 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot){
                        xranlib_decompress_avx512(&bfp_decom_req, &bfp_decom_rsp);
 		       memcpy((void*)dst2,(void*)local_dst,neg_len*4);
 		       memcpy((void*)dst1,(void*)&local_dst[neg_len],pos_len*4);
+		       //for (int n=0;n<neg_len*2;n++) ((int16_t*)dst2)[n] = ((int16_t*)local_dst)[n]>>2;
+		       //for (int n=0;n<pos_len*2;n++) ((int16_t*)dst1)[n] = ((int16_t*)&local_dst[neg_len])[n]>>2;
+
 		       outcnt++;
-		       if (0 /*outcnt==1000*/) {
-			 LOG_I(NR_PHY,"bfp_decom_rsp.len %d, payload_len %d\n",bfp_decom_rsp.len,payload_len);
-		         for (int prb=0;prb<p_prbMapElm->nRBSize;prb++){
-                           LOG_I(NR_PHY,"PRB%d exponent %u\n",prb,((uint8_t*)src)[25*prb]);    
-		           for (int i=0;i<24;i+=2) LOG_I(NR_PHY,"(%d,%d) => (%d,%d)\n",
-			  		 ((int8_t*)src)[25*prb+1+i],((int8_t*)src)[25*prb+2+i],
-					 ((int16_t*)local_dst)[24*prb+i],((int16_t*)local_dst)[24*prb+1+i]);
-		         } 
-		         exit(-1);
-		       }
            	    } else {
                        printf ("p_prbMapElm->compMethod == %d is not supported\n",
                                 p_prbMapElm->compMethod);
