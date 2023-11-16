@@ -2149,10 +2149,9 @@ void multiplex_pucch_resource(NR_UE_MAC_INST_t *mac, PUCCH_sched_t *pucch, int n
       int next_start, next_length;
       get_pucch_start_symbol_length(pucch_resource, &next_start, &next_length);
       bool overlap = check_overlapping_resources(curr_start, curr_length, next_start, next_length);
-      if (overlap) {
+      if (overlap) 
         o++;
-        j++;
-      }
+      j++;
     } else {
       if (o > 0) {
         merge_resources(&pucch[j - o], o + 1, pucch_Config);
