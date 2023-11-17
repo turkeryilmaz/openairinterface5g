@@ -65,6 +65,8 @@ unsigned short config_frames[4] = {2,9,11,13};
 
 #include "PHY/INIT/nr_phy_init.h"
 
+#include "NR_MAC_gNB/nr_mac_gNB.h"
+
 #include "system.h"
 #include <openair2/GNB_APP/gnb_app.h>
 #include "PHY/TOOLS/phy_scope_interface.h"
@@ -302,7 +304,13 @@ static int create_gNB_tasks(void) {
   RCconfig_NR_L1();
   RCconfig_nr_prs();
 
-  if (RC.nb_nr_macrlc_inst>0) RCconfig_nr_macrlc();
+  if (RC.nb_nr_macrlc_inst>0) {
+    RCconfig_nr_macrlc();
+    if (get_softmodem_params()->no_harq) {
+      RC.nrmac[0]->dl_bler.harq_round_max = 1;
+      RC.nrmac[0]->ul_bler.harq_round_max = 1;
+    }
+  }
 
   LOG_I(PHY, "%s() RC.nb_nr_L1_inst:%d\n", __FUNCTION__, RC.nb_nr_L1_inst);
 
