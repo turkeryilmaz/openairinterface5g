@@ -62,9 +62,9 @@ static void process_rlcBearerConfig(struct NR_CellGroupConfig__rlc_BearerToAddMo
   if (rlc_bearer2release_list) {
     for (int i = 0; i < rlc_bearer2release_list->list.count; i++) {
       for (int idx = 0; idx < sched_ctrl->dl_lc_num; idx++) {
-        if (sched_ctrl->dl_lc_ids[idx] == *rlc_bearer2release_list->list.array[i]) {
+        if (sched_ctrl->dl_lc[idx].id == *rlc_bearer2release_list->list.array[i]) {
           const int remaining_lcs = sched_ctrl->dl_lc_num - idx - 1;
-          memmove(&sched_ctrl->dl_lc_ids[idx], &sched_ctrl->dl_lc_ids[idx + 1], sizeof(sched_ctrl->dl_lc_ids[idx]) * remaining_lcs);
+          memmove(&sched_ctrl->dl_lc[idx], &sched_ctrl->dl_lc[idx + 1], sizeof(sched_ctrl->dl_lc[idx]) * remaining_lcs);
           sched_ctrl->dl_lc_num--;
           break;
         }
@@ -78,7 +78,7 @@ static void process_rlcBearerConfig(struct NR_CellGroupConfig__rlc_BearerToAddMo
       const int lcid = rlc_bearer2add_list->list.array[i]->logicalChannelIdentity;
       bool found = false;
       for (int idx = 0; idx < sched_ctrl->dl_lc_num; idx++) {
-        if (sched_ctrl->dl_lc_ids[idx] == lcid) {
+        if (sched_ctrl->dl_lc[idx].id == lcid) {
           found = true;
           break;
         }
@@ -86,7 +86,7 @@ static void process_rlcBearerConfig(struct NR_CellGroupConfig__rlc_BearerToAddMo
 
       if (!found) {
         sched_ctrl->dl_lc_num++;
-        sched_ctrl->dl_lc_ids[sched_ctrl->dl_lc_num - 1] = lcid;
+        sched_ctrl->dl_lc[sched_ctrl->dl_lc_num - 1].id = lcid;
         LOG_D(NR_MAC, "Adding LCID %d (%s %d)\n", lcid, lcid < 4 ? "SRB" : "DRB", lcid);
       }
     }
