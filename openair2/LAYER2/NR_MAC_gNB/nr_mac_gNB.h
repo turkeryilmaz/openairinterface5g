@@ -541,6 +541,25 @@ typedef struct {
   nssai_t nssai;
 } NR_LC_info_t;
 
+/*! \brief Slice information used by the scheduler */
+typedef struct {
+  int numSharedPrbs;
+  int numPrioritizedPrbs;
+  int numDedicatedPrbs;
+  nssai_t nssai;
+} NR_slice_sched_t;
+
+typedef struct {
+  /// the index of slice from slice config stored in gNB_MAC_INST
+  int sliceIdx;
+  /// LCs in this slice
+  uint8_t numLcids;
+  uint8_t lcid[NR_MAX_NUM_LCID];
+  /// total amount of data awaiting for this UE for each slice
+  uint32_t num_total_bytes;
+  uint16_t dl_pdus_total;
+} NR_UE_slice_info_t;
+
 /*! \brief scheduling control information set through an API */
 #define MAX_CSI_REPORTS 48
 typedef struct {
@@ -585,11 +604,15 @@ typedef struct {
   frame_t last_ul_frame;
   sub_frame_t last_ul_slot;
 
-  /// total amount of data awaiting for this UE
-  uint32_t num_total_bytes;
-  uint16_t dl_pdus_total;
+  /// UE slice specific info
+  int numSlices;
+  int curSchedSliceIdx;
+  NR_UE_slice_info_t sliceInfo[NR_MAX_NUM_SLICES];
   /// per-LC status data
   mac_rlc_status_resp_t rlc_status[NR_MAX_NUM_LCID];
+
+  uint32_t num_total_bytes;
+  uint16_t dl_pdus_total;
 
   /// Estimation of HARQ from BLER
   NR_bler_stats_t dl_bler_stats;
@@ -851,6 +874,9 @@ typedef struct gNB_MAC_INST_s {
   int16_t slot;
 
   pthread_mutex_t sched_lock;
+
+  /// store slice config. First slice is always default slice
+  NR_slice_sched_t sliceConfig[NR_MAX_NUM_SLICES];
 
 } gNB_MAC_INST;
 

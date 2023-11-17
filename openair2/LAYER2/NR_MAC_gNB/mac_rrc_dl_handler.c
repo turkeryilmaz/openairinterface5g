@@ -232,13 +232,24 @@ static NR_CellGroupConfig_t *clone_CellGroupConfig(const NR_CellGroupConfig_t *o
   return cloned;
 }
 
+static int get_idx_from_lcid(const NR_UE_sched_ctrl_t *sched_ctrl, int lcid)
+{
+  for (int i = 0; i < sched_ctrl->dl_lc_num; i++) {
+    if (sched_ctrl->dl_lc[i].id == lcid)
+      return i;
+  }
+  return -1;
+}
+
 static void set_nssaiConfig(const int drb_len, const f1ap_drb_to_be_setup_t *req_drbs, NR_UE_sched_ctrl_t *sched_ctrl)
 {
   for (int i = 0; i < drb_len; i++) {
     const f1ap_drb_to_be_setup_t *drb = &req_drbs[i];
 
     long lcid = get_lcid_from_drbid(drb->drb_id);
-    sched_ctrl->dl_lc[lcid].nssai = drb->nssai;
+    int lcid_idx = get_idx_from_lcid(sched_ctrl, lcid);
+    DevAssert(lcid_idx > -1);
+    sched_ctrl->dl_lc[lcid_idx].nssai = drb->nssai;
     LOG_I(NR_MAC, "Setting NSSAI sst: %d, sd: %d for DRB: %ld\n", drb->nssai.sst, drb->nssai.sd, drb->drb_id);
   }
 }
