@@ -2543,7 +2543,13 @@ static NR_MAC_CellGroupConfig_t *configure_mac_cellgroup(void)
   asn1cSeqAdd(&(mac_CellGroupConfig->schedulingRequestConfig->schedulingRequestToAddModList->list),schedulingrequestlist);
 
   mac_CellGroupConfig->skipUplinkTxDynamic=false;
-  mac_CellGroupConfig->ext1 = NULL;
+  mac_CellGroupConfig->ext1 = calloc(1,sizeof(*mac_CellGroupConfig->ext1));
+  mac_CellGroupConfig->ext1->csi_Mask = NULL;
+  struct NR_SetupRelease_DataInactivityTimer * dataInactivityTimer = calloc(1,sizeof(*dataInactivityTimer));
+  dataInactivityTimer->present = NR_SetupRelease_DataInactivityTimer_PR_setup;
+  dataInactivityTimer->choice.setup = NR_DataInactivityTimer_s5;
+  mac_CellGroupConfig->ext1->dataInactivityTimer = dataInactivityTimer;
+
   return mac_CellGroupConfig;
 }
 
