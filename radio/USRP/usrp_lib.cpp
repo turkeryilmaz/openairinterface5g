@@ -950,7 +950,7 @@ int trx_usrp_set_gains(openair0_device *device,
       LOG_E(HW,"RX Gain 0 too high, reduce by %3.2f dB\n",
             gain - device->max_rx_gain[0]);
       gain = device->max_rx_gain[0];
-      openair0_cfg[0].rx_gain[0] = 0;
+      openair0_cfg[0].rx_gain[0] = device->max_rx_gain[0];
       //exit(-1);
     } else if (gain < device->min_rx_gain[0]) {
       LOG_E(HW,"RX Gain 0 too low gain:%3.2f, min:%3.2f dB\n",
