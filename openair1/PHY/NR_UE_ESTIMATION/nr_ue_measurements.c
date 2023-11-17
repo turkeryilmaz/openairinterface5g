@@ -160,23 +160,19 @@ void nr_ue_measurements(PHY_VARS_NR_UE *ue,
   for (gNB_id = 0; gNB_id < ue->n_connected_gNB; gNB_id++) {
 
     ue->measurements.rx_power_avg_dB[gNB_id] = dB_fixed( ue->measurements.rx_power_avg[gNB_id]);
-    ue->measurements.wideband_cqi_tot[gNB_id] = dB_fixed2(ue->measurements.rx_power_tot[gNB_id], ue->measurements.n0_power_tot);
-    ue->measurements.wideband_cqi_avg[gNB_id] = dB_fixed2(ue->measurements.rx_power_avg[gNB_id], ue->measurements.n0_power_avg);
-    //ue->measurements.rx_rssi_dBm[gNB_id] = ue->measurements.rx_power_avg_dB[gNB_id] + 30 - 10*log10(pow(2, 30)) - ((int)openair0_cfg[0].rx_gain[0] - (int)openair0_cfg[0].rx_gain_offset[0]) - dB_fixed(ue->frame_parms.ofdm_symbol_size);
-    ue->measurements.rx_rssi_dBm[gNB_id] = (ue->measurements.rx_power_avg_dB[gNB_id] - (int)ue->rfdevice.app_rx_gain[0]) - (int)openair0_cfg[0].rx_gain_offset[0];
-    //ue->measurements.rx_rssi_fixed_point_dB[gNB_id] = ue->measurements.rx_power_avg_dB[gNB_id] - ((int)openair0_cfg[0].rx_gain[0] - (int)openair0_cfg[0].rx_gain_offset[0])- dB_fixed(ue->frame_parms.ofdm_symbol_size);
-    ue->measurements.rx_rssi_fixed_point_dB[gNB_id] = (ue->measurements.rx_power_avg_dB[gNB_id] - (int)ue->rfdevice.app_rx_gain[0]) - (int)openair0_cfg[0].rx_gain_offset[0] - dB_fixed(ue->frame_parms.ofdm_symbol_size);
+    ue->measurements.wideband_cqi_tot[gNB_id] = ue->measurements.rx_power_tot_dB[gNB_id] - ue->measurements.n0_power_tot_dB;
+    ue->measurements.wideband_cqi_avg[gNB_id] = ue->measurements.rx_power_avg_dB[gNB_id] - dB_fixed(ue->measurements.n0_power_avg);
+    ue->measurements.rx_rssi_dBm[gNB_id] = ue->measurements.rx_power_avg_dB[gNB_id] - (int)ue->rfdevice.app_rx_gain[0];
 
     LOG_D(PHY,
-          "[gNB %d] Slot %d, RSSI %d dB (%d dBm/RE), WBandCQI %d dB, rxPwrAvg "
-          "%d, n0PwrAvg %d, Instant CQI %d (dB), RSSI Fixed Point (dB) %d\n",
-          gNB_id, slot, ue->measurements.rx_power_avg_dB[gNB_id],
+          "[gNB %d] Slot %d, RSSI %d dBm/RE, WBandCQI %d dB, rxPwrAvg "
+          "%d dB, n0PwrAvg %d dB, Instant CQI %d dB\n",
+          gNB_id, slot,
           ue->measurements.rx_rssi_dBm[gNB_id],
           ue->measurements.wideband_cqi_avg[gNB_id],
-          ue->measurements.rx_power_avg[gNB_id],
-          ue->measurements.n0_power_tot,
-          ue->measurements.wideband_cqi_tot[gNB_id],
-          ue->measurements.rx_rssi_fixed_point_dB[gNB_id]);
+          ue->measurements.rx_power_avg_dB[gNB_id],
+          dB_fixed(ue->measurements.n0_power_avg),
+          ue->measurements.wideband_cqi_tot[gNB_id]);
   }
 
 #if defined(__x86_64__) || defined(__i386__)
@@ -234,7 +230,7 @@ void nr_ue_ssb_rsrp_measurements(PHY_VARS_NR_UE *ue,
 
   rsrp /= nb_re;
 
-  ue->measurements.ssb_rsrp_dBm[ssb_index] = (10*log10(rsrp) - (int)ue->rfdevice.app_rx_gain[0]) - (int)openair0_cfg[0].rx_gain_offset[0];
+  ue->measurements.ssb_rsrp_dBm[ssb_index] = 10*log10(rsrp) - (int)ue->rfdevice.app_rx_gain[0];
 
   // to obtain non-integer dB value with a resoluion of 0.5dB
   int SNRtimes10 = dB_fixed_x10(rsrp) - dB_fixed_x10(ue->measurements.n0_power_avg);
@@ -429,10 +425,7 @@ void *nr_ue_meas_neighboring_cell(void *param)
       }
     }
     neighboring_cell_info->ssb_rsrp = rsrp_sum / nb_re;
-    neighboring_cell_info->ssb_rsrp_dBm = 10 * log10(neighboring_cell_info->ssb_rsrp) + 30
-                                          - 10 * log10(pow(2, 30))
-                                          - ((int)openair0_cfg[0].rx_gain[0] - (int)openair0_cfg[0].rx_gain_offset[0])
-                                          - dB_fixed(ue->frame_parms.ofdm_symbol_size);
+    neighboring_cell_info->ssb_rsrp_dBm = 10 * log10(neighboring_cell_info->ssb_rsrp) - (int)openair0_cfg[0].rx_gain[0];
 #ifdef DEBUG_MEAS_NEIGHBORING_CELL
     LOG_I(NR_PHY, "[Nid_cell %i] SSB RSRP = %u (%i dBm)\n", nr_neighboring_cell->Nid_cell, neighboring_cell_info->ssb_rsrp, neighboring_cell_info->ssb_rsrp_dBm);
 #endif
@@ -482,7 +475,6 @@ void nr_ue_rrc_measurements(PHY_VARS_NR_UE *ue,
   uint8_t l_sss = (ue->symbol_offset + 2) % ue->frame_parms.symbols_per_slot;
   unsigned int ssb_offset = ue->frame_parms.first_carrier_offset + ue->frame_parms.ssb_start_subcarrier;
   double rx_gain = (int)ue->rfdevice.app_rx_gain[0];
-  double rx_gain_offset = openair0_cfg[0].rx_gain_offset[0];
 
   ue->measurements.n0_power_tot = 0;
 
@@ -532,21 +524,11 @@ void nr_ue_rrc_measurements(PHY_VARS_NR_UE *ue,
   /* dBm/Hz*/
   const int psd_awgn = -174;
   const int scs = 15000 * (1 << ue->frame_parms.numerology_index);
-  ue->measurements.noise_figure_dB = ue->measurements.n0_power_tot_dB + 30 -
-                                    ((int)rx_gain - (int)rx_gain_offset) -
-                                    10 * log10(pow(2, 30)) -
-                                    (psd_awgn + dB_fixed(scs) +
-                                    dB_fixed(ue->frame_parms.ofdm_symbol_size));
+  ue->measurements.noise_figure_dB = ue->measurements.n0_power_tot_dB - (int)rx_gain - (psd_awgn + dB_fixed(scs));
   /* Noise Floor calculations per dB/RE in fixed point */
-  ue->measurements.noise_floor_fixed = ue->measurements.n0_power_tot_dB -
-                                       ((int)rx_gain - (int)rx_gain_offset) -
-                                       dB_fixed(ue->frame_parms.ofdm_symbol_size);
+  ue->measurements.noise_floor_fixed = ue->measurements.n0_power_tot_dB - (int)rx_gain;
   /* Noise Power spectral density calculations in dBm/RE */
-  /*ue->measurements.noise_psd = ue->measurements.n0_power_tot_dB + 30 -
-                                 10 * log10(pow(2, 30)) -
-                                 dB_fixed(ue->frame_parms.ofdm_symbol_size) -
-                                 ((int)rx_gain - (int)rx_gain_offset);*/
-  ue->measurements.noise_psd = (ue->measurements.n0_power_tot_dB - (int)rx_gain) - (int)rx_gain_offset;
+  ue->measurements.noise_psd = ue->measurements.n0_power_tot_dB - (int)rx_gain;
 
   LOG_D(PHY,
         "In [%s][slot:%d] Noise Level %d Noise Level %d (dB), Noise PSD %d (dBm/RE), NF USRP %d (dB) Noise Floor %d (dB/RE) \n",

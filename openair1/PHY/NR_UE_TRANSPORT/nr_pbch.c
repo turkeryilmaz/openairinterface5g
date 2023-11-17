@@ -533,10 +533,9 @@ int nr_rx_pbch(PHY_VARS_NR_UE *ue,
 
 #ifdef DEBUG_PBCH
       double rx_gain = openair0_cfg[0].rx_gain[0];
-      double rx_gain_offset = openair0_cfg[0].rx_gain_offset[0];
       double DopplerEstMax = M_PI/ (2*M_PI*(DMRS_idx_current-DMRS_idx_last)*TOfdm);
-      LOG_I(PHY, "**** DopplerEst: %f, ue->DopplerEst: %d, chLevel: %i, chLevelLog: %u, outShift: %u, re: %i, im: %i, phase: %f, rxG: %f, rxGOff: %f\n",
-            DopplerEst, ue->DopplerEst, channelLevel, channelLevelLog, outputShift, Dot_Prod_Res.r, Dot_Prod_Res.i, Res_phase, rx_gain, rx_gain_offset);
+      LOG_I(PHY, "**** DopplerEst: %f, ue->DopplerEst: %d, chLevel: %i, chLevelLog: %u, outShift: %u, re: %i, im: %i, phase: %f, rxG: %f\n",
+            DopplerEst, ue->DopplerEst, channelLevel, channelLevelLog, outputShift, Dot_Prod_Res.r, Dot_Prod_Res.i, Res_phase, rx_gain);
       LOG_I(PHY, "DopplerEstMax: %f, PScaling: %f, IScaling: %f\n", DopplerEstMax, PScaling, IScaling);
 #endif
     }
