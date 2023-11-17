@@ -326,7 +326,7 @@ static void nr_store_dlsch_buffer(module_id_t module_id, frame_t frame, sub_fram
     /* loop over all activated logical channels */
     // Note: DL_SCH_LCID_DCCH, DL_SCH_LCID_DCCH1, DL_SCH_LCID_DTCH
     for (int i = 0; i < sched_ctrl->dl_lc_num; ++i) {
-      const int lcid = sched_ctrl->dl_lc_ids[i];
+      const int lcid = sched_ctrl->dl_lc[i].id;
       const uint16_t rnti = UE->rnti;
       LOG_D(NR_MAC, "In %s: UE %x: LCID %d\n", __FUNCTION__, rnti, lcid);
       if (lcid == DL_SCH_LCID_DTCH && sched_ctrl->rrc_processing_timer > 0) {
@@ -1247,7 +1247,7 @@ void nr_schedule_ue_spec(module_id_t module_id,
       if (sched_ctrl->num_total_bytes > 0) {
         /* loop over all activated logical channels */
         for (int i = 0; i < sched_ctrl->dl_lc_num; ++i) {
-          const int lcid = sched_ctrl->dl_lc_ids[i];
+          const int lcid = sched_ctrl->dl_lc[i].id;
 
           if (sched_ctrl->rlc_status[lcid].bytes_in_buffer == 0)
             continue; // no data for this LC        tbs_size_t len = 0;

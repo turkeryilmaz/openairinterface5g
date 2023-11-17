@@ -99,7 +99,7 @@ void nr_preprocessor_phytest(module_id_t module_id,
   sched_ctrl->num_total_bytes = 0;
   sched_ctrl->dl_lc_num = 1;
   const int lcid = DL_SCH_LCID_DTCH;
-  sched_ctrl->dl_lc_ids[sched_ctrl->dl_lc_num - 1] = lcid;
+  sched_ctrl->dl_lc[sched_ctrl->dl_lc_num - 1].id = lcid;
   const uint16_t rnti = UE->rnti;
   /* update sched_ctrl->num_total_bytes so that postprocessor schedules data,
    * if available */

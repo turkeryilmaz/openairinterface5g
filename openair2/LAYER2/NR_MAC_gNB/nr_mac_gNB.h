@@ -536,6 +536,11 @@ typedef struct NR_UE_ul_harq {
   NR_sched_pusch_t sched_pusch;
 } NR_UE_ul_harq_t;
 
+typedef struct {
+  uint8_t id;
+  nssai_t nssai;
+} NR_LC_info_t;
+
 /*! \brief scheduling control information set through an API */
 #define MAX_CSI_REPORTS 48
 typedef struct {
@@ -626,15 +631,13 @@ typedef struct {
   NR_UE_mac_ce_ctrl_t UE_mac_ce_ctrl; // MAC CE related information
   /// number of active DL LCs
   uint8_t dl_lc_num;
-  /// order in which DLSCH scheduler should allocate LCs
-  uint8_t dl_lc_ids[NR_MAX_NUM_LCID];
+  NR_LC_info_t dl_lc[NR_MAX_NUM_LCID];
 
   /// Timer for RRC processing procedures
   uint32_t rrc_processing_timer;
 
   /// sri, ul_ri and tpmi based on SRS
   nr_srs_feedback_t srs_feedback;
-  nssai_t dl_lc_nssai[NR_MAX_NUM_LCID];
 } NR_UE_sched_ctrl_t;
 
 typedef struct {

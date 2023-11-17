@@ -238,7 +238,7 @@ static void set_nssaiConfig(const int drb_len, const f1ap_drb_to_be_setup_t *req
     const f1ap_drb_to_be_setup_t *drb = &req_drbs[i];
 
     long lcid = get_lcid_from_drbid(drb->drb_id);
-    sched_ctrl->dl_lc_nssai[lcid] = drb->nssai;
+    sched_ctrl->dl_lc[lcid].nssai = drb->nssai;
     LOG_I(NR_MAC, "Setting NSSAI sst: %d, sd: %d for DRB: %ld\n", drb->nssai.sst, drb->nssai.sd, drb->drb_id);
   }
 }

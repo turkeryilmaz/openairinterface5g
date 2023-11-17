@@ -166,7 +166,7 @@ size_t dump_mac_stats(gNB_MAC_INST *gNB, char *output, size_t strlen, bool reset
                        stats->ulsch_total_bytes_scheduled, stats->ul.total_bytes);
 
     for (int i = 0; i < sched_ctrl->dl_lc_num; i++) {
-      int lc_id = sched_ctrl->dl_lc_ids[i];
+      int lc_id = sched_ctrl->dl_lc[i].id;
       output += snprintf(output,
                          end - output,
                          "UE %04x: LCID %d: TX %14"PRIu64" RX %14"PRIu64" bytes\n",
