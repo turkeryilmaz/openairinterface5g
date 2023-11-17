@@ -4341,6 +4341,8 @@ int16_t compute_nr_SSB_PL(NR_UE_MAC_INST_t *mac, short ssb_rsrp_dBm)
   //TODO improve PL measurements. Probably not correct as it is.
 
   int16_t pathloss = (int16_t)(referenceSignalPower - ssb_rsrp_dBm);
+  if (pathloss < 0)
+    pathloss = 0;
 
   LOG_D(NR_MAC, "pathloss %d dB, referenceSignalPower %d dBm/RE (%f mW), RSRP %d dBm (%f mW)\n",
         pathloss,
