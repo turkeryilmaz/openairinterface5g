@@ -907,7 +907,8 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
               dB_fixed_x10(pusch_vars->ulsch_power_tot),
               dB_fixed_x10(pusch_vars->ulsch_noise_power_tot),
               gNB->pusch_thres);
-        pusch_vars->ulsch_power_tot = pusch_vars->ulsch_noise_power_tot;
+        if (pusch_vars->ulsch_power_tot < pusch_vars->ulsch_noise_power_tot)
+          pusch_vars->ulsch_power_tot = pusch_vars->ulsch_noise_power_tot;
         pusch_vars->DTX = 1;
         if (stats)
           stats->ulsch_stats.DTX++;

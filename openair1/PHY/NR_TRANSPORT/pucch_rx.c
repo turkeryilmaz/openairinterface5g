@@ -1703,7 +1703,7 @@ void nr_decode_pucch2(PHY_VARS_gNB *gNB,
   // TODO this computation is wrong -> to be ignored at MAC for now
   int SNRtimes10 = dB_fixed_times10(signal_energy_nodc((int32_t *)&rxdataF[0][soffset+(l2*frame_parms->ofdm_symbol_size)+re_offset[0]],
                                                        12*pucch_pdu->prb_size)) -
-                                                       (10*gNB->measurements.n0_power_tot_dB);
+                                                       (10*gNB->measurements.n0_subband_power_avg_dB);
   int cqi,bit_left;
   if (SNRtimes10 < -640) cqi=0;
   else if (SNRtimes10 >  635) cqi=255;

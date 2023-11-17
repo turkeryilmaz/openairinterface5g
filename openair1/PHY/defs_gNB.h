@@ -554,10 +554,6 @@ typedef struct {
   unsigned int   n0_power[MAX_NUM_RU_PER_gNB];
   //! estimated noise power (dB)
   unsigned int n0_power_dB[MAX_NUM_RU_PER_gNB];
-  //! total estimated noise power (linear)
-  unsigned int   n0_power_tot;
-  //! estimated avg noise power (dB)
-  unsigned int n0_power_tot_dB;
   //! estimated avg noise power per RB per RX ant (lin)
   fourDimArray_t *n0_subband_power;
   //! estimated avg noise power per RB per RX ant (dB)
@@ -597,7 +593,6 @@ typedef struct PHY_VARS_gNB_s {
   eth_params_t         eth_params_n;
   /// Ethernet parameters for fronthaul interface
   eth_params_t         eth_params;
-  int                  rx_total_gain_dB;
   int                  (*nr_start_if)(struct RU_t_s *ru, struct PHY_VARS_gNB_s *gNB);
   uint8_t              local_flag;
   nfapi_nr_config_request_scf_t  gNB_config;

@@ -201,7 +201,7 @@ void gNB_I0_measurements(PHY_VARS_gNB *gNB,int slot, int first_symb,int num_symb
       }
       n0_subband_tot_perPRB/=frame_parms->nb_antennas_rx;
       measurements->n0_subband_power_tot_dB[rb] = dB_fixed(n0_subband_tot_perPRB);
-      measurements->n0_subband_power_tot_dBm[rb] = measurements->n0_subband_power_tot_dB[rb] - gNB->rx_total_gain_dB - dB_fixed(frame_parms->N_RB_UL);
+      measurements->n0_subband_power_tot_dBm[rb] = measurements->n0_subband_power_tot_dB[rb] - openair0_cfg[0].rx_gain[0];
       LOG_D(PHY,"n0_subband_power_tot_dB[%d] => %d, over %d symbols\n",rb,measurements->n0_subband_power_tot_dB[rb],nb_symb[rb]);
       n0_subband_tot += n0_subband_tot_perPRB;
       nb_rb++;
@@ -231,7 +231,6 @@ void nr_gnb_measurements(PHY_VARS_gNB *gNB,
   unsigned short rx_power_tot_dB;
 
   double             rx_gain = openair0_cfg[0].rx_gain[0];
-  double      rx_gain_offset = openair0_cfg[0].rx_gain_offset[0];
   PHY_MEASUREMENTS_gNB *meas = &gNB->measurements;
   NR_DL_FRAME_PARMS      *fp = &gNB->frame_parms;
   int              ch_offset = fp->ofdm_symbol_size * symbol;
@@ -260,21 +259,21 @@ void nr_gnb_measurements(PHY_VARS_gNB *gNB,
 
     rx_power_tot += rx_power[aarx];
   }
+  rx_power_tot /= fp->nb_antennas_rx;
 
   rx_power_tot_dB = (unsigned short)dB_fixed(rx_power_tot);
   rx_power_avg_dB = rx_power_tot_dB;
 
-  ulsch_measurements->wideband_cqi_tot = dB_fixed2(rx_power_tot, meas->n0_power_tot);
-  ulsch_measurements->rx_rssi_dBm =
-      rx_power_avg_dB + 30 - 10 * log10(pow(2, 30)) - (rx_gain - rx_gain_offset) - dB_fixed(fp->ofdm_symbol_size);
+  ulsch_measurements->wideband_cqi_tot = rx_power_avg_dB - meas->n0_subband_power_avg_dB;
+  ulsch_measurements->rx_rssi_dBm = rx_power_avg_dB - rx_gain;
 
   LOG_D(PHY,
-        "[RNTI %04x] RSSI %d dBm/RE, RSSI (digital) %d dB (N_RB_UL %d), WBand CQI tot %d dB, N0 Power tot %d, RX Power tot %d\n",
+        "[RNTI %04x] RSSI %d dBm/RE, RSSI (digital) %d dB/RE (N_RB_UL %d), WBand CQI tot %d dB, N0 Power tot %d, RX Power tot %d\n",
         ulsch->rnti,
         ulsch_measurements->rx_rssi_dBm,
         rx_power_avg_dB,
         N_RB_UL,
         ulsch_measurements->wideband_cqi_tot,
-        meas->n0_power_tot,
+        meas->n0_subband_power_avg_dB,
         rx_power_tot);
 }
