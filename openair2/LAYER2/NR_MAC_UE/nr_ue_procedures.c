@@ -712,12 +712,12 @@ static int nr_ue_process_dci_dl_10(module_id_t module_id,
     return -1;
   }
 
+  NR_UE_HARQ_STATUS_t *current_harq = &mac->dl_harq_info[dci->harq_pid];
   int R = nr_get_code_rate_dl(dlsch_pdu->mcs, dlsch_pdu->mcs_table);
-  dlsch_pdu->targetCodeRate = R;
-
-  int nb_rb_oh = 0; // it was not computed at UE side even before and set to 0 in nr_compute_tbs
-  int nb_re_dmrs = ((dlsch_pdu->dmrsConfigType == NFAPI_NR_DMRS_TYPE1) ? 6 : 4) * dlsch_pdu->n_dmrs_cdm_groups;
-  if (R > 0)
+  if (R > 0) {
+    dlsch_pdu->targetCodeRate = R;
+    int nb_rb_oh = 0; // it was not computed at UE side even before and set to 0 in nr_compute_tbs
+    int nb_re_dmrs = ((dlsch_pdu->dmrsConfigType == NFAPI_NR_DMRS_TYPE1) ? 6 : 4) * dlsch_pdu->n_dmrs_cdm_groups;
     dlsch_pdu->TBS = nr_compute_tbs(dlsch_pdu->qamModOrder,
                                     R,
                                     dlsch_pdu->number_rbs,
@@ -726,6 +726,14 @@ static int nr_ue_process_dci_dl_10(module_id_t module_id,
                                     nb_rb_oh,
                                     0,
                                     1);
+    // storing for possible retransmissions
+    current_harq->R = dlsch_pdu->targetCodeRate;
+    current_harq->TBS = dlsch_pdu->TBS;
+  }
+  else {
+    dlsch_pdu->targetCodeRate = current_harq->R;
+    dlsch_pdu->TBS = current_harq->TBS;
+  }
 
   int bw_tbslbrm;
   if (current_DL_BWP->initial_BWPSize > 0)
@@ -893,7 +901,6 @@ static int nr_ue_process_dci_dl_11(module_id_t module_id,
   fapi_nr_dl_config_request_t *dl_config = get_dl_config_request(mac, slot);
   fapi_nr_dl_config_request_pdu_t *dl_conf_req = &dl_config->dl_config_list[dl_config->number_pdus];
 
-  dl_conf_req->pdu_type = FAPI_NR_DL_CONFIG_TYPE_DLSCH;
   dl_conf_req->dlsch_config_pdu.rnti = dci_ind->rnti;
 
   fapi_nr_dl_config_dlsch_pdu_rel15_t *dlsch_pdu = &dl_conf_req->dlsch_config_pdu.dlsch_config_rel15;
@@ -1114,20 +1121,12 @@ static int nr_ue_process_dci_dl_11(module_id_t module_id,
                   dci_ind->N_CCE,
                   frame,
                   slot);
-
-  dl_conf_req->pdu_type = FAPI_NR_DL_CONFIG_TYPE_DLSCH;
-  LOG_D(MAC, "(nr_ue_procedures.c) pdu_type=%d\n\n", dl_conf_req->pdu_type);
-
-  dl_config->number_pdus++; // The DCI configuration is valid, we add it in the list
-
   // send the ack/nack slot number to phy to indicate tx thread to wait for DLSCH decoding
   dlsch_pdu->k1_feedback = feedback_ti;
 
   /* TODO same calculation for MCS table as done in UL */
   dlsch_pdu->mcs_table = (pdsch_Config->mcs_Table) ? (*pdsch_Config->mcs_Table + 1) : 0;
   dlsch_pdu->qamModOrder = nr_get_Qm_dl(dlsch_pdu->mcs, dlsch_pdu->mcs_table);
-  int R = nr_get_code_rate_dl(dlsch_pdu->mcs, dlsch_pdu->mcs_table);
-  dlsch_pdu->targetCodeRate = R;
   if (dlsch_pdu->qamModOrder == 0) {
     LOG_W(MAC, "Invalid code rate or Mod order, likely due to unexpected DL DCI.\n");
     return -1;
@@ -1139,7 +1138,11 @@ static int nr_ue_process_dci_dl_11(module_id_t module_id,
   }
   int nb_rb_oh = 0; // it was not computed at UE side even before and set to 0 in nr_compute_tbs
   int nb_re_dmrs = ((dmrs_type == NULL) ? 6 : 4) * dlsch_pdu->n_dmrs_cdm_groups;
-  if (R > 0)
+
+  NR_UE_HARQ_STATUS_t *current_harq = &mac->dl_harq_info[dci->harq_pid];
+  int R = nr_get_code_rate_dl(dlsch_pdu->mcs, dlsch_pdu->mcs_table);
+  if (R > 0) {
+    dlsch_pdu->targetCodeRate = R;
     dlsch_pdu->TBS = nr_compute_tbs(dlsch_pdu->qamModOrder,
                                     R,
                                     dlsch_pdu->number_rbs,
@@ -1148,6 +1151,14 @@ static int nr_ue_process_dci_dl_11(module_id_t module_id,
                                     nb_rb_oh,
                                     0,
                                     Nl);
+    // storing for possible retransmissions
+    current_harq->R = dlsch_pdu->targetCodeRate;
+    current_harq->TBS = dlsch_pdu->TBS;
+  }
+  else {
+    dlsch_pdu->targetCodeRate = current_harq->R;
+    dlsch_pdu->TBS = current_harq->TBS;
+  }
 
   // TBS_LBRM according to section 5.4.2.1 of 38.212
   long *maxMIMO_Layers = current_DL_BWP->pdsch_servingcellconfig->ext1->maxMIMO_Layers;
@@ -1175,7 +1186,8 @@ static int nr_ue_process_dci_dl_11(module_id_t module_id,
     }
   }
   // the prepared dci is valid, we add it in the list
-  dl_config->number_pdus++;
+  dl_conf_req->pdu_type = FAPI_NR_DL_CONFIG_TYPE_DLSCH;
+  dl_config->number_pdus++; // The DCI configuration is valid, we add it in the list
   return 0;
 }
 
@@ -1247,8 +1259,8 @@ void set_harq_status(NR_UE_MAC_INST_t *mac,
                      int n_CCE,
                      int N_CCE,
                      frame_t frame,
-                     int slot) {
-
+                     int slot)
+{
   NR_UE_HARQ_STATUS_t *current_harq = &mac->dl_harq_info[harq_id];
 
   current_harq->active = true;
@@ -3598,7 +3610,7 @@ void nr_ue_process_mac_pdu(nr_downlink_indication_t *dl_info,
           break;
         }
 
-        if ( mac_len > 0 ) {
+        if (mac_len > 0) {
           LOG_D(NR_MAC,"DL_SCH_LCID_CCCH (e.g. RRCSetup) with payload len %d\n", mac_len);
           for (int i = 0; i < mac_subheader_len; i++) {
             LOG_D(NR_MAC, "MAC header %d: 0x%x\n", i, pduP[i]);
@@ -3606,7 +3618,18 @@ void nr_ue_process_mac_pdu(nr_downlink_indication_t *dl_info,
           for (int i = 0; i < mac_len; i++) {
             LOG_D(NR_MAC, "%d: 0x%x\n", i, pduP[mac_subheader_len + i]);
           }
-          nr_mac_rrc_data_ind_ue(module_idP, CC_id, gNB_index, frameP, 0, mac->crnti, CCCH, pduP+mac_subheader_len, mac_len);
+
+          mac_rlc_data_ind(module_idP,
+                           mac->crnti,
+                           module_idP,
+                           frameP,
+                           ENB_FLAG_NO,
+                           MBMS_FLAG_NO,
+                           0,
+                           (char *)(pduP + mac_subheader_len),
+                           mac_len,
+                           1,
+                           NULL);
         }
         break;
       case DL_SCH_LCID_TCI_STATE_ACT_UE_SPEC_PDSCH:
@@ -4112,7 +4135,7 @@ int nr_ue_process_rar(nr_downlink_indication_t *dl_info, int pdu_id)
     LOG_I(NR_MAC, "rar->TCRNTI_1 = 0x%x\n", rar->TCRNTI_1);
     LOG_I(NR_MAC, "rar->TCRNTI_2 = 0x%x\n", rar->TCRNTI_2);
 
-    LOG_I(NR_MAC, "In %s:[%d.%d]: [UE %d] Received RAR with t_alloc %d f_alloc %d ta_command %d mcs %d freq_hopping %d tpc_command %d t_crnti %x \n",
+    LOG_I(NR_MAC, "In %s:[%d.%d]: [UE %d] Received RAR with t_alloc %d f_alloc %d ta_command %d mcs %d freq_hopping %d tpc_command %d\n",
       __FUNCTION__,
       frame,
       slot,
@@ -4122,8 +4145,7 @@ int nr_ue_process_rar(nr_downlink_indication_t *dl_info, int pdu_id)
       ta_command,
       rar_grant.mcs,
       rar_grant.freq_hopping,
-      tpc_command,
-      ra->t_crnti);
+      tpc_command);
 #endif
 
     // Schedule Msg3
@@ -4135,7 +4157,7 @@ int nr_ue_process_rar(nr_downlink_indication_t *dl_info, int pdu_id)
     }
     ret = nr_ue_pusch_scheduler(mac, is_Msg3, frame, slot, &frame_tx, &slot_tx, tda_info.k2);
 
-    if (ret != -1){
+    if (ret != -1) {
 
       fapi_nr_ul_config_request_t *ul_config = get_ul_config_request(mac, slot_tx, tda_info.k2);
       uint16_t rnti = mac->crnti;
@@ -4151,6 +4173,7 @@ int nr_ue_process_rar(nr_downlink_indication_t *dl_info, int pdu_id)
       if (!ra->cfra) {
         ra->t_crnti = rar->TCRNTI_2 + (rar->TCRNTI_1 << 8);
         rnti = ra->t_crnti;
+        send_msg3_rrc_request(mod_id, rnti);
       }
 
       pthread_mutex_lock(&ul_config->mutex_ul_config);
