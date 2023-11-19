@@ -7948,8 +7948,28 @@ void idft(uint8_t sizeidx, int16_t *input,int16_t *output,unsigned char scale_fl
 #ifdef MR_MAIN
 #include <string.h>
 #include <stdio.h>
+#include "common/config/config_load_configmodule.h"
+#include "../../SIMULATION/TOOLS/sim.h"
 
-#define LOG_M write_output
+configmodule_interface_t *cfgptr=NULL;
+configmodule_interface_t *uniqCfg = NULL;
+
+void exit_function(const char *file, const char *function, const int line, const char *s, const int assert) {
+  exit(-1);
+}
+
+static
+int64_t time_now_ns(void)
+{
+  struct timespec tms;
+
+  if (clock_gettime(CLOCK_REALTIME,&tms)) {
+    return -1;
+  }
+  int64_t nanos = tms.tv_sec * 1000000000 + tms.tv_nsec;
+  return nanos;
+}
+/*#define LOG_M write_output
 int write_output(const char *fname,const char *vname,void *data,int length,int dec,char format)
 {
 
@@ -8104,7 +8124,7 @@ int write_output(const char *fname,const char *vname,void *data,int length,int d
 
   return 0;
 }
-
+*/
 
 int main(int argc, char**argv)
 {
@@ -8601,14 +8621,15 @@ int main(int argc, char**argv)
       ((int16_t*)x)[i] = -364;
   }
   reset_meas(&ts);
-
+  int64_t t0=time_now_ns();
   for (i=0; i<10000; i++) {
     start_meas(&ts);
     idft4096((int16_t *)x,(int16_t *)y,1);
     stop_meas(&ts);
   }
 
-  printf("\n\n4096-point(%f cycles)\n",(double)ts.diff/(double)ts.trials);
+  int64_t t1=time_now_ns();
+  printf("\n\n4096-point(%f cycles, %d ns)\n",(double)ts.diff/(double)ts.trials,(t1-t0)/10000);
   LOG_M("y4096.m","y4096",y,4096,1,1);
   LOG_M("x4096.m","x4096",x,4096,1,1);
 
