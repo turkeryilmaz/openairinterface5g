@@ -217,10 +217,14 @@ void pucch_procedures_ue_nr(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, n
                              ue->tx_power_max_dBm,
                              ue->frame_parms.N_RB_UL,
                              nb_of_prbs);
+#ifdef DEBUG_ULPC
         LOG_D(PHY,"ULPC ENABLED: pucch_tx_power:%d , maxpower:%d, PUCCH scaling factor:%d\n",
                                                             pucch_tx_power, ue->tx_power_max_dBm, tx_amp);
+#endif
       } else {
+#ifdef DEBUG_ULPC
         LOG_D(PHY,"ULPC DISABLED: PUCCH scaling factor:%d\n", tx_amp);
+#endif
       }
 
       LOG_D(PHY,"Generation of PUCCH format %d at frame.slot %d.%d\n",pucch_pdu->format_type,proc->frame_tx,nr_slot_tx);

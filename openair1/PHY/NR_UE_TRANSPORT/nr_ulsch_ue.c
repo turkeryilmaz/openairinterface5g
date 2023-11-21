@@ -348,10 +348,14 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
                              UE->frame_parms.N_RB_UL,
                              pusch_pdu->rb_size);
 
+#ifdef DEBUG_ULPC
     LOG_I(PHY,"ULPC ENABLED: max tx power:%d, PUSCH tx power:%d PHR:%d dB , PUSCH scaling factor:%d\n",
                                                   UE->tx_power_max_dBm, UE->tx_power_dBm[slot], ulsch_ue->PHR, tx_amp);
+#endif
   } else {
+#ifdef DEBUG_ULPC
     LOG_I(PHY,"ULPC DISABLED: PUSCH scaling factor:%d\n", tx_amp);
+#endif
   }
 
   /////////////////////////ULSCH layer mapping/////////////////////////

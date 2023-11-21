@@ -2172,11 +2172,15 @@ bool get_downlink_ack(NR_UE_MAC_INST_t *mac, frame_t frame, int slot, PUCCH_sche
 
       if (current_harq->active) {
 
-        sched_slot = current_harq->dl_slot + current_harq->feedback_to_ul + NTN_UE_k2;
+        sched_slot = current_harq->dl_slot + current_harq->feedback_to_ul;
         sched_frame = current_harq->dl_frame;
+		
+		int frame_offset = 1;
+		if (NTN_UE_k2 > 0)
+		   frame_offset = NTN_UE_k2/slots_per_frame;
 
         if (sched_slot >= slots_per_frame) {
-          sched_frame = (sched_frame + sched_slot / slots_per_frame) % MAX_FRAME_NUMBER;
+          sched_frame = (sched_frame + frame_offset) % MAX_FRAME_NUMBER;
           sched_slot %= slots_per_frame;
         }
         AssertFatal(sched_slot < slots_per_frame, "sched_slot was calculated incorrect %d\n", sched_slot);
@@ -4537,8 +4541,10 @@ void nr_get_pusch_tx_power_ue_parameters(NR_UE_MAC_INST_t *mac,
   int16_t pathloss = compute_nr_SSB_PL(mac, mac->ssb_measurements.ssb_rsrp_dBm);
   pusch_pdu->pathloss_compensation = alpha*pathloss;
 
+#ifdef DEBUG_ULPC
   LOG_I(MAC, "P0_NOMINAL_PUSCH:%d, P0_UE_PUSCH:%d, AlphaVal:%d alpha = %lf, pathloss:%d dB\n",
                                         P0_NOMINAL_PUSCH, P0_UE_PUSCH,alpha_val, alpha, pathloss);
+#endif
 
   pusch_pdu->P0_PUSCH = P0_NOMINAL_PUSCH + P0_UE_PUSCH;
   //if IE tpc_accumulation is NULL, tpc accumulation is enabled. if IE present, tpc accumulation is disabled.
