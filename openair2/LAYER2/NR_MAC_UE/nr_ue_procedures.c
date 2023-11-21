@@ -1552,8 +1552,10 @@ int16_t get_pucch_tx_power_ue(NR_UE_MAC_INST_t *mac,
 
   int16_t pucch_power = P_O_PUCCH + M_pucch_component + pathloss + delta_F_PUCCH + DELTA_TF + G_b_f_c;
 
-  LOG_I(MAC, "PUCCH ( Tx power : %d dBm ) ( 10Log(...) : %d ) ( from Path Loss : %d ) ( delta_F_PUCCH : %d ) ( DELTA_TF : %d ) ( G_b_f_c : %d ) \n",
+#ifdef DEBUG_ULPC
+    LOG_I(MAC, "PUCCH ( Tx power : %d dBm ) ( 10Log(...) : %d ) ( from Path Loss : %d ) ( delta_F_PUCCH : %d ) ( DELTA_TF : %d ) ( G_b_f_c : %d ) \n",
                     pucch_power, M_pucch_component, pathloss, delta_F_PUCCH, DELTA_TF, G_b_f_c);
+#endif
 
   return (pucch_power);
 }

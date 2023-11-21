@@ -519,7 +519,6 @@ void nr_ue_rrc_measurements(PHY_VARS_NR_UE *ue,
 
   ue->measurements.n0_power_tot /= ue->frame_parms.nb_antennas_rx;
   ue->measurements.n0_power_tot_dB = (unsigned short) dB_fixed(ue->measurements.n0_power_tot);
-  LOG_A(PHY, "aarx: %d\n", aarx);
 
   /* dBm/Hz*/
   const int psd_awgn = -174;
