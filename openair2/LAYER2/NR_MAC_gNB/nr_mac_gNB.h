@@ -547,6 +547,7 @@ typedef struct {
   int numPrioritizedPrbs;
   int numDedicatedPrbs;
   nssai_t nssai;
+  int allocatedPrbs;
 } NR_slice_sched_t;
 
 typedef struct {
