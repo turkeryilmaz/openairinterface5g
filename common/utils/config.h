@@ -50,8 +50,8 @@
  */
 
 #if TRACE_ASN1C_ENC_DEC
-#include "common/utils/LOG/log.h"
-#define ASN_DEBUG(x...) do{ LOG_I(ASN1,x);LOG_I(ASN1,"\n"); } while(false)
+#include "stdbool.h"
+#define ASN_DEBUG(x...) do{ printf(x);printf("\n"); } while(false)
 #else
 #define ASN_DEBUG(x...)
 #endif
