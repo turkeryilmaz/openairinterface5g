@@ -651,6 +651,12 @@ static void config_common(gNB_MAC_INST *nrmac, nr_pdsch_AntennaPorts_t pdsch_Ant
   cfg->ssb_table.ssb_subcarrier_offset.tl.tag = NFAPI_NR_CONFIG_SSB_SUBCARRIER_OFFSET_TAG;
   cfg->num_tlv++;
 
+  uint8_t *mib_payload = nrmac->common_channels[0].MIB_pdu;
+  uint32_t mib = (mib_payload[2] << 16) | (mib_payload[1] << 8) | mib_payload[0];
+  cfg->ssb_table.MIB.tl.tag = NFAPI_NR_CONFIG_MIB_TAG;
+  cfg->ssb_table.MIB.value = mib;
+  cfg->num_tlv++;
+
   nrmac->ssb_SubcarrierOffset = cfg->ssb_table.ssb_subcarrier_offset.value;
   nrmac->ssb_OffsetPointA = cfg->ssb_table.ssb_offset_point_a.value;
   LOG_I(NR_MAC,
@@ -780,7 +786,7 @@ void nr_mac_config_scc(gNB_MAC_INST *nrmac, NR_ServingCellConfigCommon_t *scc, c
 
   config_common(nrmac, config->pdsch_AntennaPorts, config->pusch_AntennaPorts, scc);
 
-  if (NFAPI_MODE == NFAPI_MODE_PNF || NFAPI_MODE == NFAPI_MODE_VNF) {
+  if (NFAPI_MODE == NFAPI_MODE_PNF || NFAPI_MODE == NFAPI_MODE_VNF || NFAPI_MODE == NFAPI_MODE_AERIAL) {
     // fake that the gNB is configured in nFAPI mode, which would normally be
     // done in a NR_PHY_config_req, but in this mode, there is no PHY
     RC.gNB[0]->configured = 1;
