@@ -80,7 +80,9 @@ unsigned short config_frames[4] = {2,9,11,13};
 #include "nfapi/oai_integration/vendor_ext.h"
 #include "gnb_config.h"
 #include "openair2/E1AP/e1ap_common.h"
-
+#ifdef ENABLE_AERIAL
+#include "fapi/oai-integration/fapi_nvIPC.h"
+#endif
 #ifdef E2_AGENT
 #include "openair2/E2AP/flexric/src/agent/e2_agent_api.h"
 #include "openair2/E2AP/RAN_FUNCTION/init_ran_func.h"
@@ -299,8 +301,10 @@ static int create_gNB_tasks(ngran_node_t node_type, configmodule_interface_t *cf
 
   RCconfig_verify(cfg, node_type);
 
-  RCconfig_NR_L1();
-  RCconfig_nr_prs();
+  if(NFAPI_MODE != NFAPI_MODE_VNF && NFAPI_MODE !=NFAPI_MODE_PNF && NFAPI_MODE != NFAPI_MODE_AERIAL){
+    RCconfig_NR_L1();
+    RCconfig_nr_prs();
+  }
 
   if (RC.nb_nr_macrlc_inst > 0)
     RCconfig_nr_macrlc(cfg);
@@ -700,7 +704,7 @@ int main( int argc, char **argv ) {
   pthread_mutex_init(&sync_mutex, NULL);
   usleep(1000);
 
-  if (NFAPI_MODE) {
+  if (NFAPI_MODE && NFAPI_MODE != NFAPI_MODE_AERIAL) {
     printf("NFAPI*** - mutex and cond created - will block shortly for completion of PNF connection\n");
     pthread_cond_init(&sync_cond,NULL);
     pthread_mutex_init(&sync_mutex, NULL);
@@ -719,7 +723,7 @@ int main( int argc, char **argv ) {
   printf("wait_gNBs()\n");
   wait_gNBs();
   printf("About to Init RU threads RC.nb_RU:%d\n", RC.nb_RU);
-  int sl_ahead=6;
+  int sl_ahead = NFAPI_MODE == NFAPI_MODE_AERIAL ? 0 : 6;
   if (RC.nb_RU >0) {
     printf("Initializing RU threads\n");
     init_NR_RU(uniqCfg, get_softmodem_params()->rf_config_file);
@@ -742,7 +746,7 @@ int main( int argc, char **argv ) {
 //////////////////////////////////
 //// Init the E2 Agent
 
-  // OAI Wrapper 
+  // OAI Wrapper
   e2_agent_args_t oai_args = RCconfig_NR_E2agent();
 
   if (oai_args.enabled) {
@@ -762,7 +766,11 @@ int main( int argc, char **argv ) {
 
   if (RC.nb_RU > 0)
     start_NR_RU();
-
+#ifdef ENABLE_AERIAL
+  if(NFAPI_MODE == NFAPI_MODE_AERIAL){
+    nvIPC_Init();
+  }
+#endif
   if (RC.nb_nr_L1_inst > 0) {
     printf("wait RUs\n");
     wait_RUs();
@@ -791,7 +799,7 @@ int main( int argc, char **argv ) {
       load_softscope("nrqt", &p);
     }
 
-    if (NFAPI_MODE != NFAPI_MODE_PNF && NFAPI_MODE != NFAPI_MODE_VNF) {
+    if (NFAPI_MODE != NFAPI_MODE_PNF && NFAPI_MODE != NFAPI_MODE_VNF && NFAPI_MODE != NFAPI_MODE_AERIAL) {
       printf("Not NFAPI mode - call init_eNB_afterRU()\n");
       init_eNB_afterRU();
     } else {

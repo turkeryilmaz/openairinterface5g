@@ -386,7 +386,7 @@ static void config_csirs(const NR_ServingCellConfigCommon_t *servingcellconfigco
     nzpcsi0->resourceMapping = resourceMapping;
     nzpcsi0->powerControlOffset = 0;
     nzpcsi0->powerControlOffsetSS = calloc(1,sizeof(*nzpcsi0->powerControlOffsetSS));
-    *nzpcsi0->powerControlOffsetSS = NR_NZP_CSI_RS_Resource__powerControlOffsetSS_db0;
+    *nzpcsi0->powerControlOffsetSS = NR_NZP_CSI_RS_Resource__powerControlOffsetSS_db_3;
     nzpcsi0->scramblingID = *servingcellconfigcommon->physCellId;
     set_csirs_periodicity(nzpcsi0, id, ideal_period, nb_slots_per_period, nb_dl_slots_period);
     nzpcsi0->qcl_InfoPeriodicCSI_RS = calloc(1,sizeof(*nzpcsi0->qcl_InfoPeriodicCSI_RS));
@@ -836,7 +836,7 @@ void nr_rrc_config_ul_tda(NR_ServingCellConfigCommon_t *scc, int min_fb_delay){
   pusch_timedomainresourceallocation->k2 = CALLOC(1,sizeof(long));
   *pusch_timedomainresourceallocation->k2 = k2;
   pusch_timedomainresourceallocation->mappingType = NR_PUSCH_TimeDomainResourceAllocation__mappingType_typeB;
-  pusch_timedomainresourceallocation->startSymbolAndLength = get_SLIV(0, 13);
+  pusch_timedomainresourceallocation->startSymbolAndLength = get_SLIV(0, 12);
   asn1cSeqAdd(&scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList->list,pusch_timedomainresourceallocation); 
 
   // UL TDA index 1 in case of SRS
@@ -909,15 +909,15 @@ static void config_pucch_resset0(NR_PUCCH_Config_t *pucch_Config, int uid, int c
 
   NR_PUCCH_Resource_t *pucchres0 = calloc(1,sizeof(*pucchres0));
   pucchres0->pucch_ResourceId = *pucchid;
-  pucchres0->startingPRB = 8 + uid;
+  pucchres0->startingPRB = 0 + uid;
   AssertFatal(pucchres0->startingPRB < curr_bwp, "Not enough resources in current BWP (size %d) to allocate uid %d\n", curr_bwp, uid);
   pucchres0->intraSlotFrequencyHopping = NULL;
   pucchres0->secondHopPRB = NULL;
   pucchres0->format.present = NR_PUCCH_Resource__format_PR_format0;
   pucchres0->format.choice.format0 = calloc(1,sizeof(*pucchres0->format.choice.format0));
   pucchres0->format.choice.format0->initialCyclicShift = 0;
-  pucchres0->format.choice.format0->nrofSymbols = 1;
-  pucchres0->format.choice.format0->startingSymbolIndex = 13;
+  pucchres0->format.choice.format0->nrofSymbols = 2;
+  pucchres0->format.choice.format0->startingSymbolIndex = 12;
   asn1cSeqAdd(&pucch_Config->resourceToAddModList->list,pucchres0);
 
   asn1cSeqAdd(&pucch_Config->resourceSetToAddModList->list,pucchresset);
@@ -941,7 +941,7 @@ static void config_pucch_resset1(NR_PUCCH_Config_t *pucch_Config, const NR_UE_NR
 
   NR_PUCCH_Resource_t *pucchres2 = calloc(1,sizeof(*pucchres2));
   pucchres2->pucch_ResourceId = *pucchressetid;
-  pucchres2->startingPRB = 0;
+  pucchres2->startingPRB = 24;
   pucchres2->intraSlotFrequencyHopping = NULL;
   pucchres2->secondHopPRB = NULL;
   pucchres2->format.present = NR_PUCCH_Resource__format_PR_format2;
