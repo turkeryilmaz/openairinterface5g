@@ -80,7 +80,10 @@
   {"TOI" ,                         CONFIG_HLP_TI_Scaling,      0,               .dblptr=&TO_IScaling,                        .defdblval=0.1,    TYPE_DOUBLE,   0}, \
   {"TOII",                         CONFIG_HLP_TO_Iinit,        0,               .iptr=&TO_IScalingInit,                      .defintval=0,      TYPE_INT,      0},  \
   {"agc",                          CONFIG_HLP_AGC,         PARAMFLAG_BOOL,      .iptr=&(nrUE_params.enable_agc),             .defintval=0,      TYPE_INT,      0},\
-  {"ulpc",                         CONFIG_HLP_ULPC,        PARAMFLAG_BOOL,      .iptr=&(nrUE_params.enable_ulpc),            .defintval=0,      TYPE_INT,      0}}
+  {"ulpc",                         CONFIG_HLP_ULPC,        PARAMFLAG_BOOL,      .iptr=&(nrUE_params.enable_ulpc),            .defintval=0,      TYPE_INT,      0},\
+  {"TOIR",                         CONFIG_HLP_TO_Init_Rate,    0,               .iptr=&TO_init_rate,                         .defintval=0,      TYPE_INT,      0},  \
+  {"FOPA",                         CONFIG_HLP_FO_Sync_Offset,  0,               .iptr=&commonDoppler,                        .defintval=0,      TYPE_INT,      0},  \
+}
 // clang-format on
 
 typedef struct {

@@ -140,6 +140,9 @@
 #define CONFIG_HLP_AMC           "flag to use adaptive modulation and coding: 1 = use AMC \n"
 #define CONFIG_HLP_SINR_OSET_DL  "Additional SINR offset in [dB] applied to the reported SINR from UE for DL AMC \n"
 #define CONFIG_HLP_SINR_OSET_UL  "Additional SINR offset in [dB] applied to the measured SINR at gNB for UL AMC \n"
+#define CONFIG_HLP_TO_Init_Rate     "change rate of the timing offset during the initialization phase, in samples/frame \n"
+#define CONFIG_HLP_FO_Sync_Offset   "frequency offset of point A \n"
+
 /*--------------------------------------------------------------------------------------------------------------------------------*/
 /*                                            command line parameters for LOG utility                                             */
 /*   optname         helpstr          paramflags          XXXptr                     defXXXval            type           numelt   */
@@ -206,5 +209,6 @@ extern double TO_PScaling;
 extern double TO_IScaling;
 
 extern int commonDoppler;
+extern int TO_init_rate; 
 
 #endif

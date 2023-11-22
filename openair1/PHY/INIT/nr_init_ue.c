@@ -385,6 +385,8 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
   // set the initial frequency offset to 0
   ue->DopplerEst = 0;
   ue->DopplerEstTot = (float)commonDoppler;
+
+  ue->TO_I_Ctrl = 0;
   
   ue->f_pusch = 0;
   return 0;

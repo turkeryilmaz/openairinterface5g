@@ -959,7 +959,7 @@ static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimest
           int nbAnt_tx = ptr->th.nbAnt;//number of Tx antennas
           
           double timeForDoppler = (double)pathStartingTime;
-          if (counter > 6000)
+          if ( ((t-> typeStamp != ENB_MAGICDL) && (TO_UE_flag == 1)) || ((TO_gNB_flag == 1) && (t->typeStamp == ENB_MAGICDL)) )
             timeForDoppler = (double)pathStartingTime + (double)SampIdxDoppler/fsamp;
           
           if (timeForDoppler > (double)pathEndingTime)
@@ -998,7 +998,7 @@ static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimest
               out[i].i += (short)(ptr->circularBuf[((t->nextRxTstamp-RFsim_PropDelay+i)*nbAnt_tx+a_tx)%CirSize].i*H_awgn_mimo[a][a_tx]);
             } // end for a_tx
 
-            if ((counter > 6000))
+            if ( ((t-> typeStamp != ENB_MAGICDL) && (TO_UE_flag == 1)) || ((TO_gNB_flag == 1) && (t->typeStamp == ENB_MAGICDL)) )
             {
               int16_t outRealTmp = out[i].r;
               int16_t outImagTmp = out[i].i;

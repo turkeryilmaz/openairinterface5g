@@ -566,6 +566,7 @@ typedef struct {
   int              rx_offset_TO; /// Timing offset used for compensating the time drift due to high speed
   int              rx_offset_slot; /// Indicating time (in slots) after rx_offset calculation
   int              rx_offset_comp; /// Already compensated rx_offset
+  int              TO_I_Ctrl;      /// accululative part for tracking timing offset 
 
   // Estimated Doppler frequency shift from the DMRS
   int32_t DopplerEst;

@@ -808,6 +808,8 @@ void *UE_thread(void *arg)
   NR_UE_MAC_INST_t *mac = get_mac_inst(0);
   int rx_offset_slot = 0; //samples to be shifted for the current slot
   int UL_TO_Tx_ofs = 0;
+  static int acc_UL_To_TX = 0;   // acculating samples compensated on UL through timing advance 
+  extern int tshift;
 
   bool syncRunning=false;
   const int nb_slot_frame = UE->frame_parms.slots_per_frame;
@@ -830,6 +832,17 @@ void *UE_thread(void *arg)
       if (res) {
         syncRunning=false;
         if (UE->is_synchronized) {
+          if (tshift)
+          {
+            int diff = TO_init_rate;   // shift in two frames       
+            UE->TO_I_Ctrl += diff;
+            UE->rx_offset_TO = (TO_PScaling*diff) + (UE->TO_I_Ctrl*TO_IScaling); //PI controller
+            UE->rx_offset_slot = 1;
+            UE->rx_offset_comp = 0;
+            int ta_shift = (UE->init_sync_frame + trashed_frames)*2*diff;
+            UE->timing_advance += ta_shift;
+            timing_advance = UE->timing_advance;
+          } 
           decoded_frame_rx = mac->mib_frame;
           LOG_I(PHY,"UE synchronized decoded_frame_rx=%d UE->init_sync_frame=%d trashed_frames=%d\n",
                 decoded_frame_rx,
@@ -922,7 +935,8 @@ void *UE_thread(void *arg)
       rx_offset_slot = UE->rx_offset_TO * UE->rx_offset_slot / nb_slot_frame - UE->rx_offset_comp;
       UE->rx_offset_comp += rx_offset_slot;
       UE->rx_offset_slot++;
-      UL_TO_Tx_ofs += 2*rx_offset_slot; //to adapt the UE's transmission time in order to get aligned at gNB
+      UL_TO_Tx_ofs = 2*rx_offset_slot; //to adapt the UE's transmission time in order to get aligned at gNB
+      acc_UL_To_TX += UL_TO_Tx_ofs;
     }
 
     readBlockSize=get_readBlockSize(slot_nr, &UE->frame_parms) + rx_offset_slot;
@@ -963,7 +977,7 @@ void *UE_thread(void *arg)
     //timing_advance += 2*rx_offset_slot;
 
     //UE->timing_advance += 1*rx_offset_slot;
-    UE->timing_advance += 2*rx_offset_slot;
+    UE->timing_advance += UL_TO_Tx_ofs;
 
     extern uint64_t RFsim_PropDelay;
     LOG_D(PHY, "RFsim_PropDelay: %lu,         TA: %d,         diff: %d,          PI_Out: %d,       offset_slot: %d,     offset_UL: %d\n", 
