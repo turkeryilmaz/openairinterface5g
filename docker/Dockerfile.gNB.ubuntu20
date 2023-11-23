@@ -93,6 +93,12 @@ COPY --from=gnb-base \
 RUN /bin/bash -c "ln -s /usr/local/lib/liboai_usrpdevif.so /usr/local/lib/liboai_device.so" && \
     ldconfig
 
+
+# Copy the relevant configuration files for gNB
+#WORKDIR /opt/oai-gnb/etc
+#COPY --from=gnb-build /oai-ran/docker/etc .
+#RUN ls /oai-ran/docker
+
 WORKDIR /opt/oai-gnb
 #EXPOSE 2152/udp  # S1U, GTP/UDP
 #EXPOSE 22100/tcp # ?
@@ -101,5 +107,9 @@ WORKDIR /opt/oai-gnb
 #EXPOSE 50000/udp # IF5 / ORI (control)
 #EXPOSE 50001/udp # IF5 / ECPRI (data)
 
-ENTRYPOINT ["/opt/oai-gnb/bin/entrypoint.sh"]
-CMD ["/opt/oai-gnb/bin/nr-softmodem", "-O", "/opt/oai-gnb/etc/gnb.conf"]
+#ENTRYPOINT ["/opt/oai-gnb/bin/entrypoint.sh"]
+#RUN /opt/oai-gnb/bin/entrypoint.sh
+#RUN ls /opt/oai-gnb/
+#RUN ls /opt/oai-gnb/
+
+CMD ["/opt/oai-gnb/bin/nr-softmodem", "-O", "/opt/oai-gnb/etc/gnb.conf", "--rfsim", "--sa"]
