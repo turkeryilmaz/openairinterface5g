@@ -145,6 +145,8 @@ struct SystemFrameNumberInfo_Type {
 
 typedef uint8_t SubFrameNumber_Type;
 
+typedef uint8_t SymbolNumber_Type;
+
 enum SubFrameInfo_Type_Sel {
 	SubFrameInfo_Type_UNBOUND_VALUE = 0,
 	SubFrameInfo_Type_Number = 1,
@@ -203,11 +205,30 @@ struct SlotTimingInfo_Type {
 	union SlotTimingInfo_Type_Value v;
 };
 
+enum SymbolTimingInfo_Type_Sel {
+	SymbolTimingInfo_Type_UNBOUND_VALUE = 0,
+	SymbolTimingInfo_Type_SymbolOffset = 1,
+	SymbolTimingInfo_Type_FirstSymbol = 2,
+	SymbolTimingInfo_Type_Any = 3,
+};
+
+union SymbolTimingInfo_Type_Value {
+	SymbolNumber_Type SymbolOffset;
+	Null_Type FirstSymbol;
+	Null_Type Any;
+};
+
+struct SymbolTimingInfo_Type {
+	enum SymbolTimingInfo_Type_Sel d;
+	union SymbolTimingInfo_Type_Value v;
+};
+
 struct SubFrameTiming_Type {
 	struct SystemFrameNumberInfo_Type SFN;
 	struct SubFrameInfo_Type Subframe;
 	HyperSystemFrameNumberInfo_Type HSFN;
 	struct SlotTimingInfo_Type Slot;
+	struct SymbolTimingInfo_Type Symbol;
 };
 
 enum TimingInfo_Type_Sel {

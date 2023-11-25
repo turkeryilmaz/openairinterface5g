@@ -1039,23 +1039,23 @@ bool ss_task_sys_nr_handle_cellConfig5G(struct NR_CellConfigRequest_Type *p_req,
 
        if (p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.SIB1.d == true && 
           p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.SIB1.v.message.v.c1.d == SQN_NR_BCCH_DL_SCH_MessageType_c1_systemInformationBlockType1  &&
-          p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.SIB1.v.message.v.c1.v.systemInformationBlockType1.cellAccessRelatedInfo.plmn_IdentityList.d == true )
+          p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.SIB1.v.message.v.c1.v.systemInformationBlockType1.cellAccessRelatedInfo.plmn_IdentityInfoList.d == true )
       {
        
         RC.nrrrc[gnbId]->configuration[nr_cell_index].cell_identity = 0;
         for (int i = 0; i < 36; i++)
         {
           RC.nrrrc[gnbId]->configuration[nr_cell_index].cell_identity += 
-          (uint64_t)(p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.SIB1.v.message.v.c1.v.systemInformationBlockType1.cellAccessRelatedInfo.plmn_IdentityList.v->cellIdentity[i])<<(35-i);
+          (uint64_t)(p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.SIB1.v.message.v.c1.v.systemInformationBlockType1.cellAccessRelatedInfo.plmn_IdentityInfoList.v->cellIdentity[i])<<(35-i);
         }
         
-        if( p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.SIB1.v.message.v.c1.v.systemInformationBlockType1.cellAccessRelatedInfo.plmn_IdentityList.v->trackingAreaCode.d == true )
+        if( p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.SIB1.v.message.v.c1.v.systemInformationBlockType1.cellAccessRelatedInfo.plmn_IdentityInfoList.v->trackingAreaCode.d == true )
         RC.nrrrc[gnbId]->configuration[nr_cell_index].tac = 0;
         for (int i = 0; i < 24; i++)
           {
-            RC.nrrrc[gnbId]->configuration[nr_cell_index].tac  +=p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.SIB1.v.message.v.c1.v.systemInformationBlockType1.cellAccessRelatedInfo.plmn_IdentityList.v->trackingAreaCode.v[i] << (23 - i);
+            RC.nrrrc[gnbId]->configuration[nr_cell_index].tac  +=p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.SIB1.v.message.v.c1.v.systemInformationBlockType1.cellAccessRelatedInfo.plmn_IdentityInfoList.v->trackingAreaCode.v[i] << (23 - i);
           }
-        //BIT_STRING_to_uint32(p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.SIB1.v.message.v.c1.v.systemInformationBlockType1.cellAccessRelatedInfo.plmn_IdentityList.v->trackingAreaCode.v);
+        //BIT_STRING_to_uint32(p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.SIB1.v.message.v.c1.v.systemInformationBlockType1.cellAccessRelatedInfo.plmn_IdentityInfoList.v->trackingAreaCode.v);
           
         LOG_I(GNB_APP, "SIB1 tac:%d for cell_index:%d RC.nrrrc[gnbId]->configuration[nr_cell_index].cell_identity %ld\n", RC.nrrrc[gnbId]->configuration[nr_cell_index].tac , nr_cell_index, RC.nrrrc[gnbId]->configuration[nr_cell_index].cell_identity);
       }
