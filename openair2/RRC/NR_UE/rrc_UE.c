@@ -99,6 +99,8 @@ static const char  nr_nas_attach_req_imsi[] = {
 
 static size_t nr_rrc_ue_RRCSetupRequest_count = 0;
 static bool need_registration = true;
+static bool isRrcRelease = false;
+
 
 void
 nr_rrc_ue_process_ueCapabilityEnquiry(
@@ -562,6 +564,48 @@ static inline uint64_t bitStr_to_uint64(BIT_STRING_t *asn) {
   return result;
 }
 
+
+ int8_t nr_rrc_ue_paging_force_idle(
+   const uint8_t                gNB_indexP){
+   MessageDef *msg_p;
+
+   LOG_E(NR_RRC, "%s: Bug 131057 - [L3 SIMU] recurrent crash on OAI UE\n", __FUNCTION__);
+
+   msg_p = itti_alloc_new_message(TASK_RRC_NRUE, 0, NAS_CONN_RELEASE_IND);
+   protocol_ctxt_t ctxt_pP;
+
+           PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt_pP,
+                                       NR_RRC_DCCH_DATA_IND (msg_p).module_id,
+                                       GNB_FLAG_NO,
+                                       NR_RRC_DCCH_DATA_IND (msg_p).rnti,
+                                       NR_RRC_DCCH_DATA_IND (msg_p).frame,
+                                       0,
+                                       NR_RRC_DCCH_DATA_IND (msg_p).gNB_index);
+
+  itti_send_msg_to_task(TASK_NAS_NRUE, ctxt_pP.instance, msg_p);
+
+   NR_UE_MAC_INST_t *mac = get_mac_inst(ctxt_pP.module_id);
+   memset(mac->logicalChannelBearer_exist, 0, sizeof(mac->logicalChannelBearer_exist));
+   mac->phy_config_request_sent = false;
+  mac->state = UE_NOT_SYNC;
+  rrc_rlc_remove_ue(&ctxt_pP);
+  nr_pdcp_remove_UE(ctxt_pP.rntiMaybeUEid);
+
+  nr_rrc_set_state(ctxt_pP.module_id, RRC_STATE_IDLE_NR);
+  nr_rrc_set_sub_state(ctxt_pP.module_id, RRC_SUB_STATE_IDLE_NR);
+
+  NR_UE_rrc_inst[ctxt_pP.module_id].Srb0[gNB_indexP].Tx_buffer.payload_size = 0;
+  NR_UE_rrc_inst[ctxt_pP.module_id].cell_group_config = NULL;
+  NR_UE_rrc_inst[ctxt_pP.module_id].SRB1_config[gNB_indexP] = NULL;
+  NR_UE_rrc_inst[ctxt_pP.module_id].SRB2_config[gNB_indexP] = NULL;
+  NR_UE_rrc_inst[ctxt_pP.module_id].DRB_config[gNB_indexP][0] = NULL;
+  NR_UE_rrc_inst[ctxt_pP.module_id].DRB_config[gNB_indexP][1] = NULL;
+  NR_UE_rrc_inst[ctxt_pP.module_id].DRB_config[gNB_indexP][2] = NULL;
+}
+
+
+
+
 // TODO: temporary, to support paging from TTCN
 static void nr_ue_check_paging(const module_id_t module_id, const uint8_t gNB_index, NR_PCCH_Message_t *pcch)
 {
@@ -580,6 +624,10 @@ static void nr_ue_check_paging(const module_id_t module_id, const uint8_t gNB_in
 
             if (tmsi == tsc_NG_TMSI1) {
                 found = true;
+                if (isRrcRelease == false){
+                  nr_rrc_ue_paging_force_idle(gNB_index);
+                  isRrcRelease = false;
+                }
                 break;
             }
         } else if (rec->ue_Identity.present == NR_PagingUE_Identity_PR_fullI_RNTI) {
@@ -587,6 +635,10 @@ static void nr_ue_check_paging(const module_id_t module_id, const uint8_t gNB_in
 
             if (rnti == tsc_NR_I_RNTI_Value1) {
                 found = true;
+                if (!isRrcRelease == false){
+                  nr_rrc_ue_paging_force_idle(gNB_index);
+                  isRrcRelease = false;
+                }
                 break;
             }
         } else {
@@ -2363,7 +2415,7 @@ int32_t nr_rrc_ue_establish_drb(module_id_t ue_mod_idP,
        case NR_DL_DCCH_MessageType__c1_PR_rrcRelease:
          LOG_I(NR_RRC, "[UE %d] Received RRC Release (gNB %d)\n",
            ctxt_pP->module_id, gNB_indexP);
-
+         isRrcRelease = true;
          msg_p = itti_alloc_new_message(TASK_RRC_NRUE, 0, NAS_CONN_RELEASE_IND);
 
          if((dl_dcch_msg->message.choice.c1->choice.rrcRelease->criticalExtensions.present == NR_RRCRelease__criticalExtensions_PR_rrcRelease) &&
@@ -2378,16 +2430,10 @@ int32_t nr_rrc_ue_establish_drb(module_id_t ue_mod_idP,
 
          itti_send_msg_to_task(TASK_NAS_NRUE, ctxt_pP->instance, msg_p);
 
-         /* simulate power OFF, to be able to send RRCSetupRequest to TTCN again */
-         LOG_W(NR_RRC, "todo, sleep before removing UE\n");
-
          NR_UE_MAC_INST_t *mac = get_mac_inst(ctxt_pP->module_id);
          memset(mac->logicalChannelBearer_exist, 0, sizeof(mac->logicalChannelBearer_exist));
          mac->phy_config_request_sent = false;
          mac->state = UE_NOT_SYNC;
-
-         sleep(3);
-
          rrc_rlc_remove_ue(ctxt_pP);
          nr_pdcp_remove_UE(ctxt_pP->rntiMaybeUEid);
 
@@ -2403,7 +2449,6 @@ int32_t nr_rrc_ue_establish_drb(module_id_t ue_mod_idP,
          NR_UE_rrc_inst[ctxt_pP->module_id].DRB_config[gNB_indexP][2] = NULL;
 
          LOG_W(NR_RRC, "todo, UE removed\n");
-
        break;
 
        case NR_DL_DCCH_MessageType__c1_PR_ueCapabilityEnquiry:

@@ -413,6 +413,11 @@ static int create_gNB_tasks(void) {
         LOG_E(GNB_APP, "Create task for SS Port manager GNB failed\n");
         return -1;
       }
+      if(itti_create_task(TASK_SS_PORTMAN_ACP, ss_gNB_port_man_acp_task, NULL) < 0)
+      {
+        LOG_E(GNB_APP, "Create task for SS Port manager ACP failed\n");
+        return -1;
+      }
       /* This sleep is for gNB_app_task to load the RRC configuration */
       usleep(1000);
       if(itti_create_task(TASK_SYS_GNB, ss_gNB_sys_task, NULL) < 0)
@@ -431,13 +436,28 @@ static int create_gNB_tasks(void) {
         return -1;
       }
 
+      if(itti_create_task(TASK_SS_SRB_ACP, ss_gNB_srb_acp_task, NULL) < 0) {
+        LOG_E(SCTP, "Create task for SS SRB ACP failed\n");
+        return -1;
+      }
+
       if(itti_create_task(TASK_SS_DRB, ss_gNB_drb_task, NULL) < 0) {
         LOG_E(SCTP, "Create task for SS DRB failed\n");
         return -1;
       }
 
+      if(itti_create_task(TASK_SS_DRB_ACP, ss_gNB_drb_acp_task, NULL) < 0) {
+        LOG_E(SCTP, "Create task for SS DRB ACP failed\n");
+        return -1;
+      }
+
       if(itti_create_task(TASK_VTP, ss_gNB_vtp_task, NULL) < 0) {
         LOG_E(SCTP, "Create task for TASK_VTP failed\n");
+        return -1;
+      }
+
+      if(itti_create_task(TASK_VTP_ACP, ss_gNB_vtp_acp_task, NULL) < 0) {
+        LOG_E(SCTP, "Create task for TASK VTP ACP failed\n");
         return -1;
       }
 

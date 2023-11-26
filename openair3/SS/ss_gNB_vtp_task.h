@@ -27,6 +27,7 @@
 
 uint8_t ss_gNB_vtp_process_itti_msg(void);
 void *ss_gNB_vtp_task(void *arg);
+void *ss_gNB_vtp_acp_task(void *arg);
 
 typedef enum VtpProxyCmd
 {

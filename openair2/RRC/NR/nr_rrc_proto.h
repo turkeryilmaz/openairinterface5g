@@ -113,6 +113,9 @@ rrc_gNB_generate_RRCRelease(
    \param void *args_p Pointer on arguments to start the task. */
 void *rrc_gnb_task(void *args_p);
 
+/* Trigger RRC periodic processing. To be called once per ms */
+void nr_rrc_trigger(protocol_ctxt_t *ctxt, int frame, int subframe);
+
 /**\ Function to set or overwrite PTRS DL RRC parameters.
    \ *bwp Pointer to dedicated RC config structure
    \ *ptrsNrb Pointer to K_ptrs N_RB related parameters

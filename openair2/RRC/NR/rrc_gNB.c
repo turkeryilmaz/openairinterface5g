@@ -2068,7 +2068,7 @@ static int nr_rrc_gNB_decode_ccch(module_id_t module_id, rnti_t rnti, const uint
             break;
           }
           gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
-          UE = &ue_context_p->ue_context;
+          UE->primaryCC_id = CC_id;
           UE->establishment_cause = rrcSetupRequest->establishmentCause;
           UE->Srb[1].Active = 1;
           rrc_gNB_generate_RRCSetup(module_id,
@@ -3046,6 +3046,40 @@ static int get_dl_mimo_layers(const gNB_RRC_INST *rrc, const NR_UE_NR_Capability
   return(1);
 }
 
+
+void nr_rrc_ss_subframe_process(protocol_ctxt_t *const ctxt_pP)
+{
+  if(RC.ss.mode < SS_SOFTMODEM){
+    return;
+  }
+
+  MessageDef *msg;
+  gNB_RRC_INST *rrc = RC.nrrrc[ctxt_pP->module_id];
+  rrc_gNB_ue_context_t *ue_context_p = NULL;
+  RB_FOREACH(ue_context_p, rrc_nr_ue_tree_s, &rrc->rrc_ue_head)
+  {
+    gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
+    ctxt_pP->rntiMaybeUEid = UE->rnti;
+
+    if (UE->ue_release_timer_rrc > 0) {
+      UE->ue_release_timer_rrc++;
+
+      if (UE->ue_release_timer_rrc >= UE->ue_release_timer_thres_rrc) {
+        LOG_I(NR_RRC, "Removing UE %x instance ue_release_timer_rrc timeout\n", UE->rnti);
+        UE->ue_release_timer_rrc = 0;
+        nr_rrc_mac_remove_ue(UE->primaryCC_id, ctxt_pP->rntiMaybeUEid);
+        rrc_rlc_remove_ue(ctxt_pP);
+        nr_pdcp_remove_UE(ctxt_pP->rntiMaybeUEid);
+
+        /* remove RRC UE Context */
+        LOG_I(NR_RRC, "remove UE %04x \n", UE->rnti);
+        rrc_gNB_remove_ue_context(rrc, ue_context_p);
+        break;/* break  RB_FOREACH */
+      }
+    }
+  }
+}
+
 int rrc_gNB_process_e1_setup_req(e1ap_setup_req_t *req, instance_t instance) {
 
   AssertFatal(req->supported_plmns <= PLMN_LIST_MAX_SIZE, "Supported PLMNs is more than PLMN_LIST_MAX_SIZE\n");
@@ -3240,6 +3274,10 @@ void *rrc_gnb_task(void *args_p) {
         /* only this one handled for now */
         DevAssert(TIMER_HAS_EXPIRED(msg_p).timer_id == stats_timer_id);
         write_rrc_stats(RC.nrrrc[0]);
+        break;
+
+      case RRC_SUBFRAME_PROCESS:
+        nr_rrc_ss_subframe_process(&RRC_SUBFRAME_PROCESS(msg_p).ctxt);
         break;
 
       case F1AP_INITIAL_UL_RRC_MESSAGE:
@@ -3478,6 +3516,8 @@ void *rrc_gnb_task(void *args_p) {
               rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context_by_rnti(RC.nrrrc[ctxt.module_id], ctxt.rntiMaybeUEid);
               if (ue_context_p) {
                 LOG_I(NR_RRC, "rrcRelease UE rnti: %lx \n", ctxt.rntiMaybeUEid);
+                ue_context_p->ue_context.ue_release_timer_rrc = 1;
+                ue_context_p->ue_context.ue_release_timer_thres_rrc = 10; /* give enough time for low layer to transmit the rrcRelease message */
                 ue_context_p->ue_context.ue_rrc_inactivity_timer = 0;
               }
               else
@@ -3833,4 +3873,14 @@ int rrc_gNB_generate_pcch_msg(uint32_t tmsi, uint8_t paging_drx, instance_t inst
   // TODO, send message to pdcp
 
   return 0;
+}
+
+void nr_rrc_trigger(protocol_ctxt_t *ctxt, int frame, int subframe)
+{
+  MessageDef *message_p;
+  message_p = itti_alloc_new_message(TASK_RRC_GNB, 0, RRC_SUBFRAME_PROCESS);
+  RRC_SUBFRAME_PROCESS(message_p).ctxt  = *ctxt;
+  RRC_SUBFRAME_PROCESS(message_p).CC_id = 0;
+  LOG_D(NR_RRC, "Time in RRC: %u/ %u \n", frame, subframe);
+  itti_send_msg_to_task(TASK_RRC_GNB, ctxt->module_id, message_p);
 }

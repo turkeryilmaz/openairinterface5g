@@ -306,7 +306,7 @@ void ss_eNB_port_man_init(void)
     // Port number
     int port = RC.ss.Sysport;
 
-    acpInit(malloc, free, 1000);
+    acpInit(malloc, free, 0);
 
     const struct acpMsgTable msgTable[] = {
         {"SysProcess", MSG_SysProcess_userId},

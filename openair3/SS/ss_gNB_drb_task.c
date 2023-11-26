@@ -69,7 +69,9 @@ enum MsgUserId
     MSG_NrDrbProcessToSS_userId,
 };
 
-static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind, int cell_index)
+bool ss_gNB_drb_acp_task_exit = false;
+
+static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind,int cell_index)
 {
     struct NR_DRB_COMMON_IND ind = {};
 
@@ -475,15 +477,15 @@ static void ss_gNB_read_from_drb_socket(acpCtx_t ctx)
             }
             else if (userId == -ACP_PEER_DISCONNECTED)
             {
-                LOG_A(GNB_APP, "[SS_DRB] Peer ordered shutdown\n");
+                LOG_A(GNB_APP, "[SS_DRB_ACP] Peer ordered shutdown\n");
             }
             else if (userId == -ACP_PEER_CONNECTED)
             {
-                LOG_A(GNB_APP, "[SS_DRB] Peer connection established\n");
+                LOG_A(GNB_APP, "[SS_DRB_ACP] Peer connection established\n");
             }
             else
             {
-                LOG_E(GNB_APP, "[SS_DRB] Invalid userId: %d\n", userId);
+                LOG_E(GNB_APP, "[SS_DRB_ACP] Invalid userId: %d\n", userId);
                 break;
             }
         }
@@ -496,11 +498,11 @@ static void ss_gNB_read_from_drb_socket(acpCtx_t ctx)
         else if (MSG_NrDrbProcessFromSS_userId == userId)
         {
             struct NR_DRB_COMMON_REQ *req = NULL;
-            LOG_A(GNB_APP, "[SS_DRB] NR_DRB_COMMON_REQ Received\n");
+            LOG_A(GNB_APP, "[SS_DRB_ACP] NR_DRB_COMMON_REQ Received\n");
 
             if (acpNrDrbProcessFromSSDecSrv(ctx, buffer, msgSize, &req) != 0)
             {
-                LOG_E(GNB_APP, "[SS_DRB] acpNrDrbProcessFromSSDecSrv Failed\n");
+                LOG_E(GNB_APP, "[SS_DRB_ACP] acpNrDrbProcessFromSSDecSrv Failed\n");
                 break;
             }
             if(req->Common.CellId)
@@ -513,12 +515,12 @@ static void ss_gNB_read_from_drb_socket(acpCtx_t ctx)
 
             if (SS_context.SSCell_list[cell_index].State >= SS_STATE_CELL_ACTIVE)
             {
-                LOG_A(GNB_APP, "[SS_DRB] NR_DRB_COMMON_REQ received in CELL_ACTIVE\n");
-                ss_task_handle_drb_pdu_req(req, cell_index);
+                LOG_A(GNB_APP, "[SS_DRB_ACP] NR_DRB_COMMON_REQ received in CELL_ACTIVE\n");
+                ss_task_handle_drb_pdu_req(req,cell_index);
             }
             else
             {
-                LOG_W(GNB_APP, "[SS_DRB] NR_DRB_COMMON_REQ received in SS state %d \n", SS_context.SSCell_list[cell_index].State);
+                LOG_W(GNB_APP, "[SS_DRB_ACP] NR_DRB_COMMON_REQ received in SS state %d \n", SS_context.SSCell_list[cell_index].State);
             }
 
             acpNrDrbProcessFromSSFreeSrv(req);
@@ -527,7 +529,7 @@ static void ss_gNB_read_from_drb_socket(acpCtx_t ctx)
         }
         else if (MSG_NrDrbProcessToSS_userId == userId)
         {
-            LOG_A(GNB_APP, "[SS_DRB] NR_DRB_COMMON_IND Received; ignoring\n");
+            LOG_A(GNB_APP, "[SS_DRB_ACP] NR_DRB_COMMON_IND Received; ignoring\n");
             break;
         }
     }
@@ -535,70 +537,60 @@ static void ss_gNB_read_from_drb_socket(acpCtx_t ctx)
 
 void *ss_gNB_drb_process_itti_msg(void *notUsed)
 {
-    MessageDef *received_msg = NULL;
-    int result = 0;
+	MessageDef *received_msg = NULL;
+	int result = 0;
 
-    itti_poll_msg(TASK_SS_DRB, &received_msg);
+	itti_poll_msg(TASK_SS_DRB, &received_msg);
+	/* itti_receive_msg(TASK_SS_DRB, &received_msg); */
 
-    /* Check if there is a packet to handle */
-    if (received_msg != NULL)
-    {
-        switch (ITTI_MSG_ID(received_msg))
-        {
-            case SS_DRB_PDU_IND:
-                {
-                    int cell_index = 0;
-                    if(received_msg->ittiMsg.ss_drb_pdu_ind.physCellId) 
-                    {
-                      cell_index = get_gNB_cell_index_pci(received_msg->ittiMsg.ss_drb_pdu_ind.physCellId, SS_context.SSCell_list);
-                      LOG_A(ENB_SS,"[SS_DRB] cell_index in SS_DRB_PDU_IND: %d PhysicalCellId: %d \n",cell_index,SS_context.SSCell_list[cell_index].PhysicalCellId);
-                    }
-                    task_id_t origin_task = ITTI_MSG_ORIGIN_ID(received_msg);
+	/* Check if there is a packet to handle */
+	if (received_msg != NULL) {
+		switch (ITTI_MSG_ID(received_msg)) {
+			case SS_DRB_PDU_IND:
+			{
+				int cell_index = 0;
+				if(received_msg->ittiMsg.ss_drb_pdu_ind.physCellId) {
+					cell_index = get_gNB_cell_index_pci(received_msg->ittiMsg.ss_drb_pdu_ind.physCellId, SS_context.SSCell_list);
+					LOG_A(ENB_SS,"[SS_DRB] cell_index in SS_DRB_PDU_IND: %d PhysicalCellId: %d \n",cell_index,SS_context.SSCell_list[cell_index].PhysicalCellId);
+				}
+				task_id_t origin_task = ITTI_MSG_ORIGIN_ID(received_msg);
+				if (origin_task == TASK_SS_PORTMAN) {
+					LOG_D(GNB_APP, "[SS_DRB] DUMMY WAKEUP recevied from PORTMAN state %d\n", SS_context.SSCell_list[cell_index].State);
+				} else {
+					LOG_A(GNB_APP, "[SS_DRB] Received SS_DRB_PDU_IND from PDCP\n");
+					if (SS_context.SSCell_list[cell_index].State >= SS_STATE_CELL_ACTIVE) {
+						LOG_A(GNB_APP, "[SS_DRB] NR_DRB_COMMON_IND received in CELL_ACTIVE\n");
+						instance_g = ITTI_MSG_DESTINATION_INSTANCE(received_msg);
+						ss_send_drb_data(&received_msg->ittiMsg.ss_drb_pdu_ind,cell_index);
+					} else {
+						LOG_W(GNB_APP, "[SS_DRB] NR_DRB_COMMON_IND received in SS state %d\n", SS_context.SSCell_list[cell_index].State);
+					}
+				}
+			};
+			break;
 
-                    if (origin_task == TASK_SS_PORTMAN)
-                    {
-                        LOG_D(GNB_APP, "[SS_DRB] DUMMY WAKEUP recevied from PORTMAN state %d\n", SS_context.SSCell_list[cell_index].State);
-                    }
-                    else
-                    {
-                        LOG_A(GNB_APP, "[SS_DRB] Received SS_DRB_PDU_IND from PDCP\n");
-                        if (SS_context.SSCell_list[cell_index].State >= SS_STATE_CELL_ACTIVE)
-                        {
-                            LOG_A(GNB_APP, "[SS_DRB] NR_DRB_COMMON_IND received in CELL_ACTIVE\n");
-                            instance_g = ITTI_MSG_DESTINATION_INSTANCE(received_msg);
-                            ss_send_drb_data(&received_msg->ittiMsg.ss_drb_pdu_ind, cell_index);
-                        }
-                        else
-                        {
-                            LOG_W(GNB_APP, "[SS_DRB] NR_DRB_COMMON_IND received in SS state %d\n", SS_context.SSCell_list[cell_index].State);
-                        }
-                    }
-                };
-                break;
+			case TERMINATE_MESSAGE:
+				LOG_A(GNB_APP, "[SS_DRB] Received TERMINATE_MESSAGE\n");
+				ss_gNB_drb_acp_task_exit = true;
+				itti_exit_task();
+				break;
 
-            case TERMINATE_MESSAGE:
-                LOG_A(GNB_APP, "[SS_DRB] Received TERMINATE_MESSAGE\n");
-                itti_exit_task();
-                break;
+			default:
+				LOG_W(GNB_APP, "[SS_DRB] Received unhandled message %d:%s\n",
+						ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
+				break;
+		}
 
-            default:
-                LOG_W(GNB_APP, "[SS_DRB] Received unhandled message %d:%s\n",
-                        ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
-                break;
-        }
+		result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
+		AssertFatal(result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
+		received_msg = NULL;
+	}
 
-        result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
-        AssertFatal(result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
-    }
-
-    ss_gNB_read_from_drb_socket(ctx_drb_g);
-
-    return NULL;
+	return NULL;
 }
 
 void ss_gNB_drb_init(void)
 {
-    LOG_A(GNB_APP, "[SS_DRB] Starting System Simulator DRB Thread\n");
     char* host = (char*)RC.ss.DrbHost;
 
     if (host == NULL) {
@@ -630,20 +622,41 @@ void ss_gNB_drb_init(void)
     buffer = (unsigned char *)acpMalloc(size);
     assert(buffer);
 
-    itti_subscribe_event_fd(TASK_SS_DRB, fd1);
+    itti_subscribe_event_fd(TASK_SS_DRB_ACP, fd1);
 
-    itti_mark_task_ready(TASK_SS_DRB);
+    itti_mark_task_ready(TASK_SS_DRB_ACP);
 }
+
+void *ss_gNB_drb_acp_task(void *arg)
+{
+	LOG_A(GNB_APP, "[SS_DRB_ACP] Starting System Simulator DRB_ACP Thread \n");
+
+	ss_gNB_drb_init();
+	while(1) {
+		if(ctx_drb_g) {
+			ss_gNB_read_from_drb_socket(ctx_drb_g);
+		} else {
+			sleep(10);
+		}
+
+		if(ss_gNB_drb_acp_task_exit) {
+			ss_gNB_drb_acp_task_exit = false;
+			LOG_A(GNB_APP, "[SS_DRB_ACP] TERMINATE \n");
+			pthread_exit (NULL);
+		}
+	}
+
+	acpFree(buffer);
+	return NULL;
+}
+
 
 void *ss_gNB_drb_task(void *arg)
 {
-    ss_gNB_drb_init();
+	LOG_A(GNB_APP, "[SS_DRB] Starting System Simulator DRB Thread\n");
 
-    while (1)
-    {
-        (void)ss_gNB_drb_process_itti_msg(NULL);
-    }
-    acpFree(buffer);
-
-    return NULL;
+	while (1) {
+		(void)ss_gNB_drb_process_itti_msg(NULL);
+	}
+	return NULL;
 }

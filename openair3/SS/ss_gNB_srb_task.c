@@ -72,6 +72,8 @@ static unsigned char *buffer = NULL;
 static const size_t size = 16 * 1024;
 uint8_t lttng_sdu[SDU_SIZE];
 
+bool ss_gNB_srb_acp_task_exit = false;
+
 //------------------------------------------------------------------------------
 // Function to send response to the SIDL client
 static void ss_send_srb_data(ss_nrrrc_pdu_ind_t *pdu_ind, int cell_index)
@@ -311,7 +313,7 @@ ss_gNB_read_from_srb_socket(acpCtx_t ctx)
         while (1)
         {
                 int userId = acpRecvMsg(ctx, &msgSize, buffer);
-                LOG_A(GNB_APP, "[SS_SRB] Received msgSize=%d, userId=%d\n", (int)msgSize, userId);
+                LOG_A(GNB_APP, "[SS_SRB_ACP] Received msgSize=%d, userId=%d\n", (int)msgSize, userId);
 
                 // Error handling
                 if (userId < 0)
@@ -328,16 +330,16 @@ ss_gNB_read_from_srb_socket(acpCtx_t ctx)
                                 SidlStatus sidlStatus = -1;
                                 acpGetMsgSidlStatus(msgSize, buffer, &sidlStatus);
                         } else if (userId == -ACP_PEER_DISCONNECTED){
-             			LOG_A(GNB_APP, "[SS_SRB] Peer ordered shutdown\n");
+                                LOG_A(GNB_APP, "[SS_SRB_ACP] Peer ordered shutdown\n");
                                 isConnected = false;
                         }
                         else if (userId == -ACP_PEER_CONNECTED){
-                                LOG_A(GNB_APP, "[SS_SRB] Peer connection established\n");
+                                LOG_A(GNB_APP, "[SS_SRB_ACP] Peer connection established\n");
                                 isConnected = true;
                         }
                         else
                         {
-                                LOG_A(GNB_APP, "[SS_SRB] Invalid userId: %d \n", userId);
+                                LOG_A(GNB_APP, "[SS_SRB_ACP] Invalid userId: %d \n", userId);
                                 break;
                         }
                 }
@@ -349,17 +351,17 @@ ss_gNB_read_from_srb_socket(acpCtx_t ctx)
                                 break;
                         }
                         else
-                          LOG_A(GNB_APP, "[SS_SRB] Connection stopped isConnected:false\n)");
+                          LOG_A(GNB_APP, "[SS_SRB_ACP] Connection stopped isConnected:false\n)");
 
                 }
                 else if (MSG_NrSysSrbProcessFromSS_userId == userId)
                 {
                         struct NR_RRC_PDU_REQ *req = NULL;
-                        LOG_A(GNB_APP, "[SS_SRB][NR_RRC_PDU_REQ] NR_RRC_PDU_REQ Received \n");
+                        LOG_A(GNB_APP, "[SS_SRB_ACP][NR_RRC_PDU_REQ] NR_RRC_PDU_REQ Received \n");
                         // Got the message
                         if (acpNrSysSrbProcessFromSSDecSrv(ctx, buffer, msgSize, &req) != 0)
                         {
-                                LOG_A(GNB_APP, "[SS_SRB][NR_RRC_PDU_REQ] acpNrSysSrbProcessFromSSDecSrv Failed\n");
+                                LOG_A(GNB_APP, "[SS_SRB_ACP][NR_RRC_PDU_REQ] acpNrSysSrbProcessFromSSDecSrv Failed\n");
                                 break;
                         }
                         if(req->Common.CellId)
@@ -377,14 +379,14 @@ ss_gNB_read_from_srb_socket(acpCtx_t ctx)
                         }
                         else
                         {
-                                LOG_A(GNB_APP, "ERROR in fxn:%s [SS_SRB][NR_RRC_PDU_REQ] received in SS state %d \n", __FUNCTION__, SS_context.SSCell_list[cell_index].State);
+                                LOG_A(GNB_APP, "ERROR [SS_SRB_ACP][NR_RRC_PDU_REQ] received in SS state %d \n", SS_context.SSCell_list[cell_index].State);
                         }
                         acpNrSysSrbProcessFromSSFreeSrv(req);
                         return;
                 }
                 else if (MSG_NrSysSrbProcessToSS_userId == userId)
                 {
-                        LOG_A(GNB_APP, "[SS_SRB][NR_RRC_PDU_IND] NR_RRC_PDU_IND Received; ignoring \n");
+                        LOG_A(GNB_APP, "[SS_SRB_ACP][NR_RRC_PDU_IND] NR_RRC_PDU_IND Received; ignoring \n");
                         break;
                 }
         }
@@ -394,8 +396,6 @@ ss_gNB_read_from_srb_socket(acpCtx_t ctx)
 //------------------------------------------------------------------------------
 void ss_gNB_srb_init(void)
 {
-  LOG_A(GNB_APP, "[SS_SRB] Starting System Simulator SRB Thread \n");
-
   // Port number
   int port = RC.ss.Srbport;
 
@@ -432,82 +432,96 @@ void ss_gNB_srb_init(void)
     }
   }
 
-  itti_subscribe_event_fd(TASK_SS_SRB_GNB, fd1);
-  itti_mark_task_ready(TASK_SS_SRB_GNB);
+  itti_subscribe_event_fd(TASK_SS_SRB_ACP, fd1);
+  itti_mark_task_ready(TASK_SS_SRB_ACP);
 }
 
 //------------------------------------------------------------------------------
 void *ss_gNB_srb_process_itti_msg(void *notUsed)
 {
-  MessageDef *received_msg = NULL;
-  int result = 0;
-   int cell_index = 0;
+	MessageDef *received_msg = NULL;
+	int result = 0;
+	int cell_index = 0;
 
-  itti_receive_msg(TASK_SS_SRB_GNB, &received_msg);
+	itti_receive_msg(TASK_SS_SRB_GNB, &received_msg);
 
-  /* Check if there is a packet to handle */
-  if (received_msg != NULL)
-  {
-    switch (ITTI_MSG_ID(received_msg))
-    {
-      case SS_NRRRC_PDU_IND:
-        {
-          task_id_t origin_task = ITTI_MSG_ORIGIN_ID(received_msg);
-          LOG_I(ENB_SS, "received msg from %s pci:%d \n", ITTI_MSG_ORIGIN_NAME(received_msg), received_msg->ittiMsg.ss_nrrrc_pdu_ind.physCellId);
-//          if(received_msg->ittiMsg.ss_rrc_pdu_ind.physCellId){
-            cell_index = get_gNB_cell_index_pci(received_msg->ittiMsg.ss_nrrrc_pdu_ind.physCellId, SS_context.SSCell_list);
-            LOG_A(ENB_SS,"[SS_SRB] cell_index in SS_NR_RRC_PDU_IND: %d PhysicalCellId: %d \n",cell_index, SS_context.SSCell_list[cell_index].PhysicalCellId);
-//          }
+	/* Check if there is a packet to handle */
+	if (received_msg != NULL) {
+		switch (ITTI_MSG_ID(received_msg)) {
+			case SS_NRRRC_PDU_IND:
+			{
+				task_id_t origin_task = ITTI_MSG_ORIGIN_ID(received_msg);
+				LOG_I(ENB_SS, "received msg from %s pci:%d \n", ITTI_MSG_ORIGIN_NAME(received_msg), received_msg->ittiMsg.ss_nrrrc_pdu_ind.physCellId);
+				//          if(received_msg->ittiMsg.ss_rrc_pdu_ind.physCellId){
+					cell_index = get_gNB_cell_index_pci(received_msg->ittiMsg.ss_nrrrc_pdu_ind.physCellId, SS_context.SSCell_list);
+					LOG_A(ENB_SS,"[SS_SRB] cell_index in SS_NR_RRC_PDU_IND: %d PhysicalCellId: %d \n",cell_index, SS_context.SSCell_list[cell_index].PhysicalCellId);
+				//          }
+				/* Should not receive such WAKEUP signal from Portman */
+				if (origin_task == TASK_SS_PORTMAN) {
+					LOG_A(GNB_APP, "[SS_SRB] DUMMY WAKEUP recevied from PORTMAN state %d \n", SS_context.SSCell_list[cell_index].State);
+				} else {
+					LOG_A(GNB_APP, "[SS_SRB] Received SS_NRRRC_PDU_IND from RRC\n");
+					if (SS_context.SSCell_list[cell_index].State >= SS_STATE_CELL_ACTIVE) {
+						instance_g = ITTI_MSG_DESTINATION_INSTANCE(received_msg);
+						ss_send_srb_data(&received_msg->ittiMsg.ss_nrrrc_pdu_ind,cell_index);
+					} else {
+						LOG_A(GNB_APP, "ERROR [SS_SRB][NR_RRC_PDU_IND] received in SS state %d \n", SS_context.SSCell_list[cell_index].State);
+					}
+				}
+			};
+			break;
 
-          if (origin_task == TASK_SS_PORTMAN)
-          {
-            LOG_D(GNB_APP, "[SS_SRB] DUMMY WAKEUP receviedfrom PORTMAN\n");
-          }
-          else
-          {
-            LOG_A(GNB_APP, "[SS_SRB] Received SS_NRRRC_PDU_IND from RRC\n");
-            if (SS_context.SSCell_list[cell_index].State >= SS_STATE_CELL_ACTIVE)
-            {
-              instance_g = ITTI_MSG_DESTINATION_INSTANCE(received_msg);
-              ss_send_srb_data(&received_msg->ittiMsg.ss_nrrrc_pdu_ind, cell_index);
-            }
-            else
-            {
-              LOG_A(GNB_APP, "ERROR in fxn:%s [SS_SRB][NR_RRC_PDU_IND] received in SS state %d \n", __FUNCTION__, SS_context.SSCell_list[cell_index].State);
-            }
-          }
+			case TERMINATE_MESSAGE:
+				LOG_A(GNB_APP, "[SS_SRB] Received TERMINATE_MESSAGE \n");
+				ss_gNB_srb_acp_task_exit = true;
+				itti_exit_task();
+				break;
 
-          result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
-          AssertFatal(result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
-        };
-        break;
-      case TERMINATE_MESSAGE:
-        LOG_A(GNB_APP, "[SS_SRB] Received TERMINATE_MESSAGE \n");
-        itti_exit_task();
-        break;
+			default:
+				LOG_A(GNB_APP, "[SS_SRB] Received unhandled message %d:%s\n",
+						ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
+				break;
+		}
+		result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
+		AssertFatal(result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
+		received_msg = NULL;
+	}
 
-      default:
-        LOG_A(GNB_APP, "[SS_SRB] Received unhandled message %d:%s\n",
-            ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
-        break;
-    }
-  }
+	return NULL;
+}
 
-  ss_gNB_read_from_srb_socket(ctx_srb_g);
+void *ss_gNB_srb_acp_task(void *arg)
+{
+	LOG_A(GNB_APP, "[SS_SRB_ACP] Starting System Simulator SRB_ACP Thread \n");
 
-  return NULL;
+	ss_gNB_srb_init();
+	while(1) {
+		if(ctx_srb_g) {
+			ss_gNB_read_from_srb_socket(ctx_srb_g);
+		} else {
+			sleep(10);
+		}
+
+		if(ss_gNB_srb_acp_task_exit) {
+			ss_gNB_srb_acp_task_exit = false;
+			LOG_A(GNB_APP, "[SS_SRB_ACP] TERMINATE \n");
+			pthread_exit (NULL);
+		}
+	}
+
+	acpFree(buffer);
+
+	return NULL;
 }
 
 void *ss_gNB_srb_task(void *arg)
 {
-        ss_gNB_srb_init();
+	LOG_A(GNB_APP, "[SS_SRB] Starting System Simulator SRB Thread \n");
 
-	while (1)
-        {
-                //LOG_A(GNB_APP,"[SS_SRB] Inside ss_gNB_srb_task \n");
-                ss_gNB_srb_process_itti_msg(NULL);
-        }
-        acpFree(buffer);
+	while (1) {
+		//LOG_A(GNB_APP,"[SS_SRB] Inside ss_gNB_srb_task \n");
+		(void)ss_gNB_srb_process_itti_msg(NULL);
+	}
 
 	return NULL;
 }
