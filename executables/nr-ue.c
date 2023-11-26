@@ -937,6 +937,14 @@ void *UE_thread(void *arg)
       UE->rx_offset_slot++;
       UL_TO_Tx_ofs = 2*rx_offset_slot; //to adapt the UE's transmission time in order to get aligned at gNB
       acc_UL_To_TX += UL_TO_Tx_ofs;
+
+      if(UE->rx_offset_slot > ((2*nb_slot_frame) + 1))
+      {
+        UE->rx_offset_slot = 1;
+        UE->rx_offset_comp = 0;
+      } 
+
+      //LOG_A(PHY, "UE->rx_offset_TO: %d, UE->rx_offset_slot: %d, UE->rx_offset_comp: %d, rx_offset_slot: %d\n", UE->rx_offset_TO, UE->rx_offset_slot, UE->rx_offset_comp, rx_offset_slot);
     }
 
     readBlockSize=get_readBlockSize(slot_nr, &UE->frame_parms) + rx_offset_slot;

@@ -647,7 +647,7 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
     pusch_config_pdu->pusch_data.harq_process_id = dci->harq_pid;
     /* TPC_PUSCH */
     // according to TS 38.213 Table Table 7.1.1-1
-    if (pusch_Config->pusch_PowerControl->tpc_Accumulation != NULL) { // TPC ACCUMULATION DISABLED if IE present
+    if ((pusch_Config!=NULL) && (pusch_Config->pusch_PowerControl->tpc_Accumulation != NULL)) { // TPC ACCUMULATION DISABLED if IE present
       if (dci->tpc == 0) {
         pusch_config_pdu->absolute_delta_PUSCH = -4;
       }
