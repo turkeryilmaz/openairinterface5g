@@ -269,13 +269,12 @@ static int ngap_gNB_handle_ng_setup_response(sctp_assoc_t assoc_id, uint32_t str
       
       new_slice_support_p = calloc(1, sizeof(struct slice_support_s));
 
-      OCTET_STRING_TO_INT8(&slice_support_item_p->s_NSSAI.sST, new_slice_support_p->sST);
+      OCTET_STRING_TO_INT8(&slice_support_item_p->s_NSSAI.sST, new_slice_support_p->nssai.sst);
 
       if(slice_support_item_p->s_NSSAI.sD != NULL) {
-        new_slice_support_p->sD_flag = 1;
-        new_slice_support_p->sD[0] = slice_support_item_p->s_NSSAI.sD->buf[0];
-        new_slice_support_p->sD[1] = slice_support_item_p->s_NSSAI.sD->buf[1];
-        new_slice_support_p->sD[2] = slice_support_item_p->s_NSSAI.sD->buf[2];
+        BUFFER_TO_INT24(slice_support_item_p->s_NSSAI.sD->buf, new_slice_support_p->nssai.sd);
+      } else {
+        new_slice_support_p->nssai.sd = 0xffffff;
       }
       STAILQ_INSERT_TAIL(&new_plmn_support_p->slice_supports, new_slice_support_p, next);
     }

@@ -723,6 +723,22 @@ typedef struct {
 
 #define UE_iterator(BaSe, VaR) NR_UE_info_t ** VaR##pptr=BaSe, *VaR; while ((VaR=*(VaR##pptr++)))
 
+typedef struct UEsched_s {
+  float coef;
+  NR_UE_info_t *UE;
+} UEsched_t;
+
+typedef struct {
+  /// Slice config
+  nssai_t nssai;
+  /// Slice policy
+  int dedicatedRatio;
+  int minRatio;
+  int maxRatio;
+  /// UEs in this slice
+  UEsched_t UE_list[MAX_MOBILES_PER_GNB + 1];
+} NR_Slice_info_t;
+
 typedef void (*nr_pp_impl_dl)(module_id_t mod_id,
                               frame_t frame,
                               sub_frame_t slot);
@@ -781,6 +797,9 @@ typedef struct gNB_MAC_INST_s {
   int vrb_map_UL_size;
 
   NR_UEs_t UE_info;
+
+  int numSlices;
+  NR_Slice_info_t sliceConfig[NR_MAX_NUM_SLICES];
 
   /// UL handle
   uint32_t ul_handle;

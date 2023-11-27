@@ -1647,6 +1647,27 @@ void RCconfig_NRRRC(gNB_RRC_INST *rrc)
   config_security(rrc);
 }//End RCconfig_NRRRC function
 
+static void set_mac_nssai_config(paramlist_def_t *SNSSAIParamList)
+{
+  gNB_MAC_INST *mac = RC.nrmac[0];
+
+  AssertFatal(SNSSAIParamList->numelt <= NR_MAX_NUM_SLICES, "NSSAI list exceeds limit\n");
+  mac->numSlices = SNSSAIParamList->numelt;
+  for (int s = 0; s < SNSSAIParamList->numelt; s++) {
+    // Set slice parameters from config file
+    mac->sliceConfig[s].nssai.sst = *SNSSAIParamList->paramarray[s][GNB_SLICE_SERVICE_TYPE_IDX].uptr;
+    mac->sliceConfig[s].nssai.sd = (*SNSSAIParamList->paramarray[s][GNB_SLICE_DIFFERENTIATOR_IDX].uptr & 0xffffff);
+    mac->sliceConfig[s].dedicatedRatio = 0;
+    mac->sliceConfig[s].minRatio = 0;
+    mac->sliceConfig[s].maxRatio = 0;
+  }
+
+  // Set default policy
+  mac->sliceConfig[0].dedicatedRatio = 0;
+  mac->sliceConfig[0].minRatio = 0;
+  mac->sliceConfig[0].maxRatio = 100;
+}
+
 int RCconfig_NR_NG(MessageDef *msg_p, uint32_t i) {
 
   int               j,k = 0;
@@ -1776,6 +1797,8 @@ int RCconfig_NR_NG(MessageDef *msg_p, uint32_t i) {
                 NGAP_REGISTER_GNB_REQ(msg_p).plmn[l].s_nssai[s].sd =
                     (*SNSSAIParamList.paramarray[s][GNB_SLICE_DIFFERENTIATOR_IDX].uptr & 0xffffff);
               }
+              if (l == 0) // Set the first PLMN's NSSAI config in MAC
+                set_mac_nssai_config(&SNSSAIParamList);
             }
             sprintf(aprefix,"%s.[%i]",GNB_CONFIG_STRING_GNB_LIST,k);
             config_getlist(config_get_if(), &NGParamList, NGParams, sizeofArray(NGParams), aprefix);

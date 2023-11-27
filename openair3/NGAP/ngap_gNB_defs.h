@@ -134,10 +134,8 @@ struct served_guami_s {
 
 /* NSSAI element */
 struct slice_support_s{
-  uint8_t sST;
-  uint8_t sD_flag;
-  uint8_t sD[3];
-  
+  nssai_t nssai;
+
   /* Next slice element */
   STAILQ_ENTRY(slice_support_s) next;
 };

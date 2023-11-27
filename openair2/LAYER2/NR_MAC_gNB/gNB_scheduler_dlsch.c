@@ -573,10 +573,6 @@ static bool allocate_dl_retransmission(module_id_t module_id,
 }
 
 uint32_t pf_tbs[3][29]; // pre-computed, approximate TBS values for PF coefficient
-typedef struct UEsched_s {
-  float coef;
-  NR_UE_info_t * UE;
-} UEsched_t;
 
 static int comparator(const void *p, const void *q) {
   return ((UEsched_t*)p)->coef < ((UEsched_t*)q)->coef;
