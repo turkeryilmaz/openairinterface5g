@@ -241,8 +241,53 @@ static int get_idx_from_lcid(const NR_UE_sched_ctrl_t *sched_ctrl, int lcid)
   return -1;
 }
 
-static void set_nssaiConfig(const int drb_len, const f1ap_drb_to_be_setup_t *req_drbs, NR_UE_sched_ctrl_t *sched_ctrl)
+static int get_slice_index(nssai_t nssai)
 {
+  gNB_MAC_INST *mac = RC.nrmac[0];
+
+  for (int i = 0; i < mac->numSlices; i++) {
+    if (mac->sliceConfig[i].nssai.sd == nssai.sd && mac->sliceConfig[i].nssai.sst == nssai.sst) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+static void set_nssaiConfig(const int srb_len,
+                            const f1ap_srb_to_be_setup_t *req_srbs,
+                            const int drb_len,
+                            const f1ap_drb_to_be_setup_t *req_drbs,
+                            const int drb_rel_len,
+                            const f1ap_drb_to_be_released_t *req_drbs_rel,
+                            NR_UE_sched_ctrl_t *sched_ctrl)
+{
+  gNB_MAC_INST *mac = RC.nrmac[0];
+
+  for (int i = 0; i < drb_rel_len; i++) {
+    const f1ap_drb_to_be_released_t *drb = req_drbs_rel;
+    long lcid = get_lcid_from_drbid(drb->rb_id);
+
+    for (int s = 0; s < sched_ctrl->numSlices; s++) {
+      if (check_nr_list(&sched_ctrl->sliceInfo[s].lcid, lcid)) {
+        remove_nr_list(&sched_ctrl->sliceInfo[s].lcid, lcid);
+        break;
+      }
+    }
+  }
+
+  for (int i = 0; i < srb_len; i++) {
+    const f1ap_srb_to_be_setup_t *srb = &req_srbs[i];
+
+    long lcid = get_lcid_from_srbid(srb->srb_id);
+    int lcid_idx = get_idx_from_lcid(sched_ctrl, lcid);
+    DevAssert(lcid_idx > -1);
+    // set default slice for SRB
+    nssai_t *default_nssai = &mac->sliceConfig[0].nssai;
+    sched_ctrl->dl_lc[lcid_idx].nssai = *default_nssai;
+    add_nr_list(&sched_ctrl->sliceInfo[0].lcid, lcid);
+    LOG_I(NR_MAC, "Setting default NSSAI sst: %d, sd: %d for SRB: %ld\n", default_nssai->sst, default_nssai->sd, srb->srb_id);
+  }
+
   for (int i = 0; i < drb_len; i++) {
     const f1ap_drb_to_be_setup_t *drb = &req_drbs[i];
 
@@ -250,6 +295,8 @@ static void set_nssaiConfig(const int drb_len, const f1ap_drb_to_be_setup_t *req
     int lcid_idx = get_idx_from_lcid(sched_ctrl, lcid);
     DevAssert(lcid_idx > -1);
     sched_ctrl->dl_lc[lcid_idx].nssai = drb->nssai;
+    int sliceIdx = get_slice_index(drb->nssai);
+    add_nr_list(&sched_ctrl->sliceInfo[sliceIdx].lcid, lcid);
     LOG_I(NR_MAC, "Setting NSSAI sst: %d, sd: %d for DRB: %ld\n", drb->nssai.sst, drb->nssai.sd, drb->drb_id);
   }
 }
@@ -320,8 +367,14 @@ void ue_context_setup_request(const f1ap_ue_context_setup_t *req)
   /* TODO: need to apply after UE context reconfiguration confirmed? */
   nr_mac_prepare_cellgroup_update(mac, UE, new_CellGroup);
 
-  /* Set NSSAI config in MAC for each active DRB */
-  set_nssaiConfig(req->drbs_to_be_setup_length, req->drbs_to_be_setup, &UE->UE_sched_ctrl);
+  /* Set NSSAI config in MAC for each active SRB & DRB */
+  set_nssaiConfig(req->srbs_to_be_setup_length,
+                  req->srbs_to_be_setup,
+                  req->drbs_to_be_setup_length,
+                  req->drbs_to_be_setup,
+                  req->drbs_to_be_released_length,
+                  req->drbs_to_be_released,
+                  &UE->UE_sched_ctrl);
 
   NR_SCHED_UNLOCK(&mac->sched_lock);
 
@@ -420,8 +473,14 @@ void ue_context_modification_request(const f1ap_ue_context_modif_req_t *req)
 
     nr_mac_prepare_cellgroup_update(mac, UE, new_CellGroup);
 
-    /* Set NSSAI config in MAC for each active DRB */
-    set_nssaiConfig(req->drbs_to_be_setup_length, req->drbs_to_be_setup, &UE->UE_sched_ctrl);
+    /* Set NSSAI config in MAC for each active SRB & DRB */
+    set_nssaiConfig(req->srbs_to_be_setup_length,
+                    req->srbs_to_be_setup,
+                    req->drbs_to_be_setup_length,
+                    req->drbs_to_be_setup,
+                    req->drbs_to_be_released_length,
+                    req->drbs_to_be_released,
+                    &UE->UE_sched_ctrl);
   } else {
     ASN_STRUCT_FREE(asn_DEF_NR_CellGroupConfig, new_CellGroup); // we actually don't need it
   }

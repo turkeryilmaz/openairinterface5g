@@ -111,6 +111,8 @@ typedef struct {
   int len;
 } NR_list_t;
 
+#define NR_List_Iterator(BaSe, CuR) for (int *CuR = &(BaSe)->head, *nxt = (BaSe)->next; *CuR >= 0; CuR = &nxt[*CuR])
+
 typedef enum {
   RA_IDLE = 0,
   Msg2 = 1,
@@ -542,11 +544,8 @@ typedef struct {
 } NR_LC_info_t;
 
 typedef struct {
-  /// the index of slice from slice config stored in gNB_MAC_INST
-  int sliceIdx;
   /// LCs in this slice
-  uint8_t numLcids;
-  uint8_t lcid[NR_MAX_NUM_LCID];
+  NR_list_t lcid;
   /// total amount of data awaiting for this UE for each slice
   uint32_t num_total_bytes;
   uint16_t dl_pdus_total;
