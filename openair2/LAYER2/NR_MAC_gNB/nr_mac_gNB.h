@@ -541,6 +541,17 @@ typedef struct {
   nssai_t nssai;
 } NR_LC_info_t;
 
+typedef struct {
+  /// the index of slice from slice config stored in gNB_MAC_INST
+  int sliceIdx;
+  /// LCs in this slice
+  uint8_t numLcids;
+  uint8_t lcid[NR_MAX_NUM_LCID];
+  /// total amount of data awaiting for this UE for each slice
+  uint32_t num_total_bytes;
+  uint16_t dl_pdus_total;
+} NR_UE_slice_info_t;
+
 /*! \brief scheduling control information set through an API */
 #define MAX_CSI_REPORTS 48
 typedef struct {
@@ -588,6 +599,10 @@ typedef struct {
   /// total amount of data awaiting for this UE
   uint32_t num_total_bytes;
   uint16_t dl_pdus_total;
+  /// UE slice specific info
+  int numSlices;
+  int curSchedSliceIdx;
+  NR_UE_slice_info_t sliceInfo[NR_MAX_NUM_SLICES];
   /// per-LC status data
   mac_rlc_status_resp_t rlc_status[NR_MAX_NUM_LCID];
 

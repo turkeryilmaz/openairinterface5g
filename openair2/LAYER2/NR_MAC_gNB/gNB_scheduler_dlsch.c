@@ -1239,10 +1239,10 @@ void nr_schedule_ue_spec(module_id_t module_id,
       start_meas(&gNB_mac->rlc_data_req);
       int sdus = 0;
 
-      if (sched_ctrl->num_total_bytes > 0) {
-        /* loop over all activated logical channels */
-        for (int i = 0; i < sched_ctrl->dl_lc_num; ++i) {
-          const int lcid = sched_ctrl->dl_lc[i].id;
+      if (sched_ctrl->sliceInfo[sched_ctrl->curSchedSliceIdx].num_total_bytes > 0) {
+        /* loop over all activated logical channels in current slice */
+        for (int i = 0; i < sched_ctrl->sliceInfo[sched_ctrl->curSchedSliceIdx].numLcids; ++i) {
+          const int lcid = sched_ctrl->sliceInfo[sched_ctrl->curSchedSliceIdx].lcid[i];
 
           if (sched_ctrl->rlc_status[lcid].bytes_in_buffer == 0)
             continue; // no data for this LC        tbs_size_t len = 0;
