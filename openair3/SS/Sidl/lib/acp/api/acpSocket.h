@@ -32,7 +32,7 @@ SIDL_BEGIN_C_INTERFACE
 
 /** Connects to server.
  *
- * @param[in]  host Server ip address
+ * @param[in]  host Server ip address / unixsocket file
  * @param[in]  port Server ip port
  * @return   socket fd, or negative number on failure
  */

@@ -151,6 +151,15 @@ const char* adbgUtilsSysRLC_TestModeConfig_TypeToStr(int select)
 	}
 }
 
+const char* adbgUtilsSysMAC_Test_DLLogChID_TypeToStr(int select)
+{
+	switch (select) {
+		case MAC_Test_DLLogChID_Type_LogChId: return "LogChId";
+		case MAC_Test_DLLogChID_Type_ConfigLchId: return "ConfigLchId";
+		default: return "unknown";
+	}
+}
+
 const char* adbgUtilsSysMAC_TestModeConfig_TypeToStr(int select)
 {
 	switch (select) {

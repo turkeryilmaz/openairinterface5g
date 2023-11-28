@@ -1482,7 +1482,7 @@ static int sys_handle_radiobearer_list(struct SYSTEM_CTRL_REQ *req)
 	    if(BearerList->v[i].Config.v.AddOrReconfigure.Mac.v.TestMode.v.d == MAC_TestModeConfig_Type_Info)
 	    {
               RRC_RBLIST_CFG_REQ(msg_p).rb_list[i].RbConfig.isMacTestModeValid = true;
-              RRC_RBLIST_CFG_REQ(msg_p).rb_list[i].RbConfig.MacTestModeLogicalChannelId = BearerList->v[i].Config.v.AddOrReconfigure.Mac.v.TestMode.v.v.Info.DiffLogChId.LogChId;
+              RRC_RBLIST_CFG_REQ(msg_p).rb_list[i].RbConfig.MacTestModeLogicalChannelId = BearerList->v[i].Config.v.AddOrReconfigure.Mac.v.TestMode.v.v.Info.DiffLogChId.v.LogChId;
 	    }
 	  }
         }

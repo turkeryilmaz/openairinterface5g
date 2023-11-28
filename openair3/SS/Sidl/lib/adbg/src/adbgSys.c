@@ -28747,11 +28747,22 @@ static void _adbgSys__MAC_LogicalChannelConfig_Type_LogicalChannel_Optional(acpC
 	_adbgSys__MAC_LogicalChannelConfig_Type(_ctx, &p->v);
 }
 
+static void _adbgSys__MAC_Test_DLLogChID_Type_Value(acpCtx_t _ctx, const union MAC_Test_DLLogChID_Type_Value* p, enum MAC_Test_DLLogChID_Type_Sel d)
+{
+	if (d == MAC_Test_DLLogChID_Type_LogChId) {
+		adbgPrintLog(_ctx, "LogChId := %d", (int)p->LogChId);
+		return;
+	}
+	if (d == MAC_Test_DLLogChID_Type_ConfigLchId) {
+		adbgPrintLog(_ctx, "ConfigLchId := %s", (p->ConfigLchId ? "true" : "false"));
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
 static void _adbgSys__MAC_Test_DLLogChID_Type(acpCtx_t _ctx, const struct MAC_Test_DLLogChID_Type* p)
 {
-	adbgPrintLog(_ctx, "LogChId := %d", (int)p->LogChId);
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "ConfigLchId := %s", (p->ConfigLchId ? "true" : "false"));
+	_adbgSys__MAC_Test_DLLogChID_Type_Value(_ctx, &p->v, p->d);
 }
 
 static const char* adbgSys__MAC_Test_SCH_NoHeaderManipulation_Type__ToString(MAC_Test_SCH_NoHeaderManipulation_Type v)

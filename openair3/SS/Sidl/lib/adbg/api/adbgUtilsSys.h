@@ -54,6 +54,8 @@ const char* adbgUtilsSysRLC_TestModeInfo_TypeToStr(int select);
 
 const char* adbgUtilsSysRLC_TestModeConfig_TypeToStr(int select);
 
+const char* adbgUtilsSysMAC_Test_DLLogChID_TypeToStr(int select);
+
 const char* adbgUtilsSysMAC_TestModeConfig_TypeToStr(int select);
 
 const char* adbgUtilsSysRadioBearerConfig_TypeToStr(int select);

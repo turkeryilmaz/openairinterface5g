@@ -29355,12 +29355,31 @@ static int _serSysEncMAC_LogicalChannelConfig_Type_LogicalChannel_Optional(unsig
 	return SIDL_STATUS_OK;
 }
 
+static int _serSysEncMAC_Test_DLLogChID_Type_Value(unsigned char* _buffer, size_t _size, size_t* _lidx, const union MAC_Test_DLLogChID_Type_Value* p, enum MAC_Test_DLLogChID_Type_Sel d)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	if (d == MAC_Test_DLLogChID_Type_LogChId) {
+		HTON_32(&_buffer[*_lidx], p->LogChId, _lidx);
+		return SIDL_STATUS_OK;
+	}
+	if (d == MAC_Test_DLLogChID_Type_ConfigLchId) {
+		HTON_8(&_buffer[*_lidx], p->ConfigLchId, _lidx);
+		return SIDL_STATUS_OK;
+	}
+
+	return SIDL_STATUS_ERROR;
+}
+
 static int _serSysEncMAC_Test_DLLogChID_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct MAC_Test_DLLogChID_Type* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
-	HTON_32(&_buffer[*_lidx], p->LogChId, _lidx);
-	HTON_8(&_buffer[*_lidx], p->ConfigLchId, _lidx);
+	{
+		size_t _tmp = (size_t)p->d;
+		HTON_32(&_buffer[*_lidx], _tmp, _lidx);
+	}
+	_serSysEncMAC_Test_DLLogChID_Type_Value(_buffer, _size, _lidx, &p->v, p->d);
 
 	return SIDL_STATUS_OK;
 }
@@ -61164,12 +61183,32 @@ static int _serSysDecMAC_LogicalChannelConfig_Type_LogicalChannel_Optional(const
 	return SIDL_STATUS_OK;
 }
 
+static int _serSysDecMAC_Test_DLLogChID_Type_Value(const unsigned char* _buffer, size_t _size, size_t* _lidx, union MAC_Test_DLLogChID_Type_Value* p, enum MAC_Test_DLLogChID_Type_Sel d)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	if (d == MAC_Test_DLLogChID_Type_LogChId) {
+		NTOH_32(p->LogChId, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
+	}
+	if (d == MAC_Test_DLLogChID_Type_ConfigLchId) {
+		NTOH_8(p->ConfigLchId, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
+	}
+
+	return SIDL_STATUS_ERROR;
+}
+
 static int _serSysDecMAC_Test_DLLogChID_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct MAC_Test_DLLogChID_Type* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
-	NTOH_32(p->LogChId, &_buffer[*_lidx], _lidx);
-	NTOH_8(p->ConfigLchId, &_buffer[*_lidx], _lidx);
+	{
+		size_t _tmp;
+		NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
+		p->d = (enum MAC_Test_DLLogChID_Type_Sel)_tmp;
+	}
+	_serSysDecMAC_Test_DLLogChID_Type_Value(_buffer, _size, _lidx, &p->v, p->d);
 
 	return SIDL_STATUS_OK;
 }
