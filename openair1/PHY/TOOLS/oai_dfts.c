@@ -8614,17 +8614,25 @@ int main(int argc, char**argv)
     else
       ((int16_t*)x)[i] = -364;
   }
+
+  /*
   for (i=2*(4096-1200);i<8192;i++) {
     if ((taus() & 1)==0)
       ((int16_t*)x)[i] = 364;
     else
       ((int16_t*)x)[i] = -364;
   }
+  */
+  for(int i = 0; i < 8192; ++i){
+    ((int16_t*)x)[2*i] = 1024*sin(8*M_PI*i/4096);
+    ((int16_t*)x)[2*i+1] = 0;
+  }
+
   reset_meas(&ts);
   int64_t t0=time_now_ns();
   for (i=0; i<10000; i++) {
     start_meas(&ts);
-    idft4096((int16_t *)x,(int16_t *)y,1);
+    dft4096((int16_t *)x,(int16_t *)y,1);
     stop_meas(&ts);
   }
 
@@ -8633,7 +8641,7 @@ int main(int argc, char**argv)
   LOG_M("y4096.m","y4096",y,4096,1,1);
   LOG_M("x4096.m","x4096",x,4096,1,1);
 
-  dft4096((int16_t *)y,(int16_t *)x2,1);
+  idft4096((int16_t *)y,(int16_t *)x2,1);
   LOG_M("x4096_2.m","x4096_2",x2,4096,1,1);
 
 // NR 160Mhz, 434 PRB, 3/4 sampling
