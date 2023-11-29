@@ -82,7 +82,6 @@ uint16_t max_ul_sched_frame = 1;
 
 int fdopplerComp = 1; // flag to activate continous frequency offset compensation (=0 deacticated, =1 activated (default case))
 int tdriftComp = 1;
-int32_t fdopplerPrePost = 0; //pre/post compensation of the Doppler shift at the gNB side
 double FO_PScaling = 0.33;   // P scaling factor of the PID controller for the Doppler compensation at UE side
 double FO_IScaling = 0.5;    // I scaling factor of the PID controller for the Doppler compensation at UE side
 

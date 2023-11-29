@@ -50,9 +50,9 @@ void nr_adjust_synch_ue(NR_DL_FRAME_PARMS *frame_parms,
   int max_val = 0, max_pos = 0;
   const int sync_pos = 0;
   //uint8_t sync_offset = 0;
-  static int flagInitIScaling = 0;
+  //static int flagInitIScaling = 0;
 
-  static int64_t TO_I_Ctrl = 0; //Integral controller for TO
+  //static int64_t TO_I_Ctrl = 0; //Integral controller for TO
   static int frameLast = 0; //frame number of last call of nr_adjust_synch_ue()
   static int FirstFlag = 1; //indicate the first call of nr_adjust_synch_ue()
 
@@ -98,11 +98,11 @@ void nr_adjust_synch_ue(NR_DL_FRAME_PARMS *frame_parms,
 
   frameLast = frame; //save the last frame number
   
-  if ( (((diff < -4) || (diff > 4)) && (flagInitIScaling == 0)))
+/*   if ( (((diff < -4) || (diff > 4)) && (flagInitIScaling == 0)))
   {
 	  TO_I_Ctrl = TO_IScalingInit/TO_IScaling;
 	  flagInitIScaling = 1;
-  }
+  } */
 
   ue->TO_I_Ctrl += diff; //integral of all offsets
   ue->rx_offset = diff;

@@ -54,7 +54,6 @@
 //#define DEBUG_NR_PBCHSIM
 
 int fdopplerComp = 1;
-int32_t fdopplerPrePost = 0; //pre/post compensation of the Doppler shift at the gNB side
 double FO_PScaling = 0.33;   // P scaling factor of the PID controller for the Doppler compensation at UE side
 double FO_IScaling = 0.5;    // I scaling factor of the PID controller for the Doppler compensation at UE side
 int commonDoppler = 0;  // common doppler to be compensated at UE

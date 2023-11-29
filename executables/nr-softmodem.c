@@ -589,7 +589,6 @@ uint16_t pathEndingTime = 1280;
 int uePosY = 0;
 int tdriftComp = 1;
 int TO_IScalingInit = 0;
-int32_t fdopplerPrePost = 0; //pre/post compensation of the Doppler shift at the gNB side
 int commonDoppler = 0;  // common doppler to be compensated at UE, but set here to avoid linking error
 int TO_init_rate = 0;
 

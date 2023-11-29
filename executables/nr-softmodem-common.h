@@ -123,7 +123,6 @@
 #define CONFIG_HLP_PathEnd       "Set the time [sec] at which satellite is no more visible to the UE\n"
 #define CONFIG_HLP_uePosY        "Set the y-axis coordinate [m] of UE position\n"
 #define CONFIG_HLP_TDriftComp    "Execute continous timing drift compensation\n"
-#define CONFIG_HLP_FDopplerPrePost      "Set the pre/post compensation value for the Doppler shift at the gNB side\n"
 #define CONFIG_HLP_FP_ScalingFN  "Set the P scaling factor (numerator) of the PID controller for the Doppler compensation at UE side\n"
 #define CONFIG_HLP_FP_ScalingFD  "Set the P scaling factor (denominator) of the PID controller for the Doppler compensation at UE side\n"
 #define CONFIG_HLP_FI_ScalingFN  "Set the I scaling factor (numerator) of the PID controller for the Doppler compensation at UE side\n"
@@ -200,7 +199,6 @@ extern uint16_t pathStartingTime;    // time [sec] at which satellite is becomin
 extern uint16_t pathEndingTime;      // time [sec] at which satellite is no more visible to the UE
 extern int uePosY;              // y-axis coordinate [m] of UE position
 extern int tdriftComp;         // flag to activate/deactivate continous timing drift compensation
-extern int32_t fdopplerPrePost; //pre/post compensation of the Doppler shift at the gNB side
 extern double FO_PScaling;  // P scaling factor of the PID controller for the Doppler compensation at UE side
 extern double FO_IScaling;  // I scaling factor of the PID controller for the Doppler compensation at UE side
 extern int TO_IScalingInit;    // initializing the accumulative part (I part) of the PI controller for the timing offset compensation
