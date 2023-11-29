@@ -24,7 +24,9 @@ typedef enum {
   P5_VENDOR_EXT_RSP,
 
   P7_VENDOR_EXT_REQ,
-  P7_VENDOR_EXT_IND
+  P7_VENDOR_EXT_IND,
+
+  P7_CELL_SEARCH_IND
 
 } vendor_ext_message_id_e;
 
