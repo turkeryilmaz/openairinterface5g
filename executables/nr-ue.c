@@ -834,12 +834,13 @@ void *UE_thread(void *arg)
         if (UE->is_synchronized) {
           if (tshift)
           {
-            int diff = TO_init_rate;   // shift in two frames       
-            UE->TO_I_Ctrl += diff;
+            int diff = 0;   // drift in one frame     
+            UE->TO_I_Ctrl = round(TO_init_rate/TO_IScaling);
             UE->rx_offset_TO = (TO_PScaling*diff) + (UE->TO_I_Ctrl*TO_IScaling); //PI controller
             UE->rx_offset_slot = 1;
+            UE->rx_offset += (UE->init_sync_frame + trashed_frames)*TO_init_rate;
+            int ta_shift = (UE->init_sync_frame + trashed_frames)*2*TO_init_rate;
             UE->rx_offset_comp = 0;
-            int ta_shift = (UE->init_sync_frame + trashed_frames)*2*diff;
             UE->timing_advance += ta_shift;
             timing_advance = UE->timing_advance;
           } 
@@ -934,11 +935,14 @@ void *UE_thread(void *arg)
     {
       rx_offset_slot = UE->rx_offset_TO * UE->rx_offset_slot / nb_slot_frame - UE->rx_offset_comp;
       UE->rx_offset_comp += rx_offset_slot;
+
+      LOG_D(PHY, "UE->rx_offset_slot: %d, rx_offset_slot: %d, UE->rx_offset_TO: %d \n", UE->rx_offset_slot, rx_offset_slot, UE->rx_offset_TO);
+
       UE->rx_offset_slot++;
-      UL_TO_Tx_ofs = 2*rx_offset_slot; //to adapt the UE's transmission time in order to get aligned at gNB
+      UL_TO_Tx_ofs = 1*rx_offset_slot; //to adapt the UE's transmission time in order to get aligned at gNB
       acc_UL_To_TX += UL_TO_Tx_ofs;
 
-      if(UE->rx_offset_slot > ((2*nb_slot_frame) + 1))
+      if(UE->rx_offset_slot > ((2*nb_slot_frame)))
       {
         UE->rx_offset_slot = 1;
         UE->rx_offset_comp = 0;
@@ -988,8 +992,8 @@ void *UE_thread(void *arg)
     UE->timing_advance += UL_TO_Tx_ofs;
 
     extern uint64_t RFsim_PropDelay;
-    LOG_D(PHY, "RFsim_PropDelay: %lu,         TA: %d,         diff: %d,          PI_Out: %d,       offset_slot: %d,     offset_UL: %d\n", 
-                RFsim_PropDelay,         timing_advance,     UE->rx_offset,   UE->rx_offset_TO,    rx_offset_slot,       UL_TO_Tx_ofs);
+    LOG_D(PHY, "RFsim_PropDelay: %lu,         TA: %d,         diff: %d,          PI_Out: %d,       offset_slot: %d,     offset_UL: %d,      acc_UL_To_TX: %d\n", 
+                RFsim_PropDelay,         timing_advance,     UE->rx_offset,   UE->rx_offset_TO,    rx_offset_slot,       UL_TO_Tx_ofs,        acc_UL_To_TX);
 
     // use previous timing_advance value to compute writeTimestamp
     writeTimestamp = timestamp +

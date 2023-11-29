@@ -3829,10 +3829,10 @@ void nr_ue_process_mac_pdu(nr_downlink_indication_t *dl_info,
 
         
         NR_UL_TIME_ALIGNMENT_t *ul_time_alignment = &mac->ul_time_alignment;
-        static int firstTime = 0;
-        if ((frameP == (ul_time_alignment->frame + 100)%1024) || firstTime == 0 )
+        //static int firstTime = 0;
+        //if ((frameP == (ul_time_alignment->frame + 100)%1024) || firstTime == 0 )
         { 
-          firstTime = 1;
+          //firstTime = 1;
           ul_time_alignment->ta_total += ta - 31;
           ul_time_alignment->tag_id = tag;
           ul_time_alignment->ta_command = ta;
@@ -4214,6 +4214,8 @@ int nr_ue_process_rar(nr_downlink_indication_t *dl_info, int pdu_id)
     ul_time_alignment->ta_command = 31 + ta;
     ul_time_alignment->ta_total = ta;
     ul_time_alignment->ta_apply = true;
+    ul_time_alignment->frame = frame;
+    ul_time_alignment->slot = slot;
     LOG_W(MAC, "received TA command %d\n", 31 + ta);
 #ifdef DEBUG_RAR
     // CSI
