@@ -61,7 +61,7 @@ void *nrmac_stats_thread(void *arg) {
   while (oai_exit == 0) {
     char *p = output;
     NR_SCHED_LOCK(&gNB->sched_lock);
-    p += dump_mac_stats(gNB, p, end - p, false);
+    p += dump_mac_stats(gNB, 0, p, end - p, false);
     NR_SCHED_UNLOCK(&gNB->sched_lock);
     p += snprintf(p, end - p, "\n");
     p += print_meas_log(&gNB->eNB_scheduler, "DL & UL scheduling timing", NULL, NULL, p, end - p);
@@ -78,12 +78,12 @@ void *nrmac_stats_thread(void *arg) {
 }
 
 void clear_mac_stats(gNB_MAC_INST *gNB) {
-  UE_iterator(gNB->UE_info.list, UE) {
+  UE_iterator(gNB->UE_info.list[0], UE) { //TODO bugz128620 0=>ccid
     memset(&UE->mac_stats,0,sizeof(UE->mac_stats));
   }
 }
 
-size_t dump_mac_stats(gNB_MAC_INST *gNB, char *output, size_t strlen, bool reset_rsrp)
+size_t dump_mac_stats(gNB_MAC_INST *gNB, int CC_id, char *output, size_t strlen, bool reset_rsrp)
 {
   int num = 1;
   const char *begin = output;
@@ -94,7 +94,7 @@ size_t dump_mac_stats(gNB_MAC_INST *gNB, char *output, size_t strlen, bool reset
   NR_SCHED_ENSURE_LOCKED(&gNB->sched_lock);
 
   NR_SCHED_LOCK(&gNB->UE_info.mutex);
-  UE_iterator(gNB->UE_info.list, UE) {
+  UE_iterator(gNB->UE_info.list[CC_id], UE) {
     NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
     NR_mac_stats_t *stats = &UE->mac_stats;
     const int avg_rsrp = stats->num_rsrp_meas > 0 ? stats->cumul_rsrp / stats->num_rsrp_meas : 0;

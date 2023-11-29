@@ -1,0 +1,60 @@
+/*
+ * Copyright 2022 Sequans Communications.
+ *
+ * Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The OpenAirInterface Software Alliance licenses this file to You under
+ * the OAI Public License, Version 1.0  (the "License"); you may not use this file
+ * except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.openairinterface.org/?page_id=698
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * For more information about the OpenAirInterface (OAI) Software Alliance:
+ *      contact@openairinterface.org
+ */
+
+#pragma once
+
+// SIDL keywords.
+#include "msg.sidl"
+
+// SIDL commons.
+#include "SidlNrCommon.sidl"
+#include "NR_CellConfigRequest/SidlCommon_NR_SS_StaticCellResourceConfig_Type.sidl"
+#include "NR_CellConfigRequest/SidlCommon_NR_CellConfigCommon_Type.sidl"
+#include "NR_CellConfigRequest/SidlCommon_NR_CellConfigPhysicalLayer_Type.sidl"
+#include "NR_CellConfigRequest/SidlCommon_NR_BcchConfig_Type.sidl"
+#include "NR_CellConfigRequest/SidlCommon_NR_PcchConfig_Type.sidl"
+#include "NR_CellConfigRequest/SidlCommon_NR_RachProcedureConfig_Type.sidl"
+#include "NR_CellConfigRequest/SidlCommon_NR_DcchDtchConfig_Type.sidl"
+#include "NR_CellConfigRequest/SidlCommon_NR_ServingCellConfig_Type.sidl"
+
+struct NR_CellConfigInfo_Type {
+	SIDL_OPTIONAL_OF_STRUCT(NR_SS_StaticCellResourceConfig_Type, StaticResourceConfig);
+	SIDL_OPTIONAL_OF_STRUCT(NR_CellConfigCommon_Type, CellConfigCommon);
+	SIDL_OPTIONAL_OF_STRUCT(NR_CellConfigPhysicalLayer_Type, PhysicalLayer);
+	SIDL_OPTIONAL_OF_STRUCT(NR_BcchConfig_Type, BcchConfig);
+	SIDL_OPTIONAL_OF_STRUCT(NR_PcchConfig_Type, PcchConfig);
+	SIDL_OPTIONAL_OF_STRUCT(NR_RachProcedureConfig_Type, RachProcedureConfig);
+	SIDL_OPTIONAL_OF_STRUCT(NR_DcchDtchConfig_Type, DcchDtchConfig);
+	SIDL_OPTIONAL_OF_STRUCT(NR_ServingCellConfig_Type, ServingCellConfig);
+};
+
+SIDL_UNION_ENUM(NR_CellConfigRequest_Type) {
+	NR_CellConfigRequest_Type_UNBOUND_VALUE,
+	NR_CellConfigRequest_Type_AddOrReconfigure,
+	NR_CellConfigRequest_Type_Release
+};
+SIDL_UNION_BEGIN(NR_CellConfigRequest_Type) {
+	SIDL_UNION_CASE(NR_CellConfigRequest_Type_AddOrReconfigure)
+		struct NR_CellConfigInfo_Type AddOrReconfigure;
+	SIDL_UNION_CASE(NR_CellConfigRequest_Type_Release)
+		Null_Type Release;
+} SIDL_UNION_END;
