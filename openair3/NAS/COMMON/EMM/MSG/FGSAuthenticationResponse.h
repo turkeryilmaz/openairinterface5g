@@ -37,11 +37,18 @@
 #include "SpareHalfOctet.h"
 #include "MessageType.h"
 #include "AuthenticationResponseParameter.h"
+#include "EapMessage.h"
 
 #ifndef FGS_AUTHENTICATION_RESPONSE_H_
 #define FGS_AUTHENTICATION_RESPONSE_H_
 
-#define AUTHENTICATION_RESPONSE_PARAMETER_IEI     0x2d
+# define FGS_AUTHENTICATION_RESPONSE_AUTH_RESPONSE_PARAM_PRESENT  (1<<0)
+# define FGS_AUTHENTICATION_RESPONSE_EAP_MESSAGE_PRESENT          (1<<1)
+
+typedef enum fgs_authentication_response_iei_tag {
+  FGS_AUTHENTICATION_RESPONSE_AUTH_RESPONSE_PARAM_IEI = 0x2D, /* 0x2D = 45 */
+  FGS_AUTHENTICATION_RESPONSE_EAP_MESSAGE_IEI         = 0x78, /* 0x78 = 120 */
+} fgs_authentication_response_iei;
 
 /*
  * Message name: Identity response
@@ -56,7 +63,10 @@ typedef struct fgs_authentication_response_msg_tag {
   SecurityHeaderType                      securityheadertype:4;
   SpareHalfOctet                          sparehalfoctet:4;
   MessageType                             messagetype;
+  /* Optional fields */
+  uint32_t                                presencemask;
   AuthenticationResponseParameter         authenticationresponseparameter;
+  EapMessage                              eapmessage;
 } fgs_authentication_response_msg;
 
 int encode_fgs_authentication_response(fgs_authentication_response_msg *authentication_response, uint8_t *buffer, uint32_t len);

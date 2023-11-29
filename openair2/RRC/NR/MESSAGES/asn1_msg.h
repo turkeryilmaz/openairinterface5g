@@ -97,7 +97,12 @@ void fill_mastercellGroupConfig(NR_CellGroupConfig_t *cellGroupConfig,
                                 int use_rlc_um_for_drb,
                                 uint8_t configure_srb,
                                 NR_DRB_ToAddModList_t *drb_configList,
-                                long *priority);
+                                long *priority,
+                                const int CC_id);
+
+bool update_rrcReconfig_cellGroupConfig(const protocol_ctxt_t     *const ctxt_pP,
+            rrc_gNB_ue_context_t      *ue_context_pP,
+            NR_CellGroupConfig_t *cellGroupConfig);
 
 int do_RRCSetup(rrc_gNB_ue_context_t *const ue_context_pP,
                 uint8_t *const buffer,
@@ -146,7 +151,7 @@ uint8_t do_RRCSetupComplete(uint8_t Mod_id,
                             const int dedicatedInfoNASLength,
                             const char *dedicatedInfoNAS);
 
-uint8_t do_RRCSetupRequest(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size, uint8_t *rv);
+uint8_t do_RRCSetupRequest(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size, uint8_t *rv, NR_EstablishmentCause_t establishmentCause);
 
 uint8_t do_NR_RRCReconfigurationComplete_for_nsa(uint8_t *buffer, size_t buffer_size, NR_RRC_TransactionIdentifier_t Transaction_id);
 
@@ -186,6 +191,6 @@ int do_RRCReestablishment(const protocol_ctxt_t *const ctxt_pP,
 int do_RRCReestablishmentComplete(uint8_t *buffer, size_t buffer_size, int64_t rrc_TransactionIdentifier);
 
 NR_MeasConfig_t *get_defaultMeasConfig(const gNB_RrcConfigurationReq *conf);
-uint8_t do_NR_Paging(uint8_t Mod_id, uint8_t *buffer, uint32_t tmsi);
+uint8_t do_NR_Paging(uint8_t Mod_id, uint8_t *buffer, uint32_t *tmsi, size_t num_paging_record, ss_nr_paging_identity_t *paging_recordList);
 
 #endif  /* __RRC_NR_MESSAGES_ASN1_MSG__H__ */

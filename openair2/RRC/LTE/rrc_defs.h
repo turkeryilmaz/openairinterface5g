@@ -398,6 +398,8 @@ typedef struct HANDOVER_INFO_s {
   uint32_t x2u_teid;
   DATA_FORWARDING_STATE_t forwarding_state;
   DATA_ENDMARK_STATE_t endmark_state;
+  int ss_source_ue_rnti;
+  int ss_target_ue_rnti;
 } HANDOVER_INFO;
 
 typedef struct PER_EVENT_s {
@@ -654,6 +656,9 @@ typedef struct eNB_RRC_UE_s {
   int8_t                             reestablishment_xid;
   int                                does_nr;
   int                                nr_capabilities_requested;
+  uint32_t  sdu_size;    /* This is size of SDU received from TTCN */
+  uint8_t   sdu[SDU_SIZE];  /* This is sdu received from ttcn */
+
 } eNB_RRC_UE_t;
 
 typedef struct rrc_eNB_ue_context_s {
@@ -679,6 +684,10 @@ typedef struct {
   uint8_t                           sizeof_SIB1;
   uint8_t                           *SIB23;
   uint8_t                           sizeof_SIB23;
+  uint8_t                           *SIB4;
+  uint8_t                           sizeof_SIB4;
+  uint8_t                           *SIB5;
+  uint8_t                           sizeof_SIB5;
   uint8_t                           *SIB1_BR;
   uint8_t                           sizeof_SIB1_BR;
   uint8_t                           *SIB23_BR;
@@ -709,6 +718,8 @@ typedef struct {
   LTE_SystemInformationBlockType1_t     *sib1;
   LTE_SystemInformationBlockType2_t     *sib2;
   LTE_SystemInformationBlockType3_t     *sib3;
+  LTE_SystemInformationBlockType4_t     *sib4;
+  LTE_SystemInformationBlockType5_t     *sib5;
   LTE_SystemInformationBlockType1_t     *sib1_BR;
   LTE_SystemInformationBlockType2_t     *sib2_BR;
   LTE_SystemInformationBlockType1_MBMS_r14_t *sib1_MBMS;
@@ -727,6 +738,8 @@ typedef struct {
   LTE_MCCH_Message_t                mcch_counting;
   LTE_MBMSCountingRequest_r10_t    *mcch_message_counting;
   SRB_INFO                          MCCH_MESS_COUNTING[8];// MAX_MBSFN_AREA
+  bool                              sib4_Scheduled;
+  bool                              sib5_Scheduled;
 
   //TTN - SIB 18,19,21 for D2D
   LTE_SystemInformationBlockType18_r12_t *sib18;

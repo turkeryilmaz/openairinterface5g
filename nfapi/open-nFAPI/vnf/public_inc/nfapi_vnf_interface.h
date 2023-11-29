@@ -950,6 +950,16 @@ int nfapi_vnf_p7_add_pnf(nfapi_vnf_p7_config_t* config, const char* pnf_p7_addr,
  */
 int nfapi_vnf_p7_del_pnf(nfapi_vnf_p7_config_t* config, int phy_id);
 
+/*! Send the SLOT_IND.request
+ *  \param config A pointer to the vnf p7 configuration
+ *  \param req A data structure for the decoded SLOT_IND.request.
+ *	\return A status value. 0 equal success, -1 indicates failure
+ *
+ *  The caller is responsiable for memory management of any pointers set in the req, which
+ *  may be released after this function call has returned or at a later pointer
+ */
+int nfapi_vnf_p7_nr_slot_ind(nfapi_vnf_p7_config_t* config, nfapi_nr_slot_indication_scf_t* req);
+
 /*! Send the DL_CONFIG.request
  *  \param config A pointer to the vnf p7 configuration
  *  \param req A data structure for the decoded DL_CONFIG.request.
