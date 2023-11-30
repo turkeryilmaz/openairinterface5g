@@ -86,6 +86,7 @@
     {"forgetfact",             "<channel forget factor ((0 to 1)>\n", simOpt,  .dblptr=&(rfsimulator->chan_forgetfact),.defdblval=0,                     TYPE_DOUBLE,    0 },\
     {"offset",                 "<channel offset in samps>\n",         simOpt,  .iptr=&(rfsimulator->chan_offset),      .defintval=0,                     TYPE_INT,       0 },\
     {"wait_timeout",           "<wait timeout if no UE connected>\n", simOpt,  .iptr=&(rfsimulator->wait_timeout),     .defintval=1,                     TYPE_INT,       0 },\
+    {"ufs",                    "<scale on uplink frequency>\n",       simOpt,  .dblptr=&(rfsimulator->ul_freq_scale),  .defdblval=1,                     TYPE_DOUBLE,    0 },\
   };
 
 static void getset_currentchannels_type(char *buf, int debug, webdatadef_t *tdata, telnet_printfunc_t prnt);
@@ -143,6 +144,7 @@ typedef struct {
   void *telnetcmd_qid;
   poll_telnetcmdq_func_t poll_telnetcmdq;
   int wait_timeout;
+  double ul_freq_scale;
 } rfsimulator_state_t;
 
 static int TO_gNB_flag = 0;
@@ -971,25 +973,25 @@ static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimest
           double sat_posX = 0; double sat_posY = (R+h) * cos(wsat*timeForDoppler);  double sat_posZ = (R+h) * sin(wsat*timeForDoppler); 
           float norm_d = sqrt(((ue_posX - sat_posX) * (ue_posX - sat_posX)) + ((ue_posY - sat_posY) * (ue_posY - sat_posY)) + ((ue_posZ - sat_posZ) * (ue_posZ - sat_posZ)));
           float cos_theta = (sat_posY - ue_posY) / norm_d;
-          double fc = 20e9;
-          double freqScale = 1;
-          if (t-> typeStamp == ENB_MAGICDL)
-            freqScale = (double)1769080000/2169080000;
+          double fc = 3619200000;   // center frequency in Hz, hard coded!
+          double freqScale = t->ul_freq_scale;
+          //if (t-> typeStamp == ENB_MAGICDL)
+            //freqScale = (double)1769080000/2169080000;
           double c = 299792458;
 
           if (fdoppler == 1)
           {
             int currDopplerTmp = (int)((wsat*R / c) * fc * freqScale * (R/(R+h)) * cos_theta);
 
-            if (SampIdxDoppler == 0)
-              initDoppler = currDopplerTmp;
+            //if (SampIdxDoppler == 0)
+              //initDoppler = currDopplerTmp;
 
-            currDoppler =  (currDopplerTmp - initDoppler) ;
+            currDoppler =  (currDopplerTmp - initDoppler);
           }
 
           if(tshift)
             RFsim_PropDelay = (2 * norm_d / c) * fsamp; 
-          //printf("**** counter: %lu, RFsim_PropDelay[Samp]: %lu , Doppler: %d, freqScale: %f ***** \n ", counter, RFsim_PropDelay, currDoppler, freqScale);        
+          LOG_D(HW, "RFSim, counter: %lu, RFsim_PropDelay[Samp]: %lu , Doppler: %d, freqScale: %f ***** \n ", counter, RFsim_PropDelay, currDoppler, freqScale);       
 
           //LOG_I(HW, "nbAnt_tx %d\n",nbAnt_tx);
           for (int i=0; i < nsamps; i++) {//loop over nsamps
