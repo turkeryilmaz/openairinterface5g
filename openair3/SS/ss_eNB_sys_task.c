@@ -66,7 +66,7 @@ extern int sys_confirm_done;
 extern RAN_CONTEXT_t RC;
 extern uint32_t from_earfcn(int eutra_bandP, uint32_t dl_earfcn);
 extern pthread_mutex_t lock_cell_si_config;
-extern pthread_mutex_t cond_cell_si_config;
+extern pthread_cond_t cond_cell_si_config;
 
 #ifndef NR_RRC_VERSION
 extern pthread_cond_t cell_config_done_cond;

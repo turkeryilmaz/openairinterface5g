@@ -139,8 +139,15 @@ pthread_mutex_t      rrc_release_freelist;
 RRC_release_list_t   rrc_release_info;
 pthread_mutex_t      lock_ue_freelist;
 pthread_mutex_t      lock_cell_si_config;
-pthread_mutex_t      cond_cell_si_config;
+pthread_cond_t      cond_cell_si_config;
 
+static bool _is_as_security_set = false;
+static uint8_t _kRRCenc[32] = {0};
+static uint8_t _kRRCint[32] = {0};
+static uint8_t _kUPenc[32] = {0};
+
+static uint8_t _integrity_algorithm = 0;
+static uint8_t _ciphering_algorithm = 0;
 
 uint8_t ul_sqn,dl_sqn;
 
@@ -4023,17 +4030,17 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
       {
         if (pdcp_p->kRRCenc)
         {
-          kRRCenc = MALLOC(16);
+          kRRCenc = CALLOC(1,32);
           memcpy(kRRCenc, pdcp_p->kRRCenc, 16);
         }
         if (pdcp_p->kRRCint)
         {
-          kRRCint = MALLOC(32);
+          kRRCint = CALLOC(1,32);
           memcpy(kRRCint, pdcp_p->kRRCint, 32);
         }
         if (pdcp_p->kUPenc)
         {
-          kUPenc = MALLOC(16);
+          kUPenc = CALLOC(1,32);
           memcpy(kUPenc, pdcp_p->kUPenc, 16);
         }
 
@@ -6095,8 +6102,8 @@ rrc_eNB_configure_rbs_handover(struct rrc_eNB_ue_context_s *ue_context_p, protoc
         AssertFatal(NULL != RC.ss.ss_pdcp_api, "SS PDCP APIs NULL \n");
 
         kRRCint = CALLOC(1,32);
-        kUPenc = CALLOC(1,16);
-        kRRCenc = CALLOC(1,16);
+        kUPenc = CALLOC(1,32);
+        kRRCenc = CALLOC(1,32);
         memcpy(kRRCint,RC.ss.HOASSecurityCOnfig.Integrity.kRRCint, 32);
         memcpy(kUPenc,RC.ss.HOASSecurityCOnfig.Ciphering.kUPenc, 16);
         memcpy(kRRCenc,RC.ss.HOASSecurityCOnfig.Ciphering.kRRCenc, 16);
@@ -6211,6 +6218,14 @@ rrc_eNB_process_RRCConnectionReconfigurationComplete(
 
     derive_key_nas(RRC_ENC_ALG, ue_context_pP->ue_context.ciphering_algorithm, ue_context_pP->ue_context.kenb, kRRCenc);
     derive_key_nas(RRC_INT_ALG, ue_context_pP->ue_context.integrity_algorithm, ue_context_pP->ue_context.kenb, kRRCint);
+  } else {
+    if (_is_as_security_set) {
+      memcpy(kRRCenc, _kRRCenc, 32);
+      memcpy(kRRCint, _kRRCint, 32);
+      memcpy(kUPenc, _kUPenc, 32);
+
+      security_modeP = (_ciphering_algorithm ) | (_integrity_algorithm << 4);
+    }
   }
 
   /* Refresh SRBs/DRBs */
@@ -6978,11 +6993,27 @@ void rrc_eNB_as_security_configuration_req(
   if (NULL == ctxt_pP) {
     LOG_A(RRC, "No context to get PdcpCount\n");
   }
+  AssertFatal(ASSecConfReq!=NULL,"AS Security Config Request is NULL \n");
   LOG_A (RRC, "Update PDCP context for RNTI %d integrityProtAlgorithm=%d cipheringAlgorithm=%d \n",
          ASSecConfReq->rnti, ASSecConfReq->Integrity.integrity_algorithm,
          (int)ASSecConfReq->Ciphering.ciphering_algorithm);
-  AssertFatal(ASSecConfReq!=NULL,"AS Security Config Request is NULL \n");
+
   memcpy(&RC.ss.HOASSecurityCOnfig,ASSecConfReq,sizeof(RrcAsSecurityConfigReq));
+  _is_as_security_set = true;
+  _integrity_algorithm = ASSecConfReq->Integrity.integrity_algorithm;
+  _ciphering_algorithm = ASSecConfReq->Ciphering.ciphering_algorithm;
+  if(ASSecConfReq->Integrity.kRRCint) {
+    memset(_kRRCint, 0, sizeof(_kRRCint));
+    memcpy(_kRRCint,ASSecConfReq->Integrity.kRRCint, 32);
+  }
+  if(ASSecConfReq->Ciphering.kUPenc) {
+    memset(_kUPenc, 0, sizeof(_kUPenc));
+    memcpy(_kUPenc,ASSecConfReq->Ciphering.kUPenc, 16);
+  }
+  if(ASSecConfReq->Ciphering.kRRCenc) {
+    memset(_kRRCenc, 0, sizeof(_kRRCenc));
+    memcpy(_kRRCenc,ASSecConfReq->Ciphering.kRRCenc, 16);
+  }
 
   for (int i = 0; i < MAX_RBS; i++)
   {
@@ -7040,11 +7071,11 @@ void rrc_eNB_as_security_configuration_req(
           memcpy(kRRCint,ASSecConfReq->Integrity.kRRCint, 32);
         }
         if(ASSecConfReq->Ciphering.kUPenc) {
-          kUPenc = CALLOC(1,16);
+          kUPenc = CALLOC(1,32);
           memcpy(kUPenc,ASSecConfReq->Ciphering.kUPenc, 16);
         }
         if(ASSecConfReq->Ciphering.kRRCenc) {
-          kRRCenc = CALLOC(1,16);
+          kRRCenc = CALLOC(1,32);
           memcpy(kRRCenc,ASSecConfReq->Ciphering.kRRCenc, 16);
         }
 

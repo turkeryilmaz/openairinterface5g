@@ -112,6 +112,7 @@ pdcp_apply_security(
 {
   uint8_t *buffer_encrypted = NULL;
   nas_stream_cipher_t encrypt_params = {0};
+  uint16_t pdcp_pdu_tailer_len = srb_flagP ? PDCP_CONTROL_PLANE_DATA_PDU_MAC_I_SIZE : 0;
 
   DevAssert(pdcp_pP != NULL);
   DevAssert(pdcp_pdu_buffer != NULL);
@@ -155,7 +156,7 @@ pdcp_apply_security(
 
 
   encrypt_params.message    = &pdcp_pdu_buffer[pdcp_header_len];
-  encrypt_params.blength    = (sdu_buffer_size + 4)<< 3;
+  encrypt_params.blength    = (sdu_buffer_size + pdcp_pdu_tailer_len)<< 3;
 
   buffer_encrypted = &pdcp_pdu_buffer[pdcp_header_len];
 
@@ -183,6 +184,7 @@ pdcp_validate_security(
 {
   uint8_t *buffer_decrypted = NULL;
   nas_stream_cipher_t decrypt_params = {0};
+  uint16_t pdcp_pdu_tailer_len = srb_flagP ? PDCP_CONTROL_PLANE_DATA_PDU_MAC_I_SIZE : 0;
 
   DevAssert(pdcp_pP != NULL);
 
@@ -197,7 +199,7 @@ pdcp_validate_security(
   decrypt_params.bearer     = rb_id - 1;
   decrypt_params.count      = pdcp_get_next_count_rx(pdcp_pP, srb_flagP, hfn, sn);
   decrypt_params.message    = &pdcp_pdu_buffer[pdcp_header_len];
-  decrypt_params.blength    = ((sdu_buffer_size + 4) - pdcp_header_len) << 3;
+  decrypt_params.blength    = ((sdu_buffer_size + pdcp_pdu_tailer_len) - pdcp_header_len) << 3;
   decrypt_params.key_length = 16;
 
   if (srb_flagP) {
