@@ -107,6 +107,7 @@ check_supported_distribution() {
         "ubuntu21.04") return 0 ;;
         "ubuntu20.04") return 0 ;;
         "ubuntu18.04") return 0 ;;
+        "debian12")    return 0 ;;
         "debian11")    return 0 ;;
         "fedora36")    return 0 ;;
         "fedora37")    return 0 ;;
