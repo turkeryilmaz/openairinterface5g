@@ -697,7 +697,7 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
     T(T_GNB_MAC_UL_PDU_WITH_DATA, T_INT(gnb_mod_idP), T_INT(CC_idP),
       T_INT(rntiP), T_INT(frameP), T_INT(slotP), T_INT(-1) /* harq_pid */,
       T_BUFFER(sduP, sdu_lenP));
-    
+
     /* we don't know this UE (yet). Check whether there is a ongoing RA (Msg 3)
      * and check the corresponding UE's RNTI match, in which case we activate
      * it. */
@@ -705,7 +705,7 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
       NR_RA_t *ra = &gNB_mac->common_channels[CC_idP].ra[i];
       if (ra->state != WAIT_Msg3)
         continue;
-      
+
       if(no_sig) {
         LOG_D(NR_MAC, "Random Access %i failed at state %i (no signal)\n", i, ra->state);
         nr_clear_ra_proc(gnb_mod_idP, CC_idP, frameP, ra);
@@ -783,7 +783,7 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
           // harq_pid set a non valid value because it is not used in this call
           // the function is only called to decode the contention resolution sub-header
           if (nr_process_mac_pdu(gnb_mod_idP, UE_msg3_stage, CC_idP, frameP, slotP, sduP, sdu_lenP, -1) == 0) {
-            
+
             if (ra->state == Msg3_dcch_dtch) {
               // Check if the UE identified by C-RNTI still exists at the gNB
               NR_UE_info_t * UE_C = find_nr_UE(&gNB_mac->UE_info, ra->rnti);
@@ -1231,6 +1231,8 @@ void handle_nr_srs_measurements(const module_id_t module_id,
     return;
   }
 
+  UE->ue_pos_info.toa_ns = srs_ind->timing_advance_offset_nsec;
+
   gNB_MAC_INST *nr_mac = RC.nrmac[module_id];
   NR_mac_stats_t *stats = &UE->mac_stats;
   nfapi_srs_report_tlv_t *report_tlv = &srs_ind->report_tlv;
@@ -1638,7 +1640,7 @@ static void pf_ul(module_id_t module_id,
   const int CC_id = 0;
   gNB_MAC_INST *nrmac = RC.nrmac[module_id];
   NR_ServingCellConfigCommon_t *scc = nrmac->common_channels[CC_id].ServingCellConfigCommon;
-  
+
   const int min_rb = 5;
   // UEs that could be scheduled
   UEsched_t UE_sched[MAX_MOBILES_PER_GNB] = {0};
@@ -1688,7 +1690,7 @@ static void pf_ul(module_id_t module_id,
       /* reduce max_num_ue once we are sure UE can be allocated, i.e., has CCE */
       remainUEs--;
       continue;
-    } 
+    }
 
     /* skip this UE if there are no free HARQ processes. This can happen e.g.
      * if the UE disconnected in L2sim, in which case the gNB is not notified
@@ -1996,7 +1998,7 @@ static bool nr_fr1_ulsch_preprocessor(module_id_t module_id, frame_t frame, sub_
   st = e - len + 1;
 
   LOG_D(NR_MAC,"UL %d.%d : start_prb %d, end PRB %d\n",frame,slot,st,e);
-  
+
   uint16_t rballoc_mask[bwpSize];
 
   /* Calculate mask: if any RB in vrb_map_UL is blocked (1), the current RB will be 0 */
