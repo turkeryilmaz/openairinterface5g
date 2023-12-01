@@ -139,8 +139,15 @@ pthread_mutex_t      rrc_release_freelist;
 RRC_release_list_t   rrc_release_info;
 pthread_mutex_t      lock_ue_freelist;
 pthread_mutex_t      lock_cell_si_config;
-pthread_mutex_t      cond_cell_si_config;
+pthread_cond_t      cond_cell_si_config;
 
+static bool _is_as_security_set = false;
+static uint8_t _kRRCenc[32] = {0};
+static uint8_t _kRRCint[32] = {0};
+static uint8_t _kUPenc[32] = {0};
+
+static uint8_t _integrity_algorithm = 0;
+static uint8_t _ciphering_algorithm = 0;
 
 uint8_t ul_sqn,dl_sqn;
 
@@ -4023,17 +4030,17 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
       {
         if (pdcp_p->kRRCenc)
         {
-          kRRCenc = MALLOC(16);
+          kRRCenc = CALLOC(1,32);
           memcpy(kRRCenc, pdcp_p->kRRCenc, 16);
         }
         if (pdcp_p->kRRCint)
         {
-          kRRCint = MALLOC(32);
+          kRRCint = CALLOC(1,32);
           memcpy(kRRCint, pdcp_p->kRRCint, 32);
         }
         if (pdcp_p->kUPenc)
         {
-          kUPenc = MALLOC(16);
+          kUPenc = CALLOC(1,32);
           memcpy(kUPenc, pdcp_p->kUPenc, 16);
         }
 
@@ -6095,8 +6102,8 @@ rrc_eNB_configure_rbs_handover(struct rrc_eNB_ue_context_s *ue_context_p, protoc
         AssertFatal(NULL != RC.ss.ss_pdcp_api, "SS PDCP APIs NULL \n");
 
         kRRCint = CALLOC(1,32);
-        kUPenc = CALLOC(1,16);
-        kRRCenc = CALLOC(1,16);
+        kUPenc = CALLOC(1,32);
+        kRRCenc = CALLOC(1,32);
         memcpy(kRRCint,RC.ss.HOASSecurityCOnfig.Integrity.kRRCint, 32);
         memcpy(kUPenc,RC.ss.HOASSecurityCOnfig.Ciphering.kUPenc, 16);
         memcpy(kRRCenc,RC.ss.HOASSecurityCOnfig.Ciphering.kRRCenc, 16);
@@ -6211,6 +6218,14 @@ rrc_eNB_process_RRCConnectionReconfigurationComplete(
 
     derive_key_nas(RRC_ENC_ALG, ue_context_pP->ue_context.ciphering_algorithm, ue_context_pP->ue_context.kenb, kRRCenc);
     derive_key_nas(RRC_INT_ALG, ue_context_pP->ue_context.integrity_algorithm, ue_context_pP->ue_context.kenb, kRRCint);
+  } else {
+    if (_is_as_security_set) {
+      memcpy(kRRCenc, _kRRCenc, 32);
+      memcpy(kRRCint, _kRRCint, 32);
+      memcpy(kUPenc, _kUPenc, 32);
+
+      security_modeP = (_ciphering_algorithm ) | (_integrity_algorithm << 4);
+    }
   }
 
   /* Refresh SRBs/DRBs */
@@ -6978,11 +6993,27 @@ void rrc_eNB_as_security_configuration_req(
   if (NULL == ctxt_pP) {
     LOG_A(RRC, "No context to get PdcpCount\n");
   }
+  AssertFatal(ASSecConfReq!=NULL,"AS Security Config Request is NULL \n");
   LOG_A (RRC, "Update PDCP context for RNTI %d integrityProtAlgorithm=%d cipheringAlgorithm=%d \n",
          ASSecConfReq->rnti, ASSecConfReq->Integrity.integrity_algorithm,
          (int)ASSecConfReq->Ciphering.ciphering_algorithm);
-  AssertFatal(ASSecConfReq!=NULL,"AS Security Config Request is NULL \n");
+
   memcpy(&RC.ss.HOASSecurityCOnfig,ASSecConfReq,sizeof(RrcAsSecurityConfigReq));
+  _is_as_security_set = true;
+  _integrity_algorithm = ASSecConfReq->Integrity.integrity_algorithm;
+  _ciphering_algorithm = ASSecConfReq->Ciphering.ciphering_algorithm;
+  if(ASSecConfReq->Integrity.kRRCint) {
+    memset(_kRRCint, 0, sizeof(_kRRCint));
+    memcpy(_kRRCint,ASSecConfReq->Integrity.kRRCint, 32);
+  }
+  if(ASSecConfReq->Ciphering.kUPenc) {
+    memset(_kUPenc, 0, sizeof(_kUPenc));
+    memcpy(_kUPenc,ASSecConfReq->Ciphering.kUPenc, 16);
+  }
+  if(ASSecConfReq->Ciphering.kRRCenc) {
+    memset(_kRRCenc, 0, sizeof(_kRRCenc));
+    memcpy(_kRRCenc,ASSecConfReq->Ciphering.kRRCenc, 16);
+  }
 
   for (int i = 0; i < MAX_RBS; i++)
   {
@@ -7040,11 +7071,11 @@ void rrc_eNB_as_security_configuration_req(
           memcpy(kRRCint,ASSecConfReq->Integrity.kRRCint, 32);
         }
         if(ASSecConfReq->Ciphering.kUPenc) {
-          kUPenc = CALLOC(1,16);
+          kUPenc = CALLOC(1,32);
           memcpy(kUPenc,ASSecConfReq->Ciphering.kUPenc, 16);
         }
         if(ASSecConfReq->Ciphering.kRRCenc) {
-          kRRCenc = CALLOC(1,16);
+          kRRCenc = CALLOC(1,32);
           memcpy(kRRCenc,ASSecConfReq->Ciphering.kRRCenc, 16);
         }
 
@@ -7077,6 +7108,45 @@ void rrc_eNB_as_security_configuration_req(
                   rbid_, ctxt_pP->module_id, ASSecConfReq->rnti, ctxt_pP->enb_flag);
     }
   }
+}
+
+/*------------------------------------------------------------------------------*/
+/** rrc_eNB_MapT301InMs: Function to map T301 enums in 3GPP to value in Millisec  **/
+/*------------------------------------------------------------------------------*/
+static int rrc_eNB_MapT301InMs(long t301ms)
+{
+	int value=0;
+	switch(t301ms)
+	{
+		case LTE_UE_TimersAndConstants__t301_ms100:
+			value = 100;
+			break;
+		case LTE_UE_TimersAndConstants__t301_ms200:
+			value = 200;
+			break;
+		case LTE_UE_TimersAndConstants__t301_ms300:
+			value = 300;
+			break;
+		case LTE_UE_TimersAndConstants__t301_ms400:
+			value = 400;
+			break;
+		case LTE_UE_TimersAndConstants__t301_ms600:
+			value = 600;
+			break;
+		case LTE_UE_TimersAndConstants__t301_ms1000:
+			value = 1000;
+			break;
+		case LTE_UE_TimersAndConstants__t301_ms1500:
+			value = 1500;
+			break;
+		case LTE_UE_TimersAndConstants__t301_ms2000:
+			value = 2000;
+			break;
+		default: 
+			break;	
+	}
+        LOG_I(RRC,"t301 value= %d\n",value);
+	return value;
 }
 
 /*------------------------------------------------------------------------------*/
@@ -7305,8 +7375,12 @@ rrc_eNB_decode_ccch(
           /* reset timers */
           ue_context_p->ue_context.ul_failure_timer = 0;
           ue_context_p->ue_context.ue_release_timer = 0;
-          ue_context_p->ue_context.ue_reestablishment_timer = 0;
-          ue_context_p->ue_context.ue_release_timer_s1 = 0;
+
+	  /*125064: Start reestablishment timer in order to clear the UE context if reestablishment procedure is incomplete */
+	  LTE_SystemInformationBlockType2_t *sib2 = &RC.rrc[ctxt_pP->module_id]->carrier[CC_id].sib2;
+	  ue_context_p->ue_context.ue_reestablishment_timer = 1;
+	  ue_context_p->ue_context.ue_reestablishment_timer_thres = rrc_eNB_MapT301InMs(sib2->ue_TimersAndConstants.t301);
+	  ue_context_p->ue_context.ue_release_timer_s1 = 0;
           ue_context_p->ue_context.ue_release_timer_rrc = 0;
           ue_context_p->ue_context.reestablishment_xid = -1;
 
@@ -8984,6 +9058,18 @@ void rrc_subframe_process(protocol_ctxt_t *const ctxt_pP, const int CC_id) {
               ue_context_p->ue_context.rnti);
         ue_context_p->ue_context.ul_failure_timer = 20000; // lead to send S1 UE_CONTEXT_RELEASE_REQ
         removed_ue_count = add_ue_to_remove(ue_to_be_removed, removed_ue_count, ue_context_p);
+
+	/*125064: Get RNTI maintained for Reestablishment procedure to clear UE context */
+        rnti_t previous_rnti = 0;
+
+        for (int i = 0; i < MAX_MOBILES_PER_ENB; i++) {
+          if (reestablish_rnti_map[i][1] == ue_context_p->ue_context.rnti) {
+              previous_rnti = reestablish_rnti_map[i][0];
+              break;
+          }     
+        }
+        put_UE_in_freelist(ctxt_pP->module_id, previous_rnti, 1);
+
         ue_context_p->ue_context.ue_reestablishment_timer = 0;
         break; // break RB_FOREACH
       }

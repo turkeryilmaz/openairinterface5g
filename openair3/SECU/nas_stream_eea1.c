@@ -100,5 +100,5 @@ void nas_stream_encrypt_eea1(nas_stream_cipher_t const *stream_cipher, uint8_t *
   }
 
   free(KS);
-  memmove(out, stream_cipher->message, n*4);
+  memmove(out, stream_cipher->message, actual_buf_size);
 }

@@ -66,7 +66,7 @@ extern int sys_confirm_done;
 extern RAN_CONTEXT_t RC;
 extern uint32_t from_earfcn(int eutra_bandP, uint32_t dl_earfcn);
 extern pthread_mutex_t lock_cell_si_config;
-extern pthread_mutex_t cond_cell_si_config;
+extern pthread_cond_t cond_cell_si_config;
 
 #ifndef NR_RRC_VERSION
 extern pthread_cond_t cell_config_done_cond;
@@ -566,7 +566,7 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
                         RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].prach_zero_correlation = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib2.radioResourceConfigCommon.prach_Config.prach_ConfigInfo.zeroCorrelationZoneConfig;
                         RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].prach_freq_offset = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib2.radioResourceConfigCommon.prach_Config.prach_ConfigInfo.prach_FreqOffset;
                         RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].ue_TimersAndConstants_t300 = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib2.ue_TimersAndConstants.t300;
-                        RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].ue_TimersAndConstants_t301 = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib2.ue_TimersAndConstants.t310;
+                        RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].ue_TimersAndConstants_t301 = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib2.ue_TimersAndConstants.t301;
                         RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].ue_TimersAndConstants_t310 = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib2.ue_TimersAndConstants.t310;
                         RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].ue_TimersAndConstants_t311 = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib2.ue_TimersAndConstants.t311;
                         RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].ue_TimersAndConstants_n310 = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib2.ue_TimersAndConstants.n310;
