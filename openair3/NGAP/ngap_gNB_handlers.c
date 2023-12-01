@@ -801,6 +801,7 @@ static int ngap_gNB_handle_initial_context_request(sctp_assoc_t assoc_id, uint32
       } else {
         msg->allowed_nssai[i].sd = 0xffffff;
       }
+      NGAP_INFO("Initial Context Request, allowed_nssai ST %d SD 0x%06x\n", msg->allowed_nssai[i].sst, msg->allowed_nssai[i].sd);
     }
 
   /* id-UESecurityCapabilities */
@@ -981,6 +982,7 @@ static int ngap_gNB_handle_pdusession_setup_request(sctp_assoc_t assoc_id, uint3
     } else {
       msg->pdusession_setup_params[i].nssai.sd = 0xffffff;
     }
+    NGAP_INFO("Handle Pdusession Setup Request, nssai ST %d SD 0x%06x\n", msg->pdusession_setup_params[i].nssai.sst, msg->pdusession_setup_params[i].nssai.sd);
 
     allocCopy(&msg->pdusession_setup_params[i].nas_pdu, *item_p->pDUSessionNAS_PDU);
     allocCopy(&msg->pdusession_setup_params[i].pdusessionTransfer, item_p->pDUSessionResourceSetupRequestTransfer);
