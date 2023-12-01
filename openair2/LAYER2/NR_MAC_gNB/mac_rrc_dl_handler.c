@@ -564,23 +564,17 @@ void positioning_information_request(const f1ap_positioning_information_req_t *r
         req->gNB_CU_ue_id,
         req->gNB_DU_ue_id);
 
-  /* response has same type as request... */
-  f1ap_positioning_information_resp_t resp = {
-      .gNB_CU_ue_id = req->gNB_CU_ue_id,
-      .gNB_DU_ue_id = req->gNB_DU_ue_id,
-      .nrppa_msg_info.nrppa_transaction_id = req->nrppa_msg_info.nrppa_transaction_id,
-      .nrppa_msg_info.instance = req->nrppa_msg_info.instance,
-      .nrppa_msg_info.gNB_ue_ngap_id = req->nrppa_msg_info.gNB_ue_ngap_id,
-      .nrppa_msg_info.amf_ue_ngap_id = req->nrppa_msg_info.amf_ue_ngap_id,
-      .nrppa_msg_info.ue_rnti = req->nrppa_msg_info.ue_rnti,
-      .nrppa_msg_info.routing_id_buffer = req->nrppa_msg_info.routing_id_buffer,
-      .nrppa_msg_info.routing_id_length = req->nrppa_msg_info.routing_id_length,
-  };
+    f1ap_positioning_information_resp_t resp;
+    resp.gNB_CU_ue_id = req->gNB_CU_ue_id;
+    resp.gNB_DU_ue_id = req->gNB_DU_ue_id;
+    resp.nrppa_msg_info.nrppa_transaction_id = req->nrppa_msg_info.nrppa_transaction_id;
+    resp.nrppa_msg_info.instance = req->nrppa_msg_info.instance;
+    resp.nrppa_msg_info.gNB_ue_ngap_id = req->nrppa_msg_info.gNB_ue_ngap_id;
+    resp.nrppa_msg_info.amf_ue_ngap_id = req->nrppa_msg_info.amf_ue_ngap_id;
+    resp.nrppa_msg_info.ue_rnti = req->nrppa_msg_info.ue_rnti;
+    resp.nrppa_msg_info.routing_id_buffer = req->nrppa_msg_info.routing_id_buffer;
+    resp.nrppa_msg_info.routing_id_length = req->nrppa_msg_info.routing_id_length;
 
-  // printf("[MAC] PIE Test Adeel:  RequestedSRSTransmissionCharacteristics \n");
-  // xer_fprint(stdout, &asn_DEF_F1AP_RequestedSRSTransmissionCharacteristics, &f1ap_req->req_SRS_info); // test adeel //look UE
-
-  // gNB_MAC_INST *mac = RC.nrmac[req->nrppa_msg_info.instance];
   gNB_MAC_INST *mac = RC.nrmac[req->nrppa_msg_info.instance];
   mac->mac_rrc.positioning_information_response(&resp);
 }
@@ -615,10 +609,35 @@ void trp_information_request(const f1ap_trp_information_req_t *req)
 void positioning_measurement_request(const f1ap_measurement_req_t *req)
 {
   LOG_I(MAC,
-        "DL Processing Received measurement_Request transaction_id=%d, lmf_measurement_id=%d \n",
+        "DL Processing Received measurement_Request transaction_id=%d, lmf_measurement_id=%d, ran_measurement_id=%d \n",
         req->transaction_id,
-        req->lmf_measurement_id);
-  AssertFatal(false, " Not Implemented \n");
+        req->lmf_measurement_id,
+        req->ran_measurement_id);
+
+  if (req->pos_report_characteristics!=0) {
+    LOG_W(MAC,"periodic positioning measurements not yet supported\n");
+    AssertFatal(false, "Not implemented\n");
+  }
+
+  // move this to the response function
+    /* response has same type as request... */
+  f1ap_measurement_resp_t resp = {
+    .transaction_id = req->transaction_id,
+    .lmf_measurement_id = req->lmf_measurement_id,
+    .ran_measurement_id =req->ran_measurement_id,
+      .nrppa_msg_info.nrppa_transaction_id = req->nrppa_msg_info.nrppa_transaction_id,
+      .nrppa_msg_info.instance = req->nrppa_msg_info.instance,
+      .nrppa_msg_info.gNB_ue_ngap_id = req->nrppa_msg_info.gNB_ue_ngap_id,
+      .nrppa_msg_info.amf_ue_ngap_id = req->nrppa_msg_info.amf_ue_ngap_id,
+      .nrppa_msg_info.ue_rnti = req->nrppa_msg_info.ue_rnti,
+      .nrppa_msg_info.routing_id_buffer = req->nrppa_msg_info.routing_id_buffer,
+      .nrppa_msg_info.routing_id_length = req->nrppa_msg_info.routing_id_length,
+  };
+
+  //call the response handler
+  gNB_MAC_INST *mac = RC.nrmac[req->nrppa_msg_info.instance];
+  mac->mac_rrc.positioning_measurement_response(&resp);
+
 }
 
 void positioning_measurement_update(const f1ap_measurement_update_t *update)

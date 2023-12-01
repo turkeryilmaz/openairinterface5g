@@ -444,7 +444,7 @@ typedef struct f1ap_lost_connection_t {
 } f1ap_lost_connection_t;
 
 /*NRPPA IE*/ // adeel
-/* IE structures for Positioning related messages */
+/* IE structures for Positioning related messages as per TS 38.473 V16.3.1*/
 typedef struct nrppa_f1ap_info_s {
   uint32_t nrppa_transaction_id;
   instance_t instance;
@@ -469,10 +469,42 @@ typedef struct f1ap_criticality_diagnostics_s { // IE 9.3.1.3 (TS 38.473 V16.3.1
  F1AP_TransactionID_t	*transactionID;	 //OPTIONAL */
 } f1ap_criticality_diagnostics_t;
 
-typedef union bandwidth_srs_c {
+typedef enum f1ap_cause_e{
+  f1ap_cause_nothing, /* No components present */
+  f1ap_cause_radio_network,
+  f1ap_cause_transport,
+  f1ap_cause_protocol,
+  f1ap_cause_misc,
+} f1ap_cause_pr;
+
+typedef union f1ap_cause_c{
+uint8_t	 radioNetwork; //refer to TS 38.473 V16.3.1
+uint8_t	 transport; // refer to TS 38.473 V16.3.1
+uint8_t	 protocol; // refer to TS 38.473 V16.3.1
+uint8_t  misc; // refer to TS 38.473 V16.3.1
+}f1ap_cause_u;
+
+typedef struct f1ap_cause_s{
+  f1ap_cause_pr present;
+  f1ap_cause_u choice;
+}f1ap_cause_t;
+
+typedef union f1ap_bandwidth_srs_c {
   uint8_t fR1; // (M)
   uint8_t fR2; // (M)
-} bandwidth_srs_u;
+} f1ap_bandwidth_srs_u;
+
+typedef enum f1ap_bandwidth_srs_e{
+  f1ap_bandwidth_srs_pr_nothing,
+  f1ap_bandwidth_srs_pr_fR1,
+  f1ap_bandwidth_srs_pr_fR2
+}f1ap_bandwidth_srs_pr;
+
+typedef struct f1ap_bandwidth_srs_s{
+  f1ap_bandwidth_srs_pr present;
+  f1ap_bandwidth_srs_u choice;
+} f1ap_bandwidth_srs_t;
+
 
 typedef struct f1ap_scs_specific_carrier_s {
   uint32_t offsetToCarrier; // (M)
@@ -485,7 +517,7 @@ typedef struct f1ap_uplink_channel_bw_per_scs_list_s { // A_SEQUENCE_OF(struct F
   uint32_t scs_specific_carrier_list_length;
 } f1ap_uplink_channel_bw_per_scs_list_t;
 
-typedef enum f1ap_transmission_comb_pr {
+typedef enum f1ap_transmission_comb_e {
   f1ap_transmission_comb_pr_nothing, /* No components present */
   f1ap_transmission_comb_pr_n2,
   f1ap_transmission_comb_pr_n4
@@ -540,7 +572,7 @@ typedef union f1ap_resource_type_c {
   f1ap_resource_type_aperiodic_t aperiodic;
 } f1ap_resource_type_u;
 
-typedef enum f1ap_resource_type_pr {
+typedef enum f1ap_resource_type_e {
   f1ap_resource_type_pr_nothing, /* No components present */
   f1ap_resource_type_pr_periodic,
   f1ap_resource_type_pr_semi_persistent,
@@ -559,9 +591,21 @@ typedef struct f1ap_transmission_comb_n8_s {
 
 typedef union f1ap_transmission_comb_pos_c {
   f1ap_transmission_comb_pos_n2_t n2;
-  f1ap_transmission_comb_pos_n2_t n4;
+  f1ap_transmission_comb_pos_n4_t n4;
   f1ap_transmission_comb_pos_n8_t n8;
 } f1ap_transmission_comb_pos_u;
+
+typedef enum f1ap_transmission_comb_pos_e {
+  f1ap_transmission_comb_pos_pr_NOTHING,
+  f1ap_transmission_comb_pos_pr_n2,
+  f1ap_transmission_comb_pos_pr_n4,
+  f1ap_transmission_comb_pos_pr_n8
+} f1ap_transmission_comb_pos_pr;
+
+typedef struct f1ap_transmission_comb_pos_s {
+  f1ap_transmission_comb_pos_pr present;
+  f1ap_transmission_comb_pos_u choice;
+} f1ap_transmission_comb_pos_t;
 
 typedef struct f1ap_ssb_pos_s {
   uint16_t pCI_NR; // (O)
@@ -585,23 +629,35 @@ typedef struct f1ap_resource_type_aperiodic_pos_s {
   uint8_t slotOffset;
 } f1ap_resource_type_aperiodic_pos_t;
 
-typedef union f1ap_resource_type_pos_c {
+typedef union f1ap_resource_type_pos_c{
   f1ap_resource_type_periodic_pos_t periodic;
   f1ap_resource_type_semi_persistent_pos_t semi_persistent;
   f1ap_resource_type_aperiodic_pos_t aperiodic;
 } f1ap_resource_type_pos_u;
 
-typedef union f1ap_spatial_relation_pos_c {
+typedef enum f1ap_resource_type_pos_e{
+  f1ap_resource_type_pos_pr_NOTHING,
+  f1ap_resource_type_pos_pr_periodic,
+  f1ap_resource_type_pos_pr_semi_persistent,
+  f1ap_resource_type_pos_pr_aperiodic
+} f1ap_resource_type_pos_pr;
+
+typedef struct f1ap_resource_type_pos_s{
+f1ap_resource_type_pos_pr present;
+f1ap_resource_type_pos_u choice;
+} f1ap_resource_type_pos_t;
+
+typedef union f1ap_spatial_relation_pos_c{
   f1ap_ssb_pos_t sSBPos;
   f1ap_prs_information_pos_t pRSInformationPos;
 } f1ap_spatial_relation_pos_u;
 
-typedef struct f1ap_srs_resource_id_list_s { // A_SEQUENCE_OF(F1AP_SRSResourceID_t) list;
+typedef struct f1ap_srs_resource_id_list_s{ // A_SEQUENCE_OF(F1AP_SRSResourceID_t) list;
   uint8_t *srs_resource_id;
   uint8_t srs_resource_id_list_length; // maximum no of SRS resources per resource set is 16
 } f1ap_srs_resource_id_list_t;
 
-typedef struct f1ap_resource_set_type_periodic_s {
+typedef struct f1ap_resource_set_type_periodic_s{
   uint8_t periodicSet; // true	= 0
 } f1ap_resource_set_type_periodic_t;
 
@@ -620,7 +676,7 @@ typedef union f1ap_resource_set_type_c {
   f1ap_resource_set_type_aperiodic_t aperiodic;
 } f1ap_resource_set_type_u;
 
-typedef enum f1ap_resource_set_type_pr {
+typedef enum f1ap_resource_set_type_e {
   f1ap_resource_set_type_pr_nothing, /* No components present */
   f1ap_resource_set_type_pr_periodic,
   f1ap_resource_set_type_pr_semi_persistent,
@@ -675,13 +731,13 @@ typedef struct f1ap_srs_resource_s {
 
 typedef struct f1ap_pos_srs_resource_item_s {
   uint32_t srs_PosResourceId; // (M)
-  f1ap_transmission_comb_pos_u transmissionCombPos; // (M)
+  f1ap_transmission_comb_pos_t transmissionCombPos; // (M)
   uint8_t startPosition; // (M)  range (0,1,...13)
   uint8_t nrofSymbols; // (M)  n1	= 0, n2	= 1, n4	= 2, n8	= 3, n12 = 4
   uint16_t freqDomainShift; // (M)
   uint8_t c_SRS; // (M)
   uint8_t groupOrSequenceHopping; // (M)  neither	= 0, groupHopping	= 1, sequenceHopping	= 2
-  f1ap_resource_type_pos_u resourceTypePos; // (M)
+  f1ap_resource_type_pos_t resourceTypePos; // (M)
   uint32_t sequenceId; //(M)
   f1ap_spatial_relation_pos_u spatialRelationPos; /* OPTIONAL */
 } f1ap_pos_srs_resource_item_t;
@@ -864,7 +920,7 @@ typedef struct f1ap_requested_SRS_transmission_characteristics_s {
   uint16_t numberOfTransmissions; // (O) no of periodic transmission, 0= infinite no of SRS transmission, Applicable only if
                                   // Resource type IE is periodic
   uint8_t resourceType; // (M)
-  bandwidth_srs_u bandwidth_srs; // (M)
+  f1ap_bandwidth_srs_t bandwidth_srs; // (M)
   f1ap_srs_resource_set__list_t sRSResourceSetList; // (O) A_SEQUENCE_OF(struct F1AP_SRSResourceSetItem) list;
   f1ap_ssb_information_t sSBInformation; // OPTIONAL*/
 
@@ -901,10 +957,35 @@ typedef union f1ap_srs_type_c {
   f1ap_aperiodic_srs_t aperiodicSRS;
 } f1ap_srs_type_u;
 
+typedef enum f1ap_srs_type_e{
+	f1ap_srs_type_pr_NOTHING,	/* No components present */
+	f1ap_srs_type_pr_semipersistentSRS,
+	f1ap_srs_type_pr_aperiodicSRS
+}f1ap_srs_type_pr;
+
+typedef struct f1ap_srs_type_s{
+f1ap_srs_type_pr present;
+f1ap_srs_type_u  choice;
+}f1ap_srs_type_t;
+
 typedef union f1ap_abort_transmission_c {
   uint8_t sRSResourceSetID; // (M)
   uint32_t releaseALL;
 } f1ap_abort_transmission_u;
+
+
+typedef enum f1ap_abort_transmission_e {
+  f1ap_abort_transmission_pr_NOTHING,
+  f1ap_abort_transmission_pr_sRSResourceSetID,
+  f1ap_abort_transmission_pr_releaseALL
+}f1ap_abort_transmission_pr;
+
+
+typedef struct f1ap_abort_transmission_s {
+  f1ap_abort_transmission_pr present;
+  f1ap_abort_transmission_u choice;
+} f1ap_abort_transmission_t;
+
 
 typedef struct f1ap_trp_list_item_s {
   uint32_t tRPID;
@@ -1057,6 +1138,8 @@ typedef struct f1ap_trp_measurement_request_list_s { // A_SEQUENCE_OF(struct F1A
   uint32_t trp_measurement_request_list_length;
 } f1ap_trp_measurement_request_list_t;
 
+
+
 typedef struct f1ap_pos_measurement_quantities_item_s {
   uint8_t posMeasurementType; // gnb_rx_tx	= 0, ul_srs_rsrp	= 1, ul_aoa	= 2, ul_rtoa	= 3
   uint8_t timingReportingGranularityFactor; // (O)
@@ -1114,8 +1197,23 @@ typedef struct f1ap_additional_path_list_s { // IE 9.3.1.169 TS 38.473 V16.3.1 /
   uint32_t additional_path_list_length;
 } f1ap_additional_path_list_t;
 
+typedef enum f1ap_ul_rtoa_measurement_item_e{
+    f1ap_ulrtoameas_pr_NOTHING,	/* No components present */
+	f1ap_ulrtoameas_pr_k0,
+	f1ap_ulrtoameas_pr_k1,
+	f1ap_ulrtoameas_pr_k2,
+	f1ap_ulrtoameas_pr_k3,
+	f1ap_ulrtoameas_pr_k4,
+	f1ap_ulrtoameas_pr_k5
+}f1ap_ul_rtoa_measurement_item_pr;
+
+typedef struct f1ap_ul_rtoa_measurement_item_s{
+f1ap_ul_rtoa_measurement_item_pr present;
+f1ap_ul_rtoa_measurement_item_u  choice;
+}f1ap_ul_rtoa_measurement_item_t;
+
 typedef union f1ap_ul_rtoa_measurement_s { // IE 9.3.1.168 TS 38.473 V16.3.1
-  f1ap_ul_rtoa_measurement_item_u uL_RTOA_MeasurementItem;
+  f1ap_ul_rtoa_measurement_item_t uL_RTOA_MeasurementItem;
   f1ap_additional_path_list_t additionalPath_List; /* OPTIONAL */
 } f1ap_ul_rtoa_measurement_t;
 
@@ -1131,6 +1229,19 @@ typedef union f1ap_measured_results_value_c {
   f1ap_gnb_rx_tx_time_diff_t gNB_RxTxTimeDiff;
 } f1ap_measured_results_value_u;
 
+typedef enum f1ap_measured_results_value_e {
+	f1ap_measured_results_value_pr_nothing,	/* No components present */
+	f1ap_measured_results_value_pr_ul_angleofarrival,
+	f1ap_measured_results_value_pr_ul_srs_rsrp,
+	f1ap_measured_results_value_pr_ul_rtoa,
+	f1ap_measured_results_value_pr_gnb_rxtxtimediff
+} f1ap_measured_results_value_pr;
+
+typedef struct f1ap_measured_results_value_s {
+  f1ap_measured_results_value_pr present;
+  f1ap_measured_results_value_u choice;
+} f1ap_measured_results_value_t;
+
 typedef union f1ap_time_stamp_slot_index_c {
   uint8_t sCS_15;
   uint8_t sCS_30;
@@ -1138,9 +1249,23 @@ typedef union f1ap_time_stamp_slot_index_c {
   uint8_t sCS_120;
 } f1ap_time_stamp_slot_index_u;
 
+typedef enum f1ap_time_stamp_slot_index_e{
+	f1ap_time_stamp_slot_index_pr_NOTHING,
+	f1ap_time_stamp_slot_index_pr_sCS_15,
+	f1ap_time_stamp_slot_index_pr_sCS_30,
+	f1ap_time_stamp_slot_index_pr_sCS_60,
+	f1ap_time_stamp_slot_index_pr_sCS_120
+}f1ap_time_stamp_slot_index_pr;
+
+typedef struct f1ap_time_stamp_slot_index_s {
+f1ap_time_stamp_slot_index_pr  present;
+f1ap_time_stamp_slot_index_u   choice;
+} f1ap_time_stamp_slot_index_t;
+
+
 typedef struct f1ap_time_stamp_s { // IE 9.3.1.171 TS 38.473 V16.3.1
   uint16_t systemFrameNumber;
-  f1ap_time_stamp_slot_index_u slotIndex;
+  f1ap_time_stamp_slot_index_t slotIndex;
   bit_string_t measurementTime; // OPTIONAL F1AP_SFNInitialisationTime_t
 } f1ap_time_stamp_t;
 
@@ -1150,26 +1275,27 @@ typedef struct f1ap_measurement_beam_info_t { // IE 9.3.1.173 TS 38.473 V16.3.1
   uint8_t sSB_Index; // OPTIONAL
 } f1ap_measurement_beam_info_t;
 
-typedef union f1ap_pos_measurement_result_item_c {
-  f1ap_measured_results_value_u measuredResultsValue;
+
+typedef struct f1ap_pos_measurement_result_item_s {
+  f1ap_measured_results_value_t measuredResultsValue;
   f1ap_time_stamp_t timeStamp;
   f1ap_trp_measurement_quality_t measurementQuality; // (O)
   f1ap_measurement_beam_info_t measurementBeamInfo; // (O)
-} f1ap_pos_measurement_result_item_u;
+} f1ap_pos_measurement_result_item_t;
 
 typedef struct f1ap_pos_measurement_result_s { // IE 9.3.1.166 TS 38.473 V16.3.1//A_SEQUENCE_OF(struct
                                                // F1AP_PosMeasurementResultItem) list;
-  f1ap_pos_measurement_result_item_u *pos_measurement_result_item;
+  f1ap_pos_measurement_result_item_t *pos_measurement_result_item;
   uint32_t f1ap_pos_measurement_result_length;
 } f1ap_pos_measurement_result_t;
 
-typedef struct f1ap_Pos_measurement_result_list_item_s {
+typedef struct f1ap_pos_measurement_result_list_item_s {
   f1ap_pos_measurement_result_t posMeasurementResult;
   uint32_t tRPID;
-} f1ap_Pos_measurement_result_list_item_t;
+} f1ap_pos_measurement_result_list_item_t;
 
 typedef struct f1ap_pos_measurement_result_list_s { // A_SEQUENCE_OF(struct F1AP_PosMeasurementResultList_Item) list;
-  f1ap_Pos_measurement_result_list_item_t *pos_measurement_result_list_Item;
+  f1ap_pos_measurement_result_list_item_t *pos_measurement_result_list_item;
   uint32_t pos_measurement_result_list_length;
 } f1ap_pos_measurement_result_list_t;
 
@@ -1194,7 +1320,7 @@ typedef struct f1ap_positioning_information_failure_s {
   uint32_t gNB_CU_ue_id; // IE 9.3.1.4 (M)
   uint32_t gNB_DU_ue_id; // IE 9.3.1.5 (M)
   nrppa_f1ap_info_t nrppa_msg_info;
-  f1ap_Cause_t cause; // IE 9.3.1.2 (M)
+  f1ap_cause_t cause; // IE 9.3.1.2 (M)
   f1ap_criticality_diagnostics_t criticality_diagnostics; //  Criticality_Diagnostics // IE 9.3.1.3 (O)
 } f1ap_positioning_information_failure_t;
 
@@ -1210,7 +1336,7 @@ typedef struct f1ap_positioning_activation_req_s {
   uint32_t gNB_CU_ue_id; // IE 9.3.1.4 (M)
   uint32_t gNB_DU_ue_id; // IE 9.3.1.5 (M)
   nrppa_f1ap_info_t nrppa_msg_info;
-  f1ap_srs_type_u srs_type;
+  f1ap_srs_type_t srs_type;
   bit_string_t sfn_initialisation_time;
 } f1ap_positioning_activation_req_t;
 
@@ -1227,7 +1353,7 @@ typedef struct f1ap_positioning_activation_failure_s {
   uint32_t gNB_CU_ue_id; // IE 9.3.1.4 (M)
   uint32_t gNB_DU_ue_id; // IE 9.3.1.5 (M)
   nrppa_f1ap_info_t nrppa_msg_info;
-  f1ap_Cause_t cause; // IE 9.3.1.2 (M)
+  f1ap_cause_t cause; // IE 9.3.1.2 (M)
   f1ap_criticality_diagnostics_t criticality_diagnostics; //  Criticality_Diagnostics // IE 9.3.1.3 (O)
 } f1ap_positioning_activation_failure_t;
 
@@ -1235,7 +1361,7 @@ typedef struct f1ap_positioning_deactivation_s {
   uint32_t gNB_CU_ue_id; // IE 9.3.1.4 (M)
   uint32_t gNB_DU_ue_id; // IE 9.3.1.5 (M)
   nrppa_f1ap_info_t nrppa_msg_info;
-  f1ap_abort_transmission_u abort_transmission;
+  f1ap_abort_transmission_t abort_transmission;
 } f1ap_positioning_deactivation_t;
 
 /* Structure of TRP Information Transfer related NRPPA messages */
@@ -1255,7 +1381,7 @@ typedef struct f1ap_trp_information_resp_s {
 
 typedef struct f1ap_trp_information_failure_s {
   uint8_t transaction_id; // IE 9.3.1.23 (M)
-  f1ap_Cause_t cause; // IE 9.3.1.2 (M)
+  f1ap_cause_t cause; // IE 9.3.1.2 (M)
   nrppa_f1ap_info_t nrppa_msg_info;
   f1ap_criticality_diagnostics_t criticality_diagnostics; // IE 9.3.1.3 (O)
 } f1ap_trp_information_failure_t;
@@ -1292,7 +1418,7 @@ typedef struct f1ap_measurement_failure_s {
   uint16_t lmf_measurement_id; // (M)
   uint16_t ran_measurement_id; // (M)
   nrppa_f1ap_info_t nrppa_msg_info;
-  f1ap_Cause_t cause; // IE 9.3.1.2 (M)
+  f1ap_cause_t cause; // IE 9.3.1.2 (M)
   f1ap_criticality_diagnostics_t criticality_diagnostics; // IE 9.3.1.3 (O)
 } f1ap_measurement_failure_t;
 
@@ -1317,7 +1443,7 @@ typedef struct f1ap_measurement_failure_ind_s {
   uint16_t lmf_measurement_id; // (M)
   uint16_t ran_measurement_id; // (M)
   nrppa_f1ap_info_t nrppa_msg_info;
-  f1ap_Cause_t cause; // IE 9.3.1.2 (M)
+  f1ap_cause_t cause; // IE 9.3.1.2 (M)
 } f1ap_measurement_failure_ind_t;
 
 typedef struct f1ap_measurement_abort_s {

@@ -72,19 +72,14 @@
 #include "NRPPA_PositioningBroadcastCells.h"
 #include "NRPPA_AssistanceInformationFailureList.h"
 
-#include "NRPPA_Measurement-ID.h"
-#include "NRPPA_TRP-MeasurementRequestList.h"
-#include "NRPPA_TRPMeasurementQuantities.h"
-#include "NRPPA_MeasurementBeamInfoRequest.h"
-#include "NRPPA_SystemFrameNumber.h"
-#include "NRPPA_SlotNumber.h"
-#include "NRPPA_TRP-MeasurementResponseList.h"
 #include "NRPPA_TRPList.h"
 #include "NRPPA_TRPInformationTypeList.h"
-#include "NRPPA_TRPInformationList.h"
-#include "NRPPA_SRSType.h"
-#include "NRPPA_ActivationTime.h"
-#include "NRPPA_AbortTransmission.h"*/
+#include "NRPPA_SystemFrameNumber.h"
+#include "NRPPA_SlotNumber.h"
+
+
+
+*/
 
 /* Start: ad**l todo add all nrppa ASN genrated header files here */
 #include "NRPPA_NRPPA-PDU.h"
@@ -160,6 +155,12 @@
 #include "NRPPA_CriticalityDiagnostics.h"
 #include "NRPPA_Criticality.h"
 
+#include "NRPPA_SRSType.h"
+#include "NRPPA_SemipersistentSRS.h"
+#include "NRPPA_AperiodicSRS.h"
+#include "NRPPA_ActivationTime.h"
+#include "NRPPA_AbortTransmission.h"
+
 // TRP Information Transfer
 #include "NRPPA_TRPInformationFailure.h"
 #include "NRPPA_TRPInformationRequest.h"
@@ -168,6 +169,7 @@
 //#include ".h"
 #include "NRPPA_TRPInformationList.h"
 #include "NRPPA_TRPInformationItem.h"
+
 
 // Measurement Transfer
 #include "NRPPA_MeasurementRequest.h"
@@ -178,14 +180,33 @@
 #include "NRPPA_MeasurementAbort.h"
 #include "NRPPA_MeasurementFailureIndication.h"
 
+
+
+
 //#include ".h"
-#include "NRPPA_TRPMeasurementQuantities.h"
 #include "NRPPA_TRP-MeasurementRequestList.h"
+#include "NRPPA_TRP-MeasurementRequestItem.h"
+#include "NRPPA_TRPMeasurementQuantities.h"
+
+#include "NRPPA_TRPMeasurementQuantitiesList-Item.h"
+
 #include "NRPPA_TRP-MeasurementResponseList.h"
 #include "NRPPA_TRP-MeasurementResponseItem.h"
 #include "NRPPA_TrpMeasurementResult.h"
 #include "NRPPA_TrpMeasurementResultItem.h"
 #include "NRPPA_TrpMeasuredResultsValue.h"
+#include "NRPPA_MeasuredResults.h"
+#include "NRPPA_MeasuredResultsValue.h"
+#include "NRPPA_MeasurementQuantities.h"
+#include "NRPPA_UL-AoA.h"
+#include "NRPPA_UL-RTOAMeasurement.h"
+#include "NRPPA_ULRTOAMeas.h"
+#include "NRPPA_GNBRxTxTimeDiffMeas.h"
+#include "NRPPA_GNB-RxTxTimeDiff.h"
+#include "NRPPA_Measurement-ID.h"
+#include "NRPPA_MeasurementBeamInfo.h"
+
+
 /* END: ad**l todo add all nrppa ASN genrated header files here*/
 
 /* Checking version of ASN1C compiler */
