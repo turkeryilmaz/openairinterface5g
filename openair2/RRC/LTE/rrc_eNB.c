@@ -7111,6 +7111,45 @@ void rrc_eNB_as_security_configuration_req(
 }
 
 /*------------------------------------------------------------------------------*/
+/** rrc_eNB_MapT301InMs: Function to map T301 enums in 3GPP to value in Millisec  **/
+/*------------------------------------------------------------------------------*/
+static int rrc_eNB_MapT301InMs(long t301ms)
+{
+	int value=0;
+	switch(t301ms)
+	{
+		case LTE_UE_TimersAndConstants__t301_ms100:
+			value = 100;
+			break;
+		case LTE_UE_TimersAndConstants__t301_ms200:
+			value = 200;
+			break;
+		case LTE_UE_TimersAndConstants__t301_ms300:
+			value = 300;
+			break;
+		case LTE_UE_TimersAndConstants__t301_ms400:
+			value = 400;
+			break;
+		case LTE_UE_TimersAndConstants__t301_ms600:
+			value = 600;
+			break;
+		case LTE_UE_TimersAndConstants__t301_ms1000:
+			value = 1000;
+			break;
+		case LTE_UE_TimersAndConstants__t301_ms1500:
+			value = 1500;
+			break;
+		case LTE_UE_TimersAndConstants__t301_ms2000:
+			value = 2000;
+			break;
+		default: 
+			break;	
+	}
+        LOG_I(RRC,"t301 value= %d\n",value);
+	return value;
+}
+
+/*------------------------------------------------------------------------------*/
 int
 rrc_eNB_decode_ccch(
   protocol_ctxt_t *const ctxt_pP,
@@ -7336,8 +7375,12 @@ rrc_eNB_decode_ccch(
           /* reset timers */
           ue_context_p->ue_context.ul_failure_timer = 0;
           ue_context_p->ue_context.ue_release_timer = 0;
-          ue_context_p->ue_context.ue_reestablishment_timer = 0;
-          ue_context_p->ue_context.ue_release_timer_s1 = 0;
+
+	  /*125064: Start reestablishment timer in order to clear the UE context if reestablishment procedure is incomplete */
+	  LTE_SystemInformationBlockType2_t *sib2 = &RC.rrc[ctxt_pP->module_id]->carrier[CC_id].sib2;
+	  ue_context_p->ue_context.ue_reestablishment_timer = 1;
+	  ue_context_p->ue_context.ue_reestablishment_timer_thres = rrc_eNB_MapT301InMs(sib2->ue_TimersAndConstants.t301);
+	  ue_context_p->ue_context.ue_release_timer_s1 = 0;
           ue_context_p->ue_context.ue_release_timer_rrc = 0;
           ue_context_p->ue_context.reestablishment_xid = -1;
 
@@ -9015,6 +9058,18 @@ void rrc_subframe_process(protocol_ctxt_t *const ctxt_pP, const int CC_id) {
               ue_context_p->ue_context.rnti);
         ue_context_p->ue_context.ul_failure_timer = 20000; // lead to send S1 UE_CONTEXT_RELEASE_REQ
         removed_ue_count = add_ue_to_remove(ue_to_be_removed, removed_ue_count, ue_context_p);
+
+	/*125064: Get RNTI maintained for Reestablishment procedure to clear UE context */
+        rnti_t previous_rnti = 0;
+
+        for (int i = 0; i < MAX_MOBILES_PER_ENB; i++) {
+          if (reestablish_rnti_map[i][1] == ue_context_p->ue_context.rnti) {
+              previous_rnti = reestablish_rnti_map[i][0];
+              break;
+          }     
+        }
+        put_UE_in_freelist(ctxt_pP->module_id, previous_rnti, 1);
+
         ue_context_p->ue_context.ue_reestablishment_timer = 0;
         break; // break RB_FOREACH
       }
