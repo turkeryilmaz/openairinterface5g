@@ -27,6 +27,7 @@
   EMAIL   : Lionel.Gauthier@eurecom.fr and Navid Nikaein, kroempa@gmail.com
 */
 
+#include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <nr_pdcp/nr_pdcp.h>
@@ -55,8 +56,14 @@
 extern unsigned char NB_gNB_INST;
 
 extern RAN_CONTEXT_t RC;
+extern int cell_config_5G_done;
 
 #define GNB_REGISTER_RETRY_DELAY 10
+
+
+pthread_cond_t cell_config_5G_done_cond;
+pthread_mutex_t cell_config_5G_done_mutex;
+static  void wait_cell_config_5G(char *thread_name);
 
 /*------------------------------------------------------------------------------*/
 void configure_nr_rrc(uint32_t gnb_id)
@@ -68,7 +75,14 @@ void configure_nr_rrc(uint32_t gnb_id)
 
   if (RC.nrrrc[gnb_id]) {
     RCconfig_NRRRC(msg_p,gnb_id, RC.nrrrc[gnb_id]);
-    
+
+    if (RC.ss.mode >= SS_SOFTMODEM)
+    {
+      /** wait for signal */
+      wait_cell_config_5G("TASK_SYS_GNB");
+      LOG_I(GNB_APP, "fxn:%s: Received Cell Config 5G SA\n", __FUNCTION__);
+    } 
+
     LOG_I(GNB_APP, "RRC starting with node type %d\n", RC.nrrrc[gnb_id]->node_type);
     LOG_I(GNB_APP,"Sending configuration message to NR_RRC task\n");
     itti_send_msg_to_task (TASK_RRC_GNB, GNB_MODULE_ID_TO_INSTANCE(gnb_id), msg_p);
@@ -147,6 +161,7 @@ void *gNB_app_task(void *args_p)
   int cell_to_activate = 0;
   itti_mark_task_ready (TASK_GNB_APP);
   ngran_node_t node_type = get_node_type();
+  srand(time(NULL));
 
   if (RC.nb_nr_inst > 0) {
     if (node_type == ngran_gNB_CUCP ||
@@ -301,3 +316,15 @@ void *gNB_app_task(void *args_p)
 
   return NULL;
 }
+
+static  void wait_cell_config_5G(char *thread_name) {
+  LOG_A(GNB_APP, "waiting for [SYS 5G] CELL CONFIG Indication (%s)\n",thread_name);
+  pthread_mutex_lock( &cell_config_5G_done_mutex );
+      
+  while ( cell_config_5G_done < 0 )
+    pthread_cond_wait( &cell_config_5G_done_cond, &cell_config_5G_done_mutex );
+  
+  pthread_mutex_unlock(&cell_config_5G_done_mutex );
+  LOG_A( GNB_APP,"[SYS 5G]: got cell config (%s)\n", thread_name);
+}
+

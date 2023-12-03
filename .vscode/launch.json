@@ -8,10 +8,9 @@
             "name": "(gdb) Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/cmake_targets/ran_build/build/lte-softmodem",
+            "program": "${workspaceFolder}/cmake_targets/ran_build_4G/build/lte-softmodem",
             "args": [
-                "-O", "../ci-scripts/conf_files/rcc.band7.tm1.nfapi.conf",
-                "--noS1"
+                "-O", "${workspaceFolder}/ci-scripts/conf_files/3GPP_System_Simulator/SS_proxy_rcc.band1_1CC.tm1.nfapi.conf"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/cmake_targets",
