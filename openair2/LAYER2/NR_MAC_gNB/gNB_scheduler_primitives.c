@@ -1933,6 +1933,20 @@ void remove_front_nr_list(NR_list_t *listP)
 }
 
 /*
+ * Get number of elements in list
+ */
+int get_num_elements_nr_list(const NR_list_t *listP)
+{
+  int s = 0;
+  const int *cur = &listP->head;
+  while (*cur >= 0) {
+    s++;
+    cur = &listP->next[*cur];
+  }
+  return s;
+}
+
+/*
  * Check if the id is in the list
  */
 bool check_nr_list(const NR_list_t *listP, int id)

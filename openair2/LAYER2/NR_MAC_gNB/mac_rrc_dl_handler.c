@@ -267,7 +267,7 @@ static void set_nssaiConfig(const int srb_len,
     const f1ap_drb_to_be_released_t *drb = req_drbs_rel;
     long lcid = get_lcid_from_drbid(drb->rb_id);
 
-    for (int s = 0; s < sched_ctrl->numSlices; s++) {
+    for (int s = 0; s < mac->numSlices; s++) {
       if (check_nr_list(&sched_ctrl->sliceInfo[s].lcid, lcid)) {
         remove_nr_list(&sched_ctrl->sliceInfo[s].lcid, lcid);
         break;

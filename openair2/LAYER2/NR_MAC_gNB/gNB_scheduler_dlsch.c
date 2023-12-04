@@ -316,6 +316,41 @@ int nr_write_ce_dlsch_pdu(module_id_t module_idP,
   return offset;
 }
 
+/* RR scheduling of slices for each UE */
+static int get_slice_to_sched(module_id_t module_id, const NR_UE_sched_ctrl_t *sched_ctrl)
+{
+  gNB_MAC_INST *mac = RC.nrmac[module_id];
+  int cur_slice_idx = (sched_ctrl->curSchedSliceIdx + 1) % mac->numSlices;
+  while (get_num_elements_nr_list(&sched_ctrl->sliceInfo[cur_slice_idx].lcid) < 0) {
+    cur_slice_idx = (cur_slice_idx + 1) % mac->numSlices;
+  }
+  return cur_slice_idx;
+}
+
+static void add_ue_to_list(UEsched_t *ue_list, NR_UE_info_t *UE)
+{
+  int i = 0;
+  while (ue_list[i].UE != NULL) {
+    DevAssert(i < MAX_MOBILES_PER_GNB + 1);
+    i++;
+  }
+  ue_list[i].UE = UE;
+}
+
+/* Prepare the list of UE for each slice that will be scheduled in this slot.
+ * For UEs with multiples slices, current slice is selected in Round-Robin fashion.
+ */
+static void nr_update_slice_info(module_id_t module_id, frame_t frame, sub_frame_t slot)
+{
+  gNB_MAC_INST *mac = RC.nrmac[module_id];
+  UE_iterator(RC.nrmac[module_id]->UE_info.list, UE)
+  {
+    NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
+    const int slice_idx = get_slice_to_sched(module_id, sched_ctrl);
+    add_ue_to_list(mac->sliceConfig[slice_idx].UE_list, UE);
+  }
+}
+
 static void nr_store_dlsch_buffer(module_id_t module_id, frame_t frame, sub_frame_t slot)
 {
   UE_iterator(RC.nrmac[module_id]->UE_info.list, UE) {

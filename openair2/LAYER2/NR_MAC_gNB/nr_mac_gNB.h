@@ -599,7 +599,6 @@ typedef struct {
   uint32_t num_total_bytes;
   uint16_t dl_pdus_total;
   /// UE slice specific info
-  int numSlices;
   int curSchedSliceIdx;
   NR_UE_slice_info_t sliceInfo[NR_MAX_NUM_SLICES];
   /// per-LC status data
