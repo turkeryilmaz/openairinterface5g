@@ -2742,6 +2742,7 @@ void *rrc_nrue_task(void *args_p)
 
       case NR_SDAP_DATA_REQ:
       {
+        PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, ue_mod_id, GNB_FLAG_NO, NR_SDAP_DATA_REQ(msg_p).rnti, 0, 0, 0);
         result = sdap_data_req(&ctxt,
                         NR_SDAP_DATA_REQ(msg_p).rnti,
                         SRB_FLAG_NO,
