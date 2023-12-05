@@ -57,8 +57,8 @@ int get_supported_band_index(int scs, int band, int n_rbs){
 }
 
 
-// Table 5.2-1 NR operating bands in FR1 & FR2 (3GPP TS 38.101)
-// Table 5.4.2.3-1 Applicable NR-ARFCN per operating band in FR1 & FR2 (3GPP TS 38.101)
+// Table 5.2-1 NR operating bands in FR1 & FR2 (3GPP TS 38.101 and TS 38.108)
+// Table 5.4.2.3-1 Applicable NR-ARFCN per operating band in FR1 & FR2 (3GPP TS 38.101 and TS 38.108)
 // Notes:
 // - N_OFFs for bands from 80 to 89 and band 95 is referred to UL
 // - Frequencies are expressed in KHz
@@ -120,6 +120,8 @@ const nr_bandentry_t nr_bandtable[] = {
   {94,   880000,  915000, 1432000, 1517000, 20, 286400, 100},
   {95,  2010000, 2025000,     000,     000, 20, 402000, 100},
   {96,  5925000, 7125000, 5925000, 7125000,  1, 795000,  15},
+  {255, 1626500, 1660500, 1525000, 1559000, 20, 305000, 100},
+  {256, 1980000, 2010000, 2170000, 2200000, 20, 434000, 100},
   {257,26500020,29500000,26500020,29500000,  1,2054166,  60},
   {257,26500080,29500000,26500080,29500000,  2,2054167, 120},
   {258,24250080,27500000,24250080,27500000,  1,2016667,  60},
@@ -318,7 +320,7 @@ int32_t get_delta_duplex(int nr_bandP, uint8_t scs_index)
 uint16_t config_bandwidth(int mu, int nb_rb, int nr_band)
 {
 
-  if (nr_band < 100)  { //FR1
+  if (nr_band < 257)  { //FR1
    switch(mu) {
     case 0 :
       if (nb_rb<=25)
@@ -494,6 +496,7 @@ void get_samplerate_and_bw(int mu,
         *tx_bw = 50e6;
         *rx_bw = 50e6;
       }
+      break;
     case 216:
       if (threequarter_fs) {
         *sample_rate=46.08e6;
@@ -546,6 +549,7 @@ void get_samplerate_and_bw(int mu,
         *tx_bw = 10e6;
         *rx_bw = 10e6;
       }
+      break;
     case 25:
       if (threequarter_fs) {
         *sample_rate=5.76e6;

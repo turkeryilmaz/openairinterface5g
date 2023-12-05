@@ -27,8 +27,8 @@
 uint32_t nr_subcarrier_spacing[MAX_NUM_SUBCARRIER_SPACING] = {15e3, 30e3, 60e3, 120e3, 240e3};
 uint16_t nr_slots_per_subframe[MAX_NUM_SUBCARRIER_SPACING] = {1, 2, 4, 8, 16};
 
-// Table 5.4.3.3-1 38-101
-int nr_ssb_table[48][3] = {
+// Table 5.4.3.3-1 38.101 and 38.108
+int nr_ssb_table[][3] = {
   {1, 15, nr_ssb_type_A},
   {2, 15, nr_ssb_type_A},
   {3, 15, nr_ssb_type_A},
@@ -76,7 +76,10 @@ int nr_ssb_table[48][3] = {
   {92, 15, nr_ssb_type_A},
   {93, 15, nr_ssb_type_A},
   {94, 15, nr_ssb_type_A},
-  {96, 30, nr_ssb_type_C}
+  {96, 30, nr_ssb_type_C},
+  {255, 15, nr_ssb_type_A},
+  {255, 30, nr_ssb_type_B},
+  {256, 15, nr_ssb_type_A},
 };
 
 
