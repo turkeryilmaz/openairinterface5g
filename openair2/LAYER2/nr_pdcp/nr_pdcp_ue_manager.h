@@ -46,6 +46,7 @@ void nr_pdcp_manager_lock(nr_pdcp_ue_manager_t *m);
 void nr_pdcp_manager_unlock(nr_pdcp_ue_manager_t *m);
 
 nr_pdcp_ue_t *nr_pdcp_manager_get_ue(nr_pdcp_ue_manager_t *m, ue_id_t rntiMaybeUEid);
+nr_pdcp_ue_t *nr_pdcp_manager_get_ue_ex(nr_pdcp_ue_manager_t *_m, int rnti);
 void nr_pdcp_manager_remove_ue(nr_pdcp_ue_manager_t *m, ue_id_t rntiMaybeUEid);
 
 nr_pdcp_ue_t **nr_pdcp_manager_get_ue_list(nr_pdcp_ue_manager_t *_m);
