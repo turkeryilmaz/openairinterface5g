@@ -518,7 +518,7 @@ int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp)
                uint8_t *dst = (uint8_t *)u8dptr;
 
                struct xran_prb_elm* p_prbMapElm = &pRbMap->prbMap[idxElm];
-               if (ru->beam_id[0][slot*14]!=255) p_prbMapElm->nBeamIndex = ru->beam_id[0][slot*14];
+               //if (ru->beam_id[0][slot*14]!=255) p_prbMapElm->nBeamIndex = ru->beam_id[0][slot*14];
                //printf("beam id %u\n",p_prbMapElm->nBeamIndex);
 
                for (idxElm = 0;  idxElm < pRbMap->nPrbElm; idxElm++) {

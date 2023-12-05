@@ -380,17 +380,17 @@ NR_RLC_BearerConfig_t *get_DRB_RLC_BearerConfig(long lcChannelId, long drbId, NR
   rlc_BearerConfig->servedRadioBearer                      = calloc(1, sizeof(*rlc_BearerConfig->servedRadioBearer));
   rlc_BearerConfig->servedRadioBearer->present             = NR_RLC_BearerConfig__servedRadioBearer_PR_drb_Identity;
   rlc_BearerConfig->servedRadioBearer->choice.drb_Identity = drbId;
-  rlc_BearerConfig->reestablishRLC                         = NULL;
-
+  rlc_BearerConfig->reestablishRLC                         = CALLOC(1,sizeof(long));
+  *(rlc_BearerConfig->reestablishRLC ) = NR_RLC_BearerConfig__reestablishRLC_true;
   NR_RLC_Config_t *rlc_Config  = calloc(1, sizeof(NR_RLC_Config_t));
   nr_drb_config(rlc_Config, rlc_conf);
   rlc_BearerConfig->rlc_Config = rlc_Config;
 
   NR_LogicalChannelConfig_t *logicalChannelConfig                 = calloc(1, sizeof(NR_LogicalChannelConfig_t));
   logicalChannelConfig->ul_SpecificParameters                     = calloc(1, sizeof(*logicalChannelConfig->ul_SpecificParameters));
-  logicalChannelConfig->ul_SpecificParameters->priority           = priority;
-  logicalChannelConfig->ul_SpecificParameters->prioritisedBitRate = NR_LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_kBps8;
-  logicalChannelConfig->ul_SpecificParameters->bucketSizeDuration = NR_LogicalChannelConfig__ul_SpecificParameters__bucketSizeDuration_ms100;
+  logicalChannelConfig->ul_SpecificParameters->priority           = 9; //priority;
+  logicalChannelConfig->ul_SpecificParameters->prioritisedBitRate = NR_LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_infinity;
+  logicalChannelConfig->ul_SpecificParameters->bucketSizeDuration = NR_LogicalChannelConfig__ul_SpecificParameters__bucketSizeDuration_ms50;
 
   long *logicalChannelGroup                                          = CALLOC(1, sizeof(long));
   *logicalChannelGroup                                               = 1;

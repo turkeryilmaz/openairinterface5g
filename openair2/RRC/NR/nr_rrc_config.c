@@ -113,6 +113,7 @@ static NR_ControlResourceSet_t *get_coreset_config(int bwp_id, int curr_bwp, uin
       asn1cSeqAdd(&coreset->tci_StatesPDCCH_ToAddList->list,tci[i]);
     }
   }
+  coreset->tci_StatesPDCCH_ToAddList = NULL;
   coreset->tci_StatesPDCCH_ToReleaseList = NULL;
   coreset->tci_PresentInDCI = NULL;
   coreset->pdcch_DMRS_ScramblingID = NULL;
@@ -616,7 +617,8 @@ static void config_srs(const NR_ServingCellConfigCommon_t *scc,
   srs_res0->spatialRelationInfo->servingCellId = NULL;
   // TODO include CSI as reference signal when BWPs are handled properly
   srs_res0->spatialRelationInfo->referenceSignal.present = NR_SRS_SpatialRelationInfo__referenceSignal_PR_ssb_Index;
-  srs_res0->spatialRelationInfo->referenceSignal.choice.ssb_Index = 0;
+  //srs_res0->spatialRelationInfo->referenceSignal.choice.ssb_Index = 0;
+  srs_res0->spatialRelationInfo->referenceSignal.choice.csi_RS_Index = 0;
   asn1cSeqAdd(&srs_Config->srs_ResourceToAddModList->list,srs_res0);
 }
 
@@ -888,8 +890,8 @@ void set_pucch_power_config(NR_PUCCH_Config_t *pucch_Config, int do_csirs) {
   pucchspatial->servingCellId = NULL;
   // TODO include CSI as reference signal when BWPs are handled properly
   pucchspatial->referenceSignal.present = NR_PUCCH_SpatialRelationInfo__referenceSignal_PR_ssb_Index;
-  pucchspatial->referenceSignal.choice.ssb_Index = 0;
-
+  //pucchspatial->referenceSignal.choice.ssb_Index = 0;
+  pucchspatial->referenceSignal.choice.csi_RS_Index = 0;
   pucchspatial->pucch_PathlossReferenceRS_Id = PL_ref_RS->pucch_PathlossReferenceRS_Id;
   pucchspatial->p0_PUCCH_Id = p00->p0_PUCCH_Id;
   pucchspatial->closedLoopIndex = NR_PUCCH_SpatialRelationInfo__closedLoopIndex_i0;
@@ -1068,7 +1070,9 @@ static struct NR_SetupRelease_PUSCH_Config *config_pusch(NR_PUSCH_Config_t *pusc
     pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup = calloc(1, sizeof(*pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup));
   NR_DMRS_UplinkConfig_t *NR_DMRS_UplinkConfig = pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup;
   NR_DMRS_UplinkConfig->dmrs_Type = NULL;
-  NR_DMRS_UplinkConfig->dmrs_AdditionalPosition = NULL;
+  NR_DMRS_UplinkConfig->dmrs_AdditionalPosition = calloc(1,sizeof(*NR_DMRS_UplinkConfig->dmrs_AdditionalPosition));
+  *NR_DMRS_UplinkConfig->dmrs_AdditionalPosition = NR_DMRS_UplinkConfig__dmrs_AdditionalPosition_pos0;
+
   NR_DMRS_UplinkConfig->phaseTrackingRS = NULL;
   NR_DMRS_UplinkConfig->maxLength = NULL;
   if (!NR_DMRS_UplinkConfig->transformPrecodingDisabled)
@@ -1095,12 +1099,12 @@ static struct NR_SetupRelease_PUSCH_Config *config_pusch(NR_PUSCH_Config_t *pusc
   aset->alpha = calloc(1, sizeof(*aset->alpha));
   *aset->alpha = NR_Alpha_alpha1;
   asn1cSeqAdd(&pusch_Config->pusch_PowerControl->p0_AlphaSets->list, aset);
-  pusch_Config->pusch_PowerControl->pathlossReferenceRSToAddModList = calloc(1, sizeof(*pusch_Config->pusch_PowerControl->pathlossReferenceRSToAddModList));
-  NR_PUSCH_PathlossReferenceRS_t *plrefRS = calloc(1, sizeof(*plrefRS));
+  pusch_Config->pusch_PowerControl->pathlossReferenceRSToAddModList = NULL; //calloc(1, sizeof(*pusch_Config->pusch_PowerControl->pathlossReferenceRSToAddModList));
+  /*NR_PUSCH_PathlossReferenceRS_t *plrefRS = calloc(1, sizeof(*plrefRS));
   plrefRS->pusch_PathlossReferenceRS_Id = 0;
   plrefRS->referenceSignal.present = NR_PUSCH_PathlossReferenceRS__referenceSignal_PR_ssb_Index;
   plrefRS->referenceSignal.choice.ssb_Index = 0;
-  asn1cSeqAdd(&pusch_Config->pusch_PowerControl->pathlossReferenceRSToAddModList->list, plrefRS);
+  asn1cSeqAdd(&pusch_Config->pusch_PowerControl->pathlossReferenceRSToAddModList->list, plrefRS);*/
   pusch_Config->pusch_PowerControl->pathlossReferenceRSToReleaseList = NULL;
   pusch_Config->pusch_PowerControl->twoPUSCH_PC_AdjustmentStates = NULL;
   if (!pusch_Config->pusch_PowerControl->deltaMCS)
@@ -1114,7 +1118,8 @@ static struct NR_SetupRelease_PUSCH_Config *config_pusch(NR_PUSCH_Config_t *pusc
   pusch_Config->pusch_TimeDomainAllocationList = NULL;
   pusch_Config->pusch_AggregationFactor = NULL;
   set_ul_mcs_table(uecap, scc, pusch_Config);
-  pusch_Config->transformPrecoder = NULL;
+  pusch_Config->transformPrecoder = calloc(1,sizeof(*pusch_Config->transformPrecoder));
+  *pusch_Config->transformPrecoder = NR_PUSCH_Config__transformPrecoder_disabled;
   if (!pusch_Config->codebookSubset)
     pusch_Config->codebookSubset = calloc(1, sizeof(*pusch_Config->codebookSubset));
   *pusch_Config->codebookSubset = NR_PUSCH_Config__codebookSubset_nonCoherent;
@@ -1134,14 +1139,22 @@ static struct NR_SetupRelease_PDSCH_Config *config_pdsch(uint64_t ssb_bitmap, in
   setup_pdsch_Config->present = NR_SetupRelease_PDSCH_Config_PR_setup;
   NR_PDSCH_Config_t *pdsch_Config = calloc(1, sizeof(*pdsch_Config));
   setup_pdsch_Config->choice.setup = pdsch_Config;
+  pdsch_Config->maxNrofCodeWordsScheduledByDCI = calloc(1,sizeof(*pdsch_Config->maxNrofCodeWordsScheduledByDCI));
+  pdsch_Config->maxNrofCodeWordsScheduledByDCI = NR_PDSCH_Config__maxNrofCodeWordsScheduledByDCI_n1;
+
+
+
   pdsch_Config->dmrs_DownlinkForPDSCH_MappingTypeA = calloc(1, sizeof(*pdsch_Config->dmrs_DownlinkForPDSCH_MappingTypeA));
   pdsch_Config->dmrs_DownlinkForPDSCH_MappingTypeA->present = NR_SetupRelease_DMRS_DownlinkConfig_PR_setup;
   pdsch_Config->dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup = calloc(1, sizeof(*pdsch_Config->dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup));
   NR_DMRS_DownlinkConfig_t *dmrs_DownlinkForPDSCH_MappingTypeA = pdsch_Config->dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup;
   dmrs_DownlinkForPDSCH_MappingTypeA->dmrs_Type = NULL;
   dmrs_DownlinkForPDSCH_MappingTypeA->maxLength = NULL;
-  dmrs_DownlinkForPDSCH_MappingTypeA->scramblingID0 = NULL;
-  dmrs_DownlinkForPDSCH_MappingTypeA->scramblingID1 = NULL;
+  dmrs_DownlinkForPDSCH_MappingTypeA->scramblingID0 = calloc(1,sizeof(*dmrs_DownlinkForPDSCH_MappingTypeA->scramblingID0));
+  *dmrs_DownlinkForPDSCH_MappingTypeA->scramblingID0  = 100;
+  dmrs_DownlinkForPDSCH_MappingTypeA->scramblingID1 = calloc(1,sizeof(*dmrs_DownlinkForPDSCH_MappingTypeA->scramblingID1));
+  *dmrs_DownlinkForPDSCH_MappingTypeA->scramblingID1  = 100;
+
   dmrs_DownlinkForPDSCH_MappingTypeA->dmrs_AdditionalPosition = calloc(1, sizeof(*dmrs_DownlinkForPDSCH_MappingTypeA->dmrs_AdditionalPosition));
   // TODO possible improvement is to select based on some input additional position
   *dmrs_DownlinkForPDSCH_MappingTypeA->dmrs_AdditionalPosition = NR_DMRS_DownlinkConfig__dmrs_AdditionalPosition_pos1;
@@ -1168,6 +1181,7 @@ static struct NR_SetupRelease_PDSCH_Config *config_pdsch(uint64_t ssb_bitmap, in
     tcid->qcl_Type1.referenceSignal.choice.ssb = i;
     tcid->qcl_Type1.qcl_Type = NR_QCL_Info__qcl_Type_typeC;
   }
+  pdsch_Config->tci_StatesToAddModList = NULL;
   return setup_pdsch_Config;
 }
 
@@ -1240,9 +1254,9 @@ static void config_downlinkBWP(NR_BWP_Downlink_t *bwp,
   bwp->bwp_Dedicated->pdcch_Config->present = NR_SetupRelease_PDCCH_Config_PR_setup;
   bwp->bwp_Dedicated->pdcch_Config->choice.setup = calloc(1,sizeof(*bwp->bwp_Dedicated->pdcch_Config->choice.setup));
   bwp->bwp_Dedicated->pdcch_Config->choice.setup->searchSpacesToAddModList = calloc(1,sizeof(*bwp->bwp_Dedicated->pdcch_Config->choice.setup->searchSpacesToAddModList));
-  bwp->bwp_Dedicated->pdcch_Config->choice.setup->controlResourceSetToAddModList = calloc(1,sizeof(*bwp->bwp_Dedicated->pdcch_Config->choice.setup->controlResourceSetToAddModList));
+  bwp->bwp_Dedicated->pdcch_Config->choice.setup->controlResourceSetToAddModList = NULL;//calloc(1,sizeof(*bwp->bwp_Dedicated->pdcch_Config->choice.setup->controlResourceSetToAddModList));
 
-  asn1cSeqAdd(&bwp->bwp_Dedicated->pdcch_Config->choice.setup->controlResourceSetToAddModList->list, coreset);
+  //asn1cSeqAdd(&bwp->bwp_Dedicated->pdcch_Config->choice.setup->controlResourceSetToAddModList->list, coreset);
 
   bwp->bwp_Dedicated->pdcch_Config->choice.setup->searchSpacesToAddModList = calloc(1,sizeof(*bwp->bwp_Dedicated->pdcch_Config->choice.setup->searchSpacesToAddModList));
   NR_SearchSpace_t *ss2 = rrc_searchspace_config(false, 10+bwp->bwp_Id, coreset->controlResourceSetId);
@@ -1288,7 +1302,9 @@ static void config_uplinkBWP(NR_BWP_Uplink_t *ubwp,
   ubwp->bwp_Common->pucch_ConfigCommon->present= NR_SetupRelease_PUCCH_ConfigCommon_PR_setup;
   ubwp->bwp_Common->pucch_ConfigCommon->choice.setup = CALLOC(1,sizeof(struct NR_PUCCH_ConfigCommon));
   struct NR_PUCCH_ConfigCommon *pucch_ConfigCommon = ubwp->bwp_Common->pucch_ConfigCommon->choice.setup;
-  pucch_ConfigCommon->pucch_ResourceCommon = NULL; // for BWP != 0 as per 38.213 section 9.2.1
+  pucch_ConfigCommon->pucch_ResourceCommon = CALLOC(1,sizeof(long)) ; // for BWP != 0 as per 38.213 section 9.2.1
+  *pucch_ConfigCommon->pucch_ResourceCommon = 0;
+
   pucch_ConfigCommon->pucch_GroupHopping = scc->uplinkConfigCommon->initialUplinkBWP->pucch_ConfigCommon->choice.setup->pucch_GroupHopping;
   pucch_ConfigCommon->hoppingId = scc->uplinkConfigCommon->initialUplinkBWP->pucch_ConfigCommon->choice.setup->hoppingId;
   pucch_ConfigCommon->p0_nominal = scc->uplinkConfigCommon->initialUplinkBWP->pucch_ConfigCommon->choice.setup->p0_nominal;
@@ -1913,7 +1929,7 @@ NR_BCCH_DL_SCH_Message_t *get_SIB1_NR(const gNB_RrcConfigurationReq *configurati
   UL->initialUplinkBWP.genericParameters = configuration->scc->uplinkConfigCommon->initialUplinkBWP->genericParameters;
   UL->initialUplinkBWP.rach_ConfigCommon = configuration->scc->uplinkConfigCommon->initialUplinkBWP->rach_ConfigCommon;
   UL->initialUplinkBWP.pusch_ConfigCommon = configuration->scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon;
-  UL->initialUplinkBWP.pusch_ConfigCommon->choice.setup->groupHoppingEnabledTransformPrecoding = NULL;
+  UL->initialUplinkBWP.pusch_ConfigCommon->choice.setup->groupHoppingEnabledTransformPrecoding = CALLOC(1,sizeof(long));
 
   UL->initialUplinkBWP.pucch_ConfigCommon = configuration->scc->uplinkConfigCommon->initialUplinkBWP->pucch_ConfigCommon;
 
@@ -2577,7 +2593,7 @@ NR_CellGroupConfig_t *get_default_secondaryCellGroup(const NR_ServingCellConfigC
       (NR_ServingCellConfigCommon_t *)servingcellconfigcommon;
   reconfigurationWithSync->newUE_Identity =
       (get_softmodem_params()->phy_test == 1) ? 0x1234 : (taus() & 0xffff);
-  reconfigurationWithSync->t304 = NR_ReconfigurationWithSync__t304_ms2000;
+  reconfigurationWithSync->t304 = NR_ReconfigurationWithSync__t304_ms1000;
   reconfigurationWithSync->rach_ConfigDedicated = NULL;
   reconfigurationWithSync->ext1 = NULL;
 
