@@ -96,7 +96,7 @@ void nr_preprocessor_phytest(module_id_t module_id,
     rbStart += rbSize;
   }
 
-  sched_ctrl->sliceInfo[0].num_total_bytes = 0;
+  sched_ctrl->num_total_bytes = 0;
   sched_ctrl->dl_lc_num = 1;
   const int lcid = DL_SCH_LCID_DTCH;
   sched_ctrl->dl_lc[sched_ctrl->dl_lc_num - 1].id = lcid;
@@ -113,7 +113,7 @@ void nr_preprocessor_phytest(module_id_t module_id,
                                                     lcid,
                                                     0,
                                                     0);
-  sched_ctrl->sliceInfo[0].num_total_bytes += sched_ctrl->rlc_status[lcid].bytes_in_buffer;
+  sched_ctrl->num_total_bytes += sched_ctrl->rlc_status[lcid].bytes_in_buffer;
 
   int CCEIndex = get_cce_index(RC.nrmac[module_id],
                                CC_id, slot, UE->rnti,

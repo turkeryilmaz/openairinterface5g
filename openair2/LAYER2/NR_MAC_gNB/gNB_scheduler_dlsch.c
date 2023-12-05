@@ -327,14 +327,14 @@ static int get_slice_to_sched(module_id_t module_id, const NR_UE_sched_ctrl_t *s
   return cur_slice_idx;
 }
 
-static void add_ue_to_list(UEsched_t *ue_list, NR_UE_info_t *UE)
+static void add_ue_to_list(NR_UE_info_t **ue_list, NR_UE_info_t *UE)
 {
   int i = 0;
-  while (ue_list[i].UE != NULL) {
+  while (ue_list[i] != NULL) {
     DevAssert(i < MAX_MOBILES_PER_GNB + 1);
     i++;
   }
-  ue_list[i].UE = UE;
+  ue_list[i] = UE;
 }
 
 /* Prepare the list of UE for each slice that will be scheduled in this slot.
@@ -348,57 +348,154 @@ static void nr_update_slice_info(module_id_t module_id, frame_t frame, sub_frame
     NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
     const int slice_idx = get_slice_to_sched(module_id, sched_ctrl);
     add_ue_to_list(mac->sliceConfig[slice_idx].UE_list, UE);
+    mac->sliceConfig[slice_idx].numUEs++;
+    sched_ctrl->curSchedSliceIdx = slice_idx;
   }
 }
 
 static void nr_store_dlsch_buffer(module_id_t module_id, frame_t frame, sub_frame_t slot)
 {
-  UE_iterator(RC.nrmac[module_id]->UE_info.list, UE) {
-    NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
-    sched_ctrl->num_total_bytes = 0;
-    sched_ctrl->dl_pdus_total = 0;
+  gNB_MAC_INST *mac = RC.nrmac[module_id];
+  // Slices
+  for (int s = 0; s < mac->numSlices; s++) {
+    NR_UE_info_t **ue_iterator = mac->sliceConfig[s].UE_list;
+    // UEs in current slice
+    UE_iterator(ue_iterator, UE)
+    {
+      NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
+      sched_ctrl->dl_pdus_total = 0;
+      sched_ctrl->num_total_bytes = 0;
+      AssertFatal(s == sched_ctrl->curSchedSliceIdx,
+                  "RNTI: %d, UE's current scheduled slice do not match with UE list of this slice: %d.\n",
+                  UE->rnti,
+                  s);
+      // LCIDs of this slice
+      NR_List_Iterator(&sched_ctrl->sliceInfo[sched_ctrl->curSchedSliceIdx].lcid, lcidP)
+      {
+        const int lcid = *lcidP;
+        const uint16_t rnti = UE->rnti;
+        LOG_D(NR_MAC, "In %s: UE %x: LCID %d\n", __FUNCTION__, rnti, lcid);
+        if (lcid == DL_SCH_LCID_DTCH && sched_ctrl->rrc_processing_timer > 0) {
+          continue;
+        }
+        start_meas(&RC.nrmac[module_id]->rlc_status_ind);
+        sched_ctrl->rlc_status[lcid] =
+            mac_rlc_status_ind(module_id, rnti, module_id, frame, slot, ENB_FLAG_YES, MBMS_FLAG_NO, lcid, 0, 0);
+        stop_meas(&RC.nrmac[module_id]->rlc_status_ind);
 
-    /* loop over all activated logical channels */
-    // Note: DL_SCH_LCID_DCCH, DL_SCH_LCID_DCCH1, DL_SCH_LCID_DTCH
-    for (int i = 0; i < sched_ctrl->dl_lc_num; ++i) {
-      const int lcid = sched_ctrl->dl_lc[i].id;
-      const uint16_t rnti = UE->rnti;
-      LOG_D(NR_MAC, "In %s: UE %x: LCID %d\n", __FUNCTION__, rnti, lcid);
-      if (lcid == DL_SCH_LCID_DTCH && sched_ctrl->rrc_processing_timer > 0) {
-        continue;
+        if (sched_ctrl->rlc_status[lcid].bytes_in_buffer == 0)
+          continue;
+
+        sched_ctrl->dl_pdus_total += sched_ctrl->rlc_status[lcid].pdus_in_buffer;
+        sched_ctrl->num_total_bytes += sched_ctrl->rlc_status[lcid].bytes_in_buffer;
+        LOG_D(MAC,
+              "[gNB %d][%4d.%2d] %s%d->DLSCH, RLC status for UE %d: %d bytes in buffer, total DL buffer size = %d bytes, %d total "
+              "PDU bytes, %s TA command\n",
+              module_id,
+              frame,
+              slot,
+              lcid < 4 ? "DCCH" : "DTCH",
+              lcid,
+              UE->rnti,
+              sched_ctrl->rlc_status[lcid].bytes_in_buffer,
+              sched_ctrl->num_total_bytes,
+              sched_ctrl->dl_pdus_total,
+              sched_ctrl->ta_apply ? "send" : "do not send");
       }
-      start_meas(&RC.nrmac[module_id]->rlc_status_ind);
-      sched_ctrl->rlc_status[lcid] = mac_rlc_status_ind(module_id,
-                                                        rnti,
-                                                        module_id,
-                                                        frame,
-                                                        slot,
-                                                        ENB_FLAG_YES,
-                                                        MBMS_FLAG_NO,
-                                                        lcid,
-                                                        0,
-                                                        0);
-      stop_meas(&RC.nrmac[module_id]->rlc_status_ind);
-
-      if (sched_ctrl->rlc_status[lcid].bytes_in_buffer == 0)
-        continue;
-
-      sched_ctrl->dl_pdus_total += sched_ctrl->rlc_status[lcid].pdus_in_buffer;
-      sched_ctrl->num_total_bytes += sched_ctrl->rlc_status[lcid].bytes_in_buffer;
-      LOG_D(MAC,
-            "[gNB %d][%4d.%2d] %s%d->DLSCH, RLC status for UE %d: %d bytes in buffer, total DL buffer size = %d bytes, %d total PDU bytes, %s TA command\n",
-            module_id,
-            frame,
-            slot,
-            lcid < 4 ? "DCCH":"DTCH",
-            lcid,
-            UE->rnti,
-            sched_ctrl->rlc_status[lcid].bytes_in_buffer,
-            sched_ctrl->num_total_bytes,
-            sched_ctrl->dl_pdus_total,
-            sched_ctrl->ta_apply ? "send":"do not send");
     }
   }
+}
+
+static void slice_prb_estimation(module_id_t module_id, frame_t frame, sub_frame_t slot)
+{
+  gNB_MAC_INST *mac = RC.nrmac[module_id];
+  NR_ServingCellConfigCommon_t *scc = mac->common_channels[0].ServingCellConfigCommon;
+  // Slices
+  for (int s = 0; s < mac->numSlices; s++) {
+    NR_UE_info_t **ue_iterator = mac->sliceConfig[s].UE_list;
+    const int min_rbSize = 5;
+    int n_est_prbs = 0;
+    // UEs in current slice
+    UE_iterator(ue_iterator, UE)
+    {
+      NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
+      if (!UE->Msg4_ACKed || sched_ctrl->ul_failure)
+        continue;
+
+      NR_UE_DL_BWP_t *dl_bwp = &UE->current_DL_BWP;
+      const int coresetid = sched_ctrl->coreset->controlResourceSetId;
+      const uint16_t bwpSize = coresetid == 0 ? mac->cset0_bwp_size : dl_bwp->BWPSize;
+      NR_bler_stats_t *bler_stats = &sched_ctrl->dl_bler_stats;
+      uint8_t mcs;
+
+      // Getting mcs from previous allocation for rough estimation of PRBs
+      if (bler_stats->last_frame == 0 && bler_stats->mcs == 0)
+        mcs = 9;
+      else
+        mcs = bler_stats->mcs;
+
+      LOG_D(NR_MAC, "%d.%d Estimated mcs = %u \n", frame, slot, mcs);
+
+      const uint8_t nrOfLayers = get_dl_nrOfLayers(sched_ctrl, dl_bwp->dci_format);
+      const uint8_t Qm = nr_get_Qm_dl(mcs, dl_bwp->mcsTableIdx);
+      const uint16_t R = nr_get_code_rate_dl(mcs, dl_bwp->mcsTableIdx);
+      const int time_domain_allocation = get_dl_tda(mac, scc, slot);
+      AssertFatal(time_domain_allocation >= 0, "Unable to find PDSCH time domain allocation in list\n");
+      const NR_tda_info_t tda_info =
+          get_dl_tda_info(dl_bwp, 2, time_domain_allocation, scc->dmrs_TypeA_Position, 1, NR_RNTI_C, coresetid, false);
+      const NR_pdsch_dmrs_t dmrs_parms = get_dl_dmrs_params(scc, dl_bwp, &tda_info, nrOfLayers);
+
+      uint32_t TBS = 0;
+      uint16_t rbSize;
+      // Fix me: currently, the RLC does not give us the total number of PDUs
+      // awaiting. Therefore, for the time being, we put a fixed overhead of 12
+      // (for 4 PDUs) and optionally + 2 for TA. Once RLC gives the number of
+      // PDUs, we replace with 3 * numPDUs
+      const int oh = 3 * 4;
+      nr_find_nb_rb(Qm,
+                    R,
+                    1, // no transform precoding for DL
+                    nrOfLayers,
+                    tda_info.nrOfSymbols,
+                    dmrs_parms.N_PRB_DMRS * dmrs_parms.N_DMRS_SLOT,
+                    sched_ctrl->num_total_bytes + oh,
+                    min_rbSize,
+                    bwpSize,
+                    &TBS,
+                    &rbSize);
+      n_est_prbs += rbSize;
+    }
+    mac->sliceConfig[s].estimatedPRBs = n_est_prbs;
+  }
+}
+
+static int get_prbs_from_ratio(int ratio, int bwpSize)
+{
+  return ((float)ratio / 100) * bwpSize;
+}
+
+typedef struct Slice_sorted_s {
+  int coef;
+  NR_Slice_info_t *slice;
+} Slice_sorted_t;
+
+static int slice_comparator(const void *p, const void *q)
+{
+  return ((Slice_sorted_t *)p)->coef < ((Slice_sorted_t *)q)->coef;
+}
+
+/* Get available shared PRBs. */
+static int get_available_shared_prbs(module_id_t module_id, int bwpSize)
+{
+  gNB_MAC_INST *mac = RC.nrmac[module_id];
+  int guaranteedPRBs = 0;
+  for (int s = 0; s < mac->numSlices; s++) {
+    NR_Slice_info_t *slice = mac->sliceConfig + s;
+    const int dedicatedPRBs = get_prbs_from_ratio(slice->dedicatedRatio, bwpSize);
+    const int prioritizedPRBs = get_prbs_from_ratio(slice->dedicatedRatio - slice->minRatio, bwpSize);
+    guaranteedPRBs += (dedicatedPRBs + prioritizedPRBs);
+  }
+  return bwpSize - guaranteedPRBs;
 }
 
 void abort_nr_dl_harq(NR_UE_info_t* UE, int8_t harq_pid)
@@ -608,6 +705,10 @@ static bool allocate_dl_retransmission(module_id_t module_id,
 }
 
 uint32_t pf_tbs[3][29]; // pre-computed, approximate TBS values for PF coefficient
+typedef struct UEsched_s {
+  float coef;
+  NR_UE_info_t *UE;
+} UEsched_t;
 
 static int comparator(const void *p, const void *q) {
   return ((UEsched_t*)p)->coef < ((UEsched_t*)q)->coef;
@@ -887,21 +988,43 @@ static void nr_fr1_dlsch_preprocessor(module_id_t module_id, frame_t frame, sub_
     }
   }
 
-  /* Retrieve amount of data to send for this UE */
+  /* Update UE list for all slices */
+  nr_update_slice_info(module_id, frame, slot);
+
+  /* Retrieve amount of data to send for all slices */
   nr_store_dlsch_buffer(module_id, frame, slot);
+
+  /* Estimate number of PRBs for all slices */
+  slice_prb_estimation(module_id, frame, slot);
 
   int bw = scc->downlinkConfigCommon->frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth;
   int average_agg_level = 4; // TODO find a better estimation
   int max_sched_ues = bw / (average_agg_level * NR_NB_REG_PER_CCE);
 
-  /* proportional fair scheduling algorithm */
-  pf_dl(module_id,
-        frame,
-        slot,
-        UE_info->list,
-        max_sched_ues,
-        n_rb_sched,
-        rballoc_mask);
+  Slice_sorted_t sliceList[NR_MAX_NUM_SLICES] = {0};
+  // We assume that all UE are in the same BWP
+  gNB_MAC_INST *mac = RC.nrmac[module_id];
+  for (int s = 0; s < mac->numSlices; s++) {
+    DevAssert(s < NR_MAX_NUM_SLICES);
+    NR_Slice_info_t *slice = mac->sliceConfig + s;
+    const int dedicatedPRBs = get_prbs_from_ratio(slice->dedicatedRatio, bwpSize);
+    const int prioritizedPRBs = get_prbs_from_ratio(slice->dedicatedRatio - slice->minRatio, bwpSize);
+
+    sliceList[s].coef = (dedicatedPRBs + prioritizedPRBs) - slice->estimatedPRBs;
+    sliceList[s].slice = slice;
+  }
+
+  qsort(sliceList, sizeofArray(sliceList), sizeof(Slice_sorted_t), slice_comparator);
+
+  int schedUEs = 0;
+  int it = 0;
+  while (sliceList[it].slice != NULL) {
+    NR_Slice_info_t *slice = sliceList[it].slice;
+    /* proportional fair scheduling algorithm */
+    pf_dl(module_id, frame, slot, slice->UE_list, max_sched_ues - schedUEs, n_rb_sched, rballoc_mask);
+
+    schedUEs += slice->numUEs;
+  }
 }
 
 nr_pp_impl_dl nr_init_fr1_dlsch_preprocessor(int CC_id) {
@@ -1274,7 +1397,7 @@ void nr_schedule_ue_spec(module_id_t module_id,
       start_meas(&gNB_mac->rlc_data_req);
       int sdus = 0;
 
-      if (sched_ctrl->sliceInfo[sched_ctrl->curSchedSliceIdx].num_total_bytes > 0) {
+      if (sched_ctrl->num_total_bytes > 0) {
         /* loop over all activated logical channels in current slice */
         NR_List_Iterator(&sched_ctrl->sliceInfo[sched_ctrl->curSchedSliceIdx].lcid, cur_lcidP)
         {

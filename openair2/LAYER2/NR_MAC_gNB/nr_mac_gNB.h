@@ -546,9 +546,6 @@ typedef struct {
 typedef struct {
   /// LCs in this slice
   NR_list_t lcid;
-  /// total amount of data awaiting for this UE for each slice
-  uint32_t num_total_bytes;
-  uint16_t dl_pdus_total;
 } NR_UE_slice_info_t;
 
 /*! \brief scheduling control information set through an API */
@@ -736,11 +733,6 @@ typedef struct {
 
 #define UE_iterator(BaSe, VaR) NR_UE_info_t ** VaR##pptr=BaSe, *VaR; while ((VaR=*(VaR##pptr++)))
 
-typedef struct UEsched_s {
-  float coef;
-  NR_UE_info_t *UE;
-} UEsched_t;
-
 typedef struct {
   /// Slice config
   nssai_t nssai;
@@ -748,8 +740,11 @@ typedef struct {
   int dedicatedRatio;
   int minRatio;
   int maxRatio;
-  /// UEs in this slice
-  UEsched_t UE_list[MAX_MOBILES_PER_GNB + 1];
+  /// UEs in this slice in current slot
+  int numUEs;
+  NR_UE_info_t *UE_list[MAX_MOBILES_PER_GNB + 1];
+  /// Estimated PRBs in current slot
+  int estimatedPRBs;
 } NR_Slice_info_t;
 
 typedef void (*nr_pp_impl_dl)(module_id_t mod_id,
