@@ -27,7 +27,7 @@ services:
     image: cubb-build:23-2
     environment:
       - cuBB_SDK=/opt/nvidia/cuBB
-    command: bash -c " rm -rf /tmp/phy.log && chmod +x /opt/nvidia/cuBB/aerial_l1_entrypoint.sh && /opt/nvidia/cuBB/aerial_l1_entrypoint.sh"
+    command: bash -c " rm -rf /tmp/phy.log && chmod +x /opt/nvidia/cuBB/aerial_l1_entrypoint.sh && /opt/nvidia/cuBB/aerial_l1_entrypoint.sh P5G_SCF_FXN_NEU"
     healthcheck:
       test: ["CMD-SHELL",'grep -q "L1 is ready!" /tmp/phy.log && echo 0 || echo 1']
       interval: 20s
@@ -54,7 +54,8 @@ services:
     stdin_open: true
     tty: true
     volumes:
-      - ../../conf_files/vnf.sa.band78.fr1.273PRB.Aerial.conf:/opt/oai-gnb/etc/gnb.conf
+      - ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/du.Aerial.conf:/opt/oai-gnb/etc/gnb.conf
+      #- ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/vnf.sa.band78.fr1.273PRB.Aerial.conf:/opt/oai-gnb/etc/gnb.conf
     container_name: oai-gnb-aerial
     healthcheck:
       test: /bin/bash -c "ps aux | grep -v grep | grep -c softmodem"
