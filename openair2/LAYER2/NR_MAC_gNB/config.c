@@ -190,7 +190,7 @@ static void config_common(gNB_MAC_INST *nrmac, int pdsch_AntennaPorts, int pusch
   }
 
   uint32_t band = *frequencyInfoDL->frequencyBandList.list.array[0];
-  frequency_range_t frequency_range = band<100?FR1:FR2;
+  frequency_range_t frequency_range = band<257?FR1:FR2;
 
   frame_type_t frame_type = get_frame_type(*frequencyInfoDL->frequencyBandList.list.array[0], *scc->ssbSubcarrierSpacing);
   nrmac->common_channels[0].frame_type = frame_type;

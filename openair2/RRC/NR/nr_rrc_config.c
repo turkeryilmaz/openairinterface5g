@@ -1843,7 +1843,7 @@ NR_BCCH_DL_SCH_Message_t *get_SIB1_NR(const gNB_RrcConfigurationReq *configurati
   }
 
   const NR_FreqBandIndicatorNR_t band = *configuration->scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0];
-  frequency_range_t frequency_range = band < 100 ? FR1 : FR2;
+  frequency_range_t frequency_range = band < 257 ? FR1 : FR2;
   sib1->servingCellConfigCommon->downlinkConfigCommon.frequencyInfoDL.offsetToPointA = get_ssb_offset_to_pointA(*configuration->scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB,
                                configuration->scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA,
                                configuration->scc->downlinkConfigCommon->initialDownlinkBWP->genericParameters.subcarrierSpacing,

@@ -29,7 +29,7 @@ static const uint32_t nr_subcarrier_spacing[MAX_NUM_SUBCARRIER_SPACING] = {15e3,
 static const uint16_t nr_slots_per_subframe[MAX_NUM_SUBCARRIER_SPACING] = {1, 2, 4, 8, 16};
 
 // Table 5.4.3.3-1 38-101
-static const int nr_ssb_table[48][3] = {
+static const int nr_ssb_table[51][3] = {
     {1, 15, nr_ssb_type_A},  {2, 15, nr_ssb_type_A},  {3, 15, nr_ssb_type_A},  {5, 15, nr_ssb_type_A},  {5, 30, nr_ssb_type_B},
     {7, 15, nr_ssb_type_A},  {8, 15, nr_ssb_type_A},  {12, 15, nr_ssb_type_A}, {14, 15, nr_ssb_type_A}, {18, 15, nr_ssb_type_A},
     {20, 15, nr_ssb_type_A}, {25, 15, nr_ssb_type_A}, {26, 15, nr_ssb_type_A}, {28, 15, nr_ssb_type_A}, {29, 15, nr_ssb_type_A},
@@ -39,7 +39,8 @@ static const int nr_ssb_table[48][3] = {
     {65, 15, nr_ssb_type_A}, {66, 15, nr_ssb_type_A}, {66, 30, nr_ssb_type_B}, {70, 15, nr_ssb_type_A}, {71, 15, nr_ssb_type_A},
     {74, 15, nr_ssb_type_A}, {75, 15, nr_ssb_type_A}, {76, 15, nr_ssb_type_A}, {77, 30, nr_ssb_type_C}, {78, 30, nr_ssb_type_C},
     {79, 30, nr_ssb_type_C}, {90, 15, nr_ssb_type_A}, {90, 30, nr_ssb_type_C}, {91, 15, nr_ssb_type_A}, {92, 15, nr_ssb_type_A},
-    {93, 15, nr_ssb_type_A}, {94, 15, nr_ssb_type_A}, {96, 30, nr_ssb_type_C}};
+    {93, 15, nr_ssb_type_A}, {94, 15, nr_ssb_type_A}, {96, 30, nr_ssb_type_C}, {255, 15, nr_ssb_type_A}, {255, 30, nr_ssb_type_B},
+    {256, 15, nr_ssb_type_A}};
 
 void set_Lmax(NR_DL_FRAME_PARMS *fp) {
   if (get_softmodem_params()->sl_mode == 2) {
