@@ -2056,7 +2056,7 @@ uint64_t from_nrarfcn(int nr_bandP,
   LOG_D(NR_MAC, "Frequency from NR-ARFCN for N_OFFs %lu, duplex spacing %d KHz, deltaFglobal %d KHz\n", N_OFFs, delta_duplex, deltaFglobal);
 
   AssertFatal(nrarfcn >= N_OFFs,"nrarfcn %u < N_OFFs[%d] %llu\n", nrarfcn, nr_bandtable[i].band, (long long unsigned int)N_OFFs);
-  get_delta_arfcn(i, nrarfcn, N_OFFs);
+  //get_delta_arfcn(i, nrarfcn, N_OFFs);
 
   frequency = 1000*(F_REF_Offs_khz + (nrarfcn - N_REF_Offs) * deltaFglobal);
 
