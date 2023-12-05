@@ -463,7 +463,7 @@ static bool is_my_dci(NR_UE_MAC_INST_t *mac, nfapi_nr_dl_dci_pdu_t *received_pdu
     {
         if (received_pdu->RNTI == 0xFFFE)
             return true;
-        if (received_pdu->RNTI != mac->crnti && mac->ra.ra_state == RA_SUCCEEDED)
+        if (received_pdu->RNTI != mac->crnti && received_pdu->RNTI != 0xFFFF && mac->ra.ra_state == RA_SUCCEEDED)
             return false;
         if (received_pdu->RNTI != mac->ra.t_crnti && mac->ra.ra_state == WAIT_CONTENTION_RESOLUTION)
             return false;
@@ -487,6 +487,7 @@ static void copy_dl_tti_req_to_dl_info(nr_downlink_indication_t *dl_info, nfapi_
     mac->nr_ue_emul_l1.expected_dci = false;
     memset(mac->nr_ue_emul_l1.index_has_dci, 0, sizeof(mac->nr_ue_emul_l1.index_has_dci));
     int pdu_idx = 0;
+    int expected_idx=0;
 
     int num_pdus = dl_tti_request->dl_tti_request_body.nPDUs;
     AssertFatal(num_pdus >= 0, "Invalid dl_tti_request number of PDUS\n");
@@ -526,27 +527,28 @@ static void copy_dl_tti_req_to_dl_info(nr_downlink_indication_t *dl_info, nfapi_
                     if (dci_pdu_list->RNTI == 0xffff)
                     {
                         mac->nr_ue_emul_l1.expected_sib = true;
-                        mac->nr_ue_emul_l1.index_has_sib[j] = true;
-                        LOG_T(NR_MAC, "Setting index_has_sib[%d] = true\n", j);
+                        mac->nr_ue_emul_l1.index_has_sib[expected_idx] = true;
+                        LOG_D(NR_MAC, "Setting index_has_sib[%d] = true\n", expected_idx);
                     }
                     else if (dci_pdu_list->RNTI == mac->ra.ra_rnti)
                     {
                         mac->nr_ue_emul_l1.expected_rar = true;
-                        mac->nr_ue_emul_l1.index_has_rar[j] = true;
-                        LOG_T(NR_MAC, "Setting index_has_rar[%d] = true\n", j);
+                        mac->nr_ue_emul_l1.index_has_rar[expected_idx] = true;
+                        LOG_D(NR_MAC, "Setting index_has_rar[%d] = true\n", expected_idx);
                     }
                     else if (dci_pdu_list->RNTI == 0xfffe)
                     {
                         mac->nr_ue_emul_l1.expected_paging = true;
-                        mac->nr_ue_emul_l1.index_has_paging[j] = true;
-                        LOG_T(NR_MAC, "Setting index_has_paging[%d] = true\n", j);
+                        mac->nr_ue_emul_l1.index_has_paging[expected_idx] = true;
+                        LOG_D(NR_MAC, "Setting index_has_paging[%d] = true\n", expected_idx);
                     }
                     else
                     {
                         mac->nr_ue_emul_l1.expected_dci = true;
-                        mac->nr_ue_emul_l1.index_has_dci[j] = true;
-                        LOG_T(NR_MAC, "Setting index_has_dci[%d] = true\n", j);
+                        mac->nr_ue_emul_l1.index_has_dci[expected_idx] = true;
+                        LOG_D(NR_MAC, "Setting index_has_dci[%d] = true\n", expected_idx);
                     }
+                    expected_idx++;
                     pdu_idx++;
                 }
             }
