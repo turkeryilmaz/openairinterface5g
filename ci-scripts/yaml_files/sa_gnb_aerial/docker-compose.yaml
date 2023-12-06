@@ -33,7 +33,7 @@ services:
       interval: 20s
       timeout: 5s
       retries: 5
-  oai-gnb-aerial:
+  oai-du-aerial:
     cpuset: "13-20"
     image: oai-gnb-aerial:latest
     depends_on:
@@ -49,16 +49,29 @@ services:
               count: all
               capabilities:
                 - gpu
-    network_mode: host
+    #network_mode: host
     shm_size: 4096m
     stdin_open: true
     tty: true
     volumes:
       - ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/du.Aerial.conf:/opt/oai-gnb/etc/gnb.conf
       #- ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/vnf.sa.band78.fr1.273PRB.Aerial.conf:/opt/oai-gnb/etc/gnb.conf
-    container_name: oai-gnb-aerial
+    container_name: oai-du-aerial
     healthcheck:
       test: /bin/bash -c "ps aux | grep -v grep | grep -c softmodem"
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 5      
+    networks:
+       oai-ran:
+          ipv4_address: 192.168.71.141
+
+networks:
+    oai-ran:
+        driver: bridge
+        name: demo-oai-ran
+        ipam:
+            config:
+                - subnet: 192.168.71.128/26
+        driver_opts:
+            com.docker.network.bridge.name: "demo-oai-ran"
