@@ -923,8 +923,8 @@ static void deliver_pdu_drb(void *deliver_pdu_data, ue_id_t ue_id, int rb_id,
     mem_block_t *memblock = get_free_mem_block(size, __FUNCTION__);
     memcpy(memblock->data, buf, size);
     LOG_D(PDCP, "%s(): (drb %d) calling rlc_data_req size %d\n", __func__, rb_id, size);
-    //for (i = 0; i < size; i++) printf(" %2.2x", (unsigned char)memblock->data[i]);
-    //printf("\n");
+    // for (int i = 0; i < size; i++) printf("%2.2x", (unsigned char)memblock->data[i]);
+    // printf("\n");
     enqueue_rlc_data_req(&ctxt, 0, MBMS_FLAG_NO, rb_id, sdu_id, 0, size, memblock);
   }
 }
@@ -1156,10 +1156,10 @@ void add_drb_am(int is_gnb, ue_id_t rntiMaybeUEid, ue_id_t reestablish_ue_id, st
                                   has_sdap_rx, has_sdap_tx,
                                   deliver_sdu_drb, ue, deliver_pdu_drb, ue,
                                   sn_size_dl, t_reordering, discard_timer,
-                                  has_ciphering ? ciphering_algorithm : 0,
-                                  has_integrity ? integrity_algorithm : 0,
-                                  has_ciphering ? ciphering_key : NULL,
-                                  has_integrity ? integrity_key : NULL);
+                                  ciphering_algorithm,
+                                  integrity_algorithm,
+                                  ciphering_key,
+                                  integrity_key);
     nr_pdcp_ue_add_drb_pdcp_entity(ue, drb_id, pdcp_drb);
 
     if (reestablish_ue_id > 0) {
