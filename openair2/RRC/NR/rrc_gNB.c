@@ -1044,9 +1044,9 @@ rrc_gNB_store_RRCReconfiguration(
         for (int i = 0; (i < drb2addList->list.count); i++) {
           long drb_id = drb2addList->list.array[i]->drb_Identity;
           ue_p->established_drbs[drb_id].drb_id = drb_id;
-          ue_p->established_drbs[drb_id].status = DRB_ACTIVE;      
+          ue_p->established_drbs[drb_id].status = DRB_ACTIVE;
           if (drb2addList->list.array[i]->cnAssociation->present) {
-            ue_p->established_drbs[drb_id].cnAssociation.present = 1;
+            ue_p->established_drbs[drb_id].cnAssociation.present = NR_DRB_ToAddMod__cnAssociation_PR_sdap_Config;
             ue_p->established_drbs[drb_id].cnAssociation.sdap_config.defaultDRB = drb2addList->list.array[i]->cnAssociation->choice.sdap_Config->defaultDRB;
             ue_p->established_drbs[drb_id].cnAssociation.sdap_config.pdusession_id = drb2addList->list.array[i]->cnAssociation->choice.sdap_Config->pdu_Session;
             ue_p->established_drbs[drb_id].cnAssociation.sdap_config.sdap_HeaderDL = drb2addList->list.array[i]->cnAssociation->choice.sdap_Config->sdap_HeaderDL;
@@ -1496,7 +1496,7 @@ static void rrc_gNB_process_RRCReconfigurationComplete(const protocol_ctxt_t *co
     memcpy(kRRCenc, _nr_control_plane_cip_key, 16);
     memcpy(kRRCint, _nr_control_plane_int_key, 16);
     memcpy(kUPint, _nr_data_plane_int_key, 16);
-    memcpy(kUPenc, _nr_data_plane_int_key, 16);
+    memcpy(kUPenc, _nr_data_plane_cip_key, 16);
 
     ue_p->integrity_algorithm = _int_algo;
     ue_p->ciphering_algorithm = _cip_algo;
@@ -3564,7 +3564,7 @@ void *rrc_gnb_task(void *args_p) {
         _int_algo = (e_NR_IntegrityProtAlgorithm)RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.integrity_algorithm;
         _cip_algo = (NR_CipheringAlgorithm_t)RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.ciphering_algorithm;
 
-        LOG_I(NR_RRC,"[gNB %ld] Received %s: Int algo: %d, Cip algo: %ld \n", instance, msg_name_p, _int_algo, _cip_algo);
+        LOG_I(NR_RRC,"[gNB %ld] Received %s: Integrity algo: %d, Ciphering algo: %ld \n", instance, msg_name_p, _int_algo, _cip_algo);
 
         PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt, instance, GNB_FLAG_YES, RRC_AS_SECURITY_CONFIG_REQ(msg_p).rnti,
           msg_p->ittiMsgHeader.lte_time.frame, msg_p->ittiMsgHeader.lte_time.slot);
@@ -3586,6 +3586,7 @@ void *rrc_gnb_task(void *args_p) {
         }
 
         int rb = 1;
+        // AGP: TODO extend function nr_pdcp_config_set_security() for UP integrity; also set Security for ALL created PDCP entities there
         nr_pdcp_config_set_security(ctxt.rntiMaybeUEid, rb, _cip_algo | _int_algo << 4,
             &(RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kRRCenc[0]),
             &(RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint[0]),
