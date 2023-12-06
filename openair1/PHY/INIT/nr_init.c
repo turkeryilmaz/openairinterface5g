@@ -32,6 +32,7 @@
 #include "openair1/PHY/MODULATION/nr_modulation.h"
 #include "openair1/PHY/defs_RU.h"
 #include "openair1/PHY/CODING/nrLDPC_extern.h"
+#include "openair1/PHY/CODING/nr_ulsch_process_slot.h"
 #include "assertions.h"
 #include <math.h>
 #include <complex.h>
@@ -543,6 +544,9 @@ int phy_init_nr_gNB(PHY_VARS_gNB *gNB)
 
   if (gNB->ldpc_offload_flag)
     load_nrLDPClib_offload();
+
+  if (gNB->ldpc_full_slot_decoding_module)
+    load_nr_ulsch_process_slot();
 
   gNB->max_nb_pdsch = MAX_MOBILES_PER_GNB;
 

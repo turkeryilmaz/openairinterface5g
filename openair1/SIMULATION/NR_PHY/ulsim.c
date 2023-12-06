@@ -693,7 +693,7 @@ int main(int argc, char *argv[])
 
 //  nr_phy_config_request_sim(gNB,N_RB_DL,N_RB_DL,mu,0,0x01);
   gNB->ldpc_offload_flag = ldpc_offload_flag;
-  gNB->ldpc_fpga_flag = fpga_optional; // FPGA Xilinx 8038
+  gNB->ldpc_full_slot_decoding_module = fpga_optional;
   gNB->chest_freq = chest_type[0];
   gNB->chest_time = chest_type[1];
 

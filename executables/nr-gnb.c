@@ -507,7 +507,7 @@ void init_eNB_afterRU(void) {
 
     gNB = RC.gNB[inst];
 #if 1
-    gNB->ldpc_fpga_flag = ldpc_offload_flag;
+    gNB->ldpc_full_slot_decoding_module = ldpc_offload_flag;
 #else
     gNB->ldpc_offload_flag = ldpc_offload_flag;
 #endif
