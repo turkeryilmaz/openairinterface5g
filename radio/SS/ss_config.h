@@ -44,7 +44,6 @@ typedef enum ss_mode {
 #define SS_GNB                  (0x00)
 #define SS_SOFTMODEM    	(0x01)
 #define SS_SOFTMODEM_SRB        (0x02)
-#define SS_SOFTMODEM_L3LESS	(0x03)
 #endif
 typedef struct ss_crnti_config_s {
   bool b_rarResponse;

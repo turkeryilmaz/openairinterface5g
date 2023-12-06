@@ -183,6 +183,10 @@ static int nr_rrc_set_sub_state( module_id_t ue_mod_idP, Rrc_Sub_State_NR_t subS
         break;
 
       case RRC_STATE_CONNECTED_NR:
+        if(subState == RRC_SUB_STATE_IDLE_RECEIVING_SIB_NR){
+          LOG_D (RRC, "RRC connected receiving SIB\n ");
+          subState = RRC_SUB_STATE_CONNECTED_FIRST_NR;
+        }
         AssertFatal ((RRC_SUB_STATE_CONNECTED_FIRST_NR <= subState) && (subState <= RRC_SUB_STATE_CONNECTED_LAST_NR),
                      "Invalid nr sub state %d for state %d!\n", subState, NR_UE_rrc_inst[ue_mod_idP].nrRrcState);
         break;
@@ -2164,8 +2168,8 @@ int32_t nr_rrc_ue_establish_drb(module_id_t ue_mod_idP,
 
          NR_UE_MAC_INST_t *mac = get_mac_inst(ctxt_pP->module_id);
          memset(mac->logicalChannelBearer_exist, 0, sizeof(mac->logicalChannelBearer_exist));
-         mac->phy_config_request_sent = false;
-         mac->state = UE_NOT_SYNC;
+         nr_ue_mac_default_configs(mac);
+         mac->state = UE_SYNC;
          rrc_rlc_remove_ue(ctxt_pP);
          nr_pdcp_remove_UE(ctxt_pP->rntiMaybeUEid);
 
@@ -2483,6 +2487,7 @@ void *rrc_nrue_task(void *args_p)
 
       case NR_SDAP_DATA_REQ:
       {
+        PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, ue_mod_id, GNB_FLAG_NO, NR_SDAP_DATA_REQ(msg_p).rnti, 0, 0, 0);
         result = sdap_data_req(&ctxt,
                         NR_SDAP_DATA_REQ(msg_p).rnti,
                         SRB_FLAG_NO,
