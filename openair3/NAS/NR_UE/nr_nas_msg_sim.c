@@ -2023,10 +2023,5 @@ void updateKgNB(nr_ue_nas_t *nas, uint8_t *kgnb)
 
   derive_kgnb(nas->security.kamf, _ul_nas_count, nas->security.kgnb);
 
-  printf("kgNB: "); for (int i = 0; i < 32; ++i) {
-    printf("%02x ", nas->security.kgnb[i]);
-  }
-  printf("\n");
-
   memcpy(kgnb, nas->security.kgnb, 32);
 }

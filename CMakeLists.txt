@@ -29,6 +29,8 @@ project (OpenAirInterface LANGUAGES C CXX)
 #########################################################
 set (OPENAIR_DIR     ${CMAKE_SOURCE_DIR})
 
+
+
 include("cmake_targets/macros.cmake")
 
 ##############################

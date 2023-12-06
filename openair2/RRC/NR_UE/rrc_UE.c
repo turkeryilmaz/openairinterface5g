@@ -2438,7 +2438,14 @@ void *rrc_nrue_task(void *args_p)
           LOG_I(RRC, "PHY_FIND_CELL_IND CellId: %d EARFCN: %d RSRP: %d RSRQ: %d \n", PHY_FIND_CELL_IND(msg_p).cells[i].cell_id, PHY_FIND_CELL_IND(msg_p).cells[i].earfcn,rsrp_cell, rsrq_cell);
           if (rsrp_cell <= -141 && NR_UE_rrc_inst[0].serving_cellId == PHY_FIND_CELL_IND(msg_p).cells[i].cell_id && NR_UE_rrc_inst[0].nrRrcState == RRC_STATE_IDLE_NR){
             NR_UE_MAC_INST_t *mac = get_mac_inst(0);
+            if(NR_UE_rrc_inst[0].SInfo[0].sib1){
+                SEQUENCE_free(&asn_DEF_NR_SIB1, (void *) NR_UE_rrc_inst[0].SInfo[0].sib1, 1);
+            }
+            NR_UE_rrc_inst[0].SInfo[0].sib1 = NULL;
+            mac->scc_SIB = NULL;
+            mac->state = UE_NOT_SYNC;
             mac->ra.ra_state = RA_UE_IDLE;
+            memset(&mac->ssb_list, 0, sizeof(ssb_list_info_t));
             /** AGP: Note: 'SIStatus' field has been removed in tags/2023.W28
             // NR_UE_rrc_inst[0].SInfo[0].SIStatus &= 0xfffffffe; // lost serving cell, force UE receive SIB1 and trigger RA
             */
