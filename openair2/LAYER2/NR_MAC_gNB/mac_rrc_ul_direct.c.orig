@@ -372,29 +372,31 @@ static void positioning_information_response(const f1ap_positioning_information_
 
           NR_SRS_ResourceSet_t *srs_resourceset = srs_config->srs_ResourceSetToAddModList->list.array[y];
 
-          // IE sRSResourceSetID
-          resourceSet_item->sRSResourceSetID = srs_resourceset->srs_ResourceSetId; //// (M)
+          // IE sRSResourceSetID (M)
+          resourceSet_item->sRSResourceSetID = srs_resourceset->srs_ResourceSetId;
 
           // IE resourceSetType
-          if (srs_resourceset->resourceType.present == NR_SRS_ResourceSet__resourceType_PR_periodic) {
-            resourceSet_item->resourceSetType.present = f1ap_resource_set_type_pr_periodic;
-            resourceSet_item->resourceSetType.choice.periodic.periodicSet =
-                0; // TODO IE not foundsrs_resourceset->resourceType.choice.periodic->associatedCSI_RS;//(M) F1AP_ResourceSetType_t
-                   // resourceSetType;
-          } else if (srs_resourceset->resourceType.present == NR_SRS_ResourceSet__resourceType_PR_aperiodic) {
-            resourceSet_item->resourceSetType.present = f1ap_resource_set_type_pr_aperiodic;
-            resourceSet_item->resourceSetType.choice.aperiodic.sRSResourceTrigger =
-                0; // TODO verify IE format  srs_resourceset->resourceType.choice.aperiodic->aperiodicSRS_ResourceTriggerList; //
-                   // TODO IE not found ;//(M) F1AP_ResourceSetType_t	 resourceSetType;
-            resourceSet_item->resourceSetType.choice.aperiodic.slotoffset =
-                0; // TODO verify IE format srs_resourceset->resourceType.choice.aperiodic->slotOffset;
-          } else if (srs_resourceset->resourceType.present == NR_SRS_ResourceSet__resourceType_PR_semi_persistent) {
-            resourceSet_item->resourceSetType.present = f1ap_resource_set_type_pr_semi_persistent;
-            resourceSet_item->resourceSetType.choice.semi_persistent.semi_persistentSet =
-                0; // TODO IE not foundsrs_resourceset->resourceType.choice.semi_persistent->associatedCSI_RS;//(M)
-                   // F1AP_ResourceSetType_t	 resourceSetType;
-          } else if (srs_resourceset->resourceType.present == NR_SRS_ResourceSet__resourceType_PR_NOTHING) {
-            resourceSet_item->resourceSetType.present = f1ap_resource_set_type_pr_nothing;
+          // TODO IE not found srs_resourceset->resourceType.choice.periodic->associatedCSI_RS;//(M) F1AP_ResourceSetType_t// resourceSetType;
+          switch(srs_resourceset->resourceType.present){
+          case NR_SRS_ResourceSet__resourceType_PR_periodic:
+          resourceSet_item->resourceSetType.present = f1ap_resource_set_type_pr_periodic;
+          resourceSet_item->resourceSetType.choice.periodic.periodicSet =0;
+          break;
+          case NR_SRS_ResourceSet__resourceType_PR_aperiodic:
+          resourceSet_item->resourceSetType.present = f1ap_resource_set_type_pr_aperiodic;
+          resourceSet_item->resourceSetType.choice.aperiodic.sRSResourceTrigger =1; // range 1-3
+          resourceSet_item->resourceSetType.choice.aperiodic.slotoffset =1; // range 1-32
+          break;
+          case NR_SRS_ResourceSet__resourceType_PR_semi_persistent:
+          resourceSet_item->resourceSetType.present = f1ap_resource_set_type_pr_semi_persistent;
+          resourceSet_item->resourceSetType.choice.semi_persistent.semi_persistentSet =0;
+          break;
+          case NR_SRS_ResourceSet__resourceType_PR_NOTHING:
+          resourceSet_item->resourceSetType.present = f1ap_resource_set_type_pr_nothing;
+          break;
+          default:
+          LOG_E(MAC, "Unknown NR_SRS_ResourceSet__resourceType \n");
+          break;
           }
 
           // IE sRSResourceID_List
@@ -458,19 +460,25 @@ static void positioning_information_response(const f1ap_positioning_information_
         f1ap_pos_srs_resource_set_item_t *pos_resourceSet_item =
             srs_carrier_list_item->active_ul_bwp.sRSConfig.posSRSResourceSet_List.pos_srs_resource_set_item;
         LOG_D(MAC, "Preparing posSRSResourceSet_List for NRRPA  maxnoPosSRSResourceSets=%d \n", maxnoPosSRSResourceSets);
-        for (int f = 0; f < maxnoPosSRSResourceSets; f++) { // Preparing SRS Resource Set List
-          pos_resourceSet_item->possrsResourceSetID =
-              0; // (M) srs_config->possrs_ResourceSetToAddModList->list.array[y]->srs_ResourceSetId; //// (M)
-          pos_resourceSet_item->posresourceSetType.periodic.posperiodicSet = 0; // f1ap_pos_resource_set_type_u	 posresourceSetType;
+        for (int f = 0; f < maxnoPosSRSResourceSets; f++) { // Preparing Pos SRS Resource Set List
+          pos_resourceSet_item->possrsResourceSetID = 0; // (M) srs_config->possrs_ResourceSetToAddModList->list.array[y]->srs_ResourceSetId; //// (M)
+
           // pos_resourceSet_item->possRSResourceID_List; //f1ap_pos_srs_resource_id_list_t	 possRSResourceID_List;
-          int maxnoPosSRSResourcePerSets = 1; // TODO retrieve and add
+          int maxnoPosSRSResourcePerSets = 1;
           pos_resourceSet_item->possRSResourceID_List.pos_srs_resource_id_list_length = maxnoPosSRSResourcePerSets;
           pos_resourceSet_item->possRSResourceID_List.srs_pos_resource_id = malloc(maxnoPosSRSResourcePerSets * sizeof(uint8_t));
           DevAssert(pos_resourceSet_item->possRSResourceID_List.srs_pos_resource_id);
           for (int z = 0; z < maxnoPosSRSResourcePerSets; z++) {
             pos_resourceSet_item->possRSResourceID_List.srs_pos_resource_id = 0; // TODO pointer address update
           }
+
+          //  IE posresourceSetType TODO
+          //pos_resourceSet_item->posresourceSetType.present=f1ap_pos_resource_set_type_pr_nothing;
+          pos_resourceSet_item->posresourceSetType.present=f1ap_pos_resource_set_type_pr_aperiodic;
+          pos_resourceSet_item->posresourceSetType.choice.aperiodic.sRSResourceTrigger_List=1;
+          //pos_resourceSet_item->posresourceSetType.periodic.posperiodicSet = 0; // f1ap_pos_resource_set_type_u	 posresourceSetType;
         } // for(int f=0; f < maxnoSRSResourceSets; f++)
+
 
         //  Preparing Uplink Channel BW Per SCS List information IE of SRSCarrier_List f1ap_uplink_channel_bw_per_scs_list_t
         //  uplink_channel_bw_per_scs_list ; //(M)
@@ -490,7 +498,7 @@ static void positioning_information_response(const f1ap_positioning_information_
       } // for (int i = 0; i < maxnoSRScarrier; i++)
     } // Condition for the target UE of positioning if(UE_SUPI==?)
   } // UE_iterator UE_iterator(UE_info->list, UE)
->>>>>>> handling/testing NRPPA measurement request/response
+>>>>>>> code refinement
 
 /* handlers of Position Information Transfer related NRPPA UL messages */
 static void positioning_information_response(const f1ap_positioning_information_resp_t *resp) {
@@ -743,66 +751,9 @@ static void trp_information_failure(const f1ap_trp_information_failure_t *failur
 }
 
 /* handlers of Measurement Information Transfer related NRPPA UL messages */
-<<<<<<< HEAD
 static void positioning_measurement_response(const f1ap_measurement_resp_t *resp){
  LOG_I(MAC, "UL Prepring MeasurementResponse transaction_id=%d, lmf_measurement_id=%d \n", resp->transaction_id, resp->lmf_measurement_id);
  AssertFatal(false, " Not Implemented \n");
-=======
-static void positioning_measurement_response(const f1ap_measurement_resp_t *resp)
-{
-  LOG_I(MAC,
-        "UL Prepring MeasurementResponse transaction_id=%d, lmf_measurement_id=%d, ran_measurement_id=%d \n",
-        resp->transaction_id,
-        resp->lmf_measurement_id,
-        resp->ran_measurement_id);
-
-  MessageDef *msg = itti_alloc_new_message(TASK_MAC_GNB, 0, F1AP_MEASUREMENT_RESP);
-      // prepare the common part of the response
-  f1ap_measurement_resp_t f1ap_resp;
-  f1ap_resp.transaction_id = resp->transaction_id;
-  f1ap_resp.lmf_measurement_id = resp->lmf_measurement_id;
-  f1ap_resp.ran_measurement_id = resp->ran_measurement_id;
-  f1ap_resp.nrppa_msg_info = resp->nrppa_msg_info;
-  f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_length = 1;
-  f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item = malloc(sizeof(f1ap_pos_measurement_result_list_item_t));
-  f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->tRPID = 0; //TODO: this needs to be added to the config file
-  f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->posMeasurementResult.f1ap_pos_measurement_result_length = 1;
-  f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->posMeasurementResult.pos_measurement_result_item = malloc(sizeof(f1ap_pos_measurement_result_item_t));
-
-  //criticality_diagnostics;
-
-  uint32_t Tc_inv = 4096*480000;
-  uint16_t k = 1;
-  uint64_t T_inv = Tc_inv/(1<<k);
-  uint64_t T_ns_inv = 1000000000;
-
-
-  gNB_MAC_INST *mac = RC.nrmac[resp->nrppa_msg_info.instance];
-  NR_UEs_t *UE_info = &mac->UE_info;
-  UE_iterator(UE_info->list, UE)
-  {
-    if (UE->rnti == resp->nrppa_msg_info.ue_rnti) { // configuration details of specific UE // TODO manage non UE associated
-         LOG_I(MAC,
-            "Extracting uL_RTOA info of MeasurementResponse for ue rnti= %04x \n", resp->nrppa_msg_info.ue_rnti ); ////uid_t uid = &UE->uid;
-      // we assume we use UL_RTOA for now with k=1 (i.e. 8 times oversampling from 122.88e6 Msps)
-      f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->posMeasurementResult.pos_measurement_result_item->measuredResultsValue.present=f1ap_measured_results_value_pr_ul_rtoa;
-      f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->posMeasurementResult.pos_measurement_result_item->measuredResultsValue.choice.uL_RTOA.uL_RTOA_MeasurementItem.present=f1ap_ulrtoameas_pr_k1;
-      f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->posMeasurementResult.pos_measurement_result_item->measuredResultsValue.choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k1= (int32_t) (((int64_t)UE->ue_pos_info.toa_ns * (int64_t)T_inv) / T_ns_inv);
-      LOG_I(MAC,"Extracting uL_RTOA info of MeasurementResponse for ue rnti= %04x, k1=%d \n", resp->nrppa_msg_info.ue_rnti, (int32_t) (((int64_t)UE->ue_pos_info.toa_ns * (int64_t)T_inv) / T_ns_inv));
-
-      //TODO IE timeStamp.measurementTime
-      // f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->posMeasurementResult.pos_measurement_result_item->timeStamp.measurementTime
-      //TODO IE timeStamp.slotIndex
-      // f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->posMeasurementResult.pos_measurement_result_item->timeStamp.slotIndex.present
-      // f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->posMeasurementResult.pos_measurement_result_item->timeStamp.slotIndex.choice
-    }
-  }
-
-
-  F1AP_MEASUREMENT_RESP(msg) = f1ap_resp;
-  itti_send_msg_to_task(TASK_RRC_GNB, 0, msg);
-
->>>>>>> handling/testing NRPPA measurement request/response
 }
 
 static void positioning_measurement_failure(const f1ap_measurement_failure_t *failure){
