@@ -1659,7 +1659,7 @@ static void set_mac_nssai_config(paramlist_def_t *SNSSAIParamList)
     mac->sliceConfig[s].nssai.sd = (*SNSSAIParamList->paramarray[s][GNB_SLICE_DIFFERENTIATOR_IDX].uptr & 0xffffff);
     mac->sliceConfig[s].dedicatedRatio = 0;
     mac->sliceConfig[s].minRatio = 0;
-    mac->sliceConfig[s].maxRatio = 0;
+    mac->sliceConfig[s].maxRatio = 100;
   }
 
   // Set default policy

@@ -337,6 +337,15 @@ static void add_ue_to_list(NR_UE_info_t **ue_list, NR_UE_info_t *UE)
   ue_list[i] = UE;
 }
 
+static void reset_slice_info_sched(module_id_t module_id)
+{
+  gNB_MAC_INST *mac = RC.nrmac[module_id];
+  for (int s = 0; s < mac->numSlices; s++) {
+    memset(mac->sliceConfig[s].UE_list, 0, sizeof(mac->sliceConfig[s].UE_list));
+    mac->sliceConfig[s].numUEs = 0;
+  }
+}
+
 /* Prepare the list of UE for each slice that will be scheduled in this slot.
  * For UEs with multiples slices, current slice is selected in Round-Robin fashion.
  */
@@ -350,6 +359,13 @@ static void nr_update_slice_info(module_id_t module_id, frame_t frame, sub_frame
     add_ue_to_list(mac->sliceConfig[slice_idx].UE_list, UE);
     mac->sliceConfig[slice_idx].numUEs++;
     sched_ctrl->curSchedSliceIdx = slice_idx;
+    LOG_D(NR_MAC,
+          "UE: %d. Scheduled slice NSSAI: %d/%d for frame/slot: %d/%d\n",
+          UE->rnti,
+          mac->sliceConfig[slice_idx].nssai.sd,
+          mac->sliceConfig[slice_idx].nssai.sst,
+          frame,
+          slot);
   }
 }
 
@@ -388,7 +404,7 @@ static void nr_store_dlsch_buffer(module_id_t module_id, frame_t frame, sub_fram
 
         sched_ctrl->dl_pdus_total += sched_ctrl->rlc_status[lcid].pdus_in_buffer;
         sched_ctrl->num_total_bytes += sched_ctrl->rlc_status[lcid].bytes_in_buffer;
-        LOG_D(MAC,
+        LOG_I(MAC,
               "[gNB %d][%4d.%2d] %s%d->DLSCH, RLC status for UE %d: %d bytes in buffer, total DL buffer size = %d bytes, %d total "
               "PDU bytes, %s TA command\n",
               module_id,
@@ -484,6 +500,13 @@ static int slice_comparator(const void *p, const void *q)
   return ((Slice_sorted_t *)p)->coef < ((Slice_sorted_t *)q)->coef;
 }
 
+static int get_guaranteed_prbs(NR_Slice_info_t *slice, int bwpSize)
+{
+  const int dedicatedPRBs = get_prbs_from_ratio(slice->dedicatedRatio, bwpSize);
+  const int prioritizedPRBs = get_prbs_from_ratio(slice->dedicatedRatio - slice->minRatio, bwpSize);
+  return dedicatedPRBs + prioritizedPRBs;
+}
+
 /* Get available shared PRBs. */
 static int get_available_shared_prbs(module_id_t module_id, int bwpSize)
 {
@@ -491,9 +514,7 @@ static int get_available_shared_prbs(module_id_t module_id, int bwpSize)
   int guaranteedPRBs = 0;
   for (int s = 0; s < mac->numSlices; s++) {
     NR_Slice_info_t *slice = mac->sliceConfig + s;
-    const int dedicatedPRBs = get_prbs_from_ratio(slice->dedicatedRatio, bwpSize);
-    const int prioritizedPRBs = get_prbs_from_ratio(slice->dedicatedRatio - slice->minRatio, bwpSize);
-    guaranteedPRBs += (dedicatedPRBs + prioritizedPRBs);
+    guaranteedPRBs += get_guaranteed_prbs(slice, bwpSize);
   }
   return bwpSize - guaranteedPRBs;
 }
@@ -714,13 +735,13 @@ static int comparator(const void *p, const void *q) {
   return ((UEsched_t*)p)->coef < ((UEsched_t*)q)->coef;
 }
 
-static void pf_dl(module_id_t module_id,
-                  frame_t frame,
-                  sub_frame_t slot,
-                  NR_UE_info_t **UE_list,
-                  int max_num_ue,
-                  int n_rb_sched,
-                  uint16_t *rballoc_mask)
+static int pf_dl(module_id_t module_id,
+                 frame_t frame,
+                 sub_frame_t slot,
+                 NR_UE_info_t **UE_list,
+                 int max_num_ue,
+                 int n_rb_sched,
+                 uint16_t *rballoc_mask)
 {
   gNB_MAC_INST *mac = RC.nrmac[module_id];
   NR_ServingCellConfigCommon_t *scc=mac->common_channels[0].ServingCellConfigCommon;
@@ -945,6 +966,7 @@ static void pf_dl(module_id_t module_id,
     remainUEs--;
     iterator++;
   }
+  return n_rb_sched;
 }
 
 static void nr_fr1_dlsch_preprocessor(module_id_t module_id, frame_t frame, sub_frame_t slot)
@@ -989,6 +1011,7 @@ static void nr_fr1_dlsch_preprocessor(module_id_t module_id, frame_t frame, sub_
   }
 
   /* Update UE list for all slices */
+  reset_slice_info_sched(module_id);
   nr_update_slice_info(module_id, frame, slot);
 
   /* Retrieve amount of data to send for all slices */
@@ -1010,20 +1033,39 @@ static void nr_fr1_dlsch_preprocessor(module_id_t module_id, frame_t frame, sub_
     const int dedicatedPRBs = get_prbs_from_ratio(slice->dedicatedRatio, bwpSize);
     const int prioritizedPRBs = get_prbs_from_ratio(slice->dedicatedRatio - slice->minRatio, bwpSize);
 
+    LOG_D(NR_MAC, "Adding slice %d/%d to list\n", slice->nssai.sd, slice->nssai.sst);
     sliceList[s].coef = (dedicatedPRBs + prioritizedPRBs) - slice->estimatedPRBs;
     sliceList[s].slice = slice;
   }
 
   qsort(sliceList, sizeofArray(sliceList), sizeof(Slice_sorted_t), slice_comparator);
 
+  const int avail_shared_prbs = get_available_shared_prbs(module_id, bwpSize);
   int schedUEs = 0;
   int it = 0;
-  while (sliceList[it].slice != NULL) {
+  int used_shared_prbs = 0;
+  while (it < NR_MAX_NUM_SLICES) {
+    if (sliceList[it].slice == NULL) {
+      it++;
+      continue;
+    }
     NR_Slice_info_t *slice = sliceList[it].slice;
+    const int policy_shared_prbs = get_prbs_from_ratio(slice->maxRatio - slice->minRatio, bwpSize);
+    const int shared_prbs = min(policy_shared_prbs, avail_shared_prbs);
+    const int guaranteed_prbs = get_guaranteed_prbs(slice, module_id);
+    const int n_rb_sched_slice = guaranteed_prbs + shared_prbs - used_shared_prbs;
     /* proportional fair scheduling algorithm */
-    pf_dl(module_id, frame, slot, slice->UE_list, max_sched_ues - schedUEs, n_rb_sched, rballoc_mask);
+    LOG_D(NR_MAC, "Slice NSSAI: %d/%d, num PRBs: %d\n", slice->nssai.sd, slice->nssai.sst, n_rb_sched_slice);
+    const int remain_prbs = pf_dl(module_id, frame, slot, slice->UE_list, max_sched_ues - schedUEs, n_rb_sched_slice, rballoc_mask);
+    const int allocated_prbs = n_rb_sched_slice - remain_prbs;
+
+    if (allocated_prbs > guaranteed_prbs) {
+      AssertFatal(allocated_prbs <= n_rb_sched_slice, "PRB allocation error: Allocated more than it should\n");
+      used_shared_prbs += (n_rb_sched_slice - allocated_prbs);
+    }
 
     schedUEs += slice->numUEs;
+    it++;
   }
 }
 
