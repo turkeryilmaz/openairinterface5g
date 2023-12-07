@@ -45,7 +45,8 @@
 #define ETH_RAW_MODE          1
 #define ETH_UDP_IF4p5_MODE    2
 #define ETH_RAW_IF4p5_MODE    3
-#define ETH_UDP_IF5_ECPRI_MODE  4    
+#define ETH_UDP_IF5_ECPRI_MODE  4
+#define FAPI_AERIAL           5
 
 // COMMOM HEADER LENGTHS
 
