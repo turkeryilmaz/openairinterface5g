@@ -3013,6 +3013,9 @@ void prepare_initial_ul_rrc_message(gNB_MAC_INST *mac, NR_UE_info_t *UE)
   UE->CellGroup = cellGroupConfig;
   process_CellGroup(cellGroupConfig, UE);
 
+  /* Assign default slice to SRB1 */
+  NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
+  add_nr_list(&sched_ctrl->sliceInfo[0].lcid, 1);
   /* activate SRB0 */
   nr_rlc_activate_srb0(UE->rnti, UE, send_initial_ul_rrc_message);
 
