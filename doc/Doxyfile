@@ -1345,9 +1345,11 @@ INPUT                  = \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/LAYER2/nr_pdcp/nr_pdcp_sdu.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/LAYER2/nr_pdcp/nr_pdcp_sdu.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/LAYER2/nr_pdcp/nr_pdcp_security_nea2.c \
+@CMAKE_CURRENT_SOURCE_DIR@/../openair2/LAYER2/nr_pdcp/nr_pdcp_security_nea1.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/LAYER2/nr_pdcp/nr_pdcp_ue_manager.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/LAYER2/nr_pdcp/nr_pdcp_entity.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/LAYER2/nr_pdcp/nr_pdcp_security_nea2.h \
+@CMAKE_CURRENT_SOURCE_DIR@/../openair2/LAYER2/nr_pdcp/nr_pdcp_security_nea1.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/LAYER2/nr_pdcp/nr_pdcp_ue_manager.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/LAYER2/nr_pdcp/nr_pdcp_integrity_nia1.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/LAYER2/nr_pdcp/nr_pdcp_asn1_utils.h \
@@ -1757,6 +1759,7 @@ INPUT                  = \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/NAS/COMMON/IES/TimeZoneAndTime.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/NAS/COMMON/IES/Cli.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/NAS/COMMON/IES/AuthenticationResponseParameter.c \
+@CMAKE_CURRENT_SOURCE_DIR@/../openair3/NAS/COMMON/IES/EapMessage.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/NAS/COMMON/IES/SORTransparentContainer.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/NAS/COMMON/IES/FGSRegistrationType.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/NAS/COMMON/IES/NasRequestType.h \
@@ -1856,6 +1859,7 @@ INPUT                  = \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/NAS/COMMON/IES/ProtocolConfigurationOptions.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/NAS/COMMON/IES/EpsQualityOfService.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/NAS/COMMON/IES/AuthenticationResponseParameter.h \
+@CMAKE_CURRENT_SOURCE_DIR@/../openair3/NAS/COMMON/IES/EapMessage.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/NAS/COMMON/IES/PdnType.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/NAS/COMMON/IES/EpsMobileIdentity.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/NAS/COMMON/IES/SupportedCodecList.c \
