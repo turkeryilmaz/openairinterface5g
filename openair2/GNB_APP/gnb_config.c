@@ -535,7 +535,69 @@ void prepare_scd(NR_ServingCellConfig_t *scd) {
 
     asn1cSeqAdd(&scd->uplinkConfig->uplinkBWP_ToAddModList->list,ubwp);
   }
+
+  scd->pdsch_ServingCellConfig = calloc(1, sizeof(*scd->pdsch_ServingCellConfig));
+  NR_PDSCH_ServingCellConfig_t *pdsch_servingcellconfig = calloc(1, sizeof(*pdsch_servingcellconfig));
+  scd->pdsch_ServingCellConfig->present = NR_SetupRelease_PDSCH_ServingCellConfig_PR_setup;
+  scd->pdsch_ServingCellConfig->choice.setup = pdsch_servingcellconfig;
+  pdsch_servingcellconfig->nrofHARQ_ProcessesForPDSCH = calloc(1, sizeof(*pdsch_servingcellconfig->nrofHARQ_ProcessesForPDSCH));
+  scd->uplinkConfig->pusch_ServingCellConfig = calloc(1, sizeof(*scd->uplinkConfig->pusch_ServingCellConfig));
+  NR_PUSCH_ServingCellConfig_t *pusch_scc = calloc(1, sizeof(*pusch_scc));
+  scd->uplinkConfig->pusch_ServingCellConfig->present = NR_SetupRelease_PUSCH_ServingCellConfig_PR_setup;
+  scd->uplinkConfig->pusch_ServingCellConfig->choice.setup = pusch_scc;
+  pusch_scc->ext3 = calloc(1, sizeof(*pusch_scc->ext3));
+  pusch_scc->ext3->nrofHARQ_ProcessesForPUSCH_r17 = calloc(1, sizeof(*pusch_scc->ext3->nrofHARQ_ProcessesForPUSCH_r17));
 }
+
+void fix_harq_cfg(NR_PDSCH_ServingCellConfig_t *pdsch_servingcellconfig,
+                  NR_PUSCH_ServingCellConfig_t *pusch_scc)
+{
+
+  int num_dlharq = *pdsch_servingcellconfig->nrofHARQ_ProcessesForPDSCH;
+  LOG_I(NR_RRC,"Configured value dlharq:%d\n", num_dlharq);
+  switch (num_dlharq) {
+    case 2:
+      *pdsch_servingcellconfig->nrofHARQ_ProcessesForPDSCH = NR_PDSCH_ServingCellConfig__nrofHARQ_ProcessesForPDSCH_n2;
+      break;
+    case 4:
+      *pdsch_servingcellconfig->nrofHARQ_ProcessesForPDSCH = NR_PDSCH_ServingCellConfig__nrofHARQ_ProcessesForPDSCH_n4;
+      break;
+    case 6:
+      *pdsch_servingcellconfig->nrofHARQ_ProcessesForPDSCH = NR_PDSCH_ServingCellConfig__nrofHARQ_ProcessesForPDSCH_n6;
+      break;
+    case 10:
+      *pdsch_servingcellconfig->nrofHARQ_ProcessesForPDSCH = NR_PDSCH_ServingCellConfig__nrofHARQ_ProcessesForPDSCH_n10;
+      break;
+    case 12:
+      *pdsch_servingcellconfig->nrofHARQ_ProcessesForPDSCH = NR_PDSCH_ServingCellConfig__nrofHARQ_ProcessesForPDSCH_n12;
+      break;
+    case 16:
+      *pdsch_servingcellconfig->nrofHARQ_ProcessesForPDSCH = NR_PDSCH_ServingCellConfig__nrofHARQ_ProcessesForPDSCH_n16;
+      break;
+    case 32:
+      *pdsch_servingcellconfig->nrofHARQ_ProcessesForPDSCH = NR_PDSCH_ServingCellConfig__nrofHARQ_ProcessesForPDSCH_n16;
+      pdsch_servingcellconfig->ext3 = calloc(1, sizeof(*pdsch_servingcellconfig->ext3));
+      pdsch_servingcellconfig->ext3->nrofHARQ_ProcessesForPDSCH_v1700 = calloc(1, sizeof(*pdsch_servingcellconfig->ext3->nrofHARQ_ProcessesForPDSCH_v1700));
+      *pdsch_servingcellconfig->ext3->nrofHARQ_ProcessesForPDSCH_v1700 = NR_PDSCH_ServingCellConfig__ext3__nrofHARQ_ProcessesForPDSCH_v1700_n32;
+      break;
+    default:
+      //num dl harqprocesses = 8 if IEs nrofHARQ_ProcessesForPDSCH and
+      //nrofHARQ_ProcessesForPDSCH_v1700 are not present
+      free_and_zero(pdsch_servingcellconfig->nrofHARQ_ProcessesForPDSCH);
+      break;
+  }
+
+  int num_ulharq = *pusch_scc->ext3->nrofHARQ_ProcessesForPUSCH_r17;
+  if (num_ulharq == 32) {
+    *pusch_scc->ext3->nrofHARQ_ProcessesForPUSCH_r17 =
+                  NR_PUSCH_ServingCellConfig__ext3__nrofHARQ_ProcessesForPUSCH_r17_n32;
+  } else {
+    //If the IE is not present number of ul harq processes is 16
+    free_and_zero(pusch_scc->ext3->nrofHARQ_ProcessesForPUSCH_r17);
+    free_and_zero(pusch_scc->ext3);
+  }
+}
+
 
 /* This function checks dedicated serving cell configuration and performs fixes as needed */
 void fix_scd(NR_ServingCellConfig_t *scd) {
@@ -645,6 +707,10 @@ void fix_scd(NR_ServingCellConfig_t *scd) {
     }
 
   }
+
+  //SEt correct IE values based on harq values configured.
+  fix_harq_cfg(scd->pdsch_ServingCellConfig->choice.setup,
+               scd->uplinkConfig->pusch_ServingCellConfig->choice.setup);
 }
 
 void RCconfig_nr_prs(void)

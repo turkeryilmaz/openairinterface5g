@@ -157,6 +157,8 @@
 #define GNB_CONFIG_STRING_SCS_ULBWP3                                     "ul_bwp3_subcarrierSpacing"
 #define GNB_CONFIG_STRING_SCS_ULBWP4                                     "ul_bwp4_subcarrierSpacing"
 #define GNB_CONFIG_STRING_FIRSTACTIVEULBWP_ID                            "firstActiveUplinkBWP-Id"
+#define GNB_CONFIG_STRING_NUM_DL_HARQ_PROCESSES                          "nrofHARQ-ProcessesForPDSCH"
+#define GNB_CONFIG_STRING_NUM_UL_HARQ_PROCESSES                          "nrofHARQ-ProcessesForPUSCH"
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 
@@ -280,6 +282,8 @@
 {GNB_CONFIG_STRING_LOCATIONANDBANDWIDTH_ULBWP2,NULL,0,.i64ptr=&scd->uplinkConfig->uplinkBWP_ToAddModList->list.array[1]->bwp_Common->genericParameters.locationAndBandwidth,.defint64val=0,TYPE_INT64,0}, \
 {GNB_CONFIG_STRING_LOCATIONANDBANDWIDTH_ULBWP3,NULL,0,.i64ptr=&scd->uplinkConfig->uplinkBWP_ToAddModList->list.array[2]->bwp_Common->genericParameters.locationAndBandwidth,.defint64val=0,TYPE_INT64,0}, \
 {GNB_CONFIG_STRING_LOCATIONANDBANDWIDTH_ULBWP4,NULL,0,.i64ptr=&scd->uplinkConfig->uplinkBWP_ToAddModList->list.array[3]->bwp_Common->genericParameters.locationAndBandwidth,.defint64val=0,TYPE_INT64,0}, \
-{GNB_CONFIG_STRING_DEFAULTDLBWP_ID,NULL,0,.i64ptr=scd->defaultDownlinkBWP_Id,.defint64val=0,TYPE_INT64,0}}
+{GNB_CONFIG_STRING_DEFAULTDLBWP_ID,NULL,0,.i64ptr=scd->defaultDownlinkBWP_Id,.defint64val=0,TYPE_INT64,0}, \
+{GNB_CONFIG_STRING_NUM_DL_HARQ_PROCESSES,NULL,0,.i64ptr=scd->pdsch_ServingCellConfig->choice.setup->nrofHARQ_ProcessesForPDSCH,.defint64val=16,TYPE_INT64,0}, \
+{GNB_CONFIG_STRING_NUM_UL_HARQ_PROCESSES,NULL,0,.i64ptr=scd->uplinkConfig->pusch_ServingCellConfig->choice.setup->ext3->nrofHARQ_ProcessesForPUSCH_r17,.defint64val=16,TYPE_INT64,0}}
 
 #endif

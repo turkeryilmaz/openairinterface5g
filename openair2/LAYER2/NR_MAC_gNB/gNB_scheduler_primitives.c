@@ -2348,19 +2348,7 @@ NR_UE_info_t *add_new_nr_ue(gNB_MAC_INST *nr_mac, rnti_t rntiP, NR_CellGroupConf
   // pdsch_servingcellconfig == NULL in SA -> will create default (8) number of HARQ processes
   create_dl_harq_list(sched_ctrl, dl_bwp->pdsch_servingcellconfig);
 
-  int nrofHARQ = 16;
-  if (ul_bwp && ul_bwp->pusch_servingcellconfig)
-    nrofHARQ = get_nrofHARQ_ProcessesForPUSCH(ul_bwp->pusch_servingcellconfig->ext3);
-
-  LOG_D(NR_MAC,"Num UL HARQ: %d\n",nrofHARQ);
-
-  // add all available UL HARQ processes for this UE
-  // nb of ul harq processes not configurable
-  create_nr_list(&sched_ctrl->available_ul_harq, nrofHARQ);
-  for (int harq = 0; harq < nrofHARQ; harq++)
-    add_tail_nr_list(&sched_ctrl->available_ul_harq, harq);
-  create_nr_list(&sched_ctrl->feedback_ul_harq, nrofHARQ);
-  create_nr_list(&sched_ctrl->retrans_ul_harq, nrofHARQ);
+  create_ul_harq_list(sched_ctrl, (ul_bwp ? ul_bwp->pusch_servingcellconfig : NULL));
 
   reset_srs_stats(UE);
 
@@ -2407,6 +2395,35 @@ void set_sched_pucch_list(NR_UE_sched_ctrl_t *sched_ctrl,
       memset(curr_pucch, 0, sizeof(*curr_pucch));
     }
     sched_ctrl->sched_pucch_size = list_size;
+  }
+}
+
+void create_ul_harq_list(NR_UE_sched_ctrl_t *sched_ctrl,
+                         const NR_PUSCH_ServingCellConfig_t *pusch) {
+
+  int nrofHARQ = pusch ? get_nrofHARQ_ProcessesForPUSCH(pusch->ext3) : 16;
+  LOG_I(NR_MAC,"Num UL HARQ:%d\n",nrofHARQ);
+
+  if (sched_ctrl->available_ul_harq.len == 0) {
+    // add all available UL HARQ processes for this UE
+    // nb of ul harq processes not configurable
+    create_nr_list(&sched_ctrl->available_ul_harq, nrofHARQ);
+    for (int harq = 0; harq < nrofHARQ; harq++)
+      add_tail_nr_list(&sched_ctrl->available_ul_harq, harq);
+    create_nr_list(&sched_ctrl->feedback_ul_harq, nrofHARQ);
+    create_nr_list(&sched_ctrl->retrans_ul_harq, nrofHARQ);
+  } else if (sched_ctrl->available_ul_harq.len == nrofHARQ) {
+    LOG_D(NR_MAC, "nrofHARQ %d already configured\n", nrofHARQ);
+  } else {
+    const int old_nrofHARQ = sched_ctrl->available_ul_harq.len;
+    AssertFatal(nrofHARQ > old_nrofHARQ,
+                "cannot resize HARQ list to be smaller (nrofHARQ %d, old_nrofHARQ %d)\n",
+                nrofHARQ, old_nrofHARQ);
+    resize_nr_list(&sched_ctrl->available_ul_harq, nrofHARQ);
+    for (int harq = old_nrofHARQ; harq < nrofHARQ; harq++)
+      add_tail_nr_list(&sched_ctrl->available_ul_harq, harq);
+    resize_nr_list(&sched_ctrl->feedback_ul_harq, nrofHARQ);
+    resize_nr_list(&sched_ctrl->retrans_ul_harq, nrofHARQ);
   }
 }
 
@@ -2832,6 +2849,7 @@ void nr_mac_update_timers(module_id_t module_id,
         if (get_softmodem_params()->sa) {
           // add all available DL HARQ processes for this UE in SA
           create_dl_harq_list(sched_ctrl, UE->current_DL_BWP.pdsch_servingcellconfig);
+          create_ul_harq_list(sched_ctrl, UE->current_UL_BWP.pusch_servingcellconfig);
         }
       }
     }

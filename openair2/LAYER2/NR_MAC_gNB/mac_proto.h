@@ -366,6 +366,9 @@ void nr_rx_sdu(const module_id_t gnb_mod_idP,
 void create_dl_harq_list(NR_UE_sched_ctrl_t *sched_ctrl,
                          const NR_PDSCH_ServingCellConfig_t *pdsch);
 
+void create_ul_harq_list(NR_UE_sched_ctrl_t *sched_ctrl,
+                         const NR_PUSCH_ServingCellConfig_t *pusch);
+
 void reset_dl_harq_list(NR_UE_sched_ctrl_t *sched_ctrl);
 
 void reset_ul_harq_list(NR_UE_sched_ctrl_t *sched_ctrl);
