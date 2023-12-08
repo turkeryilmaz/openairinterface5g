@@ -231,8 +231,8 @@ void oran_fh_if4p5_south_in(RU_t *ru,
 
   proc->tti_rx       = sl;
   proc->frame_rx     = f;
-  proc->tti_tx       = (sl+sl_ahead)%20;
-  proc->frame_tx     = (sl>(19-sl_ahead)) ? (f+1)&1023 : f;
+  proc->tti_tx       = (sl+sl_ahead)%80;
+  proc->frame_tx     = (sl>(79-sl_ahead)) ? (f+1)&1023 : f;
 
   if (proc->first_rx == 0) {
     if (proc->tti_rx != *slot) {

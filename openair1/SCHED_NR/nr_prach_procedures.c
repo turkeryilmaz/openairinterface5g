@@ -97,7 +97,7 @@ uint8_t get_nr_prach_duration(uint8_t prach_format){
 
   }
 }
-
+extern uint32_t prach_ifft_max[1024];
 void L1_nr_prach_procedures(PHY_VARS_gNB *gNB,int frame,int slot) {
 
   uint16_t max_preamble[4]={0},max_preamble_energy[4]={0},max_preamble_delay[4]={0};
@@ -143,7 +143,7 @@ void L1_nr_prach_procedures(PHY_VARS_gNB *gNB,int frame,int slot) {
 
       free_nr_prach_entry(gNB,prach_id);
       //karim
-      LOG_I(PHY,"[RAPROC] Frame %d, slot %d, occasion %d (prachStartSymbol %d) : Most likely preamble %d, energy %d.%d dB delay %d (prach_energy counter %d)\n",
+      LOG_D(PHY,"[RAPROC] Frame %d, slot %d, occasion %d (prachStartSymbol %d) : Most likely preamble %d, energy %d.%d dB delay %d (prach_energy counter %d)\n",
 	    frame,slot,prach_oc,prachStartSymbol,
 	    max_preamble[0],
 	    max_preamble_energy[0]/10,
@@ -166,6 +166,12 @@ void L1_nr_prach_procedures(PHY_VARS_gNB *gNB,int frame,int slot) {
 	      prach_pdu->num_ra,
          max_preamble_energy[0] - gNB->measurements.prach_I0-gNB->prach_thres);
 	
+        /*if (max_preamble_energy > 200 && max_preamble[0] == 2){
+        LOG_M("prach_corr.m","prachcorr",prach_ifft_max,256,1,2);	
+        LOG_M("prach_rxsigF0.m","prach_rxsF0",gNB->prach_vars.rxsigF[0],144,1,1);
+	     exit(-1);}*/
+
+
 	T(T_ENB_PHY_INITIATE_RA_PROCEDURE, T_INT(gNB->Mod_id), T_INT(frame), T_INT(slot),
 	  T_INT(max_preamble[0]), T_INT(max_preamble_energy[0]), T_INT(max_preamble_delay[0]));
 	

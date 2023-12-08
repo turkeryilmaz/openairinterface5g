@@ -1079,11 +1079,11 @@ static struct NR_SetupRelease_PUSCH_Config *config_pusch(NR_PUSCH_Config_t *pusc
     NR_DMRS_UplinkConfig->transformPrecodingDisabled = calloc(1, sizeof(*NR_DMRS_UplinkConfig->transformPrecodingDisabled));
   NR_DMRS_UplinkConfig->transformPrecodingDisabled->scramblingID0 = NULL;
   NR_DMRS_UplinkConfig->transformPrecodingDisabled->scramblingID1 = NULL;
-  if (!NR_DMRS_UplinkConfig->transformPrecodingEnabled)
+  /*if (!NR_DMRS_UplinkConfig->transformPrecodingEnabled)
     NR_DMRS_UplinkConfig->transformPrecodingEnabled = calloc(1, sizeof(*NR_DMRS_UplinkConfig->transformPrecodingEnabled));
   NR_DMRS_UplinkConfig->transformPrecodingEnabled->nPUSCH_Identity = NULL;
   NR_DMRS_UplinkConfig->transformPrecodingEnabled->sequenceHopping = NULL;
-  NR_DMRS_UplinkConfig->transformPrecodingEnabled->sequenceGroupHopping = NULL;
+  NR_DMRS_UplinkConfig->transformPrecodingEnabled->sequenceGroupHopping = NULL;*/
   if (!pusch_Config->pusch_PowerControl)
     pusch_Config->pusch_PowerControl = calloc(1, sizeof(*pusch_Config->pusch_PowerControl));
   pusch_Config->pusch_PowerControl->tpc_Accumulation = NULL;
@@ -1107,9 +1107,9 @@ static struct NR_SetupRelease_PUSCH_Config *config_pusch(NR_PUSCH_Config_t *pusc
   asn1cSeqAdd(&pusch_Config->pusch_PowerControl->pathlossReferenceRSToAddModList->list, plrefRS);*/
   pusch_Config->pusch_PowerControl->pathlossReferenceRSToReleaseList = NULL;
   pusch_Config->pusch_PowerControl->twoPUSCH_PC_AdjustmentStates = NULL;
-  if (!pusch_Config->pusch_PowerControl->deltaMCS)
+  /*if (!pusch_Config->pusch_PowerControl->deltaMCS)
     pusch_Config->pusch_PowerControl->deltaMCS = calloc(1, sizeof(*pusch_Config->pusch_PowerControl->deltaMCS));
-  *pusch_Config->pusch_PowerControl->deltaMCS = NR_PUSCH_PowerControl__deltaMCS_enabled;
+  *pusch_Config->pusch_PowerControl->deltaMCS = NR_PUSCH_PowerControl__deltaMCS_enabled;*/
   pusch_Config->pusch_PowerControl->sri_PUSCH_MappingToAddModList = NULL;
   pusch_Config->pusch_PowerControl->sri_PUSCH_MappingToReleaseList = NULL;
   pusch_Config->frequencyHopping = NULL;
@@ -1935,7 +1935,7 @@ NR_BCCH_DL_SCH_Message_t *get_SIB1_NR(const gNB_RrcConfigurationReq *configurati
 
   UL->timeAlignmentTimerCommon = NR_TimeAlignmentTimer_infinity;
 
-  ServCellCom->n_TimingAdvanceOffset = configuration->scc->n_TimingAdvanceOffset;
+  //ServCellCom->n_TimingAdvanceOffset = configuration->scc->n_TimingAdvanceOffset;
 
   ServCellCom->ssb_PositionsInBurst.inOneGroup.buf = calloc(1, sizeof(uint8_t));
   uint8_t bitmap8,temp_bitmap=0;
