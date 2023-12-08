@@ -401,7 +401,7 @@ int nrppa_gNB_PositioningInformationResponse(instance_t instance, MessageDef *ms
         // IE resourceTypePos
         switch (pos_res_item->resourceTypePos.present) {
           case f1ap_resource_type_pos_pr_NOTHING:
-            pos_resource_item->resourceTypePos.present = NRPPA_ResourceType_PR_NOTHING;
+            pos_resource_item->resourceTypePos.present = NRPPA_ResourceTypePos_PR_NOTHING;
             break;
           case f1ap_resource_type_pos_pr_periodic:
             pos_resource_item->resourceTypePos.present = NRPPA_ResourceTypePos_PR_periodic;
