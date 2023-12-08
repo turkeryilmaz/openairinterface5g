@@ -42,14 +42,12 @@
 #include "assertions.h"
 #include "conversions.h"
 
-
 #include "nrppa_gNB.h"
 #include "nrppa_common.h"
 #include "nrppa_gNB_handlers.h"
 #include "nrppa_gNB_position_information_transfer_procedures.h"
 #include "nrppa_gNB_TRP_information_transfer_procedures.h"
 #include "nrppa_gNB_measurement_information_transfer_procedures.h"
-
 
 void nrppa_gNB_init(void)
 {
@@ -71,12 +69,10 @@ void *nrppa_gNB_process_itti_msg(void *notUsed)
         itti_exit_task();
         break;
       case NGAP_DOWNLINKUEASSOCIATEDNRPPA:
-        nrppa_handle_DownlinkUEAssociatedNRPPaTransport(instance,
-                                                        &NGAP_DOWNLINKUEASSOCIATEDNRPPA(received_msg));
+        nrppa_handle_DownlinkUEAssociatedNRPPaTransport(instance, &NGAP_DOWNLINKUEASSOCIATEDNRPPA(received_msg));
         break;
       case NGAP_DOWNLINKNONUEASSOCIATEDNRPPA:
-        nrppa_handle_DownlinkNonUEAssociatedNRPPaTransport(instance,
-                                                           &NGAP_DOWNLINKNONUEASSOCIATEDNRPPA(received_msg));
+        nrppa_handle_DownlinkNonUEAssociatedNRPPaTransport(instance, &NGAP_DOWNLINKNONUEASSOCIATEDNRPPA(received_msg));
         break;
       case F1AP_POSITIONING_INFORMATION_RESP:
         nrppa_gNB_PositioningInformationResponse(instance, received_msg);

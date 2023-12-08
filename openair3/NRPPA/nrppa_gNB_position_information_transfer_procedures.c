@@ -34,8 +34,6 @@
 #include "nrppa_gNB_itti_messaging.h"
 #include "nrppa_gNB_encoder.h"
 
-
-
 // DOWNLINK
 // PositioningInformationExchange (Parent) procedure for  PositioningInformationRequest/Response/Failure
 int nrppa_gNB_handle_PositioningInformationExchange(nrppa_gnb_ue_info_t *nrppa_msg_info, NRPPA_NRPPA_PDU_t *rx_pdu)
@@ -69,30 +67,30 @@ int nrppa_gNB_handle_PositioningInformationExchange(nrppa_gnb_ue_info_t *nrppa_m
                               container,
                               NRPPA_ProtocolIE_ID_id_RequestedSRSTransmissionCharacteristics,
                               false);
-  if (ie!=NULL){
-  NRPPA_RequestedSRSTransmissionCharacteristics_t req_SRS_info = ie->value.choice.RequestedSRSTransmissionCharacteristics;
-  // IE Resource Type
-  f1ap_req->req_SRS_info.resourceType = req_SRS_info.resourceType;
-  // IE number Of periodic Transmissions
-  //long	*numberOfTransmissions = req_SRS_info.numberOfTransmissions;
-  //f1ap_req->req_SRS_info.numberOfTransmissions =*numberOfTransmissions; //req_SRS_info.numberOfTransmissions; // OPTIONAL
-  // IE bandwidth_srs
-  switch (req_SRS_info.bandwidth.present) {
-    case NRPPA_BandwidthSRS_PR_NOTHING:
-      f1ap_req->req_SRS_info.bandwidth_srs.present = f1ap_bandwidth_srs_pr_nothing;
-      break;
-    case NRPPA_BandwidthSRS_PR_fR1:
-      f1ap_req->req_SRS_info.bandwidth_srs.present = f1ap_bandwidth_srs_pr_fR1;
-      f1ap_req->req_SRS_info.bandwidth_srs.choice.fR1 = req_SRS_info.bandwidth.choice.fR1;
-      break;
-    case NRPPA_BandwidthSRS_PR_fR2:
-      f1ap_req->req_SRS_info.bandwidth_srs.present = f1ap_bandwidth_srs_pr_fR2;
-      f1ap_req->req_SRS_info.bandwidth_srs.choice.fR2 = req_SRS_info.bandwidth.choice.fR1;
-      break;
-    default:
-      NRPPA_ERROR("PositioningInformationRequest Unknown BandwidthSRS Choice\n");
-      break;
-  }
+  if (ie != NULL) {
+    NRPPA_RequestedSRSTransmissionCharacteristics_t req_SRS_info = ie->value.choice.RequestedSRSTransmissionCharacteristics;
+    // IE Resource Type
+    f1ap_req->req_SRS_info.resourceType = req_SRS_info.resourceType;
+    // IE number Of periodic Transmissions
+    // long	*numberOfTransmissions = req_SRS_info.numberOfTransmissions;
+    // f1ap_req->req_SRS_info.numberOfTransmissions =*numberOfTransmissions; //req_SRS_info.numberOfTransmissions; // OPTIONAL
+    // IE bandwidth_srs
+    switch (req_SRS_info.bandwidth.present) {
+      case NRPPA_BandwidthSRS_PR_NOTHING:
+        f1ap_req->req_SRS_info.bandwidth_srs.present = f1ap_bandwidth_srs_pr_nothing;
+        break;
+      case NRPPA_BandwidthSRS_PR_fR1:
+        f1ap_req->req_SRS_info.bandwidth_srs.present = f1ap_bandwidth_srs_pr_fR1;
+        f1ap_req->req_SRS_info.bandwidth_srs.choice.fR1 = req_SRS_info.bandwidth.choice.fR1;
+        break;
+      case NRPPA_BandwidthSRS_PR_fR2:
+        f1ap_req->req_SRS_info.bandwidth_srs.present = f1ap_bandwidth_srs_pr_fR2;
+        f1ap_req->req_SRS_info.bandwidth_srs.choice.fR2 = req_SRS_info.bandwidth.choice.fR1;
+        break;
+      default:
+        NRPPA_ERROR("PositioningInformationRequest Unknown BandwidthSRS Choice\n");
+        break;
+    }
   }
 
   LOG_I(NRPPA,
@@ -110,7 +108,7 @@ int nrppa_gNB_handle_PositioningActivation(nrppa_gnb_ue_info_t *nrppa_msg_info, 
   DevAssert(pdu != NULL);
   xer_fprint(stdout, &asn_DEF_NRPPA_NRPPA_PDU, pdu);
 
-    // Preparing f1ap request for RRC
+  // Preparing f1ap request for RRC
   MessageDef *msg = itti_alloc_new_message(TASK_RRC_GNB, 0, F1AP_POSITIONING_ACTIVATION_REQ);
   f1ap_positioning_activation_req_t *f1ap_req = &F1AP_POSITIONING_ACTIVATION_REQ(msg);
   f1ap_req->nrppa_msg_info.instance = nrppa_msg_info->instance;
@@ -120,7 +118,7 @@ int nrppa_gNB_handle_PositioningActivation(nrppa_gnb_ue_info_t *nrppa_msg_info, 
   f1ap_req->nrppa_msg_info.routing_id_length = nrppa_msg_info->routing_id_length;
 
   // Processing Received PositioningActivation
-  NRPPA_PositioningActivationRequest_t    *container;
+  NRPPA_PositioningActivationRequest_t *container;
   NRPPA_PositioningActivationRequestIEs_t *ie;
 
   // IE 9.2.3 Message type (M)
@@ -131,33 +129,32 @@ int nrppa_gNB_handle_PositioningActivation(nrppa_gnb_ue_info_t *nrppa_msg_info, 
 
   // IE  SRSType (M)
   NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_PositioningActivationRequestIEs_t, ie, container, NRPPA_ProtocolIE_ID_id_SRSType, false);
-  if (ie!=NULL){
-  NRPPA_SRSType_t  srs_type = ie->value.choice.SRSType;
-  // IE SRS type filling in f1ap message
-  switch (srs_type.present) {
-  case NRPPA_SRSType_PR_NOTHING:
-  f1ap_req->srs_type.present=f1ap_srs_type_pr_NOTHING;
-  break;
-  case NRPPA_SRSType_PR_semipersistentSRS:
-  f1ap_req->srs_type.present=f1ap_srs_type_pr_semipersistentSRS;
-  f1ap_req->srs_type.choice.semipersistentSRS.sRSResourceSetID= srs_type.choice.semipersistentSRS->sRSResourceSetID;
-  //f1ap_req->srs_type.choice.semipersistentSRS.sRSSpatialRelation // optional
-  break;
-  case NRPPA_SRSType_PR_aperiodicSRS:
-  f1ap_req->srs_type.present=f1ap_srs_type_pr_aperiodicSRS;
-  f1ap_req->srs_type.choice.aperiodicSRS.aperiodic=srs_type.choice.aperiodicSRS->aperiodic;
-  //f1ap_req->srs_type.choice.aperiodicSRS.sRSResourceTrigger // optional
-  break;
-  default :
-  NRPPA_ERROR("PositioningActivationRequest Unknown SRS type\n");
-  break;
+  if (ie != NULL) {
+    NRPPA_SRSType_t srs_type = ie->value.choice.SRSType;
+    // IE SRS type filling in f1ap message
+    switch (srs_type.present) {
+      case NRPPA_SRSType_PR_NOTHING:
+        f1ap_req->srs_type.present = f1ap_srs_type_pr_NOTHING;
+        break;
+      case NRPPA_SRSType_PR_semipersistentSRS:
+        f1ap_req->srs_type.present = f1ap_srs_type_pr_semipersistentSRS;
+        f1ap_req->srs_type.choice.semipersistentSRS.sRSResourceSetID = srs_type.choice.semipersistentSRS->sRSResourceSetID;
+        // f1ap_req->srs_type.choice.semipersistentSRS.sRSSpatialRelation // optional
+        break;
+      case NRPPA_SRSType_PR_aperiodicSRS:
+        f1ap_req->srs_type.present = f1ap_srs_type_pr_aperiodicSRS;
+        f1ap_req->srs_type.choice.aperiodicSRS.aperiodic = srs_type.choice.aperiodicSRS->aperiodic;
+        // f1ap_req->srs_type.choice.aperiodicSRS.sRSResourceTrigger // optional
+        break;
+      default:
+        NRPPA_ERROR("PositioningActivationRequest Unknown SRS type\n");
+        break;
+    }
   }
-}
 
   // IE  Activation Time 9.2.36 (Optional) type sfn_initialisation_time
-  //NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_PositioningActivationRequestIEs_t, ie, container, NRPPA_ProtocolIE_ID_id_ActivationTime, true);
-  //f1ap_req->activation_time.size
-  //f1ap_req->activation_time.buf
+  // NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_PositioningActivationRequestIEs_t, ie, container, NRPPA_ProtocolIE_ID_id_ActivationTime,
+  // true); f1ap_req->activation_time.size f1ap_req->activation_time.buf
 
   LOG_I(NRPPA,
         "Forwarding to RRC PositioningActivationRequest gNB_CU_ue_id=%d, gNB_DU_ue_id=%d \n",
@@ -173,7 +170,7 @@ int nrppa_gNB_handle_PositioningDeactivation(nrppa_gnb_ue_info_t *nrppa_msg_info
   DevAssert(pdu != NULL);
   xer_fprint(stdout, &asn_DEF_NRPPA_NRPPA_PDU, pdu);
 
-    // Preparing f1ap request for RRC
+  // Preparing f1ap request for RRC
   MessageDef *msg = itti_alloc_new_message(TASK_RRC_GNB, 0, F1AP_POSITIONING_DEACTIVATION);
   f1ap_positioning_deactivation_t *f1ap_req = &F1AP_POSITIONING_DEACTIVATION(msg);
   f1ap_req->nrppa_msg_info.instance = nrppa_msg_info->instance;
@@ -194,26 +191,26 @@ int nrppa_gNB_handle_PositioningDeactivation(nrppa_gnb_ue_info_t *nrppa_msg_info
 
   // IE  Abort Transmission(M)
   NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_PositioningDeactivationIEs_t, ie, container, NRPPA_ProtocolIE_ID_id_AbortTransmission, false);
-  if (ie!=NULL){
-  NRPPA_AbortTransmission_t abort_transmission= ie->value.choice.AbortTransmission;
-  // IE abort_transmission filling in f1ap message
-  switch(abort_transmission.present){
-  case NRPPA_AbortTransmission_PR_NOTHING:
-  f1ap_req->abort_transmission.present=f1ap_abort_transmission_pr_NOTHING;
-  break;
-  case NRPPA_AbortTransmission_PR_sRSResourceSetID:
-  f1ap_req->abort_transmission.present=f1ap_abort_transmission_pr_sRSResourceSetID;
-  f1ap_req->abort_transmission.choice.sRSResourceSetID=abort_transmission.choice.sRSResourceSetID;
-  break;
-  case NRPPA_AbortTransmission_PR_releaseALL:
-  f1ap_req->abort_transmission.present=f1ap_abort_transmission_pr_releaseALL;
-  f1ap_req->abort_transmission.choice.releaseALL=abort_transmission.choice.releaseALL;
-  break;
-  default:
-  NRPPA_ERROR("PositioningDeActivation Unknown Abort Transmission\n");
-  break;
+  if (ie != NULL) {
+    NRPPA_AbortTransmission_t abort_transmission = ie->value.choice.AbortTransmission;
+    // IE abort_transmission filling in f1ap message
+    switch (abort_transmission.present) {
+      case NRPPA_AbortTransmission_PR_NOTHING:
+        f1ap_req->abort_transmission.present = f1ap_abort_transmission_pr_NOTHING;
+        break;
+      case NRPPA_AbortTransmission_PR_sRSResourceSetID:
+        f1ap_req->abort_transmission.present = f1ap_abort_transmission_pr_sRSResourceSetID;
+        f1ap_req->abort_transmission.choice.sRSResourceSetID = abort_transmission.choice.sRSResourceSetID;
+        break;
+      case NRPPA_AbortTransmission_PR_releaseALL:
+        f1ap_req->abort_transmission.present = f1ap_abort_transmission_pr_releaseALL;
+        f1ap_req->abort_transmission.choice.releaseALL = abort_transmission.choice.releaseALL;
+        break;
+      default:
+        NRPPA_ERROR("PositioningDeActivation Unknown Abort Transmission\n");
+        break;
+    }
   }
- }
   LOG_I(NRPPA,
         "Forwarding to RRC PositioningDeactivation gNB_CU_ue_id=%d, gNB_DU_ue_id=%d \n",
         f1ap_req->gNB_CU_ue_id,
@@ -260,8 +257,7 @@ int nrppa_gNB_PositioningInformationResponse(instance_t instance, MessageDef *ms
     ie->value.present = NRPPA_PositioningInformationResponse_IEs__value_PR_SRSConfiguration;
 
     // Preparing SRS Carrier List an IE  of SRS Configuration
-    int nb_of_srscarrier = resp->srs_configuration.srs_carrier_list
-                               .srs_carrier_list_length;
+    int nb_of_srscarrier = resp->srs_configuration.srs_carrier_list.srs_carrier_list_length;
     f1ap_srs_carrier_list_item_t *carrier_list_item = resp->srs_configuration.srs_carrier_list.srs_carrier_list_item;
 
     LOG_D(NRPPA, "Positioning_information_response(); nb_of_srscarrier= %d \n", nb_of_srscarrier);
@@ -269,16 +265,16 @@ int nrppa_gNB_PositioningInformationResponse(instance_t instance, MessageDef *ms
       asn1cSequenceAdd(ie->value.choice.SRSConfiguration.sRSCarrier_List.list, NRPPA_SRSCarrier_List_Item_t, item);
 
       item->pointA = carrier_list_item->pointA; // IE of SRSCarrier_List_Item
-      //asn1cCalloc(item->pCI, pci);
-      //pci = carrier_list_item->pci; //Optional IE Physical cell ID of the cell that contians the SRS carrier
+      // asn1cCalloc(item->pCI, pci);
+      // pci = carrier_list_item->pci; //Optional IE Physical cell ID of the cell that contians the SRS carrier
 
       // Preparing Active UL BWP information IE of SRSCarrier_List
       item->activeULBWP.locationAndBandwidth = carrier_list_item->active_ul_bwp.locationAndBandwidth;
       item->activeULBWP.subcarrierSpacing = carrier_list_item->active_ul_bwp.subcarrierSpacing;
       item->activeULBWP.cyclicPrefix = carrier_list_item->active_ul_bwp.cyclicPrefix;
       item->activeULBWP.txDirectCurrentLocation = carrier_list_item->active_ul_bwp.txDirectCurrentLocation;
-      //asn1cCalloc(item->activeULBWP.shift7dot5kHz, shift7dot5kHz);
-      //shift7dot5kHz = carrier_list_item->active_ul_bwp.shift7dot5kHz; //  Optional
+      // asn1cCalloc(item->activeULBWP.shift7dot5kHz, shift7dot5kHz);
+      // shift7dot5kHz = carrier_list_item->active_ul_bwp.shift7dot5kHz; //  Optional
 
       // Preparing sRSResource_List  IE of SRSConfig (IE of activeULBWP)
       int nb_srsresource = carrier_list_item->active_ul_bwp.sRSConfig.sRSResource_List.srs_resource_list_length;
@@ -306,16 +302,14 @@ int nrppa_gNB_PositioningInformationResponse(instance_t instance, MessageDef *ms
           case f1ap_transmission_comb_pr_n2:
             resource_item->transmissionComb.present = NRPPA_TransmissionComb_PR_n2;
             asn1cCalloc(resource_item->transmissionComb.choice.n2, comb_n2);
-            comb_n2->combOffset_n2 =
-                res_item->transmissionComb.choice.n2.combOffset_n2;
+            comb_n2->combOffset_n2 = res_item->transmissionComb.choice.n2.combOffset_n2;
             comb_n2->cyclicShift_n2 = res_item->transmissionComb.choice.n2.cyclicShift_n2;
             break;
 
           case f1ap_transmission_comb_pr_n4:
             resource_item->transmissionComb.present = NRPPA_TransmissionComb_PR_n4;
             asn1cCalloc(resource_item->transmissionComb.choice.n4, comb_n4);
-            comb_n4->combOffset_n4 =
-                res_item->transmissionComb.choice.n4.combOffset_n4;
+            comb_n4->combOffset_n4 = res_item->transmissionComb.choice.n4.combOffset_n4;
             comb_n4->cyclicShift_n4 = res_item->transmissionComb.choice.n4.cyclicShift_n4;
             break;
 
@@ -344,7 +338,7 @@ int nrppa_gNB_PositioningInformationResponse(instance_t instance, MessageDef *ms
           case f1ap_resource_type_pr_semi_persistent:
             resource_item->resourceType.present = NRPPA_ResourceType_PR_semi_persistent;
             asn1cCalloc(resource_item->resourceType.choice.periodic, res_type_semi_persistent);
-            res_type_semi_persistent->periodicity =res_item->resourceType.choice.semi_persistent.periodicity;
+            res_type_semi_persistent->periodicity = res_item->resourceType.choice.semi_persistent.periodicity;
             res_type_semi_persistent->offset = res_item->resourceType.choice.semi_persistent.offset;
             break;
           case f1ap_resource_type_pr_nothing:
@@ -364,7 +358,7 @@ int nrppa_gNB_PositioningInformationResponse(instance_t instance, MessageDef *ms
       f1ap_pos_srs_resource_item_t *pos_res_item =
           carrier_list_item->active_ul_bwp.sRSConfig.posSRSResource_List.pos_srs_resource_item;
       asn1cCalloc(item->activeULBWP.sRSConfig.posSRSResource_List, possrsresource_list);
-      LOG_D(NRPPA," PositioningInformationResponse nb_possrsresource=%d \n", nb_possrsresource);
+      LOG_D(NRPPA, " PositioningInformationResponse nb_possrsresource=%d \n", nb_possrsresource);
       for (int p = 0; p < nb_possrsresource; p++) // Preparing posSRSResource_List
       {
         asn1cSequenceAdd(possrsresource_list->list, NRPPA_PosSRSResource_Item_t, pos_resource_item);
@@ -378,57 +372,57 @@ int nrppa_gNB_PositioningInformationResponse(instance_t instance, MessageDef *ms
 
         // IE transmissionCombPos
         switch (pos_res_item->transmissionCombPos.present) {
-        case f1ap_transmission_comb_pos_pr_NOTHING:
-        pos_resource_item->transmissionCombPos.present = NRPPA_TransmissionCombPos_PR_NOTHING;
-        break;
-        case f1ap_transmission_comb_pos_pr_n2:
-        pos_resource_item->transmissionCombPos.present = NRPPA_TransmissionCombPos_PR_n2;
-        asn1cCalloc(pos_resource_item->transmissionCombPos.choice.n2, combPos_n2);
-        combPos_n2->combOffset_n2 = pos_res_item->transmissionCombPos.choice.n2.combOffset_n2;
-        combPos_n2->cyclicShift_n2 = pos_res_item->transmissionCombPos.choice.n2.cyclicShift_n2;
-        break;
-        case f1ap_transmission_comb_pos_pr_n4:
-        pos_resource_item->transmissionCombPos.present = NRPPA_TransmissionCombPos_PR_n4;
-        asn1cCalloc(pos_resource_item->transmissionCombPos.choice.n4, combPos_n4);
-        combPos_n4->combOffset_n4 = pos_res_item->transmissionCombPos.choice.n4.combOffset_n4;
-        combPos_n4->cyclicShift_n4 = pos_res_item->transmissionCombPos.choice.n4.cyclicShift_n4;
-        break;
-        case f1ap_transmission_comb_pos_pr_n8:
-        pos_resource_item->transmissionCombPos.present = NRPPA_TransmissionCombPos_PR_n8;
-        asn1cCalloc(pos_resource_item->transmissionCombPos.choice.n8, combPos_n8);
-        combPos_n8->combOffset_n8 = pos_res_item->transmissionCombPos.choice.n8.combOffset_n8;
-        combPos_n8->cyclicShift_n8 = pos_res_item->transmissionCombPos.choice.n8.cyclicShift_n8;
-        break;
-        default:
-        NRPPA_ERROR(" Pos Resource Item Unknown transmissionCombPos \n");
-        break;
+          case f1ap_transmission_comb_pos_pr_NOTHING:
+            pos_resource_item->transmissionCombPos.present = NRPPA_TransmissionCombPos_PR_NOTHING;
+            break;
+          case f1ap_transmission_comb_pos_pr_n2:
+            pos_resource_item->transmissionCombPos.present = NRPPA_TransmissionCombPos_PR_n2;
+            asn1cCalloc(pos_resource_item->transmissionCombPos.choice.n2, combPos_n2);
+            combPos_n2->combOffset_n2 = pos_res_item->transmissionCombPos.choice.n2.combOffset_n2;
+            combPos_n2->cyclicShift_n2 = pos_res_item->transmissionCombPos.choice.n2.cyclicShift_n2;
+            break;
+          case f1ap_transmission_comb_pos_pr_n4:
+            pos_resource_item->transmissionCombPos.present = NRPPA_TransmissionCombPos_PR_n4;
+            asn1cCalloc(pos_resource_item->transmissionCombPos.choice.n4, combPos_n4);
+            combPos_n4->combOffset_n4 = pos_res_item->transmissionCombPos.choice.n4.combOffset_n4;
+            combPos_n4->cyclicShift_n4 = pos_res_item->transmissionCombPos.choice.n4.cyclicShift_n4;
+            break;
+          case f1ap_transmission_comb_pos_pr_n8:
+            pos_resource_item->transmissionCombPos.present = NRPPA_TransmissionCombPos_PR_n8;
+            asn1cCalloc(pos_resource_item->transmissionCombPos.choice.n8, combPos_n8);
+            combPos_n8->combOffset_n8 = pos_res_item->transmissionCombPos.choice.n8.combOffset_n8;
+            combPos_n8->cyclicShift_n8 = pos_res_item->transmissionCombPos.choice.n8.cyclicShift_n8;
+            break;
+          default:
+            NRPPA_ERROR(" Pos Resource Item Unknown transmissionCombPos \n");
+            break;
         }
 
         // IE resourceTypePos
-        switch(pos_res_item->resourceTypePos.present ){
-        case f1ap_resource_type_pos_pr_NOTHING:
-        pos_resource_item->resourceTypePos.present = NRPPA_ResourceType_PR_NOTHING;
-        break;
-        case f1ap_resource_type_pos_pr_periodic:
-        pos_resource_item->resourceTypePos.present = NRPPA_ResourceTypePos_PR_periodic;
-        asn1cCalloc(pos_resource_item->resourceTypePos.choice.periodic, pos_res_type_periodic);
-        pos_res_type_periodic->periodicity =pos_res_item->resourceTypePos.choice.periodic.periodicity;
-        pos_res_type_periodic->offset      =pos_res_item->resourceTypePos.choice.periodic.offset;
-        break;
-        case f1ap_resource_type_pos_pr_semi_persistent:
-        pos_resource_item->resourceTypePos.present = NRPPA_ResourceTypePos_PR_semi_persistent;
-        asn1cCalloc(pos_resource_item->resourceTypePos.choice.semi_persistent, pos_res_type_semi_persistent);
-        pos_res_type_semi_persistent->periodicity =pos_res_item->resourceTypePos.choice.semi_persistent.periodicity;
-        pos_res_type_semi_persistent->offset      =pos_res_item->resourceTypePos.choice.semi_persistent.offset;
-        break;
-        case f1ap_resource_type_pos_pr_aperiodic:
-        pos_resource_item->resourceTypePos.present = NRPPA_ResourceTypePos_PR_aperiodic;
-        asn1cCalloc(pos_resource_item->resourceTypePos.choice.aperiodic, pos_res_type_aperiodic);
-        pos_res_type_aperiodic->slotOffset      =pos_res_item->resourceTypePos.choice.aperiodic.slotOffset;
-        break;
-        default:
-        NRPPA_ERROR("Pos Resource Item Unknown resourceTypePos \n");
-        break;
+        switch (pos_res_item->resourceTypePos.present) {
+          case f1ap_resource_type_pos_pr_NOTHING:
+            pos_resource_item->resourceTypePos.present = NRPPA_ResourceType_PR_NOTHING;
+            break;
+          case f1ap_resource_type_pos_pr_periodic:
+            pos_resource_item->resourceTypePos.present = NRPPA_ResourceTypePos_PR_periodic;
+            asn1cCalloc(pos_resource_item->resourceTypePos.choice.periodic, pos_res_type_periodic);
+            pos_res_type_periodic->periodicity = pos_res_item->resourceTypePos.choice.periodic.periodicity;
+            pos_res_type_periodic->offset = pos_res_item->resourceTypePos.choice.periodic.offset;
+            break;
+          case f1ap_resource_type_pos_pr_semi_persistent:
+            pos_resource_item->resourceTypePos.present = NRPPA_ResourceTypePos_PR_semi_persistent;
+            asn1cCalloc(pos_resource_item->resourceTypePos.choice.semi_persistent, pos_res_type_semi_persistent);
+            pos_res_type_semi_persistent->periodicity = pos_res_item->resourceTypePos.choice.semi_persistent.periodicity;
+            pos_res_type_semi_persistent->offset = pos_res_item->resourceTypePos.choice.semi_persistent.offset;
+            break;
+          case f1ap_resource_type_pos_pr_aperiodic:
+            pos_resource_item->resourceTypePos.present = NRPPA_ResourceTypePos_PR_aperiodic;
+            asn1cCalloc(pos_resource_item->resourceTypePos.choice.aperiodic, pos_res_type_aperiodic);
+            pos_res_type_aperiodic->slotOffset = pos_res_item->resourceTypePos.choice.aperiodic.slotOffset;
+            break;
+          default:
+            NRPPA_ERROR("Pos Resource Item Unknown resourceTypePos \n");
+            break;
         }
         // pos_resource_item->spatialRelationPos                     =pos_res_item->spatialRelationPos;	// OPTIONAl
         if (p < nb_possrsresource - 1) {
@@ -440,7 +434,7 @@ int nrppa_gNB_PositioningInformationResponse(instance_t instance, MessageDef *ms
       int nb_srsresourceset = carrier_list_item->active_ul_bwp.sRSConfig.sRSResourceSet_List
                                   .srs_resource_set_list_length; // srs_config->srs_ResourceSetToAddModList->list.count;
       f1ap_srs_resource_set_t *resSet_item = carrier_list_item->active_ul_bwp.sRSConfig.sRSResourceSet_List.srs_resource_set;
-      LOG_D(NRPPA,"PositioningInformationResponse nb_srsresourceset=%d \n", nb_srsresourceset);
+      LOG_D(NRPPA, "PositioningInformationResponse nb_srsresourceset=%d \n", nb_srsresourceset);
       asn1cCalloc(item->activeULBWP.sRSConfig.sRSResourceSet_List, srsresourceset_list);
       for (int y = 0; y < nb_srsresourceset; y++) // Preparing SRS Resource Set List
       {
@@ -457,29 +451,30 @@ int nrppa_gNB_PositioningInformationResponse(instance_t instance, MessageDef *ms
         }
 
         // IE resourceSetType
-        switch(resSet_item->resourceSetType.present){
-        case f1ap_resource_set_type_pr_periodic:
-        srsresourceset_item->resourceSetType.present= NRPPA_ResourceSetType_PR_periodic;
-        asn1cCalloc(srsresourceset_item->resourceSetType.choice.periodic, res_set_type_periodic);
-        res_set_type_periodic->periodicSet=resSet_item->resourceSetType.choice.periodic.periodicSet;
-        break;
-        case f1ap_resource_set_type_pr_aperiodic:
-        srsresourceset_item->resourceSetType.present= NRPPA_ResourceSetType_PR_aperiodic;
-        asn1cCalloc(srsresourceset_item->resourceSetType.choice.aperiodic, res_set_type_aperiodic);
-        res_set_type_aperiodic->sRSResourceTrigger=resSet_item->resourceSetType.choice.aperiodic.sRSResourceTrigger;
-        res_set_type_aperiodic->slotoffset=resSet_item->resourceSetType.choice.aperiodic.slotoffset;
-        break;
-        case f1ap_resource_set_type_pr_semi_persistent:
-        srsresourceset_item->resourceSetType.present= NRPPA_ResourceSetType_PR_semi_persistent;
-        asn1cCalloc(srsresourceset_item->resourceSetType.choice.semi_persistent, res_set_type_semi_persistent);
-        res_set_type_semi_persistent->semi_persistentSet=resSet_item->resourceSetType.choice.semi_persistent.semi_persistentSet;
-        break;
-        case f1ap_resource_set_type_pr_nothing:
-        srsresourceset_item->resourceSetType.present= NRPPA_ResourceSetType_PR_NOTHING;
-        break;
-        default:
-        NRPPA_ERROR("srsresourceset_item Unknown resourceSetType \n");
-        break;
+        switch (resSet_item->resourceSetType.present) {
+          case f1ap_resource_set_type_pr_periodic:
+            srsresourceset_item->resourceSetType.present = NRPPA_ResourceSetType_PR_periodic;
+            asn1cCalloc(srsresourceset_item->resourceSetType.choice.periodic, res_set_type_periodic);
+            res_set_type_periodic->periodicSet = resSet_item->resourceSetType.choice.periodic.periodicSet;
+            break;
+          case f1ap_resource_set_type_pr_aperiodic:
+            srsresourceset_item->resourceSetType.present = NRPPA_ResourceSetType_PR_aperiodic;
+            asn1cCalloc(srsresourceset_item->resourceSetType.choice.aperiodic, res_set_type_aperiodic);
+            res_set_type_aperiodic->sRSResourceTrigger = resSet_item->resourceSetType.choice.aperiodic.sRSResourceTrigger;
+            res_set_type_aperiodic->slotoffset = resSet_item->resourceSetType.choice.aperiodic.slotoffset;
+            break;
+          case f1ap_resource_set_type_pr_semi_persistent:
+            srsresourceset_item->resourceSetType.present = NRPPA_ResourceSetType_PR_semi_persistent;
+            asn1cCalloc(srsresourceset_item->resourceSetType.choice.semi_persistent, res_set_type_semi_persistent);
+            res_set_type_semi_persistent->semi_persistentSet =
+                resSet_item->resourceSetType.choice.semi_persistent.semi_persistentSet;
+            break;
+          case f1ap_resource_set_type_pr_nothing:
+            srsresourceset_item->resourceSetType.present = NRPPA_ResourceSetType_PR_NOTHING;
+            break;
+          default:
+            NRPPA_ERROR("srsresourceset_item Unknown resourceSetType \n");
+            break;
         }
 
         if (y < nb_srsresourceset - 1) {
@@ -510,28 +505,30 @@ int nrppa_gNB_PositioningInformationResponse(instance_t instance, MessageDef *ms
         }
 
         // IE posresourceSetType
-        switch(pos_res_set_item->posresourceSetType.present){
-        case f1ap_pos_resource_set_type_pr_nothing:
-        pos_resource_set_item->posresourceSetType.present = NRPPA_PosResourceSetType_PR_NOTHING;
-        break;
-        case f1ap_pos_resource_set_type_pr_periodic:
-        pos_resource_set_item->posresourceSetType.present = NRPPA_PosResourceSetType_PR_periodic;
-        asn1cCalloc(pos_resource_set_item->posresourceSetType.choice.periodic, pos_res_set_type_periodic);
-        pos_res_set_type_periodic->posperiodicSet = pos_res_set_item->posresourceSetType.choice.periodic.posperiodicSet;
-        break;
-        case f1ap_pos_resource_set_type_pr_aperiodic:
-        pos_resource_set_item->posresourceSetType.present = NRPPA_PosResourceSetType_PR_aperiodic;
-        asn1cCalloc(pos_resource_set_item->posresourceSetType.choice.aperiodic, pos_res_set_type_aperiodic);
-        pos_res_set_type_aperiodic->sRSResourceTrigger = pos_res_set_item->posresourceSetType.choice.aperiodic.sRSResourceTrigger_List;
-        break;
-        case f1ap_pos_resource_set_type_pr_semi_persistent:
-        pos_resource_set_item->posresourceSetType.present = NRPPA_PosResourceSetType_PR_semi_persistent;
-        asn1cCalloc(pos_resource_set_item->posresourceSetType.choice.semi_persistent, pos_res_set_type_semi_persistent);
-        pos_res_set_type_semi_persistent->possemi_persistentSet = pos_res_set_item->posresourceSetType.choice.semi_persistent.possemi_persistentSet;
-        break;
-        default:
-        NRPPA_ERROR("Unknown posresourceSetType \n");
-        break;
+        switch (pos_res_set_item->posresourceSetType.present) {
+          case f1ap_pos_resource_set_type_pr_nothing:
+            pos_resource_set_item->posresourceSetType.present = NRPPA_PosResourceSetType_PR_NOTHING;
+            break;
+          case f1ap_pos_resource_set_type_pr_periodic:
+            pos_resource_set_item->posresourceSetType.present = NRPPA_PosResourceSetType_PR_periodic;
+            asn1cCalloc(pos_resource_set_item->posresourceSetType.choice.periodic, pos_res_set_type_periodic);
+            pos_res_set_type_periodic->posperiodicSet = pos_res_set_item->posresourceSetType.choice.periodic.posperiodicSet;
+            break;
+          case f1ap_pos_resource_set_type_pr_aperiodic:
+            pos_resource_set_item->posresourceSetType.present = NRPPA_PosResourceSetType_PR_aperiodic;
+            asn1cCalloc(pos_resource_set_item->posresourceSetType.choice.aperiodic, pos_res_set_type_aperiodic);
+            pos_res_set_type_aperiodic->sRSResourceTrigger =
+                pos_res_set_item->posresourceSetType.choice.aperiodic.sRSResourceTrigger_List;
+            break;
+          case f1ap_pos_resource_set_type_pr_semi_persistent:
+            pos_resource_set_item->posresourceSetType.present = NRPPA_PosResourceSetType_PR_semi_persistent;
+            asn1cCalloc(pos_resource_set_item->posresourceSetType.choice.semi_persistent, pos_res_set_type_semi_persistent);
+            pos_res_set_type_semi_persistent->possemi_persistentSet =
+                pos_res_set_item->posresourceSetType.choice.semi_persistent.possemi_persistentSet;
+            break;
+          default:
+            NRPPA_ERROR("Unknown posresourceSetType \n");
+            break;
         }
 
         if (j < nb_possrsresourceset - 1) {
@@ -708,8 +705,7 @@ int nrppa_gNB_PositioningInformationFailure(instance_t instance, MessageDef *msg
                                                 buffer,
                                                 length);
     return length;
-  } else if (failure_msg->nrppa_msg_info.gNB_ue_ngap_id == -1 && failure_msg->nrppa_msg_info.amf_ue_ngap_id == -1)
-  {
+  } else if (failure_msg->nrppa_msg_info.gNB_ue_ngap_id == -1 && failure_msg->nrppa_msg_info.amf_ue_ngap_id == -1) {
     LOG_D(
         NRPPA,
         "Sending UplinkNonUEAssociatedNRPPa (PositioningInformationFailure) to NGAP (gNB_ue_ngap_id= %d, amf_ue_ngap_id =%ld)  \n",
@@ -755,7 +751,7 @@ int nrppa_gNB_PositioningInformationUpdate(instance_t instance, MessageDef *msg_
   // IE 9.2.4 nrppatransactionID  (M)
   head->nrppatransactionID = update_msg->nrppa_msg_info.nrppa_transaction_id;
 
-  //NRPPA_PositioningInformationUpdate_t *out = &head->value.choice.PositioningInformationUpdate;
+  // NRPPA_PositioningInformationUpdate_t *out = &head->value.choice.PositioningInformationUpdate;
 
   /*// IE 9.2.28 SRS Configuration (Optional)
   {
@@ -862,7 +858,7 @@ int nrppa_gNB_PositioningActivationResponse(instance_t instance, MessageDef *msg
     ie->id = NRPPA_ProtocolIE_ID_id_SystemFrameNumber;
     ie->criticality = NRPPA_Criticality_ignore;
     ie->value.present = NRPPA_PositioningActivationResponseIEs__value_PR_SystemFrameNumber;
-    ie->value.choice.SystemFrameNumber= resp->system_frame_number;
+    ie->value.choice.SystemFrameNumber = resp->system_frame_number;
   }
   //  IE  SlotNumber (O)
   {
@@ -870,7 +866,7 @@ int nrppa_gNB_PositioningActivationResponse(instance_t instance, MessageDef *msg
     ie->id = NRPPA_ProtocolIE_ID_id_SystemFrameNumber;
     ie->criticality = NRPPA_Criticality_ignore;
     ie->value.present = NRPPA_PositioningActivationResponseIEs__value_PR_SlotNumber;
-    ie->value.choice.SlotNumber= resp->slot_number;
+    ie->value.choice.SlotNumber = resp->slot_number;
   }
 
   /* Encode NRPPA message */
@@ -880,8 +876,7 @@ int nrppa_gNB_PositioningActivationResponse(instance_t instance, MessageDef *msg
   }
 
   /* Forward the NRPPA PDU to NGAP */
-  if (resp->nrppa_msg_info.gNB_ue_ngap_id > 0 && resp->nrppa_msg_info.amf_ue_ngap_id > 0)
-  {
+  if (resp->nrppa_msg_info.gNB_ue_ngap_id > 0 && resp->nrppa_msg_info.amf_ue_ngap_id > 0) {
     LOG_D(NRPPA,
           "Sending UplinkUEAssociatedNRPPa (PositioningActivationResponse) to NGAP (gNB_ue_ngap_id= %d, amf_ue_ngap_id =%ld)  \n",
           resp->nrppa_msg_info.gNB_ue_ngap_id,
@@ -894,8 +889,7 @@ int nrppa_gNB_PositioningActivationResponse(instance_t instance, MessageDef *msg
                                                 buffer,
                                                 length);
     return length;
-  } else if (resp->nrppa_msg_info.gNB_ue_ngap_id == -1 && resp->nrppa_msg_info.amf_ue_ngap_id == -1)
-  {
+  } else if (resp->nrppa_msg_info.gNB_ue_ngap_id == -1 && resp->nrppa_msg_info.amf_ue_ngap_id == -1) {
     LOG_D(
         NRPPA,
         "Sending UplinkNonUEAssociatedNRPPa (PositioningActivationResponse) to NGAP (gNB_ue_ngap_id= %d, amf_ue_ngap_id =%ld)  \n",

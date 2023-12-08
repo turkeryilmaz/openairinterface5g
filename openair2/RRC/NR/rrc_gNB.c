@@ -2320,19 +2320,20 @@ static void rrc_CU_process_trp_information_request(f1ap_trp_information_req_t *r
 
 static void rrc_CU_process_measurement_request(f1ap_measurement_req_t *req)
 {
-   gNB_RRC_INST *rrc = RC.nrrrc[req->nrppa_msg_info.instance];
+  gNB_RRC_INST *rrc = RC.nrrrc[req->nrppa_msg_info.instance];
 
   rrc_gNB_ue_context_t *ue_context_p =
       rrc_gNB_get_ue_context(RC.nrrrc[req->nrppa_msg_info.instance], req->nrppa_msg_info.gNB_ue_ngap_id);
   gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
-  //f1_ue_data_t ue_data = cu_get_f1_ue_data(UE->rrc_ue_id);
+  // f1_ue_data_t ue_data = cu_get_f1_ue_data(UE->rrc_ue_id);
   req->nrppa_msg_info.ue_rnti = UE->rnti;
-  //req->gNB_DU_ue_id = ue_data.secondary_ue;
-  //req->gNB_CU_ue_id = UE->rrc_ue_id;
+  // req->gNB_DU_ue_id = ue_data.secondary_ue;
+  // req->gNB_CU_ue_id = UE->rrc_ue_id;
 
   LOG_I(RRC,
         "Processing Received MeasurementRequest lmf_measurement_id=%d, ran_measurement_id=%d \n",
-        req->lmf_measurement_id,req->ran_measurement_id);
+        req->lmf_measurement_id,
+        req->ran_measurement_id);
   rrc->mac_rrc.positioning_measurement_request(req);
 }
 
@@ -2421,7 +2422,7 @@ static void rrc_CU_process_trp_information_failure(MessageDef *msg_p, instance_t
 
 static void rrc_CU_process_measurement_response(MessageDef *msg_p, instance_t instance)
 {
-   //TODO: rebuild ITTI message with RRC task ID
+  // TODO: rebuild ITTI message with RRC task ID
   f1ap_measurement_resp_t *resp = &F1AP_MEASUREMENT_RESP(msg_p);
   //  gNB_RRC_INST *rrc = RC.nrrrc[instance];
   LOG_I(RRC,
@@ -2430,12 +2431,11 @@ static void rrc_CU_process_measurement_response(MessageDef *msg_p, instance_t in
         resp->ran_measurement_id);
 
   MessageDef *msg = itti_alloc_new_message(TASK_RRC_GNB, 0, F1AP_MEASUREMENT_RESP);
-  f1ap_measurement_resp_t *f1ap_msg= &F1AP_MEASUREMENT_RESP(msg);
+  f1ap_measurement_resp_t *f1ap_msg = &F1AP_MEASUREMENT_RESP(msg);
   /* copy all fields, but reallocate memory buffers! */
   *f1ap_msg = *resp;
-  f1ap_msg->transaction_id = resp->transaction_id,
-  f1ap_msg->lmf_measurement_id = resp->lmf_measurement_id,
-  f1ap_msg->ran_measurement_id =resp->ran_measurement_id;
+  f1ap_msg->transaction_id = resp->transaction_id, f1ap_msg->lmf_measurement_id = resp->lmf_measurement_id,
+  f1ap_msg->ran_measurement_id = resp->ran_measurement_id;
   f1ap_msg->nrppa_msg_info.nrppa_transaction_id = resp->nrppa_msg_info.nrppa_transaction_id;
   f1ap_msg->nrppa_msg_info.instance = resp->nrppa_msg_info.instance;
   f1ap_msg->nrppa_msg_info.gNB_ue_ngap_id = resp->nrppa_msg_info.gNB_ue_ngap_id;
@@ -2460,7 +2460,6 @@ static void rrc_CU_process_measurement_failure_ind(MessageDef *msg_p, instance_t
 {
   LOG_I(RRC, "Processing NOT implemented Received MeasurementFailureIndication \n");
 }
-
 
 void *rrc_gnb_task(void *args_p) {
   MessageDef *msg_p;

@@ -261,7 +261,7 @@ void *rrc_enb_process_itti_msg(void *);
 #include <openair3/SCTP/sctp_eNB_task.h>
 #include <openair3/NGAP/ngap_gNB.h>
 #include <openair3/NRPPA/nrppa_gNB.h>
-#include <openair3/NRPPA/nrppa_messages_types.h>
+
 
 /*
   static const char *const messages_definition_xml = {

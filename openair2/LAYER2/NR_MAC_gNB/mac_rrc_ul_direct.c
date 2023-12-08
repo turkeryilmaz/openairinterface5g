@@ -243,12 +243,11 @@ static void positioning_information_response(const f1ap_positioning_information_
 
   gNB_MAC_INST *mac = RC.nrmac[resp->nrppa_msg_info.instance];
   NR_UEs_t *UE_info = &mac->UE_info;
-  UE_iterator(UE_info->list, UE)
-  {
+  UE_iterator (UE_info->list, UE) {
     if (UE->rnti == resp->nrppa_msg_info.ue_rnti) { // configuration details of specific UE // TODO manage non UE associated
       LOG_I(MAC,
             "Extracting SRS Configuration for Positioning_information_response for ue rnti= %04x \n",
-            resp->nrppa_msg_info.ue_rnti ); ////uid_t uid = &UE->uid;
+            resp->nrppa_msg_info.ue_rnti); ////uid_t uid = &UE->uid;
       NR_UE_UL_BWP_t *current_BWP = &UE->current_UL_BWP;
       NR_SRS_Config_t *srs_config = current_BWP->srs_Config;
 
@@ -301,55 +300,55 @@ static void positioning_information_response(const f1ap_positioning_information_
           resource_item->sequenceId = srs_resource->sequenceId; //(M)
 
           // IE transmissionComb
-          switch(srs_resource->transmissionComb.present){
-          case NR_SRS_Resource__transmissionComb_PR_n2:
-            resource_item->transmissionComb.present = f1ap_transmission_comb_pr_n2;
-            resource_item->transmissionComb.choice.n2.combOffset_n2 = srs_resource->transmissionComb.choice.n2->combOffset_n2;
-            resource_item->transmissionComb.choice.n2.cyclicShift_n2 = srs_resource->transmissionComb.choice.n2->cyclicShift_n2;
-          break;
-          case NR_SRS_Resource__transmissionComb_PR_n4:
-            resource_item->transmissionComb.present = f1ap_transmission_comb_pr_n4;
-            resource_item->transmissionComb.choice.n4.combOffset_n4 =  srs_resource->transmissionComb.choice.n4->combOffset_n4;
-            resource_item->transmissionComb.choice.n4.cyclicShift_n4 = srs_resource->transmissionComb.choice.n4->cyclicShift_n4;
-          break;
-          case NR_SRS_Resource__transmissionComb_PR_NOTHING:
-            srs_resource->transmissionComb.present = f1ap_transmission_comb_pr_nothing;
-          break;
-          default:
-          LOG_E(MAC, "Unknown Resource Item TransmissionComb\n");
-          break;
+          switch (srs_resource->transmissionComb.present) {
+            case NR_SRS_Resource__transmissionComb_PR_n2:
+              resource_item->transmissionComb.present = f1ap_transmission_comb_pr_n2;
+              resource_item->transmissionComb.choice.n2.combOffset_n2 = srs_resource->transmissionComb.choice.n2->combOffset_n2;
+              resource_item->transmissionComb.choice.n2.cyclicShift_n2 = srs_resource->transmissionComb.choice.n2->cyclicShift_n2;
+              break;
+            case NR_SRS_Resource__transmissionComb_PR_n4:
+              resource_item->transmissionComb.present = f1ap_transmission_comb_pr_n4;
+              resource_item->transmissionComb.choice.n4.combOffset_n4 = srs_resource->transmissionComb.choice.n4->combOffset_n4;
+              resource_item->transmissionComb.choice.n4.cyclicShift_n4 = srs_resource->transmissionComb.choice.n4->cyclicShift_n4;
+              break;
+            case NR_SRS_Resource__transmissionComb_PR_NOTHING:
+              srs_resource->transmissionComb.present = f1ap_transmission_comb_pr_nothing;
+              break;
+            default:
+              LOG_E(MAC, "Unknown Resource Item TransmissionComb\n");
+              break;
           }
 
           // IE  resourceType
-          switch(srs_resource->resourceType.present){
-          case NR_SRS_Resource__resourceType_PR_periodic:
-            resource_item->resourceType.present = f1ap_resource_type_pr_periodic;
-            resource_item->resourceType.choice.periodic.periodicity =
-                0; // TODO check sturctuce srs_resource->resourceType.choice.periodic->periodicityAndOffset_p.periodicity; //(M)
-                   // choice periodic (uint8_t periodicity; uint16_t offset);
-            resource_item->resourceType.choice.periodic.offset =
-                0; // TODO srs_resource->resourceType.choice.periodic->offset; //(M)
-          break;
-          case NR_SRS_Resource__resourceType_PR_aperiodic:
-            resource_item->resourceType.present = f1ap_resource_type_pr_aperiodic;
-            resource_item->resourceType.choice.aperiodic.aperiodicResourceType =
-                0; // not done in srs impelmentation srs_resource->resourceType.choice.aperiodic->aperiodicResourceType; //(M)
-                   // aperiodic (uint8_t aperiodicResourceType;);
-          break;
-          case NR_SRS_Resource__resourceType_PR_semi_persistent:
-            resource_item->resourceType.present = f1ap_resource_type_pr_semi_persistent;
-            resource_item->resourceType.choice.semi_persistent.periodicity =
-                0; // TODO not implemented in SRS srs_resource->resourceType.choice.semi_persistent->periodicity; //(M)
-                   // semi_persistent (uint8_t periodicity;
-            resource_item->resourceType.choice.semi_persistent.offset =
-                0; // TODOnot implemented in SRS srs_resource->resourceType.choice.semi_persistent->offset; //(M)
-          break;
-          case NR_SRS_Resource__resourceType_PR_NOTHING:
-            resource_item->resourceType.present = f1ap_resource_type_pr_nothing;
-          break;
-          default:
-          LOG_E(MAC, "Unknown Resource Item resourceType\n");
-          break;
+          switch (srs_resource->resourceType.present) {
+            case NR_SRS_Resource__resourceType_PR_periodic:
+              resource_item->resourceType.present = f1ap_resource_type_pr_periodic;
+              resource_item->resourceType.choice.periodic.periodicity =
+                  0; // TODO check sturctuce srs_resource->resourceType.choice.periodic->periodicityAndOffset_p.periodicity; //(M)
+                     // choice periodic (uint8_t periodicity; uint16_t offset);
+              resource_item->resourceType.choice.periodic.offset =
+                  0; // TODO srs_resource->resourceType.choice.periodic->offset; //(M)
+              break;
+            case NR_SRS_Resource__resourceType_PR_aperiodic:
+              resource_item->resourceType.present = f1ap_resource_type_pr_aperiodic;
+              resource_item->resourceType.choice.aperiodic.aperiodicResourceType =
+                  0; // not done in srs impelmentation srs_resource->resourceType.choice.aperiodic->aperiodicResourceType; //(M)
+                     // aperiodic (uint8_t aperiodicResourceType;);
+              break;
+            case NR_SRS_Resource__resourceType_PR_semi_persistent:
+              resource_item->resourceType.present = f1ap_resource_type_pr_semi_persistent;
+              resource_item->resourceType.choice.semi_persistent.periodicity =
+                  0; // TODO not implemented in SRS srs_resource->resourceType.choice.semi_persistent->periodicity; //(M)
+                     // semi_persistent (uint8_t periodicity;
+              resource_item->resourceType.choice.semi_persistent.offset =
+                  0; // TODOnot implemented in SRS srs_resource->resourceType.choice.semi_persistent->offset; //(M)
+              break;
+            case NR_SRS_Resource__resourceType_PR_NOTHING:
+              resource_item->resourceType.present = f1ap_resource_type_pr_nothing;
+              break;
+            default:
+              LOG_E(MAC, "Unknown Resource Item resourceType\n");
+              break;
           }
 
           if (k < maxnoSRSResources - 1) {
@@ -374,27 +373,28 @@ static void positioning_information_response(const f1ap_positioning_information_
           resourceSet_item->sRSResourceSetID = srs_resourceset->srs_ResourceSetId;
 
           // IE resourceSetType
-          // TODO IE not found srs_resourceset->resourceType.choice.periodic->associatedCSI_RS;//(M) F1AP_ResourceSetType_t// resourceSetType;
-          switch(srs_resourceset->resourceType.present){
-          case NR_SRS_ResourceSet__resourceType_PR_periodic:
-          resourceSet_item->resourceSetType.present = f1ap_resource_set_type_pr_periodic;
-          resourceSet_item->resourceSetType.choice.periodic.periodicSet =0;
-          break;
-          case NR_SRS_ResourceSet__resourceType_PR_aperiodic:
-          resourceSet_item->resourceSetType.present = f1ap_resource_set_type_pr_aperiodic;
-          resourceSet_item->resourceSetType.choice.aperiodic.sRSResourceTrigger =1; // range 1-3
-          resourceSet_item->resourceSetType.choice.aperiodic.slotoffset =1; // range 1-32
-          break;
-          case NR_SRS_ResourceSet__resourceType_PR_semi_persistent:
-          resourceSet_item->resourceSetType.present = f1ap_resource_set_type_pr_semi_persistent;
-          resourceSet_item->resourceSetType.choice.semi_persistent.semi_persistentSet =0;
-          break;
-          case NR_SRS_ResourceSet__resourceType_PR_NOTHING:
-          resourceSet_item->resourceSetType.present = f1ap_resource_set_type_pr_nothing;
-          break;
-          default:
-          LOG_E(MAC, "Unknown NR_SRS_ResourceSet__resourceType \n");
-          break;
+          // TODO IE not found srs_resourceset->resourceType.choice.periodic->associatedCSI_RS;//(M) F1AP_ResourceSetType_t//
+          // resourceSetType;
+          switch (srs_resourceset->resourceType.present) {
+            case NR_SRS_ResourceSet__resourceType_PR_periodic:
+              resourceSet_item->resourceSetType.present = f1ap_resource_set_type_pr_periodic;
+              resourceSet_item->resourceSetType.choice.periodic.periodicSet = 0;
+              break;
+            case NR_SRS_ResourceSet__resourceType_PR_aperiodic:
+              resourceSet_item->resourceSetType.present = f1ap_resource_set_type_pr_aperiodic;
+              resourceSet_item->resourceSetType.choice.aperiodic.sRSResourceTrigger = 1; // range 1-3
+              resourceSet_item->resourceSetType.choice.aperiodic.slotoffset = 1; // range 1-32
+              break;
+            case NR_SRS_ResourceSet__resourceType_PR_semi_persistent:
+              resourceSet_item->resourceSetType.present = f1ap_resource_set_type_pr_semi_persistent;
+              resourceSet_item->resourceSetType.choice.semi_persistent.semi_persistentSet = 0;
+              break;
+            case NR_SRS_ResourceSet__resourceType_PR_NOTHING:
+              resourceSet_item->resourceSetType.present = f1ap_resource_set_type_pr_nothing;
+              break;
+            default:
+              LOG_E(MAC, "Unknown NR_SRS_ResourceSet__resourceType \n");
+              break;
           }
 
           // IE sRSResourceID_List
@@ -433,13 +433,13 @@ static void positioning_information_response(const f1ap_positioning_information_
           pos_resource_item->sequenceId = 0; //(M)
           // pos_resource_item->spatialRelationPos;	// OPTIONAL
 
-          pos_resource_item->transmissionCombPos.present=f1ap_transmission_comb_pos_pr_n2;
+          pos_resource_item->transmissionCombPos.present = f1ap_transmission_comb_pos_pr_n2;
           pos_resource_item->transmissionCombPos.choice.n2.combOffset_n2 =
               0; // (M)  f1ap_transmission_comb_pos_n2_t n2 (combOffset_n2,cyclicShift_n2) ; f1ap_transmission_comb_pos_n2_t n4;
                  // f1ap_transmission_comb_pos_n8_t n8;
           pos_resource_item->transmissionCombPos.choice.n2.cyclicShift_n2 = 0;
 
-          pos_resource_item->resourceTypePos.present=f1ap_resource_type_pos_pr_periodic;
+          pos_resource_item->resourceTypePos.present = f1ap_resource_type_pos_pr_periodic;
           pos_resource_item->resourceTypePos.choice.periodic.periodicity =
               0; // (M)    f1ap_resource_type_periodic_pos_t	  periodic;	f1ap_resource_type_semi_persistent_pos_t semi_persistent;
                  // f1ap_resource_type_aperiodic_pos_t	        aperiodic;
@@ -459,7 +459,8 @@ static void positioning_information_response(const f1ap_positioning_information_
             srs_carrier_list_item->active_ul_bwp.sRSConfig.posSRSResourceSet_List.pos_srs_resource_set_item;
         LOG_D(MAC, "Preparing posSRSResourceSet_List for NRRPA  maxnoPosSRSResourceSets=%d \n", maxnoPosSRSResourceSets);
         for (int f = 0; f < maxnoPosSRSResourceSets; f++) { // Preparing Pos SRS Resource Set List
-          pos_resourceSet_item->possrsResourceSetID = 0; // (M) srs_config->possrs_ResourceSetToAddModList->list.array[y]->srs_ResourceSetId; //// (M)
+          pos_resourceSet_item->possrsResourceSetID =
+              0; // (M) srs_config->possrs_ResourceSetToAddModList->list.array[y]->srs_ResourceSetId; //// (M)
 
           // pos_resourceSet_item->possRSResourceID_List; //f1ap_pos_srs_resource_id_list_t	 possRSResourceID_List;
           int maxnoPosSRSResourcePerSets = 1;
@@ -471,12 +472,12 @@ static void positioning_information_response(const f1ap_positioning_information_
           }
 
           //  IE posresourceSetType TODO
-          //pos_resourceSet_item->posresourceSetType.present=f1ap_pos_resource_set_type_pr_nothing;
-          pos_resourceSet_item->posresourceSetType.present=f1ap_pos_resource_set_type_pr_aperiodic;
-          pos_resourceSet_item->posresourceSetType.choice.aperiodic.sRSResourceTrigger_List=1;
-          //pos_resourceSet_item->posresourceSetType.periodic.posperiodicSet = 0; // f1ap_pos_resource_set_type_u	 posresourceSetType;
+          // pos_resourceSet_item->posresourceSetType.present=f1ap_pos_resource_set_type_pr_nothing;
+          pos_resourceSet_item->posresourceSetType.present = f1ap_pos_resource_set_type_pr_aperiodic;
+          pos_resourceSet_item->posresourceSetType.choice.aperiodic.sRSResourceTrigger_List = 1;
+          // pos_resourceSet_item->posresourceSetType.periodic.posperiodicSet = 0; // f1ap_pos_resource_set_type_u
+          // posresourceSetType;
         } // for(int f=0; f < maxnoSRSResourceSets; f++)
-
 
         //  Preparing Uplink Channel BW Per SCS List information IE of SRSCarrier_List f1ap_uplink_channel_bw_per_scs_list_t
         //  uplink_channel_bw_per_scs_list ; //(M)
@@ -560,7 +561,7 @@ static void positioning_measurement_response(const f1ap_measurement_resp_t *resp
         resp->ran_measurement_id);
 
   MessageDef *msg = itti_alloc_new_message(TASK_MAC_GNB, 0, F1AP_MEASUREMENT_RESP);
-      // prepare the common part of the response
+  // prepare the common part of the response
   f1ap_measurement_resp_t f1ap_resp;
   f1ap_resp.transaction_id = resp->transaction_id;
   f1ap_resp.lmf_measurement_id = resp->lmf_measurement_id;
@@ -568,43 +569,50 @@ static void positioning_measurement_response(const f1ap_measurement_resp_t *resp
   f1ap_resp.nrppa_msg_info = resp->nrppa_msg_info;
   f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_length = 1;
   f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item = malloc(sizeof(f1ap_pos_measurement_result_list_item_t));
-  f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->tRPID = 0; //TODO: this needs to be added to the config file
-  f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->posMeasurementResult.f1ap_pos_measurement_result_length = 1;
-  f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->posMeasurementResult.pos_measurement_result_item = malloc(sizeof(f1ap_pos_measurement_result_item_t));
+  f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->tRPID =
+      0; // TODO: this needs to be added to the config file
+  f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->posMeasurementResult.f1ap_pos_measurement_result_length =
+      1;
+  f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->posMeasurementResult.pos_measurement_result_item =
+      malloc(sizeof(f1ap_pos_measurement_result_item_t));
 
-  //criticality_diagnostics;
+  // criticality_diagnostics;
 
-  uint32_t Tc_inv = 4096*480000;
+  uint32_t Tc_inv = 4096 * 480000;
   uint16_t k = 1;
-  uint64_t T_inv = Tc_inv/(1<<k);
+  uint64_t T_inv = Tc_inv / (1 << k);
   uint64_t T_ns_inv = 1000000000;
-
 
   gNB_MAC_INST *mac = RC.nrmac[resp->nrppa_msg_info.instance];
   NR_UEs_t *UE_info = &mac->UE_info;
-  UE_iterator(UE_info->list, UE)
-  {
+  UE_iterator (UE_info->list, UE) {
     if (UE->rnti == resp->nrppa_msg_info.ue_rnti) { // configuration details of specific UE // TODO manage non UE associated
-         LOG_I(MAC,
-            "Extracting uL_RTOA info of MeasurementResponse for ue rnti= %04x \n", resp->nrppa_msg_info.ue_rnti ); ////uid_t uid = &UE->uid;
+      LOG_I(MAC,
+            "Extracting uL_RTOA info of MeasurementResponse for ue rnti= %04x \n",
+            resp->nrppa_msg_info.ue_rnti); ////uid_t uid = &UE->uid;
       // we assume we use UL_RTOA for now with k=1 (i.e. 8 times oversampling from 122.88e6 Msps)
-      f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->posMeasurementResult.pos_measurement_result_item->measuredResultsValue.present=f1ap_measured_results_value_pr_ul_rtoa;
-      f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->posMeasurementResult.pos_measurement_result_item->measuredResultsValue.choice.uL_RTOA.uL_RTOA_MeasurementItem.present=f1ap_ulrtoameas_pr_k1;
-      f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->posMeasurementResult.pos_measurement_result_item->measuredResultsValue.choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k1= (int32_t) (((int64_t)UE->ue_pos_info.toa_ns * (int64_t)T_inv) / T_ns_inv);
-      LOG_I(MAC,"Extracting uL_RTOA info of MeasurementResponse for ue rnti= %04x, k1=%d \n", resp->nrppa_msg_info.ue_rnti, (int32_t) (((int64_t)UE->ue_pos_info.toa_ns * (int64_t)T_inv) / T_ns_inv));
+      f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->posMeasurementResult.pos_measurement_result_item
+          ->measuredResultsValue.present = f1ap_measured_results_value_pr_ul_rtoa;
+      f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->posMeasurementResult.pos_measurement_result_item
+          ->measuredResultsValue.choice.uL_RTOA.uL_RTOA_MeasurementItem.present = f1ap_ulrtoameas_pr_k1;
+      f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->posMeasurementResult.pos_measurement_result_item
+          ->measuredResultsValue.choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k1 =
+          (int32_t)(((int64_t)UE->ue_pos_info.toa_ns * (int64_t)T_inv) / T_ns_inv);
+      LOG_I(MAC,
+            "Extracting uL_RTOA info of MeasurementResponse for ue rnti= %04x, k1=%d \n",
+            resp->nrppa_msg_info.ue_rnti,
+            (int32_t)(((int64_t)UE->ue_pos_info.toa_ns * (int64_t)T_inv) / T_ns_inv));
 
-      //TODO IE timeStamp.measurementTime
+      // TODO IE timeStamp.measurementTime
       // f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->posMeasurementResult.pos_measurement_result_item->timeStamp.measurementTime
-      //TODO IE timeStamp.slotIndex
+      // TODO IE timeStamp.slotIndex
       // f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->posMeasurementResult.pos_measurement_result_item->timeStamp.slotIndex.present
       // f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->posMeasurementResult.pos_measurement_result_item->timeStamp.slotIndex.choice
     }
   }
 
-
   F1AP_MEASUREMENT_RESP(msg) = f1ap_resp;
   itti_send_msg_to_task(TASK_RRC_GNB, 0, msg);
-
 }
 
 static void positioning_measurement_failure(const f1ap_measurement_failure_t *failure)
