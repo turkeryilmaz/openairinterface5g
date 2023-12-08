@@ -56,35 +56,21 @@ extern queue_t nr_ul_tti_req_queue;
 //  main_rrc.c
 //
 /**\brief Layer 3 initialization*/
-NR_UE_RRC_INST_t *nr_l3_init_ue(char *, char *, char *);
+NR_UE_RRC_INST_t *nr_l3_init_ue(char *);
 
 //
 //  UE_rrc.c
 //
 
 /**\brief Initial the top level RRC structure instance*/
-NR_UE_RRC_INST_t *openair_rrc_top_init_ue_nr(char *, char *, char *);
+NR_UE_RRC_INST_t *openair_rrc_top_init_ue_nr(char *);
+void init_nsa_message (NR_UE_RRC_INST_t *rrc, char* reconfig_file, char* rbconfig_file);
 
-/**\brief Process NR RRC connection reconfiguration via SRB3
-   \param rrcReconfiguration  decoded rrc connection reconfiguration*/
-int8_t nr_rrc_ue_process_rrcReconfiguration(const module_id_t module_id, NR_RRCReconfiguration_t *rrcReconfiguration);
+void process_nsa_message(NR_UE_RRC_INST_t *rrc, nsa_message_t nsa_message_type, void *message, int msg_len);
 
-/**\prief Process measurement config from NR RRC connection reconfiguration message
-   \param meas_config   measurement configuration*/
-int8_t nr_rrc_ue_process_meas_config(NR_MeasConfig_t *meas_config);
-
-void nr_rrc_ue_process_RadioBearerConfig(const protocol_ctxt_t *const ctxt_pP,
-                                         const uint8_t gNB_index,
-                                         NR_RadioBearerConfig_t *const radioBearerConfig);
-
-/**\brief decode NR BCCH-BCH (MIB) message
-   \param module_idP    module id
-   \param gNB_index     gNB index
-   \param sduP          pointer to buffer of ASN message BCCH-BCH
-   \param sdu_len       length of buffer*/
-int8_t nr_rrc_ue_decode_NR_BCCH_BCH_Message(const module_id_t module_id, const uint8_t gNB_index, uint8_t *const bufferP, const uint8_t buffer_len);
-
-int8_t nr_rrc_ue_decode_NR_DL_DCCH_Message(const module_id_t module_id, const uint8_t gNB_index, const uint8_t *buffer, const uint32_t size);
+void nr_rrc_cellgroup_configuration(rrcPerNB_t *rrcNB,
+                                    instance_t instance,
+                                    NR_CellGroupConfig_t *cellGroupConfig);
 
 /**\brief interface between MAC and RRC thru SRB0 (RLC TM/no PDCP)
    \param module_id  module id
@@ -107,26 +93,12 @@ void nr_mac_rrc_sync_ind(const module_id_t module_id,
                          const frame_t frame,
                          const bool in_sync);
 void nr_mac_rrc_ra_ind(const module_id_t mod_id, int frame, bool success);
-
-/**\brief
-   \param module_id  module id
-   \param CC_id      component carrier id
-   \param gNB_index  gNB index
-   \param frame_t    frameP
-   \param rb_id_t    SRB id
-   \param buffer_pP  pointer to buffer*/
-int8_t nr_mac_rrc_data_req_ue(const module_id_t Mod_idP,
-                              const int         CC_id,
-                              const uint8_t     gNB_id,
-                              const frame_t     frameP,
-                              const rb_id_t     Srb_id,
-                              uint8_t           *buffer_pP);
-
-int8_t nr_rrc_RA_succeeded(const module_id_t mod_id, const uint8_t gNB_index);
+void nr_mac_rrc_msg3_ind(const module_id_t mod_id, int rnti);
 
 /**\brief RRC UE task.
    \param void *args_p Pointer on arguments to start the task. */
 void *rrc_nrue_task(void *args_p);
+void *rrc_nrue(void *args_p);
 
 void nr_rrc_handle_timers(NR_UE_Timers_Constants_t *timers);
 
@@ -140,20 +112,12 @@ void nsa_sendmsg_to_lte_ue(const void *message, size_t msg_len, Rrc_Msg_Type_t m
 
 void start_oai_nrue_threads(void);
 
-/**\brief RRC UE generate RRCSetupRequest message.
-   \param module_id  module id
-   \param gNB_index  gNB index  */
-void nr_rrc_ue_generate_RRCSetupRequest(module_id_t module_id, const uint8_t gNB_index);
-
-void process_lte_nsa_msg(nsa_msg_t *msg, int msg_len);
-
 int get_from_lte_ue_fd();
 
 void nr_rrc_SI_timers(NR_UE_RRC_SI_INFO *SInfo);
 
 void nr_ue_rrc_timer_trigger(int module_id, int frame, int gnb_id);
 
-void configure_spcell(NR_UE_RRC_INST_t *rrc, NR_SpCellConfig_t *spcell_config);
 void reset_rlf_timers_and_constants(NR_UE_Timers_Constants_t *tac);
 void set_default_timers_and_constants(NR_UE_Timers_Constants_t *tac);
 void nr_rrc_set_sib1_timers_and_constants(NR_UE_Timers_Constants_t *tac, NR_SIB1_t *sib1);
@@ -163,13 +127,8 @@ void handle_rlf_sync(NR_UE_Timers_Constants_t *tac,
 void nr_rrc_handle_SetupRelease_RLF_TimersAndConstants(NR_UE_RRC_INST_t *rrc,
                                                        struct NR_SetupRelease_RLF_TimersAndConstants *rlf_TimersAndConstants);
 
-void nr_rrc_manage_rlc_bearers(const NR_CellGroupConfig_t *cellGroupConfig,
-                               NR_UE_RRC_INST_t *rrc,
-                               int gNB_index,
-                               module_id_t module_id,
-                               int rnti);
-
 int configure_NR_SL_Preconfig(int sync_source);
+
 /** @}*/
 #endif
 

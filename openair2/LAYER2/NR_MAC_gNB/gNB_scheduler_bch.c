@@ -30,7 +30,6 @@
 
  */
 
-#include "GNB_APP/RRC_nr_paramsvalues.h"
 #include "assertions.h"
 #include "NR_MAC_gNB/nr_mac_gNB.h"
 #include "NR_MAC_gNB/mac_proto.h"
@@ -38,7 +37,6 @@
 #include "common/utils/LOG/log.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "UTIL/OPT/opt.h"
-#include "RRC/NR/nr_rrc_config.h"
 #include "common/utils/nr/nr_common.h"
 #include "openair1/PHY/defs_nr_common.h"
 
@@ -508,6 +506,7 @@ static void nr_fill_nfapi_dl_sib1_pdu(int Mod_idP,
                      0,
                      gNB_mac->sched_ctrlCommon->search_space,
                      gNB_mac->sched_ctrlCommon->coreset,
+                     0, // parameter not needed for DCI 1_0
                      gNB_mac->cset0_bwp_size);
 
   LOG_D(MAC,"BWPSize: %i\n", pdcch_pdu_rel15->BWPSize);
@@ -601,10 +600,10 @@ void schedule_nr_sib1(module_id_t module_idP,
       // Data to be transmitted
       memcpy(tx_req->TLVs[0].value.direct, cc->sib1_bcch_pdu, TBS);
 
-      tx_req->PDU_length = TBS;
       tx_req->PDU_index  = pdu_index;
       tx_req->num_TLV = 1;
-      tx_req->TLVs[0].length = TBS + 2;
+      tx_req->TLVs[0].length = TBS;
+      tx_req->PDU_length = compute_PDU_length(tx_req->num_TLV, tx_req->TLVs[0].length);
       TX_req->Number_of_PDUs++;
       TX_req->SFN = frameP;
       TX_req->Slot = slotP;

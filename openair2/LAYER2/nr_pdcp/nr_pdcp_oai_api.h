@@ -25,7 +25,7 @@
 #include "pdcp.h"
 #include "nr_pdcp_ue_manager.h"
 
-void nr_pdcp_layer_init(void);
+void nr_pdcp_layer_init(bool uses_e1);
 uint64_t nr_pdcp_module_init(uint64_t _pdcp_optmask, int id);
 
 void du_rlc_data_req(const protocol_ctxt_t *const ctxt_pP,
@@ -64,7 +64,7 @@ void add_drb(int is_gnb,
 void nr_DRB_preconfiguration(ue_id_t crntiMaybeUEid);
 
 bool nr_pdcp_remove_UE(ue_id_t ue_id);
-void nr_pdcp_reestablishment(ue_id_t ue_id);
+void nr_pdcp_reestablishment(ue_id_t ue_id, int rb_id, bool srb_flag);
 
 void nr_pdcp_suspend_srb(ue_id_t ue_id, int srb_id);
 void nr_pdcp_suspend_drb(ue_id_t ue_id, int drb_id);

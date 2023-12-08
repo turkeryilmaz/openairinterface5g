@@ -1086,10 +1086,8 @@ void nr_schedule_ue_spec(module_id_t module_id,
     long maxMIMO_Layers = current_BWP->pdsch_servingcellconfig ? *current_BWP->pdsch_servingcellconfig->ext1->maxMIMO_Layers : 1;
     const int nl_tbslbrm = min(maxMIMO_Layers, 4);
     // Maximum number of PRBs across all configured DL BWPs
-    int scc_bwpsize = current_BWP->initial_BWPSize;
-    int bw_tbslbrm = get_dlbw_tbslbrm(scc_bwpsize, cg);
     pdsch_pdu->maintenance_parms_v3.tbSizeLbrmBytes = nr_compute_tbslbrm(current_BWP->mcsTableIdx,
-                                                                         bw_tbslbrm,
+                                                                         current_BWP->bw_tbslbrm,
                                                                          nl_tbslbrm);
     pdsch_pdu->maintenance_parms_v3.ldpcBaseGraph = get_BG(TBS<<3,R);
 
@@ -1200,6 +1198,7 @@ void nr_schedule_ue_spec(module_id_t module_id,
                        bwp_id,
                        sched_ctrl->search_space,
                        sched_ctrl->coreset,
+                       UE->pdsch_HARQ_ACK_Codebook,
                        gNB_mac->cset0_bwp_size);
 
     LOG_D(NR_MAC,
@@ -1367,10 +1366,10 @@ void nr_schedule_ue_spec(module_id_t module_id,
 
     const int ntx_req = TX_req->Number_of_PDUs;
     nfapi_nr_pdu_t *tx_req = &TX_req->pdu_list[ntx_req];
-    tx_req->PDU_length = TBS;
     tx_req->PDU_index  = pduindex;
     tx_req->num_TLV = 1;
-    tx_req->TLVs[0].length = TBS + 2;
+    tx_req->TLVs[0].length = TBS;
+    tx_req->PDU_length = compute_PDU_length(tx_req->num_TLV, tx_req->TLVs[0].length);
     memcpy(tx_req->TLVs[0].value.direct, harq->transportBlock, TBS);
     TX_req->Number_of_PDUs++;
     TX_req->SFN = frame;

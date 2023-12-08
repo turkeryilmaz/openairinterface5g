@@ -34,50 +34,50 @@
 //-------------------------------------------------------------------------------------------//
 // Defines to access message fields.
 
-#define NGAP_REGISTER_GNB_REQ(mSGpTR) (mSGpTR)->ittiMsg.ngap_register_gnb_req
+#define NGAP_REGISTER_GNB_REQ(mSGpTR)           (mSGpTR)->ittiMsg.ngap_register_gnb_req
 
-#define NGAP_REGISTER_GNB_CNF(mSGpTR) (mSGpTR)->ittiMsg.ngap_register_gnb_cnf
-#define NGAP_DEREGISTERED_GNB_IND(mSGpTR) (mSGpTR)->ittiMsg.ngap_deregistered_gnb_ind
+#define NGAP_REGISTER_GNB_CNF(mSGpTR)           (mSGpTR)->ittiMsg.ngap_register_gnb_cnf
+#define NGAP_DEREGISTERED_GNB_IND(mSGpTR)       (mSGpTR)->ittiMsg.ngap_deregistered_gnb_ind
 
-#define NGAP_NAS_FIRST_REQ(mSGpTR) (mSGpTR)->ittiMsg.ngap_nas_first_req
-#define NGAP_UPLINK_NAS(mSGpTR) (mSGpTR)->ittiMsg.ngap_uplink_nas
-#define NGAP_UE_CAPABILITIES_IND(mSGpTR) (mSGpTR)->ittiMsg.ngap_ue_cap_info_ind
+#define NGAP_NAS_FIRST_REQ(mSGpTR)              (mSGpTR)->ittiMsg.ngap_nas_first_req
+#define NGAP_UPLINK_NAS(mSGpTR)                 (mSGpTR)->ittiMsg.ngap_uplink_nas
+#define NGAP_UE_CAPABILITIES_IND(mSGpTR)        (mSGpTR)->ittiMsg.ngap_ue_cap_info_ind
 #define NGAP_INITIAL_CONTEXT_SETUP_RESP(mSGpTR) (mSGpTR)->ittiMsg.ngap_initial_context_setup_resp
 #define NGAP_INITIAL_CONTEXT_SETUP_FAIL(mSGpTR) (mSGpTR)->ittiMsg.ngap_initial_context_setup_fail
-#define NGAP_UE_CONTEXT_RELEASE_RESP(mSGpTR) (mSGpTR)->ittiMsg.ngap_ue_release_resp
-#define NGAP_NAS_NON_DELIVERY_IND(mSGpTR) (mSGpTR)->ittiMsg.ngap_nas_non_delivery_ind
-#define NGAP_UE_CTXT_MODIFICATION_RESP(mSGpTR) (mSGpTR)->ittiMsg.ngap_ue_ctxt_modification_resp
-#define NGAP_UE_CTXT_MODIFICATION_FAIL(mSGpTR) (mSGpTR)->ittiMsg.ngap_ue_ctxt_modification_fail
-#define NGAP_PDUSESSION_SETUP_RESP(mSGpTR) (mSGpTR)->ittiMsg.ngap_pdusession_setup_resp
+#define NGAP_UE_CONTEXT_RELEASE_RESP(mSGpTR)    (mSGpTR)->ittiMsg.ngap_ue_release_resp
+#define NGAP_NAS_NON_DELIVERY_IND(mSGpTR)       (mSGpTR)->ittiMsg.ngap_nas_non_delivery_ind
+#define NGAP_UE_CTXT_MODIFICATION_RESP(mSGpTR)  (mSGpTR)->ittiMsg.ngap_ue_ctxt_modification_resp
+#define NGAP_UE_CTXT_MODIFICATION_FAIL(mSGpTR)  (mSGpTR)->ittiMsg.ngap_ue_ctxt_modification_fail
+#define NGAP_PDUSESSION_SETUP_RESP(mSGpTR)           (mSGpTR)->ittiMsg.ngap_pdusession_setup_resp
 #define NGAP_PDUSESSION_SETUP_FAIL(mSGpTR) (mSGpTR)->ittiMsg.ngap_pdusession_setup_request_fail
-#define NGAP_PDUSESSION_MODIFY_RESP(mSGpTR) (mSGpTR)->ittiMsg.ngap_pdusession_modify_resp
-#define NGAP_PATH_SWITCH_REQ(mSGpTR) (mSGpTR)->ittiMsg.ngap_path_switch_req
-#define NGAP_PATH_SWITCH_REQ_ACK(mSGpTR) (mSGpTR)->ittiMsg.ngap_path_switch_req_ack
-#define NGAP_PDUSESSION_MODIFICATION_IND(mSGpTR) (mSGpTR)->ittiMsg.ngap_pdusession_modification_ind
+#define NGAP_PDUSESSION_MODIFY_RESP(mSGpTR)           (mSGpTR)->ittiMsg.ngap_pdusession_modify_resp
+#define NGAP_PATH_SWITCH_REQ(mSGpTR)            (mSGpTR)->ittiMsg.ngap_path_switch_req
+#define NGAP_PATH_SWITCH_REQ_ACK(mSGpTR)        (mSGpTR)->ittiMsg.ngap_path_switch_req_ack
+#define NGAP_PDUSESSION_MODIFICATION_IND(mSGpTR)     (mSGpTR)->ittiMsg.ngap_pdusession_modification_ind
 
-#define NGAP_DOWNLINK_NAS(mSGpTR) (mSGpTR)->ittiMsg.ngap_downlink_nas
-#define NGAP_INITIAL_CONTEXT_SETUP_REQ(mSGpTR) (mSGpTR)->ittiMsg.ngap_initial_context_setup_req
-#define NGAP_UE_CTXT_MODIFICATION_REQ(mSGpTR) (mSGpTR)->ittiMsg.ngap_ue_ctxt_modification_req
+#define NGAP_DOWNLINK_NAS(mSGpTR)               (mSGpTR)->ittiMsg.ngap_downlink_nas
+#define NGAP_INITIAL_CONTEXT_SETUP_REQ(mSGpTR)  (mSGpTR)->ittiMsg.ngap_initial_context_setup_req
+#define NGAP_UE_CTXT_MODIFICATION_REQ(mSGpTR)   (mSGpTR)->ittiMsg.ngap_ue_ctxt_modification_req
 #define NGAP_UE_CONTEXT_RELEASE_COMMAND(mSGpTR) (mSGpTR)->ittiMsg.ngap_ue_release_command
 #define NGAP_UE_CONTEXT_RELEASE_COMPLETE(mSGpTR) (mSGpTR)->ittiMsg.ngap_ue_release_complete
-#define NGAP_PDUSESSION_SETUP_REQ(mSGpTR) (mSGpTR)->ittiMsg.ngap_pdusession_setup_req
-#define NGAP_PDUSESSION_MODIFY_REQ(mSGpTR) (mSGpTR)->ittiMsg.ngap_pdusession_modify_req
-#define NGAP_PAGING_IND(mSGpTR) (mSGpTR)->ittiMsg.ngap_paging_ind
+#define NGAP_PDUSESSION_SETUP_REQ(mSGpTR)              (mSGpTR)->ittiMsg.ngap_pdusession_setup_req
+#define NGAP_PDUSESSION_MODIFY_REQ(mSGpTR)              (mSGpTR)->ittiMsg.ngap_pdusession_modify_req
+#define NGAP_PAGING_IND(mSGpTR)                 (mSGpTR)->ittiMsg.ngap_paging_ind
 
-#define NGAP_UE_CONTEXT_RELEASE_REQ(mSGpTR) (mSGpTR)->ittiMsg.ngap_ue_release_req
-#define NGAP_PDUSESSION_RELEASE_COMMAND(mSGpTR) (mSGpTR)->ittiMsg.ngap_pdusession_release_command
+#define NGAP_UE_CONTEXT_RELEASE_REQ(mSGpTR)      (mSGpTR)->ittiMsg.ngap_ue_release_req
+#define NGAP_PDUSESSION_RELEASE_COMMAND(mSGpTR)  (mSGpTR)->ittiMsg.ngap_pdusession_release_command
 #define NGAP_PDUSESSION_RELEASE_RESPONSE(mSGpTR) (mSGpTR)->ittiMsg.ngap_pdusession_release_resp
 
-#define NGAP_UPLINKUEASSOCIATEDNRPPA(mSGpTR) (mSGpTR)->ittiMsg.ngap_UplinkUEAssociatedNRPPa // adeel changes NRPPa
-#define NGAP_UPLINKNONUEASSOCIATEDNRPPA(mSGpTR) (mSGpTR)->ittiMsg.ngap_UplinkNonUEAssociatedNRPPa // adeel changes NRPPa
-#define NGAP_DOWNLINKUEASSOCIATEDNRPPA(mSGpTR) (mSGpTR)->ittiMsg.ngap_DownlinkUEAssociatedNRPPa // adeel changes NRPPa
-#define NGAP_DOWNLINKNONUEASSOCIATEDNRPPA(mSGpTR) (mSGpTR)->ittiMsg.ngap_DownlinkNonUEAssociatedNRPPa // adeel changes NRPPa
+#define NGAP_UPLINKUEASSOCIATEDNRPPA(mSGpTR)      (mSGpTR)->ittiMsg.ngap_UplinkUEAssociatedNRPPa
+#define NGAP_UPLINKNONUEASSOCIATEDNRPPA(mSGpTR)   (mSGpTR)->ittiMsg.ngap_UplinkNonUEAssociatedNRPPa 
+#define NGAP_DOWNLINKUEASSOCIATEDNRPPA(mSGpTR)    (mSGpTR)->ittiMsg.ngap_DownlinkUEAssociatedNRPPa
+#define NGAP_DOWNLINKNONUEASSOCIATEDNRPPA(mSGpTR) (mSGpTR)->ittiMsg.ngap_DownlinkNonUEAssociatedNRPPa
 
 //-------------------------------------------------------------------------------------------//
 /* Maximum number of e-rabs to be setup/deleted in a single message.
  * Even if only one bearer will be modified by message.
  */
-#define NGAP_MAX_PDUSESSION (LTE_maxDRB + 3)
+#define NGAP_MAX_PDUSESSION  (LTE_maxDRB + 3)
 
 /* Length of the transport layer address string
  * 160 bits / 8 bits by char.
@@ -85,9 +85,9 @@
 #define NGAP_TRANSPORT_LAYER_ADDRESS_SIZE (160 / 8)
 
 #define NGAP_MAX_NB_AMF_IP_ADDRESS 10
-#define NGAP_IMSI_LENGTH 16
+#define NGAP_IMSI_LENGTH           16
 
-#define QOSFLOW_MAX_VALUE 64
+#define QOSFLOW_MAX_VALUE           64
 
 /* Security key length used within gNB
  * Even if only 16 bytes will be effectively used,
@@ -96,8 +96,8 @@
 #define SECURITY_KEY_LENGTH 32
 
 typedef enum ngap_paging_drx_e {
-  NGAP_PAGING_DRX_32 = 0x0,
-  NGAP_PAGING_DRX_64 = 0x1,
+  NGAP_PAGING_DRX_32  = 0x0,
+  NGAP_PAGING_DRX_64  = 0x1,
   NGAP_PAGING_DRX_128 = 0x2,
   NGAP_PAGING_DRX_256 = 0x3
 } ngap_paging_drx_t;
@@ -106,21 +106,24 @@ typedef enum ngap_paging_drx_e {
  * indicates higher priority.
  */
 typedef enum ngap_paging_priority_s {
-  NGAP_PAGING_PRIO_LEVEL1 = 0,
-  NGAP_PAGING_PRIO_LEVEL2 = 1,
-  NGAP_PAGING_PRIO_LEVEL3 = 2,
-  NGAP_PAGING_PRIO_LEVEL4 = 3,
-  NGAP_PAGING_PRIO_LEVEL5 = 4,
-  NGAP_PAGING_PRIO_LEVEL6 = 5,
-  NGAP_PAGING_PRIO_LEVEL7 = 6,
-  NGAP_PAGING_PRIO_LEVEL8 = 7
+  NGAP_PAGING_PRIO_LEVEL1  = 0,
+  NGAP_PAGING_PRIO_LEVEL2  = 1,
+  NGAP_PAGING_PRIO_LEVEL3  = 2,
+  NGAP_PAGING_PRIO_LEVEL4  = 3,
+  NGAP_PAGING_PRIO_LEVEL5  = 4,
+  NGAP_PAGING_PRIO_LEVEL6  = 5,
+  NGAP_PAGING_PRIO_LEVEL7  = 6,
+  NGAP_PAGING_PRIO_LEVEL8  = 7
 } ngap_paging_priority_t;
 
-typedef enum ngap_cn_domain_s { NGAP_CN_DOMAIN_PS = 1, NGAP_CN_DOMAIN_CS = 2 } ngap_cn_domain_t;
+typedef enum ngap_cn_domain_s {
+  NGAP_CN_DOMAIN_PS = 1,
+  NGAP_CN_DOMAIN_CS = 2
+} ngap_cn_domain_t;
 
 typedef struct ngap_net_ip_address_s {
-  unsigned ipv4 : 1;
-  unsigned ipv6 : 1;
+  unsigned ipv4:1;
+  unsigned ipv6:1;
   char ipv4_address[16];
   char ipv6_address[46];
 } ngap_net_ip_address_t;
@@ -133,39 +136,39 @@ typedef struct ngap_ambr_s {
 } ngap_ambr_t;
 
 typedef enum ngap_priority_level_s {
-  NGAP_PRIORITY_LEVEL_SPARE = 0,
-  NGAP_PRIORITY_LEVEL_HIGHEST = 1,
-  NGAP_PRIORITY_LEVEL_2 = 2,
-  NGAP_PRIORITY_LEVEL_3 = 3,
-  NGAP_PRIORITY_LEVEL_4 = 4,
-  NGAP_PRIORITY_LEVEL_5 = 5,
-  NGAP_PRIORITY_LEVEL_6 = 6,
-  NGAP_PRIORITY_LEVEL_7 = 7,
-  NGAP_PRIORITY_LEVEL_8 = 8,
-  NGAP_PRIORITY_LEVEL_9 = 9,
-  NGAP_PRIORITY_LEVEL_10 = 10,
-  NGAP_PRIORITY_LEVEL_11 = 11,
-  NGAP_PRIORITY_LEVEL_12 = 12,
-  NGAP_PRIORITY_LEVEL_13 = 13,
-  NGAP_PRIORITY_LEVEL_LOWEST = 14,
+  NGAP_PRIORITY_LEVEL_SPARE       = 0,
+  NGAP_PRIORITY_LEVEL_HIGHEST     = 1,
+  NGAP_PRIORITY_LEVEL_2           = 2,
+  NGAP_PRIORITY_LEVEL_3           = 3,
+  NGAP_PRIORITY_LEVEL_4           = 4,
+  NGAP_PRIORITY_LEVEL_5           = 5,
+  NGAP_PRIORITY_LEVEL_6           = 6,
+  NGAP_PRIORITY_LEVEL_7           = 7,
+  NGAP_PRIORITY_LEVEL_8           = 8,
+  NGAP_PRIORITY_LEVEL_9           = 9,
+  NGAP_PRIORITY_LEVEL_10          = 10,
+  NGAP_PRIORITY_LEVEL_11          = 11,
+  NGAP_PRIORITY_LEVEL_12          = 12,
+  NGAP_PRIORITY_LEVEL_13          = 13,
+  NGAP_PRIORITY_LEVEL_LOWEST      = 14,
   NGAP_PRIORITY_LEVEL_NO_PRIORITY = 15
 } ngap_priority_level_t;
 
 typedef enum ngap_pre_emp_capability_e {
-  NGAP_PRE_EMPTION_CAPABILITY_ENABLED = 0,
+  NGAP_PRE_EMPTION_CAPABILITY_ENABLED  = 0,
   NGAP_PRE_EMPTION_CAPABILITY_DISABLED = 1,
   NGAP_PRE_EMPTION_CAPABILITY_MAX,
 } ngap_pre_emp_capability_t;
 
 typedef enum ngap_pre_emp_vulnerability_e {
-  NGAP_PRE_EMPTION_VULNERABILITY_ENABLED = 0,
+  NGAP_PRE_EMPTION_VULNERABILITY_ENABLED  = 0,
   NGAP_PRE_EMPTION_VULNERABILITY_DISABLED = 1,
   NGAP_PRE_EMPTION_VULNERABILITY_MAX,
 } ngap_pre_emp_vulnerability_t;
 
 typedef struct ngap_allocation_retention_priority_s {
-  ngap_priority_level_t priority_level;
-  ngap_pre_emp_capability_t pre_emp_capability;
+  ngap_priority_level_t        priority_level;
+  ngap_pre_emp_capability_t    pre_emp_capability;
   ngap_pre_emp_vulnerability_t pre_emp_vulnerability;
 } ngap_allocation_retention_priority_t;
 
@@ -182,19 +185,24 @@ typedef struct ngap_security_capabilities_s {
  * 'Mobile Originating'. Defined in TS 36.331.
  */
 typedef enum ngap_rrc_establishment_cause_e {
-  NGAP_RRC_CAUSE_EMERGENCY = 0x0,
-  NGAP_RRC_CAUSE_HIGH_PRIO_ACCESS = 0x1,
-  NGAP_RRC_CAUSE_MT_ACCESS = 0x2,
-  NGAP_RRC_CAUSE_MO_SIGNALLING = 0x3,
-  NGAP_RRC_CAUSE_MO_DATA = 0x4,
-  NGAP_RRC_CAUSE_MO_VOICECALL = 0x5,
-  NGAP_RRC_CAUSE_MO_VIDEOCALL = 0x6,
-  NGAP_RRC_CAUSE_MO_SMS = 0x7,
-  NGAP_RRC_CAUSE_MPS_PRIORITY_ACCESS = 0x8,
-  NGAP_RRC_CAUSE_MCS_PRIORITY_ACCESS = 0x9,
-  NGAP_RRC_CAUSE_NOTAVAILABLE = 0x10,
+  NGAP_RRC_CAUSE_EMERGENCY             = 0x0,
+  NGAP_RRC_CAUSE_HIGH_PRIO_ACCESS      = 0x1,
+  NGAP_RRC_CAUSE_MT_ACCESS             = 0x2,
+  NGAP_RRC_CAUSE_MO_SIGNALLING         = 0x3,
+  NGAP_RRC_CAUSE_MO_DATA               = 0x4,
+  NGAP_RRC_CAUSE_MO_VOICECALL          = 0x5,
+  NGAP_RRC_CAUSE_MO_VIDEOCALL          = 0x6,
+  NGAP_RRC_CAUSE_MO_SMS                = 0x7,
+  NGAP_RRC_CAUSE_MPS_PRIORITY_ACCESS   = 0x8,
+  NGAP_RRC_CAUSE_MCS_PRIORITY_ACCESS   = 0x9,
+  NGAP_RRC_CAUSE_NOTAVAILABLE          = 0x10,
   NGAP_RRC_CAUSE_LAST
 } ngap_rrc_establishment_cause_t;
+
+typedef struct nssai_s {
+  uint8_t sst;
+  uint32_t sd;
+} nssai_t;
 
 typedef struct pdusession_level_qos_parameter_s {
   uint8_t qfi;
@@ -206,28 +214,22 @@ typedef struct pdusession_level_qos_parameter_s {
 typedef struct ngap_guami_s {
   uint16_t mcc;
   uint16_t mnc;
-  uint8_t mnc_len;
-  uint8_t amf_region_id;
+  uint8_t  mnc_len;
+  uint8_t  amf_region_id;
   uint16_t amf_set_id;
-  uint8_t amf_pointer;
+  uint8_t  amf_pointer;
 } ngap_guami_t;
-
-typedef struct ngap_allowed_NSSAI_s {
-  uint8_t sST;
-  uint8_t sD_flag;
-  uint8_t sD[3];
-} ngap_allowed_NSSAI_t;
 
 typedef struct fiveg_s_tmsi_s {
   uint16_t amf_set_id;
-  uint8_t amf_pointer;
+  uint8_t  amf_pointer;
   uint32_t m_tmsi;
 } fiveg_s_tmsi_t;
 
 typedef struct ngap_tai_plmn_identity_s {
   uint16_t mcc;
   uint16_t mnc;
-  uint8_t mnc_digit_length;
+  uint8_t  mnc_digit_length;
 } ngap_plmn_identity_t;
 
 typedef struct ngap_ue_paging_identity_s {
@@ -235,27 +237,27 @@ typedef struct ngap_ue_paging_identity_s {
 } ngap_ue_paging_identity_t;
 
 typedef enum ngap_ue_identities_presenceMask_e {
-  NGAP_UE_IDENTITIES_NONE = 0,
-  NGAP_UE_IDENTITIES_FiveG_s_tmsi = 1 << 1,
-  NGAP_UE_IDENTITIES_guami = 1 << 2,
+  NGAP_UE_IDENTITIES_NONE          = 0,
+  NGAP_UE_IDENTITIES_FiveG_s_tmsi  = 1 << 1,
+  NGAP_UE_IDENTITIES_guami         = 1 << 2,
 } ngap_ue_identities_presenceMask_t;
 
 typedef struct ngap_ue_identity_s {
   ngap_ue_identities_presenceMask_t presenceMask;
-  fiveg_s_tmsi_t s_tmsi;
-  ngap_guami_t guami;
+  fiveg_s_tmsi_t  s_tmsi;
+  ngap_guami_t    guami;
 } ngap_ue_identity_t;
 
 typedef struct ngap_nas_pdu_s {
   /* Octet string data */
-  uint8_t *buffer;
+  uint8_t  *buffer;
   /* Length of the octet string */
-  uint32_t length;
+  uint32_t  length;
 } ngap_pdu_t;
 
-typedef struct ngap_mobility_restriction_s {
+typedef struct ngap_mobility_restriction_s{
   ngap_plmn_identity_t serving_plmn;
-} ngap_mobility_restriction_t;
+}ngap_mobility_restriction_t;
 
 typedef enum pdu_session_type_e {
   PDUSessionType_ipv4 = 0,
@@ -263,7 +265,7 @@ typedef enum pdu_session_type_e {
   PDUSessionType_ipv4v6 = 2,
   PDUSessionType_ethernet = 3,
   PDUSessionType_unstructured = 4
-} pdu_session_type_t;
+}pdu_session_type_t;
 
 typedef struct pdusession_s {
   /* Unique pdusession_id for the UE. */
@@ -284,17 +286,18 @@ typedef struct pdusession_s {
   transport_layer_addr_t gNB_addr_N3;
   uint32_t UPF_teid_N3;
   transport_layer_addr_t UPF_addr_N3;
+  nssai_t nssai;
 } pdusession_t;
 
-typedef enum pdusession_qosflow_mapping_ind_e {
+typedef enum pdusession_qosflow_mapping_ind_e{
   QOSFLOW_MAPPING_INDICATION_UL = 0,
   QOSFLOW_MAPPING_INDICATION_DL = 1,
   QOSFLOW_MAPPING_INDICATION_NON = 0xFF
-} pdusession_qosflow_mapping_ind_t;
+}pdusession_qosflow_mapping_ind_t;
 
-typedef struct pdusession_associate_qosflow_s {
-  uint8_t qfi;
-  pdusession_qosflow_mapping_ind_t qos_flow_mapping_ind;
+typedef struct pdusession_associate_qosflow_s{
+  uint8_t                           qfi;
+  pdusession_qosflow_mapping_ind_t  qos_flow_mapping_ind;
 } pdusession_associate_qosflow_t;
 
 typedef struct pdusession_setup_s {
@@ -309,8 +312,8 @@ typedef struct pdusession_setup_s {
   uint32_t gtp_teid;
 
   /* qos flow list number */
-  uint8_t nb_of_qos_flow;
-
+  uint8_t  nb_of_qos_flow;
+  
   /* qos flow list(1 ~ 64) */
   pdusession_associate_qosflow_t associated_qos_flows[QOSFLOW_MAX_VALUE];
 } pdusession_setup_t;
@@ -342,18 +345,18 @@ typedef struct pdusession_modify_s {
 } pdusession_modify_t;
 
 typedef enum ngap_Cause_e {
-  NGAP_CAUSE_NOTHING, /* No components present */
+  NGAP_CAUSE_NOTHING,  /* No components present */
   NGAP_CAUSE_RADIO_NETWORK,
   NGAP_CAUSE_TRANSPORT,
   NGAP_CAUSE_NAS,
   NGAP_CAUSE_PROTOCOL,
   NGAP_CAUSE_MISC,
   NGAP_Cause_PR_choice_ExtensionS,
-  // Evilish manual duplicate of asn.1 grammar
-  // because it is human work, whereas it can be generated by machine
-  // and because humans manual copy creates bugs
-  // and we create multiple names for the same thing, that is a source of confusion
-} ngap_Cause_t;
+  //Evilish manual duplicate of asn.1 grammar
+  //because it is human work, whereas it can be generated by machine
+  //and because humans manual copy creates bugs
+  //and we create multiple names for the same thing, that is a source of confusion
+} ngap_Cause_t; 
 
 typedef enum ngap_Cause_radio_network_e {
   NGAP_CAUSE_RADIO_NETWORK_UNSPECIFIED,
@@ -416,14 +419,22 @@ typedef struct pdusession_failed_s {
 
 typedef enum ngap_ue_ctxt_modification_present_s {
   NGAP_UE_CONTEXT_MODIFICATION_SECURITY_KEY = (1 << 0),
-  NGAP_UE_CONTEXT_MODIFICATION_UE_AMBR = (1 << 1),
-  NGAP_UE_CONTEXT_MODIFICATION_UE_SECU_CAP = (1 << 2),
+  NGAP_UE_CONTEXT_MODIFICATION_UE_AMBR      = (1 << 1),
+  NGAP_UE_CONTEXT_MODIFICATION_UE_SECU_CAP  = (1 << 2),
 } ngap_ue_ctxt_modification_present_t;
 
 typedef enum ngap_paging_ind_present_s {
-  NGAP_PAGING_IND_PAGING_DRX = (1 << 0),
+  NGAP_PAGING_IND_PAGING_DRX      = (1 << 0),
   NGAP_PAGING_IND_PAGING_PRIORITY = (1 << 1),
 } ngap_paging_ind_present_t;
+
+typedef struct {
+  uint16_t mcc;
+  uint16_t mnc;
+  uint8_t mnc_digit_length;
+  uint8_t num_nssai;
+  nssai_t s_nssai[8];
+} ngap_plmn_t;
 
 //-------------------------------------------------------------------------------------------//
 // gNB application layer -> NGAP messages
@@ -449,13 +460,8 @@ typedef struct ngap_register_gnb_req_s {
   /* Mobile Country Code
    * Mobile Network Code
    */
-  uint16_t mcc[PLMN_LIST_MAX_SIZE];
-  uint16_t mnc[PLMN_LIST_MAX_SIZE];
-  uint8_t mnc_digit_length[PLMN_LIST_MAX_SIZE];
-  uint8_t num_plmn;
-
-  uint16_t num_nssai[PLMN_LIST_MAX_SIZE];
-  ngap_allowed_NSSAI_t s_nssai[PLMN_LIST_MAX_SIZE][8];
+  uint8_t  num_plmn;
+  ngap_plmn_t plmn[PLMN_LIST_MAX_SIZE];
 
   /* Default Paging DRX of the gNB as defined in TS 38.304 */
   ngap_paging_drx_t default_drx;
@@ -464,11 +470,11 @@ typedef struct ngap_register_gnb_req_s {
   net_ip_address_t gnb_ip_address;
 
   /* Nb of AMF to connect to */
-  uint8_t nb_amf;
+  uint8_t          nb_amf;
   /* List of AMF to connect to */
   net_ip_address_t amf_ip_address[NGAP_MAX_NB_AMF_IP_ADDRESS];
-  uint8_t broadcast_plmn_num[NGAP_MAX_NB_AMF_IP_ADDRESS];
-  uint8_t broadcast_plmn_index[NGAP_MAX_NB_AMF_IP_ADDRESS][PLMN_LIST_MAX_SIZE];
+  uint8_t          broadcast_plmn_num[NGAP_MAX_NB_AMF_IP_ADDRESS];
+  uint8_t          broadcast_plmn_index[NGAP_MAX_NB_AMF_IP_ADDRESS][PLMN_LIST_MAX_SIZE];
 
   /* Number of SCTP streams used for a amf association */
   uint16_t sctp_in_streams;
@@ -479,12 +485,12 @@ typedef struct ngap_register_gnb_req_s {
 // NGAP -> gNB application layer messages
 typedef struct ngap_register_gnb_cnf_s {
   /* Nb of AMF connected */
-  uint8_t nb_amf;
+  uint8_t          nb_amf;
 } ngap_register_gnb_cnf_t;
 
 typedef struct ngap_deregistered_gnb_ind_s {
   /* Nb of AMF connected */
-  uint8_t nb_amf;
+  uint8_t          nb_amf;
 } ngap_deregistered_gnb_ind_t;
 
 //-------------------------------------------------------------------------------------------//
@@ -573,38 +579,38 @@ typedef struct ngap_uplink_nas_s {
 } ngap_uplink_nas_t;
 
 typedef struct ngap_ue_cap_info_ind_s {
-  uint32_t gNB_ue_ngap_id;
+  uint32_t  gNB_ue_ngap_id;
   ngap_pdu_t ue_radio_cap;
 } ngap_ue_cap_info_ind_t;
 
 typedef struct ngap_initial_context_setup_resp_s {
-  uint32_t gNB_ue_ngap_id;
+  uint32_t  gNB_ue_ngap_id;
 
   /* Number of pdusession setup-ed in the list */
-  uint8_t nb_of_pdusessions;
+  uint8_t       nb_of_pdusessions;
   /* list of pdusession setup-ed by RRC layers */
   pdusession_setup_t pdusessions[NGAP_MAX_PDUSESSION];
 
   /* Number of pdusession failed to be setup in list */
-  uint8_t nb_of_pdusessions_failed;
+  uint8_t        nb_of_pdusessions_failed;
   /* list of pdusessions that failed to be setup */
   pdusession_failed_t pdusessions_failed[NGAP_MAX_PDUSESSION];
 } ngap_initial_context_setup_resp_t;
 
 typedef struct ngap_initial_context_setup_fail_s {
-  uint32_t gNB_ue_ngap_id;
+  uint32_t  gNB_ue_ngap_id;
 
   /* TODO add cause */
 } ngap_initial_context_setup_fail_t, ngap_ue_ctxt_modification_fail_t, ngap_pdusession_setup_req_fail_t;
 
 typedef struct ngap_nas_non_delivery_ind_s {
-  uint32_t gNB_ue_ngap_id;
+  uint32_t     gNB_ue_ngap_id;
   ngap_pdu_t nas_pdu;
   /* TODO: add cause */
 } ngap_nas_non_delivery_ind_t;
 
 typedef struct ngap_ue_ctxt_modification_req_s {
-  uint32_t gNB_ue_ngap_id;
+  uint32_t  gNB_ue_ngap_id;
 
   /* Bit-mask of possible present parameters */
   ngap_ue_ctxt_modification_present_t present;
@@ -622,7 +628,7 @@ typedef struct ngap_ue_ctxt_modification_req_s {
 } ngap_ue_ctxt_modification_req_t;
 
 typedef struct ngap_ue_ctxt_modification_resp_s {
-  uint32_t gNB_ue_ngap_id;
+  uint32_t  gNB_ue_ngap_id;
 } ngap_ue_ctxt_modification_resp_t;
 
 typedef struct ngap_ue_release_complete_s {
@@ -652,7 +658,7 @@ typedef struct ngap_initial_context_setup_req_s {
 
   /* allowed nssai */
   uint8_t nb_allowed_nssais;
-  ngap_allowed_NSSAI_t allowed_nssai[8];
+  nssai_t allowed_nssai[8];
 
   /* Security algorithms */
   ngap_security_capabilities_t security_capabilities;
@@ -661,16 +667,16 @@ typedef struct ngap_initial_context_setup_req_s {
   uint8_t security_key[SECURITY_KEY_LENGTH];
 
   /* Number of pdusession to be setup in the list */
-  uint8_t nb_of_pdusessions;
+  uint8_t  nb_of_pdusessions;
   /* list of pdusession to be setup by RRC layers */
-  pdusession_t pdusession_param[NGAP_MAX_PDUSESSION];
+  pdusession_t  pdusession_param[NGAP_MAX_PDUSESSION];
 
   /* Mobility Restriction List */
-  uint8_t mobility_restriction_flag;
-  ngap_mobility_restriction_t mobility_restriction;
+  uint8_t                        mobility_restriction_flag;
+  ngap_mobility_restriction_t    mobility_restriction;
 
   /* Nas Pdu */
-  uint8_t nas_pdu_flag;
+  uint8_t                        nas_pdu_flag;
   ngap_pdu_t nas_pdu;
 } ngap_initial_context_setup_req_t;
 
@@ -712,7 +718,7 @@ typedef struct ngap_pdusession_setup_req_s {
 
   /* S-NSSAI */
   // Fixme: illogical, nssai is part of each pdu session
-  ngap_allowed_NSSAI_t allowed_nssai[8];
+  nssai_t allowed_nssai[8];
 
   /* Number of pdusession to be setup in the list */
   uint8_t nb_pdusessions_tosetup;
@@ -731,21 +737,21 @@ typedef struct ngap_pdusession_setup_req_s {
 typedef struct ngap_pdusession_setup_resp_s {
   uint32_t gNB_ue_ngap_id;
   /* Number of pdusession setup-ed in the list */
-  uint8_t nb_of_pdusessions;
+  uint8_t       nb_of_pdusessions;
   /* list of pdusession setup-ed by RRC layers */
   pdusession_setup_t pdusessions[NGAP_MAX_PDUSESSION];
 
   /* Number of pdusession failed to be setup in list */
-  uint8_t nb_of_pdusessions_failed;
+  uint8_t        nb_of_pdusessions_failed;
   /* list of pdusessions that failed to be setup */
   pdusession_failed_t pdusessions_failed[NGAP_MAX_PDUSESSION];
 } ngap_pdusession_setup_resp_t;
 
 typedef struct ngap_path_switch_req_s {
-  uint32_t gNB_ue_ngap_id;
+  uint32_t  gNB_ue_ngap_id;
 
   /* Number of pdusession setup-ed in the list */
-  uint8_t nb_of_pdusessions;
+  uint8_t       nb_of_pdusessions;
 
   /* list of pdusession setup-ed by RRC layers */
   pdusession_setup_t pdusessions_tobeswitched[NGAP_MAX_PDUSESSION];
@@ -765,7 +771,7 @@ typedef struct ngap_path_switch_req_ack_s {
   /* UE id for initial connection to NGAP */
   uint16_t ue_initial_id;
 
-  uint32_t gNB_ue_ngap_id;
+  uint32_t  gNB_ue_ngap_id;
 
   /* AMF UE id  */
   uint64_t amf_ue_ngap_id;
@@ -774,33 +780,34 @@ typedef struct ngap_path_switch_req_ack_s {
   ngap_ambr_t ue_ambr;
 
   /* Number of pdusession setup-ed in the list */
-  uint8_t nb_pdusessions_tobeswitched;
+  uint8_t       nb_pdusessions_tobeswitched;
 
   /* list of pdusession to be switched by RRC layers */
   pdusession_tobeswitched_t pdusessions_tobeswitched[NGAP_MAX_PDUSESSION];
 
   /* Number of pdusessions to be released by RRC */
-  uint8_t nb_pdusessions_tobereleased;
+  uint8_t        nb_pdusessions_tobereleased;
 
   /* list of pdusessions to be released */
   pdusession_failed_t pdusessions_tobereleased[NGAP_MAX_PDUSESSION];
 
   /* Security key */
-  int next_hop_chain_count;
+  int     next_hop_chain_count;
   uint8_t next_security_key[SECURITY_KEY_LENGTH];
 
 } ngap_path_switch_req_ack_t;
 
 typedef struct ngap_pdusession_modification_ind_s {
-  uint32_t gNB_ue_ngap_id;
+
+  uint32_t  gNB_ue_ngap_id;
 
   /* AMF UE id  */
   uint64_t amf_ue_ngap_id;
 
   /* Number of pdusession setup-ed in the list */
-  uint8_t nb_of_pdusessions_tobemodified;
+  uint8_t       nb_of_pdusessions_tobemodified;
 
-  uint8_t nb_of_pdusessions_nottobemodified;
+  uint8_t       nb_of_pdusessions_nottobemodified;
 
   /* list of pdusession setup-ed by RRC layers */
   pdusession_setup_t pdusessions_tobemodified[NGAP_MAX_PDUSESSION];
@@ -813,7 +820,8 @@ typedef struct ngap_pdusession_modification_ind_s {
 
 // NGAP --> RRC messages
 typedef struct ngap_ue_release_command_s {
-  uint32_t gNB_ue_ngap_id;
+
+  uint32_t  gNB_ue_ngap_id;
 
 } ngap_ue_release_command_t;
 
@@ -821,18 +829,18 @@ typedef struct ngap_ue_release_command_s {
 // NGAP <-- RRC messages
 typedef struct pdusession_release_s {
   /* Unique pdusession_id for the UE. */
-  uint8_t pdusession_id;
+  uint8_t                     pdusession_id;
   ngap_pdu_t data;
 } pdusession_release_t;
 
 typedef struct ngap_ue_release_req_s {
-  uint32_t gNB_ue_ngap_id;
+  uint32_t             gNB_ue_ngap_id;
   /* Number of pdusession resource in the list */
-  uint8_t nb_of_pdusessions;
+  uint8_t              nb_of_pdusessions;
   /* list of pdusession resource by RRC layers */
   pdusession_release_t pdusessions[NGAP_MAX_PDUSESSION];
   ngap_Cause_t cause;
-  long cause_value;
+  long                 cause_value;
 } ngap_ue_release_req_t, ngap_ue_release_resp_t;
 
 typedef struct ngap_pdusession_modify_req_s {
@@ -840,7 +848,7 @@ typedef struct ngap_pdusession_modify_req_s {
   uint64_t amf_ue_ngap_id;
 
   /* gNB ue ngap id as initialized by NGAP layer */
-  uint32_t gNB_ue_ngap_id;
+  uint32_t  gNB_ue_ngap_id;
 
   /* Number of pdusession to be modify in the list */
   uint8_t nb_pdusessions_tomodify;
@@ -850,15 +858,15 @@ typedef struct ngap_pdusession_modify_req_s {
 } ngap_pdusession_modify_req_t;
 
 typedef struct ngap_pdusession_modify_resp_s {
-  uint32_t gNB_ue_ngap_id;
+  uint32_t  gNB_ue_ngap_id;
 
   /* Number of pdusession modify-ed in the list */
-  uint8_t nb_of_pdusessions;
+  uint8_t       nb_of_pdusessions;
   /* list of pdusession modify-ed by RRC layers */
   pdusession_modify_t pdusessions[NGAP_MAX_PDUSESSION];
 
   /* Number of pdusession failed to be modify in list */
-  uint8_t nb_of_pdusessions_failed;
+  uint8_t        nb_of_pdusessions_failed;
   /* list of pdusessions that failed to be modify */
   pdusession_failed_t pdusessions_failed[NGAP_MAX_PDUSESSION];
 } ngap_pdusession_modify_resp_t;
@@ -868,13 +876,13 @@ typedef struct ngap_pdusession_release_command_s {
   uint64_t amf_ue_ngap_id;
 
   /* gNB ue ngap id as initialized by NGAP layer */
-  uint32_t gNB_ue_ngap_id;
+  uint32_t                       gNB_ue_ngap_id;
 
   /* The NAS PDU should be forwarded by the RRC layer to the NAS layer */
   ngap_pdu_t nas_pdu;
 
   /* Number of pdusession to be released in the list */
-  uint8_t nb_pdusessions_torelease;
+  uint8_t                        nb_pdusessions_torelease;
 
   /* PDUSession release command */
   pdusession_release_t pdusession_release_params[NGAP_MAX_PDUSESSION];
@@ -886,18 +894,18 @@ typedef struct ngap_pdusession_release_resp_s {
   uint64_t amf_ue_ngap_id;
 
   /* gNB ue ngap id as initialized by NGAP layer */
-  uint32_t gNB_ue_ngap_id;
+  uint32_t             gNB_ue_ngap_id;
 
   /* Number of pdusession released in the list */
-  uint8_t nb_of_pdusessions_released;
+  uint8_t              nb_of_pdusessions_released;
 
   /* list of pdusessions released */
   pdusession_release_t pdusession_release[NGAP_MAX_PDUSESSION];
 
   /* Number of pdusession failed to be released in list */
-  uint8_t nb_of_pdusessions_failed;
+  uint8_t              nb_of_pdusessions_failed;
   /* list of pdusessions that failed to be released */
-  pdusession_failed_t pdusessions_failed[NGAP_MAX_PDUSESSION];
+  pdusession_failed_t  pdusessions_failed[NGAP_MAX_PDUSESSION];
 
 } ngap_pdusession_release_resp_t;
 

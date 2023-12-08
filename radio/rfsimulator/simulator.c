@@ -233,7 +233,7 @@ static int allocCirBuf(rfsimulator_state_t *bridge, int sock)
     }
     char *modelname = (bridge->role == SIMU_ROLE_SERVER) ? "rfsimu_channel_ue0" : "rfsimu_channel_enB0";
     ptr->channel_model = find_channel_desc_fromname(modelname); // path_loss in dB
-    if (ptr->channel_model != NULL) {
+    if (!ptr->channel_model) {
       LOG_E(HW, "Channel model %s not found, check config file\n", modelname);
       return -1;
     }
@@ -330,13 +330,9 @@ static void rfsimulator_readconfig(rfsimulator_state_t *rfsimulator) {
   char *saveF=NULL;
   char *modelname=NULL;
   paramdef_t rfsimu_params[] = RFSIMULATOR_PARAMS_DESC;
-  int p = config_paramidx_fromname(rfsimu_params,sizeof(rfsimu_params)/sizeof(paramdef_t), RFSIMU_OPTIONS_PARAMNAME) ;
-  int ret = config_get( rfsimu_params,sizeof(rfsimu_params)/sizeof(paramdef_t),RFSIMU_SECTION);
-
-  if (ret < 0) {
-    LOG_E(HW, "Configuration couldn't be performed\n");
-    exit(-1);
-  }
+  int p = config_paramidx_fromname(rfsimu_params, sizeofArray(rfsimu_params), RFSIMU_OPTIONS_PARAMNAME);
+  int ret = config_get(config_get_if(), rfsimu_params, sizeofArray(rfsimu_params), RFSIMU_SECTION);
+  AssertFatal(ret >= 0, "configuration couldn't be performed\n");
 
   rfsimulator->saveIQfile = -1;
 
@@ -1121,6 +1117,12 @@ int device_init(openair0_device *device, openair0_config_t *openair0_cfg) {
         break;
       }
     }
+  }
+
+  /* write on a socket fails if the other end is closed and we get SIGPIPE */
+  if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
+    perror("SIGPIPE");
+    exit(1);
   }
 
   return 0;

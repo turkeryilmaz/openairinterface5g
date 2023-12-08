@@ -34,6 +34,8 @@
 #include "PHY/NR_REFSIG/refsig_defs_ue.h"
 #include "radio/COMMON/common_lib.h"
 #include "LAYER2/nr_pdcp/nr_pdcp_oai_api.h"
+#include "LAYER2/nr_rlc/nr_rlc_oai_api.h"
+#include "RRC/NR/MESSAGES/asn1_msg.h"
 
 /*
  *  NR SLOT PROCESSING SEQUENCE
@@ -367,7 +369,7 @@ static void UE_synch(void *arg) {
   PHY_VARS_NR_UE *UE = syncD->UE;
   sync_mode_t sync_mode = pbch;
   //int CC_id = UE->CC_id;
-  static int freq_offset=0;
+  static int freq_offset = 0;
   UE->is_synchronized = 0;
 
   if (UE->UE_scan == 0) {
@@ -460,15 +462,10 @@ static void UE_synch(void *arg) {
               openair0_cfg[UE->rf_map.card].tx_freq[0]);
 
         UE->rfdevice.trx_set_freq_func(&UE->rfdevice,&openair0_cfg[0]);
-        if (UE->UE_scan_carrier == 1) {
+        if (UE->UE_scan_carrier == 1)
           UE->UE_scan_carrier = 0;
-        } else {
+        else
           UE->is_synchronized = 1;
-        }
-        if (UE->synch_request.received_synch_request == 1) {
-          UE->is_synchronized = 0;
-          UE->synch_request.received_synch_request = 0;
-        }
       } else {
 
         if (UE->UE_scan_carrier == 1) {
@@ -590,13 +587,11 @@ nr_phy_data_t UE_dl_preprocessing(PHY_VARS_NR_UE *UE, UE_nr_rxtx_proc_t *proc)
   if (IS_SOFTMODEM_NOS1 || get_softmodem_params()->sa) {
 
     // Start synchronization with a target gNB
-    if (UE->synch_request.received_synch_request == 1 && UE->target_Nid_cell == -1) {
+    if (UE->synch_request.received_synch_request == 1) {
       UE->is_synchronized = 0;
       UE->target_Nid_cell = UE->synch_request.synch_req.target_Nid_cell;
-      clean_UE_ulsch(UE, proc->gNB_id);
-    } else if (UE->synch_request.received_synch_request == 1 && UE->target_Nid_cell != -1) {
+      clean_UE_harq(UE);
       UE->synch_request.received_synch_request = 0;
-      UE->target_Nid_cell = -1;
     }
 
     /* send tick to RLC and PDCP every ms */
@@ -743,7 +738,8 @@ void *UE_thread(void *arg)
   //this thread should be over the processing thread to keep in real time
   PHY_VARS_NR_UE *UE = (PHY_VARS_NR_UE *) arg;
   //  int tx_enabled = 0;
-  openair0_timestamp timestamp, writeTimestamp;
+  openair0_timestamp timestamp = 0;
+  openair0_timestamp writeTimestamp = 0;
   void *rxp[NB_ANTENNAS_RX];
   int start_rx_stream = 0;
   fapi_nr_config_request_t *cfg = &UE->nrUE_config;
@@ -809,7 +805,7 @@ void *UE_thread(void *arg)
       }
     }
 
-    AssertFatal( !syncRunning, "At this point synchronization can't be running\n");
+    AssertFatal(!syncRunning, "At this point synchronization can't be running\n");
 
     if (!UE->is_synchronized) {
       readFrame(UE, &timestamp, false);
@@ -950,14 +946,38 @@ void *UE_thread(void *arg)
 
 void init_NR_UE(int nb_inst, char *uecap_file, char *reconfig_file, char *rbconfig_file)
 {
-  int inst;
   NR_UE_MAC_INST_t *mac_inst;
   NR_UE_RRC_INST_t* rrc_inst;
   
-  for (inst=0; inst < nb_inst; inst++) {
-    AssertFatal((rrc_inst = nr_l3_init_ue(uecap_file, reconfig_file, rbconfig_file)) != NULL, "can not initialize RRC module\n");
-    AssertFatal((mac_inst = nr_l2_init_ue(rrc_inst)) != NULL, "can not initialize L2 module\n");
+  for (int inst = 0; inst < nb_inst; inst++) {
+    AssertFatal((rrc_inst = nr_l3_init_ue(uecap_file)) != NULL, "can not initialize RRC module\n");
+    AssertFatal((mac_inst = nr_l2_init_ue()) != NULL, "can not initialize L2 module\n");
     AssertFatal((mac_inst->if_module = nr_ue_if_module_init(inst)) != NULL, "can not initialize IF module\n");
+    if (!get_softmodem_params()->sa) {
+      init_nsa_message(rrc_inst, reconfig_file, rbconfig_file);
+      // TODO why do we need noS1 configuration?
+      // temporarily moved here to understand why not using the one provided by gNB
+      nr_rlc_activate_srb0(mac_inst->crnti, NULL, send_srb0_rrc);
+      if (IS_SOFTMODEM_NOS1) {
+        // get default noS1 configuration
+        NR_RadioBearerConfig_t *rbconfig = NULL;
+        NR_RLC_BearerConfig_t *rlc_rbconfig = NULL;
+        fill_nr_noS1_bearer_config(&rbconfig, &rlc_rbconfig);
+
+        // set up PDCP, RLC, MAC
+        nr_pdcp_layer_init(false);
+        nr_pdcp_add_drbs(ENB_FLAG_NO, mac_inst->crnti, rbconfig->drb_ToAddModList, 0, NULL, NULL);
+        nr_rlc_add_drb(mac_inst->crnti, rbconfig->drb_ToAddModList->list.array[0]->drb_Identity, rlc_rbconfig);
+        struct NR_CellGroupConfig__rlc_BearerToAddModList rlc_toadd_list;
+        rlc_toadd_list.list.count = 1;
+        rlc_toadd_list.list.array = calloc(1, sizeof(NR_RLC_BearerConfig_t));
+        rlc_toadd_list.list.array[0] = rlc_rbconfig;
+        nr_rrc_mac_config_req_ue_logicalChannelBearer(0, &rlc_toadd_list, NULL);
+
+        // free memory
+        free_nr_noS1_bearer_config(&rbconfig, NULL);
+      }
+    }
   }
 }
 
