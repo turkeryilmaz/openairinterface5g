@@ -43,7 +43,7 @@ int nrppa_gNB_handle_TRPInformationExchange(nrppa_gnb_ue_info_t *nrppa_msg_info,
   DevAssert(pdu != NULL);
   xer_fprint(stdout, &asn_DEF_NRPPA_NRPPA_PDU, pdu);
 
-   // Forward request to RRC
+  // Forward request to RRC
   MessageDef *msg = itti_alloc_new_message(TASK_RRC_GNB, 0, F1AP_TRP_INFORMATION_REQ);
   f1ap_trp_information_req_t *f1ap_req = &F1AP_TRP_INFORMATION_REQ(msg);
   f1ap_req->nrppa_msg_info.instance = nrppa_msg_info->instance;
@@ -64,17 +64,22 @@ int nrppa_gNB_handle_TRPInformationExchange(nrppa_gnb_ue_info_t *nrppa_msg_info,
 
   // IE TRP List
   NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_TRPInformationRequest_IEs_t, ie, container, NRPPA_ProtocolIE_ID_id_TRPList, false);
-  if (ie!= NULL){
-  LOG_I(NRPPA, "Process TRPInformationRequest IE  TRP List");
-  //    NRPPA_TRPList_t TRP_List = ie->value.choice.TRPList;  // TODO process this and fill f1ap message
+  if (ie != NULL) {
+    LOG_I(NRPPA, "Process TRPInformationRequest IE  TRP List");
+    //    NRPPA_TRPList_t TRP_List = ie->value.choice.TRPList;  // TODO process this and fill f1ap message
   }
 
   // IE TRP Information Type List
-  NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_TRPInformationRequest_IEs_t, ie, container, NRPPA_ProtocolIE_ID_id_TRPInformationTypeList, false);
-  if (ie!= NULL){
-  LOG_I(NRPPA, "Process TRPInformationRequest IE TRPInformationTypeList");
-  // NRPPA_TRPInformationTypeList_t TRP_Info_Type_List= ie->value.choice.TRPInformationTypeList; // TODO process this and fill f1ap message
-}
+  NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_TRPInformationRequest_IEs_t,
+                              ie,
+                              container,
+                              NRPPA_ProtocolIE_ID_id_TRPInformationTypeList,
+                              false);
+  if (ie != NULL) {
+    LOG_I(NRPPA, "Process TRPInformationRequest IE TRPInformationTypeList");
+    // NRPPA_TRPInformationTypeList_t TRP_Info_Type_List= ie->value.choice.TRPInformationTypeList; // TODO process this and fill
+    // f1ap message
+  }
 
   LOG_I(NRPPA, "Forwarding to RRC TRPInformationRequest transaction_id=%d\n", f1ap_req->transaction_id);
   itti_send_msg_to_task(TASK_RRC_GNB, 0, msg);
@@ -247,7 +252,6 @@ int nrppa_gNB_TRPInformationFailure(instance_t instance, MessageDef *msg_p)
         NRPPA_ERROR("Unknown TrpInformationFailure Cause\n");
         break;
     }
-
   }
 
   /*//  TODO IE 9.2.2 CriticalityDiagnostics (O)

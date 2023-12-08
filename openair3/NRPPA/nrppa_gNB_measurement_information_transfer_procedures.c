@@ -52,7 +52,7 @@ int nrppa_gNB_handle_Measurement(nrppa_gnb_ue_info_t *nrppa_msg_info, NRPPA_NRPP
   f1ap_req->nrppa_msg_info.amf_ue_ngap_id = nrppa_msg_info->amf_ue_ngap_id;
   f1ap_req->nrppa_msg_info.routing_id_buffer = nrppa_msg_info->routing_id_buffer;
   f1ap_req->nrppa_msg_info.routing_id_length = nrppa_msg_info->routing_id_length;
-  f1ap_req->ran_measurement_id = 2;//TODO add actual not in NRPPA but in F1AP;
+  f1ap_req->ran_measurement_id = 2; // TODO add actual not in NRPPA but in F1AP;
 
   // Processing Received MeasurmentRequest
   NRPPA_MeasurementRequest_t *container;
@@ -70,79 +70,94 @@ int nrppa_gNB_handle_Measurement(nrppa_gnb_ue_info_t *nrppa_msg_info, NRPPA_NRPP
   f1ap_req->lmf_measurement_id = LMF_Meas_ID;
 
   // IE TRP Measurement Request List (M)
-  NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_MeasurementRequest_IEs_t, ie, container, NRPPA_ProtocolIE_ID_id_TRP_MeasurementRequestList, false);
-  if (ie!=NULL){
-  NRPPA_TRP_MeasurementRequestList_t measurement_request_list = ie->value.choice.TRP_MeasurementRequestList;
-  int maxNoMeasTRP=measurement_request_list.list.count;
-  f1ap_req->trp_measurement_request_list.trp_measurement_request_list_length=maxNoMeasTRP;
-  f1ap_req->trp_measurement_request_list.trp_measurement_request_item= malloc(maxNoMeasTRP*sizeof(f1ap_trp_measurement_request_item_t));
-  DevAssert(f1ap_req->trp_measurement_request_list.trp_measurement_request_item);
-  f1ap_trp_measurement_request_item_t *trp_measurement_request_item=f1ap_req->trp_measurement_request_list.trp_measurement_request_item;
-  for (int k = 0; k< maxNoMeasTRP; k++){
-      NRPPA_TRP_MeasurementRequestItem_t *trp_meas_req_item= measurement_request_list.list.array[k];
-      trp_measurement_request_item->tRPID= trp_meas_req_item->tRP_ID;
-      //trp_measurement_request_item.search_window_information.delayUncertainty = trp_meas_req_item->search_window_information.delayUncertainty; // OPTIONAL
-      //trp_measurement_request_item.search_window_information.expectedPropagationDelay = trp_meas_req_item->search_window_information.expectedPropagationDelay; // OPTIONAL
+  NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_MeasurementRequest_IEs_t,
+                              ie,
+                              container,
+                              NRPPA_ProtocolIE_ID_id_TRP_MeasurementRequestList,
+                              false);
+  if (ie != NULL) {
+    NRPPA_TRP_MeasurementRequestList_t measurement_request_list = ie->value.choice.TRP_MeasurementRequestList;
+    int maxNoMeasTRP = measurement_request_list.list.count;
+    f1ap_req->trp_measurement_request_list.trp_measurement_request_list_length = maxNoMeasTRP;
+    f1ap_req->trp_measurement_request_list.trp_measurement_request_item =
+        malloc(maxNoMeasTRP * sizeof(f1ap_trp_measurement_request_item_t));
+    DevAssert(f1ap_req->trp_measurement_request_list.trp_measurement_request_item);
+    f1ap_trp_measurement_request_item_t *trp_measurement_request_item =
+        f1ap_req->trp_measurement_request_list.trp_measurement_request_item;
+    for (int k = 0; k < maxNoMeasTRP; k++) {
+      NRPPA_TRP_MeasurementRequestItem_t *trp_meas_req_item = measurement_request_list.list.array[k];
+      trp_measurement_request_item->tRPID = trp_meas_req_item->tRP_ID;
+      // trp_measurement_request_item.search_window_information.delayUncertainty =
+      // trp_meas_req_item->search_window_information.delayUncertainty; // OPTIONAL
+      // trp_measurement_request_item.search_window_information.expectedPropagationDelay =
+      // trp_meas_req_item->search_window_information.expectedPropagationDelay; // OPTIONAL
       if (k < maxNoMeasTRP - 1) {
-            trp_measurement_request_item++;
-          }
+        trp_measurement_request_item++;
+      }
+    }
   }
-}
   // IE Report Characteristics (M)
   NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_MeasurementRequest_IEs_t, ie, container, NRPPA_ProtocolIE_ID_id_ReportCharacteristics, false);
-  if (ie!=NULL){
-  NRPPA_ReportCharacteristics_t report_characteristics = ie->value.choice.ReportCharacteristics;
-  f1ap_req->pos_report_characteristics= report_characteristics;
-}
+  if (ie != NULL) {
+    NRPPA_ReportCharacteristics_t report_characteristics = ie->value.choice.ReportCharacteristics;
+    f1ap_req->pos_report_characteristics = report_characteristics;
+  }
   // IE Measurement Periodicity (M if Report Characteristics is periodic )
   NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_MeasurementRequest_IEs_t, ie, container, NRPPA_ProtocolIE_ID_id_MeasurementPeriodicity, false);
-  if (ie!=NULL){
-  NRPPA_MeasurementPeriodicity_t measurement_periodicity = ie->value.choice.MeasurementPeriodicity;
-  f1ap_req->pos_measurement_periodicity= measurement_periodicity;
-}
+  if (ie != NULL) {
+    NRPPA_MeasurementPeriodicity_t measurement_periodicity = ie->value.choice.MeasurementPeriodicity;
+    f1ap_req->pos_measurement_periodicity = measurement_periodicity;
+  }
   // IE TRP Measurement Quantities (M)
-  NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_MeasurementRequest_IEs_t, ie, container, NRPPA_ProtocolIE_ID_id_TRPMeasurementQuantities, false);
-  if (ie!=NULL){
-  NRPPA_TRPMeasurementQuantities_t measurement_quantities = ie->value.choice.TRPMeasurementQuantities;
-  int maxNoPosMeas= measurement_quantities.list.count;
-  f1ap_req->pos_measurement_quantities.f1ap_pos_measurement_quantities_length=maxNoPosMeas;
-  f1ap_req->pos_measurement_quantities.pos_measurement_quantities_item= malloc(maxNoPosMeas*sizeof(f1ap_pos_measurement_quantities_item_t));
-  DevAssert(f1ap_req->pos_measurement_quantities.pos_measurement_quantities_item);
-  f1ap_pos_measurement_quantities_item_t *pos_measurement_quantities_item = f1ap_req->pos_measurement_quantities.pos_measurement_quantities_item;
-  for (int j = 0; j< maxNoPosMeas; j++){
-      NRPPA_TRPMeasurementQuantitiesList_Item_t *meas_quant_item= measurement_quantities.list.array[j];
-      pos_measurement_quantities_item->posMeasurementType=meas_quant_item->tRPMeasurementQuantities_Item;//posMeasurementType;
-      //pos_measurement_quantities_item->timingReportingGranularityFactor=meas_quant_item->timingReportingGranularityFactor; // OPTIONal
+  NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_MeasurementRequest_IEs_t,
+                              ie,
+                              container,
+                              NRPPA_ProtocolIE_ID_id_TRPMeasurementQuantities,
+                              false);
+  if (ie != NULL) {
+    NRPPA_TRPMeasurementQuantities_t measurement_quantities = ie->value.choice.TRPMeasurementQuantities;
+    int maxNoPosMeas = measurement_quantities.list.count;
+    f1ap_req->pos_measurement_quantities.f1ap_pos_measurement_quantities_length = maxNoPosMeas;
+    f1ap_req->pos_measurement_quantities.pos_measurement_quantities_item =
+        malloc(maxNoPosMeas * sizeof(f1ap_pos_measurement_quantities_item_t));
+    DevAssert(f1ap_req->pos_measurement_quantities.pos_measurement_quantities_item);
+    f1ap_pos_measurement_quantities_item_t *pos_measurement_quantities_item =
+        f1ap_req->pos_measurement_quantities.pos_measurement_quantities_item;
+    for (int j = 0; j < maxNoPosMeas; j++) {
+      NRPPA_TRPMeasurementQuantitiesList_Item_t *meas_quant_item = measurement_quantities.list.array[j];
+      pos_measurement_quantities_item->posMeasurementType = meas_quant_item->tRPMeasurementQuantities_Item; // posMeasurementType;
+      // pos_measurement_quantities_item->timingReportingGranularityFactor=meas_quant_item->timingReportingGranularityFactor; //
+      // OPTIONal
       if (j < maxNoPosMeas - 1) {
         pos_measurement_quantities_item++;
-          }
-  }
+      }
+    }
   }
 
   // IE SFNInitialisationTime (Optional)
-  //NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_MeasurementRequest_IEs_t, ie, container, NRPPA_ProtocolIE_ID_id_SFNInitialisationTime, false);
-  //NRPPA_SFNInitialisationTime_t sfn_time = ie->value.choice.SFNInitialisationTime;
+  // NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_MeasurementRequest_IEs_t, ie, container, NRPPA_ProtocolIE_ID_id_SFNInitialisationTime,
+  // false); NRPPA_SFNInitialisationTime_t sfn_time = ie->value.choice.SFNInitialisationTime;
 
   // IE SRSConfiguration (Optional)
-  //NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_MeasurementRequest_IEs_t, ie, container, NRPPA_ProtocolIE_ID_id_SRSConfiguration, false);
-  //NRPPA_SRSConfiguration_t srs_config = ie->value.choice.SRSConfiguration;
+  // NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_MeasurementRequest_IEs_t, ie, container, NRPPA_ProtocolIE_ID_id_SRSConfiguration, false);
+  // NRPPA_SRSConfiguration_t srs_config = ie->value.choice.SRSConfiguration;
 
   // IE MeasurementBeamInfoRequest (Optional)
-  //NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_MeasurementRequest_IEs_t, ie, container, NRPPA_ProtocolIE_ID_id_MeasurementBeamInfoRequest, false);
-  //NRPPA_MeasurementBeamInfoRequest_t measurement_beam_info_request = ie->value.choice.MeasurementBeamInfoRequest;
+  // NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_MeasurementRequest_IEs_t, ie, container, NRPPA_ProtocolIE_ID_id_MeasurementBeamInfoRequest,
+  // false); NRPPA_MeasurementBeamInfoRequest_t measurement_beam_info_request = ie->value.choice.MeasurementBeamInfoRequest;
 
   // IE SystemFrameNumber (Optional)
-  //NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_MeasurementRequest_IEs_t, ie, container, NRPPA_ProtocolIE_ID_id_SystemFrameNumber, false);
-  //NRPPA_SystemFrameNumber_t frame_num = ie->value.choice.SystemFrameNumber;
+  // NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_MeasurementRequest_IEs_t, ie, container, NRPPA_ProtocolIE_ID_id_SystemFrameNumber, false);
+  // NRPPA_SystemFrameNumber_t frame_num = ie->value.choice.SystemFrameNumber;
 
   // IE SlotNumber (Optional)
-  //NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_MeasurementRequest_IEs_t, ie, container, NRPPA_ProtocolIE_ID_id_SlotNumber, false);
-  //NRPPA_SlotNumber_t slot_num = ie->value.choice.SlotNumber;
-
+  // NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_MeasurementRequest_IEs_t, ie, container, NRPPA_ProtocolIE_ID_id_SlotNumber, false);
+  // NRPPA_SlotNumber_t slot_num = ie->value.choice.SlotNumber;
 
   LOG_I(NRPPA,
         "Forwarding to RRC MeasurementRequest lmf_measurement_id=%d, ran_measurement_id=%d  \n",
-        f1ap_req->lmf_measurement_id, f1ap_req->ran_measurement_id);
+        f1ap_req->lmf_measurement_id,
+        f1ap_req->ran_measurement_id);
   itti_send_msg_to_task(TASK_RRC_GNB, 0, msg);
   return 0;
 }
@@ -180,12 +195,13 @@ int nrppa_gNB_handle_MeasurementUpdate(nrppa_gnb_ue_info_t *nrppa_msg_info, NRPP
 
   // IE RAN_Measurement_ID (M)
   NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_MeasurementUpdate_IEs_t, ie, container, NRPPA_ProtocolIE_ID_id_RAN_Measurement_ID, true);
-  NRPPA_Measurement_ID_t RAN_Meas_ID =ie->value.choice.Measurement_ID_1; //TODO adeel check if it is with Measurement_ID_1 or Measurement_ID
+  NRPPA_Measurement_ID_t RAN_Meas_ID =
+      ie->value.choice.Measurement_ID_1; // TODO adeel check if it is with Measurement_ID_1 or Measurement_ID
   f1ap_req->ran_measurement_id = RAN_Meas_ID;
 
   // IE SRSConfiguration (Optional)
-  //NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_MeasurementRequest_IEs_t, ie, container, NRPPA_ProtocolIE_ID_id_SRSConfiguration, true);
-  //NRPPA_SRSConfiguration_t srs_config = ie->value.choice.SRSConfiguration; // TODO process this information
+  // NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_MeasurementRequest_IEs_t, ie, container, NRPPA_ProtocolIE_ID_id_SRSConfiguration, true);
+  // NRPPA_SRSConfiguration_t srs_config = ie->value.choice.SRSConfiguration; // TODO process this information
 
   LOG_I(NRPPA,
         "Procesing MeasurementUpdate lmf_measurement_id=%d, ran_measurement_id=%d \n",
@@ -201,7 +217,7 @@ int nrppa_gNB_handle_MeasurementAbort(nrppa_gnb_ue_info_t *nrppa_msg_info, NRPPA
   DevAssert(pdu != NULL);
   xer_fprint(stdout, &asn_DEF_NRPPA_NRPPA_PDU, pdu);
 
-   // Forward request to RRC
+  // Forward request to RRC
   MessageDef *msg = itti_alloc_new_message(TASK_RRC_GNB, 0, F1AP_MEASUREMENT_ABORT);
   f1ap_measurement_abort_t *f1ap_req = &F1AP_MEASUREMENT_ABORT(msg);
   f1ap_req->nrppa_msg_info.instance = nrppa_msg_info->instance;
@@ -210,27 +226,26 @@ int nrppa_gNB_handle_MeasurementAbort(nrppa_gnb_ue_info_t *nrppa_msg_info, NRPPA
   f1ap_req->nrppa_msg_info.routing_id_buffer = nrppa_msg_info->routing_id_buffer;
   f1ap_req->nrppa_msg_info.routing_id_length = nrppa_msg_info->routing_id_length;
 
+  // Processing Received MeasurementAbort
+  NRPPA_MeasurementAbort_t *container;
+  NRPPA_MeasurementAbort_IEs_t *ie;
 
-    // Processing Received MeasurementAbort
-    NRPPA_MeasurementAbort_t *container;
-    NRPPA_MeasurementAbort_IEs_t *ie;
+  // IE 9.2.3 Message type (M)
+  container = &pdu->choice.initiatingMessage->value.choice.MeasurementAbort;
 
-    // IE 9.2.3 Message type (M)
-    container = &pdu->choice.initiatingMessage->value.choice.MeasurementAbort;
+  // IE 9.2.4 nrppatransactionID (M)
+  f1ap_req->nrppa_msg_info.nrppa_transaction_id = pdu->choice.initiatingMessage->nrppatransactionID;
+  f1ap_req->transaction_id = pdu->choice.initiatingMessage->nrppatransactionID;
 
-    // IE 9.2.4 nrppatransactionID (M)
-    f1ap_req->nrppa_msg_info.nrppa_transaction_id = pdu->choice.initiatingMessage->nrppatransactionID;
-    f1ap_req->transaction_id =pdu->choice.initiatingMessage->nrppatransactionID;
+  // IE LMF_Measurement_ID
+  NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_MeasurementAbort_IEs_t, ie, container, NRPPA_ProtocolIE_ID_id_LMF_Measurement_ID, true);
+  NRPPA_Measurement_ID_t LMF_Meas_ID = ie->value.choice.Measurement_ID;
+  f1ap_req->lmf_measurement_id = LMF_Meas_ID;
 
-    // IE LMF_Measurement_ID
-    NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_MeasurementAbort_IEs_t, ie, container, NRPPA_ProtocolIE_ID_id_LMF_Measurement_ID, true);
-    NRPPA_Measurement_ID_t LMF_Meas_ID = ie->value.choice.Measurement_ID;
-    f1ap_req->lmf_measurement_id = LMF_Meas_ID;
-
-    // IE RAN_Measurement_ID
-    NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_MeasurementAbort_IEs_t, ie, container, NRPPA_ProtocolIE_ID_id_RAN_Measurement_ID, true);
-    NRPPA_Measurement_ID_t RAN_Meas_ID = ie->value.choice.Measurement_ID;
-    f1ap_req->ran_measurement_id = RAN_Meas_ID;
+  // IE RAN_Measurement_ID
+  NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_MeasurementAbort_IEs_t, ie, container, NRPPA_ProtocolIE_ID_id_RAN_Measurement_ID, true);
+  NRPPA_Measurement_ID_t RAN_Meas_ID = ie->value.choice.Measurement_ID;
+  f1ap_req->ran_measurement_id = RAN_Meas_ID;
 
   LOG_I(NRPPA,
         "Procesing MeasurementABORT lmf_measurement_id=%d, ran_measurement_id=%d \n",
@@ -313,16 +328,18 @@ int nrppa_gNB_MeasurementResponse(instance_t instance, MessageDef *msg_p)
         // IE  measuredResultsValue
         switch (pos_meas_result_item->measuredResultsValue.present) {
           case f1ap_measured_results_value_pr_ul_angleofarrival:
-          LOG_I(NRPPA, "Positioning_measurement_response() Case NRPPA_TrpMeasuredResultsValue_PR_uL_AngleOfArrival\n");
+            LOG_I(NRPPA, "Positioning_measurement_response() Case NRPPA_TrpMeasuredResultsValue_PR_uL_AngleOfArrival\n");
             measItem->measuredResultsValue.present = NRPPA_TrpMeasuredResultsValue_PR_uL_AngleOfArrival;
             asn1cCalloc(measItem->measuredResultsValue.choice.uL_AngleOfArrival, meas_uL_AngleOfArrival);
-            meas_uL_AngleOfArrival->azimuthAoA = pos_meas_result_item->measuredResultsValue.choice.uL_AngleOfArrival.azimuthAoA; // (M)
-            //meas_uL_AngleOfArrival->zenithAoA = pos_meas_result_item->measuredResultsValue.choice.uL_AngleOfArrival.zenithAoA ; // OPTIONAL
-            //meas_uL_AngleOfArrival->angleCoordinateSystem = pos_meas_result_item->measuredResultsValue.choice.uL_AngleOfArrival.angleCoordinateSystem; // OPTIONAL
+            meas_uL_AngleOfArrival->azimuthAoA =
+                pos_meas_result_item->measuredResultsValue.choice.uL_AngleOfArrival.azimuthAoA; // (M)
+            // meas_uL_AngleOfArrival->zenithAoA = pos_meas_result_item->measuredResultsValue.choice.uL_AngleOfArrival.zenithAoA ;
+            // // OPTIONAL meas_uL_AngleOfArrival->angleCoordinateSystem =
+            // pos_meas_result_item->measuredResultsValue.choice.uL_AngleOfArrival.angleCoordinateSystem; // OPTIONAL
             // TODO parameter of future interest not filled in f1ap message
             break;
           case f1ap_measured_results_value_pr_ul_srs_rsrp:
-          LOG_I(NRPPA, "Positioning_measurement_response() Case NRPPA_TrpMeasuredResultsValue_PR_uL_SRS_RSRP\n");
+            LOG_I(NRPPA, "Positioning_measurement_response() Case NRPPA_TrpMeasuredResultsValue_PR_uL_SRS_RSRP\n");
             measItem->measuredResultsValue.present = NRPPA_TrpMeasuredResultsValue_PR_uL_SRS_RSRP;
             measItem->measuredResultsValue.choice.uL_SRS_RSRP = pos_meas_result_item->measuredResultsValue.choice.uL_SRS_RSRP;
             // TODO parameter of future interest not filled in f1ap message
@@ -337,27 +354,33 @@ int nrppa_gNB_MeasurementResponse(instance_t instance, MessageDef *msg_p)
                 break;
               case f1ap_ulrtoameas_pr_k0:
                 meas_uL_RTOA->uLRTOAmeas.present = NRPPA_ULRTOAMeas_PR_k0;
-                meas_uL_RTOA->uLRTOAmeas.choice.k0 =pos_meas_result_item->measuredResultsValue.choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k0;
+                meas_uL_RTOA->uLRTOAmeas.choice.k0 =
+                    pos_meas_result_item->measuredResultsValue.choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k0;
                 break;
               case f1ap_ulrtoameas_pr_k1:
                 meas_uL_RTOA->uLRTOAmeas.present = NRPPA_ULRTOAMeas_PR_k1;
-                meas_uL_RTOA->uLRTOAmeas.choice.k1 =pos_meas_result_item->measuredResultsValue.choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k1;
+                meas_uL_RTOA->uLRTOAmeas.choice.k1 =
+                    pos_meas_result_item->measuredResultsValue.choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k1;
                 break;
               case f1ap_ulrtoameas_pr_k2:
                 meas_uL_RTOA->uLRTOAmeas.present = NRPPA_ULRTOAMeas_PR_k2;
-                meas_uL_RTOA->uLRTOAmeas.choice.k2 =pos_meas_result_item->measuredResultsValue.choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k2;
+                meas_uL_RTOA->uLRTOAmeas.choice.k2 =
+                    pos_meas_result_item->measuredResultsValue.choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k2;
                 break;
               case f1ap_ulrtoameas_pr_k3:
                 meas_uL_RTOA->uLRTOAmeas.present = NRPPA_ULRTOAMeas_PR_k3;
-                meas_uL_RTOA->uLRTOAmeas.choice.k3 =pos_meas_result_item->measuredResultsValue.choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k3;
+                meas_uL_RTOA->uLRTOAmeas.choice.k3 =
+                    pos_meas_result_item->measuredResultsValue.choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k3;
                 break;
               case f1ap_ulrtoameas_pr_k4:
                 meas_uL_RTOA->uLRTOAmeas.present = NRPPA_ULRTOAMeas_PR_k4;
-                meas_uL_RTOA->uLRTOAmeas.choice.k4 =pos_meas_result_item->measuredResultsValue.choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k4;
+                meas_uL_RTOA->uLRTOAmeas.choice.k4 =
+                    pos_meas_result_item->measuredResultsValue.choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k4;
                 break;
               case f1ap_ulrtoameas_pr_k5:
                 meas_uL_RTOA->uLRTOAmeas.present = NRPPA_ULRTOAMeas_PR_k5;
-                meas_uL_RTOA->uLRTOAmeas.choice.k5 =pos_meas_result_item->measuredResultsValue.choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k5;
+                meas_uL_RTOA->uLRTOAmeas.choice.k5 =
+                    pos_meas_result_item->measuredResultsValue.choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k5;
                 break;
               default:
                 NRPPA_ERROR("Positioning_measurement_response Unknown measured Results Value of uL_RTOA_MeasurementItem \n");
@@ -366,37 +389,43 @@ int nrppa_gNB_MeasurementResponse(instance_t instance, MessageDef *msg_p)
             // TODO struct NRPPA_AdditionalPathList	*additionalPathList;	/* OPTIONAL */
             break;
           case f1ap_measured_results_value_pr_gnb_rxtxtimediff:
-          LOG_I(NRPPA, "Positioning_measurement_response() Case NRPPA_TrpMeasuredResultsValue_PR_RxTxTimeDiff \n");
+            LOG_I(NRPPA, "Positioning_measurement_response() Case NRPPA_TrpMeasuredResultsValue_PR_RxTxTimeDiff \n");
             measItem->measuredResultsValue.present = NRPPA_TrpMeasuredResultsValue_PR_gNB_RxTxTimeDiff;
             asn1cCalloc(measItem->measuredResultsValue.choice.gNB_RxTxTimeDiff, meas_gNB_RxTxTimeDiff);
 
-            switch(pos_meas_result_item->measuredResultsValue.choice.gNB_RxTxTimeDiff.rxTxTimeDiff.present){
+            switch (pos_meas_result_item->measuredResultsValue.choice.gNB_RxTxTimeDiff.rxTxTimeDiff.present) {
               case f1ap_gnbrxtxtimediffmeas_pr_NOTHING:
                 meas_gNB_RxTxTimeDiff->rxTxTimeDiff.present = NRPPA_GNBRxTxTimeDiffMeas_PR_NOTHING;
                 break;
               case f1ap_gnbrxtxtimediffmeas_pr_k0:
                 meas_gNB_RxTxTimeDiff->rxTxTimeDiff.present = NRPPA_GNBRxTxTimeDiffMeas_PR_k0;
-                meas_gNB_RxTxTimeDiff->rxTxTimeDiff.choice.k0 =pos_meas_result_item->measuredResultsValue.choice.gNB_RxTxTimeDiff.rxTxTimeDiff.choice.k0;
+                meas_gNB_RxTxTimeDiff->rxTxTimeDiff.choice.k0 =
+                    pos_meas_result_item->measuredResultsValue.choice.gNB_RxTxTimeDiff.rxTxTimeDiff.choice.k0;
                 break;
               case f1ap_gnbrxtxtimediffmeas_pr_k1:
                 meas_gNB_RxTxTimeDiff->rxTxTimeDiff.present = NRPPA_GNBRxTxTimeDiffMeas_PR_k1;
-                meas_gNB_RxTxTimeDiff->rxTxTimeDiff.choice.k1= pos_meas_result_item->measuredResultsValue.choice.gNB_RxTxTimeDiff.rxTxTimeDiff.choice.k1;
+                meas_gNB_RxTxTimeDiff->rxTxTimeDiff.choice.k1 =
+                    pos_meas_result_item->measuredResultsValue.choice.gNB_RxTxTimeDiff.rxTxTimeDiff.choice.k1;
                 break;
               case f1ap_gnbrxtxtimediffmeas_pr_k2:
                 meas_gNB_RxTxTimeDiff->rxTxTimeDiff.present = NRPPA_GNBRxTxTimeDiffMeas_PR_k2;
-                meas_gNB_RxTxTimeDiff->rxTxTimeDiff.choice.k2 =pos_meas_result_item->measuredResultsValue.choice.gNB_RxTxTimeDiff.rxTxTimeDiff.choice.k2;
+                meas_gNB_RxTxTimeDiff->rxTxTimeDiff.choice.k2 =
+                    pos_meas_result_item->measuredResultsValue.choice.gNB_RxTxTimeDiff.rxTxTimeDiff.choice.k2;
                 break;
               case f1ap_gnbrxtxtimediffmeas_pr_k3:
                 meas_gNB_RxTxTimeDiff->rxTxTimeDiff.present = NRPPA_GNBRxTxTimeDiffMeas_PR_k3;
-                meas_gNB_RxTxTimeDiff->rxTxTimeDiff.choice.k3 =pos_meas_result_item->measuredResultsValue.choice.gNB_RxTxTimeDiff.rxTxTimeDiff.choice.k3;
+                meas_gNB_RxTxTimeDiff->rxTxTimeDiff.choice.k3 =
+                    pos_meas_result_item->measuredResultsValue.choice.gNB_RxTxTimeDiff.rxTxTimeDiff.choice.k3;
                 break;
               case f1ap_gnbrxtxtimediffmeas_pr_k4:
                 meas_gNB_RxTxTimeDiff->rxTxTimeDiff.present = NRPPA_GNBRxTxTimeDiffMeas_PR_k4;
-                meas_gNB_RxTxTimeDiff->rxTxTimeDiff.choice.k4 =pos_meas_result_item->measuredResultsValue.choice.gNB_RxTxTimeDiff.rxTxTimeDiff.choice.k4;
+                meas_gNB_RxTxTimeDiff->rxTxTimeDiff.choice.k4 =
+                    pos_meas_result_item->measuredResultsValue.choice.gNB_RxTxTimeDiff.rxTxTimeDiff.choice.k4;
                 break;
               case f1ap_gnbrxtxtimediffmeas_pr_k5:
                 meas_gNB_RxTxTimeDiff->rxTxTimeDiff.present = NRPPA_GNBRxTxTimeDiffMeas_PR_k5;
-                meas_gNB_RxTxTimeDiff->rxTxTimeDiff.choice.k5 =pos_meas_result_item->measuredResultsValue.choice.gNB_RxTxTimeDiff.rxTxTimeDiff.choice.k5;
+                meas_gNB_RxTxTimeDiff->rxTxTimeDiff.choice.k5 =
+                    pos_meas_result_item->measuredResultsValue.choice.gNB_RxTxTimeDiff.rxTxTimeDiff.choice.k5;
                 break;
               default:
                 NRPPA_ERROR("Unknown measured Results Value of GNBRxTxTimeDiffMeas \n");
@@ -414,11 +443,11 @@ int nrppa_gNB_MeasurementResponse(instance_t instance, MessageDef *msg_p)
             break;
         }
 
-       // IE Time Stamp
+        // IE Time Stamp
         measItem->timeStamp.systemFrameNumber = pos_meas_result_item->timeStamp.systemFrameNumber;
 
         // IE timeStamp.measurementTime
-        //measItem->timeStamp.measurementTime = NULL; // TODO adeel type bit string retrive relevent info
+        // measItem->timeStamp.measurementTime = NULL; // TODO adeel type bit string retrive relevent info
 
         // IE Time Stamp slotIndex TODO
         measItem->timeStamp.slotIndex.present = NRPPA_TimeStampSlotIndex_PR_sCS_15;
@@ -489,8 +518,7 @@ int nrppa_gNB_MeasurementResponse(instance_t instance, MessageDef *msg_p)
   }
 
   /* Forward the NRPPA PDU to NGAP */
-  if (resp->nrppa_msg_info.gNB_ue_ngap_id > 0 && resp->nrppa_msg_info.amf_ue_ngap_id > 0)
-  {
+  if (resp->nrppa_msg_info.gNB_ue_ngap_id > 0 && resp->nrppa_msg_info.amf_ue_ngap_id > 0) {
     LOG_D(NRPPA,
           "Sending UplinkUEAssociatedNRPPa (MeasurementResponse) to NGAP (gNB_ue_ngap_id= %d, amf_ue_ngap_id =%ld)  \n",
           resp->nrppa_msg_info.gNB_ue_ngap_id,
@@ -503,8 +531,7 @@ int nrppa_gNB_MeasurementResponse(instance_t instance, MessageDef *msg_p)
                                                 buffer,
                                                 length);
     return length;
-  } else if (resp->nrppa_msg_info.gNB_ue_ngap_id == -1 && resp->nrppa_msg_info.amf_ue_ngap_id == -1)
-  {
+  } else if (resp->nrppa_msg_info.gNB_ue_ngap_id == -1 && resp->nrppa_msg_info.amf_ue_ngap_id == -1) {
     LOG_D(NRPPA,
           "Sending UplinkNonUEAssociatedNRPPa (MeasurementResponse) to NGAP (gNB_ue_ngap_id= %d, amf_ue_ngap_id =%ld)  \n",
           resp->nrppa_msg_info.gNB_ue_ngap_id,
@@ -712,18 +739,21 @@ int nrppa_gNB_MeasurementReport(instance_t instance, MessageDef *msg_p)
         // IE  measuredResultsValue
         switch (pos_meas_result_item->measuredResultsValue.present) {
           case f1ap_measured_results_value_pr_ul_angleofarrival:
-          LOG_I(NRPPA, "Positioning_measurement_report() Case NRPPA_TrpMeasuredResultsValue_PR_uL_AngleOfArrival\n");
+            LOG_I(NRPPA, "Positioning_measurement_report() Case NRPPA_TrpMeasuredResultsValue_PR_uL_AngleOfArrival\n");
             measItem->measuredResultsValue.present = NRPPA_TrpMeasuredResultsValue_PR_uL_AngleOfArrival;
             asn1cCalloc(measItem->measuredResultsValue.choice.uL_AngleOfArrival, meas_uL_AngleOfArrival);
-            meas_uL_AngleOfArrival->azimuthAoA = pos_meas_result_item->measuredResultsValue.choice.uL_AngleOfArrival.azimuthAoA; // (M)
-            //measItem->measuredResultsValue.choice.uL_AngleOfArrival->zenithAoA = pos_meas_result_item->measuredResultsValue.choice.uL_AngleOfArrival.zenithAoA ; // OPTIONAL
-            //measItem->measuredResultsValue.choice.uL_AngleOfArrival->angleCoordinateSystem = pos_meas_result_item->measuredResultsValue.choice.uL_AngleOfArrival.angleCoordinateSystem; // OPTIONAL
+            meas_uL_AngleOfArrival->azimuthAoA =
+                pos_meas_result_item->measuredResultsValue.choice.uL_AngleOfArrival.azimuthAoA; // (M)
+            // measItem->measuredResultsValue.choice.uL_AngleOfArrival->zenithAoA =
+            // pos_meas_result_item->measuredResultsValue.choice.uL_AngleOfArrival.zenithAoA ; // OPTIONAL
+            // measItem->measuredResultsValue.choice.uL_AngleOfArrival->angleCoordinateSystem =
+            // pos_meas_result_item->measuredResultsValue.choice.uL_AngleOfArrival.angleCoordinateSystem; // OPTIONAL
 
             // TODO parameter of future interest not filled in f1ap message
             break;
 
           case f1ap_measured_results_value_pr_ul_srs_rsrp:
-          LOG_I(NRPPA, "Positioning_measurement_report() Case NRPPA_TrpMeasuredResultsValue_PR_uL_SRS_RSRP\n");
+            LOG_I(NRPPA, "Positioning_measurement_report() Case NRPPA_TrpMeasuredResultsValue_PR_uL_SRS_RSRP\n");
             measItem->measuredResultsValue.present = NRPPA_TrpMeasuredResultsValue_PR_uL_SRS_RSRP;
             measItem->measuredResultsValue.choice.uL_SRS_RSRP = pos_meas_result_item->measuredResultsValue.choice.uL_SRS_RSRP;
             // TODO parameter of future interest not filled in f1ap message
@@ -740,27 +770,33 @@ int nrppa_gNB_MeasurementReport(instance_t instance, MessageDef *msg_p)
                 break;
               case f1ap_ulrtoameas_pr_k0:
                 meas_uL_RTOA->uLRTOAmeas.present = NRPPA_ULRTOAMeas_PR_k0;
-                meas_uL_RTOA->uLRTOAmeas.choice.k0 =pos_meas_result_item->measuredResultsValue.choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k0;
+                meas_uL_RTOA->uLRTOAmeas.choice.k0 =
+                    pos_meas_result_item->measuredResultsValue.choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k0;
                 break;
               case f1ap_ulrtoameas_pr_k1:
                 meas_uL_RTOA->uLRTOAmeas.present = NRPPA_ULRTOAMeas_PR_k1;
-                meas_uL_RTOA->uLRTOAmeas.choice.k1 =pos_meas_result_item->measuredResultsValue.choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k1;
+                meas_uL_RTOA->uLRTOAmeas.choice.k1 =
+                    pos_meas_result_item->measuredResultsValue.choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k1;
                 break;
               case f1ap_ulrtoameas_pr_k2:
                 meas_uL_RTOA->uLRTOAmeas.present = NRPPA_ULRTOAMeas_PR_k2;
-                meas_uL_RTOA->uLRTOAmeas.choice.k2 =pos_meas_result_item->measuredResultsValue.choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k2;
+                meas_uL_RTOA->uLRTOAmeas.choice.k2 =
+                    pos_meas_result_item->measuredResultsValue.choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k2;
                 break;
               case f1ap_ulrtoameas_pr_k3:
                 meas_uL_RTOA->uLRTOAmeas.present = NRPPA_ULRTOAMeas_PR_k3;
-                meas_uL_RTOA->uLRTOAmeas.choice.k3 =pos_meas_result_item->measuredResultsValue.choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k3;
+                meas_uL_RTOA->uLRTOAmeas.choice.k3 =
+                    pos_meas_result_item->measuredResultsValue.choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k3;
                 break;
               case f1ap_ulrtoameas_pr_k4:
                 meas_uL_RTOA->uLRTOAmeas.present = NRPPA_ULRTOAMeas_PR_k4;
-                meas_uL_RTOA->uLRTOAmeas.choice.k4 =pos_meas_result_item->measuredResultsValue.choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k4;
+                meas_uL_RTOA->uLRTOAmeas.choice.k4 =
+                    pos_meas_result_item->measuredResultsValue.choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k4;
                 break;
               case f1ap_ulrtoameas_pr_k5:
                 meas_uL_RTOA->uLRTOAmeas.present = NRPPA_ULRTOAMeas_PR_k5;
-                meas_uL_RTOA->uLRTOAmeas.choice.k5 =pos_meas_result_item->measuredResultsValue.choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k5;
+                meas_uL_RTOA->uLRTOAmeas.choice.k5 =
+                    pos_meas_result_item->measuredResultsValue.choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k5;
                 break;
               default:
                 NRPPA_ERROR("Positioning_measurement_report Unknown measured Results Value of uL_RTOA_MeasurementItem \n");
@@ -770,37 +806,43 @@ int nrppa_gNB_MeasurementReport(instance_t instance, MessageDef *msg_p)
             break;
 
           case f1ap_measured_results_value_pr_gnb_rxtxtimediff:
-          LOG_I(NRPPA, "Positioning_measurement_report() Case NRPPA_TrpMeasuredResultsValue_PR_RxTxTimeDiff \n");
+            LOG_I(NRPPA, "Positioning_measurement_report() Case NRPPA_TrpMeasuredResultsValue_PR_RxTxTimeDiff \n");
             measItem->measuredResultsValue.present = NRPPA_TrpMeasuredResultsValue_PR_gNB_RxTxTimeDiff;
             asn1cCalloc(measItem->measuredResultsValue.choice.gNB_RxTxTimeDiff, meas_gNB_RxTxTimeDiff);
 
-            switch(pos_meas_result_item->measuredResultsValue.choice.gNB_RxTxTimeDiff.rxTxTimeDiff.present){
+            switch (pos_meas_result_item->measuredResultsValue.choice.gNB_RxTxTimeDiff.rxTxTimeDiff.present) {
               case f1ap_gnbrxtxtimediffmeas_pr_NOTHING:
                 meas_gNB_RxTxTimeDiff->rxTxTimeDiff.present = NRPPA_GNBRxTxTimeDiffMeas_PR_NOTHING;
                 break;
               case f1ap_gnbrxtxtimediffmeas_pr_k0:
                 meas_gNB_RxTxTimeDiff->rxTxTimeDiff.present = NRPPA_GNBRxTxTimeDiffMeas_PR_k0;
-                meas_gNB_RxTxTimeDiff->rxTxTimeDiff.choice.k0 =pos_meas_result_item->measuredResultsValue.choice.gNB_RxTxTimeDiff.rxTxTimeDiff.choice.k0;
+                meas_gNB_RxTxTimeDiff->rxTxTimeDiff.choice.k0 =
+                    pos_meas_result_item->measuredResultsValue.choice.gNB_RxTxTimeDiff.rxTxTimeDiff.choice.k0;
                 break;
               case f1ap_gnbrxtxtimediffmeas_pr_k1:
                 meas_gNB_RxTxTimeDiff->rxTxTimeDiff.present = NRPPA_GNBRxTxTimeDiffMeas_PR_k1;
-                meas_gNB_RxTxTimeDiff->rxTxTimeDiff.choice.k1= pos_meas_result_item->measuredResultsValue.choice.gNB_RxTxTimeDiff.rxTxTimeDiff.choice.k1;
+                meas_gNB_RxTxTimeDiff->rxTxTimeDiff.choice.k1 =
+                    pos_meas_result_item->measuredResultsValue.choice.gNB_RxTxTimeDiff.rxTxTimeDiff.choice.k1;
                 break;
               case f1ap_gnbrxtxtimediffmeas_pr_k2:
                 meas_gNB_RxTxTimeDiff->rxTxTimeDiff.present = NRPPA_GNBRxTxTimeDiffMeas_PR_k2;
-                meas_gNB_RxTxTimeDiff->rxTxTimeDiff.choice.k2 =pos_meas_result_item->measuredResultsValue.choice.gNB_RxTxTimeDiff.rxTxTimeDiff.choice.k2;
+                meas_gNB_RxTxTimeDiff->rxTxTimeDiff.choice.k2 =
+                    pos_meas_result_item->measuredResultsValue.choice.gNB_RxTxTimeDiff.rxTxTimeDiff.choice.k2;
                 break;
               case f1ap_gnbrxtxtimediffmeas_pr_k3:
                 meas_gNB_RxTxTimeDiff->rxTxTimeDiff.present = NRPPA_GNBRxTxTimeDiffMeas_PR_k3;
-                meas_gNB_RxTxTimeDiff->rxTxTimeDiff.choice.k3 =pos_meas_result_item->measuredResultsValue.choice.gNB_RxTxTimeDiff.rxTxTimeDiff.choice.k3;
+                meas_gNB_RxTxTimeDiff->rxTxTimeDiff.choice.k3 =
+                    pos_meas_result_item->measuredResultsValue.choice.gNB_RxTxTimeDiff.rxTxTimeDiff.choice.k3;
                 break;
               case f1ap_gnbrxtxtimediffmeas_pr_k4:
                 meas_gNB_RxTxTimeDiff->rxTxTimeDiff.present = NRPPA_GNBRxTxTimeDiffMeas_PR_k4;
-                meas_gNB_RxTxTimeDiff->rxTxTimeDiff.choice.k4 =pos_meas_result_item->measuredResultsValue.choice.gNB_RxTxTimeDiff.rxTxTimeDiff.choice.k4;
+                meas_gNB_RxTxTimeDiff->rxTxTimeDiff.choice.k4 =
+                    pos_meas_result_item->measuredResultsValue.choice.gNB_RxTxTimeDiff.rxTxTimeDiff.choice.k4;
                 break;
               case f1ap_gnbrxtxtimediffmeas_pr_k5:
                 meas_gNB_RxTxTimeDiff->rxTxTimeDiff.present = NRPPA_GNBRxTxTimeDiffMeas_PR_k5;
-                meas_gNB_RxTxTimeDiff->rxTxTimeDiff.choice.k5 =pos_meas_result_item->measuredResultsValue.choice.gNB_RxTxTimeDiff.rxTxTimeDiff.choice.k5;
+                meas_gNB_RxTxTimeDiff->rxTxTimeDiff.choice.k5 =
+                    pos_meas_result_item->measuredResultsValue.choice.gNB_RxTxTimeDiff.rxTxTimeDiff.choice.k5;
                 break;
               default:
                 NRPPA_ERROR("Unknown measured Results Value of GNBRxTxTimeDiffMeas \n");
@@ -818,11 +860,11 @@ int nrppa_gNB_MeasurementReport(instance_t instance, MessageDef *msg_p)
             break;
         }
 
-       // IE Time Stamp
+        // IE Time Stamp
         measItem->timeStamp.systemFrameNumber = pos_meas_result_item->timeStamp.systemFrameNumber;
 
         // IE timeStamp.measurementTime
-        //measItem->timeStamp.measurementTime = NULL; // TODO adeel type bit string retrive relevent info
+        // measItem->timeStamp.measurementTime = NULL; // TODO adeel type bit string retrive relevent info
 
         // IE Time Stamp slotIndex
         measItem->timeStamp.slotIndex.present = NRPPA_TimeStampSlotIndex_PR_sCS_15;
@@ -873,7 +915,6 @@ int nrppa_gNB_MeasurementReport(instance_t instance, MessageDef *msg_p)
     } // for (int i = 0; i < nb_meas_TRPs; i++)
 
   } // IE = TRP Measurement Response List
-
 
   /* Encode NRPPA message */
   if (nrppa_gNB_encode_pdu(&pdu, &buffer, &length) < 0) {

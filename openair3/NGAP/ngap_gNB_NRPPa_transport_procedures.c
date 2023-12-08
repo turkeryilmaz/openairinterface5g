@@ -54,8 +54,8 @@ int ngap_gNB_UplinkUEAssociatedNRPPaTransport(instance_t instance, ngap_UplinkUE
   struct ngap_gNB_ue_context_s *ue_context_p = NULL;
   ngap_gNB_instance_t *ngap_gNB_instance_p = NULL;
   NGAP_NGAP_PDU_t pdu;
-  uint8_t *buffer= NULL;
-  uint32_t length=0;
+  uint8_t *buffer = NULL;
+  uint32_t length = 0;
   DevAssert(ngap_UplinkUEAssociatedNRPPa_p != NULL);
   /* Retrieve the NGAP gNB instance associated with Mod_id */
   ngap_gNB_instance_p = ngap_gNB_get_instance(instance);
@@ -140,11 +140,11 @@ int ngap_gNB_UplinkUEAssociatedNRPPaTransport(instance_t instance, ngap_UplinkUE
 int ngap_gNB_UplinkNonUEAssociatedNRPPaTransport(instance_t instance,
                                                  ngap_UplinkNonUEAssociatedNRPPa_t *ngap_UplinkNonUEAssociatedNRPPa_p)
 {
-  ngap_gNB_instance_t *ngap_gNB_instance_p= NULL;
-  ngap_gNB_amf_data_t *amf_desc_p= NULL;
+  ngap_gNB_instance_t *ngap_gNB_instance_p = NULL;
+  ngap_gNB_amf_data_t *amf_desc_p = NULL;
   NGAP_NGAP_PDU_t pdu;
-  uint8_t *buffer= NULL;
-  uint32_t length=0;
+  uint8_t *buffer = NULL;
+  uint32_t length = 0;
   DevAssert(ngap_UplinkNonUEAssociatedNRPPa_p != NULL);
   /* Retrieve the NGAP gNB instance associated with Mod_id */
   ngap_gNB_instance_p = ngap_gNB_get_instance(instance);

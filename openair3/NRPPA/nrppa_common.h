@@ -169,7 +169,6 @@
 #include "NRPPA_TRPInformationList.h"
 #include "NRPPA_TRPInformationItem.h"
 
-
 // Measurement Transfer
 #include "NRPPA_MeasurementRequest.h"
 #include "NRPPA_MeasurementFailure.h"
@@ -178,9 +177,6 @@
 #include "NRPPA_MeasurementUpdate.h"
 #include "NRPPA_MeasurementAbort.h"
 #include "NRPPA_MeasurementFailureIndication.h"
-
-
-
 
 //#include ".h"
 #include "NRPPA_TRP-MeasurementRequestList.h"
@@ -206,7 +202,6 @@
 #include "NRPPA_MeasurementBeamInfo.h"
 #include "NRPPA_SystemFrameNumber.h"
 #include "NRPPA_SlotNumber.h"
-
 
 /* END: ad**l todo add all nrppa ASN genrated header files here*/
 
@@ -285,10 +280,7 @@ typedef struct nrppa_gnb_ue_info_s {
 
 /** \brief Function callback prototype.
  **/
-typedef int (*nrppa_message_decoded_callback)(
-    nrppa_gnb_ue_info_t *nrppa_msg_info,
-    NRPPA_NRPPA_PDU_t *pdu);
-
+typedef int (*nrppa_message_decoded_callback)(nrppa_gnb_ue_info_t *nrppa_msg_info, NRPPA_NRPPA_PDU_t *pdu);
 
 /** \brief Handle criticality
  \param criticality Criticality of the IE
