@@ -210,8 +210,8 @@ static bool nrue_init_unixsocket(const char *addr)
 
 void nrue_init_standalone_socket(int tx_port, int rx_port)
 {
-    printf("--- %s \n", getenv("PROXY_ADDR"));
-    const char *standalone_addr = getenv("PROXY_ADDR") ? getenv("PROXY_ADDR") : stub_eth_params.remote_addr;
+    printf("--- %s \n", getenv("UE_ADDR"));
+    const char *standalone_addr = getenv("UE_ADDR") ? getenv("UE_ADDR") : stub_eth_params.remote_addr;
   if(is_ipaddress(standalone_addr))
   {
     nrue_init_ip_socket(standalone_addr, tx_port, rx_port);
