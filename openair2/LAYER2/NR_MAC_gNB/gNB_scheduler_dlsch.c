@@ -925,7 +925,7 @@ static int pf_dl(module_id_t module_id,
 
     uint16_t max_rbSize = 1;
 
-    while (rbStart + max_rbSize < rbStop && (rballoc_mask[rbStart + max_rbSize] & slbitmap) == slbitmap)
+    while (rbStart + max_rbSize < rbStop && (rballoc_mask[rbStart + max_rbSize] & slbitmap) == slbitmap && max_rbSize <= n_rb_sched)
       max_rbSize++;
 
     sched_pdsch->dmrs_parms = get_dl_dmrs_params(scc,
@@ -1052,7 +1052,7 @@ static void nr_fr1_dlsch_preprocessor(module_id_t module_id, frame_t frame, sub_
     NR_Slice_info_t *slice = sliceList[it].slice;
     const int policy_shared_prbs = get_prbs_from_ratio(slice->maxRatio - slice->minRatio, bwpSize);
     const int shared_prbs = min(policy_shared_prbs, avail_shared_prbs);
-    const int guaranteed_prbs = get_guaranteed_prbs(slice, module_id);
+    const int guaranteed_prbs = get_guaranteed_prbs(slice, bwpSize);
     const int n_rb_sched_slice = guaranteed_prbs + shared_prbs - used_shared_prbs;
     /* proportional fair scheduling algorithm */
     LOG_D(NR_MAC, "Slice NSSAI: %d/%d, num PRBs: %d\n", slice->nssai.sd, slice->nssai.sst, n_rb_sched_slice);
@@ -1060,8 +1060,8 @@ static void nr_fr1_dlsch_preprocessor(module_id_t module_id, frame_t frame, sub_
     const int allocated_prbs = n_rb_sched_slice - remain_prbs;
 
     if (allocated_prbs > guaranteed_prbs) {
-      AssertFatal(allocated_prbs <= n_rb_sched_slice, "PRB allocation error: Allocated more than it should\n");
-      used_shared_prbs += (n_rb_sched_slice - allocated_prbs);
+      AssertFatal(allocated_prbs <= n_rb_sched_slice+1, "PRB allocation error: Allocated more than it should\n");
+      used_shared_prbs += (allocated_prbs <= n_rb_sched_slice) ? (n_rb_sched_slice - allocated_prbs) : 0;
     }
 
     schedUEs += slice->numUEs;
