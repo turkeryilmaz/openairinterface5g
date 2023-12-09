@@ -404,7 +404,7 @@ static void nr_store_dlsch_buffer(module_id_t module_id, frame_t frame, sub_fram
 
         sched_ctrl->dl_pdus_total += sched_ctrl->rlc_status[lcid].pdus_in_buffer;
         sched_ctrl->num_total_bytes += sched_ctrl->rlc_status[lcid].bytes_in_buffer;
-        LOG_I(MAC,
+        LOG_D(MAC,
               "[gNB %d][%4d.%2d] %s%d->DLSCH, RLC status for UE %d: %d bytes in buffer, total DL buffer size = %d bytes, %d total "
               "PDU bytes, %s TA command\n",
               module_id,
