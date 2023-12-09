@@ -296,6 +296,7 @@ static void set_nssaiConfig(const int srb_len,
     DevAssert(lcid_idx > -1);
     sched_ctrl->dl_lc[lcid_idx].nssai = drb->nssai;
     int sliceIdx = get_slice_index(drb->nssai);
+    DevAssert(sliceIdx > -1);
     add_nr_list(&sched_ctrl->sliceInfo[sliceIdx].lcid, lcid);
     LOG_I(NR_MAC, "Setting NSSAI sst: %d, sd: %d for DRB: %ld\n", drb->nssai.sst, drb->nssai.sd, drb->drb_id);
   }
