@@ -963,10 +963,7 @@ static int ngap_gNB_handle_pdusession_setup_request(sctp_assoc_t assoc_id, uint3
     // S-NSSAI
     OCTET_STRING_TO_INT8(&item_p->s_NSSAI.sST, msg->pdusession_setup_params[i].nssai.sst);
     if (item_p->s_NSSAI.sD != NULL) {
-      uint8_t *sd_p = (uint8_t *)&msg->pdusession_setup_params[i].nssai.sd;
-      sd_p[0] = item_p->s_NSSAI.sD->buf[0];
-      sd_p[1] = item_p->s_NSSAI.sD->buf[1];
-      sd_p[2] = item_p->s_NSSAI.sD->buf[2];
+      BUFFER_TO_INT24((uint8_t *)item_p->s_NSSAI.sD->buf, msg->pdusession_setup_params[i].nssai.sd);
     } else {
       msg->pdusession_setup_params[i].nssai.sd = 0xffffff;
     }
