@@ -321,7 +321,7 @@ static int get_slice_to_sched(module_id_t module_id, const NR_UE_sched_ctrl_t *s
 {
   gNB_MAC_INST *mac = RC.nrmac[module_id];
   int cur_slice_idx = (sched_ctrl->curSchedSliceIdx + 1) % mac->numSlices;
-  while (get_num_elements_nr_list(&sched_ctrl->sliceInfo[cur_slice_idx].lcid) < 0) {
+  while (get_num_elements_nr_list(&sched_ctrl->sliceInfo[cur_slice_idx].lcid) <= 0) {
     cur_slice_idx = (cur_slice_idx + 1) % mac->numSlices;
   }
   return cur_slice_idx;
@@ -624,7 +624,8 @@ static bool allocate_dl_retransmission(module_id_t module_id,
 
       while (rbStart + rbSize < rbStop &&
              (rballoc_mask[rbStart + rbSize] & slbitmap) == slbitmap &&
-             rbSize < retInfo->rbSize)
+             rbSize < retInfo->rbSize &&
+             rbSize < *n_rb_sched)
         rbSize++;
     }
   } else {
@@ -639,7 +640,7 @@ static bool allocate_dl_retransmission(module_id_t module_id,
     while (rbStart < rbStop && (rballoc_mask[rbStart] & slbitmap) != slbitmap)
       rbStart++;
 
-    while (rbStart + rbSize < rbStop && (rballoc_mask[rbStart + rbSize] & slbitmap) == slbitmap)
+    while (rbStart + rbSize < rbStop && (rballoc_mask[rbStart + rbSize] & slbitmap) == slbitmap && rbSize < *n_rb_sched)
       rbSize++;
 
     uint32_t new_tbs;
@@ -753,6 +754,9 @@ static int pf_dl(module_id_t module_id,
 
   /* Loop UE_info->list to check retransmission */
   UE_iterator(UE_list, UE) {
+    if (UE == NULL)
+      continue;
+
     if (UE->Msg4_ACKed != true)
       continue;
 
@@ -925,7 +929,7 @@ static int pf_dl(module_id_t module_id,
 
     uint16_t max_rbSize = 1;
 
-    while (rbStart + max_rbSize < rbStop && (rballoc_mask[rbStart + max_rbSize] & slbitmap) == slbitmap && max_rbSize <= n_rb_sched)
+    while (rbStart + max_rbSize < rbStop && (rballoc_mask[rbStart + max_rbSize] & slbitmap) == slbitmap && max_rbSize < n_rb_sched)
       max_rbSize++;
 
     sched_pdsch->dmrs_parms = get_dl_dmrs_params(scc,
