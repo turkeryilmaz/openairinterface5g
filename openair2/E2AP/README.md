@@ -89,7 +89,7 @@ git submodule update
 ```bash
 git clone https://gitlab.eurecom.fr/mosaic5g/flexric flexric
 cd flexric/
-git checkout 93961d2480b2c7a5721e03435cb34cf9446d1ad1
+git checkout 1f04cc558ebc8da9de6a620762bc02f5db4ecb4a
 ```
 
 ### 2.2.2 Build FlexRIC

@@ -613,9 +613,9 @@ kpm_ric_ind_hdr_format_1_t kpm_ind_hdr_frm_1(void)
   kpm_ric_ind_hdr_format_1_t hdr_frm_1 = {0};
 
   int64_t const t = time_now_us();
-#if defined KPM_V2
+#if defined KPM_V2_03
   hdr_frm_1.collectStartTime = t/1000000; // seconds
-#elif defined KPM_V3 
+#elif defined KPM_V3_00 
   hdr_frm_1.collectStartTime = t; // microseconds
 #else
   static_assert(0!=0, "Undefined KPM SM Version");
@@ -690,26 +690,28 @@ static void capture_sst_sd(test_info_lst_t* test, uint8_t *sst, uint32_t **sd)
   // we made a mistake in the past: NSSAI is supposed to be an OCTET_STRING,
   // but earlier version of the RAN function and the xApp used integer, so
   // handle this gracefully by accepting integer as well
-  switch (*test->test_cond_value) {
+  switch (test->test_cond_value->type) {
     case INTEGER_TEST_COND_VALUE:
-      AssertFatal(*test->int_value <= 0xff, "illegal SST %ld\n", *test->int_value);
-      *sst = *test->int_value;
+      printf("test cond value before = %ld\n", *test->test_cond_value->int_value);
+      AssertFatal(*test->test_cond_value->int_value <= 0xff, "illegal SST %ld\n", *test->test_cond_value->int_value);
+      *sst = *test->test_cond_value->int_value;
+      printf("test cond value after = %d\n", *sst);
       *sd = NULL;
       break;
     case OCTET_STRING_TEST_COND_VALUE:
-      if (test->octet_string_value->len == 1) {
-        *sst = test->octet_string_value->buf[0];
+      if (test->test_cond_value->octet_string_value->len == 1) {
+        *sst = test->test_cond_value->octet_string_value->buf[0];
         *sd = NULL;
       } else {
-        DevAssert(test->octet_string_value->len == 4);
-        uint8_t *buf = test->octet_string_value->buf;
+        DevAssert(test->test_cond_value->octet_string_value->len == 4);
+        uint8_t *buf = test->test_cond_value->octet_string_value->buf;
         *sst = buf[0];
         *sd = malloc(**sd);
         **sd = buf[1] << 16 | buf[2] << 8 | buf[3];
       }
       break;
     default:
-      AssertFatal(false, "test condition value %d impossible\n", *test->test_cond_value);
+      AssertFatal(false, "test condition value %d impossible\n", test->test_cond_value->type);
       break;
   }
 }
@@ -786,7 +788,7 @@ void read_kpm_sm(void* data)
           case S_NSSAI_TEST_COND_TYPE: {
             assert(frm_4->matching_cond_lst[i].test_info_lst.S_NSSAI == TRUE_TEST_COND_TYPE && "Must be true");
             assert(frm_4->matching_cond_lst[i].test_info_lst.test_cond != NULL && "Even though is optional..");
-            assert(frm_4->matching_cond_lst[i].test_info_lst.int_value != NULL && "Even though is optional..");
+            assert(frm_4->matching_cond_lst[i].test_info_lst.test_cond_value != NULL && "Even though is optional..");
 
             test_cond_e const test_cond = *frm_4->matching_cond_lst[i].test_info_lst.test_cond;
             uint8_t sst = 0;
