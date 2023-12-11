@@ -238,8 +238,8 @@ static void nr_processDLSegment(void *arg)
     LOG_E(PHY,"dlsch_decoding.c: Problem in rate_matching\n");
 
 #ifdef TASK_MANAGER_UE_DECODING
-    assert(atomic_load(rdata->task_done) == 0);
-    atomic_store(rdata->task_done, 1);
+    assert(atomic_load(&rdata->task_status->completed) == 0);
+    atomic_store(&rdata->task_status->completed, 1);
 #endif
     return;
   }
@@ -283,8 +283,8 @@ static void nr_processDLSegment(void *arg)
     stop_meas(&rdata->ts_ldpc_decode);
   }
 #ifdef TASK_MANAGER_UE_DECODING
-   assert(atomic_load(rdata->task_done) == 0);
-   atomic_store(rdata->task_done, 1);
+   assert(atomic_load(&rdata->task_status->completed) == 0);
+   atomic_store(&rdata->task_status->completed, 1);
 #endif
 }
 
@@ -427,8 +427,8 @@ uint32_t nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
 
 #ifdef TASK_MANAGER_UE_DECODING
   ldpcDecode_ue_t arr[harq_process->C]; 
-  _Atomic int task_done[harq_process->C];
-  memset(task_done, 0, harq_process->C*sizeof(_Atomic int));
+  task_status_t task_status[harq_process->C];
+  memset(task_status, 0, harq_process->C*sizeof(task_status_t));
 #endif
 
   for (r=0; r<harq_process->C; r++) {
@@ -437,7 +437,7 @@ uint32_t nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
     decParams.R = nr_get_R_ldpc_decoder(dlsch->dlsch_config.rv, E, decParams.BG, decParams.Z, &harq_process->llrLen, harq_process->DLround);
 #ifdef TASK_MANAGER_UE_DECODING
    ldpcDecode_ue_t* rdata = &arr[r];
-   rdata->task_done = &task_done[r];
+   rdata->task_status = &task_status[r];
 #else
     union ldpcReqUnion id = {.s={dlsch->rnti,frame,nr_slot_rx,0,0}};
     notifiedFIFO_elt_t *req = newNotifiedFIFO_elt(sizeof(ldpcDecode_ue_t), id.p, &nf, &nr_processDLSegment);
@@ -480,7 +480,7 @@ uint32_t nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
   int nbDecode = harq_process->C;
 #ifdef TASK_MANAGER_UE_DECODING
   trigger_all_task_manager(&get_nrUE_params()->man);
-  wait_spin_all_atomics_one(nbDecode, task_done); 
+  wait_task_status_completed(nbDecode, task_status); 
   for(size_t i = 0; i < harq_process->C; ++i){
     nr_ue_postDecode(phy_vars_ue, &arr[i], nbDecode == 1, b_size, b, &num_seg_ok, proc);
     nbDecode--;

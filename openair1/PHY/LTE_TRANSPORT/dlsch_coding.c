@@ -282,8 +282,8 @@ static void TPencode(void * arg) {
     stop_meas(rdata->rm_stats);
 
 #ifdef TASK_MANAGER_LTE
-    assert(atomic_load(rdata->tasks_remaining) == 0);
-    atomic_store_explicit(rdata->tasks_remaining, 1, memory_order_seq_cst);
+    assert(atomic_load(&rdata->task_status->completed) == 0);
+    atomic_store_explicit(&rdata->task_status->completed, 1, memory_order_seq_cst);
 #endif
 }
 
@@ -352,9 +352,9 @@ int dlsch_encoding(PHY_VARS_eNB *eNB,
 
 #ifdef TASK_MANAGER_LTE
   turboEncode_t arr[hadlsch->C];
-  _Atomic int tasks_remaining[hadlsch->C];
+  task_status_t task_status[hadlsch->C];
   memset(arr, 0, sizeof(turboEncode_t)*hadlsch->C); // Let's waste some CPU cycles...
-  memset(tasks_remaining, 0, sizeof(_Atomic int)*hadlsch->C);
+  memset(task_status, 0, sizeof(task_status_t)*hadlsch->C);
 #else
   notifiedFIFO_t respEncode;
   initNotifiedFIFO(&respEncode);
@@ -363,7 +363,7 @@ int dlsch_encoding(PHY_VARS_eNB *eNB,
     for (int r=0, r_offset=0; r<hadlsch->C; r++) {
 #ifdef TASK_MANAGER_LTE 
   turboEncode_t* rdata = &arr[r];
-  rdata->tasks_remaining = &tasks_remaining[r];
+  rdata->task_status = &task_status[r];
 #else
     union turboReqUnion id= {.s={dlsch->rnti,frame,subframe,r,0}};
     notifiedFIFO_elt_t *req = newNotifiedFIFO_elt(sizeof(turboEncode_t), id.p, &respEncode, TPencode);
@@ -404,7 +404,7 @@ int dlsch_encoding(PHY_VARS_eNB *eNB,
  
 #ifdef TASK_MANAGER_LTE
   trigger_all_task_manager(proc->man);
-  wait_spin_all_atomics_one(hadlsch->C, tasks_remaining);
+  wait_task_status_completed(hadlsch->C, task_status);
 #else
   // Wait all other threads finish to process
   while (nbEncode) {
@@ -483,9 +483,9 @@ int dlsch_encoding_fembms_pmch(PHY_VARS_eNB *eNB,
 
 #ifdef TASK_MANAGER_LTE
   turboEncode_t arr[hadlsch->C];
-  _Atomic int tasks_remaining[hadlsch->C];
+  task_status_t task_status[hadlsch->C];
   memset(arr, 0, sizeof(turboEncode_t)*hadlsch->C); // Let's waste some CPU cycles...
-  memset(tasks_remaining, 0, sizeof(_Atomic int)*hadlsch->C);
+  memset(task_status, 0, hadlsch->C*sizeof( task_status_t));
 #else
   int nbEncode = 0;
   notifiedFIFO_t respEncode;
@@ -495,7 +495,7 @@ int dlsch_encoding_fembms_pmch(PHY_VARS_eNB *eNB,
   for (int r=0, r_offset=0; r<hadlsch->C; r++) {
 #ifdef TASK_MANAGER_LTE    
   turboEncode_t* rdata = &arr[r];
-  rdata->tasks_remaining = &tasks_remaining[r];
+  rdata->task_status = &task_status[r];
 #else
     union turboReqUnion id= {.s={dlsch->rnti,frame,subframe,r,0}};
     notifiedFIFO_elt_t *req = newNotifiedFIFO_elt(sizeof(turboEncode_t), id.p, &respEncode, TPencode);
@@ -534,7 +534,7 @@ int dlsch_encoding_fembms_pmch(PHY_VARS_eNB *eNB,
 
 #ifdef TASK_MANAGER_LTE
   trigger_all_task_manager(proc->man);
-  wait_spin_all_atomics_one(hadlsch->C, tasks_remaining);
+  wait_task_status_completed(hadlsch->C, task_status);
 #else
   // Wait all other threads finish to process
   while (nbEncode) {

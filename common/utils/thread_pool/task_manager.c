@@ -637,7 +637,7 @@ void wait_all_task_manager(task_manager_t* man)
 
 
 // This function does not belong here logically
-void wait_spin_all_atomics_one(size_t len, _Atomic(int)* arr)
+void wait_task_status_completed(size_t len, task_status_t* arr)
 {
   assert(len > 0);
   assert(arr != NULL);
@@ -648,7 +648,7 @@ void wait_spin_all_atomics_one(size_t len, _Atomic(int)* arr)
   for(;;){
     int cnt = 0;
     for(int j = len -1; j > -1; --j){
-      if(arr[j] == 1){
+      if(atomic_load(&arr[j].completed) == 1){
         cnt++; 
       } else 
         break;

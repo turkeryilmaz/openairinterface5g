@@ -241,8 +241,8 @@ static void processULSegment(void * arg)
                                    r,
                                    &E)==-1) {
 #ifdef TASK_MANAGER_LTE
-     assert(rdata->tasks_remaining != NULL);
-     atomic_store_explicit(rdata->tasks_remaining, 1, memory_order_seq_cst); 
+     assert(rdata->task_status != NULL);
+     atomic_store_explicit(&rdata->task_status->completed, 1, memory_order_seq_cst); 
 #endif
      LOG_E(PHY,"ulsch_decoding.c: Problem in rate matching\n");
      return;
@@ -291,8 +291,8 @@ static void processULSegment(void * arg)
                                             &ulsch_harq->abort_decode);
 
 #ifdef TASK_MANAGER_LTE
-  assert(rdata->tasks_remaining != NULL);
-  atomic_store_explicit(rdata->tasks_remaining, 1, memory_order_seq_cst); 
+  assert(rdata->task_status != NULL);
+  atomic_store_explicit(&rdata->task_status->completed, 1, memory_order_seq_cst); 
 #endif
 }
 
@@ -349,11 +349,11 @@ static int ulsch_decoding_data(PHY_VARS_eNB *eNB, L1_rxtx_proc_t *proc, int UE_i
     else
       E = ulsch_harq->Qm * ((GpmodC==0?0:1) + (Gp/ulsch_harq->C));
 
-#ifdef TASK_MANAGER
+#ifdef TASK_MANAGER_LTE
     turboDecode_t* rdata = &((turboDecode_t*)t_info->buf)[t_info->len]; 
-     assert(t_info->len < 64);
-     rdata->tasks_remaining = &t_info->tasks_remaining[t_info->len];
-     t_info->len += 1;
+    assert(t_info->len < 64);
+    rdata->task_status = &t_info->task_status[t_info->len];
+    t_info->len += 1;
 #else
     union turboReqUnion id= {.s={ulsch->rnti,proc->frame_rx,proc->subframe_rx,0,0}};
     notifiedFIFO_elt_t *req=newNotifiedFIFO_elt(sizeof(turboDecode_t),

@@ -800,7 +800,7 @@ typedef struct TurboDecode_s {
     int maxIterations;
     int decodeIterations;
 #ifdef TASK_MANAGER_LTE
- _Atomic(int)* tasks_remaining;
+ task_status_t* task_status;
 #endif
 } turboDecode_t;
 
@@ -819,7 +819,7 @@ typedef struct turboEncode_s {
   time_stats_t *te_stats;
   time_stats_t *i_stats;
 #ifdef TASK_MANAGER_LTE
- _Atomic(int)* tasks_remaining;
+ task_status_t* task_status;
 #endif
 } turboEncode_t;
 

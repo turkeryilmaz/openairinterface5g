@@ -1442,8 +1442,8 @@ static void nr_pusch_symbol_processing(void *arg)
   }
 
 #ifdef TASK_MANAGER
-  assert(rdata->task_finished != NULL);
-  atomic_store_explicit(rdata->task_finished, 1, memory_order_seq_cst); //  memory_order order );
+  assert(rdata->task_status != NULL);
+  atomic_store_explicit(&rdata->task_status->completed, 1, memory_order_seq_cst); //  memory_order order );
 #endif
 }
 
@@ -1658,10 +1658,10 @@ int nr_rx_pusch_tp(PHY_VARS_gNB *gNB,
 #ifdef TASK_MANAGER
   int const loop_iter = rel15_ul->nr_of_symbols/numSymbols;
   puschSymbolProc_t arr[loop_iter];
-  _Atomic(int) arr_tf[loop_iter];
+  task_status_t task_status[loop_iter];
 
   memset(arr, 0, loop_iter*sizeof(puschSymbolProc_t));
-  memset(arr_tf, 0, loop_iter*sizeof(_Atomic(int)));
+  memset(task_status, 0, loop_iter*sizeof(task_status_t));
 
   int sz_arr = 0;
 #endif
@@ -1681,7 +1681,7 @@ int nr_rx_pusch_tp(PHY_VARS_gNB *gNB,
     if (total_res > 0) {
 #ifdef TASK_MANAGER 
       puschSymbolProc_t *rdata = &arr[sz_arr]; 
-      rdata->task_finished = &arr_tf[sz_arr];
+      rdata->task_status = &task_status[sz_arr];
       ++sz_arr;
 #else
       union puschSymbolReqUnion id = {.s={ulsch_id,frame,slot,0}};
@@ -1722,7 +1722,7 @@ int nr_rx_pusch_tp(PHY_VARS_gNB *gNB,
 #ifdef TASK_MANAGER
   if(gNB->nbSymb > 0){
     trigger_all_task_manager(&gNB->man);
-    wait_spin_all_atomics_one(sz_arr, arr_tf);
+    wait_task_status_completed(sz_arr, task_status);
     gNB->nbSymb = 0; 
   }
 #else

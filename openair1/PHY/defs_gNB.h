@@ -758,7 +758,7 @@ typedef struct puschSymbolProc_s {
   int16_t *s;
   uint32_t nvar;
 #ifdef TASK_MANAGER
- _Atomic(int)* task_finished;
+ task_status_t* task_status;
 #endif
 } puschSymbolProc_t;
 
@@ -795,7 +795,7 @@ typedef struct LDPCDecode_s {
   int decodeIterations;
   uint32_t tbslbrm;
 #ifdef TASK_MANAGER
- _Atomic(int)* tasks_remaining;
+ task_status_t* task_status;
 #endif
 } ldpcDecode_t;
 

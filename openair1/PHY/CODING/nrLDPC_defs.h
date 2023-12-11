@@ -67,7 +67,7 @@ typedef struct {
   /// LDPC-code outputs
   uint8_t *d[MAX_NUM_NR_DLSCH_SEGMENTS_PER_LAYER*NR_MAX_NB_LAYERS];
 #ifdef TASK_MANAGER_CODING
-  _Atomic(int)* task_done; 
+  task_status_t* task_status; 
 #endif
 } encoder_implemparams_t;
 

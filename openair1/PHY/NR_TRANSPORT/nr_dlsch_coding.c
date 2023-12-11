@@ -277,8 +277,8 @@ static void ldpc8blocks(void *p)
   }
 
 #ifdef TASK_MANAGER_CODING
-  assert(atomic_load(impp->task_done) == 0);
-  atomic_store_explicit(impp->task_done, 1, memory_order_seq_cst);
+  assert(atomic_load(&impp->task_status->completed) == 0);
+  atomic_store_explicit(&impp->task_status->completed, 1, memory_order_seq_cst);
 #endif
 }
 
@@ -331,10 +331,10 @@ int nr_dlsch_encoding(PHY_VARS_gNB *gNB,
     B = A + 24;
     //    harq->b = a;
     AssertFatal((A / 8) + 4 <= max_bytes,
-                "A %d is too big (A/8+4 = %d > %d)\n",
-                A,
-                (A / 8) + 4,
-                max_bytes);
+        "A %d is too big (A/8+4 = %d > %d)\n",
+        A,
+        (A / 8) + 4,
+        max_bytes);
     memcpy(harq->b, a, (A / 8) + 4); // why is this +4 if the CRC is only 3 bytes?
   } else {
     // Add 16-bit crc (polynomial A) to payload
@@ -346,10 +346,10 @@ int nr_dlsch_encoding(PHY_VARS_gNB *gNB,
     B = A + 16;
     //    harq->b = a;
     AssertFatal((A / 8) + 3 <= max_bytes,
-                "A %d is too big (A/8+3 = %d > %d)\n",
-                A,
-                (A / 8) + 3,
-                max_bytes);
+        "A %d is too big (A/8+3 = %d > %d)\n",
+        A,
+        (A / 8) + 3,
+        max_bytes);
     memcpy(harq->b, a, (A / 8) + 3); // using 3 bytes to mimic the case of 24 bit crc
   }
 
@@ -385,20 +385,19 @@ int nr_dlsch_encoding(PHY_VARS_gNB *gNB,
   impp.tinput = tinput;
   impp.tparity = tparity;
   impp.toutput = toutput;
-<<<<<<< HEAD
   impp.harq = harq;
   if (gNB->ldpc_offload_flag && *rel15->mcsIndex > 2) {
     impp.Qm = rel15->qamModOrder[0];
     impp.rv = rel15->rvIndex[0];
     int nb_re_dmrs =
-        (rel15->dmrsConfigType == NFAPI_NR_DMRS_TYPE1) ? (6 * rel15->numDmrsCdmGrpsNoData) : (4 * rel15->numDmrsCdmGrpsNoData);
+      (rel15->dmrsConfigType == NFAPI_NR_DMRS_TYPE1) ? (6 * rel15->numDmrsCdmGrpsNoData) : (4 * rel15->numDmrsCdmGrpsNoData);
     impp.G = nr_get_G(rel15->rbSize,
-                      rel15->NrOfSymbols,
-                      nb_re_dmrs,
-                      get_num_dmrs(rel15->dlDmrsSymbPos),
-                      harq->unav_res,
-                      rel15->qamModOrder[0],
-                      rel15->nrOfLayers);
+        rel15->NrOfSymbols,
+        nb_re_dmrs,
+        get_num_dmrs(rel15->dlDmrsSymbPos),
+        harq->unav_res,
+        rel15->qamModOrder[0],
+        rel15->nrOfLayers);
     uint8_t tmp[68 * 384] __attribute__((aligned(32)));
     uint8_t *d = tmp;
     int r_offset = 0;
@@ -409,15 +408,15 @@ int nr_dlsch_encoding(PHY_VARS_gNB *gNB,
       uint8_t e[impp.E];
       bzero(e, impp.E);
       nr_rate_matching_ldpc(rel15->maintenance_parms_v3.tbSizeLbrmBytes,
-                            impp.BG,
-                            impp.Zc,
-                            tmp,
-                            e,
-                            impp.n_segments,
-                            impp.F,
-                            impp.K - impp.F - 2 * impp.Zc,
-                            impp.rv,
-                            impp.E);
+          impp.BG,
+          impp.Zc,
+          tmp,
+          e,
+          impp.n_segments,
+          impp.F,
+          impp.K - impp.F - 2 * impp.Zc,
+          impp.rv,
+          impp.E);
       nr_interleaving_ldpc(impp.E, impp.Qm, e, impp.output + r_offset);
       r_offset += impp.E;
     }
@@ -425,14 +424,40 @@ int nr_dlsch_encoding(PHY_VARS_gNB *gNB,
     notifiedFIFO_t nf;
     initNotifiedFIFO(&nf);
     int nbJobs = 0;
+#ifdef TASK_MANAGER_CODING
+    size_t const sz = (impp.n_segments/8+((impp.n_segments&7)==0 ? 0 : 1));
+    encoder_implemparams_t arr[sz];
+    task_status_t task_status[sz];
+    memset(task_status, 0, sz * sizeof(task_status));
+#endif
     for (int j = 0; j < (impp.n_segments / 8 + ((impp.n_segments & 7) == 0 ? 0 : 1)); j++) {
+#ifdef TASK_MANAGER_CODING
+      assert(nbJobs < sz);
+      encoder_implemparams_t* perJobImpp = &arr[nbJobs];
+#else
       notifiedFIFO_elt_t *req = newNotifiedFIFO_elt(sizeof(impp), j, &nf, ldpc8blocks);
       encoder_implemparams_t *perJobImpp = (encoder_implemparams_t *)NotifiedFifoData(req);
+#endif
       *perJobImpp = impp;
       perJobImpp->macro_num = j;
+#ifdef TASK_MANAGER_CODING
+      perJobImpp->task_status = &task_status[nbJobs];
+      task_t t = {.args = perJobImpp, .func = ldpc8blocks};
+      assert(atomic_load(&perJobImpp->task_status->completed) == 0);
+      async_task_manager(&gNB->man, t);
+#else 
       pushTpool(&gNB->threadPool, req);
+#endif
       nbJobs++;
     }
+
+#ifdef TASK_MANAGER_CODING
+    if(nbJobs > 0) {
+      trigger_all_task_manager(&gNB->man);
+      wait_task_status_completed(nbJobs, task_status); 
+      nbJobs = 0; 
+    }
+#else
     while (nbJobs) {
       notifiedFIFO_elt_t *req = pullTpool(&nf, &gNB->threadPool);
       if (req == NULL)
@@ -440,56 +465,8 @@ int nr_dlsch_encoding(PHY_VARS_gNB *gNB,
       delNotifiedFIFO_elt(req);
       nbJobs--;
     }
-=======
-
-  impp.harq=harq;
-  notifiedFIFO_t nf;
-  initNotifiedFIFO(&nf);
-  int nbJobs=0;
-#ifdef TASK_MANAGER_CODING
-  size_t const sz = (impp.n_segments/8+((impp.n_segments&7)==0 ? 0 : 1));
-  encoder_implemparams_t arr[sz];
-  //memset(arr, 0, sz*sizeof(encoder_implemparams_t));
-  _Atomic int tasks_done[sz];
-  memset(tasks_done, 0, sizeof(_Atomic int)*sz);
 #endif
-  for(int j=0; j<(impp.n_segments/8+((impp.n_segments&7)==0 ? 0 : 1)); j++) {
-#ifdef TASK_MANAGER_CODING
-  assert(nbJobs < sz);
-  encoder_implemparams_t* perJobImpp = &arr[nbJobs];
-#else
-    notifiedFIFO_elt_t *req=newNotifiedFIFO_elt(sizeof(impp), j, &nf, ldpc8blocks);
-    encoder_implemparams_t* perJobImpp=(encoder_implemparams_t*)NotifiedFifoData(req);
-#endif
-    *perJobImpp=impp;
-    perJobImpp->macro_num=j;
-#ifdef TASK_MANAGER_CODING
-    perJobImpp->task_done = &tasks_done[nbJobs];
-    task_t t = {.args = perJobImpp, .func = ldpc8blocks};
-    if(atomic_load(perJobImpp->task_done) != 0)
-      printf("Value %d \n", *perJobImpp->task_done );
-    assert(atomic_load(perJobImpp->task_done) == 0);
-    async_task_manager(&gNB->man, t);
-#else 
-    pushTpool(&gNB->threadPool, req);
-#endif
-    nbJobs++;
   }
-
-#ifdef TASK_MANAGER_CODING
-  trigger_all_task_manager(&gNB->man);
-  wait_spin_all_atomics_one(nbJobs, tasks_done); 
-#else
-  while(nbJobs) {
-    notifiedFIFO_elt_t *req=pullTpool(&nf, &gNB->threadPool);
-    if (req == NULL)
-      break; // Tpool has been stopped
-    delNotifiedFIFO_elt(req);
-    nbJobs--;
->>>>>>> 7325909f66 (RFSim working. Decoding working)
-  }
-#endif
-
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_gNB_DLSCH_ENCODING, VCD_FUNCTION_OUT);
   return 0;
 }

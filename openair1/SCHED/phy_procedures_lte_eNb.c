@@ -1336,8 +1336,8 @@ void pusch_procedures(PHY_VARS_eNB *eNB,L1_rxtx_proc_t *proc) {
 
 #ifdef TASK_MANAGER_LTE
   turboDecode_t arr[64] = {0}; 
-  _Atomic int tasks_remaining[64] = {0};
-  thread_info_tm_t t_info = {.buf = (uint8_t*)arr, .len = 0, .tasks_remaining = tasks_remaining};
+  task_status_t task_status[64] = {0};
+  thread_info_tm_t t_info = {.buf = (uint8_t*)arr, .len = 0, .task_status = task_status};
 #endif
 
   for (i = 0; i < NUMBER_OF_ULSCH_MAX; i++) {
@@ -1423,7 +1423,7 @@ void pusch_procedures(PHY_VARS_eNB *eNB,L1_rxtx_proc_t *proc) {
   if (proc->nbDecode) {
     // Not needed, but won't hurt performance
     trigger_all_task_manager(proc->man);
-    wait_spin_all_atomics_one(t_info.len, t_info.tasks_remaining);
+    wait_task_status_completed(t_info.len, t_info.task_status);
     for(int i = 0; i < t_info.len; ++i){
       postDecode(proc, &arr[i]); 
     } 

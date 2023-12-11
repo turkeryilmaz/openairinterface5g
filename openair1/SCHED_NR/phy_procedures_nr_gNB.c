@@ -883,8 +883,8 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
 
 #ifdef TASK_MANAGER
   ldpcDecode_t arr[64] = {0}; // cheap to initialize, even here 
-  _Atomic int tasks_remaining[64] = {0};
-  thread_info_tm_t t_info = {.buf = (uint8_t*)arr, .len = 0, .tasks_remaining = tasks_remaining};
+  task_status_t task_status[64] = {0};
+  thread_info_tm_t t_info = {.buf = (uint8_t*)arr, .len = 0, .task_status = task_status};
 #endif
 
   //int64_t const t0 = time_now_ns();
@@ -1002,7 +1002,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
   
 #ifdef TASK_MANAGER
   if (totalDecode > 0) {
-    wait_spin_all_atomics_one(t_info.len, t_info.tasks_remaining);
+    wait_task_status_completed(t_info.len, t_info.task_status);
     for(int i = 0; i < t_info.len; ++i){
       nr_postDecode(gNB, &arr[i]); 
     } 
