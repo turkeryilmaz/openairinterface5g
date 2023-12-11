@@ -312,7 +312,7 @@ static void positioning_information_response(const f1ap_positioning_information_
               resource_item->transmissionComb.choice.n4.cyclicShift_n4 = srs_resource->transmissionComb.choice.n4->cyclicShift_n4;
               break;
             case NR_SRS_Resource__transmissionComb_PR_NOTHING:
-              srs_resource->transmissionComb.present = f1ap_transmission_comb_pr_nothing;
+              resource_item->transmissionComb.present = f1ap_transmission_comb_pr_nothing;
               break;
             default:
               LOG_E(MAC, "Unknown Resource Item TransmissionComb\n");
