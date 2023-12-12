@@ -21,6 +21,7 @@
 #include <unistd.h>
 
 
+/*
 static
 int64_t time_now_us(void)
 {
@@ -37,7 +38,6 @@ int64_t time_now_us(void)
   return micros;
 }
 
-/*
 static
 void pin_thread_to_core(int core_num)
 {
@@ -391,11 +391,11 @@ typedef struct{
 
 
 // Just for debugging purposes, it is very slow!!!!
-static
-_Atomic int cnt_out = 0;
+//static
+//_Atomic int cnt_out = 0;
 
-static
-_Atomic int cnt_in = 0;
+//static
+//_Atomic int cnt_in = 0;
 
 static
 void* worker_thread(void* arg)
@@ -441,8 +441,8 @@ void* worker_thread(void* arg)
     //printf("Returning from func \n");
     //int64_t stop = time_now_us(); 
 
-    cnt_out++;
-    printf("Tasks out %d %ld \n", cnt_out, time_now_us());
+    //cnt_out++;
+    //printf("Tasks out %d %ld \n", cnt_out, time_now_us());
 
     acc_num_task +=1;
   }
@@ -559,8 +559,8 @@ void async_task_manager(task_manager_t* man, task_t t)
       man->num_task +=1;
 
       // Debbugging purposes
-      cnt_in++;
-      printf("Tasks in %d %ld \n", cnt_in, time_now_us());
+      //cnt_in++;
+      //printf("Tasks in %d %ld \n", cnt_in, time_now_us());
 
       return;
     }
@@ -570,8 +570,8 @@ void async_task_manager(task_manager_t* man, task_t t)
   man->num_task +=1;
 
   // Debbugging purposes
-  cnt_in++;
-  printf("Tasks in %d %ld \n", cnt_in, time_now_us());
+  //cnt_in++;
+  //printf("Tasks in %d %ld \n", cnt_in, time_now_us());
 }
 
 void trigger_and_spin_task_manager(task_manager_t* man)
