@@ -20,6 +20,13 @@
 #include <sys/syscall.h>      /* Definition of SYS_* constants */
 #include <unistd.h>
 
+#if defined (__i386__) || defined(__x86_64__)
+  #define pause_or_yield  __builtin_ia32_pause
+#elif __aarch64__
+  #define pause_or_yield() asm volatile("yield" ::: "memory")
+#else
+    static_assert(0!=0, "Unknown CPU architecture");
+#endif
 
 /*
 static
@@ -191,7 +198,7 @@ typedef struct {
   pthread_cond_t cv;
   seq_ring_task_t r;
   _Atomic int32_t* futex;
-  _Atomic bool* waiting;
+  //_Atomic bool* waiting;
   _Atomic int done;
 } not_q_t;
 
@@ -202,12 +209,12 @@ typedef struct{
 
 
 static
-void init_not_q(not_q_t* q, _Atomic int32_t* futex, _Atomic bool* waiting)
+void init_not_q(not_q_t* q, _Atomic int32_t* futex /*, _Atomic bool* waiting */)
 {
   assert(q != NULL);
 
   q->done = 0;
-  q->waiting = waiting;
+  //q->waiting = waiting;
   init_seq_ring_task(&q->r);
 
   pthread_mutexattr_t attr = {0};
@@ -316,11 +323,11 @@ bool pop_not_q(not_q_t* q, ret_try_t* out)
 
 label:
   // Let's be conservative and not use memory_order_relaxed
-  while (atomic_load_explicit(q->waiting, memory_order_seq_cst) == true){ //
+ // while (atomic_load_explicit(q->waiting, memory_order_seq_cst) == true){ //
       // Issue X86 PAUSE or ARM YIELD instruction to reduce contention between
       // hyper-threads
-      pause_or_yield();
-    }
+ //     pause_or_yield();
+ //   }
 
   pthread_mutex_lock(&q->mtx);
 
@@ -464,11 +471,11 @@ void init_task_manager(task_manager_t* man, uint32_t num_threads)
   assert(man->q_arr != NULL && "Memory exhausted");
   man->futex = 0; 
 
-  man->waiting = false;
+ // man->waiting = false;
 
   not_q_t* q_arr = (not_q_t*)man->q_arr;
   for(uint32_t i = 0; i < num_threads; ++i){
-    init_not_q(&q_arr[i], &man->futex, &man->waiting);   
+    init_not_q(&q_arr[i], &man->futex /*, &man->waiting */);   
   }
 
   man->t_arr = calloc(num_threads, sizeof(pthread_t));
@@ -517,7 +524,7 @@ void init_task_manager(task_manager_t* man, uint32_t num_threads)
 void free_task_manager(task_manager_t* man, void (*clean)(task_t*))
 {
   not_q_t* q_arr = (not_q_t*)man->q_arr;
-  atomic_store(&man->waiting, false);
+  //atomic_store(&man->waiting, false);
 
   for(uint32_t i = 0; i < man->len_thr; ++i){
     done_not_q(&q_arr[i]);
@@ -574,6 +581,7 @@ void async_task_manager(task_manager_t* man, task_t t)
   //printf("Tasks in %d %ld \n", cnt_in, time_now_us());
 }
 
+/*
 void trigger_and_spin_task_manager(task_manager_t* man)
 {
   assert(man != NULL);
@@ -611,6 +619,8 @@ void trigger_and_wait_all_task_manager(task_manager_t* man)
   atomic_store(&man->waiting, true);
 }
 
+*/
+
 void trigger_all_task_manager(task_manager_t* man)
 {
   assert(man != NULL);
@@ -624,6 +634,7 @@ void trigger_all_task_manager(task_manager_t* man)
   assert(r != -1);
 }
 
+/*
 void wait_all_task_manager(task_manager_t* man)
 {
   assert(man != NULL);
@@ -634,6 +645,7 @@ void wait_all_task_manager(task_manager_t* man)
     pause_or_yield();
   }
 }
+*/
 
 
 // This function does not belong here logically
@@ -662,4 +674,6 @@ void wait_task_status_completed(size_t len, task_status_t* arr)
     ++i;
   }
 }
+
+#undef pause_or_yield
 

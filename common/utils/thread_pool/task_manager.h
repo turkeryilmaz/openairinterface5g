@@ -33,14 +33,6 @@
 #include <stdint.h>
 
 #if defined (__i386__) || defined(__x86_64__)
-  #define pause_or_yield  __builtin_ia32_pause
-#elif __aarch64__
-  #define pause_or_yield() asm volatile("yield" ::: "memory")
-#else
-    static_assert(0!=0, "Unknown CPU architecture");
-#endif
-
-#if defined (__i386__) || defined(__x86_64__)
   #define LEVEL1_DCACHE_LINESIZE 64
 #elif __aarch64__
   // This is not true for ARM in the general case
@@ -79,7 +71,7 @@ typedef struct{
 
   _Atomic(int32_t) futex;
 
-  _Atomic(bool) waiting;
+  //_Atomic(bool) waiting;
 } task_manager_t;
 
 void init_task_manager(task_manager_t* man, uint32_t num_threads);
@@ -88,15 +80,19 @@ void free_task_manager(task_manager_t* man, void (*clean)(task_t* args) );
 
 void async_task_manager(task_manager_t* man, task_t t);
 
+// This function triggers the futex if the thread is waiting.
+// Note that if the thread was working, this call is superflous
+// This method proved a bit faster as it is only one syscall
+// instead of a syscall when async_task_manager is called 
 void trigger_all_task_manager(task_manager_t* man);
 
 //void trigger_and_spin_task_manager(task_manager_t* man);
 
-void stop_spining_task_manager(task_manager_t* man);
+//void stop_spining_task_manager(task_manager_t* man);
 
 //void trigger_and_wait_all_task_manager(task_manager_t* man);
 
-void wait_all_task_manager(task_manager_t* man);
+//void wait_all_task_manager(task_manager_t* man);
 
 // This function does not belong here.
 // It should be in an algorithm file
