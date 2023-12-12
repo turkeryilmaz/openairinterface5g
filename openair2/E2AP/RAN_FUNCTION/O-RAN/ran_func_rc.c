@@ -51,7 +51,13 @@ void read_rc_setup_sm(void* data)
   rc->ran_func_def = fill_rc_ran_func_def();
 }
 
-static int add_mod_dl_slice(int mod_id, slice_algorithm_e current_algo, int id, char* sst_str, int64_t pct_reserved)
+static int add_mod_dl_slice(int mod_id,
+                            slice_algorithm_e current_algo,
+                            int id,
+                            uint8_t sst,
+                            uint32_t sd,
+                            char* label,
+                            int64_t pct_reserved)
 {
   void *params = NULL;
   char *slice_algo = NULL;
@@ -69,10 +75,11 @@ static int add_mod_dl_slice(int mod_id, slice_algorithm_e current_algo, int id, 
   nr_pp_impl_param_dl_t *dl = &RC.nrmac[mod_id]->pre_processor_dl;
   void *algo = &dl->dl_algo;
   char *l = NULL;
-  if (sst_str)
-    l = strdup(sst_str);
+  if (label)
+    l = strdup(label);
+  nssai_t nssai = {.sst = sst, .sd = sd};
   LOG_W(NR_MAC, "add DL slice id %d, label %s, slice sched algo %s, pct_reserved %.2f, ue sched algo %s\n", id, l, slice_algo, ((nvs_nr_slice_param_t *)params)->pct_reserved, dl->dl_algo.name);
-  return dl->addmod_slice(dl->slices, id, l, algo, params);
+  return dl->addmod_slice(dl->slices, id, nssai, l, algo, params);
 }
 
 static void set_new_dl_slice_algo(int mod_id, int algo)
@@ -245,7 +252,7 @@ static bool add_mod_rc_slice(int mod_id, size_t slices_len, ran_param_list_t* ls
     LOG_I(NR_MAC, "configure slice %ld, label %s, Dedicated_PRB_Policy_Ratio %ld\n", i, label_nssai, nvs_cap);
 
     ///// ADD SLICE /////
-    const int rc = add_mod_dl_slice(mod_id, current_algo, i, label_nssai, (float)nvs_cap);
+    const int rc = add_mod_dl_slice(mod_id, current_algo, i, RC_sst, RC_sd, label_nssai, (float)nvs_cap);
     free(label_nssai);
     if (rc < 0) {
       pthread_mutex_unlock(&nrmac->UE_info.mutex);
