@@ -10,7 +10,6 @@
 #define TASK_MANAGER_UE
 #define TASK_MANAGER_UE_DECODING
 
-
 #define TASK_MANAGER_SIM
 
 // LTE
@@ -21,10 +20,12 @@
 
 
 #ifndef __cplusplus
+#include <stdalign.h>
 #include <stdatomic.h>
 #else
 #include <atomic>
 #define _Atomic(X) std::atomic< X >
+#define  _Alignas(X) alignas(X) 
 #endif
 
 #include <pthread.h>
@@ -52,7 +53,7 @@
 
 typedef struct{
   // Avoid false sharing
- _Alignas(LEVEL1_DCACHE_LINESIZE) _Atomic int completed;
+ _Alignas(LEVEL1_DCACHE_LINESIZE) _Atomic(int) completed;
 } task_status_t;
 
 
