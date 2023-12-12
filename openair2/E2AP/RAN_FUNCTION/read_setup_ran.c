@@ -22,7 +22,7 @@
 #include "read_setup_ran.h"
 #include "../../E2AP/flexric/src/lib/e2ap/e2ap_node_component_config_add_wrapper.h"
 #include "../../E2AP/flexric/test/rnd/fill_rnd_data_e2_setup_req.h"
-#include "../../E2AP/flexric/src/util/ngran_types.h"
+#include "../../../openair2/GNB_APP/gnb_config.h"
 #include <assert.h>
 #include <stdlib.h>
 

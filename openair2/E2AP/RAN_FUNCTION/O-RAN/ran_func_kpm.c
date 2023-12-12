@@ -73,7 +73,7 @@ static size_t filter_ues_by_s_nssai_in_du_or_monolithic(test_cond_e const condit
   }
 
   matches->num_ues = i;
-  assert(matches->num_ues >= 1 && "The number of filtered UEs must be at least equal to 1");
+
   return i;
 }
 
@@ -716,7 +716,7 @@ static void capture_sst_sd(test_info_lst_t* test, uint8_t *sst, uint32_t **sd)
   }
 }
 
-void read_kpm_sm(void* data)
+bool read_kpm_sm(void* data)
 {
   assert(data != NULL);
   // assert(data->type == KPM_STATS_V3_0);
@@ -770,7 +770,7 @@ void read_kpm_sm(void* data)
 
           case CQI_TEST_COND_TYPE: {
             // This is a bad idea. Done only to check FlexRIC xAPP
-            printf("CQI not implemented!. Randomly filling the data \n");
+            // printf("CQI not implemented!. Randomly filling the data \n");
             goto rnd_data_label;
             break;
           }
@@ -798,14 +798,17 @@ void read_kpm_sm(void* data)
             if (NODE_IS_DU(RC.nrrrc[0]->node_type)) {
               matched_ues_mac_t matched_ues = {0};
               matched_ues.num_ues = filter_ues_by_s_nssai_in_du_or_monolithic(test_cond, sst, sd, &matched_ues);
+              if (matched_ues.num_ues == 0) return false;
               kpm->ind.msg.frm_3 = fill_kpm_ind_msg_frm_3_in_du(&matched_ues, &frm_4->action_def_format_1);
             } else if (NODE_IS_CU(RC.nrrrc[0]->node_type)) {
               matched_ues_rrc_t matched_ues = {0};
               matched_ues.num_ues = filter_ues_by_s_nssai_in_cu(test_cond, sst, sd, &matched_ues);
+              if (matched_ues.num_ues == 0) return false;
               kpm->ind.msg.frm_3 = fill_kpm_ind_msg_frm_3_in_cu(&matched_ues, &frm_4->action_def_format_1);
             } else if (NODE_IS_MONOLITHIC(RC.nrrrc[0]->node_type)) {
               matched_ues_mac_t matched_ues = {0};
               matched_ues.num_ues = filter_ues_by_s_nssai_in_du_or_monolithic(test_cond, sst, sd, &matched_ues);
+              if (matched_ues.num_ues == 0) return false;
               kpm->ind.msg.frm_3 = fill_kpm_ind_msg_frm_3_in_monolithic(&matched_ues, &frm_4->action_def_format_1);
             } else {
               assert(false && "NG-RAN Type not implemented");
@@ -825,12 +828,17 @@ void read_kpm_sm(void* data)
 
     default: {
     rnd_data_label:
+      return false;
+
+      // Only for testing new xApps, but not existing ones in FlexRIC
       kpm->ind.hdr = fill_rnd_kpm_ind_hdr();
       kpm->ind.msg = fill_rnd_kpm_ind_msg();
-
+      printf("[E2 Agent]: Filling random KPM Indication Message\n");
       break;
     }
   }
+  
+  return true;
 }
 
 void read_kpm_setup_sm(void* e2ap)
