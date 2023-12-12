@@ -500,10 +500,15 @@ void fix_scd(NR_ServingCellConfig_t *scd) {
   }
 
   // Check for DL PTRS parameters validity
+  
+  LOG_I(GNB_APP, "downlinkBWP_ToAddModList Count %d\n", scd->downlinkBWP_ToAddModList->list.count);
   for (int bwp_i = 0 ; bwp_i<scd->downlinkBWP_ToAddModList->list.count; bwp_i++) {
 
+    LOG_I(GNB_APP, "downlinkBWP_ToAddModList Count %d\n", scd->downlinkBWP_ToAddModList->list.count);
+
     NR_DMRS_DownlinkConfig_t *dmrs_dl_config = scd->downlinkBWP_ToAddModList->list.array[bwp_i]->bwp_Dedicated->pdsch_Config->choice.setup->dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup;
-    
+    LOG_I(GNB_APP, "dmrs_dl_config = %p\n", dmrs_dl_config);
+
     if (dmrs_dl_config->phaseTrackingRS) {
       // If any of the frequencyDensity values are not set or are out of bounds, PTRS is assumed to be not present
       for (int i = dmrs_dl_config->phaseTrackingRS->choice.setup->frequencyDensity->list.count - 1; i >= 0; i--) {
@@ -545,6 +550,7 @@ void fix_scd(NR_ServingCellConfig_t *scd) {
   }
 
   // Check for UL PTRS parameters validity
+  LOG_I(GNB_APP, "uplinkBWP_ToAddModList Count %d\n", scd->uplinkConfig->uplinkBWP_ToAddModList->list.count);
   for (int bwp_i = 0 ; bwp_i<scd->uplinkConfig->uplinkBWP_ToAddModList->list.count; bwp_i++) {
 
     NR_DMRS_UplinkConfig_t *dmrs_ul_config = scd->uplinkConfig->uplinkBWP_ToAddModList->list.array[bwp_i]->bwp_Dedicated->pusch_Config->choice.setup->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup;

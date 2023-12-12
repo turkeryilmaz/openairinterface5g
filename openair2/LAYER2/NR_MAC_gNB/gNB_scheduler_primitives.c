@@ -276,10 +276,10 @@ NR_ControlResourceSet_t *get_coreset(gNB_MAC_INST *nrmac,
 			     "search space\n");
     return coreset;
   } else {
-       NR_ControlResourceSet_t *coreset;
+       NR_ControlResourceSet_t *coreset;   // that was uncommented
        coreset = ((NR_BWP_Downlink_t*)bwp)->bwp_Common->pdcch_ConfigCommon->choice.setup->commonControlResourceSet;
        return coreset;
-   /* const int n = ((NR_BWP_DownlinkDedicated_t*)bwp)->pdcch_Config->choice.setup->controlResourceSetToAddModList->list.count;
+   /* const int n = ((NR_BWP_DownlinkDedicated_t*)bwp)->pdcch_Config->choice.setup->controlResourceSetToAddModList->list.count;   // that was commented
     for (int i = 0; i < n; i++) {
       NR_ControlResourceSet_t *coreset =
           ((NR_BWP_DownlinkDedicated_t*)bwp)->pdcch_Config->choice.setup->controlResourceSetToAddModList->list.array[i];
@@ -915,7 +915,7 @@ void config_uldci(const NR_SIB1_t *sib1,
       dci_pdu_rel15->format_indicator = 0;
       break;
     case NR_UL_DCI_FORMAT_0_1:
-      LOG_I(NR_MAC,"Configuring DCI Format 0_1\n");
+      LOG_D(NR_MAC,"Configuring DCI Format 0_1\n");
       dci_pdu_rel15->dai[0].val = 0; //TODO
       // bwp indicator as per table 7.3.1.1.2-1 in 38.212
       dci_pdu_rel15->bwp_indicator.val = ul_bwp->n_ul_bwp < 4 ? bwp_id : bwp_id - 1;
@@ -943,7 +943,7 @@ void config_uldci(const NR_SIB1_t *sib1,
       AssertFatal(0, "Valid UL formats are 0_0 and 0_1\n");
   }
 
-  LOG_I(NR_MAC,
+  LOG_D(NR_MAC,
         "%s() ULDCI type 0 payload: dci_format %d, freq_alloc %d, time_alloc %d, freq_hop_flag %d, precoding_information.val %d antenna_ports.val %d mcs %d tpc %d ndi %d rv %d\n",
         __func__,
         dci_format,
@@ -996,6 +996,12 @@ void nr_configure_pdcch(nfapi_nr_dl_tti_pdcch_pdu_rel15_t *pdcch_pdu,
   pdcch_pdu->InterleaverSize = pdcch->InterleaverSize;
   pdcch_pdu->ShiftIndex = pdcch->ShiftIndex;
 
+ for (int i=0;i<6;i++) {
+    pdcch_pdu->FreqDomainResource[i] = coreset->frequencyDomainResources.buf[i];
+    if (coreset->frequencyDomainResources.buf[i]!=0x00)
+        LOG_D(MAC,"Coreset : BWPstart %d, BWPsize %d, SCS %d, freq %x, , duration %d\n",
+        pdcch_pdu->BWPStart,pdcch_pdu->BWPSize,(int)pdcch_pdu->SubcarrierSpacing,(int)pdcch_pdu->FreqDomainResource[i],(int)coreset->duration);
+}
   if(coreset->controlResourceSetId == 0) {
     if(is_sib1)
       pdcch_pdu->CoreSetType = NFAPI_NR_CSET_CONFIG_MIB_SIB1;
@@ -1837,14 +1843,14 @@ void fill_dci_pdu_rel15(const NR_ServingCellConfigCommon_t *scc,
       *dci_pdu |= ((uint64_t)dci_pdu_rel15->ulsch_indicator & 0x1) << (dci_size - pos);
 
 #ifdef DEBUG_DCI
-        LOG_I(NR_MAC,"============= NR_UL_DCI_FORMAT_0_1 =============\n");
+        LOG_D(NR_MAC,"============= NR_UL_DCI_FORMAT_0_1 =============\n");
         LOG_D(NR_MAC,"dci_size = %i\n", dci_size);
         LOG_D(NR_MAC,"dci_pdu_rel15->format_indicator = %i\n", dci_pdu_rel15->format_indicator);
         LOG_D(NR_MAC,"dci_pdu_rel15->carrier_indicator.val = %i\n", dci_pdu_rel15->carrier_indicator.val);
         LOG_D(NR_MAC,"dci_pdu_rel15->ul_sul_indicator.val = %i\n", dci_pdu_rel15->ul_sul_indicator.val);
         LOG_D(NR_MAC,"dci_pdu_rel15->bwp_indicator.val = %i\n", dci_pdu_rel15->bwp_indicator.val);
         LOG_D(NR_MAC,"dci_pdu_rel15->frequency_domain_assignment.val = %i\n", dci_pdu_rel15->frequency_domain_assignment.val);
-        LOG_I(NR_MAC,"dci_pdu_rel15->time_domain_assignment.val = %i\n", dci_pdu_rel15->time_domain_assignment.val);
+        LOG_D(NR_MAC,"dci_pdu_rel15->time_domain_assignment.val = %i\n", dci_pdu_rel15->time_domain_assignment.val);
         LOG_D(NR_MAC,"dci_pdu_rel15->frequency_hopping_flag.val = %i\n", dci_pdu_rel15->frequency_hopping_flag.val);
         LOG_D(NR_MAC,"dci_pdu_rel15->mcs = %i\n", dci_pdu_rel15->mcs);
         LOG_D(NR_MAC,"dci_pdu_rel15->ndi = %i\n", dci_pdu_rel15->ndi);
@@ -1952,7 +1958,7 @@ void fill_dci_pdu_rel15(const NR_ServingCellConfigCommon_t *scc,
     pos += 1;
     *dci_pdu |= ((uint64_t)dci_pdu_rel15->dmrs_sequence_initialization.val & 0x1) << (dci_size - pos);
   }
-  LOG_I(NR_MAC, "DCI has %d bits and the payload is %lx\n", dci_size, *dci_pdu);
+  LOG_D(NR_MAC, "DCI has %d bits and the payload is %lx\n", dci_size, *dci_pdu);
 }
 
 int get_spf(nfapi_nr_config_request_scf_t *cfg) {
@@ -2187,7 +2193,7 @@ void delete_nr_ue_data(NR_UE_info_t *UE, NR_COMMON_channels_t *ccPtr, uid_alloca
   destroy_nr_list(&sched_ctrl->feedback_ul_harq);
   destroy_nr_list(&sched_ctrl->retrans_ul_harq);
   uid_linear_allocator_free(uia, UE->uid);
-  LOG_I(NR_MAC, "Remove NR rnti 0x%04x\n", UE->rnti);
+  LOG_D(NR_MAC, "Remove NR rnti 0x%04x\n", UE->rnti);
   const rnti_t rnti = UE->rnti;
   free(UE);
   /* hack to remove UE in the phy */
@@ -2327,9 +2333,9 @@ void configure_UE_BWP(gNB_MAC_INST *nr_mac,
   }
 
   if (old_dl_bwp_id != DL_BWP->bwp_id)
-    LOG_I(NR_MAC, "Switching to DL-BWP %li\n", DL_BWP->bwp_id);
+    LOG_D(NR_MAC, "Switching to DL-BWP %li\n", DL_BWP->bwp_id);
   if (old_ul_bwp_id != UL_BWP->bwp_id)
-    LOG_I(NR_MAC, "Switching to UL-BWP %li\n", UL_BWP->bwp_id);
+    LOG_D(NR_MAC, "Switching to UL-BWP %li\n", UL_BWP->bwp_id);
 
   // TDA lists
   if (DL_BWP->bwp_id>0)
@@ -2470,7 +2476,7 @@ NR_UE_info_t *add_new_nr_ue(gNB_MAC_INST *nr_mac, rnti_t rntiP, NR_CellGroupConf
 {
   NR_ServingCellConfigCommon_t *scc = nr_mac->common_channels[0].ServingCellConfigCommon;
   NR_UEs_t *UE_info = &nr_mac->UE_info;
-  LOG_I(NR_MAC, "Adding UE with rnti 0x%04x\n",
+  LOG_D(NR_MAC, "Adding UE with rnti 0x%04x\n",
         rntiP);
   dump_nr_list(UE_info->list);
 
@@ -2936,7 +2942,7 @@ void nr_mac_update_timers(module_id_t module_id,
     if (sched_ctrl->rrc_processing_timer > 0) {
       sched_ctrl->rrc_processing_timer--;
       if (sched_ctrl->rrc_processing_timer == 0) {
-        LOG_I(NR_MAC, "(%d.%d) De-activating RRC processing timer for UE %04x\n", frame, slot, UE->rnti);
+        LOG_D(NR_MAC, "(%d.%d) De-activating RRC processing timer for UE %04x\n", frame, slot, UE->rnti);
 
         NR_CellGroupConfig_t *cg = NULL;
         uper_decode(NULL,
@@ -2952,7 +2958,7 @@ void nr_mac_update_timers(module_id_t module_id,
 
         NR_ServingCellConfigCommon_t *scc = RC.nrmac[module_id]->common_channels[0].ServingCellConfigCommon;
 
-        LOG_I(NR_MAC,"Modified rnti %04x with CellGroup\n", UE->rnti);
+        LOG_D(NR_MAC,"Modified rnti %04x with CellGroup\n", UE->rnti);
         process_CellGroup(cg,&UE->UE_sched_ctrl);
         NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
 

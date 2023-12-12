@@ -43,7 +43,7 @@ void rrc_coreset_config(NR_ControlResourceSet_t *coreset,
   // frequency domain resources depending on BWP size
   coreset->frequencyDomainResources.buf = calloc(1,6);
   coreset->frequencyDomainResources.buf[0] = (curr_bwp < 48) ? 0xf0 : 0xff; //it was if less than 48: 0xf0
-  coreset->frequencyDomainResources.buf[1] = (curr_bwp < 96) ? 0xe0 : 0xff;
+  coreset->frequencyDomainResources.buf[1] = (curr_bwp < 96) ? 0x00 : 0xff;  //it was if less than 96 0xe0
   coreset->frequencyDomainResources.buf[2] = (curr_bwp < 144) ? 0x00 : 0xff;
   coreset->frequencyDomainResources.buf[3] = (curr_bwp < 192) ? 0x00 : 0xff;
   coreset->frequencyDomainResources.buf[4] = (curr_bwp < 240) ? 0x00 : 0xff;
@@ -58,9 +58,9 @@ void rrc_coreset_config(NR_ControlResourceSet_t *coreset,
 
 
   // The ID space is used across the BWPs of a Serving Cell as per 38.331
-  coreset->controlResourceSetId = bwp_id;
+  coreset->controlResourceSetId = bwp_id+1;//was just bwp_id
 
- /* coreset->tci_StatesPDCCH_ToAddList=calloc(1,sizeof(*coreset->tci_StatesPDCCH_ToAddList));
+  coreset->tci_StatesPDCCH_ToAddList=calloc(1,sizeof(*coreset->tci_StatesPDCCH_ToAddList));
   NR_TCI_StateId_t *tci[64];
   for (int i=0;i<64;i++) {
     if ((ssb_bitmap>>(63-i))&0x01){
@@ -68,7 +68,7 @@ void rrc_coreset_config(NR_ControlResourceSet_t *coreset,
       *tci[i] = i;
       ASN_SEQUENCE_ADD(&coreset->tci_StatesPDCCH_ToAddList->list,tci[i]);
     }
-  }*/
+  }
   coreset->tci_StatesPDCCH_ToAddList = NULL;
   coreset->tci_StatesPDCCH_ToReleaseList = NULL;
   coreset->tci_PresentInDCI = NULL;
@@ -573,9 +573,20 @@ void nr_rrc_config_ul_tda(NR_ServingCellConfigCommon_t *scc, int min_fb_delay){
   struct NR_PUSCH_TimeDomainResourceAllocation *pusch_timedomainresourceallocation = CALLOC(1,sizeof(struct NR_PUSCH_TimeDomainResourceAllocation));
   pusch_timedomainresourceallocation->k2  = CALLOC(1,sizeof(long));
   *pusch_timedomainresourceallocation->k2 = k2;
-  pusch_timedomainresourceallocation->mappingType = NR_PUSCH_TimeDomainResourceAllocation__mappingType_typeB;
-  pusch_timedomainresourceallocation->startSymbolAndLength = get_SLIV(0,13);
+  pusch_timedomainresourceallocation->mappingType = NR_PUSCH_TimeDomainResourceAllocation__mappingType_typeB;    // it was B
+  pusch_timedomainresourceallocation->startSymbolAndLength = get_SLIV(0,13);  // L used to be13
   ASN_SEQUENCE_ADD(&scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList->list,pusch_timedomainresourceallocation); 
+
+
+  /*//For the sake if trying out to add another element in the PUSCH config list ( it wasnt herem it was added by IMad)
+  struct NR_PUSCH_TimeDomainResourceAllocation *pusch_timedomainresourceallocation1 = CALLOC(1,sizeof(struct NR_PUSCH_TimeDomainResourceAllocation));
+  pusch_timedomainresourceallocation1->k2  = CALLOC(1,sizeof(long));
+  *pusch_timedomainresourceallocation1->k2 = k2;
+  pusch_timedomainresourceallocation1->mappingType = NR_PUSCH_TimeDomainResourceAllocation__mappingType_typeB;   // it was B
+  pusch_timedomainresourceallocation1->startSymbolAndLength = get_SLIV(0,12);
+  ASN_SEQUENCE_ADD(&scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList->list,pusch_timedomainresourceallocation1);
+  */
+  ///////////    
 
   if(frame_type==TDD) {
     if(scc->tdd_UL_DL_ConfigurationCommon) {
@@ -585,7 +596,7 @@ void nr_rrc_config_ul_tda(NR_ServingCellConfigCommon_t *scc, int min_fb_delay){
         pusch_timedomainresourceallocation = CALLOC(1,sizeof(struct NR_PUSCH_TimeDomainResourceAllocation));
         pusch_timedomainresourceallocation->k2  = CALLOC(1,sizeof(long));
         *pusch_timedomainresourceallocation->k2 = k2;
-        pusch_timedomainresourceallocation->mappingType = NR_PUSCH_TimeDomainResourceAllocation__mappingType_typeB;
+        pusch_timedomainresourceallocation->mappingType = NR_PUSCH_TimeDomainResourceAllocation__mappingType_typeB;  // it was B
         pusch_timedomainresourceallocation->startSymbolAndLength = get_SLIV(14-ul_symb,ul_symb-1); // starting in fist ul symbol til the last but one
         ASN_SEQUENCE_ADD(&scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList->list,pusch_timedomainresourceallocation);
 
@@ -599,7 +610,7 @@ void nr_rrc_config_ul_tda(NR_ServingCellConfigCommon_t *scc, int min_fb_delay){
           *pusch_timedomainresourceallocation_msg3->k2 += nb_slots_per_period;
         AssertFatal(*pusch_timedomainresourceallocation_msg3->k2<33,"Computed k2 for msg3 %ld is larger than the range allowed by RRC (0..32)\n",
                     *pusch_timedomainresourceallocation_msg3->k2);
-        pusch_timedomainresourceallocation_msg3->mappingType = NR_PUSCH_TimeDomainResourceAllocation__mappingType_typeB;
+        pusch_timedomainresourceallocation_msg3->mappingType = NR_PUSCH_TimeDomainResourceAllocation__mappingType_typeB; //it was B
         pusch_timedomainresourceallocation_msg3->startSymbolAndLength = get_SLIV(14-ul_symb,ul_symb-1); // starting in fist ul symbol til the last but one
         ASN_SEQUENCE_ADD(&scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList->list,pusch_timedomainresourceallocation_msg3);
       }
@@ -750,8 +761,8 @@ static void set_SR_periodandoffset(NR_SchedulingRequestResourceConfig_t *schedul
   if(tdd)
     sr_slot = tdd->nrofDownlinkSlots; // SR in the first uplink slot
 
-    LOG_I(NR_RRC,"sr_slot (%d)\n",sr_slot);
-    LOG_I(NR_RRC,"SCS (%ld)\n",*scc->ssbSubcarrierSpacing);
+  LOG_I(NR_RRC,"sr_slot (%d)\n",sr_slot);
+  LOG_I(NR_RRC,"SCS (%ld)\n",*scc->ssbSubcarrierSpacing);
 
 
   schedulingRequestResourceConfig->periodicityAndOffset = calloc(1,sizeof(*schedulingRequestResourceConfig->periodicityAndOffset));
@@ -903,7 +914,7 @@ void config_downlinkBWP(NR_BWP_Downlink_t *bwp,
   bwp->bwp_Common->pdcch_ConfigCommon->choice.setup->commonSearchSpaceList=calloc(1,sizeof(*bwp->bwp_Common->pdcch_ConfigCommon->choice.setup->commonSearchSpaceList));
 
   NR_SearchSpace_t *ss=calloc(1,sizeof(*ss));
-  ss->searchSpaceId = bwp->bwp_Id;
+  ss->searchSpaceId = 5+bwp->bwp_Id;      // it was bwp->bwp_Id
   ss->controlResourceSetId=calloc(1,sizeof(*ss->controlResourceSetId));
   *ss->controlResourceSetId=coreset->controlResourceSetId;
   ss->monitoringSlotPeriodicityAndOffset = calloc(1,sizeof(*ss->monitoringSlotPeriodicityAndOffset));
@@ -913,15 +924,15 @@ void config_downlinkBWP(NR_BWP_Downlink_t *bwp,
   ss->monitoringSymbolsWithinSlot->buf = calloc(1,2);
   // should be '1100 0000 0000 00'B (LSB first!), first two symols in slot, adjust if needed
   ss->monitoringSymbolsWithinSlot->buf[1] = 0;
-  ss->monitoringSymbolsWithinSlot->buf[0] = 0xc0;
+  ss->monitoringSymbolsWithinSlot->buf[0] = 0x80;  // it was 0xc0 and 0xc0
   ss->monitoringSymbolsWithinSlot->size = 2;
   ss->monitoringSymbolsWithinSlot->bits_unused = 2;
   ss->nrofCandidates = calloc(1,sizeof(*ss->nrofCandidates));
   // TODO write a function to program nr of candidates and aggregation level
   ss->nrofCandidates->aggregationLevel1 = NR_SearchSpace__nrofCandidates__aggregationLevel1_n0;
   ss->nrofCandidates->aggregationLevel2 = NR_SearchSpace__nrofCandidates__aggregationLevel2_n0;
-  ss->nrofCandidates->aggregationLevel4 = NR_SearchSpace__nrofCandidates__aggregationLevel4_n0;
-  ss->nrofCandidates->aggregationLevel8 = NR_SearchSpace__nrofCandidates__aggregationLevel8_n1;
+  ss->nrofCandidates->aggregationLevel4 = NR_SearchSpace__nrofCandidates__aggregationLevel4_n1;    // it was n0
+  ss->nrofCandidates->aggregationLevel8 = NR_SearchSpace__nrofCandidates__aggregationLevel8_n0;    // it was n1
   ss->nrofCandidates->aggregationLevel16 = NR_SearchSpace__nrofCandidates__aggregationLevel16_n0;
   ss->searchSpaceType = calloc(1,sizeof(*ss->searchSpaceType));
   ss->searchSpaceType->present = NR_SearchSpace__searchSpaceType_PR_common;
@@ -963,7 +974,7 @@ void config_downlinkBWP(NR_BWP_Downlink_t *bwp,
 
   bwp->bwp_Dedicated->pdcch_Config->choice.setup->searchSpacesToAddModList = calloc(1,sizeof(*bwp->bwp_Dedicated->pdcch_Config->choice.setup->searchSpacesToAddModList));
   NR_SearchSpace_t *ss2 = calloc(1,sizeof(*ss2));
-  ss2->searchSpaceId= 1+bwp->bwp_Id;
+  ss2->searchSpaceId= 10+bwp->bwp_Id;    // it was 1+bwp->bwp_Id
   ss2->controlResourceSetId=calloc(1,sizeof(*ss2->controlResourceSetId));
   *ss2->controlResourceSetId=coreset->controlResourceSetId;
   ss2->monitoringSlotPeriodicityAndOffset=calloc(1,sizeof(*ss2->monitoringSlotPeriodicityAndOffset));
@@ -974,12 +985,12 @@ void config_downlinkBWP(NR_BWP_Downlink_t *bwp,
   ss2->monitoringSymbolsWithinSlot->buf = calloc(1,2);
   ss2->monitoringSymbolsWithinSlot->size = 2;
 
-  ss2->monitoringSymbolsWithinSlot->buf[0]=0xc0; // it was 0x80
+  ss2->monitoringSymbolsWithinSlot->buf[0]=0x80; // it was 0xc0 and 0x80
   ss2->monitoringSymbolsWithinSlot->buf[1]=0x0; //it was 0x0
   ss2->monitoringSymbolsWithinSlot->bits_unused = 2;
   ss2->nrofCandidates=calloc(1,sizeof(*ss2->nrofCandidates));
-  ss2->nrofCandidates->aggregationLevel1 = NR_SearchSpace__nrofCandidates__aggregationLevel1_n0;
-  ss2->nrofCandidates->aggregationLevel2 = NR_SearchSpace__nrofCandidates__aggregationLevel2_n2; // it was n4
+  ss2->nrofCandidates->aggregationLevel1 = NR_SearchSpace__nrofCandidates__aggregationLevel1_n0;   //it was n1
+  ss2->nrofCandidates->aggregationLevel2 = NR_SearchSpace__nrofCandidates__aggregationLevel2_n2; // it was n5
   ss2->nrofCandidates->aggregationLevel4 = NR_SearchSpace__nrofCandidates__aggregationLevel4_n0;
   ss2->nrofCandidates->aggregationLevel8 = NR_SearchSpace__nrofCandidates__aggregationLevel8_n0;
   ss2->nrofCandidates->aggregationLevel16 = NR_SearchSpace__nrofCandidates__aggregationLevel16_n0;
@@ -1006,11 +1017,54 @@ void config_downlinkBWP(NR_BWP_Downlink_t *bwp,
   else
     dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup->dmrs_Type=NULL;
   dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup->maxLength=NULL;
-  dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup->scramblingID0=NULL;
-  dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup->scramblingID1=NULL;
-  dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup->dmrs_AdditionalPosition = calloc(1,sizeof(*dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup->dmrs_AdditionalPosition));
-  *dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup->dmrs_AdditionalPosition = NR_DMRS_DownlinkConfig__dmrs_AdditionalPosition_pos1;
+  //dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup->scramblingID0=NULL;
+  //dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup->scramblingID1=NULL;
 
+  dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup->scramblingID0 = calloc (1,sizeof(dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup->scramblingID0));
+  *dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup->scramblingID0=100;  //it was NULL
+  dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup->scramblingID1 = calloc (1,sizeof(dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup->scramblingID1));
+  *dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup->scramblingID1=100;  //it was NULL
+  dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup->dmrs_AdditionalPosition = calloc(1,sizeof(*dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup->dmrs_AdditionalPosition));
+  *dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup->dmrs_AdditionalPosition = NR_DMRS_DownlinkConfig__dmrs_AdditionalPosition_pos1;  //it was pos1
+  /*dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup->phaseTrackingRS = calloc(1,sizeof(*dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup->phaseTrackingRS));
+  dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup->phaseTrackingRS->present = NR_SetupRelease_PTRS_DownlinkConfig_PR_setup;
+  dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup->phaseTrackingRS->choice.setup = calloc(1,sizeof(*dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup->phaseTrackingRS->choice.setup));
+  dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup->phaseTrackingRS->choice.setup->frequencyDensity = calloc(1,sizeof(*dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup->phaseTrackingRS->choice.setup->frequencyDensity));
+
+
+  long *dl_rbs = CALLOC(2, sizeof(long));
+  dl_rbs[0]= 5; //was1;   //it was25;
+  dl_rbs[1]= 26; //was1; //it was75;
+  for (int i=0;i<2;i++) {
+        
+      ASN_SEQUENCE_ADD(&dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup->phaseTrackingRS->choice.setup->frequencyDensity->list, &dl_rbs[i]);
+  }
+
+  dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup->phaseTrackingRS->choice.setup->timeDensity = calloc(1,sizeof(*dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup->phaseTrackingRS->choice.setup->timeDensity));
+  long *dl_mcs = CALLOC(3, sizeof(long));
+  dl_mcs[0] = 2; //it was0;
+  dl_mcs[1] = 8; //itwas0;
+  dl_mcs[2] = 10; //itwas0
+
+  for (int i=0;i<3;i++) {
+      ASN_SEQUENCE_ADD(&dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup->phaseTrackingRS->choice.setup->timeDensity->list, &dl_mcs[i]);
+  }
+
+   
+  dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup->phaseTrackingRS->choice.setup->epre_Ratio = calloc(1,sizeof(*dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup->phaseTrackingRS->choice.setup->epre_Ratio));
+  *dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup->phaseTrackingRS->choice.setup->epre_Ratio = 0;
+  dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup->phaseTrackingRS->choice.setup->resourceElementOffset = calloc(1,sizeof(*dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup->phaseTrackingRS->choice.setup->resourceElementOffset));
+  *dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup->phaseTrackingRS->choice.setup->resourceElementOffset = 0;*/
+	 
+
+
+  //For testing the PDSCH addition sequence with the BWD dedicated//
+  
+  pdsch_Config->choice.setup->pdsch_TimeDomainAllocationList = calloc(1,sizeof(pdsch_Config->choice.setup->pdsch_TimeDomainAllocationList));
+  pdsch_Config->choice.setup->pdsch_TimeDomainAllocationList->present = NR_SetupRelease_PDSCH_TimeDomainResourceAllocationList_PR_setup;
+  pdsch_Config->choice.setup->pdsch_TimeDomainAllocationList->choice.setup = calloc(1,sizeof(pdsch_Config->choice.setup->pdsch_TimeDomainAllocationList->choice.setup));
+  nr_rrc_config_dl_tda(pdsch_Config->choice.setup->pdsch_TimeDomainAllocationList->choice.setup, get_frame_type((int)*scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0], *scc->ssbSubcarrierSpacing), scc->tdd_UL_DL_ConfigurationCommon, curr_bwp);
+  
   pdsch_Config->choice.setup->resourceAllocation = NR_PDSCH_Config__resourceAllocation_resourceAllocationType1;
   pdsch_Config->choice.setup->prb_BundlingType.present = NR_PDSCH_Config__prb_BundlingType_PR_staticBundling;
   pdsch_Config->choice.setup->prb_BundlingType.choice.staticBundling = calloc(1,sizeof(*pdsch_Config->choice.setup->prb_BundlingType.choice.staticBundling));
@@ -1098,21 +1152,60 @@ void config_uplinkBWP(NR_BWP_Uplink_t *ubwp,
   ubwp->bwp_Dedicated->pusch_Config->choice.setup = pusch_Config;
   pusch_Config->txConfig=calloc(1,sizeof(*pusch_Config->txConfig));
   *pusch_Config->txConfig= NR_PUSCH_Config__txConfig_codebook;
-  pusch_Config->dmrs_UplinkForPUSCH_MappingTypeA = NULL;
+  pusch_Config->dmrs_UplinkForPUSCH_MappingTypeA = NULL;   // it was A
   if (!pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB) {
     pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB = calloc(1,sizeof(*pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB));
     pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->present = NR_SetupRelease_DMRS_UplinkConfig_PR_setup;
     pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup = calloc(1,sizeof(*pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup));
   }
-  NR_DMRS_UplinkConfig_t *NR_DMRS_UplinkConfig = pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup;
+  NR_DMRS_UplinkConfig_t *NR_DMRS_UplinkConfig = pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup;   // it was B in all configs instead of A
   NR_DMRS_UplinkConfig->dmrs_Type = NULL;
   NR_DMRS_UplinkConfig->dmrs_AdditionalPosition = calloc(1,sizeof(*NR_DMRS_UplinkConfig->dmrs_AdditionalPosition));
   *NR_DMRS_UplinkConfig->dmrs_AdditionalPosition = NR_DMRS_UplinkConfig__dmrs_AdditionalPosition_pos0;
-  NR_DMRS_UplinkConfig->phaseTrackingRS=NULL;
+  NR_DMRS_UplinkConfig->phaseTrackingRS=NULL;  // it was NULL
+  /*NR_DMRS_UplinkConfig->phaseTrackingRS = calloc(1,sizeof(*NR_DMRS_UplinkConfig->phaseTrackingRS));
+  NR_DMRS_UplinkConfig->phaseTrackingRS->present = NR_SetupRelease_DMRS_UplinkConfig_PR_setup;
+  NR_DMRS_UplinkConfig->phaseTrackingRS->choice.setup = calloc(1,sizeof(*NR_DMRS_UplinkConfig->phaseTrackingRS->choice.setup));
+  NR_DMRS_UplinkConfig->phaseTrackingRS->choice.setup->transformPrecoderDisabled = calloc(1,sizeof(*NR_DMRS_UplinkConfig->phaseTrackingRS->choice.setup->transformPrecoderDisabled));
+  NR_DMRS_UplinkConfig->phaseTrackingRS->choice.setup->transformPrecoderDisabled->frequencyDensity = calloc(1,sizeof(*NR_DMRS_UplinkConfig->phaseTrackingRS->choice.setup->transformPrecoderDisabled->frequencyDensity));
+  long *ul_rbs = CALLOC(2, sizeof(long));
+  ul_rbs[0]= 1;   //was5;  //itwas25;
+  ul_rbs[1]= 1;   //was25;  //itwas75;
+  for (int i=0;i<2;i++) {
+
+      ASN_SEQUENCE_ADD(&NR_DMRS_UplinkConfig->phaseTrackingRS->choice.setup->transformPrecoderDisabled->frequencyDensity->list, &ul_rbs[i]);
+  }
+
+ NR_DMRS_UplinkConfig->phaseTrackingRS->choice.setup->transformPrecoderDisabled->timeDensity = calloc(1,sizeof(*NR_DMRS_UplinkConfig->phaseTrackingRS->choice.setup->transformPrecoderDisabled->timeDensity));
+
+
+  long *ul_mcs = CALLOC(3, sizeof(long));
+  ul_mcs[0]=2; //itwas2;
+  ul_mcs[1]=3;  //itwas4;
+  ul_mcs[2]=10;  //itwas10;
+  for (int i=0;i<3;i++) {
+
+      ASN_SEQUENCE_ADD(&NR_DMRS_UplinkConfig->phaseTrackingRS->choice.setup->transformPrecoderDisabled->timeDensity->list, &ul_mcs[i]);
+  }
+
+
+  //NR_DMRS_UplinkConfig->phaseTrackingRS->choice.setup->transformPrecoderDisabled->maxNrofPorts = calloc(1,sizeof(NR_DMRS_UplinkConfig->phaseTrackingRS->choice.setup->transformPrecoderDisabled->maxNrofPorts));
+  //NR_DMRS_UplinkConfig->phaseTrackingRS->choice.setup->transformPrecoderDisabled->resourceElementOffset = calloc(1,sizeof(*NR_DMRS_UplinkConfig->phaseTrackingRS->choice.setup->transformPrecoderDisabled->resourceElementOffset));
+  *NR_DMRS_UplinkConfig->phaseTrackingRS->choice.setup->transformPrecoderDisabled->resourceElementOffset = 0;
+  NR_DMRS_UplinkConfig->phaseTrackingRS->choice.setup->transformPrecoderDisabled->maxNrofPorts = 0;
+  //NR_DMRS_UplinkConfig->phaseTrackingRS->choice.setup->transformPrecoderDisabled->ptrs_Power = calloc(1,sizeof(NR_DMRS_UplinkConfig->phaseTrackingRS->choice.setup->transformPrecoderDisabled->ptrs_Power));
+  NR_DMRS_UplinkConfig->phaseTrackingRS->choice.setup->transformPrecoderDisabled->ptrs_Power = 1;*/
+
+
   NR_DMRS_UplinkConfig->maxLength=NULL;
   NR_DMRS_UplinkConfig->transformPrecodingDisabled = calloc(1,sizeof(*NR_DMRS_UplinkConfig->transformPrecodingDisabled));
+  /*NR_DMRS_UplinkConfig->transformPrecodingDisabled->scramblingID0 = calloc(1,sizeof(*NR_DMRS_UplinkConfig->transformPrecodingDisabled->scramblingID0));
+  *NR_DMRS_UplinkConfig->transformPrecodingDisabled->scramblingID0 = 100;   //it was NULL;
+  NR_DMRS_UplinkConfig->transformPrecodingDisabled->scramblingID1 = calloc(1,sizeof(*NR_DMRS_UplinkConfig->transformPrecodingDisabled->scramblingID1));
+  *NR_DMRS_UplinkConfig->transformPrecodingDisabled->scramblingID1 = 100;   // it was NULL;*/
   NR_DMRS_UplinkConfig->transformPrecodingDisabled->scramblingID0 = NULL;
   NR_DMRS_UplinkConfig->transformPrecodingDisabled->scramblingID1 = NULL;
+
   NR_DMRS_UplinkConfig->transformPrecodingEnabled = NULL;
   pusch_Config->pusch_PowerControl = calloc(1,sizeof(*pusch_Config->pusch_PowerControl));
   pusch_Config->pusch_PowerControl->tpc_Accumulation = NULL;

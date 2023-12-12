@@ -253,7 +253,7 @@ void nr_generate_dci(PHY_VARS_gNB *gNB,
       } // cce_count
     } // symbol_idx
 
-    LOG_I(PHY,
+    LOG_D(PHY,
           "DCI: payloadSize = %d | payload = %llx\n",
           dci_pdu->PayloadSizeBits,
           *(unsigned long long *)dci_pdu->Payload);

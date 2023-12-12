@@ -4214,8 +4214,12 @@ bool set_ul_ptrs_values(NR_PTRS_UplinkConfig_t *ul_ptrs_config,
                          rbSize);
   }
   /* Check for time Density values */
-  if(ul_ptrs_config->transformPrecoderDisabled->timeDensity->list.count < 3) {
-    *L_ptrs = 0;
+/*  if (ul_ptrs_config->transformPrecoderDisabled->timeDensity == NULL
+      || ul_ptrs_config->transformPrecoderDisabled->timeDensity->list.count < 3) {*/
+
+
+  if (ul_ptrs_config->transformPrecoderDisabled->timeDensity->list.count < 3) {
+     *L_ptrs = 0;
   }
   else {
     *L_ptrs = get_L_ptrs(*ul_ptrs_config->transformPrecoderDisabled->timeDensity->list.array[0],

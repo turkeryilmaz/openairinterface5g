@@ -761,12 +761,13 @@ void tx_rf(RU_t *ru,int frame,int slot, uint64_t timestamp) {
       int beam=0;
       if ((slot%10 == 0) &&ru->common.beam_id &&
           (ru->common.beam_id[0][slot*fp->symbols_per_slot] < 64)) {
-       //beam = ru->common.beam_id[0][slot*fp->symbols_per_slot] | 64;
-         beam = 96;
-       LOG_D(HW,"slot %d, beam %d\n",slot,beam);
-      }
+         //beam = ru->common.beam_id[0][slot*fp->symbols_per_slot] | 64;
+         beam = 96; //for the sake of trying beam32 boresight
+         //beam = 127; //for the sake of trying beam63
+         LOG_D(HW,"slot %d, beam %d\n",slot,beam);
+        }
 
-      flags |= beam<<8; // MSB 16 bits are used for beam
+      flags |= beam<<8; // MSB 8 bits are used for beam
 
       LOG_D(HW,"slot %d, beam %d, flags %d\n",slot,beam,flags);
     }
