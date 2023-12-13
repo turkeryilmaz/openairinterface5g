@@ -128,6 +128,7 @@ SIDL_UNION_BEGIN(SystemFrameNumberInfo_Type) {
 } SIDL_UNION_END;
 
 typedef uint8_t SubFrameNumber_Type;
+typedef uint8_t SymbolNumber_Type;
 
 SIDL_UNION_ENUM(SubFrameInfo_Type) {
 	SubFrameInfo_Type_UNBOUND_VALUE,
@@ -179,11 +180,27 @@ SIDL_UNION_BEGIN(SlotTimingInfo_Type) {
 		Null_Type Any;
 } SIDL_UNION_END;
 
+SIDL_UNION_ENUM(SymbolTimingInfo_Type) {
+	SymbolTimingInfo_Type_UNBOUND_VALUE,
+	SymbolTimingInfo_Type_SymbolOffset,
+	SymbolTimingInfo_Type_FirstSymbol,
+	SymbolTimingInfo_Type_Any
+};
+SIDL_UNION_BEGIN(SymbolTimingInfo_Type) {
+	SIDL_UNION_CASE(SymbolTimingInfo_Type_SymbolOffset)
+		SymbolNumber_Type SymbolOffset;
+	SIDL_UNION_CASE(SymbolTimingInfo_Type_FirstSymbol)
+		Null_Type FirstSymbol;
+	SIDL_UNION_CASE(SymbolTimingInfo_Type_Any)
+		Null_Type Any;
+} SIDL_UNION_END;
+
 struct SubFrameTiming_Type {
 	struct SystemFrameNumberInfo_Type SFN;
 	struct SubFrameInfo_Type Subframe;
 	HyperSystemFrameNumberInfo_Type HSFN;
 	struct SlotTimingInfo_Type Slot;
+	struct SymbolTimingInfo_Type Symbol;
 };
 
 SIDL_UNION_ENUM(TimingInfo_Type) {

@@ -172,6 +172,9 @@ void ss_nr_port_man_send_data(
     cnf.Common.TimingInfo.v.SubFrame.Slot.v.SlotOffset.d = SlotOffset_Type_Numerology1;
     cnf.Common.TimingInfo.v.SubFrame.Slot.v.SlotOffset.v.Numerology1  = tinfo->slot % 2;
 
+    cnf.Common.TimingInfo.v.SubFrame.Symbol.d = SymbolTimingInfo_Type_Any;
+    cnf.Common.TimingInfo.v.SubFrame.Symbol.v.Any = true;
+
     /* Encode message
      */
     if (acpNrSysProcessEncSrv(nrctx_g, buffer, &msgSize, &cnf) != 0)
@@ -210,7 +213,7 @@ void ss_gNB_port_man_init(void)
         // The last element should be NULL
         {NULL, 0}};
     // Arena size to decode received message
-    const size_t aSize = 32 * 1024;
+    const size_t aSize = 128 * 1024;
 
     // Start listening server and get ACP context,
     // after the connection is performed, we can use all services

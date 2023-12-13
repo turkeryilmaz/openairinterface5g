@@ -33,9 +33,6 @@
 #include "executables/softmodem-common.h"
 #include "oai_asn1.h"
 #include "SIMULATION/TOOLS/sim.h" // for taus();
-#include "common/ran_context.h"
-extern RAN_CONTEXT_t RC;
-
 
 #include "uper_decoder.h"
 #include "uper_encoder.h"
@@ -725,55 +722,7 @@ void nr_rrc_config_ul_tda(NR_ServingCellConfigCommon_t *scc, int min_fb_delay){
 
   uint8_t DELTA[4]= {2,3,4,6}; // Delta parameter for Msg3
   int mu = scc->uplinkConfigCommon->initialUplinkBWP->genericParameters.subcarrierSpacing;
-  if(RC.ss.mode >= SS_SOFTMODEM){
-    // UL TDA index 0 is basic slot configuration starting in symbol 0 til the last but one symbol
-    struct NR_PUSCH_TimeDomainResourceAllocation *pusch_timedomainresourceallocation = CALLOC(1,sizeof(struct NR_PUSCH_TimeDomainResourceAllocation));
-    pusch_timedomainresourceallocation->k2 = CALLOC(1,sizeof(long));
-    *pusch_timedomainresourceallocation->k2 = k2;
-    pusch_timedomainresourceallocation->mappingType = NR_PUSCH_TimeDomainResourceAllocation__mappingType_typeA;
-    pusch_timedomainresourceallocation->startSymbolAndLength = get_SLIV(0, 14);
-    asn1cSeqAdd(&scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList->list,pusch_timedomainresourceallocation); 
 
-    // UL TDA index 1 in case of SRS
-    struct NR_PUSCH_TimeDomainResourceAllocation *pusch_timedomainresourceallocation1 = CALLOC(1,sizeof(struct NR_PUSCH_TimeDomainResourceAllocation));
-    pusch_timedomainresourceallocation1->k2 = CALLOC(1,sizeof(long));
-    *pusch_timedomainresourceallocation1->k2 = k2;
-    pusch_timedomainresourceallocation1->mappingType = NR_PUSCH_TimeDomainResourceAllocation__mappingType_typeA;
-    pusch_timedomainresourceallocation1->startSymbolAndLength = get_SLIV(0, 14);
-    asn1cSeqAdd(&scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList->list,pusch_timedomainresourceallocation1);
-    if(frame_type==TDD) {
-      if(scc->tdd_UL_DL_ConfigurationCommon) {
-        int ul_symb = scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSymbols;
-        if (ul_symb>1) {
-          // UL TDA index 2 for mixed slot (TDD)
-          pusch_timedomainresourceallocation = CALLOC(1,sizeof(struct NR_PUSCH_TimeDomainResourceAllocation));
-          pusch_timedomainresourceallocation->k2 = CALLOC(1,sizeof(long));
-          *pusch_timedomainresourceallocation->k2 = k2;
-          pusch_timedomainresourceallocation->mappingType = NR_PUSCH_TimeDomainResourceAllocation__mappingType_typeA;
-          pusch_timedomainresourceallocation->startSymbolAndLength = get_SLIV(14 - ul_symb, ul_symb - 1); // starting in fist ul symbol til the last but one
-          asn1cSeqAdd(&scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList->list,pusch_timedomainresourceallocation);
-        }
-        // UL TDA index 3 for msg3 in the mixed slot (TDD)
-        int nb_periods_per_frame = get_nb_periods_per_frame(scc->tdd_UL_DL_ConfigurationCommon->pattern1.dl_UL_TransmissionPeriodicity);
-        int nb_slots_per_period = ((1 << mu) * 10) / nb_periods_per_frame;
-        struct NR_PUSCH_TimeDomainResourceAllocation *pusch_timedomainresourceallocation_msg3 = CALLOC(1,sizeof(struct NR_PUSCH_TimeDomainResourceAllocation));
-        pusch_timedomainresourceallocation_msg3->k2 = CALLOC(1,sizeof(long));
-        int no_mix_slot = ul_symb < 3 ? 1 : 0; // we need at least 2 symbols for scheduling Msg3
-        *pusch_timedomainresourceallocation_msg3->k2 = nb_slots_per_period - DELTA[mu] + no_mix_slot;
-        if(*pusch_timedomainresourceallocation_msg3->k2 < min_fb_delay)
-          *pusch_timedomainresourceallocation_msg3->k2 += nb_slots_per_period;
-        AssertFatal(*pusch_timedomainresourceallocation_msg3->k2 < 33,"Computed k2 for msg3 %ld is larger than the range allowed by RRC (0..32)\n",
-                    *pusch_timedomainresourceallocation_msg3->k2);
-        pusch_timedomainresourceallocation_msg3->mappingType = NR_PUSCH_TimeDomainResourceAllocation__mappingType_typeA;
-        if(no_mix_slot)
-          pusch_timedomainresourceallocation_msg3->startSymbolAndLength = get_SLIV(0, 13); // full allocation if there is no mixed slot
-        else
-          pusch_timedomainresourceallocation_msg3->startSymbolAndLength = get_SLIV(14 - ul_symb, ul_symb - 1); // starting in fist ul symbol til the last but one
-        asn1cSeqAdd(&scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList->list,pusch_timedomainresourceallocation_msg3);
-      }
-    }
-    return;
-  }
   // UL TDA index 0 is basic slot configuration starting in symbol 0 til the last but one symbol
   struct NR_PUSCH_TimeDomainResourceAllocation *pusch_timedomainresourceallocation = CALLOC(1,sizeof(struct NR_PUSCH_TimeDomainResourceAllocation));
   pusch_timedomainresourceallocation->k2 = CALLOC(1,sizeof(long));
@@ -1113,47 +1062,26 @@ static struct NR_SetupRelease_PUSCH_Config *config_pusch(NR_PUSCH_Config_t *pusc
   if (!pusch_Config->txConfig)
     pusch_Config->txConfig = calloc(1, sizeof(*pusch_Config->txConfig));
   *pusch_Config->txConfig = NR_PUSCH_Config__txConfig_codebook;
-  if(RC.ss.mode >= SS_SOFTMODEM){
-    /* Hard code here the Nr_cell1 default configuration of TTCN */
-    if (!pusch_Config->dmrs_UplinkForPUSCH_MappingTypeA)
-      pusch_Config->dmrs_UplinkForPUSCH_MappingTypeA = calloc(1, sizeof(*pusch_Config->dmrs_UplinkForPUSCH_MappingTypeA));
-    pusch_Config->dmrs_UplinkForPUSCH_MappingTypeA->present = NR_SetupRelease_DMRS_UplinkConfig_PR_setup;
-    if (!pusch_Config->dmrs_UplinkForPUSCH_MappingTypeA->choice.setup)
-      pusch_Config->dmrs_UplinkForPUSCH_MappingTypeA->choice.setup = calloc(1, sizeof(*pusch_Config->dmrs_UplinkForPUSCH_MappingTypeA->choice.setup));
-    NR_DMRS_UplinkConfig_t *NR_DMRS_UplinkConfig = pusch_Config->dmrs_UplinkForPUSCH_MappingTypeA->choice.setup;
-    NR_DMRS_UplinkConfig->dmrs_Type = NULL;
-    NR_DMRS_UplinkConfig->dmrs_AdditionalPosition = calloc(1,sizeof(*NR_DMRS_UplinkConfig->dmrs_AdditionalPosition));
-    *(NR_DMRS_UplinkConfig->dmrs_AdditionalPosition) = NR_DMRS_UplinkConfig__dmrs_AdditionalPosition_pos1;
-    NR_DMRS_UplinkConfig->phaseTrackingRS = NULL;
-    NR_DMRS_UplinkConfig->maxLength = NULL;
-    if (!NR_DMRS_UplinkConfig->transformPrecodingDisabled)
-      NR_DMRS_UplinkConfig->transformPrecodingDisabled = calloc(1, sizeof(*NR_DMRS_UplinkConfig->transformPrecodingDisabled));
-    NR_DMRS_UplinkConfig->transformPrecodingDisabled->scramblingID0 = NULL;
-    NR_DMRS_UplinkConfig->transformPrecodingDisabled->scramblingID1 = NULL;
-    NR_DMRS_UplinkConfig->transformPrecodingEnabled = NULL;
-    pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB = NULL;
-  } else {
-    pusch_Config->dmrs_UplinkForPUSCH_MappingTypeA = NULL;
-    if (!pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB)
-      pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB = calloc(1, sizeof(*pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB));
-    pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->present = NR_SetupRelease_DMRS_UplinkConfig_PR_setup;
-    if (!pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup)
-      pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup = calloc(1, sizeof(*pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup));
-    NR_DMRS_UplinkConfig_t *NR_DMRS_UplinkConfig = pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup;
-    NR_DMRS_UplinkConfig->dmrs_Type = NULL;
-    NR_DMRS_UplinkConfig->dmrs_AdditionalPosition = NULL;
-    NR_DMRS_UplinkConfig->phaseTrackingRS = NULL;
-    NR_DMRS_UplinkConfig->maxLength = NULL;
-    if (!NR_DMRS_UplinkConfig->transformPrecodingDisabled)
-      NR_DMRS_UplinkConfig->transformPrecodingDisabled = calloc(1, sizeof(*NR_DMRS_UplinkConfig->transformPrecodingDisabled));
-    NR_DMRS_UplinkConfig->transformPrecodingDisabled->scramblingID0 = NULL;
-    NR_DMRS_UplinkConfig->transformPrecodingDisabled->scramblingID1 = NULL;
-    if (!NR_DMRS_UplinkConfig->transformPrecodingEnabled)
-      NR_DMRS_UplinkConfig->transformPrecodingEnabled = calloc(1, sizeof(*NR_DMRS_UplinkConfig->transformPrecodingEnabled));
-    NR_DMRS_UplinkConfig->transformPrecodingEnabled->nPUSCH_Identity = NULL;
-    NR_DMRS_UplinkConfig->transformPrecodingEnabled->sequenceHopping = NULL;
-    NR_DMRS_UplinkConfig->transformPrecodingEnabled->sequenceGroupHopping = NULL;
-  }
+  pusch_Config->dmrs_UplinkForPUSCH_MappingTypeA = NULL;
+  if (!pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB)
+    pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB = calloc(1, sizeof(*pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB));
+  pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->present = NR_SetupRelease_DMRS_UplinkConfig_PR_setup;
+  if (!pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup)
+    pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup = calloc(1, sizeof(*pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup));
+  NR_DMRS_UplinkConfig_t *NR_DMRS_UplinkConfig = pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup;
+  NR_DMRS_UplinkConfig->dmrs_Type = NULL;
+  NR_DMRS_UplinkConfig->dmrs_AdditionalPosition = NULL;
+  NR_DMRS_UplinkConfig->phaseTrackingRS = NULL;
+  NR_DMRS_UplinkConfig->maxLength = NULL;
+  if (!NR_DMRS_UplinkConfig->transformPrecodingDisabled)
+    NR_DMRS_UplinkConfig->transformPrecodingDisabled = calloc(1, sizeof(*NR_DMRS_UplinkConfig->transformPrecodingDisabled));
+  NR_DMRS_UplinkConfig->transformPrecodingDisabled->scramblingID0 = NULL;
+  NR_DMRS_UplinkConfig->transformPrecodingDisabled->scramblingID1 = NULL;
+  if (!NR_DMRS_UplinkConfig->transformPrecodingEnabled)
+    NR_DMRS_UplinkConfig->transformPrecodingEnabled = calloc(1, sizeof(*NR_DMRS_UplinkConfig->transformPrecodingEnabled));
+  NR_DMRS_UplinkConfig->transformPrecodingEnabled->nPUSCH_Identity = NULL;
+  NR_DMRS_UplinkConfig->transformPrecodingEnabled->sequenceHopping = NULL;
+  NR_DMRS_UplinkConfig->transformPrecodingEnabled->sequenceGroupHopping = NULL;
   if (!pusch_Config->pusch_PowerControl)
     pusch_Config->pusch_PowerControl = calloc(1, sizeof(*pusch_Config->pusch_PowerControl));
   pusch_Config->pusch_PowerControl->tpc_Accumulation = NULL;

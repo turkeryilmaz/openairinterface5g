@@ -2433,17 +2433,18 @@ uint8_t do_SIB4(uint8_t Mod_id,
     }
   }
 
-  /* Checking if intraFreqBlackCellList is present in SIB4 */
-  if (true == configuration->intraFreqBlackCellListPresent[CC_id]) {
-    (*sib4)->intraFreqBlackCellList = CALLOC(configuration->intraFreqBlackCellListCount[CC_id], sizeof(struct LTE_IntraFreqBlackCellList));
+  /* Checking if intraFreqExcludedCellList is present in SIB4 */
+  if (true == configuration->intraFreqExcludedCellListPresent[CC_id]) {
+    // TODO: should be intraFreqExcludedCellList (LTE_IntraFreqExcludedCellList) in newer ASN.1 revision
+    (*sib4)->intraFreqBlackCellList = CALLOC(configuration->intraFreqExcludedCellListCount[CC_id], sizeof(struct LTE_IntraFreqBlackCellList));
     LTE_PhysCellIdRange_t *PhysCellIdRange;
-    /* Handling multiple entities in intraFreqBlackCellList for SIB4 message */
-    for (int i = 0; i < configuration->intraFreqBlackCellListCount[CC_id]; i++) {
+    /* Handling multiple entities in intraFreqExcludedCellList for SIB4 message */
+    for (int i = 0; i < configuration->intraFreqExcludedCellListCount[CC_id]; i++) {
       PhysCellIdRange = CALLOC(1, sizeof(struct LTE_PhysCellIdRange));
-      PhysCellIdRange->start = configuration->intraFreqBlackCellList[CC_id][i].start;
-      if (true == configuration->intraFreqBlackCellList[CC_id][i].range_Present) {
+      PhysCellIdRange->start = configuration->intraFreqExcludedCellList[CC_id][i].start;
+      if (true == configuration->intraFreqExcludedCellList[CC_id][i].range_Present) {
         PhysCellIdRange->range = CALLOC(1, sizeof(long));
-        PhysCellIdRange->range = (long *)configuration->intraFreqBlackCellList[CC_id][i].range;
+        PhysCellIdRange->range = (long *)configuration->intraFreqExcludedCellList[CC_id][i].range;
       }
       asn1cSeqAdd(&(*sib4)->intraFreqBlackCellList->list, PhysCellIdRange);
     }
@@ -2546,9 +2547,10 @@ uint8_t do_SIB5(uint8_t Mod_id,
       //InterFreqCarrierInfo->interFreqNeighCellList = CALLOC(1,sizeof(struct LTE_InterFreqNeighCellList));
       ASN_SEQUENCE_ADD(&InterFreqCarrierInfo->interFreqNeighCellList->list, configuration->InterFreqCarrierFreqInfo[CC_id][i].interFreqNeighCellList);
     }
-    if(true == configuration->InterFreqCarrierFreqInfo[CC_id][i].interFreqBlackCellList_Present) {
+    if(true == configuration->InterFreqCarrierFreqInfo[CC_id][i].interFreqExcludedCellList_Present) {
+      // TODO: should be interFreqExcludedCellList (LTE_InterFreqExcludedCellList) in newer ASN.1 revision
       //InterFreqCarrierInfo->interFreqBlackCellList = CALLOC(1,sizeof(struct LTE_InterFreqBlackCellList));
-      ASN_SEQUENCE_ADD(&InterFreqCarrierInfo->interFreqBlackCellList->list, configuration->InterFreqCarrierFreqInfo[CC_id][i].interFreqBlackCellList);
+      ASN_SEQUENCE_ADD(&InterFreqCarrierInfo->interFreqBlackCellList->list, configuration->InterFreqCarrierFreqInfo[CC_id][i].interFreqExcludedCellList);
     }
     if ((true == configuration->InterFreqCarrierFreqInfo[CC_id][i].threshX_Q_r9_Present) ||
     (true == configuration->InterFreqCarrierFreqInfo[CC_id][i].q_QualMin_r9_Present)) {

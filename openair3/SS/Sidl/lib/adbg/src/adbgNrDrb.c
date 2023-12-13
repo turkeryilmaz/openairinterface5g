@@ -153,6 +153,17 @@ static void _adbgNrDrb__RlcBearerRouting_Type(acpCtx_t _ctx, const struct RlcBea
 	_adbgNrDrb__RlcBearerRouting_Type_Value(_ctx, &p->v, p->d);
 }
 
+static void _adbgNrDrb__MacBearerRouting_Type(acpCtx_t _ctx, const struct MacBearerRouting_Type* p)
+{
+	adbgPrintLog(_ctx, "NR := %s (%d)", adbgNrDrb__NR_CellId_Type__ToString(p->NR), (int)p->NR);
+}
+
+static void _adbgNrDrb__MacBearerRouting_Type_NR_ReqAspCommonPart_Type_MacBearerRouting_Optional(acpCtx_t _ctx, const struct MacBearerRouting_Type_NR_ReqAspCommonPart_Type_MacBearerRouting_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrDrb__MacBearerRouting_Type(_ctx, &p->v);
+}
+
 static void _adbgNrDrb__SystemFrameNumberInfo_Type_Value(acpCtx_t _ctx, const union SystemFrameNumberInfo_Type_Value* p, enum SystemFrameNumberInfo_Type_Sel d)
 {
 	if (d == SystemFrameNumberInfo_Type_Number) {
@@ -248,6 +259,28 @@ static void _adbgNrDrb__SlotTimingInfo_Type(acpCtx_t _ctx, const struct SlotTimi
 	_adbgNrDrb__SlotTimingInfo_Type_Value(_ctx, &p->v, p->d);
 }
 
+static void _adbgNrDrb__SymbolTimingInfo_Type_Value(acpCtx_t _ctx, const union SymbolTimingInfo_Type_Value* p, enum SymbolTimingInfo_Type_Sel d)
+{
+	if (d == SymbolTimingInfo_Type_SymbolOffset) {
+		adbgPrintLog(_ctx, "SymbolOffset := %u", (unsigned int)p->SymbolOffset);
+		return;
+	}
+	if (d == SymbolTimingInfo_Type_FirstSymbol) {
+		adbgPrintLog(_ctx, "FirstSymbol := %s", (p->FirstSymbol ? "true" : "false"));
+		return;
+	}
+	if (d == SymbolTimingInfo_Type_Any) {
+		adbgPrintLog(_ctx, "Any := %s", (p->Any ? "true" : "false"));
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrDrb__SymbolTimingInfo_Type(acpCtx_t _ctx, const struct SymbolTimingInfo_Type* p)
+{
+	_adbgNrDrb__SymbolTimingInfo_Type_Value(_ctx, &p->v, p->d);
+}
+
 static void _adbgNrDrb__SubFrameTiming_Type(acpCtx_t _ctx, const struct SubFrameTiming_Type* p)
 {
 	adbgPrintLog(_ctx, "SFN := { ");
@@ -264,6 +297,10 @@ static void _adbgNrDrb__SubFrameTiming_Type(acpCtx_t _ctx, const struct SubFrame
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "Slot := { ");
 	_adbgNrDrb__SlotTimingInfo_Type(_ctx, &p->Slot);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "Symbol := { ");
+	_adbgNrDrb__SymbolTimingInfo_Type(_ctx, &p->Symbol);
 	adbgPrintLog(_ctx, " }");
 }
 
@@ -309,6 +346,11 @@ static void _adbgNrDrb__NR_ReqAspCommonPart_Type(acpCtx_t _ctx, const struct NR_
 	adbgPrintLog(_ctx, "RlcBearerRouting := { ");
 	_adbgNrDrb__RlcBearerRouting_Type(_ctx, &p->RlcBearerRouting);
 	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "MacBearerRouting := ");
+	if (p->MacBearerRouting.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrDrb__MacBearerRouting_Type_NR_ReqAspCommonPart_Type_MacBearerRouting_Optional(_ctx, &p->MacBearerRouting);
+	if (p->MacBearerRouting.d) { adbgPrintLog(_ctx, " }"); };
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "TimingInfo := { ");
 	_adbgNrDrb__TimingInfo_Type(_ctx, &p->TimingInfo);
@@ -2297,6 +2339,12 @@ static void _adbgNrDrb__NR_RoutingInfoSUL_Type_RoutingInfoSUL_Optional(acpCtx_t 
 	adbgPrintLog(_ctx, "%s", (p->v ? "true" : "false"));
 }
 
+static void _adbgNrDrb__MacBearerRouting_Type_NR_IndAspCommonPart_Type_MacBearerRouting_Optional(acpCtx_t _ctx, const struct MacBearerRouting_Type_NR_IndAspCommonPart_Type_MacBearerRouting_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrDrb__MacBearerRouting_Type(_ctx, &p->v);
+}
+
 static void _adbgNrDrb__IntegrityErrorIndication_Type(acpCtx_t _ctx, const struct IntegrityErrorIndication_Type* p)
 {
 	adbgPrintLog(_ctx, "Nas := %s", (p->Nas ? "true" : "false"));
@@ -2347,6 +2395,11 @@ static void _adbgNrDrb__NR_IndAspCommonPart_Type(acpCtx_t _ctx, const struct NR_
 	adbgPrintLog(_ctx, "RlcBearerRouting := { ");
 	_adbgNrDrb__RlcBearerRouting_Type(_ctx, &p->RlcBearerRouting);
 	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "MacBearerRouting := ");
+	if (p->MacBearerRouting.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrDrb__MacBearerRouting_Type_NR_IndAspCommonPart_Type_MacBearerRouting_Optional(_ctx, &p->MacBearerRouting);
+	if (p->MacBearerRouting.d) { adbgPrintLog(_ctx, " }"); };
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "TimingInfo := { ");
 	_adbgNrDrb__TimingInfo_Type(_ctx, &p->TimingInfo);

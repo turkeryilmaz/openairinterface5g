@@ -33,26 +33,17 @@
 
 SIDL_BEGIN_C_INTERFACE
 
-enum NR_CellCapability_Type {
-	NR_CellCapability_broadcastOnlyCell = 0,
-	NR_CellCapability_minimumUplinkCell = 1,
-	NR_CellCapability_fullCell = 2,
+enum NR_CellCA_Capability_Type {
+	NR_CellCA_Capability_SpCell = 0,
+	NR_CellCA_Capability_Scell_Active = 1,
+	NR_CellCA_Capability_Scell_Inactive = 2,
+	NR_CellCA_Capability_None = 3,
 };
 
-typedef enum NR_CellCapability_Type NR_CellCapability_Type;
-
-enum NR_CellInitialCAConfig_Type {
-	NR_CellInitialCAConfig_SpCell = 0,
-	NR_CellInitialCAConfig_Scell_Active = 1,
-	NR_CellInitialCAConfig_Scell_Inactive = 2,
-	NR_CellInitialCAConfig_Scell_None = 3,
-};
-
-typedef enum NR_CellInitialCAConfig_Type NR_CellInitialCAConfig_Type;
+typedef enum NR_CellCA_Capability_Type NR_CellCA_Capability_Type;
 
 struct NR_SS_StaticCellResourceConfig_Type {
-	NR_CellCapability_Type CellCapability;
-	NR_CellInitialCAConfig_Type CarrierAggregation;
+	NR_CellCA_Capability_Type CA_Capability;
 };
 
 SIDL_END_C_INTERFACE

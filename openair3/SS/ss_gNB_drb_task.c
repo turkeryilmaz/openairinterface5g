@@ -114,6 +114,9 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind,int cell_index)
     ind.Common.TimingInfo.v.SubFrame.Slot.d = SlotTimingInfo_Type_Any;
     ind.Common.TimingInfo.v.SubFrame.Slot.v.Any = true;
 
+    ind.Common.TimingInfo.v.SubFrame.Symbol.d = SymbolTimingInfo_Type_Any;
+    ind.Common.TimingInfo.v.SubFrame.Symbol.v.Any = true;
+
     ind.Common.Status.d = IndicationStatus_Type_Ok;
     ind.Common.Status.v.Ok = true;
 
@@ -259,7 +262,7 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind,int cell_index)
     break;
 
     default:
-        LOG_E(GNB_APP, "[SS_DRB] %s requested NR_L2DataList_Type %d that is not yet implemented\n", _drb_data_type);
+        LOG_E(GNB_APP, "[SS_DRB] requested NR_L2DataList_Type %d that is not yet implemented\n", _drb_data_type);
     }
     // Encode Message
     size_t msgSize = size;
@@ -606,7 +609,7 @@ void ss_gNB_drb_init(void)
         {NULL, 0}};
 
     // Arena size to decode received message
-    const size_t aSize = 32 * 1024;
+    const size_t aSize = 128 * 1024;
 
     // Start listening server and get ACP context,
     // after the connection is performed, we can use all services

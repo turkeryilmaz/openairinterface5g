@@ -144,6 +144,29 @@ static int _serNrSysSrbEncRlcBearerRouting_Type(unsigned char* _buffer, size_t _
 	return SIDL_STATUS_OK;
 }
 
+static int _serNrSysSrbEncMacBearerRouting_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct MacBearerRouting_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp = (size_t)p->NR;
+		HTON_32(&_buffer[*_lidx], _tmp, _lidx);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serNrSysSrbEncMacBearerRouting_Type_NR_ReqAspCommonPart_Type_MacBearerRouting_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct MacBearerRouting_Type_NR_ReqAspCommonPart_Type_MacBearerRouting_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	_serNrSysSrbEncMacBearerRouting_Type(_buffer, _size, _lidx, &p->v);
+
+	return SIDL_STATUS_OK;
+}
+
 static int _serNrSysSrbEncSystemFrameNumberInfo_Type_Value(unsigned char* _buffer, size_t _size, size_t* _lidx, const union SystemFrameNumberInfo_Type_Value* p, enum SystemFrameNumberInfo_Type_Sel d)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -289,6 +312,39 @@ static int _serNrSysSrbEncSlotTimingInfo_Type(unsigned char* _buffer, size_t _si
 	return SIDL_STATUS_OK;
 }
 
+static int _serNrSysSrbEncSymbolTimingInfo_Type_Value(unsigned char* _buffer, size_t _size, size_t* _lidx, const union SymbolTimingInfo_Type_Value* p, enum SymbolTimingInfo_Type_Sel d)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	if (d == SymbolTimingInfo_Type_SymbolOffset) {
+		HTON_8(&_buffer[*_lidx], p->SymbolOffset, _lidx);
+		return SIDL_STATUS_OK;
+	}
+	if (d == SymbolTimingInfo_Type_FirstSymbol) {
+		HTON_8(&_buffer[*_lidx], p->FirstSymbol, _lidx);
+		return SIDL_STATUS_OK;
+	}
+	if (d == SymbolTimingInfo_Type_Any) {
+		HTON_8(&_buffer[*_lidx], p->Any, _lidx);
+		return SIDL_STATUS_OK;
+	}
+
+	return SIDL_STATUS_ERROR;
+}
+
+static int _serNrSysSrbEncSymbolTimingInfo_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SymbolTimingInfo_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp = (size_t)p->d;
+		HTON_32(&_buffer[*_lidx], _tmp, _lidx);
+	}
+	_serNrSysSrbEncSymbolTimingInfo_Type_Value(_buffer, _size, _lidx, &p->v, p->d);
+
+	return SIDL_STATUS_OK;
+}
+
 static int _serNrSysSrbEncSubFrameTiming_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SubFrameTiming_Type* p)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -297,6 +353,7 @@ static int _serNrSysSrbEncSubFrameTiming_Type(unsigned char* _buffer, size_t _si
 	_serNrSysSrbEncSubFrameInfo_Type(_buffer, _size, _lidx, &p->Subframe);
 	_serNrSysSrbEncHyperSystemFrameNumberInfo_Type(_buffer, _size, _lidx, &p->HSFN);
 	_serNrSysSrbEncSlotTimingInfo_Type(_buffer, _size, _lidx, &p->Slot);
+	_serNrSysSrbEncSymbolTimingInfo_Type(_buffer, _size, _lidx, &p->Symbol);
 
 	return SIDL_STATUS_OK;
 }
@@ -354,6 +411,7 @@ static int _serNrSysSrbEncNR_ReqAspCommonPart_Type(unsigned char* _buffer, size_
 	}
 	_serNrSysSrbEncNR_RoutingInfo_Type(_buffer, _size, _lidx, &p->RoutingInfo);
 	_serNrSysSrbEncRlcBearerRouting_Type(_buffer, _size, _lidx, &p->RlcBearerRouting);
+	_serNrSysSrbEncMacBearerRouting_Type_NR_ReqAspCommonPart_Type_MacBearerRouting_Optional(_buffer, _size, _lidx, &p->MacBearerRouting);
 	_serNrSysSrbEncTimingInfo_Type(_buffer, _size, _lidx, &p->TimingInfo);
 	_serNrSysSrbEncReqAspControlInfo_Type(_buffer, _size, _lidx, &p->ControlInfo);
 
@@ -530,6 +588,30 @@ static int _serNrSysSrbDecRlcBearerRouting_Type(const unsigned char* _buffer, si
 	return SIDL_STATUS_OK;
 }
 
+static int _serNrSysSrbDecMacBearerRouting_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct MacBearerRouting_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp;
+		NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
+		p->NR = (NR_CellId_Type)_tmp;
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serNrSysSrbDecMacBearerRouting_Type_NR_ReqAspCommonPart_Type_MacBearerRouting_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct MacBearerRouting_Type_NR_ReqAspCommonPart_Type_MacBearerRouting_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	_serNrSysSrbDecMacBearerRouting_Type(_buffer, _size, _lidx, &p->v);
+
+	return SIDL_STATUS_OK;
+}
+
 static int _serNrSysSrbDecSystemFrameNumberInfo_Type_Value(const unsigned char* _buffer, size_t _size, size_t* _lidx, union SystemFrameNumberInfo_Type_Value* p, enum SystemFrameNumberInfo_Type_Sel d)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -680,6 +762,40 @@ static int _serNrSysSrbDecSlotTimingInfo_Type(const unsigned char* _buffer, size
 	return SIDL_STATUS_OK;
 }
 
+static int _serNrSysSrbDecSymbolTimingInfo_Type_Value(const unsigned char* _buffer, size_t _size, size_t* _lidx, union SymbolTimingInfo_Type_Value* p, enum SymbolTimingInfo_Type_Sel d)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	if (d == SymbolTimingInfo_Type_SymbolOffset) {
+		NTOH_8(p->SymbolOffset, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
+	}
+	if (d == SymbolTimingInfo_Type_FirstSymbol) {
+		NTOH_8(p->FirstSymbol, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
+	}
+	if (d == SymbolTimingInfo_Type_Any) {
+		NTOH_8(p->Any, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
+	}
+
+	return SIDL_STATUS_ERROR;
+}
+
+static int _serNrSysSrbDecSymbolTimingInfo_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SymbolTimingInfo_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp;
+		NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
+		p->d = (enum SymbolTimingInfo_Type_Sel)_tmp;
+	}
+	_serNrSysSrbDecSymbolTimingInfo_Type_Value(_buffer, _size, _lidx, &p->v, p->d);
+
+	return SIDL_STATUS_OK;
+}
+
 static int _serNrSysSrbDecSubFrameTiming_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SubFrameTiming_Type* p)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -688,6 +804,7 @@ static int _serNrSysSrbDecSubFrameTiming_Type(const unsigned char* _buffer, size
 	_serNrSysSrbDecSubFrameInfo_Type(_buffer, _size, _lidx, &p->Subframe);
 	_serNrSysSrbDecHyperSystemFrameNumberInfo_Type(_buffer, _size, _lidx, &p->HSFN);
 	_serNrSysSrbDecSlotTimingInfo_Type(_buffer, _size, _lidx, &p->Slot);
+	_serNrSysSrbDecSymbolTimingInfo_Type(_buffer, _size, _lidx, &p->Symbol);
 
 	return SIDL_STATUS_OK;
 }
@@ -747,6 +864,7 @@ static int _serNrSysSrbDecNR_ReqAspCommonPart_Type(const unsigned char* _buffer,
 	}
 	_serNrSysSrbDecNR_RoutingInfo_Type(_buffer, _size, _lidx, &p->RoutingInfo);
 	_serNrSysSrbDecRlcBearerRouting_Type(_buffer, _size, _lidx, &p->RlcBearerRouting);
+	_serNrSysSrbDecMacBearerRouting_Type_NR_ReqAspCommonPart_Type_MacBearerRouting_Optional(_buffer, _size, _lidx, &p->MacBearerRouting);
 	_serNrSysSrbDecTimingInfo_Type(_buffer, _size, _lidx, &p->TimingInfo);
 	_serNrSysSrbDecReqAspControlInfo_Type(_buffer, _size, _lidx, &p->ControlInfo);
 
@@ -876,6 +994,17 @@ static int _serNrSysSrbEncNR_RoutingInfoSUL_Type_RoutingInfoSUL_Optional(unsigne
 	return SIDL_STATUS_OK;
 }
 
+static int _serNrSysSrbEncMacBearerRouting_Type_NR_IndAspCommonPart_Type_MacBearerRouting_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct MacBearerRouting_Type_NR_IndAspCommonPart_Type_MacBearerRouting_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	_serNrSysSrbEncMacBearerRouting_Type(_buffer, _size, _lidx, &p->v);
+
+	return SIDL_STATUS_OK;
+}
+
 static int _serNrSysSrbEncIntegrityErrorIndication_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct IntegrityErrorIndication_Type* p)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -936,6 +1065,7 @@ static int _serNrSysSrbEncNR_IndAspCommonPart_Type(unsigned char* _buffer, size_
 	_serNrSysSrbEncNR_RoutingInfo_Type(_buffer, _size, _lidx, &p->RoutingInfo);
 	_serNrSysSrbEncNR_RoutingInfoSUL_Type_RoutingInfoSUL_Optional(_buffer, _size, _lidx, &p->RoutingInfoSUL);
 	_serNrSysSrbEncRlcBearerRouting_Type(_buffer, _size, _lidx, &p->RlcBearerRouting);
+	_serNrSysSrbEncMacBearerRouting_Type_NR_IndAspCommonPart_Type_MacBearerRouting_Optional(_buffer, _size, _lidx, &p->MacBearerRouting);
 	_serNrSysSrbEncTimingInfo_Type(_buffer, _size, _lidx, &p->TimingInfo);
 	_serNrSysSrbEncIndicationStatus_Type(_buffer, _size, _lidx, &p->Status);
 
@@ -1014,6 +1144,17 @@ static int _serNrSysSrbDecNR_RoutingInfoSUL_Type_RoutingInfoSUL_Optional(const u
 	return SIDL_STATUS_OK;
 }
 
+static int _serNrSysSrbDecMacBearerRouting_Type_NR_IndAspCommonPart_Type_MacBearerRouting_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct MacBearerRouting_Type_NR_IndAspCommonPart_Type_MacBearerRouting_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	_serNrSysSrbDecMacBearerRouting_Type(_buffer, _size, _lidx, &p->v);
+
+	return SIDL_STATUS_OK;
+}
+
 static int _serNrSysSrbDecIntegrityErrorIndication_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct IntegrityErrorIndication_Type* p)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -1076,6 +1217,7 @@ static int _serNrSysSrbDecNR_IndAspCommonPart_Type(const unsigned char* _buffer,
 	_serNrSysSrbDecNR_RoutingInfo_Type(_buffer, _size, _lidx, &p->RoutingInfo);
 	_serNrSysSrbDecNR_RoutingInfoSUL_Type_RoutingInfoSUL_Optional(_buffer, _size, _lidx, &p->RoutingInfoSUL);
 	_serNrSysSrbDecRlcBearerRouting_Type(_buffer, _size, _lidx, &p->RlcBearerRouting);
+	_serNrSysSrbDecMacBearerRouting_Type_NR_IndAspCommonPart_Type_MacBearerRouting_Optional(_buffer, _size, _lidx, &p->MacBearerRouting);
 	_serNrSysSrbDecTimingInfo_Type(_buffer, _size, _lidx, &p->TimingInfo);
 	_serNrSysSrbDecIndicationStatus_Type(_buffer, _size, _lidx, &p->Status);
 

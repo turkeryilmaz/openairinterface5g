@@ -313,6 +313,28 @@ static void _adbgSysSrb__SlotTimingInfo_Type(acpCtx_t _ctx, const struct SlotTim
 	_adbgSysSrb__SlotTimingInfo_Type_Value(_ctx, &p->v, p->d);
 }
 
+static void _adbgSysSrb__SymbolTimingInfo_Type_Value(acpCtx_t _ctx, const union SymbolTimingInfo_Type_Value* p, enum SymbolTimingInfo_Type_Sel d)
+{
+	if (d == SymbolTimingInfo_Type_SymbolOffset) {
+		adbgPrintLog(_ctx, "SymbolOffset := %u", (unsigned int)p->SymbolOffset);
+		return;
+	}
+	if (d == SymbolTimingInfo_Type_FirstSymbol) {
+		adbgPrintLog(_ctx, "FirstSymbol := %s", (p->FirstSymbol ? "true" : "false"));
+		return;
+	}
+	if (d == SymbolTimingInfo_Type_Any) {
+		adbgPrintLog(_ctx, "Any := %s", (p->Any ? "true" : "false"));
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgSysSrb__SymbolTimingInfo_Type(acpCtx_t _ctx, const struct SymbolTimingInfo_Type* p)
+{
+	_adbgSysSrb__SymbolTimingInfo_Type_Value(_ctx, &p->v, p->d);
+}
+
 static void _adbgSysSrb__SubFrameTiming_Type(acpCtx_t _ctx, const struct SubFrameTiming_Type* p)
 {
 	adbgPrintLog(_ctx, "SFN := { ");
@@ -329,6 +351,10 @@ static void _adbgSysSrb__SubFrameTiming_Type(acpCtx_t _ctx, const struct SubFram
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "Slot := { ");
 	_adbgSysSrb__SlotTimingInfo_Type(_ctx, &p->Slot);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "Symbol := { ");
+	_adbgSysSrb__SymbolTimingInfo_Type(_ctx, &p->Symbol);
 	adbgPrintLog(_ctx, " }");
 }
 

@@ -97,17 +97,20 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind, int cell_index){
 	ind.Common.TimingInfo.v.SubFrame.Subframe.v.Number = pdu_ind->subframe;
 
 	ind.Common.TimingInfo.v.SubFrame.HSFN.d = SystemFrameNumberInfo_Type_Number;
-        ind.Common.TimingInfo.v.SubFrame.HSFN.v.Number = SS_context.hsfn;
+	ind.Common.TimingInfo.v.SubFrame.HSFN.v.Number = SS_context.hsfn;
 
 	ind.Common.TimingInfo.v.SubFrame.Slot.d = SlotTimingInfo_Type_Any;
-        ind.Common.TimingInfo.v.SubFrame.Slot.v.Any = true;
+	ind.Common.TimingInfo.v.SubFrame.Slot.v.Any = true;
+
+	ind.Common.TimingInfo.v.SubFrame.Symbol.d = SymbolTimingInfo_Type_Any;
+	ind.Common.TimingInfo.v.SubFrame.Symbol.v.Any = true;
 
 	ind.Common.Status.d = IndicationStatus_Type_Ok;
-        ind.Common.Status.v.Ok = true;
+	ind.Common.Status.v.Ok = true;
 
 	ind.Common.RlcBearerRouting.d = true;
-        ind.Common.RlcBearerRouting.v.d = RlcBearerRouting_Type_EUTRA;
-        ind.Common.RlcBearerRouting.v.v.EUTRA = SS_context.SSCell_list[cell_index].eutra_cellId;
+	ind.Common.RlcBearerRouting.v.d = RlcBearerRouting_Type_EUTRA;
+	ind.Common.RlcBearerRouting.v.v.EUTRA = SS_context.SSCell_list[cell_index].eutra_cellId;
 
 	//Populating the PDU
 	ind.U_Plane.SubframeData.NoOfTTIs = 1;
@@ -336,7 +339,7 @@ void ss_eNB_drb_init(void)
     {NULL, 0}};
 
   // Arena size to decode received message
-  const size_t aSize = 32 * 1024;
+  const size_t aSize = 128 * 1024;
 
   // Start listening server and get ACP context,
   // after the connection is performed, we can use all services
