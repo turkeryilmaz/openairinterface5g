@@ -44,6 +44,7 @@
 #define NR_NB_SC_PER_RB 12
 #define NR_MAX_NUM_LCID 32
 #define NR_MAX_NUM_QFI 64
+#define NR_MAX_NUM_SLICES 10
 
 typedef enum {
   nr_FR1 = 0,
