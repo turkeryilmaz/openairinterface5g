@@ -114,6 +114,9 @@ static void ss_send_srb_data(ss_nrrrc_pdu_ind_t *pdu_ind, int cell_index)
         ind.Common.TimingInfo.v.SubFrame.Slot.d = SlotTimingInfo_Type_Any;
         ind.Common.TimingInfo.v.SubFrame.Slot.v.Any = true;
 
+        ind.Common.TimingInfo.v.SubFrame.Symbol.d = SymbolTimingInfo_Type_Any;
+        ind.Common.TimingInfo.v.SubFrame.Symbol.v.Any = true;
+
         ind.Common.Status.d = IndicationStatus_Type_Ok;
         ind.Common.Status.v.Ok = true;
 
@@ -409,7 +412,7 @@ void ss_gNB_srb_init(void)
   };
 
   // Arena size to decode received message
-  const size_t aSize = 32 * 1024;
+  const size_t aSize = 128 * 1024;
 
   // Start listening server and get ACP context,
   // after the connection is performed, we can use all services

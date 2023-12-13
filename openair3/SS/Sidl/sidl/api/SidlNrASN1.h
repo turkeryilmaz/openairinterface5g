@@ -80,6 +80,8 @@ typedef OCTET_STRING_ELEMENT O1[1];
 
 typedef OCTET_STRING_ELEMENT O2[2];
 
+typedef OCTET_STRING_ELEMENT O3[3];
+
 typedef uint32_t SQN_NR_ARFCN_ValueNR;
 
 enum SQN_NR_MIB_subCarrierSpacingCommon_e {
@@ -545,6 +547,35 @@ enum SQN_NR_SSB_PositionQCL_Relation_r16_e {
 
 typedef enum SQN_NR_SSB_PositionQCL_Relation_r16_e SQN_NR_SSB_PositionQCL_Relation_r16_e;
 
+enum SQN_NR_SSB_PositionQCL_Relation_r17_e {
+	SQN_NR_SSB_PositionQCL_Relation_r17_e_n32 = 0,
+	SQN_NR_SSB_PositionQCL_Relation_r17_e_n64 = 1,
+};
+
+typedef enum SQN_NR_SSB_PositionQCL_Relation_r17_e SQN_NR_SSB_PositionQCL_Relation_r17_e;
+
+struct SQN_NR_PhysCellId_SQN_NR_SSB_MTC4_r17_pci_List_r17_Dynamic {
+	size_t d;
+	SQN_NR_PhysCellId* v;
+};
+
+struct SQN_NR_PhysCellId_SQN_NR_SSB_MTC4_r17_pci_List_r17_DynamicOptional {
+	bool d;
+	struct SQN_NR_PhysCellId_SQN_NR_SSB_MTC4_r17_pci_List_r17_Dynamic v;
+};
+
+struct SQN_NR_SSB_MTC4_r17 {
+	struct SQN_NR_PhysCellId_SQN_NR_SSB_MTC4_r17_pci_List_r17_DynamicOptional pci_List_r17;
+	uint8_t offset_r17;
+};
+
+struct SQN_NR_SSB_MTC4_r17_SQN_NR_SSB_MTC4List_r17_Dynamic {
+	size_t d;
+	struct SQN_NR_SSB_MTC4_r17* v;
+};
+
+typedef struct SQN_NR_SSB_MTC4_r17_SQN_NR_SSB_MTC4List_r17_Dynamic SQN_NR_SSB_MTC4List_r17;
+
 struct SQN_NR_Q_RxLevMin_SQN_NR_SIB2_intraFreqCellReselectionInfo_q_RxLevMinSUL_Optional {
 	bool d;
 	SQN_NR_Q_RxLevMin v;
@@ -605,6 +636,16 @@ struct SQN_NR_SSB_PositionQCL_Relation_r16_e_SQN_NR_SIB2_intraFreqCellReselectio
 	SQN_NR_SSB_PositionQCL_Relation_r16_e v;
 };
 
+struct SQN_NR_SSB_PositionQCL_Relation_r17_e_SQN_NR_SIB2_intraFreqCellReselectionInfo_ssb_PositionQCL_Common_r17_Optional {
+	bool d;
+	SQN_NR_SSB_PositionQCL_Relation_r17_e v;
+};
+
+struct SQN_NR_SSB_MTC4List_r17_SQN_NR_SIB2_intraFreqCellReselectionInfo_smtc4list_r17_Optional {
+	bool d;
+	SQN_NR_SSB_MTC4List_r17 v;
+};
+
 struct SQN_NR_SIB2_intraFreqCellReselectionInfo {
 	SQN_NR_Q_RxLevMin q_RxLevMin;
 	struct SQN_NR_Q_RxLevMin_SQN_NR_SIB2_intraFreqCellReselectionInfo_q_RxLevMinSUL_Optional q_RxLevMinSUL;
@@ -622,6 +663,8 @@ struct SQN_NR_SIB2_intraFreqCellReselectionInfo {
 	struct SQN_NR_SpeedStateScaleFactors_SQN_NR_SIB2_intraFreqCellReselectionInfo_t_ReselectionNR_SF_Optional t_ReselectionNR_SF;
 	struct SQN_NR_SSB_MTC2_LP_r16_SQN_NR_SIB2_intraFreqCellReselectionInfo_smtc2_LP_r16_Optional smtc2_LP_r16;
 	struct SQN_NR_SSB_PositionQCL_Relation_r16_e_SQN_NR_SIB2_intraFreqCellReselectionInfo_ssb_PositionQCL_Common_r16_Optional ssb_PositionQCL_Common_r16;
+	struct SQN_NR_SSB_PositionQCL_Relation_r17_e_SQN_NR_SIB2_intraFreqCellReselectionInfo_ssb_PositionQCL_Common_r17_Optional ssb_PositionQCL_Common_r17;
+	struct SQN_NR_SSB_MTC4List_r17_SQN_NR_SIB2_intraFreqCellReselectionInfo_smtc4list_r17_Optional smtc4list_r17;
 };
 
 enum SQN_NR_SIB2_relaxedMeasurement_r16_lowMobilityEvaluation_r16_s_SearchDeltaP_r16_e {
@@ -712,9 +755,90 @@ struct SQN_NR_SIB2_relaxedMeasurement_r16 {
 	struct SQN_NR_SIB2_relaxedMeasurement_r16_highPriorityMeasRelax_r16_e_highPriorityMeasRelax_r16_Optional highPriorityMeasRelax_r16;
 };
 
+enum SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_s_SearchDeltaP_Stationary_r17_e {
+	SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_s_SearchDeltaP_Stationary_r17_e_dB2 = 0,
+	SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_s_SearchDeltaP_Stationary_r17_e_dB3 = 1,
+	SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_s_SearchDeltaP_Stationary_r17_e_dB6 = 2,
+	SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_s_SearchDeltaP_Stationary_r17_e_dB9 = 3,
+	SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_s_SearchDeltaP_Stationary_r17_e_dB12 = 4,
+	SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_s_SearchDeltaP_Stationary_r17_e_dB15 = 5,
+	SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_s_SearchDeltaP_Stationary_r17_e_spare2 = 6,
+	SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_s_SearchDeltaP_Stationary_r17_e_spare1 = 7,
+};
+
+typedef enum SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_s_SearchDeltaP_Stationary_r17_e SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_s_SearchDeltaP_Stationary_r17_e;
+
+enum SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e {
+	SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_s5 = 0,
+	SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_s10 = 1,
+	SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_s20 = 2,
+	SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_s30 = 3,
+	SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_s60 = 4,
+	SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_s120 = 5,
+	SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_s180 = 6,
+	SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_s240 = 7,
+	SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_s300 = 8,
+	SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_spare7 = 9,
+	SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_spare6 = 10,
+	SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_spare5 = 11,
+	SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_spare4 = 12,
+	SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_spare3 = 13,
+	SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_spare2 = 14,
+	SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_spare1 = 15,
+};
+
+typedef enum SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e;
+
+struct SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17 {
+	SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_s_SearchDeltaP_Stationary_r17_e s_SearchDeltaP_Stationary_r17;
+	SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e t_SearchDeltaP_Stationary_r17;
+};
+
+struct SQN_NR_ReselectionThresholdQ_SQN_NR_SIB2_relaxedMeasurement_r17_cellEdgeEvaluationWhileStationary_r17_s_SearchThresholdQ2_r17_Optional {
+	bool d;
+	SQN_NR_ReselectionThresholdQ v;
+};
+
+struct SQN_NR_SIB2_relaxedMeasurement_r17_cellEdgeEvaluationWhileStationary_r17 {
+	SQN_NR_ReselectionThreshold s_SearchThresholdP2_r17;
+	struct SQN_NR_ReselectionThresholdQ_SQN_NR_SIB2_relaxedMeasurement_r17_cellEdgeEvaluationWhileStationary_r17_s_SearchThresholdQ2_r17_Optional s_SearchThresholdQ2_r17;
+};
+
+enum SQN_NR_SIB2_relaxedMeasurement_r17_combineRelaxedMeasCondition2_r17_e {
+	SQN_NR_SIB2_relaxedMeasurement_r17_combineRelaxedMeasCondition2_r17_e_true = 0,
+};
+
+typedef enum SQN_NR_SIB2_relaxedMeasurement_r17_combineRelaxedMeasCondition2_r17_e SQN_NR_SIB2_relaxedMeasurement_r17_combineRelaxedMeasCondition2_r17_e;
+
+struct SQN_NR_SIB2_relaxedMeasurement_r17_cellEdgeEvaluationWhileStationary_r17_cellEdgeEvaluationWhileStationary_r17_Optional {
+	bool d;
+	struct SQN_NR_SIB2_relaxedMeasurement_r17_cellEdgeEvaluationWhileStationary_r17 v;
+};
+
+struct SQN_NR_SIB2_relaxedMeasurement_r17_combineRelaxedMeasCondition2_r17_e_combineRelaxedMeasCondition2_r17_Optional {
+	bool d;
+	SQN_NR_SIB2_relaxedMeasurement_r17_combineRelaxedMeasCondition2_r17_e v;
+};
+
+struct SQN_NR_SIB2_relaxedMeasurement_r17 {
+	struct SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17 stationaryMobilityEvaluation_r17;
+	struct SQN_NR_SIB2_relaxedMeasurement_r17_cellEdgeEvaluationWhileStationary_r17_cellEdgeEvaluationWhileStationary_r17_Optional cellEdgeEvaluationWhileStationary_r17;
+	struct SQN_NR_SIB2_relaxedMeasurement_r17_combineRelaxedMeasCondition2_r17_e_combineRelaxedMeasCondition2_r17_Optional combineRelaxedMeasCondition2_r17;
+};
+
 struct SQN_NR_SIB2_relaxedMeasurement_r16_relaxedMeasurement_r16_Optional {
 	bool d;
 	struct SQN_NR_SIB2_relaxedMeasurement_r16 v;
+};
+
+struct uint8_t_SQN_NR_SIB2_cellEquivalentSize_r17_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct SQN_NR_SIB2_relaxedMeasurement_r17_relaxedMeasurement_r17_Optional {
+	bool d;
+	struct SQN_NR_SIB2_relaxedMeasurement_r17 v;
 };
 
 struct SQN_NR_SIB2 {
@@ -722,6 +846,8 @@ struct SQN_NR_SIB2 {
 	struct SQN_NR_SIB2_cellReselectionServingFreqInfo cellReselectionServingFreqInfo;
 	struct SQN_NR_SIB2_intraFreqCellReselectionInfo intraFreqCellReselectionInfo;
 	struct SQN_NR_SIB2_relaxedMeasurement_r16_relaxedMeasurement_r16_Optional relaxedMeasurement_r16;
+	struct uint8_t_SQN_NR_SIB2_cellEquivalentSize_r17_Optional cellEquivalentSize_r17;
+	struct SQN_NR_SIB2_relaxedMeasurement_r17_relaxedMeasurement_r17_Optional relaxedMeasurement_r17;
 };
 
 struct uint8_t_SQN_NR_IntraFreqNeighCellInfo_q_RxLevMinOffsetCell_Optional {
@@ -785,12 +911,12 @@ struct SQN_NR_PCI_Range {
 	struct SQN_NR_PCI_Range_range_e_range_Optional range;
 };
 
-struct SQN_NR_PCI_Range_SQN_NR_IntraFreqBlackCellList_Dynamic {
+struct SQN_NR_PCI_Range_SQN_NR_IntraFreqExcludedCellList_Dynamic {
 	size_t d;
 	struct SQN_NR_PCI_Range* v;
 };
 
-typedef struct SQN_NR_PCI_Range_SQN_NR_IntraFreqBlackCellList_Dynamic SQN_NR_IntraFreqBlackCellList;
+typedef struct SQN_NR_PCI_Range_SQN_NR_IntraFreqExcludedCellList_Dynamic SQN_NR_IntraFreqExcludedCellList;
 
 struct SQN_NR_SSB_PositionQCL_Relation_r16_e_SQN_NR_IntraFreqNeighCellInfo_v1610_ssb_PositionQCL_r16_Optional {
 	bool d;
@@ -808,12 +934,12 @@ struct SQN_NR_IntraFreqNeighCellInfo_v1610_SQN_NR_IntraFreqNeighCellList_v1610_D
 
 typedef struct SQN_NR_IntraFreqNeighCellInfo_v1610_SQN_NR_IntraFreqNeighCellList_v1610_Dynamic SQN_NR_IntraFreqNeighCellList_v1610;
 
-struct SQN_NR_PCI_Range_SQN_NR_IntraFreqWhiteCellList_r16_Dynamic {
+struct SQN_NR_PCI_Range_SQN_NR_IntraFreqAllowedCellList_r16_Dynamic {
 	size_t d;
 	struct SQN_NR_PCI_Range* v;
 };
 
-typedef struct SQN_NR_PCI_Range_SQN_NR_IntraFreqWhiteCellList_r16_Dynamic SQN_NR_IntraFreqWhiteCellList_r16;
+typedef struct SQN_NR_PCI_Range_SQN_NR_IntraFreqAllowedCellList_r16_Dynamic SQN_NR_IntraFreqAllowedCellList_r16;
 
 struct SQN_NR_PCI_Range_SQN_NR_IntraFreqCAG_CellListPerPLMN_r16_cag_CellList_r16_Dynamic {
 	size_t d;
@@ -825,14 +951,37 @@ struct SQN_NR_IntraFreqCAG_CellListPerPLMN_r16 {
 	struct SQN_NR_PCI_Range_SQN_NR_IntraFreqCAG_CellListPerPLMN_r16_cag_CellList_r16_Dynamic cag_CellList_r16;
 };
 
+struct SQN_NR_PCI_Range_SQN_NR_IntraFreqNeighHSDN_CellList_r17_Dynamic {
+	size_t d;
+	struct SQN_NR_PCI_Range* v;
+};
+
+typedef struct SQN_NR_PCI_Range_SQN_NR_IntraFreqNeighHSDN_CellList_r17_Dynamic SQN_NR_IntraFreqNeighHSDN_CellList_r17;
+
+struct SQN_NR_SSB_PositionQCL_Relation_r17_e_SQN_NR_IntraFreqNeighCellInfo_v1710_ssb_PositionQCL_r17_Optional {
+	bool d;
+	SQN_NR_SSB_PositionQCL_Relation_r17_e v;
+};
+
+struct SQN_NR_IntraFreqNeighCellInfo_v1710 {
+	struct SQN_NR_SSB_PositionQCL_Relation_r17_e_SQN_NR_IntraFreqNeighCellInfo_v1710_ssb_PositionQCL_r17_Optional ssb_PositionQCL_r17;
+};
+
+struct SQN_NR_IntraFreqNeighCellInfo_v1710_SQN_NR_IntraFreqNeighCellList_v1710_Dynamic {
+	size_t d;
+	struct SQN_NR_IntraFreqNeighCellInfo_v1710* v;
+};
+
+typedef struct SQN_NR_IntraFreqNeighCellInfo_v1710_SQN_NR_IntraFreqNeighCellList_v1710_Dynamic SQN_NR_IntraFreqNeighCellList_v1710;
+
 struct SQN_NR_IntraFreqNeighCellList_SQN_NR_SIB3_intraFreqNeighCellList_Optional {
 	bool d;
 	SQN_NR_IntraFreqNeighCellList v;
 };
 
-struct SQN_NR_IntraFreqBlackCellList_SQN_NR_SIB3_intraFreqBlackCellList_Optional {
+struct SQN_NR_IntraFreqExcludedCellList_SQN_NR_SIB3_intraFreqExcludedCellList_Optional {
 	bool d;
-	SQN_NR_IntraFreqBlackCellList v;
+	SQN_NR_IntraFreqExcludedCellList v;
 };
 
 struct OCTET_STRING_SQN_NR_SIB3_lateNonCriticalExtension_Optional {
@@ -845,9 +994,9 @@ struct SQN_NR_IntraFreqNeighCellList_v1610_SQN_NR_SIB3_intraFreqNeighCellList_v1
 	SQN_NR_IntraFreqNeighCellList_v1610 v;
 };
 
-struct SQN_NR_IntraFreqWhiteCellList_r16_SQN_NR_SIB3_intraFreqWhiteCellList_r16_Optional {
+struct SQN_NR_IntraFreqAllowedCellList_r16_SQN_NR_SIB3_intraFreqAllowedCellList_r16_Optional {
 	bool d;
-	SQN_NR_IntraFreqWhiteCellList_r16 v;
+	SQN_NR_IntraFreqAllowedCellList_r16 v;
 };
 
 struct SQN_NR_SIB3_SQN_NR_IntraFreqCAG_CellListPerPLMN_r16_intraFreqCAG_CellList_r16_Dynamic {
@@ -860,13 +1009,25 @@ struct SQN_NR_IntraFreqCAG_CellListPerPLMN_r16_SQN_NR_SIB3_intraFreqCAG_CellList
 	struct SQN_NR_SIB3_SQN_NR_IntraFreqCAG_CellListPerPLMN_r16_intraFreqCAG_CellList_r16_Dynamic v;
 };
 
+struct SQN_NR_IntraFreqNeighHSDN_CellList_r17_SQN_NR_SIB3_intraFreqNeighHSDN_CellList_r17_Optional {
+	bool d;
+	SQN_NR_IntraFreqNeighHSDN_CellList_r17 v;
+};
+
+struct SQN_NR_IntraFreqNeighCellList_v1710_SQN_NR_SIB3_intraFreqNeighCellList_v1710_Optional {
+	bool d;
+	SQN_NR_IntraFreqNeighCellList_v1710 v;
+};
+
 struct SQN_NR_SIB3 {
 	struct SQN_NR_IntraFreqNeighCellList_SQN_NR_SIB3_intraFreqNeighCellList_Optional intraFreqNeighCellList;
-	struct SQN_NR_IntraFreqBlackCellList_SQN_NR_SIB3_intraFreqBlackCellList_Optional intraFreqBlackCellList;
+	struct SQN_NR_IntraFreqExcludedCellList_SQN_NR_SIB3_intraFreqExcludedCellList_Optional intraFreqExcludedCellList;
 	struct OCTET_STRING_SQN_NR_SIB3_lateNonCriticalExtension_Optional lateNonCriticalExtension;
 	struct SQN_NR_IntraFreqNeighCellList_v1610_SQN_NR_SIB3_intraFreqNeighCellList_v1610_Optional intraFreqNeighCellList_v1610;
-	struct SQN_NR_IntraFreqWhiteCellList_r16_SQN_NR_SIB3_intraFreqWhiteCellList_r16_Optional intraFreqWhiteCellList_r16;
+	struct SQN_NR_IntraFreqAllowedCellList_r16_SQN_NR_SIB3_intraFreqAllowedCellList_r16_Optional intraFreqAllowedCellList_r16;
 	struct SQN_NR_IntraFreqCAG_CellListPerPLMN_r16_SQN_NR_SIB3_intraFreqCAG_CellList_r16_DynamicOptional intraFreqCAG_CellList_r16;
+	struct SQN_NR_IntraFreqNeighHSDN_CellList_r17_SQN_NR_SIB3_intraFreqNeighHSDN_CellList_r17_Optional intraFreqNeighHSDN_CellList_r17;
+	struct SQN_NR_IntraFreqNeighCellList_v1710_SQN_NR_SIB3_intraFreqNeighCellList_v1710_Optional intraFreqNeighCellList_v1710;
 };
 
 enum SQN_NR_SubcarrierSpacing_e {
@@ -875,8 +1036,8 @@ enum SQN_NR_SubcarrierSpacing_e {
 	SQN_NR_SubcarrierSpacing_e_kHz60 = 2,
 	SQN_NR_SubcarrierSpacing_e_kHz120 = 3,
 	SQN_NR_SubcarrierSpacing_e_kHz240 = 4,
-	SQN_NR_SubcarrierSpacing_e_spare3 = 5,
-	SQN_NR_SubcarrierSpacing_e_spare2 = 6,
+	SQN_NR_SubcarrierSpacing_e_kHz480_v1700 = 5,
+	SQN_NR_SubcarrierSpacing_e_kHz960_v1700 = 6,
 	SQN_NR_SubcarrierSpacing_e_spare1 = 7,
 };
 
@@ -917,12 +1078,12 @@ struct SQN_NR_InterFreqNeighCellInfo_SQN_NR_InterFreqNeighCellList_Dynamic {
 
 typedef struct SQN_NR_InterFreqNeighCellInfo_SQN_NR_InterFreqNeighCellList_Dynamic SQN_NR_InterFreqNeighCellList;
 
-struct SQN_NR_PCI_Range_SQN_NR_InterFreqBlackCellList_Dynamic {
+struct SQN_NR_PCI_Range_SQN_NR_InterFreqExcludedCellList_Dynamic {
 	size_t d;
 	struct SQN_NR_PCI_Range* v;
 };
 
-typedef struct SQN_NR_PCI_Range_SQN_NR_InterFreqBlackCellList_Dynamic SQN_NR_InterFreqBlackCellList;
+typedef struct SQN_NR_PCI_Range_SQN_NR_InterFreqExcludedCellList_Dynamic SQN_NR_InterFreqExcludedCellList;
 
 struct SQN_NR_MultiFrequencyBandListNR_SIB_SQN_NR_InterFreqCarrierFreqInfo_frequencyBandList_Optional {
 	bool d;
@@ -1004,9 +1165,9 @@ struct SQN_NR_InterFreqNeighCellList_SQN_NR_InterFreqCarrierFreqInfo_interFreqNe
 	SQN_NR_InterFreqNeighCellList v;
 };
 
-struct SQN_NR_InterFreqBlackCellList_SQN_NR_InterFreqCarrierFreqInfo_interFreqBlackCellList_Optional {
+struct SQN_NR_InterFreqExcludedCellList_SQN_NR_InterFreqCarrierFreqInfo_interFreqExcludedCellList_Optional {
 	bool d;
-	SQN_NR_InterFreqBlackCellList v;
+	SQN_NR_InterFreqExcludedCellList v;
 };
 
 struct SQN_NR_InterFreqCarrierFreqInfo {
@@ -1033,7 +1194,7 @@ struct SQN_NR_InterFreqCarrierFreqInfo {
 	struct SQN_NR_CellReselectionSubPriority_e_SQN_NR_InterFreqCarrierFreqInfo_cellReselectionSubPriority_Optional cellReselectionSubPriority;
 	struct SQN_NR_Q_OffsetRange_e_SQN_NR_InterFreqCarrierFreqInfo_q_OffsetFreq_Optional q_OffsetFreq;
 	struct SQN_NR_InterFreqNeighCellList_SQN_NR_InterFreqCarrierFreqInfo_interFreqNeighCellList_Optional interFreqNeighCellList;
-	struct SQN_NR_InterFreqBlackCellList_SQN_NR_InterFreqCarrierFreqInfo_interFreqBlackCellList_Optional interFreqBlackCellList;
+	struct SQN_NR_InterFreqExcludedCellList_SQN_NR_InterFreqCarrierFreqInfo_interFreqExcludedCellList_Optional interFreqExcludedCellList;
 };
 
 struct SQN_NR_InterFreqCarrierFreqInfo_SQN_NR_InterFreqCarrierFreqList_Dynamic {
@@ -1059,12 +1220,12 @@ struct SQN_NR_InterFreqNeighCellInfo_v1610_SQN_NR_InterFreqNeighCellList_v1610_D
 
 typedef struct SQN_NR_InterFreqNeighCellInfo_v1610_SQN_NR_InterFreqNeighCellList_v1610_Dynamic SQN_NR_InterFreqNeighCellList_v1610;
 
-struct SQN_NR_PCI_Range_SQN_NR_InterFreqWhiteCellList_r16_Dynamic {
+struct SQN_NR_PCI_Range_SQN_NR_InterFreqAllowedCellList_r16_Dynamic {
 	size_t d;
 	struct SQN_NR_PCI_Range* v;
 };
 
-typedef struct SQN_NR_PCI_Range_SQN_NR_InterFreqWhiteCellList_r16_Dynamic SQN_NR_InterFreqWhiteCellList_r16;
+typedef struct SQN_NR_PCI_Range_SQN_NR_InterFreqAllowedCellList_r16_Dynamic SQN_NR_InterFreqAllowedCellList_r16;
 
 struct SQN_NR_PCI_Range_SQN_NR_InterFreqCAG_CellListPerPLMN_r16_cag_CellList_r16_Dynamic {
 	size_t d;
@@ -1086,9 +1247,9 @@ struct SQN_NR_SSB_MTC2_LP_r16_SQN_NR_InterFreqCarrierFreqInfo_v1610_smtc2_LP_r16
 	struct SQN_NR_SSB_MTC2_LP_r16 v;
 };
 
-struct SQN_NR_InterFreqWhiteCellList_r16_SQN_NR_InterFreqCarrierFreqInfo_v1610_interFreqWhiteCellList_r16_Optional {
+struct SQN_NR_InterFreqAllowedCellList_r16_SQN_NR_InterFreqCarrierFreqInfo_v1610_interFreqAllowedCellList_r16_Optional {
 	bool d;
-	SQN_NR_InterFreqWhiteCellList_r16 v;
+	SQN_NR_InterFreqAllowedCellList_r16 v;
 };
 
 struct SQN_NR_SSB_PositionQCL_Relation_r16_e_SQN_NR_InterFreqCarrierFreqInfo_v1610_ssb_PositionQCL_Common_r16_Optional {
@@ -1109,7 +1270,7 @@ struct SQN_NR_InterFreqCAG_CellListPerPLMN_r16_SQN_NR_InterFreqCarrierFreqInfo_v
 struct SQN_NR_InterFreqCarrierFreqInfo_v1610 {
 	struct SQN_NR_InterFreqNeighCellList_v1610_SQN_NR_InterFreqCarrierFreqInfo_v1610_interFreqNeighCellList_v1610_Optional interFreqNeighCellList_v1610;
 	struct SQN_NR_SSB_MTC2_LP_r16_SQN_NR_InterFreqCarrierFreqInfo_v1610_smtc2_LP_r16_Optional smtc2_LP_r16;
-	struct SQN_NR_InterFreqWhiteCellList_r16_SQN_NR_InterFreqCarrierFreqInfo_v1610_interFreqWhiteCellList_r16_Optional interFreqWhiteCellList_r16;
+	struct SQN_NR_InterFreqAllowedCellList_r16_SQN_NR_InterFreqCarrierFreqInfo_v1610_interFreqAllowedCellList_r16_Optional interFreqAllowedCellList_r16;
 	struct SQN_NR_SSB_PositionQCL_Relation_r16_e_SQN_NR_InterFreqCarrierFreqInfo_v1610_ssb_PositionQCL_Common_r16_Optional ssb_PositionQCL_Common_r16;
 	struct SQN_NR_InterFreqCAG_CellListPerPLMN_r16_SQN_NR_InterFreqCarrierFreqInfo_v1610_interFreqCAG_CellList_r16_DynamicOptional interFreqCAG_CellList_r16;
 };
@@ -1121,6 +1282,97 @@ struct SQN_NR_InterFreqCarrierFreqInfo_v1610_SQN_NR_InterFreqCarrierFreqList_v16
 
 typedef struct SQN_NR_InterFreqCarrierFreqInfo_v1610_SQN_NR_InterFreqCarrierFreqList_v1610_Dynamic SQN_NR_InterFreqCarrierFreqList_v1610;
 
+struct SQN_NR_PCI_Range_SQN_NR_InterFreqNeighHSDN_CellList_r17_Dynamic {
+	size_t d;
+	struct SQN_NR_PCI_Range* v;
+};
+
+typedef struct SQN_NR_PCI_Range_SQN_NR_InterFreqNeighHSDN_CellList_r17_Dynamic SQN_NR_InterFreqNeighHSDN_CellList_r17;
+
+enum SQN_NR_InterFreqCarrierFreqInfo_v1700_highSpeedMeasInterFreq_r17_e {
+	SQN_NR_InterFreqCarrierFreqInfo_v1700_highSpeedMeasInterFreq_r17_e_true = 0,
+};
+
+typedef enum SQN_NR_InterFreqCarrierFreqInfo_v1700_highSpeedMeasInterFreq_r17_e SQN_NR_InterFreqCarrierFreqInfo_v1700_highSpeedMeasInterFreq_r17_e;
+
+enum SQN_NR_InterFreqCarrierFreqInfo_v1700_redCapAccessAllowed_r17_e {
+	SQN_NR_InterFreqCarrierFreqInfo_v1700_redCapAccessAllowed_r17_e_true = 0,
+};
+
+typedef enum SQN_NR_InterFreqCarrierFreqInfo_v1700_redCapAccessAllowed_r17_e SQN_NR_InterFreqCarrierFreqInfo_v1700_redCapAccessAllowed_r17_e;
+
+struct SQN_NR_SSB_PositionQCL_Relation_r17_e_SQN_NR_InterFreqNeighCellInfo_v1710_ssb_PositionQCL_r17_Optional {
+	bool d;
+	SQN_NR_SSB_PositionQCL_Relation_r17_e v;
+};
+
+struct SQN_NR_InterFreqNeighCellInfo_v1710 {
+	struct SQN_NR_SSB_PositionQCL_Relation_r17_e_SQN_NR_InterFreqNeighCellInfo_v1710_ssb_PositionQCL_r17_Optional ssb_PositionQCL_r17;
+};
+
+struct SQN_NR_InterFreqNeighCellInfo_v1710_SQN_NR_InterFreqNeighCellList_v1710_Dynamic {
+	size_t d;
+	struct SQN_NR_InterFreqNeighCellInfo_v1710* v;
+};
+
+typedef struct SQN_NR_InterFreqNeighCellInfo_v1710_SQN_NR_InterFreqNeighCellList_v1710_Dynamic SQN_NR_InterFreqNeighCellList_v1710;
+
+struct SQN_NR_InterFreqNeighHSDN_CellList_r17_SQN_NR_InterFreqCarrierFreqInfo_v1700_interFreqNeighHSDN_CellList_r17_Optional {
+	bool d;
+	SQN_NR_InterFreqNeighHSDN_CellList_r17 v;
+};
+
+struct SQN_NR_InterFreqCarrierFreqInfo_v1700_highSpeedMeasInterFreq_r17_e_highSpeedMeasInterFreq_r17_Optional {
+	bool d;
+	SQN_NR_InterFreqCarrierFreqInfo_v1700_highSpeedMeasInterFreq_r17_e v;
+};
+
+struct SQN_NR_InterFreqCarrierFreqInfo_v1700_redCapAccessAllowed_r17_e_redCapAccessAllowed_r17_Optional {
+	bool d;
+	SQN_NR_InterFreqCarrierFreqInfo_v1700_redCapAccessAllowed_r17_e v;
+};
+
+struct SQN_NR_SSB_PositionQCL_Relation_r17_e_SQN_NR_InterFreqCarrierFreqInfo_v1700_ssb_PositionQCL_Common_r17_Optional {
+	bool d;
+	SQN_NR_SSB_PositionQCL_Relation_r17_e v;
+};
+
+struct SQN_NR_InterFreqNeighCellList_v1710_SQN_NR_InterFreqCarrierFreqInfo_v1700_interFreqNeighCellList_v1710_Optional {
+	bool d;
+	SQN_NR_InterFreqNeighCellList_v1710 v;
+};
+
+struct SQN_NR_InterFreqCarrierFreqInfo_v1700 {
+	struct SQN_NR_InterFreqNeighHSDN_CellList_r17_SQN_NR_InterFreqCarrierFreqInfo_v1700_interFreqNeighHSDN_CellList_r17_Optional interFreqNeighHSDN_CellList_r17;
+	struct SQN_NR_InterFreqCarrierFreqInfo_v1700_highSpeedMeasInterFreq_r17_e_highSpeedMeasInterFreq_r17_Optional highSpeedMeasInterFreq_r17;
+	struct SQN_NR_InterFreqCarrierFreqInfo_v1700_redCapAccessAllowed_r17_e_redCapAccessAllowed_r17_Optional redCapAccessAllowed_r17;
+	struct SQN_NR_SSB_PositionQCL_Relation_r17_e_SQN_NR_InterFreqCarrierFreqInfo_v1700_ssb_PositionQCL_Common_r17_Optional ssb_PositionQCL_Common_r17;
+	struct SQN_NR_InterFreqNeighCellList_v1710_SQN_NR_InterFreqCarrierFreqInfo_v1700_interFreqNeighCellList_v1710_Optional interFreqNeighCellList_v1710;
+};
+
+struct SQN_NR_InterFreqCarrierFreqInfo_v1700_SQN_NR_InterFreqCarrierFreqList_v1700_Dynamic {
+	size_t d;
+	struct SQN_NR_InterFreqCarrierFreqInfo_v1700* v;
+};
+
+typedef struct SQN_NR_InterFreqCarrierFreqInfo_v1700_SQN_NR_InterFreqCarrierFreqList_v1700_Dynamic SQN_NR_InterFreqCarrierFreqList_v1700;
+
+struct SQN_NR_SSB_MTC4List_r17_SQN_NR_InterFreqCarrierFreqInfo_v1720_smtc4list_r17_Optional {
+	bool d;
+	SQN_NR_SSB_MTC4List_r17 v;
+};
+
+struct SQN_NR_InterFreqCarrierFreqInfo_v1720 {
+	struct SQN_NR_SSB_MTC4List_r17_SQN_NR_InterFreqCarrierFreqInfo_v1720_smtc4list_r17_Optional smtc4list_r17;
+};
+
+struct SQN_NR_InterFreqCarrierFreqInfo_v1720_SQN_NR_InterFreqCarrierFreqList_v1720_Dynamic {
+	size_t d;
+	struct SQN_NR_InterFreqCarrierFreqInfo_v1720* v;
+};
+
+typedef struct SQN_NR_InterFreqCarrierFreqInfo_v1720_SQN_NR_InterFreqCarrierFreqList_v1720_Dynamic SQN_NR_InterFreqCarrierFreqList_v1720;
+
 struct OCTET_STRING_SQN_NR_SIB4_lateNonCriticalExtension_Optional {
 	bool d;
 	OCTET_STRING v;
@@ -1131,10 +1383,22 @@ struct SQN_NR_InterFreqCarrierFreqList_v1610_SQN_NR_SIB4_interFreqCarrierFreqLis
 	SQN_NR_InterFreqCarrierFreqList_v1610 v;
 };
 
+struct SQN_NR_InterFreqCarrierFreqList_v1700_SQN_NR_SIB4_interFreqCarrierFreqList_v1700_Optional {
+	bool d;
+	SQN_NR_InterFreqCarrierFreqList_v1700 v;
+};
+
+struct SQN_NR_InterFreqCarrierFreqList_v1720_SQN_NR_SIB4_interFreqCarrierFreqList_v1720_Optional {
+	bool d;
+	SQN_NR_InterFreqCarrierFreqList_v1720 v;
+};
+
 struct SQN_NR_SIB4 {
 	SQN_NR_InterFreqCarrierFreqList interFreqCarrierFreqList;
 	struct OCTET_STRING_SQN_NR_SIB4_lateNonCriticalExtension_Optional lateNonCriticalExtension;
 	struct SQN_NR_InterFreqCarrierFreqList_v1610_SQN_NR_SIB4_interFreqCarrierFreqList_v1610_Optional interFreqCarrierFreqList_v1610;
+	struct SQN_NR_InterFreqCarrierFreqList_v1700_SQN_NR_SIB4_interFreqCarrierFreqList_v1700_Optional interFreqCarrierFreqList_v1700;
+	struct SQN_NR_InterFreqCarrierFreqList_v1720_SQN_NR_SIB4_interFreqCarrierFreqList_v1720_Optional interFreqCarrierFreqList_v1720;
 };
 
 typedef uint32_t SQN_NR_ARFCN_ValueEUTRA;
@@ -1273,12 +1537,12 @@ struct SQN_NR_EUTRA_PhysCellIdRange {
 	struct SQN_NR_EUTRA_PhysCellIdRange_range_e_range_Optional range;
 };
 
-struct SQN_NR_EUTRA_PhysCellIdRange_SQN_NR_EUTRA_FreqBlackCellList_Dynamic {
+struct SQN_NR_EUTRA_PhysCellIdRange_SQN_NR_EUTRA_FreqExcludedCellList_Dynamic {
 	size_t d;
 	struct SQN_NR_EUTRA_PhysCellIdRange* v;
 };
 
-typedef struct SQN_NR_EUTRA_PhysCellIdRange_SQN_NR_EUTRA_FreqBlackCellList_Dynamic SQN_NR_EUTRA_FreqBlackCellList;
+typedef struct SQN_NR_EUTRA_PhysCellIdRange_SQN_NR_EUTRA_FreqExcludedCellList_Dynamic SQN_NR_EUTRA_FreqExcludedCellList;
 
 enum SQN_NR_EUTRA_AllowedMeasBandwidth_e {
 	SQN_NR_EUTRA_AllowedMeasBandwidth_e_mbw6 = 0,
@@ -1308,9 +1572,9 @@ struct SQN_NR_EUTRA_FreqNeighCellList_SQN_NR_CarrierFreqEUTRA_eutra_FreqNeighCel
 	SQN_NR_EUTRA_FreqNeighCellList v;
 };
 
-struct SQN_NR_EUTRA_FreqBlackCellList_SQN_NR_CarrierFreqEUTRA_eutra_BlackCellList_Optional {
+struct SQN_NR_EUTRA_FreqExcludedCellList_SQN_NR_CarrierFreqEUTRA_eutra_ExcludedCellList_Optional {
 	bool d;
-	SQN_NR_EUTRA_FreqBlackCellList v;
+	SQN_NR_EUTRA_FreqExcludedCellList v;
 };
 
 struct SQN_NR_CellReselectionPriority_SQN_NR_CarrierFreqEUTRA_cellReselectionPriority_Optional {
@@ -1332,7 +1596,7 @@ struct SQN_NR_CarrierFreqEUTRA {
 	SQN_NR_ARFCN_ValueEUTRA carrierFreq;
 	struct SQN_NR_EUTRA_MultiBandInfoList_SQN_NR_CarrierFreqEUTRA_eutra_multiBandInfoList_Optional eutra_multiBandInfoList;
 	struct SQN_NR_EUTRA_FreqNeighCellList_SQN_NR_CarrierFreqEUTRA_eutra_FreqNeighCellList_Optional eutra_FreqNeighCellList;
-	struct SQN_NR_EUTRA_FreqBlackCellList_SQN_NR_CarrierFreqEUTRA_eutra_BlackCellList_Optional eutra_BlackCellList;
+	struct SQN_NR_EUTRA_FreqExcludedCellList_SQN_NR_CarrierFreqEUTRA_eutra_ExcludedCellList_Optional eutra_ExcludedCellList;
 	SQN_NR_EUTRA_AllowedMeasBandwidth_e allowedMeasBandwidth;
 	SQN_NR_EUTRA_PresenceAntennaPort1 presenceAntennaPort1;
 	struct SQN_NR_CellReselectionPriority_SQN_NR_CarrierFreqEUTRA_cellReselectionPriority_Optional cellReselectionPriority;
@@ -1374,6 +1638,35 @@ struct SQN_NR_CarrierFreqEUTRA_v1610_SQN_NR_CarrierFreqListEUTRA_v1610_Dynamic {
 
 typedef struct SQN_NR_CarrierFreqEUTRA_v1610_SQN_NR_CarrierFreqListEUTRA_v1610_Dynamic SQN_NR_CarrierFreqListEUTRA_v1610;
 
+struct SQN_NR_EUTRA_PhysCellIdRange_SQN_NR_EUTRA_FreqNeighHSDN_CellList_r17_Dynamic {
+	size_t d;
+	struct SQN_NR_EUTRA_PhysCellIdRange* v;
+};
+
+typedef struct SQN_NR_EUTRA_PhysCellIdRange_SQN_NR_EUTRA_FreqNeighHSDN_CellList_r17_Dynamic SQN_NR_EUTRA_FreqNeighHSDN_CellList_r17;
+
+struct SQN_NR_EUTRA_FreqNeighHSDN_CellList_r17_SQN_NR_CarrierFreqEUTRA_v1700_eutra_FreqNeighHSDN_CellList_r17_Optional {
+	bool d;
+	SQN_NR_EUTRA_FreqNeighHSDN_CellList_r17 v;
+};
+
+struct SQN_NR_CarrierFreqEUTRA_v1700 {
+	struct SQN_NR_EUTRA_FreqNeighHSDN_CellList_r17_SQN_NR_CarrierFreqEUTRA_v1700_eutra_FreqNeighHSDN_CellList_r17_Optional eutra_FreqNeighHSDN_CellList_r17;
+};
+
+struct SQN_NR_CarrierFreqEUTRA_v1700_SQN_NR_CarrierFreqListEUTRA_v1700_Dynamic {
+	size_t d;
+	struct SQN_NR_CarrierFreqEUTRA_v1700* v;
+};
+
+typedef struct SQN_NR_CarrierFreqEUTRA_v1700_SQN_NR_CarrierFreqListEUTRA_v1700_Dynamic SQN_NR_CarrierFreqListEUTRA_v1700;
+
+enum SQN_NR_SIB5_idleModeMeasVoiceFallback_r17_e {
+	SQN_NR_SIB5_idleModeMeasVoiceFallback_r17_e_true = 0,
+};
+
+typedef enum SQN_NR_SIB5_idleModeMeasVoiceFallback_r17_e SQN_NR_SIB5_idleModeMeasVoiceFallback_r17_e;
+
 struct SQN_NR_CarrierFreqListEUTRA_SQN_NR_SIB5_carrierFreqListEUTRA_Optional {
 	bool d;
 	SQN_NR_CarrierFreqListEUTRA v;
@@ -1394,12 +1687,24 @@ struct SQN_NR_CarrierFreqListEUTRA_v1610_SQN_NR_SIB5_carrierFreqListEUTRA_v1610_
 	SQN_NR_CarrierFreqListEUTRA_v1610 v;
 };
 
+struct SQN_NR_CarrierFreqListEUTRA_v1700_SQN_NR_SIB5_carrierFreqListEUTRA_v1700_Optional {
+	bool d;
+	SQN_NR_CarrierFreqListEUTRA_v1700 v;
+};
+
+struct SQN_NR_SIB5_idleModeMeasVoiceFallback_r17_e_idleModeMeasVoiceFallback_r17_Optional {
+	bool d;
+	SQN_NR_SIB5_idleModeMeasVoiceFallback_r17_e v;
+};
+
 struct SQN_NR_SIB5 {
 	struct SQN_NR_CarrierFreqListEUTRA_SQN_NR_SIB5_carrierFreqListEUTRA_Optional carrierFreqListEUTRA;
 	SQN_NR_T_Reselection t_ReselectionEUTRA;
 	struct SQN_NR_SpeedStateScaleFactors_SQN_NR_SIB5_t_ReselectionEUTRA_SF_Optional t_ReselectionEUTRA_SF;
 	struct OCTET_STRING_SQN_NR_SIB5_lateNonCriticalExtension_Optional lateNonCriticalExtension;
 	struct SQN_NR_CarrierFreqListEUTRA_v1610_SQN_NR_SIB5_carrierFreqListEUTRA_v1610_Optional carrierFreqListEUTRA_v1610;
+	struct SQN_NR_CarrierFreqListEUTRA_v1700_SQN_NR_SIB5_carrierFreqListEUTRA_v1700_Optional carrierFreqListEUTRA_v1700;
+	struct SQN_NR_SIB5_idleModeMeasVoiceFallback_r17_e_idleModeMeasVoiceFallback_r17_Optional idleModeMeasVoiceFallback_r17;
 };
 
 struct OCTET_STRING_SQN_NR_SIB6_lateNonCriticalExtension_Optional {
@@ -1816,7 +2121,7 @@ struct OCTET_STRING_SQN_NR_SIB13_r16_lateNonCriticalExtension_Optional {
 
 struct SQN_NR_SIB13_r16 {
 	OCTET_STRING sl_V2X_ConfigCommon_r16;
-	OCTET_STRING sl_Bandwidth_r16;
+	OCTET_STRING dummy;
 	OCTET_STRING tdd_Config_r16;
 	struct OCTET_STRING_SQN_NR_SIB13_r16_lateNonCriticalExtension_Optional lateNonCriticalExtension;
 };
@@ -1829,6 +2134,1134 @@ struct OCTET_STRING_SQN_NR_SIB14_r16_lateNonCriticalExtension_Optional {
 struct SQN_NR_SIB14_r16 {
 	OCTET_STRING sl_V2X_ConfigCommonExt_r16;
 	struct OCTET_STRING_SQN_NR_SIB14_r16_lateNonCriticalExtension_Optional lateNonCriticalExtension;
+};
+
+typedef uint8_t SQN_NR_MCC_MNC_Digit;
+
+typedef SQN_NR_MCC_MNC_Digit SQN_NR_MCC[3];
+
+struct SQN_NR_MCC_MNC_Digit_SQN_NR_MNC_Dynamic {
+	size_t d;
+	SQN_NR_MCC_MNC_Digit* v;
+};
+
+typedef struct SQN_NR_MCC_MNC_Digit_SQN_NR_MNC_Dynamic SQN_NR_MNC;
+
+struct SQN_NR_MCC_SQN_NR_PLMN_Identity_mcc_Optional {
+	bool d;
+	SQN_NR_MCC v;
+};
+
+struct SQN_NR_PLMN_Identity {
+	struct SQN_NR_MCC_SQN_NR_PLMN_Identity_mcc_Optional mcc;
+	SQN_NR_MNC mnc;
+};
+
+enum SQN_NR_ApplicableDisasterInfo_r17_Sel {
+	SQN_NR_ApplicableDisasterInfo_r17_UNBOUND_VALUE = 0,
+	SQN_NR_ApplicableDisasterInfo_r17_noDisasterRoaming_r17 = 1,
+	SQN_NR_ApplicableDisasterInfo_r17_disasterRoamingFromAnyPLMN_r17 = 2,
+	SQN_NR_ApplicableDisasterInfo_r17_commonPLMNs_r17 = 3,
+	SQN_NR_ApplicableDisasterInfo_r17_dedicatedPLMNs_r17 = 4,
+};
+
+struct SQN_NR_PLMN_Identity_SQN_NR_ApplicableDisasterInfo_r17_dedicatedPLMNs_r17_Dynamic {
+	size_t d;
+	struct SQN_NR_PLMN_Identity* v;
+};
+
+union SQN_NR_ApplicableDisasterInfo_r17_Value {
+	Null noDisasterRoaming_r17;
+	Null disasterRoamingFromAnyPLMN_r17;
+	Null commonPLMNs_r17;
+	struct SQN_NR_PLMN_Identity_SQN_NR_ApplicableDisasterInfo_r17_dedicatedPLMNs_r17_Dynamic dedicatedPLMNs_r17;
+};
+
+struct SQN_NR_ApplicableDisasterInfo_r17 {
+	enum SQN_NR_ApplicableDisasterInfo_r17_Sel d;
+	union SQN_NR_ApplicableDisasterInfo_r17_Value v;
+};
+
+struct SQN_NR_SIB15_r17_SQN_NR_PLMN_Identity_commonPLMNsWithDisasterCondition_r17_Dynamic {
+	size_t d;
+	struct SQN_NR_PLMN_Identity* v;
+};
+
+struct SQN_NR_PLMN_Identity_SQN_NR_SIB15_r17_commonPLMNsWithDisasterCondition_r17_DynamicOptional {
+	bool d;
+	struct SQN_NR_SIB15_r17_SQN_NR_PLMN_Identity_commonPLMNsWithDisasterCondition_r17_Dynamic v;
+};
+
+struct SQN_NR_SIB15_r17_SQN_NR_ApplicableDisasterInfo_r17_applicableDisasterInfoList_r17_Dynamic {
+	size_t d;
+	struct SQN_NR_ApplicableDisasterInfo_r17* v;
+};
+
+struct SQN_NR_ApplicableDisasterInfo_r17_SQN_NR_SIB15_r17_applicableDisasterInfoList_r17_DynamicOptional {
+	bool d;
+	struct SQN_NR_SIB15_r17_SQN_NR_ApplicableDisasterInfo_r17_applicableDisasterInfoList_r17_Dynamic v;
+};
+
+struct OCTET_STRING_SQN_NR_SIB15_r17_lateNonCriticalExtension_Optional {
+	bool d;
+	OCTET_STRING v;
+};
+
+struct SQN_NR_SIB15_r17 {
+	struct SQN_NR_PLMN_Identity_SQN_NR_SIB15_r17_commonPLMNsWithDisasterCondition_r17_DynamicOptional commonPLMNsWithDisasterCondition_r17;
+	struct SQN_NR_ApplicableDisasterInfo_r17_SQN_NR_SIB15_r17_applicableDisasterInfoList_r17_DynamicOptional applicableDisasterInfoList_r17;
+	struct OCTET_STRING_SQN_NR_SIB15_r17_lateNonCriticalExtension_Optional lateNonCriticalExtension;
+};
+
+typedef B8 SQN_NR_NSAG_ID_r17;
+
+typedef B24 SQN_NR_TrackingAreaCode;
+
+struct SQN_NR_TrackingAreaCode_SQN_NR_NSAG_IdentityInfo_r17_trackingAreaCode_r17_Optional {
+	bool d;
+	SQN_NR_TrackingAreaCode v;
+};
+
+struct SQN_NR_NSAG_IdentityInfo_r17 {
+	SQN_NR_NSAG_ID_r17 nsag_ID_r17;
+	struct SQN_NR_TrackingAreaCode_SQN_NR_NSAG_IdentityInfo_r17_trackingAreaCode_r17_Optional trackingAreaCode_r17;
+};
+
+struct SQN_NR_PCI_Range_SQN_NR_SliceCellListNR_r17_Dynamic {
+	size_t d;
+	struct SQN_NR_PCI_Range* v;
+};
+
+typedef struct SQN_NR_PCI_Range_SQN_NR_SliceCellListNR_r17_Dynamic SQN_NR_SliceCellListNR_r17;
+
+enum SQN_NR_SliceInfo_r17_sliceCellListNR_r17_Sel {
+	SQN_NR_SliceInfo_r17_sliceCellListNR_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SliceInfo_r17_sliceCellListNR_r17_sliceAllowedCellListNR_r17 = 1,
+	SQN_NR_SliceInfo_r17_sliceCellListNR_r17_sliceExcludedCellListNR_r17 = 2,
+};
+
+union SQN_NR_SliceInfo_r17_sliceCellListNR_r17_Value {
+	SQN_NR_SliceCellListNR_r17 sliceAllowedCellListNR_r17;
+	SQN_NR_SliceCellListNR_r17 sliceExcludedCellListNR_r17;
+};
+
+struct SQN_NR_SliceInfo_r17_sliceCellListNR_r17 {
+	enum SQN_NR_SliceInfo_r17_sliceCellListNR_r17_Sel d;
+	union SQN_NR_SliceInfo_r17_sliceCellListNR_r17_Value v;
+};
+
+struct SQN_NR_CellReselectionPriority_SQN_NR_SliceInfo_r17_nsag_CellReselectionPriority_r17_Optional {
+	bool d;
+	SQN_NR_CellReselectionPriority v;
+};
+
+struct SQN_NR_CellReselectionSubPriority_e_SQN_NR_SliceInfo_r17_nsag_CellReselectionSubPriority_r17_Optional {
+	bool d;
+	SQN_NR_CellReselectionSubPriority_e v;
+};
+
+struct SQN_NR_SliceInfo_r17_sliceCellListNR_r17_sliceCellListNR_r17_Optional {
+	bool d;
+	struct SQN_NR_SliceInfo_r17_sliceCellListNR_r17 v;
+};
+
+struct SQN_NR_SliceInfo_r17 {
+	struct SQN_NR_NSAG_IdentityInfo_r17 nsag_IdentityInfo_r17;
+	struct SQN_NR_CellReselectionPriority_SQN_NR_SliceInfo_r17_nsag_CellReselectionPriority_r17_Optional nsag_CellReselectionPriority_r17;
+	struct SQN_NR_CellReselectionSubPriority_e_SQN_NR_SliceInfo_r17_nsag_CellReselectionSubPriority_r17_Optional nsag_CellReselectionSubPriority_r17;
+	struct SQN_NR_SliceInfo_r17_sliceCellListNR_r17_sliceCellListNR_r17_Optional sliceCellListNR_r17;
+};
+
+struct SQN_NR_SliceInfo_r17_SQN_NR_SliceInfoList_r17_Dynamic {
+	size_t d;
+	struct SQN_NR_SliceInfo_r17* v;
+};
+
+typedef struct SQN_NR_SliceInfo_r17_SQN_NR_SliceInfoList_r17_Dynamic SQN_NR_SliceInfoList_r17;
+
+struct SQN_NR_SliceInfoList_r17_SQN_NR_FreqPrioritySlicing_r17_sliceInfoList_r17_Optional {
+	bool d;
+	SQN_NR_SliceInfoList_r17 v;
+};
+
+struct SQN_NR_FreqPrioritySlicing_r17 {
+	uint8_t dl_ImplicitCarrierFreq_r17;
+	struct SQN_NR_SliceInfoList_r17_SQN_NR_FreqPrioritySlicing_r17_sliceInfoList_r17_Optional sliceInfoList_r17;
+};
+
+struct SQN_NR_FreqPrioritySlicing_r17_SQN_NR_FreqPriorityListSlicing_r17_Dynamic {
+	size_t d;
+	struct SQN_NR_FreqPrioritySlicing_r17* v;
+};
+
+typedef struct SQN_NR_FreqPrioritySlicing_r17_SQN_NR_FreqPriorityListSlicing_r17_Dynamic SQN_NR_FreqPriorityListSlicing_r17;
+
+struct SQN_NR_FreqPriorityListSlicing_r17_SQN_NR_SIB16_r17_freqPriorityListSlicing_r17_Optional {
+	bool d;
+	SQN_NR_FreqPriorityListSlicing_r17 v;
+};
+
+struct OCTET_STRING_SQN_NR_SIB16_r17_lateNonCriticalExtension_Optional {
+	bool d;
+	OCTET_STRING v;
+};
+
+struct SQN_NR_SIB16_r17 {
+	struct SQN_NR_FreqPriorityListSlicing_r17_SQN_NR_SIB16_r17_freqPriorityListSlicing_r17_Optional freqPriorityListSlicing_r17;
+	struct OCTET_STRING_SQN_NR_SIB16_r17_lateNonCriticalExtension_Optional lateNonCriticalExtension;
+};
+
+enum SQN_NR_SIB17_r17_segmentType_r17_e {
+	SQN_NR_SIB17_r17_segmentType_r17_e_notLastSegment = 0,
+	SQN_NR_SIB17_r17_segmentType_r17_e_lastSegment = 1,
+};
+
+typedef enum SQN_NR_SIB17_r17_segmentType_r17_e SQN_NR_SIB17_r17_segmentType_r17_e;
+
+struct SQN_NR_SIB17_r17 {
+	uint8_t segmentNumber_r17;
+	SQN_NR_SIB17_r17_segmentType_r17_e segmentType_r17;
+	OCTET_STRING segmentContainer_r17;
+};
+
+typedef B44 SQN_NR_NID_r16;
+
+struct SQN_NR_NID_r16_nid_List_r17_Dynamic {
+	size_t d;
+	SQN_NR_NID_r16* v;
+};
+
+struct SQN_NR_GIN_Element_r17 {
+	struct SQN_NR_PLMN_Identity plmn_Identity_r17;
+	struct SQN_NR_NID_r16_nid_List_r17_Dynamic nid_List_r17;
+};
+
+struct BIT_STRING_SQN_NR_GINs_PerSNPN_r17_supportedGINs_r17_Optional {
+	bool d;
+	BIT_STRING v;
+};
+
+struct SQN_NR_GINs_PerSNPN_r17 {
+	struct BIT_STRING_SQN_NR_GINs_PerSNPN_r17_supportedGINs_r17_Optional supportedGINs_r17;
+};
+
+struct SQN_NR_SIB18_r17_SQN_NR_GIN_Element_r17_gin_ElementList_r17_Dynamic {
+	size_t d;
+	struct SQN_NR_GIN_Element_r17* v;
+};
+
+struct SQN_NR_GIN_Element_r17_SQN_NR_SIB18_r17_gin_ElementList_r17_DynamicOptional {
+	bool d;
+	struct SQN_NR_SIB18_r17_SQN_NR_GIN_Element_r17_gin_ElementList_r17_Dynamic v;
+};
+
+struct SQN_NR_SIB18_r17_SQN_NR_GINs_PerSNPN_r17_gins_PerSNPN_List_r17_Dynamic {
+	size_t d;
+	struct SQN_NR_GINs_PerSNPN_r17* v;
+};
+
+struct SQN_NR_GINs_PerSNPN_r17_SQN_NR_SIB18_r17_gins_PerSNPN_List_r17_DynamicOptional {
+	bool d;
+	struct SQN_NR_SIB18_r17_SQN_NR_GINs_PerSNPN_r17_gins_PerSNPN_List_r17_Dynamic v;
+};
+
+struct OCTET_STRING_SQN_NR_SIB18_r17_lateNonCriticalExtension_Optional {
+	bool d;
+	OCTET_STRING v;
+};
+
+struct SQN_NR_SIB18_r17 {
+	struct SQN_NR_GIN_Element_r17_SQN_NR_SIB18_r17_gin_ElementList_r17_DynamicOptional gin_ElementList_r17;
+	struct SQN_NR_GINs_PerSNPN_r17_SQN_NR_SIB18_r17_gins_PerSNPN_List_r17_DynamicOptional gins_PerSNPN_List_r17;
+	struct OCTET_STRING_SQN_NR_SIB18_r17_lateNonCriticalExtension_Optional lateNonCriticalExtension;
+};
+
+struct SQN_NR_EpochTime_r17 {
+	uint16_t sfn_r17;
+	uint8_t subFrameNR_r17;
+};
+
+enum SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e {
+	SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s5 = 0,
+	SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s10 = 1,
+	SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s15 = 2,
+	SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s20 = 3,
+	SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s25 = 4,
+	SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s30 = 5,
+	SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s35 = 6,
+	SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s40 = 7,
+	SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s45 = 8,
+	SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s50 = 9,
+	SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s55 = 10,
+	SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s60 = 11,
+	SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s120 = 12,
+	SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s180 = 13,
+	SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s240 = 14,
+	SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s900 = 15,
+};
+
+typedef enum SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e;
+
+struct int32_t_SQN_NR_TA_Info_r17_ta_CommonDrift_r17_Optional {
+	bool d;
+	int32_t v;
+};
+
+struct uint16_t_SQN_NR_TA_Info_r17_ta_CommonDriftVariant_r17_Optional {
+	bool d;
+	uint16_t v;
+};
+
+struct SQN_NR_TA_Info_r17 {
+	uint32_t ta_Common_r17;
+	struct int32_t_SQN_NR_TA_Info_r17_ta_CommonDrift_r17_Optional ta_CommonDrift_r17;
+	struct uint16_t_SQN_NR_TA_Info_r17_ta_CommonDriftVariant_r17_Optional ta_CommonDriftVariant_r17;
+};
+
+enum SQN_NR_NTN_Config_r17_ntn_PolarizationDL_r17_e {
+	SQN_NR_NTN_Config_r17_ntn_PolarizationDL_r17_e_rhcp = 0,
+	SQN_NR_NTN_Config_r17_ntn_PolarizationDL_r17_e_lhcp = 1,
+	SQN_NR_NTN_Config_r17_ntn_PolarizationDL_r17_e_linear = 2,
+};
+
+typedef enum SQN_NR_NTN_Config_r17_ntn_PolarizationDL_r17_e SQN_NR_NTN_Config_r17_ntn_PolarizationDL_r17_e;
+
+enum SQN_NR_NTN_Config_r17_ntn_PolarizationUL_r17_e {
+	SQN_NR_NTN_Config_r17_ntn_PolarizationUL_r17_e_rhcp = 0,
+	SQN_NR_NTN_Config_r17_ntn_PolarizationUL_r17_e_lhcp = 1,
+	SQN_NR_NTN_Config_r17_ntn_PolarizationUL_r17_e_linear = 2,
+};
+
+typedef enum SQN_NR_NTN_Config_r17_ntn_PolarizationUL_r17_e SQN_NR_NTN_Config_r17_ntn_PolarizationUL_r17_e;
+
+typedef int32_t SQN_NR_PositionStateVector_r17;
+
+typedef int32_t SQN_NR_VelocityStateVector_r17;
+
+struct SQN_NR_PositionVelocity_r17 {
+	SQN_NR_PositionStateVector_r17 positionX_r17;
+	SQN_NR_PositionStateVector_r17 positionY_r17;
+	SQN_NR_PositionStateVector_r17 positionZ_r17;
+	SQN_NR_VelocityStateVector_r17 velocityVX_r17;
+	SQN_NR_VelocityStateVector_r17 velocityVY_r17;
+	SQN_NR_VelocityStateVector_r17 velocityVZ_r17;
+};
+
+struct SQN_NR_Orbital_r17 {
+	uint64_t semiMajorAxis_r17;
+	uint32_t eccentricity_r17;
+	uint32_t periapsis_r17;
+	uint32_t longitude_r17;
+	int32_t inclination_r17;
+	uint32_t meanAnomaly_r17;
+};
+
+enum SQN_NR_EphemerisInfo_r17_Sel {
+	SQN_NR_EphemerisInfo_r17_UNBOUND_VALUE = 0,
+	SQN_NR_EphemerisInfo_r17_positionVelocity_r17 = 1,
+	SQN_NR_EphemerisInfo_r17_orbital_r17 = 2,
+};
+
+union SQN_NR_EphemerisInfo_r17_Value {
+	struct SQN_NR_PositionVelocity_r17 positionVelocity_r17;
+	struct SQN_NR_Orbital_r17 orbital_r17;
+};
+
+struct SQN_NR_EphemerisInfo_r17 {
+	enum SQN_NR_EphemerisInfo_r17_Sel d;
+	union SQN_NR_EphemerisInfo_r17_Value v;
+};
+
+enum SQN_NR_NTN_Config_r17_ta_Report_r17_e {
+	SQN_NR_NTN_Config_r17_ta_Report_r17_e_enabled = 0,
+};
+
+typedef enum SQN_NR_NTN_Config_r17_ta_Report_r17_e SQN_NR_NTN_Config_r17_ta_Report_r17_e;
+
+struct SQN_NR_EpochTime_r17_SQN_NR_NTN_Config_r17_epochTime_r17_Optional {
+	bool d;
+	struct SQN_NR_EpochTime_r17 v;
+};
+
+struct SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_ntn_UlSyncValidityDuration_r17_Optional {
+	bool d;
+	SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e v;
+};
+
+struct uint16_t_SQN_NR_NTN_Config_r17_cellSpecificKoffset_r17_Optional {
+	bool d;
+	uint16_t v;
+};
+
+struct uint16_t_SQN_NR_NTN_Config_r17_kmac_r17_Optional {
+	bool d;
+	uint16_t v;
+};
+
+struct SQN_NR_TA_Info_r17_SQN_NR_NTN_Config_r17_ta_Info_r17_Optional {
+	bool d;
+	struct SQN_NR_TA_Info_r17 v;
+};
+
+struct SQN_NR_NTN_Config_r17_ntn_PolarizationDL_r17_e_ntn_PolarizationDL_r17_Optional {
+	bool d;
+	SQN_NR_NTN_Config_r17_ntn_PolarizationDL_r17_e v;
+};
+
+struct SQN_NR_NTN_Config_r17_ntn_PolarizationUL_r17_e_ntn_PolarizationUL_r17_Optional {
+	bool d;
+	SQN_NR_NTN_Config_r17_ntn_PolarizationUL_r17_e v;
+};
+
+struct SQN_NR_EphemerisInfo_r17_SQN_NR_NTN_Config_r17_ephemerisInfo_r17_Optional {
+	bool d;
+	struct SQN_NR_EphemerisInfo_r17 v;
+};
+
+struct SQN_NR_NTN_Config_r17_ta_Report_r17_e_ta_Report_r17_Optional {
+	bool d;
+	SQN_NR_NTN_Config_r17_ta_Report_r17_e v;
+};
+
+struct SQN_NR_NTN_Config_r17 {
+	struct SQN_NR_EpochTime_r17_SQN_NR_NTN_Config_r17_epochTime_r17_Optional epochTime_r17;
+	struct SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_ntn_UlSyncValidityDuration_r17_Optional ntn_UlSyncValidityDuration_r17;
+	struct uint16_t_SQN_NR_NTN_Config_r17_cellSpecificKoffset_r17_Optional cellSpecificKoffset_r17;
+	struct uint16_t_SQN_NR_NTN_Config_r17_kmac_r17_Optional kmac_r17;
+	struct SQN_NR_TA_Info_r17_SQN_NR_NTN_Config_r17_ta_Info_r17_Optional ta_Info_r17;
+	struct SQN_NR_NTN_Config_r17_ntn_PolarizationDL_r17_e_ntn_PolarizationDL_r17_Optional ntn_PolarizationDL_r17;
+	struct SQN_NR_NTN_Config_r17_ntn_PolarizationUL_r17_e_ntn_PolarizationUL_r17_Optional ntn_PolarizationUL_r17;
+	struct SQN_NR_EphemerisInfo_r17_SQN_NR_NTN_Config_r17_ephemerisInfo_r17_Optional ephemerisInfo_r17;
+	struct SQN_NR_NTN_Config_r17_ta_Report_r17_e_ta_Report_r17_Optional ta_Report_r17;
+};
+
+typedef OCTET_STRING SQN_NR_ReferenceLocation_r17;
+
+struct SQN_NR_NTN_Config_r17_SQN_NR_NTN_NeighCellConfig_r17_ntn_Config_r17_Optional {
+	bool d;
+	struct SQN_NR_NTN_Config_r17 v;
+};
+
+struct SQN_NR_ARFCN_ValueNR_SQN_NR_NTN_NeighCellConfig_r17_carrierFreq_r17_Optional {
+	bool d;
+	SQN_NR_ARFCN_ValueNR v;
+};
+
+struct SQN_NR_PhysCellId_SQN_NR_NTN_NeighCellConfig_r17_physCellId_r17_Optional {
+	bool d;
+	SQN_NR_PhysCellId v;
+};
+
+struct SQN_NR_NTN_NeighCellConfig_r17 {
+	struct SQN_NR_NTN_Config_r17_SQN_NR_NTN_NeighCellConfig_r17_ntn_Config_r17_Optional ntn_Config_r17;
+	struct SQN_NR_ARFCN_ValueNR_SQN_NR_NTN_NeighCellConfig_r17_carrierFreq_r17_Optional carrierFreq_r17;
+	struct SQN_NR_PhysCellId_SQN_NR_NTN_NeighCellConfig_r17_physCellId_r17_Optional physCellId_r17;
+};
+
+struct SQN_NR_NTN_NeighCellConfig_r17_SQN_NR_NTN_NeighCellConfigList_r17_Dynamic {
+	size_t d;
+	struct SQN_NR_NTN_NeighCellConfig_r17* v;
+};
+
+typedef struct SQN_NR_NTN_NeighCellConfig_r17_SQN_NR_NTN_NeighCellConfigList_r17_Dynamic SQN_NR_NTN_NeighCellConfigList_r17;
+
+struct SQN_NR_NTN_Config_r17_SQN_NR_SIB19_r17_ntn_Config_r17_Optional {
+	bool d;
+	struct SQN_NR_NTN_Config_r17 v;
+};
+
+struct uint64_t_SQN_NR_SIB19_r17_t_Service_r17_Optional {
+	bool d;
+	uint64_t v;
+};
+
+struct SQN_NR_ReferenceLocation_r17_SQN_NR_SIB19_r17_referenceLocation_r17_Optional {
+	bool d;
+	SQN_NR_ReferenceLocation_r17 v;
+};
+
+struct uint16_t_SQN_NR_SIB19_r17_distanceThresh_r17_Optional {
+	bool d;
+	uint16_t v;
+};
+
+struct SQN_NR_NTN_NeighCellConfigList_r17_SQN_NR_SIB19_r17_ntn_NeighCellConfigList_r17_Optional {
+	bool d;
+	SQN_NR_NTN_NeighCellConfigList_r17 v;
+};
+
+struct OCTET_STRING_SQN_NR_SIB19_r17_lateNonCriticalExtension_Optional {
+	bool d;
+	OCTET_STRING v;
+};
+
+struct SQN_NR_NTN_NeighCellConfigList_r17_SQN_NR_SIB19_r17_ntn_NeighCellConfigListExt_v1720_Optional {
+	bool d;
+	SQN_NR_NTN_NeighCellConfigList_r17 v;
+};
+
+struct SQN_NR_SIB19_r17 {
+	struct SQN_NR_NTN_Config_r17_SQN_NR_SIB19_r17_ntn_Config_r17_Optional ntn_Config_r17;
+	struct uint64_t_SQN_NR_SIB19_r17_t_Service_r17_Optional t_Service_r17;
+	struct SQN_NR_ReferenceLocation_r17_SQN_NR_SIB19_r17_referenceLocation_r17_Optional referenceLocation_r17;
+	struct uint16_t_SQN_NR_SIB19_r17_distanceThresh_r17_Optional distanceThresh_r17;
+	struct SQN_NR_NTN_NeighCellConfigList_r17_SQN_NR_SIB19_r17_ntn_NeighCellConfigList_r17_Optional ntn_NeighCellConfigList_r17;
+	struct OCTET_STRING_SQN_NR_SIB19_r17_lateNonCriticalExtension_Optional lateNonCriticalExtension;
+	struct SQN_NR_NTN_NeighCellConfigList_r17_SQN_NR_SIB19_r17_ntn_NeighCellConfigListExt_v1720_Optional ntn_NeighCellConfigListExt_v1720;
+};
+
+enum SQN_NR_MCCH_RepetitionPeriodAndOffset_r17_Sel {
+	SQN_NR_MCCH_RepetitionPeriodAndOffset_r17_UNBOUND_VALUE = 0,
+	SQN_NR_MCCH_RepetitionPeriodAndOffset_r17_rf1_r17 = 1,
+	SQN_NR_MCCH_RepetitionPeriodAndOffset_r17_rf2_r17 = 2,
+	SQN_NR_MCCH_RepetitionPeriodAndOffset_r17_rf4_r17 = 3,
+	SQN_NR_MCCH_RepetitionPeriodAndOffset_r17_rf8_r17 = 4,
+	SQN_NR_MCCH_RepetitionPeriodAndOffset_r17_rf16_r17 = 5,
+	SQN_NR_MCCH_RepetitionPeriodAndOffset_r17_rf32_r17 = 6,
+	SQN_NR_MCCH_RepetitionPeriodAndOffset_r17_rf64_r17 = 7,
+	SQN_NR_MCCH_RepetitionPeriodAndOffset_r17_rf128_r17 = 8,
+	SQN_NR_MCCH_RepetitionPeriodAndOffset_r17_rf256_r17 = 9,
+};
+
+union SQN_NR_MCCH_RepetitionPeriodAndOffset_r17_Value {
+	uint8_t rf1_r17;
+	uint8_t rf2_r17;
+	uint8_t rf4_r17;
+	uint8_t rf8_r17;
+	uint8_t rf16_r17;
+	uint8_t rf32_r17;
+	uint8_t rf64_r17;
+	uint8_t rf128_r17;
+	uint8_t rf256_r17;
+};
+
+struct SQN_NR_MCCH_RepetitionPeriodAndOffset_r17 {
+	enum SQN_NR_MCCH_RepetitionPeriodAndOffset_r17_Sel d;
+	union SQN_NR_MCCH_RepetitionPeriodAndOffset_r17_Value v;
+};
+
+enum SQN_NR_MCCH_Config_r17_mcch_WindowDuration_r17_e {
+	SQN_NR_MCCH_Config_r17_mcch_WindowDuration_r17_e_sl2 = 0,
+	SQN_NR_MCCH_Config_r17_mcch_WindowDuration_r17_e_sl4 = 1,
+	SQN_NR_MCCH_Config_r17_mcch_WindowDuration_r17_e_sl8 = 2,
+	SQN_NR_MCCH_Config_r17_mcch_WindowDuration_r17_e_sl10 = 3,
+	SQN_NR_MCCH_Config_r17_mcch_WindowDuration_r17_e_sl20 = 4,
+	SQN_NR_MCCH_Config_r17_mcch_WindowDuration_r17_e_sl40 = 5,
+	SQN_NR_MCCH_Config_r17_mcch_WindowDuration_r17_e_sl80 = 6,
+	SQN_NR_MCCH_Config_r17_mcch_WindowDuration_r17_e_sl160 = 7,
+};
+
+typedef enum SQN_NR_MCCH_Config_r17_mcch_WindowDuration_r17_e SQN_NR_MCCH_Config_r17_mcch_WindowDuration_r17_e;
+
+enum SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e {
+	SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf2 = 0,
+	SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf4 = 1,
+	SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf8 = 2,
+	SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf16 = 3,
+	SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf32 = 4,
+	SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf64 = 5,
+	SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf128 = 6,
+	SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf256 = 7,
+	SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf512 = 8,
+	SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf1024 = 9,
+	SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_r2048 = 10,
+	SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf4096 = 11,
+	SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf8192 = 12,
+	SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf16384 = 13,
+	SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf32768 = 14,
+	SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf65536 = 15,
+};
+
+typedef enum SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e;
+
+struct SQN_NR_MCCH_Config_r17_mcch_WindowDuration_r17_e_mcch_WindowDuration_r17_Optional {
+	bool d;
+	SQN_NR_MCCH_Config_r17_mcch_WindowDuration_r17_e v;
+};
+
+struct SQN_NR_MCCH_Config_r17 {
+	struct SQN_NR_MCCH_RepetitionPeriodAndOffset_r17 mcch_RepetitionPeriodAndOffset_r17;
+	uint8_t mcch_WindowStartSlot_r17;
+	struct SQN_NR_MCCH_Config_r17_mcch_WindowDuration_r17_e_mcch_WindowDuration_r17_Optional mcch_WindowDuration_r17;
+	SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e mcch_ModificationPeriod_r17;
+};
+
+enum SQN_NR_LocationAndBandwidthBroadcast_r17_Sel {
+	SQN_NR_LocationAndBandwidthBroadcast_r17_UNBOUND_VALUE = 0,
+	SQN_NR_LocationAndBandwidthBroadcast_r17_sameAsSib1ConfiguredLocationAndBW = 1,
+	SQN_NR_LocationAndBandwidthBroadcast_r17_locationAndBandwidth = 2,
+};
+
+union SQN_NR_LocationAndBandwidthBroadcast_r17_Value {
+	Null sameAsSib1ConfiguredLocationAndBW;
+	uint16_t locationAndBandwidth;
+};
+
+struct SQN_NR_LocationAndBandwidthBroadcast_r17 {
+	enum SQN_NR_LocationAndBandwidthBroadcast_r17_Sel d;
+	union SQN_NR_LocationAndBandwidthBroadcast_r17_Value v;
+};
+
+enum SQN_NR_PDSCH_ConfigPTM_r17_pdsch_AggregationFactor_r17_e {
+	SQN_NR_PDSCH_ConfigPTM_r17_pdsch_AggregationFactor_r17_e_n2 = 0,
+	SQN_NR_PDSCH_ConfigPTM_r17_pdsch_AggregationFactor_r17_e_n4 = 1,
+	SQN_NR_PDSCH_ConfigPTM_r17_pdsch_AggregationFactor_r17_e_n8 = 2,
+};
+
+typedef enum SQN_NR_PDSCH_ConfigPTM_r17_pdsch_AggregationFactor_r17_e SQN_NR_PDSCH_ConfigPTM_r17_pdsch_AggregationFactor_r17_e;
+
+struct uint16_t_SQN_NR_PDSCH_ConfigPTM_r17_dataScramblingIdentityPDSCH_r17_Optional {
+	bool d;
+	uint16_t v;
+};
+
+struct uint16_t_SQN_NR_PDSCH_ConfigPTM_r17_dmrs_ScramblingID0_r17_Optional {
+	bool d;
+	uint16_t v;
+};
+
+struct SQN_NR_PDSCH_ConfigPTM_r17_pdsch_AggregationFactor_r17_e_pdsch_AggregationFactor_r17_Optional {
+	bool d;
+	SQN_NR_PDSCH_ConfigPTM_r17_pdsch_AggregationFactor_r17_e v;
+};
+
+struct SQN_NR_PDSCH_ConfigPTM_r17 {
+	struct uint16_t_SQN_NR_PDSCH_ConfigPTM_r17_dataScramblingIdentityPDSCH_r17_Optional dataScramblingIdentityPDSCH_r17;
+	struct uint16_t_SQN_NR_PDSCH_ConfigPTM_r17_dmrs_ScramblingID0_r17_Optional dmrs_ScramblingID0_r17;
+	struct SQN_NR_PDSCH_ConfigPTM_r17_pdsch_AggregationFactor_r17_e_pdsch_AggregationFactor_r17_Optional pdsch_AggregationFactor_r17;
+};
+
+enum SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_mappingType_r16_e {
+	SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_mappingType_r16_e_typeA = 0,
+	SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_mappingType_r16_e_typeB = 1,
+};
+
+typedef enum SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_mappingType_r16_e SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_mappingType_r16_e;
+
+enum SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_repetitionNumber_r16_e {
+	SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_repetitionNumber_r16_e_n2 = 0,
+	SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_repetitionNumber_r16_e_n3 = 1,
+	SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_repetitionNumber_r16_e_n4 = 2,
+	SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_repetitionNumber_r16_e_n5 = 3,
+	SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_repetitionNumber_r16_e_n6 = 4,
+	SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_repetitionNumber_r16_e_n7 = 5,
+	SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_repetitionNumber_r16_e_n8 = 6,
+	SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_repetitionNumber_r16_e_n16 = 7,
+};
+
+typedef enum SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_repetitionNumber_r16_e SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_repetitionNumber_r16_e;
+
+struct uint8_t_SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_k0_r16_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_repetitionNumber_r16_e_repetitionNumber_r16_Optional {
+	bool d;
+	SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_repetitionNumber_r16_e v;
+};
+
+struct uint8_t_SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_k0_v1710_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct SQN_NR_PDSCH_TimeDomainResourceAllocation_r16 {
+	struct uint8_t_SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_k0_r16_Optional k0_r16;
+	SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_mappingType_r16_e mappingType_r16;
+	uint8_t startSymbolAndLength_r16;
+	struct SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_repetitionNumber_r16_e_repetitionNumber_r16_Optional repetitionNumber_r16;
+	struct uint8_t_SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_k0_v1710_Optional k0_v1710;
+};
+
+struct SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_SQN_NR_PDSCH_TimeDomainResourceAllocationList_r16_Dynamic {
+	size_t d;
+	struct SQN_NR_PDSCH_TimeDomainResourceAllocation_r16* v;
+};
+
+typedef struct SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_SQN_NR_PDSCH_TimeDomainResourceAllocationList_r16_Dynamic SQN_NR_PDSCH_TimeDomainResourceAllocationList_r16;
+
+typedef uint8_t SQN_NR_RateMatchPatternId;
+
+enum SQN_NR_RateMatchPattern_patternType_bitmaps_symbolsInResourceBlock_Sel {
+	SQN_NR_RateMatchPattern_patternType_bitmaps_symbolsInResourceBlock_UNBOUND_VALUE = 0,
+	SQN_NR_RateMatchPattern_patternType_bitmaps_symbolsInResourceBlock_oneSlot = 1,
+	SQN_NR_RateMatchPattern_patternType_bitmaps_symbolsInResourceBlock_twoSlots = 2,
+};
+
+union SQN_NR_RateMatchPattern_patternType_bitmaps_symbolsInResourceBlock_Value {
+	B14 oneSlot;
+	B28 twoSlots;
+};
+
+struct SQN_NR_RateMatchPattern_patternType_bitmaps_symbolsInResourceBlock {
+	enum SQN_NR_RateMatchPattern_patternType_bitmaps_symbolsInResourceBlock_Sel d;
+	union SQN_NR_RateMatchPattern_patternType_bitmaps_symbolsInResourceBlock_Value v;
+};
+
+enum SQN_NR_RateMatchPattern_patternType_bitmaps_periodicityAndPattern_Sel {
+	SQN_NR_RateMatchPattern_patternType_bitmaps_periodicityAndPattern_UNBOUND_VALUE = 0,
+	SQN_NR_RateMatchPattern_patternType_bitmaps_periodicityAndPattern_n2 = 1,
+	SQN_NR_RateMatchPattern_patternType_bitmaps_periodicityAndPattern_n4 = 2,
+	SQN_NR_RateMatchPattern_patternType_bitmaps_periodicityAndPattern_n5 = 3,
+	SQN_NR_RateMatchPattern_patternType_bitmaps_periodicityAndPattern_n8 = 4,
+	SQN_NR_RateMatchPattern_patternType_bitmaps_periodicityAndPattern_n10 = 5,
+	SQN_NR_RateMatchPattern_patternType_bitmaps_periodicityAndPattern_n20 = 6,
+	SQN_NR_RateMatchPattern_patternType_bitmaps_periodicityAndPattern_n40 = 7,
+};
+
+union SQN_NR_RateMatchPattern_patternType_bitmaps_periodicityAndPattern_Value {
+	B2 n2;
+	B4 n4;
+	B5 n5;
+	B8 n8;
+	B10 n10;
+	B20 n20;
+	B40 n40;
+};
+
+struct SQN_NR_RateMatchPattern_patternType_bitmaps_periodicityAndPattern {
+	enum SQN_NR_RateMatchPattern_patternType_bitmaps_periodicityAndPattern_Sel d;
+	union SQN_NR_RateMatchPattern_patternType_bitmaps_periodicityAndPattern_Value v;
+};
+
+struct SQN_NR_RateMatchPattern_patternType_bitmaps_periodicityAndPattern_periodicityAndPattern_Optional {
+	bool d;
+	struct SQN_NR_RateMatchPattern_patternType_bitmaps_periodicityAndPattern v;
+};
+
+struct SQN_NR_RateMatchPattern_patternType_bitmaps {
+	B275 resourceBlocks;
+	struct SQN_NR_RateMatchPattern_patternType_bitmaps_symbolsInResourceBlock symbolsInResourceBlock;
+	struct SQN_NR_RateMatchPattern_patternType_bitmaps_periodicityAndPattern_periodicityAndPattern_Optional periodicityAndPattern;
+};
+
+typedef uint8_t SQN_NR_ControlResourceSetId;
+
+enum SQN_NR_RateMatchPattern_patternType_Sel {
+	SQN_NR_RateMatchPattern_patternType_UNBOUND_VALUE = 0,
+	SQN_NR_RateMatchPattern_patternType_bitmaps = 1,
+	SQN_NR_RateMatchPattern_patternType_controlResourceSet = 2,
+};
+
+union SQN_NR_RateMatchPattern_patternType_Value {
+	struct SQN_NR_RateMatchPattern_patternType_bitmaps bitmaps;
+	SQN_NR_ControlResourceSetId controlResourceSet;
+};
+
+struct SQN_NR_RateMatchPattern_patternType {
+	enum SQN_NR_RateMatchPattern_patternType_Sel d;
+	union SQN_NR_RateMatchPattern_patternType_Value v;
+};
+
+enum SQN_NR_RateMatchPattern_dummy_e {
+	SQN_NR_RateMatchPattern_dummy_e_dynamic = 0,
+	SQN_NR_RateMatchPattern_dummy_e_semiStatic = 1,
+};
+
+typedef enum SQN_NR_RateMatchPattern_dummy_e SQN_NR_RateMatchPattern_dummy_e;
+
+typedef uint8_t SQN_NR_ControlResourceSetId_r16;
+
+struct SQN_NR_SubcarrierSpacing_e_SQN_NR_RateMatchPattern_subcarrierSpacing_Optional {
+	bool d;
+	SQN_NR_SubcarrierSpacing_e v;
+};
+
+struct SQN_NR_ControlResourceSetId_r16_SQN_NR_RateMatchPattern_controlResourceSet_r16_Optional {
+	bool d;
+	SQN_NR_ControlResourceSetId_r16 v;
+};
+
+struct SQN_NR_RateMatchPattern {
+	SQN_NR_RateMatchPatternId rateMatchPatternId;
+	struct SQN_NR_RateMatchPattern_patternType patternType;
+	struct SQN_NR_SubcarrierSpacing_e_SQN_NR_RateMatchPattern_subcarrierSpacing_Optional subcarrierSpacing;
+	SQN_NR_RateMatchPattern_dummy_e dummy;
+	struct SQN_NR_ControlResourceSetId_r16_SQN_NR_RateMatchPattern_controlResourceSet_r16_Optional controlResourceSet_r16;
+};
+
+enum SQN_NR_RateMatchPatternLTE_CRS_carrierBandwidthDL_e {
+	SQN_NR_RateMatchPatternLTE_CRS_carrierBandwidthDL_e_n6 = 0,
+	SQN_NR_RateMatchPatternLTE_CRS_carrierBandwidthDL_e_n15 = 1,
+	SQN_NR_RateMatchPatternLTE_CRS_carrierBandwidthDL_e_n25 = 2,
+	SQN_NR_RateMatchPatternLTE_CRS_carrierBandwidthDL_e_n50 = 3,
+	SQN_NR_RateMatchPatternLTE_CRS_carrierBandwidthDL_e_n75 = 4,
+	SQN_NR_RateMatchPatternLTE_CRS_carrierBandwidthDL_e_n100 = 5,
+	SQN_NR_RateMatchPatternLTE_CRS_carrierBandwidthDL_e_spare2 = 6,
+	SQN_NR_RateMatchPatternLTE_CRS_carrierBandwidthDL_e_spare1 = 7,
+};
+
+typedef enum SQN_NR_RateMatchPatternLTE_CRS_carrierBandwidthDL_e SQN_NR_RateMatchPatternLTE_CRS_carrierBandwidthDL_e;
+
+enum SQN_NR_EUTRA_MBSFN_SubframeConfig_radioframeAllocationPeriod_e {
+	SQN_NR_EUTRA_MBSFN_SubframeConfig_radioframeAllocationPeriod_e_n1 = 0,
+	SQN_NR_EUTRA_MBSFN_SubframeConfig_radioframeAllocationPeriod_e_n2 = 1,
+	SQN_NR_EUTRA_MBSFN_SubframeConfig_radioframeAllocationPeriod_e_n4 = 2,
+	SQN_NR_EUTRA_MBSFN_SubframeConfig_radioframeAllocationPeriod_e_n8 = 3,
+	SQN_NR_EUTRA_MBSFN_SubframeConfig_radioframeAllocationPeriod_e_n16 = 4,
+	SQN_NR_EUTRA_MBSFN_SubframeConfig_radioframeAllocationPeriod_e_n32 = 5,
+};
+
+typedef enum SQN_NR_EUTRA_MBSFN_SubframeConfig_radioframeAllocationPeriod_e SQN_NR_EUTRA_MBSFN_SubframeConfig_radioframeAllocationPeriod_e;
+
+enum SQN_NR_EUTRA_MBSFN_SubframeConfig_subframeAllocation1_Sel {
+	SQN_NR_EUTRA_MBSFN_SubframeConfig_subframeAllocation1_UNBOUND_VALUE = 0,
+	SQN_NR_EUTRA_MBSFN_SubframeConfig_subframeAllocation1_oneFrame = 1,
+	SQN_NR_EUTRA_MBSFN_SubframeConfig_subframeAllocation1_fourFrames = 2,
+};
+
+union SQN_NR_EUTRA_MBSFN_SubframeConfig_subframeAllocation1_Value {
+	B6 oneFrame;
+	B24 fourFrames;
+};
+
+struct SQN_NR_EUTRA_MBSFN_SubframeConfig_subframeAllocation1 {
+	enum SQN_NR_EUTRA_MBSFN_SubframeConfig_subframeAllocation1_Sel d;
+	union SQN_NR_EUTRA_MBSFN_SubframeConfig_subframeAllocation1_Value v;
+};
+
+enum SQN_NR_EUTRA_MBSFN_SubframeConfig_subframeAllocation2_Sel {
+	SQN_NR_EUTRA_MBSFN_SubframeConfig_subframeAllocation2_UNBOUND_VALUE = 0,
+	SQN_NR_EUTRA_MBSFN_SubframeConfig_subframeAllocation2_oneFrame = 1,
+	SQN_NR_EUTRA_MBSFN_SubframeConfig_subframeAllocation2_fourFrames = 2,
+};
+
+union SQN_NR_EUTRA_MBSFN_SubframeConfig_subframeAllocation2_Value {
+	B2 oneFrame;
+	B8 fourFrames;
+};
+
+struct SQN_NR_EUTRA_MBSFN_SubframeConfig_subframeAllocation2 {
+	enum SQN_NR_EUTRA_MBSFN_SubframeConfig_subframeAllocation2_Sel d;
+	union SQN_NR_EUTRA_MBSFN_SubframeConfig_subframeAllocation2_Value v;
+};
+
+struct SQN_NR_EUTRA_MBSFN_SubframeConfig_subframeAllocation2_subframeAllocation2_Optional {
+	bool d;
+	struct SQN_NR_EUTRA_MBSFN_SubframeConfig_subframeAllocation2 v;
+};
+
+struct SQN_NR_EUTRA_MBSFN_SubframeConfig {
+	SQN_NR_EUTRA_MBSFN_SubframeConfig_radioframeAllocationPeriod_e radioframeAllocationPeriod;
+	uint8_t radioframeAllocationOffset;
+	struct SQN_NR_EUTRA_MBSFN_SubframeConfig_subframeAllocation1 subframeAllocation1;
+	struct SQN_NR_EUTRA_MBSFN_SubframeConfig_subframeAllocation2_subframeAllocation2_Optional subframeAllocation2;
+};
+
+struct SQN_NR_EUTRA_MBSFN_SubframeConfig_SQN_NR_EUTRA_MBSFN_SubframeConfigList_Dynamic {
+	size_t d;
+	struct SQN_NR_EUTRA_MBSFN_SubframeConfig* v;
+};
+
+typedef struct SQN_NR_EUTRA_MBSFN_SubframeConfig_SQN_NR_EUTRA_MBSFN_SubframeConfigList_Dynamic SQN_NR_EUTRA_MBSFN_SubframeConfigList;
+
+enum SQN_NR_RateMatchPatternLTE_CRS_nrofCRS_Ports_e {
+	SQN_NR_RateMatchPatternLTE_CRS_nrofCRS_Ports_e_n1 = 0,
+	SQN_NR_RateMatchPatternLTE_CRS_nrofCRS_Ports_e_n2 = 1,
+	SQN_NR_RateMatchPatternLTE_CRS_nrofCRS_Ports_e_n4 = 2,
+};
+
+typedef enum SQN_NR_RateMatchPatternLTE_CRS_nrofCRS_Ports_e SQN_NR_RateMatchPatternLTE_CRS_nrofCRS_Ports_e;
+
+enum SQN_NR_RateMatchPatternLTE_CRS_v_Shift_e {
+	SQN_NR_RateMatchPatternLTE_CRS_v_Shift_e_n0 = 0,
+	SQN_NR_RateMatchPatternLTE_CRS_v_Shift_e_n1 = 1,
+	SQN_NR_RateMatchPatternLTE_CRS_v_Shift_e_n2 = 2,
+	SQN_NR_RateMatchPatternLTE_CRS_v_Shift_e_n3 = 3,
+	SQN_NR_RateMatchPatternLTE_CRS_v_Shift_e_n4 = 4,
+	SQN_NR_RateMatchPatternLTE_CRS_v_Shift_e_n5 = 5,
+};
+
+typedef enum SQN_NR_RateMatchPatternLTE_CRS_v_Shift_e SQN_NR_RateMatchPatternLTE_CRS_v_Shift_e;
+
+struct SQN_NR_EUTRA_MBSFN_SubframeConfigList_SQN_NR_RateMatchPatternLTE_CRS_mbsfn_SubframeConfigList_Optional {
+	bool d;
+	SQN_NR_EUTRA_MBSFN_SubframeConfigList v;
+};
+
+struct SQN_NR_RateMatchPatternLTE_CRS {
+	uint16_t carrierFreqDL;
+	SQN_NR_RateMatchPatternLTE_CRS_carrierBandwidthDL_e carrierBandwidthDL;
+	struct SQN_NR_EUTRA_MBSFN_SubframeConfigList_SQN_NR_RateMatchPatternLTE_CRS_mbsfn_SubframeConfigList_Optional mbsfn_SubframeConfigList;
+	SQN_NR_RateMatchPatternLTE_CRS_nrofCRS_Ports_e nrofCRS_Ports;
+	SQN_NR_RateMatchPatternLTE_CRS_v_Shift_e v_Shift;
+};
+
+enum SQN_NR_PDSCH_ConfigBroadcast_r17_mcs_Table_r17_e {
+	SQN_NR_PDSCH_ConfigBroadcast_r17_mcs_Table_r17_e_qam256 = 0,
+	SQN_NR_PDSCH_ConfigBroadcast_r17_mcs_Table_r17_e_qam64LowSE = 1,
+};
+
+typedef enum SQN_NR_PDSCH_ConfigBroadcast_r17_mcs_Table_r17_e SQN_NR_PDSCH_ConfigBroadcast_r17_mcs_Table_r17_e;
+
+enum SQN_NR_PDSCH_ConfigBroadcast_r17_xOverhead_r17_e {
+	SQN_NR_PDSCH_ConfigBroadcast_r17_xOverhead_r17_e_xOh6 = 0,
+	SQN_NR_PDSCH_ConfigBroadcast_r17_xOverhead_r17_e_xOh12 = 1,
+	SQN_NR_PDSCH_ConfigBroadcast_r17_xOverhead_r17_e_xOh18 = 2,
+};
+
+typedef enum SQN_NR_PDSCH_ConfigBroadcast_r17_xOverhead_r17_e SQN_NR_PDSCH_ConfigBroadcast_r17_xOverhead_r17_e;
+
+struct SQN_NR_PDSCH_ConfigPTM_r17_SQN_NR_PDSCH_ConfigBroadcast_r17_pdschConfigList_r17_Dynamic {
+	size_t d;
+	struct SQN_NR_PDSCH_ConfigPTM_r17* v;
+};
+
+struct SQN_NR_PDSCH_TimeDomainResourceAllocationList_r16_SQN_NR_PDSCH_ConfigBroadcast_r17_pdsch_TimeDomainAllocationList_r17_Optional {
+	bool d;
+	SQN_NR_PDSCH_TimeDomainResourceAllocationList_r16 v;
+};
+
+struct SQN_NR_PDSCH_ConfigBroadcast_r17_SQN_NR_RateMatchPattern_rateMatchPatternToAddModList_r17_Dynamic {
+	size_t d;
+	struct SQN_NR_RateMatchPattern* v;
+};
+
+struct SQN_NR_RateMatchPattern_SQN_NR_PDSCH_ConfigBroadcast_r17_rateMatchPatternToAddModList_r17_DynamicOptional {
+	bool d;
+	struct SQN_NR_PDSCH_ConfigBroadcast_r17_SQN_NR_RateMatchPattern_rateMatchPatternToAddModList_r17_Dynamic v;
+};
+
+struct SQN_NR_RateMatchPatternLTE_CRS_SQN_NR_PDSCH_ConfigBroadcast_r17_lte_CRS_ToMatchAround_r17_Optional {
+	bool d;
+	struct SQN_NR_RateMatchPatternLTE_CRS v;
+};
+
+struct SQN_NR_PDSCH_ConfigBroadcast_r17_mcs_Table_r17_e_mcs_Table_r17_Optional {
+	bool d;
+	SQN_NR_PDSCH_ConfigBroadcast_r17_mcs_Table_r17_e v;
+};
+
+struct SQN_NR_PDSCH_ConfigBroadcast_r17_xOverhead_r17_e_xOverhead_r17_Optional {
+	bool d;
+	SQN_NR_PDSCH_ConfigBroadcast_r17_xOverhead_r17_e v;
+};
+
+struct SQN_NR_PDSCH_ConfigBroadcast_r17 {
+	struct SQN_NR_PDSCH_ConfigPTM_r17_SQN_NR_PDSCH_ConfigBroadcast_r17_pdschConfigList_r17_Dynamic pdschConfigList_r17;
+	struct SQN_NR_PDSCH_TimeDomainResourceAllocationList_r16_SQN_NR_PDSCH_ConfigBroadcast_r17_pdsch_TimeDomainAllocationList_r17_Optional pdsch_TimeDomainAllocationList_r17;
+	struct SQN_NR_RateMatchPattern_SQN_NR_PDSCH_ConfigBroadcast_r17_rateMatchPatternToAddModList_r17_DynamicOptional rateMatchPatternToAddModList_r17;
+	struct SQN_NR_RateMatchPatternLTE_CRS_SQN_NR_PDSCH_ConfigBroadcast_r17_lte_CRS_ToMatchAround_r17_Optional lte_CRS_ToMatchAround_r17;
+	struct SQN_NR_PDSCH_ConfigBroadcast_r17_mcs_Table_r17_e_mcs_Table_r17_Optional mcs_Table_r17;
+	struct SQN_NR_PDSCH_ConfigBroadcast_r17_xOverhead_r17_e_xOverhead_r17_Optional xOverhead_r17;
+};
+
+enum SQN_NR_ControlResourceSet_cce_REG_MappingType_interleaved_reg_BundleSize_e {
+	SQN_NR_ControlResourceSet_cce_REG_MappingType_interleaved_reg_BundleSize_e_n2 = 0,
+	SQN_NR_ControlResourceSet_cce_REG_MappingType_interleaved_reg_BundleSize_e_n3 = 1,
+	SQN_NR_ControlResourceSet_cce_REG_MappingType_interleaved_reg_BundleSize_e_n6 = 2,
+};
+
+typedef enum SQN_NR_ControlResourceSet_cce_REG_MappingType_interleaved_reg_BundleSize_e SQN_NR_ControlResourceSet_cce_REG_MappingType_interleaved_reg_BundleSize_e;
+
+enum SQN_NR_ControlResourceSet_cce_REG_MappingType_interleaved_interleaverSize_e {
+	SQN_NR_ControlResourceSet_cce_REG_MappingType_interleaved_interleaverSize_e_n2 = 0,
+	SQN_NR_ControlResourceSet_cce_REG_MappingType_interleaved_interleaverSize_e_n3 = 1,
+	SQN_NR_ControlResourceSet_cce_REG_MappingType_interleaved_interleaverSize_e_n6 = 2,
+};
+
+typedef enum SQN_NR_ControlResourceSet_cce_REG_MappingType_interleaved_interleaverSize_e SQN_NR_ControlResourceSet_cce_REG_MappingType_interleaved_interleaverSize_e;
+
+struct uint16_t_SQN_NR_ControlResourceSet_cce_REG_MappingType_interleaved_shiftIndex_Optional {
+	bool d;
+	uint16_t v;
+};
+
+struct SQN_NR_ControlResourceSet_cce_REG_MappingType_interleaved {
+	SQN_NR_ControlResourceSet_cce_REG_MappingType_interleaved_reg_BundleSize_e reg_BundleSize;
+	SQN_NR_ControlResourceSet_cce_REG_MappingType_interleaved_interleaverSize_e interleaverSize;
+	struct uint16_t_SQN_NR_ControlResourceSet_cce_REG_MappingType_interleaved_shiftIndex_Optional shiftIndex;
+};
+
+enum SQN_NR_ControlResourceSet_cce_REG_MappingType_Sel {
+	SQN_NR_ControlResourceSet_cce_REG_MappingType_UNBOUND_VALUE = 0,
+	SQN_NR_ControlResourceSet_cce_REG_MappingType_interleaved = 1,
+	SQN_NR_ControlResourceSet_cce_REG_MappingType_nonInterleaved = 2,
+};
+
+union SQN_NR_ControlResourceSet_cce_REG_MappingType_Value {
+	struct SQN_NR_ControlResourceSet_cce_REG_MappingType_interleaved interleaved;
+	Null nonInterleaved;
+};
+
+struct SQN_NR_ControlResourceSet_cce_REG_MappingType {
+	enum SQN_NR_ControlResourceSet_cce_REG_MappingType_Sel d;
+	union SQN_NR_ControlResourceSet_cce_REG_MappingType_Value v;
+};
+
+enum SQN_NR_ControlResourceSet_precoderGranularity_e {
+	SQN_NR_ControlResourceSet_precoderGranularity_e_sameAsREG_bundle = 0,
+	SQN_NR_ControlResourceSet_precoderGranularity_e_allContiguousRBs = 1,
+};
+
+typedef enum SQN_NR_ControlResourceSet_precoderGranularity_e SQN_NR_ControlResourceSet_precoderGranularity_e;
+
+typedef uint8_t SQN_NR_TCI_StateId;
+
+enum SQN_NR_ControlResourceSet_tci_PresentInDCI_e {
+	SQN_NR_ControlResourceSet_tci_PresentInDCI_e_enabled = 0,
+};
+
+typedef enum SQN_NR_ControlResourceSet_tci_PresentInDCI_e SQN_NR_ControlResourceSet_tci_PresentInDCI_e;
+
+typedef uint8_t SQN_NR_ControlResourceSetId_v1610;
+
+enum SQN_NR_ControlResourceSet_followUnifiedTCIstate_r17_e {
+	SQN_NR_ControlResourceSet_followUnifiedTCIstate_r17_e_enabled = 0,
+};
+
+typedef enum SQN_NR_ControlResourceSet_followUnifiedTCIstate_r17_e SQN_NR_ControlResourceSet_followUnifiedTCIstate_r17_e;
+
+struct SQN_NR_TCI_StateId_SQN_NR_ControlResourceSet_tci_StatesPDCCH_ToAddList_Dynamic {
+	size_t d;
+	SQN_NR_TCI_StateId* v;
+};
+
+struct SQN_NR_TCI_StateId_SQN_NR_ControlResourceSet_tci_StatesPDCCH_ToAddList_DynamicOptional {
+	bool d;
+	struct SQN_NR_TCI_StateId_SQN_NR_ControlResourceSet_tci_StatesPDCCH_ToAddList_Dynamic v;
+};
+
+struct SQN_NR_TCI_StateId_SQN_NR_ControlResourceSet_tci_StatesPDCCH_ToReleaseList_Dynamic {
+	size_t d;
+	SQN_NR_TCI_StateId* v;
+};
+
+struct SQN_NR_TCI_StateId_SQN_NR_ControlResourceSet_tci_StatesPDCCH_ToReleaseList_DynamicOptional {
+	bool d;
+	struct SQN_NR_TCI_StateId_SQN_NR_ControlResourceSet_tci_StatesPDCCH_ToReleaseList_Dynamic v;
+};
+
+struct SQN_NR_ControlResourceSet_tci_PresentInDCI_e_tci_PresentInDCI_Optional {
+	bool d;
+	SQN_NR_ControlResourceSet_tci_PresentInDCI_e v;
+};
+
+struct uint16_t_SQN_NR_ControlResourceSet_pdcch_DMRS_ScramblingID_Optional {
+	bool d;
+	uint16_t v;
+};
+
+struct uint8_t_SQN_NR_ControlResourceSet_rb_Offset_r16_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct uint8_t_SQN_NR_ControlResourceSet_tci_PresentDCI_1_2_r16_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct uint8_t_SQN_NR_ControlResourceSet_coresetPoolIndex_r16_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct SQN_NR_ControlResourceSetId_v1610_SQN_NR_ControlResourceSet_controlResourceSetId_v1610_Optional {
+	bool d;
+	SQN_NR_ControlResourceSetId_v1610 v;
+};
+
+struct SQN_NR_ControlResourceSet_followUnifiedTCIstate_r17_e_followUnifiedTCIstate_r17_Optional {
+	bool d;
+	SQN_NR_ControlResourceSet_followUnifiedTCIstate_r17_e v;
+};
+
+struct SQN_NR_ControlResourceSet {
+	SQN_NR_ControlResourceSetId controlResourceSetId;
+	B45 frequencyDomainResources;
+	uint8_t duration;
+	struct SQN_NR_ControlResourceSet_cce_REG_MappingType cce_REG_MappingType;
+	SQN_NR_ControlResourceSet_precoderGranularity_e precoderGranularity;
+	struct SQN_NR_TCI_StateId_SQN_NR_ControlResourceSet_tci_StatesPDCCH_ToAddList_DynamicOptional tci_StatesPDCCH_ToAddList;
+	struct SQN_NR_TCI_StateId_SQN_NR_ControlResourceSet_tci_StatesPDCCH_ToReleaseList_DynamicOptional tci_StatesPDCCH_ToReleaseList;
+	struct SQN_NR_ControlResourceSet_tci_PresentInDCI_e_tci_PresentInDCI_Optional tci_PresentInDCI;
+	struct uint16_t_SQN_NR_ControlResourceSet_pdcch_DMRS_ScramblingID_Optional pdcch_DMRS_ScramblingID;
+	struct uint8_t_SQN_NR_ControlResourceSet_rb_Offset_r16_Optional rb_Offset_r16;
+	struct uint8_t_SQN_NR_ControlResourceSet_tci_PresentDCI_1_2_r16_Optional tci_PresentDCI_1_2_r16;
+	struct uint8_t_SQN_NR_ControlResourceSet_coresetPoolIndex_r16_Optional coresetPoolIndex_r16;
+	struct SQN_NR_ControlResourceSetId_v1610_SQN_NR_ControlResourceSet_controlResourceSetId_v1610_Optional controlResourceSetId_v1610;
+	struct SQN_NR_ControlResourceSet_followUnifiedTCIstate_r17_e_followUnifiedTCIstate_r17_Optional followUnifiedTCIstate_r17;
+};
+
+struct SQN_NR_LocationAndBandwidthBroadcast_r17_SQN_NR_CFR_ConfigMCCH_MTCH_r17_locationAndBandwidthBroadcast_r17_Optional {
+	bool d;
+	struct SQN_NR_LocationAndBandwidthBroadcast_r17 v;
+};
+
+struct SQN_NR_PDSCH_ConfigBroadcast_r17_SQN_NR_CFR_ConfigMCCH_MTCH_r17_pdsch_ConfigMCCH_r17_Optional {
+	bool d;
+	struct SQN_NR_PDSCH_ConfigBroadcast_r17 v;
+};
+
+struct SQN_NR_ControlResourceSet_SQN_NR_CFR_ConfigMCCH_MTCH_r17_commonControlResourceSetExt_r17_Optional {
+	bool d;
+	struct SQN_NR_ControlResourceSet v;
+};
+
+struct SQN_NR_CFR_ConfigMCCH_MTCH_r17 {
+	struct SQN_NR_LocationAndBandwidthBroadcast_r17_SQN_NR_CFR_ConfigMCCH_MTCH_r17_locationAndBandwidthBroadcast_r17_Optional locationAndBandwidthBroadcast_r17;
+	struct SQN_NR_PDSCH_ConfigBroadcast_r17_SQN_NR_CFR_ConfigMCCH_MTCH_r17_pdsch_ConfigMCCH_r17_Optional pdsch_ConfigMCCH_r17;
+	struct SQN_NR_ControlResourceSet_SQN_NR_CFR_ConfigMCCH_MTCH_r17_commonControlResourceSetExt_r17_Optional commonControlResourceSetExt_r17;
+};
+
+struct SQN_NR_CFR_ConfigMCCH_MTCH_r17_SQN_NR_SIB20_r17_cfr_ConfigMCCH_MTCH_r17_Optional {
+	bool d;
+	struct SQN_NR_CFR_ConfigMCCH_MTCH_r17 v;
+};
+
+struct OCTET_STRING_SQN_NR_SIB20_r17_lateNonCriticalExtension_Optional {
+	bool d;
+	OCTET_STRING v;
+};
+
+struct SQN_NR_SIB20_r17 {
+	struct SQN_NR_MCCH_Config_r17 mcch_Config_r17;
+	struct SQN_NR_CFR_ConfigMCCH_MTCH_r17_SQN_NR_SIB20_r17_cfr_ConfigMCCH_MTCH_r17_Optional cfr_ConfigMCCH_MTCH_r17;
+	struct OCTET_STRING_SQN_NR_SIB20_r17_lateNonCriticalExtension_Optional lateNonCriticalExtension;
+};
+
+typedef O3 SQN_NR_MBS_FSAI_r17;
+
+struct SQN_NR_MBS_FSAI_r17_SQN_NR_MBS_FSAI_List_r17_Dynamic {
+	size_t d;
+	SQN_NR_MBS_FSAI_r17* v;
+};
+
+typedef struct SQN_NR_MBS_FSAI_r17_SQN_NR_MBS_FSAI_List_r17_Dynamic SQN_NR_MBS_FSAI_List_r17;
+
+struct SQN_NR_MBS_FSAI_InterFreq_r17 {
+	SQN_NR_ARFCN_ValueNR dl_CarrierFreq_r17;
+	SQN_NR_MBS_FSAI_List_r17 mbs_FSAI_List_r17;
+};
+
+struct SQN_NR_MBS_FSAI_InterFreq_r17_SQN_NR_MBS_FSAI_InterFreqList_r17_Dynamic {
+	size_t d;
+	struct SQN_NR_MBS_FSAI_InterFreq_r17* v;
+};
+
+typedef struct SQN_NR_MBS_FSAI_InterFreq_r17_SQN_NR_MBS_FSAI_InterFreqList_r17_Dynamic SQN_NR_MBS_FSAI_InterFreqList_r17;
+
+struct SQN_NR_MBS_FSAI_List_r17_SQN_NR_SIB21_r17_mbs_FSAI_IntraFreq_r17_Optional {
+	bool d;
+	SQN_NR_MBS_FSAI_List_r17 v;
+};
+
+struct SQN_NR_MBS_FSAI_InterFreqList_r17_SQN_NR_SIB21_r17_mbs_FSAI_InterFreqList_r17_Optional {
+	bool d;
+	SQN_NR_MBS_FSAI_InterFreqList_r17 v;
+};
+
+struct OCTET_STRING_SQN_NR_SIB21_r17_lateNonCriticalExtension_Optional {
+	bool d;
+	OCTET_STRING v;
+};
+
+struct SQN_NR_SIB21_r17 {
+	struct SQN_NR_MBS_FSAI_List_r17_SQN_NR_SIB21_r17_mbs_FSAI_IntraFreq_r17_Optional mbs_FSAI_IntraFreq_r17;
+	struct SQN_NR_MBS_FSAI_InterFreqList_r17_SQN_NR_SIB21_r17_mbs_FSAI_InterFreqList_r17_Optional mbs_FSAI_InterFreqList_r17;
+	struct OCTET_STRING_SQN_NR_SIB21_r17_lateNonCriticalExtension_Optional lateNonCriticalExtension;
 };
 
 enum SQN_NR_SystemInformation_IEs_sib_TypeAndInfo_s_Sel {
@@ -1846,6 +3279,13 @@ enum SQN_NR_SystemInformation_IEs_sib_TypeAndInfo_s_Sel {
 	SQN_NR_SystemInformation_IEs_sib_TypeAndInfo_s_sib12_v1610 = 11,
 	SQN_NR_SystemInformation_IEs_sib_TypeAndInfo_s_sib13_v1610 = 12,
 	SQN_NR_SystemInformation_IEs_sib_TypeAndInfo_s_sib14_v1610 = 13,
+	SQN_NR_SystemInformation_IEs_sib_TypeAndInfo_s_sib15_v1700 = 14,
+	SQN_NR_SystemInformation_IEs_sib_TypeAndInfo_s_sib16_v1700 = 15,
+	SQN_NR_SystemInformation_IEs_sib_TypeAndInfo_s_sib17_v1700 = 16,
+	SQN_NR_SystemInformation_IEs_sib_TypeAndInfo_s_sib18_v1700 = 17,
+	SQN_NR_SystemInformation_IEs_sib_TypeAndInfo_s_sib19_v1700 = 18,
+	SQN_NR_SystemInformation_IEs_sib_TypeAndInfo_s_sib20_v1700 = 19,
+	SQN_NR_SystemInformation_IEs_sib_TypeAndInfo_s_sib21_v1700 = 20,
 };
 
 union SQN_NR_SystemInformation_IEs_sib_TypeAndInfo_s_Value {
@@ -1862,6 +3302,13 @@ union SQN_NR_SystemInformation_IEs_sib_TypeAndInfo_s_Value {
 	struct SQN_NR_SIB12_r16 sib12_v1610;
 	struct SQN_NR_SIB13_r16 sib13_v1610;
 	struct SQN_NR_SIB14_r16 sib14_v1610;
+	struct SQN_NR_SIB15_r17 sib15_v1700;
+	struct SQN_NR_SIB16_r17 sib16_v1700;
+	struct SQN_NR_SIB17_r17 sib17_v1700;
+	struct SQN_NR_SIB18_r17 sib18_v1700;
+	struct SQN_NR_SIB19_r17 sib19_v1700;
+	struct SQN_NR_SIB20_r17 sib20_v1700;
+	struct SQN_NR_SIB21_r17 sib21_v1700;
 };
 
 struct SQN_NR_SystemInformation_IEs_sib_TypeAndInfo_s {
@@ -1944,6 +3391,13 @@ enum SQN_NR_PosSystemInformation_r16_IEs_posSIB_TypeAndInfo_r16_s_Sel {
 	SQN_NR_PosSystemInformation_r16_IEs_posSIB_TypeAndInfo_r16_s_posSib6_1_r16 = 35,
 	SQN_NR_PosSystemInformation_r16_IEs_posSIB_TypeAndInfo_r16_s_posSib6_2_r16 = 36,
 	SQN_NR_PosSystemInformation_r16_IEs_posSIB_TypeAndInfo_r16_s_posSib6_3_r16 = 37,
+	SQN_NR_PosSystemInformation_r16_IEs_posSIB_TypeAndInfo_r16_s_posSib1_9_v1700 = 38,
+	SQN_NR_PosSystemInformation_r16_IEs_posSIB_TypeAndInfo_r16_s_posSib1_10_v1700 = 39,
+	SQN_NR_PosSystemInformation_r16_IEs_posSIB_TypeAndInfo_r16_s_posSib2_24_v1700 = 40,
+	SQN_NR_PosSystemInformation_r16_IEs_posSIB_TypeAndInfo_r16_s_posSib2_25_v1700 = 41,
+	SQN_NR_PosSystemInformation_r16_IEs_posSIB_TypeAndInfo_r16_s_posSib6_4_v1700 = 42,
+	SQN_NR_PosSystemInformation_r16_IEs_posSIB_TypeAndInfo_r16_s_posSib6_5_v1700 = 43,
+	SQN_NR_PosSystemInformation_r16_IEs_posSIB_TypeAndInfo_r16_s_posSib6_6_v1700 = 44,
 };
 
 union SQN_NR_PosSystemInformation_r16_IEs_posSIB_TypeAndInfo_r16_s_Value {
@@ -1984,6 +3438,13 @@ union SQN_NR_PosSystemInformation_r16_IEs_posSIB_TypeAndInfo_r16_s_Value {
 	struct SQN_NR_SIBpos_r16 posSib6_1_r16;
 	struct SQN_NR_SIBpos_r16 posSib6_2_r16;
 	struct SQN_NR_SIBpos_r16 posSib6_3_r16;
+	struct SQN_NR_SIBpos_r16 posSib1_9_v1700;
+	struct SQN_NR_SIBpos_r16 posSib1_10_v1700;
+	struct SQN_NR_SIBpos_r16 posSib2_24_v1700;
+	struct SQN_NR_SIBpos_r16 posSib2_25_v1700;
+	struct SQN_NR_SIBpos_r16 posSib6_4_v1700;
+	struct SQN_NR_SIBpos_r16 posSib6_5_v1700;
+	struct SQN_NR_SIBpos_r16 posSib6_6_v1700;
 };
 
 struct SQN_NR_PosSystemInformation_r16_IEs_posSIB_TypeAndInfo_r16_s {
@@ -2084,29 +3545,6 @@ struct SQN_NR_SIB1_cellSelectionInfo {
 	struct uint8_t_SQN_NR_SIB1_cellSelectionInfo_q_QualMinOffset_Optional q_QualMinOffset;
 };
 
-typedef uint8_t SQN_NR_MCC_MNC_Digit;
-
-typedef SQN_NR_MCC_MNC_Digit SQN_NR_MCC[3];
-
-struct SQN_NR_MCC_MNC_Digit_SQN_NR_MNC_Dynamic {
-	size_t d;
-	SQN_NR_MCC_MNC_Digit* v;
-};
-
-typedef struct SQN_NR_MCC_MNC_Digit_SQN_NR_MNC_Dynamic SQN_NR_MNC;
-
-struct SQN_NR_MCC_SQN_NR_PLMN_Identity_mcc_Optional {
-	bool d;
-	SQN_NR_MCC v;
-};
-
-struct SQN_NR_PLMN_Identity {
-	struct SQN_NR_MCC_SQN_NR_PLMN_Identity_mcc_Optional mcc;
-	SQN_NR_MNC mnc;
-};
-
-typedef B24 SQN_NR_TrackingAreaCode;
-
 typedef uint8_t SQN_NR_RAN_AreaCode;
 
 typedef B36 SQN_NR_CellIdentity;
@@ -2144,6 +3582,21 @@ struct SQN_NR_PLMN_IdentityInfo_iab_Support_r16_e_iab_Support_r16_Optional {
 	SQN_NR_PLMN_IdentityInfo_iab_Support_r16_e v;
 };
 
+struct SQN_NR_TrackingAreaCode_SQN_NR_PLMN_IdentityInfo_trackingAreaList_r17_Dynamic {
+	size_t d;
+	SQN_NR_TrackingAreaCode* v;
+};
+
+struct SQN_NR_TrackingAreaCode_SQN_NR_PLMN_IdentityInfo_trackingAreaList_r17_DynamicOptional {
+	bool d;
+	struct SQN_NR_TrackingAreaCode_SQN_NR_PLMN_IdentityInfo_trackingAreaList_r17_Dynamic v;
+};
+
+struct uint8_t_SQN_NR_PLMN_IdentityInfo_gNB_ID_Length_r17_Optional {
+	bool d;
+	uint8_t v;
+};
+
 struct SQN_NR_PLMN_IdentityInfo {
 	struct SQN_NR_PLMN_Identity_SQN_NR_PLMN_IdentityInfo_plmn_IdentityList_Dynamic plmn_IdentityList;
 	struct SQN_NR_TrackingAreaCode_SQN_NR_PLMN_IdentityInfo_trackingAreaCode_Optional trackingAreaCode;
@@ -2151,6 +3604,8 @@ struct SQN_NR_PLMN_IdentityInfo {
 	SQN_NR_CellIdentity cellIdentity;
 	SQN_NR_PLMN_IdentityInfo_cellReservedForOperatorUse_e cellReservedForOperatorUse;
 	struct SQN_NR_PLMN_IdentityInfo_iab_Support_r16_e_iab_Support_r16_Optional iab_Support_r16;
+	struct SQN_NR_TrackingAreaCode_SQN_NR_PLMN_IdentityInfo_trackingAreaList_r17_DynamicOptional trackingAreaList_r17;
+	struct uint8_t_SQN_NR_PLMN_IdentityInfo_gNB_ID_Length_r17_Optional gNB_ID_Length_r17;
 };
 
 struct SQN_NR_PLMN_IdentityInfo_SQN_NR_PLMN_IdentityInfoList_Dynamic {
@@ -2198,15 +3653,13 @@ struct SQN_NR_NPN_Identity_r16_pni_npn_r16 {
 	struct SQN_NR_CAG_IdentityInfo_r16_SQN_NR_NPN_Identity_r16_pni_npn_r16_cag_IdentityList_r16_Dynamic cag_IdentityList_r16;
 };
 
-typedef B44 SQN_NR_NID_r16;
-
 struct SQN_NR_NID_r16_nid_List_r16_Dynamic {
 	size_t d;
 	SQN_NR_NID_r16* v;
 };
 
 struct SQN_NR_NPN_Identity_r16_snpn_r16 {
-	struct SQN_NR_PLMN_Identity plmn_Identity;
+	struct SQN_NR_PLMN_Identity plmn_Identity_r16;
 	struct SQN_NR_NID_r16_nid_List_r16_Dynamic nid_List_r16;
 };
 
@@ -2254,6 +3707,11 @@ struct SQN_NR_NPN_IdentityInfo_r16_iab_Support_r16_e_iab_Support_r16_Optional {
 	SQN_NR_NPN_IdentityInfo_r16_iab_Support_r16_e v;
 };
 
+struct uint8_t_SQN_NR_NPN_IdentityInfo_r16_gNB_ID_Length_r17_Optional {
+	bool d;
+	uint8_t v;
+};
+
 struct SQN_NR_NPN_IdentityInfo_r16 {
 	struct SQN_NR_NPN_Identity_r16_SQN_NR_NPN_IdentityInfo_r16_npn_IdentityList_r16_Dynamic npn_IdentityList_r16;
 	SQN_NR_TrackingAreaCode trackingAreaCode_r16;
@@ -2261,6 +3719,7 @@ struct SQN_NR_NPN_IdentityInfo_r16 {
 	SQN_NR_CellIdentity cellIdentity_r16;
 	SQN_NR_NPN_IdentityInfo_r16_cellReservedForOperatorUse_r16_e cellReservedForOperatorUse_r16;
 	struct SQN_NR_NPN_IdentityInfo_r16_iab_Support_r16_e_iab_Support_r16_Optional iab_Support_r16;
+	struct uint8_t_SQN_NR_NPN_IdentityInfo_r16_gNB_ID_Length_r17_Optional gNB_ID_Length_r17;
 };
 
 struct SQN_NR_NPN_IdentityInfo_r16_SQN_NR_NPN_IdentityInfoList_r16_Dynamic {
@@ -2269,6 +3728,57 @@ struct SQN_NR_NPN_IdentityInfo_r16_SQN_NR_NPN_IdentityInfoList_r16_Dynamic {
 };
 
 typedef struct SQN_NR_NPN_IdentityInfo_r16_SQN_NR_NPN_IdentityInfoList_r16_Dynamic SQN_NR_NPN_IdentityInfoList_r16;
+
+enum SQN_NR_SNPN_AccessInfo_r17_extCH_Supported_r17_e {
+	SQN_NR_SNPN_AccessInfo_r17_extCH_Supported_r17_e_true = 0,
+};
+
+typedef enum SQN_NR_SNPN_AccessInfo_r17_extCH_Supported_r17_e SQN_NR_SNPN_AccessInfo_r17_extCH_Supported_r17_e;
+
+enum SQN_NR_SNPN_AccessInfo_r17_extCH_WithoutConfigAllowed_r17_e {
+	SQN_NR_SNPN_AccessInfo_r17_extCH_WithoutConfigAllowed_r17_e_true = 0,
+};
+
+typedef enum SQN_NR_SNPN_AccessInfo_r17_extCH_WithoutConfigAllowed_r17_e SQN_NR_SNPN_AccessInfo_r17_extCH_WithoutConfigAllowed_r17_e;
+
+enum SQN_NR_SNPN_AccessInfo_r17_onboardingEnabled_r17_e {
+	SQN_NR_SNPN_AccessInfo_r17_onboardingEnabled_r17_e_true = 0,
+};
+
+typedef enum SQN_NR_SNPN_AccessInfo_r17_onboardingEnabled_r17_e SQN_NR_SNPN_AccessInfo_r17_onboardingEnabled_r17_e;
+
+enum SQN_NR_SNPN_AccessInfo_r17_imsEmergencySupportForSNPN_r17_e {
+	SQN_NR_SNPN_AccessInfo_r17_imsEmergencySupportForSNPN_r17_e_true = 0,
+};
+
+typedef enum SQN_NR_SNPN_AccessInfo_r17_imsEmergencySupportForSNPN_r17_e SQN_NR_SNPN_AccessInfo_r17_imsEmergencySupportForSNPN_r17_e;
+
+struct SQN_NR_SNPN_AccessInfo_r17_extCH_Supported_r17_e_extCH_Supported_r17_Optional {
+	bool d;
+	SQN_NR_SNPN_AccessInfo_r17_extCH_Supported_r17_e v;
+};
+
+struct SQN_NR_SNPN_AccessInfo_r17_extCH_WithoutConfigAllowed_r17_e_extCH_WithoutConfigAllowed_r17_Optional {
+	bool d;
+	SQN_NR_SNPN_AccessInfo_r17_extCH_WithoutConfigAllowed_r17_e v;
+};
+
+struct SQN_NR_SNPN_AccessInfo_r17_onboardingEnabled_r17_e_onboardingEnabled_r17_Optional {
+	bool d;
+	SQN_NR_SNPN_AccessInfo_r17_onboardingEnabled_r17_e v;
+};
+
+struct SQN_NR_SNPN_AccessInfo_r17_imsEmergencySupportForSNPN_r17_e_imsEmergencySupportForSNPN_r17_Optional {
+	bool d;
+	SQN_NR_SNPN_AccessInfo_r17_imsEmergencySupportForSNPN_r17_e v;
+};
+
+struct SQN_NR_SNPN_AccessInfo_r17 {
+	struct SQN_NR_SNPN_AccessInfo_r17_extCH_Supported_r17_e_extCH_Supported_r17_Optional extCH_Supported_r17;
+	struct SQN_NR_SNPN_AccessInfo_r17_extCH_WithoutConfigAllowed_r17_e_extCH_WithoutConfigAllowed_r17_Optional extCH_WithoutConfigAllowed_r17;
+	struct SQN_NR_SNPN_AccessInfo_r17_onboardingEnabled_r17_e_onboardingEnabled_r17_Optional onboardingEnabled_r17;
+	struct SQN_NR_SNPN_AccessInfo_r17_imsEmergencySupportForSNPN_r17_e_imsEmergencySupportForSNPN_r17_Optional imsEmergencySupportForSNPN_r17;
+};
 
 struct SQN_NR_CellAccessRelatedInfo_cellReservedForOtherUse_e_cellReservedForOtherUse_Optional {
 	bool d;
@@ -2285,11 +3795,22 @@ struct SQN_NR_NPN_IdentityInfoList_r16_SQN_NR_CellAccessRelatedInfo_npn_Identity
 	SQN_NR_NPN_IdentityInfoList_r16 v;
 };
 
+struct SQN_NR_CellAccessRelatedInfo_SQN_NR_SNPN_AccessInfo_r17_snpn_AccessInfoList_r17_Dynamic {
+	size_t d;
+	struct SQN_NR_SNPN_AccessInfo_r17* v;
+};
+
+struct SQN_NR_SNPN_AccessInfo_r17_SQN_NR_CellAccessRelatedInfo_snpn_AccessInfoList_r17_DynamicOptional {
+	bool d;
+	struct SQN_NR_CellAccessRelatedInfo_SQN_NR_SNPN_AccessInfo_r17_snpn_AccessInfoList_r17_Dynamic v;
+};
+
 struct SQN_NR_CellAccessRelatedInfo {
-	SQN_NR_PLMN_IdentityInfoList plmn_IdentityList;
+	SQN_NR_PLMN_IdentityInfoList plmn_IdentityInfoList;
 	struct SQN_NR_CellAccessRelatedInfo_cellReservedForOtherUse_e_cellReservedForOtherUse_Optional cellReservedForOtherUse;
 	struct SQN_NR_CellAccessRelatedInfo_cellReservedForFutureUse_r16_e_cellReservedForFutureUse_r16_Optional cellReservedForFutureUse_r16;
 	struct SQN_NR_NPN_IdentityInfoList_r16_SQN_NR_CellAccessRelatedInfo_npn_IdentityInfoList_r16_Optional npn_IdentityInfoList_r16;
+	struct SQN_NR_SNPN_AccessInfo_r17_SQN_NR_CellAccessRelatedInfo_snpn_AccessInfoList_r17_DynamicOptional snpn_AccessInfoList_r17;
 };
 
 enum SQN_NR_ConnEstFailureControl_connEstFailCount_e {
@@ -2410,6 +3931,8 @@ enum SQN_NR_SI_SchedulingInfo_si_WindowLength_e {
 	SQN_NR_SI_SchedulingInfo_si_WindowLength_e_s320 = 6,
 	SQN_NR_SI_SchedulingInfo_si_WindowLength_e_s640 = 7,
 	SQN_NR_SI_SchedulingInfo_si_WindowLength_e_s1280 = 8,
+	SQN_NR_SI_SchedulingInfo_si_WindowLength_e_s2560_v1710 = 9,
+	SQN_NR_SI_SchedulingInfo_si_WindowLength_e_s5120_v1710 = 10,
 };
 
 typedef enum SQN_NR_SI_SchedulingInfo_si_WindowLength_e SQN_NR_SI_SchedulingInfo_si_WindowLength_e;
@@ -2480,6 +4003,18 @@ enum SQN_NR_RACH_ConfigGeneric_ra_ResponseWindow_v1610_e {
 
 typedef enum SQN_NR_RACH_ConfigGeneric_ra_ResponseWindow_v1610_e SQN_NR_RACH_ConfigGeneric_ra_ResponseWindow_v1610_e;
 
+enum SQN_NR_RACH_ConfigGeneric_ra_ResponseWindow_v1700_e {
+	SQN_NR_RACH_ConfigGeneric_ra_ResponseWindow_v1700_e_sl240 = 0,
+	SQN_NR_RACH_ConfigGeneric_ra_ResponseWindow_v1700_e_sl320 = 1,
+	SQN_NR_RACH_ConfigGeneric_ra_ResponseWindow_v1700_e_sl640 = 2,
+	SQN_NR_RACH_ConfigGeneric_ra_ResponseWindow_v1700_e_sl960 = 3,
+	SQN_NR_RACH_ConfigGeneric_ra_ResponseWindow_v1700_e_sl1280 = 4,
+	SQN_NR_RACH_ConfigGeneric_ra_ResponseWindow_v1700_e_sl1920 = 5,
+	SQN_NR_RACH_ConfigGeneric_ra_ResponseWindow_v1700_e_sl2560 = 6,
+};
+
+typedef enum SQN_NR_RACH_ConfigGeneric_ra_ResponseWindow_v1700_e SQN_NR_RACH_ConfigGeneric_ra_ResponseWindow_v1700_e;
+
 struct SQN_NR_RACH_ConfigGeneric_prach_ConfigurationPeriodScaling_IAB_r16_e_prach_ConfigurationPeriodScaling_IAB_r16_Optional {
 	bool d;
 	SQN_NR_RACH_ConfigGeneric_prach_ConfigurationPeriodScaling_IAB_r16_e v;
@@ -2505,6 +4040,11 @@ struct uint16_t_SQN_NR_RACH_ConfigGeneric_prach_ConfigurationIndex_v1610_Optiona
 	uint16_t v;
 };
 
+struct SQN_NR_RACH_ConfigGeneric_ra_ResponseWindow_v1700_e_ra_ResponseWindow_v1700_Optional {
+	bool d;
+	SQN_NR_RACH_ConfigGeneric_ra_ResponseWindow_v1700_e v;
+};
+
 struct SQN_NR_RACH_ConfigGeneric {
 	uint8_t prach_ConfigurationIndex;
 	SQN_NR_RACH_ConfigGeneric_msg1_FDM_e msg1_FDM;
@@ -2519,6 +4059,7 @@ struct SQN_NR_RACH_ConfigGeneric {
 	struct uint8_t_SQN_NR_RACH_ConfigGeneric_prach_ConfigurationSOffset_IAB_r16_Optional prach_ConfigurationSOffset_IAB_r16;
 	struct SQN_NR_RACH_ConfigGeneric_ra_ResponseWindow_v1610_e_ra_ResponseWindow_v1610_Optional ra_ResponseWindow_v1610;
 	struct uint16_t_SQN_NR_RACH_ConfigGeneric_prach_ConfigurationIndex_v1610_Optional prach_ConfigurationIndex_v1610;
+	struct SQN_NR_RACH_ConfigGeneric_ra_ResponseWindow_v1700_e_ra_ResponseWindow_v1700_Optional ra_ResponseWindow_v1700;
 };
 
 enum SQN_NR_SI_RequestConfig_rach_OccasionsSI_ssb_perRACH_Occasion_e {
@@ -2655,134 +4196,6 @@ struct SQN_NR_BWP {
 	uint16_t locationAndBandwidth;
 	SQN_NR_SubcarrierSpacing_e subcarrierSpacing;
 	struct SQN_NR_BWP_cyclicPrefix_e_cyclicPrefix_Optional cyclicPrefix;
-};
-
-typedef uint8_t SQN_NR_ControlResourceSetId;
-
-enum SQN_NR_ControlResourceSet_cce_REG_MappingType_interleaved_reg_BundleSize_e {
-	SQN_NR_ControlResourceSet_cce_REG_MappingType_interleaved_reg_BundleSize_e_n2 = 0,
-	SQN_NR_ControlResourceSet_cce_REG_MappingType_interleaved_reg_BundleSize_e_n3 = 1,
-	SQN_NR_ControlResourceSet_cce_REG_MappingType_interleaved_reg_BundleSize_e_n6 = 2,
-};
-
-typedef enum SQN_NR_ControlResourceSet_cce_REG_MappingType_interleaved_reg_BundleSize_e SQN_NR_ControlResourceSet_cce_REG_MappingType_interleaved_reg_BundleSize_e;
-
-enum SQN_NR_ControlResourceSet_cce_REG_MappingType_interleaved_interleaverSize_e {
-	SQN_NR_ControlResourceSet_cce_REG_MappingType_interleaved_interleaverSize_e_n2 = 0,
-	SQN_NR_ControlResourceSet_cce_REG_MappingType_interleaved_interleaverSize_e_n3 = 1,
-	SQN_NR_ControlResourceSet_cce_REG_MappingType_interleaved_interleaverSize_e_n6 = 2,
-};
-
-typedef enum SQN_NR_ControlResourceSet_cce_REG_MappingType_interleaved_interleaverSize_e SQN_NR_ControlResourceSet_cce_REG_MappingType_interleaved_interleaverSize_e;
-
-struct uint16_t_SQN_NR_ControlResourceSet_cce_REG_MappingType_interleaved_shiftIndex_Optional {
-	bool d;
-	uint16_t v;
-};
-
-struct SQN_NR_ControlResourceSet_cce_REG_MappingType_interleaved {
-	SQN_NR_ControlResourceSet_cce_REG_MappingType_interleaved_reg_BundleSize_e reg_BundleSize;
-	SQN_NR_ControlResourceSet_cce_REG_MappingType_interleaved_interleaverSize_e interleaverSize;
-	struct uint16_t_SQN_NR_ControlResourceSet_cce_REG_MappingType_interleaved_shiftIndex_Optional shiftIndex;
-};
-
-enum SQN_NR_ControlResourceSet_cce_REG_MappingType_Sel {
-	SQN_NR_ControlResourceSet_cce_REG_MappingType_UNBOUND_VALUE = 0,
-	SQN_NR_ControlResourceSet_cce_REG_MappingType_interleaved = 1,
-	SQN_NR_ControlResourceSet_cce_REG_MappingType_nonInterleaved = 2,
-};
-
-union SQN_NR_ControlResourceSet_cce_REG_MappingType_Value {
-	struct SQN_NR_ControlResourceSet_cce_REG_MappingType_interleaved interleaved;
-	Null nonInterleaved;
-};
-
-struct SQN_NR_ControlResourceSet_cce_REG_MappingType {
-	enum SQN_NR_ControlResourceSet_cce_REG_MappingType_Sel d;
-	union SQN_NR_ControlResourceSet_cce_REG_MappingType_Value v;
-};
-
-enum SQN_NR_ControlResourceSet_precoderGranularity_e {
-	SQN_NR_ControlResourceSet_precoderGranularity_e_sameAsREG_bundle = 0,
-	SQN_NR_ControlResourceSet_precoderGranularity_e_allContiguousRBs = 1,
-};
-
-typedef enum SQN_NR_ControlResourceSet_precoderGranularity_e SQN_NR_ControlResourceSet_precoderGranularity_e;
-
-typedef uint8_t SQN_NR_TCI_StateId;
-
-enum SQN_NR_ControlResourceSet_tci_PresentInDCI_e {
-	SQN_NR_ControlResourceSet_tci_PresentInDCI_e_enabled = 0,
-};
-
-typedef enum SQN_NR_ControlResourceSet_tci_PresentInDCI_e SQN_NR_ControlResourceSet_tci_PresentInDCI_e;
-
-typedef uint8_t SQN_NR_ControlResourceSetId_v1610;
-
-struct SQN_NR_TCI_StateId_SQN_NR_ControlResourceSet_tci_StatesPDCCH_ToAddList_Dynamic {
-	size_t d;
-	SQN_NR_TCI_StateId* v;
-};
-
-struct SQN_NR_TCI_StateId_SQN_NR_ControlResourceSet_tci_StatesPDCCH_ToAddList_DynamicOptional {
-	bool d;
-	struct SQN_NR_TCI_StateId_SQN_NR_ControlResourceSet_tci_StatesPDCCH_ToAddList_Dynamic v;
-};
-
-struct SQN_NR_TCI_StateId_SQN_NR_ControlResourceSet_tci_StatesPDCCH_ToReleaseList_Dynamic {
-	size_t d;
-	SQN_NR_TCI_StateId* v;
-};
-
-struct SQN_NR_TCI_StateId_SQN_NR_ControlResourceSet_tci_StatesPDCCH_ToReleaseList_DynamicOptional {
-	bool d;
-	struct SQN_NR_TCI_StateId_SQN_NR_ControlResourceSet_tci_StatesPDCCH_ToReleaseList_Dynamic v;
-};
-
-struct SQN_NR_ControlResourceSet_tci_PresentInDCI_e_tci_PresentInDCI_Optional {
-	bool d;
-	SQN_NR_ControlResourceSet_tci_PresentInDCI_e v;
-};
-
-struct uint16_t_SQN_NR_ControlResourceSet_pdcch_DMRS_ScramblingID_Optional {
-	bool d;
-	uint16_t v;
-};
-
-struct uint8_t_SQN_NR_ControlResourceSet_rb_Offset_r16_Optional {
-	bool d;
-	uint8_t v;
-};
-
-struct uint8_t_SQN_NR_ControlResourceSet_tci_PresentDCI_1_2_r16_Optional {
-	bool d;
-	uint8_t v;
-};
-
-struct uint8_t_SQN_NR_ControlResourceSet_coresetPoolIndex_r16_Optional {
-	bool d;
-	uint8_t v;
-};
-
-struct SQN_NR_ControlResourceSetId_v1610_SQN_NR_ControlResourceSet_controlResourceSetId_v1610_Optional {
-	bool d;
-	SQN_NR_ControlResourceSetId_v1610 v;
-};
-
-struct SQN_NR_ControlResourceSet {
-	SQN_NR_ControlResourceSetId controlResourceSetId;
-	B45 frequencyDomainResources;
-	uint8_t duration;
-	struct SQN_NR_ControlResourceSet_cce_REG_MappingType cce_REG_MappingType;
-	SQN_NR_ControlResourceSet_precoderGranularity_e precoderGranularity;
-	struct SQN_NR_TCI_StateId_SQN_NR_ControlResourceSet_tci_StatesPDCCH_ToAddList_DynamicOptional tci_StatesPDCCH_ToAddList;
-	struct SQN_NR_TCI_StateId_SQN_NR_ControlResourceSet_tci_StatesPDCCH_ToReleaseList_DynamicOptional tci_StatesPDCCH_ToReleaseList;
-	struct SQN_NR_ControlResourceSet_tci_PresentInDCI_e_tci_PresentInDCI_Optional tci_PresentInDCI;
-	struct uint16_t_SQN_NR_ControlResourceSet_pdcch_DMRS_ScramblingID_Optional pdcch_DMRS_ScramblingID;
-	struct uint8_t_SQN_NR_ControlResourceSet_rb_Offset_r16_Optional rb_Offset_r16;
-	struct uint8_t_SQN_NR_ControlResourceSet_tci_PresentDCI_1_2_r16_Optional tci_PresentDCI_1_2_r16;
-	struct uint8_t_SQN_NR_ControlResourceSet_coresetPoolIndex_r16_Optional coresetPoolIndex_r16;
-	struct SQN_NR_ControlResourceSetId_v1610_SQN_NR_ControlResourceSet_controlResourceSetId_v1610_Optional controlResourceSetId_v1610;
 };
 
 typedef uint8_t SQN_NR_SearchSpaceId;
@@ -3222,8 +4635,6 @@ struct SQN_NR_PDCCH_ConfigCommon_firstPDCCH_MonitoringOccasionOfPO {
 	union SQN_NR_PDCCH_ConfigCommon_firstPDCCH_MonitoringOccasionOfPO_Value v;
 };
 
-typedef uint8_t SQN_NR_ControlResourceSetId_r16;
-
 enum SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel1_r16_e {
 	SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel1_r16_e_n1 = 0,
 	SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel1_r16_e_n2 = 1,
@@ -3428,6 +4839,324 @@ struct SQN_NR_SearchSpaceExt_r16 {
 	struct B5_SQN_NR_SearchSpaceExt_r16_freqMonitorLocations_r16_Optional freqMonitorLocations_r16;
 };
 
+enum SQN_NR_PDCCH_ConfigCommon_sdt_SearchSpace_r17_Sel {
+	SQN_NR_PDCCH_ConfigCommon_sdt_SearchSpace_r17_UNBOUND_VALUE = 0,
+	SQN_NR_PDCCH_ConfigCommon_sdt_SearchSpace_r17_newSearchSpace = 1,
+	SQN_NR_PDCCH_ConfigCommon_sdt_SearchSpace_r17_existingSearchSpace = 2,
+};
+
+union SQN_NR_PDCCH_ConfigCommon_sdt_SearchSpace_r17_Value {
+	struct SQN_NR_SearchSpace newSearchSpace;
+	SQN_NR_SearchSpaceId existingSearchSpace;
+};
+
+struct SQN_NR_PDCCH_ConfigCommon_sdt_SearchSpace_r17 {
+	enum SQN_NR_PDCCH_ConfigCommon_sdt_SearchSpace_r17_Sel d;
+	union SQN_NR_PDCCH_ConfigCommon_sdt_SearchSpace_r17_Value v;
+};
+
+enum SQN_NR_SearchSpaceExt_v1700_monitoringSlotPeriodicityAndOffset_v1710_Sel {
+	SQN_NR_SearchSpaceExt_v1700_monitoringSlotPeriodicityAndOffset_v1710_UNBOUND_VALUE = 0,
+	SQN_NR_SearchSpaceExt_v1700_monitoringSlotPeriodicityAndOffset_v1710_sl32 = 1,
+	SQN_NR_SearchSpaceExt_v1700_monitoringSlotPeriodicityAndOffset_v1710_sl64 = 2,
+	SQN_NR_SearchSpaceExt_v1700_monitoringSlotPeriodicityAndOffset_v1710_sl128 = 3,
+	SQN_NR_SearchSpaceExt_v1700_monitoringSlotPeriodicityAndOffset_v1710_sl5120 = 4,
+	SQN_NR_SearchSpaceExt_v1700_monitoringSlotPeriodicityAndOffset_v1710_sl10240 = 5,
+	SQN_NR_SearchSpaceExt_v1700_monitoringSlotPeriodicityAndOffset_v1710_sl20480 = 6,
+};
+
+union SQN_NR_SearchSpaceExt_v1700_monitoringSlotPeriodicityAndOffset_v1710_Value {
+	uint8_t sl32;
+	uint8_t sl64;
+	uint8_t sl128;
+	uint16_t sl5120;
+	uint16_t sl10240;
+	uint16_t sl20480;
+};
+
+struct SQN_NR_SearchSpaceExt_v1700_monitoringSlotPeriodicityAndOffset_v1710 {
+	enum SQN_NR_SearchSpaceExt_v1700_monitoringSlotPeriodicityAndOffset_v1710_Sel d;
+	union SQN_NR_SearchSpaceExt_v1700_monitoringSlotPeriodicityAndOffset_v1710_Value v;
+};
+
+enum SQN_NR_SearchSpaceExt_v1700_monitoringSlotsWithinSlotGroup_r17_Sel {
+	SQN_NR_SearchSpaceExt_v1700_monitoringSlotsWithinSlotGroup_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SearchSpaceExt_v1700_monitoringSlotsWithinSlotGroup_r17_slotGroupLength4_r17 = 1,
+	SQN_NR_SearchSpaceExt_v1700_monitoringSlotsWithinSlotGroup_r17_slotGroupLength8_r17 = 2,
+};
+
+union SQN_NR_SearchSpaceExt_v1700_monitoringSlotsWithinSlotGroup_r17_Value {
+	B4 slotGroupLength4_r17;
+	B8 slotGroupLength8_r17;
+};
+
+struct SQN_NR_SearchSpaceExt_v1700_monitoringSlotsWithinSlotGroup_r17 {
+	enum SQN_NR_SearchSpaceExt_v1700_monitoringSlotsWithinSlotGroup_r17_Sel d;
+	union SQN_NR_SearchSpaceExt_v1700_monitoringSlotsWithinSlotGroup_r17_Value v;
+};
+
+struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format4_0_r17 {
+};
+
+struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format4_1_r17 {
+};
+
+struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format4_2_r17 {
+};
+
+struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format4_1_AndFormat4_2_r17 {
+};
+
+enum SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel4_r17_e {
+	SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel4_r17_e_n0 = 0,
+	SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel4_r17_e_n1 = 1,
+	SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel4_r17_e_n2 = 2,
+	SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel4_r17_e_n3 = 3,
+	SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel4_r17_e_n4 = 4,
+};
+
+typedef enum SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel4_r17_e SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel4_r17_e;
+
+enum SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel8_r17_e {
+	SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel8_r17_e_n0 = 0,
+	SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel8_r17_e_n1 = 1,
+	SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel8_r17_e_n2 = 2,
+};
+
+typedef enum SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel8_r17_e SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel8_r17_e;
+
+enum SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel16_r17_e {
+	SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel16_r17_e_n0 = 0,
+	SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel16_r17_e_n1 = 1,
+};
+
+typedef enum SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel16_r17_e SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel16_r17_e;
+
+struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel4_r17_e_aggregationLevel4_r17_Optional {
+	bool d;
+	SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel4_r17_e v;
+};
+
+struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel8_r17_e_aggregationLevel8_r17_Optional {
+	bool d;
+	SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel8_r17_e v;
+};
+
+struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel16_r17_e_aggregationLevel16_r17_Optional {
+	bool d;
+	SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel16_r17_e v;
+};
+
+struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17 {
+	struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel4_r17_e_aggregationLevel4_r17_Optional aggregationLevel4_r17;
+	struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel8_r17_e_aggregationLevel8_r17_Optional aggregationLevel8_r17;
+	struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel16_r17_e_aggregationLevel16_r17_Optional aggregationLevel16_r17;
+};
+
+struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17 {
+	struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17 nrofCandidates_PEI_r17;
+};
+
+struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format4_0_r17_dci_Format4_0_r17_Optional {
+	bool d;
+	struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format4_0_r17 v;
+};
+
+struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format4_1_r17_dci_Format4_1_r17_Optional {
+	bool d;
+	struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format4_1_r17 v;
+};
+
+struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format4_2_r17_dci_Format4_2_r17_Optional {
+	bool d;
+	struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format4_2_r17 v;
+};
+
+struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format4_1_AndFormat4_2_r17_dci_Format4_1_AndFormat4_2_r17_Optional {
+	bool d;
+	struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format4_1_AndFormat4_2_r17 v;
+};
+
+struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17_dci_Format2_7_r17_Optional {
+	bool d;
+	struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17 v;
+};
+
+struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17 {
+	struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format4_0_r17_dci_Format4_0_r17_Optional dci_Format4_0_r17;
+	struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format4_1_r17_dci_Format4_1_r17_Optional dci_Format4_1_r17;
+	struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format4_2_r17_dci_Format4_2_r17_Optional dci_Format4_2_r17;
+	struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format4_1_AndFormat4_2_r17_dci_Format4_1_AndFormat4_2_r17_Optional dci_Format4_1_AndFormat4_2_r17;
+	struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17_dci_Format2_7_r17_Optional dci_Format2_7_r17;
+};
+
+struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17 {
+	struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17 common_r17;
+};
+
+struct SQN_NR_SearchSpaceExt_v1700_monitoringSlotPeriodicityAndOffset_v1710_monitoringSlotPeriodicityAndOffset_v1710_Optional {
+	bool d;
+	struct SQN_NR_SearchSpaceExt_v1700_monitoringSlotPeriodicityAndOffset_v1710 v;
+};
+
+struct SQN_NR_SearchSpaceExt_v1700_monitoringSlotsWithinSlotGroup_r17_monitoringSlotsWithinSlotGroup_r17_Optional {
+	bool d;
+	struct SQN_NR_SearchSpaceExt_v1700_monitoringSlotsWithinSlotGroup_r17 v;
+};
+
+struct uint16_t_SQN_NR_SearchSpaceExt_v1700_duration_r17_Optional {
+	bool d;
+	uint16_t v;
+};
+
+struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_searchSpaceType_r17_Optional {
+	bool d;
+	struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17 v;
+};
+
+struct uint8_t_SQN_NR_SearchSpaceExt_v1700_searchSpaceGroupIdList_r17_Dynamic {
+	size_t d;
+	uint8_t* v;
+};
+
+struct uint8_t_SQN_NR_SearchSpaceExt_v1700_searchSpaceGroupIdList_r17_DynamicOptional {
+	bool d;
+	struct uint8_t_SQN_NR_SearchSpaceExt_v1700_searchSpaceGroupIdList_r17_Dynamic v;
+};
+
+struct uint8_t_SQN_NR_SearchSpaceExt_v1700_searchSpaceLinkingId_r17_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct SQN_NR_SearchSpaceExt_v1700 {
+	struct SQN_NR_SearchSpaceExt_v1700_monitoringSlotPeriodicityAndOffset_v1710_monitoringSlotPeriodicityAndOffset_v1710_Optional monitoringSlotPeriodicityAndOffset_v1710;
+	struct SQN_NR_SearchSpaceExt_v1700_monitoringSlotsWithinSlotGroup_r17_monitoringSlotsWithinSlotGroup_r17_Optional monitoringSlotsWithinSlotGroup_r17;
+	struct uint16_t_SQN_NR_SearchSpaceExt_v1700_duration_r17_Optional duration_r17;
+	struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_searchSpaceType_r17_Optional searchSpaceType_r17;
+	struct uint8_t_SQN_NR_SearchSpaceExt_v1700_searchSpaceGroupIdList_r17_DynamicOptional searchSpaceGroupIdList_r17;
+	struct uint8_t_SQN_NR_SearchSpaceExt_v1700_searchSpaceLinkingId_r17_Optional searchSpaceLinkingId_r17;
+};
+
+enum SQN_NR_PDCCH_ConfigCommon_firstPDCCH_MonitoringOccasionOfPO_v1710_Sel {
+	SQN_NR_PDCCH_ConfigCommon_firstPDCCH_MonitoringOccasionOfPO_v1710_UNBOUND_VALUE = 0,
+	SQN_NR_PDCCH_ConfigCommon_firstPDCCH_MonitoringOccasionOfPO_v1710_sCS480KHZoneEighthT = 1,
+	SQN_NR_PDCCH_ConfigCommon_firstPDCCH_MonitoringOccasionOfPO_v1710_sCS480KHZoneSixteenthT = 2,
+};
+
+struct uint16_t_SQN_NR_PDCCH_ConfigCommon_firstPDCCH_MonitoringOccasionOfPO_v1710_sCS480KHZoneEighthT_Dynamic {
+	size_t d;
+	uint16_t* v;
+};
+
+struct uint32_t_SQN_NR_PDCCH_ConfigCommon_firstPDCCH_MonitoringOccasionOfPO_v1710_sCS480KHZoneSixteenthT_Dynamic {
+	size_t d;
+	uint32_t* v;
+};
+
+union SQN_NR_PDCCH_ConfigCommon_firstPDCCH_MonitoringOccasionOfPO_v1710_Value {
+	struct uint16_t_SQN_NR_PDCCH_ConfigCommon_firstPDCCH_MonitoringOccasionOfPO_v1710_sCS480KHZoneEighthT_Dynamic sCS480KHZoneEighthT;
+	struct uint32_t_SQN_NR_PDCCH_ConfigCommon_firstPDCCH_MonitoringOccasionOfPO_v1710_sCS480KHZoneSixteenthT_Dynamic sCS480KHZoneSixteenthT;
+};
+
+struct SQN_NR_PDCCH_ConfigCommon_firstPDCCH_MonitoringOccasionOfPO_v1710 {
+	enum SQN_NR_PDCCH_ConfigCommon_firstPDCCH_MonitoringOccasionOfPO_v1710_Sel d;
+	union SQN_NR_PDCCH_ConfigCommon_firstPDCCH_MonitoringOccasionOfPO_v1710_Value v;
+};
+
+enum SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_Sel {
+	SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_UNBOUND_VALUE = 0,
+	SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_sCS15KHZoneT = 1,
+	SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_sCS30KHZoneT_SCS15KHZhalfT = 2,
+	SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_sCS60KHZoneT_SCS30KHZhalfT_SCS15KHZquarterT = 3,
+	SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_sCS120KHZoneT_SCS60KHZhalfT_SCS30KHZquarterT_SCS15KHZoneEighthT = 4,
+	SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_sCS120KHZhalfT_SCS60KHZquarterT_SCS30KHZoneEighthT_SCS15KHZoneSixteenthT = 5,
+	SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_sCS480KHZoneT_SCS120KHZquarterT_SCS60KHZoneEighthT_SCS30KHZoneSixteenthT = 6,
+	SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_sCS480KHZhalfT_SCS120KHZoneEighthT_SCS60KHZoneSixteenthT = 7,
+	SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_sCS480KHZquarterT_SCS120KHZoneSixteenthT = 8,
+	SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_sCS480KHZoneEighthT = 9,
+	SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_sCS480KHZoneSixteenthT = 10,
+};
+
+struct uint8_t_SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_sCS15KHZoneT_Dynamic {
+	size_t d;
+	uint8_t* v;
+};
+
+struct uint16_t_SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_sCS30KHZoneT_SCS15KHZhalfT_Dynamic {
+	size_t d;
+	uint16_t* v;
+};
+
+struct uint16_t_SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_sCS60KHZoneT_SCS30KHZhalfT_SCS15KHZquarterT_Dynamic {
+	size_t d;
+	uint16_t* v;
+};
+
+struct uint16_t_SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_sCS120KHZoneT_SCS60KHZhalfT_SCS30KHZquarterT_SCS15KHZoneEighthT_Dynamic {
+	size_t d;
+	uint16_t* v;
+};
+
+struct uint16_t_SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_sCS120KHZhalfT_SCS60KHZquarterT_SCS30KHZoneEighthT_SCS15KHZoneSixteenthT_Dynamic {
+	size_t d;
+	uint16_t* v;
+};
+
+struct uint16_t_SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_sCS480KHZoneT_SCS120KHZquarterT_SCS60KHZoneEighthT_SCS30KHZoneSixteenthT_Dynamic {
+	size_t d;
+	uint16_t* v;
+};
+
+struct uint16_t_SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_sCS480KHZhalfT_SCS120KHZoneEighthT_SCS60KHZoneSixteenthT_Dynamic {
+	size_t d;
+	uint16_t* v;
+};
+
+struct uint16_t_SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_sCS480KHZquarterT_SCS120KHZoneSixteenthT_Dynamic {
+	size_t d;
+	uint16_t* v;
+};
+
+struct uint16_t_SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_sCS480KHZoneEighthT_Dynamic {
+	size_t d;
+	uint16_t* v;
+};
+
+struct uint32_t_SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_sCS480KHZoneSixteenthT_Dynamic {
+	size_t d;
+	uint32_t* v;
+};
+
+union SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_Value {
+	struct uint8_t_SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_sCS15KHZoneT_Dynamic sCS15KHZoneT;
+	struct uint16_t_SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_sCS30KHZoneT_SCS15KHZhalfT_Dynamic sCS30KHZoneT_SCS15KHZhalfT;
+	struct uint16_t_SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_sCS60KHZoneT_SCS30KHZhalfT_SCS15KHZquarterT_Dynamic sCS60KHZoneT_SCS30KHZhalfT_SCS15KHZquarterT;
+	struct uint16_t_SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_sCS120KHZoneT_SCS60KHZhalfT_SCS30KHZquarterT_SCS15KHZoneEighthT_Dynamic sCS120KHZoneT_SCS60KHZhalfT_SCS30KHZquarterT_SCS15KHZoneEighthT;
+	struct uint16_t_SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_sCS120KHZhalfT_SCS60KHZquarterT_SCS30KHZoneEighthT_SCS15KHZoneSixteenthT_Dynamic sCS120KHZhalfT_SCS60KHZquarterT_SCS30KHZoneEighthT_SCS15KHZoneSixteenthT;
+	struct uint16_t_SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_sCS480KHZoneT_SCS120KHZquarterT_SCS60KHZoneEighthT_SCS30KHZoneSixteenthT_Dynamic sCS480KHZoneT_SCS120KHZquarterT_SCS60KHZoneEighthT_SCS30KHZoneSixteenthT;
+	struct uint16_t_SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_sCS480KHZhalfT_SCS120KHZoneEighthT_SCS60KHZoneSixteenthT_Dynamic sCS480KHZhalfT_SCS120KHZoneEighthT_SCS60KHZoneSixteenthT;
+	struct uint16_t_SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_sCS480KHZquarterT_SCS120KHZoneSixteenthT_Dynamic sCS480KHZquarterT_SCS120KHZoneSixteenthT;
+	struct uint16_t_SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_sCS480KHZoneEighthT_Dynamic sCS480KHZoneEighthT;
+	struct uint32_t_SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_sCS480KHZoneSixteenthT_Dynamic sCS480KHZoneSixteenthT;
+};
+
+struct SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17 {
+	enum SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_Sel d;
+	union SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_Value v;
+};
+
+struct SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17 {
+	SQN_NR_SearchSpaceId pei_SearchSpace_r17;
+	struct SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17 firstPDCCH_MonitoringOccasionOfPEI_O_r17;
+};
+
+enum SQN_NR_PDCCH_ConfigCommon_followUnifiedTCIstate_v1720_e {
+	SQN_NR_PDCCH_ConfigCommon_followUnifiedTCIstate_v1720_e_enabled = 0,
+};
+
+typedef enum SQN_NR_PDCCH_ConfigCommon_followUnifiedTCIstate_v1720_e SQN_NR_PDCCH_ConfigCommon_followUnifiedTCIstate_v1720_e;
+
 struct SQN_NR_ControlResourceSetZero_SQN_NR_PDCCH_ConfigCommon_controlResourceSetZero_Optional {
 	bool d;
 	SQN_NR_ControlResourceSetZero v;
@@ -3488,6 +5217,46 @@ struct SQN_NR_SearchSpaceExt_r16_SQN_NR_PDCCH_ConfigCommon_commonSearchSpaceList
 	struct SQN_NR_PDCCH_ConfigCommon_SQN_NR_SearchSpaceExt_r16_commonSearchSpaceListExt_r16_Dynamic v;
 };
 
+struct SQN_NR_PDCCH_ConfigCommon_sdt_SearchSpace_r17_sdt_SearchSpace_r17_Optional {
+	bool d;
+	struct SQN_NR_PDCCH_ConfigCommon_sdt_SearchSpace_r17 v;
+};
+
+struct SQN_NR_SearchSpaceId_SQN_NR_PDCCH_ConfigCommon_searchSpaceMCCH_r17_Optional {
+	bool d;
+	SQN_NR_SearchSpaceId v;
+};
+
+struct SQN_NR_SearchSpaceId_SQN_NR_PDCCH_ConfigCommon_searchSpaceMTCH_r17_Optional {
+	bool d;
+	SQN_NR_SearchSpaceId v;
+};
+
+struct SQN_NR_PDCCH_ConfigCommon_SQN_NR_SearchSpaceExt_v1700_commonSearchSpaceListExt2_r17_Dynamic {
+	size_t d;
+	struct SQN_NR_SearchSpaceExt_v1700* v;
+};
+
+struct SQN_NR_SearchSpaceExt_v1700_SQN_NR_PDCCH_ConfigCommon_commonSearchSpaceListExt2_r17_DynamicOptional {
+	bool d;
+	struct SQN_NR_PDCCH_ConfigCommon_SQN_NR_SearchSpaceExt_v1700_commonSearchSpaceListExt2_r17_Dynamic v;
+};
+
+struct SQN_NR_PDCCH_ConfigCommon_firstPDCCH_MonitoringOccasionOfPO_v1710_firstPDCCH_MonitoringOccasionOfPO_v1710_Optional {
+	bool d;
+	struct SQN_NR_PDCCH_ConfigCommon_firstPDCCH_MonitoringOccasionOfPO_v1710 v;
+};
+
+struct SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_pei_ConfigBWP_r17_Optional {
+	bool d;
+	struct SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17 v;
+};
+
+struct SQN_NR_PDCCH_ConfigCommon_followUnifiedTCIstate_v1720_e_followUnifiedTCIstate_v1720_Optional {
+	bool d;
+	SQN_NR_PDCCH_ConfigCommon_followUnifiedTCIstate_v1720_e v;
+};
+
 struct SQN_NR_PDCCH_ConfigCommon {
 	struct SQN_NR_ControlResourceSetZero_SQN_NR_PDCCH_ConfigCommon_controlResourceSetZero_Optional controlResourceSetZero;
 	struct SQN_NR_ControlResourceSet_SQN_NR_PDCCH_ConfigCommon_commonControlResourceSet_Optional commonControlResourceSet;
@@ -3499,6 +5268,13 @@ struct SQN_NR_PDCCH_ConfigCommon {
 	struct SQN_NR_SearchSpaceId_SQN_NR_PDCCH_ConfigCommon_ra_SearchSpace_Optional ra_SearchSpace;
 	struct SQN_NR_PDCCH_ConfigCommon_firstPDCCH_MonitoringOccasionOfPO_firstPDCCH_MonitoringOccasionOfPO_Optional firstPDCCH_MonitoringOccasionOfPO;
 	struct SQN_NR_SearchSpaceExt_r16_SQN_NR_PDCCH_ConfigCommon_commonSearchSpaceListExt_r16_DynamicOptional commonSearchSpaceListExt_r16;
+	struct SQN_NR_PDCCH_ConfigCommon_sdt_SearchSpace_r17_sdt_SearchSpace_r17_Optional sdt_SearchSpace_r17;
+	struct SQN_NR_SearchSpaceId_SQN_NR_PDCCH_ConfigCommon_searchSpaceMCCH_r17_Optional searchSpaceMCCH_r17;
+	struct SQN_NR_SearchSpaceId_SQN_NR_PDCCH_ConfigCommon_searchSpaceMTCH_r17_Optional searchSpaceMTCH_r17;
+	struct SQN_NR_SearchSpaceExt_v1700_SQN_NR_PDCCH_ConfigCommon_commonSearchSpaceListExt2_r17_DynamicOptional commonSearchSpaceListExt2_r17;
+	struct SQN_NR_PDCCH_ConfigCommon_firstPDCCH_MonitoringOccasionOfPO_v1710_firstPDCCH_MonitoringOccasionOfPO_v1710_Optional firstPDCCH_MonitoringOccasionOfPO_v1710;
+	struct SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_pei_ConfigBWP_r17_Optional pei_ConfigBWP_r17;
+	struct SQN_NR_PDCCH_ConfigCommon_followUnifiedTCIstate_v1720_e_followUnifiedTCIstate_v1720_Optional followUnifiedTCIstate_v1720;
 };
 
 enum SQN_NR_SetupRelease_BWP_DownlinkCommon_pdcch_ConfigCommon_Sel {
@@ -3642,9 +5418,9 @@ enum SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_Sel {
 	SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_sCS60KHZoneT_SCS30KHZhalfT_SCS15KHZquarterT = 3,
 	SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_sCS120KHZoneT_SCS60KHZhalfT_SCS30KHZquarterT_SCS15KHZoneEighthT = 4,
 	SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_sCS120KHZhalfT_SCS60KHZquarterT_SCS30KHZoneEighthT_SCS15KHZoneSixteenthT = 5,
-	SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_sCS120KHZquarterT_SCS60KHZoneEighthT_SCS30KHZoneSixteenthT = 6,
-	SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_sCS120KHZoneEighthT_SCS60KHZoneSixteenthT = 7,
-	SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_sCS120KHZoneSixteenthT = 8,
+	SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_sCS480KHZoneT_SCS120KHZquarterT_SCS60KHZoneEighthT_SCS30KHZoneSixteenthT = 6,
+	SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_sCS480KHZhalfT_SCS120KHZoneEighthT_SCS60KHZoneSixteenthT = 7,
+	SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_sCS480KHZquarterT_SCS120KHZoneSixteenthT = 8,
 };
 
 struct uint8_t_SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_sCS15KHZoneT_Dynamic {
@@ -3672,17 +5448,17 @@ struct uint16_t_SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_sCS120KHZha
 	uint16_t* v;
 };
 
-struct uint16_t_SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_sCS120KHZquarterT_SCS60KHZoneEighthT_SCS30KHZoneSixteenthT_Dynamic {
+struct uint16_t_SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_sCS480KHZoneT_SCS120KHZquarterT_SCS60KHZoneEighthT_SCS30KHZoneSixteenthT_Dynamic {
 	size_t d;
 	uint16_t* v;
 };
 
-struct uint16_t_SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_sCS120KHZoneEighthT_SCS60KHZoneSixteenthT_Dynamic {
+struct uint16_t_SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_sCS480KHZhalfT_SCS120KHZoneEighthT_SCS60KHZoneSixteenthT_Dynamic {
 	size_t d;
 	uint16_t* v;
 };
 
-struct uint16_t_SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_sCS120KHZoneSixteenthT_Dynamic {
+struct uint16_t_SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_sCS480KHZquarterT_SCS120KHZoneSixteenthT_Dynamic {
 	size_t d;
 	uint16_t* v;
 };
@@ -3693,14 +5469,46 @@ union SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_Value {
 	struct uint16_t_SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_sCS60KHZoneT_SCS30KHZhalfT_SCS15KHZquarterT_Dynamic sCS60KHZoneT_SCS30KHZhalfT_SCS15KHZquarterT;
 	struct uint16_t_SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_sCS120KHZoneT_SCS60KHZhalfT_SCS30KHZquarterT_SCS15KHZoneEighthT_Dynamic sCS120KHZoneT_SCS60KHZhalfT_SCS30KHZquarterT_SCS15KHZoneEighthT;
 	struct uint16_t_SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_sCS120KHZhalfT_SCS60KHZquarterT_SCS30KHZoneEighthT_SCS15KHZoneSixteenthT_Dynamic sCS120KHZhalfT_SCS60KHZquarterT_SCS30KHZoneEighthT_SCS15KHZoneSixteenthT;
-	struct uint16_t_SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_sCS120KHZquarterT_SCS60KHZoneEighthT_SCS30KHZoneSixteenthT_Dynamic sCS120KHZquarterT_SCS60KHZoneEighthT_SCS30KHZoneSixteenthT;
-	struct uint16_t_SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_sCS120KHZoneEighthT_SCS60KHZoneSixteenthT_Dynamic sCS120KHZoneEighthT_SCS60KHZoneSixteenthT;
-	struct uint16_t_SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_sCS120KHZoneSixteenthT_Dynamic sCS120KHZoneSixteenthT;
+	struct uint16_t_SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_sCS480KHZoneT_SCS120KHZquarterT_SCS60KHZoneEighthT_SCS30KHZoneSixteenthT_Dynamic sCS480KHZoneT_SCS120KHZquarterT_SCS60KHZoneEighthT_SCS30KHZoneSixteenthT;
+	struct uint16_t_SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_sCS480KHZhalfT_SCS120KHZoneEighthT_SCS60KHZoneSixteenthT_Dynamic sCS480KHZhalfT_SCS120KHZoneEighthT_SCS60KHZoneSixteenthT;
+	struct uint16_t_SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_sCS480KHZquarterT_SCS120KHZoneSixteenthT_Dynamic sCS480KHZquarterT_SCS120KHZoneSixteenthT;
 };
 
 struct SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO {
 	enum SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_Sel d;
 	union SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_Value v;
+};
+
+enum SQN_NR_PCCH_Config_ranPagingInIdlePO_r17_e {
+	SQN_NR_PCCH_Config_ranPagingInIdlePO_r17_e_true = 0,
+};
+
+typedef enum SQN_NR_PCCH_Config_ranPagingInIdlePO_r17_e SQN_NR_PCCH_Config_ranPagingInIdlePO_r17_e;
+
+enum SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_v1710_Sel {
+	SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_v1710_UNBOUND_VALUE = 0,
+	SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_v1710_sCS480KHZoneEighthT = 1,
+	SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_v1710_sCS480KHZoneSixteenthT = 2,
+};
+
+struct uint16_t_SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_v1710_sCS480KHZoneEighthT_Dynamic {
+	size_t d;
+	uint16_t* v;
+};
+
+struct uint32_t_SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_v1710_sCS480KHZoneSixteenthT_Dynamic {
+	size_t d;
+	uint32_t* v;
+};
+
+union SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_v1710_Value {
+	struct uint16_t_SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_v1710_sCS480KHZoneEighthT_Dynamic sCS480KHZoneEighthT;
+	struct uint32_t_SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_v1710_sCS480KHZoneSixteenthT_Dynamic sCS480KHZoneSixteenthT;
+};
+
+struct SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_v1710 {
+	enum SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_v1710_Sel d;
+	union SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_v1710_Value v;
 };
 
 struct SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_firstPDCCH_MonitoringOccasionOfPO_Optional {
@@ -3713,12 +5521,72 @@ struct uint8_t_SQN_NR_PCCH_Config_nrofPDCCH_MonitoringOccasionPerSSB_InPO_r16_Op
 	uint8_t v;
 };
 
+struct SQN_NR_PCCH_Config_ranPagingInIdlePO_r17_e_ranPagingInIdlePO_r17_Optional {
+	bool d;
+	SQN_NR_PCCH_Config_ranPagingInIdlePO_r17_e v;
+};
+
+struct SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_v1710_firstPDCCH_MonitoringOccasionOfPO_v1710_Optional {
+	bool d;
+	struct SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_v1710 v;
+};
+
 struct SQN_NR_PCCH_Config {
 	SQN_NR_PagingCycle_e defaultPagingCycle;
 	struct SQN_NR_PCCH_Config_nAndPagingFrameOffset nAndPagingFrameOffset;
 	SQN_NR_PCCH_Config_ns_e ns;
 	struct SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_firstPDCCH_MonitoringOccasionOfPO_Optional firstPDCCH_MonitoringOccasionOfPO;
 	struct uint8_t_SQN_NR_PCCH_Config_nrofPDCCH_MonitoringOccasionPerSSB_InPO_r16_Optional nrofPDCCH_MonitoringOccasionPerSSB_InPO_r16;
+	struct SQN_NR_PCCH_Config_ranPagingInIdlePO_r17_e_ranPagingInIdlePO_r17_Optional ranPagingInIdlePO_r17;
+	struct SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_v1710_firstPDCCH_MonitoringOccasionOfPO_v1710_Optional firstPDCCH_MonitoringOccasionOfPO_v1710;
+};
+
+enum SQN_NR_PEI_Config_r17_po_NumPerPEI_r17_e {
+	SQN_NR_PEI_Config_r17_po_NumPerPEI_r17_e_po1 = 0,
+	SQN_NR_PEI_Config_r17_po_NumPerPEI_r17_e_po2 = 1,
+	SQN_NR_PEI_Config_r17_po_NumPerPEI_r17_e_po4 = 2,
+	SQN_NR_PEI_Config_r17_po_NumPerPEI_r17_e_po8 = 3,
+};
+
+typedef enum SQN_NR_PEI_Config_r17_po_NumPerPEI_r17_e SQN_NR_PEI_Config_r17_po_NumPerPEI_r17_e;
+
+struct uint8_t_SQN_NR_SubgroupConfig_r17_subgroupsNumForUEID_r17_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct SQN_NR_SubgroupConfig_r17 {
+	uint8_t subgroupsNumPerPO_r17;
+	struct uint8_t_SQN_NR_SubgroupConfig_r17_subgroupsNumForUEID_r17_Optional subgroupsNumForUEID_r17;
+};
+
+enum SQN_NR_PEI_Config_r17_lastUsedCellOnly_r17_e {
+	SQN_NR_PEI_Config_r17_lastUsedCellOnly_r17_e_true = 0,
+};
+
+typedef enum SQN_NR_PEI_Config_r17_lastUsedCellOnly_r17_e SQN_NR_PEI_Config_r17_lastUsedCellOnly_r17_e;
+
+struct SQN_NR_PEI_Config_r17_lastUsedCellOnly_r17_e_lastUsedCellOnly_r17_Optional {
+	bool d;
+	SQN_NR_PEI_Config_r17_lastUsedCellOnly_r17_e v;
+};
+
+struct SQN_NR_PEI_Config_r17 {
+	SQN_NR_PEI_Config_r17_po_NumPerPEI_r17_e po_NumPerPEI_r17;
+	uint8_t payloadSizeDCI_2_7_r17;
+	uint8_t pei_FrameOffset_r17;
+	struct SQN_NR_SubgroupConfig_r17 subgroupConfig_r17;
+	struct SQN_NR_PEI_Config_r17_lastUsedCellOnly_r17_e_lastUsedCellOnly_r17_Optional lastUsedCellOnly_r17;
+};
+
+struct SQN_NR_PEI_Config_r17_SQN_NR_DownlinkConfigCommonSIB_pei_Config_r17_Optional {
+	bool d;
+	struct SQN_NR_PEI_Config_r17 v;
+};
+
+struct SQN_NR_BWP_DownlinkCommon_SQN_NR_DownlinkConfigCommonSIB_initialDownlinkBWP_RedCap_r17_Optional {
+	bool d;
+	struct SQN_NR_BWP_DownlinkCommon v;
 };
 
 struct SQN_NR_DownlinkConfigCommonSIB {
@@ -3726,6 +5594,8 @@ struct SQN_NR_DownlinkConfigCommonSIB {
 	struct SQN_NR_BWP_DownlinkCommon initialDownlinkBWP;
 	struct SQN_NR_BCCH_Config bcch_Config;
 	struct SQN_NR_PCCH_Config pcch_Config;
+	struct SQN_NR_PEI_Config_r17_SQN_NR_DownlinkConfigCommonSIB_pei_Config_r17_Optional pei_Config_r17;
+	struct SQN_NR_BWP_DownlinkCommon_SQN_NR_DownlinkConfigCommonSIB_initialDownlinkBWP_RedCap_r17_Optional initialDownlinkBWP_RedCap_r17;
 };
 
 enum SQN_NR_FrequencyInfoUL_SIB_frequencyShift7p5khz_e {
@@ -4024,631 +5894,165 @@ struct SQN_NR_RACH_ConfigCommon_prach_RootSequenceIndex_r16 {
 	union SQN_NR_RACH_ConfigCommon_prach_RootSequenceIndex_r16_Value v;
 };
 
-struct uint8_t_SQN_NR_RACH_ConfigCommon_totalNumberOfRA_Preambles_Optional {
-	bool d;
-	uint8_t v;
-};
-
-struct SQN_NR_RACH_ConfigCommon_ssb_perRACH_OccasionAndCB_PreamblesPerSSB_ssb_perRACH_OccasionAndCB_PreamblesPerSSB_Optional {
-	bool d;
-	struct SQN_NR_RACH_ConfigCommon_ssb_perRACH_OccasionAndCB_PreamblesPerSSB v;
-};
-
-struct SQN_NR_RACH_ConfigCommon_groupBconfigured_groupBconfigured_Optional {
-	bool d;
-	struct SQN_NR_RACH_ConfigCommon_groupBconfigured v;
-};
-
-struct SQN_NR_RSRP_Range_SQN_NR_RACH_ConfigCommon_rsrp_ThresholdSSB_Optional {
-	bool d;
-	SQN_NR_RSRP_Range v;
-};
-
-struct SQN_NR_RSRP_Range_SQN_NR_RACH_ConfigCommon_rsrp_ThresholdSSB_SUL_Optional {
-	bool d;
-	SQN_NR_RSRP_Range v;
-};
-
-struct SQN_NR_SubcarrierSpacing_e_SQN_NR_RACH_ConfigCommon_msg1_SubcarrierSpacing_Optional {
-	bool d;
-	SQN_NR_SubcarrierSpacing_e v;
-};
-
-struct SQN_NR_RACH_ConfigCommon_msg3_transformPrecoder_e_msg3_transformPrecoder_Optional {
-	bool d;
-	SQN_NR_RACH_ConfigCommon_msg3_transformPrecoder_e v;
-};
-
-struct SQN_NR_RACH_ConfigCommon_ra_PrioritizationForAccessIdentity_r16_ra_PrioritizationForAccessIdentity_r16_Optional {
-	bool d;
-	struct SQN_NR_RACH_ConfigCommon_ra_PrioritizationForAccessIdentity_r16 v;
-};
-
-struct SQN_NR_RACH_ConfigCommon_prach_RootSequenceIndex_r16_prach_RootSequenceIndex_r16_Optional {
-	bool d;
-	struct SQN_NR_RACH_ConfigCommon_prach_RootSequenceIndex_r16 v;
-};
-
-struct SQN_NR_RACH_ConfigCommon {
-	struct SQN_NR_RACH_ConfigGeneric rach_ConfigGeneric;
-	struct uint8_t_SQN_NR_RACH_ConfigCommon_totalNumberOfRA_Preambles_Optional totalNumberOfRA_Preambles;
-	struct SQN_NR_RACH_ConfigCommon_ssb_perRACH_OccasionAndCB_PreamblesPerSSB_ssb_perRACH_OccasionAndCB_PreamblesPerSSB_Optional ssb_perRACH_OccasionAndCB_PreamblesPerSSB;
-	struct SQN_NR_RACH_ConfigCommon_groupBconfigured_groupBconfigured_Optional groupBconfigured;
-	SQN_NR_RACH_ConfigCommon_ra_ContentionResolutionTimer_e ra_ContentionResolutionTimer;
-	struct SQN_NR_RSRP_Range_SQN_NR_RACH_ConfigCommon_rsrp_ThresholdSSB_Optional rsrp_ThresholdSSB;
-	struct SQN_NR_RSRP_Range_SQN_NR_RACH_ConfigCommon_rsrp_ThresholdSSB_SUL_Optional rsrp_ThresholdSSB_SUL;
-	struct SQN_NR_RACH_ConfigCommon_prach_RootSequenceIndex prach_RootSequenceIndex;
-	struct SQN_NR_SubcarrierSpacing_e_SQN_NR_RACH_ConfigCommon_msg1_SubcarrierSpacing_Optional msg1_SubcarrierSpacing;
-	SQN_NR_RACH_ConfigCommon_restrictedSetConfig_e restrictedSetConfig;
-	struct SQN_NR_RACH_ConfigCommon_msg3_transformPrecoder_e_msg3_transformPrecoder_Optional msg3_transformPrecoder;
-	struct SQN_NR_RACH_ConfigCommon_ra_PrioritizationForAccessIdentity_r16_ra_PrioritizationForAccessIdentity_r16_Optional ra_PrioritizationForAccessIdentity_r16;
-	struct SQN_NR_RACH_ConfigCommon_prach_RootSequenceIndex_r16_prach_RootSequenceIndex_r16_Optional prach_RootSequenceIndex_r16;
-};
-
-enum SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommon_Sel {
-	SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommon_UNBOUND_VALUE = 0,
-	SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommon_release = 1,
-	SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommon_setup = 2,
-};
-
-union SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommon_Value {
-	Null release;
-	struct SQN_NR_RACH_ConfigCommon setup;
-};
-
-struct SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommon {
-	enum SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommon_Sel d;
-	union SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommon_Value v;
-};
-
-enum SQN_NR_PUSCH_ConfigCommon_groupHoppingEnabledTransformPrecoding_e {
-	SQN_NR_PUSCH_ConfigCommon_groupHoppingEnabledTransformPrecoding_e_enabled = 0,
-};
-
-typedef enum SQN_NR_PUSCH_ConfigCommon_groupHoppingEnabledTransformPrecoding_e SQN_NR_PUSCH_ConfigCommon_groupHoppingEnabledTransformPrecoding_e;
-
-enum SQN_NR_PUSCH_TimeDomainResourceAllocation_mappingType_e {
-	SQN_NR_PUSCH_TimeDomainResourceAllocation_mappingType_e_typeA = 0,
-	SQN_NR_PUSCH_TimeDomainResourceAllocation_mappingType_e_typeB = 1,
-};
-
-typedef enum SQN_NR_PUSCH_TimeDomainResourceAllocation_mappingType_e SQN_NR_PUSCH_TimeDomainResourceAllocation_mappingType_e;
-
-struct uint8_t_SQN_NR_PUSCH_TimeDomainResourceAllocation_k2_Optional {
-	bool d;
-	uint8_t v;
-};
-
-struct SQN_NR_PUSCH_TimeDomainResourceAllocation {
-	struct uint8_t_SQN_NR_PUSCH_TimeDomainResourceAllocation_k2_Optional k2;
-	SQN_NR_PUSCH_TimeDomainResourceAllocation_mappingType_e mappingType;
-	uint8_t startSymbolAndLength;
-};
-
-struct SQN_NR_PUSCH_TimeDomainResourceAllocation_SQN_NR_PUSCH_TimeDomainResourceAllocationList_Dynamic {
+struct SQN_NR_NSAG_ID_r17_nsag_ID_List_r17_Dynamic {
 	size_t d;
-	struct SQN_NR_PUSCH_TimeDomainResourceAllocation* v;
+	SQN_NR_NSAG_ID_r17* v;
 };
 
-typedef struct SQN_NR_PUSCH_TimeDomainResourceAllocation_SQN_NR_PUSCH_TimeDomainResourceAllocationList_Dynamic SQN_NR_PUSCH_TimeDomainResourceAllocationList;
+struct SQN_NR_RA_PrioritizationSliceInfo_r17 {
+	struct SQN_NR_NSAG_ID_r17_nsag_ID_List_r17_Dynamic nsag_ID_List_r17;
+	struct SQN_NR_RA_Prioritization ra_Prioritization_r17;
+};
 
-struct SQN_NR_PUSCH_ConfigCommon_groupHoppingEnabledTransformPrecoding_e_groupHoppingEnabledTransformPrecoding_Optional {
+struct SQN_NR_RA_PrioritizationSliceInfo_r17_SQN_NR_RA_PrioritizationSliceInfoList_r17_Dynamic {
+	size_t d;
+	struct SQN_NR_RA_PrioritizationSliceInfo_r17* v;
+};
+
+typedef struct SQN_NR_RA_PrioritizationSliceInfo_r17_SQN_NR_RA_PrioritizationSliceInfoList_r17_Dynamic SQN_NR_RA_PrioritizationSliceInfoList_r17;
+
+struct SQN_NR_RA_PrioritizationForSlicing_r17 {
+	SQN_NR_RA_PrioritizationSliceInfoList_r17 ra_PrioritizationSliceInfoList_r17;
+};
+
+enum SQN_NR_FeatureCombination_r17_redCap_r17_e {
+	SQN_NR_FeatureCombination_r17_redCap_r17_e_true = 0,
+};
+
+typedef enum SQN_NR_FeatureCombination_r17_redCap_r17_e SQN_NR_FeatureCombination_r17_redCap_r17_e;
+
+enum SQN_NR_FeatureCombination_r17_smallData_r17_e {
+	SQN_NR_FeatureCombination_r17_smallData_r17_e_true = 0,
+};
+
+typedef enum SQN_NR_FeatureCombination_r17_smallData_r17_e SQN_NR_FeatureCombination_r17_smallData_r17_e;
+
+struct SQN_NR_NSAG_ID_r17_SQN_NR_NSAG_List_r17_Dynamic {
+	size_t d;
+	SQN_NR_NSAG_ID_r17* v;
+};
+
+typedef struct SQN_NR_NSAG_ID_r17_SQN_NR_NSAG_List_r17_Dynamic SQN_NR_NSAG_List_r17;
+
+enum SQN_NR_FeatureCombination_r17_msg3_Repetitions_r17_e {
+	SQN_NR_FeatureCombination_r17_msg3_Repetitions_r17_e_true = 0,
+};
+
+typedef enum SQN_NR_FeatureCombination_r17_msg3_Repetitions_r17_e SQN_NR_FeatureCombination_r17_msg3_Repetitions_r17_e;
+
+enum SQN_NR_FeatureCombination_r17_spare4_e {
+	SQN_NR_FeatureCombination_r17_spare4_e_true = 0,
+};
+
+typedef enum SQN_NR_FeatureCombination_r17_spare4_e SQN_NR_FeatureCombination_r17_spare4_e;
+
+enum SQN_NR_FeatureCombination_r17_spare3_e {
+	SQN_NR_FeatureCombination_r17_spare3_e_true = 0,
+};
+
+typedef enum SQN_NR_FeatureCombination_r17_spare3_e SQN_NR_FeatureCombination_r17_spare3_e;
+
+enum SQN_NR_FeatureCombination_r17_spare2_e {
+	SQN_NR_FeatureCombination_r17_spare2_e_true = 0,
+};
+
+typedef enum SQN_NR_FeatureCombination_r17_spare2_e SQN_NR_FeatureCombination_r17_spare2_e;
+
+enum SQN_NR_FeatureCombination_r17_spare1_e {
+	SQN_NR_FeatureCombination_r17_spare1_e_true = 0,
+};
+
+typedef enum SQN_NR_FeatureCombination_r17_spare1_e SQN_NR_FeatureCombination_r17_spare1_e;
+
+struct SQN_NR_FeatureCombination_r17_redCap_r17_e_redCap_r17_Optional {
 	bool d;
-	SQN_NR_PUSCH_ConfigCommon_groupHoppingEnabledTransformPrecoding_e v;
+	SQN_NR_FeatureCombination_r17_redCap_r17_e v;
 };
 
-struct SQN_NR_PUSCH_TimeDomainResourceAllocationList_SQN_NR_PUSCH_ConfigCommon_pusch_TimeDomainAllocationList_Optional {
+struct SQN_NR_FeatureCombination_r17_smallData_r17_e_smallData_r17_Optional {
 	bool d;
-	SQN_NR_PUSCH_TimeDomainResourceAllocationList v;
+	SQN_NR_FeatureCombination_r17_smallData_r17_e v;
 };
 
-struct int8_t_SQN_NR_PUSCH_ConfigCommon_msg3_DeltaPreamble_Optional {
+struct SQN_NR_NSAG_List_r17_SQN_NR_FeatureCombination_r17_nsag_r17_Optional {
 	bool d;
-	int8_t v;
+	SQN_NR_NSAG_List_r17 v;
 };
 
-struct int16_t_SQN_NR_PUSCH_ConfigCommon_p0_NominalWithGrant_Optional {
+struct SQN_NR_FeatureCombination_r17_msg3_Repetitions_r17_e_msg3_Repetitions_r17_Optional {
 	bool d;
-	int16_t v;
+	SQN_NR_FeatureCombination_r17_msg3_Repetitions_r17_e v;
 };
 
-struct SQN_NR_PUSCH_ConfigCommon {
-	struct SQN_NR_PUSCH_ConfigCommon_groupHoppingEnabledTransformPrecoding_e_groupHoppingEnabledTransformPrecoding_Optional groupHoppingEnabledTransformPrecoding;
-	struct SQN_NR_PUSCH_TimeDomainResourceAllocationList_SQN_NR_PUSCH_ConfigCommon_pusch_TimeDomainAllocationList_Optional pusch_TimeDomainAllocationList;
-	struct int8_t_SQN_NR_PUSCH_ConfigCommon_msg3_DeltaPreamble_Optional msg3_DeltaPreamble;
-	struct int16_t_SQN_NR_PUSCH_ConfigCommon_p0_NominalWithGrant_Optional p0_NominalWithGrant;
-};
-
-enum SQN_NR_SetupRelease_BWP_UplinkCommon_pusch_ConfigCommon_Sel {
-	SQN_NR_SetupRelease_BWP_UplinkCommon_pusch_ConfigCommon_UNBOUND_VALUE = 0,
-	SQN_NR_SetupRelease_BWP_UplinkCommon_pusch_ConfigCommon_release = 1,
-	SQN_NR_SetupRelease_BWP_UplinkCommon_pusch_ConfigCommon_setup = 2,
-};
-
-union SQN_NR_SetupRelease_BWP_UplinkCommon_pusch_ConfigCommon_Value {
-	Null release;
-	struct SQN_NR_PUSCH_ConfigCommon setup;
-};
-
-struct SQN_NR_SetupRelease_BWP_UplinkCommon_pusch_ConfigCommon {
-	enum SQN_NR_SetupRelease_BWP_UplinkCommon_pusch_ConfigCommon_Sel d;
-	union SQN_NR_SetupRelease_BWP_UplinkCommon_pusch_ConfigCommon_Value v;
-};
-
-enum SQN_NR_PUCCH_ConfigCommon_pucch_GroupHopping_e {
-	SQN_NR_PUCCH_ConfigCommon_pucch_GroupHopping_e_neither = 0,
-	SQN_NR_PUCCH_ConfigCommon_pucch_GroupHopping_e_enable = 1,
-	SQN_NR_PUCCH_ConfigCommon_pucch_GroupHopping_e_disable = 2,
-};
-
-typedef enum SQN_NR_PUCCH_ConfigCommon_pucch_GroupHopping_e SQN_NR_PUCCH_ConfigCommon_pucch_GroupHopping_e;
-
-struct uint8_t_SQN_NR_PUCCH_ConfigCommon_pucch_ResourceCommon_Optional {
+struct SQN_NR_FeatureCombination_r17_spare4_e_spare4_Optional {
 	bool d;
-	uint8_t v;
+	SQN_NR_FeatureCombination_r17_spare4_e v;
 };
 
-struct uint16_t_SQN_NR_PUCCH_ConfigCommon_hoppingId_Optional {
+struct SQN_NR_FeatureCombination_r17_spare3_e_spare3_Optional {
 	bool d;
-	uint16_t v;
+	SQN_NR_FeatureCombination_r17_spare3_e v;
 };
 
-struct int16_t_SQN_NR_PUCCH_ConfigCommon_p0_nominal_Optional {
+struct SQN_NR_FeatureCombination_r17_spare2_e_spare2_Optional {
 	bool d;
-	int16_t v;
+	SQN_NR_FeatureCombination_r17_spare2_e v;
 };
 
-struct SQN_NR_PUCCH_ConfigCommon {
-	struct uint8_t_SQN_NR_PUCCH_ConfigCommon_pucch_ResourceCommon_Optional pucch_ResourceCommon;
-	SQN_NR_PUCCH_ConfigCommon_pucch_GroupHopping_e pucch_GroupHopping;
-	struct uint16_t_SQN_NR_PUCCH_ConfigCommon_hoppingId_Optional hoppingId;
-	struct int16_t_SQN_NR_PUCCH_ConfigCommon_p0_nominal_Optional p0_nominal;
-};
-
-enum SQN_NR_SetupRelease_BWP_UplinkCommon_pucch_ConfigCommon_Sel {
-	SQN_NR_SetupRelease_BWP_UplinkCommon_pucch_ConfigCommon_UNBOUND_VALUE = 0,
-	SQN_NR_SetupRelease_BWP_UplinkCommon_pucch_ConfigCommon_release = 1,
-	SQN_NR_SetupRelease_BWP_UplinkCommon_pucch_ConfigCommon_setup = 2,
-};
-
-union SQN_NR_SetupRelease_BWP_UplinkCommon_pucch_ConfigCommon_Value {
-	Null release;
-	struct SQN_NR_PUCCH_ConfigCommon setup;
-};
-
-struct SQN_NR_SetupRelease_BWP_UplinkCommon_pucch_ConfigCommon {
-	enum SQN_NR_SetupRelease_BWP_UplinkCommon_pucch_ConfigCommon_Sel d;
-	union SQN_NR_SetupRelease_BWP_UplinkCommon_pucch_ConfigCommon_Value v;
-};
-
-enum SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommonIAB_r16_Sel {
-	SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommonIAB_r16_UNBOUND_VALUE = 0,
-	SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommonIAB_r16_release = 1,
-	SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommonIAB_r16_setup = 2,
-};
-
-union SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommonIAB_r16_Value {
-	Null release;
-	struct SQN_NR_RACH_ConfigCommon setup;
-};
-
-struct SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommonIAB_r16 {
-	enum SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommonIAB_r16_Sel d;
-	union SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommonIAB_r16_Value v;
-};
-
-enum SQN_NR_BWP_UplinkCommon_useInterlacePUCCH_PUSCH_r16_e {
-	SQN_NR_BWP_UplinkCommon_useInterlacePUCCH_PUSCH_r16_e_enabled = 0,
-};
-
-typedef enum SQN_NR_BWP_UplinkCommon_useInterlacePUCCH_PUSCH_r16_e SQN_NR_BWP_UplinkCommon_useInterlacePUCCH_PUSCH_r16_e;
-
-enum SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e {
-	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e_one = 0,
-	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e_two = 1,
-	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e_four = 2,
-	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e_eight = 3,
-};
-
-typedef enum SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e;
-
-enum SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e {
-	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e_dB0 = 0,
-	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e_dB2 = 1,
-	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e_dB4 = 2,
-	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e_dB6 = 3,
-};
-
-typedef enum SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e;
-
-enum SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e {
-	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl1 = 0,
-	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl2 = 1,
-	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl4 = 2,
-	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl8 = 3,
-	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl10 = 4,
-	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl20 = 5,
-	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl40 = 6,
-	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl80 = 7,
-	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl160 = 8,
-	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl320 = 9,
-};
-
-typedef enum SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e;
-
-enum SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e {
-	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n3 = 0,
-	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n4 = 1,
-	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n5 = 2,
-	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n6 = 3,
-	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n7 = 4,
-	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n8 = 5,
-	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n10 = 6,
-	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n20 = 7,
-	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n50 = 8,
-	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n100 = 9,
-	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n200 = 10,
-};
-
-typedef enum SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e;
-
-struct uint16_t_SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PRACH_ConfigurationIndex_r16_Optional {
+struct SQN_NR_FeatureCombination_r17_spare1_e_spare1_Optional {
 	bool d;
-	uint16_t v;
+	SQN_NR_FeatureCombination_r17_spare1_e v;
 };
 
-struct SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e_msgA_RO_FDM_r16_Optional {
-	bool d;
-	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e v;
+struct SQN_NR_FeatureCombination_r17 {
+	struct SQN_NR_FeatureCombination_r17_redCap_r17_e_redCap_r17_Optional redCap_r17;
+	struct SQN_NR_FeatureCombination_r17_smallData_r17_e_smallData_r17_Optional smallData_r17;
+	struct SQN_NR_NSAG_List_r17_SQN_NR_FeatureCombination_r17_nsag_r17_Optional nsag_r17;
+	struct SQN_NR_FeatureCombination_r17_msg3_Repetitions_r17_e_msg3_Repetitions_r17_Optional msg3_Repetitions_r17;
+	struct SQN_NR_FeatureCombination_r17_spare4_e_spare4_Optional spare4;
+	struct SQN_NR_FeatureCombination_r17_spare3_e_spare3_Optional spare3;
+	struct SQN_NR_FeatureCombination_r17_spare2_e_spare2_Optional spare2;
+	struct SQN_NR_FeatureCombination_r17_spare1_e_spare1_Optional spare1;
 };
 
-struct uint16_t_SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FrequencyStart_r16_Optional {
-	bool d;
-	uint16_t v;
+enum SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e {
+	SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_b56 = 0,
+	SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_b144 = 1,
+	SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_b208 = 2,
+	SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_b256 = 3,
+	SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_b282 = 4,
+	SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_b480 = 5,
+	SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_b640 = 6,
+	SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_b800 = 7,
+	SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_b1000 = 8,
+	SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_b72 = 9,
+	SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_spare6 = 10,
+	SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_spare5 = 11,
+	SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_spare4 = 12,
+	SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_spare3 = 13,
+	SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_spare2 = 14,
+	SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_spare1 = 15,
 };
 
-struct uint8_t_SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_ZeroCorrelationZoneConfig_r16_Optional {
-	bool d;
-	uint8_t v;
+typedef enum SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e;
+
+enum SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_messagePowerOffsetGroupB_r17_e {
+	SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_messagePowerOffsetGroupB_r17_e_minusinfinity = 0,
+	SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_messagePowerOffsetGroupB_r17_e_dB0 = 1,
+	SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_messagePowerOffsetGroupB_r17_e_dB5 = 2,
+	SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_messagePowerOffsetGroupB_r17_e_dB8 = 3,
+	SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_messagePowerOffsetGroupB_r17_e_dB10 = 4,
+	SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_messagePowerOffsetGroupB_r17_e_dB12 = 5,
+	SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_messagePowerOffsetGroupB_r17_e_dB15 = 6,
+	SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_messagePowerOffsetGroupB_r17_e_dB18 = 7,
 };
 
-struct SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e_msgA_PreamblePowerRampingStep_r16_Optional {
-	bool d;
-	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e v;
-};
+typedef enum SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_messagePowerOffsetGroupB_r17_e SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_messagePowerOffsetGroupB_r17_e;
 
-struct int16_t_SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreambleReceivedTargetPower_r16_Optional {
-	bool d;
-	int16_t v;
-};
-
-struct SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_msgB_ResponseWindow_r16_Optional {
-	bool d;
-	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e v;
-};
-
-struct SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_preambleTransMax_r16_Optional {
-	bool d;
-	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e v;
-};
-
-struct SQN_NR_RACH_ConfigGenericTwoStepRA_r16 {
-	struct uint16_t_SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PRACH_ConfigurationIndex_r16_Optional msgA_PRACH_ConfigurationIndex_r16;
-	struct SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e_msgA_RO_FDM_r16_Optional msgA_RO_FDM_r16;
-	struct uint16_t_SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FrequencyStart_r16_Optional msgA_RO_FrequencyStart_r16;
-	struct uint8_t_SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_ZeroCorrelationZoneConfig_r16_Optional msgA_ZeroCorrelationZoneConfig_r16;
-	struct SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e_msgA_PreamblePowerRampingStep_r16_Optional msgA_PreamblePowerRampingStep_r16;
-	struct int16_t_SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreambleReceivedTargetPower_r16_Optional msgA_PreambleReceivedTargetPower_r16;
-	struct SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_msgB_ResponseWindow_r16_Optional msgB_ResponseWindow_r16;
-	struct SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_preambleTransMax_r16_Optional preambleTransMax_r16;
-};
-
-enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e {
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n4 = 0,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n8 = 1,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n12 = 2,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n16 = 3,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n20 = 4,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n24 = 5,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n28 = 6,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n32 = 7,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n36 = 8,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n40 = 9,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n44 = 10,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n48 = 11,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n52 = 12,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n56 = 13,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n60 = 14,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n64 = 15,
-};
-
-typedef enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e;
-
-enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e {
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n4 = 0,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n8 = 1,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n12 = 2,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n16 = 3,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n20 = 4,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n24 = 5,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n28 = 6,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n32 = 7,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n36 = 8,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n40 = 9,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n44 = 10,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n48 = 11,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n52 = 12,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n56 = 13,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n60 = 14,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n64 = 15,
-};
-
-typedef enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e;
-
-enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e {
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n4 = 0,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n8 = 1,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n12 = 2,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n16 = 3,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n20 = 4,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n24 = 5,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n28 = 6,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n32 = 7,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n36 = 8,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n40 = 9,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n44 = 10,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n48 = 11,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n52 = 12,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n56 = 13,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n60 = 14,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n64 = 15,
-};
-
-typedef enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e;
-
-enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e {
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n4 = 0,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n8 = 1,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n12 = 2,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n16 = 3,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n20 = 4,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n24 = 5,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n28 = 6,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n32 = 7,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n36 = 8,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n40 = 9,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n44 = 10,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n48 = 11,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n52 = 12,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n56 = 13,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n60 = 14,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n64 = 15,
-};
-
-typedef enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e;
-
-enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e {
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n4 = 0,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n8 = 1,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n12 = 2,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n16 = 3,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n20 = 4,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n24 = 5,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n28 = 6,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n32 = 7,
-};
-
-typedef enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e;
-
-enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_Sel {
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_UNBOUND_VALUE = 0,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth = 1,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth = 2,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf = 3,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one = 4,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two = 5,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_four = 6,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_eight = 7,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_sixteen = 8,
-};
-
-union SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_Value {
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e oneEighth;
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e oneFourth;
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e oneHalf;
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e one;
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e two;
-	uint8_t four;
-	uint8_t eight;
-	uint8_t sixteen;
-};
-
-struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16 {
-	enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_Sel d;
-	union SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_Value v;
-};
-
-enum SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e {
-	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b56 = 0,
-	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b144 = 1,
-	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b208 = 2,
-	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b256 = 3,
-	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b282 = 4,
-	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b480 = 5,
-	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b640 = 6,
-	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b800 = 7,
-	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b1000 = 8,
-	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b72 = 9,
-	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_spare6 = 10,
-	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_spare5 = 11,
-	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_spare4 = 12,
-	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_spare3 = 13,
-	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_spare2 = 14,
-	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_spare1 = 15,
-};
-
-typedef enum SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e;
-
-enum SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e {
-	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_minusinfinity = 0,
-	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB0 = 1,
-	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB5 = 2,
-	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB8 = 3,
-	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB10 = 4,
-	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB12 = 5,
-	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB15 = 6,
-	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB18 = 7,
-};
-
-typedef enum SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e;
-
-struct SQN_NR_GroupB_ConfiguredTwoStepRA_r16 {
-	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e ra_MsgA_SizeGroupA;
-	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e messagePowerOffsetGroupB;
-	uint8_t numberofRA_PreamblesGroupA;
-};
-
-enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_Sel {
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_UNBOUND_VALUE = 0,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_l839 = 1,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_l139 = 2,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_l571 = 3,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_l1151 = 4,
-};
-
-union SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_Value {
-	uint16_t l839;
-	uint8_t l139;
-	uint16_t l571;
-	uint16_t l1151;
-};
-
-struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16 {
-	enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_Sel d;
-	union SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_Value v;
-};
-
-enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e {
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n1 = 0,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n2 = 1,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n4 = 2,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n6 = 3,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n8 = 4,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n10 = 5,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n20 = 6,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n50 = 7,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n100 = 8,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n200 = 9,
-};
-
-typedef enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e;
-
-enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e {
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e_unrestrictedSet = 0,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e_restrictedSetTypeA = 1,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e_restrictedSetTypeB = 2,
-};
-
-typedef enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e;
-
-struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_PrioritizationForAccessIdentityTwoStep_r16 {
-	struct SQN_NR_RA_Prioritization ra_Prioritization_r16;
-	B2 ra_PrioritizationForAI_r16;
-};
-
-enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e {
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf8 = 0,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf16 = 1,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf24 = 2,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf32 = 3,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf40 = 4,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf48 = 5,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf56 = 6,
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf64 = 7,
-};
-
-typedef enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e;
-
-struct uint8_t_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TotalNumberOfRA_Preambles_r16_Optional {
-	bool d;
-	uint8_t v;
-};
-
-struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_Optional {
-	bool d;
-	struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16 v;
-};
-
-struct uint8_t_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_CB_PreamblesPerSSB_PerSharedRO_r16_Optional {
-	bool d;
-	uint8_t v;
-};
-
-struct uint8_t_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_SharedRO_MaskIndex_r16_Optional {
-	bool d;
-	uint8_t v;
-};
-
-struct SQN_NR_GroupB_ConfiguredTwoStepRA_r16_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_groupB_ConfiguredTwoStepRA_r16_Optional {
-	bool d;
-	struct SQN_NR_GroupB_ConfiguredTwoStepRA_r16 v;
-};
-
-struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_msgA_PRACH_RootSequenceIndex_r16_Optional {
-	bool d;
-	struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16 v;
-};
-
-struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_msgA_TransMax_r16_Optional {
-	bool d;
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e v;
-};
-
-struct SQN_NR_RSRP_Range_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RSRP_Threshold_r16_Optional {
-	bool d;
-	SQN_NR_RSRP_Range v;
-};
-
-struct SQN_NR_RSRP_Range_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RSRP_ThresholdSSB_r16_Optional {
-	bool d;
-	SQN_NR_RSRP_Range v;
-};
-
-struct SQN_NR_SubcarrierSpacing_e_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SubcarrierSpacing_r16_Optional {
-	bool d;
-	SQN_NR_SubcarrierSpacing_e v;
-};
-
-struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e_msgA_RestrictedSetConfig_r16_Optional {
-	bool d;
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e v;
-};
-
-struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_PrioritizationForAccessIdentityTwoStep_r16_ra_PrioritizationForAccessIdentityTwoStep_r16_Optional {
-	bool d;
-	struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_PrioritizationForAccessIdentityTwoStep_r16 v;
-};
-
-struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_ra_ContentionResolutionTimer_r16_Optional {
-	bool d;
-	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e v;
-};
-
-struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16 {
-	struct SQN_NR_RACH_ConfigGenericTwoStepRA_r16 rach_ConfigGenericTwoStepRA_r16;
-	struct uint8_t_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TotalNumberOfRA_Preambles_r16_Optional msgA_TotalNumberOfRA_Preambles_r16;
-	struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_Optional msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16;
-	struct uint8_t_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_CB_PreamblesPerSSB_PerSharedRO_r16_Optional msgA_CB_PreamblesPerSSB_PerSharedRO_r16;
-	struct uint8_t_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_SharedRO_MaskIndex_r16_Optional msgA_SSB_SharedRO_MaskIndex_r16;
-	struct SQN_NR_GroupB_ConfiguredTwoStepRA_r16_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_groupB_ConfiguredTwoStepRA_r16_Optional groupB_ConfiguredTwoStepRA_r16;
-	struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_msgA_PRACH_RootSequenceIndex_r16_Optional msgA_PRACH_RootSequenceIndex_r16;
-	struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_msgA_TransMax_r16_Optional msgA_TransMax_r16;
-	struct SQN_NR_RSRP_Range_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RSRP_Threshold_r16_Optional msgA_RSRP_Threshold_r16;
-	struct SQN_NR_RSRP_Range_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RSRP_ThresholdSSB_r16_Optional msgA_RSRP_ThresholdSSB_r16;
-	struct SQN_NR_SubcarrierSpacing_e_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SubcarrierSpacing_r16_Optional msgA_SubcarrierSpacing_r16;
-	struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e_msgA_RestrictedSetConfig_r16_Optional msgA_RestrictedSetConfig_r16;
-	struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_PrioritizationForAccessIdentityTwoStep_r16_ra_PrioritizationForAccessIdentityTwoStep_r16_Optional ra_PrioritizationForAccessIdentityTwoStep_r16;
-	struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_ra_ContentionResolutionTimer_r16_Optional ra_ContentionResolutionTimer_r16;
+struct SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17 {
+	SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e ra_SizeGroupA_r17;
+	SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_messagePowerOffsetGroupB_r17_e messagePowerOffsetGroupB_r17;
+	uint8_t numberOfRA_PreamblesGroupA_r17;
 };
 
 enum SQN_NR_MsgA_PUSCH_Resource_r16_nrofMsgA_PO_PerSlot_r16_e {
@@ -4855,6 +6259,770 @@ struct SQN_NR_MsgA_PUSCH_Config_r16 {
 	struct int8_t_SQN_NR_MsgA_PUSCH_Config_r16_msgA_DeltaPreamble_r16_Optional msgA_DeltaPreamble_r16;
 };
 
+struct uint8_t_SQN_NR_FeatureCombinationPreambles_r17_ssb_SharedRO_MaskIndex_r17_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_groupBconfigured_r17_Optional {
+	bool d;
+	struct SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17 v;
+};
+
+struct SQN_NR_MsgA_PUSCH_Config_r16_SQN_NR_FeatureCombinationPreambles_r17_separateMsgA_PUSCH_Config_r17_Optional {
+	bool d;
+	struct SQN_NR_MsgA_PUSCH_Config_r16 v;
+};
+
+struct SQN_NR_RSRP_Range_SQN_NR_FeatureCombinationPreambles_r17_msgA_RSRP_Threshold_r17_Optional {
+	bool d;
+	SQN_NR_RSRP_Range v;
+};
+
+struct SQN_NR_RSRP_Range_SQN_NR_FeatureCombinationPreambles_r17_rsrp_ThresholdSSB_r17_Optional {
+	bool d;
+	SQN_NR_RSRP_Range v;
+};
+
+struct int8_t_SQN_NR_FeatureCombinationPreambles_r17_deltaPreamble_r17_Optional {
+	bool d;
+	int8_t v;
+};
+
+struct SQN_NR_FeatureCombinationPreambles_r17 {
+	struct SQN_NR_FeatureCombination_r17 featureCombination_r17;
+	uint8_t startPreambleForThisPartition_r17;
+	uint8_t numberOfPreamblesPerSSB_ForThisPartition_r17;
+	struct uint8_t_SQN_NR_FeatureCombinationPreambles_r17_ssb_SharedRO_MaskIndex_r17_Optional ssb_SharedRO_MaskIndex_r17;
+	struct SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_groupBconfigured_r17_Optional groupBconfigured_r17;
+	struct SQN_NR_MsgA_PUSCH_Config_r16_SQN_NR_FeatureCombinationPreambles_r17_separateMsgA_PUSCH_Config_r17_Optional separateMsgA_PUSCH_Config_r17;
+	struct SQN_NR_RSRP_Range_SQN_NR_FeatureCombinationPreambles_r17_msgA_RSRP_Threshold_r17_Optional msgA_RSRP_Threshold_r17;
+	struct SQN_NR_RSRP_Range_SQN_NR_FeatureCombinationPreambles_r17_rsrp_ThresholdSSB_r17_Optional rsrp_ThresholdSSB_r17;
+	struct int8_t_SQN_NR_FeatureCombinationPreambles_r17_deltaPreamble_r17_Optional deltaPreamble_r17;
+};
+
+struct uint8_t_SQN_NR_RACH_ConfigCommon_totalNumberOfRA_Preambles_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct SQN_NR_RACH_ConfigCommon_ssb_perRACH_OccasionAndCB_PreamblesPerSSB_ssb_perRACH_OccasionAndCB_PreamblesPerSSB_Optional {
+	bool d;
+	struct SQN_NR_RACH_ConfigCommon_ssb_perRACH_OccasionAndCB_PreamblesPerSSB v;
+};
+
+struct SQN_NR_RACH_ConfigCommon_groupBconfigured_groupBconfigured_Optional {
+	bool d;
+	struct SQN_NR_RACH_ConfigCommon_groupBconfigured v;
+};
+
+struct SQN_NR_RSRP_Range_SQN_NR_RACH_ConfigCommon_rsrp_ThresholdSSB_Optional {
+	bool d;
+	SQN_NR_RSRP_Range v;
+};
+
+struct SQN_NR_RSRP_Range_SQN_NR_RACH_ConfigCommon_rsrp_ThresholdSSB_SUL_Optional {
+	bool d;
+	SQN_NR_RSRP_Range v;
+};
+
+struct SQN_NR_SubcarrierSpacing_e_SQN_NR_RACH_ConfigCommon_msg1_SubcarrierSpacing_Optional {
+	bool d;
+	SQN_NR_SubcarrierSpacing_e v;
+};
+
+struct SQN_NR_RACH_ConfigCommon_msg3_transformPrecoder_e_msg3_transformPrecoder_Optional {
+	bool d;
+	SQN_NR_RACH_ConfigCommon_msg3_transformPrecoder_e v;
+};
+
+struct SQN_NR_RACH_ConfigCommon_ra_PrioritizationForAccessIdentity_r16_ra_PrioritizationForAccessIdentity_r16_Optional {
+	bool d;
+	struct SQN_NR_RACH_ConfigCommon_ra_PrioritizationForAccessIdentity_r16 v;
+};
+
+struct SQN_NR_RACH_ConfigCommon_prach_RootSequenceIndex_r16_prach_RootSequenceIndex_r16_Optional {
+	bool d;
+	struct SQN_NR_RACH_ConfigCommon_prach_RootSequenceIndex_r16 v;
+};
+
+struct SQN_NR_RA_PrioritizationForSlicing_r17_SQN_NR_RACH_ConfigCommon_ra_PrioritizationForSlicing_r17_Optional {
+	bool d;
+	struct SQN_NR_RA_PrioritizationForSlicing_r17 v;
+};
+
+struct SQN_NR_RACH_ConfigCommon_SQN_NR_FeatureCombinationPreambles_r17_featureCombinationPreamblesList_r17_Dynamic {
+	size_t d;
+	struct SQN_NR_FeatureCombinationPreambles_r17* v;
+};
+
+struct SQN_NR_FeatureCombinationPreambles_r17_SQN_NR_RACH_ConfigCommon_featureCombinationPreamblesList_r17_DynamicOptional {
+	bool d;
+	struct SQN_NR_RACH_ConfigCommon_SQN_NR_FeatureCombinationPreambles_r17_featureCombinationPreamblesList_r17_Dynamic v;
+};
+
+struct SQN_NR_RACH_ConfigCommon {
+	struct SQN_NR_RACH_ConfigGeneric rach_ConfigGeneric;
+	struct uint8_t_SQN_NR_RACH_ConfigCommon_totalNumberOfRA_Preambles_Optional totalNumberOfRA_Preambles;
+	struct SQN_NR_RACH_ConfigCommon_ssb_perRACH_OccasionAndCB_PreamblesPerSSB_ssb_perRACH_OccasionAndCB_PreamblesPerSSB_Optional ssb_perRACH_OccasionAndCB_PreamblesPerSSB;
+	struct SQN_NR_RACH_ConfigCommon_groupBconfigured_groupBconfigured_Optional groupBconfigured;
+	SQN_NR_RACH_ConfigCommon_ra_ContentionResolutionTimer_e ra_ContentionResolutionTimer;
+	struct SQN_NR_RSRP_Range_SQN_NR_RACH_ConfigCommon_rsrp_ThresholdSSB_Optional rsrp_ThresholdSSB;
+	struct SQN_NR_RSRP_Range_SQN_NR_RACH_ConfigCommon_rsrp_ThresholdSSB_SUL_Optional rsrp_ThresholdSSB_SUL;
+	struct SQN_NR_RACH_ConfigCommon_prach_RootSequenceIndex prach_RootSequenceIndex;
+	struct SQN_NR_SubcarrierSpacing_e_SQN_NR_RACH_ConfigCommon_msg1_SubcarrierSpacing_Optional msg1_SubcarrierSpacing;
+	SQN_NR_RACH_ConfigCommon_restrictedSetConfig_e restrictedSetConfig;
+	struct SQN_NR_RACH_ConfigCommon_msg3_transformPrecoder_e_msg3_transformPrecoder_Optional msg3_transformPrecoder;
+	struct SQN_NR_RACH_ConfigCommon_ra_PrioritizationForAccessIdentity_r16_ra_PrioritizationForAccessIdentity_r16_Optional ra_PrioritizationForAccessIdentity_r16;
+	struct SQN_NR_RACH_ConfigCommon_prach_RootSequenceIndex_r16_prach_RootSequenceIndex_r16_Optional prach_RootSequenceIndex_r16;
+	struct SQN_NR_RA_PrioritizationForSlicing_r17_SQN_NR_RACH_ConfigCommon_ra_PrioritizationForSlicing_r17_Optional ra_PrioritizationForSlicing_r17;
+	struct SQN_NR_FeatureCombinationPreambles_r17_SQN_NR_RACH_ConfigCommon_featureCombinationPreamblesList_r17_DynamicOptional featureCombinationPreamblesList_r17;
+};
+
+enum SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommon_Sel {
+	SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommon_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommon_release = 1,
+	SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommon_setup = 2,
+};
+
+union SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommon_Value {
+	Null release;
+	struct SQN_NR_RACH_ConfigCommon setup;
+};
+
+struct SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommon {
+	enum SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommon_Sel d;
+	union SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommon_Value v;
+};
+
+enum SQN_NR_PUSCH_ConfigCommon_groupHoppingEnabledTransformPrecoding_e {
+	SQN_NR_PUSCH_ConfigCommon_groupHoppingEnabledTransformPrecoding_e_enabled = 0,
+};
+
+typedef enum SQN_NR_PUSCH_ConfigCommon_groupHoppingEnabledTransformPrecoding_e SQN_NR_PUSCH_ConfigCommon_groupHoppingEnabledTransformPrecoding_e;
+
+enum SQN_NR_PUSCH_TimeDomainResourceAllocation_mappingType_e {
+	SQN_NR_PUSCH_TimeDomainResourceAllocation_mappingType_e_typeA = 0,
+	SQN_NR_PUSCH_TimeDomainResourceAllocation_mappingType_e_typeB = 1,
+};
+
+typedef enum SQN_NR_PUSCH_TimeDomainResourceAllocation_mappingType_e SQN_NR_PUSCH_TimeDomainResourceAllocation_mappingType_e;
+
+struct uint8_t_SQN_NR_PUSCH_TimeDomainResourceAllocation_k2_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct SQN_NR_PUSCH_TimeDomainResourceAllocation {
+	struct uint8_t_SQN_NR_PUSCH_TimeDomainResourceAllocation_k2_Optional k2;
+	SQN_NR_PUSCH_TimeDomainResourceAllocation_mappingType_e mappingType;
+	uint8_t startSymbolAndLength;
+};
+
+struct SQN_NR_PUSCH_TimeDomainResourceAllocation_SQN_NR_PUSCH_TimeDomainResourceAllocationList_Dynamic {
+	size_t d;
+	struct SQN_NR_PUSCH_TimeDomainResourceAllocation* v;
+};
+
+typedef struct SQN_NR_PUSCH_TimeDomainResourceAllocation_SQN_NR_PUSCH_TimeDomainResourceAllocationList_Dynamic SQN_NR_PUSCH_TimeDomainResourceAllocationList;
+
+struct SQN_NR_PUSCH_ConfigCommon_groupHoppingEnabledTransformPrecoding_e_groupHoppingEnabledTransformPrecoding_Optional {
+	bool d;
+	SQN_NR_PUSCH_ConfigCommon_groupHoppingEnabledTransformPrecoding_e v;
+};
+
+struct SQN_NR_PUSCH_TimeDomainResourceAllocationList_SQN_NR_PUSCH_ConfigCommon_pusch_TimeDomainAllocationList_Optional {
+	bool d;
+	SQN_NR_PUSCH_TimeDomainResourceAllocationList v;
+};
+
+struct int8_t_SQN_NR_PUSCH_ConfigCommon_msg3_DeltaPreamble_Optional {
+	bool d;
+	int8_t v;
+};
+
+struct int16_t_SQN_NR_PUSCH_ConfigCommon_p0_NominalWithGrant_Optional {
+	bool d;
+	int16_t v;
+};
+
+struct SQN_NR_PUSCH_ConfigCommon {
+	struct SQN_NR_PUSCH_ConfigCommon_groupHoppingEnabledTransformPrecoding_e_groupHoppingEnabledTransformPrecoding_Optional groupHoppingEnabledTransformPrecoding;
+	struct SQN_NR_PUSCH_TimeDomainResourceAllocationList_SQN_NR_PUSCH_ConfigCommon_pusch_TimeDomainAllocationList_Optional pusch_TimeDomainAllocationList;
+	struct int8_t_SQN_NR_PUSCH_ConfigCommon_msg3_DeltaPreamble_Optional msg3_DeltaPreamble;
+	struct int16_t_SQN_NR_PUSCH_ConfigCommon_p0_NominalWithGrant_Optional p0_NominalWithGrant;
+};
+
+enum SQN_NR_SetupRelease_BWP_UplinkCommon_pusch_ConfigCommon_Sel {
+	SQN_NR_SetupRelease_BWP_UplinkCommon_pusch_ConfigCommon_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_BWP_UplinkCommon_pusch_ConfigCommon_release = 1,
+	SQN_NR_SetupRelease_BWP_UplinkCommon_pusch_ConfigCommon_setup = 2,
+};
+
+union SQN_NR_SetupRelease_BWP_UplinkCommon_pusch_ConfigCommon_Value {
+	Null release;
+	struct SQN_NR_PUSCH_ConfigCommon setup;
+};
+
+struct SQN_NR_SetupRelease_BWP_UplinkCommon_pusch_ConfigCommon {
+	enum SQN_NR_SetupRelease_BWP_UplinkCommon_pusch_ConfigCommon_Sel d;
+	union SQN_NR_SetupRelease_BWP_UplinkCommon_pusch_ConfigCommon_Value v;
+};
+
+enum SQN_NR_PUCCH_ConfigCommon_pucch_GroupHopping_e {
+	SQN_NR_PUCCH_ConfigCommon_pucch_GroupHopping_e_neither = 0,
+	SQN_NR_PUCCH_ConfigCommon_pucch_GroupHopping_e_enable = 1,
+	SQN_NR_PUCCH_ConfigCommon_pucch_GroupHopping_e_disable = 2,
+};
+
+typedef enum SQN_NR_PUCCH_ConfigCommon_pucch_GroupHopping_e SQN_NR_PUCCH_ConfigCommon_pucch_GroupHopping_e;
+
+enum SQN_NR_PUCCH_ConfigCommon_intra_SlotFH_r17_e {
+	SQN_NR_PUCCH_ConfigCommon_intra_SlotFH_r17_e_fromLowerEdge = 0,
+	SQN_NR_PUCCH_ConfigCommon_intra_SlotFH_r17_e_fromUpperEdge = 1,
+};
+
+typedef enum SQN_NR_PUCCH_ConfigCommon_intra_SlotFH_r17_e SQN_NR_PUCCH_ConfigCommon_intra_SlotFH_r17_e;
+
+enum SQN_NR_PUCCH_ConfigCommon_additionalPRBOffset_r17_e {
+	SQN_NR_PUCCH_ConfigCommon_additionalPRBOffset_r17_e_n2 = 0,
+	SQN_NR_PUCCH_ConfigCommon_additionalPRBOffset_r17_e_n3 = 1,
+	SQN_NR_PUCCH_ConfigCommon_additionalPRBOffset_r17_e_n4 = 2,
+	SQN_NR_PUCCH_ConfigCommon_additionalPRBOffset_r17_e_n6 = 3,
+	SQN_NR_PUCCH_ConfigCommon_additionalPRBOffset_r17_e_n8 = 4,
+	SQN_NR_PUCCH_ConfigCommon_additionalPRBOffset_r17_e_n9 = 5,
+	SQN_NR_PUCCH_ConfigCommon_additionalPRBOffset_r17_e_n10 = 6,
+	SQN_NR_PUCCH_ConfigCommon_additionalPRBOffset_r17_e_n12 = 7,
+};
+
+typedef enum SQN_NR_PUCCH_ConfigCommon_additionalPRBOffset_r17_e SQN_NR_PUCCH_ConfigCommon_additionalPRBOffset_r17_e;
+
+struct uint8_t_SQN_NR_PUCCH_ConfigCommon_pucch_ResourceCommon_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct uint16_t_SQN_NR_PUCCH_ConfigCommon_hoppingId_Optional {
+	bool d;
+	uint16_t v;
+};
+
+struct int16_t_SQN_NR_PUCCH_ConfigCommon_p0_nominal_Optional {
+	bool d;
+	int16_t v;
+};
+
+struct uint8_t_SQN_NR_PUCCH_ConfigCommon_nrofPRBs_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct SQN_NR_PUCCH_ConfigCommon_intra_SlotFH_r17_e_intra_SlotFH_r17_Optional {
+	bool d;
+	SQN_NR_PUCCH_ConfigCommon_intra_SlotFH_r17_e v;
+};
+
+struct uint8_t_SQN_NR_PUCCH_ConfigCommon_pucch_ResourceCommonRedCap_r17_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct SQN_NR_PUCCH_ConfigCommon_additionalPRBOffset_r17_e_additionalPRBOffset_r17_Optional {
+	bool d;
+	SQN_NR_PUCCH_ConfigCommon_additionalPRBOffset_r17_e v;
+};
+
+struct SQN_NR_PUCCH_ConfigCommon {
+	struct uint8_t_SQN_NR_PUCCH_ConfigCommon_pucch_ResourceCommon_Optional pucch_ResourceCommon;
+	SQN_NR_PUCCH_ConfigCommon_pucch_GroupHopping_e pucch_GroupHopping;
+	struct uint16_t_SQN_NR_PUCCH_ConfigCommon_hoppingId_Optional hoppingId;
+	struct int16_t_SQN_NR_PUCCH_ConfigCommon_p0_nominal_Optional p0_nominal;
+	struct uint8_t_SQN_NR_PUCCH_ConfigCommon_nrofPRBs_Optional nrofPRBs;
+	struct SQN_NR_PUCCH_ConfigCommon_intra_SlotFH_r17_e_intra_SlotFH_r17_Optional intra_SlotFH_r17;
+	struct uint8_t_SQN_NR_PUCCH_ConfigCommon_pucch_ResourceCommonRedCap_r17_Optional pucch_ResourceCommonRedCap_r17;
+	struct SQN_NR_PUCCH_ConfigCommon_additionalPRBOffset_r17_e_additionalPRBOffset_r17_Optional additionalPRBOffset_r17;
+};
+
+enum SQN_NR_SetupRelease_BWP_UplinkCommon_pucch_ConfigCommon_Sel {
+	SQN_NR_SetupRelease_BWP_UplinkCommon_pucch_ConfigCommon_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_BWP_UplinkCommon_pucch_ConfigCommon_release = 1,
+	SQN_NR_SetupRelease_BWP_UplinkCommon_pucch_ConfigCommon_setup = 2,
+};
+
+union SQN_NR_SetupRelease_BWP_UplinkCommon_pucch_ConfigCommon_Value {
+	Null release;
+	struct SQN_NR_PUCCH_ConfigCommon setup;
+};
+
+struct SQN_NR_SetupRelease_BWP_UplinkCommon_pucch_ConfigCommon {
+	enum SQN_NR_SetupRelease_BWP_UplinkCommon_pucch_ConfigCommon_Sel d;
+	union SQN_NR_SetupRelease_BWP_UplinkCommon_pucch_ConfigCommon_Value v;
+};
+
+enum SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommonIAB_r16_Sel {
+	SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommonIAB_r16_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommonIAB_r16_release = 1,
+	SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommonIAB_r16_setup = 2,
+};
+
+union SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommonIAB_r16_Value {
+	Null release;
+	struct SQN_NR_RACH_ConfigCommon setup;
+};
+
+struct SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommonIAB_r16 {
+	enum SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommonIAB_r16_Sel d;
+	union SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommonIAB_r16_Value v;
+};
+
+enum SQN_NR_BWP_UplinkCommon_useInterlacePUCCH_PUSCH_r16_e {
+	SQN_NR_BWP_UplinkCommon_useInterlacePUCCH_PUSCH_r16_e_enabled = 0,
+};
+
+typedef enum SQN_NR_BWP_UplinkCommon_useInterlacePUCCH_PUSCH_r16_e SQN_NR_BWP_UplinkCommon_useInterlacePUCCH_PUSCH_r16_e;
+
+enum SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e {
+	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e_one = 0,
+	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e_two = 1,
+	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e_four = 2,
+	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e_eight = 3,
+};
+
+typedef enum SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e;
+
+enum SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e {
+	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e_dB0 = 0,
+	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e_dB2 = 1,
+	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e_dB4 = 2,
+	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e_dB6 = 3,
+};
+
+typedef enum SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e;
+
+enum SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e {
+	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl1 = 0,
+	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl2 = 1,
+	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl4 = 2,
+	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl8 = 3,
+	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl10 = 4,
+	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl20 = 5,
+	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl40 = 6,
+	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl80 = 7,
+	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl160 = 8,
+	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl320 = 9,
+};
+
+typedef enum SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e;
+
+enum SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e {
+	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n3 = 0,
+	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n4 = 1,
+	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n5 = 2,
+	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n6 = 3,
+	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n7 = 4,
+	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n8 = 5,
+	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n10 = 6,
+	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n20 = 7,
+	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n50 = 8,
+	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n100 = 9,
+	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n200 = 10,
+};
+
+typedef enum SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e;
+
+enum SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_v1700_e {
+	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_v1700_e_sl240 = 0,
+	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_v1700_e_sl640 = 1,
+	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_v1700_e_sl960 = 2,
+	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_v1700_e_sl1280 = 3,
+	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_v1700_e_sl1920 = 4,
+	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_v1700_e_sl2560 = 5,
+};
+
+typedef enum SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_v1700_e SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_v1700_e;
+
+struct uint16_t_SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PRACH_ConfigurationIndex_r16_Optional {
+	bool d;
+	uint16_t v;
+};
+
+struct SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e_msgA_RO_FDM_r16_Optional {
+	bool d;
+	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e v;
+};
+
+struct uint16_t_SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FrequencyStart_r16_Optional {
+	bool d;
+	uint16_t v;
+};
+
+struct uint8_t_SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_ZeroCorrelationZoneConfig_r16_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e_msgA_PreamblePowerRampingStep_r16_Optional {
+	bool d;
+	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e v;
+};
+
+struct int16_t_SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreambleReceivedTargetPower_r16_Optional {
+	bool d;
+	int16_t v;
+};
+
+struct SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_msgB_ResponseWindow_r16_Optional {
+	bool d;
+	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e v;
+};
+
+struct SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_preambleTransMax_r16_Optional {
+	bool d;
+	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e v;
+};
+
+struct SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_v1700_e_msgB_ResponseWindow_v1700_Optional {
+	bool d;
+	SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_v1700_e v;
+};
+
+struct SQN_NR_RACH_ConfigGenericTwoStepRA_r16 {
+	struct uint16_t_SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PRACH_ConfigurationIndex_r16_Optional msgA_PRACH_ConfigurationIndex_r16;
+	struct SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e_msgA_RO_FDM_r16_Optional msgA_RO_FDM_r16;
+	struct uint16_t_SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FrequencyStart_r16_Optional msgA_RO_FrequencyStart_r16;
+	struct uint8_t_SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_ZeroCorrelationZoneConfig_r16_Optional msgA_ZeroCorrelationZoneConfig_r16;
+	struct SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e_msgA_PreamblePowerRampingStep_r16_Optional msgA_PreamblePowerRampingStep_r16;
+	struct int16_t_SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreambleReceivedTargetPower_r16_Optional msgA_PreambleReceivedTargetPower_r16;
+	struct SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_msgB_ResponseWindow_r16_Optional msgB_ResponseWindow_r16;
+	struct SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_preambleTransMax_r16_Optional preambleTransMax_r16;
+	struct SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_v1700_e_msgB_ResponseWindow_v1700_Optional msgB_ResponseWindow_v1700;
+};
+
+enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e {
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n4 = 0,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n8 = 1,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n12 = 2,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n16 = 3,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n20 = 4,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n24 = 5,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n28 = 6,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n32 = 7,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n36 = 8,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n40 = 9,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n44 = 10,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n48 = 11,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n52 = 12,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n56 = 13,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n60 = 14,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n64 = 15,
+};
+
+typedef enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e;
+
+enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e {
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n4 = 0,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n8 = 1,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n12 = 2,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n16 = 3,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n20 = 4,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n24 = 5,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n28 = 6,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n32 = 7,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n36 = 8,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n40 = 9,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n44 = 10,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n48 = 11,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n52 = 12,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n56 = 13,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n60 = 14,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n64 = 15,
+};
+
+typedef enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e;
+
+enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e {
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n4 = 0,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n8 = 1,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n12 = 2,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n16 = 3,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n20 = 4,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n24 = 5,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n28 = 6,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n32 = 7,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n36 = 8,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n40 = 9,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n44 = 10,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n48 = 11,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n52 = 12,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n56 = 13,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n60 = 14,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n64 = 15,
+};
+
+typedef enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e;
+
+enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e {
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n4 = 0,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n8 = 1,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n12 = 2,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n16 = 3,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n20 = 4,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n24 = 5,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n28 = 6,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n32 = 7,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n36 = 8,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n40 = 9,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n44 = 10,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n48 = 11,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n52 = 12,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n56 = 13,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n60 = 14,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n64 = 15,
+};
+
+typedef enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e;
+
+enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e {
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n4 = 0,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n8 = 1,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n12 = 2,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n16 = 3,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n20 = 4,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n24 = 5,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n28 = 6,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n32 = 7,
+};
+
+typedef enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e;
+
+enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_Sel {
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_UNBOUND_VALUE = 0,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth = 1,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth = 2,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf = 3,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one = 4,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two = 5,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_four = 6,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_eight = 7,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_sixteen = 8,
+};
+
+union SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_Value {
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e oneEighth;
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e oneFourth;
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e oneHalf;
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e one;
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e two;
+	uint8_t four;
+	uint8_t eight;
+	uint8_t sixteen;
+};
+
+struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16 {
+	enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_Sel d;
+	union SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_Value v;
+};
+
+enum SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e {
+	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b56 = 0,
+	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b144 = 1,
+	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b208 = 2,
+	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b256 = 3,
+	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b282 = 4,
+	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b480 = 5,
+	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b640 = 6,
+	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b800 = 7,
+	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b1000 = 8,
+	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b72 = 9,
+	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_spare6 = 10,
+	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_spare5 = 11,
+	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_spare4 = 12,
+	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_spare3 = 13,
+	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_spare2 = 14,
+	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_spare1 = 15,
+};
+
+typedef enum SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e;
+
+enum SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e {
+	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_minusinfinity = 0,
+	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB0 = 1,
+	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB5 = 2,
+	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB8 = 3,
+	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB10 = 4,
+	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB12 = 5,
+	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB15 = 6,
+	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB18 = 7,
+};
+
+typedef enum SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e;
+
+struct SQN_NR_GroupB_ConfiguredTwoStepRA_r16 {
+	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e ra_MsgA_SizeGroupA;
+	SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e messagePowerOffsetGroupB;
+	uint8_t numberOfRA_PreamblesGroupA;
+};
+
+enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_Sel {
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_UNBOUND_VALUE = 0,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_l839 = 1,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_l139 = 2,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_l571 = 3,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_l1151 = 4,
+};
+
+union SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_Value {
+	uint16_t l839;
+	uint8_t l139;
+	uint16_t l571;
+	uint16_t l1151;
+};
+
+struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16 {
+	enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_Sel d;
+	union SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_Value v;
+};
+
+enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e {
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n1 = 0,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n2 = 1,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n4 = 2,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n6 = 3,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n8 = 4,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n10 = 5,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n20 = 6,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n50 = 7,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n100 = 8,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n200 = 9,
+};
+
+typedef enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e;
+
+enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e {
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e_unrestrictedSet = 0,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e_restrictedSetTypeA = 1,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e_restrictedSetTypeB = 2,
+};
+
+typedef enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e;
+
+struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_PrioritizationForAccessIdentityTwoStep_r16 {
+	struct SQN_NR_RA_Prioritization ra_Prioritization_r16;
+	B2 ra_PrioritizationForAI_r16;
+};
+
+enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e {
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf8 = 0,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf16 = 1,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf24 = 2,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf32 = 3,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf40 = 4,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf48 = 5,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf56 = 6,
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf64 = 7,
+};
+
+typedef enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e;
+
+struct uint8_t_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TotalNumberOfRA_Preambles_r16_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_Optional {
+	bool d;
+	struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16 v;
+};
+
+struct uint8_t_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_CB_PreamblesPerSSB_PerSharedRO_r16_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct uint8_t_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_SharedRO_MaskIndex_r16_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct SQN_NR_GroupB_ConfiguredTwoStepRA_r16_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_groupB_ConfiguredTwoStepRA_r16_Optional {
+	bool d;
+	struct SQN_NR_GroupB_ConfiguredTwoStepRA_r16 v;
+};
+
+struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_msgA_PRACH_RootSequenceIndex_r16_Optional {
+	bool d;
+	struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16 v;
+};
+
+struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_msgA_TransMax_r16_Optional {
+	bool d;
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e v;
+};
+
+struct SQN_NR_RSRP_Range_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RSRP_Threshold_r16_Optional {
+	bool d;
+	SQN_NR_RSRP_Range v;
+};
+
+struct SQN_NR_RSRP_Range_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RSRP_ThresholdSSB_r16_Optional {
+	bool d;
+	SQN_NR_RSRP_Range v;
+};
+
+struct SQN_NR_SubcarrierSpacing_e_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SubcarrierSpacing_r16_Optional {
+	bool d;
+	SQN_NR_SubcarrierSpacing_e v;
+};
+
+struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e_msgA_RestrictedSetConfig_r16_Optional {
+	bool d;
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e v;
+};
+
+struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_PrioritizationForAccessIdentityTwoStep_r16_ra_PrioritizationForAccessIdentityTwoStep_r16_Optional {
+	bool d;
+	struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_PrioritizationForAccessIdentityTwoStep_r16 v;
+};
+
+struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_ra_ContentionResolutionTimer_r16_Optional {
+	bool d;
+	SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e v;
+};
+
+struct SQN_NR_RA_PrioritizationForSlicing_r17_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_PrioritizationForSlicingTwoStep_r17_Optional {
+	bool d;
+	struct SQN_NR_RA_PrioritizationForSlicing_r17 v;
+};
+
+struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_SQN_NR_FeatureCombinationPreambles_r17_featureCombinationPreamblesList_r17_Dynamic {
+	size_t d;
+	struct SQN_NR_FeatureCombinationPreambles_r17* v;
+};
+
+struct SQN_NR_FeatureCombinationPreambles_r17_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_featureCombinationPreamblesList_r17_DynamicOptional {
+	bool d;
+	struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_SQN_NR_FeatureCombinationPreambles_r17_featureCombinationPreamblesList_r17_Dynamic v;
+};
+
+struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16 {
+	struct SQN_NR_RACH_ConfigGenericTwoStepRA_r16 rach_ConfigGenericTwoStepRA_r16;
+	struct uint8_t_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TotalNumberOfRA_Preambles_r16_Optional msgA_TotalNumberOfRA_Preambles_r16;
+	struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_Optional msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16;
+	struct uint8_t_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_CB_PreamblesPerSSB_PerSharedRO_r16_Optional msgA_CB_PreamblesPerSSB_PerSharedRO_r16;
+	struct uint8_t_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_SharedRO_MaskIndex_r16_Optional msgA_SSB_SharedRO_MaskIndex_r16;
+	struct SQN_NR_GroupB_ConfiguredTwoStepRA_r16_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_groupB_ConfiguredTwoStepRA_r16_Optional groupB_ConfiguredTwoStepRA_r16;
+	struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_msgA_PRACH_RootSequenceIndex_r16_Optional msgA_PRACH_RootSequenceIndex_r16;
+	struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_msgA_TransMax_r16_Optional msgA_TransMax_r16;
+	struct SQN_NR_RSRP_Range_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RSRP_Threshold_r16_Optional msgA_RSRP_Threshold_r16;
+	struct SQN_NR_RSRP_Range_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RSRP_ThresholdSSB_r16_Optional msgA_RSRP_ThresholdSSB_r16;
+	struct SQN_NR_SubcarrierSpacing_e_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SubcarrierSpacing_r16_Optional msgA_SubcarrierSpacing_r16;
+	struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e_msgA_RestrictedSetConfig_r16_Optional msgA_RestrictedSetConfig_r16;
+	struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_PrioritizationForAccessIdentityTwoStep_r16_ra_PrioritizationForAccessIdentityTwoStep_r16_Optional ra_PrioritizationForAccessIdentityTwoStep_r16;
+	struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_ra_ContentionResolutionTimer_r16_Optional ra_ContentionResolutionTimer_r16;
+	struct SQN_NR_RA_PrioritizationForSlicing_r17_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_PrioritizationForSlicingTwoStep_r17_Optional ra_PrioritizationForSlicingTwoStep_r17;
+	struct SQN_NR_FeatureCombinationPreambles_r17_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_featureCombinationPreamblesList_r17_DynamicOptional featureCombinationPreamblesList_r17;
+};
+
 struct SQN_NR_MsgA_PUSCH_Config_r16_SQN_NR_MsgA_ConfigCommon_r16_msgA_PUSCH_Config_r16_Optional {
 	bool d;
 	struct SQN_NR_MsgA_PUSCH_Config_r16 v;
@@ -4880,6 +7048,57 @@ struct SQN_NR_SetupRelease_BWP_UplinkCommon_msgA_ConfigCommon_r16 {
 	enum SQN_NR_SetupRelease_BWP_UplinkCommon_msgA_ConfigCommon_r16_Sel d;
 	union SQN_NR_SetupRelease_BWP_UplinkCommon_msgA_ConfigCommon_r16_Value v;
 };
+
+struct SQN_NR_RACH_ConfigCommon_SQN_NR_AdditionalRACH_Config_r17_rach_ConfigCommon_r17_Optional {
+	bool d;
+	struct SQN_NR_RACH_ConfigCommon v;
+};
+
+struct SQN_NR_MsgA_ConfigCommon_r16_SQN_NR_AdditionalRACH_Config_r17_msgA_ConfigCommon_r17_Optional {
+	bool d;
+	struct SQN_NR_MsgA_ConfigCommon_r16 v;
+};
+
+struct SQN_NR_AdditionalRACH_Config_r17 {
+	struct SQN_NR_RACH_ConfigCommon_SQN_NR_AdditionalRACH_Config_r17_rach_ConfigCommon_r17_Optional rach_ConfigCommon_r17;
+	struct SQN_NR_MsgA_ConfigCommon_r16_SQN_NR_AdditionalRACH_Config_r17_msgA_ConfigCommon_r17_Optional msgA_ConfigCommon_r17;
+};
+
+struct SQN_NR_AdditionalRACH_Config_r17_SQN_NR_AdditionalRACH_ConfigList_r17_Dynamic {
+	size_t d;
+	struct SQN_NR_AdditionalRACH_Config_r17* v;
+};
+
+typedef struct SQN_NR_AdditionalRACH_Config_r17_SQN_NR_AdditionalRACH_ConfigList_r17_Dynamic SQN_NR_AdditionalRACH_ConfigList_r17;
+
+enum SQN_NR_SetupRelease_BWP_UplinkCommon_additionalRACH_ConfigList_r17_Sel {
+	SQN_NR_SetupRelease_BWP_UplinkCommon_additionalRACH_ConfigList_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_BWP_UplinkCommon_additionalRACH_ConfigList_r17_release = 1,
+	SQN_NR_SetupRelease_BWP_UplinkCommon_additionalRACH_ConfigList_r17_setup = 2,
+};
+
+union SQN_NR_SetupRelease_BWP_UplinkCommon_additionalRACH_ConfigList_r17_Value {
+	Null release;
+	SQN_NR_AdditionalRACH_ConfigList_r17 setup;
+};
+
+struct SQN_NR_SetupRelease_BWP_UplinkCommon_additionalRACH_ConfigList_r17 {
+	enum SQN_NR_SetupRelease_BWP_UplinkCommon_additionalRACH_ConfigList_r17_Sel d;
+	union SQN_NR_SetupRelease_BWP_UplinkCommon_additionalRACH_ConfigList_r17_Value v;
+};
+
+enum SQN_NR_NumberOfMsg3_Repetitions_r17_e {
+	SQN_NR_NumberOfMsg3_Repetitions_r17_e_n1 = 0,
+	SQN_NR_NumberOfMsg3_Repetitions_r17_e_n2 = 1,
+	SQN_NR_NumberOfMsg3_Repetitions_r17_e_n3 = 2,
+	SQN_NR_NumberOfMsg3_Repetitions_r17_e_n4 = 3,
+	SQN_NR_NumberOfMsg3_Repetitions_r17_e_n7 = 4,
+	SQN_NR_NumberOfMsg3_Repetitions_r17_e_n8 = 5,
+	SQN_NR_NumberOfMsg3_Repetitions_r17_e_n12 = 6,
+	SQN_NR_NumberOfMsg3_Repetitions_r17_e_n16 = 7,
+};
+
+typedef enum SQN_NR_NumberOfMsg3_Repetitions_r17_e SQN_NR_NumberOfMsg3_Repetitions_r17_e;
 
 struct SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommon_SQN_NR_BWP_UplinkCommon_rach_ConfigCommon_Optional {
 	bool d;
@@ -4911,6 +7130,31 @@ struct SQN_NR_SetupRelease_BWP_UplinkCommon_msgA_ConfigCommon_r16_SQN_NR_BWP_Upl
 	struct SQN_NR_SetupRelease_BWP_UplinkCommon_msgA_ConfigCommon_r16 v;
 };
 
+struct bool_SQN_NR_BWP_UplinkCommon_enableRA_PrioritizationForSlicing_r17_Optional {
+	bool d;
+	bool v;
+};
+
+struct SQN_NR_SetupRelease_BWP_UplinkCommon_additionalRACH_ConfigList_r17_SQN_NR_BWP_UplinkCommon_additionalRACH_ConfigList_r17_Optional {
+	bool d;
+	struct SQN_NR_SetupRelease_BWP_UplinkCommon_additionalRACH_ConfigList_r17 v;
+};
+
+struct SQN_NR_RSRP_Range_SQN_NR_BWP_UplinkCommon_rsrp_ThresholdMsg3_r17_Optional {
+	bool d;
+	SQN_NR_RSRP_Range v;
+};
+
+struct SQN_NR_NumberOfMsg3_Repetitions_r17_e_SQN_NR_BWP_UplinkCommon_numberOfMsg3_RepetitionsList_r17_ArrayOptional {
+	bool d;
+	SQN_NR_NumberOfMsg3_Repetitions_r17_e v[4];
+};
+
+struct uint8_t_SQN_NR_BWP_UplinkCommon_mcs_Msg3_Repetitions_r17_ArrayOptional {
+	bool d;
+	uint8_t v[8];
+};
+
 struct SQN_NR_BWP_UplinkCommon {
 	struct SQN_NR_BWP genericParameters;
 	struct SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommon_SQN_NR_BWP_UplinkCommon_rach_ConfigCommon_Optional rach_ConfigCommon;
@@ -4919,6 +7163,11 @@ struct SQN_NR_BWP_UplinkCommon {
 	struct SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommonIAB_r16_SQN_NR_BWP_UplinkCommon_rach_ConfigCommonIAB_r16_Optional rach_ConfigCommonIAB_r16;
 	struct SQN_NR_BWP_UplinkCommon_useInterlacePUCCH_PUSCH_r16_e_useInterlacePUCCH_PUSCH_r16_Optional useInterlacePUCCH_PUSCH_r16;
 	struct SQN_NR_SetupRelease_BWP_UplinkCommon_msgA_ConfigCommon_r16_SQN_NR_BWP_UplinkCommon_msgA_ConfigCommon_r16_Optional msgA_ConfigCommon_r16;
+	struct bool_SQN_NR_BWP_UplinkCommon_enableRA_PrioritizationForSlicing_r17_Optional enableRA_PrioritizationForSlicing_r17;
+	struct SQN_NR_SetupRelease_BWP_UplinkCommon_additionalRACH_ConfigList_r17_SQN_NR_BWP_UplinkCommon_additionalRACH_ConfigList_r17_Optional additionalRACH_ConfigList_r17;
+	struct SQN_NR_RSRP_Range_SQN_NR_BWP_UplinkCommon_rsrp_ThresholdMsg3_r17_Optional rsrp_ThresholdMsg3_r17;
+	struct SQN_NR_NumberOfMsg3_Repetitions_r17_e_SQN_NR_BWP_UplinkCommon_numberOfMsg3_RepetitionsList_r17_ArrayOptional numberOfMsg3_RepetitionsList_r17;
+	struct uint8_t_SQN_NR_BWP_UplinkCommon_mcs_Msg3_Repetitions_r17_ArrayOptional mcs_Msg3_Repetitions_r17;
 };
 
 enum SQN_NR_TimeAlignmentTimer_e {
@@ -5014,19 +7263,19 @@ struct SQN_NR_TDD_UL_DL_ConfigCommon {
 	struct SQN_NR_TDD_UL_DL_Pattern_SQN_NR_TDD_UL_DL_ConfigCommon_pattern2_Optional pattern2;
 };
 
-enum SQN_NR_SemiStaticChannelAccessConfig_period_e {
-	SQN_NR_SemiStaticChannelAccessConfig_period_e_ms1 = 0,
-	SQN_NR_SemiStaticChannelAccessConfig_period_e_ms2 = 1,
-	SQN_NR_SemiStaticChannelAccessConfig_period_e_ms2dot5 = 2,
-	SQN_NR_SemiStaticChannelAccessConfig_period_e_ms4 = 3,
-	SQN_NR_SemiStaticChannelAccessConfig_period_e_ms5 = 4,
-	SQN_NR_SemiStaticChannelAccessConfig_period_e_ms10 = 5,
+enum SQN_NR_SemiStaticChannelAccessConfig_r16_period_e {
+	SQN_NR_SemiStaticChannelAccessConfig_r16_period_e_ms1 = 0,
+	SQN_NR_SemiStaticChannelAccessConfig_r16_period_e_ms2 = 1,
+	SQN_NR_SemiStaticChannelAccessConfig_r16_period_e_ms2dot5 = 2,
+	SQN_NR_SemiStaticChannelAccessConfig_r16_period_e_ms4 = 3,
+	SQN_NR_SemiStaticChannelAccessConfig_r16_period_e_ms5 = 4,
+	SQN_NR_SemiStaticChannelAccessConfig_r16_period_e_ms10 = 5,
 };
 
-typedef enum SQN_NR_SemiStaticChannelAccessConfig_period_e SQN_NR_SemiStaticChannelAccessConfig_period_e;
+typedef enum SQN_NR_SemiStaticChannelAccessConfig_r16_period_e SQN_NR_SemiStaticChannelAccessConfig_r16_period_e;
 
-struct SQN_NR_SemiStaticChannelAccessConfig {
-	SQN_NR_SemiStaticChannelAccessConfig_period_e period;
+struct SQN_NR_SemiStaticChannelAccessConfig_r16 {
+	SQN_NR_SemiStaticChannelAccessConfig_r16_period_e period;
 };
 
 enum SQN_NR_ServingCellConfigCommonSIB_channelAccessMode_r16_Sel {
@@ -5037,7 +7286,7 @@ enum SQN_NR_ServingCellConfigCommonSIB_channelAccessMode_r16_Sel {
 
 union SQN_NR_ServingCellConfigCommonSIB_channelAccessMode_r16_Value {
 	Null dynamic;
-	struct SQN_NR_SemiStaticChannelAccessConfig semiStatic;
+	struct SQN_NR_SemiStaticChannelAccessConfig_r16 semiStatic;
 };
 
 struct SQN_NR_ServingCellConfigCommonSIB_channelAccessMode_r16 {
@@ -5083,6 +7332,73 @@ struct SQN_NR_HighSpeedConfig_r16 {
 	struct SQN_NR_HighSpeedConfig_r16_highSpeedDemodFlag_r16_e_highSpeedDemodFlag_r16_Optional highSpeedDemodFlag_r16;
 };
 
+enum SQN_NR_ServingCellConfigCommonSIB_channelAccessMode2_r17_e {
+	SQN_NR_ServingCellConfigCommonSIB_channelAccessMode2_r17_e_enabled = 0,
+};
+
+typedef enum SQN_NR_ServingCellConfigCommonSIB_channelAccessMode2_r17_e SQN_NR_ServingCellConfigCommonSIB_channelAccessMode2_r17_e;
+
+enum SQN_NR_ServingCellConfigCommonSIB_discoveryBurstWindowLength_v1700_e {
+	SQN_NR_ServingCellConfigCommonSIB_discoveryBurstWindowLength_v1700_e_ms0dot125 = 0,
+	SQN_NR_ServingCellConfigCommonSIB_discoveryBurstWindowLength_v1700_e_ms0dot25 = 1,
+	SQN_NR_ServingCellConfigCommonSIB_discoveryBurstWindowLength_v1700_e_ms0dot5 = 2,
+	SQN_NR_ServingCellConfigCommonSIB_discoveryBurstWindowLength_v1700_e_ms0dot75 = 3,
+	SQN_NR_ServingCellConfigCommonSIB_discoveryBurstWindowLength_v1700_e_ms1 = 4,
+	SQN_NR_ServingCellConfigCommonSIB_discoveryBurstWindowLength_v1700_e_ms1dot25 = 5,
+};
+
+typedef enum SQN_NR_ServingCellConfigCommonSIB_discoveryBurstWindowLength_v1700_e SQN_NR_ServingCellConfigCommonSIB_discoveryBurstWindowLength_v1700_e;
+
+enum SQN_NR_HighSpeedConfigFR2_r17_highSpeedMeasFlagFR2_r17_e {
+	SQN_NR_HighSpeedConfigFR2_r17_highSpeedMeasFlagFR2_r17_e_set1 = 0,
+	SQN_NR_HighSpeedConfigFR2_r17_highSpeedMeasFlagFR2_r17_e_set2 = 1,
+};
+
+typedef enum SQN_NR_HighSpeedConfigFR2_r17_highSpeedMeasFlagFR2_r17_e SQN_NR_HighSpeedConfigFR2_r17_highSpeedMeasFlagFR2_r17_e;
+
+enum SQN_NR_HighSpeedConfigFR2_r17_highSpeedDeploymentTypeFR2_r17_e {
+	SQN_NR_HighSpeedConfigFR2_r17_highSpeedDeploymentTypeFR2_r17_e_unidirectional = 0,
+	SQN_NR_HighSpeedConfigFR2_r17_highSpeedDeploymentTypeFR2_r17_e_bidirectional = 1,
+};
+
+typedef enum SQN_NR_HighSpeedConfigFR2_r17_highSpeedDeploymentTypeFR2_r17_e SQN_NR_HighSpeedConfigFR2_r17_highSpeedDeploymentTypeFR2_r17_e;
+
+enum SQN_NR_HighSpeedConfigFR2_r17_highSpeedLargeOneStepUL_TimingFR2_r17_e {
+	SQN_NR_HighSpeedConfigFR2_r17_highSpeedLargeOneStepUL_TimingFR2_r17_e_true = 0,
+};
+
+typedef enum SQN_NR_HighSpeedConfigFR2_r17_highSpeedLargeOneStepUL_TimingFR2_r17_e SQN_NR_HighSpeedConfigFR2_r17_highSpeedLargeOneStepUL_TimingFR2_r17_e;
+
+struct SQN_NR_HighSpeedConfigFR2_r17_highSpeedMeasFlagFR2_r17_e_highSpeedMeasFlagFR2_r17_Optional {
+	bool d;
+	SQN_NR_HighSpeedConfigFR2_r17_highSpeedMeasFlagFR2_r17_e v;
+};
+
+struct SQN_NR_HighSpeedConfigFR2_r17_highSpeedDeploymentTypeFR2_r17_e_highSpeedDeploymentTypeFR2_r17_Optional {
+	bool d;
+	SQN_NR_HighSpeedConfigFR2_r17_highSpeedDeploymentTypeFR2_r17_e v;
+};
+
+struct SQN_NR_HighSpeedConfigFR2_r17_highSpeedLargeOneStepUL_TimingFR2_r17_e_highSpeedLargeOneStepUL_TimingFR2_r17_Optional {
+	bool d;
+	SQN_NR_HighSpeedConfigFR2_r17_highSpeedLargeOneStepUL_TimingFR2_r17_e v;
+};
+
+struct SQN_NR_HighSpeedConfigFR2_r17 {
+	struct SQN_NR_HighSpeedConfigFR2_r17_highSpeedMeasFlagFR2_r17_e_highSpeedMeasFlagFR2_r17_Optional highSpeedMeasFlagFR2_r17;
+	struct SQN_NR_HighSpeedConfigFR2_r17_highSpeedDeploymentTypeFR2_r17_e_highSpeedDeploymentTypeFR2_r17_Optional highSpeedDeploymentTypeFR2_r17;
+	struct SQN_NR_HighSpeedConfigFR2_r17_highSpeedLargeOneStepUL_TimingFR2_r17_e_highSpeedLargeOneStepUL_TimingFR2_r17_Optional highSpeedLargeOneStepUL_TimingFR2_r17;
+};
+
+struct SQN_NR_BWP_UplinkCommon_SQN_NR_UplinkConfigCommonSIB_v1700_initialUplinkBWP_RedCap_r17_Optional {
+	bool d;
+	struct SQN_NR_BWP_UplinkCommon v;
+};
+
+struct SQN_NR_UplinkConfigCommonSIB_v1700 {
+	struct SQN_NR_BWP_UplinkCommon_SQN_NR_UplinkConfigCommonSIB_v1700_initialUplinkBWP_RedCap_r17_Optional initialUplinkBWP_RedCap_r17;
+};
+
 struct SQN_NR_UplinkConfigCommonSIB_SQN_NR_ServingCellConfigCommonSIB_uplinkConfigCommon_Optional {
 	bool d;
 	struct SQN_NR_UplinkConfigCommonSIB v;
@@ -5118,6 +7434,26 @@ struct SQN_NR_HighSpeedConfig_r16_SQN_NR_ServingCellConfigCommonSIB_highSpeedCon
 	struct SQN_NR_HighSpeedConfig_r16 v;
 };
 
+struct SQN_NR_ServingCellConfigCommonSIB_channelAccessMode2_r17_e_channelAccessMode2_r17_Optional {
+	bool d;
+	SQN_NR_ServingCellConfigCommonSIB_channelAccessMode2_r17_e v;
+};
+
+struct SQN_NR_ServingCellConfigCommonSIB_discoveryBurstWindowLength_v1700_e_discoveryBurstWindowLength_v1700_Optional {
+	bool d;
+	SQN_NR_ServingCellConfigCommonSIB_discoveryBurstWindowLength_v1700_e v;
+};
+
+struct SQN_NR_HighSpeedConfigFR2_r17_SQN_NR_ServingCellConfigCommonSIB_highSpeedConfigFR2_r17_Optional {
+	bool d;
+	struct SQN_NR_HighSpeedConfigFR2_r17 v;
+};
+
+struct SQN_NR_UplinkConfigCommonSIB_v1700_SQN_NR_ServingCellConfigCommonSIB_uplinkConfigCommon_v1700_Optional {
+	bool d;
+	struct SQN_NR_UplinkConfigCommonSIB_v1700 v;
+};
+
 struct SQN_NR_ServingCellConfigCommonSIB {
 	struct SQN_NR_DownlinkConfigCommonSIB downlinkConfigCommon;
 	struct SQN_NR_UplinkConfigCommonSIB_SQN_NR_ServingCellConfigCommonSIB_uplinkConfigCommon_Optional uplinkConfigCommon;
@@ -5130,6 +7466,10 @@ struct SQN_NR_ServingCellConfigCommonSIB {
 	struct SQN_NR_ServingCellConfigCommonSIB_channelAccessMode_r16_channelAccessMode_r16_Optional channelAccessMode_r16;
 	struct SQN_NR_ServingCellConfigCommonSIB_discoveryBurstWindowLength_r16_e_discoveryBurstWindowLength_r16_Optional discoveryBurstWindowLength_r16;
 	struct SQN_NR_HighSpeedConfig_r16_SQN_NR_ServingCellConfigCommonSIB_highSpeedConfig_r16_Optional highSpeedConfig_r16;
+	struct SQN_NR_ServingCellConfigCommonSIB_channelAccessMode2_r17_e_channelAccessMode2_r17_Optional channelAccessMode2_r17;
+	struct SQN_NR_ServingCellConfigCommonSIB_discoveryBurstWindowLength_v1700_e_discoveryBurstWindowLength_v1700_Optional discoveryBurstWindowLength_v1700;
+	struct SQN_NR_HighSpeedConfigFR2_r17_SQN_NR_ServingCellConfigCommonSIB_highSpeedConfigFR2_r17_Optional highSpeedConfigFR2_r17;
+	struct SQN_NR_UplinkConfigCommonSIB_v1700_SQN_NR_ServingCellConfigCommonSIB_uplinkConfigCommon_v1700_Optional uplinkConfigCommon_v1700;
 };
 
 enum SQN_NR_SIB1_ims_EmergencySupport_e {
@@ -5575,13 +7915,497 @@ struct SQN_NR_SI_RequestConfig_SQN_NR_PosSI_SchedulingInfo_r16_posSI_RequestConf
 	struct SQN_NR_SI_RequestConfig v;
 };
 
+struct SQN_NR_SI_RequestConfig_SQN_NR_PosSI_SchedulingInfo_r16_posSI_RequestConfigRedCap_r17_Optional {
+	bool d;
+	struct SQN_NR_SI_RequestConfig v;
+};
+
 struct SQN_NR_PosSI_SchedulingInfo_r16 {
 	struct SQN_NR_PosSchedulingInfo_r16_SQN_NR_PosSI_SchedulingInfo_r16_posSchedulingInfoList_r16_Dynamic posSchedulingInfoList_r16;
 	struct SQN_NR_SI_RequestConfig_SQN_NR_PosSI_SchedulingInfo_r16_posSI_RequestConfig_r16_Optional posSI_RequestConfig_r16;
 	struct SQN_NR_SI_RequestConfig_SQN_NR_PosSI_SchedulingInfo_r16_posSI_RequestConfigSUL_r16_Optional posSI_RequestConfigSUL_r16;
+	struct SQN_NR_SI_RequestConfig_SQN_NR_PosSI_SchedulingInfo_r16_posSI_RequestConfigRedCap_r17_Optional posSI_RequestConfigRedCap_r17;
 };
 
-struct SQN_NR_SIB1_v1610_IEs_nonCriticalExtension {
+enum SQN_NR_UAC_AC1_SelectAssistInfo_r16_e {
+	SQN_NR_UAC_AC1_SelectAssistInfo_r16_e_a = 0,
+	SQN_NR_UAC_AC1_SelectAssistInfo_r16_e_b = 1,
+	SQN_NR_UAC_AC1_SelectAssistInfo_r16_e_c = 2,
+	SQN_NR_UAC_AC1_SelectAssistInfo_r16_e_notConfigured = 3,
+};
+
+typedef enum SQN_NR_UAC_AC1_SelectAssistInfo_r16_e SQN_NR_UAC_AC1_SelectAssistInfo_r16_e;
+
+struct SQN_NR_UAC_AC1_SelectAssistInfo_r16_e_uac_AC1_SelectAssistInfo_r16_Dynamic {
+	size_t d;
+	SQN_NR_UAC_AC1_SelectAssistInfo_r16_e* v;
+};
+
+struct SQN_NR_SIB1_v1630_IEs_uac_BarringInfo_v1630 {
+	struct SQN_NR_UAC_AC1_SelectAssistInfo_r16_e_uac_AC1_SelectAssistInfo_r16_Dynamic uac_AC1_SelectAssistInfo_r16;
+};
+
+enum SQN_NR_SIB1_v1700_IEs_hsdn_Cell_r17_e {
+	SQN_NR_SIB1_v1700_IEs_hsdn_Cell_r17_e_true = 0,
+};
+
+typedef enum SQN_NR_SIB1_v1700_IEs_hsdn_Cell_r17_e SQN_NR_SIB1_v1700_IEs_hsdn_Cell_r17_e;
+
+enum SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e {
+	SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p00 = 0,
+	SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p05 = 1,
+	SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p10 = 2,
+	SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p15 = 3,
+	SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p20 = 4,
+	SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p25 = 5,
+	SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p30 = 6,
+	SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p40 = 7,
+	SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p50 = 8,
+	SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p60 = 9,
+	SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p70 = 10,
+	SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p75 = 11,
+	SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p80 = 12,
+	SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p85 = 13,
+	SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p90 = 14,
+	SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p95 = 15,
+};
+
+typedef enum SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e;
+
+struct SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_uac_BarringFactorForAI3_r17_Optional {
+	bool d;
+	SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e v;
+};
+
+struct SQN_NR_UAC_BarringInfoSet_v1700 {
+	struct SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_uac_BarringFactorForAI3_r17_Optional uac_BarringFactorForAI3_r17;
+};
+
+struct SQN_NR_UAC_BarringInfoSet_v1700_SQN_NR_UAC_BarringInfoSetList_v1700_Dynamic {
+	size_t d;
+	struct SQN_NR_UAC_BarringInfoSet_v1700* v;
+};
+
+typedef struct SQN_NR_UAC_BarringInfoSet_v1700_SQN_NR_UAC_BarringInfoSetList_v1700_Dynamic SQN_NR_UAC_BarringInfoSetList_v1700;
+
+struct SQN_NR_SIB1_v1700_IEs_uac_BarringInfo_v1700 {
+	SQN_NR_UAC_BarringInfoSetList_v1700 uac_BarringInfoSetList_v1700;
+};
+
+enum SQN_NR_SDT_ConfigCommonSIB_r17_sdt_LogicalChannelSR_DelayTimer_r17_e {
+	SQN_NR_SDT_ConfigCommonSIB_r17_sdt_LogicalChannelSR_DelayTimer_r17_e_sf20 = 0,
+	SQN_NR_SDT_ConfigCommonSIB_r17_sdt_LogicalChannelSR_DelayTimer_r17_e_sf40 = 1,
+	SQN_NR_SDT_ConfigCommonSIB_r17_sdt_LogicalChannelSR_DelayTimer_r17_e_sf64 = 2,
+	SQN_NR_SDT_ConfigCommonSIB_r17_sdt_LogicalChannelSR_DelayTimer_r17_e_sf128 = 3,
+	SQN_NR_SDT_ConfigCommonSIB_r17_sdt_LogicalChannelSR_DelayTimer_r17_e_sf512 = 4,
+	SQN_NR_SDT_ConfigCommonSIB_r17_sdt_LogicalChannelSR_DelayTimer_r17_e_sf1024 = 5,
+	SQN_NR_SDT_ConfigCommonSIB_r17_sdt_LogicalChannelSR_DelayTimer_r17_e_sf2560 = 6,
+	SQN_NR_SDT_ConfigCommonSIB_r17_sdt_LogicalChannelSR_DelayTimer_r17_e_spare1 = 7,
+};
+
+typedef enum SQN_NR_SDT_ConfigCommonSIB_r17_sdt_LogicalChannelSR_DelayTimer_r17_e SQN_NR_SDT_ConfigCommonSIB_r17_sdt_LogicalChannelSR_DelayTimer_r17_e;
+
+enum SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e {
+	SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte32 = 0,
+	SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte100 = 1,
+	SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte200 = 2,
+	SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte400 = 3,
+	SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte600 = 4,
+	SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte800 = 5,
+	SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte1000 = 6,
+	SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte2000 = 7,
+	SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte4000 = 8,
+	SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte8000 = 9,
+	SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte9000 = 10,
+	SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte10000 = 11,
+	SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte12000 = 12,
+	SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte24000 = 13,
+	SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte48000 = 14,
+	SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte96000 = 15,
+};
+
+typedef enum SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e;
+
+enum SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e {
+	SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_ms100 = 0,
+	SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_ms200 = 1,
+	SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_ms300 = 2,
+	SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_ms400 = 3,
+	SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_ms600 = 4,
+	SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_ms1000 = 5,
+	SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_ms2000 = 6,
+	SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_ms3000 = 7,
+	SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_ms4000 = 8,
+	SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_spare7 = 9,
+	SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_spare6 = 10,
+	SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_spare5 = 11,
+	SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_spare4 = 12,
+	SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_spare3 = 13,
+	SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_spare2 = 14,
+	SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_spare1 = 15,
+};
+
+typedef enum SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e;
+
+struct SQN_NR_RSRP_Range_SQN_NR_SDT_ConfigCommonSIB_r17_sdt_RSRP_Threshold_r17_Optional {
+	bool d;
+	SQN_NR_RSRP_Range v;
+};
+
+struct SQN_NR_SDT_ConfigCommonSIB_r17_sdt_LogicalChannelSR_DelayTimer_r17_e_sdt_LogicalChannelSR_DelayTimer_r17_Optional {
+	bool d;
+	SQN_NR_SDT_ConfigCommonSIB_r17_sdt_LogicalChannelSR_DelayTimer_r17_e v;
+};
+
+struct SQN_NR_SDT_ConfigCommonSIB_r17 {
+	struct SQN_NR_RSRP_Range_SQN_NR_SDT_ConfigCommonSIB_r17_sdt_RSRP_Threshold_r17_Optional sdt_RSRP_Threshold_r17;
+	struct SQN_NR_SDT_ConfigCommonSIB_r17_sdt_LogicalChannelSR_DelayTimer_r17_e_sdt_LogicalChannelSR_DelayTimer_r17_Optional sdt_LogicalChannelSR_DelayTimer_r17;
+	SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e sdt_DataVolumeThreshold_r17;
+	SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e t319a_r17;
+};
+
+enum SQN_NR_RedCap_ConfigCommonSIB_r17_halfDuplexRedCapAllowed_r17_e {
+	SQN_NR_RedCap_ConfigCommonSIB_r17_halfDuplexRedCapAllowed_r17_e_true = 0,
+};
+
+typedef enum SQN_NR_RedCap_ConfigCommonSIB_r17_halfDuplexRedCapAllowed_r17_e SQN_NR_RedCap_ConfigCommonSIB_r17_halfDuplexRedCapAllowed_r17_e;
+
+enum SQN_NR_RedCap_ConfigCommonSIB_r17_cellBarredRedCap_r17_cellBarredRedCap1Rx_r17_e {
+	SQN_NR_RedCap_ConfigCommonSIB_r17_cellBarredRedCap_r17_cellBarredRedCap1Rx_r17_e_barred = 0,
+	SQN_NR_RedCap_ConfigCommonSIB_r17_cellBarredRedCap_r17_cellBarredRedCap1Rx_r17_e_notBarred = 1,
+};
+
+typedef enum SQN_NR_RedCap_ConfigCommonSIB_r17_cellBarredRedCap_r17_cellBarredRedCap1Rx_r17_e SQN_NR_RedCap_ConfigCommonSIB_r17_cellBarredRedCap_r17_cellBarredRedCap1Rx_r17_e;
+
+enum SQN_NR_RedCap_ConfigCommonSIB_r17_cellBarredRedCap_r17_cellBarredRedCap2Rx_r17_e {
+	SQN_NR_RedCap_ConfigCommonSIB_r17_cellBarredRedCap_r17_cellBarredRedCap2Rx_r17_e_barred = 0,
+	SQN_NR_RedCap_ConfigCommonSIB_r17_cellBarredRedCap_r17_cellBarredRedCap2Rx_r17_e_notBarred = 1,
+};
+
+typedef enum SQN_NR_RedCap_ConfigCommonSIB_r17_cellBarredRedCap_r17_cellBarredRedCap2Rx_r17_e SQN_NR_RedCap_ConfigCommonSIB_r17_cellBarredRedCap_r17_cellBarredRedCap2Rx_r17_e;
+
+struct SQN_NR_RedCap_ConfigCommonSIB_r17_cellBarredRedCap_r17 {
+	SQN_NR_RedCap_ConfigCommonSIB_r17_cellBarredRedCap_r17_cellBarredRedCap1Rx_r17_e cellBarredRedCap1Rx_r17;
+	SQN_NR_RedCap_ConfigCommonSIB_r17_cellBarredRedCap_r17_cellBarredRedCap2Rx_r17_e cellBarredRedCap2Rx_r17;
+};
+
+struct SQN_NR_RedCap_ConfigCommonSIB_r17_halfDuplexRedCapAllowed_r17_e_halfDuplexRedCapAllowed_r17_Optional {
+	bool d;
+	SQN_NR_RedCap_ConfigCommonSIB_r17_halfDuplexRedCapAllowed_r17_e v;
+};
+
+struct SQN_NR_RedCap_ConfigCommonSIB_r17_cellBarredRedCap_r17_cellBarredRedCap_r17_Optional {
+	bool d;
+	struct SQN_NR_RedCap_ConfigCommonSIB_r17_cellBarredRedCap_r17 v;
+};
+
+struct SQN_NR_RedCap_ConfigCommonSIB_r17 {
+	struct SQN_NR_RedCap_ConfigCommonSIB_r17_halfDuplexRedCapAllowed_r17_e_halfDuplexRedCapAllowed_r17_Optional halfDuplexRedCapAllowed_r17;
+	struct SQN_NR_RedCap_ConfigCommonSIB_r17_cellBarredRedCap_r17_cellBarredRedCap_r17_Optional cellBarredRedCap_r17;
+};
+
+typedef uint8_t SQN_NR_FeaturePriority_r17;
+
+struct SQN_NR_FeaturePriority_r17_SQN_NR_SIB1_v1700_IEs_featurePriorities_r17_redCapPriority_r17_Optional {
+	bool d;
+	SQN_NR_FeaturePriority_r17 v;
+};
+
+struct SQN_NR_FeaturePriority_r17_SQN_NR_SIB1_v1700_IEs_featurePriorities_r17_slicingPriority_r17_Optional {
+	bool d;
+	SQN_NR_FeaturePriority_r17 v;
+};
+
+struct SQN_NR_FeaturePriority_r17_SQN_NR_SIB1_v1700_IEs_featurePriorities_r17_msg3_Repetitions_Priority_r17_Optional {
+	bool d;
+	SQN_NR_FeaturePriority_r17 v;
+};
+
+struct SQN_NR_FeaturePriority_r17_SQN_NR_SIB1_v1700_IEs_featurePriorities_r17_sdt_Priority_r17_Optional {
+	bool d;
+	SQN_NR_FeaturePriority_r17 v;
+};
+
+struct SQN_NR_SIB1_v1700_IEs_featurePriorities_r17 {
+	struct SQN_NR_FeaturePriority_r17_SQN_NR_SIB1_v1700_IEs_featurePriorities_r17_redCapPriority_r17_Optional redCapPriority_r17;
+	struct SQN_NR_FeaturePriority_r17_SQN_NR_SIB1_v1700_IEs_featurePriorities_r17_slicingPriority_r17_Optional slicingPriority_r17;
+	struct SQN_NR_FeaturePriority_r17_SQN_NR_SIB1_v1700_IEs_featurePriorities_r17_msg3_Repetitions_Priority_r17_Optional msg3_Repetitions_Priority_r17;
+	struct SQN_NR_FeaturePriority_r17_SQN_NR_SIB1_v1700_IEs_featurePriorities_r17_sdt_Priority_r17_Optional sdt_Priority_r17;
+};
+
+enum SQN_NR_SchedulingInfo2_r17_si_BroadcastStatus_r17_e {
+	SQN_NR_SchedulingInfo2_r17_si_BroadcastStatus_r17_e_broadcasting = 0,
+	SQN_NR_SchedulingInfo2_r17_si_BroadcastStatus_r17_e_notBroadcasting = 1,
+};
+
+typedef enum SQN_NR_SchedulingInfo2_r17_si_BroadcastStatus_r17_e SQN_NR_SchedulingInfo2_r17_si_BroadcastStatus_r17_e;
+
+enum SQN_NR_SchedulingInfo2_r17_si_Periodicity_r17_e {
+	SQN_NR_SchedulingInfo2_r17_si_Periodicity_r17_e_rf8 = 0,
+	SQN_NR_SchedulingInfo2_r17_si_Periodicity_r17_e_rf16 = 1,
+	SQN_NR_SchedulingInfo2_r17_si_Periodicity_r17_e_rf32 = 2,
+	SQN_NR_SchedulingInfo2_r17_si_Periodicity_r17_e_rf64 = 3,
+	SQN_NR_SchedulingInfo2_r17_si_Periodicity_r17_e_rf128 = 4,
+	SQN_NR_SchedulingInfo2_r17_si_Periodicity_r17_e_rf256 = 5,
+	SQN_NR_SchedulingInfo2_r17_si_Periodicity_r17_e_rf512 = 6,
+};
+
+typedef enum SQN_NR_SchedulingInfo2_r17_si_Periodicity_r17_e SQN_NR_SchedulingInfo2_r17_si_Periodicity_r17_e;
+
+enum SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e {
+	SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_sibType15 = 0,
+	SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_sibType16 = 1,
+	SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_sibType17 = 2,
+	SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_sibType18 = 3,
+	SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_sibType19 = 4,
+	SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_sibType20 = 5,
+	SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_sibType21 = 6,
+	SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_spare9 = 7,
+	SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_spare8 = 8,
+	SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_spare7 = 9,
+	SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_spare6 = 10,
+	SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_spare5 = 11,
+	SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_spare4 = 12,
+	SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_spare3 = 13,
+	SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_spare2 = 14,
+	SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_spare1 = 15,
+};
+
+typedef enum SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e;
+
+enum SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e {
+	SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_posSibType1_9 = 0,
+	SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_posSibType1_10 = 1,
+	SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_posSibType2_24 = 2,
+	SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_posSibType2_25 = 3,
+	SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_posSibType6_4 = 4,
+	SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_posSibType6_5 = 5,
+	SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_posSibType6_6 = 6,
+	SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_spare9 = 7,
+	SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_spare8 = 8,
+	SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_spare7 = 9,
+	SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_spare6 = 10,
+	SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_spare5 = 11,
+	SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_spare4 = 12,
+	SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_spare3 = 13,
+	SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_spare2 = 14,
+	SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_spare1 = 15,
+};
+
+typedef enum SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e;
+
+enum SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_encrypted_r17_e {
+	SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_encrypted_r17_e_true = 0,
+};
+
+typedef enum SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_encrypted_r17_e SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_encrypted_r17_e;
+
+struct SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_encrypted_r17_e_encrypted_r17_Optional {
+	bool d;
+	SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_encrypted_r17_e v;
+};
+
+struct SQN_NR_GNSS_ID_r16_SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_gnss_id_r17_Optional {
+	bool d;
+	struct SQN_NR_GNSS_ID_r16 v;
+};
+
+struct SQN_NR_SBAS_ID_r16_SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_sbas_id_r17_Optional {
+	bool d;
+	struct SQN_NR_SBAS_ID_r16 v;
+};
+
+struct SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17 {
+	SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e posSibType_r17;
+	struct SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_encrypted_r17_e_encrypted_r17_Optional encrypted_r17;
+	struct SQN_NR_GNSS_ID_r16_SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_gnss_id_r17_Optional gnss_id_r17;
+	struct SQN_NR_SBAS_ID_r16_SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_sbas_id_r17_Optional sbas_id_r17;
+};
+
+enum SQN_NR_SIB_TypeInfo_v1700_sibType_r17_Sel {
+	SQN_NR_SIB_TypeInfo_v1700_sibType_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17 = 1,
+	SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17 = 2,
+};
+
+union SQN_NR_SIB_TypeInfo_v1700_sibType_r17_Value {
+	SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e type1_r17;
+	struct SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17 type2_r17;
+};
+
+struct SQN_NR_SIB_TypeInfo_v1700_sibType_r17 {
+	enum SQN_NR_SIB_TypeInfo_v1700_sibType_r17_Sel d;
+	union SQN_NR_SIB_TypeInfo_v1700_sibType_r17_Value v;
+};
+
+enum SQN_NR_SIB_TypeInfo_v1700_areaScope_r17_e {
+	SQN_NR_SIB_TypeInfo_v1700_areaScope_r17_e_true = 0,
+};
+
+typedef enum SQN_NR_SIB_TypeInfo_v1700_areaScope_r17_e SQN_NR_SIB_TypeInfo_v1700_areaScope_r17_e;
+
+struct uint8_t_SQN_NR_SIB_TypeInfo_v1700_valueTag_r17_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct SQN_NR_SIB_TypeInfo_v1700_areaScope_r17_e_areaScope_r17_Optional {
+	bool d;
+	SQN_NR_SIB_TypeInfo_v1700_areaScope_r17_e v;
+};
+
+struct SQN_NR_SIB_TypeInfo_v1700 {
+	struct SQN_NR_SIB_TypeInfo_v1700_sibType_r17 sibType_r17;
+	struct uint8_t_SQN_NR_SIB_TypeInfo_v1700_valueTag_r17_Optional valueTag_r17;
+	struct SQN_NR_SIB_TypeInfo_v1700_areaScope_r17_e_areaScope_r17_Optional areaScope_r17;
+};
+
+struct SQN_NR_SIB_TypeInfo_v1700_SQN_NR_SIB_Mapping_v1700_Dynamic {
+	size_t d;
+	struct SQN_NR_SIB_TypeInfo_v1700* v;
+};
+
+typedef struct SQN_NR_SIB_TypeInfo_v1700_SQN_NR_SIB_Mapping_v1700_Dynamic SQN_NR_SIB_Mapping_v1700;
+
+struct SQN_NR_SchedulingInfo2_r17 {
+	SQN_NR_SchedulingInfo2_r17_si_BroadcastStatus_r17_e si_BroadcastStatus_r17;
+	uint16_t si_WindowPosition_r17;
+	SQN_NR_SchedulingInfo2_r17_si_Periodicity_r17_e si_Periodicity_r17;
+	SQN_NR_SIB_Mapping_v1700 sib_MappingInfo_r17;
+};
+
+struct SQN_NR_SchedulingInfo2_r17_SQN_NR_SI_SchedulingInfo_v1700_schedulingInfoList2_r17_Dynamic {
+	size_t d;
+	struct SQN_NR_SchedulingInfo2_r17* v;
+};
+
+struct SQN_NR_SI_RequestConfig_SQN_NR_SI_SchedulingInfo_v1700_si_RequestConfigRedCap_r17_Optional {
+	bool d;
+	struct SQN_NR_SI_RequestConfig v;
+};
+
+struct SQN_NR_SI_SchedulingInfo_v1700 {
+	struct SQN_NR_SchedulingInfo2_r17_SQN_NR_SI_SchedulingInfo_v1700_schedulingInfoList2_r17_Dynamic schedulingInfoList2_r17;
+	struct SQN_NR_SI_RequestConfig_SQN_NR_SI_SchedulingInfo_v1700_si_RequestConfigRedCap_r17_Optional si_RequestConfigRedCap_r17;
+};
+
+enum SQN_NR_SIB1_v1700_IEs_eDRX_AllowedIdle_r17_e {
+	SQN_NR_SIB1_v1700_IEs_eDRX_AllowedIdle_r17_e_true = 0,
+};
+
+typedef enum SQN_NR_SIB1_v1700_IEs_eDRX_AllowedIdle_r17_e SQN_NR_SIB1_v1700_IEs_eDRX_AllowedIdle_r17_e;
+
+enum SQN_NR_SIB1_v1700_IEs_eDRX_AllowedInactive_r17_e {
+	SQN_NR_SIB1_v1700_IEs_eDRX_AllowedInactive_r17_e_true = 0,
+};
+
+typedef enum SQN_NR_SIB1_v1700_IEs_eDRX_AllowedInactive_r17_e SQN_NR_SIB1_v1700_IEs_eDRX_AllowedInactive_r17_e;
+
+enum SQN_NR_SIB1_v1700_IEs_intraFreqReselectionRedCap_r17_e {
+	SQN_NR_SIB1_v1700_IEs_intraFreqReselectionRedCap_r17_e_allowed = 0,
+	SQN_NR_SIB1_v1700_IEs_intraFreqReselectionRedCap_r17_e_notAllowed = 1,
+};
+
+typedef enum SQN_NR_SIB1_v1700_IEs_intraFreqReselectionRedCap_r17_e SQN_NR_SIB1_v1700_IEs_intraFreqReselectionRedCap_r17_e;
+
+enum SQN_NR_SIB1_v1700_IEs_cellBarredNTN_r17_e {
+	SQN_NR_SIB1_v1700_IEs_cellBarredNTN_r17_e_barred = 0,
+	SQN_NR_SIB1_v1700_IEs_cellBarredNTN_r17_e_notBarred = 1,
+};
+
+typedef enum SQN_NR_SIB1_v1700_IEs_cellBarredNTN_r17_e SQN_NR_SIB1_v1700_IEs_cellBarredNTN_r17_e;
+
+struct SQN_NR_SIB1_v1700_IEs_nonCriticalExtension {
+};
+
+struct SQN_NR_SIB1_v1700_IEs_hsdn_Cell_r17_e_hsdn_Cell_r17_Optional {
+	bool d;
+	SQN_NR_SIB1_v1700_IEs_hsdn_Cell_r17_e v;
+};
+
+struct SQN_NR_SIB1_v1700_IEs_uac_BarringInfo_v1700_uac_BarringInfo_v1700_Optional {
+	bool d;
+	struct SQN_NR_SIB1_v1700_IEs_uac_BarringInfo_v1700 v;
+};
+
+struct SQN_NR_SDT_ConfigCommonSIB_r17_SQN_NR_SIB1_v1700_IEs_sdt_ConfigCommon_r17_Optional {
+	bool d;
+	struct SQN_NR_SDT_ConfigCommonSIB_r17 v;
+};
+
+struct SQN_NR_RedCap_ConfigCommonSIB_r17_SQN_NR_SIB1_v1700_IEs_redCap_ConfigCommon_r17_Optional {
+	bool d;
+	struct SQN_NR_RedCap_ConfigCommonSIB_r17 v;
+};
+
+struct SQN_NR_SIB1_v1700_IEs_featurePriorities_r17_featurePriorities_r17_Optional {
+	bool d;
+	struct SQN_NR_SIB1_v1700_IEs_featurePriorities_r17 v;
+};
+
+struct SQN_NR_SI_SchedulingInfo_v1700_SQN_NR_SIB1_v1700_IEs_si_SchedulingInfo_v1700_Optional {
+	bool d;
+	struct SQN_NR_SI_SchedulingInfo_v1700 v;
+};
+
+struct B10_SQN_NR_SIB1_v1700_IEs_hyperSFN_r17_Optional {
+	bool d;
+	B10 v;
+};
+
+struct SQN_NR_SIB1_v1700_IEs_eDRX_AllowedIdle_r17_e_eDRX_AllowedIdle_r17_Optional {
+	bool d;
+	SQN_NR_SIB1_v1700_IEs_eDRX_AllowedIdle_r17_e v;
+};
+
+struct SQN_NR_SIB1_v1700_IEs_eDRX_AllowedInactive_r17_e_eDRX_AllowedInactive_r17_Optional {
+	bool d;
+	SQN_NR_SIB1_v1700_IEs_eDRX_AllowedInactive_r17_e v;
+};
+
+struct SQN_NR_SIB1_v1700_IEs_intraFreqReselectionRedCap_r17_e_intraFreqReselectionRedCap_r17_Optional {
+	bool d;
+	SQN_NR_SIB1_v1700_IEs_intraFreqReselectionRedCap_r17_e v;
+};
+
+struct SQN_NR_SIB1_v1700_IEs_cellBarredNTN_r17_e_cellBarredNTN_r17_Optional {
+	bool d;
+	SQN_NR_SIB1_v1700_IEs_cellBarredNTN_r17_e v;
+};
+
+struct SQN_NR_SIB1_v1700_IEs_nonCriticalExtension_nonCriticalExtension_Optional {
+	bool d;
+	struct SQN_NR_SIB1_v1700_IEs_nonCriticalExtension v;
+};
+
+struct SQN_NR_SIB1_v1700_IEs {
+	struct SQN_NR_SIB1_v1700_IEs_hsdn_Cell_r17_e_hsdn_Cell_r17_Optional hsdn_Cell_r17;
+	struct SQN_NR_SIB1_v1700_IEs_uac_BarringInfo_v1700_uac_BarringInfo_v1700_Optional uac_BarringInfo_v1700;
+	struct SQN_NR_SDT_ConfigCommonSIB_r17_SQN_NR_SIB1_v1700_IEs_sdt_ConfigCommon_r17_Optional sdt_ConfigCommon_r17;
+	struct SQN_NR_RedCap_ConfigCommonSIB_r17_SQN_NR_SIB1_v1700_IEs_redCap_ConfigCommon_r17_Optional redCap_ConfigCommon_r17;
+	struct SQN_NR_SIB1_v1700_IEs_featurePriorities_r17_featurePriorities_r17_Optional featurePriorities_r17;
+	struct SQN_NR_SI_SchedulingInfo_v1700_SQN_NR_SIB1_v1700_IEs_si_SchedulingInfo_v1700_Optional si_SchedulingInfo_v1700;
+	struct B10_SQN_NR_SIB1_v1700_IEs_hyperSFN_r17_Optional hyperSFN_r17;
+	struct SQN_NR_SIB1_v1700_IEs_eDRX_AllowedIdle_r17_e_eDRX_AllowedIdle_r17_Optional eDRX_AllowedIdle_r17;
+	struct SQN_NR_SIB1_v1700_IEs_eDRX_AllowedInactive_r17_e_eDRX_AllowedInactive_r17_Optional eDRX_AllowedInactive_r17;
+	struct SQN_NR_SIB1_v1700_IEs_intraFreqReselectionRedCap_r17_e_intraFreqReselectionRedCap_r17_Optional intraFreqReselectionRedCap_r17;
+	struct SQN_NR_SIB1_v1700_IEs_cellBarredNTN_r17_e_cellBarredNTN_r17_Optional cellBarredNTN_r17;
+	struct SQN_NR_SIB1_v1700_IEs_nonCriticalExtension_nonCriticalExtension_Optional nonCriticalExtension;
+};
+
+struct SQN_NR_SIB1_v1630_IEs_uac_BarringInfo_v1630_uac_BarringInfo_v1630_Optional {
+	bool d;
+	struct SQN_NR_SIB1_v1630_IEs_uac_BarringInfo_v1630 v;
+};
+
+struct SQN_NR_SIB1_v1700_IEs_SQN_NR_SIB1_v1630_IEs_nonCriticalExtension_Optional {
+	bool d;
+	struct SQN_NR_SIB1_v1700_IEs v;
+};
+
+struct SQN_NR_SIB1_v1630_IEs {
+	struct SQN_NR_SIB1_v1630_IEs_uac_BarringInfo_v1630_uac_BarringInfo_v1630_Optional uac_BarringInfo_v1630;
+	struct SQN_NR_SIB1_v1700_IEs_SQN_NR_SIB1_v1630_IEs_nonCriticalExtension_Optional nonCriticalExtension;
 };
 
 struct SQN_NR_SIB1_v1610_IEs_idleModeMeasurementsEUTRA_r16_e_idleModeMeasurementsEUTRA_r16_Optional {
@@ -5599,16 +8423,16 @@ struct SQN_NR_PosSI_SchedulingInfo_r16_SQN_NR_SIB1_v1610_IEs_posSI_SchedulingInf
 	struct SQN_NR_PosSI_SchedulingInfo_r16 v;
 };
 
-struct SQN_NR_SIB1_v1610_IEs_nonCriticalExtension_nonCriticalExtension_Optional {
+struct SQN_NR_SIB1_v1630_IEs_SQN_NR_SIB1_v1610_IEs_nonCriticalExtension_Optional {
 	bool d;
-	struct SQN_NR_SIB1_v1610_IEs_nonCriticalExtension v;
+	struct SQN_NR_SIB1_v1630_IEs v;
 };
 
 struct SQN_NR_SIB1_v1610_IEs {
 	struct SQN_NR_SIB1_v1610_IEs_idleModeMeasurementsEUTRA_r16_e_idleModeMeasurementsEUTRA_r16_Optional idleModeMeasurementsEUTRA_r16;
 	struct SQN_NR_SIB1_v1610_IEs_idleModeMeasurementsNR_r16_e_idleModeMeasurementsNR_r16_Optional idleModeMeasurementsNR_r16;
 	struct SQN_NR_PosSI_SchedulingInfo_r16_SQN_NR_SIB1_v1610_IEs_posSI_SchedulingInfo_r16_Optional posSI_SchedulingInfo_r16;
-	struct SQN_NR_SIB1_v1610_IEs_nonCriticalExtension_nonCriticalExtension_Optional nonCriticalExtension;
+	struct SQN_NR_SIB1_v1630_IEs_SQN_NR_SIB1_v1610_IEs_nonCriticalExtension_Optional nonCriticalExtension;
 };
 
 struct SQN_NR_SIB1_cellSelectionInfo_cellSelectionInfo_Optional {
@@ -6251,87 +9075,112 @@ struct SQN_NR_PUCCH_PowerControl {
 	struct SQN_NR_SetupRelease_PUCCH_PowerControl_pathlossReferenceRSs_v1610_SQN_NR_PUCCH_PowerControl_pathlossReferenceRSs_v1610_Optional pathlossReferenceRSs_v1610;
 };
 
-enum SQN_NR_PUCCH_ResourceExt_r16_interlaceAllocation_r16_interlace0_Sel {
-	SQN_NR_PUCCH_ResourceExt_r16_interlaceAllocation_r16_interlace0_UNBOUND_VALUE = 0,
-	SQN_NR_PUCCH_ResourceExt_r16_interlaceAllocation_r16_interlace0_scs15 = 1,
-	SQN_NR_PUCCH_ResourceExt_r16_interlaceAllocation_r16_interlace0_scs30 = 2,
+enum SQN_NR_PUCCH_ResourceExt_v1610_interlaceAllocation_r16_interlace0_r16_Sel {
+	SQN_NR_PUCCH_ResourceExt_v1610_interlaceAllocation_r16_interlace0_r16_UNBOUND_VALUE = 0,
+	SQN_NR_PUCCH_ResourceExt_v1610_interlaceAllocation_r16_interlace0_r16_scs15 = 1,
+	SQN_NR_PUCCH_ResourceExt_v1610_interlaceAllocation_r16_interlace0_r16_scs30 = 2,
 };
 
-union SQN_NR_PUCCH_ResourceExt_r16_interlaceAllocation_r16_interlace0_Value {
+union SQN_NR_PUCCH_ResourceExt_v1610_interlaceAllocation_r16_interlace0_r16_Value {
 	uint8_t scs15;
 	uint8_t scs30;
 };
 
-struct SQN_NR_PUCCH_ResourceExt_r16_interlaceAllocation_r16_interlace0 {
-	enum SQN_NR_PUCCH_ResourceExt_r16_interlaceAllocation_r16_interlace0_Sel d;
-	union SQN_NR_PUCCH_ResourceExt_r16_interlaceAllocation_r16_interlace0_Value v;
+struct SQN_NR_PUCCH_ResourceExt_v1610_interlaceAllocation_r16_interlace0_r16 {
+	enum SQN_NR_PUCCH_ResourceExt_v1610_interlaceAllocation_r16_interlace0_r16_Sel d;
+	union SQN_NR_PUCCH_ResourceExt_v1610_interlaceAllocation_r16_interlace0_r16_Value v;
 };
 
-struct SQN_NR_PUCCH_ResourceExt_r16_interlaceAllocation_r16 {
-	uint8_t rb_SetIndex;
-	struct SQN_NR_PUCCH_ResourceExt_r16_interlaceAllocation_r16_interlace0 interlace0;
+struct SQN_NR_PUCCH_ResourceExt_v1610_interlaceAllocation_r16 {
+	uint8_t rb_SetIndex_r16;
+	struct SQN_NR_PUCCH_ResourceExt_v1610_interlaceAllocation_r16_interlace0_r16 interlace0_r16;
 };
 
-enum SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Length_v1610_e {
-	SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Length_v1610_e_n2 = 0,
-	SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Length_v1610_e_n4 = 1,
+enum SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Length_v1610_e {
+	SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Length_v1610_e_n2 = 0,
+	SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Length_v1610_e_n4 = 1,
 };
 
-typedef enum SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Length_v1610_e SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Length_v1610_e;
+typedef enum SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Length_v1610_e SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Length_v1610_e;
 
-enum SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Index_v1610_e {
-	SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Index_v1610_e_n0 = 0,
-	SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Index_v1610_e_n1 = 1,
-	SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Index_v1610_e_n2 = 2,
-	SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Index_v1610_e_n3 = 3,
+enum SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Index_v1610_e {
+	SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Index_v1610_e_n0 = 0,
+	SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Index_v1610_e_n1 = 1,
+	SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Index_v1610_e_n2 = 2,
+	SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Index_v1610_e_n3 = 3,
 };
 
-typedef enum SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Index_v1610_e SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Index_v1610_e;
+typedef enum SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Index_v1610_e SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Index_v1610_e;
 
-struct SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Length_v1610_e_occ_Length_v1610_Optional {
+struct SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Length_v1610_e_occ_Length_v1610_Optional {
 	bool d;
-	SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Length_v1610_e v;
+	SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Length_v1610_e v;
 };
 
-struct SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Index_v1610_e_occ_Index_v1610_Optional {
+struct SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Index_v1610_e_occ_Index_v1610_Optional {
 	bool d;
-	SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Index_v1610_e v;
+	SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Index_v1610_e v;
 };
 
-struct SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610 {
-	struct SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Length_v1610_e_occ_Length_v1610_Optional occ_Length_v1610;
-	struct SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Index_v1610_e_occ_Index_v1610_Optional occ_Index_v1610;
+struct SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610 {
+	struct SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Length_v1610_e_occ_Length_v1610_Optional occ_Length_v1610;
+	struct SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Index_v1610_e_occ_Index_v1610_Optional occ_Index_v1610;
 };
 
-enum SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_Sel {
-	SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_UNBOUND_VALUE = 0,
-	SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_interlace1_v1610 = 1,
-	SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610 = 2,
+enum SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_Sel {
+	SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_UNBOUND_VALUE = 0,
+	SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_interlace1_v1610 = 1,
+	SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610 = 2,
 };
 
-union SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_Value {
+union SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_Value {
 	uint8_t interlace1_v1610;
-	struct SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610 occ_v1610;
+	struct SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610 occ_v1610;
 };
 
-struct SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610 {
-	enum SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_Sel d;
-	union SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_Value v;
+struct SQN_NR_PUCCH_ResourceExt_v1610_format_v1610 {
+	enum SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_Sel d;
+	union SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_Value v;
 };
 
-struct SQN_NR_PUCCH_ResourceExt_r16_interlaceAllocation_r16_interlaceAllocation_r16_Optional {
+struct SQN_NR_PUCCH_ResourceExt_v1610_formatExt_v1700 {
+	uint8_t nrofPRBs_r17;
+};
+
+enum SQN_NR_PUCCH_ResourceExt_v1610_pucch_RepetitionNrofSlots_r17_e {
+	SQN_NR_PUCCH_ResourceExt_v1610_pucch_RepetitionNrofSlots_r17_e_n1 = 0,
+	SQN_NR_PUCCH_ResourceExt_v1610_pucch_RepetitionNrofSlots_r17_e_n2 = 1,
+	SQN_NR_PUCCH_ResourceExt_v1610_pucch_RepetitionNrofSlots_r17_e_n4 = 2,
+	SQN_NR_PUCCH_ResourceExt_v1610_pucch_RepetitionNrofSlots_r17_e_n8 = 3,
+};
+
+typedef enum SQN_NR_PUCCH_ResourceExt_v1610_pucch_RepetitionNrofSlots_r17_e SQN_NR_PUCCH_ResourceExt_v1610_pucch_RepetitionNrofSlots_r17_e;
+
+struct SQN_NR_PUCCH_ResourceExt_v1610_interlaceAllocation_r16_interlaceAllocation_r16_Optional {
 	bool d;
-	struct SQN_NR_PUCCH_ResourceExt_r16_interlaceAllocation_r16 v;
+	struct SQN_NR_PUCCH_ResourceExt_v1610_interlaceAllocation_r16 v;
 };
 
-struct SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_formatExt_v1610_Optional {
+struct SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_format_v1610_Optional {
 	bool d;
-	struct SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610 v;
+	struct SQN_NR_PUCCH_ResourceExt_v1610_format_v1610 v;
 };
 
-struct SQN_NR_PUCCH_ResourceExt_r16 {
-	struct SQN_NR_PUCCH_ResourceExt_r16_interlaceAllocation_r16_interlaceAllocation_r16_Optional interlaceAllocation_r16;
-	struct SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_formatExt_v1610_Optional formatExt_v1610;
+struct SQN_NR_PUCCH_ResourceExt_v1610_formatExt_v1700_formatExt_v1700_Optional {
+	bool d;
+	struct SQN_NR_PUCCH_ResourceExt_v1610_formatExt_v1700 v;
+};
+
+struct SQN_NR_PUCCH_ResourceExt_v1610_pucch_RepetitionNrofSlots_r17_e_pucch_RepetitionNrofSlots_r17_Optional {
+	bool d;
+	SQN_NR_PUCCH_ResourceExt_v1610_pucch_RepetitionNrofSlots_r17_e v;
+};
+
+struct SQN_NR_PUCCH_ResourceExt_v1610 {
+	struct SQN_NR_PUCCH_ResourceExt_v1610_interlaceAllocation_r16_interlaceAllocation_r16_Optional interlaceAllocation_r16;
+	struct SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_format_v1610_Optional format_v1610;
+	struct SQN_NR_PUCCH_ResourceExt_v1610_formatExt_v1700_formatExt_v1700_Optional formatExt_v1700;
+	struct SQN_NR_PUCCH_ResourceExt_v1610_pucch_RepetitionNrofSlots_r17_e_pucch_RepetitionNrofSlots_r17_Optional pucch_RepetitionNrofSlots_r17;
 };
 
 struct int8_t_SQN_NR_DL_DataToUL_ACK_r16_Dynamic {
@@ -6503,20 +9352,375 @@ struct SQN_NR_SetupRelease_PUCCH_Config_sps_PUCCH_AN_List_r16 {
 	union SQN_NR_SetupRelease_PUCCH_Config_sps_PUCCH_AN_List_r16_Value v;
 };
 
-enum SQN_NR_SchedulingRequestResourceConfig_v1610_phy_PriorityIndex_r16_e {
-	SQN_NR_SchedulingRequestResourceConfig_v1610_phy_PriorityIndex_r16_e_p0 = 0,
-	SQN_NR_SchedulingRequestResourceConfig_v1610_phy_PriorityIndex_r16_e_p1 = 1,
+enum SQN_NR_SchedulingRequestResourceConfigExt_v1610_phy_PriorityIndex_r16_e {
+	SQN_NR_SchedulingRequestResourceConfigExt_v1610_phy_PriorityIndex_r16_e_p0 = 0,
+	SQN_NR_SchedulingRequestResourceConfigExt_v1610_phy_PriorityIndex_r16_e_p1 = 1,
 };
 
-typedef enum SQN_NR_SchedulingRequestResourceConfig_v1610_phy_PriorityIndex_r16_e SQN_NR_SchedulingRequestResourceConfig_v1610_phy_PriorityIndex_r16_e;
+typedef enum SQN_NR_SchedulingRequestResourceConfigExt_v1610_phy_PriorityIndex_r16_e SQN_NR_SchedulingRequestResourceConfigExt_v1610_phy_PriorityIndex_r16_e;
 
-struct SQN_NR_SchedulingRequestResourceConfig_v1610_phy_PriorityIndex_r16_e_phy_PriorityIndex_r16_Optional {
+struct SQN_NR_SchedulingRequestResourceConfigExt_v1610_phy_PriorityIndex_r16_e_phy_PriorityIndex_r16_Optional {
 	bool d;
-	SQN_NR_SchedulingRequestResourceConfig_v1610_phy_PriorityIndex_r16_e v;
+	SQN_NR_SchedulingRequestResourceConfigExt_v1610_phy_PriorityIndex_r16_e v;
 };
 
-struct SQN_NR_SchedulingRequestResourceConfig_v1610 {
-	struct SQN_NR_SchedulingRequestResourceConfig_v1610_phy_PriorityIndex_r16_e_phy_PriorityIndex_r16_Optional phy_PriorityIndex_r16;
+struct SQN_NR_SchedulingRequestResourceConfigExt_v1610 {
+	struct SQN_NR_SchedulingRequestResourceConfigExt_v1610_phy_PriorityIndex_r16_e_phy_PriorityIndex_r16_Optional phy_PriorityIndex_r16;
+};
+
+enum SQN_NR_SetupRelease_PUCCH_Config_format0_r17_Sel {
+	SQN_NR_SetupRelease_PUCCH_Config_format0_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_PUCCH_Config_format0_r17_release = 1,
+	SQN_NR_SetupRelease_PUCCH_Config_format0_r17_setup = 2,
+};
+
+union SQN_NR_SetupRelease_PUCCH_Config_format0_r17_Value {
+	Null release;
+	struct SQN_NR_PUCCH_FormatConfig setup;
+};
+
+struct SQN_NR_SetupRelease_PUCCH_Config_format0_r17 {
+	enum SQN_NR_SetupRelease_PUCCH_Config_format0_r17_Sel d;
+	union SQN_NR_SetupRelease_PUCCH_Config_format0_r17_Value v;
+};
+
+struct SQN_NR_PUCCH_MaxCodeRate_e_SQN_NR_PUCCH_FormatConfigExt_r17_maxCodeRateLP_r17_Optional {
+	bool d;
+	SQN_NR_PUCCH_MaxCodeRate_e v;
+};
+
+struct SQN_NR_PUCCH_FormatConfigExt_r17 {
+	struct SQN_NR_PUCCH_MaxCodeRate_e_SQN_NR_PUCCH_FormatConfigExt_r17_maxCodeRateLP_r17_Optional maxCodeRateLP_r17;
+};
+
+enum SQN_NR_SetupRelease_PUCCH_Config_format2Ext_r17_Sel {
+	SQN_NR_SetupRelease_PUCCH_Config_format2Ext_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_PUCCH_Config_format2Ext_r17_release = 1,
+	SQN_NR_SetupRelease_PUCCH_Config_format2Ext_r17_setup = 2,
+};
+
+union SQN_NR_SetupRelease_PUCCH_Config_format2Ext_r17_Value {
+	Null release;
+	struct SQN_NR_PUCCH_FormatConfigExt_r17 setup;
+};
+
+struct SQN_NR_SetupRelease_PUCCH_Config_format2Ext_r17 {
+	enum SQN_NR_SetupRelease_PUCCH_Config_format2Ext_r17_Sel d;
+	union SQN_NR_SetupRelease_PUCCH_Config_format2Ext_r17_Value v;
+};
+
+enum SQN_NR_SetupRelease_PUCCH_Config_format3Ext_r17_Sel {
+	SQN_NR_SetupRelease_PUCCH_Config_format3Ext_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_PUCCH_Config_format3Ext_r17_release = 1,
+	SQN_NR_SetupRelease_PUCCH_Config_format3Ext_r17_setup = 2,
+};
+
+union SQN_NR_SetupRelease_PUCCH_Config_format3Ext_r17_Value {
+	Null release;
+	struct SQN_NR_PUCCH_FormatConfigExt_r17 setup;
+};
+
+struct SQN_NR_SetupRelease_PUCCH_Config_format3Ext_r17 {
+	enum SQN_NR_SetupRelease_PUCCH_Config_format3Ext_r17_Sel d;
+	union SQN_NR_SetupRelease_PUCCH_Config_format3Ext_r17_Value v;
+};
+
+enum SQN_NR_SetupRelease_PUCCH_Config_format4Ext_r17_Sel {
+	SQN_NR_SetupRelease_PUCCH_Config_format4Ext_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_PUCCH_Config_format4Ext_r17_release = 1,
+	SQN_NR_SetupRelease_PUCCH_Config_format4Ext_r17_setup = 2,
+};
+
+union SQN_NR_SetupRelease_PUCCH_Config_format4Ext_r17_Value {
+	Null release;
+	struct SQN_NR_PUCCH_FormatConfigExt_r17 setup;
+};
+
+struct SQN_NR_SetupRelease_PUCCH_Config_format4Ext_r17 {
+	enum SQN_NR_SetupRelease_PUCCH_Config_format4Ext_r17_Sel d;
+	union SQN_NR_SetupRelease_PUCCH_Config_format4Ext_r17_Value v;
+};
+
+struct uint8_t_SQN_NR_UL_AccessConfigListDCI_1_2_r17_Dynamic {
+	size_t d;
+	uint8_t* v;
+};
+
+typedef struct uint8_t_SQN_NR_UL_AccessConfigListDCI_1_2_r17_Dynamic SQN_NR_UL_AccessConfigListDCI_1_2_r17;
+
+enum SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_2_r17_Sel {
+	SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_2_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_2_r17_release = 1,
+	SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_2_r17_setup = 2,
+};
+
+union SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_2_r17_Value {
+	Null release;
+	SQN_NR_UL_AccessConfigListDCI_1_2_r17 setup;
+};
+
+struct SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_2_r17 {
+	enum SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_2_r17_Sel d;
+	union SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_2_r17_Value v;
+};
+
+enum SQN_NR_PUCCH_Config_mappingPattern_r17_e {
+	SQN_NR_PUCCH_Config_mappingPattern_r17_e_cyclicMapping = 0,
+	SQN_NR_PUCCH_Config_mappingPattern_r17_e_sequentialMapping = 1,
+};
+
+typedef enum SQN_NR_PUCCH_Config_mappingPattern_r17_e SQN_NR_PUCCH_Config_mappingPattern_r17_e;
+
+typedef uint8_t SQN_NR_PUCCH_PowerControlSetInfoId_r17;
+
+enum SQN_NR_PUCCH_PowerControlSetInfo_r17_pucch_ClosedLoopIndex_r17_e {
+	SQN_NR_PUCCH_PowerControlSetInfo_r17_pucch_ClosedLoopIndex_r17_e_i0 = 0,
+	SQN_NR_PUCCH_PowerControlSetInfo_r17_pucch_ClosedLoopIndex_r17_e_i1 = 1,
+};
+
+typedef enum SQN_NR_PUCCH_PowerControlSetInfo_r17_pucch_ClosedLoopIndex_r17_e SQN_NR_PUCCH_PowerControlSetInfo_r17_pucch_ClosedLoopIndex_r17_e;
+
+typedef uint8_t SQN_NR_PUCCH_PathlossReferenceRS_Id_r17;
+
+struct SQN_NR_PUCCH_PowerControlSetInfo_r17 {
+	SQN_NR_PUCCH_PowerControlSetInfoId_r17 pucch_PowerControlSetInfoId_r17;
+	SQN_NR_P0_PUCCH_Id p0_PUCCH_Id_r17;
+	SQN_NR_PUCCH_PowerControlSetInfo_r17_pucch_ClosedLoopIndex_r17_e pucch_ClosedLoopIndex_r17;
+	SQN_NR_PUCCH_PathlossReferenceRS_Id_r17 pucch_PathlossReferenceRS_Id_r17;
+};
+
+enum SQN_NR_PUCCH_Config_secondTPCFieldDCI_1_1_r17_e {
+	SQN_NR_PUCCH_Config_secondTPCFieldDCI_1_1_r17_e_enabled = 0,
+};
+
+typedef enum SQN_NR_PUCCH_Config_secondTPCFieldDCI_1_1_r17_e SQN_NR_PUCCH_Config_secondTPCFieldDCI_1_1_r17_e;
+
+enum SQN_NR_PUCCH_Config_secondTPCFieldDCI_1_2_r17_e {
+	SQN_NR_PUCCH_Config_secondTPCFieldDCI_1_2_r17_e_enabled = 0,
+};
+
+typedef enum SQN_NR_PUCCH_Config_secondTPCFieldDCI_1_2_r17_e SQN_NR_PUCCH_Config_secondTPCFieldDCI_1_2_r17_e;
+
+struct int8_t_SQN_NR_DL_DataToUL_ACK_r17_Dynamic {
+	size_t d;
+	int8_t* v;
+};
+
+typedef struct int8_t_SQN_NR_DL_DataToUL_ACK_r17_Dynamic SQN_NR_DL_DataToUL_ACK_r17;
+
+enum SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_r17_Sel {
+	SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_r17_release = 1,
+	SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_r17_setup = 2,
+};
+
+union SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_r17_Value {
+	Null release;
+	SQN_NR_DL_DataToUL_ACK_r17 setup;
+};
+
+struct SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_r17 {
+	enum SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_r17_Sel d;
+	union SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_r17_Value v;
+};
+
+struct uint8_t_SQN_NR_DL_DataToUL_ACK_DCI_1_2_r17_Dynamic {
+	size_t d;
+	uint8_t* v;
+};
+
+typedef struct uint8_t_SQN_NR_DL_DataToUL_ACK_DCI_1_2_r17_Dynamic SQN_NR_DL_DataToUL_ACK_DCI_1_2_r17;
+
+enum SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_DCI_1_2_r17_Sel {
+	SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_DCI_1_2_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_DCI_1_2_r17_release = 1,
+	SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_DCI_1_2_r17_setup = 2,
+};
+
+union SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_DCI_1_2_r17_Value {
+	Null release;
+	SQN_NR_DL_DataToUL_ACK_DCI_1_2_r17 setup;
+};
+
+struct SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_DCI_1_2_r17 {
+	enum SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_DCI_1_2_r17_Sel d;
+	union SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_DCI_1_2_r17_Value v;
+};
+
+struct uint8_t_SQN_NR_UL_AccessConfigListDCI_1_1_r17_Dynamic {
+	size_t d;
+	uint8_t* v;
+};
+
+typedef struct uint8_t_SQN_NR_UL_AccessConfigListDCI_1_1_r17_Dynamic SQN_NR_UL_AccessConfigListDCI_1_1_r17;
+
+enum SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_1_r17_Sel {
+	SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_1_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_1_r17_release = 1,
+	SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_1_r17_setup = 2,
+};
+
+union SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_1_r17_Value {
+	Null release;
+	SQN_NR_UL_AccessConfigListDCI_1_1_r17 setup;
+};
+
+struct SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_1_r17 {
+	enum SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_1_r17_Sel d;
+	union SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_1_r17_Value v;
+};
+
+enum SQN_NR_SchedulingRequestResourceConfigExt_v1700_periodicityAndOffset_r17_Sel {
+	SQN_NR_SchedulingRequestResourceConfigExt_v1700_periodicityAndOffset_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SchedulingRequestResourceConfigExt_v1700_periodicityAndOffset_r17_sl1280 = 1,
+	SQN_NR_SchedulingRequestResourceConfigExt_v1700_periodicityAndOffset_r17_sl2560 = 2,
+	SQN_NR_SchedulingRequestResourceConfigExt_v1700_periodicityAndOffset_r17_sl5120 = 3,
+};
+
+union SQN_NR_SchedulingRequestResourceConfigExt_v1700_periodicityAndOffset_r17_Value {
+	uint16_t sl1280;
+	uint16_t sl2560;
+	uint16_t sl5120;
+};
+
+struct SQN_NR_SchedulingRequestResourceConfigExt_v1700_periodicityAndOffset_r17 {
+	enum SQN_NR_SchedulingRequestResourceConfigExt_v1700_periodicityAndOffset_r17_Sel d;
+	union SQN_NR_SchedulingRequestResourceConfigExt_v1700_periodicityAndOffset_r17_Value v;
+};
+
+struct SQN_NR_SchedulingRequestResourceConfigExt_v1700_periodicityAndOffset_r17_periodicityAndOffset_r17_Optional {
+	bool d;
+	struct SQN_NR_SchedulingRequestResourceConfigExt_v1700_periodicityAndOffset_r17 v;
+};
+
+struct SQN_NR_SchedulingRequestResourceConfigExt_v1700 {
+	struct SQN_NR_SchedulingRequestResourceConfigExt_v1700_periodicityAndOffset_r17_periodicityAndOffset_r17_Optional periodicityAndOffset_r17;
+};
+
+enum SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_DMRS_Bundling_r17_e {
+	SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_DMRS_Bundling_r17_e_enabled = 0,
+};
+
+typedef enum SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_DMRS_Bundling_r17_e SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_DMRS_Bundling_r17_e;
+
+enum SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_WindowRestart_r17_e {
+	SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_WindowRestart_r17_e_enabled = 0,
+};
+
+typedef enum SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_WindowRestart_r17_e SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_WindowRestart_r17_e;
+
+enum SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_FrequencyHoppingInterval_r17_e {
+	SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_FrequencyHoppingInterval_r17_e_s2 = 0,
+	SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_FrequencyHoppingInterval_r17_e_s4 = 1,
+	SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_FrequencyHoppingInterval_r17_e_s5 = 2,
+	SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_FrequencyHoppingInterval_r17_e_s10 = 3,
+};
+
+typedef enum SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_FrequencyHoppingInterval_r17_e SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_FrequencyHoppingInterval_r17_e;
+
+struct SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_DMRS_Bundling_r17_e_pucch_DMRS_Bundling_r17_Optional {
+	bool d;
+	SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_DMRS_Bundling_r17_e v;
+};
+
+struct uint8_t_SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_TimeDomainWindowLength_r17_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_WindowRestart_r17_e_pucch_WindowRestart_r17_Optional {
+	bool d;
+	SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_WindowRestart_r17_e v;
+};
+
+struct SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_FrequencyHoppingInterval_r17_e_pucch_FrequencyHoppingInterval_r17_Optional {
+	bool d;
+	SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_FrequencyHoppingInterval_r17_e v;
+};
+
+struct SQN_NR_DMRS_BundlingPUCCH_Config_r17 {
+	struct SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_DMRS_Bundling_r17_e_pucch_DMRS_Bundling_r17_Optional pucch_DMRS_Bundling_r17;
+	struct uint8_t_SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_TimeDomainWindowLength_r17_Optional pucch_TimeDomainWindowLength_r17;
+	struct SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_WindowRestart_r17_e_pucch_WindowRestart_r17_Optional pucch_WindowRestart_r17;
+	struct SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_FrequencyHoppingInterval_r17_e_pucch_FrequencyHoppingInterval_r17_Optional pucch_FrequencyHoppingInterval_r17;
+};
+
+enum SQN_NR_SetupRelease_PUCCH_Config_dmrs_BundlingPUCCH_Config_r17_Sel {
+	SQN_NR_SetupRelease_PUCCH_Config_dmrs_BundlingPUCCH_Config_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_PUCCH_Config_dmrs_BundlingPUCCH_Config_r17_release = 1,
+	SQN_NR_SetupRelease_PUCCH_Config_dmrs_BundlingPUCCH_Config_r17_setup = 2,
+};
+
+union SQN_NR_SetupRelease_PUCCH_Config_dmrs_BundlingPUCCH_Config_r17_Value {
+	Null release;
+	struct SQN_NR_DMRS_BundlingPUCCH_Config_r17 setup;
+};
+
+struct SQN_NR_SetupRelease_PUCCH_Config_dmrs_BundlingPUCCH_Config_r17 {
+	enum SQN_NR_SetupRelease_PUCCH_Config_dmrs_BundlingPUCCH_Config_r17_Sel d;
+	union SQN_NR_SetupRelease_PUCCH_Config_dmrs_BundlingPUCCH_Config_r17_Value v;
+};
+
+struct uint8_t_SQN_NR_DL_DataToUL_ACK_v1700_Dynamic {
+	size_t d;
+	uint8_t* v;
+};
+
+typedef struct uint8_t_SQN_NR_DL_DataToUL_ACK_v1700_Dynamic SQN_NR_DL_DataToUL_ACK_v1700;
+
+enum SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_v1700_Sel {
+	SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_v1700_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_v1700_release = 1,
+	SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_v1700_setup = 2,
+};
+
+union SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_v1700_Value {
+	Null release;
+	SQN_NR_DL_DataToUL_ACK_v1700 setup;
+};
+
+struct SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_v1700 {
+	enum SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_v1700_Sel d;
+	union SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_v1700_Value v;
+};
+
+struct uint8_t_SQN_NR_DL_DataToUL_ACK_MulticastDCI_Format4_1_r17_Dynamic {
+	size_t d;
+	uint8_t* v;
+};
+
+typedef struct uint8_t_SQN_NR_DL_DataToUL_ACK_MulticastDCI_Format4_1_r17_Dynamic SQN_NR_DL_DataToUL_ACK_MulticastDCI_Format4_1_r17;
+
+enum SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_MulticastDCI_Format4_1_r17_Sel {
+	SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_MulticastDCI_Format4_1_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_MulticastDCI_Format4_1_r17_release = 1,
+	SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_MulticastDCI_Format4_1_r17_setup = 2,
+};
+
+union SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_MulticastDCI_Format4_1_r17_Value {
+	Null release;
+	SQN_NR_DL_DataToUL_ACK_MulticastDCI_Format4_1_r17 setup;
+};
+
+struct SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_MulticastDCI_Format4_1_r17 {
+	enum SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_MulticastDCI_Format4_1_r17_Sel d;
+	union SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_MulticastDCI_Format4_1_r17_Value v;
+};
+
+enum SQN_NR_SetupRelease_PUCCH_Config_sps_PUCCH_AN_ListMulticast_r17_Sel {
+	SQN_NR_SetupRelease_PUCCH_Config_sps_PUCCH_AN_ListMulticast_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_PUCCH_Config_sps_PUCCH_AN_ListMulticast_r17_release = 1,
+	SQN_NR_SetupRelease_PUCCH_Config_sps_PUCCH_AN_ListMulticast_r17_setup = 2,
+};
+
+union SQN_NR_SetupRelease_PUCCH_Config_sps_PUCCH_AN_ListMulticast_r17_Value {
+	Null release;
+	SQN_NR_SPS_PUCCH_AN_List_r16 setup;
+};
+
+struct SQN_NR_SetupRelease_PUCCH_Config_sps_PUCCH_AN_ListMulticast_r17 {
+	enum SQN_NR_SetupRelease_PUCCH_Config_sps_PUCCH_AN_ListMulticast_r17_Sel d;
+	union SQN_NR_SetupRelease_PUCCH_Config_sps_PUCCH_AN_ListMulticast_r17_Value v;
 };
 
 struct SQN_NR_PUCCH_Config_SQN_NR_PUCCH_ResourceSet_resourceSetToAddModList_Dynamic {
@@ -6644,14 +9848,14 @@ struct SQN_NR_PUCCH_PowerControl_SQN_NR_PUCCH_Config_pucch_PowerControl_Optional
 	struct SQN_NR_PUCCH_PowerControl v;
 };
 
-struct SQN_NR_PUCCH_Config_SQN_NR_PUCCH_ResourceExt_r16_resourceToAddModListExt_r16_Dynamic {
+struct SQN_NR_PUCCH_Config_SQN_NR_PUCCH_ResourceExt_v1610_resourceToAddModListExt_v1610_Dynamic {
 	size_t d;
-	struct SQN_NR_PUCCH_ResourceExt_r16* v;
+	struct SQN_NR_PUCCH_ResourceExt_v1610* v;
 };
 
-struct SQN_NR_PUCCH_ResourceExt_r16_SQN_NR_PUCCH_Config_resourceToAddModListExt_r16_DynamicOptional {
+struct SQN_NR_PUCCH_ResourceExt_v1610_SQN_NR_PUCCH_Config_resourceToAddModListExt_v1610_DynamicOptional {
 	bool d;
-	struct SQN_NR_PUCCH_Config_SQN_NR_PUCCH_ResourceExt_r16_resourceToAddModListExt_r16_Dynamic v;
+	struct SQN_NR_PUCCH_Config_SQN_NR_PUCCH_ResourceExt_v1610_resourceToAddModListExt_v1610_Dynamic v;
 };
 
 struct SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_r16_SQN_NR_PUCCH_Config_dl_DataToUL_ACK_r16_Optional {
@@ -6684,44 +9888,44 @@ struct SQN_NR_PUCCH_Config_dmrs_UplinkTransformPrecodingPUCCH_r16_e_dmrs_UplinkT
 	SQN_NR_PUCCH_Config_dmrs_UplinkTransformPrecodingPUCCH_r16_e v;
 };
 
-struct SQN_NR_PUCCH_Config_SQN_NR_PUCCH_SpatialRelationInfo_spatialRelationInfoToAddModList2_r16_Dynamic {
+struct SQN_NR_PUCCH_Config_SQN_NR_PUCCH_SpatialRelationInfo_spatialRelationInfoToAddModListSizeExt_v1610_Dynamic {
 	size_t d;
 	struct SQN_NR_PUCCH_SpatialRelationInfo* v;
 };
 
-struct SQN_NR_PUCCH_SpatialRelationInfo_SQN_NR_PUCCH_Config_spatialRelationInfoToAddModList2_r16_DynamicOptional {
+struct SQN_NR_PUCCH_SpatialRelationInfo_SQN_NR_PUCCH_Config_spatialRelationInfoToAddModListSizeExt_v1610_DynamicOptional {
 	bool d;
-	struct SQN_NR_PUCCH_Config_SQN_NR_PUCCH_SpatialRelationInfo_spatialRelationInfoToAddModList2_r16_Dynamic v;
+	struct SQN_NR_PUCCH_Config_SQN_NR_PUCCH_SpatialRelationInfo_spatialRelationInfoToAddModListSizeExt_v1610_Dynamic v;
 };
 
-struct SQN_NR_PUCCH_SpatialRelationInfoId_SQN_NR_PUCCH_Config_spatialRelationInfoToReleaseList2_r16_Dynamic {
+struct SQN_NR_PUCCH_SpatialRelationInfoId_SQN_NR_PUCCH_Config_spatialRelationInfoToReleaseListSizeExt_v1610_Dynamic {
 	size_t d;
 	SQN_NR_PUCCH_SpatialRelationInfoId* v;
 };
 
-struct SQN_NR_PUCCH_SpatialRelationInfoId_SQN_NR_PUCCH_Config_spatialRelationInfoToReleaseList2_r16_DynamicOptional {
+struct SQN_NR_PUCCH_SpatialRelationInfoId_SQN_NR_PUCCH_Config_spatialRelationInfoToReleaseListSizeExt_v1610_DynamicOptional {
 	bool d;
-	struct SQN_NR_PUCCH_SpatialRelationInfoId_SQN_NR_PUCCH_Config_spatialRelationInfoToReleaseList2_r16_Dynamic v;
+	struct SQN_NR_PUCCH_SpatialRelationInfoId_SQN_NR_PUCCH_Config_spatialRelationInfoToReleaseListSizeExt_v1610_Dynamic v;
 };
 
-struct SQN_NR_PUCCH_Config_SQN_NR_PUCCH_SpatialRelationInfoExt_r16_spatialRelationInfoToAddModListExt_r16_Dynamic {
+struct SQN_NR_PUCCH_Config_SQN_NR_PUCCH_SpatialRelationInfoExt_r16_spatialRelationInfoToAddModListExt_v1610_Dynamic {
 	size_t d;
 	struct SQN_NR_PUCCH_SpatialRelationInfoExt_r16* v;
 };
 
-struct SQN_NR_PUCCH_SpatialRelationInfoExt_r16_SQN_NR_PUCCH_Config_spatialRelationInfoToAddModListExt_r16_DynamicOptional {
+struct SQN_NR_PUCCH_SpatialRelationInfoExt_r16_SQN_NR_PUCCH_Config_spatialRelationInfoToAddModListExt_v1610_DynamicOptional {
 	bool d;
-	struct SQN_NR_PUCCH_Config_SQN_NR_PUCCH_SpatialRelationInfoExt_r16_spatialRelationInfoToAddModListExt_r16_Dynamic v;
+	struct SQN_NR_PUCCH_Config_SQN_NR_PUCCH_SpatialRelationInfoExt_r16_spatialRelationInfoToAddModListExt_v1610_Dynamic v;
 };
 
-struct SQN_NR_PUCCH_SpatialRelationInfoId_r16_SQN_NR_PUCCH_Config_spatialRelationInfoToReleaseList_r16_Dynamic {
+struct SQN_NR_PUCCH_SpatialRelationInfoId_r16_SQN_NR_PUCCH_Config_spatialRelationInfoToReleaseListExt_v1610_Dynamic {
 	size_t d;
 	SQN_NR_PUCCH_SpatialRelationInfoId_r16* v;
 };
 
-struct SQN_NR_PUCCH_SpatialRelationInfoId_r16_SQN_NR_PUCCH_Config_spatialRelationInfoToReleaseList_r16_DynamicOptional {
+struct SQN_NR_PUCCH_SpatialRelationInfoId_r16_SQN_NR_PUCCH_Config_spatialRelationInfoToReleaseListExt_v1610_DynamicOptional {
 	bool d;
-	struct SQN_NR_PUCCH_SpatialRelationInfoId_r16_SQN_NR_PUCCH_Config_spatialRelationInfoToReleaseList_r16_Dynamic v;
+	struct SQN_NR_PUCCH_SpatialRelationInfoId_r16_SQN_NR_PUCCH_Config_spatialRelationInfoToReleaseListExt_v1610_Dynamic v;
 };
 
 struct SQN_NR_PUCCH_Config_SQN_NR_PUCCH_ResourceGroup_r16_resourceGroupToAddModList_r16_Dynamic {
@@ -6749,14 +9953,119 @@ struct SQN_NR_SetupRelease_PUCCH_Config_sps_PUCCH_AN_List_r16_SQN_NR_PUCCH_Confi
 	struct SQN_NR_SetupRelease_PUCCH_Config_sps_PUCCH_AN_List_r16 v;
 };
 
-struct SQN_NR_PUCCH_Config_SQN_NR_SchedulingRequestResourceConfig_v1610_schedulingRequestResourceToAddModList_v1610_Dynamic {
+struct SQN_NR_PUCCH_Config_SQN_NR_SchedulingRequestResourceConfigExt_v1610_schedulingRequestResourceToAddModListExt_v1610_Dynamic {
 	size_t d;
-	struct SQN_NR_SchedulingRequestResourceConfig_v1610* v;
+	struct SQN_NR_SchedulingRequestResourceConfigExt_v1610* v;
 };
 
-struct SQN_NR_SchedulingRequestResourceConfig_v1610_SQN_NR_PUCCH_Config_schedulingRequestResourceToAddModList_v1610_DynamicOptional {
+struct SQN_NR_SchedulingRequestResourceConfigExt_v1610_SQN_NR_PUCCH_Config_schedulingRequestResourceToAddModListExt_v1610_DynamicOptional {
 	bool d;
-	struct SQN_NR_PUCCH_Config_SQN_NR_SchedulingRequestResourceConfig_v1610_schedulingRequestResourceToAddModList_v1610_Dynamic v;
+	struct SQN_NR_PUCCH_Config_SQN_NR_SchedulingRequestResourceConfigExt_v1610_schedulingRequestResourceToAddModListExt_v1610_Dynamic v;
+};
+
+struct SQN_NR_SetupRelease_PUCCH_Config_format0_r17_SQN_NR_PUCCH_Config_format0_r17_Optional {
+	bool d;
+	struct SQN_NR_SetupRelease_PUCCH_Config_format0_r17 v;
+};
+
+struct SQN_NR_SetupRelease_PUCCH_Config_format2Ext_r17_SQN_NR_PUCCH_Config_format2Ext_r17_Optional {
+	bool d;
+	struct SQN_NR_SetupRelease_PUCCH_Config_format2Ext_r17 v;
+};
+
+struct SQN_NR_SetupRelease_PUCCH_Config_format3Ext_r17_SQN_NR_PUCCH_Config_format3Ext_r17_Optional {
+	bool d;
+	struct SQN_NR_SetupRelease_PUCCH_Config_format3Ext_r17 v;
+};
+
+struct SQN_NR_SetupRelease_PUCCH_Config_format4Ext_r17_SQN_NR_PUCCH_Config_format4Ext_r17_Optional {
+	bool d;
+	struct SQN_NR_SetupRelease_PUCCH_Config_format4Ext_r17 v;
+};
+
+struct SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_2_r17_SQN_NR_PUCCH_Config_ul_AccessConfigListDCI_1_2_r17_Optional {
+	bool d;
+	struct SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_2_r17 v;
+};
+
+struct SQN_NR_PUCCH_Config_mappingPattern_r17_e_mappingPattern_r17_Optional {
+	bool d;
+	SQN_NR_PUCCH_Config_mappingPattern_r17_e v;
+};
+
+struct SQN_NR_PUCCH_Config_SQN_NR_PUCCH_PowerControlSetInfo_r17_powerControlSetInfoToAddModList_r17_Dynamic {
+	size_t d;
+	struct SQN_NR_PUCCH_PowerControlSetInfo_r17* v;
+};
+
+struct SQN_NR_PUCCH_PowerControlSetInfo_r17_SQN_NR_PUCCH_Config_powerControlSetInfoToAddModList_r17_DynamicOptional {
+	bool d;
+	struct SQN_NR_PUCCH_Config_SQN_NR_PUCCH_PowerControlSetInfo_r17_powerControlSetInfoToAddModList_r17_Dynamic v;
+};
+
+struct SQN_NR_PUCCH_PowerControlSetInfoId_r17_SQN_NR_PUCCH_Config_powerControlSetInfoToReleaseList_r17_Dynamic {
+	size_t d;
+	SQN_NR_PUCCH_PowerControlSetInfoId_r17* v;
+};
+
+struct SQN_NR_PUCCH_PowerControlSetInfoId_r17_SQN_NR_PUCCH_Config_powerControlSetInfoToReleaseList_r17_DynamicOptional {
+	bool d;
+	struct SQN_NR_PUCCH_PowerControlSetInfoId_r17_SQN_NR_PUCCH_Config_powerControlSetInfoToReleaseList_r17_Dynamic v;
+};
+
+struct SQN_NR_PUCCH_Config_secondTPCFieldDCI_1_1_r17_e_secondTPCFieldDCI_1_1_r17_Optional {
+	bool d;
+	SQN_NR_PUCCH_Config_secondTPCFieldDCI_1_1_r17_e v;
+};
+
+struct SQN_NR_PUCCH_Config_secondTPCFieldDCI_1_2_r17_e_secondTPCFieldDCI_1_2_r17_Optional {
+	bool d;
+	SQN_NR_PUCCH_Config_secondTPCFieldDCI_1_2_r17_e v;
+};
+
+struct SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_r17_SQN_NR_PUCCH_Config_dl_DataToUL_ACK_r17_Optional {
+	bool d;
+	struct SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_r17 v;
+};
+
+struct SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_DCI_1_2_r17_SQN_NR_PUCCH_Config_dl_DataToUL_ACK_DCI_1_2_r17_Optional {
+	bool d;
+	struct SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_DCI_1_2_r17 v;
+};
+
+struct SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_1_r17_SQN_NR_PUCCH_Config_ul_AccessConfigListDCI_1_1_r17_Optional {
+	bool d;
+	struct SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_1_r17 v;
+};
+
+struct SQN_NR_PUCCH_Config_SQN_NR_SchedulingRequestResourceConfigExt_v1700_schedulingRequestResourceToAddModListExt_v1700_Dynamic {
+	size_t d;
+	struct SQN_NR_SchedulingRequestResourceConfigExt_v1700* v;
+};
+
+struct SQN_NR_SchedulingRequestResourceConfigExt_v1700_SQN_NR_PUCCH_Config_schedulingRequestResourceToAddModListExt_v1700_DynamicOptional {
+	bool d;
+	struct SQN_NR_PUCCH_Config_SQN_NR_SchedulingRequestResourceConfigExt_v1700_schedulingRequestResourceToAddModListExt_v1700_Dynamic v;
+};
+
+struct SQN_NR_SetupRelease_PUCCH_Config_dmrs_BundlingPUCCH_Config_r17_SQN_NR_PUCCH_Config_dmrs_BundlingPUCCH_Config_r17_Optional {
+	bool d;
+	struct SQN_NR_SetupRelease_PUCCH_Config_dmrs_BundlingPUCCH_Config_r17 v;
+};
+
+struct SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_v1700_SQN_NR_PUCCH_Config_dl_DataToUL_ACK_v1700_Optional {
+	bool d;
+	struct SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_v1700 v;
+};
+
+struct SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_MulticastDCI_Format4_1_r17_SQN_NR_PUCCH_Config_dl_DataToUL_ACK_MulticastDCI_Format4_1_r17_Optional {
+	bool d;
+	struct SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_MulticastDCI_Format4_1_r17 v;
+};
+
+struct SQN_NR_SetupRelease_PUCCH_Config_sps_PUCCH_AN_ListMulticast_r17_SQN_NR_PUCCH_Config_sps_PUCCH_AN_ListMulticast_r17_Optional {
+	bool d;
+	struct SQN_NR_SetupRelease_PUCCH_Config_sps_PUCCH_AN_ListMulticast_r17 v;
 };
 
 struct SQN_NR_PUCCH_Config {
@@ -6775,21 +10084,39 @@ struct SQN_NR_PUCCH_Config {
 	struct SQN_NR_PUCCH_SpatialRelationInfo_SQN_NR_PUCCH_Config_spatialRelationInfoToAddModList_DynamicOptional spatialRelationInfoToAddModList;
 	struct SQN_NR_PUCCH_SpatialRelationInfoId_SQN_NR_PUCCH_Config_spatialRelationInfoToReleaseList_DynamicOptional spatialRelationInfoToReleaseList;
 	struct SQN_NR_PUCCH_PowerControl_SQN_NR_PUCCH_Config_pucch_PowerControl_Optional pucch_PowerControl;
-	struct SQN_NR_PUCCH_ResourceExt_r16_SQN_NR_PUCCH_Config_resourceToAddModListExt_r16_DynamicOptional resourceToAddModListExt_r16;
+	struct SQN_NR_PUCCH_ResourceExt_v1610_SQN_NR_PUCCH_Config_resourceToAddModListExt_v1610_DynamicOptional resourceToAddModListExt_v1610;
 	struct SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_r16_SQN_NR_PUCCH_Config_dl_DataToUL_ACK_r16_Optional dl_DataToUL_ACK_r16;
 	struct SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_1_r16_SQN_NR_PUCCH_Config_ul_AccessConfigListDCI_1_1_r16_Optional ul_AccessConfigListDCI_1_1_r16;
 	struct SQN_NR_PUCCH_Config_subslotLengthForPUCCH_r16_subslotLengthForPUCCH_r16_Optional subslotLengthForPUCCH_r16;
 	struct SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_DCI_1_2_r16_SQN_NR_PUCCH_Config_dl_DataToUL_ACK_DCI_1_2_r16_Optional dl_DataToUL_ACK_DCI_1_2_r16;
 	struct uint8_t_SQN_NR_PUCCH_Config_numberOfBitsForPUCCH_ResourceIndicatorDCI_1_2_r16_Optional numberOfBitsForPUCCH_ResourceIndicatorDCI_1_2_r16;
 	struct SQN_NR_PUCCH_Config_dmrs_UplinkTransformPrecodingPUCCH_r16_e_dmrs_UplinkTransformPrecodingPUCCH_r16_Optional dmrs_UplinkTransformPrecodingPUCCH_r16;
-	struct SQN_NR_PUCCH_SpatialRelationInfo_SQN_NR_PUCCH_Config_spatialRelationInfoToAddModList2_r16_DynamicOptional spatialRelationInfoToAddModList2_r16;
-	struct SQN_NR_PUCCH_SpatialRelationInfoId_SQN_NR_PUCCH_Config_spatialRelationInfoToReleaseList2_r16_DynamicOptional spatialRelationInfoToReleaseList2_r16;
-	struct SQN_NR_PUCCH_SpatialRelationInfoExt_r16_SQN_NR_PUCCH_Config_spatialRelationInfoToAddModListExt_r16_DynamicOptional spatialRelationInfoToAddModListExt_r16;
-	struct SQN_NR_PUCCH_SpatialRelationInfoId_r16_SQN_NR_PUCCH_Config_spatialRelationInfoToReleaseList_r16_DynamicOptional spatialRelationInfoToReleaseList_r16;
+	struct SQN_NR_PUCCH_SpatialRelationInfo_SQN_NR_PUCCH_Config_spatialRelationInfoToAddModListSizeExt_v1610_DynamicOptional spatialRelationInfoToAddModListSizeExt_v1610;
+	struct SQN_NR_PUCCH_SpatialRelationInfoId_SQN_NR_PUCCH_Config_spatialRelationInfoToReleaseListSizeExt_v1610_DynamicOptional spatialRelationInfoToReleaseListSizeExt_v1610;
+	struct SQN_NR_PUCCH_SpatialRelationInfoExt_r16_SQN_NR_PUCCH_Config_spatialRelationInfoToAddModListExt_v1610_DynamicOptional spatialRelationInfoToAddModListExt_v1610;
+	struct SQN_NR_PUCCH_SpatialRelationInfoId_r16_SQN_NR_PUCCH_Config_spatialRelationInfoToReleaseListExt_v1610_DynamicOptional spatialRelationInfoToReleaseListExt_v1610;
 	struct SQN_NR_PUCCH_ResourceGroup_r16_SQN_NR_PUCCH_Config_resourceGroupToAddModList_r16_DynamicOptional resourceGroupToAddModList_r16;
 	struct SQN_NR_PUCCH_ResourceGroupId_r16_SQN_NR_PUCCH_Config_resourceGroupToReleaseList_r16_DynamicOptional resourceGroupToReleaseList_r16;
 	struct SQN_NR_SetupRelease_PUCCH_Config_sps_PUCCH_AN_List_r16_SQN_NR_PUCCH_Config_sps_PUCCH_AN_List_r16_Optional sps_PUCCH_AN_List_r16;
-	struct SQN_NR_SchedulingRequestResourceConfig_v1610_SQN_NR_PUCCH_Config_schedulingRequestResourceToAddModList_v1610_DynamicOptional schedulingRequestResourceToAddModList_v1610;
+	struct SQN_NR_SchedulingRequestResourceConfigExt_v1610_SQN_NR_PUCCH_Config_schedulingRequestResourceToAddModListExt_v1610_DynamicOptional schedulingRequestResourceToAddModListExt_v1610;
+	struct SQN_NR_SetupRelease_PUCCH_Config_format0_r17_SQN_NR_PUCCH_Config_format0_r17_Optional format0_r17;
+	struct SQN_NR_SetupRelease_PUCCH_Config_format2Ext_r17_SQN_NR_PUCCH_Config_format2Ext_r17_Optional format2Ext_r17;
+	struct SQN_NR_SetupRelease_PUCCH_Config_format3Ext_r17_SQN_NR_PUCCH_Config_format3Ext_r17_Optional format3Ext_r17;
+	struct SQN_NR_SetupRelease_PUCCH_Config_format4Ext_r17_SQN_NR_PUCCH_Config_format4Ext_r17_Optional format4Ext_r17;
+	struct SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_2_r17_SQN_NR_PUCCH_Config_ul_AccessConfigListDCI_1_2_r17_Optional ul_AccessConfigListDCI_1_2_r17;
+	struct SQN_NR_PUCCH_Config_mappingPattern_r17_e_mappingPattern_r17_Optional mappingPattern_r17;
+	struct SQN_NR_PUCCH_PowerControlSetInfo_r17_SQN_NR_PUCCH_Config_powerControlSetInfoToAddModList_r17_DynamicOptional powerControlSetInfoToAddModList_r17;
+	struct SQN_NR_PUCCH_PowerControlSetInfoId_r17_SQN_NR_PUCCH_Config_powerControlSetInfoToReleaseList_r17_DynamicOptional powerControlSetInfoToReleaseList_r17;
+	struct SQN_NR_PUCCH_Config_secondTPCFieldDCI_1_1_r17_e_secondTPCFieldDCI_1_1_r17_Optional secondTPCFieldDCI_1_1_r17;
+	struct SQN_NR_PUCCH_Config_secondTPCFieldDCI_1_2_r17_e_secondTPCFieldDCI_1_2_r17_Optional secondTPCFieldDCI_1_2_r17;
+	struct SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_r17_SQN_NR_PUCCH_Config_dl_DataToUL_ACK_r17_Optional dl_DataToUL_ACK_r17;
+	struct SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_DCI_1_2_r17_SQN_NR_PUCCH_Config_dl_DataToUL_ACK_DCI_1_2_r17_Optional dl_DataToUL_ACK_DCI_1_2_r17;
+	struct SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_1_r17_SQN_NR_PUCCH_Config_ul_AccessConfigListDCI_1_1_r17_Optional ul_AccessConfigListDCI_1_1_r17;
+	struct SQN_NR_SchedulingRequestResourceConfigExt_v1700_SQN_NR_PUCCH_Config_schedulingRequestResourceToAddModListExt_v1700_DynamicOptional schedulingRequestResourceToAddModListExt_v1700;
+	struct SQN_NR_SetupRelease_PUCCH_Config_dmrs_BundlingPUCCH_Config_r17_SQN_NR_PUCCH_Config_dmrs_BundlingPUCCH_Config_r17_Optional dmrs_BundlingPUCCH_Config_r17;
+	struct SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_v1700_SQN_NR_PUCCH_Config_dl_DataToUL_ACK_v1700_Optional dl_DataToUL_ACK_v1700;
+	struct SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_MulticastDCI_Format4_1_r17_SQN_NR_PUCCH_Config_dl_DataToUL_ACK_MulticastDCI_Format4_1_r17_Optional dl_DataToUL_ACK_MulticastDCI_Format4_1_r17;
+	struct SQN_NR_SetupRelease_PUCCH_Config_sps_PUCCH_AN_ListMulticast_r17_SQN_NR_PUCCH_Config_sps_PUCCH_AN_ListMulticast_r17_Optional sps_PUCCH_AN_ListMulticast_r17;
 };
 
 enum SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_Config_Sel {
@@ -7744,6 +11071,40 @@ enum SQN_NR_PUSCH_Allocation_r16_numberOfRepetitions_r16_e {
 
 typedef enum SQN_NR_PUSCH_Allocation_r16_numberOfRepetitions_r16_e SQN_NR_PUSCH_Allocation_r16_numberOfRepetitions_r16_e;
 
+enum SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e {
+	SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_n1 = 0,
+	SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_n2 = 1,
+	SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_n3 = 2,
+	SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_n4 = 3,
+	SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_n7 = 4,
+	SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_n8 = 5,
+	SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_n12 = 6,
+	SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_n16 = 7,
+	SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_n20 = 8,
+	SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_n24 = 9,
+	SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_n28 = 10,
+	SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_n32 = 11,
+	SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_spare4 = 12,
+	SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_spare3 = 13,
+	SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_spare2 = 14,
+	SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_spare1 = 15,
+};
+
+typedef enum SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e;
+
+enum SQN_NR_PUSCH_Allocation_r16_numberOfSlotsTBoMS_r17_e {
+	SQN_NR_PUSCH_Allocation_r16_numberOfSlotsTBoMS_r17_e_n1 = 0,
+	SQN_NR_PUSCH_Allocation_r16_numberOfSlotsTBoMS_r17_e_n2 = 1,
+	SQN_NR_PUSCH_Allocation_r16_numberOfSlotsTBoMS_r17_e_n4 = 2,
+	SQN_NR_PUSCH_Allocation_r16_numberOfSlotsTBoMS_r17_e_n8 = 3,
+	SQN_NR_PUSCH_Allocation_r16_numberOfSlotsTBoMS_r17_e_spare4 = 4,
+	SQN_NR_PUSCH_Allocation_r16_numberOfSlotsTBoMS_r17_e_spare3 = 5,
+	SQN_NR_PUSCH_Allocation_r16_numberOfSlotsTBoMS_r17_e_spare2 = 6,
+	SQN_NR_PUSCH_Allocation_r16_numberOfSlotsTBoMS_r17_e_spare1 = 7,
+};
+
+typedef enum SQN_NR_PUSCH_Allocation_r16_numberOfSlotsTBoMS_r17_e SQN_NR_PUSCH_Allocation_r16_numberOfSlotsTBoMS_r17_e;
+
 struct SQN_NR_PUSCH_Allocation_r16_mappingType_r16_e_mappingType_r16_Optional {
 	bool d;
 	SQN_NR_PUSCH_Allocation_r16_mappingType_r16_e v;
@@ -7769,12 +11130,30 @@ struct SQN_NR_PUSCH_Allocation_r16_numberOfRepetitions_r16_e_numberOfRepetitions
 	SQN_NR_PUSCH_Allocation_r16_numberOfRepetitions_r16_e v;
 };
 
+struct SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_numberOfRepetitionsExt_r17_Optional {
+	bool d;
+	SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e v;
+};
+
+struct SQN_NR_PUSCH_Allocation_r16_numberOfSlotsTBoMS_r17_e_numberOfSlotsTBoMS_r17_Optional {
+	bool d;
+	SQN_NR_PUSCH_Allocation_r16_numberOfSlotsTBoMS_r17_e v;
+};
+
+struct uint8_t_SQN_NR_PUSCH_Allocation_r16_extendedK2_r17_Optional {
+	bool d;
+	uint8_t v;
+};
+
 struct SQN_NR_PUSCH_Allocation_r16 {
 	struct SQN_NR_PUSCH_Allocation_r16_mappingType_r16_e_mappingType_r16_Optional mappingType_r16;
 	struct uint8_t_SQN_NR_PUSCH_Allocation_r16_startSymbolAndLength_r16_Optional startSymbolAndLength_r16;
 	struct uint8_t_SQN_NR_PUSCH_Allocation_r16_startSymbol_r16_Optional startSymbol_r16;
 	struct uint8_t_SQN_NR_PUSCH_Allocation_r16_length_r16_Optional length_r16;
 	struct SQN_NR_PUSCH_Allocation_r16_numberOfRepetitions_r16_e_numberOfRepetitions_r16_Optional numberOfRepetitions_r16;
+	struct SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_numberOfRepetitionsExt_r17_Optional numberOfRepetitionsExt_r17;
+	struct SQN_NR_PUSCH_Allocation_r16_numberOfSlotsTBoMS_r17_e_numberOfSlotsTBoMS_r17_Optional numberOfSlotsTBoMS_r17;
+	struct uint8_t_SQN_NR_PUSCH_Allocation_r16_extendedK2_r17_Optional extendedK2_r17;
 };
 
 struct uint8_t_SQN_NR_PUSCH_TimeDomainResourceAllocation_r16_k2_r16_Optional {
@@ -7989,24 +11368,38 @@ struct SQN_NR_PUSCH_PowerControl_v1610_olpc_ParameterSet {
 	struct uint8_t_SQN_NR_PUSCH_PowerControl_v1610_olpc_ParameterSet_olpc_ParameterSetDCI_0_2_r16_Optional olpc_ParameterSetDCI_0_2_r16;
 };
 
-struct SQN_NR_PUSCH_PowerControl_v1610_SQN_NR_PUSCH_PathlossReferenceRS_r16_pathlossReferenceRSToAddModList2_r16_Dynamic {
+typedef uint8_t SQN_NR_PUSCH_PathlossReferenceRS_Id_r17;
+
+typedef uint8_t SQN_NR_AdditionalPCIIndex_r17;
+
+struct SQN_NR_AdditionalPCIIndex_r17_SQN_NR_PUSCH_PathlossReferenceRS_v1710_additionalPCI_r17_Optional {
+	bool d;
+	SQN_NR_AdditionalPCIIndex_r17 v;
+};
+
+struct SQN_NR_PUSCH_PathlossReferenceRS_v1710 {
+	SQN_NR_PUSCH_PathlossReferenceRS_Id_r17 pusch_PathlossReferenceRS_Id_r17;
+	struct SQN_NR_AdditionalPCIIndex_r17_SQN_NR_PUSCH_PathlossReferenceRS_v1710_additionalPCI_r17_Optional additionalPCI_r17;
+};
+
+struct SQN_NR_PUSCH_PowerControl_v1610_SQN_NR_PUSCH_PathlossReferenceRS_r16_pathlossReferenceRSToAddModListSizeExt_v1610_Dynamic {
 	size_t d;
 	struct SQN_NR_PUSCH_PathlossReferenceRS_r16* v;
 };
 
-struct SQN_NR_PUSCH_PathlossReferenceRS_r16_SQN_NR_PUSCH_PowerControl_v1610_pathlossReferenceRSToAddModList2_r16_DynamicOptional {
+struct SQN_NR_PUSCH_PathlossReferenceRS_r16_SQN_NR_PUSCH_PowerControl_v1610_pathlossReferenceRSToAddModListSizeExt_v1610_DynamicOptional {
 	bool d;
-	struct SQN_NR_PUSCH_PowerControl_v1610_SQN_NR_PUSCH_PathlossReferenceRS_r16_pathlossReferenceRSToAddModList2_r16_Dynamic v;
+	struct SQN_NR_PUSCH_PowerControl_v1610_SQN_NR_PUSCH_PathlossReferenceRS_r16_pathlossReferenceRSToAddModListSizeExt_v1610_Dynamic v;
 };
 
-struct SQN_NR_PUSCH_PathlossReferenceRS_Id_v1610_SQN_NR_PUSCH_PowerControl_v1610_pathlossReferenceRSToReleaseList2_r16_Dynamic {
+struct SQN_NR_PUSCH_PathlossReferenceRS_Id_v1610_SQN_NR_PUSCH_PowerControl_v1610_pathlossReferenceRSToReleaseListSizeExt_v1610_Dynamic {
 	size_t d;
 	SQN_NR_PUSCH_PathlossReferenceRS_Id_v1610* v;
 };
 
-struct SQN_NR_PUSCH_PathlossReferenceRS_Id_v1610_SQN_NR_PUSCH_PowerControl_v1610_pathlossReferenceRSToReleaseList2_r16_DynamicOptional {
+struct SQN_NR_PUSCH_PathlossReferenceRS_Id_v1610_SQN_NR_PUSCH_PowerControl_v1610_pathlossReferenceRSToReleaseListSizeExt_v1610_DynamicOptional {
 	bool d;
-	struct SQN_NR_PUSCH_PathlossReferenceRS_Id_v1610_SQN_NR_PUSCH_PowerControl_v1610_pathlossReferenceRSToReleaseList2_r16_Dynamic v;
+	struct SQN_NR_PUSCH_PathlossReferenceRS_Id_v1610_SQN_NR_PUSCH_PowerControl_v1610_pathlossReferenceRSToReleaseListSizeExt_v1610_Dynamic v;
 };
 
 struct SQN_NR_PUSCH_PowerControl_v1610_SQN_NR_P0_PUSCH_Set_r16_p0_PUSCH_SetList_r16_Dynamic {
@@ -8024,11 +11417,55 @@ struct SQN_NR_PUSCH_PowerControl_v1610_olpc_ParameterSet_olpc_ParameterSet_Optio
 	struct SQN_NR_PUSCH_PowerControl_v1610_olpc_ParameterSet v;
 };
 
+struct SQN_NR_PUSCH_PowerControl_v1610_SQN_NR_SRI_PUSCH_PowerControl_sri_PUSCH_MappingToAddModList2_r17_Dynamic {
+	size_t d;
+	struct SQN_NR_SRI_PUSCH_PowerControl* v;
+};
+
+struct SQN_NR_SRI_PUSCH_PowerControl_SQN_NR_PUSCH_PowerControl_v1610_sri_PUSCH_MappingToAddModList2_r17_DynamicOptional {
+	bool d;
+	struct SQN_NR_PUSCH_PowerControl_v1610_SQN_NR_SRI_PUSCH_PowerControl_sri_PUSCH_MappingToAddModList2_r17_Dynamic v;
+};
+
+struct SQN_NR_SRI_PUSCH_PowerControlId_SQN_NR_PUSCH_PowerControl_v1610_sri_PUSCH_MappingToReleaseList2_r17_Dynamic {
+	size_t d;
+	SQN_NR_SRI_PUSCH_PowerControlId* v;
+};
+
+struct SQN_NR_SRI_PUSCH_PowerControlId_SQN_NR_PUSCH_PowerControl_v1610_sri_PUSCH_MappingToReleaseList2_r17_DynamicOptional {
+	bool d;
+	struct SQN_NR_SRI_PUSCH_PowerControlId_SQN_NR_PUSCH_PowerControl_v1610_sri_PUSCH_MappingToReleaseList2_r17_Dynamic v;
+};
+
+struct SQN_NR_PUSCH_PowerControl_v1610_SQN_NR_P0_PUSCH_Set_r16_p0_PUSCH_SetList2_r17_Dynamic {
+	size_t d;
+	struct SQN_NR_P0_PUSCH_Set_r16* v;
+};
+
+struct SQN_NR_P0_PUSCH_Set_r16_SQN_NR_PUSCH_PowerControl_v1610_p0_PUSCH_SetList2_r17_DynamicOptional {
+	bool d;
+	struct SQN_NR_PUSCH_PowerControl_v1610_SQN_NR_P0_PUSCH_Set_r16_p0_PUSCH_SetList2_r17_Dynamic v;
+};
+
+struct SQN_NR_PUSCH_PowerControl_v1610_SQN_NR_PUSCH_PathlossReferenceRS_v1710_pathlossReferenceRSToAddModListExt_v1710_Dynamic {
+	size_t d;
+	struct SQN_NR_PUSCH_PathlossReferenceRS_v1710* v;
+};
+
+struct SQN_NR_PUSCH_PathlossReferenceRS_v1710_SQN_NR_PUSCH_PowerControl_v1610_pathlossReferenceRSToAddModListExt_v1710_DynamicOptional {
+	bool d;
+	struct SQN_NR_PUSCH_PowerControl_v1610_SQN_NR_PUSCH_PathlossReferenceRS_v1710_pathlossReferenceRSToAddModListExt_v1710_Dynamic v;
+};
+
 struct SQN_NR_PUSCH_PowerControl_v1610 {
-	struct SQN_NR_PUSCH_PathlossReferenceRS_r16_SQN_NR_PUSCH_PowerControl_v1610_pathlossReferenceRSToAddModList2_r16_DynamicOptional pathlossReferenceRSToAddModList2_r16;
-	struct SQN_NR_PUSCH_PathlossReferenceRS_Id_v1610_SQN_NR_PUSCH_PowerControl_v1610_pathlossReferenceRSToReleaseList2_r16_DynamicOptional pathlossReferenceRSToReleaseList2_r16;
+	struct SQN_NR_PUSCH_PathlossReferenceRS_r16_SQN_NR_PUSCH_PowerControl_v1610_pathlossReferenceRSToAddModListSizeExt_v1610_DynamicOptional pathlossReferenceRSToAddModListSizeExt_v1610;
+	struct SQN_NR_PUSCH_PathlossReferenceRS_Id_v1610_SQN_NR_PUSCH_PowerControl_v1610_pathlossReferenceRSToReleaseListSizeExt_v1610_DynamicOptional pathlossReferenceRSToReleaseListSizeExt_v1610;
 	struct SQN_NR_P0_PUSCH_Set_r16_SQN_NR_PUSCH_PowerControl_v1610_p0_PUSCH_SetList_r16_DynamicOptional p0_PUSCH_SetList_r16;
 	struct SQN_NR_PUSCH_PowerControl_v1610_olpc_ParameterSet_olpc_ParameterSet_Optional olpc_ParameterSet;
+	struct SQN_NR_SRI_PUSCH_PowerControl_SQN_NR_PUSCH_PowerControl_v1610_sri_PUSCH_MappingToAddModList2_r17_DynamicOptional sri_PUSCH_MappingToAddModList2_r17;
+	struct SQN_NR_SRI_PUSCH_PowerControlId_SQN_NR_PUSCH_PowerControl_v1610_sri_PUSCH_MappingToReleaseList2_r17_DynamicOptional sri_PUSCH_MappingToReleaseList2_r17;
+	struct SQN_NR_P0_PUSCH_Set_r16_SQN_NR_PUSCH_PowerControl_v1610_p0_PUSCH_SetList2_r17_DynamicOptional p0_PUSCH_SetList2_r17;
+	struct SQN_NR_PUSCH_PathlossReferenceRS_v1710_SQN_NR_PUSCH_PowerControl_v1610_pathlossReferenceRSToAddModListExt_v1710_DynamicOptional pathlossReferenceRSToAddModListExt_v1710;
 };
 
 enum SQN_NR_SetupRelease_PUSCH_Config_pusch_PowerControl_v1610_Sel {
@@ -8050,7 +11487,7 @@ struct SQN_NR_SetupRelease_PUSCH_Config_pusch_PowerControl_v1610 {
 enum SQN_NR_PUSCH_Config_ul_FullPowerTransmission_r16_e {
 	SQN_NR_PUSCH_Config_ul_FullPowerTransmission_r16_e_fullpower = 0,
 	SQN_NR_PUSCH_Config_ul_FullPowerTransmission_r16_e_fullpowerMode1 = 1,
-	SQN_NR_PUSCH_Config_ul_FullPowerTransmission_r16_e_fullpoweMode2 = 2,
+	SQN_NR_PUSCH_Config_ul_FullPowerTransmission_r16_e_fullpowerMode2 = 2,
 };
 
 typedef enum SQN_NR_PUSCH_Config_ul_FullPowerTransmission_r16_e SQN_NR_PUSCH_Config_ul_FullPowerTransmission_r16_e;
@@ -8069,6 +11506,319 @@ union SQN_NR_SetupRelease_PUSCH_Config_pusch_TimeDomainAllocationListForMultiPUS
 struct SQN_NR_SetupRelease_PUSCH_Config_pusch_TimeDomainAllocationListForMultiPUSCH_r16 {
 	enum SQN_NR_SetupRelease_PUSCH_Config_pusch_TimeDomainAllocationListForMultiPUSCH_r16_Sel d;
 	union SQN_NR_SetupRelease_PUSCH_Config_pusch_TimeDomainAllocationListForMultiPUSCH_r16_Value v;
+};
+
+struct uint8_t_SQN_NR_UL_AccessConfigListDCI_0_2_r17_Dynamic {
+	size_t d;
+	uint8_t* v;
+};
+
+typedef struct uint8_t_SQN_NR_UL_AccessConfigListDCI_0_2_r17_Dynamic SQN_NR_UL_AccessConfigListDCI_0_2_r17;
+
+enum SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_2_r17_Sel {
+	SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_2_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_2_r17_release = 1,
+	SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_2_r17_setup = 2,
+};
+
+union SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_2_r17_Value {
+	Null release;
+	SQN_NR_UL_AccessConfigListDCI_0_2_r17 setup;
+};
+
+struct SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_2_r17 {
+	enum SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_2_r17_Sel d;
+	union SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_2_r17_Value v;
+};
+
+typedef uint8_t SQN_NR_BetaOffsetsCrossPri_r17[3];
+
+enum SQN_NR_BetaOffsetsCrossPriSel_r17_Sel {
+	SQN_NR_BetaOffsetsCrossPriSel_r17_UNBOUND_VALUE = 0,
+	SQN_NR_BetaOffsetsCrossPriSel_r17_dynamic_r17 = 1,
+	SQN_NR_BetaOffsetsCrossPriSel_r17_semiStatic_r17 = 2,
+};
+
+union SQN_NR_BetaOffsetsCrossPriSel_r17_Value {
+	SQN_NR_BetaOffsetsCrossPri_r17 dynamic_r17[4];
+	SQN_NR_BetaOffsetsCrossPri_r17 semiStatic_r17;
+};
+
+struct SQN_NR_BetaOffsetsCrossPriSel_r17 {
+	enum SQN_NR_BetaOffsetsCrossPriSel_r17_Sel d;
+	union SQN_NR_BetaOffsetsCrossPriSel_r17_Value v;
+};
+
+enum SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0_r17_Sel {
+	SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0_r17_release = 1,
+	SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0_r17_setup = 2,
+};
+
+union SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0_r17_Value {
+	Null release;
+	struct SQN_NR_BetaOffsetsCrossPriSel_r17 setup;
+};
+
+struct SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0_r17 {
+	enum SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0_r17_Sel d;
+	union SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0_r17_Value v;
+};
+
+enum SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1_r17_Sel {
+	SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1_r17_release = 1,
+	SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1_r17_setup = 2,
+};
+
+union SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1_r17_Value {
+	Null release;
+	struct SQN_NR_BetaOffsetsCrossPriSel_r17 setup;
+};
+
+struct SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1_r17 {
+	enum SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1_r17_Sel d;
+	union SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1_r17_Value v;
+};
+
+enum SQN_NR_BetaOffsetsCrossPriSelDCI_0_2_r17_dynamicDCI_0_2_r17_Sel {
+	SQN_NR_BetaOffsetsCrossPriSelDCI_0_2_r17_dynamicDCI_0_2_r17_UNBOUND_VALUE = 0,
+	SQN_NR_BetaOffsetsCrossPriSelDCI_0_2_r17_dynamicDCI_0_2_r17_oneBit_r17 = 1,
+	SQN_NR_BetaOffsetsCrossPriSelDCI_0_2_r17_dynamicDCI_0_2_r17_twoBits_r17 = 2,
+};
+
+union SQN_NR_BetaOffsetsCrossPriSelDCI_0_2_r17_dynamicDCI_0_2_r17_Value {
+	SQN_NR_BetaOffsetsCrossPri_r17 oneBit_r17[2];
+	SQN_NR_BetaOffsetsCrossPri_r17 twoBits_r17[4];
+};
+
+struct SQN_NR_BetaOffsetsCrossPriSelDCI_0_2_r17_dynamicDCI_0_2_r17 {
+	enum SQN_NR_BetaOffsetsCrossPriSelDCI_0_2_r17_dynamicDCI_0_2_r17_Sel d;
+	union SQN_NR_BetaOffsetsCrossPriSelDCI_0_2_r17_dynamicDCI_0_2_r17_Value v;
+};
+
+enum SQN_NR_BetaOffsetsCrossPriSelDCI_0_2_r17_Sel {
+	SQN_NR_BetaOffsetsCrossPriSelDCI_0_2_r17_UNBOUND_VALUE = 0,
+	SQN_NR_BetaOffsetsCrossPriSelDCI_0_2_r17_dynamicDCI_0_2_r17 = 1,
+	SQN_NR_BetaOffsetsCrossPriSelDCI_0_2_r17_semiStaticDCI_0_2_r17 = 2,
+};
+
+union SQN_NR_BetaOffsetsCrossPriSelDCI_0_2_r17_Value {
+	struct SQN_NR_BetaOffsetsCrossPriSelDCI_0_2_r17_dynamicDCI_0_2_r17 dynamicDCI_0_2_r17;
+	SQN_NR_BetaOffsetsCrossPri_r17 semiStaticDCI_0_2_r17;
+};
+
+struct SQN_NR_BetaOffsetsCrossPriSelDCI_0_2_r17 {
+	enum SQN_NR_BetaOffsetsCrossPriSelDCI_0_2_r17_Sel d;
+	union SQN_NR_BetaOffsetsCrossPriSelDCI_0_2_r17_Value v;
+};
+
+enum SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0DCI_0_2_r17_Sel {
+	SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0DCI_0_2_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0DCI_0_2_r17_release = 1,
+	SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0DCI_0_2_r17_setup = 2,
+};
+
+union SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0DCI_0_2_r17_Value {
+	Null release;
+	struct SQN_NR_BetaOffsetsCrossPriSelDCI_0_2_r17 setup;
+};
+
+struct SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0DCI_0_2_r17 {
+	enum SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0DCI_0_2_r17_Sel d;
+	union SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0DCI_0_2_r17_Value v;
+};
+
+enum SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1DCI_0_2_r17_Sel {
+	SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1DCI_0_2_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1DCI_0_2_r17_release = 1,
+	SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1DCI_0_2_r17_setup = 2,
+};
+
+union SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1DCI_0_2_r17_Value {
+	Null release;
+	struct SQN_NR_BetaOffsetsCrossPriSelDCI_0_2_r17 setup;
+};
+
+struct SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1DCI_0_2_r17 {
+	enum SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1DCI_0_2_r17_Sel d;
+	union SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1DCI_0_2_r17_Value v;
+};
+
+enum SQN_NR_PUSCH_Config_mappingPattern_r17_e {
+	SQN_NR_PUSCH_Config_mappingPattern_r17_e_cyclicMapping = 0,
+	SQN_NR_PUSCH_Config_mappingPattern_r17_e_sequentialMapping = 1,
+};
+
+typedef enum SQN_NR_PUSCH_Config_mappingPattern_r17_e SQN_NR_PUSCH_Config_mappingPattern_r17_e;
+
+enum SQN_NR_PUSCH_Config_secondTPCFieldDCI_0_1_r17_e {
+	SQN_NR_PUSCH_Config_secondTPCFieldDCI_0_1_r17_e_enabled = 0,
+};
+
+typedef enum SQN_NR_PUSCH_Config_secondTPCFieldDCI_0_1_r17_e SQN_NR_PUSCH_Config_secondTPCFieldDCI_0_1_r17_e;
+
+enum SQN_NR_PUSCH_Config_secondTPCFieldDCI_0_2_r17_e {
+	SQN_NR_PUSCH_Config_secondTPCFieldDCI_0_2_r17_e_enabled = 0,
+};
+
+typedef enum SQN_NR_PUSCH_Config_secondTPCFieldDCI_0_2_r17_e SQN_NR_PUSCH_Config_secondTPCFieldDCI_0_2_r17_e;
+
+struct uint8_t_SQN_NR_UL_AccessConfigListDCI_0_1_r17_Dynamic {
+	size_t d;
+	uint8_t* v;
+};
+
+typedef struct uint8_t_SQN_NR_UL_AccessConfigListDCI_0_1_r17_Dynamic SQN_NR_UL_AccessConfigListDCI_0_1_r17;
+
+enum SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_1_r17_Sel {
+	SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_1_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_1_r17_release = 1,
+	SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_1_r17_setup = 2,
+};
+
+union SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_1_r17_Value {
+	Null release;
+	SQN_NR_UL_AccessConfigListDCI_0_1_r17 setup;
+};
+
+struct SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_1_r17 {
+	enum SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_1_r17_Sel d;
+	union SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_1_r17_Value v;
+};
+
+struct uint8_t_SQN_NR_MinSchedulingOffsetK2_Values_r17_Dynamic {
+	size_t d;
+	uint8_t* v;
+};
+
+typedef struct uint8_t_SQN_NR_MinSchedulingOffsetK2_Values_r17_Dynamic SQN_NR_MinSchedulingOffsetK2_Values_r17;
+
+enum SQN_NR_SetupRelease_PUSCH_Config_minimumSchedulingOffsetK2_r17_Sel {
+	SQN_NR_SetupRelease_PUSCH_Config_minimumSchedulingOffsetK2_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_PUSCH_Config_minimumSchedulingOffsetK2_r17_release = 1,
+	SQN_NR_SetupRelease_PUSCH_Config_minimumSchedulingOffsetK2_r17_setup = 2,
+};
+
+union SQN_NR_SetupRelease_PUSCH_Config_minimumSchedulingOffsetK2_r17_Value {
+	Null release;
+	SQN_NR_MinSchedulingOffsetK2_Values_r17 setup;
+};
+
+struct SQN_NR_SetupRelease_PUSCH_Config_minimumSchedulingOffsetK2_r17 {
+	enum SQN_NR_SetupRelease_PUSCH_Config_minimumSchedulingOffsetK2_r17_Sel d;
+	union SQN_NR_SetupRelease_PUSCH_Config_minimumSchedulingOffsetK2_r17_Value v;
+};
+
+enum SQN_NR_PUSCH_Config_availableSlotCounting_r17_e {
+	SQN_NR_PUSCH_Config_availableSlotCounting_r17_e_enabled = 0,
+};
+
+typedef enum SQN_NR_PUSCH_Config_availableSlotCounting_r17_e SQN_NR_PUSCH_Config_availableSlotCounting_r17_e;
+
+enum SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_DMRS_Bundling_r17_e {
+	SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_DMRS_Bundling_r17_e_enabled = 0,
+};
+
+typedef enum SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_DMRS_Bundling_r17_e SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_DMRS_Bundling_r17_e;
+
+enum SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_WindowRestart_r17_e {
+	SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_WindowRestart_r17_e_enabled = 0,
+};
+
+typedef enum SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_WindowRestart_r17_e SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_WindowRestart_r17_e;
+
+enum SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e {
+	SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e_s2 = 0,
+	SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e_s4 = 1,
+	SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e_s5 = 2,
+	SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e_s6 = 3,
+	SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e_s8 = 4,
+	SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e_s10 = 5,
+	SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e_s12 = 6,
+	SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e_s14 = 7,
+	SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e_s16 = 8,
+	SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e_s20 = 9,
+};
+
+typedef enum SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e;
+
+struct SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_DMRS_Bundling_r17_e_pusch_DMRS_Bundling_r17_Optional {
+	bool d;
+	SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_DMRS_Bundling_r17_e v;
+};
+
+struct uint8_t_SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_TimeDomainWindowLength_r17_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_WindowRestart_r17_e_pusch_WindowRestart_r17_Optional {
+	bool d;
+	SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_WindowRestart_r17_e v;
+};
+
+struct SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e_pusch_FrequencyHoppingInterval_r17_Optional {
+	bool d;
+	SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e v;
+};
+
+struct SQN_NR_DMRS_BundlingPUSCH_Config_r17 {
+	struct SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_DMRS_Bundling_r17_e_pusch_DMRS_Bundling_r17_Optional pusch_DMRS_Bundling_r17;
+	struct uint8_t_SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_TimeDomainWindowLength_r17_Optional pusch_TimeDomainWindowLength_r17;
+	struct SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_WindowRestart_r17_e_pusch_WindowRestart_r17_Optional pusch_WindowRestart_r17;
+	struct SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e_pusch_FrequencyHoppingInterval_r17_Optional pusch_FrequencyHoppingInterval_r17;
+};
+
+enum SQN_NR_SetupRelease_PUSCH_Config_dmrs_BundlingPUSCH_Config_r17_Sel {
+	SQN_NR_SetupRelease_PUSCH_Config_dmrs_BundlingPUSCH_Config_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_PUSCH_Config_dmrs_BundlingPUSCH_Config_r17_release = 1,
+	SQN_NR_SetupRelease_PUSCH_Config_dmrs_BundlingPUSCH_Config_r17_setup = 2,
+};
+
+union SQN_NR_SetupRelease_PUSCH_Config_dmrs_BundlingPUSCH_Config_r17_Value {
+	Null release;
+	struct SQN_NR_DMRS_BundlingPUSCH_Config_r17 setup;
+};
+
+struct SQN_NR_SetupRelease_PUSCH_Config_dmrs_BundlingPUSCH_Config_r17 {
+	enum SQN_NR_SetupRelease_PUSCH_Config_dmrs_BundlingPUSCH_Config_r17_Sel d;
+	union SQN_NR_SetupRelease_PUSCH_Config_dmrs_BundlingPUSCH_Config_r17_Value v;
+};
+
+typedef uint8_t SQN_NR_MPE_ResourceId_r17;
+
+enum SQN_NR_MPE_Resource_r17_mpe_ReferenceSignal_r17_Sel {
+	SQN_NR_MPE_Resource_r17_mpe_ReferenceSignal_r17_UNBOUND_VALUE = 0,
+	SQN_NR_MPE_Resource_r17_mpe_ReferenceSignal_r17_csi_RS_Resource_r17 = 1,
+	SQN_NR_MPE_Resource_r17_mpe_ReferenceSignal_r17_ssb_Resource_r17 = 2,
+};
+
+union SQN_NR_MPE_Resource_r17_mpe_ReferenceSignal_r17_Value {
+	SQN_NR_NZP_CSI_RS_ResourceId csi_RS_Resource_r17;
+	SQN_NR_SSB_Index ssb_Resource_r17;
+};
+
+struct SQN_NR_MPE_Resource_r17_mpe_ReferenceSignal_r17 {
+	enum SQN_NR_MPE_Resource_r17_mpe_ReferenceSignal_r17_Sel d;
+	union SQN_NR_MPE_Resource_r17_mpe_ReferenceSignal_r17_Value v;
+};
+
+struct SQN_NR_ServCellIndex_SQN_NR_MPE_Resource_r17_cell_r17_Optional {
+	bool d;
+	SQN_NR_ServCellIndex v;
+};
+
+struct SQN_NR_AdditionalPCIIndex_r17_SQN_NR_MPE_Resource_r17_additionalPCI_r17_Optional {
+	bool d;
+	SQN_NR_AdditionalPCIIndex_r17 v;
+};
+
+struct SQN_NR_MPE_Resource_r17 {
+	SQN_NR_MPE_ResourceId_r17 mpe_ResourceId_r17;
+	struct SQN_NR_ServCellIndex_SQN_NR_MPE_Resource_r17_cell_r17_Optional cell_r17;
+	struct SQN_NR_AdditionalPCIIndex_r17_SQN_NR_MPE_Resource_r17_additionalPCI_r17_Optional additionalPCI_r17;
+	struct SQN_NR_MPE_Resource_r17_mpe_ReferenceSignal_r17 mpe_ReferenceSignal_r17;
 };
 
 struct uint16_t_SQN_NR_PUSCH_Config_dataScramblingIdentityPUSCH_Optional {
@@ -8321,6 +12071,101 @@ struct uint8_t_SQN_NR_PUSCH_Config_numberOfInvalidSymbolsForDL_UL_Switching_r16_
 	uint8_t v;
 };
 
+struct SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_2_r17_SQN_NR_PUSCH_Config_ul_AccessConfigListDCI_0_2_r17_Optional {
+	bool d;
+	struct SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_2_r17 v;
+};
+
+struct SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0_r17_SQN_NR_PUSCH_Config_betaOffsetsCrossPri0_r17_Optional {
+	bool d;
+	struct SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0_r17 v;
+};
+
+struct SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1_r17_SQN_NR_PUSCH_Config_betaOffsetsCrossPri1_r17_Optional {
+	bool d;
+	struct SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1_r17 v;
+};
+
+struct SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0DCI_0_2_r17_SQN_NR_PUSCH_Config_betaOffsetsCrossPri0DCI_0_2_r17_Optional {
+	bool d;
+	struct SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0DCI_0_2_r17 v;
+};
+
+struct SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1DCI_0_2_r17_SQN_NR_PUSCH_Config_betaOffsetsCrossPri1DCI_0_2_r17_Optional {
+	bool d;
+	struct SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1DCI_0_2_r17 v;
+};
+
+struct SQN_NR_PUSCH_Config_mappingPattern_r17_e_mappingPattern_r17_Optional {
+	bool d;
+	SQN_NR_PUSCH_Config_mappingPattern_r17_e v;
+};
+
+struct SQN_NR_PUSCH_Config_secondTPCFieldDCI_0_1_r17_e_secondTPCFieldDCI_0_1_r17_Optional {
+	bool d;
+	SQN_NR_PUSCH_Config_secondTPCFieldDCI_0_1_r17_e v;
+};
+
+struct SQN_NR_PUSCH_Config_secondTPCFieldDCI_0_2_r17_e_secondTPCFieldDCI_0_2_r17_Optional {
+	bool d;
+	SQN_NR_PUSCH_Config_secondTPCFieldDCI_0_2_r17_e v;
+};
+
+struct uint8_t_SQN_NR_PUSCH_Config_sequenceOffsetForRV_r17_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_1_r17_SQN_NR_PUSCH_Config_ul_AccessConfigListDCI_0_1_r17_Optional {
+	bool d;
+	struct SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_1_r17 v;
+};
+
+struct SQN_NR_SetupRelease_PUSCH_Config_minimumSchedulingOffsetK2_r17_SQN_NR_PUSCH_Config_minimumSchedulingOffsetK2_r17_Optional {
+	bool d;
+	struct SQN_NR_SetupRelease_PUSCH_Config_minimumSchedulingOffsetK2_r17 v;
+};
+
+struct SQN_NR_PUSCH_Config_availableSlotCounting_r17_e_availableSlotCounting_r17_Optional {
+	bool d;
+	SQN_NR_PUSCH_Config_availableSlotCounting_r17_e v;
+};
+
+struct SQN_NR_SetupRelease_PUSCH_Config_dmrs_BundlingPUSCH_Config_r17_SQN_NR_PUSCH_Config_dmrs_BundlingPUSCH_Config_r17_Optional {
+	bool d;
+	struct SQN_NR_SetupRelease_PUSCH_Config_dmrs_BundlingPUSCH_Config_r17 v;
+};
+
+struct uint8_t_SQN_NR_PUSCH_Config_harq_ProcessNumberSizeDCI_0_2_v1700_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct uint8_t_SQN_NR_PUSCH_Config_harq_ProcessNumberSizeDCI_0_1_r17_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct SQN_NR_PUSCH_Config_SQN_NR_MPE_Resource_r17_mpe_ResourcePoolToAddModList_r17_Dynamic {
+	size_t d;
+	struct SQN_NR_MPE_Resource_r17* v;
+};
+
+struct SQN_NR_MPE_Resource_r17_SQN_NR_PUSCH_Config_mpe_ResourcePoolToAddModList_r17_DynamicOptional {
+	bool d;
+	struct SQN_NR_PUSCH_Config_SQN_NR_MPE_Resource_r17_mpe_ResourcePoolToAddModList_r17_Dynamic v;
+};
+
+struct SQN_NR_MPE_ResourceId_r17_SQN_NR_PUSCH_Config_mpe_ResourcePoolToReleaseList_r17_Dynamic {
+	size_t d;
+	SQN_NR_MPE_ResourceId_r17* v;
+};
+
+struct SQN_NR_MPE_ResourceId_r17_SQN_NR_PUSCH_Config_mpe_ResourcePoolToReleaseList_r17_DynamicOptional {
+	bool d;
+	struct SQN_NR_MPE_ResourceId_r17_SQN_NR_PUSCH_Config_mpe_ResourcePoolToReleaseList_r17_Dynamic v;
+};
+
 struct SQN_NR_PUSCH_Config {
 	struct uint16_t_SQN_NR_PUSCH_Config_dataScramblingIdentityPUSCH_Optional dataScramblingIdentityPUSCH;
 	struct SQN_NR_PUSCH_Config_txConfig_e_txConfig_Optional txConfig;
@@ -8372,6 +12217,23 @@ struct SQN_NR_PUSCH_Config {
 	struct SQN_NR_PUSCH_Config_ul_FullPowerTransmission_r16_e_ul_FullPowerTransmission_r16_Optional ul_FullPowerTransmission_r16;
 	struct SQN_NR_SetupRelease_PUSCH_Config_pusch_TimeDomainAllocationListForMultiPUSCH_r16_SQN_NR_PUSCH_Config_pusch_TimeDomainAllocationListForMultiPUSCH_r16_Optional pusch_TimeDomainAllocationListForMultiPUSCH_r16;
 	struct uint8_t_SQN_NR_PUSCH_Config_numberOfInvalidSymbolsForDL_UL_Switching_r16_Optional numberOfInvalidSymbolsForDL_UL_Switching_r16;
+	struct SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_2_r17_SQN_NR_PUSCH_Config_ul_AccessConfigListDCI_0_2_r17_Optional ul_AccessConfigListDCI_0_2_r17;
+	struct SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0_r17_SQN_NR_PUSCH_Config_betaOffsetsCrossPri0_r17_Optional betaOffsetsCrossPri0_r17;
+	struct SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1_r17_SQN_NR_PUSCH_Config_betaOffsetsCrossPri1_r17_Optional betaOffsetsCrossPri1_r17;
+	struct SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0DCI_0_2_r17_SQN_NR_PUSCH_Config_betaOffsetsCrossPri0DCI_0_2_r17_Optional betaOffsetsCrossPri0DCI_0_2_r17;
+	struct SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1DCI_0_2_r17_SQN_NR_PUSCH_Config_betaOffsetsCrossPri1DCI_0_2_r17_Optional betaOffsetsCrossPri1DCI_0_2_r17;
+	struct SQN_NR_PUSCH_Config_mappingPattern_r17_e_mappingPattern_r17_Optional mappingPattern_r17;
+	struct SQN_NR_PUSCH_Config_secondTPCFieldDCI_0_1_r17_e_secondTPCFieldDCI_0_1_r17_Optional secondTPCFieldDCI_0_1_r17;
+	struct SQN_NR_PUSCH_Config_secondTPCFieldDCI_0_2_r17_e_secondTPCFieldDCI_0_2_r17_Optional secondTPCFieldDCI_0_2_r17;
+	struct uint8_t_SQN_NR_PUSCH_Config_sequenceOffsetForRV_r17_Optional sequenceOffsetForRV_r17;
+	struct SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_1_r17_SQN_NR_PUSCH_Config_ul_AccessConfigListDCI_0_1_r17_Optional ul_AccessConfigListDCI_0_1_r17;
+	struct SQN_NR_SetupRelease_PUSCH_Config_minimumSchedulingOffsetK2_r17_SQN_NR_PUSCH_Config_minimumSchedulingOffsetK2_r17_Optional minimumSchedulingOffsetK2_r17;
+	struct SQN_NR_PUSCH_Config_availableSlotCounting_r17_e_availableSlotCounting_r17_Optional availableSlotCounting_r17;
+	struct SQN_NR_SetupRelease_PUSCH_Config_dmrs_BundlingPUSCH_Config_r17_SQN_NR_PUSCH_Config_dmrs_BundlingPUSCH_Config_r17_Optional dmrs_BundlingPUSCH_Config_r17;
+	struct uint8_t_SQN_NR_PUSCH_Config_harq_ProcessNumberSizeDCI_0_2_v1700_Optional harq_ProcessNumberSizeDCI_0_2_v1700;
+	struct uint8_t_SQN_NR_PUSCH_Config_harq_ProcessNumberSizeDCI_0_1_r17_Optional harq_ProcessNumberSizeDCI_0_1_r17;
+	struct SQN_NR_MPE_Resource_r17_SQN_NR_PUSCH_Config_mpe_ResourcePoolToAddModList_r17_DynamicOptional mpe_ResourcePoolToAddModList_r17;
+	struct SQN_NR_MPE_ResourceId_r17_SQN_NR_PUSCH_Config_mpe_ResourcePoolToReleaseList_r17_DynamicOptional mpe_ResourcePoolToReleaseList_r17;
 };
 
 enum SQN_NR_SetupRelease_BWP_UplinkDedicated_pusch_Config_Sel {
@@ -8563,6 +12425,111 @@ enum SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_timeReferenceSFN_r16
 
 typedef enum SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_timeReferenceSFN_r16_e SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_timeReferenceSFN_r16_e;
 
+enum SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_Subset_r17_Sel {
+	SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_Subset_r17_UNBOUND_VALUE = 0,
+	SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_Subset_r17_shortBitmap_r17 = 1,
+	SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_Subset_r17_mediumBitmap_r17 = 2,
+	SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_Subset_r17_longBitmap_r17 = 3,
+};
+
+union SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_Subset_r17_Value {
+	B4 shortBitmap_r17;
+	B8 mediumBitmap_r17;
+	B64 longBitmap_r17;
+};
+
+struct SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_Subset_r17 {
+	enum SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_Subset_r17_Sel d;
+	union SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_Subset_r17_Value v;
+};
+
+enum SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_PerCG_PUSCH_r17_e {
+	SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_PerCG_PUSCH_r17_e_oneEighth = 0,
+	SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_PerCG_PUSCH_r17_e_oneFourth = 1,
+	SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_PerCG_PUSCH_r17_e_half = 2,
+	SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_PerCG_PUSCH_r17_e_one = 3,
+	SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_PerCG_PUSCH_r17_e_two = 4,
+	SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_PerCG_PUSCH_r17_e_four = 5,
+	SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_PerCG_PUSCH_r17_e_eight = 6,
+	SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_PerCG_PUSCH_r17_e_sixteen = 7,
+};
+
+typedef enum SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_PerCG_PUSCH_r17_e SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_PerCG_PUSCH_r17_e;
+
+enum SQN_NR_CG_SDT_Configuration_r17_sdt_Alpha_r17_e {
+	SQN_NR_CG_SDT_Configuration_r17_sdt_Alpha_r17_e_alpha0 = 0,
+	SQN_NR_CG_SDT_Configuration_r17_sdt_Alpha_r17_e_alpha04 = 1,
+	SQN_NR_CG_SDT_Configuration_r17_sdt_Alpha_r17_e_alpha05 = 2,
+	SQN_NR_CG_SDT_Configuration_r17_sdt_Alpha_r17_e_alpha06 = 3,
+	SQN_NR_CG_SDT_Configuration_r17_sdt_Alpha_r17_e_alpha07 = 4,
+	SQN_NR_CG_SDT_Configuration_r17_sdt_Alpha_r17_e_alpha08 = 5,
+	SQN_NR_CG_SDT_Configuration_r17_sdt_Alpha_r17_e_alpha09 = 6,
+	SQN_NR_CG_SDT_Configuration_r17_sdt_Alpha_r17_e_alpha1 = 7,
+};
+
+typedef enum SQN_NR_CG_SDT_Configuration_r17_sdt_Alpha_r17_e SQN_NR_CG_SDT_Configuration_r17_sdt_Alpha_r17_e;
+
+enum SQN_NR_CG_SDT_Configuration_r17_sdt_DMRS_Ports_r17_Sel {
+	SQN_NR_CG_SDT_Configuration_r17_sdt_DMRS_Ports_r17_UNBOUND_VALUE = 0,
+	SQN_NR_CG_SDT_Configuration_r17_sdt_DMRS_Ports_r17_dmrsType1_r17 = 1,
+	SQN_NR_CG_SDT_Configuration_r17_sdt_DMRS_Ports_r17_dmrsType2_r17 = 2,
+};
+
+union SQN_NR_CG_SDT_Configuration_r17_sdt_DMRS_Ports_r17_Value {
+	B8 dmrsType1_r17;
+	B12 dmrsType2_r17;
+};
+
+struct SQN_NR_CG_SDT_Configuration_r17_sdt_DMRS_Ports_r17 {
+	enum SQN_NR_CG_SDT_Configuration_r17_sdt_DMRS_Ports_r17_Sel d;
+	union SQN_NR_CG_SDT_Configuration_r17_sdt_DMRS_Ports_r17_Value v;
+};
+
+struct uint8_t_SQN_NR_CG_SDT_Configuration_r17_cg_SDT_RetransmissionTimer_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_Subset_r17_sdt_SSB_Subset_r17_Optional {
+	bool d;
+	struct SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_Subset_r17 v;
+};
+
+struct SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_PerCG_PUSCH_r17_e_sdt_SSB_PerCG_PUSCH_r17_Optional {
+	bool d;
+	SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_PerCG_PUSCH_r17_e v;
+};
+
+struct int8_t_SQN_NR_CG_SDT_Configuration_r17_sdt_P0_PUSCH_r17_Optional {
+	bool d;
+	int8_t v;
+};
+
+struct SQN_NR_CG_SDT_Configuration_r17_sdt_Alpha_r17_e_sdt_Alpha_r17_Optional {
+	bool d;
+	SQN_NR_CG_SDT_Configuration_r17_sdt_Alpha_r17_e v;
+};
+
+struct SQN_NR_CG_SDT_Configuration_r17_sdt_DMRS_Ports_r17_sdt_DMRS_Ports_r17_Optional {
+	bool d;
+	struct SQN_NR_CG_SDT_Configuration_r17_sdt_DMRS_Ports_r17 v;
+};
+
+struct uint8_t_SQN_NR_CG_SDT_Configuration_r17_sdt_NrofDMRS_Sequences_r17_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct SQN_NR_CG_SDT_Configuration_r17 {
+	struct uint8_t_SQN_NR_CG_SDT_Configuration_r17_cg_SDT_RetransmissionTimer_Optional cg_SDT_RetransmissionTimer;
+	struct SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_Subset_r17_sdt_SSB_Subset_r17_Optional sdt_SSB_Subset_r17;
+	struct SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_PerCG_PUSCH_r17_e_sdt_SSB_PerCG_PUSCH_r17_Optional sdt_SSB_PerCG_PUSCH_r17;
+	struct int8_t_SQN_NR_CG_SDT_Configuration_r17_sdt_P0_PUSCH_r17_Optional sdt_P0_PUSCH_r17;
+	struct SQN_NR_CG_SDT_Configuration_r17_sdt_Alpha_r17_e_sdt_Alpha_r17_Optional sdt_Alpha_r17;
+	struct SQN_NR_CG_SDT_Configuration_r17_sdt_DMRS_Ports_r17_sdt_DMRS_Ports_r17_Optional sdt_DMRS_Ports_r17;
+	struct uint8_t_SQN_NR_CG_SDT_Configuration_r17_sdt_NrofDMRS_Sequences_r17_Optional sdt_NrofDMRS_Sequences_r17;
+};
+
 struct uint8_t_SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_dmrs_SeqInitialization_Optional {
 	bool d;
 	uint8_t v;
@@ -8593,6 +12560,36 @@ struct SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_timeReferenceSFN_r
 	SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_timeReferenceSFN_r16_e v;
 };
 
+struct uint8_t_SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_pathlossReferenceIndex2_r17_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct uint8_t_SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_srs_ResourceIndicator2_r17_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct uint8_t_SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_precodingAndNumberOfLayers2_r17_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct uint8_t_SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_timeDomainAllocation_v1710_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct uint16_t_SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_timeDomainOffset_r17_Optional {
+	bool d;
+	uint16_t v;
+};
+
+struct SQN_NR_CG_SDT_Configuration_r17_SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_cg_SDT_Configuration_r17_Optional {
+	bool d;
+	struct SQN_NR_CG_SDT_Configuration_r17 v;
+};
+
 struct SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant {
 	uint16_t timeDomainOffset;
 	uint8_t timeDomainAllocation;
@@ -8607,6 +12604,12 @@ struct SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant {
 	struct SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_pusch_RepTypeIndicator_r16_e_pusch_RepTypeIndicator_r16_Optional pusch_RepTypeIndicator_r16;
 	struct SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_frequencyHoppingPUSCH_RepTypeB_r16_e_frequencyHoppingPUSCH_RepTypeB_r16_Optional frequencyHoppingPUSCH_RepTypeB_r16;
 	struct SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_timeReferenceSFN_r16_e_timeReferenceSFN_r16_Optional timeReferenceSFN_r16;
+	struct uint8_t_SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_pathlossReferenceIndex2_r17_Optional pathlossReferenceIndex2_r17;
+	struct uint8_t_SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_srs_ResourceIndicator2_r17_Optional srs_ResourceIndicator2_r17;
+	struct uint8_t_SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_precodingAndNumberOfLayers2_r17_Optional precodingAndNumberOfLayers2_r17;
+	struct uint8_t_SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_timeDomainAllocation_v1710_Optional timeDomainAllocation_v1710;
+	struct uint16_t_SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_timeDomainOffset_r17_Optional timeDomainOffset_r17;
+	struct SQN_NR_CG_SDT_Configuration_r17_SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_cg_SDT_Configuration_r17_Optional cg_SDT_Configuration_r17;
 };
 
 enum SQN_NR_ConfiguredGrantConfig_cg_minDFI_Delay_r16_e {
@@ -8668,11 +12671,11 @@ struct SQN_NR_CG_StartingOffsets_r16 {
 	struct uint8_t_SQN_NR_CG_StartingOffsets_r16_cg_StartingPartialBW_OutsideCOT_r16_Optional cg_StartingPartialBW_OutsideCOT_r16;
 };
 
-enum SQN_NR_ConfiguredGrantConfig_cg_UCI_Multiplexing_e {
-	SQN_NR_ConfiguredGrantConfig_cg_UCI_Multiplexing_e_enabled = 0,
+enum SQN_NR_ConfiguredGrantConfig_cg_UCI_Multiplexing_r16_e {
+	SQN_NR_ConfiguredGrantConfig_cg_UCI_Multiplexing_r16_e_enabled = 0,
 };
 
-typedef enum SQN_NR_ConfiguredGrantConfig_cg_UCI_Multiplexing_e SQN_NR_ConfiguredGrantConfig_cg_UCI_Multiplexing_e;
+typedef enum SQN_NR_ConfiguredGrantConfig_cg_UCI_Multiplexing_r16_e SQN_NR_ConfiguredGrantConfig_cg_UCI_Multiplexing_r16_e;
 
 struct SQN_NR_CG_COT_Sharing_r16_cot_Sharing_r16 {
 	uint8_t duration_r16;
@@ -8719,6 +12722,103 @@ enum SQN_NR_ConfiguredGrantConfig_autonomousTx_r16_e {
 };
 
 typedef enum SQN_NR_ConfiguredGrantConfig_autonomousTx_r16_e SQN_NR_ConfiguredGrantConfig_autonomousTx_r16_e;
+
+enum SQN_NR_BetaOffsetsCrossPriSelCG_r17_Sel {
+	SQN_NR_BetaOffsetsCrossPriSelCG_r17_UNBOUND_VALUE = 0,
+	SQN_NR_BetaOffsetsCrossPriSelCG_r17_dynamic_r17 = 1,
+	SQN_NR_BetaOffsetsCrossPriSelCG_r17_semiStatic_r17 = 2,
+};
+
+struct SQN_NR_BetaOffsetsCrossPri_r17_dynamic_r17_Dynamic {
+	size_t d;
+	SQN_NR_BetaOffsetsCrossPri_r17* v;
+};
+
+union SQN_NR_BetaOffsetsCrossPriSelCG_r17_Value {
+	struct SQN_NR_BetaOffsetsCrossPri_r17_dynamic_r17_Dynamic dynamic_r17;
+	SQN_NR_BetaOffsetsCrossPri_r17 semiStatic_r17;
+};
+
+struct SQN_NR_BetaOffsetsCrossPriSelCG_r17 {
+	enum SQN_NR_BetaOffsetsCrossPriSelCG_r17_Sel d;
+	union SQN_NR_BetaOffsetsCrossPriSelCG_r17_Value v;
+};
+
+enum SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri0_r17_Sel {
+	SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri0_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri0_r17_release = 1,
+	SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri0_r17_setup = 2,
+};
+
+union SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri0_r17_Value {
+	Null release;
+	struct SQN_NR_BetaOffsetsCrossPriSelCG_r17 setup;
+};
+
+struct SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri0_r17 {
+	enum SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri0_r17_Sel d;
+	union SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri0_r17_Value v;
+};
+
+enum SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri1_r17_Sel {
+	SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri1_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri1_r17_release = 1,
+	SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri1_r17_setup = 2,
+};
+
+union SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri1_r17_Value {
+	Null release;
+	struct SQN_NR_BetaOffsetsCrossPriSelCG_r17 setup;
+};
+
+struct SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri1_r17 {
+	enum SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri1_r17_Sel d;
+	union SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri1_r17_Value v;
+};
+
+enum SQN_NR_ConfiguredGrantConfig_mappingPattern_r17_e {
+	SQN_NR_ConfiguredGrantConfig_mappingPattern_r17_e_cyclicMapping = 0,
+	SQN_NR_ConfiguredGrantConfig_mappingPattern_r17_e_sequentialMapping = 1,
+};
+
+typedef enum SQN_NR_ConfiguredGrantConfig_mappingPattern_r17_e SQN_NR_ConfiguredGrantConfig_mappingPattern_r17_e;
+
+enum SQN_NR_ConfiguredGrantConfig_powerControlLoopToUse2_r17_e {
+	SQN_NR_ConfiguredGrantConfig_powerControlLoopToUse2_r17_e_n0 = 0,
+	SQN_NR_ConfiguredGrantConfig_powerControlLoopToUse2_r17_e_n1 = 1,
+};
+
+typedef enum SQN_NR_ConfiguredGrantConfig_powerControlLoopToUse2_r17_e SQN_NR_ConfiguredGrantConfig_powerControlLoopToUse2_r17_e;
+
+struct SQN_NR_CG_COT_Sharing_r17_cot_Sharing_r17 {
+	uint16_t duration_r17;
+	uint16_t offset_r17;
+};
+
+enum SQN_NR_CG_COT_Sharing_r17_Sel {
+	SQN_NR_CG_COT_Sharing_r17_UNBOUND_VALUE = 0,
+	SQN_NR_CG_COT_Sharing_r17_noCOT_Sharing_r17 = 1,
+	SQN_NR_CG_COT_Sharing_r17_cot_Sharing_r17 = 2,
+};
+
+union SQN_NR_CG_COT_Sharing_r17_Value {
+	Null noCOT_Sharing_r17;
+	struct SQN_NR_CG_COT_Sharing_r17_cot_Sharing_r17 cot_Sharing_r17;
+};
+
+struct SQN_NR_CG_COT_Sharing_r17 {
+	enum SQN_NR_CG_COT_Sharing_r17_Sel d;
+	union SQN_NR_CG_COT_Sharing_r17_Value v;
+};
+
+enum SQN_NR_ConfiguredGrantConfig_repK_v1710_e {
+	SQN_NR_ConfiguredGrantConfig_repK_v1710_e_n12 = 0,
+	SQN_NR_ConfiguredGrantConfig_repK_v1710_e_n16 = 1,
+	SQN_NR_ConfiguredGrantConfig_repK_v1710_e_n24 = 2,
+	SQN_NR_ConfiguredGrantConfig_repK_v1710_e_n32 = 3,
+};
+
+typedef enum SQN_NR_ConfiguredGrantConfig_repK_v1710_e SQN_NR_ConfiguredGrantConfig_repK_v1710_e;
 
 struct SQN_NR_ConfiguredGrantConfig_frequencyHopping_e_frequencyHopping_Optional {
 	bool d;
@@ -8790,9 +12890,9 @@ struct SQN_NR_CG_StartingOffsets_r16_SQN_NR_ConfiguredGrantConfig_cg_StartingOff
 	struct SQN_NR_CG_StartingOffsets_r16 v;
 };
 
-struct SQN_NR_ConfiguredGrantConfig_cg_UCI_Multiplexing_e_cg_UCI_Multiplexing_Optional {
+struct SQN_NR_ConfiguredGrantConfig_cg_UCI_Multiplexing_r16_e_cg_UCI_Multiplexing_r16_Optional {
 	bool d;
-	SQN_NR_ConfiguredGrantConfig_cg_UCI_Multiplexing_e v;
+	SQN_NR_ConfiguredGrantConfig_cg_UCI_Multiplexing_r16_e v;
 };
 
 struct uint8_t_SQN_NR_ConfiguredGrantConfig_cg_COT_SharingOffset_r16_Optional {
@@ -8855,6 +12955,76 @@ struct SQN_NR_ConfiguredGrantConfig_autonomousTx_r16_e_autonomousTx_r16_Optional
 	SQN_NR_ConfiguredGrantConfig_autonomousTx_r16_e v;
 };
 
+struct SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri0_r17_SQN_NR_ConfiguredGrantConfig_cg_betaOffsetsCrossPri0_r17_Optional {
+	bool d;
+	struct SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri0_r17 v;
+};
+
+struct SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri1_r17_SQN_NR_ConfiguredGrantConfig_cg_betaOffsetsCrossPri1_r17_Optional {
+	bool d;
+	struct SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri1_r17 v;
+};
+
+struct SQN_NR_ConfiguredGrantConfig_mappingPattern_r17_e_mappingPattern_r17_Optional {
+	bool d;
+	SQN_NR_ConfiguredGrantConfig_mappingPattern_r17_e v;
+};
+
+struct uint8_t_SQN_NR_ConfiguredGrantConfig_sequenceOffsetForRV_r17_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct SQN_NR_P0_PUSCH_AlphaSetId_SQN_NR_ConfiguredGrantConfig_p0_PUSCH_Alpha2_r17_Optional {
+	bool d;
+	SQN_NR_P0_PUSCH_AlphaSetId v;
+};
+
+struct SQN_NR_ConfiguredGrantConfig_powerControlLoopToUse2_r17_e_powerControlLoopToUse2_r17_Optional {
+	bool d;
+	SQN_NR_ConfiguredGrantConfig_powerControlLoopToUse2_r17_e v;
+};
+
+struct SQN_NR_ConfiguredGrantConfig_SQN_NR_CG_COT_Sharing_r17_cg_COT_SharingList_r17_Dynamic {
+	size_t d;
+	struct SQN_NR_CG_COT_Sharing_r17* v;
+};
+
+struct SQN_NR_CG_COT_Sharing_r17_SQN_NR_ConfiguredGrantConfig_cg_COT_SharingList_r17_DynamicOptional {
+	bool d;
+	struct SQN_NR_ConfiguredGrantConfig_SQN_NR_CG_COT_Sharing_r17_cg_COT_SharingList_r17_Dynamic v;
+};
+
+struct uint16_t_SQN_NR_ConfiguredGrantConfig_periodicityExt_r17_Optional {
+	bool d;
+	uint16_t v;
+};
+
+struct SQN_NR_ConfiguredGrantConfig_repK_v1710_e_repK_v1710_Optional {
+	bool d;
+	SQN_NR_ConfiguredGrantConfig_repK_v1710_e v;
+};
+
+struct uint8_t_SQN_NR_ConfiguredGrantConfig_nrofHARQ_Processes_v1700_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct uint8_t_SQN_NR_ConfiguredGrantConfig_harq_ProcID_Offset2_v1700_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct uint16_t_SQN_NR_ConfiguredGrantConfig_configuredGrantTimer_v1700_Optional {
+	bool d;
+	uint16_t v;
+};
+
+struct uint16_t_SQN_NR_ConfiguredGrantConfig_cg_minDFI_Delay_v1710_Optional {
+	bool d;
+	uint16_t v;
+};
+
 struct SQN_NR_ConfiguredGrantConfig {
 	struct SQN_NR_ConfiguredGrantConfig_frequencyHopping_e_frequencyHopping_Optional frequencyHopping;
 	struct SQN_NR_DMRS_UplinkConfig cg_DMRS_Configuration;
@@ -8877,7 +13047,7 @@ struct SQN_NR_ConfiguredGrantConfig {
 	struct uint8_t_SQN_NR_ConfiguredGrantConfig_cg_nrofPUSCH_InSlot_r16_Optional cg_nrofPUSCH_InSlot_r16;
 	struct uint8_t_SQN_NR_ConfiguredGrantConfig_cg_nrofSlots_r16_Optional cg_nrofSlots_r16;
 	struct SQN_NR_CG_StartingOffsets_r16_SQN_NR_ConfiguredGrantConfig_cg_StartingOffsets_r16_Optional cg_StartingOffsets_r16;
-	struct SQN_NR_ConfiguredGrantConfig_cg_UCI_Multiplexing_e_cg_UCI_Multiplexing_Optional cg_UCI_Multiplexing;
+	struct SQN_NR_ConfiguredGrantConfig_cg_UCI_Multiplexing_r16_e_cg_UCI_Multiplexing_r16_Optional cg_UCI_Multiplexing_r16;
 	struct uint8_t_SQN_NR_ConfiguredGrantConfig_cg_COT_SharingOffset_r16_Optional cg_COT_SharingOffset_r16;
 	struct uint8_t_SQN_NR_ConfiguredGrantConfig_betaOffsetCG_UCI_r16_Optional betaOffsetCG_UCI_r16;
 	struct SQN_NR_CG_COT_Sharing_r16_SQN_NR_ConfiguredGrantConfig_cg_COT_SharingList_r16_DynamicOptional cg_COT_SharingList_r16;
@@ -8889,6 +13059,19 @@ struct SQN_NR_ConfiguredGrantConfig {
 	struct SQN_NR_ConfiguredGrantConfig_startingFromRV0_r16_e_startingFromRV0_r16_Optional startingFromRV0_r16;
 	struct SQN_NR_ConfiguredGrantConfig_phy_PriorityIndex_r16_e_phy_PriorityIndex_r16_Optional phy_PriorityIndex_r16;
 	struct SQN_NR_ConfiguredGrantConfig_autonomousTx_r16_e_autonomousTx_r16_Optional autonomousTx_r16;
+	struct SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri0_r17_SQN_NR_ConfiguredGrantConfig_cg_betaOffsetsCrossPri0_r17_Optional cg_betaOffsetsCrossPri0_r17;
+	struct SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri1_r17_SQN_NR_ConfiguredGrantConfig_cg_betaOffsetsCrossPri1_r17_Optional cg_betaOffsetsCrossPri1_r17;
+	struct SQN_NR_ConfiguredGrantConfig_mappingPattern_r17_e_mappingPattern_r17_Optional mappingPattern_r17;
+	struct uint8_t_SQN_NR_ConfiguredGrantConfig_sequenceOffsetForRV_r17_Optional sequenceOffsetForRV_r17;
+	struct SQN_NR_P0_PUSCH_AlphaSetId_SQN_NR_ConfiguredGrantConfig_p0_PUSCH_Alpha2_r17_Optional p0_PUSCH_Alpha2_r17;
+	struct SQN_NR_ConfiguredGrantConfig_powerControlLoopToUse2_r17_e_powerControlLoopToUse2_r17_Optional powerControlLoopToUse2_r17;
+	struct SQN_NR_CG_COT_Sharing_r17_SQN_NR_ConfiguredGrantConfig_cg_COT_SharingList_r17_DynamicOptional cg_COT_SharingList_r17;
+	struct uint16_t_SQN_NR_ConfiguredGrantConfig_periodicityExt_r17_Optional periodicityExt_r17;
+	struct SQN_NR_ConfiguredGrantConfig_repK_v1710_e_repK_v1710_Optional repK_v1710;
+	struct uint8_t_SQN_NR_ConfiguredGrantConfig_nrofHARQ_Processes_v1700_Optional nrofHARQ_Processes_v1700;
+	struct uint8_t_SQN_NR_ConfiguredGrantConfig_harq_ProcID_Offset2_v1700_Optional harq_ProcID_Offset2_v1700;
+	struct uint16_t_SQN_NR_ConfiguredGrantConfig_configuredGrantTimer_v1700_Optional configuredGrantTimer_v1700;
+	struct uint16_t_SQN_NR_ConfiguredGrantConfig_cg_minDFI_Delay_v1710_Optional cg_minDFI_Delay_v1710;
 };
 
 enum SQN_NR_SetupRelease_BWP_UplinkDedicated_configuredGrantConfig_Sel {
@@ -9034,6 +13217,20 @@ struct SQN_NR_SetupRelease_SRS_ResourceSet_pathlossReferenceRSList_r16 {
 	union SQN_NR_SetupRelease_SRS_ResourceSet_pathlossReferenceRSList_r16_Value v;
 };
 
+enum SQN_NR_SRS_ResourceSet_usagePDC_r17_e {
+	SQN_NR_SRS_ResourceSet_usagePDC_r17_e_true = 0,
+};
+
+typedef enum SQN_NR_SRS_ResourceSet_usagePDC_r17_e SQN_NR_SRS_ResourceSet_usagePDC_r17_e;
+
+typedef uint8_t SQN_NR_AvailableSlotOffset_r17;
+
+enum SQN_NR_SRS_ResourceSet_followUnifiedTCIstateSRS_r17_e {
+	SQN_NR_SRS_ResourceSet_followUnifiedTCIstateSRS_r17_e_enabled = 0,
+};
+
+typedef enum SQN_NR_SRS_ResourceSet_followUnifiedTCIstateSRS_r17_e SQN_NR_SRS_ResourceSet_followUnifiedTCIstateSRS_r17_e;
+
 struct SQN_NR_SRS_ResourceId_SQN_NR_SRS_ResourceSet_srs_ResourceIdList_Dynamic {
 	size_t d;
 	SQN_NR_SRS_ResourceId* v;
@@ -9069,6 +13266,26 @@ struct SQN_NR_SetupRelease_SRS_ResourceSet_pathlossReferenceRSList_r16_SQN_NR_SR
 	struct SQN_NR_SetupRelease_SRS_ResourceSet_pathlossReferenceRSList_r16 v;
 };
 
+struct SQN_NR_SRS_ResourceSet_usagePDC_r17_e_usagePDC_r17_Optional {
+	bool d;
+	SQN_NR_SRS_ResourceSet_usagePDC_r17_e v;
+};
+
+struct SQN_NR_AvailableSlotOffset_r17_SQN_NR_SRS_ResourceSet_availableSlotOffsetList_r17_Dynamic {
+	size_t d;
+	SQN_NR_AvailableSlotOffset_r17* v;
+};
+
+struct SQN_NR_AvailableSlotOffset_r17_SQN_NR_SRS_ResourceSet_availableSlotOffsetList_r17_DynamicOptional {
+	bool d;
+	struct SQN_NR_AvailableSlotOffset_r17_SQN_NR_SRS_ResourceSet_availableSlotOffsetList_r17_Dynamic v;
+};
+
+struct SQN_NR_SRS_ResourceSet_followUnifiedTCIstateSRS_r17_e_followUnifiedTCIstateSRS_r17_Optional {
+	bool d;
+	SQN_NR_SRS_ResourceSet_followUnifiedTCIstateSRS_r17_e v;
+};
+
 struct SQN_NR_SRS_ResourceSet {
 	SQN_NR_SRS_ResourceSetId srs_ResourceSetId;
 	struct SQN_NR_SRS_ResourceId_SQN_NR_SRS_ResourceSet_srs_ResourceIdList_DynamicOptional srs_ResourceIdList;
@@ -9079,6 +13296,9 @@ struct SQN_NR_SRS_ResourceSet {
 	struct SQN_NR_PathlossReferenceRS_Config_SQN_NR_SRS_ResourceSet_pathlossReferenceRS_Optional pathlossReferenceRS;
 	struct SQN_NR_SRS_ResourceSet_srs_PowerControlAdjustmentStates_e_srs_PowerControlAdjustmentStates_Optional srs_PowerControlAdjustmentStates;
 	struct SQN_NR_SetupRelease_SRS_ResourceSet_pathlossReferenceRSList_r16_SQN_NR_SRS_ResourceSet_pathlossReferenceRSList_r16_Optional pathlossReferenceRSList_r16;
+	struct SQN_NR_SRS_ResourceSet_usagePDC_r17_e_usagePDC_r17_Optional usagePDC_r17;
+	struct SQN_NR_AvailableSlotOffset_r17_SQN_NR_SRS_ResourceSet_availableSlotOffsetList_r17_DynamicOptional availableSlotOffsetList_r17;
+	struct SQN_NR_SRS_ResourceSet_followUnifiedTCIstateSRS_r17_e_followUnifiedTCIstateSRS_r17_Optional followUnifiedTCIstateSRS_r17;
 };
 
 enum SQN_NR_SRS_Resource_nrofSRS_Ports_e {
@@ -9288,6 +13508,141 @@ struct SQN_NR_SRS_Resource_resourceMapping_r16 {
 	SQN_NR_SRS_Resource_resourceMapping_r16_repetitionFactor_r16_e repetitionFactor_r16;
 };
 
+typedef uint8_t SQN_NR_NR_DL_PRS_ResourceID_r17;
+
+struct SQN_NR_SpatialRelationInfo_PDC_r17_referenceSignal_srs {
+	SQN_NR_SRS_ResourceId resourceId;
+	SQN_NR_BWP_Id uplinkBWP;
+};
+
+enum SQN_NR_SpatialRelationInfo_PDC_r17_referenceSignal_Sel {
+	SQN_NR_SpatialRelationInfo_PDC_r17_referenceSignal_UNBOUND_VALUE = 0,
+	SQN_NR_SpatialRelationInfo_PDC_r17_referenceSignal_ssb_Index = 1,
+	SQN_NR_SpatialRelationInfo_PDC_r17_referenceSignal_csi_RS_Index = 2,
+	SQN_NR_SpatialRelationInfo_PDC_r17_referenceSignal_dl_PRS_PDC = 3,
+	SQN_NR_SpatialRelationInfo_PDC_r17_referenceSignal_srs = 4,
+};
+
+union SQN_NR_SpatialRelationInfo_PDC_r17_referenceSignal_Value {
+	SQN_NR_SSB_Index ssb_Index;
+	SQN_NR_NZP_CSI_RS_ResourceId csi_RS_Index;
+	SQN_NR_NR_DL_PRS_ResourceID_r17 dl_PRS_PDC;
+	struct SQN_NR_SpatialRelationInfo_PDC_r17_referenceSignal_srs srs;
+};
+
+struct SQN_NR_SpatialRelationInfo_PDC_r17_referenceSignal {
+	enum SQN_NR_SpatialRelationInfo_PDC_r17_referenceSignal_Sel d;
+	union SQN_NR_SpatialRelationInfo_PDC_r17_referenceSignal_Value v;
+};
+
+struct SQN_NR_SpatialRelationInfo_PDC_r17 {
+	struct SQN_NR_SpatialRelationInfo_PDC_r17_referenceSignal referenceSignal;
+};
+
+enum SQN_NR_SetupRelease_SRS_Resource_spatialRelationInfo_PDC_r17_Sel {
+	SQN_NR_SetupRelease_SRS_Resource_spatialRelationInfo_PDC_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_SRS_Resource_spatialRelationInfo_PDC_r17_release = 1,
+	SQN_NR_SetupRelease_SRS_Resource_spatialRelationInfo_PDC_r17_setup = 2,
+};
+
+union SQN_NR_SetupRelease_SRS_Resource_spatialRelationInfo_PDC_r17_Value {
+	Null release;
+	struct SQN_NR_SpatialRelationInfo_PDC_r17 setup;
+};
+
+struct SQN_NR_SetupRelease_SRS_Resource_spatialRelationInfo_PDC_r17 {
+	enum SQN_NR_SetupRelease_SRS_Resource_spatialRelationInfo_PDC_r17_Sel d;
+	union SQN_NR_SetupRelease_SRS_Resource_spatialRelationInfo_PDC_r17_Value v;
+};
+
+enum SQN_NR_SRS_Resource_resourceMapping_r17_nrofSymbols_r17_e {
+	SQN_NR_SRS_Resource_resourceMapping_r17_nrofSymbols_r17_e_n1 = 0,
+	SQN_NR_SRS_Resource_resourceMapping_r17_nrofSymbols_r17_e_n2 = 1,
+	SQN_NR_SRS_Resource_resourceMapping_r17_nrofSymbols_r17_e_n4 = 2,
+	SQN_NR_SRS_Resource_resourceMapping_r17_nrofSymbols_r17_e_n8 = 3,
+	SQN_NR_SRS_Resource_resourceMapping_r17_nrofSymbols_r17_e_n10 = 4,
+	SQN_NR_SRS_Resource_resourceMapping_r17_nrofSymbols_r17_e_n12 = 5,
+	SQN_NR_SRS_Resource_resourceMapping_r17_nrofSymbols_r17_e_n14 = 6,
+};
+
+typedef enum SQN_NR_SRS_Resource_resourceMapping_r17_nrofSymbols_r17_e SQN_NR_SRS_Resource_resourceMapping_r17_nrofSymbols_r17_e;
+
+enum SQN_NR_SRS_Resource_resourceMapping_r17_repetitionFactor_r17_e {
+	SQN_NR_SRS_Resource_resourceMapping_r17_repetitionFactor_r17_e_n1 = 0,
+	SQN_NR_SRS_Resource_resourceMapping_r17_repetitionFactor_r17_e_n2 = 1,
+	SQN_NR_SRS_Resource_resourceMapping_r17_repetitionFactor_r17_e_n4 = 2,
+	SQN_NR_SRS_Resource_resourceMapping_r17_repetitionFactor_r17_e_n5 = 3,
+	SQN_NR_SRS_Resource_resourceMapping_r17_repetitionFactor_r17_e_n6 = 4,
+	SQN_NR_SRS_Resource_resourceMapping_r17_repetitionFactor_r17_e_n7 = 5,
+	SQN_NR_SRS_Resource_resourceMapping_r17_repetitionFactor_r17_e_n8 = 6,
+	SQN_NR_SRS_Resource_resourceMapping_r17_repetitionFactor_r17_e_n10 = 7,
+	SQN_NR_SRS_Resource_resourceMapping_r17_repetitionFactor_r17_e_n12 = 8,
+	SQN_NR_SRS_Resource_resourceMapping_r17_repetitionFactor_r17_e_n14 = 9,
+};
+
+typedef enum SQN_NR_SRS_Resource_resourceMapping_r17_repetitionFactor_r17_e SQN_NR_SRS_Resource_resourceMapping_r17_repetitionFactor_r17_e;
+
+struct SQN_NR_SRS_Resource_resourceMapping_r17 {
+	uint8_t startPosition_r17;
+	SQN_NR_SRS_Resource_resourceMapping_r17_nrofSymbols_r17_e nrofSymbols_r17;
+	SQN_NR_SRS_Resource_resourceMapping_r17_repetitionFactor_r17_e repetitionFactor_r17;
+};
+
+enum SQN_NR_SRS_Resource_partialFreqSounding_r17_startRBIndexFScaling_r17_Sel {
+	SQN_NR_SRS_Resource_partialFreqSounding_r17_startRBIndexFScaling_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SRS_Resource_partialFreqSounding_r17_startRBIndexFScaling_r17_startRBIndexAndFreqScalingFactor2_r17 = 1,
+	SQN_NR_SRS_Resource_partialFreqSounding_r17_startRBIndexFScaling_r17_startRBIndexAndFreqScalingFactor4_r17 = 2,
+};
+
+union SQN_NR_SRS_Resource_partialFreqSounding_r17_startRBIndexFScaling_r17_Value {
+	uint8_t startRBIndexAndFreqScalingFactor2_r17;
+	uint8_t startRBIndexAndFreqScalingFactor4_r17;
+};
+
+struct SQN_NR_SRS_Resource_partialFreqSounding_r17_startRBIndexFScaling_r17 {
+	enum SQN_NR_SRS_Resource_partialFreqSounding_r17_startRBIndexFScaling_r17_Sel d;
+	union SQN_NR_SRS_Resource_partialFreqSounding_r17_startRBIndexFScaling_r17_Value v;
+};
+
+enum SQN_NR_SRS_Resource_partialFreqSounding_r17_enableStartRBHopping_r17_e {
+	SQN_NR_SRS_Resource_partialFreqSounding_r17_enableStartRBHopping_r17_e_enable = 0,
+};
+
+typedef enum SQN_NR_SRS_Resource_partialFreqSounding_r17_enableStartRBHopping_r17_e SQN_NR_SRS_Resource_partialFreqSounding_r17_enableStartRBHopping_r17_e;
+
+struct SQN_NR_SRS_Resource_partialFreqSounding_r17_enableStartRBHopping_r17_e_enableStartRBHopping_r17_Optional {
+	bool d;
+	SQN_NR_SRS_Resource_partialFreqSounding_r17_enableStartRBHopping_r17_e v;
+};
+
+struct SQN_NR_SRS_Resource_partialFreqSounding_r17 {
+	struct SQN_NR_SRS_Resource_partialFreqSounding_r17_startRBIndexFScaling_r17 startRBIndexFScaling_r17;
+	struct SQN_NR_SRS_Resource_partialFreqSounding_r17_enableStartRBHopping_r17_e_enableStartRBHopping_r17_Optional enableStartRBHopping_r17;
+};
+
+struct SQN_NR_SRS_Resource_transmissionComb_n8_r17 {
+	uint8_t combOffset_n8_r17;
+	uint8_t cyclicShift_n8_r17;
+};
+
+typedef uint8_t SQN_NR_TCI_UL_State_Id_r17;
+
+enum SQN_NR_SRS_Resource_srs_TCIState_r17_Sel {
+	SQN_NR_SRS_Resource_srs_TCIState_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SRS_Resource_srs_TCIState_r17_srs_UL_TCIState_r17 = 1,
+	SQN_NR_SRS_Resource_srs_TCIState_r17_srs_DLorJoint_TCIState_r17 = 2,
+};
+
+union SQN_NR_SRS_Resource_srs_TCIState_r17_Value {
+	SQN_NR_TCI_UL_State_Id_r17 srs_UL_TCIState_r17;
+	SQN_NR_TCI_StateId srs_DLorJoint_TCIState_r17;
+};
+
+struct SQN_NR_SRS_Resource_srs_TCIState_r17 {
+	enum SQN_NR_SRS_Resource_srs_TCIState_r17_Sel d;
+	union SQN_NR_SRS_Resource_srs_TCIState_r17_Value v;
+};
+
 struct SQN_NR_SRS_Resource_ptrs_PortIndex_e_ptrs_PortIndex_Optional {
 	bool d;
 	SQN_NR_SRS_Resource_ptrs_PortIndex_e v;
@@ -9301,6 +13656,31 @@ struct SQN_NR_SRS_SpatialRelationInfo_SQN_NR_SRS_Resource_spatialRelationInfo_Op
 struct SQN_NR_SRS_Resource_resourceMapping_r16_resourceMapping_r16_Optional {
 	bool d;
 	struct SQN_NR_SRS_Resource_resourceMapping_r16 v;
+};
+
+struct SQN_NR_SetupRelease_SRS_Resource_spatialRelationInfo_PDC_r17_SQN_NR_SRS_Resource_spatialRelationInfo_PDC_r17_Optional {
+	bool d;
+	struct SQN_NR_SetupRelease_SRS_Resource_spatialRelationInfo_PDC_r17 v;
+};
+
+struct SQN_NR_SRS_Resource_resourceMapping_r17_resourceMapping_r17_Optional {
+	bool d;
+	struct SQN_NR_SRS_Resource_resourceMapping_r17 v;
+};
+
+struct SQN_NR_SRS_Resource_partialFreqSounding_r17_partialFreqSounding_r17_Optional {
+	bool d;
+	struct SQN_NR_SRS_Resource_partialFreqSounding_r17 v;
+};
+
+struct SQN_NR_SRS_Resource_transmissionComb_n8_r17_transmissionComb_n8_r17_Optional {
+	bool d;
+	struct SQN_NR_SRS_Resource_transmissionComb_n8_r17 v;
+};
+
+struct SQN_NR_SRS_Resource_srs_TCIState_r17_srs_TCIState_r17_Optional {
+	bool d;
+	struct SQN_NR_SRS_Resource_srs_TCIState_r17 v;
 };
 
 struct SQN_NR_SRS_Resource {
@@ -9317,6 +13697,11 @@ struct SQN_NR_SRS_Resource {
 	uint16_t sequenceId;
 	struct SQN_NR_SRS_SpatialRelationInfo_SQN_NR_SRS_Resource_spatialRelationInfo_Optional spatialRelationInfo;
 	struct SQN_NR_SRS_Resource_resourceMapping_r16_resourceMapping_r16_Optional resourceMapping_r16;
+	struct SQN_NR_SetupRelease_SRS_Resource_spatialRelationInfo_PDC_r17_SQN_NR_SRS_Resource_spatialRelationInfo_PDC_r17_Optional spatialRelationInfo_PDC_r17;
+	struct SQN_NR_SRS_Resource_resourceMapping_r17_resourceMapping_r17_Optional resourceMapping_r17;
+	struct SQN_NR_SRS_Resource_partialFreqSounding_r17_partialFreqSounding_r17_Optional partialFreqSounding_r17;
+	struct SQN_NR_SRS_Resource_transmissionComb_n8_r17_transmissionComb_n8_r17_Optional transmissionComb_n8_r17;
+	struct SQN_NR_SRS_Resource_srs_TCIState_r17_srs_TCIState_r17_Optional srs_TCIState_r17;
 };
 
 enum SQN_NR_SRS_Config_tpc_Accumulation_e {
@@ -9507,7 +13892,7 @@ struct SQN_NR_SRS_PosResource_r16_transmissionComb_r16_n2_r16 {
 };
 
 struct SQN_NR_SRS_PosResource_r16_transmissionComb_r16_n4_r16 {
-	uint8_t combOffset_n4_16;
+	uint8_t combOffset_n4_r16;
 	uint8_t cyclicShift_n4_r16;
 };
 
@@ -9624,12 +14009,44 @@ struct SQN_NR_SRS_PeriodicityAndOffset_r16 {
 	union SQN_NR_SRS_PeriodicityAndOffset_r16_Value v;
 };
 
+enum SQN_NR_SRS_PeriodicityAndOffsetExt_r16_Sel {
+	SQN_NR_SRS_PeriodicityAndOffsetExt_r16_UNBOUND_VALUE = 0,
+	SQN_NR_SRS_PeriodicityAndOffsetExt_r16_sl128 = 1,
+	SQN_NR_SRS_PeriodicityAndOffsetExt_r16_sl256 = 2,
+	SQN_NR_SRS_PeriodicityAndOffsetExt_r16_sl512 = 3,
+	SQN_NR_SRS_PeriodicityAndOffsetExt_r16_sl20480 = 4,
+};
+
+union SQN_NR_SRS_PeriodicityAndOffsetExt_r16_Value {
+	uint8_t sl128;
+	uint8_t sl256;
+	uint16_t sl512;
+	uint16_t sl20480;
+};
+
+struct SQN_NR_SRS_PeriodicityAndOffsetExt_r16 {
+	enum SQN_NR_SRS_PeriodicityAndOffsetExt_r16_Sel d;
+	union SQN_NR_SRS_PeriodicityAndOffsetExt_r16_Value v;
+};
+
+struct SQN_NR_SRS_PeriodicityAndOffsetExt_r16_SQN_NR_SRS_PosResource_r16_resourceType_r16_semi_persistent_r16_periodicityAndOffset_sp_Ext_r16_Optional {
+	bool d;
+	struct SQN_NR_SRS_PeriodicityAndOffsetExt_r16 v;
+};
+
 struct SQN_NR_SRS_PosResource_r16_resourceType_r16_semi_persistent_r16 {
 	struct SQN_NR_SRS_PeriodicityAndOffset_r16 periodicityAndOffset_sp_r16;
+	struct SQN_NR_SRS_PeriodicityAndOffsetExt_r16_SQN_NR_SRS_PosResource_r16_resourceType_r16_semi_persistent_r16_periodicityAndOffset_sp_Ext_r16_Optional periodicityAndOffset_sp_Ext_r16;
+};
+
+struct SQN_NR_SRS_PeriodicityAndOffsetExt_r16_SQN_NR_SRS_PosResource_r16_resourceType_r16_periodic_r16_periodicityAndOffset_p_Ext_r16_Optional {
+	bool d;
+	struct SQN_NR_SRS_PeriodicityAndOffsetExt_r16 v;
 };
 
 struct SQN_NR_SRS_PosResource_r16_resourceType_r16_periodic_r16 {
 	struct SQN_NR_SRS_PeriodicityAndOffset_r16 periodicityAndOffset_p_r16;
+	struct SQN_NR_SRS_PeriodicityAndOffsetExt_r16_SQN_NR_SRS_PosResource_r16_resourceType_r16_periodic_r16_periodicityAndOffset_p_Ext_r16_Optional periodicityAndOffset_p_Ext_r16;
 };
 
 enum SQN_NR_SRS_PosResource_r16_resourceType_r16_Sel {
@@ -9972,6 +14389,12 @@ struct SQN_NR_SetupRelease_BeamFailureRecoveryConfig_candidateBeamRSListExt_v161
 	union SQN_NR_SetupRelease_BeamFailureRecoveryConfig_candidateBeamRSListExt_v1610_Value v;
 };
 
+enum SQN_NR_BeamFailureRecoveryConfig_spCell_BFR_CBRA_r16_e {
+	SQN_NR_BeamFailureRecoveryConfig_spCell_BFR_CBRA_r16_e_true = 0,
+};
+
+typedef enum SQN_NR_BeamFailureRecoveryConfig_spCell_BFR_CBRA_r16_e SQN_NR_BeamFailureRecoveryConfig_spCell_BFR_CBRA_r16_e;
+
 struct uint8_t_SQN_NR_BeamFailureRecoveryConfig_rootSequenceIndex_BFR_Optional {
 	bool d;
 	uint8_t v;
@@ -10037,6 +14460,11 @@ struct SQN_NR_SetupRelease_BeamFailureRecoveryConfig_candidateBeamRSListExt_v161
 	struct SQN_NR_SetupRelease_BeamFailureRecoveryConfig_candidateBeamRSListExt_v1610 v;
 };
 
+struct SQN_NR_BeamFailureRecoveryConfig_spCell_BFR_CBRA_r16_e_spCell_BFR_CBRA_r16_Optional {
+	bool d;
+	SQN_NR_BeamFailureRecoveryConfig_spCell_BFR_CBRA_r16_e v;
+};
+
 struct SQN_NR_BeamFailureRecoveryConfig {
 	struct uint8_t_SQN_NR_BeamFailureRecoveryConfig_rootSequenceIndex_BFR_Optional rootSequenceIndex_BFR;
 	struct SQN_NR_RACH_ConfigGeneric_SQN_NR_BeamFailureRecoveryConfig_rach_ConfigBFR_Optional rach_ConfigBFR;
@@ -10050,6 +14478,7 @@ struct SQN_NR_BeamFailureRecoveryConfig {
 	struct SQN_NR_SubcarrierSpacing_e_SQN_NR_BeamFailureRecoveryConfig_msg1_SubcarrierSpacing_Optional msg1_SubcarrierSpacing;
 	struct SQN_NR_RA_Prioritization_SQN_NR_BeamFailureRecoveryConfig_ra_PrioritizationTwoStep_r16_Optional ra_PrioritizationTwoStep_r16;
 	struct SQN_NR_SetupRelease_BeamFailureRecoveryConfig_candidateBeamRSListExt_v1610_SQN_NR_BeamFailureRecoveryConfig_candidateBeamRSListExt_v1610_Optional candidateBeamRSListExt_v1610;
+	struct SQN_NR_BeamFailureRecoveryConfig_spCell_BFR_CBRA_r16_e_spCell_BFR_CBRA_r16_Optional spCell_BFR_CBRA_r16;
 };
 
 enum SQN_NR_SetupRelease_BWP_UplinkDedicated_beamFailureRecoveryConfig_Sel {
@@ -10184,6 +14613,171 @@ struct SQN_NR_ConfiguredGrantConfigType2DeactivationState_r16_SQN_NR_ConfiguredG
 
 typedef struct SQN_NR_ConfiguredGrantConfigType2DeactivationState_r16_SQN_NR_ConfiguredGrantConfigType2DeactivationStateList_r16_Dynamic SQN_NR_ConfiguredGrantConfigType2DeactivationStateList_r16;
 
+enum SQN_NR_TCI_UL_State_r17_referenceSignal_r17_Sel {
+	SQN_NR_TCI_UL_State_r17_referenceSignal_r17_UNBOUND_VALUE = 0,
+	SQN_NR_TCI_UL_State_r17_referenceSignal_r17_ssb_Index_r17 = 1,
+	SQN_NR_TCI_UL_State_r17_referenceSignal_r17_csi_RS_Index_r17 = 2,
+	SQN_NR_TCI_UL_State_r17_referenceSignal_r17_srs_r17 = 3,
+};
+
+union SQN_NR_TCI_UL_State_r17_referenceSignal_r17_Value {
+	SQN_NR_SSB_Index ssb_Index_r17;
+	SQN_NR_NZP_CSI_RS_ResourceId csi_RS_Index_r17;
+	SQN_NR_SRS_ResourceId srs_r17;
+};
+
+struct SQN_NR_TCI_UL_State_r17_referenceSignal_r17 {
+	enum SQN_NR_TCI_UL_State_r17_referenceSignal_r17_Sel d;
+	union SQN_NR_TCI_UL_State_r17_referenceSignal_r17_Value v;
+};
+
+typedef uint8_t SQN_NR_Uplink_powerControlId_r17;
+
+struct SQN_NR_ServCellIndex_SQN_NR_TCI_UL_State_r17_servingCellId_r17_Optional {
+	bool d;
+	SQN_NR_ServCellIndex v;
+};
+
+struct SQN_NR_BWP_Id_SQN_NR_TCI_UL_State_r17_bwp_Id_r17_Optional {
+	bool d;
+	SQN_NR_BWP_Id v;
+};
+
+struct SQN_NR_AdditionalPCIIndex_r17_SQN_NR_TCI_UL_State_r17_additionalPCI_r17_Optional {
+	bool d;
+	SQN_NR_AdditionalPCIIndex_r17 v;
+};
+
+struct SQN_NR_Uplink_powerControlId_r17_SQN_NR_TCI_UL_State_r17_ul_powerControl_r17_Optional {
+	bool d;
+	SQN_NR_Uplink_powerControlId_r17 v;
+};
+
+struct SQN_NR_PUSCH_PathlossReferenceRS_Id_r17_SQN_NR_TCI_UL_State_r17_pathlossReferenceRS_Id_r17_Optional {
+	bool d;
+	SQN_NR_PUSCH_PathlossReferenceRS_Id_r17 v;
+};
+
+struct SQN_NR_TCI_UL_State_r17 {
+	SQN_NR_TCI_UL_State_Id_r17 tci_UL_State_Id_r17;
+	struct SQN_NR_ServCellIndex_SQN_NR_TCI_UL_State_r17_servingCellId_r17_Optional servingCellId_r17;
+	struct SQN_NR_BWP_Id_SQN_NR_TCI_UL_State_r17_bwp_Id_r17_Optional bwp_Id_r17;
+	struct SQN_NR_TCI_UL_State_r17_referenceSignal_r17 referenceSignal_r17;
+	struct SQN_NR_AdditionalPCIIndex_r17_SQN_NR_TCI_UL_State_r17_additionalPCI_r17_Optional additionalPCI_r17;
+	struct SQN_NR_Uplink_powerControlId_r17_SQN_NR_TCI_UL_State_r17_ul_powerControl_r17_Optional ul_powerControl_r17;
+	struct SQN_NR_PUSCH_PathlossReferenceRS_Id_r17_SQN_NR_TCI_UL_State_r17_pathlossReferenceRS_Id_r17_Optional pathlossReferenceRS_Id_r17;
+};
+
+struct SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17_explicitlist_SQN_NR_TCI_UL_State_r17_ul_TCI_ToAddModList_r17_Dynamic {
+	size_t d;
+	struct SQN_NR_TCI_UL_State_r17* v;
+};
+
+struct SQN_NR_TCI_UL_State_r17_SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17_explicitlist_ul_TCI_ToAddModList_r17_DynamicOptional {
+	bool d;
+	struct SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17_explicitlist_SQN_NR_TCI_UL_State_r17_ul_TCI_ToAddModList_r17_Dynamic v;
+};
+
+struct SQN_NR_TCI_UL_State_Id_r17_SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17_explicitlist_ul_TCI_ToReleaseList_r17_Dynamic {
+	size_t d;
+	SQN_NR_TCI_UL_State_Id_r17* v;
+};
+
+struct SQN_NR_TCI_UL_State_Id_r17_SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17_explicitlist_ul_TCI_ToReleaseList_r17_DynamicOptional {
+	bool d;
+	struct SQN_NR_TCI_UL_State_Id_r17_SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17_explicitlist_ul_TCI_ToReleaseList_r17_Dynamic v;
+};
+
+struct SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17_explicitlist {
+	struct SQN_NR_TCI_UL_State_r17_SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17_explicitlist_ul_TCI_ToAddModList_r17_DynamicOptional ul_TCI_ToAddModList_r17;
+	struct SQN_NR_TCI_UL_State_Id_r17_SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17_explicitlist_ul_TCI_ToReleaseList_r17_DynamicOptional ul_TCI_ToReleaseList_r17;
+};
+
+struct SQN_NR_ServingCellAndBWP_Id_r17 {
+	SQN_NR_ServCellIndex servingcell_r17;
+	SQN_NR_BWP_Id bwp_r17;
+};
+
+enum SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17_Sel {
+	SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17_UNBOUND_VALUE = 0,
+	SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17_explicitlist = 1,
+	SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17_unifiedTCI_StateRef_r17 = 2,
+};
+
+union SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17_Value {
+	struct SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17_explicitlist explicitlist;
+	struct SQN_NR_ServingCellAndBWP_Id_r17 unifiedTCI_StateRef_r17;
+};
+
+struct SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17 {
+	enum SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17_Sel d;
+	union SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17_Value v;
+};
+
+enum SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast1_r17_Sel {
+	SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast1_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast1_r17_release = 1,
+	SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast1_r17_setup = 2,
+};
+
+union SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast1_r17_Value {
+	Null release;
+	SQN_NR_PUCCH_ConfigurationList_r16 setup;
+};
+
+struct SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast1_r17 {
+	enum SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast1_r17_Sel d;
+	union SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast1_r17_Value v;
+};
+
+enum SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast2_r17_Sel {
+	SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast2_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast2_r17_release = 1,
+	SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast2_r17_setup = 2,
+};
+
+union SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast2_r17_Value {
+	Null release;
+	SQN_NR_PUCCH_ConfigurationList_r16 setup;
+};
+
+struct SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast2_r17 {
+	enum SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast2_r17_Sel d;
+	union SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast2_r17_Value v;
+};
+
+enum SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast1_r17_Sel {
+	SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast1_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast1_r17_release = 1,
+	SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast1_r17_setup = 2,
+};
+
+union SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast1_r17_Value {
+	Null release;
+	struct SQN_NR_PUCCH_Config setup;
+};
+
+struct SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast1_r17 {
+	enum SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast1_r17_Sel d;
+	union SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast1_r17_Value v;
+};
+
+enum SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast2_r17_Sel {
+	SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast2_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast2_r17_release = 1,
+	SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast2_r17_setup = 2,
+};
+
+union SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast2_r17_Value {
+	Null release;
+	struct SQN_NR_PUCCH_Config setup;
+};
+
+struct SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast2_r17 {
+	enum SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast2_r17_Sel d;
+	union SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast2_r17_Value v;
+};
+
 struct SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_Config_SQN_NR_BWP_UplinkDedicated_pucch_Config_Optional {
 	bool d;
 	struct SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_Config v;
@@ -10254,6 +14848,36 @@ struct SQN_NR_ConfiguredGrantConfigType2DeactivationStateList_r16_SQN_NR_BWP_Upl
 	SQN_NR_ConfiguredGrantConfigType2DeactivationStateList_r16 v;
 };
 
+struct SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17_ul_TCI_StateList_r17_Optional {
+	bool d;
+	struct SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17 v;
+};
+
+struct SQN_NR_Uplink_powerControlId_r17_SQN_NR_BWP_UplinkDedicated_ul_powerControl_r17_Optional {
+	bool d;
+	SQN_NR_Uplink_powerControlId_r17 v;
+};
+
+struct SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast1_r17_SQN_NR_BWP_UplinkDedicated_pucch_ConfigurationListMulticast1_r17_Optional {
+	bool d;
+	struct SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast1_r17 v;
+};
+
+struct SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast2_r17_SQN_NR_BWP_UplinkDedicated_pucch_ConfigurationListMulticast2_r17_Optional {
+	bool d;
+	struct SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast2_r17 v;
+};
+
+struct SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast1_r17_SQN_NR_BWP_UplinkDedicated_pucch_ConfigMulticast1_r17_Optional {
+	bool d;
+	struct SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast1_r17 v;
+};
+
+struct SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast2_r17_SQN_NR_BWP_UplinkDedicated_pucch_ConfigMulticast2_r17_Optional {
+	bool d;
+	struct SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast2_r17 v;
+};
+
 struct SQN_NR_BWP_UplinkDedicated {
 	struct SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_Config_SQN_NR_BWP_UplinkDedicated_pucch_Config_Optional pucch_Config;
 	struct SQN_NR_SetupRelease_BWP_UplinkDedicated_pusch_Config_SQN_NR_BWP_UplinkDedicated_pusch_Config_Optional pusch_Config;
@@ -10269,6 +14893,12 @@ struct SQN_NR_BWP_UplinkDedicated {
 	struct SQN_NR_ConfiguredGrantConfigToAddModList_r16_SQN_NR_BWP_UplinkDedicated_configuredGrantConfigToAddModList_r16_Optional configuredGrantConfigToAddModList_r16;
 	struct SQN_NR_ConfiguredGrantConfigToReleaseList_r16_SQN_NR_BWP_UplinkDedicated_configuredGrantConfigToReleaseList_r16_Optional configuredGrantConfigToReleaseList_r16;
 	struct SQN_NR_ConfiguredGrantConfigType2DeactivationStateList_r16_SQN_NR_BWP_UplinkDedicated_configuredGrantConfigType2DeactivationStateList_r16_Optional configuredGrantConfigType2DeactivationStateList_r16;
+	struct SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17_ul_TCI_StateList_r17_Optional ul_TCI_StateList_r17;
+	struct SQN_NR_Uplink_powerControlId_r17_SQN_NR_BWP_UplinkDedicated_ul_powerControl_r17_Optional ul_powerControl_r17;
+	struct SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast1_r17_SQN_NR_BWP_UplinkDedicated_pucch_ConfigurationListMulticast1_r17_Optional pucch_ConfigurationListMulticast1_r17;
+	struct SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast2_r17_SQN_NR_BWP_UplinkDedicated_pucch_ConfigurationListMulticast2_r17_Optional pucch_ConfigurationListMulticast2_r17;
+	struct SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast1_r17_SQN_NR_BWP_UplinkDedicated_pucch_ConfigMulticast1_r17_Optional pucch_ConfigMulticast1_r17;
+	struct SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast2_r17_SQN_NR_BWP_UplinkDedicated_pucch_ConfigMulticast2_r17_Optional pucch_ConfigMulticast2_r17;
 };
 
 enum SQN_NR_CSI_RS_ResourceMapping_frequencyDomainAllocation_Sel {
@@ -11150,9 +15780,69 @@ struct SQN_NR_SetupRelease_PHR_Config_mpe_Reporting_FR2_r16 {
 	union SQN_NR_SetupRelease_PHR_Config_mpe_Reporting_FR2_r16_Value v;
 };
 
+enum SQN_NR_MPE_Config_FR2_r17_mpe_ProhibitTimer_r17_e {
+	SQN_NR_MPE_Config_FR2_r17_mpe_ProhibitTimer_r17_e_sf0 = 0,
+	SQN_NR_MPE_Config_FR2_r17_mpe_ProhibitTimer_r17_e_sf10 = 1,
+	SQN_NR_MPE_Config_FR2_r17_mpe_ProhibitTimer_r17_e_sf20 = 2,
+	SQN_NR_MPE_Config_FR2_r17_mpe_ProhibitTimer_r17_e_sf50 = 3,
+	SQN_NR_MPE_Config_FR2_r17_mpe_ProhibitTimer_r17_e_sf100 = 4,
+	SQN_NR_MPE_Config_FR2_r17_mpe_ProhibitTimer_r17_e_sf200 = 5,
+	SQN_NR_MPE_Config_FR2_r17_mpe_ProhibitTimer_r17_e_sf500 = 6,
+	SQN_NR_MPE_Config_FR2_r17_mpe_ProhibitTimer_r17_e_sf1000 = 7,
+};
+
+typedef enum SQN_NR_MPE_Config_FR2_r17_mpe_ProhibitTimer_r17_e SQN_NR_MPE_Config_FR2_r17_mpe_ProhibitTimer_r17_e;
+
+enum SQN_NR_MPE_Config_FR2_r17_mpe_Threshold_r17_e {
+	SQN_NR_MPE_Config_FR2_r17_mpe_Threshold_r17_e_dB3 = 0,
+	SQN_NR_MPE_Config_FR2_r17_mpe_Threshold_r17_e_dB6 = 1,
+	SQN_NR_MPE_Config_FR2_r17_mpe_Threshold_r17_e_dB9 = 2,
+	SQN_NR_MPE_Config_FR2_r17_mpe_Threshold_r17_e_dB12 = 3,
+};
+
+typedef enum SQN_NR_MPE_Config_FR2_r17_mpe_Threshold_r17_e SQN_NR_MPE_Config_FR2_r17_mpe_Threshold_r17_e;
+
+struct SQN_NR_MPE_Config_FR2_r17 {
+	SQN_NR_MPE_Config_FR2_r17_mpe_ProhibitTimer_r17_e mpe_ProhibitTimer_r17;
+	SQN_NR_MPE_Config_FR2_r17_mpe_Threshold_r17_e mpe_Threshold_r17;
+	uint8_t numberOfN_r17;
+};
+
+enum SQN_NR_SetupRelease_PHR_Config_mpe_Reporting_FR2_r17_Sel {
+	SQN_NR_SetupRelease_PHR_Config_mpe_Reporting_FR2_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_PHR_Config_mpe_Reporting_FR2_r17_release = 1,
+	SQN_NR_SetupRelease_PHR_Config_mpe_Reporting_FR2_r17_setup = 2,
+};
+
+union SQN_NR_SetupRelease_PHR_Config_mpe_Reporting_FR2_r17_Value {
+	Null release;
+	struct SQN_NR_MPE_Config_FR2_r17 setup;
+};
+
+struct SQN_NR_SetupRelease_PHR_Config_mpe_Reporting_FR2_r17 {
+	enum SQN_NR_SetupRelease_PHR_Config_mpe_Reporting_FR2_r17_Sel d;
+	union SQN_NR_SetupRelease_PHR_Config_mpe_Reporting_FR2_r17_Value v;
+};
+
+enum SQN_NR_PHR_Config_twoPHRMode_r17_e {
+	SQN_NR_PHR_Config_twoPHRMode_r17_e_enabled = 0,
+};
+
+typedef enum SQN_NR_PHR_Config_twoPHRMode_r17_e SQN_NR_PHR_Config_twoPHRMode_r17_e;
+
 struct SQN_NR_SetupRelease_PHR_Config_mpe_Reporting_FR2_r16_SQN_NR_PHR_Config_mpe_Reporting_FR2_r16_Optional {
 	bool d;
 	struct SQN_NR_SetupRelease_PHR_Config_mpe_Reporting_FR2_r16 v;
+};
+
+struct SQN_NR_SetupRelease_PHR_Config_mpe_Reporting_FR2_r17_SQN_NR_PHR_Config_mpe_Reporting_FR2_r17_Optional {
+	bool d;
+	struct SQN_NR_SetupRelease_PHR_Config_mpe_Reporting_FR2_r17 v;
+};
+
+struct SQN_NR_PHR_Config_twoPHRMode_r17_e_twoPHRMode_r17_Optional {
+	bool d;
+	SQN_NR_PHR_Config_twoPHRMode_r17_e v;
 };
 
 struct SQN_NR_PHR_Config {
@@ -11164,6 +15854,8 @@ struct SQN_NR_PHR_Config {
 	bool phr_Type2OtherCell;
 	SQN_NR_PHR_Config_phr_ModeOtherCG_e phr_ModeOtherCG;
 	struct SQN_NR_SetupRelease_PHR_Config_mpe_Reporting_FR2_r16_SQN_NR_PHR_Config_mpe_Reporting_FR2_r16_Optional mpe_Reporting_FR2_r16;
+	struct SQN_NR_SetupRelease_PHR_Config_mpe_Reporting_FR2_r17_SQN_NR_PHR_Config_mpe_Reporting_FR2_r17_Optional mpe_Reporting_FR2_r17;
+	struct SQN_NR_PHR_Config_twoPHRMode_r17_e_twoPHRMode_r17_Optional twoPHRMode_r17;
 };
 
 enum SQN_NR_SetupRelease_MAC_CellGroupConfig_phr_Config_Sel {
@@ -11231,99 +15923,99 @@ enum SQN_NR_MAC_CellGroupConfig_lch_BasedPrioritization_r16_e {
 
 typedef enum SQN_NR_MAC_CellGroupConfig_lch_BasedPrioritization_r16_e SQN_NR_MAC_CellGroupConfig_lch_BasedPrioritization_r16_e;
 
-enum SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e {
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms1 = 0,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms2 = 1,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms3 = 2,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms4 = 3,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms5 = 4,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms6 = 5,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms8 = 6,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms10 = 7,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms20 = 8,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms30 = 9,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms40 = 10,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms50 = 11,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms60 = 12,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms80 = 13,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms100 = 14,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms200 = 15,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms300 = 16,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms400 = 17,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms500 = 18,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms600 = 19,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms800 = 20,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms1000 = 21,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms1200 = 22,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms1600 = 23,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_spare8 = 24,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_spare7 = 25,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_spare6 = 26,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_spare5 = 27,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_spare4 = 28,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_spare3 = 29,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_spare2 = 30,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_spare1 = 31,
+enum SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e {
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms1 = 0,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms2 = 1,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms3 = 2,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms4 = 3,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms5 = 4,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms6 = 5,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms8 = 6,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms10 = 7,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms20 = 8,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms30 = 9,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms40 = 10,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms50 = 11,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms60 = 12,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms80 = 13,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms100 = 14,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms200 = 15,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms300 = 16,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms400 = 17,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms500 = 18,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms600 = 19,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms800 = 20,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms1000 = 21,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms1200 = 22,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms1600 = 23,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_spare8 = 24,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_spare7 = 25,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_spare6 = 26,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_spare5 = 27,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_spare4 = 28,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_spare3 = 29,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_spare2 = 30,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_spare1 = 31,
 };
 
-typedef enum SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e;
+typedef enum SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e;
 
-enum SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_Sel {
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_UNBOUND_VALUE = 0,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_subMilliSeconds = 1,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds = 2,
+enum SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_Sel {
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_UNBOUND_VALUE = 0,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_subMilliSeconds = 1,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds = 2,
 };
 
-union SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_Value {
+union SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_Value {
 	uint8_t subMilliSeconds;
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e milliSeconds;
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e milliSeconds;
 };
 
-struct SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer {
-	enum SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_Sel d;
-	union SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_Value v;
+struct SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16 {
+	enum SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_Sel d;
+	union SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_Value v;
 };
 
-enum SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e {
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms0 = 0,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms1 = 1,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms2 = 2,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms3 = 3,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms4 = 4,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms5 = 5,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms6 = 6,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms8 = 7,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms10 = 8,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms20 = 9,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms30 = 10,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms40 = 11,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms50 = 12,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms60 = 13,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms80 = 14,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms100 = 15,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms200 = 16,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms300 = 17,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms500 = 18,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms750 = 19,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms1280 = 20,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms1920 = 21,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms2560 = 22,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_spare9 = 23,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_spare8 = 24,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_spare7 = 25,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_spare6 = 26,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_spare5 = 27,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_spare4 = 28,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_spare3 = 29,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_spare2 = 30,
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_spare1 = 31,
+enum SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e {
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms0 = 0,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms1 = 1,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms2 = 2,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms3 = 3,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms4 = 4,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms5 = 5,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms6 = 6,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms8 = 7,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms10 = 8,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms20 = 9,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms30 = 10,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms40 = 11,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms50 = 12,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms60 = 13,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms80 = 14,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms100 = 15,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms200 = 16,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms300 = 17,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms500 = 18,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms750 = 19,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms1280 = 20,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms1920 = 21,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms2560 = 22,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_spare9 = 23,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_spare8 = 24,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_spare7 = 25,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_spare6 = 26,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_spare5 = 27,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_spare4 = 28,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_spare3 = 29,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_spare2 = 30,
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_spare1 = 31,
 };
 
-typedef enum SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e;
+typedef enum SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e;
 
-struct SQN_NR_DRX_ConfigSecondaryGroup {
-	struct SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer drx_onDurationTimer;
-	SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e drx_InactivityTimer;
+struct SQN_NR_DRX_ConfigSecondaryGroup_r16 {
+	struct SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16 drx_onDurationTimer_r16;
+	SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e drx_InactivityTimer_r16;
 };
 
 enum SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigSecondaryGroup_r16_Sel {
@@ -11334,13 +16026,516 @@ enum SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigSecondaryGroup_r16_Sel {
 
 union SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigSecondaryGroup_r16_Value {
 	Null release;
-	struct SQN_NR_DRX_ConfigSecondaryGroup setup;
+	struct SQN_NR_DRX_ConfigSecondaryGroup_r16 setup;
 };
 
 struct SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigSecondaryGroup_r16 {
 	enum SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigSecondaryGroup_r16_Sel d;
 	union SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigSecondaryGroup_r16_Value v;
 };
+
+enum SQN_NR_MAC_CellGroupConfig_enhancedSkipUplinkTxDynamic_r16_e {
+	SQN_NR_MAC_CellGroupConfig_enhancedSkipUplinkTxDynamic_r16_e_true = 0,
+};
+
+typedef enum SQN_NR_MAC_CellGroupConfig_enhancedSkipUplinkTxDynamic_r16_e SQN_NR_MAC_CellGroupConfig_enhancedSkipUplinkTxDynamic_r16_e;
+
+enum SQN_NR_MAC_CellGroupConfig_enhancedSkipUplinkTxConfigured_r16_e {
+	SQN_NR_MAC_CellGroupConfig_enhancedSkipUplinkTxConfigured_r16_e_true = 0,
+};
+
+typedef enum SQN_NR_MAC_CellGroupConfig_enhancedSkipUplinkTxConfigured_r16_e SQN_NR_MAC_CellGroupConfig_enhancedSkipUplinkTxConfigured_r16_e;
+
+enum SQN_NR_MAC_CellGroupConfig_intraCG_Prioritization_r17_e {
+	SQN_NR_MAC_CellGroupConfig_intraCG_Prioritization_r17_e_enabled = 0,
+};
+
+typedef enum SQN_NR_MAC_CellGroupConfig_intraCG_Prioritization_r17_e SQN_NR_MAC_CellGroupConfig_intraCG_Prioritization_r17_e;
+
+enum SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e {
+	SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl0 = 0,
+	SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl1 = 1,
+	SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl2 = 2,
+	SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl4 = 3,
+	SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl6 = 4,
+	SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl8 = 5,
+	SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl16 = 6,
+	SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl24 = 7,
+	SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl33 = 8,
+	SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl40 = 9,
+	SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl64 = 10,
+	SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl80 = 11,
+	SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl96 = 12,
+	SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl112 = 13,
+	SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl128 = 14,
+	SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl160 = 15,
+	SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl320 = 16,
+	SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare15 = 17,
+	SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare14 = 18,
+	SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare13 = 19,
+	SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare12 = 20,
+	SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare11 = 21,
+	SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare10 = 22,
+	SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare9 = 23,
+	SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare8 = 24,
+	SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare7 = 25,
+	SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare6 = 26,
+	SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare5 = 27,
+	SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare4 = 28,
+	SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare3 = 29,
+	SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare2 = 30,
+	SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare1 = 31,
+};
+
+typedef enum SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e;
+
+struct SQN_NR_DRX_ConfigSL_r17 {
+	uint8_t drx_HARQ_RTT_TimerSL_r17;
+	SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e drx_RetransmissionTimerSL_r17;
+};
+
+enum SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigSL_r17_Sel {
+	SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigSL_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigSL_r17_release = 1,
+	SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigSL_r17_setup = 2,
+};
+
+union SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigSL_r17_Value {
+	Null release;
+	struct SQN_NR_DRX_ConfigSL_r17 setup;
+};
+
+struct SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigSL_r17 {
+	enum SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigSL_r17_Sel d;
+	union SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigSL_r17_Value v;
+};
+
+struct SQN_NR_DRX_ConfigExt_v1700 {
+	uint16_t drx_HARQ_RTT_TimerDL_r17;
+	uint16_t drx_HARQ_RTT_TimerUL_r17;
+};
+
+enum SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigExt_v1700_Sel {
+	SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigExt_v1700_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigExt_v1700_release = 1,
+	SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigExt_v1700_setup = 2,
+};
+
+union SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigExt_v1700_Value {
+	Null release;
+	struct SQN_NR_DRX_ConfigExt_v1700 setup;
+};
+
+struct SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigExt_v1700 {
+	enum SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigExt_v1700_Sel d;
+	union SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigExt_v1700_Value v;
+};
+
+enum SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e {
+	SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_ms192 = 0,
+	SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_ms256 = 1,
+	SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_ms320 = 2,
+	SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_ms384 = 3,
+	SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_ms448 = 4,
+	SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_ms512 = 5,
+	SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_ms576 = 6,
+	SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_ms640 = 7,
+	SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_ms1082 = 8,
+	SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_spare7 = 9,
+	SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_spare6 = 10,
+	SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_spare5 = 11,
+	SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_spare4 = 12,
+	SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_spare3 = 13,
+	SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_spare2 = 14,
+	SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_spare1 = 15,
+};
+
+typedef enum SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e;
+
+struct SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_sr_ProhibitTimer_v1700_Optional {
+	bool d;
+	SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e v;
+};
+
+struct SQN_NR_SchedulingRequestToAddModExt_v1700 {
+	struct SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_sr_ProhibitTimer_v1700_Optional sr_ProhibitTimer_v1700;
+};
+
+struct SQN_NR_SchedulingRequestConfig_v1700_SQN_NR_SchedulingRequestToAddModExt_v1700_schedulingRequestToAddModListExt_v1700_Dynamic {
+	size_t d;
+	struct SQN_NR_SchedulingRequestToAddModExt_v1700* v;
+};
+
+struct SQN_NR_SchedulingRequestToAddModExt_v1700_SQN_NR_SchedulingRequestConfig_v1700_schedulingRequestToAddModListExt_v1700_DynamicOptional {
+	bool d;
+	struct SQN_NR_SchedulingRequestConfig_v1700_SQN_NR_SchedulingRequestToAddModExt_v1700_schedulingRequestToAddModListExt_v1700_Dynamic v;
+};
+
+struct SQN_NR_SchedulingRequestConfig_v1700 {
+	struct SQN_NR_SchedulingRequestToAddModExt_v1700_SQN_NR_SchedulingRequestConfig_v1700_schedulingRequestToAddModListExt_v1700_DynamicOptional schedulingRequestToAddModListExt_v1700;
+};
+
+enum SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e {
+	SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms0dot5 = 0,
+	SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms1 = 1,
+	SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms2 = 2,
+	SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms3 = 3,
+	SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms4 = 4,
+	SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms5 = 5,
+	SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms6 = 6,
+	SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms7 = 7,
+	SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms8 = 8,
+	SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms9 = 9,
+	SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms10 = 10,
+	SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms11 = 11,
+	SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms12 = 12,
+	SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms13 = 13,
+	SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms14 = 14,
+	SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms15 = 15,
+	SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_spare13 = 16,
+	SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_spare12 = 17,
+	SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_spare11 = 18,
+	SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_spare10 = 19,
+	SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_spare9 = 20,
+	SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_spare8 = 21,
+	SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_spare7 = 22,
+	SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_spare6 = 23,
+	SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_spare5 = 24,
+	SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_spare4 = 25,
+	SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_spare3 = 26,
+	SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_spare2 = 27,
+	SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_spare1 = 28,
+};
+
+typedef enum SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e;
+
+enum SQN_NR_TAR_Config_r17_timingAdvanceSR_r17_e {
+	SQN_NR_TAR_Config_r17_timingAdvanceSR_r17_e_enabled = 0,
+};
+
+typedef enum SQN_NR_TAR_Config_r17_timingAdvanceSR_r17_e SQN_NR_TAR_Config_r17_timingAdvanceSR_r17_e;
+
+struct SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_offsetThresholdTA_r17_Optional {
+	bool d;
+	SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e v;
+};
+
+struct SQN_NR_TAR_Config_r17_timingAdvanceSR_r17_e_timingAdvanceSR_r17_Optional {
+	bool d;
+	SQN_NR_TAR_Config_r17_timingAdvanceSR_r17_e v;
+};
+
+struct SQN_NR_TAR_Config_r17 {
+	struct SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_offsetThresholdTA_r17_Optional offsetThresholdTA_r17;
+	struct SQN_NR_TAR_Config_r17_timingAdvanceSR_r17_e_timingAdvanceSR_r17_Optional timingAdvanceSR_r17;
+};
+
+enum SQN_NR_SetupRelease_MAC_CellGroupConfig_tar_Config_r17_Sel {
+	SQN_NR_SetupRelease_MAC_CellGroupConfig_tar_Config_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_MAC_CellGroupConfig_tar_Config_r17_release = 1,
+	SQN_NR_SetupRelease_MAC_CellGroupConfig_tar_Config_r17_setup = 2,
+};
+
+union SQN_NR_SetupRelease_MAC_CellGroupConfig_tar_Config_r17_Value {
+	Null release;
+	struct SQN_NR_TAR_Config_r17 setup;
+};
+
+struct SQN_NR_SetupRelease_MAC_CellGroupConfig_tar_Config_r17 {
+	enum SQN_NR_SetupRelease_MAC_CellGroupConfig_tar_Config_r17_Sel d;
+	union SQN_NR_SetupRelease_MAC_CellGroupConfig_tar_Config_r17_Value v;
+};
+
+typedef uint8_t SQN_NR_MBS_RNTI_SpecificConfigId_r17;
+
+typedef uint16_t SQN_NR_RNTI_Value;
+
+enum SQN_NR_MBS_RNTI_SpecificConfig_r17_groupCommon_RNTI_r17_Sel {
+	SQN_NR_MBS_RNTI_SpecificConfig_r17_groupCommon_RNTI_r17_UNBOUND_VALUE = 0,
+	SQN_NR_MBS_RNTI_SpecificConfig_r17_groupCommon_RNTI_r17_g_RNTI = 1,
+	SQN_NR_MBS_RNTI_SpecificConfig_r17_groupCommon_RNTI_r17_g_CS_RNTI = 2,
+};
+
+union SQN_NR_MBS_RNTI_SpecificConfig_r17_groupCommon_RNTI_r17_Value {
+	SQN_NR_RNTI_Value g_RNTI;
+	SQN_NR_RNTI_Value g_CS_RNTI;
+};
+
+struct SQN_NR_MBS_RNTI_SpecificConfig_r17_groupCommon_RNTI_r17 {
+	enum SQN_NR_MBS_RNTI_SpecificConfig_r17_groupCommon_RNTI_r17_Sel d;
+	union SQN_NR_MBS_RNTI_SpecificConfig_r17_groupCommon_RNTI_r17_Value v;
+};
+
+enum SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e {
+	SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms1 = 0,
+	SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms2 = 1,
+	SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms3 = 2,
+	SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms4 = 3,
+	SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms5 = 4,
+	SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms6 = 5,
+	SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms8 = 6,
+	SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms10 = 7,
+	SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms20 = 8,
+	SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms30 = 9,
+	SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms40 = 10,
+	SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms50 = 11,
+	SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms60 = 12,
+	SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms80 = 13,
+	SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms100 = 14,
+	SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms200 = 15,
+	SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms300 = 16,
+	SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms400 = 17,
+	SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms500 = 18,
+	SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms600 = 19,
+	SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms800 = 20,
+	SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms1000 = 21,
+	SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms1200 = 22,
+	SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms1600 = 23,
+	SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_spare8 = 24,
+	SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_spare7 = 25,
+	SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_spare6 = 26,
+	SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_spare5 = 27,
+	SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_spare4 = 28,
+	SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_spare3 = 29,
+	SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_spare2 = 30,
+	SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_spare1 = 31,
+};
+
+typedef enum SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e;
+
+enum SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_Sel {
+	SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_UNBOUND_VALUE = 0,
+	SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_subMilliSeconds = 1,
+	SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds = 2,
+};
+
+union SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_Value {
+	uint8_t subMilliSeconds;
+	SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e milliSeconds;
+};
+
+struct SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17 {
+	enum SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_Sel d;
+	union SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_Value v;
+};
+
+enum SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e {
+	SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms0 = 0,
+	SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms1 = 1,
+	SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms2 = 2,
+	SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms3 = 3,
+	SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms4 = 4,
+	SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms5 = 5,
+	SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms6 = 6,
+	SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms8 = 7,
+	SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms10 = 8,
+	SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms20 = 9,
+	SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms30 = 10,
+	SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms40 = 11,
+	SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms50 = 12,
+	SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms60 = 13,
+	SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms80 = 14,
+	SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms100 = 15,
+	SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms200 = 16,
+	SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms300 = 17,
+	SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms500 = 18,
+	SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms750 = 19,
+	SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms1280 = 20,
+	SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms1920 = 21,
+	SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms2560 = 22,
+	SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_spare9 = 23,
+	SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_spare8 = 24,
+	SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_spare7 = 25,
+	SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_spare6 = 26,
+	SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_spare5 = 27,
+	SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_spare4 = 28,
+	SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_spare3 = 29,
+	SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_spare2 = 30,
+	SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_spare1 = 31,
+};
+
+typedef enum SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e;
+
+enum SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e {
+	SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl0 = 0,
+	SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl1 = 1,
+	SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl2 = 2,
+	SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl4 = 3,
+	SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl6 = 4,
+	SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl8 = 5,
+	SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl16 = 6,
+	SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl24 = 7,
+	SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl33 = 8,
+	SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl40 = 9,
+	SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl64 = 10,
+	SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl80 = 11,
+	SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl96 = 12,
+	SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl112 = 13,
+	SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl128 = 14,
+	SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl160 = 15,
+	SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl320 = 16,
+	SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare15 = 17,
+	SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare14 = 18,
+	SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare13 = 19,
+	SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare12 = 20,
+	SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare11 = 21,
+	SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare10 = 22,
+	SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare9 = 23,
+	SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare8 = 24,
+	SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare7 = 25,
+	SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare6 = 26,
+	SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare5 = 27,
+	SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare4 = 28,
+	SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare3 = 29,
+	SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare2 = 30,
+	SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare1 = 31,
+};
+
+typedef enum SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e;
+
+enum SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_Sel {
+	SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_UNBOUND_VALUE = 0,
+	SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_ms10 = 1,
+	SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_ms20 = 2,
+	SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_ms32 = 3,
+	SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_ms40 = 4,
+	SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_ms60 = 5,
+	SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_ms64 = 6,
+	SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_ms70 = 7,
+	SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_ms80 = 8,
+	SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_ms128 = 9,
+	SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_ms160 = 10,
+	SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_ms256 = 11,
+	SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_ms320 = 12,
+	SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_ms512 = 13,
+	SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_ms640 = 14,
+	SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_ms1024 = 15,
+	SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_ms1280 = 16,
+	SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_ms2048 = 17,
+	SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_ms2560 = 18,
+	SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_ms5120 = 19,
+	SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_ms10240 = 20,
+};
+
+union SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_Value {
+	uint8_t ms10;
+	uint8_t ms20;
+	uint8_t ms32;
+	uint8_t ms40;
+	uint8_t ms60;
+	uint8_t ms64;
+	uint8_t ms70;
+	uint8_t ms80;
+	uint8_t ms128;
+	uint8_t ms160;
+	uint8_t ms256;
+	uint16_t ms320;
+	uint16_t ms512;
+	uint16_t ms640;
+	uint16_t ms1024;
+	uint16_t ms1280;
+	uint16_t ms2048;
+	uint16_t ms2560;
+	uint16_t ms5120;
+	uint16_t ms10240;
+};
+
+struct SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17 {
+	enum SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_Sel d;
+	union SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_Value v;
+};
+
+struct uint8_t_SQN_NR_DRX_ConfigPTM_r17_drx_HARQ_RTT_TimerDL_PTM_r17_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_drx_RetransmissionTimerDL_PTM_r17_Optional {
+	bool d;
+	SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e v;
+};
+
+struct SQN_NR_DRX_ConfigPTM_r17 {
+	struct SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17 drx_onDurationTimerPTM_r17;
+	SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e drx_InactivityTimerPTM_r17;
+	struct uint8_t_SQN_NR_DRX_ConfigPTM_r17_drx_HARQ_RTT_TimerDL_PTM_r17_Optional drx_HARQ_RTT_TimerDL_PTM_r17;
+	struct SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_drx_RetransmissionTimerDL_PTM_r17_Optional drx_RetransmissionTimerDL_PTM_r17;
+	struct SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17 drx_LongCycleStartOffsetPTM_r17;
+	uint8_t drx_SlotOffsetPTM_r17;
+};
+
+enum SQN_NR_SetupRelease_MBS_RNTI_SpecificConfig_r17_drx_ConfigPTM_r17_Sel {
+	SQN_NR_SetupRelease_MBS_RNTI_SpecificConfig_r17_drx_ConfigPTM_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_MBS_RNTI_SpecificConfig_r17_drx_ConfigPTM_r17_release = 1,
+	SQN_NR_SetupRelease_MBS_RNTI_SpecificConfig_r17_drx_ConfigPTM_r17_setup = 2,
+};
+
+union SQN_NR_SetupRelease_MBS_RNTI_SpecificConfig_r17_drx_ConfigPTM_r17_Value {
+	Null release;
+	struct SQN_NR_DRX_ConfigPTM_r17 setup;
+};
+
+struct SQN_NR_SetupRelease_MBS_RNTI_SpecificConfig_r17_drx_ConfigPTM_r17 {
+	enum SQN_NR_SetupRelease_MBS_RNTI_SpecificConfig_r17_drx_ConfigPTM_r17_Sel d;
+	union SQN_NR_SetupRelease_MBS_RNTI_SpecificConfig_r17_drx_ConfigPTM_r17_Value v;
+};
+
+enum SQN_NR_MBS_RNTI_SpecificConfig_r17_harq_FeedbackEnablerMulticast_r17_e {
+	SQN_NR_MBS_RNTI_SpecificConfig_r17_harq_FeedbackEnablerMulticast_r17_e_dci_enabler = 0,
+	SQN_NR_MBS_RNTI_SpecificConfig_r17_harq_FeedbackEnablerMulticast_r17_e_enabled = 1,
+};
+
+typedef enum SQN_NR_MBS_RNTI_SpecificConfig_r17_harq_FeedbackEnablerMulticast_r17_e SQN_NR_MBS_RNTI_SpecificConfig_r17_harq_FeedbackEnablerMulticast_r17_e;
+
+enum SQN_NR_MBS_RNTI_SpecificConfig_r17_harq_FeedbackOptionMulticast_r17_e {
+	SQN_NR_MBS_RNTI_SpecificConfig_r17_harq_FeedbackOptionMulticast_r17_e_ack_nack = 0,
+	SQN_NR_MBS_RNTI_SpecificConfig_r17_harq_FeedbackOptionMulticast_r17_e_nack_only = 1,
+};
+
+typedef enum SQN_NR_MBS_RNTI_SpecificConfig_r17_harq_FeedbackOptionMulticast_r17_e SQN_NR_MBS_RNTI_SpecificConfig_r17_harq_FeedbackOptionMulticast_r17_e;
+
+enum SQN_NR_MBS_RNTI_SpecificConfig_r17_pdsch_AggregationFactor_r17_e {
+	SQN_NR_MBS_RNTI_SpecificConfig_r17_pdsch_AggregationFactor_r17_e_n2 = 0,
+	SQN_NR_MBS_RNTI_SpecificConfig_r17_pdsch_AggregationFactor_r17_e_n4 = 1,
+	SQN_NR_MBS_RNTI_SpecificConfig_r17_pdsch_AggregationFactor_r17_e_n8 = 2,
+};
+
+typedef enum SQN_NR_MBS_RNTI_SpecificConfig_r17_pdsch_AggregationFactor_r17_e SQN_NR_MBS_RNTI_SpecificConfig_r17_pdsch_AggregationFactor_r17_e;
+
+struct SQN_NR_SetupRelease_MBS_RNTI_SpecificConfig_r17_drx_ConfigPTM_r17_SQN_NR_MBS_RNTI_SpecificConfig_r17_drx_ConfigPTM_r17_Optional {
+	bool d;
+	struct SQN_NR_SetupRelease_MBS_RNTI_SpecificConfig_r17_drx_ConfigPTM_r17 v;
+};
+
+struct SQN_NR_MBS_RNTI_SpecificConfig_r17_harq_FeedbackEnablerMulticast_r17_e_harq_FeedbackEnablerMulticast_r17_Optional {
+	bool d;
+	SQN_NR_MBS_RNTI_SpecificConfig_r17_harq_FeedbackEnablerMulticast_r17_e v;
+};
+
+struct SQN_NR_MBS_RNTI_SpecificConfig_r17_harq_FeedbackOptionMulticast_r17_e_harq_FeedbackOptionMulticast_r17_Optional {
+	bool d;
+	SQN_NR_MBS_RNTI_SpecificConfig_r17_harq_FeedbackOptionMulticast_r17_e v;
+};
+
+struct SQN_NR_MBS_RNTI_SpecificConfig_r17_pdsch_AggregationFactor_r17_e_pdsch_AggregationFactor_r17_Optional {
+	bool d;
+	SQN_NR_MBS_RNTI_SpecificConfig_r17_pdsch_AggregationFactor_r17_e v;
+};
+
+struct SQN_NR_MBS_RNTI_SpecificConfig_r17 {
+	SQN_NR_MBS_RNTI_SpecificConfigId_r17 mbs_RNTI_SpecificConfigId_r17;
+	struct SQN_NR_MBS_RNTI_SpecificConfig_r17_groupCommon_RNTI_r17 groupCommon_RNTI_r17;
+	struct SQN_NR_SetupRelease_MBS_RNTI_SpecificConfig_r17_drx_ConfigPTM_r17_SQN_NR_MBS_RNTI_SpecificConfig_r17_drx_ConfigPTM_r17_Optional drx_ConfigPTM_r17;
+	struct SQN_NR_MBS_RNTI_SpecificConfig_r17_harq_FeedbackEnablerMulticast_r17_e_harq_FeedbackEnablerMulticast_r17_Optional harq_FeedbackEnablerMulticast_r17;
+	struct SQN_NR_MBS_RNTI_SpecificConfig_r17_harq_FeedbackOptionMulticast_r17_e_harq_FeedbackOptionMulticast_r17_Optional harq_FeedbackOptionMulticast_r17;
+	struct SQN_NR_MBS_RNTI_SpecificConfig_r17_pdsch_AggregationFactor_r17_e_pdsch_AggregationFactor_r17_Optional pdsch_AggregationFactor_r17;
+};
+
+enum SQN_NR_MAC_CellGroupConfig_drx_LastTransmissionUL_r17_e {
+	SQN_NR_MAC_CellGroupConfig_drx_LastTransmissionUL_r17_e_enabled = 0,
+};
+
+typedef enum SQN_NR_MAC_CellGroupConfig_drx_LastTransmissionUL_r17_e SQN_NR_MAC_CellGroupConfig_drx_LastTransmissionUL_r17_e;
 
 struct SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_Config_SQN_NR_MAC_CellGroupConfig_drx_Config_Optional {
 	bool d;
@@ -11402,6 +16597,106 @@ struct SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigSecondaryGroup_r16_SQN_
 	struct SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigSecondaryGroup_r16 v;
 };
 
+struct SQN_NR_MAC_CellGroupConfig_enhancedSkipUplinkTxDynamic_r16_e_enhancedSkipUplinkTxDynamic_r16_Optional {
+	bool d;
+	SQN_NR_MAC_CellGroupConfig_enhancedSkipUplinkTxDynamic_r16_e v;
+};
+
+struct SQN_NR_MAC_CellGroupConfig_enhancedSkipUplinkTxConfigured_r16_e_enhancedSkipUplinkTxConfigured_r16_Optional {
+	bool d;
+	SQN_NR_MAC_CellGroupConfig_enhancedSkipUplinkTxConfigured_r16_e v;
+};
+
+struct SQN_NR_MAC_CellGroupConfig_intraCG_Prioritization_r17_e_intraCG_Prioritization_r17_Optional {
+	bool d;
+	SQN_NR_MAC_CellGroupConfig_intraCG_Prioritization_r17_e v;
+};
+
+struct SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigSL_r17_SQN_NR_MAC_CellGroupConfig_drx_ConfigSL_r17_Optional {
+	bool d;
+	struct SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigSL_r17 v;
+};
+
+struct SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigExt_v1700_SQN_NR_MAC_CellGroupConfig_drx_ConfigExt_v1700_Optional {
+	bool d;
+	struct SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigExt_v1700 v;
+};
+
+struct SQN_NR_SchedulingRequestId_SQN_NR_MAC_CellGroupConfig_schedulingRequestID_BFR_r17_Optional {
+	bool d;
+	SQN_NR_SchedulingRequestId v;
+};
+
+struct SQN_NR_SchedulingRequestId_SQN_NR_MAC_CellGroupConfig_schedulingRequestID_BFR2_r17_Optional {
+	bool d;
+	SQN_NR_SchedulingRequestId v;
+};
+
+struct SQN_NR_SchedulingRequestConfig_v1700_SQN_NR_MAC_CellGroupConfig_schedulingRequestConfig_v1700_Optional {
+	bool d;
+	struct SQN_NR_SchedulingRequestConfig_v1700 v;
+};
+
+struct SQN_NR_SetupRelease_MAC_CellGroupConfig_tar_Config_r17_SQN_NR_MAC_CellGroupConfig_tar_Config_r17_Optional {
+	bool d;
+	struct SQN_NR_SetupRelease_MAC_CellGroupConfig_tar_Config_r17 v;
+};
+
+struct SQN_NR_MAC_CellGroupConfig_SQN_NR_MBS_RNTI_SpecificConfig_r17_g_RNTI_ConfigToAddModList_r17_Dynamic {
+	size_t d;
+	struct SQN_NR_MBS_RNTI_SpecificConfig_r17* v;
+};
+
+struct SQN_NR_MBS_RNTI_SpecificConfig_r17_SQN_NR_MAC_CellGroupConfig_g_RNTI_ConfigToAddModList_r17_DynamicOptional {
+	bool d;
+	struct SQN_NR_MAC_CellGroupConfig_SQN_NR_MBS_RNTI_SpecificConfig_r17_g_RNTI_ConfigToAddModList_r17_Dynamic v;
+};
+
+struct SQN_NR_MBS_RNTI_SpecificConfigId_r17_SQN_NR_MAC_CellGroupConfig_g_RNTI_ConfigToReleaseList_r17_Dynamic {
+	size_t d;
+	SQN_NR_MBS_RNTI_SpecificConfigId_r17* v;
+};
+
+struct SQN_NR_MBS_RNTI_SpecificConfigId_r17_SQN_NR_MAC_CellGroupConfig_g_RNTI_ConfigToReleaseList_r17_DynamicOptional {
+	bool d;
+	struct SQN_NR_MBS_RNTI_SpecificConfigId_r17_SQN_NR_MAC_CellGroupConfig_g_RNTI_ConfigToReleaseList_r17_Dynamic v;
+};
+
+struct SQN_NR_MAC_CellGroupConfig_SQN_NR_MBS_RNTI_SpecificConfig_r17_g_CS_RNTI_ConfigToAddModList_r17_Dynamic {
+	size_t d;
+	struct SQN_NR_MBS_RNTI_SpecificConfig_r17* v;
+};
+
+struct SQN_NR_MBS_RNTI_SpecificConfig_r17_SQN_NR_MAC_CellGroupConfig_g_CS_RNTI_ConfigToAddModList_r17_DynamicOptional {
+	bool d;
+	struct SQN_NR_MAC_CellGroupConfig_SQN_NR_MBS_RNTI_SpecificConfig_r17_g_CS_RNTI_ConfigToAddModList_r17_Dynamic v;
+};
+
+struct SQN_NR_MBS_RNTI_SpecificConfigId_r17_SQN_NR_MAC_CellGroupConfig_g_CS_RNTI_ConfigToReleaseList_r17_Dynamic {
+	size_t d;
+	SQN_NR_MBS_RNTI_SpecificConfigId_r17* v;
+};
+
+struct SQN_NR_MBS_RNTI_SpecificConfigId_r17_SQN_NR_MAC_CellGroupConfig_g_CS_RNTI_ConfigToReleaseList_r17_DynamicOptional {
+	bool d;
+	struct SQN_NR_MBS_RNTI_SpecificConfigId_r17_SQN_NR_MAC_CellGroupConfig_g_CS_RNTI_ConfigToReleaseList_r17_Dynamic v;
+};
+
+struct bool_SQN_NR_MAC_CellGroupConfig_allowCSI_SRS_Tx_MulticastDRX_Active_r17_Optional {
+	bool d;
+	bool v;
+};
+
+struct SQN_NR_SchedulingRequestId_SQN_NR_MAC_CellGroupConfig_schedulingRequestID_PosMG_Request_r17_Optional {
+	bool d;
+	SQN_NR_SchedulingRequestId v;
+};
+
+struct SQN_NR_MAC_CellGroupConfig_drx_LastTransmissionUL_r17_e_drx_LastTransmissionUL_r17_Optional {
+	bool d;
+	SQN_NR_MAC_CellGroupConfig_drx_LastTransmissionUL_r17_e v;
+};
+
 struct SQN_NR_MAC_CellGroupConfig {
 	struct SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_Config_SQN_NR_MAC_CellGroupConfig_drx_Config_Optional drx_Config;
 	struct SQN_NR_SchedulingRequestConfig_SQN_NR_MAC_CellGroupConfig_schedulingRequestConfig_Optional schedulingRequestConfig;
@@ -11416,6 +16711,22 @@ struct SQN_NR_MAC_CellGroupConfig {
 	struct SQN_NR_MAC_CellGroupConfig_lch_BasedPrioritization_r16_e_lch_BasedPrioritization_r16_Optional lch_BasedPrioritization_r16;
 	struct SQN_NR_SchedulingRequestId_SQN_NR_MAC_CellGroupConfig_schedulingRequestID_BFR_SCell_r16_Optional schedulingRequestID_BFR_SCell_r16;
 	struct SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigSecondaryGroup_r16_SQN_NR_MAC_CellGroupConfig_drx_ConfigSecondaryGroup_r16_Optional drx_ConfigSecondaryGroup_r16;
+	struct SQN_NR_MAC_CellGroupConfig_enhancedSkipUplinkTxDynamic_r16_e_enhancedSkipUplinkTxDynamic_r16_Optional enhancedSkipUplinkTxDynamic_r16;
+	struct SQN_NR_MAC_CellGroupConfig_enhancedSkipUplinkTxConfigured_r16_e_enhancedSkipUplinkTxConfigured_r16_Optional enhancedSkipUplinkTxConfigured_r16;
+	struct SQN_NR_MAC_CellGroupConfig_intraCG_Prioritization_r17_e_intraCG_Prioritization_r17_Optional intraCG_Prioritization_r17;
+	struct SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigSL_r17_SQN_NR_MAC_CellGroupConfig_drx_ConfigSL_r17_Optional drx_ConfigSL_r17;
+	struct SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigExt_v1700_SQN_NR_MAC_CellGroupConfig_drx_ConfigExt_v1700_Optional drx_ConfigExt_v1700;
+	struct SQN_NR_SchedulingRequestId_SQN_NR_MAC_CellGroupConfig_schedulingRequestID_BFR_r17_Optional schedulingRequestID_BFR_r17;
+	struct SQN_NR_SchedulingRequestId_SQN_NR_MAC_CellGroupConfig_schedulingRequestID_BFR2_r17_Optional schedulingRequestID_BFR2_r17;
+	struct SQN_NR_SchedulingRequestConfig_v1700_SQN_NR_MAC_CellGroupConfig_schedulingRequestConfig_v1700_Optional schedulingRequestConfig_v1700;
+	struct SQN_NR_SetupRelease_MAC_CellGroupConfig_tar_Config_r17_SQN_NR_MAC_CellGroupConfig_tar_Config_r17_Optional tar_Config_r17;
+	struct SQN_NR_MBS_RNTI_SpecificConfig_r17_SQN_NR_MAC_CellGroupConfig_g_RNTI_ConfigToAddModList_r17_DynamicOptional g_RNTI_ConfigToAddModList_r17;
+	struct SQN_NR_MBS_RNTI_SpecificConfigId_r17_SQN_NR_MAC_CellGroupConfig_g_RNTI_ConfigToReleaseList_r17_DynamicOptional g_RNTI_ConfigToReleaseList_r17;
+	struct SQN_NR_MBS_RNTI_SpecificConfig_r17_SQN_NR_MAC_CellGroupConfig_g_CS_RNTI_ConfigToAddModList_r17_DynamicOptional g_CS_RNTI_ConfigToAddModList_r17;
+	struct SQN_NR_MBS_RNTI_SpecificConfigId_r17_SQN_NR_MAC_CellGroupConfig_g_CS_RNTI_ConfigToReleaseList_r17_DynamicOptional g_CS_RNTI_ConfigToReleaseList_r17;
+	struct bool_SQN_NR_MAC_CellGroupConfig_allowCSI_SRS_Tx_MulticastDRX_Active_r17_Optional allowCSI_SRS_Tx_MulticastDRX_Active_r17;
+	struct SQN_NR_SchedulingRequestId_SQN_NR_MAC_CellGroupConfig_schedulingRequestID_PosMG_Request_r17_Optional schedulingRequestID_PosMG_Request_r17;
+	struct SQN_NR_MAC_CellGroupConfig_drx_LastTransmissionUL_r17_e_drx_LastTransmissionUL_r17_Optional drx_LastTransmissionUL_r17;
 };
 
 enum SQN_NR_GapConfig_mgl_e {
@@ -11534,6 +16845,201 @@ struct SQN_NR_SetupRelease_MeasGapConfig_gapUE {
 	union SQN_NR_SetupRelease_MeasGapConfig_gapUE_Value v;
 };
 
+typedef uint8_t SQN_NR_MeasGapId_r17;
+
+enum SQN_NR_GapConfig_r17_gapType_r17_e {
+	SQN_NR_GapConfig_r17_gapType_r17_e_perUE = 0,
+	SQN_NR_GapConfig_r17_gapType_r17_e_perFR1 = 1,
+	SQN_NR_GapConfig_r17_gapType_r17_e_perFR2 = 2,
+};
+
+typedef enum SQN_NR_GapConfig_r17_gapType_r17_e SQN_NR_GapConfig_r17_gapType_r17_e;
+
+enum SQN_NR_GapConfig_r17_mgl_r17_e {
+	SQN_NR_GapConfig_r17_mgl_r17_e_ms1 = 0,
+	SQN_NR_GapConfig_r17_mgl_r17_e_ms1dot5 = 1,
+	SQN_NR_GapConfig_r17_mgl_r17_e_ms2 = 2,
+	SQN_NR_GapConfig_r17_mgl_r17_e_ms3 = 3,
+	SQN_NR_GapConfig_r17_mgl_r17_e_ms3dot5 = 4,
+	SQN_NR_GapConfig_r17_mgl_r17_e_ms4 = 5,
+	SQN_NR_GapConfig_r17_mgl_r17_e_ms5 = 6,
+	SQN_NR_GapConfig_r17_mgl_r17_e_ms5dot5 = 7,
+	SQN_NR_GapConfig_r17_mgl_r17_e_ms6 = 8,
+	SQN_NR_GapConfig_r17_mgl_r17_e_ms10 = 9,
+	SQN_NR_GapConfig_r17_mgl_r17_e_ms20 = 10,
+};
+
+typedef enum SQN_NR_GapConfig_r17_mgl_r17_e SQN_NR_GapConfig_r17_mgl_r17_e;
+
+enum SQN_NR_GapConfig_r17_mgrp_r17_e {
+	SQN_NR_GapConfig_r17_mgrp_r17_e_ms20 = 0,
+	SQN_NR_GapConfig_r17_mgrp_r17_e_ms40 = 1,
+	SQN_NR_GapConfig_r17_mgrp_r17_e_ms80 = 2,
+	SQN_NR_GapConfig_r17_mgrp_r17_e_ms160 = 3,
+};
+
+typedef enum SQN_NR_GapConfig_r17_mgrp_r17_e SQN_NR_GapConfig_r17_mgrp_r17_e;
+
+enum SQN_NR_GapConfig_r17_mgta_r17_e {
+	SQN_NR_GapConfig_r17_mgta_r17_e_ms0 = 0,
+	SQN_NR_GapConfig_r17_mgta_r17_e_ms0dot25 = 1,
+	SQN_NR_GapConfig_r17_mgta_r17_e_ms0dot5 = 2,
+	SQN_NR_GapConfig_r17_mgta_r17_e_ms0dot75 = 3,
+};
+
+typedef enum SQN_NR_GapConfig_r17_mgta_r17_e SQN_NR_GapConfig_r17_mgta_r17_e;
+
+enum SQN_NR_GapConfig_r17_refServCellIndicator_r17_e {
+	SQN_NR_GapConfig_r17_refServCellIndicator_r17_e_pCell = 0,
+	SQN_NR_GapConfig_r17_refServCellIndicator_r17_e_pSCell = 1,
+	SQN_NR_GapConfig_r17_refServCellIndicator_r17_e_mcg_FR2 = 2,
+};
+
+typedef enum SQN_NR_GapConfig_r17_refServCellIndicator_r17_e SQN_NR_GapConfig_r17_refServCellIndicator_r17_e;
+
+enum SQN_NR_GapConfig_r17_preConfigInd_r17_e {
+	SQN_NR_GapConfig_r17_preConfigInd_r17_e_true = 0,
+};
+
+typedef enum SQN_NR_GapConfig_r17_preConfigInd_r17_e SQN_NR_GapConfig_r17_preConfigInd_r17_e;
+
+enum SQN_NR_GapConfig_r17_ncsgInd_r17_e {
+	SQN_NR_GapConfig_r17_ncsgInd_r17_e_true = 0,
+};
+
+typedef enum SQN_NR_GapConfig_r17_ncsgInd_r17_e SQN_NR_GapConfig_r17_ncsgInd_r17_e;
+
+enum SQN_NR_GapConfig_r17_gapAssociationPRS_r17_e {
+	SQN_NR_GapConfig_r17_gapAssociationPRS_r17_e_true = 0,
+};
+
+typedef enum SQN_NR_GapConfig_r17_gapAssociationPRS_r17_e SQN_NR_GapConfig_r17_gapAssociationPRS_r17_e;
+
+enum SQN_NR_MeasGapSharingScheme_e {
+	SQN_NR_MeasGapSharingScheme_e_scheme00 = 0,
+	SQN_NR_MeasGapSharingScheme_e_scheme01 = 1,
+	SQN_NR_MeasGapSharingScheme_e_scheme10 = 2,
+	SQN_NR_MeasGapSharingScheme_e_scheme11 = 3,
+};
+
+typedef enum SQN_NR_MeasGapSharingScheme_e SQN_NR_MeasGapSharingScheme_e;
+
+typedef uint8_t SQN_NR_GapPriority_r17;
+
+struct SQN_NR_GapConfig_r17_refServCellIndicator_r17_e_refServCellIndicator_r17_Optional {
+	bool d;
+	SQN_NR_GapConfig_r17_refServCellIndicator_r17_e v;
+};
+
+struct SQN_NR_ServCellIndex_SQN_NR_GapConfig_r17_refFR2_ServCellAsyncCA_r17_Optional {
+	bool d;
+	SQN_NR_ServCellIndex v;
+};
+
+struct SQN_NR_GapConfig_r17_preConfigInd_r17_e_preConfigInd_r17_Optional {
+	bool d;
+	SQN_NR_GapConfig_r17_preConfigInd_r17_e v;
+};
+
+struct SQN_NR_GapConfig_r17_ncsgInd_r17_e_ncsgInd_r17_Optional {
+	bool d;
+	SQN_NR_GapConfig_r17_ncsgInd_r17_e v;
+};
+
+struct SQN_NR_GapConfig_r17_gapAssociationPRS_r17_e_gapAssociationPRS_r17_Optional {
+	bool d;
+	SQN_NR_GapConfig_r17_gapAssociationPRS_r17_e v;
+};
+
+struct SQN_NR_MeasGapSharingScheme_e_SQN_NR_GapConfig_r17_gapSharing_r17_Optional {
+	bool d;
+	SQN_NR_MeasGapSharingScheme_e v;
+};
+
+struct SQN_NR_GapPriority_r17_SQN_NR_GapConfig_r17_gapPriority_r17_Optional {
+	bool d;
+	SQN_NR_GapPriority_r17 v;
+};
+
+struct SQN_NR_GapConfig_r17 {
+	SQN_NR_MeasGapId_r17 measGapId_r17;
+	SQN_NR_GapConfig_r17_gapType_r17_e gapType_r17;
+	uint8_t gapOffset_r17;
+	SQN_NR_GapConfig_r17_mgl_r17_e mgl_r17;
+	SQN_NR_GapConfig_r17_mgrp_r17_e mgrp_r17;
+	SQN_NR_GapConfig_r17_mgta_r17_e mgta_r17;
+	struct SQN_NR_GapConfig_r17_refServCellIndicator_r17_e_refServCellIndicator_r17_Optional refServCellIndicator_r17;
+	struct SQN_NR_ServCellIndex_SQN_NR_GapConfig_r17_refFR2_ServCellAsyncCA_r17_Optional refFR2_ServCellAsyncCA_r17;
+	struct SQN_NR_GapConfig_r17_preConfigInd_r17_e_preConfigInd_r17_Optional preConfigInd_r17;
+	struct SQN_NR_GapConfig_r17_ncsgInd_r17_e_ncsgInd_r17_Optional ncsgInd_r17;
+	struct SQN_NR_GapConfig_r17_gapAssociationPRS_r17_e_gapAssociationPRS_r17_Optional gapAssociationPRS_r17;
+	struct SQN_NR_MeasGapSharingScheme_e_SQN_NR_GapConfig_r17_gapSharing_r17_Optional gapSharing_r17;
+	struct SQN_NR_GapPriority_r17_SQN_NR_GapConfig_r17_gapPriority_r17_Optional gapPriority_r17;
+};
+
+typedef uint8_t SQN_NR_MeasPosPreConfigGapId_r17;
+
+enum SQN_NR_PosGapConfig_r17_mgl_r17_e {
+	SQN_NR_PosGapConfig_r17_mgl_r17_e_ms1dot5 = 0,
+	SQN_NR_PosGapConfig_r17_mgl_r17_e_ms3 = 1,
+	SQN_NR_PosGapConfig_r17_mgl_r17_e_ms3dot5 = 2,
+	SQN_NR_PosGapConfig_r17_mgl_r17_e_ms4 = 3,
+	SQN_NR_PosGapConfig_r17_mgl_r17_e_ms5dot5 = 4,
+	SQN_NR_PosGapConfig_r17_mgl_r17_e_ms6 = 5,
+	SQN_NR_PosGapConfig_r17_mgl_r17_e_ms10 = 6,
+	SQN_NR_PosGapConfig_r17_mgl_r17_e_ms20 = 7,
+};
+
+typedef enum SQN_NR_PosGapConfig_r17_mgl_r17_e SQN_NR_PosGapConfig_r17_mgl_r17_e;
+
+enum SQN_NR_PosGapConfig_r17_mgrp_r17_e {
+	SQN_NR_PosGapConfig_r17_mgrp_r17_e_ms20 = 0,
+	SQN_NR_PosGapConfig_r17_mgrp_r17_e_ms40 = 1,
+	SQN_NR_PosGapConfig_r17_mgrp_r17_e_ms80 = 2,
+	SQN_NR_PosGapConfig_r17_mgrp_r17_e_ms160 = 3,
+};
+
+typedef enum SQN_NR_PosGapConfig_r17_mgrp_r17_e SQN_NR_PosGapConfig_r17_mgrp_r17_e;
+
+enum SQN_NR_PosGapConfig_r17_mgta_r17_e {
+	SQN_NR_PosGapConfig_r17_mgta_r17_e_ms0 = 0,
+	SQN_NR_PosGapConfig_r17_mgta_r17_e_ms0dot25 = 1,
+	SQN_NR_PosGapConfig_r17_mgta_r17_e_ms0dot5 = 2,
+};
+
+typedef enum SQN_NR_PosGapConfig_r17_mgta_r17_e SQN_NR_PosGapConfig_r17_mgta_r17_e;
+
+enum SQN_NR_PosGapConfig_r17_gapType_r17_e {
+	SQN_NR_PosGapConfig_r17_gapType_r17_e_perUE = 0,
+	SQN_NR_PosGapConfig_r17_gapType_r17_e_perFR1 = 1,
+	SQN_NR_PosGapConfig_r17_gapType_r17_e_perFR2 = 2,
+};
+
+typedef enum SQN_NR_PosGapConfig_r17_gapType_r17_e SQN_NR_PosGapConfig_r17_gapType_r17_e;
+
+struct SQN_NR_PosGapConfig_r17 {
+	SQN_NR_MeasPosPreConfigGapId_r17 measPosPreConfigGapId_r17;
+	uint8_t gapOffset_r17;
+	SQN_NR_PosGapConfig_r17_mgl_r17_e mgl_r17;
+	SQN_NR_PosGapConfig_r17_mgrp_r17_e mgrp_r17;
+	SQN_NR_PosGapConfig_r17_mgta_r17_e mgta_r17;
+	SQN_NR_PosGapConfig_r17_gapType_r17_e gapType_r17;
+};
+
+struct SQN_NR_PosGapConfig_r17_SQN_NR_PosMeasGapPreConfigToAddModList_r17_Dynamic {
+	size_t d;
+	struct SQN_NR_PosGapConfig_r17* v;
+};
+
+typedef struct SQN_NR_PosGapConfig_r17_SQN_NR_PosMeasGapPreConfigToAddModList_r17_Dynamic SQN_NR_PosMeasGapPreConfigToAddModList_r17;
+
+struct SQN_NR_MeasPosPreConfigGapId_r17_SQN_NR_PosMeasGapPreConfigToReleaseList_r17_Dynamic {
+	size_t d;
+	SQN_NR_MeasPosPreConfigGapId_r17* v;
+};
+
+typedef struct SQN_NR_MeasPosPreConfigGapId_r17_SQN_NR_PosMeasGapPreConfigToReleaseList_r17_Dynamic SQN_NR_PosMeasGapPreConfigToReleaseList_r17;
+
 struct SQN_NR_SetupRelease_MeasGapConfig_gapFR2_SQN_NR_MeasGapConfig_gapFR2_Optional {
 	bool d;
 	struct SQN_NR_SetupRelease_MeasGapConfig_gapFR2 v;
@@ -11549,10 +17055,44 @@ struct SQN_NR_SetupRelease_MeasGapConfig_gapUE_SQN_NR_MeasGapConfig_gapUE_Option
 	struct SQN_NR_SetupRelease_MeasGapConfig_gapUE v;
 };
 
+struct SQN_NR_MeasGapConfig_SQN_NR_GapConfig_r17_gapToAddModList_r17_Dynamic {
+	size_t d;
+	struct SQN_NR_GapConfig_r17* v;
+};
+
+struct SQN_NR_GapConfig_r17_SQN_NR_MeasGapConfig_gapToAddModList_r17_DynamicOptional {
+	bool d;
+	struct SQN_NR_MeasGapConfig_SQN_NR_GapConfig_r17_gapToAddModList_r17_Dynamic v;
+};
+
+struct SQN_NR_MeasGapId_r17_SQN_NR_MeasGapConfig_gapToReleaseList_r17_Dynamic {
+	size_t d;
+	SQN_NR_MeasGapId_r17* v;
+};
+
+struct SQN_NR_MeasGapId_r17_SQN_NR_MeasGapConfig_gapToReleaseList_r17_DynamicOptional {
+	bool d;
+	struct SQN_NR_MeasGapId_r17_SQN_NR_MeasGapConfig_gapToReleaseList_r17_Dynamic v;
+};
+
+struct SQN_NR_PosMeasGapPreConfigToAddModList_r17_SQN_NR_MeasGapConfig_posMeasGapPreConfigToAddModList_r17_Optional {
+	bool d;
+	SQN_NR_PosMeasGapPreConfigToAddModList_r17 v;
+};
+
+struct SQN_NR_PosMeasGapPreConfigToReleaseList_r17_SQN_NR_MeasGapConfig_posMeasGapPreConfigToReleaseList_r17_Optional {
+	bool d;
+	SQN_NR_PosMeasGapPreConfigToReleaseList_r17 v;
+};
+
 struct SQN_NR_MeasGapConfig {
 	struct SQN_NR_SetupRelease_MeasGapConfig_gapFR2_SQN_NR_MeasGapConfig_gapFR2_Optional gapFR2;
 	struct SQN_NR_SetupRelease_MeasGapConfig_gapFR1_SQN_NR_MeasGapConfig_gapFR1_Optional gapFR1;
 	struct SQN_NR_SetupRelease_MeasGapConfig_gapUE_SQN_NR_MeasGapConfig_gapUE_Optional gapUE;
+	struct SQN_NR_GapConfig_r17_SQN_NR_MeasGapConfig_gapToAddModList_r17_DynamicOptional gapToAddModList_r17;
+	struct SQN_NR_MeasGapId_r17_SQN_NR_MeasGapConfig_gapToReleaseList_r17_DynamicOptional gapToReleaseList_r17;
+	struct SQN_NR_PosMeasGapPreConfigToAddModList_r17_SQN_NR_MeasGapConfig_posMeasGapPreConfigToAddModList_r17_Optional posMeasGapPreConfigToAddModList_r17;
+	struct SQN_NR_PosMeasGapPreConfigToReleaseList_r17_SQN_NR_MeasGapConfig_posMeasGapPreConfigToReleaseList_r17_Optional posMeasGapPreConfigToReleaseList_r17;
 };
 
 typedef B48 SQN_NR_NG_5G_S_TMSI;
@@ -11598,7 +17138,78 @@ struct SQN_NR_PagingRecord_SQN_NR_PagingRecordList_Dynamic {
 
 typedef struct SQN_NR_PagingRecord_SQN_NR_PagingRecordList_Dynamic SQN_NR_PagingRecordList;
 
-struct SQN_NR_Paging_nonCriticalExtension {
+enum SQN_NR_PagingRecord_v1700_pagingCause_r17_e {
+	SQN_NR_PagingRecord_v1700_pagingCause_r17_e_voice = 0,
+};
+
+typedef enum SQN_NR_PagingRecord_v1700_pagingCause_r17_e SQN_NR_PagingRecord_v1700_pagingCause_r17_e;
+
+struct SQN_NR_PagingRecord_v1700_pagingCause_r17_e_pagingCause_r17_Optional {
+	bool d;
+	SQN_NR_PagingRecord_v1700_pagingCause_r17_e v;
+};
+
+struct SQN_NR_PagingRecord_v1700 {
+	struct SQN_NR_PagingRecord_v1700_pagingCause_r17_e_pagingCause_r17_Optional pagingCause_r17;
+};
+
+struct SQN_NR_PagingRecord_v1700_SQN_NR_PagingRecordList_v1700_Dynamic {
+	size_t d;
+	struct SQN_NR_PagingRecord_v1700* v;
+};
+
+typedef struct SQN_NR_PagingRecord_v1700_SQN_NR_PagingRecordList_v1700_Dynamic SQN_NR_PagingRecordList_v1700;
+
+enum SQN_NR_TMGI_r17_plmn_Id_r17_Sel {
+	SQN_NR_TMGI_r17_plmn_Id_r17_UNBOUND_VALUE = 0,
+	SQN_NR_TMGI_r17_plmn_Id_r17_plmn_Index = 1,
+	SQN_NR_TMGI_r17_plmn_Id_r17_explicitValue = 2,
+};
+
+union SQN_NR_TMGI_r17_plmn_Id_r17_Value {
+	uint8_t plmn_Index;
+	struct SQN_NR_PLMN_Identity explicitValue;
+};
+
+struct SQN_NR_TMGI_r17_plmn_Id_r17 {
+	enum SQN_NR_TMGI_r17_plmn_Id_r17_Sel d;
+	union SQN_NR_TMGI_r17_plmn_Id_r17_Value v;
+};
+
+struct SQN_NR_TMGI_r17 {
+	struct SQN_NR_TMGI_r17_plmn_Id_r17 plmn_Id_r17;
+	O3 serviceId_r17;
+};
+
+struct SQN_NR_TMGI_r17_SQN_NR_PagingGroupList_r17_Dynamic {
+	size_t d;
+	struct SQN_NR_TMGI_r17* v;
+};
+
+typedef struct SQN_NR_TMGI_r17_SQN_NR_PagingGroupList_r17_Dynamic SQN_NR_PagingGroupList_r17;
+
+struct SQN_NR_Paging_v1700_IEs_nonCriticalExtension {
+};
+
+struct SQN_NR_PagingRecordList_v1700_SQN_NR_Paging_v1700_IEs_pagingRecordList_v1700_Optional {
+	bool d;
+	SQN_NR_PagingRecordList_v1700 v;
+};
+
+struct SQN_NR_PagingGroupList_r17_SQN_NR_Paging_v1700_IEs_pagingGroupList_r17_Optional {
+	bool d;
+	SQN_NR_PagingGroupList_r17 v;
+};
+
+struct SQN_NR_Paging_v1700_IEs_nonCriticalExtension_nonCriticalExtension_Optional {
+	bool d;
+	struct SQN_NR_Paging_v1700_IEs_nonCriticalExtension v;
+};
+
+struct SQN_NR_Paging_v1700_IEs {
+	struct SQN_NR_PagingRecordList_v1700_SQN_NR_Paging_v1700_IEs_pagingRecordList_v1700_Optional pagingRecordList_v1700;
+	struct SQN_NR_PagingGroupList_r17_SQN_NR_Paging_v1700_IEs_pagingGroupList_r17_Optional pagingGroupList_r17;
+	struct SQN_NR_Paging_v1700_IEs_nonCriticalExtension_nonCriticalExtension_Optional nonCriticalExtension;
 };
 
 struct SQN_NR_PagingRecordList_SQN_NR_Paging_pagingRecordList_Optional {
@@ -11611,15 +17222,15 @@ struct OCTET_STRING_SQN_NR_Paging_lateNonCriticalExtension_Optional {
 	OCTET_STRING v;
 };
 
-struct SQN_NR_Paging_nonCriticalExtension_nonCriticalExtension_Optional {
+struct SQN_NR_Paging_v1700_IEs_SQN_NR_Paging_nonCriticalExtension_Optional {
 	bool d;
-	struct SQN_NR_Paging_nonCriticalExtension v;
+	struct SQN_NR_Paging_v1700_IEs v;
 };
 
 struct SQN_NR_Paging {
 	struct SQN_NR_PagingRecordList_SQN_NR_Paging_pagingRecordList_Optional pagingRecordList;
 	struct OCTET_STRING_SQN_NR_Paging_lateNonCriticalExtension_Optional lateNonCriticalExtension;
-	struct SQN_NR_Paging_nonCriticalExtension_nonCriticalExtension_Optional nonCriticalExtension;
+	struct SQN_NR_Paging_v1700_IEs_SQN_NR_Paging_nonCriticalExtension_Optional nonCriticalExtension;
 };
 
 enum SQN_NR_PCCH_MessageType_c1_Sel {
@@ -11875,10 +17486,28 @@ struct SQN_NR_QCL_Info_SQN_NR_TCI_State_qcl_Type2_Optional {
 	struct SQN_NR_QCL_Info v;
 };
 
+struct SQN_NR_AdditionalPCIIndex_r17_SQN_NR_TCI_State_additionalPCI_r17_Optional {
+	bool d;
+	SQN_NR_AdditionalPCIIndex_r17 v;
+};
+
+struct SQN_NR_PUSCH_PathlossReferenceRS_Id_r17_SQN_NR_TCI_State_pathlossReferenceRS_Id_r17_Optional {
+	bool d;
+	SQN_NR_PUSCH_PathlossReferenceRS_Id_r17 v;
+};
+
+struct SQN_NR_Uplink_powerControlId_r17_SQN_NR_TCI_State_ul_powerControl_r17_Optional {
+	bool d;
+	SQN_NR_Uplink_powerControlId_r17 v;
+};
+
 struct SQN_NR_TCI_State {
 	SQN_NR_TCI_StateId tci_StateId;
 	struct SQN_NR_QCL_Info qcl_Type1;
 	struct SQN_NR_QCL_Info_SQN_NR_TCI_State_qcl_Type2_Optional qcl_Type2;
+	struct SQN_NR_AdditionalPCIIndex_r17_SQN_NR_TCI_State_additionalPCI_r17_Optional additionalPCI_r17;
+	struct SQN_NR_PUSCH_PathlossReferenceRS_Id_r17_SQN_NR_TCI_State_pathlossReferenceRS_Id_r17_Optional pathlossReferenceRS_Id_r17;
+	struct SQN_NR_Uplink_powerControlId_r17_SQN_NR_TCI_State_ul_powerControl_r17_Optional ul_powerControl_r17;
 };
 
 enum SQN_NR_PDSCH_Config_vrb_ToPRB_Interleaver_e {
@@ -11919,102 +17548,6 @@ enum SQN_NR_PDSCH_Config_pdsch_AggregationFactor_e {
 };
 
 typedef enum SQN_NR_PDSCH_Config_pdsch_AggregationFactor_e SQN_NR_PDSCH_Config_pdsch_AggregationFactor_e;
-
-typedef uint8_t SQN_NR_RateMatchPatternId;
-
-enum SQN_NR_RateMatchPattern_patternType_bitmaps_symbolsInResourceBlock_Sel {
-	SQN_NR_RateMatchPattern_patternType_bitmaps_symbolsInResourceBlock_UNBOUND_VALUE = 0,
-	SQN_NR_RateMatchPattern_patternType_bitmaps_symbolsInResourceBlock_oneSlot = 1,
-	SQN_NR_RateMatchPattern_patternType_bitmaps_symbolsInResourceBlock_twoSlots = 2,
-};
-
-union SQN_NR_RateMatchPattern_patternType_bitmaps_symbolsInResourceBlock_Value {
-	B14 oneSlot;
-	B28 twoSlots;
-};
-
-struct SQN_NR_RateMatchPattern_patternType_bitmaps_symbolsInResourceBlock {
-	enum SQN_NR_RateMatchPattern_patternType_bitmaps_symbolsInResourceBlock_Sel d;
-	union SQN_NR_RateMatchPattern_patternType_bitmaps_symbolsInResourceBlock_Value v;
-};
-
-enum SQN_NR_RateMatchPattern_patternType_bitmaps_periodicityAndPattern_Sel {
-	SQN_NR_RateMatchPattern_patternType_bitmaps_periodicityAndPattern_UNBOUND_VALUE = 0,
-	SQN_NR_RateMatchPattern_patternType_bitmaps_periodicityAndPattern_n2 = 1,
-	SQN_NR_RateMatchPattern_patternType_bitmaps_periodicityAndPattern_n4 = 2,
-	SQN_NR_RateMatchPattern_patternType_bitmaps_periodicityAndPattern_n5 = 3,
-	SQN_NR_RateMatchPattern_patternType_bitmaps_periodicityAndPattern_n8 = 4,
-	SQN_NR_RateMatchPattern_patternType_bitmaps_periodicityAndPattern_n10 = 5,
-	SQN_NR_RateMatchPattern_patternType_bitmaps_periodicityAndPattern_n20 = 6,
-	SQN_NR_RateMatchPattern_patternType_bitmaps_periodicityAndPattern_n40 = 7,
-};
-
-union SQN_NR_RateMatchPattern_patternType_bitmaps_periodicityAndPattern_Value {
-	B2 n2;
-	B4 n4;
-	B5 n5;
-	B8 n8;
-	B10 n10;
-	B20 n20;
-	B40 n40;
-};
-
-struct SQN_NR_RateMatchPattern_patternType_bitmaps_periodicityAndPattern {
-	enum SQN_NR_RateMatchPattern_patternType_bitmaps_periodicityAndPattern_Sel d;
-	union SQN_NR_RateMatchPattern_patternType_bitmaps_periodicityAndPattern_Value v;
-};
-
-struct SQN_NR_RateMatchPattern_patternType_bitmaps_periodicityAndPattern_periodicityAndPattern_Optional {
-	bool d;
-	struct SQN_NR_RateMatchPattern_patternType_bitmaps_periodicityAndPattern v;
-};
-
-struct SQN_NR_RateMatchPattern_patternType_bitmaps {
-	B275 resourceBlocks;
-	struct SQN_NR_RateMatchPattern_patternType_bitmaps_symbolsInResourceBlock symbolsInResourceBlock;
-	struct SQN_NR_RateMatchPattern_patternType_bitmaps_periodicityAndPattern_periodicityAndPattern_Optional periodicityAndPattern;
-};
-
-enum SQN_NR_RateMatchPattern_patternType_Sel {
-	SQN_NR_RateMatchPattern_patternType_UNBOUND_VALUE = 0,
-	SQN_NR_RateMatchPattern_patternType_bitmaps = 1,
-	SQN_NR_RateMatchPattern_patternType_controlResourceSet = 2,
-};
-
-union SQN_NR_RateMatchPattern_patternType_Value {
-	struct SQN_NR_RateMatchPattern_patternType_bitmaps bitmaps;
-	SQN_NR_ControlResourceSetId controlResourceSet;
-};
-
-struct SQN_NR_RateMatchPattern_patternType {
-	enum SQN_NR_RateMatchPattern_patternType_Sel d;
-	union SQN_NR_RateMatchPattern_patternType_Value v;
-};
-
-enum SQN_NR_RateMatchPattern_dummy_e {
-	SQN_NR_RateMatchPattern_dummy_e_dynamic = 0,
-	SQN_NR_RateMatchPattern_dummy_e_semiStatic = 1,
-};
-
-typedef enum SQN_NR_RateMatchPattern_dummy_e SQN_NR_RateMatchPattern_dummy_e;
-
-struct SQN_NR_SubcarrierSpacing_e_SQN_NR_RateMatchPattern_subcarrierSpacing_Optional {
-	bool d;
-	SQN_NR_SubcarrierSpacing_e v;
-};
-
-struct SQN_NR_ControlResourceSetId_r16_SQN_NR_RateMatchPattern_controlResourceSet_r16_Optional {
-	bool d;
-	SQN_NR_ControlResourceSetId_r16 v;
-};
-
-struct SQN_NR_RateMatchPattern {
-	SQN_NR_RateMatchPatternId rateMatchPatternId;
-	struct SQN_NR_RateMatchPattern_patternType patternType;
-	struct SQN_NR_SubcarrierSpacing_e_SQN_NR_RateMatchPattern_subcarrierSpacing_Optional subcarrierSpacing;
-	SQN_NR_RateMatchPattern_dummy_e dummy;
-	struct SQN_NR_ControlResourceSetId_r16_SQN_NR_RateMatchPattern_controlResourceSet_r16_Optional controlResourceSet_r16;
-};
 
 enum SQN_NR_RateMatchPatternGroup_s_Sel {
 	SQN_NR_RateMatchPatternGroup_s_UNBOUND_VALUE = 0,
@@ -12294,50 +17827,6 @@ enum SQN_NR_PDSCH_Config_mcs_TableDCI_1_2_r16_e {
 
 typedef enum SQN_NR_PDSCH_Config_mcs_TableDCI_1_2_r16_e SQN_NR_PDSCH_Config_mcs_TableDCI_1_2_r16_e;
 
-enum SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_mappingType_r16_e {
-	SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_mappingType_r16_e_typeA = 0,
-	SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_mappingType_r16_e_typeB = 1,
-};
-
-typedef enum SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_mappingType_r16_e SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_mappingType_r16_e;
-
-enum SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_repetitionNumber_r16_e {
-	SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_repetitionNumber_r16_e_n2 = 0,
-	SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_repetitionNumber_r16_e_n3 = 1,
-	SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_repetitionNumber_r16_e_n4 = 2,
-	SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_repetitionNumber_r16_e_n5 = 3,
-	SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_repetitionNumber_r16_e_n6 = 4,
-	SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_repetitionNumber_r16_e_n7 = 5,
-	SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_repetitionNumber_r16_e_n8 = 6,
-	SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_repetitionNumber_r16_e_n16 = 7,
-};
-
-typedef enum SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_repetitionNumber_r16_e SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_repetitionNumber_r16_e;
-
-struct uint8_t_SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_k0_r16_Optional {
-	bool d;
-	uint8_t v;
-};
-
-struct SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_repetitionNumber_r16_e_repetitionNumber_r16_Optional {
-	bool d;
-	SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_repetitionNumber_r16_e v;
-};
-
-struct SQN_NR_PDSCH_TimeDomainResourceAllocation_r16 {
-	struct uint8_t_SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_k0_r16_Optional k0_r16;
-	SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_mappingType_r16_e mappingType_r16;
-	uint8_t startSymbolAndLength_r16;
-	struct SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_repetitionNumber_r16_e_repetitionNumber_r16_Optional repetitionNumber_r16;
-};
-
-struct SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_SQN_NR_PDSCH_TimeDomainResourceAllocationList_r16_Dynamic {
-	size_t d;
-	struct SQN_NR_PDSCH_TimeDomainResourceAllocation_r16* v;
-};
-
-typedef struct SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_SQN_NR_PDSCH_TimeDomainResourceAllocationList_r16_Dynamic SQN_NR_PDSCH_TimeDomainResourceAllocationList_r16;
-
 enum SQN_NR_SetupRelease_PDSCH_Config_pdsch_TimeDomainAllocationListDCI_1_2_r16_Sel {
 	SQN_NR_SetupRelease_PDSCH_Config_pdsch_TimeDomainAllocationListDCI_1_2_r16_UNBOUND_VALUE = 0,
 	SQN_NR_SetupRelease_PDSCH_Config_pdsch_TimeDomainAllocationListDCI_1_2_r16_release = 1,
@@ -12511,14 +18000,14 @@ struct SQN_NR_SetupRelease_RepetitionSchemeConfig_r16_fdm_TDM_r16 {
 
 enum SQN_NR_SlotBased_r16_tciMapping_r16_e {
 	SQN_NR_SlotBased_r16_tciMapping_r16_e_cyclicMapping = 0,
-	SQN_NR_SlotBased_r16_tciMapping_r16_e_sequenticalMapping = 1,
+	SQN_NR_SlotBased_r16_tciMapping_r16_e_sequentialMapping = 1,
 };
 
 typedef enum SQN_NR_SlotBased_r16_tciMapping_r16_e SQN_NR_SlotBased_r16_tciMapping_r16_e;
 
 struct SQN_NR_SlotBased_r16 {
 	SQN_NR_SlotBased_r16_tciMapping_r16_e tciMapping_r16;
-	uint8_t sequenceOffsetforRV_r16;
+	uint8_t sequenceOffsetForRV_r16;
 };
 
 enum SQN_NR_SetupRelease_RepetitionSchemeConfig_r16_slotBased_r16_Sel {
@@ -12568,6 +18057,233 @@ struct SQN_NR_SetupRelease_PDSCH_Config_repetitionSchemeConfig_r16 {
 	enum SQN_NR_SetupRelease_PDSCH_Config_repetitionSchemeConfig_r16_Sel d;
 	union SQN_NR_SetupRelease_PDSCH_Config_repetitionSchemeConfig_r16_Value v;
 };
+
+enum SQN_NR_SlotBased_v1630_tciMapping_r16_e {
+	SQN_NR_SlotBased_v1630_tciMapping_r16_e_cyclicMapping = 0,
+	SQN_NR_SlotBased_v1630_tciMapping_r16_e_sequentialMapping = 1,
+};
+
+typedef enum SQN_NR_SlotBased_v1630_tciMapping_r16_e SQN_NR_SlotBased_v1630_tciMapping_r16_e;
+
+struct SQN_NR_SlotBased_v1630 {
+	SQN_NR_SlotBased_v1630_tciMapping_r16_e tciMapping_r16;
+	uint8_t sequenceOffsetForRV_r16;
+};
+
+enum SQN_NR_SetupRelease_RepetitionSchemeConfig_v1630_slotBased_v1630_Sel {
+	SQN_NR_SetupRelease_RepetitionSchemeConfig_v1630_slotBased_v1630_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_RepetitionSchemeConfig_v1630_slotBased_v1630_release = 1,
+	SQN_NR_SetupRelease_RepetitionSchemeConfig_v1630_slotBased_v1630_setup = 2,
+};
+
+union SQN_NR_SetupRelease_RepetitionSchemeConfig_v1630_slotBased_v1630_Value {
+	Null release;
+	struct SQN_NR_SlotBased_v1630 setup;
+};
+
+struct SQN_NR_SetupRelease_RepetitionSchemeConfig_v1630_slotBased_v1630 {
+	enum SQN_NR_SetupRelease_RepetitionSchemeConfig_v1630_slotBased_v1630_Sel d;
+	union SQN_NR_SetupRelease_RepetitionSchemeConfig_v1630_slotBased_v1630_Value v;
+};
+
+struct SQN_NR_RepetitionSchemeConfig_v1630 {
+	struct SQN_NR_SetupRelease_RepetitionSchemeConfig_v1630_slotBased_v1630 slotBased_v1630;
+};
+
+enum SQN_NR_SetupRelease_PDSCH_Config_repetitionSchemeConfig_v1630_Sel {
+	SQN_NR_SetupRelease_PDSCH_Config_repetitionSchemeConfig_v1630_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_PDSCH_Config_repetitionSchemeConfig_v1630_release = 1,
+	SQN_NR_SetupRelease_PDSCH_Config_repetitionSchemeConfig_v1630_setup = 2,
+};
+
+union SQN_NR_SetupRelease_PDSCH_Config_repetitionSchemeConfig_v1630_Value {
+	Null release;
+	struct SQN_NR_RepetitionSchemeConfig_v1630 setup;
+};
+
+struct SQN_NR_SetupRelease_PDSCH_Config_repetitionSchemeConfig_v1630 {
+	enum SQN_NR_SetupRelease_PDSCH_Config_repetitionSchemeConfig_v1630_Sel d;
+	union SQN_NR_SetupRelease_PDSCH_Config_repetitionSchemeConfig_v1630_Value v;
+};
+
+enum SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_OneShotFeedbackDCI_1_2_r17_e {
+	SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_OneShotFeedbackDCI_1_2_r17_e_enabled = 0,
+};
+
+typedef enum SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_OneShotFeedbackDCI_1_2_r17_e SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_OneShotFeedbackDCI_1_2_r17_e;
+
+enum SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_EnhType3DCI_1_2_r17_e {
+	SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_EnhType3DCI_1_2_r17_e_enabled = 0,
+};
+
+typedef enum SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_EnhType3DCI_1_2_r17_e SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_EnhType3DCI_1_2_r17_e;
+
+enum SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_EnhType3DCI_Field_1_2_r17_e {
+	SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_EnhType3DCI_Field_1_2_r17_e_enabled = 0,
+};
+
+typedef enum SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_EnhType3DCI_Field_1_2_r17_e SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_EnhType3DCI_Field_1_2_r17_e;
+
+enum SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_RetxDCI_1_2_r17_e {
+	SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_RetxDCI_1_2_r17_e_enabled = 0,
+};
+
+typedef enum SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_RetxDCI_1_2_r17_e SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_RetxDCI_1_2_r17_e;
+
+enum SQN_NR_PDSCH_Config_pucch_sSCellDynDCI_1_2_r17_e {
+	SQN_NR_PDSCH_Config_pucch_sSCellDynDCI_1_2_r17_e_enabled = 0,
+};
+
+typedef enum SQN_NR_PDSCH_Config_pucch_sSCellDynDCI_1_2_r17_e SQN_NR_PDSCH_Config_pucch_sSCellDynDCI_1_2_r17_e;
+
+struct SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17_explicitlist_SQN_NR_TCI_State_dl_OrJoint_TCI_State_ToAddModList_r17_Dynamic {
+	size_t d;
+	struct SQN_NR_TCI_State* v;
+};
+
+struct SQN_NR_TCI_State_SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17_explicitlist_dl_OrJoint_TCI_State_ToAddModList_r17_DynamicOptional {
+	bool d;
+	struct SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17_explicitlist_SQN_NR_TCI_State_dl_OrJoint_TCI_State_ToAddModList_r17_Dynamic v;
+};
+
+struct SQN_NR_TCI_StateId_SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17_explicitlist_dl_OrJoint_TCI_State_ToReleaseList_r17_Dynamic {
+	size_t d;
+	SQN_NR_TCI_StateId* v;
+};
+
+struct SQN_NR_TCI_StateId_SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17_explicitlist_dl_OrJoint_TCI_State_ToReleaseList_r17_DynamicOptional {
+	bool d;
+	struct SQN_NR_TCI_StateId_SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17_explicitlist_dl_OrJoint_TCI_State_ToReleaseList_r17_Dynamic v;
+};
+
+struct SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17_explicitlist {
+	struct SQN_NR_TCI_State_SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17_explicitlist_dl_OrJoint_TCI_State_ToAddModList_r17_DynamicOptional dl_OrJoint_TCI_State_ToAddModList_r17;
+	struct SQN_NR_TCI_StateId_SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17_explicitlist_dl_OrJoint_TCI_State_ToReleaseList_r17_DynamicOptional dl_OrJoint_TCI_State_ToReleaseList_r17;
+};
+
+enum SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17_Sel {
+	SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17_UNBOUND_VALUE = 0,
+	SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17_explicitlist = 1,
+	SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17_unifiedTCI_StateRef_r17 = 2,
+};
+
+union SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17_Value {
+	struct SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17_explicitlist explicitlist;
+	struct SQN_NR_ServingCellAndBWP_Id_r17 unifiedTCI_StateRef_r17;
+};
+
+struct SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17 {
+	enum SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17_Sel d;
+	union SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17_Value v;
+};
+
+enum SQN_NR_PDSCH_Config_beamAppTime_r17_e {
+	SQN_NR_PDSCH_Config_beamAppTime_r17_e_n1 = 0,
+	SQN_NR_PDSCH_Config_beamAppTime_r17_e_n2 = 1,
+	SQN_NR_PDSCH_Config_beamAppTime_r17_e_n4 = 2,
+	SQN_NR_PDSCH_Config_beamAppTime_r17_e_n7 = 3,
+	SQN_NR_PDSCH_Config_beamAppTime_r17_e_n14 = 4,
+	SQN_NR_PDSCH_Config_beamAppTime_r17_e_n28 = 5,
+	SQN_NR_PDSCH_Config_beamAppTime_r17_e_n42 = 6,
+	SQN_NR_PDSCH_Config_beamAppTime_r17_e_n56 = 7,
+	SQN_NR_PDSCH_Config_beamAppTime_r17_e_n70 = 8,
+	SQN_NR_PDSCH_Config_beamAppTime_r17_e_n84 = 9,
+	SQN_NR_PDSCH_Config_beamAppTime_r17_e_n98 = 10,
+	SQN_NR_PDSCH_Config_beamAppTime_r17_e_n112 = 11,
+	SQN_NR_PDSCH_Config_beamAppTime_r17_e_n224 = 12,
+	SQN_NR_PDSCH_Config_beamAppTime_r17_e_n336 = 13,
+	SQN_NR_PDSCH_Config_beamAppTime_r17_e_spare2 = 14,
+	SQN_NR_PDSCH_Config_beamAppTime_r17_e_spare1 = 15,
+};
+
+typedef enum SQN_NR_PDSCH_Config_beamAppTime_r17_e SQN_NR_PDSCH_Config_beamAppTime_r17_e;
+
+struct SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_SQN_NR_MultiPDSCH_TDRA_r17_pdsch_TDRA_List_r17_Dynamic {
+	size_t d;
+	struct SQN_NR_PDSCH_TimeDomainResourceAllocation_r16* v;
+};
+
+struct SQN_NR_MultiPDSCH_TDRA_r17 {
+	struct SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_SQN_NR_MultiPDSCH_TDRA_r17_pdsch_TDRA_List_r17_Dynamic pdsch_TDRA_List_r17;
+};
+
+struct SQN_NR_MultiPDSCH_TDRA_r17_SQN_NR_MultiPDSCH_TDRA_List_r17_Dynamic {
+	size_t d;
+	struct SQN_NR_MultiPDSCH_TDRA_r17* v;
+};
+
+typedef struct SQN_NR_MultiPDSCH_TDRA_r17_SQN_NR_MultiPDSCH_TDRA_List_r17_Dynamic SQN_NR_MultiPDSCH_TDRA_List_r17;
+
+enum SQN_NR_SetupRelease_PDSCH_Config_pdsch_TimeDomainAllocationListForMultiPDSCH_r17_Sel {
+	SQN_NR_SetupRelease_PDSCH_Config_pdsch_TimeDomainAllocationListForMultiPDSCH_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_PDSCH_Config_pdsch_TimeDomainAllocationListForMultiPDSCH_r17_release = 1,
+	SQN_NR_SetupRelease_PDSCH_Config_pdsch_TimeDomainAllocationListForMultiPDSCH_r17_setup = 2,
+};
+
+union SQN_NR_SetupRelease_PDSCH_Config_pdsch_TimeDomainAllocationListForMultiPDSCH_r17_Value {
+	Null release;
+	SQN_NR_MultiPDSCH_TDRA_List_r17 setup;
+};
+
+struct SQN_NR_SetupRelease_PDSCH_Config_pdsch_TimeDomainAllocationListForMultiPDSCH_r17 {
+	enum SQN_NR_SetupRelease_PDSCH_Config_pdsch_TimeDomainAllocationListForMultiPDSCH_r17_Sel d;
+	union SQN_NR_SetupRelease_PDSCH_Config_pdsch_TimeDomainAllocationListForMultiPDSCH_r17_Value v;
+};
+
+enum SQN_NR_PDSCH_Config_dmrs_FD_OCC_DisabledForRank1_PDSCH_r17_e {
+	SQN_NR_PDSCH_Config_dmrs_FD_OCC_DisabledForRank1_PDSCH_r17_e_true = 0,
+};
+
+typedef enum SQN_NR_PDSCH_Config_dmrs_FD_OCC_DisabledForRank1_PDSCH_r17_e SQN_NR_PDSCH_Config_dmrs_FD_OCC_DisabledForRank1_PDSCH_r17_e;
+
+struct uint8_t_SQN_NR_MinSchedulingOffsetK0_Values_r17_Dynamic {
+	size_t d;
+	uint8_t* v;
+};
+
+typedef struct uint8_t_SQN_NR_MinSchedulingOffsetK0_Values_r17_Dynamic SQN_NR_MinSchedulingOffsetK0_Values_r17;
+
+enum SQN_NR_SetupRelease_PDSCH_Config_minimumSchedulingOffsetK0_r17_Sel {
+	SQN_NR_SetupRelease_PDSCH_Config_minimumSchedulingOffsetK0_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_PDSCH_Config_minimumSchedulingOffsetK0_r17_release = 1,
+	SQN_NR_SetupRelease_PDSCH_Config_minimumSchedulingOffsetK0_r17_setup = 2,
+};
+
+union SQN_NR_SetupRelease_PDSCH_Config_minimumSchedulingOffsetK0_r17_Value {
+	Null release;
+	SQN_NR_MinSchedulingOffsetK0_Values_r17 setup;
+};
+
+struct SQN_NR_SetupRelease_PDSCH_Config_minimumSchedulingOffsetK0_r17 {
+	enum SQN_NR_SetupRelease_PDSCH_Config_minimumSchedulingOffsetK0_r17_Sel d;
+	union SQN_NR_SetupRelease_PDSCH_Config_minimumSchedulingOffsetK0_r17_Value v;
+};
+
+enum SQN_NR_PDSCH_Config_mcs_Table_r17_e {
+	SQN_NR_PDSCH_Config_mcs_Table_r17_e_qam1024 = 0,
+};
+
+typedef enum SQN_NR_PDSCH_Config_mcs_Table_r17_e SQN_NR_PDSCH_Config_mcs_Table_r17_e;
+
+enum SQN_NR_PDSCH_Config_mcs_TableDCI_1_2_r17_e {
+	SQN_NR_PDSCH_Config_mcs_TableDCI_1_2_r17_e_qam1024 = 0,
+};
+
+typedef enum SQN_NR_PDSCH_Config_mcs_TableDCI_1_2_r17_e SQN_NR_PDSCH_Config_mcs_TableDCI_1_2_r17_e;
+
+enum SQN_NR_PDSCH_Config_xOverheadMulticast_r17_e {
+	SQN_NR_PDSCH_Config_xOverheadMulticast_r17_e_xOh6 = 0,
+	SQN_NR_PDSCH_Config_xOverheadMulticast_r17_e_xOh12 = 1,
+	SQN_NR_PDSCH_Config_xOverheadMulticast_r17_e_xOh18 = 2,
+};
+
+typedef enum SQN_NR_PDSCH_Config_xOverheadMulticast_r17_e SQN_NR_PDSCH_Config_xOverheadMulticast_r17_e;
+
+enum SQN_NR_PDSCH_Config_priorityIndicatorDCI_4_2_r17_e {
+	SQN_NR_PDSCH_Config_priorityIndicatorDCI_4_2_r17_e_enabled = 0,
+};
+
+typedef enum SQN_NR_PDSCH_Config_priorityIndicatorDCI_4_2_r17_e SQN_NR_PDSCH_Config_priorityIndicatorDCI_4_2_r17_e;
 
 struct uint16_t_SQN_NR_PDSCH_Config_dataScramblingIdentityPDSCH_Optional {
 	bool d;
@@ -12854,6 +18570,96 @@ struct SQN_NR_SetupRelease_PDSCH_Config_repetitionSchemeConfig_r16_SQN_NR_PDSCH_
 	struct SQN_NR_SetupRelease_PDSCH_Config_repetitionSchemeConfig_r16 v;
 };
 
+struct SQN_NR_SetupRelease_PDSCH_Config_repetitionSchemeConfig_v1630_SQN_NR_PDSCH_Config_repetitionSchemeConfig_v1630_Optional {
+	bool d;
+	struct SQN_NR_SetupRelease_PDSCH_Config_repetitionSchemeConfig_v1630 v;
+};
+
+struct SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_OneShotFeedbackDCI_1_2_r17_e_pdsch_HARQ_ACK_OneShotFeedbackDCI_1_2_r17_Optional {
+	bool d;
+	SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_OneShotFeedbackDCI_1_2_r17_e v;
+};
+
+struct SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_EnhType3DCI_1_2_r17_e_pdsch_HARQ_ACK_EnhType3DCI_1_2_r17_Optional {
+	bool d;
+	SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_EnhType3DCI_1_2_r17_e v;
+};
+
+struct SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_EnhType3DCI_Field_1_2_r17_e_pdsch_HARQ_ACK_EnhType3DCI_Field_1_2_r17_Optional {
+	bool d;
+	SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_EnhType3DCI_Field_1_2_r17_e v;
+};
+
+struct SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_RetxDCI_1_2_r17_e_pdsch_HARQ_ACK_RetxDCI_1_2_r17_Optional {
+	bool d;
+	SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_RetxDCI_1_2_r17_e v;
+};
+
+struct SQN_NR_PDSCH_Config_pucch_sSCellDynDCI_1_2_r17_e_pucch_sSCellDynDCI_1_2_r17_Optional {
+	bool d;
+	SQN_NR_PDSCH_Config_pucch_sSCellDynDCI_1_2_r17_e v;
+};
+
+struct SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17_dl_OrJoint_TCIStateList_r17_Optional {
+	bool d;
+	struct SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17 v;
+};
+
+struct SQN_NR_PDSCH_Config_beamAppTime_r17_e_beamAppTime_r17_Optional {
+	bool d;
+	SQN_NR_PDSCH_Config_beamAppTime_r17_e v;
+};
+
+struct SQN_NR_SetupRelease_PDSCH_Config_pdsch_TimeDomainAllocationListForMultiPDSCH_r17_SQN_NR_PDSCH_Config_pdsch_TimeDomainAllocationListForMultiPDSCH_r17_Optional {
+	bool d;
+	struct SQN_NR_SetupRelease_PDSCH_Config_pdsch_TimeDomainAllocationListForMultiPDSCH_r17 v;
+};
+
+struct SQN_NR_PDSCH_Config_dmrs_FD_OCC_DisabledForRank1_PDSCH_r17_e_dmrs_FD_OCC_DisabledForRank1_PDSCH_r17_Optional {
+	bool d;
+	SQN_NR_PDSCH_Config_dmrs_FD_OCC_DisabledForRank1_PDSCH_r17_e v;
+};
+
+struct SQN_NR_SetupRelease_PDSCH_Config_minimumSchedulingOffsetK0_r17_SQN_NR_PDSCH_Config_minimumSchedulingOffsetK0_r17_Optional {
+	bool d;
+	struct SQN_NR_SetupRelease_PDSCH_Config_minimumSchedulingOffsetK0_r17 v;
+};
+
+struct uint8_t_SQN_NR_PDSCH_Config_harq_ProcessNumberSizeDCI_1_2_v1700_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct uint8_t_SQN_NR_PDSCH_Config_harq_ProcessNumberSizeDCI_1_1_r17_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct SQN_NR_PDSCH_Config_mcs_Table_r17_e_mcs_Table_r17_Optional {
+	bool d;
+	SQN_NR_PDSCH_Config_mcs_Table_r17_e v;
+};
+
+struct SQN_NR_PDSCH_Config_mcs_TableDCI_1_2_r17_e_mcs_TableDCI_1_2_r17_Optional {
+	bool d;
+	SQN_NR_PDSCH_Config_mcs_TableDCI_1_2_r17_e v;
+};
+
+struct SQN_NR_PDSCH_Config_xOverheadMulticast_r17_e_xOverheadMulticast_r17_Optional {
+	bool d;
+	SQN_NR_PDSCH_Config_xOverheadMulticast_r17_e v;
+};
+
+struct SQN_NR_PDSCH_Config_priorityIndicatorDCI_4_2_r17_e_priorityIndicatorDCI_4_2_r17_Optional {
+	bool d;
+	SQN_NR_PDSCH_Config_priorityIndicatorDCI_4_2_r17_e v;
+};
+
+struct uint8_t_SQN_NR_PDSCH_Config_sizeDCI_4_2_r17_Optional {
+	bool d;
+	uint8_t v;
+};
+
 struct SQN_NR_PDSCH_Config {
 	struct uint16_t_SQN_NR_PDSCH_Config_dataScramblingIdentityPDSCH_Optional dataScramblingIdentityPDSCH;
 	struct SQN_NR_SetupRelease_PDSCH_Config_dmrs_DownlinkForPDSCH_MappingTypeA_SQN_NR_PDSCH_Config_dmrs_DownlinkForPDSCH_MappingTypeA_Optional dmrs_DownlinkForPDSCH_MappingTypeA;
@@ -12903,6 +18709,24 @@ struct SQN_NR_PDSCH_Config {
 	struct uint16_t_SQN_NR_PDSCH_Config_dataScramblingIdentityPDSCH2_r16_Optional dataScramblingIdentityPDSCH2_r16;
 	struct SQN_NR_SetupRelease_PDSCH_Config_pdsch_TimeDomainAllocationList_r16_SQN_NR_PDSCH_Config_pdsch_TimeDomainAllocationList_r16_Optional pdsch_TimeDomainAllocationList_r16;
 	struct SQN_NR_SetupRelease_PDSCH_Config_repetitionSchemeConfig_r16_SQN_NR_PDSCH_Config_repetitionSchemeConfig_r16_Optional repetitionSchemeConfig_r16;
+	struct SQN_NR_SetupRelease_PDSCH_Config_repetitionSchemeConfig_v1630_SQN_NR_PDSCH_Config_repetitionSchemeConfig_v1630_Optional repetitionSchemeConfig_v1630;
+	struct SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_OneShotFeedbackDCI_1_2_r17_e_pdsch_HARQ_ACK_OneShotFeedbackDCI_1_2_r17_Optional pdsch_HARQ_ACK_OneShotFeedbackDCI_1_2_r17;
+	struct SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_EnhType3DCI_1_2_r17_e_pdsch_HARQ_ACK_EnhType3DCI_1_2_r17_Optional pdsch_HARQ_ACK_EnhType3DCI_1_2_r17;
+	struct SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_EnhType3DCI_Field_1_2_r17_e_pdsch_HARQ_ACK_EnhType3DCI_Field_1_2_r17_Optional pdsch_HARQ_ACK_EnhType3DCI_Field_1_2_r17;
+	struct SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_RetxDCI_1_2_r17_e_pdsch_HARQ_ACK_RetxDCI_1_2_r17_Optional pdsch_HARQ_ACK_RetxDCI_1_2_r17;
+	struct SQN_NR_PDSCH_Config_pucch_sSCellDynDCI_1_2_r17_e_pucch_sSCellDynDCI_1_2_r17_Optional pucch_sSCellDynDCI_1_2_r17;
+	struct SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17_dl_OrJoint_TCIStateList_r17_Optional dl_OrJoint_TCIStateList_r17;
+	struct SQN_NR_PDSCH_Config_beamAppTime_r17_e_beamAppTime_r17_Optional beamAppTime_r17;
+	struct SQN_NR_SetupRelease_PDSCH_Config_pdsch_TimeDomainAllocationListForMultiPDSCH_r17_SQN_NR_PDSCH_Config_pdsch_TimeDomainAllocationListForMultiPDSCH_r17_Optional pdsch_TimeDomainAllocationListForMultiPDSCH_r17;
+	struct SQN_NR_PDSCH_Config_dmrs_FD_OCC_DisabledForRank1_PDSCH_r17_e_dmrs_FD_OCC_DisabledForRank1_PDSCH_r17_Optional dmrs_FD_OCC_DisabledForRank1_PDSCH_r17;
+	struct SQN_NR_SetupRelease_PDSCH_Config_minimumSchedulingOffsetK0_r17_SQN_NR_PDSCH_Config_minimumSchedulingOffsetK0_r17_Optional minimumSchedulingOffsetK0_r17;
+	struct uint8_t_SQN_NR_PDSCH_Config_harq_ProcessNumberSizeDCI_1_2_v1700_Optional harq_ProcessNumberSizeDCI_1_2_v1700;
+	struct uint8_t_SQN_NR_PDSCH_Config_harq_ProcessNumberSizeDCI_1_1_r17_Optional harq_ProcessNumberSizeDCI_1_1_r17;
+	struct SQN_NR_PDSCH_Config_mcs_Table_r17_e_mcs_Table_r17_Optional mcs_Table_r17;
+	struct SQN_NR_PDSCH_Config_mcs_TableDCI_1_2_r17_e_mcs_TableDCI_1_2_r17_Optional mcs_TableDCI_1_2_r17;
+	struct SQN_NR_PDSCH_Config_xOverheadMulticast_r17_e_xOverheadMulticast_r17_Optional xOverheadMulticast_r17;
+	struct SQN_NR_PDSCH_Config_priorityIndicatorDCI_4_2_r17_e_priorityIndicatorDCI_4_2_r17_Optional priorityIndicatorDCI_4_2_r17;
+	struct uint8_t_SQN_NR_PDSCH_Config_sizeDCI_4_2_r17_Optional sizeDCI_4_2_r17;
 };
 
 enum SQN_NR_PDSCH_CodeBlockGroupTransmission_maxCodeBlockGroupsPerTransportBlock_e {
@@ -12977,6 +18801,30 @@ struct SQN_NR_SetupRelease_PDSCH_ServingCellConfig_pdsch_CodeBlockGroupTransmiss
 	union SQN_NR_SetupRelease_PDSCH_ServingCellConfig_pdsch_CodeBlockGroupTransmissionList_r16_Value v;
 };
 
+typedef B32 SQN_NR_DownlinkHARQ_FeedbackDisabled_r17;
+
+enum SQN_NR_SetupRelease_PDSCH_ServingCellConfig_downlinkHARQ_FeedbackDisabled_r17_Sel {
+	SQN_NR_SetupRelease_PDSCH_ServingCellConfig_downlinkHARQ_FeedbackDisabled_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_PDSCH_ServingCellConfig_downlinkHARQ_FeedbackDisabled_r17_release = 1,
+	SQN_NR_SetupRelease_PDSCH_ServingCellConfig_downlinkHARQ_FeedbackDisabled_r17_setup = 2,
+};
+
+union SQN_NR_SetupRelease_PDSCH_ServingCellConfig_downlinkHARQ_FeedbackDisabled_r17_Value {
+	Null release;
+	SQN_NR_DownlinkHARQ_FeedbackDisabled_r17 setup;
+};
+
+struct SQN_NR_SetupRelease_PDSCH_ServingCellConfig_downlinkHARQ_FeedbackDisabled_r17 {
+	enum SQN_NR_SetupRelease_PDSCH_ServingCellConfig_downlinkHARQ_FeedbackDisabled_r17_Sel d;
+	union SQN_NR_SetupRelease_PDSCH_ServingCellConfig_downlinkHARQ_FeedbackDisabled_r17_Value v;
+};
+
+enum SQN_NR_PDSCH_ServingCellConfig_nrofHARQ_ProcessesForPDSCH_v1700_e {
+	SQN_NR_PDSCH_ServingCellConfig_nrofHARQ_ProcessesForPDSCH_v1700_e_n32 = 0,
+};
+
+typedef enum SQN_NR_PDSCH_ServingCellConfig_nrofHARQ_ProcessesForPDSCH_v1700_e SQN_NR_PDSCH_ServingCellConfig_nrofHARQ_ProcessesForPDSCH_v1700_e;
+
 struct SQN_NR_SetupRelease_PDSCH_ServingCellConfig_codeBlockGroupTransmission_SQN_NR_PDSCH_ServingCellConfig_codeBlockGroupTransmission_Optional {
 	bool d;
 	struct SQN_NR_SetupRelease_PDSCH_ServingCellConfig_codeBlockGroupTransmission v;
@@ -13012,6 +18860,16 @@ struct SQN_NR_SetupRelease_PDSCH_ServingCellConfig_pdsch_CodeBlockGroupTransmiss
 	struct SQN_NR_SetupRelease_PDSCH_ServingCellConfig_pdsch_CodeBlockGroupTransmissionList_r16 v;
 };
 
+struct SQN_NR_SetupRelease_PDSCH_ServingCellConfig_downlinkHARQ_FeedbackDisabled_r17_SQN_NR_PDSCH_ServingCellConfig_downlinkHARQ_FeedbackDisabled_r17_Optional {
+	bool d;
+	struct SQN_NR_SetupRelease_PDSCH_ServingCellConfig_downlinkHARQ_FeedbackDisabled_r17 v;
+};
+
+struct SQN_NR_PDSCH_ServingCellConfig_nrofHARQ_ProcessesForPDSCH_v1700_e_nrofHARQ_ProcessesForPDSCH_v1700_Optional {
+	bool d;
+	SQN_NR_PDSCH_ServingCellConfig_nrofHARQ_ProcessesForPDSCH_v1700_e v;
+};
+
 struct SQN_NR_PDSCH_ServingCellConfig {
 	struct SQN_NR_SetupRelease_PDSCH_ServingCellConfig_codeBlockGroupTransmission_SQN_NR_PDSCH_ServingCellConfig_codeBlockGroupTransmission_Optional codeBlockGroupTransmission;
 	struct SQN_NR_PDSCH_ServingCellConfig_xOverhead_e_xOverhead_Optional xOverhead;
@@ -13020,6 +18878,8 @@ struct SQN_NR_PDSCH_ServingCellConfig {
 	struct uint8_t_SQN_NR_PDSCH_ServingCellConfig_maxMIMO_Layers_Optional maxMIMO_Layers;
 	struct bool_SQN_NR_PDSCH_ServingCellConfig_processingType2Enabled_Optional processingType2Enabled;
 	struct SQN_NR_SetupRelease_PDSCH_ServingCellConfig_pdsch_CodeBlockGroupTransmissionList_r16_SQN_NR_PDSCH_ServingCellConfig_pdsch_CodeBlockGroupTransmissionList_r16_Optional pdsch_CodeBlockGroupTransmissionList_r16;
+	struct SQN_NR_SetupRelease_PDSCH_ServingCellConfig_downlinkHARQ_FeedbackDisabled_r17_SQN_NR_PDSCH_ServingCellConfig_downlinkHARQ_FeedbackDisabled_r17_Optional downlinkHARQ_FeedbackDisabled_r17;
+	struct SQN_NR_PDSCH_ServingCellConfig_nrofHARQ_ProcessesForPDSCH_v1700_e_nrofHARQ_ProcessesForPDSCH_v1700_Optional nrofHARQ_ProcessesForPDSCH_v1700;
 };
 
 enum SQN_NR_PUSCH_CodeBlockGroupTransmission_maxCodeBlockGroupsPerTransportBlock_e {
@@ -13083,6 +18943,30 @@ struct SQN_NR_SetupRelease_PUSCH_ServingCellConfig_maxMIMO_LayersDCI_0_2_r16 {
 	union SQN_NR_SetupRelease_PUSCH_ServingCellConfig_maxMIMO_LayersDCI_0_2_r16_Value v;
 };
 
+enum SQN_NR_PUSCH_ServingCellConfig_nrofHARQ_ProcessesForPUSCH_r17_e {
+	SQN_NR_PUSCH_ServingCellConfig_nrofHARQ_ProcessesForPUSCH_r17_e_n32 = 0,
+};
+
+typedef enum SQN_NR_PUSCH_ServingCellConfig_nrofHARQ_ProcessesForPUSCH_r17_e SQN_NR_PUSCH_ServingCellConfig_nrofHARQ_ProcessesForPUSCH_r17_e;
+
+typedef B32 SQN_NR_UplinkHARQ_mode_r17;
+
+enum SQN_NR_SetupRelease_PUSCH_ServingCellConfig_uplinkHARQ_mode_r17_Sel {
+	SQN_NR_SetupRelease_PUSCH_ServingCellConfig_uplinkHARQ_mode_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_PUSCH_ServingCellConfig_uplinkHARQ_mode_r17_release = 1,
+	SQN_NR_SetupRelease_PUSCH_ServingCellConfig_uplinkHARQ_mode_r17_setup = 2,
+};
+
+union SQN_NR_SetupRelease_PUSCH_ServingCellConfig_uplinkHARQ_mode_r17_Value {
+	Null release;
+	SQN_NR_UplinkHARQ_mode_r17 setup;
+};
+
+struct SQN_NR_SetupRelease_PUSCH_ServingCellConfig_uplinkHARQ_mode_r17 {
+	enum SQN_NR_SetupRelease_PUSCH_ServingCellConfig_uplinkHARQ_mode_r17_Sel d;
+	union SQN_NR_SetupRelease_PUSCH_ServingCellConfig_uplinkHARQ_mode_r17_Value v;
+};
+
 struct SQN_NR_SetupRelease_PUSCH_ServingCellConfig_codeBlockGroupTransmission_SQN_NR_PUSCH_ServingCellConfig_codeBlockGroupTransmission_Optional {
 	bool d;
 	struct SQN_NR_SetupRelease_PUSCH_ServingCellConfig_codeBlockGroupTransmission v;
@@ -13113,6 +18997,16 @@ struct SQN_NR_SetupRelease_PUSCH_ServingCellConfig_maxMIMO_LayersDCI_0_2_r16_SQN
 	struct SQN_NR_SetupRelease_PUSCH_ServingCellConfig_maxMIMO_LayersDCI_0_2_r16 v;
 };
 
+struct SQN_NR_PUSCH_ServingCellConfig_nrofHARQ_ProcessesForPUSCH_r17_e_nrofHARQ_ProcessesForPUSCH_r17_Optional {
+	bool d;
+	SQN_NR_PUSCH_ServingCellConfig_nrofHARQ_ProcessesForPUSCH_r17_e v;
+};
+
+struct SQN_NR_SetupRelease_PUSCH_ServingCellConfig_uplinkHARQ_mode_r17_SQN_NR_PUSCH_ServingCellConfig_uplinkHARQ_mode_r17_Optional {
+	bool d;
+	struct SQN_NR_SetupRelease_PUSCH_ServingCellConfig_uplinkHARQ_mode_r17 v;
+};
+
 struct SQN_NR_PUSCH_ServingCellConfig {
 	struct SQN_NR_SetupRelease_PUSCH_ServingCellConfig_codeBlockGroupTransmission_SQN_NR_PUSCH_ServingCellConfig_codeBlockGroupTransmission_Optional codeBlockGroupTransmission;
 	struct SQN_NR_PUSCH_ServingCellConfig_rateMatching_e_rateMatching_Optional rateMatching;
@@ -13120,6 +19014,8 @@ struct SQN_NR_PUSCH_ServingCellConfig {
 	struct uint8_t_SQN_NR_PUSCH_ServingCellConfig_maxMIMO_Layers_Optional maxMIMO_Layers;
 	struct bool_SQN_NR_PUSCH_ServingCellConfig_processingType2Enabled_Optional processingType2Enabled;
 	struct SQN_NR_SetupRelease_PUSCH_ServingCellConfig_maxMIMO_LayersDCI_0_2_r16_SQN_NR_PUSCH_ServingCellConfig_maxMIMO_LayersDCI_0_2_r16_Optional maxMIMO_LayersDCI_0_2_r16;
+	struct SQN_NR_PUSCH_ServingCellConfig_nrofHARQ_ProcessesForPUSCH_r17_e_nrofHARQ_ProcessesForPUSCH_r17_Optional nrofHARQ_ProcessesForPUSCH_r17;
+	struct SQN_NR_SetupRelease_PUSCH_ServingCellConfig_uplinkHARQ_mode_r17_SQN_NR_PUSCH_ServingCellConfig_uplinkHARQ_mode_r17_Optional uplinkHARQ_mode_r17;
 };
 
 enum SQN_NR_PhysicalCellGroupConfig_harq_ACK_SpatialBundlingPUCCH_e {
@@ -13140,8 +19036,6 @@ enum SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_Codebook_e {
 };
 
 typedef enum SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_Codebook_e SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_Codebook_e;
-
-typedef uint16_t SQN_NR_RNTI_Value;
 
 enum SQN_NR_SetupRelease_PhysicalCellGroupConfig_cs_RNTI_Sel {
 	SQN_NR_SetupRelease_PhysicalCellGroupConfig_cs_RNTI_UNBOUND_VALUE = 0,
@@ -13432,6 +19326,235 @@ enum SQN_NR_PhysicalCellGroupConfig_bdFactorR_r16_e {
 
 typedef enum SQN_NR_PhysicalCellGroupConfig_bdFactorR_r16_e SQN_NR_PhysicalCellGroupConfig_bdFactorR_r16_e;
 
+typedef uint8_t SQN_NR_PDSCH_HARQ_ACK_EnhType3Index_r17;
+
+enum SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_applicable_r17_Sel {
+	SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_applicable_r17_UNBOUND_VALUE = 0,
+	SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_applicable_r17_perCC = 1,
+	SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_applicable_r17_perHARQ = 2,
+};
+
+struct uint8_t_SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_applicable_r17_perCC_Dynamic {
+	size_t d;
+	uint8_t* v;
+};
+
+struct B16_SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_applicable_r17_perHARQ_Dynamic {
+	size_t d;
+	B16* v;
+};
+
+union SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_applicable_r17_Value {
+	struct uint8_t_SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_applicable_r17_perCC_Dynamic perCC;
+	struct B16_SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_applicable_r17_perHARQ_Dynamic perHARQ;
+};
+
+struct SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_applicable_r17 {
+	enum SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_applicable_r17_Sel d;
+	union SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_applicable_r17_Value v;
+};
+
+enum SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_pdsch_HARQ_ACK_EnhType3NDI_r17_e {
+	SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_pdsch_HARQ_ACK_EnhType3NDI_r17_e_true = 0,
+};
+
+typedef enum SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_pdsch_HARQ_ACK_EnhType3NDI_r17_e SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_pdsch_HARQ_ACK_EnhType3NDI_r17_e;
+
+enum SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_pdsch_HARQ_ACK_EnhType3CBG_r17_e {
+	SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_pdsch_HARQ_ACK_EnhType3CBG_r17_e_true = 0,
+};
+
+typedef enum SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_pdsch_HARQ_ACK_EnhType3CBG_r17_e SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_pdsch_HARQ_ACK_EnhType3CBG_r17_e;
+
+struct SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_pdsch_HARQ_ACK_EnhType3NDI_r17_e_pdsch_HARQ_ACK_EnhType3NDI_r17_Optional {
+	bool d;
+	SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_pdsch_HARQ_ACK_EnhType3NDI_r17_e v;
+};
+
+struct SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_pdsch_HARQ_ACK_EnhType3CBG_r17_e_pdsch_HARQ_ACK_EnhType3CBG_r17_Optional {
+	bool d;
+	SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_pdsch_HARQ_ACK_EnhType3CBG_r17_e v;
+};
+
+struct SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17 {
+	SQN_NR_PDSCH_HARQ_ACK_EnhType3Index_r17 pdsch_HARQ_ACK_EnhType3Index_r17;
+	struct SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_applicable_r17 applicable_r17;
+	struct SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_pdsch_HARQ_ACK_EnhType3NDI_r17_e_pdsch_HARQ_ACK_EnhType3NDI_r17_Optional pdsch_HARQ_ACK_EnhType3NDI_r17;
+	struct SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_pdsch_HARQ_ACK_EnhType3CBG_r17_e_pdsch_HARQ_ACK_EnhType3CBG_r17_Optional pdsch_HARQ_ACK_EnhType3CBG_r17;
+};
+
+enum SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3DCI_FieldSecondaryPUCCHgroup_r17_e {
+	SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3DCI_FieldSecondaryPUCCHgroup_r17_e_enabled = 0,
+};
+
+typedef enum SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3DCI_FieldSecondaryPUCCHgroup_r17_e SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3DCI_FieldSecondaryPUCCHgroup_r17_e;
+
+enum SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3DCI_Field_r17_e {
+	SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3DCI_Field_r17_e_enabled = 0,
+};
+
+typedef enum SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3DCI_Field_r17_e SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3DCI_Field_r17_e;
+
+enum SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_Retx_r17_e {
+	SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_Retx_r17_e_enabled = 0,
+};
+
+typedef enum SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_Retx_r17_e SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_Retx_r17_e;
+
+enum SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_RetxSecondaryPUCCHgroup_r17_e {
+	SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_RetxSecondaryPUCCHgroup_r17_e_enabled = 0,
+};
+
+typedef enum SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_RetxSecondaryPUCCHgroup_r17_e SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_RetxSecondaryPUCCHgroup_r17_e;
+
+typedef uint8_t SQN_NR_SCellIndex;
+
+enum SQN_NR_PhysicalCellGroupConfig_pucch_sSCellDyn_r17_e {
+	SQN_NR_PhysicalCellGroupConfig_pucch_sSCellDyn_r17_e_enabled = 0,
+};
+
+typedef enum SQN_NR_PhysicalCellGroupConfig_pucch_sSCellDyn_r17_e SQN_NR_PhysicalCellGroupConfig_pucch_sSCellDyn_r17_e;
+
+enum SQN_NR_PhysicalCellGroupConfig_pucch_sSCellDynSecondaryPUCCHgroup_r17_e {
+	SQN_NR_PhysicalCellGroupConfig_pucch_sSCellDynSecondaryPUCCHgroup_r17_e_enabled = 0,
+};
+
+typedef enum SQN_NR_PhysicalCellGroupConfig_pucch_sSCellDynSecondaryPUCCHgroup_r17_e SQN_NR_PhysicalCellGroupConfig_pucch_sSCellDynSecondaryPUCCHgroup_r17_e;
+
+enum SQN_NR_PhysicalCellGroupConfig_uci_MuxWithDiffPrio_r17_e {
+	SQN_NR_PhysicalCellGroupConfig_uci_MuxWithDiffPrio_r17_e_enabled = 0,
+};
+
+typedef enum SQN_NR_PhysicalCellGroupConfig_uci_MuxWithDiffPrio_r17_e SQN_NR_PhysicalCellGroupConfig_uci_MuxWithDiffPrio_r17_e;
+
+enum SQN_NR_PhysicalCellGroupConfig_uci_MuxWithDiffPrioSecondaryPUCCHgroup_r17_e {
+	SQN_NR_PhysicalCellGroupConfig_uci_MuxWithDiffPrioSecondaryPUCCHgroup_r17_e_enabled = 0,
+};
+
+typedef enum SQN_NR_PhysicalCellGroupConfig_uci_MuxWithDiffPrioSecondaryPUCCHgroup_r17_e SQN_NR_PhysicalCellGroupConfig_uci_MuxWithDiffPrioSecondaryPUCCHgroup_r17_e;
+
+enum SQN_NR_PhysicalCellGroupConfig_simultaneousPUCCH_PUSCH_r17_e {
+	SQN_NR_PhysicalCellGroupConfig_simultaneousPUCCH_PUSCH_r17_e_enabled = 0,
+};
+
+typedef enum SQN_NR_PhysicalCellGroupConfig_simultaneousPUCCH_PUSCH_r17_e SQN_NR_PhysicalCellGroupConfig_simultaneousPUCCH_PUSCH_r17_e;
+
+enum SQN_NR_PhysicalCellGroupConfig_simultaneousPUCCH_PUSCH_SecondaryPUCCHgroup_r17_e {
+	SQN_NR_PhysicalCellGroupConfig_simultaneousPUCCH_PUSCH_SecondaryPUCCHgroup_r17_e_enabled = 0,
+};
+
+typedef enum SQN_NR_PhysicalCellGroupConfig_simultaneousPUCCH_PUSCH_SecondaryPUCCHgroup_r17_e SQN_NR_PhysicalCellGroupConfig_simultaneousPUCCH_PUSCH_SecondaryPUCCHgroup_r17_e;
+
+enum SQN_NR_PhysicalCellGroupConfig_prioLowDG_HighCG_r17_e {
+	SQN_NR_PhysicalCellGroupConfig_prioLowDG_HighCG_r17_e_enabled = 0,
+};
+
+typedef enum SQN_NR_PhysicalCellGroupConfig_prioLowDG_HighCG_r17_e SQN_NR_PhysicalCellGroupConfig_prioLowDG_HighCG_r17_e;
+
+enum SQN_NR_PhysicalCellGroupConfig_prioHighDG_LowCG_r17_e {
+	SQN_NR_PhysicalCellGroupConfig_prioHighDG_LowCG_r17_e_enabled = 0,
+};
+
+typedef enum SQN_NR_PhysicalCellGroupConfig_prioHighDG_LowCG_r17_e SQN_NR_PhysicalCellGroupConfig_prioHighDG_LowCG_r17_e;
+
+enum SQN_NR_PhysicalCellGroupConfig_twoQCLTypeDforPDCCHRepetition_r17_e {
+	SQN_NR_PhysicalCellGroupConfig_twoQCLTypeDforPDCCHRepetition_r17_e_enabled = 0,
+};
+
+typedef enum SQN_NR_PhysicalCellGroupConfig_twoQCLTypeDforPDCCHRepetition_r17_e SQN_NR_PhysicalCellGroupConfig_twoQCLTypeDforPDCCHRepetition_r17_e;
+
+enum SQN_NR_SetupRelease_MulticastConfig_r17_pdsch_HARQ_ACK_CodebookListMulticast_r17_Sel {
+	SQN_NR_SetupRelease_MulticastConfig_r17_pdsch_HARQ_ACK_CodebookListMulticast_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_MulticastConfig_r17_pdsch_HARQ_ACK_CodebookListMulticast_r17_release = 1,
+	SQN_NR_SetupRelease_MulticastConfig_r17_pdsch_HARQ_ACK_CodebookListMulticast_r17_setup = 2,
+};
+
+union SQN_NR_SetupRelease_MulticastConfig_r17_pdsch_HARQ_ACK_CodebookListMulticast_r17_Value {
+	Null release;
+	SQN_NR_PDSCH_HARQ_ACK_CodebookList_r16 setup;
+};
+
+struct SQN_NR_SetupRelease_MulticastConfig_r17_pdsch_HARQ_ACK_CodebookListMulticast_r17 {
+	enum SQN_NR_SetupRelease_MulticastConfig_r17_pdsch_HARQ_ACK_CodebookListMulticast_r17_Sel d;
+	union SQN_NR_SetupRelease_MulticastConfig_r17_pdsch_HARQ_ACK_CodebookListMulticast_r17_Value v;
+};
+
+enum SQN_NR_MulticastConfig_r17_type1_Codebook_GenerationMode_r17_e {
+	SQN_NR_MulticastConfig_r17_type1_Codebook_GenerationMode_r17_e_mode1 = 0,
+	SQN_NR_MulticastConfig_r17_type1_Codebook_GenerationMode_r17_e_mode2 = 1,
+};
+
+typedef enum SQN_NR_MulticastConfig_r17_type1_Codebook_GenerationMode_r17_e SQN_NR_MulticastConfig_r17_type1_Codebook_GenerationMode_r17_e;
+
+struct SQN_NR_SetupRelease_MulticastConfig_r17_pdsch_HARQ_ACK_CodebookListMulticast_r17_SQN_NR_MulticastConfig_r17_pdsch_HARQ_ACK_CodebookListMulticast_r17_Optional {
+	bool d;
+	struct SQN_NR_SetupRelease_MulticastConfig_r17_pdsch_HARQ_ACK_CodebookListMulticast_r17 v;
+};
+
+struct SQN_NR_MulticastConfig_r17_type1_Codebook_GenerationMode_r17_e_type1_Codebook_GenerationMode_r17_Optional {
+	bool d;
+	SQN_NR_MulticastConfig_r17_type1_Codebook_GenerationMode_r17_e v;
+};
+
+struct SQN_NR_MulticastConfig_r17 {
+	struct SQN_NR_SetupRelease_MulticastConfig_r17_pdsch_HARQ_ACK_CodebookListMulticast_r17_SQN_NR_MulticastConfig_r17_pdsch_HARQ_ACK_CodebookListMulticast_r17_Optional pdsch_HARQ_ACK_CodebookListMulticast_r17;
+	struct SQN_NR_MulticastConfig_r17_type1_Codebook_GenerationMode_r17_e_type1_Codebook_GenerationMode_r17_Optional type1_Codebook_GenerationMode_r17;
+};
+
+enum SQN_NR_SetupRelease_PhysicalCellGroupConfig_multicastConfig_r17_Sel {
+	SQN_NR_SetupRelease_PhysicalCellGroupConfig_multicastConfig_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_PhysicalCellGroupConfig_multicastConfig_r17_release = 1,
+	SQN_NR_SetupRelease_PhysicalCellGroupConfig_multicastConfig_r17_setup = 2,
+};
+
+union SQN_NR_SetupRelease_PhysicalCellGroupConfig_multicastConfig_r17_Value {
+	Null release;
+	struct SQN_NR_MulticastConfig_r17 setup;
+};
+
+struct SQN_NR_SetupRelease_PhysicalCellGroupConfig_multicastConfig_r17 {
+	enum SQN_NR_SetupRelease_PhysicalCellGroupConfig_multicastConfig_r17_Sel d;
+	union SQN_NR_SetupRelease_PhysicalCellGroupConfig_multicastConfig_r17_Value v;
+};
+
+struct uint8_t_SQN_NR_PDCCH_BlindDetectionCA_CombIndicator_r17_pdcch_BlindDetectionCA1_r17_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct uint8_t_SQN_NR_PDCCH_BlindDetectionCA_CombIndicator_r17_pdcch_BlindDetectionCA2_r17_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct SQN_NR_PDCCH_BlindDetectionCA_CombIndicator_r17 {
+	struct uint8_t_SQN_NR_PDCCH_BlindDetectionCA_CombIndicator_r17_pdcch_BlindDetectionCA1_r17_Optional pdcch_BlindDetectionCA1_r17;
+	struct uint8_t_SQN_NR_PDCCH_BlindDetectionCA_CombIndicator_r17_pdcch_BlindDetectionCA2_r17_Optional pdcch_BlindDetectionCA2_r17;
+	uint8_t pdcch_BlindDetectionCA3_r17;
+};
+
+enum SQN_NR_SetupRelease_PhysicalCellGroupConfig_pdcch_BlindDetectionCA_CombIndicator_r17_Sel {
+	SQN_NR_SetupRelease_PhysicalCellGroupConfig_pdcch_BlindDetectionCA_CombIndicator_r17_UNBOUND_VALUE = 0,
+	SQN_NR_SetupRelease_PhysicalCellGroupConfig_pdcch_BlindDetectionCA_CombIndicator_r17_release = 1,
+	SQN_NR_SetupRelease_PhysicalCellGroupConfig_pdcch_BlindDetectionCA_CombIndicator_r17_setup = 2,
+};
+
+union SQN_NR_SetupRelease_PhysicalCellGroupConfig_pdcch_BlindDetectionCA_CombIndicator_r17_Value {
+	Null release;
+	struct SQN_NR_PDCCH_BlindDetectionCA_CombIndicator_r17 setup;
+};
+
+struct SQN_NR_SetupRelease_PhysicalCellGroupConfig_pdcch_BlindDetectionCA_CombIndicator_r17 {
+	enum SQN_NR_SetupRelease_PhysicalCellGroupConfig_pdcch_BlindDetectionCA_CombIndicator_r17_Sel d;
+	union SQN_NR_SetupRelease_PhysicalCellGroupConfig_pdcch_BlindDetectionCA_CombIndicator_r17_Value v;
+};
+
+enum SQN_NR_PhysicalCellGroupConfig_simultaneousSR_PUSCH_diffPUCCH_Groups_r17_e {
+	SQN_NR_PhysicalCellGroupConfig_simultaneousSR_PUSCH_diffPUCCH_Groups_r17_e_enabled = 0,
+};
+
+typedef enum SQN_NR_PhysicalCellGroupConfig_simultaneousSR_PUSCH_diffPUCCH_Groups_r17_e SQN_NR_PhysicalCellGroupConfig_simultaneousSR_PUSCH_diffPUCCH_Groups_r17_e;
+
 struct SQN_NR_PhysicalCellGroupConfig_harq_ACK_SpatialBundlingPUCCH_e_harq_ACK_SpatialBundlingPUCCH_Optional {
 	bool d;
 	SQN_NR_PhysicalCellGroupConfig_harq_ACK_SpatialBundlingPUCCH_e v;
@@ -13602,6 +19725,156 @@ struct SQN_NR_PhysicalCellGroupConfig_bdFactorR_r16_e_bdFactorR_r16_Optional {
 	SQN_NR_PhysicalCellGroupConfig_bdFactorR_r16_e v;
 };
 
+struct SQN_NR_PhysicalCellGroupConfig_SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_pdsch_HARQ_ACK_EnhType3ToAddModList_r17_Dynamic {
+	size_t d;
+	struct SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17* v;
+};
+
+struct SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3ToAddModList_r17_DynamicOptional {
+	bool d;
+	struct SQN_NR_PhysicalCellGroupConfig_SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_pdsch_HARQ_ACK_EnhType3ToAddModList_r17_Dynamic v;
+};
+
+struct SQN_NR_PDSCH_HARQ_ACK_EnhType3Index_r17_SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3ToReleaseList_r17_Dynamic {
+	size_t d;
+	SQN_NR_PDSCH_HARQ_ACK_EnhType3Index_r17* v;
+};
+
+struct SQN_NR_PDSCH_HARQ_ACK_EnhType3Index_r17_SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3ToReleaseList_r17_DynamicOptional {
+	bool d;
+	struct SQN_NR_PDSCH_HARQ_ACK_EnhType3Index_r17_SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3ToReleaseList_r17_Dynamic v;
+};
+
+struct SQN_NR_PhysicalCellGroupConfig_SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_pdsch_HARQ_ACK_EnhType3SecondaryToAddModList_r17_Dynamic {
+	size_t d;
+	struct SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17* v;
+};
+
+struct SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3SecondaryToAddModList_r17_DynamicOptional {
+	bool d;
+	struct SQN_NR_PhysicalCellGroupConfig_SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_pdsch_HARQ_ACK_EnhType3SecondaryToAddModList_r17_Dynamic v;
+};
+
+struct SQN_NR_PDSCH_HARQ_ACK_EnhType3Index_r17_SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3SecondaryToReleaseList_r17_Dynamic {
+	size_t d;
+	SQN_NR_PDSCH_HARQ_ACK_EnhType3Index_r17* v;
+};
+
+struct SQN_NR_PDSCH_HARQ_ACK_EnhType3Index_r17_SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3SecondaryToReleaseList_r17_DynamicOptional {
+	bool d;
+	struct SQN_NR_PDSCH_HARQ_ACK_EnhType3Index_r17_SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3SecondaryToReleaseList_r17_Dynamic v;
+};
+
+struct SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3DCI_FieldSecondaryPUCCHgroup_r17_e_pdsch_HARQ_ACK_EnhType3DCI_FieldSecondaryPUCCHgroup_r17_Optional {
+	bool d;
+	SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3DCI_FieldSecondaryPUCCHgroup_r17_e v;
+};
+
+struct SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3DCI_Field_r17_e_pdsch_HARQ_ACK_EnhType3DCI_Field_r17_Optional {
+	bool d;
+	SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3DCI_Field_r17_e v;
+};
+
+struct SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_Retx_r17_e_pdsch_HARQ_ACK_Retx_r17_Optional {
+	bool d;
+	SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_Retx_r17_e v;
+};
+
+struct SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_RetxSecondaryPUCCHgroup_r17_e_pdsch_HARQ_ACK_RetxSecondaryPUCCHgroup_r17_Optional {
+	bool d;
+	SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_RetxSecondaryPUCCHgroup_r17_e v;
+};
+
+struct SQN_NR_SCellIndex_SQN_NR_PhysicalCellGroupConfig_pucch_sSCell_r17_Optional {
+	bool d;
+	SQN_NR_SCellIndex v;
+};
+
+struct SQN_NR_SCellIndex_SQN_NR_PhysicalCellGroupConfig_pucch_sSCellSecondaryPUCCHgroup_r17_Optional {
+	bool d;
+	SQN_NR_SCellIndex v;
+};
+
+struct SQN_NR_PhysicalCellGroupConfig_pucch_sSCellDyn_r17_e_pucch_sSCellDyn_r17_Optional {
+	bool d;
+	SQN_NR_PhysicalCellGroupConfig_pucch_sSCellDyn_r17_e v;
+};
+
+struct SQN_NR_PhysicalCellGroupConfig_pucch_sSCellDynSecondaryPUCCHgroup_r17_e_pucch_sSCellDynSecondaryPUCCHgroup_r17_Optional {
+	bool d;
+	SQN_NR_PhysicalCellGroupConfig_pucch_sSCellDynSecondaryPUCCHgroup_r17_e v;
+};
+
+struct uint8_t_SQN_NR_PhysicalCellGroupConfig_pucch_sSCellPattern_r17_Dynamic {
+	size_t d;
+	uint8_t* v;
+};
+
+struct uint8_t_SQN_NR_PhysicalCellGroupConfig_pucch_sSCellPattern_r17_DynamicOptional {
+	bool d;
+	struct uint8_t_SQN_NR_PhysicalCellGroupConfig_pucch_sSCellPattern_r17_Dynamic v;
+};
+
+struct uint8_t_SQN_NR_PhysicalCellGroupConfig_pucch_sSCellPatternSecondaryPUCCHgroup_r17_Dynamic {
+	size_t d;
+	uint8_t* v;
+};
+
+struct uint8_t_SQN_NR_PhysicalCellGroupConfig_pucch_sSCellPatternSecondaryPUCCHgroup_r17_DynamicOptional {
+	bool d;
+	struct uint8_t_SQN_NR_PhysicalCellGroupConfig_pucch_sSCellPatternSecondaryPUCCHgroup_r17_Dynamic v;
+};
+
+struct SQN_NR_PhysicalCellGroupConfig_uci_MuxWithDiffPrio_r17_e_uci_MuxWithDiffPrio_r17_Optional {
+	bool d;
+	SQN_NR_PhysicalCellGroupConfig_uci_MuxWithDiffPrio_r17_e v;
+};
+
+struct SQN_NR_PhysicalCellGroupConfig_uci_MuxWithDiffPrioSecondaryPUCCHgroup_r17_e_uci_MuxWithDiffPrioSecondaryPUCCHgroup_r17_Optional {
+	bool d;
+	SQN_NR_PhysicalCellGroupConfig_uci_MuxWithDiffPrioSecondaryPUCCHgroup_r17_e v;
+};
+
+struct SQN_NR_PhysicalCellGroupConfig_simultaneousPUCCH_PUSCH_r17_e_simultaneousPUCCH_PUSCH_r17_Optional {
+	bool d;
+	SQN_NR_PhysicalCellGroupConfig_simultaneousPUCCH_PUSCH_r17_e v;
+};
+
+struct SQN_NR_PhysicalCellGroupConfig_simultaneousPUCCH_PUSCH_SecondaryPUCCHgroup_r17_e_simultaneousPUCCH_PUSCH_SecondaryPUCCHgroup_r17_Optional {
+	bool d;
+	SQN_NR_PhysicalCellGroupConfig_simultaneousPUCCH_PUSCH_SecondaryPUCCHgroup_r17_e v;
+};
+
+struct SQN_NR_PhysicalCellGroupConfig_prioLowDG_HighCG_r17_e_prioLowDG_HighCG_r17_Optional {
+	bool d;
+	SQN_NR_PhysicalCellGroupConfig_prioLowDG_HighCG_r17_e v;
+};
+
+struct SQN_NR_PhysicalCellGroupConfig_prioHighDG_LowCG_r17_e_prioHighDG_LowCG_r17_Optional {
+	bool d;
+	SQN_NR_PhysicalCellGroupConfig_prioHighDG_LowCG_r17_e v;
+};
+
+struct SQN_NR_PhysicalCellGroupConfig_twoQCLTypeDforPDCCHRepetition_r17_e_twoQCLTypeDforPDCCHRepetition_r17_Optional {
+	bool d;
+	SQN_NR_PhysicalCellGroupConfig_twoQCLTypeDforPDCCHRepetition_r17_e v;
+};
+
+struct SQN_NR_SetupRelease_PhysicalCellGroupConfig_multicastConfig_r17_SQN_NR_PhysicalCellGroupConfig_multicastConfig_r17_Optional {
+	bool d;
+	struct SQN_NR_SetupRelease_PhysicalCellGroupConfig_multicastConfig_r17 v;
+};
+
+struct SQN_NR_SetupRelease_PhysicalCellGroupConfig_pdcch_BlindDetectionCA_CombIndicator_r17_SQN_NR_PhysicalCellGroupConfig_pdcch_BlindDetectionCA_CombIndicator_r17_Optional {
+	bool d;
+	struct SQN_NR_SetupRelease_PhysicalCellGroupConfig_pdcch_BlindDetectionCA_CombIndicator_r17 v;
+};
+
+struct SQN_NR_PhysicalCellGroupConfig_simultaneousSR_PUSCH_diffPUCCH_Groups_r17_e_simultaneousSR_PUSCH_diffPUCCH_Groups_r17_Optional {
+	bool d;
+	SQN_NR_PhysicalCellGroupConfig_simultaneousSR_PUSCH_diffPUCCH_Groups_r17_e v;
+};
+
 struct SQN_NR_PhysicalCellGroupConfig {
 	struct SQN_NR_PhysicalCellGroupConfig_harq_ACK_SpatialBundlingPUCCH_e_harq_ACK_SpatialBundlingPUCCH_Optional harq_ACK_SpatialBundlingPUCCH;
 	struct SQN_NR_PhysicalCellGroupConfig_harq_ACK_SpatialBundlingPUSCH_e_harq_ACK_SpatialBundlingPUSCH_Optional harq_ACK_SpatialBundlingPUSCH;
@@ -13638,6 +19911,30 @@ struct SQN_NR_PhysicalCellGroupConfig {
 	struct SQN_NR_SetupRelease_PhysicalCellGroupConfig_pdcch_BlindDetection2_r16_SQN_NR_PhysicalCellGroupConfig_pdcch_BlindDetection2_r16_Optional pdcch_BlindDetection2_r16;
 	struct SQN_NR_SetupRelease_PhysicalCellGroupConfig_pdcch_BlindDetection3_r16_SQN_NR_PhysicalCellGroupConfig_pdcch_BlindDetection3_r16_Optional pdcch_BlindDetection3_r16;
 	struct SQN_NR_PhysicalCellGroupConfig_bdFactorR_r16_e_bdFactorR_r16_Optional bdFactorR_r16;
+	struct SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3ToAddModList_r17_DynamicOptional pdsch_HARQ_ACK_EnhType3ToAddModList_r17;
+	struct SQN_NR_PDSCH_HARQ_ACK_EnhType3Index_r17_SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3ToReleaseList_r17_DynamicOptional pdsch_HARQ_ACK_EnhType3ToReleaseList_r17;
+	struct SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3SecondaryToAddModList_r17_DynamicOptional pdsch_HARQ_ACK_EnhType3SecondaryToAddModList_r17;
+	struct SQN_NR_PDSCH_HARQ_ACK_EnhType3Index_r17_SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3SecondaryToReleaseList_r17_DynamicOptional pdsch_HARQ_ACK_EnhType3SecondaryToReleaseList_r17;
+	struct SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3DCI_FieldSecondaryPUCCHgroup_r17_e_pdsch_HARQ_ACK_EnhType3DCI_FieldSecondaryPUCCHgroup_r17_Optional pdsch_HARQ_ACK_EnhType3DCI_FieldSecondaryPUCCHgroup_r17;
+	struct SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3DCI_Field_r17_e_pdsch_HARQ_ACK_EnhType3DCI_Field_r17_Optional pdsch_HARQ_ACK_EnhType3DCI_Field_r17;
+	struct SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_Retx_r17_e_pdsch_HARQ_ACK_Retx_r17_Optional pdsch_HARQ_ACK_Retx_r17;
+	struct SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_RetxSecondaryPUCCHgroup_r17_e_pdsch_HARQ_ACK_RetxSecondaryPUCCHgroup_r17_Optional pdsch_HARQ_ACK_RetxSecondaryPUCCHgroup_r17;
+	struct SQN_NR_SCellIndex_SQN_NR_PhysicalCellGroupConfig_pucch_sSCell_r17_Optional pucch_sSCell_r17;
+	struct SQN_NR_SCellIndex_SQN_NR_PhysicalCellGroupConfig_pucch_sSCellSecondaryPUCCHgroup_r17_Optional pucch_sSCellSecondaryPUCCHgroup_r17;
+	struct SQN_NR_PhysicalCellGroupConfig_pucch_sSCellDyn_r17_e_pucch_sSCellDyn_r17_Optional pucch_sSCellDyn_r17;
+	struct SQN_NR_PhysicalCellGroupConfig_pucch_sSCellDynSecondaryPUCCHgroup_r17_e_pucch_sSCellDynSecondaryPUCCHgroup_r17_Optional pucch_sSCellDynSecondaryPUCCHgroup_r17;
+	struct uint8_t_SQN_NR_PhysicalCellGroupConfig_pucch_sSCellPattern_r17_DynamicOptional pucch_sSCellPattern_r17;
+	struct uint8_t_SQN_NR_PhysicalCellGroupConfig_pucch_sSCellPatternSecondaryPUCCHgroup_r17_DynamicOptional pucch_sSCellPatternSecondaryPUCCHgroup_r17;
+	struct SQN_NR_PhysicalCellGroupConfig_uci_MuxWithDiffPrio_r17_e_uci_MuxWithDiffPrio_r17_Optional uci_MuxWithDiffPrio_r17;
+	struct SQN_NR_PhysicalCellGroupConfig_uci_MuxWithDiffPrioSecondaryPUCCHgroup_r17_e_uci_MuxWithDiffPrioSecondaryPUCCHgroup_r17_Optional uci_MuxWithDiffPrioSecondaryPUCCHgroup_r17;
+	struct SQN_NR_PhysicalCellGroupConfig_simultaneousPUCCH_PUSCH_r17_e_simultaneousPUCCH_PUSCH_r17_Optional simultaneousPUCCH_PUSCH_r17;
+	struct SQN_NR_PhysicalCellGroupConfig_simultaneousPUCCH_PUSCH_SecondaryPUCCHgroup_r17_e_simultaneousPUCCH_PUSCH_SecondaryPUCCHgroup_r17_Optional simultaneousPUCCH_PUSCH_SecondaryPUCCHgroup_r17;
+	struct SQN_NR_PhysicalCellGroupConfig_prioLowDG_HighCG_r17_e_prioLowDG_HighCG_r17_Optional prioLowDG_HighCG_r17;
+	struct SQN_NR_PhysicalCellGroupConfig_prioHighDG_LowCG_r17_e_prioHighDG_LowCG_r17_Optional prioHighDG_LowCG_r17;
+	struct SQN_NR_PhysicalCellGroupConfig_twoQCLTypeDforPDCCHRepetition_r17_e_twoQCLTypeDforPDCCHRepetition_r17_Optional twoQCLTypeDforPDCCHRepetition_r17;
+	struct SQN_NR_SetupRelease_PhysicalCellGroupConfig_multicastConfig_r17_SQN_NR_PhysicalCellGroupConfig_multicastConfig_r17_Optional multicastConfig_r17;
+	struct SQN_NR_SetupRelease_PhysicalCellGroupConfig_pdcch_BlindDetectionCA_CombIndicator_r17_SQN_NR_PhysicalCellGroupConfig_pdcch_BlindDetectionCA_CombIndicator_r17_Optional pdcch_BlindDetectionCA_CombIndicator_r17;
+	struct SQN_NR_PhysicalCellGroupConfig_simultaneousSR_PUSCH_diffPUCCH_Groups_r17_e_simultaneousSR_PUSCH_diffPUCCH_Groups_r17_Optional simultaneousSR_PUSCH_diffPUCCH_Groups_r17;
 };
 
 enum SQN_NR_CFRA_occasions_ssb_perRACH_Occasion_e {
@@ -13663,7 +19960,7 @@ struct SQN_NR_CFRA_occasions {
 	struct SQN_NR_CFRA_occasions_ssb_perRACH_Occasion_e_ssb_perRACH_Occasion_Optional ssb_perRACH_Occasion;
 };
 
-struct uint16_t_SQN_NR_CFRA_SSB_Resource_msgA_PUSCH_resource_Index_r16_Optional {
+struct uint16_t_SQN_NR_CFRA_SSB_Resource_msgA_PUSCH_Resource_Index_r16_Optional {
 	bool d;
 	uint16_t v;
 };
@@ -13671,7 +19968,7 @@ struct uint16_t_SQN_NR_CFRA_SSB_Resource_msgA_PUSCH_resource_Index_r16_Optional 
 struct SQN_NR_CFRA_SSB_Resource {
 	SQN_NR_SSB_Index ssb;
 	uint8_t ra_PreambleIndex;
-	struct uint16_t_SQN_NR_CFRA_SSB_Resource_msgA_PUSCH_resource_Index_r16_Optional msgA_PUSCH_resource_Index_r16;
+	struct uint16_t_SQN_NR_CFRA_SSB_Resource_msgA_PUSCH_Resource_Index_r16_Optional msgA_PUSCH_Resource_Index_r16;
 };
 
 struct SQN_NR_CFRA_SSB_Resource_SQN_NR_CFRA_resources_ssb_ssb_ResourceList_Dynamic {
@@ -13826,113 +20123,6 @@ struct SQN_NR_RACH_ConfigDedicated {
 	struct SQN_NR_CFRA_TwoStep_r16_SQN_NR_RACH_ConfigDedicated_cfra_TwoStep_r16_Optional cfra_TwoStep_r16;
 };
 
-enum SQN_NR_RateMatchPatternLTE_CRS_carrierBandwidthDL_e {
-	SQN_NR_RateMatchPatternLTE_CRS_carrierBandwidthDL_e_n6 = 0,
-	SQN_NR_RateMatchPatternLTE_CRS_carrierBandwidthDL_e_n15 = 1,
-	SQN_NR_RateMatchPatternLTE_CRS_carrierBandwidthDL_e_n25 = 2,
-	SQN_NR_RateMatchPatternLTE_CRS_carrierBandwidthDL_e_n50 = 3,
-	SQN_NR_RateMatchPatternLTE_CRS_carrierBandwidthDL_e_n75 = 4,
-	SQN_NR_RateMatchPatternLTE_CRS_carrierBandwidthDL_e_n100 = 5,
-	SQN_NR_RateMatchPatternLTE_CRS_carrierBandwidthDL_e_spare2 = 6,
-	SQN_NR_RateMatchPatternLTE_CRS_carrierBandwidthDL_e_spare1 = 7,
-};
-
-typedef enum SQN_NR_RateMatchPatternLTE_CRS_carrierBandwidthDL_e SQN_NR_RateMatchPatternLTE_CRS_carrierBandwidthDL_e;
-
-enum SQN_NR_EUTRA_MBSFN_SubframeConfig_radioframeAllocationPeriod_e {
-	SQN_NR_EUTRA_MBSFN_SubframeConfig_radioframeAllocationPeriod_e_n1 = 0,
-	SQN_NR_EUTRA_MBSFN_SubframeConfig_radioframeAllocationPeriod_e_n2 = 1,
-	SQN_NR_EUTRA_MBSFN_SubframeConfig_radioframeAllocationPeriod_e_n4 = 2,
-	SQN_NR_EUTRA_MBSFN_SubframeConfig_radioframeAllocationPeriod_e_n8 = 3,
-	SQN_NR_EUTRA_MBSFN_SubframeConfig_radioframeAllocationPeriod_e_n16 = 4,
-	SQN_NR_EUTRA_MBSFN_SubframeConfig_radioframeAllocationPeriod_e_n32 = 5,
-};
-
-typedef enum SQN_NR_EUTRA_MBSFN_SubframeConfig_radioframeAllocationPeriod_e SQN_NR_EUTRA_MBSFN_SubframeConfig_radioframeAllocationPeriod_e;
-
-enum SQN_NR_EUTRA_MBSFN_SubframeConfig_subframeAllocation1_Sel {
-	SQN_NR_EUTRA_MBSFN_SubframeConfig_subframeAllocation1_UNBOUND_VALUE = 0,
-	SQN_NR_EUTRA_MBSFN_SubframeConfig_subframeAllocation1_oneFrame = 1,
-	SQN_NR_EUTRA_MBSFN_SubframeConfig_subframeAllocation1_fourFrames = 2,
-};
-
-union SQN_NR_EUTRA_MBSFN_SubframeConfig_subframeAllocation1_Value {
-	B6 oneFrame;
-	B24 fourFrames;
-};
-
-struct SQN_NR_EUTRA_MBSFN_SubframeConfig_subframeAllocation1 {
-	enum SQN_NR_EUTRA_MBSFN_SubframeConfig_subframeAllocation1_Sel d;
-	union SQN_NR_EUTRA_MBSFN_SubframeConfig_subframeAllocation1_Value v;
-};
-
-enum SQN_NR_EUTRA_MBSFN_SubframeConfig_subframeAllocation2_Sel {
-	SQN_NR_EUTRA_MBSFN_SubframeConfig_subframeAllocation2_UNBOUND_VALUE = 0,
-	SQN_NR_EUTRA_MBSFN_SubframeConfig_subframeAllocation2_oneFrame = 1,
-	SQN_NR_EUTRA_MBSFN_SubframeConfig_subframeAllocation2_fourFrames = 2,
-};
-
-union SQN_NR_EUTRA_MBSFN_SubframeConfig_subframeAllocation2_Value {
-	B2 oneFrame;
-	B8 fourFrames;
-};
-
-struct SQN_NR_EUTRA_MBSFN_SubframeConfig_subframeAllocation2 {
-	enum SQN_NR_EUTRA_MBSFN_SubframeConfig_subframeAllocation2_Sel d;
-	union SQN_NR_EUTRA_MBSFN_SubframeConfig_subframeAllocation2_Value v;
-};
-
-struct SQN_NR_EUTRA_MBSFN_SubframeConfig_subframeAllocation2_subframeAllocation2_Optional {
-	bool d;
-	struct SQN_NR_EUTRA_MBSFN_SubframeConfig_subframeAllocation2 v;
-};
-
-struct SQN_NR_EUTRA_MBSFN_SubframeConfig {
-	SQN_NR_EUTRA_MBSFN_SubframeConfig_radioframeAllocationPeriod_e radioframeAllocationPeriod;
-	uint8_t radioframeAllocationOffset;
-	struct SQN_NR_EUTRA_MBSFN_SubframeConfig_subframeAllocation1 subframeAllocation1;
-	struct SQN_NR_EUTRA_MBSFN_SubframeConfig_subframeAllocation2_subframeAllocation2_Optional subframeAllocation2;
-};
-
-struct SQN_NR_EUTRA_MBSFN_SubframeConfig_SQN_NR_EUTRA_MBSFN_SubframeConfigList_Dynamic {
-	size_t d;
-	struct SQN_NR_EUTRA_MBSFN_SubframeConfig* v;
-};
-
-typedef struct SQN_NR_EUTRA_MBSFN_SubframeConfig_SQN_NR_EUTRA_MBSFN_SubframeConfigList_Dynamic SQN_NR_EUTRA_MBSFN_SubframeConfigList;
-
-enum SQN_NR_RateMatchPatternLTE_CRS_nrofCRS_Ports_e {
-	SQN_NR_RateMatchPatternLTE_CRS_nrofCRS_Ports_e_n1 = 0,
-	SQN_NR_RateMatchPatternLTE_CRS_nrofCRS_Ports_e_n2 = 1,
-	SQN_NR_RateMatchPatternLTE_CRS_nrofCRS_Ports_e_n4 = 2,
-};
-
-typedef enum SQN_NR_RateMatchPatternLTE_CRS_nrofCRS_Ports_e SQN_NR_RateMatchPatternLTE_CRS_nrofCRS_Ports_e;
-
-enum SQN_NR_RateMatchPatternLTE_CRS_v_Shift_e {
-	SQN_NR_RateMatchPatternLTE_CRS_v_Shift_e_n0 = 0,
-	SQN_NR_RateMatchPatternLTE_CRS_v_Shift_e_n1 = 1,
-	SQN_NR_RateMatchPatternLTE_CRS_v_Shift_e_n2 = 2,
-	SQN_NR_RateMatchPatternLTE_CRS_v_Shift_e_n3 = 3,
-	SQN_NR_RateMatchPatternLTE_CRS_v_Shift_e_n4 = 4,
-	SQN_NR_RateMatchPatternLTE_CRS_v_Shift_e_n5 = 5,
-};
-
-typedef enum SQN_NR_RateMatchPatternLTE_CRS_v_Shift_e SQN_NR_RateMatchPatternLTE_CRS_v_Shift_e;
-
-struct SQN_NR_EUTRA_MBSFN_SubframeConfigList_SQN_NR_RateMatchPatternLTE_CRS_mbsfn_SubframeConfigList_Optional {
-	bool d;
-	SQN_NR_EUTRA_MBSFN_SubframeConfigList v;
-};
-
-struct SQN_NR_RateMatchPatternLTE_CRS {
-	uint16_t carrierFreqDL;
-	SQN_NR_RateMatchPatternLTE_CRS_carrierBandwidthDL_e carrierBandwidthDL;
-	struct SQN_NR_EUTRA_MBSFN_SubframeConfigList_SQN_NR_RateMatchPatternLTE_CRS_mbsfn_SubframeConfigList_Optional mbsfn_SubframeConfigList;
-	SQN_NR_RateMatchPatternLTE_CRS_nrofCRS_Ports_e nrofCRS_Ports;
-	SQN_NR_RateMatchPatternLTE_CRS_v_Shift_e v_Shift;
-};
-
 enum SQN_NR_SPS_Config_periodicity_e {
 	SQN_NR_SPS_Config_periodicity_e_ms10 = 0,
 	SQN_NR_SPS_Config_periodicity_e_ms20 = 1,
@@ -14006,6 +20196,31 @@ struct SQN_NR_SPS_Config_pdsch_AggregationFactor_r16_e_pdsch_AggregationFactor_r
 	SQN_NR_SPS_Config_pdsch_AggregationFactor_r16_e v;
 };
 
+struct uint8_t_SQN_NR_SPS_Config_sps_HARQ_Deferral_r17_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct SQN_NR_PUCCH_ResourceId_SQN_NR_SPS_Config_n1PUCCH_AN_PUCCHsSCell_r17_Optional {
+	bool d;
+	SQN_NR_PUCCH_ResourceId v;
+};
+
+struct uint16_t_SQN_NR_SPS_Config_periodicityExt_r17_Optional {
+	bool d;
+	uint16_t v;
+};
+
+struct uint8_t_SQN_NR_SPS_Config_nrofHARQ_Processes_v1710_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct uint8_t_SQN_NR_SPS_Config_harq_ProcID_Offset_v1700_Optional {
+	bool d;
+	uint8_t v;
+};
+
 struct SQN_NR_SPS_Config {
 	SQN_NR_SPS_Config_periodicity_e periodicity;
 	uint8_t nrofHARQ_Processes;
@@ -14016,6 +20231,11 @@ struct SQN_NR_SPS_Config {
 	struct uint16_t_SQN_NR_SPS_Config_periodicityExt_r16_Optional periodicityExt_r16;
 	struct uint8_t_SQN_NR_SPS_Config_harq_CodebookID_r16_Optional harq_CodebookID_r16;
 	struct SQN_NR_SPS_Config_pdsch_AggregationFactor_r16_e_pdsch_AggregationFactor_r16_Optional pdsch_AggregationFactor_r16;
+	struct uint8_t_SQN_NR_SPS_Config_sps_HARQ_Deferral_r17_Optional sps_HARQ_Deferral_r17;
+	struct SQN_NR_PUCCH_ResourceId_SQN_NR_SPS_Config_n1PUCCH_AN_PUCCHsSCell_r17_Optional n1PUCCH_AN_PUCCHsSCell_r17;
+	struct uint16_t_SQN_NR_SPS_Config_periodicityExt_r17_Optional periodicityExt_r17;
+	struct uint8_t_SQN_NR_SPS_Config_nrofHARQ_Processes_v1710_Optional nrofHARQ_Processes_v1710;
+	struct uint8_t_SQN_NR_SPS_Config_harq_ProcID_Offset_v1700_Optional harq_ProcID_Offset_v1700;
 };
 
 typedef uint16_t SQN_NR_ScramblingId;

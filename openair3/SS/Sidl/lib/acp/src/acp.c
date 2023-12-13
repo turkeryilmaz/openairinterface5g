@@ -601,7 +601,6 @@ int acpServerInit(acpCtx_t ctx, const char* host, int port, size_t aSize)
 
 int acpServerInitWithCtx(const char* host, int port, const struct acpMsgTable* msgTable, size_t aSize, acpCtx_t* ctx)
 {
-	SIDL_ASSERT(host);
 	SIDL_ASSERT(ctx);
 	ACP_DEBUG_ENTER_LOG();
 

@@ -159,6 +159,29 @@ struct NR_SI_List_Type_NR_SegmentedSI_List_Type_Dynamic {
 
 typedef struct NR_SI_List_Type_NR_SegmentedSI_List_Type_Dynamic NR_SegmentedSI_List_Type;
 
+enum NR_PosSI_Type_Sel {
+	NR_PosSI_Type_UNBOUND_VALUE = 0,
+	NR_PosSI_Type_PosSI = 1,
+	NR_PosSI_Type_SegmentedPosSIs = 2,
+};
+
+union NR_PosSI_Type_Value {
+	struct SQN_NR_BCCH_DL_SCH_Message PosSI;
+	NR_SI_List_Type SegmentedPosSIs;
+};
+
+struct NR_PosSI_Type {
+	enum NR_PosSI_Type_Sel d;
+	union NR_PosSI_Type_Value v;
+};
+
+struct NR_PosSI_Type_NR_PosSI_List_Type_Dynamic {
+	size_t d;
+	struct NR_PosSI_Type* v;
+};
+
+typedef struct NR_PosSI_Type_NR_PosSI_List_Type_Dynamic NR_PosSI_List_Type;
+
 struct SQN_NR_BCCH_BCH_Message_MIB_Optional {
 	bool d;
 	struct SQN_NR_BCCH_BCH_Message v;
@@ -179,11 +202,17 @@ struct NR_SegmentedSI_List_Type_SegmentedSIs_Optional {
 	NR_SegmentedSI_List_Type v;
 };
 
+struct NR_PosSI_List_Type_PosSIs_Optional {
+	bool d;
+	NR_PosSI_List_Type v;
+};
+
 struct NR_BcchInfo_Type {
 	struct SQN_NR_BCCH_BCH_Message_MIB_Optional MIB;
 	struct SQN_NR_BCCH_DL_SCH_Message_SIB1_Optional SIB1;
 	struct NR_SI_List_Type_SIs_Optional SIs;
 	struct NR_SegmentedSI_List_Type_SegmentedSIs_Optional SegmentedSIs;
+	struct NR_PosSI_List_Type_PosSIs_Optional PosSIs;
 };
 
 struct NR_BcchToPbchConfig_Type_Pbch_Optional {

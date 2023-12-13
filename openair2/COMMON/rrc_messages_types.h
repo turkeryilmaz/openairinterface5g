@@ -369,8 +369,8 @@ typedef struct InterFreqCarrierFreqInfo_s {
   e_LTE_Q_OffsetRange         *q_OffsetFreq;/* OPTIONAL */
   bool                            interFreqNeighCellList_Present;
   LTE_InterFreqNeighCellInfo_t    *interFreqNeighCellList;/* OPTIONAL */
-  bool                        interFreqBlackCellList_Present;
-  PhysCellIdRange_t           *interFreqBlackCellList;/* OPTIONAL */
+  bool                        interFreqExcludedCellList_Present;
+  PhysCellIdRange_t           *interFreqExcludedCellList;/* OPTIONAL */
   bool          q_QualMin_r9_Present;
   long          *q_QualMin_r9;/* OPTIONAL */
   bool          threshX_Q_r9_Present;
@@ -528,9 +528,9 @@ typedef struct RrcConfigurationReq_s {
   bool                       intraFreqNeighCellListPresent[MAX_NUM_CCs];
   int                        intraFreqNeighCellListCount[MAX_NUM_CCs];
   IntraFreqNeighCellInfo_t  *intraFreqNeighCellList[MAX_NUM_CCs];
-  bool                       intraFreqBlackCellListPresent[MAX_NUM_CCs];
-  int                        intraFreqBlackCellListCount[MAX_NUM_CCs];
-  PhysCellIdRange_t         *intraFreqBlackCellList[MAX_NUM_CCs];
+  bool                       intraFreqExcludedCellListPresent[MAX_NUM_CCs];
+  int                        intraFreqExcludedCellListCount[MAX_NUM_CCs];
+  PhysCellIdRange_t         *intraFreqExcludedCellList[MAX_NUM_CCs];
 
   //SIB5
   bool                         sib5_Present[MAX_NUM_CCs];

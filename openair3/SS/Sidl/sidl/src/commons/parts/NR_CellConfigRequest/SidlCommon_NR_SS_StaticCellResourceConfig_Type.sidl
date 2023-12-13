@@ -29,19 +29,12 @@
 #include "SidlNrCommon.sidl"
 
 typedef enum {
-	NR_CellCapability_broadcastOnlyCell,
-	NR_CellCapability_minimumUplinkCell,
-	NR_CellCapability_fullCell
-} NR_CellCapability_Type;
-
-typedef enum {
-	NR_CellInitialCAConfig_SpCell,
-	NR_CellInitialCAConfig_Scell_Active,
-	NR_CellInitialCAConfig_Scell_Inactive,
-	NR_CellInitialCAConfig_Scell_None
-} NR_CellInitialCAConfig_Type;
+	NR_CellCA_Capability_SpCell,
+	NR_CellCA_Capability_Scell_Active,
+	NR_CellCA_Capability_Scell_Inactive,
+	NR_CellCA_Capability_None
+} NR_CellCA_Capability_Type;
 
 struct NR_SS_StaticCellResourceConfig_Type {
-	NR_CellCapability_Type CellCapability;
-	NR_CellInitialCAConfig_Type CarrierAggregation;
+	NR_CellCA_Capability_Type CA_Capability;
 };

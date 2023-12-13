@@ -318,7 +318,7 @@ void ss_eNB_vng_init(void)
     };
 
     // Arena size to decode received message
-    const size_t aSize = 32 * 1024;
+    const size_t aSize = 128 * 1024;
 
     // Start listening server and get ACP context,
     // after the connection is performed, we can use all services
