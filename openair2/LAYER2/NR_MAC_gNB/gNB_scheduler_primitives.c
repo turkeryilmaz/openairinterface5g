@@ -1821,6 +1821,30 @@ void create_nr_list(NR_list_t *list, int len)
 }
 
 /*
+ * Reset NR_list
+ */
+void reset_nr_list(NR_list_t *list)
+{
+  list->head = -1;
+  memset(list->next, -1, list->len);
+  list->tail = -1;
+}
+
+/*
+ * Check if id is in the list
+ */
+bool check_nr_list(const NR_list_t *listP, int id)
+{
+  const int *cur = &listP->head;
+  while (*cur >= 0) {
+    if (*cur == id)
+      return true;
+    cur = &listP->next[*cur];
+  }
+  return false;
+}
+
+/*
  * Resize an NR_list
  */
 void resize_nr_list(NR_list_t *list, int new_len)
@@ -1996,6 +2020,10 @@ void delete_nr_ue_data(NR_UE_info_t *UE, NR_COMMON_channels_t *ccPtr, uid_alloca
   destroy_nr_list(&sched_ctrl->retrans_ul_harq);
   free_sched_pucch_list(sched_ctrl);
   uid_linear_allocator_free(uia, UE->uid);
+  for (int slice = 0; slice < NR_MAX_NUM_SLICES; slice++) {
+    destroy_nr_list(&sched_ctrl->sliceInfo[slice].lcid);
+  }
+  destroy_nr_list(&UE->dl_id);
   LOG_I(NR_MAC, "Remove NR rnti 0x%04x\n", UE->rnti);
   free(UE);
 }
@@ -2357,6 +2385,12 @@ NR_UE_info_t *add_new_nr_ue(gNB_MAC_INST *nr_mac, rnti_t rntiP, NR_CellGroupConf
   create_nr_list(&sched_ctrl->retrans_ul_harq, 16);
 
   reset_srs_stats(UE);
+
+  /* prepare LC list for all slices in this UE */
+  for (int slice = 0; slice < NR_MAX_NUM_SLICES; slice++) {
+    create_nr_list(&sched_ctrl->sliceInfo[slice].lcid, NR_MAX_NUM_LCID);
+  }
+  create_nr_list(&UE->dl_id, NR_MAX_NUM_SLICES);
 
   // associate UEs to the first slice if slice exists (there is no DRB setup in this stage)
   nr_pp_impl_param_dl_t *dl = &RC.nrmac[0]->pre_processor_dl;

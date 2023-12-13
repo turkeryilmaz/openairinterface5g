@@ -26,6 +26,7 @@
 #include "openair2/LAYER2/nr_rlc/nr_rlc_oai_api.h"
 #include "openair2/RRC/NR/MESSAGES/asn1_msg.h"
 #include "F1AP_CauseRadioNetwork.h"
+#include "NR_MAC_gNB/slicing/nr_slicing.h"
 
 #include "uper_decoder.h"
 #include "uper_encoder.h"
@@ -363,6 +364,10 @@ void ue_context_setup_request(const f1ap_ue_context_setup_t *req)
   /* Set NSSAI config in MAC for each active DRB */
   set_nssaiConfig(req->drbs_to_be_setup_length, req->drbs_to_be_setup, &UE->UE_sched_ctrl);
 
+  /* Associate UE to the corresponding slice*/
+  nr_pp_impl_param_dl_t *dl = &mac->pre_processor_dl;
+  if (dl->slices)
+    dl->add_UE(dl->slices, UE);
   NR_SCHED_UNLOCK(&mac->sched_lock);
 
   /* some sanity checks, since we use the same type for request and response */
