@@ -32,6 +32,7 @@
 #include "lib/f1ap_interface_management.h"
 
 #include "executables/softmodem-common.h"
+#include "NR_MAC_gNB/slicing/nr_slicing.h"
 
 #include "uper_decoder.h"
 #include "uper_encoder.h"
@@ -587,6 +588,11 @@ void ue_context_setup_request(const f1ap_ue_context_setup_t *req)
   resp.du_to_cu_rrc_information->cellGroupConfig_length = (enc_rval.encoded + 7) >> 3;
 
   nr_mac_prepare_cellgroup_update(mac, UE, new_CellGroup);
+
+  /* Associate UE to the corresponding slice */
+  nr_pp_impl_param_dl_t *dl = &mac->pre_processor_dl;
+  if (dl->slices)
+    dl->add_UE(dl->slices, UE);
 
   NR_SCHED_UNLOCK(&mac->sched_lock);
 
