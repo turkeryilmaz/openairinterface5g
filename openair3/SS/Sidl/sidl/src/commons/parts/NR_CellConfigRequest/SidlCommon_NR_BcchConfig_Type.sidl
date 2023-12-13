@@ -68,11 +68,26 @@ struct NR_BcchToPdschConfig_Type {
 typedef SIDL_DYNAMIC_OF_STRUCT(ASN_NR_NAME(BCCH_DL_SCH_Message), NR_SI_List_Type);
 typedef SIDL_DYNAMIC(NR_SI_List_Type, NR_SegmentedSI_List_Type);
 
+SIDL_UNION_ENUM(NR_PosSI_Type) {
+	NR_PosSI_Type_UNBOUND_VALUE,
+	NR_PosSI_Type_PosSI,
+	NR_PosSI_Type_SegmentedPosSIs
+};
+SIDL_UNION_BEGIN(NR_PosSI_Type) {
+	SIDL_UNION_CASE(NR_PosSI_Type_PosSI)
+		struct ASN_NR_NAME(BCCH_DL_SCH_Message) PosSI;
+	SIDL_UNION_CASE(NR_PosSI_Type_SegmentedPosSIs)
+		NR_SI_List_Type SegmentedPosSIs;
+} SIDL_UNION_END;
+
+typedef SIDL_DYNAMIC_OF_STRUCT(NR_PosSI_Type, NR_PosSI_List_Type);
+
 struct NR_BcchInfo_Type {
 	SIDL_OPTIONAL_OF_STRUCT(ASN_NR_NAME(BCCH_BCH_Message), MIB);
 	SIDL_OPTIONAL_OF_STRUCT(ASN_NR_NAME(BCCH_DL_SCH_Message), SIB1);
 	SIDL_OPTIONAL(NR_SI_List_Type, SIs);
 	SIDL_OPTIONAL(NR_SegmentedSI_List_Type, SegmentedSIs);
+	SIDL_OPTIONAL(NR_PosSI_List_Type, PosSIs);
 };
 
 struct NR_BcchConfig_Type {

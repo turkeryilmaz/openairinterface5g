@@ -423,7 +423,7 @@ int ss_gNB_vtp_init(void)
             NULL, 0}};
 
     // Arena size to decode received message
-    const size_t aSize = 32 * 1024;
+    const size_t aSize = 128 * 1024;
 
     // Start listening server and get ACP context,
     // after the connection is performed, we can use all services

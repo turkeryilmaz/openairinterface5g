@@ -86,7 +86,8 @@ const char* adbgUtilsDrbPDCP_PDU_TypeToStr(int select)
 		case PDCP_PDU_Type_DataExtSN_UDC: return "DataExtSN_UDC";
 		case PDCP_PDU_Type_Data18bitSN_UDC: return "Data18bitSN_UDC";
 		case PDCP_PDU_Type_UdcFeedback: return "UdcFeedback";
-		case PDCP_PDU_Type_EhcFeedback: return "EhcFeedback";
+		case PDCP_PDU_Type_EhcFeedback_ShortCID: return "EhcFeedback_ShortCID";
+		case PDCP_PDU_Type_EhcFeedback_LongCID: return "EhcFeedback_LongCID";
 		default: return "unknown";
 	}
 }

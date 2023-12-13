@@ -28,6 +28,8 @@
 
 SIDL_BEGIN_C_INTERFACE
 
+typedef BIT_STRING_ELEMENT B1[1];
+
 typedef BIT_STRING_ELEMENT B2[2];
 
 typedef BIT_STRING_ELEMENT B3[3];
@@ -372,13 +374,30 @@ struct SQN_PHICH_Config {
 	SQN_PHICH_Config_phich_Resource_e phich_Resource;
 };
 
+enum SQN_MasterInformationBlock_partEARFCN_17_Sel {
+	SQN_MasterInformationBlock_partEARFCN_17_UNBOUND_VALUE = 0,
+	SQN_MasterInformationBlock_partEARFCN_17_spare = 1,
+	SQN_MasterInformationBlock_partEARFCN_17_earfcn_LSB = 2,
+};
+
+union SQN_MasterInformationBlock_partEARFCN_17_Value {
+	B2 spare;
+	B2 earfcn_LSB;
+};
+
+struct SQN_MasterInformationBlock_partEARFCN_17 {
+	enum SQN_MasterInformationBlock_partEARFCN_17_Sel d;
+	union SQN_MasterInformationBlock_partEARFCN_17_Value v;
+};
+
 struct SQN_MasterInformationBlock {
 	SQN_MasterInformationBlock_dl_Bandwidth_e dl_Bandwidth;
 	struct SQN_PHICH_Config phich_Config;
 	B8 systemFrameNumber;
 	uint8_t schedulingInfoSIB1_BR_r13;
 	bool systemInfoUnchanged_BR_r15;
-	B4 spare;
+	struct SQN_MasterInformationBlock_partEARFCN_17 partEARFCN_17;
+	B1 spare;
 };
 
 struct SQN_BCCH_BCH_Message {
@@ -2346,6 +2365,113 @@ enum SQN_RadioResourceConfigCommonSIB_rss_MeasNonNCL_r16_e {
 
 typedef enum SQN_RadioResourceConfigCommonSIB_rss_MeasNonNCL_r16_e SQN_RadioResourceConfigCommonSIB_rss_MeasNonNCL_r16_e;
 
+enum SQN_PCCH_Config_v1700_ranPagingInIdlePO_r17_e {
+	SQN_PCCH_Config_v1700_ranPagingInIdlePO_r17_e_true = 0,
+};
+
+typedef enum SQN_PCCH_Config_v1700_ranPagingInIdlePO_r17_e SQN_PCCH_Config_v1700_ranPagingInIdlePO_r17_e;
+
+struct SQN_PCCH_Config_v1700 {
+	SQN_PCCH_Config_v1700_ranPagingInIdlePO_r17_e ranPagingInIdlePO_r17;
+};
+
+enum SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_ta_Report_r17_e {
+	SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_ta_Report_r17_e_enabled = 0,
+};
+
+typedef enum SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_ta_Report_r17_e SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_ta_Report_r17_e;
+
+enum SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_t318_r17_e {
+	SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_t318_r17_e_ms0 = 0,
+	SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_t318_r17_e_ms50 = 1,
+	SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_t318_r17_e_ms100 = 2,
+	SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_t318_r17_e_ms200 = 3,
+	SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_t318_r17_e_ms500 = 4,
+	SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_t318_r17_e_ms1000 = 5,
+	SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_t318_r17_e_ms2000 = 6,
+	SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_t318_r17_e_ms4000 = 7,
+};
+
+typedef enum SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_t318_r17_e SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_t318_r17_e;
+
+enum SQN_PRACH_TxDuration_r17_prach_TxDuration_r17_e {
+	SQN_PRACH_TxDuration_r17_prach_TxDuration_r17_e_n1 = 0,
+	SQN_PRACH_TxDuration_r17_prach_TxDuration_r17_e_n2 = 1,
+	SQN_PRACH_TxDuration_r17_prach_TxDuration_r17_e_n4 = 2,
+	SQN_PRACH_TxDuration_r17_prach_TxDuration_r17_e_n8 = 3,
+	SQN_PRACH_TxDuration_r17_prach_TxDuration_r17_e_n16 = 4,
+	SQN_PRACH_TxDuration_r17_prach_TxDuration_r17_e_n32 = 5,
+	SQN_PRACH_TxDuration_r17_prach_TxDuration_r17_e_n64 = 6,
+	SQN_PRACH_TxDuration_r17_prach_TxDuration_r17_e_n128 = 7,
+};
+
+typedef enum SQN_PRACH_TxDuration_r17_prach_TxDuration_r17_e SQN_PRACH_TxDuration_r17_prach_TxDuration_r17_e;
+
+struct SQN_PRACH_TxDuration_r17 {
+	SQN_PRACH_TxDuration_r17_prach_TxDuration_r17_e prach_TxDuration_r17;
+};
+
+enum SQN_PUCCH_TxDuration_r17_pucch_TxDuration_r17_e {
+	SQN_PUCCH_TxDuration_r17_pucch_TxDuration_r17_e_sf2 = 0,
+	SQN_PUCCH_TxDuration_r17_pucch_TxDuration_r17_e_sf4 = 1,
+	SQN_PUCCH_TxDuration_r17_pucch_TxDuration_r17_e_sf8 = 2,
+	SQN_PUCCH_TxDuration_r17_pucch_TxDuration_r17_e_sf16 = 3,
+	SQN_PUCCH_TxDuration_r17_pucch_TxDuration_r17_e_sf32 = 4,
+	SQN_PUCCH_TxDuration_r17_pucch_TxDuration_r17_e_sf64 = 5,
+	SQN_PUCCH_TxDuration_r17_pucch_TxDuration_r17_e_sf128 = 6,
+};
+
+typedef enum SQN_PUCCH_TxDuration_r17_pucch_TxDuration_r17_e SQN_PUCCH_TxDuration_r17_pucch_TxDuration_r17_e;
+
+struct SQN_PUCCH_TxDuration_r17 {
+	SQN_PUCCH_TxDuration_r17_pucch_TxDuration_r17_e pucch_TxDuration_r17;
+};
+
+enum SQN_PUSCH_TxDuration_r17_pusch_TxDuration_r17_e {
+	SQN_PUSCH_TxDuration_r17_pusch_TxDuration_r17_e_n2 = 0,
+	SQN_PUSCH_TxDuration_r17_pusch_TxDuration_r17_e_n4 = 1,
+	SQN_PUSCH_TxDuration_r17_pusch_TxDuration_r17_e_n8 = 2,
+	SQN_PUSCH_TxDuration_r17_pusch_TxDuration_r17_e_n16 = 3,
+	SQN_PUSCH_TxDuration_r17_pusch_TxDuration_r17_e_n32 = 4,
+	SQN_PUSCH_TxDuration_r17_pusch_TxDuration_r17_e_n64 = 5,
+	SQN_PUSCH_TxDuration_r17_pusch_TxDuration_r17_e_n128 = 6,
+	SQN_PUSCH_TxDuration_r17_pusch_TxDuration_r17_e_n256 = 7,
+};
+
+typedef enum SQN_PUSCH_TxDuration_r17_pusch_TxDuration_r17_e SQN_PUSCH_TxDuration_r17_pusch_TxDuration_r17_e;
+
+struct SQN_PUSCH_TxDuration_r17 {
+	SQN_PUSCH_TxDuration_r17_pusch_TxDuration_r17_e pusch_TxDuration_r17;
+};
+
+struct SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_ta_Report_r17_e_ta_Report_r17_Optional {
+	bool d;
+	SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_ta_Report_r17_e v;
+};
+
+struct SQN_PRACH_TxDuration_r17_SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_prach_TxDuration_r17_Optional {
+	bool d;
+	struct SQN_PRACH_TxDuration_r17 v;
+};
+
+struct SQN_PUCCH_TxDuration_r17_SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_pucch_TxDuration_r17_Optional {
+	bool d;
+	struct SQN_PUCCH_TxDuration_r17 v;
+};
+
+struct SQN_PUSCH_TxDuration_r17_SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_pusch_TxDuration_r17_Optional {
+	bool d;
+	struct SQN_PUSCH_TxDuration_r17 v;
+};
+
+struct SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17 {
+	struct SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_ta_Report_r17_e_ta_Report_r17_Optional ta_Report_r17;
+	SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_t318_r17_e t318_r17;
+	struct SQN_PRACH_TxDuration_r17_SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_prach_TxDuration_r17_Optional prach_TxDuration_r17;
+	struct SQN_PUCCH_TxDuration_r17_SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_pucch_TxDuration_r17_Optional pucch_TxDuration_r17;
+	struct SQN_PUSCH_TxDuration_r17_SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_pusch_TxDuration_r17_Optional pusch_TxDuration_r17;
+};
+
 struct SQN_UplinkPowerControlCommon_v1020_SQN_RadioResourceConfigCommonSIB_uplinkPowerControlCommon_v1020_Optional {
 	bool d;
 	struct SQN_UplinkPowerControlCommon_v1020 v;
@@ -2486,6 +2612,16 @@ struct bool_SQN_RadioResourceConfigCommonSIB_highSpeedInterRAT_NR_r16_Optional {
 	bool v;
 };
 
+struct SQN_PCCH_Config_v1700_SQN_RadioResourceConfigCommonSIB_pcch_Config_v1700_Optional {
+	bool d;
+	struct SQN_PCCH_Config_v1700 v;
+};
+
+struct SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_ntn_ConfigCommon_r17_Optional {
+	bool d;
+	struct SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17 v;
+};
+
 struct SQN_RadioResourceConfigCommonSIB {
 	struct SQN_RACH_ConfigCommon rach_ConfigCommon;
 	struct SQN_BCCH_Config bcch_Config;
@@ -2525,6 +2661,8 @@ struct SQN_RadioResourceConfigCommonSIB {
 	struct SQN_RadioResourceConfigCommonSIB_rss_MeasNonNCL_r16_e_rss_MeasNonNCL_r16_Optional rss_MeasNonNCL_r16;
 	struct B2_SQN_RadioResourceConfigCommonSIB_puncturedSubcarriersDL_r16_Optional puncturedSubcarriersDL_r16;
 	struct bool_SQN_RadioResourceConfigCommonSIB_highSpeedInterRAT_NR_r16_Optional highSpeedInterRAT_NR_r16;
+	struct SQN_PCCH_Config_v1700_SQN_RadioResourceConfigCommonSIB_pcch_Config_v1700_Optional pcch_Config_v1700;
+	struct SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_ntn_ConfigCommon_r17_Optional ntn_ConfigCommon_r17;
 };
 
 enum SQN_UE_TimersAndConstants_t300_e {
@@ -3771,6 +3909,8 @@ struct SQN_CellReselectionServingFreqInfo_v1610 {
 	struct SQN_CellReselectionSubPriority_r13_e_SQN_CellReselectionServingFreqInfo_v1610_altCellReselectionSubPriority_r16_Optional altCellReselectionSubPriority_r16;
 };
 
+typedef uint32_t SQN_TimeOffsetUTC_r17;
+
 struct OCTET_STRING_SQN_SystemInformationBlockType3_lateNonCriticalExtension_Optional {
 	bool d;
 	OCTET_STRING v;
@@ -3861,6 +4001,11 @@ struct SQN_CellReselectionServingFreqInfo_v1610_SQN_SystemInformationBlockType3_
 	struct SQN_CellReselectionServingFreqInfo_v1610 v;
 };
 
+struct SQN_TimeOffsetUTC_r17_SQN_SystemInformationBlockType3_t_Service_r17_Optional {
+	bool d;
+	SQN_TimeOffsetUTC_r17 v;
+};
+
 struct SQN_SystemInformationBlockType3 {
 	struct SQN_SystemInformationBlockType3_cellReselectionInfoCommon cellReselectionInfoCommon;
 	struct SQN_SystemInformationBlockType3_cellReselectionServingFreqInfo cellReselectionServingFreqInfo;
@@ -3883,6 +4028,7 @@ struct SQN_SystemInformationBlockType3 {
 	struct SQN_CellSelectionInfoCE_v1530_SQN_SystemInformationBlockType3_cellSelectionInfoCE_v1530_Optional cellSelectionInfoCE_v1530;
 	struct SQN_SystemInformationBlockType3_crs_IntfMitigNeighCellsCE_r15_e_crs_IntfMitigNeighCellsCE_r15_Optional crs_IntfMitigNeighCellsCE_r15;
 	struct SQN_CellReselectionServingFreqInfo_v1610_SQN_SystemInformationBlockType3_cellReselectionServingFreqInfo_v1610_Optional cellReselectionServingFreqInfo_v1610;
+	struct SQN_TimeOffsetUTC_r17_SQN_SystemInformationBlockType3_t_Service_r17_Optional t_Service_r17;
 };
 
 typedef uint16_t SQN_PhysCellId;
@@ -3966,12 +4112,12 @@ struct SQN_PhysCellIdRange {
 	struct SQN_PhysCellIdRange_range_e_range_Optional range;
 };
 
-struct SQN_PhysCellIdRange_SQN_IntraFreqBlackCellList_Dynamic {
+struct SQN_PhysCellIdRange_SQN_IntraFreqExcludedCellList_Dynamic {
 	size_t d;
 	struct SQN_PhysCellIdRange* v;
 };
 
-typedef struct SQN_PhysCellIdRange_SQN_IntraFreqBlackCellList_Dynamic SQN_IntraFreqBlackCellList;
+typedef struct SQN_PhysCellIdRange_SQN_IntraFreqExcludedCellList_Dynamic SQN_IntraFreqExcludedCellList;
 
 struct SQN_PhysCellIdRange_SQN_IntraFreqNeighHSDN_CellList_r15_Dynamic {
 	size_t d;
@@ -4027,9 +4173,9 @@ struct SQN_IntraFreqNeighCellList_SQN_SystemInformationBlockType4_intraFreqNeigh
 	SQN_IntraFreqNeighCellList v;
 };
 
-struct SQN_IntraFreqBlackCellList_SQN_SystemInformationBlockType4_intraFreqBlackCellList_Optional {
+struct SQN_IntraFreqExcludedCellList_SQN_SystemInformationBlockType4_intraFreqExcludedCellList_Optional {
 	bool d;
-	SQN_IntraFreqBlackCellList v;
+	SQN_IntraFreqExcludedCellList v;
 };
 
 struct SQN_PhysCellIdRange_SQN_SystemInformationBlockType4_csg_PhysCellIdRange_Optional {
@@ -4059,7 +4205,7 @@ struct SQN_IntraFreqNeighCellList_v1610_SQN_SystemInformationBlockType4_intraFre
 
 struct SQN_SystemInformationBlockType4 {
 	struct SQN_IntraFreqNeighCellList_SQN_SystemInformationBlockType4_intraFreqNeighCellList_Optional intraFreqNeighCellList;
-	struct SQN_IntraFreqBlackCellList_SQN_SystemInformationBlockType4_intraFreqBlackCellList_Optional intraFreqBlackCellList;
+	struct SQN_IntraFreqExcludedCellList_SQN_SystemInformationBlockType4_intraFreqExcludedCellList_Optional intraFreqExcludedCellList;
 	struct SQN_PhysCellIdRange_SQN_SystemInformationBlockType4_csg_PhysCellIdRange_Optional csg_PhysCellIdRange;
 	struct OCTET_STRING_SQN_SystemInformationBlockType4_lateNonCriticalExtension_Optional lateNonCriticalExtension;
 	struct SQN_IntraFreqNeighHSDN_CellList_r15_SQN_SystemInformationBlockType4_intraFreqNeighHSDN_CellList_r15_Optional intraFreqNeighHSDN_CellList_r15;
@@ -4079,12 +4225,12 @@ struct SQN_InterFreqNeighCellInfo_SQN_InterFreqNeighCellList_Dynamic {
 
 typedef struct SQN_InterFreqNeighCellInfo_SQN_InterFreqNeighCellList_Dynamic SQN_InterFreqNeighCellList;
 
-struct SQN_PhysCellIdRange_SQN_InterFreqBlackCellList_Dynamic {
+struct SQN_PhysCellIdRange_SQN_InterFreqExcludedCellList_Dynamic {
 	size_t d;
 	struct SQN_PhysCellIdRange* v;
 };
 
-typedef struct SQN_PhysCellIdRange_SQN_InterFreqBlackCellList_Dynamic SQN_InterFreqBlackCellList;
+typedef struct SQN_PhysCellIdRange_SQN_InterFreqExcludedCellList_Dynamic SQN_InterFreqExcludedCellList;
 
 struct SQN_InterFreqCarrierFreqInfo_threshX_Q_r9 {
 	SQN_ReselectionThresholdQ_r9 threshX_HighQ_r9;
@@ -4116,9 +4262,9 @@ struct SQN_InterFreqNeighCellList_SQN_InterFreqCarrierFreqInfo_interFreqNeighCel
 	SQN_InterFreqNeighCellList v;
 };
 
-struct SQN_InterFreqBlackCellList_SQN_InterFreqCarrierFreqInfo_interFreqBlackCellList_Optional {
+struct SQN_InterFreqExcludedCellList_SQN_InterFreqCarrierFreqInfo_interFreqExcludedCellList_Optional {
 	bool d;
-	SQN_InterFreqBlackCellList v;
+	SQN_InterFreqExcludedCellList v;
 };
 
 struct SQN_Q_QualMin_r9_SQN_InterFreqCarrierFreqInfo_q_QualMin_r9_Optional {
@@ -4150,7 +4296,7 @@ struct SQN_InterFreqCarrierFreqInfo {
 	SQN_NeighCellConfig neighCellConfig;
 	struct SQN_Q_OffsetRange_e_SQN_InterFreqCarrierFreqInfo_q_OffsetFreq_Optional q_OffsetFreq;
 	struct SQN_InterFreqNeighCellList_SQN_InterFreqCarrierFreqInfo_interFreqNeighCellList_Optional interFreqNeighCellList;
-	struct SQN_InterFreqBlackCellList_SQN_InterFreqCarrierFreqInfo_interFreqBlackCellList_Optional interFreqBlackCellList;
+	struct SQN_InterFreqExcludedCellList_SQN_InterFreqCarrierFreqInfo_interFreqExcludedCellList_Optional interFreqExcludedCellList;
 	struct SQN_Q_QualMin_r9_SQN_InterFreqCarrierFreqInfo_q_QualMin_r9_Optional q_QualMin_r9;
 	struct SQN_InterFreqCarrierFreqInfo_threshX_Q_r9_threshX_Q_r9_Optional threshX_Q_r9;
 	struct SQN_Q_QualMin_r9_SQN_InterFreqCarrierFreqInfo_q_QualMinWB_r11_Optional q_QualMinWB_r11;
@@ -4238,9 +4384,9 @@ struct SQN_InterFreqNeighCellList_SQN_InterFreqCarrierFreqInfo_r12_interFreqNeig
 	SQN_InterFreqNeighCellList v;
 };
 
-struct SQN_InterFreqBlackCellList_SQN_InterFreqCarrierFreqInfo_r12_interFreqBlackCellList_r12_Optional {
+struct SQN_InterFreqExcludedCellList_SQN_InterFreqCarrierFreqInfo_r12_interFreqExcludedCellList_r12_Optional {
 	bool d;
-	SQN_InterFreqBlackCellList v;
+	SQN_InterFreqExcludedCellList v;
 };
 
 struct SQN_Q_QualMin_r9_SQN_InterFreqCarrierFreqInfo_r12_q_QualMin_r12_Optional {
@@ -4287,7 +4433,7 @@ struct SQN_InterFreqCarrierFreqInfo_r12 {
 	SQN_NeighCellConfig neighCellConfig_r12;
 	struct SQN_Q_OffsetRange_e_SQN_InterFreqCarrierFreqInfo_r12_q_OffsetFreq_r12_Optional q_OffsetFreq_r12;
 	struct SQN_InterFreqNeighCellList_SQN_InterFreqCarrierFreqInfo_r12_interFreqNeighCellList_r12_Optional interFreqNeighCellList_r12;
-	struct SQN_InterFreqBlackCellList_SQN_InterFreqCarrierFreqInfo_r12_interFreqBlackCellList_r12_Optional interFreqBlackCellList_r12;
+	struct SQN_InterFreqExcludedCellList_SQN_InterFreqCarrierFreqInfo_r12_interFreqExcludedCellList_r12_Optional interFreqExcludedCellList_r12;
 	struct SQN_Q_QualMin_r9_SQN_InterFreqCarrierFreqInfo_r12_q_QualMin_r12_Optional q_QualMin_r12;
 	struct SQN_InterFreqCarrierFreqInfo_r12_threshX_Q_r12_threshX_Q_r12_Optional threshX_Q_r12;
 	struct SQN_Q_QualMin_r9_SQN_InterFreqCarrierFreqInfo_r12_q_QualMinWB_r12_Optional q_QualMinWB_r12;
@@ -4836,6 +4982,13 @@ struct SQN_BeamMeasConfigIdleNR_r16 {
 	bool reportRS_IndexResultsNR_r16;
 };
 
+enum SQN_MeasIdleCarrierNR_r16_subcarrierSpacingSSB_r17_e {
+	SQN_MeasIdleCarrierNR_r16_subcarrierSpacingSSB_r17_e_kHz480 = 0,
+	SQN_MeasIdleCarrierNR_r16_subcarrierSpacingSSB_r17_e_spare1 = 1,
+};
+
+typedef enum SQN_MeasIdleCarrierNR_r16_subcarrierSpacingSSB_r17_e SQN_MeasIdleCarrierNR_r16_subcarrierSpacingSSB_r17_e;
+
 struct SQN_MultiFrequencyBandListNR_r15_SQN_MeasIdleCarrierNR_r16_frequencyBandList_Optional {
 	bool d;
 	SQN_MultiFrequencyBandListNR_r15 v;
@@ -4861,6 +5014,11 @@ struct SQN_BeamMeasConfigIdleNR_r16_SQN_MeasIdleCarrierNR_r16_beamMeasConfigIdle
 	struct SQN_BeamMeasConfigIdleNR_r16 v;
 };
 
+struct SQN_MeasIdleCarrierNR_r16_subcarrierSpacingSSB_r17_e_subcarrierSpacingSSB_r17_Optional {
+	bool d;
+	SQN_MeasIdleCarrierNR_r16_subcarrierSpacingSSB_r17_e v;
+};
+
 struct SQN_MeasIdleCarrierNR_r16 {
 	SQN_ARFCN_ValueNR_r15 carrierFreqNR_r16;
 	SQN_MeasIdleCarrierNR_r16_subcarrierSpacingSSB_r16_e subcarrierSpacingSSB_r16;
@@ -4870,6 +5028,7 @@ struct SQN_MeasIdleCarrierNR_r16 {
 	struct SQN_MeasIdleCarrierNR_r16_qualityThresholdNR_r16_qualityThresholdNR_r16_Optional qualityThresholdNR_r16;
 	struct SQN_MeasIdleCarrierNR_r16_ssb_MeasConfig_r16_ssb_MeasConfig_r16_Optional ssb_MeasConfig_r16;
 	struct SQN_BeamMeasConfigIdleNR_r16_SQN_MeasIdleCarrierNR_r16_beamMeasConfigIdle_r16_Optional beamMeasConfigIdle_r16;
+	struct SQN_MeasIdleCarrierNR_r16_subcarrierSpacingSSB_r17_e_subcarrierSpacingSSB_r17_Optional subcarrierSpacingSSB_r17;
 };
 
 struct SQN_MeasIdleCarrierNR_r16_SQN_NR_CarrierList_r16_Dynamic {
@@ -6091,7 +6250,7 @@ enum SQN_MBSFN_AreaInfo_r16_subcarrierSpacingMBMS_r16_e {
 	SQN_MBSFN_AreaInfo_r16_subcarrierSpacingMBMS_r16_e_kHz2dot5 = 1,
 	SQN_MBSFN_AreaInfo_r16_subcarrierSpacingMBMS_r16_e_kHz1dot25 = 2,
 	SQN_MBSFN_AreaInfo_r16_subcarrierSpacingMBMS_r16_e_kHz0dot37 = 3,
-	SQN_MBSFN_AreaInfo_r16_subcarrierSpacingMBMS_r16_e_spare4 = 4,
+	SQN_MBSFN_AreaInfo_r16_subcarrierSpacingMBMS_r16_e_kHz15_v1710 = 4,
 	SQN_MBSFN_AreaInfo_r16_subcarrierSpacingMBMS_r16_e_spare3 = 5,
 	SQN_MBSFN_AreaInfo_r16_subcarrierSpacingMBMS_r16_e_spare2 = 6,
 	SQN_MBSFN_AreaInfo_r16_subcarrierSpacingMBMS_r16_e_spare1 = 7,
@@ -6126,6 +6285,27 @@ struct SQN_MBSFN_AreaInfo_r16_SQN_MBSFN_AreaInfoList_r16_Dynamic {
 
 typedef struct SQN_MBSFN_AreaInfo_r16_SQN_MBSFN_AreaInfoList_r16_Dynamic SQN_MBSFN_AreaInfoList_r16;
 
+enum SQN_MBSFN_AreaInfo_r17_pmch_Bandwidth_r17_e {
+	SQN_MBSFN_AreaInfo_r17_pmch_Bandwidth_r17_e_n40 = 0,
+	SQN_MBSFN_AreaInfo_r17_pmch_Bandwidth_r17_e_n35 = 1,
+	SQN_MBSFN_AreaInfo_r17_pmch_Bandwidth_r17_e_n30 = 2,
+	SQN_MBSFN_AreaInfo_r17_pmch_Bandwidth_r17_e_spare1 = 3,
+};
+
+typedef enum SQN_MBSFN_AreaInfo_r17_pmch_Bandwidth_r17_e SQN_MBSFN_AreaInfo_r17_pmch_Bandwidth_r17_e;
+
+struct SQN_MBSFN_AreaInfo_r17 {
+	struct SQN_MBSFN_AreaInfo_r16 mbsfn_AreaInfo_r17;
+	SQN_MBSFN_AreaInfo_r17_pmch_Bandwidth_r17_e pmch_Bandwidth_r17;
+};
+
+struct SQN_MBSFN_AreaInfo_r17_SQN_MBSFN_AreaInfoList_r17_Dynamic {
+	size_t d;
+	struct SQN_MBSFN_AreaInfo_r17* v;
+};
+
+typedef struct SQN_MBSFN_AreaInfo_r17_SQN_MBSFN_AreaInfoList_r17_Dynamic SQN_MBSFN_AreaInfoList_r17;
+
 struct OCTET_STRING_SQN_SystemInformationBlockType13_r9_lateNonCriticalExtension_Optional {
 	bool d;
 	OCTET_STRING v;
@@ -6141,12 +6321,18 @@ struct SQN_MBSFN_AreaInfoList_r16_SQN_SystemInformationBlockType13_r9_mbsfn_Area
 	SQN_MBSFN_AreaInfoList_r16 v;
 };
 
+struct SQN_MBSFN_AreaInfoList_r17_SQN_SystemInformationBlockType13_r9_mbsfn_AreaInfoList_r17_Optional {
+	bool d;
+	SQN_MBSFN_AreaInfoList_r17 v;
+};
+
 struct SQN_SystemInformationBlockType13_r9 {
 	SQN_MBSFN_AreaInfoList_r9 mbsfn_AreaInfoList_r9;
 	struct SQN_MBMS_NotificationConfig_r9 notificationConfig_r9;
 	struct OCTET_STRING_SQN_SystemInformationBlockType13_r9_lateNonCriticalExtension_Optional lateNonCriticalExtension;
 	struct SQN_MBMS_NotificationConfig_v1430_SQN_SystemInformationBlockType13_r9_notificationConfig_v1430_Optional notificationConfig_v1430;
 	struct SQN_MBSFN_AreaInfoList_r16_SQN_SystemInformationBlockType13_r9_mbsfn_AreaInfoList_r16_Optional mbsfn_AreaInfoList_r16;
+	struct SQN_MBSFN_AreaInfoList_r17_SQN_SystemInformationBlockType13_r9_mbsfn_AreaInfoList_r17_Optional mbsfn_AreaInfoList_r17;
 };
 
 enum SQN_EAB_Config_r11_eab_Category_r11_e {
@@ -9232,12 +9418,12 @@ enum SQN_SSB_PositionQCL_RelationNR_r16_e {
 
 typedef enum SQN_SSB_PositionQCL_RelationNR_r16_e SQN_SSB_PositionQCL_RelationNR_r16_e;
 
-struct SQN_PhysCellIdNR_r15_SQN_WhiteCellListNR_r16_Dynamic {
+struct SQN_PhysCellIdNR_r15_SQN_AllowedCellListNR_r16_Dynamic {
 	size_t d;
 	SQN_PhysCellIdNR_r15* v;
 };
 
-typedef struct SQN_PhysCellIdNR_r15_SQN_WhiteCellListNR_r16_Dynamic SQN_WhiteCellListNR_r16;
+typedef struct SQN_PhysCellIdNR_r15_SQN_AllowedCellListNR_r16_Dynamic SQN_AllowedCellListNR_r16;
 
 enum SQN_CarrierFreqNR_v1610_highSpeedCarrierNR_r16_e {
 	SQN_CarrierFreqNR_v1610_highSpeedCarrierNR_r16_e_true = 0,
@@ -9255,9 +9441,9 @@ struct SQN_SSB_PositionQCL_RelationNR_r16_e_SQN_CarrierFreqNR_v1610_ssb_Position
 	SQN_SSB_PositionQCL_RelationNR_r16_e v;
 };
 
-struct SQN_WhiteCellListNR_r16_SQN_CarrierFreqNR_v1610_whiteCellListNR_r16_Optional {
+struct SQN_AllowedCellListNR_r16_SQN_CarrierFreqNR_v1610_allowedCellListNR_r16_Optional {
 	bool d;
-	SQN_WhiteCellListNR_r16 v;
+	SQN_AllowedCellListNR_r16 v;
 };
 
 struct SQN_CarrierFreqNR_v1610_highSpeedCarrierNR_r16_e_highSpeedCarrierNR_r16_Optional {
@@ -9268,7 +9454,7 @@ struct SQN_CarrierFreqNR_v1610_highSpeedCarrierNR_r16_e_highSpeedCarrierNR_r16_O
 struct SQN_CarrierFreqNR_v1610 {
 	struct SQN_MTC_SSB2_LP_NR_r16_SQN_CarrierFreqNR_v1610_smtc2_LP_r16_Optional smtc2_LP_r16;
 	struct SQN_SSB_PositionQCL_RelationNR_r16_e_SQN_CarrierFreqNR_v1610_ssb_PositionQCL_CommonNR_r16_Optional ssb_PositionQCL_CommonNR_r16;
-	struct SQN_WhiteCellListNR_r16_SQN_CarrierFreqNR_v1610_whiteCellListNR_r16_Optional whiteCellListNR_r16;
+	struct SQN_AllowedCellListNR_r16_SQN_CarrierFreqNR_v1610_allowedCellListNR_r16_Optional allowedCellListNR_r16;
 	struct SQN_CarrierFreqNR_v1610_highSpeedCarrierNR_r16_e_highSpeedCarrierNR_r16_Optional highSpeedCarrierNR_r16;
 };
 
@@ -9278,6 +9464,65 @@ struct SQN_CarrierFreqNR_v1610_SQN_CarrierFreqListNR_v1610_Dynamic {
 };
 
 typedef struct SQN_CarrierFreqNR_v1610_SQN_CarrierFreqListNR_v1610_Dynamic SQN_CarrierFreqListNR_v1610;
+
+struct SQN_PhysCellIdRangeNR_r16_SQN_NR_FreqNeighHSDN_CellList_r17_Dynamic {
+	size_t d;
+	struct SQN_PhysCellIdRangeNR_r16* v;
+};
+
+typedef struct SQN_PhysCellIdRangeNR_r16_SQN_NR_FreqNeighHSDN_CellList_r17_Dynamic SQN_NR_FreqNeighHSDN_CellList_r17;
+
+struct SQN_NR_FreqNeighHSDN_CellList_r17_SQN_CarrierFreqNR_v1700_nr_FreqNeighHSDN_CellList_r17_Optional {
+	bool d;
+	SQN_NR_FreqNeighHSDN_CellList_r17 v;
+};
+
+struct SQN_CarrierFreqNR_v1700 {
+	struct SQN_NR_FreqNeighHSDN_CellList_r17_SQN_CarrierFreqNR_v1700_nr_FreqNeighHSDN_CellList_r17_Optional nr_FreqNeighHSDN_CellList_r17;
+};
+
+struct SQN_CarrierFreqNR_v1700_SQN_CarrierFreqListNR_v1700_Dynamic {
+	size_t d;
+	struct SQN_CarrierFreqNR_v1700* v;
+};
+
+typedef struct SQN_CarrierFreqNR_v1700_SQN_CarrierFreqListNR_v1700_Dynamic SQN_CarrierFreqListNR_v1700;
+
+enum SQN_CarrierFreqNR_v1720_subcarrierSpacingSSB_r17_e {
+	SQN_CarrierFreqNR_v1720_subcarrierSpacingSSB_r17_e_kHz480 = 0,
+	SQN_CarrierFreqNR_v1720_subcarrierSpacingSSB_r17_e_spare1 = 1,
+};
+
+typedef enum SQN_CarrierFreqNR_v1720_subcarrierSpacingSSB_r17_e SQN_CarrierFreqNR_v1720_subcarrierSpacingSSB_r17_e;
+
+enum SQN_SSB_PositionQCL_RelationNR_r17_e {
+	SQN_SSB_PositionQCL_RelationNR_r17_e_n32 = 0,
+	SQN_SSB_PositionQCL_RelationNR_r17_e_n64 = 1,
+};
+
+typedef enum SQN_SSB_PositionQCL_RelationNR_r17_e SQN_SSB_PositionQCL_RelationNR_r17_e;
+
+struct SQN_CarrierFreqNR_v1720_subcarrierSpacingSSB_r17_e_subcarrierSpacingSSB_r17_Optional {
+	bool d;
+	SQN_CarrierFreqNR_v1720_subcarrierSpacingSSB_r17_e v;
+};
+
+struct SQN_SSB_PositionQCL_RelationNR_r17_e_SQN_CarrierFreqNR_v1720_ssb_PositionQCL_CommonNR_r17_Optional {
+	bool d;
+	SQN_SSB_PositionQCL_RelationNR_r17_e v;
+};
+
+struct SQN_CarrierFreqNR_v1720 {
+	struct SQN_CarrierFreqNR_v1720_subcarrierSpacingSSB_r17_e_subcarrierSpacingSSB_r17_Optional subcarrierSpacingSSB_r17;
+	struct SQN_SSB_PositionQCL_RelationNR_r17_e_SQN_CarrierFreqNR_v1720_ssb_PositionQCL_CommonNR_r17_Optional ssb_PositionQCL_CommonNR_r17;
+};
+
+struct SQN_CarrierFreqNR_v1720_SQN_CarrierFreqListNR_v1720_Dynamic {
+	size_t d;
+	struct SQN_CarrierFreqNR_v1720* v;
+};
+
+typedef struct SQN_CarrierFreqNR_v1720_SQN_CarrierFreqListNR_v1720_Dynamic SQN_CarrierFreqListNR_v1720;
 
 struct SQN_CarrierFreqListNR_r15_SQN_SystemInformationBlockType24_r15_carrierFreqListNR_r15_Optional {
 	bool d;
@@ -9299,12 +9544,24 @@ struct SQN_CarrierFreqListNR_v1610_SQN_SystemInformationBlockType24_r15_carrierF
 	SQN_CarrierFreqListNR_v1610 v;
 };
 
+struct SQN_CarrierFreqListNR_v1700_SQN_SystemInformationBlockType24_r15_carrierFreqListNR_v1700_Optional {
+	bool d;
+	SQN_CarrierFreqListNR_v1700 v;
+};
+
+struct SQN_CarrierFreqListNR_v1720_SQN_SystemInformationBlockType24_r15_carrierFreqListNR_v1720_Optional {
+	bool d;
+	SQN_CarrierFreqListNR_v1720 v;
+};
+
 struct SQN_SystemInformationBlockType24_r15 {
 	struct SQN_CarrierFreqListNR_r15_SQN_SystemInformationBlockType24_r15_carrierFreqListNR_r15_Optional carrierFreqListNR_r15;
 	SQN_T_Reselection t_ReselectionNR_r15;
 	struct SQN_SpeedStateScaleFactors_SQN_SystemInformationBlockType24_r15_t_ReselectionNR_SF_r15_Optional t_ReselectionNR_SF_r15;
 	struct OCTET_STRING_SQN_SystemInformationBlockType24_r15_lateNonCriticalExtension_Optional lateNonCriticalExtension;
 	struct SQN_CarrierFreqListNR_v1610_SQN_SystemInformationBlockType24_r15_carrierFreqListNR_v1610_Optional carrierFreqListNR_v1610;
+	struct SQN_CarrierFreqListNR_v1700_SQN_SystemInformationBlockType24_r15_carrierFreqListNR_v1700_Optional carrierFreqListNR_v1700;
+	struct SQN_CarrierFreqListNR_v1720_SQN_SystemInformationBlockType24_r15_carrierFreqListNR_v1720_Optional carrierFreqListNR_v1720;
 };
 
 typedef uint8_t SQN_UAC_BarringInfoSetIndex_r15;
@@ -9439,6 +9696,52 @@ enum SQN_SystemInformationBlockType25_r15_ab_PerRSRP_r16_e {
 
 typedef enum SQN_SystemInformationBlockType25_r15_ab_PerRSRP_r16_e SQN_SystemInformationBlockType25_r15_ab_PerRSRP_r16_e;
 
+enum SQN_UAC_AC1_SelectAssistInfo_r16_e {
+	SQN_UAC_AC1_SelectAssistInfo_r16_e_a = 0,
+	SQN_UAC_AC1_SelectAssistInfo_r16_e_b = 1,
+	SQN_UAC_AC1_SelectAssistInfo_r16_e_c = 2,
+	SQN_UAC_AC1_SelectAssistInfo_r16_e_notConfigured = 3,
+};
+
+typedef enum SQN_UAC_AC1_SelectAssistInfo_r16_e SQN_UAC_AC1_SelectAssistInfo_r16_e;
+
+enum SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e {
+	SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p00 = 0,
+	SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p05 = 1,
+	SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p10 = 2,
+	SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p15 = 3,
+	SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p20 = 4,
+	SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p25 = 5,
+	SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p30 = 6,
+	SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p40 = 7,
+	SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p50 = 8,
+	SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p60 = 9,
+	SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p70 = 10,
+	SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p75 = 11,
+	SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p80 = 12,
+	SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p85 = 13,
+	SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p90 = 14,
+	SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p95 = 15,
+};
+
+typedef enum SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e;
+
+struct SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_uac_BarringFactorForAI3_r17_Optional {
+	bool d;
+	SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e v;
+};
+
+struct SQN_UAC_BarringInfoSet_v1700 {
+	struct SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_uac_BarringFactorForAI3_r17_Optional uac_BarringFactorForAI3_r17;
+};
+
+struct SQN_UAC_BarringInfoSet_v1700_SQN_UAC_BarringInfoSetList_v1700_Dynamic {
+	size_t d;
+	struct SQN_UAC_BarringInfoSet_v1700* v;
+};
+
+typedef struct SQN_UAC_BarringInfoSet_v1700_SQN_UAC_BarringInfoSetList_v1700_Dynamic SQN_UAC_BarringInfoSetList_v1700;
+
 struct SQN_UAC_BarringPerCatList_r15_SQN_SystemInformationBlockType25_r15_uac_BarringForCommon_r15_Optional {
 	bool d;
 	SQN_UAC_BarringPerCatList_r15 v;
@@ -9464,6 +9767,21 @@ struct SQN_SystemInformationBlockType25_r15_ab_PerRSRP_r16_e_ab_PerRSRP_r16_Opti
 	SQN_SystemInformationBlockType25_r15_ab_PerRSRP_r16_e v;
 };
 
+struct SQN_UAC_AC1_SelectAssistInfo_r16_e_SQN_SystemInformationBlockType25_r15_uac_AC1_SelectAssistInfo_r16_Dynamic {
+	size_t d;
+	SQN_UAC_AC1_SelectAssistInfo_r16_e* v;
+};
+
+struct SQN_UAC_AC1_SelectAssistInfo_r16_e_SQN_SystemInformationBlockType25_r15_uac_AC1_SelectAssistInfo_r16_DynamicOptional {
+	bool d;
+	struct SQN_UAC_AC1_SelectAssistInfo_r16_e_SQN_SystemInformationBlockType25_r15_uac_AC1_SelectAssistInfo_r16_Dynamic v;
+};
+
+struct SQN_UAC_BarringInfoSetList_v1700_SQN_SystemInformationBlockType25_r15_uac_BarringInfoSetList_v1700_Optional {
+	bool d;
+	SQN_UAC_BarringInfoSetList_v1700 v;
+};
+
 struct SQN_SystemInformationBlockType25_r15 {
 	struct SQN_UAC_BarringPerCatList_r15_SQN_SystemInformationBlockType25_r15_uac_BarringForCommon_r15_Optional uac_BarringForCommon_r15;
 	struct SQN_UAC_BarringPerPLMN_List_r15_SQN_SystemInformationBlockType25_r15_uac_BarringPerPLMN_List_r15_Optional uac_BarringPerPLMN_List_r15;
@@ -9471,6 +9789,8 @@ struct SQN_SystemInformationBlockType25_r15 {
 	struct SQN_SystemInformationBlockType25_r15_uac_AC1_SelectAssistInfo_r15_uac_AC1_SelectAssistInfo_r15_Optional uac_AC1_SelectAssistInfo_r15;
 	struct OCTET_STRING_SQN_SystemInformationBlockType25_r15_lateNonCriticalExtension_Optional lateNonCriticalExtension;
 	struct SQN_SystemInformationBlockType25_r15_ab_PerRSRP_r16_e_ab_PerRSRP_r16_Optional ab_PerRSRP_r16;
+	struct SQN_UAC_AC1_SelectAssistInfo_r16_e_SQN_SystemInformationBlockType25_r15_uac_AC1_SelectAssistInfo_r16_DynamicOptional uac_AC1_SelectAssistInfo_r16;
+	struct SQN_UAC_BarringInfoSetList_v1700_SQN_SystemInformationBlockType25_r15_uac_BarringInfoSetList_v1700_Optional uac_BarringInfoSetList_v1700;
 };
 
 struct SQN_Tx_ConfigIndex_r14_tx_ConfigIndexList_r15_Dynamic {
@@ -9880,6 +10200,267 @@ struct SQN_SystemInformationBlockType29_r16 {
 	struct OCTET_STRING_SQN_SystemInformationBlockType29_r16_lateNonCriticalExtension_Optional lateNonCriticalExtension;
 };
 
+enum SQN_ApplicableDisasterInfo_r17_Sel {
+	SQN_ApplicableDisasterInfo_r17_UNBOUND_VALUE = 0,
+	SQN_ApplicableDisasterInfo_r17_noDisasterRoaming_r17 = 1,
+	SQN_ApplicableDisasterInfo_r17_disasterRoamingFromAnyPLMN_r17 = 2,
+	SQN_ApplicableDisasterInfo_r17_commonPLMNs_r17 = 3,
+	SQN_ApplicableDisasterInfo_r17_dedicatedPLMNs_r17 = 4,
+};
+
+struct SQN_PLMN_Identity_SQN_ApplicableDisasterInfo_r17_dedicatedPLMNs_r17_Dynamic {
+	size_t d;
+	struct SQN_PLMN_Identity* v;
+};
+
+union SQN_ApplicableDisasterInfo_r17_Value {
+	Null noDisasterRoaming_r17;
+	Null disasterRoamingFromAnyPLMN_r17;
+	Null commonPLMNs_r17;
+	struct SQN_PLMN_Identity_SQN_ApplicableDisasterInfo_r17_dedicatedPLMNs_r17_Dynamic dedicatedPLMNs_r17;
+};
+
+struct SQN_ApplicableDisasterInfo_r17 {
+	enum SQN_ApplicableDisasterInfo_r17_Sel d;
+	union SQN_ApplicableDisasterInfo_r17_Value v;
+};
+
+struct SQN_SystemInformationBlockType30_r17_SQN_PLMN_Identity_commonPLMNsWithDisasterCondition_r17_Dynamic {
+	size_t d;
+	struct SQN_PLMN_Identity* v;
+};
+
+struct SQN_PLMN_Identity_SQN_SystemInformationBlockType30_r17_commonPLMNsWithDisasterCondition_r17_DynamicOptional {
+	bool d;
+	struct SQN_SystemInformationBlockType30_r17_SQN_PLMN_Identity_commonPLMNsWithDisasterCondition_r17_Dynamic v;
+};
+
+struct SQN_SystemInformationBlockType30_r17_SQN_ApplicableDisasterInfo_r17_applicableDisasterInfoList_r17_Dynamic {
+	size_t d;
+	struct SQN_ApplicableDisasterInfo_r17* v;
+};
+
+struct SQN_ApplicableDisasterInfo_r17_SQN_SystemInformationBlockType30_r17_applicableDisasterInfoList_r17_DynamicOptional {
+	bool d;
+	struct SQN_SystemInformationBlockType30_r17_SQN_ApplicableDisasterInfo_r17_applicableDisasterInfoList_r17_Dynamic v;
+};
+
+struct OCTET_STRING_SQN_SystemInformationBlockType30_r17_lateNonCriticalExtension_Optional {
+	bool d;
+	OCTET_STRING v;
+};
+
+struct SQN_SystemInformationBlockType30_r17 {
+	struct SQN_PLMN_Identity_SQN_SystemInformationBlockType30_r17_commonPLMNsWithDisasterCondition_r17_DynamicOptional commonPLMNsWithDisasterCondition_r17;
+	struct SQN_ApplicableDisasterInfo_r17_SQN_SystemInformationBlockType30_r17_applicableDisasterInfoList_r17_DynamicOptional applicableDisasterInfoList_r17;
+	struct OCTET_STRING_SQN_SystemInformationBlockType30_r17_lateNonCriticalExtension_Optional lateNonCriticalExtension;
+};
+
+typedef int32_t SQN_PositionStateVector_r17;
+
+typedef int32_t SQN_VelocityStateVector_r17;
+
+struct SQN_EphemerisStateVectors_r17 {
+	SQN_PositionStateVector_r17 positionX_r17;
+	SQN_PositionStateVector_r17 positionY_r17;
+	SQN_PositionStateVector_r17 positionZ_r17;
+	SQN_VelocityStateVector_r17 velocityVX_r17;
+	SQN_VelocityStateVector_r17 velocityVY_r17;
+	SQN_VelocityStateVector_r17 velocityVZ_r17;
+};
+
+struct SQN_EphemerisOrbitalParameters_r17 {
+	uint64_t semiMajorAxis_r17;
+	uint32_t eccentricity_r17;
+	uint32_t periapsis_r17;
+	uint32_t longitude_r17;
+	int32_t inclination_r17;
+	uint32_t anomaly_r17;
+};
+
+enum SQN_ServingSatelliteInfo_r17_ephemerisInfo_r17_Sel {
+	SQN_ServingSatelliteInfo_r17_ephemerisInfo_r17_UNBOUND_VALUE = 0,
+	SQN_ServingSatelliteInfo_r17_ephemerisInfo_r17_stateVectors = 1,
+	SQN_ServingSatelliteInfo_r17_ephemerisInfo_r17_orbitalParameters = 2,
+};
+
+union SQN_ServingSatelliteInfo_r17_ephemerisInfo_r17_Value {
+	struct SQN_EphemerisStateVectors_r17 stateVectors;
+	struct SQN_EphemerisOrbitalParameters_r17 orbitalParameters;
+};
+
+struct SQN_ServingSatelliteInfo_r17_ephemerisInfo_r17 {
+	enum SQN_ServingSatelliteInfo_r17_ephemerisInfo_r17_Sel d;
+	union SQN_ServingSatelliteInfo_r17_ephemerisInfo_r17_Value v;
+};
+
+struct uint32_t_SQN_ServingSatelliteInfo_r17_nta_CommonParameters_17_nta_Common_r17_Optional {
+	bool d;
+	uint32_t v;
+};
+
+struct int32_t_SQN_ServingSatelliteInfo_r17_nta_CommonParameters_17_nta_CommonDrift_r17_Optional {
+	bool d;
+	int32_t v;
+};
+
+struct uint16_t_SQN_ServingSatelliteInfo_r17_nta_CommonParameters_17_nta_CommonDriftVariation_r17_Optional {
+	bool d;
+	uint16_t v;
+};
+
+struct SQN_ServingSatelliteInfo_r17_nta_CommonParameters_17 {
+	struct uint32_t_SQN_ServingSatelliteInfo_r17_nta_CommonParameters_17_nta_Common_r17_Optional nta_Common_r17;
+	struct int32_t_SQN_ServingSatelliteInfo_r17_nta_CommonParameters_17_nta_CommonDrift_r17_Optional nta_CommonDrift_r17;
+	struct uint16_t_SQN_ServingSatelliteInfo_r17_nta_CommonParameters_17_nta_CommonDriftVariation_r17_Optional nta_CommonDriftVariation_r17;
+};
+
+enum SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e {
+	SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s5 = 0,
+	SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s10 = 1,
+	SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s15 = 2,
+	SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s20 = 3,
+	SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s25 = 4,
+	SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s30 = 5,
+	SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s35 = 6,
+	SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s40 = 7,
+	SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s45 = 8,
+	SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s50 = 9,
+	SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s55 = 10,
+	SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s60 = 11,
+	SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s120 = 12,
+	SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s180 = 13,
+	SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s240 = 14,
+	SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s900 = 15,
+};
+
+typedef enum SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e;
+
+struct SQN_ServingSatelliteInfo_r17_epochTime_r17 {
+	uint16_t startSFN_r17;
+	uint8_t startSubFrame_r17;
+};
+
+struct SQN_ServingSatelliteInfo_r17_epochTime_r17_epochTime_r17_Optional {
+	bool d;
+	struct SQN_ServingSatelliteInfo_r17_epochTime_r17 v;
+};
+
+struct uint16_t_SQN_ServingSatelliteInfo_r17_k_Mac_r17_Optional {
+	bool d;
+	uint16_t v;
+};
+
+struct SQN_ServingSatelliteInfo_r17 {
+	struct SQN_ServingSatelliteInfo_r17_ephemerisInfo_r17 ephemerisInfo_r17;
+	struct SQN_ServingSatelliteInfo_r17_nta_CommonParameters_17 nta_CommonParameters_17;
+	SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e ul_SyncValidityDuration_r17;
+	struct SQN_ServingSatelliteInfo_r17_epochTime_r17_epochTime_r17_Optional epochTime_r17;
+	uint16_t k_Offset_r17;
+	struct uint16_t_SQN_ServingSatelliteInfo_r17_k_Mac_r17_Optional k_Mac_r17;
+};
+
+struct OCTET_STRING_SQN_SystemInformationBlockType31_r17_lateNonCriticalExtension_Optional {
+	bool d;
+	OCTET_STRING v;
+};
+
+struct SQN_SystemInformationBlockType31_r17 {
+	struct SQN_ServingSatelliteInfo_r17 servingSatelliteInfo_r17;
+	struct OCTET_STRING_SQN_SystemInformationBlockType31_r17_lateNonCriticalExtension_Optional lateNonCriticalExtension;
+};
+
+struct SQN_TLE_EphemerisParameters_r17 {
+	uint32_t inclination_r17;
+	uint32_t argumentPerigee_r17;
+	uint32_t rightAscension_r17;
+	uint32_t meanAnomaly_r17;
+	uint32_t eccentricity_r17;
+	uint64_t meanMotion_r17;
+	int32_t bStarDecimal_r17;
+	int8_t bStarExponent_r17;
+	int32_t epochStar_r17;
+};
+
+struct SQN_TLE_EphemerisParameters_r17_SQN_SatelliteInfo_r17_serviceInfo_r17_tle_EphemerisParameters_r17_Optional {
+	bool d;
+	struct SQN_TLE_EphemerisParameters_r17 v;
+};
+
+struct SQN_TimeOffsetUTC_r17_SQN_SatelliteInfo_r17_serviceInfo_r17_t_ServiceStart_r17_Optional {
+	bool d;
+	SQN_TimeOffsetUTC_r17 v;
+};
+
+struct SQN_SatelliteInfo_r17_serviceInfo_r17 {
+	struct SQN_TLE_EphemerisParameters_r17_SQN_SatelliteInfo_r17_serviceInfo_r17_tle_EphemerisParameters_r17_Optional tle_EphemerisParameters_r17;
+	struct SQN_TimeOffsetUTC_r17_SQN_SatelliteInfo_r17_serviceInfo_r17_t_ServiceStart_r17_Optional t_ServiceStart_r17;
+};
+
+struct SQN_SatelliteInfo_r17_footprintInfo_r17_referencePoint_r17 {
+	int32_t longitude_r17;
+	int32_t latitude_r17;
+};
+
+struct int8_t_SQN_SatelliteInfo_r17_footprintInfo_r17_elevationAngles_r17_elevationAngleLeft_r17_Optional {
+	bool d;
+	int8_t v;
+};
+
+struct SQN_SatelliteInfo_r17_footprintInfo_r17_elevationAngles_r17 {
+	int8_t elevationAngleRight_r17;
+	struct int8_t_SQN_SatelliteInfo_r17_footprintInfo_r17_elevationAngles_r17_elevationAngleLeft_r17_Optional elevationAngleLeft_r17;
+};
+
+struct SQN_SatelliteInfo_r17_footprintInfo_r17_referencePoint_r17_referencePoint_r17_Optional {
+	bool d;
+	struct SQN_SatelliteInfo_r17_footprintInfo_r17_referencePoint_r17 v;
+};
+
+struct SQN_SatelliteInfo_r17_footprintInfo_r17_elevationAngles_r17_elevationAngles_r17_Optional {
+	bool d;
+	struct SQN_SatelliteInfo_r17_footprintInfo_r17_elevationAngles_r17 v;
+};
+
+struct uint16_t_SQN_SatelliteInfo_r17_footprintInfo_r17_radius_r17_Optional {
+	bool d;
+	uint16_t v;
+};
+
+struct SQN_SatelliteInfo_r17_footprintInfo_r17 {
+	struct SQN_SatelliteInfo_r17_footprintInfo_r17_referencePoint_r17_referencePoint_r17_Optional referencePoint_r17;
+	struct SQN_SatelliteInfo_r17_footprintInfo_r17_elevationAngles_r17_elevationAngles_r17_Optional elevationAngles_r17;
+	struct uint16_t_SQN_SatelliteInfo_r17_footprintInfo_r17_radius_r17_Optional radius_r17;
+};
+
+struct SQN_SatelliteInfo_r17 {
+	uint8_t satelliteId_r17;
+	struct SQN_SatelliteInfo_r17_serviceInfo_r17 serviceInfo_r17;
+	struct SQN_SatelliteInfo_r17_footprintInfo_r17 footprintInfo_r17;
+};
+
+struct SQN_SatelliteInfo_r17_SQN_SatelliteInfoList_r17_Dynamic {
+	size_t d;
+	struct SQN_SatelliteInfo_r17* v;
+};
+
+typedef struct SQN_SatelliteInfo_r17_SQN_SatelliteInfoList_r17_Dynamic SQN_SatelliteInfoList_r17;
+
+struct SQN_SatelliteInfoList_r17_SQN_SystemInformationBlockType32_r17_satelliteInfoList_r17_Optional {
+	bool d;
+	SQN_SatelliteInfoList_r17 v;
+};
+
+struct OCTET_STRING_SQN_SystemInformationBlockType32_r17_lateNonCriticalExtension_Optional {
+	bool d;
+	OCTET_STRING v;
+};
+
+struct SQN_SystemInformationBlockType32_r17 {
+	struct SQN_SatelliteInfoList_r17_SQN_SystemInformationBlockType32_r17_satelliteInfoList_r17_Optional satelliteInfoList_r17;
+	struct OCTET_STRING_SQN_SystemInformationBlockType32_r17_lateNonCriticalExtension_Optional lateNonCriticalExtension;
+};
+
 enum SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_Sel {
 	SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_UNBOUND_VALUE = 0,
 	SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib2 = 1,
@@ -9909,6 +10490,9 @@ enum SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_Sel {
 	SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib27_v1610 = 25,
 	SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib28_v1610 = 26,
 	SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib29_v1610 = 27,
+	SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib30_v1700 = 28,
+	SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib31_v1700 = 29,
+	SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib32_v1700 = 30,
 };
 
 union SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_Value {
@@ -9939,6 +10523,9 @@ union SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_Value {
 	struct SQN_SystemInformationBlockType27_r16 sib27_v1610;
 	struct SQN_SystemInformationBlockType28_r16 sib28_v1610;
 	struct SQN_SystemInformationBlockType29_r16 sib29_v1610;
+	struct SQN_SystemInformationBlockType30_r17 sib30_v1700;
+	struct SQN_SystemInformationBlockType31_r17 sib31_v1700;
+	struct SQN_SystemInformationBlockType32_r17 sib32_v1700;
 };
 
 struct SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s {
@@ -10690,6 +11277,8 @@ enum SQN_PosSIB_Type_r15_posSibType_r15_e {
 	SQN_PosSIB_Type_r15_posSibType_r15_e_posSibType2_25_v1610 = 33,
 	SQN_PosSIB_Type_r15_posSibType_r15_e_posSibType4_1_v1610 = 34,
 	SQN_PosSIB_Type_r15_posSibType_r15_e_posSibType5_1_v1610 = 35,
+	SQN_PosSIB_Type_r15_posSibType_r15_e_posSibType1_9_v1700 = 36,
+	SQN_PosSIB_Type_r15_posSibType_r15_e_posSibType1_10_v1700 = 37,
 };
 
 typedef enum SQN_PosSIB_Type_r15_posSibType_r15_e SQN_PosSIB_Type_r15_posSibType_r15_e;
@@ -10917,7 +11506,62 @@ struct SQN_PLMN_IdentityInfo_v1610_SQN_PLMN_IdentityList_v1610_Dynamic {
 
 typedef struct SQN_PLMN_IdentityInfo_v1610_SQN_PLMN_IdentityList_v1610_Dynamic SQN_PLMN_IdentityList_v1610;
 
-struct SQN_SystemInformationBlockType1_v1610_IEs_nonCriticalExtension {
+enum SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_cellBarred_NTN_r17_e {
+	SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_cellBarred_NTN_r17_e_barred = 0,
+	SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_cellBarred_NTN_r17_e_notBarred = 1,
+};
+
+typedef enum SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_cellBarred_NTN_r17_e SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_cellBarred_NTN_r17_e;
+
+struct SQN_TrackingAreaCode_SQN_TrackingAreaList_r17_Dynamic {
+	size_t d;
+	SQN_TrackingAreaCode* v;
+};
+
+typedef struct SQN_TrackingAreaCode_SQN_TrackingAreaList_r17_Dynamic SQN_TrackingAreaList_r17;
+
+struct SQN_TrackingAreaList_r17_SQN_PLMN_IdentityInfo_v1700_trackingAreaList_r17_Optional {
+	bool d;
+	SQN_TrackingAreaList_r17 v;
+};
+
+struct SQN_PLMN_IdentityInfo_v1700 {
+	struct SQN_TrackingAreaList_r17_SQN_PLMN_IdentityInfo_v1700_trackingAreaList_r17_Optional trackingAreaList_r17;
+};
+
+struct SQN_PLMN_IdentityInfo_v1700_SQN_PLMN_IdentityList_v1700_Dynamic {
+	size_t d;
+	struct SQN_PLMN_IdentityInfo_v1700* v;
+};
+
+typedef struct SQN_PLMN_IdentityInfo_v1700_SQN_PLMN_IdentityList_v1700_Dynamic SQN_PLMN_IdentityList_v1700;
+
+struct SQN_PLMN_IdentityList_v1700_SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_plmn_IdentityList_v1700_Optional {
+	bool d;
+	SQN_PLMN_IdentityList_v1700 v;
+};
+
+struct SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17 {
+	SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_cellBarred_NTN_r17_e cellBarred_NTN_r17;
+	struct SQN_PLMN_IdentityList_v1700_SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_plmn_IdentityList_v1700_Optional plmn_IdentityList_v1700;
+};
+
+struct SQN_SystemInformationBlockType1_v1700_IEs_nonCriticalExtension {
+};
+
+struct SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_cellAccessRelatedInfo_NTN_r17_Optional {
+	bool d;
+	struct SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17 v;
+};
+
+struct SQN_SystemInformationBlockType1_v1700_IEs_nonCriticalExtension_nonCriticalExtension_Optional {
+	bool d;
+	struct SQN_SystemInformationBlockType1_v1700_IEs_nonCriticalExtension v;
+};
+
+struct SQN_SystemInformationBlockType1_v1700_IEs {
+	struct SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_cellAccessRelatedInfo_NTN_r17_Optional cellAccessRelatedInfo_NTN_r17;
+	struct SQN_SystemInformationBlockType1_v1700_IEs_nonCriticalExtension_nonCriticalExtension_Optional nonCriticalExtension;
 };
 
 struct SQN_SystemInformationBlockType1_v1610_IEs_eDRX_Allowed_5GC_r16_e_eDRX_Allowed_5GC_r16_Optional {
@@ -10940,9 +11584,9 @@ struct SQN_PLMN_IdentityList_v1610_SQN_SystemInformationBlockType1_v1610_IEs_plm
 	SQN_PLMN_IdentityList_v1610 v;
 };
 
-struct SQN_SystemInformationBlockType1_v1610_IEs_nonCriticalExtension_nonCriticalExtension_Optional {
+struct SQN_SystemInformationBlockType1_v1700_IEs_SQN_SystemInformationBlockType1_v1610_IEs_nonCriticalExtension_Optional {
 	bool d;
-	struct SQN_SystemInformationBlockType1_v1610_IEs_nonCriticalExtension v;
+	struct SQN_SystemInformationBlockType1_v1700_IEs v;
 };
 
 struct SQN_SystemInformationBlockType1_v1610_IEs {
@@ -10950,7 +11594,7 @@ struct SQN_SystemInformationBlockType1_v1610_IEs {
 	struct SQN_SystemInformationBlockType1_v1610_IEs_transmissionInControlChRegion_r16_e_transmissionInControlChRegion_r16_Optional transmissionInControlChRegion_r16;
 	struct SQN_SystemInformationBlockType1_v1610_IEs_campingAllowedInCE_r16_e_campingAllowedInCE_r16_Optional campingAllowedInCE_r16;
 	struct SQN_PLMN_IdentityList_v1610_SQN_SystemInformationBlockType1_v1610_IEs_plmn_IdentityList_v1610_Optional plmn_IdentityList_v1610;
-	struct SQN_SystemInformationBlockType1_v1610_IEs_nonCriticalExtension_nonCriticalExtension_Optional nonCriticalExtension;
+	struct SQN_SystemInformationBlockType1_v1700_IEs_SQN_SystemInformationBlockType1_v1610_IEs_nonCriticalExtension_Optional nonCriticalExtension;
 };
 
 struct SQN_SystemInformationBlockType1_v1540_IEs_si_posOffset_r15_e_si_posOffset_r15_Optional {
@@ -14855,7 +15499,44 @@ enum SQN_Paging_v1610_IEs_uac_ParamModification_r16_e {
 
 typedef enum SQN_Paging_v1610_IEs_uac_ParamModification_r16_e SQN_Paging_v1610_IEs_uac_ParamModification_r16_e;
 
-struct SQN_Paging_v1610_IEs_nonCriticalExtension {
+enum SQN_PagingRecord_v1700_pagingCause_r17_e {
+	SQN_PagingRecord_v1700_pagingCause_r17_e_voice = 0,
+};
+
+typedef enum SQN_PagingRecord_v1700_pagingCause_r17_e SQN_PagingRecord_v1700_pagingCause_r17_e;
+
+struct SQN_PagingRecord_v1700_pagingCause_r17_e_pagingCause_r17_Optional {
+	bool d;
+	SQN_PagingRecord_v1700_pagingCause_r17_e v;
+};
+
+struct SQN_PagingRecord_v1700 {
+	struct SQN_PagingRecord_v1700_pagingCause_r17_e_pagingCause_r17_Optional pagingCause_r17;
+};
+
+struct SQN_PagingRecord_v1700_SQN_PagingRecordList_v1700_Dynamic {
+	size_t d;
+	struct SQN_PagingRecord_v1700* v;
+};
+
+typedef struct SQN_PagingRecord_v1700_SQN_PagingRecordList_v1700_Dynamic SQN_PagingRecordList_v1700;
+
+struct SQN_Paging_v1700_IEs_nonCriticalExtension {
+};
+
+struct SQN_PagingRecordList_v1700_SQN_Paging_v1700_IEs_pagingRecordList_v1700_Optional {
+	bool d;
+	SQN_PagingRecordList_v1700 v;
+};
+
+struct SQN_Paging_v1700_IEs_nonCriticalExtension_nonCriticalExtension_Optional {
+	bool d;
+	struct SQN_Paging_v1700_IEs_nonCriticalExtension v;
+};
+
+struct SQN_Paging_v1700_IEs {
+	struct SQN_PagingRecordList_v1700_SQN_Paging_v1700_IEs_pagingRecordList_v1700_Optional pagingRecordList_v1700;
+	struct SQN_Paging_v1700_IEs_nonCriticalExtension_nonCriticalExtension_Optional nonCriticalExtension;
 };
 
 struct SQN_PagingRecordList_v1610_SQN_Paging_v1610_IEs_pagingRecordList_v1610_Optional {
@@ -14868,15 +15549,15 @@ struct SQN_Paging_v1610_IEs_uac_ParamModification_r16_e_uac_ParamModification_r1
 	SQN_Paging_v1610_IEs_uac_ParamModification_r16_e v;
 };
 
-struct SQN_Paging_v1610_IEs_nonCriticalExtension_nonCriticalExtension_Optional {
+struct SQN_Paging_v1700_IEs_SQN_Paging_v1610_IEs_nonCriticalExtension_Optional {
 	bool d;
-	struct SQN_Paging_v1610_IEs_nonCriticalExtension v;
+	struct SQN_Paging_v1700_IEs v;
 };
 
 struct SQN_Paging_v1610_IEs {
 	struct SQN_PagingRecordList_v1610_SQN_Paging_v1610_IEs_pagingRecordList_v1610_Optional pagingRecordList_v1610;
 	struct SQN_Paging_v1610_IEs_uac_ParamModification_r16_e_uac_ParamModification_r16_Optional uac_ParamModification_r16;
-	struct SQN_Paging_v1610_IEs_nonCriticalExtension_nonCriticalExtension_Optional nonCriticalExtension;
+	struct SQN_Paging_v1700_IEs_SQN_Paging_v1610_IEs_nonCriticalExtension_Optional nonCriticalExtension;
 };
 
 struct SQN_Paging_v1530_IEs_accessType_e_accessType_Optional {
@@ -15504,6 +16185,29 @@ struct SQN_SetupRelease_PDCP_Config_ethernetHeaderCompression_r16 {
 	union SQN_SetupRelease_PDCP_Config_ethernetHeaderCompression_r16_Value v;
 };
 
+enum SQN_DiscardTimerExt_r17_e {
+	SQN_DiscardTimerExt_r17_e_ms2000 = 0,
+	SQN_DiscardTimerExt_r17_e_spare = 1,
+};
+
+typedef enum SQN_DiscardTimerExt_r17_e SQN_DiscardTimerExt_r17_e;
+
+enum SQN_SetupRelease_PDCP_Config_discardTimerExt_r17_Sel {
+	SQN_SetupRelease_PDCP_Config_discardTimerExt_r17_UNBOUND_VALUE = 0,
+	SQN_SetupRelease_PDCP_Config_discardTimerExt_r17_release = 1,
+	SQN_SetupRelease_PDCP_Config_discardTimerExt_r17_setup = 2,
+};
+
+union SQN_SetupRelease_PDCP_Config_discardTimerExt_r17_Value {
+	Null release;
+	SQN_DiscardTimerExt_r17_e setup;
+};
+
+struct SQN_SetupRelease_PDCP_Config_discardTimerExt_r17 {
+	enum SQN_SetupRelease_PDCP_Config_discardTimerExt_r17_Sel d;
+	union SQN_SetupRelease_PDCP_Config_discardTimerExt_r17_Value v;
+};
+
 struct SQN_PDCP_Config_discardTimer_e_discardTimer_Optional {
 	bool d;
 	SQN_PDCP_Config_discardTimer_e v;
@@ -15579,6 +16283,11 @@ struct SQN_SetupRelease_PDCP_Config_ethernetHeaderCompression_r16_SQN_PDCP_Confi
 	struct SQN_SetupRelease_PDCP_Config_ethernetHeaderCompression_r16 v;
 };
 
+struct SQN_SetupRelease_PDCP_Config_discardTimerExt_r17_SQN_PDCP_Config_discardTimerExt_r17_Optional {
+	bool d;
+	struct SQN_SetupRelease_PDCP_Config_discardTimerExt_r17 v;
+};
+
 struct SQN_PDCP_Config {
 	struct SQN_PDCP_Config_discardTimer_e_discardTimer_Optional discardTimer;
 	struct SQN_PDCP_Config_rlc_AM_rlc_AM_Optional rlc_AM;
@@ -15596,6 +16305,7 @@ struct SQN_PDCP_Config {
 	struct SQN_PDCP_Config_uplinkDataCompression_r15_uplinkDataCompression_r15_Optional uplinkDataCompression_r15;
 	struct SQN_PDCP_Config_pdcp_DuplicationConfig_r15_pdcp_DuplicationConfig_r15_Optional pdcp_DuplicationConfig_r15;
 	struct SQN_SetupRelease_PDCP_Config_ethernetHeaderCompression_r16_SQN_PDCP_Config_ethernetHeaderCompression_r16_Optional ethernetHeaderCompression_r16;
+	struct SQN_SetupRelease_PDCP_Config_discardTimerExt_r17_SQN_PDCP_Config_discardTimerExt_r17_Optional discardTimerExt_r17;
 };
 
 struct SQN_PRACH_ConfigInfo_SQN_PRACH_Config_prach_ConfigInfo_Optional {
