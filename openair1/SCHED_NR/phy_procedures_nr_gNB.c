@@ -465,7 +465,7 @@ void nr_fill_indication(PHY_VARS_gNB *gNB, int frame, int slot_rx, int ULSCH_id,
   else                        cqi=(640+SNRtimes10)/5;
 
 
-  if (SNRtimes10 > 150) {
+ /* if (SNRtimes10 > 150) {
       __attribute__((unused))
       int off = ((pusch_pdu->rb_size&1) == 1)? 4:0;
 
@@ -531,7 +531,7 @@ void nr_fill_indication(PHY_VARS_gNB *gNB, int frame, int slot_rx, int ULSCH_id,
       }
       exit(-1);
 
-    }
+    }*/
     
  
   // crc indication

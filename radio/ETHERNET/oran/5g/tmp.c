@@ -478,7 +478,6 @@ int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp)
          xran_ctx = xran_dev_get_ctx_by_id(ant_id/nb_tx_per_ru);
          // This loop would better be more inner to avoid confusion and maybe also errors.
          for(int32_t sym_idx = 0; sym_idx < XRAN_NUM_OF_SYMBOL_PER_SLOT; sym_idx++) {
-
             uint8_t *pData = xran_ctx->sFrontHaulTxBbuIoBufCtrl[tti % XRAN_N_FE_BUF_LEN][0][ant_id%nb_tx_per_ru].sBufferList.pBuffers[sym_idx%XRAN_NUM_OF_SYMBOL_PER_SLOT].pData;
             uint8_t *pPrbMapData = xran_ctx->sFrontHaulTxPrbMapBbuIoBufCtrl[tti % XRAN_N_FE_BUF_LEN][0][ant_id%nb_tx_per_ru].sBufferList.pBuffers->pData;
             struct xran_prb_map *pPrbMap = (struct xran_prb_map *)pPrbMapData;

@@ -40,6 +40,7 @@
 volatile uint8_t first_call_set = 0;
 volatile uint8_t first_rx_set = 0;
 volatile int first_read_set = 0;
+//volatile int wait_buffer = 1;
 
 // Variable declaration useful for fill IQ samples from file
 #define IQ_PLAYBACK_BUFFER_BYTES (XRAN_NUM_OF_SLOT_IN_TDD_LOOP*N_SYM_PER_SLOT*XRAN_MAX_PRBS*N_SC_PER_PRB*4L)
@@ -54,6 +55,7 @@ volatile uint32_t rx_cb_slot = 0;
 
 #define GetFrameNum(tti,SFNatSecStart,numSubFramePerSystemFrame, numSlotPerSubFrame)  ((((uint32_t)tti / ((uint32_t)numSubFramePerSystemFrame * (uint32_t)numSlotPerSubFrame)) + SFNatSecStart) & 0x3FF)
 #define GetSlotNum(tti, numSlotPerSfn) ((uint32_t)tti % ((uint32_t)numSlotPerSfn))
+int32_t xran_get_slot_idx_from_tti (uint32_t tti, uint32_t *nFrameIdx, uint32_t *nSubframeIdx,  uint32_t *nSlotIdx, uint64_t *nSecond);
 
 #ifdef ORAN_BRONZE
 extern struct xran_fh_config  xranConf;
@@ -72,28 +74,47 @@ volatile oran_sync_info_t oran_sync_info;
 #endif
 void oai_xran_fh_rx_callback(void *pCallbackTag, xran_status_t status){
     struct xran_cb_tag *callback_tag = (struct xran_cb_tag *)pCallbackTag;
-    uint64_t second;
-    uint32_t tti;
-    uint32_t frame;
-    uint32_t subframe;
-    uint32_t slot,slot2;
+    uint64_t second, second2;
+    uint32_t tti, tti2;
+    uint32_t rx_tti;
+
+    uint32_t frame,frame2;
+    uint32_t subframe,subframe2;
+    uint32_t slot,slot2,slot3;
     uint32_t rx_sym;
 
     static int32_t last_slot=-1;
     static int32_t last_frame=-1;
+    rx_tti = callback_tag->slotiId;
+
 #ifdef ORAN_BRONZE       
   uint16_t mu = xranConf.frame_conf.nNumerology;
 #else
   uint16_t mu = app_io_xran_fh_config[0].frame_conf.nNumerology;
 #endif
-    tti = xran_get_slot_idx(
-#ifndef ORAN_BRONZE
-		    0,
-#endif
-		    &frame,&subframe,&slot,&second);
+
+        /*tti2 = xran_get_slot_idx(
+        0,
+		    &frame2,
+        &subframe2,
+        &slot3,
+        &second2);*/
+
+    tti = xran_get_slot_idx(0,
+        /*tti = xran_get_slot_idx_from_tti(
+        rx_tti,*/
+		    &frame,
+        &subframe,
+        &slot,
+        &second);
 
     rx_sym = callback_tag->symbol;
+    //printf("rx_sym %d rx_tti %d tti %d slot %d sf %d f %d rx_tti mod 8 = %d\n",rx_sym, rx_tti,tti , slot, subframe, frame, rx_tti%8 );
     if (rx_sym == 7) {
+      //printf("xran_get_slot_idx: (tti %d f %d sf %d sl %d s %d)  xran_get_slot_idx_from_tti : (tti %d f %d sf %d sl %d s %d)  \n",
+      //tti2, frame2, subframe2, slot3, second2, tti, frame, subframe, slot, second);
+
+    //if (((subframe*8 + slot)%10 == 7 && rx_sym == 7) || ((subframe*8 + slot)%10 != 7 && rx_sym == 13)) {
       if (first_call_set) {
         if (!first_rx_set) {
           LOG_I(PHY,"first_rx is set\n");
@@ -113,8 +134,9 @@ void oai_xran_fh_rx_callback(void *pCallbackTag, xran_status_t status){
 #else
            LOG_D(PHY,"Writing %d.%d (slot %d, subframe %d,last_slot %d)\n",frame,slot2,slot,subframe,last_slot);
 	   oran_sync_info.tti = tti;
-           oran_sync_info.sl = slot2;
+     oran_sync_info.sl = slot2;
 	   oran_sync_info.f  = frame;
+     //wait_buffer = 0;
 #endif
 #ifndef USE_POLLING
            pushNotifiedFIFO(&oran_sync_fifo, req);
@@ -228,6 +250,23 @@ int read_prach_data(ru_info_t *ru, int frame, int slot)
 		           for (idx = 0; idx < (139*2); idx++) dst[idx]=local_dst[idx/*+4*/];
 			      else
 	  	         for (idx = 0; idx < (139*2); idx++) dst[idx]+=(local_dst[idx/*+4*/]);
+
+          /*if (1 && dst != NULL )
+          {
+            int energy_level = dB_fixed(signal_energy((int32_t*)dst,12));
+            if (energy_level>20) 
+            {
+            printf("PRACH tti %d slot %d symb %d energy lvel %d\n", tti, slot, sym_idx, energy_level);
+            /*int off = (((pos_len+neg_len)&1) == 1)? 4:0;
+            if (sym_id==10)
+            LOG_M("rxsig10.m","rxsF10",local_dst,1024,1,1);
+            if (sym_id==11)
+            LOG_M("rxsig11.m","rxsF11",local_dst,1024,1,1);           
+            if (sym_id==12)
+            LOG_M("rxsig12.m","rxsF12",local_dst,1024,1,1);
+            }
+          }*/
+
 			  } // COMPMETHOD_BLKFLOAT
 		} //aa
 	  }// symb_indx
@@ -268,6 +307,8 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot){
 #else
   LOG_D(PHY,"In  xran_fh_rx_read_slot, first_rx_set %d\n",first_rx_set); 
   while (first_rx_set ==0) {}
+  //while (wait_buffer == 1) {}
+  //wait_buffer = 1;
 
   *slot = oran_sync_info.sl;
   *frame = oran_sync_info.f;
@@ -280,12 +321,13 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot){
     //*slot = oran_sync_info.sl;
     cnt++;
   }
-  LOG_D(PHY,"cnt %d, Reading %d.%d\n",cnt,*frame,*slot);
+  LOG_D(PHY,"cnt %d, Reading %d.%d tti in %d tti oran %d\n",cnt,*frame,*slot, tti_in, oran_sync_info.tti);
   last_slot = *slot;
 #endif
   //return(0);
 
   int tti=(*frame*10*(1<<mu)) + *slot;
+  //printf("frame %d slot %d tti %d\n", *frame, *slot, tti);
   
   read_prach_data(ru, *frame, *slot);
 
@@ -410,6 +452,23 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot){
 		       memcpy((void*)dst2,(void*)local_dst,neg_len*4);
 		       memcpy((void*)dst1,(void*)&local_dst[neg_len],pos_len*4);
 		       outcnt++;
+
+         /*if (1 && local_dst != NULL )
+          {
+            int energy_level = dB_fixed(signal_energy((int32_t*)local_dst,(pos_len+neg_len)));
+            if (energy_level>20) 
+            {
+            printf("PUSCH tti %d slot %d last_slot %d symb %d energy lvel %d\n", tti, *slot, last_slot, sym_idx, energy_level);
+            /*int off = (((pos_len+neg_len)&1) == 1)? 4:0;
+            if (sym_id==10)
+            LOG_M("rxsig10.m","rxsF10",local_dst,1024,1,1);
+            if (sym_id==11)
+            LOG_M("rxsig11.m","rxsF11",local_dst,1024,1,1);           
+            if (sym_id==12)
+            LOG_M("rxsig12.m","rxsF12",local_dst,1024,1,1);
+            }
+          }*/
+
 		       if (0 /*outcnt==1000*/) {
 			 LOG_I(NR_PHY,"bfp_decom_rsp.len %d, payload_len %d\n",bfp_decom_rsp.len,payload_len);
 		         for (int prb=0;prb<p_prbMapElm->nRBSize;prb++){

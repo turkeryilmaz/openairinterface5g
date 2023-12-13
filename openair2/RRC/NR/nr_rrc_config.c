@@ -617,8 +617,8 @@ static void config_srs(const NR_ServingCellConfigCommon_t *scc,
   srs_res0->spatialRelationInfo->servingCellId = NULL;
   // TODO include CSI as reference signal when BWPs are handled properly
   srs_res0->spatialRelationInfo->referenceSignal.present = NR_SRS_SpatialRelationInfo__referenceSignal_PR_ssb_Index;
-  //srs_res0->spatialRelationInfo->referenceSignal.choice.ssb_Index = 0;
-  srs_res0->spatialRelationInfo->referenceSignal.choice.csi_RS_Index = 0;
+  srs_res0->spatialRelationInfo->referenceSignal.choice.ssb_Index = 0;
+  //srs_res0->spatialRelationInfo->referenceSignal.choice.csi_RS_Index = 0;
   asn1cSeqAdd(&srs_Config->srs_ResourceToAddModList->list,srs_res0);
 }
 
@@ -890,8 +890,8 @@ void set_pucch_power_config(NR_PUCCH_Config_t *pucch_Config, int do_csirs) {
   pucchspatial->servingCellId = NULL;
   // TODO include CSI as reference signal when BWPs are handled properly
   pucchspatial->referenceSignal.present = NR_PUCCH_SpatialRelationInfo__referenceSignal_PR_ssb_Index;
-  //pucchspatial->referenceSignal.choice.ssb_Index = 0;
-  pucchspatial->referenceSignal.choice.csi_RS_Index = 0;
+  pucchspatial->referenceSignal.choice.ssb_Index = 0;
+  //pucchspatial->referenceSignal.choice.csi_RS_Index = 0;
   pucchspatial->pucch_PathlossReferenceRS_Id = PL_ref_RS->pucch_PathlossReferenceRS_Id;
   pucchspatial->p0_PUCCH_Id = p00->p0_PUCCH_Id;
   pucchspatial->closedLoopIndex = NR_PUCCH_SpatialRelationInfo__closedLoopIndex_i0;
@@ -1070,8 +1070,9 @@ static struct NR_SetupRelease_PUSCH_Config *config_pusch(NR_PUSCH_Config_t *pusc
     pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup = calloc(1, sizeof(*pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup));
   NR_DMRS_UplinkConfig_t *NR_DMRS_UplinkConfig = pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup;
   NR_DMRS_UplinkConfig->dmrs_Type = NULL;
-  NR_DMRS_UplinkConfig->dmrs_AdditionalPosition = calloc(1,sizeof(*NR_DMRS_UplinkConfig->dmrs_AdditionalPosition));
-  *NR_DMRS_UplinkConfig->dmrs_AdditionalPosition = NR_DMRS_UplinkConfig__dmrs_AdditionalPosition_pos0;
+  NR_DMRS_UplinkConfig->dmrs_AdditionalPosition = NULL;
+  //NR_DMRS_UplinkConfig->dmrs_AdditionalPosition = calloc(1,sizeof(*NR_DMRS_UplinkConfig->dmrs_AdditionalPosition));
+  //*NR_DMRS_UplinkConfig->dmrs_AdditionalPosition = NR_DMRS_UplinkConfig__dmrs_AdditionalPosition_pos0;
 
   NR_DMRS_UplinkConfig->phaseTrackingRS = NULL;
   NR_DMRS_UplinkConfig->maxLength = NULL;
@@ -1099,12 +1100,12 @@ static struct NR_SetupRelease_PUSCH_Config *config_pusch(NR_PUSCH_Config_t *pusc
   aset->alpha = calloc(1, sizeof(*aset->alpha));
   *aset->alpha = NR_Alpha_alpha1;
   asn1cSeqAdd(&pusch_Config->pusch_PowerControl->p0_AlphaSets->list, aset);
-  pusch_Config->pusch_PowerControl->pathlossReferenceRSToAddModList = NULL; //calloc(1, sizeof(*pusch_Config->pusch_PowerControl->pathlossReferenceRSToAddModList));
-  /*NR_PUSCH_PathlossReferenceRS_t *plrefRS = calloc(1, sizeof(*plrefRS));
+  pusch_Config->pusch_PowerControl->pathlossReferenceRSToAddModList = calloc(1, sizeof(*pusch_Config->pusch_PowerControl->pathlossReferenceRSToAddModList));
+  NR_PUSCH_PathlossReferenceRS_t *plrefRS = calloc(1, sizeof(*plrefRS));
   plrefRS->pusch_PathlossReferenceRS_Id = 0;
   plrefRS->referenceSignal.present = NR_PUSCH_PathlossReferenceRS__referenceSignal_PR_ssb_Index;
   plrefRS->referenceSignal.choice.ssb_Index = 0;
-  asn1cSeqAdd(&pusch_Config->pusch_PowerControl->pathlossReferenceRSToAddModList->list, plrefRS);*/
+  asn1cSeqAdd(&pusch_Config->pusch_PowerControl->pathlossReferenceRSToAddModList->list, plrefRS);
   pusch_Config->pusch_PowerControl->pathlossReferenceRSToReleaseList = NULL;
   pusch_Config->pusch_PowerControl->twoPUSCH_PC_AdjustmentStates = NULL;
   /*if (!pusch_Config->pusch_PowerControl->deltaMCS)
@@ -1118,8 +1119,8 @@ static struct NR_SetupRelease_PUSCH_Config *config_pusch(NR_PUSCH_Config_t *pusc
   pusch_Config->pusch_TimeDomainAllocationList = NULL;
   pusch_Config->pusch_AggregationFactor = NULL;
   set_ul_mcs_table(uecap, scc, pusch_Config);
-  pusch_Config->transformPrecoder = calloc(1,sizeof(*pusch_Config->transformPrecoder));
-  *pusch_Config->transformPrecoder = NR_PUSCH_Config__transformPrecoder_disabled;
+  pusch_Config->transformPrecoder = NULL; /*calloc(1,sizeof(*pusch_Config->transformPrecoder));
+  *pusch_Config->transformPrecoder = NR_PUSCH_Config__transformPrecoder_disabled;*/
   if (!pusch_Config->codebookSubset)
     pusch_Config->codebookSubset = calloc(1, sizeof(*pusch_Config->codebookSubset));
   *pusch_Config->codebookSubset = NR_PUSCH_Config__codebookSubset_nonCoherent;
@@ -1929,7 +1930,7 @@ NR_BCCH_DL_SCH_Message_t *get_SIB1_NR(const gNB_RrcConfigurationReq *configurati
   UL->initialUplinkBWP.genericParameters = configuration->scc->uplinkConfigCommon->initialUplinkBWP->genericParameters;
   UL->initialUplinkBWP.rach_ConfigCommon = configuration->scc->uplinkConfigCommon->initialUplinkBWP->rach_ConfigCommon;
   UL->initialUplinkBWP.pusch_ConfigCommon = configuration->scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon;
-  UL->initialUplinkBWP.pusch_ConfigCommon->choice.setup->groupHoppingEnabledTransformPrecoding = CALLOC(1,sizeof(long));
+  UL->initialUplinkBWP.pusch_ConfigCommon->choice.setup->groupHoppingEnabledTransformPrecoding = NULL; //CALLOC(1,sizeof(long));
 
   UL->initialUplinkBWP.pucch_ConfigCommon = configuration->scc->uplinkConfigCommon->initialUplinkBWP->pucch_ConfigCommon;
 
