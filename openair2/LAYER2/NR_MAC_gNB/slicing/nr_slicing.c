@@ -410,23 +410,19 @@ void nvs_nr_dl(module_id_t mod_id,
   int max_sched_ues = bw / (average_agg_level * NR_NB_REG_PER_CCE);
 
   nr_slice_info_t *si = RC.nrmac[mod_id]->pre_processor_dl.slices;
-  int bytes_last_round = 0;
-  UE_iterator(UE_info->list, UE) {
-    const NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
+  int bytes_last_round[MAX_NVS_SLICES] = {0};
+  for (int s_idx = 0; s_idx < si->num; ++s_idx) {
+    UE_iterator(UE_info->list, UE) {
+      const NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
+      if (si->s[s_idx]->id == UE->dl_id) {
+        bytes_last_round[s_idx] += UE->mac_stats.dl.current_bytes;
 
-    bytes_last_round += UE->mac_stats.dl.current_bytes;
-
-    int s_idx;
-    for (s_idx = 0; s_idx < si->num; s_idx++) {
-      if (si->s[s_idx]->id == UE->dl_id)
-        break;
+        /* if UE has data or retransmission, mark respective slice as active */
+        const int retx_pid = sched_ctrl->retrans_dl_harq.head;
+        const bool active = sched_ctrl->num_total_bytes > 0 || retx_pid >= 0;
+        ((_nvs_int_t *)si->s[s_idx]->int_data)->active |= active;
+      }
     }
-    DevAssert(s_idx >= 0 && s_idx < si->num);
-
-    /* if UE has data or retransmission, mark respective slice as active */
-    const int retx_pid = sched_ctrl->retrans_dl_harq.head;
-    const bool active = sched_ctrl->num_total_bytes > 0 || retx_pid >= 0;
-    ((_nvs_int_t *)si->s[s_idx]->int_data)->active |= active;
   }
 
   float maxw = 0.0f;
@@ -445,7 +441,7 @@ void nvs_nr_dl(module_id_t mod_id,
       float inst = 0.0f;
       if (ip->rb > 0) { /* it was scheduled last round */
         /* inst rate: B in last round * 8(bit) / 1000000 (Mbps) * 1000 (1ms) */
-        inst = (float) bytes_last_round * 8 / 1000;
+        inst = (float) bytes_last_round[i] * 8 / 1000;
         ip->eff = (1.0f - ip->beta_eff) * ip->eff + ip->beta_eff * inst;
         //LOG_W(NR_MAC, "i %d slice %d ip->rb %d inst %f ip->eff %f\n", i, s->id, ip->rb, inst, ip->eff);
         ip->rb = 0;
