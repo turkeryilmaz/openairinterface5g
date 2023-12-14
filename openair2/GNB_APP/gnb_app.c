@@ -76,7 +76,7 @@ void configure_nr_rrc(uint32_t gnb_id)
   if (RC.nrrrc[gnb_id]) {
     RCconfig_NRRRC(msg_p,gnb_id, RC.nrrrc[gnb_id]);
 
-    if (RC.ss.mode == SS_SOFTMODEM) 
+    if (RC.ss.mode >= SS_SOFTMODEM)
     {
       /** wait for signal */
       wait_cell_config_5G("TASK_SYS_GNB");
