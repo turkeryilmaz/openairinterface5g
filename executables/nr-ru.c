@@ -1359,7 +1359,7 @@ void *ru_thread( void *param ) {
     syncMsg->slot_tx = proc->tti_tx;
     syncMsg->timestamp_tx = proc->timestamp_tx;
     res->key = proc->tti_rx;
-#ifdef TASK_MANAGER_RU
+#ifdef TASK_MANAGER // no TASK_MANAGER_RU
     if (!get_softmodem_params()->reorder_thread_disable) {
       assert(res->processingFunc != NULL);
       assert(res->reponseFifo != NULL);
