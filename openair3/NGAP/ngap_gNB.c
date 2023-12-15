@@ -356,6 +356,9 @@ void *ngap_gNB_process_itti_msg(void *notUsed) {
         ngap_gNB_pdusession_release_resp(instance, &NGAP_PDUSESSION_RELEASE_RESPONSE(received_msg));
         break;
 
+      case NGAP_HANDOVER_REQUIRED:
+        ngap_gNB_handover_required(instance, &NGAP_HANDOVER_REQUIRED(received_msg));
+        break;
       default:
         NGAP_ERROR("Received unhandled message: %d:%s\n", ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
         break;

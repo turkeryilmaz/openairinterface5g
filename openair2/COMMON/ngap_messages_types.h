@@ -65,6 +65,8 @@
 #define NGAP_PDUSESSION_SETUP_REQ(mSGpTR)              (mSGpTR)->ittiMsg.ngap_pdusession_setup_req
 #define NGAP_PDUSESSION_MODIFY_REQ(mSGpTR)              (mSGpTR)->ittiMsg.ngap_pdusession_modify_req
 #define NGAP_PAGING_IND(mSGpTR)                 (mSGpTR)->ittiMsg.ngap_paging_ind
+#define NGAP_HANDOVER_REQUIRED(mSGpTR)           (mSGpTR)->ittiMsg.ngap_handover_required
+#define NGAP_HANDOVER_COMMAND(mSGpTR)            (mSGpTR)->ittiMsg.ngap_handover_command
 
 #define NGAP_UE_CONTEXT_RELEASE_REQ(mSGpTR)     (mSGpTR)->ittiMsg.ngap_ue_release_req
 #define NGAP_PDUSESSION_RELEASE_COMMAND(mSGpTR)      (mSGpTR)->ittiMsg.ngap_pdusession_release_command
@@ -525,6 +527,51 @@ typedef struct ngap_uplink_nas_s {
   /* NAS pdu */
   ngap_pdu_t nas_pdu;
 } ngap_uplink_nas_t;
+
+typedef struct target_cell_id_s {
+  ngap_plmn_identity_t plmn_identity;
+  uint32_t nrCellIdentity;
+} target_cell_id_t;
+
+typedef struct target_ran_node_id_s {
+  uint32_t targetgNBId;
+  ngap_plmn_identity_t plmn_identity; //use for both + selected TAI
+  uint32_t tac; //use for both + selected TAI
+} target_ran_node_id_t;
+
+typedef struct source_to_target_transparent_container_s {
+  ngap_pdu_t handoverInfo;
+  target_cell_id_t targetCellId;
+} source_to_target_transparent_container_t;
+
+typedef struct handover_drb_item_s {
+  uint8_t drbId;
+  uint8_t qosFlowId;
+  bool isActive;
+} handover_drb_item_t;
+
+
+typedef struct ngap_handover_required_s {
+  uint32_t gNB_ue_ngap_id;
+  uint64_t amf_ue_ngap_id;
+  target_ran_node_id_t target_gnb_id;
+  source_to_target_transparent_container_t* sourceToTargetContainer;
+  uint8_t       nb_of_pdusessions;
+  pdusession_setup_t pdusessions[NGAP_MAX_PDUSESSION];
+  handover_drb_item_t used_drbs[MAX_DRBS_PER_UE];
+  uint32_t cause; //16 for Handover DEsirable For Radio Reason
+  uint32_t handoverType; // 0 for intra5gs
+} ngap_handover_required_t;
+
+typedef struct ngap_handover_command_s {
+  uint32_t gNB_ue_ngap_id;
+  uint64_t amf_ue_ngap_id;
+  ngap_pdu_t handoverCommand;
+  uint32_t cause; //16 for Handover DEsirable For Radio Reason
+  uint32_t handoverType; // 0 for intra5gs
+  uint8_t       nb_of_pdusessions;
+  pdusession_setup_t pduSessionResourceHandoverList[NGAP_MAX_PDUSESSION]; //for data forwarding
+} ngap_handover_command_t;
 
 typedef struct ngap_ue_cap_info_ind_s {
   uint32_t  gNB_ue_ngap_id;

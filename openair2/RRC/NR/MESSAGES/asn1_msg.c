@@ -64,6 +64,10 @@
 #include "NR_LogicalChannelConfig.h"
 #include "NR_PDCP-Config.h"
 #include "NR_MAC-CellGroupConfig.h"
+#include "NR_HandoverPreparationInformation.h"
+#include "NR_HandoverCommand.h"
+#include "NR_HandoverCommand-IEs.h"
+#include "NR_AS-Config.h"
 #include "NR_SecurityModeCommand.h"
 #include "NR_CipheringAlgorithm.h"
 #include "NR_RRCReconfiguration-IEs.h"
@@ -662,6 +666,131 @@ int do_NR_RRCRelease(uint8_t *buffer, size_t buffer_size, uint8_t Transaction_id
   return((enc_rval.encoded+7)/8);
 }
 
+int16_t do_HO_RRCReconfiguration(const gNB_RRC_UE_t *UE,
+                              uint8_t *buffer,
+                              size_t buffer_size,
+                              uint8_t Transaction_id,
+                              NR_SRB_ToAddModList_t *SRB_configList,
+                              NR_DRB_ToAddModList_t *DRB_configList,
+                              NR_DRB_ToReleaseList_t *DRB_releaseList,
+                              NR_SecurityConfig_t *security_config,
+                              NR_MeasConfig_t *meas_config,
+                              struct NR_RRCReconfiguration_v1530_IEs__dedicatedNAS_MessageList *dedicatedNAS_MessageList,
+                              NR_CellGroupConfig_t *cellGroupConfig)
+//------------------------------------------------------------------------------
+{
+    asn_enc_rval_t                                   enc_rval;
+    NR_RRCReconfiguration_IEs_t                      *ie;
+
+    NR_RRCReconfiguration_t* rrcReconf  = (NR_RRCReconfiguration_t*)calloc(1, sizeof(NR_RRCReconfiguration_t));
+    rrcReconf->rrc_TransactionIdentifier = Transaction_id;
+    rrcReconf->criticalExtensions.present = NR_RRCReconfiguration__criticalExtensions_PR_rrcReconfiguration;
+
+    ie = calloc(1, sizeof(NR_RRCReconfiguration_IEs_t));
+    if ((SRB_configList &&  SRB_configList->list.size) ||
+        (DRB_configList &&  DRB_configList->list.size))  {
+      ie->radioBearerConfig = calloc(1, sizeof(NR_RadioBearerConfig_t));
+      ie->radioBearerConfig->srb_ToAddModList  = SRB_configList;
+      ie->radioBearerConfig->drb_ToAddModList  = DRB_configList;
+      ie->radioBearerConfig->securityConfig    = security_config;
+      ie->radioBearerConfig->srb3_ToRelease    = NULL;
+      ie->radioBearerConfig->drb_ToReleaseList = DRB_releaseList;
+    }
+
+    /******************** Meas Config ********************/
+    // measConfig
+    ie->measConfig = meas_config;
+    // lateNonCriticalExtension
+    ie->lateNonCriticalExtension = NULL;
+    // nonCriticalExtension
+
+    if (cellGroupConfig) {
+      ie->nonCriticalExtension = calloc(1, sizeof(NR_RRCReconfiguration_v1530_IEs_t));
+    }
+
+    if (cellGroupConfig != NULL) {
+      uint8_t *buf = NULL;
+      ssize_t len = uper_encode_to_new_buffer(&asn_DEF_NR_CellGroupConfig, NULL, cellGroupConfig, (void **)&buf);
+      AssertFatal(len > 0, "ASN1 message encoding failed (%lu)!\n", len);
+      if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
+        xer_fprint(stdout, &asn_DEF_NR_CellGroupConfig, (const void *) cellGroupConfig);
+      }
+      ie->nonCriticalExtension->masterCellGroup = calloc(1,sizeof(OCTET_STRING_t));
+      ie->nonCriticalExtension->masterCellGroup->buf = buf;
+      ie->nonCriticalExtension->masterCellGroup->size = len;
+    }
+
+    rrcReconf->criticalExtensions.choice.rrcReconfiguration = ie;
+
+
+    enc_rval = uper_encode_to_buffer(&asn_DEF_NR_RRCReconfiguration,
+                                     NULL,
+                                     (void *)rrcReconf,
+                                     buffer,
+                                     buffer_size);
+
+    AssertFatal(enc_rval.encoded >0, "ASN1 message encoding failed (%s, %lu)!\n",
+                enc_rval.failed_type->name, enc_rval.encoded);
+
+    // don't free what we did not allocate, so set fields with pointers to NULL
+    // if memory comes from outside
+    ie->measConfig = NULL;
+    if (ie->radioBearerConfig) {
+      ie->radioBearerConfig->srb_ToAddModList = NULL;
+      ie->radioBearerConfig->drb_ToAddModList = NULL;
+      ie->radioBearerConfig->securityConfig = NULL;
+      ie->radioBearerConfig->srb3_ToRelease = NULL;
+      ie->radioBearerConfig->drb_ToReleaseList = NULL;
+    }
+    if (ie->nonCriticalExtension)
+      ie->nonCriticalExtension->dedicatedNAS_MessageList = NULL;
+    ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_NR_RRCReconfiguration, rrcReconf);
+    LOG_D(NR_RRC,
+          "RRCReconfiguration for UE %d: Encoded %zd bits (%zd bytes)\n",
+          UE->rrc_ue_id,
+          enc_rval.encoded,
+          (enc_rval.encoded + 7) / 8);
+
+    return((enc_rval.encoded+7)/8);
+}
+
+int16_t prepare_DL_DCCH_for_HO_Command(const gNB_RRC_UE_t *UE,
+                        uint8_t** hoCommand,
+                        size_t hoCommandLength,
+                        uint8_t* buffer,
+                        size_t buffer_size)
+{
+    NR_DL_DCCH_Message_t                             dl_dcch_msg={0};
+    asn_enc_rval_t                                   enc_rval;
+    dl_dcch_msg.message.present            = NR_DL_DCCH_MessageType_PR_c1;
+    asn1cCalloc(dl_dcch_msg.message.choice.c1, c1);//          = CALLOC(1, sizeof(struct NR_DL_DCCH_MessageType__c1));
+    c1->present = NR_DL_DCCH_MessageType__c1_PR_rrcReconfiguration;
+
+    asn1cCalloc(c1->choice.rrcReconfiguration, rrcReconf);
+    
+    uper_decode_complete(NULL, &asn_DEF_NR_RRCReconfiguration, (void **)&rrcReconf, (const void*)*hoCommand, hoCommandLength);
+    if (LOG_DEBUGFLAG(DEBUG_ASN1))
+      xer_fprint(stdout, &asn_DEF_NR_DL_DCCH_Message, (void *)&dl_dcch_msg);
+
+    enc_rval = uper_encode_to_buffer(&asn_DEF_NR_DL_DCCH_Message,
+                                     NULL,
+                                     (void *)&dl_dcch_msg,
+                                     buffer,
+                                     buffer_size);
+
+    AssertFatal(enc_rval.encoded >0, "ASN1 message encoding failed (%s, %lu)!\n",
+                enc_rval.failed_type->name, enc_rval.encoded);
+
+    ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_NR_DL_DCCH_Message, &dl_dcch_msg);
+    LOG_D(NR_RRC,
+          "RRCReconfiguration for UE %d: Encoded %zd bits (%zd bytes)\n",
+          UE->rrc_ue_id,
+          enc_rval.encoded,
+          (enc_rval.encoded + 7) / 8);
+
+    return((enc_rval.encoded+7)/8);                
+}
+
 //------------------------------------------------------------------------------
 int16_t do_RRCReconfiguration(const gNB_RRC_UE_t *UE,
                               uint8_t *buffer,
@@ -1183,6 +1312,62 @@ NR_MeasConfig_t *get_defaultMeasConfig(uint32_t ssb_arfcn, int band, int scs)
   return mc;
 }
 
+int16_t get_HandoverPreparationInformation(const gNB_RRC_UE_t* ue_p, NR_SRB_ToAddModList_t *SRBs, NR_DRB_ToAddModList_t *DRBs,  uint8_t** buffer, size_t buffer_size) {
+  uint8_t rrc_reconfiguration_buffer[RRC_BUF_SIZE] = {0};
+
+  int reconfigSize = do_HO_RRCReconfiguration(ue_p,
+                                   rrc_reconfiguration_buffer,
+                                   RRC_BUF_SIZE,
+                                   0,
+                                   SRBs,
+                                   DRBs,
+                                   NULL,
+                                   NULL,
+                                   ue_p->measConfig,
+                                   NULL,
+                                   ue_p->masterCellGroup);
+
+                                   
+  NR_HandoverPreparationInformation_t HoPrepInfo={0};
+  NR_HandoverPreparationInformation_IEs_t *ie;
+  asn_enc_rval_t                                   enc_rval;
+
+  HoPrepInfo.criticalExtensions.present = NR_HandoverPreparationInformation__criticalExtensions_PR_c1;
+  asn1cCalloc(HoPrepInfo.criticalExtensions.choice.c1, c1);
+  c1->present = NR_HandoverPreparationInformation__criticalExtensions__c1_PR_handoverPreparationInformation;
+
+  ie = calloc(1, sizeof(NR_HandoverPreparationInformation_IEs_t));
+  
+  asn1cSequenceAdd(ie->ue_CapabilityRAT_List.list, NR_UE_CapabilityRAT_Container_t, nrContainer);
+  nrContainer->rat_Type = 0; //NR
+
+  nrContainer->ue_CapabilityRAT_Container.size = uper_encode_to_new_buffer(&asn_DEF_NR_UE_NR_Capability, NULL, (void *)ue_p->UE_Capability_nr, (void **)&nrContainer->ue_CapabilityRAT_Container.buf);
+  
+  asn1cCalloc(ie->sourceConfig, sourceConfig);
+  OCTET_STRING_fromBuf(&sourceConfig->rrcReconfiguration,
+                       (const char *)rrc_reconfiguration_buffer, reconfigSize);
+
+  HoPrepInfo.criticalExtensions.choice.c1->choice.handoverPreparationInformation = ie;
+  if (LOG_DEBUGFLAG(DEBUG_ASN1))
+    xer_fprint(stdout, &asn_DEF_NR_HandoverPreparationInformation, (void *)&HoPrepInfo);
+  
+  enc_rval = uper_encode_to_buffer(&asn_DEF_NR_HandoverPreparationInformation,
+                                     NULL,
+                                     (void *)&HoPrepInfo,
+                                     (*buffer),
+                                     buffer_size);
+
+  AssertFatal(enc_rval.encoded >0, "ASN1 message encoding failed (%s, %lu)!\n",
+                enc_rval.failed_type->name, enc_rval.encoded);
+                
+  ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_NR_HandoverPreparationInformation, &HoPrepInfo);
+  LOG_D(NR_RRC,"HO LOG: Handover Preparation for UE %lu Encoded %zd bits (%zd bytes)\n",
+            ue_p->amf_ue_ngap_id,
+            enc_rval.encoded,
+            (enc_rval.encoded+7)/8);
+
+  return((enc_rval.encoded+7)/8);
+}
 
 NR_MeasConfig_t *get_EventBasedMeasConfig(uint32_t ssb_arfcn, int band, int scs, const nr_measurement_event_configuration_t* measurementConfiguration, nr_neighbour_gnb_configuration_t* neighbourConfiguration, const int numberOfNeighbours){
 
@@ -1294,7 +1479,7 @@ NR_MeasConfig_t *get_EventBasedMeasConfig(uint32_t ssb_arfcn, int band, int scs,
       etrc_A2->eventId.choice.eventA2->hysteresis = 0;
       etrc_A2->eventId.choice.eventA2->timeToTrigger = measurementConfiguration->a2_time_to_trigger;
       etrc_A2->rsType = NR_NR_RS_Type_ssb;
-      etrc_A2->reportInterval = NR_ReportInterval_ms480;
+      etrc_A2->reportInterval = NR_ReportInterval_ms1024;
       etrc_A2->reportAmount = NR_EventTriggerConfig__reportAmount_r4;
       etrc_A2->reportQuantityCell.rsrp = true;
       etrc_A2->reportQuantityCell.rsrq = false;

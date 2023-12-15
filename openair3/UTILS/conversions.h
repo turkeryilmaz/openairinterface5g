@@ -139,6 +139,7 @@ do {                                            \
     (aSN)->size = 4;                            \
 } while(0)
 
+
 #define INT32_TO_BIT_STRING(x, aSN) \
 do {                                \
     INT32_TO_OCTET_STRING(x, aSN);  \
@@ -601,5 +602,6 @@ do {                                                    \
 #define TAC_TO_ASN1 INT16_TO_OCTET_STRING
 #define GTP_TEID_TO_ASN1 INT32_TO_OCTET_STRING
 #define OCTET_STRING_TO_TAC OCTET_STRING_TO_INT16
+#define ASN1_TO_GTP_TEID OCTET_STRING_TO_INT32
 
 #endif /* CONVERSIONS_H_ */

@@ -85,6 +85,16 @@
 #include "NGAP_GTPTunnel.h"
 #include "NGAP_UE-NGAP-ID-pair.h"
 #include "NGAP_UserLocationInformationNR.h"
+#include "NGAP_HandoverCommand.h"
+#include "NGAP_HandoverCommandTransfer.h"
+#include "NGAP_PDUSessionResourceHandoverList.h"
+#include "NGAP_PDUSessionResourceHandoverItem.h"
+#include "NGAP_UPTransportLayerInformation.h"
+#include "NGAP_GTPTunnel.h"
+#include "NGAP_GTP-TEID.h"
+#include "NGAP_TargetNGRANNode-ToSourceNGRANNode-TransparentContainer.h"
+#include "NGAP_TargetToSource-TransparentContainer.h"
+
 
 /* Checking version of ASN1C compiler */
 #if (ASN1C_ENVIRONMENT_VERSION < ASN1C_MINIMUM_VERSION)

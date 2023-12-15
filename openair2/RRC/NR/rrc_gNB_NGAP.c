@@ -56,6 +56,9 @@
 #include "RRC/NR/MESSAGES/asn1_msg.h"
 #include "NR_UERadioAccessCapabilityInformation.h"
 #include "NR_UE-CapabilityRAT-ContainerList.h"
+#include "NR_HandoverPreparationInformation.h"
+#include "NR_HandoverCommand.h"
+#include "NR_HandoverCommand-IEs.h"
 #include "NGAP_CauseRadioNetwork.h"
 #include "f1ap_messages_types.h"
 #include "openair2/F1AP/f1ap_ids.h"
@@ -1275,7 +1278,79 @@ void rrc_gNB_send_NGAP_UE_CAPABILITIES_IND(const protocol_ctxt_t *const ctxt_pP,
     itti_send_msg_to_task (TASK_NGAP, ctxt_pP->instance, msg_p);
     LOG_I(NR_RRC,"Send message to ngap: NGAP_UE_CAPABILITIES_IND\n");
 }
+void rrc_gNB_send_NGAP_HANDOVER_REQUIRED(
+  const protocol_ctxt_t    *const ctxt_pP,
+  rrc_gNB_ue_context_t     *const ue_context_pP,
+  uint8_t                  xid,
+  const nr_neighbour_gnb_configuration_t* neighbourCellConfiguration,
+  uint8_t** handoverPrepInfo,
+  const size_t handoverPrepInfoSize
+)
+{
+  LOG_I(NR_RRC, "HO Log: Preparing Handover Required Structure\n");
 
+  MessageDef  *msg_p;
+  gNB_RRC_UE_t *UE = &ue_context_pP->ue_context;
+  msg_p = itti_alloc_new_message (TASK_RRC_GNB, 0, NGAP_HANDOVER_REQUIRED);
+  ngap_handover_required_t* ho_required = &NGAP_HANDOVER_REQUIRED(msg_p);
+  memset(ho_required, 0, sizeof(*ho_required));
+
+  //Prepare RAN UE NGAP ID
+  ho_required->gNB_ue_ngap_id = UE->rrc_ue_id;
+
+  //Prepare AMF UE NGAP ID
+  ho_required->amf_ue_ngap_id = UE->amf_ue_ngap_id;
+  ho_required->nb_of_pdusessions = UE->nb_of_pdusessions;
+  // Prepare PDU Session Items
+  for (int i = 0; i < UE->nb_of_pdusessions; ++i) {
+    if (UE->pduSession[i].status == PDU_SESSION_STATUS_DONE || UE->pduSession[i].status == PDU_SESSION_STATUS_ESTABLISHED) {
+      rrc_pdu_session_param_t *pduSession = find_pduSession(UE, UE->pduSession[i].param.pdusession_id, false);
+      if (!pduSession)
+        continue;
+
+      ho_required->pdusessions[i].pdusession_id = pduSession->param.pdusession_id;
+      ho_required->pdusessions[i].nb_of_qos_flow = pduSession->param.nb_qos;
+      for (int j = 0; j < pduSession->param.nb_qos; ++j) {
+        ho_required->pdusessions[i].associated_qos_flows[j].qfi = pduSession->param.qos[j].qfi;
+      }
+    }
+  }
+
+  for (int drbItem = 0; drbItem < MAX_DRBS_PER_UE; ++drbItem) {
+      if (UE->established_drbs[drbItem].status == DRB_INACTIVE)
+          continue;
+
+      ho_required->used_drbs[drbItem].isActive = true;
+      ho_required->used_drbs[drbItem].drbId =  UE->established_drbs[drbItem].drb_id;
+      ho_required->used_drbs[drbItem].qosFlowId = ho_required->pdusessions[drbItem].associated_qos_flows[0].qfi;
+  }
+
+  //Prepare Source To Target Container
+  ho_required->sourceToTargetContainer =  (source_to_target_transparent_container_t*)calloc(1, sizeof(source_to_target_transparent_container_t));
+  ho_required->sourceToTargetContainer->targetCellId.plmn_identity.mnc_digit_length = neighbourCellConfiguration->neighbour_mnc_digit_length;
+  ho_required->sourceToTargetContainer->targetCellId.plmn_identity.mnc = neighbourCellConfiguration->neighbour_mnc;
+  ho_required->sourceToTargetContainer->targetCellId.plmn_identity.mcc = neighbourCellConfiguration->neighbour_mcc;
+  ho_required->sourceToTargetContainer->targetCellId.nrCellIdentity = neighbourCellConfiguration->neighbour_nrcell_id;
+
+  ho_required->sourceToTargetContainer->handoverInfo.buffer = (uint8_t*)(calloc(1, handoverPrepInfoSize));
+  memcpy(ho_required->sourceToTargetContainer->handoverInfo.buffer, *handoverPrepInfo, handoverPrepInfoSize);
+  ho_required->sourceToTargetContainer->handoverInfo.length = handoverPrepInfoSize;
+
+  //Prepare Target ID
+  ho_required->target_gnb_id.plmn_identity.mnc_digit_length = neighbourCellConfiguration->neighbour_mnc_digit_length;
+  ho_required->target_gnb_id.plmn_identity.mnc = neighbourCellConfiguration->neighbour_mnc;
+  ho_required->target_gnb_id.plmn_identity.mcc = neighbourCellConfiguration->neighbour_mcc;
+  ho_required->target_gnb_id.tac = neighbourCellConfiguration->neighbour_tac;
+  ho_required->target_gnb_id.targetgNBId = neighbourCellConfiguration->neighbour_gNB_ID;
+
+  //Prepare Cause
+  ho_required->cause = 16; //handover desirable for radio reason
+  //Preapre HO Type
+  ho_required->handoverType = 0; //intra5gs
+
+  ue_context_pP->ue_context.StatusRrc = NR_RRC_HO_PREPARATION;
+  itti_send_msg_to_task(TASK_NGAP, ctxt_pP->instance, msg_p);
+}
 //------------------------------------------------------------------------------
 void
 rrc_gNB_send_NGAP_PDUSESSION_RELEASE_RESPONSE(

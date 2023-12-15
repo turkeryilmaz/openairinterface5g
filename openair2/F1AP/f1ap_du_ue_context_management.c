@@ -1074,6 +1074,20 @@ int DU_handle_UE_CONTEXT_MODIFICATION_REQUEST(instance_t instance, sctp_assoc_t 
     }
   }
 
+  F1AP_UEContextModificationRequestIEs_t *ieTxInd;
+  F1AP_FIND_PROTOCOLIE_BY_ID(F1AP_UEContextModificationRequestIEs_t,
+                             ieTxInd,
+                             container,
+                             F1AP_ProtocolIE_ID_id_TransmissionActionIndicator,
+                             false);
+
+  if (ieTxInd) {
+    f1ap_ue_context_modification_req->transmission_action_indicator = calloc(1, sizeof(uint8_t));
+    *f1ap_ue_context_modification_req->transmission_action_indicator = ieTxInd->value.choice.TransmissionActionIndicator;
+    LOG_I(NR_MAC, "HO LOG: Successfully Set TransmissionActionIndicator: %u\n", *f1ap_ue_context_modification_req->transmission_action_indicator);
+  }
+
+
   ue_context_modification_request(f1ap_ue_context_modification_req);
   return 0;
 }

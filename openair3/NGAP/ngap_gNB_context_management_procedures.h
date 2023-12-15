@@ -38,4 +38,7 @@ int ngap_ue_context_release_complete(instance_t instance,
 int ngap_ue_context_release_req(instance_t instance,
                                 ngap_ue_release_req_t *ue_release_req_p);
 
+int ngap_gNB_handover_required(instance_t instance,
+                             ngap_handover_required_t *handover_required_p);
+
 #endif /* NGAP_GNB_CONTEXT_MANAGEMENT_PROCEDURES_H_ */

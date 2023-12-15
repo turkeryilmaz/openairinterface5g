@@ -140,10 +140,28 @@ int do_RRCReestablishment(rrc_gNB_ue_context_t *const ue_context_pP,
                           uint16_t pci,
                           NR_ARFCN_ValueNR_t absoluteFrequencySSB);
 
-int do_RRCReestablishmentComplete(uint8_t *buffer, size_t buffer_size, int64_t rrc_TransactionIdentifier);
+int16_t do_HO_RRCReconfiguration(const gNB_RRC_UE_t *UE,
+                              uint8_t *buffer,
+                              size_t buffer_size,
+                              uint8_t Transaction_id,
+                              NR_SRB_ToAddModList_t *SRB_configList,
+                              NR_DRB_ToAddModList_t *DRB_configList,
+                              NR_DRB_ToReleaseList_t *DRB_releaseList,
+                              NR_SecurityConfig_t *security_config,
+                              NR_MeasConfig_t *meas_config,
+                              struct NR_RRCReconfiguration_v1530_IEs__dedicatedNAS_MessageList *dedicatedNAS_MessageList,
+                              NR_CellGroupConfig_t *cellGroupConfig);
 
+int do_RRCReestablishmentComplete(uint8_t *buffer, size_t buffer_size, int64_t rrc_TransactionIdentifier);
+struct NR_HandoverPreparationInformation; //forward declare
 NR_MeasConfig_t *get_defaultMeasConfig(uint32_t absFreqSSB, int band, int scs);
 NR_MeasConfig_t *get_EventBasedMeasConfig(uint32_t ssb_arfcn, int band, int scs, const nr_measurement_event_configuration_t* measurementConfiguration, nr_neighbour_gnb_configuration_t* neighbourConfiguration, const int numberOfNeighbours);
+int16_t get_HandoverPreparationInformation(const gNB_RRC_UE_t* ue_p, NR_SRB_ToAddModList_t *SRBs, NR_DRB_ToAddModList_t *DRBs, uint8_t** buffer, size_t buffer_size);
+int16_t prepare_DL_DCCH_for_HO_Command(const gNB_RRC_UE_t *UE,
+                        uint8_t** hoCommand,
+                        size_t hoCommandLength,
+                        uint8_t* buffer,
+                        size_t buffer_size);
 void free_defaultMeasConfig(NR_MeasConfig_t *mc);
 uint8_t do_NR_Paging(uint8_t Mod_id, uint8_t *buffer, uint32_t tmsi);
 

@@ -58,11 +58,14 @@
 #include "NR_RRCSetup.h"
 
 #include "NR_CellGroupConfig.h"
+#include "NR_MeasResultListNR.h"
 #include "NR_MeasResults.h"
 #include "NR_UL-CCCH-Message.h"
 #include "NR_RRCSetupRequest-IEs.h"
 #include "NR_RRCSetupComplete-IEs.h"
 #include "NR_RRCReestablishmentRequest-IEs.h"
+#include "NR_HandoverCommand.h"
+#include "NR_HandoverCommand-IEs.h"
 #include "NR_MIB.h"
 #include "uper_encoder.h"
 #include "uper_decoder.h"
@@ -109,6 +112,21 @@
 //#define XER_PRINT
 
 extern RAN_CONTEXT_t RC;
+
+static inline uint64_t bitStr_to_uint64(const BIT_STRING_t *asn);
+
+static const nr_neighbour_gnb_configuration_t* rrc_gNB_find_neighbour_cell_configuration_by_phyCellId(int phyCellId)
+{
+  const gNB_RRC_INST* rrc = RC.nrrrc[0];
+  for (uint8_t neighbourId = 0; neighbourId < rrc->number_of_neighbours; ++neighbourId)
+  {
+    const nr_neighbour_gnb_configuration_t* configuration = &(rrc->neighbourConfiguration[neighbourId]);
+    if (configuration->physicalCellId == phyCellId)
+      return configuration;
+  }
+
+  return NULL;
+}
 
 mui_t rrc_gNB_mui = 0;
 
@@ -708,7 +726,7 @@ void rrc_gNB_generate_dedicatedRRCReconfiguration(const protocol_ctxt_t *const c
         rrc_gNB_mui,
         ctxt_pP->module_id,
         DCCH);
-
+  
   nr_rrc_transfer_protected_rrc_message(rrc, ue_p, DCCH, buffer, size);
 }
 
@@ -907,6 +925,83 @@ rrc_gNB_generate_dedicatedRRCReconfiguration_release(
   gNB_RRC_INST *rrc = RC.nrrrc[ctxt_pP->module_id];
   nr_rrc_transfer_protected_rrc_message(rrc, ue_p, DCCH, buffer, size);
 }
+
+typedef struct deliver_ue_ctxt_modification_data_t {
+  gNB_RRC_INST *rrc;
+  f1ap_ue_context_modif_req_t *modification_req;
+  sctp_assoc_t assoc_id;
+} deliver_ue_ctxt_modification_data_t;
+static void rrc_deliver_ue_ctxt_modif_req(void *deliver_pdu_data, ue_id_t ue_id, int srb_id, char *buf, int size, int sdu_id)
+{
+  DevAssert(deliver_pdu_data != NULL);
+  deliver_ue_ctxt_modification_data_t *data = deliver_pdu_data;
+  data->modification_req->rrc_container = (uint8_t*)buf;
+  data->modification_req->rrc_container_length = size;
+  data->rrc->mac_rrc.ue_context_modification_request(data->assoc_id, data->modification_req);
+}
+
+static void rrc_gNB_process_HandoverCommand(MessageDef* msg_p, instance_t instance)
+{
+  LOG_E(NR_RRC, "Handover Command has came to the source gNB RRC!\n");
+  uint32_t gNB_ue_ngap_id = 0;
+  ngap_handover_command_t* handover_command_msg = &NGAP_HANDOVER_COMMAND(msg_p);
+  gNB_ue_ngap_id = handover_command_msg->gNB_ue_ngap_id;
+
+  gNB_RRC_INST *rrc = RC.nrrrc[instance];
+  rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context(rrc, gNB_ue_ngap_id);
+  
+
+  if (ue_context_p == NULL) {
+    /* Can not associate this message to an UE index */
+    LOG_W(NR_RRC, "[gNB %ld] In HANDOVER_COMMAND: unknown UE from gNB_ue_ngap_id (%u)\n",
+          instance,
+          gNB_ue_ngap_id);
+    return;
+  }
+  const gNB_RRC_UE_t* UE = &ue_context_p->ue_context;
+
+  if (UE->StatusRrc != NR_RRC_HO_PREPARATION)
+  {
+    LOG_E(NR_RRC, "HO LOG: UE is not in HO Status!\n");
+    return ;
+  }
+
+  NR_HandoverCommand_t* hoCommand = NULL;
+  asn_dec_rval_t dec_rval = uper_decode_complete(NULL,
+                                                   &asn_DEF_NR_HandoverCommand,
+                                                   (void **)&hoCommand,
+                                                   (uint8_t *)handover_command_msg->handoverCommand.buffer,
+                                                   handover_command_msg->handoverCommand.length);
+  if (dec_rval.code != RC_OK && dec_rval.consumed == 0) {
+    LOG_E(NR_RRC, "Can not decode Handover Command!\n");
+    return;
+  }
+  ue_context_p->ue_context.StatusRrc = NR_RRC_HO_EXECUTION;
+  uint8_t* buffer = (uint8_t*)calloc(1, RRC_BUF_SIZE);
+  int encoded_size = prepare_DL_DCCH_for_HO_Command(&ue_context_p->ue_context, &(hoCommand->criticalExtensions.choice.c1->choice.handoverCommand->handoverCommandMessage.buf),
+                                                     hoCommand->criticalExtensions.choice.c1->choice.handoverCommand->handoverCommandMessage.size, buffer, RRC_BUF_SIZE);
+  DevAssert(encoded_size > 0);
+  
+  f1_ue_data_t ue_data = cu_get_f1_ue_data(ue_context_p->ue_context.rrc_ue_id);
+  RETURN_IF_INVALID_ASSOC_ID(ue_data);
+  f1ap_ue_context_modif_req_t ue_context_modif_req = {
+      .gNB_CU_ue_id = UE->rrc_ue_id,
+      .gNB_DU_ue_id = ue_data.secondary_ue,
+      .plmn.mcc = rrc->configuration.mcc[0],
+      .plmn.mnc = rrc->configuration.mnc[0],
+      .plmn.mnc_digit_length = rrc->configuration.mnc_digit_length[0],
+      .nr_cellid = rrc->nr_cellid,
+      .servCellId = 0,
+  };
+
+  ue_context_modif_req.transmission_action_indicator = (uint8_t*)malloc(sizeof(uint8_t));
+  *ue_context_modif_req.transmission_action_indicator = 0;
+
+  deliver_ue_ctxt_modification_data_t data = {.rrc = rrc, .modification_req = &ue_context_modif_req, .assoc_id = ue_data.du_assoc_id };
+  nr_pdcp_data_req_srb(UE->rrc_ue_id, DCCH, rrc_gNB_mui++, encoded_size, buffer, rrc_deliver_ue_ctxt_modif_req, &data);
+
+}
+
 
 //-----------------------------------------------------------------------------
 static void rrc_gNB_generate_RRCReestablishment(rrc_gNB_ue_context_t *ue_context_pP,
@@ -1243,8 +1338,7 @@ static void rrc_gNB_process_MeasurementReport(rrc_gNB_ue_context_t *ue_context, 
     LOG_E(NR_RRC, "%s: %i - meas_config = %p\n", __FUNCTION__, __LINE__, meas_config);
     return;
   }
-  // xer_fprint(stdout, &asn_DEF_NR_MeasurementReport, (void *)measurementReport);
-  // xer_fprint(stdout, &asn_DEF_NR_MeasConfig, (void*)ue_ctxt->measConfig);
+
   NR_MeasurementReport_IEs_t *measurementReport_IEs = measurementReport->criticalExtensions.choice.measurementReport;
   const NR_MeasId_t measId = measurementReport_IEs->measResults.measId;
 
@@ -1300,6 +1394,10 @@ static void rrc_gNB_process_MeasurementReport(rrc_gNB_ue_context_t *ue_context, 
 
   int servingCellRSRP = 0;
   int neighbourCellRSRP = 0;
+  bool trigger_ho = false;
+  int bestRsrp = -10000;
+  int bestNeighbourId = -1;
+  const int handoverMargin = 0; //This is an optimization parameter for HO like hysteresis. 0 for now.
 
   switch (event_triggered->eventId.present) {
     case NR_EventTriggerConfig__eventId_PR_eventA2:
@@ -1335,14 +1433,40 @@ static void rrc_gNB_process_MeasurementReport(rrc_gNB_ue_context_t *ue_context, 
           neighbourCellRSRP =  *(meas_result_neigh_cell->measResult.cellResults.resultsCSI_RS_Cell->rsrp) - 157;
         }
         LOG_I(NR_RRC, "HO LOG: Measurement Report has came for the neighbour: %d with RSRP: %d\n", neighbourCellId, neighbourCellRSRP);
+        if (neighbourCellRSRP > bestRsrp) {
+          bestRsrp = neighbourCellRSRP;
+          bestNeighbourId = neighbourCellId;
+        }
       }
 
-    }
-      break;
+      if (bestRsrp > servingCellRSRP + handoverMargin){
+        trigger_ho = true;
+        LOG_I(NR_RRC, "HO LOG: Serving Cell RSRP: %d - Best Neighbor RSRP: %d ! Trigger HO\n", servingCellRSRP, bestRsrp);
+      }
+    } break;
+  
     default:
       LOG_D(NR_RRC, "NR_EventTriggerConfig__eventId_PR_NOTHING or Other event report\n");
       break;
-  }  
+  }
+
+  if (trigger_ho == true && ue_ctxt->StatusRrc != NR_RRC_HO_PREPARATION) {
+    LOG_I(NR_RRC, "HO LOG: TRIGGER HANDOVER FOR PHY CELL ID: %d\n", bestNeighbourId);
+
+    protocol_ctxt_t ctxt = {0};
+    PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt, 0, GNB_FLAG_YES, ue_context->ue_context.rrc_ue_id, 0, 0);
+    uint8_t* buffer = (uint8_t*)calloc(1,RRC_BUF_SIZE);
+    NR_SRB_ToAddModList_t *SRBs = createSRBlist(&ue_context->ue_context, false);
+    NR_DRB_ToAddModList_t *DRBs = createDRBlist(&ue_context->ue_context, false);
+    size_t hoPrepSize = get_HandoverPreparationInformation(&ue_context->ue_context,SRBs, DRBs, &buffer, RRC_BUF_SIZE);
+    DevAssert(bestNeighbourId != -1);
+    const nr_neighbour_gnb_configuration_t* neighbourConfig = rrc_gNB_find_neighbour_cell_configuration_by_phyCellId(bestNeighbourId);
+    if (neighbourConfig != NULL) {
+      rrc_gNB_send_NGAP_HANDOVER_REQUIRED(&ctxt, ue_context, 0, neighbourConfig, &buffer, hoPrepSize);
+    } else {
+      LOG_E(NR_RRC, "HO LOG: NeighBour Cell Configuration can not be found with phyCellId: 0\n");
+    }
+  }    
 }
 
 static int handle_rrcReestablishmentComplete(const protocol_ctxt_t *const ctxt_pP,
@@ -1702,6 +1826,7 @@ int rrc_gNB_decode_dcch(const protocol_ctxt_t *const ctxt_pP,
                   && ul_dcch_msg->message.present == NR_UL_DCCH_MessageType_PR_c1
                   && ul_dcch_msg->message.choice.c1
                   && ul_dcch_msg->message.choice.c1->present == NR_UL_DCCH_MessageType__c1_PR_measurementReport);
+
         rrc_gNB_process_MeasurementReport(ue_context_p, ul_dcch_msg->message.choice.c1->choice.measurementReport);
         break;
 
@@ -2296,6 +2421,7 @@ static const char *get_rrc_connection_status_text(NR_UE_STATE_t state)
     case NR_RRC_SI_RECEIVED: return "SI-received";
     case NR_RRC_CONNECTED: return "connected";
     case NR_RRC_RECONFIGURED: return "reconfigured";
+    case NR_RRC_HO_PREPARATION: return "HO-preparation";
     case NR_RRC_HO_EXECUTION: return "HO-execution";
     default: AssertFatal(false, "illegal RRC state %d\n", state); return "illegal";
   }
@@ -2544,6 +2670,10 @@ void *rrc_gnb_task(void *args_p) {
 
       case NGAP_PAGING_IND:
         rrc_gNB_process_PAGING_IND(msg_p, instance);
+        break;
+
+      case NGAP_HANDOVER_COMMAND:
+        rrc_gNB_process_HandoverCommand(msg_p, instance);
         break;
 
       default:

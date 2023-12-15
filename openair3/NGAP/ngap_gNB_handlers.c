@@ -41,6 +41,7 @@
 #include "ngap_gNB_trace.h"
 #include "ngap_gNB_nas_procedures.h"
 #include "ngap_gNB_management_procedures.h"
+#include "ngap_gNB_context_management_procedures.h"
 
 #include "ngap_gNB_default_values.h"
 
@@ -55,6 +56,16 @@ static void allocCopy(ngap_pdu_t *out, OCTET_STRING_t in)
     memcpy(out->buffer, in.buf, in.size);
   }
   out->length = in.size;
+}
+
+static void allocAddrCopy(BIT_STRING_t *out, transport_layer_addr_t in)
+{
+  if (in.length) {
+    out->buf = malloc(in.length);
+    memcpy(out->buf, in.buffer, in.length);
+    out->size = in.length;
+    out->bits_unused = 0;
+  }
 }
 
 char *ngap_direction2String(int ngap_dir) {
@@ -670,6 +681,12 @@ static int ngap_gNB_handle_error_indication(sctp_assoc_t assoc_id, uint32_t stre
   return 0;
 }
 
+static int ngap_gNB_handle_handover_request(sctp_assoc_t assoc_id, uint32_t stream, NGAP_NGAP_PDU_t *pdu)
+{
+  NGAP_INFO("HO LOG: Handover Request Message Has Came to the Target gNB! - NOT IMPLEMENTED\n");
+  return 0;
+}
+
 static int ngap_gNB_handle_initial_context_request(sctp_assoc_t assoc_id, uint32_t stream, NGAP_NGAP_PDU_t *pdu)
 {
   int i;
@@ -990,6 +1007,119 @@ static int ngap_gNB_handle_pdusession_setup_request(sctp_assoc_t assoc_id, uint3
   return 0;
 }
 
+static int ngap_gNB_handle_handover_command(sctp_assoc_t assoc_id, uint32_t stream, NGAP_NGAP_PDU_t *pdu)
+{
+  NGAP_INFO("HO LOG: Handover Command is came to source gNB!\n");
+  //  NGAP_AMF_UE_NGAP_ID_t       amf_ue_ngap_id;
+  uint64_t                      amf_ue_ngap_id;
+  NGAP_RAN_UE_NGAP_ID_t         ran_ue_ngap_id;
+  ngap_gNB_amf_data_t          *amf_desc_p       = NULL;
+
+  NGAP_HandoverCommand_t     *container;
+  NGAP_HandoverCommandIEs_t  *ie;
+  DevAssert(pdu != NULL);
+  container = &pdu->choice.successfulOutcome->value.choice.HandoverCommand;
+
+  if ((amf_desc_p = ngap_gNB_get_AMF(NULL, assoc_id, 0)) == NULL) {
+    NGAP_ERROR("[SCTP %u] Received Handover Command for non "
+               "existing AMF context\n", assoc_id);
+    return -1;
+  }
+
+  /* id-AMF-UE-NGAP-ID */
+  NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_HandoverCommandIEs_t, ie, container, NGAP_ProtocolIE_ID_id_AMF_UE_NGAP_ID, true);
+  asn_INTEGER2ulong(&(ie->value.choice.AMF_UE_NGAP_ID), &amf_ue_ngap_id);
+
+  /* id-gNB-UE-NGAP-ID */
+  NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_HandoverCommandIEs_t, ie, container, NGAP_ProtocolIE_ID_id_RAN_UE_NGAP_ID, true);
+  ran_ue_ngap_id = ie->value.choice.RAN_UE_NGAP_ID;  
+
+ ngap_gNB_ue_context_t *ue_desc_p = ngap_get_ue_context(ran_ue_ngap_id);
+  if (!ue_desc_p) {
+    NGAP_ERROR("[SCTP %u] Received HO Command Msg for non "
+               "existing UE context 0x%06lx\n", assoc_id,
+               ran_ue_ngap_id);
+    return -1;
+  }
+
+  ue_desc_p->rx_stream = stream;
+
+  if ( ue_desc_p->amf_ue_ngap_id != amf_ue_ngap_id) {
+    NGAP_ERROR("UE context amf_ue_ngap_id is different form that of the message (%lu != %lu)",
+              (uint64_t)ue_desc_p->amf_ue_ngap_id, amf_ue_ngap_id);
+    return -1;
+  }
+
+ 
+  MessageDef * message_p = itti_alloc_new_message(TASK_NGAP, 0, NGAP_HANDOVER_COMMAND);
+  ngap_handover_command_t * msg=&NGAP_HANDOVER_COMMAND(message_p);
+  memset(msg, 0, sizeof(*msg));
+  msg->gNB_ue_ngap_id = ue_desc_p->gNB_ue_ngap_id;
+  msg->amf_ue_ngap_id = ue_desc_p->amf_ue_ngap_id;
+
+  /* id-Handover Type */
+  NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_HandoverCommandIEs_t, ie, container, NGAP_ProtocolIE_ID_id_HandoverType, true);
+  if (ie->value.choice.HandoverType != NGAP_HandoverType_intra5gs){
+    NGAP_ERROR("Only Intra 5GS Handovers are supported at the moment!\n");
+    return -1;
+  }
+  /* PDU Session Resource Handover List */
+  NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_HandoverCommandIEs_t, ie, container, NGAP_ProtocolIE_ID_id_HandoverType, false);
+  if (ie != NULL)
+  {
+    uint8_t numberOfDlForwardSessions = 0;
+    for (int pduSesIdx = 0; pduSesIdx < ie->value.choice.PDUSessionResourceHandoverList.list.count; ++pduSesIdx)
+    {
+      NGAP_PDUSessionResourceHandoverItem_t* pduSessionItem = ie->value.choice.PDUSessionResourceHandoverList.list.array[pduSesIdx];
+      msg->pduSessionResourceHandoverList[pduSesIdx].pdusession_id = pduSessionItem->pDUSessionID;
+      NGAP_HandoverCommandTransfer_t* hoCommandTransfer = NULL;
+      asn_dec_rval_t dec_rval = uper_decode_complete(NULL, &asn_DEF_NGAP_HandoverCommandTransfer, (void**)&hoCommandTransfer, pduSessionItem->handoverCommandTransfer.buf, pduSessionItem->handoverCommandTransfer.size);
+      if (dec_rval.code != RC_OK) {
+        NGAP_ERROR("cannot decode Ho Command List for UE ID: %d, ignoring data forwarding\n", ue_desc_p->gNB_ue_ngap_id);
+        continue;
+      }
+      if (hoCommandTransfer->dLForwardingUP_TNLInformation->present != NGAP_UPTransportLayerInformation_PR_gTPTunnel) {
+        NGAP_ERROR("GTP TNL Information does not exists for UE ID: %d, ignoring data forwarding\n", ue_desc_p->gNB_ue_ngap_id);
+        continue;
+      }
+
+      NGAP_UPTransportLayerInformation_t* upTransportLayerInfo = hoCommandTransfer->dLForwardingUP_TNLInformation;
+      if (upTransportLayerInfo->present != NGAP_UPTransportLayerInformation_PR_gTPTunnel)
+      {
+        NGAP_ERROR("GTP TNL Information does not exists for UE ID: %d, ignoring data forwarding\n", ue_desc_p->gNB_ue_ngap_id);
+        continue;
+      }
+
+
+      OCTET_STRING_TO_INT32(&(upTransportLayerInfo->choice.gTPTunnel->gTP_TEID), msg->pduSessionResourceHandoverList[pduSesIdx].gtp_teid);
+      allocAddrCopy(&(upTransportLayerInfo->choice.gTPTunnel->transportLayerAddress), msg->pduSessionResourceHandoverList[pduSesIdx].gNB_addr);
+
+      numberOfDlForwardSessions++;
+    }
+
+    msg->nb_of_pdusessions = numberOfDlForwardSessions;
+  }
+
+  NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_HandoverCommandIEs_t, ie, container, NGAP_ProtocolIE_ID_id_TargetToSource_TransparentContainer, true);
+  // ie->value.choice.TargetToSource_TransparentContainer
+  NGAP_TargetToSource_TransparentContainer_t* targetToSourceTransparentContainer= &(ie->value.choice.TargetToSource_TransparentContainer);
+  NGAP_TargetNGRANNode_ToSourceNGRANNode_TransparentContainer_t* transparentContainer = NULL;
+  asn_dec_rval_t dec_rval = aper_decode_complete(NULL, &asn_DEF_NGAP_TargetNGRANNode_ToSourceNGRANNode_TransparentContainer, (void**)&transparentContainer, targetToSourceTransparentContainer->buf, targetToSourceTransparentContainer->size);
+  if (dec_rval.code != RC_OK) {
+    NGAP_ERROR("cannot decode Ho Command List for UE ID: %d\n", ue_desc_p->gNB_ue_ngap_id);
+    return -1;
+  }
+  
+  msg->handoverCommand.buffer = (uint8_t*)calloc(1, transparentContainer->rRCContainer.size);
+  msg->handoverCommand.length = transparentContainer->rRCContainer.size;
+  memcpy(msg->handoverCommand.buffer, transparentContainer->rRCContainer.buf, transparentContainer->rRCContainer.size);
+
+  NGAP_INFO("Handover Command is parsed with a size of: %u. Sending to RRC GNB!\n", msg->handoverCommand.length);
+  itti_send_msg_to_task(TASK_RRC_GNB, amf_desc_p->ngap_gNB_instance->instance, message_p);
+
+  return 0;
+}
+
 static int ngap_gNB_handle_paging(sctp_assoc_t assoc_id, uint32_t stream, NGAP_NGAP_PDU_t *pdu)
 {
   ngap_gNB_amf_data_t   *amf_desc_p        = NULL;
@@ -1289,8 +1419,8 @@ const ngap_message_decoded_callback ngap_messages_callback[][3] = {
     {ngap_gNB_handle_error_indication, 0, 0}, /* ErrorIndication */
     {0, 0, 0}, /* HandoverCancel */
     {0, 0, 0}, /* HandoverNotification */
-    {0, 0, 0}, /* HandoverPreparation */
-    {0, 0, 0}, /* HandoverResourceAllocation */
+    {0, ngap_gNB_handle_handover_command, 0}, /* HandoverPreparation */
+    {ngap_gNB_handle_handover_request, 0, 0}, /* HandoverResourceAllocation */
     {ngap_gNB_handle_initial_context_request, 0, 0}, /* InitialContextSetup */
     {0, 0, 0}, /* InitialUEMessage */
     {0, 0, 0}, /* LocationReportingControl */

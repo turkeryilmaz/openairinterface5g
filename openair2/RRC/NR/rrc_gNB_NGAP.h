@@ -100,6 +100,15 @@ void rrc_gNB_send_NGAP_UE_CAPABILITIES_IND(const protocol_ctxt_t *const ctxt_pP,
                                            rrc_gNB_ue_context_t *const ue_context_pP,
                                            const NR_UECapabilityInformation_t *const ue_cap_info);
 
+void rrc_gNB_send_NGAP_HANDOVER_REQUIRED(
+  const protocol_ctxt_t    *const ctxt_pP,
+  rrc_gNB_ue_context_t     *const ue_context_pP,
+  uint8_t                  xid,
+  const nr_neighbour_gnb_configuration_t* neighbourCellConfiguration,
+  uint8_t** handoverPrepInfo,
+  const size_t handoverPrepInfoSize
+);
+
 int rrc_gNB_process_NGAP_PDUSESSION_RELEASE_COMMAND(MessageDef *msg_p, instance_t instance);
 
 void

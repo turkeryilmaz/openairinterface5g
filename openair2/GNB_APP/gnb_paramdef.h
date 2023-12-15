@@ -257,8 +257,8 @@ typedef enum {
 
 #define GNBNEIGHBOURCELLPARAMS_DESC {                                                                  \
 /*   optname                                                  helpstr                       paramflags  XXXptr     def val          type    numelt */ \
-  {GNB_CONFIG_STRING_GNB_ID,                                NULL,                                    0,           .uptr=NULL,   .defintval=0,                 TYPE_UINT,      0},    \
-  {GNB_CONFIG_STRING_NRCELLID,                              NULL,                                    0,           .u64ptr=NULL, .defint64val=1,               TYPE_UINT64,    0},    \
+  {GNB_CONFIG_STRING_NEIGHBOUR_GNB_ID,                      NULL,                                    0,           .uptr=NULL,   .defintval=0,                 TYPE_UINT,      0},    \
+  {GNB_CONFIG_STRING_NEIGHBOUR_NR_CELLID,                   NULL,                                    0,           .u64ptr=NULL, .defint64val=1,               TYPE_UINT64,    0},    \
   {GNB_CONFIG_STRING_NEIGHBOUR_CELL_PHYSICAL_ID,            "neighbour cell physical id",            0,           .uptr=NULL,   .defuintval=1000,             TYPE_UINT,      0},    \
   {GNB_CONFIG_STRING_NEIGHBOUR_CELL_ABS_FREQ_SSB,           "neighbour cell abs freq ssb",           0,           .i64ptr=NULL, .defint64val=621312,          TYPE_INT64,     0},    \
   {GNB_CONFIG_STRING_NEIGHBOUR_CELL_SCS,                    "neighbour cell scs",                    0,           .uptr=NULL,   .defuintval=1,                TYPE_UINT,      0},    \

@@ -465,6 +465,13 @@ void ue_context_modification_request(const f1ap_ue_context_modif_req_t *req)
   } else {
     ASN_STRUCT_FREE(asn_DEF_NR_CellGroupConfig, new_CellGroup); // we actually don't need it
   }
+
+  if (req->transmission_action_indicator != NULL) {
+    //TODO: After RLC Acknowledge comes for RRC Reconfiguration; then set this flag!
+    // UE->UE_sched_ctrl.transmission_stop = *(req->transmission_action_indicator) ? false : true;
+    LOG_I(NR_MAC, "HO LOG: Current Value of transmission indicator is %d\n", (int)UE->UE_sched_ctrl.transmission_stop);
+  }
+
   NR_SCHED_UNLOCK(&mac->sched_lock);
 
   /* some sanity checks, since we use the same type for request and response */
