@@ -202,7 +202,7 @@ static void nr_configure_srs(nfapi_nr_srs_pdu_t *srs_pdu,
     srs_pdu->beamforming.prg_size = 1;
   }
 
-  uint16_t *vrb_map_UL = RC.nrmac[module_id]->common_channels[CC_id].vrb_map_UL[frame % MAX_NUM_UL_SCHED_FRAME][buffer_index];
+  uint16_t *vrb_map_UL = &RC.nrmac[module_id]->common_channels[CC_id].vrb_map_UL[buffer_index * MAX_BWP_SIZE];
   uint64_t mask = SL_to_bitmap(13 - srs_pdu->time_start_position, srs_pdu->num_symbols);
   for (int i = 0; i < srs_pdu->bwp_size; ++i)
     vrb_map_UL[i + srs_pdu->bwp_start] |= mask;
@@ -218,7 +218,7 @@ static void nr_fill_nfapi_srs(int module_id,
 {
 
   int index = ul_buffer_index(frame, slot, UE->current_UL_BWP.scs, RC.nrmac[module_id]->UL_tti_req_ahead_size);
-  nfapi_nr_ul_tti_request_t *future_ul_tti_req = &RC.nrmac[module_id]->UL_tti_req_ahead[0][frame%MAX_NUM_UL_SCHED_FRAME][index];
+  nfapi_nr_ul_tti_request_t *future_ul_tti_req = &RC.nrmac[module_id]->UL_tti_req_ahead[0][index];
   AssertFatal(future_ul_tti_req->n_pdus <
               sizeof(future_ul_tti_req->pdus_list) / sizeof(future_ul_tti_req->pdus_list[0]),
               "Invalid future_ul_tti_req->n_pdus %d\n", future_ul_tti_req->n_pdus);

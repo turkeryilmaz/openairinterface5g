@@ -475,16 +475,8 @@ void nr_mac_config_scc(gNB_MAC_INST *nrmac,
   int n = nr_slots_per_frame[*scc->ssbSubcarrierSpacing];
   if (*scc->ssbSubcarrierSpacing == 0)
     n <<= 1; // to have enough room for feedback possibly beyond the frame we need a larger array at 15kHz SCS
-  //nrmac->common_channels[0].vrb_map_UL = calloc(n * MAX_BWP_SIZE, sizeof(uint16_t));
+  nrmac->common_channels[0].vrb_map_UL = calloc(n * MAX_BWP_SIZE, sizeof(uint16_t));
   nrmac->vrb_map_UL_size = n;
-
-  nrmac->common_channels[0].vrb_map_UL = calloc(MAX_NUM_UL_SCHED_FRAME, sizeof(uint16_t **));
-  for (int i = 0; i < MAX_NUM_UL_SCHED_FRAME; ++i ) {
-    nrmac->common_channels[0].vrb_map_UL[i] = calloc(n, sizeof(uint16_t *));
-    for (int j = 0; j < n; ++j)
-      nrmac->common_channels[0].vrb_map_UL[i][j] = calloc(MAX_BWP_SIZE, sizeof(uint16_t));
-  }
-
 
   AssertFatal(nrmac->common_channels[0].vrb_map_UL,
               "could not allocate memory for RC.nrmac[]->common_channels[0].vrb_map_UL\n");

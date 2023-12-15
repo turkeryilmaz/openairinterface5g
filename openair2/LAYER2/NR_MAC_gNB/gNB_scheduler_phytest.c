@@ -249,8 +249,7 @@ bool nr_ul_preprocessor_phytest(module_id_t module_id, frame_t frame, sub_frame_
   sched_ctrl->sched_pusch.tda_info = tda_info;
 
   const int buffer_index = ul_buffer_index(sched_frame, sched_slot, mu, nr_mac->vrb_map_UL_size);
-  uint16_t *vrb_map_UL = nr_mac->common_channels[CC_id].vrb_map_UL[sched_frame%MAX_NUM_UL_SCHED_FRAME][buffer_index];
-  //uint16_t *vrb_map_UL = RC.nrmac[module_id]->common_channels[CC_id].vrb_map_UL[sched_frame%MAX_NUM_UL_SCHED_FRAME][sched_slot];
+  uint16_t *vrb_map_UL = &nr_mac->common_channels[CC_id].vrb_map_UL[buffer_index * MAX_BWP_SIZE];
   const uint16_t symb = SL_to_bitmap(tda_info.startSymbolIndex, tda_info.nrOfSymbols);
 
   uint16_t rbStart = (bw - target_ul_bw) / 2;

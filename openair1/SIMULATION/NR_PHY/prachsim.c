@@ -65,7 +65,6 @@ char *uecap_file;
 uint16_t NTN_UE_k2 = 0;
 uint16_t NTN_UE_slot_Rx_to_Tx = 0;
 uint16_t NTN_gNB_k2 = 0;
-uint16_t max_ul_sched_frame = 1;
 
 int fdopplerComp = 1;
 int commonDoppler = 0;  // common doppler to be compensated at UE

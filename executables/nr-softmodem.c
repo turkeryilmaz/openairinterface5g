@@ -579,7 +579,6 @@ void init_pdcp(void) {
 
 uint64_t RFsim_PropDelay = 0;
 uint16_t NTN_gNB_k2 = 0;
-uint16_t max_ul_sched_frame = 1;
 int fdoppler = 1;               // flag to simulate frequency offset at the RF-Simulator (default active = 1, 0 = de-activate)
 int tshift = 0;               // flag to simulate timing offset at the RF-Simulator (default de-activate = 0, 0 = activate)
 int fdopplerComp = 1;

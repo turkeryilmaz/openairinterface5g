@@ -78,7 +78,6 @@ const char *__asan_default_options()
 uint16_t NTN_UE_k2 = 0;
 uint16_t NTN_UE_slot_Rx_to_Tx = 0;
 uint16_t NTN_gNB_k2 = 0;
-uint16_t max_ul_sched_frame = 1;
 
 int fdopplerComp = 1; // flag to activate continous frequency offset compensation (=0 deacticated, =1 activated (default case))
 int tdriftComp = 1;
