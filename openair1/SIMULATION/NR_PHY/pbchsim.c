@@ -53,7 +53,7 @@
 #include "nfapi/oai_integration/vendor_ext.h"
 //#define DEBUG_NR_PBCHSIM
 
-int fdopplerComp = 1;
+int fdopplerComp = 0;
 double FO_PScaling = 0.33;   // P scaling factor of the PID controller for the Doppler compensation at UE side
 double FO_IScaling = 0.5;    // I scaling factor of the PID controller for the Doppler compensation at UE side
 int commonDoppler = 0;  // common doppler to be compensated at UE

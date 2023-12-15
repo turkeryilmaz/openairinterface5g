@@ -579,14 +579,13 @@ void init_pdcp(void) {
 
 uint64_t RFsim_PropDelay = 0;
 uint16_t NTN_gNB_k2 = 0;
-int fdoppler = 1;               // flag to simulate frequency offset at the RF-Simulator (default active = 1, 0 = de-activate)
-int tshift = 0;               // flag to simulate timing offset at the RF-Simulator (default de-activate = 0, 0 = activate)
-int fdopplerComp = 1;
+int fdoppler = 0;             // flag to simulate frequency offset at the RF-Simulator (default de-active = 0, 1 = activate)
+int tshift = 0;               // flag to simulate timing offset at the RF-Simulator (default de-activate = 0, 1 = activate)
+int fdopplerComp = 0;
 int RFsim_DriftPerFrame = 0;
 uint16_t pathStartingTime = 1050;
 uint16_t pathEndingTime = 1280;
 int uePosY = 0;
-int tdriftComp = 1;
 int TO_IScalingInit = 0;
 int commonDoppler = 0;  // common doppler to be compensated at UE, but set here to avoid linking error
 int TO_init_rate = 0;

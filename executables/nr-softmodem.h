@@ -34,13 +34,12 @@
   {"s" ,                    CONFIG_HLP_SNR,            0,                .dblptr=&snr_dB,                     .defdblval=25,                    TYPE_DOUBLE, 0},        \
   {"P" ,                    CONFIG_HLP_PROPD,          0,                .u64ptr=&RFsim_PropDelay,            .defintval=0,                     TYPE_UINT64, 0},        \
   {"gnb_k2" ,               CONFIG_HLP_GNBK2,          0,                .u16ptr=&NTN_gNB_k2,                 .defintval=0,                     TYPE_UINT16, 0},        \
-  {"FD" ,                   CONFIG_HLP_FDoppler,       0,                .iptr=&fdoppler,                     .defintval=1,                     TYPE_INT,    0},        \
+  {"FD" ,                   CONFIG_HLP_FDoppler,       0,                .iptr=&fdoppler,                     .defintval=0,                     TYPE_INT,    0},        \
   {"TS" ,                   CONFIG_HLP_TShift,         0,                .iptr=&tshift,                       .defintval=0,                     TYPE_INT,    0},        \
   {"TD" ,                   CONFIG_HLP_TDRIFT,         0,                .iptr=&RFsim_DriftPerFrame,          .defintval=0,                     TYPE_INT,    0},        \
   {"PST" ,                  CONFIG_HLP_PathStart,      0,                .u16ptr=&pathStartingTime,           .defintval=1050,                  TYPE_UINT16, 0},        \
   {"PET" ,                  CONFIG_HLP_PathEnd,        0,                .u16ptr=&pathEndingTime,             .defintval=1280,                  TYPE_UINT16, 0},        \
   {"ue_PosY" ,              CONFIG_HLP_uePosY,         0,                .iptr=&uePosY,                       .defintval=0,                     TYPE_INT,    0},        \
-  {"FC" ,                   CONFIG_HLP_FDopplerComp,   0,                .iptr=&fdopplerComp,                 .defintval=0,                     TYPE_INT32,  0},        \
   {"amc" ,                  CONFIG_HLP_AMC,            0,                .u8ptr=&amc_flag,                    .defdblval=0,                     TYPE_UINT8,  0},        \
   {"sinr-offset-dl" ,       CONFIG_HLP_SINR_OSET_DL,   0,                .dblptr=&sinr_offset_dl,             .defdblval=0,                     TYPE_DOUBLE, 0},        \
   {"sinr-offset-ul" ,       CONFIG_HLP_SINR_OSET_UL,   0,                .dblptr=&sinr_offset_ul,             .defdblval=0,                     TYPE_DOUBLE, 0}         \

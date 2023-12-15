@@ -930,7 +930,6 @@ void *UE_thread(void *arg)
 
     int readBlockSize, writeBlockSize;
 
-    extern int tdriftComp;
     if (tdriftComp == 1)
     {
       rx_offset_slot = UE->rx_offset_TO * UE->rx_offset_slot / nb_slot_frame - UE->rx_offset_comp;

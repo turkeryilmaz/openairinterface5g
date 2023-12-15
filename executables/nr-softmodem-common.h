@@ -197,7 +197,6 @@ extern int RFsim_DriftPerFrame; //the timing offset/drift per frame in the RF si
 extern uint16_t pathStartingTime;    // time [sec] at which satellite is becoming visible to the UE.
 extern uint16_t pathEndingTime;      // time [sec] at which satellite is no more visible to the UE
 extern int uePosY;              // y-axis coordinate [m] of UE position
-extern int tdriftComp;         // flag to activate/deactivate continous timing drift compensation
 extern double FO_PScaling;  // P scaling factor of the PID controller for the Doppler compensation at UE side
 extern double FO_IScaling;  // I scaling factor of the PID controller for the Doppler compensation at UE side
 extern int TO_IScalingInit;    // initializing the accumulative part (I part) of the PI controller for the timing offset compensation
