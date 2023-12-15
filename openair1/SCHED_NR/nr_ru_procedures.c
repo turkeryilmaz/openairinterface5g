@@ -507,7 +507,7 @@ void nr_fep_tp(RU_t *ru, int slot)
   }
 #ifdef TASK_MANAGER_RU
   //stop_spining_task_manager(&ru->man);
-  if(nbfeptx > 0) {
+  if(nbfeprx > 0) {
     trigger_all_task_manager(&ru->man);
     wait_task_status_completed(nbfeprx, task_status);
   }
