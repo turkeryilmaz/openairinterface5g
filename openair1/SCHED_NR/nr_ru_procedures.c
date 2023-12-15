@@ -327,8 +327,8 @@ void nr_feptx(void *arg) {
   nr_feptx0(ru,slot,startSymbol,numSymbols,aa);
 
 #ifdef TASK_MANAGER_RU
-  assert(atomic_load(&feptx->task_status->completed) == 0);
-  atomic_store_explicit(&feptx->task_status->completed, 1, memory_order_seq_cst);
+  //assert(atomic_load(&feptx->task_status->completed) == 0);
+  atomic_store_explicit(&feptx->task_status->completed, 1, memory_order_release);
 #endif
 }
 
@@ -345,9 +345,10 @@ void nr_feptx_tp(RU_t *ru, int frame_tx, int slot) {
 
 #ifdef TASK_MANAGER_RU
   size_t const sz = ru->nb_tx + (ru->half_slot_parallelization>0)*ru->nb_tx;
-  feptx_cmd_t arr[sz]; 
-  task_status_t task_status[sz];
-  memset(&task_status, 0, sz * sizeof(task_status_t));
+  assert(sz < 32);
+  feptx_cmd_t arr[32] = {0}; 
+  task_status_t task_status[32] = {0};
+  //memset(&task_status, 0, sz * sizeof(task_status_t));
 #endif
 
   for (int aid=0;aid<ru->nb_tx;aid++) {
@@ -440,8 +441,8 @@ void nr_fep(void* arg) {
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_RU_FEPRX+aid, 0);
 
 #ifdef TASK_MANAGER_RU
-  assert(atomic_load(&feprx_cmd->task_status->completed) == 0);
-  atomic_store(&feprx_cmd->task_status->completed, 1);
+  //assert(atomic_load(&feprx_cmd->task_status->completed) == 0);
+  atomic_store_explicit(&feprx_cmd->task_status->completed, 1, memory_order_release);
 #endif
 }
 
@@ -454,9 +455,10 @@ void nr_fep_tp(RU_t *ru, int slot)
  
 #ifdef TASK_MANAGER_RU
   size_t const sz = ru->nb_rx + (ru->half_slot_parallelization>0)*ru->nb_rx;
-  feprx_cmd_t arr[sz]; 
-  task_status_t task_status[sz];
-  memset(&task_status, 0, sizeof(task_status_t) * sz);
+  assert(sz < 32);
+  feprx_cmd_t arr[32] = {0}; 
+  task_status_t task_status[32] = {0};
+  //memset(&task_status, 0, sizeof(task_status_t) * sz);
 #endif
 
   for (int aid=0;aid<ru->nb_rx;aid++) {
@@ -505,8 +507,10 @@ void nr_fep_tp(RU_t *ru, int slot)
   }
 #ifdef TASK_MANAGER_RU
   //stop_spining_task_manager(&ru->man);
-  trigger_all_task_manager(&ru->man);
-  wait_task_status_completed(nbfeprx, task_status);
+  if(nbfeptx > 0) {
+    trigger_all_task_manager(&ru->man);
+    wait_task_status_completed(nbfeprx, task_status);
+  }
 #else
   while (nbfeprx>0) {
     notifiedFIFO_elt_t *req=pullTpool(ru->respfeprx, ru->threadPool);

@@ -335,7 +335,7 @@ label:
     int rc = pthread_mutex_unlock(&q->mtx);
     assert(rc == 0);
 
-    int val = *q->futex; // atomic_load_explicit(q->futex, memory_order_acquire);
+    int val = atomic_load_explicit(q->futex, memory_order_acquire);
     long r = syscall(SYS_futex, q->futex, FUTEX_WAIT_PRIVATE, val, NULL, 0);
     assert(r != -1);
     goto label;
@@ -469,7 +469,7 @@ void init_task_manager(task_manager_t* man, uint32_t num_threads)
 
   man->q_arr = calloc(num_threads, sizeof(not_q_t));
   assert(man->q_arr != NULL && "Memory exhausted");
-  man->futex = 0; 
+  atomic_store_explicit(&man->futex, 0, memory_order_seq_cst); 
 
  // man->waiting = false;
 
@@ -625,7 +625,7 @@ void trigger_all_task_manager(task_manager_t* man)
 {
   assert(man != NULL);
   //  FUTEX_WAKE_PRIVATE
-  man->futex = 0;
+  atomic_store_explicit(&man->futex, 0, memory_order_seq_cst);
   long r = syscall(SYS_futex, &man->futex, FUTEX_WAKE_PRIVATE, INT_MAX, NULL, NULL, 0);
   //printf("Number of threads woken %ld \n", r);
   if(r == -1){
@@ -657,21 +657,17 @@ void wait_task_status_completed(size_t len, task_status_t* arr)
   // We are believing Fedor
   const struct timespec ns = {0,1};
   int i = 0;
-  for(;;){
-    int cnt = 0;
-    for(int j = len -1; j > -1; --j){
-      if(atomic_load(&arr[j].completed) == 1){
-        cnt++; 
-      } else 
+  for(int j = len -1; j != -1 ; i++){
+    for(; j != -1; --j){
+      int const task_completed = 1;
+      if(atomic_load_explicit(&arr[j].completed, memory_order_acquire) != task_completed)
         break;
     }
-    if(i == 8){
+
+    if(i == 16){
       i = 0;
       nanosleep(&ns, NULL); 
     }
-    if(cnt == len)
-      break;
-    ++i;
   }
 }
 
