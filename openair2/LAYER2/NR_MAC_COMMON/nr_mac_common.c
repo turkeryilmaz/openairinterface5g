@@ -3674,6 +3674,7 @@ bool is_nr_UL_slot(NR_TDD_UL_DL_ConfigCommon_t *tdd_UL_DL_ConfigurationCommon, s
 {
   // Note: condition on frame_type
   // goal: the UL scheduler assumes mode is TDD therefore this hack is needed to make FDD work
+  // JPE Warning can impact TTCN USRP setup this part of code has a little bit changed from W31
   if (frame_type == FDD || RC.ss.mode < SS_SOFTMODEM)
     return true;
   if (tdd_UL_DL_ConfigurationCommon == NULL)

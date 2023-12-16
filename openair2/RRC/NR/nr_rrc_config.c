@@ -36,7 +36,6 @@
 #include "common/ran_context.h"
 extern RAN_CONTEXT_t RC;
 
-
 #include "uper_decoder.h"
 #include "uper_encoder.h"
 
@@ -725,7 +724,8 @@ void nr_rrc_config_ul_tda(NR_ServingCellConfigCommon_t *scc, int min_fb_delay){
 
   uint8_t DELTA[4]= {2,3,4,6}; // Delta parameter for Msg3
   int mu = scc->uplinkConfigCommon->initialUplinkBWP->genericParameters.subcarrierSpacing;
-  if(RC.ss.mode >= SS_SOFTMODEM){
+
+  if(RC.ss.mode == SS_SOFTMODEM){
     // UL TDA index 0 is basic slot configuration starting in symbol 0 til the last but one symbol
     struct NR_PUSCH_TimeDomainResourceAllocation *pusch_timedomainresourceallocation = CALLOC(1,sizeof(struct NR_PUSCH_TimeDomainResourceAllocation));
     pusch_timedomainresourceallocation->k2 = CALLOC(1,sizeof(long));
@@ -774,6 +774,9 @@ void nr_rrc_config_ul_tda(NR_ServingCellConfigCommon_t *scc, int min_fb_delay){
     }
     return;
   }
+
+
+
   // UL TDA index 0 is basic slot configuration starting in symbol 0 til the last but one symbol
   struct NR_PUSCH_TimeDomainResourceAllocation *pusch_timedomainresourceallocation = CALLOC(1,sizeof(struct NR_PUSCH_TimeDomainResourceAllocation));
   pusch_timedomainresourceallocation->k2 = CALLOC(1,sizeof(long));
@@ -1113,7 +1116,8 @@ static struct NR_SetupRelease_PUSCH_Config *config_pusch(NR_PUSCH_Config_t *pusc
   if (!pusch_Config->txConfig)
     pusch_Config->txConfig = calloc(1, sizeof(*pusch_Config->txConfig));
   *pusch_Config->txConfig = NR_PUSCH_Config__txConfig_codebook;
-  if(RC.ss.mode >= SS_SOFTMODEM){
+
+  if(RC.ss.mode >= SS_SOFTMODEM && RC.ss.mode != SS_SOFTMODEM_SRB){
     /* Hard code here the Nr_cell1 default configuration of TTCN */
     if (!pusch_Config->dmrs_UplinkForPUSCH_MappingTypeA)
       pusch_Config->dmrs_UplinkForPUSCH_MappingTypeA = calloc(1, sizeof(*pusch_Config->dmrs_UplinkForPUSCH_MappingTypeA));
