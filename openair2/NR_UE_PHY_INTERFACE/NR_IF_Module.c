@@ -788,8 +788,9 @@ static void fill_dci_from_dl_config(nr_downlink_indication_t*dl_ind, fapi_nr_dl_
     if (num_dci_options <= 0)
       LOG_D(NR_MAC, "num_dci_opts = %d for pdu[%d] in dl_config_list\n", rel15_dci->num_dci_options, i);
     AssertFatal(num_dci_options <= sizeof(rel15_dci->dci_length_options) / sizeof(rel15_dci->dci_length_options[0]),
-                "num_dci_options %d > dci_length_options array num_dci_options number_pdus %d i %d pdu_type %d\n", num_dci_options,dl_config->number_pdus,i,dl_config->dl_config_list[i].pdu_type);
-    
+      "num_dci_options %d > dci_length_options array num_dci_options number_pdus %d i %d pdu_type %d\n",
+      num_dci_options,dl_config->number_pdus,i,dl_config->dl_config_list[i].pdu_type);
+
     for (int j = 0; j < num_dci_options; j++) {
       int num_dcis = dl_ind->dci_ind->number_of_dcis;
       AssertFatal(num_dcis <= sizeof(dl_ind->dci_ind->dci_list) / sizeof(dl_ind->dci_ind->dci_list[0]),

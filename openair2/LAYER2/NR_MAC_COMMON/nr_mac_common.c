@@ -3674,7 +3674,10 @@ int is_nr_UL_slot(NR_TDD_UL_DL_ConfigCommon_t	*tdd_UL_DL_ConfigurationCommon, sl
 
   // Note: condition on frame_type
   // goal: the UL scheduler assumes mode is TDD therefore this hack is needed to make FDD work
-  if ( (tdd_UL_DL_ConfigurationCommon == NULL || frame_type == FDD || RC.ss.mode < SS_SOFTMODEM)) {
+  //TODO there is a race in the code at init phase RC.ss.mode is not initialised so as value set to 0. TDD config shall not be applied at this state else system will go in fatal
+  // so RC.ss.mode < SS_SOFTMODEM) needs to be kept at the end
+  if (tdd_UL_DL_ConfigurationCommon == NULL || frame_type == FDD || RC.ss.mode < SS_SOFTMODEM) {
+  //if (tdd_UL_DL_ConfigurationCommon == NULL || frame_type == FDD) {
     return(1);
   }
 
