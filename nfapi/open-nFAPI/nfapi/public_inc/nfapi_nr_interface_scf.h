@@ -1467,11 +1467,9 @@ typedef enum {
 
 //table 3-58
 #define NFAPI_NR_MAX_TX_REQUEST_TLV 2
-typedef struct {
-  uint16_t PDU_length; // SCF 222.10.02 The total length (in bytes) of the PDU description and  PDU data, without the padding bytes.
-                       // (2 bytes PDU_Length + 2 bytes PDU_Index + 4 bytes num_TLV + TLV size ( 2 bytes tag + 2 bytes length +
-                       // value size without padding))
-                       // TBS + 12
+typedef struct
+{
+  uint32_t PDU_length;
   uint16_t PDU_index;
   uint32_t num_TLV;
   nfapi_nr_tx_data_request_tlv_t TLVs[NFAPI_NR_MAX_TX_REQUEST_TLV];
