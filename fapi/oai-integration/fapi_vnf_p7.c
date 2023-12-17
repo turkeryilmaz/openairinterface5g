@@ -957,7 +957,7 @@ uint8_t aerial_unpack_nr_rach_indication(uint8_t **ppReadPackedMsg,
   return unpack_nr_rach_indication(ppReadPackedMsg, end, msg, config);
 }
 
-static uint8_t aerial_pack_tx_data_request(void *pMessageBuf,
+static int32_t aerial_pack_tx_data_request(void *pMessageBuf,
                                            void *pPackedBuf,
                                            void *pDataBuf,
                                            uint32_t packedBufLen,
@@ -1009,7 +1009,7 @@ static uint8_t aerial_pack_tx_data_request(void *pMessageBuf,
     // recalculate PDU_Length for Aerial (leave only the size occupied in the payload buffer afterward)
     // assuming there is only 1 TLV present
     value->PDU_length = value->TLVs[0].length;
-    if (!(push16(value->PDU_length, ppWriteBody, end) && push16(0, ppWriteBody, end)
+    if (!(push32(value->PDU_length, ppWriteBody, end)
           && // cuBB expects TX_DATA.request PDUSize to be 32 bit
           push16(value->PDU_index, ppWriteBody, end) && push32(value->num_TLV, ppWriteBody, end))) {
       return 0;
@@ -1258,14 +1258,19 @@ int fapi_nr_pack_and_send_p7_message(vnf_p7_t *vnf_p7, nfapi_p7_message_header_t
       == NFAPI_NR_PHY_MSG_TYPE_TX_DATA_REQUEST) {
     uint8_t FAPI_data_buffer[1024 * 64];
     uint32_t data_len = 0;
-    int len_FAPI = aerial_pack_tx_data_request(header,
+    int32_t len_FAPI = aerial_pack_tx_data_request(header,
                                                FAPI_buffer,
                                                FAPI_data_buffer,
                                                sizeof(FAPI_buffer),
                                                sizeof(FAPI_data_buffer),
                                                &vnf_p7->_public.codec_config,
                                                &data_len);
-    return aerial_send_P7_msg_with_data(FAPI_buffer, len_FAPI, FAPI_data_buffer, data_len, header);
+    if (len_FAPI <=0) {
+      LOG_E(NFAPI_VNF,"Problem packing TX_DATA_request\n");
+      return len_FAPI;
+    }
+    else
+      return aerial_send_P7_msg_with_data(FAPI_buffer, len_FAPI, FAPI_data_buffer, data_len, header);
   } else {
     // Create and send FAPI P7 message
     int len_FAPI = fapi_nr_p7_message_pack(header, FAPI_buffer, sizeof(FAPI_buffer), &vnf_p7->_public.codec_config);
