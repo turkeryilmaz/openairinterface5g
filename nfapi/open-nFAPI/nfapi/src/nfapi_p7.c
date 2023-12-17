@@ -2017,8 +2017,7 @@ static uint8_t pack_hi_dci0_request(void *msg, uint8_t **ppWritePackedMsg, uint8
 static uint8_t pack_tx_data_pdu_list_value(void *tlv, uint8_t **ppWritePackedMsg, uint8_t *end)
 {
   nfapi_nr_pdu_t *value = (nfapi_nr_pdu_t *)tlv;
-  AssertFatal(value->PDU_length <= 0xFFFF,"TX_DATA.request PDU_Length should be within 16 bit, according to SCF222.10.02");
-  if (!(push16(value->PDU_length, ppWritePackedMsg, end) && push16(value->PDU_index, ppWritePackedMsg, end)
+  if (!(push32(value->PDU_length, ppWritePackedMsg, end) && push16(value->PDU_index, ppWritePackedMsg, end)
         && push32(value->num_TLV, ppWritePackedMsg, end)))
     return 0;
 
@@ -5903,7 +5902,7 @@ static uint8_t unpack_hi_dci0_request(uint8_t **ppReadPackedMsg, uint8_t *end, v
 static uint8_t unpack_tx_data_pdu_list_value(uint8_t **ppReadPackedMsg, uint8_t *end, void *msg) {
   nfapi_nr_pdu_t *pNfapiMsg = (nfapi_nr_pdu_t *)msg;
 
-  if(!(pull16(ppReadPackedMsg, (uint16_t *)&pNfapiMsg->PDU_length, end) &&
+  if(!(pull32(ppReadPackedMsg, &pNfapiMsg->PDU_length, end) &&
        pull16(ppReadPackedMsg, &pNfapiMsg->PDU_index, end) &&
        pull32(ppReadPackedMsg, &pNfapiMsg->num_TLV, end)
   ))
@@ -6006,10 +6005,10 @@ static uint8_t unpack_tx_request(uint8_t **ppReadPackedMsg, uint8_t *end, void *
           nfapi_tx_request_pdu_t *pdu = &(pNfapiMsg->tx_request_body.tx_pdu_list[i]);
 
           if (pdu) {
-            uint16_t length = 0;
+            uint32_t length = 0;
             uint16_t index = 0;
 
-            if(!(pull16(ppReadPackedMsg, &length, end) &&
+            if(!(pull32(ppReadPackedMsg, &length, end) &&
                  pull16(ppReadPackedMsg, &index, end)))
               return 0;
 
