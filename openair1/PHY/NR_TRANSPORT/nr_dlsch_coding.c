@@ -428,7 +428,7 @@ int nr_dlsch_encoding(PHY_VARS_gNB *gNB,
     size_t const sz = (impp.n_segments/8+((impp.n_segments&7)==0 ? 0 : 1));
     encoder_implemparams_t arr[sz];
     task_status_t task_status[sz];
-    memset(task_status, 0, sz * sizeof(task_status));
+    memset(task_status, 0, sz * sizeof(task_status_t));
 #endif
     for (int j = 0; j < (impp.n_segments / 8 + ((impp.n_segments & 7) == 0 ? 0 : 1)); j++) {
 #ifdef TASK_MANAGER_CODING
