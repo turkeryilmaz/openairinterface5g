@@ -1019,23 +1019,12 @@ void nr_decode_pucch2(PHY_VARS_gNB *gNB,
               pucch_pdu->prb_start);
 
   //extract pucch and dmrs first
-
-<<<<<<< HEAD
+  
   int l2 = pucch_pdu->start_symbol_index;
-=======
-  int l2=pucch_pdu->start_symbol_index;
-  int re_offset[2];
-  re_offset[0] = 12*(pucch_pdu->prb_start+pucch_pdu->bwp_start) + frame_parms->first_carrier_offset;
-  int soffset=(slot%RU_RX_SLOT_DEPTH)*frame_parms->symbols_per_slot*frame_parms->ofdm_symbol_size; 
->>>>>>> 37fc85713d (synchronization of RU and L1 threads to avoid race condition with)
-
-  int soffset = (slot & 3) * frame_parms->symbols_per_slot * frame_parms->ofdm_symbol_size;
-
+  int soffset=(slot % RU_RX_SLOT_DEPTH) * frame_parms->symbols_per_slot * frame_parms->ofdm_symbol_size; 
   int re_offset[2];
   re_offset[0] =
       (12 * (pucch_pdu->prb_start + pucch_pdu->bwp_start) + frame_parms->first_carrier_offset) % frame_parms->ofdm_symbol_size;
-  if (re_offset[0]>= frame_parms->ofdm_symbol_size)
-    re_offset[0]-=frame_parms->ofdm_symbol_size;
   if (pucch_pdu->freq_hop_flag == 0)
     re_offset[1] = re_offset[0];
   else {
