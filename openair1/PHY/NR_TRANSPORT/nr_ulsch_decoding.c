@@ -37,6 +37,7 @@
 #include "PHY/CODING/coding_defs.h"
 #include "PHY/CODING/lte_interleaver_inline.h"
 #include "PHY/CODING/nrLDPC_extern.h"
+#include "PHY/CODING/nrLDPC_decoder/nrLDPC_offload.h"
 #include "PHY/NR_TRANSPORT/nr_transport_common_proto.h"
 #include "PHY/NR_TRANSPORT/nr_transport_proto.h"
 #include "PHY/NR_TRANSPORT/nr_ulsch.h"
@@ -232,8 +233,8 @@ int decode_offload(PHY_VARS_gNB *phy_vars_gNB,
 {
   NR_gNB_ULSCH_t *ulsch = &phy_vars_gNB->ulsch[ULSCH_id];
   NR_UL_gNB_HARQ_t *harq_process = ulsch->harq_process;
-  int16_t z_ol[32 * 1024] __attribute__((aligned(16)));
-  int8_t l_ol[32 * 1024] __attribute__((aligned(16)));
+  int16_t z_ol[BBDEV_LDPC_MAX_E] __attribute__((aligned(16)));
+  int8_t l_ol[BBDEV_LDPC_MAX_E] __attribute__((aligned(16)));
   uint8_t Qm = pusch_pdu->qam_mod_order;
   uint8_t n_layers = pusch_pdu->nrOfLayers;
   const int Kr = harq_process->K;
