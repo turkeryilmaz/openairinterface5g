@@ -1507,6 +1507,8 @@ void nr_rrc_ue_process_securityModeCommand(const protocol_ctxt_t *const ctxt_pP,
   uint8_t kRRCenc[16] = {0};
   uint8_t kUPenc[16] = {0};
   uint8_t kRRCint[16] = {0};
+  nr_ue_nas_t *nas = get_ue_nas_info(ctxt_pP->module_id);
+  updateKgNB(nas, &(ue_rrc->kgnb[0]));
   nr_derive_key(UP_ENC_ALG,
                 ue_rrc->cipheringAlgorithm,
                 ue_rrc->kgnb,
@@ -2024,9 +2026,6 @@ int32_t nr_rrc_ue_establish_drb(module_id_t ue_mod_idP,
                                          ie->nonCriticalExtension->masterCellGroup,
                                          ie->nonCriticalExtension->fullConfig);
      }
-
-     nr_ue_nas_t *nas = get_ue_nas_info(ctxt_pP->module_id);
-     updateKgNB(nas, &(NR_UE_rrc_inst[ctxt_pP->module_id].kgnb[0]));
 
      if (ie->radioBearerConfig != NULL) {
        LOG_I(NR_RRC, "radio Bearer Configuration is present\n");
