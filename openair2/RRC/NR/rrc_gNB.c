@@ -3477,6 +3477,26 @@ void *rrc_gnb_task(void *args_p) {
                 rrc_gNB_store_RRCReconfiguration(&ctxt,ue_context_p,rrcReconfiguration);
               }
             }
+            else if(dl_dcch_msg->message.choice.c1->present == NR_DL_DCCH_MessageType__c1_PR_securityModeCommand)
+            {
+              NR_SecurityModeCommand_t * securityModeCommand = dl_dcch_msg->message.choice.c1->choice.securityModeCommand;
+              if(securityModeCommand->criticalExtensions.present == NR_SecurityModeCommand__criticalExtensions_PR_securityModeCommand){
+                NR_SecurityModeCommand_IEs_t * ie = securityModeCommand->criticalExtensions.choice.securityModeCommand;
+                if(ie){
+                  NR_CipheringAlgorithm_t cipher_algo = ie->securityConfigSMC.securityAlgorithmConfig.cipheringAlgorithm;
+                  NR_IntegrityProtAlgorithm_t integrity_algo = ie->securityConfigSMC.securityAlgorithmConfig.integrityProtAlgorithm? *(ie->securityConfigSMC.securityAlgorithmConfig.integrityProtAlgorithm): 0;
+                  if(cipher_algo == _cip_algo && integrity_algo == _int_algo){
+                    /* Set security to PDCP for the created SRB1 */
+                    nr_pdcp_config_set_security(ctxt.rntiMaybeUEid, DCCH, _cip_algo | _int_algo << 4,
+                                                              _nr_control_plane_cip_key,
+                                                              _nr_control_plane_int_key,
+                                                              NULL);
+                  }else {
+                    LOG_E(NR_RRC, "SS configure secuirty not matched with SecurityModeCommand\n");
+                  }
+                }
+              }
+            }
             else if(dl_dcch_msg->message.choice.c1->present == NR_DL_DCCH_MessageType__c1_PR_rrcRelease)
             {
               rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context_by_rnti(RC.nrrrc[ctxt.module_id], ctxt.rntiMaybeUEid);
@@ -3584,13 +3604,6 @@ void *rrc_gnb_task(void *args_p) {
           memset(&(_nr_control_plane_cip_key[0]), 0, 16);
           memset(&(_nr_data_plane_cip_key[0]), 0, 16);
         }
-
-        int rb = 1;
-        // AGP: TODO extend function nr_pdcp_config_set_security() for UP integrity; also set Security for ALL created PDCP entities there
-        nr_pdcp_config_set_security(ctxt.rntiMaybeUEid, rb, _cip_algo | _int_algo << 4,
-            &(RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kRRCenc[0]),
-            &(RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint[0]),
-            &(RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kUPenc[0]));
       }
       break;
 
