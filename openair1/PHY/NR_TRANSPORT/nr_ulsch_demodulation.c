@@ -1441,7 +1441,7 @@ static void nr_pusch_symbol_processing(void *arg)
       llr16[i] = llr_ptr[i] * rdata->s[i];
   }
 
-#ifdef TASK_MANAGER
+#ifdef TASK_MANAGER_DEMODULATION
   assert(rdata->task_status != NULL);
   atomic_store_explicit(&rdata->task_status->completed, 1, memory_order_seq_cst); //  memory_order order );
 #endif
@@ -1655,7 +1655,7 @@ int nr_rx_pusch_tp(PHY_VARS_gNB *gNB,
   start_meas(&gNB->rx_pusch_symbol_processing_stats);
   int numSymbols = gNB->num_pusch_symbols_per_thread;
 
-#ifdef TASK_MANAGER
+#ifdef TASK_MANAGER_DEMODULATION
   int const loop_iter = rel15_ul->nr_of_symbols/numSymbols;
   puschSymbolProc_t arr[loop_iter];
   task_status_t task_status[loop_iter];
@@ -1679,7 +1679,7 @@ int nr_rx_pusch_tp(PHY_VARS_gNB *gNB,
       total_res+=pusch_vars->ul_valid_re_per_slot[symbol+s];
     }
     if (total_res > 0) {
-#ifdef TASK_MANAGER 
+#ifdef TASK_MANAGER_DEMODULATION 
       puschSymbolProc_t *rdata = &arr[sz_arr]; 
       rdata->task_status = &task_status[sz_arr];
       ++sz_arr;
@@ -1706,7 +1706,7 @@ int nr_rx_pusch_tp(PHY_VARS_gNB *gNB,
         // Obvious memory leak when TASK_MANAGER not defined
         nr_pusch_symbol_processing(rdata);
       } else {
-#ifdef TASK_MANAGER
+#ifdef TASK_MANAGER_DEMODULATION
         task_t t = { .args = rdata, .func = &nr_pusch_symbol_processing };
         async_task_manager(&gNB->man , t);
 #else
@@ -1719,9 +1719,9 @@ int nr_rx_pusch_tp(PHY_VARS_gNB *gNB,
     }
   } // symbol loop
 
-#ifdef TASK_MANAGER
+#ifdef TASK_MANAGER_DEMODULATION
   if(gNB->nbSymb > 0){
-    trigger_all_task_manager(&gNB->man);
+    //trigger_all_task_manager(&gNB->man);
     wait_task_status_completed(sz_arr, task_status);
     gNB->nbSymb = 0; 
   }

@@ -481,12 +481,15 @@ void init_gNB_Tpool(int inst) {
   PHY_VARS_gNB *gNB;
   gNB = RC.gNB[inst];
   gNB_L1_proc_t *proc = &gNB->proc;
-#ifdef TASK_MANAGER
+#if defined(TASK_MANAGER) && defined(TASK_MANAGER_CODING) && defined(TASK_MANAGER_DEMODULATION) 
   int const log_cores = get_nprocs_conf();
   assert(log_cores > 0);
   printf("[MIR]: log cores %d \n", log_cores);
   // Assuming: 2 x Physical cores = Logical cores
-  init_task_manager(&gNB->man, log_cores/2);
+  init_task_manager(&gNB->man, 4);
+#elif !defined(TASK_MANAGER) || !defined(TASK_MANAGER_CODING) || !defined(TASK_MANAGER_DEMODULATION) 
+  init_task_manager(&gNB->man, 4);
+  initTpool(get_softmodem_params()->threadPoolConfig, &gNB->threadPool, cpumeas(CPUMEAS_GETSTATE));
 #else
   initTpool(get_softmodem_params()->threadPoolConfig, &gNB->threadPool, cpumeas(CPUMEAS_GETSTATE));
 #endif

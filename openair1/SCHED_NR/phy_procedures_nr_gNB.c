@@ -1002,10 +1002,12 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
   
 #ifdef TASK_MANAGER
   if (totalDecode > 0) {
+	  assert(totalDecode == t_info.len);
     wait_task_status_completed(t_info.len, t_info.task_status);
     for(int i = 0; i < t_info.len; ++i){
       nr_postDecode(gNB, &arr[i]); 
     } 
+    totalDecode = 0;
     //printf("Decoding time %ld \n", time_now_ns() - t0);
   }
 #else

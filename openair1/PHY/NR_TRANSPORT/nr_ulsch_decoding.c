@@ -189,7 +189,10 @@ static void nr_processULSegment(void *arg)
 
     LOG_E(PHY, "ulsch_decoding.c: Problem in rate_matching\n");
     rdata->decodeIterations = max_ldpc_iterations + 1;
-
+#ifdef TASK_MANAGER
+  assert(rdata->task_status != NULL && atomic_load(&rdata->task_status->completed) == 0);
+  atomic_store_explicit(&rdata->task_status->completed, 1, memory_order_release); //  memory_order order );
+#endif
     return;
   }
 
@@ -233,8 +236,7 @@ static void nr_processULSegment(void *arg)
 
 #ifdef TASK_MANAGER
   assert(rdata->task_status != NULL && atomic_load(&rdata->task_status->completed) == 0);
-  atomic_store_explicit(&rdata->task_status->completed, 1, memory_order_seq_cst); //  memory_order order );
-  // atomic_fetch_sub_explicit(rdata->tasks_remaining, 1, memory_order_seq_cst);
+  atomic_store_explicit(&rdata->task_status->completed, 1, memory_order_release); //  memory_order order );
 #endif
 }
 
@@ -499,10 +501,6 @@ int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
     r_offset += E;
     offset += ((harq_process->K >> 3) - (harq_process->F >> 3) - ((harq_process->C > 1) ? 3 : 0));
   }
-#ifdef TASK_MANAGER
-  //stop_spining_task_manager(&phy_vars_gNB->man);
-  trigger_all_task_manager(&phy_vars_gNB->man);
-#endif
 
   return harq_process->C;
 }

@@ -398,7 +398,7 @@ void nr_feptx_tp(RU_t *ru, int frame_tx, int slot) {
 #ifdef TASK_MANAGER_RU
   if(nbfeptx > 0) {
     //stop_spining_task_manager(&ru->man);
-    trigger_all_task_manager(&ru->man);
+    //trigger_all_task_manager(&ru->man);
     wait_task_status_completed(nbfeptx, task_status);
     nbfeptx = 0; 
   }
@@ -508,7 +508,7 @@ void nr_fep_tp(RU_t *ru, int slot)
 #ifdef TASK_MANAGER_RU
   //stop_spining_task_manager(&ru->man);
   if(nbfeprx > 0) {
-    trigger_all_task_manager(&ru->man);
+    //trigger_all_task_manager(&ru->man);
     wait_task_status_completed(nbfeprx, task_status);
   }
 #else

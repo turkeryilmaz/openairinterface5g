@@ -4,6 +4,7 @@
 
 // Comment for deactivating ws tpool
 #define TASK_MANAGER
+#define TASK_MANAGER_DEMODULATION
 #define TASK_MANAGER_CODING
 #define TASK_MANAGER_RU
 
@@ -66,10 +67,10 @@ typedef struct{
 
   _Atomic(uint64_t) num_task;
 
-  pthread_cond_t  wait_cv; 
-  pthread_mutex_t wait_mtx;
+//  pthread_cond_t  wait_cv; 
+//  pthread_mutex_t wait_mtx;
 
-  _Atomic(int32_t) futex;
+//  _Atomic(int32_t) futex;
 
   //_Atomic(bool) waiting;
 } task_manager_t;
@@ -84,7 +85,7 @@ void async_task_manager(task_manager_t* man, task_t t);
 // Note that if the thread was working, this call is superflous
 // This method proved a bit faster as it is only one syscall
 // instead of a syscall when async_task_manager is called 
-void trigger_all_task_manager(task_manager_t* man);
+// void trigger_all_task_manager(task_manager_t* man);
 
 //void trigger_and_spin_task_manager(task_manager_t* man);
 

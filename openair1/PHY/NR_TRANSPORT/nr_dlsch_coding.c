@@ -453,7 +453,7 @@ int nr_dlsch_encoding(PHY_VARS_gNB *gNB,
 
 #ifdef TASK_MANAGER_CODING
     if(nbJobs > 0) {
-      trigger_all_task_manager(&gNB->man);
+      //trigger_all_task_manager(&gNB->man);
       wait_task_status_completed(nbJobs, task_status); 
       nbJobs = 0; 
     }

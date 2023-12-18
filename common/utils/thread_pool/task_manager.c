@@ -197,7 +197,7 @@ typedef struct {
   pthread_mutex_t mtx;
   pthread_cond_t cv;
   seq_ring_task_t r;
-  _Atomic int32_t* futex;
+ // _Atomic int32_t* futex;
   //_Atomic bool* waiting;
   _Atomic int done;
 } not_q_t;
@@ -209,7 +209,7 @@ typedef struct{
 
 
 static
-void init_not_q(not_q_t* q, _Atomic int32_t* futex /*, _Atomic bool* waiting */)
+void init_not_q(not_q_t* q /*, _Atomic int32_t* futex , _Atomic bool* waiting */)
 {
   assert(q != NULL);
 
@@ -229,7 +229,7 @@ void init_not_q(not_q_t* q, _Atomic int32_t* futex /*, _Atomic bool* waiting */)
   rc = pthread_cond_init(&q->cv, c_attr);
   assert(rc == 0);
 
-  q->futex = futex;
+  //q->futex = futex;
 }
 
 static
@@ -263,6 +263,8 @@ bool try_push_not_q(not_q_t* q, task_t t)
   int const rc = pthread_mutex_unlock(&q->mtx);
   assert(rc == 0);
 
+  pthread_cond_signal(&q->cv);
+
   return true;
 }
 
@@ -277,6 +279,8 @@ void push_not_q(not_q_t* q, task_t t)
   assert(rc == 0);
 
   push_back_seq_ring_task(&q->r, t);
+
+  pthread_cond_signal(&q->cv);
 
   pthread_mutex_unlock(&q->mtx);
 }
@@ -305,6 +309,7 @@ ret_try_t try_pop_not_q(not_q_t* q)
     return ret;
   }
 
+  assert(sz > 0);
   ret.t = pop_seq_ring_task(&q->r);
 
   rc = pthread_mutex_unlock(&q->mtx);
@@ -321,7 +326,14 @@ bool pop_not_q(not_q_t* q, ret_try_t* out)
   assert(out != NULL);
   assert(q->done == 0 || q->done ==1);
 
-label:
+  int rc = pthread_mutex_lock(&q->mtx);
+  assert(rc == 0);
+  assert(q->done == 0 || q->done ==1);
+
+  while(size_seq_ring_task(&q->r) == 0 && q->done == 0)
+    pthread_cond_wait(&q->cv , &q->mtx);
+
+  /*
   // Let's be conservative and not use memory_order_relaxed
  // while (atomic_load_explicit(q->waiting, memory_order_seq_cst) == true){ //
       // Issue X86 PAUSE or ARM YIELD instruction to reduce contention between
@@ -340,11 +352,11 @@ label:
     assert(r != -1);
     goto label;
   }
-
-  assert(q->done == 0 || q->done ==1);
+*/
 
   //printf("Waking %ld id %ld \n", time_now_us(), pthread_self());
 
+  assert(q->done == 0 || q->done ==1);
   if(q->done == 1){
     //printf("Done, returning \n");
     int rc = pthread_mutex_unlock(&q->mtx);
@@ -354,7 +366,7 @@ label:
 
   out->t = pop_seq_ring_task(&q->r);
 
-  int rc = pthread_mutex_unlock(&q->mtx);
+  rc = pthread_mutex_unlock(&q->mtx);
   assert(rc == 0);
 
   return true;
@@ -369,13 +381,13 @@ void done_not_q(not_q_t* q)
   assert(rc == 0);
   
   q->done = 1;
-  long r = syscall(SYS_futex, q->futex, FUTEX_WAKE_PRIVATE, INT_MAX, NULL, NULL, 0);
-  assert(r != -1);
+  //long r = syscall(SYS_futex, q->futex, FUTEX_WAKE_PRIVATE, INT_MAX, NULL, NULL, 0);
+  //assert(r != -1);
   rc = pthread_mutex_unlock(&q->mtx);
   assert(rc == 0);
 
-//  rc = pthread_cond_signal(&q->cv);
-//  assert(rc == 0);
+  rc = pthread_cond_signal(&q->cv);
+  assert(rc == 0);
 
 //  q->futex++;
 }
@@ -469,13 +481,13 @@ void init_task_manager(task_manager_t* man, uint32_t num_threads)
 
   man->q_arr = calloc(num_threads, sizeof(not_q_t));
   assert(man->q_arr != NULL && "Memory exhausted");
-  atomic_store_explicit(&man->futex, 0, memory_order_seq_cst); 
+  //atomic_store_explicit(&man->futex, 0, memory_order_seq_cst); 
 
  // man->waiting = false;
 
   not_q_t* q_arr = (not_q_t*)man->q_arr;
   for(uint32_t i = 0; i < num_threads; ++i){
-    init_not_q(&q_arr[i], &man->futex /*, &man->waiting */);   
+    init_not_q(&q_arr[i] /*,&man->futex, &man->waiting */);   
   }
 
   man->t_arr = calloc(num_threads, sizeof(pthread_t));
@@ -506,6 +518,7 @@ void init_task_manager(task_manager_t* man, uint32_t num_threads)
 
   man->index = 0;
 
+  /*
   pthread_mutexattr_t attr = {0};
 #ifdef _DEBUG
   int const rc_mtx = pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK);
@@ -517,6 +530,7 @@ void init_task_manager(task_manager_t* man, uint32_t num_threads)
   pthread_condattr_t* c_attr = NULL; 
   rc = pthread_cond_init(&man->wait_cv, c_attr);
   assert(rc == 0);
+*/
 
   //pin_thread_to_core(3);
 }
@@ -542,12 +556,13 @@ void free_task_manager(task_manager_t* man, void (*clean)(task_t*))
   free(man->q_arr);
 
   free(man->t_arr);
-
+/*
   int rc = pthread_mutex_destroy(&man->wait_mtx);
   assert(rc == 0);
 
   rc = pthread_cond_destroy(&man->wait_cv);
   assert(rc == 0);
+  */
 }
 
 void async_task_manager(task_manager_t* man, task_t t)
@@ -621,6 +636,7 @@ void trigger_and_wait_all_task_manager(task_manager_t* man)
 
 */
 
+/*
 void trigger_all_task_manager(task_manager_t* man)
 {
   assert(man != NULL);
@@ -633,6 +649,7 @@ void trigger_all_task_manager(task_manager_t* man)
   }
   assert(r != -1);
 }
+*/
 
 /*
 void wait_all_task_manager(task_manager_t* man)
@@ -660,7 +677,7 @@ void wait_task_status_completed(size_t len, task_status_t* arr)
   for(int j = len -1; j != -1 ; i++){
     for(; j != -1; --j){
       int const task_completed = 1;
-      if(atomic_load_explicit(&arr[j].completed, memory_order_acquire) != task_completed)
+      if(atomic_load_explicit(&arr[j].completed, memory_order_seq_cst) != task_completed) //  memory_order_acquire
         break;
     }
 

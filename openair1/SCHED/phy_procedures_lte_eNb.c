@@ -1422,7 +1422,7 @@ void pusch_procedures(PHY_VARS_eNB *eNB,L1_rxtx_proc_t *proc) {
 #ifdef TASK_MANAGER_LTE
   if (proc->nbDecode) {
     // Not needed, but won't hurt performance
-    trigger_all_task_manager(proc->man);
+    //trigger_all_task_manager(proc->man);
     wait_task_status_completed(t_info.len, t_info.task_status);
     for(int i = 0; i < t_info.len; ++i){
       postDecode(proc, &arr[i]); 

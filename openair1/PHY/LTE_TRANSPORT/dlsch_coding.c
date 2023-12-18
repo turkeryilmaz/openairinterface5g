@@ -403,7 +403,7 @@ int dlsch_encoding(PHY_VARS_eNB *eNB,
   }
  
 #ifdef TASK_MANAGER_LTE
-  trigger_all_task_manager(proc->man);
+  //trigger_all_task_manager(proc->man);
   wait_task_status_completed(hadlsch->C, task_status);
 #else
   // Wait all other threads finish to process
@@ -533,7 +533,7 @@ int dlsch_encoding_fembms_pmch(PHY_VARS_eNB *eNB,
   }
 
 #ifdef TASK_MANAGER_LTE
-  trigger_all_task_manager(proc->man);
+  //trigger_all_task_manager(proc->man);
   wait_task_status_completed(hadlsch->C, task_status);
 #else
   // Wait all other threads finish to process

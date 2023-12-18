@@ -479,7 +479,7 @@ uint32_t nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
   int num_seg_ok = 0;
   int nbDecode = harq_process->C;
 #ifdef TASK_MANAGER_UE_DECODING
-  trigger_all_task_manager(&get_nrUE_params()->man);
+  //trigger_all_task_manager(&get_nrUE_params()->man);
   wait_task_status_completed(nbDecode, task_status); 
   for(size_t i = 0; i < harq_process->C; ++i){
     nr_ue_postDecode(phy_vars_ue, &arr[i], nbDecode == 1, b_size, b, &num_seg_ok, proc);
