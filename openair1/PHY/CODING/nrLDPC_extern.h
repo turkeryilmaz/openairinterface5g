@@ -22,6 +22,7 @@
 #define _NRLDPC_EXTERN_H__
 #include "openair1/PHY/CODING/nrLDPC_defs.h"
 
+#define BBDEV_LDPC_MAX_E 32768
 /* ldpc coder/decoder API*/
 typedef struct ldpc_interface_s {
   LDPC_initfunc_t *LDPCinit;

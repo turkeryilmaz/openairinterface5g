@@ -20,7 +20,6 @@
 #define DEFAULT_BURST 32U
 #define DEFAULT_OPS 64U
 #define DEFAULT_ITER 6U
-#define BBDEV_LDPC_MAX_E 32768
 
 enum op_data_type {
   DATA_INPUT = 0,
