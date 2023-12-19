@@ -791,7 +791,7 @@ typedef struct LDPCDecode_s {
   int decodeIterations;
   uint32_t tbslbrm;
 #ifdef TASK_MANAGER
- _Atomic int* tasks_remaining;
+ task_status_t* tasks_remaining;
 #endif
 } ldpcDecode_t;
 

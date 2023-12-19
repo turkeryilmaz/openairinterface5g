@@ -259,7 +259,7 @@ static void nr_processULSegment(void *arg)
 
 #ifdef TASK_MANAGER
   assert(rdata->tasks_remaining != NULL);
-  atomic_store_explicit(rdata->tasks_remaining, 1, memory_order_seq_cst); //  memory_order order );
+  atomic_store_explicit(&rdata->tasks_remaining->completed, 1, memory_order_seq_cst); //  memory_order order );
   // atomic_fetch_sub_explicit(rdata->tasks_remaining, 1, memory_order_seq_cst);
 #endif
 }

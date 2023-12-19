@@ -611,7 +611,7 @@ void wait_all_task_manager(task_manager_t* man)
   }
 }
 
-
+/*
 // This function does not belong here logically
 void wait_spin_all_atomics_one(size_t len, _Atomic int arr[len])
 {
@@ -638,4 +638,32 @@ void wait_spin_all_atomics_one(size_t len, _Atomic int arr[len])
     ++i;
   }
 }
+*/
+
+
+
+// This function does not belong here logically
+void wait_task_status_completed(size_t len, task_status_t* arr)
+{
+  assert(len > 0);
+  assert(arr != NULL);
+
+  // We are believing Fedor
+  const struct timespec ns = {0,1};
+  int i = 0;
+  for(int j = len -1; j != -1 ; i++){
+    for(; j != -1; --j){
+      int const task_completed = 1;
+      if(atomic_load_explicit(&arr[j].completed, memory_order_acquire) != task_completed) //  memory_order_acquire
+        break;
+    }
+
+    if(i == 16){
+      i = 0;
+      nanosleep(&ns, NULL);
+    }
+  }
+}
+
+
 
