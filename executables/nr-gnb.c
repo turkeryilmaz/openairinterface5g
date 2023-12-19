@@ -32,6 +32,7 @@
 
 #define _GNU_SOURCE
 #include <pthread.h>
+#include <ctype.h>
 
 #undef MALLOC //there are two conflicting definitions, so we better make sure we don't use it at all
 
@@ -477,18 +478,65 @@ void *tx_reorder_thread(void* param) {
   return(NULL);
 }
 
-void init_gNB_Tpool(int inst) {
+static
+int num_threads(char* params)
+{
+  char *saveptr, * curptr;
+  char *parms_cpy=strdup(params);
+  int nbThreads=0;
+  curptr=strtok_r(parms_cpy,",",&saveptr);
+  while ( curptr!=NULL ) {
+    int c=toupper(curptr[0]);
+
+    switch (c) {
+
+      case 'N':
+        //pool->activated=false;
+        break;
+
+      default:
+	int core_id = atoi(curptr);
+        printf("[MIR]: create a thread for core %d\n", core_id);
+        nbThreads++;
+    }
+    curptr=strtok_r(NULL,",",&saveptr);
+  }
+  free(parms_cpy);
+
+
+  printf("[MIR]: num threads %d\n", nbThreads);
+  printf("[MIR]: num threads %d\n", nbThreads);
+  printf("[MIR]: num threads %d\n", nbThreads);
+  printf("[MIR]: num threads %d\n", nbThreads);
+  printf("[MIR]: num threads %d\n", nbThreads);
+  printf("[MIR]: num threads %d\n", nbThreads);
+  printf("[MIR]: num threads %d\n", nbThreads);
+  printf("[MIR]: num threads %d\n", nbThreads);
+  printf("[MIR]: num threads %d\n", nbThreads);
+  printf("[MIR]: num threads %d\n", nbThreads);
+  printf("[MIR]: num threads %d\n", nbThreads);
+  printf("[MIR]: num threads %d\n", nbThreads);
+
+
+  return nbThreads;
+}
+
+
+void init_gNB_Tpool(int inst) 
+{
   PHY_VARS_gNB *gNB;
   gNB = RC.gNB[inst];
   gNB_L1_proc_t *proc = &gNB->proc;
 #if defined(TASK_MANAGER) && defined(TASK_MANAGER_CODING) && defined(TASK_MANAGER_DEMODULATION) 
-  int const log_cores = get_nprocs_conf();
-  assert(log_cores > 0);
-  printf("[MIR]: log cores %d \n", log_cores);
+  //int const log_cores = get_nprocs_conf();
+  //assert(log_cores > 0);
+  //printf("[MIR]: log cores %d \n", log_cores);
   // Assuming: 2 x Physical cores = Logical cores
-  init_task_manager(&gNB->man, 4);
+  int n_threads = num_threads(get_softmodem_params()->threadPoolConfig);
+  init_task_manager(&gNB->man, n_threads);
 #elif !defined(TASK_MANAGER) || !defined(TASK_MANAGER_CODING) || !defined(TASK_MANAGER_DEMODULATION) 
-  init_task_manager(&gNB->man, 4);
+  int n_threads = num_threads(get_softmodem_params()->threadPoolConfig);
+  init_task_manager(&gNB->man, n_threads);
   initTpool(get_softmodem_params()->threadPoolConfig, &gNB->threadPool, cpumeas(CPUMEAS_GETSTATE));
 #else
   initTpool(get_softmodem_params()->threadPoolConfig, &gNB->threadPool, cpumeas(CPUMEAS_GETSTATE));
