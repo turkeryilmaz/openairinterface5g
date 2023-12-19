@@ -385,7 +385,6 @@ int nr_dlsch_encoding(PHY_VARS_gNB *gNB,
   impp.tinput = tinput;
   impp.tparity = tparity;
   impp.toutput = toutput;
-<<<<<<< HEAD
   impp.harq = harq;
   if (gNB->ldpc_offload_flag && *rel15->mcsIndex > 2) {
     impp.Qm = rel15->qamModOrder[0];
@@ -440,56 +439,7 @@ int nr_dlsch_encoding(PHY_VARS_gNB *gNB,
       delNotifiedFIFO_elt(req);
       nbJobs--;
     }
-=======
-
-  impp.harq=harq;
-  notifiedFIFO_t nf;
-  initNotifiedFIFO(&nf);
-  int nbJobs=0;
-#ifdef TASK_MANAGER_CODING
-  size_t const sz = (impp.n_segments/8+((impp.n_segments&7)==0 ? 0 : 1));
-  encoder_implemparams_t arr[sz];
-  //memset(arr, 0, sz*sizeof(encoder_implemparams_t));
-  _Atomic int tasks_done[sz];
-  memset(tasks_done, 0, sizeof(_Atomic int)*sz);
-#endif
-  for(int j=0; j<(impp.n_segments/8+((impp.n_segments&7)==0 ? 0 : 1)); j++) {
-#ifdef TASK_MANAGER_CODING
-  assert(nbJobs < sz);
-  encoder_implemparams_t* perJobImpp = &arr[nbJobs];
-#else
-    notifiedFIFO_elt_t *req=newNotifiedFIFO_elt(sizeof(impp), j, &nf, ldpc8blocks);
-    encoder_implemparams_t* perJobImpp=(encoder_implemparams_t*)NotifiedFifoData(req);
-#endif
-    *perJobImpp=impp;
-    perJobImpp->macro_num=j;
-#ifdef TASK_MANAGER_CODING
-    perJobImpp->task_done = &tasks_done[nbJobs];
-    task_t t = {.args = perJobImpp, .func = ldpc8blocks};
-    if(atomic_load(perJobImpp->task_done) != 0)
-      printf("Value %d \n", *perJobImpp->task_done );
-    assert(atomic_load(perJobImpp->task_done) == 0);
-    async_task_manager(&gNB->man, t);
-#else 
-    pushTpool(&gNB->threadPool, req);
-#endif
-    nbJobs++;
   }
-
-#ifdef TASK_MANAGER_CODING
-  trigger_all_task_manager(&gNB->man);
-  wait_spin_all_atomics_one(nbJobs, tasks_done); 
-#else
-  while(nbJobs) {
-    notifiedFIFO_elt_t *req=pullTpool(&nf, &gNB->threadPool);
-    if (req == NULL)
-      break; // Tpool has been stopped
-    delNotifiedFIFO_elt(req);
-    nbJobs--;
->>>>>>> 7325909f66 (RFSim working. Decoding working)
-  }
-#endif
-
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_gNB_DLSCH_ENCODING, VCD_FUNCTION_OUT);
   return 0;
 }

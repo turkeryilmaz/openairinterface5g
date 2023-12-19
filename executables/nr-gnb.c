@@ -32,6 +32,7 @@
 
 #define _GNU_SOURCE
 #include <pthread.h>
+#include <ctype.h>
 
 #undef MALLOC //there are two conflicting definitions, so we better make sure we don't use it at all
 
@@ -289,14 +290,14 @@ void rx_func(void *param)
       syncMsg->gNB = gNB;
       syncMsg->timestamp_tx = info->timestamp_tx;
       res->key = slot_tx;
-#ifdef TASK_MANAGER
+//#ifdef TASK_MANAGER
       assert(res->processingFunc != NULL);
       res->processingFunc(NotifiedFifoData(res));
       if (res->reponseFifo)
         pushNotifiedFIFO(res->reponseFifo, res);
-#else
-      pushTpool(&gNB->threadPool, res);
-#endif
+//#else
+ //     pushTpool(&gNB->threadPool, res);
+//#endif
     }
   } else if (get_softmodem_params()->continuous_tx) {
     notifiedFIFO_elt_t *res = pullNotifiedFIFO(&gNB->L1_tx_free);
@@ -477,6 +478,37 @@ void *tx_reorder_thread(void* param) {
   return(NULL);
 }
 
+static
+int num_threads(char* params)
+{
+  char *saveptr, * curptr;
+  char *parms_cpy=strdup(params);
+  int nbThreads=0;
+  curptr=strtok_r(parms_cpy,",",&saveptr);
+  while ( curptr!=NULL ) {
+    int c=toupper(curptr[0]);
+
+    switch (c) {
+      case 'N':
+        //pool->activated=false;
+        break;
+
+      default:
+        printf("create a thread for core %d\n", atoi(curptr));
+        int core_id = atoi(curptr);
+        //Configure the thread scheduler policy for Linux
+        // set the thread name for debugging
+        nbThreads++;
+    }
+
+    curptr=strtok_r(NULL,",",&saveptr);
+  }
+  free(parms_cpy);
+  return nbThreads;
+} 
+
+
+
 void init_gNB_Tpool(int inst) {
   PHY_VARS_gNB *gNB;
   gNB = RC.gNB[inst];
@@ -486,7 +518,8 @@ void init_gNB_Tpool(int inst) {
   assert(log_cores > 0);
   printf("[MIR]: log cores %d \n", log_cores);
   // Assuming: 2 x Physical cores = Logical cores
-  init_task_manager(&gNB->man, log_cores/2);
+  int num_threads = num_threads(get_softmodem_params()->threadPoolConfig);
+  init_task_manager(&gNB->man, num_threads); //log_cores/2);
 #endif
   // PUSCH symbols per thread need to be calculated by how many threads we have
   gNB->num_pusch_symbols_per_thread = 1;
