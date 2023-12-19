@@ -2425,6 +2425,7 @@ void *rrc_nrue_task(void *args_p)
             }
             NR_UE_rrc_inst[0].SInfo[0].sib1 = NULL;
             // mac->scc_SIB = NULL; AGP: removed in W32 to compile
+            mac->phy_config_request_sent = false;
             mac->state = UE_NOT_SYNC;
             mac->ra.ra_state = RA_UE_IDLE;
             memset(&mac->ssb_list, 0, sizeof(ssb_list_info_t));
@@ -2504,7 +2505,7 @@ void *rrc_nrue_task(void *args_p)
         LOG_E(NR_RRC, "[UE %d] Received unexpected message %s\n", ue_mod_id, ITTI_MSG_NAME (msg_p));
         break;
     }
-    LOG_D(NR_RRC, "[UE %d] RRC Status %d\n", ue_mod_id, NR_UE_rrc_inst[ue_mod_id].nrRrcState);
+    LOG_I(NR_RRC, "[UE %d] RRC Status %d\n", ue_mod_id, NR_UE_rrc_inst[0].nrRrcState); //force to ue[0].nrRrCState to avoid mem access issue.
     result = itti_free(ITTI_MSG_ORIGIN_ID(msg_p), msg_p);
     AssertFatal (result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
     msg_p = NULL;

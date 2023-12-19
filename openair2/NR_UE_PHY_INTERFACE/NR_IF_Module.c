@@ -523,6 +523,8 @@ static void copy_dl_tti_req_to_dl_info(nr_downlink_indication_t *dl_info, nfapi_
                     nfapi_nr_dl_dci_pdu_t *dci_pdu_list = &pdu_list->pdcch_pdu.pdcch_pdu_rel15.dci_pdu[j];
                     if (!is_my_dci(mac, dci_pdu_list))
                     {
+                         LOG_D(NR_MAC,"pdu with RNTI %x filtered out, mac state %d mac->phy_config_request_sent %d mac->ra.ra_state %d\n", 
+                         dci_pdu_list->RNTI,mac->state,mac->phy_config_request_sent,mac->ra.ra_state);
                         continue;
                     }
                     fill_dl_info_with_pdcch(dl_info->dci_ind, dci_pdu_list, pdu_idx);
