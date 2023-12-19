@@ -525,8 +525,8 @@ int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
     offset += ((harq_process->K >> 3) - (harq_process->F >> 3) - ((harq_process->C > 1) ? 3 : 0));
   }
 #ifdef TASK_MANAGER
-  stop_spining_task_manager(&phy_vars_gNB->man);
-  trigger_all_task_manager(&phy_vars_gNB->man);
+  //stop_spining_task_manager(&phy_vars_gNB->man);
+  //trigger_all_task_manager(&phy_vars_gNB->man);
 #endif
 
   return harq_process->C;
