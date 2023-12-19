@@ -504,6 +504,16 @@ int num_threads(char* params)
     curptr=strtok_r(NULL,",",&saveptr);
   }
   free(parms_cpy);
+  printf("Num threads %d \n", nbThreads);
+  printf("Num threads %d \n", nbThreads);
+  printf("Num threads %d \n", nbThreads);
+  printf("Num threads %d \n", nbThreads);
+  printf("Num threads %d \n", nbThreads);
+  printf("Num threads %d \n", nbThreads);
+  printf("Num threads %d \n", nbThreads);
+  printf("Num threads %d \n", nbThreads);
+  printf("Num threads %d \n", nbThreads);
+  printf("Num threads %d \n", nbThreads);
   return nbThreads;
 } 
 
@@ -514,12 +524,12 @@ void init_gNB_Tpool(int inst) {
   gNB = RC.gNB[inst];
   gNB_L1_proc_t *proc = &gNB->proc;
 #ifdef TASK_MANAGER
-  int const log_cores = get_nprocs_conf();
-  assert(log_cores > 0);
-  printf("[MIR]: log cores %d \n", log_cores);
+  //int const log_cores = get_nprocs_conf();
+  //assert(log_cores > 0);
+  //printf("[MIR]: log cores %d \n", log_cores);
   // Assuming: 2 x Physical cores = Logical cores
-  int num_threads = num_threads(get_softmodem_params()->threadPoolConfig);
-  init_task_manager(&gNB->man, num_threads); //log_cores/2);
+  int n_threads = num_threads(get_softmodem_params()->threadPoolConfig);
+  init_task_manager(&gNB->man, n_threads); //log_cores/2);
 #endif
   // PUSCH symbols per thread need to be calculated by how many threads we have
   gNB->num_pusch_symbols_per_thread = 1;
