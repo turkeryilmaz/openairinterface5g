@@ -277,8 +277,8 @@ static void ldpc8blocks(void *p)
   }
 
 #ifdef TASK_MANAGER_CODING
-  assert(atomic_load(impp->task_done) == 0);
-  atomic_store_explicit(impp->task_done, 1, memory_order_seq_cst);
+  //assert(atomic_load(impp->task_done) == 0);
+  atomic_store_explicit(&impp->task_done->completed, 1, memory_order_release);
 #endif
 }
 
@@ -424,14 +424,39 @@ int nr_dlsch_encoding(PHY_VARS_gNB *gNB,
     notifiedFIFO_t nf;
     initNotifiedFIFO(&nf);
     int nbJobs = 0;
+
+#ifdef TASK_MANAGER_CODING
+      size_t const sz = (impp.n_segments/8+((impp.n_segments&7)==0 ? 0 : 1));
+      encoder_implemparams_t arr[sz];
+      task_status_t task_status[sz];
+      memset(task_status, 0, sz * sizeof(task_status_t));
+ #endif
     for (int j = 0; j < (impp.n_segments / 8 + ((impp.n_segments & 7) == 0 ? 0 : 1)); j++) {
+#ifdef TASK_MANAGER_CODING
+      assert(nbJobs < sz);
+      encoder_implemparams_t* perJobImpp = &arr[nbJobs];
+#else
       notifiedFIFO_elt_t *req = newNotifiedFIFO_elt(sizeof(impp), j, &nf, ldpc8blocks);
       encoder_implemparams_t *perJobImpp = (encoder_implemparams_t *)NotifiedFifoData(req);
+#endif
       *perJobImpp = impp;
       perJobImpp->macro_num = j;
+#ifdef TASK_MANAGER_CODING
+        perJobImpp->task_done = &task_status[nbJobs];
+        task_t t = {.args = perJobImpp, .func = ldpc8blocks};
+        //assert(atomic_load(&perJobImpp->task_status->completed) == 0); 
+        async_task_manager(&gNB->man, t); 
+#else
       pushTpool(&gNB->threadPool, req);
+#endif
+
       nbJobs++;
     }
+#ifdef TASK_MANAGER_CODING
+      if(nbJobs > 0) {
+        wait_task_status_completed(nbJobs, task_status);
+      }
+#else
     while (nbJobs) {
       notifiedFIFO_elt_t *req = pullTpool(&nf, &gNB->threadPool);
       if (req == NULL)
@@ -439,6 +464,7 @@ int nr_dlsch_encoding(PHY_VARS_gNB *gNB,
       delNotifiedFIFO_elt(req);
       nbJobs--;
     }
+#endif
   }
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_gNB_DLSCH_ENCODING, VCD_FUNCTION_OUT);
   return 0;

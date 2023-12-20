@@ -1191,9 +1191,6 @@ void *ru_thread( void *param ) {
   pthread_mutex_unlock(&RC.ru_mutex);
   wait_sync("ru_thread");
 
-  processingData_L1_t *syncMsg;
-  notifiedFIFO_elt_t *res;
-
   if(!emulate_rf) {
     // Start RF device if any
     if (ru->start_rf) {
@@ -1341,15 +1338,18 @@ void *ru_thread( void *param ) {
       }
     } // end if (slot_type == NR_UPLINK_SLOT || slot_type == NR_MIXED_SLOT) {
 
+
+    notifiedFIFO_elt_t *res = NULL;
     // At this point, all information for subframe has been received on FH interface
     if (!get_softmodem_params()->reorder_thread_disable) {
-      //res = pullTpool(&gNB->resp_L1, &gNB->threadPool);
       res = pullNotifiedFIFO(&gNB->resp_L1);
       if (res == NULL)
         break; // Tpool has been stopped
     } else {
       res = newNotifiedFIFO_elt(sizeof(processingData_L1_t), 0, &gNB->resp_L1, NULL);
     }
+
+    processingData_L1_t *syncMsg = NULL;
 
     syncMsg = (processingData_L1_t *)NotifiedFifoData(res);
     syncMsg->gNB = gNB;
@@ -1361,14 +1361,11 @@ void *ru_thread( void *param ) {
     res->key = proc->tti_rx;
 #ifdef TASK_MANAGER // No TASK_MANAGER_RU
     if (!get_softmodem_params()->reorder_thread_disable) {
-      assert(res->processingFunc != NULL);
+      assert(res->processingFunc == rx_func);
       assert(res->reponseFifo != NULL);
-      //assert(gNB->threadPool.incomingFifo == gNB->resp_L1);
-
-      pushNotifiedFIFO(&gNB->threadPool.incomingFifo, res);
-
-      //res->processingFunc(NotifiedFifoData(res));
-      //pushNotifiedFIFO(res->reponseFifo, res);
+      syncMsg->elm = res; 
+      task_t t = {.func = rx_func, .args = syncMsg};
+      async_task_manager(&gNB->man, t);
     } 
 #else
     if (!get_softmodem_params()->reorder_thread_disable) 

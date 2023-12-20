@@ -728,7 +728,6 @@ typedef struct PHY_VARS_gNB_s {
   notifiedFIFO_t L1_tx_filled;
   notifiedFIFO_t L1_tx_out;
   notifiedFIFO_t resp_RU_tx;
-  tpool_t threadPool;
   int nbSymb;
   int num_pusch_symbols_per_thread;
   pthread_t L1_rx_thread;
@@ -739,8 +738,14 @@ typedef struct PHY_VARS_gNB_s {
   void *scopeData;
   /// structure for analyzing high-level RT measurements
   rt_L1_profiling_t rt_L1_profiling; 
-#ifdef TASK_MANAGER
+
+#if defined(TASK_MANAGER) && defined(TASK_MANAGER_CODING) && defined(TASK_MANAGER_DEMODULATION) && defined(TASK_MANAGER_RU) && defined(TASK_MANAGER_SIM)
   task_manager_t man;
+#elif !defined(TASK_MANAGER) ||  !defined(TASK_MANAGER_CODING) || !defined(TASK_MANAGER_DEMODULATION) || !defined(TASK_MANAGER_RU) || !defined(TASK_MANAGER_SIM) 
+  task_manager_t man;
+  tpool_t threadPool;
+#else
+  tpool_t threadPool;
 #endif
 } PHY_VARS_gNB;
 
@@ -818,6 +823,9 @@ typedef struct processingData_L1 {
   int slot_tx;
   openair0_timestamp timestamp_tx;
   PHY_VARS_gNB *gNB;
+#ifdef TASK_MANAGER_RU
+  notifiedFIFO_elt_t* elm; 
+#endif
 } processingData_L1_t;
 
 typedef enum {
