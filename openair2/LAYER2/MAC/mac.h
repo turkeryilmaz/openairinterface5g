@@ -124,8 +124,8 @@
 /*!\brief logical channl group ID 3 */
 #define LCGID3 3
 /*!\brief Maximum number of logical chanels */
-#define MAX_NUM_LCID 11
-/*!\brief Maximum number od control elemenets */
+#define MAX_NUM_LCID 32
+/*!\brief Maximum number of control elemenets */
 #define MAX_NUM_CE 5
 /*!\brief Maximum number of random access process */
 #define NB_RA_PROC_MAX 4

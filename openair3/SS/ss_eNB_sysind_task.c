@@ -122,7 +122,13 @@ static void ss_send_sysind_data(ss_system_ind_t *p_ind,int cell_index)
            ind.Indication.v.RachPreamble.RepetitionsPerPreambleAttempt.d = true;
            ind.Indication.v.RachPreamble.RepetitionsPerPreambleAttempt.v = p_ind->repetitionsPerPreambleAttempt;
         }
-        if(SysInd_Type_UL_HARQ == p_ind->sysind_type)
+        if(SysInd_Type_SchedReq == p_ind->sysind_type)
+        {
+          LOG_A(ENB_SS_SYSIND, "[SS_SYSIND] SYSTEM_IND with UL SR\n");
+          ind.Indication.d = SystemIndication_Type_SchedReq;
+          ind.Indication.v.SchedReq = true;
+	}
+	if(SysInd_Type_UL_HARQ == p_ind->sysind_type)
         {
           LOG_A(ENB_SS_SYSIND, "[SS_SYSIND] SYSTEM_IND with UL HARQ %d\n", p_ind->UL_Harq);
           ind.Indication.d = SystemIndication_Type_UL_HARQ;

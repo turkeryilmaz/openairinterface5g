@@ -586,6 +586,14 @@ mac_UE_get_rrc_status(
 );
 
 void
+rrc_mac_data_req(
+  const rnti_t         rnti,
+  const uint8_t        lc_id,
+  const sdu_size_t     sdu_buffer_size,
+  unsigned char *const sdu_buffer_p
+);
+
+void
 rrc_eNB_generate_UECapabilityEnquiry(
   const protocol_ctxt_t *const ctxt_pP,
   rrc_eNB_ue_context_t          *const ue_context_pP

@@ -1914,6 +1914,19 @@ static void sys_handle_l1macind_ctrl(struct SYSTEM_CTRL_REQ *req)
         SS_L1MACIND_CTRL(message_p).HarqError_Ctrl = IndCtrlMode_DISABLE;
       }
     }
+    SS_L1MACIND_CTRL(message_p).SchedReq_Ctrl = IndCtrlMode_NOT_PRESENT;
+    if(L1MacInd_Ctrl->SchedReq.d)
+    {
+      LOG_A(ENB_SS_SYS_TASK, "l1macind ctrl SchedReq type %d received from TTCN\n", L1MacInd_Ctrl->SchedReq.v);
+      if (IndicationAndControlMode_enable == L1MacInd_Ctrl->SchedReq.v)
+      {
+        SS_L1MACIND_CTRL(message_p).SchedReq_Ctrl = IndCtrlMode_ENABLE;
+      }
+      else if (IndicationAndControlMode_disable == L1MacInd_Ctrl->SchedReq.v)
+      {
+        SS_L1MACIND_CTRL(message_p).SchedReq_Ctrl = IndCtrlMode_DISABLE;
+      }
+    }
 
     vt_add_sf(&req->Common.TimingInfo, 4);
     if (!vt_timer_push_msg(&req->Common.TimingInfo, TASK_MAC_ENB,0, message_p))

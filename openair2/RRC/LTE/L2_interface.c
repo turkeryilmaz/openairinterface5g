@@ -336,6 +336,24 @@ mac_rrc_data_req(
 
 
 //------------------------------------------------------------------------------
+void
+rrc_mac_data_req(
+  const rnti_t         rnti,
+  const uint8_t        lc_id,
+  const sdu_size_t     sdu_buffer_size,
+  unsigned char *const sdu_buffer_p
+)
+//------------------------------------------------------------------------------
+{
+      LOG_D(RRC,"Received data request for RNTI: %d, LCID: %d, Size: %d \n", rnti, lc_id, sdu_buffer_size);
+      RC.macTestPdu_Buffer.rnti = rnti;
+      RC.macTestPdu_Buffer.lc_id = lc_id;
+      RC.macTestPdu_Buffer.sdu_buffer_size = sdu_buffer_size;
+      RC.macTestPdu_Buffer.sdu_buffer_p = sdu_buffer_p;
+      RC.macTestPdu_Buffer.isTestMacPduValid = true;
+}
+
+//------------------------------------------------------------------------------
 int8_t
 mac_rrc_data_ind(
   const module_id_t     module_idP,

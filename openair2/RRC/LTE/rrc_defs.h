@@ -814,6 +814,15 @@ typedef struct eNB_RRC_INST_s {
 
 } eNB_RRC_INST;
 
+typedef struct ss_DRB_MacTestPdu_s{
+  rnti_t         rnti;
+  uint8_t        lc_id;
+  sdu_size_t     sdu_buffer_size;
+  unsigned char  *sdu_buffer_p;
+  bool           isLoopBackData;     //True if UL is expected in test mode 
+  bool           isTestMacPduValid;  //True if MAC PDU is received from TTCN
+}ss_DRB_MacTestPdu_t;
+
 #define MAX_UE_CAPABILITY_SIZE 255
 typedef struct OAI_UECapability_s {
   uint8_t sdu[MAX_UE_CAPABILITY_SIZE];

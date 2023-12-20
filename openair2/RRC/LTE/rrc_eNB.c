@@ -9879,9 +9879,16 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
                                       SS_DRB_PDU_REQ(msg_p).rnti,
                                       msg_p->ittiMsgHeader.lte_time.frame,
                                       msg_p->ittiMsgHeader.lte_time.slot);
-        lchannelType = Bearer_DCCH_e;
-        bcchTransportType = dlsch_TRANSPORT;
-        pdcp_data_req(&ctxt, SRB_FLAG_NO, SS_DRB_PDU_REQ(msg_p).drb_id, 0, 0, SS_DRB_PDU_REQ(msg_p).sdu_size, SS_DRB_PDU_REQ(msg_p).sdu, PDCP_TRANSMISSION_MODE_DATA, NULL, NULL);
+        if(SS_DRB_PDU_REQ(msg_p).data_type == DRB_PdcpSdu)
+        {
+           lchannelType = Bearer_DCCH_e;
+           bcchTransportType = dlsch_TRANSPORT;
+           pdcp_data_req(&ctxt, SRB_FLAG_NO, SS_DRB_PDU_REQ(msg_p).drb_id, 0, 0, SS_DRB_PDU_REQ(msg_p).sdu_size, SS_DRB_PDU_REQ(msg_p).sdu, PDCP_TRANSMISSION_MODE_DATA, NULL, NULL);
+        }
+        if(SS_DRB_PDU_REQ(msg_p).data_type == DRB_MacPdu)
+        {
+	    rrc_mac_data_req(SS_DRB_PDU_REQ(msg_p).rnti, SS_DRB_PDU_REQ(msg_p).drb_id, SS_DRB_PDU_REQ(msg_p).sdu_size, SS_DRB_PDU_REQ(msg_p).sdu);
+        }
         break;
 
         case RRC_AS_SECURITY_CONFIG_REQ:

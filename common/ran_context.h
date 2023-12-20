@@ -105,6 +105,8 @@ typedef struct {
   int *nb_mac_CC;
   /// Number of component carriers per instance in this node
   int *nb_nr_mac_CC;
+  /// MAC test PDU container received from TTCN (By-passing RLC/PDCP)
+  ss_DRB_MacTestPdu_t macTestPdu_Buffer;
   /// Number of L1 instances in this node
   int nb_L1_inst;
   /// Number of NB_IoT L1 instances in this node

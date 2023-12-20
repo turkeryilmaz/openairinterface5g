@@ -5034,6 +5034,18 @@ SR_indication(module_id_t mod_idP,
       UE_info->UE_template[cc_idP][UE_id].ul_active = true;
       VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_SR_INDICATION, 1);
       VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_SR_INDICATION, 0);
+      if(IndCtrlMode_ENABLE == RC.ss.l1macind[cc_idP].SchedReq_Ctrl)
+      {
+          // Populate and send the SS<_SYSTEM_IND to System Simulator
+          MessageDef *m = itti_alloc_new_message(TASK_MAC_ENB, 0, SS_SYSTEM_IND);
+          SS_SYSTEM_IND(m).physCellId = RC.mac[mod_idP]->common_channels[cc_idP].physCellId;
+          SS_SYSTEM_IND(m).sysind_type = SysInd_Type_SchedReq;
+          SS_SYSTEM_IND(m).sfn = frameP;
+          SS_SYSTEM_IND(m).sf = subframeP;
+          itti_send_msg_to_task(TASK_SS_SYSIND, 0, m);
+          LOG_A(MAC,"MAC Sending SS_SYSTEM_IND with Type %d to System Simulator frame %d Subframe %d\n",
+           SS_SYSTEM_IND(m).sysind_type, frameP,subframeP);
+      }
     }
   } else {
     LOG_D(MAC, "[eNB %d][SR %x] Frame %d subframeP %d Signaling SR for UE %d (unknown UE_id) on CC_id %d\n",

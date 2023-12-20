@@ -174,6 +174,31 @@ do {                                            \
     INT8_TO_BUFFER(x, (aSN)->buf);              \
 } while(0)
 
+
+#define BIT_OCTET_TO_UINT8(dST, sRC, lEN)             \
+do {                                                  \
+    uint8_t len = (lEN);                              \
+    while (len-- > 0) {                               \
+      if(sRC[len]){                                   \
+        dST |= (1 << (lEN - len - 1));                \
+      }                                               \
+    }                                                 \
+} while(0)
+
+
+#define UINT8_TO_BIT_OCTET(dST, sRC, lEN)             \
+do {                                                  \
+    uint8_t len = (lEN);                              \
+    while (len-- > 0) {                               \
+      if(sRC & (1 << len)){                           \
+        dST[lEN - len - 1] = 0x01;                    \
+      }else{                                          \
+        dST[lEN - len - 1] = 0x00;                    \
+      }                                               \
+    }                                                 \
+} while(0)
+
+
 #define MME_CODE_TO_OCTET_STRING INT8_TO_OCTET_STRING
 #define M_TMSI_TO_OCTET_STRING   INT32_TO_OCTET_STRING
 #define MME_GID_TO_OCTET_STRING  INT16_TO_OCTET_STRING

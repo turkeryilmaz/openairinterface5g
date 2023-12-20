@@ -296,6 +296,7 @@ void *mac_enb_task(void *arg)
         int CC_id = received_msg->ittiMsg.ss_l1macind_ctrl.cell_index;
         RC.ss.l1macind[CC_id].UL_HARQ_Ctrl = received_msg->ittiMsg.ss_l1macind_ctrl.UL_HARQ_Ctrl;
         RC.ss.l1macind[CC_id].HarqError_Ctrl = received_msg->ittiMsg.ss_l1macind_ctrl.HarqError_Ctrl;
+        RC.ss.l1macind[CC_id].SchedReq_Ctrl = received_msg->ittiMsg.ss_l1macind_ctrl.SchedReq_Ctrl;
         if (received_msg->ittiMsg.ss_l1macind_ctrl.bitmask & PDCCH_ORDER_PRESENT)
         {
           RC.rrc[0]->configuration.radioresourceconfig[cell_index].prach_preambleIndex = received_msg->ittiMsg.ss_l1macind_ctrl.pdcchOrder.preambleIndex;
