@@ -1359,12 +1359,16 @@ void *ru_thread( void *param ) {
     syncMsg->slot_tx = proc->tti_tx;
     syncMsg->timestamp_tx = proc->timestamp_tx;
     res->key = proc->tti_rx;
-#ifdef TASK_MANAGER_RU
+#ifdef TASK_MANAGER // No TASK_MANAGER_RU
     if (!get_softmodem_params()->reorder_thread_disable) {
       assert(res->processingFunc != NULL);
       assert(res->reponseFifo != NULL);
-      res->processingFunc(NotifiedFifoData(res));
-      pushNotifiedFIFO(res->reponseFifo, res);
+      //assert(gNB->threadPool.incomingFifo == gNB->resp_L1);
+
+      pushNotifiedFIFO(&gNB->threadPool.incomingFifo, res);
+
+      //res->processingFunc(NotifiedFifoData(res));
+      //pushNotifiedFIFO(res->reponseFifo, res);
     } 
 #else
     if (!get_softmodem_params()->reorder_thread_disable) 
@@ -1876,10 +1880,7 @@ void init_NR_RU(configmodule_interface_t *cfg, char *rf_config_file)
       }
       LOG_I(PHY,"RU thread-pool core string %s\n",pool);
 #ifdef TASK_MANAGER_RU
-      int const log_cores = get_nprocs_conf();
-      assert(log_cores > 0);
-      // Assuming: Physical cores = Logical cores / 2
-      init_task_manager(&ru->man, log_cores/2); 
+      init_task_manager(&ru->man, ru->num_tpcores); 
 #else
       ru->threadPool = (tpool_t*)malloc(sizeof(tpool_t));
       initTpool(pool, ru->threadPool, cpumeas(CPUMEAS_GETSTATE));
