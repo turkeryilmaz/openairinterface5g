@@ -259,7 +259,7 @@ static void nr_processULSegment(void *arg)
 
 #ifdef TASK_MANAGER
   assert(rdata->tasks_remaining != NULL);
-  atomic_store_explicit(&rdata->tasks_remaining->completed, 1, memory_order_seq_cst); //  memory_order order );
+  atomic_store_explicit(&rdata->tasks_remaining->completed, 1, memory_order_release); //  memory_order order );
   // atomic_fetch_sub_explicit(rdata->tasks_remaining, 1, memory_order_seq_cst);
 #endif
 }
@@ -482,7 +482,7 @@ int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
     int E = nr_get_E(G, harq_process->C, Qm, n_layers, r);
 #ifdef TASK_MANAGER
      ldpcDecode_t* rdata = &((ldpcDecode_t*)t_info->buf)[t_info->len]; 
-     assert(t_info->len < 64);
+     assert(t_info->len < 16);
      rdata->tasks_remaining = &t_info->tasks_remaining[t_info->len];
      t_info->len += 1;
 #else

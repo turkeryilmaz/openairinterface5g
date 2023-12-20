@@ -529,7 +529,7 @@ void init_gNB_Tpool(int inst) {
   //printf("[MIR]: log cores %d \n", log_cores);
   // Assuming: 2 x Physical cores = Logical cores
   int n_threads = num_threads(get_softmodem_params()->threadPoolConfig);
-  init_task_manager(&gNB->man, n_threads); //log_cores/2);
+  init_task_manager(&gNB->man, n_threads ); //log_cores/2);
 #endif
   // PUSCH symbols per thread need to be calculated by how many threads we have
   gNB->num_pusch_symbols_per_thread = 1;

@@ -882,8 +882,8 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
   }
 
 #ifdef TASK_MANAGER
-  ldpcDecode_t arr[64]; 
-  task_status_t tasks_remaining[64] = {0};
+  ldpcDecode_t arr[16]; 
+  task_status_t tasks_remaining[16] = {0};
   thread_info_tm_t t_info = {.buf = (uint8_t*)arr, .len = 0, .tasks_remaining = tasks_remaining};
 #endif
 

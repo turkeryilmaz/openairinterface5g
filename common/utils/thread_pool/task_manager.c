@@ -663,18 +663,18 @@ void wait_task_status_completed(size_t len, task_status_t* arr)
 
   // We are believing Fedor
   const struct timespec ns = {0,1};
-  int i = 0;
+  uint64_t i = 0;
   for(int j = len -1; j != -1 ; i++){
     for(; j != -1; --j){
       int const task_completed = 1;
       if(atomic_load_explicit(&arr[j].completed, memory_order_acquire) != task_completed) //  memory_order_acquire
         break;
     }
-
-    if(i == 16){
-      i = 0;
+    if(i % 8 == 0){
       nanosleep(&ns, NULL);
     }
+    //sched_yield();
+   // pause_or_yield(); 
   }
 
 }
