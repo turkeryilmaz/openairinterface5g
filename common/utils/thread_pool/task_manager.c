@@ -670,7 +670,7 @@ void wait_task_status_completed(size_t len, task_status_t* arr)
       if(atomic_load_explicit(&arr[j].completed, memory_order_acquire) != task_completed) //  memory_order_acquire
         break;
     }
-    if(i % 8 == 0){
+    if(i % 16 == 0){
       nanosleep(&ns, NULL);
     }
     //sched_yield();
