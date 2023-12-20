@@ -19,6 +19,7 @@
  *      contact@openairinterface.org
  */
 
+#include <ctype.h>
 #include <fcntl.h>
 #include <math.h>
 #include <string.h>
@@ -258,6 +259,34 @@ void validate_input_pmi(nr_pdsch_AntennaPorts_t pdsch_AntennaPorts, int nrOfLaye
     default :
       AssertFatal(false, "Precoding with more than 2 nrOfLayers not yet supported\n");
   }
+}
+
+
+
+static
+int num_threads(char* parms_cpy)
+{
+  char *saveptr, * curptr;
+  int nbThreads=0;
+  curptr=strtok_r(parms_cpy,",",&saveptr);
+  while ( curptr!=NULL ) {
+    int c=toupper(curptr[0]);
+
+    switch (c) {
+
+      case 'N':
+        //pool->activated=false;
+        break;
+
+      default:
+	int const core_id = atoi(curptr);
+ 	printf("create a thread for core %d\n", core_id);
+        nbThreads++;
+    }
+
+    curptr=strtok_r(NULL,",",&saveptr);
+  }
+  return nbThreads; 
 }
 
 
@@ -916,10 +945,8 @@ int main(int argc, char **argv)
   int n_errs = 0;
 
 #ifdef TASK_MANAGER_SIM
-  int const log_cores = get_nprocs_conf();
-  assert(log_cores > 0);
-  // Assuming: Physical cores = Logical cores / 2
-  init_task_manager(&gNB->man, log_cores/2);
+  int const n_threads = num_threads(gNBthreads); 
+  init_task_manager(&gNB->man, n_threads );
 #else
   initNamedTpool(gNBthreads, &gNB->threadPool, true, "gNB-tpool");
 #endif

@@ -497,9 +497,8 @@ static
 int num_threads(char* params)
 {
   char *saveptr, * curptr;
-  char *parms_cpy=strdup(params);
   int nbThreads=0;
-  curptr=strtok_r(parms_cpy,",",&saveptr);
+  curptr=strtok_r( params,",",&saveptr);
   while ( curptr!=NULL ) {
     int c=toupper(curptr[0]);
 
@@ -509,30 +508,15 @@ int num_threads(char* params)
         break;
 
       default:
-        printf("create a thread for core %d\n", atoi(curptr));
         int core_id = atoi(curptr);
-        //Configure the thread scheduler policy for Linux
-        // set the thread name for debugging
+        printf("create a thread for core %d\n", core_id);
         nbThreads++;
     }
 
     curptr=strtok_r(NULL,",",&saveptr);
   }
-  free(parms_cpy);
-  printf("Num threads %d \n", nbThreads);
-  printf("Num threads %d \n", nbThreads);
-  printf("Num threads %d \n", nbThreads);
-  printf("Num threads %d \n", nbThreads);
-  printf("Num threads %d \n", nbThreads);
-  printf("Num threads %d \n", nbThreads);
-  printf("Num threads %d \n", nbThreads);
-  printf("Num threads %d \n", nbThreads);
-  printf("Num threads %d \n", nbThreads);
-  printf("Num threads %d \n", nbThreads);
   return nbThreads;
 } 
-
-
 
 void init_gNB_Tpool(int inst) {
   PHY_VARS_gNB *gNB;
