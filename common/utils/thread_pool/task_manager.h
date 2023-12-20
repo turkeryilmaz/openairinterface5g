@@ -7,7 +7,7 @@
 #define TASK_MANAGER_CODING
 #define TASK_MANAGER_RU
 
-//#define TASK_MANAGER_UE
+#define TASK_MANAGER_UE
 //#define TASK_MANAGER_UE_DECODING
 
 #define TASK_MANAGER_SIM
@@ -23,17 +23,6 @@
   #define pause_or_yield  __builtin_ia32_pause
 #elif __aarch64__
   #define pause_or_yield() asm volatile("yield" ::: "memory")
-#else
-    static_assert(0!=0, "Unknown CPU architecture");
-#endif
-
-#if defined (__i386__) || defined(__x86_64__)
-  #define LEVEL1_DCACHE_LINESIZE 64
-#elif __aarch64__
-  // This is not true for ARM in the general case
-  // in linux, you can obtain the size at runtime using sysconf (_SC_LEVEL1_DCACHE_LINESIZE)
-  // in c++ using std::hardware_destructive_interference_size
-  #define LEVEL1_DCACHE_LINESIZE 64
 #else
     static_assert(0!=0, "Unknown CPU architecture");
 #endif
