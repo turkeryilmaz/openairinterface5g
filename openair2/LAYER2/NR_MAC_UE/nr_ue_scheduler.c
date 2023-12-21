@@ -3571,10 +3571,10 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind) {
   }
   if (sl_ind->slot_type==SIDELINK_SLOT_TYPE_TX || sl_ind->phy_data==NULL) rx_allowed=false;
   if (((get_nrUE_params()->sync_ref && sl_ind->slot_rx > 9) || 
-      (!get_nrUE_params()->sync_ref && sl_ind->slot_rx < 10)) && rx_allowed) {
+      (!get_nrUE_params()->sync_ref && sl_ind->slot_rx < 10)) && rx_allowed && !is_psbch_slot) {
       LOG_D(NR_MAC,"Scheduling PSCCH RX processing slot %d, sync_ref %d\n",slot,get_nrUE_params()->sync_ref);
       nr_ue_sl_pscch_rx_scheduler(sl_ind, mac->sl_bwp, mac->sl_rx_res_pool,&rx_config, &tti_action);
-    }
+  }
   if (!is_psbch_slot && tx_allowed) {
     //Check if reserved slot or a sidelink resource configured in Rx/Tx resource pool timeresource bitmap
     nr_ue_sl_pssch_scheduler(mac,sl_ind, mac->sl_bwp, mac->sl_tx_res_pool,&tx_config, &tti_action);
