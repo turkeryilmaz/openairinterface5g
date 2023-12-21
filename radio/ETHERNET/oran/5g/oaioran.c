@@ -455,7 +455,7 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot){
          if (1 && local_dst != NULL )
           {
             int energy_level = dB_fixed(signal_energy((int32_t*)local_dst,(pos_len+neg_len)));
-            if (energy_level>16) 
+            if (energy_level>25) 
             {
             printf("PUSCH tti %d slot %d last_slot %d symb %d energy lvel %d\n", tti, *slot, last_slot, sym_idx, energy_level);
             /*int off = (((pos_len+neg_len)&1) == 1)? 4:0;
