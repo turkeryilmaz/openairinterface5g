@@ -451,7 +451,7 @@ static int num_threads(char* params)
 				//pool->activated=false;
 				break;
 
-			default:
+			default: ;
 				int core_id = atoi(curptr);
 				printf("create a thread for core %d\n", core_id);
 				// set the thread name for debugging

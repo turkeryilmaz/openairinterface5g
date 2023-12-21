@@ -503,14 +503,16 @@ int num_threads(char* params)
     int c=toupper(curptr[0]);
 
     switch (c) {
-      case 'N':
+      case 'N': {
         //pool->activated=false;
         break;
+		}
 
-      default:
+      default:{ 
         int core_id = atoi(curptr);
         printf("create a thread for core %d\n", core_id);
         nbThreads++;
+	      }
     }
 
     curptr=strtok_r(NULL,",",&saveptr);

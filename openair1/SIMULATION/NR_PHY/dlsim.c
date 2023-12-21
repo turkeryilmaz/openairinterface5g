@@ -278,7 +278,7 @@ int num_threads(char* parms_cpy)
         //pool->activated=false;
         break;
 
-      default:
+      default: ;
 	int const core_id = atoi(curptr);
  	printf("create a thread for core %d\n", core_id);
         nbThreads++;
