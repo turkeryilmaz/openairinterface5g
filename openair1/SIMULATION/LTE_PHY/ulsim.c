@@ -363,11 +363,6 @@ int main(int argc, char **argv) {
   static double maxDoppler = 0.0;
   static int srs_flag = 0;
   static int N_RB_DL=25,osf=1;
- 
-#ifdef TASK_MANAGER_LTE
-  task_manager_t man = {0};
-#endif
-
   //uint8_t cyclic_shift = 0;
   static uint8_t beta_ACK=0,beta_RI=0,beta_CQI=2,cqi_size=11;
   static uint8_t tdd_config=3,frame_type=FDD;
@@ -794,15 +789,12 @@ int main(int argc, char **argv) {
   proc_rxtx_ue->subframe_rx = (proc_rxtx->subframe_tx+6)%10;
  
 #ifdef TASK_MANAGER_LTE
-  int const log_cores = get_nprocs_conf();
-  assert(log_cores > 0);
-  init_task_manager(&man, log_cores);
-  proc_rxtx->man = &man;
+  int const n_threads = 1;
+  init_task_manager(proc_rxtx->man, n_threads);
 #else
   proc_rxtx->threadPool = (tpool_t *)malloc(sizeof(tpool_t));
   initTpool("n", proc_rxtx->threadPool, true);
 #endif
-
   proc_rxtx->respDecode=(notifiedFIFO_t*) malloc(sizeof(notifiedFIFO_t));
   initNotifiedFIFO(proc_rxtx->respDecode);
 

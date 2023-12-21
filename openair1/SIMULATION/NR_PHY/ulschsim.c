@@ -605,8 +605,8 @@ int main(int argc, char **argv)
 
 #ifdef TASK_MANAGER
      ldpcDecode_t arr[64] = {0};
-     task_status_t task_status[64] = {0};
-     thread_info_tm_t t_info = {.buf = (uint8_t*)arr, .len = 0, .task_status = task_status };
+     task_status_t tasks_remaining[64] = {0};
+     thread_info_tm_t t_info = {.buf = (uint8_t*)arr, .len = 0, .tasks_remaining = tasks_remaining };
      int nbDecode = nr_ulsch_decoding(gNB, UE_id, channel_output_fixed, frame_parms, rel15_ul, frame, subframe, harq_pid, G, &t_info);
      assert(nbDecode > 0);
 #else
@@ -614,7 +614,7 @@ int main(int argc, char **argv)
 #endif
      int nb_ok = 0;
 #ifdef TASK_MANAGER
-    wait_task_status_completed(t_info.len, t_info.task_status);
+    wait_task_status_completed(t_info.len, t_info.tasks_remaining);
   if(nbDecode > 0){
     for(size_t i = 0; i < nbDecode; ++i){
       ret = nr_postDecode_sim(gNB, &arr[i], &nb_ok);
@@ -678,7 +678,6 @@ int main(int argc, char **argv)
 
   loader_reset();
   logTerm();
-
 
   return (n_errors);
 }

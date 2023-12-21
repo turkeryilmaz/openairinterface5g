@@ -33,6 +33,7 @@
 //#define DEBUG_ULSCH_DECODING
 
 #include <syscall.h>
+#include <stdatomic.h>
 #include "PHY/defs_eNB.h"
 #include "PHY/phy_extern.h"
 #include "PHY/CODING/coding_extern.h"
@@ -41,6 +42,7 @@
 #include "RRC/LTE/rrc_extern.h"
 #include "PHY_INTERFACE/phy_interface.h"
 #include "transport_proto.h"
+#include "common/utils/thread_pool/task_manager.h"
 
 extern int oai_exit;
 
@@ -209,8 +211,7 @@ uint8_t extract_cqi_crc(uint8_t *cqi,uint8_t CQI_LENGTH) {
   return(crc);
 }
 
-static void processULSegment(void * arg) 
-{
+static void processULSegment(void * arg) {
   turboDecode_t* rdata=(turboDecode_t*) arg;
   PHY_VARS_eNB *eNB=rdata->eNB;
   LTE_UL_eNB_HARQ_t *ulsch_harq=rdata->ulsch_harq;
@@ -241,8 +242,8 @@ static void processULSegment(void * arg)
                                    r,
                                    &E)==-1) {
 #ifdef TASK_MANAGER_LTE
-     assert(rdata->task_status != NULL);
-     atomic_store_explicit(&rdata->task_status->completed, 1, memory_order_seq_cst); 
+    // assert(rdata->task_status != NULL);
+     atomic_store_explicit(&rdata->tasks_remaining->completed, 1, memory_order_seq_cst); 
 #endif
      LOG_E(PHY,"ulsch_decoding.c: Problem in rate matching\n");
      return;
@@ -283,6 +284,7 @@ static void processULSegment(void * arg)
                                             rdata->Fbits,
                                             &eNB->ulsch_tc_init_stats,
                                             &eNB->ulsch_tc_alpha_stats,
+
                                             &eNB->ulsch_tc_beta_stats,
                                             &eNB->ulsch_tc_gamma_stats,
                                             &eNB->ulsch_tc_ext_stats,
@@ -291,9 +293,9 @@ static void processULSegment(void * arg)
                                             &ulsch_harq->abort_decode);
 
 #ifdef TASK_MANAGER_LTE
-  assert(rdata->task_status != NULL);
-  atomic_store_explicit(&rdata->task_status->completed, 1, memory_order_seq_cst); 
-#endif
+     assert(rdata->tasks_remaining != NULL);
+     atomic_store_explicit(&rdata->tasks_remaining->completed, 1, memory_order_seq_cst); 
+#endif 
 }
 
 /*!
@@ -305,9 +307,7 @@ static void processULSegment(void * arg)
   @returns 0 on success
 */
 
-
-                              
-#ifdef TASK_MANAGER_LTE 
+#ifdef TASK_MANAGER_LTE
 static int ulsch_decoding_data(PHY_VARS_eNB *eNB, L1_rxtx_proc_t *proc, int UE_id, int harq_pid, int llr8_flag, thread_info_tm_t* t_info)
 #else
 static int ulsch_decoding_data(PHY_VARS_eNB *eNB, L1_rxtx_proc_t *proc, int UE_id, int harq_pid, int llr8_flag)
@@ -325,8 +325,6 @@ static int ulsch_decoding_data(PHY_VARS_eNB *eNB, L1_rxtx_proc_t *proc, int UE_i
     *decoder16 : *decoder8;
   ulsch_harq->processedSegments=0;
   set_abort(&ulsch_harq->abort_decode, false);
-
-
   for (int r=0; r<ulsch_harq->C; r++) {
     //    printf("before subblock deinterleaving c[%d] = %p\n",r,ulsch_harq->c[r]);
     // Get Turbo interleaver parameters
@@ -350,10 +348,10 @@ static int ulsch_decoding_data(PHY_VARS_eNB *eNB, L1_rxtx_proc_t *proc, int UE_i
       E = ulsch_harq->Qm * ((GpmodC==0?0:1) + (Gp/ulsch_harq->C));
 
 #ifdef TASK_MANAGER_LTE
-    turboDecode_t* rdata = &((turboDecode_t*)t_info->buf)[t_info->len]; 
-    assert(t_info->len < 64);
-    rdata->task_status = &t_info->task_status[t_info->len];
-    t_info->len += 1;
+    turboDecode_t* rdata = &((turboDecode_t*)t_info->buf)[t_info->len];
+     assert(t_info->len < 64);
+     rdata->tasks_remaining = &t_info->tasks_remaining[t_info->len];
+     t_info->len += 1;
 #else
     union turboReqUnion id= {.s={ulsch->rnti,proc->frame_rx,proc->subframe_rx,0,0}};
     notifiedFIFO_elt_t *req=newNotifiedFIFO_elt(sizeof(turboDecode_t),
@@ -390,10 +388,6 @@ static int ulsch_decoding_data(PHY_VARS_eNB *eNB, L1_rxtx_proc_t *proc, int UE_i
     r_offset+=E;
     offset+=sz;	    
   }
-
-#ifdef TASK_MANAGER_LTE
-  //trigger_all_task_manager(proc->man);
-#endif
   return(ret);
 }
 
@@ -433,7 +427,7 @@ unsigned int ulsch_decoding(PHY_VARS_eNB *eNB,
                              // This is a broken idea. But so is the code arquitecture
                               ,thread_info_tm_t* t_info
 #endif
-                             )
+			     )
 {
   int16_t *ulsch_llr = eNB->pusch_vars[UE_id]->llr;
   LTE_DL_FRAME_PARMS *frame_parms = &eNB->frame_parms;
@@ -1120,7 +1114,7 @@ unsigned int ulsch_decoding(PHY_VARS_eNB *eNB,
 
   LOG_D(PHY,"frame %d subframe %d O_ACK:%d o_ACK[]=%d:%d:%d:%d\n",frame,subframe,ulsch_harq->O_ACK,ulsch_harq->o_ACK[0],ulsch_harq->o_ACK[1],ulsch_harq->o_ACK[2],ulsch_harq->o_ACK[3]);
   // Do ULSCH Decoding for data portion
-#ifdef TASK_MANAGER_LTE 
+#ifdef TASK_MANAGER_LTE
   ret = ulsch_decoding_data(eNB, proc, UE_id, harq_pid, llr8_flag, t_info);
 #else
   ret = ulsch_decoding_data(eNB, proc, UE_id, harq_pid, llr8_flag);

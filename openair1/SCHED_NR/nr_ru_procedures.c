@@ -34,6 +34,7 @@
 #include "sched_nr.h"
 #include "PHY/MODULATION/modulation_common.h"
 #include "PHY/MODULATION/nr_modulation.h"
+#include <stdatomic.h>
 
 #include "common/utils/LOG/log.h"
 #include "common/utils/system.h"
@@ -327,8 +328,8 @@ void nr_feptx(void *arg) {
   nr_feptx0(ru,slot,startSymbol,numSymbols,aa);
 
 #ifdef TASK_MANAGER_RU
-  //assert(atomic_load(&feptx->task_status->completed) == 0);
-  atomic_store_explicit(&feptx->task_status->completed, 1, memory_order_release);
+  //assert(atomic_load(&feptx->task_done->completed) == 0);
+  atomic_store_explicit(&feptx->task_done->completed, 1, memory_order_release);
 #endif
 }
 
@@ -345,19 +346,18 @@ void nr_feptx_tp(RU_t *ru, int frame_tx, int slot) {
 
 #ifdef TASK_MANAGER_RU
   size_t const sz = ru->nb_tx + (ru->half_slot_parallelization>0)*ru->nb_tx;
-  assert(sz < 32);
-  feptx_cmd_t arr[32] = {0}; 
-  task_status_t task_status[32] = {0};
-  //memset(&task_status, 0, sz * sizeof(task_status_t));
+  feptx_cmd_t arr[sz]; 
+  task_status_t tasks_done[sz];
+  memset(&tasks_done, 0, sizeof(task_status_t) * sz);
 #endif
 
   for (int aid=0;aid<ru->nb_tx;aid++) {
 #ifdef TASK_MANAGER_RU
     feptx_cmd_t *feptx_cmd = &arr[nbfeptx];
-    feptx_cmd->task_status = &task_status[nbfeptx]; 
+    feptx_cmd->task_done = &tasks_done[nbfeptx]; 
 #else
-    notifiedFIFO_elt_t *req=newNotifiedFIFO_elt(sizeof(feptx_cmd_t), 2000 + aid,ru->respfeptx,nr_feptx);
-    feptx_cmd_t *feptx_cmd=(feptx_cmd_t*)NotifiedFifoData(req);       
+       notifiedFIFO_elt_t *req=newNotifiedFIFO_elt(sizeof(feptx_cmd_t), 2000 + aid,ru->respfeptx,nr_feptx);
+       feptx_cmd_t *feptx_cmd=(feptx_cmd_t*)NotifiedFifoData(req);       
 #endif
        feptx_cmd->aid          = aid;
        feptx_cmd->ru           = ru;
@@ -374,8 +374,8 @@ void nr_feptx_tp(RU_t *ru, int frame_tx, int slot) {
        nbfeptx++;
        if (ru->half_slot_parallelization>0) {
 #ifdef TASK_MANAGER_RU
-         feptx_cmd_t *feptx_cmd = &arr[nbfeptx];
-         feptx_cmd->task_status = &task_status[nbfeptx]; 
+    feptx_cmd_t *feptx_cmd = &arr[nbfeptx];
+    feptx_cmd->task_done = &tasks_done[nbfeptx]; 
 #else
          notifiedFIFO_elt_t *req = newNotifiedFIFO_elt(sizeof(feptx_cmd_t), 2000 + aid + ru->nb_tx,ru->respfeptx,nr_feptx);
          feptx_cmd_t *feptx_cmd=(feptx_cmd_t*)NotifiedFifoData(req);       
@@ -386,8 +386,8 @@ void nr_feptx_tp(RU_t *ru, int frame_tx, int slot) {
          feptx_cmd->startSymbol  = ru->nr_frame_parms->symbols_per_slot>>1;
          feptx_cmd->numSymbols   = ru->nr_frame_parms->symbols_per_slot>>1;
 #ifdef TASK_MANAGER_RU
-         task_t t = {.func = nr_feptx, .args = feptx_cmd};
-         async_task_manager(&ru->man, t);
+        task_t t = {.func = nr_feptx, .args = feptx_cmd};
+        async_task_manager(&ru->man, t);
 #else 
          pushTpool(ru->threadPool,req);
 #endif     
@@ -396,12 +396,8 @@ void nr_feptx_tp(RU_t *ru, int frame_tx, int slot) {
   }
 
 #ifdef TASK_MANAGER_RU
-  if(nbfeptx > 0) {
-    //stop_spining_task_manager(&ru->man);
-    //trigger_all_task_manager(&ru->man);
-    wait_task_status_completed(nbfeptx, task_status);
-    nbfeptx = 0; 
-  }
+  if(nbfeptx > 0)
+    wait_task_status_completed(nbfeptx, tasks_done);
 #else
   while (nbfeptx>0) {
     notifiedFIFO_elt_t *req=pullTpool(ru->respfeptx, ru->threadPool);
@@ -441,8 +437,8 @@ void nr_fep(void* arg) {
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_RU_FEPRX+aid, 0);
 
 #ifdef TASK_MANAGER_RU
-  //assert(atomic_load(&feprx_cmd->task_status->completed) == 0);
-  atomic_store_explicit(&feprx_cmd->task_status->completed, 1, memory_order_release);
+ // assert(atomic_load(feprx_cmd->task_done->completed) == 0);
+  atomic_store_explicit(&feprx_cmd->task_done->completed, 1, memory_order_release);
 #endif
 }
 
@@ -455,16 +451,15 @@ void nr_fep_tp(RU_t *ru, int slot)
  
 #ifdef TASK_MANAGER_RU
   size_t const sz = ru->nb_rx + (ru->half_slot_parallelization>0)*ru->nb_rx;
-  assert(sz < 32);
-  feprx_cmd_t arr[32] = {0}; 
-  task_status_t task_status[32] = {0};
-  //memset(&task_status, 0, sizeof(task_status_t) * sz);
+  feprx_cmd_t arr[sz]; 
+  task_status_t tasks_done[sz];
+  memset(&tasks_done, 0, sizeof(task_status_t) * sz);
 #endif
 
   for (int aid=0;aid<ru->nb_rx;aid++) {
 #ifdef TASK_MANAGER_RU
        feprx_cmd_t* feprx_cmd= &arr[nbfeprx];
-       feprx_cmd->task_status = &task_status[nbfeprx];
+       feprx_cmd->task_done = &tasks_done[nbfeprx];
 #else
        notifiedFIFO_elt_t *req=newNotifiedFIFO_elt(sizeof(feprx_cmd_t), 1000 + aid,ru->respfeprx,nr_fep);
        feprx_cmd_t *feprx_cmd=(feprx_cmd_t*)NotifiedFifoData(req);       
@@ -484,8 +479,8 @@ void nr_fep_tp(RU_t *ru, int slot)
        if (ru->half_slot_parallelization>0) {
 
 #ifdef TASK_MANAGER_RU
-       feprx_cmd_t* feprx_cmd= &arr[nbfeprx];
-       feprx_cmd->task_status = &task_status[nbfeprx];
+       feprx_cmd_t * feprx_cmd= &arr[nbfeprx];
+       feprx_cmd->task_done = &tasks_done[nbfeprx];
 #else
          notifiedFIFO_elt_t *req=newNotifiedFIFO_elt(sizeof(feprx_cmd_t), 1000 + aid + ru->nb_rx,ru->respfeprx,nr_fep);
          feprx_cmd_t *feprx_cmd=(feprx_cmd_t*)NotifiedFifoData(req);       
@@ -506,11 +501,8 @@ void nr_fep_tp(RU_t *ru, int slot)
        }
   }
 #ifdef TASK_MANAGER_RU
-  //stop_spining_task_manager(&ru->man);
-  if(nbfeprx > 0) {
-    //trigger_all_task_manager(&ru->man);
-    wait_task_status_completed(nbfeprx, task_status);
-  }
+  if(nbfeprx > 0)
+    wait_task_status_completed(nbfeprx, tasks_done);
 #else
   while (nbfeprx>0) {
     notifiedFIFO_elt_t *req=pullTpool(ru->respfeprx, ru->threadPool);

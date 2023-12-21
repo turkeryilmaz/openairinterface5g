@@ -963,6 +963,7 @@ set(PHY_SRC
 #  ${OPENAIR1_DIR}/PHY/LTE_ESTIMATION/lte_ul_channel_estimation.c
   ${OPENAIR1_DIR}/PHY/LTE_ESTIMATION/lte_eNB_measurements.c
   ${OPENAIR1_DIR}/PHY/INIT/lte_init.c
+  ${OPENAIR_DIR}/common/utils/thread_pool/task_manager.c
   )
 
 set(PHY_SRC_RU

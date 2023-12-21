@@ -179,7 +179,7 @@ typedef struct {
  int endSymbol;
  int slot; 
 #ifdef TASK_MANAGER_RU
- task_status_t* task_status; 
+ task_status_t* task_done; 
 #endif
 } feprx_cmd_t;
 
@@ -190,7 +190,7 @@ typedef struct {
  int startSymbol;
  int numSymbols;
 #ifdef TASK_MANAGER_RU
- task_status_t* task_status; 
+ task_status_t* task_done; 
 #endif
 } feptx_cmd_t;
 

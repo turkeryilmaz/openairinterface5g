@@ -46,7 +46,7 @@
 #include <time.h>
 #include <stdint.h>
 
-/*
+
 static
 int64_t time_now_ns(void)
 {
@@ -57,7 +57,7 @@ int64_t time_now_ns(void)
   int64_t nanos = tms.tv_sec * 1000000000 + tms.tv_nsec;
   return nanos;
 }
-*/
+
 
 //#define DEBUG_RXDATA
 //#define SRS_IND_DEBUG
@@ -783,6 +783,9 @@ bool maybe_trigger_and_spin_threads(PHY_VARS_gNB* gNB, int frame_rx, int slot_rx
 */
 #endif
 
+static int cnt = 0;
+
+
 int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
 {
 #ifdef TASK_MANAGER
@@ -882,12 +885,12 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
   }
 
 #ifdef TASK_MANAGER
-  ldpcDecode_t arr[64] = {0}; // cheap to initialize, even here 
-  task_status_t task_status[64] = {0};
-  thread_info_tm_t t_info = {.buf = (uint8_t*)arr, .len = 0, .task_status = task_status};
+  ldpcDecode_t arr[16]; 
+  task_status_t tasks_remaining[16] = {0};
+  thread_info_tm_t t_info = {.buf = (uint8_t*)arr, .len = 0, .tasks_remaining = tasks_remaining};
 #endif
 
-  //int64_t const t0 = time_now_ns();
+  int64_t const t0 = time_now_ns();
   int totalDecode = 0;
   for (int ULSCH_id = 0; ULSCH_id < gNB->max_nb_pusch; ULSCH_id++) {
     NR_gNB_ULSCH_t *ulsch = &gNB->ulsch[ULSCH_id];
@@ -1000,15 +1003,17 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
     }
   }
   
+    ++cnt;
 #ifdef TASK_MANAGER
   if (totalDecode > 0) {
-	  assert(totalDecode == t_info.len);
-    wait_task_status_completed(t_info.len, t_info.task_status);
+    assert(totalDecode == t_info.len);
+    wait_task_status_completed(t_info.len, t_info.tasks_remaining);
     for(int i = 0; i < t_info.len; ++i){
       nr_postDecode(gNB, &arr[i]); 
     } 
-    totalDecode = 0;
-    //printf("Decoding time %ld \n", time_now_ns() - t0);
+
+   if(cnt % 1024 == 0)
+    printf("Decoding time %ld \n", time_now_ns() - t0);
   }
 #else
     while (totalDecode > 0) {
@@ -1019,7 +1024,9 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
       delNotifiedFIFO_elt(req);
       totalDecode--;
     }
-  //printf("Decoding time %ld \n", time_now_ns() - t0);
+
+   if(cnt % 1024 == 0)
+  printf("Decoding time %ld \n", time_now_ns() - t0);
 #endif
   stop_meas(&gNB->ulsch_decoding_stats);
 

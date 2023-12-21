@@ -51,6 +51,7 @@
 //#define gNB_DEBUG_TRACE
 
 #include "common/utils/thread_pool/task_manager.h"
+#include <stdatomic.h>
 #include <stdint.h>
 #include <time.h>
 #include <stdalign.h>
@@ -190,8 +191,8 @@ static void nr_processULSegment(void *arg)
     LOG_E(PHY, "ulsch_decoding.c: Problem in rate_matching\n");
     rdata->decodeIterations = max_ldpc_iterations + 1;
 #ifdef TASK_MANAGER
-  assert(rdata->task_status != NULL && atomic_load(&rdata->task_status->completed) == 0);
-  atomic_store_explicit(&rdata->task_status->completed, 1, memory_order_release); //  memory_order order );
+  //assert(rdata->task_status != NULL && atomic_load(&rdata->task_status->completed) == 0);
+  atomic_store_explicit(&rdata->tasks_remaining->completed, 1, memory_order_release); //  memory_order order );
 #endif
     return;
   }
@@ -235,8 +236,8 @@ static void nr_processULSegment(void *arg)
     memcpy(ulsch_harq->c[r],llrProcBuf,  Kr>>3);
 
 #ifdef TASK_MANAGER
-  assert(rdata->task_status != NULL && atomic_load(&rdata->task_status->completed) == 0);
-  atomic_store_explicit(&rdata->task_status->completed, 1, memory_order_release); //  memory_order order );
+  assert(rdata->tasks_remaining != NULL);
+  atomic_store_explicit(&rdata->tasks_remaining->completed, 1, memory_order_release); //  memory_order order );
 #endif
 }
 
@@ -345,7 +346,6 @@ int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
                         uint8_t harq_pid,
                         uint32_t G
 #ifdef TASK_MANAGER
-                        // This is a broken idea. But so is the code arquitecture
                         , thread_info_tm_t* t_info
 #endif
                         )
@@ -459,8 +459,8 @@ int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
     int E = nr_get_E(G, harq_process->C, Qm, n_layers, r);
 #ifdef TASK_MANAGER
      ldpcDecode_t* rdata = &((ldpcDecode_t*)t_info->buf)[t_info->len]; 
-     assert(t_info->len < 64);
-     rdata->task_status = &t_info->task_status[t_info->len];
+     assert(t_info->len < 16);
+     rdata->tasks_remaining = &t_info->tasks_remaining[t_info->len];
      t_info->len += 1;
 #else
     union ldpcReqUnion id = {.s = {ulsch->rnti, frame, nr_tti_rx, 0, 0}};

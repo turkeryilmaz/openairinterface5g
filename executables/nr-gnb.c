@@ -284,25 +284,35 @@ void rx_func(void *param)
     } else {
       //notifiedFIFO_elt_t * res = pullTpool(&gNB->L1_tx_filled, &gNB->threadPool);
       notifiedFIFO_elt_t* res = pullNotifiedFIFO(&gNB->L1_tx_filled);
-      if (res == NULL)
-        return; // Tpool has been stopped
+      if (res == NULL){
+#ifdef TASK_MANAGER_RU
+         if(info->elm != NULL)
+            pushNotifiedFIFO(info->elm->reponseFifo, info->elm);
+#endif
+        return; // Queue aborted 
+      }
        processingData_L1tx_t* syncMsg = (processingData_L1tx_t *)NotifiedFifoData(res);
       syncMsg->gNB = gNB;
       syncMsg->timestamp_tx = info->timestamp_tx;
       res->key = slot_tx;
-#ifdef TASK_MANAGER
+//#ifdef TASK_MANAGER
       assert(res->processingFunc != NULL);
       res->processingFunc(NotifiedFifoData(res));
       if (res->reponseFifo)
         pushNotifiedFIFO(res->reponseFifo, res);
-#else
-      pushTpool(&gNB->threadPool, res);
-#endif
+//#else
+ //     pushTpool(&gNB->threadPool, res);
+//#endif
     }
   } else if (get_softmodem_params()->continuous_tx) {
     notifiedFIFO_elt_t *res = pullNotifiedFIFO(&gNB->L1_tx_free);
-    if (res == NULL)
-      return; // Tpool has been stopped
+    if (res == NULL){
+#ifdef TASK_MANAGER_RU
+         if(info->elm != NULL)
+            pushNotifiedFIFO(info->elm->reponseFifo, info->elm);
+#endif
+      return;  // Queue aborted 
+    }
     processingData_L1tx_t *syncMsg = (processingData_L1tx_t *)NotifiedFifoData(res);
     syncMsg->gNB = gNB;
     syncMsg->timestamp_tx = info->timestamp_tx;
@@ -311,6 +321,11 @@ void rx_func(void *param)
     res->key = slot_tx;
     pushNotifiedFIFO(&gNB->L1_tx_out, res);
   }
+#ifdef TASK_MANAGER_RU
+  // I can also write bad code
+  if(info->elm != NULL)
+    pushNotifiedFIFO(info->elm->reponseFifo, info->elm);
+#endif
 
 #if 0
   LOG_D(PHY, "rxtx:%lld nfapi:%lld phy:%lld tx:%lld rx:%lld prach:%lld ofdm:%lld ",
@@ -482,70 +497,48 @@ static
 int num_threads(char* params)
 {
   char *saveptr, * curptr;
-  char *parms_cpy=strdup(params);
   int nbThreads=0;
-  curptr=strtok_r(parms_cpy,",",&saveptr);
+  curptr=strtok_r( params,",",&saveptr);
   while ( curptr!=NULL ) {
     int c=toupper(curptr[0]);
 
     switch (c) {
-
       case 'N':
         //pool->activated=false;
         break;
 
       default:
-	int core_id = atoi(curptr);
-        printf("[MIR]: create a thread for core %d\n", core_id);
+        int core_id = atoi(curptr);
+        printf("create a thread for core %d\n", core_id);
         nbThreads++;
     }
+
     curptr=strtok_r(NULL,",",&saveptr);
   }
-  free(parms_cpy);
-
-
-  printf("[MIR]: num threads %d\n", nbThreads);
-  printf("[MIR]: num threads %d\n", nbThreads);
-  printf("[MIR]: num threads %d\n", nbThreads);
-  printf("[MIR]: num threads %d\n", nbThreads);
-  printf("[MIR]: num threads %d\n", nbThreads);
-  printf("[MIR]: num threads %d\n", nbThreads);
-  printf("[MIR]: num threads %d\n", nbThreads);
-  printf("[MIR]: num threads %d\n", nbThreads);
-  printf("[MIR]: num threads %d\n", nbThreads);
-  printf("[MIR]: num threads %d\n", nbThreads);
-  printf("[MIR]: num threads %d\n", nbThreads);
-  printf("[MIR]: num threads %d\n", nbThreads);
-
-
   return nbThreads;
-}
+} 
 
-
-void init_gNB_Tpool(int inst) 
-{
+void init_gNB_Tpool(int inst) {
   PHY_VARS_gNB *gNB;
   gNB = RC.gNB[inst];
   gNB_L1_proc_t *proc = &gNB->proc;
-#if defined(TASK_MANAGER) && defined(TASK_MANAGER_CODING) && defined(TASK_MANAGER_DEMODULATION) 
-  //int const log_cores = get_nprocs_conf();
-  //assert(log_cores > 0);
-  //printf("[MIR]: log cores %d \n", log_cores);
-  // Assuming: 2 x Physical cores = Logical cores
-  int n_threads = num_threads(get_softmodem_params()->threadPoolConfig);
-  init_task_manager(&gNB->man, n_threads);
-#elif !defined(TASK_MANAGER) || !defined(TASK_MANAGER_CODING) || !defined(TASK_MANAGER_DEMODULATION) 
-  int n_threads = num_threads(get_softmodem_params()->threadPoolConfig);
-  init_task_manager(&gNB->man, n_threads);
-  initTpool(get_softmodem_params()->threadPoolConfig, &gNB->threadPool, cpumeas(CPUMEAS_GETSTATE));
-#else
-  initTpool(get_softmodem_params()->threadPoolConfig, &gNB->threadPool, cpumeas(CPUMEAS_GETSTATE));
-#endif
-  
+
   // PUSCH symbols per thread need to be calculated by how many threads we have
   gNB->num_pusch_symbols_per_thread = 1;
 
-  // ULSCH decoder result FIFO
+#if defined(TASK_MANAGER) && defined(TASK_MANAGER_CODING) && defined(TASK_MANAGER_DEMODULATION) && defined(TASK_MANAGER_RU)
+  int n_threads = num_threads(get_softmodem_params()->threadPoolConfig);
+  init_task_manager(&gNB->man, n_threads); //log_cores/2);
+#elif !defined(TASK_MANAGER) ||  !defined(TASK_MANAGER_CODING) || !defined(TASK_MANAGER_DEMODULATION) || !defined(TASK_MANAGER_RU)
+  int n_threads = num_threads(get_softmodem_params()->threadPoolConfig);
+  init_task_manager(&gNB->man, n_threads ); //log_cores/2);
+  // ULSCH decoding threadpool
+  initTpool(get_softmodem_params()->threadPoolConfig, &gNB->threadPool, cpumeas(CPUMEAS_GETSTATE));
+#else
+  // ULSCH decoding threadpool
+  initTpool(get_softmodem_params()->threadPoolConfig, &gNB->threadPool, cpumeas(CPUMEAS_GETSTATE));
+#endif
+   // ULSCH decoder result FIFO
   initNotifiedFIFO(&gNB->respPuschSymb);
   initNotifiedFIFO(&gNB->respDecode);
 

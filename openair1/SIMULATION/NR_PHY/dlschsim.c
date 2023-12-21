@@ -19,6 +19,7 @@
  *      contact@openairinterface.org
  */
 
+#include <ctype.h>
 #include <string.h>
 #include <math.h>
 #include <unistd.h>
@@ -100,6 +101,35 @@ nrUE_params_t *get_nrUE_params(void) {
   return &nrUE_params;
 }
 configmodule_interface_t *uniqCfg = NULL;
+
+
+static
+int num_threads(char* parms_cpy)
+{
+  char *saveptr, * curptr;
+  int nbThreads=0;
+  curptr=strtok_r(parms_cpy,",",&saveptr);
+  while ( curptr!=NULL ) {
+    int c=toupper(curptr[0]);
+
+    switch (c) {
+
+      case 'N':
+        //pool->activated=false;
+        break;
+
+      default:
+	int const core_id = atoi(curptr);
+ 	printf("create a thread for core %d\n", core_id);
+        nbThreads++;
+    }
+
+    curptr=strtok_r(NULL,",",&saveptr);
+  }
+  return nbThreads; 
+}
+
+
 
 int main(int argc, char **argv)
 {
@@ -375,9 +405,8 @@ int main(int argc, char **argv)
 	RC.gNB[0] = calloc(1, sizeof(PHY_VARS_gNB));
 	gNB = RC.gNB[0];
 #ifdef TASK_MANAGER_SIM
-  int const log_cores = get_nprocs_conf();
-  assert(log_cores > 0);
-  init_task_manager(&gNB->man, log_cores);
+  int const n_threads = num_threads(gNBthreads);
+  init_task_manager(&gNB->man, n_threads);
   init_task_manager(&nrUE_params.man, dlsch_threads);
 #else
   initNamedTpool(gNBthreads, &gNB->threadPool, true, "gNB-tpool");

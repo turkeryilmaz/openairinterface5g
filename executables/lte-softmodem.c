@@ -33,8 +33,7 @@
 
 #define _GNU_SOURCE             /* See feature_test_macros(7) */
 #include <sched.h>
-#include <sys/sysinfo.h>
-
+#include <ctype.h>
 #undef MALLOC //there are two conflicting definitions, so we better make sure we don't use it at all
 
 #include "assertions.h"
@@ -435,6 +434,37 @@ static  void wait_nfapi_init(char *thread_name) {
   pthread_mutex_unlock(&nfapi_sync_mutex);
   printf( "NFAPI: got sync (%s)\n", thread_name);
 }
+
+#ifdef TASK_MANAGER_LTE
+static int num_threads(char* params)
+{
+	char *saveptr, * curptr;
+	char *parms_cpy=strdup(params);
+	int nbThreads=0;
+	curptr=strtok_r(parms_cpy,",",&saveptr);
+	while ( curptr!=NULL ) {
+		int c=toupper(curptr[0]);
+
+		switch (c) {
+
+			case 'N':
+				//pool->activated=false;
+				break;
+
+			default:
+				int core_id = atoi(curptr);
+				printf("create a thread for core %d\n", core_id);
+				// set the thread name for debugging
+				nbThreads++;
+		}
+
+		curptr=strtok_r(NULL,",",&saveptr);
+	}
+	free(parms_cpy);
+	return nbThreads;
+}
+#endif 
+
 configmodule_interface_t *uniqCfg = NULL;
 int main ( int argc, char **argv )
 {
@@ -547,13 +577,12 @@ int main ( int argc, char **argv )
     init_eNB(get_softmodem_params()->single_thread_flag,get_softmodem_params()->wait_for_sync);
   }
 #ifdef TASK_MANAGER_LTE
-      int const log_cores = get_nprocs_conf();
-      assert(log_cores > 0);
+      assert(strlen(get_softmodem_params()->threadPoolConfig) > 0);
+      int n_threads = num_threads(get_softmodem_params()->threadPoolConfig);
       task_manager_t man = {0};
-      // Assuming: Physical cores = Logical cores / 2
-      init_task_manager(&man, log_cores/2); 
-#endif 
-
+      init_task_manager(&man, n_threads);
+#endif
+ 
   for (int x=0; x < RC.nb_L1_inst; x++)
     for (int CC_id=0; CC_id<RC.nb_L1_CC[x]; CC_id++) {
       L1_rxtx_proc_t *L1proc= &RC.eNB[x][CC_id]->proc.L1_proc;
@@ -567,12 +596,14 @@ int main ( int argc, char **argv )
       L1proc->threadPool = (tpool_t *)malloc(sizeof(tpool_t));
       if ( strlen(get_softmodem_params()->threadPoolConfig) > 0 )
        initTpool(get_softmodem_params()->threadPoolConfig, L1proc->threadPool, true);
-      else
-        initTpool("n", L1proc->threadPool, true);
+      }
+      else{
+	      assert(0!=0 && "Bug");
+	      initTpool("n", L1proc->threadPool, true);
+      }
       L1proctx->threadPool = L1proc->threadPool;
-      initNotifiedFIFO(L1proc->respDecode);
 #endif
-
+      initNotifiedFIFO(L1proc->respDecode);
   }
 
   printf("wait_eNBs()\n");

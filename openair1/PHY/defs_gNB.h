@@ -738,9 +738,10 @@ typedef struct PHY_VARS_gNB_s {
   void *scopeData;
   /// structure for analyzing high-level RT measurements
   rt_L1_profiling_t rt_L1_profiling; 
-#if defined(TASK_MANAGER) && defined(TASK_MANAGER_CODING) && defined(TASK_MANAGER_DEMODULATION)
+
+#if defined(TASK_MANAGER) && defined(TASK_MANAGER_CODING) && defined(TASK_MANAGER_DEMODULATION) && defined(TASK_MANAGER_RU) && defined(TASK_MANAGER_SIM)
   task_manager_t man;
-#elif !defined(TASK_MANAGER) || !defined(TASK_MANAGER_CODING) || !defined(TASK_MANAGER_DEMODULATION)
+#elif !defined(TASK_MANAGER) ||  !defined(TASK_MANAGER_CODING) || !defined(TASK_MANAGER_DEMODULATION) || !defined(TASK_MANAGER_RU) || !defined(TASK_MANAGER_SIM) 
   task_manager_t man;
   tpool_t threadPool;
 #else
@@ -760,9 +761,9 @@ typedef struct puschSymbolProc_s {
   int16_t **llr_layers;
   int16_t *s;
   uint32_t nvar;
-#ifdef TASK_MANAGER_DEMODULATION 
- task_status_t* task_status;
-#endif
+#ifdef TASK_MANAGER_DEMODULATION
+  task_status_t* task_finished;
+#endif 
 } puschSymbolProc_t;
 
 struct puschSymbolReqId {
@@ -798,7 +799,7 @@ typedef struct LDPCDecode_s {
   int decodeIterations;
   uint32_t tbslbrm;
 #ifdef TASK_MANAGER
- task_status_t* task_status;
+ task_status_t* tasks_remaining;
 #endif
 } ldpcDecode_t;
 
@@ -822,6 +823,9 @@ typedef struct processingData_L1 {
   int slot_tx;
   openair0_timestamp timestamp_tx;
   PHY_VARS_gNB *gNB;
+#ifdef TASK_MANAGER_RU
+  notifiedFIFO_elt_t* elm; 
+#endif
 } processingData_L1_t;
 
 typedef enum {

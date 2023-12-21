@@ -1233,8 +1233,7 @@ uci_procedures(PHY_VARS_eNB *eNB,
 }
 
 #ifdef TASK_MANAGER_LTE
-void postDecode(L1_rxtx_proc_t *proc, turboDecode_t * rdata)
-{
+void postDecode(L1_rxtx_proc_t *proc, turboDecode_t* rdata){
 #else
 void postDecode(L1_rxtx_proc_t *proc, notifiedFIFO_elt_t *req)
 {
@@ -1335,9 +1334,9 @@ void pusch_procedures(PHY_VARS_eNB *eNB,L1_rxtx_proc_t *proc) {
   uint32_t harq_pid0 = subframe2harq_pid(&eNB->frame_parms,frame,subframe);
 
 #ifdef TASK_MANAGER_LTE
-  turboDecode_t arr[64] = {0}; 
-  task_status_t task_status[64] = {0};
-  thread_info_tm_t t_info = {.buf = (uint8_t*)arr, .len = 0, .task_status = task_status};
+  turboDecode_t arr[64] = {0};
+  task_status_t tasks_remaining[64] = {0};
+  thread_info_tm_t t_info = { .tasks_remaining = tasks_remaining, .buf = (uint8_t*)arr };
 #endif
 
   for (i = 0; i < NUMBER_OF_ULSCH_MAX; i++) {
@@ -1392,7 +1391,6 @@ void pusch_procedures(PHY_VARS_eNB *eNB,L1_rxtx_proc_t *proc) {
       rx_ulsch(eNB,proc, i);
       stop_meas(&eNB->ulsch_demodulation_stats);
       start_meas(&eNB->ulsch_decoding_stats);
-
       ulsch_decoding(eNB,
                      proc,
                      i,
@@ -1400,9 +1398,9 @@ void pusch_procedures(PHY_VARS_eNB *eNB,L1_rxtx_proc_t *proc) {
                      ulsch_harq->V_UL_DAI,
                      ulsch_harq->nb_rb > 20 ? 1 : 0
 #ifdef TASK_MANAGER_LTE
-                     ,&t_info
-#endif
-                     );
+		     ,&t_info 
+#endif		     
+		     );
     }
     else if ((ulsch) &&
              (ulsch->rnti>0) &&
@@ -1420,14 +1418,12 @@ void pusch_procedures(PHY_VARS_eNB *eNB,L1_rxtx_proc_t *proc) {
 
   const bool decode = proc->nbDecode;
 #ifdef TASK_MANAGER_LTE
-  if (proc->nbDecode) {
-    // Not needed, but won't hurt performance
-    //trigger_all_task_manager(proc->man);
-    wait_task_status_completed(t_info.len, t_info.task_status);
-    for(int i = 0; i < t_info.len; ++i){
-      postDecode(proc, &arr[i]); 
-    } 
-    //printf("Decoding time %ld \n", time_now_ns() - t0);
+  assert(t_info.len == proc->nbDecode);
+  if (proc->nbDecode > 0) {
+     wait_task_status_completed(t_info.len, t_info.tasks_remaining);  
+     for(size_t i = 0; i < t_info.len; ++i){
+       postDecode(proc, &arr[i]);
+     }
   }
 #else
   while (proc->nbDecode > 0) {
@@ -1440,7 +1436,6 @@ void pusch_procedures(PHY_VARS_eNB *eNB,L1_rxtx_proc_t *proc) {
     delNotifiedFIFO_elt(req);
   }
 #endif
-
   if (decode)
     stop_meas(&eNB->ulsch_decoding_stats);
 }
