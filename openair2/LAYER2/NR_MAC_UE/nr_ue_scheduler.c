@@ -3586,20 +3586,8 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind) {
      if (((1<<slot_mod_period) % mask) == 0) rx_allowed=false;
   }
   if (sl_ind->slot_type==SIDELINK_SLOT_TYPE_TX || sl_ind->phy_data==NULL) rx_allowed=false;
-      LOG_D(NR_MAC, "sync_ref %d, slot_rx %d, rx_allowed %d, psbch slot %d\n", get_nrUE_params()->sync_ref, sl_ind->slot_rx, rx_allowed, !is_psbch_slot);
-      if (get_nrUE_params()->sync_ref && rx_allowed && !is_psbch_slot) {
-          NR_SL_PSFCH_Config_r16_t *sl_psfch_config = mac->sl_rx_res_pool->sl_PSFCH_Config_r16->choice.setup;
-          const uint8_t psfch_periods[] = {0,1,2,4};
-          long psfch_period = (sl_psfch_config->sl_PSFCH_Period_r16)
-                                  ? psfch_periods[*sl_psfch_config->sl_PSFCH_Period_r16] : 0;
-          if (slot%psfch_period == 0) {
-          LOG_D(NR_MAC,"Scheduling PSFCH RX processing slot %d, sync_ref %d\n",slot,get_nrUE_params()->sync_ref);
-          nr_ue_sl_psfch_rx_scheduler(mac, sl_ind, mac->sl_bwp->sl_BWP_Generic_r16, mac->sl_rx_res_pool, &rx_config, &tti_action);
-        }
-      }
-
-  if (((get_nrUE_params()->sync_ref && sl_ind->slot_rx > 9) ||
-  (!get_nrUE_params()->sync_ref && sl_ind->slot_rx < 10)) && rx_allowed && !is_psbch_slot) {
+  if (((get_nrUE_params()->sync_ref && sl_ind->slot_rx > 9) || 
+      (!get_nrUE_params()->sync_ref && sl_ind->slot_rx < 10)) && rx_allowed && !is_psbch_slot) {
       LOG_D(NR_MAC,"Scheduling PSCCH RX processing slot %d, sync_ref %d\n",slot,get_nrUE_params()->sync_ref);
       nr_ue_sl_pscch_rx_scheduler(sl_ind, mac->sl_bwp, mac->sl_rx_res_pool,&rx_config, &tti_action);
   }
