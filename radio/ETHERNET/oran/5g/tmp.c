@@ -56,7 +56,7 @@ volatile uint32_t rx_cb_slot = 0;
 
 #define GetFrameNum(tti,SFNatSecStart,numSubFramePerSystemFrame, numSlotPerSubFrame)  ((((uint32_t)tti / ((uint32_t)numSubFramePerSystemFrame * (uint32_t)numSlotPerSubFrame)) + SFNatSecStart) & 0x3FF)
 #define GetSlotNum(tti, numSlotPerSfn) ((uint32_t)tti % ((uint32_t)numSlotPerSfn))
-
+int32_t xran_get_slot_idx_from_tti (uint32_t tti, uint32_t *nFrameIdx, uint32_t *nSubframeIdx,  uint32_t *nSlotIdx, uint64_t *nSecond);
 #ifdef ORAN_BRONZE
 extern struct xran_fh_config  xranConf;
 extern void * xranHandle;
@@ -76,6 +76,7 @@ void oai_xran_fh_rx_callback(void *pCallbackTag, xran_status_t status){
     struct xran_cb_tag *callback_tag = (struct xran_cb_tag *)pCallbackTag;
     uint64_t second;
     uint32_t tti;
+    uint32_t rx_tti;
     uint32_t frame;
     uint32_t subframe;
     uint32_t slot,slot2;
@@ -86,11 +87,14 @@ void oai_xran_fh_rx_callback(void *pCallbackTag, xran_status_t status){
     static int32_t last_frame=-1;
     int num_ports=app_io_xran_fh_init.xran_ports;
     static int rx_RU[XRAN_PORTS_NUM][20]={0};
-    tti = xran_get_slot_idx(
-#ifndef ORAN_BRONZE
-		    0,
-#endif
-		    &frame,&subframe,&slot,&second);
+    rx_tti = callback_tag->slotiId;
+
+    tti = xran_get_slot_idx_from_tti(
+                    rx_tti,
+                    &frame,
+                    &subframe,
+                    &slot,
+                    &second);
 
     rx_sym = callback_tag->symbol;
     ru_id = callback_tag->oXuId;
@@ -406,6 +410,8 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot){
                        xranlib_decompress_avx512(&bfp_decom_req, &bfp_decom_rsp);
 		       memcpy((void*)dst2,(void*)local_dst,neg_len*4);
 		       memcpy((void*)dst1,(void*)&local_dst[neg_len],pos_len*4);
+           /*
+           LOG_I(NR_PHY,"%d.%d.%d.%d : en %d\n",*frame,*slot,sym_idx,ant_id,dB_fixed(signal_energy(local_dst,(neg_len+pos_len)))); */
 		       //for (int n=0;n<neg_len*2;n++) ((int16_t*)dst2)[n] = ((int16_t*)local_dst)[n]>>2;
 		       //for (int n=0;n<pos_len*2;n++) ((int16_t*)dst1)[n] = ((int16_t*)&local_dst[neg_len])[n]>>2;
 
@@ -478,6 +484,7 @@ int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp)
          xran_ctx = xran_dev_get_ctx_by_id(ant_id/nb_tx_per_ru);
          // This loop would better be more inner to avoid confusion and maybe also errors.
          for(int32_t sym_idx = 0; sym_idx < XRAN_NUM_OF_SYMBOL_PER_SLOT; sym_idx++) {
+
             uint8_t *pData = xran_ctx->sFrontHaulTxBbuIoBufCtrl[tti % XRAN_N_FE_BUF_LEN][0][ant_id%nb_tx_per_ru].sBufferList.pBuffers[sym_idx%XRAN_NUM_OF_SYMBOL_PER_SLOT].pData;
             uint8_t *pPrbMapData = xran_ctx->sFrontHaulTxPrbMapBbuIoBufCtrl[tti % XRAN_N_FE_BUF_LEN][0][ant_id%nb_tx_per_ru].sBufferList.pBuffers->pData;
             struct xran_prb_map *pPrbMap = (struct xran_prb_map *)pPrbMapData;

@@ -100,13 +100,12 @@ void oai_xran_fh_rx_callback(void *pCallbackTag, xran_status_t status){
         &slot3,
         &second2);*/
 
-    tti = xran_get_slot_idx(0,
-        /*tti = xran_get_slot_idx_from_tti(
-        rx_tti,*/
-		    &frame,
-        &subframe,
-        &slot,
-        &second);
+    tti = xran_get_slot_idx(
+                    0,
+                    &frame,
+                    &subframe,
+                    &slot,
+                    &second);
 
     rx_sym = callback_tag->symbol;
     //printf("rx_sym %d rx_tti %d tti %d slot %d sf %d f %d rx_tti mod 8 = %d\n",rx_sym, rx_tti,tti , slot, subframe, frame, rx_tti%8 );
@@ -453,10 +452,10 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot){
 		       memcpy((void*)dst1,(void*)&local_dst[neg_len],pos_len*4);
 		       outcnt++;
 
-         /*if (1 && local_dst != NULL )
+         if (1 && local_dst != NULL )
           {
             int energy_level = dB_fixed(signal_energy((int32_t*)local_dst,(pos_len+neg_len)));
-            if (energy_level>20) 
+            if (energy_level>16) 
             {
             printf("PUSCH tti %d slot %d last_slot %d symb %d energy lvel %d\n", tti, *slot, last_slot, sym_idx, energy_level);
             /*int off = (((pos_len+neg_len)&1) == 1)? 4:0;
@@ -465,9 +464,9 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot){
             if (sym_id==11)
             LOG_M("rxsig11.m","rxsF11",local_dst,1024,1,1);           
             if (sym_id==12)
-            LOG_M("rxsig12.m","rxsF12",local_dst,1024,1,1);
+            LOG_M("rxsig12.m","rxsF12",local_dst,1024,1,1);*/
             }
-          }*/
+          }
 
 		       if (0 /*outcnt==1000*/) {
 			 LOG_I(NR_PHY,"bfp_decom_rsp.len %d, payload_len %d\n",bfp_decom_rsp.len,payload_len);
