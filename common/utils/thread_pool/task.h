@@ -1,6 +1,12 @@
 #ifndef TASK_WORK_STEALING_THREAD_POOL_H
 #define TASK_WORK_STEALING_THREAD_POOL_H 
 
+#ifndef __cplusplus
+#include <stdalign.h>
+#else
+#define _Alignas(X) alignas(X) 
+#endif
+
 #if defined (__i386__) || defined(__x86_64__)
   #define LEVEL1_DCACHE_LINESIZE 64
 #elif __aarch64__
@@ -11,6 +17,7 @@
 #else
     static_assert(0!=0, "Unknown CPU architecture");
 #endif
+
 
 typedef struct{
   // Avoid false sharing. Doing it in the first member

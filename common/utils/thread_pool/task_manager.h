@@ -14,9 +14,17 @@
 
 #include "task.h"
 #include <pthread.h>
-#include <stdatomic.h>
 #include <stdbool.h>
 #include <stdint.h>
+
+#ifndef __cplusplus
+#include <stdalign.h>
+#include <stdatomic.h>
+#else
+#include <atomic>
+#define _Atomic(X) std::atomic< X >
+#define _Alignas(X) alignas(X) 
+#endif
 
 #if defined (__i386__) || defined(__x86_64__)
   #define pause_or_yield  __builtin_ia32_pause
@@ -42,11 +50,11 @@ typedef struct{
   pthread_t* t_arr;
   size_t len_thr;
   
-  atomic_uint_fast64_t index;
+  _Atomic(uint64_t) index;
 
   void* q_arr;
 
-  atomic_uint_fast64_t num_task;
+  _Atomic(uint64_t) num_task;
 
 //  pthread_cond_t  wait_cv; 
 //  pthread_mutex_t wait_mtx;
