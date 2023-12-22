@@ -578,7 +578,7 @@ int main ( int argc, char **argv )
   }
 #ifdef TASK_MANAGER_LTE
       assert(strlen(get_softmodem_params()->threadPoolConfig) > 0);
-      int n_threads = num_threads(get_softmodem_params()->threadPoolConfig);
+      int const n_threads = max(num_threads(get_softmodem_params()->threadPoolConfig), 1);
       task_manager_t man = {0};
       init_task_manager(&man, n_threads);
 #endif

@@ -555,7 +555,7 @@ int main(int argc, char *argv[])
   gNB->num_pusch_symbols_per_thread = 1;
 
 #ifdef TASK_MANAGER
-  init_task_manager(&gNB->man, threadCnt);
+  init_task_manager(&gNB->man, max(threadCnt, 1));
 #else
   initFloatingCoresTpool(threadCnt, &gNB->threadPool, false, "gNB-tpool");
 #endif

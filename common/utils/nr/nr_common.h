@@ -137,9 +137,26 @@ void nr_est_delay(int ofdm_symbol_size, const c16_t *ls_est, c16_t *ch_estimates
 #define CEILIDIV(a,b) ((a+b-1)/b)
 #define ROUNDIDIV(a,b) (((a<<1)+b)/(b<<1))
 
-#define cmax(a,b)  ((a>b) ? (a) : (b))
+// How many cmin/cmax, min/max are defined in OAI? Clean in separate MR
+#ifndef cmax
+
+#define cmax(a,b) \
+({ __typeof__ (a) _a = (a); \
+   __typeof__ (b) _b = (b); \
+  _a > _b ? _a : _b; })
+
+#endif
+
 #define cmax3(a,b,c) ((cmax(a,b)>c) ? (cmax(a,b)) : (c))
-#define cmin(a,b)  ((a<b) ? (a) : (b))
+
+#ifndef cmin
+
+#define cmin(a,b) \
+({ __typeof__ (a) _a = (a); \
+   __typeof__ (b) _b = (b); \
+  _a < _b ? _a : _b; })
+
+#endif
 
 #ifdef __cplusplus
 #ifdef min

@@ -405,9 +405,9 @@ int main(int argc, char **argv)
 	RC.gNB[0] = calloc(1, sizeof(PHY_VARS_gNB));
 	gNB = RC.gNB[0];
 #ifdef TASK_MANAGER_SIM
-  int const n_threads = num_threads(gNBthreads);
+  int const n_threads = max(num_threads(gNBthreads), 1);
   init_task_manager(&gNB->man, n_threads);
-  init_task_manager(&nrUE_params.man, dlsch_threads);
+  init_task_manager(&nrUE_params.man, max(dlsch_threads, 1));
 #else
   initNamedTpool(gNBthreads, &gNB->threadPool, true, "gNB-tpool");
   initFloatingCoresTpool(dlsch_threads, &nrUE_params.Tpool, false, "UE-tpool");

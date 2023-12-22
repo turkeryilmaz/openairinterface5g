@@ -498,7 +498,7 @@ void init_task_manager(task_manager_t* man, uint32_t num_threads)
     ret=pthread_attr_setschedparam(&attr, &sparam);
 
     int rc = pthread_create(&man->t_arr[i], &attr, worker_thread, args);
-    assert(rc == 0);
+    assert(rc == 0 && "Error creating a thread");
   }
 
   man->index = 0;

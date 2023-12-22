@@ -903,6 +903,8 @@ int main(int argc, char **argv)
   unsigned int errors_bit = 0;
 
 #ifdef TASK_MANAGER_SIM
+  if(dlsch_threads == 0)
+    dlsch_threads = 1; 
   init_task_manager(&nrUE_params.man, dlsch_threads);
 #else
   initFloatingCoresTpool(dlsch_threads, &nrUE_params.Tpool, false, "UE-tpool");
@@ -945,7 +947,7 @@ int main(int argc, char **argv)
   int n_errs = 0;
 
 #ifdef TASK_MANAGER_SIM
-  int const n_threads = num_threads(gNBthreads); 
+  int const n_threads = max(num_threads(gNBthreads), 1); 
   init_task_manager(&gNB->man, n_threads );
 #else
   initNamedTpool(gNBthreads, &gNB->threadPool, true, "gNB-tpool");

@@ -790,6 +790,8 @@ int main(int argc, char **argv) {
  
 #ifdef TASK_MANAGER_LTE
   int const n_threads = 1;
+  proc_rxtx->man = calloc(1, sizeof(task_manager_t));
+  assert(proc_rxtx->man != NULL && "Memory exhausted");
   init_task_manager(proc_rxtx->man, n_threads);
 #else
   proc_rxtx->threadPool = (tpool_t *)malloc(sizeof(tpool_t));
