@@ -39,6 +39,7 @@
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "common/utils/nr/nr_common.h"
 #include "executables/softmodem-common.h"
+#include "common/utils/LATSEQ/latseq.h"
 
 //#define DEBUG_DLSCH
 //#define DEBUG_DLSCH_MAPPING
@@ -129,13 +130,13 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx,
     unsigned char output[rel15->rbSize * NR_SYMBOLS_PER_SLOT * NR_NB_SC_PER_RB * Qm * rel15->nrOfLayers] __attribute__((aligned(32)));
     bzero(output,rel15->rbSize * NR_SYMBOLS_PER_SLOT * NR_NB_SC_PER_RB * Qm * rel15->nrOfLayers);
     start_meas(dlsch_encoding_stats);
-
     if (nr_dlsch_encoding(gNB,
                           frame, slot, harq, frame_parms,output,tinput,tprep,tparity,toutput,
                           dlsch_rate_matching_stats,
                           dlsch_interleaving_stats,
                           dlsch_segmentation_stats) == -1)
       return;
+    LATSEQ_P("D phy.ldcp--phy.scrambled", "len%u::fm%u.sl%u.dlschid%u.rnti%u", 1, frame, slot, dlsch_id, rel15->rnti);
     stop_meas(dlsch_encoding_stats);
 #ifdef DEBUG_DLSCH
     printf("PDSCH encoding:\nPayload:\n");
@@ -178,6 +179,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx,
       }
 #endif
 
+      LATSEQ_P("D phy.scrambled--phy.modulated", "len%u::fm%u.sl%u.codeword%u.rnti%u", 1, frame, slot, q, rel15->rnti);
       stop_meas(dlsch_scrambling_stats);
       /// Modulation
       start_meas(dlsch_modulation_stats);
@@ -185,6 +187,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx,
                     encoded_length,
                     Qm,
                     mod_symbs[q]);
+      LATSEQ_P("D phy.modulated--phy.layermapped", "len%u::fm%u.sl%u.codeword%u.qm%u.rnti%u", 1, frame, slot, q, Qm, rel15->rnti);
       VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_gNB_PDSCH_MODULATION, 0);
       stop_meas(dlsch_modulation_stats);
 #ifdef DEBUG_DLSCH
@@ -215,7 +218,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx,
         printf("\n");
       }
 #endif
-
+    LATSEQ_P("D phy.layermapped--phy.resourcemapped", "len%u::fm%u.sl%u.rnti%u", 1, frame, slot, rel15->rnti);
     stop_meas(&gNB->dlsch_layer_mapping_stats); 
 
     /// Resource mapping
@@ -467,6 +470,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx,
         } // no DMRS/PTRS in symbol  
       } // symbol loop
     }// layer loop
+    LATSEQ_P("D phy.resourcemapped--phy.antennamapped", "len%u::fm%u.sl%u.rnti%u", 1, frame, slot, rel15->rnti);
     stop_meas(&gNB->dlsch_resource_mapping_stats);
 
     ///Layer Precoding and Antenna port mapping
@@ -477,7 +481,6 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx,
     // The Precoding matrix:
     // The Codebook Type I
     start_meas(&gNB->dlsch_precoding_stats);
-
     for (int ap=0; ap<frame_parms->nb_antennas_tx; ap++) {
 
       for (int l=rel15->StartSymbolIndex; l<rel15->StartSymbolIndex+rel15->NrOfSymbols; l++) {
@@ -562,7 +565,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx,
         } //RB loop
       } // symbol loop
     }// port loop
-
+    LATSEQ_P("D phy.antennamapped--phy.rotated", "len%u::fm%u.sl%u.nbant%u.rnti%u", 1, frame, slot, frame_parms->nb_antennas_tx, rel15->rnti);
     stop_meas(&gNB->dlsch_precoding_stats);
 
     // TODO: handle precoding

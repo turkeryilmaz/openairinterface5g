@@ -1546,6 +1546,7 @@ static int generate_retx_pdu(nr_rlc_entity_am_t *entity, char *buffer,
   int p;
 
   sdu = entity->retransmit_list;
+  LATSEQ_P("D rlc.retx--TODO", "len%u::sn%u.so%u", sdu->size, sdu->sdu->sn, sdu->so);
 
   pdu_header_size = compute_pdu_header_size(entity, sdu);
 
@@ -1622,6 +1623,7 @@ static int generate_tx_pdu(nr_rlc_entity_am_t *entity, char *buffer, int size)
     return 0;
 
   sdu = entity->tx_list;
+  LATSEQ_P("D rlc.genpdu--rlc.seg", "len%u::Rbuf%u.sn%u", sdu->size, sdu->sdu, sdu->sdu->sn);
 
   pdu_header_size = compute_pdu_header_size(entity, sdu);
 
@@ -1641,7 +1643,7 @@ static int generate_tx_pdu(nr_rlc_entity_am_t *entity, char *buffer, int size)
   entity->common.bstatus.tx_size -= pdu_size;
 
   /* assign SN to SDU */
-  sdu->sdu->sn = entity->tx_next;
+  //sdu->sdu->sn = entity->tx_next;
 
   /* segment if necessary */
   if (pdu_size > size) {
@@ -1660,8 +1662,8 @@ static int generate_tx_pdu(nr_rlc_entity_am_t *entity, char *buffer, int size)
   }
 
   /* update tx_next if the SDU segment is the last */
-  if (sdu->is_last)
-    entity->tx_next = (entity->tx_next + 1) % entity->sn_modulus;
+  //if (sdu->is_last)
+  //  entity->tx_next = (entity->tx_next + 1) % entity->sn_modulus;
 
   /* put SDU/SDU segment in the wait list */
   /* speedup: check end of wait list, probably the new sdu comes after */
@@ -1693,6 +1695,7 @@ static int generate_tx_pdu(nr_rlc_entity_am_t *entity, char *buffer, int size)
     entity->force_poll = 0;
   }
   int ret_size = serialize_sdu(entity, sdu, buffer, size, p);
+  LATSEQ_P("D rlc.seg--mac.hdr", "len%u::Rbuf%u.sn%u.so%u.RMbuf%u", ret_size, sdu->sdu, sdu->sdu->sn, sdu->so, buffer);
 
   entity->common.stats.txpdu_pkts++;
   entity->common.stats.txpdu_bytes += ret_size;
@@ -1774,10 +1777,12 @@ void nr_rlc_entity_am_recv_sdu(nr_rlc_entity_t *_entity,
           entity->sdu_rejected);
     entity->sdu_rejected = 0;
     entity->t_log_buffer_full = entity->t_current;
+    LATSEQ_P("D rlc.sdu--rlc.rejected1", "len%u::PRbuf%u", size, buffer);
   }
 
   if (entity->tx_size + size > entity->tx_maxsize) {
     entity->sdu_rejected++;
+    LATSEQ_P("D rlc.sdu--rlc.rejected2", "len%u::PRbuf%u", size, buffer);
     return;
   }
 
@@ -1786,6 +1791,9 @@ void nr_rlc_entity_am_recv_sdu(nr_rlc_entity_t *_entity,
   entity->common.stats.rxsdu_bytes += size;
 
   sdu = nr_rlc_new_sdu(buffer, size, sdu_id);
+  sdu->sdu->sn = entity->tx_next;
+  entity->tx_next = (entity->tx_next + 1) % entity->sn_modulus;
+  LATSEQ_P("D rlc.buf--rlc.genpdu", "len%u::PRbuf%u.Rbuf%u.sn%u", size, buffer, sdu->sdu, sdu->sdu->sn);
 
   LOG_D(RLC, "Created new RLC SDU and append it to the RLC list \n");
 

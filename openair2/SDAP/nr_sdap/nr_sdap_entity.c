@@ -24,6 +24,7 @@
 #include <openair2/LAYER2/nr_pdcp/nr_pdcp_oai_api.h>
 #include <openair3/ocp-gtpu/gtp_itf.h>
 #include "openair2/LAYER2/nr_pdcp/nr_pdcp_ue_manager.h"
+#include "common/utils/LATSEQ/latseq.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -70,6 +71,7 @@ static bool nr_sdap_tx_entity(nr_sdap_entity_t *entity,
                               const uint32_t *destinationL2Id,
                               const uint8_t qfi,
                               const bool rqi) {
+  LATSEQ_P("D sdap.pdu--pdcp.hdr", "len%u::SPbuf%u.ueid%u", sdu_buffer_size, sdu_buffer, entity->ue_id);
   /* The offset of the SDAP header, it might be 0 if has_sdap_tx is not true in the pdcp entity. */
   int offset=0;
   bool ret = false;

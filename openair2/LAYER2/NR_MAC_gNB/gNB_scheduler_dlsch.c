@@ -44,6 +44,7 @@
 /*Softmodem params*/
 #include "executables/softmodem-common.h"
 #include "../../../nfapi/oai_integration/vendor_ext.h"
+#include "common/utils/LATSEQ/latseq.h"
 
 ////////////////////////////////////////////////////////
 /////* DLSCH MAC PDU generation (6.1.2 TS 38.321) */////
@@ -982,7 +983,7 @@ void nr_schedule_ue_spec(module_id_t module_id,
     harq->feedback_slot = pucch->ul_slot;
     harq->is_waiting = true;
     UE->mac_stats.dl.rounds[harq->round]++;
-    LOG_D(NR_MAC,
+    LOG_D(NR_MAC, 
           "%4d.%2d [DLSCH/PDSCH/PUCCH] RNTI %04x DCI L %d start %3d RBs %3d startSymbol %2d nb_symbol %2d dmrspos %x MCS %2d nrOfLayers %d TBS %4d HARQ PID %2d round %d RV %d NDI %d dl_data_to_ULACK %d (%d.%d) PUCCH allocation %d TPC %d\n",
           frame,
           slot,
@@ -1208,6 +1209,7 @@ void nr_schedule_ue_spec(module_id_t module_id,
           pdcch_pdu->DurationSymbols);
 
     if (harq->round != 0) { /* retransmission */
+      LATSEQ_P("D mac.retx--mac.dci", "len%u::fm%u.sl%u.hqpid%u.hqround%u", TBS, frame, slot, current_harq_pid, harq->round);
       /* we do not have to do anything, since we do not require to get data
        * from RLC or encode MAC CEs. The TX_req structure is filled below
        * or copy data to FAPI structures */
@@ -1294,6 +1296,8 @@ void nr_schedule_ue_spec(module_id_t module_id,
             dlsch_total_bytes += len;
             lcid_bytes += len;
             sdus += 1;
+            LATSEQ_P("D mac.hdr--mac.dci", "len%u::RMbuf%u.fm%u.sl%u.hqpid%u.mcs%u.tbsize%u.rnti%u", len, buf-len, frame, slot, current_harq_pid, sched_pdsch->mcs, sched_pdsch->tb_size, rnti);
+            LATSEQ_P("D mac.hdr--mac.retx", "len%u::RMbuf%u.hqpid%u.mcs%u.tbsize%u.rnti%u", len, buf-len, current_harq_pid, sched_pdsch->mcs, sched_pdsch->tb_size,rnti);
           }
 
           UE->mac_stats.dl.lc_bytes[lcid] += lcid_bytes;
