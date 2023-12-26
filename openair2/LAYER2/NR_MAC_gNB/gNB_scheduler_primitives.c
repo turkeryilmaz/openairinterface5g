@@ -1974,11 +1974,15 @@ void remove_front_nr_list(NR_list_t *listP)
 
 NR_UE_info_t *find_nr_UE(NR_UEs_t *UEs, int CC_id, rnti_t rntiP)
 {
-
-  UE_iterator(UEs->list[CC_id], UE) {
-    if (UE->rnti == rntiP) {
-      LOG_D(NR_MAC,"Search and found rnti: %04x,ccid %d\n", rntiP,CC_id);
-      return UE;
+  for(int cell_index=0;cell_index<RC.nb_nr_CC[0];cell_index++){
+    UE_iterator(UEs->list[cell_index], UE) {
+      if (UE->rnti == rntiP) {
+        LOG_D(NR_MAC,"Search and found rnti: %04x,ccid %d\n", rntiP,CC_id);
+        if(UE->CC_id != CC_id){
+          LOG_W(NR_MAC,"the UE found is not on the candidate cell, this happens when CC_id info missing for callers");
+        }
+        return UE;
+      }
     }
   }
   LOG_W(NR_MAC,"Search for not existing rnti (ignore for RA): %04x  ccid %d\n", rntiP,CC_id);
