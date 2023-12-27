@@ -59,6 +59,9 @@
 #include "NR_HandoverPreparationInformation.h"
 #include "NR_HandoverCommand.h"
 #include "NR_HandoverCommand-IEs.h"
+#include "NGAP_SourceNGRANNode-ToTargetNGRANNode-TransparentContainer.h"
+#include "NGAP_NGRAN-CGI.h"
+#include "NGAP_NR-CGI.h"
 #include "NGAP_CauseRadioNetwork.h"
 #include "f1ap_messages_types.h"
 #include "openair2/F1AP/f1ap_ids.h"
@@ -74,6 +77,8 @@
 #include "NGAP_Dynamic5QIDescriptor.h"
 #include "conversions.h"
 #include "RRC/NR/rrc_gNB_radio_bearers.h"
+#include "rrc_gNB_du.h"
+#include "ngap_gNB_nnsf.h"
 
 #include "uper_encoder.h"
 
@@ -90,6 +95,7 @@ static const uint16_t NGAP_INTEGRITY_NIA2_MASK = 0x4000;
 static const uint16_t NGAP_INTEGRITY_NIA3_MASK = 0x2000;
 
 #define INTEGRITY_ALGORITHM_NONE NR_IntegrityProtAlgorithm_nia0
+extern int get_ssb_arfcn(const f1ap_served_cell_info_t *cell_info, const NR_MIB_t *mib, const NR_SIB1_t *sib1);
 
 static int rrc_gNB_process_security(const protocol_ctxt_t *const ctxt_pP, rrc_gNB_ue_context_t *const ue_context_pP, ngap_security_capabilities_t *security_capabilities_pP);
 
@@ -115,6 +121,28 @@ void process_gNB_security_key (
   memcpy(UE->kgnb, security_key_pP, SECURITY_KEY_LENGTH);
   memset(UE->nh, 0, SECURITY_KEY_LENGTH);
   UE->nh_ncc = -1;
+
+  for (i = 0; i < 32; i++) {
+    sprintf(&ascii_buffer[2 * i], "%02X", UE->kgnb[i]);
+  }
+
+  ascii_buffer[2 * i] = '\0';
+  LOG_I(NR_RRC, "[gNB %d][UE %x] Saved security key %s\n", ctxt_pP->module_id, UE->rnti, ascii_buffer);
+}
+
+
+void process_gNB_kgnb_star(
+  const protocol_ctxt_t *const ctxt_pP,
+  rrc_gNB_ue_context_t*  ue_context_pP,
+  uint16_t pci,
+  NR_ARFCN_ValueNR_t absoluteFrequencySSB
+)
+{
+  char ascii_buffer[65];
+  uint8_t i;
+  gNB_RRC_UE_t *UE = &ue_context_pP->ue_context;
+  
+  nr_derive_key_ng_ran_star(pci, absoluteFrequencySSB, UE->nh, UE->kgnb);
 
   for (i = 0; i < 32; i++) {
     sprintf(&ascii_buffer[2 * i], "%02X", UE->kgnb[i]);
@@ -150,7 +178,7 @@ nr_rrc_pdcp_config_security(
 
   if ( LOG_DUMPFLAG( DEBUG_SECURITY ) ) {
     if (print_keys == 1 ) {
-      print_keys =0;
+      // print_keys =0;
       LOG_DUMPMSG(NR_RRC, DEBUG_SECURITY, UE->kgnb, 32, "\nKgNB:");
       LOG_DUMPMSG(NR_RRC, DEBUG_SECURITY, kRRCenc, 16,"\nKRRCenc:" );
       LOG_DUMPMSG(NR_RRC, DEBUG_SECURITY, kRRCint, 16,"\nKRRCint:" );
@@ -159,7 +187,9 @@ nr_rrc_pdcp_config_security(
 
   uint8_t security_mode =
       enable_ciphering ? UE->ciphering_algorithm | (UE->integrity_algorithm << 4) : 0 | (UE->integrity_algorithm << 4);
-  nr_pdcp_config_set_security(ctxt_pP->rntiMaybeUEid, DCCH, security_mode, kRRCenc, kRRCint, kUPenc);
+  
+  LOG_I(NR_RRC, "HO LOG: Current Security Mode %u Integrity Algo: %d Ciphering Algo: %ld\n", security_mode, UE->integrity_algorithm, UE->ciphering_algorithm);
+  nr_pdcp_config_set_security(ctxt_pP->rntiMaybeUEid, DCCH, security_mode, kRRCenc, kRRCint, kUPenc, UE->as_security_active);
 }
 
 //------------------------------------------------------------------------------
@@ -1195,6 +1225,170 @@ int rrc_gNB_process_NGAP_UE_CONTEXT_RELEASE_REQ(MessageDef *msg_p, instance_t in
     return (0);
   }
 }
+static NR_SRB_ToAddModList_t *createSRBlist(gNB_RRC_UE_t *ue, bool reestablish)
+{
+  if (!ue->Srb[1].Active) {
+    LOG_E(NR_RRC, "Call SRB list while SRB1 doesn't exist\n");
+    return NULL;
+  }
+  NR_SRB_ToAddModList_t *list = CALLOC(sizeof(*list), 1);
+  for (int i = 0; i < maxSRBs; i++)
+    if (ue->Srb[i].Active) {
+      asn1cSequenceAdd(list->list, NR_SRB_ToAddMod_t, srb);
+      srb->srb_Identity = i;
+      if (reestablish) {
+        asn1cCallocOne(srb->reestablishPDCP, NR_SRB_ToAddMod__reestablishPDCP_true);
+      }
+    }
+  return list;
+}
+
+static int create_rrc_NGAP_ue_context(protocol_ctxt_t* ctxt_P, const ngap_handover_request_t* const handover_req, uint32_t gNB_ue_ngap_id)
+{
+  struct ngap_gNB_amf_data_s * new_amf_desc_p = NULL;
+  ngap_gNB_instance_t * ngap_gNB_instance_p = ngap_gNB_get_instance(ctxt_P->module_id);
+  new_amf_desc_p = ngap_gNB_nnsf_select_amf_by_guami(ngap_gNB_instance_p, NGAP_RRC_CAUSE_MO_SIGNALLING, handover_req->guami);
+    
+  if (new_amf_desc_p) {
+    LOG_I(NR_RRC, "HO LOG: Chose AMF '%s' (assoc_id %d)\n",
+              new_amf_desc_p->amf_name,
+              new_amf_desc_p->assoc_id);
+
+    struct ngap_gNB_ue_context_s *ue_desc_p = calloc(1, sizeof(*ue_desc_p));
+    DevAssert(ue_desc_p != NULL);
+    /* Keep a reference to the selected AMF */
+    ue_desc_p->amf_ref       = new_amf_desc_p;
+    ue_desc_p->amf_ue_ngap_id = handover_req->amf_ue_ngap_id;
+    ue_desc_p->gNB_ue_ngap_id = gNB_ue_ngap_id;
+    ue_desc_p->gNB_instance  = ngap_gNB_instance_p;
+    ue_desc_p->ue_state = NGAP_UE_CONNECTED;
+
+    ngap_store_ue_context(ue_desc_p);
+    LOG_I(NR_RRC, "HO LOG: AMF found with amf setId: %d amfPointer: %d amfRegionId: %d \n",
+          handover_req->guami.amf_set_id, handover_req->guami.amf_pointer, handover_req->guami.amf_region_id);
+    return 0;
+  }
+
+  LOG_E(NR_RRC, "HO LOG: AMF Can not found with amf setId: %d amfPointer: %d amfRegionId: %d \n",
+  handover_req->guami.amf_set_id, handover_req->guami.amf_pointer, handover_req->guami.amf_region_id);
+  return -1;
+}
+
+int rrc_gNB_process_Handover_Request(MessageDef* msg_p, instance_t instance)
+{
+  protocol_ctxt_t ctxt = {0};
+  ctxt.eNB_index = 0;
+
+  ngap_handover_request_t* handover_req = &NGAP_HANDOVER_REQUEST(msg_p);
+  gNB_RRC_INST* rrc = RC.nrrrc[instance];
+  rrc_gNB_ue_context_t * ue_context_p = NULL;
+
+  NGAP_SourceNGRANNode_ToTargetNGRANNode_TransparentContainer_t* transparentContainer = NULL;
+  asn_dec_rval_t dec_rval = aper_decode_complete(NULL, &asn_DEF_NGAP_SourceNGRANNode_ToTargetNGRANNode_TransparentContainer, (void**)&transparentContainer, handover_req->sourceToTargetTransparentContainer.buffer, handover_req->sourceToTargetTransparentContainer.length);
+  if (dec_rval.code != RC_OK) {
+    LOG_E(NR_RRC, "cannot decode Ho Request Source To Target Transparent Container for UE ID: %lu, Returning...\n", handover_req->amf_ue_ngap_id);
+    return -1;
+  }
+  if ( LOG_DEBUGFLAG(DEBUG_ASN1) )
+    xer_fprint(stdout, &asn_DEF_NGAP_SourceNGRANNode_ToTargetNGRANNode_TransparentContainer, (const void*)transparentContainer);
+
+  uint64_t nci;
+  BIT_STRING_TO_NR_CELL_IDENTITY(&transparentContainer->targetCell_ID.choice.nR_CGI->nRCellIdentity, nci);
+  LOG_I(NR_RRC, "HO LOG: HO Request has came for NCI: %lu \n", nci);
+  uint8_t cellIdx = UINT8_MAX;
+  struct nr_rrc_du_container_t* du = get_du_for_nr_cell_id(rrc, nci, &cellIdx);
+  if (du == NULL || cellIdx == UINT8_MAX)
+  {
+    /* Cell Not Found! Return HO Request Failure*/
+    LOG_E(RRC, "received Handover Request message, but no corresponding DU found\n");
+    return -1;
+  }
+  
+  const f1ap_served_cell_info_t * cell_info = &du->setup_req->cell[cellIdx].info;
+  uint32_t ssb_arfcn = get_ssb_arfcn(cell_info, du->mib, du->sib1);
+  
+  sctp_assoc_t curr_assoc_id = du->assoc_id;
+  ue_context_p = rrc_gNB_create_ue_context(curr_assoc_id, UINT16_MAX, rrc, UINT64_MAX, UINT32_MAX);
+  gNB_RRC_UE_t* UE = &(ue_context_p->ue_context);
+  PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt, instance, GNB_FLAG_YES, UE->rrc_ue_id, 0, 0);
+
+
+  if (create_rrc_NGAP_ue_context(&ctxt, handover_req, UE->rrc_ue_id) < 0) {
+    LOG_E(NR_RRC, "Can not add the ue to NGAP Context! Trigger Handover Cancel!\n");
+    return -1;
+  }
+
+  UE->StatusRrc = NR_RRC_HO_PREPARATION; 
+  UE->amf_ue_ngap_id = handover_req->amf_ue_ngap_id;
+  UE->nh_ncc = handover_req->next_hop_chain_count;
+  UE->ue_guami.mcc = handover_req->guami.mcc;
+  UE->ue_guami.mnc = handover_req->guami.mnc;
+  UE->ue_guami.mnc_len = handover_req->guami.mnc_len;
+  UE->ue_guami.amf_region_id = handover_req->guami.amf_region_id;
+  UE->ue_guami.amf_set_id = handover_req->guami.amf_set_id;
+  UE->ue_guami.amf_pointer = handover_req->guami.amf_pointer;
+  
+  // /* Clone Handover Preparation Information Before Parsing! */
+  // UE->ue_handover_prep_info_buffer.buf = (uint8_t*)calloc(1, transparentContainer->rRCContainer.size);
+  // memcpy(UE->ue_handover_prep_info_buffer.buf, transparentContainer->rRCContainer.buf, transparentContainer->rRCContainer.size);
+  // UE->ue_handover_prep_info_buffer.len = transparentContainer->rRCContainer.size;
+
+  /* Parse If Needed Later (?)*/
+  NR_HandoverPreparationInformation_t *hoPrepInformation = NULL;
+  asn_dec_rval_t hoPrep_dec_rval = uper_decode_complete(NULL,
+                                                 &asn_DEF_NR_HandoverPreparationInformation,
+                                                 (void **)&hoPrepInformation,
+                                                 (uint8_t *)transparentContainer->rRCContainer.buf,
+                                                 transparentContainer->rRCContainer.size);
+  AssertFatal(hoPrep_dec_rval.code == RC_OK && hoPrep_dec_rval.consumed > 0, "Handover Prep Info decode error\n");
+  
+  if ( LOG_DEBUGFLAG(DEBUG_ASN1) )
+    xer_fprint(stdout, &asn_DEF_NR_HandoverPreparationInformation, (const void*)hoPrepInformation);
+  
+  NR_HandoverPreparationInformation_IEs_t* hoPrep  = hoPrepInformation->criticalExtensions.choice.c1->choice.handoverPreparationInformation;
+  if (UE->ue_cap_buffer.buf != NULL)
+    free(UE->ue_cap_buffer.buf);
+
+  const NR_UE_CapabilityRAT_ContainerList_t *ue_CapabilityRAT_ContainerList =
+        &(hoPrep->ue_CapabilityRAT_List);
+
+  UE->ue_cap_buffer.len = uper_encode_to_new_buffer(&asn_DEF_NR_UE_CapabilityRAT_ContainerList,
+                                                      NULL,
+                                                      ue_CapabilityRAT_ContainerList,
+                                                      (void **)&UE->ue_cap_buffer.buf);
+  if (UE->ue_cap_buffer.len <= 0) {
+      LOG_E(RRC, "could not encode UE-CapabilityRAT-ContainerList, abort handling capabilities\n");
+      return -1;
+  }
+
+  UE->ue_handover_prep_info_buffer.len = uper_encode_to_new_buffer(&asn_DEF_NR_HandoverPreparationInformation,
+                                                      NULL,
+                                                      (const void*)hoPrepInformation,
+                                                      (void **)&UE->ue_handover_prep_info_buffer.buf);
+  if (UE->ue_handover_prep_info_buffer.len <= 0) {
+      LOG_E(RRC, "Could not encode Handover Preparation Information, abort...\n");
+      return -1;
+  }
+
+  ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_NR_HandoverPreparationInformation, hoPrepInformation);
+  
+  //PREPARE PDCP
+  rrc_gNB_process_security(&ctxt, ue_context_p, &handover_req->security_capabilities);
+  memcpy(UE->nh, handover_req->next_hop, SECURITY_KEY_LENGTH);
+  process_gNB_kgnb_star(&ctxt, ue_context_p, cell_info->nr_pci, ssb_arfcn);
+  
+  UE->Srb[1].Active = 1;
+  UE->Srb[2].Active = 1;
+  NR_SRB_ToAddModList_t *SRBs = createSRBlist(UE, true);
+
+  nr_pdcp_add_srbs(true, UE->rrc_ue_id, SRBs, 0, NULL, NULL);
+  uint8_t enableCiphering = 0;
+  UE->as_security_active = true;
+  nr_rrc_pdcp_config_security(&ctxt, ue_context_p, enableCiphering);
+  
+  trigger_bearer_setup(rrc, UE, handover_req->nb_of_pdusessions, handover_req->pduSessionResourceSetupHOList, handover_req->ue_ambr.br_dl); 
+  return 0;
+}
 
 //-----------------------------------------------------------------------------
 /*
@@ -1349,6 +1543,75 @@ void rrc_gNB_send_NGAP_HANDOVER_REQUIRED(
   ho_required->handoverType = 0; //intra5gs
 
   ue_context_pP->ue_context.StatusRrc = NR_RRC_HO_PREPARATION;
+  itti_send_msg_to_task(TASK_NGAP, ctxt_pP->instance, msg_p);
+}
+
+void rrc_gNB_send_NGAP_HANDOVER_NOTIFY(
+  const protocol_ctxt_t    *const ctxt_pP,
+  rrc_gNB_ue_context_t     *const ue_context_pP,
+  uint32_t nrCellId
+)
+{
+  LOG_I(NR_RRC, "HO Log: Preparing Handover Notify Structure\n");
+
+  MessageDef  *msg_p;
+  gNB_RRC_UE_t *UE = &ue_context_pP->ue_context;
+  msg_p = itti_alloc_new_message (TASK_RRC_GNB, 0, NGAP_HANDOVER_NOTIFY);
+  ngap_handover_notify_t* ho_notify = &NGAP_HANDOVER_NOTIFY(msg_p);
+  memset(ho_notify, 0, sizeof(*ho_notify));
+
+  ho_notify->gNB_ue_ngap_id = UE->rrc_ue_id;
+  ho_notify->amf_ue_ngap_id = UE->amf_ue_ngap_id;
+  ho_notify->nrCellId = nrCellId;
+
+  itti_send_msg_to_task(TASK_NGAP, ctxt_pP->instance, msg_p);
+}
+
+void rrc_gNB_send_NGAP_HANDOVER_REQUEST_ACKNOWLEDGE(
+  const protocol_ctxt_t    *const ctxt_pP,
+  rrc_gNB_ue_context_t     *const ue_context_pP,
+  uint8_t                  xid,
+  uint8_t** handoverCommand,
+  const size_t handoverCommandSize
+)
+{
+  LOG_I(NR_RRC, "HO Log: Preparing Handover Command Structure\n");
+
+  MessageDef  *msg_p;
+  gNB_RRC_UE_t *UE = &ue_context_pP->ue_context;
+  msg_p = itti_alloc_new_message (TASK_RRC_GNB, 0, NGAP_HANDOVER_REQUEST_ACKNOWLEDGE);
+  ngap_handover_request_ack_t* ho_req_ack = &NGAP_HANDOVER_REQUEST_ACKNOWLEDGE(msg_p);
+  memset(ho_req_ack, 0, sizeof(*ho_req_ack));
+
+  //Prepare RAN UE NGAP ID
+  ho_req_ack->gNB_ue_ngap_id = UE->rrc_ue_id;
+
+  //Prepare AMF UE NGAP ID
+  ho_req_ack->amf_ue_ngap_id = UE->amf_ue_ngap_id;
+  ho_req_ack->nb_of_pdusessions = UE->nb_of_pdusessions;
+  for (int pduSessionIdx = 0; pduSessionIdx < UE->nb_of_pdusessions; pduSessionIdx++)
+  {
+    rrc_pdu_session_param_t* session = &UE->pduSession[pduSessionIdx];
+  
+    ho_req_ack->pdusessions[pduSessionIdx].pdusession_id = session->param.pdusession_id;
+    ho_req_ack->pdusessions[pduSessionIdx].pdu_session_type = session->param.pdu_session_type;
+    ho_req_ack->pdusessions[pduSessionIdx].gtp_teid= session->param.gNB_teid_N3;
+    memcpy(ho_req_ack->pdusessions[pduSessionIdx].gNB_addr.buffer, session->param.gNB_addr_N3.buffer, session->param.gNB_addr_N3.length);
+    ho_req_ack->pdusessions[pduSessionIdx].gNB_addr.length = session->param.gNB_addr_N3.length;
+    ho_req_ack->pdusessions[pduSessionIdx].nb_of_qos_flow = session->param.nb_qos;
+    for (int qos_flow_index = 0; qos_flow_index < ho_req_ack->pdusessions[pduSessionIdx].nb_of_qos_flow; qos_flow_index++) {
+        ho_req_ack->pdusessions[pduSessionIdx].associated_qos_flows[qos_flow_index].qfi = session->param.qos[qos_flow_index].qfi;
+        ho_req_ack->pdusessions[pduSessionIdx].associated_qos_flows[qos_flow_index].qos_flow_mapping_ind = QOSFLOW_MAPPING_INDICATION_DL;
+      
+    }
+  }
+
+  ho_req_ack->targetToSourceTransparentContainer.buffer = (uint8_t*)(calloc(1, handoverCommandSize));
+  memcpy(ho_req_ack->targetToSourceTransparentContainer.buffer, *handoverCommand, handoverCommandSize);
+  ho_req_ack->targetToSourceTransparentContainer.length = handoverCommandSize;
+
+  UE->StatusRrc = NR_RRC_HO_EXECUTION;
+
   itti_send_msg_to_task(TASK_NGAP, ctxt_pP->instance, msg_p);
 }
 //------------------------------------------------------------------------------

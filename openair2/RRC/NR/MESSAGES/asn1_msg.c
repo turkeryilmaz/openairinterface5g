@@ -665,7 +665,7 @@ int do_NR_RRCRelease(uint8_t *buffer, size_t buffer_size, uint8_t Transaction_id
   ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_NR_DL_DCCH_Message, &dl_dcch_msg);
   return((enc_rval.encoded+7)/8);
 }
-
+                        
 int16_t do_HO_RRCReconfiguration(const gNB_RRC_UE_t *UE,
                               uint8_t *buffer,
                               size_t buffer_size,
@@ -676,7 +676,8 @@ int16_t do_HO_RRCReconfiguration(const gNB_RRC_UE_t *UE,
                               NR_SecurityConfig_t *security_config,
                               NR_MeasConfig_t *meas_config,
                               struct NR_RRCReconfiguration_v1530_IEs__dedicatedNAS_MessageList *dedicatedNAS_MessageList,
-                              NR_CellGroupConfig_t *cellGroupConfig)
+                              NR_CellGroupConfig_t *cellGroupConfig, 
+                              bool masterKeyUpdate)
 //------------------------------------------------------------------------------
 {
     asn_enc_rval_t                                   enc_rval;
@@ -697,6 +698,16 @@ int16_t do_HO_RRCReconfiguration(const gNB_RRC_UE_t *UE,
       ie->radioBearerConfig->drb_ToReleaseList = DRB_releaseList;
     }
 
+    if (masterKeyUpdate) {
+      ie->radioBearerConfig->securityConfig = (NR_SecurityConfig_t*)calloc(1, sizeof(NR_SecurityConfig_t));
+      ie->radioBearerConfig->securityConfig->keyToUse =  (long*)calloc(1, sizeof(long));
+      *ie->radioBearerConfig->securityConfig->keyToUse = NR_SecurityConfig__keyToUse_master;
+
+      ie->radioBearerConfig->securityConfig->securityAlgorithmConfig = (NR_SecurityAlgorithmConfig_t*)calloc(1, sizeof(NR_SecurityAlgorithmConfig_t));
+      ie->radioBearerConfig->securityConfig->securityAlgorithmConfig->cipheringAlgorithm = UE->ciphering_algorithm;
+      ie->radioBearerConfig->securityConfig->securityAlgorithmConfig->integrityProtAlgorithm = (NR_IntegrityProtAlgorithm_t*)calloc(1, sizeof(NR_IntegrityProtAlgorithm_t));
+      *ie->radioBearerConfig->securityConfig->securityAlgorithmConfig->integrityProtAlgorithm = UE->integrity_algorithm;
+    }
     /******************** Meas Config ********************/
     // measConfig
     ie->measConfig = meas_config;
@@ -709,6 +720,18 @@ int16_t do_HO_RRCReconfiguration(const gNB_RRC_UE_t *UE,
     }
 
     if (cellGroupConfig != NULL) {
+      if (cellGroupConfig->rlc_BearerToAddModList == NULL)
+      {
+        cellGroupConfig->rlc_BearerToAddModList = calloc(1, sizeof(*cellGroupConfig->rlc_BearerToAddModList));
+        for (int i = 1; i < UE->masterCellGroup->rlc_BearerToAddModList->list.count; ++i)
+        asn1cSeqAdd(&cellGroupConfig->rlc_BearerToAddModList->list, UE->masterCellGroup->rlc_BearerToAddModList->list.array[i]);
+      }
+
+      for (int i = 0; i < cellGroupConfig->rlc_BearerToAddModList->list.count; i++) {
+        asn1cCallocOne(cellGroupConfig->rlc_BearerToAddModList->list.array[i]->reestablishRLC,
+                      NR_RLC_BearerConfig__reestablishRLC_true);
+      }
+
       uint8_t *buf = NULL;
       ssize_t len = uper_encode_to_new_buffer(&asn_DEF_NR_CellGroupConfig, NULL, cellGroupConfig, (void **)&buf);
       AssertFatal(len > 0, "ASN1 message encoding failed (%lu)!\n", len);
@@ -720,6 +743,11 @@ int16_t do_HO_RRCReconfiguration(const gNB_RRC_UE_t *UE,
       ie->nonCriticalExtension->masterCellGroup->size = len;
     }
 
+    if (masterKeyUpdate) {
+      ie->nonCriticalExtension->masterKeyUpdate = calloc(1, sizeof(NR_MasterKeyUpdate_t));
+      ie->nonCriticalExtension->masterKeyUpdate->keySetChangeIndicator = false;
+      ie->nonCriticalExtension->masterKeyUpdate->nextHopChainingCount = UE->nh_ncc;
+    }
     rrcReconf->criticalExtensions.choice.rrcReconfiguration = ie;
 
 
@@ -1312,6 +1340,114 @@ NR_MeasConfig_t *get_defaultMeasConfig(uint32_t ssb_arfcn, int band, int scs)
   return mc;
 }
 
+void remove_source_gnb_measurement_configuration(rrc_gNB_ue_context_t *ue_context_p)
+{
+  gNB_RRC_UE_t* UE = &ue_context_p->ue_context;
+  if (UE->measConfig == NULL) {
+    LOG_E(NR_RRC, "HO LOG: UE's Measurement Configuration is NULL!\n");
+    return; 
+  }
+  
+  NR_HandoverPreparationInformation_t *hoPrepInformation = NULL;
+  asn_dec_rval_t hoPrep_dec_rval = uper_decode_complete(NULL,
+                                                 &asn_DEF_NR_HandoverPreparationInformation,
+                                                 (void **)&hoPrepInformation,
+                                                 (uint8_t *)UE->ue_handover_prep_info_buffer.buf,
+                                                 UE->ue_handover_prep_info_buffer.len);
+  AssertFatal(hoPrep_dec_rval.code == RC_OK && hoPrep_dec_rval.consumed > 0, "Handover Prep Info decode error\n");
+
+  NR_RRCReconfiguration_t* rrcReconf = NULL;
+  NR_AS_Config_t*	sourceConfig = hoPrepInformation->criticalExtensions.choice.c1->choice.handoverPreparationInformation->sourceConfig;
+  asn_dec_rval_t rrcReconf_dec_rval = uper_decode_complete(NULL,
+                                                 &asn_DEF_NR_RRCReconfiguration,
+                                                 (void **)&rrcReconf,
+                                                 (uint8_t *)sourceConfig->rrcReconfiguration.buf,
+                                                 sourceConfig->rrcReconfiguration.size);
+  AssertFatal(rrcReconf_dec_rval.code == RC_OK && rrcReconf_dec_rval.consumed > 0, "Source gNB RRC Reconfig decode error\n");
+  if (rrcReconf->criticalExtensions.choice.rrcReconfiguration->measConfig == NULL)
+    return;
+
+  NR_MeasConfig_t *sourceMC = rrcReconf->criticalExtensions.choice.rrcReconfiguration->measConfig;
+  NR_MeasConfig_t *currentMC = UE->measConfig;
+
+  if (sourceMC->measObjectToAddModList->list.count > 0) {
+    currentMC->measObjectToRemoveList = calloc(1, sizeof(*currentMC->measObjectToRemoveList));
+    for (int i = 0; i < sourceMC->measObjectToAddModList->list.count; i++) {
+      NR_MeasObjectId_t* measObjId = calloc(1, sizeof(NR_MeasObjectId_t));
+      *measObjId = sourceMC->measObjectToAddModList->list.array[i]->measObjectId;
+      asn1cSeqAdd(&currentMC->measObjectToRemoveList->list, measObjId);
+    }
+  }
+
+  if (sourceMC->reportConfigToAddModList->list.count > 0) {
+    currentMC->reportConfigToRemoveList = calloc(1, sizeof(*currentMC->reportConfigToRemoveList));
+    for (int i = 0; i < sourceMC->reportConfigToAddModList->list.count; i++) {
+      NR_ReportConfigId_t* reportConfigId = calloc(1, sizeof(NR_ReportConfigId_t));
+      *reportConfigId = sourceMC->reportConfigToAddModList->list.array[i]->reportConfigId;
+      asn1cSeqAdd(&currentMC->reportConfigToRemoveList->list, reportConfigId);
+    }
+  }
+
+  if (sourceMC->measIdToAddModList->list.count > 0) {
+    currentMC->measIdToRemoveList = calloc(1, sizeof(*currentMC->measIdToRemoveList));
+    for (int i = 0; i < sourceMC->measIdToAddModList->list.count; i++) {
+      NR_MeasId_t* measId = calloc(1, sizeof(NR_MeasId_t));
+      *measId = sourceMC->measIdToAddModList->list.array[i]->measId;
+      asn1cSeqAdd(&currentMC->measIdToRemoveList->list, measId);
+    }
+  }     
+    
+}
+
+int16_t get_HandoverCommandMessage(const gNB_RRC_UE_t* ue_p,NR_SRB_ToAddModList_t **SRBs,  NR_DRB_ToAddModList_t **DRBs, uint8_t** buffer, size_t buffer_size, uint8_t transactionId) {
+  uint8_t rrc_reconfiguration_buffer[RRC_BUF_SIZE] = {0};
+
+  int reconfigSize = do_HO_RRCReconfiguration(ue_p,
+                                    rrc_reconfiguration_buffer,
+                                    RRC_BUF_SIZE,
+                                    transactionId,
+                                    *SRBs,
+                                    *DRBs,
+                                    NULL,
+                                    NULL,
+                                    ue_p->measConfig,
+                                    NULL,
+                                    ue_p->masterCellGroup,
+                                    true);
+
+  NR_HandoverCommand_t                             HoCommand={0};
+  NR_HandoverCommand_IEs_t                         *ie;
+  asn_enc_rval_t                                   enc_rval;
+
+  HoCommand.criticalExtensions.present = NR_HandoverCommand__criticalExtensions_PR_c1;
+  asn1cCalloc(HoCommand.criticalExtensions.choice.c1, c1);
+  c1->present = NR_HandoverCommand__criticalExtensions__c1_PR_handoverCommand;
+  ie = calloc(1, sizeof(NR_HandoverCommand_IEs_t));
+  OCTET_STRING_fromBuf(&ie->handoverCommandMessage,
+                       (const char *)rrc_reconfiguration_buffer, reconfigSize); 
+
+  HoCommand.criticalExtensions.choice.c1->choice.handoverCommand = ie; 
+  if ( LOG_DEBUGFLAG(DEBUG_ASN1) )
+      xer_fprint(stdout, &asn_DEF_NR_HandoverCommand, (void *)&HoCommand);
+
+  enc_rval = uper_encode_to_buffer(&asn_DEF_NR_HandoverCommand,
+                                     NULL,
+                                     (void *)&HoCommand,
+                                     (*buffer),
+                                     buffer_size);
+
+  AssertFatal(enc_rval.encoded >0, "ASN1 message encoding failed (%s, %lu)!\n",
+                enc_rval.failed_type->name, enc_rval.encoded);
+
+  LOG_D(NR_RRC,"HO LOG: Handover Command for UE %u Encoded %zd bits (%zd bytes)\n",
+            ue_p->rrc_ue_id,
+            enc_rval.encoded,
+            (enc_rval.encoded+7)/8);
+
+  return((enc_rval.encoded+7)/8);
+
+}
+
 int16_t get_HandoverPreparationInformation(const gNB_RRC_UE_t* ue_p, NR_SRB_ToAddModList_t *SRBs, NR_DRB_ToAddModList_t *DRBs,  uint8_t** buffer, size_t buffer_size) {
   uint8_t rrc_reconfiguration_buffer[RRC_BUF_SIZE] = {0};
 
@@ -1325,7 +1461,8 @@ int16_t get_HandoverPreparationInformation(const gNB_RRC_UE_t* ue_p, NR_SRB_ToAd
                                    NULL,
                                    ue_p->measConfig,
                                    NULL,
-                                   ue_p->masterCellGroup);
+                                   ue_p->masterCellGroup,
+                                   false);
 
                                    
   NR_HandoverPreparationInformation_t HoPrepInfo={0};

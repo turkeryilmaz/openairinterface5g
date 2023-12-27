@@ -150,7 +150,8 @@ int16_t do_HO_RRCReconfiguration(const gNB_RRC_UE_t *UE,
                               NR_SecurityConfig_t *security_config,
                               NR_MeasConfig_t *meas_config,
                               struct NR_RRCReconfiguration_v1530_IEs__dedicatedNAS_MessageList *dedicatedNAS_MessageList,
-                              NR_CellGroupConfig_t *cellGroupConfig);
+                              NR_CellGroupConfig_t *cellGroupConfig,
+                              bool masterKeyUpdate);
 
 int do_RRCReestablishmentComplete(uint8_t *buffer, size_t buffer_size, int64_t rrc_TransactionIdentifier);
 struct NR_HandoverPreparationInformation; //forward declare
@@ -162,6 +163,8 @@ int16_t prepare_DL_DCCH_for_HO_Command(const gNB_RRC_UE_t *UE,
                         size_t hoCommandLength,
                         uint8_t* buffer,
                         size_t buffer_size);
+void remove_source_gnb_measurement_configuration(rrc_gNB_ue_context_t * ue_p);
+int16_t get_HandoverCommandMessage(const gNB_RRC_UE_t* ue_p,NR_SRB_ToAddModList_t **SRBs,  NR_DRB_ToAddModList_t **DRBs, uint8_t** buffer, size_t buffer_size, uint8_t transactionId);
 void free_defaultMeasConfig(NR_MeasConfig_t *mc);
 uint8_t do_NR_Paging(uint8_t Mod_id, uint8_t *buffer, uint32_t tmsi);
 

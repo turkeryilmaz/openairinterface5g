@@ -103,7 +103,6 @@ static void nr_pdcp_entity_recv_pdu(nr_pdcp_entity_t *entity,
   }
 
   rcvd_count = (rcvd_hfn << entity->sn_size) | rcvd_sn;
-
   if (entity->has_ciphering)
     entity->cipher(entity->security_context,
                    buffer+header_size, size-header_size,

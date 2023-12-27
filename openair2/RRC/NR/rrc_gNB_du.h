@@ -37,6 +37,7 @@ void rrc_CU_process_f1_lost_connection(struct gNB_RRC_INST_s *rrc, struct f1ap_l
 
 struct nr_rrc_du_container_t *get_du_for_ue(struct gNB_RRC_INST_s *rrc, uint32_t ue_id);
 struct nr_rrc_du_container_t *get_du_by_assoc_id(struct gNB_RRC_INST_s *rrc, sctp_assoc_t assoc_id);
+struct nr_rrc_du_container_t* get_du_for_nr_cell_id(struct gNB_RRC_INST_s *rrc, uint64_t cellId, uint8_t* cellIdx);
 
 void dump_du_info(const struct gNB_RRC_INST_s *rrc, FILE *f);
 

@@ -98,7 +98,11 @@ static int ngap_gNB_decode_initiating_message(NGAP_NGAP_PDU_t *pdu) {
       free(res.buffer);
       NGAP_INFO("TODO Handover Resource Allocation initiating message\n");
       break;
-      
+    case NGAP_ProcedureCode_id_DownlinkRANStatusTransfer:
+      res = asn_encode_to_new_buffer(NULL, ATS_CANONICAL_XER, &asn_DEF_NGAP_NGAP_PDU, pdu);
+      free(res.buffer);
+      NGAP_INFO("TODO Downlink RAN Status Transfer initiating message\n");
+      break;
     default:
       NGAP_ERROR("Unknown procedure ID (%d) for initiating message\n",
                  (int)pdu->choice.initiatingMessage->procedureCode);

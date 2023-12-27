@@ -62,7 +62,22 @@
 #include "NGAP_UEHistoryInformation.h"
 #include "NGAP_LastVisitedNGRANCellInformation.h"
 #include "NGAP_Cause.h"
+#include "NGAP_PDUSessionResourceAdmittedList.h"
+#include "NGAP_PDUSessionResourceAdmittedItem.h"
+#include "NGAP_HandoverRequestAcknowledgeTransfer.h"
+#include "NGAP_QosFlowItemWithDataForwarding.h"
+#include "NGAP_HandoverNotify.h"
 
+
+static void allocAddrCopy(BIT_STRING_t *out, transport_layer_addr_t in)
+{
+  if (in.length) {
+    out->buf = malloc(in.length);
+    memcpy(out->buf, in.buffer, in.length);
+    out->size = in.length;
+    out->bits_unused = 0;
+  }
+}
 
 int ngap_ue_context_release_complete(instance_t instance,
                                      ngap_ue_release_complete_t *ue_release_complete_p)
@@ -235,6 +250,214 @@ int ngap_ue_context_release_req(instance_t instance,
   if (ngap_gNB_encode_pdu(&pdu, &buffer, &length) < 0) {
     /* Encode procedure has failed... */
     NGAP_ERROR("Failed to encode UE context release complete\n");
+    return -1;
+  }
+
+  /* UE associated signalling -> use the allocated stream */
+  ngap_gNB_itti_send_sctp_data_req(ngap_gNB_instance_p->instance,
+                                   ue_context_p->amf_ref->assoc_id, buffer,
+                                   length, ue_context_p->tx_stream);
+
+  return 0;
+}
+int ngap_gNB_handover_request_acknowledge(instance_t instance, ngap_handover_request_ack_t* handover_req_ack_p)
+{
+  NGAP_INFO("Preparing HO Request Acknowledge Message!\n");
+  ngap_gNB_instance_t            *ngap_gNB_instance_p = NULL;
+  struct ngap_gNB_ue_context_s   *ue_context_p        = NULL;
+  NGAP_NGAP_PDU_t pdu;
+  uint8_t  *buffer  = NULL;
+  uint32_t length;
+  /* Retrieve the NGAP gNB instance associated with Mod_id */
+  ngap_gNB_instance_p = ngap_gNB_get_instance(instance);
+  DevAssert(handover_req_ack_p != NULL);
+  DevAssert(ngap_gNB_instance_p != NULL);
+
+  if ((ue_context_p = ngap_get_ue_context(handover_req_ack_p->gNB_ue_ngap_id)) == NULL) {
+    /* The context for this gNB ue ngap id doesn't exist in the map of gNB UEs */
+    NGAP_WARN("Failed to find ue context associated with gNB ue ngap id: 0x%08x\n", handover_req_ack_p->gNB_ue_ngap_id);
+    return -1;
+  }  
+  /* Prepare the NGAP message to encode */
+  memset(&pdu, 0, sizeof(pdu));
+  pdu.present = NGAP_NGAP_PDU_PR_successfulOutcome;
+  asn1cCalloc(pdu.choice.successfulOutcome, head);
+  head->procedureCode = NGAP_ProcedureCode_id_HandoverResourceAllocation;
+  head->criticality = NGAP_Criticality_reject;
+  head->value.present = NGAP_SuccessfulOutcome__value_PR_HandoverRequestAcknowledge;
+  NGAP_HandoverRequestAcknowledge_t *out = &head->value.choice.HandoverRequestAcknowledge; 
+
+  /* mandatory */
+  {
+    asn1cSequenceAdd(out->protocolIEs.list, NGAP_HandoverRequestAcknowledgeIEs_t, ie);
+    ie->id = NGAP_ProtocolIE_ID_id_AMF_UE_NGAP_ID;
+    ie->criticality = NGAP_Criticality_ignore;
+    ie->value.present = NGAP_HandoverRequestAcknowledgeIEs__value_PR_AMF_UE_NGAP_ID;
+    asn_uint642INTEGER(&ie->value.choice.AMF_UE_NGAP_ID, handover_req_ack_p->amf_ue_ngap_id);
+  }
+    /* mandatory */
+  {
+    asn1cSequenceAdd(out->protocolIEs.list, NGAP_HandoverRequestAcknowledgeIEs_t, ie);
+    ie->id = NGAP_ProtocolIE_ID_id_RAN_UE_NGAP_ID;
+    ie->criticality = NGAP_Criticality_ignore;
+    ie->value.present = NGAP_HandoverRequestAcknowledgeIEs__value_PR_RAN_UE_NGAP_ID;
+    ie->value.choice.RAN_UE_NGAP_ID = (int64_t)handover_req_ack_p->gNB_ue_ngap_id;
+  }
+
+    /* mandatory */
+  {
+    asn1cSequenceAdd(out->protocolIEs.list, NGAP_HandoverRequestAcknowledgeIEs_t, ie);
+    ie->id = NGAP_ProtocolIE_ID_id_TargetToSource_TransparentContainer;
+    ie->criticality = NGAP_Criticality_reject;
+    ie->value.present = NGAP_HandoverRequestAcknowledgeIEs__value_PR_TargetToSource_TransparentContainer;
+    
+
+    NGAP_TargetNGRANNode_ToSourceNGRANNode_TransparentContainer_t* transparentContainer =  (NGAP_TargetNGRANNode_ToSourceNGRANNode_TransparentContainer_t*)calloc(1, sizeof(NGAP_TargetNGRANNode_ToSourceNGRANNode_TransparentContainer_t));
+    //rRC Container
+    {
+      // Handover Command
+      transparentContainer->rRCContainer.size = handover_req_ack_p->targetToSourceTransparentContainer.length;
+      transparentContainer->rRCContainer.buf =  (uint8_t *)malloc(handover_req_ack_p->targetToSourceTransparentContainer.length);
+      memcpy(transparentContainer->rRCContainer.buf, handover_req_ack_p->targetToSourceTransparentContainer.buffer ,handover_req_ack_p->targetToSourceTransparentContainer.length);
+      uint8_t *buf = NULL;
+      int encoded = aper_encode_to_new_buffer(&asn_DEF_NGAP_TargetNGRANNode_ToSourceNGRANNode_TransparentContainer, NULL, transparentContainer, (void**)&buf);
+
+      OCTET_STRING_fromBuf(&ie->value.choice.TargetToSource_TransparentContainer, (const char *)buf,
+                              encoded);
+    }
+  }
+
+      /* mandatory */
+  {
+    asn1cSequenceAdd(out->protocolIEs.list, NGAP_HandoverRequestAcknowledgeIEs_t, ie);
+    ie->id = NGAP_ProtocolIE_ID_id_PDUSessionResourceAdmittedList;
+    ie->criticality = NGAP_Criticality_ignore;
+    ie->value.present = NGAP_HandoverRequestAcknowledgeIEs__value_PR_PDUSessionResourceAdmittedList;
+
+    for (int pduSesIdx = 0; pduSesIdx < handover_req_ack_p->nb_of_pdusessions; pduSesIdx++)
+    {
+      asn1cSequenceAdd(ie->value.choice.PDUSessionResourceAdmittedList.list, NGAP_PDUSessionResourceAdmittedItem_t, hoPduSesAdmittedItem);
+      hoPduSesAdmittedItem->pDUSessionID = handover_req_ack_p->pdusessions[pduSesIdx].pdusession_id;
+      /* dLQosFlowPerTNLInformation */
+      NGAP_HandoverRequestAcknowledgeTransfer_t hoReqTransfer = {0};
+      hoReqTransfer.dL_NGU_UP_TNLInformation.present = NGAP_UPTransportLayerInformation_PR_gTPTunnel;
+      asn1cCalloc(hoReqTransfer.dL_NGU_UP_TNLInformation.choice.gTPTunnel, tmp);
+      GTP_TEID_TO_ASN1(handover_req_ack_p->pdusessions[pduSesIdx].gtp_teid, &tmp->gTP_TEID);
+      allocAddrCopy(&tmp->transportLayerAddress, handover_req_ack_p->pdusessions[pduSesIdx].gNB_addr);
+
+      for (int j = 0; j < handover_req_ack_p->pdusessions[pduSesIdx].nb_of_qos_flow; j++)
+      {
+        asn1cSequenceAdd(hoReqTransfer.qosFlowSetupResponseList.list, NGAP_QosFlowItemWithDataForwarding_t, qosItem);
+        qosItem->qosFlowIdentifier = handover_req_ack_p->pdusessions[pduSesIdx].associated_qos_flows[j].qfi;
+        qosItem->dataForwardingAccepted = NGAP_DataForwardingAccepted_data_forwarding_accepted;
+      }
+
+      void *hoReqTransfer_buffer;
+      ssize_t encoded = aper_encode_to_new_buffer(&asn_DEF_NGAP_HandoverRequestAcknowledgeTransfer, NULL, &hoReqTransfer, &hoReqTransfer_buffer);           
+      AssertFatal(encoded > 0, "ASN1 message encoding failed !\n");
+      hoPduSesAdmittedItem->handoverRequestAcknowledgeTransfer.buf = hoReqTransfer_buffer;
+      hoPduSesAdmittedItem->handoverRequestAcknowledgeTransfer.size = encoded;
+
+      ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_NGAP_HandoverRequestAcknowledgeTransfer, &hoReqTransfer);
+    }
+  }
+
+  if (LOG_DEBUGFLAG(DEBUG_ASN1))
+    xer_fprint(stdout, &asn_DEF_NGAP_NGAP_PDU, (void *)&pdu);
+
+  if (ngap_gNB_encode_pdu(&pdu, &buffer, &length) < 0) {
+    /* Encode procedure has failed... */
+    NGAP_ERROR("Failed to encode Handover Request Acknowledge Msg\n");
+    return -1;
+  }
+
+  /* UE associated signalling -> use the allocated stream */
+  ngap_gNB_itti_send_sctp_data_req(ngap_gNB_instance_p->instance,
+                                   ue_context_p->amf_ref->assoc_id, buffer,
+                                   length, ue_context_p->tx_stream);
+
+  return 0;
+}
+
+int ngap_gNB_handover_notify(instance_t instance, ngap_handover_notify_t* handover_notify_p)
+{
+  LOG_I(NR_RRC, "HO LOG: NGAP Handover Required Preparation!\n");
+  ngap_gNB_instance_t            *ngap_gNB_instance_p = NULL;
+  struct ngap_gNB_ue_context_s   *ue_context_p        = NULL;
+  NGAP_NGAP_PDU_t pdu;
+  uint8_t  *buffer  = NULL;
+  uint32_t length;
+  /* Retrieve the NGAP gNB instance associated with Mod_id */
+  ngap_gNB_instance_p = ngap_gNB_get_instance(instance);
+  DevAssert(handover_notify_p != NULL);
+  DevAssert(ngap_gNB_instance_p != NULL);
+
+  if ((ue_context_p = ngap_get_ue_context(handover_notify_p->gNB_ue_ngap_id)) == NULL) {
+    /* The context for this gNB ue ngap id doesn't exist in the map of gNB UEs */
+    NGAP_WARN("Failed to find ue context associated with gNB ue ngap id: 0x%08x\n", handover_notify_p->gNB_ue_ngap_id);
+    return -1;
+  }  
+
+  /* Prepare the NGAP message to encode */
+  memset(&pdu, 0, sizeof(pdu));
+  pdu.present = NGAP_NGAP_PDU_PR_initiatingMessage;
+  asn1cCalloc(pdu.choice.initiatingMessage, head);
+  head->procedureCode = NGAP_ProcedureCode_id_HandoverNotification;
+  head->criticality = NGAP_Criticality_ignore;
+  head->value.present = NGAP_InitiatingMessage__value_PR_HandoverNotify;
+  NGAP_HandoverNotify_t *out = &head->value.choice.HandoverNotify;  
+
+    /* mandatory */
+  {
+    asn1cSequenceAdd(out->protocolIEs.list, NGAP_HandoverNotifyIEs_t, ie);
+    ie->id = NGAP_ProtocolIE_ID_id_AMF_UE_NGAP_ID;
+    ie->criticality = NGAP_Criticality_reject;
+    ie->value.present = NGAP_HandoverNotifyIEs__value_PR_AMF_UE_NGAP_ID;
+    asn_uint642INTEGER(&ie->value.choice.AMF_UE_NGAP_ID, ue_context_p->amf_ue_ngap_id);
+  }
+
+
+    /* mandatory */
+  {
+    asn1cSequenceAdd(out->protocolIEs.list, NGAP_HandoverNotifyIEs_t, ie);
+    ie->id = NGAP_ProtocolIE_ID_id_RAN_UE_NGAP_ID;
+    ie->criticality = NGAP_Criticality_reject;
+    ie->value.present = NGAP_HandoverNotifyIEs__value_PR_RAN_UE_NGAP_ID;
+    ie->value.choice.RAN_UE_NGAP_ID = (int64_t)ue_context_p->gNB_ue_ngap_id;
+  }
+
+  /* mandatory */
+  {
+    asn1cSequenceAdd(out->protocolIEs.list, NGAP_HandoverNotifyIEs_t, ie);
+    ie->id = NGAP_ProtocolIE_ID_id_UserLocationInformation;
+    ie->criticality = NGAP_Criticality_ignore;
+    ie->value.present = NGAP_HandoverNotifyIEs__value_PR_UserLocationInformation;
+
+    ie->value.choice.UserLocationInformation.present = NGAP_UserLocationInformation_PR_userLocationInformationNR;
+
+    asn1cCalloc(ie->value.choice.UserLocationInformation.choice.userLocationInformationNR, userinfo_nr_p);
+
+    /* Set nRCellIdentity. default userLocationInformationNR */
+    MACRO_GNB_ID_TO_CELL_IDENTITY(ngap_gNB_instance_p->gNB_id,
+                                  handover_notify_p->nrCellId, // Cell ID
+                                  &userinfo_nr_p->nR_CGI.nRCellIdentity);
+
+    MCC_MNC_TO_TBCD(ngap_gNB_instance_p->plmn[ue_context_p->selected_plmn_identity].mcc,
+                    ngap_gNB_instance_p->plmn[ue_context_p->selected_plmn_identity].mnc,
+                    ngap_gNB_instance_p->plmn[ue_context_p->selected_plmn_identity].mnc_digit_length,
+                    &userinfo_nr_p->nR_CGI.pLMNIdentity);
+
+    // /* Set TAI */
+    INT24_TO_OCTET_STRING(ngap_gNB_instance_p->tac, &userinfo_nr_p->tAI.tAC);
+    MCC_MNC_TO_PLMNID(ngap_gNB_instance_p->plmn[ue_context_p->selected_plmn_identity].mcc,
+                      ngap_gNB_instance_p->plmn[ue_context_p->selected_plmn_identity].mnc,
+                      ngap_gNB_instance_p->plmn[ue_context_p->selected_plmn_identity].mnc_digit_length,
+                      &userinfo_nr_p->tAI.pLMNIdentity);
+  }
+
+  if (ngap_gNB_encode_pdu(&pdu, &buffer, &length) < 0) {
+    /* Encode procedure has failed... */
+    NGAP_ERROR("Failed to encode Handover Required Msg\n");
     return -1;
   }
 

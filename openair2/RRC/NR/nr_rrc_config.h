@@ -85,5 +85,14 @@ NR_CellGroupConfig_t *get_default_secondaryCellGroup(const NR_ServingCellConfigC
                                                      int servCellIndex,
                                                      const nr_mac_config_t *configuration,
                                                      int uid);
+                                                     
+uint64_t get_ssb_bitmap(const NR_ServingCellConfigCommon_t *scc); 
+
+typedef struct f1ap_served_cell_info_t f1ap_served_cell_info_t;
+int get_dl_band(const f1ap_served_cell_info_t *cell_info);
+int get_ssb_scs(const f1ap_served_cell_info_t *cell_info);
+int get_dl_arfcn(const f1ap_served_cell_info_t *cell_info);
+int get_dl_bw(const f1ap_served_cell_info_t *cell_info);
+int get_ssb_arfcn(const f1ap_served_cell_info_t *cell_info, const NR_MIB_t *mib, const NR_SIB1_t *sib1);
 
 #endif

@@ -887,7 +887,7 @@ bool nr_mac_prepare_ra_ue(gNB_MAC_INST *nrmac, uint32_t rnti, NR_CellGroupConfig
   if (ra_index == NR_NB_RA_PROC_MAX) {
     LOG_E(NR_MAC, "RA processes are not available for CFRA RNTI %04x\n", rnti);
     return false;
-  }
+  } 
   NR_RA_t *ra = &cc->ra[ra_index];
   ra->cfra = true;
   ra->rnti = rnti;
@@ -905,7 +905,7 @@ bool nr_mac_prepare_ra_ue(gNB_MAC_INST *nrmac, uint32_t rnti, NR_CellGroupConfig
       }
     }
   }
-  LOG_I(NR_MAC, "Added new %s process for UE RNTI %04x with initial CellGroup\n", ra->cfra ? "CFRA" : "CBRA", rnti);
+  LOG_I(NR_MAC, "Added new %s process for UE RNTI %04x with initial CellGroup with RA Index %u\n", ra->cfra ? "CFRA" : "CBRA", rnti, ra_index);
   return true;
 }
 

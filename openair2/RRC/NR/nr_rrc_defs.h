@@ -250,6 +250,7 @@ typedef struct gNB_RRC_UE_s {
 
   bool as_security_active;
 
+  byte_array_t ue_handover_prep_info_buffer;
   byte_array_t ue_cap_buffer;
   NR_UE_NR_Capability_t*             UE_Capability_nr;
   int                                UE_Capability_size;

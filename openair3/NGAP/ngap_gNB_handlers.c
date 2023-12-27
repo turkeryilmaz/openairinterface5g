@@ -680,10 +680,154 @@ static int ngap_gNB_handle_error_indication(sctp_assoc_t assoc_id, uint32_t stre
   // TODO continue
   return 0;
 }
-
+static int ngap_gNB_handle_downlink_ran_status_transfer(sctp_assoc_t assoc_id, uint32_t stream, NGAP_NGAP_PDU_t *pdu)
+{
+  NGAP_INFO("This Procedure is not implemented yet! DL RAN STATUS TRANSFER\n");
+  return 0;
+}
 static int ngap_gNB_handle_handover_request(sctp_assoc_t assoc_id, uint32_t stream, NGAP_NGAP_PDU_t *pdu)
 {
   NGAP_INFO("HO LOG: Handover Request Message Has Came to the Target gNB! - NOT IMPLEMENTED\n");
+  uint64_t                      amf_ue_ngap_id;
+  ngap_gNB_amf_data_t          *amf_desc_p       = NULL;
+
+  NGAP_HandoverRequest_t     *container;
+  NGAP_HandoverRequestIEs_t  *ie;
+  DevAssert(pdu != NULL);
+  container = &pdu->choice.initiatingMessage->value.choice.HandoverRequest;
+
+  if ((amf_desc_p = ngap_gNB_get_AMF(NULL, assoc_id, 0)) == NULL) {
+    NGAP_ERROR("[SCTP %u] Received Handover Request for non "
+               "existing AMF context\n", assoc_id);
+    return -1;
+  }
+  /* id-Handover Type */
+  NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_HandoverRequestIEs_t, ie, container, NGAP_ProtocolIE_ID_id_HandoverType, true);
+  if (ie->value.choice.HandoverType != NGAP_HandoverType_intra5gs){
+    NGAP_ERROR("Only Intra 5GS Handovers are supported at the moment!\n");
+    return -1;
+  }
+
+  /* id-AMF-UE-NGAP-ID */
+  NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_HandoverRequestIEs_t, ie, container, NGAP_ProtocolIE_ID_id_AMF_UE_NGAP_ID, true);
+  asn_INTEGER2ulong(&(ie->value.choice.AMF_UE_NGAP_ID), &amf_ue_ngap_id);
+  NGAP_INFO("HO LOG: HO Request is came with AMF UE NGAP ID: %lu \n", amf_ue_ngap_id);
+
+ 
+  MessageDef * message_p = itti_alloc_new_message(TASK_NGAP, 0, NGAP_HANDOVER_REQUEST);
+  ngap_handover_request_t * msg=&NGAP_HANDOVER_REQUEST(message_p);
+  memset(msg, 0, sizeof(*msg));
+  msg->amf_ue_ngap_id = amf_ue_ngap_id;
+  /* id-GUAMI */
+  NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_HandoverRequestIEs_t, ie, container,
+                             NGAP_ProtocolIE_ID_id_GUAMI, true);
+
+  TBCD_TO_MCC_MNC(&ie->value.choice.GUAMI.pLMNIdentity, msg->guami.mcc,
+                    msg->guami.mnc, msg->guami.mnc_len);
+    
+  OCTET_STRING_TO_INT8(&ie->value.choice.GUAMI.aMFRegionID, msg->guami.amf_region_id);
+  OCTET_STRING_TO_INT16(&ie->value.choice.GUAMI.aMFSetID, msg->guami.amf_set_id);
+  OCTET_STRING_TO_INT8(&ie->value.choice.GUAMI.aMFPointer, msg->guami.amf_pointer);
+
+  /* id-UEAggregateMaximumBitRate */
+  NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_HandoverRequestIEs_t, ie, container,
+                             NGAP_ProtocolIE_ID_id_UEAggregateMaximumBitRate, false);
+
+  if (ie != NULL) { /* checked by macro but cppcheck doesn't see it */
+    asn_INTEGER2ulong(&(ie->value.choice.UEAggregateMaximumBitRate.uEAggregateMaximumBitRateUL),
+                      &(msg->ue_ambr.br_ul));
+    asn_INTEGER2ulong(&(ie->value.choice.UEAggregateMaximumBitRate.uEAggregateMaximumBitRateDL),
+                      &(msg->ue_ambr.br_dl));
+  } else {
+    NGAP_ERROR("could not found NGAP_ProtocolIE_ID_id_UEAggregateMaximumBitRate\n");
+  }
+
+
+  /* id-AllowedNSSAI */
+  NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_HandoverRequestIEs_t, ie, container,
+                               NGAP_ProtocolIE_ID_id_AllowedNSSAI, true);
+  NGAP_AllowedNSSAI_Item_t *allow_nssai_item_p = NULL;
+
+  AssertFatal(ie, "AllowedNSSAI not present, forging 2 NSSAI\n");
+
+  NGAP_INFO("AllowedNSSAI.list.count %d\n", ie->value.choice.AllowedNSSAI.list.count);
+  msg->nb_allowed_nssais = ie->value.choice.AllowedNSSAI.list.count;
+    
+  for(int i = 0; i < ie->value.choice.AllowedNSSAI.list.count; i++) {
+    allow_nssai_item_p = ie->value.choice.AllowedNSSAI.list.array[i];
+
+    OCTET_STRING_TO_INT8(&allow_nssai_item_p->s_NSSAI.sST, msg->allowed_nssai[i].sst);
+
+    if(allow_nssai_item_p->s_NSSAI.sD != NULL) {
+      memcpy(&msg->allowed_nssai[i].sd, allow_nssai_item_p->s_NSSAI.sD, 3);
+    } else {
+      msg->allowed_nssai[i].sd = 0xffffff;
+    }
+  }  
+
+  /* id-UESecurityCapabilities */
+  NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_HandoverRequestIEs_t, ie, container,
+                             NGAP_ProtocolIE_ID_id_UESecurityCapabilities, true);
+
+  msg->security_capabilities.nRencryption_algorithms =
+    BIT_STRING_to_uint16(&ie->value.choice.UESecurityCapabilities.nRencryptionAlgorithms);
+  msg->security_capabilities.nRintegrity_algorithms =
+    BIT_STRING_to_uint16(&ie->value.choice.UESecurityCapabilities.nRintegrityProtectionAlgorithms);
+  msg->security_capabilities.eUTRAencryption_algorithms =
+    BIT_STRING_to_uint16(&ie->value.choice.UESecurityCapabilities.eUTRAencryptionAlgorithms);
+  msg->security_capabilities.eUTRAintegrity_algorithms = BIT_STRING_to_uint16(&ie->value.choice.UESecurityCapabilities.eUTRAintegrityProtectionAlgorithms);
+  
+  /* id-Security Context */
+  NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_HandoverRequestIEs_t, ie, container, NGAP_ProtocolIE_ID_id_SecurityContext, true);
+  memcpy(&msg->next_hop, ie->value.choice.SecurityContext.nextHopNH.buf, ie->value.choice.SecurityContext.nextHopNH.size);
+  msg->next_hop_chain_count = (uint8_t)ie->value.choice.SecurityContext.nextHopChainingCount;
+  
+  /* id-MobilityRestrictionList*/
+  NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_HandoverRequestIEs_t, ie, container, NGAP_ProtocolIE_ID_id_MobilityRestrictionList, false);
+
+  if (ie != NULL) { /* checked by macro but cppcheck doesn't see it */
+    NGAP_MobilityRestrictionList_t *mobility_rest_list_p = NULL;
+    mobility_rest_list_p = &ie->value.choice.MobilityRestrictionList;
+
+    msg->mobility_restriction_flag = 1;
+    TBCD_TO_MCC_MNC(
+        &mobility_rest_list_p->servingPLMN, msg->mobility_restriction.serving_plmn.mcc, msg->mobility_restriction.serving_plmn.mnc, msg->mobility_restriction.serving_plmn.mnc_digit_length);
+  }
+  /* id-Cause */
+
+  /* id-SourceToTargetTransparentContainer*/
+  NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_HandoverRequestIEs_t, ie, container, NGAP_ProtocolIE_ID_id_SourceToTarget_TransparentContainer, true);
+  DevAssert(ie != NULL);
+
+  allocCopy(&(msg->sourceToTargetTransparentContainer), ie->value.choice.SourceToTarget_TransparentContainer);
+  
+ 
+  /* id-PDU Session Resource Setup List HO Req*/
+  NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_HandoverRequestIEs_t, ie, container, NGAP_ProtocolIE_ID_id_PDUSessionResourceSetupListHOReq, true);
+  
+  for (int pduSesIdx = 0; pduSesIdx < ie->value.choice.PDUSessionResourceSetupListHOReq.list.count; ++pduSesIdx)
+  {
+    NGAP_PDUSessionResourceSetupItemHOReq_t* item_p = ie->value.choice.PDUSessionResourceSetupListHOReq.list.array[pduSesIdx];
+    msg->pduSessionResourceSetupHOList[pduSesIdx].pdusession_id = item_p->pDUSessionID;
+    msg->pduSessionResourceSetupHOList[pduSesIdx].pdu_session_type = 0;
+    // S-NSSAI
+    OCTET_STRING_TO_INT8(&item_p->s_NSSAI.sST, msg->pduSessionResourceSetupHOList[pduSesIdx].nssai.sst);
+    if (item_p->s_NSSAI.sD != NULL) {
+      uint8_t *sd_p = (uint8_t *)&msg->pduSessionResourceSetupHOList[pduSesIdx].nssai.sd;
+      sd_p[0] = item_p->s_NSSAI.sD->buf[0];
+      sd_p[1] = item_p->s_NSSAI.sD->buf[1];
+      sd_p[2] = item_p->s_NSSAI.sD->buf[2];
+    } else {
+      msg->pduSessionResourceSetupHOList[pduSesIdx].nssai.sd = 0xffffff;
+    }
+    
+    allocCopy(&msg->pduSessionResourceSetupHOList[pduSesIdx].pdusessionTransfer, item_p->handoverRequestTransfer);
+
+  }
+  msg->nb_of_pdusessions = ie->value.choice.PDUSessionResourceSetupListHOReq.list.count;
+
+  itti_send_msg_to_task(TASK_RRC_GNB, amf_desc_p->ngap_gNB_instance->instance, message_p);
+
   return 0;
 }
 
@@ -1414,7 +1558,7 @@ const ngap_message_decoded_callback ngap_messages_callback[][3] = {
     {ngap_gNB_handle_nas_downlink, 0, 0}, /* DownlinkNASTransport */
     {0, 0, 0}, /* DownlinkNonUEAssociatedNRPPaTransport */
     {0, 0, 0}, /* DownlinkRANConfigurationTransfer */
-    {0, 0, 0}, /* DownlinkRANStatusTransfer */
+    {ngap_gNB_handle_downlink_ran_status_transfer, 0, 0}, /* DownlinkRANStatusTransfer */
     {0, 0, 0}, /* DownlinkUEAssociatedNRPPaTransport */
     {ngap_gNB_handle_error_indication, 0, 0}, /* ErrorIndication */
     {0, 0, 0}, /* HandoverCancel */

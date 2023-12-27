@@ -254,6 +254,20 @@ nr_rrc_du_container_t *get_du_for_ue(gNB_RRC_INST *rrc, uint32_t ue_id)
   return get_du_by_assoc_id(rrc, ue_data.du_assoc_id);
 }
 
+struct nr_rrc_du_container_t* get_du_for_nr_cell_id(struct gNB_RRC_INST_s *rrc, uint64_t cellId, uint8_t* cellIdx)
+{
+  nr_rrc_du_container_t *it = NULL;
+  uint8_t cell_idx = 0;
+  RB_FOREACH(it, rrc_du_tree, &rrc->dus) {
+    if (it->setup_req->cell->info.nr_cellid == cellId) {
+      *cellIdx = cell_idx;
+      return it;
+    }
+    cell_idx++;
+  }
+  return NULL;
+}
+
 nr_rrc_du_container_t *get_du_by_assoc_id(gNB_RRC_INST *rrc, sctp_assoc_t assoc_id)
 {
   nr_rrc_du_container_t e = {.assoc_id = assoc_id};

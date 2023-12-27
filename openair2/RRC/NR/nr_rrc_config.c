@@ -35,6 +35,7 @@
 #include "executables/softmodem-common.h"
 #include "oai_asn1.h"
 #include "SIMULATION/TOOLS/sim.h" // for taus();
+#include "rrc_gNB_du.h"
 
 #include "uper_decoder.h"
 #include "uper_encoder.h"
@@ -236,7 +237,7 @@ static NR_ControlResourceSet_t *get_coreset_config(int bwp_id, int curr_bwp, uin
   return coreset;
 }
 
-static uint64_t get_ssb_bitmap(const NR_ServingCellConfigCommon_t *scc)
+uint64_t get_ssb_bitmap(const NR_ServingCellConfigCommon_t *scc)
 {
   uint64_t bitmap=0;
   switch (scc->ssb_PositionsInBurst->present) {
@@ -2973,4 +2974,72 @@ NR_CellGroupConfig_t *get_default_secondaryCellGroup(const NR_ServingCellConfigC
     xer_fprint(stdout, &asn_DEF_NR_SpCellConfig, (void *)secondaryCellGroup->spCellConfig);
   }
   return secondaryCellGroup;
+}
+
+int get_dl_band(const f1ap_served_cell_info_t *cell_info)
+{
+  return cell_info->mode == F1AP_MODE_TDD ? cell_info->tdd.freqinfo.band : cell_info->fdd.dl_freqinfo.band;
+}
+
+int get_ssb_scs(const f1ap_served_cell_info_t *cell_info)
+{
+  return cell_info->mode == F1AP_MODE_TDD ? cell_info->tdd.tbw.scs : cell_info->fdd.dl_tbw.scs;
+}
+
+int get_dl_arfcn(const f1ap_served_cell_info_t *cell_info)
+{
+  return cell_info->mode == F1AP_MODE_TDD ? cell_info->tdd.freqinfo.arfcn : cell_info->fdd.dl_freqinfo.arfcn;
+}
+
+int get_dl_bw(const f1ap_served_cell_info_t *cell_info)
+{
+  return cell_info->mode == F1AP_MODE_TDD ? cell_info->tdd.tbw.nrb : cell_info->fdd.dl_tbw.nrb;
+}
+
+int get_ssb_arfcn(const f1ap_served_cell_info_t *cell_info, const NR_MIB_t *mib, const NR_SIB1_t *sib1)
+{
+  DevAssert(cell_info != NULL && sib1 != NULL && mib != NULL);
+  const NR_FrequencyInfoDL_SIB_t* freq_info = &sib1->servingCellConfigCommon->downlinkConfigCommon.frequencyInfoDL;
+  AssertFatal(freq_info->scs_SpecificCarrierList.list.count == 1, "cannot handle more than one carrier, but has %d\n", freq_info->scs_SpecificCarrierList.list.count);
+  AssertFatal(freq_info->scs_SpecificCarrierList.list.array[0]->offsetToCarrier == 0, "cannot handle offsetToCarrier != 0, but is %ld\n", freq_info->scs_SpecificCarrierList.list.array[0]->offsetToCarrier);
+
+  long offsetToPointA = freq_info->offsetToPointA;
+  long kssb = mib->ssb_SubcarrierOffset;
+  uint32_t dl_arfcn = get_dl_arfcn(cell_info);
+  int scs = get_ssb_scs(cell_info);
+  int band = get_dl_band(cell_info);
+  // FR1 includes frequency bands from 410 MHz (ARFCN 82000) to 7125 MHz (ARFCN 875000)
+  // FR2 includes frequency bands from 24.25 GHz (ARFCN 2016667) to 71.0 GHz (ARFCN 2795832)
+  uint64_t scaling = 0;
+  if (dl_arfcn >= 82000 && dl_arfcn < 875000)
+    scaling = 1;
+  else if (dl_arfcn >= 2016667 && dl_arfcn < 2795832)
+    scaling = 4;
+  else
+    AssertFatal(false, "Invalid absoluteFrequencyPointA: %d\n", dl_arfcn);
+
+
+  uint64_t freqpointa = from_nrarfcn(band, scs, dl_arfcn);
+  // offsetToPointA and kSSB are both on 15kHz SCS for FR1 and 60kHz SCS for FR2 (see 38.211 sections 7.4.3.1 and 4.4.4.2)
+  // SSB uses the SCS of the cell and is 20 RBs wide, so use 10
+  uint64_t freqssb = freqpointa + scaling * 15000 * (offsetToPointA * 12 + kssb)  + 10ll * 12 * (1 << scs) * 15000;
+  int bw_index = get_supported_band_index(scs, band, get_dl_bw(cell_info));
+  int band_size_hz = get_supported_bw_mhz(band > 256 ? FR2 : FR1, bw_index) * 1000 * 1000;
+  uint32_t ssb_arfcn = to_nrarfcn(band, freqssb, scs, band_size_hz);
+
+  LOG_W(RRC, "freqpointa %ld Hz/%d offsetToPointA %ld kssb %ld scs %d band %d band_size_hz %d freqssb %ld Hz/%d\n", freqpointa, dl_arfcn, offsetToPointA, kssb, scs, band, band_size_hz, freqssb, ssb_arfcn);
+
+  if (RC.nrmac) {
+    // debugging: let's test this is the correct ARFCN
+    // in the CU, we have no access to the SSB ARFCN and therefore need to
+    // compute it ourselves. If we are running in monolithic, though, we have
+    // access to the MAC structures and hence can read and compare to the
+    // original SSB ARFCN. If the below creates problems, it can safely be
+    // taken out (but the reestablishment will likely not work).
+    const NR_ServingCellConfigCommon_t *scc = RC.nrmac[0]->common_channels[0].ServingCellConfigCommon;
+    uint32_t scc_ssb_arfcn = *scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB;
+    AssertFatal(ssb_arfcn == scc_ssb_arfcn, "mismatch of SCC SSB ARFCN original %d vs. computed %d! Note: you can remove this Assert, the gNB might run but UE connection instable\n", scc_ssb_arfcn, ssb_arfcn);
+  }
+
+  return ssb_arfcn;
 }

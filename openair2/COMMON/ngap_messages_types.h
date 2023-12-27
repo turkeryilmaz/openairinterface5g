@@ -67,6 +67,9 @@
 #define NGAP_PAGING_IND(mSGpTR)                 (mSGpTR)->ittiMsg.ngap_paging_ind
 #define NGAP_HANDOVER_REQUIRED(mSGpTR)           (mSGpTR)->ittiMsg.ngap_handover_required
 #define NGAP_HANDOVER_COMMAND(mSGpTR)            (mSGpTR)->ittiMsg.ngap_handover_command
+#define NGAP_HANDOVER_REQUEST(mSGpTR)            (mSGpTR)->ittiMsg.ngap_handover_request
+#define NGAP_HANDOVER_REQUEST_ACKNOWLEDGE(mSGpTR)           (mSGpTR)->ittiMsg.ngap_handover_request_ack
+#define NGAP_HANDOVER_NOTIFY(mSGpTR)           (mSGpTR)->ittiMsg.ngap_handover_notify
 
 #define NGAP_UE_CONTEXT_RELEASE_REQ(mSGpTR)     (mSGpTR)->ittiMsg.ngap_ue_release_req
 #define NGAP_PDUSESSION_RELEASE_COMMAND(mSGpTR)      (mSGpTR)->ittiMsg.ngap_pdusession_release_command
@@ -550,6 +553,11 @@ typedef struct handover_drb_item_s {
   bool isActive;
 } handover_drb_item_t;
 
+typedef struct ngap_handover_notify_s {
+  uint32_t gNB_ue_ngap_id;
+  uint64_t amf_ue_ngap_id;
+  uint32_t nrCellId;
+} ngap_handover_notify_t;
 
 typedef struct ngap_handover_required_s {
   uint32_t gNB_ue_ngap_id;
@@ -563,6 +571,14 @@ typedef struct ngap_handover_required_s {
   uint32_t handoverType; // 0 for intra5gs
 } ngap_handover_required_t;
 
+typedef struct ngap_handover_request_ack_s {
+  uint32_t            gNB_ue_ngap_id;
+  uint64_t            amf_ue_ngap_id;
+  pdusession_setup_t  pdusessions[NGAP_MAX_PDUSESSION];
+  uint8_t             nb_of_pdusessions;
+  ngap_pdu_t          targetToSourceTransparentContainer;
+} ngap_handover_request_ack_t;
+
 typedef struct ngap_handover_command_s {
   uint32_t gNB_ue_ngap_id;
   uint64_t amf_ue_ngap_id;
@@ -572,6 +588,22 @@ typedef struct ngap_handover_command_s {
   uint8_t       nb_of_pdusessions;
   pdusession_setup_t pduSessionResourceHandoverList[NGAP_MAX_PDUSESSION]; //for data forwarding
 } ngap_handover_command_t;
+
+typedef struct ngap_handover_request_s {
+  uint64_t                        amf_ue_ngap_id;
+  uint8_t                         nb_of_pdusessions;
+  pdusession_t                    pduSessionResourceSetupHOList[NGAP_MAX_PDUSESSION];
+  ngap_pdu_t                      sourceToTargetTransparentContainer;
+  ngap_ambr_t                     ue_ambr;
+  ngap_guami_t                    guami;
+  uint8_t                         nb_allowed_nssais;
+  nssai_t                         allowed_nssai[8];
+  ngap_security_capabilities_t    security_capabilities;
+  uint8_t                         next_hop[SECURITY_KEY_LENGTH];
+  uint8_t                         next_hop_chain_count;
+  uint8_t                         mobility_restriction_flag;
+  ngap_mobility_restriction_t     mobility_restriction;
+} ngap_handover_request_t;
 
 typedef struct ngap_ue_cap_info_ind_s {
   uint32_t  gNB_ue_ngap_id;

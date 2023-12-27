@@ -109,6 +109,30 @@ void rrc_gNB_send_NGAP_HANDOVER_REQUIRED(
   const size_t handoverPrepInfoSize
 );
 
+void rrc_gNB_send_NGAP_HANDOVER_NOTIFY(
+  const protocol_ctxt_t    *const ctxt_pP,
+  rrc_gNB_ue_context_t     *const ue_context_pP,
+  uint32_t nrCellId
+);
+
+void rrc_gNB_send_NGAP_HANDOVER_REQUEST_ACKNOWLEDGE(
+  const protocol_ctxt_t    *const ctxt_pP,
+  rrc_gNB_ue_context_t     *const ue_context_pP,
+  uint8_t                  xid,
+  uint8_t** handoverCommand,
+  const size_t handoverCommandSize
+);
+
+int rrc_gNB_process_Handover_Request(MessageDef* msg_p, instance_t instance);
+
+
+void process_gNB_kgnb_star(
+  const protocol_ctxt_t *const ctxt_pP,
+  rrc_gNB_ue_context_t*  ue_context_pP,
+  uint16_t pci,
+  NR_ARFCN_ValueNR_t absoluteFrequencySSB
+);
+
 int rrc_gNB_process_NGAP_PDUSESSION_RELEASE_COMMAND(MessageDef *msg_p, instance_t instance);
 
 void

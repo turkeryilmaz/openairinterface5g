@@ -21,6 +21,7 @@
 
 #include "nr_pdcp_integrity_nia1.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
@@ -52,6 +53,8 @@ void nr_pdcp_integrity_nia1_integrity(void *integrity_context,
   ctx->bearer = bearer-1;
   ctx->direction = direction;
   ctx->blength = length * 8;
+  fprintf(stdout, "PDCP Context For NIA1 Integrity: count: %u\n", ctx->count);
+  fflush(stdout);
 
   stream_compute_integrity(EIA1_128_ALG_ID, ctx, out);
 }

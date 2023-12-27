@@ -85,7 +85,8 @@ void nr_pdcp_config_set_security(ue_id_t ue_id,
                                  const uint8_t security_modeP,
                                  uint8_t *const kRRCenc_pP,
                                  uint8_t *const kRRCint_pP,
-                                 uint8_t *const kUPenc_pP);
+                                 uint8_t *const kUPenc_pP,
+                                 bool security_mode_completed);
 
 bool cu_f1u_data_req(protocol_ctxt_t  *ctxt_pP,
                      const srb_flag_t srb_flagP,

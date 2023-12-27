@@ -209,7 +209,8 @@ void nas_stream_encrypt_eia1(nas_stream_cipher_t const *stream_cipher, uint8_t o
   /* Multiply by Q */
   EVAL = MUL64(EVAL,Q,c);
   MAC_I = (uint32_t)(EVAL >> 32) ^ z[4];
-  //printf ("MAC_I:%16X\n",MAC_I);
+  fprintf (stdout, "MAC_I:%16X\n",MAC_I);
+  fflush(stdout);
   MAC_I = hton_int32(MAC_I);
   memcpy(out, &MAC_I, 4);
 }

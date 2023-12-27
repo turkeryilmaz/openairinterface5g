@@ -94,6 +94,10 @@
 #include "NGAP_GTP-TEID.h"
 #include "NGAP_TargetNGRANNode-ToSourceNGRANNode-TransparentContainer.h"
 #include "NGAP_TargetToSource-TransparentContainer.h"
+#include "NGAP_SourceNGRANNode-ToTargetNGRANNode-TransparentContainer.h"
+#include "NGAP_SourceToTarget-TransparentContainer.h"
+#include "NGAP_HandoverRequest.h"
+#include "NGAP_PDUSessionResourceSetupItemHOReq.h"
 
 
 /* Checking version of ASN1C compiler */

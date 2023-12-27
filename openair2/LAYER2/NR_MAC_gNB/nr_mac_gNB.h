@@ -718,6 +718,7 @@ typedef struct {
   float ul_thr_ue;
   float dl_thr_ue;
   long pdsch_HARQ_ACK_Codebook;
+  bool isUEDoingHandover;
 } NR_UE_info_t;
 
 typedef struct {

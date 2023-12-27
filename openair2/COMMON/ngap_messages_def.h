@@ -74,9 +74,12 @@ MESSAGE_DEF(NGAP_PDUSESSION_SETUP_REQUEST_FAIL  , MESSAGE_PRIORITY_MED, ngap_pdu
 MESSAGE_DEF(NGAP_PDUSESSION_MODIFY_RESP          , MESSAGE_PRIORITY_MED, ngap_pdusession_modify_resp_t          , ngap_pdusession_modify_resp)
 MESSAGE_DEF(NGAP_PDUSESSION_RELEASE_RESPONSE    , MESSAGE_PRIORITY_MED, ngap_pdusession_release_resp_t        , ngap_pdusession_release_resp)
 MESSAGE_DEF(NGAP_HANDOVER_REQUIRED              , MESSAGE_PRIORITY_MED, ngap_handover_required_t        , ngap_handover_required)
+MESSAGE_DEF(NGAP_HANDOVER_REQUEST_ACKNOWLEDGE   , MESSAGE_PRIORITY_MED, ngap_handover_request_ack_t        , ngap_handover_request_ack)
 MESSAGE_DEF(NGAP_PATH_SWITCH_REQ           , MESSAGE_PRIORITY_MED, ngap_path_switch_req_t           , ngap_path_switch_req)
 MESSAGE_DEF(NGAP_PATH_SWITCH_REQ_ACK       , MESSAGE_PRIORITY_MED, ngap_path_switch_req_ack_t       , ngap_path_switch_req_ack)
 MESSAGE_DEF(NGAP_PDUSESSION_MODIFICATION_IND    , MESSAGE_PRIORITY_MED, ngap_pdusession_modification_ind_t    , ngap_pdusession_modification_ind)
+MESSAGE_DEF(NGAP_HANDOVER_NOTIFY              , MESSAGE_PRIORITY_MED, ngap_handover_notify_t        , ngap_handover_notify)
+
 
 /* NGAP -> RRC messages */
 MESSAGE_DEF(NGAP_DOWNLINK_NAS              , MESSAGE_PRIORITY_MED, ngap_downlink_nas_t              , ngap_downlink_nas )
@@ -88,6 +91,7 @@ MESSAGE_DEF(NGAP_PDUSESSION_MODIFY_REQ           , MESSAGE_PRIORITY_MED, ngap_pd
 MESSAGE_DEF(NGAP_PDUSESSION_RELEASE_COMMAND     , MESSAGE_PRIORITY_MED, ngap_pdusession_release_command_t     , ngap_pdusession_release_command)
 MESSAGE_DEF(NGAP_UE_CONTEXT_RELEASE_COMMAND, MESSAGE_PRIORITY_MED, ngap_ue_release_command_t        , ngap_ue_release_command)
 MESSAGE_DEF(NGAP_HANDOVER_COMMAND            , MESSAGE_PRIORITY_MED, ngap_handover_command_t        , ngap_handover_command)
+MESSAGE_DEF(NGAP_HANDOVER_REQUEST            , MESSAGE_PRIORITY_MED, ngap_handover_request_t        , ngap_handover_request)
 
 /* NGAP <-> RRC messages (can be initiated either by MME or gNB) */
 MESSAGE_DEF(NGAP_UE_CONTEXT_RELEASE_REQ    , MESSAGE_PRIORITY_MED, ngap_ue_release_req_t            , ngap_ue_release_req)

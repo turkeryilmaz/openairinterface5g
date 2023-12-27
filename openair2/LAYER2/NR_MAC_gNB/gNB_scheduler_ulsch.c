@@ -134,12 +134,10 @@ static int nr_process_mac_pdu(instance_t module_idP,
     uint16_t mac_len=0;
     uint16_t mac_subheader_len=sizeof(NR_MAC_SUBHEADER_FIXED);
     uint8_t rx_lcid = ((NR_MAC_SUBHEADER_FIXED *)pduP)->LCID;
-
     LOG_D(NR_MAC, "In %s: received UL-SCH sub-PDU with LCID 0x%x in %d.%d (remaining PDU length %d)\n", __func__, rx_lcid, frameP, slot, pdu_len);
 
     unsigned char *ce_ptr;
     int n_Lcg = 0;
-
     switch(rx_lcid){
       //  MAC CE
       /*#ifdef DEBUG_HEADER_PARSING
@@ -483,12 +481,13 @@ static void abort_nr_ul_harq(NR_UE_info_t *UE, int8_t harq_pid)
     sched_ctrl->sched_ul_bytes = 0;
 }
 
-static bool get_UE_waiting_CFRA_msg3(const gNB_MAC_INST *gNB_mac, const int CC_id, const frame_t frame, const sub_frame_t slot)
+static bool get_UE_waiting_CFRA_msg3(const NR_UE_info_t *UE, const gNB_MAC_INST *gNB_mac, const int CC_id, const frame_t frame, const sub_frame_t slot)
 {
   bool UE_waiting_CFRA_msg3 = false;
   for (int i = 0; i < NR_NB_RA_PROC_MAX; i++) {
     const NR_RA_t *ra = &gNB_mac->common_channels[CC_id].ra[i];
-    if (ra->cfra == true && ra->state == WAIT_Msg3 && frame == ra->Msg3_frame && slot == ra->Msg3_slot) {
+    // LOG_D(NR_MAC, "\nra-cfra: %d , ra->state: %d, raMsg3Frame: %u, raMsg3 Slot: %u\n", ra->cfra, ra->state, ra->Msg3_frame, ra->Msg3_slot);
+    if (ra->cfra == true && ra->state == WAIT_Msg3 && frame == ra->Msg3_frame && slot == ra->Msg3_slot && UE->rnti == ra->rnti) {
       UE_waiting_CFRA_msg3 = true;
       break;
     }
@@ -506,7 +505,7 @@ void handle_nr_ul_harq(const int CC_idP,
   NR_SCHED_LOCK(&nrmac->sched_lock);
 
   NR_UE_info_t *UE = find_nr_UE(&nrmac->UE_info, crc_pdu->rnti);
-  bool UE_waiting_CFRA_msg3 = get_UE_waiting_CFRA_msg3(nrmac, CC_idP, frame, slot);
+  bool UE_waiting_CFRA_msg3 = get_UE_waiting_CFRA_msg3(UE, nrmac, CC_idP, frame, slot);
 
   if (!UE || UE_waiting_CFRA_msg3 == true) {
     LOG_D(NR_MAC, "handle harq for rnti %04x, in RA process\n", crc_pdu->rnti);
@@ -598,8 +597,13 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
   const int pusch_failure_thres = gNB_mac->pusch_failure_thres;
 
   NR_UE_info_t *UE = find_nr_UE(&gNB_mac->UE_info, current_rnti);
-  bool UE_waiting_CFRA_msg3 = get_UE_waiting_CFRA_msg3(gNB_mac, CC_idP, frameP, slotP);
-
+  
+  bool UE_waiting_CFRA_msg3 = false;
+  if (UE != NULL)
+  {
+      UE_waiting_CFRA_msg3 = get_UE_waiting_CFRA_msg3(UE, gNB_mac, CC_idP, frameP, slotP);
+  }
+  
   if (UE && UE_waiting_CFRA_msg3 == false) {
 
     NR_UE_sched_ctrl_t *UE_scheduling_control = &UE->UE_sched_ctrl;
@@ -684,7 +688,6 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
       }
     }
   } else if(sduP) {
-
     bool no_sig = true;
     for (int k = 0; k < sdu_lenP; k++) {
       if(sduP[k]!=0) {
@@ -716,13 +719,13 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
 
         // random access pusch with TC-RNTI
         if (ra->rnti != current_rnti) {
-          LOG_D(NR_MAC,
+          LOG_E(NR_MAC,
                 "expected TC_RNTI %04x to match current RNTI %04x\n",
                 ra->rnti,
                 current_rnti);
 
           if( (frameP==ra->Msg3_frame) && (slotP==ra->Msg3_slot) ) {
-            LOG_D(NR_MAC, "Random Access %i failed at state %i (TC_RNTI %04x RNTI %04x)\n", i, ra->state,ra->rnti,current_rnti);
+            LOG_E(NR_MAC, "Random Access %i failed at state %i (TC_RNTI %04x RNTI %04x)\n", i, ra->state,ra->rnti,current_rnti);
             nr_clear_ra_proc(gnb_mod_idP, CC_idP, frameP, ra);
           }
 
@@ -742,12 +745,12 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
         // re-initialize ta update variables after RA procedure completion
         UE_msg3_stage->UE_sched_ctrl.ta_frame = frameP;
 
-        LOG_D(NR_MAC,
+        LOG_E(NR_MAC,
               "reset RA state information for RA-RNTI 0x%04x/index %d\n",
               ra->rnti,
               i);
 
-        LOG_I(NR_MAC,
+        LOG_E(NR_MAC,
               "[gNB %d][RAPROC] PUSCH with TC_RNTI 0x%04x received correctly, "
               "adding UE MAC Context RNTI 0x%04x\n",
               gnb_mod_idP,
@@ -761,15 +764,21 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
           UE_scheduling_control->ta_update = timing_advance;
         UE_scheduling_control->raw_rssi = rssi;
         UE_scheduling_control->pusch_snrx10 = ul_cqi * 5 - 640;
-        LOG_D(NR_MAC, "[UE %04x] PUSCH TPC %d and TA %d\n", UE_msg3_stage->rnti, UE_scheduling_control->tpc0, UE_scheduling_control->ta_update);
+        LOG_E(NR_MAC, "[UE %04x] PUSCH TPC %d and TA %d\n", UE_msg3_stage->rnti, UE_scheduling_control->tpc0, UE_scheduling_control->ta_update);
         if (ra->cfra) {
           LOG_A(NR_MAC, "(rnti 0x%04x) CFRA procedure succeeded!\n", ra->rnti);
           nr_mac_reset_ul_failure(UE_scheduling_control);
           reset_dl_harq_list(UE_scheduling_control);
           reset_ul_harq_list(UE_scheduling_control);
           nr_clear_ra_proc(gnb_mod_idP, CC_idP, frameP, ra);
-          process_CellGroup(ra->CellGroup, UE_msg3_stage);
-
+          if (UE->isUEDoingHandover)
+          {
+            LOG_I(NR_MAC, "HO LOG: NR Process PDU is calling after CFRA for rnti: 0x%04x\n", UE->rnti);
+            nr_process_mac_pdu(gnb_mod_idP, UE, CC_idP, frameP, slotP, sduP, sdu_lenP, 0);
+            UE->Msg4_ACKed = true;
+          } else {
+            process_CellGroup(ra->CellGroup, UE_msg3_stage);
+          }
         } else {
 
           LOG_A(NR_MAC,"[RAPROC] RA-Msg3 received (sdu_lenP %d)\n",sdu_lenP);
@@ -836,7 +845,7 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
 
       // for CFRA (NSA) do not schedule retransmission of msg3
       if (ra->cfra) {
-        LOG_D(NR_MAC, "Random Access %i failed at state %i (NSA msg3 reception failed)\n", i, ra->state);
+        LOG_E(NR_MAC, "Random Access %i failed at state %i (NSA msg3 reception failed)\n", i, ra->state);
         nr_clear_ra_proc(gnb_mod_idP, CC_idP, frameP, ra);
         return;
       }
