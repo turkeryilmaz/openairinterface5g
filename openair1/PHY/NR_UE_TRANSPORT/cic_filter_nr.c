@@ -36,7 +36,9 @@
 
 #include "PHY/defs_nr_UE.h"
 
+#define DEFINE_VARIABLES_CIC_FILTER_NR_H
 #include "PHY/NR_UE_TRANSPORT/cic_filter_nr.h"
+#undef DEFINE_VARIABLES_CIC_FILTER_NR_H
 
 /*******************************************************************
 *
@@ -221,7 +223,7 @@ void fir_filter_basic(int32_t *input, int32_t *output, int length, int taps_fir_
 *
 *********************************************************************/
 
-void fir_filter(int32_t *input, int32_t *output, int length, int taps_fir_number, const int *taps_fir, int scaling_shift)
+void fir_filter(int32_t *input, int32_t *output, int length, int taps_fir_number, int *taps_fir, int scaling_shift)
 {
   int32_t current;
 

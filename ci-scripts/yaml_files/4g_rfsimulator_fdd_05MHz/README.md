@@ -410,33 +410,16 @@ in HSS config:
             NB_USERS: 10
 ```
 
-All UE parameter values will be taken from the mounted config file, so modify
-the corresponding UE file to reflect the above changes
+in UE config:
 
 ```yaml
-  oai_ue0:
-        [...]
-        volumes:
-            - ../../conf_files/lteue.usim-ci.conf:/opt/oai-lte-ue/etc/ue_usim.conf
-```
-
-and in the UE file, you should have
-```
-PLMN: {
-    PLMN0: {
-           FULLNAME="OpenAirInterface";
-           SHORTNAME="OAICN";
-           MNC="96";
-           MCC="208";
-    };
-};
-[...]
-    SIM: {
-        MSIN="0100000001";
-        USIM_API_K="fec86ba6eb707ed08905757b1bb44b8f";
-        OPC="c42449363bbad02b66d16bc975d77cc1";
-        MSISDN="001011234561010";
-    };
+            MCC: '208'
+            MNC: '96'
+            SHORT_IMSI: '0100000001'
+            LTE_KEY: 'fec86ba6eb707ed08905757b1bb44b8f'
+            OPC: 'c42449363bbad02b66d16bc975d77cc1'
+            MSISDN: '001011234561010'
+            HPLMN: 20896
 ```
 
 As you can see: `LTE_K` and `LTE_KEY` are the same value. And `OP_KEY` and `OPC` can be deduced from each other. Look in HSS logs.
@@ -488,19 +471,13 @@ in SPGW-C/-U configs:
             REALM: openairinterface.org
 ```
 
-In eNB, all the parameter values will be taken from the mounted config file.
+in eNB config:
 
 ```yaml
-oai_enb0:
-        [...]
-        volumes:
-            - ../../conf_files/enb.band7.25prb.rfsim.conf:/opt/oai-enb/etc/enb.conf
-```
-
-with the eNB config reading:
-
-```libconfig
-    plmn_list = ( { mcc = 208; mnc = 96; mnc_length = 2; } );
+            MCC: '208'
+            MNC: '96'
+            MNC_LENGTH: 2
+            TAC: 1
 ```
 
 The values SHALL match, and `TAC` shall match `TAC_0` from MME.
