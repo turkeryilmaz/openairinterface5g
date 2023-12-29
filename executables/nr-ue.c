@@ -722,8 +722,13 @@ void readFrame(PHY_VARS_NR_UE *UE,  openair0_timestamp *timestamp, bool toTrash)
                                  UE->frame_parms.get_samples_per_slot(slot, &UE->frame_parms),
                                  UE->frame_parms.nb_antennas_rx);
 
-      if (IS_SOFTMODEM_RFSIM)
-        dummyWrite(UE,*timestamp, UE->frame_parms.get_samples_per_slot(slot,&UE->frame_parms));
+      if (IS_SOFTMODEM_RFSIM) {
+        openair0_timestamp writeTimestamp = *timestamp +
+          UE->frame_parms.get_samples_slot_timestamp(slot, &UE->frame_parms, DURATION_RX_TO_TX)
+          - openair0_cfg[0].tx_sample_advance - UE->N_TA_offset - UE->timing_advance;
+        int writeSlot = (slot + DURATION_RX_TO_TX) % UE->frame_parms.slots_per_frame;
+        dummyWrite(UE, writeTimestamp, UE->frame_parms.get_samples_per_slot(writeSlot, &UE->frame_parms));
+      }
       if (toTrash)
         for (int i=0; i<UE->frame_parms.nb_antennas_rx; i++)
           free(rxp[i]);
@@ -748,19 +753,20 @@ void syncInFrame(PHY_VARS_NR_UE *UE, openair0_timestamp *timestamp) {
 					       UE->frame_parms.nb_antennas_rx),"");
       }
     } else {
-      *timestamp += UE->frame_parms.get_samples_per_slot(1,&UE->frame_parms);
       for ( int size=UE->rx_offset ; size > 0 ; size -= UE->frame_parms.samples_per_subframe ) {
 	int unitTransfer=size>UE->frame_parms.samples_per_subframe ? UE->frame_parms.samples_per_subframe : size ;
-	// we write before read because gNB waits for UE to write and both executions halt
-	// this happens here as the read size is samples_per_subframe which is very much larger than samp_per_slot
-	if (IS_SOFTMODEM_RFSIM) dummyWrite(UE,*timestamp, unitTransfer);
 	AssertFatal(unitTransfer ==
 		    UE->rfdevice.trx_read_func(&UE->rfdevice,
 					       timestamp,
 					       (void **)UE->common_vars.rxdata,
 					       unitTransfer,
 					       UE->frame_parms.nb_antennas_rx),"");
-	*timestamp += unitTransfer; // this does not affect the read but needed for RFSIM write
+        if (IS_SOFTMODEM_RFSIM) {
+          openair0_timestamp writeTimestamp = *timestamp +
+            UE->frame_parms.get_samples_slot_timestamp(0, &UE->frame_parms, DURATION_RX_TO_TX)
+            - openair0_cfg[0].tx_sample_advance - UE->N_TA_offset - UE->timing_advance;
+          dummyWrite(UE, writeTimestamp, unitTransfer);
+        }
       }
     }
 }
@@ -842,7 +848,6 @@ void *UE_thread(void *arg)
             int ta_shift = (UE->init_sync_frame + trashed_frames)*2*TO_init_rate;
             UE->rx_offset_comp = 0;
             UE->timing_advance += ta_shift;
-            timing_advance = UE->timing_advance;
           } 
           decoded_frame_rx = mac->mib_frame;
           LOG_I(PHY,"UE synchronized decoded_frame_rx=%d UE->init_sync_frame=%d trashed_frames=%d\n",
