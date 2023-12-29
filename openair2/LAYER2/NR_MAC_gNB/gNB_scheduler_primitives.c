@@ -2010,8 +2010,8 @@ void set_max_fb_time(NR_UE_UL_BWP_t *UL_BWP, const NR_UE_DL_BWP_t *DL_BWP)
       if(*fb_times->list.array[i] > UL_BWP->max_fb_time)
         UL_BWP->max_fb_time = *fb_times->list.array[i];
     }
-    UL_BWP->max_fb_time += NTN_gNB_k2;
   }
+  UL_BWP->max_fb_time += NTN_gNB_k2;
 }
 
 void reset_sched_ctrl(NR_UE_sched_ctrl_t *sched_ctrl)

@@ -200,12 +200,6 @@ void nr_schedule_pucch(gNB_MAC_INST *nrmac,
     NR_sched_pucch_t *curr_pucch = &UE->UE_sched_ctrl.sched_pucch[pucch_index];
     if (!curr_pucch->active)
       continue;
-    if (!UE->Msg4_ACKed)
-    {
-      const NR_UE_UL_BWP_t *ul_bwp = &UE->current_UL_BWP;
-      const int n_slots_frame = nr_slots_per_frame[ul_bwp->scs]; 
-      frameP += NTN_gNB_k2 / n_slots_frame;
-    } 
     DevAssert(frameP == curr_pucch->frame && slotP == curr_pucch->ul_slot);
 
     const uint16_t O_ack = curr_pucch->dai_c;
@@ -1055,7 +1049,7 @@ static NR_UE_harq_t *find_harq(frame_t frame, sub_frame_t slot, NR_UE_info_t * U
     return NULL;
   NR_UE_harq_t *harq = &sched_ctrl->harq_processes[pid];
   /* old feedbacks we missed: mark for retransmission */
-  while (harq->feedback_frame != frame
+  while ((harq->feedback_frame - frame + 1024 ) % 1024 > 512 // harq->feedback_frame < frame
          || (harq->feedback_frame == frame && harq->feedback_slot < slot)) {
     LOG_W(NR_MAC,
           "UE %04x expected HARQ pid %d feedback at %4d.%2d, but is at %4d.%2d instead (HARQ feedback is in the past)\n",
@@ -1073,7 +1067,8 @@ static NR_UE_harq_t *find_harq(frame_t frame, sub_frame_t slot, NR_UE_info_t * U
     harq = &sched_ctrl->harq_processes[pid];
   }
   /* feedbacks that we wait for in the future: don't do anything */
-  if (harq->feedback_slot > slot) {
+  if ((frame - harq->feedback_frame + 1024 ) % 1024 > 512 // harq->feedback_frame > frame
+      || (harq->feedback_frame == frame && harq->feedback_slot > slot)) {
     LOG_W(NR_MAC,
           "UE %04x expected HARQ pid %d feedback at %4d.%2d, but is at %4d.%2d instead (HARQ feedback is in the future)\n",
           UE->rnti,

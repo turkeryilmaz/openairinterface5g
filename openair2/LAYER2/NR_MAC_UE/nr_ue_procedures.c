@@ -1216,11 +1216,8 @@ void set_harq_status(NR_UE_MAC_INST_t *mac,
   current_harq->dl_slot = slot;
   int scs = get_softmodem_params()->numerology;
   int slots_per_frame = nr_slots_per_frame[scs];
-  slot += data_toul_fb;
-  if (slot >= slots_per_frame) {
-    frame = (frame + 1) % 1024;
-    slot %= slots_per_frame;
-  }
+  frame = (frame + (slot + data_toul_fb) / slots_per_frame) % MAX_FRAME_NUMBER;
+  slot = (slot + data_toul_fb) % slots_per_frame;
 
   LOG_D(NR_PHY,"Setting harq_status for harq_id %d, dl %d.%d, sched ul %d.%d\n",
         harq_id, current_harq->dl_frame, current_harq->dl_slot, frame, slot);
@@ -2173,13 +2170,9 @@ bool get_downlink_ack(NR_UE_MAC_INST_t *mac, frame_t frame, int slot, PUCCH_sche
 
         sched_slot = current_harq->dl_slot + current_harq->feedback_to_ul;
         sched_frame = current_harq->dl_frame;
-		
-		int frame_offset = 1;
-		if (NTN_UE_k2 > 0)
-		   frame_offset = NTN_UE_k2/slots_per_frame;
 
         if (sched_slot >= slots_per_frame) {
-          sched_frame = (sched_frame + frame_offset) % MAX_FRAME_NUMBER;
+          sched_frame = (sched_frame + sched_slot/slots_per_frame) % MAX_FRAME_NUMBER;
           sched_slot %= slots_per_frame;
         }
         AssertFatal(sched_slot < slots_per_frame, "sched_slot was calculated incorrect %d\n", sched_slot);
