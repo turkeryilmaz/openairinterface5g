@@ -2229,9 +2229,8 @@ bool get_downlink_ack(NR_UE_MAC_INST_t *mac, frame_t frame, int slot, PUCCH_sche
     }
   }
 
-  if(get_softmodem_params()->no_harq) {
-    number_harq_feedback = 0;
-  }
+  if(get_softmodem_params()->no_harq)
+    AssertFatal(number_harq_feedback == 0, "no HARQ feedback should be sent in no_harq mode");
 
   /* no any ack to transmit */
   if (number_harq_feedback == 0) {

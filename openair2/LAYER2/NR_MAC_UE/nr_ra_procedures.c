@@ -897,7 +897,10 @@ void nr_ra_succeeded(const module_id_t mod_id, const uint8_t gNB_index, const fr
     mac->crnti = ra->t_crnti;
     ra->t_crnti = 0;
     LOG_D(MAC, "In %s: [UE %d][%d.%d] CB-RA: cleared contention resolution timer...\n", __FUNCTION__, mod_id, frame, slot);
-    mac->state = UE_WAIT_TX_ACK_MSG4;
+    if(get_softmodem_params()->no_harq)
+      mac->state = UE_CONNECTED;
+    else
+      mac->state = UE_WAIT_TX_ACK_MSG4;
   }
 
   LOG_D(MAC, "In %s: [UE %d] clearing RA_active flag...\n", __FUNCTION__, mod_id);
