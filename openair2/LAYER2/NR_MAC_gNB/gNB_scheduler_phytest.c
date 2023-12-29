@@ -62,6 +62,15 @@ void nr_preprocessor_phytest(module_id_t module_id,
   NR_UE_DL_BWP_t *dl_bwp = &UE->current_DL_BWP;
   const int CC_id = 0;
 
+  /* return if all DL HARQ processes wait for feedback */
+  if (sched_ctrl->retrans_dl_harq.head == -1 && sched_ctrl->available_dl_harq.head == -1) {
+    LOG_D(NR_MAC, "[UE %04x][%4d.%2d] UE has no free DL HARQ process, skipping\n",
+          UE->rnti,
+          frame,
+          slot);
+    return;
+  }
+
   const int tda = get_dl_tda(RC.nrmac[module_id], scc, slot);
   NR_tda_info_t tda_info = get_dl_tda_info(dl_bwp, sched_ctrl->search_space->searchSpaceType->present, tda,
                                            scc->dmrs_TypeA_Position, 1, NR_RNTI_C, sched_ctrl->coreset->controlResourceSetId, false);
@@ -126,7 +135,7 @@ void nr_preprocessor_phytest(module_id_t module_id,
   int r_pucch = nr_get_pucch_resource(sched_ctrl->coreset, UE->current_UL_BWP.pucch_Config, CCEIndex);
   const int alloc = nr_acknack_scheduling(RC.nrmac[module_id], UE, frame, slot, r_pucch, 0);
   if (alloc < 0) {
-    LOG_D(MAC,
+    LOG_W(MAC,
           "%s(): could not find PUCCH for UE %04x@%d.%d\n",
           __func__,
           rnti,
@@ -210,6 +219,15 @@ bool nr_ul_preprocessor_phytest(module_id_t module_id, frame_t frame, sub_frame_
   NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
   NR_UE_UL_BWP_t *ul_bwp = &UE->current_UL_BWP;
   const int mu = ul_bwp->scs;
+
+  /* return if all UL HARQ processes wait for feedback */
+  if (sched_ctrl->retrans_ul_harq.head == -1 && sched_ctrl->available_ul_harq.head == -1) {
+    LOG_D(NR_MAC, "[UE %04x][%4d.%2d] UE has no free UL HARQ process, skipping\n",
+          UE->rnti,
+          frame,
+          slot);
+    return false;
+  }
 
   NR_PUSCH_TimeDomainResourceAllocationList_t *tdaList = get_ul_tdalist(ul_bwp, sched_ctrl->coreset->controlResourceSetId, sched_ctrl->search_space->searchSpaceType->present, NR_RNTI_C);
   const int temp_tda = get_ul_tda(nr_mac, scc, frame, slot);
