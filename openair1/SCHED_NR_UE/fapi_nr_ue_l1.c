@@ -43,6 +43,7 @@
 #include "SCHED_NR_UE/phy_sch_processing_time.h"
 
 extern PHY_VARS_NR_UE ***PHY_vars_UE_g;
+extern uint16_t NTN_UE_k2; //the additional k2 value at UE
 
 const char *const dl_pdu_type[] = {"DCI", "DLSCH", "RA_DLSCH", "SI_DLSCH", "P_DLSCH", "CSI_RS", "CSI_IM", "TA"};
 const char *const ul_pdu_type[] = {"PRACH", "PUCCH", "PUSCH", "SRS"};
@@ -375,15 +376,9 @@ void configure_ta_command(PHY_VARS_NR_UE *ue, fapi_nr_ta_command_pdu *ta_command
   const double t_subframe = 1.0; // subframe duration of 1 msec
   const int ul_tx_timing_adjustment = 1 + (int)ceil(slots_per_subframe*(N_t_1 + N_t_2 + N_TA_max + 0.5)/t_subframe);
 
-  int ta_slot_temp = ta_command_pdu->ta_slot + ul_tx_timing_adjustment + NTN_UE_slot_Rx_to_Tx;
+  int ta_slot_temp = ta_command_pdu->ta_slot + ul_tx_timing_adjustment + NTN_UE_k2;
   ue->ta_slot =  ta_slot_temp % slots_per_frame;
-  /*
-  if (ta_slot_temp > slots_per_frame)
-    ue->ta_frame = (ta_command_pdu->ta_frame + ta_slot_temp/slots_per_frame) % 1024;
-  else
-    ue->ta_frame = ta_command_pdu->ta_frame;
-  */
-  ue->ta_frame = (ta_command_pdu->ta_frame + ta_slot_temp/slots_per_frame) % 1024;
+  ue->ta_frame = (ta_command_pdu->ta_frame + ta_slot_temp/slots_per_frame) % MAX_FRAME_NUMBER;
   ue->ta_command = ta_command_pdu->ta_command;
   LOG_D(PHY,"TA command received in Frame.Slot %d.%d -- Starting UL time alignment procedures. TA update will be applied at frame %d slot %d\n",
         ta_command_pdu->ta_frame, ta_command_pdu->ta_slot, ue->ta_frame, ue->ta_slot);
