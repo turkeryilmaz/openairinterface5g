@@ -541,6 +541,7 @@ void prepare_scd(NR_ServingCellConfig_t *scd) {
   scd->pdsch_ServingCellConfig->present = NR_SetupRelease_PDSCH_ServingCellConfig_PR_setup;
   scd->pdsch_ServingCellConfig->choice.setup = pdsch_servingcellconfig;
   pdsch_servingcellconfig->nrofHARQ_ProcessesForPDSCH = calloc(1, sizeof(*pdsch_servingcellconfig->nrofHARQ_ProcessesForPDSCH));
+  *pdsch_servingcellconfig->nrofHARQ_ProcessesForPDSCH = 16;
   scd->uplinkConfig->pusch_ServingCellConfig = calloc(1, sizeof(*scd->uplinkConfig->pusch_ServingCellConfig));
   NR_PUSCH_ServingCellConfig_t *pusch_scc = calloc(1, sizeof(*pusch_scc));
   scd->uplinkConfig->pusch_ServingCellConfig->present = NR_SetupRelease_PUSCH_ServingCellConfig_PR_setup;
