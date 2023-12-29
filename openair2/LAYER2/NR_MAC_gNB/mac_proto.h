@@ -190,7 +190,7 @@ int nr_acknack_scheduling(gNB_MAC_INST *mac,
 
 int get_pdsch_to_harq_feedback(NR_PUCCH_Config_t *pucch_Config,
                                nr_dci_format_t dci_format,
-                               uint8_t *pdsch_to_harq_feedback);
+                               int *pdsch_to_harq_feedback);
   
 int nr_get_pucch_resource(NR_ControlResourceSet_t *coreset,
                           NR_PUCCH_Config_t *pucch_Config,

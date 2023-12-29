@@ -2541,7 +2541,7 @@ uint8_t nr_get_tpc(int target, uint8_t cqi, int incr) {
 
 int get_pdsch_to_harq_feedback(NR_PUCCH_Config_t *pucch_Config,
                                 nr_dci_format_t dci_format,
-                                uint8_t *pdsch_to_harq_feedback) {
+                                int *pdsch_to_harq_feedback) {
   /* already mutex protected: held in nr_acknack_scheduling() */
 
   if (dci_format == NR_DL_DCI_FORMAT_1_0) {

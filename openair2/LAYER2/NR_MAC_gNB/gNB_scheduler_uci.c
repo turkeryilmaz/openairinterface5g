@@ -1340,7 +1340,7 @@ int nr_acknack_scheduling(gNB_MAC_INST *mac,
   if(is_common == 0)
    dci_format = UE->current_DL_BWP.dci_format;
 
-  uint8_t pdsch_to_harq_feedback[8];
+  int pdsch_to_harq_feedback[8];
   int fb_size = get_pdsch_to_harq_feedback(pucch_Config, dci_format, pdsch_to_harq_feedback);
 
   for (int f = 0; f < fb_size; f++) {

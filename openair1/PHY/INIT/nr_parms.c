@@ -198,7 +198,7 @@ uint32_t get_slot_from_timestamp(openair0_timestamp timestamp_rx, const NR_DL_FR
    return slot_idx; 
 }
 
-uint32_t get_samples_slot_timestamp(int slot, const NR_DL_FRAME_PARMS *fp, uint8_t sl_ahead)
+uint32_t get_samples_slot_timestamp(int slot, const NR_DL_FRAME_PARMS *fp, uint16_t sl_ahead)
 {
   uint32_t samp_count = 0;
 
