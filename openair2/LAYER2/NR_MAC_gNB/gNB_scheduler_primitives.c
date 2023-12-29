@@ -2383,7 +2383,7 @@ void set_sched_pucch_list(NR_UE_sched_ctrl_t *sched_ctrl,
   const int n_ul_slots_period = tdd ? tdd->nrofUplinkSlots + (tdd->nrofUplinkSymbols > 0 ? 1 : 0) : n_slots_frame;
   // PUCCH list size is given by the number of UL slots in the PUCCH period
   // the length PUCCH period is determined by max_fb_time since we may need to prepare PUCCH for ACK/NACK max_fb_time slots ahead
-  const int list_size = n_ul_slots_period << (ul_bwp->max_fb_time/nr_slots_period);
+  const int list_size = n_ul_slots_period << (int)ceil(log2(ul_bwp->max_fb_time/nr_slots_period+1));
   if(!sched_ctrl->sched_pucch) {
     sched_ctrl->sched_pucch = calloc(list_size, sizeof(*sched_ctrl->sched_pucch));
     sched_ctrl->sched_pucch_size = list_size;
@@ -2910,9 +2910,7 @@ void UL_tti_req_ahead_initialization(gNB_MAC_INST * gNB, NR_ServingCellConfigCom
   if(gNB->UL_tti_req_ahead[CCid])
     return;
 
-  int size = n;
-  if (scs == 0)
-    size <<= 1; // to have enough room for feedback possibly beyond the frame we need a larger array at 15kHz SCS
+  int size = n << (int)ceil(log2((NTN_gNB_k2+13)/n+1)); // 13 is upper limit for max_fb_time
 
   gNB->UL_tti_req_ahead_size = size;
   gNB->UL_tti_req_ahead[CCid] = calloc(size, sizeof(nfapi_nr_ul_tti_request_t));

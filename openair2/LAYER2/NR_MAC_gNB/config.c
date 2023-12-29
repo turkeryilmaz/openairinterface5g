@@ -456,6 +456,8 @@ int nr_transmission_action_indicator_stop(module_id_t module_id, rnti_t rnti)
   return 0;
 }
 
+extern uint16_t NTN_gNB_k2;
+
 void nr_mac_config_scc(gNB_MAC_INST *nrmac,
                        rrc_pdsch_AntennaPorts_t pdsch_AntennaPorts,
                        int pusch_AntennaPorts,
@@ -472,11 +474,10 @@ void nr_mac_config_scc(gNB_MAC_INST *nrmac,
               "SSB Bitmap type %d is not valid\n",
               scc->ssb_PositionsInBurst->present);
 
-  int n = nr_slots_per_frame[*scc->ssbSubcarrierSpacing];
-  if (*scc->ssbSubcarrierSpacing == 0)
-    n <<= 1; // to have enough room for feedback possibly beyond the frame we need a larger array at 15kHz SCS
-  nrmac->common_channels[0].vrb_map_UL = calloc(n * MAX_BWP_SIZE, sizeof(uint16_t));
-  nrmac->vrb_map_UL_size = n;
+  const int n = nr_slots_per_frame[*scc->ssbSubcarrierSpacing];
+  nrmac->vrb_map_UL_size = n << (int)ceil(log2((NTN_gNB_k2+13)/n+1)); // 13 is upper limit for max_fb_time
+
+  nrmac->common_channels[0].vrb_map_UL = calloc(nrmac->vrb_map_UL_size * MAX_BWP_SIZE, sizeof(uint16_t));
 
   AssertFatal(nrmac->common_channels[0].vrb_map_UL,
               "could not allocate memory for RC.nrmac[]->common_channels[0].vrb_map_UL\n");

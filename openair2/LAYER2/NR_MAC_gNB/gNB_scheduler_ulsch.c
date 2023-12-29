@@ -2128,7 +2128,6 @@ void nr_schedule_ulsch(module_id_t module_id, frame_t frame, sub_frame_t slot, n
     if (get_softmodem_params()->no_harq) {
       /* added to front ofthe list to reuse same harq ID */
       add_tail_nr_list(&sched_ctrl->available_ul_harq, harq_id);
-      LOG_D(MAC, "Ulharq id %d Released due to NO_HARQ flag. \n",harq_id);
       cur_harq->feedback_slot = -1;
       cur_harq->is_waiting = false;
       cur_harq->ndi ^=1;
@@ -2205,8 +2204,8 @@ void nr_schedule_ulsch(module_id_t module_id, frame_t frame, sub_frame_t slot, n
     /* PUSCH in a later slot, but corresponding DCI now! */
     const int index = ul_buffer_index(sched_pusch->frame, sched_pusch->slot, current_BWP->scs, nr_mac->UL_tti_req_ahead_size);
     nfapi_nr_ul_tti_request_t *future_ul_tti_req = &nr_mac->UL_tti_req_ahead[0][index];
-    //if (future_ul_tti_req->SFN != sched_pusch->frame || future_ul_tti_req->Slot != sched_pusch->slot)
-    LOG_D(MAC,
+    if (future_ul_tti_req->SFN != sched_pusch->frame || future_ul_tti_req->Slot != sched_pusch->slot)
+      LOG_W(MAC,
             "%d.%d future UL_tti_req's frame.slot %d.%d does not match PUSCH %d.%d\n",
             frame, slot,
             future_ul_tti_req->SFN,
