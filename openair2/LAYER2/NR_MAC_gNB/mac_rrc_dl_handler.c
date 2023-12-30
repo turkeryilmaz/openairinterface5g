@@ -250,7 +250,7 @@ void ue_context_modification_confirm(const f1ap_ue_context_modif_confirm_t *conf
   gNB_MAC_INST *mac = RC.nrmac[0];
   NR_SCHED_LOCK(&mac->sched_lock);
   /* check first that the scheduler knows such UE */
-  NR_UE_info_t *UE = find_nr_UE(&mac->UE_info, confirm->gNB_DU_ue_id);
+  NR_UE_info_t *UE = find_nr_UE(&mac->UE_info, 0, confirm->gNB_DU_ue_id); //TODO to check if 0 ok. Impacts will appear when multi cells will be fully deployed
   if (UE == NULL) {
     LOG_E(MAC, "ERROR: unknown UE with RNTI %04x, ignoring UE Context Modification Confirm\n", confirm->gNB_DU_ue_id);
     NR_SCHED_UNLOCK(&mac->sched_lock);
@@ -275,7 +275,7 @@ void ue_context_modification_refuse(const f1ap_ue_context_modif_refuse_t *refuse
 
   gNB_MAC_INST *mac = RC.nrmac[0];
   NR_SCHED_LOCK(&mac->sched_lock);
-  NR_UE_info_t *UE = find_nr_UE(&RC.nrmac[0]->UE_info, refuse->gNB_DU_ue_id);
+  NR_UE_info_t *UE = find_nr_UE(&RC.nrmac[0]->UE_info, 0, refuse->gNB_DU_ue_id); //TODO to check if 0 ok. Impacts will appear when multi cells will be fully deployed
   if (UE == NULL) {
     LOG_E(MAC, "ERROR: unknown UE with RNTI %04x, ignoring UE Context Modification Refuse\n", refuse->gNB_DU_ue_id);
     NR_SCHED_UNLOCK(&mac->sched_lock);
