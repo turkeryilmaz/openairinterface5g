@@ -117,15 +117,15 @@ void process_CellGroup(NR_CellGroupConfig_t *CellGroup, NR_UE_info_t *UE)
    if (CellGroup->spCellConfig && CellGroup->spCellConfig->reconfigurationWithSync
        && CellGroup->spCellConfig->reconfigurationWithSync->rach_ConfigDedicated
        && CellGroup->spCellConfig->reconfigurationWithSync->rach_ConfigDedicated->choice.uplink->cfra) {
-    nr_mac_prepare_ra_ue(RC.nrmac[0], UE->rnti, CellGroup);
+    nr_mac_prepare_ra_ue(RC.nrmac[0], UE->CC_id, UE->rnti, CellGroup);
    }
    process_rlcBearerConfig(CellGroup->rlc_BearerToAddModList, CellGroup->rlc_BearerToReleaseList, &UE->UE_sched_ctrl);
 }
 
-static void config_common(gNB_MAC_INST *nrmac, int pdsch_AntennaPorts, int pusch_AntennaPorts, NR_ServingCellConfigCommon_t *scc)
+static void config_common(gNB_MAC_INST *nrmac, int pdsch_AntennaPorts, int pusch_AntennaPorts, NR_ServingCellConfigCommon_t *scc, int CC_id)
 {
-  nfapi_nr_config_request_scf_t *cfg = &nrmac->config[0];
-  nrmac->common_channels[0].ServingCellConfigCommon = scc;
+  nfapi_nr_config_request_scf_t *cfg = &nrmac->config[CC_id];
+  nrmac->common_channels[CC_id].ServingCellConfigCommon = scc;
 
   // Carrier configuration
   struct NR_FrequencyInfoDL *frequencyInfoDL = scc->downlinkConfigCommon->frequencyInfoDL;
@@ -197,7 +197,7 @@ static void config_common(gNB_MAC_INST *nrmac, int pdsch_AntennaPorts, int pusch
   frequency_range_t frequency_range = band<100?FR1:FR2;
 
   frame_type_t frame_type = get_frame_type(*frequencyInfoDL->frequencyBandList.list.array[0], *scc->ssbSubcarrierSpacing);
-  nrmac->common_channels[0].frame_type = frame_type;
+  nrmac->common_channels[CC_id].frame_type = frame_type;
 
   // Cell configuration
   cfg->cell_config.phy_cell_id.value = *scc->physCellId;
@@ -418,7 +418,25 @@ static void config_common(gNB_MAC_INST *nrmac, int pdsch_AntennaPorts, int pusch
   }
 }
 
-int nr_mac_enable_ue_rrc_processing_timer(module_id_t Mod_idP, rnti_t rnti, NR_SubcarrierSpacing_t subcarrierSpacing, uint32_t rrc_reconfiguration_delay)
+int rrc_mac_config_dedicate_scheduling(module_id_t Mod_idP, NR_DcchDtchConfig_t *dcchDtchConfig)
+{
+  gNB_MAC_INST *nrmac = RC.nrmac[Mod_idP];
+  if(dcchDtchConfig!=NULL){
+    if(dcchDtchConfig->ul && dcchDtchConfig->ul->dci_info){
+      NR_DciFormat_0_X_ResourceAssignment_t * dci0_resouceAssignment = dcchDtchConfig->ul->dci_info->resoure_assignment;
+      if(dci0_resouceAssignment){
+        nrmac->min_grant_prb = dci0_resouceAssignment->Nprb;
+        nrmac->grant_prb = dci0_resouceAssignment->Nprb;
+        nrmac->grant_mcs= dci0_resouceAssignment->transportBlock_scheduling.imcs;
+        nrmac->grant_rbStart = dci0_resouceAssignment->FirstRbIndex;
+        LOG_I(NR_MAC,"config mac PUSCH scheduler rbSize:%d, mcs:%d, rbStart:%d \n",nrmac->grant_prb,nrmac->grant_mcs,nrmac->grant_rbStart);
+      }
+    }
+  }
+  return 0;
+}
+
+int nr_mac_enable_ue_rrc_processing_timer(module_id_t Mod_idP, int CC_id, rnti_t rnti, NR_SubcarrierSpacing_t subcarrierSpacing, uint32_t rrc_reconfiguration_delay)
 {
   if (rrc_reconfiguration_delay == 0) {
     return -1;
@@ -427,7 +445,7 @@ int nr_mac_enable_ue_rrc_processing_timer(module_id_t Mod_idP, rnti_t rnti, NR_S
   gNB_MAC_INST *nrmac = RC.nrmac[Mod_idP];
   NR_SCHED_LOCK(&nrmac->sched_lock);
 
-  NR_UE_info_t *UE_info = find_nr_UE(&nrmac->UE_info,rnti);
+  NR_UE_info_t *UE_info = find_nr_UE(&nrmac->UE_info, CC_id, rnti);
   if (!UE_info) {
     LOG_W(NR_MAC, "Could not find UE for RNTI 0x%04x\n", rnti);
     NR_SCHED_UNLOCK(&nrmac->sched_lock);
@@ -449,6 +467,7 @@ int nr_mac_enable_ue_rrc_processing_timer(module_id_t Mod_idP, rnti_t rnti, NR_S
 }
 
 void nr_mac_config_scc(gNB_MAC_INST *nrmac,
+                       const int CC_id,
                        rrc_pdsch_AntennaPorts_t pdsch_AntennaPorts,
                        int pusch_AntennaPorts,
                        int sib1_tda,
@@ -456,7 +475,9 @@ void nr_mac_config_scc(gNB_MAC_INST *nrmac,
                        NR_ServingCellConfigCommon_t *scc)
 {
   DevAssert(nrmac != NULL);
-  AssertFatal(nrmac->common_channels[0].ServingCellConfigCommon == NULL, "logic error: multiple configurations of SCC\n");
+
+  if(RC.ss.mode == SS_ENB)
+    AssertFatal(nrmac->common_channels[CC_id].ServingCellConfigCommon == NULL, "logic error: multiple configurations of SCC\n");
   NR_SCHED_LOCK(&nrmac->sched_lock);
 
   DevAssert(scc != NULL);
@@ -467,29 +488,30 @@ void nr_mac_config_scc(gNB_MAC_INST *nrmac,
   int n = nr_slots_per_frame[*scc->ssbSubcarrierSpacing];
   if (*scc->ssbSubcarrierSpacing == 0)
     n <<= 1; // to have enough room for feedback possibly beyond the frame we need a larger array at 15kHz SCS
-  nrmac->common_channels[0].vrb_map_UL = calloc(n * MAX_BWP_SIZE, sizeof(uint16_t));
+  nrmac->common_channels[CC_id].vrb_map_UL = calloc(n * MAX_BWP_SIZE, sizeof(uint16_t));
   nrmac->vrb_map_UL_size = n;
-  AssertFatal(nrmac->common_channels[0].vrb_map_UL,
+  AssertFatal(nrmac->common_channels[CC_id].vrb_map_UL,
               "could not allocate memory for RC.nrmac[]->common_channels[0].vrb_map_UL\n");
 
   LOG_I(NR_MAC, "Configuring common parameters from NR ServingCellConfig\n");
 
   int num_pdsch_antenna_ports = pdsch_AntennaPorts.N1 * pdsch_AntennaPorts.N2 * pdsch_AntennaPorts.XP;
   nrmac->xp_pdsch_antenna_ports = pdsch_AntennaPorts.XP;
-  config_common(nrmac, num_pdsch_antenna_ports, pusch_AntennaPorts, scc);
+  config_common(nrmac, num_pdsch_antenna_ports, pusch_AntennaPorts, scc,CC_id);
 
   if (NFAPI_MODE == NFAPI_MODE_PNF || NFAPI_MODE == NFAPI_MODE_VNF) {
     // fake that the gNB is configured in nFAPI mode, which would normally be
     // done in a NR_PHY_config_req, but in this mode, there is no PHY
     RC.gNB[0]->configured = 1;
   } else {
-    NR_PHY_Config_t phycfg = {.Mod_id = 0, .CC_id = 0, .cfg = &nrmac->config[0]};
+    NR_PHY_Config_t phycfg = {.Mod_id = 0, .CC_id = 0, .cfg = &nrmac->config[CC_id]};
     DevAssert(nrmac->if_inst->NR_PHY_config_req);
     nrmac->if_inst->NR_PHY_config_req(&phycfg);
   }
 
+
   nrmac->minRXTXTIMEpdsch = minRXTXTIMEpdsch;
-  find_SSB_and_RO_available(nrmac);
+  find_SSB_and_RO_available(nrmac,CC_id);
 
   const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
 
@@ -525,7 +547,7 @@ void nr_mac_config_scc(gNB_MAC_INST *nrmac,
   }
 
   if (get_softmodem_params()->sa > 0) {
-    NR_COMMON_channels_t *cc = &nrmac->common_channels[0];
+    NR_COMMON_channels_t *cc = &nrmac->common_channels[CC_id];
     nrmac->sib1_tda = sib1_tda;
     for (int n = 0; n < NR_NB_RA_PROC_MAX; n++) {
       NR_RA_t *ra = &cc->ra[n];
@@ -547,7 +569,9 @@ void nr_mac_config_mib(gNB_MAC_INST *nrmac, NR_BCCH_BCH_Message_t *mib)
   NR_SCHED_LOCK(&nrmac->sched_lock);
   NR_COMMON_channels_t *cc = &nrmac->common_channels[0];
 
-  AssertFatal(cc->mib == NULL, "logic bug: updated MIB multiple times\n");
+  if(RC.ss.mode == SS_ENB)
+    AssertFatal(cc->mib == NULL, "logic bug: updated MIB multiple times\n");
+
   cc->mib = mib;
   NR_SCHED_UNLOCK(&nrmac->sched_lock);
 }
@@ -559,7 +583,9 @@ void nr_mac_config_sib1(gNB_MAC_INST *nrmac, NR_BCCH_DL_SCH_Message_t *sib1)
   NR_SCHED_LOCK(&nrmac->sched_lock);
   NR_COMMON_channels_t *cc = &nrmac->common_channels[0];
 
-  AssertFatal(cc->sib1 == NULL, "logic bug: updated SIB1 multiple times\n");
+  if(RC.ss.mode == SS_ENB)
+    AssertFatal(cc->sib1 == NULL, "logic bug: updated SIB1 multiple times\n");
+
   cc->sib1 = sib1;
   NR_SCHED_UNLOCK(&nrmac->sched_lock);
 }
@@ -571,7 +597,7 @@ bool nr_mac_add_test_ue(gNB_MAC_INST *nrmac, uint32_t rnti, NR_CellGroupConfig_t
   DevAssert(get_softmodem_params()->phy_test);
   NR_SCHED_LOCK(&nrmac->sched_lock);
 
-  NR_UE_info_t* UE = add_new_nr_ue(nrmac, rnti, CellGroup);
+  NR_UE_info_t* UE = add_new_nr_ue(nrmac, rnti, 0, CellGroup); //bugz128620 to do: 0 is not good
   if (UE) {
     LOG_I(NR_MAC,"Force-added new UE %x with initial CellGroup\n", rnti);
     process_CellGroup(CellGroup, UE);
@@ -582,14 +608,14 @@ bool nr_mac_add_test_ue(gNB_MAC_INST *nrmac, uint32_t rnti, NR_CellGroupConfig_t
   return UE != NULL;
 }
 
-bool nr_mac_prepare_ra_ue(gNB_MAC_INST *nrmac, uint32_t rnti, NR_CellGroupConfig_t *CellGroup)
+bool nr_mac_prepare_ra_ue(gNB_MAC_INST *nrmac, int CC_id, uint32_t rnti, NR_CellGroupConfig_t *CellGroup)
 {
   DevAssert(nrmac != NULL);
   DevAssert(CellGroup != NULL);
   NR_SCHED_ENSURE_LOCKED(&nrmac->sched_lock);
 
   // NSA case: need to pre-configure CFRA
-  const int CC_id = 0;
+  //const int CC_id = 0;
   NR_COMMON_channels_t *cc = &nrmac->common_channels[CC_id];
   uint8_t ra_index = 0;
   /* checking for free RA process */
@@ -621,7 +647,7 @@ bool nr_mac_prepare_ra_ue(gNB_MAC_INST *nrmac, uint32_t rnti, NR_CellGroupConfig
   return true;
 }
 
-bool nr_mac_update_cellgroup(gNB_MAC_INST *nrmac, uint32_t rnti, NR_CellGroupConfig_t *CellGroup)
+bool nr_mac_update_cellgroup(gNB_MAC_INST *nrmac, int CC_id, uint32_t rnti, NR_CellGroupConfig_t *CellGroup)
 {
   DevAssert(nrmac != NULL);
   /* we assume that this function is mutex-protected from outside */
@@ -629,7 +655,7 @@ bool nr_mac_update_cellgroup(gNB_MAC_INST *nrmac, uint32_t rnti, NR_CellGroupCon
 
   DevAssert(CellGroup != NULL);
 
-  NR_UE_info_t *UE = find_nr_UE(&nrmac->UE_info, rnti);
+  NR_UE_info_t *UE = find_nr_UE(&nrmac->UE_info, CC_id, rnti);
   AssertFatal(UE != NULL, "Can't find UE %04x for CellGroup update\n", rnti);
 
   /* copy CellGroup by calling asn1c encode this is a temporary hack to avoid the gNB having a pointer to RRC CellGroup structure
