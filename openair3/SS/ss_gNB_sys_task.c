@@ -36,7 +36,6 @@
 
 #include "openair2/LAYER2/nr_pdcp/nr_pdcp_entity.h"
 #include "openair2/LAYER2/nr_pdcp/nr_pdcp_ue_manager.h"
-#include "openair2/LAYER2/NR_MAC_gNB/gNB_scheduler_primitives.c"
 
 #include "common/utils/LOG/ss-log.h"
 #include "ss_utils.h"
