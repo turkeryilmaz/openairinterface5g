@@ -28,7 +28,6 @@
  * @ingroup _ngap
  */
 
-
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -493,7 +492,6 @@ static int ngap_gNB_generate_ng_setup_request(
   ie->value.present = NGAP_NGSetupRequestIEs__value_PR_PagingDRX;
   ie->value.choice.PagingDRX = instance_p->default_drx;
   asn1cSeqAdd(&out->protocolIEs.list, ie);
-
 
   if (ngap_gNB_encode_pdu(&pdu, &buffer, &len) < 0) {
     NGAP_ERROR("Failed to encode NG setup request\n");

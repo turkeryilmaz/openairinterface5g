@@ -64,9 +64,14 @@
 #define NGAP_PDUSESSION_MODIFY_REQ(mSGpTR)              (mSGpTR)->ittiMsg.ngap_pdusession_modify_req
 #define NGAP_PAGING_IND(mSGpTR)                 (mSGpTR)->ittiMsg.ngap_paging_ind
 
-#define NGAP_UE_CONTEXT_RELEASE_REQ(mSGpTR)     (mSGpTR)->ittiMsg.ngap_ue_release_req
-#define NGAP_PDUSESSION_RELEASE_COMMAND(mSGpTR)      (mSGpTR)->ittiMsg.ngap_pdusession_release_command
-#define NGAP_PDUSESSION_RELEASE_RESPONSE(mSGpTR)     (mSGpTR)->ittiMsg.ngap_pdusession_release_resp
+#define NGAP_UE_CONTEXT_RELEASE_REQ(mSGpTR)      (mSGpTR)->ittiMsg.ngap_ue_release_req
+#define NGAP_PDUSESSION_RELEASE_COMMAND(mSGpTR)  (mSGpTR)->ittiMsg.ngap_pdusession_release_command
+#define NGAP_PDUSESSION_RELEASE_RESPONSE(mSGpTR) (mSGpTR)->ittiMsg.ngap_pdusession_release_resp
+
+#define NGAP_UPLINKUEASSOCIATEDNRPPA(mSGpTR)      (mSGpTR)->ittiMsg.ngap_UplinkUEAssociatedNRPPa
+#define NGAP_UPLINKNONUEASSOCIATEDNRPPA(mSGpTR)   (mSGpTR)->ittiMsg.ngap_UplinkNonUEAssociatedNRPPa 
+#define NGAP_DOWNLINKUEASSOCIATEDNRPPA(mSGpTR)    (mSGpTR)->ittiMsg.ngap_DownlinkUEAssociatedNRPPa
+#define NGAP_DOWNLINKNONUEASSOCIATEDNRPPA(mSGpTR) (mSGpTR)->ittiMsg.ngap_DownlinkNonUEAssociatedNRPPa
 
 #define NGAP_UPLINKUEASSOCIATEDNRPPA(mSGpTR)                  (mSGpTR)->ittiMsg.ngap_UplinkUEAssociatedNRPPa
 #define NGAP_UPLINKNONUEASSOCIATEDNRPPA(mSGpTR)               (mSGpTR)->ittiMsg.ngap_UplinkNonUEAssociatedNRPPa
@@ -645,7 +650,6 @@ typedef struct ngap_downlink_nas_s {
   ngap_pdu_t nas_pdu;
 } ngap_downlink_nas_t;
 
-
 typedef struct ngap_initial_context_setup_req_s {
   /* UE id for initial connection to NGAP */
   uint32_t gNB_ue_ngap_id;
@@ -681,7 +685,6 @@ typedef struct ngap_initial_context_setup_req_s {
   uint8_t                        nas_pdu_flag;
   ngap_pdu_t nas_pdu;
 } ngap_initial_context_setup_req_t;
-
 
 typedef struct ngap_paging_ind_s {
   /* UE paging identity */
@@ -771,7 +774,6 @@ typedef struct ngap_path_switch_req_s {
 } ngap_path_switch_req_t;
 
 typedef struct ngap_path_switch_req_ack_s {
-
   /* UE id for initial connection to NGAP */
   uint16_t ue_initial_id;
 
@@ -828,7 +830,6 @@ typedef struct ngap_ue_release_command_s {
   uint32_t  gNB_ue_ngap_id;
 
 } ngap_ue_release_command_t;
-
 
 //-------------------------------------------------------------------------------------------//
 // NGAP <-- RRC messages

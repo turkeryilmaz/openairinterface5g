@@ -18,7 +18,7 @@
  * For more information about the OpenAirInterface (OAI) Software Alliance:
  *      contact@openairinterface.org
  */
- 
+
 /*! \file ngap_gNB_itti_messaging.h
  * \brief ngap itti messages handlers for gNB
  * \author Yoshio INOUE, Masayuki HARADA

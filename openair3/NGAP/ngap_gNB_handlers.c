@@ -236,7 +236,7 @@ static int ngap_gNB_handle_ng_setup_response(sctp_assoc_t assoc_id, uint32_t str
     amf_desc_p->amf_name[ie->value.choice.AMFName.size] = '\0';
   }
 
-
+  
   /* mandatory set the plmn supports */
   NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_NGSetupResponseIEs_t, ie, container,
                                NGAP_ProtocolIE_ID_id_PLMNSupportList, true);
@@ -256,7 +256,7 @@ static int ngap_gNB_handle_ng_setup_response(sctp_assoc_t assoc_id, uint32_t str
     plmn_support_item_p = ie->value.choice.PLMNSupportList.list.array[i];
 
     new_plmn_support_p = calloc(1, sizeof(struct plmn_support_s));
-
+    
     TBCD_TO_MCC_MNC(&plmn_support_item_p->pLMNIdentity, new_plmn_support_p->plmn_identity.mcc,
                     new_plmn_support_p->plmn_identity.mnc, new_plmn_support_p->plmn_identity.mnc_digit_length);
 
@@ -267,7 +267,7 @@ static int ngap_gNB_handle_ng_setup_response(sctp_assoc_t assoc_id, uint32_t str
     STAILQ_INIT(&new_plmn_support_p->slice_supports);
     for(int j=0; j<plmn_support_item_p->sliceSupportList.list.count; j++) {
       slice_support_item_p = plmn_support_item_p->sliceSupportList.list.array[j];
-
+      
       new_slice_support_p = calloc(1, sizeof(struct slice_support_s));
 
       OCTET_STRING_TO_INT8(&slice_support_item_p->s_NSSAI.sST, new_slice_support_p->sST);
@@ -300,7 +300,7 @@ static int ngap_gNB_handle_error_indication(sctp_assoc_t assoc_id, uint32_t stre
   NGAP_ErrorIndicationIEs_t *ie;
   ngap_gNB_amf_data_t        *amf_desc_p;
   uint64_t                 amf_ue_ngap_id;
-
+    
   DevAssert(pdu != NULL);
   container = &pdu->choice.initiatingMessage->value.choice.ErrorIndication;
 
@@ -360,7 +360,7 @@ static int ngap_gNB_handle_error_indication(sctp_assoc_t assoc_id, uint32_t stre
           case NGAP_CauseRadioNetwork_release_due_to_ngran_generated_reason:
             NGAP_WARN("Received NG Error indication NGAP_CauseRadioNetwork_release_due_to_ngran_generated_reason\n");
             break;
-
+          
           case NGAP_CauseRadioNetwork_release_due_to_5gc_generated_reason:
             NGAP_WARN("Received NG Error indication NGAP_CauseRadioNetwork_release_due_to_5gc_generated_reason\n");
             break;
@@ -650,11 +650,11 @@ static int ngap_gNB_handle_error_indication(sctp_assoc_t assoc_id, uint32_t stre
         }
 
         break;
-
+        
       default:
        NGAP_WARN("Received NG Error indication cause NGAP_Cause_PR_choice_Extensions\n");
        break;
-
+      
     }
   }
 
@@ -665,7 +665,6 @@ static int ngap_gNB_handle_error_indication(sctp_assoc_t assoc_id, uint32_t stre
   if (ie) {
     // TODO continue
   }
-
 
   // TODO continue
   return 0;
@@ -717,7 +716,7 @@ static int ngap_gNB_handle_initial_context_request(sctp_assoc_t assoc_id, uint32
 
   ue_desc_p->rx_stream = stream;
   ue_desc_p->amf_ue_ngap_id = amf_ue_ngap_id;
-
+  
   MessageDef *message_p = itti_alloc_new_message(TASK_NGAP, 0, NGAP_INITIAL_CONTEXT_SETUP_REQ);
   ngap_initial_context_setup_req_t * msg=&NGAP_INITIAL_CONTEXT_SETUP_REQ(message_p);
   memset(msg, 0, sizeof(*msg));
@@ -743,7 +742,7 @@ static int ngap_gNB_handle_initial_context_request(sctp_assoc_t assoc_id, uint32
 
     TBCD_TO_MCC_MNC(&ie->value.choice.GUAMI.pLMNIdentity, msg->guami.mcc,
                     msg->guami.mnc, msg->guami.mnc_len);
-
+    
     OCTET_STRING_TO_INT8(&ie->value.choice.GUAMI.aMFRegionID, msg->guami.amf_region_id);
     OCTET_STRING_TO_INT16(&ie->value.choice.GUAMI.aMFSetID, msg->guami.amf_set_id);
     OCTET_STRING_TO_INT8(&ie->value.choice.GUAMI.aMFPointer, msg->guami.amf_pointer);
@@ -1179,7 +1178,6 @@ static int ngap_gNB_handle_pdusession_release_command(sctp_assoc_t assoc_id, uin
     NGAP_ERROR("[SCTP %u] Received pdu session release command for non existing AMF context\n", assoc_id);
     return -1;
   }
-
 
   /* id-AMF-UE-NGAP-ID */
   NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_PDUSessionResourceReleaseCommandIEs_t, ie, container,

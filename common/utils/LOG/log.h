@@ -169,8 +169,6 @@ extern "C" {
 #define SET_LOG_DUMP(B)   g_log->dump_mask = (g_log->dump_mask | B)
 #define CLEAR_LOG_DUMP(B) g_log->dump_mask = (g_log->dump_mask & (~B))
 
-
-
 typedef enum {
   MIN_LOG_COMPONENTS = 0,
   PHY = MIN_LOG_COMPONENTS,
@@ -234,7 +232,6 @@ comp_name_t;
 #define MAX_LOG_DYNALLOC_COMPONENTS 20
 #define MAX_LOG_COMPONENTS (MAX_LOG_PREDEF_COMPONENTS + MAX_LOG_DYNALLOC_COMPONENTS)
 
-
 typedef struct {
   char *name; /*!< \brief string name of item */
   int value;  /*!< \brief integer value of mapping */
@@ -256,7 +253,6 @@ typedef struct  {
   char log_buffer[MAX_LOG_TOTAL];
 } log_component_t;
 
-
 typedef struct {
   log_component_t         log_component[MAX_LOG_COMPONENTS];
   char                    level2string[NUM_LOG_LEVEL];
@@ -265,8 +261,6 @@ typedef struct {
   uint64_t                debug_mask;
   uint64_t                dump_mask;
 } log_t;
-
-
 
 #ifdef LOG_MAIN
 log_t *g_log;
@@ -365,9 +359,6 @@ int32_t write_file_matlab(const char *fname, const char *vname, void *data, int 
   " nocolor:   disable color usage in log messages\n"\
   " level:     add log level indication in log messages\n"\
   " thread:    add threads names in log messages\n"
-
-
-
 
 /*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 /*   LOG global configuration parameters                                                                                                                                                */

@@ -116,7 +116,7 @@ typedef struct f1ap_net_config_t {
 typedef struct f1ap_plmn_t {
   uint16_t mcc;
   uint16_t mnc;
-  uint8_t mnc_digit_length;
+  uint8_t  mnc_digit_length;
 } f1ap_plmn_t;
 
 typedef enum f1ap_mode_t { F1AP_MODE_TDD = 0, F1AP_MODE_FDD = 1 } f1ap_mode_t;
@@ -176,11 +176,10 @@ typedef struct f1ap_gnb_du_system_info_t {
 } f1ap_gnb_du_system_info_t;
 
 typedef struct f1ap_setup_req_s {
-
   // F1_Setup_Req payload
   uint64_t gNB_DU_id;
   char *gNB_DU_name;
-
+  
   /// number of DU cells available
   uint16_t num_cells_available; //0< num_cells_available <= 512;
   struct {
@@ -237,7 +236,7 @@ typedef struct f1ap_gnb_cu_configuration_update_s {
 typedef struct f1ap_setup_failure_s {
   uint16_t cause;
   uint16_t time_to_wait;
-  uint16_t criticality_diagnostics;
+  uint16_t criticality_diagnostics; 
 } f1ap_setup_failure_t;
 
 typedef struct f1ap_gnb_cu_configuration_update_acknowledge_s {
@@ -246,7 +245,7 @@ typedef struct f1ap_gnb_cu_configuration_update_acknowledge_s {
   uint64_t nr_cellid[F1AP_MAX_NB_CELLS];
   uint16_t cause[F1AP_MAX_NB_CELLS];
   int have_criticality;
-  uint16_t criticality_diagnostics;
+  uint16_t criticality_diagnostics; 
   uint16_t noofTNLAssociations_to_setup;
   uint16_t have_port[F1AP_MAX_NO_OF_TNL_ASSOCIATIONS];
   in_addr_t tl_address[F1AP_MAX_NO_OF_TNL_ASSOCIATIONS]; // currently only IPv4 supported
@@ -254,9 +253,9 @@ typedef struct f1ap_gnb_cu_configuration_update_acknowledge_s {
   in_addr_t tl_address_failed[F1AP_MAX_NO_OF_TNL_ASSOCIATIONS]; // currently only IPv4 supported
   uint16_t cause_failed[F1AP_MAX_NO_OF_TNL_ASSOCIATIONS];
   uint16_t noofDedicatedSIDeliveryNeededUEs;
-  uint32_t gNB_CU_ue_id[F1AP_MAX_NO_UE_ID];
+  uint32_t gNB_CU_ue_id[F1AP_MAX_NO_UE_ID]; 
   f1ap_plmn_t ue_plmn[F1AP_MAX_NO_UE_ID];
-  uint64_t ue_nr_cellid[F1AP_MAX_NO_UE_ID];
+  uint64_t ue_nr_cellid[F1AP_MAX_NO_UE_ID];  
 } f1ap_gnb_cu_configuration_update_acknowledge_t;
 
 typedef struct f1ap_gnb_cu_configuration_update_failure_s {
@@ -266,7 +265,6 @@ typedef struct f1ap_gnb_cu_configuration_update_failure_s {
 } f1ap_gnb_cu_configuration_update_failure_t;
 
 typedef struct f1ap_dl_rrc_message_s {
-
   uint32_t gNB_CU_ue_id;
   uint32_t gNB_DU_ue_id;
   uint32_t *old_gNB_DU_ue_id;

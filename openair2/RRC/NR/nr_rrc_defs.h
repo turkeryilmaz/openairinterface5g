@@ -30,7 +30,6 @@
 #ifndef __OPENAIR_RRC_DEFS_NR_H__
 #define __OPENAIR_RRC_DEFS_NR_H__
 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -159,7 +158,7 @@ typedef struct HANDOVER_INFO_NR_s {
   int                                                 size;               /* size of above message in bytes */
 } NR_HANDOVER_INFO;
 
-#define NR_RRC_BUFFER_SIZE                            sizeof(RRC_BUFFER_NR)
+#define NR_RRC_BUFFER_SIZE sizeof(RRC_BUFFER_NR)
 
 typedef struct nr_rrc_guami_s {
   uint16_t mcc;
@@ -332,7 +331,6 @@ typedef struct {
 
 } rrc_gNB_carrier_data_t;
 //---------------------------------------------------
-
 
 typedef struct {
   /* nea0 = 0, nea1 = 1, ... */

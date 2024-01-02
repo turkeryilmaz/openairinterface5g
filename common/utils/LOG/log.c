@@ -687,7 +687,7 @@ int set_log(int component,
 
 void set_glog(int level)
 {
-  for (int c = 0; c < MAX_LOG_COMPONENTS; c++) {
+  for (int c=0; c< MAX_LOG_COMPONENTS; c++ ) {
     set_log(c, level);
   }
 }

@@ -3082,7 +3082,6 @@ int rrc_gNB_generate_pcch_msg(sctp_assoc_t assoc_id, const NR_SIB1_t *sib1, uint
       LOG_E(RRC, "[gNB %ld] In rrc_gNB_generate_pcch_msg:  pfoffset error (pfoffset %d)\n",
             instance, sib1->servingCellConfigCommon->downlinkConfigCommon.pcch_Config.nAndPagingFrameOffset.present);
       return (-1);
-
   }
 
   switch (sib1->servingCellConfigCommon->downlinkConfigCommon.pcch_Config.ns) {

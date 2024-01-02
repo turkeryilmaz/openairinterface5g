@@ -29,7 +29,6 @@
 #include <mem_block.h>
 #include <assertions.h>
 
-
 typedef enum timer_type_s {
   TIMER_PERIODIC,
   TIMER_ONE_SHOT,
@@ -56,12 +55,10 @@ typedef struct {
   long          timer_id;
 } timer_delete_t;
 
-
 typedef struct itti_lte_time_s {
   uint32_t frame;
   uint8_t slot;
 } itti_lte_time_t;
-
 
 typedef struct IttiMsgEmpty_s {
   // This dummy element is to avoid CLANG warning: empty struct has size 0 in C, size 1 in C++
@@ -416,8 +413,6 @@ typedef struct MessageDef_s {
   MessageHeader ittiMsgHeader; /**< Message header */
   msg_t         ittiMsg;
 } MessageDef;
-
-
 
 /* Extract the instance from a message */
 #define ITTI_MSG_ID(mSGpTR)                 ((mSGpTR)->ittiMsgHeader.messageId)
