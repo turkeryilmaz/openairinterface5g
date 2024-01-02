@@ -529,11 +529,10 @@ rb_found:
    * ID if in gNB, else use RNTI normally */
   ctx.rntiMaybeUEid = ue->rnti;
 
-  // AGP: W32 hack
-  // if (is_enb) {
-    // f1_ue_data_t ue_data = du_get_f1_ue_data(ue->rnti);
-    // ctx.rntiMaybeUEid = ue_data.secondary_ue;
-  // }
+  if (is_enb && RC.ss.mode < SS_SOFTMODEM) {
+    f1_ue_data_t ue_data = du_get_f1_ue_data(ue->rnti);
+    ctx.rntiMaybeUEid = ue_data.secondary_ue;
+  }
 
   ctx.enb_flag = is_enb;
 

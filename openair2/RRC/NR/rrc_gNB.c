@@ -215,7 +215,7 @@ static void freeDRBlist(NR_DRB_ToAddModList_t *list)
   return;
 }
 
-// AGP: removed in OAI@W32
+// AGP: removed in OAI@W32. Left in SQN version for compatibility
 static void nr_rrc_addmod_srbs(int rnti,
                                const NR_SRB_INFO_TABLE_ENTRY *srb_list,
                                const int nb_srb,
@@ -223,11 +223,11 @@ static void nr_rrc_addmod_srbs(int rnti,
 {
   if (srb_list == NULL || bearer_list == NULL)
     return;
-  LOG_W(NR_RRC, ">>> %s: nb_srb=%d\n", __FUNCTION__, nb_srb);
+  LOG_I(NR_RRC, "%s: nb_srb=%d\n", __FUNCTION__, nb_srb);
   
   for (int i = 0; i < nb_srb; i++) {
     if (srb_list[i].Active) {
-      LOG_W(NR_RRC, ">>> %s: srb_list[%d].Active\n", __FUNCTION__, i);
+      LOG_I(NR_RRC, "%s: srb_list[%d].Active\n", __FUNCTION__, i);
       for (int j = 0; j < bearer_list->list.count; j++) {
         const NR_RLC_BearerConfig_t *bearer = bearer_list->list.array[j];
         if (bearer->servedRadioBearer != NULL
@@ -1490,7 +1490,8 @@ static void rrc_gNB_process_RRCReconfigurationComplete(const protocol_ctxt_t *co
     const struct NR_CellGroupConfig__rlc_BearerToAddModList *bearer_list =
         ue_context_pP->ue_context.masterCellGroup->rlc_BearerToAddModList;
     if (RC.ss.mode > SS_GNB) {
-      nr_rrc_addmod_srbs(ctxt_pP->rntiMaybeUEid, ue_p->Srb, maxSRBs, bearer_list); // AGP: removed in OAI@W32
+      // AGP: removed in OAI@W32. Left in SQN version for compatibility
+      nr_rrc_addmod_srbs(ctxt_pP->rntiMaybeUEid, ue_p->Srb, maxSRBs, bearer_list);
     }
     nr_rrc_addmod_drbs(ctxt_pP->rntiMaybeUEid, DRB_configList, bearer_list);
   }
