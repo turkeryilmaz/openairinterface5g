@@ -124,8 +124,8 @@ void process_CellGroup(NR_CellGroupConfig_t *CellGroup, NR_UE_info_t *UE)
 
 static void config_common(gNB_MAC_INST *nrmac, int pdsch_AntennaPorts, int pusch_AntennaPorts, NR_ServingCellConfigCommon_t *scc, int CC_id)
 {
-   nfapi_nr_config_request_scf_t *cfg = &nrmac->config[0];
-   nrmac->common_channels[0].ServingCellConfigCommon = scc;
+   nfapi_nr_config_request_scf_t *cfg = &nrmac->config[CC_id];
+   nrmac->common_channels[CC_id].ServingCellConfigCommon = scc;
 
    // Carrier configuration
    struct NR_FrequencyInfoDL *frequencyInfoDL = scc->downlinkConfigCommon->frequencyInfoDL;
@@ -199,7 +199,7 @@ static void config_common(gNB_MAC_INST *nrmac, int pdsch_AntennaPorts, int pusch
    frequency_range_t frequency_range = band < 100 ? FR1 : FR2;
 
    frame_type_t frame_type = get_frame_type(*frequencyInfoDL->frequencyBandList.list.array[0], *scc->ssbSubcarrierSpacing);
-   nrmac->common_channels[0].frame_type = frame_type;
+   nrmac->common_channels[CC_id].frame_type = frame_type;
 
    // Cell configuration
    cfg->cell_config.phy_cell_id.value = *scc->physCellId;
