@@ -26,8 +26,8 @@
 #include <stdint.h>
 #include <sys/epoll.h>
 
-#include <mem_block.h>
 #include <assertions.h>
+#include "common/utils/mem/oai_memory.h"
 
 typedef enum timer_type_s {
   TIMER_PERIODIC,
@@ -54,6 +54,7 @@ typedef struct {
   long          task_id;
   long          timer_id;
 } timer_delete_t;
+
 
 typedef struct itti_lte_time_s {
   uint32_t frame;
@@ -260,7 +261,6 @@ typedef struct IttiMsgText_s {
 void *rrc_enb_process_itti_msg(void *);
 #include <openair3/SCTP/sctp_eNB_task.h>
 #include <openair3/NGAP/ngap_gNB.h>
-#include <openair3/NRPPA/nrppa_gNB.h>
 
 /*
   static const char *const messages_definition_xml = {
@@ -297,7 +297,6 @@ typedef struct {
   TASK_DEF(TASK_RAL_ENB, 200)         \
   TASK_DEF(TASK_S1AP, 200)            \
   TASK_DEF(TASK_NGAP, 200)            \
-  TASK_DEF(TASK_NRPPA, 200)           \
   TASK_DEF(TASK_X2AP, 200)            \
   TASK_DEF(TASK_M2AP_ENB, 200)        \
   TASK_DEF(TASK_M2AP_MCE, 200)        \
@@ -413,6 +412,8 @@ typedef struct MessageDef_s {
   MessageHeader ittiMsgHeader; /**< Message header */
   msg_t         ittiMsg;
 } MessageDef;
+
+
 
 /* Extract the instance from a message */
 #define ITTI_MSG_ID(mSGpTR)                 ((mSGpTR)->ittiMsgHeader.messageId)
@@ -549,7 +550,6 @@ void itti_set_task_real_time(task_id_t task_id);
 void itti_send_terminate_message(task_id_t task_id);
 
 void *itti_malloc(task_id_t origin_task_id, task_id_t destination_task_id, ssize_t size);
-int memory_read(const char *datafile, void *data, size_t size);
 int itti_free(task_id_t task_id, void *ptr);
 
 int itti_init(task_id_t task_max, const task_info_t *tasks_info);
