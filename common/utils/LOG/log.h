@@ -253,7 +253,7 @@ typedef struct  {
   log_vprint_func_t vprint;
   log_print_func_t  print;
   /* SR: make the log buffer component relative */
-  char             log_buffer[MAX_LOG_TOTAL];
+  char log_buffer[MAX_LOG_TOTAL];
 } log_component_t;
 
 

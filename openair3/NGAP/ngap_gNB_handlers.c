@@ -26,7 +26,7 @@
  * \date 2020
  * \version 0.1
  */
- 
+
 #include <stdint.h>
 
 #include "intertask_interface.h"
@@ -40,6 +40,7 @@
 #include "ngap_gNB_ue_context.h"
 #include "ngap_gNB_trace.h"
 #include "ngap_gNB_nas_procedures.h"
+#include "ngap_gNB_NRPPa_transport_procedures.h"
 #include "ngap_gNB_management_procedures.h"
 
 #include "ngap_gNB_default_values.h"
@@ -182,7 +183,7 @@ static int ngap_gNB_handle_ng_setup_response(sctp_assoc_t assoc_id, uint32_t str
     STAILQ_INIT(&new_guami_p->served_region_ids);
     STAILQ_INIT(&new_guami_p->amf_set_ids);
     STAILQ_INIT(&new_guami_p->amf_pointers);
-    
+
     NGAP_PLMNIdentity_t *plmn_identity_p;
     struct plmn_identity_s *new_plmn_identity_p;
     plmn_identity_p = &guami_item_p->gUAMI.pLMNIdentity;
@@ -191,7 +192,7 @@ static int ngap_gNB_handle_ng_setup_response(sctp_assoc_t assoc_id, uint32_t str
                     new_plmn_identity_p->mnc, new_plmn_identity_p->mnc_digit_length);
     STAILQ_INSERT_TAIL(&new_guami_p->served_plmns, new_plmn_identity_p, next);
     new_guami_p->nb_served_plmns++;
-    
+
     NGAP_AMFRegionID_t        *amf_region_id_p;
     struct served_region_id_s *new_region_id_p;
     amf_region_id_p = &guami_item_p->gUAMI.aMFRegionID;
@@ -235,7 +236,7 @@ static int ngap_gNB_handle_ng_setup_response(sctp_assoc_t assoc_id, uint32_t str
     amf_desc_p->amf_name[ie->value.choice.AMFName.size] = '\0';
   }
 
-  
+
   /* mandatory set the plmn supports */
   NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_NGSetupResponseIEs_t, ie, container,
                                NGAP_ProtocolIE_ID_id_PLMNSupportList, true);
@@ -255,7 +256,7 @@ static int ngap_gNB_handle_ng_setup_response(sctp_assoc_t assoc_id, uint32_t str
     plmn_support_item_p = ie->value.choice.PLMNSupportList.list.array[i];
 
     new_plmn_support_p = calloc(1, sizeof(struct plmn_support_s));
-    
+
     TBCD_TO_MCC_MNC(&plmn_support_item_p->pLMNIdentity, new_plmn_support_p->plmn_identity.mcc,
                     new_plmn_support_p->plmn_identity.mnc, new_plmn_support_p->plmn_identity.mnc_digit_length);
 
@@ -266,7 +267,7 @@ static int ngap_gNB_handle_ng_setup_response(sctp_assoc_t assoc_id, uint32_t str
     STAILQ_INIT(&new_plmn_support_p->slice_supports);
     for(int j=0; j<plmn_support_item_p->sliceSupportList.list.count; j++) {
       slice_support_item_p = plmn_support_item_p->sliceSupportList.list.array[j];
-      
+
       new_slice_support_p = calloc(1, sizeof(struct slice_support_s));
 
       OCTET_STRING_TO_INT8(&slice_support_item_p->s_NSSAI.sST, new_slice_support_p->sST);
@@ -299,7 +300,7 @@ static int ngap_gNB_handle_error_indication(sctp_assoc_t assoc_id, uint32_t stre
   NGAP_ErrorIndicationIEs_t *ie;
   ngap_gNB_amf_data_t        *amf_desc_p;
   uint64_t                 amf_ue_ngap_id;
-    
+
   DevAssert(pdu != NULL);
   container = &pdu->choice.initiatingMessage->value.choice.ErrorIndication;
 
@@ -359,7 +360,7 @@ static int ngap_gNB_handle_error_indication(sctp_assoc_t assoc_id, uint32_t stre
           case NGAP_CauseRadioNetwork_release_due_to_ngran_generated_reason:
             NGAP_WARN("Received NG Error indication NGAP_CauseRadioNetwork_release_due_to_ngran_generated_reason\n");
             break;
-          
+
           case NGAP_CauseRadioNetwork_release_due_to_5gc_generated_reason:
             NGAP_WARN("Received NG Error indication NGAP_CauseRadioNetwork_release_due_to_5gc_generated_reason\n");
             break;
@@ -649,11 +650,11 @@ static int ngap_gNB_handle_error_indication(sctp_assoc_t assoc_id, uint32_t stre
         }
 
         break;
-        
+
       default:
        NGAP_WARN("Received NG Error indication cause NGAP_Cause_PR_choice_Extensions\n");
        break;
-      
+
     }
   }
 
@@ -716,7 +717,7 @@ static int ngap_gNB_handle_initial_context_request(sctp_assoc_t assoc_id, uint32
 
   ue_desc_p->rx_stream = stream;
   ue_desc_p->amf_ue_ngap_id = amf_ue_ngap_id;
-  
+
   MessageDef *message_p = itti_alloc_new_message(TASK_NGAP, 0, NGAP_INITIAL_CONTEXT_SETUP_REQ);
   ngap_initial_context_setup_req_t * msg=&NGAP_INITIAL_CONTEXT_SETUP_REQ(message_p);
   memset(msg, 0, sizeof(*msg));
@@ -742,7 +743,7 @@ static int ngap_gNB_handle_initial_context_request(sctp_assoc_t assoc_id, uint32
 
     TBCD_TO_MCC_MNC(&ie->value.choice.GUAMI.pLMNIdentity, msg->guami.mcc,
                     msg->guami.mnc, msg->guami.mnc_len);
-    
+
     OCTET_STRING_TO_INT8(&ie->value.choice.GUAMI.aMFRegionID, msg->guami.amf_region_id);
     OCTET_STRING_TO_INT16(&ie->value.choice.GUAMI.aMFSetID, msg->guami.amf_set_id);
     OCTET_STRING_TO_INT8(&ie->value.choice.GUAMI.aMFPointer, msg->guami.amf_pointer);
@@ -765,7 +766,7 @@ static int ngap_gNB_handle_initial_context_request(sctp_assoc_t assoc_id, uint32
   /* id-AllowedNSSAI */
   NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_InitialContextSetupRequestIEs_t, ie, container,
                                NGAP_ProtocolIE_ID_id_AllowedNSSAI, true);
-  
+
   //if (ie != NULL) { /* checked by macro but cppcheck doesn't see it */
     NGAP_AllowedNSSAI_Item_t *allow_nssai_item_p = NULL;
 
@@ -777,7 +778,7 @@ static int ngap_gNB_handle_initial_context_request(sctp_assoc_t assoc_id, uint32
 
     NGAP_INFO("AllowedNSSAI.list.count %d\n", ie->value.choice.AllowedNSSAI.list.count);
     msg->nb_allowed_nssais = ie->value.choice.AllowedNSSAI.list.count;
-    
+
     for(i = 0; i < ie->value.choice.AllowedNSSAI.list.count; i++) {
       allow_nssai_item_p = ie->value.choice.AllowedNSSAI.list.array[i];
 
@@ -816,7 +817,7 @@ static int ngap_gNB_handle_initial_context_request(sctp_assoc_t assoc_id, uint32
       msg->mobility_restriction_flag = 1;
       TBCD_TO_MCC_MNC(
           &mobility_rest_list_p->servingPLMN, msg->mobility_restriction.serving_plmn.mcc, msg->mobility_restriction.serving_plmn.mnc, msg->mobility_restriction.serving_plmn.mnc_digit_length);
-  } 
+  }
 
 
   /* id-NAS-PDU */
@@ -1272,10 +1273,10 @@ const ngap_message_decoded_callback ngap_messages_callback[][3] = {
     {0, 0, 0}, /* CellTrafficTrace */
     {ngap_gNB_handle_deactivate_trace, 0, 0}, /* DeactivateTrace */
     {ngap_gNB_handle_nas_downlink, 0, 0}, /* DownlinkNASTransport */
-    {0, 0, 0}, /* DownlinkNonUEAssociatedNRPPaTransport */
+    {ngap_gNB_handle_DownlinkNonUEAssociatedNRPPaTransport, 0, 0}, /* DownlinkNonUEAssociatedNRPPaTransport*/
     {0, 0, 0}, /* DownlinkRANConfigurationTransfer */
     {0, 0, 0}, /* DownlinkRANStatusTransfer */
-    {0, 0, 0}, /* DownlinkUEAssociatedNRPPaTransport */
+    {ngap_gNB_handle_DownlinkUEAssociatedNRPPaTransport, 0, 0}, /* DownlinkUEAssociatedNRPPaTransport*/
     {ngap_gNB_handle_error_indication, 0, 0}, /* ErrorIndication */
     {0, 0, 0}, /* HandoverCancel */
     {0, 0, 0}, /* HandoverNotification */

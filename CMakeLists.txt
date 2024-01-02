@@ -362,9 +362,28 @@ add_library(ngap
   ${NGAP_DIR}/ngap_gNB_overload.c
   ${NGAP_DIR}/ngap_gNB_trace.c
   ${NGAP_DIR}/ngap_gNB_ue_context.c
+  ${NGAP_DIR}/ngap_gNB_NRPPa_transport_procedures.c
   )
 target_link_libraries(ngap PUBLIC asn1_ngap)
 target_link_libraries(ngap PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
+
+# NRPPA
+##############
+# target asn1_nrppa in openair3/NRPPA/MESSAGES/CMakeLists.txt used below
+set(NRPPA_DIR ${OPENAIR3_DIR}/NRPPA)
+include_directories ("${NRPPA_DIR}")
+add_library(nrppa
+  ${NRPPA_DIR}/nrppa_gNB.c
+  ${NRPPA_DIR}/nrppa_gNB_decoder.c
+  ${NRPPA_DIR}/nrppa_gNB_encoder.c
+  ${NRPPA_DIR}/nrppa_gNB_handlers.c
+  ${NRPPA_DIR}/nrppa_gNB_itti_messaging.c
+  ${NRPPA_DIR}/nrppa_gNB_position_information_transfer_procedures.c
+  ${NRPPA_DIR}/nrppa_gNB_TRP_information_transfer_procedures.c
+  ${NRPPA_DIR}/nrppa_gNB_measurement_information_transfer_procedures.c
+  )
+target_link_libraries(nrppa PUBLIC asn1_nrppa)
+target_link_libraries(nrppa PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
 
 #M2AP
 ##############
@@ -1236,7 +1255,7 @@ set(NR_SDAP_SRC
   ${OPENAIR2_DIR}/SDAP/nr_sdap/nr_sdap.c
   ${OPENAIR2_DIR}/SDAP/nr_sdap/nr_sdap_entity.c
   )
-  
+
 set(L2_SRC
   ${PDCP_DIR}/pdcp.c
   ${PDCP_DIR}/pdcp_fifo.c
@@ -2074,7 +2093,7 @@ target_link_libraries(nr-softmodem PRIVATE
   -Wl,--start-group
   UTIL HASHTABLE SCTP_CLIENT SCHED_LIB SCHED_RU_LIB SCHED_NR_LIB PHY_NR PHY PHY_COMMON PHY_NR_COMMON PHY_RU GTPV1U SECURITY
   ITTI ${NAS_UE_LIB} lte_rrc nr_rrc
-  ngap s1ap L2_LTE_NR L2_NR MAC_NR_COMMON NFAPI_COMMON_LIB NFAPI_LIB NFAPI_VNF_LIB NFAPI_PNF_LIB NFAPI_USER_LIB SIMU SIMU_ETH
+  ngap nrppa s1ap L2_LTE_NR L2_NR MAC_NR_COMMON NFAPI_COMMON_LIB NFAPI_LIB NFAPI_VNF_LIB NFAPI_PNF_LIB NFAPI_USER_LIB SIMU SIMU_ETH
   x2ap f1ap m2ap m3ap e1ap shlib_loader
   -Wl,--end-group z dl)
 
@@ -2095,7 +2114,7 @@ endif()
 
 # force the generation of ASN.1 so that we don't need to wait during the build
 target_link_libraries(nr-softmodem PRIVATE
-  asn1_lte_rrc asn1_nr_rrc asn1_s1ap asn1_ngap asn1_m2ap asn1_m3ap asn1_x2ap asn1_f1ap asn1_lpp)
+  asn1_lte_rrc asn1_nr_rrc asn1_s1ap asn1_ngap asn1_m2ap asn1_m3ap asn1_x2ap asn1_f1ap asn1_lpp asn1_nrppa)
 if(E2_AGENT)
   target_compile_definitions(nr-softmodem PRIVATE E2_AGENT)
 endif()
@@ -2116,7 +2135,7 @@ target_link_libraries(nr-cuup PRIVATE
                       GTPV1U e1ap f1ap SIMU_ETH
                       z sctp dl pthread shlib_loader ${T_LIB})
 target_link_libraries(nr-cuup PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
-                     
+
 # nr-uesoftmodem is  UE implementation
 #######################################
 

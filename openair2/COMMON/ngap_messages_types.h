@@ -68,10 +68,10 @@
 #define NGAP_PDUSESSION_RELEASE_COMMAND(mSGpTR)      (mSGpTR)->ittiMsg.ngap_pdusession_release_command
 #define NGAP_PDUSESSION_RELEASE_RESPONSE(mSGpTR)     (mSGpTR)->ittiMsg.ngap_pdusession_release_resp
 
-#define NGAP_UPLINKUEASSOCIATEDNRPPA(mSGpTR)                  (mSGpTR)->ittiMsg.ngap_UplinkUEAssociatedNRPPa      //adeel changes NRPPa
-#define NGAP_UPLINKNONUEASSOCIATEDNRPPA(mSGpTR)               (mSGpTR)->ittiMsg.ngap_UplinkNonUEAssociatedNRPPa   //adeel changes NRPPa
-#define NGAP_DOWNLINKUEASSOCIATEDNRPPA(mSGpTR)                (mSGpTR)->ittiMsg.ngap_DownlinkUEAssociatedNRPPa    //adeel changes NRPPa
-#define NGAP_DOWNLINKNONUEASSOCIATEDNRPPA(mSGpTR)             (mSGpTR)->ittiMsg.ngap_DownlinkNonUEAssociatedNRPPa //adeel changes NRPPa
+#define NGAP_UPLINKUEASSOCIATEDNRPPA(mSGpTR)                  (mSGpTR)->ittiMsg.ngap_UplinkUEAssociatedNRPPa
+#define NGAP_UPLINKNONUEASSOCIATEDNRPPA(mSGpTR)               (mSGpTR)->ittiMsg.ngap_UplinkNonUEAssociatedNRPPa
+#define NGAP_DOWNLINKUEASSOCIATEDNRPPA(mSGpTR)                (mSGpTR)->ittiMsg.ngap_DownlinkUEAssociatedNRPPa
+#define NGAP_DOWNLINKNONUEASSOCIATEDNRPPA(mSGpTR)             (mSGpTR)->ittiMsg.ngap_DownlinkNonUEAssociatedNRPPa
 
 //-------------------------------------------------------------------------------------------//
 /* Maximum number of e-rabs to be setup/deleted in a single message.
@@ -498,18 +498,17 @@ typedef struct ngap_deregistered_gnb_ind_s {
 // NRPPa -> NGAP
 typedef struct ngap_routing_id_s {
   /* Octet string data */
-  uint8_t  *buffer;
+  uint8_t *buffer;
   /* Length of the octet string */
-  uint32_t  length;
+  uint32_t length;
 } ngap_routing_id_t;
 
 typedef struct ngap_nrppa_pdu_s {
   /* Octet string data */
-  uint8_t  *buffer;
+  uint8_t *buffer;
   /* Length of the octet string */
-  uint32_t  length;
+  uint32_t length;
 } ngap_nrppa_pdu_t;
-
 
 typedef struct ngap_UplinkUEAssociatedNRPPa_s {
   /* Unique UE identifier within an gNB */
@@ -522,7 +521,7 @@ typedef struct ngap_UplinkUEAssociatedNRPPa_s {
 
 typedef struct ngap_UplinkNonUEAssociatedNRPPa_s {
   /* routing ID */
-   ngap_routing_id_t routing_id;
+  ngap_routing_id_t routing_id;
   /* NRPPa pdu */
   ngap_pdu_t nrppa_pdu;
 } ngap_UplinkNonUEAssociatedNRPPa_t;
@@ -533,14 +532,14 @@ typedef struct ngap_DownlinkUEAssociatedNRPPa_s {
   uint32_t gNB_ue_ngap_id;
   uint32_t amf_ue_ngap_id;
   /* routing ID */
-   ngap_routing_id_t routing_id;
+  ngap_routing_id_t routing_id;
   /* NRPPa pdu */
   ngap_pdu_t nrppa_pdu;
 } ngap_DownlinkUEAssociatedNRPPa_t;
 
 typedef struct ngap_DownlinkNonUEAssociatedNRPPa_s {
   /* routing ID */
-     ngap_routing_id_t routing_id;
+  ngap_routing_id_t routing_id;
   /* NRPPa pdu */
   ngap_pdu_t nrppa_pdu;
 } ngap_DownlinkNonUEAssociatedNRPPa_t;

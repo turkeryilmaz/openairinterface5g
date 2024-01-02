@@ -986,7 +986,7 @@ static void rrc_gNB_process_RRCReconfigurationComplete(const protocol_ctxt_t *co
           //  nr_DRB2LCHAN[i] = (uint8_t) * DRB_configList->list.array[i]->pdcp_Config->moreThanOneRLC->primaryPath.logicalChannel;
           //}
 
-            // rrc_mac_config_req_eNB
+          // rrc_mac_config_req_eNB
         } else { // remove LCHAN from MAC/PHY
           if (ue_p->DRB_active[drb_id] == 1) {
             /* TODO : It may be needed if gNB goes into full stack working. */
@@ -1339,7 +1339,7 @@ static inline uint64_t bitStr_to_uint64(const BIT_STRING_t *asn) {
   int index;
   int shift;
 
-  DevCheck ((asn->size > 0) && (asn->size <= 8), asn->size, 0, 0);
+  DevCheck((asn->size > 0) && (asn->size <= 8), asn->size, 0, 0);
 
   shift = ((asn->size - 1) * 8) - asn->bits_unused;
   for (index = 0; index < (asn->size - 1); index++) {
@@ -2282,6 +2282,218 @@ static void write_rrc_stats(const gNB_RRC_INST *rrc)
   fclose(f);
 }
 
+// NRPPA DOWNLINK processes
+static void rrc_CU_process_positioning_information_request(f1ap_positioning_information_req_t *req)
+{
+  rrc_gNB_ue_context_t *ue_context_p =
+      rrc_gNB_get_ue_context(RC.nrrrc[req->nrppa_msg_info.instance], req->nrppa_msg_info.gNB_ue_ngap_id);
+  gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
+  f1_ue_data_t ue_data = cu_get_f1_ue_data(UE->rrc_ue_id);
+
+  req->nrppa_msg_info.ue_rnti = UE->rnti;
+  req->gNB_DU_ue_id = ue_data.secondary_ue;
+  req->gNB_CU_ue_id = UE->rrc_ue_id;
+
+  gNB_RRC_INST *rrc = RC.nrrrc[req->nrppa_msg_info.instance];
+  LOG_I(RRC,
+        "Processing Received PositioningInformationRequest gNB_CU_ue_id=%d, gNB_DU_ue_id=%d,  rnti= %04x\n",
+        req->gNB_CU_ue_id,
+        req->gNB_DU_ue_id,
+        req->nrppa_msg_info.ue_rnti);
+  rrc->mac_rrc.positioning_information_request(req);
+}
+
+static void rrc_CU_process_positioning_activation_request(f1ap_positioning_activation_req_t *req)
+{
+  rrc_gNB_ue_context_t *ue_context_p =
+      rrc_gNB_get_ue_context(RC.nrrrc[req->nrppa_msg_info.instance], req->nrppa_msg_info.gNB_ue_ngap_id);
+  gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
+  f1_ue_data_t ue_data = cu_get_f1_ue_data(UE->rrc_ue_id);
+
+  req->nrppa_msg_info.ue_rnti = UE->rnti;
+  req->gNB_DU_ue_id = ue_data.secondary_ue;
+  req->gNB_CU_ue_id = UE->rrc_ue_id;
+
+  gNB_RRC_INST *rrc = RC.nrrrc[req->nrppa_msg_info.instance];
+  LOG_I(RRC,
+        "Processing Received PositioningActivationRequest gNB_CU_ue_id=%d, gNB_DU_ue_id=%d,  rnti= %04x\n",
+        req->gNB_CU_ue_id,
+        req->gNB_DU_ue_id,
+        req->nrppa_msg_info.ue_rnti);
+  rrc->mac_rrc.positioning_activation_request(req);
+}
+
+static void rrc_CU_process_positioning_deactivation(f1ap_positioning_deactivation_t *req)
+{
+  rrc_gNB_ue_context_t *ue_context_p =
+      rrc_gNB_get_ue_context(RC.nrrrc[req->nrppa_msg_info.instance], req->nrppa_msg_info.gNB_ue_ngap_id);
+  gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
+  f1_ue_data_t ue_data = cu_get_f1_ue_data(UE->rrc_ue_id);
+
+  req->nrppa_msg_info.ue_rnti = UE->rnti;
+  req->gNB_DU_ue_id = ue_data.secondary_ue;
+  req->gNB_CU_ue_id = UE->rrc_ue_id;
+
+  gNB_RRC_INST *rrc = RC.nrrrc[req->nrppa_msg_info.instance];
+  LOG_I(RRC,
+        "Processing Received PositioningDeactivationRequest gNB_CU_ue_id=%d, gNB_DU_ue_id=%d,  rnti= %04x\n",
+        req->gNB_CU_ue_id,
+        req->gNB_DU_ue_id,
+        req->nrppa_msg_info.ue_rnti);
+  rrc->mac_rrc.positioning_deactivation(req);
+}
+
+static void rrc_CU_process_trp_information_request(f1ap_trp_information_req_t *req)
+{
+  //  f1_ue_data_t ue_data = cu_get_f1_ue_data(UE->rrc_ue_id);
+  gNB_RRC_INST *rrc = RC.nrrrc[req->nrppa_msg_info.instance];
+  LOG_I(RRC, "Processing Received TRPInformationRequest transaction_id=%d\n", req->transaction_id);
+  rrc->mac_rrc.trp_information_request(req);
+}
+
+static void rrc_CU_process_measurement_request(f1ap_measurement_req_t *req)
+{
+  gNB_RRC_INST *rrc = RC.nrrrc[req->nrppa_msg_info.instance];
+
+  rrc_gNB_ue_context_t *ue_context_p =
+      rrc_gNB_get_ue_context(RC.nrrrc[req->nrppa_msg_info.instance], req->nrppa_msg_info.gNB_ue_ngap_id);
+  gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
+  // f1_ue_data_t ue_data = cu_get_f1_ue_data(UE->rrc_ue_id);
+  req->nrppa_msg_info.ue_rnti = UE->rnti;
+  // req->gNB_DU_ue_id = ue_data.secondary_ue;
+  // req->gNB_CU_ue_id = UE->rrc_ue_id;
+
+  LOG_I(RRC,
+        "Processing Received MeasurementRequest lmf_measurement_id=%d, ran_measurement_id=%d \n",
+        req->lmf_measurement_id,
+        req->ran_measurement_id);
+  rrc->mac_rrc.positioning_measurement_request(req);
+}
+
+static void rrc_CU_process_measurement_update(f1ap_measurement_update_t *req)
+{
+  // rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context(RC.nrrrc[req->nrppa_msg_info.instance],
+  // req->nrppa_msg_info.gNB_ue_ngap_id); gNB_RRC_UE_t *UE = &ue_context_p->ue_context; req->nrppa_msg_info.ue_rnti=UE->rnti;
+  //  f1_ue_data_t ue_data = cu_get_f1_ue_data(UE->rrc_ue_id);
+  gNB_RRC_INST *rrc = RC.nrrrc[req->nrppa_msg_info.instance];
+  LOG_I(RRC,
+        "Processing Received MeasurementUpdate lmf_measurement_id=%d, ran_measurement_id=%d \n",
+        req->lmf_measurement_id,
+        req->ran_measurement_id);
+  rrc->mac_rrc.positioning_measurement_update(req);
+}
+
+static void rrc_CU_process_measurement_abort(f1ap_measurement_abort_t *req)
+{
+  // rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context(RC.nrrrc[req->nrppa_msg_info.instance],
+  // req->nrppa_msg_info.gNB_ue_ngap_id); gNB_RRC_UE_t *UE = &ue_context_p->ue_context; req->nrppa_msg_info.ue_rnti=UE->rnti;
+  //  f1_ue_data_t ue_data = cu_get_f1_ue_data(UE->rrc_ue_id);
+  gNB_RRC_INST *rrc = RC.nrrrc[req->nrppa_msg_info.instance];
+  LOG_I(RRC,
+        "Processing Received MeasurementAbort lmf_measurement_id=%d, ran_measurement_id=%d \n",
+        req->lmf_measurement_id,
+        req->ran_measurement_id);
+  rrc->mac_rrc.positioning_measurement_abort(req);
+}
+
+// NRPPA UPLINK processes TODO add remaining
+static void rrc_CU_process_positioning_information_response(MessageDef *msg_p, instance_t instance)
+{
+  f1ap_positioning_information_resp_t *resp = &F1AP_POSITIONING_INFORMATION_RESP(msg_p);
+  //  gNB_RRC_INST *rrc = RC.nrrrc[instance];
+  LOG_I(RRC,
+        "Processing Received PositioningInformationResponse gNB_CU_ue_id=%d, gNB_DU_ue_id=%d \n",
+        resp->gNB_CU_ue_id,
+        resp->gNB_DU_ue_id);
+
+  MessageDef *msg = itti_alloc_new_message(TASK_RRC_GNB, 0, F1AP_POSITIONING_INFORMATION_RESP);
+  f1ap_positioning_information_resp_t *f1ap_msg = &F1AP_POSITIONING_INFORMATION_RESP(msg);
+  /* copy all fields, but reallocate memory buffers! */
+  *f1ap_msg = *resp;
+  f1ap_msg->gNB_CU_ue_id = resp->gNB_CU_ue_id;
+  f1ap_msg->gNB_DU_ue_id = resp->gNB_DU_ue_id;
+  f1ap_msg->nrppa_msg_info.nrppa_transaction_id = resp->nrppa_msg_info.nrppa_transaction_id;
+  f1ap_msg->nrppa_msg_info.instance = resp->nrppa_msg_info.instance;
+  f1ap_msg->nrppa_msg_info.gNB_ue_ngap_id = resp->nrppa_msg_info.gNB_ue_ngap_id;
+  f1ap_msg->nrppa_msg_info.amf_ue_ngap_id = resp->nrppa_msg_info.amf_ue_ngap_id;
+  f1ap_msg->nrppa_msg_info.ue_rnti = resp->nrppa_msg_info.ue_rnti;
+  f1ap_msg->nrppa_msg_info.routing_id_buffer = resp->nrppa_msg_info.routing_id_buffer;
+  f1ap_msg->nrppa_msg_info.routing_id_length = resp->nrppa_msg_info.routing_id_length;
+
+  itti_send_msg_to_task(TASK_NRPPA, instance, msg);
+}
+
+static void rrc_CU_process_positioning_information_failure(MessageDef *msg_p, instance_t instance)
+{
+  LOG_I(RRC, "Processing NOT implemented Received PositioningInformationFailure \n");
+}
+
+static void rrc_CU_process_positioning_information_update(MessageDef *msg_p, instance_t instance)
+{
+  LOG_I(RRC, "Processing NOT implemented Received PositioningInformationUpdate \n");
+}
+
+static void rrc_CU_process_positioning_activation_response(MessageDef *msg_p, instance_t instance)
+{
+  LOG_I(RRC, "Processing NOT implemented Received PositioningActivationResponse \n");
+}
+
+static void rrc_CU_process_positioning_activation_failure(MessageDef *msg_p, instance_t instance)
+{
+  LOG_I(RRC, "Processing NOT implemented Received PositioningActivationFailure \n");
+}
+
+static void rrc_CU_process_trp_information_response(MessageDef *msg_p, instance_t instance)
+{
+  LOG_I(RRC, "Processing NOT implemented Received TRPInformationResponse \n");
+}
+
+static void rrc_CU_process_trp_information_failure(MessageDef *msg_p, instance_t instance)
+{
+  LOG_I(RRC, "Processing NOT implemented Received TRPInformationFailure \n");
+}
+
+static void rrc_CU_process_measurement_response(MessageDef *msg_p, instance_t instance)
+{
+  // TODO: rebuild ITTI message with RRC task ID
+  f1ap_measurement_resp_t *resp = &F1AP_MEASUREMENT_RESP(msg_p);
+  //  gNB_RRC_INST *rrc = RC.nrrrc[instance];
+  LOG_I(RRC,
+        "Processing Received MeasurementResponse lmf_measurement_id=%d, ran_measurement_id=%d \n",
+        resp->lmf_measurement_id,
+        resp->ran_measurement_id);
+
+  MessageDef *msg = itti_alloc_new_message(TASK_RRC_GNB, 0, F1AP_MEASUREMENT_RESP);
+  f1ap_measurement_resp_t *f1ap_msg = &F1AP_MEASUREMENT_RESP(msg);
+  /* copy all fields, but reallocate memory buffers! */
+  *f1ap_msg = *resp;
+  f1ap_msg->transaction_id = resp->transaction_id, f1ap_msg->lmf_measurement_id = resp->lmf_measurement_id,
+  f1ap_msg->ran_measurement_id = resp->ran_measurement_id;
+  f1ap_msg->nrppa_msg_info.nrppa_transaction_id = resp->nrppa_msg_info.nrppa_transaction_id;
+  f1ap_msg->nrppa_msg_info.instance = resp->nrppa_msg_info.instance;
+  f1ap_msg->nrppa_msg_info.gNB_ue_ngap_id = resp->nrppa_msg_info.gNB_ue_ngap_id;
+  f1ap_msg->nrppa_msg_info.amf_ue_ngap_id = resp->nrppa_msg_info.amf_ue_ngap_id;
+  f1ap_msg->nrppa_msg_info.ue_rnti = resp->nrppa_msg_info.ue_rnti;
+  f1ap_msg->nrppa_msg_info.routing_id_buffer = resp->nrppa_msg_info.routing_id_buffer;
+  f1ap_msg->nrppa_msg_info.routing_id_length = resp->nrppa_msg_info.routing_id_length;
+  itti_send_msg_to_task(TASK_NRPPA, instance, msg);
+}
+
+static void rrc_CU_process_measurement_failure(MessageDef *msg_p, instance_t instance)
+{
+  LOG_I(RRC, "Processing NOT implemented Received MeasurementFailure \n");
+}
+
+static void rrc_CU_process_measurement_report(MessageDef *msg_p, instance_t instance)
+{
+  LOG_I(RRC, "Processing NOT implemented Received MeasurementReport \n");
+}
+
+static void rrc_CU_process_measurement_failure_ind(MessageDef *msg_p, instance_t instance)
+{
+  LOG_I(RRC, "Processing NOT implemented Received MeasurementFailureIndication \n");
+}
+
 void *rrc_gnb_task(void *args_p) {
   MessageDef *msg_p;
   instance_t                         instance;
@@ -2293,7 +2505,7 @@ void *rrc_gnb_task(void *args_p) {
     /* timer to write stats to file */
     timer_setup(1, 0, TASK_RRC_GNB, 0, TIMER_PERIODIC, NULL, &stats_timer_id);
   }
-  
+
   itti_mark_task_ready(TASK_RRC_GNB);
   LOG_I(NR_RRC,"Entering main loop of NR_RRC message task\n");
 
@@ -2395,6 +2607,80 @@ void *rrc_gnb_task(void *args_p) {
 
       case F1AP_LOST_CONNECTION:
         rrc_CU_process_f1_lost_connection(RC.nrrrc[0], &F1AP_LOST_CONNECTION(msg_p), msg_p->ittiMsgHeader.originInstance);
+        break;
+
+      // F1AP NRPPA DOWNLINK RELATED PROCESSES
+      case F1AP_POSITIONING_INFORMATION_REQ: // ADEEL TODO add other NRPPA messages
+        rrc_CU_process_positioning_information_request(&F1AP_POSITIONING_INFORMATION_REQ(msg_p));
+        break;
+
+      case F1AP_POSITIONING_ACTIVATION_REQ:
+        rrc_CU_process_positioning_activation_request(&F1AP_POSITIONING_ACTIVATION_REQ(msg_p));
+        break;
+
+      case F1AP_POSITIONING_DEACTIVATION:
+        rrc_CU_process_positioning_deactivation(&F1AP_POSITIONING_DEACTIVATION(msg_p));
+        break;
+
+      case F1AP_TRP_INFORMATION_REQ:
+        rrc_CU_process_trp_information_request(&F1AP_TRP_INFORMATION_REQ(msg_p));
+        break;
+
+      case F1AP_MEASUREMENT_REQ:
+        rrc_CU_process_measurement_request(&F1AP_MEASUREMENT_REQ(msg_p));
+        break;
+
+      case F1AP_MEASUREMENT_UPDATE:
+        rrc_CU_process_measurement_update(&F1AP_MEASUREMENT_UPDATE(msg_p));
+        break;
+
+      case F1AP_MEASUREMENT_ABORT:
+        rrc_CU_process_measurement_abort(&F1AP_MEASUREMENT_ABORT(msg_p));
+        break;
+
+      // F1AP NRPPA UPLINK RELATED PROCESSES
+      case F1AP_POSITIONING_INFORMATION_RESP:
+        rrc_CU_process_positioning_information_response(msg_p, instance);
+        break;
+
+      case F1AP_POSITIONING_INFORMATION_FAILURE:
+        rrc_CU_process_positioning_information_failure(msg_p, instance);
+        break;
+
+      case F1AP_POSITIONING_INFORMATION_UPDATE:
+        rrc_CU_process_positioning_information_update(msg_p, instance);
+        break;
+
+      case F1AP_POSITIONING_ACTIVATION_RESP:
+        rrc_CU_process_positioning_activation_response(msg_p, instance);
+        break;
+
+      case F1AP_POSITIONING_ACTIVATION_FAILURE:
+        rrc_CU_process_positioning_activation_failure(msg_p, instance);
+        break;
+
+      case F1AP_TRP_INFORMATION_RESP:
+        rrc_CU_process_trp_information_response(msg_p, instance);
+        break;
+
+      case F1AP_TRP_INFORMATION_FAILURE:
+        rrc_CU_process_trp_information_failure(msg_p, instance);
+        break;
+
+      case F1AP_MEASUREMENT_RESP:
+        rrc_CU_process_measurement_response(msg_p, instance);
+        break;
+
+      case F1AP_MEASUREMENT_FAILURE:
+        rrc_CU_process_measurement_failure(msg_p, instance);
+        break;
+
+      case F1AP_MEASUREMENT_REPORT:
+        rrc_CU_process_measurement_report(msg_p, instance);
+        break;
+
+      case F1AP_MEASUREMENT_FAILURE_IND:
+        rrc_CU_process_measurement_failure_ind(msg_p, instance);
         break;
 
       /* Messages from X2AP */
@@ -2537,7 +2823,7 @@ rrc_gNB_generate_UECapabilityEnquiry(
            buffer,
            rrc_gNB_get_next_transaction_identifier(ctxt_pP->module_id));
   LOG_I(NR_RRC,
-        PROTOCOL_NR_RRC_CTXT_UE_FMT" Logical Channel DL-DCCH, Generate NR UECapabilityEnquiry (bytes %d)\n",
+        PROTOCOL_NR_RRC_CTXT_UE_FMT " Logical Channel DL-DCCH, Generate NR UECapabilityEnquiry (bytes %d)\n",
         PROTOCOL_NR_RRC_CTXT_UE_ARGS(ctxt_pP),
         size);
 

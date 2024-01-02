@@ -57,6 +57,7 @@
 #include "ngap_gNB_itti_messaging.h"
 
 #include "ngap_gNB_ue_context.h" // test, to be removed
+#include "ngap_gNB_NRPPa_transport_procedures.h"
 
 #include "assertions.h"
 #include "conversions.h"
@@ -177,7 +178,7 @@ void ngap_gNB_handle_register_gNB(instance_t instance, ngap_register_gnb_req_t *
     new_instance->gNB_id           = ngap_register_gNB->gNB_id;
     new_instance->cell_type        = ngap_register_gNB->cell_type;
     new_instance->tac              = ngap_register_gNB->tac;
-    
+
     memcpy(&new_instance->gNB_ng_ip,
        &ngap_register_gNB->gnb_ip_address,
        sizeof(ngap_register_gNB->gnb_ip_address));
@@ -356,6 +357,14 @@ void *ngap_gNB_process_itti_msg(void *notUsed) {
         ngap_gNB_pdusession_release_resp(instance, &NGAP_PDUSESSION_RELEASE_RESPONSE(received_msg));
         break;
 
+      case NGAP_UPLINKUEASSOCIATEDNRPPA:
+        ngap_gNB_UplinkUEAssociatedNRPPaTransport(instance, &NGAP_UPLINKUEASSOCIATEDNRPPA(received_msg));
+        break;
+
+      case NGAP_UPLINKNONUEASSOCIATEDNRPPA:
+        ngap_gNB_UplinkNonUEAssociatedNRPPaTransport(instance, &NGAP_UPLINKNONUEASSOCIATEDNRPPA(received_msg));
+        break;
+
       default:
         NGAP_ERROR("Received unhandled message: %d:%s\n", ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
         break;
@@ -476,7 +485,7 @@ static int ngap_gNB_generate_ng_setup_request(
     asn1cSeqAdd(&ie->value.choice.SupportedTAList.list, ta);
   }
   asn1cSeqAdd(&out->protocolIEs.list, ie);
-  
+
   /* mandatory */
   ie = (NGAP_NGSetupRequestIEs_t *)calloc(1, sizeof(NGAP_NGSetupRequestIEs_t));
   ie->id = NGAP_ProtocolIE_ID_id_DefaultPagingDRX;

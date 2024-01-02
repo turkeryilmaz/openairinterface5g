@@ -217,7 +217,6 @@ static void initial_ul_rrc_message_transfer_direct(module_id_t module_id, const 
   itti_send_msg_to_task(TASK_RRC_GNB, module_id, msg);
 }
 
-
 /* handlers of Position Information Transfer related NRPPA UL messages */
 static void positioning_information_response(const f1ap_positioning_information_resp_t *resp)
 {
@@ -502,59 +501,146 @@ static void positioning_information_response(const f1ap_positioning_information_
   itti_send_msg_to_task(TASK_RRC_GNB, 0, msg);
 }
 
-static void positioning_information_failure(const f1ap_positioning_information_failure_t *failure){
- LOG_I(MAC, "UL Prepring PositioningInformationFailure gNB_CU_ue_id=%d, gNB_DU_ue_id=%d \n", failure->gNB_CU_ue_id, failure->gNB_DU_ue_id);
- AssertFatal(false, "Not Implemented \n");
+static void positioning_information_failure(const f1ap_positioning_information_failure_t *failure)
+{
+  LOG_I(MAC,
+        "UL Prepring PositioningInformationFailure gNB_CU_ue_id=%d, gNB_DU_ue_id=%d \n",
+        failure->gNB_CU_ue_id,
+        failure->gNB_DU_ue_id);
+  AssertFatal(false, "Not Implemented \n");
 }
 
-static void positioning_information_update(const f1ap_positioning_information_update_t *update){
- LOG_I(MAC, "UL Prepring PositioningInformationUPDATE gNB_CU_ue_id=%d, gNB_DU_ue_id=%d \n", update->gNB_CU_ue_id, update->gNB_DU_ue_id);
- AssertFatal(false, "Not Implemented \n");
+static void positioning_information_update(const f1ap_positioning_information_update_t *update)
+{
+  LOG_I(MAC,
+        "UL Prepring PositioningInformationUPDATE gNB_CU_ue_id=%d, gNB_DU_ue_id=%d \n",
+        update->gNB_CU_ue_id,
+        update->gNB_DU_ue_id);
+  AssertFatal(false, "Not Implemented \n");
 }
 
-static void positioning_activation_response(const f1ap_positioning_activation_resp_t *resp){
- LOG_I(MAC, "UL Prepring PositioningActivationResponse gNB_CU_ue_id=%d, gNB_DU_ue_id=%d \n", resp->gNB_CU_ue_id, resp->gNB_DU_ue_id);
- AssertFatal(false, " Not Implemented \n");
+static void positioning_activation_response(const f1ap_positioning_activation_resp_t *resp)
+{
+  LOG_I(MAC,
+        "UL Prepring PositioningActivationResponse gNB_CU_ue_id=%d, gNB_DU_ue_id=%d \n",
+        resp->gNB_CU_ue_id,
+        resp->gNB_DU_ue_id);
+  AssertFatal(false, " Not Implemented \n");
 }
 
-static void positioning_activation_failure(const f1ap_positioning_activation_failure_t *failure){
- LOG_I(MAC, "UL Prepring PositioningActivationFailure gNB_CU_ue_id=%d, gNB_DU_ue_id=%d \n", failure->gNB_CU_ue_id, failure->gNB_DU_ue_id);
- AssertFatal(false, " Not Implemented \n");
+static void positioning_activation_failure(const f1ap_positioning_activation_failure_t *failure)
+{
+  LOG_I(MAC,
+        "UL Prepring PositioningActivationFailure gNB_CU_ue_id=%d, gNB_DU_ue_id=%d \n",
+        failure->gNB_CU_ue_id,
+        failure->gNB_DU_ue_id);
+  AssertFatal(false, " Not Implemented \n");
 }
 
 /* handlers of TRP Information Transfer related NRPPA UL messages */
 
-static void trp_information_response(const f1ap_trp_information_resp_t *resp){
- LOG_I(MAC, "UL Prepring TRPInformationResponse transaction_id=%d\n", resp->transaction_id);
- AssertFatal(false, " Not Implemented \n");
+static void trp_information_response(const f1ap_trp_information_resp_t *resp)
+{
+  LOG_I(MAC, "UL Prepring TRPInformationResponse transaction_id=%d\n", resp->transaction_id);
+  AssertFatal(false, " Not Implemented \n");
 }
 
-static void trp_information_failure(const f1ap_trp_information_failure_t *failure){
- LOG_I(MAC, "UL Prepring TRPInformationFailure transaction_id=%d \n", failure->transaction_id);
- AssertFatal(false, " Not Implemented \n");
+static void trp_information_failure(const f1ap_trp_information_failure_t *failure)
+{
+  LOG_I(MAC, "UL Prepring TRPInformationFailure transaction_id=%d \n", failure->transaction_id);
+  AssertFatal(false, " Not Implemented \n");
 }
 
 /* handlers of Measurement Information Transfer related NRPPA UL messages */
-static void positioning_measurement_response(const f1ap_measurement_resp_t *resp){
- LOG_I(MAC, "UL Prepring MeasurementResponse transaction_id=%d, lmf_measurement_id=%d \n", resp->transaction_id, resp->lmf_measurement_id);
- AssertFatal(false, " Not Implemented \n");
+static void positioning_measurement_response(const f1ap_measurement_resp_t *resp)
+{
+  LOG_I(MAC,
+        "UL Prepring MeasurementResponse transaction_id=%d, lmf_measurement_id=%d, ran_measurement_id=%d \n",
+        resp->transaction_id,
+        resp->lmf_measurement_id,
+        resp->ran_measurement_id);
+
+  MessageDef *msg = itti_alloc_new_message(TASK_MAC_GNB, 0, F1AP_MEASUREMENT_RESP);
+  // prepare the common part of the response
+  f1ap_measurement_resp_t f1ap_resp;
+  f1ap_resp.transaction_id = resp->transaction_id;
+  f1ap_resp.lmf_measurement_id = resp->lmf_measurement_id;
+  f1ap_resp.ran_measurement_id = resp->ran_measurement_id;
+  f1ap_resp.nrppa_msg_info = resp->nrppa_msg_info;
+  f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_length = 1;
+  f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item = malloc(sizeof(f1ap_pos_measurement_result_list_item_t));
+  f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->tRPID =
+      0; // TODO: this needs to be added to the config file
+  f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->posMeasurementResult.f1ap_pos_measurement_result_length =
+      1;
+  f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->posMeasurementResult.pos_measurement_result_item =
+      malloc(sizeof(f1ap_pos_measurement_result_item_t));
+
+  // criticality_diagnostics;
+
+  uint32_t Tc_inv = 4096 * 480000;
+  uint16_t k = 1;
+  uint64_t T_inv = Tc_inv / (1 << k);
+  uint64_t T_ns_inv = 1000000000;
+
+  gNB_MAC_INST *mac = RC.nrmac[resp->nrppa_msg_info.instance];
+  NR_UEs_t *UE_info = &mac->UE_info;
+  UE_iterator (UE_info->list, UE) {
+    if (UE->rnti == resp->nrppa_msg_info.ue_rnti) { // configuration details of specific UE // TODO manage non UE associated
+      LOG_I(MAC,
+            "Extracting uL_RTOA info of MeasurementResponse for ue rnti= %04x \n",
+            resp->nrppa_msg_info.ue_rnti); ////uid_t uid = &UE->uid;
+      // we assume we use UL_RTOA for now with k=1 (i.e. 8 times oversampling from 122.88e6 Msps)
+      f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->posMeasurementResult.pos_measurement_result_item
+          ->measuredResultsValue.present = f1ap_measured_results_value_pr_ul_rtoa;
+      f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->posMeasurementResult.pos_measurement_result_item
+          ->measuredResultsValue.choice.uL_RTOA.uL_RTOA_MeasurementItem.present = f1ap_ulrtoameas_pr_k1;
+      f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->posMeasurementResult.pos_measurement_result_item
+          ->measuredResultsValue.choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k1 =
+          (int32_t)(((int64_t)UE->ue_pos_info.toa_ns * (int64_t)T_inv) / T_ns_inv);
+      LOG_I(MAC,
+            "Extracting uL_RTOA info of MeasurementResponse for ue rnti= %04x, k1=%d \n",
+            resp->nrppa_msg_info.ue_rnti,
+            (int32_t)(((int64_t)UE->ue_pos_info.toa_ns * (int64_t)T_inv) / T_ns_inv));
+
+      // TODO IE timeStamp.measurementTime
+      // f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->posMeasurementResult.pos_measurement_result_item->timeStamp.measurementTime
+      // TODO IE timeStamp.slotIndex
+      // f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->posMeasurementResult.pos_measurement_result_item->timeStamp.slotIndex.present
+      // f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->posMeasurementResult.pos_measurement_result_item->timeStamp.slotIndex.choice
+    }
+  }
+
+  F1AP_MEASUREMENT_RESP(msg) = f1ap_resp;
+  itti_send_msg_to_task(TASK_RRC_GNB, 0, msg);
 }
 
-static void positioning_measurement_failure(const f1ap_measurement_failure_t *failure){
- LOG_I(MAC, "UL Prepring MeasurementFailure transaction_id=%d, lmf_measurement_id=%d \n", failure->transaction_id, failure->lmf_measurement_id);
- AssertFatal(false, " Not Implemented \n");
+static void positioning_measurement_failure(const f1ap_measurement_failure_t *failure)
+{
+  LOG_I(MAC,
+        "UL Prepring MeasurementFailure transaction_id=%d, lmf_measurement_id=%d \n",
+        failure->transaction_id,
+        failure->lmf_measurement_id);
+  AssertFatal(false, " Not Implemented \n");
 }
 
-static void positioning_measurement_report(const f1ap_measurement_report_t *report){
- LOG_I(MAC, "UL Prepring MeasurementReport transaction_id=%d, lmf_measurement_id=%d \n", report->transaction_id, report->lmf_measurement_id);
- AssertFatal(false, " Not Implemented \n");
+static void positioning_measurement_report(const f1ap_measurement_report_t *report)
+{
+  LOG_I(MAC,
+        "UL Prepring MeasurementReport transaction_id=%d, lmf_measurement_id=%d \n",
+        report->transaction_id,
+        report->lmf_measurement_id);
+  AssertFatal(false, " Not Implemented \n");
 }
 
-static void positioning_measurement_failure_indication(const f1ap_measurement_failure_ind_t *failure_ind){
- LOG_I(MAC, "UL Prepring MeasurementFailureIndication transaction_id=%d, lmf_measurement_id=%d \n", failure_ind->transaction_id, failure_ind->lmf_measurement_id);
- AssertFatal(false, " Not Implemented \n");
+static void positioning_measurement_failure_indication(const f1ap_measurement_failure_ind_t *failure_ind)
+{
+  LOG_I(MAC,
+        "UL Prepring MeasurementFailureIndication transaction_id=%d, lmf_measurement_id=%d \n",
+        failure_ind->transaction_id,
+        failure_ind->lmf_measurement_id);
+  AssertFatal(false, " Not Implemented \n");
 }
-
 
 void mac_rrc_ul_direct_init(struct nr_mac_rrc_ul_if_s *mac_rrc)
 {
@@ -564,16 +650,16 @@ void mac_rrc_ul_direct_init(struct nr_mac_rrc_ul_if_s *mac_rrc)
   mac_rrc->ue_context_modification_required = ue_context_modification_required_direct;
   mac_rrc->ue_context_release_request = ue_context_release_request_direct;
   mac_rrc->ue_context_release_complete = ue_context_release_complete_direct;
-  mac_rrc->initial_ul_rrc_message_transfer  = initial_ul_rrc_message_transfer_direct;
-  mac_rrc->positioning_information_response             = positioning_information_response; // nrppa adeel
-  mac_rrc->positioning_information_failure              = positioning_information_failure;
-  mac_rrc->positioning_information_update               = positioning_information_update;
-  mac_rrc->positioning_activation_response              = positioning_activation_response;
-  mac_rrc->positioning_activation_failure               = positioning_activation_failure;
-  mac_rrc->trp_information_response                     = trp_information_response;
-  mac_rrc->trp_information_failure                      = trp_information_failure;
-  mac_rrc->positioning_measurement_response             = positioning_measurement_response;
-  mac_rrc->positioning_measurement_failure              = positioning_measurement_failure;
-  mac_rrc->positioning_measurement_report               = positioning_measurement_report;
-  mac_rrc->positioning_measurement_failure_indication   = positioning_measurement_failure_indication;
+  mac_rrc->initial_ul_rrc_message_transfer = initial_ul_rrc_message_transfer_direct;
+  mac_rrc->positioning_information_response = positioning_information_response; // nrppa adeel
+  mac_rrc->positioning_information_failure = positioning_information_failure;
+  mac_rrc->positioning_information_update = positioning_information_update;
+  mac_rrc->positioning_activation_response = positioning_activation_response;
+  mac_rrc->positioning_activation_failure = positioning_activation_failure;
+  mac_rrc->trp_information_response = trp_information_response;
+  mac_rrc->trp_information_failure = trp_information_failure;
+  mac_rrc->positioning_measurement_response = positioning_measurement_response;
+  mac_rrc->positioning_measurement_failure = positioning_measurement_failure;
+  mac_rrc->positioning_measurement_report = positioning_measurement_report;
+  mac_rrc->positioning_measurement_failure_indication = positioning_measurement_failure_indication;
 }
