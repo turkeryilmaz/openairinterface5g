@@ -833,10 +833,13 @@ void nr_rrc_mac_config_req_mcg(module_id_t module_id,
       mac->if_module->phy_config_request(&mac->phy_config);
       mac->phy_config_request_sent = true;
     }
+  }
+  configure_current_BWP(mac, NULL, cell_group_config);
+
+  if (cell_group_config->spCellConfig && cell_group_config->spCellConfig->reconfigurationWithSync) {
     // Setup the SSB to Rach Occasions mapping according to the config
     build_ssb_to_ro_map(mac);
   }
-  configure_current_BWP(mac, NULL, cell_group_config);
 }
 
 void nr_rrc_mac_config_req_scg(module_id_t module_id,

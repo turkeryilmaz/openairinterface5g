@@ -848,7 +848,12 @@ void *UE_thread(void *arg)
             int ta_shift = (UE->init_sync_frame + trashed_frames)*2*TO_init_rate;
             UE->rx_offset_comp = 0;
             UE->timing_advance += ta_shift;
-          } 
+          }
+          // Reset target_Nid_cell for next handover
+          UE->target_Nid_cell = -1;
+          // Still unknown why need to reset timing_advance in RFsim to avoid:
+          // Received RAR preamble (38) doesn't match the intended RAPID (37)
+          UE->timing_advance = 0;
           decoded_frame_rx = mac->mib_frame;
           LOG_I(PHY,"UE synchronized decoded_frame_rx=%d UE->init_sync_frame=%d trashed_frames=%d\n",
                 decoded_frame_rx,
