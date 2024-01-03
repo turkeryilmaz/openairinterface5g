@@ -1782,6 +1782,7 @@ NR_BCCH_BCH_Message_t *get_new_MIB_NR(const NR_ServingCellConfigCommon_t *scc)
 
   mib->message.choice.mib->cellBarred = NR_MIB__cellBarred_notBarred;
   mib->message.choice.mib->intraFreqReselection = NR_MIB__intraFreqReselection_notAllowed;
+  xer_fprint(stdout, &asn_DEF_NR_MIB, (const void*)mib->message.choice.mib);
   return mib;
 }
 
