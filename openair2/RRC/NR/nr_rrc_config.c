@@ -2186,7 +2186,7 @@ NR_BCCH_DL_SCH_Message_t *get_SIB1_NR(const gNB_RrcConfigurationReq *configurati
   // nonCriticalExtension
   // TODO: add nonCriticalExtension
 
-  //xer_fprint(stdout, &asn_DEF_NR_SIB1, (const void*)sib1_message->message.choice.c1->choice.systemInformationBlockType1);
+  xer_fprint(stdout, &asn_DEF_NR_SIB1, (const void*)sib1_message->message.choice.c1->choice.systemInformationBlockType1);
   return sib1_message;
 }
 reconfig_SIB1_NR(NR_BCCH_DL_SCH_Message_t *sib1_message,  gNB_RrcConfigurationReq *configuration)
