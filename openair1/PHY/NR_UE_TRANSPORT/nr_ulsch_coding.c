@@ -139,8 +139,7 @@ int nr_ulsch_encoding(PHY_VARS_NR_UE *ue,
     Kr_bytes = impp.Kr>>3;
 #endif
 
-///////////////////////// c---->| LDCP coding |---->d /////////////////////////
-///////////
+///////////////////////// c---->| LDCP coding |---->d ////////////////////////////////////
     for (int r = 0; r < impp.n_segments; r++) {
 #ifdef DEBUG_ULSCH_CODING
       printf("Encoder: B %d F %d \n", B, impp.F);
@@ -151,15 +150,7 @@ int nr_ulsch_encoding(PHY_VARS_NR_UE *ue,
       }
       printf("\n");
 #endif
-    //ldpc_encoder_orig((unsigned char*)harq_process->c[r],harq_process->d[r],Kr,BG,0);
-    //ldpc_encoder_optim((unsigned char*)harq_process->c[r],(unsigned char*)&harq_process->d[r][0],Kr,BG,NULL,NULL,NULL,NULL);
     }
-    //for (int i=0;i<68*384;i++)
-    //printf("channel_input[%d]=%d\n",i,channel_input[i]);
-    /*printf("output %d %d %d %d %d \n", harq_process->d[0][0], harq_process->d[0][1], harq_process->d[r][2],harq_process->d[0][3],
-    harq_process->d[0][4]); for (int cnt =0 ; cnt < 66*harq_process->Z; cnt ++){ printf("%d \n",  harq_process->d[0][cnt]);
-    }
-    printf("\n");*/
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_LDPC_ENCODER_OPTIM, VCD_FUNCTION_IN);
   }
   start_meas(&ue->ulsch_ldpc_encoding_stats);
