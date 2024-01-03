@@ -399,8 +399,8 @@ void fh_if4p5_south_in(RU_t *ru,
   proc->frame_rx = f;
   proc->timestamp_rx = (proc->frame_rx * fp->samples_per_subframe * 10)  + fp->get_samples_slot_timestamp(proc->tti_rx, fp, 0);
   //  proc->timestamp_tx = proc->timestamp_rx +  (4*fp->samples_per_subframe);
-  proc->tti_tx   = (sl+ru->sl_ahead)%fp->slots_per_frame;
-  proc->frame_tx = (sl>(fp->slots_per_frame-1-(ru->sl_ahead))) ? (f+1)&1023 : f;
+  proc->tti_tx = (sl + ru->sl_ahead) % fp->slots_per_frame;
+  proc->frame_tx = (f + (sl + ru->sl_ahead) / fp->slots_per_frame) & 1023;
 
   if (proc->first_rx == 0) {
     if (proc->tti_rx != *slot) {
@@ -667,7 +667,7 @@ void rx_rf(RU_t *ru,int *frame,int *slot) {
   if (rxs != samples_per_slot) LOG_E(PHY, "rx_rf: Asked for %d samples, got %d from USRP\n",samples_per_slot,rxs);
 
   if (proc->first_rx != 1) {
-    samples_per_slot_prev = fp->get_samples_per_slot((*slot-1)%fp->slots_per_frame,fp);
+    samples_per_slot_prev = fp->get_samples_per_slot((*slot + fp->slots_per_frame - 1) % fp->slots_per_frame, fp);
 
     if (proc->timestamp_rx - old_ts != samples_per_slot_prev) {
       LOG_D(PHY,"rx_rf: rfdevice timing drift of %"PRId64" samples (ts_off %"PRId64")\n",proc->timestamp_rx - old_ts - samples_per_slot_prev,ru->ts_offset);
@@ -1279,8 +1279,8 @@ void *ru_thread( void *param ) {
     int sl=proc->tti_tx;
     for (int slidx=0;slidx<ru->sl_ahead;slidx++)
        proc->timestamp_tx += fp->get_samples_per_slot((sl+slidx)%fp->slots_per_frame,fp);
-    proc->frame_tx     = (proc->tti_rx > (fp->slots_per_frame-1-(ru->sl_ahead))) ? (proc->frame_rx+1)&1023 : proc->frame_rx;
-    proc->tti_tx      = (proc->tti_rx + ru->sl_ahead)%fp->slots_per_frame;
+    proc->frame_tx = (proc->frame_rx + (proc->tti_rx + ru->sl_ahead) / fp->slots_per_frame) & 1023;
+    proc->tti_tx = (proc->tti_rx + ru->sl_ahead) % fp->slots_per_frame;
     int absslot_rx = proc->timestamp_rx/fp->get_samples_per_slot(proc->tti_rx,fp);
     int rt_prof_idx = absslot_rx % RT_PROF_DEPTH;
     clock_gettime(CLOCK_MONOTONIC,&ru->rt_ru_profiling.return_RU_south_in[rt_prof_idx]);

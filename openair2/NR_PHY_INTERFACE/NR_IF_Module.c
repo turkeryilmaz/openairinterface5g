@@ -477,15 +477,15 @@ void NR_UL_indication(NR_UL_IND_t *UL_info) {
       // clear UL DCI prior to handling ULSCH
       sched_info->UL_dci_req.numPdus = 0;
       gNB_dlsch_ulsch_scheduler(module_id,
-                                (UL_info->frame + ((UL_info->slot > (spf - 1 - ifi->sl_ahead)) ? 1 : 0)) % 1024,
+                                (UL_info->frame + ((UL_info->slot + ifi->sl_ahead) / spf)) % 1024,
                                 (UL_info->slot + ifi->sl_ahead) % spf,
                                 sched_info);
 
       ifi->CC_mask            = 0;
       sched_info->module_id   = module_id;
       sched_info->CC_id       = CC_id;
-      sched_info->frame       = (UL_info->frame + ((UL_info->slot>(spf-1-ifi->sl_ahead)) ? 1 : 0)) % 1024;
-      sched_info->slot        = (UL_info->slot+ifi->sl_ahead)%spf;
+      sched_info->frame = (UL_info->frame + ((UL_info->slot + ifi->sl_ahead) / spf)) % 1024;
+      sched_info->slot = (UL_info->slot + ifi->sl_ahead) % spf;
 
 #ifdef DUMP_FAPI
       dump_dl(sched_info);
