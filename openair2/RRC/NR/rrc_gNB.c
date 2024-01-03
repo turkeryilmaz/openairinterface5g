@@ -303,6 +303,12 @@ static void init_NR_SI(gNB_RRC_INST *rrc, const int CC_id, gNB_RrcConfigurationR
 {
   static int mac_common_config_done[MAX_NUM_CCs] = {0};
   LOG_D(RRC,"%s()\n\n\n\n",__FUNCTION__);
+
+  // From 3GPP 38331, NOTE 1:	Upper layers provide the 5G-S-TMSI if the UE is registered in the TA of the current cell."
+  if (RC.ss.mode == SS_SOFTMODEM_SRB) {
+    configuration->tac = time(NULL);
+  }
+
   if (NODE_IS_DU(rrc->node_type) || NODE_IS_MONOLITHIC(rrc->node_type))
     if(rrc->carrier[CC_id].mib == NULL){
       rrc->carrier[CC_id].mib = get_new_MIB_NR(rrc->carrier[CC_id].servingcellconfigcommon);
