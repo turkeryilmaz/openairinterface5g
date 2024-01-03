@@ -120,6 +120,19 @@ typedef struct {
   int delay_max_val;
 } delay_t;
 
+typedef struct {
+  bool active;
+  uint32_t counter;
+  uint32_t target;
+  uint32_t step;
+} NR_timer_t;
+
+void nr_timer_start(NR_timer_t *timer);
+void nr_timer_stop(NR_timer_t *timer);
+void nr_timer_tick(NR_timer_t *timer);
+void nr_timer_setup(NR_timer_t *timer, const uint32_t target, const uint32_t step);
+bool nr_timer_expired(NR_timer_t timer);
+
 extern const nr_bandentry_t nr_bandtable[];
 
 static inline int get_num_dmrs(uint16_t dmrs_mask ) {

@@ -102,17 +102,17 @@ void nr_rrc_handle_timers(NR_UE_RRC_INST_t *rrc, instance_t instance)
 {
   NR_UE_Timers_Constants_t *timers = &rrc->timers_and_constants;
 
-  if (timers->T300_active == true) {
-    timers->T300_cnt += 10;
-    if(timers->T300_cnt >= timers->T300_k) {
-      timers->T300_active = false;
-      timers->T300_cnt = 0;
+  if (timers->T300.active) {
+    nr_timer_tick(&timers->T300);
+    if(nr_timer_expired(timers->T300)) {
+      nr_timer_stop(&timers->T300);
       handle_t300_expiry(instance);
     }
   }
-  if (timers->T304_active == true) {
-    timers->T304_cnt += 10;
-    if(timers->T304_cnt >= timers->T304_k) {
+  // T304
+  if (timers->T304.active) {
+    nr_timer_tick(&timers->T304);
+    if(nr_timer_expired(timers->T304)) {
       // TODO
       // For T304 of MCG, in case of the handover from NR or intra-NR
       // handover, initiate the RRC re-establishment procedure;
@@ -120,18 +120,18 @@ void nr_rrc_handle_timers(NR_UE_RRC_INST_t *rrc, instance_t instance)
       // specifications applicable for the source RAT.
     }
   }
-  if (timers->T310_active == true) {
-    timers->T310_cnt += 10;
-    if(timers->T310_cnt >= timers->T310_k) {
+  if (timers->T310.active) {
+    nr_timer_tick(&timers->T310);
+    if(nr_timer_expired(timers->T310)) {
       // TODO
       // handle detection of radio link failure
       // as described in 5.3.10.3 of 38.331
       AssertFatal(false, "Radio link failure! Not handled yet!\n");
     }
   }
-  if (timers->T311_active == true) {
-    timers->T311_cnt += 10;
-    if(timers->T311_cnt >= timers->T311_k) {
+  if (timers->T311.active) {
+    nr_timer_tick(&timers->T311);
+    if(nr_timer_expired(timers->T311)) {
       // Upon T311 expiry, the UE shall perform the actions upon going to RRC_IDLE
       // with release cause 'RRC connection failure'
       nr_rrc_going_to_IDLE(instance, RRC_CONNECTION_FAILURE, NULL);
@@ -139,121 +139,127 @@ void nr_rrc_handle_timers(NR_UE_RRC_INST_t *rrc, instance_t instance)
   }
 }
 
-void nr_rrc_set_T304(NR_UE_Timers_Constants_t *tac, NR_ReconfigurationWithSync_t *reconfigurationWithSync)
+void nr_rrc_set_T304(NR_timer_t *T304, NR_ReconfigurationWithSync_t *reconfigurationWithSync)
 {
   if(reconfigurationWithSync) {
+    int target = 0;
     switch (reconfigurationWithSync->t304) {
       case NR_ReconfigurationWithSync__t304_ms50 :
-        tac->T304_k = 50;
+        target = 50;
         break;
       case NR_ReconfigurationWithSync__t304_ms100 :
-        tac->T304_k = 100;
+        target = 100;
         break;
       case NR_ReconfigurationWithSync__t304_ms150 :
-        tac->T304_k = 150;
+        target = 150;
         break;
       case NR_ReconfigurationWithSync__t304_ms200 :
-        tac->T304_k = 200;
+        target = 200;
         break;
       case NR_ReconfigurationWithSync__t304_ms500 :
-        tac->T304_k = 500;
+        target = 500;
         break;
       case NR_ReconfigurationWithSync__t304_ms1000 :
-        tac->T304_k = 1000;
+        target = 1000;
         break;
       case NR_ReconfigurationWithSync__t304_ms2000 :
-        tac->T304_k = 2000;
+        target = 2000;
         break;
       case NR_ReconfigurationWithSync__t304_ms10000 :
-        tac->T304_k = 10000;
+        target = 10000;
         break;
       default :
         AssertFatal(false, "Invalid T304 %ld\n", reconfigurationWithSync->t304);
     }
+    nr_timer_setup(T304, target, 10); // 10ms step
   }
 }
 
 void set_rlf_sib1_timers_and_constants(NR_UE_Timers_Constants_t *tac, NR_SIB1_t *sib1)
 {
   if(sib1 && sib1->ue_TimersAndConstants) {
+    int k = 0;
     switch (sib1->ue_TimersAndConstants->t301) {
       case NR_UE_TimersAndConstants__t301_ms100 :
-        tac->T301_k = 100;
+        k = 100;
         break;
       case NR_UE_TimersAndConstants__t301_ms200 :
-        tac->T301_k = 200;
+        k = 200;
         break;
       case NR_UE_TimersAndConstants__t301_ms300 :
-        tac->T301_k = 300;
+        k = 300;
         break;
       case NR_UE_TimersAndConstants__t301_ms400 :
-        tac->T301_k = 400;
+        k = 400;
         break;
       case NR_UE_TimersAndConstants__t301_ms600 :
-        tac->T301_k = 600;
+        k = 600;
         break;
       case NR_UE_TimersAndConstants__t301_ms1000 :
-        tac->T301_k = 1000;
+        k = 1000;
         break;
       case NR_UE_TimersAndConstants__t301_ms1500 :
-        tac->T301_k = 1500;
+        k = 1500;
         break;
       case NR_UE_TimersAndConstants__t301_ms2000 :
-        tac->T301_k = 2000;
+        k = 2000;
         break;
       default :
         AssertFatal(false, "Invalid T301 %ld\n", sib1->ue_TimersAndConstants->t301);
     }
+    nr_timer_setup(&tac->T301, k, 10); // 10ms step
     switch (sib1->ue_TimersAndConstants->t310) {
       case NR_UE_TimersAndConstants__t310_ms0 :
-        tac->T310_k = 0;
+        k = 0;
         break;
       case NR_UE_TimersAndConstants__t310_ms50 :
-        tac->T310_k = 50;
+        k = 50;
         break;
       case NR_UE_TimersAndConstants__t310_ms100 :
-        tac->T310_k = 100;
+        k = 100;
         break;
       case NR_UE_TimersAndConstants__t310_ms200 :
-        tac->T310_k = 200;
+        k = 200;
         break;
       case NR_UE_TimersAndConstants__t310_ms500 :
-        tac->T310_k = 500;
+        k = 500;
         break;
       case NR_UE_TimersAndConstants__t310_ms1000 :
-        tac->T310_k = 1000;
+        k = 1000;
         break;
       case NR_UE_TimersAndConstants__t310_ms2000 :
-        tac->T310_k = 2000;
+        k = 2000;
         break;
       default :
         AssertFatal(false, "Invalid T310 %ld\n", sib1->ue_TimersAndConstants->t310);
     }
+    nr_timer_setup(&tac->T310, k, 10); // 10ms step
     switch (sib1->ue_TimersAndConstants->t311) {
       case NR_UE_TimersAndConstants__t311_ms1000 :
-        tac->T311_k = 1000;
+        k = 1000;
         break;
       case NR_UE_TimersAndConstants__t311_ms3000 :
-        tac->T311_k = 3000;
+        k = 3000;
         break;
       case NR_UE_TimersAndConstants__t311_ms5000 :
-        tac->T311_k = 5000;
+        k = 5000;
         break;
       case NR_UE_TimersAndConstants__t311_ms10000 :
-        tac->T311_k = 10000;
+        k = 10000;
         break;
       case NR_UE_TimersAndConstants__t311_ms15000 :
-        tac->T311_k = 15000;
+        k = 15000;
         break;
       case NR_UE_TimersAndConstants__t311_ms20000 :
-        tac->T311_k = 20000;
+        k = 20000;
         break;
       case NR_UE_TimersAndConstants__t311_ms30000 :
-        tac->T311_k = 30000;
+        k = 30000;
         break;
       default :
         AssertFatal(false, "Invalid T311 %ld\n", sib1->ue_TimersAndConstants->t311);
     }
+    nr_timer_setup(&tac->T311, k, 10); // 10ms step
     switch (sib1->ue_TimersAndConstants->n310) {
       case NR_UE_TimersAndConstants__n310_n1 :
         tac->N310_k = 1;
@@ -319,62 +325,65 @@ void nr_rrc_set_sib1_timers_and_constants(NR_UE_Timers_Constants_t *tac, NR_SIB1
 {
   set_rlf_sib1_timers_and_constants(tac, sib1);
   if(sib1 && sib1->ue_TimersAndConstants) {
+    int k = 0;
     switch (sib1->ue_TimersAndConstants->t300) {
       case NR_UE_TimersAndConstants__t300_ms100 :
-        tac->T300_k = 100;
+        k = 100;
         break;
       case NR_UE_TimersAndConstants__t300_ms200 :
-        tac->T300_k = 200;
+        k = 200;
         break;
       case NR_UE_TimersAndConstants__t300_ms300 :
-        tac->T300_k = 300;
+        k = 300;
         break;
       case NR_UE_TimersAndConstants__t300_ms400 :
-        tac->T300_k = 400;
+        k = 400;
         break;
       case NR_UE_TimersAndConstants__t300_ms600 :
-        tac->T300_k = 600;
+        k = 600;
         break;
       case NR_UE_TimersAndConstants__t300_ms1000 :
-        tac->T300_k = 1000;
+        k = 1000;
         break;
       case NR_UE_TimersAndConstants__t300_ms1500 :
-        tac->T300_k = 1500;
+        k = 1500;
         break;
       case NR_UE_TimersAndConstants__t300_ms2000 :
-        tac->T300_k = 2000;
+        k = 2000;
         break;
       default :
         AssertFatal(false, "Invalid T300 %ld\n", sib1->ue_TimersAndConstants->t300);
     }
+    nr_timer_setup(&tac->T300, k, 10); // 10ms step
     switch (sib1->ue_TimersAndConstants->t319) {
       case NR_UE_TimersAndConstants__t319_ms100 :
-        tac->T319_k = 100;
+        k = 100;
         break;
       case NR_UE_TimersAndConstants__t319_ms200 :
-        tac->T319_k = 200;
+        k = 200;
         break;
       case NR_UE_TimersAndConstants__t319_ms300 :
-        tac->T319_k = 300;
+        k = 300;
         break;
       case NR_UE_TimersAndConstants__t319_ms400 :
-        tac->T319_k = 400;
+        k = 400;
         break;
       case NR_UE_TimersAndConstants__t319_ms600 :
-        tac->T319_k = 600;
+        k = 600;
         break;
       case NR_UE_TimersAndConstants__t319_ms1000 :
-        tac->T319_k = 1000;
+        k = 1000;
         break;
       case NR_UE_TimersAndConstants__t319_ms1500 :
-        tac->T319_k = 1500;
+        k = 1500;
         break;
       case NR_UE_TimersAndConstants__t319_ms2000 :
-        tac->T319_k = 2000;
+        k = 2000;
         break;
       default :
         AssertFatal(false, "Invalid T319 %ld\n", sib1->ue_TimersAndConstants->t319);
     }
+    nr_timer_setup(&tac->T319, k, 10); // 10ms step
   }
   else
     LOG_E(NR_RRC,"SIB1 should not be NULL and neither UE_Timers_Constants\n");
@@ -398,37 +407,39 @@ void nr_rrc_handle_SetupRelease_RLF_TimersAndConstants(NR_UE_RRC_INST_t *rrc,
       if (rlf_tac == NULL)
         return;
       // (re-)configure the value of timers and constants in accordance with received rlf-TimersAndConstants
+      int k = 0;
       switch (rlf_tac->t310) {
         case NR_RLF_TimersAndConstants__t310_ms0 :
-          tac->T310_k = 0;
+          k = 0;
           break;
         case NR_RLF_TimersAndConstants__t310_ms50 :
-          tac->T310_k = 50;
+          k = 50;
           break;
         case NR_RLF_TimersAndConstants__t310_ms100 :
-          tac->T310_k = 100;
+          k = 100;
           break;
         case NR_RLF_TimersAndConstants__t310_ms200 :
-          tac->T310_k = 200;
+          k = 200;
           break;
         case NR_RLF_TimersAndConstants__t310_ms500 :
-          tac->T310_k = 500;
+          k = 500;
           break;
         case NR_RLF_TimersAndConstants__t310_ms1000 :
-          tac->T310_k = 1000;
+          k = 1000;
           break;
         case NR_RLF_TimersAndConstants__t310_ms2000 :
-          tac->T310_k = 2000;
+          k = 2000;
           break;
         case NR_RLF_TimersAndConstants__t310_ms4000 :
-          tac->T310_k = 4000;
+          k = 4000;
           break;
         case NR_RLF_TimersAndConstants__t310_ms6000 :
-          tac->T310_k = 6000;
+          k = 6000;
           break;
         default :
           AssertFatal(false, "Invalid T310 %ld\n", rlf_tac->t310);
       }
+      nr_timer_setup(&tac->T310, k, 10); // 10ms step
       switch (rlf_tac->n310) {
         case NR_RLF_TimersAndConstants__n310_n1 :
           tac->N310_k = 1;
@@ -488,29 +499,30 @@ void nr_rrc_handle_SetupRelease_RLF_TimersAndConstants(NR_UE_RRC_INST_t *rrc,
       if (rlf_tac->ext1) {
         switch (rlf_tac->ext1->t311) {
           case NR_RLF_TimersAndConstants__ext1__t311_ms1000 :
-            tac->T311_k = 1000;
+            k = 1000;
             break;
           case NR_RLF_TimersAndConstants__ext1__t311_ms3000 :
-            tac->T311_k = 3000;
+            k = 3000;
             break;
           case NR_RLF_TimersAndConstants__ext1__t311_ms5000 :
-            tac->T311_k = 5000;
+            k = 5000;
             break;
           case NR_RLF_TimersAndConstants__ext1__t311_ms10000 :
-            tac->T311_k = 10000;
+            k = 10000;
             break;
           case NR_RLF_TimersAndConstants__ext1__t311_ms15000 :
-            tac->T311_k = 15000;
+            k = 15000;
             break;
           case NR_RLF_TimersAndConstants__ext1__t311_ms20000 :
-            tac->T311_k = 20000;
+            k = 20000;
             break;
           case NR_RLF_TimersAndConstants__ext1__t311_ms30000 :
-            tac->T311_k = 30000;
+            k = 30000;
             break;
           default :
             AssertFatal(false, "Invalid T311 %ld\n", rlf_tac->ext1->t311);
         }
+        nr_timer_setup(&tac->T311, k, 10); // 10ms step
       }
       reset_rlf_timers_and_constants(tac);
       break;
@@ -524,13 +536,12 @@ void handle_rlf_sync(NR_UE_Timers_Constants_t *tac,
 {
   if (sync_msg == IN_SYNC) {
     tac->N310_cnt = 0;
-    if (tac->T310_active) {
+    if (tac->T310.active) {
       tac->N311_cnt++;
       // Upon receiving N311 consecutive "in-sync" indications
       if (tac->N311_cnt >= tac->N311_k) {
         // stop timer T310
-        tac->T310_active = false;
-        tac->T310_cnt = 0;
+        nr_timer_stop(&tac->T310);
         tac->N311_cnt = 0;
       }
     }
@@ -538,20 +549,19 @@ void handle_rlf_sync(NR_UE_Timers_Constants_t *tac,
   else {
     // OUT_OF_SYNC
     tac->N311_cnt = 0;
-    if(tac->T300_active ||
-       tac->T301_active ||
-       tac->T304_active ||
-       tac->T310_active ||
-       tac->T311_active ||
-       tac->T319_active)
+    if(tac->T300.active ||
+       tac->T301.active ||
+       tac->T304.active ||
+       tac->T310.active ||
+       tac->T311.active ||
+       tac->T319.active)
       return;
     tac->N310_cnt++;
     // upon receiving N310 consecutive "out-of-sync" indications
     if (tac->N310_cnt >= tac->N310_k) {
       // start timer T310
-        tac->T310_active = true;
-        tac->T310_cnt = 0;
-        tac->N310_cnt = 0;
+      nr_timer_start(&tac->T310);
+      tac->N310_cnt = 0;
     }
   }
 }
@@ -559,17 +569,16 @@ void handle_rlf_sync(NR_UE_Timers_Constants_t *tac,
 void set_default_timers_and_constants(NR_UE_Timers_Constants_t *tac)
 {
   // 38.331 9.2.3 Default values timers and constants
-  tac->T310_k = 1000;
+  nr_timer_setup(&tac->T310, 1000, 10); // 10ms step
+  nr_timer_setup(&tac->T310, 30000, 10); // 10ms step
   tac->N310_k = 1;
-  tac->T311_k = 30000;
   tac->N311_k = 1;
 }
 
 void reset_rlf_timers_and_constants(NR_UE_Timers_Constants_t *tac)
 {
   // stop timer T310 for this cell group, if running
-  tac->T310_active = false;
-  tac->T310_cnt = 0;
+  nr_timer_stop(&tac->T310);
   // reset the counters N310 and N311
   tac->N310_cnt = 0;
   tac->N311_cnt = 0;
