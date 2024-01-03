@@ -120,6 +120,7 @@ extern void start_oai_nrue_threads(void);
 int get_from_lte_ue_fd();
 
 void nr_rrc_SI_timers(NR_UE_RRC_SI_INFO *SInfo);
+void init_SI_timers(NR_UE_RRC_SI_INFO *SInfo);
 
 void nr_ue_rrc_timer_trigger(int module_id, int frame, int gnb_id);
 void handle_t300_expiry(instance_t instance);

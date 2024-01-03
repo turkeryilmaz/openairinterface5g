@@ -21,81 +21,70 @@
 
 #include "openair2/RRC/NR_UE/rrc_proto.h"
 
-void nr_rrc_SI_timers(NR_UE_RRC_SI_INFO *SInfo)
+void init_SI_timers(NR_UE_RRC_SI_INFO *SInfo)
 {
   // delete any stored version of a SIB after 3 hours
   // from the moment it was successfully confirmed as valid
-  if (SInfo->sib1 && SInfo->sib1_timer >= 0) {
-    SInfo->sib1_timer += 10;
-    if (SInfo->sib1_timer > 10800000)
-      SInfo->sib1_timer = -1;
-  }
-  if (SInfo->sib2 && SInfo->sib2_timer >= 0) {
-    SInfo->sib2_timer += 10;
-    if (SInfo->sib2_timer > 10800000)
-      SInfo->sib2_timer = -1;
-  }
-  if (SInfo->sib3 && SInfo->sib3_timer >= 0) {
-    SInfo->sib3_timer += 10;
-    if (SInfo->sib3_timer > 10800000)
-      SInfo->sib3_timer = -1;
-  }
-  if (SInfo->sib4 && SInfo->sib4_timer >= 0) {
-    SInfo->sib4_timer += 10;
-    if (SInfo->sib4_timer > 10800000)
-      SInfo->sib4_timer = -1;
-  }
-  if (SInfo->sib5 && SInfo->sib5_timer >= 0) {
-    SInfo->sib5_timer += 10;
-    if (SInfo->sib5_timer > 10800000)
-      SInfo->sib5_timer = -1;
-  }
-  if (SInfo->sib6 && SInfo->sib6_timer >= 0) {
-    SInfo->sib6_timer += 10;
-    if (SInfo->sib6_timer > 10800000)
-      SInfo->sib6_timer = -1;
-  }
-  if (SInfo->sib7 && SInfo->sib7_timer >= 0) {
-    SInfo->sib7_timer += 10;
-    if (SInfo->sib7_timer > 10800000)
-      SInfo->sib7_timer = -1;
-  }
-  if (SInfo->sib8 && SInfo->sib8_timer >= 0) {
-    SInfo->sib8_timer += 10;
-    if (SInfo->sib8_timer > 10800000)
-      SInfo->sib8_timer = -1;
-  }
-  if (SInfo->sib9 && SInfo->sib9_timer >= 0) {
-    SInfo->sib9_timer += 10;
-    if (SInfo->sib9_timer > 10800000)
-      SInfo->sib9_timer = -1;
+  SInfo->sib1_timer.active = false;
+  nr_timer_setup(&SInfo->sib1_timer, 10800000, 10);
+  SInfo->sib2_timer.active = false;
+  nr_timer_setup(&SInfo->sib2_timer, 10800000, 10);
+  SInfo->sib3_timer.active = false;
+  nr_timer_setup(&SInfo->sib3_timer, 10800000, 10);
+  SInfo->sib4_timer.active = false;
+  nr_timer_setup(&SInfo->sib4_timer, 10800000, 10);
+  SInfo->sib5_timer.active = false;
+  nr_timer_setup(&SInfo->sib5_timer, 10800000, 10);
+  SInfo->sib6_timer.active = false;
+  nr_timer_setup(&SInfo->sib6_timer, 10800000, 10);
+  SInfo->sib7_timer.active = false;
+  nr_timer_setup(&SInfo->sib7_timer, 10800000, 10);
+  SInfo->sib8_timer.active = false;
+  nr_timer_setup(&SInfo->sib8_timer, 10800000, 10);
+  SInfo->sib9_timer.active = false;
+  nr_timer_setup(&SInfo->sib9_timer, 10800000, 10);
+  SInfo->sib10_timer.active = false;
+  nr_timer_setup(&SInfo->sib10_timer, 10800000, 10);
+  SInfo->sib11_timer.active = false;
+  nr_timer_setup(&SInfo->sib11_timer, 10800000, 10);
+  SInfo->sib12_timer.active = false;
+  nr_timer_setup(&SInfo->sib12_timer, 10800000, 10);
+  SInfo->sib13_timer.active = false;
+  nr_timer_setup(&SInfo->sib13_timer, 10800000, 10);
+  SInfo->sib14_timer.active = false;
+  nr_timer_setup(&SInfo->sib14_timer, 10800000, 10);
+}
 
-  }
-  if (SInfo->sib10 && SInfo->sib10_timer >= 0) {
-    SInfo->sib10_timer += 10;
-    if (SInfo->sib10_timer > 10800000)
-      SInfo->sib10_timer = -1;
-  }
-  if (SInfo->sib11 && SInfo->sib11_timer >= 0) {
-    SInfo->sib11_timer += 10;
-    if (SInfo->sib11_timer > 10800000)
-      SInfo->sib11_timer = -1;
-  }
-  if (SInfo->sib12 && SInfo->sib12_timer >= 0) {
-    SInfo->sib12_timer += 10;
-    if (SInfo->sib12_timer > 10800000)
-      SInfo->sib12_timer = -1;
-  }
-  if (SInfo->sib13 && SInfo->sib13_timer >= 0) {
-    SInfo->sib13_timer += 10;
-    if (SInfo->sib13_timer > 10800000)
-      SInfo->sib13_timer = -1;
-  }
-  if (SInfo->sib14 && SInfo->sib14_timer >= 0) {
-    SInfo->sib14_timer += 10;
-    if (SInfo->sib14_timer > 10800000)
-      SInfo->sib14_timer = -1;
-  }
+void nr_rrc_SI_timers(NR_UE_RRC_SI_INFO *SInfo)
+{
+  if (SInfo->sib1 && SInfo->sib1_timer.active)
+    nr_timer_tick(&SInfo->sib1_timer);
+  if (SInfo->sib2 && SInfo->sib2_timer.active)
+    nr_timer_tick(&SInfo->sib2_timer);
+  if (SInfo->sib3 && SInfo->sib3_timer.active)
+    nr_timer_tick(&SInfo->sib3_timer);
+  if (SInfo->sib4 && SInfo->sib4_timer.active)
+    nr_timer_tick(&SInfo->sib4_timer);
+  if (SInfo->sib5 && SInfo->sib5_timer.active)
+    nr_timer_tick(&SInfo->sib5_timer);
+  if (SInfo->sib6 && SInfo->sib6_timer.active)
+    nr_timer_tick(&SInfo->sib6_timer);
+  if (SInfo->sib7 && SInfo->sib7_timer.active)
+    nr_timer_tick(&SInfo->sib7_timer);
+  if (SInfo->sib8 && SInfo->sib8_timer.active)
+    nr_timer_tick(&SInfo->sib8_timer);
+  if (SInfo->sib9 && SInfo->sib9_timer.active)
+    nr_timer_tick(&SInfo->sib9_timer);
+  if (SInfo->sib10 && SInfo->sib10_timer.active)
+    nr_timer_tick(&SInfo->sib10_timer);
+  if (SInfo->sib11 && SInfo->sib11_timer.active)
+    nr_timer_tick(&SInfo->sib11_timer);
+  if (SInfo->sib12 && SInfo->sib12_timer.active)
+    nr_timer_tick(&SInfo->sib12_timer);
+  if (SInfo->sib13 && SInfo->sib13_timer.active)
+    nr_timer_tick(&SInfo->sib13_timer);
+  if (SInfo->sib14 && SInfo->sib14_timer.active)
+    nr_timer_tick(&SInfo->sib14_timer);
 }
 
 void nr_rrc_handle_timers(NR_UE_RRC_INST_t *rrc, instance_t instance)
