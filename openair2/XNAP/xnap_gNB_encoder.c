@@ -19,18 +19,41 @@
  *      contact@openairinterface.org
  */
 
-/*! \file xnap_messages_def.h
+/*! \file xnap_gNB_encoder.c
+ * \brief xnap encoder procedures for gNB
  * \author Sreeshma Shiv <sreeshmau@iisc.ac.in>
  * \date August 2023
  * \version 1.0
  */
 
-/* gNB application layer -> XNAP messages */
-MESSAGE_DEF(XNAP_REGISTER_GNB_REQ, MESSAGE_PRIORITY_MED, xnap_register_gnb_req_t, xnap_register_gnb_req)
-/* XNAP -> gNB application layer messages */
+#include <stdio.h>
+#include <string.h>
+#include <stdint.h>
 
-/* handover messages XNAP <-> RRC */
-MESSAGE_DEF(XNAP_SETUP_REQ, MESSAGE_PRIORITY_MED, xnap_setup_req_t, xnap_setup_req)
-MESSAGE_DEF(XNAP_SETUP_RESP, MESSAGE_PRIORITY_MED, xnap_setup_resp_t, xnap_setup_resp)
-MESSAGE_DEF(XNAP_SETUP_FAILURE, MESSAGE_PRIORITY_MED, xnap_setup_failure_t, xnap_setup_failure)
-MESSAGE_DEF(XNAP_HANDOVER_REQ, MESSAGE_PRIORITY_MED, xnap_handover_req_t, xnap_handover_req)
+#include "assertions.h"
+#include "conversions.h"
+#include "intertask_interface.h"
+#include "xnap_common.h"
+#include "xnap_gNB_encoder.h"
+
+int xnap_gNB_encode_pdu(XNAP_XnAP_PDU_t *pdu, uint8_t **buffer, uint32_t *len)
+{
+  ssize_t encoded;
+
+  DevAssert(pdu != NULL);
+  DevAssert(buffer != NULL);
+  DevAssert(len != NULL);
+
+  xer_fprint(stdout, &asn_DEF_XNAP_XnAP_PDU, (void *)pdu);
+
+  encoded = aper_encode_to_new_buffer(&asn_DEF_XNAP_XnAP_PDU, 0, pdu, (void **)buffer);
+
+  if (encoded < 0) {
+    return -1;
+  }
+
+  *len = encoded;
+
+  ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_XNAP_XnAP_PDU, pdu);
+  return encoded;
+}

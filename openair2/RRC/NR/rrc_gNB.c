@@ -97,10 +97,16 @@
 #include "openair2/F1AP/f1ap_common.h"
 #include "openair2/F1AP/f1ap_ids.h"
 #include "openair2/SDAP/nr_sdap/nr_sdap_entity.h"
+#include "cmake_targets/ran_build/build/openair2/RRC/NR/MESSAGES/NR_HandoverPreparationInformation.h"
+#include "cmake_targets/ran_build/build/openair2/RRC/NR/MESSAGES/NR_UERadioAccessCapabilityInformation-IEs.h"
 #include "cucp_cuup_if.h"
 #include "BIT_STRING.h"
 #include "assertions.h"
 
+/*Imran*/
+#include "NR_MeasurementReport-IEs.h"
+#include <openair2/XNAP/xnap_gNB_task.h>
+//#include <openair2/COMMON/xnap_messages_types.h>
 //#define XER_PRINT
 
 extern RAN_CONTEXT_t RC;
@@ -1351,6 +1357,337 @@ static inline uint64_t bitStr_to_uint64(const BIT_STRING_t *asn) {
   return result;
 }
 
+/**
+int xnap_gNB_generate_xn_handover_request (instance_t *instance_p,
+                                           xnap_handover_req_t *xnap_handover_req, int ue_id)
+{
+
+  XNAP_XnAP_PDU_t                     pdu;
+  XNAP_HandoverRequest_t              *out;
+  XNAP_HandoverRequest_IEs_t          *ie;
+  XNAP_E_RABs_ToBeSetup_ItemIEs_t     *e_RABS_ToBeSetup_ItemIEs;
+  XNAP_E_RABs_ToBeSetup_Item_t        *e_RABs_ToBeSetup_Item;
+  XNAP_LastVisitedCell_Item_t         *lastVisitedCell_Item;
+
+  uint8_t  *buffer;
+  uint32_t  len;
+  int       ret = 0;
+
+  DevAssert(instance_p != NULL);
+  DevAssert(xnap_gNB_data_p != NULL);
+
+  * Prepare the XnAP handover message to encode *
+  memset(&pdu, 0, sizeof(pdu));
+  pdu.present = XNAP_XnAP_PDU_PR_initiatingMessage;
+  pdu.choice.initiatingMessage.procedureCode = XNAP_ProcedureCode_id_handoverPreparation;
+  pdu.choice.initiatingMessage.criticality = XNAP_Criticality_reject;
+  pdu.choice.initiatingMessage.value.present = XNAP_InitiatingMessage__value_PR_HandoverRequest;
+  out = &pdu.choice.initiatingMessage.value.choice.HandoverRequest;
+
+  * mandatory *
+  ie = (HandoverRequest-IEs *)calloc(1, sizeof(Xnap_HandoverRequest_IEs));
+  ie->id = Xnap_ProtocolIE_ID_id_sourceNG_RANnodeUEXnAPID;
+  ie->criticality = Xnap_Criticality_reject;
+  ie->value.present = Xnap_HandoverRequest_IEs__value_PR_NG_RANnodeUEXnAPID;
+  ie->value.choice.UE_XnAP_ID = xnap_id_get_id_source(&instance_p->id_manager, ue_id);
+  asn1cSeqAdd(&out->protocolIEs.list, ie);
+
+  * mandatory *
+  ie = (Xnap_HandoverRequest_IEs *)calloc(1, sizeof(Xnap_HandoverRequest_IEs));
+  ie->id = Xnap_ProtocolIE_ID_id_Cause;
+  ie->criticality = Xnap_Criticality_ignore;
+  ie->value.present = Xnap_HandoverRequest_IEs__value_PR_Cause;
+  ie->value.choice.Cause.present = Xnap_Cause_PR_radioNetwork;
+  ie->value.choice.Cause.choice.radioNetwork = Xnap_CauseRadioNetwork_handover_desirable_for_radio_reasons;
+  asn1cSeqAdd(&out->protocolIEs.list, ie);
+
+  * mandatory *
+  ie = (Xnap_HandoverRequest_IEs *)calloc(1, sizeof(Xnap_HandoverRequest_IEs));
+  ie->id = Xnap_ProtocolIE_ID_id_TargetCell_ID;
+  ie->criticality = Xnap_Criticality_reject;
+  ie->value.present = Xnap_HandoverRequest_IEs__value_PR_ECGI;
+  MCC_MNC_TO_PLMNID(instance_p->mcc, instance_p->mnc, instance_p->mnc_digit_length,  // not instance - pick it from message
+                       &ie->value.choice.NRCGI.pLMN_Identity);
+  MACRO_ENB_ID_TO_CELL_IDENTITY(xnap_gNB_data_p->gNB_id, 0, &ie->value.choice.NRCGI.NRcellIdentifier);
+  asn1cSeqAdd(&out->protocolIEs.list, ie);
+
+  * mandatory *
+  ie = (Xnap_HandoverRequest_IEs_t *)calloc(1, sizeof(Xnap_HandoverRequest_IEs_t));
+  ie->id = Xnap_ProtocolIE_ID_id_GUAMI;
+  ie->criticality = Xnap_Criticality_reject;
+  ie->value.present = Xnap_HandoverRequest_IEs__value_PR_GUAMI;
+  MCC_MNC_TO_PLMNID(instance_p->mcc, instance_p->mnc, instance_p->mnc_digit_length,
+                       &ie->value.choice.GUMMEI.gU_Group_ID.pLMN_Identity); // remove instance - need to use instance for greping, picking not for filling
+  //@TODO: consider to update these values
+  INT16_TO_OCTET_STRING(xnap_handover_req->ue_gummei.mme_group_id, &ie->value.choice.GUMMEI.gU_Group_ID.mME_Group_ID);
+  MME_CODE_TO_OCTET_STRING(xnap_handover_req->ue_gummei.mme_code, &ie->value.choice.GUMMEI.mME_Code);
+  asn1cSeqAdd(&out->protocolIEs.list, ie);
+
+  * mandatory *
+  ie = (Xnap_HandoverRequest_IEs_t *)calloc(1, sizeof(Xnap_HandoverRequest_IEs_t));
+  ie->id = Xnap_ProtocolIE_ID_id_UE_ContextInformation;
+  ie->criticality = Xnap_Criticality_reject;
+  ie->value.present = Xnap_ProtocolIE_ID_id_UEContextInfoHORequest;
+  //@TODO: consider to update this value
+  ie->value.choice.UE_ContextInformation.amf_UE_NGAP_ID = xnap_handover_req->amf_ue_ngap_id;
+
+  * mandatory *
+  ie = (Xnap_CPTransportLayerInformation_t *)calloc(4, sizeof(Xnap_HandoverRequest_IEs_t));
+  cptlinfo->present = Xnap_CPTransportLayerInformation_PR_endpointIPAddress;
+  cptlinfo->choice.endpointIPAddress.size = 4 ; //endian ness has to be verified here
+  cptlinfo->value.choice.cp_TNL_info_source = xnap_handover_req->cp_TNL_info_source;
+
+  KGNB_STAR_TO_BIT_STRING(xnap_handover_req->kenb,&ie->value.choice.UE_ContextInformation.aS_SecurityInformation.key_gNB_star);
+
+  if (xnap_handover_req->kgnb_ncc >=0) { // Check this condition
+    ie->value.choice.UE_ContextInformation.aS_SecurityInformation.nextHopChainingCount = xnap_handover_req->kgnb_ncc;
+  }
+  else {
+    ie->value.choice.UE_ContextInformation.aS_SecurityInformation.nextHopChainingCount = 1;
+  }
+
+  ENCRALG_TO_BIT_STRING(xnap_handover_req->security_capabilities.encryption_algorithms,
+              &ie->value.choice.UE_ContextInformation.uESecurityCapabilities.encryptionAlgorithms);
+
+  INTPROTALG_TO_BIT_STRING(xnap_handover_req->security_capabilities.integrity_algorithms,
+              &ie->value.choice.UE_ContextInformation.uESecurityCapabilities.integrityProtectionAlgorithms);
+
+  //@TODO: update with proper UEAMPR
+  UEAGMAXBITRTD_TO_ASN_PRIMITIVES(3L,&ie->value.choice.UE_ContextInformation.uEaggregateMaximumBitRate.uEaggregateMaximumBitRateDownlink);
+  UEAGMAXBITRTU_TO_ASN_PRIMITIVES(6L,&ie->value.choice.UE_ContextInformation.uEaggregateMaximumBitRate.uEaggregateMaximumBitRateUplink);
+  {
+    for (int i=0;i<xnap_handover_req->nb_e_rabs_tobesetup;i++) {
+      e_RABS_ToBeSetup_ItemIEs = (Xnap_E_RABs_ToBeSetup_ItemIEs_t *)calloc(1,sizeof(Xnap_E_RABs_ToBeSetup_ItemIEs_t));
+      e_RABS_ToBeSetup_ItemIEs->id = Xnap_ProtocolIE_ID_id_E_RABs_ToBeSetup_Item;
+      e_RABS_ToBeSetup_ItemIEs->criticality = Xnap_Criticality_ignore;
+      e_RABS_ToBeSetup_ItemIEs->value.present = Xnap_E_RABs_ToBeSetup_ItemIEs__value_PR_E_RABs_ToBeSetup_Item;
+      e_RABs_ToBeSetup_Item = &e_RABS_ToBeSetup_ItemIEs->value.choice.E_RABs_ToBeSetup_Item;
+      {
+        e_RABs_ToBeSetup_Item->e_RAB_ID = xnap_handover_req->e_rabs_tobesetup[i].e_rab_id;
+        e_RABs_ToBeSetup_Item->e_RAB_Level_QoS_Parameters.qCI = xnap_handover_req->e_rab_param[i].qos.qci;
+        e_RABs_ToBeSetup_Item->e_RAB_Level_QoS_Parameters.allocationAndRetentionPriority.priorityLevel = xnap_handover_req->e_rab_param[i].qos.allocation_retention_priority.priority_level;
+        e_RABs_ToBeSetup_Item->e_RAB_Level_QoS_Parameters.allocationAndRetentionPriority.pre_emptionCapability = xnap_handover_req->e_rab_param[i].qos.allocation_retention_priority.pre_emp_capability;
+        e_RABs_ToBeSetup_Item->e_RAB_Level_QoS_Parameters.allocationAndRetentionPriority.pre_emptionVulnerability = xnap_handover_req->e_rab_param[i].qos.allocation_retention_priority.pre_emp_vulnerability;
+        e_RABs_ToBeSetup_Item->uL_GTPtunnelEndpoint.transportLayerAddress.size = (uint8_t)(xnap_handover_req->e_rabs_tobesetup[i].gNB_addr.length/8);
+        e_RABs_ToBeSetup_Item->uL_GTPtunnelEndpoint.transportLayerAddress.bits_unused = xnap_handover_req->e_rabs_tobesetup[i].gNB_addr.length%8;
+        e_RABs_ToBeSetup_Item->uL_GTPtunnelEndpoint.transportLayerAddress.buf =
+                        calloc(1,e_RABs_ToBeSetup_Item->uL_GTPtunnelEndpoint.transportLayerAddress.size);
+
+        memcpy (e_RABs_ToBeSetup_Item->uL_GTPtunnelEndpoint.transportLayerAddress.buf,
+                        xnap_handover_req->e_rabs_tobesetup[i].eNB_addr.buffer,
+                        e_RABs_ToBeSetup_Item->uL_GTPtunnelEndpoint.transportLayerAddress.size);
+
+        INT32_TO_OCTET_STRING(xnap_handover_req->e_rabs_tobesetup[i].gtp_teid,&e_RABs_ToBeSetup_Item->uL_GTPtunnelEndpoint.gTP_TEID);
+      }
+      asn1cSeqAdd(&ie->value.choice.UE_ContextInformation.e_RABs_ToBeSetup_List.list, e_RABS_ToBeSetup_ItemIEs);
+    }
+  }
+
+  OCTET_STRING_fromBuf(&ie->value.choice.UE_ContextInformation.rRC_Context, (char*) xnap_handover_req->rrc_buffer, xnap_handover_req->rrc_buffer_size);
+
+  asn1cSeqAdd(&out->protocolIEs.list, ie);
+
+  * mandatory *
+  ie = (Xnap_HandoverRequest_IEs_t *)calloc(1, sizeof(Xnap_HandoverRequest_IEs_t));
+  ie->id = Xnap_ProtocolIE_ID_id_UE_HistoryInformation;
+  ie->criticality = Xnap_Criticality_ignore;
+  ie->value.present = Xnap_HandoverRequest_IEs__value_PR_UE_HistoryInformation;
+  //@TODO: consider to update this value
+  {
+   lastVisitedCell_Item = (Xnap_LastVisitedCell_Item_t *)calloc(1, sizeof(Xnap_LastVisitedCell_Item_t));
+   lastVisitedCell_Item->present = Xnap_LastVisitedCell_Item_PR_ng_RAN_Cell;
+   MCC_MNC_TO_PLMNID(instance_p->mcc, instance_p->mnc, instance_p->mnc_digit_length,
+                       &lastVisitedCell_Item->choice.e_UTRAN_Cell.global_Cell_ID.pLMN_Identity);
+   MACRO_ENB_ID_TO_CELL_IDENTITY(0, 0, &lastVisitedCell_Item->choice.e_UTRAN_Cell.global_Cell_ID.ng_RANcellIdentifier);
+   lastVisitedCell_Item->choice.ngRAN_Cell.cellType.cell_Size = XNAP_Cell_Size_small;
+   lastVisitedCell_Item->choice.ngRAN_Cell.time_UE_StayedInCell = 2;
+   asn1cSeqAdd(&ie->value.choice.UE_HistoryInformation.list, lastVisitedCell_Item);
+  }
+
+  asn1cSeqAdd(&out->protocolIEs.list, ie);
+
+  if (xnap_gNB_encode_pdu(&pdu, &buffer, &len) < 0) {
+    XNAP_ERROR("Failed to encode XN handover request\n");
+    abort();
+    return -1;
+  }
+
+  xnap_gNB_itti_send_sctp_data_req(instance_p->instance, xnap_gNB_data_p->assoc_id, buffer, len, 1);
+
+  return ret;
+} ***/
+
+/**
+static
+void xnap_gNB_handle_handover_req(instance_t instance,
+                                  xnap_handover_req_t *xnap_handover_req)
+{
+  XNAP_gNB_instance_t *instance_p;
+  XNAP_gNB_data_t     *target;
+  XNAP_id_manager     *id_manager;
+  int                 ue_id;
+
+  int target_pci = xnap_handover_req->target_physCellId;
+
+  instance_p = xnap_gNB_get_instance(instance);
+  DevAssert(instance_p != NULL);
+
+  target = xnap_is_gNB_pci_in_list(target_pci);
+  DevAssert(target != NULL);
+
+  * allocate xnap ID *
+  id_manager = &instance_p->id_manager;
+  ue_id = xnap_allocate_new_id(id_manager);
+  if (ue_id == -1) {
+    XNAP_ERROR("could not allocate a new XNAP UE ID\n");
+    * TODO: cancel handover: send (to be defined) message to RRC *
+    exit(1);
+  }
+  * id_source is ue_id, id_target is unknown yet *
+  xnap_set_ids(id_manager, ue_id, xnap_handover_req->rnti, ue_id, -1);
+  xnap_id_set_state(id_manager, ue_id, XNID_STATE_SOURCE_PREPARE);
+  xnap_set_reloc_prep_timer(id_manager, ue_id,
+                            xnap_timer_get_tti(&instance_p->timers));
+  xnap_id_set_target(id_manager, ue_id, target);
+
+  xnap_gNB_generate_xn_handover_request(instance_p, target, xnap_handover_req, ue_id);
+} */
+
+void rrc_gNB_process_HandoverPreparationInformation(int mod_id, xnap_handover_req_t *m) {
+  struct rrc_gNB_ue_context_s        *ue_context_target_p = NULL;
+  /* TODO: get proper UE rnti */
+  int rnti = taus() & 0xffff;
+  int i;
+  //global_rnti = rnti;
+  OCTET_STRING_t *ueCapabilityRAT_Container_nr=NULL; 
+  rrc_gNB_ue_context_t *const ue_context_pP;
+  uint8_t                     *buffer;
+  int                          *_size;
+
+  memset(buffer, 0, 8192);
+//  char *ho_buf = (char *) buffer;
+  int ho_size;
+//  ho_size = do_HandoverPreparation(ho_buf, 8192, ue_context_pP->ue_context.UE_Capability, ue_context_pP->ue_context.UE_Capability_size);
+  *_size = ho_size;
+
+  NR_HandoverPreparationInformation_t *ho = NULL;
+  NR_HandoverPreparationInformation_IEs_t *ho_info;
+ // NR_HandoverPreparationInformation_r8_IEs_t *ho_info;
+  asn_dec_rval_t                      dec_rval;
+  ue_context_target_p = rrc_gNB_get_ue_context(RC.rrc[mod_id], rnti);
+
+  if (ue_context_target_p != NULL) {
+    LOG_E(RRC, "\nError in obtaining free UE id in target gNB for handover \n");
+    return;
+  }
+
+  ue_context_target_p = rrc_gNB_allocate_new_UE_context(RC.rrc[mod_id]);
+
+  if (ue_context_target_p == NULL) {
+    LOG_E(RRC, "Cannot create new UE context\n");
+    return;
+  }
+  ue_context_target_p->ue_id_rnti = rnti;
+  ue_context_target_p->ue_context.rnti = rnti;
+  RB_INSERT(rrc_ue_tree_s, &RC.rrc[mod_id]->rrc_ue_head, ue_context_target_p);
+  LOG_D(RRC, "eNB %d: Created new UE context uid %u\n", mod_id, ue_context_target_p->local_uid);
+  ue_context_target_p->ue_context.handover_info = CALLOC(1, sizeof(*(ue_context_target_p->ue_context.handover_info)));
+  //ue_context_target_p->ue_context.StatusRrc = RRC_HO_EXECUTION;
+  //ue_context_target_p->ue_context.handover_info->state = HO_ACK;
+  ue_context_target_p->ue_context.handover_info->x2_id = m->x2_id;
+  ue_context_target_p->ue_context.handover_info->assoc_id = m->target_assoc_id;
+  memset (ue_context_target_p->ue_context.nh, 0, 32);
+  ue_context_target_p->ue_context.nh_ncc = -1;
+  memcpy (ue_context_target_p->ue_context.kgnb, m->kgnb, 32);
+  ue_context_target_p->ue_context.kgnb_ncc = m->kgnb_ncc;
+  ue_context_target_p->ue_context.security_capabilities.nRencryption_algorithms = m->security_capabilities.encryption_algorithms;
+  ue_context_target_p->ue_context.security_capabilities.nRintegrity_algorithms = m->security_capabilities.nRintegrity_algorithms;
+  dec_rval = uper_decode(NULL,
+                         &asn_DEF_NR_HandoverPreparationInformation,
+                         (void **)&ho,
+                         m->rrc_buffer,
+                         m->rrc_buffer_size, 0, 0);
+
+if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
+    xer_fprint(stdout, &asn_DEF_NR_HandoverPreparationInformation, ho);
+  }
+
+  if (dec_rval.code != RC_OK ||
+      ho->criticalExtensions.present != NR_HandoverPreparationInformation__criticalExtensions_PR_c1 ||
+      ho->criticalExtensions.choice.c1->present != NR_HandoverPreparationInformation__criticalExtensions__c1_PR_handoverPreparationInformation) {
+    LOG_E(RRC, "could not decode Handover Preparation\n");
+    abort();
+  }
+
+  ho_info = &ho->criticalExtensions.choice.c1->choice.handoverPreparationInformation;
+/*
+  if (ue_context_target_p->ue_context.UE_Capability_nr) {
+    LOG_I(RRC, "freeing old UE capabilities for UE %x\n", rnti);
+    ASN_STRUCT_FREE(asn_DEF_NR_UE_EUTRA_Capability,
+                    ue_context_target_p->ue_context.UE_Capability_nr);
+    ue_context_target_p->ue_context.UE_Capability_nr = 0;
+  }
+
+  dec_rval = uper_decode(NULL,
+                         &asn_DEF_NR_UE_CapabilityRAT_ContainerList,
+                         (void **)&ue_context_target_p->ue_context.UE_Capability_nr,
+                         ho_info->ue_RadioAccessCapabilityInfo.list.array[0]->ueCapabilityRAT_Container.buf,
+                         ho_info->ue_RadioAccessCapabilityInfo.list.array[0]->ueCapabilityRAT_Container.size, 0, 0);
+  ue_context_target_p->ue_context.UE_Capability_size = ho_info->ue_RadioAccessCapabilityInfo.list.array[0]->ueCapabilityRAT_Container.size; */
+
+  // decode and store capabilities
+  gNB_RRC_INST *rrc;
+  rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_allocate_new_ue_context(rrc);
+  gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
+
+    if (ueCapabilityRAT_Container_nr != NULL) {
+    dec_rval = uper_decode(NULL, &asn_DEF_NR_UE_NR_Capability, (void **)&UE->UE_Capability_nr, ueCapabilityRAT_Container_nr->buf, ueCapabilityRAT_Container_nr->size, 0, 0);
+
+    if ((dec_rval.code != RC_OK) && (dec_rval.consumed == 0)) {
+      LOG_E(RRC, "Failed to decode UE NR capabilities (%zu bytes) container size %lu\n", dec_rval.consumed,ueCapabilityRAT_Container_nr->size);
+      ASN_STRUCT_FREE(asn_DEF_NR_UE_NR_Capability, UE->UE_Capability_nr);
+      UE->UE_Capability_nr = 0;
+      AssertFatal(1==0,"exiting\n");
+    }
+  }
+
+
+  if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
+    xer_fprint(stdout, &asn_DEF_NR_UE_CapabilityRAT_ContainerList, ue_context_target_p->ue_context.UE_Capability_nr);
+  }
+
+   if ((dec_rval.code != RC_OK) && (dec_rval.consumed == 0)) {
+    LOG_E(RRC, "Failed to decode UE capabilities (%zu bytes)\n", dec_rval.consumed);
+    ASN_STRUCT_FREE(asn_DEF_NR_UE_CapabilityRAT_ContainerList,
+                    ue_context_target_p->ue_context.UE_Capability_nr);
+    ue_context_target_p->ue_context.UE_Capability_nr = 0;
+  }
+
+  ue_context_target_p->ue_context.nb_of_e_rabs = m->nb_e_rabs_tobesetup;
+//  ue_context_target_p->ue_context.setup_e_rabs = m->nb_e_rabs_tobesetup;
+  ue_context_target_p->ue_context.amf_ue_ngap_id = m->mme_ue_s1ap_id;
+  ue_context_target_p->ue_context.ue_guami.mcc = m->ue_guami.mcc;
+  ue_context_target_p->ue_context.ue_guami.mnc = m->ue_guami.mnc;
+  ue_context_target_p->ue_context.ue_guami.mnc_len = m->ue_guami.mnc_len;
+  ue_context_target_p->ue_context.ue_guami.amf_region_id = m->ue_guami.amf_region_id;
+  ue_context_target_p->ue_context.ue_guami.amf_set_id = m->ue_guami.amf_set_id;
+  LOG_I(RRC, "eNB %d: Update the E-RABS %u\n", mod_id, ue_context_target_p->ue_context.nb_of_e_rabs);
+
+  for (i = 0; i < ue_context_target_p->ue_context.nb_of_e_rabs; i++) {
+    ue_context_target_p->ue_context.e_rab[i].status = E_RAB_STATUS_NEW;
+    ue_context_target_p->ue_context.e_rab[i].param.e_rab_id = m->e_rabs_tobesetup[i].e_rab_id;
+    ue_context_target_p->ue_context.e_rab[i].param.sgw_addr = m->e_rabs_tobesetup[i].eNB_addr;
+    ue_context_target_p->ue_context.e_rab[i].param.gtp_teid= m->e_rabs_tobesetup[i].gtp_teid;
+    LOG_I(RRC, "eNB %d: Update the UE context after HO, e_rab_id %u gtp_teid %u\n", mod_id,
+          ue_context_target_p->ue_context.e_rab[i].param.e_rab_id,
+          ue_context_target_p->ue_context.e_rab[i].param.gtp_teid);
+  }
+
+  rrc_gNB_process_XNAP_TUNNEL_SETUP_REQ(mod_id, ue_context_target_p);
+  ue_context_target_p->ue_context.StatusRrc = RRC_HO_EXECUTION;
+//  ue_context_target_p->ue_context.handover_info->state = HO_ACK;
+}
+
 static void rrc_gNB_process_MeasurementReport(rrc_gNB_ue_context_t *ue_context, NR_MeasurementReport_t *measurementReport)
 {
   if (LOG_DEBUGFLAG(DEBUG_ASN1))
@@ -1364,13 +1701,331 @@ static void rrc_gNB_process_MeasurementReport(rrc_gNB_ue_context_t *ue_context, 
   ue_ctxt->measResults = NULL;
 
   const NR_MeasId_t id = measurementReport->criticalExtensions.choice.measurementReport->measResults.measId;
+    /*Imran*/
+  NR_MeasurementReport_IEs_t    *measurementReport_IEs = measurementReport->criticalExtensions.choice.measurementReport;
+  NR_MeasResults_t *ik_measResults = &measurementReport_IEs->measResults;
+
+  // gNB_RRC_UE_t *ue_ctxt = &ue_context->ue_context;
+
   AssertFatal(id, "unexpected MeasResult for MeasurementId %ld received\n", id);
   asn1cCallocOne(ue_ctxt->measResults, measurementReport->criticalExtensions.choice.measurementReport->measResults);
-  /* we "keep" the measurement report, so set to 0 */
+  bool trigger_ho = false;
+
+  switch (id) {
+    case NR_EventTriggerConfig__eventId_PR_eventA1:
+      LOG_I(NR_RRC, "Event A1 (Serving becomes better than threshold)\n");
+      break;
+
+    case NR_EventTriggerConfig__eventId_PR_eventA2:
+      LOG_I(NR_RRC, "Event A2 (Serving becomes worse than threshold)\n");
+      break;
+
+    case NR_EventTriggerConfig__eventId_PR_eventA3:
+
+      LOG_I(NR_RRC, "Event A3 (Neighbour becomes offset better than SpCell)\n");
+
+      /*Event A3*/
+      /*ServingCell*/
+     /*iterate over all the Cells*/
+      for (int res_mo_idx = 0 ; res_mo_idx < ik_measResults->measResultServingMOList.list.count; res_mo_idx++){
+
+        /*Primary Cells*/
+
+        NR_MeasResultServMO_t *measresultservmo_all = ik_measResults->measResultServingMOList.list.array[res_mo_idx];
+        NR_MeasQuantityResults_t *mqr_all = NULL;
+
+        if (measresultservmo_all->measResultServingCell.measResult.cellResults.resultsSSB_Cell){
+          mqr_all = measresultservmo_all->measResultServingCell.measResult.cellResults.resultsSSB_Cell;
+        }
+        else {
+          mqr_all = measresultservmo_all->measResultServingCell.measResult.cellResults.resultsCSI_RS_Cell;
+        }
+        AssertFatal(mqr_all, "No Serving Cell Measrements!\n");
+
+        const long active_rsrp = *mqr_all->rsrp;
+        const long active_rsrq = *mqr_all->rsrq;
+        LOG_D(RRC, "Serving Cell Measurements: RSRP: %ld dBm, RSRQ: %ld dB\n", active_rsrp, active_rsrq);
+
+        /*Best Neighbour Cell*/
+
+        NR_MeasQuantityResults_t *neighbour_mqr_all = NULL;
+
+        if (measresultservmo_all->measResultServingCell.measResult.cellResults.resultsSSB_Cell){
+          neighbour_mqr_all = measresultservmo_all->measResultBestNeighCell->measResult.cellResults.resultsSSB_Cell;
+        }
+        else {
+          neighbour_mqr_all = measresultservmo_all->measResultBestNeighCell->measResult.cellResults.resultsCSI_RS_Cell;
+        }
+        AssertFatal(neighbour_mqr_all, "No Serving Cell Measrements!\n");
+
+        const long neighbour_rsrp = *neighbour_mqr_all->rsrp;
+        const long neighbour_rsrq = *neighbour_mqr_all->rsrq;
+        LOG_D(RRC, "Best Neighbour Cell Measurements: RSRP: %ld dBm, RSRQ: %ld dB\n", neighbour_rsrp, neighbour_rsrq);
+
+        /*Offset for now considering 0*/
+
+        if (neighbour_rsrp > active_rsrp){
+          trigger_ho = true;
+
+        /*HO Initiation*/
+        }
+      }
+    case NR_EventTriggerConfig__eventId_PR_eventA4:
+      LOG_I(NR_RRC, "Event A4 (Neighbour becomes better than threshold)\n");
+      break;
+
+    case NR_EventTriggerConfig__eventId_PR_eventA5:
+      LOG_I(NR_RRC, "Event A5 (SpCell becomes worse than threshold1 and neighbour becomes better than threshold2)\n");
+      break;
+
+    case NR_EventTriggerConfig__eventId_PR_eventA6:
+      LOG_I(NR_RRC, "Event A6 (Neighbour becomes offset better than SCell)\n");
+      break;
+
+    default:
+      LOG_I(NR_RRC, "NR_EventTriggerConfig__eventId_PR_NOTHING or Other event report\n");
+      break;
+
+  }
+
+  if (trigger_ho == true) {
+    LOG_I(NR_RRC, "Handover is triggered\n");
+  }
+
+  NR_MeasResultServMO_t *measresultservmo = ik_measResults->measResultServingMOList.list.array[0]; //getting only first
+  NR_MeasResultNR_t *measresultnr = &measresultservmo->measResultServingCell;
+  NR_MeasQuantityResults_t *mqr = measresultnr->measResult.cellResults.resultsSSB_Cell;
+  int ncell_index=0;
+  uint32_t earfcn_dl;
+
+   if (mqr != NULL){
+    const long rrsrp = *mqr->rsrp - 156;
+    const float rrsrq = (float) (*mqr->rsrq - 87) / 2.0f;
+    const float rsinr = (float) (*mqr->sinr - 46) / 2.0f;
+    LOG_D(RRC, "RSRP %ld dBm RSRQ %.1f dB SINR %.1f dB\n", rrsrp, rrsrq, rsinr);
+  }
+
+  LOG_D(RRC, "NR MeasID %ld\n", id);
+
+ /* if XNAP is disabled, do nothing */
+ /** if (!RC.rrc[ENB_INSTANCE_TO_MODULE_ID(ctxt_pP->instance)]->configuration.enable_xnap)
+    return;
+
+  if (RC.rrc[ctxt_pP->module_id]->xnap_ho_net_control)
+    return;
+
+  LOG_D(RRC, "A3 event is triggered...\n"); PRV - Review **/
+/**  if (ue_context_pP->ue_context.StatusRrc != RRC_HO_EXECUTION) {
+    MessageDef      *msg;
+    LOG_I(RRC, "Send HO preparation message at frame %d and subframe %d \n", ctxt_pP->frame, ctxt_pP->subframe); **/
+    /* HO info struct may not be needed anymore */
+    //ue_context_pP->ue_context.handover_info = CALLOC(1, sizeof(*(ue_context_pP->ue_context.handover_info)));
+    //ue_context_pP->ue_context.StatusRrc = RRC_HO_EXECUTION;
+    struct rrc_gNB_ue_context_s         *const ue_context_pP;
+
+    ue_context_pP->ue_context.handover_info->state = HO_REQUEST;
+    /* HO Preparation message */
+//    msg = itti_alloc_new_message(TASK_RRC_GNB, 0, XNAP_HANDOVER_REQ);
+    msg = itti_alloc_new_message(TASK_XNAP, 0, XNAP_HANDOVER_REQ);
+    xnap_handover_req_t *xnap_msg = &XNAP_HANDOVER_REQ(msg); 
+    rrc_gNB_process_HandoverPreparationInformation(
+      ue_context_pP,
+      XNAP_HANDOVER_REQ(msg).rrc_buffer,
+      &XNAP_HANDOVER_REQ(msg).rrc_buffer_size);
+    XNAP_HANDOVER_REQ(msg).rnti = ctxt_pP->rntiMaybeUEid;
+//    XNAP_HANDOVER_REQ(msg).target_physCellId = measResultsnr->measResultNeighCells->choice.
+   //     measResultListEUTRA.list.array[ncell_index]->physCellId;  /*PRV*/
+    XNAP_HANDOVER_REQ(msg).ue_guami.mcc = ue_context_pP->ue_context.ue_guami.mcc;
+    XNAP_HANDOVER_REQ(msg).ue_guami.mnc = ue_context_pP->ue_context.ue_guami.mnc;
+    XNAP_HANDOVER_REQ(msg).ue_guami.mnc_len = ue_context_pP->ue_context.ue_guami.mnc_len;
+    XNAP_HANDOVER_REQ(msg).ue_guami.amf_region_id = ue_context_pP->ue_context.ue_guami.amf_region_id;
+    XNAP_HANDOVER_REQ(msg).ue_guami.amf_set_id = ue_context_pP->ue_context.ue_guami.amf_set_id;
+    // Don't know how to get this ID?
+    XNAP_HANDOVER_REQ(msg).mme_ue_s1ap_id = ue_context_pP->ue_context.mme_ue_s1ap_id;
+    XNAP_HANDOVER_REQ(msg).security_capabilities = ue_context_pP->ue_context.security_capabilities;
+    // compute keNB*
+    earfcn_dl = (uint32_t)to_earfcn_DL(RC.rrc[ctxt_pP->module_id]->carrier[0].eutra_band, RC.rrc[ctxt_pP->module_id]->carrier[0].dl_CarrierFreq,
+                                       RC.rrc[ctxt_pP->module_id]->carrier[0].N_RB_DL);
+  //  derive_kgNB_star(ue_context_pP->ue_context.kgnb, XNAP_HANDOVER_REQ(msg).target_physCellId, earfcn_dl, true, KgNB_star);  /*PRV */
+ //   memcpy(XNAP_HANDOVER_REQ(msg).kgnb, KgNB_star, 32);
+    XNAP_HANDOVER_REQ(msg).kgnb_ncc = ue_context_pP->ue_context.kgnb_ncc;
+    //XNAP_HANDOVER_REQ(msg).ue_ambr=ue_context_pP->ue_context.ue_ambr;
+    XNAP_HANDOVER_REQ(msg).nb_e_rabs_tobesetup = ue_context_pP->ue_context.setup_e_rabs;
+
+    for (int i=0; i<ue_context_pP->ue_context.setup_e_rabs; i++) {
+      XNAP_HANDOVER_REQ(msg).e_rabs_tobesetup[i].e_rab_id = ue_context_pP->ue_context.e_rab[i].param.e_rab_id;
+      XNAP_HANDOVER_REQ(msg).e_rabs_tobesetup[i].eNB_addr = ue_context_pP->ue_context.e_rab[i].param.sgw_addr;
+      XNAP_HANDOVER_REQ(msg).e_rabs_tobesetup[i].gtp_teid = ue_context_pP->ue_context.e_rab[i].param.gtp_teid;
+      XNAP_HANDOVER_REQ(msg).e_rab_param[i].qos.qci = ue_context_pP->ue_context.e_rab[i].param.qos.qci;
+      XNAP_HANDOVER_REQ(msg).e_rab_param[i].qos.allocation_retention_priority.priority_level = ue_context_pP->ue_context.e_rab[i].param.qos.allocation_retention_priority.priority_level;
+      XNAP_HANDOVER_REQ(msg).e_rab_param[i].qos.allocation_retention_priority.pre_emp_capability = ue_context_pP->ue_context.e_rab[i].param.qos.allocation_retention_priority.pre_emp_capability;
+      XNAP_HANDOVER_REQ(msg).e_rab_param[i].qos.allocation_retention_priority.pre_emp_vulnerability = ue_context_pP->ue_context.e_rab[i].param.qos.allocation_retention_priority.pre_emp_vulnerability;
+    }
+    /* TODO: don't do that, XNAP should find the target by itself */
+    //XNAP_HANDOVER_REQ(msg).target_mod_id = 0;
+    {  LOG_I(RRC,
+          "[eNB %d] Frame %d: potential handover preparation: store the information in an intermediate structure in case of failure\n",
+          ctxt_pP->module_id, ctxt_pP->frame);
+    itti_send_msg_to_task(TASK_XNAP, ENB_MODULE_ID_TO_INSTANCE(ctxt_pP->module_id), msg);
+  } else {
+    LOG_D(RRC, "[eNB %d] Frame %d: Ignoring MeasReport from UE %lx as Handover is in progress... \n", ctxt_pP->module_id, ctxt_pP->frame, ctxt_pP->rntiMaybeUEid);
+  }
+
+  /*ALL NeighbourCell*/
+  // NR_MeasResultNR_t *neighbour_measresult = ik_measResults->measResultNeighCells->choice.measResultListNR.list.array[0] ;
+
+  NR_MeasResultNR_t *neighbour_measresult = ik_measResults->measResultNeighCells->choice.measResultListNR->list.array[0] ;
+
+  // NR_MeasQuantityResults_t *neighbour = neighbour_measresult->measResult.cellResults.resultsSSB_Cell;
+
+
+  // if (measurementReport->criticalExtensions.choice.measurementReport->measResults->measResultNeighCells->choice.measResultListNR.list.count > 0) {
+
+  //   neighbour_cells_count = measurementReport->criticalExtensions.choice.measurementReport->measResults->measResultNeighCells->choice.measResultListNR.list.count
+  //   LOG_D(RRC, "Neighbour Cells Count %d\n", neighbour_cells_count );
+
+  // }
+
+  // if (neighbour != NULL){
+  //   const long rrsrp = *neighbour->rsrp - 156;
+  //   const float rrsrq = (float) (*neighbour->rsrq - 87) / 2.0f;
+  //   const float rsinr = (float) (*neighbour->sinr - 46) / 2.0f;
+  //   LOG_D(RRC, "PrimaryCell Results: %d NeighbouringCell Results: %d", rrsrp, rrsrq, rsinr);
+  // }
+
+
+
+  /*Imran*/
+
+//}
+
+/*  AssertFatal(id, "unexpected MeasResult for MeasurementId %ld received\n", id);
+  asn1cCallocOne(ue_ctxt->measResults, measurementReport->criticalExtensions.choice.measurementReport->measResults);
+  ** we "keep" the measurement report, so set to 0 **
   free(measurementReport->criticalExtensions.choice.measurementReport);
   measurementReport->criticalExtensions.choice.measurementReport = NULL;
+} */
+
+/***
+void rrc_gNB_process_HandoverPreparationInformation(int mod_id, xnap_handover_req_t *m) {
+  struct rrc_gNB_ue_context_s        *ue_context_target_p = NULL;
+  * TODO: get proper UE rnti *
+  int rnti = taus() & 0xffff;
+  int i;
+  //global_rnti = rnti;
+  //
+  rrc_gNB_ue_context_t *const ue_context_pP;
+  uint8_t                     *buffer;
+  int                          *_size;
+
+  memset(buffer, 0, 8192);
+  char *ho_buf = (char *) buffer;
+  int ho_size;
+//  ho_size = do_HandoverPreparation(ho_buf, 8192, ue_context_pP->ue_context.UE_Capability, ue_context_pP->ue_context.UE_Capability_size);
+  *_size = ho_size;
+
+  NR_HandoverPreparationInformation_t *ho = NULL;
+  NR_HandoverPreparationInformation_r8_IEs_t *ho_info;
+  asn_dec_rval_t                      dec_rval;
+  ue_context_target_p = rrc_gNB_get_ue_context(RC.rrc[mod_id], rnti);
+
+  if (ue_context_target_p != NULL) {
+    LOG_E(RRC, "\nError in obtaining free UE id in target gNB for handover \n");
+    return;
+  }
+
+  ue_context_target_p = rrc_gNB_allocate_new_UE_context(RC.rrc[mod_id]);
+
+  if (ue_context_target_p == NULL) {
+    LOG_E(RRC, "Cannot create new UE context\n");
+    return;
+  }
+
+  ue_context_target_p->ue_id_rnti = rnti;
+  ue_context_target_p->ue_context.rnti = rnti;
+  RB_INSERT(rrc_ue_tree_s, &RC.rrc[mod_id]->rrc_ue_head, ue_context_target_p);
+  LOG_D(RRC, "eNB %d: Created new UE context uid %u\n", mod_id, ue_context_target_p->local_uid);
+  ue_context_target_p->ue_context.handover_info = CALLOC(1, sizeof(*(ue_context_target_p->ue_context.handover_info)));
+  //ue_context_target_p->ue_context.StatusRrc = RRC_HO_EXECUTION;
+  //ue_context_target_p->ue_context.handover_info->state = HO_ACK;
+  ue_context_target_p->ue_context.handover_info->x2_id = m->x2_id;
+  ue_context_target_p->ue_context.handover_info->assoc_id = m->target_assoc_id;
+  memset (ue_context_target_p->ue_context.nh, 0, 32);
+  ue_context_target_p->ue_context.nh_ncc = -1;
+  memcpy (ue_context_target_p->ue_context.kenb, m->kenb, 32);
+  ue_context_target_p->ue_context.kenb_ncc = m->kenb_ncc;
+  ue_context_target_p->ue_context.security_capabilities.encryption_algorithms = m->security_capabilities.encryption_algorithms;
+  ue_context_target_p->ue_context.security_capabilities.integrity_algorithms = m->security_capabilities.integrity_algorithms;
+  dec_rval = uper_decode(NULL,
+                         &asn_DEF_NR_HandoverPreparationInformation,
+                         (void **)&ho,
+                         m->rrc_buffer,
+                         m->rrc_buffer_size, 0, 0);
+
+if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
+    xer_fprint(stdout, &asn_DEF_NR_HandoverPreparationInformation, ho);
+  }
+
+  if (dec_rval.code != RC_OK ||
+      ho->criticalExtensions.present != NR_HandoverPreparationInformation__criticalExtensions_PR_c1 ||
+      ho->criticalExtensions.choice.c1.present != NR_HandoverPreparationInformation__criticalExtensions__c1_PR_handoverPreparationInformation_r8) {
+    LOG_E(RRC, "could not decode Handover Preparation\n");
+    abort();
+  }
+
+  ho_info = &ho->criticalExtensions.choice.c1.choice.handoverPreparationInformation_r8;
+
+  if (ue_context_target_p->ue_context.UE_Capability) {
+    LOG_I(RRC, "freeing old UE capabilities for UE %x\n", rnti);
+    ASN_STRUCT_FREE(asn_DEF_LTE_UE_EUTRA_Capability,
+                    ue_context_target_p->ue_context.UE_Capability);
+    ue_context_target_p->ue_context.UE_Capability = 0;
+  }
+
+  dec_rval = uper_decode(NULL,
+                         &asn_DEF_LTE_UE_EUTRA_Capability,
+                         (void **)&ue_context_target_p->ue_context.UE_Capability,
+                         ho_info->ue_RadioAccessCapabilityInfo.list.array[0]->ueCapabilityRAT_Container.buf,
+                         ho_info->ue_RadioAccessCapabilityInfo.list.array[0]->ueCapabilityRAT_Container.size, 0, 0);
+  ue_context_target_p->ue_context.UE_Capability_size = ho_info->ue_RadioAccessCapabilityInfo.list.array[0]->ueCapabilityRAT_Container.size;
+
+  if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
+    xer_fprint(stdout, &asn_DEF_LTE_UE_EUTRA_Capability, ue_context_target_p->ue_context.UE_Capability);
+  }
+
+  if ((dec_rval.code != RC_OK) && (dec_rval.consumed == 0)) {
+    LOG_E(RRC, "Failed to decode UE capabilities (%zu bytes)\n", dec_rval.consumed);
+    ASN_STRUCT_FREE(asn_DEF_LTE_UE_EUTRA_Capability,
+                    ue_context_target_p->ue_context.UE_Capability);
+    ue_context_target_p->ue_context.UE_Capability = 0;
+  }
+
+  ue_context_target_p->ue_context.nb_of_e_rabs = m->nb_e_rabs_tobesetup;
+  ue_context_target_p->ue_context.setup_e_rabs = m->nb_e_rabs_tobesetup;
+  ue_context_target_p->ue_context.mme_ue_s1ap_id = m->mme_ue_s1ap_id;
+  ue_context_target_p->ue_context.ue_gummei.mcc = m->ue_gummei.mcc;
+  ue_context_target_p->ue_context.ue_gummei.mnc = m->ue_gummei.mnc;
+  ue_context_target_p->ue_context.ue_gummei.mnc_len = m->ue_gummei.mnc_len;
+  ue_context_target_p->ue_context.ue_gummei.mme_code = m->ue_gummei.mme_code;
+  ue_context_target_p->ue_context.ue_gummei.mme_group_id = m->ue_gummei.mme_group_id;
+  LOG_I(RRC, "eNB %d: Update the E-RABS %u\n", mod_id, ue_context_target_p->ue_context.nb_of_e_rabs);
+
+  for (i = 0; i < ue_context_target_p->ue_context.nb_of_e_rabs; i++) {
+    ue_context_target_p->ue_context.e_rab[i].status = E_RAB_STATUS_NEW;
+    ue_context_target_p->ue_context.e_rab[i].param.e_rab_id = m->e_rabs_tobesetup[i].e_rab_id;
+    ue_context_target_p->ue_context.e_rab[i].param.sgw_addr = m->e_rabs_tobesetup[i].eNB_addr;
+    ue_context_target_p->ue_context.e_rab[i].param.gtp_teid= m->e_rabs_tobesetup[i].gtp_teid;
+    LOG_I(RRC, "eNB %d: Update the UE context after HO, e_rab_id %u gtp_teid %u\n", mod_id,
+          ue_context_target_p->ue_context.e_rab[i].param.e_rab_id,
+          ue_context_target_p->ue_context.e_rab[i].param.gtp_teid);
+  }
+
+  rrc_gNB_process_XNAP_TUNNEL_SETUP_REQ(mod_id, ue_context_target_p);
+  ue_context_target_p->ue_context.StatusRrc = RRC_HO_EXECUTION;
+  ue_context_target_p->ue_context.handover_info->state = HO_ACK;
 }
 
+**/
 static int handle_rrcReestablishmentComplete(const protocol_ctxt_t *const ctxt_pP,
                                              rrc_gNB_ue_context_t *ue_context_p,
                                              const NR_RRCReestablishmentComplete_t *reestablishment_complete)

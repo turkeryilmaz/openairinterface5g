@@ -20,8 +20,16 @@
 
 #include "intertask_interface.h"
 #include "xnap_common.h"
+<<<<<<< HEAD
 #include "xnap_gNB_task.h"
 #include "xnap_gNB_generate_messages.h"
+=======
+#include "XNAP_ProtocolIE-Field.h"
+#include "xnap_gNB_task.h"
+#include "xnap_gNB_generate_messages.h"
+#include "xnap_gNB_encoder.h"
+#include "xnap_gNB_decoder.h"
+>>>>>>> 91da4e350b (codechanges-squashed- jan18)
 #include "XNAP_GlobalgNB-ID.h"
 #include "XNAP_ServedCells-NR-Item.h"
 #include "XNAP_ServedCellInformation-NR.h"
@@ -32,7 +40,13 @@
 #include "conversions.h"
 #include "XNAP_BroadcastPLMNinTAISupport-Item.h"
 #include "XNAP_TAISupport-Item.h"
+<<<<<<< HEAD
 #include "XNAP_GlobalAMF-Region-Information.h"
+=======
+#include "XNAP_TargetCellList-Item.h"
+#include "XNAP_GlobalAMF-Region-Information.h"
+#include "XNAP_QoSFlowsToBeSetup-Item.h"
+>>>>>>> 91da4e350b (codechanges-squashed- jan18)
 #include "XNAP_NRModeInfoFDD.h"
 #include "XNAP_NRModeInfoTDD.h"
 
@@ -97,6 +111,10 @@ int xnap_gNB_generate_xn_setup_request(sctp_assoc_t assoc_id, xnap_setup_req_t *
   ie->criticality = XNAP_Criticality_reject;
   ie->value.present = XNAP_XnSetupRequest_IEs__value_PR_TAISupport_List;
 
+<<<<<<< HEAD
+=======
+  //{
+>>>>>>> 91da4e350b (codechanges-squashed- jan18)
   // for (int i=0;i<1;i++)
   {
     TAISupport_ItemIEs = (XNAP_TAISupport_Item_t *)calloc(1, sizeof(XNAP_TAISupport_Item_t));
@@ -111,6 +129,7 @@ int xnap_gNB_generate_xn_setup_request(sctp_assoc_t assoc_id, xnap_setup_req_t *
                           req->info.plmn.mnc_digit_length,
                           &e_BroadcastPLMNinTAISupport_ItemIE->plmn_id);
 
+<<<<<<< HEAD
         for (int k = 0; k < 1; k++) {
           e_S_NSSAI_ItemIE = (XNAP_S_NSSAI_t *)calloc(1, sizeof(XNAP_S_NSSAI_t));
           INT8_TO_OCTET_STRING(req->snssai[k].sst, &e_S_NSSAI_ItemIE->sst);
@@ -119,6 +138,17 @@ int xnap_gNB_generate_xn_setup_request(sctp_assoc_t assoc_id, xnap_setup_req_t *
             INT24_TO_OCTET_STRING(req->snssai[k].sd, e_S_NSSAI_ItemIE->sd);
           }
           asn1cSeqAdd(&e_BroadcastPLMNinTAISupport_ItemIE->tAISliceSupport_List.list, e_S_NSSAI_ItemIE);
+=======
+        {
+          for (int k = 0; k < 1; k++) {
+            e_S_NSSAI_ItemIE = (XNAP_S_NSSAI_t *)calloc(1, sizeof(XNAP_S_NSSAI_t));
+            e_S_NSSAI_ItemIE->sst.size = 1; // OCTET STRING(SIZE(1))
+            e_S_NSSAI_ItemIE->sst.buf = calloc(e_S_NSSAI_ItemIE->sst.size, sizeof(OCTET_STRING_t));
+            e_S_NSSAI_ItemIE->sst.buf[0] = 1;
+
+            asn1cSeqAdd(&e_BroadcastPLMNinTAISupport_ItemIE->tAISliceSupport_List.list, e_S_NSSAI_ItemIE);
+          }
+>>>>>>> 91da4e350b (codechanges-squashed- jan18)
         }
         asn1cSeqAdd(&TAISupport_ItemIEs->broadcastPLMNs.list, e_BroadcastPLMNinTAISupport_ItemIE);
       }
@@ -160,7 +190,11 @@ int xnap_gNB_generate_xn_setup_request(sctp_assoc_t assoc_id, xnap_setup_req_t *
         servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd =
             (XNAP_NRModeInfoFDD_t *)calloc(1, sizeof(XNAP_NRModeInfoFDD_t));
         servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRFrequencyInfo.nrARFCN = fdd->ul_freqinfo.arfcn;
+<<<<<<< HEAD
         for (int j = 0; j < 1; j++) { // fdd ul number of available freq_Bands = 1
+=======
+        for (int j = 0; j < 1; j++) { //fdd ul number of available freq_Bands = 1
+>>>>>>> 91da4e350b (codechanges-squashed- jan18)
           nrfreqbanditemul = (XNAP_NRFrequencyBandItem_t *)calloc(1, sizeof(XNAP_NRFrequencyBandItem_t));
           nrfreqbanditemul->nr_frequency_band = fdd->ul_freqinfo.band;
           asn1cSeqAdd(&servedCellMember->served_cell_info_NR.nrModeInfo.choice.fdd->ulNRFrequencyInfo.frequencyBand_List.list,
@@ -280,6 +314,7 @@ int xnap_gNB_generate_xn_setup_request(sctp_assoc_t assoc_id, xnap_setup_req_t *
             break;
         }
       } else if (req->info.mode == XNAP_MODE_TDD) { // TDD
+<<<<<<< HEAD
         const xnap_tdd_info_t *tdd = &req->info.tdd;
         servedCellMember->served_cell_info_NR.nrModeInfo.present = XNAP_NRModeInfo_PR_tdd;
         servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd =
@@ -288,6 +323,16 @@ int xnap_gNB_generate_xn_setup_request(sctp_assoc_t assoc_id, xnap_setup_req_t *
         for (int j = 0; j < 1; j++) { // number of available bands = j = 1
           nrfreqbanditem = (XNAP_NRFrequencyBandItem_t *)calloc(1, sizeof(XNAP_NRFrequencyBandItem_t));
           nrfreqbanditem->nr_frequency_band = tdd->freqinfo.band;
+=======
+	const xnap_tdd_info_t *tdd = &req->info.tdd;
+        servedCellMember->served_cell_info_NR.nrModeInfo.present = XNAP_NRModeInfo_PR_tdd;
+        servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd =
+            (XNAP_NRModeInfoTDD_t *)calloc(1, sizeof(XNAP_NRModeInfoTDD_t));
+        servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd->nrFrequencyInfo.nrARFCN = tdd->freqinfo.arfcn; 
+        for (int j = 0; j < 1; j++) { //number of available bands = j = 1
+          nrfreqbanditem = (XNAP_NRFrequencyBandItem_t *)calloc(1, sizeof(XNAP_NRFrequencyBandItem_t));
+          nrfreqbanditem->nr_frequency_band = tdd->freqinfo.band; 
+>>>>>>> 91da4e350b (codechanges-squashed- jan18)
           asn1cSeqAdd(&servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd->nrFrequencyInfo.frequencyBand_List.list,
                       nrfreqbanditem);
         }
@@ -308,6 +353,10 @@ int xnap_gNB_generate_xn_setup_request(sctp_assoc_t assoc_id, xnap_setup_req_t *
             servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd->nrTransmissonBandwidth.nRSCS = XNAP_NRSCS_scs120;
             break;
         }
+<<<<<<< HEAD
+=======
+
+>>>>>>> 91da4e350b (codechanges-squashed- jan18)
         switch (tdd->tbw.nrb) {
           case 11:
             servedCellMember->served_cell_info_NR.nrModeInfo.choice.tdd->nrTransmissonBandwidth.nRNRB = XNAP_NRNRB_nrb11;
@@ -368,7 +417,11 @@ int xnap_gNB_generate_xn_setup_request(sctp_assoc_t assoc_id, xnap_setup_req_t *
     e_GlobalAMF_Region_Information_ItemIEs->amf_region_id.size = 1;
     e_GlobalAMF_Region_Information_ItemIEs->amf_region_id.buf =
         calloc(1, e_GlobalAMF_Region_Information_ItemIEs->amf_region_id.size);
+<<<<<<< HEAD
     e_GlobalAMF_Region_Information_ItemIEs->amf_region_id.buf[0] = 80; // TODO: Hardcoded for now
+=======
+    e_GlobalAMF_Region_Information_ItemIEs->amf_region_id.buf[0] = 80;
+>>>>>>> 91da4e350b (codechanges-squashed- jan18)
     e_GlobalAMF_Region_Information_ItemIEs->amf_region_id.bits_unused = 0;
 
     asn1cSeqAdd(&ie->value.choice.AMF_Region_Information.list, e_GlobalAMF_Region_Information_ItemIEs);
@@ -728,7 +781,7 @@ int xnap_gNB_generate_xn_setup_response(sctp_assoc_t assoc_id, xnap_setup_resp_t
           break;
         default:
           AssertFatal(0, "Failed: Check value for N_RB_DL/N_RB_UL"); // TODO: Add all values or function to convert.
-          break;
+  break;
       }
     }
     // Setting MTC to 0 now. Will be handled later.
@@ -746,3 +799,145 @@ int xnap_gNB_generate_xn_setup_response(sctp_assoc_t assoc_id, xnap_setup_resp_t
 
   return ret;
 }
+
+int xnap_gNB_generate_xn_handover_request (instance_t *instance_p,
+                                           xnap_handover_req_t *xnap_handover_req, int ue_id)
+{
+
+  XNAP_XnAP_PDU_t                     pdu;
+  XNAP_HandoverRequest_t              *out;
+  XNAP_HandoverRequest_IEs_t          *ie;
+
+  uint8_t  *buffer;
+  uint32_t  len;
+  int       ret = 0;
+
+  DevAssert(instance_p != NULL); //not pointer
+ // DevAssert(xnap_gNB_data_p != NULL);// not defined
+
+  /* Prepare the XnAP handover message to encode */
+  memset(&pdu, 0, sizeof(pdu));
+  pdu.present = XNAP_XnAP_PDU_PR_initiatingMessage;
+  pdu.choice.initiatingMessage->procedureCode = XNAP_ProcedureCode_id_handoverPreparation;
+  pdu.choice.initiatingMessage->criticality = XNAP_Criticality_reject;
+  pdu.choice.initiatingMessage->value.present = XNAP_InitiatingMessage__value_PR_HandoverRequest;
+  out = &pdu.choice.initiatingMessage->value.choice.HandoverRequest;
+
+  /* mandatory */
+  ie = (XNAP_HandoverRequest_IEs_t *)calloc(1, sizeof(XNAP_HandoverRequest_IEs_t));
+  ie->id = XNAP_ProtocolIE_ID_id_sourceNG_RANnodeUEXnAPID;
+  ie->criticality = XNAP_Criticality_reject;
+  ie->value.present = XNAP_HandoverRequest_IEs__value_PR_NG_RANnodeUEXnAPID;
+  ie->value.choice.UE_XnAP_ID = xnap_id_get_id_source(&instance_p->id_manager, ue_id);
+  asn1cSeqAdd(&out->protocolIEs.list, ie);
+
+  /* mandatory */
+  ie = (XNAP_HandoverRequest_IEs_t *)calloc(1, sizeof(XNAP_HandoverRequest_IEs_t));
+  ie->id = XNAP_ProtocolIE_ID_id_Cause;
+  ie->criticality = XNAP_Criticality_ignore;
+  ie->value.present = XNAP_HandoverRequest_IEs__value_PR_Cause;
+  ie->value.choice.Cause.present = XNAP_Cause_PR_radioNetwork;
+  ie->value.choice.Cause.choice.radioNetwork = 1; //Xnap_CauseRadioNetwork_handover_desirable_for_radio_reasons;
+  asn1cSeqAdd(&out->protocolIEs.list, ie);
+
+  /* mandatory */
+  ie = (XNAP_HandoverRequest_IEs_t *)calloc(1, sizeof(XNAP_HandoverRequest_IEs_t));
+  ie->id = XNAP_ProtocolIE_ID_id_TargetCellCGI;
+  ie->criticality = XNAP_Criticality_reject;
+  ie->value.present = XNAP_HandoverRequest_IEs__value_PR_Target_CGI;
+  ie->value.choice.XNAP_Target_CGI_u.present = XNAP_Cause_PR_Target_CGI;
+  ie->value.choice.targetCellID = (XNAP_TargetCellList_Item_t *)calloc(1, sizeof(XNAP_TargetCellList_Item_t));
+  MCC_MNC_TO_PLMNID(xnap_handover_req->info.plmn.mcc,
+                    xnap_handover_req->info.plmn.mnc,
+                    xnap_handover_req->info.plmn.mnc_digit_length,
+                    xnap_handover_req->info.plmn.plmn_id);
+  asn1cSeqAdd(&out->protocolIEs.list, ie);
+
+  /* mandatory */
+  ie = (XNAP_HandoverRequest_IEs_t *)calloc(1, sizeof(XNAP_HandoverRequest_IEs_t));
+  ie->id = Xnap_ProtocolIE_ID_id_GUAMI;
+  ie->criticality = XNAP_Criticality_reject;
+  ie->value.present = Xnap_HandoverRequest_IEs__value_PR_GUAMI;
+  ie->value.choice.GUAMI.present = XNAP_Cause_PR_GUAMI;
+  ie->value.choice.Guami = (XNAP_GUAMI_t *)calloc(1, sizeof(XNAP_GUAMI_t));
+  MCC_MNC_TO_PLMNID(req->info.plmn.mcc,
+                    req->info.plmn.mnc,
+                    req->info.plmn.mnc_digit_length,
+                    &ie->value.choice.Guami.choice.pLMN_Identity);
+  ie->value.choice.Guami.choice.amf_region_id = 1;
+  ie->value.choice.Guami.choice.amf_set_id = 1;
+  ie->value.choice.Guami.choice.amf_pointer = 1;
+  asn1cSeqAdd(&out->protocolIEs.list, ie);
+
+  /* mandatory */
+  ie = (XNAP_HandoverRequest_IEs_t *)calloc(1, sizeof(XNAP_HandoverRequest_IEs_t));
+  ie->id = Xnap_ProtocolIE_ID_id_UE_ContextInformation;
+  ie->criticality = XNAP_Criticality_reject;
+  ie->value.present = Xnap_ProtocolIE_ID_id_UEContextInfoHORequest;
+  //@TODO: consider to update this value
+  ie->value.choice.UE_ContextInformation.amf_UE_NGAP_ID = xnap_handover_req->amf_ue_ngap_id;
+
+  /* mandatory */
+  ie = (Xnap_CPTransportLayerInformation_t *)calloc(4, sizeof(XNAP_HandoverRequest_IEs_t));
+  cptlinfo->present = Xnap_CPTransportLayerInformation_PR_endpointIPAddress;
+  cptlinfo->choice.endpointIPAddress.size = 4 ; //endian ness has to be verified here
+  cptlinfo->value.choice.cp_TNL_info_source = xnap_handover_req->cp_TNL_info_source;
+
+  KGNB_STAR_TO_BIT_STRING(xnap_handover_req->kgnb,&ie->value.choice.UE_ContextInformation.aS_SecurityInformation.key_gNB_star);
+
+  if (xnap_handover_req->kgnb_ncc >=0) { // Check this condition
+    ie->value.choice.UE_ContextInformation.aS_SecurityInformation.nextHopChainingCount = xnap_handover_req->kgnb_ncc;
+  }
+  else {
+    ie->value.choice.UE_ContextInformation.aS_SecurityInformation.nextHopChainingCount = 1;
+  }
+
+   /* id-NRUESecurityCapabilities */
+  XNAP_FIND_PROTOCOLIE_BY_ID(Xnap_HandoverRequest_IEs_t, ie, container,
+                             XNAP_ProtocolIE_ID_id_NRUESecurityCapabilities, false);
+  if (ie != NULL) {
+    xnap_handover_req.nr_security_capabilities.encryption_algorithms =
+      BIT_STRING_to_uint16(&ie->value.choice.NRUESecurityCapabilities.nRencryptionAlgorithms);
+    xnap_handover_req.nr_security_capabilities.integrity_algorithms =
+      BIT_STRING_to_uint16(&ie->value.choice.NRUESecurityCapabilities.nRintegrityProtectionAlgorithms);
+  } else {
+    xnap_handover_req.nr_security_capabilities.encryption_algorithms = 0;
+    xnap_handover_req.nr_security_capabilities.integrity_algorithms = 0;
+  }
+
+  }
+
+  OCTET_STRING_fromBuf(&ie->value.choice.UE_ContextInformation.rRC_Context, (char*) xnap_handover_req->rrc_buffer, xnap_handover_req->rrc_buffer_size);
+
+  asn1cSeqAdd(&out->protocolIEs.list, ie);
+
+  /* mandatory */
+  ie = (XNAP_HandoverRequest_IEs_t *)calloc(1, sizeof(XNAP_HandoverRequest_IEs_t));
+  ie->id = Xnap_ProtocolIE_ID_id_UE_HistoryInformation;
+  ie->criticality = XNAP_Criticality_ignore;
+  ie->value.present = Xnap_HandoverRequest_IEs__value_PR_UE_HistoryInformation;
+  //@TODO: consider to update this value
+  {
+   lastVisitedCell_Item = (Xnap_LastVisitedCell_Item_t *)calloc(1, sizeof(Xnap_LastVisitedCell_Item_t));
+   lastVisitedCell_Item->present = Xnap_LastVisitedCell_Item_PR_ng_RAN_Cell;
+   MCC_MNC_TO_PLMNID(instance_p->mcc, instance_p->mnc, instance_p->mnc_digit_length,
+                       &lastVisitedCell_Item->choice.e_UTRAN_Cell.global_Cell_ID.pLMN_Identity);
+   MACRO_ENB_ID_TO_CELL_IDENTITY(0, 0, &lastVisitedCell_Item->choice.e_UTRAN_Cell.global_Cell_ID.ng_RANcellIdentifier);
+  lastVisitedCell_Item->choice.ngRAN_Cell.cellType.cell_Size = XNAP_Cell_Size_small;
+   lastVisitedCell_Item->choice.ngRAN_Cell.time_UE_StayedInCell = 2;
+   asn1cSeqAdd(&ie->value.choice.UE_HistoryInformation.list, lastVisitedCell_Item);
+  }
+
+  asn1cSeqAdd(&out->protocolIEs.list, ie);
+
+  if (xnap_gNB_encode_pdu(&pdu, &buffer, &len) < 0) {
+    XNAP_ERROR("Failed to encode XN handover request\n");
+    abort();
+    return -1;
+  }
+
+  xnap_gNB_itti_send_sctp_data_req(instance_p->instance, xnap_gNB_data_p->assoc_id, buffer, len, 1);
+
+  return ret;
+}
+

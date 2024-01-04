@@ -19,43 +19,16 @@
  *      contact@openairinterface.org
  */
 
-/*! \file xnap_common.c
- * \brief xnap encoder,decoder dunctions for gNB
- * \author Sreeshma Shiv <sreeshmau@iisc.ac.in>
- * \date Dec 2023
+/*! \file xnap_gNB_decoder.c
+ * \date July 2023
  * \version 1.0
  */
 
 #include <stdio.h>
-#include <string.h>
-#include <stdint.h>
-
 #include "assertions.h"
-#include "conversions.h"
 #include "intertask_interface.h"
 #include "xnap_common.h"
-
-int xnap_gNB_encode_pdu(XNAP_XnAP_PDU_t *pdu, uint8_t **buffer, uint32_t *len)
-{
-  ssize_t encoded;
-
-  DevAssert(pdu != NULL);
-  DevAssert(buffer != NULL);
-  DevAssert(len != NULL);
-
-  xer_fprint(stdout, &asn_DEF_XNAP_XnAP_PDU, (void *)pdu);
-
-  encoded = aper_encode_to_new_buffer(&asn_DEF_XNAP_XnAP_PDU, 0, pdu, (void **)buffer);
-
-  if (encoded < 0) {
-    return -1;
-  }
-
-  *len = encoded;
-
-  ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_XNAP_XnAP_PDU, pdu);
-  return encoded;
-}
+#include "xnap_gNB_decoder.h"
 
 int xnap_gNB_decode_pdu(XNAP_XnAP_PDU_t *pdu, const uint8_t *const buffer, uint32_t length)
 {
@@ -68,6 +41,25 @@ int xnap_gNB_decode_pdu(XNAP_XnAP_PDU_t *pdu, const uint8_t *const buffer, uint3
   if (dec_ret.code != RC_OK) {
     LOG_E(XNAP, "Failed to decode PDU\n");
     return -1;
+  }
+
+  switch (pdu->present) {
+    case XNAP_XnAP_PDU_PR_initiatingMessage:
+      LOG_I(XNAP, "xnap_gNB_decode_initiating_message!\n");
+      break;
+    case XNAP_XnAP_PDU_PR_successfulOutcome:
+      LOG_I(XNAP, "xnap_gNB_decode_successfuloutcome_message!\n");
+      break;
+    case XNAP_XnAP_PDU_PR_unsuccessfulOutcome:
+      LOG_I(XNAP, "xnap_gNB_decode_unsuccessfuloutcome_message!\n");
+      break;
+    case XNAP_ProcedureCode_id_handoverPreparation:
+      //asn_encode_to_new_buffer(NULL, ATS_CANONICAL_XER, &asn_DEF_XNAP_XNAP_PDU, pdu);
+      XNAP_INFO("xnap_eNB_decode_initiating_message!\n");
+      break;
+    default:
+      LOG_D(XNAP, "Unknown presence (%d) or not implemented\n", (int)pdu->present);
+      break;
   }
   return 0;
 }

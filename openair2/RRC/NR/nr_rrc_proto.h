@@ -135,6 +135,22 @@ void bearer_context_setup_direct(e1ap_bearer_setup_req_t *req,
 void bearer_context_setup_e1ap(e1ap_bearer_setup_req_t *req,
                                  instance_t instance);
 
+void
+rrc_gNB_process_MeasurementReport(
+  const protocol_ctxt_t *const ctxt_pP,
+//  rrc_gNB_ue_context_t        *ue_context_pP,
+  const NR_MeasResults_t   *const measResults2
+);
+ 
+void
+rrc_gNB_generate_HandoverPreparationInformation(
+  //const protocol_ctxt_t* const ctxt_pP,
+  rrc_gNB_ue_context_t          *const ue_context_pP,
+  uint8_t                     *buffer,
+  int                          *_size
+  //LTE_PhysCellId_t targetPhyId
+);
+
 void ue_cxt_mod_send_e1ap(MessageDef *msg,
                           instance_t instance);
 

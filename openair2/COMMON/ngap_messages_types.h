@@ -174,6 +174,7 @@ typedef struct ngap_security_capabilities_s {
   uint16_t nRintegrity_algorithms;
   uint16_t eUTRAencryption_algorithms;
   uint16_t eUTRAintegrity_algorithms;
+  uint16_t encryption_algorithms;
 } ngap_security_capabilities_t;
 
 /* Provides the establishment cause for the RRC connection request as provided

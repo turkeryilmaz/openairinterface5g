@@ -30,5 +30,4 @@
 
 void xnap_gNB_itti_send_sctp_data_req(sctp_assoc_t assoc_id, uint8_t *buffer, uint32_t buffer_length, uint16_t stream);
 
-
 #endif /* XNAP_GNB_ITTI_MESSAGING_H_ */

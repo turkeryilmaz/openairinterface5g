@@ -19,18 +19,15 @@
  *      contact@openairinterface.org
  */
 
-/*! \file xnap_messages_def.h
- * \author Sreeshma Shiv <sreeshmau@iisc.ac.in>
- * \date August 2023
+/*! \file xnap_gNB_decoder.h
+ * \date July 2023
  * \version 1.0
  */
 
-/* gNB application layer -> XNAP messages */
-MESSAGE_DEF(XNAP_REGISTER_GNB_REQ, MESSAGE_PRIORITY_MED, xnap_register_gnb_req_t, xnap_register_gnb_req)
-/* XNAP -> gNB application layer messages */
+#ifndef XNAP_GNB_DECODER_H_
+#define XNAP_GNB_DECODER_H_
 
-/* handover messages XNAP <-> RRC */
-MESSAGE_DEF(XNAP_SETUP_REQ, MESSAGE_PRIORITY_MED, xnap_setup_req_t, xnap_setup_req)
-MESSAGE_DEF(XNAP_SETUP_RESP, MESSAGE_PRIORITY_MED, xnap_setup_resp_t, xnap_setup_resp)
-MESSAGE_DEF(XNAP_SETUP_FAILURE, MESSAGE_PRIORITY_MED, xnap_setup_failure_t, xnap_setup_failure)
-MESSAGE_DEF(XNAP_HANDOVER_REQ, MESSAGE_PRIORITY_MED, xnap_handover_req_t, xnap_handover_req)
+int xnap_gNB_decode_pdu(XNAP_XnAP_PDU_t *pdu, const uint8_t *const buffer, uint32_t length) __attribute__((warn_unused_result));
+
+#endif /* XNAP_GNB_DECODER_H_ */
+

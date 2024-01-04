@@ -23,6 +23,8 @@
 #include "tree.h"
 #include "sctp_eNB_defs.h"
 #include "xnap_messages_types.h"
+#include "xnap_ids.h"
+#include "xnap_timers.h"
 
 #ifndef XNAP_GNB_DEFS_H_
 #define XNAP_GNB_DEFS_H_
@@ -90,6 +92,8 @@ typedef struct xnap_gNB_instance_s {
   /* SCTP information */
   xnap_sctp_t sctp_streams;
   char *gNB_name;
+  xnap_id_manager  id_manager;
+  xnap_timers_t    timers;
 } xnap_gNB_instance_t;
 
 #endif /* XNAP_GNB_DEFS_H_ */

@@ -159,6 +159,8 @@ typedef struct HANDOVER_INFO_NR_s {
 
   uint8_t                                             buf[RRC_BUF_SIZE];  /* ASN.1 encoded handoverCommandMessage */
   int                                                 size;               /* size of above message in bytes */
+  sctp_assoc_t 					      assoc_id;
+  int 						      x2_id;
 } NR_HANDOVER_INFO;
 
 #define NR_RRC_BUFFER_SIZE                            sizeof(RRC_BUFFER_NR)
@@ -323,6 +325,15 @@ typedef struct gNB_RRC_UE_s {
 typedef struct rrc_gNB_ue_context_s {
   /* Tree related data */
   RB_ENTRY(rrc_gNB_ue_context_s) entries;
+
+  /* Uniquely identifies the UE between MME and eNB within the eNB.
+   * This id is encoded on 24bits.
+   */
+  rnti_t         ue_id_rnti;
+
+  // another key for protocol layers but should not be used as a key for RB tree
+  uid_t          local_uid;
+
   /* UE id for initial connection to NGAP */
   struct gNB_RRC_UE_s   ue_context;
 } rrc_gNB_ue_context_t;
@@ -421,6 +432,11 @@ typedef struct gNB_RRC_INST_s {
 
   RB_HEAD(rrc_cuup_tree, nr_rrc_cuup_container_t) cuups; // CU-UPs, indexed by assoc_id
   size_t num_cuups;
+
+ /* KgNB as computed from parameters within USIM card */
+  uint8_t kgnb[32];
+  uint8_t nh[32];
+  int8_t  nh_ncc;
 
 } gNB_RRC_INST;
 

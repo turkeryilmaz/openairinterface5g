@@ -27,12 +27,14 @@
 #ifndef XNAP_MESSAGES_TYPES_H_
 #define XNAP_MESSAGES_TYPES_H_
 
-// Defines to access message fields.
+#include "s1ap_messages_types.h"
+#include "f1ap_messages_types.h"
 
 #define XNAP_REGISTER_GNB_REQ(mSGpTR) (mSGpTR)->ittiMsg.xnap_register_gnb_req
 #define XNAP_SETUP_REQ(mSGpTR) (mSGpTR)->ittiMsg.xnap_setup_req
 #define XNAP_SETUP_RESP(mSGpTR) (mSGpTR)->ittiMsg.xnap_setup_resp
 #define XNAP_SETUP_FAILURE(mSGpTR) (mSGpTR)->ittiMsg.xnap_setup_failure
+#define XNAP_HANDOVER_REQ(mSGpTR) (mSGpTR)->ittiMsg.xnap_handover_req
 
 #define XNAP_MAX_NB_GNB_IP_ADDRESS 4
 
@@ -146,7 +148,7 @@ typedef struct xnap_setup_resp_s {
   xnap_served_cell_info_t info;
 } xnap_setup_resp_t;
 
-typedef struct xnap_register_gnb_req_s {
+ypedef struct xnap_register_gnb_req_s {
   xnap_setup_req_t setup_req;
   xnap_net_config_t net_config;
   char *gNB_name;
@@ -166,4 +168,113 @@ typedef struct xnap_setup_failure_s {
   uint16_t time_to_wait;
   uint16_t criticality_diagnostics;
 } xnap_setup_failure_t;
+
+typedef struct xnap_guami_s {
+  xnap_plmn_t plmn_id;
+  uint8_t amf_region_id;
+  uint8_t amf_set_id;
+  uint8_t amf_pointer;
+} xnap_guami_t;
+
+typedef struct xnap_allocation_retention_priority_s {
+  uint16_t priority_level;
+  preemption_capability_t preemption_capability;
+  preemption_vulnerability_t preemption_vulnerability;
+} xnap_allocation_retention_priority_t;
+
+typedef struct xnap_qos_characteristics_s {
+  union {
+    struct {
+      long fiveqi;
+      long qos_priority_level;
+    } non_dynamic;
+    struct {
+      long fiveqi; // -1 -> optional
+      long qos_priority_level;
+      long packet_delay_budget;
+      struct {
+        long per_scalar;
+        long per_exponent;
+      } packet_error_rate;
+    } dynamic;
+  };
+  fiveQI_type_t qos_type;
+} xnap_qos_characteristics_t;
+
+typedef struct xnap_qos_tobe_setup_item_s {
+  uint8_t qfi;
+  xnap_qos_characteristics_t qos_params;
+  xnap_allocation_retention_priority_t allocation_retention_priority;
+} xnap_qos_tobe_setup_item_t;
+
+typedef struct xnap_qos_tobe_setup_list_s {
+  uint8_t num_qos;
+  xnap_qos_tobe_setup_item_t qos[2]; //QOSFLOW_MAX_VALUE= 64 Put this?
+} xnap_qos_tobe_setup_list_t;
+
+typedef struct xnap_pdusession_tobe_setup_item_s {
+  uint8_t pdusession_id;
+  xnap_snssai_t snssai;
+  xnap_net_ip_address_t up_ngu_tnl_ip_upf;
+  teid_t up_ngu_tnl_teid_upf;
+  uint32_t pdu_session_type; //enumerated-pdu_session_type_t- ngap_messages_types.h
+  xnap_qos_tobe_setup_list_t qos_list;
+} xnap_pdusession_tobe_setup_item_t;
+
+typedef struct xnap_pdusession_tobe_setup_list_s {
+  uint8_t num_pdu;
+  xnap_pdusession_tobe_setup_item_t pdu[NGAP_MAX_PDUSESSION]; //Is the limit ok?
+} xnap_pdusession_tobe_setup_list_t;
+
+typedef struct xnap_ngran_cgi_t {
+  xnap_plmn_t plmn_id;
+  uint32_t cgi;
+} xnap_ngran_cgi_t;
+
+typedef struct xnap_security_capabilities_s {
+  uint16_t encryption_algorithms;
+  uint16_t integrity_algorithms;
+} xnap_security_capabilities_t;
+
+typedef struct xnap_ambr_s {
+  uint64_t br_ul;
+  uint64_t br_dl;
+} xnap_ambr_t;
+
+typedef struct xnap_uehistory_info_s {
+  xnap_ngran_cgi_t last_visited_cgi;
+  cell_type_t cell_type; //enumerated -s1ap_messages_types.h
+  uint64_t time_UE_StayedInCell;
+} xnap_uehistory_info_t; //38.413- 9.3.1.97
+
+typedef struct xnap_ue_context_info_s {
+  uint64_t ngc_ue_sig_ref;// 0-2^40-1
+  xnap_net_ip_address_t tnl_ip_source;
+  uint32_t tnl_port_source;
+  xnap_security_capabilities_t security_capabilities;
+  uint8_t as_security_key_ranstar[32];//bitstring 256, why array?
+  uint32_t as_security_ncc;
+  xnap_ambr_t ue_ambr;
+  uint8_t rrc_buffer[8192 /* arbitrary, big enough */];
+  xnap_uehistory_info_t uehistory_info;//most recent info added at top(upto 16). how many needed?
+  int rrc_buffer_size;//rrc msg type needed?
+} xnap_ue_context_info_t;
+
+typedef struct xnap_handover_req_s {
+  uint32_t ng_node_ue_xnap_id;
+  xnap_Cause_t cause_type;
+  xnap_ngran_cgi_t target_cgi;
+  xnap_guami_t guami;
+  xnap_ue_context_info_t ue_context;
+} xnap_handover_req_t;
+
+typedef struct xnap_handover_req_ack_s {
+  uint32_t ng_node_ue_xnap_id;
+  xnap_Cause_t cause_type;
+  xnap_ngran_cgi_t target_cgi;
+  xnap_guami_t guami;
+  xnap_ue_context_info_t ue_context;
+} xnap_handover_req_ack_t;
+
 #endif /* XNAP_MESSAGES_TYPES_H_ */
+
