@@ -29,6 +29,7 @@
  * @ingroup _mac
 
  */
+#define _GNU_SOURCE
 
 #include "common/platform_types.h"
 #include "common/platform_constants.h"
@@ -54,6 +55,65 @@
 extern RAN_CONTEXT_t RC;
 //extern int l2_init_gNB(void);
 extern uint8_t nfapi_mode;
+
+/**
+ * This is a QoS comparator function for qsort.
+ *
+ * @lcid1 pointer to the first array element
+ * @lcid1 pointer to the second array element
+ * @return negative return value means that *p1 goes before *p2
+ *         zero return value means that that *p1 is equivalent to *p2
+ *         positive return value means that *p1 goes after *p2
+ **/
+static int QoS_Comp(const void *lcid1, const void *lcid2, void *sctrl)
+{
+  NR_UE_sched_ctrl_t *sched_ctrl = (NR_UE_sched_ctrl_t *)sctrl;
+  uint8_t lcid_1 = *(uint8_t *)lcid1;
+  uint8_t lcid_2 = *(uint8_t *)lcid2;
+  uint8_t *lc_priority = sched_ctrl->dl_lc_ids_priorities;
+
+  int32_t priority_1 = lc_priority[lcid_1];
+  int32_t priority_2 = lc_priority[lcid_2];
+
+  return (priority_1 - priority_2);
+}
+
+void process_lcOrder(NR_UE_sched_ctrl_t *sched_ctrl)
+{
+  // Reset the priority of the UE
+  sched_ctrl->priority_ue = 0;
+  for (int i = 0; i < sched_ctrl->dl_lc_num; i++) {
+    uint8_t lcid = sched_ctrl->dl_lc_ids[i];
+    if (lcid < 4) {
+      /* each SRB is considered a priority of 1 */
+      sched_ctrl->dl_lc_ids_priorities[lcid] = 1;
+    } else {
+      /* sum of priorities of qos flows mapped to a DRB/LC */
+      uint8_t drb_id = lcid - 3; /* DRBID is LCID - 3 */
+      for (int q = 0; q < NR_MAX_NUM_QFI; q++)
+        sched_ctrl->dl_lc_ids_priorities[lcid] += sched_ctrl->qos_config[drb_id - 1][q].priority;
+    }
+    sched_ctrl->priority_ue += sched_ctrl->dl_lc_ids_priorities[lcid];
+    LOG_D(NR_MAC,
+          "The priority of the UE with lcid %d of priority %d is %d\n",
+          lcid,
+          sched_ctrl->dl_lc_ids_priorities[lcid],
+          sched_ctrl->priority_ue);
+  }
+
+  /* lc with in each UE are sorted so that lower in value(high priority) lcs are scheduled first*/
+  qsort_r(sched_ctrl->dl_lc_ids, sched_ctrl->dl_lc_num, sizeof(uint8_t), QoS_Comp, sched_ctrl->dl_lc_ids_priorities);
+
+  LOG_I(NR_MAC, "Printing logical channel ids sorted by Priority Level:\n");
+  for (int j = 0; j < sched_ctrl->dl_lc_num; j++) {
+    uint8_t lcid = sched_ctrl->dl_lc_ids[j];
+    LOG_I(NR_MAC,
+          "LCID %d (%s %d)\n",
+          lcid,
+          lcid < 4 ? "SRB" : "DRB",
+          lcid < 4 ? lcid : lcid - 3); // lcid 0 - SRB0, 1- SRB1, 2 - SRB2, 3 - 31 DRBs,
+  }
+}
 
 static void process_rlcBearerConfig(struct NR_CellGroupConfig__rlc_BearerToAddModList *rlc_bearer2add_list,
                                     struct NR_CellGroupConfig__rlc_BearerToReleaseList *rlc_bearer2release_list,
@@ -120,6 +180,7 @@ void process_CellGroup(NR_CellGroupConfig_t *CellGroup, NR_UE_info_t *UE)
     nr_mac_prepare_ra_ue(RC.nrmac[0], UE->rnti, CellGroup);
    }
    process_rlcBearerConfig(CellGroup->rlc_BearerToAddModList, CellGroup->rlc_BearerToReleaseList, &UE->UE_sched_ctrl);
+   process_lcOrder(&UE->UE_sched_ctrl);
 }
 
 static void config_common(gNB_MAC_INST *nrmac, int pdsch_AntennaPorts, int pusch_AntennaPorts, NR_ServingCellConfigCommon_t *scc)

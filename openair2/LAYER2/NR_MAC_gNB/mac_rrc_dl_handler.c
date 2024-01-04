@@ -252,7 +252,7 @@ static void set_QoSConfig(const f1ap_ue_context_modif_req_t *req, NR_UE_sched_ct
   AssertFatal(req != NULL, "f1ap_ue_context_modif_req is NULL\n");
   uint8_t drb_count = req->drbs_to_be_setup_length;
   uint8_t srb_count = req->srbs_to_be_setup_length;
-  LOG_I(NR_MAC, "Number of DRBs = %d and SRBs = %d\n", drb_count, srb_count);
+  LOG_D(NR_MAC, "Number of DRBs = %d and SRBs = %d\n", drb_count, srb_count);
 
   /* DRBs*/
   for (int i = 0; i < drb_count; i++) {
@@ -272,7 +272,7 @@ static void set_QoSConfig(const f1ap_ue_context_modif_req_t *req, NR_UE_sched_ct
         fiveqi = qos_char->dynamic.fiveqi > 0 ? qos_char->dynamic.fiveqi : 0;
       }
       if (qos_char->qos_type == non_dynamic) {
-        LOG_D(NR_MAC, "Qos Priority level is considered from the standarsdized 5QI to QoS mapping table\n");
+        LOG_I(NR_MAC, "Qos Priority level is considered from the standarsdized 5QI to QoS mapping table\n");
         for (int id = 0; id < 26; id++) {
           if (qos_fiveqi[id] == fiveqi)
             priority = qos_priority[id];
@@ -280,7 +280,7 @@ static void set_QoSConfig(const f1ap_ue_context_modif_req_t *req, NR_UE_sched_ct
       }
       sched_ctrl->qos_config[drb_id - 1][q].fiveQI = fiveqi;
       sched_ctrl->qos_config[drb_id - 1][q].priority = priority;
-      LOG_D(NR_MAC,
+      LOG_I(NR_MAC,
             "In %s: drb_id %ld: 5QI %lu priority %lu\n",
             __func__,
             drb_id,
@@ -353,11 +353,11 @@ void ue_context_setup_request(const f1ap_ue_context_setup_t *req)
   AssertFatal(enc_rval.encoded > 0, "Could not encode CellGroup, failed element %s\n", enc_rval.failed_type->name);
   resp.du_to_cu_rrc_information->cellGroupConfig_length = (enc_rval.encoded + 7) >> 3;
 
-  /* TODO: need to apply after UE context reconfiguration confirmed? */
-  nr_mac_prepare_cellgroup_update(mac, UE, new_CellGroup);
-
   /* Fill the QoS config in MAC for each active DRB */
   set_QoSConfig(req, &UE->UE_sched_ctrl);
+
+  /* TODO: need to apply after UE context reconfiguration confirmed? */
+  nr_mac_prepare_cellgroup_update(mac, UE, new_CellGroup);
 
   /* Set NSSAI config in MAC for each active DRB */
   set_nssaiConfig(req->drbs_to_be_setup_length, req->drbs_to_be_setup, &UE->UE_sched_ctrl);
@@ -457,10 +457,10 @@ void ue_context_modification_request(const f1ap_ue_context_modif_req_t *req)
     AssertFatal(enc_rval.encoded > 0, "Could not encode CellGroup, failed element %s\n", enc_rval.failed_type->name);
     resp.du_to_cu_rrc_information->cellGroupConfig_length = (enc_rval.encoded + 7) >> 3;
 
-    nr_mac_prepare_cellgroup_update(mac, UE, new_CellGroup);
-
     /* Fill the QoS config in MAC for each active DRB */
     set_QoSConfig(req, &UE->UE_sched_ctrl);
+
+    nr_mac_prepare_cellgroup_update(mac, UE, new_CellGroup);
 
     /* Set NSSAI config in MAC for each active DRB */
     set_nssaiConfig(req->drbs_to_be_setup_length, req->drbs_to_be_setup, &UE->UE_sched_ctrl);

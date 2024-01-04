@@ -653,6 +653,9 @@ static void pf_dl(module_id_t module_id,
       if (sched_ctrl->num_total_bytes == 0 && frame != (sched_ctrl->ta_frame + 10) % 1024)
         continue;
 
+      /* QoS processing*/
+      uint8_t aggregated_priority = sched_ctrl->priority_ue;
+
       /* Calculate coeff */
       const NR_bler_options_t *bo = &mac->dl_bler;
       const int max_mcs_table = current_BWP->mcsTableIdx == 1 ? 27 : 28;
@@ -674,14 +677,16 @@ static void pf_dl(module_id_t module_id,
                                     0 /* N_PRB_oh, 0 for initialBWP */,
                                     0 /* tb_scaling */,
                                     sched_pdsch->nrOfLayers) >> 3;
-      float coeff_ue = (float) tbs / UE->dl_thr_ue;
-      LOG_D(NR_MAC, "[UE %04x][%4d.%2d] b %d, thr_ue %f, tbs %d, coeff_ue %f\n",
+      float coeff_ue = (float)tbs / (UE->dl_thr_ue * aggregated_priority);
+      LOG_D(NR_MAC,
+            "[UE %04x][%4d.%2d] b %d, thr_ue %f, tbs %d, ue_priority %d, coeff_ue %f\n",
             UE->rnti,
             frame,
             slot,
             b,
             UE->dl_thr_ue,
             tbs,
+            aggregated_priority,
             coeff_ue);
       /* Create UE_sched list for UEs eligible for new transmission*/
       UE_sched[curUE].coef=coeff_ue;

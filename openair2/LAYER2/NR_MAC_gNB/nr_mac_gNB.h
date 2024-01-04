@@ -634,6 +634,8 @@ typedef struct {
   uint8_t dl_lc_num;
   /// order in which DLSCH scheduler should allocate LCs
   uint8_t dl_lc_ids[NR_MAX_NUM_LCID];
+  // priorities of lcids
+  uint8_t dl_lc_ids_priorities[NR_MAX_NUM_LCID];
 
   /// Timer for RRC processing procedures
   uint32_t rrc_processing_timer;
@@ -642,8 +644,15 @@ typedef struct {
   nr_srs_feedback_t srs_feedback;
   nssai_t dl_lc_nssai[NR_MAX_NUM_LCID];
 
-  // Information about the QoS configuration for each LCID/DRB
-  NR_QoS_config_t qos_config[NR_MAX_NUM_LCID - 4][NR_MAX_NUM_QFI]; // 0 -CCCH and 1- 3 SRBs(0,1,2)
+  /*
+   Information about the QoS configuration for each LCID/DRB
+   (0 -CCCH and 1- 3 SRBs(0,1,2), 4-32 DRBs(0, 1, 28))
+    DRB Identity can be any value [1-32]
+  */
+  NR_QoS_config_t qos_config[NR_MAX_NUM_LCID][NR_MAX_NUM_QFI];
+
+  // priority assigned to ue
+  uint8_t priority_ue;
 } NR_UE_sched_ctrl_t;
 
 typedef struct {
