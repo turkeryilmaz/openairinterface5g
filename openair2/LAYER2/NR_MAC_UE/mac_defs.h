@@ -451,7 +451,7 @@ typedef struct {
 } NR_BWP_PDCCH_t;
 
 /*!\brief Top level UE MAC structure */
-typedef struct {
+typedef struct NR_UE_MAC_INST_s {
   NR_UE_L2_STATE_t state;
   int servCellIndex;
   long physCellId;

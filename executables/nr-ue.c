@@ -310,16 +310,13 @@ static void *NRUE_phy_stub_standalone_pnf_task(void *arg)
 
     int CC_id = 0;
     uint8_t gNB_id = 0;
-    nr_uplink_indication_t ul_info;
     int slots_per_frame = 20; //30 kHZ subcarrier spacing
     int slot_ahead = 2; // TODO: Make this dynamic
-    ul_info.cc_id = CC_id;
-    ul_info.gNB_index = gNB_id;
-    ul_info.module_id = mod_id;
-    ul_info.frame_rx = frame;
-    ul_info.slot_rx = slot;
-    ul_info.slot_tx = (slot + slot_ahead) % slots_per_frame;
-    ul_info.frame_tx = (ul_info.slot_rx + slot_ahead >= slots_per_frame) ? ul_info.frame_rx + 1 : ul_info.frame_rx;
+    nr_uplink_indication_t ul_info = {.cc_id = CC_id,
+                                      .gNB_index = gNB_id,
+                                      .module_id = mod_id,
+                                      .slot = (slot + slot_ahead) % slots_per_frame,
+                                      .frame = (slot + slot_ahead >= slots_per_frame) ? (frame + 1) % 1024 : frame};
 
     if (pthread_mutex_lock(&mac->mutex_dl_info)) abort();
 
@@ -330,8 +327,7 @@ static void *NRUE_phy_stub_standalone_pnf_task(void *arg)
       free_and_zero(ch_info);
     }
 
-    if (is_nr_DL_slot(mac->tdd_UL_DL_ConfigurationCommon,
-                      ul_info.slot_rx)) {
+    if (is_nr_DL_slot(mac->tdd_UL_DL_ConfigurationCommon, slot)) {
       memset(&mac->dl_info, 0, sizeof(mac->dl_info));
       mac->dl_info.cc_id = CC_id;
       mac->dl_info.gNB_index = gNB_id;
@@ -345,9 +341,8 @@ static void *NRUE_phy_stub_standalone_pnf_task(void *arg)
 
     if (pthread_mutex_unlock(&mac->mutex_dl_info)) abort();
 
-    if (is_nr_UL_slot(mac->tdd_UL_DL_ConfigurationCommon,
-                      ul_info.slot_tx, mac->frame_type)) {
-      LOG_D(NR_MAC, "Slot %d. calling nr_ue_ul_ind()\n", ul_info.slot_tx);
+    if (is_nr_UL_slot(mac->tdd_UL_DL_ConfigurationCommon, ul_info.slot, mac->frame_type)) {
+      LOG_D(NR_MAC, "Slot %d. calling nr_ue_ul_ind()\n", ul_info.slot);
       nr_ue_ul_scheduler(&ul_info);
     }
     process_queued_nr_nfapi_msgs(mac, sfn_slot);
@@ -545,7 +540,12 @@ void processSlotTX(void *arg) {
   PHY_VARS_NR_UE    *UE   = rxtxD->UE;
   nr_phy_data_tx_t phy_data = {0};
 
-  LOG_D(PHY,"%d.%d => slot type %d\n", proc->frame_tx, proc->nr_slot_tx, proc->tx_slot_type);
+  LOG_D(PHY,
+        "SlotTx %d.%d => slot type %d, wait: %d \n",
+        proc->frame_tx,
+        proc->nr_slot_tx,
+        proc->tx_slot_type,
+        rxtxD->tx_wait_for_dlsch);
   if (proc->tx_slot_type == NR_UPLINK_SLOT || proc->tx_slot_type == NR_MIXED_SLOT){
 
     // wait for rx slots to send indication (if any) that DLSCH decoding is finished
@@ -558,17 +558,12 @@ void processSlotTX(void *arg) {
     // [TODO] mapping right after NR initial sync
     if(UE->if_inst != NULL && UE->if_inst->ul_indication != NULL) {
       start_meas(&UE->ue_ul_indication_stats);
-      nr_uplink_indication_t ul_indication;
-      memset((void*)&ul_indication, 0, sizeof(ul_indication));
-
-      ul_indication.module_id = UE->Mod_id;
-      ul_indication.gNB_index = proc->gNB_id;
-      ul_indication.cc_id     = UE->CC_id;
-      ul_indication.frame_rx  = proc->frame_rx;
-      ul_indication.slot_rx   = proc->nr_slot_rx;
-      ul_indication.frame_tx  = proc->frame_tx;
-      ul_indication.slot_tx   = proc->nr_slot_tx;
-      ul_indication.phy_data      = &phy_data;
+      nr_uplink_indication_t ul_indication = {.module_id = UE->Mod_id,
+                                              .gNB_index = proc->gNB_id,
+                                              .cc_id = UE->CC_id,
+                                              .frame = proc->frame_tx,
+                                              .slot = proc->nr_slot_tx,
+                                              .phy_data = &phy_data};
 
       UE->if_inst->ul_indication(&ul_indication);
       stop_meas(&UE->ue_ul_indication_stats);
@@ -580,9 +575,10 @@ void processSlotTX(void *arg) {
   RU_write(rxtxD);
 }
 
-nr_phy_data_t UE_dl_preprocessing(PHY_VARS_NR_UE *UE, UE_nr_rxtx_proc_t *proc)
+static nr_phy_data_t UE_dl_preprocessing(PHY_VARS_NR_UE *UE, UE_nr_rxtx_proc_t *proc, int *tx_wait_for_dlsch)
 {
   nr_phy_data_t phy_data = {0};
+  LOG_D(PHY, "preprocessing %d.%d => slot type %d \n", proc->frame_rx, proc->nr_slot_rx, proc->rx_slot_type);
 
   if (IS_SOFTMODEM_NOS1 || get_softmodem_params()->sa) {
 
@@ -613,10 +609,11 @@ nr_phy_data_t UE_dl_preprocessing(PHY_VARS_NR_UE *UE, UE_nr_rxtx_proc_t *proc)
 
     uint64_t a=rdtsc_oai();
     pbch_pdcch_processing(UE, proc, &phy_data);
-    if (phy_data.dlsch[0].active) {
+    if (phy_data.dlsch[0].active && phy_data.dlsch[0].rnti != SI_RNTI) {
       // indicate to tx thread to wait for DLSCH decoding
       const int ack_nack_slot = (proc->nr_slot_rx + phy_data.dlsch[0].dlsch_config.k1_feedback) % UE->frame_parms.slots_per_frame;
-      UE->tx_wait_for_dlsch[ack_nack_slot]++;
+      tx_wait_for_dlsch[ack_nack_slot]++;
+      LOG_D(NR_PHY, "Adding wait even for slot %d, total %d\n", ack_nack_slot, tx_wait_for_dlsch[ack_nack_slot]);
     }
 
     LOG_D(PHY, "In %s: slot %d, time %llu\n", __FUNCTION__, proc->nr_slot_rx, (rdtsc_oai()-a)/3500);
@@ -764,10 +761,10 @@ void *UE_thread(void *arg)
   const int nb_slot_frame = UE->frame_parms.slots_per_frame;
   int absolute_slot=0, decoded_frame_rx=INT_MAX, trashed_frames=0;
   initNotifiedFIFO(&UE->phy_config_ind);
+  int tx_wait_for_dlsch[NR_MAX_SLOTS_PER_FRAME];
 
   int num_ind_fifo = nb_slot_frame;
   for(int i=0; i < num_ind_fifo; i++) {
-    UE->tx_wait_for_dlsch[num_ind_fifo] = 0;
     UE->tx_resume_ind_fifo[i] = malloc(sizeof(*UE->tx_resume_ind_fifo[i]));
     initNotifiedFIFO(UE->tx_resume_ind_fifo[i]);
   }
@@ -824,6 +821,7 @@ void *UE_thread(void *arg)
       syncInFrame(UE, &timestamp);
       UE->rx_offset=0;
       UE->time_sync_cell=0;
+      memset(tx_wait_for_dlsch, 0, sizeof(tx_wait_for_dlsch));
       // read in first symbol
       AssertFatal (UE->frame_parms.ofdm_symbol_size+UE->frame_parms.nb_prefix_samples0 ==
                    UE->rfdevice.trx_read_func(&UE->rfdevice,
@@ -913,24 +911,26 @@ void *UE_thread(void *arg)
     if (curMsg.proc.nr_slot_tx == 0)
       nr_ue_rrc_timer_trigger(UE->Mod_id, curMsg.proc.frame_tx, curMsg.proc.gNB_id);
 
+    // RX slot processing. We launch and forget.
+    notifiedFIFO_elt_t *newEltRx =
+        newNotifiedFIFO_elt(sizeof(nr_rxtx_thread_data_t), curMsg.proc.nr_slot_rx, NULL, UE_dl_processing);
+    nr_rxtx_thread_data_t *curMsgRx = (nr_rxtx_thread_data_t *)NotifiedFifoData(newEltRx);
+    curMsgRx->proc = curMsg.proc;
+    curMsgRx->UE = UE;
+    curMsgRx->phy_data = UE_dl_preprocessing(UE, &curMsg.proc, UE->tx_wait_for_dlsch);
+    pushTpool(&(get_nrUE_params()->Tpool), newEltRx);
+
     // Start TX slot processing here. It runs in parallel with RX slot processing
-    notifiedFIFO_elt_t *newElt = newNotifiedFIFO_elt(sizeof(nr_rxtx_thread_data_t), curMsg.proc.nr_slot_tx, &txFifo, processSlotTX);
-    nr_rxtx_thread_data_t *curMsgTx = (nr_rxtx_thread_data_t *) NotifiedFifoData(newElt);
+    notifiedFIFO_elt_t *newEltTx =
+        newNotifiedFIFO_elt(sizeof(nr_rxtx_thread_data_t), curMsg.proc.nr_slot_tx, &txFifo, processSlotTX);
+    nr_rxtx_thread_data_t *curMsgTx = (nr_rxtx_thread_data_t *)NotifiedFifoData(newEltTx);
     curMsgTx->proc = curMsg.proc;
     curMsgTx->writeBlockSize = writeBlockSize;
     curMsgTx->proc.timestamp_tx = writeTimestamp;
     curMsgTx->UE = UE;
     curMsgTx->tx_wait_for_dlsch = UE->tx_wait_for_dlsch[curMsgTx->proc.nr_slot_tx];
     UE->tx_wait_for_dlsch[curMsgTx->proc.nr_slot_tx] = 0;
-    pushTpool(&(get_nrUE_params()->Tpool), newElt);
-
-    // RX slot processing. We launch and forget.
-    newElt = newNotifiedFIFO_elt(sizeof(nr_rxtx_thread_data_t), curMsg.proc.nr_slot_rx, NULL, UE_dl_processing);
-    nr_rxtx_thread_data_t *curMsgRx = (nr_rxtx_thread_data_t *) NotifiedFifoData(newElt);
-    curMsgRx->proc = curMsg.proc;
-    curMsgRx->UE = UE;
-    curMsgRx->phy_data = UE_dl_preprocessing(UE, &curMsg.proc);
-    pushTpool(&(get_nrUE_params()->Tpool), newElt);
+    pushTpool(&(get_nrUE_params()->Tpool), newEltTx);
 
     // Wait for TX slot processing to finish
     notifiedFIFO_elt_t *res;

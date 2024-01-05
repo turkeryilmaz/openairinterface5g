@@ -168,7 +168,7 @@ typedef struct {
 
 typedef struct {
   uint16_t pdu_length;
-  uint16_t pdu_index;
+  void* pdu_index;
   uint8_t* pdu;
 } fapi_nr_tx_request_body_t;
 
@@ -390,23 +390,24 @@ typedef struct {
 } fapi_nr_ul_config_srs_pdu;
 
 typedef struct {
-  uint8_t pdu_type;
+  int pdu_type;
   union {
     fapi_nr_ul_config_prach_pdu prach_config_pdu;
     fapi_nr_ul_config_pucch_pdu pucch_config_pdu;
     nfapi_nr_ue_pusch_pdu_t     pusch_config_pdu;
     fapi_nr_ul_config_srs_pdu   srs_config_pdu;
   };
+  pthread_mutex_t* lock;
+  int* NBpdus;
 } fapi_nr_ul_config_request_pdu_t;
 
 typedef struct {
-  uint16_t sfn;
-  uint16_t slot;
-  uint8_t number_pdus;
-  fapi_nr_ul_config_request_pdu_t ul_config_list[FAPI_NR_UL_CONFIG_LIST_NUM];
+  int frame;
+  int slot;
+  int nb_ULpdus;
+  fapi_nr_ul_config_request_pdu_t ul_config_list[FAPI_NR_UL_CONFIG_LIST_NUM + 1];
   pthread_mutex_t mutex_ul_config;
 } fapi_nr_ul_config_request_t;
-
 
 typedef struct {
   uint16_t rnti;

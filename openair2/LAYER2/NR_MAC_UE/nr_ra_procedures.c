@@ -608,15 +608,24 @@ void nr_Msg3_transmitted(module_id_t mod_id, uint8_t CC_id, frame_t frameP, slot
   ra->ra_state = WAIT_CONTENTION_RESOLUTION;
 }
 
-void nr_get_msg3_payload(module_id_t mod_id)
+void nr_get_msg3_payload(module_id_t mod_id, uint8_t *pdu)
 {
   NR_UE_MAC_INST_t *mac = get_mac_inst(mod_id);
   RA_config_t *ra = &mac->ra;
-  uint8_t *pdu = mac->CCCH_pdu.payload;
   const uint8_t sh_size = sizeof(NR_MAC_SUBHEADER_FIXED);
   NR_MAC_SUBHEADER_FIXED *header = (NR_MAC_SUBHEADER_FIXED *) pdu;
   pdu += sh_size;
   int lcid = 0; // SRB0 for messages sent in MSG3
+  // dirty fix for a race condition
+  // RRC thread populates this rlc buffer
+  // no mechanism ensure synchronization
+  // so we wait here RRC thread before reading the SDU
+  mac_rlc_status_resp_t tmp;
+  do {
+    tmp = mac_rlc_status_ind(mod_id, ra->t_crnti, 0, 0, 0, ENB_FLAG_NO, MBMS_FLAG_NO, lcid, 0, 0);
+    if (!tmp.bytes_in_buffer)
+      usleep(100);
+  } while (!tmp.bytes_in_buffer);
   tbs_size_t len = mac_rlc_data_req(mod_id,
                                     ra->t_crnti,
                                     0,
@@ -667,11 +676,7 @@ void nr_get_msg3_payload(module_id_t mod_id)
  * @gNB_id              gNB ID
  * @nr_slot_tx          current UL TX slot
  */
-uint8_t nr_ue_get_rach(module_id_t mod_id,
-                       int CC_id,
-                       frame_t frame,
-                       uint8_t gNB_id,
-                       int nr_slot_tx)
+uint8_t nr_ue_get_rach(module_id_t mod_id, int CC_id, frame_t frame, uint8_t gNB_id, int nr_slot_tx, uint8_t payload[16])
 {
   NR_UE_MAC_INST_t *mac = get_mac_inst(mod_id);
   RA_config_t *ra = &mac->ra;
@@ -708,9 +713,7 @@ uint8_t nr_ue_get_rach(module_id_t mod_id,
 
       const uint8_t TBS_max = 8 + sizeof(NR_MAC_SUBHEADER_SHORT) + sizeof(NR_MAC_SUBHEADER_SHORT); // Note: unclear the reason behind the selection of such TBS_max
       int size_sdu = 0;
-      uint8_t mac_ce[16] = {0};
-      uint8_t *pdu = get_softmodem_params()->sa ? mac->CCCH_pdu.payload : mac_ce;
-      uint8_t *payload = pdu;
+      uint8_t *pdu = payload;
 
       // Concerning the C-RNTI MAC CE, it has to be included if the UL transmission (Msg3) is not being made for the CCCH logical channel.
       // Therefore it has been assumed that this event only occurs only when RA is done and it is not SA mode.
@@ -957,19 +960,12 @@ void prepare_msg4_feedback(NR_UE_MAC_INST_t *mac, int pid, int ack_nack)
   NR_UE_HARQ_STATUS_t *current_harq = &mac->dl_harq_info[pid];
   int sched_slot = current_harq->ul_slot;
   int sched_frame = current_harq->ul_frame;
-  fapi_nr_ul_config_request_t *ul_config = get_ul_config_request(mac, sched_slot, 0);
-  pthread_mutex_lock(&ul_config->mutex_ul_config);
   mac->nr_ue_emul_l1.num_harqs = 1;
-  AssertFatal(ul_config->number_pdus < FAPI_NR_UL_CONFIG_LIST_NUM,
-              "ul_config->number_pdus %d out of bounds\n",
-              ul_config->number_pdus);
-  fapi_nr_ul_config_pucch_pdu *pucch_pdu = &ul_config->ul_config_list[ul_config->number_pdus].pucch_config_pdu;
-  PUCCH_sched_t pucch = {0};
-  pucch.n_CCE = current_harq->n_CCE;
-  pucch.N_CCE = current_harq->N_CCE;
-  pucch.delta_pucch = current_harq->delta_pucch;
-  pucch.ack_payload = ack_nack;
-  pucch.n_harq = 1;
+  PUCCH_sched_t pucch = {.n_CCE = current_harq->n_CCE,
+                         .N_CCE = current_harq->N_CCE,
+                         .delta_pucch = current_harq->delta_pucch,
+                         .ack_payload = ack_nack,
+                         .n_harq = 1};
   current_harq->active = false;
   current_harq->ack_received = false;
   if (get_softmodem_params()->emulate_l1) {
@@ -977,11 +973,9 @@ void prepare_msg4_feedback(NR_UE_MAC_INST_t *mac, int pid, int ack_nack)
     mac->nr_ue_emul_l1.harq[pid].active_dl_harq_sfn = sched_frame;
     mac->nr_ue_emul_l1.harq[pid].active_dl_harq_slot = sched_slot;
   }
-  nr_ue_configure_pucch(mac,
-                        sched_slot,
-                        mac->ra.t_crnti,
-                        &pucch,
-                        pucch_pdu);
-  fill_ul_config(ul_config, sched_frame, sched_slot, FAPI_NR_UL_CONFIG_TYPE_PUCCH);
-  pthread_mutex_unlock(&ul_config->mutex_ul_config);
+  fapi_nr_ul_config_request_pdu_t *pdu = lockGet_ul_config(mac, sched_frame, sched_slot, FAPI_NR_UL_CONFIG_TYPE_PUCCH);
+  if (!pdu)
+    return;
+  nr_ue_configure_pucch(mac, sched_slot, mac->ra.t_crnti, &pucch, &pdu->pucch_config_pdu);
+  release_ul_config(pdu, false);
 }

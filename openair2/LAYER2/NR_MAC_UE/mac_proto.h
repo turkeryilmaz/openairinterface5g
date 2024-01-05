@@ -215,26 +215,6 @@ void release_mac_configuration(NR_UE_MAC_INST_t *mac);
 void nr_ue_ul_scheduler(nr_uplink_indication_t *ul_info);
 void nr_ue_dl_scheduler(nr_downlink_indication_t *dl_info);
 
-/**\brief fill nr_scheduled_response struct instance
-   @param nr_scheduled_response_t *    pointer to scheduled_response instance to fill
-   @param fapi_nr_dl_config_request_t* pointer to dl_config,
-   @param fapi_nr_ul_config_request_t* pointer to ul_config,
-   @param fapi_nr_tx_request_t*        pointer to tx_request;
-   @param module_id_t mod_id           module ID
-   @param int cc_id                    CC ID
-   @param frame_t frame                frame number
-   @param int slot                     reference number
-   @param void *phy_pata               pointer to a PHY specific structure to be filled in the scheduler response (can be null) */
-void fill_scheduled_response(nr_scheduled_response_t *scheduled_response,
-                             fapi_nr_dl_config_request_t *dl_config,
-                             fapi_nr_ul_config_request_t *ul_config,
-                             fapi_nr_tx_request_t *tx_request,
-                             module_id_t mod_id,
-                             int cc_id,
-                             frame_t frame,
-                             int slot,
-                             void *phy_data);
-
 /*! \fn int8_t nr_ue_get_SR(module_id_t module_idP, frame_t frameP, slot_t slotP);
    \brief Called by PHY to get sdu for PUSCH transmission.  It performs the following operations: Checks BSR for DCCH, DCCH1 and
 DTCH corresponding to previous values computed either in SR or BSR procedures.  It gets rlc status indications on DCCH,DCCH1 and
@@ -435,20 +415,6 @@ void nr_ue_msg3_scheduler(NR_UE_MAC_INST_t *mac,
                           sub_frame_t current_slot,
                           uint8_t Msg3_tda_id);
 
-/* \brief Function called by PHY to process the received RAR and check that the preamble matches what was sent by the gNB. It provides the timing advance and t-CRNTI.
-@param Mod_id Index of UE instance
-@param CC_id Index to a component carrier
-@param frame Frame index
-@param ra_rnti RA_RNTI value
-@param dlsch_buffer  Pointer to dlsch_buffer containing RAR PDU
-@param t_crnti Pointer to PHY variable containing the T_CRNTI
-@param preamble_index Preamble Index used by PHY to transmit the PRACH.  This should match the received RAR to trigger the rest of
-random-access procedure
-@param selected_rar_buffer the output buffer for storing the selected RAR header and RAR payload
-@returns timing advance or 0xffff if preamble doesn't match
-*/
-int nr_ue_process_rar(nr_downlink_indication_t *dl_info, int pdu_id);
-
 void nr_ue_contention_resolution(module_id_t module_id, int cc_id, frame_t frame, int slot, NR_PRACH_RESOURCES_t *prach_resources);
 
 void nr_ra_failed(uint8_t mod_id, uint8_t CC_id, NR_PRACH_RESOURCES_t *prach_resources, frame_t frame, int slot);
@@ -468,11 +434,7 @@ andom-access to transmit a BSR along with the C-RNTI control element (see 5.1.4 
 @param gNB_id gNB index
 @param nr_slot_tx slot for PRACH transmission
 @returns indication to generate PRACH to phy */
-uint8_t nr_ue_get_rach(module_id_t mod_id,
-                       int CC_id,
-                       frame_t frame,
-                       uint8_t gNB_id,
-                       int nr_slot_tx);
+uint8_t nr_ue_get_rach(module_id_t mod_id, int CC_id, frame_t frame, uint8_t gNB_id, int nr_slot_tx, uint8_t payload[16]);
 
 /* \brief Function implementing the routine for the selection of Random Access resources (5.1.2 TS 38.321).
 @param module_idP Index of UE instance
@@ -502,7 +464,7 @@ void set_ra_rnti(NR_UE_MAC_INST_t *mac, fapi_nr_ul_config_prach_pdu *prach_pdu);
 void nr_Msg1_transmitted(module_id_t mod_id);
 
 void nr_Msg3_transmitted(module_id_t mod_id, uint8_t CC_id, frame_t frameP, slot_t slotP, uint8_t gNB_id);
-void nr_get_msg3_payload(module_id_t mod_id);
+void nr_get_msg3_payload(module_id_t mod_id, uint8_t *pdu);
 void send_msg3_rrc_request(module_id_t mod_id, int rnti);
 
 void nr_ue_msg2_scheduler(module_id_t mod_id, uint16_t rach_frame, uint16_t rach_slot, uint16_t *msg2_frame, uint16_t *msg2_slot);
@@ -517,10 +479,12 @@ void build_ssb_to_ro_map(NR_UE_MAC_INST_t *mac);
 
 void ue_init_config_request(NR_UE_MAC_INST_t *mac, int scs);
 
-fapi_nr_ul_config_request_t *get_ul_config_request(NR_UE_MAC_INST_t *mac, int slot, int fb_time);
 fapi_nr_dl_config_request_t *get_dl_config_request(NR_UE_MAC_INST_t *mac, int slot);
 
-void fill_ul_config(fapi_nr_ul_config_request_t *ul_config, frame_t frame_tx, int slot_tx, uint8_t pdu_type);
+fapi_nr_ul_config_request_pdu_t *lockGet_ul_config(NR_UE_MAC_INST_t *mac, frame_t frame_tx, int slot_tx, uint8_t pdu_type);
+fapi_nr_ul_config_request_pdu_t *fapiLockIterator(fapi_nr_ul_config_request_t *ul_config, frame_t frame_tx, int slot_tx);
+
+void release_ul_config(fapi_nr_ul_config_request_pdu_t *pdu, bool clearIt);
 
 int16_t compute_nr_SSB_PL(NR_UE_MAC_INST_t *mac, short ssb_rsrp_dBm);
 
@@ -530,7 +494,13 @@ int16_t compute_nr_SSB_PL(NR_UE_MAC_INST_t *mac, short ssb_rsrp_dBm);
 // - in which ULSCH should be scheduled. K2 is configured in RRC configuration.  
 // PUSCH Msg3 scheduler:
 // - scheduled by RAR UL grant according to 8.3 of TS 38.213
-int nr_ue_pusch_scheduler(NR_UE_MAC_INST_t *mac, uint8_t is_Msg3, frame_t current_frame, int current_slot, frame_t *frame_tx, int *slot_tx, long k2);
+int nr_ue_pusch_scheduler(const NR_UE_MAC_INST_t *mac,
+                          const uint8_t is_Msg3,
+                          const frame_t current_frame,
+                          const int current_slot,
+                          frame_t *frame_tx,
+                          int *slot_tx,
+                          const long k2);
 
 int get_rnti_type(NR_UE_MAC_INST_t *mac, uint16_t rnti);
 

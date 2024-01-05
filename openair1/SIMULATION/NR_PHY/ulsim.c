@@ -719,7 +719,6 @@ int main(int argc, char *argv[])
 
   uint32_t errors_decoding = 0;
 
-  nr_scheduled_response_t scheduled_response={0};
   fapi_nr_ul_config_request_t ul_config={0};
   fapi_nr_tx_request_t tx_req={0};
 
@@ -1074,15 +1073,9 @@ int main(int argc, char *argv[])
         nr_schedule_response(Sched_INFO);
 
         // --------- setting parameters for UE --------
-
-        scheduled_response.module_id = 0;
-        scheduled_response.CC_id = 0;
-        scheduled_response.frame = frame;
-        scheduled_response.slot = slot;
-        scheduled_response.dl_config = NULL;
-        scheduled_response.ul_config = &ul_config;
-        scheduled_response.tx_request = &tx_req;
-        scheduled_response.phy_data = (void *)&phy_data;
+        nr_scheduled_response_t scheduled_response = {.ul_config = &ul_config,
+                                                      .tx_request = &tx_req,
+                                                      .phy_data = (void *)&phy_data};
 
         // Config UL TX PDU
         tx_req.slot = slot;
@@ -1094,7 +1087,7 @@ int main(int argc, char *argv[])
         tx_req.tx_request_body[0].pdu = &ulsch_input_buffer[0];
 
         ul_config.slot = slot;
-        ul_config.number_pdus = do_SRS == 1 ? 2 : 1;
+        ul_config.nb_ULpdus = do_SRS == 1 ? 2 : 1;
 
         fapi_nr_ul_config_request_pdu_t *ul_config0 = &ul_config.ul_config_list[0];
         ul_config0->pdu_type = FAPI_NR_UL_CONFIG_TYPE_PUSCH;
