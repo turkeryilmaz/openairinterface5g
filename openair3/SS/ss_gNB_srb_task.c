@@ -428,7 +428,7 @@ void ss_gNB_srb_init(void)
   buffer = (unsigned char *)acpMalloc(size);
   assert(buffer);
 
-  if (RC.ss.mode == SS_SOFTMODEM_SRB)
+  if (RC.ss.mode == SS_HWTMODEM)
   {
     for(int idx=0; idx<8; idx++){
        SS_context.SSCell_list[idx].State = SS_STATE_CELL_ACTIVE;

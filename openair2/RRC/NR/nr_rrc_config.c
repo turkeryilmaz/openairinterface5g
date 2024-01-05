@@ -1117,7 +1117,7 @@ static struct NR_SetupRelease_PUSCH_Config *config_pusch(NR_PUSCH_Config_t *pusc
     pusch_Config->txConfig = calloc(1, sizeof(*pusch_Config->txConfig));
   *pusch_Config->txConfig = NR_PUSCH_Config__txConfig_codebook;
 
-  if(RC.ss.mode >= SS_SOFTMODEM && RC.ss.mode != SS_SOFTMODEM_SRB){
+  if(RC.ss.mode >= SS_SOFTMODEM && RC.ss.mode != SS_HWTMODEM){
     /* Hard code here the Nr_cell1 default configuration of TTCN */
     if (!pusch_Config->dmrs_UplinkForPUSCH_MappingTypeA)
       pusch_Config->dmrs_UplinkForPUSCH_MappingTypeA = calloc(1, sizeof(*pusch_Config->dmrs_UplinkForPUSCH_MappingTypeA));
@@ -2159,7 +2159,7 @@ NR_BCCH_DL_SCH_Message_t *get_SIB1_NR(const gNB_RrcConfigurationReq *configurati
   // ue-TimersAndConstants
   sib1->ue_TimersAndConstants = CALLOC(1,sizeof(struct NR_UE_TimersAndConstants));
   AssertFatal(sib1->ue_TimersAndConstants != NULL, "out of memory\n");
-  if(RC.ss.mode != SS_SOFTMODEM_SRB){
+  if(RC.ss.mode != SS_HWTMODEM){
     //W/A increasing T300 to avoid TAU
     sib1->ue_TimersAndConstants->t300 = NR_UE_TimersAndConstants__t300_ms2000;
   } else{

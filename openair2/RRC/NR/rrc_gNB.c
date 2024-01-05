@@ -305,7 +305,7 @@ static void init_NR_SI(gNB_RRC_INST *rrc, const int CC_id, gNB_RrcConfigurationR
   LOG_D(RRC,"%s()\n\n\n\n",__FUNCTION__);
 
   // From 3GPP 38331, NOTE 1:	Upper layers provide the 5G-S-TMSI if the UE is registered in the TA of the current cell."
-  if (RC.ss.mode == SS_SOFTMODEM_SRB) {
+  if (RC.ss.mode == SS_HWTMODEM) {
     configuration->tac = time(NULL);
   }
 
