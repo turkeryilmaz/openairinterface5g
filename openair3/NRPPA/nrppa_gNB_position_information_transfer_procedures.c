@@ -52,8 +52,8 @@ int nrppa_gNB_handle_PositioningInformationExchange(nrppa_gnb_ue_info_t *nrppa_m
   f1ap_req->nrppa_msg_info.routing_id_length = nrppa_msg_info->routing_id_length;
 
   // Processing Received PositioningInformationRequest
-  NRPPA_PositioningInformationRequest_t *container;
-  NRPPA_PositioningInformationRequest_IEs_t *ie;
+  NRPPA_PositioningInformationRequest_t *container = NULL;
+  NRPPA_PositioningInformationRequest_IEs_t *ie = NULL;
 
   // IE 9.2.3 Message type (M)
   container = &rx_pdu->choice.initiatingMessage->value.choice.PositioningInformationRequest;
@@ -118,8 +118,8 @@ int nrppa_gNB_handle_PositioningActivation(nrppa_gnb_ue_info_t *nrppa_msg_info, 
   f1ap_req->nrppa_msg_info.routing_id_length = nrppa_msg_info->routing_id_length;
 
   // Processing Received PositioningActivation
-  NRPPA_PositioningActivationRequest_t *container;
-  NRPPA_PositioningActivationRequestIEs_t *ie;
+  NRPPA_PositioningActivationRequest_t *container = NULL;
+  NRPPA_PositioningActivationRequestIEs_t *ie = NULL;
 
   // IE 9.2.3 Message type (M)
   container = &pdu->choice.initiatingMessage->value.choice.PositioningActivationRequest;
@@ -180,8 +180,8 @@ int nrppa_gNB_handle_PositioningDeactivation(nrppa_gnb_ue_info_t *nrppa_msg_info
   f1ap_req->nrppa_msg_info.routing_id_length = nrppa_msg_info->routing_id_length;
 
   // Processing Received PositioningDeActivation
-  NRPPA_PositioningDeactivation_t *container;
-  NRPPA_PositioningDeactivationIEs_t *ie;
+  NRPPA_PositioningDeactivation_t *container = NULL;
+  NRPPA_PositioningDeactivationIEs_t *ie = NULL;
 
   // IE 9.2.3 Message type (M)
   container = &pdu->choice.initiatingMessage->value.choice.PositioningDeactivation;
@@ -230,9 +230,7 @@ int nrppa_gNB_PositioningInformationResponse(instance_t instance, MessageDef *ms
         resp->nrppa_msg_info.ue_rnti);
 
   // Prepare NRPPA Position Information transfer Response
-  NRPPA_NRPPA_PDU_t tx_pdu;
-  uint8_t *buffer = NULL;
-  uint32_t length = 0;
+  NRPPA_NRPPA_PDU_t tx_pdu ={0};
 
   /* Prepare the NRPPA message to encode for successfulOutcome PositioningInformationResponse */
 
@@ -577,36 +575,39 @@ int nrppa_gNB_PositioningInformationResponse(instance_t instance, MessageDef *ms
   xer_fprint(stdout, &asn_DEF_NRPPA_NRPPA_PDU, &tx_pdu);
 
   /* Encode NRPPA message */
+  uint8_t *buffer = NULL;
+  uint32_t length = 0;
   if (nrppa_gNB_encode_pdu(&tx_pdu, &buffer, &length) < 0) {
     NRPPA_ERROR("Failed to encode Uplink NRPPa PositioningInformationResponse\n");
     return -1;
   }
 
   /* Forward the NRPPA PDU to NGAP */
-  if (resp->nrppa_msg_info.gNB_ue_ngap_id > 0 && resp->nrppa_msg_info.amf_ue_ngap_id > 0) //( 1) // TODO
+  nrppa_f1ap_info_t *info=&resp->nrppa_msg_info;
+  if (info->gNB_ue_ngap_id > 0 && info->amf_ue_ngap_id > 0) //( 1) // TODO
   {
     LOG_D(NRPPA,
           "Sending UplinkUEAssociatedNRPPa (PositioningInformationResponse) to NGAP (gNB_ue_ngap_id= %d, amf_ue_ngap_id =%ld)  \n",
-          resp->nrppa_msg_info.gNB_ue_ngap_id,
-          resp->nrppa_msg_info.amf_ue_ngap_id);
-    nrppa_gNB_itti_send_UplinkUEAssociatedNRPPa(resp->nrppa_msg_info.instance,
-                                                resp->nrppa_msg_info.gNB_ue_ngap_id,
-                                                resp->nrppa_msg_info.amf_ue_ngap_id,
-                                                resp->nrppa_msg_info.routing_id_buffer,
-                                                resp->nrppa_msg_info.routing_id_length,
+          info->gNB_ue_ngap_id,
+          info->amf_ue_ngap_id);
+    nrppa_gNB_itti_send_UplinkUEAssociatedNRPPa(info->instance,
+                                                info->gNB_ue_ngap_id,
+                                                info->amf_ue_ngap_id,
+                                                info->routing_id_buffer,
+                                                info->routing_id_length,
                                                 buffer,
                                                 length);
     return length;
-  } else if (resp->nrppa_msg_info.gNB_ue_ngap_id == -1 && resp->nrppa_msg_info.amf_ue_ngap_id == -1) //
+  } else if (info->gNB_ue_ngap_id == -1 && info->amf_ue_ngap_id == -1) //
   {
     LOG_D(
         NRPPA,
         "Sending UplinkNonUEAssociatedNRPPa (PositioningInformationResponse) to NGAP (gNB_ue_ngap_id= %d, amf_ue_ngap_id =%ld)  \n",
-        resp->nrppa_msg_info.gNB_ue_ngap_id,
-        resp->nrppa_msg_info.amf_ue_ngap_id);
-    nrppa_gNB_itti_send_UplinkNonUEAssociatedNRPPa(resp->nrppa_msg_info.instance,
-                                                   resp->nrppa_msg_info.routing_id_buffer,
-                                                   resp->nrppa_msg_info.routing_id_length,
+        info->gNB_ue_ngap_id,
+        info->amf_ue_ngap_id);
+    nrppa_gNB_itti_send_UplinkNonUEAssociatedNRPPa(info->instance,
+                                                   info->routing_id_buffer,
+                                                   info->routing_id_length,
                                                    buffer,
                                                    length);
     return length;
@@ -626,9 +627,7 @@ int nrppa_gNB_PositioningInformationFailure(instance_t instance, MessageDef *msg
         failure_msg->nrppa_msg_info.ue_rnti);
 
   // Prepare NRPPA Position Information failure
-  NRPPA_NRPPA_PDU_t tx_pdu;
-  uint8_t *buffer = NULL;
-  uint32_t length = 0;
+  NRPPA_NRPPA_PDU_t tx_pdu ={0};
 
   // IE: 9.2.3 Message Type unsuccessfulOutcome PositioningInformationFaliure (M)
   memset(&tx_pdu, 0, sizeof(tx_pdu));
@@ -686,40 +685,42 @@ int nrppa_gNB_PositioningInformationFailure(instance_t instance, MessageDef *msg
   xer_fprint(stdout, &asn_DEF_NRPPA_NRPPA_PDU, &tx_pdu);
 
   /* Encode NRPPA message */
+  uint8_t *buffer = NULL;
+  uint32_t length = 0;
   if (nrppa_gNB_encode_pdu(&tx_pdu, &buffer, &length) < 0) {
     NRPPA_ERROR("Failed to encode Uplink NRPPa PositioningInformationFailure \n");
     return -1;
   }
 
   /* Forward the NRPPA PDU to NGAP */
-  if (failure_msg->nrppa_msg_info.gNB_ue_ngap_id > 0 && failure_msg->nrppa_msg_info.amf_ue_ngap_id > 0) {
+  nrppa_f1ap_info_t *info=&failure_msg->nrppa_msg_info;
+  if (info->gNB_ue_ngap_id > 0 && info->amf_ue_ngap_id > 0) {
     LOG_D(NRPPA,
           "Sending UplinkUEAssociatedNRPPa (PositioningInformationFailure) to NGAP (gNB_ue_ngap_id= %d, amf_ue_ngap_id =%ld)  \n",
-          failure_msg->nrppa_msg_info.gNB_ue_ngap_id,
-          failure_msg->nrppa_msg_info.amf_ue_ngap_id);
-    nrppa_gNB_itti_send_UplinkUEAssociatedNRPPa(failure_msg->nrppa_msg_info.instance,
-                                                failure_msg->nrppa_msg_info.gNB_ue_ngap_id,
-                                                failure_msg->nrppa_msg_info.amf_ue_ngap_id,
-                                                failure_msg->nrppa_msg_info.routing_id_buffer,
-                                                failure_msg->nrppa_msg_info.routing_id_length,
+          info->gNB_ue_ngap_id,
+          info->amf_ue_ngap_id);
+    nrppa_gNB_itti_send_UplinkUEAssociatedNRPPa(info->instance,
+                                                info->gNB_ue_ngap_id,
+                                                info->amf_ue_ngap_id,
+                                                info->routing_id_buffer,
+                                                info->routing_id_length,
                                                 buffer,
                                                 length);
     return length;
-  } else if (failure_msg->nrppa_msg_info.gNB_ue_ngap_id == -1 && failure_msg->nrppa_msg_info.amf_ue_ngap_id == -1) {
+  } else if (info->gNB_ue_ngap_id == -1 && info->amf_ue_ngap_id == -1) {
     LOG_D(
         NRPPA,
         "Sending UplinkNonUEAssociatedNRPPa (PositioningInformationFailure) to NGAP (gNB_ue_ngap_id= %d, amf_ue_ngap_id =%ld)  \n",
-        failure_msg->nrppa_msg_info.gNB_ue_ngap_id,
-        failure_msg->nrppa_msg_info.amf_ue_ngap_id);
-    nrppa_gNB_itti_send_UplinkNonUEAssociatedNRPPa(failure_msg->nrppa_msg_info.instance,
-                                                   failure_msg->nrppa_msg_info.routing_id_buffer,
-                                                   failure_msg->nrppa_msg_info.routing_id_length,
+        info->gNB_ue_ngap_id,
+        info->amf_ue_ngap_id);
+    nrppa_gNB_itti_send_UplinkNonUEAssociatedNRPPa(info->instance,
+                                                   info->routing_id_buffer,
+                                                   info->routing_id_length,
                                                    buffer,
                                                    length);
     return length;
   } else {
     NRPPA_ERROR("Failed to find context for Uplink NonUE/UE Associated NRPPa PositioningInformationFailure\n");
-
     return -1;
   }
 }
@@ -734,9 +735,7 @@ int nrppa_gNB_PositioningInformationUpdate(instance_t instance, MessageDef *msg_
         update_msg->nrppa_msg_info.ue_rnti);
 
   // Prepare NRPPA Position Information Update
-  NRPPA_NRPPA_PDU_t pdu;
-  uint8_t *buffer = NULL;
-  uint32_t length = 0;
+  NRPPA_NRPPA_PDU_t pdu ={0};
 
   // Prepare the NRPPA message to encode for initiating message PositioningInformationUpdate
 
@@ -777,40 +776,43 @@ int nrppa_gNB_PositioningInformationUpdate(instance_t instance, MessageDef *msg_
   xer_fprint(stdout, &asn_DEF_NRPPA_NRPPA_PDU, &pdu);
 
   /* Encode NRPPA message */
+  uint8_t *buffer = NULL;
+  uint32_t length = 0;
   if (nrppa_gNB_encode_pdu(&pdu, &buffer, &length) < 0) {
     NRPPA_ERROR("Failed to encode Uplink NRPPa PositioningInformationUpdate\n");
     /* Encode procedure has failed... */
     return -1;
   }
 
-  if (update_msg->nrppa_msg_info.gNB_ue_ngap_id > 0 && update_msg->nrppa_msg_info.amf_ue_ngap_id > 0) {
+    /* Forward the NRPPA PDU to NGAP */
+  nrppa_f1ap_info_t *info=&update_msg->nrppa_msg_info;
+  if (info->gNB_ue_ngap_id > 0 && info->amf_ue_ngap_id > 0) {
     LOG_D(NRPPA,
           "Sending UplinkUEAssociatedNRPPa (PositioningInformationUpdate) to NGAP (gNB_ue_ngap_id= %d, amf_ue_ngap_id =%ld)  \n",
-          update_msg->nrppa_msg_info.gNB_ue_ngap_id,
-          update_msg->nrppa_msg_info.amf_ue_ngap_id);
-    nrppa_gNB_itti_send_UplinkUEAssociatedNRPPa(update_msg->nrppa_msg_info.instance,
-                                                update_msg->nrppa_msg_info.gNB_ue_ngap_id,
-                                                update_msg->nrppa_msg_info.amf_ue_ngap_id,
-                                                update_msg->nrppa_msg_info.routing_id_buffer,
-                                                update_msg->nrppa_msg_info.routing_id_length,
+          info->gNB_ue_ngap_id,
+          info->amf_ue_ngap_id);
+    nrppa_gNB_itti_send_UplinkUEAssociatedNRPPa(info->instance,
+                                                info->gNB_ue_ngap_id,
+                                                info->amf_ue_ngap_id,
+                                                info->routing_id_buffer,
+                                                info->routing_id_length,
                                                 buffer,
                                                 length); // tx_nrppa_pdu=buffer, nrppa_pdu_length=length
     return length;
-  } else if (update_msg->nrppa_msg_info.gNB_ue_ngap_id == -1 && update_msg->nrppa_msg_info.amf_ue_ngap_id == -1) //
+  } else if (info->gNB_ue_ngap_id == -1 && info->amf_ue_ngap_id == -1) //
   {
     LOG_D(NRPPA,
           "Sending UplinkNonUEAssociatedNRPPa (PositioningInformationUpdate) to NGAP (gNB_ue_ngap_id= %d, amf_ue_ngap_id =%ld)  \n",
-          update_msg->nrppa_msg_info.gNB_ue_ngap_id,
-          update_msg->nrppa_msg_info.amf_ue_ngap_id);
-    nrppa_gNB_itti_send_UplinkNonUEAssociatedNRPPa(update_msg->nrppa_msg_info.instance,
-                                                   update_msg->nrppa_msg_info.routing_id_buffer,
-                                                   update_msg->nrppa_msg_info.routing_id_length,
+          info->gNB_ue_ngap_id,
+          info->amf_ue_ngap_id);
+    nrppa_gNB_itti_send_UplinkNonUEAssociatedNRPPa(info->instance,
+                                                   info->routing_id_buffer,
+                                                   info->routing_id_length,
                                                    buffer,
                                                    length);
     return length;
   } else {
     NRPPA_ERROR("Failed to find context for Uplink NonUE/UE Associated NRPPa PositioningInformationUpdate\n");
-
     return -1;
   }
 }
@@ -826,9 +828,7 @@ int nrppa_gNB_PositioningActivationResponse(instance_t instance, MessageDef *msg
         resp->nrppa_msg_info.ue_rnti);
 
   // Prepare NRPPA Positioning  Activation Response
-  NRPPA_NRPPA_PDU_t pdu;
-  uint8_t *buffer = NULL;
-  uint32_t length = 0;
+  NRPPA_NRPPA_PDU_t pdu ={0};
 
   /* Prepare the NRPPA message to encode for successfulOutcome PositioningActivationResponse */
 
@@ -870,34 +870,37 @@ int nrppa_gNB_PositioningActivationResponse(instance_t instance, MessageDef *msg
   }
 
   /* Encode NRPPA message */
+  uint8_t *buffer = NULL;
+  uint32_t length = 0;
   if (nrppa_gNB_encode_pdu(&pdu, &buffer, &length) < 0) {
     NRPPA_ERROR("Failed to encode Uplink NRPPa PositioningActivationResponse\n");
     return -1;
   }
 
   /* Forward the NRPPA PDU to NGAP */
-  if (resp->nrppa_msg_info.gNB_ue_ngap_id > 0 && resp->nrppa_msg_info.amf_ue_ngap_id > 0) {
+  nrppa_f1ap_info_t *info=&resp->nrppa_msg_info;
+  if (info->gNB_ue_ngap_id > 0 && info->amf_ue_ngap_id > 0) {
     LOG_D(NRPPA,
           "Sending UplinkUEAssociatedNRPPa (PositioningActivationResponse) to NGAP (gNB_ue_ngap_id= %d, amf_ue_ngap_id =%ld)  \n",
-          resp->nrppa_msg_info.gNB_ue_ngap_id,
-          resp->nrppa_msg_info.amf_ue_ngap_id);
-    nrppa_gNB_itti_send_UplinkUEAssociatedNRPPa(resp->nrppa_msg_info.instance,
-                                                resp->nrppa_msg_info.gNB_ue_ngap_id,
-                                                resp->nrppa_msg_info.amf_ue_ngap_id,
-                                                resp->nrppa_msg_info.routing_id_buffer,
-                                                resp->nrppa_msg_info.routing_id_length,
+          info->gNB_ue_ngap_id,
+          info->amf_ue_ngap_id);
+    nrppa_gNB_itti_send_UplinkUEAssociatedNRPPa(info->instance,
+                                                info->gNB_ue_ngap_id,
+                                                info->amf_ue_ngap_id,
+                                                info->routing_id_buffer,
+                                                info->routing_id_length,
                                                 buffer,
                                                 length);
     return length;
-  } else if (resp->nrppa_msg_info.gNB_ue_ngap_id == -1 && resp->nrppa_msg_info.amf_ue_ngap_id == -1) {
+  } else if (info->gNB_ue_ngap_id == -1 && info->amf_ue_ngap_id == -1) {
     LOG_D(
         NRPPA,
         "Sending UplinkNonUEAssociatedNRPPa (PositioningActivationResponse) to NGAP (gNB_ue_ngap_id= %d, amf_ue_ngap_id =%ld)  \n",
-        resp->nrppa_msg_info.gNB_ue_ngap_id,
-        resp->nrppa_msg_info.amf_ue_ngap_id);
-    nrppa_gNB_itti_send_UplinkNonUEAssociatedNRPPa(resp->nrppa_msg_info.instance,
-                                                   resp->nrppa_msg_info.routing_id_buffer,
-                                                   resp->nrppa_msg_info.routing_id_length,
+        info->gNB_ue_ngap_id,
+        info->amf_ue_ngap_id);
+    nrppa_gNB_itti_send_UplinkNonUEAssociatedNRPPa(info->instance,
+                                                   info->routing_id_buffer,
+                                                   info->routing_id_length,
                                                    buffer,
                                                    length);
     return length;
@@ -919,9 +922,7 @@ int nrppa_gNB_PositioningActivationFailure(instance_t instance, MessageDef *msg_
 
   // Prepare NRPPA Positioning Activation Failure
 
-  NRPPA_NRPPA_PDU_t pdu;
-  uint8_t *buffer = NULL;
-  uint32_t length = 0;
+  NRPPA_NRPPA_PDU_t pdu ={0};
 
   /* Prepare the NRPPA message to encode for unsuccessfulOutcome PositioningActivationFailure */
   // IE: 9.2.3 Message Type unsuccessfulOutcome PositioningActivationFailure /* mandatory */
@@ -981,34 +982,37 @@ int nrppa_gNB_PositioningActivationFailure(instance_t instance, MessageDef *msg_
   }
 
   /* Encode NRPPA message */
+  uint8_t *buffer = NULL;
+  uint32_t length = 0;
   if (nrppa_gNB_encode_pdu(&pdu, &buffer, &length) < 0) {
     NRPPA_ERROR("Failed to encode Uplink NRPPa PositioningActivationFailure \n");
     return -1;
   }
 
   /* Forward the NRPPA PDU to NGAP */
-  if (failure_msg->nrppa_msg_info.gNB_ue_ngap_id > 0 && failure_msg->nrppa_msg_info.amf_ue_ngap_id > 0) {
+  nrppa_f1ap_info_t *info=&failure_msg->nrppa_msg_info;
+  if (info->gNB_ue_ngap_id > 0 && info->amf_ue_ngap_id > 0) {
     LOG_D(NRPPA,
           "Sending UplinkUEAssociatedNRPPa (PositioningActivationFailure) to NGAP (gNB_ue_ngap_id= %d, amf_ue_ngap_id =%ld)  \n",
-          failure_msg->nrppa_msg_info.gNB_ue_ngap_id,
-          failure_msg->nrppa_msg_info.amf_ue_ngap_id);
-    nrppa_gNB_itti_send_UplinkUEAssociatedNRPPa(failure_msg->nrppa_msg_info.instance,
-                                                failure_msg->nrppa_msg_info.gNB_ue_ngap_id,
-                                                failure_msg->nrppa_msg_info.amf_ue_ngap_id,
-                                                failure_msg->nrppa_msg_info.routing_id_buffer,
-                                                failure_msg->nrppa_msg_info.routing_id_length,
+          info->gNB_ue_ngap_id,
+          info->amf_ue_ngap_id);
+    nrppa_gNB_itti_send_UplinkUEAssociatedNRPPa(info->instance,
+                                                info->gNB_ue_ngap_id,
+                                                info->amf_ue_ngap_id,
+                                                info->routing_id_buffer,
+                                                info->routing_id_length,
                                                 buffer,
                                                 length); // tx_nrppa_pdu=buffer, nrppa_pdu_length=length
     return length;
-  } else if (failure_msg->nrppa_msg_info.gNB_ue_ngap_id == -1 && failure_msg->nrppa_msg_info.amf_ue_ngap_id == -1) //
+  } else if (info->gNB_ue_ngap_id == -1 && info->amf_ue_ngap_id == -1) //
   {
     LOG_D(NRPPA,
           "Sending UplinkNonUEAssociatedNRPPa (PositioningActivationFailure) to NGAP (gNB_ue_ngap_id= %d, amf_ue_ngap_id =%ld)  \n",
-          failure_msg->nrppa_msg_info.gNB_ue_ngap_id,
-          failure_msg->nrppa_msg_info.amf_ue_ngap_id);
-    nrppa_gNB_itti_send_UplinkNonUEAssociatedNRPPa(failure_msg->nrppa_msg_info.instance,
-                                                   failure_msg->nrppa_msg_info.routing_id_buffer,
-                                                   failure_msg->nrppa_msg_info.routing_id_length,
+          info->gNB_ue_ngap_id,
+          info->amf_ue_ngap_id);
+    nrppa_gNB_itti_send_UplinkNonUEAssociatedNRPPa(info->instance,
+                                                   info->routing_id_buffer,
+                                                   info->routing_id_length,
                                                    buffer,
                                                    length);
     return length;

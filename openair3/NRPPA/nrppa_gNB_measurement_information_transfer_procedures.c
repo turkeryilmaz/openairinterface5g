@@ -55,8 +55,8 @@ int nrppa_gNB_handle_Measurement(nrppa_gnb_ue_info_t *nrppa_msg_info, NRPPA_NRPP
   f1ap_req->ran_measurement_id = 2; // TODO add actual not in NRPPA but in F1AP;
 
   // Processing Received MeasurmentRequest
-  NRPPA_MeasurementRequest_t *container;
-  NRPPA_MeasurementRequest_IEs_t *ie;
+  NRPPA_MeasurementRequest_t *container = NULL;
+  NRPPA_MeasurementRequest_IEs_t *ie = NULL;
 
   // IE 9.2.3 Message type (M)
   container = &pdu->choice.initiatingMessage->value.choice.MeasurementRequest;
@@ -178,8 +178,8 @@ int nrppa_gNB_handle_MeasurementUpdate(nrppa_gnb_ue_info_t *nrppa_msg_info, NRPP
   f1ap_req->nrppa_msg_info.routing_id_length = nrppa_msg_info->routing_id_length;
 
   // Processing Received MeasurementUpdate
-  NRPPA_MeasurementUpdate_t *container;
-  NRPPA_MeasurementUpdate_IEs_t *ie;
+  NRPPA_MeasurementUpdate_t *container = NULL;
+  NRPPA_MeasurementUpdate_IEs_t *ie = NULL;
 
   // IE 9.2.3 Message type (M)
   container = &pdu->choice.initiatingMessage->value.choice.MeasurementUpdate;
@@ -195,8 +195,8 @@ int nrppa_gNB_handle_MeasurementUpdate(nrppa_gnb_ue_info_t *nrppa_msg_info, NRPP
 
   // IE RAN_Measurement_ID (M)
   NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_MeasurementUpdate_IEs_t, ie, container, NRPPA_ProtocolIE_ID_id_RAN_Measurement_ID, true);
-  NRPPA_Measurement_ID_t RAN_Meas_ID =
-      ie->value.choice.Measurement_ID_1; // TODO adeel check if it is with Measurement_ID_1 or Measurement_ID
+  NRPPA_Measurement_ID_t RAN_Meas_ID = ie->value.choice.Measurement_ID_1;
+      // TODO adeel check if it is with Measurement_ID_1 or Measurement_ID
   f1ap_req->ran_measurement_id = RAN_Meas_ID;
 
   // IE SRSConfiguration (Optional)
@@ -227,8 +227,8 @@ int nrppa_gNB_handle_MeasurementAbort(nrppa_gnb_ue_info_t *nrppa_msg_info, NRPPA
   f1ap_req->nrppa_msg_info.routing_id_length = nrppa_msg_info->routing_id_length;
 
   // Processing Received MeasurementAbort
-  NRPPA_MeasurementAbort_t *container;
-  NRPPA_MeasurementAbort_IEs_t *ie;
+  NRPPA_MeasurementAbort_t *container = NULL;
+  NRPPA_MeasurementAbort_IEs_t *ie = NULL;
 
   // IE 9.2.3 Message type (M)
   container = &pdu->choice.initiatingMessage->value.choice.MeasurementAbort;
@@ -267,9 +267,7 @@ int nrppa_gNB_MeasurementResponse(instance_t instance, MessageDef *msg_p)
         resp->nrppa_msg_info.ue_rnti);
 
   // Prepare NRPPA Measurement Response
-  NRPPA_NRPPA_PDU_t pdu;
-  uint8_t *buffer = NULL;
-  uint32_t length = 0;
+  NRPPA_NRPPA_PDU_t pdu ={0};
 
   /* Prepare the NRPPA message to encode for successfulOutcome MeasurementResponse */
   // IE: 9.2.3 Message Type successfulOutcome MeasurementResponse  mandatory
@@ -512,33 +510,36 @@ int nrppa_gNB_MeasurementResponse(instance_t instance, MessageDef *msg_p)
   xer_fprint(stdout, &asn_DEF_NRPPA_NRPPA_PDU, &pdu);
 
   /* Encode NRPPA message */
+  uint8_t *buffer = NULL;
+  uint32_t length = 0;
   if (nrppa_gNB_encode_pdu(&pdu, &buffer, &length) < 0) {
     NRPPA_ERROR("Failed to encode Uplink NRPPa MeasurementResponse\n");
     return -1;
   }
 
   /* Forward the NRPPA PDU to NGAP */
-  if (resp->nrppa_msg_info.gNB_ue_ngap_id > 0 && resp->nrppa_msg_info.amf_ue_ngap_id > 0) {
+  nrppa_f1ap_info_t *info=&resp->nrppa_msg_info;
+  if (info->gNB_ue_ngap_id > 0 && info->amf_ue_ngap_id > 0) {
     LOG_D(NRPPA,
           "Sending UplinkUEAssociatedNRPPa (MeasurementResponse) to NGAP (gNB_ue_ngap_id= %d, amf_ue_ngap_id =%ld)  \n",
-          resp->nrppa_msg_info.gNB_ue_ngap_id,
-          resp->nrppa_msg_info.amf_ue_ngap_id);
-    nrppa_gNB_itti_send_UplinkUEAssociatedNRPPa(resp->nrppa_msg_info.instance,
-                                                resp->nrppa_msg_info.gNB_ue_ngap_id,
-                                                resp->nrppa_msg_info.amf_ue_ngap_id,
-                                                resp->nrppa_msg_info.routing_id_buffer,
-                                                resp->nrppa_msg_info.routing_id_length,
+          info->gNB_ue_ngap_id,
+          info->amf_ue_ngap_id);
+    nrppa_gNB_itti_send_UplinkUEAssociatedNRPPa(info->instance,
+                                                info->gNB_ue_ngap_id,
+                                                info->amf_ue_ngap_id,
+                                                info->routing_id_buffer,
+                                                info->routing_id_length,
                                                 buffer,
                                                 length);
     return length;
-  } else if (resp->nrppa_msg_info.gNB_ue_ngap_id == -1 && resp->nrppa_msg_info.amf_ue_ngap_id == -1) {
+  } else if (info->gNB_ue_ngap_id == -1 && info->amf_ue_ngap_id == -1) {
     LOG_D(NRPPA,
           "Sending UplinkNonUEAssociatedNRPPa (MeasurementResponse) to NGAP (gNB_ue_ngap_id= %d, amf_ue_ngap_id =%ld)  \n",
-          resp->nrppa_msg_info.gNB_ue_ngap_id,
-          resp->nrppa_msg_info.amf_ue_ngap_id);
-    nrppa_gNB_itti_send_UplinkNonUEAssociatedNRPPa(resp->nrppa_msg_info.instance,
-                                                   resp->nrppa_msg_info.routing_id_buffer,
-                                                   resp->nrppa_msg_info.routing_id_length,
+          info->gNB_ue_ngap_id,
+          info->amf_ue_ngap_id);
+    nrppa_gNB_itti_send_UplinkNonUEAssociatedNRPPa(info->instance,
+                                                   info->routing_id_buffer,
+                                                   info->routing_id_length,
                                                    buffer,
                                                    length);
     return length;
@@ -559,9 +560,7 @@ int nrppa_gNB_MeasurementFailure(instance_t instance, MessageDef *msg_p)
         failure_msg->nrppa_msg_info.ue_rnti);
 
   // Prepare the NRPPA message to encode for unsuccessfulOutcome MeasurementFailure
-  NRPPA_NRPPA_PDU_t pdu;
-  uint8_t *buffer = NULL;
-  uint32_t length = 0;
+  NRPPA_NRPPA_PDU_t pdu ={0};
 
   // IE: 9.2.3 Message Type  mandatory
   memset(&pdu, 0, sizeof(pdu));
@@ -625,6 +624,8 @@ int nrppa_gNB_MeasurementFailure(instance_t instance, MessageDef *msg_p)
   }*/
 
   /* Encode NRPPA message */
+  uint8_t *buffer = NULL;
+  uint32_t length = 0;
   if (nrppa_gNB_encode_pdu(&pdu, &buffer, &length) < 0) {
     NRPPA_ERROR("Failed to encode Uplink NRPPa MeasurementFailure \n");
     /* Encode procedure has failed... */
@@ -632,28 +633,29 @@ int nrppa_gNB_MeasurementFailure(instance_t instance, MessageDef *msg_p)
   }
 
   /* Forward the NRPPA PDU to NGAP */
-  if (failure_msg->nrppa_msg_info.gNB_ue_ngap_id > 0 && failure_msg->nrppa_msg_info.amf_ue_ngap_id > 0) {
+  nrppa_f1ap_info_t *info=&failure_msg->nrppa_msg_info;
+  if (info->gNB_ue_ngap_id > 0 && info->amf_ue_ngap_id > 0) {
     LOG_D(NRPPA,
           "Sending UplinkUEAssociatedNRPPa (MeasurementFailure) to NGAP (gNB_ue_ngap_id= %d, amf_ue_ngap_id =%ld)  \n",
-          failure_msg->nrppa_msg_info.gNB_ue_ngap_id,
-          failure_msg->nrppa_msg_info.amf_ue_ngap_id);
-    nrppa_gNB_itti_send_UplinkUEAssociatedNRPPa(failure_msg->nrppa_msg_info.instance,
-                                                failure_msg->nrppa_msg_info.gNB_ue_ngap_id,
-                                                failure_msg->nrppa_msg_info.amf_ue_ngap_id,
-                                                failure_msg->nrppa_msg_info.routing_id_buffer,
-                                                failure_msg->nrppa_msg_info.routing_id_length,
+          info->gNB_ue_ngap_id,
+          info->amf_ue_ngap_id);
+    nrppa_gNB_itti_send_UplinkUEAssociatedNRPPa(info->instance,
+                                                info->gNB_ue_ngap_id,
+                                                info->amf_ue_ngap_id,
+                                                info->routing_id_buffer,
+                                                info->routing_id_length,
                                                 buffer,
                                                 length); // tx_nrppa_pdu=buffer, nrppa_pdu_length=length
     return length;
-  } else if (failure_msg->nrppa_msg_info.gNB_ue_ngap_id == -1 && failure_msg->nrppa_msg_info.amf_ue_ngap_id == -1) //
+  } else if (info->gNB_ue_ngap_id == -1 && info->amf_ue_ngap_id == -1) //
   {
     LOG_D(NRPPA,
           "Sending UplinkNonUEAssociatedNRPPa (MeasurementFailure) to NGAP (gNB_ue_ngap_id= %d, amf_ue_ngap_id =%ld)  \n",
-          failure_msg->nrppa_msg_info.gNB_ue_ngap_id,
-          failure_msg->nrppa_msg_info.amf_ue_ngap_id);
-    nrppa_gNB_itti_send_UplinkNonUEAssociatedNRPPa(failure_msg->nrppa_msg_info.instance,
-                                                   failure_msg->nrppa_msg_info.routing_id_buffer,
-                                                   failure_msg->nrppa_msg_info.routing_id_length,
+          info->gNB_ue_ngap_id,
+          info->amf_ue_ngap_id);
+    nrppa_gNB_itti_send_UplinkNonUEAssociatedNRPPa(info->instance,
+                                                   info->routing_id_buffer,
+                                                   info->routing_id_length,
                                                    buffer,
                                                    length);
     return length;
@@ -675,9 +677,7 @@ int nrppa_gNB_MeasurementReport(instance_t instance, MessageDef *msg_p)
         report_msg->nrppa_msg_info.ue_rnti);
 
   // Prepare NRPPA Measurement Report
-  NRPPA_NRPPA_PDU_t pdu;
-  uint8_t *buffer = NULL;
-  uint32_t length = 0;
+  NRPPA_NRPPA_PDU_t pdu ={0};
 
   /* Prepare the NRPPA message to encode for initiatingMessage MeasurementReport */
 
@@ -917,6 +917,8 @@ int nrppa_gNB_MeasurementReport(instance_t instance, MessageDef *msg_p)
   } // IE = TRP Measurement Response List
 
   /* Encode NRPPA message */
+  uint8_t *buffer = NULL;
+  uint32_t length = 0;
   if (nrppa_gNB_encode_pdu(&pdu, &buffer, &length) < 0) {
     NRPPA_ERROR("Failed to encode Uplink NRPPa MeasurementReport\n");
     /* Encode procedure has failed... */
@@ -924,28 +926,29 @@ int nrppa_gNB_MeasurementReport(instance_t instance, MessageDef *msg_p)
   }
 
   /* Forward the NRPPA PDU to NGAP */
-  if (report_msg->nrppa_msg_info.gNB_ue_ngap_id > 0 && report_msg->nrppa_msg_info.amf_ue_ngap_id > 0) {
+  nrppa_f1ap_info_t *info=&report_msg->nrppa_msg_info;
+  if (info->gNB_ue_ngap_id > 0 && info->amf_ue_ngap_id > 0) {
     LOG_D(NRPPA,
           "Sending UplinkUEAssociatedNRPPa (MeasurementReport) to NGAP (gNB_ue_ngap_id= %d, amf_ue_ngap_id =%ld)  \n",
-          report_msg->nrppa_msg_info.gNB_ue_ngap_id,
-          report_msg->nrppa_msg_info.amf_ue_ngap_id);
-    nrppa_gNB_itti_send_UplinkUEAssociatedNRPPa(report_msg->nrppa_msg_info.instance,
-                                                report_msg->nrppa_msg_info.gNB_ue_ngap_id,
-                                                report_msg->nrppa_msg_info.amf_ue_ngap_id,
-                                                report_msg->nrppa_msg_info.routing_id_buffer,
-                                                report_msg->nrppa_msg_info.routing_id_length,
+          info->gNB_ue_ngap_id,
+          info->amf_ue_ngap_id);
+    nrppa_gNB_itti_send_UplinkUEAssociatedNRPPa(info->instance,
+                                                info->gNB_ue_ngap_id,
+                                                info->amf_ue_ngap_id,
+                                                info->routing_id_buffer,
+                                                info->routing_id_length,
                                                 buffer,
                                                 length); // tx_nrppa_pdu=buffer, nrppa_pdu_length=length
     return length;
-  } else if (report_msg->nrppa_msg_info.gNB_ue_ngap_id == -1 && report_msg->nrppa_msg_info.amf_ue_ngap_id == -1) //
+  } else if (info->gNB_ue_ngap_id == -1 && info->amf_ue_ngap_id == -1) //
   {
     LOG_D(NRPPA,
           "Sending UplinkNonUEAssociatedNRPPa (MeasurementReport) to NGAP (gNB_ue_ngap_id= %d, amf_ue_ngap_id =%ld)  \n",
-          report_msg->nrppa_msg_info.gNB_ue_ngap_id,
-          report_msg->nrppa_msg_info.amf_ue_ngap_id);
-    nrppa_gNB_itti_send_UplinkNonUEAssociatedNRPPa(report_msg->nrppa_msg_info.instance,
-                                                   report_msg->nrppa_msg_info.routing_id_buffer,
-                                                   report_msg->nrppa_msg_info.routing_id_length,
+          info->gNB_ue_ngap_id,
+          info->amf_ue_ngap_id);
+    nrppa_gNB_itti_send_UplinkNonUEAssociatedNRPPa(info->instance,
+                                                   info->routing_id_buffer,
+                                                   info->routing_id_length,
                                                    buffer,
                                                    length);
     return length;
@@ -966,9 +969,7 @@ int nrppa_gNB_MeasurementFailureIndication(instance_t instance, MessageDef *msg_
         failure_msg->ran_measurement_id,
         failure_msg->nrppa_msg_info.ue_rnti);
   // Prepare NRPPA Measurement Failure Indication
-  NRPPA_NRPPA_PDU_t pdu;
-  uint8_t *buffer = NULL;
-  uint32_t length = 0;
+  NRPPA_NRPPA_PDU_t pdu ={0};
   /* Prepare the NRPPA message to encode for initiatingMessage MeasurementFailureIndication */
 
   // IE 9.2.3 Message type (M)
@@ -1036,34 +1037,37 @@ int nrppa_gNB_MeasurementFailureIndication(instance_t instance, MessageDef *msg_
   }
 
   /* Encode NRPPA message */
+  uint8_t *buffer = NULL;
+  uint32_t length = 0;
   if (nrppa_gNB_encode_pdu(&pdu, &buffer, &length) < 0) {
     NRPPA_ERROR("Failed to encode Uplink NRPPa MeasurementFailureIndication \n");
     return -1;
   }
 
   /* Forward the NRPPA PDU to NGAP */
-  if (failure_msg->nrppa_msg_info.gNB_ue_ngap_id > 0 && failure_msg->nrppa_msg_info.amf_ue_ngap_id > 0) {
+  nrppa_f1ap_info_t *info=&failure_msg->nrppa_msg_info;
+  if (info->gNB_ue_ngap_id > 0 && info->amf_ue_ngap_id > 0) {
     LOG_D(NRPPA,
           "Sending UplinkUEAssociatedNRPPa (MeasurementFailureIndication) to NGAP (gNB_ue_ngap_id= %d, amf_ue_ngap_id =%ld)  \n",
-          failure_msg->nrppa_msg_info.gNB_ue_ngap_id,
-          failure_msg->nrppa_msg_info.amf_ue_ngap_id);
-    nrppa_gNB_itti_send_UplinkUEAssociatedNRPPa(failure_msg->nrppa_msg_info.instance,
-                                                failure_msg->nrppa_msg_info.gNB_ue_ngap_id,
-                                                failure_msg->nrppa_msg_info.amf_ue_ngap_id,
-                                                failure_msg->nrppa_msg_info.routing_id_buffer,
-                                                failure_msg->nrppa_msg_info.routing_id_length,
+          info->gNB_ue_ngap_id,
+          info->amf_ue_ngap_id);
+    nrppa_gNB_itti_send_UplinkUEAssociatedNRPPa(info->instance,
+                                                info->gNB_ue_ngap_id,
+                                                info->amf_ue_ngap_id,
+                                                info->routing_id_buffer,
+                                                info->routing_id_length,
                                                 buffer,
                                                 length); // tx_nrppa_pdu=buffer, nrppa_pdu_length=length
     return length;
-  } else if (failure_msg->nrppa_msg_info.gNB_ue_ngap_id == -1 && failure_msg->nrppa_msg_info.amf_ue_ngap_id == -1) //
+  } else if (info->gNB_ue_ngap_id == -1 && info->amf_ue_ngap_id == -1) //
   {
     LOG_D(NRPPA,
           "Sending UplinkNonUEAssociatedNRPPa (MeasurementFailureIndication) to NGAP (gNB_ue_ngap_id= %d, amf_ue_ngap_id =%ld)  \n",
-          failure_msg->nrppa_msg_info.gNB_ue_ngap_id,
-          failure_msg->nrppa_msg_info.amf_ue_ngap_id);
-    nrppa_gNB_itti_send_UplinkNonUEAssociatedNRPPa(failure_msg->nrppa_msg_info.instance,
-                                                   failure_msg->nrppa_msg_info.routing_id_buffer,
-                                                   failure_msg->nrppa_msg_info.routing_id_length,
+          info->gNB_ue_ngap_id,
+          info->amf_ue_ngap_id);
+    nrppa_gNB_itti_send_UplinkNonUEAssociatedNRPPa(info->instance,
+                                                   info->routing_id_buffer,
+                                                   info->routing_id_length,
                                                    buffer,
                                                    length);
     return length;

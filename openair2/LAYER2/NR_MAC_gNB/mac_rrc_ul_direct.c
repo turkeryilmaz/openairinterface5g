@@ -323,25 +323,25 @@ static void positioning_information_response(const f1ap_positioning_information_
           switch (srs_resource->resourceType.present) {
             case NR_SRS_Resource__resourceType_PR_periodic:
               resource_item->resourceType.present = f1ap_resource_type_pr_periodic;
-              resource_item->resourceType.choice.periodic.periodicity =
-                  0; // TODO check sturctuce srs_resource->resourceType.choice.periodic->periodicityAndOffset_p.periodicity; //(M)
+              resource_item->resourceType.choice.periodic.periodicity =0;
+              // TODO check sturctuce srs_resource->resourceType.choice.periodic->periodicityAndOffset_p.periodicity; //(M)
                      // choice periodic (uint8_t periodicity; uint16_t offset);
-              resource_item->resourceType.choice.periodic.offset =
-                  0; // TODO srs_resource->resourceType.choice.periodic->offset; //(M)
+              resource_item->resourceType.choice.periodic.offset =0;
+              // TODO srs_resource->resourceType.choice.periodic->offset; //(M)
               break;
             case NR_SRS_Resource__resourceType_PR_aperiodic:
               resource_item->resourceType.present = f1ap_resource_type_pr_aperiodic;
-              resource_item->resourceType.choice.aperiodic.aperiodicResourceType =
-                  0; // not done in srs impelmentation srs_resource->resourceType.choice.aperiodic->aperiodicResourceType; //(M)
+              resource_item->resourceType.choice.aperiodic.aperiodicResourceType =0;
+              // not done in srs impelmentation srs_resource->resourceType.choice.aperiodic->aperiodicResourceType; //(M)
                      // aperiodic (uint8_t aperiodicResourceType;);
               break;
             case NR_SRS_Resource__resourceType_PR_semi_persistent:
               resource_item->resourceType.present = f1ap_resource_type_pr_semi_persistent;
-              resource_item->resourceType.choice.semi_persistent.periodicity =
-                  0; // TODO not implemented in SRS srs_resource->resourceType.choice.semi_persistent->periodicity; //(M)
+              resource_item->resourceType.choice.semi_persistent.periodicity =0;
+              // TODO not implemented in SRS srs_resource->resourceType.choice.semi_persistent->periodicity; //(M)
                      // semi_persistent (uint8_t periodicity;
-              resource_item->resourceType.choice.semi_persistent.offset =
-                  0; // TODOnot implemented in SRS srs_resource->resourceType.choice.semi_persistent->offset; //(M)
+              resource_item->resourceType.choice.semi_persistent.offset =0;
+              // TODOnot implemented in SRS srs_resource->resourceType.choice.semi_persistent->offset; //(M)
               break;
             case NR_SRS_Resource__resourceType_PR_NOTHING:
               resource_item->resourceType.present = f1ap_resource_type_pr_nothing;
@@ -561,20 +561,22 @@ static void positioning_measurement_response(const f1ap_measurement_resp_t *resp
         resp->ran_measurement_id);
 
   MessageDef *msg = itti_alloc_new_message(TASK_MAC_GNB, 0, F1AP_MEASUREMENT_RESP);
+  f1ap_measurement_resp_t *f1ap_resp= &F1AP_MEASUREMENT_RESP(msg);
+
+
   // prepare the common part of the response
-  f1ap_measurement_resp_t f1ap_resp;
-  f1ap_resp.transaction_id = resp->transaction_id;
-  f1ap_resp.lmf_measurement_id = resp->lmf_measurement_id;
-  f1ap_resp.ran_measurement_id = resp->ran_measurement_id;
-  f1ap_resp.nrppa_msg_info = resp->nrppa_msg_info;
-  f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_length = 1;
-  f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item = malloc(sizeof(f1ap_pos_measurement_result_list_item_t));
-  f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->tRPID =
-      0; // TODO: this needs to be added to the config file
-  f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->posMeasurementResult.f1ap_pos_measurement_result_length =
-      1;
-  f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->posMeasurementResult.pos_measurement_result_item =
-      malloc(sizeof(f1ap_pos_measurement_result_item_t));
+  *f1ap_resp = *resp;
+  f1ap_resp->transaction_id = resp->transaction_id;
+  f1ap_resp->lmf_measurement_id = resp->lmf_measurement_id;
+  f1ap_resp->ran_measurement_id = resp->ran_measurement_id;
+  f1ap_resp->nrppa_msg_info = resp->nrppa_msg_info;
+  f1ap_pos_measurement_result_list_t *measList=&f1ap_resp->pos_measurement_result_list;
+  measList->pos_measurement_result_list_length = 1;
+  measList->pos_measurement_result_list_item = malloc(sizeof(f1ap_pos_measurement_result_list_item_t));
+  measList->pos_measurement_result_list_item->tRPID =0; // TODO: needs to be added to config file
+  f1ap_pos_measurement_result_t *posMeasRes= &measList->pos_measurement_result_list_item->posMeasurementResult;
+  posMeasRes->f1ap_pos_measurement_result_length =1;
+  posMeasRes->pos_measurement_result_item =malloc(sizeof(f1ap_pos_measurement_result_item_t));
 
   // criticality_diagnostics;
 
@@ -591,12 +593,10 @@ static void positioning_measurement_response(const f1ap_measurement_resp_t *resp
             "Extracting uL_RTOA info of MeasurementResponse for ue rnti= %04x \n",
             resp->nrppa_msg_info.ue_rnti); ////uid_t uid = &UE->uid;
       // we assume we use UL_RTOA for now with k=1 (i.e. 8 times oversampling from 122.88e6 Msps)
-      f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->posMeasurementResult.pos_measurement_result_item
-          ->measuredResultsValue.present = f1ap_measured_results_value_pr_ul_rtoa;
-      f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->posMeasurementResult.pos_measurement_result_item
-          ->measuredResultsValue.choice.uL_RTOA.uL_RTOA_MeasurementItem.present = f1ap_ulrtoameas_pr_k1;
-      f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->posMeasurementResult.pos_measurement_result_item
-          ->measuredResultsValue.choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k1 =
+      f1ap_measured_results_value_t *MeasResVal= &posMeasRes->pos_measurement_result_item->measuredResultsValue;
+      MeasResVal->present = f1ap_measured_results_value_pr_ul_rtoa;
+      MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.present = f1ap_ulrtoameas_pr_k1;
+      MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k1 =
           (int32_t)(((int64_t)UE->ue_pos_info.toa_ns * (int64_t)T_inv) / T_ns_inv);
       LOG_I(MAC,
             "Extracting uL_RTOA info of MeasurementResponse for ue rnti= %04x, k1=%d \n",
@@ -604,14 +604,13 @@ static void positioning_measurement_response(const f1ap_measurement_resp_t *resp
             (int32_t)(((int64_t)UE->ue_pos_info.toa_ns * (int64_t)T_inv) / T_ns_inv));
 
       // TODO IE timeStamp.measurementTime
-      // f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->posMeasurementResult.pos_measurement_result_item->timeStamp.measurementTime
+      // posMeasRes->pos_measurement_result_item->timeStamp.measurementTime
       // TODO IE timeStamp.slotIndex
-      // f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->posMeasurementResult.pos_measurement_result_item->timeStamp.slotIndex.present
-      // f1ap_resp.pos_measurement_result_list.pos_measurement_result_list_item->posMeasurementResult.pos_measurement_result_item->timeStamp.slotIndex.choice
+      // posMeasRes->pos_measurement_result_item->timeStamp.slotIndex.present
+      // posMeasRes->pos_measurement_result_item->timeStamp.slotIndex.choice
     }
   }
 
-  F1AP_MEASUREMENT_RESP(msg) = f1ap_resp;
   itti_send_msg_to_task(TASK_RRC_GNB, 0, msg);
 }
 

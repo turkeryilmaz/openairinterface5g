@@ -89,27 +89,42 @@ void ngap_gNB_itti_send_DownlinkUEAssociatedNRPPa(instance_t instance,
                                                   uint8_t *nrppa_pdu,
                                                   uint32_t nrppa_pdu_length)
 {
-  MessageDef *message_p;
-  ngap_DownlinkUEAssociatedNRPPa_t *ngap_DownlinkUEAssociatedNRPPa;
-  message_p = itti_alloc_new_message(TASK_NGAP, 0, NGAP_DOWNLINKUEASSOCIATEDNRPPA);
+  /*MessageDef *msg= itti_alloc_new_message(TASK_NGAP, 0, NGAP_DOWNLINKUEASSOCIATEDNRPPA);
+  ngap_DownlinkUEAssociatedNRPPa_t *DLNRPPa= &NGAP_DOWNLINKUEASSOCIATEDNRPPA(msg);
 
-  ngap_DownlinkUEAssociatedNRPPa = &message_p->ittiMsg.ngap_DownlinkUEAssociatedNRPPa;
+  DLNRPPa->gNB_ue_ngap_id = gNB_ue_ngap_id;
+  DLNRPPa->amf_ue_ngap_id = amf_ue_ngap_id;
 
-  ngap_DownlinkUEAssociatedNRPPa->gNB_ue_ngap_id = gNB_ue_ngap_id;
+  // Routing ID
+  DLNRPPa->routing_id.buffer = malloc(sizeof(uint8_t) * routingId_buffer_length);
+  memcpy(DLNRPPa->routing_id.buffer, routingId_buffer, routingId_buffer_length);
+  DLNRPPa->routing_id.length = routingId_buffer_length;
 
-  ngap_DownlinkUEAssociatedNRPPa->amf_ue_ngap_id = amf_ue_ngap_id;
+  // NRPPa PDU
+  DLNRPPa->nrppa_pdu.buffer = malloc(sizeof(uint8_t) * nrppa_pdu_length);
+  memcpy(DLNRPPa->nrppa_pdu.buffer, nrppa_pdu, nrppa_pdu_length);
+  DLNRPPa->nrppa_pdu.length = nrppa_pdu_length;
 
-  /* Routing ID */
-  ngap_DownlinkUEAssociatedNRPPa->routing_id.buffer = malloc(sizeof(uint8_t) * routingId_buffer_length);
-  memcpy(ngap_DownlinkUEAssociatedNRPPa->routing_id.buffer, routingId_buffer, routingId_buffer_length);
-  ngap_DownlinkUEAssociatedNRPPa->routing_id.length = routingId_buffer_length;
+  itti_send_msg_to_task(TASK_NRPPA, instance, msg);*/
 
-  /* NRPPa PDU*/
-  ngap_DownlinkUEAssociatedNRPPa->nrppa_pdu.buffer = malloc(sizeof(uint8_t) * nrppa_pdu_length);
-  memcpy(ngap_DownlinkUEAssociatedNRPPa->nrppa_pdu.buffer, nrppa_pdu, nrppa_pdu_length);
-  ngap_DownlinkUEAssociatedNRPPa->nrppa_pdu.length = nrppa_pdu_length;
+  MessageDef *msg=itti_alloc_new_message_sized(TASK_NGAP, 0, NGAP_DOWNLINKUEASSOCIATEDNRPPA,
+       sizeof(ngap_DownlinkUEAssociatedNRPPa_t)+ routingId_buffer_length + nrppa_pdu_length);
+  ngap_DownlinkUEAssociatedNRPPa_t *msgData = &NGAP_DOWNLINKUEASSOCIATEDNRPPA(msg);
 
-  itti_send_msg_to_task(TASK_NRPPA, instance, message_p);
+  msgData->gNB_ue_ngap_id = gNB_ue_ngap_id;
+  msgData->amf_ue_ngap_id = amf_ue_ngap_id;
+
+  // Routing ID
+  msgData->routing_id.buffer=(uint8_t *)(msgData+1);
+  memcpy(msgData->routing_id.buffer, routingId_buffer, routingId_buffer_length);
+  msgData->routing_id.length = routingId_buffer_length;
+
+  // NRPPa PDU
+  msgData->nrppa_pdu.buffer = msgData->routing_id.buffer+routingId_buffer_length;
+  memcpy(msgData->nrppa_pdu.buffer, nrppa_pdu, nrppa_pdu_length);
+  msgData->nrppa_pdu.length = nrppa_pdu_length;
+
+  itti_send_msg_to_task(TASK_NRPPA, instance, msg);
 }
 
 void ngap_gNB_itti_send_DownlinkNonUEAssociatedNRPPa(instance_t instance,
@@ -118,20 +133,36 @@ void ngap_gNB_itti_send_DownlinkNonUEAssociatedNRPPa(instance_t instance,
                                                      uint8_t *nrppa_pdu,
                                                      uint32_t nrppa_pdu_length)
 {
-  MessageDef *message_p;
-  ngap_DownlinkNonUEAssociatedNRPPa_t *ngap_DownlinkNonUEAssociatedNRPPa;
-  message_p = itti_alloc_new_message(TASK_NGAP, 0, NGAP_DOWNLINKNONUEASSOCIATEDNRPPA);
-  ngap_DownlinkNonUEAssociatedNRPPa = &message_p->ittiMsg.ngap_DownlinkNonUEAssociatedNRPPa;
+  /*MessageDef *msg= itti_alloc_new_message(TASK_NGAP, 0, NGAP_DOWNLINKNONUEASSOCIATEDNRPPA);
+  ngap_DownlinkNonUEAssociatedNRPPa_t *DLNRPPa = &NGAP_DOWNLINKNONUEASSOCIATEDNRPPA(msg);
 
-  /* Routing ID*/
-  ngap_DownlinkNonUEAssociatedNRPPa->routing_id.buffer = malloc(sizeof(uint8_t) * routingId_buffer_length);
-  memcpy(ngap_DownlinkNonUEAssociatedNRPPa->routing_id.buffer, routingId_buffer, routingId_buffer_length);
-  ngap_DownlinkNonUEAssociatedNRPPa->routing_id.length = routingId_buffer_length;
+  // Routing ID
+  DLNRPPa->routing_id.buffer = malloc(sizeof(uint8_t) * routingId_buffer_length);
+  memcpy(DLNRPPa->routing_id.buffer, routingId_buffer, routingId_buffer_length);
+  DLNRPPa->routing_id.length = routingId_buffer_length;
 
-  /* NRPPa PDU*/
-  ngap_DownlinkNonUEAssociatedNRPPa->nrppa_pdu.buffer = malloc(sizeof(uint8_t) * nrppa_pdu_length);
-  memcpy(ngap_DownlinkNonUEAssociatedNRPPa->nrppa_pdu.buffer, nrppa_pdu, nrppa_pdu_length);
-  ngap_DownlinkNonUEAssociatedNRPPa->nrppa_pdu.length = nrppa_pdu_length;
+  // NRPPa PDU
+  DLNRPPa->nrppa_pdu.buffer = malloc(sizeof(uint8_t) * nrppa_pdu_length);
+  memcpy(DLNRPPa->nrppa_pdu.buffer, nrppa_pdu, nrppa_pdu_length);
+  DLNRPPa->nrppa_pdu.length = nrppa_pdu_length;
 
-  itti_send_msg_to_task(TASK_NRPPA, instance, message_p);
+  itti_send_msg_to_task(TASK_NRPPA, instance, msg);*/
+
+
+  MessageDef *msg=itti_alloc_new_message_sized(TASK_NGAP, 0, NGAP_DOWNLINKNONUEASSOCIATEDNRPPA,
+        sizeof(ngap_DownlinkNonUEAssociatedNRPPa_t)+ routingId_buffer_length + nrppa_pdu_length);
+  ngap_DownlinkNonUEAssociatedNRPPa_t *msgData = &NGAP_DOWNLINKNONUEASSOCIATEDNRPPA(msg);
+
+  // Routing ID
+  msgData->routing_id.buffer=(uint8_t *)(msgData+1);
+  memcpy(msgData->routing_id.buffer, routingId_buffer, routingId_buffer_length);
+  msgData->routing_id.length = routingId_buffer_length;
+
+  // NRPPa PDU
+  msgData->nrppa_pdu.buffer = msgData->routing_id.buffer+routingId_buffer_length;
+  memcpy(msgData->nrppa_pdu.buffer, nrppa_pdu, nrppa_pdu_length);
+  msgData->nrppa_pdu.length = nrppa_pdu_length;
+
+  itti_send_msg_to_task(TASK_NRPPA, instance, msg);
+
 }

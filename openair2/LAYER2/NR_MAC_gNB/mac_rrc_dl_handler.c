@@ -643,7 +643,7 @@ void positioning_information_request(const f1ap_positioning_information_req_t *r
         req->gNB_CU_ue_id,
         req->gNB_DU_ue_id);
 
-  f1ap_positioning_information_resp_t resp;
+  /*f1ap_positioning_information_resp_t resp;
   resp.gNB_CU_ue_id = req->gNB_CU_ue_id;
   resp.gNB_DU_ue_id = req->gNB_DU_ue_id;
   resp.nrppa_msg_info.nrppa_transaction_id = req->nrppa_msg_info.nrppa_transaction_id;
@@ -652,7 +652,21 @@ void positioning_information_request(const f1ap_positioning_information_req_t *r
   resp.nrppa_msg_info.amf_ue_ngap_id = req->nrppa_msg_info.amf_ue_ngap_id;
   resp.nrppa_msg_info.ue_rnti = req->nrppa_msg_info.ue_rnti;
   resp.nrppa_msg_info.routing_id_buffer = req->nrppa_msg_info.routing_id_buffer;
-  resp.nrppa_msg_info.routing_id_length = req->nrppa_msg_info.routing_id_length;
+  resp.nrppa_msg_info.routing_id_length = req->nrppa_msg_info.routing_id_length;*/
+
+  f1ap_positioning_information_resp_t resp= {
+      .gNB_CU_ue_id = req->gNB_CU_ue_id,
+      .gNB_DU_ue_id = req->gNB_DU_ue_id,
+      .nrppa_msg_info.nrppa_transaction_id = req->nrppa_msg_info.nrppa_transaction_id,
+      .nrppa_msg_info.instance = req->nrppa_msg_info.instance,
+      .nrppa_msg_info.gNB_ue_ngap_id = req->nrppa_msg_info.gNB_ue_ngap_id,
+      .nrppa_msg_info.amf_ue_ngap_id = req->nrppa_msg_info.amf_ue_ngap_id,
+      .nrppa_msg_info.ue_rnti = req->nrppa_msg_info.ue_rnti,
+      .nrppa_msg_info.routing_id_buffer = req->nrppa_msg_info.routing_id_buffer,
+      .nrppa_msg_info.routing_id_length = req->nrppa_msg_info.routing_id_length,
+  };
+
+
 
   gNB_MAC_INST *mac = RC.nrmac[req->nrppa_msg_info.instance];
   mac->mac_rrc.positioning_information_response(&resp);
@@ -684,7 +698,6 @@ void trp_information_request(const f1ap_trp_information_req_t *req)
 }
 
 /* handlers of Measurement Information Transfer related NRPPA DL messages */
-/* handlers of Position Information Transfer related NRPPA UL messages */
 void positioning_measurement_request(const f1ap_measurement_req_t *req)
 {
   LOG_I(MAC,
