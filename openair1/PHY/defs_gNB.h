@@ -640,6 +640,10 @@ typedef struct PHY_VARS_gNB_s {
 
   int ldpc_offload_flag;
 
+  int ldpc_xdma_flag;
+  // Number of threads created for deinterleaving and rate dematching with XDMA decoding
+  int ldpc_xdma_number_threads_predecoding;
+
   int reorder_thread_disable;
 
   int max_ldpc_iterations;

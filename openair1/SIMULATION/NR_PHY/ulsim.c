@@ -187,6 +187,8 @@ int main(int argc, char *argv[])
   double effTP;
   float eff_tp_check = 100;
   int ldpc_offload_flag = 0;
+  int ldpc_xdma_flag = 0;
+  int ldpc_xdma_number_threads_predecoding = 1;
   uint8_t max_rounds = 4;
   int chest_type[2] = {0};
   int enable_ptrs = 0;
@@ -223,7 +225,7 @@ int main(int argc, char *argv[])
   /* initialize the sin-cos table */
   InitSinLUT();
 
-  while ((c = getopt(argc, argv, "a:b:c:d:ef:g:h:i:k:m:n:op:q:r:s:t:u:v:w:y:z:C:F:G:H:I:M:N:PR:S:T:U:L:ZW:E:X:")) != -1) {
+  while ((c = getopt(argc, argv, "a:b:c:d:ef:g:h:i:k:m:n:o:op:q:r:s:t:u:v:w:y:z:C:F:G:H:I:M:N:PR:S:T:U:L:ZW:E:X:")) != -1) {
     printf("handling optarg %c\n",c);
     switch (c) {
 
@@ -331,7 +333,22 @@ int main(int argc, char *argv[])
       break;
 
     case 'o':
-      ldpc_offload_flag = 1;
+      //switch on optarg to choose the offload option
+      switch ((char) *optarg) {
+        case '1':
+          ldpc_offload_flag = 1;
+          break;
+        case '2':
+          ldpc_xdma_flag = 1;
+          if (optarg[1]=',') {
+            ldpc_xdma_number_threads_predecoding = atoi(&optarg[2]);
+          } else {
+            printf("Expecting \"-o 2,<number of predecoding threads>\"! Falling back to one predecoding thread\n");
+          }
+          break;
+        default:
+          printf("Invalid offload mode!\n");
+      }
       break;
 
     case 'p':
@@ -493,7 +510,7 @@ int main(int argc, char *argv[])
       printf("-k 3/4 sampling\n");
       printf("-m MCS value\n");
       printf("-n Number of trials to simulate\n");
-      printf("-o ldpc offload flag\n");
+      printf("-o <mode, 1(T1/T2), 2(XDMA)>[,<number of predecoding threads (mode 2)>] ldpc offload flag\n");
       printf("-p Use extended prefix mode\n");
       printf("-q MCS table\n");
       printf("-r Number of allocated resource blocks for PUSCH\n");
@@ -630,6 +647,9 @@ int main(int argc, char *argv[])
 
 //  nr_phy_config_request_sim(gNB,N_RB_DL,N_RB_DL,mu,0,0x01);
   gNB->ldpc_offload_flag = ldpc_offload_flag;
+  gNB->ldpc_xdma_flag = ldpc_xdma_flag;
+  gNB->ldpc_xdma_number_threads_predecoding = ldpc_xdma_number_threads_predecoding;
+  AssertFatal(gNB->ldpc_xdma_number_threads_predecoding > 0, "Number of predecoding threads should be positive");
   gNB->chest_freq = chest_type[0];
   gNB->chest_time = chest_type[1];
 
