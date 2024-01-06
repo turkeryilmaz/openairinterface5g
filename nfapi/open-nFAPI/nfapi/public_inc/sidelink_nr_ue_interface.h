@@ -306,6 +306,7 @@ typedef struct {
   union {
     sl_nr_tx_config_psbch_pdu_t tx_psbch_config_pdu;
     sl_nr_tx_config_pscch_pssch_pdu_t tx_pscch_pssch_config_pdu;
+    sl_nr_tx_config_psfch_pdu_t tx_psfch_config_pdu;
   };
 } sl_nr_tx_config_request_pdu_t;
 

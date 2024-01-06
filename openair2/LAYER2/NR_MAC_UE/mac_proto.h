@@ -40,6 +40,13 @@
 #define NR_DL_MAX_DAI                            (4)                      /* TS 38.213 table 9.1.3-1 Value of counter DAI for DCI format 1_0 and 1_1 */
 #define NR_DL_MAX_NB_CW                          (2)                      /* number of downlink code word */
 
+// 38.213 Table 16.3-1 set of cyclic shift pairs
+static const int16_t table_16_3_1[4][6] = {
+                                          {0},
+                                          {0, 3},
+                                          {0, 2, 4},
+                                          {0, 1, 2, 3, 4, 5}
+                                       };
 /**\brief initialize the field in nr_mac instance
    \param module_id      module id */
 void nr_ue_init_mac(module_id_t module_idP);
@@ -440,6 +447,8 @@ int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
                                        NR_SL_PreconfigurationNR_r16_t *sl_preconfiguration,
                                        uint8_t sync_source, 
 				       int srcid);
+
+uint8_t count_PSFCH_PRBs_bits(uint8_t* buf, size_t size);
 
 void nr_rrc_mac_transmit_slss_req(module_id_t module_id,
                                   uint8_t *sl_mib_payload,

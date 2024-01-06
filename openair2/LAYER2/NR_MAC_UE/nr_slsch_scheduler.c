@@ -70,7 +70,7 @@ bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP,int slotP, nr_sci_pdu_t
      sci2_pdu->source_id=0x12;
      sci2_pdu->dest_id=0xabcd;
      sci2_pdu->harq_feedback=1;
-     sci2_pdu->cast_type=0;
+     sci2_pdu->cast_type=2;
      if (format2==NR_SL_SCI_FORMAT_2C || format2==NR_SL_SCI_FORMAT_2A)
        sci2_pdu->csi_req=1;
      if (format2==NR_SL_SCI_FORMAT_2B)

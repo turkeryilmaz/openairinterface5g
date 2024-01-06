@@ -3578,12 +3578,30 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind) {
   if (!is_psbch_slot && tx_allowed) {
     //Check if reserved slot or a sidelink resource configured in Rx/Tx resource pool timeresource bitmap
     nr_ue_sl_pssch_scheduler(mac,sl_ind, mac->sl_bwp, mac->sl_tx_res_pool,&tx_config, &tti_action);
+
+    if (sl_ind->slot_type == SIDELINK_SLOT_TYPE_TX && mac->sci_pdu_rx.harq_feedback) {
+      NR_SL_PSFCH_Config_r16_t *sl_psfch_config = mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup;
+      long psfch_period = *sl_psfch_config->sl_PSFCH_Period_r16;
+      long psfch_min_time_gap = *sl_psfch_config->sl_MinTimeGapPSFCH_r16;
+      sl_ind->slot_tx = (slot + psfch_min_time_gap) % NR_MAX_SLOTS_PER_FRAME;
+      if (slot + psfch_min_time_gap >= NR_MAX_SLOTS_PER_FRAME) {
+        sl_ind->frame_tx = (frame + 1) % 1024;
+      }
+      // Need to check further weather New slot is SIDELINK SLOT or not
+      //LOG_I(NR_MAC, "sl_ind->slot_type %d, slot: %d, psfch_period: %ld, slot_mod_psfch_period: %d\n", sl_ind->slot_type, slot, psfch_period, slot%psfch_period);
+      LOG_I(NR_MAC, "sci_pdu feedback %d, cast_type %d\n", mac->sci_pdu_rx.harq_feedback, mac->sci_pdu_rx.cast_type);
+      // Add further check based on HARQ-ACK indication in SCI
+      if (slot%psfch_period == 0) {
+        LOG_I(NR_MAC,"Scheduling PSFCH TX processing slot %d\n", slot);
+        nr_ue_sl_psfch_scheduler(mac, sl_ind, mac->sl_bwp, mac->sl_tx_res_pool, &tx_config, &tti_action);
+      }
+    }
   }
 
   if (tti_action == SL_NR_CONFIG_TYPE_RX_PSBCH || tti_action == SL_NR_CONFIG_TYPE_RX_PSCCH || tti_action == SL_NR_CONFIG_TYPE_RX_PSSCH_SCI || tti_action == SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH) {
     fill_scheduled_response(&scheduled_response, NULL, NULL, NULL,  &rx_config, NULL, mod_id, 0,frame, slot, sl_ind->phy_data);
   }
-  if (tti_action == SL_NR_CONFIG_TYPE_TX_PSBCH || tti_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH) {
+  if (tti_action == SL_NR_CONFIG_TYPE_TX_PSBCH || tti_action == SL_NR_CONFIG_TYPE_TX_PSFCH || tti_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH) {
     fill_scheduled_response(&scheduled_response, NULL, NULL, NULL, NULL, &tx_config, mod_id, 0,frame, slot, sl_ind->phy_data);
   }
 
@@ -3598,4 +3616,49 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind) {
       mac->if_module->scheduled_response(&scheduled_response);
   }
 
+}
+
+void nr_ue_sl_psfch_scheduler(NR_UE_MAC_INST_t *mac,
+		                          nr_sidelink_indication_t *sl_ind,
+                              const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp,
+                              const NR_SL_ResourcePool_r16_t *sl_res_pool,
+                              sl_nr_tx_config_request_t *tx_config,
+                              uint8_t *config_type) {
+  LOG_I(NR_MAC,"PSFCH %s\n", __FUNCTION__);
+  uint8_t ret_status = 0;
+  uint16_t slot = sl_ind->slot_tx;
+  uint16_t frame = sl_ind->frame_tx;
+  int lcid = 4;
+  int sdu_length = 0;
+
+  if ((frame & 127) == 0 && slot == 0) {
+    print_meas(&mac->rlc_data_req,"rlc_data_req",NULL,NULL);
+  }
+  if (sl_ind->slot_type != SIDELINK_SLOT_TYPE_TX) return false;
+
+  if (slot > 9 && get_nrUE_params()->sync_ref) return false;
+
+  if (slot < 10 && !get_nrUE_params()->sync_ref) return false;
+/*
+  if ((frame&127) > 0) return false;
+
+  if ((slot % 10) != 6) return false;
+*/
+  LOG_I(NR_MAC,"[UE%d] SL-PSFCH SCHEDULER: Frame:SLOT %d:%d, slot_type:%d\n",
+        sl_ind->module_id, frame, slot,sl_ind->slot_type);
+
+  sl_nr_tx_config_psfch_pdu_t *tx_psfch_pdu = &tx_config->tx_config_list[0].tx_psfch_config_pdu;
+  tx_psfch_pdu->start_symbol_index = 0;
+  tx_psfch_pdu->hopping_id = 1;
+  tx_psfch_pdu->prb = 2;
+  tx_psfch_pdu->initial_cyclic_shift = 0;
+  tx_psfch_pdu->mcs = 1;
+  const uint8_t sh_size = sizeof(NR_MAC_SUBHEADER_LONG);
+
+  *config_type = SL_NR_CONFIG_TYPE_TX_PSFCH;
+  tx_config->number_pdus = 1;
+  tx_config->sfn = frame;
+  tx_config->slot = slot;
+  tx_config->tx_config_list[0].pdu_type = *config_type;
+  //TODO: Add PSFCH related further configurations.
 }

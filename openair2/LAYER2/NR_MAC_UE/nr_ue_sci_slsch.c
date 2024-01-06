@@ -249,6 +249,7 @@ void fill_pssch_pscch_pdu(sl_nr_tx_config_pscch_pssch_pdu_t *nr_sl_pssch_pscch_p
      if (num_psfch_symbols == 3) num_psfch_symbols++;
   }
   nr_sl_pssch_pscch_pdu->pssch_numsym=7+*sl_bwp->sl_BWP_Generic_r16->sl_LengthSymbols_r16-num_psfch_symbols-2;
+  LOG_I(NR_PHY, "num_psfch_symbols %d, sl_LengthSymbols: %d, pssch_numsym: %d\n", num_psfch_symbols, *sl_bwp->sl_BWP_Generic_r16->sl_LengthSymbols_r16, nr_sl_pssch_pscch_pdu->pssch_numsym);
   nr_sl_pssch_pscch_pdu->pssch_startsym = *sl_bwp->sl_BWP_Generic_r16->sl_StartSymbol_r16;
 
   nr_sl_pssch_pscch_pdu->sci2_beta_offset = *sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_BetaOffsets2ndSCI_r16->list.array[sci_pdu->beta_offset_indicator];

@@ -91,7 +91,7 @@ void nr_fill_sl_rx_indication(sl_nr_rx_indication_t *rx_ind,
         rx_slsch_pdu->pdu        = slsch_status->rdata->ulsch_harq->b;
         rx_slsch_pdu->pdu_length = slsch_status->rdata->ulsch_harq->TBS;
         rx_slsch_pdu->harq_pid   = slsch_status->rdata->harq_pid;
-        rx_slsch_pdu->ack_nack   = (slsch_status->rxok==true) ? 1 : 0;
+        rx_slsch_pdu->ack_nack   = (slsch_status->rxok==true) ? 1 : 1; // Revert it, for testing only
 
         if (slsch_status->rxok==true) ue->SL_UE_PHY_PARAMS.pssch.rx_ok++;
         else                          ue->SL_UE_PHY_PARAMS.pssch.rx_errors[0]++;
@@ -718,7 +718,19 @@ int phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
    tx_action = 1;
   }
   else if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSFCH) {
-   LOG_I(NR_PHY,"Generating PSFCH ( )\n");
+    LOG_I(NR_PHY,"Generating PSFCH ( )\n");
+    // phy_data->nr_sl_psfch_pdu.start_symbol_index = 0;
+    // phy_data->nr_sl_psfch_pdu.hopping_id = 1;
+    // phy_data->nr_sl_psfch_pdu.prb = 2;
+
+    // phy_data->nr_sl_psfch_pdu.initial_cyclic_shift = 0;
+    // phy_data->nr_sl_psfch_pdu.mcs = 1;
+    nr_generate_psfch0(ue,
+                      txdataF,
+                      fp,
+                      AMP,
+                      slot_tx,
+                      &phy_data->nr_sl_psfch_pdu);
   }
   if (tx_action) {
     LOG_D(PHY, "Sending SL data \n");

@@ -575,7 +575,7 @@ typedef struct {
   ////	FAPI-like interface message
   fapi_nr_ul_config_request_t *ul_config_request;
   fapi_nr_dl_config_request_t *dl_config_request;
-
+  sl_nr_tx_config_psfch_pdu_t *sl_tx_config_psfch_pdu;
   ///     Interface module instances
   nr_ue_if_module_t       *if_module;
   nr_phy_config_t         phy_config;

@@ -24,6 +24,10 @@
 
 #define SL_DEBUG
 
+static const int sequence_cyclic_shift_harq_ack_or_ack_or_only_nack[2]
+/* Sequence cyclic shift */ = {  0, 6 };
+
+
 uint8_t sl_process_TDD_UL_DL_config_patterns(NR_TDD_UL_DL_ConfigCommon_t *TDD_UL_DL_Config,
                                              uint8_t mu,
                                              double *slot_period_P,
@@ -488,6 +492,12 @@ uint8_t sl_determine_sci_1a_len(uint16_t *num_subchannels,
     const uint8_t psfch_periods[] = {0,1,2,4};
     psfch_period = (psfch_config->sl_PSFCH_Period_r16)
                           ? psfch_periods[*psfch_config->sl_PSFCH_Period_r16] : 0;
+    LOG_D(NR_MAC, "sl_PSFCH_Period_r16: %ld\n", *psfch_config->sl_PSFCH_Period_r16);
+    LOG_D(NR_MAC, "sl_PSFCH_RB_Set_r16: %02X\n", *psfch_config->sl_PSFCH_RB_Set_r16->buf);
+    LOG_D(NR_MAC, "sl_NumMuxCS_Pair_r16: %ld\n", *psfch_config->sl_NumMuxCS_Pair_r16);
+    LOG_D(NR_MAC, "sl_MinTimeGapPSFCH_r16: %ld\n", *psfch_config->sl_MinTimeGapPSFCH_r16);
+    LOG_D(NR_MAC, "sl_PSFCH_HopID_r16: %ld\n", *psfch_config->sl_PSFCH_HopID_r16);
+    LOG_D(NR_MAC, "sl_PSFCH_CandidateResourceType_r16: %ld\n", *psfch_config->sl_PSFCH_CandidateResourceType_r16);
   }
 
   if ((psfch_period == 2) || (psfch_period == 4)) {
@@ -575,6 +585,43 @@ uint32_t sl_determine_num_sidelink_slots(uint8_t mod_id, uint16_t *N_SSB_16frame
   return N_SL_SLOTS;
 }
 
+
+uint8_t count_PSFCH_PRBs_bits(uint8_t* buf, size_t size) {
+  uint8_t count = 0;
+  uint8_t byte;
+  for (size_t i = 0; i < size; i++) {
+    byte = buf[i];
+    while(byte) {
+      count += byte & 1;
+      byte >>= 1;
+    }
+  }
+  return count;
+}
+
+static uint16_t nr_ue_configure_psfch(int module_idP) {
+    NR_UE_MAC_INST_t *mac = get_mac_inst(module_idP);
+    if (!mac->sl_tx_res_pool->sl_PSFCH_Config_r16 &&
+        mac->sl_tx_res_pool->sl_PSFCH_Config_r16->present != NR_SetupRelease_SL_PSFCH_Config_r16_PR_setup)
+        return;
+
+      NR_SL_PSFCH_Config_r16_t *sl_psfch_config = mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup;
+      const int sl_num_muxcs_pair[4] = {1, 2, 3, 6};
+      uint8_t sci2_src_id = mac->sci_pdu_rx.source_id;
+      uint8_t *rb_buf = sl_psfch_config->sl_PSFCH_RB_Set_r16->buf;
+      size_t size = sl_psfch_config->sl_PSFCH_RB_Set_r16->size / sizeof(rb_buf[0]);
+      uint8_t m_psfch_prb_set = count_PSFCH_PRBs_bits(rb_buf, size);
+      long sl_numsubchannel = *mac->sl_tx_res_pool->sl_NumSubchannel_r16;
+      long sl_psfch_period = *sl_psfch_config->sl_PSFCH_Period_r16;
+      long n_psfch_cs = *sl_psfch_config->sl_NumMuxCS_Pair_r16;
+
+      double m_psfch_subch_slot = m_psfch_prb_set / sl_numsubchannel * sl_psfch_period;
+      long n_psfch_type = *sl_psfch_config->sl_PSFCH_CandidateResourceType_r16 ? sl_numsubchannel : 1;
+      uint16_t r_psfch_prb_cs = n_psfch_type * m_psfch_subch_slot * sl_num_muxcs_pair[n_psfch_cs];
+      uint8_t psfch_rsc_idx = (sci2_src_id + module_idP) / r_psfch_prb_cs;
+      return table_16_3_1[n_psfch_cs][psfch_rsc_idx];
+}
+
 void nr_ue_process_mac_sl_pdu(int module_idP,
 		              sl_nr_rx_indication_t *rx_ind,
                               int pdu_id)
@@ -589,6 +636,30 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
   if (!pduP){
     return;
   }
+
+  LOG_I(NR_MAC, "Filling psfch pdu %d\n", module_idP);
+  if ((rx_ind->rx_indication_body + pdu_id)->rx_slsch_pdu.ack_nack == 1) {
+    uint16_t m0 = nr_ue_configure_psfch(module_idP);
+    mac->sl_tx_config_psfch_pdu = calloc(1, sizeof(sl_nr_tx_config_psfch_pdu_t));
+    mac->sl_tx_config_psfch_pdu->initial_cyclic_shift = m0;
+    if (mac->sci1_pdu.second_stage_sci_format == 2 ||
+        mac->sci_pdu_rx.cast_type == 1 ||
+        mac->sci_pdu_rx.cast_type == 2) {
+      mac->sl_tx_config_psfch_pdu->mcs = sequence_cyclic_shift_harq_ack_or_ack_or_only_nack[1]; // TODO: Update to use index 0 as well.
+    } else if (mac->sci1_pdu.second_stage_sci_format == 1 ||
+              (mac->sci1_pdu.second_stage_sci_format == 1 && mac->sci_pdu_rx.cast_type == 3)) {
+      mac->sl_tx_config_psfch_pdu->mcs = sequence_cyclic_shift_harq_ack_or_ack_or_only_nack[0];
+    }
+
+  const uint8_t values[] = {7, 8, 9, 10, 11, 12, 13, 14};
+  NR_SL_BWP_Generic_r16_t *sl_bwp = mac->sl_bwp->sl_BWP_Generic_r16;
+  uint8_t sl_num_symbols = (sl_bwp->sl_LengthSymbols_r16) ?
+                                            values[*sl_bwp->sl_LengthSymbols_r16] : 0;
+  mac->sl_tx_config_psfch_pdu->start_symbol_index = mac->sl_bwp->sl_BWP_Generic_r16->sl_StartSymbol_r16 + sl_num_symbols - 2; // start_symbol_index has been used as lprime and lprime should be computed as lprime = start symbol + sl_LengthSymbols_r16 - 2
+  mac->sl_tx_config_psfch_pdu->hopping_id = *mac->sl_bwp->sl_BWP_PoolConfigCommon_r16->sl_TxPoolSelectedNormal_r16->list.array[0]->sl_ResourcePool_r16->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_HopID_r16;
+  mac->sl_tx_config_psfch_pdu->prb = 2;
+  }
+
   if ((rx_ind->rx_indication_body + pdu_id)->rx_slsch_pdu.ack_nack == 0) 
     return;
 
