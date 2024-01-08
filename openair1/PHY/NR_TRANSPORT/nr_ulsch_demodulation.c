@@ -1692,7 +1692,13 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
     pusch_vars->dmrs_symbol =
         get_next_dmrs_symbol_in_slot(rel15_ul->ul_dmrs_symb_pos, rel15_ul->start_symbol_index, rel15_ul->nr_of_symbols);
   }
-  LATSEQ_P("U phy.CHest--phy.CHrbscacompllr", "::fm%u.sl%u.hqpid%u.nbantrx%u.rnti%u.rssidBm%u.wbcqitotdB%u", frame, slot, harq_pid, frame_parms->nb_antennas_rx, rel15_ul->rnti, ulsch->ulsch_measurements.rx_rssi_dBm, ulsch->ulsch_measurements.wideband_cqi_tot);
+  LATSEQ_P("U phy.CHest--phy.CHrbscacompllr", "::fm%u.sl%u.hqpid%u.nbantrx%u.rnti%u.rssidBm%d.wbcqitotdB%d", frame, slot, harq_pid, frame_parms->nb_antennas_rx, rel15_ul->rnti, ulsch->ulsch_measurements.rx_rssi_dBm, ulsch->ulsch_measurements.wideband_cqi_tot);
+  T(T_GNB_PHY_UL_TIME_CHANNEL_ESTIMATE_DMRS,
+      T_INT(rel15_ul->rnti),
+      T_INT(frame),
+      T_INT(slot),
+      T_INT(harq_pid),
+      T_BUFFER(gNB->pusch_vars[ulsch_id].ul_ch_estimates_time[0], sizeof(int32_t) * frame_parms->ofdm_symbol_size));
   stop_meas(&gNB->ulsch_channel_estimation_stats);
 
   int off = ((rel15_ul->rb_size&1) == 1)? 4:0;
