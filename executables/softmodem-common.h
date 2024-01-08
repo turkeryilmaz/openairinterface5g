@@ -111,6 +111,8 @@ extern "C"
 #define CONFIG_HLP_NID2          "Set NID2 value in Sidelink\n"
 #define CONFIG_HLP_NOITTI        "Do not start itti threads, call queue processing in place, inside the caller thread"
 #define CONFIG_HLP_LDPC_OFFLOAD  "Enable LDPC offload to AMD Xilinx T2 telco card\n"
+#define CONFIG_HLP_LDPC_XDMA_E   "Enable LDPC offload to Xilinx FPGA with XDMA driver\n"
+#define CONFIG_HLP_LDPC_XDMA_NT  "Number of threads for deinterleaving and rate dematching with decoding on Xilinx FPGA with XDMA driver\n"
 
 /*-----------------------------------------------------------------------------------------------------------------------------------------------------*/
 /*                                            command line parameters common to eNodeB and UE                                                          */
@@ -146,6 +148,8 @@ extern "C"
 #define NID1                softmodem_params.nid1
 #define NID2                softmodem_params.nid2
 #define LDPC_OFFLOAD_FLAG   softmodem_params.ldpc_offload_flag
+#define LDPC_XDMA_FLAG      softmodem_params.ldpc_xdma_flag
+#define LDPC_XDMA_NUM_THR   softmodem_params.ldpc_xdma_num_thr
 
 #define REORDER_THREAD_DISABLE    softmodem_params.reorder_thread_disable
 #define DEFAULT_RFCONFIG_FILE    "/usr/local/etc/syriq/ue.band7.tm1.PRB100.NR40.dat";
@@ -195,6 +199,8 @@ extern int usrp_tx_thread;
   {"nid2",                  CONFIG_HLP_NID2,          0,              .iptr=&NID2,                            .defintval=1,             TYPE_INT,    0},  \
   {"no-itti-threads",       CONFIG_HLP_NOITTI,        PARAMFLAG_BOOL, .iptr=&softmodem_params.no_itti,        .defintval=0,             TYPE_INT,    0},  \
   {"ldpc-offload-enable",   CONFIG_HLP_LDPC_OFFLOAD,  PARAMFLAG_BOOL, .iptr=&LDPC_OFFLOAD_FLAG,               .defstrval=0,             TYPE_INT,    0},  \
+  {"ldpc-xdma-enable",      CONFIG_HLP_LDPC_XDMA_E,   PARAMFLAG_BOOL, .iptr=&LDPC_XDMA_FLAG,                  .defintval=0,             TYPE_INT,    0},  \
+  {"ldpc-xdma-num-thr",     CONFIG_HLP_LDPC_XDMA_NT,  0,              .iptr=&LDPC_XDMA_NUM_THR,               .defintval=1,             TYPE_INT,    0},  \
 }
 // clang-format on
 
@@ -237,6 +243,8 @@ extern int usrp_tx_thread;
                {"MONOLITHIC", "PNF", "VNF","UE_STUB_PNF","UE_STUB_OFFNET","STANDALONE_PNF"}, \
                {NFAPI_MONOLITHIC, NFAPI_MODE_PNF, NFAPI_MODE_VNF,NFAPI_UE_STUB_PNF,NFAPI_UE_STUB_OFFNET,NFAPI_MODE_STANDALONE_PNF}, \
                6 } }, \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
@@ -358,6 +366,8 @@ typedef struct {
   int            nid2;
   int no_itti;
   int ldpc_offload_flag;
+  int ldpc_xdma_flag;
+  int ldpc_xdma_num_thr;
 } softmodem_params_t;
 
 extern uint64_t get_softmodem_optmask(void);

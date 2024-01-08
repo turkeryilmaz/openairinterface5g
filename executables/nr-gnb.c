@@ -601,6 +601,8 @@ void init_eNB_afterRU(void) {
 
     gNB = RC.gNB[inst];
     gNB->ldpc_offload_flag = get_softmodem_params()->ldpc_offload_flag;
+    gNB->ldpc_xdma_flag = get_softmodem_params()->ldpc_xdma_flag;
+    gNB->ldpc_xdma_number_threads_predecoding = get_softmodem_params()->ldpc_xdma_num_thr;
     gNB->reorder_thread_disable = get_softmodem_params()->reorder_thread_disable;
 
     phy_init_nr_gNB(gNB);
