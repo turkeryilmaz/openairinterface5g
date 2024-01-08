@@ -734,15 +734,15 @@ static bool nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, 
 
   int ind_type = -1;
   switch(dlsch[0].rnti_type) {
-    case _RA_RNTI_:
+    case TYPE_RA_RNTI_:
       ind_type = FAPI_NR_RX_PDU_TYPE_RAR;
       break;
 
-    case _SI_RNTI_:
+    case TYPE_SI_RNTI_:
       ind_type = FAPI_NR_RX_PDU_TYPE_SIB;
       break;
 
-    case _C_RNTI_:
+    case TYPE_C_RNTI_:
       ind_type = FAPI_NR_RX_PDU_TYPE_DLSCH;
       break;
 
@@ -826,7 +826,6 @@ static bool nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, 
     ue->if_inst->dl_indication(&dl_indication);
   }
 
-  // DLSCH decoding finished! don't wait anymore
   const int ack_nack_slot = (proc->nr_slot_rx + dlsch[0].dlsch_config.k1_feedback) % ue->frame_parms.slots_per_frame;
   send_slot_ind(ue->tx_resume_ind_fifo[ack_nack_slot], proc->nr_slot_rx);
 
