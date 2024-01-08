@@ -838,7 +838,7 @@ void *ss_gNB_sys_task(void *arg)
     LOG_A(GNB_APP, "TASK_SYS_GNB: fxn:%s line:%d RC.ss.mode:SS_STATE_NOT_CONFIGURED \n", __FUNCTION__, __LINE__);
   }
   // Set the state to CELL_ACTIVE for SRB processing mode
-  else if (RC.ss.mode == SS_SOFTMODEM_SRB)
+  else if (RC.ss.mode == SS_HWTMODEM)
   {
     SS_context.SSCell_list[nr_cell_index].State = SS_STATE_CELL_ACTIVE;
     LOG_A(GNB_APP, "TASK_SYS_GNB: fxn:%s line:%d SS_STATE_CELL_ACTIVE \n", __FUNCTION__, __LINE__);

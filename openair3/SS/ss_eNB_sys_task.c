@@ -2681,7 +2681,7 @@ void *ss_eNB_sys_task(void *arg)
     //SS_context.SSCell_list[cell_index].State = SS_STATE_NOT_CONFIGURED;
   }
   // Set the state to CELL_ACTIVE for SRB processing mode
-  else if (RC.ss.mode == SS_SOFTMODEM_SRB)
+  else if (RC.ss.mode == SS_HWTMODEM)
   {
     SS_context.SSCell_list[cell_index].State = SS_STATE_CELL_ACTIVE;
   }
