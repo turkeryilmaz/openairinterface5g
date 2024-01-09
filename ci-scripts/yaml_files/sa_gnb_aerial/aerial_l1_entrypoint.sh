@@ -34,4 +34,13 @@ else
     argument="$1"
 fi
 
+export NVIPC_DEBUG_EN=2
+
 "$cuBB_Path"/build/cuPHY-CP/cuphycontroller/examples/cuphycontroller_scf "$argument"
+#Collect pcap
+"$cuBB_Path"/build/cuPHY-CP/gt_common_libs/nvIPC/tests/pcap/pcap_collect
+
+cp -f nvipc.pcap /opt/cuBB/share
+cp -f /tmp/phy.log /opt/cuBB/share
+chmod 666 /opt/cuBB/share/nvipc.pcap
+chmod 666 /opt/cuBB/share/phy.log
