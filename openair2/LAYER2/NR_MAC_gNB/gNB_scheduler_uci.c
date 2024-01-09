@@ -1065,7 +1065,7 @@ void handle_nr_uci_pucch_2_3_4(module_id_t mod_id,
   // TODO PUCCH2 SNR computation is not correct -> ignore the following
   if (uci_234->ul_cqi != 0xff) {
     sched_ctrl->pucch_snrx10 = uci_234->ul_cqi * 5 - 640;
-    sched_ctrl->tpc1 = nr_get_tpc(RC.nrmac[mod_id]->pucch_target_snrx10, sched_ctrl->pucch_snrx10, 30);
+    sched_ctrl->tpc1 = nr_get_tpc(nrmac->pucch_target_snrx10, sched_ctrl->pucch_snrx10, 30);
   }
 
   // TODO: handle SR
@@ -1269,9 +1269,6 @@ int nr_acknack_scheduling(gNB_MAC_INST *mac,
           && !check_bits_vs_coderate_limit(pucch_Config,
                                            curr_pucch->csi_bits + curr_pucch->dai_c + 2,
                                            curr_pucch->resource_indicator))
-        continue;
-      // TODO we can't schedule more than 11 bits in PUCCH2 for now
-      if (curr_pucch->csi_bits + curr_pucch->dai_c >= 11)
         continue;
 
       // otherwise we can schedule in this active PUCCH
