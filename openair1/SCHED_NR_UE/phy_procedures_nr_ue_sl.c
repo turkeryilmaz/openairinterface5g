@@ -719,12 +719,7 @@ int phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
   }
   else if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSFCH) {
     LOG_I(NR_PHY,"Generating PSFCH ( )\n");
-    // phy_data->nr_sl_psfch_pdu.start_symbol_index = 0;
-    // phy_data->nr_sl_psfch_pdu.hopping_id = 1;
-    // phy_data->nr_sl_psfch_pdu.prb = 2;
 
-    // phy_data->nr_sl_psfch_pdu.initial_cyclic_shift = 0;
-    // phy_data->nr_sl_psfch_pdu.mcs = 1;
     nr_generate_psfch0(ue,
                       txdataF,
                       fp,

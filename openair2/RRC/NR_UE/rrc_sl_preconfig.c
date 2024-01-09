@@ -141,7 +141,7 @@ static void prepare_NR_SL_ResourcePool(NR_SL_ResourcePool_r16_t *sl_res_pool,
   //and HARQ feedback for all transmissions in the resource pool is disabled.
   // {sl0, sl1, sl2, sl4}
   sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16 = calloc(1, sizeof(long));
-  *sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16 = NR_SL_PSFCH_Config_r16__sl_PSFCH_Period_r16_sl1;
+  *sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16 = NR_SL_PSFCH_Config_r16__sl_PSFCH_Period_r16_sl2;
 
   // Set of PRBs that are actually used for PSFCH transmission and reception (bitmap)
   // 0b10101010101010101010101010101010101010101010101001 (PRBs bitmap)

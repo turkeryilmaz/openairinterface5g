@@ -605,21 +605,24 @@ static uint16_t nr_ue_configure_psfch(int module_idP) {
         mac->sl_tx_res_pool->sl_PSFCH_Config_r16->present != NR_SetupRelease_SL_PSFCH_Config_r16_PR_setup)
         return;
 
-      NR_SL_PSFCH_Config_r16_t *sl_psfch_config = mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup;
-      const int sl_num_muxcs_pair[4] = {1, 2, 3, 6};
-      uint8_t sci2_src_id = mac->sci_pdu_rx.source_id;
-      uint8_t *rb_buf = sl_psfch_config->sl_PSFCH_RB_Set_r16->buf;
-      size_t size = sl_psfch_config->sl_PSFCH_RB_Set_r16->size / sizeof(rb_buf[0]);
-      uint8_t m_psfch_prb_set = count_PSFCH_PRBs_bits(rb_buf, size);
-      long sl_numsubchannel = *mac->sl_tx_res_pool->sl_NumSubchannel_r16;
-      long sl_psfch_period = *sl_psfch_config->sl_PSFCH_Period_r16;
-      long n_psfch_cs = *sl_psfch_config->sl_NumMuxCS_Pair_r16;
+    NR_SL_PSFCH_Config_r16_t *sl_psfch_config = mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup;
+    const int sl_num_muxcs_pair[4] = {1, 2, 3, 6};
+    uint8_t sci2_src_id = mac->sci_pdu_rx.source_id;
+    LOG_D(NR_MAC, "source id %d, module_idP %d\n", sci2_src_id, module_idP);
+    uint8_t *rb_buf = sl_psfch_config->sl_PSFCH_RB_Set_r16->buf;
+    size_t size = sl_psfch_config->sl_PSFCH_RB_Set_r16->size / sizeof(rb_buf[0]);
+    uint8_t m_psfch_prb_set = count_PSFCH_PRBs_bits(rb_buf, size);
+    long sl_numsubchannel = *mac->sl_tx_res_pool->sl_NumSubchannel_r16;
+    long sl_psfch_period = *sl_psfch_config->sl_PSFCH_Period_r16;
+    long n_psfch_cs = *sl_psfch_config->sl_NumMuxCS_Pair_r16;
 
-      double m_psfch_subch_slot = m_psfch_prb_set / sl_numsubchannel * sl_psfch_period;
-      long n_psfch_type = *sl_psfch_config->sl_PSFCH_CandidateResourceType_r16 ? sl_numsubchannel : 1;
-      uint16_t r_psfch_prb_cs = n_psfch_type * m_psfch_subch_slot * sl_num_muxcs_pair[n_psfch_cs];
-      uint8_t psfch_rsc_idx = (sci2_src_id + module_idP) / r_psfch_prb_cs;
-      return table_16_3_1[n_psfch_cs][psfch_rsc_idx];
+    double m_psfch_subch_slot = m_psfch_prb_set / sl_numsubchannel * sl_psfch_period;
+    long n_psfch_type = *sl_psfch_config->sl_PSFCH_CandidateResourceType_r16 ? sl_numsubchannel : 1;
+    uint16_t r_psfch_prb_cs = n_psfch_type * m_psfch_subch_slot * sl_num_muxcs_pair[n_psfch_cs];
+    uint8_t psfch_rsc_idx = (sci2_src_id + module_idP) / r_psfch_prb_cs;
+    LOG_D(NR_MAC, "size %d, m_psfch_prb_set %d, sl_numsubchannel %d, sl_psfch_period %d, n_psfch_cs %d\n", size, m_psfch_prb_set, sl_numsubchannel, sl_psfch_period, n_psfch_cs);
+    LOG_D(NR_MAC, "m_psfch_subch_slot %f, n_psfch_type %d, r_psfch_prb_cs %d, psfch_rsc_idx %d\n", m_psfch_subch_slot, n_psfch_type, r_psfch_prb_cs, psfch_rsc_idx);
+    return table_16_3_1[n_psfch_cs][psfch_rsc_idx];
 }
 
 void nr_ue_process_mac_sl_pdu(int module_idP,
@@ -655,9 +658,16 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
   NR_SL_BWP_Generic_r16_t *sl_bwp = mac->sl_bwp->sl_BWP_Generic_r16;
   uint8_t sl_num_symbols = (sl_bwp->sl_LengthSymbols_r16) ?
                                             values[*sl_bwp->sl_LengthSymbols_r16] : 0;
-  mac->sl_tx_config_psfch_pdu->start_symbol_index = mac->sl_bwp->sl_BWP_Generic_r16->sl_StartSymbol_r16 + sl_num_symbols - 2; // start_symbol_index has been used as lprime and lprime should be computed as lprime = start symbol + sl_LengthSymbols_r16 - 2
+  mac->sl_tx_config_psfch_pdu->start_symbol_index = *mac->sl_bwp->sl_BWP_Generic_r16->sl_StartSymbol_r16 + sl_num_symbols - 2; // start_symbol_index has been used as lprime and lprime should be computed as lprime = start symbol + sl_LengthSymbols_r16 - 2
   mac->sl_tx_config_psfch_pdu->hopping_id = *mac->sl_bwp->sl_BWP_PoolConfigCommon_r16->sl_TxPoolSelectedNormal_r16->list.array[0]->sl_ResourcePool_r16->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_HopID_r16;
   mac->sl_tx_config_psfch_pdu->prb = 2;
+
+  LOG_D(NR_MAC,"Filled psfch pdu %d\n", module_idP);
+  LOG_D(NR_MAC,"pucch_pdu->hopping_id %d\n", mac->sl_tx_config_psfch_pdu->hopping_id);
+  LOG_D(NR_MAC,"pucch_pdu->initial_cyclic_shift %d\n", mac->sl_tx_config_psfch_pdu->initial_cyclic_shift);
+  LOG_D(NR_MAC,"pucch_pdu->mcs %d\n", mac->sl_tx_config_psfch_pdu->mcs);
+  LOG_D(NR_MAC,"start_sym_index %d\n", mac->sl_tx_config_psfch_pdu->start_symbol_index);
+
   }
 
   if ((rx_ind->rx_indication_body + pdu_id)->rx_slsch_pdu.ack_nack == 0) 

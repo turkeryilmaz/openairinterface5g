@@ -59,6 +59,5 @@ void nr_generate_psfch0(const PHY_VARS_NR_UE *ue,
   pucch_pdu.prb_start            = psfch_pdu->prb;
   pucch_pdu.initial_cyclic_shift = psfch_pdu->initial_cyclic_shift;
   pucch_pdu.mcs                  = psfch_pdu->mcs;
-
   nr_generate_pucch0(ue,txdataF,frame_parms,amp,nr_slot_tx,&pucch_pdu); 
 } 

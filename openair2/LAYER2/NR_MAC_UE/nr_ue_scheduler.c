@@ -3588,11 +3588,8 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind) {
         sl_ind->frame_tx = (frame + 1) % 1024;
       }
       // Need to check further weather New slot is SIDELINK SLOT or not
-      //LOG_I(NR_MAC, "sl_ind->slot_type %d, slot: %d, psfch_period: %ld, slot_mod_psfch_period: %d\n", sl_ind->slot_type, slot, psfch_period, slot%psfch_period);
-      LOG_I(NR_MAC, "sci_pdu feedback %d, cast_type %d\n", mac->sci_pdu_rx.harq_feedback, mac->sci_pdu_rx.cast_type);
       // Add further check based on HARQ-ACK indication in SCI
       if (slot%psfch_period == 0) {
-        LOG_I(NR_MAC,"Scheduling PSFCH TX processing slot %d\n", slot);
         nr_ue_sl_psfch_scheduler(mac, sl_ind, mac->sl_bwp, mac->sl_tx_res_pool, &tx_config, &tti_action);
       }
     }
@@ -3624,7 +3621,7 @@ void nr_ue_sl_psfch_scheduler(NR_UE_MAC_INST_t *mac,
                               const NR_SL_ResourcePool_r16_t *sl_res_pool,
                               sl_nr_tx_config_request_t *tx_config,
                               uint8_t *config_type) {
-  LOG_I(NR_MAC,"PSFCH %s\n", __FUNCTION__);
+
   uint8_t ret_status = 0;
   uint16_t slot = sl_ind->slot_tx;
   uint16_t frame = sl_ind->frame_tx;
@@ -3648,11 +3645,16 @@ void nr_ue_sl_psfch_scheduler(NR_UE_MAC_INST_t *mac,
         sl_ind->module_id, frame, slot,sl_ind->slot_type);
 
   sl_nr_tx_config_psfch_pdu_t *tx_psfch_pdu = &tx_config->tx_config_list[0].tx_psfch_config_pdu;
-  tx_psfch_pdu->start_symbol_index = 0;
-  tx_psfch_pdu->hopping_id = 1;
-  tx_psfch_pdu->prb = 2;
-  tx_psfch_pdu->initial_cyclic_shift = 0;
-  tx_psfch_pdu->mcs = 1;
+  tx_psfch_pdu->start_symbol_index = mac->sl_tx_config_psfch_pdu->start_symbol_index;
+  tx_psfch_pdu->hopping_id = mac->sl_tx_config_psfch_pdu->hopping_id;
+  tx_psfch_pdu->prb = mac->sl_tx_config_psfch_pdu->prb;
+  tx_psfch_pdu->initial_cyclic_shift = mac->sl_tx_config_psfch_pdu->initial_cyclic_shift;
+  tx_psfch_pdu->mcs = mac->sl_tx_config_psfch_pdu->mcs;
+  tx_psfch_pdu->freq_hop_flag = 0;
+  tx_psfch_pdu->second_hop_prb = 0;
+  tx_psfch_pdu->group_hop_flag = 0;
+  tx_psfch_pdu->sequence_hop_flag = 0;
+  tx_psfch_pdu->nr_of_symbols = 1;
   const uint8_t sh_size = sizeof(NR_MAC_SUBHEADER_LONG);
 
   *config_type = SL_NR_CONFIG_TYPE_TX_PSFCH;

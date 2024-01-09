@@ -292,6 +292,11 @@ typedef struct sl_nr_tx_config_psbch_pdu {
 
 typedef struct sl_nr_tx_config_psfch_pdu {
 //  These fields map directly to the same fields in nfapi_nr_ul_config_pucch_pdu 
+  uint8_t freq_hop_flag;
+  uint8_t group_hop_flag;
+  uint8_t sequence_hop_flag;
+  uint16_t second_hop_prb;
+  uint8_t nr_of_symbols;
   uint8_t start_symbol_index;
   uint8_t hopping_id;
   uint8_t prb;

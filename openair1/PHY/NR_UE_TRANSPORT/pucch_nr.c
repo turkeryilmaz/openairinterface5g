@@ -111,6 +111,13 @@ void nr_generate_pucch0(const PHY_VARS_NR_UE *ue,
     nr_group_sequence_hopping(pucch_GroupHopping,pucch_pdu->hopping_id,1,nr_slot_tx,&u[1],&v[1]); // calculating u and v value
     prb_offset[1] = pucch_pdu->second_hop_prb + pucch_pdu->bwp_start;
   }
+  LOG_D(PHY, "prb_start %d\n", pucch_pdu->prb_start);
+  LOG_D(PHY,"nr_of_symbols %d\n", pucch_pdu->nr_of_symbols);
+  LOG_D(PHY,"hopping_id %d\n", pucch_pdu->hopping_id);
+  LOG_D(PHY,"initial_cyclic_shift %d\n", pucch_pdu->initial_cyclic_shift);
+  LOG_D(PHY,"mcs %d\n", pucch_pdu->mcs);
+  LOG_D(PHY,"start_sym_index %d\n", pucch_pdu->start_symbol_index);
+  LOG_D(PHY,"nr_slot_tx %d\n", nr_slot_tx);
   for (int l=0; l<pucch_pdu->nr_of_symbols; l++) {
     alpha = nr_cyclic_shift_hopping(pucch_pdu->hopping_id,
                                     pucch_pdu->initial_cyclic_shift,
