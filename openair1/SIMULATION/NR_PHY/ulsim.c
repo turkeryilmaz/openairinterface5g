@@ -340,10 +340,11 @@ int main(int argc, char *argv[])
           break;
         case '2':
           ldpc_xdma_flag = 1;
-          if (optarg[1]=',') {
+          if (optarg[1]==',') {
             ldpc_xdma_number_threads_predecoding = atoi(&optarg[2]);
           } else {
             printf("Expecting \"-o 2,<number of predecoding threads>\"! Falling back to one predecoding thread\n");
+            ldpc_xdma_number_threads_predecoding = 1;
           }
           break;
         default:
