@@ -92,6 +92,11 @@ int8_t nr_mac_rrc_data_ind_ue(const module_id_t module_id,
 void nr_mac_rrc_sync_ind(const module_id_t module_id,
                          const frame_t frame,
                          const bool in_sync);
+
+void nr_rrc_going_to_IDLE(instance_t instance,
+                          NR_Release_Cause_t release_cause,
+                          NR_RRCRelease_t *RRCRelease);
+
 void nr_mac_rrc_ra_ind(const module_id_t mod_id, int frame, bool success);
 void nr_mac_rrc_msg3_ind(const module_id_t mod_id, int rnti);
 
@@ -100,7 +105,7 @@ void nr_mac_rrc_msg3_ind(const module_id_t mod_id, int rnti);
 void *rrc_nrue_task(void *args_p);
 void *rrc_nrue(void *args_p);
 
-void nr_rrc_handle_timers(NR_UE_Timers_Constants_t *timers);
+void nr_rrc_handle_timers(NR_UE_RRC_INST_t *rrc, instance_t instance);
 
 /**\brief RRC NSA UE task.
    \param void *args_p Pointer on arguments to start the task. */
@@ -110,13 +115,14 @@ void init_connections_with_lte_ue(void);
 
 void nsa_sendmsg_to_lte_ue(const void *message, size_t msg_len, Rrc_Msg_Type_t msg_type);
 
-void start_oai_nrue_threads(void);
+extern void start_oai_nrue_threads(void);
 
 int get_from_lte_ue_fd();
 
 void nr_rrc_SI_timers(NR_UE_RRC_SI_INFO *SInfo);
 
 void nr_ue_rrc_timer_trigger(int module_id, int frame, int gnb_id);
+void handle_t300_expiry(instance_t instance);
 
 void reset_rlf_timers_and_constants(NR_UE_Timers_Constants_t *tac);
 void set_default_timers_and_constants(NR_UE_Timers_Constants_t *tac);
