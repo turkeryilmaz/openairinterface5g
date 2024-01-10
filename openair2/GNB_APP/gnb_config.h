@@ -96,7 +96,9 @@ void RCconfig_verify(ngran_node_t node_type);
 extern void NRRCconfig_RU(void);
 extern void RCconfig_nr_prs(void);
 extern void RCconfig_NR_L1(void);
+extern void RCconfig_nr_ssparam(void);
 extern void RCconfig_nr_macrlc(void);
+extern int  RCconfig_nr_gtpu(void );
 extern void NRRCConfig(void);
 
 //void                          enb_config_display(void);

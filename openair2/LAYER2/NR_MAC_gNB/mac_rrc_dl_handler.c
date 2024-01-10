@@ -206,7 +206,7 @@ void ue_context_setup_request(const f1ap_ue_context_setup_t *req)
 
   NR_SCHED_LOCK(&mac->sched_lock);
 
-  NR_UE_info_t *UE = find_nr_UE(&RC.nrmac[0]->UE_info, req->gNB_DU_ue_id);
+  NR_UE_info_t *UE = find_nr_UE(&RC.nrmac[0]->UE_info, 0, req->gNB_DU_ue_id); //TODO to check if 0 ok; gNB_DU_ue_id replaced rnti in OAI@W32
   AssertFatal(UE != NULL, "did not find UE with RNTI %04x, but UE Context Setup Failed not implemented\n", req->gNB_DU_ue_id);
 
   NR_CellGroupConfig_t *new_CellGroup = clone_CellGroupConfig(UE->CellGroup);
@@ -286,7 +286,7 @@ void ue_context_modification_request(const f1ap_ue_context_modif_req_t *req)
   }
 
   NR_SCHED_LOCK(&mac->sched_lock);
-  NR_UE_info_t *UE = find_nr_UE(&RC.nrmac[0]->UE_info, req->gNB_DU_ue_id);
+  NR_UE_info_t *UE = find_nr_UE(&RC.nrmac[0]->UE_info, 0, req->gNB_DU_ue_id); //TODO to check if 0 ok; gNB_DU_ue_id replaced rnti in OAI@W32
 
   NR_CellGroupConfig_t *new_CellGroup = clone_CellGroupConfig(UE->CellGroup);
 
@@ -365,7 +365,7 @@ void ue_context_modification_confirm(const f1ap_ue_context_modif_confirm_t *conf
   gNB_MAC_INST *mac = RC.nrmac[0];
   NR_SCHED_LOCK(&mac->sched_lock);
   /* check first that the scheduler knows such UE */
-  NR_UE_info_t *UE = find_nr_UE(&mac->UE_info, confirm->gNB_DU_ue_id);
+  NR_UE_info_t *UE = find_nr_UE(&mac->UE_info, 0, confirm->gNB_DU_ue_id); //TODO to check if 0 ok. Impacts will appear when multi cells will be fully deployed
   if (UE == NULL) {
     LOG_E(MAC, "ERROR: unknown UE with RNTI %04x, ignoring UE Context Modification Confirm\n", confirm->gNB_DU_ue_id);
     NR_SCHED_UNLOCK(&mac->sched_lock);
@@ -390,7 +390,7 @@ void ue_context_modification_refuse(const f1ap_ue_context_modif_refuse_t *refuse
 
   gNB_MAC_INST *mac = RC.nrmac[0];
   NR_SCHED_LOCK(&mac->sched_lock);
-  NR_UE_info_t *UE = find_nr_UE(&RC.nrmac[0]->UE_info, refuse->gNB_DU_ue_id);
+  NR_UE_info_t *UE = find_nr_UE(&RC.nrmac[0]->UE_info, 0, refuse->gNB_DU_ue_id); //TODO to check if 0 ok. Impacts will appear when multi cells will be fully deployed
   if (UE == NULL) {
     LOG_E(MAC, "ERROR: unknown UE with RNTI %04x, ignoring UE Context Modification Refuse\n", refuse->gNB_DU_ue_id);
     NR_SCHED_UNLOCK(&mac->sched_lock);
@@ -420,11 +420,11 @@ void ue_context_release_command(const f1ap_ue_context_release_cmd_t *cmd)
   /* mark UE as to be deleted after PUSCH failure */
   gNB_MAC_INST *mac = RC.nrmac[0];
   pthread_mutex_lock(&mac->sched_lock);
-  NR_UE_info_t *UE = find_nr_UE(&mac->UE_info, cmd->gNB_DU_ue_id);
+  NR_UE_info_t *UE = find_nr_UE(&mac->UE_info, 0, cmd->gNB_DU_ue_id); //TODO to check if 0 ok; gNB_DU_ue_id replaced rnti in OAI@W32
   if (UE->UE_sched_ctrl.ul_failure || cmd->rrc_container_length == 0) {
     /* The UE is already not connected anymore or we have nothing to forward*/
     nr_rlc_remove_ue(cmd->gNB_DU_ue_id);
-    mac_remove_nr_ue(mac, cmd->gNB_DU_ue_id);
+    mac_remove_nr_ue(mac, 0, cmd->gNB_DU_ue_id); //TODO to check if 0 ok; gNB_DU_ue_id replaced rnti in OAI@W32
   } else {
     /* UE is in sync: forward release message and mark to be deleted
      * after UL failure */
@@ -453,7 +453,7 @@ void dl_rrc_message_transfer(const f1ap_dl_rrc_message_t *dl_rrc)
   gNB_MAC_INST *mac = RC.nrmac[0];
   pthread_mutex_lock(&mac->sched_lock);
   /* check first that the scheduler knows such UE */
-  NR_UE_info_t *UE = find_nr_UE(&mac->UE_info, dl_rrc->gNB_DU_ue_id);
+  NR_UE_info_t *UE = find_nr_UE(&mac->UE_info, 0, dl_rrc->gNB_DU_ue_id); //TODO to check if 0 ok; gNB_DU_ue_id replaced rnti in OAI@W32
   if (UE == NULL) {
     LOG_E(MAC, "ERROR: unknown UE with RNTI %04x, ignoring DL RRC Message Transfer\n", dl_rrc->gNB_DU_ue_id);
     pthread_mutex_unlock(&mac->sched_lock);
@@ -484,7 +484,7 @@ void dl_rrc_message_transfer(const f1ap_dl_rrc_message_t *dl_rrc)
     /* 38.401 says: "Find UE context based on old gNB-DU UE F1AP ID, replace
      * old C-RNTI/PCI with new C-RNTI/PCI". So we delete the new contexts
      * below, then change the C-RNTI of the old one to the new one */
-    NR_UE_info_t *oldUE = find_nr_UE(&mac->UE_info, *dl_rrc->old_gNB_DU_ue_id);
+    NR_UE_info_t *oldUE = find_nr_UE(&mac->UE_info, 0, *dl_rrc->old_gNB_DU_ue_id); //TODO to check if 0 ok; gNB_DU_ue_id replaced rnti in OAI@W32
     DevAssert(oldUE);
     pthread_mutex_lock(&mac->sched_lock);
     /* 38.331 5.3.7.2 says that the UE releases the spCellConfig, so we drop it
@@ -492,12 +492,12 @@ void dl_rrc_message_transfer(const f1ap_dl_rrc_message_t *dl_rrc)
      * the CU, so save the old UE's CellGroup for the new UE */
     UE->CellGroup->spCellConfig = NULL;
     NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
-    NR_ServingCellConfigCommon_t *scc = mac->common_channels[0].ServingCellConfigCommon;
+    NR_ServingCellConfigCommon_t *scc = mac->common_channels[CC_id].ServingCellConfigCommon;  //TODO W38
     configure_UE_BWP(mac, scc, sched_ctrl, NULL, UE, -1, -1);
 
     nr_mac_prepare_cellgroup_update(mac, UE, oldUE->CellGroup);
     oldUE->CellGroup = NULL;
-    mac_remove_nr_ue(mac, *dl_rrc->old_gNB_DU_ue_id);
+    mac_remove_nr_ue(mac, 0, *dl_rrc->old_gNB_DU_ue_id); //TODO to check if 0 ok; gNB_DU_ue_id replaced rnti in OAI@W32
     pthread_mutex_unlock(&mac->sched_lock);
     nr_rlc_remove_ue(dl_rrc->gNB_DU_ue_id);
     nr_rlc_update_rnti(*dl_rrc->old_gNB_DU_ue_id, dl_rrc->gNB_DU_ue_id);
