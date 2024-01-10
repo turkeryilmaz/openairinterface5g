@@ -543,8 +543,8 @@ set_ldpc_dec_op(struct rte_bbdev_dec_op **ops, unsigned int n,
     }
     LOG_D(PHY,"ULSCH %02d HARQPID %02d R %02d COMBIN %d RV %d NCB %05d \n", ulsch_id, harq_pid, r, p_offloadParams->setCombIn, p_offloadParams->rv, p_offloadParams->n_cb);
     ops[i]->ldpc_dec.code_block_mode = 1; // ldpc_dec->code_block_mode;
-    ops[i]->ldpc_dec.harq_combined_input.offset = ulsch_id * 64 * BBDEV_LDPC_MAX_E + r * BBDEV_LDPC_MAX_E;
-    ops[i]->ldpc_dec.harq_combined_output.offset = ulsch_id * 64 * BBDEV_LDPC_MAX_E  + r * BBDEV_LDPC_MAX_E;
+    ops[i]->ldpc_dec.harq_combined_input.offset = ulsch_id * 64 * LDPC_MAX_CB_SIZE + r * LDPC_MAX_CB_SIZE;
+    ops[i]->ldpc_dec.harq_combined_output.offset = ulsch_id * 64 * LDPC_MAX_CB_SIZE  + r * LDPC_MAX_CB_SIZE;
     if (bufs->hard_outputs != NULL)
       ops[i]->ldpc_dec.hard_output = bufs->hard_outputs[start_idx + i];
     if (bufs->inputs != NULL)
@@ -575,7 +575,7 @@ static void set_ldpc_enc_op(struct rte_bbdev_enc_op **ops,
     ops[i]->ldpc_enc.n_filler = p_offloadParams->F;
     ops[i]->ldpc_enc.n_cb = p_offloadParams->n_cb;
     ops[i]->ldpc_enc.rv_index = p_offloadParams->rv;
-    ops[i]->ldpc_enc.op_flags = RTE_BBDEV_LDPC_INTERLEAVER_BYPASS | RTE_BBDEV_LDPC_RATE_MATCH;
+    ops[i]->ldpc_enc.op_flags = RTE_BBDEV_LDPC_RATE_MATCH;
     ops[i]->ldpc_enc.code_block_mode = 1;
     ops[i]->ldpc_enc.output = outputs[start_idx + i];
     ops[i]->ldpc_enc.input = inputs[start_idx + i];
@@ -613,7 +613,7 @@ static int retrieve_ldpc_enc_op(struct rte_bbdev_enc_op **ops, const uint16_t n,
   for (i = 0; i < n; ++i) {
     output = &ops[i]->ldpc_enc.output;
     m = output->data;
-    uint16_t data_len = min((BBDEV_LDPC_MAX_E) / 8, rte_pktmbuf_data_len(m)); // fix me
+    uint16_t data_len = min((LDPC_MAX_CB_SIZE) / 8, rte_pktmbuf_data_len(m)); // fix me
     data = m->buf_addr;
     for (int byte = 0; byte < data_len; byte++)
       for (int bit = 0; bit < 8; bit++)
@@ -968,7 +968,7 @@ int32_t LDPCinit()
 
   int socket_id = GET_SOCKET(info.socket_id);
   int out_max_sz = 8448; // max code block size (for BG1), 22 * 384
-  int in_max_sz = BBDEV_LDPC_MAX_E; // max number of encoded bits (for BG2 and MCS0)
+  int in_max_sz = LDPC_MAX_CB_SIZE; // max number of encoded bits (for BG2 and MCS0)
   int num_ops = 1;
   int f_ret = create_mempools(ad, socket_id, num_ops, out_max_sz, in_max_sz);
   if (f_ret != TEST_SUCCESS) {

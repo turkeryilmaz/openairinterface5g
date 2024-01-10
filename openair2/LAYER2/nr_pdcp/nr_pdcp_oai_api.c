@@ -30,6 +30,7 @@
 #include "NR_RLC-Config.h"
 #include "NR_CellGroupConfig.h"
 #include "openair2/RRC/NR/nr_rrc_proto.h"
+#include "common/utils/mem/oai_memory.h"
 #include <stdint.h>
 
 /* from OAI */
@@ -111,7 +112,7 @@ typedef struct {
   mui_t           muiP;
   confirm_t       confirmP;
   sdu_size_t      sdu_sizeP;
-  mem_block_t     *sdu_pP;
+  uint8_t *sdu_pP;
 } rlc_data_req_queue_item;
 
 #define RLC_DATA_REQ_QUEUE_SIZE 10000
@@ -173,13 +174,13 @@ static void init_nr_rlc_data_req_queue(void)
 }
 
 static void enqueue_rlc_data_req(const protocol_ctxt_t *const ctxt_pP,
-                                 const srb_flag_t   srb_flagP,
-                                 const MBMS_flag_t  MBMS_flagP,
-                                 const rb_id_t      rb_idP,
-                                 const mui_t        muiP,
-                                 confirm_t    confirmP,
-                                 sdu_size_t   sdu_sizeP,
-                                 mem_block_t *sdu_pP)
+                                 const srb_flag_t srb_flagP,
+                                 const MBMS_flag_t MBMS_flagP,
+                                 const rb_id_t rb_idP,
+                                 const mui_t muiP,
+                                 confirm_t confirmP,
+                                 sdu_size_t sdu_sizeP,
+                                 uint8_t *sdu_pP)
 {
   int i;
   int logged = 0;
@@ -210,13 +211,13 @@ static void enqueue_rlc_data_req(const protocol_ctxt_t *const ctxt_pP,
 }
 
 void du_rlc_data_req(const protocol_ctxt_t *const ctxt_pP,
-                     const srb_flag_t   srb_flagP,
-                     const MBMS_flag_t  MBMS_flagP,
-                     const rb_id_t      rb_idP,
-                     const mui_t        muiP,
-                     confirm_t    confirmP,
-                     sdu_size_t   sdu_sizeP,
-                     mem_block_t *sdu_pP)
+                     const srb_flag_t srb_flagP,
+                     const MBMS_flag_t MBMS_flagP,
+                     const rb_id_t rb_idP,
+                     const mui_t muiP,
+                     confirm_t confirmP,
+                     sdu_size_t sdu_sizeP,
+                     uint8_t *sdu_pP)
 {
   enqueue_rlc_data_req(ctxt_pP,
                        srb_flagP,
@@ -241,7 +242,7 @@ typedef struct {
   MBMS_flag_t     MBMS_flagP;
   rb_id_t         rb_id;
   sdu_size_t      sdu_buffer_size;
-  mem_block_t     *sdu_buffer;
+  uint8_t *sdu_buffer;
 } pdcp_data_ind_queue_item;
 
 #define PDCP_DATA_IND_QUEUE_SIZE 10000
@@ -256,13 +257,12 @@ typedef struct {
 
 static pdcp_data_ind_queue pq;
 
-static void do_pdcp_data_ind(
-  const protocol_ctxt_t *const  ctxt_pP,
-  const srb_flag_t srb_flagP,
-  const MBMS_flag_t MBMS_flagP,
-  const rb_id_t rb_id,
-  const sdu_size_t sdu_buffer_size,
-  mem_block_t *const sdu_buffer)
+static void do_pdcp_data_ind(const protocol_ctxt_t *const ctxt_pP,
+                             const srb_flag_t srb_flagP,
+                             const MBMS_flag_t MBMS_flagP,
+                             const rb_id_t rb_id,
+                             const sdu_size_t sdu_buffer_size,
+                             uint8_t *const sdu_buffer)
 {
   nr_pdcp_ue_t *ue;
   nr_pdcp_entity_t *rb;
@@ -285,14 +285,14 @@ static void do_pdcp_data_ind(
   rb = nr_pdcp_get_rb(ue, rb_id, srb_flagP);
 
   if (rb != NULL) {
-    rb->recv_pdu(rb, (char *)sdu_buffer->data, sdu_buffer_size);
+    rb->recv_pdu(rb, (char *)sdu_buffer, sdu_buffer_size);
   } else {
     LOG_E(PDCP, "pdcp_data_ind: no RB found (rb_id %ld, srb_flag %d)\n", rb_id, srb_flagP);
   }
 
   nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
 
-  free_mem_block(sdu_buffer, __FUNCTION__);
+  free(sdu_buffer);
 }
 
 static void *pdcp_data_ind_thread(void *_)
@@ -337,13 +337,12 @@ static void init_nr_pdcp_data_ind_queue(void)
   }
 }
 
-static void enqueue_pdcp_data_ind(
-  const protocol_ctxt_t *const  ctxt_pP,
-  const srb_flag_t srb_flagP,
-  const MBMS_flag_t MBMS_flagP,
-  const rb_id_t rb_id,
-  const sdu_size_t sdu_buffer_size,
-  mem_block_t *const sdu_buffer)
+static void enqueue_pdcp_data_ind(const protocol_ctxt_t *const ctxt_pP,
+                                  const srb_flag_t srb_flagP,
+                                  const MBMS_flag_t MBMS_flagP,
+                                  const rb_id_t rb_id,
+                                  const sdu_size_t sdu_buffer_size,
+                                  uint8_t *const sdu_buffer)
 {
   int i;
   int logged = 0;
@@ -371,12 +370,12 @@ static void enqueue_pdcp_data_ind(
   if (pthread_mutex_unlock(&pq.m) != 0) abort();
 }
 
-bool pdcp_data_ind(const protocol_ctxt_t *const  ctxt_pP,
+bool pdcp_data_ind(const protocol_ctxt_t *const ctxt_pP,
                    const srb_flag_t srb_flagP,
                    const MBMS_flag_t MBMS_flagP,
                    const rb_id_t rb_id,
                    const sdu_size_t sdu_buffer_size,
-                   mem_block_t *const sdu_buffer,
+                   uint8_t *const sdu_buffer,
                    const uint32_t *const srcID,
                    const uint32_t *const dstID)
 {
@@ -670,8 +669,8 @@ static void deliver_pdu_drb_ue(void *deliver_pdu_data, ue_id_t ue_id, int rb_id,
   DevAssert(deliver_pdu_data == NULL);
   protocol_ctxt_t ctxt = { .enb_flag = 0, .rntiMaybeUEid = ue_id };
 
-  mem_block_t *memblock = get_free_mem_block(size, __FUNCTION__);
-  memcpy(memblock->data, buf, size);
+  uint8_t *memblock = malloc16(size);
+  memcpy(memblock, buf, size);
   LOG_D(PDCP, "%s(): (drb %d) calling rlc_data_req size %d UE %ld/%04lx\n", __func__, rb_id, size, ctxt.rntiMaybeUEid, ctxt.rntiMaybeUEid);
   enqueue_rlc_data_req(&ctxt, 0, MBMS_FLAG_NO, rb_id, sdu_id, 0, size, memblock);
 }
@@ -702,8 +701,8 @@ static void deliver_pdu_drb_gnb(void *deliver_pdu_data, ue_id_t ue_id, int rb_id
     extern instance_t CUuniqInstance;
     itti_send_msg_to_task(TASK_GTPV1_U, CUuniqInstance, message_p);
   } else {
-    mem_block_t *memblock = get_free_mem_block(size, __FUNCTION__);
-    memcpy(memblock->data, buf, size);
+    uint8_t *memblock = malloc16(size);
+    memcpy(memblock, buf, size);
     LOG_D(PDCP, "%s(): (drb %d) calling rlc_data_req size %d\n", __func__, rb_id, size);
     enqueue_rlc_data_req(&ctxt, 0, MBMS_FLAG_NO, rb_id, sdu_id, 0, size, memblock);
   }
@@ -760,8 +759,8 @@ void deliver_pdu_srb_rlc(void *deliver_pdu_data, ue_id_t ue_id, int srb_id,
                          char *buf, int size, int sdu_id)
 {
   protocol_ctxt_t ctxt = { .enb_flag = 1, .rntiMaybeUEid = ue_id };
-  mem_block_t *memblock = get_free_mem_block(size, __FUNCTION__);
-  memcpy(memblock->data, buf, size);
+  uint8_t *memblock = malloc16(size);
+  memcpy(memblock, buf, size);
   enqueue_rlc_data_req(&ctxt, 1, MBMS_FLAG_NO, srb_id, sdu_id, 0, size, memblock);
 }
 
@@ -958,13 +957,11 @@ bool pdcp_remove_UE(const protocol_ctxt_t *const ctxt_pP)
   abort();
 }
 
-bool nr_pdcp_remove_UE(ue_id_t ue_id)
+void nr_pdcp_remove_UE(ue_id_t ue_id)
 {
   nr_pdcp_manager_lock(nr_pdcp_ue_manager);
   nr_pdcp_manager_remove_ue(nr_pdcp_ue_manager, ue_id);
   nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
-
-  return 1;
 }
 
 /* hack: dummy function needed due to LTE dependencies */
@@ -1093,12 +1090,11 @@ void nr_pdcp_reconfigure_srb(ue_id_t ue_id, int srb_id, long t_Reordering)
   nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
 }
 
-void nr_pdcp_reconfigure_drb(ue_id_t ue_id, int drb_id, long t_Reordering)
+void nr_pdcp_reconfigure_drb(ue_id_t ue_id, int drb_id, NR_PDCP_Config_t *pdcp_config, NR_SDAP_Config_t *sdap_config)
 {
-  /* The enabling/disabling of ciphering or integrity protection
-   * can be changed only by releasing and adding the DRB
-   * (so not by reconfiguring).
-   */
+  // The enabling/disabling of ciphering or integrity protection
+  // can be changed only by releasing and adding the DRB
+  // (so not by reconfiguring).
   nr_pdcp_manager_lock(nr_pdcp_ue_manager);
   nr_pdcp_ue_t *ue = nr_pdcp_manager_get_ue(nr_pdcp_ue_manager, ue_id);
   nr_pdcp_entity_t *drb = nr_pdcp_get_rb(ue, drb_id, false);
@@ -1107,8 +1103,33 @@ void nr_pdcp_reconfigure_drb(ue_id_t ue_id, int drb_id, long t_Reordering)
     nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
     return;
   }
-  int decoded_t_reordering = decode_t_reordering(t_Reordering);
-  drb->t_reordering = decoded_t_reordering;
+  if (pdcp_config) {
+    if (pdcp_config->t_Reordering)
+      drb->t_reordering = decode_t_reordering(*pdcp_config->t_Reordering);
+    else
+      drb->t_reordering = -1;
+    struct NR_PDCP_Config__drb *drb_config = pdcp_config->drb;
+    if (drb_config) {
+      if (drb_config->discardTimer)
+        drb->discard_timer = decode_discard_timer(*drb_config->discardTimer);
+      bool size_set = false;
+      if (drb_config->pdcp_SN_SizeUL) {
+        drb->sn_size = decode_sn_size_ul(*drb_config->pdcp_SN_SizeUL);
+        size_set = true;
+      }
+      if (drb_config->pdcp_SN_SizeDL) {
+        int size = decode_sn_size_dl(*drb_config->pdcp_SN_SizeDL);
+        AssertFatal(!size_set || (size == drb->sn_size),
+                    "SN sizes must be the same. dl=%d, ul=%d",
+                    size, drb->sn_size);
+        drb->sn_size = size;
+      }
+    }
+  }
+  if (sdap_config) {
+    // nr_reconfigure_sdap_entity
+    AssertFatal(false, "Function to reconfigure SDAP entity not implemented yet\n");
+  }
   nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
 }
 
@@ -1131,6 +1152,7 @@ void nr_pdcp_release_drb(ue_id_t ue_id, int drb_id)
   nr_pdcp_ue_t *ue = nr_pdcp_manager_get_ue(nr_pdcp_ue_manager, ue_id);
   nr_pdcp_entity_t *drb = ue->drb[drb_id - 1];
   if (drb) {
+    nr_sdap_release_drb(ue_id, drb_id, drb->pdusession_id);
     drb->release_entity(drb);
     drb->delete_entity(drb);
     ue->drb[drb_id - 1] = NULL;
@@ -1221,12 +1243,12 @@ bool cu_f1u_data_req(protocol_ctxt_t  *ctxt_pP,
                      const uint32_t *const destinationL2Id) {
   //Force instance id to 0, OAI incoherent instance management
   ctxt_pP->instance=0;
-  mem_block_t *memblock = get_free_mem_block(sdu_buffer_size, __func__);
+  uint8_t *memblock = malloc16(sdu_buffer_size);
   if (memblock == NULL) {
-    LOG_E(RLC, "%s:%d:%s: ERROR: get_free_mem_block failed\n", __FILE__, __LINE__, __FUNCTION__);
+    LOG_E(RLC, "%s:%d:%s: ERROR: malloc16 failed\n", __FILE__, __LINE__, __FUNCTION__);
     exit(1);
   }
-  memcpy(memblock->data,sdu_buffer, sdu_buffer_size);
+  memcpy(memblock, sdu_buffer, sdu_buffer_size);
   int ret=pdcp_data_ind(ctxt_pP,srb_flagP, false, rb_id, sdu_buffer_size, memblock, NULL, NULL);
   if (!ret) {
     LOG_E(RLC, "%s:%d:%s: ERROR: pdcp_data_ind failed\n", __FILE__, __LINE__, __FUNCTION__);

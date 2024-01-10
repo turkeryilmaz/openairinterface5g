@@ -69,12 +69,12 @@ sudo python3 ~/dpdk-stable/usertools/dpdk-hugepages.py -p 1G --setup 10G`
 the host machine*
 
 # Modifications in the OAI code
-## PMD path specification
-Path to the PMD for operating the card is specified in `CMakeLists.txt` file in
+## DPDK lib and PMD path specification
+Path to the DPDK lib and Accelercomm PMD for operating the card is specified in the `CMakeLists.txt` file, in
 *LDPC OFFLOAD library* section. Modify following line based on the location of
-the PMD on your system. By deafult, path to the PMD is set to `/opt/dpdk-t2/lib/x86_64-linux-gnu/`.
+`libdpdk.pc` file associated with the target DPDK library on your system. By default, the path is set to `/usr/local/lib/x86_64-linux-gnu/pkgconfig`.
 ```
-find_library(PMD_T2 NAMES rte_baseband_accl_ldpc HINTS "/opt/dpdk-t2/lib/x86_64-linux-gnu/")
+set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/usr/local/lib/x86_64-linux-gnu/pkgconfig")
 ```
 
 ## T2 card DPDK initialization
@@ -144,7 +144,6 @@ sudo ./nr-softmodem --sa -O ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb.sa
 
 # Limitations
 ## AMD Xilinx T2 card
- - offload of the LDPC encoding implemented for MCS > 2, OAI CPU encoder is used for MCS =< 2
  - functionality of the LDPC encoding and decoding offload verified in OTA SISO setup with USRP N310 and Quectel RM500Q, blocking of the card reported for MIMO setup (2 layers)
 
 *Note: AMD Xilinx T1 Telco card is not supported anymore.*
