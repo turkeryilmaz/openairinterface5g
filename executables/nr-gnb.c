@@ -399,24 +399,18 @@ void *nrL1_stats_thread(void *param) {
 // two parallel L1 tx threads.
 void *tx_reorder_thread(void* param) {
   PHY_VARS_gNB *gNB = (PHY_VARS_gNB *)param;
-    notifiedFIFO_elt_t *resL1Reserve = NULL;
-  
 
-  resL1Reserve = pullTpool(&gNB->L1_tx_out, &gNB->threadPool);
+  LOG_I(PHY,"tx_reorder_thread started\n");
+
+  notifiedFIFO_elt_t *resL1Reserve = pullTpool(&gNB->L1_tx_out, &gNB->threadPool);
   AssertFatal(resL1Reserve != NULL, "pullTpool() did not return start message in %s\n", __func__);
   int next_tx_slot=((processingData_L1tx_t *)NotifiedFifoData(resL1Reserve))->slot;
   
-  LOG_I(PHY,"tx_reorder_thread started\n");
-  
   while (!oai_exit) {
     notifiedFIFO_elt_t *resL1;
-    if (resL1Reserve) {
-       resL1=resL1Reserve;
-       if (((processingData_L1tx_t *)NotifiedFifoData(resL1))->slot != next_tx_slot) {
-         LOG_E(PHY,"order mistake\n");
-         resL1Reserve = NULL;
-         resL1 = pullTpool(&gNB->L1_tx_out, &gNB->threadPool);
-       }
+    if (resL1Reserve != NULL && ((processingData_L1tx_t *)NotifiedFifoData(resL1Reserve))->slot == next_tx_slot) {
+       resL1 = resL1Reserve;
+       resL1Reserve = NULL;
      } else { 
        resL1 = pullTpool(&gNB->L1_tx_out, &gNB->threadPool);
        if (resL1 != NULL && ((processingData_L1tx_t *)NotifiedFifoData(resL1))->slot != next_tx_slot) {
@@ -442,8 +436,6 @@ void *tx_reorder_thread(void* param) {
     } else
       next_tx_slot = get_next_downlink_slot(gNB, &gNB->gNB_config, syncMsgRU.frame_tx, syncMsgRU.slot_tx);
     pushNotifiedFIFO(&gNB->L1_tx_free, resL1);
-    if (resL1==resL1Reserve)
-       resL1Reserve=NULL;
     LOG_D(PHY,"gNB: %d.%d : calling RU TX function\n",syncMsgL1->frame,syncMsgL1->slot);
     ru_tx_func((void*)&syncMsgRU);
   }
