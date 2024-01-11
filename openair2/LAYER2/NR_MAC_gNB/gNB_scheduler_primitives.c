@@ -2536,6 +2536,14 @@ void mac_remove_nr_ue(gNB_MAC_INST *nr_mac, rnti_t rnti)
     return;
   }
 
+  /* Dissociate UE from all corresponding slice*/
+  nr_pp_impl_param_dl_t *dl = &nr_mac->pre_processor_dl;
+  if (dl->slices) {
+    for (int i = 0; i < dl->slices->num; i++) {
+      dl->remove_UE(dl->slices, UE, i);
+    }
+  }
+
   NR_UE_info_t * newUEs[MAX_MOBILES_PER_GNB+1]={0};
   int newListIdx=0;
   for (int i=0; i<MAX_MOBILES_PER_GNB; i++)
@@ -2545,14 +2553,6 @@ void mac_remove_nr_ue(gNB_MAC_INST *nr_mac, rnti_t rnti)
   NR_SCHED_UNLOCK(&UE_info->mutex);
 
   delete_nr_ue_data(UE, nr_mac->common_channels, &UE_info->uid_allocator);
-
-  /* Dissociate UE from all corresponding slice*/
-  nr_pp_impl_param_dl_t *dl = &nr_mac->pre_processor_dl;
-  if (dl->slices) {
-    for (int i = 0; i < dl->slices->num; i++) {
-      dl->remove_UE(dl->slices, UE, i);
-    }
-  }
 }
 
 uint8_t nr_get_tpc(int target, uint8_t cqi, int incr) {
