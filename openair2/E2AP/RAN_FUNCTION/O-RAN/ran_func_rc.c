@@ -41,8 +41,6 @@ bool read_rc_sm(void* data)
   assert(data != NULL);
 //  assert(data->type == RAN_CTRL_STATS_V1_03);
   assert(0!=0 && "Not implemented");
-
-  return true;
 }
 
 void read_rc_setup_sm(void* data)
@@ -113,19 +111,6 @@ static int find_dl_slice(nr_slice_info_t *si, uint32_t id)
       return i;
   }
   return -1;
-}
-
-static int assoc_ue_to_dl_slice(int mod_id, NR_UE_info_t* assoc_ue, uint32_t assoc_dl_id)
-{
-  nr_pp_impl_param_dl_t *dl = &RC.nrmac[mod_id]->pre_processor_dl;
-  int new_idx = find_dl_slice(dl->slices, assoc_dl_id);
-  int old_idx = find_dl_slice(dl->slices, assoc_ue->dl_id);
-  if (new_idx < 0 || old_idx < 0)
-    return -100;
-  LOG_W(NR_MAC, "associate UE RNTI 0x%04x from slice ID %d idx %d to slice ID %d idx %d\n",
-        assoc_ue->rnti, assoc_ue->dl_id, old_idx, assoc_dl_id, new_idx);
-  dl->move_UE(dl->slices, assoc_ue, old_idx, new_idx);
-  return 0;
 }
 
 static char* copy_bytearr_to_str(const byte_array_t* ba)
@@ -284,6 +269,7 @@ static bool add_mod_rc_slice(int mod_id, size_t slices_len, ran_param_list_t* ls
     if (nrmac->UE_info.list[0] == NULL)
       LOG_E(NR_MAC, "no UE connected\n");
 
+
     nr_pp_impl_param_dl_t *dl = &RC.nrmac[mod_id]->pre_processor_dl;
     NR_UEs_t *UE_info = &RC.nrmac[mod_id]->UE_info;
     UE_iterator(UE_info->list, UE) {
@@ -314,24 +300,7 @@ static bool add_mod_rc_slice(int mod_id, size_t slices_len, ran_param_list_t* ls
             UE_mcc, UE_mnc, UE_sst, UE_sd, RC_mcc, RC_mnc, RC_sst, RC_sd);
 
       if (UE_mcc == RC_mcc && UE_mnc == RC_mnc && UE_sst == RC_sst && UE_sd == RC_sd) {
-        /* Check current slice of this RNTI before assoc */
-        size_t cur_idx = dl->get_UE_slice_idx(dl->slices, rnti);
-        if (i == cur_idx) {
-          LOG_D(NR_MAC, "expected DL slice association for UE RNTI 0x%04x\n", rnti);
-          continue;
-        }
-        /* Check this RNTI in the current slice before assoc */
-        int cur_ue_idx = dl->get_UE_idx(dl->slices->s[cur_idx], rnti);
-        if (cur_ue_idx < 0) {
-          LOG_E(NR_MAC, "error while associating RNTI 0x%04x\n", rnti);
-          continue;
-        }
-        /* Associate this RNTI to another dl slice */
-        int rc = assoc_ue_to_dl_slice(mod_id, nrmac->UE_info.list[cur_ue_idx], i);
-        if (rc < 0) {
-          LOG_E(NR_MAC, "error code %d while associating RNTI 0x%04x\n", rc, rnti);
-          continue;
-        }
+          dl->add_UE(dl->slices, UE);
       } else {
         LOG_W(NR_MAC, "cannot find specified PLMN (mcc %d mnc %d) NSSAI (sst %d sd %d) from the existing UE PLMN (mcc %d mnc %d) NSSAI (sst %d sd %d) \n",
               RC_mcc, RC_mnc, RC_sst, RC_sd, UE_mcc, UE_mnc, UE_sst, UE_sd);
