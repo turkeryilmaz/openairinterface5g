@@ -98,7 +98,6 @@ int32_t uplink_frequency_offset[MAX_NUM_CCs][4];
 
 uint16_t sf_ahead=4 ;
 int slot_ahead=6 ;
-uint16_t sl_ahead=0;
 double cpuf;
 //uint8_t nfapi_mode = 0;
 uint64_t downlink_frequency[MAX_NUM_CCs][4];
