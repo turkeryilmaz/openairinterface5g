@@ -175,38 +175,50 @@ void set_scs_parameters (NR_DL_FRAME_PARMS *fp, int mu, int N_RB_DL)
 
 uint32_t get_samples_per_slot(int slot, const NR_DL_FRAME_PARMS *fp)
 {
-  uint32_t samp_count;
+  if (fp->numerology_index == 0)
+    return fp->samples_per_subframe;
 
-  if(fp->numerology_index == 0)
-    samp_count = fp->samples_per_subframe;
-  else
-    samp_count = (slot % (fp->slots_per_subframe / 2)) ? fp->samples_per_slotN0 : fp->samples_per_slot0;
-
-  return samp_count;
+  return (slot % (fp->slots_per_subframe / 2)) ? fp->samples_per_slotN0 : fp->samples_per_slot0;
 }
 
 uint32_t get_slot_from_timestamp(openair0_timestamp timestamp_rx, const NR_DL_FRAME_PARMS *fp)
 {
-   uint32_t slot_idx = 0;
-   int samples_till_the_slot = fp->get_samples_per_slot(slot_idx,fp)-1;
-   timestamp_rx = timestamp_rx%fp->samples_per_frame;
+  uint32_t slot_idx = 0;
+  timestamp_rx = timestamp_rx % fp->samples_per_frame;
 
-    while (timestamp_rx > samples_till_the_slot) {
-        slot_idx++;
-        samples_till_the_slot += fp->get_samples_per_slot(slot_idx,fp);
-     }
-   return slot_idx; 
+  while (timestamp_rx >= fp->samples_per_subframe) {
+    timestamp_rx -= fp->samples_per_subframe;
+    slot_idx += fp->slots_per_subframe;
+  }
+
+  for (int slot = 0; slot < fp->slots_per_subframe; slot++) {
+    int samples_per_slot = fp->get_samples_per_slot(slot, fp);
+    if (timestamp_rx < samples_per_slot)
+      break;
+    timestamp_rx -= samples_per_slot;
+    slot_idx++;
+  }
+
+  return slot_idx;
 }
 
 uint32_t get_samples_slot_timestamp(int slot, const NR_DL_FRAME_PARMS *fp, uint16_t sl_ahead)
 {
   uint32_t samp_count = 0;
 
-  if(!sl_ahead) {
-    for(uint16_t idx_slot = 0; idx_slot < slot; idx_slot++)
+  if (!sl_ahead) {
+    while (slot >= fp->slots_per_subframe) {
+      slot -= fp->slots_per_subframe;
+      samp_count += fp->samples_per_subframe;
+    }
+    for (uint16_t idx_slot = 0; idx_slot < slot; idx_slot++)
       samp_count += fp->get_samples_per_slot(idx_slot, fp);
   } else {
-    for(uint16_t idx_slot = slot; idx_slot < slot+sl_ahead; idx_slot++)
+    while (sl_ahead >= fp->slots_per_subframe) {
+      sl_ahead -= fp->slots_per_subframe;
+      samp_count += fp->samples_per_subframe;
+    }
+    for (uint16_t idx_slot = slot; idx_slot < slot + sl_ahead; idx_slot++)
       samp_count += fp->get_samples_per_slot(idx_slot, fp);
   }
   return samp_count;
