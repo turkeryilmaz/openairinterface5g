@@ -57,6 +57,7 @@
 #define DEBUG_gNB_SCHEDULER 1
 
 #include "common/ran_context.h"
+#include "NR_MAC_gNB/slicing/nr_slicing.h"
 
 //#define DEBUG_DCI
 
@@ -2544,6 +2545,14 @@ void mac_remove_nr_ue(gNB_MAC_INST *nr_mac, rnti_t rnti)
   NR_SCHED_UNLOCK(&UE_info->mutex);
 
   delete_nr_ue_data(UE, nr_mac->common_channels, &UE_info->uid_allocator);
+
+  /* Dissociate UE from all corresponding slice*/
+  nr_pp_impl_param_dl_t *dl = &nr_mac->pre_processor_dl;
+  if (dl->slices) {
+    for (int i = 0; i < dl->slices->num; i++) {
+      dl->remove_UE(dl->slices, UE, i);
+    }
+  }
 }
 
 uint8_t nr_get_tpc(int target, uint8_t cqi, int incr) {
@@ -3014,6 +3023,17 @@ void prepare_initial_ul_rrc_message(gNB_MAC_INST *mac, NR_UE_info_t *UE)
 
   UE->CellGroup = cellGroupConfig;
   process_CellGroup(cellGroupConfig, UE);
+
+  /* Assign SRB1 to default slice */
+  const long lcid = 1;
+  nr_pp_impl_param_dl_t *dl = &mac->pre_processor_dl;
+  if (dl->slices) {
+    nssai_t *default_nssai = &dl->slices->s[0]->nssai;
+    UE->UE_sched_ctrl.dl_lc_nssai[lcid] = *default_nssai;
+    LOG_I(NR_MAC, "Setting NSSAI sst: %d, sd: %d for SRB: %ld\n", default_nssai->sst, default_nssai->sd, lcid);
+
+    dl->add_UE(dl->slices, UE);
+  }
 
   /* activate SRB0 */
   nr_rlc_activate_srb0(UE->rnti, UE, send_initial_ul_rrc_message);
