@@ -139,27 +139,21 @@ static inline int cpumeas(int action) {
 
 static inline void start_meas(time_stats_t *ts) {
   if (opp_enabled) {
-    if (ts->meas_flag==0) {
-      ts->trials++;
-      ts->in = rdtsc_oai();
-      ts->meas_flag=1;
-    } else {
-      ts->in = rdtsc_oai();
-    }
-    if ((ts->trials&16383)<10) ts->max=0;
+    ts->meas_flag = 1;
+    ts->in = rdtsc_oai();
   }
 }
 
 static inline void stop_meas(time_stats_t *ts) {
   if (opp_enabled) {
     long long out = rdtsc_oai();
-    if (ts->in) {
+    if (ts->meas_flag == 1) {
       ts->diff += (out - ts->in);
       /// process duration is the difference between two clock points
       ts->p_time = (out - ts->in);
       ts->diff_square += ((double)out - ts->in) * ((double)out - ts->in);
-
-      if ((out - ts->in) > ts->max)
+      ts->trials++;
+      if ((ts->trials & 16383) < 10 || (out - ts->in) > ts->max)
         ts->max = out - ts->in;
 
       ts->meas_flag = 0;
