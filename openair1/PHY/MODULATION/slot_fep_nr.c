@@ -62,8 +62,9 @@ int nr_slot_fep(PHY_VARS_NR_UE *ue,
 
   dft_size_idx_t dftsize = get_dft(frame_parms->ofdm_symbol_size);
   // This is for misalignment issues
-  int32_t tmp_dft_in[8192] __attribute__ ((aligned (32)));
+  int32_t tmp_dft_in[frame_parms->ofdm_symbol_size] __attribute__((aligned(32)));
 
+  // offset of first OFDM symbol
   unsigned int rx_offset = frame_parms->get_samples_slot_timestamp(Ns,frame_parms,0);
   unsigned int abs_symbol = Ns * frame_parms->symbols_per_slot + symbol;
   for (int idx_symb = Ns*frame_parms->symbols_per_slot; idx_symb <= abs_symbol; idx_symb++)
@@ -164,8 +165,9 @@ int nr_slot_fep_init_sync(PHY_VARS_NR_UE *ue,
 
   dft_size_idx_t dftsize = get_dft(frame_parms->ofdm_symbol_size);
   // This is for misalignment issues
-  int32_t tmp_dft_in[8192] __attribute__ ((aligned (32)));
+  int32_t tmp_dft_in[frame_parms->ofdm_symbol_size] __attribute__((aligned(32)));
 
+  // offset of first OFDM symbol
   unsigned int slot_offset = frame_parms->get_samples_slot_timestamp(Ns,frame_parms,0);
   unsigned int rx_offset   = sample_offset + slot_offset;
   unsigned int abs_symbol  = Ns * frame_parms->symbols_per_slot + symbol;
@@ -257,16 +259,18 @@ int nr_slot_fep_meas(PHY_VARS_NR_UE *ue,
   unsigned int nb_prefix_samples0 = frame_parms->nb_prefix_samples;
   unsigned int frame_length_samples = frame_parms->samples_per_frame;
   dft_size_idx_t dftsize = get_dft(frame_parms->ofdm_symbol_size);
+  // This is for misalignment issues
+  int32_t tmp_dft_in[frame_parms->ofdm_symbol_size] __attribute__((aligned(32)));
+
+  // offset of first OFDM symbol
   unsigned int slot_offset = frame_parms->get_samples_slot_timestamp(Ns, frame_parms, 0);
   unsigned int abs_symbol = Ns * frame_parms->symbols_per_slot + symbol;
 
   unsigned int rx_offset = sample_offset + slot_offset;
-  for (int idx_symb = Ns * frame_parms->symbols_per_slot; idx_symb <= abs_symbol; idx_symb++) {
-    rx_offset += (abs_symbol % (0x7 << frame_parms->numerology_index)) ? nb_prefix_samples : nb_prefix_samples0;
-  }
+  for (int idx_symb = Ns * frame_parms->symbols_per_slot; idx_symb <= abs_symbol; idx_symb++)
+    rx_offset += (idx_symb % (0x7 << frame_parms->numerology_index)) ? nb_prefix_samples : nb_prefix_samples0;
   rx_offset += frame_parms->ofdm_symbol_size * symbol;
 
-  int32_t tmp_dft_in[8192] __attribute__((aligned(32)));
   for (unsigned char aa = 0; aa < frame_parms->nb_antennas_rx; aa++) {
     int16_t *rxdata_ptr;
     rx_offset %= frame_length_samples * 2;
@@ -311,7 +315,7 @@ int nr_slot_fep_ul(NR_DL_FRAME_PARMS *frame_parms,
 
   dft_size_idx_t dftsize = get_dft(frame_parms->ofdm_symbol_size);
   // This is for misalignment issues
-  int32_t tmp_dft_in[8192] __attribute__ ((aligned (32)));
+  int32_t tmp_dft_in[frame_parms->ofdm_symbol_size] __attribute__((aligned(32)));
 
   // offset of first OFDM symbol
   unsigned int rxdata_offset = frame_parms->get_samples_slot_timestamp(Ns,frame_parms,0);
