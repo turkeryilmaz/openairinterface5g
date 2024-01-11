@@ -3317,13 +3317,14 @@ bool prepare_initial_ul_rrc_message(gNB_MAC_INST *mac, NR_UE_info_t *UE)
   int priority = bearer->mac_LogicalChannelConfig->ul_SpecificParameters->priority;
   nr_lc_config_t c = {.lcid = bearer->logicalChannelIdentity, .priority = priority};
   nr_pp_impl_param_dl_t *dl = &mac->pre_processor_dl;
+  /* for UEs added before RIC configures slices */
+  const nssai_t default_slice_nssai = {.sst = 0, .sd = 0};
+  /* if slices are configured, first slice is default slice for SRBs */
+  c.nssai = (dl->slices) ? dl->slices->s[0]->nssai : default_slice_nssai;
+  nr_mac_add_lcid(&UE->UE_sched_ctrl, &c);
   if (dl->slices) {
-    nssai_t *default_slice_nssai = &dl->slices->s[0]->nssai; // first slice is default slice for SRBs
-    c.nssai = *default_slice_nssai;
-
     dl->add_UE(dl->slices, UE);
   }
-  nr_mac_add_lcid(&UE->UE_sched_ctrl, &c);
   return true;
 }
 

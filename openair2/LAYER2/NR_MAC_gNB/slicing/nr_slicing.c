@@ -108,21 +108,29 @@ void nr_slicing_add_UE(nr_slice_info_t *si, NR_UE_info_t *new_ue)
       }
     }
     if (matched_ue) {
+      /* check if incoming UE is already in slice list */
+      UE_iterator(si->s[i]->UE_list, UE) {
+        if (UE->rnti == new_ue->rnti)
+          break;
+      }
+      if (UE)
+        continue; // go to next slice
+
       /* add this slice id to this UE's slice list */
       add_nr_list(&new_ue->dl_id, si->s[i]->id);
       int num_UEs = si->s[i]->num_UEs;
       if (si->s[i]->UE_list[num_UEs] == NULL) {
         si->s[i]->UE_list[num_UEs] = new_ue;
         si->s[i]->num_UEs += 1;
+        LOG_I(NR_MAC,
+              "Add UE rnti 0x%04x to slice idx %d, sst %d, sd %d\n",
+              new_ue->rnti,
+              i,
+              si->s[i]->nssai.sst,
+              si->s[i]->nssai.sd);
       } else {
         LOG_E(NR_MAC, "cannot add new UE rnti 0x%04x to slice idx %d, num_UEs %d\n", new_ue->rnti, i, si->s[i]->num_UEs);
       }
-      LOG_I(NR_MAC,
-            "Add UE rnti 0x%04x to slice idx %d, sst %d, sd %d\n",
-            new_ue->rnti,
-            i,
-            si->s[i]->nssai.sst,
-            si->s[i]->nssai.sd);
     }
   }
 }
@@ -536,16 +544,16 @@ nr_pp_impl_param_dl_t nvs_nr_dl_init(module_id_t mod_id)
   nvs_nr_slice_param_t *dlp = malloc(sizeof(nvs_nr_slice_param_t));
   DevAssert(dlp);
   dlp->type = NVS_RES;
-  dlp->pct_reserved = 1.0f;
+  // we reserved 5% resource for RRC connection while UE is connecting before created slice or
+  // PDU setup while UE is trying to connect after created slice
+  dlp->pct_reserved = 0.05f;
   nr_dl_sched_algo_t *algo = &RC.nrmac[mod_id]->pre_processor_dl.dl_algo;
   algo->data = NULL;
-  nssai_t nssai = {.sst = 1, .sd = 0};
-  const int rc = addmod_nvs_nr_slice_dl(si, 0, nssai, strdup("default"), algo, dlp);
+  // default slice: sst = 1, sd = 0x000000, id = 999, label = default
+  nssai_t nssai = {.sst = 0, .sd = 0};
+  const int rc = addmod_nvs_nr_slice_dl(si, 99, nssai, strdup("default"), algo, dlp);
+  LOG_W(NR_MAC, "Add default DL slice id 99, label default, sst %d, sd %d, slice sched algo NVS_CAPACITY, pct_reserved %.2f, ue sched algo %s\n", nssai.sst, nssai.sd, dlp->pct_reserved, algo->name);
   DevAssert(0 == rc);
-  NR_UEs_t *UE_info = &RC.nrmac[mod_id]->UE_info;
-  UE_iterator(UE_info->list, UE) {
-    nr_slicing_add_UE(si, UE);
-  }
 
 
   nr_pp_impl_param_dl_t nvs;

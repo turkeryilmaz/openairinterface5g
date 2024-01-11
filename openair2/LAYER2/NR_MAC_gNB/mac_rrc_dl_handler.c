@@ -221,6 +221,7 @@ static int handle_ue_context_srbs_setup(NR_UE_info_t *UE,
                                         f1ap_srb_to_be_setup_t **resp_srbs,
                                         NR_CellGroupConfig_t *cellGroupConfig)
 {
+  gNB_MAC_INST *mac = RC.nrmac[0];
   DevAssert(req_srbs != NULL && resp_srbs != NULL && cellGroupConfig != NULL);
 
   *resp_srbs = calloc(srbs_len, sizeof(**resp_srbs));
@@ -231,7 +232,12 @@ static int handle_ue_context_srbs_setup(NR_UE_info_t *UE,
     nr_rlc_add_srb(UE->rnti, srb->srb_id, rlc_BearerConfig);
 
     int priority = rlc_BearerConfig->mac_LogicalChannelConfig->ul_SpecificParameters->priority;
+    /* for UEs added before RIC configures slices */
+    const nssai_t default_slice_nssai = {.sst = 0, .sd = 0};
     nr_lc_config_t c = {.lcid = rlc_BearerConfig->logicalChannelIdentity, .priority = priority};
+    /* if slices are configured, first slice is default slice for SRBs */
+    nr_pp_impl_param_dl_t *dl = &mac->pre_processor_dl;
+    c.nssai = (dl->slices) ? dl->slices->s[0]->nssai : default_slice_nssai;
     nr_mac_add_lcid(&UE->UE_sched_ctrl, &c);
 
     (*resp_srbs)[i].srb_id = srb->srb_id;
