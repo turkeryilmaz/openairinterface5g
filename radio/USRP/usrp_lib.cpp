@@ -483,20 +483,21 @@ static int trx_usrp_write(openair0_device *device,
 
     // bring RX data into 12 LSBs for softmodem RX
     for (int i=0; i<cc; i++) {
-      for (int j=0; j<nsamps2; j++) {
 #if defined(__x86_64__) || defined(__i386__)
-        if ((((uintptr_t) buff[i])&0x1F)==0) {
+      if ((((uintptr_t) buff[i])&0x1F)==0) {
+        for (int j=0; j<nsamps2; j++) {
           buff_tx[i][j] = simde_mm256_slli_epi16(((__m256i *)buff[i])[j],4);
         }
-        else 
-        {
+      } else {
+        for (int j=0; j<nsamps2; j++) {
           __m256i tmp = simde_mm256_loadu_si256(((__m256i *)buff[i])+j);
           buff_tx[i][j] = simde_mm256_slli_epi16(tmp,4);
         }
+      }
 #elif defined(__arm__) || defined(__aarch64__)
+      for (int j=0; j<nsamps2; j++)
         buff_tx[i][j] = vshlq_n_s16(((int16x8_t *)buff[i])[j],4);
 #endif
-      }
     }
 
     s->tx_md.has_time_spec  = true;
@@ -621,20 +622,21 @@ void *trx_usrp_write_thread(void * arg){
 
     // bring RX data into 12 LSBs for softmodem RX
     for (int i=0; i<cc; i++) {
-      for (int j=0; j<nsamps2; j++) {
-        #if defined(__x86_64__) || defined(__i386__)
-            if ((((uintptr_t) buff[i])&0x1F)==0) {
-              buff_tx[i][j] = simde_mm256_slli_epi16(((__m256i *)buff[i])[j],4);
-            }
-            else
-            {
-              __m256i tmp = simde_mm256_loadu_si256(((__m256i *)buff[i])+j);
-              buff_tx[i][j] = simde_mm256_slli_epi16(tmp,4);
-            }
-        #elif defined(__arm__) || defined(__aarch64__)
-          buff_tx[i][j] = vshlq_n_s16(((int16x8_t *)buff[i])[j],4);
-        #endif
+#if defined(__x86_64__) || defined(__i386__)
+      if ((((uintptr_t) buff[i])&0x1F)==0) {
+        for (int j=0; j<nsamps2; j++) {
+          buff_tx[i][j] = simde_mm256_slli_epi16(((__m256i *)buff[i])[j],4);
+        }
+      } else {
+        for (int j=0; j<nsamps2; j++) {
+          __m256i tmp = simde_mm256_loadu_si256(((__m256i *)buff[i])+j);
+          buff_tx[i][j] = simde_mm256_slli_epi16(tmp,4);
+        }
       }
+#elif defined(__arm__) || defined(__aarch64__)
+      for (int j=0; j<nsamps2; j++)
+        buff_tx[i][j] = vshlq_n_s16(((int16x8_t *)buff[i])[j],4);
+#endif
     }
 
 
@@ -772,20 +774,21 @@ static int trx_usrp_read(openair0_device *device, openair0_timestamp *ptimestamp
 
   // bring RX data into 12 LSBs for softmodem RX
   for (int i=0; i<cc; i++) {
-    for (int j=0; j<nsamps2; j++) {
 #if defined(__x86_64__) || defined(__i386__)
-      // FK: in some cases the buffer might not be 32 byte aligned, so we cannot use avx2
-
-      if ((((uintptr_t) buff[i])&0x1F)==0) {
+    // FK: in some cases the buffer might not be 32 byte aligned, so we cannot use avx2
+    if ((((uintptr_t) buff[i])&0x1F)==0) {
+      for (int j=0; j<nsamps2; j++) {
         ((__m256i *)buff[i])[j] = simde_mm256_srai_epi16(buff_tmp[i][j],rxshift);
-      } else {
+      }
+    } else {
+      for (int j=0; j<nsamps2; j++) {
         __m256i tmp = simde_mm256_srai_epi16(buff_tmp[i][j],rxshift);
         simde_mm256_storeu_si256(((__m256i *)buff[i])+j, tmp);
       }
     }
 #elif defined(__arm__) || defined(__aarch64__)
-      for (int j=0; j<nsamps2; j++) 
-        ((int16x8_t *)buff[i])[j] = vshrq_n_s16(buff_tmp[i][j],rxshift);
+    for (int j=0; j<nsamps2; j++)
+      ((int16x8_t *)buff[i])[j] = vshrq_n_s16(buff_tmp[i][j],rxshift);
 #endif
   }
 
