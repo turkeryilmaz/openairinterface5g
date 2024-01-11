@@ -475,12 +475,16 @@ void nr_mac_config_scc(gNB_MAC_INST *nrmac,
               scc->ssb_PositionsInBurst->present);
 
   const int n = nr_slots_per_frame[*scc->ssbSubcarrierSpacing];
-  nrmac->vrb_map_UL_size = n << (int)ceil(log2((NTN_gNB_k2+13)/n+1)); // 13 is upper limit for max_fb_time
+  int size = n << (int)ceil(log2((NTN_gNB_k2+13)/n+1)); // 13 is upper limit for max_fb_time
 
-  nrmac->common_channels[0].vrb_map_UL = calloc(nrmac->vrb_map_UL_size * MAX_BWP_SIZE, sizeof(uint16_t));
-
+  nrmac->vrb_map_UL_size = size;
+  nrmac->common_channels[0].vrb_map_UL = calloc(size * MAX_BWP_SIZE, sizeof(uint16_t));
   AssertFatal(nrmac->common_channels[0].vrb_map_UL,
               "could not allocate memory for RC.nrmac[]->common_channels[0].vrb_map_UL\n");
+
+  nrmac->UL_tti_req_ahead_size = size;
+  nrmac->UL_tti_req_ahead[0] = calloc(size, sizeof(nfapi_nr_ul_tti_request_t));
+  AssertFatal(nrmac->UL_tti_req_ahead[0], "could not allocate memory for nrmac->UL_tti_req_ahead[0]\n");
 
   LOG_I(NR_MAC, "Configuring common parameters from NR ServingCellConfig\n");
 
