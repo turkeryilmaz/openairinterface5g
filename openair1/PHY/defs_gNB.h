@@ -41,7 +41,6 @@
 #include "PHY/defs_common.h"
 #include "PHY/CODING/nrLDPC_extern.h"
 #include "PHY/CODING/nrLDPC_decoder/nrLDPC_types.h"
-#include "executables/rt_profiling.h"
 #include "nfapi_nr_interface_scf.h"
 
 #define MAX_NUM_RU_PER_gNB 8
@@ -771,8 +770,6 @@ typedef struct PHY_VARS_gNB_s {
   int L1_tx_thread_core;
   struct processingData_L1tx *msgDataTx;
   void *scopeData;
-  /// structure for analyzing high-level RT measurements
-  rt_L1_profiling_t rt_L1_profiling; 
 } PHY_VARS_gNB;
 
 typedef struct LDPCDecode_s {

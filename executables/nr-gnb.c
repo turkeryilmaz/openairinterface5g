@@ -38,7 +38,6 @@
 #include "assertions.h"
 #include <common/utils/LOG/log.h>
 #include <common/utils/system.h>
-#include "rt_profiling.h"
 
 #include "PHY/types.h"
 
@@ -116,22 +115,12 @@ void tx_func(void *param)
   PHY_VARS_gNB *gNB = info->gNB;
   int frame_tx = info->frame;
   int slot_tx = info->slot;
-  int cumul_samples = gNB->frame_parms.get_samples_per_slot(0, &gNB->frame_parms);
-  int i = 1;
-  for (; i < gNB->frame_parms.slots_per_subframe / 2; i++)
-    cumul_samples += gNB->frame_parms.get_samples_per_slot(i, &gNB->frame_parms);
-  int samples = cumul_samples / i;
-  int absslot_tx = info->timestamp_tx / samples;
-  int absslot_rx = absslot_tx - gNB->RU_list[0]->sl_ahead;
-  int rt_prof_idx = absslot_rx % RT_PROF_DEPTH;
   start_meas(&gNB->phy_proc_tx);
 
-  clock_gettime(CLOCK_MONOTONIC, &gNB->rt_L1_profiling.start_L1_TX[rt_prof_idx]);
   phy_procedures_gNB_TX(info,
                         frame_tx,
                         slot_tx,
                         1);
-  clock_gettime(CLOCK_MONOTONIC, &gNB->rt_L1_profiling.return_L1_TX[rt_prof_idx]);
 
   if (get_softmodem_params()->reorder_thread_disable) {
     processingData_RU_t syncMsgRU;
@@ -182,15 +171,6 @@ void rx_func(void *param)
   int frame_tx = info->frame_tx;
   int slot_tx = info->slot_tx;
   nfapi_nr_config_request_scf_t *cfg = &gNB->gNB_config;
-  int cumul_samples = gNB->frame_parms.get_samples_per_slot(0, &gNB->frame_parms);
-  int i = 1;
-  for (; i < gNB->frame_parms.slots_per_subframe / 2; i++)
-    cumul_samples += gNB->frame_parms.get_samples_per_slot(i, &gNB->frame_parms);
-  int samples = cumul_samples / i;
-  int absslot_tx = info->timestamp_tx / samples;
-  int absslot_rx = absslot_tx - gNB->RU_list[0]->sl_ahead;
-  int rt_prof_idx = absslot_rx % RT_PROF_DEPTH;
-  clock_gettime(CLOCK_MONOTONIC,&info->gNB->rt_L1_profiling.start_L1_RX[rt_prof_idx]);
   start_meas(&softmodem_stats_rxtx_sf);
 
   // *******************************************************************
@@ -254,7 +234,6 @@ void rx_func(void *param)
 
   stop_meas( &softmodem_stats_rxtx_sf );
   LOG_D(PHY,"%s() Exit proc[rx:%d%d tx:%d%d]\n", __FUNCTION__, frame_rx, slot_rx, frame_tx, slot_tx);
-  clock_gettime(CLOCK_MONOTONIC,&info->gNB->rt_L1_profiling.return_L1_RX[rt_prof_idx]);
 
   // Call the scheduler
   start_meas(&gNB->ul_indication_stats);
