@@ -53,10 +53,6 @@ services:
     stdin_open: true
     tty: true
     volumes:
-      - /lib/modules:/lib/modules
-      - /dev/hugepages:/dev/hugepages
-      - /usr/src:/usr/src
-      - ~/share:/opt/nvidia/cuBB/share
       - ../../conf_files/vnf.sa.band78.fr1.273PRB.Aerial.conf:/opt/oai-gnb/etc/gnb.conf
     container_name: oai-gnb-aerial
     healthcheck:
