@@ -255,7 +255,7 @@ static bool add_mod_rc_slice(int mod_id, size_t slices_len, ran_param_list_t* ls
     //LOG_I(NR_MAC, "configure slice %ld, label %s, Max_PRB_Policy_Ratio %ld\n", i, label_nssai, max_prb_ratio);
 
     ///// ADD SLICE /////
-    const int rc = add_mod_dl_slice(mod_id, current_algo, i, RC_sst, RC_sd, label_nssai, (float)nvs_cap);
+    const int rc = add_mod_dl_slice(mod_id, current_algo, i+1, RC_sst, RC_sd, label_nssai, (float)nvs_cap);
     free(label_nssai);
     if (rc < 0) {
       pthread_mutex_unlock(&nrmac->UE_info.mutex);
