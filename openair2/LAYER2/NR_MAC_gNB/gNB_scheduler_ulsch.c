@@ -410,7 +410,7 @@ static int nr_process_mac_pdu(instance_t module_idP,
               mac_len);
         UE->mac_stats.ul.lc_bytes[rx_lcid] += mac_len;
 
-        LATSEQ_P("U mac.demuxed--rlc.decoded", "len%u::fm%u.sl%u.hqpid%u.MRbuf%u.rnti%u", mac_len, frameP, slot, harq_pid, pduP+mac_subheader_len, UE->rnti);
+        if(mac_len > 3) { LATSEQ_P("U mac.demuxed--rlc.decoded", "len%u::fm%u.sl%u.hqpid%u.MRbuf%u.rnti%u", mac_len, frameP, slot, harq_pid, pduP+mac_subheader_len, UE->rnti); }
         mac_rlc_data_ind(module_idP,
                          UE->rnti,
                          module_idP,
