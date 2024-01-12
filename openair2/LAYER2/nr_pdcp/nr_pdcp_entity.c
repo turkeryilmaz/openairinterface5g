@@ -25,11 +25,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "common/ran_context.h"
 #include "nr_pdcp_security_nea1.h"
 #include "nr_pdcp_security_nea2.h"
 #include "nr_pdcp_integrity_nia2.h"
 #include "nr_pdcp_integrity_nia1.h"
 #include "nr_pdcp_sdu.h"
+#include "ss_gNB_context.h"
 
 #include "MAC/mac.h"  // for DCCH
 
@@ -43,6 +45,8 @@
                     snprintf(tmp_buf+tmp_count, 4095-tmp_count, "'");\
                     LOG_I(c, "%s\n", tmp_buf); \
                   } while (0)
+
+extern RAN_CONTEXT_t RC;
 
 static void nr_pdcp_entity_recv_pdu(nr_pdcp_entity_t *entity,
                                     char *_buffer, int size)
@@ -158,7 +162,9 @@ static void nr_pdcp_entity_recv_pdu(nr_pdcp_entity_t *entity,
       LOG_E(PDCP, "%s: discard NR PDU, integrity failed\n", __FUNCTION__);
       entity->stats.rxpdu_dd_pkts++;
       entity->stats.rxpdu_dd_bytes += size;
-      exit(1);
+      if (RC.ss.mode != SS_HWTMODEM) {
+              exit(1);
+      }
     }
   }
 
