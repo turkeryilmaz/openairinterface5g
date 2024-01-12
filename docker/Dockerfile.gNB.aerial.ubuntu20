@@ -71,7 +71,6 @@ RUN apt-get update && \
         procps \
         libsctp1 \
         tzdata \
-        libblas3 \
         libatlas3-base \
         libconfig9 \
         openssl \
@@ -80,10 +79,6 @@ RUN apt-get update && \
         iproute2 \
         iputils-ping \
         gdb \
-        python \
-        python3 \
-        python3-six \
-        python3-requests \
         libusb-1.0-0 && \
     rm -rf /var/lib/apt/lists/*
 
