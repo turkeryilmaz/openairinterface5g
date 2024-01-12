@@ -39,10 +39,14 @@
 void set_cset_offset(uint16_t);
 
 void mac_top_init_gNB(ngran_node_t node_type,
-                      int CC_id,
                       NR_ServingCellConfigCommon_t *scc,
                       NR_ServingCellConfig_t *scd,
                       const nr_mac_config_t *conf);
+
+void mac_init_more_cell(ngran_node_t node_type,
+                      NR_ServingCellConfigCommon_t *scc,
+                      NR_ServingCellConfig_t *scd,
+                      const nr_mac_config_t *config, int CC_id); //TODO W38: to call this function in gnb_config.c
 
 
 
@@ -50,7 +54,7 @@ void nr_mac_send_f1_setup_req(void);
 
 void nr_mac_config_scc(gNB_MAC_INST *nrmac, NR_ServingCellConfigCommon_t *scc, const nr_mac_config_t *mac_config, const int CC_id);
 
-void nr_mac_configure_sib1(gNB_MAC_INST *nrmac, const f1ap_plmn_t *plmn, uint64_t cellID, int tac);
+void nr_mac_configure_sib1(gNB_MAC_INST *nrmac, const f1ap_plmn_t *plmn, uint64_t cellID, int tac, int CC_id);
 
 bool nr_mac_add_test_ue(gNB_MAC_INST *nrmac, uint32_t rnti, NR_CellGroupConfig_t *CellGroup);
 
@@ -59,7 +63,7 @@ bool nr_mac_prepare_ra_ue(gNB_MAC_INST *nrmac, int CC_id, uint32_t rnti, NR_Cell
 
 bool nr_mac_prepare_cellgroup_update(gNB_MAC_INST *nrmac, NR_UE_info_t *UE, NR_CellGroupConfig_t *CellGroup);
 
-int nr_mac_enable_ue_rrc_processing_timer(gNB_MAC_INST *mac, int_t CC_id, NR_UE_info_t *UE, bool apply_cellGroup); 
+int nr_mac_enable_ue_rrc_processing_timer(gNB_MAC_INST *mac, NR_UE_info_t *UE, bool apply_cellGroup); 
 int rrc_mac_config_dedicate_scheduling(module_id_t Mod_idP, NR_DcchDtchConfig_t *dcchDtchConfig);
 
 

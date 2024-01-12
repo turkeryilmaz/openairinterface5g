@@ -368,9 +368,12 @@ typedef struct {
   uint8_t                                   *SIB23;
   uint8_t                                   sizeof_SIB23;
 
+  long                                      physCellId;
   NR_SIB2_t                                *sib2;
   NR_SIB3_t                                *sib3;
   NR_BCCH_DL_SCH_Message_t                  systemInformation; // SIB23
+  /* dedicate Scheduler Config */
+  NR_DcchDtchConfig_t                       *dcchDtchConfig;
   NR_CellGroupConfig_t                      *secondaryCellGroup[MAX_NR_RRC_UE_CONTEXTS];
 
   uint8_t                           *paging;

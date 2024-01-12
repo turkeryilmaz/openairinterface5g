@@ -128,9 +128,9 @@ void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP, 
   /* already mutex protected: held in gNB_dlsch_ulsch_scheduler() */
   nfapi_nr_dl_tti_request_body_t *dl_req;
   uint8_t num_tdd_period,num_ssb;
-  int CC_id;
+  //int CC_id;
 
-  for (CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
+  /*for (CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++)*/ {
     NR_COMMON_channels_t *cc= &gNB->common_channels[CC_id];
     const NR_MIB_t *mib = cc->mib->message.choice.mib;
     NR_ServingCellConfigCommon_t *scc = cc->ServingCellConfigCommon;
@@ -139,11 +139,11 @@ void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP, 
 
     // get MIB every 8 frames
     if(((slotP == 0) && (frameP & 7) == 0) ||
-       gNB->first_MIB) {
+       gNB->first_MIB[0]) {
       int mib_sdu_length = encode_mib(cc->mib, frameP, cc->MIB_pdu, sizeof(cc->MIB_pdu));
 
       // flag to avoid sending an empty MIB in the first frames of execution since gNB doesn't get at the beginning in frame 0 slot 0
-      gNB->first_MIB = false;
+      gNB->first_MIB[0] = false;
 
       LOG_D(MAC,
             "[gNB %d] Frame %d : MIB->BCH  CC_id %d, Received %d bytes\n",
@@ -151,9 +151,21 @@ void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP, 
             frameP,
             CC_id,
             mib_sdu_length);
+
+      mac_pkt_info_t mac_pkt;
+      mac_pkt.direction = DIRECTION_DOWNLINK;
+      mac_pkt.rnti_type = WS_NO_RNTI;
+      mac_pkt.rnti      = 0xFFFF;
+      mac_pkt.harq_pid  = 0;
+      mac_pkt.preamble  = -1; /* TODO */
+      LOG_MAC_P(OAILOG_INFO, "MAC_DL_PDU", frameP, slotP, mac_pkt, (uint8_t *)cc->MIB_pdu, (int)mib_sdu_length);
     }
 
+
+
     uint32_t mib_pdu = (*(uint32_t *)cc->MIB_pdu) & ((1 << 24) - 1);
+	
+	
 
     int8_t ssb_period = *scc->ssb_periodicityServingCell;
     uint8_t ssb_frame_periodicity = 1;  // every how many frames SSB are generated
@@ -192,7 +204,7 @@ void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP, 
               if ((ssb_start_symbol/14) == rel_slot){
                 const int prb_offset = offset_pointa >> scs;
                 schedule_ssb(frameP, slotP, scc, dl_req, i_ssb, ssbSubcarrierOffset, offset_pointa, mib_pdu);
-                fill_ssb_vrb_map(cc, prb_offset, ssbSubcarrierOffset, ssb_start_symbol, CC_id);
+                fill_ssb_vrb_map(cc, prb_offset, ssbSubcarrierOffset, ssb_start_symbol);
                 if (get_softmodem_params()->sa == 1) {
                   get_type0_PDCCH_CSS_config_parameters(&(gNB->type0_PDCCH_CSS_config[CC_id][i_ssb]),
                                                         frameP,
@@ -221,7 +233,7 @@ void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP, 
               if ((ssb_start_symbol/14) == rel_slot){
                 const int prb_offset = offset_pointa >> scs;
                 schedule_ssb(frameP, slotP, scc, dl_req, i_ssb, ssbSubcarrierOffset, offset_pointa, mib_pdu);
-                fill_ssb_vrb_map(cc, prb_offset, ssbSubcarrierOffset, ssb_start_symbol, CC_id);
+                fill_ssb_vrb_map(cc, prb_offset, ssbSubcarrierOffset, ssb_start_symbol);
                 if (get_softmodem_params()->sa == 1) {
                   get_type0_PDCCH_CSS_config_parameters(&gNB->type0_PDCCH_CSS_config[CC_id][i_ssb],
                                                         frameP,
@@ -251,7 +263,7 @@ void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP, 
               if ((ssb_start_symbol/14) == rel_slot){
                 const int prb_offset = offset_pointa >> (scs-2); // reference 60kHz
                 schedule_ssb(frameP, slotP, scc, dl_req, i_ssb, ssbSubcarrierOffset, offset_pointa, mib_pdu);
-                fill_ssb_vrb_map(cc, prb_offset, ssbSubcarrierOffset >> (scs - 2), ssb_start_symbol, CC_id);
+                fill_ssb_vrb_map(cc, prb_offset, ssbSubcarrierOffset >> (scs - 2), ssb_start_symbol);
                 const NR_TDD_UL_DL_Pattern_t *tdd = &scc->tdd_UL_DL_ConfigurationCommon->pattern1;
                 const int n_slots_frame = nr_slots_per_frame[*scc->ssbSubcarrierSpacing];
                 // FR2 is only TDD, to be fixed for flexible TDD
@@ -558,7 +570,7 @@ void schedule_nr_sib1(module_id_t module_idP,
   gNB_MAC_INST *gNB_mac = RC.nrmac[module_idP];
   NR_ServingCellConfigCommon_t *scc = gNB_mac->common_channels[CC_id].ServingCellConfigCommon;
 
-  int time_domain_allocation = gNB_mac->radio_config.sib1_tda;
+  int time_domain_allocation = gNB_mac->radio_config[CC_id].sib1_tda;
 
   int L_max;
   switch (scc->ssb_PositionsInBurst->present) {
@@ -643,7 +655,7 @@ void schedule_nr_sib1(module_id_t module_idP,
         mac_pkt.rnti      = SI_RNTI;
         mac_pkt.harq_pid  = 0;
         mac_pkt.preamble  = -1; /* TODO */
-        LOG_MAC_P(OAILOG_DEBUG, "MAC_DL_PDU", frameP, slotP, mac_pkt, (uint8_t *)sib1_payload, (int)sib1_sdu_length);
+        LOG_MAC_P(OAILOG_DEBUG, "MAC_DL_PDU", frameP, slotP, mac_pkt, (uint8_t *)cc->sib1_bcch_pdu, (int)cc->sib1_bcch_length);
     }
   }
 }

@@ -1629,6 +1629,7 @@ static void prepare_dl_pdus(gNB_MAC_INST *nr_mac,
     LOG_D(NR_MAC,"numDlDci: %i\n", pdcch_pdu_rel15->numDlDci);
 }
 
+#if 0 //TODO W38: this function was removed by OAI, check if still necessary
 static void nr_generate_Msg3_dcch_dtch_response(module_id_t module_idP,
                                                 int CC_id,
                                                 frame_t frameP,
@@ -1814,6 +1815,7 @@ static void nr_generate_Msg3_dcch_dtch_response(module_id_t module_idP,
   // Reset uplink failure flags/counters/timers at MAC so gNB will resume again scheduling resources for this UE
   nr_mac_reset_ul_failure(sched_ctrl);
 }
+#endif
 
 static void nr_generate_Msg4(module_id_t module_idP,
                              int CC_id,
@@ -2116,6 +2118,7 @@ static void nr_check_Msg4_Ack(module_id_t module_id, int CC_id, frame_t frame, s
         // Pause scheduling according to:
         // 3GPP TS 38.331 Section 12 Table 12.1-1: UE performance requirements for RRC procedures for UEs
         nr_mac_enable_ue_rrc_processing_timer(RC.nrmac[module_id], UE, false);
+        
       } else {
         LOG_I(NR_MAC, "%4d.%2d UE %04x: RA Procedure failed at Msg4!\n", frame, slot, ra->rnti);
       }
@@ -2298,7 +2301,7 @@ void nr_schedule_RA(module_id_t module_idP,
         nr_generate_Msg3_retransmission(module_idP, CC_id, frameP, slotP, ra, ul_dci_req);
         break;
       case Msg3_dcch_dtch:
-        nr_generate_Msg3_dcch_dtch_response(module_idP, CC_id, frameP, slotP, ra, DL_req, TX_req);
+        /* fallthrough */ //nr_generate_Msg3_dcch_dtch_response(module_idP, CC_id, frameP, slotP, ra, DL_req, TX_req);  //TODO W38  //W38 note: removed nr_generate_Msg3_dcch_dtch_response
       case Msg4:
         nr_generate_Msg4(module_idP, CC_id, frameP, slotP, ra, DL_req, TX_req);
         break;

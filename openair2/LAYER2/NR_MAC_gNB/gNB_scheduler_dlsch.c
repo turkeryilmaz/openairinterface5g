@@ -665,7 +665,7 @@ static void pf_dl(module_id_t module_id,
         sched_pdsch->mcs = get_mcs_from_bler(bo, stats, &sched_ctrl->dl_bler_stats, max_mcs, frame);
       sched_pdsch->nrOfLayers = get_dl_nrOfLayers(sched_ctrl, current_BWP->dci_format);
       sched_pdsch->pm_index =
-          mac->identity_pm ? 0 : get_pm_index(UE, sched_pdsch->nrOfLayers, mac->radio_config.pdsch_AntennaPorts.XP);
+          mac->identity_pm ? 0 : get_pm_index(UE, sched_pdsch->nrOfLayers, mac->radio_config[CC_id].pdsch_AntennaPorts.XP);
       const uint8_t Qm = nr_get_Qm_dl(sched_pdsch->mcs, current_BWP->mcsTableIdx);
       const uint16_t R = nr_get_code_rate_dl(sched_pdsch->mcs, current_BWP->mcsTableIdx);
       uint32_t tbs = nr_compute_tbs(Qm,
@@ -1680,15 +1680,10 @@ void schedule_nr_PCH(module_id_t module_idP,
         continue;
       }
 
-      if (frameP % ue_pf_po->T == ue_pf_po->PF_min && slotP == ue_pf_po->PO) {
-        uint16_t pcch_sdu_length = mac_rrc_nr_data_req(module_idP,
-                                              CC_id,
-                                              frameP,
-                                              PCCH,
-                                              P_RNTI,
-                                              1,
-                                              pcch_sdu);
-
+      if (frameP % ue_pf_po->T == ue_pf_po->PF_min && slotP == ue_pf_po->PO) {   //W38: note: no more mac_rrc_nr_data_req, paging is replaced by below quick(ugly) implement
+        memcpy(pcch_sdu, RC.nrrrc[module_idP]->carrier[CC_id].paging, RC.nrrrc[module_idP]->carrier[CC_id].sizeof_paging);                                      
+        uint16_t pcch_sdu_length = RC.nrrrc[module_idP]->carrier[CC_id].sizeof_paging;                                      
+        LOG_D(NR_RRC, "[gNB %d] PCCH  activated , it has %d bytes\n", module_idP, RC.nrrrc[module_idP]->carrier[CC_id].sizeof_paging);
         if (pcch_sdu_length == 0) {
           LOG_D(NR_MAC, "[gNB %d] Frame %d slot %d: PCCH not active(size = 0 byte)\n",
                 module_idP,

@@ -660,7 +660,7 @@ rrc_gNB_send_NGAP_UPLINK_NAS(
 
         if(RC.ss.mode == SS_GNB)
         {
-          LOG_NAS_P(OAILOG_INFO, "NR_NAS_PDU", pdu_buffer, pdu_length);
+          LOG_NAS_P(OAILOG_INFO, "NR_NAS_PDU", buf, nas->size);
         }
         // extract_imsi(NGAP_UPLINK_NAS (msg_p).nas_pdu.buffer,
         //               NGAP_UPLINK_NAS (msg_p).nas_pdu.length,

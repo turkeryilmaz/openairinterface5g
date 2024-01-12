@@ -935,6 +935,8 @@ void RCconfig_NR_L1(void)
   }
 }
 
+
+
 static void check_ssb_raster(uint64_t freq, int band, int scs);
 
 static NR_ServingCellConfigCommon_t *get_scc_config(int minRXTXTIME)
@@ -1131,6 +1133,30 @@ static f1ap_setup_req_t *RC_read_F1Setup(uint64_t id,
   return req;
 }
 
+void RCconfig_nr_ssparam(void) {
+  paramdef_t SSConfig_Params[] = GNB_SSPARAMS_DESC;
+  paramlist_def_t SSConfig_ParamList = {GNB_CONFIG_SS,NULL,0};
+  config_getlist( &SSConfig_ParamList,SSConfig_Params,sizeof(SSConfig_Params)/sizeof(paramdef_t), NULL);
+
+  if ( SSConfig_ParamList.numelt > 0) {
+    RC.ss.hostIp              = strdup(*(SSConfig_ParamList.paramarray[0][GNB_CONFIG_SS_HOSTIP_IDX].strptr));
+    RC.ss.Sysport             = *(SSConfig_ParamList.paramarray[0][GNB_CONFIG_SS_SYSPORT_IDX].iptr);
+    RC.ss.SysHost             = strdup(*(SSConfig_ParamList.paramarray[0][GNB_CONFIG_SS_SYSHOST_IDX].strptr));
+    RC.ss.Srbport             = *(SSConfig_ParamList.paramarray[0][GNB_CONFIG_SS_SRBPORT_IDX].iptr);
+    RC.ss.SrbHost             = strdup(*(SSConfig_ParamList.paramarray[0][GNB_CONFIG_SS_SRBHOST_IDX].strptr));
+    RC.ss.Vngport             = *(SSConfig_ParamList.paramarray[0][GNB_CONFIG_SS_VNGPORT_IDX].iptr);
+    RC.ss.VngHost             = strdup(*(SSConfig_ParamList.paramarray[0][GNB_CONFIG_SS_VNGHOST_IDX].strptr));
+    RC.ss.Vtpport             = *(SSConfig_ParamList.paramarray[0][GNB_CONFIG_SS_VTPPORT_IDX].iptr);
+    RC.ss.VtpHost             = strdup(*(SSConfig_ParamList.paramarray[0][GNB_CONFIG_SS_VTPHOST_IDX].strptr));
+    RC.ss.Drbport             = *(SSConfig_ParamList.paramarray[0][GNB_CONFIG_SS_DRBPORT_IDX].iptr);
+    RC.ss.DrbHost             = strdup(*(SSConfig_ParamList.paramarray[0][GNB_CONFIG_SS_DRBHOST_IDX].strptr));
+    RC.ss.mode                = *(SSConfig_ParamList.paramarray[0][GNB_CONFIG_SS_MODE_IDX].iptr);
+    RC.ss.SysportNR           = *(SSConfig_ParamList.paramarray[0][GNB_CONFIG_SS_SYSPORT_IDX].iptr);
+  }
+  LOG_W(GNB_APP,"SS_Config:SSMode %d, hostIp=%s, Sysport=%d, Srbport=%d  Vngport=%d\n",
+                  RC.ss.mode, RC.ss.hostIp,RC.ss.Sysport,RC.ss.Srbport,RC.ss.Vngport);
+}
+
 void RCconfig_nr_macrlc() {
   int j = 0;
   uint16_t prbbl[275] = {0};
@@ -1203,6 +1229,8 @@ void RCconfig_nr_macrlc() {
     RC.nb_nr_macrlc_inst = MacRLC_ParamList.numelt;
     ngran_node_t node_type = get_node_type();
     mac_top_init_gNB(node_type, scc, scd, &config);
+
+    
     RC.nb_nr_mac_CC = (int *)malloc(RC.nb_nr_macrlc_inst * sizeof(int));
 
     for (j=0;j<RC.nb_nr_macrlc_inst;j++) {
@@ -1287,7 +1315,7 @@ void RCconfig_nr_macrlc() {
     read_du_cell_info(&id, &name, &info, 1);
 
     if (get_softmodem_params()->sa)
-      nr_mac_configure_sib1(RC.nrmac[0], &info.plmn, info.nr_cellid, *info.tac);
+      nr_mac_configure_sib1(RC.nrmac[0], &info.plmn, info.nr_cellid, *info.tac, 0);
 
     // read F1 Setup information from config and generated MIB/SIB1
     // and store it at MAC for sending later
@@ -1656,7 +1684,8 @@ void RCconfig_NRRRC(gNB_RRC_INST *rrc)
 
     // search if in active list
     
-    gNB_RrcConfigurationReq nrrrc_config[MAX_NUM_CCs] = {0,0};  //TODO W38
+    gNB_RrcConfigurationReq *nrrrc_config;  //TODO W38 , done
+    
     for (k=0; k <num_gnbs ; k++) {
       if (strcmp(GNBSParams[GNB_ACTIVE_GNBS_IDX].strlistptr[k], *(GNBParamList.paramarray[i][GNB_GNB_NAME_IDX].strptr) )== 0) {
 
@@ -1674,8 +1703,9 @@ void RCconfig_NRRRC(gNB_RRC_INST *rrc)
           PLMNParams[I].chkPptr = &(config_check_PLMNParams[I]);
 
         for (uint8_t cc=0; cc< MAX_NUM_CCs; cc++){
-          nrrrc_config[cc].cell_identity     = gnb_id;
-          nrrrc_config[cc].tac               = *GNBParamList.paramarray[i][GNB_TRACKING_AREA_CODE_IDX].uptr;
+          nrrrc_config = &rrc->configuration[cc];
+          nrrrc_config->cell_identity     = gnb_id;
+          nrrrc_config->tac               = *GNBParamList.paramarray[i][GNB_TRACKING_AREA_CODE_IDX].uptr;
           AssertFatal(!GNBParamList.paramarray[i][GNB_MOBILE_COUNTRY_CODE_IDX_OLD].strptr
                       && !GNBParamList.paramarray[i][GNB_MOBILE_NETWORK_CODE_IDX_OLD].strptr,
                       "It seems that you use an old configuration file. Please change the existing\n"
@@ -1691,26 +1721,26 @@ void RCconfig_NRRRC(gNB_RRC_INST *rrc)
             AssertFatal(0, "The number of PLMN IDs must be in [1,6], but is %d\n",
                         PLMNParamList.numelt);
 
-          nrrrc_config[cc].num_plmn = PLMNParamList.numelt;
+          nrrrc_config->num_plmn = PLMNParamList.numelt;
 
           for (int l = 0; l < PLMNParamList.numelt; ++l) {
     
-          nrrrc_config[cc].mcc[l]               = *PLMNParamList.paramarray[l][GNB_MOBILE_COUNTRY_CODE_IDX].uptr;
-          nrrrc_config[cc].mnc[l]               = *PLMNParamList.paramarray[l][GNB_MOBILE_NETWORK_CODE_IDX].uptr;
-          nrrrc_config[cc].mnc_digit_length[l]  = *PLMNParamList.paramarray[l][GNB_MNC_DIGIT_LENGTH].u8ptr;
-          AssertFatal((nrrrc_config.mnc_digit_length[l] == 2) ||
-            (nrrrc_config.mnc_digit_length[l] == 3),"BAD MNC DIGIT LENGTH %d",
-            nrrrc_config.mnc_digit_length[l]);
+          nrrrc_config->mcc[l]               = *PLMNParamList.paramarray[l][GNB_MOBILE_COUNTRY_CODE_IDX].uptr;
+          nrrrc_config->mnc[l]               = *PLMNParamList.paramarray[l][GNB_MOBILE_NETWORK_CODE_IDX].uptr;
+          nrrrc_config->mnc_digit_length[l]  = *PLMNParamList.paramarray[l][GNB_MNC_DIGIT_LENGTH].u8ptr;
+          AssertFatal((nrrrc_config->mnc_digit_length[l] == 2) ||
+            (nrrrc_config->mnc_digit_length[l] == 3),"BAD MNC DIGIT LENGTH %d",
+            nrrrc_config->mnc_digit_length[l]);
           }
-          nrrrc_config.enable_sdap = *GNBParamList.paramarray[i][GNB_ENABLE_SDAP_IDX].iptr;
-          LOG_I(GNB_APP, "SDAP layer is %s\n", nrrrc_config.enable_sdap ? "enabled" : "disabled");
-          nrrrc_config.drbs = *GNBParamList.paramarray[i][GNB_DRBS].iptr;
-          LOG_I(GNB_APP, "Data Radio Bearer count %d\n", nrrrc_config.drbs);
+          nrrrc_config->enable_sdap = *GNBParamList.paramarray[i][GNB_ENABLE_SDAP_IDX].iptr;
+          LOG_I(GNB_APP, "SDAP layer is %s\n", nrrrc_config->enable_sdap ? "enabled" : "disabled");
+          nrrrc_config->drbs = *GNBParamList.paramarray[i][GNB_DRBS].iptr;
+          LOG_I(GNB_APP, "Data Radio Bearer count %d\n", nrrrc_config->drbs);
         }
 
       }//
     }//End for (k=0; k <num_gnbs ; k++)
-    openair_rrc_gNB_configuration(rrc, &nrrrc_config);
+   // openair_rrc_gNB_configuration(rrc, &nrrrc_config); //TODO W38: configuration init is splitted to two parts
   }//End if (num_gnbs>0)
 
   config_security(rrc);

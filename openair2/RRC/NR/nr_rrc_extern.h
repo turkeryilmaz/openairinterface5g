@@ -35,7 +35,7 @@
 #include "LAYER2/RLC/rlc.h"
 #include "openair2/RRC/common.h"
 
-void openair_rrc_gNB_configuration(gNB_RRC_INST *rrc, gNB_RrcConfigurationReq *configuration);
+void openair_rrc_gNB_configuration(gNB_RRC_INST *rrc, NRRrcConfigurationReqList *configuration);
 
 extern UE_RRC_INST *UE_rrc_inst;
 

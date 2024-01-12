@@ -237,7 +237,7 @@ void ue_context_setup_request(const f1ap_ue_context_setup_t *req)
     UE->capability = ue_cap;
     LOG_I(NR_MAC, "UE %04x: received capabilities, updating CellGroupConfig\n", UE->rnti);
     NR_ServingCellConfigCommon_t *scc = mac->common_channels[0].ServingCellConfigCommon;
-    update_cellGroupConfig(new_CellGroup, UE->uid, UE->capability, &mac->radio_config, scc);
+    update_cellGroupConfig(new_CellGroup, UE->uid, UE->capability, &mac->radio_config[UE->CC_id], scc);
   }
 
   resp.du_to_cu_rrc_information = calloc(1, sizeof(du_to_cu_rrc_information_t));
@@ -319,8 +319,8 @@ void ue_context_modification_request(const f1ap_ue_context_modif_req_t *req)
     ASN_STRUCT_FREE(asn_DEF_NR_UE_NR_Capability, UE->capability);
     UE->capability = ue_cap;
     LOG_I(NR_MAC, "UE %04x: received capabilities, updating CellGroupConfig\n", UE->rnti);
-    NR_ServingCellConfigCommon_t *scc = mac->common_channels[0].ServingCellConfigCommon;
-    update_cellGroupConfig(new_CellGroup, UE->uid, UE->capability, &mac->radio_config, scc);
+    NR_ServingCellConfigCommon_t *scc = mac->common_channels[UE->CC_id].ServingCellConfigCommon;
+    update_cellGroupConfig(new_CellGroup, UE->uid, UE->capability, &mac->radio_config[UE->CC_id], scc);
   }
 
   if (req->srbs_to_be_setup_length > 0 || req->drbs_to_be_setup_length > 0 || ue_cap != NULL) {
@@ -492,11 +492,12 @@ void dl_rrc_message_transfer(const f1ap_dl_rrc_message_t *dl_rrc)
      * the CU, so save the old UE's CellGroup for the new UE */
     UE->CellGroup->spCellConfig = NULL;
     NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
-    NR_ServingCellConfigCommon_t *scc = mac->common_channels[CC_id].ServingCellConfigCommon;  //TODO W38
-    configure_UE_BWP(mac, scc, sched_ctrl, NULL, UE, -1, -1);
+    NR_ServingCellConfigCommon_t *scc = mac->common_channels[UE->CC_id].ServingCellConfigCommon;  //TODO W38
+    configure_UE_BWP(mac, UE->CC_id, scc, sched_ctrl, NULL, UE, -1, -1);
 
     nr_mac_prepare_cellgroup_update(mac, UE, oldUE->CellGroup);
     oldUE->CellGroup = NULL;
+    //TODO W38: to double check below
     mac_remove_nr_ue(mac, 0, *dl_rrc->old_gNB_DU_ue_id); //TODO to check if 0 ok; gNB_DU_ue_id replaced rnti in OAI@W32
     pthread_mutex_unlock(&mac->sched_lock);
     nr_rlc_remove_ue(dl_rrc->gNB_DU_ue_id);

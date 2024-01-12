@@ -366,7 +366,7 @@ static int get_ssb_arfcn(const f1ap_served_cell_info_t *cell_info, const NR_MIB_
 static void init_NR_SI(gNB_RRC_INST *rrc)
 {
 
-  // static int mac_common_config_done[MAX_NUM_CCs] = {0};
+  // static int mac_common_config_done[MAX_NUM_CCs] = {0}; //TODO W38: to check if needed
   // LOG_D(NR_RRC,"%s()\n",__FUNCTION__);
 
   // // From 3GPP 38331, NOTE 1:	Upper layers provide the 5G-S-TMSI if the UE is registered in the TA of the current cell."
@@ -401,11 +401,12 @@ static void init_NR_SI(gNB_RRC_INST *rrc)
   // }
   if (!NODE_IS_DU(rrc->node_type)) {
     for(uint8_t CC_id=0;CC_id < MAX_NUM_CCs; CC_id++){
-    rrc->carrier[CC_id].SIB23 = (uint8_t *) malloc16(100);
-    AssertFatal(rrc->carrier[CC_id].SIB23 != NULL, "cannot allocate memory for SIB");
-    rrc->carrier[CC_id].sizeof_SIB23 = do_SIB23_NR(&(rrc->carrier[CC_id]));
-    LOG_I(NR_RRC,"do_SIB23_NR, size %d \n ", rrc->carrier[CC_id].sizeof_SIB23);
-    AssertFatal(rrc->carrier[CC_id].sizeof_SIB23 != 255,"FATAL, RC.nrrrc[mod].carrier[CC_id].sizeof_SIB23 == 255");
+      rrc->carrier[CC_id].SIB23 = (uint8_t *) malloc16(100);
+      AssertFatal(rrc->carrier[CC_id].SIB23 != NULL, "cannot allocate memory for SIB");
+      rrc->carrier[CC_id].sizeof_SIB23 = do_SIB23_NR(&(rrc->carrier[CC_id]), &rrc->configuration[CC_id]);
+      LOG_I(NR_RRC,"do_SIB23_NR, size %d \n ", rrc->carrier[CC_id].sizeof_SIB23);
+      AssertFatal(rrc->carrier[CC_id].sizeof_SIB23 != 255,"FATAL, RC.nrrrc[mod].carrier[CC_id].sizeof_SIB23 == 255");
+    }
   }
 
   LOG_I(NR_RRC,"Done init_NR_SI\n");
@@ -467,9 +468,10 @@ void openair_rrc_gNB_configuration(gNB_RRC_INST *rrc, NRRrcConfigurationReqList 
   RB_INIT(&rrc->rrc_ue_head);
   for(int CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
     rrc->configuration[CC_id] = configuration->configuration[CC_id];
+    
   }
-   /// System Information INIT
-  init_NR_SI(rrc); //TODO W38 init_NR_SI need to handle all cells
+  // System Information INIT
+  init_NR_SI(rrc); //TODO W38 init_NR_SI need to handle all cells done
   return;
 } // END openair_rrc_gNB_configuration
 
@@ -633,8 +635,8 @@ int rrc_gNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_name, insta
   uint8_t buffer[RRC_BUF_SIZE];
   uint8_t *message_buffer;
   MessageDef *message_p;
-  struct NR_SIB1 *sib1 = RC.nrrrc[instance]->carrier[CC_id].siblock1->message.choice.c1->choice.systemInformationBlockType1;
-
+  //struct NR_SIB1 *sib1 = RC.nrrrc[instance]->carrier[CC_id].siblock1->message.choice.c1->choice.systemInformationBlockType1;
+  struct NR_SIB1 *sib1 = RC.nrmac[0]->common_channels[CC_id].sib1;  //TODO W38: check here is paing TC failed
   // TODO: set configuration from TTCN SYS message
 
   /* get default DRX cycle from configuration */
@@ -956,6 +958,149 @@ static void rrc_gNB_generate_defaultRRCReconfiguration(const protocol_ctxt_t *co
   AssertFatal(!NODE_IS_DU(rrc->node_type), "illegal node type DU!\n");
 
   nr_rrc_transfer_protected_rrc_message(rrc, ue_p, DCCH, buffer, size);
+}
+void
+rrc_gNB_store_RRCReconfiguration(
+  const protocol_ctxt_t     *const ctxt_pP,
+  rrc_gNB_ue_context_t      *ue_context_pP,
+  NR_RRCReconfiguration_t * rrcReconfiguration
+)
+//-----------------------------------------------------------------------------
+{
+  gNB_RRC_UE_t *ue_p = &ue_context_pP->ue_context;
+  NR_SRB_ToAddModList_t *srb2addListP = NULL;
+  NR_DRB_ToAddModList_t *drb2addList = NULL;
+  NR_DRB_ToReleaseList_t *drb2releaseList = NULL;
+  NR_CellGroupConfig_t  *cellGroupConfig = NULL;
+  long xid;
+
+  AssertFatal (rrcReconfiguration!=NULL, "%s rrcReconfiguration is NULL\n",__FUNCTION__);
+  xid = rrcReconfiguration->rrc_TransactionIdentifier;
+  LOG_D(NR_RRC, "rrc_gNB_store_RRCReconfiguration for transaction %ld\n",xid);
+
+  drb2addList = fill_DRB_configList(ue_p);
+  drb2releaseList = CALLOC(sizeof(*drb2releaseList), 1);
+
+  for (int i = 0; i < NB_RB_MAX; i++) {
+    asn1cSequenceAdd(drb2releaseList->list, NR_DRB_Identity_t, DRB_release);
+    DRB_release = i + 1;
+  }
+
+  if(rrcReconfiguration->criticalExtensions.present == NR_RRCReconfiguration__criticalExtensions_PR_rrcReconfiguration && rrcReconfiguration->criticalExtensions.choice.rrcReconfiguration){
+    NR_RRCReconfiguration_IEs_t * ie = rrcReconfiguration->criticalExtensions.choice.rrcReconfiguration;
+
+    if(ie->radioBearerConfig){
+      if(ie->radioBearerConfig->srb_ToAddModList){
+        LOG_D(NR_RRC, "%s store srb_ToAddModList\n",__FUNCTION__);
+        srb2addListP = ie->radioBearerConfig->srb_ToAddModList;
+        ie->radioBearerConfig->srb_ToAddModList = NULL; /* to avoid the content be released externally */
+        /* Set the SRB active in UE context */
+        if (srb2addListP != NULL) {
+          for (int i = 0; (i < srb2addListP->list.count) && (i < 3); i++) {
+            if (srb2addListP->list.array[i]->srb_Identity == 1) {
+              ue_p->Srb[1].Active = 1;
+            } else if (srb2addListP->list.array[i]->srb_Identity == 2) {
+              ue_p->Srb[2].Active = 1;
+              LOG_I(NR_RRC, "[gNB %d] Frame      %d CC %d : SRB2 is now active\n", ctxt_pP->module_id, ctxt_pP->frame, ue_p->primaryCC_id);
+            } else {
+              LOG_W(NR_RRC, "[gNB %d] Frame %d CC %d: invalid SRB identity %ld\n", ctxt_pP->module_id, ctxt_pP->frame, ue_p->primaryCC_id, srb2addListP->list.array[i]->srb_Identity);
+            }
+          }
+        }
+      }
+
+      if(ie->radioBearerConfig->drb_ToAddModList) {
+        drb2addList = ie->radioBearerConfig->drb_ToAddModList;
+        ie->radioBearerConfig->drb_ToAddModList = NULL; /* to avoid the content be released externally*/
+        for (int i = 0; (i < drb2addList->list.count); i++) {
+          long drb_id = drb2addList->list.array[i]->drb_Identity;
+          ue_p->established_drbs[drb_id].drb_id = drb_id;
+          ue_p->established_drbs[drb_id].status = DRB_ACTIVE;
+          if (drb2addList->list.array[i]->cnAssociation->present) {
+            ue_p->established_drbs[drb_id].cnAssociation.present = NR_DRB_ToAddMod__cnAssociation_PR_sdap_Config;
+            ue_p->established_drbs[drb_id].cnAssociation.sdap_config.defaultDRB = drb2addList->list.array[i]->cnAssociation->choice.sdap_Config->defaultDRB;
+            ue_p->established_drbs[drb_id].cnAssociation.sdap_config.pdusession_id = drb2addList->list.array[i]->cnAssociation->choice.sdap_Config->pdu_Session;
+            ue_p->established_drbs[drb_id].cnAssociation.sdap_config.sdap_HeaderDL = drb2addList->list.array[i]->cnAssociation->choice.sdap_Config->sdap_HeaderDL;
+            ue_p->established_drbs[drb_id].cnAssociation.sdap_config.sdap_HeaderUL = drb2addList->list.array[i]->cnAssociation->choice.sdap_Config->sdap_HeaderUL;
+            for (int j = 0; j < drb2addList->list.array[i]->cnAssociation->choice.sdap_Config->mappedQoS_FlowsToAdd->list.count; ++j) {
+              ue_p->established_drbs[drb_id].cnAssociation.sdap_config.mappedQoS_FlowsToAdd[i] = drb2addList->list.array[i]->cnAssociation->choice.sdap_Config->mappedQoS_FlowsToAdd->list.array[j];
+            }
+          }
+          // Struct is marked as OPTIONAL, but no present flag to check
+          ue_p->established_drbs[drb_id].pdcp_config.discardTimer = *drb2addList->list.array[i]->pdcp_Config->drb->discardTimer;
+          ue_p->established_drbs[drb_id].pdcp_config.pdcp_SN_SizeUL = *drb2addList->list.array[i]->pdcp_Config->drb->pdcp_SN_SizeUL;
+          ue_p->established_drbs[drb_id].pdcp_config.pdcp_SN_SizeDL = *drb2addList->list.array[i]->pdcp_Config->drb->pdcp_SN_SizeDL;
+
+          LOG_I(NR_RRC, "[gNB %d] Frame %d CC %d : DRB%d is now active\n", ctxt_pP->module_id, ctxt_pP->frame, ue_p->primaryCC_id, drb_id);
+        }
+      }
+
+      if(ie->radioBearerConfig->drb_ToReleaseList){
+        LOG_D(NR_RRC, "%s store drb_ToReleaseList\n",__FUNCTION__);
+        drb2releaseList = (NR_DRB_ToAddModList_t*)ie->radioBearerConfig->drb_ToReleaseList;
+        ie->radioBearerConfig->drb_ToReleaseList = NULL; /* to avoid the content be released externally*/
+      }
+    }
+
+    if(ie->nonCriticalExtension){
+      if(ie->nonCriticalExtension->masterCellGroup){
+        uper_decode(NULL,
+              &asn_DEF_NR_CellGroupConfig,
+              (void **)&cellGroupConfig,
+              (uint8_t *)ie->nonCriticalExtension->masterCellGroup->buf,
+              ie->nonCriticalExtension->masterCellGroup->size, 0, 0);
+
+        if (LOG_DEBUGFLAG(DEBUG_ASN1) ) {
+          xer_fprint(stdout, &asn_DEF_NR_CellGroupConfig, (const void *)cellGroupConfig);
+        }
+
+        if(cellGroupConfig){
+#if 1
+          NR_CellGroupConfig_t   *masterCellGroup = ue_context_pP->ue_context.masterCellGroup;
+          if(masterCellGroup && cellGroupConfig->rlc_BearerToAddModList){
+            /* we only care the added Bearer configuration here */
+            int count = cellGroupConfig->rlc_BearerToAddModList->list.count;
+            if(count && masterCellGroup->rlc_BearerToAddModList==NULL){
+              /* code would not get here */
+              masterCellGroup->rlc_BearerToAddModList = CALLOC(1,sizeof(struct NR_CellGroupConfig__rlc_BearerToAddModList));
+            }
+            LOG_D(NR_RRC, "%s add rlc_BearerConfig into UE masterCellGroup\n",__FUNCTION__);
+            for(int i=0; i < count; i++){
+              ASN_SEQUENCE_ADD(&masterCellGroup->rlc_BearerToAddModList->list, cellGroupConfig->rlc_BearerToAddModList->list.array[i]);
+            }
+            if (LOG_DEBUGFLAG(DEBUG_ASN1) ) {
+              xer_fprint(stdout, &asn_DEF_NR_CellGroupConfig, (const void *)masterCellGroup);
+            }
+            cellGroupConfig->rlc_BearerToAddModList->list.free = NULL; /*not free item pointer as it already added to another list */
+            asn_sequence_empty(&cellGroupConfig->rlc_BearerToAddModList->list);
+          }
+          ASN_STRUCT_FREE(asn_DEF_NR_CellGroupConfig,cellGroupConfig);
+#else
+          if(ue_context_pP->ue_context.masterCellGroup){
+            /* There is issue to free masterCellGroup content here.  */
+            ASN_STRUCT_FREE(asn_DEF_NR_CellGroupConfig,ue_context_pP->ue_context.masterCellGroup);
+          }
+          LOG_D(NR_RRC, "%s store cellGroupConfig\n",__FUNCTION__);
+          ue_context_pP->ue_context.masterCellGroup = cellGroupConfig;
+#endif
+        }
+      }
+    }
+  }
+
+  gNB_RRC_INST *rrc = RC.nrrrc[ctxt_pP->module_id];
+  if (NODE_IS_DU(rrc->node_type) || NODE_IS_MONOLITHIC(rrc->node_type)) {
+
+
+    // uint32_t delay_ms = ue_context_pP->ue_context.masterCellGroup &&
+    //                     ue_context_pP->ue_context.masterCellGroup->spCellConfig &&
+    //                     ue_context_pP->ue_context.masterCellGroup->spCellConfig->spCellConfigDedicated &&
+    //                     ue_context_pP->ue_context.masterCellGroup->spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList ?
+    //                     NR_RRC_RECONFIGURATION_DELAY_MS + NR_RRC_BWP_SWITCHING_DELAY_MS : NR_RRC_RECONFIGURATION_DELAY_MS;
+
+
+    nr_mac_enable_ue_rrc_processing_timer(RC.nrmac, ue_p, /* apply_cellGroup = */ true);
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -1543,7 +1688,7 @@ int nr_rrc_reconfiguration_req(rrc_gNB_ue_context_t         *const ue_context_pP
   uint8_t buffer[RRC_BUF_SIZE];
   int size = do_RRCReconfiguration(ue_p, buffer, RRC_BUF_SIZE, xid, NULL, NULL, NULL, NULL, NULL, NULL, masterCellGroup);
 
-  nr_rrc_mac_update_cellgroup(CC_id, ue_context_pP->ue_context.rnti, masterCellGroup);
+  // nr_rrc_mac_update_cellgroup(CC_id, ue_context_pP->ue_context.rnti, masterCellGroup); //TODO W38 this function removed @OAI
 
   gNB_RRC_INST *rrc = RC.nrrrc[ctxt_pP->module_id];
   nr_rrc_transfer_protected_rrc_message(rrc, ue_p, DCCH, buffer, size);
@@ -2260,8 +2405,8 @@ static void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *req, sctp_assoc_t ass
   if (!rrc_gNB_plmn_matches(rrc, cell_info)) {
     LOG_E(NR_RRC,
           "PLMN mismatch: CU %d%d cellID %ld, DU %d%d cellID %ld\n",
-          rrc->configuration.mcc[0],
-          rrc->configuration.mnc[0],
+          rrc->configuration[0].mcc[0],
+          rrc->configuration[0].mnc[0],
           rrc->nr_cellid,
           cell_info->plmn.mcc,
           cell_info->plmn.mnc,

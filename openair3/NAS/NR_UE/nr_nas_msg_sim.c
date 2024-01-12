@@ -1957,26 +1957,6 @@ void *nas_nrue_task(void *args_p)
           case FGS_DEREGISTRATION_ACCEPT:
             LOG_I(NAS, "received deregistration accept\n");
             break;
-          case REGISTRATION_ACCEPT:
-          {
-            LOG_I(NAS, "[UE] Received REGISTRATION ACCEPT message\n");
-
-            generateRegistrationComplete(nas,&initialNasMsg, NULL);
-            if (initialNasMsg.length > 0) {
-              send_nas_uplink_data_req(instance, &initialNasMsg);
-              LOG_I(NAS, "Send NAS_UPLINK_DATA_REQ message(RegistrationComplete)\n");
-              initialNasMsg.length = 0; /*To avoid send again later*/
-            }
-
-            as_nas_info_t pduEstablishMsg;
-            memset(&pduEstablishMsg, 0, sizeof(as_nas_info_t));
-            generatePduSessionEstablishRequest(nas, &pduEstablishMsg);
-            if (pduEstablishMsg.length > 0) {
-              send_nas_uplink_data_req(instance, &pduEstablishMsg);
-              LOG_I(NAS, "Send NAS_UPLINK_DATA_REQ message(PduSessionEstablishRequest)\n");
-            }
-            break;
-          }
           case FGS_PDU_SESSION_ESTABLISHMENT_ACC:
             LOG_I(NAS, "[UE] Received PDU_SESSION_ESTABLISHMENT_ACCEPT message\n");
             capture_pdu_session_establishment_accept_msg(pdu_buffer,pdu_buffer_len);

@@ -840,7 +840,7 @@ typedef struct gNB_MAC_INST_s {
   uint16_t cset0_bwp_size;
   NR_Type0_PDCCH_CSS_config_t type0_PDCCH_CSS_config[MAX_NUM_CCs][64];
 
-  bool first_MIB;
+  bool first_MIB[MAX_NUM_CCs];
   NR_bler_options_t dl_bler;
   NR_bler_options_t ul_bler;
   uint8_t min_grant_prb;
@@ -857,6 +857,7 @@ typedef struct gNB_MAC_INST_s {
   int16_t slot;
 
   pthread_mutex_t sched_lock;
+  
 
 } gNB_MAC_INST;
 

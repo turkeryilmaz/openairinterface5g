@@ -223,24 +223,6 @@ static int nr_rrc_set_sub_state( module_id_t ue_mod_idP, Rrc_Sub_State_NR_t subS
 
 int8_t nr_rrc_ue_decode_secondary_cellgroup_config(const module_id_t module_id, NR_CellGroupConfig_t *cell_group_config)
 {
-  NR_CellGroupConfig_t *cell_group_config = NULL;
-  uint32_t i;
-
-  asn_dec_rval_t dec_rval = uper_decode(NULL,
-                                        &asn_DEF_NR_CellGroupConfig,
-                                        (void **)&cell_group_config,
-                                        (uint8_t *)buffer,
-                                        size, 0, 0);
-
-  if ((dec_rval.code != RC_OK) && (dec_rval.consumed == 0)) {
-    LOG_E(NR_RRC, "NR_CellGroupConfig decode error\n");
-    for (i=0; i<size; i++)
-      LOG_E(NR_RRC, "%02x ",buffer[i]);
-    LOG_E(NR_RRC, "\n");
-    // free the memory
-    SEQUENCE_free(&asn_DEF_NR_CellGroupConfig, (void *)cell_group_config, 1);
-    return -1;
-  }
 
   if(NR_UE_rrc_inst[module_id].scell_group_config == NULL)
     NR_UE_rrc_inst[module_id].scell_group_config = cell_group_config;
@@ -651,7 +633,7 @@ static void nr_rrc_ue_paging_force_idle(
   itti_send_msg_to_task(TASK_NAS_NRUE, ctxt_pP.instance, msg_p);
 
    NR_UE_MAC_INST_t *mac = get_mac_inst(ctxt_pP.module_id);
-   memset(mac->logicalChannelBearer_exist, 0, sizeof(mac->logicalChannelBearer_exist));
+  // memset(mac->logicalChannelBearer_exist, 0, sizeof(mac->logicalChannelBearer_exist));  //TODO W38: logicalChannelBearer_exist removed by OAI @W38
    mac->phy_config_request_sent = false;
   mac->state = UE_NOT_SYNC;
   rrc_rlc_remove_ue(&ctxt_pP);
@@ -660,13 +642,13 @@ static void nr_rrc_ue_paging_force_idle(
   nr_rrc_set_state(ctxt_pP.module_id, RRC_STATE_IDLE_NR);
   nr_rrc_set_sub_state(ctxt_pP.module_id, RRC_SUB_STATE_IDLE_NR);
 
-  NR_UE_rrc_inst[ctxt_pP.module_id].Srb0[gNB_indexP].Tx_buffer.payload_size = 0;
+  //NR_UE_rrc_inst[ctxt_pP.module_id].Srb0[gNB_indexP].Tx_buffer.payload_size = 0;
   NR_UE_rrc_inst[ctxt_pP.module_id].cell_group_config = NULL;
-  NR_UE_rrc_inst[ctxt_pP.module_id].SRB1_config[gNB_indexP] = NULL;
-  NR_UE_rrc_inst[ctxt_pP.module_id].SRB2_config[gNB_indexP] = NULL;
-  NR_UE_rrc_inst[ctxt_pP.module_id].DRB_config[gNB_indexP][0] = NULL;
-  NR_UE_rrc_inst[ctxt_pP.module_id].DRB_config[gNB_indexP][1] = NULL;
-  NR_UE_rrc_inst[ctxt_pP.module_id].DRB_config[gNB_indexP][2] = NULL;
+  // NR_UE_rrc_inst[ctxt_pP.module_id].SRB1_config[gNB_indexP] = NULL;
+  // NR_UE_rrc_inst[ctxt_pP.module_id].SRB2_config[gNB_indexP] = NULL;
+  // NR_UE_rrc_inst[ctxt_pP.module_id].DRB_config[gNB_indexP][0] = NULL;
+  // NR_UE_rrc_inst[ctxt_pP.module_id].DRB_config[gNB_indexP][1] = NULL;
+  // NR_UE_rrc_inst[ctxt_pP.module_id].DRB_config[gNB_indexP][2] = NULL;
 }
 
 
@@ -2030,7 +2012,7 @@ void nr_rrc_ue_generate_RRCSetupRequest(module_id_t module_id, const uint8_t gNB
          itti_send_msg_to_task(TASK_NAS_NRUE, ctxt_pP->instance, msg_p);
 
          NR_UE_MAC_INST_t *mac = get_mac_inst(ctxt_pP->module_id);
-         memset(mac->logicalChannelBearer_exist, 0, sizeof(mac->logicalChannelBearer_exist));
+         // memset(mac->logicalChannelBearer_exist, 0, sizeof(mac->logicalChannelBearer_exist));  //TODO W38: logicalChannelBearer_exist removed by OAI @W38
          nr_ue_mac_default_configs(mac);
          mac->state = UE_SYNC;
          rrc_rlc_remove_ue(ctxt_pP);
@@ -2039,13 +2021,15 @@ void nr_rrc_ue_generate_RRCSetupRequest(module_id_t module_id, const uint8_t gNB
          nr_rrc_set_state(ctxt_pP->module_id, RRC_STATE_IDLE_NR);
          nr_rrc_set_sub_state(ctxt_pP->module_id, RRC_SUB_STATE_IDLE_NR);
 
-         NR_UE_rrc_inst[ctxt_pP->module_id].Srb0[gNB_indexP].Tx_buffer.payload_size = 0;
+         NR_UE_rrc_inst[ctxt_pP->module_id].Srb[gNB_indexP][0].srb_buffers.Tx_buffer.payload_size= 0;
          NR_UE_rrc_inst[ctxt_pP->module_id].cell_group_config = NULL;
-         NR_UE_rrc_inst[ctxt_pP->module_id].SRB1_config[gNB_indexP] = NULL;
-         NR_UE_rrc_inst[ctxt_pP->module_id].SRB2_config[gNB_indexP] = NULL;
-         NR_UE_rrc_inst[ctxt_pP->module_id].DRB_config[gNB_indexP][0] = NULL;
-         NR_UE_rrc_inst[ctxt_pP->module_id].DRB_config[gNB_indexP][1] = NULL;
-         NR_UE_rrc_inst[ctxt_pP->module_id].DRB_config[gNB_indexP][2] = NULL;
+        
+        memset(&NR_UE_rrc_inst[ctxt_pP->module_id].active_DRBs[0][0],0, sizeof(bool)*MAX_DRBS_PER_UE);
+        memset( &NR_UE_rrc_inst[ctxt_pP->module_id].active_RLC_entity[0][0],0, sizeof(bool)*NR_MAX_NUM_LCID);
+        //  NR_UE_rrc_inst[ctxt_pP->module_id].SRB2_config[gNB_indexP] = NULL;
+        //  NR_UE_rrc_inst[ctxt_pP->module_id].DRB_config[gNB_indexP][0] = NULL;
+        //  NR_UE_rrc_inst[ctxt_pP->module_id].DRB_config[gNB_indexP][1] = NULL;
+        //  NR_UE_rrc_inst[ctxt_pP->module_id].DRB_config[gNB_indexP][2] = NULL;
 
          LOG_W(NR_RRC, "todo, UE removed\n");
        break;

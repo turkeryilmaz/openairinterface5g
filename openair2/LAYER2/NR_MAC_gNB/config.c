@@ -460,7 +460,7 @@ int rrc_mac_config_dedicate_scheduling(module_id_t Mod_idP, NR_DcchDtchConfig_t 
   }
   return 0;
 }
-void nr_mac_config_scc(gNB_MAC_INST *nrmac, NR_ServingCellConfigCommon_t *scc, const nr_mac_config_t *config)
+void nr_mac_config_scc(gNB_MAC_INST *nrmac, NR_ServingCellConfigCommon_t *scc, const nr_mac_config_t *config, int CC_id)
 {
   DevAssert(nrmac != NULL);
   DevAssert(scc != NULL);
@@ -544,7 +544,7 @@ void nr_mac_config_scc(gNB_MAC_INST *nrmac, NR_ServingCellConfigCommon_t *scc, c
   //NR_SCHED_UNLOCK(&nrmac->sched_lock);
 }
 
-void nr_mac_configure_sib1(gNB_MAC_INST *nrmac, const f1ap_plmn_t *plmn, uint64_t cellID, int tac)
+void nr_mac_configure_sib1(gNB_MAC_INST *nrmac, const f1ap_plmn_t *plmn, uint64_t cellID, int tac, int CC_id)
 {
   AssertFatal(get_softmodem_params()->sa > 0, "error: SIB1 only applicable for SA\n");
 
@@ -619,7 +619,7 @@ bool nr_mac_prepare_ra_ue(gNB_MAC_INST *nrmac, int CC_id, uint32_t rnti, NR_Cell
  * will trigger the timer with nr_mac_enable_ue_rrc_processing_timer(); upon
  * expiry nr_mac_apply_cellgroup() will apply the CellGroupConfig (radio config
  * etc). */
-bool nr_mac_prepare_cellgroup_update(gNB_MAC_INST *nrmac, int CC_id, NR_UE_info_t *UE, NR_CellGroupConfig_t *CellGroup)
+bool nr_mac_prepare_cellgroup_update(gNB_MAC_INST *nrmac, NR_UE_info_t *UE, NR_CellGroupConfig_t *CellGroup)
 {
   DevAssert(nrmac != NULL);
   DevAssert(UE != NULL);

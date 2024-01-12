@@ -1170,9 +1170,9 @@ bool ss_task_sys_nr_handle_cellConfig5G(struct NR_CellConfigRequest_Type *p_req,
     if (p_req->v.AddOrReconfigure.PhysicalLayer.v.Common.v.PhysicalCellId.d == true && p_req->v.AddOrReconfigure.PhysicalLayer.d == true)
     {
       RC.nrrrc[gnbId]->carrier[nr_cell_index].physCellId = p_req->v.AddOrReconfigure.PhysicalLayer.v.Common.v.PhysicalCellId.v;
-    *(RC.nrrrc[gnbId]->carrier[nr_cell_index].servingcellconfigcommon->physCellId) = p_req->v.AddOrReconfigure.PhysicalLayer.v.Common.v.PhysicalCellId.v;
-      LOG_A(GNB_APP," %s gnbId %d, nr_cell_index %d, physCellId %d scc.physCellId %d==servingcellconfigcommon=%x\n",__FUNCTION__,gnbId,nr_cell_index,RC.nrrrc[gnbId]->carrier[nr_cell_index].physCellId,*RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->physCellId,
-      RC.nrrrc[gnbId]->carrier[nr_cell_index].servingcellconfigcommon );
+   // *(RC.nrrrc[gnbId]->carrier[nr_cell_index].servingcellconfigcommon->physCellId) = p_req->v.AddOrReconfigure.PhysicalLayer.v.Common.v.PhysicalCellId.v;
+      LOG_A(GNB_APP," %s gnbId %d, nr_cell_index %d, physCellId %d \n",__FUNCTION__,gnbId,nr_cell_index,RC.nrrrc[gnbId]->carrier[nr_cell_index].physCellId );
+    //note W38: scc and sib1 moved to mac. let's say rrc does not need physcellid => still needed, where rrc report message to ttcn, phycell id is needed.
       *RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->physCellId = p_req->v.AddOrReconfigure.PhysicalLayer.v.Common.v.PhysicalCellId.v;
     }
 
