@@ -30,6 +30,8 @@
 * \warning
 */
 #ifdef ENABLE_AERIAL
+#define _GNU_SOURCE
+#include <sched.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
@@ -605,12 +607,24 @@ static int aerial_recv_msg(nv_ipc_t *ipc, nv_ipc_msg_t *recv_msg)
   return 0;
 }
 
-
 bool recv_task_running = false;
+int stick_this_thread_to_core(int core_id)
+{
+  int num_cores = sysconf(_SC_NPROCESSORS_ONLN);
+  if (core_id < 0 || core_id >= num_cores)
+    return EINVAL;
 
+  cpu_set_t cpuset;
+  CPU_ZERO(&cpuset);
+  CPU_SET(core_id, &cpuset);
+
+  pthread_t current_thread = pthread_self();
+  return pthread_setaffinity_np(current_thread, sizeof(cpu_set_t), &cpuset);
+}
 void *epoll_recv_task(void *arg)
 {
   struct epoll_event ev, events[MAX_EVENTS];
+  stick_this_thread_to_core(10);
   LOG_D(NFAPI_VNF,"Aerial recv task start \n");
   int epoll_fd = epoll_create1(0);
   if (epoll_fd == -1) {
