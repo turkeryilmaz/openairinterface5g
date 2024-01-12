@@ -3033,6 +3033,10 @@ void prepare_initial_ul_rrc_message(gNB_MAC_INST *mac, NR_UE_info_t *UE)
     LOG_I(NR_MAC, "Setting NSSAI sst: %d, sd: %d for SRB: %ld\n", default_nssai->sst, default_nssai->sd, lcid);
 
     dl->add_UE(dl->slices, UE);
+  } else {
+    nssai_t nssai = {.sst = 0, .sd = 0};
+    UE->UE_sched_ctrl.dl_lc_nssai[lcid] = nssai;
+    LOG_I(NR_MAC, "Setting NSSAI sst: %d, sd: %d for SRB: %ld\n", UE->UE_sched_ctrl.dl_lc_nssai[lcid].sst, UE->UE_sched_ctrl.dl_lc_nssai[lcid].sd, lcid);
   }
 
   /* activate SRB0 */
