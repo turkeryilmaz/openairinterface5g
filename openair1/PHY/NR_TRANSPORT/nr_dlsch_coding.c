@@ -366,17 +366,14 @@ int nr_dlsch_encoding(PHY_VARS_gNB *gNB,
   if (gNB->ldpc_offload_flag) {
     impp.Qm = rel15->qamModOrder[0];
     impp.rv = rel15->rvIndex[0];
-    int nb_re_dmrs =
-        (rel15->dmrsConfigType == NFAPI_NR_DMRS_TYPE1) ? (6 * rel15->numDmrsCdmGrpsNoData) : (4 * rel15->numDmrsCdmGrpsNoData);
-    impp.G = nr_get_G(rel15->rbSize, rel15->NrOfSymbols, nb_re_dmrs, get_num_dmrs(rel15->dlDmrsSymbPos), harq->unav_res,
-                      rel15->qamModOrder[0], rel15->nrOfLayers);
-    int r_offset = 0;
+    int nb_re_dmrs = (rel15->dmrsConfigType == NFAPI_NR_DMRS_TYPE1) ?
+                     (6 * rel15->numDmrsCdmGrpsNoData) : (4 * rel15->numDmrsCdmGrpsNoData);
+    impp.G = nr_get_G(rel15->rbSize, rel15->NrOfSymbols, nb_re_dmrs, get_num_dmrs(rel15->dlDmrsSymbPos),
+                      harq->unav_res, rel15->qamModOrder[0], rel15->nrOfLayers);
     for (int r = 0; r < impp.n_segments; r++) {
-      impp.E = nr_get_E(impp.G, impp.n_segments, impp.Qm, rel15->nrOfLayers, r);
-      uint8_t *f = impp.output + r_offset;
-      ldpc_interface_offload.LDPCencoder(&harq->c[r], &f, &impp);
-      r_offset += impp.E;
+      impp.E_cb[r] = nr_get_E(impp.G, impp.n_segments, impp.Qm, rel15->nrOfLayers, r);
     }
+    ldpc_interface_offload.LDPCencoder(harq->c, &impp.output, &impp);
   } else {
     notifiedFIFO_t nf;
     initNotifiedFIFO(&nf);
