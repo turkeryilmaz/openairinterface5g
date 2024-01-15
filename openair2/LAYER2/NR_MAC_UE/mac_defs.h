@@ -449,9 +449,11 @@ typedef struct NR_sched_pssch {
 
 typedef struct {
   bool is_waiting;
+  bool is_active;
   uint8_t ndi;
   uint8_t round;
   uint16_t feedback_slot;
+  uint16_t feedback_frame;
 
   /// sched_pusch keeps information on MCS etc used for the initial transmission
   NR_sched_pssch_t sched_pssch;

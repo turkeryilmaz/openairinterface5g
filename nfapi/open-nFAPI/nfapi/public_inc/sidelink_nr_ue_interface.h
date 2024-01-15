@@ -30,6 +30,7 @@ typedef enum sl_nr_rx_config_type_enum {
   SL_NR_CONFIG_TYPE_RX_PSCCH,
   SL_NR_CONFIG_TYPE_RX_PSSCH_SCI,
   SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH,
+  SL_NR_CONFIG_TYPE_RX_PSFCH,
   SL_NR_CONFIG_TYPE_RX_MAXIMUM
 } sl_nr_rx_config_type_enum_t;
 
@@ -302,8 +303,24 @@ typedef struct sl_nr_tx_config_psfch_pdu {
   uint8_t prb;
   uint16_t initial_cyclic_shift;
   uint8_t mcs;
-  
+  uint8_t psfch_payload;
 } sl_nr_tx_config_psfch_pdu_t;
+
+typedef struct sl_nr_rx_config_psfch_pdu {
+//  These fields map directly to the same fields in nfapi_nr_ul_config_pucch_pdu
+  uint8_t freq_hop_flag;
+  uint8_t group_hop_flag;
+  uint8_t sequence_hop_flag;
+  uint16_t second_hop_prb;
+  uint8_t nr_of_symbols;
+  uint8_t start_symbol_index;
+  uint8_t hopping_id;
+  uint8_t prb;
+  uint16_t initial_cyclic_shift;
+  uint8_t mcs;
+  uint8_t psfch_payload;
+
+} sl_nr_rx_config_psfch_pdu_t;
 
 // MAC commands PHY to perform an action on TX RESOURCE POOL or TX PSBCH using this TX CONFIG
 typedef struct {

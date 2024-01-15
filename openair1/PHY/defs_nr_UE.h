@@ -222,6 +222,17 @@ typedef struct {
 } NR_UE_PUCCH;
 
 typedef struct {
+  int max_nb_pucch;
+  /// \brief Pointers (dynamic) to the received data in the frequency domain.
+  /// - first index: rx antenna [0..nb_antennas_rx[
+  /// - second index: ? [0..2*ofdm_symbol_size*frame_parms->symbols_per_tti[
+  c16_t **rxdataF;
+  /// \brief holds the transmit data in the frequency domain.
+  /// For IFFT_FPGA this points to the same memory as PHY_vars->rx_vars[a].RX_DMA_BUFFER. //?
+  /// - first index: eNB id [0..2] (hard coded)
+  /// - second index: tx antenna [0..14[ where 14 is the total supported antenna ports.
+  /// - third index: sample [0..samples_per_frame_woCP]
+  c16_t **txdataF;
   /// \brief Holds the transmit data in time domain.
   /// For IFFT_FPGA this points to the same memory as PHY_vars->tx_vars[a].TX_DMA_BUFFER.
   /// - first index: tx antenna [0..nb_antennas_tx[
@@ -709,6 +720,7 @@ typedef struct nr_phy_data_s {
   sl_nr_rx_config_pscch_pdu_t nr_sl_pscch_pdu;
   sl_nr_rx_config_pssch_sci_pdu_t nr_sl_pssch_sci_pdu;
   sl_nr_rx_config_pssch_pdu_t nr_sl_pssch_pdu;
+  sl_nr_rx_config_psfch_pdu_t nr_sl_psfch_pdu;
 } nr_phy_data_t;
 /* this structure is used to pass both UE phy vars and
  * proc to the function UE_thread_rxn_txnp4

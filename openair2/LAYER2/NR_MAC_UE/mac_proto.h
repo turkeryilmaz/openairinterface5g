@@ -498,6 +498,10 @@ bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
                        uint8_t *slsch_pdu,
                        nr_sci_format_t format2, 
                        uint16_t *slsch_pdu_length);
+void config_psfch_pdu_rx(NR_UE_MAC_INST_t *mac,
+                         sl_nr_rx_config_psfch_pdu_t *nr_sl_psfch_pdu,
+                         const NR_SL_BWP_Generic_r16_t *sl_bwp,
+                         const NR_SL_ResourcePool_r16_t *sl_res_pool);
 
 void config_pscch_pdu_rx(sl_nr_rx_config_pscch_pdu_t *nr_sl_pscch_pdu,
                          const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp,

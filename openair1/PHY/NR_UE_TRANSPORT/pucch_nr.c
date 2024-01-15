@@ -161,6 +161,7 @@ void nr_generate_pucch0(const PHY_VARS_NR_UE *ue,
 
       txdataF[0][(l2*frame_parms->ofdm_symbol_size) + re_offset].r = (int16_t)(((int32_t)(amp) * x_n_re[l][n])>>15);
       txdataF[0][(l2*frame_parms->ofdm_symbol_size) + re_offset].i = (int16_t)(((int32_t)(amp) * x_n_im[l][n])>>15);
+      LOG_I(NR_PHY, "re %x, i %x\n", txdataF[0][(l2*frame_parms->ofdm_symbol_size) + re_offset].r, txdataF[0][(l2*frame_parms->ofdm_symbol_size) + re_offset].i);
       //((int16_t *)txptr[0][re_offset])[0] = (int16_t)((int32_t)amp * x_n_re[(12*l)+n])>>15;
       //((int16_t *)txptr[0][re_offset])[1] = (int16_t)((int32_t)amp * x_n_im[(12*l)+n])>>15;
       //txptr[re_offset] = (x_n_re[(12*l)+n]<<16) + x_n_im[(12*l)+n];

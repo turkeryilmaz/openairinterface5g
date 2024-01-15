@@ -633,42 +633,65 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
   uint8_t *pduP          = (rx_ind->rx_indication_body + pdu_id)->rx_slsch_pdu.pdu;
   int32_t pdu_len        = (int32_t)(rx_ind->rx_indication_body + pdu_id)->rx_slsch_pdu.pdu_length;
   uint8_t done           = 0;
+  NR_UE_sl_harq_t   *harq_proc;
   NR_UE_MAC_INST_t *mac = get_mac_inst(module_idP);
   int frame = rx_ind->sfn;
   int slot = rx_ind->slot;
+  uint16_t sched_frame, sched_slot;
   if (!pduP){
     return;
   }
 
   LOG_I(NR_MAC, "Filling psfch pdu %d\n", module_idP);
-  if ((rx_ind->rx_indication_body + pdu_id)->rx_slsch_pdu.ack_nack == 1) {
-    uint16_t m0 = nr_ue_configure_psfch(module_idP);
-    mac->sl_tx_config_psfch_pdu = calloc(1, sizeof(sl_nr_tx_config_psfch_pdu_t));
-    mac->sl_tx_config_psfch_pdu->initial_cyclic_shift = m0;
-    if (mac->sci1_pdu.second_stage_sci_format == 2 ||
-        mac->sci_pdu_rx.cast_type == 1 ||
-        mac->sci_pdu_rx.cast_type == 2) {
-      mac->sl_tx_config_psfch_pdu->mcs = sequence_cyclic_shift_harq_ack_or_ack_or_only_nack[1]; // TODO: Update to use index 0 as well.
-    } else if (mac->sci1_pdu.second_stage_sci_format == 1 ||
-              (mac->sci1_pdu.second_stage_sci_format == 1 && mac->sci_pdu_rx.cast_type == 3)) {
-      mac->sl_tx_config_psfch_pdu->mcs = sequence_cyclic_shift_harq_ack_or_ack_or_only_nack[0];
-    }
+  NR_SL_PSFCH_Config_r16_t *sl_psfch_config = mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup;
+  const uint8_t time_gap[] = {2, 3};
+  uint8_t psfch_min_time_gap = time_gap[*sl_psfch_config->sl_MinTimeGapPSFCH_r16];
+  uint8_t harq_pid = (rx_ind->rx_indication_body + pdu_id)->rx_slsch_pdu.harq_pid;
+  mac->sl_info.list[0] = calloc(1, sizeof(NR_SL_UE_info_t));
+  harq_proc = &mac->sl_info.list[0]->UE_sched_ctrl.sl_harq_processes[harq_pid];
+  mac->sl_info.list[0]->dest_id = mac->sci_pdu_rx.source_id;
+  mac->sl_info.list[0]->uid = module_idP;
+  long psfch_period = *sl_psfch_config->sl_PSFCH_Period_r16;
+  int delta_slots = (slot + psfch_min_time_gap) % psfch_period ? psfch_period - (slot + psfch_min_time_gap) % psfch_period: 0;
+  sched_slot = slot + psfch_min_time_gap + delta_slots;
+  LOG_D(NR_MAC, "psfch_period %d, slot %d, delta_slots %d, sched_slot %d, time_gap %d\n", psfch_period, slot, delta_slots, sched_slot, psfch_min_time_gap);
+  sched_frame = frame;
+  if (sched_slot >= NR_MAX_SLOTS_PER_FRAME) {
+    sched_slot %= NR_MAX_SLOTS_PER_FRAME;
+    sched_frame = (sched_frame + 1) %1024;
+  }
+
+  harq_proc->feedback_slot = sched_slot;
+  harq_proc->feedback_frame = sched_frame;
+  harq_proc->is_active = true;
+  LOG_D(NR_MAC, "feedback_slot %d, feedback_frame %d, slot %d, frame %d\n", harq_proc->feedback_slot, harq_proc->feedback_frame, slot, frame);
+  uint8_t ack_nack = (rx_ind->rx_indication_body + pdu_id)->rx_slsch_pdu.ack_nack;
+  uint16_t m0 = nr_ue_configure_psfch(module_idP);
+  LOG_I(NR_MAC, "EJAZ:: m0\n", m0);
+  mac->sl_tx_config_psfch_pdu = calloc(1, sizeof(sl_nr_tx_config_psfch_pdu_t));
+  mac->sl_tx_config_psfch_pdu->initial_cyclic_shift = m0;
+  if (mac->sci1_pdu.second_stage_sci_format == 2 ||
+      mac->sci_pdu_rx.cast_type == 1 ||
+      mac->sci_pdu_rx.cast_type == 2) {
+    mac->sl_tx_config_psfch_pdu->mcs = sequence_cyclic_shift_harq_ack_or_ack_or_only_nack[ack_nack];
+  } else if (mac->sci1_pdu.second_stage_sci_format == 1 ||
+            (mac->sci1_pdu.second_stage_sci_format == 1 && mac->sci_pdu_rx.cast_type == 3)) {
+    mac->sl_tx_config_psfch_pdu->mcs = sequence_cyclic_shift_harq_ack_or_ack_or_only_nack[0];
+  }
 
   const uint8_t values[] = {7, 8, 9, 10, 11, 12, 13, 14};
   NR_SL_BWP_Generic_r16_t *sl_bwp = mac->sl_bwp->sl_BWP_Generic_r16;
-  uint8_t sl_num_symbols = (sl_bwp->sl_LengthSymbols_r16) ?
+  uint8_t sl_num_symbols = *sl_bwp->sl_LengthSymbols_r16 ?
                                             values[*sl_bwp->sl_LengthSymbols_r16] : 0;
-  mac->sl_tx_config_psfch_pdu->start_symbol_index = *mac->sl_bwp->sl_BWP_Generic_r16->sl_StartSymbol_r16 + sl_num_symbols - 2; // start_symbol_index has been used as lprime and lprime should be computed as lprime = start symbol + sl_LengthSymbols_r16 - 2
+  mac->sl_tx_config_psfch_pdu->start_symbol_index = *sl_bwp->sl_StartSymbol_r16 + sl_num_symbols - 2; // start_symbol_index has been used as lprime and lprime should be computed as lprime = start symbol + sl_LengthSymbols_r16 - 2
   mac->sl_tx_config_psfch_pdu->hopping_id = *mac->sl_bwp->sl_BWP_PoolConfigCommon_r16->sl_TxPoolSelectedNormal_r16->list.array[0]->sl_ResourcePool_r16->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_HopID_r16;
-  mac->sl_tx_config_psfch_pdu->prb = 2;
-
+  mac->sl_tx_config_psfch_pdu->prb = 1;
+  mac->sl_tx_config_psfch_pdu->psfch_payload = 1;
   LOG_D(NR_MAC,"Filled psfch pdu %d\n", module_idP);
   LOG_D(NR_MAC,"pucch_pdu->hopping_id %d\n", mac->sl_tx_config_psfch_pdu->hopping_id);
   LOG_D(NR_MAC,"pucch_pdu->initial_cyclic_shift %d\n", mac->sl_tx_config_psfch_pdu->initial_cyclic_shift);
   LOG_D(NR_MAC,"pucch_pdu->mcs %d\n", mac->sl_tx_config_psfch_pdu->mcs);
   LOG_D(NR_MAC,"start_sym_index %d\n", mac->sl_tx_config_psfch_pdu->start_symbol_index);
-
-  }
 
   if ((rx_ind->rx_indication_body + pdu_id)->rx_slsch_pdu.ack_nack == 0) 
     return;
