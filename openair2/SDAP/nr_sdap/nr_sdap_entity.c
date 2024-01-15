@@ -29,6 +29,11 @@
 #include <string.h>
 #include <pthread.h>
 
+/* Standarized 5QI values and Default Priority levels as mentioned in 3GPP TS 23.501 Table 5.7.4-1 */
+const uint64_t qos_fiveqi[] = {1, 2, 3, 4, 65, 66, 67, 71, 72, 73, 74, 76, 5, 6, 7, 8, 9, 69, 70, 79, 80, 82, 83, 84, 85, 86};
+const uint64_t qos_priority[] = {20, 40, 30, 50, 7, 20, 15, 56, 56, 56, 56, 56, 10,
+                                 60, 70, 80, 90, 5, 55, 65, 68, 19, 22, 24, 21, 18};
+
 typedef struct {
   nr_sdap_entity_t *sdap_entity_llist;
 } nr_sdap_entity_info;

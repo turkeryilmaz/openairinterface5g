@@ -37,4 +37,7 @@ void ue_context_release_command(const f1ap_ue_context_release_cmd_t *cmd);
 
 void dl_rrc_message_transfer(const f1ap_dl_rrc_message_t *dl_rrc);
 
+extern const uint64_t qos_fiveqi[];
+extern const uint64_t qos_priority[];
+
 #endif /* MAC_RRC_DL_HANDLER_H */

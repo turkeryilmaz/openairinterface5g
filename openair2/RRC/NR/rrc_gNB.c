@@ -95,6 +95,7 @@
 #include <openair3/ocp-gtpu/gtp_itf.h>
 #include <openair2/RRC/NR/nr_rrc_proto.h>
 #include "openair2/F1AP/f1ap_common.h"
+#include "openair2/E1AP/e1ap_common.h"
 #include "openair2/F1AP/f1ap_ids.h"
 #include "openair2/SDAP/nr_sdap/nr_sdap_entity.h"
 #include "cucp_cuup_if.h"
@@ -2046,7 +2047,7 @@ void rrc_gNB_process_e1_bearer_context_setup_resp(e1ap_bearer_setup_resp_t *resp
         drb->drb_info.flows_mapped_to_drb[j].qfi = drb_config->qosFlows[j].qfi;
 
         pdusession_level_qos_parameter_t *in_qos_char = get_qos_characteristics(drb_config->qosFlows[j].qfi, RRC_pduSession);
-        f1ap_qos_characteristics_t *qos_char = &drb->drb_info.flows_mapped_to_drb[j].qos_params.qos_characteristics;
+        qos_characteristics_t *qos_char = &drb->drb_info.flows_mapped_to_drb[j].qos_params.qos_characteristics;
         if (in_qos_char->fiveQI_type == dynamic) {
           qos_char->qos_type = dynamic;
           qos_char->dynamic.fiveqi = in_qos_char->fiveQI;
@@ -2058,7 +2059,10 @@ void rrc_gNB_process_e1_bearer_context_setup_resp(e1ap_bearer_setup_resp_t *resp
         }
       }
       /* the DRB QoS parameters: we just reuse the ones from the first flow */
-      drb->drb_info.drb_qos = drb->drb_info.flows_mapped_to_drb[0].qos_params;
+      get_drb_characteristics((qos_flow_to_setup_t *)drb->drb_info.flows_mapped_to_drb,
+                              drb->drb_info.flows_to_be_setup_length,
+                              drb->drb_info.flows_mapped_to_drb[0].qos_params.qos_characteristics.qos_type,
+                              &drb->drb_info.drb_qos);
 
       /* pass NSSAI info to MAC */
       drb->nssai = RRC_pduSession->param.nssai;

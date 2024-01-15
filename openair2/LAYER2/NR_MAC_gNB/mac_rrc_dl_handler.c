@@ -23,16 +23,12 @@
 
 #include "mac_proto.h"
 #include "openair2/F1AP/f1ap_ids.h"
+#include "openair2/E1AP/e1ap_common.h"
 #include "openair2/LAYER2/nr_rlc/nr_rlc_oai_api.h"
 #include "F1AP_CauseRadioNetwork.h"
 
 #include "uper_decoder.h"
 #include "uper_encoder.h"
-
-// Standarized 5QI values and Default Priority levels as mentioned in 3GPP TS 23.501 Table 5.7.4-1
-const uint64_t qos_fiveqi[26] = {1, 2, 3, 4, 65, 66, 67, 71, 72, 73, 74, 76, 5, 6, 7, 8, 9, 69, 70, 79, 80, 82, 83, 84, 85, 86};
-const uint64_t qos_priority[26] = {20, 40, 30, 50, 7, 20, 15, 56, 56, 56, 56, 56, 10,
-                                   60, 70, 80, 90, 5, 55, 65, 68, 19, 22, 24, 21, 18};
 
 static long get_lcid_from_drbid(int drb_id)
 {
@@ -248,45 +244,32 @@ static void set_nssaiConfig(const int drb_len, const f1ap_drb_to_be_setup_t *req
   }
 }
 
-static void set_QoSConfig(const f1ap_ue_context_modif_req_t *req, NR_UE_sched_ctrl_t *sched_ctrl)
+static void set_LCpriority(const f1ap_ue_context_modif_req_t *req, NR_UE_sched_ctrl_t *sched_ctrl)
 {
   AssertFatal(req != NULL, "f1ap_ue_context_modif_req is NULL\n");
   uint8_t drb_count = req->drbs_to_be_setup_length;
   uint8_t srb_count = req->srbs_to_be_setup_length;
   LOG_I(NR_MAC, "Number of DRBs = %d and SRBs = %d\n", drb_count, srb_count);
 
+  /* SRBs*/
+  for (int i = 0; i < srb_count; i++) {
+    f1ap_srb_to_be_setup_t *srb_p = &req->srbs_to_be_setup[i];
+    long srb_id = srb_p->srb_id;
+    long lc_id = get_lcid_from_srbid(srb_id);
+    sched_ctrl->dl_lc_ids_priorities[lc_id] = srb_id;
+  }
   /* DRBs*/
   for (int i = 0; i < drb_count; i++) {
     f1ap_drb_to_be_setup_t *drb_p = &req->drbs_to_be_setup[i];
-    uint8_t nb_qos_flows = drb_p->drb_info.flows_to_be_setup_length;
     long drb_id = drb_p->drb_id;
-    LOG_I(NR_MAC, "number of QOS flows mapped to DRB_id %ld: %d\n", drb_id, nb_qos_flows);
+    long lc_id = get_lcid_from_drbid(drb_id);
 
-    for (int q = 0; q < nb_qos_flows; q++) {
-      f1ap_flows_mapped_to_drb_t *qos_flow = &drb_p->drb_info.flows_mapped_to_drb[q];
-
-      f1ap_qos_characteristics_t *qos_char = &qos_flow->qos_params.qos_characteristics;
-      uint64_t priority = qos_char->non_dynamic.qos_priority_level;
-      int64_t fiveqi = qos_char->non_dynamic.fiveqi;
-      if (qos_char->qos_type == dynamic) {
-        priority = qos_char->dynamic.qos_priority_level;
-        fiveqi = qos_char->dynamic.fiveqi > 0 ? qos_char->dynamic.fiveqi : 0;
-      }
-      if (qos_char->qos_type == non_dynamic) {
-        LOG_D(NR_MAC, "Qos Priority level is considered from the standarsdized 5QI to QoS mapping table\n");
-        for (int id = 0; id < 26; id++) {
-          if (qos_fiveqi[id] == fiveqi)
-            priority = qos_priority[id];
-        }
-      }
-      sched_ctrl->qos_config[drb_id - 1][q].fiveQI = fiveqi;
-      sched_ctrl->qos_config[drb_id - 1][q].priority = priority;
-      LOG_D(NR_MAC,
-            "In %s: drb_id %ld: 5QI %lu priority %lu\n",
-            __func__,
-            drb_id,
-            sched_ctrl->qos_config[drb_id - 1][q].fiveQI,
-            sched_ctrl->qos_config[drb_id - 1][q].priority);
+    qos_characteristics_t *qos_char = &drb_p->drb_info.drb_qos.qos_characteristics;
+    if (qos_char->qos_type == non_dynamic) {
+      long fiveqi = qos_char->non_dynamic.fiveqi;
+      sched_ctrl->dl_lc_ids_priorities[lc_id] = get_flow_priority(fiveqi);
+    } else {
+      sched_ctrl->dl_lc_ids_priorities[lc_id] = qos_char->dynamic.qos_priority_level;
     }
   }
 }
@@ -351,11 +334,11 @@ void ue_context_setup_request(const f1ap_ue_context_setup_t *req)
   AssertFatal(enc_rval.encoded > 0, "Could not encode CellGroup, failed element %s\n", enc_rval.failed_type->name);
   resp.du_to_cu_rrc_information->cellGroupConfig_length = (enc_rval.encoded + 7) >> 3;
 
+  /* Fill the QoS config in MAC for each active DRB */
+  set_LCpriority(req, &UE->UE_sched_ctrl);
+
   /* TODO: need to apply after UE context reconfiguration confirmed? */
   nr_mac_prepare_cellgroup_update(mac, UE, new_CellGroup);
-
-  /* Fill the QoS config in MAC for each active DRB */
-  set_QoSConfig(req, &UE->UE_sched_ctrl);
 
   /* Set NSSAI config in MAC for each active DRB */
   set_nssaiConfig(req->drbs_to_be_setup_length, req->drbs_to_be_setup, &UE->UE_sched_ctrl);
@@ -455,10 +438,10 @@ void ue_context_modification_request(const f1ap_ue_context_modif_req_t *req)
     AssertFatal(enc_rval.encoded > 0, "Could not encode CellGroup, failed element %s\n", enc_rval.failed_type->name);
     resp.du_to_cu_rrc_information->cellGroupConfig_length = (enc_rval.encoded + 7) >> 3;
 
-    nr_mac_prepare_cellgroup_update(mac, UE, new_CellGroup);
-
     /* Fill the QoS config in MAC for each active DRB */
-    set_QoSConfig(req, &UE->UE_sched_ctrl);
+    set_LCpriority(req, &UE->UE_sched_ctrl);
+
+    nr_mac_prepare_cellgroup_update(mac, UE, new_CellGroup);
 
     /* Set NSSAI config in MAC for each active DRB */
     set_nssaiConfig(req->drbs_to_be_setup_length, req->drbs_to_be_setup, &UE->UE_sched_ctrl);
