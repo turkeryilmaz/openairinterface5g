@@ -547,14 +547,20 @@ void nr_mac_config_scc(gNB_MAC_INST *nrmac, NR_ServingCellConfigCommon_t *scc, c
 void nr_mac_configure_sib1(gNB_MAC_INST *nrmac, const f1ap_plmn_t *plmn, uint64_t cellID, int tac, int CC_id)
 {
   AssertFatal(get_softmodem_params()->sa > 0, "error: SIB1 only applicable for SA\n");
-
+  NR_SCHED_LOCK(&nrmac->sched_lock);
   NR_COMMON_channels_t *cc = &nrmac->common_channels[CC_id];
   NR_ServingCellConfigCommon_t *scc = cc->ServingCellConfigCommon;
   NR_BCCH_DL_SCH_Message_t *sib1 = get_SIB1_NR(scc, plmn, cellID, tac);
+  
+  if(cc->sib1){
+    free_SIB1_NR(cc->sib1);
+  }
   cc->sib1 = sib1;
   cc->sib1_bcch_length = encode_SIB1_NR(sib1, cc->sib1_bcch_pdu, sizeof(cc->sib1_bcch_pdu));
+  NR_SCHED_UNLOCK(&nrmac->sched_lock);
   AssertFatal(cc->sib1_bcch_length > 0, "could not encode SIB1\n");
 }
+
 
 bool nr_mac_add_test_ue(gNB_MAC_INST *nrmac, uint32_t rnti, NR_CellGroupConfig_t *CellGroup)
 {

@@ -204,7 +204,50 @@ static void mac_rrc_init(gNB_MAC_INST *mac, ngran_node_t node_type)
       break;
   }
 }
+void nr_mac_update_config(void){
 
+  //get_new_MIB_NR
+  for(int CC_id=1;CC_id<MAX_NUM_CCs;CC_id++){
+    
+    NR_SCHED_LOCK(&(RC.nrmac[0]->sched_lock));
+    if(RC.nrmac[0]->common_channels[CC_id].mib){
+      free_MIB_NR(RC.nrmac[0]->common_channels[CC_id].mib);
+    }
+    RC.nrmac[0]->common_channels[CC_id].mib = get_new_MIB_NR(RC.nrmac[0]->common_channels[CC_id].ServingCellConfigCommon);
+    NR_SCHED_UNLOCK(&(RC.nrmac[0]->sched_lock));
+
+    f1ap_plmn_t plmn;
+    plmn.mcc = RC.nrrrc[0]->configuration[CC_id].mcc;
+    plmn.mnc = RC.nrrrc[0]->configuration[CC_id].mnc;
+    plmn.mnc_digit_length = RC.nrrrc[0]->configuration[CC_id].mnc_digit_length;
+    nr_mac_configure_sib1(RC.nrmac[0], &plmn, RC.nrrrc[0]->configuration[CC_id].cell_identity, RC.nrrrc[0]->configuration[CC_id].tac, CC_id);
+ 
+    //W38 note ttcn does not config below part, so only a copy from local param list, //TODO W38: to double check 
+#if 0    
+    nr_mac_config_t config;
+    config.pdsch_AntennaPorts.N1 = RC.nrrrc[0]->configuration[CC_id].pdsch_AntennaPorts.N1;
+    config.pdsch_AntennaPorts.N2 = RC.nrrrc[0]->configuration[CC_id].pdsch_AntennaPorts.N2;
+    config.pdsch_AntennaPorts.XP =  RC.nrrrc[0]->configuration[CC_id].pdsch_AntennaPorts.XP;
+    config.pusch_AntennaPorts =  RC.nrrrc[0]->configuration[CC_id].pusch_AntennaPorts;
+    config.minRXTXTIME =  RC.nrrrc[0]->configuration[CC_id].minRXTXTIME;
+    config.sib1_tda = RC.nrrrc[0]->configuration[CC_id].sib1_tda;
+    config.do_CSIRS = RC.nrrrc[0]->configuration[CC_id].do_CSIRS; 
+    config.do_SRS = RC.nrrrc[0]->configuration[CC_id].do_SRS;
+    config.force_256qam_off = RC.nrrrc[0]->configuration[CC_id].force_256qam_off;
+
+    nr_mac_config_scc(RC.nrmac[0], RC.nrmac[0]->common_channels[CC_id].ServingCellConfigCommon, &config, CC_id);
+#else
+    nr_mac_config_scc(RC.nrmac[0], RC.nrmac[0]->common_channels[CC_id].ServingCellConfigCommon, &RC.nrmac[0]->radio_config[CC_id], CC_id);
+#endif  
+ 
+  }
+
+  
+  
+ 
+  
+  
+}
 void mac_top_init_gNB(ngran_node_t node_type,
                       NR_ServingCellConfigCommon_t *scc,
                       NR_ServingCellConfig_t *scd,

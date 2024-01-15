@@ -188,6 +188,11 @@ pthread_cond_t cell_config_done_cond;
 pthread_mutex_t cell_config_done_mutex;
 int cell_config_done=-1;
 
+pthread_cond_t cell_config_5G_done_cond;
+pthread_mutex_t cell_config_5G_done_mutex;
+extern int cell_config_5G_done;
+static  void wait_cell_config_5G(char *thread_name);
+
 /* hack: pdcp_run() is required by 4G scheduler which is compiled into
  * nr-softmodem because of linker issues */
 void pdcp_run(const protocol_ctxt_t *const ctxt_pP)
@@ -332,6 +337,16 @@ static int create_gNB_tasks(ngran_node_t node_type)
     RC.nrrrc = calloc(1, sizeof(*RC.nrrrc));
     RC.nrrrc[0] = calloc(1,sizeof(gNB_RRC_INST));
     RCconfig_NRRRC(RC.nrrrc[0]);
+
+    if (RC.ss.mode == SS_SOFTMODEM)  //W38 note: need to wait configuration from ttcn. moved here
+    {
+      /** wait for signal */
+      wait_cell_config_5G("TASK_SYS_GNB");
+      LOG_I(GNB_APP, "fxn:%s: Received Cell Config 5G SA\n", __FUNCTION__);
+      // msg_p = itti_alloc_new_message (TASK_GNB_APP, 0, NRRRC_CONFIGURATION_REQ);
+      // LOG_I(GNB_APP,"Sending configuration message to NR_RRC task\n");
+      // itti_send_msg_to_task (TASK_RRC_GNB, GNB_MODULE_ID_TO_INSTANCE(gnb_id), msg_p);
+    }
   }
 
   if (RC.nb_nr_inst > 0 &&
@@ -901,4 +916,16 @@ int main( int argc, char **argv ) {
   logClean();
   printf("Bye.\n");
   return 0;
+}
+
+static  void wait_cell_config_5G(char *thread_name) {
+             
+  LOG_A(GNB_APP, "waiting for [SYS 5G] CELL CONFIG Indication (%s)\n",thread_name);
+  pthread_mutex_lock( &cell_config_5G_done_mutex );
+      
+  while ( cell_config_5G_done < 0 )
+    pthread_cond_wait( &cell_config_5G_done_cond, &cell_config_5G_done_mutex );
+  
+  pthread_mutex_unlock(&cell_config_5G_done_mutex );
+  LOG_A( GNB_APP,"[SYS 5G]: got cell config (%s)\n", thread_name);
 }

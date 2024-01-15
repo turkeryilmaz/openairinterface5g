@@ -690,7 +690,6 @@ typedef struct NRRrcConfigurationReq_s {
 
 //TODO: W38 below are moved to MAC, better to define a struct to keep them
   NR_ServingCellConfigCommon_t *scc;
-  NR_ServingCellConfig_t  *scd;
   int                     ssb_SubcarrierOffset;
   int                     sib1_tda;
   rrc_pdsch_AntennaPorts_t pdsch_AntennaPorts;

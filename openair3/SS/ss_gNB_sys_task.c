@@ -1015,7 +1015,7 @@ bool ss_task_sys_nr_handle_cellConfig5G(struct NR_CellConfigRequest_Type *p_req,
               RC.nrrrc[gnbId]->carrier.siblock1
               RC.nrrrc[gnbId]->carrier.systemInformation
      */
-    if(p_req->v.AddOrReconfigure.BcchConfig.d)
+    if(p_req->v.AddOrReconfigure.BcchConfig.d)  //W38 note: we are decoding mib/sib from ttcn and configure cell configuration to gnb cells, and then mac regenerate it 
     {
       if (p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.MIB.d == true )
       {
@@ -1192,7 +1192,7 @@ bool ss_task_sys_nr_handle_cellConfig5G(struct NR_CellConfigRequest_Type *p_req,
       *RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB =
         p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.v.R15.absoluteFrequencySSB.v;
       LOG_A(GNB_APP, "fxn:%s DL absoluteFrequencySSB:%ld\n", __FUNCTION__, 
-          *RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB);
+          *RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB);  //W38 note: we have only one copy of SCC, fortunately, ttcn does not update its item after cell activated.
     }
 
     /* Populating frequency band list */
@@ -1440,7 +1440,7 @@ bool ss_task_sys_nr_handle_cellConfigRadioBearer(struct NR_SYSTEM_CTRL_REQ *req)
                   NR_QFI_t * qfi = CALLOC(1,sizeof(NR_QFI_t));
                   *qfi = BearerList->v[i].Config.v.AddOrReconfigure.Sdap.v.v.Config.v.SdapConfig.MappedQoS_Flows.v.v[j];
                   ASN_SEQUENCE_ADD(&sdap->mappedQoS_FlowsToAdd->list,qfi);
-                }
+                } 
               }
               rbConfig->Sdap = sdap;
             }else if(BearerList->v[i].Config.v.AddOrReconfigure.Sdap.v.v.Config.d == SdapConfigInfo_Type_TransparentMode){

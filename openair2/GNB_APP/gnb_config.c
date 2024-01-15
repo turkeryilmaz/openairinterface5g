@@ -975,7 +975,7 @@ static NR_ServingCellConfigCommon_t *get_scc_config(int minRXTXTIME)
                        *scc->ssbSubcarrierSpacing);
     fix_scc(scc, ssb_bitmap);
   }
-  nr_rrc_config_ul_tda(scc, minRXTXTIME);
+  nr_rrc_config_ul_tda(scc, minRXTXTIME); //W38 note: need to update when receive new params from ttcn
   return scc;
 }
 
@@ -1157,6 +1157,60 @@ void RCconfig_nr_ssparam(void) {
                   RC.ss.mode, RC.ss.hostIp,RC.ss.Sysport,RC.ss.Srbport,RC.ss.Vngport);
 }
 
+void sync_inited_params_for_ss(void)
+{
+ 
+    for (uint8_t cc=0; cc< MAX_NUM_CCs; cc++){
+       
+      //below parts already inited during RCconfig_RRC init 
+      //RC.nrrrc[0]->configuration[cc].cell_identity = gnb_id;
+      //RC.nrrrc[0]->configuration[cc].tac = *GNBParamList.paramarray[i][GNB_TRACKING_AREA_CODE_IDX].uptr;
+      // nrrrc_config->num_plmn = PLMNParamList.numelt;
+      // for (int l = 0; l < PLMNParamList.numelt; ++l) {
+      // nrrrc_config->mcc[l]               = *PLMNParamList.paramarray[l][GNB_MOBILE_COUNTRY_CODE_IDX].uptr;
+      // nrrrc_config->mnc[l]               = *PLMNParamList.paramarray[l][GNB_MOBILE_NETWORK_CODE_IDX].uptr;
+      // nrrrc_config->mnc_digit_length[l]  = *PLMNParamList.paramarray[l][GNB_MNC_DIGIT_LENGTH].u8ptr;
+      // } 
+      // RC.nrrrc[0]->configuration[cc].enable_sdap = *GNBParamList.paramarray[i][GNB_ENABLE_SDAP_IDX].iptr;
+      // LOG_I(GNB_APP, "SDAP layer is %s\n", RC.nrrrc[0]->.configuration[cc].enable_sdap ? "enabled" : "disabled");
+      // RC.nrrrc[0]->configuration[cc].drbs = *GNBParamList.paramarray[i][GNB_DRBS].iptr;
+      // LOG_I(GNB_APP, "Data Radio Bearer count %d\n", RC.nrrrc[0]->.configuration[cc].drbs);
+
+
+      // sync radio_config
+      LOG_I(GNB_APP, "pdsch_AntennaPorts N1 %d\n",RC.nrmac[0]->radio_config[cc].pdsch_AntennaPorts.N1);
+      RC.nrrrc[0]->configuration[cc].pdsch_AntennaPorts.N1 =  RC.nrmac[0]->radio_config[cc].pdsch_AntennaPorts.N1;
+      LOG_I(GNB_APP, "pdsch_AntennaPorts N2 %d\n", RC.nrmac[0]->radio_config[cc].pdsch_AntennaPorts.N2 );
+      RC.nrrrc[0]->configuration[cc].pdsch_AntennaPorts.N2 = RC.nrmac[0]->radio_config[cc].pdsch_AntennaPorts.N2;
+      LOG_I(GNB_APP, "pdsch_AntennaPorts XP %d\n", RC.nrmac[0]->radio_config[cc].pdsch_AntennaPorts.XP);
+      RC.nrrrc[0]->configuration[cc].pdsch_AntennaPorts.XP = RC.nrmac[0]->radio_config[cc].pdsch_AntennaPorts.XP;
+      LOG_I(GNB_APP, "pusch_AntennaPorts %d\n", RC.nrmac[0]->radio_config[cc].pusch_AntennaPorts);
+      RC.nrrrc[0]->configuration[cc].pusch_AntennaPorts = RC.nrmac[0]->radio_config[cc].pusch_AntennaPorts;
+      LOG_I(GNB_APP, "minTXRXTIME %d\n", RC.nrmac[0]->radio_config[cc].minRXTXTIME);
+      RC.nrrrc[0]->configuration[cc].minRXTXTIME = RC.nrmac[0]->radio_config[cc].minRXTXTIME;
+      LOG_I(GNB_APP, "Do CSI-RS %d\n", RC.nrmac[0]->radio_config[cc].do_CSIRS);
+      RC.nrrrc[0]->configuration[cc].do_CSIRS = RC.nrmac[0]->radio_config[cc].do_CSIRS;
+      LOG_I(GNB_APP, "Do SRS %d\n", RC.nrmac[0]->radio_config[cc].force_256qam_off);
+      RC.nrrrc[0]->configuration[cc].do_SRS = RC.nrmac[0]->radio_config[cc].do_SRS;
+      RC.nrrrc[0]->configuration[cc].force_256qam_off = RC.nrmac[0]->radio_config[cc].force_256qam_off;
+      LOG_I(GNB_APP, "256 QAM: %s\n", RC.nrrrc[0]->configuration[cc].force_256qam_off ? "force off" : "may be on");
+      LOG_I(GNB_APP, "SIB1 TDA %d\n", RC.nrmac[0]->radio_config[cc].sib1_tda);
+      RC.nrrrc[0]->configuration[cc].sib1_tda =  RC.nrmac[0]->radio_config[cc].sib1_tda;
+  
+      //W38 note: actually we have only one copy of scc, we expect NR_SystemRequest_Type_Cell from ttcn config scc only during init, so no read/write issue
+      RC.nrrrc[0]->configuration[cc].scc = RC.nrmac[0]->common_channels[cc].ServingCellConfigCommon; 
+                                                                      
+
+
+      RC.nrrrc[0]->configuration[cc].q_RxLevMinSIB1 = -55;
+      RC.nrrrc[0]->configuration[cc].q_RxLevMinSIB2 = -55;
+      RC.nrrrc[0]->configuration[cc].cellBarred = 1;  
+
+    }
+
+
+}
+
 void RCconfig_nr_macrlc() {
   int j = 0;
   uint16_t prbbl[275] = {0};
@@ -1229,6 +1283,15 @@ void RCconfig_nr_macrlc() {
     RC.nb_nr_macrlc_inst = MacRLC_ParamList.numelt;
     ngran_node_t node_type = get_node_type();
     mac_top_init_gNB(node_type, scc, scd, &config);
+    
+    for(int CC_id=1;CC_id<MAX_NUM_CCs;CC_id++){
+      scc = get_scc_config(config.minRXTXTIME);
+      //xer_fprint(stdout, &asn_DEF_NR_ServingCellConfigCommon, scc);
+      scd = get_scd_config();
+      mac_init_more_cell(node_type, scc, scd, &config, CC_id);
+    }
+
+    
 
     
     RC.nb_nr_mac_CC = (int *)malloc(RC.nb_nr_macrlc_inst * sizeof(int));
@@ -1314,9 +1377,12 @@ void RCconfig_nr_macrlc() {
     f1ap_served_cell_info_t info;
     read_du_cell_info(&id, &name, &info, 1);
 
-    if (get_softmodem_params()->sa)
-      nr_mac_configure_sib1(RC.nrmac[0], &info.plmn, info.nr_cellid, *info.tac, 0);
-
+    if (get_softmodem_params()->sa){
+      for(int CC_id=1;CC_id<MAX_NUM_CCs;CC_id++){
+        nr_mac_configure_sib1(RC.nrmac[0], &info.plmn, info.nr_cellid, *info.tac, CC_id);
+      }
+    }
+    sync_inited_params_for_ss();
     // read F1 Setup information from config and generated MIB/SIB1
     // and store it at MAC for sending later
     NR_BCCH_BCH_Message_t *mib = RC.nrmac[0]->common_channels[0].mib;
@@ -1332,6 +1398,7 @@ void RCconfig_nr_macrlc() {
     // AssertFatal (0,"No " CONFIG_STRING_MACRLC_LIST " configuration found");
   }
 }
+
 
 void config_security(gNB_RRC_INST *rrc)
 {
@@ -1704,7 +1771,23 @@ void RCconfig_NRRRC(gNB_RRC_INST *rrc)
 
         for (uint8_t cc=0; cc< MAX_NUM_CCs; cc++){
           nrrrc_config = &rrc->configuration[cc];
-          nrrrc_config->cell_identity     = gnb_id;
+          if (RC.ss.mode == SS_GNB){
+            nrrrc_config->cell_identity     = gnb_id; //TODO W38: 
+          }else{
+            nrrrc_config->cell_identity     = (int)*RC.nrmac[i]->common_channels[cc].ServingCellConfigCommon->physCellId;
+          }
+/* // ///TODO W38 done
+ {
+          if (RC.ss.mode == SS_GNB)
+          {
+            NRRRC_CONFIGURATION_REQ(msg_p).configuration[cc].cell_identity = gnb_id;
+          }
+          else
+          {
+            NRRRC_CONFIGURATION_REQ(msg_p).configuration[cc].cell_identity = (int)*scc[cc]->physCellId;
+          }
+          NRRRC_CONFIGURATION_REQ(msg_p).configuration[cc].tac = *GNBParamList.paramarray[i][GNB_TRACKING_AREA_CODE_IDX].uptr;
+*/
           nrrrc_config->tac               = *GNBParamList.paramarray[i][GNB_TRACKING_AREA_CODE_IDX].uptr;
           AssertFatal(!GNBParamList.paramarray[i][GNB_MOBILE_COUNTRY_CODE_IDX_OLD].strptr
                       && !GNBParamList.paramarray[i][GNB_MOBILE_NETWORK_CODE_IDX_OLD].strptr,

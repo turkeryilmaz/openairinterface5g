@@ -58,14 +58,13 @@
 extern unsigned char NB_gNB_INST;
 
 extern RAN_CONTEXT_t RC;
-extern int cell_config_5G_done;
+
 
 #define GNB_REGISTER_RETRY_DELAY 10
 
 
-pthread_cond_t cell_config_5G_done_cond;
-pthread_mutex_t cell_config_5G_done_mutex;
-static  void wait_cell_config_5G(char *thread_name);
+
+
 
 /*------------------------------------------------------------------------------*/
 // TODO: this function is not needed, need to check if logic broken: sync between TTCN and gnb during init here need to implment at other place
@@ -312,14 +311,5 @@ void *gNB_app_task(void *args_p)
   return NULL;
 }
 
-static  void wait_cell_config_5G(char *thread_name) {
-  LOG_A(GNB_APP, "waiting for [SYS 5G] CELL CONFIG Indication (%s)\n",thread_name);
-  pthread_mutex_lock( &cell_config_5G_done_mutex );
-      
-  while ( cell_config_5G_done < 0 )
-    pthread_cond_wait( &cell_config_5G_done_cond, &cell_config_5G_done_mutex );
-  
-  pthread_mutex_unlock(&cell_config_5G_done_mutex );
-  LOG_A( GNB_APP,"[SYS 5G]: got cell config (%s)\n", thread_name);
-}
+
 

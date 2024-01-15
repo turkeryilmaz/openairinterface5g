@@ -48,7 +48,7 @@ void mac_init_more_cell(ngran_node_t node_type,
                       NR_ServingCellConfig_t *scd,
                       const nr_mac_config_t *config, int CC_id); //TODO W38: to call this function in gnb_config.c
 
-
+void nr_mac_update_config(void);
 
 void nr_mac_send_f1_setup_req(void);
 

@@ -409,6 +409,8 @@ static void init_NR_SI(gNB_RRC_INST *rrc)
     }
   }
 
+  
+
   LOG_I(NR_RRC,"Done init_NR_SI\n");
     // /* set flag to indicate that cell information is configured. This is required //TODO W38: to check
   //  * in DU to trigger F1AP_SETUP procedure */
@@ -462,6 +464,7 @@ void openair_rrc_gNB_configuration(gNB_RRC_INST *rrc, NRRrcConfigurationReqList 
   AssertFatal(rrc != NULL, "RC.nrrrc not initialized!");
   AssertFatal(NUMBER_OF_UE_MAX < (module_id_t)0xFFFFFFFFFFFFFFFF, " variable overflow");
   AssertFatal(configuration!=NULL,"configuration input is null\n");
+  static int init_config_flag = 0;  //W38: this is flag is used to avoid memory leakage? but was not working as expected?
   rrc->module_id = 0;
   rrc_gNB_CU_DU_init(rrc);
   uid_linear_allocator_init(&rrc->uid_allocator);
@@ -472,6 +475,22 @@ void openair_rrc_gNB_configuration(gNB_RRC_INST *rrc, NRRrcConfigurationReqList 
   }
   // System Information INIT
   init_NR_SI(rrc); //TODO W38 init_NR_SI need to handle all cells done
+
+
+  for(int CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
+      nr_rrc_config_ul_tda(RC.nrmac[0]->common_channels[CC_id].ServingCellConfigCommon,RC.nrmac[0]->radio_config[CC_id].minRXTXTIME); //TODO W38: calling the function again, cauing memory leakage
+    }
+  nr_mac_update_config();
+  for(int CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
+    rrc_mac_config_dedicate_scheduling(rrc->module_id, rrc->carrier[CC_id].dcchDtchConfig);
+  }
+  if (init_config_flag){
+    for(int CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++){
+      rrc->carrier[CC_id].sizeof_paging = 0;
+      rrc->carrier[CC_id].paging = (uint8_t *) calloc(1, 256);
+      init_config_flag = 1;
+    }
+  }
   return;
 } // END openair_rrc_gNB_configuration
 
