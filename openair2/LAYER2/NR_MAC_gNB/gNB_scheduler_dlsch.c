@@ -1296,8 +1296,8 @@ void nr_schedule_ue_spec(module_id_t module_id,
             dlsch_total_bytes += len;
             lcid_bytes += len;
             sdus += 1;
-            LATSEQ_P("D mac.hdr--mac.dci", "len%u::RMbuf%u.fm%u.sl%u.hqpid%u.mcs%u.tbsize%u.rnti%u", len, buf-len, frame, slot, current_harq_pid, sched_pdsch->mcs, sched_pdsch->tb_size, rnti);
-            LATSEQ_P("D mac.hdr--mac.retx", "len%u::RMbuf%u.hqpid%u.mcs%u.tbsize%u.rnti%u", len, buf-len, current_harq_pid, sched_pdsch->mcs, sched_pdsch->tb_size,rnti);
+            LATSEQ_P("D mac.hdr--mac.dci", "len%u::RMbuf%u.fm%u.sl%u.hqpid%u.mcs%u.TBS%u.rnti%u", len, buf-len, frame, slot, current_harq_pid, sched_pdsch->mcs, sched_pdsch->tb_size, rnti);
+            LATSEQ_P("D mac.hdr--mac.retx", "len%u::RMbuf%u.hqpid%u.mcs%u.TBS%u.rnti%u", len, buf-len, current_harq_pid, sched_pdsch->mcs, sched_pdsch->tb_size,rnti);
           }
 
           UE->mac_stats.dl.lc_bytes[lcid] += lcid_bytes;

@@ -136,7 +136,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx,
                           dlsch_interleaving_stats,
                           dlsch_segmentation_stats) == -1)
       return;
-    LATSEQ_P("D phy.ldcp--phy.scrambled", "len%u::fm%u.sl%u.dlschid%u.rnti%u", 1, frame, slot, dlsch_id, rel15->rnti);
+    LATSEQ_P("D phy.ldpc--phy.scrambled", "len%u::fm%u.sl%u.dlschid%u.rnti%u", 1, frame, slot, dlsch_id, rel15->rnti);
     stop_meas(dlsch_encoding_stats);
 #ifdef DEBUG_DLSCH
     printf("PDSCH encoding:\nPayload:\n");
