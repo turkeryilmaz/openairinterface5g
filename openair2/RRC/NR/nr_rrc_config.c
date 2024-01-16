@@ -64,8 +64,8 @@ static NR_SearchSpace_t *rrc_searchspace_config(bool is_common, int searchspacei
     ss->nrofCandidates->aggregationLevel4 = NR_SearchSpace__nrofCandidates__aggregationLevel4_n1;
   }
   else {
-    ss->nrofCandidates->aggregationLevel2 = NR_SearchSpace__nrofCandidates__aggregationLevel2_n2;
-    ss->nrofCandidates->aggregationLevel4 = NR_SearchSpace__nrofCandidates__aggregationLevel4_n0;
+    ss->nrofCandidates->aggregationLevel2 = NR_SearchSpace__nrofCandidates__aggregationLevel2_n0;
+    ss->nrofCandidates->aggregationLevel4 = NR_SearchSpace__nrofCandidates__aggregationLevel4_n2;
   }
   ss->nrofCandidates->aggregationLevel8 = NR_SearchSpace__nrofCandidates__aggregationLevel8_n0;
   ss->nrofCandidates->aggregationLevel16 = NR_SearchSpace__nrofCandidates__aggregationLevel16_n0;
@@ -806,8 +806,8 @@ static void config_pucch_resset0(NR_PUCCH_Config_t *pucch_Config, int uid, int c
   pucchres0->format.present = NR_PUCCH_Resource__format_PR_format0;
   pucchres0->format.choice.format0 = calloc(1,sizeof(*pucchres0->format.choice.format0));
   pucchres0->format.choice.format0->initialCyclicShift = 0;
-  pucchres0->format.choice.format0->nrofSymbols = 1;
-  pucchres0->format.choice.format0->startingSymbolIndex = 13;
+  pucchres0->format.choice.format0->nrofSymbols = 2;
+  pucchres0->format.choice.format0->startingSymbolIndex = 12;
   asn1cSeqAdd(&pucch_Config->resourceToAddModList->list,pucchres0);
 
   asn1cSeqAdd(&pucch_Config->resourceSetToAddModList->list,pucchresset);
@@ -1145,9 +1145,9 @@ static struct NR_SetupRelease_PDSCH_Config *config_pdsch(uint64_t ssb_bitmap, in
   dmrs_DownlinkForPDSCH_MappingTypeA->maxLength = NULL;
   dmrs_DownlinkForPDSCH_MappingTypeA->scramblingID0 = NULL;
   dmrs_DownlinkForPDSCH_MappingTypeA->scramblingID1 = NULL;
-  dmrs_DownlinkForPDSCH_MappingTypeA->dmrs_AdditionalPosition = calloc(1, sizeof(*dmrs_DownlinkForPDSCH_MappingTypeA->dmrs_AdditionalPosition));
+  dmrs_DownlinkForPDSCH_MappingTypeA->dmrs_AdditionalPosition = NULL; //calloc(1, sizeof(*dmrs_DownlinkForPDSCH_MappingTypeA->dmrs_AdditionalPosition));
   // TODO possible improvement is to select based on some input additional position
-  *dmrs_DownlinkForPDSCH_MappingTypeA->dmrs_AdditionalPosition = NR_DMRS_DownlinkConfig__dmrs_AdditionalPosition_pos1;
+  //*dmrs_DownlinkForPDSCH_MappingTypeA->dmrs_AdditionalPosition = NR_DMRS_DownlinkConfig__dmrs_AdditionalPosition_pos1;
 
   pdsch_Config->dataScramblingIdentityPDSCH = NULL;
   pdsch_Config->resourceAllocation = NR_PDSCH_Config__resourceAllocation_resourceAllocationType1;

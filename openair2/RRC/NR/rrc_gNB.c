@@ -467,6 +467,7 @@ void nr_HO_trigger(const protocol_ctxt_t *ctxt_p, rrc_gNB_ue_context_t *ue_conte
   itti_send_msg_to_task(TASK_CU_F1, RC.nrrrc[instance]->f1_instance, message_p);
 }
 
+int ho_count = 0;
 void *timer_update_thread(void *param)
 {
   while (!oai_exit) {
@@ -484,12 +485,15 @@ void *timer_update_thread(void *param)
             // Decrement until it reaches 0 and then trigger HO
             rrc->location_ho_timer--;
 
+            LOG_W(NR_RRC, "[DU %i][HO #%i] LOCATION-BASED TRIGGER TIMER = %2i\n", mod_id, ho_count, rrc->location_ho_timer);
+
             if (rrc->location_ho_timer == 0) {
               int mod_id_t = (mod_id + 1) % RC.nb_nr_inst;
               gNB_RRC_INST *rrc_t = RC.nrrrc[mod_id_t];
               if (rrc_t && rrc_t->f1_instance >= 0) {
                 rrc->location_ho_rnti = -1;
                 nr_HO_trigger(&ctxt, ue_context_p, rrc_t->carrier.physCellId);
+                ho_count++;
               } else {
                 LOG_E(NR_RRC, "Target DU is not active. Handover not started.\n");
                 rrc->location_ho_timer = rrc->configuration.location_ho_trigger;

@@ -821,6 +821,14 @@ void *UE_thread(void *arg)
   UE->is_synchronized = 0;
   AssertFatal(UE->rfdevice.trx_start_func(&UE->rfdevice) == 0, "Could not start the device\n");
 
+  if (!IS_SOFTMODEM_RFSIM) {
+    if (UE->rfdevice.openair0_cfg->sample_rate == 7680000) {
+      UE->rfdevice.openair0_cfg->tx_sample_advance = 112;
+    } else if (UE->rfdevice.openair0_cfg->sample_rate == 15360000) {
+      UE->rfdevice.openair0_cfg->tx_sample_advance = 128;
+    }
+  }
+
   notifiedFIFO_t nf;
   initNotifiedFIFO(&nf);
 
@@ -869,8 +877,6 @@ void *UE_thread(void *arg)
             UE->rx_offset_comp = 0;
             UE->timing_advance += ta_shift;
           }
-          // Reset target_Nid_cell for next handover
-          UE->target_Nid_cell = -1;
           // Still unknown why need to reset timing_advance in RFsim to avoid:
           // Received RAR preamble (38) doesn't match the intended RAPID (37)
           UE->timing_advance = 0;
