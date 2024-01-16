@@ -258,7 +258,7 @@ void mac_top_init_gNB(ngran_node_t node_type,
 
   AssertFatal(RC.nb_nr_macrlc_inst == 1, "what is the point of calling %s() if you don't need exactly one MAC?\n", __func__);
 
-  LOG_I(MAC, "[MAIN] Init function start:nb_nr_macrlc_inst=%d\n",RC.nb_nr_macrlc_inst);
+  LOG_I(MAC, "[MAIN] Init function start:nb_nr_macrlc_inst=%d %s\n",RC.nb_nr_macrlc_inst, __FUNCTION__);
 
   if (RC.nb_nr_macrlc_inst > 0) {
 
@@ -373,7 +373,7 @@ void mac_init_more_cell(ngran_node_t node_type,
 
   AssertFatal(RC.nb_nr_macrlc_inst == 1, "what is the point of calling %s() if you don't need exactly one MAC?\n", __func__);
 
-  LOG_I(MAC, "[MAIN] Init function start:nb_nr_macrlc_inst=%d\n",RC.nb_nr_macrlc_inst);
+  LOG_I(MAC, "[MAIN] Init function start:nb_nr_macrlc_inst=%d %s\n",RC.nb_nr_macrlc_inst, __FUNCTION__);
 
   if (RC.nb_nr_macrlc_inst > 0) {
 

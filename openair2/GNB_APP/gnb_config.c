@@ -1159,7 +1159,7 @@ void RCconfig_nr_ssparam(void) {
 
 void sync_inited_params_for_ss(void)
 {
- 
+    LOG_D(GNB_APP," sync initialized cell configuration(from local parameters) to TTCN rrc configuration\n");
     for (uint8_t cc=0; cc< MAX_NUM_CCs; cc++){
        
       //below parts already inited during RCconfig_RRC init 
@@ -1378,11 +1378,11 @@ void RCconfig_nr_macrlc() {
     read_du_cell_info(&id, &name, &info, 1);
 
     if (get_softmodem_params()->sa){
-      for(int CC_id=1;CC_id<MAX_NUM_CCs;CC_id++){
+      for(int CC_id=0;CC_id<MAX_NUM_CCs;CC_id++){
         nr_mac_configure_sib1(RC.nrmac[0], &info.plmn, info.nr_cellid, *info.tac, CC_id);
       }
     }
-    sync_inited_params_for_ss();
+    
     // read F1 Setup information from config and generated MIB/SIB1
     // and store it at MAC for sending later
     NR_BCCH_BCH_Message_t *mib = RC.nrmac[0]->common_channels[0].mib;
@@ -1811,6 +1811,7 @@ void RCconfig_NRRRC(gNB_RRC_INST *rrc)
           nrrrc_config->mcc[l]               = *PLMNParamList.paramarray[l][GNB_MOBILE_COUNTRY_CODE_IDX].uptr;
           nrrrc_config->mnc[l]               = *PLMNParamList.paramarray[l][GNB_MOBILE_NETWORK_CODE_IDX].uptr;
           nrrrc_config->mnc_digit_length[l]  = *PLMNParamList.paramarray[l][GNB_MNC_DIGIT_LENGTH].u8ptr;
+          nrrrc_config->q_RxLevMinSIB2 = -55;
           AssertFatal((nrrrc_config->mnc_digit_length[l] == 2) ||
             (nrrrc_config->mnc_digit_length[l] == 3),"BAD MNC DIGIT LENGTH %d",
             nrrrc_config->mnc_digit_length[l]);
@@ -1823,7 +1824,7 @@ void RCconfig_NRRRC(gNB_RRC_INST *rrc)
 
       }//
     }//End for (k=0; k <num_gnbs ; k++)
-   // openair_rrc_gNB_configuration(rrc, &nrrrc_config); //TODO W38: configuration init is splitted to two parts
+    openair_rrc_gNB_configuration(rrc, &nrrrc_config); //TODO W38: this 1st call is to initialize cu_du parts.
   }//End if (num_gnbs>0)
 
   config_security(rrc);

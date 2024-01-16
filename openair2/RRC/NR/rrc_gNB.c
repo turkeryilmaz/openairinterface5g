@@ -464,15 +464,18 @@ void openair_rrc_gNB_configuration(gNB_RRC_INST *rrc, NRRrcConfigurationReqList 
   AssertFatal(rrc != NULL, "RC.nrrrc not initialized!");
   AssertFatal(NUMBER_OF_UE_MAX < (module_id_t)0xFFFFFFFFFFFFFFFF, " variable overflow");
   AssertFatal(configuration!=NULL,"configuration input is null\n");
-  static int init_config_flag = 0;  //W38: this is flag is used to avoid memory leakage? but was not working as expected?
+  static int init_config_flag = 1;  //W38: this is flag is used to avoid memory leakage? but was not working as expected?
   rrc->module_id = 0;
-  rrc_gNB_CU_DU_init(rrc);
-  uid_linear_allocator_init(&rrc->uid_allocator);
-  RB_INIT(&rrc->rrc_ue_head);
-  for(int CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
-    rrc->configuration[CC_id] = configuration->configuration[CC_id];
-    
+  
+  if (init_config_flag){
+    rrc_gNB_CU_DU_init(rrc);
+    uid_linear_allocator_init(&rrc->uid_allocator);
   }
+  RB_INIT(&rrc->rrc_ue_head);
+  // for(int CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
+  //   rrc->configuration[CC_id] = configuration->configuration[CC_id];
+    
+  // }
   // System Information INIT
   init_NR_SI(rrc); //TODO W38 init_NR_SI need to handle all cells done
 
@@ -488,7 +491,7 @@ void openair_rrc_gNB_configuration(gNB_RRC_INST *rrc, NRRrcConfigurationReqList 
     for(int CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++){
       rrc->carrier[CC_id].sizeof_paging = 0;
       rrc->carrier[CC_id].paging = (uint8_t *) calloc(1, 256);
-      init_config_flag = 1;
+      init_config_flag = 0;
     }
   }
   return;
@@ -2516,6 +2519,7 @@ static void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *req, sctp_assoc_t ass
   // send
   itti_send_msg_to_task(TASK_CU_F1, 0, msg_p2);
   */
+ LOG_I(RRC, "dbg w38 %d\n",__LINE__);
 }
 
 void rrc_gNB_process_initial_ul_rrc_message(const f1ap_initial_ul_rrc_message_t *ul_rrc)
@@ -3319,7 +3323,8 @@ void *rrc_gnb_task(void *args_p) {
       /* Messages from gNB app */ //TODO W38
       case NRRRC_CONFIGURATION_REQ:
         LOG_I(NR_RRC, "[gNB %ld] Received %s : %p\n", instance, msg_name_p,&NRRRC_CONFIGURATION_REQ(msg_p));
-        openair_rrc_gNB_configuration(instance, &NRRRC_CONFIGURATION_REQ(msg_p));
+        gNB_RRC_INST         *rrc=RC.nrrrc[instance];
+        openair_rrc_gNB_configuration(rrc, &NRRRC_CONFIGURATION_REQ(msg_p));
         break;
 
       case NRRRC_RBLIST_CFG_REQ: //TODO W38
@@ -3330,6 +3335,7 @@ void *rrc_gnb_task(void *args_p) {
       /* Messages from F1AP task */
       case F1AP_SETUP_REQ:
         AssertFatal(!NODE_IS_DU(RC.nrrrc[instance]->node_type), "should not receive F1AP_SETUP_REQUEST in DU!\n");
+        LOG_D(NR_RRC,"dbg w38 NODE_IS_DU(RC.nrrrc[instance]->node_type is %d\n ",NODE_IS_DU(RC.nrrrc[instance]->node_type));
         rrc_gNB_process_f1_setup_req(&F1AP_SETUP_REQ(msg_p), msg_p->ittiMsgHeader.originInstance);
         break;
 

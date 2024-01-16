@@ -338,6 +338,8 @@ static int create_gNB_tasks(ngran_node_t node_type)
     RC.nrrrc[0] = calloc(1,sizeof(gNB_RRC_INST));
     RCconfig_NRRRC(RC.nrrrc[0]);
 
+    sync_inited_params_for_ss();
+
     if (RC.ss.mode == SS_SOFTMODEM)  //W38 note: need to wait configuration from ttcn. moved here
     {
       /** wait for signal */
