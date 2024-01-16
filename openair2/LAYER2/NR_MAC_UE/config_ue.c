@@ -795,6 +795,22 @@ void ue_init_config_request(NR_UE_MAC_INST_t *mac, int scs)
     pthread_mutex_init(&(mac->ul_config_request[i].mutex_ul_config), NULL);
 }
 
+static void update_mib_conf(NR_MIB_t *target, NR_MIB_t *source)
+{
+  target->systemFrameNumber.size = source->systemFrameNumber.size;
+  target->systemFrameNumber.bits_unused = source->systemFrameNumber.bits_unused;
+  if (!target->systemFrameNumber.buf)
+    target->systemFrameNumber.buf = calloc(target->systemFrameNumber.size, sizeof(*target->systemFrameNumber.buf));
+  for (int i = 0; i < target->systemFrameNumber.size; i++)
+    target->systemFrameNumber.buf[i] = source->systemFrameNumber.buf[i];
+  target->subCarrierSpacingCommon = source->subCarrierSpacingCommon;
+  target->ssb_SubcarrierOffset = source->ssb_SubcarrierOffset;
+  target->dmrs_TypeA_Position = source->dmrs_TypeA_Position;
+  target->pdcch_ConfigSIB1 = source->pdcch_ConfigSIB1;
+  target->cellBarred = source->cellBarred;
+  target->intraFreqReselection = source->intraFreqReselection;
+}
+
 void nr_rrc_mac_config_req_mib(module_id_t module_id,
                                int cc_idP,
                                NR_MIB_t *mib,
@@ -802,16 +818,16 @@ void nr_rrc_mac_config_req_mib(module_id_t module_id,
 {
   NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
   AssertFatal(mib, "MIB should not be NULL\n");
-  // initialize dl and ul config_request upon first reception of MIB
-  mac->mib = mib;    //  update by every reception
+  if (!mac->mib)
+    mac->mib = calloc(1, sizeof(*mac->mib));
+  update_mib_conf(mac->mib, mib);
   mac->phy_config.Mod_id = module_id;
   mac->phy_config.CC_id = cc_idP;
   if (sched_sib == 1)
     mac->get_sib1 = true;
   else if (sched_sib == 2)
     mac->get_otherSI = true;
-  nr_ue_decode_mib(module_id,
-                   cc_idP);
+  nr_ue_decode_mib(module_id, cc_idP);
 }
 
 static void setup_puschpowercontrol(NR_PUSCH_PowerControl_t *source, NR_PUSCH_PowerControl_t *target)
@@ -961,21 +977,7 @@ static void setup_pdschconfig(NR_PDSCH_Config_t *source, NR_PDSCH_Config_t *targ
   target->rbg_Size = source->rbg_Size;
   UPDATE_MAC_IE(target->mcs_Table, source->mcs_Table, long);
   UPDATE_MAC_IE(target->maxNrofCodeWordsScheduledByDCI, source->maxNrofCodeWordsScheduledByDCI, long);
-  target->prb_BundlingType.present = source->prb_BundlingType.present;
-  switch (source->prb_BundlingType.present) {
-    case NR_PDSCH_Config__prb_BundlingType_PR_staticBundling:
-      UPDATE_MAC_IE(target->prb_BundlingType.choice.staticBundling,
-                    source->prb_BundlingType.choice.staticBundling,
-                    struct NR_PDSCH_Config__prb_BundlingType__staticBundling);
-      break;
-    case NR_PDSCH_Config__prb_BundlingType_PR_dynamicBundling:
-      UPDATE_MAC_IE(target->prb_BundlingType.choice.dynamicBundling,
-                    source->prb_BundlingType.choice.dynamicBundling,
-                    struct NR_PDSCH_Config__prb_BundlingType__dynamicBundling);
-      break;
-    default:
-      break;
-  }
+  UPDATE_MAC_NP_IE(target->prb_BundlingType, source->prb_BundlingType, struct NR_PDSCH_Config__prb_BundlingType);
   AssertFatal(source->zp_CSI_RS_ResourceToAddModList == NULL, "Not handled\n");
   AssertFatal(source->aperiodic_ZP_CSI_RS_ResourceSetsToAddModList == NULL, "Not handled\n");
   AssertFatal(source->sp_ZP_CSI_RS_ResourceSetsToAddModList == NULL, "Not handled\n");
@@ -1101,30 +1103,48 @@ static void setup_pucchconfig(NR_PUCCH_Config_t *source, NR_PUCCH_Config_t *targ
   }
 }
 
+static void handle_aperiodic_srs_type(struct NR_SRS_ResourceSet__resourceType__aperiodic *source,
+                                      struct NR_SRS_ResourceSet__resourceType__aperiodic *target)
+{
+  target->aperiodicSRS_ResourceTrigger = source->aperiodicSRS_ResourceTrigger;
+  if (source->csi_RS)
+    UPDATE_MAC_IE(target->csi_RS, source->csi_RS, NR_NZP_CSI_RS_ResourceId_t);
+  UPDATE_MAC_IE(target->slotOffset, source->slotOffset, long);
+  if (source->ext1 && source->ext1->aperiodicSRS_ResourceTriggerList)
+    UPDATE_MAC_IE(target->ext1->aperiodicSRS_ResourceTriggerList,
+                  source->ext1->aperiodicSRS_ResourceTriggerList,
+                  struct NR_SRS_ResourceSet__resourceType__aperiodic__ext1__aperiodicSRS_ResourceTriggerList);
+}
+
 static void setup_srsresourceset(NR_SRS_ResourceSet_t *target, NR_SRS_ResourceSet_t *source)
 {
   target->srs_ResourceSetId = source->srs_ResourceSetId;
   if (source->srs_ResourceIdList)
     UPDATE_MAC_IE(target->srs_ResourceIdList, source->srs_ResourceIdList, struct NR_SRS_ResourceSet__srs_ResourceIdList);
-  target->resourceType.present = source->resourceType.present;
-  switch (source->resourceType.present) {
-    case NR_SRS_ResourceSet__resourceType_PR_aperiodic:
-      UPDATE_MAC_IE(target->resourceType.choice.aperiodic,
-                    source->resourceType.choice.aperiodic,
-                    struct NR_SRS_ResourceSet__resourceType__aperiodic);
-      break;
-    case NR_SRS_ResourceSet__resourceType_PR_periodic:
-      UPDATE_MAC_IE(target->resourceType.choice.periodic,
-                    source->resourceType.choice.periodic,
-                    struct NR_SRS_ResourceSet__resourceType__periodic);
-      break;
-    case NR_SRS_ResourceSet__resourceType_PR_semi_persistent:
-      UPDATE_MAC_IE(target->resourceType.choice.semi_persistent,
-                    source->resourceType.choice.semi_persistent,
-                    struct NR_SRS_ResourceSet__resourceType__semi_persistent);
-      break;
-    default:
-      break;
+
+  if (target->resourceType.present != source->resourceType.present) {
+    UPDATE_MAC_NP_IE(target->resourceType, source->resourceType, struct NR_SRS_ResourceSet__resourceType);
+  }
+  else {
+    switch (source->resourceType.present) {
+      case NR_SRS_ResourceSet__resourceType_PR_aperiodic:
+        handle_aperiodic_srs_type(source->resourceType.choice.aperiodic, target->resourceType.choice.aperiodic);
+        break;
+      case NR_SRS_ResourceSet__resourceType_PR_periodic:
+        if (source->resourceType.choice.periodic->associatedCSI_RS)
+          UPDATE_MAC_IE(target->resourceType.choice.periodic->associatedCSI_RS,
+                        source->resourceType.choice.periodic->associatedCSI_RS,
+                        NR_NZP_CSI_RS_ResourceId_t);
+        break;
+      case NR_SRS_ResourceSet__resourceType_PR_semi_persistent:
+        if (source->resourceType.choice.semi_persistent->associatedCSI_RS)
+          UPDATE_MAC_IE(target->resourceType.choice.semi_persistent->associatedCSI_RS,
+                        source->resourceType.choice.semi_persistent->associatedCSI_RS,
+                        NR_NZP_CSI_RS_ResourceId_t);
+        break;
+      default:
+        break;
+    }
   }
   target->usage = source->usage;
   UPDATE_MAC_IE(target->alpha, source->alpha, NR_Alpha_t);
@@ -1365,11 +1385,12 @@ void nr_rrc_mac_config_req_reset(module_id_t module_id,
 
   // Sending to PHY a request to resync
   // with no target cell ID
-  mac->synch_request.Mod_id = module_id;
-  mac->synch_request.CC_id = 0;
-  mac->synch_request.synch_req.target_Nid_cell = -1;
-  mac->if_module->synch_request(&mac->synch_request);
-
+  if (reset_cause != DETACH) {
+    mac->synch_request.Mod_id = module_id;
+    mac->synch_request.CC_id = 0;
+    mac->synch_request.synch_req.target_Nid_cell = -1;
+    mac->if_module->synch_request(&mac->synch_request);
+  }
 }
 
 void nr_rrc_mac_config_req_sib1(module_id_t module_id,
@@ -1529,46 +1550,52 @@ static void configure_maccellgroup(NR_UE_MAC_INST_t *mac, const NR_MAC_CellGroup
 
 static void configure_csi_resourcemapping(NR_CSI_RS_ResourceMapping_t *target, NR_CSI_RS_ResourceMapping_t *source)
 {
-  target->frequencyDomainAllocation.present = source->frequencyDomainAllocation.present;
-  switch (source->frequencyDomainAllocation.present) {
-    case NR_CSI_RS_ResourceMapping__frequencyDomainAllocation_PR_row1:
-      target->frequencyDomainAllocation.choice.row1.size = source->frequencyDomainAllocation.choice.row1.size;
-      target->frequencyDomainAllocation.choice.row1.bits_unused = source->frequencyDomainAllocation.choice.row1.bits_unused;
-      if (!target->frequencyDomainAllocation.choice.row1.buf)
-        target->frequencyDomainAllocation.choice.row1.buf =
-            calloc(target->frequencyDomainAllocation.choice.row1.size, sizeof(uint8_t));
-      for (int i = 0; i < target->frequencyDomainAllocation.choice.row1.size; i++)
-        target->frequencyDomainAllocation.choice.row1.buf[i] = source->frequencyDomainAllocation.choice.row1.buf[i];
-      break;
-    case NR_CSI_RS_ResourceMapping__frequencyDomainAllocation_PR_row2:
-      target->frequencyDomainAllocation.choice.row2.size = source->frequencyDomainAllocation.choice.row2.size;
-      target->frequencyDomainAllocation.choice.row2.bits_unused = source->frequencyDomainAllocation.choice.row2.bits_unused;
-      if (!target->frequencyDomainAllocation.choice.row2.buf)
-        target->frequencyDomainAllocation.choice.row2.buf =
-            calloc(target->frequencyDomainAllocation.choice.row2.size, sizeof(uint8_t));
-      for (int i = 0; i < target->frequencyDomainAllocation.choice.row2.size; i++)
-        target->frequencyDomainAllocation.choice.row2.buf[i] = source->frequencyDomainAllocation.choice.row2.buf[i];
-      break;
-    case NR_CSI_RS_ResourceMapping__frequencyDomainAllocation_PR_row4:
-      target->frequencyDomainAllocation.choice.row4.size = source->frequencyDomainAllocation.choice.row4.size;
-      target->frequencyDomainAllocation.choice.row4.bits_unused = source->frequencyDomainAllocation.choice.row4.bits_unused;
-      if (!target->frequencyDomainAllocation.choice.row4.buf)
-        target->frequencyDomainAllocation.choice.row4.buf =
-            calloc(target->frequencyDomainAllocation.choice.row4.size, sizeof(uint8_t));
-      for (int i = 0; i < target->frequencyDomainAllocation.choice.row4.size; i++)
-        target->frequencyDomainAllocation.choice.row4.buf[i] = source->frequencyDomainAllocation.choice.row4.buf[i];
-      break;
-    case NR_CSI_RS_ResourceMapping__frequencyDomainAllocation_PR_other:
-      target->frequencyDomainAllocation.choice.other.size = source->frequencyDomainAllocation.choice.other.size;
-      target->frequencyDomainAllocation.choice.other.bits_unused = source->frequencyDomainAllocation.choice.other.bits_unused;
-      if (!target->frequencyDomainAllocation.choice.other.buf)
-        target->frequencyDomainAllocation.choice.other.buf =
-            calloc(target->frequencyDomainAllocation.choice.other.size, sizeof(uint8_t));
-      for (int i = 0; i < target->frequencyDomainAllocation.choice.other.size; i++)
-        target->frequencyDomainAllocation.choice.other.buf[i] = source->frequencyDomainAllocation.choice.other.buf[i];
-      break;
-    default:
-      AssertFatal(false, "Invalid entry\n");
+  if (target->frequencyDomainAllocation.present != source->frequencyDomainAllocation.present) {
+    UPDATE_MAC_NP_IE(target->frequencyDomainAllocation,
+                     source->frequencyDomainAllocation,
+                     struct NR_CSI_RS_ResourceMapping__frequencyDomainAllocation);
+  }
+  else {
+    switch (source->frequencyDomainAllocation.present) {
+      case NR_CSI_RS_ResourceMapping__frequencyDomainAllocation_PR_row1:
+        target->frequencyDomainAllocation.choice.row1.size = source->frequencyDomainAllocation.choice.row1.size;
+        target->frequencyDomainAllocation.choice.row1.bits_unused = source->frequencyDomainAllocation.choice.row1.bits_unused;
+        if (!target->frequencyDomainAllocation.choice.row1.buf)
+          target->frequencyDomainAllocation.choice.row1.buf =
+              calloc(target->frequencyDomainAllocation.choice.row1.size, sizeof(uint8_t));
+        for (int i = 0; i < target->frequencyDomainAllocation.choice.row1.size; i++)
+          target->frequencyDomainAllocation.choice.row1.buf[i] = source->frequencyDomainAllocation.choice.row1.buf[i];
+        break;
+      case NR_CSI_RS_ResourceMapping__frequencyDomainAllocation_PR_row2:
+        target->frequencyDomainAllocation.choice.row2.size = source->frequencyDomainAllocation.choice.row2.size;
+        target->frequencyDomainAllocation.choice.row2.bits_unused = source->frequencyDomainAllocation.choice.row2.bits_unused;
+        if (!target->frequencyDomainAllocation.choice.row2.buf)
+          target->frequencyDomainAllocation.choice.row2.buf =
+              calloc(target->frequencyDomainAllocation.choice.row2.size, sizeof(uint8_t));
+        for (int i = 0; i < target->frequencyDomainAllocation.choice.row2.size; i++)
+          target->frequencyDomainAllocation.choice.row2.buf[i] = source->frequencyDomainAllocation.choice.row2.buf[i];
+        break;
+      case NR_CSI_RS_ResourceMapping__frequencyDomainAllocation_PR_row4:
+        target->frequencyDomainAllocation.choice.row4.size = source->frequencyDomainAllocation.choice.row4.size;
+        target->frequencyDomainAllocation.choice.row4.bits_unused = source->frequencyDomainAllocation.choice.row4.bits_unused;
+        if (!target->frequencyDomainAllocation.choice.row4.buf)
+          target->frequencyDomainAllocation.choice.row4.buf =
+              calloc(target->frequencyDomainAllocation.choice.row4.size, sizeof(uint8_t));
+        for (int i = 0; i < target->frequencyDomainAllocation.choice.row4.size; i++)
+          target->frequencyDomainAllocation.choice.row4.buf[i] = source->frequencyDomainAllocation.choice.row4.buf[i];
+        break;
+      case NR_CSI_RS_ResourceMapping__frequencyDomainAllocation_PR_other:
+        target->frequencyDomainAllocation.choice.other.size = source->frequencyDomainAllocation.choice.other.size;
+        target->frequencyDomainAllocation.choice.other.bits_unused = source->frequencyDomainAllocation.choice.other.bits_unused;
+        if (!target->frequencyDomainAllocation.choice.other.buf)
+          target->frequencyDomainAllocation.choice.other.buf =
+              calloc(target->frequencyDomainAllocation.choice.other.size, sizeof(uint8_t));
+        for (int i = 0; i < target->frequencyDomainAllocation.choice.other.size; i++)
+          target->frequencyDomainAllocation.choice.other.buf[i] = source->frequencyDomainAllocation.choice.other.buf[i];
+        break;
+      default:
+        AssertFatal(false, "Invalid entry\n");
+    }
   }
   target->nrofPorts = source->nrofPorts;
   target->firstOFDMSymbolInTimeDomain = source->firstOFDMSymbolInTimeDomain;
@@ -1896,7 +1923,7 @@ static void configure_BWPs(NR_UE_MAC_INST_t *mac, NR_ServingCellConfig_t *scd)
     }
     if (scd->uplinkConfig->firstActiveUplinkBWP_Id) {
       mac->current_UL_BWP = get_ul_bwp_structure(mac, *scd->uplinkConfig->firstActiveUplinkBWP_Id, false);
-      AssertFatal(mac->current_UL_BWP, "Couldn't find DL-BWP %ld\n", *scd->uplinkConfig->firstActiveUplinkBWP_Id);
+      AssertFatal(mac->current_UL_BWP, "Couldn't find UL-BWP %ld\n", *scd->uplinkConfig->firstActiveUplinkBWP_Id);
     }
   }
 }
@@ -1930,7 +1957,9 @@ void nr_rrc_mac_config_req_cg(module_id_t module_id,
   }
 
   // Setup the SSB to Rach Occasions mapping according to the config
-  build_ssb_to_ro_map(mac);
+  // Only if RACH is configured for current BWP
+  if (mac->current_UL_BWP->rach_ConfigCommon)
+    build_ssb_to_ro_map(mac);
 
   if (!mac->dl_config_request || !mac->ul_config_request)
     ue_init_config_request(mac, mac->current_DL_BWP->scs);

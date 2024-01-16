@@ -466,7 +466,11 @@ const uint8_t table_6_1_2_1_1_3[16][4] = {
     {0, 3, 0, 10} // row index 16
 };
 
-NR_tda_info_t get_ul_tda_info(const NR_UE_UL_BWP_t *ul_bwp, int controlResourceSetId, int ss_type, nr_rnti_type_t rnti_type, int tda_index)
+NR_tda_info_t get_ul_tda_info(const NR_UE_UL_BWP_t *ul_bwp,
+                              int controlResourceSetId,
+                              int ss_type,
+                              nr_rnti_type_t rnti_type,
+                              int tda_index)
 {
   NR_tda_info_t tda_info = {0};
   NR_PUSCH_TimeDomainResourceAllocationList_t *tdalist = get_ul_tdalist(ul_bwp, controlResourceSetId, ss_type, rnti_type);
@@ -604,8 +608,14 @@ NR_tda_info_t set_tda_info_from_list(NR_PDSCH_TimeDomainResourceAllocationList_t
   return tda_info;
 }
 
-NR_tda_info_t get_dl_tda_info(const NR_UE_DL_BWP_t *dl_BWP, int ss_type, int tda_index, int dmrs_typeA_pos,
-                              int mux_pattern, nr_rnti_type_t rnti_type, int coresetid, bool sib1)
+NR_tda_info_t get_dl_tda_info(const NR_UE_DL_BWP_t *dl_BWP,
+                              int ss_type,
+                              int tda_index,
+                              int dmrs_typeA_pos,
+                              int mux_pattern,
+                              nr_rnti_type_t rnti_type,
+                              int coresetid,
+                              bool sib1)
 {
   NR_tda_info_t tda_info;
   bool normal_CP = true;
@@ -614,7 +624,7 @@ NR_tda_info_t get_dl_tda_info(const NR_UE_DL_BWP_t *dl_BWP, int ss_type, int tda
   // implements Table 5.1.2.1.1-1 of 38.214
   NR_PDSCH_TimeDomainResourceAllocationList_t *tdalist = get_dl_tdalist(dl_BWP, coresetid, ss_type, rnti_type);
   switch (rnti_type) {
-    case NR_RNTI_SI:
+    case TYPE_SI_RNTI_:
       if(sib1) {
         default_table_type_t table_type = get_default_table_type(mux_pattern);
         tda_info = get_info_from_tda_tables(table_type, tda_index, dmrs_typeA_pos, normal_CP);
@@ -628,7 +638,7 @@ NR_tda_info_t get_dl_tda_info(const NR_UE_DL_BWP_t *dl_BWP, int ss_type, int tda
         }
       }
       break;
-    case NR_RNTI_P:
+    case TYPE_P_RNTI_:
       if(tdalist)
         tda_info = set_tda_info_from_list(tdalist, tda_index);
       else {
@@ -636,11 +646,11 @@ NR_tda_info_t get_dl_tda_info(const NR_UE_DL_BWP_t *dl_BWP, int ss_type, int tda
         tda_info = get_info_from_tda_tables(table_type, tda_index, dmrs_typeA_pos, normal_CP);
       }
       break;
-    case NR_RNTI_C:
-    case NR_RNTI_CS:
-    case NR_RNTI_MCS_C:
-    case NR_RNTI_RA:
-    case NR_RNTI_TC:
+    case TYPE_C_RNTI_:
+    case TYPE_CS_RNTI_:
+    case TYPE_MCS_C_RNTI_:
+    case TYPE_RA_RNTI_:
+    case TYPE_TC_RNTI_:
       if(tdalist)
         tda_info = set_tda_info_from_list(tdalist, tda_index);
       else
@@ -3227,21 +3237,29 @@ uint8_t compute_precoding_information(NR_PUSCH_Config_t *pusch_Config,
   return nbits;
 }
 
-NR_PDSCH_TimeDomainResourceAllocationList_t *get_dl_tdalist(const NR_UE_DL_BWP_t *DL_BWP, int controlResourceSetId, int ss_type, nr_rnti_type_t rnti_type)
+NR_PDSCH_TimeDomainResourceAllocationList_t *get_dl_tdalist(const NR_UE_DL_BWP_t *DL_BWP,
+                                                            int controlResourceSetId,
+                                                            int ss_type,
+                                                            nr_rnti_type_t rnti_type)
 {
   if (!DL_BWP)
     return NULL;
   // see table 5.1.2.1.1-1 in 38.214
-  if ((rnti_type == NR_RNTI_CS || rnti_type == NR_RNTI_C || rnti_type == NR_RNTI_MCS_C) && !(ss_type == NR_SearchSpace__searchSpaceType_PR_common && controlResourceSetId == 0)
+  if ((rnti_type == TYPE_CS_RNTI_ || rnti_type == TYPE_C_RNTI_ || rnti_type == TYPE_MCS_C_RNTI_)
+      && !(ss_type == NR_SearchSpace__searchSpaceType_PR_common && controlResourceSetId == 0)
       && (DL_BWP->pdsch_Config && DL_BWP->pdsch_Config->pdsch_TimeDomainAllocationList))
     return DL_BWP->pdsch_Config->pdsch_TimeDomainAllocationList->choice.setup;
   else
     return DL_BWP->tdaList_Common;
 }
 
-NR_PUSCH_TimeDomainResourceAllocationList_t *get_ul_tdalist(const NR_UE_UL_BWP_t *UL_BWP, int controlResourceSetId, int ss_type, nr_rnti_type_t rnti_type)
+NR_PUSCH_TimeDomainResourceAllocationList_t *get_ul_tdalist(const NR_UE_UL_BWP_t *UL_BWP,
+                                                            int controlResourceSetId,
+                                                            int ss_type,
+                                                            nr_rnti_type_t rnti_type)
 {
-  if ((rnti_type == NR_RNTI_CS || rnti_type == NR_RNTI_C || rnti_type == NR_RNTI_MCS_C) && !(ss_type == NR_SearchSpace__searchSpaceType_PR_common && controlResourceSetId == 0)
+  if ((rnti_type == TYPE_CS_RNTI_ || rnti_type == TYPE_C_RNTI_ || rnti_type == TYPE_MCS_C_RNTI_)
+      && !(ss_type == NR_SearchSpace__searchSpaceType_PR_common && controlResourceSetId == 0)
       && (UL_BWP->pusch_Config && UL_BWP->pusch_Config->pusch_TimeDomainAllocationList))
     return UL_BWP->pusch_Config->pusch_TimeDomainAllocationList->choice.setup;
   else
@@ -3795,17 +3813,12 @@ uint8_t get_pdsch_mcs_table(long *mcs_Table, int dci_format, int rnti_type, int 
 
   // Set downlink MCS table (Semi-persistent scheduling ignored for now)
   uint8_t mcsTableIdx = 0; // default value
-  if (mcs_Table &&
-      *mcs_Table == NR_PDSCH_Config__mcs_Table_qam256 &&
-      dci_format == NR_DL_DCI_FORMAT_1_1 &&
-      rnti_type == NR_RNTI_C)
+  if (mcs_Table && *mcs_Table == NR_PDSCH_Config__mcs_Table_qam256 && dci_format == NR_DL_DCI_FORMAT_1_1 && rnti_type == TYPE_C_RNTI_)
     mcsTableIdx = 1;
-  else if (rnti_type != NR_RNTI_MCS_C &&
-           mcs_Table &&
-           *mcs_Table == NR_PDSCH_Config__mcs_Table_qam64LowSE &&
-           ss_type == NR_SearchSpace__searchSpaceType_PR_ue_Specific)
+  else if (rnti_type != TYPE_MCS_C_RNTI_ && mcs_Table && *mcs_Table == NR_PDSCH_Config__mcs_Table_qam64LowSE
+           && ss_type == NR_SearchSpace__searchSpaceType_PR_ue_Specific)
     mcsTableIdx = 2;
-  else if (rnti_type == NR_RNTI_MCS_C)
+  else if (rnti_type == TYPE_MCS_C_RNTI_)
     mcsTableIdx = 2;
 
   LOG_D(NR_MAC,"DL MCS Table Index: %d\n", mcsTableIdx);
@@ -3823,23 +3836,20 @@ uint8_t get_pusch_mcs_table(long *mcs_Table,
 
   // implementing 6.1.4.1 in 38.214
   if (mcs_Table != NULL) {
-    if (config_grant || (rnti_type == NR_RNTI_CS)) {
+    if (config_grant || (rnti_type == TYPE_CS_RNTI_)) {
       if (*mcs_Table == NR_PUSCH_Config__mcs_Table_qam256)
         return 1;
       else
         return (2 + (is_tp << 1));
-    }
-    else {
-      if ((*mcs_Table == NR_PUSCH_Config__mcs_Table_qam256) &&
-          (dci_format == NR_UL_DCI_FORMAT_0_1) &&
-          ((rnti_type == NR_RNTI_C ) || (rnti_type == NR_RNTI_SP_CSI)))
+    } else {
+      if ((*mcs_Table == NR_PUSCH_Config__mcs_Table_qam256) && (dci_format == NR_UL_DCI_FORMAT_0_1)
+          && ((rnti_type == TYPE_C_RNTI_) || (rnti_type == TYPE_SP_CSI_RNTI_)))
         return 1;
       // TODO take into account UE configuration
-      if ((*mcs_Table == NR_PUSCH_Config__mcs_Table_qam64LowSE) &&
-          (target_ss == NR_SearchSpace__searchSpaceType_PR_ue_Specific) &&
-          ((rnti_type == NR_RNTI_C ) || (rnti_type == NR_RNTI_SP_CSI)))
+      if ((*mcs_Table == NR_PUSCH_Config__mcs_Table_qam64LowSE) && (target_ss == NR_SearchSpace__searchSpaceType_PR_ue_Specific)
+          && ((rnti_type == TYPE_C_RNTI_) || (rnti_type == TYPE_SP_CSI_RNTI_)))
         return (2 + (is_tp << 1));
-      if (rnti_type == NR_RNTI_MCS_C)
+      if (rnti_type == TYPE_MCS_C_RNTI_)
         return (2 + (is_tp << 1));
     }
   }
@@ -4075,8 +4085,8 @@ void csi_period_offset(NR_CSI_ReportConfig_t *csirep,
   }
 }
 
-uint8_t get_BG(uint32_t A, uint16_t R) {
-
+uint8_t get_BG(uint32_t A, uint16_t R)
+{
   float code_rate = (float) R / 10240.0f;
   if ((A <= 292) || ((A <= NR_MAX_PDSCH_TBS) && (code_rate <= 0.6667)) || code_rate <= 0.25)
     return 2;
@@ -4431,20 +4441,18 @@ void get_type0_PDCCH_CSS_config_parameters(NR_Type0_PDCCH_CSS_config_t *type0_PD
   type0_PDCCH_CSS_config->cset_start_rb = ssb_offset_point_a - type0_PDCCH_CSS_config->rb_offset;
 }
 
-void fill_coresetZero(NR_ControlResourceSet_t *coreset0, NR_Type0_PDCCH_CSS_config_t *type0_PDCCH_CSS_config) {
-
-  int32_t duration;
-
+void fill_coresetZero(NR_ControlResourceSet_t *coreset0, NR_Type0_PDCCH_CSS_config_t *type0_PDCCH_CSS_config)
+{
   if (coreset0 == NULL)
     coreset0 = calloc(1,sizeof(*coreset0));
 
-  coreset0->controlResourceSetId = 0;
-
   AssertFatal(type0_PDCCH_CSS_config!=NULL,"No type0 CSS configuration\n");
 
-  duration = type0_PDCCH_CSS_config->num_symbols;
+  coreset0->controlResourceSetId = 0;
+  int duration = type0_PDCCH_CSS_config->num_symbols;
 
-  if(coreset0->frequencyDomainResources.buf == NULL) coreset0->frequencyDomainResources.buf = calloc(1,6);
+  if(coreset0->frequencyDomainResources.buf == NULL)
+    coreset0->frequencyDomainResources.buf = calloc(1,6);
 
   switch(type0_PDCCH_CSS_config->num_rbs){
     case 24:
@@ -4470,8 +4478,9 @@ void fill_coresetZero(NR_ControlResourceSet_t *coreset0, NR_Type0_PDCCH_CSS_conf
   coreset0->frequencyDomainResources.bits_unused = 3;
 
   coreset0->duration = duration;
-  coreset0->cce_REG_MappingType.present=NR_ControlResourceSet__cce_REG_MappingType_PR_interleaved;
-  coreset0->cce_REG_MappingType.choice.interleaved=calloc(1,sizeof(*coreset0->cce_REG_MappingType.choice.interleaved));
+  coreset0->cce_REG_MappingType.present = NR_ControlResourceSet__cce_REG_MappingType_PR_interleaved;
+  if (!coreset0->cce_REG_MappingType.choice.interleaved)
+    coreset0->cce_REG_MappingType.choice.interleaved = calloc(1,sizeof(*coreset0->cce_REG_MappingType.choice.interleaved));
   coreset0->cce_REG_MappingType.choice.interleaved->reg_BundleSize = NR_ControlResourceSet__cce_REG_MappingType__interleaved__reg_BundleSize_n6;
   coreset0->cce_REG_MappingType.choice.interleaved->interleaverSize = NR_ControlResourceSet__cce_REG_MappingType__interleaved__interleaverSize_n2;
   coreset0->cce_REG_MappingType.choice.interleaved->shiftIndex = NULL; // -> use cell_id
@@ -4481,23 +4490,28 @@ void fill_coresetZero(NR_ControlResourceSet_t *coreset0, NR_Type0_PDCCH_CSS_conf
   coreset0->tci_StatesPDCCH_ToReleaseList = NULL;
   coreset0->tci_PresentInDCI = NULL;
   coreset0->pdcch_DMRS_ScramblingID = NULL;
-
 }
 
 void fill_searchSpaceZero(NR_SearchSpace_t *ss0,
                           int slots_per_frame,
                           NR_Type0_PDCCH_CSS_config_t *type0_PDCCH_CSS_config)
 {
-
-  if(ss0 == NULL) ss0=calloc(1,sizeof(*ss0));
-  if(ss0->controlResourceSetId == NULL) ss0->controlResourceSetId=calloc(1,sizeof(*ss0->controlResourceSetId));
-  if(ss0->monitoringSymbolsWithinSlot == NULL) ss0->monitoringSymbolsWithinSlot = calloc(1,sizeof(*ss0->monitoringSymbolsWithinSlot));
-  if(ss0->monitoringSymbolsWithinSlot->buf == NULL) ss0->monitoringSymbolsWithinSlot->buf = calloc(1,2);
-  if(ss0->nrofCandidates == NULL) ss0->nrofCandidates = calloc(1,sizeof(*ss0->nrofCandidates));
-  if(ss0->searchSpaceType == NULL) ss0->searchSpaceType = calloc(1,sizeof(*ss0->searchSpaceType));
-  if(ss0->searchSpaceType->choice.common == NULL) ss0->searchSpaceType->choice.common=calloc(1,sizeof(*ss0->searchSpaceType->choice.common));
+  if(ss0 == NULL)
+    ss0 = calloc(1, sizeof(*ss0));
+  if(ss0->controlResourceSetId == NULL)
+    ss0->controlResourceSetId = calloc(1, sizeof(*ss0->controlResourceSetId));
+  if(ss0->monitoringSymbolsWithinSlot == NULL)
+    ss0->monitoringSymbolsWithinSlot = calloc(1, sizeof(*ss0->monitoringSymbolsWithinSlot));
+  if(ss0->monitoringSymbolsWithinSlot->buf == NULL)
+    ss0->monitoringSymbolsWithinSlot->buf = calloc(1, 2);
+  if(ss0->nrofCandidates == NULL)
+    ss0->nrofCandidates = calloc(1, sizeof(*ss0->nrofCandidates));
+  if(ss0->searchSpaceType == NULL)
+    ss0->searchSpaceType = calloc(1, sizeof(*ss0->searchSpaceType));
+  if(ss0->searchSpaceType->choice.common == NULL)
+    ss0->searchSpaceType->choice.common = calloc(1, sizeof(*ss0->searchSpaceType->choice.common));
   if(ss0->searchSpaceType->choice.common->dci_Format0_0_AndFormat1_0 == NULL)
-    ss0->searchSpaceType->choice.common->dci_Format0_0_AndFormat1_0 = calloc(1,sizeof(*ss0->searchSpaceType->choice.common->dci_Format0_0_AndFormat1_0));
+    ss0->searchSpaceType->choice.common->dci_Format0_0_AndFormat1_0 = calloc(1, sizeof(*ss0->searchSpaceType->choice.common->dci_Format0_0_AndFormat1_0));
 
   AssertFatal(type0_PDCCH_CSS_config!=NULL,"No type0 CSS configuration\n");
 
@@ -4508,13 +4522,15 @@ void fill_searchSpaceZero(NR_SearchSpace_t *ss0,
 
   ss0->searchSpaceId = 0;
   *ss0->controlResourceSetId = 0;
-  ss0->monitoringSlotPeriodicityAndOffset = calloc(1,sizeof(*ss0->monitoringSlotPeriodicityAndOffset));
+  if(ss0->monitoringSlotPeriodicityAndOffset == NULL)
+    ss0->monitoringSlotPeriodicityAndOffset = calloc(1, sizeof(*ss0->monitoringSlotPeriodicityAndOffset));
   set_monitoring_periodicity_offset(ss0,periodicity,offset);
   const uint32_t duration = type0_PDCCH_CSS_config->search_space_duration;
   if (duration==1)
     ss0->duration = NULL;
   else{
-    ss0->duration = calloc(1,sizeof(*ss0->duration));
+    if (!ss0->duration)
+      ss0->duration = calloc(1, sizeof(*ss0->duration));
     *ss0->duration = duration;
   }
 
