@@ -30,16 +30,11 @@ FROM ran-base:latest AS gnb-base
 
 FROM ran-build:latest AS gnb-build
 
-COPY ./libori.so /usr/local/lib
-
-# build AW2S fronthaul lib
-WORKDIR /oai-ran
-RUN /bin/sh oaienv && \
-    cd cmake_targets/ && \
-    ./build_oai -w AW2SORI -t Ethernet
+#RUN python3 ./docker/scripts/generateTemplate.py ./docker/scripts/gnb_parameters.yaml && \
+#    cp /oai-ran/docker/scripts/gnb_entrypoint.sh /oai-ran/docker/scripts/entrypoint.sh
 
 #start from scratch for target executable
-FROM $BASE_IMAGE as oai-gnb-aw2s
+FROM $BASE_IMAGE as oai-gnb
 ENV TZ=Europe/Paris
 
 RUN dnf update -y && \
@@ -50,41 +45,78 @@ RUN dnf update -y && \
         atlas \
         lksctp-tools \
         tzdata \
+        gdb \
+        python3 \
+        python3-pip \
         net-tools \
         iputils && \
+    pip3 install six && \
+    pip3 install requests && \
     echo "/usr/local/lib" > /etc/ld.so.conf.d/local-lib.conf && \
     echo "/usr/local/lib64" >> /etc/ld.so.conf.d/local-lib.conf
 
-WORKDIR /opt/oai-gnb-aw2s/bin
+WORKDIR /opt/oai-gnb/bin
 COPY --from=gnb-build \
-    /oai-ran/cmake_targets/ran_build/build/nr-softmodem \
-    ./
-COPY ./docker/scripts/gnb-aw2s_entrypoint.sh ./entrypoint.sh
+    /oai-ran/cmake_targets/ran_build/build/nr-softmodem ./
+COPY ./docker/scripts/gnb_entrypoint.sh ./entrypoint.sh
 
 COPY --from=gnb-build \
     /oai-ran/cmake_targets/ran_build/build/liboai_eth_transpro.so \
     /oai-ran/cmake_targets/ran_build/build/librfsimulator.so \
-    /oai-ran/cmake_targets/ran_build/build/libaw2sori_transpro.so \
+    /oai-ran/cmake_targets/ran_build/build/liboai_usrpdevif.so \
     /oai-ran/cmake_targets/ran_build/build/libcoding.so \
     /oai-ran/cmake_targets/ran_build/build/libparams_libconfig.so \
     /oai-ran/cmake_targets/ran_build/build/libdfts.so \
     /oai-ran/cmake_targets/ran_build/build/libldpc*.so \
     /oai-ran/cmake_targets/ran_build/build/libtelnetsrv.so \
-    /usr/local/lib/libori.so \
+    /oai-ran/cmake_targets/ran_build/build/libtelnetsrv_ci.so \
     /usr/local/lib/
 
 COPY --from=gnb-base \
-    /lib64/libconfig.so \
-    /lib64/libforms.so \
-    /lib64/libblas.so \
-    /lib64/liblapack.so \
-    /lib64/liblapacke.so \
+    /lib64/libconfig.so.11 \
+    /lib64/libforms.so.2 \
+    /lib64/libblas.so.3 \
+    /lib64/libcblas.so.3 \
+    /lib64/liblapack.so.3 \
+    /lib64/liblapacke.so.3 \
+    /lib64/libboost_chrono.so.1.75.0 \
+    /lib64/libboost_date_time.so.1.75.0 \
+    /lib64/libboost_filesystem.so.1.75.0 \
+    /lib64/libboost_program_options.so.1.75.0 \
+    /lib64/libboost_serialization.so.1.75.0 \
+    /lib64/libboost_thread.so.1.75.0 \
+    /lib64/libboost_system.so.1.75.0 \
+    /lib64/libboost_unit_test_framework.so.1.75.0 \
+    /lib64/libboost_atomic.so.1.75.0 \
+    /lib64/libboost_timer.so.1.75.0 \
+    /lib64/libboost_regex.so.1.75.0 \
+    /lib64/libicudata.so.67 \
+    /lib64/libicui18n.so.67 \
+    /lib64/libicuuc.so.67 \
     /lib64/
 
-RUN ln -s /usr/local/lib/libaw2sori_transpro.so /usr/local/lib/libthirdparty_transpro.so && \
-    ln -s /usr/local/lib/liboai_eth_transpro.so /usr/local/lib/liboai_transpro.so && \
-    ldconfig
+# Now we are copying from builder-image the UHD files.
+COPY --from=gnb-base /usr/local/bin/uhd_find_devices /usr/local/bin
+COPY --from=gnb-base /usr/local/lib64/libuhd.so.4.4.0 /usr/local/lib64
+COPY --from=gnb-base /usr/local/lib64/uhd/utils/uhd_images_downloader.py /opt/oai-gnb/bin
 
-WORKDIR /opt/oai-gnb-aw2s
-ENTRYPOINT ["/opt/oai-gnb-aw2s/bin/entrypoint.sh"]
-CMD ["/opt/oai-gnb-aw2s/bin/nr-softmodem", "-O", "/opt/oai-gnb-aw2s/etc/gnb.conf"]
+WORKDIR /usr/local/share/uhd/rfnoc
+COPY --from=gnb-base /usr/local/share/uhd/rfnoc/ .
+
+RUN /bin/bash -c "ln -s /usr/local/lib/liboai_usrpdevif.so /usr/local/lib/liboai_device.so" && \
+    ldconfig
+    
+## Copy the relevant configuration files for gNB
+#WORKDIR /opt/oai-gnb/etc
+#COPY --from=gnb-build /oai-ran/docker/etc .
+
+WORKDIR /opt/oai-gnb
+#EXPOSE 2152/udp  # S1U, GTP/UDP
+#EXPOSE 22100/tcp # ?
+#EXPOSE 36412/udp # S1C, SCTP/UDP
+#EXPOSE 36422/udp # X2C, SCTP/UDP
+#EXPOSE 50000/udp # IF5 / ORI (control)
+#EXPOSE 50001/udp # IF5 / ECPRI (data)
+
+ENTRYPOINT ["/opt/oai-gnb/bin/entrypoint.sh"]
+CMD ["/opt/oai-gnb/bin/nr-softmodem", "-O", "/opt/oai-gnb/etc/gnb.conf"]
