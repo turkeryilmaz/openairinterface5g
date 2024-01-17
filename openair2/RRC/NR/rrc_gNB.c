@@ -479,10 +479,10 @@ void openair_rrc_gNB_configuration(gNB_RRC_INST *rrc, NRRrcConfigurationReqList 
   // System Information INIT
   init_NR_SI(rrc); //TODO W38 init_NR_SI need to handle all cells done
 
-
-  for(int CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
-      nr_rrc_config_ul_tda(RC.nrmac[0]->common_channels[CC_id].ServingCellConfigCommon,RC.nrmac[0]->radio_config[CC_id].minRXTXTIME); //TODO W38: calling the function again, cauing memory leakage
-    }
+  //TODO w38: come back here to fix it. memory leakage and update ul_tda
+  // for(int CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
+  //     nr_rrc_config_ul_tda(RC.nrmac[0]->common_channels[CC_id].ServingCellConfigCommon,RC.nrmac[0]->radio_config[CC_id].minRXTXTIME); //TODO W38: calling the function again, cauing memory leakage
+  //   }
   nr_mac_update_config();
   for(int CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
     rrc_mac_config_dedicate_scheduling(rrc->module_id, rrc->carrier[CC_id].dcchDtchConfig);
@@ -2519,7 +2519,7 @@ static void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *req, sctp_assoc_t ass
   // send
   itti_send_msg_to_task(TASK_CU_F1, 0, msg_p2);
   */
- LOG_I(RRC, "dbg w38 %d\n",__LINE__);
+
 }
 
 void rrc_gNB_process_initial_ul_rrc_message(const f1ap_initial_ul_rrc_message_t *ul_rrc)
@@ -3047,8 +3047,7 @@ void prepare_and_send_ue_context_modification_f1(rrc_gNB_ue_context_t *ue_contex
     cu2du.uE_CapabilityRAT_ContainerList = UE->ue_cap_buffer.buf;
     cu2du.uE_CapabilityRAT_ContainerList_length = UE->ue_cap_buffer.len;
   }
-
-  f1_ue_data_t ue_data = cu_get_f1_ue_data(UE->rrc_ue_id);
+  f1_ue_data_t ue_data = cu_get_f1_ue_data(UE->rnti);
   f1ap_ue_context_modif_req_t ue_context_modif_req = {
       .gNB_CU_ue_id = UE->rrc_ue_id,
       .gNB_DU_ue_id = ue_data.secondary_ue,
@@ -3179,7 +3178,7 @@ static void write_rrc_stats(const gNB_RRC_INST *rrc)
   RB_FOREACH(ue_context_p, rrc_nr_ue_tree_s, &((gNB_RRC_INST *)rrc)->rrc_ue_head)
   {
     const gNB_RRC_UE_t *ue_ctxt = &ue_context_p->ue_context;
-    f1_ue_data_t ue_data = cu_get_f1_ue_data(ue_ctxt->rrc_ue_id);
+    f1_ue_data_t ue_data = cu_get_f1_ue_data(ue_ctxt->rnti);  //TODO for later, one day, we will replace rnti with ue_id as OAI
     /* currently, we support only one DU. If we support multiple, need to
      * search for the DU corresponding to this UE here */
     const nr_rrc_du_container_t *du = rrc->du;
@@ -3335,7 +3334,6 @@ void *rrc_gnb_task(void *args_p) {
       /* Messages from F1AP task */
       case F1AP_SETUP_REQ:
         AssertFatal(!NODE_IS_DU(RC.nrrrc[instance]->node_type), "should not receive F1AP_SETUP_REQUEST in DU!\n");
-        LOG_D(NR_RRC,"dbg w38 NODE_IS_DU(RC.nrrrc[instance]->node_type is %d\n ",NODE_IS_DU(RC.nrrrc[instance]->node_type));
         rrc_gNB_process_f1_setup_req(&F1AP_SETUP_REQ(msg_p), msg_p->ittiMsgHeader.originInstance);
         break;
 

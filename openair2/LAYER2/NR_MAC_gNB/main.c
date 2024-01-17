@@ -377,7 +377,7 @@ void mac_init_more_cell(ngran_node_t node_type,
 
   if (RC.nb_nr_macrlc_inst > 0) {
 
-    RC.nrmac = (gNB_MAC_INST **) malloc16(RC.nb_nr_macrlc_inst *sizeof(gNB_MAC_INST *));
+    //RC.nrmac = (gNB_MAC_INST **) malloc16(RC.nb_nr_macrlc_inst *sizeof(gNB_MAC_INST *)); //rc.nrmac is already initialized.
     
     AssertFatal(RC.nrmac != NULL,"can't ALLOCATE %zu Bytes for %d gNB_MAC_INST with size %zu \n",
                 RC.nb_nr_macrlc_inst * sizeof(gNB_MAC_INST *),

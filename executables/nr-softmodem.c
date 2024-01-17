@@ -316,7 +316,7 @@ static int create_gNB_tasks(ngran_node_t node_type)
   LOG_I(PHY, "%s() Task ready initialize structures\n", __FUNCTION__);
 
   RCconfig_verify(node_type);
-
+  RCconfig_nr_ssparam();  
   RCconfig_NR_L1();
   RCconfig_nr_prs();
 
@@ -339,12 +339,12 @@ static int create_gNB_tasks(ngran_node_t node_type)
     RCconfig_NRRRC(RC.nrrrc[0]);
 
     sync_inited_params_for_ss();
-
-    if (RC.ss.mode == SS_SOFTMODEM)  //W38 note: need to wait configuration from ttcn. moved here
+  
+    //if (RC.ss.mode == SS_SOFTMODEM)  //W38 note: this is useless, ss.mode has not been initialized yet. same issue before W38. //TODO: if neccessary, need to implement new sync with ttcn cell config
     {
       /** wait for signal */
-      wait_cell_config_5G("TASK_SYS_GNB");
-      LOG_I(GNB_APP, "fxn:%s: Received Cell Config 5G SA\n", __FUNCTION__);
+      //wait_cell_config_5G("TASK_SYS_GNB");
+      //LOG_I(GNB_APP, "fxn:%s: Received Cell Config 5G SA\n", __FUNCTION__);
       // msg_p = itti_alloc_new_message (TASK_GNB_APP, 0, NRRRC_CONFIGURATION_REQ);
       // LOG_I(GNB_APP,"Sending configuration message to NR_RRC task\n");
       // itti_send_msg_to_task (TASK_RRC_GNB, GNB_MODULE_ID_TO_INSTANCE(gnb_id), msg_p);
@@ -417,7 +417,7 @@ static int create_gNB_tasks(ngran_node_t node_type)
   }
 
   if (gnb_nb > 0) {
-    RCconfig_nr_ssparam();
+//    RCconfig_nr_ssparam();  
     if (itti_create_task (TASK_GNB_APP, gNB_app_task, NULL) < 0) {
       LOG_E(GNB_APP, "Create task for gNB APP failed\n");
       return -1;

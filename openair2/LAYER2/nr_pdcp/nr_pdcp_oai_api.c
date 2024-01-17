@@ -921,7 +921,7 @@ static void deliver_pdu_drb_gnb(void *deliver_pdu_data, ue_id_t ue_id, int rb_id
                                 char *buf, int size, int sdu_id)
 {
   DevAssert(deliver_pdu_data == NULL);
-  f1_ue_data_t ue_data = cu_get_f1_ue_data(ue_id);
+  f1_ue_data_t ue_data = cu_get_f1_ue_data(ue_id); //TODO w38: check here 1st if DRB issue
   protocol_ctxt_t ctxt = { .enb_flag = 1, .rntiMaybeUEid = ue_data.secondary_ue };
 
   if (NODE_IS_CU(node_type)) {

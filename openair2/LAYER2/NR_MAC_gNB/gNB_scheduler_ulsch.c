@@ -1723,7 +1723,7 @@ static void pf_ul(module_id_t module_id,
 
     const int B = max(0, sched_ctrl->estimated_ul_buffer - sched_ctrl->sched_ul_bytes);
     /* preprocessor computed sched_frame/sched_slot */
-    const bool do_sched = nr_UE_is_to_be_scheduled(scc, 0, UE, sched_pusch->frame, sched_pusch->slot, nrmac->ulsch_max_frame_inactivity);
+    const bool do_sched = nr_UE_is_to_be_scheduled(scc, CC_id, UE, sched_pusch->frame, sched_pusch->slot, nrmac->ulsch_max_frame_inactivity);
 
     LOG_D(NR_MAC,"pf_ul: do_sched UE %04x => %s\n",UE->rnti,do_sched ? "yes" : "no");
     if ((B == 0 && !do_sched) || (sched_ctrl->rrc_processing_timer > 0)) {
