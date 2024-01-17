@@ -1673,6 +1673,7 @@ static uint8_t pack_nr_config_request(void *msg, uint8_t **ppWritePackedMsg, uin
   numTLVs++;
 
   if (NFAPI_MODE != NFAPI_MODE_AERIAL) {
+    // TLV not supported by Aerial L1
     pack_nr_tlv(NFAPI_NR_CONFIG_FREQUENCY_SHIFT_7P5KHZ_TAG,
                 &(pNfapiMsg->carrier_config.frequency_shift_7p5khz),
                 ppWritePackedMsg,
@@ -1706,6 +1707,7 @@ static uint8_t pack_nr_config_request(void *msg, uint8_t **ppWritePackedMsg, uin
                         &pack_uint32_tlv_value);
   numTLVs++;
   if (NFAPI_MODE != NFAPI_MODE_AERIAL) {
+    // TLV not supported by Aerial L1
     retval &= pack_nr_tlv(NFAPI_NR_CONFIG_BCH_PAYLOAD_TAG,
                           &(pNfapiMsg->ssb_config.bch_payload),
                           ppWritePackedMsg,
@@ -1820,6 +1822,7 @@ static uint8_t pack_nr_config_request(void *msg, uint8_t **ppWritePackedMsg, uin
   // END PRACH Configuration
   // START SSB Table
   if (NFAPI_MODE != NFAPI_MODE_AERIAL) {
+    // TLV not supported by Aerial L1
     retval &= pack_nr_tlv(NFAPI_NR_CONFIG_SSB_OFFSET_POINT_A_TAG,
                           &(pNfapiMsg->ssb_table.ssb_offset_point_a),
                           ppWritePackedMsg,
@@ -1856,6 +1859,7 @@ static uint8_t pack_nr_config_request(void *msg, uint8_t **ppWritePackedMsg, uin
                         &pack_uint32_tlv_value);
   numTLVs++;
   if (NFAPI_MODE != NFAPI_MODE_AERIAL) {
+    // TLV not supported by Aerial L1
     for (int i = 0; i < 64; i++) {
       // SCF222.10.02 Table 3-25 : If included there must be 64 instances of this TLV
       retval &= pack_nr_tlv(NFAPI_NR_CONFIG_BEAM_ID_TAG,

@@ -769,6 +769,8 @@ int main( int argc, char **argv ) {
 #ifdef ENABLE_AERIAL
   if(NFAPI_MODE == NFAPI_MODE_AERIAL){
     nvIPC_Init();
+  }else{
+    AssertFatal(1==0,"Not run as Aerial mode when compiled with AERIAL, if you want to run other (n)FAPI modes, please run ./build_oai without -w AERIAL");
   }
 #endif
   if (RC.nb_nr_L1_inst > 0) {
