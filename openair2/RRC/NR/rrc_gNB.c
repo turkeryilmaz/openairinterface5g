@@ -470,8 +470,9 @@ void openair_rrc_gNB_configuration(gNB_RRC_INST *rrc, NRRrcConfigurationReqList 
   if (init_config_flag){
     rrc_gNB_CU_DU_init(rrc);
     uid_linear_allocator_init(&rrc->uid_allocator);
+     RB_INIT(&rrc->rrc_ue_head);
   }
-  RB_INIT(&rrc->rrc_ue_head);
+ 
   // for(int CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
   //   rrc->configuration[CC_id] = configuration->configuration[CC_id];
     
@@ -1121,7 +1122,9 @@ rrc_gNB_store_RRCReconfiguration(
     //                     NR_RRC_RECONFIGURATION_DELAY_MS + NR_RRC_BWP_SWITCHING_DELAY_MS : NR_RRC_RECONFIGURATION_DELAY_MS;
 
 
-    nr_mac_enable_ue_rrc_processing_timer(RC.nrmac, ue_p, /* apply_cellGroup = */ true);
+    NR_SCHED_LOCK(&RC.nrmac[0]->sched_lock);
+    nr_mac_enable_ue_rrc_processing_timer(RC.nrmac[0], ue_p, /* apply_cellGroup = */ true);
+    NR_SCHED_UNLOCK(&RC.nrmac[0]->sched_lock);
   }
 }
 
