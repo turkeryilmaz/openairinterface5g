@@ -914,15 +914,15 @@ static void config_pucch_resset0(NR_PUCCH_Config_t *pucch_Config, int uid, int c
 
   NR_PUCCH_Resource_t *pucchres0 = calloc(1,sizeof(*pucchres0));
   pucchres0->pucch_ResourceId = *pucchid;
-  pucchres0->startingPRB = 0 + uid;
+  pucchres0->startingPRB = 8 + uid;
   AssertFatal(pucchres0->startingPRB < curr_bwp, "Not enough resources in current BWP (size %d) to allocate uid %d\n", curr_bwp, uid);
   pucchres0->intraSlotFrequencyHopping = NULL;
   pucchres0->secondHopPRB = NULL;
   pucchres0->format.present = NR_PUCCH_Resource__format_PR_format0;
   pucchres0->format.choice.format0 = calloc(1,sizeof(*pucchres0->format.choice.format0));
   pucchres0->format.choice.format0->initialCyclicShift = 0;
-  pucchres0->format.choice.format0->nrofSymbols = 2;
-  pucchres0->format.choice.format0->startingSymbolIndex = 12;
+  pucchres0->format.choice.format0->nrofSymbols = 1;
+  pucchres0->format.choice.format0->startingSymbolIndex = 13;
   asn1cSeqAdd(&pucch_Config->resourceToAddModList->list,pucchres0);
 
   asn1cSeqAdd(&pucch_Config->resourceSetToAddModList->list,pucchresset);
