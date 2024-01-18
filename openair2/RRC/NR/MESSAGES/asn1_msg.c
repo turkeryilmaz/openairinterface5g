@@ -687,6 +687,8 @@ int do_RRCSetup(rrc_gNB_ue_context_t *const ue_context_pP,
   AssertFatal(ie->masterCellGroup.buf != NULL, "could not allocate memory for masterCellGroup\n");
   memcpy(ie->masterCellGroup.buf, masterCellGroup, masterCellGroup_len);
   ie->masterCellGroup.size = masterCellGroup_len;
+  // decode masterCellGroup OCTET_STRING received from DU and place in ue context
+  ue_p->masterCellGroup = decode_cellGroupConfig(masterCellGroup, masterCellGroup_len); //W38 removed by OAI @w38. keep it for SS
 
   if (LOG_DEBUGFLAG(DEBUG_ASN1)) {
     xer_fprint(stdout, &asn_DEF_NR_CellGroupConfig, ue_p->masterCellGroup);
