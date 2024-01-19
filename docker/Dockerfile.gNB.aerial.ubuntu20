@@ -102,8 +102,6 @@ COPY --from=ran-build \
     /usr/local/lib/libnvipc.so \
     /usr/local/lib/
 
-RUN /bin/bash -c "ln -s /usr/local/lib/liboai_usrpdevif.so /usr/local/lib/liboai_device.so" && \
-    ldconfig
 
 WORKDIR /opt/oai-gnb
 ENTRYPOINT ["/opt/oai-gnb/bin/entrypoint.sh"]
