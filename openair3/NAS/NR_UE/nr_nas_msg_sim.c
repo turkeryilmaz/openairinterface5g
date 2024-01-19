@@ -1937,10 +1937,12 @@ void *nas_nrue_task(void *args_p)
             decodeDownlinkNASTransport(&initialNasMsg, pdu_buffer);
             break;
           case REGISTRATION_ACCEPT:
+
+          {// do not remove this brace.  it changes namespce of initialNasMsg
             LOG_I(NAS, "[UE] Received REGISTRATION ACCEPT message\n");
             decodeRegistrationAccept(pdu_buffer, NAS_DOWNLINK_DATA_IND(msg_p).nasMsg.length, nas);
 
-            as_nas_info_t initialNasMsg = {0};
+            as_nas_info_t initialNasMsg = {0}; //this variable is redefined, be careful with namespace when rebasing
             generateRegistrationComplete(nas, &initialNasMsg, NULL);
             if (initialNasMsg.length > 0) {
               send_nas_uplink_data_req(instance, &initialNasMsg);
@@ -1953,6 +1955,7 @@ void *nas_nrue_task(void *args_p)
               send_nas_uplink_data_req(instance, &pduEstablishMsg);
               LOG_I(NAS, "Send NAS_UPLINK_DATA_REQ message(PduSessionEstablishRequest)\n");
             }
+          }
             break;
           case FGS_DEREGISTRATION_ACCEPT:
             LOG_I(NAS, "received deregistration accept\n");
