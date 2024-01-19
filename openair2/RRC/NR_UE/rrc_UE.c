@@ -644,11 +644,23 @@ static void nr_rrc_ue_paging_force_idle(
 
   //NR_UE_rrc_inst[ctxt_pP.module_id].Srb0[gNB_indexP].Tx_buffer.payload_size = 0;
   NR_UE_rrc_inst[ctxt_pP.module_id].cell_group_config = NULL;
+  NR_UE_RRC_INST_t *rrc = &NR_UE_rrc_inst[ctxt_pP.module_id];
   // NR_UE_rrc_inst[ctxt_pP.module_id].SRB1_config[gNB_indexP] = NULL;
   // NR_UE_rrc_inst[ctxt_pP.module_id].SRB2_config[gNB_indexP] = NULL;
   // NR_UE_rrc_inst[ctxt_pP.module_id].DRB_config[gNB_indexP][0] = NULL;
   // NR_UE_rrc_inst[ctxt_pP.module_id].DRB_config[gNB_indexP][1] = NULL;
   // NR_UE_rrc_inst[ctxt_pP.module_id].DRB_config[gNB_indexP][2] = NULL;
+  for (int i = 0; i < NB_CNX_UE; i++) {
+      
+      
+      for (int j = 0; j < MAX_DRBS_PER_UE; j++)
+        rrc->active_DRBs[i][j] = false;
+      // SRB0 activated by default
+      rrc->Srb[i][0].status = RB_ESTABLISHED;
+      rrc->Srb[i][1].status = RB_NOT_PRESENT;
+     // rrc->Srb[i][2].status = RB_NOT_PRESENT;
+
+    }
 }
 
 
@@ -672,7 +684,7 @@ static void nr_ue_check_paging(const module_id_t module_id, const uint8_t gNB_in
 
             if (tmsi == tsc_NG_TMSI1) {
                 found = true;
-                if (isRrcRelease == false){
+                if (!isRrcRelease == false){
                   nr_rrc_ue_paging_force_idle(gNB_index);
                   isRrcRelease = false;
                 }
@@ -1601,6 +1613,7 @@ void nr_rrc_ue_generate_RRCSetupRequest(module_id_t module_id, const uint8_t gNB
   uint8_t rv[6];
   NR_UE_RRC_SRB_INFO_t *Srb0 = &NR_UE_rrc_inst[module_id].Srb[gNB_index][0];
   if (Srb0->srb_buffers.Tx_buffer.payload_size == 0) {
+    nr_rrc_ue_RRCSetupRequest_count++;
     // Get RRCConnectionRequest, fill random for now
     // Generate random byte stream for contention resolution
 
@@ -1809,7 +1822,8 @@ void nr_rrc_ue_generate_RRCSetupRequest(module_id_t module_id, const uint8_t gNB
      for (int cnt = 0; cnt < radioBearerConfig->srb_ToAddModList->list.count; cnt++) {
        struct NR_SRB_ToAddMod *srb = radioBearerConfig->srb_ToAddModList->list.array[cnt];
        NR_UE_RRC_SRB_INFO_t *Srb_info = &ue_rrc->Srb[gNB_index][srb->srb_Identity];
-       if (Srb_info->status == RB_NOT_PRESENT)
+
+       if (Srb_info->status == RB_NOT_PRESENT){
          add_srb(ctxt_pP->enb_flag,
                  ctxt_pP->rntiMaybeUEid,
                  radioBearerConfig->srb_ToAddModList->list.array[cnt],
@@ -1817,6 +1831,7 @@ void nr_rrc_ue_generate_RRCSetupRequest(module_id_t module_id, const uint8_t gNB
                  ue_rrc->integrityProtAlgorithm,
                  kRRCenc,
                  kRRCint);
+       }
        else {
          AssertFatal(srb->discardOnPDCP == NULL, "discardOnPDCP not yet implemented\n");
          AssertFatal(srb->reestablishPDCP == NULL, "reestablishPDCP not yet implemented\n");

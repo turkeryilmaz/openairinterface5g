@@ -726,7 +726,6 @@ void nr_rrc_config_ul_tda(NR_ServingCellConfigCommon_t *scc, int min_fb_delay){
 
     // UL TDA index 1 in case of SRS
     struct NR_PUSCH_TimeDomainResourceAllocation *pusch_timedomainresourceallocation1 = CALLOC(1,sizeof(struct NR_PUSCH_TimeDomainResourceAllocation));
-    LOG_I(NR_RRC,"dbg w38 addr of pusch_timedomainresourceallocation1->mappingType is %lx and its value is ",&(pusch_timedomainresourceallocation1->mappingType),pusch_timedomainresourceallocation1->mappingType);
     pusch_timedomainresourceallocation1->k2 = CALLOC(1,sizeof(long));
     *pusch_timedomainresourceallocation1->k2 = k2;
     pusch_timedomainresourceallocation1->mappingType = NR_PUSCH_TimeDomainResourceAllocation__mappingType_typeA;

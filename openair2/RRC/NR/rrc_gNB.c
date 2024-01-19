@@ -658,8 +658,9 @@ int rrc_gNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_name, insta
   uint8_t buffer[RRC_BUF_SIZE];
   uint8_t *message_buffer;
   MessageDef *message_p;
-  //struct NR_SIB1 *sib1 = RC.nrrrc[instance]->carrier[CC_id].siblock1->message.choice.c1->choice.systemInformationBlockType1;
-  struct NR_SIB1 *sib1 = RC.nrmac[0]->common_channels[CC_id].sib1;  //TODO W38: check here is paing TC failed
+    
+  struct NR_SIB1 *sib1 = RC.nrmac[0]->common_channels[CC_id].sib1->message.choice.c1->choice.systemInformationBlockType1;
+  
   // TODO: set configuration from TTCN SYS message
 
   /* get default DRX cycle from configuration */
@@ -1121,9 +1122,10 @@ rrc_gNB_store_RRCReconfiguration(
     //                     ue_context_pP->ue_context.masterCellGroup->spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList ?
     //                     NR_RRC_RECONFIGURATION_DELAY_MS + NR_RRC_BWP_SWITCHING_DELAY_MS : NR_RRC_RECONFIGURATION_DELAY_MS;
 
-
+    // note be careful, do not mix MAC UE database and RRC UE database  
+    NR_UE_info_t *UE=find_nr_UE(&RC.nrmac[0]->UE_info, 0, ue_context_pP->ue_context.rnti);
     NR_SCHED_LOCK(&RC.nrmac[0]->sched_lock);
-    nr_mac_enable_ue_rrc_processing_timer(RC.nrmac[0], ue_p, /* apply_cellGroup = */ true);
+    nr_mac_enable_ue_rrc_processing_timer(RC.nrmac[0], UE, /* apply_cellGroup = */ false);//TODO W38: this is unconformtable, for OAI, MAC process this message, it has all info needed. eg. app_cellGroup reconfig_cellgroup. RRC does not
     NR_SCHED_UNLOCK(&RC.nrmac[0]->sched_lock);
   }
 }
