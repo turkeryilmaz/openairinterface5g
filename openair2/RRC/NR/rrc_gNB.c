@@ -1114,7 +1114,9 @@ rrc_gNB_store_RRCReconfiguration(
 
   gNB_RRC_INST *rrc = RC.nrrrc[ctxt_pP->module_id];
   if (NODE_IS_DU(rrc->node_type) || NODE_IS_MONOLITHIC(rrc->node_type)) {
-
+    //int CC_id = 0; //bugz129620 to do, to acquire ccid info
+    //nr_rrc_mac_update_cellgroup(CC_id, ue_p->rnti, ue_p->masterCellGroup);
+    
 
     // uint32_t delay_ms = ue_context_pP->ue_context.masterCellGroup &&
     //                     ue_context_pP->ue_context.masterCellGroup->spCellConfig &&
@@ -1124,6 +1126,9 @@ rrc_gNB_store_RRCReconfiguration(
 
     // note be careful, do not mix MAC UE database and RRC UE database  
     NR_UE_info_t *UE=find_nr_UE(&RC.nrmac[0]->UE_info, 0, ue_context_pP->ue_context.rnti);
+    NR_SCHED_LOCK(&RC.nrmac[0]->sched_lock);
+    nr_mac_prepare_cellgroup_update(RC.nrmac[0], UE, ue_p->masterCellGroup);
+    NR_SCHED_UNLOCK(&RC.nrmac[0]->sched_lock);
     NR_SCHED_LOCK(&RC.nrmac[0]->sched_lock);
     nr_mac_enable_ue_rrc_processing_timer(RC.nrmac[0], UE, /* apply_cellGroup = */ false);//TODO W38: this is unconformtable, for OAI, MAC process this message, it has all info needed. eg. app_cellGroup reconfig_cellgroup. RRC does not
     NR_SCHED_UNLOCK(&RC.nrmac[0]->sched_lock);

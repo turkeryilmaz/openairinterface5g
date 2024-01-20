@@ -658,7 +658,7 @@ static void nr_rrc_ue_paging_force_idle(
       // SRB0 activated by default
       rrc->Srb[i][0].status = RB_ESTABLISHED;
       rrc->Srb[i][1].status = RB_NOT_PRESENT;
-     // rrc->Srb[i][2].status = RB_NOT_PRESENT;
+      rrc->Srb[i][2].status = RB_NOT_PRESENT;
 
     }
 }
