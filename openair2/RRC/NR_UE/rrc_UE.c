@@ -1558,8 +1558,9 @@ void nr_rrc_ue_process_securityModeCommand(const protocol_ctxt_t *const ctxt_pP,
     uint8_t security_mode = ue_rrc->cipheringAlgorithm | (ue_rrc->integrityProtAlgorithm << 4);
     // configure lower layers to apply SRB integrity protection and ciphering
     for (int i = 1; i < NR_NUM_SRB; i++) {
-      if (ue_rrc->Srb[gNB_index][i].status == RB_ESTABLISHED)
+      if (ue_rrc->Srb[gNB_index][i].status == RB_ESTABLISHED){
         nr_pdcp_config_set_security(ctxt_pP->rntiMaybeUEid, i, security_mode, kRRCenc, kRRCint, kUPenc);
+      }
     }
   } else {
     LOG_I(NR_RRC, "skipped pdcp_config_set_security() as securityMode == 0x%02x", securityMode);
@@ -1849,7 +1850,16 @@ void nr_rrc_ue_generate_RRCSetupRequest(module_id_t module_id, const uint8_t gNB
          nr_release_drb(ctxt_pP->rntiMaybeUEid, *DRB_id);
      }
    }
-
+  uint8_t kUPenc[16] = {0};
+  uint8_t kUPint[16] = {0};
+  nr_derive_key(UP_ENC_ALG,
+                NR_UE_rrc_inst[ctxt_pP->module_id].cipheringAlgorithm,
+                NR_UE_rrc_inst[ctxt_pP->module_id].kgnb,
+                kUPenc);
+  nr_derive_key(UP_INT_ALG,
+                NR_UE_rrc_inst[ctxt_pP->module_id].integrityProtAlgorithm,
+                NR_UE_rrc_inst[ctxt_pP->module_id].kgnb,
+                kUPint);
    // Establish DRBs if present
    if (radioBearerConfig->drb_ToAddModList != NULL) {
      for (int cnt = 0; cnt < radioBearerConfig->drb_ToAddModList->list.count; cnt++) {
@@ -1869,8 +1879,8 @@ void nr_rrc_ue_generate_RRCSetupRequest(module_id_t module_id, const uint8_t gNB
                  radioBearerConfig->drb_ToAddModList->list.array[cnt],
                  ue_rrc->cipheringAlgorithm,
                  ue_rrc->integrityProtAlgorithm,
-                 kRRCenc,
-                 kRRCint);
+                 kUPenc,
+                 kUPint);
        }
      }
    } // drb_ToAddModList //
