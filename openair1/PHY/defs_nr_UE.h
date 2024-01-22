@@ -703,6 +703,8 @@ typedef struct {
   //Scaling factor will be calculated based on tranmit power of the channel.
   // by default scaling factor is 512
   int            enable_ulpc;
+
+  int ho_flag;
 } PHY_VARS_NR_UE;
 
 typedef struct nr_phy_data_tx_s {
@@ -724,6 +726,7 @@ typedef struct nr_rxtx_thread_data_s {
   notifiedFIFO_t txFifo;
   nr_phy_data_t phy_data;
   int tx_wait_for_dlsch;
+  int ho_flag;
 } nr_rxtx_thread_data_t;
 
 typedef struct LDPCDecode_ue_s {

@@ -157,6 +157,7 @@ void init_nr_ue_vars(PHY_VARS_NR_UE *ue,
   ue->if_inst     = nr_ue_if_module_init(0);
   ue->dci_thres   = 0;
   ue->target_Nid_cell = -1;
+  ue->ho_flag = 0;
 
   // initialize all signal buffers
   init_nr_ue_signal(ue, nb_connected_gNB);
@@ -444,6 +445,9 @@ static void UE_synch(void *arg) {
       nr_get_carrier_frequencies(UE, &dl_carrier, &ul_carrier);
 
       if (nr_initial_sync(&syncD->proc, UE, 2, get_softmodem_params()->sa) == 0) {
+
+        if(UE->target_Nid_cell != -1)
+          UE->ho_flag = 2;
         freq_offset = UE->common_vars.freq_offset; // frequency offset computed with pss in initial sync
         hw_slot_offset = ((UE->rx_offset<<1) / UE->frame_parms.samples_per_subframe * UE->frame_parms.slots_per_subframe) +
                          round((float)((UE->rx_offset<<1) % UE->frame_parms.samples_per_subframe)/UE->frame_parms.samples_per_slot0);
@@ -512,6 +516,7 @@ static void UE_synch(void *arg) {
   }
 }
 
+static int burst_started = 0;
 static void RU_write(nr_rxtx_thread_data_t *rxtxD) {
 
   PHY_VARS_NR_UE *UE = rxtxD->UE;
@@ -543,6 +548,17 @@ static void RU_write(nr_rxtx_thread_data_t *rxtxD) {
     }
   } else {
     flags = TX_BURST_MIDDLE;
+
+    if (rxtxD->ho_flag == 1)
+    { 
+      flags = TX_BURST_END;
+      burst_started = 0;
+    } 
+    if ((rxtxD->ho_flag == 2) && (burst_started == 0))
+    { 
+      flags = TX_BURST_START;
+      burst_started = 1;
+    } 
   }
 
   if (flags || IS_SOFTMODEM_RFSIM)
@@ -626,6 +642,8 @@ nr_phy_data_t UE_dl_preprocessing(PHY_VARS_NR_UE *UE, UE_nr_rxtx_proc_t *proc)
         init_symbol_rotation(&UE->frame_parms);
       }
       UE->is_synchronized = 0;
+      //UE->timing_advance =  get_nrUE_params()->timing_advance;
+      UE->ho_flag = 1;
       UE->target_Nid_cell = synch_req->target_Nid_cell;
       clean_UE_dlsch(UE, proc->gNB_id);
       clean_UE_ulsch(UE, proc->gNB_id);
@@ -879,7 +897,7 @@ void *UE_thread(void *arg)
           }
           // Still unknown why need to reset timing_advance in RFsim to avoid:
           // Received RAR preamble (38) doesn't match the intended RAPID (37)
-          UE->timing_advance = 0;
+          //UE->timing_advance = 0;
           decoded_frame_rx = mac->mib_frame;
           LOG_I(PHY,"UE synchronized decoded_frame_rx=%d UE->init_sync_frame=%d trashed_frames=%d\n",
                 decoded_frame_rx,
@@ -1020,10 +1038,6 @@ void *UE_thread(void *arg)
         LOG_E(PHY,"can't compensate: diff =%d\n", first_symbols);
     }
     
-    //timing_advance += 1*rx_offset_slot;
-    //timing_advance += 2*rx_offset_slot;
-
-    //UE->timing_advance += 1*rx_offset_slot;
     UE->timing_advance += UL_TO_Tx_ofs;
 
     extern uint64_t RFsim_PropDelay;
@@ -1036,45 +1050,47 @@ void *UE_thread(void *arg)
       - firstSymSamp - openair0_cfg[0].tx_sample_advance -
       UE->N_TA_offset - timing_advance;
 
-  	//timing_advance += 1*rx_offset_slot;
-    //timing_advance += 2*rx_offset_slot;
-
-    //UE->timing_advance += 1*rx_offset_slot;
-    //UE->timing_advance += 2*rx_offset_slot;
-
     // but use current UE->timing_advance value to compute writeBlockSize
     if (UE->timing_advance != timing_advance) {
       writeBlockSize -= UE->timing_advance - timing_advance;
       timing_advance = UE->timing_advance;
     }
 
-    //timing_advance += 1*rx_offset_slot;
-    //timing_advance += 2*rx_offset_slot;
-
-    //UE->timing_advance += 1*rx_offset_slot;
-    //UE->timing_advance += 2*rx_offset_slot;
 
     if (curMsg.proc.nr_slot_tx == 0)
       nr_ue_rrc_timer_trigger(UE->Mod_id, curMsg.proc.frame_tx, curMsg.proc.gNB_id);
 
+
+        // RX slot processing. We launch and forget.
+    notifiedFIFO_elt_t *newElt = newNotifiedFIFO_elt(sizeof(nr_rxtx_thread_data_t), curMsg.proc.nr_slot_rx, NULL, UE_dl_processing);
+    nr_rxtx_thread_data_t *curMsgRx = (nr_rxtx_thread_data_t *) NotifiedFifoData(newElt);
+    curMsgRx->proc = curMsg.proc;
+    curMsgRx->UE = UE;
+    curMsgRx->phy_data = UE_dl_preprocessing(UE, &curMsg.proc);
+    pushTpool(&(get_nrUE_params()->Tpool), newElt);
+
+
     // Start TX slot processing here. It runs in parallel with RX slot processing
-    notifiedFIFO_elt_t *newElt = newNotifiedFIFO_elt(sizeof(nr_rxtx_thread_data_t), curMsg.proc.nr_slot_tx, &txFifo, processSlotTX);
+    newElt = newNotifiedFIFO_elt(sizeof(nr_rxtx_thread_data_t), curMsg.proc.nr_slot_tx, &txFifo, processSlotTX);
     nr_rxtx_thread_data_t *curMsgTx = (nr_rxtx_thread_data_t *) NotifiedFifoData(newElt);
     curMsgTx->proc = curMsg.proc;
     curMsgTx->writeBlockSize = writeBlockSize;
     curMsgTx->proc.timestamp_tx = writeTimestamp;
     curMsgTx->UE = UE;
+    curMsgTx->ho_flag = UE->ho_flag;
     curMsgTx->tx_wait_for_dlsch = UE->tx_wait_for_dlsch[curMsgTx->proc.nr_slot_tx];
     UE->tx_wait_for_dlsch[curMsgTx->proc.nr_slot_tx] = 0;
     pushTpool(&(get_nrUE_params()->Tpool), newElt);
 
     // RX slot processing. We launch and forget.
+    /*
     newElt = newNotifiedFIFO_elt(sizeof(nr_rxtx_thread_data_t), curMsg.proc.nr_slot_rx, NULL, UE_dl_processing);
     nr_rxtx_thread_data_t *curMsgRx = (nr_rxtx_thread_data_t *) NotifiedFifoData(newElt);
     curMsgRx->proc = curMsg.proc;
     curMsgRx->UE = UE;
     curMsgRx->phy_data = UE_dl_preprocessing(UE, &curMsg.proc);
     pushTpool(&(get_nrUE_params()->Tpool), newElt);
+    */
 
     // Wait for TX slot processing to finish
     notifiedFIFO_elt_t *res;
