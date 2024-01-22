@@ -79,7 +79,8 @@ unsigned short config_frames[4] = {2,9,11,13};
 #include <openair3/ocp-gtpu/gtp_itf.h>
 #include "nfapi/oai_integration/vendor_ext.h"
 #include "gnb_config.h"
-#include "openair2/E1AP/e1ap_common.h"
+#include "E1AP/e1ap_common.h"
+#include "LAYER2/NR_MAC_gNB/nr_mac_gNB.h"
 #ifdef ENABLE_AERIAL
 #include "fapi/oai-integration/fapi_nvIPC.h"
 #endif
@@ -768,7 +769,8 @@ int main( int argc, char **argv ) {
     start_NR_RU();
 #ifdef ENABLE_AERIAL
   if(NFAPI_MODE == NFAPI_MODE_AERIAL){
-    nvIPC_Init(RC.nrmac[0]->eth_params_s.local_if_name);
+    gNB_MAC_INST *nrmac = RC.nrmac[0];
+    nvIPC_Init(nrmac->eth_params_s.local_if_name);
   }else{
     AssertFatal(1==0,"Not run as Aerial mode when compiled with AERIAL, if you want to run other (n)FAPI modes, please run ./build_oai without -w AERIAL");
   }
