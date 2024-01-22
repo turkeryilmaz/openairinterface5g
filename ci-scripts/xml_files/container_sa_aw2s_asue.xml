@@ -31,15 +31,9 @@
     020000
     002000
     002001
-    002002
-    002003
+    002002  
     002004
-    002005
-    002006
     002007
-    002008
-    002009
-    002010
     000100
     000010
     000020
@@ -81,7 +75,7 @@
   <testCase id="002002">
     <class>Attach_UE</class>
     <desc>Attach UE</desc>
-    <id>amarisoft_ue_2</id>
+    <id>amarisoft_ue_2 amarisoft_ue_3</id>
   </testCase>
 
   <testCase id="002003">
@@ -93,7 +87,7 @@
   <testCase id="002004">
     <class>Attach_UE</class>
     <desc>Attach UE</desc>
-    <id>amarisoft_ue_4</id>
+    <id>amarisoft_ue_4 amarisoft_ue_5 amarisoft_ue_6</id>
   </testCase>
 
   <testCase id="002005">
@@ -111,7 +105,7 @@
   <testCase id="002007">
     <class>Attach_UE</class>
     <desc>Attach UE</desc>
-    <id>amarisoft_ue_7</id>
+    <id>amarisoft_ue_7 amarisoft_ue_8 amarisoft_ue_9 amarisoft_ue_10</id>
   </testCase>
 
   <testCase id="002008">
