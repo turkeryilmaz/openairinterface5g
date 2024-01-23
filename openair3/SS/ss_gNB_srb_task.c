@@ -92,8 +92,12 @@ static void ss_send_srb_data(ss_nrrrc_pdu_ind_t *pdu_ind, int cell_index)
         SS_context.SSCell_list[cell_index].ss_rnti_g = rnti_g;
         size_t msgSize = size;
         memset(&ind, 0, sizeof(ind));
-        //TODO: Work Around till Sys port is implemented for 5G
-      	ind.Common.CellId = SS_context.SSCell_list[cell_index].nr_cellId;
+        if (RC.ss.mode == SS_HWTMODEM) {
+                // Work Around as Sys port not used in this mode - cell init not done
+                ind.Common.CellId = nr_Cell1;
+        } else {
+                ind.Common.CellId = SS_context.SSCell_list[cell_index].nr_cellId;
+        }
 
         // Populated the Routing Info
         ind.Common.RoutingInfo.d = NR_RoutingInfo_Type_RadioBearerId;
@@ -121,8 +125,12 @@ static void ss_send_srb_data(ss_nrrrc_pdu_ind_t *pdu_ind, int cell_index)
         ind.Common.Status.v.Ok = true;
 
         ind.Common.RlcBearerRouting.d = RlcBearerRouting_Type_NR;
-	//TODO: Work Around till Sys port is implemented for 5G
-        ind.Common.RlcBearerRouting.v.NR = SS_context.SSCell_list[cell_index].nr_cellId;
+        if (RC.ss.mode == SS_HWTMODEM) {
+                // Work Around as Sys port not used in this mode - cell init not done
+                ind.Common.RlcBearerRouting.v.NR = nr_Cell1;
+        } else {
+                ind.Common.RlcBearerRouting.v.NR = SS_context.SSCell_list[cell_index].nr_cellId;
+        }
 
         /* Populate and Send the EUTRA RRC PDU IND to Client */
         if (pdu_ind->srb_id == 0)
