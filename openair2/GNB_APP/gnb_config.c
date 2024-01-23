@@ -1771,23 +1771,9 @@ void RCconfig_NRRRC(gNB_RRC_INST *rrc)
 
         for (uint8_t cc=0; cc< MAX_NUM_CCs; cc++){
           nrrrc_config = &rrc->configuration[cc];
-          if (RC.ss.mode == SS_GNB){
-            nrrrc_config->cell_identity     = gnb_id; //TODO W38: 
-          }else{
-            nrrrc_config->cell_identity     = (int)*RC.nrmac[i]->common_channels[cc].ServingCellConfigCommon->physCellId;
-          }
-/* // ///TODO W38 done
- {
-          if (RC.ss.mode == SS_GNB)
-          {
-            NRRRC_CONFIGURATION_REQ(msg_p).configuration[cc].cell_identity = gnb_id;
-          }
-          else
-          {
-            NRRRC_CONFIGURATION_REQ(msg_p).configuration[cc].cell_identity = (int)*scc[cc]->physCellId;
-          }
-          NRRRC_CONFIGURATION_REQ(msg_p).configuration[cc].tac = *GNBParamList.paramarray[i][GNB_TRACKING_AREA_CODE_IDX].uptr;
-*/
+
+          nrrrc_config->cell_identity = (uint64_t) * (GNBParamList.paramarray[0][GNB_NRCELLID_IDX].u64ptr);
+
           nrrrc_config->tac               = *GNBParamList.paramarray[i][GNB_TRACKING_AREA_CODE_IDX].uptr;
           AssertFatal(!GNBParamList.paramarray[i][GNB_MOBILE_COUNTRY_CODE_IDX_OLD].strptr
                       && !GNBParamList.paramarray[i][GNB_MOBILE_NETWORK_CODE_IDX_OLD].strptr,
@@ -1807,11 +1793,16 @@ void RCconfig_NRRRC(gNB_RRC_INST *rrc)
           nrrrc_config->num_plmn = PLMNParamList.numelt;
 
           for (int l = 0; l < PLMNParamList.numelt; ++l) {
+
     
           nrrrc_config->mcc[l]               = *PLMNParamList.paramarray[l][GNB_MOBILE_COUNTRY_CODE_IDX].uptr;
           nrrrc_config->mnc[l]               = *PLMNParamList.paramarray[l][GNB_MOBILE_NETWORK_CODE_IDX].uptr;
           nrrrc_config->mnc_digit_length[l]  = *PLMNParamList.paramarray[l][GNB_MNC_DIGIT_LENGTH].u8ptr;
+          nrrrc_config->tac                  = *GNBParamList.paramarray[0][GNB_TRACKING_AREA_CODE_IDX].uptr;
           nrrrc_config->q_RxLevMinSIB2 = -55;
+          nrrrc_config->q_RxLevMinSIB1 = -55;
+          
+          
           AssertFatal((nrrrc_config->mnc_digit_length[l] == 2) ||
             (nrrrc_config->mnc_digit_length[l] == 3),"BAD MNC DIGIT LENGTH %d",
             nrrrc_config->mnc_digit_length[l]);

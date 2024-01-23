@@ -2190,8 +2190,10 @@ NR_BCCH_DL_SCH_Message_t *get_SIB1_NR(const NR_ServingCellConfigCommon_t *scc, c
   xer_fprint(stdout, &asn_DEF_NR_SIB1, (const void*)sib1_message->message.choice.c1->choice.systemInformationBlockType1);
   return sib1_message;
 }
-reconfig_SIB1_NR(NR_BCCH_DL_SCH_Message_t *sib1_message,  gNB_RrcConfigurationReq *configuration)
+
+void reconfig_SIB1_NR(NR_BCCH_DL_SCH_Message_t *sib1_message, const NR_ServingCellConfigCommon_t *scc, const f1ap_plmn_t *plmn, uint64_t cellID, int tac)
 {
+  AssertFatal(cellID < (1l << 36), "cellID must fit within 36 bits, but is %ld\n", cellID);
   // NR_BCCH_DL_SCH_Message_t *sib1_message = CALLOC(1,sizeof(NR_BCCH_DL_SCH_Message_t));
  
   AssertFatal(sib1_message != NULL, "out of memory\n");
@@ -2220,17 +2222,17 @@ reconfig_SIB1_NR(NR_BCCH_DL_SCH_Message_t *sib1_message,  gNB_RrcConfigurationRe
   for (int i = 0; i < num_plmn; ++i) {
     asn1cSequenceAdd(nr_plmn_info->plmn_IdentityList.list, struct NR_PLMN_Identity, nr_plmn);
     asn1cCalloc(nr_plmn->mcc, mcc);
-    int confMcc = configuration->mcc[i];
+    int confMcc = plmn->mcc;
     asn1cSequenceAdd(mcc->list, NR_MCC_MNC_Digit_t, mcc0);
     *mcc0 = (confMcc / 100) % 10;
     asn1cSequenceAdd(mcc->list, NR_MCC_MNC_Digit_t, mcc1);
     *mcc1 = (confMcc / 10) % 10;
     asn1cSequenceAdd(mcc->list, NR_MCC_MNC_Digit_t, mcc2);
     *mcc2 = confMcc % 10;
-    int mnc = configuration->mnc[i];
-    if (configuration->mnc_digit_length[i] == 3) {
+    int mnc = plmn->mnc;
+    if (plmn->mnc_digit_length == 3) {
       asn1cSequenceAdd(nr_plmn->mnc.list, NR_MCC_MNC_Digit_t, mnc0);
-      *mnc0 = (configuration->mnc[i] / 100) % 10;
+      *mnc0 = (0 / 100) % 10;
     }
     asn1cSequenceAdd(nr_plmn->mnc.list, NR_MCC_MNC_Digit_t, mnc1);
     *mnc1 = (mnc / 10) % 10;
@@ -2247,7 +2249,7 @@ reconfig_SIB1_NR(NR_BCCH_DL_SCH_Message_t *sib1_message,  gNB_RrcConfigurationRe
   nr_plmn_info->cellIdentity.size = 5;
   nr_plmn_info->cellIdentity.bits_unused = 4;
  //configuration->cell_identity =512;
-  uint64_t tmp = configuration->cell_identity <<4;
+  uint64_t tmp = cellID <<4;
   for(int ii=4;ii>=0;ii--){
      nr_plmn_info->cellIdentity.buf[4-ii]=(tmp >>(ii*8))  & 0xff;
   }
@@ -2255,7 +2257,7 @@ reconfig_SIB1_NR(NR_BCCH_DL_SCH_Message_t *sib1_message,  gNB_RrcConfigurationRe
  
   // nr_plmn_info->trackingAreaCode = CALLOC(1, sizeof(NR_TrackingAreaCode_t));
   AssertFatal(nr_plmn_info->trackingAreaCode != NULL, "out of memory\n");
-  uint32_t tmp2 = htobe32(configuration->tac);
+  uint32_t tmp2 = htobe32(tac);
   // nr_plmn_info->trackingAreaCode->buf = CALLOC(1, 3);
   AssertFatal(nr_plmn_info->trackingAreaCode->buf != NULL, "out of memory\n");
   memcpy(nr_plmn_info->trackingAreaCode->buf, ((char *)&tmp2) + 1, 3);
@@ -2302,9 +2304,9 @@ reconfig_SIB1_NR(NR_BCCH_DL_SCH_Message_t *sib1_message,  gNB_RrcConfigurationRe
   
   struct NR_ServingCellConfigCommonSIB  *ServCellCom = sib1->servingCellConfigCommon;
   NR_BWP_DownlinkCommon_t *initialDownlinkBWP = &ServCellCom->downlinkConfigCommon.initialDownlinkBWP;
-  initialDownlinkBWP->genericParameters = configuration->scc->downlinkConfigCommon->initialDownlinkBWP->genericParameters;
+  initialDownlinkBWP->genericParameters = scc->downlinkConfigCommon->initialDownlinkBWP->genericParameters;
 
-  const NR_FrequencyInfoDL_t *frequencyInfoDL = configuration->scc->downlinkConfigCommon->frequencyInfoDL;
+  const NR_FrequencyInfoDL_t *frequencyInfoDL = scc->downlinkConfigCommon->frequencyInfoDL;
   
   asn_set_empty(&ServCellCom->downlinkConfigCommon.frequencyInfoDL.frequencyBandList.list);
   
@@ -2317,12 +2319,12 @@ reconfig_SIB1_NR(NR_BCCH_DL_SCH_Message_t *sib1_message,  gNB_RrcConfigurationRe
   }
   
   
-  const NR_FreqBandIndicatorNR_t band = *configuration->scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0];
+  const NR_FreqBandIndicatorNR_t band = *scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0];
        
   frequency_range_t frequency_range = band < 100 ? FR1 : FR2;
-  sib1->servingCellConfigCommon->downlinkConfigCommon.frequencyInfoDL.offsetToPointA = get_ssb_offset_to_pointA(*configuration->scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB,
-                               configuration->scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA,
-                               configuration->scc->downlinkConfigCommon->initialDownlinkBWP->genericParameters.subcarrierSpacing,
+  sib1->servingCellConfigCommon->downlinkConfigCommon.frequencyInfoDL.offsetToPointA = get_ssb_offset_to_pointA(*scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB,
+                               scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA,
+                               scc->downlinkConfigCommon->initialDownlinkBWP->genericParameters.subcarrierSpacing,
                                frequency_range);
   
   LOG_I(NR_RRC,
@@ -2336,7 +2338,7 @@ reconfig_SIB1_NR(NR_BCCH_DL_SCH_Message_t *sib1_message,  gNB_RrcConfigurationRe
                 frequencyInfoDL->scs_SpecificCarrierList.list.array[i]);
   }
   
-  initialDownlinkBWP->pdcch_ConfigCommon = configuration->scc->downlinkConfigCommon->initialDownlinkBWP->pdcch_ConfigCommon;
+  initialDownlinkBWP->pdcch_ConfigCommon = scc->downlinkConfigCommon->initialDownlinkBWP->pdcch_ConfigCommon;
   // initialDownlinkBWP->pdcch_ConfigCommon->choice.setup->commonSearchSpaceList =
   //     CALLOC(1, sizeof(struct NR_PDCCH_ConfigCommon__commonSearchSpaceList));
   AssertFatal(initialDownlinkBWP->pdcch_ConfigCommon->choice.setup->commonSearchSpaceList != NULL, "out of memory\n");
@@ -2357,7 +2359,7 @@ reconfig_SIB1_NR(NR_BCCH_DL_SCH_Message_t *sib1_message,  gNB_RrcConfigurationRe
   asn1cReConfigOne(initialDownlinkBWP->pdcch_ConfigCommon->choice.setup->pagingSearchSpace, 2);
   asn1cReConfigOne(initialDownlinkBWP->pdcch_ConfigCommon->choice.setup->ra_SearchSpace, 1);
    
-  initialDownlinkBWP->pdsch_ConfigCommon = configuration->scc->downlinkConfigCommon->initialDownlinkBWP->pdsch_ConfigCommon;
+  initialDownlinkBWP->pdsch_ConfigCommon = scc->downlinkConfigCommon->initialDownlinkBWP->pdsch_ConfigCommon;
   ServCellCom->downlinkConfigCommon.bcch_Config.modificationPeriodCoeff = NR_BCCH_Config__modificationPeriodCoeff_n2;
   ServCellCom->downlinkConfigCommon.pcch_Config.defaultPagingCycle = NR_PagingCycle_rf256;
   ServCellCom->downlinkConfigCommon.pcch_Config.nAndPagingFrameOffset.present = NR_PCCH_Config__nAndPagingFrameOffset_PR_quarterT;
@@ -2378,33 +2380,49 @@ reconfig_SIB1_NR(NR_BCCH_DL_SCH_Message_t *sib1_message,  gNB_RrcConfigurationRe
   //typeof(ServCellCom->uplinkConfigCommon) UL;
   //UL= ServCellCom->uplinkConfigCommon;
   asn_set_empty(&UL->frequencyInfoUL.scs_SpecificCarrierList.list);
-  const NR_FrequencyInfoUL_t *frequencyInfoUL = configuration->scc->uplinkConfigCommon->frequencyInfoUL;
+  const NR_FrequencyInfoUL_t *frequencyInfoUL = scc->uplinkConfigCommon->frequencyInfoUL;
 
   for (int i = 0; i < frequencyInfoUL->scs_SpecificCarrierList.list.count; i++) {
     asn1cSeqAdd(&UL->frequencyInfoUL.scs_SpecificCarrierList.list, frequencyInfoUL->scs_SpecificCarrierList.list.array[i]);
   }
 
   asn1cReConfigOne(UL->frequencyInfoUL.p_Max, *frequencyInfoUL->p_Max);
+ frame_type_t frame_type =
+      get_frame_type((int)*scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0],
+                     *scc->ssbSubcarrierSpacing);
+
+  if (frame_type == FDD) {
+    UL->frequencyInfoUL.absoluteFrequencyPointA = malloc(sizeof(*UL->frequencyInfoUL.absoluteFrequencyPointA));
+    AssertFatal(UL->frequencyInfoUL.absoluteFrequencyPointA != NULL, "out of memory\n");
+    *UL->frequencyInfoUL.absoluteFrequencyPointA =
+        *scc->uplinkConfigCommon->frequencyInfoUL->absoluteFrequencyPointA;
+    UL->frequencyInfoUL.frequencyBandList = calloc(1, sizeof(*UL->frequencyInfoUL.frequencyBandList));
+    AssertFatal(UL->frequencyInfoUL.frequencyBandList != NULL, "out of memory\n");
+    for (int i = 0; i < frequencyInfoUL->frequencyBandList->list.count; i++) {
+      asn1cSequenceAdd(UL->frequencyInfoUL.frequencyBandList->list, struct NR_NR_MultiBandInfo, nrMultiBandInfo);
+      nrMultiBandInfo->freqBandIndicatorNR = frequencyInfoUL->frequencyBandList->list.array[i];
+    }
+  }
   //ServCellCom->uplinkConfigCommon.p_Max =  *frequencyInfoUL->p_Max;
-  UL->initialUplinkBWP.genericParameters = configuration->scc->uplinkConfigCommon->initialUplinkBWP->genericParameters;
-  UL->initialUplinkBWP.rach_ConfigCommon = configuration->scc->uplinkConfigCommon->initialUplinkBWP->rach_ConfigCommon;
-  UL->initialUplinkBWP.pusch_ConfigCommon = configuration->scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon;
+  UL->initialUplinkBWP.genericParameters = scc->uplinkConfigCommon->initialUplinkBWP->genericParameters;
+  UL->initialUplinkBWP.rach_ConfigCommon = scc->uplinkConfigCommon->initialUplinkBWP->rach_ConfigCommon;
+  UL->initialUplinkBWP.pusch_ConfigCommon = scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon;
   UL->initialUplinkBWP.pusch_ConfigCommon->choice.setup->groupHoppingEnabledTransformPrecoding = NULL;
 
-  UL->initialUplinkBWP.pucch_ConfigCommon = configuration->scc->uplinkConfigCommon->initialUplinkBWP->pucch_ConfigCommon;
+  UL->initialUplinkBWP.pucch_ConfigCommon = scc->uplinkConfigCommon->initialUplinkBWP->pucch_ConfigCommon;
 
   UL->timeAlignmentTimerCommon = NR_TimeAlignmentTimer_infinity;
 
-  ServCellCom->n_TimingAdvanceOffset = configuration->scc->n_TimingAdvanceOffset;
+  ServCellCom->n_TimingAdvanceOffset = scc->n_TimingAdvanceOffset;
 
   // ServCellCom->ssb_PositionsInBurst.inOneGroup.buf = calloc(1, sizeof(uint8_t));
   uint8_t bitmap8,temp_bitmap=0;
-  switch (configuration->scc->ssb_PositionsInBurst->present) {
+  switch (scc->ssb_PositionsInBurst->present) {
     case NR_ServingCellConfigCommon__ssb_PositionsInBurst_PR_shortBitmap:
-      ServCellCom->ssb_PositionsInBurst.inOneGroup = configuration->scc->ssb_PositionsInBurst->choice.shortBitmap;
+      ServCellCom->ssb_PositionsInBurst.inOneGroup = scc->ssb_PositionsInBurst->choice.shortBitmap;
       break;
     case NR_ServingCellConfigCommon__ssb_PositionsInBurst_PR_mediumBitmap:
-      ServCellCom->ssb_PositionsInBurst.inOneGroup = configuration->scc->ssb_PositionsInBurst->choice.mediumBitmap;
+      ServCellCom->ssb_PositionsInBurst.inOneGroup = scc->ssb_PositionsInBurst->choice.mediumBitmap;
       break;
     /*
      * groupPresence: This field is present when maximum number of SS/PBCH blocks per half frame equals to 64 as defined in
@@ -2428,7 +2446,7 @@ reconfig_SIB1_NR(NR_BCCH_DL_SCH_Message_t *sib1_message,  gNB_RrcConfigurationRe
       AssertFatal(ServCellCom->ssb_PositionsInBurst.groupPresence->buf != NULL, "out of memory\n");
       ServCellCom->ssb_PositionsInBurst.groupPresence->buf[0] = 0;
       for (int i = 0; i < 8; i++) {
-        bitmap8 = configuration->scc->ssb_PositionsInBurst->choice.longBitmap.buf[i];
+        bitmap8 = scc->ssb_PositionsInBurst->choice.longBitmap.buf[i];
         if (bitmap8 != 0) {
           if (temp_bitmap == 0)
             temp_bitmap = bitmap8;
@@ -2446,15 +2464,15 @@ reconfig_SIB1_NR(NR_BCCH_DL_SCH_Message_t *sib1_message,  gNB_RrcConfigurationRe
       break;
   }
 
-  ServCellCom->ssb_PeriodicityServingCell = *configuration->scc->ssb_periodicityServingCell;
-  if (configuration->scc->tdd_UL_DL_ConfigurationCommon) {
+  ServCellCom->ssb_PeriodicityServingCell = *scc->ssb_periodicityServingCell;
+  if (scc->tdd_UL_DL_ConfigurationCommon) {
     //ServCellCom->tdd_UL_DL_ConfigurationCommon = CALLOC(1,sizeof(struct NR_TDD_UL_DL_ConfigCommon));
     AssertFatal(ServCellCom->tdd_UL_DL_ConfigurationCommon != NULL, "out of memory\n");
-    ServCellCom->tdd_UL_DL_ConfigurationCommon->referenceSubcarrierSpacing = configuration->scc->tdd_UL_DL_ConfigurationCommon->referenceSubcarrierSpacing;
-    ServCellCom->tdd_UL_DL_ConfigurationCommon->pattern1 = configuration->scc->tdd_UL_DL_ConfigurationCommon->pattern1;
-    ServCellCom->tdd_UL_DL_ConfigurationCommon->pattern2 = configuration->scc->tdd_UL_DL_ConfigurationCommon->pattern2;
+    ServCellCom->tdd_UL_DL_ConfigurationCommon->referenceSubcarrierSpacing = scc->tdd_UL_DL_ConfigurationCommon->referenceSubcarrierSpacing;
+    ServCellCom->tdd_UL_DL_ConfigurationCommon->pattern1 = scc->tdd_UL_DL_ConfigurationCommon->pattern1;
+    ServCellCom->tdd_UL_DL_ConfigurationCommon->pattern2 = scc->tdd_UL_DL_ConfigurationCommon->pattern2;
   }
-  ServCellCom->ss_PBCH_BlockPower = configuration->scc->ss_PBCH_BlockPower;
+  ServCellCom->ss_PBCH_BlockPower = scc->ss_PBCH_BlockPower;
 
   // ims-EmergencySupport
   // TODO: add ims-EmergencySupport
@@ -2465,7 +2483,13 @@ reconfig_SIB1_NR(NR_BCCH_DL_SCH_Message_t *sib1_message,  gNB_RrcConfigurationRe
   // ue-TimersAndConstants
   //sib1->ue_TimersAndConstants = CALLOC(1,sizeof(struct NR_UE_TimersAndConstants));
   AssertFatal(sib1->ue_TimersAndConstants != NULL, "out of memory\n");
-  sib1->ue_TimersAndConstants->t300 = NR_UE_TimersAndConstants__t300_ms2000;
+  if(RC.ss.mode != SS_HWTMODEM){
+    //W/A increasing T300 to avoid TAU
+    sib1->ue_TimersAndConstants->t300 = NR_UE_TimersAndConstants__t300_ms2000;
+  } else{
+    //JPE keeping initial value set from OAI code
+    sib1->ue_TimersAndConstants->t300 = NR_UE_TimersAndConstants__t300_ms400;
+  }
   sib1->ue_TimersAndConstants->t301 = NR_UE_TimersAndConstants__t301_ms400;
   sib1->ue_TimersAndConstants->t310 = NR_UE_TimersAndConstants__t310_ms2000;
   sib1->ue_TimersAndConstants->n310 = NR_UE_TimersAndConstants__n310_n10;
@@ -2497,6 +2521,7 @@ reconfig_SIB1_NR(NR_BCCH_DL_SCH_Message_t *sib1_message,  gNB_RrcConfigurationRe
   
   //return sib1_message;
 }
+
 
 void free_SIB1_NR(NR_BCCH_DL_SCH_Message_t *sib1)
 {

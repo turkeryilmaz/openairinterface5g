@@ -477,14 +477,17 @@ void openair_rrc_gNB_configuration(gNB_RRC_INST *rrc, NRRrcConfigurationReqList 
   //   rrc->configuration[CC_id] = configuration->configuration[CC_id];
     
   // }
-  // System Information INIT
-  init_NR_SI(rrc); //TODO W38 init_NR_SI need to handle all cells done
+  
 
   //TODO w38: come back here to fix it. memory leakage and update ul_tda
   // for(int CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
   //     nr_rrc_config_ul_tda(RC.nrmac[0]->common_channels[CC_id].ServingCellConfigCommon,RC.nrmac[0]->radio_config[CC_id].minRXTXTIME); //TODO W38: calling the function again, cauing memory leakage
   //   }
+  if(!init_config_flag)
   nr_mac_update_config();
+  // System Information INIT
+  init_NR_SI(rrc); //TODO W38 init_NR_SI need to handle all cells done
+  
   for(int CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
     rrc_mac_config_dedicate_scheduling(rrc->module_id, rrc->carrier[CC_id].dcchDtchConfig);
   }

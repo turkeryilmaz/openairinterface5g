@@ -207,7 +207,7 @@ static void mac_rrc_init(gNB_MAC_INST *mac, ngran_node_t node_type)
 void nr_mac_update_config(void){
 
   //get_new_MIB_NR
-  for(int CC_id=1;CC_id<MAX_NUM_CCs;CC_id++){
+  for(int CC_id=0;CC_id<MAX_NUM_CCs;CC_id++){
     
     NR_SCHED_LOCK(&(RC.nrmac[0]->sched_lock));
     if(RC.nrmac[0]->common_channels[CC_id].mib){
@@ -217,9 +217,10 @@ void nr_mac_update_config(void){
     NR_SCHED_UNLOCK(&(RC.nrmac[0]->sched_lock));
 
     f1ap_plmn_t plmn;
-    plmn.mcc = RC.nrrrc[0]->configuration[CC_id].mcc;
-    plmn.mnc = RC.nrrrc[0]->configuration[CC_id].mnc;
-    plmn.mnc_digit_length = RC.nrrrc[0]->configuration[CC_id].mnc_digit_length;
+    plmn.mcc = RC.nrrrc[0]->configuration[CC_id].mcc[0];
+    plmn.mnc = RC.nrrrc[0]->configuration[CC_id].mnc[0];
+    plmn.mnc_digit_length = RC.nrrrc[0]->configuration[CC_id].mnc_digit_length[0];
+   
     nr_mac_configure_sib1(RC.nrmac[0], &plmn, RC.nrrrc[0]->configuration[CC_id].cell_identity, RC.nrrrc[0]->configuration[CC_id].tac, CC_id);
  
     //W38 note ttcn does not config below part, so only a copy from local param list, //TODO W38: to double check 

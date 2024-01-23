@@ -550,14 +550,17 @@ void nr_mac_configure_sib1(gNB_MAC_INST *nrmac, const f1ap_plmn_t *plmn, uint64_
   NR_SCHED_LOCK(&nrmac->sched_lock);
   NR_COMMON_channels_t *cc = &nrmac->common_channels[CC_id];
   NR_ServingCellConfigCommon_t *scc = cc->ServingCellConfigCommon;
-  NR_BCCH_DL_SCH_Message_t *sib1 = get_SIB1_NR(scc, plmn, cellID, tac);
+
+  
   
   if(cc->sib1){
-    free_SIB1_NR(cc->sib1);
+    reconfig_SIB1_NR(cc->sib1, scc, plmn, cellID, tac);
+  }else{
+    NR_BCCH_DL_SCH_Message_t *sib1 = get_SIB1_NR(scc, plmn, cellID, tac);
+    cc->sib1 = sib1;
   }
-  cc->sib1 = sib1;
-    LOG_I(NR_MAC,"cc->sib1 %lx nrmac->common_channels[CC_id].sib1\n", cc->sib1,nrmac->common_channels[CC_id].sib1 );
-  cc->sib1_bcch_length = encode_SIB1_NR(sib1, cc->sib1_bcch_pdu, sizeof(cc->sib1_bcch_pdu));
+  
+  cc->sib1_bcch_length = encode_SIB1_NR(cc->sib1, cc->sib1_bcch_pdu, sizeof(cc->sib1_bcch_pdu));
   NR_SCHED_UNLOCK(&nrmac->sched_lock);
   AssertFatal(cc->sib1_bcch_length > 0, "could not encode SIB1\n");
 }
