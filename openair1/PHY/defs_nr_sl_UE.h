@@ -184,9 +184,6 @@ typedef struct SL_NR_UE_PSBCH {
 } SL_NR_UE_PSBCH_t;
 
 typedef struct SL_NR_UE_PSFCH {
-  // STATS - Receptions with CRC OK
-  uint16_t rx_ok;
-
   // STATS - transmissions of PSFCH by the UE
   uint16_t num_psfch_tx;
 

@@ -625,6 +625,12 @@ void processSlotTX(void *arg) {
 
   if (proc->tx_slot_type == NR_SIDELINK_SLOT && UE->sl_mode == 2) {
 
+    // wait for rx slots to send indication (if any) that SLSCH decoding is finished
+    // for(int i=0; i < rxtxD->tx_wait_for_slsch; i++) {
+    //   LOG_I(NR_PHY, "EJJ: tx slot: %d, rxtxD->tx_wait_for_slsch: %d pullNotifiedFIFO\n", proc->nr_slot_tx, rxtxD->tx_wait_for_slsch);
+    //   notifiedFIFO_elt_t *res = pullNotifiedFIFO(UE->tx_resume_ind_fifo[proc->nr_slot_tx]);
+    //   delNotifiedFIFO_elt(res);
+    // }
    // trigger L2 to run ue_scheduler thru IF module
     if(UE->if_inst != NULL && UE->if_inst->sl_indication != NULL) {
       start_meas(&UE->ue_ul_indication_stats);
@@ -642,6 +648,7 @@ void processSlotTX(void *arg) {
       sl_indication.slot_type = SIDELINK_SLOT_TYPE_TX;
 
       LOG_D(NR_PHY,"Sending SL indication RX %d.%d TX %d.%d\n",proc->frame_rx,proc->nr_slot_rx,proc->frame_tx,proc->nr_slot_tx);
+      LOG_D(NR_PHY, "calling sl_indication: RX %d.%d TX %d.%d %s\n",proc->frame_rx,proc->nr_slot_rx,proc->frame_tx,proc->nr_slot_tx, __FUNCTION__);
       UE->if_inst->sl_indication(&sl_indication);
 
       stop_meas(&UE->ue_ul_indication_stats);
@@ -719,10 +726,24 @@ nr_phy_data_t UE_dl_preprocessing(PHY_VARS_NR_UE *UE, UE_nr_rxtx_proc_t *proc)
       if(UE->if_inst != NULL && UE->if_inst->sl_indication != NULL) {
         nr_sidelink_indication_t sl_indication;
         nr_fill_sl_indication(&sl_indication, NULL, NULL, proc, UE, &phy_data);
+        LOG_D(NR_PHY, "calling sl_indication: RX %d.%d TX %d.%d %s\n",proc->frame_rx,proc->nr_slot_rx,proc->frame_tx,proc->nr_slot_tx, __FUNCTION__);
         UE->if_inst->sl_indication(&sl_indication);
       }
       uint64_t a=rdtsc_oai();
       psbch_pscch_pssch_processing(UE, proc, &phy_data);
+      // if (phy_data.sl_active) {
+      //   LOG_I(NR_PHY, "%s sl_active: %d\n", __FUNCTION__, phy_data.sl_active);
+      //   // indicate to tx thread to wait for DLSCH decoding
+      //   sl_nr_phy_config_request_t *sl_cfg = NULL;
+      //   sl_cfg = &UE->SL_UE_PHY_PARAMS.sl_config;
+      //   uint8_t psfch_period = sl_cfg->psfch_period;
+      //   uint8_t psfch_min_time_gap = sl_cfg->time_gap;
+      //   int delta_slots = (proc->nr_slot_rx + psfch_min_time_gap) % psfch_period ? psfch_period - (proc->nr_slot_rx + psfch_min_time_gap) % psfch_period: 0;
+      //   uint8_t feedback_slot = proc->nr_slot_rx + psfch_min_time_gap + delta_slots;
+      //   feedback_slot %= NR_MAX_SLOTS_PER_FRAME;
+      //   UE->tx_wait_for_slsch[feedback_slot]++;
+      //   phy_data.sl_active = false;
+      // }
       LOG_D(PHY, "In %s: slot %d:%d, time %llu\n", __FUNCTION__, proc->frame_rx, proc->nr_slot_rx, (rdtsc_oai()-a)/3500);
     }
   } else {
@@ -917,6 +938,7 @@ void *UE_thread(void *arg)
   int num_ind_fifo = nb_slot_frame;
   for(int i=0; i < num_ind_fifo; i++) {
     UE->tx_wait_for_dlsch[num_ind_fifo] = 0;
+    //UE->tx_wait_for_slsch[num_ind_fifo] = 0;
     UE->tx_resume_ind_fifo[i] = malloc(sizeof(*UE->tx_resume_ind_fifo[i]));
     initNotifiedFIFO(UE->tx_resume_ind_fifo[i]);
   }
@@ -1085,8 +1107,13 @@ void *UE_thread(void *arg)
     curMsgTx->writeBlockSize = writeBlockSize;
     curMsgTx->proc.timestamp_tx = writeTimestamp;
     curMsgTx->UE = UE;
-    curMsgTx->tx_wait_for_dlsch = UE->tx_wait_for_dlsch[curMsgTx->proc.nr_slot_tx];
-    UE->tx_wait_for_dlsch[curMsgTx->proc.nr_slot_tx] = 0;
+    // if (UE->tx_wait_for_slsch[curMsgTx->proc.nr_slot_tx] > 0) {
+    //   curMsgTx->tx_wait_for_slsch = UE->tx_wait_for_slsch[curMsgTx->proc.nr_slot_tx];
+    //   UE->tx_wait_for_slsch[curMsgTx->proc.nr_slot_tx] = 0;
+    // } else {
+      curMsgTx->tx_wait_for_dlsch = UE->tx_wait_for_dlsch[curMsgTx->proc.nr_slot_tx];
+      UE->tx_wait_for_dlsch[curMsgTx->proc.nr_slot_tx] = 0;
+    //}
     pushTpool(&(get_nrUE_params()->Tpool), newElt);
 
     // RX slot processing. We launch and forget.

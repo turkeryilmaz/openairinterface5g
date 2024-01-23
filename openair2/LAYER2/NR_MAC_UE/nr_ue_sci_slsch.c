@@ -249,7 +249,7 @@ void fill_pssch_pscch_pdu(sl_nr_tx_config_pscch_pssch_pdu_t *nr_sl_pssch_pscch_p
      if (num_psfch_symbols == 3) num_psfch_symbols++;
   }
   nr_sl_pssch_pscch_pdu->pssch_numsym=7+*sl_bwp->sl_BWP_Generic_r16->sl_LengthSymbols_r16-num_psfch_symbols-2;
-  LOG_I(NR_PHY, "num_psfch_symbols %d, sl_LengthSymbols: %d, pssch_numsym: %d\n", num_psfch_symbols, *sl_bwp->sl_BWP_Generic_r16->sl_LengthSymbols_r16, nr_sl_pssch_pscch_pdu->pssch_numsym);
+  LOG_D(NR_PHY, "num_psfch_symbols %d, sl_LengthSymbols: %d, pssch_numsym: %d\n", num_psfch_symbols,  *sl_bwp->sl_BWP_Generic_r16->sl_LengthSymbols_r16, nr_sl_pssch_pscch_pdu->pssch_numsym);
   nr_sl_pssch_pscch_pdu->pssch_startsym = *sl_bwp->sl_BWP_Generic_r16->sl_StartSymbol_r16;
 
   nr_sl_pssch_pscch_pdu->sci2_beta_offset = *sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_BetaOffsets2ndSCI_r16->list.array[sci_pdu->beta_offset_indicator];
@@ -355,7 +355,7 @@ void fill_pssch_pscch_pdu(sl_nr_tx_config_pscch_pssch_pdu_t *nr_sl_pssch_pscch_p
 						     N_RE,1+(sci_pdu->number_of_dmrs_port&1))>>3;
   nr_sl_pssch_pscch_pdu->mcs = sci_pdu->mcs;
   nr_sl_pssch_pscch_pdu->num_layers = sci_pdu->number_of_dmrs_port+1;
-  LOG_I(NR_MAC,"PSSCH: mcs %d, coderate %d, Nl %d => tbs %d\n",sci_pdu->mcs,nr_sl_pssch_pscch_pdu->target_coderate,nr_sl_pssch_pscch_pdu->num_layers,nr_sl_pssch_pscch_pdu->tb_size);
+  LOG_D(NR_MAC,"PSSCH: mcs %d, coderate %d, Nl %d => tbs %d\n",sci_pdu->mcs,nr_sl_pssch_pscch_pdu->target_coderate,nr_sl_pssch_pscch_pdu->num_layers,nr_sl_pssch_pscch_pdu->tb_size);
   nr_sl_pssch_pscch_pdu->tbslbrm = nr_compute_tbslbrm(mcs_tb_ind,NRRIV2BW(sl_bwp->sl_BWP_Generic_r16->sl_BWP_r16->locationAndBandwidth,273),nr_sl_pssch_pscch_pdu->num_layers);
   nr_sl_pssch_pscch_pdu->mcs_table=mcs_tb_ind;
   nr_sl_pssch_pscch_pdu->rv_index = sci2_pdu->rv_index;
@@ -462,26 +462,25 @@ void fill_pssch_pscch_pdu(sl_nr_tx_config_pscch_pssch_pdu_t *nr_sl_pssch_pscch_p
   nr_sl_pssch_pscch_pdu->slsch_payload_length = slsch_pdu_length;
 };
 
-void config_psfch_pdu_rx(NR_UE_MAC_INST_t *mac,
-                         sl_nr_rx_config_psfch_pdu_t *nr_sl_psfch_pdu,
-                         const NR_SL_BWP_Generic_r16_t *sl_bwp,
-                         const NR_SL_ResourcePool_r16_t *sl_res_pool) {
-  nr_sl_psfch_pdu->freq_hop_flag = 0;
-  nr_sl_psfch_pdu->group_hop_flag = 0;
-  nr_sl_psfch_pdu->sequence_hop_flag = 0;
-  nr_sl_psfch_pdu->second_hop_prb = 0;
-  nr_sl_psfch_pdu->nr_of_symbols = 1;
-  const uint8_t values[] = {7, 8, 9, 10, 11, 12, 13, 14};
-  LOG_D(NR_MAC, "E1 *sl_bwp->sl_LengthSymbols_r16 %d\n", *sl_bwp->sl_LengthSymbols_r16);
-  uint8_t sl_num_symbols = *sl_bwp->sl_LengthSymbols_r16 ?
-                            values[*sl_bwp->sl_LengthSymbols_r16] : 0;
-  nr_sl_psfch_pdu->start_symbol_index = *sl_bwp->sl_StartSymbol_r16 + sl_num_symbols - 2;
-  nr_sl_psfch_pdu->hopping_id = 0;
-  nr_sl_psfch_pdu->prb = 1;
-  // nr_sl_psfch_pdu->initial_cyclic_shift = mac->sl_;
-  // nr_sl_psfch_pdu->mcs = mac->sl_;
-  nr_sl_psfch_pdu->psfch_payload = 0;
-}
+// void config_psfch_pdu_rx(NR_UE_MAC_INST_t *mac,
+//                          sl_nr_rx_config_psfch_pdu_t *nr_sl_psfch_pdu,
+//                          const NR_SL_BWP_Generic_r16_t *sl_bwp,
+//                          const NR_SL_ResourcePool_r16_t *sl_res_pool) {
+//   nr_sl_psfch_pdu->freq_hop_flag = 0;
+//   nr_sl_psfch_pdu->group_hop_flag = 0;
+//   nr_sl_psfch_pdu->sequence_hop_flag = 0;
+//   nr_sl_psfch_pdu->second_hop_prb = 0;
+//   nr_sl_psfch_pdu->nr_of_symbols = 1;
+//   const uint8_t values[] = {7, 8, 9, 10, 11, 12, 13, 14};
+//   uint8_t sl_num_symbols = *sl_bwp->sl_LengthSymbols_r16 ?
+//                             values[*sl_bwp->sl_LengthSymbols_r16] : 0;
+//   nr_sl_psfch_pdu->start_symbol_index = *sl_bwp->sl_StartSymbol_r16 + sl_num_symbols - 2;
+//   nr_sl_psfch_pdu->hopping_id = 0;
+//   nr_sl_psfch_pdu->prb = 1;
+//   //TODO
+//   // nr_sl_psfch_pdu->initial_cyclic_shift = mac->sl_;
+//   // nr_sl_psfch_pdu->mcs = mac->sl_;
+// }
 
 void config_pscch_pdu_rx(sl_nr_rx_config_pscch_pdu_t *nr_sl_pscch_pdu,
 	  	         const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp, 

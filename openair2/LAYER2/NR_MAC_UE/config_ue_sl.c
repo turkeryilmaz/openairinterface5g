@@ -457,6 +457,13 @@ int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
   nr_sl_phy_config_t *sl_phy_cfg = &sl_mac->sl_phy_config;
   sl_phy_cfg->Mod_id = module_id;
   sl_phy_cfg->CC_id = 0;
+  const uint8_t psfch_periods[] = {0,1,2,4};
+  const uint8_t time_gaps[] = {2, 3};
+  NR_SL_PSFCH_Config_r16_t *psfch_config = mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup;
+  uint8_t psfch_period_index = *psfch_config->sl_PSFCH_Period_r16;
+  uint8_t psfch_time_gap_indx = *psfch_config->sl_MinTimeGapPSFCH_r16;
+  sl_phy_cfg->sl_config_req.psfch_period =  psfch_periods[psfch_period_index];
+  sl_phy_cfg->sl_config_req.time_gap =  time_gaps[psfch_time_gap_indx];
 
   sl_prepare_phy_config(module_id, &sl_phy_cfg->sl_config_req,
                         freqcfg, sync_source, sl_OffsetDFN, sl_mac->sl_TDD_config);

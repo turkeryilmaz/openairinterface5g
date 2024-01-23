@@ -303,6 +303,7 @@ typedef struct sl_nr_tx_config_psfch_pdu {
   uint8_t prb;
   uint16_t initial_cyclic_shift;
   uint8_t mcs;
+  uint8_t bit_len_harq;
   uint8_t psfch_payload;
 } sl_nr_tx_config_psfch_pdu_t;
 
@@ -319,7 +320,6 @@ typedef struct sl_nr_rx_config_psfch_pdu {
   uint16_t initial_cyclic_shift;
   uint8_t mcs;
   uint8_t psfch_payload;
-
 } sl_nr_rx_config_psfch_pdu_t;
 
 // MAC commands PHY to perform an action on TX RESOURCE POOL or TX PSBCH using this TX CONFIG
@@ -407,6 +407,7 @@ typedef struct
 } sl_nr_carrier_config_t;
 
 
+
 typedef struct {
   // Mask indicating which of the below configs are changed
   // Bit0 - carrier_config, Bit1 - syncsource cfg
@@ -422,6 +423,10 @@ typedef struct {
   sl_nr_bwp_config_t sl_bwp_config;
 
   uint32_t sl_DMRS_ScrambleId;
+  
+  // PSFCH related configuration to find feedback slot
+  uint8_t time_gap;
+  uint8_t psfch_period;
 
 } sl_nr_phy_config_request_t;
 

@@ -3385,22 +3385,22 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
   }
   return true;
 }
-void nr_ue_sl_psfch_rx_scheduler(NR_UE_MAC_INST_t *mac,
-                              nr_sidelink_indication_t *sl_ind,
-                              const NR_SL_BWP_Generic_r16_t *sl_bwp,
-                              const NR_SL_ResourcePool_r16_t *sl_res_pool,
-                              sl_nr_rx_config_request_t *rx_config,
-                              uint8_t *config_type) {
-  *config_type = SL_NR_CONFIG_TYPE_RX_PSFCH;
-  rx_config->number_pdus = 1;
-  rx_config->sfn = sl_ind->frame_rx;
-  rx_config->slot = sl_ind->slot_rx;
-  rx_config->sl_rx_config_list[0].pdu_type = *config_type;
-  config_psfch_pdu_rx(mac, &rx_config->sl_rx_config_list[0].rx_pscch_config_pdu,
-                       sl_bwp,
-                       sl_res_pool);
-  LOG_D(NR_MAC, "[UE%d] TTI-%d:%d RX PSFCH REQ \n", sl_ind->module_id,sl_ind->frame_rx, sl_ind->slot_rx);
-}
+// void nr_ue_sl_psfch_rx_scheduler(NR_UE_MAC_INST_t *mac,
+//                               nr_sidelink_indication_t *sl_ind,
+//                               const NR_SL_BWP_Generic_r16_t *sl_bwp,
+//                               const NR_SL_ResourcePool_r16_t *sl_res_pool,
+//                               sl_nr_rx_config_request_t *rx_config,
+//                               uint8_t *config_type) {
+//   *config_type = SL_NR_CONFIG_TYPE_RX_PSFCH;
+//   rx_config->number_pdus = 1;
+//   rx_config->sfn = sl_ind->frame_rx;
+//   rx_config->slot = sl_ind->slot_rx;
+//   rx_config->sl_rx_config_list[0].pdu_type = *config_type;
+//   config_psfch_pdu_rx(mac, &rx_config->sl_rx_config_list[0].rx_pscch_config_pdu,
+//                        sl_bwp,
+//                        sl_res_pool);
+//   LOG_D(NR_MAC, "[UE%d] TTI-%d:%d RX PSFCH REQ \n", sl_ind->module_id,sl_ind->frame_rx, sl_ind->slot_rx);
+// }
 void nr_ue_sl_pscch_rx_scheduler(nr_sidelink_indication_t *sl_ind,
                               const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp,
                               const NR_SL_ResourcePool_r16_t *sl_res_pool,
@@ -3536,12 +3536,11 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind) {
   module_id_t mod_id    = sl_ind->module_id;
   frame_t frame     = sl_ind->frame_rx;
   slot_t slot       = sl_ind->slot_rx;
-
   if (sl_ind->slot_type == SIDELINK_SLOT_TYPE_TX) {
     frame = sl_ind->frame_tx;
     slot = sl_ind->slot_tx;
   }
-
+  LOG_D(NR_PHY, "frame: %d, slot %d, type: %d\n", frame, slot, sl_ind->slot_type);
   NR_UE_MAC_INST_t *mac = get_mac_inst(mod_id);
   sl_nr_ue_mac_params_t *sl_mac = mac->SL_MAC_PARAMS;
   sl_nr_phy_config_request_t *sl_cfg = &sl_mac->sl_phy_config.sl_config_req;
@@ -3585,15 +3584,17 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind) {
      if (((1<<slot_mod_period) % mask) == 0) rx_allowed=false;
   }
   if (sl_ind->slot_type==SIDELINK_SLOT_TYPE_TX || sl_ind->phy_data==NULL) rx_allowed=false;
-  LOG_D(NR_MAC, "sync_ref %d, slot_rx %d, rx_allowed %d, psbch slot %d\n", get_nrUE_params()->sync_ref, sl_ind->slot_rx, rx_allowed, !is_psbch_slot);
-  if (get_nrUE_params()->sync_ref && rx_allowed && !is_psbch_slot) {
-      NR_SL_PSFCH_Config_r16_t *sl_psfch_config = mac->sl_rx_res_pool->sl_PSFCH_Config_r16->choice.setup;
-      long psfch_period = *sl_psfch_config->sl_PSFCH_Period_r16;
-      if (slot%psfch_period == 0) {
-      LOG_D(NR_MAC,"Scheduling PSFCH RX processing slot %d, sync_ref %d\n",slot,get_nrUE_params()->sync_ref);
-      nr_ue_sl_psfch_rx_scheduler(mac, sl_ind, mac->sl_bwp->sl_BWP_Generic_r16, mac->sl_rx_res_pool, &rx_config, &tti_action);
-    }
-  }
+      // LOG_D(NR_MAC, "sync_ref %d, slot_rx %d, rx_allowed %d, psbch slot %d\n", get_nrUE_params()->sync_ref, sl_ind->slot_rx, rx_allowed, !is_psbch_slot);
+      // if (get_nrUE_params()->sync_ref && rx_allowed && !is_psbch_slot) {
+      //     NR_SL_PSFCH_Config_r16_t *sl_psfch_config = mac->sl_rx_res_pool->sl_PSFCH_Config_r16->choice.setup;
+      //     const uint8_t psfch_periods[] = {0,1,2,4};
+      //     long psfch_period = (sl_psfch_config->sl_PSFCH_Period_r16)
+      //                             ? psfch_periods[*sl_psfch_config->sl_PSFCH_Period_r16] : 0;
+      //     if (slot%psfch_period == 0) {
+      //     LOG_D(NR_MAC,"Scheduling PSFCH RX processing slot %d, sync_ref %d\n",slot,get_nrUE_params()->sync_ref);
+      //     nr_ue_sl_psfch_rx_scheduler(mac, sl_ind, mac->sl_bwp->sl_BWP_Generic_r16, mac->sl_rx_res_pool, &rx_config, &tti_action);
+      //   }
+      // }
 
   if (((get_nrUE_params()->sync_ref && sl_ind->slot_rx > 9) ||
   (!get_nrUE_params()->sync_ref && sl_ind->slot_rx < 10)) && rx_allowed && !is_psbch_slot) {
@@ -3606,19 +3607,26 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind) {
 
     if (sl_ind->slot_type == SIDELINK_SLOT_TYPE_TX && mac->sci_pdu_rx.harq_feedback) {
       NR_SL_PSFCH_Config_r16_t *sl_psfch_config = mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup;
-      long psfch_period = *sl_psfch_config->sl_PSFCH_Period_r16;
+      const uint8_t psfch_periods[] = {0,1,2,4};
+      long psfch_period = (sl_psfch_config->sl_PSFCH_Period_r16)
+                          ? psfch_periods[*sl_psfch_config->sl_PSFCH_Period_r16] : 0;
       NR_UE_sl_harq_t *current_harq;
-      for (int harq_pid = 0; harq_pid < 16; harq_pid++) {
-        current_harq = &mac->sl_info.list[0]->UE_sched_ctrl.sl_harq_processes[harq_pid];
-        sl_ind->slot_tx = current_harq->feedback_slot;
-        sl_ind->frame_tx = current_harq->feedback_frame;
-        if (slot%psfch_period == 0 && current_harq->feedback_slot == slot && current_harq->feedback_frame == frame && current_harq->is_active) {
-          LOG_I(NR_MAC, "Scheduling PSFCH transmission at frame %d slot %d \n", current_harq->feedback_frame, current_harq->feedback_slot);
-          nr_ue_sl_psfch_scheduler(mac, sl_ind, mac->sl_bwp, mac->sl_tx_res_pool, &tx_config, &tti_action);
-          current_harq->is_active = false;
-          break;
-        }
-      }
+      // if (slot%psfch_period == 0) {
+      //   for (int harq_pid = 0; harq_pid < 16; harq_pid++) {
+      //     current_harq = &mac->sl_info.list[0]->UE_sched_ctrl.sl_harq_processes[harq_pid];
+      //     sl_ind->slot_tx = current_harq->feedback_slot;
+      //     sl_ind->frame_tx = current_harq->feedback_frame;
+      //     if (current_harq->feedback_slot > 0 && current_harq->feedback_frame > 0 && current_harq->is_active) {
+      //       LOG_D(NR_MAC, "harq pid %d, sl_ind->frame_tx %d, sl_ind->slot_tx %d, frame %d, slot %d\n",  harq_pid, sl_ind->frame_tx, sl_ind->slot_tx, frame, slot);
+      //       if (current_harq->feedback_slot == slot && current_harq->feedback_frame == frame && current_harq->is_active) {
+      //         LOG_I(NR_MAC, "Scheduling PSFCH transmission at frame %d slot %d for harq_pid %d\n", current_harq->feedback_frame, current_harq->feedback_slot, harq_pid);
+      //         nr_ue_sl_psfch_scheduler(mac, sl_ind, mac->sl_bwp, mac->sl_tx_res_pool, &tx_config, &tti_action);
+      //         current_harq->is_active = false;
+      //         break;
+      //       }
+      //     }
+      //   }
+      // }
     }
   }
   if (tti_action == SL_NR_CONFIG_TYPE_RX_PSBCH || tti_action == SL_NR_CONFIG_TYPE_RX_PSCCH || tti_action == SL_NR_CONFIG_TYPE_RX_PSSCH_SCI || tti_action == SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH) {
@@ -3641,52 +3649,43 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind) {
 
 }
 
-void nr_ue_sl_psfch_scheduler(NR_UE_MAC_INST_t *mac,
-		                          nr_sidelink_indication_t *sl_ind,
-                              const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp,
-                              const NR_SL_ResourcePool_r16_t *sl_res_pool,
-                              sl_nr_tx_config_request_t *tx_config,
-                              uint8_t *config_type) {
+// void nr_ue_sl_psfch_scheduler(NR_UE_MAC_INST_t *mac,
+// 		                          nr_sidelink_indication_t *sl_ind,
+//                               const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp,
+//                               const NR_SL_ResourcePool_r16_t *sl_res_pool,
+//                               sl_nr_tx_config_request_t *tx_config,
+//                               uint8_t *config_type) {
 
-  uint8_t ret_status = 0;
-  uint16_t slot = sl_ind->slot_tx;
-  uint16_t frame = sl_ind->frame_tx;
-  int lcid = 4;
-  int sdu_length = 0;
+//   uint16_t slot = sl_ind->slot_tx;
+//   uint16_t frame = sl_ind->frame_tx;
 
-  if ((frame & 127) == 0 && slot == 0) {
-    print_meas(&mac->rlc_data_req,"rlc_data_req",NULL,NULL);
-  }
-  if (sl_ind->slot_type != SIDELINK_SLOT_TYPE_TX) return false;
+//   if (sl_ind->slot_type != SIDELINK_SLOT_TYPE_TX) return false;
 
-  // if (slot > 9 && get_nrUE_params()->sync_ref) return false;
+//   NR_UE_sl_harq_t *current_harq;
+//   for (int harq_pid = 0; harq_pid < 16; harq_pid++) {
+//     current_harq = &mac->sl_info.list[0]->UE_sched_ctrl.sl_harq_processes[harq_pid];
+//     if (current_harq->feedback_slot == slot && current_harq->feedback_frame == frame && current_harq->is_active) {
+//       sl_nr_tx_config_psfch_pdu_t *tx_psfch_pdu = &tx_config->tx_config_list[0].tx_psfch_config_pdu;
+//       tx_psfch_pdu->start_symbol_index = mac->sl_tx_config_psfch_pdu[harq_pid]->start_symbol_index;
+//       tx_psfch_pdu->hopping_id = mac->sl_tx_config_psfch_pdu[harq_pid]->hopping_id;
+//       tx_psfch_pdu->prb = mac->sl_tx_config_psfch_pdu[harq_pid]->prb;
+//       tx_psfch_pdu->initial_cyclic_shift = mac->sl_tx_config_psfch_pdu[harq_pid]->initial_cyclic_shift;
+//       tx_psfch_pdu->mcs = mac->sl_tx_config_psfch_pdu[harq_pid]->mcs;
+//       tx_psfch_pdu->freq_hop_flag = 0;
+//       tx_psfch_pdu->second_hop_prb = 0;
+//       tx_psfch_pdu->group_hop_flag = 0;
+//       tx_psfch_pdu->sequence_hop_flag = 0;
+//       tx_psfch_pdu->nr_of_symbols = 1;
+//       tx_psfch_pdu->psfch_payload = mac->sl_tx_config_psfch_pdu[harq_pid]->psfch_payload;
 
-  // if (slot < 10 && !get_nrUE_params()->sync_ref) return false;
-/*
-  if ((frame&127) > 0) return false;
-
-  if ((slot % 10) != 6) return false;
-*/
-  LOG_D(NR_MAC,"[UE%d] SL-PSFCH SCHEDULER: Frame:SLOT %d:%d, slot_type:%d\n",
-        sl_ind->module_id, frame, slot,sl_ind->slot_type);
-
-  sl_nr_tx_config_psfch_pdu_t *tx_psfch_pdu = &tx_config->tx_config_list[0].tx_psfch_config_pdu;
-  tx_psfch_pdu->start_symbol_index = mac->sl_tx_config_psfch_pdu->start_symbol_index;
-  tx_psfch_pdu->hopping_id = mac->sl_tx_config_psfch_pdu->hopping_id;
-  tx_psfch_pdu->prb = mac->sl_tx_config_psfch_pdu->prb;
-  tx_psfch_pdu->initial_cyclic_shift = mac->sl_tx_config_psfch_pdu->initial_cyclic_shift;
-  tx_psfch_pdu->mcs = mac->sl_tx_config_psfch_pdu->mcs;
-  tx_psfch_pdu->freq_hop_flag = 0;
-  tx_psfch_pdu->second_hop_prb = 0;
-  tx_psfch_pdu->group_hop_flag = 0;
-  tx_psfch_pdu->sequence_hop_flag = 0;
-  tx_psfch_pdu->nr_of_symbols = 1;
-  tx_psfch_pdu->psfch_payload = mac->sl_tx_config_psfch_pdu->psfch_payload;
-
-  *config_type = SL_NR_CONFIG_TYPE_TX_PSFCH;
-  tx_config->number_pdus = 1;
-  tx_config->sfn = frame;
-  tx_config->slot = slot;
-  tx_config->tx_config_list[0].pdu_type = *config_type;
-
-}
+//       *config_type = SL_NR_CONFIG_TYPE_TX_PSFCH;
+//       tx_config->number_pdus = 1;
+//       tx_config->sfn = frame;
+//       tx_config->slot = slot;
+//       tx_config->tx_config_list[0].pdu_type = *config_type;
+//       LOG_D(NR_MAC,"[UE%d] Harq id: %d, SL-PSFCH SCHEDULER: Frame:SLOT %d:%d, slot_type:%d\n",
+//             harq_pid, sl_ind->module_id, frame, slot,sl_ind->slot_type);
+//       break;
+//     }
+//   }
+// }

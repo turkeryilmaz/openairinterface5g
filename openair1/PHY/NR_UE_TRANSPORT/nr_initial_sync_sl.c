@@ -575,7 +575,7 @@ int sl_nr_slss_search(PHY_VARS_NR_UE *UE, UE_nr_rxtx_proc_t *proc, int num_frame
 
 
           LOG_D(PHY,"Sidelink SLSS SEARCH PSBCH RX OK. Send SL-SSB TO MAC\n");
-
+          LOG_D(NR_PHY, "calling sl_indication: RX %d.%d TX %d.%d %s\n",proc->frame_rx,proc->nr_slot_rx,proc->frame_tx,proc->nr_slot_tx, __FUNCTION__);
           if (UE->if_inst && UE->if_inst->sl_indication)
             UE->if_inst->sl_indication(&sl_indication);
 
