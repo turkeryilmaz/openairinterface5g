@@ -214,31 +214,31 @@ void xnap_gNB_handle_handover_req(instance_t instance,
   xnap_id_manager     *id_manager;
   int                 ue_id;
 
-  int target_pci = xnap_handover_req->target_physCellId;
+  //int target_pci = xnap_handover_req->target_physCellId; //pci or cgi?
 
   instance_p = xnap_gNB_get_instance(instance);
   DevAssert(instance_p != NULL);
 
-  target = xnap_is_gNB_pci_in_list(target_pci);
+ // target = xnap_is_gNB_pci_in_list(target_pci);Write new function for this if needed
   DevAssert(target != NULL);
 
   /* allocate xnap ID */
   id_manager = &instance_p->id_manager;
   ue_id = xnap_allocate_new_id(id_manager);
   if (ue_id == -1) {
-    XNAP_ERROR("could not allocate a new XNAP UE ID\n");
+    LOG_E(XNAP,"could not allocate a new XNAP UE ID\n");
     /* TODO: cancel handover: send (to be defined) message to RRC */
     exit(1);
   }
   /* id_source is ue_id, id_target is unknown yet */
-  xnap_set_ids(id_manager, ue_id, xnap_handover_req->rnti, ue_id, -1);
-  xnap_id_set_state(id_manager, ue_id, XNID_STATE_SOURCE_PREPARE);
-  xnap_set_reloc_prep_timer(id_manager, ue_id,
-                            xnap_timer_get_tti(&instance_p->timers));
-  xnap_id_set_target(id_manager, ue_id, target);
+  //xnap_set_ids(id_manager, ue_id, xnap_handover_req->rnti, ue_id, -1); //use?ho req structure wont have rnti- take from where it belongs to.
+  //xnap_id_set_state(id_manager, ue_id, XNID_STATE_SOURCE_PREPARE);// use?
+  //xnap_set_reloc_prep_timer(id_manager, ue_id,
+                            //xnap_timer_get_tti(&instance_p->timers));
+  //xnap_id_set_target(id_manager, ue_id, target);
 
 //  xnap_gNB_generate_xn_handover_request(instance_p, target, xnap_handover_req, ue_id); //Review removed target here but needs it
-  xnap_gNB_generate_xn_handover_request(instance_p, xnap_handover_req, ue_id);
+  xnap_gNB_generate_xn_handover_request(instance, xnap_handover_req, ue_id);
 }
 
 void *xnap_task(void *arg)

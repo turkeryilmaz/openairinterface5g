@@ -148,7 +148,7 @@ typedef struct xnap_setup_resp_s {
   xnap_served_cell_info_t info;
 } xnap_setup_resp_t;
 
-ypedef struct xnap_register_gnb_req_s {
+typedef struct xnap_register_gnb_req_s {
   xnap_setup_req_t setup_req;
   xnap_net_config_t net_config;
   char *gNB_name;
@@ -262,6 +262,7 @@ typedef struct xnap_ue_context_info_s {
 
 typedef struct xnap_handover_req_s {
   uint32_t ng_node_ue_xnap_id;
+  xnap_plmn_t plmn_id;
   xnap_Cause_t cause_type;
   xnap_ngran_cgi_t target_cgi;
   xnap_guami_t guami;

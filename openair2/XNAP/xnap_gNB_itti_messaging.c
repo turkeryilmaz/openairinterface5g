@@ -22,7 +22,6 @@
 #include "intertask_interface.h"
 #include "xnap_gNB_itti_messaging.h"
 
-<<<<<<< HEAD
 void xnap_gNB_itti_send_sctp_data_req(sctp_assoc_t assoc_id, uint8_t *buffer, uint32_t buffer_length, uint16_t stream)
 {
   MessageDef *message_p;

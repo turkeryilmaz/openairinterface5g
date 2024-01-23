@@ -325,18 +325,10 @@ typedef struct gNB_RRC_UE_s {
 typedef struct rrc_gNB_ue_context_s {
   /* Tree related data */
   RB_ENTRY(rrc_gNB_ue_context_s) entries;
-
-  /* Uniquely identifies the UE between MME and eNB within the eNB.
-   * This id is encoded on 24bits.
-   */
-  rnti_t         ue_id_rnti;
-
-  // another key for protocol layers but should not be used as a key for RB tree
-  uid_t          local_uid;
-
   /* UE id for initial connection to NGAP */
   struct gNB_RRC_UE_s   ue_context;
 } rrc_gNB_ue_context_t;
+////why did you change this?? we need to think if it is really needed before taking the code from LTE especially in such common files. I am reverting it back for now. willadd if needed.
 
 typedef struct {
 

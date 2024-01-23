@@ -28,7 +28,6 @@
 #include "xnap_gNB_defs.h"
 #include "xnap_gNB_task.h"
 
-<<<<<<< HEAD
 // xnap_gNB_internal_data_t xnap_gNB_internal_data;
 static xnap_gNB_instance_t *xn_inst[NUMBER_OF_gNB_MAX] = {0};
 
@@ -65,7 +64,6 @@ RB_GENERATE(xnap_gnb_tree, xnap_gNB_data_t, entry, xnap_gNB_compare_assoc_id);
   return 0;
 }*/
 
-<<<<<<< HEAD
 static pthread_mutex_t xn_inst_mtx = PTHREAD_MUTEX_INITIALIZER;
 void createXninst(instance_t instanceP, xnap_setup_req_t *req, xnap_net_config_t *nc)
 {

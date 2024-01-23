@@ -275,22 +275,6 @@ void *gNB_app_task(void *args_p)
       /* TODO handle recovering of registration */
       break;
 
-     case XNAP_DEREGISTERED_GNB_IND:
-        LOG_W(GNB_APP,
-              "[gNB %ld] Received %s: associated gNB %d\n",
-              instance,
-              ITTI_MSG_NAME(msg_p),
-              XNAP_DEREGISTERED_GNB_IND(msg_p).nb_xn);
-        break;
-
-      case XNAP_REGISTER_GNB_CNF:
-        LOG_I(GNB_APP,
-              "[gNB %ld] Received %s: associated gNB %d\n",
-              instance,
-              ITTI_MSG_NAME(msg_p),
-              XNAP_REGISTER_GNB_CNF(msg_p).nb_xn);
-        break;
-
     case TIMER_HAS_EXPIRED:
       LOG_I(GNB_APP, " Received %s: timer_id %ld\n", msg_name, TIMER_HAS_EXPIRED(msg_p).timer_id);
 

@@ -23,7 +23,7 @@
 #define XNAP_TIMERS_H_
 
 #include <stdint.h>
-#include "platform_types.h"
+//#include "platform_types.h"
 
 typedef struct {
   /* incremented every TTI (every millisecond when in realtime).
@@ -45,7 +45,7 @@ void xnap_timers_init(xnap_timers_t *t,
     int tx2_reloc_overall,
     int t_dc_prep,
     int t_dc_overall);
-void xnap_check_timers(instance_t instance);
+//void xnap_check_timers(instance_t instance);
 uint64_t xnap_timer_get_tti(xnap_timers_t *t);
 
 #endif /* X2AP_TIMERS_H_ */

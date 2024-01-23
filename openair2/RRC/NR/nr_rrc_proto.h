@@ -43,6 +43,8 @@
 #include "NR_CG-ConfigInfo.h"
 #include "NR_SecurityConfig.h"
 #include "NR_CellGroupConfig.h"
+// #include "NR_MeasurementReport-IEs.h"
+#include "NR_MeasurementReport.h"
 
 #define NR_MAX_SUPPORTED_DL_LAYERS 2
 
@@ -137,9 +139,10 @@ void bearer_context_setup_e1ap(e1ap_bearer_setup_req_t *req,
 
 void
 rrc_gNB_process_MeasurementReport(
-  const protocol_ctxt_t *const ctxt_pP,
+		rrc_gNB_ue_context_t *ue_context, NR_MeasurementReport_t *measurementReport
+//  const protocol_ctxt_t *const ctxt_pP,
 //  rrc_gNB_ue_context_t        *ue_context_pP,
-  const NR_MeasResults_t   *const measResults2
+//  const NR_MeasResults_t   *const measResults2
 );
  
 void
