@@ -75,7 +75,7 @@ int32_t nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
     for (int p_index = 0; p_index < N_ap; p_index++) {
       abs_val += squaredMod(((c16_t*)chT_interpol[p_index])[k]);
     }
-    mean_val += (abs_val - mean_val)/k;
+    mean_val += (abs_val - mean_val)/(k+1);
     if(abs_val > max_val)
       {
 	max_val = abs_val;
