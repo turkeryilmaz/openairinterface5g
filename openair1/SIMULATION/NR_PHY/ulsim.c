@@ -225,7 +225,7 @@ int main(int argc, char *argv[])
   /* initialize the sin-cos table */
   InitSinLUT();
 
-  while ((c = getopt(argc, argv, "a:b:c:d:ef:g:h:i:k:m:n:o:op:q:r:s:t:u:v:w:y:z:C:F:G:H:I:M:N:PR:S:T:U:L:ZW:E:X:")) != -1) {
+  while ((c = getopt(argc, argv, "a:b:c:d:ef:g:h:i:k:m:n:op:q:r:s:t:u:v:w:x:y:z:C:F:G:H:I:M:N:PR:S:T:U:L:ZW:E:X:")) != -1) {
     printf("handling optarg %c\n",c);
     switch (c) {
 
@@ -333,23 +333,7 @@ int main(int argc, char *argv[])
       break;
 
     case 'o':
-      //switch on optarg to choose the offload option
-      switch ((char) *optarg) {
-        case '1':
-          ldpc_offload_flag = 1;
-          break;
-        case '2':
-          ldpc_xdma_flag = 1;
-          if (optarg[1]==',') {
-            ldpc_xdma_number_threads_predecoding = atoi(&optarg[2]);
-          } else {
-            printf("Expecting \"-o 2,<number of predecoding threads>\"! Falling back to one predecoding thread\n");
-            ldpc_xdma_number_threads_predecoding = 1;
-          }
-          break;
-        default:
-          printf("Invalid offload mode!\n");
-      }
+      ldpc_offload_flag = 1;
       break;
 
     case 'p':
@@ -388,6 +372,11 @@ int main(int argc, char *argv[])
 
     case 't':
       eff_tp_check = atof(optarg);
+      break;
+
+    case 'x':
+      ldpc_xdma_flag = 1;
+      ldpc_xdma_number_threads_predecoding = atoi(optarg);
       break;
 
     case 'y':
@@ -511,7 +500,7 @@ int main(int argc, char *argv[])
       printf("-k 3/4 sampling\n");
       printf("-m MCS value\n");
       printf("-n Number of trials to simulate\n");
-      printf("-o <mode, 1(T1/T2), 2(XDMA)>[,<number of predecoding threads (mode 2)>] ldpc offload flag\n");
+      printf("-o ldpc offload flag\n");
       printf("-p Use extended prefix mode\n");
       printf("-q MCS table\n");
       printf("-r Number of allocated resource blocks for PUSCH\n");
@@ -521,6 +510,7 @@ int main(int argc, char *argv[])
       printf("-u Set the numerology\n");
       printf("-v Set the max rounds\n");
       printf("-w Start PRB for PUSCH\n");
+      printf("-x <number of predecoding threads> enables ldpc offload through xdma\n");
       printf("-y Number of TX antennas used at UE\n");
       printf("-z Number of RX antennas used at gNB\n");
       printf("-C Specify the number of threads for the simulation\n");

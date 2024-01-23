@@ -618,7 +618,7 @@ int decode_xdma(PHY_VARS_gNB *phy_vars_gNB,
   int no_iteration_ldpc = 2;
 
   uint8_t dtx_det = 0;
-  uint32_t num_threads_prepare_max = &phy_vars_gNB->ldpc_xdma_number_threads_predecoding;
+  uint32_t num_threads_prepare_max = phy_vars_gNB->ldpc_xdma_number_threads_predecoding;
   uint32_t num_threads_prepare = 0;
   uint32_t r_remaining = 0;
   //start the prepare jobs
