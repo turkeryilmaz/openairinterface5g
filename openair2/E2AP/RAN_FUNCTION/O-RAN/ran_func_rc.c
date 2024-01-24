@@ -651,15 +651,6 @@ static void set_new_dl_slice_algo(int mod_id, int algo)
     dl.dl_algo.unset(&dl.dl_algo.data);
 }
 
-//static int find_dl_slice(nr_slice_info_t *si, uint32_t id)
-//{
-//  for (int i = 0; i < si->num; ++i) {
-//    if (si->s[i]->id == id)
-//      return i;
-//  }
-//  return -1;
-//}
-
 static char* copy_bytearr_to_str(const byte_array_t* ba)
 {
   if (ba->len < 1)
