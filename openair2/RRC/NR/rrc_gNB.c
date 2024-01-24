@@ -2987,6 +2987,9 @@ void nr_rrc_ss_subframe_process(protocol_ctxt_t *const ctxt_pP)
       if (UE->ue_release_timer_rrc >= UE->ue_release_timer_thres_rrc) {
         LOG_I(NR_RRC, "Removing UE %x instance ue_release_timer_rrc timeout\n", UE->rnti);
         UE->ue_release_timer_rrc = 0;
+         NR_SCHED_LOCK(&RC.nrmac[ctxt_pP->module_id]->sched_lock);
+         mac_remove_nr_ue(RC.nrmac[ctxt_pP->module_id], UE->primaryCC_id, UE->rnti);
+         NR_SCHED_UNLOCK(&RC.nrmac[ctxt_pP->module_id]->sched_lock);
         rrc_rlc_remove_ue(ctxt_pP);
         nr_pdcp_remove_UE(ctxt_pP->rntiMaybeUEid);
 
