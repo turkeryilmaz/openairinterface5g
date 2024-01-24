@@ -654,7 +654,7 @@ typedef struct PHY_VARS_NR_UE_s {
   notifiedFIFO_t phy_config_ind;
   notifiedFIFO_t *tx_resume_ind_fifo[NR_MAX_SLOTS_PER_FRAME];
   int tx_wait_for_dlsch[NR_MAX_SLOTS_PER_FRAME];
-  //int tx_wait_for_slsch[NR_MAX_SLOTS_PER_FRAME];
+  // int tx_wait_for_slsch[NR_MAX_SLOTS_PER_FRAME];
 
   //Sidelink parameters
   sl_nr_sidelink_mode_t sl_mode;
@@ -712,7 +712,7 @@ typedef struct nr_phy_data_s {
   sl_nr_rx_config_pscch_pdu_t nr_sl_pscch_pdu;
   sl_nr_rx_config_pssch_sci_pdu_t nr_sl_pssch_sci_pdu;
   sl_nr_rx_config_pssch_pdu_t nr_sl_pssch_pdu;
-  //sl_nr_rx_config_psfch_pdu_t nr_sl_psfch_pdu;
+  sl_nr_rx_config_psfch_pdu_t nr_sl_psfch_pdu;
 } nr_phy_data_t;
 /* this structure is used to pass both UE phy vars and
  * proc to the function UE_thread_rxn_txnp4
@@ -724,7 +724,7 @@ typedef struct nr_rxtx_thread_data_s {
   notifiedFIFO_t txFifo;
   nr_phy_data_t phy_data;
   int tx_wait_for_dlsch;
-  //int tx_wait_for_slsch;
+  // int tx_wait_for_slsch;
 } nr_rxtx_thread_data_t;
 
 typedef struct LDPCDecode_ue_s {

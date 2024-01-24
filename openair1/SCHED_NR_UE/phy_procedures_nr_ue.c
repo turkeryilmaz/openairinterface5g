@@ -658,6 +658,7 @@ void send_slot_ind(notifiedFIFO_t *nf, int slot) {
     notifiedFIFO_elt_t *newElt = newNotifiedFIFO_elt(sizeof(int), 0, NULL, NULL);
     int *msgData = (int *) NotifiedFifoData(newElt);
     *msgData = slot;
+    LOG_I(PHY, "Pushed slot %d in notified fifo\n", slot);
     pushNotifiedFIFO(nf, newElt);
   }
 }

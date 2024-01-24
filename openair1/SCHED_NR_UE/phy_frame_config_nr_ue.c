@@ -150,7 +150,7 @@ int sl_nr_ue_slot_select(sl_nr_phy_config_request_t *cfg,
       ul_sym++;
     }
   }
-
+  LOG_D(NR_MAC, "frame:slot %d:%d num of ul_sym %d, NR_NUMBER_OF_SYMBOLS_PER_SLOT %d\n", nr_frame, nr_slot, ul_sym, NR_NUMBER_OF_SYMBOLS_PER_SLOT);
   if(ul_sym == NR_NUMBER_OF_SYMBOLS_PER_SLOT) {
     slot_type = NR_SIDELINK_SLOT;
   } else if (ul_sym){

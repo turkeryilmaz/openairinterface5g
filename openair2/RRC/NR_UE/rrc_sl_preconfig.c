@@ -141,7 +141,6 @@ static void prepare_NR_SL_ResourcePool(NR_SL_ResourcePool_r16_t *sl_res_pool,
   //and HARQ feedback for all transmissions in the resource pool is disabled.
   // {sl0, sl1, sl2, sl4}
   sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16 = calloc(1, sizeof(long));
-  *sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16 = NR_SL_PSFCH_Config_r16__sl_PSFCH_Period_r16_sl4;
 
   // Set of PRBs that are actually used for PSFCH transmission and reception (bitmap)
   // 0b10101010101010101010101010101010101010101010101001 (PRBs bitmap)
@@ -151,21 +150,18 @@ static void prepare_NR_SL_ResourcePool(NR_SL_ResourcePool_r16_t *sl_res_pool,
   sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_RB_Set_r16->buf = calloc(sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_RB_Set_r16->size, sizeof(uint8_t));
   memset(sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_RB_Set_r16->buf, 0xAA, 6); // 48 bits
   sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_RB_Set_r16->buf[6] = (0b01 << 6); // 2 bits
+
   // Number of cyclic shift pairs used for a PSFCH transmission that can be multiplexed in a PRB
   sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_NumMuxCS_Pair_r16 = calloc(1, sizeof(long));
-  *sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_NumMuxCS_Pair_r16 = NR_SL_PSFCH_Config_r16__sl_NumMuxCS_Pair_r16_n2;
 
   // The minimum time gap between PSFCH and the associated PSSCH in the unit of slots {sl2, sl3}
   sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_MinTimeGapPSFCH_r16 = calloc(1, sizeof(long));
-  *sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_MinTimeGapPSFCH_r16 = NR_SL_PSFCH_Config_r16__sl_MinTimeGapPSFCH_r16_sl2;
 
   // Scrambling ID {0..1023} for sequence hopping of the PSFCH used in the resource pool
   sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_HopID_r16 = calloc(1, sizeof(long));
-  *sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_HopID_r16 = 1;
 
   // Indicates the number of PSFCH resources available {startSubCH, allocSubCH} for multiplexing HARQ-ACK information in a PSFCH transmission
   sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_CandidateResourceType_r16 = calloc(1, sizeof(long));
-  *sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_CandidateResourceType_r16 = NR_SL_PSFCH_Config_r16__sl_PSFCH_CandidateResourceType_r16_startSubCH;
 
   // indicates allowed sync sources which are allowed to use this resource pool
   sl_res_pool->sl_SyncAllowed_r16 = calloc(1, sizeof(NR_SL_SyncAllowed_r16_t));

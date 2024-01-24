@@ -645,23 +645,20 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
     return;
   }
 
-  LOG_I(NR_MAC, "Filling psfch pdu %d\n", module_idP);
+  LOG_D(NR_MAC, "Filling psfch pdu %d\n", module_idP);
   NR_SL_PSFCH_Config_r16_t *sl_psfch_config = mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup;
   const uint8_t time_gap[] = {2, 3};
   uint8_t psfch_min_time_gap = time_gap[*sl_psfch_config->sl_MinTimeGapPSFCH_r16];
   uint8_t harq_pid = (rx_ind->rx_indication_body + pdu_id)->rx_slsch_pdu.harq_pid;
-  
+
   mac->sl_info.list[0] = calloc(1, sizeof(NR_SL_UE_info_t));
   harq_proc = &mac->sl_info.list[0]->UE_sched_ctrl.sl_harq_processes[harq_pid];
-  // mac->sl_info.list[0]->dest_id = mac->sci_pdu_rx.source_id;
-  // mac->sl_info.list[0]->uid = module_idP;
   const uint8_t psfch_periods[] = {0,1,2,4};
   long psfch_period = (sl_psfch_config->sl_PSFCH_Period_r16)
                         ? psfch_periods[*sl_psfch_config->sl_PSFCH_Period_r16] : 0;
   int delta_slots = (slot + psfch_min_time_gap) % psfch_period ? psfch_period - (slot + psfch_min_time_gap) % psfch_period: 0;
   sched_slot = slot + psfch_min_time_gap + delta_slots;
   sched_frame = frame;
-  LOG_I(NR_MAC, "harq pid: %d psfch_period %d, slot %d, delta_slots %d, sched_slot %d, time_gap %d\n", harq_pid, psfch_period, slot, delta_slots, sched_slot, psfch_min_time_gap);
   if (sched_slot >= NR_MAX_SLOTS_PER_FRAME) {
     sched_slot %= NR_MAX_SLOTS_PER_FRAME;
     sched_frame = (sched_frame + 1) %1024;
@@ -670,7 +667,9 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
   harq_proc->feedback_slot = sched_slot;
   harq_proc->feedback_frame = sched_frame;
   harq_proc->is_active = true;
-  LOG_I(NR_MAC, "feedback_slot %d, feedback_frame %d, slot %d, frame %d\n", harq_proc->feedback_slot, harq_proc->feedback_frame, slot, frame);
+
+  LOG_I(NR_MAC, "harq pid: %p:%d:%d psfch_period %d, delta_slots %d, feedback frame:slot %d:%d, frame:slot %d:%d, time_gap %d\n", harq_proc, harq_pid, mac->sl_info.list[0]->UE_sched_ctrl.sl_harq_processes[harq_pid].is_active, psfch_period, delta_slots, harq_proc->feedback_frame, harq_proc->feedback_slot, frame, slot, psfch_min_time_gap);
+
   uint8_t ack_nack = (rx_ind->rx_indication_body + pdu_id)->rx_slsch_pdu.ack_nack;
   mac->sl_tx_config_psfch_pdu[harq_pid] = calloc(1, sizeof(sl_nr_tx_config_psfch_pdu_t));
   uint16_t m0 = compute_m0(module_idP);
@@ -693,9 +692,8 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
   mac->sl_tx_config_psfch_pdu[harq_pid]->prb = 1;
   mac->sl_tx_config_psfch_pdu[harq_pid]->psfch_payload = 1;
   mac->sl_tx_config_psfch_pdu[harq_pid]->bit_len_harq = 1;
-  LOG_D(NR_MAC,"Filled psfch pdu\n");
-  
-  //nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind);
+  LOG_I(NR_MAC,"Filled psfch pdu\n");
+
   if ((rx_ind->rx_indication_body + pdu_id)->rx_slsch_pdu.ack_nack == 0) 
     return;
 

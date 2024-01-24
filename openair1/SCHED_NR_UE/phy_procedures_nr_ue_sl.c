@@ -228,8 +228,8 @@ int nr_slsch_procedures(PHY_VARS_NR_UE *ue, int frame_rx, int slot_rx, int SLSCH
   // feedback_slot %= NR_MAX_SLOTS_PER_FRAME;
   // phy_data->sl_active = true;
   // send_slot_ind(ue->tx_resume_ind_fifo[feedback_slot], slot_rx);
-  // LOG_I(NR_PHY, "%s EJJ: Sent slot indication: slot_rx %d feedback_slot %d, sl_active %d\n", __FUNCTION__, slot_rx, feedback_slot, phy_data->sl_active);
-  // LOG_I(NR_MAC, "harq pid: %d psfch_period %d, slot_rx %d, delta_slots %d, feedback_slot %d, time_gap %d\n", harq_pid, psfch_period, slot_rx, delta_slots, feedback_slot, psfch_min_time_gap);
+  // LOG_D(NR_PHY, "%s Sent slot indication: slot_rx %d feedback_slot %d, sl_active %d\n", __FUNCTION__, slot_rx, feedback_slot, phy_data->sl_active);
+  // LOG_I(NR_MAC, "harq pid: %d Sent slot indication psfch_period %d, slot_rx %d, delta_slots %d, feedback_slot %d, time_gap %d\n", harq_pid, psfch_period, slot_rx, delta_slots, feedback_slot, psfch_min_time_gap);
   return nbDecode;
 }
 
@@ -300,8 +300,9 @@ void nr_postDecode_slsch(PHY_VARS_NR_UE *UE, notifiedFIFO_elt_t *req,UE_nr_rxtx_
       //      dumpsig=1;
     }
     slsch->last_iteration_cnt = rdata->decodeIterations;
-    // sl_rx_indication.sfn = proc->frame_rx;
-    // sl_rx_indication.slot = proc->nr_slot_rx;
+    // FIXME: There may be need to add condition for PSFCH
+    sl_rx_indication.sfn = proc->frame_rx;
+    sl_rx_indication.slot = proc->nr_slot_rx;
     nr_fill_sl_rx_indication(&sl_rx_indication,SL_NR_RX_PDU_TYPE_SLSCH,UE,1,proc,(void*)&slsch_status,0);
     nr_fill_sl_indication(&sl_indication,&sl_rx_indication,NULL,proc,UE,phy_data);
     LOG_D(NR_PHY, "calling sl_indication: RX %d.%d TX %d.%d %s\n",proc->frame_rx,proc->nr_slot_rx,proc->frame_tx,proc->nr_slot_tx, __FUNCTION__);

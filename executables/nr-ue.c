@@ -624,10 +624,9 @@ void processSlotTX(void *arg) {
 
 
   if (proc->tx_slot_type == NR_SIDELINK_SLOT && UE->sl_mode == 2) {
-
     // wait for rx slots to send indication (if any) that SLSCH decoding is finished
     // for(int i=0; i < rxtxD->tx_wait_for_slsch; i++) {
-    //   LOG_I(NR_PHY, "EJJ: tx slot: %d, rxtxD->tx_wait_for_slsch: %d pullNotifiedFIFO\n", proc->nr_slot_tx, rxtxD->tx_wait_for_slsch);
+    //   LOG_D(NR_PHY, "tx frame:slot %d:%d, rxtxD->tx_wait_for_slsch: %d pullNotifiedFIFO\n", proc->frame_tx, proc->nr_slot_tx, rxtxD->tx_wait_for_slsch);
     //   notifiedFIFO_elt_t *res = pullNotifiedFIFO(UE->tx_resume_ind_fifo[proc->nr_slot_tx]);
     //   delNotifiedFIFO_elt(res);
     // }
@@ -647,8 +646,7 @@ void processSlotTX(void *arg) {
       sl_indication.phy_data  = &phy_data;
       sl_indication.slot_type = SIDELINK_SLOT_TYPE_TX;
 
-      LOG_D(NR_PHY,"Sending SL indication RX %d.%d TX %d.%d\n",proc->frame_rx,proc->nr_slot_rx,proc->frame_tx,proc->nr_slot_tx);
-      LOG_D(NR_PHY, "calling sl_indication: RX %d.%d TX %d.%d %s\n",proc->frame_rx,proc->nr_slot_rx,proc->frame_tx,proc->nr_slot_tx, __FUNCTION__);
+      LOG_D(NR_PHY,"Sending SL indication RX %d.%d TX %d.%d %s\n",proc->frame_rx,proc->nr_slot_rx,proc->frame_tx,proc->nr_slot_tx, __FUNCTION__);
       UE->if_inst->sl_indication(&sl_indication);
 
       stop_meas(&UE->ue_ul_indication_stats);
@@ -938,7 +936,7 @@ void *UE_thread(void *arg)
   int num_ind_fifo = nb_slot_frame;
   for(int i=0; i < num_ind_fifo; i++) {
     UE->tx_wait_for_dlsch[num_ind_fifo] = 0;
-    //UE->tx_wait_for_slsch[num_ind_fifo] = 0;
+    // UE->tx_wait_for_slsch[num_ind_fifo] = 0;
     UE->tx_resume_ind_fifo[i] = malloc(sizeof(*UE->tx_resume_ind_fifo[i]));
     initNotifiedFIFO(UE->tx_resume_ind_fifo[i]);
   }
@@ -1111,8 +1109,8 @@ void *UE_thread(void *arg)
     //   curMsgTx->tx_wait_for_slsch = UE->tx_wait_for_slsch[curMsgTx->proc.nr_slot_tx];
     //   UE->tx_wait_for_slsch[curMsgTx->proc.nr_slot_tx] = 0;
     // } else {
-      curMsgTx->tx_wait_for_dlsch = UE->tx_wait_for_dlsch[curMsgTx->proc.nr_slot_tx];
-      UE->tx_wait_for_dlsch[curMsgTx->proc.nr_slot_tx] = 0;
+    curMsgTx->tx_wait_for_dlsch = UE->tx_wait_for_dlsch[curMsgTx->proc.nr_slot_tx];
+    UE->tx_wait_for_dlsch[curMsgTx->proc.nr_slot_tx] = 0;
     //}
     pushTpool(&(get_nrUE_params()->Tpool), newElt);
 
