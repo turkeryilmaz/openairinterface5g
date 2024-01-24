@@ -1335,9 +1335,7 @@ int8_t nr_rrc_ue_decode_ccch(const protocol_ctxt_t *const ctxt_pP, const NR_UE_R
          rrc->timers_and_constants.T300_active = 0;
 
          nr_rrc_ue_process_masterCellGroup(ctxt_pP, gNB_index, &dl_ccch_msg->message.choice.c1->choice.rrcSetup->criticalExtensions.choice.rrcSetup->masterCellGroup, NULL);
-         LOG_D(NR_RRC,"mark: line %d:radioBearerConfig %lx, radioBearerConfig->securityConfig %lx \n", __LINE__,
-               &dl_ccch_msg->message.choice.c1->choice.rrcSetup->criticalExtensions.choice.rrcSetup->radioBearerConfig,
-               dl_ccch_msg->message.choice.c1->choice.rrcSetup->criticalExtensions.choice.rrcSetup->radioBearerConfig.securityConfig);
+
          nr_rrc_ue_process_RadioBearerConfig(ctxt_pP, gNB_index, &dl_ccch_msg->message.choice.c1->choice.rrcSetup->criticalExtensions.choice.rrcSetup->radioBearerConfig);
          rrc->nrRrcState = RRC_STATE_CONNECTED_NR;
          rrc->rnti = ctxt_pP->rntiMaybeUEid;
@@ -1819,7 +1817,7 @@ void nr_rrc_ue_generate_RRCSetupRequest(module_id_t module_id, const uint8_t gNB
                    kRRCint);
    }
 
-   if (radioBearerConfig->srb_ToAddModList != NULL) {
+   if (radioBearerConfig->srb_ToAddModList != NULL) { 
      for (int cnt = 0; cnt < radioBearerConfig->srb_ToAddModList->list.count; cnt++) {
        struct NR_SRB_ToAddMod *srb = radioBearerConfig->srb_ToAddModList->list.array[cnt];
        NR_UE_RRC_SRB_INFO_t *Srb_info = &ue_rrc->Srb[gNB_index][srb->srb_Identity];
@@ -2307,6 +2305,7 @@ void *rrc_nrue_task(void *args_p)
             mac->ra.ra_state = RA_UE_IDLE;
             memset(&mac->ssb_list, 0, sizeof(ssb_list_info_t));
             NR_UE_rrc_inst[0].ra_trigger = INITIAL_ACCESS_FROM_RRC_IDLE;
+            nr_rrc_ue_paging_force_idle(0);
           }  
         }
 

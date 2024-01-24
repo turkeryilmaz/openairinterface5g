@@ -477,7 +477,7 @@ void nr_mac_config_scc(gNB_MAC_INST *nrmac, NR_ServingCellConfigCommon_t *scc, c
   nrmac->common_channels[CC_id].vrb_map_UL = calloc(n * MAX_BWP_SIZE, sizeof(uint16_t));
   nrmac->vrb_map_UL_size = n;
   AssertFatal(nrmac->common_channels[CC_id].vrb_map_UL,
-              "could not allocate memory for RC.nrmac[]->common_channels[0].vrb_map_UL\n");
+              "could not allocate memory for RC.nrmac[]->common_channels[CC_id].vrb_map_UL\n");
 
   LOG_I(NR_MAC, "Configuring common parameters from NR ServingCellConfig\n");
 

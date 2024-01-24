@@ -611,7 +611,7 @@ void schedule_nr_sib1(module_id_t module_idP,
                                                       1);
 
 
-      NR_COMMON_channels_t *cc = &gNB_mac->common_channels[0];
+      NR_COMMON_channels_t *cc = &gNB_mac->common_channels[CC_id];
       // Configure sched_ctrlCommon for SIB1
       uint32_t TBS = schedule_control_sib1(module_idP, CC_id,
                                            type0_PDCCH_CSS_config,
