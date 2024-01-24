@@ -34,4 +34,6 @@ else
     argument="$1"
 fi
 
+cp /opt/cuBB/share/*.yaml "$cuBB_Path"/cuPHY-CP/cuphycontroller/config/.
+cp /opt/cuBB/share/nvlog_config.yaml "$cuBB_Path"/cuPHY/nvlog/config/nvlog_config.yaml
 "$cuBB_Path"/build/cuPHY-CP/cuphycontroller/examples/cuphycontroller_scf "$argument"

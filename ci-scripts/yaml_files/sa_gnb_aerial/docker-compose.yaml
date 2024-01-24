@@ -28,14 +28,17 @@ services:
     environment:
       - cuBB_SDK=/opt/nvidia/cuBB
     command: bash -c " rm -rf /tmp/phy.log && chmod +x /opt/nvidia/cuBB/aerial_l1_entrypoint.sh && /opt/nvidia/cuBB/aerial_l1_entrypoint.sh P5G_SCF_FXN_NEU"
+        #command: bash -c "rm -rf /tmp/phy.log && while true; do echo hello; sleep 2; done"
     healthcheck:
-      test: ["CMD-SHELL",'grep -q "L1 is ready!" /tmp/phy.log && echo 0 || echo 1']
+      test: ["CMD-SHELL",'test -f /tmp/phy.log && grep -q "L1 is ready!" /tmp/phy.log || exit 1']
       interval: 20s
       timeout: 5s
       retries: 5
   oai-du-aerial:
     cpuset: "13-20"
     image: oai-gnb-aerial:latest
+    environment:
+      - NFAPI_TRACE_LEVEL=NFAPI_TRACE_DEBUG
     depends_on:
       nv-cubb:
         condition: service_healthy
@@ -54,8 +57,8 @@ services:
     stdin_open: true
     tty: true
     volumes:
-      - ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/du.Aerial.conf:/opt/oai-gnb/etc/gnb.conf
-      #- ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/vnf.sa.band78.fr1.273PRB.Aerial.conf:/opt/oai-gnb/etc/gnb.conf
+      #- ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/du.Aerial.conf:/opt/oai-gnb/etc/gnb.conf
+      - ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/vnf.sa.band78.fr1.273PRB.Aerial.conf:/opt/oai-gnb/etc/gnb.conf
     container_name: oai-du-aerial
     healthcheck:
       test: /bin/bash -c "ps aux | grep -v grep | grep -c softmodem"
