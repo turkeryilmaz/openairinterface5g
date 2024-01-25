@@ -170,8 +170,14 @@ void nr_dlsim_preprocessor(module_id_t module_id,
   sched_pdsch->time_domain_allocation = get_dl_tda(RC.nrmac[module_id], scc, slot);
   AssertFatal(sched_pdsch->time_domain_allocation >= 0,"Unable to find PDSCH time domain allocation in list\n");
 
-  sched_pdsch->tda_info = get_dl_tda_info(current_BWP, sched_ctrl->search_space->searchSpaceType->present, sched_pdsch->time_domain_allocation,
-                                          NR_MIB__dmrs_TypeA_Position_pos2, 1, NR_RNTI_C, sched_ctrl->coreset->controlResourceSetId, false);
+  sched_pdsch->tda_info = get_dl_tda_info(current_BWP,
+                                          sched_ctrl->search_space->searchSpaceType->present,
+                                          sched_pdsch->time_domain_allocation,
+                                          NR_MIB__dmrs_TypeA_Position_pos2,
+                                          1,
+                                          TYPE_C_RNTI_,
+                                          sched_ctrl->coreset->controlResourceSetId,
+                                          false);
 
   sched_pdsch->dmrs_parms = get_dl_dmrs_params(scc,
                                                current_BWP,
@@ -217,35 +223,21 @@ nrUE_params_t *get_nrUE_params(void) {
 }
 
 
-void validate_input_pmi(nr_pdsch_AntennaPorts_t pdsch_AntennaPorts, int nrOfLayers, int pmi)
+void validate_input_pmi(nfapi_nr_config_request_scf_t *gNB_config,
+                        nr_pdsch_AntennaPorts_t pdsch_AntennaPorts,
+                        int nrOfLayers,
+                        int pmi)
 {
   if (pmi == 0)
     return;
 
+  nfapi_nr_pm_pdu_t *pmi_pdu = &gNB_config->pmi_list.pmi_pdu[pmi - 1]; // pmi 0 is identity matrix
+  AssertFatal(pmi == pmi_pdu->pm_idx, "PMI %d doesn't match to the one in precoding matrix %d\n", pmi, pmi_pdu->pm_idx);
+  AssertFatal(nrOfLayers == pmi_pdu->numLayers, "Number of layers %d doesn't match to the one in precoding matrix %d for PMI %d\n",
+              nrOfLayers, pmi_pdu->numLayers, pmi);
   int num_antenna_ports = pdsch_AntennaPorts.N1 * pdsch_AntennaPorts.N2 * pdsch_AntennaPorts.XP;
-  int N1 = pdsch_AntennaPorts.N1;
-  int N2 = pdsch_AntennaPorts.N2;
-  int O1 = N1 > 1 ? 4 : 1;
-  int O2 = N2 > 1 ? 4 : 1;
-  int K1, K2;
-  if (num_antenna_ports > 2)
-    get_K1_K2(N1, N2, &K1, &K2);
-  else {
-    K1 = 1; K2 = 1;
-  }
-  int num_pmi = 1; // pmi = 0 is the identity matrix
-  switch (nrOfLayers) {
-    case 1 :
-      num_pmi += N1 * O1 * N2 * O2 * 4;
-      AssertFatal(pmi < num_pmi, "Input PMI index %d exceeds the limit of configured matrices %d for %d layers\n", pmi, num_pmi, nrOfLayers);
-      return;
-    case 2 :
-      num_pmi += N1 * O1 * N2 * O2 * K1 * K2 * 2;
-      AssertFatal(pmi < num_pmi, "Input PMI index %d exceeds the limit of conigured matrices %d for %d layers\n", pmi, num_pmi, nrOfLayers);
-      break;
-    default :
-      AssertFatal(false, "Precoding with more than 2 nrOfLayers not yet supported\n");
-  }
+  AssertFatal(num_antenna_ports == pmi_pdu->num_ant_ports, "Configured antenna ports %d does not match precoding matrix AP size %d for PMI %d\n",
+              num_antenna_ports, pmi_pdu->num_ant_ports, pmi);
 }
 
 
@@ -618,6 +610,7 @@ int main(int argc, char **argv)
   gNB = RC.gNB[0];
   gNB->ofdm_offset_divisor = UINT_MAX;
   gNB->ldpc_offload_flag = ldpc_offload_flag;
+  gNB->phase_comp = true; // we need to perform phase compensation, otherwise everything will fail
   frame_parms = &gNB->frame_parms; //to be initialized I suppose (maybe not necessary for PBCH)
   frame_parms->nb_antennas_tx = n_tx;
   frame_parms->nb_antennas_rx = n_rx;
@@ -703,7 +696,7 @@ int main(int argc, char **argv)
   gNB->ap_N2 = pdsch_AntennaPorts.N2;
   gNB->ap_XP = pdsch_AntennaPorts.XP;
 
-  validate_input_pmi(pdsch_AntennaPorts, g_nrOfLayers, g_pmi);
+  validate_input_pmi(&gNB_mac->config[0], pdsch_AntennaPorts, g_nrOfLayers, g_pmi);
 
   NR_UE_NR_Capability_t* UE_Capability_nr = CALLOC(1,sizeof(NR_UE_NR_Capability_t));
   prepare_sim_uecap(UE_Capability_nr,scc,mu,
@@ -843,7 +836,7 @@ int main(int argc, char **argv)
     nr_gold_pdsch(UE, i, UE->scramblingID_dlsch[i]);
   }
 
-  nr_l2_init_ue();
+  nr_l2_init_ue(1);
   UE_mac = get_mac_inst(0);
   ue_init_config_request(UE_mac, mu);
 

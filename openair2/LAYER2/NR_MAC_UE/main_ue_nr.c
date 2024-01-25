@@ -42,7 +42,7 @@
 #include "openair2/LAYER2/RLC/rlc.h"
 static NR_UE_MAC_INST_t *nr_ue_mac_inst; 
 
-void send_srb0_rrc(int rnti, const uint8_t *sdu, sdu_size_t sdu_len, void *data)
+void send_srb0_rrc(int ue_id, const uint8_t *sdu, sdu_size_t sdu_len, void *data)
 {
   AssertFatal(sdu_len > 0 && sdu_len < CCCH_SDU_SIZE, "invalid CCCH SDU size %d\n", sdu_len);
 
@@ -50,13 +50,12 @@ void send_srb0_rrc(int rnti, const uint8_t *sdu, sdu_size_t sdu_len, void *data)
   memset(NR_RRC_MAC_CCCH_DATA_IND(message_p).sdu, 0, sdu_len);
   memcpy(NR_RRC_MAC_CCCH_DATA_IND(message_p).sdu, sdu, sdu_len);
   NR_RRC_MAC_CCCH_DATA_IND(message_p).sdu_size = sdu_len;
-  NR_RRC_MAC_CCCH_DATA_IND(message_p).rnti = rnti;
-  itti_send_msg_to_task(TASK_RRC_NRUE, 0, message_p);
+  itti_send_msg_to_task(TASK_RRC_NRUE, ue_id, message_p);
 }
 
 void send_msg3_rrc_request(module_id_t mod_id, int rnti)
 {
-  nr_rlc_activate_srb0(rnti, NULL, send_srb0_rrc);
+  nr_rlc_activate_srb0(mod_id, NULL, send_srb0_rrc);
   nr_mac_rrc_msg3_ind(mod_id, rnti);
 }
 
@@ -74,6 +73,13 @@ void nr_ue_init_mac(module_id_t module_idP)
   mac->servCellIndex = 0;
   mac->harq_ACK_SpatialBundlingPUCCH = false;
   mac->harq_ACK_SpatialBundlingPUSCH = false;
+
+  memset(&mac->ssb_measurements, 0, sizeof(mac->ssb_measurements));
+  memset(&mac->ul_time_alignment, 0, sizeof(mac->ul_time_alignment));
+  for (int i = 0; i < MAX_NUM_BWP_UE; i++) {
+    memset(&mac->ssb_list[i], 0, sizeof(mac->ssb_list[i]));
+    memset(&mac->prach_assoc_pattern[i], 0, sizeof(mac->prach_assoc_pattern[i]));
+  }
 }
 
 void nr_ue_mac_default_configs(NR_UE_MAC_INST_t *mac)
@@ -103,31 +109,34 @@ void nr_ue_mac_default_configs(NR_UE_MAC_INST_t *mac)
     for (int k = 0; k < NR_MAX_HARQ_PROCESSES; k++)
       mac->UL_ndi[k] = -1; // initialize to invalid value
   }
-
-  memset(&mac->ssb_measurements, 0, sizeof(mac->ssb_measurements));
-  memset(&mac->ul_time_alignment, 0, sizeof(mac->ul_time_alignment));
 }
 
-NR_UE_MAC_INST_t *nr_l2_init_ue()
+NR_UE_MAC_INST_t *nr_l2_init_ue(int nb_inst)
 {
   //init mac here
-  nr_ue_mac_inst = (NR_UE_MAC_INST_t *)calloc(NB_NR_UE_MAC_INST, sizeof(NR_UE_MAC_INST_t));
+  nr_ue_mac_inst = (NR_UE_MAC_INST_t *)calloc(nb_inst, sizeof(NR_UE_MAC_INST_t));
+  AssertFatal(nr_ue_mac_inst, "Couldn't allocate %d instances of MAC module\n", nb_inst);
 
-  for (int j = 0; j < NB_NR_UE_MAC_INST; j++) {
+  for (int j = 0; j < nb_inst; j++) {
     nr_ue_init_mac(j);
     NR_UE_MAC_INST_t *mac = get_mac_inst(j);
+    mac->ue_id = j;
     nr_ue_mac_default_configs(mac);
     if (get_softmodem_params()->sa)
       ue_init_config_request(mac, get_softmodem_params()->numerology);
   }
+
   int rc = rlc_module_init(0);
-  AssertFatal(rc == 0, "%s: Could not initialize RLC layer\n", __FUNCTION__);
+  AssertFatal(rc == 0, "Could not initialize RLC layer\n");
 
   return (nr_ue_mac_inst);
 }
 
-NR_UE_MAC_INST_t *get_mac_inst(module_id_t module_id) {
-  return &nr_ue_mac_inst[(int)module_id];
+NR_UE_MAC_INST_t *get_mac_inst(module_id_t module_id)
+{
+  NR_UE_MAC_INST_t *mac = &nr_ue_mac_inst[(int)module_id];
+  AssertFatal(mac, "Couldn't get MAC inst %d\n", module_id);
+  return mac;
 }
 
 void reset_mac_inst(NR_UE_MAC_INST_t *nr_mac)
@@ -202,12 +211,13 @@ void release_mac_configuration(NR_UE_MAC_INST_t *mac)
   free(sc->maxMIMO_Layers_PUSCH);
   memset(&mac->sc_info, 0, sizeof(mac->sc_info));
 
+  mac->current_DL_BWP = NULL;
+  mac->current_UL_BWP = NULL;
+
   for (int i = 0; i < mac->dl_BWPs.count; i++)
     release_dl_BWP(mac, i);
   for (int i = 0; i < mac->ul_BWPs.count; i++)
     release_ul_BWP(mac, i);
-  mac->current_DL_BWP = NULL;
-  mac->current_UL_BWP = NULL;
 
   for (int i = 0; i < NR_MAX_NUM_LCID; i++) {
     nr_release_mac_config_logicalChannelBearer(mac, i + 1);
