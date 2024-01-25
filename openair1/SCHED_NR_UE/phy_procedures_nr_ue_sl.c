@@ -746,7 +746,7 @@ int phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
                       &phy_data->nr_sl_psfch_pdu);
     sl_phy_params->psfch.num_psfch_tx ++;
     tx_action = 1;
-    LOG_I(NR_PHY, "Sending SL data frame %d slot %d\n", frame_tx, slot_tx);
+    LOG_D(NR_PHY, "Sending SL data frame %d slot %d\n", frame_tx, slot_tx);
   }
   if (tx_action) {
     nr_ue_pusch_common_procedures(ue,

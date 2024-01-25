@@ -3293,6 +3293,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
                        NR_SL_SCI_FORMAT_2A);
 
   int buflen = tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu.tb_size;
+  LOG_I(NR_MAC, "\n", tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu.sci2_payload);
 
   NR_UE_MAC_CE_INFO mac_ce_info = {0};
   NR_UE_MAC_CE_INFO *mac_ce_p=&mac_ce_info;
@@ -3539,11 +3540,10 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind) {
   if (sl_ind->slot_type == SIDELINK_SLOT_TYPE_TX) {
     frame = sl_ind->frame_tx;
     slot = sl_ind->slot_tx;
-    LOG_D(NR_PHY, "frame: %d, slot %d, type: %d\n", frame, slot, sl_ind->slot_type);
   }
 
   NR_UE_MAC_INST_t *mac = get_mac_inst(mod_id);
-  LOG_D(NR_MAC, "harq feedback %d\n", mac->sci_pdu_rx.harq_feedback);
+  LOG_I(NR_MAC, "frame: %d, slot %d, slot type: %d, harq feedback %d\n", frame, slot, sl_ind->slot_type, mac->sci_pdu_rx.harq_feedback);
   sl_nr_ue_mac_params_t *sl_mac = mac->SL_MAC_PARAMS;
   sl_nr_phy_config_request_t *sl_cfg = &sl_mac->sl_phy_config.sl_config_req;
 
@@ -3607,7 +3607,7 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind) {
     //Check if reserved slot or a sidelink resource configured in Rx/Tx resource pool timeresource bitmap
     nr_ue_sl_pssch_scheduler(mac,sl_ind, mac->sl_bwp, mac->sl_tx_res_pool,&tx_config, &tti_action);
   }
-    // harq_feedback value has issue, more often it is displaying as zero
+    // FIXIT: harq_feedback value has issue, more often it is displaying as zero
     if (sl_ind->slot_type == SIDELINK_SLOT_TYPE_TX && mac->sci_pdu_rx.harq_feedback) {
       NR_SL_PSFCH_Config_r16_t *sl_psfch_config = mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup;
       const uint8_t psfch_periods[] = {0,1,2,4};
@@ -3617,23 +3617,24 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind) {
       if (slot%psfch_period == 0) {
         for (int harq_pid = 0; harq_pid < 16; harq_pid++) {
           current_harq = &mac->sl_info.list[0]->UE_sched_ctrl.sl_harq_processes[harq_pid];
-          //if (current_harq->is_active)
           LOG_D(NR_MAC, "harq is active %p:%d\n", current_harq, current_harq->is_active);
           sl_ind->slot_tx = current_harq->feedback_slot;
           sl_ind->frame_tx = current_harq->feedback_frame;
-          if (current_harq->feedback_slot > 0 && current_harq->feedback_frame > 0 && current_harq->is_active) {
+          LOG_D(NR_MAC, "Feedback frame %d:%d HARQ is_active %d\n", current_harq->feedback_frame, current_harq->feedback_slot, current_harq->is_active);
+          if (current_harq->is_active) {
             LOG_D(NR_MAC, "harq pid %d, sl_ind->frame_tx %d, sl_ind->slot_tx %d, frame %d, slot %d\n",  harq_pid, sl_ind->frame_tx, sl_ind->slot_tx, frame, slot);
             if (current_harq->feedback_slot == slot && current_harq->feedback_frame == frame && current_harq->is_active) {
-              LOG_I(NR_MAC, "Scheduling PSFCH transmission at frame %d slot %d for harq_pid %d\n", current_harq->feedback_frame, current_harq->feedback_slot, harq_pid);
+              LOG_D(NR_MAC, "Scheduling PSFCH transmission at frame %d slot %d for harq_pid %d\n", current_harq->feedback_frame, current_harq->feedback_slot, harq_pid);
               nr_ue_sl_psfch_scheduler(mac, sl_ind, mac->sl_bwp, mac->sl_tx_res_pool, &tx_config, &tti_action);
               current_harq->is_active = false;
+              current_harq->feedback_slot = -1;
+              current_harq->feedback_frame = -1;
               break;
             }
           }
         }
       }
     }
-  //}
   if (tti_action == SL_NR_CONFIG_TYPE_RX_PSBCH || tti_action == SL_NR_CONFIG_TYPE_RX_PSCCH || tti_action == SL_NR_CONFIG_TYPE_RX_PSSCH_SCI || tti_action == SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH) {
     fill_scheduled_response(&scheduled_response, NULL, NULL, NULL,  &rx_config, NULL, mod_id, 0,frame, slot, sl_ind->phy_data);
   }

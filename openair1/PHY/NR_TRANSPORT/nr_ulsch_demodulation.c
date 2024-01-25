@@ -2280,7 +2280,7 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
          LOG_D(NR_PHY, "calling sl_indication: RX %d.%d TX %d.%d %s\n",proc->frame_rx,proc->nr_slot_rx,proc->frame_tx,proc->nr_slot_tx, __FUNCTION__);
 	       nr_fill_sl_indication(&sl_indication, NULL, &sci_ind, proc, ue, phy_data);
 	       ue->if_inst->sl_indication(&sl_indication);
-	       LOG_I(NR_PHY,"Returning from SCI2 SL indication\n");
+	       LOG_D(NR_PHY,"Returning from SCI2 SL indication\n");
                //
 	  }
         } // (not ML || nrOfLayers==1 ) AND pssch and sci2 REs to handle	
