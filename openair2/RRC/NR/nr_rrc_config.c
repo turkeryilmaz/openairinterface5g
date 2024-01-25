@@ -946,7 +946,7 @@ static void config_pucch_resset1(NR_PUCCH_Config_t *pucch_Config, const NR_UE_NR
 
   NR_PUCCH_Resource_t *pucchres2 = calloc(1,sizeof(*pucchres2));
   pucchres2->pucch_ResourceId = *pucchressetid;
-  pucchres2->startingPRB = 24;
+  pucchres2->startingPRB = 0;
   pucchres2->intraSlotFrequencyHopping = NULL;
   pucchres2->secondHopPRB = NULL;
   pucchres2->format.present = NR_PUCCH_Resource__format_PR_format2;
