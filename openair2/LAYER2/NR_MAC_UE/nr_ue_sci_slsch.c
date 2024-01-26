@@ -249,7 +249,6 @@ void fill_pssch_pscch_pdu(sl_nr_tx_config_pscch_pssch_pdu_t *nr_sl_pssch_pscch_p
      if (num_psfch_symbols == 3) num_psfch_symbols++;
   }
   nr_sl_pssch_pscch_pdu->pssch_numsym=7+*sl_bwp->sl_BWP_Generic_r16->sl_LengthSymbols_r16-num_psfch_symbols-2;
-  LOG_D(NR_PHY, "num_psfch_symbols %d, sl_LengthSymbols: %d, pssch_numsym: %d\n", num_psfch_symbols,  *sl_bwp->sl_BWP_Generic_r16->sl_LengthSymbols_r16, nr_sl_pssch_pscch_pdu->pssch_numsym);
   nr_sl_pssch_pscch_pdu->pssch_startsym = *sl_bwp->sl_BWP_Generic_r16->sl_StartSymbol_r16;
 
   nr_sl_pssch_pscch_pdu->sci2_beta_offset = *sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_BetaOffsets2ndSCI_r16->list.array[sci_pdu->beta_offset_indicator];
@@ -462,25 +461,7 @@ void fill_pssch_pscch_pdu(sl_nr_tx_config_pscch_pssch_pdu_t *nr_sl_pssch_pscch_p
   nr_sl_pssch_pscch_pdu->slsch_payload_length = slsch_pdu_length;
 };
 
-void config_psfch_pdu_rx(NR_UE_MAC_INST_t *mac,
-                         sl_nr_rx_config_psfch_pdu_t *nr_sl_psfch_pdu,
-                         const NR_SL_BWP_Generic_r16_t *sl_bwp,
-                         const NR_SL_ResourcePool_r16_t *sl_res_pool) {
-  nr_sl_psfch_pdu->freq_hop_flag = 0;
-  nr_sl_psfch_pdu->group_hop_flag = 0;
-  nr_sl_psfch_pdu->sequence_hop_flag = 0;
-  nr_sl_psfch_pdu->second_hop_prb = 0;
-  nr_sl_psfch_pdu->nr_of_symbols = 1;
-  const uint8_t values[] = {7, 8, 9, 10, 11, 12, 13, 14};
-  uint8_t sl_num_symbols = *sl_bwp->sl_LengthSymbols_r16 ?
-                            values[*sl_bwp->sl_LengthSymbols_r16] : 0;
-  nr_sl_psfch_pdu->start_symbol_index = *sl_bwp->sl_StartSymbol_r16 + sl_num_symbols - 2;
-  nr_sl_psfch_pdu->hopping_id = 0;
-  nr_sl_psfch_pdu->prb = 1;
-  //TODO
-  // nr_sl_psfch_pdu->initial_cyclic_shift = mac->sl_;
-  // nr_sl_psfch_pdu->mcs = mac->sl_;
-}
+
 
 void config_pscch_pdu_rx(sl_nr_rx_config_pscch_pdu_t *nr_sl_pscch_pdu,
 	  	         const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp, 
@@ -816,7 +797,7 @@ int nr_ue_process_sci2_indication_pdu(NR_UE_MAC_INST_t *mac,module_id_t mod_id,f
         sci->sci_format_type,sci->Nid,sci->subch_index,sci->sci_payloadlen,*(unsigned long long*)sci->sci_payloadBits);
   AssertFatal(sci->sci_format_type == SL_SCI_FORMAT_2_ON_PSSCH, "need to have format 2 here only\n");
   extract_pssch_sci_pdu((uint64_t *)sci->sci_payloadBits, sci->sci_payloadlen,sl_bwp, sl_res_pool, sci_pdu);
-  LOG_I(NR_MAC,"SCI2A: harq_pid %d ndi %d RV %d SRC %x DST %x HARQ_FB %d Cast %d CSI_Req %d\n", sci_pdu->harq_pid,sci_pdu->ndi,sci_pdu->rv_index,sci_pdu->source_id,sci_pdu->dest_id,sci_pdu->harq_feedback,sci_pdu->cast_type,sci_pdu->csi_req);
+  LOG_D(NR_MAC,"SCI2A: harq_pid %d ndi %d RV %d SRC %x DST %x HARQ_FB %d Cast %d CSI_Req %d\n", sci_pdu->harq_pid,sci_pdu->ndi,sci_pdu->rv_index,sci_pdu->source_id,sci_pdu->dest_id,sci_pdu->harq_feedback,sci_pdu->cast_type,sci_pdu->csi_req);
   // send schedule response
 
   sl_nr_rx_config_request_t rx_config;
@@ -882,7 +863,7 @@ extract_pssch_sci_pdu(uint64_t *sci2_payload, int len,
   fsize = 1;
   pos+=fsize;
   sci_pdu->harq_feedback = *sci2_payload>>(sci2_size-pos)&((1<<fsize)-1);
-  LOG_I(NR_MAC,"harq_feedback (%d) in pos %d sci2_payload %lu, (sci2_size-pos) %d, mask %d\n",sci_pdu->harq_feedback, pos-fsize, *sci2_payload, (sci2_size-pos), ((1<<fsize)-1));
+  LOG_D(NR_MAC,"harq_feedback (%d) in pos %d\n",sci_pdu->harq_feedback,pos-fsize);
 
   //cast_type // 2 bits formac 2A
   fsize = 2;

@@ -40,13 +40,6 @@
 #define NR_DL_MAX_DAI                            (4)                      /* TS 38.213 table 9.1.3-1 Value of counter DAI for DCI format 1_0 and 1_1 */
 #define NR_DL_MAX_NB_CW                          (2)                      /* number of downlink code word */
 
-// 38.213 Table 16.3-1 set of cyclic shift pairs
-static const int16_t table_16_3_1[4][6] = {
-                                          {0},
-                                          {0, 3},
-                                          {0, 2, 4},
-                                          {0, 1, 2, 3, 4, 5}
-                                       };
 /**\brief initialize the field in nr_mac instance
    \param module_id      module id */
 void nr_ue_init_mac(module_id_t module_idP);
@@ -448,8 +441,6 @@ int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
                                        uint8_t sync_source, 
 				       int srcid);
 
-uint8_t count_PSFCH_PRBs_bits(uint8_t* buf, size_t size);
-
 void nr_rrc_mac_transmit_slss_req(module_id_t module_id,
                                   uint8_t *sl_mib_payload,
                                   uint16_t tx_slss_id,
@@ -498,11 +489,6 @@ bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
                        uint8_t *slsch_pdu,
                        nr_sci_format_t format2, 
                        uint16_t *slsch_pdu_length);
-
-void config_psfch_pdu_rx(NR_UE_MAC_INST_t *mac,
-                         sl_nr_rx_config_psfch_pdu_t *nr_sl_psfch_pdu,
-                         const NR_SL_BWP_Generic_r16_t *sl_bwp,
-                         const NR_SL_ResourcePool_r16_t *sl_res_pool);
 
 void config_pscch_pdu_rx(sl_nr_rx_config_pscch_pdu_t *nr_sl_pscch_pdu,
                          const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp,

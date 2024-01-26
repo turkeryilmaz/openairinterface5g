@@ -494,7 +494,6 @@ int nr_ue_pdcch_procedures(PHY_VARS_NR_UE *ue,
     sci_ind.number_of_SCIs = dci_cnt;
     // fill sl_indication message
     nr_fill_sl_indication(&sl_indication, NULL, &sci_ind, proc, ue, phy_data);
-    LOG_D(NR_PHY, "calling sl_indication: RX %d.%d TX %d.%d %s\n",proc->frame_rx,proc->nr_slot_rx,proc->frame_tx,proc->nr_slot_tx, __FUNCTION__);
     //  send to mac
     ue->if_inst->sl_indication(&sl_indication);
   }
@@ -658,7 +657,6 @@ void send_slot_ind(notifiedFIFO_t *nf, int slot) {
     notifiedFIFO_elt_t *newElt = newNotifiedFIFO_elt(sizeof(int), 0, NULL, NULL);
     int *msgData = (int *) NotifiedFifoData(newElt);
     *msgData = slot;
-    LOG_I(PHY, "Pushed slot %d in notified fifo\n", slot);
     pushNotifiedFIFO(nf, newElt);
   }
 }

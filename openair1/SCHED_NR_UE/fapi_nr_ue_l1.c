@@ -759,11 +759,6 @@ int8_t sl_handle_scheduled_response(nr_scheduled_response_t *scheduled_response)
               phy_data_tx->nr_sl_pssch_pscch_pdu.mcs,
               phy_data_tx->nr_sl_pssch_pscch_pdu.tbslbrm);
        break;
-      case SL_NR_CONFIG_TYPE_TX_PSFCH:
-        LOG_I(NR_PHY, "Recvd CONFIG_TYPE_TX_PSFCH\n");
-        phy_data_tx->sl_tx_action = SL_NR_CONFIG_TYPE_TX_PSFCH;
-        phy_data_tx->nr_sl_psfch_pdu = sl_tx_config->tx_config_list[0].tx_psfch_config_pdu;
-       break;
       default:
         AssertFatal(0,"Incorrect sl_tx config req pdutype \n");
         break;

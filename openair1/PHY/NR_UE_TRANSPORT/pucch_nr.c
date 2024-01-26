@@ -40,7 +40,6 @@
 #include <openair1/PHY/CODING/nrSmallBlock/nr_small_block_defs.h>
 #include "common/utils/LOG/log.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
-# include "executables/softmodem-common.h"
 
 #include "T.h"
 //#define NR_UNIT_TEST 1

@@ -2260,7 +2260,7 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
 						pssch_pdu->sci2_len,
 						sci2_re);
 	       // send SCI indication with SCI2 payload and get SLSCH information if CRC is OK
-	       LOG_I(NR_PHY,"SCI indication (crc %x)\n",crc);
+	       LOG_D(NR_PHY,"SCI indication (crc %x)\n",crc);
 	       if (crc==0) ue->SL_UE_PHY_PARAMS.pssch.rx_sci2_ok++;   
 	       else        ue->SL_UE_PHY_PARAMS.pssch.rx_sci2_errors++;   
 	       sl_nr_sci_indication_t sci_ind={0}; 
@@ -2277,7 +2277,6 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
                memcpy(sci_ind.sci_pdu[sci_ind.number_of_SCIs].sci_payloadBits,&sci_estimation,8);
                sci_ind.number_of_SCIs++;
 	       nr_sidelink_indication_t sl_indication;
-         LOG_D(NR_PHY, "calling sl_indication: RX %d.%d TX %d.%d %s\n",proc->frame_rx,proc->nr_slot_rx,proc->frame_tx,proc->nr_slot_tx, __FUNCTION__);
 	       nr_fill_sl_indication(&sl_indication, NULL, &sci_ind, proc, ue, phy_data);
 	       ue->if_inst->sl_indication(&sl_indication);
 	       LOG_D(NR_PHY,"Returning from SCI2 SL indication\n");
