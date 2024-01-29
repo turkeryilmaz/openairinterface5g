@@ -39,6 +39,7 @@
 #include "XNAP_QoSFlowsToBeSetup-Item.h"
 #include "XNAP_NRModeInfoFDD.h"
 #include "XNAP_NRModeInfoTDD.h"
+#include "openair2/RRC/NR/nr_rrc_defs.h"
 
 int xnap_gNB_generate_xn_setup_request(sctp_assoc_t assoc_id, xnap_setup_req_t *req)
 {
@@ -888,8 +889,21 @@ int xnap_gNB_generate_xn_handover_request (instance_t instance,
     return -1;
   }
 
- // xnap_gNB_itti_send_sctp_data_req(assoc_id, buffer, len, 0); /////where do you get the assoc id from??
+  xnap_gNB_itti_send_sctp_data_req(assoc_id, buffer, len, 0); /////where do you get the assoc id from??
 
   return ret;
 }
 
+void rrc_gNB_process_HandoverPreparationInformation(//// why is this here? should be in RRC
+     rrc_gNB_ue_context_t ue_context_p,
+     uint8_t    *buffer,
+     int        *size)
+{
+  memset(buffer, 0, 8192);
+  char *ho_buf = (char *) buffer;
+  int ho_size;
+  ho_size = do_NRHandoverPreparation(ho_buf, 8192, ue_context_p.ue_context.UE_Capability_nr, ue_context_p.ue_context.UE_Capability_size);
+  *size = ho_size;
+
+
+}
