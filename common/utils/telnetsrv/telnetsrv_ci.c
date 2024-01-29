@@ -41,7 +41,7 @@
 static int get_single_ue_rnti_mac(void)
 {
   NR_UE_info_t *ue = NULL;
-  UE_iterator(RC.nrmac[0]->UE_info.list, it) {
+  UE_iterator(RC.nrmac[0]->UE_info.list, it) { //TODO bugz128620
     if (it && ue)
       return -1;
     if (it)
