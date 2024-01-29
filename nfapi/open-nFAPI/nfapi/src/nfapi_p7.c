@@ -41,6 +41,7 @@
 
 extern int nfapi_unpack_p7_vendor_extension(nfapi_p7_message_header_t *header, uint8_t **ppReadPackedMsg, void *user_data);
 extern int nfapi_pack_p7_vendor_extension(nfapi_p7_message_header_t *header, uint8_t **ppWritePackedMsg, void *user_data);
+static uint8_t pack_p7_cell_search_indication(void *msg, uint8_t **ppWritePackedMsg, uint8_t *end, nfapi_p7_codec_config_t* config);
 
 uint32_t nfapi_calculate_checksum(uint8_t *buffer, uint16_t len) {
   uint32_t chksum = 0;
