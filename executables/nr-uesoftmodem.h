@@ -13,7 +13,6 @@
 #define  CONFIG_HLP_OFFSET_DIV             "Divisor for computing OFDM symbol offset in Rx chain (num samples in CP/<the value>). Default value is 8. To set the sample offset to 0, set this value ~ 10e6\n"
 #define  CONFIG_HLP_MAX_LDPC_ITERATIONS    "Maximum LDPC decoder iterations\n"
 #define  CONFIG_HLP_SL_SYNCSOURCEUE         "Sidelink UE acts as SYNC REF UE"
-#define  CONFIG_HLP_PSFCH                  "Set value to 1 if PSFCH is based on PUCCH, otherwise 0\n"
 /***************************************************************************************************************************************/
 /* command line options definitions, CMDLINE_XXXX_DESC macros are used to initialize paramdef_t arrays which are then used as argument
    when calling config_get or config_getlist functions                                                                                 */
@@ -64,7 +63,6 @@
   {"ue-timing-correction-disable", CONFIG_HLP_DISABLETIMECORR, PARAMFLAG_BOOL,  .iptr=&(nrUE_params.no_timing_correction),   .defintval=0,      TYPE_INT,      0}, \
   {"SLC",                          CONFIG_HLP_SLF,             0,               .u64ptr=&(sidelink_frequency[0][0]),         .defuintval=2600000000,TYPE_UINT64,0}, \
   {"sync-ref",                     CONFIG_HLP_SL_SYNCSOURCEUE, PARAMFLAG_BOOL,  .uptr=&(nrUE_params.sync_ref),               .defuintval=0,     TYPE_UINT32,   0}, \
-  {"send_psfch_with_pucch",        CONFIG_HLP_PSFCH,           0,                .iptr=&(nrUE_params.send_psfch_with_pucch), .defintval=0,      TYPE_INT,      0}, \
 }
 // clang-format on
 

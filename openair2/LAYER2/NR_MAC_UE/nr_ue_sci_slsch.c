@@ -36,7 +36,6 @@
 
 /* exe */
 #include "executables/nr-softmodem.h"
-#include "executables/nr-uesoftmodem.h"
 
 /* RRC*/
 #include "RRC/NR_UE/rrc_proto.h"
@@ -248,7 +247,6 @@ void fill_pssch_pscch_pdu(sl_nr_tx_config_pscch_pssch_pdu_t *nr_sl_pssch_pscch_p
   if (sl_res_pool->sl_PSFCH_Config_r16 && sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16 && *sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16>0) {
      num_psfch_symbols = *sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16;
      if (num_psfch_symbols == 3) num_psfch_symbols++;
-     if (get_nrUE_params()->send_psfch_with_pucch) num_psfch_symbols = 0;
   }
   nr_sl_pssch_pscch_pdu->pssch_numsym=7+*sl_bwp->sl_BWP_Generic_r16->sl_LengthSymbols_r16-num_psfch_symbols-2;
   LOG_D(NR_PHY, "num_psfch_symbols %d, sl_LengthSymbols: %d, pssch_numsym: %d\n", num_psfch_symbols,  *sl_bwp->sl_BWP_Generic_r16->sl_LengthSymbols_r16, nr_sl_pssch_pscch_pdu->pssch_numsym);
@@ -515,7 +513,6 @@ void config_pscch_pdu_rx(sl_nr_rx_config_pscch_pdu_t *nr_sl_pscch_pdu,
   if (sl_res_pool->sl_PSFCH_Config_r16 && sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16 && *sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16>0) {
      num_psfch_symbols = *sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16;
      if (num_psfch_symbols == 3) num_psfch_symbols++;
-     if (get_nrUE_params()->send_psfch_with_pucch) num_psfch_symbols = 0;
   }
   nr_sl_pscch_pdu->pssch_numsym=7+*sl_bwp->sl_BWP_Generic_r16->sl_LengthSymbols_r16-num_psfch_symbols-2;
   //sci 1A length used to decode on PSCCH.
@@ -676,7 +673,6 @@ void config_pssch_slsch_pdu_rx(sl_nr_rx_config_pssch_pdu_t *nr_sl_pssch_pdu,
   if (sl_res_pool->sl_PSFCH_Config_r16 && sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16 && *sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16>0) {
      num_psfch_symbols = *sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16;
      if (num_psfch_symbols == 3) num_psfch_symbols++;
-     if (get_nrUE_params()->send_psfch_with_pucch) num_psfch_symbols = 0;
   }
   int pssch_numsym=7+*sl_bwp->sl_BWP_Generic_r16->sl_LengthSymbols_r16-num_psfch_symbols-2;
   uint16_t l_subch;
@@ -771,7 +767,6 @@ int config_pssch_sci_pdu_rx(sl_nr_rx_config_pssch_sci_pdu_t *nr_sl_pssch_sci_pdu
   if (sl_res_pool->sl_PSFCH_Config_r16 && sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16 && *sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16>0) {
      num_psfch_symbols = *sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16;
      if (num_psfch_symbols == 3) num_psfch_symbols++;
-     if (get_nrUE_params()->send_psfch_with_pucch) num_psfch_symbols = 0;
   }
   nr_sl_pssch_sci_pdu->pssch_numsym = 7+*sl_bwp->sl_BWP_Generic_r16->sl_LengthSymbols_r16-num_psfch_symbols-2;
   
