@@ -36,7 +36,6 @@
 
 /* exe */
 #include "executables/nr-softmodem.h"
-#include "executables/nr-uesoftmodem.h"
 
 /* RRC*/
 #include "RRC/NR_UE/rrc_proto.h"
