@@ -196,13 +196,13 @@ int get_nREDMRS(const NR_SL_ResourcePool_r16_t *sl_res_pool) {
 }
 
 void fill_pssch_pscch_pdu(sl_nr_tx_config_pscch_pssch_pdu_t *nr_sl_pssch_pscch_pdu,
-			                    const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp,
+                          const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp,
                           const NR_SL_ResourcePool_r16_t *sl_res_pool,
-		                      nr_sci_pdu_t *sci_pdu,
-		                      nr_sci_pdu_t *sci2_pdu,
+                          nr_sci_pdu_t *sci_pdu,
+                          nr_sci_pdu_t *sci2_pdu,
                           uint16_t slsch_pdu_length,
-		                      const nr_sci_format_t format1,
-		                      const nr_sci_format_t format2)  {
+                          const nr_sci_format_t format1,
+                          const nr_sci_format_t format2)  {
   int pos = 0, fsize;
   uint64_t *sci_payload = (uint64_t *)nr_sl_pssch_pscch_pdu->pscch_sci_payload;
   uint64_t *sci2_payload = (uint64_t *)nr_sl_pssch_pscch_pdu->sci2_payload;
