@@ -64,7 +64,6 @@
   {"ue-timing-correction-disable", CONFIG_HLP_DISABLETIMECORR, PARAMFLAG_BOOL,  .iptr=&(nrUE_params.no_timing_correction),   .defintval=0,      TYPE_INT,      0}, \
   {"SLC",                          CONFIG_HLP_SLF,             0,               .u64ptr=&(sidelink_frequency[0][0]),         .defuintval=2600000000,TYPE_UINT64,0}, \
   {"sync-ref",                     CONFIG_HLP_SL_SYNCSOURCEUE, PARAMFLAG_BOOL,  .uptr=&(nrUE_params.sync_ref),               .defuintval=0,     TYPE_UINT32,   0}, \
-  {"send_psfch_with_pucch",        CONFIG_HLP_PSFCH,           0,                .iptr=&(nrUE_params.send_psfch_with_pucch), .defintval=0,      TYPE_INT,      0}, \
 }
 // clang-format on
 
@@ -87,7 +86,6 @@ typedef struct {
   int            N_RB_DL;
   int            ssb_start_subcarrier;
   uint32_t       sync_ref;
-  int            send_psfch_with_pucch;
 } nrUE_params_t;
 extern uint64_t get_nrUE_optmask(void);
 extern uint64_t set_nrUE_optmask(uint64_t bitmask);
