@@ -617,6 +617,7 @@ void processSlotTX(void *arg) {
   RU_write(rxtxD);
 }
 
+extern int commonDoppler;
 nr_phy_data_t UE_dl_preprocessing(PHY_VARS_NR_UE *UE, UE_nr_rxtx_proc_t *proc)
 {
   nr_phy_data_t phy_data = {0};
@@ -635,6 +636,14 @@ nr_phy_data_t UE_dl_preprocessing(PHY_VARS_NR_UE *UE, UE_nr_rxtx_proc_t *proc)
         UE->frame_parms.dl_CarrierFreq = dl_CarrierFreq;
         UE->frame_parms.ul_CarrierFreq = dl_CarrierFreq - diff;
 
+        double dl_CarrierFreq_cmd = (double)downlink_frequency[0][0];
+        float frequency_scaling = (float)( (double)dl_CarrierFreq / dl_CarrierFreq_cmd);
+        float commonDopplerTmp = frequency_scaling * (float)commonDoppler;
+
+        LOG_A(PHY, "dl_CarrierFreq: %lu, dl_CarrierFreq_cmd: %lu, frequency_scaling: %f, commonDoppler_DU0: %d, commonDoppler_DU1: %d\n", dl_CarrierFreq, downlink_frequency[0][0], frequency_scaling, commonDoppler, (int)commonDopplerTmp);
+
+        commonDoppler = (int)commonDopplerTmp;
+
         nr_rf_card_config_freq(&openair0_cfg[UE->rf_map.card], UE->frame_parms.ul_CarrierFreq, UE->frame_parms.dl_CarrierFreq, 0);
         // Reset frequency offset
         UE->common_vars.freq_offset = 0;
@@ -642,7 +651,18 @@ nr_phy_data_t UE_dl_preprocessing(PHY_VARS_NR_UE *UE, UE_nr_rxtx_proc_t *proc)
         init_symbol_rotation(&UE->frame_parms);
       }
       UE->is_synchronized = 0;
-      //UE->timing_advance =  get_nrUE_params()->timing_advance;
+      UE->timing_advance =  get_nrUE_params()->timing_advance;
+
+      // reset all parameters related to frequency offset and timing drift estimation/compensation
+      UE->DopplerEst = 0;
+      UE->DopplerEstTot = (float)commonDoppler;
+
+      UE->TO_I_Ctrl = 0;
+      UE->rx_offset = 0;
+      UE->rx_offset_TO = 0; //PI controller
+      UE->rx_offset_slot = 1;
+      UE->rx_offset_comp = 0;
+
       UE->ho_flag = 1;
       UE->target_Nid_cell = synch_req->target_Nid_cell;
       clean_UE_dlsch(UE, proc->gNB_id);
@@ -839,13 +859,14 @@ void *UE_thread(void *arg)
   UE->is_synchronized = 0;
   AssertFatal(UE->rfdevice.trx_start_func(&UE->rfdevice) == 0, "Could not start the device\n");
 
+  /*
   if (!IS_SOFTMODEM_RFSIM) {
     if (UE->rfdevice.openair0_cfg->sample_rate == 7680000) {
       UE->rfdevice.openair0_cfg->tx_sample_advance = 112;
     } else if (UE->rfdevice.openair0_cfg->sample_rate == 15360000) {
       UE->rfdevice.openair0_cfg->tx_sample_advance = 128;
     }
-  }
+  }*/
 
   notifiedFIFO_t nf;
   initNotifiedFIFO(&nf);

@@ -519,6 +519,13 @@ int nr_rx_pbch(PHY_VARS_NR_UE *ue,
       double TOfdm = slotDuration / ((double)ue->frame_parms.symbols_per_slot);   // symbol duration in sec
       double DopplerEst = Res_phase/ (2*M_PI*(DMRS_idx_current-DMRS_idx_last)*TOfdm);
 
+      if(!ue->is_synchronized)         // this might  be as a handover process is being executed, then reset the static variables
+      {
+        DopplerEstTot = 0;
+        Doppler_I_Ctrl = 0;
+        DopplerErrLast = (int64_t)1<<60;
+      }
+
       if ((ue->is_synchronized) && (DopplerEst > 35 || DopplerEst < -35 ))
       { 
         // PI Controller
