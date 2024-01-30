@@ -143,7 +143,7 @@ static void prepare_NR_SL_ResourcePool(NR_SL_ResourcePool_r16_t *sl_res_pool,
   sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16 = calloc(1, sizeof(long));
 
   // Set of PRBs that are actually used for PSFCH transmission and reception (bitmap)
-  // 0b10101010101010101010101010101010101010101010101001 (PRBs bitmap)
+  // 0xAAAAAAAAAAAA8  (PRBs bitmap)
   sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_RB_Set_r16 = calloc(1, sizeof(*sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_RB_Set_r16));
   sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_RB_Set_r16->size = 7;
   sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_RB_Set_r16->bits_unused = 6;
