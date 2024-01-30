@@ -36,6 +36,7 @@
 
 /* exe */
 #include "executables/nr-softmodem.h"
+#include "executables/nr-uesoftmodem.h"
 
 /* RRC*/
 #include "RRC/NR_UE/rrc_proto.h"
@@ -244,12 +245,11 @@ void fill_pssch_pscch_pdu(sl_nr_tx_config_pscch_pssch_pdu_t *nr_sl_pssch_pscch_p
   nr_sl_pssch_pscch_pdu->pscch_dmrs_scrambling_id,
   nr_sl_pssch_pscch_pdu->num_subch,
   nr_sl_pssch_pscch_pdu->subchannel_size);
-#if 0
   if (sl_res_pool->sl_PSFCH_Config_r16 && sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16 && *sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16>0) {
      num_psfch_symbols = *sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16;
      if (num_psfch_symbols == 3) num_psfch_symbols++;
+     if (get_nrUE_params()->is_pucch_psfch) num_psfch_symbols = 0;
   }
-#endif
   nr_sl_pssch_pscch_pdu->pssch_numsym=7+*sl_bwp->sl_BWP_Generic_r16->sl_LengthSymbols_r16-num_psfch_symbols-2;
   nr_sl_pssch_pscch_pdu->pssch_startsym = *sl_bwp->sl_BWP_Generic_r16->sl_StartSymbol_r16;
 
@@ -493,12 +493,11 @@ void config_pscch_pdu_rx(sl_nr_rx_config_pscch_pdu_t *nr_sl_pscch_pdu,
   //Guard symbol + AGC symbol are also excluded
   //Indicates the number of symbols for PSCCH+PSSCH txn
   int num_psfch_symbols=0;
-#if 0
   if (sl_res_pool->sl_PSFCH_Config_r16 && sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16 && *sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16>0) {
      num_psfch_symbols = *sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16;
      if (num_psfch_symbols == 3) num_psfch_symbols++;
+     if (get_nrUE_params()->is_pucch_psfch) num_psfch_symbols = 0;
   }
-#endif
   nr_sl_pscch_pdu->pssch_numsym=7+*sl_bwp->sl_BWP_Generic_r16->sl_LengthSymbols_r16-num_psfch_symbols-2;
   //sci 1A length used to decode on PSCCH.
   nr_sl_pscch_pdu->sci_1a_length = nr_sci_size(sl_res_pool,&dummy_sci,NR_SL_SCI_FORMAT_1A);
@@ -655,12 +654,11 @@ void config_pssch_slsch_pdu_rx(sl_nr_rx_config_pssch_pdu_t *nr_sl_pssch_pdu,
 		                                NRRIV2BW(sl_bwp->sl_BWP_Generic_r16->sl_BWP_r16->locationAndBandwidth,273),
 						nr_sl_pssch_pdu->num_layers);
   int num_psfch_symbols=0;
-#if 0
   if (sl_res_pool->sl_PSFCH_Config_r16 && sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16 && *sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16>0) {
      num_psfch_symbols = *sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16;
      if (num_psfch_symbols == 3) num_psfch_symbols++;
+     if (get_nrUE_params()->is_pucch_psfch) num_psfch_symbols = 0;
   }
-#endif
   int pssch_numsym=7+*sl_bwp->sl_BWP_Generic_r16->sl_LengthSymbols_r16-num_psfch_symbols-2;
   uint16_t l_subch;
   convNRFRIV(sci_pdu->frequency_resource_assignment.val,
@@ -751,13 +749,12 @@ int config_pssch_sci_pdu_rx(sl_nr_rx_config_pssch_sci_pdu_t *nr_sl_pssch_sci_pdu
   //Guard symbol + AGC symbol are also excluded
   //Indicates the number of symbols for PSCCH+PSSCH txn
   int num_psfch_symbols=0;
-#if 0
   if (sl_res_pool->sl_PSFCH_Config_r16 && sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16 && *sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16>0) {
      num_psfch_symbols = *sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16;
      if (num_psfch_symbols == 3) num_psfch_symbols++;
+     if (get_nrUE_params()->is_pucch_psfch) num_psfch_symbols = 0;
   }
-#endif
-  nr_sl_pssch_sci_pdu->pssch_numsym = 7+*sl_bwp->sl_BWP_Generic_r16->sl_LengthSymbols_r16-num_psfch_symbols-2;;
+  nr_sl_pssch_sci_pdu->pssch_numsym = 7+*sl_bwp->sl_BWP_Generic_r16->sl_LengthSymbols_r16-num_psfch_symbols-2;
   
   //DMRS SYMBOL MASK. If bit set to 1 indicates it is a DMRS symbol. LSB is symbol 0
   // Table from SPEC 38.211, Table 8.4.1.1.2-1

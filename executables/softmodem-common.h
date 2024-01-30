@@ -109,7 +109,6 @@ extern "C"
 #define CONFIG_HLP_SYNC_REF      "Sync Reference in Sidelink\n"
 #define CONFIG_HLP_NID1          "Set NID1 value in Sidelink\n"
 #define CONFIG_HLP_NID2          "Set NID2 value in Sidelink\n"
-
 /*-----------------------------------------------------------------------------------------------------------------------------------------------------*/
 /*                                            command line parameters common to eNodeB and UE                                                          */
 /*   optname                 helpstr                  paramflags      XXXptr                              defXXXval              type         numelt   */

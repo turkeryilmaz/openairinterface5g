@@ -487,7 +487,6 @@ int main( int argc, char **argv ) {
       init_pdcp(mode_offset + ue_id_g);
     }
   }
-
   PHY_vars_UE_g = malloc(sizeof(PHY_VARS_NR_UE **));
   PHY_vars_UE_g[0] = malloc(sizeof(PHY_VARS_NR_UE *)*MAX_NUM_CCs);
   if (get_softmodem_params()->emulate_l1) {
