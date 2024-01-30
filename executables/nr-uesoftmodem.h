@@ -85,6 +85,7 @@ typedef struct {
   int            N_RB_DL;
   int            ssb_start_subcarrier;
   uint32_t       sync_ref;
+  int            send_psfch_with_pucch;
 } nrUE_params_t;
 extern uint64_t get_nrUE_optmask(void);
 extern uint64_t set_nrUE_optmask(uint64_t bitmask);
