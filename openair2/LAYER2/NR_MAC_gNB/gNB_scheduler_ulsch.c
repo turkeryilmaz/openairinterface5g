@@ -765,7 +765,6 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
           nr_mac_reset_ul_failure(UE_scheduling_control);
           reset_dl_harq_list(UE_scheduling_control);
           reset_ul_harq_list(UE_scheduling_control);
-          UE_msg3_stage->ra_timer = 0;
           nr_clear_ra_proc(gnb_mod_idP, CC_idP, frameP, ra);
           process_CellGroup(ra->CellGroup, UE_msg3_stage);
 
@@ -1503,7 +1502,11 @@ static bool allocate_ul_retransmission(gNB_MAC_INST *nrmac,
   const uint8_t nrOfLayers = retInfo->nrOfLayers;
   LOG_D(NR_MAC,"retInfo->time_domain_allocation = %d, tda = %d\n", retInfo->time_domain_allocation, tda);
   LOG_D(NR_MAC,"tbs %d\n",retInfo->tb_size);
-  NR_tda_info_t tda_info = get_ul_tda_info(ul_bwp, sched_ctrl->coreset->controlResourceSetId, sched_ctrl->search_space->searchSpaceType->present, NR_RNTI_C, tda);
+  NR_tda_info_t tda_info = get_ul_tda_info(ul_bwp,
+                                           sched_ctrl->coreset->controlResourceSetId,
+                                           sched_ctrl->search_space->searchSpaceType->present,
+                                           TYPE_C_RNTI_,
+                                           tda);
   bool reuse_old_tda = (retInfo->tda_info.startSymbolIndex == tda_info.startSymbolIndex) && (retInfo->tda_info.nrOfSymbols <= tda_info.nrOfSymbols);
   if (reuse_old_tda && nrOfLayers == retInfo->nrOfLayers) {
     /* Check the resource is enough for retransmission */
@@ -1741,7 +1744,11 @@ static void pf_ul(module_id_t module_id,
 
       sched_pusch->nrOfLayers = sched_ctrl->srs_feedback.ul_ri + 1;
       sched_pusch->time_domain_allocation = get_ul_tda(nrmac, scc, sched_pusch->frame, sched_pusch->slot);
-      sched_pusch->tda_info = get_ul_tda_info(current_BWP, sched_ctrl->coreset->controlResourceSetId, sched_ctrl->search_space->searchSpaceType->present, NR_RNTI_C, sched_pusch->time_domain_allocation);
+      sched_pusch->tda_info = get_ul_tda_info(current_BWP,
+                                              sched_ctrl->coreset->controlResourceSetId,
+                                              sched_ctrl->search_space->searchSpaceType->present,
+                                              TYPE_C_RNTI_,
+                                              sched_pusch->time_domain_allocation);
       sched_pusch->dmrs_info = get_ul_dmrs_params(scc,
                                                   current_BWP,
                                                   &sched_pusch->tda_info,
@@ -1841,7 +1848,11 @@ static void pf_ul(module_id_t module_id,
 
     sched_pusch->nrOfLayers = sched_ctrl->srs_feedback.ul_ri + 1;
     sched_pusch->time_domain_allocation = get_ul_tda(nrmac, scc, sched_pusch->frame, sched_pusch->slot);
-    sched_pusch->tda_info = get_ul_tda_info(current_BWP, sched_ctrl->coreset->controlResourceSetId, sched_ctrl->search_space->searchSpaceType->present, NR_RNTI_C, sched_pusch->time_domain_allocation);
+    sched_pusch->tda_info = get_ul_tda_info(current_BWP,
+                                            sched_ctrl->coreset->controlResourceSetId,
+                                            sched_ctrl->search_space->searchSpaceType->present,
+                                            TYPE_C_RNTI_,
+                                            sched_pusch->time_domain_allocation);
     sched_pusch->dmrs_info = get_ul_dmrs_params(scc,
                                                 current_BWP,
                                                 &sched_pusch->tda_info,
@@ -1944,7 +1955,10 @@ static bool nr_fr1_ulsch_preprocessor(module_id_t module_id, frame_t frame, sub_
   NR_UE_UL_BWP_t *current_BWP = &nr_mac->UE_info.list[0]->current_UL_BWP;
   int mu = current_BWP->scs;
   const int temp_tda = get_ul_tda(nr_mac, scc, frame, slot);
-  NR_PUSCH_TimeDomainResourceAllocationList_t *tdaList = get_ul_tdalist(current_BWP, sched_ctrl->coreset->controlResourceSetId, sched_ctrl->search_space->searchSpaceType->present, NR_RNTI_C);
+  NR_PUSCH_TimeDomainResourceAllocationList_t *tdaList = get_ul_tdalist(current_BWP,
+                                                                        sched_ctrl->coreset->controlResourceSetId,
+                                                                        sched_ctrl->search_space->searchSpaceType->present,
+                                                                        TYPE_C_RNTI_);
   int K2 = get_K2(tdaList, temp_tda, mu);
   const int sched_frame = (frame + (slot + K2 >= nr_slots_per_frame[mu])) & 1023;
   const int sched_slot = (slot + K2) % nr_slots_per_frame[mu];
@@ -2119,8 +2133,6 @@ void nr_schedule_ulsch(module_id_t module_id, frame_t frame, sub_frame_t slot, n
     add_tail_nr_list(&sched_ctrl->feedback_ul_harq, harq_id);
     cur_harq->feedback_slot = sched_pusch->slot;
     cur_harq->is_waiting = true;
-
-    int rnti_types[2] = { NR_RNTI_C, 0 };
 
     /* Statistics */
     AssertFatal(cur_harq->round < nr_mac->ul_bler.harq_round_max, "Indexing ulsch_rounds[%d] is out of bounds\n", cur_harq->round);
@@ -2345,7 +2357,7 @@ void nr_schedule_ulsch(module_id_t module_id, frame_t frame, sub_frame_t slot, n
       ul_dci_request_pdu->PDUSize = (uint8_t)(2+sizeof(nfapi_nr_dl_tti_pdcch_pdu));
       pdcch_pdu = &ul_dci_request_pdu->pdcch_pdu.pdcch_pdu_rel15;
       ul_dci_req->numPdus += 1;
-      nr_configure_pdcch(pdcch_pdu, coreset, false, &sched_ctrl->sched_pdcch);
+      nr_configure_pdcch(pdcch_pdu, coreset, &sched_ctrl->sched_pdcch);
       pdcch_pdu_coreset[coresetid] = pdcch_pdu;
     }
 
@@ -2386,7 +2398,7 @@ void nr_schedule_ulsch(module_id_t module_id, frame_t frame, sub_frame_t slot, n
                        dci_pdu,
                        &uldci_payload,
                        current_BWP->dci_format,
-                       rnti_types[0],
+                       TYPE_C_RNTI_,
                        current_BWP->bwp_id,
                        ss,
                        coreset,

@@ -199,7 +199,6 @@ void find_search_space(int ss_type,
 
 void nr_configure_pdcch(nfapi_nr_dl_tti_pdcch_pdu_rel15_t *pdcch_pdu,
                         NR_ControlResourceSet_t *coreset,
-                        bool is_sib1,
                         NR_sched_pdcch_t *pdcch);
 
 NR_sched_pdcch_t set_pdcch_structure(gNB_MAC_INST *gNB_mac,
@@ -378,7 +377,9 @@ NR_pdsch_dmrs_t get_dl_dmrs_params(const NR_ServingCellConfigCommon_t *scc,
                                    const NR_tda_info_t *tda_info,
                                    const int Layers);
 
-uint16_t get_pm_index(const NR_UE_info_t *UE,
+uint16_t get_pm_index(const gNB_MAC_INST *nrmac,
+                      const NR_UE_info_t *UE,
+                      nr_dci_format_t dci_format,
                       int layers,
                       int xp_pdsch_antenna_ports);
 
