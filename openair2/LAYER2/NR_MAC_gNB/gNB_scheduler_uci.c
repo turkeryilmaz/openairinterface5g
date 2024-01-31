@@ -1019,7 +1019,7 @@ void handle_nr_uci_pucch_0_1(module_id_t mod_id,
 
     // tpc (power control) only if we received AckNack
     if (uci_01->harq.harq_confidence_level==0)
-      sched_ctrl->tpc1 = nr_get_tpc(nrmac->pucch_target_snrx10, uci_01->ul_cqi, 30);
+      sched_ctrl->tpc1 = nr_get_tpc(nrmac->pucch_target_snrx10, uci_01->ul_cqi, 30, 0);
     else
       sched_ctrl->tpc1 = 3;
     sched_ctrl->pucch_snrx10 = uci_01->ul_cqi * 5 - 640;
@@ -1267,6 +1267,9 @@ int nr_acknack_scheduling(gNB_MAC_INST *mac,
           && !check_bits_vs_coderate_limit(pucch_Config,
                                            curr_pucch->csi_bits + curr_pucch->dai_c + 2,
                                            curr_pucch->resource_indicator))
+        continue;
+      // limit ack/nak to 3 bits
+      if (curr_pucch->csi_bits > 0 && curr_pucch->dai_c >= 3)
         continue;
 
       // otherwise we can schedule in this active PUCCH

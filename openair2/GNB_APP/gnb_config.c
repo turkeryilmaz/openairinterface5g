@@ -885,6 +885,7 @@ void RCconfig_NR_L1(void)
       RC.gNB[j]->L1_tx_thread_core = *(L1_ParamList.paramarray[j][L1_TX_THREAD_CORE].iptr);
       LOG_I(PHY,"L1_RX_THREAD_CORE %d (%d)\n",*(L1_ParamList.paramarray[j][L1_RX_THREAD_CORE].iptr),L1_RX_THREAD_CORE);
       RC.gNB[j]->TX_AMP = (int16_t)(32767.0 / pow(10.0, .05 * (double)(*L1_ParamList.paramarray[j][L1_TX_AMP_BACKOFF_dB].uptr)));
+      RC.gNB[j]->phase_comp = *L1_ParamList.paramarray[j][L1_PHASE_COMP].uptr;
       LOG_I(PHY, "TX_AMP = %d (-%d dBFS)\n", RC.gNB[j]->TX_AMP, *L1_ParamList.paramarray[j][L1_TX_AMP_BACKOFF_dB].uptr);
       AssertFatal(RC.gNB[j]->TX_AMP > 300, "TX_AMP is too small, must be larger than 300 (is %d)\n", RC.gNB[j]->TX_AMP);
       if (strcmp(*(L1_ParamList.paramarray[j][L1_TRANSPORT_N_PREFERENCE_IDX].strptr), "local_mac") == 0) {
@@ -1240,11 +1241,14 @@ void RCconfig_nr_macrlc(configmodule_interface_t *cfg)
   config.do_CSIRS = *GNBParamList.paramarray[0][GNB_DO_CSIRS_IDX].iptr;
   config.do_SRS = *GNBParamList.paramarray[0][GNB_DO_SRS_IDX].iptr;
   config.force_256qam_off = *GNBParamList.paramarray[0][GNB_FORCE256QAMOFF_IDX].iptr;
+  config.force_UL256qam_off = *GNBParamList.paramarray[0][GNB_FORCEUL256QAMOFF_IDX].iptr;
+  config.use_deltaMCS = *GNBParamList.paramarray[0][GNB_USE_DELTA_MCS_IDX].iptr;
   LOG_I(GNB_APP,
-        "CSI-RS %d, SRS %d, 256 QAM %s\n",
+        "CSI-RS %d, SRS %d, 256 QAM %s, delta_MCS %s\n",
         config.do_CSIRS,
         config.do_SRS,
-        config.force_256qam_off ? "force off" : "may be on");
+        config.force_256qam_off ? "force off" : "may be on",
+        config.use_deltaMCS ? "on" : "off");
 
   NR_ServingCellConfigCommon_t *scc = get_scc_config(cfg, config.minRXTXTIME);
   //xer_fprint(stdout, &asn_DEF_NR_ServingCellConfigCommon, scc);
