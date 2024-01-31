@@ -52,6 +52,7 @@
 
 extern RAN_CONTEXT_t RC;
 
+
 int8_t nr_mac_rrc_bwp_switch_req(const module_id_t     module_idP,
                                  const frame_t         frameP,
                                  const sub_frame_t     sub_frameP,
