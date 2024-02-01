@@ -2490,7 +2490,12 @@ pdcp_config_set_security(
           pdcp_pP->integrityProtAlgorithm);
 
     kRRCenc != NULL ? memcpy(pdcp_pP->kRRCenc, kRRCenc, 32) : memset(pdcp_pP->kRRCenc, 0, 32);
-    kRRCint != NULL ? memcpy(pdcp_pP->kRRCint, kRRCint, 32) : memset(pdcp_pP->kRRCint, 0, 32);
+    /** According to 3GPP specs 36.523-3 rel 16 if integrity is omit/null then keep integrity parameters as it **/
+    if(kRRCint != NULL)
+    {
+	    memcpy(pdcp_pP->kRRCint, kRRCint, 32);
+    }
+
     kUPenc != NULL ? memcpy(pdcp_pP->kUPenc, kUPenc, 32) : memset(pdcp_pP->kUPenc, 0, 32);
 
     /* Activate security */
