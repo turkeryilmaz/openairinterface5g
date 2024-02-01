@@ -343,7 +343,7 @@ static void ss_task_sys_handle_timing_info(ss_set_timinfo_t *tinfo)
  * corrected. Does not impact TC_6_1_2_2.
  *
  */
-int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
+int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req, bool *pIsRrcConfigReqSent)
 {
   CellConfigReq_t *cellConfig;
   assert(req);
@@ -351,9 +351,8 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
   assert(Cell);
   struct CellConfigInfo_Type *AddOrReconfigure = &(Cell->v.AddOrReconfigure);
   assert(AddOrReconfigure);
-
   if (AddOrReconfigure->Basic.d == false && AddOrReconfigure->Active.d == false)
-    return false;
+     return false;
 
   cellConfig = (CellConfigReq_t *)malloc(sizeof(CellConfigReq_t));
   cellConfig->header.preamble = 0xFEEDC0DE;
@@ -366,6 +365,7 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
     MessageDef *msg_p = itti_alloc_new_message(TASK_SYS, ENB_MODULE_ID_TO_INSTANCE(enb_id), RRC_CONFIGURATION_REQ);
 
     RRC_CONFIGURATION_REQ(msg_p) = RC.rrc[enb_id]->configuration;
+    RRC_CONFIGURATION_REQ(msg_p).ActiveParamPresent[cell_index] = false;
     if (AddOrReconfigure->Basic.d == true)
     {
       if (AddOrReconfigure->Basic.v.StaticCellInfo.d == true)
@@ -776,10 +776,10 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
     if (AddOrReconfigure->Active.d == true)
     {
       LOG_A(ENB_SS_SYS_TASK, "Cell Config Active Present\n");
-      RRC_CONFIGURATION_REQ(msg_p).ActiveParamPresent[cell_index] = true;
       LOG_A(ENB_SS_SYS_TASK, "Active.v.C_RNTI.d=%d Active.v.RachProcedureConfig.d=%d\n", AddOrReconfigure->Active.v.C_RNTI.d, AddOrReconfigure->Active.v.RachProcedureConfig.d);
       if (AddOrReconfigure->Active.v.C_RNTI.d == true)
       {
+	RRC_CONFIGURATION_REQ(msg_p).ActiveParamPresent[cell_index] = true;
         RRC_CONFIGURATION_REQ(msg_p).ActiveParam[cell_index].b_C_RNTI_Present = true;
         RRC_CONFIGURATION_REQ(msg_p).ActiveParam[cell_index].C_RNTI = bin_to_int(AddOrReconfigure->Active.v.C_RNTI.v, 16);
         SS_context.SSCell_list[cell_index].ss_rnti_g = RRC_CONFIGURATION_REQ(msg_p).ActiveParam[cell_index].C_RNTI;
@@ -789,6 +789,7 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
       {
         if (AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.d == true)
         {
+	  RRC_CONFIGURATION_REQ(msg_p).ActiveParamPresent[cell_index] = true;
           for (int i = 0; i < (AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.d); i++)
           {
             if (RandomAccessResponseConfig_Type_Ctrl == AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.v[i].RAResponse.d)
@@ -813,7 +814,7 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
               }
               else if(RandomAccessResponse_Type_None == AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.v[i].RAResponse.v.Ctrl.Rar.d)
               {
-                RRC_CONFIGURATION_REQ(msg_p).ActiveParam[cell_index].numRar = 0; /* Indicate non RAR response: do not initate RA procedure */
+		      RRC_CONFIGURATION_REQ(msg_p).ActiveParam[cell_index].numRar = 0; /* Indicate non RAR response: do not initate RA procedure */
               }
             }
             if (AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.v[i].ContentionResolutionCtrl.d == ContentionResolutionCtrl_Type_TCRNTI_Based)
@@ -836,21 +837,29 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
             }
           }
         }
-      }
+      }  
     }
     else
     {
       // RRC_CONFIGURATION_REQ(msg_p).ActiveParamPresent[cell_index] = false;
     }
-    LOG_A(ENB_SS_SYS_TASK, "SS: ActiveParamPresent: %d, RlcPduCCCH_Present: %d, RLC Container PDU size: %d \n", RRC_CONFIGURATION_REQ(msg_p).ActiveParamPresent[cell_index], RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Present[cell_index], RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Size[cell_index]);
-    // store the modified cell config back
-    memcpy(&(RC.rrc[enb_id]->configuration), &RRC_CONFIGURATION_REQ(msg_p), sizeof(RRC_CONFIGURATION_REQ(msg_p)));
-    if (!vt_timer_push_msg(&req->Common.TimingInfo, TASK_RRC_ENB,ENB_MODULE_ID_TO_INSTANCE(enb_id), msg_p))
+    LOG_A(ENB_SS_SYS_TASK, "SS: ActiveParamPresent: %d, SS: Basic Present %d RlcPduCCCH_Present: %d, RLC Container PDU size: %d \n", RRC_CONFIGURATION_REQ(msg_p).ActiveParamPresent[cell_index], AddOrReconfigure->Basic.d,RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Present[cell_index], RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Size[cell_index]);
+    if ((AddOrReconfigure->Basic.d == true) || (RRC_CONFIGURATION_REQ(msg_p).ActiveParamPresent[cell_index] == true))
     {
-      LOG_A(ENB_SS_SYS_TASK, "Sending Cell configuration to RRC from SYSTEM_CTRL_REQ \n");
-      itti_send_msg_to_task(TASK_RRC_ENB, ENB_MODULE_ID_TO_INSTANCE(enb_id), msg_p);
+	    // store the modified cell config back
+	    memcpy(&(RC.rrc[enb_id]->configuration), &RRC_CONFIGURATION_REQ(msg_p), sizeof(RRC_CONFIGURATION_REQ(msg_p)));
+	    *pIsRrcConfigReqSent = true;
+	    if (!vt_timer_push_msg(&req->Common.TimingInfo, TASK_RRC_ENB,ENB_MODULE_ID_TO_INSTANCE(enb_id), msg_p))
+	    {
+		    LOG_A(ENB_SS_SYS_TASK, "Sending Cell configuration to RRC from SYSTEM_CTRL_REQ \n");
+		    itti_send_msg_to_task(TASK_RRC_ENB, ENB_MODULE_ID_TO_INSTANCE(enb_id), msg_p);
+	    }
     }
-
+    else
+    {
+	    itti_free(ITTI_MSG_ORIGIN_ID(msg_p),msg_p);
+    }
+    LOG_E(ENB_SS_SYS_TASK, "pIsRrcConfigReqSent %d",*pIsRrcConfigReqSent);
     /* Active Config for ULGrant Params */
     bool destTaskMAC = false;
     for (int enb_id = 0; enb_id < RC.nb_inst; enb_id++)
@@ -946,7 +955,6 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
       }
     }
   }
-
   return true;
 }
 /*
@@ -1058,6 +1066,7 @@ static void send_sys_cnf(enum ConfirmationResult_Type_Sel resType,
  */
 int sys_handle_cell_config_req(struct SYSTEM_CTRL_REQ *req)
 {
+  bool isRrcConfigReqSent = false;
   int status = false;
   int returnState = SS_context.SSCell_list[cell_index].State;
   enum SystemConfirm_Type_Sel cnfType = SystemConfirm_Type_Cell;
@@ -1072,7 +1081,7 @@ int sys_handle_cell_config_req(struct SYSTEM_CTRL_REQ *req)
   case CellConfigRequest_Type_AddOrReconfigure:
 
     LOG_A(ENB_SS_SYS_TASK, "CellConfigRequest_Type_AddOrReconfigure receivied\n");
-    status = sys_add_reconfig_cell(req);
+    status = sys_add_reconfig_cell(req,&isRrcConfigReqSent);
     if (status)
     {
       /** TODO Signal to main thread */
@@ -1108,9 +1117,19 @@ int sys_handle_cell_config_req(struct SYSTEM_CTRL_REQ *req)
       LOG_I (ENB_SS_SYS_TASK,"[SYS] CC-MGMT configured RC.nb_CC %d current updated CC_index %d RC.nb_mac_CC %d\n",
                 RC.nb_CC[0],cell_index,*RC.nb_mac_CC);
     }
-    if (status)
+    if (status && Cell->v.AddOrReconfigure.Basic.d)
     {
-      wait_cell_si_config(cell_index);
+	    /**case: When RRC_CONFIGURATION_REQ is sent
+	      SS shall unblock Portman and send SYS_CONFIRM after receiving RRC_CONFIGURATION_CNF**/
+	    wait_cell_si_config(cell_index);
+    }
+    if((status == false) ||  (isRrcConfigReqSent == false))
+    {
+	    /**case: When RRC_CONFIGURATION_REQ is not sent
+	      SS need to  unblock Portman and sent sys_confirm from here**/
+            resVal = status;
+	    send_sys_cnf(resType, resVal, cnfType, NULL);
+	    sys_confirm_done_indication();
     }
     break;
   case CellConfigRequest_Type_Release: /**TODO: NOT IMPLEMNTED */
