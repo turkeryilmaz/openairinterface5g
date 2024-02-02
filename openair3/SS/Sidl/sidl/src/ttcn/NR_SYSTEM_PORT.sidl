@@ -442,7 +442,7 @@ typedef SIDL_DYNAMIC(int32_t, NR_SlotOffsetList_Type);
 
 struct NR_PagingTrigger_Type {
 	struct ASN_NR_NAME(PCCH_Message) Paging;
-	SIDL_OPTIONAL(NR_SlotOffsetList_Type, SlotOffsetList);
+	SIDL_OPTIONAL_WITH_PFX(NR_PagingTrigger_Type, NR_SlotOffsetList_Type, SlotOffsetList);
 };
 
 typedef SIDL_DYNAMIC_OF_STRUCT(NR_CellAttenuationConfig_Type, NR_CellAttenuationList_Type);
@@ -461,6 +461,133 @@ struct NR_Band_SsbForDelta_Type {
 	struct Band_SsbInfo_Type DeltaSecondary;
 };
 
+struct NR_PDCCH_Order_Type {
+	B6_Type RA_PreambleIndex;
+	struct NR_DciCommon_UL_SUL_Indicator_Type UL_SUL_Indicator;
+	B6_Type SSB_Index;
+	B4_Type PrachMaskIndex;
+};
+
+struct NR_DciWithShortMessageOnly_Type {
+	B2_Type ShortMessageIndicator;
+	B8_Type ShortMessages;
+	SIDL_OPTIONAL_WITH_PFX(NR_DciWithShortMessageOnly_Type, NR_SlotOffsetList_Type, SlotOffsetList);
+};
+
+typedef SIDL_DYNAMIC(BIT_STRING, NR_DciFormat_2_0_SfiList_Type);
+
+struct NR_DciFormat_2_0_Type {
+	NR_DciFormat_2_0_SfiList_Type SfiList;
+};
+
+typedef SIDL_DYNAMIC(B14_Type, NR_DciFormat_2_1_IntValueList_Type); // (1..9)
+
+struct NR_DciFormat_2_1_Type {
+	NR_DciFormat_2_1_IntValueList_Type IntValueList;
+};
+
+struct NR_DciFormat_2_2_ClosedLoopIndicator_Type {
+	Null_Type None;
+	B1_Type Index;
+};
+
+SIDL_UNION_ENUM(NR_DciFormat_2_2_TpcBlock_Type) {
+	NR_DciFormat_2_2_TpcBlock_Type_UNBOUND_VALUE,
+	NR_DciFormat_2_2_TpcBlock_Type_ClosedLoopIndicator,
+	NR_DciFormat_2_2_TpcBlock_Type_TpcCommand
+};
+SIDL_UNION_BEGIN(NR_DciFormat_2_2_TpcBlock_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_2_2_TpcBlock_Type_ClosedLoopIndicator)
+		struct NR_DciFormat_2_2_ClosedLoopIndicator_Type ClosedLoopIndicator;
+	SIDL_UNION_CASE(NR_DciFormat_2_2_TpcBlock_Type_TpcCommand)
+		struct NR_DciCommon_TpcCommand_Type TpcCommand;
+} SIDL_UNION_END;
+
+typedef SIDL_DYNAMIC_OF_STRUCT(NR_DciFormat_2_2_TpcBlock_Type, NR_DciFormat_2_2_TpcBlockList_Type);
+
+struct NR_DciFormat_2_2_Type {
+	NR_DciFormat_2_2_TpcBlockList_Type TpcBlockList;
+};
+
+struct NR_DciFormat_2_3_SrsRequest_Type {
+	Null_Type None;
+	B2_Type SrsRequestValue;
+};
+
+typedef SIDL_DYNAMIC_OF_STRUCT(NR_DciCommon_TpcCommand_Type, NR_DciCommon_TpcCommandList_Type);
+
+struct NR_DciFormat_2_3_TypeA_Type {
+	struct NR_DciFormat_2_3_SrsRequest_Type SrsRequest;
+	NR_DciCommon_TpcCommandList_Type TpcCommandList;
+};
+
+struct NR_DciFormat_2_3_SingleBlockTypeB_Type {
+	struct NR_DciFormat_2_3_SrsRequest_Type SrsRequest;
+	struct NR_DciCommon_TpcCommand_Type TpcCommand;
+};
+
+typedef SIDL_DYNAMIC_OF_STRUCT(NR_DciFormat_2_3_SingleBlockTypeB_Type, NR_DciFormat_2_3_TypeB_Type);
+
+SIDL_UNION_ENUM(NR_DciFormat_2_3_TypeA_B_Type) {
+	NR_DciFormat_2_3_TypeA_B_Type_UNBOUND_VALUE,
+	NR_DciFormat_2_3_TypeA_B_Type_TypeA,
+	NR_DciFormat_2_3_TypeA_B_Type_TypeB
+};
+SIDL_UNION_BEGIN(NR_DciFormat_2_3_TypeA_B_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_2_3_TypeA_B_Type_TypeA)
+		struct NR_DciFormat_2_3_TypeA_Type TypeA;
+	SIDL_UNION_CASE(NR_DciFormat_2_3_TypeA_B_Type_TypeB)
+		NR_DciFormat_2_3_TypeB_Type TypeB;
+} SIDL_UNION_END;
+
+struct NR_DciFormat_2_3_Type {
+	struct NR_DciFormat_2_3_TypeA_B_Type TypeA_B;
+};
+
+struct NR_DciFormat_2_6_Block_Type {
+	B1_Type WakeupIndication;
+	struct NR_DciFormat_X_1_SCellDormancyIndication_Type SCellDormacyIndication;
+};
+
+typedef SIDL_DYNAMIC_OF_STRUCT(NR_DciFormat_2_6_Block_Type, NR_DciFormat_2_6_Block_List_Type);
+
+struct NR_DciFormat_2_6_Type {
+	NR_DciFormat_2_6_Block_List_Type BlockList;
+};
+
+SIDL_UNION_ENUM(NR_DCI_TriggerFormat_Type) {
+	NR_DCI_TriggerFormat_Type_UNBOUND_VALUE,
+	NR_DCI_TriggerFormat_Type_PdcchOrder,
+	NR_DCI_TriggerFormat_Type_ShortMessage,
+	NR_DCI_TriggerFormat_Type_DciFormat_2_0,
+	NR_DCI_TriggerFormat_Type_DciFormat_2_1,
+	NR_DCI_TriggerFormat_Type_DciFormat_2_2,
+	NR_DCI_TriggerFormat_Type_DciFormat_2_3,
+	NR_DCI_TriggerFormat_Type_DciFormat_2_6
+};
+SIDL_UNION_BEGIN(NR_DCI_TriggerFormat_Type) {
+	SIDL_UNION_CASE(NR_DCI_TriggerFormat_Type_PdcchOrder)
+		struct NR_PDCCH_Order_Type PdcchOrder;
+	SIDL_UNION_CASE(NR_DCI_TriggerFormat_Type_ShortMessage)
+		struct NR_DciWithShortMessageOnly_Type ShortMessage;
+	SIDL_UNION_CASE(NR_DCI_TriggerFormat_Type_DciFormat_2_0)
+		struct NR_DciFormat_2_0_Type DciFormat_2_0;
+	SIDL_UNION_CASE(NR_DCI_TriggerFormat_Type_DciFormat_2_1)
+		struct NR_DciFormat_2_1_Type DciFormat_2_1;
+	SIDL_UNION_CASE(NR_DCI_TriggerFormat_Type_DciFormat_2_2)
+		struct NR_DciFormat_2_2_Type DciFormat_2_2;
+	SIDL_UNION_CASE(NR_DCI_TriggerFormat_Type_DciFormat_2_3)
+		struct NR_DciFormat_2_3_Type DciFormat_2_3;
+	SIDL_UNION_CASE(NR_DCI_TriggerFormat_Type_DciFormat_2_6)
+		struct NR_DciFormat_2_6_Type DciFormat_2_6;
+} SIDL_UNION_END;
+
+struct NR_DCI_Trigger_Type {
+	struct NR_AssignedBWPs_Type AssignedBWPs;
+	NR_SearchSpaceType_Type SearchSpaceType;
+	struct NR_DCI_TriggerFormat_Type DciFormat;
+};
+
 SIDL_UNION_ENUM(NR_SystemRequest_Type) {
 	NR_SystemRequest_Type_UNBOUND_VALUE,
 	NR_SystemRequest_Type_Cell,
@@ -470,8 +597,8 @@ SIDL_UNION_ENUM(NR_SystemRequest_Type) {
 	NR_SystemRequest_Type_AS_Security,
 	// NR_SystemRequest_Type_SystemIndCtrl,
 	NR_SystemRequest_Type_PdcpCount = 7,
-	// NR_SystemRequest_Type_DciTrigger,
-	NR_SystemRequest_Type_Paging = 9,
+	NR_SystemRequest_Type_DciTrigger,
+	NR_SystemRequest_Type_Paging,
 	// NR_SystemRequest_Type_MacCommandTrigger,
 	// NR_SystemRequest_Type_L1_TestMode,
 	// NR_SystemRequest_Type_PdcpHandoverControl,
@@ -492,7 +619,8 @@ SIDL_UNION_BEGIN(NR_SystemRequest_Type) {
 	// SIDL_UNION_CASE(NR_SystemRequest_Type_SystemIndCtrl)
 	SIDL_UNION_CASE(NR_SystemRequest_Type_PdcpCount)
 		struct NR_PDCP_CountReq_Type PdcpCount;
-	// SIDL_UNION_CASE(NR_SystemRequest_Type_DciTrigger)
+	SIDL_UNION_CASE(NR_SystemRequest_Type_DciTrigger)
+		struct NR_DCI_Trigger_Type DciTrigger;
 	SIDL_UNION_CASE(NR_SystemRequest_Type_Paging)
 		struct NR_PagingTrigger_Type Paging;
 	// SIDL_UNION_CASE(NR_SystemRequest_Type_MacCommandTrigger)
