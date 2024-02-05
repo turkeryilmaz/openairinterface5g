@@ -1178,6 +1178,76 @@ NR_MeasConfig_t *get_defaultMeasConfig(uint32_t ssb_arfcn, int band, int scs)
   measid->reportConfigId = 1;
   asn1cSeqAdd(&mc->measIdToAddModList->list, measid);
 
+   /*Imran*/ /*Requires Verification*/
+
+  /*Event A3*/
+  NR_ReportConfigToAddMod_t *rc_event_A3 = calloc(1, sizeof(*rc_event_A3));
+  rc_event_A3->reportConfigId = 3;
+  rc_event_A3->reportConfig.present = NR_ReportConfigToAddMod__reportConfig_PR_reportConfigNR;
+  NR_EventTriggerConfig_t *etrc_event_A3 = calloc(1, sizeof(*etrc_event_A3));
+  etrc_event_A3->eventId.present = NR_EventTriggerConfig__eventId_PR_eventA3;
+  etrc_event_A3->eventId.choice.eventA3 = calloc(1, sizeof(*etrc_event_A3->eventId.choice.eventA3));
+  etrc_event_A3->eventId.choice.eventA3->a3_Offset.present = NR_MeasTriggerQuantityOffset_PR_rsrp;
+  etrc_event_A3->eventId.choice.eventA3->a3_Offset.choice.rsrp = 0; //
+  etrc_event_A3->eventId.choice.eventA3->reportOnLeave = true;
+  etrc_event_A3->eventId.choice.eventA3->hysteresis = 0;
+  etrc_event_A3->eventId.choice.eventA3->timeToTrigger = NR_TimeToTrigger_ms2560;
+  etrc_event_A3->rsType = NR_NR_RS_Type_ssb;
+  etrc_event_A3->reportInterval = NR_ReportInterval_ms1024;
+  etrc_event_A3->reportAmount = NR_EventTriggerConfig__reportAmount_infinity;
+  etrc_event_A3->reportQuantityCell.rsrp = true;
+  etrc_event_A3->reportQuantityCell.rsrq = false;
+  etrc_event_A3->reportQuantityCell.sinr = false;
+  asn1cCallocOne(etrc_event_A3->maxNrofRS_IndexesToReport, 4);
+  etrc_event_A3->maxReportCells = 4;
+  etrc_event_A3->includeBeamMeasurements = false;
+  NR_ReportConfigNR_t *rcnr_event_A3 = calloc(1, sizeof(*rcnr_event_A3));
+  rcnr_event_A3->reportType.present = NR_ReportConfigNR__reportType_PR_eventTriggered;
+  rcnr_event_A3->reportType.choice.eventTriggered = etrc_event_A3;
+  rc_event_A3->reportConfig.choice.reportConfigNR = rcnr_event_A3;
+  asn1cSeqAdd(&mc->reportConfigToAddModList->list, rc_event_A3);
+
+   /*Event A5*/
+  // NR_ReportConfigToAddMod_t *rc_event_A5 = calloc(1, sizeof(*rc_event_A5));
+  // rc_event_A5->reportConfigId = 5;
+  // rc_event_A5->reportConfig.present = NR_ReportConfigToAddMod__reportConfig_PR_reportConfigNR;
+  // NR_EventTriggerConfig_t *etrc_event_A5 = calloc(1, sizeof(*etrc_event_A5));
+  // etrc_event_A5->eventId.present = NR_EventTriggerConfig__eventId_PR_eventA5;
+  // etrc_event_A5->eventId.choice.eventA5 = calloc(1, sizeof(*etrc_event_A5->eventId.choice.eventA5));
+  // etrc_event_A5->eventId.choice.eventA5->a5_Threshold1.present = NR_MeasTriggerQuantityOffset_PR_rsrp;
+  // etrc_event_A5->eventId.choice.eventA5->a5_Threshold1.choice.rsrp = 10; // 10 means 5 dB
+  //etrc_event_A5->eventId.choice.eventA5->a5_Threshold2.present = NR_MeasTriggerQuantityOffset_PR_rsrp;
+  // etrc_event_A5->eventId.choice.eventA5->a5_Threshold2.choice.rsrp = 10; // 10 means 5 dB
+  // etrc_event_A5->eventId.choice.eventA5->reportOnLeave = true;
+  // etrc_event_A5->eventId.choice.eventA5->hysteresis = 0;
+  // etrc_event_A5->eventId.choice.eventA5->timeToTrigger = NR_TimeToTrigger_ms2560;
+  // etrc_event_A5->rsType = NR_NR_RS_Type_ssb;
+  // etrc_event_A5->reportInterval = NR_ReportInterval_ms1024;
+  // etrc_event_A5->reportAmount = NR_EventTriggerConfig__reportAmount_infinity;
+  // etrc_event_A53->reportQuantityCell.rsrp = true;
+  // etrc_event_A5->reportQuantityCell.rsrq = false;
+  // etrc_event_A5->reportQuantityCell.sinr = false;
+  // asn1cCallocOne(etrc_event_A5->maxNrofRS_IndexesToReport, 4);
+  // etrc_event_A5->maxReportCells = 4;
+  // etrc_event_A5->includeBeamMeasurements = false;
+  // NR_ReportConfigNR_t *rcnr_event_A5 = calloc(1, sizeof(*rcnr_event_A5));
+  // rcnr_event_A5->reportType.present = NR_ReportConfigNR__reportType_PR_eventTriggered;
+  // rcnr_event_A5->reportType.choice.eventTriggered = etrc_event_A5;
+  // rc_evet_A5->reportConfig.choice.reportConfigNR = rcnr_event_A5;
+  // asn1cSeqAdd(&mc->reportConfigToAddModList->list, rc_event_A5);
+  /*Imran*/
+  // Measurement ID: Identifies how to report measurements of a specific object. This is a many-to-many mapping: a
+  // measurement object could have multiple reporting configurations, a reporting configuration could apply to multiple
+  // objects. A unique ID is used for each object-to-report-config association. When UE sends a MeasurementReport
+  // message, a single ID and related measurements are included in the message.
+  mc->measIdToAddModList = calloc(1, sizeof(*mc->measIdToAddModList));
+ // NR_MeasIdToAddMod_t *measid = calloc(1, sizeof(*measid));
+
+  measid->measId = 1;
+  measid->measObjectId = 1;
+  measid->reportConfigId = 1;
+  asn1cSeqAdd(&mc->measIdToAddModList->list, measid);
+
   // Quantity Configuration: Specifies parameters for layer 3 filtering of measurements. Only after filtering, reporting
   // criteria are evaluated. The formula used is F_n = (1-a)F_(n-1) + a*M_n, where M is the latest measurement, F is the
   // filtered measurement, and ais based on configured filter coefficient.
@@ -1187,6 +1257,28 @@ NR_MeasConfig_t *get_defaultMeasConfig(uint32_t ssb_arfcn, int band, int scs)
   asn1cCallocOne(qcnr3->quantityConfigCell.ssb_FilterConfig.filterCoefficientRSRP, NR_FilterCoefficient_fc6);
   asn1cCallocOne(qcnr3->quantityConfigCell.csi_RS_FilterConfig.filterCoefficientRSRP, NR_FilterCoefficient_fc6);
   asn1cSeqAdd(&mc->quantityConfig->quantityConfigNR_List->list, qcnr3);
+
+  /*Imran*/
+  NR_QuantityConfigNR_t *qcnr_event_a3 = calloc(1, sizeof(*qcnr_event_a3));
+  asn1cCallocOne(qcnr_event_a3->quantityConfigCell.ssb_FilterConfig.filterCoefficientRSRP, NR_FilterCoefficient_fc6);
+  asn1cCallocOne(qcnr_event_a3->quantityConfigCell.csi_RS_FilterConfig.filterCoefficientRSRP, NR_FilterCoefficient_fc6);
+  asn1cSeqAdd(&mc->quantityConfig->quantityConfigNR_List->list, qcnr_event_a3);
+
+  NR_QuantityConfigNR_t *qcnr_event_a5 = calloc(1, sizeof(*qcnr_event_a5));
+  asn1cCallocOne(qcnr_event_a5->quantityConfigCell.ssb_FilterConfig.filterCoefficientRSRP, NR_FilterCoefficient_fc6);
+  asn1cCallocOne(qcnr_event_a5->quantityConfigCell.csi_RS_FilterConfig.filterCoefficientRSRP, NR_FilterCoefficient_fc6);
+  asn1cSeqAdd(&mc->quantityConfig->quantityConfigNR_List->list, qcnr_event_a5);
+  /*Imran*/
+
+  // Quantity Configuration: Specifies parameters for layer 3 filtering of measurements. Only after filtering, reporting
+  // criteria are evaluated. The formula used is F_n = (1-a)F_(n-1) + a*M_n, where M is the latest measurement, F is the
+  // filtered measurement, and ais based on configured filter coefficient.
+/*  mc->quantityConfig = calloc(1, sizeof(*mc->quantityConfig));
+  mc->quantityConfig->quantityConfigNR_List = calloc(1, sizeof(*mc->quantityConfig->quantityConfigNR_List));
+  NR_QuantityConfigNR_t *qcnr3 = calloc(1, sizeof(*qcnr3));
+  asn1cCallocOne(qcnr3->quantityConfigCell.ssb_FilterConfig.filterCoefficientRSRP, NR_FilterCoefficient_fc6);
+  asn1cCallocOne(qcnr3->quantityConfigCell.csi_RS_FilterConfig.filterCoefficientRSRP, NR_FilterCoefficient_fc6);
+  asn1cSeqAdd(&mc->quantityConfig->quantityConfigNR_List->list, qcnr3);  */
 
   return mc;
 }

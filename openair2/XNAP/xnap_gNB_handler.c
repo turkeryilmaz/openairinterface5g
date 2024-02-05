@@ -90,6 +90,13 @@ const char *xnap_direction2String(int xnap_dir)
   return (xnap_direction_String[xnap_dir]);
 }
 
+/** Commented it for now ** 
+int xnap_assoc_id(F1_t isXNAP, instance_t instanceP) {
+  xnap_setup_req_t *xnap_inst=xnap_req(isXNAP, instanceP);
+  return xnap_inst->assoc_id;
+} **/
+
+
 int xnap_gNB_handle_message(instance_t instance,
                             sctp_assoc_t assoc_id,
                             int32_t stream,

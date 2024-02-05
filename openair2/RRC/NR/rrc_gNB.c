@@ -1357,6 +1357,18 @@ static inline uint64_t bitStr_to_uint64(const BIT_STRING_t *asn) {
   return result;
 }
 
+void rrc_gNB_process_HandoverPreparationInformation(//// why is this here? should be in RRC
+     rrc_gNB_ue_context_t *ue_context_p,
+     uint8_t    *buffer,
+     int        *size)
+{
+  memset(buffer, 0, 8192);
+  char *ho_buf = (char *) buffer;
+  int ho_size;
+  ho_size = do_NRHandoverPreparation(ho_buf, 8192, ue_context_p->ue_context.UE_Capability_nr, ue_context_p->ue_context.UE_Capability_size);
+  *size = ho_size;
+}
+
 
 void rrc_gNB_process_MeasurementReport(rrc_gNB_ue_context_t *ue_context_p, NR_MeasurementReport_t *measurementReport)
 {
@@ -1367,8 +1379,8 @@ void rrc_gNB_process_MeasurementReport(rrc_gNB_ue_context_t *ue_context_p, NR_Me
             && measurementReport->criticalExtensions.choice.measurementReport != NULL);
 
   gNB_RRC_UE_t *ue_ctxt = &ue_context_p->ue_context;
-  ASN_STRUCT_FREE(asn_DEF_NR_MeasResults, ue_ctxt->measResults); ////what is ue_ctxt?
-  ue_ctxt->measResults = NULL; ////same as above
+  ASN_STRUCT_FREE(asn_DEF_NR_MeasResults, ue_ctxt->measResults);
+  ue_ctxt->measResults = NULL;
 
   const NR_MeasId_t id = measurementReport->criticalExtensions.choice.measurementReport->measResults.measId;
     /*Imran*/
@@ -1463,7 +1475,7 @@ void rrc_gNB_process_MeasurementReport(rrc_gNB_ue_context_t *ue_context_p, NR_Me
   NR_MeasResultServMO_t *measresultservmo = ik_measResults->measResultServingMOList.list.array[0]; //getting only first
   NR_MeasResultNR_t *measresultnr = &measresultservmo->measResultServingCell;
   NR_MeasQuantityResults_t *mqr = measresultnr->measResult.cellResults.resultsSSB_Cell;
-  int ncell_index=0;
+//  int ncell_index=0;
 
    if (mqr != NULL){
     const long rrsrp = *mqr->rsrp - 156;
@@ -1483,7 +1495,7 @@ void rrc_gNB_process_MeasurementReport(rrc_gNB_ue_context_t *ue_context_p, NR_Me
   LOG_D(RRC, "NR MeasID %ld\n", id);
 
   /*ALL NeighbourCell*/
-  NR_MeasResultNR_t *neighbour_measresult = ik_measResults->measResultNeighCells->choice.measResultListNR->list.array[0] ;
+//  NR_MeasResultNR_t *neighbour_measresult = ik_measResults->measResultNeighCells->choice.measResultListNR->list.array[0] ;  /* Need to review this whether to retain */
 
   /*Imran*/
   MessageDef      *msg;

@@ -40,6 +40,7 @@
 #include "XNAP_NRModeInfoFDD.h"
 #include "XNAP_NRModeInfoTDD.h"
 #include "openair2/RRC/NR/nr_rrc_defs.h"
+#include "xnap_gNB_defs.h"
 
 int xnap_gNB_generate_xn_setup_request(sctp_assoc_t assoc_id, xnap_setup_req_t *req)
 {
@@ -752,21 +753,31 @@ int xnap_gNB_generate_xn_setup_response(sctp_assoc_t assoc_id, xnap_setup_resp_t
   return ret;
 }
 
-int xnap_gNB_generate_xn_handover_request (instance_t instance,
-                                           xnap_handover_req_t *xnap_handover_req, int ue_id)
+//int xnap_gNB_generate_xn_handover_request (sctp_assoc_t assoc_id, instance_t instance,
+ //                                          xnap_handover_req_t *xnap_handover_req, int ue_id)
+ int xnap_gNB_generate_xn_handover_request (sctp_assoc_t assoc_id, xnap_handover_req_t *xnap_handover_req)                                         
 {
 
   XNAP_XnAP_PDU_t                     pdu;
-  XNAP_HandoverRequest_t              *out;
+  XNAP_HandoverRequest_t              *xnhandoverreq;
   XNAP_HandoverRequest_IEs_t          *ie;
+  instance_t  instance;
 
   uint8_t  *buffer;
   uint32_t  len;
   int       ret = 0;
-  sctp_assoc_t assoc_id;
 //get intance from tree if needed
-  //DevAssert(instance_p != NULL); //not pointer
- // DevAssert(xnap_gNB_data_p != NULL);// not defined
+  DevAssert(instance != NULL); //not pointer
+//  DevAssert(xnap_gNB_data_p != NULL);// not defined
+
+ //  DevAssert(pdu != NULL);
+   xnhandoverreq = &pdu.choice.initiatingMessage->value.choice.HandoverRequest;
+    /* Send a xn setup failure with protocol cause unspecified */
+    MessageDef *message_p = itti_alloc_new_message(TASK_XNAP, 0, XNAP_HANDOVER_REQ);
+    message_p->ittiMsgHeader.originInstance = assoc_id;
+    itti_send_msg_to_task(TASK_XNAP, 0, message_p);
+  
+  LOG_D(XNAP, "Received a new XN setup request\n");
 
   /* Prepare the XnAP handover message to encode */
   memset(&pdu, 0, sizeof(pdu));
@@ -774,7 +785,7 @@ int xnap_gNB_generate_xn_handover_request (instance_t instance,
   pdu.choice.initiatingMessage->procedureCode = XNAP_ProcedureCode_id_handoverPreparation;
   pdu.choice.initiatingMessage->criticality = XNAP_Criticality_reject;
   pdu.choice.initiatingMessage->value.present = XNAP_InitiatingMessage__value_PR_HandoverRequest;
-  out = &pdu.choice.initiatingMessage->value.choice.HandoverRequest;
+  xnhandoverreq = &pdu.choice.initiatingMessage->value.choice.HandoverRequest;
 
   /* mandatory */
   ie = (XNAP_HandoverRequest_IEs_t *)calloc(1, sizeof(XNAP_HandoverRequest_IEs_t));
@@ -782,7 +793,7 @@ int xnap_gNB_generate_xn_handover_request (instance_t instance,
   ie->criticality = XNAP_Criticality_reject;
   ie->value.present = XNAP_HandoverRequest_IEs__value_PR_NG_RANnodeUEXnAPID;
  // ie->value.choice.UE_XnAP_ID = xnap_id_get_id_source(&instance_p->id_manager, ue_id);
-  asn1cSeqAdd(&out->protocolIEs.list, ie);
+  asn1cSeqAdd(&xnhandoverreq->protocolIEs.list, ie);
 
   /* mandatory */
   ie = (XNAP_HandoverRequest_IEs_t *)calloc(1, sizeof(XNAP_HandoverRequest_IEs_t));
@@ -791,22 +802,22 @@ int xnap_gNB_generate_xn_handover_request (instance_t instance,
   ie->value.present = XNAP_HandoverRequest_IEs__value_PR_Cause;
   ie->value.choice.Cause.present = XNAP_Cause_PR_radioNetwork;
   ie->value.choice.Cause.choice.radioNetwork = 1; //Xnap_CauseRadioNetwork_handover_desirable_for_radio_reasons;
-  asn1cSeqAdd(&out->protocolIEs.list, ie);
+  asn1cSeqAdd(&xnhandoverreq->protocolIEs.list, ie);
 
   /* mandatory */
-/**  ie = (XNAP_HandoverRequest_IEs_t *)calloc(1, sizeof(XNAP_HandoverRequest_IEs_t));
+  ie = (XNAP_HandoverRequest_IEs_t *)calloc(1, sizeof(XNAP_HandoverRequest_IEs_t));
   ie->id = XNAP_ProtocolIE_ID_id_TargetCellCGI;
   ie->criticality = XNAP_Criticality_reject;
   ie->value.present = XNAP_HandoverRequest_IEs__value_PR_Target_CGI;
-  ie->value.choice.XNAP_Target_CGI_u.present = XNAP_Target_CGI_PR_nr;
-  ie->value.choice.nr = (XNAP_NR_CGI_t *)calloc(1, sizeof(XNAP_NR_CGI_t));
+  ie->value.choice.Target_CGI.present = XNAP_Target_CGI_PR_nr;
+  ie->value.choice.Target_CGI.choice.nr = (XNAP_NR_CGI_t *)calloc(1, sizeof(XNAP_NR_CGI_t));
   MCC_MNC_TO_PLMNID(xnap_handover_req->plmn_id.mcc,
                     xnap_handover_req->plmn_id.mnc,
                     xnap_handover_req->plmn_id.mnc_digit_length,
-                    &ie->value.choice.nr.plmn_id); **/
-  //nr_CI to be filled.
-  //NR_CELL_ID_TO_BIT_STRING(xnap_handover_req->target_cgi.cgi, &ie->
-/**  asn1cSeqAdd(&out->protocolIEs.list, ie); **/
+                    &ie->value.choice.Target_CGI.choice.nr->plmn_id); 
+ //  NR_CELL_ID_TO_BIT_STRING(xnap_handover_req->plmn_id,
+   //                            &ie->value.choice.Target_CGI.choice.nr->nr_CI); // bit string
+   asn1cSeqAdd(&xnhandoverreq->protocolIEs.list, ie); 
 
   /* mandatory */
 /**  ie = (XNAP_HandoverRequest_IEs_t *)calloc(1, sizeof(XNAP_HandoverRequest_IEs_t));
@@ -863,7 +874,7 @@ int xnap_gNB_generate_xn_handover_request (instance_t instance,
 
   OCTET_STRING_fromBuf(&ie->value.choice.UEContextInfoHORequest.rrc_Context, (char*) xnap_handover_req->ue_context.rrc_buffer, 8192);// added 8192- need to remove hard coding
 
-  asn1cSeqAdd(&out->protocolIEs.list, ie);
+  asn1cSeqAdd(&xnhandoverreq->protocolIEs.list, ie);
 
   /* mandatory */
 /**  ie = (XNAP_HandoverRequest_IEs_t *)calloc(1, sizeof(XNAP_HandoverRequest_IEs_t));
@@ -894,6 +905,16 @@ int xnap_gNB_generate_xn_handover_request (instance_t instance,
   return ret;
 }
 
+/** getting assoc-id- sharing this clip from F1AP
+ * int f1ap_assoc_id(F1_t isCu, instance_t instanceP) {
+  f1ap_setup_req_t *f1_inst=f1ap_req(isCu, instanceP);
+  return f1_inst->assoc_id;
+}
+If method that we have implemented to fetch assoc_id is not correct, need to try this 
+
+**/
+
+/**
 void rrc_gNB_process_HandoverPreparationInformation(//// why is this here? should be in RRC
      rrc_gNB_ue_context_t ue_context_p,
      uint8_t    *buffer,
@@ -906,4 +927,4 @@ void rrc_gNB_process_HandoverPreparationInformation(//// why is this here? shoul
   *size = ho_size;
 
 
-}
+} **/

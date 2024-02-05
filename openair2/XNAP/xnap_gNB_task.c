@@ -213,7 +213,7 @@ void xnap_gNB_handle_handover_req(instance_t instance,
   xnap_gNB_data_t     *target;
   xnap_id_manager     *id_manager;
   int                 ue_id;
-
+  sctp_assoc_t assoc_id;
   //int target_pci = xnap_handover_req->target_physCellId; //pci or cgi?
 
   instance_p = xnap_gNB_get_instance(instance);
@@ -225,6 +225,9 @@ void xnap_gNB_handle_handover_req(instance_t instance,
   /* allocate xnap ID */
   id_manager = &instance_p->id_manager;
   ue_id = xnap_allocate_new_id(id_manager);
+  MessageDef *message_p = itti_alloc_new_message(TASK_XNAP, 0, XNAP_HANDOVER_REQ);
+  message_p->ittiMsgHeader.originInstance = assoc_id;
+  xnap_handover_req_t *req = &XNAP_HANDOVER_REQ(message_p);
   if (ue_id == -1) {
     LOG_E(XNAP,"could not allocate a new XNAP UE ID\n");
     /* TODO: cancel handover: send (to be defined) message to RRC */
@@ -238,7 +241,7 @@ void xnap_gNB_handle_handover_req(instance_t instance,
   //xnap_id_set_target(id_manager, ue_id, target);
 
 //  xnap_gNB_generate_xn_handover_request(instance_p, target, xnap_handover_req, ue_id); //Review removed target here but needs it
-  xnap_gNB_generate_xn_handover_request(instance, xnap_handover_req, ue_id);
+  xnap_gNB_generate_xn_handover_request(assoc_id, xnap_handover_req);
 }
 
 void *xnap_task(void *arg)

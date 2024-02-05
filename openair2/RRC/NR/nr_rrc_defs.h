@@ -388,6 +388,12 @@ typedef struct nr_rrc_cuup_container_t {
   sctp_assoc_t assoc_id;
 } nr_rrc_cuup_container_t;
 
+typedef struct nr_xnap_container_t {
+   RB_ENTRY(nr_xnap_container_t) entries;
+   xnap_setup_req_t *setup_req;
+   sctp_assoc_t assoc_id;
+} nr_xnap_container_t;
+
 //---NR---(completely change)---------------------
 typedef struct gNB_RRC_INST_s {
 
@@ -424,6 +430,9 @@ typedef struct gNB_RRC_INST_s {
 
   RB_HEAD(rrc_cuup_tree, nr_rrc_cuup_container_t) cuups; // CU-UPs, indexed by assoc_id
   size_t num_cuups;
+
+  RB_HEAD(xnap_tree, nr_xnap_container_t) xnapids; // XNAP IDs, indexed by assoc_id
+  size_t num_xnapids;
 
  /* KgNB as computed from parameters within USIM card */
   uint8_t kgnb[32];
