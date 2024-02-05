@@ -748,7 +748,7 @@ static int ngap_gNB_handle_initial_context_request(sctp_assoc_t assoc_id, uint32
   msg->guami.amf_set_id = BIT_STRING_to_uint16(&ie->value.choice.GUAMI.aMFSetID);
   msg->guami.amf_pointer = BIT_STRING_to_uint8(&ie->value.choice.GUAMI.aMFPointer);
 
-
+  NGAP_INFO("Initial Context Request, GUAMI mcc %d mnc %d mnc_len %d\n", msg->guami.mcc, msg->guami.mnc, msg->guami.mnc_len);
   NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_InitialContextSetupRequestIEs_t, ie, container, NGAP_ProtocolIE_ID_id_PDUSessionResourceSetupListCxtReq, false);
   if (ie != NULL) {
     msg->nb_of_pdusessions = ie->value.choice.PDUSessionResourceSetupListCxtReq.list.count;
