@@ -690,8 +690,7 @@ int main(int argc, char *argv[])
   }
 
   //Configure UE
-  nr_l2_init_ue();
-
+  nr_l2_init_ue(1);
   NR_UE_MAC_INST_t* UE_mac = get_mac_inst(0);
 
   ue_init_config_request(UE_mac, mu);
@@ -719,9 +718,7 @@ int main(int argc, char *argv[])
 
   uint32_t errors_decoding = 0;
 
-  nr_scheduled_response_t scheduled_response={0};
-  fapi_nr_ul_config_request_t ul_config={0};
-  fapi_nr_tx_request_t tx_req={0};
+  fapi_nr_ul_config_request_t ul_config = {0};
 
   uint8_t ptrs_mcs1 = 2;
   uint8_t ptrs_mcs2 = 4;
@@ -1074,24 +1071,7 @@ int main(int argc, char *argv[])
         nr_schedule_response(Sched_INFO);
 
         // --------- setting parameters for UE --------
-
-        scheduled_response.module_id = 0;
-        scheduled_response.CC_id = 0;
-        scheduled_response.frame = frame;
-        scheduled_response.slot = slot;
-        scheduled_response.dl_config = NULL;
-        scheduled_response.ul_config = &ul_config;
-        scheduled_response.tx_request = &tx_req;
-        scheduled_response.phy_data = (void *)&phy_data;
-
-        // Config UL TX PDU
-        tx_req.slot = slot;
-        tx_req.sfn = frame;
-        tx_req.number_of_pdus = 1; //do_SRS == 1 ? 2 : 1;
-
-        tx_req.tx_request_body[0].pdu_length = TBS / 8;
-        tx_req.tx_request_body[0].pdu_index = 0;
-        tx_req.tx_request_body[0].pdu = &ulsch_input_buffer[0];
+        nr_scheduled_response_t scheduled_response = {.ul_config = &ul_config, .phy_data = (void *)&phy_data};
 
         ul_config.slot = slot;
         ul_config.number_pdus = do_SRS == 1 ? 2 : 1;
@@ -1099,6 +1079,9 @@ int main(int argc, char *argv[])
         fapi_nr_ul_config_request_pdu_t *ul_config0 = &ul_config.ul_config_list[0];
         ul_config0->pdu_type = FAPI_NR_UL_CONFIG_TYPE_PUSCH;
         nfapi_nr_ue_pusch_pdu_t *pusch_config_pdu = &ul_config0->pusch_config_pdu;
+        // Config UL TX PDU
+        pusch_config_pdu->tx_request_body.pdu = ulsch_input_buffer;
+        pusch_config_pdu->tx_request_body.pdu_length = TBS / 8;
         pusch_config_pdu->rnti = n_rnti;
         pusch_config_pdu->pdu_bit_map = pdu_bit_map;
         pusch_config_pdu->qam_mod_order = mod_order;
@@ -1116,6 +1099,7 @@ int main(int argc, char *argv[])
         pusch_config_pdu->absolute_delta_PUSCH = 0;
         pusch_config_pdu->target_code_rate = code_rate;
         pusch_config_pdu->tbslbrm = tbslbrm;
+        pusch_config_pdu->ldpcBaseGraph = get_BG(TBS, code_rate);
         pusch_config_pdu->pusch_data.tb_size = TBS / 8;
         pusch_config_pdu->pusch_data.new_data_indicator = round == 0 ? true : false;
         pusch_config_pdu->pusch_data.rv_index = rv_index;

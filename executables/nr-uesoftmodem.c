@@ -368,7 +368,8 @@ void init_openair0(void) {
   }
 }
 
-static void init_pdcp(int ue_id) {
+static void init_pdcp(int ue_id)
+{
   uint32_t pdcp_initmask = (!IS_SOFTMODEM_NOS1) ? LINK_ENB_PDCP_TO_GTPV1U_BIT : (LINK_ENB_PDCP_TO_GTPV1U_BIT | PDCP_USE_NETLINK_BIT | LINK_ENB_PDCP_TO_IP_DRIVER_BIT);
 
   /*if (IS_SOFTMODEM_RFSIM || (nfapi_getmode()==NFAPI_UE_STUB_PNF)) {
@@ -454,7 +455,8 @@ configmodule_interface_t *uniqCfg = NULL;
 // A global var to reduce the changes size
 ldpc_interface_t ldpc_interface = {0}, ldpc_interface_offload = {0};
 
-int main( int argc, char **argv ) {
+int main(int argc, char **argv)
+{
   int set_exe_prio = 1;
   if (checkIfFedoraDistribution())
     if (checkIfGenericKernelOnFedora())
@@ -509,8 +511,6 @@ int main( int argc, char **argv ) {
     memset(PHY_vars_UE_g[0][CC_id], 0, sizeof(*PHY_vars_UE_g[0][CC_id]));
   }
 
-  init_NR_UE(1, uecap_file, reconfig_file, rbconfig_file);
-
   int mode_offset = get_softmodem_params()->nsa ? NUMBER_OF_UE_MAX : 1;
   uint16_t node_number = get_softmodem_params()->node_number;
   ue_id_g = (node_number == 0) ? 0 : node_number - 2;
@@ -523,6 +523,8 @@ int main( int argc, char **argv ) {
       init_pdcp(mode_offset + ue_id_g);
     }
   }
+
+  init_NR_UE(NB_UE_INST, uecap_file, reconfig_file, rbconfig_file);
 
   if (get_softmodem_params()->emulate_l1) {
     RCconfig_nr_ue_macrlc();
