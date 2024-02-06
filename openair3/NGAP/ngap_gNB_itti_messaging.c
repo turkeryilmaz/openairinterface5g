@@ -89,7 +89,7 @@ void ngap_gNB_itti_send_DownlinkUEAssociatedNRPPa(instance_t instance,
                                                   uint8_t *nrppa_pdu,
                                                   uint32_t nrppa_pdu_length)
 {
-  /*MessageDef *msg= itti_alloc_new_message(TASK_NGAP, 0, NGAP_DOWNLINKUEASSOCIATEDNRPPA);
+  MessageDef *msg= itti_alloc_new_message(TASK_NGAP, 0, NGAP_DOWNLINKUEASSOCIATEDNRPPA);
   ngap_DownlinkUEAssociatedNRPPa_t *DLNRPPa= &NGAP_DOWNLINKUEASSOCIATEDNRPPA(msg);
 
   DLNRPPa->gNB_ue_ngap_id = gNB_ue_ngap_id;
@@ -105,9 +105,9 @@ void ngap_gNB_itti_send_DownlinkUEAssociatedNRPPa(instance_t instance,
   memcpy(DLNRPPa->nrppa_pdu.buffer, nrppa_pdu, nrppa_pdu_length);
   DLNRPPa->nrppa_pdu.length = nrppa_pdu_length;
 
-  itti_send_msg_to_task(TASK_NRPPA, instance, msg);*/
+  itti_send_msg_to_task(TASK_NRPPA, instance, msg);
 
-  MessageDef *msg=itti_alloc_new_message_sized(TASK_NGAP, 0, NGAP_DOWNLINKUEASSOCIATEDNRPPA,
+  /*MessageDef *msg=itti_alloc_new_message_sized(TASK_NGAP, 0, NGAP_DOWNLINKUEASSOCIATEDNRPPA,
        sizeof(ngap_DownlinkUEAssociatedNRPPa_t)+ routingId_buffer_length + nrppa_pdu_length);
   ngap_DownlinkUEAssociatedNRPPa_t *msgData = &NGAP_DOWNLINKUEASSOCIATEDNRPPA(msg);
 
@@ -124,7 +124,7 @@ void ngap_gNB_itti_send_DownlinkUEAssociatedNRPPa(instance_t instance,
   memcpy(msgData->nrppa_pdu.buffer, nrppa_pdu, nrppa_pdu_length);
   msgData->nrppa_pdu.length = nrppa_pdu_length;
 
-  itti_send_msg_to_task(TASK_NRPPA, instance, msg);
+  itti_send_msg_to_task(TASK_NRPPA, instance, msg);*/
 }
 
 void ngap_gNB_itti_send_DownlinkNonUEAssociatedNRPPa(instance_t instance,

@@ -514,7 +514,7 @@ void nr_pusch_ptrs_processing(PHY_VARS_gNB *gNB,
     c16_t *phase_per_symbol = (c16_t *)pusch_vars->ptrs_phase_per_slot[aarx];
     ptrs_re_symbol = &pusch_vars->ptrs_re_per_slot;
     *ptrs_re_symbol = 0;
-    phase_per_symbol[symbol].i = 0; 
+    phase_per_symbol[symbol].i = 0;
     /* set DMRS estimates to 0 angle with magnitude 1 */
     if(is_dmrs_symbol(symbol,*dmrsSymbPos)) {
       /* set DMRS real estimation to 32767 */
@@ -524,7 +524,7 @@ void nr_pusch_ptrs_processing(PHY_VARS_gNB *gNB,
 #endif
     }
     else {// real ptrs value is set to 0
-      phase_per_symbol[symbol].r = 0; 
+      phase_per_symbol[symbol].r = 0;
     }
 
     if(symbol == *startSymbIndex) {

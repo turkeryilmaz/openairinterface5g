@@ -51,7 +51,6 @@
 int ngap_gNB_UplinkUEAssociatedNRPPaTransport(instance_t instance, ngap_UplinkUEAssociatedNRPPa_t *UlNRPPaMsg)
 {
   LOG_I(NGAP, "Initiating ngap_gNB_UplinkUEAssociatedNRPPaTransport \n");
-
   DevAssert(UlNRPPaMsg != NULL);
   struct ngap_gNB_ue_context_s *ue_context_p = NULL;
   ngap_gNB_instance_t *ngap_gNB_instance_p = NULL;
@@ -74,7 +73,6 @@ int ngap_gNB_UplinkUEAssociatedNRPPaTransport(instance_t instance, ngap_UplinkUE
   head->procedureCode = NGAP_ProcedureCode_id_UplinkUEAssociatedNRPPaTransport;
   head->criticality = NGAP_Criticality_ignore;
   head->value.present = NGAP_InitiatingMessage__value_PR_UplinkUEAssociatedNRPPaTransport;
-
   NGAP_UplinkUEAssociatedNRPPaTransport_t *out = &head->value.choice.UplinkUEAssociatedNRPPaTransport;
 
   // IE: 9.3.3.1 AMF UE NGAP ID /* mandatory */
@@ -121,7 +119,6 @@ int ngap_gNB_UplinkUEAssociatedNRPPaTransport(instance_t instance, ngap_UplinkUE
     /* Encode procedure has failed... */
     return -1;
   }
-
   LOG_I(NGAP, "Sending sctp_data_req for ngap_gNB_UplinkUEAssociatedNRPPaTransport \n");
   /* UE associated signalling -> use the allocated stream */
   ngap_gNB_itti_send_sctp_data_req(ngap_gNB_instance_p->instance,

@@ -71,14 +71,9 @@
 #define NGAP_PDUSESSION_RELEASE_RESPONSE(mSGpTR) (mSGpTR)->ittiMsg.ngap_pdusession_release_resp
 
 #define NGAP_UPLINKUEASSOCIATEDNRPPA(mSGpTR)      (mSGpTR)->ittiMsg.ngap_UplinkUEAssociatedNRPPa
-#define NGAP_UPLINKNONUEASSOCIATEDNRPPA(mSGpTR)   (mSGpTR)->ittiMsg.ngap_UplinkNonUEAssociatedNRPPa 
+#define NGAP_UPLINKNONUEASSOCIATEDNRPPA(mSGpTR)   (mSGpTR)->ittiMsg.ngap_UplinkNonUEAssociatedNRPPa
 #define NGAP_DOWNLINKUEASSOCIATEDNRPPA(mSGpTR)    (mSGpTR)->ittiMsg.ngap_DownlinkUEAssociatedNRPPa
 #define NGAP_DOWNLINKNONUEASSOCIATEDNRPPA(mSGpTR) (mSGpTR)->ittiMsg.ngap_DownlinkNonUEAssociatedNRPPa
-
-#define NGAP_UPLINKUEASSOCIATEDNRPPA(mSGpTR)                  (mSGpTR)->ittiMsg.ngap_UplinkUEAssociatedNRPPa
-#define NGAP_UPLINKNONUEASSOCIATEDNRPPA(mSGpTR)               (mSGpTR)->ittiMsg.ngap_UplinkNonUEAssociatedNRPPa
-#define NGAP_DOWNLINKUEASSOCIATEDNRPPA(mSGpTR)                (mSGpTR)->ittiMsg.ngap_DownlinkUEAssociatedNRPPa
-#define NGAP_DOWNLINKNONUEASSOCIATEDNRPPA(mSGpTR)             (mSGpTR)->ittiMsg.ngap_DownlinkNonUEAssociatedNRPPa
 
 //-------------------------------------------------------------------------------------------//
 /* Maximum number of e-rabs to be setup/deleted in a single message.
