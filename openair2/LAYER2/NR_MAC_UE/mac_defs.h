@@ -36,7 +36,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "platform_types.h"
+#include "common/platform_types.h"
 
 /* IF */
 #include "NR_IF_Module.h"
@@ -68,9 +68,8 @@
 // NR UE defs
 // ==========
 
-#define NB_NR_UE_MAC_INST 1
-#define MAX_NUM_BWP_UE       4
-#define NUM_SLOT_FRAME    10
+#define MAX_NUM_BWP_UE 5
+#define NUM_SLOT_FRAME 10
 
 /*!\brief value for indicating BSR Timer is not running */
 #define NR_MAC_UE_BSR_TIMER_NOT_RUNNING   (0xFFFF)
@@ -166,6 +165,13 @@ typedef enum {
 } NR_UE_L2_STATE_t;
 
 typedef enum {
+  GO_TO_IDLE,
+  DETACH,
+  T300_EXPIRY,
+  RE_ESTABLISHMENT
+} NR_UE_MAC_reset_cause_t;
+
+typedef enum {
   RA_2STEP = 0,
   RA_4STEP
 } nr_ra_type_e;
@@ -196,8 +202,6 @@ typedef struct {
   NR_LC_SCHEDULING_INFO lc_sched_info[NR_MAX_NUM_LCID];
   // lcg scheduling info
   NR_LCG_SCHEDULING_INFO lcg_sched_info[NR_MAX_NUM_LCGID];
-  /// sum of all lcid buffer size
-  uint16_t All_lcid_buffer_size_lastTTI;
   /// SR pending as defined in 38.321
   uint8_t  SR_pending;
   /// SR_COUNTER as defined in 38.321
@@ -214,14 +218,9 @@ typedef struct {
   uint16_t sr_ProhibitTimer;
   /// sr ProhibitTime running
   uint8_t sr_ProhibitTimer_Running;
-  ///  default value to n5
-  uint16_t maxHARQ_Tx;
-  /// default value is false
-  uint16_t ttiBundling;
-  /// default value is release
-  struct DRX_Config *drx_config;
-  /// default value is release
-  struct MAC_MainConfig__phr_Config *phr_config;
+  // Maximum number of SR transmissions
+  uint32_t sr_TransMax;
+  int sr_id;
   ///timer before triggering a periodic PHR
   uint16_t periodicPHR_Timer;
   ///timer before triggering a prohibit PHR
@@ -234,7 +233,6 @@ typedef struct {
   int16_t prohibitPHR_SF;
   ///DL Pathloss Change in db
   uint16_t PathlossChange_db;
-
   /// default value is false
   uint16_t extendedBSR_Sizes_r10;
   /// default value is false
@@ -350,11 +348,13 @@ typedef struct {
   int8_t delta_pucch;
   uint32_t R;
   uint32_t TBS;
+  int last_ndi;
 } NR_UE_HARQ_STATUS_t;
 
 typedef struct {
   uint32_t R;
   uint32_t TBS;
+  int last_ndi;
 } NR_UL_HARQ_INFO_t;
 
 typedef struct {
@@ -440,50 +440,47 @@ typedef struct nr_lcordered_info_s {
   NR_LogicalChannelConfig_t *logicalChannelConfig_ordered;
 } nr_lcordered_info_t;
 
-/*!\brief Top level UE MAC structure */
 typedef struct {
+  NR_SearchSpace_t *otherSI_SS;
+  NR_SearchSpace_t *ra_SS;
+  NR_SearchSpace_t *paging_SS;
+  NR_ControlResourceSet_t *coreset0;
+  NR_ControlResourceSet_t *commonControlResourceSet;
+  NR_SearchSpace_t *search_space_zero;
+  A_SEQUENCE_OF(NR_ControlResourceSet_t) list_Coreset;
+  A_SEQUENCE_OF(NR_SearchSpace_t) list_SS;
+} NR_BWP_PDCCH_t;
+
+/*!\brief Top level UE MAC structure */
+typedef struct NR_UE_MAC_INST_s {
+  module_id_t ue_id;
   NR_UE_L2_STATE_t state;
-  int                             servCellIndex;
-  long                            physCellId;
-  ////  MAC config
-  int                             first_sync_frame;
-  bool                            get_sib1;
-  bool                            get_otherSI;
-  NR_MIB_t                        *mib;
+  int servCellIndex;
+  long physCellId;
+  int first_sync_frame;
+  bool get_sib1;
+  bool get_otherSI;
+  NR_MIB_t *mib;
   struct NR_SI_SchedulingInfo *si_SchedulingInfo;
   int si_window_start;
-  ssb_list_info_t ssb_list;
+  ssb_list_info_t ssb_list[MAX_NUM_BWP_UE];
+  prach_association_pattern_t prach_assoc_pattern[MAX_NUM_BWP_UE];
 
-  NR_UE_DL_BWP_t current_DL_BWP;
-  NR_UE_UL_BWP_t current_UL_BWP;
-  NR_BWP_DownlinkCommon_t *bwp_dlcommon;
-  NR_BWP_UplinkCommon_t *bwp_ulcommon;
+  NR_UE_ServingCell_Info_t sc_info;
+  A_SEQUENCE_OF(NR_UE_DL_BWP_t) dl_BWPs;
+  A_SEQUENCE_OF(NR_UE_UL_BWP_t) ul_BWPs;
+  NR_BWP_PDCCH_t config_BWP_PDCCH[MAX_NUM_BWP_UE];
+  NR_UE_DL_BWP_t *current_DL_BWP;
+  NR_UE_UL_BWP_t *current_UL_BWP;
 
   bool harq_ACK_SpatialBundlingPUCCH;
   bool harq_ACK_SpatialBundlingPUSCH;
 
   NR_UL_TIME_ALIGNMENT_t ul_time_alignment;
-
-  NR_SearchSpace_t *otherSI_SS;
-  NR_SearchSpace_t *ra_SS;
-  NR_SearchSpace_t *paging_SS;
-  NR_ControlResourceSet_t *BWP_coresets[FAPI_NR_MAX_CORESET_PER_BWP];
-  NR_ControlResourceSet_t *coreset0;
-  NR_SearchSpace_t *BWP_searchspaces[FAPI_NR_MAX_SS];
-  NR_SearchSpace_t *search_space_zero;
-
   NR_TDD_UL_DL_ConfigCommon_t *tdd_UL_DL_ConfigurationCommon;
-  NR_CrossCarrierSchedulingConfig_t *crossCarrierSchedulingConfig;
 
   bool phy_config_request_sent;
   frame_type_t frame_type;
-
-  ///     Type0-PDCCH seach space
-  fapi_nr_dl_config_dci_dl_pdu_rel15_t type0_pdcch_dci_config;
-  uint32_t type0_pdcch_ss_mux_pattern;
-  int type0_pdcch_ss_sfn_c;
-  uint32_t type0_pdcch_ss_n_c;
-  uint32_t type0_pdcch_consecutive_slots;
 
   /* PDUs */
   /// Outgoing CCCH pdu for PHY
@@ -504,8 +501,6 @@ typedef struct {
   /// measurements from CSI-RS
   fapi_nr_csirs_measurements_t csirs_measurements;
 
-  /// Last NDI of UL HARQ processes
-  int UL_ndi[NR_MAX_HARQ_PROCESSES];
   ////	FAPI-like interface message
   fapi_nr_ul_config_request_t *ul_config_request;
   fapi_nr_dl_config_request_t *dl_config_request;

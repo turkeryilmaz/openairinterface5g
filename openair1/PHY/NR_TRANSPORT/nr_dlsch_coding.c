@@ -74,18 +74,11 @@ void free_gNB_dlsch(NR_gNB_DLSCH_t *dlsch, uint16_t N_RB, const NR_DL_FRAME_PARM
   free(harq->c);
   free(harq->pdu);
 
-  int nb_codewords = NR_MAX_NB_LAYERS > 4 ? 2 : 1;
-  for (int q=0; q<nb_codewords; q++)
-    free(dlsch->mod_symbs[q]);
-  free(dlsch->mod_symbs);
-
   for (int layer = 0; layer < max_layers; layer++) {
-    free(dlsch->txdataF[layer]);
     for (int aa = 0; aa < 64; aa++)
       free(dlsch->ue_spec_bf_weights[layer][aa]);
     free(dlsch->ue_spec_bf_weights[layer]);
   }
-  free(dlsch->txdataF);
   free(dlsch->ue_spec_bf_weights);
 }
 
@@ -103,10 +96,6 @@ NR_gNB_DLSCH_t new_gNB_dlsch(NR_DL_FRAME_PARMS *frame_parms, uint16_t N_RB)
   uint32_t dlsch_bytes = a_segments*1056;  // allocated bytes per segment
   NR_gNB_DLSCH_t dlsch;
 
-  int txdataf_size = frame_parms->N_RB_DL*NR_SYMBOLS_PER_SLOT*NR_NB_SC_PER_RB*8; // max pdsch encoded length for each layer
-
-  dlsch.txdataF = (int32_t **)malloc16(max_layers * sizeof(int32_t *));
-
   dlsch.ue_spec_bf_weights = (int32_t ***)malloc16(max_layers * sizeof(int32_t **));
   for (int layer=0; layer<max_layers; layer++) {
     dlsch.ue_spec_bf_weights[layer] = (int32_t **)malloc16(64 * sizeof(int32_t *));
@@ -118,13 +107,7 @@ NR_gNB_DLSCH_t new_gNB_dlsch(NR_DL_FRAME_PARMS *frame_parms, uint16_t N_RB)
         dlsch.ue_spec_bf_weights[layer][aa][re] = 0x00007fff;
       }
     }
-    dlsch.txdataF[layer] = (int32_t *)malloc16((txdataf_size) * sizeof(int32_t));
   }
-
-  int nb_codewords = NR_MAX_NB_LAYERS > 4 ? 2 : 1;
-  dlsch.mod_symbs = (int32_t **)malloc16(nb_codewords * sizeof(int32_t *));
-  for (int q=0; q<nb_codewords; q++)
-    dlsch.mod_symbs[q] = (int32_t *)malloc16(txdataf_size * max_layers * sizeof(int32_t));
 
   NR_DL_gNB_HARQ_t *harq = &dlsch.harq_process;
   bzero(harq, sizeof(NR_DL_gNB_HARQ_t));
@@ -380,7 +363,7 @@ int nr_dlsch_encoding(PHY_VARS_gNB *gNB,
   impp.tparity = tparity;
   impp.toutput = toutput;
   impp.harq = harq;
-  if (gNB->ldpc_offload_flag && *rel15->mcsIndex > 2) {
+  if (gNB->ldpc_offload_flag) {
     impp.Qm = rel15->qamModOrder[0];
     impp.rv = rel15->rvIndex[0];
     int nb_re_dmrs =
@@ -392,26 +375,11 @@ int nr_dlsch_encoding(PHY_VARS_gNB *gNB,
                       harq->unav_res,
                       rel15->qamModOrder[0],
                       rel15->nrOfLayers);
-    uint8_t tmp[68 * 384] __attribute__((aligned(32)));
-    uint8_t *d = tmp;
     int r_offset = 0;
     for (int r = 0; r < impp.n_segments; r++) {
       impp.E = nr_get_E(impp.G, impp.n_segments, impp.Qm, rel15->nrOfLayers, r);
-      impp.Kr = impp.K;
-      ldpc_interface_offload.LDPCencoder(&harq->c[r], &d, &impp);
-      uint8_t e[impp.E];
-      bzero(e, impp.E);
-      nr_rate_matching_ldpc(rel15->maintenance_parms_v3.tbSizeLbrmBytes,
-                            impp.BG,
-                            impp.Zc,
-                            tmp,
-                            e,
-                            impp.n_segments,
-                            impp.F,
-                            impp.K - impp.F - 2 * impp.Zc,
-                            impp.rv,
-                            impp.E);
-      nr_interleaving_ldpc(impp.E, impp.Qm, e, impp.output + r_offset);
+      uint8_t *f = impp.output + r_offset;
+      ldpc_interface_offload.LDPCencoder(&harq->c[r], &f, &impp);
       r_offset += impp.E;
     }
   } else {

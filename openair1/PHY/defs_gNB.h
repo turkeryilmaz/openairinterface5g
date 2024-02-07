@@ -142,10 +142,6 @@ typedef struct {
 typedef struct {
   /// Pointers to variables related to DLSCH harq process
   NR_DL_gNB_HARQ_t harq_process;
-  /// TX buffers for UE-spec transmission (antenna layers 1,...,4 after to precoding)
-  int32_t **txdataF;
-  /// Modulated symbols buffer
-  int32_t **mod_symbs;
   /// beamforming weights for UE-spec transmission (antenna ports 5 or 7..14), for each codeword, maximum 4 layers?
   int32_t ***ue_spec_bf_weights;
   /// Active flag for baseband transmitter processing
@@ -608,6 +604,10 @@ typedef struct PHY_VARS_gNB_s {
 
   // reference amplitude for TX
   int16_t TX_AMP;
+
+  // flag to activate 3GPP phase symbolwise rotation
+  bool phase_comp;
+
   // PUCCH0 Look-up table for cyclic-shifts
   NR_gNB_PUCCH0_LUT_t pucch0_lut;
 
@@ -622,13 +622,6 @@ typedef struct PHY_VARS_gNB_s {
 
   /// PDSCH DMRS sequence
   uint32_t ****nr_gold_pdsch_dmrs;
-
-  /// PDSCH codebook I precoding LUTs
-  /// first dimension: Rank number [0,...,noOfLayers-1[
-  /// second dimension: PMI [0,...,CodeSize-1[
-  /// third dimension: [i_rows*noOfLayers+j_col], i_rows=0,...pdsch_AntennaPorts-1 and j_col=0,...,noOfLayers-1
-  int32_t ***nr_mimo_precoding_matrix;
-  int pmiq_size[NR_MAX_NB_LAYERS];
 
   /// PUSCH DMRS
   uint32_t ****nr_gold_pusch_dmrs;

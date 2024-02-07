@@ -874,8 +874,8 @@ void tx_rf(RU_t *ru,int frame,int slot, uint64_t timestamp) {
   // AssertFatal(txs == 0,"trx write function error %d\n", txs);
 }
 
-// this is for RU with local RF unit
-void fill_rf_config(RU_t *ru, char *rf_config_file) {
+static void fill_rf_config(RU_t *ru, char *rf_config_file)
+{
   int i;
   NR_DL_FRAME_PARMS *fp   = ru->nr_frame_parms;
   nfapi_nr_config_request_scf_t *config = &ru->config; //tmp index
@@ -896,35 +896,70 @@ void fill_rf_config(RU_t *ru, char *rf_config_file) {
   else //FDD
     cfg->duplex_mode = duplex_mode_FDD;
 
+  cfg->configFilename = rf_config_file;
+
+  AssertFatal(ru->nb_tx > 0 && ru->nb_tx <= 8, "openair0 does not support more than 8 antennas\n");
+  AssertFatal(ru->nb_rx > 0 && ru->nb_rx <= 8, "openair0 does not support more than 8 antennas\n");
+
   cfg->Mod_id = 0;
   cfg->num_rb_dl=N_RB;
   cfg->tx_num_channels=ru->nb_tx;
   cfg->rx_num_channels=ru->nb_rx;
   LOG_I(PHY,"Setting RF config for N_RB %d, NB_RX %d, NB_TX %d\n",cfg->num_rb_dl,cfg->rx_num_channels,cfg->tx_num_channels);
+  LOG_I(PHY,"tune_offset %.0f Hz, sample_rate %.0f Hz\n",cfg->tune_offset,cfg->sample_rate);
 
   for (i=0; i<ru->nb_tx; i++) {
     if (ru->if_frequency == 0) {
       cfg->tx_freq[i] = (double)fp->dl_CarrierFreq;
-      cfg->rx_freq[i] = (double)fp->ul_CarrierFreq;
     } else if (ru->if_freq_offset) {
       cfg->tx_freq[i] = (double)(ru->if_frequency);
-      cfg->rx_freq[i] = (double)(ru->if_frequency + ru->if_freq_offset);
-      LOG_I(PHY, "Setting IF TX frequency to %lu Hz with IF RX frequency offset %d Hz\n", ru->if_frequency, ru->if_freq_offset);
+      LOG_I(PHY, "Setting IF TX frequency to %lu Hz with IF TX frequency offset %d Hz\n", ru->if_frequency, ru->if_freq_offset);
     } else {
       cfg->tx_freq[i] = (double)ru->if_frequency;
-      cfg->rx_freq[i] = (double)(ru->if_frequency+fp->ul_CarrierFreq-fp->dl_CarrierFreq);
     }
 
     cfg->tx_gain[i] = ru->att_tx;
+    LOG_I(PHY, "Channel %d: setting tx_gain offset %.0f, tx_freq %.0f Hz\n", 
+          i, cfg->tx_gain[i],cfg->tx_freq[i]);
+  }
+
+  for (i=0; i<ru->nb_rx; i++) {
+    if (ru->if_frequency == 0) {
+      cfg->rx_freq[i] = (double)fp->ul_CarrierFreq;
+    } else if (ru->if_freq_offset) {
+      cfg->rx_freq[i] = (double)(ru->if_frequency + ru->if_freq_offset);
+      LOG_I(PHY, "Setting IF RX frequency to %lu Hz with IF RX frequency offset %d Hz\n", ru->if_frequency, ru->if_freq_offset);
+    } else {
+      cfg->rx_freq[i] = (double)(ru->if_frequency+fp->ul_CarrierFreq-fp->dl_CarrierFreq);
+    }
+
     cfg->rx_gain[i] = ru->max_rxgain-ru->att_rx;
-    cfg->configFilename = rf_config_file;
-    LOG_I(PHY, "Channel %d: setting tx_gain offset %.0f, rx_gain offset %.0f, tx_freq %.0f Hz, rx_freq %.0f Hz, tune_offset %.0f Hz, sample_rate %.0f Hz\n",
-          i, cfg->tx_gain[i],
-          cfg->rx_gain[i],
-          cfg->tx_freq[i],
-          cfg->rx_freq[i],
-          cfg->tune_offset,
-          cfg->sample_rate);
+    LOG_I(PHY, "Channel %d: setting rx_gain offset %.0f, rx_freq %.0f Hz\n",
+          i,cfg->rx_gain[i],cfg->rx_freq[i]);
+  }
+}
+
+static void fill_split7_2_config(split7_config_t *split7, const nfapi_nr_config_request_scf_t *config, int slots_per_frame)
+{
+  const nfapi_nr_prach_config_t *prach_config = &config->prach_config;
+  const nfapi_nr_tdd_table_t *tdd_table = &config->tdd_table;
+  const nfapi_nr_cell_config_t *cell_config = &config->cell_config;
+
+  DevAssert(prach_config->prach_ConfigurationIndex.tl.tag == NFAPI_NR_CONFIG_PRACH_CONFIG_INDEX_TAG);
+  split7->prach_index = prach_config->prach_ConfigurationIndex.value;
+  AssertFatal(prach_config->num_prach_fd_occasions.value == 1, "cannot handle more than one PRACH occasion\n");
+  split7->prach_freq_start = prach_config->num_prach_fd_occasions_list[0].k1.value;
+
+  DevAssert(cell_config->frame_duplex_type.tl.tag == NFAPI_NR_CONFIG_FRAME_DUPLEX_TYPE_TAG);
+  if (cell_config->frame_duplex_type.value == 1 /* TDD */) {
+    DevAssert(tdd_table->tdd_period.tl.tag == NFAPI_NR_CONFIG_TDD_PERIOD_TAG);
+    int nb_periods_per_frame = get_nb_periods_per_frame(tdd_table->tdd_period.value);
+    split7->n_tdd_period = slots_per_frame / nb_periods_per_frame;
+    for (int slot = 0; slot < split7->n_tdd_period; ++slot) {
+      for (int sym = 0; sym < 14; ++sym) {
+        split7->slot_dirs[slot].sym_dir[sym] = tdd_table->max_tdd_periodicity_list[slot].max_num_of_symbol_per_slot_list[sym].slot_config.value;
+      }
+    }
   }
 }
 
@@ -1142,24 +1177,33 @@ void *ru_thread( void *param ) {
   LOG_I(PHY,"Starting RU %d (%s,%s) on cpu %d\n",ru->idx,NB_functions[ru->function],NB_timing[ru->if_timing],sched_getcpu());
   memcpy((void *)&ru->config,(void *)&RC.gNB[0]->gNB_config,sizeof(ru->config));
 
-  if(emulate_rf) {
-    nr_init_frame_parms(&ru->config, fp);
-    nr_dump_frame_parms(fp);
-    fill_rf_config(ru,ru->rf_config_file);
-    nr_phy_init_RU(ru);
+  nr_init_frame_parms(&ru->config, fp);
+  nr_dump_frame_parms(fp);
+  nr_phy_init_RU(ru);
+  fill_rf_config(ru, ru->rf_config_file);
+  fill_split7_2_config(&ru->openair0_cfg.split7, &ru->config, fp->slots_per_frame);
 
-    if (setup_RU_buffers(ru)!=0) {
-      printf("Exiting, cannot initialize RU Buffers\n");
-      exit(-1);
-    }
-  } else {
-    nr_init_frame_parms(&ru->config, fp);
-    nr_dump_frame_parms(fp);
-    fill_rf_config(ru,ru->rf_config_file);
-    nr_phy_init_RU(ru);
-
+  if(!emulate_rf) {
     // Start IF device if any
     if (ru->nr_start_if) {
+      LOG_I(PHY, "starting transport\n");
+      ret = openair0_transport_load(&ru->ifdevice, &ru->openair0_cfg, &ru->eth_params);
+      AssertFatal(ret == 0, "RU %u: openair0_transport_init() ret %d: cannot initialize transport protocol\n", ru->idx, ret);
+
+      if (ru->ifdevice.get_internal_parameter != NULL) {
+        /* it seems the device can "overwrite" (request?) to set the callbacks
+         * for fh_south_in()/fh_south_out() differently */
+        void *t = ru->ifdevice.get_internal_parameter("fh_if4p5_south_in");
+        if (t != NULL)
+          ru->fh_south_in = t;
+        t = ru->ifdevice.get_internal_parameter("fh_if4p5_south_out");
+        if (t != NULL)
+          ru->fh_south_out = t;
+      } else {
+
+        malloc_IF4p5_buffer(ru);
+      }
+
       LOG_I(PHY,"Starting IF interface for RU %d, nb_rx %d\n",ru->idx,ru->nb_rx);
       AssertFatal(ru->nr_start_if(ru,NULL) == 0, "Could not start the IF device\n");
 
@@ -1175,11 +1219,11 @@ void *ru_thread( void *param ) {
       ret = openair0_device_load(&ru->rfdevice,&ru->openair0_cfg);
       AssertFatal(ret==0,"Cannot connect to local radio\n");
     }
+  }
 
-    if (setup_RU_buffers(ru)!=0) {
-      printf("Exiting, cannot initialize RU Buffers\n");
-      exit(-1);
-    }
+  if (setup_RU_buffers(ru)!=0) {
+    printf("Exiting, cannot initialize RU Buffers\n");
+    exit(-1);
   }
 
   LOG_I(PHY, "Signaling main thread that RU %d is ready, sl_ahead %d\n",ru->idx,ru->sl_ahead);
@@ -1623,8 +1667,6 @@ void init_precoding_weights(PHY_VARS_gNB *gNB) {
 }*/
 
 void set_function_spec_param(RU_t *ru) {
-  int ret;
-
   switch (ru->if_south) {
     case LOCAL_RF:   // this is an RU with integrated RF (RRU, gNB)
       reset_meas(&ru->rx_fhaul);
@@ -1645,13 +1687,6 @@ void set_function_spec_param(RU_t *ru) {
         reset_meas(&ru->tx_fhaul);
         reset_meas(&ru->compression);
         reset_meas(&ru->transport);
-        ret = openair0_transport_load(&ru->ifdevice,&ru->openair0_cfg,&ru->eth_params);
-        printf("openair0_transport_init returns %d for ru_id %u\n", ret, ru->idx);
-
-        if (ret<0) {
-          printf("Exiting, cannot initialize transport protocol\n");
-          exit(-1);
-        }
       } else if (ru->function == NGFI_RRU_IF4p5) {
         ru->do_prach              = 1;                        // do part of prach processing in RU
         ru->fh_north_in           = NULL;                     // no synchronous incoming fronthaul from north
@@ -1668,15 +1703,6 @@ void set_function_spec_param(RU_t *ru) {
         reset_meas(&ru->tx_fhaul);
         reset_meas(&ru->compression);
         reset_meas(&ru->transport);
-        ret = openair0_transport_load(&ru->ifdevice,&ru->openair0_cfg,&ru->eth_params);
-        printf("openair0_transport_init returns %d for ru_id %u\n", ret, ru->idx);
-
-        if (ret<0) {
-          printf("Exiting, cannot initialize transport protocol\n");
-          exit(-1);
-        }
-
-        malloc_IF4p5_buffer(ru);
       } else if (ru->function == gNodeB_3GPP) {
         ru->do_prach             = 0;                       // no prach processing in RU
         ru->feprx                = nr_fep_tp;     // this is frequency-shift + DFTs
@@ -1725,15 +1751,6 @@ void set_function_spec_param(RU_t *ru) {
       ru->ifdevice.eth_params    = &ru->eth_params;
       ru->ifdevice.configure_rru = configure_ru;
 
-      printf("starting transport : rx_num_antennas %d, tx_num_antennas %d\n",ru->openair0_cfg.rx_num_channels,ru->openair0_cfg.tx_num_channels); 
-      ret = openair0_transport_load(&ru->ifdevice,&ru->openair0_cfg,&ru->eth_params);
-      printf("openair0_transport_init returns %d for ru_id %u\n", ret, ru->idx);
-
-      if (ret<0) {
-        printf("Exiting, cannot initialize transport protocol\n");
-        exit(-1);
-      }
-
       break;
 
     case REMOTE_IF4p5:
@@ -1753,27 +1770,6 @@ void set_function_spec_param(RU_t *ru) {
       ru->ifdevice.host_type     = RAU_HOST;
       ru->ifdevice.eth_params    = &ru->eth_params;
       ru->ifdevice.configure_rru = configure_ru;
-      ret = openair0_transport_load(&ru->ifdevice, &ru->openair0_cfg, &ru->eth_params);
-      printf("openair0_transport_init returns %d for ru_id %u\n", ret, ru->idx);
-
-      if (ret<0) {
-        printf("Exiting, cannot initialize transport protocol\n");
-        exit(-1);
-      }
-
-      if (ru->ifdevice.get_internal_parameter != NULL) {
-        void *t = ru->ifdevice.get_internal_parameter("fh_if4p5_south_in");
-
-        if (t != NULL)
-          ru->fh_south_in = t;
-
-        t = ru->ifdevice.get_internal_parameter("fh_if4p5_south_out");
-
-        if (t != NULL)
-          ru->fh_south_out = t;
-      }
-
-      malloc_IF4p5_buffer(ru);
       break;
 
     default:
@@ -1816,10 +1812,6 @@ void init_NR_RU(configmodule_interface_t *cfg, char *rf_config_file)
         LOG_E(PHY,"%s() DJP - ru->gNB_list ru->num_gNB are not initialized - so do it manually\n", __FUNCTION__);
         ru->gNB_list[0] = RC.gNB[0];
         ru->num_gNB=1;
-        //
-        //
-      } else {
-        LOG_E(PHY,"DJP - delete code above this %s:%d\n", __FILE__, __LINE__);
       }
     }
 
@@ -1846,11 +1838,7 @@ void init_NR_RU(configmodule_interface_t *cfg, char *rf_config_file)
         }
       }
     }
-    ru->openair0_cfg.rx_num_channels = ru->nb_rx;
-    ru->openair0_cfg.tx_num_channels = ru->nb_tx;
-    //LOG_I(PHY,"Initializing RRU descriptor %d : (%s,%s,%d)\n",ru_id,ru_if_types[ru->if_south],NB_timing[ru->if_timing],ru->function);
     set_function_spec_param(ru);
-    LOG_I(PHY,"Starting ru_thread %d\n",ru_id);
     init_RU_proc(ru);
     if (ru->if_south != REMOTE_IF4p5) {
       int threadCnt = ru->num_tpcores;

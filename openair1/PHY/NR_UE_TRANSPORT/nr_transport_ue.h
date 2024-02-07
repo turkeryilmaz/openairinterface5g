@@ -38,7 +38,6 @@
 #include "nfapi/open-nFAPI/nfapi/public_inc/fapi_nr_ue_interface.h"
 #include "../NR_TRANSPORT/nr_transport_common_proto.h"
 
-
 typedef enum {
  NEW_TRANSMISSION_HARQ,
  RETRANSMISSION_HARQ
@@ -95,7 +94,7 @@ typedef struct {
   // UL number of harq processes
   uint8_t number_harq_processes_for_pusch;
   /// RNTI type
-  uint8_t rnti_type;
+  nr_rnti_type_t rnti_type;
   /// Cell ID
   int     Nid_cell;
   /// bit mask of PT-RS ofdm symbol indicies
@@ -105,8 +104,6 @@ typedef struct {
 typedef struct {
   /// Indicator of first reception
   uint8_t first_rx;
-  /// Last Ndi received for this process on DCI (used for C-RNTI only)
-  uint8_t Ndi;
   /// DLSCH status flag indicating
   SCH_status_t status;
   /// Transport block size

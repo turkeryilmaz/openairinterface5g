@@ -154,6 +154,8 @@ void *L1_rx_thread(void *arg)
 
   while (oai_exit == 0) {
      notifiedFIFO_elt_t *res = pullNotifiedFIFO(&gNB->resp_L1);
+     if (res == NULL)
+       break;
      processingData_L1_t *info = (processingData_L1_t *)NotifiedFifoData(res);
      rx_func(info);
      delNotifiedFIFO_elt(res);
@@ -235,7 +237,7 @@ void rx_func(void *param)
     L1_nr_prach_procedures(gNB,frame_rx,slot_rx);
 
     //WA: comment rotation in tx/rx
-    if((gNB->num_RU == 1) && (gNB->RU_list[0]->if_south != REMOTE_IF4p5)) {
+    if (gNB->phase_comp) {
       //apply the rx signal rotation here
       int soffset = (slot_rx & 3) * gNB->frame_parms.symbols_per_slot * gNB->frame_parms.ofdm_symbol_size;
       for (int aa = 0; aa < gNB->frame_parms.nb_antennas_rx; aa++) {
@@ -357,11 +359,15 @@ static size_t dump_L1_meas_stats(PHY_VARS_gNB *gNB, RU_t *ru, char *output, size
   output += print_meas_log(&gNB->rx_pusch_stats, "PUSCH inner-receiver", NULL, NULL, output, end - output);
   output += print_meas_log(&gNB->ulsch_decoding_stats, "PUSCH decoding", NULL, NULL, output, end - output);
   output += print_meas_log(&gNB->schedule_response_stats, "Schedule Response", NULL, NULL, output, end - output);
+  output += print_meas_log(&gNB->rx_prach, "PRACH RX", NULL, NULL, output, end - output);
   if (ru->feprx)
     output += print_meas_log(&ru->ofdm_demod_stats, "feprx", NULL, NULL, output, end - output);
 
-  if (ru->feptx_ofdm) {
+  if (ru->feptx_prec) {
     output += print_meas_log(&ru->precoding_stats,"feptx_prec",NULL,NULL, output, end - output);
+  }
+
+  if (ru->feptx_ofdm) {
     output += print_meas_log(&ru->txdataF_copy_stats,"txdataF_copy",NULL,NULL, output, end - output);
     output += print_meas_log(&ru->ofdm_mod_stats,"feptx_ofdm",NULL,NULL, output, end - output);
     output += print_meas_log(&ru->ofdm_total_stats,"feptx_total",NULL,NULL, output, end - output);
@@ -541,7 +547,8 @@ void term_gNB_Tpool(int inst) {
   gNB_L1_proc_t *proc = &gNB->proc;
   if (!get_softmodem_params()->emulate_l1)
     pthread_join(proc->L1_stats_thread, NULL);
-  pthread_join(proc->pthread_tx_reorder, NULL);
+  if (!get_softmodem_params()->reorder_thread_disable)
+    pthread_join(proc->pthread_tx_reorder, NULL);
 }
 
 /*!
@@ -593,7 +600,7 @@ void init_eNB_afterRU(void) {
     LOG_I(PHY,"RC.nb_nr_CC[inst:%d]:%p\n", inst, RC.gNB[inst]);
 
     gNB = RC.gNB[inst];
-    gNB->ldpc_offload_flag = ldpc_offload_flag;
+    gNB->ldpc_offload_flag = get_softmodem_params()->ldpc_offload_flag;
     gNB->reorder_thread_disable = get_softmodem_params()->reorder_thread_disable;
 
     phy_init_nr_gNB(gNB);
