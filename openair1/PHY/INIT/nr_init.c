@@ -137,7 +137,9 @@ int phy_init_nr_gNB(PHY_VARS_gNB *gNB)
 
   if (gNB->nr_ulsch_decoding_interface_flag)
     load_nr_ulsch_decoding_interface(gNB->nr_ulsch_decoding_interface_version, &nr_ulsch_decoding_interface);
-  else if (gNB->ldpc_offload_flag)
+  // loading the LDPC library is still necessary for encoding
+
+  if (gNB->ldpc_offload_flag)
     load_LDPClib("_t2", &ldpc_interface_offload);
   else
     load_LDPClib(NULL, &ldpc_interface);
