@@ -68,7 +68,6 @@
 // NR UE defs
 // ==========
 
-#define NB_NR_UE_MAC_INST 1
 #define MAX_NUM_BWP_UE 5
 #define NUM_SLOT_FRAME 10
 
@@ -451,7 +450,8 @@ typedef struct {
 } NR_BWP_PDCCH_t;
 
 /*!\brief Top level UE MAC structure */
-typedef struct {
+typedef struct NR_UE_MAC_INST_s {
+  module_id_t ue_id;
   NR_UE_L2_STATE_t state;
   int servCellIndex;
   long physCellId;

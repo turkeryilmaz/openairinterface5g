@@ -76,6 +76,8 @@ static inline const char *rnti_types(nr_rnti_type_t rr)
 }
 #undef R
 
+#define NR_MAX_NB_LAYERS 4 // 8
+
 typedef enum {
   nr_FR1 = 0,
   nr_FR2
@@ -113,6 +115,49 @@ typedef struct {
   /// Max value related to time shift estimation based on DMRS-PDSCH/PUSCH
   int delay_max_val;
 } delay_t;
+
+typedef struct {
+  bool active;
+  uint32_t counter;
+  uint32_t target;
+  uint32_t step;
+} NR_timer_t;
+
+/**
+ * @brief To start a timer
+ * @param timer Timer to be started
+ */
+void nr_timer_start(NR_timer_t *timer);
+/**
+ * @brief To stop a timer
+ * @param timer Timer to stopped
+ */
+void nr_timer_stop(NR_timer_t *timer);
+/**
+ * @brief If active, it increases timer counter by an amout of units equal to step. It stops timer if expired
+ * @param timer Timer to be handled
+ * @return Indication if the timer is expired or not
+ */
+bool nr_timer_tick(NR_timer_t *timer);
+/**
+ * @brief To setup a timer
+ * @param timer Timer to setup
+ * @param target Target value for timer (when reached, timer is considered expired)
+ * @param step Amount of units to add to timer counter every tick
+ */
+void nr_timer_setup(NR_timer_t *timer, const uint32_t target, const uint32_t step);
+/**
+ * @brief To check if a timer is expired
+ * @param timer Timer to be checked
+ * @return Indication if the timer is expired or not
+ */
+bool nr_timer_expired(NR_timer_t timer);
+/**
+ * @brief To check if a timer is active
+ * @param timer Timer to be checked
+ * @return Indication if the timer is active or not
+ */
+bool is_nr_timer_active(NR_timer_t timer);
 
 extern const nr_bandentry_t nr_bandtable[];
 

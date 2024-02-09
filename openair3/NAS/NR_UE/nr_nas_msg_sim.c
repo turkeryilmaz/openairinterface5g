@@ -48,7 +48,6 @@
 #include "intertask_interface.h"
 #include "openair2/RRC/NAS/nas_config.h"
 #include <openair3/NAS/COMMON/NR_NAS_defs.h>
-#include <openair1/PHY/phy_extern_nr_ue.h>
 #include <openair1/SIMULATION/ETH_TRANSPORT/proto.h>
 #include "openair2/SDAP/nr_sdap/nr_sdap.h"
 #include "openair3/SECU/nas_stream_eia2.h"
@@ -549,12 +548,12 @@ static void generateAuthenticationResp(nr_ue_nas_t *nas, as_nas_info_t *initialN
   initialNasMsg->length = mm_msg_encode(mm_msg, (uint8_t*)(initialNasMsg->data), size);
 }
 
-int nas_itti_kgnb_refresh_req(const uint8_t kgnb[32])
+int nas_itti_kgnb_refresh_req(instance_t instance, const uint8_t kgnb[32])
 {
   MessageDef *message_p;
   message_p = itti_alloc_new_message(TASK_NAS_NRUE, 0, NAS_KENB_REFRESH_REQ);
   memcpy(NAS_KENB_REFRESH_REQ(message_p).kenb, kgnb, sizeof(NAS_KENB_REFRESH_REQ(message_p).kenb));
-  return itti_send_msg_to_task(TASK_RRC_NRUE, 0, message_p);
+  return itti_send_msg_to_task(TASK_RRC_NRUE, instance, message_p);
 }
 
 static void generateSecurityModeComplete(nr_ue_nas_t *nas, as_nas_info_t *initialNasMsg)
@@ -1219,7 +1218,7 @@ void *nas_nrue(void *args_p)
             generateAuthenticationResp(nas, &initialNasMsg, pdu_buffer);
             break;
           case FGS_SECURITY_MODE_COMMAND:
-            nas_itti_kgnb_refresh_req(nas->security.kgnb);
+            nas_itti_kgnb_refresh_req(instance, nas->security.kgnb);
             generateSecurityModeComplete(nas, &initialNasMsg);
             break;
           case FGS_DOWNLINK_NAS_TRANSPORT:
