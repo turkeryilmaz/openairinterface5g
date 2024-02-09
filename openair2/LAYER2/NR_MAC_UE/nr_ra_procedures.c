@@ -786,7 +786,7 @@ uint8_t nr_ue_get_rach(module_id_t mod_id,
 
       } else if (ra->RA_window_cnt > 0) {
 
-        LOG_I(MAC, "[UE %d][%d.%d]: RAR not received yet (RA window count %d) \n", mod_id, frame, nr_slot_tx, ra->RA_window_cnt);
+        LOG_D(MAC, "[UE %d][%d.%d]: RAR not received yet (RA window count %d) \n", mod_id, frame, nr_slot_tx, ra->RA_window_cnt);
 
         // Fill in preamble and PRACH resources
         ra->RA_window_cnt--;

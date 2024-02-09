@@ -907,14 +907,13 @@ void *UE_thread(void *arg)
         if (UE->is_synchronized) {
           if (tshift)
           {
-            int diff = 0;   // drift in one frame     
-            UE->TO_I_Ctrl = round(TO_init_rate/TO_IScaling);
+            int diff = 0;   // drift in one frame
+            if (TO_IScaling != 0)
+              UE->TO_I_Ctrl = round(TO_init_rate/TO_IScaling);
             UE->rx_offset_TO = (TO_PScaling*diff) + (UE->TO_I_Ctrl*TO_IScaling); //PI controller
             UE->rx_offset_slot = 1;
             UE->rx_offset += (UE->init_sync_frame + trashed_frames)*TO_init_rate;
-            int ta_shift = (UE->init_sync_frame + trashed_frames)*2*TO_init_rate;
             UE->rx_offset_comp = 0;
-            UE->timing_advance += ta_shift;
           }
           // Still unknown why need to reset timing_advance in RFsim to avoid:
           // Received RAR preamble (38) doesn't match the intended RAPID (37)
@@ -1060,6 +1059,8 @@ void *UE_thread(void *arg)
     }
     
     UE->timing_advance += UL_TO_Tx_ofs;
+    if(mac->ra.ra_state == GENERATE_PREAMBLE)
+      UE->timing_advance = get_nrUE_params()->timing_advance;
 
     extern uint64_t RFsim_PropDelay;
     LOG_D(PHY, "RFsim_PropDelay: %lu,         TA: %d,         diff: %d,          PI_Out: %d,       offset_slot: %d,     offset_UL: %d,      acc_UL_To_TX: %d\n", 
