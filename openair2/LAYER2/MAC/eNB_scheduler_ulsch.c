@@ -168,6 +168,14 @@ rx_sdu(const module_id_t enb_mod_idP,
       UE_scheduling_control->ul_scheduled &= (~(1 << harq_pid));
       UE_scheduling_control->pusch_rx_num[CC_idP]++;
 
+       /* Enabling ULSCH scheduling for CFRA mode HO UE only.
+        * Otherwise ULSCH scheduling enabled after msg4.*/
+       if(mac_eNB_get_rach_mode(enb_mod_idP, current_rnti))
+       {
+           UE_template_ptr->configured = true;
+           mac_eNB_set_rach_mode(enb_mod_idP, current_rnti, false);
+       }
+
       /* Update with smoothing: 3/4 of old value and 1/4 of new.
        * This is the logic that was done in the function
        * lte_est_timing_advance_pusch, maybe it's not necessary?

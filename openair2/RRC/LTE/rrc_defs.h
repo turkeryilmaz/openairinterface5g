@@ -582,6 +582,8 @@ typedef struct eNB_RRC_UE_s {
   int                                gnb_rnti;     //RNTI of the UE at the gNB if in ENDC connection
   int                                gnb_x2_assoc_id;
   uint64_t                           random_ue_identity;
+  //To store the rach mode. True if CFRA, otherwise false
+  bool isRachModeCFRA;
 
 
   /* Information from UE RRC ConnectionRequest */

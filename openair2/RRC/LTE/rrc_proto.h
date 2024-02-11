@@ -590,6 +590,19 @@ mac_UE_get_rrc_status(
   const uint8_t     indexP
 );
 
+bool
+mac_eNB_get_rach_mode(
+  const module_id_t Mod_idP,
+  const rnti_t      rntiP
+);
+
+void
+mac_eNB_set_rach_mode(
+  const module_id_t Mod_idP,
+  const rnti_t      rntiP,
+  const bool  isRachModeCFRA
+);
+
 void
 rrc_mac_data_req(
   const rnti_t         rnti,

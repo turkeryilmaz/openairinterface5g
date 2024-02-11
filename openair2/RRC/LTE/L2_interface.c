@@ -454,6 +454,50 @@ mac_eNB_get_rrc_status(
   }
 }
 
+
+//------------------------------------------------------------------------------
+/*
+* Get UE rach mode whether CFRA, otherwise CBRA of UE from RNTI
+*/
+bool
+mac_eNB_get_rach_mode(
+  const module_id_t Mod_idP,
+  const rnti_t      rntiP
+)
+//------------------------------------------------------------------------------
+{
+  struct rrc_eNB_ue_context_s *ue_context_p = NULL;
+  ue_context_p = rrc_eNB_get_ue_context(RC.rrc[Mod_idP], rntiP);
+
+  if (ue_context_p != NULL) {
+    return (ue_context_p->ue_context.isRachModeCFRA);
+  } else {
+    return false;
+  }
+}
+
+
+//------------------------------------------------------------------------------
+/*
+* Set UE rach mode whether CFRA with RNTI
+*/
+void
+mac_eNB_set_rach_mode(
+  const module_id_t Mod_idP,
+  const rnti_t      rntiP,
+  const bool  isRachModeCFRA
+)
+//------------------------------------------------------------------------------
+{
+  struct rrc_eNB_ue_context_s *ue_context_p = NULL;
+  ue_context_p = rrc_eNB_get_ue_context(RC.rrc[Mod_idP], rntiP);
+
+  if (ue_context_p != NULL) {
+    ue_context_p->ue_context.isRachModeCFRA = isRachModeCFRA;
+  }
+}
+
+
 void mac_eNB_rrc_ul_failure(const module_id_t Mod_instP,
                             const int CC_idP,
                             const frame_t frameP,

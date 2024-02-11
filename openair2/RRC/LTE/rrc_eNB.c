@@ -4573,10 +4573,13 @@ void rrc_eNB_process_handoverPreparationInformation(int mod_id, x2ap_handover_re
 
   ue_context_target_p->ue_context.primaryCC_id = primary_ccId;
   RB_INSERT(rrc_ue_tree_s, &RC.rrc[mod_id]->rrc_ue_head, ue_context_target_p);
-  LOG_D(RRC, "eNB %d: Created new UE context uid %u\n", mod_id, ue_context_target_p->local_uid);
   ue_context_target_p->ue_context.handover_info = CALLOC(1, sizeof(*(ue_context_target_p->ue_context.handover_info)));
   //ue_context_target_p->ue_context.StatusRrc = RRC_HO_EXECUTION;
   //ue_context_target_p->ue_context.handover_info->state = HO_ACK;
+  /*Set rach mode in new ue context & reset in old ue context*/
+  (mac_eNB_get_rach_mode(mod_id,m->rnti)) ? (mac_eNB_set_rach_mode(mod_id, rnti, true)) : (mac_eNB_set_rach_mode(mod_id, rnti, false));
+  mac_eNB_set_rach_mode(mod_id, m->rnti, false);
+  LOG_D(RRC, "eNB %d: Created new UE context uid %u, isRachModeCFRA: %d\n", mod_id, ue_context_target_p->local_uid, mac_eNB_get_rach_mode(mod_id,rnti));
   ue_context_target_p->ue_context.handover_info->x2_id = m->x2_id;
   ue_context_target_p->ue_context.handover_info->ss_source_ue_rnti = m->rnti;
   ue_context_target_p->ue_context.handover_info->assoc_id = m->target_assoc_id;
@@ -7912,6 +7915,7 @@ rrc_eNB_decode_dcch(
   LTE_UL_DCCH_Message_t               *ul_dcch_msg = NULL; //&uldcchmsg;
   int i;
   struct rrc_eNB_ue_context_s        *ue_context_p = NULL;
+  struct rrc_eNB_ue_context_s        *src_ue_context_p = NULL;
   uint8_t                             xid;
   int dedicated_DRB=0;
   T(T_ENB_RRC_UL_DCCH_DATA_IN, T_INT(ctxt_pP->module_id), T_INT(ctxt_pP->frame), T_INT(ctxt_pP->subframe), T_INT(ctxt_pP->rntiMaybeUEid));
@@ -8009,7 +8013,10 @@ rrc_eNB_decode_dcch(
           MessageDef      *msg_p         = NULL;
 
           if(ue_context_p->ue_context.handover_info) {
-            if(ue_context_p->ue_context.handover_info->state == HO_COMPLETE) {
+            /*HO states are maintained in source UE context only */		  
+            src_ue_context_p = rrc_eNB_get_ue_context(RC.rrc[ctxt_pP->module_id], ue_context_p->ue_context.handover_info->ss_source_ue_rnti);
+            if( (src_ue_context_p) && (src_ue_context_p->ue_context.handover_info->state == HO_COMPLETE) ) {
+              LOG_A(RRC, "Releasing the X2AP as HO_COMPLETE\n");
               msg_p = itti_alloc_new_message (TASK_RRC_ENB, 0, X2AP_UE_CONTEXT_RELEASE);
               X2AP_UE_CONTEXT_RELEASE (msg_p).rnti = ue_context_p->ue_context.handover_info->ss_source_ue_rnti;
               X2AP_UE_CONTEXT_RELEASE (msg_p).source_assoc_id = ue_context_p->ue_context.handover_info->assoc_id;
@@ -9680,7 +9687,8 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
                      &X2AP_HANDOVER_REQ(msg).rrc_buffer_size);
                 X2AP_HANDOVER_REQ(msg).rnti = SS_RRC_PDU_REQ(msg_p).rnti;
                 ue_context_p->ue_context.handover_info->ss_target_ue_rnti = (mobilityControlInfo->newUE_Identity.buf[0]<<8)|mobilityControlInfo->newUE_Identity.buf[1];
-                LOG_A(RRC,"CRNTI in X2AP_HANDOVER_REQ: %d \n",X2AP_HANDOVER_REQ(msg).rnti);
+                (mobilityControlInfo->rach_ConfigDedicated) ? (mac_eNB_set_rach_mode(instance, SS_RRC_PDU_REQ(msg_p).rnti, true)) : (mac_eNB_set_rach_mode(instance, SS_RRC_PDU_REQ(msg_p).rnti, false));
+                LOG_A(RRC,"X2AP_HANDOVER_REQ CRNTI: %d, isRachModeCFRA: %d\n", X2AP_HANDOVER_REQ(msg).rnti, mac_eNB_get_rach_mode(instance, SS_RRC_PDU_REQ(msg_p).rnti));
                 X2AP_HANDOVER_REQ(msg).target_physCellId = dl_dcch_msg->message.choice.c1.choice.rrcConnectionReconfiguration.criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.mobilityControlInfo->targetPhysCellId;
                 X2AP_HANDOVER_REQ(msg).ue_gummei.mcc = ue_context_p->ue_context.ue_gummei.mcc;
                 X2AP_HANDOVER_REQ(msg).ue_gummei.mnc = ue_context_p->ue_context.ue_gummei.mnc;
