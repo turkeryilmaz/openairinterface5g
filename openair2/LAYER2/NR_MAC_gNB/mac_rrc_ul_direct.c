@@ -605,10 +605,10 @@ static void positioning_measurement_response(const f1ap_measurement_resp_t *resp
             (int32_t)(((int64_t)UE->ue_pos_info.toa_ns * (int64_t)T_inv) / T_ns_inv));
 
       // TODO IE timeStamp.measurementTime
-      // posMeasRes->pos_measurement_result_item->timeStamp.measurementTime
+      posMeasRes->pos_measurement_result_item->timeStamp.systemFrameNumber = mac->frame;
       // TODO IE timeStamp.slotIndex
-      // posMeasRes->pos_measurement_result_item->timeStamp.slotIndex.present
-      // posMeasRes->pos_measurement_result_item->timeStamp.slotIndex.choice
+      posMeasRes->pos_measurement_result_item->timeStamp.slotIndex.present = f1ap_time_stamp_slot_index_pr_sCS_30;
+      posMeasRes->pos_measurement_result_item->timeStamp.slotIndex.choice.sCS_30 = mac->slot;
     }
   }
 
