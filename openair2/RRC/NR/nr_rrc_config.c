@@ -2242,7 +2242,28 @@ static NR_SpCellConfig_t *get_initial_SpCellConfig(int uid,
       configuredGrantConfig->transformPrecoder = calloc(1,sizeof(*configuredGrantConfig->transformPrecoder));
       *configuredGrantConfig->transformPrecoder = NR_ConfiguredGrantConfig__transformPrecoder_enabled;
       configuredGrantConfig->repK_RV = calloc(1,sizeof(*configuredGrantConfig->repK_RV));
-      *configuredGrantConfig->repK_RV= NR_ConfiguredGrantConfig__repK_RV_s1_0231;
+      *configuredGrantConfig->repK_RV = NR_ConfiguredGrantConfig__repK_RV_s1_0231;
+      configuredGrantConfig->configuredGrantTimer = calloc(1,sizeof(*configuredGrantConfig->configuredGrantTimer));
+      *configuredGrantConfig->configuredGrantTimer = 10;
+      configuredGrantConfig->resourceAllocation = 4;
+      configuredGrantConfig->powerControlLoopToUse = 5;
+      configuredGrantConfig->nrofHARQ_Processes = 5;
+      configuredGrantConfig->repK = 5;
+      configuredGrantConfig->periodicity = 5;
+      configuredGrantConfig->rrc_ConfiguredUplinkGrant = calloc(1, sizeof(*configuredGrantConfig->rrc_ConfiguredUplinkGrant));
+      configuredGrantConfig->rrc_ConfiguredUplinkGrant->timeDomainOffset = 5;
+      configuredGrantConfig->rrc_ConfiguredUplinkGrant->timeDomainAllocation = 5;
+      configuredGrantConfig->rrc_ConfiguredUplinkGrant->antennaPort = 2;
+      configuredGrantConfig->rrc_ConfiguredUplinkGrant->dmrs_SeqInitialization = calloc(1, sizeof(*configuredGrantConfig->rrc_ConfiguredUplinkGrant->dmrs_SeqInitialization));
+      *configuredGrantConfig->rrc_ConfiguredUplinkGrant->dmrs_SeqInitialization = 5;
+      
+
+
+
+      
+
+
+
   }
 
   if (configuredGrantConfig != NULL){
