@@ -2600,6 +2600,237 @@ rrc_gNB_generate_RRCRelease(
   /* UE will be freed after UE context release complete */
 }
 
+static pdu_session_to_setup_t fill_pdu_session(const rrc_pdu_session_param_t *session, const drb_t *rrc_drb)
+{
+  pdu_session_to_setup_t pdu = {0};
+  pdu.sessionId = session->param.pdusession_id;
+  pdu.numDRB2Setup = 1;
+  DRB_nGRAN_to_setup_t *drb = &pdu.DRBnGRanList[0];
+  drb->id = rrc_drb->drb_id;
+
+  const struct sdap_config_s *sdap_config = &rrc_drb->cnAssociation.sdap_config;
+  drb->defaultDRB = sdap_config->defaultDRB ? E1AP_DefaultDRB_true : E1AP_DefaultDRB_false;
+  drb->sDAP_Header_UL = sdap_config->sdap_HeaderUL;
+  drb->sDAP_Header_DL = sdap_config->sdap_HeaderDL;
+  drb->numQosFlow2Setup = 1;
+
+  const struct pdcp_config_s *pdcp_config = &rrc_drb->pdcp_config;
+  drb->pDCP_SN_Size_UL = pdcp_config->pdcp_SN_SizeUL;
+  drb->pDCP_SN_Size_DL = pdcp_config->pdcp_SN_SizeDL;
+  drb->discardTimer = pdcp_config->discardTimer;
+  drb->reorderingTimer = pdcp_config->t_Reordering;
+
+  drb->rLC_Mode = E1AP_RLC_Mode_rlc_am; //rrc->configuration.um_on_default_drb ? E1AP_RLC_Mode_rlc_um_bidirectional : E1AP_RLC_Mode_rlc_am;
+
+  drb->numCellGroups = 1; // assume one cell group associated with a DRB
+
+  for (int k=0; k < drb->numCellGroups; k++) {
+    cell_group_t *cellGroup = drb->cellGroupList + k;
+    cellGroup->id = 0; // MCG
+  }
+
+  drb->numQosFlow2Setup = session->param.nb_qos;
+  for (int k=0; k < drb->numQosFlow2Setup; k++) {
+    qos_flow_to_setup_t *qos_flow = drb->qosFlows + k;
+    const pdusession_level_qos_parameter_t *qos_session = session->param.qos + k;
+
+    qos_characteristics_t *qos_char = &qos_flow->qos_params.qos_characteristics;
+    qos_flow->qfi = qos_session->qfi;
+    qos_char->qos_type = qos_session->fiveQI_type;
+    if (qos_char->qos_type == dynamic) {
+      qos_char->dynamic.fiveqi = qos_session->fiveQI;
+      qos_char->dynamic.qos_priority_level = qos_session->qos_priority;
+    } else {
+      qos_char->non_dynamic.fiveqi = qos_session->fiveQI;
+      qos_char->non_dynamic.qos_priority_level = qos_session->qos_priority;
+    }
+
+    ngran_allocation_retention_priority_t *rent_priority = &qos_flow->qos_params.alloc_reten_priority;
+    const ngap_allocation_retention_priority_t *rent_priority_in = &qos_session->allocation_retention_priority;
+    rent_priority->priority_level = rent_priority_in->priority_level;
+    rent_priority->preemption_capability = rent_priority_in->pre_emp_capability;
+    rent_priority->preemption_vulnerability = rent_priority_in->pre_emp_vulnerability;
+  }
+
+  return pdu;
+}
+
+void rrc_gNB_trigger_new_bearer(int rnti)
+{
+  /* get RRC and UE */
+  gNB_RRC_INST *rrc = RC.nrrrc[0];
+  rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context_by_rnti_any_du(rrc, rnti);
+  if (ue_context_p == NULL) {
+    LOG_E(RRC, "unknown UE RNTI %04x\n", rnti);
+    return;
+  }
+  gNB_RRC_UE_t *ue = &ue_context_p->ue_context;
+
+  /* get the existing PDU sessoin */
+  if (ue->nb_of_pdusessions < 1) {
+    LOG_E(RRC, "no PDU session set up yet, cannot create additional bearer\n");
+    return;
+  }
+  const rrc_pdu_session_param_t *session = &ue->pduSession[0];
+  DevAssert(session->param.nb_qos == 1);
+
+  if (ue->established_drbs[0].status != DRB_INACTIVE
+      && ue->established_drbs[1].status != DRB_INACTIVE) {
+    LOG_E(RRC, "already have two established bearers, aborting\n");
+    return;
+  }
+
+  int drb_id = 2;
+  drb_t *rrc_drb = generateDRB(ue,
+                               drb_id,
+                               session,
+                               rrc->configuration.enable_sdap,
+                               rrc->security.do_drb_integrity,
+                               rrc->security.do_drb_ciphering);
+
+  /* the only thing E1 can do as of now, is to generate new PDU sessions. This
+   * includes SDAP, and GTP/NG-U, but we don't want that. therefore, use PDCP
+   * and GTP/F1-U directly below */
+
+  /* generate dummy PDU session, from which we generate DRB info, used to
+   * initialize PDCP */
+  pdu_session_to_setup_t pdu = fill_pdu_session(session, rrc_drb);
+
+  pdu.integrityProtectionIndication = rrc->security.do_drb_integrity ? E1AP_IntegrityProtectionIndication_required : E1AP_IntegrityProtectionIndication_not_needed;
+  pdu.confidentialityProtectionIndication = rrc->security.do_drb_ciphering ? E1AP_ConfidentialityProtectionIndication_required : E1AP_ConfidentialityProtectionIndication_not_needed;
+
+  NR_DRB_ToAddModList_t DRB_configList = {0};
+  extern void fill_DRB_configList_e1(NR_DRB_ToAddModList_t *DRB_configList, const pdu_session_to_setup_t *pdu);
+  fill_DRB_configList_e1(&DRB_configList, &pdu);
+
+  uint8_t enc_key[16];
+  nr_derive_key(UP_ENC_ALG, ue->ciphering_algorithm, ue->kgnb, enc_key);
+  uint8_t int_key[16];
+  nr_derive_key(UP_INT_ALG, ue->integrity_algorithm, ue->kgnb, int_key);
+
+  nr_pdcp_add_drbs(true, // set this to notify PDCP that his not UE
+                   ue->rrc_ue_id,
+                   &DRB_configList,
+                   (ue->integrity_algorithm << 4) | ue->ciphering_algorithm,
+                   enc_key,
+                   int_key);
+
+  /* initialize F1 GTP, if necessary */
+  extern instance_t get_f1_gtp_instance(void);
+  instance_t f1inst = get_f1_gtp_instance();
+  uint8_t tlAddress[4] = {0};
+  long teid = 0;
+  if (f1inst >= 0) { /* we have F1(-U) */
+    teid_t dummy_teid = 0xffff; // we will update later with answer from DU
+    in_addr_t dummy_address = {0}; // IPv4, updated later with answer from DU
+    gtpv1u_gnb_create_tunnel_resp_t resp_f1 = {0};
+    int qfi = -1; // don't put PDU session marker in GTP
+    extern int drb_gtpu_create(instance_t instance, uint32_t ue_id, int incoming_id, int outgoing_id,
+                               int qfi, in_addr_t tlAddress, teid_t outgoing_teid,
+                               gtpCallback callBack, gtpCallbackSDAP callBackSDAP, gtpv1u_gnb_create_tunnel_resp_t *create_tunnel_resp);
+    int ret = drb_gtpu_create(f1inst,
+                              ue->rrc_ue_id,
+                              rrc_drb->drb_id,
+                              rrc_drb->drb_id,
+                              qfi,
+                              dummy_address,
+                              dummy_teid,
+                              cu_f1u_data_req,
+                              NULL,
+                              &resp_f1);
+    AssertFatal(ret >= 0, "Unable to create GTP Tunnel for F1-U\n");
+    memcpy(tlAddress, &resp_f1.gnb_addr.buffer, 4);
+    teid = resp_f1.gnb_NGu_teid[0];
+  }
+
+  int xid = rrc_gNB_get_next_transaction_identifier(0);
+  /* associate the new bearer to it */
+  ue->xids[xid] = RRC_DEDICATED_RECONF;
+  ue->pduSession[0].xid = xid; // hack: fake xid for ongoing PDU session
+  LOG_W(RRC, "trigger new bearer %d for UE %04x xid %d\n", rrc_drb->drb_id, ue->rnti, xid);
+
+  /* as noted above, cannot go via E1, but reuse E1 setup response handler to
+   * set up the DRB via F1 (and then the reconfiguration) */
+  e1ap_bearer_setup_resp_t resp = {
+    .gNB_cu_cp_ue_id = ue->rrc_ue_id,
+    .gNB_cu_up_ue_id = ue->rrc_ue_id,
+    .numPDUSessions = 1,
+    .pduSession[0].id = session->param.pdusession_id,
+    .pduSession[0].numDRBSetup = 1,
+    .pduSession[0].DRBnGRanList[0].id = drb_id,
+    .pduSession[0].DRBnGRanList[0].numQosFlowSetup = 1,
+    .pduSession[0].DRBnGRanList[0].qosFlows[0].qfi = session->param.qos[0].qfi,
+  };
+  if (f1inst >= 0) { /* we have F1(-U) */
+    DRB_nGRAN_setup_t *resp_drb = &resp.pduSession[0].DRBnGRanList[0];
+    resp_drb->numUpParam = 1;
+    memcpy(&resp_drb->UpParamList[0].tlAddress, tlAddress, 4);
+    resp_drb->UpParamList[0].teId = teid;
+  }
+  rrc_gNB_process_e1_bearer_context_setup_resp(&resp, 0);
+}
+
+void rrc_gNB_trigger_release_bearer(int rnti)
+{
+  /* get RRC and UE */
+  gNB_RRC_INST *rrc = RC.nrrrc[0];
+  rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context_by_rnti_any_du(rrc, rnti);
+  if (ue_context_p == NULL) {
+    LOG_E(RRC, "unknown UE RNTI %04x\n", rnti);
+    return;
+  }
+  gNB_RRC_UE_t *ue = &ue_context_p->ue_context;
+
+  if (ue->established_drbs[1].status == DRB_INACTIVE) {
+    LOG_E(RRC, "no second bearer, aborting\n");
+    return;
+  }
+
+  // don't use E1: bearer release is not implemented, call directly
+  // into PDCP/SDAP and then send corresponding message via F1
+
+  int drb_id = 2;
+  ue->established_drbs[1].status = DRB_INACTIVE;
+  ue->DRB_ReleaseList = calloc(1, sizeof(*ue->DRB_ReleaseList));
+  AssertFatal(ue->DRB_ReleaseList != NULL, "out of memory\n");
+  NR_DRB_Identity_t *asn1_drb = malloc(sizeof(*asn1_drb));
+  AssertFatal(asn1_drb != NULL, "out of memory\n");
+  int idx = 0;
+  NR_DRB_ToAddModList_t *drb_list = createDRBlist(ue, false);
+  while (idx < drb_list->list.count) {
+    const NR_DRB_ToAddMod_t *drbc = drb_list->list.array[idx];
+    if (drbc->drb_Identity == drb_id)
+      break;
+    ++idx;
+  }
+  if (idx < drb_list->list.count) {
+    nr_pdcp_release_drb(rnti, drb_id);
+    asn_sequence_del(&drb_list->list, idx, 1);
+  }
+  *asn1_drb = drb_id;
+  asn1cSeqAdd(&ue->DRB_ReleaseList->list, asn1_drb);
+
+  f1ap_drb_to_be_released_t drbs_to_be_released[1] = {{.rb_id = drb_id}};
+  f1_ue_data_t ue_data = cu_get_f1_ue_data(ue->rrc_ue_id);
+  RETURN_IF_INVALID_ASSOC_ID(ue_data);
+  f1ap_ue_context_modif_req_t ue_context_modif_req = {
+    .gNB_CU_ue_id = ue->rrc_ue_id,
+    .gNB_DU_ue_id = ue_data.secondary_ue,
+    .plmn.mcc = rrc->configuration.mcc[0],
+    .plmn.mnc = rrc->configuration.mnc[0],
+    .plmn.mnc_digit_length = rrc->configuration.mnc_digit_length[0],
+    .nr_cellid = rrc->nr_cellid,
+    .servCellId = 0, /* TODO: correct value? */
+    .srbs_to_be_setup_length = 0,
+    .srbs_to_be_setup = NULL,
+    .drbs_to_be_setup_length = 0,
+    .drbs_to_be_setup = NULL,
+    .drbs_to_be_released_length = 1,
+    .drbs_to_be_released = drbs_to_be_released,
+  };
+  rrc->mac_rrc.ue_context_modification_request(ue_data.du_assoc_id, &ue_context_modif_req);
+}
+
 int rrc_gNB_generate_pcch_msg(sctp_assoc_t assoc_id, const NR_SIB1_t *sib1, uint32_t tmsi, uint8_t paging_drx)
 {
   instance_t instance = 0;

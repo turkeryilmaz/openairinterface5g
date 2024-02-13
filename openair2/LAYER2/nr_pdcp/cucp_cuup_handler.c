@@ -35,7 +35,7 @@
 #include "openair2/E1AP/e1ap_common.h"
 #include "openair2/F1AP/f1ap_common.h"
 
-static void fill_DRB_configList_e1(NR_DRB_ToAddModList_t *DRB_configList, const pdu_session_to_setup_t *pdu)
+void fill_DRB_configList_e1(NR_DRB_ToAddModList_t *DRB_configList, const pdu_session_to_setup_t *pdu)
 {
   for (int i=0; i < pdu->numDRB2Setup; i++) {
     const DRB_nGRAN_to_setup_t *drb = pdu->DRBnGRanList + i;
@@ -90,7 +90,7 @@ static void fill_DRB_configList_e1(NR_DRB_ToAddModList_t *DRB_configList, const 
   }
 }
 
-static int drb_gtpu_create(instance_t instance,
+int drb_gtpu_create(instance_t instance,
                            uint32_t ue_id,
                            int incoming_id,
                            int outgoing_id,
@@ -124,7 +124,7 @@ static instance_t get_n3_gtp_instance(void)
   return inst->gtpInstN3;
 }
 
-static instance_t get_f1_gtp_instance(void)
+instance_t get_f1_gtp_instance(void)
 {
   const f1ap_cudu_inst_t *inst = getCxt(0);
   if (!inst)
