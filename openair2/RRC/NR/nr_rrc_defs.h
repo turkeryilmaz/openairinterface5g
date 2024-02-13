@@ -289,6 +289,7 @@ typedef struct gNB_RRC_UE_s {
   uint64_t amf_ue_ngap_id;
   nr_rrc_guami_t                     ue_guami;
 
+  xnap_security_capabilities_t       xnap_security_capabilities;
   ngap_security_capabilities_t       security_capabilities;
   //NSA block
   /* Number of NSA e_rab */

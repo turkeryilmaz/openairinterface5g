@@ -35,9 +35,11 @@
 #include "assertions.h"
 #include "conversions.h"
 
+static int xnap_gNB_handle_handover_preparation(instance_t instance, sctp_assoc_t assoc_id, uint32_t stream, XNAP_XnAP_PDU_t *pdu);
+
 /* Placement of callback functions according to XNAP_ProcedureCode.h */
 static const xnap_message_decoded_callback xnap_messages_callback[][3] = {
-    {0, 0, 0},
+    {xnap_gNB_handle_handover_preparation, 0, 0},  /* handoverPreparation */
     {0, 0, 0},
     {0, 0, 0},
     {0, 0, 0},
@@ -206,3 +208,147 @@ int xnap_gNB_handle_message(instance_t instance,
   ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_XNAP_XnAP_PDU, &pdu);
   return ret;
 }
+
+static int xnap_gNB_handle_handover_preparation(instance_t instance, sctp_assoc_t assoc_id, uint32_t stream, XNAP_XnAP_PDU_t *pdu)
+{
+
+  XNAP_HandoverRequest_t             *xnHandoverRequest;
+  XNAP_HandoverRequest_IEs_t         *ie;
+
+//  X2AP_E_RABs_ToBeSetup_ItemIEs_t    *e_RABS_ToBeSetup_ItemIEs;
+//  X2AP_E_RABs_ToBeSetup_Item_t       *e_RABs_ToBeSetup_Item;
+
+  xnap_gNB_instance_t                *instance_p;
+  xnap_gNB_data_t                    *xnap_gNB_data;
+  MessageDef                         *msg;
+  int                                ue_id;
+
+  DevAssert (pdu != NULL);
+  xnHandoverRequest = &pdu->choice.initiatingMessage->value.choice.HandoverRequest;
+
+  if (stream == 0) {
+    LOG_E (XNAP, "Received new xn handover request on stream == 0\n");
+    /* TODO: send a xn failure response */
+    return 0;
+  }
+
+  XNAP_DEBUG ("Received a new XN handover request\n");
+
+  xnap_gNB_data = xnap_get_gNB(NULL, assoc_id, 0);
+  DevAssert(xnap_gNB_data != NULL);
+
+  instance_p = xnap_gNB_get_instance(instance);
+  DevAssert(instance_p != NULL);
+
+  msg = itti_alloc_new_message(TASK_XNAP, 0, XNAP_HANDOVER_REQ);
+
+  XNAP_FIND_PROTOCOLIE_BY_ID(XNAP_HandoverRequest_IEs_t, ie, xnHandoverRequest,
+                             XNAP_ProtocolIE_ID_id_oldNG_RANnodeUEXnAPID, true);
+  if (ie == NULL ) {
+    LOG_E (XNAP, "%s %d: ie is a NULL pointer \n",__FILE__,__LINE__);
+    itti_free(ITTI_MSG_ORIGIN_ID(msg), msg);
+    return -1;
+  }
+
+    /* allocate a new X2AP UE ID */
+  ue_id = xnap_allocate_new_id(&instance_p->id_manager);
+  if (ue_id == -1) {
+    LOG_E (XNAP, "could not allocate a new XNAP UE ID\n");
+    /* TODO: cancel handover: send HO preparation failure to source gNB */
+    exit(1);
+  }
+  /* rnti is unknown yet, must not be set to -1, 0 is fine */
+  xnap_set_ids(&instance_p->id_manager, ue_id, 0, ie->value.choice.NG_RANnodeUEXnAPID, ue_id);
+  xnap_id_set_state(&instance_p->id_manager, ue_id, XNID_STATE_TARGET);
+
+  XNAP_HANDOVER_REQ(msg).ng_node_ue_xnap_id = ue_id;
+
+  XNAP_FIND_PROTOCOLIE_BY_ID(XNAP_HandoverRequest_IEs_t, ie, xnHandoverRequest,
+                             XNAP_ProtocolIE_ID_id_GUAMI, true);
+  if (ie == NULL ) {
+    LOG_E (XNAP, "%s %d: ie is a NULL pointer \n",__FILE__,__LINE__);
+    itti_free(ITTI_MSG_ORIGIN_ID(msg), msg);
+    return -1;
+  }
+
+/*  MCC_MNC_TO_PLMNID(ie->info.plmn.mcc,
+                    ie->info.plmn.mnc,
+                    ie->info.plmn.mnc_digit_length,
+                    &ie->value.choice.GlobalNG_RANNode_ID.choice.gNB->plmn_id); */
+
+/** Need to understand if this search is neeeded **
+  XNAP_FIND_PROTOCOLIE_BY_ID(XNAP_HandoverRequest_IEs_t, ie, xnHandoverRequest,
+                             XNAP_UEContextInfoHORequest_t, true);  **/
+
+  if (ie == NULL ) {
+    LOG_E (XNAP, "%s %d: ie is a NULL pointer \n",__FILE__,__LINE__);
+    itti_free(ITTI_MSG_ORIGIN_ID(msg), msg);
+    return -1;
+  }
+
+//  XNAP_HANDOVER_REQ(msg).mme_ue_s1ap_id = ie->value.choice.UE_ContextInformation.mME_UE_S1AP_ID;
+
+  /* TODO: properly store Target Cell ID */
+
+  XNAP_HANDOVER_REQ(msg).ue_context.target_assoc_id = assoc_id;
+/**
+  XNAP_HANDOVER_REQ(msg).security_capabilities.encryption_algorithms =
+    BIT_STRING_to_uint16(&ie->value.choice.UE_ContextInformation.uESecurityCapabilities.encryptionAlgorithms);
+  XNAP_HANDOVER_REQ(msg).security_capabilities.integrity_algorithms =
+    BIT_STRING_to_uint16(&ie->value.choice.UE_ContextInformation.uESecurityCapabilities.integrityProtectionAlgorithms);
+
+  //X2AP_HANDOVER_REQ(msg).ue_ambr=ue_context_pP->ue_context.ue_ambr;
+
+  if ((ie->value.choice.UE_ContextInformation.aS_SecurityInformation.key_eNodeB_star.buf) &&
+          (ie->value.choice.UE_ContextInformation.aS_SecurityInformation.key_eNodeB_star.size == 32)) {
+    memcpy(XNAP_HANDOVER_REQ(msg).kenb, ie->value.choice.UE_ContextInformation.aS_SecurityInformation.key_eNodeB_star.buf, 32);
+    XNAP_HANDOVER_REQ(msg).kenb_ncc = ie->value.choice.UE_ContextInformation.aS_SecurityInformation.nextHopChainingCount;
+  } else {
+    X2AP_WARN ("Size of eNB key star does not match the expected value\n");
+  }
+
+  if (ie->value.choice.UE_ContextInformation.e_RABs_ToBeSetup_List.list.count > 0) {
+
+    XNAP_HANDOVER_REQ(msg).nb_e_rabs_tobesetup = ie->value.choice.UE_ContextInformation.e_RABs_ToBeSetup_List.list.count;
+
+    for (int i=0;i<ie->value.choice.UE_ContextInformation.e_RABs_ToBeSetup_List.list.count;i++) {
+      e_RABS_ToBeSetup_ItemIEs = (X2AP_E_RABs_ToBeSetup_ItemIEs_t *) ie->value.choice.UE_ContextInformation.e_RABs_ToBeSetup_List.list.array[i];
+      e_RABs_ToBeSetup_Item = &e_RABS_ToBeSetup_ItemIEs->value.choice.E_RABs_ToBeSetup_Item;
+
+      XNAP_HANDOVER_REQ(msg).e_rabs_tobesetup[i].e_rab_id = e_RABs_ToBeSetup_Item->e_RAB_ID ;
+
+      memcpy(XNAP_HANDOVER_REQ(msg).e_rabs_tobesetup[i].eNB_addr.buffer,
+                     e_RABs_ToBeSetup_Item->uL_GTPtunnelEndpoint.transportLayerAddress.buf,
+                     e_RABs_ToBeSetup_Item->uL_GTPtunnelEndpoint.transportLayerAddress.size);
+
+      XNAP_HANDOVER_REQ(msg).e_rabs_tobesetup[i].eNB_addr.length =
+                      e_RABs_ToBeSetup_Item->uL_GTPtunnelEndpoint.transportLayerAddress.size * 8 - e_RABs_ToBeSetup_Item->uL_GTPtunnelEndpoint.transportLayerAddress.bits_unused;
+
+      OCTET_STRING_TO_INT32(&e_RABs_ToBeSetup_Item->uL_GTPtunnelEndpoint.gTP_TEID,
+                                                XNAP_HANDOVER_REQ(msg).e_rabs_tobesetup[i].gtp_teid);
+
+      XNAP_HANDOVER_REQ(msg).e_rab_param[i].qos.qci = e_RABs_ToBeSetup_Item->e_RAB_Level_QoS_Parameters.qCI;
+      XNAP_HANDOVER_REQ(msg).e_rab_param[i].qos.allocation_retention_priority.priority_level = e_RABs_ToBeSetup_Item->e_RAB_Level_QoS_Parameters.allocationAndRetentionPriority.priorityLevel;
+      XNAP_HANDOVER_REQ(msg).e_rab_param[i].qos.allocation_retention_priority.pre_emp_capability = e_RABs_ToBeSetup_Item->e_RAB_Level_QoS_Parameters.allocationAndRetentionPriority.pre_emptionCapability;
+      XNAP_HANDOVER_REQ(msg).e_rab_param[i].qos.allocation_retention_priority.pre_emp_vulnerability = e_RABs_ToBeSetup_Item->e_RAB_Level_QoS_Parameters.allocationAndRetentionPriority.pre_emptionVulnerability;
+    }
+
+  }
+    else {
+    SO_ERROR ("Can't decode the e_RABs_ToBeSetup_List \n");
+  }
+**/
+//  XNAP_RRC_Context_t *c = &ie->value.choice.UE_ContextInformation.rRC_Context;
+     OCTET_STRING_t *c = &ie->value.choice.UEContextInfoHORequest.rrc_Context;
+  if (sizeof(c) > 8192 /* TODO: this is the size of rrc_buffer in struct x2ap_handover_req_s */)
+    { printf("%s:%d: fatal: buffer too big\n", __FILE__, __LINE__); abort(); }
+
+//  memcpy(XNAP_HANDOVER_REQ(msg).ue_context.rrc_buffer, c, sizeof(c));
+  XNAP_HANDOVER_REQ(msg).ue_context.rrc_buffer_size = sizeof(c);
+
+  itti_send_msg_to_task(TASK_RRC_GNB, instance_p->instance, msg);
+
+  return 0;
+}
+                                                           
+

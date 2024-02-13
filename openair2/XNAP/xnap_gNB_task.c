@@ -226,7 +226,8 @@ void xnap_gNB_handle_handover_req(instance_t instance,
   id_manager = &instance_p->id_manager;
   ue_id = xnap_allocate_new_id(id_manager);
   MessageDef *message_p = itti_alloc_new_message(TASK_XNAP, 0, XNAP_HANDOVER_REQ);
-  message_p->ittiMsgHeader.originInstance = assoc_id;
+//  message_p->ittiMsgHeader.originInstance = assoc_id;
+  assoc_id = xnap_gNB_get_assoc_id(instance_p); 
   xnap_handover_req_t *req = &XNAP_HANDOVER_REQ(message_p);
   if (ue_id == -1) {
     LOG_E(XNAP,"could not allocate a new XNAP UE ID\n");

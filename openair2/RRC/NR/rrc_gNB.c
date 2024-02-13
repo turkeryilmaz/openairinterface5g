@@ -1357,7 +1357,7 @@ static inline uint64_t bitStr_to_uint64(const BIT_STRING_t *asn) {
   return result;
 }
 
-void rrc_gNB_process_HandoverPreparationInformation(//// why is this here? should be in RRC
+void rrc_gNB_process_HandoverPreparationInformation(
      rrc_gNB_ue_context_t *ue_context_p,
      uint8_t    *buffer,
      int        *size)
@@ -1483,22 +1483,23 @@ void rrc_gNB_process_MeasurementReport(rrc_gNB_ue_context_t *ue_context_p, NR_Me
     const float rsinr = (float) (*mqr->sinr - 46) / 2.0f;
     LOG_D(RRC, "RSRP %ld dBm RSRQ %.1f dB SINR %.1f dB\n", rrsrp, rrsrq, rsinr);
   }
-   /** Handling of Neighborcells has to be done here
+   /** Handling of Neighborcells has to be done here  **/
     if (!ue_ctxt->measResults->measResultNeighCells) {
       ue_ctxt->measResults->measResultNeighCells = calloc(1,sizeof(*ue_ctxt->measResults->measResultNeighCells));
-      ue_ctxt->measResults->measResultNeighCells->present = NR_MeasResults__measResultNeighCells_PR_measResultNeighCellListNR_r15;
-      ue_ctxt->measResults->measResultNeighCells->choice.measResultNeighCellListNR_r15.list.array = calloc(1, sizeof(*ue_ctxt->measResults.measResultNeighCells.choice.measResultNeighCellListNR_r15.list.array));
-      ue_ctxt->measResults->measResultNeighCells->choice.measResultNeighCellListNR_r15.list.array[0] = calloc(1, sizeof(*ue_ctxt->measResults.measResultNeighCells.choice.measResultNeighCellListNR_r15.list.array[0]));
-      ue_ctxt->measResults->measResultNeighCells->choice.measResultNeighCellListNR_r15.list.count = 1;
-    } **/
+      ue_ctxt->measResults->measResultNeighCells->present = NR_MeasResults__measResultNeighCells_PR_measResultListNR;
+      ue_ctxt->measResults->measResultNeighCells->choice.measResultListNR->list.array = calloc(1, sizeof(*ue_ctxt->measResults->measResultNeighCells->choice.measResultListNR->list.array));
+      ue_ctxt->measResults->measResultNeighCells->choice.measResultListNR->list.array[0] = calloc(1, sizeof(*ue_ctxt->measResults->measResultNeighCells->choice.measResultListNR->list.array[0]));
+      ue_ctxt->measResults->measResultNeighCells->choice.measResultListNR->list.count = 1;
+    }
 
   LOG_D(RRC, "NR MeasID %ld\n", id);
 
   /*ALL NeighbourCell*/
-//  NR_MeasResultNR_t *neighbour_measresult = ik_measResults->measResultNeighCells->choice.measResultListNR->list.array[0] ;  /* Need to review this whether to retain */
+  NR_MeasResultNR_t *neighbour_measresult = ik_measResults->measResultNeighCells->choice.measResultListNR->list.array[0] ;  /* Need to review this whether to retain */
 
   /*Imran*/
   MessageDef      *msg;
+  //int ncell_index=0; 
   msg = itti_alloc_new_message(TASK_RRC_GNB, 0, XNAP_HANDOVER_REQ);
 
   /* Need to add function to get best neighbour cells */
@@ -1508,6 +1509,20 @@ void rrc_gNB_process_MeasurementReport(rrc_gNB_ue_context_t *ue_context_p, NR_Me
      XNAP_HANDOVER_REQ(msg).ue_context.rrc_buffer,
      &XNAP_HANDOVER_REQ(msg).ue_context.rrc_buffer_size);
 
+     XNAP_HANDOVER_REQ(msg).target_cgi.cgi = ue_ctxt->measResults->measResultNeighCells->choice.
+        measResultListNR->list.array[0]->physCellId;//hardcoded to 0 , confirm if its phy cell id only, add plmn-mcc,mnc
+    XNAP_HANDOVER_REQ(msg).guami.plmn_id.mcc = ue_ctxt->ue_guami.mcc;
+    XNAP_HANDOVER_REQ(msg).guami.plmn_id.mnc = ue_ctxt->ue_guami.mnc;
+    XNAP_HANDOVER_REQ(msg).guami.plmn_id.mnc_digit_length = ue_ctxt->ue_guami.mnc_len;
+    XNAP_HANDOVER_REQ(msg).guami.amf_region_id = ue_ctxt->ue_guami.amf_region_id;
+    XNAP_HANDOVER_REQ(msg).guami.amf_set_id = ue_ctxt->ue_guami.amf_set_id;
+    XNAP_HANDOVER_REQ(msg).guami.amf_pointer = ue_ctxt->ue_guami.amf_pointer;
+    XNAP_HANDOVER_REQ(msg).ue_context.security_capabilities = ue_ctxt->xnap_security_capabilities;
+    // compute kgNB*
+    // Need to add kgNB computation
+//    XNAP_HANDOVER_REQ(msg).kenb_ncc = ue_context_pP->ue_context.kenb_ncc;
+ //   XNAP_HANDOVER_REQ(msg).nb_e_rabs_tobesetup = ue_context_pP->ue_context.setup_e_rabs; 
+////send to TASK_XNAP
 }
 
 static int handle_rrcReestablishmentComplete(const protocol_ctxt_t *const ctxt_pP,

@@ -258,6 +258,7 @@ typedef struct xnap_ue_context_info_s {
   uint8_t rrc_buffer[8192 /* arbitrary, big enough */];
   xnap_uehistory_info_t uehistory_info;//most recent info added at top(upto 16). how many needed?
   int rrc_buffer_size;//rrc msg type needed?
+  int target_assoc_id;
 } xnap_ue_context_info_t;
 
 typedef struct xnap_handover_req_s {

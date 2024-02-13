@@ -773,7 +773,7 @@ int xnap_gNB_generate_xn_setup_response(sctp_assoc_t assoc_id, xnap_setup_resp_t
  //  DevAssert(pdu != NULL);
    xnhandoverreq = &pdu.choice.initiatingMessage->value.choice.HandoverRequest;
     /* Send a xn setup failure with protocol cause unspecified */
-    MessageDef *message_p = itti_alloc_new_message(TASK_XNAP, 0, XNAP_HANDOVER_REQ);
+    MessageDef *message_p = itti_alloc_new_message(TASK_XNAP, 0, XNAP_FAILURE_REQ);// failure
     message_p->ittiMsgHeader.originInstance = assoc_id;
     itti_send_msg_to_task(TASK_XNAP, 0, message_p);
   
@@ -792,7 +792,7 @@ int xnap_gNB_generate_xn_setup_response(sctp_assoc_t assoc_id, xnap_setup_resp_t
   ie->id = XNAP_ProtocolIE_ID_id_sourceNG_RANnodeUEXnAPID;
   ie->criticality = XNAP_Criticality_reject;
   ie->value.present = XNAP_HandoverRequest_IEs__value_PR_NG_RANnodeUEXnAPID;
- // ie->value.choice.UE_XnAP_ID = xnap_id_get_id_source(&instance_p->id_manager, ue_id);
+ // ie->value.choice.UE_XnAP_ID = xnap_id_get_id_source(&instance_p->id_manager, ue_id);//// value to be added.
   asn1cSeqAdd(&xnhandoverreq->protocolIEs.list, ie);
 
   /* mandatory */
@@ -811,12 +811,12 @@ int xnap_gNB_generate_xn_setup_response(sctp_assoc_t assoc_id, xnap_setup_resp_t
   ie->value.present = XNAP_HandoverRequest_IEs__value_PR_Target_CGI;
   ie->value.choice.Target_CGI.present = XNAP_Target_CGI_PR_nr;
   ie->value.choice.Target_CGI.choice.nr = (XNAP_NR_CGI_t *)calloc(1, sizeof(XNAP_NR_CGI_t));
-  MCC_MNC_TO_PLMNID(xnap_handover_req->plmn_id.mcc,
+  MCC_MNC_TO_PLMNID(xnap_handover_req->plmn_id.mcc,/// correct
                     xnap_handover_req->plmn_id.mnc,
                     xnap_handover_req->plmn_id.mnc_digit_length,
                     &ie->value.choice.Target_CGI.choice.nr->plmn_id); 
- //  NR_CELL_ID_TO_BIT_STRING(xnap_handover_req->plmn_id,
-   //                            &ie->value.choice.Target_CGI.choice.nr->nr_CI); // bit string
+   NR_CELL_ID_TO_BIT_STRING(xnap_handover_req->target_cgi.cgi,
+                               &ie->value.choice.Target_CGI.choice.nr->nr_CI); // bit string
    asn1cSeqAdd(&xnhandoverreq->protocolIEs.list, ie); 
 
   /* mandatory */
