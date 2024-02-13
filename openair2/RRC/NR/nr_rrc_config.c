@@ -2225,6 +2225,29 @@ static NR_SpCellConfig_t *get_initial_SpCellConfig(int uid,
                                 && uplinkConfig->pusch_ServingCellConfig->choice.setup->ext1->maxMIMO_Layers
                             ? *uplinkConfig->pusch_ServingCellConfig->choice.setup->ext1->maxMIMO_Layers
                             : 1;
+  // Allocate memory for configuredGrantConfig
+  initialUplinkBWP->configuredGrantConfig = calloc(1,sizeof(*initialUplinkBWP->configuredGrantConfig));
+  initialUplinkBWP->configuredGrantConfig->present = NR_SetupRelease_ConfiguredGrantConfig_PR_setup;
+  NR_ConfiguredGrantConfig_t *configuredGrantConfig = calloc(1, sizeof(*configuredGrantConfig));
+  initialUplinkBWP->configuredGrantConfig->choice.setup = configuredGrantConfig;
+  if (configuredGrantConfig != NULL){
+      configuredGrantConfig->frequencyHopping = calloc(1,sizeof(*configuredGrantConfig->frequencyHopping));
+      *configuredGrantConfig->frequencyHopping = NR_ConfiguredGrantConfig__frequencyHopping_interSlot;
+      configuredGrantConfig->mcs_Table = calloc(1,sizeof(*configuredGrantConfig->mcs_Table));
+      *configuredGrantConfig->mcs_Table = NR_ConfiguredGrantConfig__mcs_Table_qam256;
+      configuredGrantConfig->mcs_TableTransformPrecoder = calloc(1,sizeof(*configuredGrantConfig->mcs_TableTransformPrecoder));
+      *configuredGrantConfig->mcs_TableTransformPrecoder = NR_ConfiguredGrantConfig__mcs_TableTransformPrecoder_qam256;
+      configuredGrantConfig->rbg_Size = calloc(1,sizeof(*configuredGrantConfig->rbg_Size));
+      *configuredGrantConfig->rbg_Size = NR_ConfiguredGrantConfig__rbg_Size_config2;
+      configuredGrantConfig->transformPrecoder = calloc(1,sizeof(*configuredGrantConfig->transformPrecoder));
+      *configuredGrantConfig->transformPrecoder = NR_ConfiguredGrantConfig__transformPrecoder_enabled;
+      configuredGrantConfig->repK_RV = calloc(1,sizeof(*configuredGrantConfig->repK_RV));
+      *configuredGrantConfig->repK_RV= NR_ConfiguredGrantConfig__repK_RV_s1_0231;
+  }
+
+  if (configuredGrantConfig != NULL){
+      asn_fprint(stdout, &asn_DEF_NR_ConfiguredGrantConfig, configuredGrantConfig);
+  }
 
   // We are using do_srs = 0 here because the periodic SRS will only be enabled in update_cellGroupConfig() if do_srs == 1
   initialUplinkBWP->srs_Config = calloc(1, sizeof(*initialUplinkBWP->srs_Config));
