@@ -2244,26 +2244,68 @@ static NR_SpCellConfig_t *get_initial_SpCellConfig(int uid,
       configuredGrantConfig->repK_RV = calloc(1,sizeof(*configuredGrantConfig->repK_RV));
       *configuredGrantConfig->repK_RV = NR_ConfiguredGrantConfig__repK_RV_s1_0231;
       configuredGrantConfig->configuredGrantTimer = calloc(1,sizeof(*configuredGrantConfig->configuredGrantTimer));
-      *configuredGrantConfig->configuredGrantTimer = 10;
-      configuredGrantConfig->resourceAllocation = 4;
-      configuredGrantConfig->powerControlLoopToUse = 5;
-      configuredGrantConfig->nrofHARQ_Processes = 5;
-      configuredGrantConfig->repK = 5;
-      configuredGrantConfig->periodicity = 5;
+      *configuredGrantConfig->configuredGrantTimer;
+      configuredGrantConfig->resourceAllocation;
+      configuredGrantConfig->powerControlLoopToUse;
+      configuredGrantConfig->nrofHARQ_Processes;
+      configuredGrantConfig->repK;
+      configuredGrantConfig->periodicity;
       configuredGrantConfig->rrc_ConfiguredUplinkGrant = calloc(1, sizeof(*configuredGrantConfig->rrc_ConfiguredUplinkGrant));
-      configuredGrantConfig->rrc_ConfiguredUplinkGrant->timeDomainOffset = 5;
-      configuredGrantConfig->rrc_ConfiguredUplinkGrant->timeDomainAllocation = 5;
-      configuredGrantConfig->rrc_ConfiguredUplinkGrant->antennaPort = 2;
+      configuredGrantConfig->rrc_ConfiguredUplinkGrant->timeDomainOffset;
+      configuredGrantConfig->rrc_ConfiguredUplinkGrant->timeDomainAllocation;
+      configuredGrantConfig->rrc_ConfiguredUplinkGrant->antennaPort;
       configuredGrantConfig->rrc_ConfiguredUplinkGrant->dmrs_SeqInitialization = calloc(1, sizeof(*configuredGrantConfig->rrc_ConfiguredUplinkGrant->dmrs_SeqInitialization));
-      *configuredGrantConfig->rrc_ConfiguredUplinkGrant->dmrs_SeqInitialization = 5;
-      
-
-
-
-      
-
-
-
+      *configuredGrantConfig->rrc_ConfiguredUplinkGrant->dmrs_SeqInitialization;
+      configuredGrantConfig->rrc_ConfiguredUplinkGrant->precodingAndNumberOfLayers;
+      configuredGrantConfig->rrc_ConfiguredUplinkGrant->srs_ResourceIndicator = calloc(1, sizeof(*configuredGrantConfig->rrc_ConfiguredUplinkGrant->srs_ResourceIndicator));
+      *configuredGrantConfig->rrc_ConfiguredUplinkGrant->srs_ResourceIndicator;
+      configuredGrantConfig->rrc_ConfiguredUplinkGrant->mcsAndTBS;
+      configuredGrantConfig->rrc_ConfiguredUplinkGrant->frequencyHoppingOffset = calloc(1, sizeof(*configuredGrantConfig->rrc_ConfiguredUplinkGrant->frequencyHoppingOffset));
+      *configuredGrantConfig->rrc_ConfiguredUplinkGrant->frequencyHoppingOffset;
+      configuredGrantConfig->rrc_ConfiguredUplinkGrant->pathlossReferenceIndex;
+      configuredGrantConfig->rrc_ConfiguredUplinkGrant->ext1 = calloc(1, sizeof(*configuredGrantConfig->rrc_ConfiguredUplinkGrant->ext1));
+      *configuredGrantConfig->rrc_ConfiguredUplinkGrant->ext1->pusch_RepTypeIndicator_r16;
+      configuredGrantConfig->rrc_ConfiguredUplinkGrant->ext1 = calloc(1, sizeof(*configuredGrantConfig->rrc_ConfiguredUplinkGrant->ext1));
+      *configuredGrantConfig->rrc_ConfiguredUplinkGrant->ext1->frequencyHoppingPUSCH_RepTypeB_r16;
+      configuredGrantConfig->rrc_ConfiguredUplinkGrant->ext1 = calloc(1, sizeof(*configuredGrantConfig->rrc_ConfiguredUplinkGrant->ext1));
+      *configuredGrantConfig->rrc_ConfiguredUplinkGrant->ext1->timeReferenceSFN_r16;
+       configuredGrantConfig->rrc_ConfiguredUplinkGrant->ext2 = calloc(1, sizeof(*configuredGrantConfig->rrc_ConfiguredUplinkGrant->ext2));
+      *configuredGrantConfig->rrc_ConfiguredUplinkGrant->ext2->pathlossReferenceIndex2_r17;
+       configuredGrantConfig->rrc_ConfiguredUplinkGrant->ext2 = calloc(1, sizeof(*configuredGrantConfig->rrc_ConfiguredUplinkGrant->ext2));
+      *configuredGrantConfig->rrc_ConfiguredUplinkGrant->ext2->srs_ResourceIndicator2_r17;
+      configuredGrantConfig->rrc_ConfiguredUplinkGrant->ext2 = calloc(1, sizeof(*configuredGrantConfig->rrc_ConfiguredUplinkGrant->ext2));
+      *configuredGrantConfig->rrc_ConfiguredUplinkGrant->ext2->precodingAndNumberOfLayers2_r17;
+      configuredGrantConfig->rrc_ConfiguredUplinkGrant->ext2 = calloc(1, sizeof(*configuredGrantConfig->rrc_ConfiguredUplinkGrant->ext2));
+      *configuredGrantConfig->rrc_ConfiguredUplinkGrant->ext2->timeDomainAllocation_v1710;
+      configuredGrantConfig->rrc_ConfiguredUplinkGrant->ext2 = calloc(1, sizeof(*configuredGrantConfig->rrc_ConfiguredUplinkGrant->ext2));
+      *configuredGrantConfig->rrc_ConfiguredUplinkGrant->ext2->timeDomainOffset_r17;
+      configuredGrantConfig->ext1->cg_COT_SharingList_r16 = calloc(1, sizeof(*configuredGrantConfig->ext1->cg_COT_SharingList_r16));
+      *configuredGrantConfig->ext1->cg_RetransmissionTimer_r16;
+      configuredGrantConfig->ext1->cg_COT_SharingList_r16 = calloc(1, sizeof(*configuredGrantConfig->ext1->cg_COT_SharingList_r16));
+      *configuredGrantConfig->ext1->cg_minDFI_Delay_r16;
+      configuredGrantConfig->ext1->cg_COT_SharingList_r16 = calloc(1, sizeof(*configuredGrantConfig->ext1->cg_COT_SharingList_r16));
+      *configuredGrantConfig->ext1->cg_nrofPUSCH_InSlot_r16;
+       configuredGrantConfig->ext1->cg_COT_SharingList_r16 = calloc(1, sizeof(*configuredGrantConfig->ext1->cg_COT_SharingList_r16));
+      *configuredGrantConfig->ext1->cg_nrofSlots_r16;
+      configuredGrantConfig->ext1->cg_COT_SharingList_r16 = calloc(1, sizeof(*configuredGrantConfig->ext1->cg_COT_SharingList_r16));
+      *configuredGrantConfig->ext1->cg_UCI_Multiplexing_r16;
+      configuredGrantConfig->ext1->cg_COT_SharingList_r16 = calloc(1, sizeof(*configuredGrantConfig->ext1->cg_COT_SharingList_r16));
+      *configuredGrantConfig->ext1->cg_COT_SharingOffset_r16;
+      configuredGrantConfig->ext1->cg_COT_SharingList_r16 = calloc(1, sizeof(*configuredGrantConfig->ext1->cg_COT_SharingList_r16));
+      *configuredGrantConfig->ext1->betaOffsetCG_UCI_r16;
+      configuredGrantConfig->ext1 = calloc(1, sizeof(*configuredGrantConfig->ext1));
+      *configuredGrantConfig->ext1->harq_ProcID_Offset_r16;
+      configuredGrantConfig->ext1 = calloc(1, sizeof(*configuredGrantConfig->ext1));
+      *configuredGrantConfig->ext1->harq_ProcID_Offset2_r16;
+      configuredGrantConfig->ext1 = calloc(1, sizeof(*configuredGrantConfig->ext1));
+      *configuredGrantConfig->ext1->periodicityExt_r16;
+      configuredGrantConfig->ext1 = calloc(1, sizeof(*configuredGrantConfig->ext1));
+      *configuredGrantConfig->ext1->startingFromRV0_r16;
+      configuredGrantConfig->ext1 = calloc(1, sizeof(*configuredGrantConfig->ext1));
+      *configuredGrantConfig->ext1->phy_PriorityIndex_r16;
+      configuredGrantConfig->ext1 = calloc(1, sizeof(*configuredGrantConfig->ext1));
+      *configuredGrantConfig->ext1->autonomousTx_r16;
+      //TO do: start implimenting from line 270 and check back all the strucks you have not implimented yet
   }
 
   if (configuredGrantConfig != NULL){
