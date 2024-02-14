@@ -3166,7 +3166,7 @@ void nr_mac_trigger_ul_failure(int rnti)
   sched_ctrl->ul_failure = true;
   // 30 seconds till triggering release request
   NR_SubcarrierSpacing_t subcarrier_spacing = UE->current_DL_BWP.scs;
-  sched_ctrl->ul_failure_timer = 30000 << subcarrier_spacing;
+  sched_ctrl->ul_failure_timer = 5000 << subcarrier_spacing;
 }
 
 void nr_mac_reset_ul_failure(NR_UE_sched_ctrl_t *sched_ctrl)
@@ -3191,7 +3191,7 @@ void nr_mac_check_ul_failure(const gNB_MAC_INST *nrmac, int rnti, NR_UE_sched_ct
       .gNB_CU_ue_id = ue_data.secondary_ue,
       .gNB_DU_ue_id = rnti,
       .cause = F1AP_CAUSE_RADIO_NETWORK,
-      .cause_value = F1AP_CauseRadioNetwork_rl_failure_others,
+      .cause_value = F1AP_CauseRadioNetwork_rl_failure_rlc,
     };
     nrmac->mac_rrc.ue_context_release_request(&request);
   }
