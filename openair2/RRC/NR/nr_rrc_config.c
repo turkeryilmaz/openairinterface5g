@@ -1767,10 +1767,9 @@ NR_BCCH_BCH_Message_t *get_new_MIB_NR(const NR_ServingCellConfigCommon_t *scc)
   AssertFatal(scc->ssbSubcarrierSpacing != NULL, "scc->ssbSubcarrierSpacing is null\n");
   int ssb_subcarrier_offset = 31; // default value for NSA
   if (get_softmodem_params()->sa) {
-    nr_sco_info_t sco = get_ssb_subcarrier_offset(*scc->ssbSubcarrierSpacing,
-                                                  *scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB,
-                                                  scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA);
-    ssb_subcarrier_offset = sco.subcarrier_offset;
+    ssb_subcarrier_offset = get_ssb_subcarrier_offset(*scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB,
+                                                      scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA,
+                                                      *scc->ssbSubcarrierSpacing);
   }
   mib->message.choice.mib->ssb_SubcarrierOffset = ssb_subcarrier_offset & 15;
 

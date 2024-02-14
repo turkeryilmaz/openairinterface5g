@@ -350,7 +350,7 @@ int nr_init_frame_parms_ue(NR_DL_FRAME_PARMS *fp,
   if (((fp->freq_range == nr_FR1) && (config->ssb_table.ssb_subcarrier_offset < 24)) ||
       ((fp->freq_range == nr_FR2) && (config->ssb_table.ssb_subcarrier_offset < 12))) {
     if (fp->freq_range == nr_FR1)
-      sco = config->ssb_table.ssb_subcarrier_offset >> config->ssb_config.scs_common;
+      sco = config->ssb_table.ssb_subcarrier_offset>>config->ssb_config.scs_common;
     else
       sco = config->ssb_table.ssb_subcarrier_offset;
   }

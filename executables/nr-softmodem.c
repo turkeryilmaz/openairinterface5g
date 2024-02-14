@@ -299,7 +299,6 @@ static int create_gNB_tasks(ngran_node_t node_type, configmodule_interface_t *cf
 
   RCconfig_verify(cfg, node_type);
 
-  RCconfig_NR_L1();
   RCconfig_nr_prs();
 
   if (RC.nb_nr_macrlc_inst > 0)
@@ -400,7 +399,7 @@ static int create_gNB_tasks(ngran_node_t node_type, configmodule_interface_t *cf
       }
     }
 
-    // If CU
+    // E1AP initialisation, whether the node is a CU or has integrated CU
     if (node_type == ngran_gNB_CU || node_type == ngran_gNB) {
       MessageDef *msg = RCconfig_NR_CU_E1(NULL);
       instance_t inst = 0;
@@ -682,11 +681,13 @@ int main( int argc, char **argv ) {
 #endif
   LOG_I(HW, "Version: %s\n", PACKAGE_VERSION);
 
-  if (RC.nb_nr_L1_inst > 0)
-    RCconfig_NR_L1();
 
   // don't create if node doesn't connect to RRC/S1/GTP
   const ngran_node_t node_type = get_node_type();
+
+  if (RC.nb_nr_L1_inst > 0)
+    RCconfig_NR_L1();
+
   if (NFAPI_MODE != NFAPI_MODE_PNF) {
     int ret = create_gNB_tasks(node_type, uniqCfg);
     AssertFatal(ret == 0, "cannot create ITTI tasks\n");
