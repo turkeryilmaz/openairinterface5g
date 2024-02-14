@@ -2305,6 +2305,19 @@ static NR_SpCellConfig_t *get_initial_SpCellConfig(int uid,
       *configuredGrantConfig->ext1->phy_PriorityIndex_r16;
       configuredGrantConfig->ext1 = calloc(1, sizeof(*configuredGrantConfig->ext1));
       *configuredGrantConfig->ext1->autonomousTx_r16;
+      configuredGrantConfig->ext2->mappingPattern_r17 = calloc(1,sizeof(*configuredGrantConfig->ext2->mappingPattern_r17));
+      *configuredGrantConfig->ext2->mappingPattern_r17 = NR_ConfiguredGrantConfig__ext2__mappingPattern_r17_cyclicMapping;
+      configuredGrantConfig->ext2->sequenceOffsetForRV_r17 = calloc(1,sizeof(*configuredGrantConfig->ext2->sequenceOffsetForRV_r17));
+      *configuredGrantConfig->ext2->sequenceOffsetForRV_r17 = NULL ;
+      configuredGrantConfig->ext2->powerControlLoopToUse2_r17 = calloc(1,sizeof(*configuredGrantConfig->ext2->powerControlLoopToUse2_r17));
+      *configuredGrantConfig->ext2->powerControlLoopToUse2_r17 = NR_ConfiguredGrantConfig__ext2__powerControlLoopToUse2_r17_n0;
+      configuredGrantConfig->ext2->periodicityExt_r17 = calloc(1,sizeof(*configuredGrantConfig->ext2->periodicityExt_r17));
+      *configuredGrantConfig->ext2->periodicityExt_r17 = NULL;
+      configuredGrantConfig->ext2->repK_v1710 = calloc(1,sizeof(*configuredGrantConfig->ext2->repK_v1710));
+      *configuredGrantConfig->ext2->repK_v1710 = NR_ConfiguredGrantConfig__ext2__repK_v1710_n12;
+      
+
+
       //TO do: start implimenting from line 270 and check back all the strucks you have not implimented yet
   }
 
