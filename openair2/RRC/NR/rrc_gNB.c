@@ -2655,11 +2655,22 @@ static pdu_session_to_setup_t fill_pdu_session(const rrc_pdu_session_param_t *se
   return pdu;
 }
 
+static int get_single_ue_rnti(void)
+{
+  rrc_gNB_ue_context_t *ue_context_p = NULL;
+  RB_FOREACH(ue_context_p, rrc_nr_ue_tree_s, &(RC.nrrrc[0]->rrc_ue_head)) {
+    return ue_context_p->ue_context.rnti;
+  }
+  return -1;
+}
+
 extern instance_t get_f1_gtp_instance(void);
 void rrc_gNB_trigger_new_bearer(int rnti)
 {
   /* get RRC and UE */
   gNB_RRC_INST *rrc = RC.nrrrc[0];
+  if (rnti < 0)
+    rnti = get_single_ue_rnti();
   rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context_by_rnti_any_du(rrc, rnti);
   if (ue_context_p == NULL) {
     LOG_E(RRC, "unknown UE RNTI %04x\n", rnti);
@@ -2774,6 +2785,8 @@ void rrc_gNB_trigger_release_bearer(int rnti)
 {
   /* get RRC and UE */
   gNB_RRC_INST *rrc = RC.nrrrc[0];
+  if (rnti < 0)
+    rnti = get_single_ue_rnti();
   rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context_by_rnti_any_du(rrc, rnti);
   if (ue_context_p == NULL) {
     LOG_E(RRC, "unknown UE RNTI %04x\n", rnti);
