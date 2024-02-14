@@ -2655,6 +2655,7 @@ static pdu_session_to_setup_t fill_pdu_session(const rrc_pdu_session_param_t *se
   return pdu;
 }
 
+extern instance_t get_f1_gtp_instance(void);
 void rrc_gNB_trigger_new_bearer(int rnti)
 {
   /* get RRC and UE */
@@ -2716,7 +2717,6 @@ void rrc_gNB_trigger_new_bearer(int rnti)
                    int_key);
 
   /* initialize F1 GTP, if necessary */
-  extern instance_t get_f1_gtp_instance(void);
   instance_t f1inst = get_f1_gtp_instance();
   uint8_t tlAddress[4] = {0};
   long teid = 0;
@@ -2809,6 +2809,11 @@ void rrc_gNB_trigger_release_bearer(int rnti)
   }
   *asn1_drb = drb_id;
   asn1cSeqAdd(&ue->DRB_ReleaseList->list, asn1_drb);
+
+  instance_t f1inst = get_f1_gtp_instance();
+  if (f1inst >= 0)
+    newGtpuDeleteOneTunnel(f1inst, ue->rrc_ue_id, drb_id);
+  nr_pdcp_release_drb(ue->rrc_ue_id, drb_id);
 
   f1ap_drb_to_be_released_t drbs_to_be_released[1] = {{.rb_id = drb_id}};
   f1_ue_data_t ue_data = cu_get_f1_ue_data(ue->rrc_ue_id);
