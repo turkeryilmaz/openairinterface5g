@@ -2233,10 +2233,18 @@ static NR_SpCellConfig_t *get_initial_SpCellConfig(int uid,
   if (configuredGrantConfig != NULL){
       configuredGrantConfig->frequencyHopping = calloc(1,sizeof(*configuredGrantConfig->frequencyHopping));
       *configuredGrantConfig->frequencyHopping = NR_ConfiguredGrantConfig__frequencyHopping_interSlot;
+      //need to be checked
+      NR_DMRS_UplinkConfig_t *cg_DMRS_Configuration = calloc(1,sizeof(*cg_DMRS_Configuration));
+      cg_DMRS_Configuration->dmrs_Type = 0;
+      //TODO: Add the other required parameters
       configuredGrantConfig->mcs_Table = calloc(1,sizeof(*configuredGrantConfig->mcs_Table));
       *configuredGrantConfig->mcs_Table = NR_ConfiguredGrantConfig__mcs_Table_qam256;
       configuredGrantConfig->mcs_TableTransformPrecoder = calloc(1,sizeof(*configuredGrantConfig->mcs_TableTransformPrecoder));
       *configuredGrantConfig->mcs_TableTransformPrecoder = NR_ConfiguredGrantConfig__mcs_TableTransformPrecoder_qam256;
+      configuredGrantConfig->uci_OnPUSCH = calloc(1, sizeof(*configuredGrantConfig->uci_OnPUSCH));
+      configuredGrantConfig->uci_OnPUSCH->present = NR_SetupRelease_CG_UCI_OnPUSCH_PR_setup;
+      NR_SetupRelease_CG_UCI_OnPUSCH_t *uci_OnPUSCH = calloc(1, sizeof(*uci_OnPUSCH));
+      configuredGrantConfig->uci_OnPUSCH->choice.setup = uci_OnPUSCH;
       configuredGrantConfig->rbg_Size = calloc(1,sizeof(*configuredGrantConfig->rbg_Size));
       *configuredGrantConfig->rbg_Size = NR_ConfiguredGrantConfig__rbg_Size_config2;
       configuredGrantConfig->transformPrecoder = calloc(1,sizeof(*configuredGrantConfig->transformPrecoder));
@@ -2247,6 +2255,8 @@ static NR_SpCellConfig_t *get_initial_SpCellConfig(int uid,
       *configuredGrantConfig->configuredGrantTimer;
       configuredGrantConfig->resourceAllocation;
       configuredGrantConfig->powerControlLoopToUse;
+      //need to be checked 
+      NR_P0_PUSCH_AlphaSetId_t p0_PUSCH_Alpha = 0;
       configuredGrantConfig->nrofHARQ_Processes;
       configuredGrantConfig->repK;
       configuredGrantConfig->periodicity;
@@ -2263,6 +2273,8 @@ static NR_SpCellConfig_t *get_initial_SpCellConfig(int uid,
       configuredGrantConfig->rrc_ConfiguredUplinkGrant->frequencyHoppingOffset = calloc(1, sizeof(*configuredGrantConfig->rrc_ConfiguredUplinkGrant->frequencyHoppingOffset));
       *configuredGrantConfig->rrc_ConfiguredUplinkGrant->frequencyHoppingOffset;
       configuredGrantConfig->rrc_ConfiguredUplinkGrant->pathlossReferenceIndex;
+      //extensions
+      /*
       configuredGrantConfig->rrc_ConfiguredUplinkGrant->ext1 = calloc(1, sizeof(*configuredGrantConfig->rrc_ConfiguredUplinkGrant->ext1));
       *configuredGrantConfig->rrc_ConfiguredUplinkGrant->ext1->pusch_RepTypeIndicator_r16;
       configuredGrantConfig->rrc_ConfiguredUplinkGrant->ext1 = calloc(1, sizeof(*configuredGrantConfig->rrc_ConfiguredUplinkGrant->ext1));
@@ -2315,10 +2327,20 @@ static NR_SpCellConfig_t *get_initial_SpCellConfig(int uid,
       *configuredGrantConfig->ext2->periodicityExt_r17 = NULL;
       configuredGrantConfig->ext2->repK_v1710 = calloc(1,sizeof(*configuredGrantConfig->ext2->repK_v1710));
       *configuredGrantConfig->ext2->repK_v1710 = NR_ConfiguredGrantConfig__ext2__repK_v1710_n12;
-      
-
-
+      configuredGrantConfig->ext2->nrofHARQ_Processes_v1700 = calloc(1,sizeof(*configuredGrantConfig->ext2->nrofHARQ_Processes_v1700));
+      *configuredGrantConfig->ext2->nrofHARQ_Processes_v1700 = NULL;
+      configuredGrantConfig->ext2->harq_ProcID_Offset2_v1700 = calloc(1,sizeof(*configuredGrantConfig->ext2->harq_ProcID_Offset2_v1700));
+      *configuredGrantConfig->ext2->harq_ProcID_Offset2_v1700 = NULL;
+      configuredGrantConfig->ext2->configuredGrantTimer_v1700 = calloc(1,sizeof(*configuredGrantConfig->ext2->configuredGrantTimer_v1700));
+      *configuredGrantConfig->ext2->configuredGrantTimer_v1700 = NULL;
+      configuredGrantConfig->ext2->cg_minDFI_Delay_v1710 = calloc(1,sizeof(*configuredGrantConfig->ext2->cg_minDFI_Delay_v1710));
+      *configuredGrantConfig->ext2->cg_minDFI_Delay_v1710 = NULL;
+      configuredGrantConfig->ext3->harq_ProcID_Offset_v1730 = calloc(1,sizeof(*configuredGrantConfig->ext3->harq_ProcID_Offset_v1730));
+      *configuredGrantConfig->ext3->harq_ProcID_Offset_v1730 = NULL;
+      configuredGrantConfig->ext3->cg_nrofSlots_r17 = calloc(1,sizeof(*configuredGrantConfig->ext3->cg_nrofSlots_r17));
+      *configuredGrantConfig->ext3->cg_nrofSlots_r17 = NULL;
       //TO do: start implimenting from line 270 and check back all the strucks you have not implimented yet
+      */
   }
 
   if (configuredGrantConfig != NULL){
