@@ -31,6 +31,7 @@
  */
 
 #include "nr_dci.h"
+# include "executables/softmodem-common.h"
 
 void nr_group_sequence_hopping (pucch_GroupHopping_t PUCCH_GroupHopping,
                                 uint32_t n_id,
@@ -63,7 +64,11 @@ void nr_group_sequence_hopping (pucch_GroupHopping_t PUCCH_GroupHopping,
   uint8_t f_ss=0,f_gh=0;
   *u=0;
   *v=0;
-  uint32_t c_init = 0; 
+  uint32_t c_init = 0;
+  if (get_softmodem_params()->sl_mode) {
+    *u = n_id % 30;
+    return;
+  }
   uint32_t x1,s; // TS 38.211 Subclause 5.2.1
   int l = 32, minShift = ((2*nr_slot_tx+n_hop)<<3);
   int tmpShift =0;
@@ -140,7 +145,8 @@ double nr_cyclic_shift_hopping(uint32_t n_id,
 
   uint32_t x1,s = lte_gold_generic(&x1, &c_init, 1); // TS 38.211 Subclause 5.2.1
   uint8_t n_cs=0;
-  int l = 32, minShift = (14*8*nr_slot_tx )+ 8*(lnormal+lprime);
+  int l = get_softmodem_params()->sl_mode ? 0 : 32;
+  int minShift = (14*8*nr_slot_tx) + 8*(lnormal+lprime);
   int tmpShift =0;
 #ifdef DEBUG_NR_PUCCH_TX
   printf("\t\t [nr_cyclic_shift_hopping] calculating alpha (cyclic shift) using c_init=%u -> \n",c_init);

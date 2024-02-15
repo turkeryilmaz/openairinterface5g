@@ -183,6 +183,11 @@ typedef struct SL_NR_UE_PSBCH {
 
 } SL_NR_UE_PSBCH_t;
 
+typedef struct SL_NR_UE_PSFCH {
+  // STATS - transmissions of PSFCH by the UE
+  uint16_t num_psfch_tx;
+} SL_NR_UE_PSFCH_t;
+
 typedef struct sl_nr_ue_phy_params {
 
   SL_NR_UE_INIT_PARAMS_t init_params;
@@ -197,6 +202,9 @@ typedef struct sl_nr_ue_phy_params {
   
   // sidelink phy parameters used for pssch reception/txn
   SL_NR_UE_PSSCH_t pssch;
+
+  // sidelink phy parameters used for psfch reception/txn
+  SL_NR_UE_PSFCH_t psfch;
 
   //Configuration parameters from MAC
   sl_nr_phy_config_request_t sl_config;

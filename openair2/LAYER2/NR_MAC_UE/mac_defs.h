@@ -449,9 +449,12 @@ typedef struct NR_sched_pssch {
 
 typedef struct {
   bool is_waiting;
+  bool is_active;
   uint8_t ndi;
   uint8_t round;
   uint16_t feedback_slot;
+  uint16_t feedback_frame;
+  int8_t sl_harq_pid;
 
   /// sched_pusch keeps information on MCS etc used for the initial transmission
   NR_sched_pssch_t sched_pssch;
@@ -600,6 +603,7 @@ typedef struct {
   NR_SSB_meas_t ssb_measurements;
 
   dci_pdu_rel15_t def_dci_pdu_rel15[NR_MAX_SLOTS_PER_FRAME][8];
+  sl_nr_tx_config_psfch_pdu_t *sl_tx_config_psfch_pdu[NR_MAX_HARQ_PROCESSES];
 
   // Defined for abstracted mode
   nr_downlink_indication_t dl_info;
