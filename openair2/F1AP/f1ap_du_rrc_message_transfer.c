@@ -212,6 +212,8 @@ int DU_send_INITIAL_UL_RRC_MESSAGE_TRANSFER(sctp_assoc_t assoc_id, const f1ap_in
   }
 
   f1ap_itti_send_sctp_data_req(assoc_id, buffer, len);
+  free(msg->rrc_container);
+  free(tmp);
   return 0;
 }
 
