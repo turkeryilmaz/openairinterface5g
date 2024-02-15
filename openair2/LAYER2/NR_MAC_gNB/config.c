@@ -29,7 +29,9 @@
  * @ingroup _mac
 
  */
+#define _GNU_SOURCE
 
+#define _GNU_SOURCE
 #include "common/platform_types.h"
 #include "common/platform_constants.h"
 #include "common/ran_context.h"
@@ -363,6 +365,47 @@ nfapi_nr_pm_list_t init_DL_MIMO_codebook(gNB_MAC_INST *gNB, nr_pdsch_AntennaPort
     AssertFatal(false, "Max number of antenna ports supported is currently 16\n");
 }
 
+/**
+ * This is a QoS comparator function for qsort.
+ *
+ * @lcid1 pointer to the first array element
+ * @lcid1 pointer to the second array element
+ * @return negative return value means that *p1 goes before *p2
+ *         zero return value means that that *p1 is equivalent to *p2
+ *         positive return value means that *p1 goes after *p2
+ **/
+static int QoS_Comp(const void *lcid1, const void *lcid2, void *sctrl)
+{
+  NR_UE_sched_ctrl_t *sched_ctrl = (NR_UE_sched_ctrl_t *)sctrl;
+  uint8_t *lc_priority = sched_ctrl->dl_lc_ids_priorities;
+
+  return lc_priority[*(uint8_t *)lcid1] - lc_priority[*(uint8_t *)lcid2];
+}
+
+void process_lcOrder(NR_UE_sched_ctrl_t *sched_ctrl)
+{
+  /* lc with in each UE are sorted so that lower in value(high priority) lcs are scheduled first*/
+  qsort_r(sched_ctrl->dl_lc_ids, sched_ctrl->dl_lc_num, sizeof(uint8_t), QoS_Comp, sched_ctrl);
+
+  LOG_D(NR_MAC, "Printing logical channel ids sorted by Priority Level:\n");
+
+  uint8_t priority_ue = 0;
+  for (int j = 0; j < sched_ctrl->dl_lc_num; j++) {
+    uint8_t lcid = sched_ctrl->dl_lc_ids[j];
+    LOG_I(NR_MAC,
+          "LCID %d (%s %d) = Priority of %d\n",
+          lcid,
+          lcid < 4 ? "SRB" : "DRB",
+          lcid < 4 ? lcid : lcid - 3,
+          sched_ctrl->dl_lc_ids_priorities[lcid]); // lcid 0 - SRB0, 1- SRB1, 2 - SRB2, 3 - 31 DRBs,
+
+    /* determine the priority of the UE as the mean priority of DRBs */
+    priority_ue += sched_ctrl->dl_lc_ids_priorities[lcid];
+  }
+  sched_ctrl->priority_ue = (float)priority_ue / sched_ctrl->dl_lc_num;
+  LOG_I(NR_MAC, "The priority of the UE is:%f\n", sched_ctrl->priority_ue);
+}
+
 static void process_rlcBearerConfig(struct NR_CellGroupConfig__rlc_BearerToAddModList *rlc_bearer2add_list,
                                     struct NR_CellGroupConfig__rlc_BearerToReleaseList *rlc_bearer2release_list,
                                     NR_UE_sched_ctrl_t *sched_ctrl)
@@ -428,6 +471,7 @@ void process_CellGroup(NR_CellGroupConfig_t *CellGroup, NR_UE_info_t *UE)
     nr_mac_prepare_ra_ue(RC.nrmac[0], UE->rnti, CellGroup);
    }
    process_rlcBearerConfig(CellGroup->rlc_BearerToAddModList, CellGroup->rlc_BearerToReleaseList, &UE->UE_sched_ctrl);
+   process_lcOrder(&UE->UE_sched_ctrl);
 }
 
 static void config_common(gNB_MAC_INST *nrmac, nr_pdsch_AntennaPorts_t pdsch_AntennaPorts, int pusch_AntennaPorts, NR_ServingCellConfigCommon_t *scc)

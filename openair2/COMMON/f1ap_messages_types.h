@@ -299,7 +299,7 @@ typedef enum preemption_vulnerability_e {
   PREEMPTABLE,
 } preemption_vulnerability_t;
 
-typedef struct f1ap_qos_characteristics_s {
+typedef struct qos_characteristics_s {
   union {
     struct {
       long fiveqi;
@@ -316,26 +316,26 @@ typedef struct f1ap_qos_characteristics_s {
     } dynamic;
   };
   fiveQI_type_t qos_type;
-} f1ap_qos_characteristics_t;
+} qos_characteristics_t;
 
-typedef struct f1ap_ngran_allocation_retention_priority_s {
+typedef struct ngran_allocation_retention_priority_s {
   uint16_t priority_level;
   preemption_capability_t preemption_capability;
   preemption_vulnerability_t preemption_vulnerability;
-} f1ap_ngran_allocation_retention_priority_t;
+} ngran_allocation_retention_priority_t;
 
-typedef struct f1ap_qos_flow_level_qos_parameters_s {
-  f1ap_qos_characteristics_t qos_characteristics;
-  f1ap_ngran_allocation_retention_priority_t alloc_reten_priority;
-} f1ap_qos_flow_level_qos_parameters_t;
+typedef struct qos_flow_level_qos_parameters_s {
+  qos_characteristics_t qos_characteristics;
+  ngran_allocation_retention_priority_t alloc_reten_priority;
+} qos_flow_level_qos_parameters_t;
 
 typedef struct f1ap_flows_mapped_to_drb_s {
   long qfi; // qos flow identifier
-  f1ap_qos_flow_level_qos_parameters_t qos_params;
+  qos_flow_level_qos_parameters_t qos_params;
 } f1ap_flows_mapped_to_drb_t;
 
 typedef struct f1ap_drb_information_s {
-  f1ap_qos_flow_level_qos_parameters_t drb_qos;
+  qos_flow_level_qos_parameters_t drb_qos;
   f1ap_flows_mapped_to_drb_t *flows_mapped_to_drb;
   uint8_t flows_to_be_setup_length;
 } f1ap_drb_information_t;

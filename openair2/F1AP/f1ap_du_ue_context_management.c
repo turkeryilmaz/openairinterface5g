@@ -900,11 +900,11 @@ int DU_handle_UE_CONTEXT_MODIFICATION_REQUEST(instance_t instance, sctp_assoc_t 
             /* 12.1.2.1 dRB_QoS */
             {
               /* QoS-Flow-Level-QoS-Parameters */
-              f1ap_qos_flow_level_qos_parameters_t *drb_qos = &drb_info->drb_qos;
+              qos_flow_level_qos_parameters_t *drb_qos = &drb_info->drb_qos;
               F1AP_QoSFlowLevelQoSParameters_t *dRB_QoS = &dRB_Info->dRB_QoS;
               {
                 /* QoS Characteristics*/
-                f1ap_qos_characteristics_t *drb_qos_char = &drb_qos->qos_characteristics;
+                qos_characteristics_t *drb_qos_char = &drb_qos->qos_characteristics;
                 F1AP_QoS_Characteristics_t *dRB_QoS_Char = &dRB_QoS->qoS_Characteristics;
 
                 if (dRB_QoS_Char->present == F1AP_QoS_Characteristics_PR_non_Dynamic_5QI) {
@@ -946,12 +946,12 @@ int DU_handle_UE_CONTEXT_MODIFICATION_REQUEST(instance_t instance, sctp_assoc_t 
 
               /* QoS-Flow-Level-QoS-Parameters */
               {
-                f1ap_qos_flow_level_qos_parameters_t *flow_qos = &flows_mapped_to_drb->qos_params;
+                qos_flow_level_qos_parameters_t *flow_qos = &flows_mapped_to_drb->qos_params;
                 F1AP_QoSFlowLevelQoSParameters_t *Flow_QoS = &flows_Mapped_To_Drb->qoSFlowLevelQoSParameters;
 
                 /* QoS Characteristics*/
                 {
-                  f1ap_qos_characteristics_t *flow_qos_char = &flow_qos->qos_characteristics;
+                  qos_characteristics_t *flow_qos_char = &flow_qos->qos_characteristics;
                   F1AP_QoS_Characteristics_t *Flow_QoS_Char = &Flow_QoS->qoS_Characteristics;
 
                   if (Flow_QoS_Char->present == F1AP_QoS_Characteristics_PR_non_Dynamic_5QI) {

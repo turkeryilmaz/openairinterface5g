@@ -55,6 +55,7 @@ extern "C"
 
 #define CONFIG_HLP_DUMPFRAME     "dump UE received frame to rxsig_frame0.dat and exit\n"
 #define CONFIG_HLP_PHYTST        "test UE phy layer, mac disabled\n"
+#define CONFIG_HLP_QOS_AWARE_SCHED "use scheduler for downlink that performs scheduling based on qos priorities\n"
 #define CONFIG_HLP_DORA          "test gNB  and UE with RA procedures\n"
 #define CONFIG_HLP_SA            "run gNB in standalone mode\n"
 #define CONFIG_HLP_SL_MODE       "sets the NR sidelink mode (0: not in sidelink mode, 1: in-coverage/gNB, 2: out-of-coverage/no gNB)\n"
@@ -117,6 +118,7 @@ extern "C"
 #define TP_CONFIG           softmodem_params.threadPoolConfig
 #define CONTINUOUS_TX       softmodem_params.continuous_tx
 #define PHY_TEST            softmodem_params.phy_test
+#define QOS_AWARE_SCHEDULER softmodem_params.use_qos_aware_scheduler
 #define DO_RA               softmodem_params.do_ra
 #define SA                  softmodem_params.sa
 #define SL_MODE             softmodem_params.sl_mode
@@ -150,6 +152,7 @@ extern int usrp_tx_thread;
   {"rf-config-file",        CONFIG_HLP_RFCFGF,        0,              .strptr=&RF_CONFIG_FILE,                .defstrval=NULL,          TYPE_STRING, 0},  \
   {"thread-pool",           CONFIG_HLP_TPOOL,         0,              .strptr=&TP_CONFIG,                     .defstrval="-1,-1,-1,-1,-1,-1,-1,-1",  TYPE_STRING, 0},     \
   {"phy-test",              CONFIG_HLP_PHYTST,        PARAMFLAG_BOOL, .iptr=&PHY_TEST,                        .defintval=0,             TYPE_INT,    0},  \
+  {"use-qos-scheduler",     CONFIG_HLP_QOS_AWARE_SCHED, PARAMFLAG_BOOL,.iptr=&QOS_AWARE_SCHEDULER,             .defintval=1,             TYPE_INT,    0},  \
   {"do-ra",                 CONFIG_HLP_DORA,          PARAMFLAG_BOOL, .iptr=&DO_RA,                           .defintval=0,             TYPE_INT,    0},  \
   {"sa",                    CONFIG_HLP_SA,            PARAMFLAG_BOOL, .iptr=&SA,                              .defintval=0,             TYPE_INT,    0},  \
   {"sl-mode",               CONFIG_HLP_SL_MODE,       0,              .u8ptr=&SL_MODE,                        .defintval=0,             TYPE_UINT8,  0},  \
@@ -192,6 +195,7 @@ extern int usrp_tx_thread;
 
 // clang-format off
 #define CMDLINE_PARAMS_CHECK_DESC {         \
+    { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
@@ -335,6 +339,7 @@ typedef struct {
   int            hw_timing_advance;
   uint32_t       send_dmrs_sync;
   int            use_256qam_table;
+  int use_qos_aware_scheduler;
   int            chest_time;
   int            chest_freq;
   uint8_t        nfapi;

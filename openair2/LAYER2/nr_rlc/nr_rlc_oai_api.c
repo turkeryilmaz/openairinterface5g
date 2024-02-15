@@ -235,6 +235,7 @@ mac_rlc_status_resp_t mac_rlc_status_ind(const module_id_t module_idP,
   nr_rlc_manager_unlock(nr_rlc_ue_manager);
 
   ret.pdus_in_buffer = 0;
+
   /* TODO: creation time may be important (unit: frame, as it seems) */
   ret.head_sdu_creation_time = 0;
   ret.head_sdu_remaining_size_to_send = 0;

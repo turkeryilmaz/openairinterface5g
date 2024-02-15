@@ -1238,11 +1238,11 @@ int CU_send_UE_CONTEXT_MODIFICATION_REQUEST(sctp_assoc_t assoc_id, f1ap_ue_conte
         /* 12.1.2.1 dRB_QoS */
         {
           /* qoS_Characteristics */
-          f1ap_qos_flow_level_qos_parameters_t *drb_qos_in = &drb_info_in->drb_qos;
+          qos_flow_level_qos_parameters_t *drb_qos_in = &drb_info_in->drb_qos;
           {
             int some_decide_qoS_characteristics = drb_qos_in->qos_characteristics.qos_type;
 
-            f1ap_qos_characteristics_t *drb_qos_char_in = &drb_qos_in->qos_characteristics;
+            qos_characteristics_t *drb_qos_char_in = &drb_qos_in->qos_characteristics;
             if (some_decide_qoS_characteristics == non_dynamic) {
               DRB_Information->dRB_QoS.qoS_Characteristics.present = F1AP_QoS_Characteristics_PR_non_Dynamic_5QI;
               asn1cCalloc(DRB_Information->dRB_QoS.qoS_Characteristics.choice.non_Dynamic_5QI, tmp);
@@ -1347,12 +1347,12 @@ int CU_send_UE_CONTEXT_MODIFICATION_REQUEST(sctp_assoc_t assoc_id, f1ap_ue_conte
           flows_mapped_to_drb_item->qoSFlowIdentifier = qos_flow_in->qfi;
           /* qoSFlowLevelQoSParameters */
           {
-            f1ap_qos_flow_level_qos_parameters_t *flow_qos_params_in = &qos_flow_in->qos_params;
+            qos_flow_level_qos_parameters_t *flow_qos_params_in = &qos_flow_in->qos_params;
             /* qoS_Characteristics */
             {
               int some_decide_qoS_characteristics = flow_qos_params_in->qos_characteristics.qos_type;
               F1AP_QoS_Characteristics_t *QosParams = &flows_mapped_to_drb_item->qoSFlowLevelQoSParameters.qoS_Characteristics;
-              f1ap_qos_characteristics_t *flow_qos_char_in = &flow_qos_params_in->qos_characteristics;
+              qos_characteristics_t *flow_qos_char_in = &flow_qos_params_in->qos_characteristics;
 
               if (some_decide_qoS_characteristics == non_dynamic) {
                 QosParams->present = F1AP_QoS_Characteristics_PR_non_Dynamic_5QI;

@@ -59,5 +59,12 @@ int e1ap_encode_send(E1_t type, sctp_assoc_t assoc_id, struct E1AP_E1AP_PDU *pdu
 
 void e1ap_common_init();
 void cuup_init_n3(instance_t instance);
+void get_drb_characteristics(qos_flow_to_setup_t *qos_flows_in,
+                             int num_qos_flows,
+                             fiveQI_type_t qos_type,
+                             qos_flow_level_qos_parameters_t *dRB_QoS);
+long get_flow_priority(long fiveqi);
 
+extern const uint64_t qos_fiveqi[];
+extern const uint64_t qos_priority[];
 #endif /* E1AP_COMMON_H_ */

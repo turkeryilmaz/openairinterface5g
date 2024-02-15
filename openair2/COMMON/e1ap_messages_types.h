@@ -126,6 +126,7 @@ typedef struct drb_to_setup_s {
   cell_group_t cellGroupList[E1AP_MAX_NUM_CELL_GROUPS];
 } drb_to_setup_t;
 
+/*
 typedef struct qos_characteristics_s {
   union {
     struct {
@@ -156,6 +157,8 @@ typedef struct qos_flow_level_qos_parameters_s {
   ngran_allocation_retention_priority_t alloc_reten_priority; // additional members should be added!!
 } qos_flow_level_qos_parameters_t;
 
+*/
+
 typedef struct qos_flow_setup_e {
   long qfi; // qos flow identifier
   qos_flow_level_qos_parameters_t qos_params;
@@ -179,6 +182,7 @@ typedef struct DRB_nGRAN_to_setup_s {
   cell_group_t cellGroupList[E1AP_MAX_NUM_CELL_GROUPS];
   int numQosFlow2Setup;
   qos_flow_to_setup_t qosFlows[E1AP_MAX_NUM_QOS_FLOWS];
+  qos_flow_level_qos_parameters_t dRB_QoS;
 } DRB_nGRAN_to_setup_t;
 
 typedef struct pdu_session_to_setup_s {

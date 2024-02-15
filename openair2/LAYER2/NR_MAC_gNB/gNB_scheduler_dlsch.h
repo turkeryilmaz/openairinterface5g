@@ -19,25 +19,31 @@
  *      contact@openairinterface.org
  */
 
-#ifndef MAC_RRC_DL_HANDLER_H
-#define MAC_RRC_DL_HANDLER_H
+#ifndef DLSCH_SCHEDULER_H
+#define DLSCH_SCHEDULER_H
 
-#include "common/platform_types.h"
-#include "f1ap_messages_types.h"
-#include "openair2/RRC/NR/MESSAGES/asn1_msg.h"
+#include "NR_MAC_gNB/nr_mac_gNB.h"
 
-void f1_setup_response(const f1ap_setup_resp_t *resp);
-void f1_setup_failure(const f1ap_setup_failure_t *failure);
-NR_CellGroupConfig_t *clone_CellGroupConfig(const NR_CellGroupConfig_t *orig);
-void ue_context_setup_request(const f1ap_ue_context_setup_t *req);
-void ue_context_modification_request(const f1ap_ue_context_modif_req_t *req);
-void ue_context_modification_confirm(const f1ap_ue_context_modif_confirm_t *confirm);
-void ue_context_modification_refuse(const f1ap_ue_context_modif_refuse_t *refuse);
-void ue_context_release_command(const f1ap_ue_context_release_cmd_t *cmd);
+typedef struct UEsched_s {
+  float coef;
+  NR_UE_info_t *UE;
+  uint16_t num_rbs_sched; // number of resource blocks scheduled
+  bool oh_status;
+} UEsched_t;
 
-void dl_rrc_message_transfer(const f1ap_dl_rrc_message_t *dl_rrc);
+typedef struct LCIDsched_s {
+  float coef;
+  NR_UE_info_t *UE;
+  uint8_t curr_lcid; // to specify the lcid of the current UE after sorting (not an optimum approach)
+  uint8_t curr_ue; // to keep track of to which UE this lcid belongs to
+  uint8_t lcid_priority; // calculated lcid priority based on qos flow priorities
+  uint16_t num_rbs_lcid_allocated; // number of resource blocks allocated for this LCID initially
+  uint16_t num_rbs_lcid_used;
+  uint16_t num_rbs_lcid_remain;
+  float factor;
+  uint32_t allocated_bytes;
+  uint32_t remaining_bytes;
+  uint16_t overhead;
+} LCIDsched_t;
 
-extern const uint64_t qos_fiveqi[];
-extern const uint64_t qos_priority[];
-
-#endif /* MAC_RRC_DL_HANDLER_H */
+#endif

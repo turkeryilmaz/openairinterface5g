@@ -445,9 +445,9 @@ static void trigger_bearer_setup(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, int n, pdu
 
         ngran_allocation_retention_priority_t *rent_priority = &qos_flow->qos_params.alloc_reten_priority;
         ngap_allocation_retention_priority_t *rent_priority_in = &qos_session->allocation_retention_priority;
-        rent_priority->priority_level = rent_priority_in->priority_level;
-        rent_priority->preemption_capability = rent_priority_in->pre_emp_capability;
-        rent_priority->preemption_vulnerability = rent_priority_in->pre_emp_vulnerability;
+        rent_priority->priority_level = (uint16_t)rent_priority_in->priority_level;
+        rent_priority->preemption_capability = (preemption_capability_t)((uint16_t)rent_priority_in->pre_emp_capability);
+        rent_priority->preemption_vulnerability = (preemption_vulnerability_t)((uint16_t)rent_priority_in->pre_emp_vulnerability);
       }
     }
   }
