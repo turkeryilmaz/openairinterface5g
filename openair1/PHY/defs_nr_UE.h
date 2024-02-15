@@ -695,9 +695,8 @@ typedef struct nr_phy_data_tx_s {
   //Sidelink Tx action decided by MAC 
   sl_nr_tx_config_type_enum_t sl_tx_action;
   sl_nr_tx_config_psbch_pdu_t psbch_vars;
-  sl_nr_tx_config_pscch_pssch_pdu_t nr_sl_pssch_pscch_pdu;
+  sl_nr_tx_config_pscch_pssch_psfch_pdu_t nr_sl_pssch_pscch_psfch_pdu;
   uint32_t pscch_Nid;
-  sl_nr_tx_config_psfch_pdu_t nr_sl_psfch_pdu;
 } nr_phy_data_tx_t;
 
 typedef struct nr_phy_data_s {

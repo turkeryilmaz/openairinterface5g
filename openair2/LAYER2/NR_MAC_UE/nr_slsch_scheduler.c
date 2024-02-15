@@ -39,15 +39,19 @@
 #include "NR_MAC_UE/mac_proto.h"
 #include "NR_MAC_UE/mac_extern.h"
 #include "NR_MAC_UE/nr_ue_sci.h"
+#include <executables/nr-uesoftmodem.h>
 
 bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP,int slotP, nr_sci_pdu_t *sci_pdu,nr_sci_pdu_t *sci2_pdu,uint8_t *slsch_pdu,nr_sci_format_t format2, uint16_t *slsch_pdu_length_max) {
 
    mac_rlc_status_resp_t rlc_status = mac_rlc_status_ind(0, mac->src_id, 0,frameP,slotP,ENB_FLAG_NO,MBMS_FLAG_NO, 4, 0, 0);
 
+  uint8_t psfch_period = 0;
+  if (mac->sl_tx_res_pool->sl_PSFCH_Config_r16)
+    psfch_period = *mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16;
 //   rlc_status.bytes_in_buffer = 0;
    *slsch_pdu_length_max = 0;
 
-   if (rlc_status.bytes_in_buffer > 0) {
+  if (rlc_status.bytes_in_buffer > 0 || mac->sci_pdu_rx.harq_feedback) {
 // Fill SCI1A
      sci_pdu->priority = 0;
      sci_pdu->frequency_resource_assignment.val=0;
@@ -67,10 +71,10 @@ bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP,int slotP, nr_sci_pdu_t
      sci2_pdu->harq_pid = 0;
      sci2_pdu->ndi = (1-sci2_pdu->ndi)&1; 
      sci2_pdu->rv_index=0;
-     sci2_pdu->source_id=0x12;
+     sci2_pdu->source_id = get_softmodem_params()->node_number;
      sci2_pdu->dest_id=0xabcd;
-     sci2_pdu->harq_feedback=1;
-     sci2_pdu->cast_type=0;
+     sci2_pdu->harq_feedback = psfch_period ? 1 : 0;
+     sci2_pdu->cast_type = 1;
      if (format2==NR_SL_SCI_FORMAT_2C || format2==NR_SL_SCI_FORMAT_2A)
        sci2_pdu->csi_req=1;
      if (format2==NR_SL_SCI_FORMAT_2B)

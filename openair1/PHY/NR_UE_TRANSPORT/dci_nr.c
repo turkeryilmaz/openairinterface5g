@@ -891,7 +891,7 @@ uint8_t nr_dci_decoding_procedure(PHY_VARS_NR_UE *ue,
   sl_nr_sci_indication_t *sci_ind=NULL;
   if (pscch_flag == 0) dci_ind = (fapi_nr_dci_indication_t*)ind;
   else sci_ind = (sl_nr_sci_indication_t *)ind;
- 
+
   for (int j=0;j<rel15->number_of_candidates;j++) {
     int CCEind = rel15->CCE[j];
     int L = rel15->L[j];

@@ -40,6 +40,13 @@
 #define NR_DL_MAX_DAI                            (4)                      /* TS 38.213 table 9.1.3-1 Value of counter DAI for DCI format 1_0 and 1_1 */
 #define NR_DL_MAX_NB_CW                          (2)                      /* number of downlink code word */
 
+// 38.213 Table 16.3-1 set of cyclic shift pairs
+static const int16_t table_16_3_1[4][6] = {
+                                          {0},
+                                          {0, 3},
+                                          {0, 2, 4},
+                                          {0, 1, 2, 3, 4, 5}
+                                       };
 /**\brief initialize the field in nr_mac instance
    \param module_id      module id */
 void nr_ue_init_mac(module_id_t module_idP);
@@ -441,6 +448,8 @@ int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
                                        uint8_t sync_source, 
 				       int srcid);
 
+uint8_t count_PSFCH_PRBs_bits(uint8_t* buf, size_t size);
+
 void nr_rrc_mac_transmit_slss_req(module_id_t module_id,
                                   uint8_t *sl_mib_payload,
                                   uint16_t tx_slss_id,
@@ -490,6 +499,14 @@ bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
                        nr_sci_format_t format2, 
                        uint16_t *slsch_pdu_length);
 
+void nr_ue_sl_psfch_scheduler(NR_UE_MAC_INST_t *mac,
+                              long psfch_period,
+                              nr_sidelink_indication_t *sl_ind,
+                              const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp,
+                              const NR_SL_ResourcePool_r16_t *sl_res_pool,
+                              sl_nr_tx_config_request_t *tx_config,
+                              uint8_t *config_type);
+
 void config_pscch_pdu_rx(sl_nr_rx_config_pscch_pdu_t *nr_sl_pscch_pdu,
                          const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp,
                          const NR_SL_ResourcePool_r16_t *sl_res_pool);
@@ -502,7 +519,7 @@ int config_pssch_sci_pdu_rx(sl_nr_rx_config_pssch_sci_pdu_t *nr_sl_pssch_sci_pdu
                              const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp,
                              const NR_SL_ResourcePool_r16_t *sl_res_pool);
 
-void fill_pssch_pscch_pdu(sl_nr_tx_config_pscch_pssch_pdu_t *nr_sl_pssch_pscch_pdu,
+void fill_pssch_pscch_pdu(sl_nr_tx_config_pscch_pssch_psfch_pdu_t *nr_sl_pssch_pscch_pdu,
                           const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp,
                           const NR_SL_ResourcePool_r16_t *sl_res_pool,
                           nr_sci_pdu_t *sci_pdu,
@@ -510,5 +527,9 @@ void fill_pssch_pscch_pdu(sl_nr_tx_config_pscch_pssch_pdu_t *nr_sl_pssch_pscch_p
                           uint16_t slsch_pdu_length,
                           const nr_sci_format_t format1,
                           const nr_sci_format_t format2);
+
+void fill_psfch_pdu(sl_nr_tx_config_psfch_pdu_t *mac_psfch_pdu,
+                    sl_nr_tx_config_request_t *tx_config,
+                    int num_psfch_symbols);
 #endif
 /** @}*/
