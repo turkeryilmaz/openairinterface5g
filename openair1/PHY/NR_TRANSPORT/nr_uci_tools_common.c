@@ -140,13 +140,12 @@ double nr_cyclic_shift_hopping(uint32_t n_id,
    *     - lprime: lprime is the index of the OFDM symbol in the slot that corresponds to the first OFDM symbol of the PUCCH transmission in the slot given by [5, TS 38.213]
    */
   // alpha_init initialized to 2*PI/12=0.5235987756
-  uint8_t is_sidelink = get_softmodem_params()->sl_mode ? 1 : 0;
   double alpha = 0.5235987756;
   uint32_t c_init = n_id; // we initialize c_init again to calculate n_cs
 
   uint32_t x1,s = lte_gold_generic(&x1, &c_init, 1); // TS 38.211 Subclause 5.2.1
   uint8_t n_cs=0;
-  int l = is_sidelink ? 0 : 32;
+  int l = get_softmodem_params()->sl_mode ? 0 : 32;
   int minShift = (14*8*nr_slot_tx) + 8*(lnormal+lprime);
   int tmpShift =0;
 #ifdef DEBUG_NR_PUCCH_TX

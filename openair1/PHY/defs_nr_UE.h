@@ -222,7 +222,6 @@ typedef struct {
 } NR_UE_PUCCH;
 
 typedef struct {
-  int max_nb_pucch;
   /// \brief Holds the transmit data in time domain.
   /// For IFFT_FPGA this points to the same memory as PHY_vars->tx_vars[a].TX_DMA_BUFFER.
   /// - first index: tx antenna [0..nb_antennas_tx[
@@ -654,7 +653,6 @@ typedef struct PHY_VARS_NR_UE_s {
   notifiedFIFO_t phy_config_ind;
   notifiedFIFO_t *tx_resume_ind_fifo[NR_MAX_SLOTS_PER_FRAME];
   int tx_wait_for_dlsch[NR_MAX_SLOTS_PER_FRAME];
-  // int tx_wait_for_slsch[NR_MAX_SLOTS_PER_FRAME];
 
   //Sidelink parameters
   sl_nr_sidelink_mode_t sl_mode;
@@ -697,22 +695,19 @@ typedef struct nr_phy_data_tx_s {
   //Sidelink Tx action decided by MAC 
   sl_nr_tx_config_type_enum_t sl_tx_action;
   sl_nr_tx_config_psbch_pdu_t psbch_vars;
-  sl_nr_tx_config_pscch_pssch_pdu_t nr_sl_pssch_pscch_pdu;
+  sl_nr_tx_config_pscch_pssch_psfch_pdu_t nr_sl_pssch_pscch_psfch_pdu;
   uint32_t pscch_Nid;
-  sl_nr_tx_config_psfch_pdu_t nr_sl_psfch_pdu;
 } nr_phy_data_tx_t;
 
 typedef struct nr_phy_data_s {
   NR_UE_PDCCH_CONFIG phy_pdcch_config;
   NR_UE_DLSCH_t dlsch[2];
-  bool sl_active;
 
   //Sidelink Rx action decided by MAC 
   sl_nr_rx_config_type_enum_t sl_rx_action;
   sl_nr_rx_config_pscch_pdu_t nr_sl_pscch_pdu;
   sl_nr_rx_config_pssch_sci_pdu_t nr_sl_pssch_sci_pdu;
   sl_nr_rx_config_pssch_pdu_t nr_sl_pssch_pdu;
-  sl_nr_rx_config_psfch_pdu_t nr_sl_psfch_pdu;
 } nr_phy_data_t;
 /* this structure is used to pass both UE phy vars and
  * proc to the function UE_thread_rxn_txnp4
@@ -724,7 +719,6 @@ typedef struct nr_rxtx_thread_data_s {
   notifiedFIFO_t txFifo;
   nr_phy_data_t phy_data;
   int tx_wait_for_dlsch;
-  // int tx_wait_for_slsch;
 } nr_rxtx_thread_data_t;
 
 typedef struct LDPCDecode_ue_s {

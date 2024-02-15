@@ -30,7 +30,6 @@ typedef enum sl_nr_rx_config_type_enum {
   SL_NR_CONFIG_TYPE_RX_PSCCH,
   SL_NR_CONFIG_TYPE_RX_PSSCH_SCI,
   SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH,
-  SL_NR_CONFIG_TYPE_RX_PSFCH,
   SL_NR_CONFIG_TYPE_RX_MAXIMUM
 } sl_nr_rx_config_type_enum_t;
 
@@ -38,7 +37,7 @@ typedef enum sl_nr_rx_config_type_enum {
 typedef enum sl_nr_tx_config_type_enum {
   SL_NR_CONFIG_TYPE_TX_PSBCH = SL_NR_CONFIG_TYPE_RX_MAXIMUM + 1,
   SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH,
-  SL_NR_CONFIG_TYPE_TX_PSFCH,
+  SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH,
   SL_NR_CONFIG_TYPE_TX_MAXIMUM
 } sl_nr_tx_config_type_enum_t;
 
@@ -210,8 +209,23 @@ typedef struct {
   sl_nr_rx_config_request_pdu_t sl_rx_config_list[SL_NR_RX_CONFIG_LIST_NUM];
 } sl_nr_rx_config_request_t;
 
+typedef struct sl_nr_tx_config_psfch_pdu {
+  //  These fields can be mapped directly to the same fields in nfapi_nr_ul_config_pucch_pdu
+  uint8_t freq_hop_flag;
+  uint8_t group_hop_flag;
+  uint8_t sequence_hop_flag;
+  uint16_t second_hop_prb;
+  uint8_t nr_of_symbols;
+  uint8_t start_symbol_index;
+  uint8_t hopping_id;
+  uint16_t prb;
+  uint16_t sl_bwp_start;
+  uint16_t initial_cyclic_shift;
+  uint8_t mcs;
+  uint8_t bit_len_harq;
+} sl_nr_tx_config_psfch_pdu_t;
 //MAC commands PHY to transmit Data on PSCCH, PSSCH.
-typedef struct sl_nr_tx_config_pscch_pssch_pdu {
+typedef struct sl_nr_tx_config_pscch_pssch_psfch_pdu {
 
   //SCI 1A Payload Prepared by MAC, to be sent on PSCCH
   uint8_t pscch_sci_payload[SL_NR_MAX_PSCCH_SCI_LENGTH_IN_BYTES];
@@ -270,7 +284,8 @@ typedef struct sl_nr_tx_config_pscch_pssch_pdu {
   // Table from SPEC 38.211, Table 8.4.1.1.2-1
   uint16_t dmrs_symbol_position;
 
-
+  // PSFCH related parameters
+  sl_nr_tx_config_psfch_pdu_t psfch_pdu;
   //....TBD.. any additional parameters
 
   //TX Power for PSSCH in symbol without PSCCH.
@@ -280,7 +295,7 @@ typedef struct sl_nr_tx_config_pscch_pssch_pdu {
 
   uint16_t slsch_payload_length;
   uint8_t *slsch_payload;
-} sl_nr_tx_config_pscch_pssch_pdu_t;
+} sl_nr_tx_config_pscch_pssch_psfch_pdu_t;
 
 // MAC indicates PHY to send PSBCH.
 typedef struct sl_nr_tx_config_psbch_pdu {
@@ -291,44 +306,12 @@ typedef struct sl_nr_tx_config_psbch_pdu {
 
 } sl_nr_tx_config_psbch_pdu_t;
 
-typedef struct sl_nr_tx_config_psfch_pdu {
-//  These fields map directly to the same fields in nfapi_nr_ul_config_pucch_pdu 
-  uint8_t freq_hop_flag;
-  uint8_t group_hop_flag;
-  uint8_t sequence_hop_flag;
-  uint16_t second_hop_prb;
-  uint8_t nr_of_symbols;
-  uint8_t start_symbol_index;
-  uint8_t hopping_id;
-  uint8_t prb;
-  uint16_t initial_cyclic_shift;
-  uint8_t mcs;
-  uint8_t bit_len_harq;
-  uint8_t psfch_payload;
-} sl_nr_tx_config_psfch_pdu_t;
-
-typedef struct sl_nr_rx_config_psfch_pdu {
-//  These fields map directly to the same fields in nfapi_nr_ul_config_pucch_pdu
-  uint8_t freq_hop_flag;
-  uint8_t group_hop_flag;
-  uint8_t sequence_hop_flag;
-  uint16_t second_hop_prb;
-  uint8_t nr_of_symbols;
-  uint8_t start_symbol_index;
-  uint8_t hopping_id;
-  uint8_t prb;
-  uint16_t initial_cyclic_shift;
-  uint8_t mcs;
-  uint8_t psfch_payload;
-} sl_nr_rx_config_psfch_pdu_t;
-
 // MAC commands PHY to perform an action on TX RESOURCE POOL or TX PSBCH using this TX CONFIG
 typedef struct {
   sl_nr_tx_config_type_enum_t pdu_type; // indicates the type of TX config request
   union {
     sl_nr_tx_config_psbch_pdu_t tx_psbch_config_pdu;
-    sl_nr_tx_config_pscch_pssch_pdu_t tx_pscch_pssch_config_pdu;
-    sl_nr_tx_config_psfch_pdu_t tx_psfch_config_pdu;
+    sl_nr_tx_config_pscch_pssch_psfch_pdu_t tx_pscch_pssch_psfch_config_pdu;
   };
 } sl_nr_tx_config_request_pdu_t;
 
@@ -407,7 +390,6 @@ typedef struct
 } sl_nr_carrier_config_t;
 
 
-
 typedef struct {
   // Mask indicating which of the below configs are changed
   // Bit0 - carrier_config, Bit1 - syncsource cfg
@@ -423,10 +405,6 @@ typedef struct {
   sl_nr_bwp_config_t sl_bwp_config;
 
   uint32_t sl_DMRS_ScrambleId;
-  
-  // PSFCH related configuration to find feedback slot
-  uint8_t time_gap;
-  uint8_t psfch_period;
 
 } sl_nr_phy_config_request_t;
 

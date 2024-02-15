@@ -499,10 +499,13 @@ bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
                        nr_sci_format_t format2, 
                        uint16_t *slsch_pdu_length);
 
-void config_psfch_pdu_rx(NR_UE_MAC_INST_t *mac,
-                         sl_nr_rx_config_psfch_pdu_t *nr_sl_psfch_pdu,
-                         const NR_SL_BWP_Generic_r16_t *sl_bwp,
-                         const NR_SL_ResourcePool_r16_t *sl_res_pool);
+void nr_ue_sl_psfch_scheduler(NR_UE_MAC_INST_t *mac,
+                              long psfch_period,
+                              nr_sidelink_indication_t *sl_ind,
+                              const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp,
+                              const NR_SL_ResourcePool_r16_t *sl_res_pool,
+                              sl_nr_tx_config_request_t *tx_config,
+                              uint8_t *config_type);
 
 void config_pscch_pdu_rx(sl_nr_rx_config_pscch_pdu_t *nr_sl_pscch_pdu,
                          const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp,
@@ -516,7 +519,7 @@ int config_pssch_sci_pdu_rx(sl_nr_rx_config_pssch_sci_pdu_t *nr_sl_pssch_sci_pdu
                              const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp,
                              const NR_SL_ResourcePool_r16_t *sl_res_pool);
 
-void fill_pssch_pscch_pdu(sl_nr_tx_config_pscch_pssch_pdu_t *nr_sl_pssch_pscch_pdu,
+void fill_pssch_pscch_pdu(sl_nr_tx_config_pscch_pssch_psfch_pdu_t *nr_sl_pssch_pscch_pdu,
                           const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp,
                           const NR_SL_ResourcePool_r16_t *sl_res_pool,
                           nr_sci_pdu_t *sci_pdu,
@@ -524,5 +527,9 @@ void fill_pssch_pscch_pdu(sl_nr_tx_config_pscch_pssch_pdu_t *nr_sl_pssch_pscch_p
                           uint16_t slsch_pdu_length,
                           const nr_sci_format_t format1,
                           const nr_sci_format_t format2);
+
+void fill_psfch_pdu(sl_nr_tx_config_psfch_pdu_t *mac_psfch_pdu,
+                    sl_nr_tx_config_request_t *tx_config,
+                    int num_psfch_symbols);
 #endif
 /** @}*/

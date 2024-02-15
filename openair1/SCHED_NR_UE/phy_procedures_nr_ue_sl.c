@@ -92,6 +92,7 @@ void nr_fill_sl_rx_indication(sl_nr_rx_indication_t *rx_ind,
         rx_slsch_pdu->pdu_length = slsch_status->rdata->ulsch_harq->TBS;
         rx_slsch_pdu->harq_pid   = slsch_status->rdata->harq_pid;
         rx_slsch_pdu->ack_nack   = (slsch_status->rxok==true) ? 1 : 0;
+
         if (slsch_status->rxok==true) ue->SL_UE_PHY_PARAMS.pssch.rx_ok++;
         else                          ue->SL_UE_PHY_PARAMS.pssch.rx_errors[0]++;
       }
@@ -218,18 +219,6 @@ int nr_slsch_procedures(PHY_VARS_NR_UE *ue, int frame_rx, int slot_rx, int SLSCH
 
   int nbDecode =
       nr_ulsch_decoding(NULL, ue, SLSCH_id, ue->pssch_vars[SLSCH_id].llr, fp, &pusch_pdu, frame_rx, slot_rx, harq_pid, G,proc,phy_data);
-
-  // sl_nr_phy_config_request_t *sl_cfg = NULL;
-  // sl_cfg = &ue->SL_UE_PHY_PARAMS.sl_config;
-  // uint8_t psfch_period = sl_cfg->psfch_period;
-  // uint8_t psfch_min_time_gap = sl_cfg->time_gap;
-  // int delta_slots = (slot_rx + psfch_min_time_gap) % psfch_period ? psfch_period - (slot_rx + psfch_min_time_gap) % psfch_period: 0;
-  // uint8_t feedback_slot = slot_rx + psfch_min_time_gap + delta_slots;
-  // feedback_slot %= NR_MAX_SLOTS_PER_FRAME;
-  // phy_data->sl_active = true;
-  // send_slot_ind(ue->tx_resume_ind_fifo[feedback_slot], slot_rx);
-  // LOG_D(NR_PHY, "%s Sent slot indication: slot_rx %d feedback_slot %d, sl_active %d\n", __FUNCTION__, slot_rx, feedback_slot, phy_data->sl_active);
-  // LOG_I(NR_MAC, "harq pid: %d Sent slot indication psfch_period %d, slot_rx %d, delta_slots %d, feedback_slot %d, time_gap %d\n", harq_pid, psfch_period, slot_rx, delta_slots, feedback_slot, psfch_min_time_gap);
   return nbDecode;
 }
 
@@ -300,12 +289,10 @@ void nr_postDecode_slsch(PHY_VARS_NR_UE *UE, notifiedFIFO_elt_t *req,UE_nr_rxtx_
       //      dumpsig=1;
     }
     slsch->last_iteration_cnt = rdata->decodeIterations;
-    // FIXME: There may be need to add condition for PSFCH
     sl_rx_indication.sfn = proc->frame_rx;
     sl_rx_indication.slot = proc->nr_slot_rx;
     nr_fill_sl_rx_indication(&sl_rx_indication,SL_NR_RX_PDU_TYPE_SLSCH,UE,1,proc,(void*)&slsch_status,0);
     nr_fill_sl_indication(&sl_indication,&sl_rx_indication,NULL,proc,UE,phy_data);
-    LOG_D(NR_PHY, "calling sl_indication: RX %d.%d TX %d.%d %s\n",proc->frame_rx,proc->nr_slot_rx,proc->frame_tx,proc->nr_slot_tx, __FUNCTION__);
     if (UE->if_inst && UE->if_inst->sl_indication)
       UE->if_inst->sl_indication(&sl_indication);
     /*
@@ -396,7 +383,7 @@ static int nr_ue_psbch_procedures(PHY_VARS_NR_UE *ue,
 
   nr_fill_sl_indication(&sl_indication, &rx_ind, NULL, proc, ue, phy_data);
   nr_fill_sl_rx_indication(&rx_ind, SL_NR_RX_PDU_TYPE_SSB, ue, number_pdus, proc, (void *)result, rx_slss_id);
-  LOG_D(NR_PHY, "calling sl_indication: RX %d.%d TX %d.%d %s\n",proc->frame_rx,proc->nr_slot_rx,proc->frame_tx,proc->nr_slot_tx, __FUNCTION__);
+
   if (ue->if_inst && ue->if_inst->sl_indication)
     ue->if_inst->sl_indication(&sl_indication);
 
@@ -451,7 +438,7 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
                                                       sl_phy_params->pssch.rx_errors[1],
                                                       sl_phy_params->pssch.rx_errors[2],
                                                       sl_phy_params->pssch.rx_errors[3]);
-      LOG_I(NR_PHY, "%s[UE%d] %d:%d PSFCH Stats: TX %d, RX \n",KGRN,
+      LOG_I(NR_PHY, "%s[UE%d] %d:%d PSFCH Stats: TX %d\n", KGRN,
                                                       ue->Mod_id, frame_rx, nr_slot_rx,
                                                       sl_phy_params->psfch.num_psfch_tx
                                                       );
@@ -724,31 +711,31 @@ int phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
 
     tx_action = 1;
   }
-  else if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH) {
-   LOG_D(NR_PHY,"Generating PSCCH (%d.%d) \n",frame_tx,slot_tx);
-   
-   phy_data->pscch_Nid = nr_generate_sci1(ue,txdataF[0],fp,AMP,slot_tx,&phy_data->nr_sl_pssch_pscch_pdu) &0xFFFF; 
+  else if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH ||
+          phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH) {
+    LOG_D(NR_PHY, "Generating PSCCH (%d.%d) \n", frame_tx, slot_tx);
 
-   nr_ue_ulsch_procedures(ue,0,frame_tx,slot_tx,0,phy_data,txdataF);
+    phy_data->pscch_Nid = nr_generate_sci1(ue, txdataF[0], fp, AMP, slot_tx, &phy_data->nr_sl_pssch_pscch_psfch_pdu) &0xFFFF;
 
-   sl_phy_params->pscch.num_pscch_tx ++;
-   sl_phy_params->pssch.num_pssch_sci2_tx ++;
-   sl_phy_params->pssch.num_pssch_tx ++;
-   tx_action = 1;
-  }
-  else if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSFCH) {
-    LOG_I(NR_PHY,"Generating PSFCH ( )\n");
-    nr_generate_psfch0(ue,
-                      txdataF,
-                      fp,
-                      AMP,
-                      slot_tx,
-                      &phy_data->nr_sl_psfch_pdu);
-    sl_phy_params->psfch.num_psfch_tx ++;
+    nr_ue_ulsch_procedures(ue,0,frame_tx,slot_tx,0,phy_data,txdataF);
+
+    sl_phy_params->pscch.num_pscch_tx ++;
+    sl_phy_params->pssch.num_pssch_sci2_tx ++;
+    sl_phy_params->pssch.num_pssch_tx ++;
+    if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH) {
+      LOG_D(NR_PHY, "Generating PSFCH (%d.%d) \n", frame_tx, slot_tx);
+      nr_generate_psfch0(ue,
+                        txdataF,
+                        fp,
+                        AMP,
+                        slot_tx,
+                        &phy_data->nr_sl_pssch_pscch_psfch_pdu.psfch_pdu);
+      sl_phy_params->psfch.num_psfch_tx ++;
+    }
     tx_action = 1;
-    LOG_I(NR_PHY, "Sending SL data frame %d slot %d\n", frame_tx, slot_tx);
   }
   if (tx_action) {
+    LOG_D(PHY, "Sending SL data \n");
     nr_ue_pusch_common_procedures(ue,
                                   proc->nr_slot_tx,
                                   fp,

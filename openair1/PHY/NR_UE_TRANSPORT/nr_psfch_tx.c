@@ -60,7 +60,10 @@ void nr_generate_psfch0(const PHY_VARS_NR_UE *ue,
   pucch_pdu.initial_cyclic_shift = psfch_pdu->initial_cyclic_shift;
   pucch_pdu.mcs                  = psfch_pdu->mcs;
   pucch_pdu.nr_of_symbols        = psfch_pdu->nr_of_symbols;
-  pucch_pdu.payload              = psfch_pdu->psfch_payload;
   pucch_pdu.n_bit                = psfch_pdu->bit_len_harq;
-  nr_generate_pucch0(ue,txdataF,frame_parms,amp,nr_slot_tx,&pucch_pdu);
+  pucch_pdu.bwp_start            = psfch_pdu->sl_bwp_start;
+  pucch_pdu.freq_hop_flag        = psfch_pdu->freq_hop_flag;
+  pucch_pdu.group_hop_flag       = psfch_pdu->group_hop_flag;
+  pucch_pdu.second_hop_prb       = psfch_pdu->second_hop_prb;
+  nr_generate_pucch0(ue, txdataF, frame_parms, amp, nr_slot_tx, &pucch_pdu);
 }

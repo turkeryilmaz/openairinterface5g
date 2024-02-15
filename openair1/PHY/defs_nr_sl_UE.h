@@ -186,7 +186,6 @@ typedef struct SL_NR_UE_PSBCH {
 typedef struct SL_NR_UE_PSFCH {
   // STATS - transmissions of PSFCH by the UE
   uint16_t num_psfch_tx;
-
 } SL_NR_UE_PSFCH_t;
 
 typedef struct sl_nr_ue_phy_params {

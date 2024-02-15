@@ -194,7 +194,7 @@ int get_nREDMRS(const NR_SL_ResourcePool_r16_t *sl_res_pool) {
   return(nREDMRS/cnt);
 }
 
-void fill_pssch_pscch_pdu(sl_nr_tx_config_pscch_pssch_pdu_t *nr_sl_pssch_pscch_pdu,
+void fill_pssch_pscch_pdu(sl_nr_tx_config_pscch_pssch_psfch_pdu_t *nr_sl_pssch_pscch_pdu,
                           const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp,
                           const NR_SL_ResourcePool_r16_t *sl_res_pool,
                           nr_sci_pdu_t *sci_pdu,
@@ -245,11 +245,10 @@ void fill_pssch_pscch_pdu(sl_nr_tx_config_pscch_pssch_pdu_t *nr_sl_pssch_pscch_p
   nr_sl_pssch_pscch_pdu->num_subch,
   nr_sl_pssch_pscch_pdu->subchannel_size);
   if (sl_res_pool->sl_PSFCH_Config_r16 && sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16 && *sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16>0) {
-     num_psfch_symbols = *sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16;
-     if (num_psfch_symbols == 3) num_psfch_symbols++;
+     // As per 38214 8.1.3.2, num_psfch_symbols can be 3 if psfch_overhead_indication.nbits is 1; FYI psfch_overhead_indication.nbits is set to 1 in case of PSFCH period 2 or 4 in sl_determine_sci_1a_len()
+     num_psfch_symbols = 3;
   }
   nr_sl_pssch_pscch_pdu->pssch_numsym=7+*sl_bwp->sl_BWP_Generic_r16->sl_LengthSymbols_r16-num_psfch_symbols-2;
-  LOG_D(NR_PHY, "num_psfch_symbols %d, sl_LengthSymbols: %d, pssch_numsym: %d\n", num_psfch_symbols,  *sl_bwp->sl_BWP_Generic_r16->sl_LengthSymbols_r16, nr_sl_pssch_pscch_pdu->pssch_numsym);
   nr_sl_pssch_pscch_pdu->pssch_startsym = *sl_bwp->sl_BWP_Generic_r16->sl_StartSymbol_r16;
 
   nr_sl_pssch_pscch_pdu->sci2_beta_offset = *sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_BetaOffsets2ndSCI_r16->list.array[sci_pdu->beta_offset_indicator];
@@ -462,26 +461,6 @@ void fill_pssch_pscch_pdu(sl_nr_tx_config_pscch_pssch_pdu_t *nr_sl_pssch_pscch_p
   nr_sl_pssch_pscch_pdu->slsch_payload_length = slsch_pdu_length;
 };
 
-void config_psfch_pdu_rx(NR_UE_MAC_INST_t *mac,
-                         sl_nr_rx_config_psfch_pdu_t *nr_sl_psfch_pdu,
-                         const NR_SL_BWP_Generic_r16_t *sl_bwp,
-                         const NR_SL_ResourcePool_r16_t *sl_res_pool) {
-  nr_sl_psfch_pdu->freq_hop_flag = 0;
-  nr_sl_psfch_pdu->group_hop_flag = 0;
-  nr_sl_psfch_pdu->sequence_hop_flag = 0;
-  nr_sl_psfch_pdu->second_hop_prb = 0;
-  nr_sl_psfch_pdu->nr_of_symbols = 1;
-  const uint8_t values[] = {7, 8, 9, 10, 11, 12, 13, 14};
-  uint8_t sl_num_symbols = *sl_bwp->sl_LengthSymbols_r16 ?
-                            values[*sl_bwp->sl_LengthSymbols_r16] : 0;
-  nr_sl_psfch_pdu->start_symbol_index = *sl_bwp->sl_StartSymbol_r16 + sl_num_symbols - 2;
-  nr_sl_psfch_pdu->hopping_id = 0;
-  nr_sl_psfch_pdu->prb = 1;
-  //TODO
-  // nr_sl_psfch_pdu->initial_cyclic_shift = mac->sl_;
-  // nr_sl_psfch_pdu->mcs = mac->sl_;
-}
-
 void config_pscch_pdu_rx(sl_nr_rx_config_pscch_pdu_t *nr_sl_pscch_pdu,
 	  	         const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp, 
                          const NR_SL_ResourcePool_r16_t *sl_res_pool){
@@ -511,8 +490,8 @@ void config_pscch_pdu_rx(sl_nr_rx_config_pscch_pdu_t *nr_sl_pscch_pdu,
   //Indicates the number of symbols for PSCCH+PSSCH txn
   int num_psfch_symbols=0;
   if (sl_res_pool->sl_PSFCH_Config_r16 && sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16 && *sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16>0) {
-     num_psfch_symbols = *sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16;
-     if (num_psfch_symbols == 3) num_psfch_symbols++;
+     // As per 38214 8.1.3.2, num_psfch_symbols can be 3 if psfch_overhead_indication.nbits is 1; FYI psfch_overhead_indication.nbits is set to 1 in case of PSFCH period 2 or 4 in sl_determine_sci_1a_len()
+     num_psfch_symbols = 3;
   }
   nr_sl_pscch_pdu->pssch_numsym=7+*sl_bwp->sl_BWP_Generic_r16->sl_LengthSymbols_r16-num_psfch_symbols-2;
   //sci 1A length used to decode on PSCCH.
@@ -671,8 +650,8 @@ void config_pssch_slsch_pdu_rx(sl_nr_rx_config_pssch_pdu_t *nr_sl_pssch_pdu,
 						nr_sl_pssch_pdu->num_layers);
   int num_psfch_symbols=0;
   if (sl_res_pool->sl_PSFCH_Config_r16 && sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16 && *sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16>0) {
-     num_psfch_symbols = *sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16;
-     if (num_psfch_symbols == 3) num_psfch_symbols++;
+     // As per 38214 8.1.3.2, num_psfch_symbols can be 3 if psfch_overhead_indication.nbits is 1; FYI psfch_overhead_indication.nbits is set to 1 in case of PSFCH period 2 or 4 in sl_determine_sci_1a_len()
+     num_psfch_symbols = 3;
   }
   int pssch_numsym=7+*sl_bwp->sl_BWP_Generic_r16->sl_LengthSymbols_r16-num_psfch_symbols-2;
   uint16_t l_subch;
@@ -765,11 +744,11 @@ int config_pssch_sci_pdu_rx(sl_nr_rx_config_pssch_sci_pdu_t *nr_sl_pssch_sci_pdu
   //Indicates the number of symbols for PSCCH+PSSCH txn
   int num_psfch_symbols=0;
   if (sl_res_pool->sl_PSFCH_Config_r16 && sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16 && *sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16>0) {
-     num_psfch_symbols = *sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16;
-     if (num_psfch_symbols == 3) num_psfch_symbols++;
+     // As per 38214 8.1.3.2, num_psfch_symbols can be 3 if psfch_overhead_indication.nbits is 1; FYI psfch_overhead_indication.nbits is set to 1 in case of PSFCH period 2 or 4 in sl_determine_sci_1a_len()
+     num_psfch_symbols = 3;
   }
   nr_sl_pssch_sci_pdu->pssch_numsym = 7+*sl_bwp->sl_BWP_Generic_r16->sl_LengthSymbols_r16-num_psfch_symbols-2;
-  
+
   //DMRS SYMBOL MASK. If bit set to 1 indicates it is a DMRS symbol. LSB is symbol 0
   // Table from SPEC 38.211, Table 8.4.1.1.2-1
   int num_dmrs_symbols;
