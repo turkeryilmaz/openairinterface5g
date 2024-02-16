@@ -86,7 +86,7 @@ void nrppa_gNB_itti_send_UplinkNonUEAssociatedNRPPa(instance_t instance,
 {
   LOG_I(NRPPA, "initiating nrppa_gNB_itti_send_UplinkNonUEAssociatedNRPPa \n");
 
-/*  MessageDef *msg = itti_alloc_new_message(TASK_NRPPA, 0, NGAP_UPLINKNONUEASSOCIATEDNRPPA);
+  MessageDef *msg = itti_alloc_new_message(TASK_NRPPA, 0, NGAP_UPLINKNONUEASSOCIATEDNRPPA);
   ngap_UplinkNonUEAssociatedNRPPa_t *ULNRPPA= &NGAP_UPLINKNONUEASSOCIATEDNRPPA(msg);
 
   // Routing ID
@@ -99,10 +99,10 @@ void nrppa_gNB_itti_send_UplinkNonUEAssociatedNRPPa(instance_t instance,
   memcpy(ULNRPPA->nrppa_pdu.buffer, nrppa_pdu, nrppa_pdu_length);
   ULNRPPA->nrppa_pdu.length = nrppa_pdu_length;
 
-  itti_send_msg_to_task(TASK_NGAP, instance, msg);*/
+  itti_send_msg_to_task(TASK_NGAP, instance, msg);
 
 // TODO try the below approach
-  MessageDef *msg=itti_alloc_new_message_sized(TASK_NRPPA, 0, NGAP_UPLINKNONUEASSOCIATEDNRPPA,
+/* MessageDef *msg=itti_alloc_new_message_sized(TASK_NRPPA, 0, NGAP_UPLINKNONUEASSOCIATEDNRPPA,
        sizeof(ngap_UplinkNonUEAssociatedNRPPa_t)+ routingId_buffer_length + nrppa_pdu_length);
 
   ngap_UplinkNonUEAssociatedNRPPa_t *msgData = &NGAP_UPLINKNONUEASSOCIATEDNRPPA(msg);
@@ -117,5 +117,5 @@ void nrppa_gNB_itti_send_UplinkNonUEAssociatedNRPPa(instance_t instance,
   memcpy(msgData->nrppa_pdu.buffer, nrppa_pdu, nrppa_pdu_length);
   msgData->nrppa_pdu.length = nrppa_pdu_length;
 
-  itti_send_msg_to_task(TASK_NGAP, instance, msg);
+  itti_send_msg_to_task(TASK_NGAP, instance, msg);*/
 }

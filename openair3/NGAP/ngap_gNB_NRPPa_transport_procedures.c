@@ -132,7 +132,7 @@ int ngap_gNB_UplinkUEAssociatedNRPPaTransport(instance_t instance, ngap_UplinkUE
 // UPLINK NON UE ASSOCIATED NRPPA TRANSPORT (9.2.9.4 of TS 38.413 Version 16.0.0.0 Release 16)
 int ngap_gNB_UplinkNonUEAssociatedNRPPaTransport(instance_t instance, ngap_UplinkNonUEAssociatedNRPPa_t *UlNRPPaMsg)
 {
-  LOG_I(NGAP, "Initiating ngap_gNB_UplinkUEAssociatedNRPPaTransport \n");
+  LOG_I(NGAP, "Initiating ngap_gNB_UplinkNonUEAssociatedNRPPaTransport \n");
   DevAssert(UlNRPPaMsg != NULL);
 
   /* Retrieve the NGAP gNB instance associated with Mod_id */
