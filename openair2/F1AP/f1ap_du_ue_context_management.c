@@ -323,6 +323,21 @@ int DU_send_UE_CONTEXT_SETUP_RESPONSE(sctp_assoc_t assoc_id, f1ap_ue_context_set
       //drbs_setup_item.lCID = 1L;
 
       for (int j=0;  j<resp->drbs_to_be_setup[i].up_dl_tnl_length; j++) {
+        f1ap_drb_to_be_setup_t *drb = &resp->drbs_to_be_setup[i];
+        transport_layer_addr_t tl_addr = {0};
+        memcpy(tl_addr.buffer, &drb->up_ul_tnl[0].tl_address, sizeof(drb->up_ul_tnl[0].tl_address));
+        tl_addr.length = sizeof(drb->up_ul_tnl[0].tl_address) * 8;
+        drb->up_dl_tnl[j].teid = newGtpuCreateTunnel(getCxt(0)->gtpInst,
+                                                     resp->gNB_DU_ue_id,
+                                                     drb->drb_id,
+                                                     drb->drb_id,
+                                                     drb->up_ul_tnl[j].teid,
+                                                     -1, // no qfi
+                                                     tl_addr,
+                                                     drb->up_ul_tnl[0].port,
+                                                     DURecvCb,
+                                                     NULL);
+                                                     
         /* ADD */
         asn1cSequenceAdd(drbs_setup_item->dLUPTNLInformation_ToBeSetup_List.list,
                        F1AP_DLUPTNLInformation_ToBeSetup_Item_t, dLUPTNLInformation_ToBeSetup_Item);
