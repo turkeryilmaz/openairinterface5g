@@ -513,7 +513,8 @@ int CU_send_UE_CONTEXT_SETUP_REQUEST(sctp_assoc_t assoc_id, f1ap_ue_context_setu
                                                                                                0xFFFF, // We will set the right value from DU answer
                                                                                                -1, // no qfi
                                                                                                addr,   // We will set the right value from DU answer
-                                                                                               f1ap_ue_context_setup_req->drbs_to_be_setup[i].up_dl_tnl[0].port,
+                                                                                               RC.nrrrc[0]->eth_params_s.my_portd,
+                                                                                              //  f1ap_ue_context_setup_req->drbs_to_be_setup[i].up_dl_tnl[0].port,
                                                                                                cu_f1u_data_req,
                                                                                                NULL);
         /*  12.3.1 ULTunnels_ToBeSetup_Item */
