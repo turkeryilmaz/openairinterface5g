@@ -251,7 +251,7 @@ static void nr_rrc_ue_process_rrcReconfiguration(const instance_t instance,
 {
   NR_UE_RRC_INST_t *rrc = &NR_UE_rrc_inst[instance];
   rrcPerNB_t *rrcNB = NR_UE_rrc_inst[instance].perNB + gNB_index;
-
+  LOG_D(PDCP,"mark %s %d\n",__FUNCTION__,__LINE__);
   switch (rrcReconfiguration->criticalExtensions.present) {
     case NR_RRCReconfiguration__criticalExtensions_PR_rrcReconfiguration: {
       NR_RRCReconfiguration_IEs_t *ie = rrcReconfiguration->criticalExtensions.choice.rrcReconfiguration;
@@ -1229,7 +1229,11 @@ static void rrc_ue_generate_RRCSetupComplete(instance_t instance, rnti_t rnti, c
   if (get_softmodem_params()->sa) {
     as_nas_info_t initialNasMsg;
     nr_ue_nas_t *nas = get_ue_nas_info(instance);
+    if(need_registration == true){
     generateRegistrationRequest(&initialNasMsg, nas);
+    } else {
+      generateServiceRequest(&initialNasMsg, nas);
+    }
     nas_msg = (char*)initialNasMsg.data;
     nas_msg_length = initialNasMsg.length;
   } else {
@@ -1385,6 +1389,8 @@ static void nr_rrc_ue_process_securityModeCommand(NR_UE_RRC_INST_t *ue_rrc,
   uint8_t kRRCenc[16] = {0};
   uint8_t kUPenc[16] = {0};
   uint8_t kRRCint[16] = {0};
+  nr_ue_nas_t *nas = get_ue_nas_info(0);
+  updateKgNB(nas, &(ue_rrc->kgnb[0]));
   nr_derive_key(UP_ENC_ALG,
                 ue_rrc->cipheringAlgorithm,
                 ue_rrc->kgnb,
@@ -1399,6 +1405,25 @@ static void nr_rrc_ue_process_securityModeCommand(NR_UE_RRC_INST_t *ue_rrc,
                 kRRCint);
 
   log_dump(NR_RRC, ue_rrc->kgnb, 32, LOG_DUMP_CHAR, "driving kRRCenc, kRRCint and kUPenc from KgNB=");
+    /*
+    LOG_I(NR_RRC, "driving kRRCenc, kRRCint and kUPenc from KgNB="
+        "%02x%02x%02x%02x"
+        "%02x%02x%02x%02x"
+        "%02x%02x%02x%02x"
+        "%02x%02x%02x%02x"
+        "%02x%02x%02x%02x"
+        "%02x%02x%02x%02x"
+        "%02x%02x%02x%02x"
+        "%02x%02x%02x%02x\n",
+        ue_rrc->kgnb[0],  ue_rrc->kgnb[1],  ue_rrc->kgnb[2],  ue_rrc->kgnb[3],
+        ue_rrc->kgnb[4],  ue_rrc->kgnb[5],  ue_rrc->kgnb[6],  ue_rrc->kgnb[7],
+        ue_rrc->kgnb[8],  ue_rrc->kgnb[9],  ue_rrc->kgnb[10], ue_rrc->kgnb[11],
+        ue_rrc->kgnb[12], ue_rrc->kgnb[13], ue_rrc->kgnb[14], ue_rrc->kgnb[15],
+        ue_rrc->kgnb[16], ue_rrc->kgnb[17], ue_rrc->kgnb[18], ue_rrc->kgnb[19],
+        ue_rrc->kgnb[20], ue_rrc->kgnb[21], ue_rrc->kgnb[22], ue_rrc->kgnb[23],
+        ue_rrc->kgnb[24], ue_rrc->kgnb[25], ue_rrc->kgnb[26], ue_rrc->kgnb[27],
+        ue_rrc->kgnb[28], ue_rrc->kgnb[29], ue_rrc->kgnb[30], ue_rrc->kgnb[31]);
+        */
 
   if (securityMode != 0xff) {
     uint8_t security_mode = ue_rrc->cipheringAlgorithm | (ue_rrc->integrityProtAlgorithm << 4);
@@ -1567,6 +1592,7 @@ static void nr_rrc_ue_process_RadioBearerConfig(NR_UE_RRC_INST_t *ue_rrc,
                                                 rrcPerNB_t *rrcNB,
                                                 NR_RadioBearerConfig_t *const radioBearerConfig)
 {
+  LOG_D(PDCP,"mark %s %d\n",__FUNCTION__,__LINE__);
   if (LOG_DEBUGFLAG(DEBUG_ASN1))
     xer_fprint(stdout, &asn_DEF_NR_RadioBearerConfig, (const void *)radioBearerConfig);
 
@@ -1588,6 +1614,9 @@ static void nr_rrc_ue_process_RadioBearerConfig(NR_UE_RRC_INST_t *ue_rrc,
          ue_rrc->cipheringAlgorithm = radioBearerConfig->securityConfig->securityAlgorithmConfig->cipheringAlgorithm;
          ue_rrc->integrityProtAlgorithm = *radioBearerConfig->securityConfig->securityAlgorithmConfig->integrityProtAlgorithm;
        }
+     }else{
+      NR_UE_rrc_inst[0].cipheringAlgorithm = NR_CipheringAlgorithm_nea0;
+      NR_UE_rrc_inst[0].integrityProtAlgorithm = NR_IntegrityProtAlgorithm_nia0;
      }
     nr_derive_key(RRC_ENC_ALG, ue_rrc->cipheringAlgorithm, ue_rrc->kgnb, kRRCenc);
     nr_derive_key(RRC_INT_ALG, ue_rrc->integrityProtAlgorithm, ue_rrc->kgnb, kRRCint);
@@ -1622,7 +1651,16 @@ static void nr_rrc_ue_process_RadioBearerConfig(NR_UE_RRC_INST_t *ue_rrc,
         nr_pdcp_release_drb(rnti, *DRB_id);
     }
   }
-
+  uint8_t kUPenc[16] = {0};
+  uint8_t kUPint[16] = {0};
+  nr_derive_key(UP_ENC_ALG,
+                NR_UE_rrc_inst[0].cipheringAlgorithm,
+                NR_UE_rrc_inst[0].kgnb,
+                kUPenc);
+  nr_derive_key(UP_INT_ALG,
+                NR_UE_rrc_inst[0].integrityProtAlgorithm,
+                NR_UE_rrc_inst[0].kgnb,
+                kUPint);
   // Establish DRBs if present
   if (radioBearerConfig->drb_ToAddModList != NULL) {
     for (int cnt = 0; cnt < radioBearerConfig->drb_ToAddModList->list.count; cnt++) {
@@ -1642,8 +1680,8 @@ static void nr_rrc_ue_process_RadioBearerConfig(NR_UE_RRC_INST_t *ue_rrc,
                 radioBearerConfig->drb_ToAddModList->list.array[cnt],
                 ue_rrc->cipheringAlgorithm,
                 ue_rrc->integrityProtAlgorithm,
-                kRRCenc,
-                kRRCint);
+                kUPenc,
+                kUPint);
       }
     }
   } // drb_ToAddModList //
