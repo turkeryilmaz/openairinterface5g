@@ -647,9 +647,16 @@ static int rfsimulator_write_internal(rfsimulator_state_t *t, openair0_timestamp
   if ( t->lastWroteTS != 0 && fabs((double)t->lastWroteTS-timestamp) > (double)CirSize)
     LOG_E(HW,"Discontinuous TX gap too large Tx:%lu, %lu\n", t->lastWroteTS, timestamp);
 
-  if (t->lastWroteTS > timestamp+nsamps)
+  if (t->lastWroteTS > timestamp)
     LOG_E(HW,"Not supported to send Tx out of order (same in USRP) %lu, %lu\n",
           t->lastWroteTS, timestamp);
+
+  if ((flags != TX_BURST_START) && (flags != TX_BURST_START_AND_END) && (t->lastWroteTS < timestamp))
+    LOG_W(HW,
+          "Gap in writing to USRP: last written %lu, now %lu, gap %lu\n",
+          t->lastWroteTS,
+          timestamp,
+          timestamp - t->lastWroteTS);
 
   t->lastWroteTS=timestamp+nsamps;
 
