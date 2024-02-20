@@ -86,7 +86,6 @@ double FO_IScaling = 0.5;    // I scaling factor of the PID controller for the D
 
 double TO_PScaling = 1;
 double TO_IScaling = 0.1;
-int TO_IScalingInit = 0;
 
 int commonDoppler = 0; //421528;
 

@@ -199,7 +199,6 @@ extern uint16_t pathEndingTime;      // time [sec] at which satellite is no more
 extern int uePosY;              // y-axis coordinate [m] of UE position
 extern double FO_PScaling;  // P scaling factor of the PID controller for the Doppler compensation at UE side
 extern double FO_IScaling;  // I scaling factor of the PID controller for the Doppler compensation at UE side
-extern int TO_IScalingInit;    // initializing the accumulative part (I part) of the PI controller for the timing offset compensation
 
 extern double TO_PScaling;
 extern double TO_IScaling;

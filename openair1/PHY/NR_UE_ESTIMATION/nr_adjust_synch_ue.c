@@ -97,12 +97,6 @@ void nr_adjust_synch_ue(NR_DL_FRAME_PARMS *frame_parms,
     diff /= FrameDiff; //scaled by the frame number
 
   frameLast = frame; //save the last frame number
-  
-/*   if ( (((diff < -4) || (diff > 4)) && (flagInitIScaling == 0)))
-  {
-	  TO_I_Ctrl = TO_IScalingInit/TO_IScaling;
-	  flagInitIScaling = 1;
-  } */
 
   ue->TO_I_Ctrl += diff; //integral of all offsets
   ue->rx_offset = diff;

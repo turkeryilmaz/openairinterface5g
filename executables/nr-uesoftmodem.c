@@ -445,7 +445,6 @@ double FO_IScaling = 0;   // I scaling factor of the PID controller for the Dopp
 
 double TO_PScaling = 1;
 double TO_IScaling = 0.1;
-int TO_IScalingInit = 0;
 
 int commonDoppler = 0; //421528;
 int TO_init_rate = 0;
