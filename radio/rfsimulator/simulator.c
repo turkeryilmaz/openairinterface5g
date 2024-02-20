@@ -86,7 +86,6 @@
     {"forgetfact",             "<channel forget factor ((0 to 1)>\n", simOpt,  .dblptr=&(rfsimulator->chan_forgetfact),.defdblval=0,                     TYPE_DOUBLE,    0 },\
     {"offset",                 "<channel offset in samps>\n",         simOpt,  .iptr=&(rfsimulator->chan_offset),      .defintval=0,                     TYPE_INT,       0 },\
     {"wait_timeout",           "<wait timeout if no UE connected>\n", simOpt,  .iptr=&(rfsimulator->wait_timeout),     .defintval=1,                     TYPE_INT,       0 },\
-    {"ufs",                    "<scale on uplink frequency>\n",       simOpt,  .dblptr=&(rfsimulator->ul_freq_scale),  .defdblval=1,                     TYPE_DOUBLE,    0 },\
   };
 
 static void getset_currentchannels_type(char *buf, int debug, webdatadef_t *tdata, telnet_printfunc_t prnt);
@@ -144,7 +143,8 @@ typedef struct {
   void *telnetcmd_qid;
   poll_telnetcmdq_func_t poll_telnetcmdq;
   int wait_timeout;
-  double ul_freq_scale;
+  double rx_freq[4];
+  double tx_freq[4];
 } rfsimulator_state_t;
 
 /*! \brief Settings to be used for RF simulator.
@@ -816,7 +816,6 @@ extern uint64_t RFsim_PropDelay;
 //Paramters for Doppler shift. Assume the Doppler frequency changes every frame
 extern int32_t fdoppler; // flag to simulate frequency offset (default active = 1, 0 = de-activate)
 extern int tshift;
-const uint32_t fsamp = 61440000; //sampling frequency
 extern uint16_t pathStartingTime;    // time [sec] at which satellite is becoming visible to the UE 
 extern uint16_t pathEndingTime;      // time [sec] at which satellite is no more visible to the UE
 extern int uePosY;              // y-axis coordinate [m] of UE position
@@ -828,7 +827,6 @@ static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimest
 
   int currDoppler = 0;
   static uint64_t counter = 0;
-  static int initDoppler = 0;
   static uint64_t SampIdxDoppler = 0; //sample index in the calculation of the Doppler shift
   //Paramters for Doppler shift. Assume the Doppler frequency changes every frame
 
@@ -929,30 +927,26 @@ static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimest
             timeForDoppler = (double)pathEndingTime;
 
           const float R = 6371000;  const float h = 600000;
+          const float wsat = 0.0011;
           double ue_posX = 0; double ue_posY = (double)uePosY; double ue_posZ = R;
-          static float wsat = 0.0011; 
-          double sat_posX = 0; double sat_posY = (R+h) * cos(wsat*timeForDoppler);  double sat_posZ = (R+h) * sin(wsat*timeForDoppler); 
+          double sat_posX = 0;
+          double sat_posY = (R + h) * cos(wsat * timeForDoppler);
+          double sat_posZ = (R + h) * sin(wsat * timeForDoppler);
           float norm_d = sqrt(((ue_posX - sat_posX) * (ue_posX - sat_posX)) + ((ue_posY - sat_posY) * (ue_posY - sat_posY)) + ((ue_posZ - sat_posZ) * (ue_posZ - sat_posZ)));
           float cos_theta = (sat_posY - ue_posY) / norm_d;
-          double fc = 3619200000;   // center frequency in Hz, hard coded!
-          double freqScale = t->ul_freq_scale;
-          //if (t-> typeStamp == ENB_MAGICDL)
-            //freqScale = (double)1769080000/2169080000;
           double c = 299792458;
 
-          if (fdoppler == 1)
-          {
-            int currDopplerTmp = (int)((wsat*R / c) * fc * freqScale * (R/(R+h)) * cos_theta);
+          if (fdoppler)
+            currDoppler = (int)((wsat * R / c) * t->rx_freq[0] * (R / (R + h)) * cos_theta);
 
-            //if (SampIdxDoppler == 0)
-              //initDoppler = currDopplerTmp;
-
-            currDoppler =  (currDopplerTmp - initDoppler);
-          }
-
-          if(tshift)
-            RFsim_PropDelay = (2 * norm_d / c) * fsamp; 
-          LOG_D(HW, "RFSim, counter: %lu, RFsim_PropDelay[Samp]: %lu , Doppler: %d, freqScale: %f ***** \n ", counter, RFsim_PropDelay, currDoppler, freqScale);       
+          if (tshift)
+            RFsim_PropDelay = (2 * norm_d / c) * t->sample_rate;
+          LOG_D(HW,
+                "RFSim, counter: %lu, RFsim_PropDelay[Samp]: %lu , Doppler: %d, frequency: %f ***** \n ",
+                counter,
+                RFsim_PropDelay,
+                currDoppler,
+                t->rx_freq[0]);
 
           //LOG_I(HW, "nbAnt_tx %d\n",nbAnt_tx);
           for (int i=0; i < nsamps; i++) {//loop over nsamps
@@ -962,11 +956,13 @@ static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimest
             } // end for a_tx
 
             if (fdoppler) {
+              double phaseDoppler = 2 * M_PI * (double)SampIdxDoppler * currDoppler / t->sample_rate;
+
               int16_t outRealTmp = out[i].r;
               int16_t outImagTmp = out[i].i;
 
-              out[i].r = (short)(outRealTmp * cos(2*M_PI*(double)SampIdxDoppler*currDoppler/fsamp) - outImagTmp * sin(2*M_PI*(double)SampIdxDoppler*currDoppler/fsamp));
-              out[i].i = (short)(outImagTmp * cos(2*M_PI*(double)SampIdxDoppler*currDoppler/fsamp) + outRealTmp * sin(2*M_PI*(double)SampIdxDoppler*currDoppler/fsamp));
+              out[i].r = (short)(outRealTmp * cos(phaseDoppler) - outImagTmp * sin(phaseDoppler));
+              out[i].i = (short)(outImagTmp * cos(phaseDoppler) + outRealTmp * sin(phaseDoppler));
 
               SampIdxDoppler++;
             }
@@ -975,8 +971,8 @@ static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimest
             int16_t outRealTmp = out[i].r;
             int16_t outImagTmp = out[i].i;
 
-            out[i].r = (short)(outRealTmp * cos(2*M_PI*(double)SampIdxDoppler*fdopplerCurr/fsamp) - outImagTmp * sin(2*M_PI*(double)SampIdxDoppler*fdopplerCurr/fsamp));
-            out[i].i = (short)(outImagTmp * cos(2*M_PI*(double)SampIdxDoppler*fdopplerCurr/fsamp) + outRealTmp * sin(2*M_PI*(double)SampIdxDoppler*fdopplerCurr/fsamp));
+            out[i].r = (short)(outRealTmp * cos(2*M_PI*(double)SampIdxDoppler*fdopplerCurr/t->sample_rate) - outImagTmp * sin(2*M_PI*(double)SampIdxDoppler*fdopplerCurr/t->sample_rate));
+            out[i].i = (short)(outImagTmp * cos(2*M_PI*(double)SampIdxDoppler*fdopplerCurr/t->sample_rate) + outRealTmp * sin(2*M_PI*(double)SampIdxDoppler*fdopplerCurr/t->sample_rate));
 
             SampIdxDoppler++;
             CntDoppRate++;
@@ -1042,6 +1038,11 @@ static int rfsimulator_stop(openair0_device *device) {
   return 0;
 }
 static int rfsimulator_set_freq(openair0_device *device, openair0_config_t *openair0_cfg) {
+  rfsimulator_state_t *t = device->priv;
+  for (int i = 0; i < 4; i++) {
+    t->rx_freq[i] = openair0_cfg->rx_freq[i];
+    t->tx_freq[i] = openair0_cfg->tx_freq[i];
+  }
   return 0;
 }
 static int rfsimulator_set_gains(openair0_device *device, openair0_config_t *openair0_cfg, int dont_block) {
@@ -1111,7 +1112,11 @@ int device_init(openair0_device *device, openair0_config_t *openair0_cfg) {
   rfsimulator->tx_num_channels=openair0_cfg->tx_num_channels;
   rfsimulator->rx_num_channels=openair0_cfg->rx_num_channels;
   rfsimulator->sample_rate=openair0_cfg->sample_rate;
-  rfsimulator->tx_bw=openair0_cfg->tx_bw;  
+  rfsimulator->tx_bw = openair0_cfg->tx_bw;
+  for (int i = 0; i < 4; i++) {
+    rfsimulator->rx_freq[i] = openair0_cfg->rx_freq[i];
+    rfsimulator->tx_freq[i] = openair0_cfg->tx_freq[i];
+  }
   rfsimulator_readconfig(rfsimulator);
   LOG_W(HW, "rfsim: sample_rate %f\n", rfsimulator->sample_rate);
   pthread_mutex_init(&Sockmutex, NULL);
