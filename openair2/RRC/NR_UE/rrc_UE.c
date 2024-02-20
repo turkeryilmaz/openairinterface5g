@@ -1905,6 +1905,7 @@ void *rrc_nrue(void *notUsed)
   /* Cell_Search_5G s*/
   case PHY_FIND_CELL_IND:
   {
+    rrc=&NR_UE_rrc_inst[0]; //overwrite rrc as instance is not carried in this message
     nb_cells = PHY_FIND_CELL_IND(msg_p).cell_nb;
     LOG_D(RRC, "Received message %s with reports for %d cells.\n",
           ITTI_MSG_NAME (msg_p), nb_cells);
