@@ -36,7 +36,6 @@
   {"gnb_k2" ,               CONFIG_HLP_GNBK2,          0,                .u16ptr=&NTN_gNB_k2,                 .defintval=0,                     TYPE_UINT16, 0},        \
   {"FD" ,                   CONFIG_HLP_FDoppler,       0,                .iptr=&fdoppler,                     .defintval=0,                     TYPE_INT,    0},        \
   {"TS" ,                   CONFIG_HLP_TShift,         0,                .iptr=&tshift,                       .defintval=0,                     TYPE_INT,    0},        \
-  {"TD" ,                   CONFIG_HLP_TDRIFT,         0,                .iptr=&RFsim_DriftPerFrame,          .defintval=0,                     TYPE_INT,    0},        \
   {"PST" ,                  CONFIG_HLP_PathStart,      0,                .u16ptr=&pathStartingTime,           .defintval=1050,                  TYPE_UINT16, 0},        \
   {"PET" ,                  CONFIG_HLP_PathEnd,        0,                .u16ptr=&pathEndingTime,             .defintval=1280,                  TYPE_UINT16, 0},        \
   {"ue_PosY" ,              CONFIG_HLP_uePosY,         0,                .iptr=&uePosY,                       .defintval=0,                     TYPE_INT,    0},        \

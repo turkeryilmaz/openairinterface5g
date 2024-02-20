@@ -432,7 +432,6 @@ int NB_UE_INST = 1;
 uint64_t RFsim_PropDelay = 0;
 uint16_t NTN_UE_k2 = 0;
 uint16_t NTN_UE_slot_Rx_to_Tx = 0;
-int RFsim_DriftPerFrame = 0;
 int32_t fdoppler = 0;            // flag to simulate frequency offset at the RF-Simulator (default de-active = 0, 1 = activate)
 int32_t tshift = 0;              // flag to simulate timing offset at the RF-Simulator (default de-activate = 0, 1 = activate)
 uint16_t pathStartingTime = 1050;

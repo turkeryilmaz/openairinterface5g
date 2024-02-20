@@ -147,18 +147,14 @@ typedef struct {
   double ul_freq_scale;
 } rfsimulator_state_t;
 
-static int TO_gNB_flag = 0;
-static int TO_UE_flag = 0;
-static int TO_wait_flag = 1;
-
-/*! \brief Settings to be used for RF simulator. 
+/*! \brief Settings to be used for RF simulator.
 Currently assumed to be 53db = 0dbm*/
 gain_calib_table_t rx_sample_calibvalues_UErfsim[] = {
   {0.0,67.0},
   {-1,0}
 };
 
-/*! \brief Settings to be used for RF simulator. 
+/*! \brief Settings to be used for RF simulator.
 Currently assumed to be 53db = 0dbm */
 gain_calib_table_t tx_sample_calibvalues_UErfsim[] = {
   {0.0,137.0},
@@ -391,7 +387,7 @@ static int rfsimu_setchanmod_cmd(char *buff, int debug, telnet_printfunc_t prnt,
         }
       } /* for */
       if (found==0)
-      	prnt("Channel %s not found or not currently used\n",modelname); 
+        prnt("Channel %s not found or not currently used\n", modelname);
     }
   } else {
     prnt("ERROR: 2 parameters required: model name and model type (%i found)\n",s);
@@ -609,8 +605,7 @@ static int startClient(openair0_device *device) {
 
     if (connect(sock, (struct sockaddr *)&addr, sizeof(addr)) == 0) {
       LOG_I(HW,"rfsimulator: connection established\n");
-      connected=true;
-      TO_UE_flag = 1;
+      connected = true;
     }
 
     perror("rfsimulator");
@@ -622,44 +617,11 @@ static int startClient(openair0_device *device) {
   return 0;
 }
 
-extern uint64_t RFsim_PropDelay;
-extern int RFsim_DriftPerFrame;
-int samples_per_slot = 30720; //number of samples per slot, HARD CODED!
-int nb_slot_per_fram = 20; //number of slots per frame, HARD CODED!
 static int rfsimulator_write_internal(rfsimulator_state_t *t, openair0_timestamp timestamp, void **samplesVoid, int nsamps, int nbAnt, int flags, bool alreadyLocked) {
   if (!alreadyLocked)
     pthread_mutex_lock(&Sockmutex);
 
   LOG_D(HW,"sending %d samples at time: %ld, nbAnt %d\n", nsamps, timestamp, nbAnt);
-
-  static int64_t TO_sim_shift = 0;
-  static uint64_t TO_TS = 0;
-  if (RFsim_DriftPerFrame!=0) {
-    if ( TO_gNB_flag) { //a gNB is active
-      if ( TO_wait_flag ) { //for the first write when a UE is connected
-        TO_wait_flag=0;
-        TO_TS = timestamp+samples_per_slot*nb_slot_per_fram*300+samples_per_slot*5; //start drifting 300 frames after a UE is active, trying to skip all the "trash" frames (5 trash frames currently)
-        //"samples_per_slot*5" is from the comparison of loging of gNB and UE, for gNB to start drifting the same as UE
-      }
-      while (timestamp > (TO_TS+samples_per_slot/2)) { //update the TO shift according to the timestamp
-        TO_sim_shift+=((0<RFsim_DriftPerFrame)-(RFsim_DriftPerFrame<0));
-        TO_TS += samples_per_slot*nb_slot_per_fram/abs(RFsim_DriftPerFrame);
-      }
-    }
-    if ( TO_UE_flag) { //a UE is active
-      if ( TO_wait_flag ) { //for the first write when a UE is connected
-        TO_wait_flag=0;
-        TO_TS = timestamp+samples_per_slot*nb_slot_per_fram*300; //start drifting 300 frames after a UE is active, trying to skip all the "trash" frames (5 trash frames currently)
-      }
-      while (timestamp > (TO_TS+samples_per_slot/2)) { //update the TO shift according to the timestamp
-        TO_sim_shift+=((0<RFsim_DriftPerFrame)-(RFsim_DriftPerFrame<0));
-        TO_TS += samples_per_slot*nb_slot_per_fram/abs(RFsim_DriftPerFrame);
-      }
-    }
-  }
-  
-  timestamp = timestamp + TO_sim_shift;
-  //printf("TO_sim_shift=%lld, RFsim_PropDelay=%llu,RFsim_DriftPerFrame=%d\n", TO_sim_shift,RFsim_PropDelay,RFsim_DriftPerFrame);
 
   for (int i=0; i<FD_SETSIZE; i++) {
     buffer_t *b=&t->buf[i];
@@ -724,8 +686,7 @@ static bool flushInput(rfsimulator_state_t *t, int timeout, int nsamps_for_initi
       AssertFatal( (conn_sock = accept(t->listen_sock,NULL,NULL)) != -1, "");
       setblocking(conn_sock, notBlocking);
       allocCirBuf(t, conn_sock);
-      LOG_I(HW,"A client connected, sending the current time\n");
-      TO_gNB_flag = 1;
+      LOG_I(HW, "A client connected, sending the current time\n");
       c16_t v= {0};
       void *samplesVoid[t->tx_num_channels];
 
@@ -850,6 +811,8 @@ static bool flushInput(rfsimulator_state_t *t, int timeout, int nsamps_for_initi
   return nfds>0;
 }
 
+extern uint64_t RFsim_PropDelay;
+
 //Paramters for Doppler shift. Assume the Doppler frequency changes every frame
 extern int32_t fdoppler; // flag to simulate frequency offset (default active = 1, 0 = de-activate)
 extern int tshift;
@@ -951,7 +914,7 @@ static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimest
                      CirSize);
         }
         else { // no channel modeling
-          
+
           double H_awgn_mimo[4][4] ={{1.0, 0.2, 0.1, 0.05}, //rx 0
                                       {0.2, 1.0, 0.2, 0.1}, //rx 1
                                      {0.1, 0.2, 1.0, 0.2}, //rx 2
@@ -959,14 +922,12 @@ static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimest
 
           sample_t *out=(sample_t *)samplesVoid[a];
           int nbAnt_tx = ptr->th.nbAnt;//number of Tx antennas
-          
-          double timeForDoppler = (double)pathStartingTime;
-          if ( ((t-> typeStamp != ENB_MAGICDL) && (TO_UE_flag == 1)) || ((TO_gNB_flag == 1) && (t->typeStamp == ENB_MAGICDL)) )
-            timeForDoppler = (double)pathStartingTime + (double)SampIdxDoppler/fsamp;
-          
+
+          double timeForDoppler = (double)pathStartingTime + (double)SampIdxDoppler / t->sample_rate;
+
           if (timeForDoppler > (double)pathEndingTime)
             timeForDoppler = (double)pathEndingTime;
-          
+
           const float R = 6371000;  const float h = 600000;
           double ue_posX = 0; double ue_posY = (double)uePosY; double ue_posZ = R;
           static float wsat = 0.0011; 
@@ -1000,8 +961,7 @@ static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimest
               out[i].i += (short)(ptr->circularBuf[((t->nextRxTstamp-RFsim_PropDelay+i)*nbAnt_tx+a_tx)%CirSize].i*H_awgn_mimo[a][a_tx]);
             } // end for a_tx
 
-            if ( ((t-> typeStamp != ENB_MAGICDL) && (TO_UE_flag == 1)) || ((TO_gNB_flag == 1) && (t->typeStamp == ENB_MAGICDL)) )
-            {
+            if (fdoppler) {
               int16_t outRealTmp = out[i].r;
               int16_t outImagTmp = out[i].i;
 
@@ -1035,7 +995,7 @@ static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimest
       } // end for a (number of rx antennas)
     }
   }
-  
+
   counter++;
   /*
   if ((t-> typeStamp != ENB_MAGICDL) && (TO_UE_flag == 1))
@@ -1045,7 +1005,7 @@ static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimest
 
     FILE *fptr;
     fptr = fopen(filename,"a");
-  
+
     if (counter % 1600 == 0)
     {
       fprintf(fptr,"%d\n",currDoppler);
@@ -1053,7 +1013,7 @@ static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimest
     fclose(fptr);
     counter++;
   }*/
-  
+
   *ptimestamp = t->nextRxTstamp; // return the time of the first sample
   t->nextRxTstamp+=nsamps;
   LOG_D(HW,"Rx to upper layer: %d from %ld to %ld, energy in first antenna %d\n",
@@ -1170,7 +1130,7 @@ int device_init(openair0_device *device, openair0_config_t *openair0_cfg) {
   /* let's pretend to be a b2x0 */
   device->type = RFSIMULATOR;
   // Do this for UE, in order to test Powercontrol on UE
-  if (rfsimulator->typeStamp == UE_MAGICDL) { 
+  if (rfsimulator->typeStamp == UE_MAGICDL) {
     openair0_cfg[0].rx_gain_calib_table = rx_sample_calibvalues_UErfsim;
     openair0_cfg[0].tx_gain_calib_table = tx_sample_calibvalues_UErfsim;
     openair0_cfg[0].rx_gain_offset[0] = openair0_cfg[0].rx_gain_calib_table[0].offset;

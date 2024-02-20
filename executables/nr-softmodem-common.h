@@ -118,7 +118,6 @@
 #define CONFIG_HLP_FDoppler      "activate/deactivate simulating time-varying doppler offset on RFSimulator\n"
 #define CONFIG_HLP_TShift        "activate/deactivate simulating time-varying timing offset at RFSimulator\n"
 #define CONFIG_HLP_FDopplerComp  "Execute continous frequency offset compensation\n"
-#define CONFIG_HLP_TDRIFT        "Set the timing offset/drift per frame in the RF simulator (expressed in number of samples per frame)\n"
 #define CONFIG_HLP_PathStart     "Set the time [sec] at which satellite is becoming visible to the UE\n"
 #define CONFIG_HLP_PathEnd       "Set the time [sec] at which satellite is no more visible to the UE\n"
 #define CONFIG_HLP_uePosY        "Set the y-axis coordinate [m] of UE position\n"
@@ -193,7 +192,6 @@ extern uint16_t NTN_gNB_k2; //the additional k2 value at gNB
 extern int fdoppler;             // flag to simulate frequency offset at the RF-Simulator (default active = 1, 0 = de-activate)
 extern int tshift;             // flag to simulate timing offset at the RF-Simulator (default active = 1, 0 = de-activate)
 extern int fdopplerComp;         // flag to activate/deactivate continous frequency offset compensation
-extern int RFsim_DriftPerFrame; //the timing offset/drift per frame in the RF simulator (expressed in number of samples per frame)
 extern uint16_t pathStartingTime;    // time [sec] at which satellite is becoming visible to the UE.
 extern uint16_t pathEndingTime;      // time [sec] at which satellite is no more visible to the UE
 extern int uePosY;              // y-axis coordinate [m] of UE position

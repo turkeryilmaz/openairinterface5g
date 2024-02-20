@@ -582,7 +582,6 @@ uint16_t NTN_gNB_k2 = 0;
 int fdoppler = 0;             // flag to simulate frequency offset at the RF-Simulator (default de-active = 0, 1 = activate)
 int tshift = 0;               // flag to simulate timing offset at the RF-Simulator (default de-activate = 0, 1 = activate)
 int fdopplerComp = 0;
-int RFsim_DriftPerFrame = 0;
 uint16_t pathStartingTime = 1050;
 uint16_t pathEndingTime = 1280;
 int uePosY = 0;
