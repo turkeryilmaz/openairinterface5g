@@ -1011,7 +1011,7 @@ void *UE_thread(void *arg)
       LOG_D(PHY, "UE->rx_offset_slot: %d, rx_offset_slot: %d, UE->rx_offset_TO: %d \n", UE->rx_offset_slot, rx_offset_slot, UE->rx_offset_TO);
 
       UE->rx_offset_slot++;
-      UL_TO_Tx_ofs = 1*rx_offset_slot; //to adapt the UE's transmission time in order to get aligned at gNB
+      UL_TO_Tx_ofs = 2 * rx_offset_slot; // to adapt the UE's transmission time in order to get aligned at gNB
       acc_UL_To_TX += UL_TO_Tx_ofs;
 
       if(UE->rx_offset_slot > ((2*nb_slot_frame)))
@@ -1023,8 +1023,8 @@ void *UE_thread(void *arg)
       //LOG_A(PHY, "UE->rx_offset_TO: %d, UE->rx_offset_slot: %d, UE->rx_offset_comp: %d, rx_offset_slot: %d\n", UE->rx_offset_TO, UE->rx_offset_slot, UE->rx_offset_comp, rx_offset_slot);
     }
 
-    readBlockSize=get_readBlockSize(slot_nr, &UE->frame_parms) + rx_offset_slot;
-    writeBlockSize=UE->frame_parms.get_samples_per_slot((slot_nr + DURATION_RX_TO_TX) % nb_slot_frame, &UE->frame_parms);
+    readBlockSize = get_readBlockSize(slot_nr, &UE->frame_parms) + rx_offset_slot;
+    writeBlockSize = UE->frame_parms.get_samples_per_slot((slot_nr + DURATION_RX_TO_TX) % nb_slot_frame, &UE->frame_parms) + rx_offset_slot;
     /*
     if (UE->apply_timing_offset && (slot_nr == nb_slot_frame-1)) {
       const int sampShift = -(UE->rx_offset>>1);
