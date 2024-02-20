@@ -642,6 +642,8 @@ typedef struct {
   uint8_t dl_lc_num;
   /// order in which DLSCH scheduler should allocate LCs
   uint8_t dl_lc_ids[NR_MAX_NUM_LCID];
+  // priorities of lcids
+  uint8_t dl_lc_ids_priorities[NR_MAX_NUM_LCID];
 
   /// Timer for RRC processing procedures
   uint32_t rrc_processing_timer;
@@ -649,9 +651,6 @@ typedef struct {
   /// sri, ul_ri and tpmi based on SRS
   nr_srs_feedback_t srs_feedback;
   nssai_t dl_lc_nssai[NR_MAX_NUM_LCID];
-
-  // priorities of lcids
-  uint8_t dl_lc_ids_priorities[NR_MAX_NUM_LCID];
 } NR_UE_sched_ctrl_t;
 
 typedef struct {
