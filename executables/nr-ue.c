@@ -882,7 +882,7 @@ void *UE_thread(void *arg)
   int rx_offset_slot = 0; //samples to be shifted for the current slot
   int UL_TO_Tx_ofs = 0;
   static int acc_UL_To_TX = 0;   // acculating samples compensated on UL through timing advance 
-  extern int tshift;
+  extern int tdriftComp;
 
   bool syncRunning=false;
   const int nb_slot_frame = UE->frame_parms.slots_per_frame;
@@ -905,8 +905,7 @@ void *UE_thread(void *arg)
       if (res) {
         syncRunning=false;
         if (UE->is_synchronized) {
-          if (tshift)
-          {
+          if (tdriftComp) {
             int diff = 0;   // drift in one frame
             if (TO_IScaling != 0)
               UE->TO_I_Ctrl = round(TO_init_rate/TO_IScaling);
