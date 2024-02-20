@@ -967,8 +967,31 @@ static int8_t nr_rrc_ue_decode_NR_BCCH_DL_SCH_Message(instance_t instance,
     switch (bcch_message->message.choice.c1->present) {
       case NR_BCCH_DL_SCH_MessageType__c1_PR_systemInformationBlockType1:
         LOG_D(NR_RRC, "[UE %ld] Decoding SIB1\n", instance);
-        if(SI_info->sib1)
-          ASN_STRUCT_FREE(asn_DEF_NR_SIB1, SI_info->sib1);
+        // w45 rebase: in OAI codes, sib1 fields are referred by MAC(see nr_rrc_mac_config_req_sib1 and configure_current_BWP). memory access issue is caused when releasing old sib but no update of those refers
+        // WA (before OAI fix it) is do not release sib1 and check only fields we concern, eg. trackingAreaCode
+        if(SI_info->sib1 != NULL) { 
+          NR_SIB1_t *new_sib1 = bcch_message->message.choice.c1->choice.systemInformationBlockType1;
+          if (passes_cell_selection_criteria_nr(new_sib1) == false) {
+            LOG_E(NR_RRC, "Cell Selection Crieteria not met \n");
+            SEQUENCE_free(&asn_DEF_NR_SIB1, (void *)new_sib1, 1);
+            break;
+          } else {
+            NR_UE_MAC_INST_t *mac = get_mac_inst(0);
+            if( mac->ra.ra_state == RA_UE_IDLE) {
+              mac->ra.ra_state = GENERATE_PREAMBLE;
+            }
+  
+            if( new_sib1->cellAccessRelatedInfo.plmn_IdentityInfoList.list.array[0]->trackingAreaCode != NULL &&
+                BIT_STRING_to_uint32(new_sib1->cellAccessRelatedInfo.plmn_IdentityInfoList.list.array[0]->trackingAreaCode) !=  NR_UE_rrc_inst[0].tac) {
+                NR_UE_rrc_inst[0].tac = BIT_STRING_to_uint32(new_sib1->cellAccessRelatedInfo.plmn_IdentityInfoList.list.array[0]->trackingAreaCode);
+                need_registration = true;
+                LOG_D(NR_RRC,"tac is %d\n",NR_UE_rrc_inst[0].tac);
+                SEQUENCE_free(&asn_DEF_NR_SIB1, (void *)new_sib1, 1 );
+            }
+            // SEQUENCE_free(&asn_DEF_NR_SIB1, (void *)SI_info->sib1, 1);
+            break;
+          }
+        }
         NR_SIB1_t *sib1 = bcch_message->message.choice.c1->choice.systemInformationBlockType1;
         SI_info->sib1 = sib1;
         SI_info->sib1_timer = 0;
