@@ -237,3 +237,20 @@ where:
 # Caveats
 Still issues in power control: txgain, rxgain are not used.
 
+# Running 5G Sidelink mode 2 on rfsimulator
+
+```bash
+cd openairinterface5g/cmake_targets/ran_build/build
+```
+
+### Launch SyncRef UE in one window
+
+```bash
+sudo -E ./nr-uesoftmodem -O ../../../targets/PROJECTS/NR-SIDELINK/CONF/sl_preconfiguration.conf --sa --sl-mode 2 --sync-ref --rfsim --thread-pool -1,-1,-1,-1 --rfsimulator.serveraddr server --rfsimulator.serverport 4048 --node-number 2
+```
+
+### Launch NearBy UE in another window
+
+```bash
+sudo -E ./nr-uesoftmodem -O ../../../targets/PROJECTS/NR-SIDELINK/CONF/sl_preconfiguration.conf --rfsim --sa --sl-mode 2 --thread-pool -1,-1,-1,-1 --rfsimulator.serveraddr 127.0.0.1 --rfsimulator.serverport 4048 --node-number 3
+```
