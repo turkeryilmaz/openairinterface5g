@@ -251,7 +251,7 @@ static void nr_rrc_ue_process_rrcReconfiguration(const instance_t instance,
 {
   NR_UE_RRC_INST_t *rrc = &NR_UE_rrc_inst[instance];
   rrcPerNB_t *rrcNB = NR_UE_rrc_inst[instance].perNB + gNB_index;
-  LOG_D(PDCP,"mark %s %d\n",__FUNCTION__,__LINE__);
+
   switch (rrcReconfiguration->criticalExtensions.present) {
     case NR_RRCReconfiguration__criticalExtensions_PR_rrcReconfiguration: {
       NR_RRCReconfiguration_IEs_t *ie = rrcReconfiguration->criticalExtensions.choice.rrcReconfiguration;
@@ -273,7 +273,7 @@ static void nr_rrc_ue_process_rrcReconfiguration(const instance_t instance,
         if (ie->nonCriticalExtension->dedicatedNAS_MessageList) {
           struct NR_RRCReconfiguration_v1530_IEs__dedicatedNAS_MessageList *tmp = ext->dedicatedNAS_MessageList;
           for (int i = 0; i < tmp->list.count; i++) {
-            MessageDef *ittiMsg = itti_alloc_new_message(TASK_RRC_NRUE, 0, NAS_CONN_ESTABLI_CNF);
+            MessageDef *ittiMsg = itti_alloc_new_message(TASK_RRC_NRUE, 0, NAS_DOWNLINK_DATA_IND);
             NasConnEstabCnf *msg = &NAS_CONN_ESTABLI_CNF(ittiMsg);
             msg->errCode = AS_SUCCESS;
             msg->nasMsg.length = tmp->list.array[i]->size;
@@ -283,6 +283,8 @@ static void nr_rrc_ue_process_rrcReconfiguration(const instance_t instance,
           tmp->list.count = 0; // to prevent the automatic free by ASN1_FREE
         }
       }
+
+      
 
       if (ie->secondaryCellGroup != NULL) {
         NR_CellGroupConfig_t *secondCellGroupConfig = NULL;
@@ -1592,7 +1594,6 @@ static void nr_rrc_ue_process_RadioBearerConfig(NR_UE_RRC_INST_t *ue_rrc,
                                                 rrcPerNB_t *rrcNB,
                                                 NR_RadioBearerConfig_t *const radioBearerConfig)
 {
-  LOG_D(PDCP,"mark %s %d\n",__FUNCTION__,__LINE__);
   if (LOG_DEBUGFLAG(DEBUG_ASN1))
     xer_fprint(stdout, &asn_DEF_NR_RadioBearerConfig, (const void *)radioBearerConfig);
 
@@ -1718,7 +1719,7 @@ static int nr_rrc_ue_decode_dcch(instance_t instance,
     LOG_E(NR_RRC, "Received message on DL-DCCH (SRB%ld), should not have ...\n", Srb_id);
   }
 
-  LOG_D(NR_RRC, "Decoding DL-DCCH Message\n");
+  
   asn_dec_rval_t dec_rval = uper_decode(NULL, &asn_DEF_NR_DL_DCCH_Message, (void **)&dl_dcch_msg, Buffer, Buffer_size, 0, 0);
 
   if ((dec_rval.code != RC_OK) && (dec_rval.consumed == 0)) {
@@ -1730,10 +1731,11 @@ static int nr_rrc_ue_decode_dcch(instance_t instance,
   if (LOG_DEBUGFLAG(DEBUG_ASN1)) {
     xer_fprint(stdout, &asn_DEF_NR_DL_DCCH_Message, (void *)dl_dcch_msg);
   }
-
+  LOG_D(NR_RRC, "Decoding DL-DCCH Message %d\n",dl_dcch_msg->message.present);
   switch (dl_dcch_msg->message.present) {
     case NR_DL_DCCH_MessageType_PR_c1: {
       struct NR_DL_DCCH_MessageType__c1 *c1 = dl_dcch_msg->message.choice.c1;
+      LOG_D(NR_RRC, "Decoding DL-DCCH Message MessageType %d\n",c1->present);
       switch (c1->present) {
         case NR_DL_DCCH_MessageType__c1_PR_NOTHING:
           LOG_I(NR_RRC, "Received PR_NOTHING on DL-DCCH-Message\n");
@@ -1817,7 +1819,7 @@ static int nr_rrc_ue_decode_dcch(instance_t instance,
             /* This message hold a dedicated info NAS payload, forward it to NAS */
             NR_DedicatedNAS_Message_t *dedicatedNAS_Message =
                 dlInformationTransfer->criticalExtensions.choice.dlInformationTransfer->dedicatedNAS_Message;
-
+            LOG_D(NR_RRC,"NAS NAS_DOWNLINK_DATA_IND received on DCCH,instance %d\n",instance);
             MessageDef *ittiMsg = itti_alloc_new_message(TASK_RRC_NRUE, 0, NAS_DOWNLINK_DATA_IND);
             NasDlDataInd *msg = &NAS_DOWNLINK_DATA_IND(ittiMsg);
             msg->UEid = instance; // TODO set the UEid to something else ?
