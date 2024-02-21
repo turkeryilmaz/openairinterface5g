@@ -737,9 +737,7 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
   while (!done && pdu_len > 0){
     uint16_t mac_len = 0x0000;
     uint16_t mac_subheader_len = 0x0001; //  default to fixed-length subheader = 1-oct
-    uint8_t rx_lcid = ((NR_MAC_SUBHEADER_FIXED *)pduP)->LCID;
-
-    LOG_D(NR_MAC, "[UE %x] LCID %d, PDU length %d\n", mac->src_id,rx_lcid, pdu_len);
+    uint8_t rx_lcid = ((NR_MAC_SUBHEADER_LONG *)(pduP + sizeof(NR_SLSCH_MAC_SUBHEADER_FIXED)))->LCID;
     switch(rx_lcid){
       //  MAC CE
       case SL_SCH_LCID_4_19:

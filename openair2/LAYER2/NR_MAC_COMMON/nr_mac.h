@@ -114,23 +114,50 @@ typedef struct {
   uint8_t R: 2;       // octet 1 [7:6]
 } __attribute__ ((__packed__)) NR_MAC_SUBHEADER_FIXED;
 
+// 38321 section 6.1.6 Figure 6.1.6-1
+typedef struct {
+  uint8_t V: 4; // octet 1 [7:4]
+  uint8_t R: 4; // octet 1 [3:0]
+  uint16_t  SRC: 16; // octet 2, octet 3
+  uint8_t DST: 8; // octet 4
+}__attribute__ ((__packed__)) NR_SLSCH_MAC_SUBHEADER_FIXED;
+
 static inline int get_mac_len(uint8_t* pdu, int pdu_len, uint16_t *mac_ce_len, uint16_t *mac_subheader_len) {
-  if ( pdu_len < (int)sizeof(NR_MAC_SUBHEADER_SHORT))
+  uint8_t sl_sch_header_len = (int)sizeof(NR_SLSCH_MAC_SUBHEADER_FIXED);
+  if (pdu_len < sl_sch_header_len)
+    return false;
+  NR_SLSCH_MAC_SUBHEADER_FIXED *sl_sch_subheader = (NR_SLSCH_MAC_SUBHEADER_FIXED*) pdu;
+  pdu += sl_sch_header_len;
+  if ( pdu_len < sl_sch_header_len + (int)sizeof(NR_MAC_SUBHEADER_SHORT))
     return false;
   NR_MAC_SUBHEADER_SHORT *s = (NR_MAC_SUBHEADER_SHORT*) pdu;
   NR_MAC_SUBHEADER_LONG *l = (NR_MAC_SUBHEADER_LONG*) pdu;
-  if (s->F && pdu_len < (int)sizeof(NR_MAC_SUBHEADER_LONG))
+  if (s->F && pdu_len < sl_sch_header_len + (int)sizeof(NR_MAC_SUBHEADER_LONG))
     return false;
   if (s->F) {
-    *mac_subheader_len = sizeof(*l);
+    *mac_subheader_len = sizeof(*l) + sizeof(*sl_sch_subheader);
     *mac_ce_len = ntohs(l->L);
   } else {
-    *mac_subheader_len = sizeof(*s);
+    *mac_subheader_len = sizeof(*s) + sizeof(*sl_sch_subheader);
     *mac_ce_len = s->L;
   }
+  LOG_D(NR_MAC, "V %hhu, SRC %hu, DST %hhu\n", sl_sch_subheader->V, sl_sch_subheader->SRC, sl_sch_subheader->DST);
+  LOG_D(NR_MAC, "R %hhu, F %hhu, LCID %hhu, L %hu\n", l->R, l->F, l->LCID, ntohs(l->L));
+  LOG_D(NR_MAC, "mac_subheader_len %hu, mac_ce_len %hu\n", *mac_subheader_len, *mac_ce_len);
   return true;
 }
     
+// SL BSR MAC CEs
+// TS 38.321 ch. 6.1.3.33
+// Short BSR for a specific logical channel group ID
+typedef struct {
+  uint8_t destination_index: 5;    // octet 1 MSB
+  uint8_t LcgID: 3;                // octet 1 LSB
+  uint8_t Buffer_size: 8;
+} __attribute__ ((__packed__)) NR_SL_BSR_SHORT;
+
+typedef NR_SL_BSR_SHORT NR_SL_BSR_SHORT_TRUNCATED;
+
 // BSR MAC CEs
 // TS 38.321 ch. 6.1.3.1
 // Short BSR for a specific logical channel group ID
@@ -552,10 +579,24 @@ typedef struct nr_csi_report {
   int N2;
 } nr_csi_report_t;
 
+// 38321 sec. 6.1.3.35
 typedef struct {
-  int CQI;
-  int RI;
-} nr_sl_csi_report_t;
+  uint8_t RI: 1; // 7th bit
+  uint8_t CQI: 4; // 3-6 bits
+  uint8_t R: 3; // 0-2 bits
+} __attribute__ ((__packed__)) nr_sl_csi_report_t;
+
+// 38321 sec. 6.1.3.35
+typedef struct {
+  uint8_t C1: 1; // 1st bit
+  uint8_t C2: 1; // 2nd bit
+  uint8_t C3: 1; // 3rd bit
+  uint8_t C4: 1; // 4th bit
+  uint8_t C5: 1; // 5th bit
+  uint8_t C6: 1; // 6th bit
+  uint8_t C7: 1; // 7th bit
+  uint8_t C8: 1; // 8th bit
+} __attribute__ ((__packed__)) nr_sl_config_grant;
 
 typedef enum {
   NR_SRS_SRI_0 = 0,
