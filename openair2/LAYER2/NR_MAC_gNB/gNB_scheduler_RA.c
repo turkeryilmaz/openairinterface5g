@@ -545,6 +545,7 @@ void nr_initiate_ra_proc(module_id_t module_idP,
                          uint8_t symbol,
                          int16_t timing_offset)
 {
+timing_offset = 4;
   gNB_MAC_INST *nr_mac = RC.nrmac[module_idP];
   NR_SCHED_LOCK(&nr_mac->sched_lock);
 
@@ -1670,10 +1671,25 @@ static void nr_generate_Msg4(module_id_t module_idP,
   NR_COMMON_channels_t *cc = &nr_mac->common_channels[CC_id];
   NR_UE_DL_BWP_t *dl_bwp = &ra->DL_BWP;
 
+  NR_ServingCellConfigCommon_t *scc = cc->ServingCellConfigCommon;
+  const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
+  // lenght of tdd period in slots
+  const int n_slots_frame = nr_slots_per_frame[dl_bwp->scs];
+  int tdd_period_slot =n_slots_frame;
+  if (tdd) {
+    tdd_period_slot = n_slots_frame/get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity);
+  }
+  else{
+    if(cc->frame_type == TDD)
+      AssertFatal(cc->frame_type == FDD, "Dynamic TDD not handled yet\n");
+  }
+  // FR2 schedule Msg4 in slot 2 of TDD period
+  if (dl_bwp->scs >= 3 &&(!(slotP%tdd_period_slot == 4 || slotP%tdd_period_slot == 4 || slotP%tdd_period_slot == 2)))  return;
+
+  LOG_I(NR_MAC, "frame %d and slot %d\n",  frameP, slotP ); 
   // if it is a DL slot, if the RA is in MSG4 state
   if (is_xlsch_in_slot(nr_mac->dlsch_slot_bitmap[slotP / 64], slotP)) {
 
-    NR_ServingCellConfigCommon_t *scc = cc->ServingCellConfigCommon;
     NR_SearchSpace_t *ss = ra->ra_ss;
 
     NR_ControlResourceSet_t *coreset = ra->coreset;
@@ -1912,7 +1928,7 @@ static void nr_generate_Msg4(module_id_t module_idP,
     }
 
     ra->state = WAIT_Msg4_ACK;
-    LOG_I(NR_MAC,"UE %04x Generate msg4: feedback at %4d.%2d, payload %d bytes, next state WAIT_Msg4_ACK\n", ra->rnti, pucch->frame, pucch->ul_slot, harq->tb_size);
+    LOG_I(NR_MAC,"UE %04x Generate msg4 in %d.%d: feedback at %4d.%2d, payload %d bytes, next state WAIT_Msg4_ACK\n", ra->rnti, frameP, slotP, pucch->frame, pucch->ul_slot, harq->tb_size);
   }
 }
 

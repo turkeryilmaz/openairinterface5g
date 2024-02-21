@@ -2069,6 +2069,10 @@ nr_pp_impl_ul nr_init_fr1_ulsch_preprocessor(int CC_id)
 void nr_schedule_ulsch(module_id_t module_id, frame_t frame, sub_frame_t slot, nfapi_nr_ul_dci_request_t *ul_dci_req)
 {
   gNB_MAC_INST *nr_mac = RC.nrmac[module_id];
+
+//  if (!(((slot/10)%2==0 && slot%10==3)||((slot/10)%2==0 && slot%10==4)||((slot/10)%2==0 && slot%10==5)))
+//    return;   
+
   /* already mutex protected: held in gNB_dlsch_ulsch_scheduler() */
   NR_SCHED_ENSURE_LOCKED(&nr_mac->sched_lock);
 

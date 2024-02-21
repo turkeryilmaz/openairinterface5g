@@ -773,6 +773,7 @@ int get_ssb_subcarrier_offset(uint32_t absoluteFrequencySSB, uint32_t absoluteFr
   // the assertion is to avoid having an offset of half a subcarrier
   if (scs == 1)
     AssertFatal(subcarrier_offset % 2 == 0, "ssb offset %d invalid for scs %d\n", subcarrier_offset, scs);
+  //subcarrier_offset = 4;
   return subcarrier_offset;
 }
 
@@ -791,6 +792,8 @@ uint32_t get_ssb_offset_to_pointA(uint32_t absoluteFrequencySSB,
   const int ssb_offset_point_a = ((scaled_abs_diff / 12) - 10) * scaling;
   // Offset to point A needs to be divisible by scaling
   AssertFatal(ssb_offset_point_a % scaling == 0, "PRB offset %d not valid for scs %d\n", ssb_offset_point_a, ssbSubcarrierSpacing);
+  //const int  ssb_offset_point_a  = 25;
+  //return 25;
   return ssb_offset_point_a;
 }
 
