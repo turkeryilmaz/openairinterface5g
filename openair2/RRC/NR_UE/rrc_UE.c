@@ -1719,7 +1719,7 @@ static int nr_rrc_ue_decode_dcch(instance_t instance,
     LOG_E(NR_RRC, "Received message on DL-DCCH (SRB%ld), should not have ...\n", Srb_id);
   }
 
-  
+  LOG_D(NR_RRC, "Decoding DL-DCCH Message\n");
   asn_dec_rval_t dec_rval = uper_decode(NULL, &asn_DEF_NR_DL_DCCH_Message, (void **)&dl_dcch_msg, Buffer, Buffer_size, 0, 0);
 
   if ((dec_rval.code != RC_OK) && (dec_rval.consumed == 0)) {
@@ -1731,11 +1731,10 @@ static int nr_rrc_ue_decode_dcch(instance_t instance,
   if (LOG_DEBUGFLAG(DEBUG_ASN1)) {
     xer_fprint(stdout, &asn_DEF_NR_DL_DCCH_Message, (void *)dl_dcch_msg);
   }
-  LOG_D(NR_RRC, "Decoding DL-DCCH Message %d\n",dl_dcch_msg->message.present);
+
   switch (dl_dcch_msg->message.present) {
     case NR_DL_DCCH_MessageType_PR_c1: {
       struct NR_DL_DCCH_MessageType__c1 *c1 = dl_dcch_msg->message.choice.c1;
-      LOG_D(NR_RRC, "Decoding DL-DCCH Message MessageType %d\n",c1->present);
       switch (c1->present) {
         case NR_DL_DCCH_MessageType__c1_PR_NOTHING:
           LOG_I(NR_RRC, "Received PR_NOTHING on DL-DCCH-Message\n");
@@ -1819,7 +1818,7 @@ static int nr_rrc_ue_decode_dcch(instance_t instance,
             /* This message hold a dedicated info NAS payload, forward it to NAS */
             NR_DedicatedNAS_Message_t *dedicatedNAS_Message =
                 dlInformationTransfer->criticalExtensions.choice.dlInformationTransfer->dedicatedNAS_Message;
-            LOG_D(NR_RRC,"NAS NAS_DOWNLINK_DATA_IND received on DCCH,instance %d\n",instance);
+
             MessageDef *ittiMsg = itti_alloc_new_message(TASK_RRC_NRUE, 0, NAS_DOWNLINK_DATA_IND);
             NasDlDataInd *msg = &NAS_DOWNLINK_DATA_IND(ittiMsg);
             msg->UEid = instance; // TODO set the UEid to something else ?
@@ -2010,6 +2009,56 @@ void *rrc_nrue(void *notUsed)
   }
   /* Cell_Search_5G e*/
 
+      case NR_DTCH_DATA_REQ:
+      {
+        LOG_I(NR_RRC, "[UE %d] Received %s: frame %d, rnti %d\n", instance, ITTI_MSG_NAME(msg_p), NR_DTCH_DATA_REQ(msg_p).frame, NR_DTCH_DATA_REQ(msg_p).rnti);
+        PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, instance, GNB_FLAG_NO, NR_DTCH_DATA_REQ(msg_p).rnti, NR_DTCH_DATA_REQ(msg_p).frame, 0, NR_DTCH_DATA_REQ(msg_p).gNB_index);
+
+        result = nr_pdcp_data_req_drb(&ctxt,
+                                      SRB_FLAG_NO,
+                                      NR_DTCH_DATA_REQ(msg_p).rb_id,
+                                      NR_DTCH_DATA_REQ(msg_p).muip,
+                                      NR_DTCH_DATA_REQ(msg_p).confirmp,
+                                      NR_DTCH_DATA_REQ(msg_p).sdu_size,
+                                      NR_DTCH_DATA_REQ(msg_p).sdu_p,
+                                      NR_DTCH_DATA_REQ(msg_p).mode,
+                                      NULL, NULL);
+        if (result != true) {
+          LOG_E(NR_RRC, "PDCP data request failed!\n");
+        }
+
+        result = itti_free(ITTI_MSG_ORIGIN_ID(msg_p), NR_DTCH_DATA_REQ(msg_p).sdu_p);
+        AssertFatal(result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
+
+        break;
+      }
+
+      case NR_SDAP_DATA_REQ:
+      {
+        PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, instance, GNB_FLAG_NO, NR_SDAP_DATA_REQ(msg_p).rnti, 0, 0, 0);
+        result = sdap_data_req(&ctxt,
+                        NR_SDAP_DATA_REQ(msg_p).rnti,
+                        SRB_FLAG_NO,
+                        NR_SDAP_DATA_REQ(msg_p).rb_id,
+                        NR_SDAP_DATA_REQ(msg_p).muip,
+                        NR_SDAP_DATA_REQ(msg_p).confirmp,
+                        NR_SDAP_DATA_REQ(msg_p).sdu_size,
+                        (unsigned char *)NR_SDAP_DATA_REQ(msg_p).sdu_p,
+                        NR_SDAP_DATA_REQ(msg_p).mode,
+                        NULL,
+                        NULL,
+                        NR_SDAP_DATA_REQ(msg_p).qfi,
+                        NR_SDAP_DATA_REQ(msg_p).rqi,
+                        NR_SDAP_DATA_REQ(msg_p).pdu_sessionId);
+        if (result != true) {
+          LOG_E(NR_RRC, "NR_SDAP_DATA_REQ data request failed!\n");
+        }
+        result = itti_free(ITTI_MSG_ORIGIN_ID(msg_p), NR_SDAP_DATA_REQ(msg_p).sdu_p);
+        AssertFatal(result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
+
+        break;
+      }
+
   default:
     LOG_E(NR_RRC, "[UE %ld] Received unexpected message %s\n", instance, ITTI_MSG_NAME(msg_p));
     break;
@@ -2072,13 +2121,10 @@ static void nr_rrc_ue_process_ueCapabilityEnquiry(NR_UE_RRC_INST_t *rrc, NR_UECa
   else {
     rrc->UECap.UE_NR_Capability = CALLOC(1, sizeof(NR_UE_NR_Capability_t));
     asn1cSequenceAdd(rrc->UECap.UE_NR_Capability->rf_Parameters.supportedBandListNR.list, NR_BandNR_t, nr_bandnr);
-    //nr_bandnr->bandNR = 1;
     nr_bandnr->bandNR = 78;
     nr_bandnr->multipleTCI = CALLOC(1, sizeof(long));
     *nr_bandnr->multipleTCI = NR_BandNR__multipleTCI_supported;
-    asn1cSeqAdd(&rrc->UECap.UE_NR_Capability->rf_Parameters.supportedBandListNR.list,
-                     nr_bandnr);    
-  }
+}
   xer_fprint(stdout, &asn_DEF_NR_UE_NR_Capability, (void *)rrc->UECap.UE_NR_Capability);
 
   asn_enc_rval_t enc_rval = uper_encode_to_buffer(&asn_DEF_NR_UE_NR_Capability,
