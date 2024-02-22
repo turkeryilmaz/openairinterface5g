@@ -2661,9 +2661,15 @@ typedef struct {
   uint8_t phr_ce_len;
   uint8_t phr_header_len;
   uint16_t sdu_length_total;
-  NR_BSR_SHORT *bsr_s;
+  union {
+    NR_BSR_SHORT *bsr_s;
+    NR_SL_BSR_SHORT *sl_bsr_s;
+  };
   NR_BSR_LONG *bsr_l;
-  NR_BSR_SHORT *bsr_t;
+  union {
+    NR_BSR_SHORT *bsr_t;
+    NR_SL_BSR_SHORT *sl_bsr_t;
+  };
   //NR_POWER_HEADROOM_CMD *phr_pr;
   int tot_mac_ce_len;
   uint8_t total_mac_pdu_header_len;
@@ -2724,15 +2730,16 @@ int nr_ue_get_sdu_mac_ce_pre(module_id_t module_idP,
                 "Inconsistent BSR Trigger=%d !\n",
                 mac->BSR_reporting_active);
 
+    uint8_t size_bsr = get_softmodem_params()->sl_mode ? sizeof(NR_SL_BSR_SHORT) : sizeof(NR_BSR_SHORT);
     //A Regular or Periodic BSR can only be sent if TBS is sufficient as transmitting only a BSR is not allowed if UE has data to transmit
     if (num_lcg_id_with_data <= 1) {
-      if (buflen >= (sizeof(NR_BSR_SHORT)+sizeof(NR_MAC_SUBHEADER_FIXED)+1)) {
-        mac_ce_p->bsr_ce_len = sizeof(NR_BSR_SHORT); //1 byte
+      if (buflen >= (size_bsr + sizeof(NR_MAC_SUBHEADER_FIXED) + 1)) {
+        mac_ce_p->bsr_ce_len = size_bsr;
         mac_ce_p->bsr_header_len = sizeof(NR_MAC_SUBHEADER_FIXED); //1 byte
       }
     } else {
       if (buflen >= (num_lcg_id_with_data+1+sizeof(NR_MAC_SUBHEADER_SHORT)+1)) {
-        mac_ce_p->bsr_ce_len = num_lcg_id_with_data + 1; //variable size
+        mac_ce_p->bsr_ce_len = num_lcg_id_with_data * size_bsr + 1; //variable size
         mac_ce_p->bsr_header_len = sizeof(NR_MAC_SUBHEADER_SHORT); //2 bytes
       }
     }
@@ -3252,6 +3259,8 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
   uint16_t frame = sl_ind->frame_tx;
   int lcid = 4;
   int sdu_length = 0;
+  uint16_t sdu_length_total = 0;
+  uint8_t total_mac_pdu_header_len = 0;
 
   if ((frame & 127) == 0 && slot == 0) {
     print_meas(&mac->rlc_data_req,"rlc_data_req",NULL,NULL);
@@ -3293,94 +3302,103 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
 
   int buflen = tx_config->tx_config_list[0].tx_pscch_pssch_psfch_config_pdu.tb_size;
 
-  NR_UE_MAC_CE_INFO mac_ce_info = {0};
-  NR_UE_MAC_CE_INFO *mac_ce_p=&mac_ce_info;
-  mac_ce_p->bsr_len = 0;
-  mac_ce_p->bsr_ce_len = 0;
-  mac_ce_p->bsr_header_len = 0;
-  mac_ce_p->phr_len = 0;
-  LOG_D(NR_MAC, "[UE%d] TTI-%d:%d TX PSCCH_PSSCH REQ  TBS %d\n", sl_ind->module_id,frame, slot,buflen);
+  LOG_D(NR_MAC, "[UE%d] TTI-%d:%d TX PSCCH_PSSCH REQ  TBS %d\n", sl_ind->module_id, frame, slot, buflen);
   
-   
-  //nr_ue_get_sdu_mac_ce_pre updates all mac_ce related header field related to length
-  mac_ce_p->tot_mac_ce_len = nr_ue_get_sdu_mac_ce_pre(0, 0, frame, slot, 0, pdu, buflen, mac_ce_p);
-  mac_ce_p->total_mac_pdu_header_len = mac_ce_p->tot_mac_ce_len;
-
-
-  int buflen_remain = buflen - (mac_ce_p->total_mac_pdu_header_len + mac_ce_p->sdu_length_total + sh_size);
+  NR_SLSCH_MAC_SUBHEADER_FIXED *sl_sch_subheader = (NR_SLSCH_MAC_SUBHEADER_FIXED *) pdu;
+  sl_sch_subheader->V = 0;
+  sl_sch_subheader->R = 0;
+  sl_sch_subheader->SRC = get_softmodem_params()->node_number;
+  sl_sch_subheader->DST = 0xab;
+  pdu += sizeof(NR_SLSCH_MAC_SUBHEADER_FIXED);
+  LOG_D(NR_PHY, "V %d, R %d, SRC %d, DST %d\n", sl_sch_subheader->V, sl_sch_subheader->R, sl_sch_subheader->SRC, sl_sch_subheader->DST);
+  int buflen_remain = buflen - sizeof(NR_SLSCH_MAC_SUBHEADER_FIXED);
+  LOG_D(NR_PHY, "buflen_remain after adding SL_SCH_MAC_SUBHEADER_FIXED %d\n", buflen_remain);
 
   int num_sdus=0;
-  while (buflen_remain > 0){
+  while (buflen_remain > 0) {
 
-      // Pointer used to build the MAC sub-PDU headers in the ULSCH buffer for each SDU
-      NR_MAC_SUBHEADER_LONG *header = (NR_MAC_SUBHEADER_LONG *) pdu;
+    // Pointer used to build the MAC sub-PDU headers in the ULSCH buffer for each SDU
+    NR_MAC_SUBHEADER_LONG *header = (NR_MAC_SUBHEADER_LONG *) pdu;
+    pdu += sh_size;
 
-      pdu += sh_size;
+    start_meas(&mac->rlc_data_req);
+    sdu_length = mac_rlc_data_req(0,
+                                  mac->src_id,
+                                  0,
+                                  frame,
+                                  ENB_FLAG_NO,
+                                  MBMS_FLAG_NO,
+                                  lcid,
+                                  buflen_remain,
+                                  (char *)pdu,
+                                  0,
+                                  0);
 
-      start_meas(&mac->rlc_data_req);
-      sdu_length = mac_rlc_data_req(0,
-                                    mac->src_id,
-                                    0,
-                                    frame,
-                                    ENB_FLAG_NO,
-                                    MBMS_FLAG_NO,
-                                    lcid,
-                                    buflen_remain,
-                                    (char *)pdu,
-                                    0,
-                                    0);
+    stop_meas(&mac->rlc_data_req);
+    AssertFatal(buflen_remain >= sdu_length, "In %s: LCID = 0x%02x RLC has segmented %d bytes but MAC has max %d remaining bytes\n",
+                __FUNCTION__,
+                lcid,
+                sdu_length,
+                buflen_remain);
+    if (sdu_length > 0) {
 
-      stop_meas(&mac->rlc_data_req);
-      AssertFatal(buflen_remain >= sdu_length, "In %s: LCID = 0x%02x RLC has segmented %d bytes but MAC has max %d remaining bytes\n",
-                  __FUNCTION__,
-                  lcid,
-                  sdu_length,
-                  buflen_remain);
+      LOG_D(NR_MAC, "In %s: [UE %d] [%d.%d] SL-DXCH -> SLSCH, Generating SL MAC sub-PDU for SDU %d, length %d bytes, RB with LCID 0x%02x (buflen (TBS) %d bytes)\n",
+        __FUNCTION__,
+        0,
+        frame,
+        slot,
+        num_sdus + 1,
+        sdu_length,
+        lcid,
+        buflen);
 
-      if (sdu_length > 0) {
+      header->R = 0;
+      header->F = 1;
+      header->LCID = lcid;
+      header->L = htons(sdu_length);
+      pdu += sdu_length;
+      sdu_length_total += sdu_length;
+      total_mac_pdu_header_len += sh_size;
+      buflen_remain -= (sh_size + sdu_length);
+      LOG_D(NR_PHY, "buflen_remain %d, subtracting (sh_size + sdu_length) %d, total_mac_pdu_header_len %hhu sdu total length %d, sdu_length %d\n", buflen_remain, (sh_size + sdu_length), total_mac_pdu_header_len, sdu_length_total, sdu_length);
+      num_sdus++;
 
-        LOG_D(NR_MAC, "In %s: [UE %d] [%d.%d] SL-DXCH -> SLSCH, Generating SL MAC sub-PDU for SDU %d, length %d bytes, RB with LCID 0x%02x (buflen (TBS) %d bytes)\n",
-          __FUNCTION__,
-          0,
-          frame,
-          slot,
-          num_sdus + 1,
-          sdu_length,
-          lcid,
-          buflen);
+    } else {
+      pdu -= sh_size;
+      LOG_D(NR_MAC, "In %s: no data to transmit for RB with LCID 0x%02x\n", __FUNCTION__, lcid);
+      break;
+    }
 
-        header->R = 0;
-        header->F = 1;
-        header->LCID = lcid;
-        header->L = htons(sdu_length);
+    NR_UE_MAC_CE_INFO *mac_ce_p = (NR_UE_MAC_CE_INFO *) pdu;
+    mac_ce_p->bsr_len = 0;
+    mac_ce_p->bsr_ce_len = 0;
+    mac_ce_p->bsr_header_len = 0;
+    mac_ce_p->phr_len = 0;
+    mac_ce_p->sdu_length_total = sdu_length_total;
+    mac_ce_p->total_mac_pdu_header_len = total_mac_pdu_header_len;
+    LOG_D(NR_MAC, "[UE%d] TTI-%d:%d TX PSCCH_PSSCH REQ  TBS %d\n", sl_ind->module_id, frame, slot, buflen);
 
-        pdu += sdu_length;
-        mac_ce_p->sdu_length_total += sdu_length;
-        mac_ce_p->total_mac_pdu_header_len += sh_size;
+    //nr_ue_get_sdu_mac_ce_pre updates all mac_ce related header field related to length
+    mac_ce_p->tot_mac_ce_len = nr_ue_get_sdu_mac_ce_pre(0, 0, frame, slot, 0, pdu, buflen, mac_ce_p);
+    buflen_remain -= mac_ce_p->tot_mac_ce_len;
 
-        num_sdus++;
+    LOG_D(NR_PHY, "buflen_remain %d, total_mac_pdu_header_len %d, adding tot_mac_ce_len %d, \n", buflen_remain, mac_ce_p->total_mac_pdu_header_len, mac_ce_p->tot_mac_ce_len);
 
+    if (buflen_remain > 0) {
+      LOG_D(NR_MAC, "In %s filling remainder %d bytes to the UL PDU \n", __FUNCTION__, buflen_remain);
+      ((NR_MAC_SUBHEADER_FIXED *) pdu)->R = 0;
+      ((NR_MAC_SUBHEADER_FIXED *) pdu)->LCID = SL_SCH_LCID_SL_PADDING;
+      pdu++;
+      buflen_remain--;
+
+      if (IS_SOFTMODEM_RFSIM) {
+        for (int j = 0; j < buflen_remain; j++) {
+            pdu[j] = (unsigned char) rand();
+        }
       } else {
-        pdu -= sh_size;
-        LOG_D(NR_MAC, "In %s: no data to transmit for RB with LCID 0x%02x\n", __FUNCTION__, lcid);
-        break;
+        memset(pdu, 0, buflen_remain);
       }
-
-      buflen_remain = buflen - (mac_ce_p->total_mac_pdu_header_len + mac_ce_p->sdu_length_total + sh_size);
-  if (buflen_remain > 0) {  
-     LOG_D(NR_MAC, "In %s filling remainder %d bytes to the UL PDU \n", __FUNCTION__, buflen_remain);
-     ((NR_MAC_SUBHEADER_FIXED *) pdu)->R = 0;
-     ((NR_MAC_SUBHEADER_FIXED *) pdu)->LCID = SL_SCH_LCID_SL_PADDING;
-     pdu++;
-     buflen_remain--;
-
-     if (IS_SOFTMODEM_RFSIM) {
-       for (int j = 0; j < buflen_remain; j++) {
-          pdu[j] = (unsigned char) rand();
-       }
-     } else {
-       memset(pdu, 0, buflen_remain);
-     }						     }
+    }
   }
   return true;
 }
