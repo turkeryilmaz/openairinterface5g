@@ -3370,20 +3370,22 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
     }
   }
 
-  NR_UE_MAC_CE_INFO *mac_ce_p = (NR_UE_MAC_CE_INFO *) pdu;
-  mac_ce_p->bsr_len = 0;
-  mac_ce_p->bsr_ce_len = 0;
-  mac_ce_p->bsr_header_len = 0;
-  mac_ce_p->phr_len = 0;
-  mac_ce_p->sdu_length_total = sdu_length_total;
-  mac_ce_p->total_mac_pdu_header_len = total_mac_pdu_header_len;
-  LOG_D(NR_MAC, "[UE%d] TTI-%d:%d TX PSCCH_PSSCH REQ  TBS %d\n", sl_ind->module_id, frame, slot, buflen);
+  if (buflen_remain > 0) {
+    NR_UE_MAC_CE_INFO *mac_ce_p = (NR_UE_MAC_CE_INFO *) pdu;
+    mac_ce_p->bsr_len = 0;
+    mac_ce_p->bsr_ce_len = 0;
+    mac_ce_p->bsr_header_len = 0;
+    mac_ce_p->phr_len = 0;
+    mac_ce_p->sdu_length_total = sdu_length_total;
+    mac_ce_p->total_mac_pdu_header_len = total_mac_pdu_header_len;
+    LOG_D(NR_MAC, "[UE%d] TTI-%d:%d TX PSCCH_PSSCH REQ  TBS %d\n", sl_ind->module_id, frame, slot, buflen);
 
-  //nr_ue_get_sdu_mac_ce_pre updates all mac_ce related header field related to length
-  mac_ce_p->tot_mac_ce_len = nr_ue_get_sdu_mac_ce_pre(0, 0, frame, slot, 0, pdu, buflen, mac_ce_p);
-  buflen_remain -= mac_ce_p->tot_mac_ce_len;
+    //nr_ue_get_sdu_mac_ce_pre updates all mac_ce related header field related to length
+    mac_ce_p->tot_mac_ce_len = nr_ue_get_sdu_mac_ce_pre(0, 0, frame, slot, 0, pdu, buflen, mac_ce_p);
+    buflen_remain -= mac_ce_p->tot_mac_ce_len;
 
-  LOG_D(NR_PHY, "buflen_remain %d, total_mac_pdu_header_len %d, adding tot_mac_ce_len %d, \n", buflen_remain, mac_ce_p->total_mac_pdu_header_len, mac_ce_p->tot_mac_ce_len);
+    LOG_D(NR_PHY, "buflen_remain %d, total_mac_pdu_header_len %d, adding tot_mac_ce_len %d, \n", buflen_remain, mac_ce_p->total_mac_pdu_header_len, mac_ce_p->tot_mac_ce_len);
+  }
 
   if (buflen_remain > 0) {
     LOG_D(NR_MAC, "In %s filling remainder %d bytes to the UL PDU \n", __FUNCTION__, buflen_remain);
