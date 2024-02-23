@@ -240,3 +240,13 @@ bool nr_pdcp_get_first_ue_id(nr_pdcp_ue_manager_t *_m, ue_id_t *ret)
   *ret = m->ue_list[0]->rntiMaybeUEid;
   return true;
 }
+
+bool nr_pdcp_get_last_ue_id(nr_pdcp_ue_manager_t *_m, ue_id_t *ret)
+{
+  nr_pdcp_ue_manager_internal_t *m = _m;
+  if (m->ue_count == 0)
+    return false;
+  *ret = m->ue_list[m->ue_count-1]->rntiMaybeUEid;
+  return true;
+}
+

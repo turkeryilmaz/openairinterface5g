@@ -546,7 +546,7 @@ static void *ue_tun_read_thread(void *_)
     LOG_D(PDCP, "%s(): nas_sock_fd read returns len %d\n", __func__, len);
 
     nr_pdcp_manager_lock(nr_pdcp_ue_manager);
-    has_ue = nr_pdcp_get_first_ue_id(nr_pdcp_ue_manager, &rntiMaybeUEid);
+    has_ue = nr_pdcp_get_last_ue_id(nr_pdcp_ue_manager, &rntiMaybeUEid);
     nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
 
     if (!has_ue) continue;
