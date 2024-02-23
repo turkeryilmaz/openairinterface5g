@@ -1980,11 +1980,11 @@ void *rrc_nrue(void *notUsed)
       if (rsrp_cell <= -141 && NR_UE_rrc_inst[0].serving_cellId == PHY_FIND_CELL_IND(msg_p).cells[i].cell_id && NR_UE_rrc_inst[0].nrRrcState == RRC_STATE_IDLE_NR){
         NR_UE_MAC_INST_t *mac = get_mac_inst(0);
         //JPE TODO@TTCN we manage on gNB<Multi cells> 
-        NR_UE_RRC_SI_INFO *SInfo = &NR_UE_rrc_inst[instance].perNB[0].SInfo;
-        if(SInfo[0].sib1){
-          SEQUENCE_free(&asn_DEF_NR_SIB1, (void *) SInfo[0].sib1, 1);
+        NR_UE_RRC_SI_INFO *SInfo = &(rrc->perNB[0].SInfo);   
+        if(SInfo->sib1){
+          SEQUENCE_free(&asn_DEF_NR_SIB1, (void *) SInfo->sib1, 1);
         }
-        SInfo[0].sib1 = NULL;
+        SInfo->sib1 = NULL;
         mac->phy_config_request_sent = false;
         mac->state = UE_NOT_SYNC;
         mac->ra.ra_state = RA_UE_IDLE;
