@@ -492,6 +492,7 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req, bool *pIsRrcConfigReqSent
 #define SIB1_CELL_SEL_INFO SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.cellSelectionInfo
 #define SIB1_CELL_NON_CE SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.nonCriticalExtension.v.nonCriticalExtension
 #define SIB1_CELL_Q_QUALMIN SIB1_CELL_NON_CE.v.cellSelectionInfo_v920.v.q_QualMin_r9
+#define SIB1_TDD_CONFIG SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.tdd_Config.v
           if (AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIB1.d == true)
           {
             LOG_A(ENB_SS_SYS_TASK, "[SIB1] q-RxLevMin: %d \n", SIB1_CELL_SEL_INFO.q_RxLevMin);
@@ -506,6 +507,11 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req, bool *pIsRrcConfigReqSent
                   RRC_CONFIGURATION_REQ(msg_p).q_QualMin[cell_index] = SIB1_CELL_Q_QUALMIN;
                 }
               }
+            }
+	    if(SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.tdd_Config.d)
+            {
+              RRC_CONFIGURATION_REQ(msg_p).tdd_config[cell_index] = SIB1_TDD_CONFIG.subframeAssignment;
+              RRC_CONFIGURATION_REQ(msg_p).tdd_config_s[cell_index] = SIB1_TDD_CONFIG.specialSubframePatterns;
             }
           }
 

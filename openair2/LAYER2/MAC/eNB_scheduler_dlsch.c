@@ -278,7 +278,8 @@ set_ul_DAI(int module_idP,
   COMMON_channels_t *cc = &eNB->common_channels[CC_idP];
 
   if (cc->tdd_Config != NULL) {    //TDD
-    DAI = (UE_info->UE_template[CC_idP][UE_idP].DAI - 1) & 3;
+      DAI = (UE_info->UE_template[CC_idP][UE_idP].DAI > 0)?((UE_info->UE_template[CC_idP][UE_idP].DAI - 1) & 3):UE_info->UE_template[CC_idP][UE_idP].DAI;
+    
     LOG_D(MAC, "[eNB %d] CC_id %d Frame %d, subframe %d: DAI %d for UE %d\n",
           module_idP,
           CC_idP,
