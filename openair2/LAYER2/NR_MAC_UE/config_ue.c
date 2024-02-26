@@ -171,12 +171,13 @@ void config_common_ue_sa(NR_UE_MAC_INST_t *mac,
                                       frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth);
   cfg->carrier_config.uplink_bandwidth = get_supported_bw_mhz(UL_band_ind > 256 ? FR2 : FR1, bw_index);
 
-  if (frequencyInfoUL->absoluteFrequencyPointA == NULL)
+  if (frequencyInfoUL->absoluteFrequencyPointA == NULL){
     cfg->carrier_config.uplink_frequency = cfg->carrier_config.dl_frequency;
-  else
+  }
+  else{
     // TODO check if corresponds to what reported in SIB1
     cfg->carrier_config.uplink_frequency = (downlink_frequency[cc_idP][0]/1000) + uplink_frequency_offset[cc_idP][0];
-
+  }
   for (int i = 0; i < 5; i++) {
     if (i == frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing) {
       cfg->carrier_config.ul_grid_size[i] = frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth;
@@ -192,6 +193,7 @@ void config_common_ue_sa(NR_UE_MAC_INST_t *mac,
   // cell config
 
   cfg->cell_config.phy_cell_id = mac->physCellId;
+  LOG_I(NR_MAC,"wz:%s phycell id is  %d\n",__FUNCTION__,mac->physCellId);
   cfg->cell_config.frame_duplex_type = mac->frame_type;
 
   // SSB config
@@ -838,9 +840,22 @@ void configure_current_BWP(NR_UE_MAC_INST_t *mac,
   UL_BWP->initial_BWPSize = NRRIV2BW(mac->bwp_ulcommon->genericParameters.locationAndBandwidth, MAX_BWP_SIZE);
   DL_BWP->initial_BWPStart = NRRIV2PRBOFFSET(mac->bwp_dlcommon->genericParameters.locationAndBandwidth, MAX_BWP_SIZE);
   UL_BWP->initial_BWPStart = NRRIV2PRBOFFSET(mac->bwp_ulcommon->genericParameters.locationAndBandwidth, MAX_BWP_SIZE);
-
   DL_BWP->bw_tbslbrm = get_dlbw_tbslbrm(DL_BWP->initial_BWPSize, spCellConfigDedicated);
   UL_BWP->bw_tbslbrm = get_ulbw_tbslbrm(UL_BWP->initial_BWPSize, spCellConfigDedicated);
+}
+
+int nr_rrc_mac_config_req_ue_cell_selection(module_id_t module_id,
+                             int cc_idP,
+                             uint8_t gNB_index,
+                             long physCellId,
+                             uint8_t phy_id)
+{
+  NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
+  
+  mac->physCellId = physCellId;
+  LOG_I(NR_MAC," phycell id is set to %d\n",mac->physCellId);
+  mac->phy_id = phy_id;
+  return 0;
 }
 
 void ue_init_config_request(NR_UE_MAC_INST_t *mac, int scs)
@@ -920,6 +935,8 @@ void handle_reconfiguration_with_sync(NR_UE_MAC_INST_t *mac,
     mac->if_module->synch_request(&mac->synch_request);
     mac->if_module->phy_config_request(&mac->phy_config);
     mac->phy_config_request_sent = true;
+    mac->physCellId = reconfigurationWithSync->spCellConfigCommon->physCellId;  //TODO W47 rebase
+    LOG_I(NR_MAC,"%s MAC phycell id is  %d\n",__FUNCTION__,mac->physCellId);
   }
 }
 

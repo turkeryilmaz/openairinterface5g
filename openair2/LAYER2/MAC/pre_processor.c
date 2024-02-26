@@ -531,10 +531,21 @@ store_dlsch_buffer(module_id_t Mod_id,
     UE_sched_ctrl_t *UE_sched_ctrl = &UE_info->UE_sched_ctrl[UE_id];
     UE_template->dl_buffer_total = 0;
     UE_template->dl_pdus_total = 0;
+    uint8_t       active_lcid_num = 0;  
 
-    /* loop over all activated logical channels */
-    for (int i = 0; i < UE_sched_ctrl->dl_lc_num; ++i) {
-      const int lcid = UE_sched_ctrl->dl_lc_ids[i];
+    if(true == RC.macTestPdu_Buffer.isTestMacPduValid){
+      active_lcid_num = MAX_NUM_LCID;  //All including the reserved LCIDs
+    }else{
+      active_lcid_num = UE_sched_ctrl->dl_lc_num;  //Only configured LCIDs
+    }
+
+    /* Loop over all active LCIDs to estimate BO data */
+    for (uint8_t i = 0; i < active_lcid_num; ++i) {
+      int lcid = i; // will match DCCH, DCCH1, DTCH
+      if(i < UE_sched_ctrl->dl_lc_num){
+        lcid = UE_sched_ctrl->dl_lc_ids[i];
+      }
+
       const mac_rlc_status_resp_t rlc_status = mac_rlc_status_ind(Mod_id,
                                                                   UE_template->rnti,
                                                                   Mod_id,
@@ -546,8 +557,18 @@ store_dlsch_buffer(module_id_t Mod_id,
                                                                   0,
                                                                   0
                                                                  );
-      UE_template->dl_buffer_info[lcid] = rlc_status.bytes_in_buffer;
-      UE_template->dl_pdus_in_buffer[lcid] = rlc_status.pdus_in_buffer;
+      UE_template->dl_buffer_info[lcid] = 0;
+      if(false == RC.macTestPdu_Buffer.isTestMacPduValid){/*Estimate BO from RLC*/
+        UE_template->dl_buffer_info[lcid] = rlc_status.bytes_in_buffer;
+        UE_template->dl_pdus_in_buffer[lcid] = rlc_status.pdus_in_buffer;
+      }else{ /*Estimate BO instead with received mac test pdu */
+        if((UE_template->rnti == RC.macTestPdu_Buffer.rnti) && (lcid == RC.macTestPdu_Buffer.lc_id))
+        {
+           UE_template->dl_buffer_info[lcid] =  RC.macTestPdu_Buffer.sdu_buffer_size;
+           UE_template->dl_pdus_in_buffer[lcid] =  1;
+        }
+      }
+
       UE_template->dl_buffer_head_sdu_creation_time[lcid] = rlc_status.head_sdu_creation_time;
       UE_template->dl_buffer_head_sdu_creation_time_max =
         cmax(UE_template->dl_buffer_head_sdu_creation_time_max, rlc_status.head_sdu_creation_time);
@@ -559,7 +580,7 @@ store_dlsch_buffer(module_id_t Mod_id,
       /* update the number of bytes in the UE_sched_ctrl. The DLSCH will use
        * this to request the corresponding data from the RLC, and this might be
        * limited in the preprocessor */
-      UE_sched_ctrl->dl_lc_bytes[i] = rlc_status.bytes_in_buffer;
+      UE_sched_ctrl->dl_lc_bytes[i] = UE_template->dl_buffer_info[lcid];
 
 #ifdef DEBUG_eNB_SCHEDULER
       /* note for dl_buffer_head_sdu_remaining_size_to_send[lcid] :
@@ -632,8 +653,8 @@ dlsch_scheduler_pre_processor(module_id_t Mod_id,
       LOG_E(MAC, "UE %d has RNTI NOT_A_RNTI!\n", UE_id);
       continue;
     }
-    if (UE_info->active[UE_id] != true) {
-      LOG_E(MAC, "UE %d RNTI %x is NOT active!\n", UE_id, rnti);
+    if (UE_info->active[CC_id][UE_id] != true) {
+      LOG_T(MAC, "UE %d RNTI %x is NOT active!\n", UE_id, rnti);
       continue;
     }
     if (ue_template->rach_resource_type > 0) {

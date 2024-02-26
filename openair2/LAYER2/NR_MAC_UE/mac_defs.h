@@ -243,11 +243,12 @@ typedef struct {
 
 typedef enum {
   RA_UE_IDLE = 0,
-  GENERATE_PREAMBLE = 1,
-  WAIT_RAR = 2,
-  WAIT_CONTENTION_RESOLUTION = 3,
-  RA_SUCCEEDED = 4,
-  RA_FAILED = 5
+  WAIT_SIB   = 1,
+  GENERATE_PREAMBLE = 2,
+  WAIT_RAR = 3,
+  WAIT_CONTENTION_RESOLUTION = 4,
+  RA_SUCCEEDED = 5,
+  RA_FAILED = 6
 } RA_state_t;
 
 typedef struct {
@@ -445,6 +446,7 @@ typedef struct {
   NR_UE_L2_STATE_t state;
   int                             servCellIndex;
   long                            physCellId;
+  uint8_t                         phy_id;
   ////  MAC config
   int                             first_sync_frame;
   bool                            get_sib1;

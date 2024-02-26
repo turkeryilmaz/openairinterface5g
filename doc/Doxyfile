@@ -1361,6 +1361,7 @@ INPUT                  = \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/NAS/COMMON/IES/ProcedureTransactionIdentity.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/NAS/COMMON/IES/CipheringKeySequenceNumber.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/NAS/COMMON/IES/AuthenticationResponseParameter.c \
+@CMAKE_CURRENT_SOURCE_DIR@/../openair3/NAS/COMMON/IES/EapMessage.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/NAS/COMMON/IES/DaylightSavingTime.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/NAS/COMMON/IES/DaylightSavingTime.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/NAS/COMMON/IES/PdnType.c \
@@ -1524,6 +1525,7 @@ INPUT                  = \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/NAS/COMMON/IES/EpsUpdateResult.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/NAS/COMMON/IES/EpsUpdateType.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/NAS/COMMON/IES/AuthenticationResponseParameter.h \
+@CMAKE_CURRENT_SOURCE_DIR@/../openair3/NAS/COMMON/IES/EapMessage.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/NAS/COMMON/IES/NetworkName.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/NAS/COMMON/IES/LinkedEpsBearerIdentity.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair3/NAS/COMMON/IES/SupportedCodecList.c \
@@ -1743,7 +1745,9 @@ INPUT                  = \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/LAYER2/nr_pdcp/nr_pdcp_e1_api.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/LAYER2/nr_pdcp/nr_pdcp_integrity_nia2.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/LAYER2/nr_pdcp/nr_pdcp_security_nea2.c \
+@CMAKE_CURRENT_SOURCE_DIR@/../openair2/LAYER2/nr_pdcp/nr_pdcp_security_nea1.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/LAYER2/nr_pdcp/nr_pdcp_security_nea2.h \
+@CMAKE_CURRENT_SOURCE_DIR@/../openair2/LAYER2/nr_pdcp/nr_pdcp_security_nea1.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/LAYER2/nr_pdcp/nr_pdcp_entity.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/LAYER2/nr_pdcp/nr_pdcp_timer_thread.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/LAYER2/nr_pdcp/nr_pdcp_oai_api.h \
