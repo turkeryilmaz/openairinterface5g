@@ -30,11 +30,12 @@ The hardware on which we have tried this tutorial:
 
 NICs we have tested so far:
 
-|Vendor      |Firmware Version        |
-|------------|------------------------|
-|Intel X710  |9.20 0x8000d95e 22.0.9  |
-|Intel E810  |4.00 0x8001184e 1.3236.0|
-|Intel XXV710|6.02 0x80003888         |
+|Vendor         |Firmware Version        |
+|---------------|------------------------|
+|Intel X710     |9.20 0x8000d95e 22.0.9  |
+|Intel E810-XXV |4.00 0x8001184e 1.3236.0|
+|E810-C         |4.20 0x8001784e 22.0.9  |
+|Intel XXV710   |6.02 0x80003888         |
 
 PTP enabled switches and grandmaster clock we have in are lab:
 
@@ -44,8 +45,17 @@ PTP enabled switches and grandmaster clock we have in are lab:
 |Fibrolan Falcon-RX/812/G|8.0.25.4        |
 |Qulsar Qg2 (Grandmaster)|12.1.27         |
 
+**S-Plane synchronization is mandatory.** S-plane support is done via `ptp4l`
+and `phc2sys`.
 
-Radio units we are testing/integrating:
+| Software  | Software Version |
+|-----------|------------------|
+| `ptp4l`   | 3.1.1            |
+| `phc2sys` | 3.1.1            |
+
+We have only verified LLS-C3 configuration in our lab, i.e.  using an external
+grandmaster, a switch as a boundary clock, and the gNB/DU and RU.  We haven't
+tested any RU without S-plane. Radio units we are testing/integrating:
 
 |Vendor     |Software Version |
 |-----------|-----------------|
@@ -74,14 +84,14 @@ Tested libxran releases:
 
 Your server could be:
 
-* One NUMA Node (See [one NUMA node example](#111-one-numa-node)): all the processors are sharing a single memory system.
-* Two NUMA Node (see [two NUMA node example](#112-two-numa-node)): processors are grouped in 2 memory systems.
+* One NUMA node (See [one NUMA node example](#111-one-numa-node)): all the processors are sharing a single memory system.
+* Two NUMA nodes (see [two NUMA nodes example](#112-two-numa-node)): processors are grouped in 2 memory systems.
   - Usually the even (ie `0,2,4,...`) CPUs are on the 1st socket
   - And the odd (ie (`1,3,5,...`) CPUs are on the 2nd socket
 
 DPDK, OAI and kernel threads require to be properly allocated to extract maximum real-time performance for your use case.
 
-1. **NOTE**: Currently the default OAI 7.2 configuration file requires isolated **CPUs 0,2,4** for DPDK/libXRAN, **CPU 6** for `ru_thread` and **CPU 8** for `L1_rx_thread`. It is preferrable to have all these threads on the same socket.
+1. **NOTE**: Currently the default OAI 7.2 configuration file requires isolated **CPUs 0,2,4** for DPDK/libXRAN, **CPU 6** for `ru_thread`, **CPU 8** for `L1_rx_thread` and **CPU 10** for `L1_tx_thread`. It is preferrable to have all these threads on the same socket.
 2. Allocating CPUs to the OAI nr-softmodem is done using the `--thread-pool` option. Allocating 4 CPUs is the minimal configuration but we recommend to allocate at least **8** CPUs. And they can be on a different socket as the DPDK threads.
 3. And to avoid kernel preempting these allocated CPUs, it is better to force the kernel to use un-allocated CPUs.
 
@@ -92,16 +102,28 @@ Let summarize for example on a `32-CPU` single NUMA node system, regardless of t
 |XRAN DPDK usage    |0,2,4             |
 |OAI `ru_thread`    |6                 |
 |OAI `L1_rx_thread` |8                 |
+|OAI `L1_tx_thread` |10                |
 |OAI `nr-softmodem` |1,3,5,7,9,11,13,15|
 |kernel             |16-31             |
 
-In below example we have shown the output of `/proc/cmdline` for two different servers, each of them have different number of numa nodes. Be careful in isolating the CPUs in your environment. Apart from CPU allocation there are additional parameters which are important to be present in your boot command.
+In below example we have shown the output of `/proc/cmdline` for two different servers, each of them have different number of NUMA nodes. **Be careful in isolating the CPUs in your environment.** Apart from CPU allocation there are additional parameters which are important to be present in your boot command.
 
-Modifying the `linux` command line usually requires to edit the `/etc/default/grub`, run a `grub` command and reboot the server.
+Modifying the `linux` command line usually requires to edit string `GRUB_CMDLINE_LINUX` in `/etc/default/grub`, run a `grub` command and reboot the server.
 
-### One NUMA NODE
+* Set parameters `isolcpus`, `nohz_full` and `rcu_nocbs` with the list of CPUs to isolate for XRAN.
+* Set parameter `kthread_cpus` with the list of CPUs to isolate for kernel.
 
-Below is the output of `/proc/cmdline` of a single numa node server,
+Set the `tuned` profile to `realtime`. If the `tuned-adm` command is not installed then you have to install it. When choosing this profile you have to mention the isolated cpus in `/etc/tuned/realtime-variables.conf`. By default this profile adds `skew_tick=1 isolcpus=managed_irq,domain,<cpu-you-choose> intel_pstate=disable nosoftlockup tsc=nowatchdog` in the boot command. **Make sure you don't add them while changing `/etc/default/grub`**.
+
+```bash
+tuned-adm profile realtime
+```
+
+**Checkout anyway the examples below.**
+
+### One NUMA Node
+
+Below is the output of `/proc/cmdline` of a single NUMA node server,
 
 ```bash
 NUMA:
@@ -115,9 +137,9 @@ isolcpus=0-15 nohz_full=0-15 rcu_nocbs=0-15 kthread_cpus=16-31 rcu_nocb_poll nos
 
 Example taken for AMD EPYC 9374F 32-Core Processor
 
-### Two numa nodes
+### Two NUMA Nodes
 
-Below is the output of `/proc/cmdline` of a two numa node server,
+Below is the output of `/proc/cmdline` of a two NUMA node server,
 
 ```
 NUMA:
@@ -143,12 +165,6 @@ sudo cpupower idle-set -D 0
 sudo cpupower idle-set -E
 ```
 
-Set the `tuned` profile to `realtime`. If the `tuned-adm` command is not installed then you have to install it.
-
-```bash
-tuned-adm profile realtime
-```
-
 The above information we have gathered either from O-RAN documents or via our own experiments. In case you would like to read the O-RAN documents then here are the links:
 
 1. [O-RAN-SC O-DU Setup Configuration](https://docs.o-ran-sc.org/projects/o-ran-sc-o-du-phy/en/latest/Setup-Configuration_fh.html)
@@ -156,6 +172,9 @@ The above information we have gathered either from O-RAN documents or via our ow
 
 
 ## PTP configuration
+
+**Note**: You may run OAI with O-RAN 7.2 Fronthaul without a RU attached (e.g. for benchmarking).
+In such case, you can skip PTP configuration and go to DPDK section.
 
 1. You can install `linuxptp` rpm or debian package. It will install ptp4l and phc2sys.
 
@@ -226,11 +245,13 @@ WantedBy=multi-user.target
 ### Debugging PTP issues
 
 You can see these steps in case your ptp logs have erorrs or `rms` reported in `ptp4l` logs is more than 100ms.
+Beware that PTP issues may show up only when running OAI and XRAN. If you are using the `ptp4l` service, have a look back in time in the journal: `journalctl -u ptp4l.service -S <hours>:<minutes>:<seconds>`
 
 1. Make sure that you have `skew_tick=1` in `/proc/cmdline`
 2. For Intel E-810 cards set `tx_timestamp_timeout` to 50 or 100 if there are errors in ptp4l logs
 3. Other time sources than PTP, such as NTP or chrony timesources, should be disabled. Make sure they are enabled as further below.
-4. If `rms` or `delay` remain high, you can try pinning the PTP process to an isolated CPU.
+4. Make sure you set `kthread_cpus=<cpu_list>` in `/proc/cmdline`.
+5. If `rms` or `delay` in `ptp4l` or `offset` in `phc2sys` logs remain high then you can try pinning the `ptp4l` and `phc2sys` processes to an isolated CPU.
 
 ```bash
 #to check there is NTP enabled or not
@@ -431,68 +452,18 @@ cmake .. -GNinja -DOAI_FHI72=ON -Dxran_LOCATION=$HOME/phy/fhi_lib/lib
 ninja nr-softmodem oran_fhlib_5g params_libconfig
 ```
 
-# Configure the RU
+# Configuration
+
+**Note**: You may run OAI with O-RAN 7.2 Fronthaul without a RU attached (e.g. for benchmarking).
+In such case, skip RU configuration and go through Network Interfaces, DPDK VFs and OAI configuration by using arbitrary values for RU MAC addresses and VLAN tags.
+
+## Configure the RU
 
 Contact the RU vendor to get the configuration manual, and configure the RU
 appropriately. You can orient on the OAI configuration files mentioned further
 below.
 
 We are evaluating if we can share RU configuration steps.
-
-# Configure OAI gNB
-
-Sample configuration files for OAI gNB, specific to the manufacturer of the radio unit, are available at:
-1. LITE-ON RU: [`gnb.sa.band78.273prb.fhi72.4x4-liteon.conf`](../targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb.sa.band78.273prb.fhi72.4x4-liteon.conf) (band n78, 273 PRBs, 3.5GHz center freq, 4x4 antenna configuration with 9 bit I/Q samples (compressed) for PUSCH/PDSCH/PRACH, 2-layer DL MIMO, UL SISO)
-2. Benetel 650 RU: [`gnb.sa.band78.273prb.fhi72.4x2-benetel650.conf`](../targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb.sa.band78.273prb.fhi72.4x2-benetel650.conf) (band n78, 273 PRBs, 3.5GHz center freq, 4x2 antenna configuration with 9 bit I/Q samples (compressed) for PUSCH/PDSCH/PRACH, 2-layer DL MIMO, UL SISO)
-3. VVDN RU: [`gnb.sa.band77.273prb.fhi72.4x4-vvdn.conf`](../targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb.sa.band77.273prb.fhi72.4x4-vvdn.conf) (band n77, 273 PRBs, 4.0GHz center freq, 4x4 antenna configuration with 9 bit I/Q samples (compressed) for PUSCH/PDSCH/PRACH, 2-layer DL MIMO, UL SISO)
-
-## Adapt the OAI-gNB configuration file to your system/workspace
-
-Edit the sample OAI gNB configuration file and check following parameters:
-
-* `gNBs` section
-  * The PLMN section shall match the one defined in the AMF
-  * `amf_ip_address` shall be the correct AMF IP address in your system
-  * `GNB_INTERFACE_NAME_FOR_NG_AMF` and `GNB_IPV4_ADDRESS_FOR_NG_AMF` shall match your DU N2 interface name and IP address
-  * `GNB_INTERFACE_NAME_FOR_NGU` and `GNB_IPV4_ADDRESS_FOR_NGU` shall match your DU N3 interface name and IP address
-  * `prach_ConfigurationIndex`
-  * `prach_msg1_FrequencyStart`
-  * Adjust the frequency, bandwidth and SSB position
-
-* `L1s` section
-  * Set an isolated core for L1 thread `L1_rx_thread_core`, in our environment we are using CPU 8
-  * `phase_compensation` should be set to 0 to disable when it is performed in the RU and set to 1 when it should be performed on the DU side
-
-* `RUs` section
-  * Set an isolated core for RU thread `ru_thread_core`, in our environment we are using CPU 6
-
-* `fhi_72` (FrontHaul Interface) section: this config follows the structure
-  that is employed by the xRAN library (`xran_fh_init` and `xran_fh_config`
-  structs in the code):
-  * `dpdk_devices`: PCI addresses of NIC VFs binded to the DPDK
-  * `io_core`: absolute CPU core ID for XRAN library
-  * `worker_cores`: array of absolute CPU core IDs for XRAN library
-  * `du_addr`: DU C- and U-plane MAC-addresses (format `UU:VV:WW:XX:YY:ZZ`,
-    hexadecimal numbers)
-  * `ru_addr`: RU C- and U-plane MAC-addresses (format `UU:VV:WW:XX:YY:ZZ`,
-    hexadecimal numbers)
-  * `mtu`: Maximum Transmission Unit for the RU, specified by RU vendor
-  * `fh_config`: parameters that need to match RU parameters
-    * timing parameters (starting with `T`) depend on the RU: `Tadv_cp_dl` is a
-      single number, the rest pairs of numbers `(x, y)` specifying minimum and
-      maximum delays
-    * `ru_config`: RU-specific configuration:
-      * `iq_width`: Width of DL/UL IQ samples: if 16, no compression, if <16, applies
-        compression
-      * `iq_width_prach`: Width of PRACH IQ samples: if 16, no compression, if <16, applies
-        compression
-      * `fft_size`: size of FFT performed by RU, set to 12 by default
-    * `prach_config`: PRACH-specific configuration
-      * `eAxC_offset`:  PRACH antenna offset
-      * `kbar`: the PRACH guard interval, provided in RU
-
-xRAN SRS reception is not supported. The eAxC offsets for DL/UL are determined
-from the antenna configuration.
 
 ## Configure Network Interfaces and DPDK VFs
 
@@ -624,13 +595,151 @@ sudo /usr/local/bin/dpdk-devbind.py --bind vfio-pci 31:06.1
 ```
 </details>
 
-# Start OAI gNB
 
+## Configure OAI gNB
+
+**Beware in the following section to let in the range of isolated cores the parameters that should be (i.e. `L1s.L1_rx_thread_core`, `L1s.L1_tx_thread_core`, `RUs.ru_thread_core`, `fhi_72.io_core` and `fhi_72.worker_cores`)**
+
+Sample configuration files for OAI gNB, specific to the manufacturer of the radio unit, are available at:
+1. LITE-ON RU: [`gnb.sa.band78.273prb.fhi72.4x4-liteon.conf`](../targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb.sa.band78.273prb.fhi72.4x4-liteon.conf) (band n78, 273 PRBs, 3.5GHz center freq, 4x4 antenna configuration with 9 bit I/Q samples (compressed) for PUSCH/PDSCH/PRACH, 2-layer DL MIMO, UL SISO)
+2. Benetel 650 RU: [`gnb.sa.band78.273prb.fhi72.4x2-benetel650.conf`](../targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb.sa.band78.273prb.fhi72.4x2-benetel650.conf) (band n78, 273 PRBs, 3.5GHz center freq, 4x2 antenna configuration with 9 bit I/Q samples (compressed) for PUSCH/PDSCH/PRACH, 2-layer DL MIMO, UL SISO)
+3. VVDN RU: [`gnb.sa.band77.273prb.fhi72.4x4-vvdn.conf`](../targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb.sa.band77.273prb.fhi72.4x4-vvdn.conf) (band n77, 273 PRBs, 4.0GHz center freq, 4x4 antenna configuration with 9 bit I/Q samples (compressed) for PUSCH/PDSCH/PRACH, 2-layer DL MIMO, UL SISO)
+
+Edit the sample OAI gNB configuration file and check following parameters:
+
+* `gNBs` section
+  * The PLMN section shall match the one defined in the AMF
+  * `amf_ip_address` shall be the correct AMF IP address in your system
+  * `GNB_INTERFACE_NAME_FOR_NG_AMF` and `GNB_IPV4_ADDRESS_FOR_NG_AMF` shall match your DU N2 interface name and IP address
+  * `GNB_INTERFACE_NAME_FOR_NGU` and `GNB_IPV4_ADDRESS_FOR_NGU` shall match your DU N3 interface name and IP address
+  * `prach_ConfigurationIndex`
+  * `prach_msg1_FrequencyStart`
+  * Adjust the frequency, bandwidth and SSB position
+
+* `L1s` section
+  * Set an isolated core for L1 thread `L1_rx_thread_core`, in our environment we are using CPU 8
+  * Set an isolated core for L1 thread `L1_tx_thread_core`, in our environment we are using CPU 10
+  * `phase_compensation` should be set to 0 to disable when it is performed in the RU and set to 1 when it should be performed on the DU side
+
+* `RUs` section
+  * Set an isolated core for RU thread `ru_thread_core`, in our environment we are using CPU 6
+
+* `fhi_72` (FrontHaul Interface) section: this config follows the structure
+  that is employed by the xRAN library (`xran_fh_init` and `xran_fh_config`
+  structs in the code):
+  * `dpdk_devices`: PCI addresses of NIC VFs binded to the DPDK (not the physical NIC but the VFs, use `lspci | grep Virtual`)
+  * `system_core`: absolute CPU core ID for DPDK control threads
+    (`rte_mp_handle`, `eal-intr-thread`, `iavf-event-thread`)
+  * `io_core`: absolute CPU core ID for XRAN library, it should be an isolated core, in our environment we are using CPU 4
+  * `worker_cores`: array of absolute CPU core IDs for XRAN library, they should be isolated cores, in our environment we are using CPU 2
+  * `du_addr`: DU C- and U-plane MAC-addresses (format `UU:VV:WW:XX:YY:ZZ`,
+    hexadecimal numbers)
+  * `ru_addr`: RU C- and U-plane MAC-addresses (format `UU:VV:WW:XX:YY:ZZ`,
+    hexadecimal numbers)
+  * `mtu`: Maximum Transmission Unit for the RU, specified by RU vendor
+  * `fh_config`: parameters that need to match RU parameters
+    * timing parameters (starting with `T`) depend on the RU: `Tadv_cp_dl` is a
+      single number, the rest pairs of numbers `(x, y)` specifying minimum and
+      maximum delays
+    * `ru_config`: RU-specific configuration:
+      * `iq_width`: Width of DL/UL IQ samples: if 16, no compression, if <16, applies
+        compression
+      * `iq_width_prach`: Width of PRACH IQ samples: if 16, no compression, if <16, applies
+        compression
+      * `fft_size`: size of FFT performed by RU, set to 12 by default
+    * `prach_config`: PRACH-specific configuration
+      * `eAxC_offset`:  PRACH antenna offset
+      * `kbar`: the PRACH guard interval, provided in RU
+
+Layer mapping (eAxC offsets) happens as follows:
+- For PUSCH/PDSCH, the layers are mapped to `[0,1,...,N-1]` where `N` is the
+  respective RX/TX number of antennas.
+- For PRACH, the layers are mapped to `[No,No+1,...No+N-1]` where No is the
+  `fhi_72.fh_config.[0].prach_config.eAxC_offset` and `N` the number of receive
+  antennas.
+
+xRAN SRS reception is not supported.
+
+# Start and Operation of OAI gNB
+
+Run the `nr-softmodem` from the build directory:
 ```bash
-cd ran_build/build
-
+cd ~/openairinterface5g/ran_build/build
 sudo ./nr-softmodem -O ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/oran.fh.band78.fr1.273PRB.conf --sa --reorder-thread-disable 1 --thread-pool <list of non isolated cpus>
 ```
 
-For example if you have two numa nodes (for example 18 CPU per socket) in your system and odd cores are non isolated then you can put the thread-pool on `1,3,5,7,9,11,13,15`. Else if you have 1 numa node either you can use isolated cores or non isolated. Just make sure that isolated cores are not the ones defined earlier.
+**Note**: You may run OAI with O-RAN 7.2 Fronthaul without a RU attached (e.g. for benchmarking).
+In such case, you would generate artificial traffic by replacing the `--sa` option by the `--phy-test` option.
 
+You have to set the thread pool option to non-isolated CPUs, since the thread
+pool is used for L1 processing which should not interfere with DPDK threads.
+For example if you have two NUMA nodes in your system (for example 18 CPUs per
+socket) and odd cores are non-isolated, then you can put the thread-pool on
+`1,3,5,7,9,11,13,15`. On the other hand, if you have one NUMA node, you can use
+either isolated cores or non isolated cores, but make sure that isolated cores
+are not the ones defined earlier for DPDK/xran.
+
+<details>
+<summary>Once the gNB runs, you should see counters for PDSCH/PUSCH/PRACH per
+antenna port, as follows (4x2 configuration):</summary>
+
+```
+[NR_PHY]   [o-du 0][rx   24604 pps   24520 kbps  455611][tx  126652 pps  126092 kbps 2250645][Total Msgs_Rcvd 24604]
+[NR_PHY]   [o_du0][pusch0   10766 prach0    1536]
+[NR_PHY]   [o_du0][pusch1   10766 prach1    1536]
+```
+
+</details>
+
+The first line show RX/TX packet counters, i.e., packets received from the RU
+(RX), and sent to the RU (TX). In the second and third line, it shows the
+counters for the PUSCH and PRACH ports (2 receive antennas, so two counters
+each). These numbers should be equal, otherwise it indicates that you don't
+receive enough packets on either port.
+
+<details>
+<summary>If you see many zeroes, then it means that OAI does not receive
+packets on the fronthaul from the RU (RX is almost 0, all PUSCH/PRACH counters
+are 0).</summary>
+
+```
+[NR_PHY]   [o-du 0][rx       2 pps       0 kbps       0][tx 1020100 pps  127488 kbps 4717971][Total Msgs_Rcvd 2]
+[NR_PHY]   [o_du0][pusch0       0 prach0       0]
+[NR_PHY]   [o_du0][pusch1       0 prach1       0]
+[NR_PHY]   [o_du0][pusch2       0 prach2       0]
+[NR_PHY]   [o_du0][pusch3       0 prach3       0]
+```
+
+</details>
+
+In this case, please make sure that the O-RU has been configured with the right
+ethernet address of the gNB, and has been activated. You might enable port
+mirroring at your switch to capture the fronthaul packets: check that you see
+(1) packets at all (2) they have the right ethernet address (3) the right VLAN
+tag. Although we did not test this, you might make use of the [DPDK packet
+capture feature](https://doc.dpdk.org/guides/howto/packet_capture_framework.html)
+
+<details>
+<summary>If you see messages about `Received time doesn't correspond to the
+time we think it is` or `Jump in frame counter`, the S-plane is not working.</summary>
+
+```
+[PHY]   Received Time doesn't correspond to the time we think it is (slot mismatch, received 480.5, expected 475.8)
+[PHY]   Received Time doesn't correspond to the time we think it is (frame mismatch, 480.5 , expected 475.5)
+[PHY]   Jump in frame counter last_frame 480 => 519, slot 19
+[PHY]   Received Time doesn't correspond to the time we think it is (slot mismatch, received 519.19, expected 480.12)
+[PHY]   Received Time doesn't correspond to the time we think it is (frame mismatch, 519.19 , expected 480.19)
+[PHY]   Received Time doesn't correspond to the time we think it is (slot mismatch, received 520.1, expected 520.0)
+```
+
+You can see that the frame numbers jump around, by 5-40 frames (corresponding
+to 50-400ms!). This indicates the gNB receives packets on the fronthaul that
+don't match its internal time, and the synchronization between gNB and RU is
+not working!
+
+</details>
+
+In this case, you should reverify that `ptp4l` and `phc2sys` are working, e.g.,
+do not do any jumps (during the last hour). While an occasional jump is not
+necessarily problematic for the gNB, many such messages mean that the system is
+not working, and UEs might not be able to attach or reach good performance.

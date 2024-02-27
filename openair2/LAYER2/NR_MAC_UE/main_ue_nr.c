@@ -53,10 +53,9 @@ void send_srb0_rrc(int ue_id, const uint8_t *sdu, sdu_size_t sdu_len, void *data
   itti_send_msg_to_task(TASK_RRC_NRUE, ue_id, message_p);
 }
 
-void nr_ue_init_mac(module_id_t module_idP)
+void nr_ue_init_mac(NR_UE_MAC_INST_t *mac)
 {
-  LOG_I(NR_MAC, "[UE%d] Applying default macMainConfig\n", module_idP);
-  NR_UE_MAC_INST_t *mac = get_mac_inst(module_idP);
+  LOG_I(NR_MAC, "[UE%d] Initializing MAC\n", mac->ue_id);
   mac->first_sync_frame = -1;
   mac->get_sib1 = false;
   mac->get_otherSI = false;
@@ -67,12 +66,19 @@ void nr_ue_init_mac(module_id_t module_idP)
   mac->servCellIndex = 0;
   mac->harq_ACK_SpatialBundlingPUCCH = false;
   mac->harq_ACK_SpatialBundlingPUSCH = false;
+  mac->uecap_maxMIMO_PDSCH_layers = 0;
+  mac->uecap_maxMIMO_PUSCH_layers_cb = 0;
+  mac->uecap_maxMIMO_PUSCH_layers_nocb = 0;
 
   memset(&mac->ssb_measurements, 0, sizeof(mac->ssb_measurements));
   memset(&mac->ul_time_alignment, 0, sizeof(mac->ul_time_alignment));
   for (int i = 0; i < MAX_NUM_BWP_UE; i++) {
     memset(&mac->ssb_list[i], 0, sizeof(mac->ssb_list[i]));
     memset(&mac->prach_assoc_pattern[i], 0, sizeof(mac->prach_assoc_pattern[i]));
+  }
+  for (int k = 0; k < NR_MAX_HARQ_PROCESSES; k++) {
+    mac->ul_harq_info[k].last_ndi = -1; // initialize to invalid value
+    mac->dl_harq_info[k].last_ndi = -1; // initialize to invalid value
   }
 }
 
@@ -95,13 +101,9 @@ void nr_ue_mac_default_configs(NR_UE_MAC_INST_t *mac)
 
   for (int i = 0; i < NR_MAX_NUM_LCID; i++) {
     LOG_D(NR_MAC, "Applying default logical channel config for LCGID %d\n", i);
-    mac->scheduling_info.lc_sched_info[i].Bj = -1;
-    mac->scheduling_info.lc_sched_info[i].bucket_size = -1;
-    mac->scheduling_info.lc_sched_info[i].LCGID = 0; // defaults to 0 irrespective of SRB or DRB
     mac->scheduling_info.lc_sched_info[i].LCID_status = LCID_EMPTY;
     mac->scheduling_info.lc_sched_info[i].LCID_buffer_remain = 0;
-    for (int k = 0; k < NR_MAX_HARQ_PROCESSES; k++)
-      mac->UL_ndi[k] = -1; // initialize to invalid value
+    mac->scheduling_info.lc_sched_info[i].Bj = 0;
   }
 }
 
@@ -112,9 +114,9 @@ NR_UE_MAC_INST_t *nr_l2_init_ue(int nb_inst)
   AssertFatal(nr_ue_mac_inst, "Couldn't allocate %d instances of MAC module\n", nb_inst);
 
   for (int j = 0; j < nb_inst; j++) {
-    nr_ue_init_mac(j);
     NR_UE_MAC_INST_t *mac = get_mac_inst(j);
     mac->ue_id = j;
+    nr_ue_init_mac(mac);
     nr_ue_mac_default_configs(mac);
     if (get_softmodem_params()->sa)
       ue_init_config_request(mac, get_softmodem_params()->numerology);
@@ -134,6 +136,7 @@ NR_UE_MAC_INST_t *get_mac_inst(module_id_t module_id)
 {
   NR_UE_MAC_INST_t *mac = &nr_ue_mac_inst[(int)module_id];
   AssertFatal(mac, "Couldn't get MAC inst %d\n", module_id);
+  AssertFatal(mac->ue_id == module_id, "MAC ID %d doesn't match with input %d\n", mac->ue_id, module_id);
   return mac;
 }
 
@@ -142,8 +145,10 @@ void reset_mac_inst(NR_UE_MAC_INST_t *nr_mac)
   // MAC reset according to 38.321 Section 5.12
 
   nr_ue_mac_default_configs(nr_mac);
+
   // initialize Bj for each logical channel to zero
-  // Done in default config but to -1 (is that correct?)
+  for (int i = 0; i < NR_MAX_NUM_LCID; i++)
+    nr_mac->scheduling_info.lc_sched_info[i].Bj = 0;
 
   // stop all running timers
   // TODO
@@ -153,7 +158,7 @@ void reset_mac_inst(NR_UE_MAC_INST_t *nr_mac)
 
   // set the NDIs for all uplink HARQ processes to the value 0
   for (int k = 0; k < NR_MAX_HARQ_PROCESSES; k++)
-    nr_mac->UL_ndi[k] = -1; // initialize to invalid value
+    nr_mac->ul_harq_info[k].last_ndi = -1; // initialize to invalid value
 
   // stop any ongoing RACH procedure
   if (nr_mac->ra.ra_state < RA_SUCCEEDED)
@@ -163,7 +168,7 @@ void reset_mac_inst(NR_UE_MAC_INST_t *nr_mac)
   // TODO not sure what needs to be done here
 
   // flush Msg3 buffer
-  // TODO we don't have a Msg3 buffer
+  free_and_zero(nr_mac->ra.Msg3_buffer);
 
   // cancel any triggered Scheduling Request procedure
   // Done in default config
@@ -179,7 +184,8 @@ void reset_mac_inst(NR_UE_MAC_INST_t *nr_mac)
     memset(&nr_mac->dl_harq_info[k], 0, sizeof(NR_UE_HARQ_STATUS_t));
 
   // for each DL HARQ process, consider the next received transmission for a TB as the very first transmission
-  // TODO there is nothing in the MAC indicating first transmission
+  for (int k = 0; k < NR_MAX_HARQ_PROCESSES; k++)
+    nr_mac->dl_harq_info[k].last_ndi = -1; // initialize to invalid value
 
   // release, if any, Temporary C-RNTI
   nr_mac->ra.t_crnti = 0;
@@ -217,9 +223,13 @@ void release_mac_configuration(NR_UE_MAC_INST_t *mac)
   for (int i = 0; i < mac->ul_BWPs.count; i++)
     release_ul_BWP(mac, i);
 
-  for (int i = 0; i < NR_MAX_NUM_LCID; i++) {
-    nr_release_mac_config_logicalChannelBearer(mac, i + 1);
-    memset(&mac->lc_ordered_info[i], 0, sizeof(nr_lcordered_info_t));
+  asn1cFreeStruc(asn_DEF_NR_SearchSpace, mac->search_space_zero);
+  asn1cFreeStruc(asn_DEF_NR_ControlResourceSet, mac->coreset0);
+
+  for (int i = 0; i < mac->lc_ordered_list.count; i++) {
+    nr_lcordered_info_t *lc_info = mac->lc_ordered_list.array[i];
+    asn_sequence_del(&mac->lc_ordered_list, i, 0);
+    free(lc_info);
   }
 
   memset(&mac->ssb_measurements, 0, sizeof(mac->ssb_measurements));

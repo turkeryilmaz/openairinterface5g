@@ -54,6 +54,8 @@
 #include "NR_DL-DCCH-Message.h"
 #include "NR_SystemInformation.h"
 #include "NR_UE-NR-Capability.h"
+#include "NR_SL-PreconfigurationNR-r16.h"
+#include "NR_MasterInformationBlockSidelink.h"
 
 #include "RRC/NR/nr_rrc_common.h"
 #include "as_message.h"
@@ -176,9 +178,6 @@ typedef struct rrcPerNB {
   NR_QuantityConfig_t *QuantityConfig;
   NR_MeasIdToAddMod_t *MeasId[MAX_MEAS_ID];
   NR_MeasGapConfig_t *measGapConfig;
-  NR_RB_status_t Srb[NR_NUM_SRB];
-  NR_RB_status_t status_DRBs[MAX_DRBS_PER_UE];
-  bool active_RLC_entity[NR_MAX_NUM_LCID];
   NR_UE_RRC_SI_INFO SInfo;
   NR_RSRP_Range_t s_measure;
 } rrcPerNB_t;
@@ -187,8 +186,7 @@ typedef struct NR_UE_RRC_INST_s {
   instance_t ue_id;
   rrcPerNB_t perNB[NB_CNX_UE];
 
-  char                           *uecap_file;
-  rnti_t                         rnti;
+  rnti_t rnti;
 
   OAI_NR_UECapability_t UECap;
   NR_UE_Timers_Constants_t timers_and_constants;
@@ -197,6 +195,10 @@ typedef struct NR_UE_RRC_INST_s {
 
   NR_BWP_Id_t dl_bwp_id;
   NR_BWP_Id_t ul_bwp_id;
+
+  NR_RB_status_t Srb[NR_NUM_SRB];
+  NR_RB_status_t status_DRBs[MAX_DRBS_PER_UE];
+  bool active_RLC_entity[NR_MAX_NUM_LCID];
 
   /* KgNB as computed from parameters within USIM card */
   uint8_t kgnb[32];
@@ -210,6 +212,10 @@ typedef struct NR_UE_RRC_INST_s {
   long               selected_plmn_identity;
   Rrc_State_NR_t     nrRrcState;
   as_nas_info_t      initialNasMsg;
+
+  //Sidelink params
+  NR_SL_PreconfigurationNR_r16_t *sl_preconfig;
+
 } NR_UE_RRC_INST_t;
 
 #endif

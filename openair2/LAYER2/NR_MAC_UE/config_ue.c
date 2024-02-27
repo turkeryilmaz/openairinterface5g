@@ -42,32 +42,6 @@
 #include "SCHED_NR/phy_frame_config_nr.h"
 #include "oai_asn1.h"
 
-const long logicalChannelGroup0_NR = 0;
-typedef struct NR_LogicalChannelConfig__ul_SpecificParameters LcConfig_UlParamas_t;
-
-const LcConfig_UlParamas_t NR_LCSRB1 = {
-    .priority = 1,
-    .prioritisedBitRate = NR_LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_infinity,
-    .logicalChannelGroup = (long *)&logicalChannelGroup0_NR};
-
-const LcConfig_UlParamas_t NR_LCSRB2 = {
-    .priority = 3,
-    .prioritisedBitRate = NR_LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_infinity,
-    .logicalChannelGroup = (long *)&logicalChannelGroup0_NR};
-
-const LcConfig_UlParamas_t NR_LCSRB3 = {
-    .priority = 1,
-    .prioritisedBitRate = NR_LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_infinity,
-    .logicalChannelGroup = (long *)&logicalChannelGroup0_NR};
-
-// these are the default values for SRB configurations(SRB1 and SRB2) as mentioned in 36.331 pg 258-259
-const NR_LogicalChannelConfig_t NR_SRB1_logicalChannelConfig_defaultValue = {.ul_SpecificParameters =
-                                                                                 (LcConfig_UlParamas_t *)&NR_LCSRB1};
-const NR_LogicalChannelConfig_t NR_SRB2_logicalChannelConfig_defaultValue = {.ul_SpecificParameters =
-                                                                                 (LcConfig_UlParamas_t *)&NR_LCSRB2};
-const NR_LogicalChannelConfig_t NR_SRB3_logicalChannelConfig_defaultValue = {.ul_SpecificParameters =
-                                                                                 (LcConfig_UlParamas_t *)&NR_LCSRB3};
-
 void set_tdd_config_nr_ue(fapi_nr_tdd_table_t *tdd_table,
                           int mu,
                           NR_TDD_UL_DL_Pattern_t *pattern)
@@ -132,11 +106,10 @@ void set_tdd_config_nr_ue(fapi_nr_tdd_table_t *tdd_table,
 
 static void config_common_ue_sa(NR_UE_MAC_INST_t *mac,
                                 NR_ServingCellConfigCommonSIB_t *scc,
-                                module_id_t module_id,
                                 int cc_idP)
 {
   fapi_nr_config_request_t *cfg = &mac->phy_config.config_req;
-  mac->phy_config.Mod_id = module_id;
+  mac->phy_config.Mod_id = mac->ue_id;
   mac->phy_config.CC_id = cc_idP;
 
   LOG_D(MAC, "Entering SA UE Config Common\n");
@@ -271,12 +244,11 @@ static void config_common_ue_sa(NR_UE_MAC_INST_t *mac,
 
 static void config_common_ue(NR_UE_MAC_INST_t *mac,
                              NR_ServingCellConfigCommon_t *scc,
-                             module_id_t module_id,
                              int cc_idP)
 {
   fapi_nr_config_request_t *cfg = &mac->phy_config.config_req;
 
-  mac->phy_config.Mod_id = module_id;
+  mac->phy_config.Mod_id = mac->ue_id;
   mac->phy_config.CC_id = cc_idP;
   
   // carrier config
@@ -448,9 +420,7 @@ void release_common_ss_cset(NR_BWP_PDCCH_t *pdcch)
   asn1cFreeStruc(asn_DEF_NR_SearchSpace, pdcch->otherSI_SS);
   asn1cFreeStruc(asn_DEF_NR_SearchSpace, pdcch->ra_SS);
   asn1cFreeStruc(asn_DEF_NR_SearchSpace, pdcch->paging_SS);
-  asn1cFreeStruc(asn_DEF_NR_SearchSpace, pdcch->search_space_zero);
   asn1cFreeStruc(asn_DEF_NR_ControlResourceSet, pdcch->commonControlResourceSet);
-  asn1cFreeStruc(asn_DEF_NR_ControlResourceSet, pdcch->coreset0);
 }
 
 static void modlist_ss(NR_SearchSpace_t *source, NR_SearchSpace_t *target)
@@ -471,12 +441,13 @@ static void modlist_ss(NR_SearchSpace_t *source, NR_SearchSpace_t *target)
     UPDATE_MAC_IE(target->searchSpaceType, source->searchSpaceType, struct NR_SearchSpace__searchSpaceType);
 }
 
-static NR_SearchSpace_t *get_common_search_space(const struct NR_PDCCH_ConfigCommon__commonSearchSpaceList *commonSearchSpaceList,
+static NR_SearchSpace_t *get_common_search_space(const NR_UE_MAC_INST_t *mac,
+                                                 const struct NR_PDCCH_ConfigCommon__commonSearchSpaceList *commonSearchSpaceList,
                                                  const NR_BWP_PDCCH_t *pdcch,
                                                  const NR_SearchSpaceId_t ss_id)
 {
   if (ss_id == 0)
-    return pdcch->search_space_zero;
+    return mac->search_space_zero;
 
   NR_SearchSpace_t *css = NULL;
   for (int i = 0; i < commonSearchSpaceList->list.count; i++) {
@@ -490,12 +461,15 @@ static NR_SearchSpace_t *get_common_search_space(const struct NR_PDCCH_ConfigCom
   return css;
 }
 
-static void configure_common_ss_coreset(NR_BWP_PDCCH_t *pdcch, NR_PDCCH_ConfigCommon_t *pdcch_ConfigCommon)
+static void configure_common_ss_coreset(const NR_UE_MAC_INST_t *mac,
+                                        NR_BWP_PDCCH_t *pdcch,
+                                        NR_PDCCH_ConfigCommon_t *pdcch_ConfigCommon)
 {
   if (pdcch_ConfigCommon) {
     asn1cFreeStruc(asn_DEF_NR_SearchSpace, pdcch->otherSI_SS);
     if (pdcch_ConfigCommon->searchSpaceOtherSystemInformation)
-      pdcch->otherSI_SS = get_common_search_space(pdcch_ConfigCommon->commonSearchSpaceList,
+      pdcch->otherSI_SS = get_common_search_space(mac,
+                                                  pdcch_ConfigCommon->commonSearchSpaceList,
                                                   pdcch,
                                                   *pdcch_ConfigCommon->searchSpaceOtherSystemInformation);
 
@@ -505,7 +479,7 @@ static void configure_common_ss_coreset(NR_BWP_PDCCH_t *pdcch, NR_PDCCH_ConfigCo
         pdcch->ra_SS = pdcch->otherSI_SS;
       else
         pdcch->ra_SS =
-            get_common_search_space(pdcch_ConfigCommon->commonSearchSpaceList, pdcch, *pdcch_ConfigCommon->ra_SearchSpace);
+            get_common_search_space(mac, pdcch_ConfigCommon->commonSearchSpaceList, pdcch, *pdcch_ConfigCommon->ra_SearchSpace);
     }
 
     asn1cFreeStruc(asn_DEF_NR_SearchSpace, pdcch->paging_SS);
@@ -516,7 +490,7 @@ static void configure_common_ss_coreset(NR_BWP_PDCCH_t *pdcch, NR_PDCCH_ConfigCo
         pdcch->paging_SS = pdcch->ra_SS;
       if (!pdcch->paging_SS)
         pdcch->paging_SS =
-            get_common_search_space(pdcch_ConfigCommon->commonSearchSpaceList, pdcch, *pdcch_ConfigCommon->pagingSearchSpace);
+            get_common_search_space(mac, pdcch_ConfigCommon->commonSearchSpaceList, pdcch, *pdcch_ConfigCommon->pagingSearchSpace);
     }
 
     UPDATE_MAC_IE(pdcch->commonControlResourceSet, pdcch_ConfigCommon->commonControlResourceSet, NR_ControlResourceSet_t);
@@ -648,25 +622,13 @@ static void configure_ss_coreset(NR_BWP_PDCCH_t *pdcch, NR_PDCCH_Config_t *pdcch
   }
 }
 
-static int lcid_cmp(const void *lc1, const void *lc2, void *mac_inst)
+static int lcid_cmp(const void *a, const void *b)
 {
-  uint8_t id1 = ((nr_lcordered_info_t *)lc1)->lcids_ordered;
-  uint8_t id2 = ((nr_lcordered_info_t *)lc2)->lcids_ordered;
-  NR_UE_MAC_INST_t *mac = (NR_UE_MAC_INST_t *)mac_inst;
-
-  NR_LogicalChannelConfig_t **lc_config = &mac->logicalChannelConfig[0];
-
-  AssertFatal(id1 > 0 && id2 > 0, "undefined logical channel identity\n");
-  AssertFatal(lc_config[id1 - 1] != NULL || lc_config[id2 - 1] != NULL, "logical channel configuration should be available\n");
-
-  return (lc_config[id1 - 1]->ul_SpecificParameters->priority - lc_config[id2 - 1]->ul_SpecificParameters->priority);
-}
-
-void nr_release_mac_config_logicalChannelBearer(NR_UE_MAC_INST_t *mac, long channel_identity)
-{
-  if (mac->logicalChannelConfig[channel_identity - 1] != NULL) {
-    asn1cFreeStruc(asn_DEF_NR_LogicalChannelConfig, mac->logicalChannelConfig[channel_identity - 1]);
-  }
+  long priority_a = (*((nr_lcordered_info_t**)a))->priority;
+  AssertFatal(priority_a > 0 && priority_a < 17, "Invalid priority value %ld\n", priority_a);
+  long priority_b = (*((nr_lcordered_info_t**)b))->priority;
+  AssertFatal(priority_b > 0 && priority_b < 17, "Invalid priority value %ld\n", priority_b);
+  return priority_a - priority_b;
 }
 
 static int nr_get_ms_bucketsizeduration(long bucketsizeduration)
@@ -695,93 +657,111 @@ static int nr_get_ms_bucketsizeduration(long bucketsizeduration)
   }
 }
 
-void nr_configure_mac_config_logicalChannelBearer(module_id_t module_id,
-                                                  long channel_identity,
-                                                  NR_LogicalChannelConfig_t *lc_config)
+static uint32_t get_lc_bucket_size(long prioritisedBitRate, long bucketSizeDuration)
 {
-  NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
-
-  LOG_I(NR_MAC, "[MACLogicalChannelConfig]Applying RRC Logical Channel Config %d to lcid %li\n", module_id, channel_identity);
-  mac->logicalChannelConfig[channel_identity - 1] = lc_config;
-
-  // initialize the variable Bj for every LCID
-  mac->scheduling_info.lc_sched_info[channel_identity - 1].Bj = 0;
-
-  // store the bucket size
-  int pbr = nr_get_pbr(lc_config->ul_SpecificParameters->prioritisedBitRate);
-  int bsd = nr_get_ms_bucketsizeduration(lc_config->ul_SpecificParameters->bucketSizeDuration);
-
+  int pbr = nr_get_pbr(prioritisedBitRate);
   // in infinite pbr, the bucket is saturated by pbr
-  if (lc_config->ul_SpecificParameters->prioritisedBitRate
-      == NR_LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_infinity) {
+  int bsd = 0;
+  if (prioritisedBitRate == NR_LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_infinity)
     bsd = 1;
-  }
-  mac->scheduling_info.lc_sched_info[channel_identity - 1].bucket_size = pbr * bsd;
-
-  if (lc_config->ul_SpecificParameters->logicalChannelGroup != NULL)
-    mac->scheduling_info.lc_sched_info[channel_identity - 1].LCGID = *lc_config->ul_SpecificParameters->logicalChannelGroup;
   else
-    mac->scheduling_info.lc_sched_info[channel_identity - 1].LCGID = 0;
+    bsd = nr_get_ms_bucketsizeduration(bucketSizeDuration);
+
+  return pbr * bsd;
 }
 
-static void configure_logicalChannelBearer(module_id_t module_id,
+// default configuration as per 38.331 section 9.2.1
+static void set_default_logicalchannelconfig(nr_lcordered_info_t *lc_info, NR_SRB_Identity_t srb_id)
+{
+  lc_info->lcid = srb_id;
+  lc_info->priority = srb_id == 2 ? 3 : 1;
+  lc_info->prioritisedBitRate = NR_LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_infinity;
+  lc_info->bucket_size = get_lc_bucket_size(lc_info->prioritisedBitRate, 0);
+}
+
+static void nr_configure_lc_config(NR_UE_MAC_INST_t *mac,
+                                   nr_lcordered_info_t *lc_info,
+                                   NR_LogicalChannelConfig_t *mac_lc_config,
+                                   NR_SRB_Identity_t srb_id)
+{
+  if (srb_id > 0 && !mac_lc_config->ul_SpecificParameters) {
+    // release configuration and reset to default
+    set_default_logicalchannelconfig(lc_info, srb_id);
+    mac->scheduling_info.lc_sched_info[lc_info->lcid - 1].LCGID = 0;
+    return;
+  }
+  AssertFatal(mac_lc_config->ul_SpecificParameters, "UL parameters shouldn't be NULL for DRBs\n");
+  struct NR_LogicalChannelConfig__ul_SpecificParameters *ul_parm = mac_lc_config->ul_SpecificParameters;
+  lc_info->priority = ul_parm->priority;
+  lc_info->prioritisedBitRate = ul_parm->prioritisedBitRate;
+  // TODO Verify setting to 0 is ok, 331 just says need R (release if NULL)
+  mac->scheduling_info.lc_sched_info[lc_info->lcid - 1].LCGID = ul_parm->logicalChannelGroup ? *ul_parm->logicalChannelGroup : 0;
+  lc_info->bucket_size = get_lc_bucket_size(ul_parm->prioritisedBitRate, ul_parm->bucketSizeDuration);
+}
+
+static void configure_logicalChannelBearer(NR_UE_MAC_INST_t *mac,
                                            struct NR_CellGroupConfig__rlc_BearerToAddModList *rlc_toadd_list,
                                            struct NR_CellGroupConfig__rlc_BearerToReleaseList *rlc_torelease_list)
 {
-  NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
   if (rlc_torelease_list) {
     for (int i = 0; i < rlc_torelease_list->list.count; i++) {
-      if (rlc_torelease_list->list.array[i]) {
-        int lc_identity = *rlc_torelease_list->list.array[i];
-        nr_release_mac_config_logicalChannelBearer(mac, lc_identity);
+      long id = *rlc_torelease_list->list.array[i];
+      int j;
+      for (j = 0; j < mac->lc_ordered_list.count; j++) {
+        if (id == mac->lc_ordered_list.array[j]->lcid)
+          break;
       }
+      if (j < mac->lc_ordered_list.count) {
+        nr_lcordered_info_t *lc_info = mac->lc_ordered_list.array[j];
+        asn_sequence_del(&mac->lc_ordered_list, j, 0);
+        free(lc_info);
+      }
+      else
+        LOG_E(NR_MAC, "Element not present in the list, impossible to release\n");
     }
   }
+
   if (rlc_toadd_list) {
     for (int i = 0; i < rlc_toadd_list->list.count; i++) {
       NR_RLC_BearerConfig_t *rlc_bearer = rlc_toadd_list->list.array[i];
       int lc_identity = rlc_bearer->logicalChannelIdentity;
-      mac->lc_ordered_info[i].lcids_ordered = lc_identity;
-      NR_LogicalChannelConfig_t *mac_lc_config = NULL;
-      if (mac->logicalChannelConfig[lc_identity - 1] == NULL) {
+      NR_LogicalChannelConfig_t *mac_lc_config = rlc_bearer->mac_LogicalChannelConfig;
+      int j;
+      for (j = 0; j < mac->lc_ordered_list.count; j++) {
+        if (lc_identity == mac->lc_ordered_list.array[j]->lcid)
+          break;
+      }
+      if (j < mac->lc_ordered_list.count) {
+        LOG_D(NR_MAC, "Logical channel %d is already established, Reconfiguring now\n", lc_identity);
+        if (mac_lc_config != NULL) {
+          NR_SRB_Identity_t srb_id = 0;
+          if (rlc_bearer->servedRadioBearer->present == NR_RLC_BearerConfig__servedRadioBearer_PR_srb_Identity)
+            srb_id = rlc_bearer->servedRadioBearer->choice.srb_Identity;
+          nr_configure_lc_config(mac, mac->lc_ordered_list.array[j], mac_lc_config, srb_id);
+        }
+      }
+      else {
         /* setup of new LCID*/
+        nr_lcordered_info_t *lc_info = calloc(1, sizeof(*lc_info));
+        lc_info->lcid = lc_identity;
         LOG_D(NR_MAC, "Establishing the logical channel %d\n", lc_identity);
         AssertFatal(rlc_bearer->servedRadioBearer, "servedRadioBearer should be present for LCID establishment\n");
         if (rlc_bearer->servedRadioBearer->present == NR_RLC_BearerConfig__servedRadioBearer_PR_srb_Identity) { /* SRB */
           NR_SRB_Identity_t srb_id = rlc_bearer->servedRadioBearer->choice.srb_Identity;
-          if (rlc_bearer->mac_LogicalChannelConfig != NULL) {
-            UPDATE_MAC_IE(mac_lc_config, rlc_bearer->mac_LogicalChannelConfig, NR_LogicalChannelConfig_t);
-          } else {
-            LOG_I(NR_RRC, "Applying the default logicalChannelConfig for SRB\n");
-            if (srb_id == 1)
-              mac_lc_config = (NR_LogicalChannelConfig_t *)&NR_SRB1_logicalChannelConfig_defaultValue;
-            else if (srb_id == 2)
-              mac_lc_config = (NR_LogicalChannelConfig_t *)&NR_SRB2_logicalChannelConfig_defaultValue;
-            else if (srb_id == 3)
-              mac_lc_config = (NR_LogicalChannelConfig_t *)&NR_SRB3_logicalChannelConfig_defaultValue;
-            else
-              AssertFatal(1 == 0, "The logical id %d is not a valid SRB id %li\n", lc_identity, srb_id);
-          }
+          if (mac_lc_config != NULL)
+            nr_configure_lc_config(mac, lc_info, mac_lc_config, srb_id);
+          else
+            set_default_logicalchannelconfig(lc_info, srb_id);
         } else { /* DRB */
-          AssertFatal(rlc_bearer->mac_LogicalChannelConfig,
-                      "When establishing a DRB, LogicalChannelConfig should be mandatorily present\n");
-          UPDATE_MAC_IE(mac_lc_config, rlc_bearer->mac_LogicalChannelConfig, NR_LogicalChannelConfig_t);
+          AssertFatal(mac_lc_config, "When establishing a DRB, LogicalChannelConfig should be mandatorily present\n");
+          nr_configure_lc_config(mac, lc_info, mac_lc_config, 0);
         }
-      } else {
-        /* LC is already established, reconfiguring the LC */
-        LOG_D(NR_MAC, "Logical channel %d is already established, Reconfiguring now\n", lc_identity);
-        if (rlc_bearer->mac_LogicalChannelConfig != NULL) {
-          UPDATE_MAC_IE(mac_lc_config, rlc_bearer->mac_LogicalChannelConfig, NR_LogicalChannelConfig_t);
-        }
-      }
-      if (mac_lc_config) {
-        mac->lc_ordered_info[i].logicalChannelConfig_ordered = mac_lc_config;
-        nr_configure_mac_config_logicalChannelBearer(module_id, lc_identity, mac_lc_config);
+        ASN_SEQUENCE_ADD(&mac->lc_ordered_list, lc_info);
       }
     }
 
     // reorder the logical channels as per its priority
-    qsort_r(mac->lc_ordered_info, rlc_toadd_list->list.count, sizeof(nr_lcordered_info_t), lcid_cmp, mac);
+    qsort(mac->lc_ordered_list.array, mac->lc_ordered_list.count, sizeof(nr_lcordered_info_t*), lcid_cmp);
   }
 }
 
@@ -827,7 +807,7 @@ void nr_rrc_mac_config_req_mib(module_id_t module_id,
     mac->get_sib1 = true;
   else if (sched_sib == 2)
     mac->get_otherSI = true;
-  nr_ue_decode_mib(module_id, cc_idP);
+  nr_ue_decode_mib(mac, cc_idP);
 }
 
 static void setup_puschpowercontrol(NR_PUSCH_PowerControl_t *source, NR_PUSCH_PowerControl_t *target)
@@ -1326,7 +1306,7 @@ static void configure_common_BWP_dl(NR_UE_MAC_INST_t *mac, int bwp_id, NR_BWP_Do
     NR_BWP_PDCCH_t *pdcch = &mac->config_BWP_PDCCH[bwp_id];
     if (dl_common->pdcch_ConfigCommon) {
       if (dl_common->pdcch_ConfigCommon->present == NR_SetupRelease_PDCCH_ConfigCommon_PR_setup)
-        configure_common_ss_coreset(pdcch, dl_common->pdcch_ConfigCommon->choice.setup);
+        configure_common_ss_coreset(mac, pdcch, dl_common->pdcch_ConfigCommon->choice.setup);
       if (dl_common->pdcch_ConfigCommon->present == NR_SetupRelease_PDCCH_ConfigCommon_PR_release)
         release_common_ss_cset(pdcch);
     }
@@ -1381,7 +1361,7 @@ void nr_rrc_mac_config_req_reset(module_id_t module_id,
   reset_mac_inst(mac);
   reset_ra(&mac->ra);
   release_mac_configuration(mac);
-  nr_ue_init_mac(module_id);
+  nr_ue_init_mac(mac);
 
   // Sending to PHY a request to resync
   // with no target cell ID
@@ -1404,7 +1384,7 @@ void nr_rrc_mac_config_req_sib1(module_id_t module_id,
   UPDATE_MAC_IE(mac->tdd_UL_DL_ConfigurationCommon, scc->tdd_UL_DL_ConfigurationCommon, NR_TDD_UL_DL_ConfigCommon_t);
   UPDATE_MAC_IE(mac->si_SchedulingInfo, si_SchedulingInfo, NR_SI_SchedulingInfo_t);
 
-  config_common_ue_sa(mac, scc, module_id, cc_idP);
+  config_common_ue_sa(mac, scc, cc_idP);
   configure_common_BWP_dl(mac,
                           0, // bwp-id
                           &scc->downlinkConfigCommon.initialDownlinkBWP);
@@ -1430,7 +1410,6 @@ void nr_rrc_mac_config_req_sib1(module_id_t module_id,
 }
 
 static void handle_reconfiguration_with_sync(NR_UE_MAC_INST_t *mac,
-                                             module_id_t module_id,
                                              int cc_idP,
                                              const NR_ReconfigurationWithSync_t *reconfigurationWithSync)
 {
@@ -1451,7 +1430,7 @@ static void handle_reconfiguration_with_sync(NR_UE_MAC_INST_t *mac,
       mac->physCellId = *scc->physCellId;
     mac->dmrs_TypeA_Position = scc->dmrs_TypeA_Position;
     UPDATE_MAC_IE(mac->tdd_UL_DL_ConfigurationCommon, scc->tdd_UL_DL_ConfigurationCommon, NR_TDD_UL_DL_ConfigCommon_t);
-    config_common_ue(mac, scc, module_id, cc_idP);
+    config_common_ue(mac, scc, cc_idP);
     if (scc->downlinkConfigCommon)
       configure_common_BWP_dl(mac,
                               0, // bwp-id
@@ -1467,7 +1446,7 @@ static void handle_reconfiguration_with_sync(NR_UE_MAC_INST_t *mac,
   nr_ue_mac_default_configs(mac);
 
   if (!get_softmodem_params()->emulate_l1) {
-    mac->synch_request.Mod_id = module_id;
+    mac->synch_request.Mod_id = mac->ue_id;
     mac->synch_request.CC_id = cc_idP;
     mac->synch_request.synch_req.target_Nid_cell = mac->physCellId;
     mac->if_module->synch_request(&mac->synch_request);
@@ -1928,9 +1907,64 @@ static void configure_BWPs(NR_UE_MAC_INST_t *mac, NR_ServingCellConfig_t *scd)
   }
 }
 
+static void handle_mac_uecap_info(NR_UE_MAC_INST_t *mac, NR_UE_NR_Capability_t *ue_Capability)
+{
+  if (!ue_Capability->featureSets)
+    return;
+  if (ue_Capability->featureSets->featureSetsDownlinkPerCC) {
+    struct NR_FeatureSets__featureSetsDownlinkPerCC *fs_dlcc_list = ue_Capability->featureSets->featureSetsDownlinkPerCC;
+    for (int i = 0; i < fs_dlcc_list->list.count; i++) {
+      NR_FeatureSetDownlinkPerCC_t *fs_dl_cc = fs_dlcc_list->list.array[i];
+      if (mac->current_DL_BWP->scs != fs_dl_cc->supportedSubcarrierSpacingDL)
+        continue;
+      int uecap_bw_index;
+      if (fs_dl_cc->supportedBandwidthDL.present == NR_SupportedBandwidth_PR_fr1) {
+        uecap_bw_index = fs_dl_cc->supportedBandwidthDL.choice.fr1;
+        // 90 MHz option is indicated by a separate pointer in case indicated supported BW is 100MHz
+        // so we need to increase the index by 1 unit to point to 100 MHz if not 90MHz
+        if (uecap_bw_index == NR_SupportedBandwidth__fr1_mhz100 && !fs_dl_cc->channelBW_90mhz)
+          uecap_bw_index++;
+      }
+      else
+        uecap_bw_index = fs_dl_cc->supportedBandwidthDL.choice.fr2;
+      int dl_bw_mhz = mac->phy_config.config_req.carrier_config.dl_bandwidth;
+      if (dl_bw_mhz != get_supported_bw_mhz(mac->frequency_range, uecap_bw_index))
+        continue;
+      if (fs_dl_cc->maxNumberMIMO_LayersPDSCH)
+        mac->uecap_maxMIMO_PDSCH_layers = 2 << *fs_dl_cc->maxNumberMIMO_LayersPDSCH;
+    }
+  }
+  if (ue_Capability->featureSets->featureSetsUplinkPerCC) {
+    struct NR_FeatureSets__featureSetsUplinkPerCC *fs_ulcc_list = ue_Capability->featureSets->featureSetsUplinkPerCC;
+    for (int i = 0; i < fs_ulcc_list->list.count; i++) {
+      NR_FeatureSetUplinkPerCC_t *fs_ul_cc = fs_ulcc_list->list.array[i];
+      if (mac->current_UL_BWP->scs != fs_ul_cc->supportedSubcarrierSpacingUL)
+        continue;
+      int uecap_bw_index;
+      if (fs_ul_cc->supportedBandwidthUL.present == NR_SupportedBandwidth_PR_fr1) {
+        uecap_bw_index = fs_ul_cc->supportedBandwidthUL.choice.fr1;
+        // 90 MHz option is indicated by a separate pointer in case indicated supported BW is 100MHz
+        // so we need to increase the index by 1 unit to point to 100 MHz if not 90MHz
+        if (uecap_bw_index == NR_SupportedBandwidth__fr1_mhz100 && !fs_ul_cc->channelBW_90mhz)
+          uecap_bw_index++;
+      }
+      else
+        uecap_bw_index = fs_ul_cc->supportedBandwidthUL.choice.fr2;
+      int ul_bw_mhz = mac->phy_config.config_req.carrier_config.uplink_bandwidth;
+      if (ul_bw_mhz != get_supported_bw_mhz(mac->frequency_range, uecap_bw_index))
+        continue;
+      if (fs_ul_cc->maxNumberMIMO_LayersNonCB_PUSCH)
+        mac->uecap_maxMIMO_PUSCH_layers_nocb = 1 << *fs_ul_cc->maxNumberMIMO_LayersNonCB_PUSCH;
+      if (fs_ul_cc->mimo_CB_PUSCH && fs_ul_cc->mimo_CB_PUSCH->maxNumberMIMO_LayersCB_PUSCH)
+        mac->uecap_maxMIMO_PUSCH_layers_cb = 1 << *fs_ul_cc->mimo_CB_PUSCH->maxNumberMIMO_LayersCB_PUSCH;
+    }
+  }
+}
+
 void nr_rrc_mac_config_req_cg(module_id_t module_id,
                               int cc_idP,
-                              NR_CellGroupConfig_t *cell_group_config)
+                              NR_CellGroupConfig_t *cell_group_config,
+                              NR_UE_NR_Capability_t *ue_Capability)
 {
   LOG_I(MAC,"Applying CellGroupConfig from gNodeB\n");
   AssertFatal(cell_group_config, "CellGroupConfig should not be NULL\n");
@@ -1948,7 +1982,7 @@ void nr_rrc_mac_config_req_cg(module_id_t module_id,
     mac->servCellIndex = spCellConfig->servCellIndex ? *spCellConfig->servCellIndex : 0;
     if (spCellConfig->reconfigurationWithSync) {
       LOG_A(NR_MAC, "Received reconfigurationWithSync\n");
-      handle_reconfiguration_with_sync(mac, module_id, cc_idP, spCellConfig->reconfigurationWithSync);
+      handle_reconfiguration_with_sync(mac, cc_idP, spCellConfig->reconfigurationWithSync);
     }
     if (scd) {
       configure_servingcell_info(&mac->sc_info, scd);
@@ -1956,9 +1990,12 @@ void nr_rrc_mac_config_req_cg(module_id_t module_id,
     }
   }
 
-  configure_logicalChannelBearer(module_id,
+  configure_logicalChannelBearer(mac,
                                  cell_group_config->rlc_BearerToAddModList,
                                  cell_group_config->rlc_BearerToReleaseList);
+
+  if (ue_Capability)
+    handle_mac_uecap_info(mac, ue_Capability);
 
   // Setup the SSB to Rach Occasions mapping according to the config
   // Only if RACH is configured for current BWP
