@@ -21,6 +21,7 @@ services:
       - /usr/src:/usr/src
       - ./aerial_l1_entrypoint.sh:/opt/nvidia/cuBB/aerial_l1_entrypoint.sh
       - /var/log/aerial:/var/log/aerial
+      - ../../../cmake_targets/share:/opt/cuBB/share
     userns_mode: host
     ipc: "shareable"
     image: cubb-build:23-2
@@ -53,7 +54,7 @@ services:
     stdin_open: true
     tty: true
     volumes:
-      - ../../conf_files/vnf.sa.band78.fr1.273PRB.Aerial.conf:/opt/oai-gnb/etc/gnb.conf
+      - ../../conf_files/gnb-vnf.sa.band78.273prb.aerial.conf:/opt/oai-gnb/etc/gnb.conf
     container_name: oai-gnb-aerial
     healthcheck:
       test: /bin/bash -c "ps aux | grep -v grep | grep -c softmodem"
