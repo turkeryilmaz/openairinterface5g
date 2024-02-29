@@ -745,6 +745,7 @@ void nr_schedule_srs_secondary(int module_id, frame_t frame, int slot) {
     dummy_ue_info.current_UL_BWP.BWPSize = NRRIV2BW(ubwp.locationAndBandwidth,MAX_BWP_SIZE);
     dummy_ue_info.current_UL_BWP.BWPStart = NRRIV2PRBOFFSET(ubwp.locationAndBandwidth,MAX_BWP_SIZE);
     dummy_ue_info.current_UL_BWP.scs = ubwp.subcarrierSpacing;
+    dummy_ue_info.rnti = NON_UE_ASSOCIATED_SRS_DUMMY_RNTI;
     
     // Check if UE will transmit the SRS in this frame
     if ( ((frame - offset/n_slots_frame)*n_slots_frame)%period == 0) {

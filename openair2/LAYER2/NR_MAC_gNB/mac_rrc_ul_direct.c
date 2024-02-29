@@ -594,8 +594,8 @@ static void positioning_measurement_response(const f1ap_measurement_resp_t *resp
 
   gNB_MAC_INST *mac = RC.nrmac[resp->nrppa_msg_info.instance];
   NR_UEs_t *UE_info = &mac->UE_info;
-  /*UE_iterator (UE_info->list, UE) {
-    if (UE->rnti == resp->nrppa_msg_info.ue_rnti) { // configuration details of specific UE // TODO manage non UE associated
+  UE_iterator (UE_info->list, UE) {
+    if (UE->rnti == NON_UE_ASSOCIATED_SRS_DUMMY_RNTI /*resp->nrppa_msg_info.ue_rnti*/) { // configuration details of specific UE // TODO manage non UE associated
       LOG_I(MAC,
             "Extracting uL_RTOA info of MeasurementResponse for ue rnti= %04x \n",
             resp->nrppa_msg_info.ue_rnti); ////uid_t uid = &UE->uid;
@@ -610,28 +610,6 @@ static void positioning_measurement_response(const f1ap_measurement_resp_t *resp
             resp->nrppa_msg_info.ue_rnti,
             (int32_t)(((int64_t)UE->ue_pos_info.toa_ns * (int64_t)T_inv) / T_ns_inv));
 
-      // TODO IE timeStamp.measurementTime
-      posMeasRes->pos_measurement_result_item->timeStamp.systemFrameNumber = mac->frame;
-      // TODO IE timeStamp.slotIndex
-      posMeasRes->pos_measurement_result_item->timeStamp.slotIndex.present = f1ap_time_stamp_slot_index_pr_sCS_30;
-      posMeasRes->pos_measurement_result_item->timeStamp.slotIndex.choice.sCS_30 = mac->slot;
-    }
-  }*/
-
-  UE_iterator (UE_info->list, UE) {
-    if (1) { // configuration details of specific UE // TODO manage non UE associated
-      LOG_I(MAC,
-            "Extracting uL_RTOA info of MeasurementResponse for ue rnti= %04x \n",
-            resp->nrppa_msg_info.ue_rnti); ////uid_t uid = &UE->uid;
-      // we assume we use UL_RTOA for now with k=1 (i.e. 8 times oversampling from 122.88e6 Msps)
-      f1ap_measured_results_value_t *MeasResVal= &posMeasRes->pos_measurement_result_item->measuredResultsValue;
-      MeasResVal->present = f1ap_measured_results_value_pr_ul_rtoa;
-      MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.present = f1ap_ulrtoameas_pr_k1;
-      MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k1 =0;
-          //(int32_t)(((int64_t)UE->ue_pos_info.toa_ns * (int64_t)T_inv) / T_ns_inv);
-      LOG_I(MAC,
-            "Extracting uL_RTOA info of MeasurementResponse for ue rnti= %04x, k1=%d \n",
-            resp->nrppa_msg_info.ue_rnti,0);
       // TODO IE timeStamp.measurementTime
       posMeasRes->pos_measurement_result_item->timeStamp.systemFrameNumber = mac->frame;
       // TODO IE timeStamp.slotIndex
