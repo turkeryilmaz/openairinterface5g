@@ -972,6 +972,8 @@ void prepare_msg4_feedback(NR_UE_MAC_INST_t *mac, int pid, int ack_nack)
   current_harq->active = false;
   current_harq->ack_received = false;
   if (get_softmodem_params()->emulate_l1) {
+    current_harq->active = true;
+    current_harq->ack_received = true;
     mac->nr_ue_emul_l1.harq[pid].active = true;
     mac->nr_ue_emul_l1.harq[pid].active_dl_harq_sfn = sched_frame;
     mac->nr_ue_emul_l1.harq[pid].active_dl_harq_slot = sched_slot;
