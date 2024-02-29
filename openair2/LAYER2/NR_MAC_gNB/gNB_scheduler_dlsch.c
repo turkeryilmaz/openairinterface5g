@@ -926,6 +926,11 @@ void nr_schedule_ue_spec(module_id_t module_id,
   AssertFatal(pthread_mutex_trylock(&gNB_mac->sched_lock) == EBUSY,
               "this function should be called with the scheduler mutex locked\n");
 
+
+// if (!((slot > 0 && slot <= 10)||(slot >= 20 && slot <= 30)||(slot >= 40 && slot <= 50)))
+//   return;
+
+
   if (!is_xlsch_in_slot(gNB_mac->dlsch_slot_bitmap[slot / 64], slot))
     return;
 

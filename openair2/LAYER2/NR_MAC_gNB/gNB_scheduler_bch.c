@@ -88,6 +88,7 @@ static void schedule_ssb(frame_t frame,
   dl_config_pdu->ssb_pdu.ssb_pdu_rel15.precoding_and_beamforming.prgs_list[0].dig_bf_interface_list[0].beam_idx = beam_index;
   dl_req->nPDUs++;
 
+  LOG_D(MAC," Scheduling SSB %d with offsetPointA %d and Kssb %d\n", i_ssb, offset_pointa, scoffset);
   LOG_D(MAC,"Scheduling ssb %d at frame %d and slot %d\n",i_ssb,frame,slot);
 }
 
