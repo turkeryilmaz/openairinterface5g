@@ -1081,12 +1081,12 @@ class Containerize():
 		logging.info(f'stopping services {services}')
 
 		mySSH.run(f'docker-compose -f {yamlDir}/ci-docker-compose.yml stop -t3')
-		copyin_res = False
+		copyin_res = True
 		for svcName in allServices:
 			# head -n -1 suppresses the final "X exited with status code Y"
 			filename = f'{svcName}-{HTML.testCase_id}.log'
 			mySSH.run(f'docker-compose -f {yamlDir}/ci-docker-compose.yml logs --no-log-prefix -- {svcName} &> {lSourcePath}/cmake_targets/log/{filename}')
-			copyin_res = mySSH.copyin(f'{lSourcePath}/cmake_targets/log/{filename}', f'{filename}')
+			copyin_res = mySSH.copyin(f'{lSourcePath}/cmake_targets/log/{filename}', f'{filename}') and copyin_res
 		# when nv-cubb container is available, copy L1 pcap, OAI Aerial pipeline
 		if 'nv-cubb' in allServices:
 			mySSH.run(f'cp {lSourcePath}/cmake_targets/share/gnb_nvipc.pcap {lSourcePath}/cmake_targets/gnb_nvipc.pcap')
@@ -1095,7 +1095,7 @@ class Containerize():
 
 		# Analyzing log file!
 		if not copyin_res:
-			HTML.htmleNBFailureMsg='Could not copy logfile to analyze it!'
+			HTML.htmleNBFailureMsg='Could not copy logfile(s) to analyze it!'
 			HTML.CreateHtmlTestRow('N/A', 'KO', CONST.ENB_PROCESS_NOLOGFILE_TO_ANALYZE)
 			self.exitStatus = 1
 		# use function for UE log analysis, when oai-nr-ue container is used
