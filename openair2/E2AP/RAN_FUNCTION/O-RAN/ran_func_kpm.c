@@ -20,7 +20,6 @@
  */
 
 #include "ran_func_kpm.h"
-#include "openair2/E2AP/flexric/test/rnd/fill_rnd_data_kpm.h"  // this dependancy will be taken out once RAN Function Definition is implemented
 #include "openair2/E2AP/flexric/src/util/time_now_us.h"
 #include "common/utils/assertions.h"
 
@@ -47,6 +46,16 @@
 
 /* Please note that only one executable nr-softmodem exists for DU, CU, CU-CP and gNB-mono nodes;
   the layer separation should be done better in the future */
+
+static ngran_node_t node_type = 0;
+static void get_e2_node_type(void)
+{
+  #if defined (NGRAN_GNB_DU) && defined (NGRAN_GNB_CUUP) && defined (NGRAN_GNB_CUCP)
+  node_type = RC.nrrrc[0]->node_type;
+  #elif defined (NGRAN_GNB_CUUP)
+  node_type =  ngran_gNB_CUUP;
+  #endif
+}
 
 #if defined (NGRAN_GNB_CUUP)  
 typedef struct uldlcounter {
@@ -866,13 +875,124 @@ bool read_kpm_sm(void* data)
   return true;
 }
 
+char** fill_kpm_ran_def_du(void)
+{
+  static char* kpm_meas[] = {
+    "DRB.RlcSduDelayDl", 
+    "DRB.UEThpDl", 
+    "DRB.UEThpUl", 
+    "RRU.PrbTotDl", 
+    "RRU.PrbTotUl",
+  };
+  return kpm_meas;
+}
+
+char** fill_kpm_ran_def_gnb(void)
+{
+  static char* kpm_meas[] = {
+    "DRB.PdcpSduVolumeDL", 
+    "DRB.PdcpSduVolumeUL", 
+    "DRB.RlcSduDelayDl", 
+    "DRB.UEThpDl", 
+    "DRB.UEThpUl", 
+    "RRU.PrbTotDl", 
+    "RRU.PrbTotUl",
+  };
+  return kpm_meas;
+}
+
+char** fill_kpm_ran_def_cuup(void)
+{
+  static char* kpm_meas[] = {
+    "DRB.PdcpSduVolumeDL", 
+    "DRB.PdcpSduVolumeUL", 
+  };
+  return kpm_meas;
+}
+
+char** fill_kpm_ran_def_cucp(void)
+{
+  return NULL;
+}
+
+typedef char** (*meas_list)(void);
+
+static const meas_list ran_def_kpm[END_NGRAN_NODE_TYPE] =
+{
+  NULL,
+  NULL,
+  fill_kpm_ran_def_gnb,
+  NULL,
+  NULL,
+  fill_kpm_ran_def_cuup, // at the moment, for CU, we use the same function as for CU-UP
+  NULL,
+  fill_kpm_ran_def_du,
+  NULL,
+  fill_kpm_ran_def_cucp, // at the moment, no measurement is implemented in CU-CP
+  fill_kpm_ran_def_cuup,
+};
+
+
 void read_kpm_setup_sm(void* e2ap)
 {
   assert(e2ap != NULL);
 //  assert(e2ap->type == KPM_V3_0_AGENT_IF_E2_SETUP_ANS_V0);
 
   kpm_e2_setup_t* kpm = (kpm_e2_setup_t*)(e2ap);
-  kpm->ran_func_def = fill_rnd_kpm_ran_func_def(); 
+
+  /* Fill the RAN Function Definition with currently supported measurements */
+  
+  // RAN Function Name is already filled in fill_ran_function_name() in kpm_sm_agent.c
+
+  // Sequence of Event Trigger styles
+  kpm->ran_func_def.sz_ric_event_trigger_style_list = 1;
+  kpm->ran_func_def.ric_event_trigger_style_list = calloc(kpm->ran_func_def.sz_ric_event_trigger_style_list, sizeof(ric_event_trigger_style_item_t));
+  assert(kpm->ran_func_def.ric_event_trigger_style_list != NULL && "Memory exhausted");
+
+  kpm->ran_func_def.ric_event_trigger_style_list[0].style_type = STYLE_1_RIC_EVENT_TRIGGER;
+  const char ev_style_name[] = "Periodic Report";
+  kpm->ran_func_def.ric_event_trigger_style_list[0].style_name = cp_str_to_ba(ev_style_name);
+  kpm->ran_func_def.ric_event_trigger_style_list[0].format_type = FORMAT_1_RIC_EVENT_TRIGGER;
+
+  // Fill supported measurements depending on the E2 node
+  // [1, 65535]
+  // 3GPP TS 28.552
+  get_e2_node_type();
+  char** kpm_meas = ran_def_kpm[node_type]();
+  if (kpm_meas == NULL) return; // e.g. CU-CP node, doesn't support any measurements
+  size_t sz = 0;
+  while (kpm_meas[sz] != NULL) {
+    sz++;
+  }
+
+  // Sequence of Report styles
+  kpm->ran_func_def.sz_ric_report_style_list = 1;
+  kpm->ran_func_def.ric_report_style_list = calloc(kpm->ran_func_def.sz_ric_report_style_list, sizeof(ric_report_style_item_t));
+  assert(kpm->ran_func_def.ric_report_style_list != NULL && "Memory exhausted");
+
+  kpm->ran_func_def.ric_report_style_list[0].report_style_type = STYLE_4_RIC_SERVICE_REPORT;
+  const char report_style_name[] = "Common Condition-based, UE-level Measurement";
+  kpm->ran_func_def.ric_report_style_list[0].report_style_name = cp_str_to_ba(report_style_name);
+  kpm->ran_func_def.ric_report_style_list[0].act_def_format_type = FORMAT_4_ACTION_DEFINITION;
+
+  kpm->ran_func_def.ric_report_style_list[0].meas_info_for_action_lst_len = sz;
+  kpm->ran_func_def.ric_report_style_list[0].meas_info_for_action_lst = calloc(sz, sizeof(meas_info_for_action_lst_t));
+  assert(kpm->ran_func_def.ric_report_style_list[0].meas_info_for_action_lst != NULL && "Memory exhausted");
+
+  for(size_t i = 0; i < sz; i++) {
+    // 8.3.9
+    kpm->ran_func_def.ric_report_style_list[0].meas_info_for_action_lst[i].name = cp_str_to_ba(kpm_meas[i]);
+
+    // 8.3.10  -  OPTIONAL
+    kpm->ran_func_def.ric_report_style_list[0].meas_info_for_action_lst[i].id = NULL;
+
+    // 8.3.26  -  OPTIONAL
+    kpm->ran_func_def.ric_report_style_list[0].meas_info_for_action_lst[i].bin_range_def = NULL;
+  } 
+
+  // Supported RIC Indication Formats
+  kpm->ran_func_def.ric_report_style_list[0].ind_hdr_format_type = FORMAT_1_INDICATION_HEADER;  // 8.3.5
+  kpm->ran_func_def.ric_report_style_list[0].ind_msg_format_type = FORMAT_3_INDICATION_MESSAGE;  // 8.3.5
 }
 
 sm_ag_if_ans_t write_ctrl_kpm_sm(void const* src)
