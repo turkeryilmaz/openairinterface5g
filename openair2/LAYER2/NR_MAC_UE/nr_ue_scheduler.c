@@ -626,23 +626,21 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
       pusch_config_pdu->pusch_uci.csi_part1_payload = csi_report->part1_payload;
       pusch_config_pdu->pusch_uci.csi_part2_bit_length = csi_report->p2_bits;
       pusch_config_pdu->pusch_uci.csi_part2_payload = csi_report->part2_payload;
-      AssertFatal(pusch_Config && pusch_Config->uci_OnPUSCH,
-                  "UCI on PUSCH need to be configured\n");
-      pusch_config_pdu->pusch_uci.alpha_scaling = pusch_Config->uci_OnPUSCH->choice.setup->scaling;
-      AssertFatal(pusch_Config->uci_OnPUSCH->choice.setup->betaOffsets &&
-                  pusch_Config->uci_OnPUSCH->choice.setup->betaOffsets->present == NR_UCI_OnPUSCH__betaOffsets_PR_semiStatic,
+      AssertFatal(pusch_Config && pusch_Config->uci_OnPUSCH, "UCI on PUSCH need to be configured\n");
+      NR_UCI_OnPUSCH_t *onPusch = pusch_Config->uci_OnPUSCH->choice.setup;
+      AssertFatal(onPusch &&
+                  onPusch->betaOffsets &&
+                  onPusch->betaOffsets->present == NR_UCI_OnPUSCH__betaOffsets_PR_semiStatic,
                   "Only semistatic beta offset is supported\n");
-      NR_BetaOffsets_t *beta_offsets = pusch_Config->uci_OnPUSCH->choice.setup->betaOffsets->choice.semiStatic;
-      pusch_config_pdu->pusch_uci.beta_offset_harq_ack = pusch_config_pdu->pusch_uci.harq_ack_bit_length > 2 ?
-                                                         (pusch_config_pdu->pusch_uci.harq_ack_bit_length < 12 ? *beta_offsets->betaOffsetACK_Index2 :
-                                                         *beta_offsets->betaOffsetACK_Index3) :
-                                                         *beta_offsets->betaOffsetACK_Index1;
+      NR_BetaOffsets_t *beta_offsets = onPusch->betaOffsets->choice.semiStatic;
+
       pusch_config_pdu->pusch_uci.beta_offset_csi1 = pusch_config_pdu->pusch_uci.csi_part1_bit_length < 12 ?
                                                      *beta_offsets->betaOffsetCSI_Part1_Index1 :
                                                      *beta_offsets->betaOffsetCSI_Part1_Index2;
       pusch_config_pdu->pusch_uci.beta_offset_csi2 = pusch_config_pdu->pusch_uci.csi_part2_bit_length < 12 ?
                                                      *beta_offsets->betaOffsetCSI_Part2_Index1 :
                                                      *beta_offsets->betaOffsetCSI_Part2_Index2;
+      pusch_config_pdu->pusch_uci.alpha_scaling = onPusch->scaling;
     }
     else {
       pusch_config_pdu->pusch_uci.csi_part1_bit_length = 0;
@@ -2043,6 +2041,102 @@ void build_ssb_to_ro_map(NR_UE_MAC_INST_t *mac)
   LOG_D(NR_MAC,"Map SSB to RO done\n");
 }
 
+#if 0
+static bool schedule_uci_on_pusch(NR_UE_MAC_INST_t *mac, frame_t frame_tx, int slot_tx, PUCCH_sched_t *pucch)
+{
+  fapi_nr_ul_config_request_pdu_t *ulcfg_pdu = lockGet_ul_iterator(mac, frame_tx, slot_tx);
+  if (!ulcfg_pdu)
+    return NULL;
+
+  nfapi_nr_ue_pusch_pdu_t *pusch_pdu = NULL;
+  while (ulcfg_pdu->pdu_type != FAPI_NR_END) {
+    if (ulcfg_pdu->pdu_type == FAPI_NR_UL_CONFIG_TYPE_PUSCH) {
+      int start_pusch = ulcfg_pdu->pusch_config_pdu.start_symbol_index;
+      int nsymb_pusch = ulcfg_pdu->pusch_config_pdu.nr_of_symbols;
+      int end_pusch = start_pusch + nsymb_pusch;
+      NR_PUCCH_Resource_t *pucchres = pucch->pucch_resource;
+      int nr_of_symbols = 0;
+      int start_symbol_index = 0;
+      switch(pucchres->format.present) {
+        case NR_PUCCH_Resource__format_PR_format0 :
+          nr_of_symbols = pucchres->format.choice.format0->nrofSymbols;
+          start_symbol_index = pucchres->format.choice.format0->startingSymbolIndex;
+          break;
+        case NR_PUCCH_Resource__format_PR_format1 :
+          nr_of_symbols = pucchres->format.choice.format1->nrofSymbols;
+          start_symbol_index = pucchres->format.choice.format1->startingSymbolIndex;
+          break;
+        case NR_PUCCH_Resource__format_PR_format2 :
+          nr_of_symbols = pucchres->format.choice.format2->nrofSymbols;
+          start_symbol_index = pucchres->format.choice.format2->startingSymbolIndex;
+          break;
+        case NR_PUCCH_Resource__format_PR_format3 :
+          nr_of_symbols = pucchres->format.choice.format3->nrofSymbols;
+          start_symbol_index = pucchres->format.choice.format3->startingSymbolIndex;
+          break;
+        case NR_PUCCH_Resource__format_PR_format4 :
+          nr_of_symbols = pucchres->format.choice.format4->nrofSymbols;
+          start_symbol_index = pucchres->format.choice.format4->startingSymbolIndex;
+          break;
+        default :
+          AssertFatal(false, "Undefined PUCCH format \n");
+      }
+      int final_symbol = nr_of_symbols + start_symbol_index;
+      // PUCCH overlapping in time with PUSCH
+      if (start_symbol_index < end_pusch && final_symbol > start_pusch) {
+        pusch_pdu = &ulcfg_pdu->pusch_config_pdu;
+        break;
+      }
+    }
+    ulcfg_pdu++;
+  }
+
+  if (!pusch_pdu) {
+    release_ul_config(ulcfg_pdu, false);
+    return false;
+  }
+
+  // If a UE would transmit on a serving cell a PUSCH without UL-SCH that overlaps with a PUCCH transmission
+  // on a serving cell that includes positive SR information, the UE does not transmit the PUSCH.
+  if (pusch_pdu && pusch_pdu->ulsch_indicator == 0 && pucch->sr_payload == 1) {
+    release_ul_config(ulcfg_pdu, false);
+    return false;
+  }
+
+  // - UE multiplexes only HARQ-ACK information, if any, from the UCI in the PUSCH transmission
+  // and does not transmit the PUCCH if the UE multiplexes aperiodic or semi-persistent CSI reports in the PUSCH
+
+  // - UE multiplexes only HARQ-ACK information and CSI reports, if any, from the UCI in the PUSCH transmission
+  // and does not transmit the PUCCH if the UE does not multiplex aperiodic or semi-persistent CSI reports in the PUSCH
+  bool mux_done = false;
+  if (pucch->n_harq > 0) {
+    pusch_pdu->pusch_uci.harq_ack_bit_length = pucch->n_harq;
+    pusch_pdu->pusch_uci.harq_payload = pucch->ack_payload;
+    NR_PUSCH_Config_t *pusch_Config = mac->current_UL_BWP->pusch_Config;
+    AssertFatal(pusch_Config && pusch_Config->uci_OnPUSCH, "UCI on PUSCH need to be configured\n");
+    NR_UCI_OnPUSCH_t *onPusch = pusch_Config->uci_OnPUSCH->choice.setup;
+    AssertFatal(onPusch &&
+                onPusch->betaOffsets &&
+                onPusch->betaOffsets->present == NR_UCI_OnPUSCH__betaOffsets_PR_semiStatic,
+                "Only semistatic beta offset is supported\n");
+    NR_BetaOffsets_t *beta_offsets = onPusch->betaOffsets->choice.semiStatic;
+    pusch_pdu->pusch_uci.beta_offset_harq_ack = pucch->n_harq > 2 ?
+                                                       (pucch->n_harq < 12 ? *beta_offsets->betaOffsetACK_Index2 :
+                                                       *beta_offsets->betaOffsetACK_Index3) :
+                                                       *beta_offsets->betaOffsetACK_Index1;
+    pusch_pdu->pusch_uci.alpha_scaling = onPusch->scaling;
+    mux_done = true;
+  }
+  if (pusch_pdu->pusch_uci.csi_part1_bit_length == 0 && pusch_pdu->pusch_uci.csi_part2_bit_length == 0) {
+    // To support this we would need to shift some bits into CSI part2 -> need to change the logic
+    AssertFatal(pucch->n_csi == 0, "Multiplexing periodic CSI on PUSCH not supported\n");
+  }
+
+  release_ul_config(ulcfg_pdu, false);
+  // only use PUSCH if any mux is done otherwise send PUCCH
+  return mux_done;
+}
+#endif
 void nr_ue_pucch_scheduler(NR_UE_MAC_INST_t *mac, frame_t frameP, int slotP, void *phy_data)
 {
   PUCCH_sched_t pucch[3] = {0}; // TODO the size might change in the future in case of multiple SR or multiple CSI in a slot
