@@ -1094,9 +1094,6 @@ class Containerize():
 		mySSH.run(f'docker-compose -f {yamlDir}/ci-docker-compose.yml down -v')
 
 		# Analyzing log file!
-		files = ','.join([f'{s}-{HTML.testCase_id}' for s in services])
-		if len(services) > 1:
-			files = '{' + files + '}'
 		if not copyin_res:
 			HTML.htmleNBFailureMsg='Could not copy logfile to analyze it!'
 			HTML.CreateHtmlTestRow('N/A', 'KO', CONST.ENB_PROCESS_NOLOGFILE_TO_ANALYZE)
@@ -1123,7 +1120,7 @@ class Containerize():
 					HTML.CreateHtmlTestRow(RAN.runtime_stats, 'OK', CONST.ALL_PROCESSES_OK)
 			# all the xNB run logs shall be on the server 0 for logCollecting
 			if self.eNB_serverId[self.eNB_instance] != '0':
-				mySSH.copyout(f'./{files}.log', f'{self.eNBSourceCodePath}/cmake_targets/', recursive=True)
+				mySSH.copyout(f'./*.log', f'{self.eNBSourceCodePath}/cmake_targets/', recursive=True)
 		if self.exitStatus == 0:
 			logging.info('\u001B[1m Undeploying OAI Object Pass\u001B[0m')
 		else:
