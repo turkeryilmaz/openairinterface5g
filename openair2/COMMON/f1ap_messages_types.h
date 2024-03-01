@@ -1159,8 +1159,27 @@ typedef union f1ap_trp_information_type_response_item_c {
   f1ap_geographical_coordinates_t geographicalCoordinates;
 } f1ap_trp_information_type_response_item_u;
 
+typedef enum f1ap_trp_information_type_response_item_e {
+  f1ap_trp_information_type_response_item_pr_NOTHING,	/* No components present */
+	f1ap_trp_information_type_response_item_pr_pCI_NR,
+	f1ap_trp_information_type_response_item_pr_nG_RAN_CGI,
+	f1ap_trp_information_type_response_item_pr_nRARFCN,
+	f1ap_trp_information_type_response_item_pr_pRSConfiguration,
+	f1ap_trp_information_type_response_item_pr_sSBinformation,
+  f1ap_trp_information_type_response_item_pr_sFNInitialisationTime,
+	f1ap_trp_information_type_response_item_pr_spatialDirectionInformation,
+	f1ap_trp_information_type_response_item_pr_geographicalCoordinates
+} f1ap_trp_information_type_response_item_pr;
+
+typedef struct f1ap_trp_information_type_response_item_s {
+  f1ap_trp_information_type_response_item_pr present;
+  f1ap_trp_information_type_response_item_u choice;
+} f1ap_trp_information_type_response_item_t;
+
+
+
 typedef struct f1ap_trp_information_type_response_list_s { // A_SEQUENCE_OF(struct F1AP_TRPInformationTypeResponseItem) list;
-  f1ap_trp_information_type_response_item_u *trp_information_type_response_item;
+  f1ap_trp_information_type_response_item_t *trp_information_type_response_item;
   uint8_t trp_information_type_response_list_length;
 } f1ap_trp_information_type_response_list_t;
 

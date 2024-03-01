@@ -122,22 +122,26 @@ int nrppa_gNB_TRPInformationResponse(instance_t instance, MessageDef *msg_p)
 
     // TODO Retrieve TRP information from RAN Context
 
-    int nb_of_TRP = 1; // TODO find the acutal number for TRP and add here
+    int nb_of_TRP = resp->trp_information_list.trp_information_list_length; // TODO find the acutal number for TRP and add here
+    f1ap_trp_information_item_t *trpInfItem= resp->trp_information_list.trp_information_item;
     for (int i = 0; i < nb_of_TRP; i++) {
       asn1cSequenceAdd(ie->value.choice.TRPInformationList.list, TRPInformationList__Member, item);
-      item->tRP_ID = 0; // long NRPPA_TRP_ID_t
+      item->tRP_ID = trpInfItem->tRPInformation.tRPID ; // long NRPPA_TRP_ID_t
 
       // Preparing tRPInformation IE of NRPPA_TRPInformationList__Member
-      int nb_tRPInfoTypes = 1; // TODO find the acutal size add here
+      int nb_tRPInfoTypes = trpInfItem->tRPInformation.tRPInformationTypeResponseList.trp_information_type_response_list_length; 
+      f1ap_trp_information_type_response_item_t *resItem=trpInfItem->tRPInformation.tRPInformationTypeResponseList.trp_information_type_response_item;
       for (int k = 0; k < nb_tRPInfoTypes; k++) // Preparing NRPPA_TRPInformation_t a list of  TRPInformation_item
       {
         asn1cSequenceAdd(item->tRPInformation.list, NRPPA_TRPInformationItem_t, trpinfo_item);
         // TODO adeel retrive relevent info and add
-        trpinfo_item->choice.pCI_NR = 0; // long dummy value
-        trpinfo_item->choice.sSBinformation = NULL; // dummy values
+        trpinfo_item->present= NRPPA_TRPInformationItem_PR_pCI_NR;
+        trpinfo_item->choice.pCI_NR = resItem->choice.pCI_NR; ; // long dummy value
+        
+        /*trpinfo_item->choice.sSBinformation = NULL; // dummy values
         trpinfo_item->choice.nG_RAN_CGI = NULL; // dummy values
         trpinfo_item->choice.pRSConfiguration = NULL; // dummy values
-        trpinfo_item->choice.geographicalCoordinates = NULL; // dummy values
+        trpinfo_item->choice.geographicalCoordinates = NULL; // dummy values*/
 
       } // for(int k=0; k < nb_tRPInfoTypes; k++)
     } // for (int i = 0; i < nb_of_TRP; i++)
