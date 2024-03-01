@@ -1069,14 +1069,19 @@ class Containerize():
 			svcName = ''
 
 		ret = mySSH.run(f'docker compose -f {yamlDir}/ci-docker-compose.yml config --services')
+		if ret.returncode != 0:
+			HTML.CreateHtmlTestRow(RAN.runtime_stats, 'KO', "cannot enumerate running services")
+			self.exitStatus = 1
+			return
 		# first line has command, last line has next command prompt
 		allServices = ret.stdout.splitlines()
 		services = []
 		for s in allServices:
-			ret = mySSH.run(f'docker compose -f {yamlDir}/ci-docker-compose.yml ps --all -- {s}')
+			# outputs the hash if the container is running
+			ret = mySSH.run(f'docker compose -f {yamlDir}/ci-docker-compose.yml ps --all --quiet --filter status=running -- {s}')
 			running = ret.stdout.splitlines()
 			logging.debug(f'running services: {running}')
-			if len(running) > 0: # something is running for that service
+			if ret.stdout != "" and ret.returncode == 0: # something is running for that service
 				services.append(s)
 		logging.info(f'stopping services {services}')
 
