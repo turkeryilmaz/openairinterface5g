@@ -44,12 +44,25 @@ int encode_fgs_authentication_response(fgs_authentication_response_msg *authenti
   int encode_result = 0;
 
 
-  if ((encode_result =
-         encode_authentication_response_parameter(&authentication_response->authenticationresponseparameter,
-           AUTHENTICATION_RESPONSE_PARAMETER_IEI, buffer + encoded, len - encoded)) < 0)        //Return in case of error
-    return encode_result;
-  else
-    encoded += encode_result;
+  if ((authentication_response->presencemask & FGS_AUTHENTICATION_RESPONSE_AUTH_RESPONSE_PARAM_PRESENT)
+      == FGS_AUTHENTICATION_RESPONSE_AUTH_RESPONSE_PARAM_PRESENT) {
+    if ((encode_result =
+          encode_authentication_response_parameter(&authentication_response->authenticationresponseparameter,
+            FGS_AUTHENTICATION_RESPONSE_AUTH_RESPONSE_PARAM_IEI, buffer + encoded, len - encoded)) < 0)        //Return in case of error
+      return encode_result;
+    else
+      encoded += encode_result;
+  }
+
+  if ((authentication_response->presencemask & FGS_AUTHENTICATION_RESPONSE_EAP_MESSAGE_PRESENT)
+      == FGS_AUTHENTICATION_RESPONSE_EAP_MESSAGE_PRESENT) {
+    if ((encode_result =
+          encode_eap_message(&authentication_response->eapmessage,
+            FGS_AUTHENTICATION_RESPONSE_EAP_MESSAGE_IEI, buffer + encoded, len - encoded)) < 0)        //Return in case of error
+      return encode_result;
+    else
+      encoded += encode_result;
+  }
 
   return encoded;
 }

@@ -166,7 +166,7 @@ mac_rrc_data_ind_ue(
   }
 
   if(srb_idP == BCCH) {
-    LOG_D(RRC,"[UE %d] Received SDU for BCCH on SRB %ld from eNB %d\n",module_idP,srb_idP,eNB_indexP);
+    LOG_D(RRC,"[UE %d] Received SDU for BCCH on SRB %ld from eNB:%d SFN:%d SF:%d\n",module_idP,srb_idP,eNB_indexP, frameP, sub_frameP);
     {
       MessageDef *message_p;
       int msg_sdu_size = sizeof(RRC_MAC_BCCH_DATA_IND (message_p).sdu);
@@ -192,7 +192,7 @@ mac_rrc_data_ind_ue(
   }
 
   if(srb_idP == PCCH) {
-    LOG_D(RRC,"[UE %d] Received SDU for PCCH on SRB %ld from eNB %d\n",module_idP,srb_idP,eNB_indexP);
+    LOG_D(RRC,"[UE %d] Received SDU for PCCH on SRB %ld from eNB %d SFN:%d SF:%d\n",module_idP,srb_idP,eNB_indexP, frameP, sub_frameP);
     decode_PCCH_DLSCH_Message(&ctxt,eNB_indexP,(uint8_t *)sduP,sdu_lenP);
   }
 
