@@ -407,7 +407,7 @@ void fix_scc(NR_ServingCellConfigCommon_t *scc,uint64_t ssbmap) {
   }
 
   // fix UL absolute frequency
-  if (RC.ss.mode == SS_GNB)
+  if (RC.ss.mode == SS_GNB || RC.ss.mode == SS_HWTMODEM)
   {
     if ((int)*scc->uplinkConfigCommon->frequencyInfoUL->absoluteFrequencyPointA == -1)
     {
