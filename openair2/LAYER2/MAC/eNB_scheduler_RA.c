@@ -1326,11 +1326,59 @@ initiate_ra_proc(module_id_t module_idP,
   RA_t *ra = &cc->ra[0];
   struct LTE_PRACH_ConfigSIB_v1310 *ext4_prach = NULL;
   LTE_PRACH_ParametersListCE_r13_t *prach_ParametersListCE_r13 = NULL;
-  if(RC.ss.mode >= SS_SOFTMODEM && (!RC.ss.ss_crnti[CC_id].b_rarResponse)){
-    LOG_D(MAC,
-        "[eNB %d][RAPROC] CC_id %d Frame %d, Subframe %d  SS mode Do not Initate RA procedure for preamble index %d, timing offset %d\n",
+ 
+  LOG_D(MAC,
+        "[eNB %d][RAPROC] CC_id %d Frame %d, Subframe %d  Initiating RA procedure for preamble index %d, timing offset %d\n",
         module_idP, CC_id, frameP, subframeP, preamble_index, timing_offset);
-    return;
+  LOG_D(MAC,
+        "[eNB %d][RAPROC] CC_id %d Frame %d, Subframe %d  PRACH resource type %d\n",
+        module_idP, CC_id, frameP, subframeP, rach_resource_type);
+ 
+      /*Send rach info if enabled by System Simulator*/
+      if(RC.ss.l1macind[CC_id].rachpreamble_enable)
+      {
+        // Populate and send the SS_SYSTEM_IND to System Simulator
+        MessageDef *m = itti_alloc_new_message(TASK_MAC_ENB, 0, SS_SYSTEM_IND);
+        SS_SYSTEM_IND(m).bitmask = false;
+        SS_SYSTEM_IND(m).sfn = frameP;
+        SS_SYSTEM_IND(m).sf = subframeP;
+        SS_SYSTEM_IND(m).ra_PreambleIndex = preamble_index;
+        SS_SYSTEM_IND(m).prtPower_Type = true;
+        SS_SYSTEM_IND(m).repetitionsPerPreambleAttempt = 0;
+        SS_SYSTEM_IND(m).physCellId = cc->physCellId;
+        itti_send_msg_to_task(TASK_SS_SYSIND, module_idP, m);
+        LOG_A(MAC,"MAC Sending SS_SYSTEM_IND with ra_PreambleIndex=%d prtPower_Type=%d bitmask=%d sfn=%d sf=%d to System Simulator\n", SS_SYSTEM_IND(m).ra_PreambleIndex, SS_SYSTEM_IND(m).prtPower_Type,
+		SS_SYSTEM_IND(m).bitmask, SS_SYSTEM_IND(m).sfn, SS_SYSTEM_IND(m).sf);
+      }
+
+  if((RC.ss.mode >= SS_SOFTMODEM) && (RC.ss.ss_crnti[CC_id].numRar))
+  {
+       uint8_t rar_index = 0;
+      /* The last rach config should persist till next rach connfigured by system simulator
+       * 1. increment index up to last rar(numRar - 1) only
+       * 2. Last rar onwards do not increment index
+       * 3. Act as per last rar untill next rach config received from SS */	  
+      if(RC.ss.ss_crnti[CC_id].Rar_Response_Index < (RC.ss.ss_crnti[CC_id].numRar - 1))
+      {
+         rar_index = RC.ss.ss_crnti[CC_id].Rar_Response_Index++;
+      }
+      else
+      {
+         rar_index = RC.ss.ss_crnti[CC_id].numRar - 1;	      
+      }
+      /*Check the config of simulated rach attempts*/
+      if(RC.ss.ss_crnti[CC_id].b_rarResponse[rar_index])
+      {
+         LOG_D(MAC,"[eNB %d][RAPROC] CC_id %d Frame %d, Subframe %d SS rach attempt %d RAR allowed for preamble index %d, timing offset %d\n", module_idP, CC_id, frameP, subframeP, (i + 1), preamble_index, timing_offset);
+         RC.ss.ss_crnti[CC_id].b_ignore_rlf_sdu_ind = false;
+      }
+      else
+      {
+         LOG_D(MAC,"[eNB %d][RAPROC] CC_id %d Frame %d, Subframe %d SS rach attempt %d RAR not allowed for preamble index %d, timing offset %d\n", module_idP, CC_id, frameP, subframeP, (i + 1), preamble_index, timing_offset);
+	 /*Set the param to ignore the unsuccessful rlc sdu indication*/
+	 RC.ss.ss_crnti[CC_id].b_ignore_rlf_sdu_ind = true;   //If RAR restricted, ignore unsuccesful rlc sdu indication for RLF
+         return;
+      }
   }
 
   if (cc->mib->message.schedulingInfoSIB1_BR_r13>0) {
@@ -1341,12 +1389,6 @@ initiate_ra_proc(module_id_t module_idP,
     prach_ParametersListCE_r13 = &ext4_prach->prach_ParametersListCE_r13;
   }
 
-  LOG_D(MAC,
-        "[eNB %d][RAPROC] CC_id %d Frame %d, Subframe %d  Initiating RA procedure for preamble index %d, timing offset %d\n",
-        module_idP, CC_id, frameP, subframeP, preamble_index, timing_offset);
-  LOG_D(MAC,
-        "[eNB %d][RAPROC] CC_id %d Frame %d, Subframe %d  PRACH resource type %d\n",
-        module_idP, CC_id, frameP, subframeP, rach_resource_type);
   uint16_t msg2_frame = frameP;
   uint16_t msg2_subframe = subframeP;
   int offset;
@@ -1385,6 +1427,8 @@ initiate_ra_proc(module_id_t module_idP,
             abort();
 
           case 1 :
+            offset = 8;
+            break;
 	  case 3 :
 	  case 4 :
           case 5 :
@@ -1482,21 +1526,6 @@ initiate_ra_proc(module_id_t module_idP,
             module_idP, CC_id, frameP, ra[i].Msg2_frame,
             ra[i].Msg2_subframe, i, ra[i].rnti, ra[i].state);
 
-      if(RC.ss.l1macind[CC_id].rachpreamble_enable)
-      {
-        // Populate and send the SS_SYSTEM_IND to System Simulator
-        MessageDef *m = itti_alloc_new_message(TASK_MAC_ENB, 0, SS_SYSTEM_IND);
-        SS_SYSTEM_IND(m).bitmask = false;
-        SS_SYSTEM_IND(m).sfn = frameP;
-        SS_SYSTEM_IND(m).sf = subframeP;
-        SS_SYSTEM_IND(m).ra_PreambleIndex = preamble_index;
-        SS_SYSTEM_IND(m).prtPower_Type = true;
-        SS_SYSTEM_IND(m).repetitionsPerPreambleAttempt = 0;
-        SS_SYSTEM_IND(m).physCellId = cc->physCellId;
-        itti_send_msg_to_task(TASK_SS_SYSIND, module_idP, m);
-        LOG_A(MAC,"MAC Sending SS_SYSTEM_IND with ra_PreambleIndex=%d prtPower_Type=%d bitmask=%d sfn=%d sf=%d to System Simulator\n", SS_SYSTEM_IND(m).ra_PreambleIndex, SS_SYSTEM_IND(m).prtPower_Type,
-		SS_SYSTEM_IND(m).bitmask, SS_SYSTEM_IND(m).sfn, SS_SYSTEM_IND(m).sf);
-      }
       return;
     }
   }

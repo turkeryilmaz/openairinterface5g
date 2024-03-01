@@ -492,6 +492,7 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req, bool *pIsRrcConfigReqSent
 #define SIB1_CELL_SEL_INFO SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.cellSelectionInfo
 #define SIB1_CELL_NON_CE SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.nonCriticalExtension.v.nonCriticalExtension
 #define SIB1_CELL_Q_QUALMIN SIB1_CELL_NON_CE.v.cellSelectionInfo_v920.v.q_QualMin_r9
+#define SIB1_TDD_CONFIG SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.tdd_Config.v
           if (AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIB1.d == true)
           {
             LOG_A(ENB_SS_SYS_TASK, "[SIB1] q-RxLevMin: %d \n", SIB1_CELL_SEL_INFO.q_RxLevMin);
@@ -506,6 +507,11 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req, bool *pIsRrcConfigReqSent
                   RRC_CONFIGURATION_REQ(msg_p).q_QualMin[cell_index] = SIB1_CELL_Q_QUALMIN;
                 }
               }
+            }
+	    if(SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.tdd_Config.d)
+            {
+              RRC_CONFIGURATION_REQ(msg_p).tdd_config[cell_index] = SIB1_TDD_CONFIG.subframeAssignment;
+              RRC_CONFIGURATION_REQ(msg_p).tdd_config_s[cell_index] = SIB1_TDD_CONFIG.specialSubframePatterns;
             }
           }
 
@@ -790,6 +796,8 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req, bool *pIsRrcConfigReqSent
         if (AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.d == true)
         {
 	  RRC_CONFIGURATION_REQ(msg_p).ActiveParamPresent[cell_index] = true;
+	  RRC_CONFIGURATION_REQ(msg_p).ActiveParam[cell_index].numRar = AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.d;
+          LOG_A(ENB_SS_SYS_TASK,"SS controlled RAR config count: %d\n", RRC_CONFIGURATION_REQ(msg_p).ActiveParam[cell_index].numRar);
           for (int i = 0; i < (AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.d); i++)
           {
             if (RandomAccessResponseConfig_Type_Ctrl == AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.v[i].RAResponse.d)
@@ -797,7 +805,8 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req, bool *pIsRrcConfigReqSent
               LOG_A(ENB_SS_SYS_TASK, "RAResponse present in Active Cell Config\n");
               if (RandomAccessResponse_Type_List == AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.v[i].RAResponse.v.Ctrl.Rar.d)
               {
-                RRC_CONFIGURATION_REQ(msg_p).ActiveParam[cell_index].numRar = AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.v[i].RAResponse.v.Ctrl.Rar.v.List.d;
+                RRC_CONFIGURATION_REQ(msg_p).ActiveParam[cell_index].Rar[i].b_rarResponse = true; /*Indicates RA response: Allows tx of RAR/msg2*/
+                LOG_A(ENB_SS_SYS_TASK, "RAResponse allowed\n");
                 for (int j = 0; j < AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.v[i].RAResponse.v.Ctrl.Rar.v.List.d; j++)
                 {
                   if (TempC_RNTI_Type_SameAsC_RNTI == AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.v[i].RAResponse.v.Ctrl.Rar.v.List.v[j].TempC_RNTI.d)
@@ -814,7 +823,8 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req, bool *pIsRrcConfigReqSent
               }
               else if(RandomAccessResponse_Type_None == AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.v[i].RAResponse.v.Ctrl.Rar.d)
               {
-		      RRC_CONFIGURATION_REQ(msg_p).ActiveParam[cell_index].numRar = 0; /* Indicate non RAR response: do not initate RA procedure */
+		 RRC_CONFIGURATION_REQ(msg_p).ActiveParam[cell_index].Rar[i].b_rarResponse = false; /*Indicates non RA response: Avoids tx of RAR/msg2*/
+                 LOG_A(ENB_SS_SYS_TASK, "RAResponse not allowed\n");
               }
             }
             if (AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.v[i].ContentionResolutionCtrl.d == ContentionResolutionCtrl_Type_TCRNTI_Based)
