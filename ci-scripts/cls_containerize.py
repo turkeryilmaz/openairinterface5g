@@ -951,12 +951,12 @@ class Containerize():
 		if svcName == '':
 			logging.warning('no service name given: starting all services in ci-docker-compose.yml!')
 
-		mySSH.command(f'docker-compose --file ci-docker-compose.yml up -d -- {svcName}', '\$', 30)
+		mySSH.command(f'docker compose --file ci-docker-compose.yml up -d -- {svcName}', '\$', 30)
 
 		# Checking Status
 		grep = ''
 		if svcName != '': grep = f' | grep -A3 {svcName}'
-		mySSH.command(f'docker-compose --file ci-docker-compose.yml config {grep}', '\$', 5)
+		mySSH.command(f'docker compose --file ci-docker-compose.yml config {grep}', '\$', 5)
 		result = re.search('container_name: (?P<container_name>[a-zA-Z0-9\-\_]+)', mySSH.getBefore())
 		unhealthyNb = 0
 		healthyNb = 0
@@ -1068,30 +1068,30 @@ class Containerize():
 			logging.warning(f'service name given, but will stop all services in ci-docker-compose.yml!')
 			svcName = ''
 
-		ret = mySSH.run(f'docker-compose -f {yamlDir}/ci-docker-compose.yml config --services')
+		ret = mySSH.run(f'docker compose -f {yamlDir}/ci-docker-compose.yml config --services')
 		# first line has command, last line has next command prompt
 		allServices = ret.stdout.splitlines()
 		services = []
 		for s in allServices:
-			ret = mySSH.run(f'docker-compose -f {yamlDir}/ci-docker-compose.yml ps --all -- {s}')
+			ret = mySSH.run(f'docker compose -f {yamlDir}/ci-docker-compose.yml ps --all -- {s}')
 			running = ret.stdout.splitlines()
 			logging.debug(f'running services: {running}')
 			if len(running) > 0: # something is running for that service
 				services.append(s)
 		logging.info(f'stopping services {services}')
 
-		mySSH.run(f'docker-compose -f {yamlDir}/ci-docker-compose.yml stop -t3')
+		mySSH.run(f'docker compose -f {yamlDir}/ci-docker-compose.yml stop -t3')
 		copyin_res = True
 		for svcName in allServices:
 			# head -n -1 suppresses the final "X exited with status code Y"
 			filename = f'{svcName}-{HTML.testCase_id}.log'
-			mySSH.run(f'docker-compose -f {yamlDir}/ci-docker-compose.yml logs --no-log-prefix -- {svcName} &> {lSourcePath}/cmake_targets/log/{filename}')
+			mySSH.run(f'docker compose -f {yamlDir}/ci-docker-compose.yml logs --no-log-prefix -- {svcName} &> {lSourcePath}/cmake_targets/log/{filename}')
 			copyin_res = mySSH.copyin(f'{lSourcePath}/cmake_targets/log/{filename}', f'{filename}') and copyin_res
 		# when nv-cubb container is available, copy L1 pcap, OAI Aerial pipeline
 		if 'nv-cubb' in allServices:
 			mySSH.run(f'cp {lSourcePath}/cmake_targets/share/gnb_nvipc.pcap {lSourcePath}/cmake_targets/gnb_nvipc.pcap')
 
-		mySSH.run(f'docker-compose -f {yamlDir}/ci-docker-compose.yml down -v')
+		mySSH.run(f'docker compose -f {yamlDir}/ci-docker-compose.yml down -v')
 
 		# Analyzing log file!
 		if not copyin_res:
