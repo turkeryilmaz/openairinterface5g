@@ -649,11 +649,12 @@ void nr_rrc_mac_config_req_ue_logicalChannelBearer(module_id_t module_id,
     for (int i = 0; i < rlc_toadd_list->list.count; i++) {
       NR_RLC_BearerConfig_t *rlc_bearer = rlc_toadd_list->list.array[i];
       int lc_identity = rlc_bearer->logicalChannelIdentity;      
-      mac->lc_ordered_info[i+mac->order_list_count].lcids_ordered = lc_identity;
+     
+      mac->lc_ordered_info[mac->order_list_count].lcids_ordered = lc_identity;
       NR_LogicalChannelConfig_t *mac_lc_config;
       if (mac->logicalChannelConfig[lc_identity - 1] == NULL) {
         /* setup of new LCID*/
-        LOG_D(NR_MAC, "Establishing the logical channel %d\n", lc_identity);
+        LOG_D(NR_MAC, "the logical channel %d saved to lc_ordered_info[%d]\n", lc_identity,i+mac->order_list_count);
         AssertFatal(rlc_bearer->servedRadioBearer, "servedRadioBearer should be present for LCID establishment\n");
         if (rlc_bearer->servedRadioBearer->present == NR_RLC_BearerConfig__servedRadioBearer_PR_srb_Identity) { /* SRB */
           NR_SRB_Identity_t srb_id = rlc_bearer->servedRadioBearer->choice.srb_Identity;
@@ -684,7 +685,7 @@ void nr_rrc_mac_config_req_ue_logicalChannelBearer(module_id_t module_id,
           continue;
         }
       }
-      mac->lc_ordered_info[mac->order_list_count+i].logicalChannelConfig_ordered = mac_lc_config;
+      mac->lc_ordered_info[mac->order_list_count].logicalChannelConfig_ordered = mac_lc_config;
       nr_configure_mac_config_logicalChannelBearer(module_id, lc_identity, mac_lc_config);
       mac->order_list_count++;
     }
