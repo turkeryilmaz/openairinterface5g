@@ -1006,6 +1006,7 @@ void init_NR_UE(int nb_inst, char *uecap_file, char *reconfig_file, char *rbconf
         rlc_toadd_list.list.count = 1;
         rlc_toadd_list.list.array = calloc(1, sizeof(NR_RLC_BearerConfig_t));
         rlc_toadd_list.list.array[0] = rlc_rbconfig;
+        mac_inst->order_list_count =0;
         nr_rrc_mac_config_req_ue_logicalChannelBearer(0, &rlc_toadd_list, NULL);
 
         // free memory

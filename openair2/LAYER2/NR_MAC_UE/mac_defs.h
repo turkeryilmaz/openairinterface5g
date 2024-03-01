@@ -527,6 +527,7 @@ typedef struct {
 
   // order lc info
   nr_lcordered_info_t lc_ordered_info[NR_MAX_NUM_LCID];
+  uint8_t order_list_count;
   NR_UE_SCHEDULING_INFO scheduling_info;
 
   /// PHR
