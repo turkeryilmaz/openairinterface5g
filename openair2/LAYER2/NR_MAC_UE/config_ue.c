@@ -171,12 +171,13 @@ void config_common_ue_sa(NR_UE_MAC_INST_t *mac,
                                       frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth);
   cfg->carrier_config.uplink_bandwidth = get_supported_bw_mhz(UL_band_ind > 256 ? FR2 : FR1, bw_index);
 
-  if (frequencyInfoUL->absoluteFrequencyPointA == NULL)
+  if (frequencyInfoUL->absoluteFrequencyPointA == NULL){
     cfg->carrier_config.uplink_frequency = cfg->carrier_config.dl_frequency;
-  else
+  }
+  else{
     // TODO check if corresponds to what reported in SIB1
     cfg->carrier_config.uplink_frequency = (downlink_frequency[cc_idP][0]/1000) + uplink_frequency_offset[cc_idP][0];
-
+  }
   for (int i = 0; i < 5; i++) {
     if (i == frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing) {
       cfg->carrier_config.ul_grid_size[i] = frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth;
@@ -192,6 +193,7 @@ void config_common_ue_sa(NR_UE_MAC_INST_t *mac,
   // cell config
 
   cfg->cell_config.phy_cell_id = mac->physCellId;
+  LOG_I(NR_MAC,"wz:%s phycell id is  %d\n",__FUNCTION__,mac->physCellId);
   cfg->cell_config.frame_duplex_type = mac->frame_type;
 
   // SSB config
@@ -559,6 +561,17 @@ void nr_release_mac_config_logicalChannelBearer(module_id_t module_id, long chan
   if (mac->logicalChannelConfig[channel_identity - 1] != NULL) {
     mac->logicalChannelConfig[channel_identity - 1] = NULL;
     memset(&mac->scheduling_info.lc_sched_info[channel_identity - 1], 0, sizeof(NR_LC_SCHEDULING_INFO));
+    for(uint8_t ii=0;ii<mac->order_list_count;ii++){
+      if(mac->lc_ordered_info[ii].lcids_ordered == channel_identity){
+        for(uint8_t jj=ii;jj<mac->order_list_count;jj++){
+          mac->lc_ordered_info[jj]=mac->lc_ordered_info[jj+1];
+        }
+        mac->order_list_count--;
+        break;
+      }else{
+        AssertFatal(0==1, "removing a rb not in ordered list\n");
+      }
+    }
   } else {
     LOG_E(NR_MAC, "Trying to release a non configured logical channel bearer %li\n", channel_identity);
   }
@@ -635,12 +648,13 @@ void nr_rrc_mac_config_req_ue_logicalChannelBearer(module_id_t module_id,
   if (rlc_toadd_list) {
     for (int i = 0; i < rlc_toadd_list->list.count; i++) {
       NR_RLC_BearerConfig_t *rlc_bearer = rlc_toadd_list->list.array[i];
-      int lc_identity = rlc_bearer->logicalChannelIdentity;
-      mac->lc_ordered_info[i].lcids_ordered = lc_identity;
+      int lc_identity = rlc_bearer->logicalChannelIdentity;      
+     
+      mac->lc_ordered_info[mac->order_list_count].lcids_ordered = lc_identity;
       NR_LogicalChannelConfig_t *mac_lc_config;
       if (mac->logicalChannelConfig[lc_identity - 1] == NULL) {
         /* setup of new LCID*/
-        LOG_D(NR_MAC, "Establishing the logical channel %d\n", lc_identity);
+        LOG_D(NR_MAC, "the logical channel %d saved to lc_ordered_info[%d]\n", lc_identity,i+mac->order_list_count);
         AssertFatal(rlc_bearer->servedRadioBearer, "servedRadioBearer should be present for LCID establishment\n");
         if (rlc_bearer->servedRadioBearer->present == NR_RLC_BearerConfig__servedRadioBearer_PR_srb_Identity) { /* SRB */
           NR_SRB_Identity_t srb_id = rlc_bearer->servedRadioBearer->choice.srb_Identity;
@@ -671,8 +685,9 @@ void nr_rrc_mac_config_req_ue_logicalChannelBearer(module_id_t module_id,
           continue;
         }
       }
-      mac->lc_ordered_info[i].logicalChannelConfig_ordered = mac_lc_config;
+      mac->lc_ordered_info[mac->order_list_count].logicalChannelConfig_ordered = mac_lc_config;
       nr_configure_mac_config_logicalChannelBearer(module_id, lc_identity, mac_lc_config);
+      mac->order_list_count++;
     }
 
     // reorder the logical channels as per its priority
@@ -838,9 +853,22 @@ void configure_current_BWP(NR_UE_MAC_INST_t *mac,
   UL_BWP->initial_BWPSize = NRRIV2BW(mac->bwp_ulcommon->genericParameters.locationAndBandwidth, MAX_BWP_SIZE);
   DL_BWP->initial_BWPStart = NRRIV2PRBOFFSET(mac->bwp_dlcommon->genericParameters.locationAndBandwidth, MAX_BWP_SIZE);
   UL_BWP->initial_BWPStart = NRRIV2PRBOFFSET(mac->bwp_ulcommon->genericParameters.locationAndBandwidth, MAX_BWP_SIZE);
-
   DL_BWP->bw_tbslbrm = get_dlbw_tbslbrm(DL_BWP->initial_BWPSize, spCellConfigDedicated);
   UL_BWP->bw_tbslbrm = get_ulbw_tbslbrm(UL_BWP->initial_BWPSize, spCellConfigDedicated);
+}
+
+int nr_rrc_mac_config_req_ue_cell_selection(module_id_t module_id,
+                             int cc_idP,
+                             uint8_t gNB_index,
+                             long physCellId,
+                             uint8_t phy_id)
+{
+  NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
+  
+  mac->physCellId = physCellId;
+  LOG_I(NR_MAC," phycell id is set to %d\n",mac->physCellId);
+  mac->phy_id = phy_id;
+  return 0;
 }
 
 void ue_init_config_request(NR_UE_MAC_INST_t *mac, int scs)
@@ -920,6 +948,8 @@ void handle_reconfiguration_with_sync(NR_UE_MAC_INST_t *mac,
     mac->if_module->synch_request(&mac->synch_request);
     mac->if_module->phy_config_request(&mac->phy_config);
     mac->phy_config_request_sent = true;
+    mac->physCellId = reconfigurationWithSync->spCellConfigCommon->physCellId;  //TODO W47 rebase
+    LOG_I(NR_MAC,"%s MAC phycell id is  %d\n",__FUNCTION__,mac->physCellId);
   }
 }
 
