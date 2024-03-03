@@ -707,9 +707,10 @@ void nr_schedule_srs_secondary(int module_id, frame_t frame, int slot) {
 
   f1ap_measurement_req_t *f1ap_meas_req = RC.nrmac[module_id]->f1ap_meas_req;
   if (!f1ap_meas_req) {
-    LOG_I(MAC,"No F1AP Measurement Request, skipping SRS measurement\n");
+    LOG_D(MAC,"No F1AP Measurement Request, skipping SRS measurement\n");
     return;
   }
+  LOG_I(MAC,"Got F1AP Measurement Request, programming SRS measurement\n");
   
   f1ap_srs_configuration_t *srs_configuration = &f1ap_meas_req->srs_configuration;
   if (!srs_configuration) {
@@ -749,7 +750,7 @@ void nr_schedule_srs_secondary(int module_id, frame_t frame, int slot) {
     
     // Check if UE will transmit the SRS in this frame
     if ( ((frame - offset/n_slots_frame)*n_slots_frame)%period == 0) {
-      LOG_D(NR_MAC,"Scheduling SRS reception for %d.%d\n", frame, offset%n_slots_frame);
+      LOG_I(NR_MAC,"Scheduling non-ue associated SRS measurement for %d.%d\n", frame, offset%n_slots_frame);
       nr_fill_nfapi_srs(module_id, CC_id, &dummy_ue_info, frame, slot, srs_resource_set, srs_resource, 1); 
     }
   }

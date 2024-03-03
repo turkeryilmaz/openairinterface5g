@@ -709,7 +709,6 @@ void positioning_measurement_request(const f1ap_measurement_req_t *req)
     AssertFatal(false, "Not implemented\n");
   }
 
-  // we need to check if this message is for the serving cell or neighboring cell. In case of neighboring cell we need to program the SRS measurement somehow.
   gNB_MAC_INST *mac = RC.nrmac[req->nrppa_msg_info.instance];
 
   //store the whole measurement request (incl SRS config) from measurement in MAC

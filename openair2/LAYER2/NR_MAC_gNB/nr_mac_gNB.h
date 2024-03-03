@@ -711,7 +711,7 @@ typedef struct {
   uint8_t pos_measurement_periodicity; //(C) if report characteristics periodic	ms120=0, ms240=1, ms480=2, ms640=3, ms1024=4, ms20
   uint8_t pos_report_ondemand_pending; // (C) if report characteristics ondemand the request sets this to 1 and once response is sent its set back to 0
   int16_t toa_ns; // for the moment we only support toa measurements, others can be added here later
-} NR_UE_pos_t;
+} NR_meas_pos_t;
 
 /*! \brief UE list used by gNB to order UEs/CC for scheduling*/
 typedef struct {
@@ -737,7 +737,6 @@ typedef struct {
   float ul_thr_ue;
   float dl_thr_ue;
   long pdsch_HARQ_ACK_Codebook;
-  NR_UE_pos_t ue_pos_info;
 } NR_UE_info_t;
 
 typedef struct {
@@ -884,11 +883,10 @@ typedef struct gNB_MAC_INST_s {
 
   pthread_mutex_t sched_lock;
 
-  //holds the SRS config for UEs of neighboring cells
-  //to be expanded to multiple users later
-  NR_SetupRelease_SRS_Config_t *setup_srs_config[1];
-
+  //holds the SRS config for NRPPa measurement request
   f1ap_measurement_req_t *f1ap_meas_req;
+  //holds measurement response (non-ue associated)
+  NR_meas_pos_t meas_pos_info;
 } gNB_MAC_INST;
 
 #endif /*__LAYER2_NR_MAC_GNB_H__ */

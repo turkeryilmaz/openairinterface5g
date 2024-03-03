@@ -1220,6 +1220,13 @@ void handle_nr_srs_measurements(const module_id_t module_id,
   LOG_I(NR_MAC, "srs_ind->report_type = %i\n", srs_ind->report_type);
 #endif
 
+  if (srs_ind->rnti == NON_UE_ASSOCIATED_SRS_DUMMY_RNTI) {
+    LOG_I(NR_MAC, "Received Non-UE associated SRS with ToA %d (ns)\n",srs_ind->timing_advance_offset_nsec);
+    nrmac->meas_pos_info.toa_ns = srs_ind->timing_advance_offset_nsec;
+    //for the moment this is all we need so retunr
+    return;
+  }
+  
   NR_UE_info_t *UE = find_nr_UE(&RC.nrmac[module_id]->UE_info, srs_ind->rnti);
   if (!UE) {
     LOG_W(NR_MAC, "Could not find UE for RNTI %04x\n", srs_ind->rnti);
@@ -1232,8 +1239,6 @@ void handle_nr_srs_measurements(const module_id_t module_id,
     NR_SCHED_UNLOCK(&nrmac->sched_lock);
     return;
   }
-
-  UE->ue_pos_info.toa_ns = srs_ind->timing_advance_offset_nsec;
 
   gNB_MAC_INST *nr_mac = RC.nrmac[module_id];
   NR_mac_stats_t *stats = &UE->mac_stats;
