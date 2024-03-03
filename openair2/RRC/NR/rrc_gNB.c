@@ -2436,7 +2436,28 @@ static void rrc_CU_process_positioning_activation_failure(MessageDef *msg_p, ins
 
 static void rrc_CU_process_trp_information_response(MessageDef *msg_p, instance_t instance)
 {
-  LOG_I(RRC, "Processing NOT implemented Received TRPInformationResponse \n");
+    f1ap_trp_information_resp_t *resp = &F1AP_TRP_INFORMATION_RESP(msg_p);
+  //  gNB_RRC_INST *rrc = RC.nrrrc[instance];
+  LOG_I(RRC,
+        "Processing Received TRPInformationResponse gNB_CU_ue_id=%d, gNB_DU_ue_id=%d \n",
+        resp->gNB_CU_ue_id,
+        resp->gNB_DU_ue_id);
+
+  MessageDef *msg = itti_alloc_new_message(TASK_RRC_GNB, 0, F1AP_TRP_INFORMATION_RESP);
+  f1ap_trp_information_resp_t *f1ap_msg = &F1AP_TRP_INFORMATION_RESP(msg);
+  /* copy all fields, but reallocate memory buffers! */
+  *f1ap_msg = *resp;
+  f1ap_msg->gNB_CU_ue_id = resp->gNB_CU_ue_id;
+  f1ap_msg->gNB_DU_ue_id = resp->gNB_DU_ue_id;
+  f1ap_msg->nrppa_msg_info.nrppa_transaction_id = resp->nrppa_msg_info.nrppa_transaction_id;
+  f1ap_msg->nrppa_msg_info.instance = resp->nrppa_msg_info.instance;
+  f1ap_msg->nrppa_msg_info.gNB_ue_ngap_id = resp->nrppa_msg_info.gNB_ue_ngap_id;
+  f1ap_msg->nrppa_msg_info.amf_ue_ngap_id = resp->nrppa_msg_info.amf_ue_ngap_id;
+  f1ap_msg->nrppa_msg_info.ue_rnti = resp->nrppa_msg_info.ue_rnti;
+  f1ap_msg->nrppa_msg_info.routing_id_buffer = resp->nrppa_msg_info.routing_id_buffer;
+  f1ap_msg->nrppa_msg_info.routing_id_length = resp->nrppa_msg_info.routing_id_length;
+
+  itti_send_msg_to_task(TASK_NRPPA, instance, msg);
 }
 
 static void rrc_CU_process_trp_information_failure(MessageDef *msg_p, instance_t instance)

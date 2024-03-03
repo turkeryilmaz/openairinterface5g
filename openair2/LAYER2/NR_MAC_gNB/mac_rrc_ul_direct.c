@@ -532,7 +532,32 @@ static void positioning_activation_response(const f1ap_positioning_activation_re
         "UL Prepring PositioningActivationResponse gNB_CU_ue_id=%d, gNB_DU_ue_id=%d \n",
         resp->gNB_CU_ue_id,
         resp->gNB_DU_ue_id);
-  AssertFatal(false, " Not Implemented \n");
+  //AssertFatal(false, " Not Implemented \n");
+  MessageDef *msg = itti_alloc_new_message(TASK_MAC_GNB, 0, F1AP_POSITIONING_ACTIVATION_RESP);
+  f1ap_positioning_activation_resp_t *f1ap_msg = &F1AP_POSITIONING_ACTIVATION_RESP(msg);
+
+  /* TODO copy all fields, but reallocate memory buffers! */
+  *f1ap_msg = *resp;
+  f1ap_msg->gNB_CU_ue_id = resp->gNB_CU_ue_id;
+  f1ap_msg->gNB_DU_ue_id = resp->gNB_DU_ue_id;
+  f1ap_msg->nrppa_msg_info.nrppa_transaction_id = resp->nrppa_msg_info.nrppa_transaction_id;
+  f1ap_msg->nrppa_msg_info.instance = resp->nrppa_msg_info.instance;
+  f1ap_msg->nrppa_msg_info.gNB_ue_ngap_id = resp->nrppa_msg_info.gNB_ue_ngap_id;
+  f1ap_msg->nrppa_msg_info.amf_ue_ngap_id = resp->nrppa_msg_info.amf_ue_ngap_id;
+  f1ap_msg->nrppa_msg_info.ue_rnti = resp->nrppa_msg_info.ue_rnti;
+  f1ap_msg->nrppa_msg_info.routing_id_buffer = resp->nrppa_msg_info.routing_id_buffer;
+  f1ap_msg->nrppa_msg_info.routing_id_length = resp->nrppa_msg_info.routing_id_length;
+
+
+  // IE 9.2.2 CriticalityDiagnostics (O)
+  // IE  SystemFrameNumber (O) 
+  // here we will send the preconfigured info as changing on fly is not possible
+  f1ap_msg->system_frame_number=128; // TODO retireve the actual values and fill it
+  // IE  SlotNumber (O)
+  // here we will send the preconfigured info as changing on fly is not possible
+  f1ap_msg->slot_number=8; // TODO retireve the actual values and fill it
+
+itti_send_msg_to_task(TASK_RRC_GNB, 0, msg);
 }
 
 static void positioning_activation_failure(const f1ap_positioning_activation_failure_t *failure)
@@ -549,7 +574,68 @@ static void positioning_activation_failure(const f1ap_positioning_activation_fai
 static void trp_information_response(const f1ap_trp_information_resp_t *resp)
 {
   LOG_I(MAC, "UL Prepring TRPInformationResponse transaction_id=%d\n", resp->transaction_id);
-  AssertFatal(false, " Not Implemented \n");
+  //AssertFatal(false, " Not Implemented \n");
+  MessageDef *msg = itti_alloc_new_message(TASK_MAC_GNB, 0, F1AP_TRP_INFORMATION_RESP);
+  f1ap_trp_information_resp_t *f1ap_msg = &F1AP_TRP_INFORMATION_RESP(msg);
+
+  /* TODO copy all fields, but reallocate memory buffers! */
+  *f1ap_msg = *resp;
+  f1ap_msg->transaction_id = resp->transaction_id;
+  f1ap_msg->nrppa_msg_info.nrppa_transaction_id = resp->nrppa_msg_info.nrppa_transaction_id;
+  f1ap_msg->nrppa_msg_info.instance = resp->nrppa_msg_info.instance;
+  f1ap_msg->nrppa_msg_info.gNB_ue_ngap_id = resp->nrppa_msg_info.gNB_ue_ngap_id;
+  f1ap_msg->nrppa_msg_info.amf_ue_ngap_id = resp->nrppa_msg_info.amf_ue_ngap_id;
+  f1ap_msg->nrppa_msg_info.ue_rnti = resp->nrppa_msg_info.ue_rnti;
+  f1ap_msg->nrppa_msg_info.routing_id_buffer = resp->nrppa_msg_info.routing_id_buffer;
+  f1ap_msg->nrppa_msg_info.routing_id_length = resp->nrppa_msg_info.routing_id_length;
+  
+  
+  // IE TRP Information List (M)
+  // TODO fill pdu using f1ap_trp_information_resp_t *resp
+  {
+    // TODO Retrieve TRP information from RAN Context
+
+    int nb_of_TRP = 1; // TODO find the acutal number for TRP and add here
+    f1ap_msg->trp_information_list.trp_information_list_length=nb_of_TRP;
+    f1ap_msg->trp_information_list.trp_information_item= malloc(nb_of_TRP * sizeof(f1ap_trp_information_item_t));
+    DevAssert(f1ap_msg->trp_information_list.trp_information_item);
+    f1ap_trp_information_item_t *trp_information_item= f1ap_msg->trp_information_list.trp_information_item;
+    LOG_D(MAC, "Preparing trp information list for NRPPA nb_of_TRP=%d \n", nb_of_TRP);
+    for (int i = 0; i < nb_of_TRP; i++) {
+      trp_information_item->tRPInformation.tRPID=0;//   item->tRP_ID = 0; // long NRPPA_TRP_ID_t
+
+      // Preparing tRPInformation IE of TRPInformationList__Member
+      
+      int nb_tRPInfoTypes = 1; // TODO find the acutal size add here
+      f1ap_trp_information_type_response_list_t *rspList =trp_information_item->tRPInformation.tRPInformationTypeResponseList;
+      rspList->trp_information_type_response_list_length= nb_tRPInfoTypes;
+      rspList->trp_information_type_response_item=malloc(nb_tRPInfoTypes*sizeof(f1ap_trp_information_type_response_item_u));
+      DevAssert(rspList->trp_information_type_response_item);
+      f1ap_trp_information_type_response_item_t *rspItem= rspList->trp_information_type_response_item;
+      for (int k = 0; k < nb_tRPInfoTypes; k++) // Preparing NRPPA_TRPInformation_t a list of  TRPInformation_item
+      {
+        rspItem->present= f1ap_trp_information_type_response_item_pr_pCI_NR;
+        rspItem->choice.pCI_NR= 10; // dummy values
+        // TODO adeel retrive relevent info and add
+        /*trpinfo_item->choice.pCI_NR = 0; // long dummy value
+        trpinfo_item->choice.sSBinformation = NULL; // dummy values
+        trpinfo_item->choice.nG_RAN_CGI = NULL; // dummy values
+        trpinfo_item->choice.pRSConfiguration = NULL; // dummy values
+        trpinfo_item->choice.geographicalCoordinates = NULL; // dummy values*/
+
+      } // for(int k=0; k < nb_tRPInfoTypes; k++)
+    } // for (int i = 0; i < nb_of_TRP; i++)
+
+  } // IE Information List */
+
+  /*//  TODO IE 9.2.2 CriticalityDiagnostics (O)
+  {
+    asn1cSequenceAdd(out->protocolIEs.list, NRPPA_TRPInformationResponse_IEs_t, ie);
+    ie->id = NRPPA_ProtocolIE_ID_id_CriticalityDiagnostics;
+    ie->criticality = NRPPA_Criticality_ignore;
+    ie->value.present = NRPPA_TRPInformationResponse_IEs__value_PR_CriticalityDiagnostics;
+  }*/
+itti_send_msg_to_task(TASK_RRC_GNB, 0, msg);
 }
 
 static void trp_information_failure(const f1ap_trp_information_failure_t *failure)
