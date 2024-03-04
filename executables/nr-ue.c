@@ -527,6 +527,7 @@ static void RU_write(nr_rxtx_thread_data_t *rxtxD) {
     flags = TX_BURST_MIDDLE;
   }
 
+  LATSEQ_P("D ue.phy.ant--ue.phy.southout", "::fm%u.sl%u", proc->frame_tx, slot)
   if (flags || IS_SOFTMODEM_RFSIM)
     AssertFatal(rxtxD->writeBlockSize ==
                 UE->rfdevice.trx_write_func(&UE->rfdevice,
@@ -539,6 +540,7 @@ static void RU_write(nr_rxtx_thread_data_t *rxtxD) {
   for (int i=0; i<UE->frame_parms.nb_antennas_tx; i++)
     memset(txp[i], 0, rxtxD->writeBlockSize);
 
+  LATSEQ_P("D ue.phy.southout--ue.phy.finished", "::fm%u.sl%u", proc->frame_tx, slot);
 }
 
 void processSlotTX(void *arg) {
