@@ -599,15 +599,15 @@ static void trp_information_response(const f1ap_trp_information_resp_t *resp)
     f1ap_msg->trp_information_list.trp_information_list_length=nb_of_TRP;
     f1ap_msg->trp_information_list.trp_information_item= malloc(nb_of_TRP * sizeof(f1ap_trp_information_item_t));
     DevAssert(f1ap_msg->trp_information_list.trp_information_item);
-    f1ap_trp_information_item_t *trp_information_item= f1ap_msg->trp_information_list.trp_information_item;
+    f1ap_trp_information_item_t *trp_info_item= f1ap_msg->trp_information_list.trp_information_item;
     LOG_D(MAC, "Preparing trp information list for NRPPA nb_of_TRP=%d \n", nb_of_TRP);
     for (int i = 0; i < nb_of_TRP; i++) {
-      trp_information_item->tRPInformation.tRPID=0;//   item->tRP_ID = 0; // long NRPPA_TRP_ID_t
+      trp_info_item->tRPInformation.tRPID=0;//   item->tRP_ID = 0; // long NRPPA_TRP_ID_t
 
       // Preparing tRPInformation IE of TRPInformationList__Member
       
       int nb_tRPInfoTypes = 1; // TODO find the acutal size add here
-      f1ap_trp_information_type_response_list_t *rspList =trp_information_item->tRPInformation.tRPInformationTypeResponseList;
+      f1ap_trp_information_type_response_list_t *rspList =&trp_info_item->tRPInformation.tRPInformationTypeResponseList;
       rspList->trp_information_type_response_list_length= nb_tRPInfoTypes;
       rspList->trp_information_type_response_item=malloc(nb_tRPInfoTypes*sizeof(f1ap_trp_information_type_response_item_u));
       DevAssert(rspList->trp_information_type_response_item);
