@@ -257,6 +257,8 @@ static void positioning_information_response(const f1ap_positioning_information_
             resp->nrppa_msg_info.ue_rnti); ////uid_t uid = &UE->uid;
       NR_UE_UL_BWP_t *current_BWP = &UE->current_UL_BWP;
       NR_SRS_Config_t *srs_config = current_BWP->srs_Config;
+      printf("adeel TEST mac_rrc_ul_direct \n \n SRS configuration as per MAC \n");
+      xer_fprint(stdout, &asn_DEF_NR_SRS_Config, srs_config);
 
       // IE 9.2.28 SRS Configuration Preparing SRS Configuration IE of PositioningInformationResponse
       int maxnoSRScarrier = 1; // gNB->max_nb_srs max value is 32; // TODO find the acutal number for carrier and add here
@@ -302,7 +304,7 @@ static void positioning_information_response(const f1ap_positioning_information_
           resource_item->c_SRS = srs_resource->freqHopping.c_SRS; //(M)
           resource_item->b_SRS = srs_resource->freqHopping.b_SRS; //(M)
           resource_item->b_hop = srs_resource->freqHopping.b_hop; //(M)
-          resource_item->groupOrSequenceHopping = 0; // TODO not found(M) neither	= 0, groupHopping	= 1, sequenceHopping	= 2
+          resource_item->groupOrSequenceHopping = srs_resource->groupOrSequenceHopping; //(M) neither	= 0, groupHopping	= 1, sequenceHopping	= 2
           resource_item->slotOffset = 0; // TODO not found (M)
           resource_item->sequenceId = srs_resource->sequenceId; //(M)
 
@@ -330,26 +332,167 @@ static void positioning_information_response(const f1ap_positioning_information_
           switch (srs_resource->resourceType.present) {
             case NR_SRS_Resource__resourceType_PR_periodic:
               resource_item->resourceType.present = f1ap_resource_type_pr_periodic;
-              resource_item->resourceType.choice.periodic.periodicity =0;
-              // TODO check sturctuce srs_resource->resourceType.choice.periodic->periodicityAndOffset_p.periodicity; //(M)
-                     // choice periodic (uint8_t periodicity; uint16_t offset);
-              resource_item->resourceType.choice.periodic.offset =0;
-              // TODO srs_resource->resourceType.choice.periodic->offset; //(M)
+              NR_SRS_PeriodicityAndOffset_t periodAndOff= srs_resource->resourceType.choice.periodic->periodicityAndOffset_p;
+              f1ap_resource_type_periodic_t periodic= resource_item->resourceType.choice.periodic;
+              switch (periodAndOff.present) {
+                case NR_SRS_PeriodicityAndOffset_PR_NOTHING:
+                  periodic.periodicity =-1; //TODO choice not available in periodAndOff
+                  break; 
+                case NR_SRS_PeriodicityAndOffset_PR_sl1:
+                  periodic.periodicity =0;
+                  periodic.offset =periodAndOff.choice.sl1;
+                  break;
+                case NR_SRS_PeriodicityAndOffset_PR_sl2:
+                  periodic.periodicity =1;
+                  periodic.offset =periodAndOff.choice.sl2;
+                  break;
+                case NR_SRS_PeriodicityAndOffset_PR_sl4:
+                  periodic.periodicity =2;
+                  periodic.offset =periodAndOff.choice.sl4;
+                  break;
+                case NR_SRS_PeriodicityAndOffset_PR_sl5:
+                  periodic.periodicity =3;
+                  periodic.offset =periodAndOff.choice.sl5;
+                  break;
+                case NR_SRS_PeriodicityAndOffset_PR_sl8:
+                  periodic.periodicity =4;
+                  periodic.offset =periodAndOff.choice.sl8;
+                  break;
+                case NR_SRS_PeriodicityAndOffset_PR_sl10:
+                  periodic.periodicity =5 ;
+                  periodic.offset =periodAndOff.choice.sl10;
+                  break;
+                case NR_SRS_PeriodicityAndOffset_PR_sl16:
+                  periodic.periodicity =6;
+                  periodic.offset =periodAndOff.choice.sl16;
+                  break;
+                case NR_SRS_PeriodicityAndOffset_PR_sl20:
+                  periodic.periodicity =7;
+                  periodic.offset =periodAndOff.choice.sl20;
+                  break;
+                case NR_SRS_PeriodicityAndOffset_PR_sl32:
+                  periodic.periodicity =8;
+                  periodic.offset =periodAndOff.choice.sl32;
+                  break;
+                case NR_SRS_PeriodicityAndOffset_PR_sl40:
+                  periodic.periodicity =9;
+                  periodic.offset =periodAndOff.choice.sl40;
+                  break;
+                case NR_SRS_PeriodicityAndOffset_PR_sl64:
+                  periodic.periodicity =10;
+                  periodic.offset =periodAndOff.choice.sl64;
+                  break;
+                case NR_SRS_PeriodicityAndOffset_PR_sl80:
+                  periodic.periodicity =11;
+                  periodic.offset =periodAndOff.choice.sl80;
+                  break;
+                case NR_SRS_PeriodicityAndOffset_PR_sl160:
+                  periodic.periodicity =12;
+                  periodic.offset =periodAndOff.choice.sl160;
+                  break;
+                case NR_SRS_PeriodicityAndOffset_PR_sl320:
+                  periodic.periodicity =13;
+                  periodic.offset =periodAndOff.choice.sl320;
+                  break;
+                case NR_SRS_PeriodicityAndOffset_PR_sl640:
+                  periodic.periodicity =14 ;
+                  periodic.offset =periodAndOff.choice.sl640;
+                  break;
+                case NR_SRS_PeriodicityAndOffset_PR_sl1280:
+                  periodic.periodicity =15;
+                  periodic.offset =periodAndOff.choice.sl1280;
+                  break;
+                case NR_SRS_PeriodicityAndOffset_PR_sl2560:
+                  periodic.periodicity =16;
+                  periodic.offset =periodAndOff.choice.sl2560;
+                  break;
+              }
               break;
             case NR_SRS_Resource__resourceType_PR_aperiodic:
               resource_item->resourceType.present = f1ap_resource_type_pr_aperiodic;
-              resource_item->resourceType.choice.aperiodic.aperiodicResourceType =0;
+              //resource_item->resourceType.choice.aperiodic.aperiodicResourceType =0; 
               // not done in srs impelmentation srs_resource->resourceType.choice.aperiodic->aperiodicResourceType; //(M)
                      // aperiodic (uint8_t aperiodicResourceType;);
               break;
             case NR_SRS_Resource__resourceType_PR_semi_persistent:
               resource_item->resourceType.present = f1ap_resource_type_pr_semi_persistent;
-              resource_item->resourceType.choice.semi_persistent.periodicity =0;
-              // TODO not implemented in SRS srs_resource->resourceType.choice.semi_persistent->periodicity; //(M)
-                     // semi_persistent (uint8_t periodicity;
-              resource_item->resourceType.choice.semi_persistent.offset =0;
-              // TODOnot implemented in SRS srs_resource->resourceType.choice.semi_persistent->offset; //(M)
+              NR_SRS_PeriodicityAndOffset_t periodAndOff_sp= srs_resource->resourceType.choice.semi_persistent->periodicityAndOffset_sp;
+              f1ap_resource_type_semi_persistent_t semi_persistent= resource_item->resourceType.choice.semi_persistent;
+              switch (periodAndOff_sp.present) {
+                case NR_SRS_PeriodicityAndOffset_PR_NOTHING:
+                  semi_persistent.periodicity =-1; //TODO choice not available in periodAndOff
+                  break; 
+                case NR_SRS_PeriodicityAndOffset_PR_sl1:
+                  semi_persistent.periodicity =0;
+                  semi_persistent.offset =periodAndOff_sp.choice.sl1;
+                  break;
+                case NR_SRS_PeriodicityAndOffset_PR_sl2:
+                  semi_persistent.periodicity =1;
+                  semi_persistent.offset =periodAndOff_sp.choice.sl2;
+                  break;
+                case NR_SRS_PeriodicityAndOffset_PR_sl4:
+                  semi_persistent.periodicity =2;
+                  semi_persistent.offset =periodAndOff_sp.choice.sl4;
+                  break;
+                case NR_SRS_PeriodicityAndOffset_PR_sl5:
+                  semi_persistent.periodicity =3;
+                  semi_persistent.offset =periodAndOff_sp.choice.sl5;
+                  break;
+                case NR_SRS_PeriodicityAndOffset_PR_sl8:
+                  semi_persistent.periodicity =4;
+                  semi_persistent.offset =periodAndOff_sp.choice.sl8;
+                  break;
+                case NR_SRS_PeriodicityAndOffset_PR_sl10:
+                  semi_persistent.periodicity =5 ;
+                  semi_persistent.offset =periodAndOff_sp.choice.sl10;
+                  break;
+                case NR_SRS_PeriodicityAndOffset_PR_sl16:
+                  semi_persistent.periodicity =6;
+                  semi_persistent.offset =periodAndOff_sp.choice.sl16;
+                  break;
+                case NR_SRS_PeriodicityAndOffset_PR_sl20:
+                  semi_persistent.periodicity =7;
+                  semi_persistent.offset =periodAndOff_sp.choice.sl20;
+                  break;
+                case NR_SRS_PeriodicityAndOffset_PR_sl32:
+                  semi_persistent.periodicity =8;
+                  semi_persistent.offset =periodAndOff_sp.choice.sl32;
+                  break;
+                case NR_SRS_PeriodicityAndOffset_PR_sl40:
+                  semi_persistent.periodicity =9;
+                  semi_persistent.offset =periodAndOff_sp.choice.sl40;
+                  break;
+                case NR_SRS_PeriodicityAndOffset_PR_sl64:
+                  semi_persistent.periodicity =10;
+                  semi_persistent.offset =periodAndOff_sp.choice.sl64;
+                  break;
+                case NR_SRS_PeriodicityAndOffset_PR_sl80:
+                  semi_persistent.periodicity =11;
+                  semi_persistent.offset =periodAndOff_sp.choice.sl80;
+                  break;
+                case NR_SRS_PeriodicityAndOffset_PR_sl160:
+                  semi_persistent.periodicity =12;
+                  semi_persistent.offset =periodAndOff_sp.choice.sl160;
+                  break;
+                case NR_SRS_PeriodicityAndOffset_PR_sl320:
+                  semi_persistent.periodicity =13;
+                  semi_persistent.offset =periodAndOff_sp.choice.sl320;
+                  break;
+                case NR_SRS_PeriodicityAndOffset_PR_sl640:
+                  semi_persistent.periodicity =14 ;
+                  semi_persistent.offset =periodAndOff_sp.choice.sl640;
+                  break;
+                case NR_SRS_PeriodicityAndOffset_PR_sl1280:
+                  semi_persistent.periodicity =15;
+                  semi_persistent.offset =periodAndOff_sp.choice.sl1280;
+                  break;
+                case NR_SRS_PeriodicityAndOffset_PR_sl2560:
+                  semi_persistent.periodicity =16;
+                  semi_persistent.offset =periodAndOff_sp.choice.sl2560;
+                  break;
+              }
               break;
+
             case NR_SRS_Resource__resourceType_PR_NOTHING:
               resource_item->resourceType.present = f1ap_resource_type_pr_nothing;
               break;
@@ -364,7 +507,7 @@ static void positioning_information_response(const f1ap_positioning_information_
         } // for(int k=0; k < nb_srsresource; k++)
 
         // Preparing sRSResourceSet_List IE of SRSConfig (IE of activeULBWP)
-        int maxnoSRSResourceSets = 1; // srs_config->srs_ResourceSetToAddModList->list.count;
+        int maxnoSRSResourceSets = srs_config->srs_ResourceSetToAddModList->list.count;
         srs_carrier_list_item->active_ul_bwp.sRSConfig.sRSResourceSet_List.srs_resource_set_list_length = maxnoSRSResourceSets;
         srs_carrier_list_item->active_ul_bwp.sRSConfig.sRSResourceSet_List.srs_resource_set =
             malloc(maxnoSRSResourceSets * sizeof(f1ap_srs_resource_set_t));
@@ -385,16 +528,18 @@ static void positioning_information_response(const f1ap_positioning_information_
           switch (srs_resourceset->resourceType.present) {
             case NR_SRS_ResourceSet__resourceType_PR_periodic:
               resourceSet_item->resourceSetType.present = f1ap_resource_set_type_pr_periodic;
-              resourceSet_item->resourceSetType.choice.periodic.periodicSet = 0;
+              resourceSet_item->resourceSetType.choice.periodic.periodicSet = 0; // TODO 
+              // Todo periodicSet not found in srs_resourceset->resourceType.choice.periodic
               break;
             case NR_SRS_ResourceSet__resourceType_PR_aperiodic:
               resourceSet_item->resourceSetType.present = f1ap_resource_set_type_pr_aperiodic;
-              resourceSet_item->resourceSetType.choice.aperiodic.sRSResourceTrigger = 1; // range 1-3
-              resourceSet_item->resourceSetType.choice.aperiodic.slotoffset = 1; // range 1-32
+              resourceSet_item->resourceSetType.choice.aperiodic.sRSResourceTrigger = srs_resourceset->resourceType.choice.aperiodic->aperiodicSRS_ResourceTrigger;// 1; // range 1-3
+              resourceSet_item->resourceSetType.choice.aperiodic.slotoffset = srs_resourceset->resourceType.choice.aperiodic->slotOffset[0]; //1; // range 1-32
               break;
             case NR_SRS_ResourceSet__resourceType_PR_semi_persistent:
               resourceSet_item->resourceSetType.present = f1ap_resource_set_type_pr_semi_persistent;
-              resourceSet_item->resourceSetType.choice.semi_persistent.semi_persistentSet = 0;
+              resourceSet_item->resourceSetType.choice.semi_persistent.semi_persistentSet = 0; //TODO
+              //TODO semi_persistentSet not found in srs_resourceset->resourceType.choice.semi_persistent
               break;
             case NR_SRS_ResourceSet__resourceType_PR_NOTHING:
               resourceSet_item->resourceSetType.present = f1ap_resource_set_type_pr_nothing;
@@ -405,12 +550,12 @@ static void positioning_information_response(const f1ap_positioning_information_
           }
 
           // IE sRSResourceID_List
-          int maxnoSRSResourcePerSets = 1; // TODO retrieve and add
+          int maxnoSRSResourcePerSets = srs_resourceset->srs_ResourceIdList->list.count;// 1; // TODO retrieve and add
           resourceSet_item->sRSResourceID_List.srs_resource_id_list_length = maxnoSRSResourcePerSets;
           resourceSet_item->sRSResourceID_List.srs_resource_id = malloc(maxnoSRSResourcePerSets * sizeof(uint8_t));
           DevAssert(resourceSet_item->sRSResourceID_List.srs_resource_id);
           for (int z = 0; z < maxnoSRSResourcePerSets; z++) {
-            resourceSet_item->sRSResourceID_List.srs_resource_id = 0; // (M)F1AP_SRSResourceID_List_t	 sRSResourceID_List;
+            resourceSet_item->sRSResourceID_List.srs_resource_id = srs_resourceset->srs_ResourceIdList->list.array[z];//0; // (M)F1AP_SRSResourceID_List_t	 sRSResourceID_List;
           }
 
           if (y < maxnoSRSResourceSets - 1) {
