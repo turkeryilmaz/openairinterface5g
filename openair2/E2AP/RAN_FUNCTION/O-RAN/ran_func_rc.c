@@ -22,6 +22,7 @@
 #include "ran_func_rc.h"
 #include "ran_func_rc_subs.h"
 #include "ran_func_rc_extern.h"
+#include "ran_e2sm_ue_id.h"
 #include "../../flexric/src/sm/rc_sm/ie/ir/lst_ran_param.h"
 #include "../../flexric/src/sm/rc_sm/ie/ir/ran_param_list.h"
 #include "../../flexric/src/agent/e2_agent_api.h"
@@ -34,14 +35,17 @@ static pthread_once_t once_rc_mutex = PTHREAD_ONCE_INIT;
 static rc_subs_data_t rc_subs_data = {0};
 static pthread_mutex_t rc_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static ngran_node_t node_type = 0;
-static void get_e2_node_type(void)
+static ngran_node_t get_e2_node_type(void)
 {
-  #if defined (NGRAN_GNB_DU) && defined (NGRAN_GNB_CUUP) && defined (NGRAN_GNB_CUCP)
+  ngran_node_t node_type = 0;
+
+#if defined(NGRAN_GNB_DU) && defined(NGRAN_GNB_CUUP) && defined(NGRAN_GNB_CUCP)
   node_type = RC.nrrrc[0]->node_type;
-  #elif defined (NGRAN_GNB_CUUP)
+#elif defined (NGRAN_GNB_CUUP)
   node_type =  ngran_gNB_CUUP;
-  #endif
+#endif
+
+  return node_type;
 }
 
 static void init_once_rc(void)
@@ -447,10 +451,10 @@ static const fp_rc_func_def ran_def_rc[END_NGRAN_NODE_TYPE] =
   NULL,
   fill_rc_ran_def_cu,
   NULL,
-  fill_rc_ran_def_null,
+  fill_rc_ran_def_null, // DU - at the moment, no Service is supported
   NULL,
   fill_rc_ran_def_cucp,
-  fill_rc_ran_def_null,
+  fill_rc_ran_def_null, // CU-UP - at the moment, no Service is supported
 };
 
 void read_rc_setup_sm(void* data)
@@ -463,7 +467,7 @@ void read_rc_setup_sm(void* data)
   
   // RAN Function Name is already filled in fill_ran_function_name() in rc_sm_agent.c
 
-  get_e2_node_type();
+  const ngran_node_t node_type = get_e2_node_type();
   rc->ran_func_def = ran_def_rc[node_type]();
 
   // E2 Setup Request is sent periodically until the connection is established
@@ -474,53 +478,6 @@ void read_rc_setup_sm(void* data)
 
 
 RB_PROTOTYPE(ric_id_2_param_id_trees, ric_req_id_s, entries, cmp_ric_req_id);
-
-static ue_id_e2sm_t fill_ue_id_data(const gNB_RRC_UE_t *rrc_ue_context)
-{
-  ue_id_e2sm_t ue_id = {0};
-
-  // Check the E2 node type
-  #if defined (NGRAN_GNB_CUUP) && defined (NGRAN_GNB_CUCP)
-  ue_id.type = GNB_UE_ID_E2SM;
-  if (RC.nrrrc[0]->node_type == ngran_gNB_CU) {
-    // gNB-CU UE F1AP ID List
-    // C-ifCUDUseparated
-    ue_id.gnb.gnb_cu_ue_f1ap_lst_len = 1;
-    ue_id.gnb.gnb_cu_ue_f1ap_lst = calloc(ue_id.gnb.gnb_cu_ue_f1ap_lst_len, sizeof(uint32_t));
-    assert(ue_id.gnb.gnb_cu_ue_f1ap_lst != NULL && "Memory exhausted");
-
-    for(size_t i = 0; i < ue_id.gnb.gnb_cu_ue_f1ap_lst_len; i++) {
-      ue_id.gnb.gnb_cu_ue_f1ap_lst[i] = rrc_ue_context->rrc_ue_id;
-    }
-  } else if (RC.nrrrc[0]->node_type == ngran_gNB_CUCP) {
-    //gNB-CU-CP UE E1AP ID List
-    //C-ifCPUPseparated 
-    ue_id.gnb.gnb_cu_cp_ue_e1ap_lst_len = 1;
-    ue_id.gnb.gnb_cu_cp_ue_e1ap_lst = calloc(ue_id.gnb.gnb_cu_cp_ue_e1ap_lst_len, sizeof(uint32_t));
-    assert(ue_id.gnb.gnb_cu_cp_ue_e1ap_lst != NULL && "Memory exhausted");
-
-    for(size_t i = 0; i < ue_id.gnb.gnb_cu_cp_ue_e1ap_lst_len; i++) {
-      ue_id.gnb.gnb_cu_cp_ue_e1ap_lst[i] = rrc_ue_context->rrc_ue_id;
-    }
-  } else if (RC.nrrrc[0]->node_type == ngran_gNB_DU) {
-    assert(false && "RRC state change cannot be triggered from DU\n");
-  }
-
-  #elif defined (NGRAN_GNB_CUUP)
-  assert(false && "RRC state change cannot be triggered from CU-UP\n");
-
-  #endif
-
-  ue_id.gnb.amf_ue_ngap_id = rrc_ue_context->rrc_ue_id;
-  ue_id.gnb.guami.amf_ptr = rrc_ue_context->ue_guami.amf_pointer;
-  ue_id.gnb.guami.amf_region_id = rrc_ue_context->ue_guami.amf_region_id;
-  ue_id.gnb.guami.amf_set_id = rrc_ue_context->ue_guami.amf_set_id;
-  ue_id.gnb.guami.plmn_id.mcc = rrc_ue_context->ue_guami.mcc;
-  ue_id.gnb.guami.plmn_id.mnc = rrc_ue_context->ue_guami.mnc;
-  ue_id.gnb.guami.plmn_id.mnc_digit_len = rrc_ue_context->ue_guami.mnc_len;
-
-  return ue_id;
-}
 
 static seq_ran_param_t fill_rrc_state_change_seq_ran(const rc_sm_rrc_state_e rrc_state)
 {
@@ -557,7 +514,8 @@ static rc_ind_data_t* fill_ue_rrc_state_change(const gNB_RRC_UE_t *rrc_ue_contex
   // UE ID
   // Mandatory
   // 9.3.10
-  rc_ind->msg.frmt_2.seq_ue_id[0].ue_id = fill_ue_id_data(rrc_ue_context);
+  const ngran_node_t node_type = get_e2_node_type();
+  rc_ind->msg.frmt_2.seq_ue_id[0].ue_id = fill_ue_id_data[node_type](rrc_ue_context, 0, 0);
 
   // Sequence of
   // RAN Parameter
@@ -640,39 +598,45 @@ sm_ag_if_ans_t write_ctrl_rc_sm(void const* data)
 //  assert(data->type == RAN_CONTROL_CTRL_V1_03 );
 
   rc_ctrl_req_data_t const* ctrl = (rc_ctrl_req_data_t const*)data;
-  if(ctrl->hdr.format == FORMAT_1_E2SM_RC_CTRL_HDR){
-    if(ctrl->hdr.frmt_1.ric_style_type == 1 && ctrl->hdr.frmt_1.ctrl_act_id == 2){
-      printf("QoS flow mapping configuration \n");
-      e2sm_rc_ctrl_msg_frmt_1_t const* frmt_1 = &ctrl->msg.frmt_1;
-      for(size_t i = 0; i < frmt_1->sz_ran_param; ++i){
-        seq_ran_param_t const* rp = frmt_1->ran_param;
-        if(rp[i].ran_param_id == 1){
-          assert(rp[i].ran_param_val.type == ELEMENT_KEY_FLAG_TRUE_RAN_PARAMETER_VAL_TYPE );
-          printf("DRB ID %ld \n", rp[i].ran_param_val.flag_true->int_ran);
-        } else if(rp[i].ran_param_id == 2){
-          assert(rp[i].ran_param_val.type == LIST_RAN_PARAMETER_VAL_TYPE);
-          printf("List of QoS Flows to be modified \n");
-          for(size_t j = 0; j < ctrl->msg.frmt_1.ran_param[i].ran_param_val.lst->sz_lst_ran_param; ++j){ 
-            lst_ran_param_t const* lrp = rp[i].ran_param_val.lst->lst_ran_param;
-            // The following assertion should be true, but there is a bug in the std
-            // check src/sm/rc_sm/enc/rc_enc_asn.c:1085 and src/sm/rc_sm/enc/rc_enc_asn.c:984 
-            // assert(lrp[j].ran_param_id == 3); 
-            assert(lrp[j].ran_param_struct.ran_param_struct[0].ran_param_id == 4) ;
-            assert(lrp[j].ran_param_struct.ran_param_struct[0].ran_param_val.type == ELEMENT_KEY_FLAG_TRUE_RAN_PARAMETER_VAL_TYPE);
 
-            int64_t qfi = lrp[j].ran_param_struct.ran_param_struct[0].ran_param_val.flag_true->int_ran;
-            assert(qfi > -1 && qfi < 65);
+  assert(ctrl->hdr.format == FORMAT_1_E2SM_RC_CTRL_HDR && "Indication Header Format received not valid");
+  assert(ctrl->msg.format == FORMAT_1_E2SM_RC_CTRL_MSG && "Indication Message Format received not valid");
+  assert(ctrl->hdr.frmt_1.ctrl_act_id == 2 && "Currently only QoS flow mapping configuration supported");
 
-            assert(lrp[j].ran_param_struct.ran_param_struct[1].ran_param_id == 5);
-            assert(lrp[j].ran_param_struct.ran_param_struct[1].ran_param_val.type == ELEMENT_KEY_FLAG_FALSE_RAN_PARAMETER_VAL_TYPE);
-            int64_t dir = lrp[j].ran_param_struct.ran_param_struct[1].ran_param_val.flag_false->int_ran;
-            assert(dir == 0 || dir == 1);
-            printf("qfi = %ld dir %ld \n", qfi, dir);
-          }
-        } 
-      }
-    }
-  }
+  printf("QoS flow mapping configuration\n");
+
+  const seq_ran_param_t* ran_param = ctrl->msg.frmt_1.ran_param;
+
+  // DRB ID
+  assert(ran_param[0].ran_param_id == 1 && "First RAN Parameter ID has to be DRB ID");
+  assert(ran_param[0].ran_param_val.type == ELEMENT_KEY_FLAG_TRUE_RAN_PARAMETER_VAL_TYPE);
+  printf("DRB ID %ld \n", ran_param[0].ran_param_val.flag_true->int_ran);
+
+
+  // List of QoS Flows to be modified in DRB
+  assert(ran_param[1].ran_param_id == 2 && "Second RAN Parameter ID has to be List of QoS Flows");
+  assert(ran_param[1].ran_param_val.type == LIST_RAN_PARAMETER_VAL_TYPE);
+  printf("List of QoS Flows to be modified in DRB\n");
+  const lst_ran_param_t* lrp = ran_param[1].ran_param_val.lst->lst_ran_param;
+
+  // The following assertion should be true, but there is a bug in the std
+  // check src/sm/rc_sm/enc/rc_enc_asn.c:1085 and src/sm/rc_sm/enc/rc_enc_asn.c:984 
+  // assert(lrp->ran_param_struct.ran_param_struct[0].ran_param_id == 3);
+
+  // QoS Flow Identifier
+  assert(lrp->ran_param_struct.ran_param_struct[0].ran_param_id == 4);
+  assert(lrp->ran_param_struct.ran_param_struct[0].ran_param_val.type == ELEMENT_KEY_FLAG_TRUE_RAN_PARAMETER_VAL_TYPE);
+  int64_t qfi = lrp->ran_param_struct.ran_param_struct[0].ran_param_val.flag_true->int_ran;
+  assert(qfi > -1 && qfi < 65);
+
+  // QoS Flow Mapping Indication
+  assert(lrp->ran_param_struct.ran_param_struct[1].ran_param_id == 5);
+  assert(lrp->ran_param_struct.ran_param_struct[1].ran_param_val.type == ELEMENT_KEY_FLAG_FALSE_RAN_PARAMETER_VAL_TYPE);
+  int64_t dir = lrp->ran_param_struct.ran_param_struct[1].ran_param_val.flag_false->int_ran;
+  assert(dir == 0 || dir == 1);
+
+  printf("qfi = %ld, dir %ld \n", qfi, dir);
+
 
   sm_ag_if_ans_t ans = {.type = CTRL_OUTCOME_SM_AG_IF_ANS_V0};
   ans.ctrl_out.type = RAN_CTRL_V1_3_AGENT_IF_CTRL_ANS_V0;
