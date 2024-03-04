@@ -2732,7 +2732,13 @@ typedef struct {
 } nfapi_cqi_indication_rel8_t;
 #define NFAPI_CQI_INDICATION_REL8_TAG 0x202f
 
-#define NFAPI_CC_MAX MAX_NUM_CCs
+//#define NFAPI_CC_MAX MAX_NUM_CCs
+#ifndef MAX_NUM_CCs
+#define NFAPI_CC_MAX 1
+#else
+#define NFAPI_CC_MAX  MAX_NUM_CCs
+#endif
+
 typedef struct {
 	nfapi_tl_t tl;
 	uint16_t length;
@@ -3177,6 +3183,7 @@ typedef struct {
 
 #define NFAPI_NB_IOT_CELL_SEARCH_REQUEST_TAG 0x3021
 
+#if 0 /** TODO: FC Moved below, Need clean up for OAI */
 typedef struct {
 	uint16_t pci;
 	uint8_t rsrp;
@@ -3191,6 +3198,36 @@ typedef struct {
 } nfapi_lte_cell_search_indication_t;
 
 #define NFAPI_LTE_CELL_SEARCH_INDICATION_TAG 0x3007
+#else
+typedef struct {
+	uint16_t pci;
+	uint8_t rsrp;
+	uint8_t rsrq;
+	int16_t frequency_offset;
+} nfapi_lte_found_cell_t;
+
+typedef struct {
+	nfapi_tl_t tl;
+	uint16_t number_of_lte_cells_found;
+	nfapi_lte_found_cell_t lte_found_cells[NFAPI_MAX_LTE_CELLS_FOUND];
+} nfapi_lte_cell_search_indication_t;
+
+#define NFAPI_LTE_CELL_SEARCH_INDICATION_TAG 0x3007
+
+
+typedef struct {
+        nfapi_p7_message_header_t header;
+        uint32_t error_code;
+        nfapi_lte_cell_search_indication_t lte_cell_search_indication;
+#if 0 /** TODO FC Lets's start with only LTE */
+        nfapi_utran_cell_search_indication_t utran_cell_search_indication;
+        nfapi_geran_cell_search_indication_t geran_cell_search_indication;
+        nfapi_pnf_cell_search_state_t pnf_cell_search_state;
+        nfapi_nb_iot_cell_search_indication_t nb_iot_cell_search_indication;
+#endif
+        nfapi_vendor_extension_tlv_t vendor_extension;
+} vendor_nfapi_cell_search_indication_t;
+#endif
 
 typedef struct {
 	uint16_t psc;
@@ -3464,6 +3501,9 @@ typedef struct {
 	nfapi_p7_message_header_t header;
 	uint16_t sfn_sf;
 } nfapi_subframe_indication_t;
+
+/** VTUESF.indication sent from UE as an ACK in the virtual time scenario */
+typedef nfapi_subframe_indication_t nfapi_ue_sf_indication_vt_t;
 
 typedef struct {
 	nfapi_p7_message_header_t header;

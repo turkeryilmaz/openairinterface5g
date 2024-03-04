@@ -106,6 +106,15 @@ int send_ue_information = 0;
 // TimeToTrigger enum mapping table (36.331 TimeToTrigger IE)
 static const uint32_t timeToTrigger_ms[16] = {0, 40, 64, 80, 100, 128, 160, 256, 320, 480, 512, 640, 1024, 1280, 2560, 5120};
 
+
+//TODO FC Temp for cell-selection
+int8_t rsrp_cell = -128;
+int8_t rsrq_cell = -128;
+
+/** TODO TEMP FIX, Remove this and feed info structure */
+NRBearerTypeE lchannelType = Bearer_UNDEFINED_e;
+BCCHTransportType_e  bcchTransportType = NR_PLANE_UNDEFINED_E;
+
 /* 36.133 Section 9.1.4 RSRP Measurement Report Mapping, Table: 9.1.4-1 */
 static const float RSRP_meas_mapping[98] = {-140, -139, -138, -137, -136, -135, -134, -133, -132, -131, -130, -129, -128, -127, -126, -125, -124, -123, -122, -121, -120, -119, -118, -117, -116,
                                             -115, -114, -113, -112, -111, -110, -109, -108, -107, -106, -105, -104, -103, -102, -101, -100, -99,  -98,  -97,  -96,  -95,  -94,  -93,  -92,  -91,
@@ -1559,7 +1568,7 @@ rrc_ue_process_securityModeCommand(
 
   if (h_rc == HASH_TABLE_OK) {
     LOG_D(RRC, "PDCP_COLL_KEY_VALUE() returns valid key = %ld\n", key);
-    LOG_D(RRC, "driving kRRCenc, kRRCint and kUPenc from KeNB="
+    LOG_D(RRC, "deriving kRRCenc, kRRCint and kUPenc from KeNB="
           "%02x%02x%02x%02x"
           "%02x%02x%02x%02x"
           "%02x%02x%02x%02x"
@@ -1660,7 +1669,7 @@ rrc_ue_process_MBMSCountingRequest(
   LTE_MBMSCountingResponse_r10_t *MBMSCountingResponse = &ul_dcch_msg.message.choice.c1.choice.mbmsCountingResponse_r10;
 
   MBMSCountingResponse->criticalExtensions.present = LTE_MBMSCountingResponse_r10__criticalExtensions_PR_c1;
-  MBMSCountingResponse->criticalExtensions.choice.c1.present = LTE_MBMSCountingResponse_r10__criticalExtensions__c1_PR_countingResponse_r10; 
+  MBMSCountingResponse->criticalExtensions.choice.c1.present = LTE_MBMSCountingResponse_r10__criticalExtensions__c1_PR_countingResponse_r10;
   LTE_MBMSCountingResponse_r10_IEs_t *MBMSCountingResponse_r10_IEs = &MBMSCountingResponse->criticalExtensions.choice.c1.choice.countingResponse_r10;
 
   MBMSCountingResponse_r10_IEs->mbsfn_AreaIndex_r10 = calloc(1,sizeof(long));
@@ -3096,7 +3105,7 @@ int decode_SIB1_MBMS( const protocol_ctxt_t *const ctxt_pP, const uint8_t eNB_in
   UE_rrc_inst[ctxt_pP->module_id].Info[eNB_index].SIB1systemInfoValueTag_MBMS = sib1_MBMS->systemInfoValueTag_r14;
 
   /*
-  if (EPC_MODE_ENABLED) 
+  if (EPC_MODE_ENABLED)
     {
       int cell_valid = 0;
 
@@ -3156,6 +3165,24 @@ int decode_SIB1_MBMS( const protocol_ctxt_t *const ctxt_pP, const uint8_t eNB_in
   */
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME( VCD_SIGNAL_DUMPER_FUNCTIONS_RRC_UE_DECODE_SIB1, VCD_FUNCTION_OUT );
   return 0;
+}
+
+
+//-----------------------------------------------------------------------------
+uint8_t passes_cell_selection_criteria (uint32_t cell_id, uint8_t qrxlevmeas,
+                        long qrxlevmin, long qrxlevminoff, uint8_t pcomp)
+{
+  int srxlev = 0;
+
+  srxlev = (-1 * qrxlevmeas) - (qrxlevmin + qrxlevminoff) - pcomp;
+  if (srxlev <= 0) {
+    return 1;
+  }
+
+  LOG_A (RRC, "Passes cell selection criteria. \n\t\tCell ID: %d \n\t\t"
+           "Srxlev: %d \n\t\tqrxlevmeas: -%d \n\t\tqrxlevmin: %ld \n",
+         cell_id, srxlev, qrxlevmeas, qrxlevmin);
+  return 0; /* Success */
 }
 
 
@@ -3266,7 +3293,21 @@ int decode_SIB1( const protocol_ctxt_t *const ctxt_pP, const uint8_t eNB_index, 
   UE_rrc_inst[ctxt_pP->module_id].Info[eNB_index].SIwindowsize = siWindowLength_int[sib1->si_WindowLength];
   LOG_I( RRC, "[FRAME unknown][RRC_UE][MOD %02"PRIu8"][][--- MAC_CONFIG_REQ (SIB1 params eNB %"PRIu8") --->][MAC_UE][MOD %02"PRIu8"][]\n",
          ctxt_pP->module_id, eNB_index, ctxt_pP->module_id );
-  /* pointers to  SIperiod inthe Info struct points to a packed structure
+  #if 1 /** TODO: To be enabled for sequans after cell config porting*/
+  /** Cell selection changes for System Simulator */
+  uint32_t cell_id = 0; //BIT_STRING_to_uint32( &sib1->cellAccessRelatedInfo.cellIdentity );
+  long qrxlevmin = sib1->cellSelectionInfo.q_RxLevMin;
+  long qrxlevminoff = (sib1->cellSelectionInfo.q_RxLevMinOffset)?*sib1->cellSelectionInfo.q_RxLevMinOffset : 0;
+  long pcomp = (sib1->p_Max)?*sib1->p_Max : 0;
+  int cell_valid = 0;
+
+  if ( passes_cell_selection_criteria (cell_id, rsrp, qrxlevmin, qrxlevminoff, pcomp)) {
+      LOG_E(RRC, "Cell ID: %d Fails cell selection criteria qrxlevmeas(RSRP): -%d qrxlevmin: %ld\n",
+                           cell_id, rsrp, qrxlevmin);
+  } else {
+  #endif
+
+ /* pointers to  SIperiod inthe Info struct points to a packed structure
  * Using these possibly unaligned pointers in a function call may trigger alignment errors at run time and
  * gcc, from v9,  now warns about it. fix these warnings by removing the indirection on data
  * Not sure if SiPeriod can be modified, reassign after function call for security
@@ -3304,7 +3345,9 @@ int decode_SIB1( const protocol_ctxt_t *const ctxt_pP, const uint8_t eNB_index, 
   UE_rrc_inst[ctxt_pP->module_id].Info[eNB_index].SIB1systemInfoValueTag = sib1->systemInfoValueTag;
 
   if (EPC_MODE_ENABLED) {
-    int cell_valid = 0;
+#if 0 /** Firecell TODO Need code cleanup, this variable is kept on top */
+    int cell_valid = 0; /** TODO: To be removed */
+#endif
 
     if (sib1->cellAccessRelatedInfo.cellBarred == LTE_SystemInformationBlockType1__cellAccessRelatedInfo__cellBarred_notBarred) {
       /* Cell is not barred */
@@ -3353,6 +3396,7 @@ int decode_SIB1( const protocol_ctxt_t *const ctxt_pP, const uint8_t eNB_index, 
           break;
         }
       }
+    }
     }
 
     if (cell_valid == 0) {
@@ -4250,10 +4294,10 @@ int decode_SI( const protocol_ctxt_t *const ctxt_pP, const uint8_t eNB_index ) {
     }
     if (new_sib == 1) {
       UE_rrc_inst[ctxt_pP->module_id].Info[eNB_index].SIcnt++;
-  
+
       if (UE_rrc_inst[ctxt_pP->module_id].Info[eNB_index].SIcnt == sib1->schedulingInfoList.list.count)
         rrc_set_sub_state( ctxt_pP->module_id, RRC_SUB_STATE_IDLE_SIB_COMPLETE );
-  
+
       LOG_I(RRC,"SIStatus %x, SIcnt %d/%d\n",
             UE_rrc_inst[ctxt_pP->module_id].Info[eNB_index].SIStatus,
             UE_rrc_inst[ctxt_pP->module_id].Info[eNB_index].SIcnt,
@@ -4862,6 +4906,7 @@ void *rrc_ue_task( void *args_p ) {
   instance_t    instance;
   unsigned int  ue_mod_id;
   int           result;
+  uint16_t      nb_cells;
   SRB_INFO     *srb_info_p;
   protocol_ctxt_t  ctxt;
   itti_mark_task_ready (TASK_RRC_UE);
@@ -4910,8 +4955,10 @@ void *rrc_ue_task( void *args_p ) {
                                    RRC_MAC_BCCH_DATA_IND (msg_p).enb_index,
                                    RRC_MAC_BCCH_DATA_IND (msg_p).sdu,
                                    RRC_MAC_BCCH_DATA_IND (msg_p).sdu_size,
-                                   RRC_MAC_BCCH_DATA_IND (msg_p).rsrq,
-                                   RRC_MAC_BCCH_DATA_IND (msg_p).rsrp);
+                                   //RRC_MAC_BCCH_DATA_IND (msg_p).rsrq,
+                                   //RRC_MAC_BCCH_DATA_IND (msg_p).rsrp);
+                                   rsrq_cell,
+                                   rsrp_cell);
         break;
 
       case RRC_MAC_BCCH_MBMS_DATA_IND:
@@ -4923,8 +4970,10 @@ void *rrc_ue_task( void *args_p ) {
                                         RRC_MAC_BCCH_MBMS_DATA_IND (msg_p).enb_index,
                                         RRC_MAC_BCCH_MBMS_DATA_IND (msg_p).sdu,
                                         RRC_MAC_BCCH_MBMS_DATA_IND (msg_p).sdu_size,
-                                        RRC_MAC_BCCH_MBMS_DATA_IND (msg_p).rsrq,
-                                        RRC_MAC_BCCH_MBMS_DATA_IND (msg_p).rsrp);
+                                        //RRC_MAC_BCCH_MBMS_DATA_IND (msg_p).rsrq,
+                                        //RRC_MAC_BCCH_MBMS_DATA_IND (msg_p).rsrp);
+                                        rsrq_cell,
+                                        rsrp_cell);
         break;
 
       case RRC_MAC_CCCH_DATA_CNF:
@@ -5238,7 +5287,7 @@ void *rrc_ue_task( void *args_p ) {
         }
 
         break;
-
+#if 0 /** TODO Temporarily disbaled for testing cell selection using same event. */
       case PHY_FIND_CELL_IND:
         LOG_D(RRC, "[UE %d] Received %s: state %d\n", ue_mod_id, ITTI_MSG_NAME (msg_p), rrc_get_state(ue_mod_id));
 
@@ -5287,6 +5336,7 @@ void *rrc_ue_task( void *args_p ) {
         }
 
         break; // PHY_FIND_CELL_IND
+#endif
 
       case PHY_MEAS_REPORT_IND: {
         LOG_D(RRC, "[UE %d] Received %s\n", ue_mod_id, ITTI_MSG_NAME (msg_p));
@@ -5340,6 +5390,18 @@ void *rrc_ue_task( void *args_p ) {
         LOG_D(RRC, "[UE %d] Received %s\n", ue_mod_id, ITTI_MSG_NAME (msg_p));
         break;
 #endif
+      case PHY_FIND_CELL_IND:
+        nb_cells = PHY_FIND_CELL_IND(msg_p).cell_nb;
+        LOG_D(RRC, "Received %s with reports for %d cells.\n", ITTI_MSG_NAME (msg_p), nb_cells);
+
+	for (int i = 0 ; i < nb_cells; i++) {
+                /** TODO: Store for all reported cells, currently storing only one */
+		rsrp_cell = PHY_FIND_CELL_IND(msg_p).cells[i].rsrp;
+		rsrq_cell = PHY_FIND_CELL_IND(msg_p).cells[i].rsrq;
+                LOG_D(RRC, "PHY_FIND_CELL_IND Cell: %d RSRP: %d RSRQ: %d \n", PHY_FIND_CELL_IND(msg_p).cell_nb, rsrp_cell, rsrq_cell);
+	}
+
+        break;
 
       default:
         LOG_E(RRC, "[UE %d] Received unexpected message %s\n", ue_mod_id, ITTI_MSG_NAME (msg_p));
