@@ -1103,7 +1103,7 @@ class Containerize():
 			copyin_res = mySSH.copyin(f'{lSourcePath}/cmake_targets/log/{filename}', f'{filename}') and copyin_res
 		# when nv-cubb container is available, copy L1 pcap, OAI Aerial pipeline
 		if 'nv-cubb' in allServices:
-			mySSH.run(f'cp {lSourcePath}/cmake_targets/share/gnb_nvipc.pcap {lSourcePath}/cmake_targets/gnb_nvipc.pcap')
+			mySSH.run(f'cp /tmp/share/nvipc.pcap {lSourcePath}/cmake_targets/gnb_nvipc.pcap')
 
 		mySSH.run(f'docker compose -f {yamlDir}/ci-docker-compose.yml down -v')
 
