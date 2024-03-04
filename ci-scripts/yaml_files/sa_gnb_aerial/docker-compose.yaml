@@ -21,7 +21,7 @@ services:
       - /usr/src:/usr/src
       - ./aerial_l1_entrypoint.sh:/opt/nvidia/cuBB/aerial_l1_entrypoint.sh
       - /var/log/aerial:/var/log/aerial
-      - ../../../cmake_targets/share:/opt/cuBB/share
+      - /tmp/share:/opt/cuBB/share
     userns_mode: host
     ipc: "shareable"
     image: cubb-build:23-2
@@ -41,6 +41,8 @@ services:
         condition: service_healthy
     privileged: true
     ipc: "container:nv-cubb"
+    environment:
+      USE_ADDITIONAL_OPTIONS: --log_config.global_log_options level,nocolor,time
     deploy:
       resources:
         reservations:
