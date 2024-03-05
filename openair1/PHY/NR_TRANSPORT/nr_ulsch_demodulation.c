@@ -10,6 +10,7 @@
 #include "common/utils/nr/nr_common.h"
 #include <openair1/PHY/TOOLS/phy_scope_interface.h>
 #include "PHY/sse_intrin.h"
+#include "E3_AGENT/e3_agent.h"
 
 #define INVALID_VALUE 255
 
@@ -1321,6 +1322,15 @@ static void inner_rx(PHY_VARS_gNB *gNB,
                                 symbol,
                                 buffer_length,
                                 output_shift);
+
+
+  // Dump IQs sample in frequency domain from rxdataF_comp
+  // TODO check if this is before the equalization
+  if (e3_agent_control->trigger_iq_dump){
+      printf("Trigger has been activated - Saving data to file\n");
+      // int16_t* var_tmp = (int16_t *)&rxdataF_comp[0][(symbol*(off+(nb_rb*12)))];
+      // T(T_E3_AGENT_RAW_IQ_DATA, T_BUFFER(var_tmp, 1024));
+  }
 
   if (nb_layer == 1 && rel15_ul->transform_precoding == transformPrecoder_enabled && rel15_ul->qam_mod_order <= 6) {
     if (rel15_ul->qam_mod_order > 2)
