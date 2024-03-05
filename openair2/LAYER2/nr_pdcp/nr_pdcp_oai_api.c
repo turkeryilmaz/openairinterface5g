@@ -432,7 +432,7 @@ bool pdcp_data_ind(const protocol_ctxt_t *const  ctxt_pP,
 
 #include "LAYER2/MAC/mac_extern.h"
 
-static void reblock_tun_socket(void)
+static bool reblock_tun_socket(void)
 {
   extern int nas_sock_fd[];
   int f;
@@ -441,8 +441,9 @@ static void reblock_tun_socket(void)
   f &= ~(O_NONBLOCK);
   if (fcntl(nas_sock_fd[0], F_SETFL, f) == -1) {
     LOG_E(PDCP, "reblock_tun_socket failed\n");
-    exit(1);
+    return false;
   }
+  return true;
 }
 /****************************************************************************/
 /* Function to check if the packet is an IP packet and its type is ICMP     */
@@ -493,8 +494,8 @@ static void *enb_tun_read_thread(void *_)
   while (1) {
     len = read(nas_sock_fd[0], &rx_buf, NL_MAX_PAYLOAD);
     if (len == -1) {
-      LOG_E(PDCP, "%s:%d:%s: fatal\n", __FILE__, __LINE__, __FUNCTION__);
-      exit(1);
+      LOG_E(PDCP, "%s:%d:%s: ERROR\n", __FILE__, __LINE__, __FUNCTION__);
+      //exit(1);
     }
 
     LOG_D(PDCP, "%s(): nas_sock_fd read returns len %d\n", __func__, len);
@@ -580,24 +581,29 @@ static void *ue_tun_read_thread(void *_)
 static void start_pdcp_tun_enb(void)
 {
   pthread_t t;
+  bool tun_status=false;
 
-  reblock_tun_socket();
-
-  if (pthread_create(&t, NULL, enb_tun_read_thread, NULL) != 0) {
-    LOG_E(PDCP, "%s:%d:%s: fatal\n", __FILE__, __LINE__, __FUNCTION__);
-    exit(1);
+  tun_status = reblock_tun_socket();
+  if (tun_status == true) {
+    if (pthread_create(&t, NULL, enb_tun_read_thread, NULL) != 0) {
+      LOG_E(PDCP, "%s:%d:%s: fatal\n", __FILE__, __LINE__, __FUNCTION__);
+      exit(1);
+    }
   }
 }
 
 static void start_pdcp_tun_ue(void)
 {
   pthread_t t;
+  bool tun_status=false;
 
-  reblock_tun_socket();
+  tun_status = reblock_tun_socket();
 
-  if (pthread_create(&t, NULL, ue_tun_read_thread, NULL) != 0) {
-    LOG_E(PDCP, "%s:%d:%s: fatal\n", __FILE__, __LINE__, __FUNCTION__);
-    exit(1);
+  if (tun_status == true) {
+    if (pthread_create(&t, NULL, ue_tun_read_thread, NULL) != 0) {
+      LOG_E(PDCP, "%s:%d:%s: fatal\n", __FILE__, __LINE__, __FUNCTION__);
+      exit(1);
+    }
   }
 }
 

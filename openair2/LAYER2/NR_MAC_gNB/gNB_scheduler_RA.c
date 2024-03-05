@@ -1495,7 +1495,8 @@ static void prepare_dl_pdus(gNB_MAC_INST *nr_mac,
     BWPStart = dl_bwp->BWPStart;
     BWPSize  = dl_bwp->BWPSize;
   } else {
-    type0_PDCCH_CSS_config = &nr_mac->type0_PDCCH_CSS_config[ra->beam_id];
+    //nr_mac->type0_PDCCH_CSS_config[ra->beam_id][0] is NULL which is not correct... We need to take into account CELL ID index else it will crash
+    type0_PDCCH_CSS_config = &nr_mac->type0_PDCCH_CSS_config[0][ra->beam_id];
     BWPStart = type0_PDCCH_CSS_config->cset_start_rb;
     BWPSize = type0_PDCCH_CSS_config->num_rbs;
   }
