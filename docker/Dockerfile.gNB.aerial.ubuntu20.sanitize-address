@@ -21,68 +21,89 @@
 #---------------------------------------------------------------------
 #
 # Dockerfile for the Open-Air-Interface BUILD service
-#   Valid for Ubuntu 18.04
+#   Valid for Ubuntu 22.04
 #
 #---------------------------------------------------------------------
 
+FROM ran-base:latest as ran-build
 
-FROM ubuntu:focal AS ran-base
-ARG NEEDED_GIT_PROXY
-ENV DEBIAN_FRONTEND=noninteractive
-ENV TZ=Europe/Paris
-ENV BUILD_UHD_FROM_SOURCE=True
-ENV UHD_VERSION=3.15.0.0
-
-#install developers pkg/repo
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get upgrade --yes && \
     DEBIAN_FRONTEND=noninteractive apt-get install --yes \
-       #gcc needed for build_oai
-       build-essential \
-       psmisc \
-       git \
-       xxd \
        wget \
        ninja-build \
        #unzip is needed for protobuf
        unzip \
-       # python3-pip for conf template generation
-       python3-pip && \
-    pip3 install --ignore-installed pyyaml
+       moreutils \
+       vim-tiny \
+       nano \
+       # To build libnvipc
+       cmake libpcap-dev libcunit1-dev libnuma-dev pkg-config
 
-# In some network environments, GIT proxy is required
-RUN /bin/bash -c "if [[ -v NEEDED_GIT_PROXY ]]; then git config --global http.proxy $NEEDED_GIT_PROXY; fi"
-
-WORKDIR /
-
-#copy OAI source
-RUN mkdir oai-ran
-COPY . oai-ran
-
-#install DPDK
-RUN wget https://fast.dpdk.org/rel/dpdk-21.08.tar.xz &&\
-    tar xJf dpdk-21.08.tar.xz
-
-# if ninja gives error "x cannot be used on thin files", replace the following python script with this content
-RUN cp oai-ran/docker/scripts/gen-pmdinfo-cfile.py dpdk-21.08/buildtools/.
-
-RUN pip3 install meson pyelftools
-
-WORKDIR /dpdk-21.08
-
-RUN mkdir build &&\
-    meson build &&\
-    cd build &&\
-    ninja  &&\
-    ninja install &&\
-    ldconfig
-
-
-#run build_oai -I to get the builder image
+RUN rm -Rf /oai-ran
 WORKDIR /oai-ran
+COPY . .
 
-RUN /bin/sh oaienv && \ 
+RUN /bin/sh oaienv && \
+    tar -xvzf nvipc_src.*.tar.gz && \
+    cd nvipc_src.* && \
+    git init && \
+    git apply ../cmake_targets/tools/install_libraries_to_system.patch --verbose && \
+    rm -rf build && mkdir build && cd build && \
+    cmake .. -DNVIPC_DPDK_ENABLE=OFF -DNVIPC_DOCA_ENABLE=OFF -DNVIPC_CUDA_ENABLE=OFF -DENABLE_SLT_RSP=ON && \
+    make -j && make install
+
+RUN /bin/sh oaienv && \
     cd cmake_targets && \
     mkdir -p log && \
-    ./build_oai -I -w None --gNB --ninja --sanitize-address
+    ./build_oai -w AERIAL --gNB --ninja --sanitize-address
 
+
+#start from scratch for target executable
+FROM ubuntu:focal as oai-gnb-aerial
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Europe
+
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get upgrade --yes && \
+    DEBIAN_FRONTEND=noninteractive apt-get install --yes \
+        software-properties-common \
+        procps \
+        libsctp1 \
+        tzdata \
+        libatlas3-base \
+        libconfig9 \
+        openssl \
+        net-tools \
+        iperf \
+        iproute2 \
+        iputils-ping \
+        gdb \
+        libusb-1.0-0 && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /opt/oai-gnb/bin
+COPY --from=ran-build \
+    /oai-ran/cmake_targets/ran_build/build/nr-softmodem ./
+COPY ./docker/scripts/gnb_entrypoint.sh ./entrypoint.sh
+
+COPY --from=ran-build \
+    /oai-ran/cmake_targets/ran_build/build/libcoding.so \
+    /oai-ran/cmake_targets/ran_build/build/librfsimulator.so \
+    /oai-ran/cmake_targets/ran_build/build/libparams_libconfig.so \
+    /oai-ran/cmake_targets/ran_build/build/libdfts.so \
+    /oai-ran/cmake_targets/ran_build/build/libldpc*.so \
+    /usr/local/lib/
+
+#copy files from nvIPC
+COPY --from=ran-build \
+    /usr/local/lib/libfmtlog-shared.so \
+    /usr/local/lib/libnvlog.so \
+    /usr/local/lib/libnvipc.so \
+    /usr/local/lib/
+
+
+WORKDIR /opt/oai-gnb
+COPY --from=gnb-base /tini /tini
+ENTRYPOINT ["/tini", "-v", "--", "/opt/oai-gnb/bin/entrypoint.sh"]
+CMD ["/opt/oai-gnb/bin/nr-softmodem", "-O", "/opt/oai-gnb/etc/gnb.conf"]
