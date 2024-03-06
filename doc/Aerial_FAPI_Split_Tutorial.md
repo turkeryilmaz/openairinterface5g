@@ -20,9 +20,9 @@
 
 The hardware on which we have tried this tutorial:
 
-|Hardware (CPU,RAM)                          |Operating System (kernel)                  | NIC (Vendor,Driver,Firmware) |
-|--------------------------------------------|----------------------------------|------------------------------|
-|Intel Xeon Gold 6240R, 2.4GHz, 24C48T, 96GB DDR4  |Ubuntu 22.04.3 LTS (5.15.0-72-lowlatency)| NVIDIA ConnectX®-6 Dx 22.38.1002       |
+| Hardware (CPU,RAM)                                                         |Operating System (kernel)                  | NIC (Vendor,Driver,Firmware) |
+|----------------------------------------------------------------------------|----------------------------------|------------------------------|
+| Gigabyte  Edge E251-U70 (Intel Xeon Gold 6240R, 2.4GHz, 24C48T, 96GB DDR4) |Ubuntu 22.04.3 LTS (5.15.0-72-lowlatency)| NVIDIA ConnectX®-6 Dx 22.38.1002       |
 
 **NOTE**: These are not minimum hardware requirements. This is the configuration of our servers. The NIC card should support hardware PTP time stamping.
 
