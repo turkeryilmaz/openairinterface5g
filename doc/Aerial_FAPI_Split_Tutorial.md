@@ -26,15 +26,16 @@ The hardware on which we have tried this tutorial:
 
 **NOTE**: These are not minimum hardware requirements. This is the configuration of our servers. The NIC card should support hardware PTP time stamping.
 
-PTP enabled switches and grandmaster clock we have in our lab:
+PTP enabled switches and grandmaster clock we have tested with:
 
-|Vendor                  |Software Version|
-|------------------------|----------------|
-|Fibrolan Falcon-RX/812/G|8.0.25.4        |
-|Qulsar Qg2 (Grandmaster)|12.1.27         |
+| Vendor                   | Software Version |
+|--------------------------|------------------|
+| Fibrolan Falcon-RX/812/G | 8.0.25.4         |
+| CISCO C93180YC-FX3       | 10.2(4)          |
+| Qulsar Qg2 (Grandmaster) | 12.1.27          |
 
 
-Radio units we are testing/integrating:
+These are the radio units we've used for testing:
 
 | Vendor      | Software Version |
 |-------------|------------------|
@@ -44,11 +45,13 @@ Radio units we are testing/integrating:
 
 The UEs that have been tested and confirmed working with Aerial are the following:
 
-| Vendor         | Model             |
-|----------------|-------------------|
-| Sierra Wireless | EM9191            |
-| Quectel        | RM500Q-GL         |
-| Apaltec        | Tributo 5G-Dongle |
+| Vendor          | Model                         |
+|-----------------|-------------------------------|
+| Sierra Wireless | EM9191                        |
+| Quectel         | RM500Q-GL                     |
+| Apaltec         | Tributo 5G-Dongle             |
+| OnePlus         | Nord (AC2003)                 |
+| Apple iPhone    | 14 Pro (MQ0G3RX/A) (iOS 17.3) |
 
 
 ## Configure your server
@@ -148,7 +151,6 @@ After=ptp4l.service
 Restart=always
 RestartSec=5s
 Type=simple
-#ExecStart=/bin/sh -c "/usr/sbin/phc2sys -s /dev/ptp$(ethtool -T your_PTP_ENABLED_NIC(e.g. ens6f1) | grep PTP | awk '{print $4}') -c CLOCK_REALTIME -n 0 -R 256 -u 256"
 ExecStart=/usr/sbin/phc2sys -a -r -r -n 24
 
 [Install]
