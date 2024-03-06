@@ -751,7 +751,8 @@ void nr_schedule_srs_secondary(int module_id, frame_t frame, int slot) {
     // Check if UE will transmit the SRS in this frame
     if ( ((frame - offset/n_slots_frame)*n_slots_frame)%period == 0) {
       LOG_I(NR_MAC,"Scheduling non-ue associated SRS measurement for %d.%d\n", frame, offset%n_slots_frame);
-      nr_fill_nfapi_srs(module_id, CC_id, &dummy_ue_info, frame, slot, srs_resource_set, srs_resource, 1); 
+      nr_fill_nfapi_srs(module_id, CC_id, &dummy_ue_info, frame, slot, srs_resource_set, srs_resource, 1);
+      RC.nrmac[module_id]->f1ap_meas_req = NULL;
     }
   }
 }
