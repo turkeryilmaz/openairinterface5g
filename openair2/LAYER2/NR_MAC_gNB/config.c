@@ -843,11 +843,8 @@ void nr_mac_config_scc(gNB_MAC_INST *nrmac, NR_ServingCellConfigCommon_t *scc, c
 
   config_common(nrmac, config->pdsch_AntennaPorts, config->pusch_AntennaPorts, scc);
 
-  if (NFAPI_MODE == NFAPI_MODE_PNF || NFAPI_MODE == NFAPI_MODE_VNF || NFAPI_MODE == NFAPI_MODE_AERIAL) {
-    // fake that the gNB is configured in nFAPI mode, which would normally be
-    // done in a NR_PHY_config_req, but in this mode, there is no PHY
-    RC.gNB[0]->configured = 1;
-  } else {
+  if (NFAPI_MODE == NFAPI_MONOLITHIC) {
+    // nothing to be sent in the other cases
     NR_PHY_Config_t phycfg = {.Mod_id = 0, .CC_id = 0, .cfg = &nrmac->config[0]};
     DevAssert(nrmac->if_inst->NR_PHY_config_req);
     nrmac->if_inst->NR_PHY_config_req(&phycfg);
