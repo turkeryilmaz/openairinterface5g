@@ -87,13 +87,7 @@ COPY --from=ran-build \
     /oai-ran/cmake_targets/ran_build/build/nr-softmodem ./
 COPY ./docker/scripts/gnb_entrypoint.sh ./entrypoint.sh
 
-COPY --from=ran-build \
-    /oai-ran/cmake_targets/ran_build/build/libcoding.so \
-    /oai-ran/cmake_targets/ran_build/build/librfsimulator.so \
-    /oai-ran/cmake_targets/ran_build/build/libparams_libconfig.so \
-    /oai-ran/cmake_targets/ran_build/build/libdfts.so \
-    /oai-ran/cmake_targets/ran_build/build/libldpc*.so \
-    /usr/local/lib/
+COPY --from=ran-build /oai-ran/cmake_targets/ran_build/build/libparams_libconfig.so /usr/local/lib/
 
 #copy files from nvIPC
 COPY --from=ran-build \
