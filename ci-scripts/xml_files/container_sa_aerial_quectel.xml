@@ -21,8 +21,8 @@
 
 -->
 <testCaseList>
-        <htmlTabRef>gNB-PHY-Test-40</htmlTabRef>
-        <htmlTabName>Timing phytest 40 MHz</htmlTabName>
+        <htmlTabRef>TEST-AERIAL-SA</htmlTabRef>
+        <htmlTabName>AERIAL 100 MHz TDD SA</htmlTabName>
         <htmlTabIcon>tasks</htmlTabIcon>
         <repeatCount>1</repeatCount>
         <TestCaseRequestedList>
@@ -57,7 +57,7 @@
 
         <testCase id="002222">
                 <class>Deploy_Object</class>
-                <desc>Deploy Nvidia CUBB in a container</desc>
+                <desc>Deploy PNF/Nvidia CUBB in a container</desc>
                 <yaml_path>ci-scripts/yaml_files/sa_gnb_aerial</yaml_path>
                 <services>nv-cubb</services>
                 <eNB_instance>0</eNB_instance>
