@@ -513,8 +513,10 @@ void fill_pdcch_vrb_map(gNB_MAC_INST *mac,
   for (int j=first_cce; j<first_cce+aggregation; j++) { // loop over CCEs
     for (int k=6*j/L; k<(6*j/L+6/L); k++) { // loop over REG bundles
       int f = cce_to_reg_interleaving(R, k, n_shift, C, L, N_regs);
-      for(int rb=0; rb<B_rb; rb++) // loop over the RBs of the bundle
+      for(int rb=0; rb<B_rb; rb++){ // loop over the RBs of the bundle
+         AssertFatal(pdcch->BWPStart + f*B_rb + rb <275 && pdcch->BWPStart + f*B_rb + rb>=0,"vrb array out of bound\n");
         vrb_map[pdcch->BWPStart + f*B_rb + rb] |= SL_to_bitmap(pdcch->StartSymbolIndex, N_symb);
+      }
     }
   }
 }
