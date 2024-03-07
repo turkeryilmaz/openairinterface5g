@@ -191,6 +191,7 @@ void schedule_CSI(module_id_t module_idP,
   COMMON_channels_t              *cc = NULL;
   nfapi_ul_config_request_body_t *ul_req = NULL;
   UE_sched_ctrl_t *UE_scheduling_control = NULL;
+  rnti_t                            rnti = NOT_A_RNTI;
 
   for (CC_id = 0; CC_id < RC.nb_mac_CC[module_idP]; CC_id++) {
     cc = &eNB->common_channels[CC_id];
@@ -200,8 +201,14 @@ void schedule_CSI(module_id_t module_idP,
         continue;
       }
 
+      /* If not Valid RNTI found then skip as UE context isn't valid*/  
+      rnti = UE_RNTI(module_idP, UE_id);
+      if (rnti == NOT_A_RNTI) {
+              continue;
+      }
+
       /* Drop the allocation if the UE hasn't sent RRCConnectionSetupComplete yet */
-      if (mac_eNB_get_rrc_status(module_idP, UE_RNTI(module_idP, UE_id)) < RRC_CONNECTED) {
+      if (mac_eNB_get_rrc_status(module_idP, rnti) < RRC_CONNECTED) {
         continue;
       }
 
