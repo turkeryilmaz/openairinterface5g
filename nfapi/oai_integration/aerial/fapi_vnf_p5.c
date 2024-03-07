@@ -41,11 +41,6 @@ extern int single_thread_flag;
 extern uint16_t sf_ahead;
 extern uint16_t slot_ahead;
 
-void aerial_oai_enb_init(void)
-{
-  NFAPI_TRACE(NFAPI_TRACE_INFO, "%s() About to call init_eNB_afterRU()\n", __FUNCTION__);
-  init_eNB_afterRU();
-}
 
 static pthread_t vnf_aerial_p7_start_pthread;
 void *aerial_vnf_nr_aerial_p7_start_thread(void *ptr)
@@ -373,7 +368,6 @@ int aerial_nr_config_resp_cb(nfapi_vnf_config_t *config, int p5_idx, nfapi_nr_co
   nfapi_nr_start_request_scf_t req;
   NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] Received NFAPI_CONFIG_RESP idx:%d phy_id:%d\n", p5_idx, resp->header.phy_id);
   NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] Calling oai_enb_init()\n");
-  aerial_oai_enb_init(); // TODO: change to gnb
 
   memset(&req, 0, sizeof(req));
   req.header.message_id = NFAPI_NR_PHY_MSG_TYPE_START_REQUEST;
