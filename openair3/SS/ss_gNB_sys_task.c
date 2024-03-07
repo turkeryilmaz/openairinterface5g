@@ -1180,23 +1180,33 @@ bool ss_task_sys_nr_handle_cellConfig5G(struct NR_CellConfigRequest_Type *p_req,
     }
 
     /* Populating NR_ARFCN */
-    if (p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.d == NR_ASN1_FrequencyInfoDL_Type_R15)
-    {
-      RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA =
-        p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.v.R15.absoluteFrequencyPointA;
-      LOG_A(GNB_APP, "fxn:%s DL absoluteFrequencyPointA :%ld\n", __FUNCTION__, 
-          RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA);
-    }
+    /*
+     TTCN configuraton: offsettopointA = 4, controlResourceSetZero =2 drived from absoluteFrequencyPointA and absoluteFrequencySSB
+     json parameter: offsettopointA = 86, controlResourceSetZero =12
+     since 7cca085ff0b16db04c53d24bf4dccbbae9f98486 above two are mixed: offsettoPointA = 4, controlResourceSetZero =12
+     this caused vrb_map[...] out of bound, then various segment faults.
+     previous WA: controlResourceSetZero to 2 caused regressions. this WA is to give up absoluteFrequencyPointA and absoluteFrequencySSB from TTCN, so offsettoPointA=86
+  
+    */
+    if (RC.ss.mode == SS_HWTMODEM) { 
+      if (p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.d == NR_ASN1_FrequencyInfoDL_Type_R15)
+      {
+        RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA =
+          p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.v.R15.absoluteFrequencyPointA;
+        LOG_A(GNB_APP, "fxn:%s DL absoluteFrequencyPointA :%ld\n", __FUNCTION__, 
+            RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA);
+      }
 
-    /* Populating absoluteFrequencySSB */
-    if (p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.v.R15.absoluteFrequencySSB.d == true &&
-        p_req->v.AddOrReconfigure.PhysicalLayer.d == true )
-    {
-      *RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB =
-        p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.v.R15.absoluteFrequencySSB.v;
-      LOG_A(GNB_APP, "fxn:%s DL absoluteFrequencySSB:%ld\n", __FUNCTION__, 
-          *RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB);  //W38 note: we have only one copy of SCC, fortunately, ttcn does not update its item after cell activated.
-      // note: no need to recover offsetToPointA as it can be deduced from absoluteFrequencySSB: get_ssb_offset_to_pointA API
+      /* Populating absoluteFrequencySSB */
+      if (p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.v.R15.absoluteFrequencySSB.d == true &&
+          p_req->v.AddOrReconfigure.PhysicalLayer.d == true )
+      {
+        *RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB =
+          p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.v.R15.absoluteFrequencySSB.v;
+        LOG_A(GNB_APP, "fxn:%s DL absoluteFrequencySSB:%ld\n", __FUNCTION__, 
+            *RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB);  //W38 note: we have only one copy of SCC, fortunately, ttcn does not update its item after cell activated.
+        // note: no need to recover offsetToPointA as it can be deduced from absoluteFrequencySSB: get_ssb_offset_to_pointA API
+      }
     }
 
     /* Populating frequency band list */
