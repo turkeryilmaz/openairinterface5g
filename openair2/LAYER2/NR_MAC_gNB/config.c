@@ -341,8 +341,8 @@ static void config_common(gNB_MAC_INST *nrmac, int pdsch_AntennaPorts, int pusch
    cfg->ssb_table.ssb_subcarrier_offset.tl.tag = NFAPI_NR_CONFIG_SSB_SUBCARRIER_OFFSET_TAG;
    cfg->num_tlv++;
 
-   nrmac->ssb_SubcarrierOffset = cfg->ssb_table.ssb_subcarrier_offset.value;
-   nrmac->ssb_OffsetPointA = cfg->ssb_table.ssb_offset_point_a.value;
+   nrmac->ssb_SubcarrierOffset[CC_id] = cfg->ssb_table.ssb_subcarrier_offset.value;
+   nrmac->ssb_OffsetPointA[CC_id] = cfg->ssb_table.ssb_offset_point_a.value;
    LOG_I(NR_MAC,
          "ssb_OffsetPointA %d, ssb_SubcarrierOffset %d\n",
          cfg->ssb_table.ssb_offset_point_a.value,
