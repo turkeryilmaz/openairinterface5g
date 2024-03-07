@@ -407,7 +407,7 @@ void fix_scc(NR_ServingCellConfigCommon_t *scc,uint64_t ssbmap) {
   }
 
   // fix UL absolute frequency
-  if (RC.ss.mode == SS_GNB)
+  if (RC.ss.mode == SS_GNB || RC.ss.mode == SS_HWTMODEM)
   {
     if ((int)*scc->uplinkConfigCommon->frequencyInfoUL->absoluteFrequencyPointA == -1)
     {
@@ -1000,6 +1000,15 @@ static NR_ServingCellConfigCommon_t *get_scc_config(configmodule_interface_t *cf
   asn1cCallocOne(pcc->ra_SearchSpace, 1);
   asn1cCallocOne(pcc->pagingSearchSpace, 2);
   asn1cCallocOne(pcc->searchSpaceOtherSystemInformation, 3);
+  
+  /* TTCN configuraton: offsettopointA = 4, controlResourceSetZero =2
+     json parameter: offsettopointA = 86, controlResourceSetZero =12
+     since 7cca085ff0b16db04c53d24bf4dccbbae9f98486 above two are mixed: offsettoPointA = 4, controlResourceSetZero =12
+     this caused vrb_map[...] out of bound, then various segment faults.
+     WA before 7cca085ff0b16db04c53d24bf4dccbbae9f98486 fixed is to force controlResourceSetZero to 2
+  */
+  *pcc->controlResourceSetZero = 2; 
+  LOG_D(NR_RRC,"dbg cset0 %d",pcc->controlResourceSetZero ? *pcc->controlResourceSetZero : 555);
 
   return scc;
 }

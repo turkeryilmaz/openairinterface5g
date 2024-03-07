@@ -770,8 +770,8 @@ typedef struct gNB_MAC_INST_s {
   /// PUSCH Failure threshold (compared to consecutive PUSCH DTX)
   int                             pusch_failure_thres;
   /// Subcarrier Offset
-  int                             ssb_SubcarrierOffset;
-  int                             ssb_OffsetPointA;
+  int                             ssb_SubcarrierOffset[MAX_NUM_CCs];
+  int                             ssb_OffsetPointA[MAX_NUM_CCs];
 
   /// Common cell resources
   NR_COMMON_channels_t common_channels[NFAPI_CC_MAX];
