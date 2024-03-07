@@ -72,32 +72,19 @@ Currently, the CPU isolation is setup the following:
 |--------------|-----------|:---------------:|:--------------:|
 | Gigabyte     | Edge E251-U70 |      24     |      2-10      |
 
-<!-- Depending on which server you use, the CPU allocation for both L1 and L2 will differ:
-
-**Dell PowerEdge R750**
-
-| Applicative Threads    | Allocated CPUs     |
-|------------------------|--------------------|
-| Aerial L1              | 2,3,4,5,6,7,8      |
-| PTP & PHC2SYS Services | 9                  |
-| OAI `nr-softmodem`     | 10-18              |
-| kernel                 | 0,1,19,20,21,22,23 |-->
-
 
 **Gigabyte  Edge E251-U70**
 
-| Applicative Threads    | Allocated CPUs     |
-|------------------------|--------------------|
-| Aerial L1              | 2,3,4,5,6          |
-| PTP & PHC2SYS Services | 9                  |
-| OAI `L1_rx_thread`     | 8                  |
-| OAI `nr-softmodem`     | 1,3,5,7,9,11,13,15 |
-| kernel                 | 16-31              |
+| Applicative Threads    | Allocated CPUs |
+|------------------------|----------------|
+| Aerial L1              | 2,3,4,5,6,7,8  |
+| PTP & PHC2SYS Services | 9              |
+| OAI `nr-softmodem`     | 13-20          |
 
 
 ## PTP configuration
 
-1. You can install `linuxptp` rpm or debian package. It will install ptp4l and phc2sys.
+1. You need to install the `linuxptp` debian package. It will install both ptp4l and phc2sys.
 
 ```bash
 #Ubuntu
@@ -132,7 +119,7 @@ Documentation=man:ptp4l
 Restart=always
 RestartSec=5s
 Type=simple
-ExecStart=taskset -c 20 /usr/sbin/ptp4l -f /etc/ptp.conf
+ExecStart=taskset -c 9 /usr/sbin/ptp4l -f /etc/ptp.conf
  
 [Install]
 WantedBy=multi-user.target
