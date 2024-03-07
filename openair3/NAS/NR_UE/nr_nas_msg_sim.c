@@ -2079,7 +2079,7 @@ void *nas_nrue(void *args_p)
           {// do not remove this brace.  it changes namespce of initialNasMsg
             LOG_I(NAS, "[UE] Received REGISTRATION ACCEPT message\n");
             decodeRegistrationAccept(pdu_buffer, NAS_DOWNLINK_DATA_IND(msg_p).nasMsg.length, nas);
-
+            get_allowed_nssai(nas_allowed_nssai, pdu_buffer, NAS_CONN_ESTABLI_CNF(msg_p).nasMsg.length);
             as_nas_info_t initialNasMsg = {0}; //this variable is redefined, be careful with namespace when rebasing
             generateRegistrationComplete(nas, &initialNasMsg, NULL);
             if (initialNasMsg.length > 0) {

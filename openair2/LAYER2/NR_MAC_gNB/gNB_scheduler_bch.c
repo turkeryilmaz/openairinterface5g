@@ -184,8 +184,9 @@ void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP, 
 
       NR_SubcarrierSpacing_t scs = *scc->ssbSubcarrierSpacing;
       const long band = *scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0];
-      const uint16_t offset_pointa = gNB->ssb_OffsetPointA;
-      uint8_t ssbSubcarrierOffset = gNB->ssb_SubcarrierOffset;
+
+      const uint16_t offset_pointa = gNB->ssb_OffsetPointA[CC_id];
+      uint8_t ssbSubcarrierOffset = gNB->ssb_SubcarrierOffset[CC_id];
 
       const BIT_STRING_t *shortBitmap = &scc->ssb_PositionsInBurst->choice.shortBitmap;
       const BIT_STRING_t *mediumBitmap = &scc->ssb_PositionsInBurst->choice.mediumBitmap;
