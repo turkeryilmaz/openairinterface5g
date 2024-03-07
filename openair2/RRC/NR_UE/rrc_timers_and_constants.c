@@ -117,6 +117,18 @@ void nr_rrc_handle_timers(NR_UE_Timers_Constants_t *timers)
       // TODO
       // handle detection of radio link failure
       // as described in 5.3.10.3 of 38.331
+      // AssertFatal(false, "Radio link failure! Not handled yet!\n");
+      timers->T310_active = false;
+      timers->T310_cnt = 0;
+      timers->T311_active = true;
+      timers->T311_cnt = 0;
+    }
+  }
+  if (timers->T311_active == true) {
+    timers->T311_cnt += 10;
+    if(timers->T311_cnt >= timers->T311_k) {
+      // TODO
+      // handle detection of radio link failure
       AssertFatal(false, "Radio link failure! Not handled yet!\n");
     }
   }
@@ -159,6 +171,10 @@ void nr_rrc_set_T304(NR_UE_Timers_Constants_t *tac, NR_ReconfigurationWithSync_t
 void set_rlf_sib1_timers_and_constants(NR_UE_Timers_Constants_t *tac, NR_SIB1_t *sib1)
 {
   if(sib1 && sib1->ue_TimersAndConstants) {
+    sib1->ue_TimersAndConstants->t310 = NR_UE_TimersAndConstants__t310_ms1000; // TODO: bugz#130121 (rlf) - temporary hard-code this
+    sib1->ue_TimersAndConstants->t311 = NR_UE_TimersAndConstants__t311_ms10000; // TODO: bugz#130121 (rlf) - temporary hard-code this
+    sib1->ue_TimersAndConstants->n310 = NR_UE_TimersAndConstants__n310_n1; // TODO: bugz#130121 (rlf) - temporary hard-code this
+    sib1->ue_TimersAndConstants->n311 = NR_UE_TimersAndConstants__n311_n1; // TODO: bugz#130121 (rlf) - temporary hard-code this
     switch (sib1->ue_TimersAndConstants->t301) {
       case NR_UE_TimersAndConstants__t301_ms100 :
         tac->T301_k = 100;
@@ -535,6 +551,8 @@ void handle_rlf_sync(NR_UE_Timers_Constants_t *tac,
         tac->T310_active = true;
         tac->T310_cnt = 0;
         tac->N310_cnt = 0;
+        tac->T311_active = false;
+        tac->T311_cnt = 0;
     }
   }
 }
