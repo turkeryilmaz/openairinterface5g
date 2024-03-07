@@ -344,47 +344,6 @@ int aerial_nr_send_config_request(nfapi_vnf_config_t *config, int p5_idx)
   req->header.phy_id = phy->id;
   NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] Send NFAPI_CONFIG_REQUEST\n");
 
-  req->nfapi_config.p7_vnf_port.tl.tag = NFAPI_NR_NFAPI_P7_VNF_PORT_TAG;
-  req->nfapi_config.p7_vnf_port.value = p7_vnf->local_port;
-  req->num_tlv++;
-  NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] DJP local_port:%d\n", ntohs(p7_vnf->local_port));
-  req->nfapi_config.p7_vnf_address_ipv4.tl.tag = NFAPI_NR_NFAPI_P7_VNF_ADDRESS_IPV4_TAG;
-  struct sockaddr_in vnf_p7_sockaddr;
-  vnf_p7_sockaddr.sin_addr.s_addr = inet_addr(p7_vnf->local_addr);
-  memcpy(&(req->nfapi_config.p7_vnf_address_ipv4.address[0]), &vnf_p7_sockaddr.sin_addr.s_addr, 4);
-  req->num_tlv++;
-  NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] DJP local_addr:%s\n", p7_vnf->local_addr);
-  req->nfapi_config.timing_window.tl.tag = NFAPI_NR_NFAPI_TIMING_WINDOW_TAG;
-  req->nfapi_config.timing_window.value = p7_vnf->timing_window;
-  NFAPI_TRACE(NFAPI_TRACE_INFO,
-              "\n[VNF]Timing window tag : %d Timing window:%u\n",
-              NFAPI_NR_NFAPI_TIMING_WINDOW_TAG,
-              p7_vnf->timing_window);
-  req->num_tlv++;
-
-  if (p7_vnf->periodic_timing_enabled || p7_vnf->aperiodic_timing_enabled) {
-    req->nfapi_config.timing_info_mode.tl.tag = NFAPI_NR_NFAPI_TIMING_INFO_MODE_TAG;
-    req->nfapi_config.timing_info_mode.value = (p7_vnf->aperiodic_timing_enabled << 1) | (p7_vnf->periodic_timing_enabled);
-    req->num_tlv++;
-
-    if (p7_vnf->periodic_timing_enabled) {
-      req->nfapi_config.timing_info_period.tl.tag = NFAPI_NR_NFAPI_TIMING_INFO_PERIOD_TAG;
-      req->nfapi_config.timing_info_period.value = p7_vnf->periodic_timing_period;
-      req->num_tlv++;
-    }
-  }
-
-  // TODO: Assign tag and value for P7 message offsets
-  req->nfapi_config.dl_tti_timing_offset.tl.tag = NFAPI_NR_NFAPI_DL_TTI_TIMING_OFFSET;
-  req->nfapi_config.ul_tti_timing_offset.tl.tag = NFAPI_NR_NFAPI_UL_TTI_TIMING_OFFSET;
-  req->nfapi_config.ul_dci_timing_offset.tl.tag = NFAPI_NR_NFAPI_UL_DCI_TIMING_OFFSET;
-  req->nfapi_config.tx_data_timing_offset.tl.tag = NFAPI_NR_NFAPI_TX_DATA_TIMING_OFFSET;
-
-  vendor_ext_tlv_2 ve2;
-  memset(&ve2, 0, sizeof(ve2));
-  ve2.tl.tag = VENDOR_EXT_TLV_2_TAG;
-  ve2.dummy = 2016;
-  req->vendor_extension = &ve2.tl;
 
   vnf_t *_this = (vnf_t *)(config);
 
@@ -394,21 +353,6 @@ int aerial_nr_send_config_request(nfapi_vnf_config_t *config, int p5_idx)
     printf("%s failed to find phy information phy_id:%d\n", __FUNCTION__, req->header.phy_id);
     return -1;
   }
-
-  // set the timing parameters
-  req->nfapi_config.timing_window.tl.tag = NFAPI_NR_NFAPI_TIMING_WINDOW_TAG;
-  req->nfapi_config.timing_window.value = vnf_phy->timing_window;
-  req->num_tlv++;
-
-  req->nfapi_config.timing_info_mode.tl.tag = NFAPI_NR_NFAPI_TIMING_INFO_MODE_TAG;
-  req->nfapi_config.timing_info_mode.value = vnf_phy->timing_info_mode;
-  req->num_tlv++;
-
-  req->nfapi_config.timing_info_period.tl.tag = NFAPI_NR_NFAPI_TIMING_INFO_PERIOD_TAG;
-  req->nfapi_config.timing_info_period.value = vnf_phy->timing_info_period;
-  req->num_tlv++;
-
-  memcpy(&RC.gNB[0]->gNB_config, &RC.nrmac[0]->config[0], sizeof(nfapi_nr_config_request_scf_t));
 
   nfapi_p4_p5_message_header_t *msg = &req->header;
   uint16_t msg_len = sizeof(nfapi_nr_config_request_scf_t);
