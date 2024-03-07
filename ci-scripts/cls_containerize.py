@@ -1014,7 +1014,7 @@ class Containerize():
 			cnt = 0
 			while (cnt < 20):
 				mySSH.command('docker logs ' + containerName + ' | egrep --text --color=never -i "wait|sync|Starting|ready"', '\$', 30)
-				result = re.search('got sync|Starting E1AP at CU UP|Starting F1AP at CU|Got sync|Waiting for RUs to be configured|cuPHYController initialized', mySSH.getBefore())
+				result = re.search('got sync|Starting E1AP at CU UP|Starting F1AP at CU|Got sync|Waiting for RUs to be configured|Received CONFIG.response, gNB is ready', mySSH.getBefore())
 				if result is None:
 					time.sleep(6)
 					cnt += 1
@@ -1101,9 +1101,6 @@ class Containerize():
 			filename = f'{svcName}-{HTML.testCase_id}.log'
 			mySSH.run(f'docker compose -f {yamlDir}/ci-docker-compose.yml logs --no-log-prefix -- {svcName} &> {lSourcePath}/cmake_targets/log/{filename}')
 			copyin_res = mySSH.copyin(f'{lSourcePath}/cmake_targets/log/{filename}', f'{filename}') and copyin_res
-		# when nv-cubb container is available, copy L1 pcap, OAI Aerial pipeline
-		if 'nv-cubb' in allServices:
-			mySSH.run(f'cp /tmp/share/nvipc.pcap {lSourcePath}/cmake_targets/gnb_nvipc.pcap')
 
 		mySSH.run(f'docker compose -f {yamlDir}/ci-docker-compose.yml down -v')
 
@@ -1124,14 +1121,15 @@ class Containerize():
 				HTML.CreateHtmlTestRow('UE log Analysis', 'OK', CONST.ALL_PROCESSES_OK)
 		else:
 			for svcName in services:
-				filename = f'{svcName}-{HTML.testCase_id}.log'
-				logging.debug(f'\u001B[1m Analyzing logfile {filename}\u001B[0m')
-				logStatus = RAN.AnalyzeLogFile_eNB(filename, HTML, self.ran_checkers)
-				if (logStatus < 0):
-					HTML.CreateHtmlTestRow(RAN.runtime_stats, 'KO', logStatus)
-					self.exitStatus = 1
-				else:
-					HTML.CreateHtmlTestRow(RAN.runtime_stats, 'OK', CONST.ALL_PROCESSES_OK)
+				if svcName != 'nv-cubb':
+					filename = f'{svcName}-{HTML.testCase_id}.log'
+					logging.debug(f'\u001B[1m Analyzing logfile {filename}\u001B[0m')
+					logStatus = RAN.AnalyzeLogFile_eNB(filename, HTML, self.ran_checkers)
+					if (logStatus < 0):
+						HTML.CreateHtmlTestRow(RAN.runtime_stats, 'KO', logStatus)
+						self.exitStatus = 1
+					else:
+						HTML.CreateHtmlTestRow(RAN.runtime_stats, 'OK', CONST.ALL_PROCESSES_OK)
 			# all the xNB run logs shall be on the server 0 for logCollecting
 			if self.eNB_serverId[self.eNB_instance] != '0':
 				mySSH.copyout(f'./*.log', f'{lSourcePath}/cmake_targets/', recursive=True)
