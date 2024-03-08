@@ -1920,22 +1920,18 @@ void *rrc_nrue(void *notUsed)
           nr_rrc_set_state(0, RRC_STATE_IDLE_NR);
           nr_rrc_set_sub_state(0, RRC_SUB_STATE_IDLE_NR);
 
-          //TODO to be cross checked by Anton
-	  //NR_UE_rrc_inst[0].cell_group_config = NULL;
+          NR_UE_rrc_inst[0].cell_group_config = NULL;
 
           NR_UE_RRC_INST_t *rrc = &NR_UE_rrc_inst[ctxt_pP.module_id];
           for (int i = 0; i < NB_CNX_UE; i++) {
               rrcPerNB_t *ptr = &rrc->perNB[i];
               for (int j = 0; j < MAX_DRBS_PER_UE; j++) {
-                //TODO to be cross checked by Anton
-		//ptr->active_DRBs[j] = false;
-		ptr->status_DRBs[j] = RB_NOT_PRESENT;
+                ptr->active_DRBs[j] = false;
               }
               // SRB0 activated by default
-              //TODO to be cross checked by Anton
-	      ptr->Srb[0] = RB_ESTABLISHED;
-              ptr->Srb[1] = RB_NOT_PRESENT;
-              ptr->Srb[2] = RB_NOT_PRESENT;
+              ptr->Srb[0].status = RB_ESTABLISHED;
+              ptr->Srb[1].status = RB_NOT_PRESENT;
+              ptr->Srb[2].status = RB_NOT_PRESENT;
           }
 
           need_registration = true;
