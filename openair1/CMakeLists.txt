@@ -1,2 +1,4 @@
 add_subdirectory(PHY)
-add_subdirectory(E3_AGENT)
+if(E3_AGENT)
+    add_subdirectory(E3AP)
+endif()

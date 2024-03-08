@@ -224,7 +224,7 @@ typedef enum {
   NFAPI_PNF,
   ITTI,
   UTIL,
-  E3_AGENT,
+  E3AP,
   MAX_LOG_PREDEF_COMPONENTS,
 } comp_name_t;
 

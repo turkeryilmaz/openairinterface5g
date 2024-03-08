@@ -86,8 +86,8 @@ unsigned short config_frames[4] = {2,9,11,13};
 #include "openair2/E2AP/RAN_FUNCTION/init_ran_func.h"
 #endif
 
-#ifdef 1 // this should be replaced by E3_AGENT
-#include <openair1/E3_AGENT/e3_agent.h>
+#ifdef E3_AGENT
+#include "openair1/E3AP/e3_agent.h"
 #endif
 
 
@@ -742,7 +742,9 @@ int main( int argc, char **argv ) {
 
 #endif // E2_AGENT
 
-#ifdef 1 // This should be replaced by E3_AGENT
+//////////////////////////////////
+//// Init the E3 Agent
+#ifdef E3_AGENT
   e3_agent_init();
 #endif // E3_AGENT
 
