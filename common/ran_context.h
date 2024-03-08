@@ -39,6 +39,8 @@
 #include "radio/SS/ss_config.h"
 #include "RRC/NR/nr_rrc_defs.h"
 
+#include "OCTET_STRING.h"
+
 // Used for loopback message routing in DRB-specific TC's
 typedef enum {
   DRB_MacPdu = 0,
@@ -153,6 +155,8 @@ typedef struct {
   nr_drb_data_t nr_drb_data_type;
   RBConfig RB_Config[MAX_NUM_CCs][MAX_RBS];
   NRRBConfig NR_RB_Config[MAX_NUM_CCs][MAX_NR_RBS];
+  /// CellGroupConfig given by SS/TTCN
+  OCTET_STRING_t *cellGroupConfig;
 } RAN_CONTEXT_t;
 
 extern RAN_CONTEXT_t RC;

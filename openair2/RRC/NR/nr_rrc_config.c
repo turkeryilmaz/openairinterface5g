@@ -28,6 +28,7 @@
  * \email: raymond.knopp@eurecom.fr, kroempa@gmail.com
  */
 
+#include "assertions.h"
 #include "openair3/UTILS/conversions.h"
 #include "nr_rrc_config.h"
 #include "common/utils/nr/nr_common.h"
@@ -3079,6 +3080,23 @@ void update_cellGroupConfig(NR_CellGroupConfig_t *cellGroupConfig,
     }
   }
   update_cqitables(bwp_Dedicated->pdsch_Config, SpCellConfig->spCellConfigDedicated->csi_MeasConfig->choice.setup);
+}
+
+void update_cellGroupConfig2(NR_CellGroupConfig_t *cellGroupConfig, const OCTET_STRING_t *data)
+{
+  DevAssert(cellGroupConfig != NULL);
+  DevAssert(data != NULL);
+  NR_CellGroupConfig_t *newCellGroupConfig = decode_cellGroupConfig(data->buf, data->size);
+
+  // TODO: do need to update other fields?
+
+  if (cellGroupConfig->spCellConfig && cellGroupConfig->spCellConfig->rlf_TimersAndConstants == NULL &&
+      newCellGroupConfig->spCellConfig && newCellGroupConfig->spCellConfig->rlf_TimersAndConstants) {
+    cellGroupConfig->spCellConfig->rlf_TimersAndConstants = newCellGroupConfig->spCellConfig->rlf_TimersAndConstants;
+    newCellGroupConfig->spCellConfig->rlf_TimersAndConstants = NULL;
+  }
+
+  free_cellGroupConfig(newCellGroupConfig);
 }
 
 void free_cellGroupConfig(NR_CellGroupConfig_t *cellGroupConfig)

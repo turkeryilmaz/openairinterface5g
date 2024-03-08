@@ -1095,6 +1095,7 @@ static void enqueue_nr_nfapi_msg(void *buffer, ssize_t len, nfapi_p7_message_hea
                         PHY_FIND_CELL_IND (message_p).cells[i].rsrp-141,
                         (PHY_FIND_CELL_IND (message_p).cells[i].rsrq-39)/2);
 
+                // TODO: compare with current cell?
                 if (PHY_FIND_CELL_IND (message_p).cells[i].rsrp > 0) {
                     good_cells++;
                 }
