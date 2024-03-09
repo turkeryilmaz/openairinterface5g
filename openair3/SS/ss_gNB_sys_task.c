@@ -37,11 +37,17 @@
 #include "openair2/LAYER2/nr_pdcp/nr_pdcp_entity.h"
 #include "openair2/LAYER2/nr_pdcp/nr_pdcp_ue_manager.h"
 
+#include "constr_TYPE.h"
+#include "OCTET_STRING.h"
+#include "NR_DL-CCCH-Message.h"
+
 #include "common/utils/LOG/ss-log.h"
 #include "ss_utils.h"
 #include "softmodem-common.h"
 #include "../../openair2/LAYER2/NR_MAC_gNB/nr_mac_gNB.h"
 #include "ss_gNB_multicell_helper.h"
+
+#include "SidlCommon_NR_RachProcedureConfig_Type.h"
 
 
 extern RAN_CONTEXT_t RC;
@@ -94,7 +100,53 @@ static void int_to_bin(uint32_t in, int count, uint8_t *out)
   }
 }
 
+static void process_RachProcedureMsg4RrcMsg(const struct NR_RachProcedureMsg4RrcMsg_Type *rrcMsg)
+{
+  switch (rrcMsg->d) {
+    case NR_RachProcedureMsg4RrcMsg_Type_RrcCcchMsg:
+      {
+        NR_DL_CCCH_Message_t *dl_ccch_msg = NULL;
+        asn_dec_rval_t dec_rval = uper_decode(NULL, &asn_DEF_NR_DL_CCCH_Message, (void **)&dl_ccch_msg, rrcMsg->v.RrcCcchMsg.v, rrcMsg->v.RrcCcchMsg.d, 0, 0);
+        AssertFatal(dec_rval.code == RC_OK, "Failed to decode DL-CCCH-Message");
 
+        OCTET_STRING_t *masterCellGroup = NULL;
+
+        if (dl_ccch_msg->message.present == NR_DL_CCCH_MessageType_PR_c1 &&
+            dl_ccch_msg->message.choice.c1->present == NR_DL_CCCH_MessageType__c1_PR_rrcSetup)
+        {
+          NR_RRCSetup_t *rrcSetup = dl_ccch_msg->message.choice.c1->choice.rrcSetup;
+          if (rrcSetup->criticalExtensions.present == NR_RRCSetup__criticalExtensions_PR_rrcSetup)
+          {
+            masterCellGroup = &rrcSetup->criticalExtensions.choice.rrcSetup->masterCellGroup;
+          }
+        }
+
+        if (masterCellGroup != NULL)
+        {
+          LOG_A(GNB_APP, "[SYS-GNB] Store CellGroupConfig for RrcSetup\n");
+          if (RC.cellGroupConfig != NULL)
+          {
+            ASN_STRUCT_FREE(asn_DEF_OCTET_STRING, RC.cellGroupConfig);
+          }
+          RC.cellGroupConfig = OCTET_STRING_new_fromBuf(&asn_DEF_OCTET_STRING, (const char *)masterCellGroup->buf, masterCellGroup->size);
+          AssertFatal(RC.cellGroupConfig != NULL, "Allocation for cellGroupConfig failed");
+        }
+        else
+        {
+          LOG_E(GNB_APP, "%s: masterCellGroup not found\n", __FUNCTION__);
+        }
+
+        ASN_STRUCT_FREE(asn_DEF_NR_DL_CCCH_Message, dl_ccch_msg);
+
+        break;
+      }
+    default:
+      {
+        LOG_W(GNB_APP, "RachProcedure Msg4RrcMsg not handled\n");
+        break;
+      }
+  }
+}
 
 /*
  * Function : send_sys_cnf
@@ -1079,7 +1131,20 @@ bool ss_task_sys_nr_handle_cellConfig5G(struct NR_CellConfigRequest_Type *p_req,
     /* 6. RachProcedureConfig */
     if(p_req->v.AddOrReconfigure.RachProcedureConfig.d)
     {
-
+      if (p_req->v.AddOrReconfigure.RachProcedureConfig.v.RachProcedureList.d
+          && p_req->v.AddOrReconfigure.RachProcedureConfig.v.RachProcedureList.v.d)
+      {
+        if (p_req->v.AddOrReconfigure.RachProcedureConfig.v.RachProcedureList.v.d != 1)
+        {
+          LOG_W(GNB_APP, "RachProcedureList != 1 (not handled other elements)\n");
+        }
+        if (p_req->v.AddOrReconfigure.RachProcedureConfig.v.RachProcedureList.v.v[0].ContentionResolution.d &&
+            p_req->v.AddOrReconfigure.RachProcedureConfig.v.RachProcedureList.v.v[0].ContentionResolution.v.d == NR_ContentionResolutionCtrl_Type_Msg4_Based &&
+            p_req->v.AddOrReconfigure.RachProcedureConfig.v.RachProcedureList.v.v[0].ContentionResolution.v.v.Msg4_Based.RrcPdu.d)
+        {
+          process_RachProcedureMsg4RrcMsg(&p_req->v.AddOrReconfigure.RachProcedureConfig.v.RachProcedureList.v.v[0].ContentionResolution.v.v.Msg4_Based.RrcPdu.v);
+        }
+      }
     }
 
     /* 7. DcchDtchConfig */

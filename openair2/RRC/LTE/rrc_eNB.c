@@ -7547,6 +7547,7 @@ rrc_eNB_decode_ccch(
                 ue_context_p->ue_context.ue_release_timer_s1 = 0;
                 ue_context_p->ue_context.ue_release_timer_rrc = 0;
                 ue_context_p->ue_context.reestablishment_xid = -1;
+		ue_context_p->ue_context.StatusRrc=0;
               } else {
                 LOG_I(RRC," S-TMSI doesn't exist, setting Initialue_identity_s_TMSI.m_tmsi to %p => %x\n",ue_context_p,m_tmsi);
                 //              ue_context_p = rrc_eNB_get_next_free_ue_context(ctxt_pP, NOT_A_RANDOM_UE_IDENTITY);

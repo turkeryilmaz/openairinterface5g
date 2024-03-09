@@ -2169,10 +2169,14 @@ static void sys_handle_as_security_req(struct SYSTEM_CTRL_REQ *req)
     else if (ASSecurity->d == AS_Security_Type_Release)
     {
       LOG_A(ENB_SS_SYS_TASK, "AS_Security_Type_Release received\n");
+      if(req->Common.ControlInfo.CnfFlag == true)
+      {
+        send_sys_cnf(resType, resVal, cnfType, NULL);
+        sys_confirm_done_indication();
+      } 
     }
   }
   set_syscnf(reqCnfFlag_g, resType, resVal, cnfType);
-//  send_sys_cnf(resType, resVal, cnfType, NULL);
 }
 
 /*
