@@ -70,6 +70,9 @@ queue_t nr_ul_dci_req_queue;
 queue_t nr_ul_tti_req_queue;
 pthread_mutex_t mac_IF_mutex;
 
+// Forward declarations
+void handle_rlm(rlm_t rlm_result, int frame, module_id_t module_id);
+
 static bool is_ipaddress(const char* s)
 {
     struct sockaddr_in sa;
@@ -1071,6 +1074,8 @@ static void enqueue_nr_nfapi_msg(void *buffer, ssize_t len, nfapi_p7_message_hea
                 break;
             }
 
+            int good_cells = 0;
+
             MessageDef *message_p;
             int         i;
             message_p = itti_alloc_new_message(TASK_UNKNOWN, 0, PHY_FIND_CELL_IND);
@@ -1089,7 +1094,13 @@ static void enqueue_nr_nfapi_msg(void *buffer, ssize_t len, nfapi_p7_message_hea
                         PHY_FIND_CELL_IND (message_p).cells[i].earfcn,
                         PHY_FIND_CELL_IND (message_p).cells[i].rsrp-141,
                         (PHY_FIND_CELL_IND (message_p).cells[i].rsrq-39)/2);
+
+                // TODO: compare with current cell?
+                if (PHY_FIND_CELL_IND (message_p).cells[i].rsrp > 0) {
+                    good_cells++;
+                }
             }
+            mac->p7_cell_search_ind_rlm = good_cells ? RLM_in_sync : RLM_out_of_sync;
             itti_send_msg_to_task(TASK_RRC_NRUE, INSTANCE_DEFAULT, message_p);
 
             break;
@@ -1415,9 +1426,14 @@ int nr_ue_dl_indication(nr_downlink_indication_t *dl_info)
 
         switch(rx_indication_body.pdu_type){
           case FAPI_NR_RX_PDU_TYPE_SSB:
+            if (false /*TODO: need to check for RC.ss.mode != SS_SOFTMODEM*/)
             handle_rlm(rx_indication_body.ssb_pdu.radiolink_monitoring,
                        dl_info->frame,
                        dl_info->module_id);
+            else
+            handle_rlm(mac->p7_cell_search_ind_rlm,
+                       dl_info->frame,
+                       dl_info->module_id);;
             if(rx_indication_body.ssb_pdu.decoded_pdu) {
               handle_ssb_meas(mac,
                               rx_indication_body.ssb_pdu.ssb_index,

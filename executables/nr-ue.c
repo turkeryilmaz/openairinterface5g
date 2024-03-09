@@ -349,6 +349,11 @@ static void *NRUE_phy_stub_standalone_pnf_task(void *arg)
     ul_info.slot_tx = (slot + slot_ahead) % slots_per_frame;
     ul_info.frame_tx = (ul_info.slot_rx + slot_ahead >= slots_per_frame) ? ul_info.frame_rx + 1 : ul_info.frame_rx;
 
+    if (true /*TODO: need to check for RC.ss.mode == SS_SOFTMODEM*/) {
+      if (ul_info.slot_tx == 0)
+        nr_ue_rrc_timer_trigger(mod_id, ul_info.frame_tx, gNB_id);
+    }
+
     if (pthread_mutex_lock(&mac->mutex_dl_info)) abort();
 
     if (ch_info) {
