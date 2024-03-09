@@ -371,6 +371,7 @@ struct NR_AssignedBWPs_Type {
 	SIDL_OPTIONAL(Null_Type, ActiveBWP);
 	SIDL_OPTIONAL(Null_Type, InitialBWP);
 	NR_BWP_Id_List_Type DedicatedBWPs;
+	SIDL_OPTIONAL(Null_Type, InitialBWP_RedCap);
 };
 
 typedef enum {

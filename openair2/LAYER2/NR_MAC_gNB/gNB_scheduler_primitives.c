@@ -40,6 +40,7 @@
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "common/utils/nr/nr_common.h"
 #include "UTIL/OPT/opt.h"
+#include "RRC/NR/nr_rrc_config.h"
 
 #include "openair2/LAYER2/nr_rlc/nr_rlc_oai_api.h"
 #include "F1AP_CauseRadioNetwork.h"
@@ -57,6 +58,7 @@
 #define DEBUG_gNB_SCHEDULER 1
 
 #include "common/ran_context.h"
+#include "radio/SS/ss_config.h"
 
 //#define DEBUG_DCI
 
@@ -2325,7 +2327,7 @@ void configure_UE_BWP(gNB_MAC_INST *nr_mac,
                                                   sched_ctrl->coreset,
                                                   scc,
                                                   &dl_genericParameters,
-                                                  &(nr_mac->type0_PDCCH_CSS_config[CC_id]));
+                                                  nr_mac->type0_PDCCH_CSS_config[CC_id]);
 
     // set DL DCI format
     DL_BWP->dci_format = (sched_ctrl->search_space->searchSpaceType &&
@@ -3096,6 +3098,13 @@ void prepare_initial_ul_rrc_message(gNB_MAC_INST *mac, NR_UE_info_t *UE)
   const NR_ServingCellConfigCommon_t *scc = mac->common_channels[CC_id].ServingCellConfigCommon;
   const NR_ServingCellConfig_t *sccd = mac->common_channels[CC_id].pre_ServingCellConfig;
   NR_CellGroupConfig_t *cellGroupConfig = get_initial_cellGroupConfig(UE->uid, scc, sccd, &mac->radio_config[CC_id]);
+
+  if (RC.ss.mode == SS_SOFTMODEM) {
+    if (RC.cellGroupConfig) {
+      LOG_A(NR_MAC, "Update CellGroupConfig from SS for initial RRC\n");
+      update_cellGroupConfig2(cellGroupConfig, RC.cellGroupConfig);
+    }
+  }
 
   UE->CellGroup = cellGroupConfig;
   process_CellGroup(cellGroupConfig, UE);

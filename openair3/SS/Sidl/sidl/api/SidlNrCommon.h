@@ -550,10 +550,16 @@ struct Null_Type_InitialBWP_Optional {
 	Null_Type v;
 };
 
+struct Null_Type_InitialBWP_RedCap_Optional {
+	bool d;
+	Null_Type v;
+};
+
 struct NR_AssignedBWPs_Type {
 	struct Null_Type_ActiveBWP_Optional ActiveBWP;
 	struct Null_Type_InitialBWP_Optional InitialBWP;
 	NR_BWP_Id_List_Type DedicatedBWPs;
+	struct Null_Type_InitialBWP_RedCap_Optional InitialBWP_RedCap;
 };
 
 enum NR_ResourceAllocationType_Type {

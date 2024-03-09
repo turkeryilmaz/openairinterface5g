@@ -34,6 +34,8 @@
 #include "nr_rrc_defs.h"
 #include "openair2/RRC/NR/MESSAGES/asn1_msg.h"
 
+#include "OCTET_STRING.h"
+
 // forward declaration of MAC configuration parameters, definition is included in C file
 struct nr_mac_config_t;
 typedef struct nr_mac_config_t nr_mac_config_t;
@@ -72,6 +74,7 @@ void update_cellGroupConfig(NR_CellGroupConfig_t *cellGroupConfig,
                             NR_UE_NR_Capability_t *uecap,
                             const nr_mac_config_t *configuration,
                             const NR_ServingCellConfigCommon_t *scc);
+void update_cellGroupConfig2(NR_CellGroupConfig_t *cellGroupConfig, const OCTET_STRING_t *data);
 void free_cellGroupConfig(NR_CellGroupConfig_t *cellGroupConfig);
 int encode_cellGroupConfig(NR_CellGroupConfig_t *cellGroupConfig, uint8_t *buffer, int max_buffer_size);
 NR_CellGroupConfig_t *decode_cellGroupConfig(const uint8_t *buffer, int max_buffer_size);
