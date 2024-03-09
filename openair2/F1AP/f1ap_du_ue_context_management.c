@@ -58,6 +58,16 @@ bool DURecvCb(protocol_ctxt_t *ctxt_pP,
   return true;
 }
 
+static instance_t du_create_gtpu_instance_to_cu(char *CUaddr, uint16_t CUport, char *DUaddr, uint16_t DUport)
+{
+  openAddr_t tmp = {0};
+  strncpy(tmp.originHost, DUaddr, sizeof(tmp.originHost)-1);
+  strncpy(tmp.destinationHost, CUaddr, sizeof(tmp.destinationHost)-1);
+  sprintf(tmp.originService, "%d", DUport);
+  sprintf(tmp.destinationService, "%d", CUport);
+  return gtpv1Init(tmp);
+}
+
 int DU_handle_UE_CONTEXT_SETUP_REQUEST(instance_t instance, sctp_assoc_t assoc_id, uint32_t stream, F1AP_F1AP_PDU_t *pdu)
 {
   F1AP_UEContextSetupRequest_t    *container;
@@ -150,6 +160,27 @@ int DU_handle_UE_CONTEXT_SETUP_REQUEST(instance_t instance, sctp_assoc_t assoc_i
       // 3GPP assumes GTP-U is on port 2152, but OAI is configurable
       drb_p->up_ul_tnl[0].port = getCxt(instance)->net_config.CUport;
 
+      extern instance_t DUuniqInstance;
+      if (DUuniqInstance == 0) {
+        char gtp_tunnel_ip_address[32];
+        snprintf(gtp_tunnel_ip_address,
+                 sizeof(gtp_tunnel_ip_address),
+                 "%d.%d.%d.%d",
+                 drb_p->up_ul_tnl[0].tl_address & 0xff,
+                 (drb_p->up_ul_tnl[0].tl_address >> 8) & 0xff,
+                 (drb_p->up_ul_tnl[0].tl_address >> 16) & 0xff,
+                 (drb_p->up_ul_tnl[0].tl_address >> 24) & 0xff);
+        getCxt(instance)->gtpInst = du_create_gtpu_instance_to_cu(gtp_tunnel_ip_address,
+                                                                  getCxt(instance)->net_config.CUport,
+                                                                  getCxt(instance)->net_config.DU_f1_ip_address.ipv4_address,
+                                                                  getCxt(instance)->net_config.DUport);
+        AssertFatal(getCxt(instance)->gtpInst > 0, "Failed to create CU F1-U UDP listener");
+        // Fixme: fully inconsistent instances management
+        // dirty global var is a bad fix
+        extern instance_t legacyInstanceMapping;
+        legacyInstanceMapping = DUuniqInstance = getCxt(instance)->gtpInst;
+      }
+
       switch (drbs_tobesetup_item_p->rLCMode) {
         case F1AP_RLCMode_rlc_am:
           drb_p->rlc_mode = RLC_MODE_AM;
@@ -158,6 +189,115 @@ int DU_handle_UE_CONTEXT_SETUP_REQUEST(instance_t instance, sctp_assoc_t assoc_i
         default:
           drb_p->rlc_mode = RLC_MODE_TM;
           break;
+      }
+
+      if (drbs_tobesetup_item_p->qoSInformation.present == F1AP_QoSInformation_PR_eUTRANQoS) {
+        AssertFatal(false, "Decode of eUTRANQoS is not implemented yet");
+      } // EUTRAN QoS Information
+      else {
+        /* 12.1.2 DRB_Information */
+        if (drbs_tobesetup_item_p->qoSInformation.present == F1AP_QoSInformation_PR_choice_extension) {
+          F1AP_QoSInformation_ExtIEs_t *ie =
+              (F1AP_QoSInformation_ExtIEs_t *)drbs_tobesetup_item_p->qoSInformation.choice.choice_extension;
+          if (ie->id == F1AP_ProtocolIE_ID_id_DRB_Information && ie->criticality == F1AP_Criticality_reject
+              && ie->value.present == F1AP_QoSInformation_ExtIEs__value_PR_DRB_Information) {
+            F1AP_DRB_Information_t *dRB_Info = &ie->value.choice.DRB_Information;
+            f1ap_drb_information_t *drb_info = &f1ap_ue_context_setup_req->drbs_to_be_setup->drb_info;
+
+            /* 12.1.2.1 dRB_QoS */
+            {
+              /* QoS-Flow-Level-QoS-Parameters */
+              f1ap_qos_flow_level_qos_parameters_t *drb_qos = &drb_info->drb_qos;
+              F1AP_QoSFlowLevelQoSParameters_t *dRB_QoS = &dRB_Info->dRB_QoS;
+              {
+                /* QoS Characteristics*/
+                f1ap_qos_characteristics_t *drb_qos_char = &drb_qos->qos_characteristics;
+                F1AP_QoS_Characteristics_t *dRB_QoS_Char = &dRB_QoS->qoS_Characteristics;
+
+                if (dRB_QoS_Char->present == F1AP_QoS_Characteristics_PR_non_Dynamic_5QI) {
+                  drb_qos_char->qos_type = non_dynamic;
+                  drb_qos_char->non_dynamic.fiveqi = dRB_QoS_Char->choice.non_Dynamic_5QI->fiveQI;
+                  drb_qos_char->non_dynamic.qos_priority_level = (dRB_QoS_Char->choice.non_Dynamic_5QI->qoSPriorityLevel != NULL)
+                                                                     ? *dRB_QoS_Char->choice.non_Dynamic_5QI->qoSPriorityLevel
+                                                                     : -1;
+                } else {
+                  drb_qos_char->qos_type = dynamic;
+                  drb_qos_char->dynamic.fiveqi =
+                      (dRB_QoS_Char->choice.dynamic_5QI->fiveQI != NULL) ? *dRB_QoS_Char->choice.dynamic_5QI->fiveQI : -1;
+                  drb_qos_char->dynamic.qos_priority_level = dRB_QoS_Char->choice.dynamic_5QI->qoSPriorityLevel;
+                  drb_qos_char->dynamic.packet_delay_budget = dRB_QoS_Char->choice.dynamic_5QI->packetDelayBudget;
+                  drb_qos_char->dynamic.packet_error_rate.per_scalar = dRB_QoS_Char->choice.dynamic_5QI->packetErrorRate.pER_Scalar;
+                  drb_qos_char->dynamic.packet_error_rate.per_exponent =
+                      dRB_QoS_Char->choice.dynamic_5QI->packetErrorRate.pER_Exponent;
+                }
+              }
+
+              /* nGRANallocationRetentionPriority */
+              drb_qos->alloc_reten_priority.priority_level = dRB_QoS->nGRANallocationRetentionPriority.priorityLevel;
+              drb_qos->alloc_reten_priority.preemption_vulnerability =
+                  dRB_QoS->nGRANallocationRetentionPriority.pre_emptionVulnerability;
+              drb_qos->alloc_reten_priority.preemption_capability =
+                  dRB_QoS->nGRANallocationRetentionPriority.pre_emptionVulnerability;
+            } // dRB_QoS
+
+            // 12.1.2.4 flows_Mapped_To_DRB_List
+            drb_info->flows_to_be_setup_length = dRB_Info->flows_Mapped_To_DRB_List.list.count;
+            drb_info->flows_mapped_to_drb = calloc(drb_info->flows_to_be_setup_length, sizeof(f1ap_flows_mapped_to_drb_t));
+            AssertFatal(drb_info->flows_mapped_to_drb, "could not allocate memory for drb_p->drb_info.flows_mapped_to_drb\n");
+
+            for (int k = 0; k < drb_p->drb_info.flows_to_be_setup_length; k++) {
+              f1ap_flows_mapped_to_drb_t *flows_mapped_to_drb = drb_info->flows_mapped_to_drb + k;
+              F1AP_Flows_Mapped_To_DRB_Item_t *flows_Mapped_To_Drb = dRB_Info->flows_Mapped_To_DRB_List.list.array[0] + k;
+
+              flows_mapped_to_drb->qfi = flows_Mapped_To_Drb->qoSFlowIdentifier;
+
+              /* QoS-Flow-Level-QoS-Parameters */
+              {
+                f1ap_qos_flow_level_qos_parameters_t *flow_qos = &flows_mapped_to_drb->qos_params;
+                F1AP_QoSFlowLevelQoSParameters_t *Flow_QoS = &flows_Mapped_To_Drb->qoSFlowLevelQoSParameters;
+
+                /* QoS Characteristics*/
+                {
+                  f1ap_qos_characteristics_t *flow_qos_char = &flow_qos->qos_characteristics;
+                  F1AP_QoS_Characteristics_t *Flow_QoS_Char = &Flow_QoS->qoS_Characteristics;
+
+                  if (Flow_QoS_Char->present == F1AP_QoS_Characteristics_PR_non_Dynamic_5QI) {
+                    flow_qos_char->qos_type = non_dynamic;
+                    flow_qos_char->non_dynamic.fiveqi = Flow_QoS_Char->choice.non_Dynamic_5QI->fiveQI;
+                    flow_qos_char->non_dynamic.qos_priority_level =
+                        (Flow_QoS_Char->choice.non_Dynamic_5QI->qoSPriorityLevel != NULL)
+                            ? *Flow_QoS_Char->choice.non_Dynamic_5QI->qoSPriorityLevel
+                            : -1;
+                  } else {
+                    flow_qos_char->qos_type = dynamic;
+                    flow_qos_char->dynamic.fiveqi =
+                        (Flow_QoS_Char->choice.dynamic_5QI->fiveQI != NULL) ? *Flow_QoS_Char->choice.dynamic_5QI->fiveQI : -1;
+                    flow_qos_char->dynamic.qos_priority_level = Flow_QoS_Char->choice.dynamic_5QI->qoSPriorityLevel;
+                    flow_qos_char->dynamic.packet_delay_budget = Flow_QoS_Char->choice.dynamic_5QI->packetDelayBudget;
+                    flow_qos_char->dynamic.packet_error_rate.per_scalar =
+                        Flow_QoS_Char->choice.dynamic_5QI->packetErrorRate.pER_Scalar;
+                    flow_qos_char->dynamic.packet_error_rate.per_exponent =
+                        Flow_QoS_Char->choice.dynamic_5QI->packetErrorRate.pER_Exponent;
+                  }
+                }
+
+                /* nGRANallocationRetentionPriority */
+                flow_qos->alloc_reten_priority.priority_level = Flow_QoS->nGRANallocationRetentionPriority.priorityLevel;
+                flow_qos->alloc_reten_priority.preemption_vulnerability =
+                    Flow_QoS->nGRANallocationRetentionPriority.pre_emptionVulnerability;
+                flow_qos->alloc_reten_priority.preemption_capability =
+                    Flow_QoS->nGRANallocationRetentionPriority.pre_emptionVulnerability;
+              }
+            }
+
+            /* S-NSSAI */
+            OCTET_STRING_TO_INT8(&dRB_Info->sNSSAI.sST, drb_p->nssai.sst);
+            if (dRB_Info->sNSSAI.sD != NULL)
+              memcpy((uint8_t *)&drb_p->nssai.sd, dRB_Info->sNSSAI.sD->buf, 3);
+            else
+              drb_p->nssai.sd = 0xffffff;
+          }
+        }
       }
     }
   }
@@ -770,16 +910,6 @@ int DU_send_UE_CONTEXT_RELEASE_COMPLETE(sctp_assoc_t assoc_id, f1ap_ue_context_r
 
   f1ap_itti_send_sctp_data_req(assoc_id, buffer, len);
   return 0;
-}
-
-static instance_t du_create_gtpu_instance_to_cu(char *CUaddr, uint16_t CUport, char *DUaddr, uint16_t DUport)
-{
-  openAddr_t tmp = {0};
-  strncpy(tmp.originHost, DUaddr, sizeof(tmp.originHost)-1);
-  strncpy(tmp.destinationHost, CUaddr, sizeof(tmp.destinationHost)-1);
-  sprintf(tmp.originService, "%d", DUport);
-  sprintf(tmp.destinationService, "%d", CUport);
-  return gtpv1Init(tmp);
 }
 
 int DU_handle_UE_CONTEXT_MODIFICATION_REQUEST(instance_t instance, sctp_assoc_t assoc_id, uint32_t stream, F1AP_F1AP_PDU_t *pdu)
