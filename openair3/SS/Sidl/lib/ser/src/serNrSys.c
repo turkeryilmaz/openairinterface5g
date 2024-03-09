@@ -19341,6 +19341,17 @@ static int _serNrSysEncNull_Type_InitialBWP_Optional(unsigned char* _buffer, siz
 	return SIDL_STATUS_OK;
 }
 
+static int _serNrSysEncNull_Type_InitialBWP_RedCap_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct Null_Type_InitialBWP_RedCap_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	HTON_8(&_buffer[*_lidx], p->v, _lidx);
+
+	return SIDL_STATUS_OK;
+}
+
 static int _serNrSysEncNR_AssignedBWPs_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct NR_AssignedBWPs_Type* p)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -19351,6 +19362,7 @@ static int _serNrSysEncNR_AssignedBWPs_Type(unsigned char* _buffer, size_t _size
 	for (size_t i1 = 0; i1 < p->DedicatedBWPs.d; i1++) {
 		HTON_8(&_buffer[*_lidx], p->DedicatedBWPs.v[i1], _lidx);
 	}
+	_serNrSysEncNull_Type_InitialBWP_RedCap_Optional(_buffer, _size, _lidx, &p->InitialBWP_RedCap);
 
 	return SIDL_STATUS_OK;
 }
@@ -36521,6 +36533,298 @@ static int _serNrSysEncNR_PDCP_CountReq_Type(unsigned char* _buffer, size_t _siz
 	return SIDL_STATUS_OK;
 }
 
+static int _serNrSysEncNR_PDCCH_Order_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct NR_PDCCH_Order_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	for (size_t i1 = 0; i1 < 6; i1++) {
+		HTON_8(&_buffer[*_lidx], p->RA_PreambleIndex[i1], _lidx);
+	}
+	_serNrSysEncNR_DciCommon_UL_SUL_Indicator_Type(_buffer, _size, _lidx, &p->UL_SUL_Indicator);
+	for (size_t i1 = 0; i1 < 6; i1++) {
+		HTON_8(&_buffer[*_lidx], p->SSB_Index[i1], _lidx);
+	}
+	for (size_t i1 = 0; i1 < 4; i1++) {
+		HTON_8(&_buffer[*_lidx], p->PrachMaskIndex[i1], _lidx);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serNrSysEncNR_SlotOffsetList_Type_NR_DciWithShortMessageOnly_Type_SlotOffsetList_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct NR_SlotOffsetList_Type_NR_DciWithShortMessageOnly_Type_SlotOffsetList_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	HTON_32(&_buffer[*_lidx], p->v.d, _lidx);
+	for (size_t i1 = 0; i1 < p->v.d; i1++) {
+		HTON_32(&_buffer[*_lidx], p->v.v[i1], _lidx);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serNrSysEncNR_DciWithShortMessageOnly_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct NR_DciWithShortMessageOnly_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	for (size_t i1 = 0; i1 < 2; i1++) {
+		HTON_8(&_buffer[*_lidx], p->ShortMessageIndicator[i1], _lidx);
+	}
+	for (size_t i1 = 0; i1 < 8; i1++) {
+		HTON_8(&_buffer[*_lidx], p->ShortMessages[i1], _lidx);
+	}
+	_serNrSysEncNR_SlotOffsetList_Type_NR_DciWithShortMessageOnly_Type_SlotOffsetList_Optional(_buffer, _size, _lidx, &p->SlotOffsetList);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serNrSysEncNR_DciFormat_2_0_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct NR_DciFormat_2_0_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_32(&_buffer[*_lidx], p->SfiList.d, _lidx);
+	for (size_t i1 = 0; i1 < p->SfiList.d; i1++) {
+		HTON_32(&_buffer[*_lidx], p->SfiList.v[i1].d, _lidx);
+		for (size_t i2 = 0; i2 < p->SfiList.v[i1].d; i2++) {
+			HTON_8(&_buffer[*_lidx], p->SfiList.v[i1].v[i2], _lidx);
+		}
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serNrSysEncNR_DciFormat_2_1_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct NR_DciFormat_2_1_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_32(&_buffer[*_lidx], p->IntValueList.d, _lidx);
+	for (size_t i1 = 0; i1 < p->IntValueList.d; i1++) {
+		for (size_t i2 = 0; i2 < 14; i2++) {
+			HTON_8(&_buffer[*_lidx], p->IntValueList.v[i1][i2], _lidx);
+		}
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serNrSysEncNR_DciFormat_2_2_ClosedLoopIndicator_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct NR_DciFormat_2_2_ClosedLoopIndicator_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->None, _lidx);
+	for (size_t i2 = 0; i2 < 1; i2++) {
+		HTON_8(&_buffer[*_lidx], p->Index[i2], _lidx);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serNrSysEncNR_DciFormat_2_2_TpcBlock_Type_Value(unsigned char* _buffer, size_t _size, size_t* _lidx, const union NR_DciFormat_2_2_TpcBlock_Type_Value* p, enum NR_DciFormat_2_2_TpcBlock_Type_Sel d)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	if (d == NR_DciFormat_2_2_TpcBlock_Type_ClosedLoopIndicator) {
+		_serNrSysEncNR_DciFormat_2_2_ClosedLoopIndicator_Type(_buffer, _size, _lidx, &p->ClosedLoopIndicator);
+		return SIDL_STATUS_OK;
+	}
+	if (d == NR_DciFormat_2_2_TpcBlock_Type_TpcCommand) {
+		_serNrSysEncNR_DciCommon_TpcCommand_Type(_buffer, _size, _lidx, &p->TpcCommand);
+		return SIDL_STATUS_OK;
+	}
+
+	return SIDL_STATUS_ERROR;
+}
+
+static int _serNrSysEncNR_DciFormat_2_2_TpcBlock_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct NR_DciFormat_2_2_TpcBlock_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp = (size_t)p->d;
+		HTON_32(&_buffer[*_lidx], _tmp, _lidx);
+	}
+	_serNrSysEncNR_DciFormat_2_2_TpcBlock_Type_Value(_buffer, _size, _lidx, &p->v, p->d);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serNrSysEncNR_DciFormat_2_2_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct NR_DciFormat_2_2_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_32(&_buffer[*_lidx], p->TpcBlockList.d, _lidx);
+	for (size_t i1 = 0; i1 < p->TpcBlockList.d; i1++) {
+		_serNrSysEncNR_DciFormat_2_2_TpcBlock_Type(_buffer, _size, _lidx, &p->TpcBlockList.v[i1]);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serNrSysEncNR_DciFormat_2_3_SrsRequest_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct NR_DciFormat_2_3_SrsRequest_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->None, _lidx);
+	for (size_t i1 = 0; i1 < 2; i1++) {
+		HTON_8(&_buffer[*_lidx], p->SrsRequestValue[i1], _lidx);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serNrSysEncNR_DciFormat_2_3_TypeA_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct NR_DciFormat_2_3_TypeA_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serNrSysEncNR_DciFormat_2_3_SrsRequest_Type(_buffer, _size, _lidx, &p->SrsRequest);
+	HTON_32(&_buffer[*_lidx], p->TpcCommandList.d, _lidx);
+	for (size_t i1 = 0; i1 < p->TpcCommandList.d; i1++) {
+		_serNrSysEncNR_DciCommon_TpcCommand_Type(_buffer, _size, _lidx, &p->TpcCommandList.v[i1]);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serNrSysEncNR_DciFormat_2_3_SingleBlockTypeB_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct NR_DciFormat_2_3_SingleBlockTypeB_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serNrSysEncNR_DciFormat_2_3_SrsRequest_Type(_buffer, _size, _lidx, &p->SrsRequest);
+	_serNrSysEncNR_DciCommon_TpcCommand_Type(_buffer, _size, _lidx, &p->TpcCommand);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serNrSysEncNR_DciFormat_2_3_TypeA_B_Type_Value(unsigned char* _buffer, size_t _size, size_t* _lidx, const union NR_DciFormat_2_3_TypeA_B_Type_Value* p, enum NR_DciFormat_2_3_TypeA_B_Type_Sel d)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	if (d == NR_DciFormat_2_3_TypeA_B_Type_TypeA) {
+		_serNrSysEncNR_DciFormat_2_3_TypeA_Type(_buffer, _size, _lidx, &p->TypeA);
+		return SIDL_STATUS_OK;
+	}
+	if (d == NR_DciFormat_2_3_TypeA_B_Type_TypeB) {
+		HTON_32(&_buffer[*_lidx], p->TypeB.d, _lidx);
+		for (size_t i1 = 0; i1 < p->TypeB.d; i1++) {
+			_serNrSysEncNR_DciFormat_2_3_SingleBlockTypeB_Type(_buffer, _size, _lidx, &p->TypeB.v[i1]);
+		}
+		return SIDL_STATUS_OK;
+	}
+
+	return SIDL_STATUS_ERROR;
+}
+
+static int _serNrSysEncNR_DciFormat_2_3_TypeA_B_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct NR_DciFormat_2_3_TypeA_B_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp = (size_t)p->d;
+		HTON_32(&_buffer[*_lidx], _tmp, _lidx);
+	}
+	_serNrSysEncNR_DciFormat_2_3_TypeA_B_Type_Value(_buffer, _size, _lidx, &p->v, p->d);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serNrSysEncNR_DciFormat_2_3_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct NR_DciFormat_2_3_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serNrSysEncNR_DciFormat_2_3_TypeA_B_Type(_buffer, _size, _lidx, &p->TypeA_B);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serNrSysEncNR_DciFormat_2_6_Block_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct NR_DciFormat_2_6_Block_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	for (size_t i2 = 0; i2 < 1; i2++) {
+		HTON_8(&_buffer[*_lidx], p->WakeupIndication[i2], _lidx);
+	}
+	_serNrSysEncNR_DciFormat_X_1_SCellDormancyIndication_Type(_buffer, _size, _lidx, &p->SCellDormacyIndication);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serNrSysEncNR_DciFormat_2_6_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct NR_DciFormat_2_6_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_32(&_buffer[*_lidx], p->BlockList.d, _lidx);
+	for (size_t i1 = 0; i1 < p->BlockList.d; i1++) {
+		_serNrSysEncNR_DciFormat_2_6_Block_Type(_buffer, _size, _lidx, &p->BlockList.v[i1]);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serNrSysEncNR_DCI_TriggerFormat_Type_Value(unsigned char* _buffer, size_t _size, size_t* _lidx, const union NR_DCI_TriggerFormat_Type_Value* p, enum NR_DCI_TriggerFormat_Type_Sel d)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	if (d == NR_DCI_TriggerFormat_Type_PdcchOrder) {
+		_serNrSysEncNR_PDCCH_Order_Type(_buffer, _size, _lidx, &p->PdcchOrder);
+		return SIDL_STATUS_OK;
+	}
+	if (d == NR_DCI_TriggerFormat_Type_ShortMessage) {
+		_serNrSysEncNR_DciWithShortMessageOnly_Type(_buffer, _size, _lidx, &p->ShortMessage);
+		return SIDL_STATUS_OK;
+	}
+	if (d == NR_DCI_TriggerFormat_Type_DciFormat_2_0) {
+		_serNrSysEncNR_DciFormat_2_0_Type(_buffer, _size, _lidx, &p->DciFormat_2_0);
+		return SIDL_STATUS_OK;
+	}
+	if (d == NR_DCI_TriggerFormat_Type_DciFormat_2_1) {
+		_serNrSysEncNR_DciFormat_2_1_Type(_buffer, _size, _lidx, &p->DciFormat_2_1);
+		return SIDL_STATUS_OK;
+	}
+	if (d == NR_DCI_TriggerFormat_Type_DciFormat_2_2) {
+		_serNrSysEncNR_DciFormat_2_2_Type(_buffer, _size, _lidx, &p->DciFormat_2_2);
+		return SIDL_STATUS_OK;
+	}
+	if (d == NR_DCI_TriggerFormat_Type_DciFormat_2_3) {
+		_serNrSysEncNR_DciFormat_2_3_Type(_buffer, _size, _lidx, &p->DciFormat_2_3);
+		return SIDL_STATUS_OK;
+	}
+	if (d == NR_DCI_TriggerFormat_Type_DciFormat_2_6) {
+		_serNrSysEncNR_DciFormat_2_6_Type(_buffer, _size, _lidx, &p->DciFormat_2_6);
+		return SIDL_STATUS_OK;
+	}
+
+	return SIDL_STATUS_ERROR;
+}
+
+static int _serNrSysEncNR_DCI_TriggerFormat_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct NR_DCI_TriggerFormat_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp = (size_t)p->d;
+		HTON_32(&_buffer[*_lidx], _tmp, _lidx);
+	}
+	_serNrSysEncNR_DCI_TriggerFormat_Type_Value(_buffer, _size, _lidx, &p->v, p->d);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serNrSysEncNR_DCI_Trigger_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct NR_DCI_Trigger_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serNrSysEncNR_AssignedBWPs_Type(_buffer, _size, _lidx, &p->AssignedBWPs);
+	{
+		size_t _tmp = (size_t)p->SearchSpaceType;
+		HTON_32(&_buffer[*_lidx], _tmp, _lidx);
+	}
+	_serNrSysEncNR_DCI_TriggerFormat_Type(_buffer, _size, _lidx, &p->DciFormat);
+
+	return SIDL_STATUS_OK;
+}
+
 static int _serNrSysEncSQN_NR_PagingUE_Identity_Value(unsigned char* _buffer, size_t _size, size_t* _lidx, const union SQN_NR_PagingUE_Identity_Value* p, enum SQN_NR_PagingUE_Identity_Sel d)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -36833,7 +37137,7 @@ static int _serNrSysEncSQN_NR_PCCH_Message(unsigned char* _buffer, size_t _size,
 	return SIDL_STATUS_OK;
 }
 
-static int _serNrSysEncNR_SlotOffsetList_Type_SlotOffsetList_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct NR_SlotOffsetList_Type_SlotOffsetList_Optional* p)
+static int _serNrSysEncNR_SlotOffsetList_Type_NR_PagingTrigger_Type_SlotOffsetList_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct NR_SlotOffsetList_Type_NR_PagingTrigger_Type_SlotOffsetList_Optional* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
@@ -36852,7 +37156,7 @@ static int _serNrSysEncNR_PagingTrigger_Type(unsigned char* _buffer, size_t _siz
 	(void)_size; // TODO: generate boundaries checking
 
 	_serNrSysEncSQN_NR_PCCH_Message(_buffer, _size, _lidx, &p->Paging);
-	_serNrSysEncNR_SlotOffsetList_Type_SlotOffsetList_Optional(_buffer, _size, _lidx, &p->SlotOffsetList);
+	_serNrSysEncNR_SlotOffsetList_Type_NR_PagingTrigger_Type_SlotOffsetList_Optional(_buffer, _size, _lidx, &p->SlotOffsetList);
 
 	return SIDL_STATUS_OK;
 }
@@ -36981,6 +37285,10 @@ static int _serNrSysEncNR_SystemRequest_Type_Value(unsigned char* _buffer, size_
 	}
 	if (d == NR_SystemRequest_Type_PdcpCount) {
 		_serNrSysEncNR_PDCP_CountReq_Type(_buffer, _size, _lidx, &p->PdcpCount);
+		return SIDL_STATUS_OK;
+	}
+	if (d == NR_SystemRequest_Type_DciTrigger) {
+		_serNrSysEncNR_DCI_Trigger_Type(_buffer, _size, _lidx, &p->DciTrigger);
 		return SIDL_STATUS_OK;
 	}
 	if (d == NR_SystemRequest_Type_Paging) {
@@ -57008,6 +57316,17 @@ static int _serNrSysDecNull_Type_InitialBWP_Optional(const unsigned char* _buffe
 	return SIDL_STATUS_OK;
 }
 
+static int _serNrSysDecNull_Type_InitialBWP_RedCap_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct Null_Type_InitialBWP_RedCap_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	NTOH_8(p->v, &_buffer[*_lidx], _lidx);
+
+	return SIDL_STATUS_OK;
+}
+
 static int _serNrSysDecNR_AssignedBWPs_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct NR_AssignedBWPs_Type* p)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -57019,6 +57338,7 @@ static int _serNrSysDecNR_AssignedBWPs_Type(const unsigned char* _buffer, size_t
 	for (size_t i1 = 0; i1 < p->DedicatedBWPs.d; i1++) {
 		NTOH_8(p->DedicatedBWPs.v[i1], &_buffer[*_lidx], _lidx);
 	}
+	_serNrSysDecNull_Type_InitialBWP_RedCap_Optional(_buffer, _size, _lidx, &p->InitialBWP_RedCap);
 
 	return SIDL_STATUS_OK;
 }
@@ -74851,6 +75171,310 @@ static int _serNrSysDecNR_PDCP_CountReq_Type(const unsigned char* _buffer, size_
 	return SIDL_STATUS_OK;
 }
 
+static int _serNrSysDecNR_PDCCH_Order_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct NR_PDCCH_Order_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	for (size_t i1 = 0; i1 < 6; i1++) {
+		NTOH_8(p->RA_PreambleIndex[i1], &_buffer[*_lidx], _lidx);
+	}
+	_serNrSysDecNR_DciCommon_UL_SUL_Indicator_Type(_buffer, _size, _lidx, &p->UL_SUL_Indicator);
+	for (size_t i1 = 0; i1 < 6; i1++) {
+		NTOH_8(p->SSB_Index[i1], &_buffer[*_lidx], _lidx);
+	}
+	for (size_t i1 = 0; i1 < 4; i1++) {
+		NTOH_8(p->PrachMaskIndex[i1], &_buffer[*_lidx], _lidx);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serNrSysDecNR_SlotOffsetList_Type_NR_DciWithShortMessageOnly_Type_SlotOffsetList_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct NR_SlotOffsetList_Type_NR_DciWithShortMessageOnly_Type_SlotOffsetList_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
+	p->v.v = (int32_t*)serMalloc(_mem, p->v.d * sizeof(int32_t));
+	for (size_t i1 = 0; i1 < p->v.d; i1++) {
+		NTOH_32(p->v.v[i1], &_buffer[*_lidx], _lidx);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serNrSysDecNR_DciWithShortMessageOnly_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct NR_DciWithShortMessageOnly_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	for (size_t i1 = 0; i1 < 2; i1++) {
+		NTOH_8(p->ShortMessageIndicator[i1], &_buffer[*_lidx], _lidx);
+	}
+	for (size_t i1 = 0; i1 < 8; i1++) {
+		NTOH_8(p->ShortMessages[i1], &_buffer[*_lidx], _lidx);
+	}
+	_serNrSysDecNR_SlotOffsetList_Type_NR_DciWithShortMessageOnly_Type_SlotOffsetList_Optional(_buffer, _size, _lidx, _mem, &p->SlotOffsetList);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serNrSysDecNR_DciFormat_2_0_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct NR_DciFormat_2_0_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_32(p->SfiList.d, &_buffer[*_lidx], _lidx);
+	p->SfiList.v = (BIT_STRING*)serMalloc(_mem, p->SfiList.d * sizeof(BIT_STRING));
+	for (size_t i1 = 0; i1 < p->SfiList.d; i1++) {
+		NTOH_32(p->SfiList.v[i1].d, &_buffer[*_lidx], _lidx);
+		p->SfiList.v[i1].v = (BIT_STRING_ELEMENT*)serMalloc(_mem, p->SfiList.v[i1].d * sizeof(BIT_STRING_ELEMENT));
+		for (size_t i2 = 0; i2 < p->SfiList.v[i1].d; i2++) {
+			NTOH_8(p->SfiList.v[i1].v[i2], &_buffer[*_lidx], _lidx);
+		}
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serNrSysDecNR_DciFormat_2_1_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct NR_DciFormat_2_1_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_32(p->IntValueList.d, &_buffer[*_lidx], _lidx);
+	p->IntValueList.v = (B14_Type*)serMalloc(_mem, p->IntValueList.d * sizeof(B14_Type));
+	for (size_t i1 = 0; i1 < p->IntValueList.d; i1++) {
+		for (size_t i2 = 0; i2 < 14; i2++) {
+			NTOH_8(p->IntValueList.v[i1][i2], &_buffer[*_lidx], _lidx);
+		}
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serNrSysDecNR_DciFormat_2_2_ClosedLoopIndicator_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct NR_DciFormat_2_2_ClosedLoopIndicator_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->None, &_buffer[*_lidx], _lidx);
+	for (size_t i2 = 0; i2 < 1; i2++) {
+		NTOH_8(p->Index[i2], &_buffer[*_lidx], _lidx);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serNrSysDecNR_DciFormat_2_2_TpcBlock_Type_Value(const unsigned char* _buffer, size_t _size, size_t* _lidx, union NR_DciFormat_2_2_TpcBlock_Type_Value* p, enum NR_DciFormat_2_2_TpcBlock_Type_Sel d)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	if (d == NR_DciFormat_2_2_TpcBlock_Type_ClosedLoopIndicator) {
+		_serNrSysDecNR_DciFormat_2_2_ClosedLoopIndicator_Type(_buffer, _size, _lidx, &p->ClosedLoopIndicator);
+		return SIDL_STATUS_OK;
+	}
+	if (d == NR_DciFormat_2_2_TpcBlock_Type_TpcCommand) {
+		_serNrSysDecNR_DciCommon_TpcCommand_Type(_buffer, _size, _lidx, &p->TpcCommand);
+		return SIDL_STATUS_OK;
+	}
+
+	return SIDL_STATUS_ERROR;
+}
+
+static int _serNrSysDecNR_DciFormat_2_2_TpcBlock_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct NR_DciFormat_2_2_TpcBlock_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp;
+		NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
+		p->d = (enum NR_DciFormat_2_2_TpcBlock_Type_Sel)_tmp;
+	}
+	_serNrSysDecNR_DciFormat_2_2_TpcBlock_Type_Value(_buffer, _size, _lidx, &p->v, p->d);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serNrSysDecNR_DciFormat_2_2_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct NR_DciFormat_2_2_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_32(p->TpcBlockList.d, &_buffer[*_lidx], _lidx);
+	p->TpcBlockList.v = (struct NR_DciFormat_2_2_TpcBlock_Type*)serMalloc(_mem, p->TpcBlockList.d * sizeof(struct NR_DciFormat_2_2_TpcBlock_Type));
+	for (size_t i1 = 0; i1 < p->TpcBlockList.d; i1++) {
+		_serNrSysDecNR_DciFormat_2_2_TpcBlock_Type(_buffer, _size, _lidx, &p->TpcBlockList.v[i1]);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serNrSysDecNR_DciFormat_2_3_SrsRequest_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct NR_DciFormat_2_3_SrsRequest_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->None, &_buffer[*_lidx], _lidx);
+	for (size_t i1 = 0; i1 < 2; i1++) {
+		NTOH_8(p->SrsRequestValue[i1], &_buffer[*_lidx], _lidx);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serNrSysDecNR_DciFormat_2_3_TypeA_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct NR_DciFormat_2_3_TypeA_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serNrSysDecNR_DciFormat_2_3_SrsRequest_Type(_buffer, _size, _lidx, &p->SrsRequest);
+	NTOH_32(p->TpcCommandList.d, &_buffer[*_lidx], _lidx);
+	p->TpcCommandList.v = (struct NR_DciCommon_TpcCommand_Type*)serMalloc(_mem, p->TpcCommandList.d * sizeof(struct NR_DciCommon_TpcCommand_Type));
+	for (size_t i1 = 0; i1 < p->TpcCommandList.d; i1++) {
+		_serNrSysDecNR_DciCommon_TpcCommand_Type(_buffer, _size, _lidx, &p->TpcCommandList.v[i1]);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serNrSysDecNR_DciFormat_2_3_SingleBlockTypeB_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct NR_DciFormat_2_3_SingleBlockTypeB_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serNrSysDecNR_DciFormat_2_3_SrsRequest_Type(_buffer, _size, _lidx, &p->SrsRequest);
+	_serNrSysDecNR_DciCommon_TpcCommand_Type(_buffer, _size, _lidx, &p->TpcCommand);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serNrSysDecNR_DciFormat_2_3_TypeA_B_Type_Value(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, union NR_DciFormat_2_3_TypeA_B_Type_Value* p, enum NR_DciFormat_2_3_TypeA_B_Type_Sel d)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	if (d == NR_DciFormat_2_3_TypeA_B_Type_TypeA) {
+		_serNrSysDecNR_DciFormat_2_3_TypeA_Type(_buffer, _size, _lidx, _mem, &p->TypeA);
+		return SIDL_STATUS_OK;
+	}
+	if (d == NR_DciFormat_2_3_TypeA_B_Type_TypeB) {
+		NTOH_32(p->TypeB.d, &_buffer[*_lidx], _lidx);
+		p->TypeB.v = (struct NR_DciFormat_2_3_SingleBlockTypeB_Type*)serMalloc(_mem, p->TypeB.d * sizeof(struct NR_DciFormat_2_3_SingleBlockTypeB_Type));
+		for (size_t i1 = 0; i1 < p->TypeB.d; i1++) {
+			_serNrSysDecNR_DciFormat_2_3_SingleBlockTypeB_Type(_buffer, _size, _lidx, &p->TypeB.v[i1]);
+		}
+		return SIDL_STATUS_OK;
+	}
+
+	return SIDL_STATUS_ERROR;
+}
+
+static int _serNrSysDecNR_DciFormat_2_3_TypeA_B_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct NR_DciFormat_2_3_TypeA_B_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp;
+		NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
+		p->d = (enum NR_DciFormat_2_3_TypeA_B_Type_Sel)_tmp;
+	}
+	_serNrSysDecNR_DciFormat_2_3_TypeA_B_Type_Value(_buffer, _size, _lidx, _mem, &p->v, p->d);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serNrSysDecNR_DciFormat_2_3_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct NR_DciFormat_2_3_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serNrSysDecNR_DciFormat_2_3_TypeA_B_Type(_buffer, _size, _lidx, _mem, &p->TypeA_B);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serNrSysDecNR_DciFormat_2_6_Block_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct NR_DciFormat_2_6_Block_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	for (size_t i2 = 0; i2 < 1; i2++) {
+		NTOH_8(p->WakeupIndication[i2], &_buffer[*_lidx], _lidx);
+	}
+	_serNrSysDecNR_DciFormat_X_1_SCellDormancyIndication_Type(_buffer, _size, _lidx, _mem, &p->SCellDormacyIndication);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serNrSysDecNR_DciFormat_2_6_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct NR_DciFormat_2_6_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_32(p->BlockList.d, &_buffer[*_lidx], _lidx);
+	p->BlockList.v = (struct NR_DciFormat_2_6_Block_Type*)serMalloc(_mem, p->BlockList.d * sizeof(struct NR_DciFormat_2_6_Block_Type));
+	for (size_t i1 = 0; i1 < p->BlockList.d; i1++) {
+		_serNrSysDecNR_DciFormat_2_6_Block_Type(_buffer, _size, _lidx, _mem, &p->BlockList.v[i1]);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serNrSysDecNR_DCI_TriggerFormat_Type_Value(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, union NR_DCI_TriggerFormat_Type_Value* p, enum NR_DCI_TriggerFormat_Type_Sel d)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	if (d == NR_DCI_TriggerFormat_Type_PdcchOrder) {
+		_serNrSysDecNR_PDCCH_Order_Type(_buffer, _size, _lidx, &p->PdcchOrder);
+		return SIDL_STATUS_OK;
+	}
+	if (d == NR_DCI_TriggerFormat_Type_ShortMessage) {
+		_serNrSysDecNR_DciWithShortMessageOnly_Type(_buffer, _size, _lidx, _mem, &p->ShortMessage);
+		return SIDL_STATUS_OK;
+	}
+	if (d == NR_DCI_TriggerFormat_Type_DciFormat_2_0) {
+		_serNrSysDecNR_DciFormat_2_0_Type(_buffer, _size, _lidx, _mem, &p->DciFormat_2_0);
+		return SIDL_STATUS_OK;
+	}
+	if (d == NR_DCI_TriggerFormat_Type_DciFormat_2_1) {
+		_serNrSysDecNR_DciFormat_2_1_Type(_buffer, _size, _lidx, _mem, &p->DciFormat_2_1);
+		return SIDL_STATUS_OK;
+	}
+	if (d == NR_DCI_TriggerFormat_Type_DciFormat_2_2) {
+		_serNrSysDecNR_DciFormat_2_2_Type(_buffer, _size, _lidx, _mem, &p->DciFormat_2_2);
+		return SIDL_STATUS_OK;
+	}
+	if (d == NR_DCI_TriggerFormat_Type_DciFormat_2_3) {
+		_serNrSysDecNR_DciFormat_2_3_Type(_buffer, _size, _lidx, _mem, &p->DciFormat_2_3);
+		return SIDL_STATUS_OK;
+	}
+	if (d == NR_DCI_TriggerFormat_Type_DciFormat_2_6) {
+		_serNrSysDecNR_DciFormat_2_6_Type(_buffer, _size, _lidx, _mem, &p->DciFormat_2_6);
+		return SIDL_STATUS_OK;
+	}
+
+	return SIDL_STATUS_ERROR;
+}
+
+static int _serNrSysDecNR_DCI_TriggerFormat_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct NR_DCI_TriggerFormat_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp;
+		NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
+		p->d = (enum NR_DCI_TriggerFormat_Type_Sel)_tmp;
+	}
+	_serNrSysDecNR_DCI_TriggerFormat_Type_Value(_buffer, _size, _lidx, _mem, &p->v, p->d);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serNrSysDecNR_DCI_Trigger_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct NR_DCI_Trigger_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serNrSysDecNR_AssignedBWPs_Type(_buffer, _size, _lidx, _mem, &p->AssignedBWPs);
+	{
+		size_t _tmp;
+		NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
+		p->SearchSpaceType = (NR_SearchSpaceType_Type)_tmp;
+	}
+	_serNrSysDecNR_DCI_TriggerFormat_Type(_buffer, _size, _lidx, _mem, &p->DciFormat);
+
+	return SIDL_STATUS_OK;
+}
+
 static int _serNrSysDecSQN_NR_PagingUE_Identity_Value(const unsigned char* _buffer, size_t _size, size_t* _lidx, union SQN_NR_PagingUE_Identity_Value* p, enum SQN_NR_PagingUE_Identity_Sel d)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -75173,7 +75797,7 @@ static int _serNrSysDecSQN_NR_PCCH_Message(const unsigned char* _buffer, size_t 
 	return SIDL_STATUS_OK;
 }
 
-static int _serNrSysDecNR_SlotOffsetList_Type_SlotOffsetList_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct NR_SlotOffsetList_Type_SlotOffsetList_Optional* p)
+static int _serNrSysDecNR_SlotOffsetList_Type_NR_PagingTrigger_Type_SlotOffsetList_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct NR_SlotOffsetList_Type_NR_PagingTrigger_Type_SlotOffsetList_Optional* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
@@ -75193,7 +75817,7 @@ static int _serNrSysDecNR_PagingTrigger_Type(const unsigned char* _buffer, size_
 	(void)_size; // TODO: generate boundaries checking
 
 	_serNrSysDecSQN_NR_PCCH_Message(_buffer, _size, _lidx, _mem, &p->Paging);
-	_serNrSysDecNR_SlotOffsetList_Type_SlotOffsetList_Optional(_buffer, _size, _lidx, _mem, &p->SlotOffsetList);
+	_serNrSysDecNR_SlotOffsetList_Type_NR_PagingTrigger_Type_SlotOffsetList_Optional(_buffer, _size, _lidx, _mem, &p->SlotOffsetList);
 
 	return SIDL_STATUS_OK;
 }
@@ -75325,6 +75949,10 @@ static int _serNrSysDecNR_SystemRequest_Type_Value(const unsigned char* _buffer,
 	}
 	if (d == NR_SystemRequest_Type_PdcpCount) {
 		_serNrSysDecNR_PDCP_CountReq_Type(_buffer, _size, _lidx, _mem, &p->PdcpCount);
+		return SIDL_STATUS_OK;
+	}
+	if (d == NR_SystemRequest_Type_DciTrigger) {
+		_serNrSysDecNR_DCI_Trigger_Type(_buffer, _size, _lidx, _mem, &p->DciTrigger);
 		return SIDL_STATUS_OK;
 	}
 	if (d == NR_SystemRequest_Type_Paging) {
@@ -82594,6 +83222,136 @@ static void _serNrSysFreeNR_PDCP_CountReq_Type(struct NR_PDCP_CountReq_Type* p)
 	_serNrSysFreeNR_PDCP_CountReq_Type_Value(&p->v, p->d);
 }
 
+static void _serNrSysFreeNR_SlotOffsetList_Type_NR_DciWithShortMessageOnly_Type_SlotOffsetList_Optional(struct NR_SlotOffsetList_Type_NR_DciWithShortMessageOnly_Type_SlotOffsetList_Optional* p)
+{
+	if (!p->d) return;
+	if (p->v.v) {
+		serFree(p->v.v);
+	}
+}
+
+static void _serNrSysFreeNR_DciWithShortMessageOnly_Type(struct NR_DciWithShortMessageOnly_Type* p)
+{
+	_serNrSysFreeNR_SlotOffsetList_Type_NR_DciWithShortMessageOnly_Type_SlotOffsetList_Optional(&p->SlotOffsetList);
+}
+
+static void _serNrSysFreeNR_DciFormat_2_0_Type(struct NR_DciFormat_2_0_Type* p)
+{
+	if (p->SfiList.v) {
+		for (size_t i1 = 0; i1 < p->SfiList.d; i1++) {
+			if (p->SfiList.v[i1].v) {
+				serFree(p->SfiList.v[i1].v);
+			}
+		}
+		serFree(p->SfiList.v);
+	}
+}
+
+static void _serNrSysFreeNR_DciFormat_2_1_Type(struct NR_DciFormat_2_1_Type* p)
+{
+	if (p->IntValueList.v) {
+		serFree(p->IntValueList.v);
+	}
+}
+
+static void _serNrSysFreeNR_DciFormat_2_2_Type(struct NR_DciFormat_2_2_Type* p)
+{
+	if (p->TpcBlockList.v) {
+		for (size_t i1 = 0; i1 < p->TpcBlockList.d; i1++) {
+		}
+		serFree(p->TpcBlockList.v);
+	}
+}
+
+static void _serNrSysFreeNR_DciFormat_2_3_TypeA_Type(struct NR_DciFormat_2_3_TypeA_Type* p)
+{
+	if (p->TpcCommandList.v) {
+		for (size_t i1 = 0; i1 < p->TpcCommandList.d; i1++) {
+		}
+		serFree(p->TpcCommandList.v);
+	}
+}
+
+static void _serNrSysFreeNR_DciFormat_2_3_TypeA_B_Type_Value(union NR_DciFormat_2_3_TypeA_B_Type_Value* p, enum NR_DciFormat_2_3_TypeA_B_Type_Sel d)
+{
+	if (d == NR_DciFormat_2_3_TypeA_B_Type_TypeA) {
+		_serNrSysFreeNR_DciFormat_2_3_TypeA_Type(&p->TypeA);
+		return;
+	}
+	if (d == NR_DciFormat_2_3_TypeA_B_Type_TypeB) {
+		if (p->TypeB.v) {
+			for (size_t i1 = 0; i1 < p->TypeB.d; i1++) {
+			}
+			serFree(p->TypeB.v);
+		}
+		return;
+	}
+}
+
+static void _serNrSysFreeNR_DciFormat_2_3_TypeA_B_Type(struct NR_DciFormat_2_3_TypeA_B_Type* p)
+{
+	_serNrSysFreeNR_DciFormat_2_3_TypeA_B_Type_Value(&p->v, p->d);
+}
+
+static void _serNrSysFreeNR_DciFormat_2_3_Type(struct NR_DciFormat_2_3_Type* p)
+{
+	_serNrSysFreeNR_DciFormat_2_3_TypeA_B_Type(&p->TypeA_B);
+}
+
+static void _serNrSysFreeNR_DciFormat_2_6_Block_Type(struct NR_DciFormat_2_6_Block_Type* p)
+{
+	_serNrSysFreeNR_DciFormat_X_1_SCellDormancyIndication_Type(&p->SCellDormacyIndication);
+}
+
+static void _serNrSysFreeNR_DciFormat_2_6_Type(struct NR_DciFormat_2_6_Type* p)
+{
+	if (p->BlockList.v) {
+		for (size_t i1 = 0; i1 < p->BlockList.d; i1++) {
+			_serNrSysFreeNR_DciFormat_2_6_Block_Type(&p->BlockList.v[i1]);
+		}
+		serFree(p->BlockList.v);
+	}
+}
+
+static void _serNrSysFreeNR_DCI_TriggerFormat_Type_Value(union NR_DCI_TriggerFormat_Type_Value* p, enum NR_DCI_TriggerFormat_Type_Sel d)
+{
+	if (d == NR_DCI_TriggerFormat_Type_ShortMessage) {
+		_serNrSysFreeNR_DciWithShortMessageOnly_Type(&p->ShortMessage);
+		return;
+	}
+	if (d == NR_DCI_TriggerFormat_Type_DciFormat_2_0) {
+		_serNrSysFreeNR_DciFormat_2_0_Type(&p->DciFormat_2_0);
+		return;
+	}
+	if (d == NR_DCI_TriggerFormat_Type_DciFormat_2_1) {
+		_serNrSysFreeNR_DciFormat_2_1_Type(&p->DciFormat_2_1);
+		return;
+	}
+	if (d == NR_DCI_TriggerFormat_Type_DciFormat_2_2) {
+		_serNrSysFreeNR_DciFormat_2_2_Type(&p->DciFormat_2_2);
+		return;
+	}
+	if (d == NR_DCI_TriggerFormat_Type_DciFormat_2_3) {
+		_serNrSysFreeNR_DciFormat_2_3_Type(&p->DciFormat_2_3);
+		return;
+	}
+	if (d == NR_DCI_TriggerFormat_Type_DciFormat_2_6) {
+		_serNrSysFreeNR_DciFormat_2_6_Type(&p->DciFormat_2_6);
+		return;
+	}
+}
+
+static void _serNrSysFreeNR_DCI_TriggerFormat_Type(struct NR_DCI_TriggerFormat_Type* p)
+{
+	_serNrSysFreeNR_DCI_TriggerFormat_Type_Value(&p->v, p->d);
+}
+
+static void _serNrSysFreeNR_DCI_Trigger_Type(struct NR_DCI_Trigger_Type* p)
+{
+	_serNrSysFreeNR_AssignedBWPs_Type(&p->AssignedBWPs);
+	_serNrSysFreeNR_DCI_TriggerFormat_Type(&p->DciFormat);
+}
+
 static void _serNrSysFreeSQN_NR_PagingRecordList_SQN_NR_Paging_pagingRecordList_Optional(struct SQN_NR_PagingRecordList_SQN_NR_Paging_pagingRecordList_Optional* p)
 {
 	if (!p->d) return;
@@ -82701,7 +83459,7 @@ static void _serNrSysFreeSQN_NR_PCCH_Message(struct SQN_NR_PCCH_Message* p)
 	_serNrSysFreeSQN_NR_PCCH_MessageType(&p->message);
 }
 
-static void _serNrSysFreeNR_SlotOffsetList_Type_SlotOffsetList_Optional(struct NR_SlotOffsetList_Type_SlotOffsetList_Optional* p)
+static void _serNrSysFreeNR_SlotOffsetList_Type_NR_PagingTrigger_Type_SlotOffsetList_Optional(struct NR_SlotOffsetList_Type_NR_PagingTrigger_Type_SlotOffsetList_Optional* p)
 {
 	if (!p->d) return;
 	if (p->v.v) {
@@ -82712,7 +83470,7 @@ static void _serNrSysFreeNR_SlotOffsetList_Type_SlotOffsetList_Optional(struct N
 static void _serNrSysFreeNR_PagingTrigger_Type(struct NR_PagingTrigger_Type* p)
 {
 	_serNrSysFreeSQN_NR_PCCH_Message(&p->Paging);
-	_serNrSysFreeNR_SlotOffsetList_Type_SlotOffsetList_Optional(&p->SlotOffsetList);
+	_serNrSysFreeNR_SlotOffsetList_Type_NR_PagingTrigger_Type_SlotOffsetList_Optional(&p->SlotOffsetList);
 }
 
 static void _serNrSysFreeNR_SystemRequest_Type_Value(union NR_SystemRequest_Type_Value* p, enum NR_SystemRequest_Type_Sel d)
@@ -82744,6 +83502,10 @@ static void _serNrSysFreeNR_SystemRequest_Type_Value(union NR_SystemRequest_Type
 	}
 	if (d == NR_SystemRequest_Type_PdcpCount) {
 		_serNrSysFreeNR_PDCP_CountReq_Type(&p->PdcpCount);
+		return;
+	}
+	if (d == NR_SystemRequest_Type_DciTrigger) {
+		_serNrSysFreeNR_DCI_Trigger_Type(&p->DciTrigger);
 		return;
 	}
 	if (d == NR_SystemRequest_Type_Paging) {

@@ -17739,6 +17739,12 @@ static void _adbgNrSys__Null_Type_InitialBWP_Optional(acpCtx_t _ctx, const struc
 	adbgPrintLog(_ctx, "%s", (p->v ? "true" : "false"));
 }
 
+static void _adbgNrSys__Null_Type_InitialBWP_RedCap_Optional(acpCtx_t _ctx, const struct Null_Type_InitialBWP_RedCap_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s", (p->v ? "true" : "false"));
+}
+
 static void _adbgNrSys__NR_AssignedBWPs_Type(acpCtx_t _ctx, const struct NR_AssignedBWPs_Type* p)
 {
 	adbgPrintLog(_ctx, "ActiveBWP := ");
@@ -17752,6 +17758,9 @@ static void _adbgNrSys__NR_AssignedBWPs_Type(acpCtx_t _ctx, const struct NR_Assi
 		adbgPrintLog(_ctx, "%02X", p->DedicatedBWPs.v[i1]);
 	}
 	adbgPrintLog(_ctx, "'O");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "InitialBWP_RedCap := ");
+	_adbgNrSys__Null_Type_InitialBWP_RedCap_Optional(_ctx, &p->InitialBWP_RedCap);
 }
 
 static void _adbgNrSys__NR_AssignedBWPs_Type_NR_SearchSpaceDlDciAssignment_Type_AssignedBWPs_Optional(acpCtx_t _ctx, const struct NR_AssignedBWPs_Type_NR_SearchSpaceDlDciAssignment_Type_AssignedBWPs_Optional* p)
@@ -34468,6 +34477,296 @@ static void _adbgNrSys__NR_PDCP_CountReq_Type(acpCtx_t _ctx, const struct NR_PDC
 	_adbgNrSys__NR_PDCP_CountReq_Type_Value(_ctx, &p->v, p->d);
 }
 
+static void _adbgNrSys__NR_PDCCH_Order_Type(acpCtx_t _ctx, const struct NR_PDCCH_Order_Type* p)
+{
+	adbgPrintLog(_ctx, "RA_PreambleIndex := '");
+	for (size_t i1 = 0; i1 < 6; i1++) {
+		adbgPrintLog(_ctx, "%02X", p->RA_PreambleIndex[i1]);
+	}
+	adbgPrintLog(_ctx, "'O");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "UL_SUL_Indicator := { ");
+	_adbgNrSys__NR_DciCommon_UL_SUL_Indicator_Type(_ctx, &p->UL_SUL_Indicator);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "SSB_Index := '");
+	for (size_t i1 = 0; i1 < 6; i1++) {
+		adbgPrintLog(_ctx, "%02X", p->SSB_Index[i1]);
+	}
+	adbgPrintLog(_ctx, "'O");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "PrachMaskIndex := '");
+	for (size_t i1 = 0; i1 < 4; i1++) {
+		adbgPrintLog(_ctx, "%02X", p->PrachMaskIndex[i1]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static void _adbgNrSys__NR_SlotOffsetList_Type_NR_DciWithShortMessageOnly_Type_SlotOffsetList_Optional(acpCtx_t _ctx, const struct NR_SlotOffsetList_Type_NR_DciWithShortMessageOnly_Type_SlotOffsetList_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "'");
+	for (size_t i1 = 0; i1 < p->v.d; i1++) {
+		adbgPrintLog(_ctx, "%02X", p->v.v[i1]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static void _adbgNrSys__NR_DciWithShortMessageOnly_Type(acpCtx_t _ctx, const struct NR_DciWithShortMessageOnly_Type* p)
+{
+	adbgPrintLog(_ctx, "ShortMessageIndicator := '");
+	for (size_t i1 = 0; i1 < 2; i1++) {
+		adbgPrintLog(_ctx, "%02X", p->ShortMessageIndicator[i1]);
+	}
+	adbgPrintLog(_ctx, "'O");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "ShortMessages := '");
+	for (size_t i1 = 0; i1 < 8; i1++) {
+		adbgPrintLog(_ctx, "%02X", p->ShortMessages[i1]);
+	}
+	adbgPrintLog(_ctx, "'O");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "SlotOffsetList := ");
+	if (p->SlotOffsetList.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__NR_SlotOffsetList_Type_NR_DciWithShortMessageOnly_Type_SlotOffsetList_Optional(_ctx, &p->SlotOffsetList);
+	if (p->SlotOffsetList.d) { adbgPrintLog(_ctx, " }"); };
+}
+
+static void _adbgNrSys__NR_DciFormat_2_0_Type(acpCtx_t _ctx, const struct NR_DciFormat_2_0_Type* p)
+{
+	adbgPrintLog(_ctx, "SfiList := { ");
+	for (size_t i1 = 0; i1 < p->SfiList.d; i1++) {
+		adbgPrintLog(_ctx, "'");
+		for (size_t i2 = 0; i2 < p->SfiList.v[i1].d; i2++) {
+			adbgPrintLog(_ctx, "%02X", p->SfiList.v[i1].v[i2]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		if (i1 != p->SfiList.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+	adbgPrintLog(_ctx, " }");
+}
+
+static void _adbgNrSys__NR_DciFormat_2_1_Type(acpCtx_t _ctx, const struct NR_DciFormat_2_1_Type* p)
+{
+	adbgPrintLog(_ctx, "{");
+	for (size_t i1 = 0; i1 < p->IntValueList.d; i1++) {
+		adbgPrintLog(_ctx, "'");
+		for (size_t i2 = 0; i2 < 14; i2++) {
+			adbgPrintLog(_ctx, "%02X", p->IntValueList.v[i1][i2]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		if (i1 != p->IntValueList.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+	adbgPrintLog(_ctx, " }");
+}
+
+static void _adbgNrSys__NR_DciFormat_2_2_ClosedLoopIndicator_Type(acpCtx_t _ctx, const struct NR_DciFormat_2_2_ClosedLoopIndicator_Type* p)
+{
+	adbgPrintLog(_ctx, "None := %s", (p->None ? "true" : "false"));
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "Index := '");
+	for (size_t i2 = 0; i2 < 1; i2++) {
+		adbgPrintLog(_ctx, "%02X", p->Index[i2]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static void _adbgNrSys__NR_DciFormat_2_2_TpcBlock_Type_Value(acpCtx_t _ctx, const union NR_DciFormat_2_2_TpcBlock_Type_Value* p, enum NR_DciFormat_2_2_TpcBlock_Type_Sel d)
+{
+	if (d == NR_DciFormat_2_2_TpcBlock_Type_ClosedLoopIndicator) {
+		adbgPrintLog(_ctx, "ClosedLoopIndicator := { ");
+		_adbgNrSys__NR_DciFormat_2_2_ClosedLoopIndicator_Type(_ctx, &p->ClosedLoopIndicator);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == NR_DciFormat_2_2_TpcBlock_Type_TpcCommand) {
+		adbgPrintLog(_ctx, "TpcCommand := { ");
+		_adbgNrSys__NR_DciCommon_TpcCommand_Type(_ctx, &p->TpcCommand);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__NR_DciFormat_2_2_TpcBlock_Type(acpCtx_t _ctx, const struct NR_DciFormat_2_2_TpcBlock_Type* p)
+{
+	_adbgNrSys__NR_DciFormat_2_2_TpcBlock_Type_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__NR_DciFormat_2_2_Type(acpCtx_t _ctx, const struct NR_DciFormat_2_2_Type* p)
+{
+	adbgPrintLog(_ctx, "TpcBlockList := { ");
+	for (size_t i1 = 0; i1 < p->TpcBlockList.d; i1++) {
+		adbgPrintLog(_ctx, "{ ");
+		_adbgNrSys__NR_DciFormat_2_2_TpcBlock_Type(_ctx, &p->TpcBlockList.v[i1]);
+		adbgPrintLog(_ctx, " }");
+		if (i1 != p->TpcBlockList.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+	adbgPrintLog(_ctx, " }");
+}
+
+static void _adbgNrSys__NR_DciFormat_2_3_SrsRequest_Type(acpCtx_t _ctx, const struct NR_DciFormat_2_3_SrsRequest_Type* p)
+{
+	adbgPrintLog(_ctx, "None := %s", (p->None ? "true" : "false"));
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "SrsRequestValue := '");
+	for (size_t i1 = 0; i1 < 2; i1++) {
+		adbgPrintLog(_ctx, "%02X", p->SrsRequestValue[i1]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static void _adbgNrSys__NR_DciFormat_2_3_TypeA_Type(acpCtx_t _ctx, const struct NR_DciFormat_2_3_TypeA_Type* p)
+{
+	adbgPrintLog(_ctx, "SrsRequest := { ");
+	_adbgNrSys__NR_DciFormat_2_3_SrsRequest_Type(_ctx, &p->SrsRequest);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "TpcCommandList := { ");
+	for (size_t i1 = 0; i1 < p->TpcCommandList.d; i1++) {
+		adbgPrintLog(_ctx, "{ ");
+		_adbgNrSys__NR_DciCommon_TpcCommand_Type(_ctx, &p->TpcCommandList.v[i1]);
+		adbgPrintLog(_ctx, " }");
+		if (i1 != p->TpcCommandList.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+	adbgPrintLog(_ctx, " }");
+}
+
+static void _adbgNrSys__NR_DciFormat_2_3_SingleBlockTypeB_Type(acpCtx_t _ctx, const struct NR_DciFormat_2_3_SingleBlockTypeB_Type* p)
+{
+	adbgPrintLog(_ctx, "SrsRequest := { ");
+	_adbgNrSys__NR_DciFormat_2_3_SrsRequest_Type(_ctx, &p->SrsRequest);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "TpcCommand := { ");
+	_adbgNrSys__NR_DciCommon_TpcCommand_Type(_ctx, &p->TpcCommand);
+	adbgPrintLog(_ctx, " }");
+}
+
+static void _adbgNrSys__NR_DciFormat_2_3_TypeA_B_Type_Value(acpCtx_t _ctx, const union NR_DciFormat_2_3_TypeA_B_Type_Value* p, enum NR_DciFormat_2_3_TypeA_B_Type_Sel d)
+{
+	if (d == NR_DciFormat_2_3_TypeA_B_Type_TypeA) {
+		adbgPrintLog(_ctx, "TypeA := { ");
+		_adbgNrSys__NR_DciFormat_2_3_TypeA_Type(_ctx, &p->TypeA);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == NR_DciFormat_2_3_TypeA_B_Type_TypeB) {
+		adbgPrintLog(_ctx, "TypeB := { ");
+		for (size_t i1 = 0; i1 < p->TypeB.d; i1++) {
+			adbgPrintLog(_ctx, "{ ");
+			_adbgNrSys__NR_DciFormat_2_3_SingleBlockTypeB_Type(_ctx, &p->TypeB.v[i1]);
+			adbgPrintLog(_ctx, " }");
+			if (i1 != p->TypeB.d - 1) { adbgPrintLog(_ctx, ", "); }
+		}
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__NR_DciFormat_2_3_TypeA_B_Type(acpCtx_t _ctx, const struct NR_DciFormat_2_3_TypeA_B_Type* p)
+{
+	_adbgNrSys__NR_DciFormat_2_3_TypeA_B_Type_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__NR_DciFormat_2_3_Type(acpCtx_t _ctx, const struct NR_DciFormat_2_3_Type* p)
+{
+	adbgPrintLog(_ctx, "TypeA_B := { ");
+	_adbgNrSys__NR_DciFormat_2_3_TypeA_B_Type(_ctx, &p->TypeA_B);
+	adbgPrintLog(_ctx, " }");
+}
+
+static void _adbgNrSys__NR_DciFormat_2_6_Block_Type(acpCtx_t _ctx, const struct NR_DciFormat_2_6_Block_Type* p)
+{
+	adbgPrintLog(_ctx, "WakeupIndication := '");
+	for (size_t i2 = 0; i2 < 1; i2++) {
+		adbgPrintLog(_ctx, "%02X", p->WakeupIndication[i2]);
+	}
+	adbgPrintLog(_ctx, "'O");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "SCellDormacyIndication := { ");
+	_adbgNrSys__NR_DciFormat_X_1_SCellDormancyIndication_Type(_ctx, &p->SCellDormacyIndication);
+	adbgPrintLog(_ctx, " }");
+}
+
+static void _adbgNrSys__NR_DciFormat_2_6_Type(acpCtx_t _ctx, const struct NR_DciFormat_2_6_Type* p)
+{
+	adbgPrintLog(_ctx, "BlockList := { ");
+	for (size_t i1 = 0; i1 < p->BlockList.d; i1++) {
+		adbgPrintLog(_ctx, "{ ");
+		_adbgNrSys__NR_DciFormat_2_6_Block_Type(_ctx, &p->BlockList.v[i1]);
+		adbgPrintLog(_ctx, " }");
+		if (i1 != p->BlockList.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+	adbgPrintLog(_ctx, " }");
+}
+
+static void _adbgNrSys__NR_DCI_TriggerFormat_Type_Value(acpCtx_t _ctx, const union NR_DCI_TriggerFormat_Type_Value* p, enum NR_DCI_TriggerFormat_Type_Sel d)
+{
+	if (d == NR_DCI_TriggerFormat_Type_PdcchOrder) {
+		adbgPrintLog(_ctx, "PdcchOrder := { ");
+		_adbgNrSys__NR_PDCCH_Order_Type(_ctx, &p->PdcchOrder);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == NR_DCI_TriggerFormat_Type_ShortMessage) {
+		adbgPrintLog(_ctx, "ShortMessage := { ");
+		_adbgNrSys__NR_DciWithShortMessageOnly_Type(_ctx, &p->ShortMessage);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == NR_DCI_TriggerFormat_Type_DciFormat_2_0) {
+		adbgPrintLog(_ctx, "DciFormat_2_0 := { ");
+		_adbgNrSys__NR_DciFormat_2_0_Type(_ctx, &p->DciFormat_2_0);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == NR_DCI_TriggerFormat_Type_DciFormat_2_1) {
+		adbgPrintLog(_ctx, "DciFormat_2_1 := { ");
+		_adbgNrSys__NR_DciFormat_2_1_Type(_ctx, &p->DciFormat_2_1);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == NR_DCI_TriggerFormat_Type_DciFormat_2_2) {
+		adbgPrintLog(_ctx, "DciFormat_2_2 := { ");
+		_adbgNrSys__NR_DciFormat_2_2_Type(_ctx, &p->DciFormat_2_2);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == NR_DCI_TriggerFormat_Type_DciFormat_2_3) {
+		adbgPrintLog(_ctx, "DciFormat_2_3 := { ");
+		_adbgNrSys__NR_DciFormat_2_3_Type(_ctx, &p->DciFormat_2_3);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == NR_DCI_TriggerFormat_Type_DciFormat_2_6) {
+		adbgPrintLog(_ctx, "DciFormat_2_6 := { ");
+		_adbgNrSys__NR_DciFormat_2_6_Type(_ctx, &p->DciFormat_2_6);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__NR_DCI_TriggerFormat_Type(acpCtx_t _ctx, const struct NR_DCI_TriggerFormat_Type* p)
+{
+	_adbgNrSys__NR_DCI_TriggerFormat_Type_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__NR_DCI_Trigger_Type(acpCtx_t _ctx, const struct NR_DCI_Trigger_Type* p)
+{
+	adbgPrintLog(_ctx, "AssignedBWPs := { ");
+	_adbgNrSys__NR_AssignedBWPs_Type(_ctx, &p->AssignedBWPs);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "SearchSpaceType := %s (%d)", adbgNrSys__NR_SearchSpaceType_Type__ToString(p->SearchSpaceType), (int)p->SearchSpaceType);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "DciFormat := { ");
+	_adbgNrSys__NR_DCI_TriggerFormat_Type(_ctx, &p->DciFormat);
+	adbgPrintLog(_ctx, " }");
+}
+
 static void _adbgNrSys__SQN_NR_PagingUE_Identity_Value(acpCtx_t _ctx, const union SQN_NR_PagingUE_Identity_Value* p, enum SQN_NR_PagingUE_Identity_Sel d)
 {
 	if (d == SQN_NR_PagingUE_Identity_ng_5G_S_TMSI) {
@@ -34717,7 +35016,7 @@ static void _adbgNrSys__SQN_NR_PCCH_Message(acpCtx_t _ctx, const struct SQN_NR_P
 	adbgPrintLog(_ctx, " }");
 }
 
-static void _adbgNrSys__NR_SlotOffsetList_Type_SlotOffsetList_Optional(acpCtx_t _ctx, const struct NR_SlotOffsetList_Type_SlotOffsetList_Optional* p)
+static void _adbgNrSys__NR_SlotOffsetList_Type_NR_PagingTrigger_Type_SlotOffsetList_Optional(acpCtx_t _ctx, const struct NR_SlotOffsetList_Type_NR_PagingTrigger_Type_SlotOffsetList_Optional* p)
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
 	adbgPrintLog(_ctx, "'");
@@ -34735,7 +35034,7 @@ static void _adbgNrSys__NR_PagingTrigger_Type(acpCtx_t _ctx, const struct NR_Pag
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "SlotOffsetList := ");
 	if (p->SlotOffsetList.d) { adbgPrintLog(_ctx, "{ "); };
-	_adbgNrSys__NR_SlotOffsetList_Type_SlotOffsetList_Optional(_ctx, &p->SlotOffsetList);
+	_adbgNrSys__NR_SlotOffsetList_Type_NR_PagingTrigger_Type_SlotOffsetList_Optional(_ctx, &p->SlotOffsetList);
 	if (p->SlotOffsetList.d) { adbgPrintLog(_ctx, " }"); };
 }
 
@@ -34856,6 +35155,12 @@ static void _adbgNrSys__NR_SystemRequest_Type_Value(acpCtx_t _ctx, const union N
 	if (d == NR_SystemRequest_Type_PdcpCount) {
 		adbgPrintLog(_ctx, "PdcpCount := { ");
 		_adbgNrSys__NR_PDCP_CountReq_Type(_ctx, &p->PdcpCount);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == NR_SystemRequest_Type_DciTrigger) {
+		adbgPrintLog(_ctx, "DciTrigger := { ");
+		_adbgNrSys__NR_DCI_Trigger_Type(_ctx, &p->DciTrigger);
 		adbgPrintLog(_ctx, " }");
 		return;
 	}

@@ -693,14 +693,14 @@ struct int32_t_NR_SlotOffsetList_Type_Dynamic {
 
 typedef struct int32_t_NR_SlotOffsetList_Type_Dynamic NR_SlotOffsetList_Type;
 
-struct NR_SlotOffsetList_Type_SlotOffsetList_Optional {
+struct NR_SlotOffsetList_Type_NR_PagingTrigger_Type_SlotOffsetList_Optional {
 	bool d;
 	NR_SlotOffsetList_Type v;
 };
 
 struct NR_PagingTrigger_Type {
 	struct SQN_NR_PCCH_Message Paging;
-	struct NR_SlotOffsetList_Type_SlotOffsetList_Optional SlotOffsetList;
+	struct NR_SlotOffsetList_Type_NR_PagingTrigger_Type_SlotOffsetList_Optional SlotOffsetList;
 };
 
 struct NR_CellAttenuationConfig_Type_NR_CellAttenuationList_Type_Dynamic {
@@ -750,6 +750,175 @@ struct NR_Band_SsbForDelta_Type {
 	struct Band_SsbInfo_Type DeltaSecondary;
 };
 
+struct NR_PDCCH_Order_Type {
+	B6_Type RA_PreambleIndex;
+	struct NR_DciCommon_UL_SUL_Indicator_Type UL_SUL_Indicator;
+	B6_Type SSB_Index;
+	B4_Type PrachMaskIndex;
+};
+
+struct NR_SlotOffsetList_Type_NR_DciWithShortMessageOnly_Type_SlotOffsetList_Optional {
+	bool d;
+	NR_SlotOffsetList_Type v;
+};
+
+struct NR_DciWithShortMessageOnly_Type {
+	B2_Type ShortMessageIndicator;
+	B8_Type ShortMessages;
+	struct NR_SlotOffsetList_Type_NR_DciWithShortMessageOnly_Type_SlotOffsetList_Optional SlotOffsetList;
+};
+
+struct BIT_STRING_NR_DciFormat_2_0_SfiList_Type_Dynamic {
+	size_t d;
+	BIT_STRING* v;
+};
+
+typedef struct BIT_STRING_NR_DciFormat_2_0_SfiList_Type_Dynamic NR_DciFormat_2_0_SfiList_Type;
+
+struct NR_DciFormat_2_0_Type {
+	NR_DciFormat_2_0_SfiList_Type SfiList;
+};
+
+struct B14_Type_NR_DciFormat_2_1_IntValueList_Type_Dynamic {
+	size_t d;
+	B14_Type* v;
+};
+
+typedef struct B14_Type_NR_DciFormat_2_1_IntValueList_Type_Dynamic NR_DciFormat_2_1_IntValueList_Type;
+
+struct NR_DciFormat_2_1_Type {
+	NR_DciFormat_2_1_IntValueList_Type IntValueList;
+};
+
+struct NR_DciFormat_2_2_ClosedLoopIndicator_Type {
+	Null_Type None;
+	B1_Type Index;
+};
+
+enum NR_DciFormat_2_2_TpcBlock_Type_Sel {
+	NR_DciFormat_2_2_TpcBlock_Type_UNBOUND_VALUE = 0,
+	NR_DciFormat_2_2_TpcBlock_Type_ClosedLoopIndicator = 1,
+	NR_DciFormat_2_2_TpcBlock_Type_TpcCommand = 2,
+};
+
+union NR_DciFormat_2_2_TpcBlock_Type_Value {
+	struct NR_DciFormat_2_2_ClosedLoopIndicator_Type ClosedLoopIndicator;
+	struct NR_DciCommon_TpcCommand_Type TpcCommand;
+};
+
+struct NR_DciFormat_2_2_TpcBlock_Type {
+	enum NR_DciFormat_2_2_TpcBlock_Type_Sel d;
+	union NR_DciFormat_2_2_TpcBlock_Type_Value v;
+};
+
+struct NR_DciFormat_2_2_TpcBlock_Type_NR_DciFormat_2_2_TpcBlockList_Type_Dynamic {
+	size_t d;
+	struct NR_DciFormat_2_2_TpcBlock_Type* v;
+};
+
+typedef struct NR_DciFormat_2_2_TpcBlock_Type_NR_DciFormat_2_2_TpcBlockList_Type_Dynamic NR_DciFormat_2_2_TpcBlockList_Type;
+
+struct NR_DciFormat_2_2_Type {
+	NR_DciFormat_2_2_TpcBlockList_Type TpcBlockList;
+};
+
+struct NR_DciFormat_2_3_SrsRequest_Type {
+	Null_Type None;
+	B2_Type SrsRequestValue;
+};
+
+struct NR_DciCommon_TpcCommand_Type_NR_DciCommon_TpcCommandList_Type_Dynamic {
+	size_t d;
+	struct NR_DciCommon_TpcCommand_Type* v;
+};
+
+typedef struct NR_DciCommon_TpcCommand_Type_NR_DciCommon_TpcCommandList_Type_Dynamic NR_DciCommon_TpcCommandList_Type;
+
+struct NR_DciFormat_2_3_TypeA_Type {
+	struct NR_DciFormat_2_3_SrsRequest_Type SrsRequest;
+	NR_DciCommon_TpcCommandList_Type TpcCommandList;
+};
+
+struct NR_DciFormat_2_3_SingleBlockTypeB_Type {
+	struct NR_DciFormat_2_3_SrsRequest_Type SrsRequest;
+	struct NR_DciCommon_TpcCommand_Type TpcCommand;
+};
+
+struct NR_DciFormat_2_3_SingleBlockTypeB_Type_NR_DciFormat_2_3_TypeB_Type_Dynamic {
+	size_t d;
+	struct NR_DciFormat_2_3_SingleBlockTypeB_Type* v;
+};
+
+typedef struct NR_DciFormat_2_3_SingleBlockTypeB_Type_NR_DciFormat_2_3_TypeB_Type_Dynamic NR_DciFormat_2_3_TypeB_Type;
+
+enum NR_DciFormat_2_3_TypeA_B_Type_Sel {
+	NR_DciFormat_2_3_TypeA_B_Type_UNBOUND_VALUE = 0,
+	NR_DciFormat_2_3_TypeA_B_Type_TypeA = 1,
+	NR_DciFormat_2_3_TypeA_B_Type_TypeB = 2,
+};
+
+union NR_DciFormat_2_3_TypeA_B_Type_Value {
+	struct NR_DciFormat_2_3_TypeA_Type TypeA;
+	NR_DciFormat_2_3_TypeB_Type TypeB;
+};
+
+struct NR_DciFormat_2_3_TypeA_B_Type {
+	enum NR_DciFormat_2_3_TypeA_B_Type_Sel d;
+	union NR_DciFormat_2_3_TypeA_B_Type_Value v;
+};
+
+struct NR_DciFormat_2_3_Type {
+	struct NR_DciFormat_2_3_TypeA_B_Type TypeA_B;
+};
+
+struct NR_DciFormat_2_6_Block_Type {
+	B1_Type WakeupIndication;
+	struct NR_DciFormat_X_1_SCellDormancyIndication_Type SCellDormacyIndication;
+};
+
+struct NR_DciFormat_2_6_Block_Type_NR_DciFormat_2_6_Block_List_Type_Dynamic {
+	size_t d;
+	struct NR_DciFormat_2_6_Block_Type* v;
+};
+
+typedef struct NR_DciFormat_2_6_Block_Type_NR_DciFormat_2_6_Block_List_Type_Dynamic NR_DciFormat_2_6_Block_List_Type;
+
+struct NR_DciFormat_2_6_Type {
+	NR_DciFormat_2_6_Block_List_Type BlockList;
+};
+
+enum NR_DCI_TriggerFormat_Type_Sel {
+	NR_DCI_TriggerFormat_Type_UNBOUND_VALUE = 0,
+	NR_DCI_TriggerFormat_Type_PdcchOrder = 1,
+	NR_DCI_TriggerFormat_Type_ShortMessage = 2,
+	NR_DCI_TriggerFormat_Type_DciFormat_2_0 = 3,
+	NR_DCI_TriggerFormat_Type_DciFormat_2_1 = 4,
+	NR_DCI_TriggerFormat_Type_DciFormat_2_2 = 5,
+	NR_DCI_TriggerFormat_Type_DciFormat_2_3 = 6,
+	NR_DCI_TriggerFormat_Type_DciFormat_2_6 = 7,
+};
+
+union NR_DCI_TriggerFormat_Type_Value {
+	struct NR_PDCCH_Order_Type PdcchOrder;
+	struct NR_DciWithShortMessageOnly_Type ShortMessage;
+	struct NR_DciFormat_2_0_Type DciFormat_2_0;
+	struct NR_DciFormat_2_1_Type DciFormat_2_1;
+	struct NR_DciFormat_2_2_Type DciFormat_2_2;
+	struct NR_DciFormat_2_3_Type DciFormat_2_3;
+	struct NR_DciFormat_2_6_Type DciFormat_2_6;
+};
+
+struct NR_DCI_TriggerFormat_Type {
+	enum NR_DCI_TriggerFormat_Type_Sel d;
+	union NR_DCI_TriggerFormat_Type_Value v;
+};
+
+struct NR_DCI_Trigger_Type {
+	struct NR_AssignedBWPs_Type AssignedBWPs;
+	NR_SearchSpaceType_Type SearchSpaceType;
+	struct NR_DCI_TriggerFormat_Type DciFormat;
+};
+
 enum NR_SystemRequest_Type_Sel {
 	NR_SystemRequest_Type_UNBOUND_VALUE = 0,
 	NR_SystemRequest_Type_Cell = 1,
@@ -758,6 +927,7 @@ enum NR_SystemRequest_Type_Sel {
 	NR_SystemRequest_Type_EnquireTiming = 4,
 	NR_SystemRequest_Type_AS_Security = 5,
 	NR_SystemRequest_Type_PdcpCount = 7,
+	NR_SystemRequest_Type_DciTrigger = 8,
 	NR_SystemRequest_Type_Paging = 9,
 	NR_SystemRequest_Type_DeltaValues = 13,
 };
@@ -769,6 +939,7 @@ union NR_SystemRequest_Type_Value {
 	Null_Type EnquireTiming;
 	struct NR_AS_Security_Type AS_Security;
 	struct NR_PDCP_CountReq_Type PdcpCount;
+	struct NR_DCI_Trigger_Type DciTrigger;
 	struct NR_PagingTrigger_Type Paging;
 	struct NR_Band_SsbForDelta_Type DeltaValues;
 };

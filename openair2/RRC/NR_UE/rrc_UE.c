@@ -1677,7 +1677,7 @@ static int nr_rrc_ue_decode_dcch(instance_t instance,
                                        NR_RRC_DCCH_DATA_IND (msg_p).gNB_index);
 
          rrc_rlc_remove_ue(&ctxt_pP);
-         nr_pdcp_remove_UE(&ctxt_pP.rntiMaybeUEid);
+         nr_pdcp_remove_UE(ctxt_pP.rntiMaybeUEid);
 
          nr_rrc_set_state(ctxt_pP.module_id, RRC_STATE_IDLE_NR);
          nr_rrc_set_sub_state(ctxt_pP.module_id, RRC_SUB_STATE_IDLE_NR);
@@ -1895,10 +1895,51 @@ void *rrc_nrue(void *notUsed)
       rsrp_cell = PHY_FIND_CELL_IND(msg_p).cells[i].rsrp-141;
       rsrq_cell = (PHY_FIND_CELL_IND(msg_p).cells[i].rsrq-39)/2;
       LOG_I(RRC, "PHY_FIND_CELL_IND CellId: %d EARFCN: %d RSRP: %d RSRQ: %d \n", PHY_FIND_CELL_IND(msg_p).cells[i].cell_id, PHY_FIND_CELL_IND(msg_p).cells[i].earfcn,rsrp_cell, rsrq_cell);
-                    
-      if (rsrp_cell > -141){
-        nr_rrc_mac_config_req_ue_cell_selection(0,0,0,(uint16_t)(PHY_FIND_CELL_IND(msg_p).cells[i].cell_id),i+1);
+
+      if (rsrp_cell > -141) {
+        nr_rrc_mac_config_req_ue_cell_selection(0, 0, 0, (uint16_t)(PHY_FIND_CELL_IND(msg_p).cells[i].cell_id), i + 1);
         NR_UE_rrc_inst[0].serving_cellId = PHY_FIND_CELL_IND(msg_p).cells[i].cell_id;
+
+        if (NR_UE_rrc_inst[0].timers_and_constants.T311_active) {
+          NR_UE_rrc_inst[0].timers_and_constants.T311_active = false;
+
+          LOG_I(NR_RRC, "%s -- RESET UE [%x] during T311 timer on cell found\n", __FUNCTION__, NR_UE_rrc_inst[0].rnti);
+
+          protocol_ctxt_t ctxt_pP = {0};
+          ctxt_pP.rntiMaybeUEid = NR_UE_rrc_inst[0].rnti;
+
+          NR_UE_MAC_INST_t *mac = get_mac_inst(ctxt_pP.module_id);
+          nr_ue_mac_default_configs(mac);
+          mac->phy_config_request_sent = false;
+          mac->state = UE_NOT_SYNC;
+          mac->ra.ra_state = WAIT_SIB;
+
+          rrc_rlc_remove_ue(&ctxt_pP);
+          nr_pdcp_remove_UE(ctxt_pP.rntiMaybeUEid);
+
+          nr_rrc_set_state(ctxt_pP.module_id, RRC_STATE_IDLE_NR);
+          nr_rrc_set_sub_state(ctxt_pP.module_id, RRC_SUB_STATE_IDLE_NR);
+
+          // NR_UE_rrc_inst[ctxt_pP.module_id].cell_group_config = NULL;
+
+          NR_UE_RRC_INST_t *rrc = &NR_UE_rrc_inst[ctxt_pP.module_id];
+          for (int i = 0; i < NB_CNX_UE; i++) {
+            rrcPerNB_t *ptr = &rrc->perNB[i];
+
+            for (int j = 0; j < NR_MAX_NUM_LCID; j++) {
+              ptr->active_RLC_entity[j] = false;
+            }
+            for (int j = 0; j < MAX_DRBS_PER_UE; j++) {
+              ptr->status_DRBs[j] = RB_NOT_PRESENT;
+            }
+            // SRB0 activated by default
+            ptr->Srb[0] = RB_ESTABLISHED;
+            ptr->Srb[1] = RB_NOT_PRESENT;
+            ptr->Srb[2] = RB_NOT_PRESENT;
+          }
+
+          need_registration = true;
+        }
       }
     }
     break;

@@ -68,6 +68,12 @@ const char* adbgUtilsNrSysNR_PDCP_ActTime_TypeToStr(int select);
 
 const char* adbgUtilsNrSysNR_AS_Security_TypeToStr(int select);
 
+const char* adbgUtilsNrSysNR_DciFormat_2_2_TpcBlock_TypeToStr(int select);
+
+const char* adbgUtilsNrSysNR_DciFormat_2_3_TypeA_B_TypeToStr(int select);
+
+const char* adbgUtilsNrSysNR_DCI_TriggerFormat_TypeToStr(int select);
+
 const char* adbgUtilsNrSysNR_SystemRequest_TypeToStr(int select);
 
 const char* adbgUtilsNrSysNR_SystemConfirm_TypeToStr(int select);
