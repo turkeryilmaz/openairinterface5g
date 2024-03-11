@@ -1429,8 +1429,8 @@ typedef struct f1ap_positioning_activation_resp_s {
   uint32_t gNB_CU_ue_id; // IE 9.3.1.4 (M)
   uint32_t gNB_DU_ue_id; // IE 9.3.1.5 (M)
   nrppa_f1ap_info_t nrppa_msg_info;
-  uint16_t system_frame_number; // (O)
-  uint16_t slot_number; // (O)
+  uint32_t system_frame_number; // (O)
+  uint32_t slot_number; // (O)
   f1ap_criticality_diagnostics_t criticality_diagnostics; //  Criticality_Diagnostics // IE 9.3.1.3 (O)
 } f1ap_positioning_activation_resp_t;
 

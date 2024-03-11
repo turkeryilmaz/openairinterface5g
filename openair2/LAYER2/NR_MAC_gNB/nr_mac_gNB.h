@@ -711,7 +711,9 @@ typedef struct {
   uint8_t pos_measurement_periodicity; //(C) if report characteristics periodic	ms120=0, ms240=1, ms480=2, ms640=3, ms1024=4, ms20
   uint8_t pos_report_valid; // (C) if report has been received from L1 sets this to 1 and once response is sent its set back to 0
   int16_t toa_ns; // for the moment we only support toa measurements, others can be added here later
-} NR_meas_pos_t;
+  uint32_t frame; // for srs activation response
+  uint32_t slot; // for srs activation response
+} NR_UE_pos_t;
 
 /*! \brief UE list used by gNB to order UEs/CC for scheduling*/
 typedef struct {

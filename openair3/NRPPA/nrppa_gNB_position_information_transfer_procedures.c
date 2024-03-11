@@ -867,7 +867,7 @@ int nrppa_gNB_PositioningActivationResponse(instance_t instance, MessageDef *msg
   //  IE  SlotNumber (O)
   {
     asn1cSequenceAdd(out->protocolIEs.list, NRPPA_PositioningActivationResponseIEs_t, ie);
-    ie->id = NRPPA_ProtocolIE_ID_id_SystemFrameNumber;
+    ie->id = NRPPA_ProtocolIE_ID_id_SlotNumber;
     ie->criticality = NRPPA_Criticality_ignore;
     ie->value.present = NRPPA_PositioningActivationResponseIEs__value_PR_SlotNumber;
     ie->value.choice.SlotNumber = resp->slot_number;

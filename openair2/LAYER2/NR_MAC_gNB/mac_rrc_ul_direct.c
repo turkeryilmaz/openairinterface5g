@@ -693,15 +693,22 @@ static void positioning_activation_response(const f1ap_positioning_activation_re
   f1ap_msg->nrppa_msg_info.routing_id_buffer = resp->nrppa_msg_info.routing_id_buffer;
   f1ap_msg->nrppa_msg_info.routing_id_length = resp->nrppa_msg_info.routing_id_length;
 
-
-  // IE 9.2.2 CriticalityDiagnostics (O)
-  // IE  SystemFrameNumber (O) 
-  // here we will send the preconfigured info as changing on fly is not possible
-  f1ap_msg->system_frame_number=128; // TODO retireve the actual values and fill it
-  // IE  SlotNumber (O)
-  // here we will send the preconfigured info as changing on fly is not possible
-  f1ap_msg->slot_number=8; // TODO retireve the actual values and fill it
-
+  // PHY_VARS_gNB_s *gNB =  RC.gNB[resp->nrppa_msg_info.instance];
+  gNB_MAC_INST *mac = RC.nrmac[resp->nrppa_msg_info.instance];
+  NR_UEs_t *UE_info = &mac->UE_info;
+  UE_iterator (UE_info->list, UE) {
+    if (UE->rnti == resp->nrppa_msg_info.ue_rnti) { // configuration details of specific UE // TODO manage non UE associated
+      LOG_I(MAC, "Extracting SRS frame and slot info of ActivationResponse for ue rnti= %04x \n",
+            resp->nrppa_msg_info.ue_rnti);
+      // IE 9.2.2 CriticalityDiagnostics (O)
+      // IE  SystemFrameNumber (O) 
+      // here we will send the preconfigured info as changing on fly is not possible
+      f1ap_msg->system_frame_number=UE->ue_pos_info.frame; // TODO retireve the actual values and fill it
+      // IE  SlotNumber (O)
+      // here we will send the preconfigured info as changing on fly is not possible
+      f1ap_msg->slot_number=UE->ue_pos_info.slot; // TODO retireve the actual values and fill it
+    }
+  }
 itti_send_msg_to_task(TASK_RRC_GNB, 0, msg);
 }
 
@@ -761,16 +768,32 @@ static void trp_information_response(const f1ap_trp_information_resp_t *resp)
       {
         rspItem->present= f1ap_trp_information_type_response_item_pr_pCI_NR;
         rspItem->choice.pCI_NR= 10; // dummy values
+         
+        // bit_string_t nRCellIdentity; // typedef BIT_STRING_t	 F1AP_NRCellIdentity_t;
+
+        //rspItem->present=f1ap_trp_information_type_response_item_pr_nG_RAN_CGI;
+        //rspItem->choice.nG_RAN_CGI.nRCellIdentity.bits_unused= ;
+        //rspItem->choice.nG_RAN_CGI.nRCellIdentity.buf= ;
+        //rspItem->choice.nG_RAN_CGI.nRCellIdentity.size=;
+        
+        // octet_string_t pLMN_Identity; // typedef OCTET_STRING_t	 F1AP_PLMN_Identity_t;
+        //rspItem->choice.nG_RAN_CGI.pLMN_Identity.buf=
+        //rspItem->choice.nG_RAN_CGI.pLMN_Identity.size
         // TODO adeel retrive relevent info and add
+        
         /*trpinfo_item->choice.pCI_NR = 0; // long dummy value
         trpinfo_item->choice.sSBinformation = NULL; // dummy values
         trpinfo_item->choice.nG_RAN_CGI = NULL; // dummy values
         trpinfo_item->choice.pRSConfiguration = NULL; // dummy values
         trpinfo_item->choice.geographicalCoordinates = NULL; // dummy values*/
-
+        if (k < nb_tRPInfoTypes-1){
+          rspItem++;
+        }
       } // for(int k=0; k < nb_tRPInfoTypes; k++)
+      if (i < nb_of_TRP-1){
+        trp_info_item++;
+      }
     } // for (int i = 0; i < nb_of_TRP; i++)
-
   } // IE Information List */
 
   /*//  TODO IE 9.2.2 CriticalityDiagnostics (O)
