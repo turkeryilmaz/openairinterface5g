@@ -702,11 +702,9 @@ static void positioning_activation_response(const f1ap_positioning_activation_re
             resp->nrppa_msg_info.ue_rnti);
       // IE 9.2.2 CriticalityDiagnostics (O)
       // IE  SystemFrameNumber (O) 
-      // here we will send the preconfigured info as changing on fly is not possible
-      f1ap_msg->system_frame_number=UE->ue_pos_info.frame; // TODO retireve the actual values and fill it
+      f1ap_msg->system_frame_number=0; // TODO retireve the actual values and fill it
       // IE  SlotNumber (O)
-      // here we will send the preconfigured info as changing on fly is not possible
-      f1ap_msg->slot_number=UE->ue_pos_info.slot; // TODO retireve the actual values and fill it
+      f1ap_msg->slot_number=0; // TODO retireve the actual values and fill it
     }
   }
 itti_send_msg_to_task(TASK_RRC_GNB, 0, msg);

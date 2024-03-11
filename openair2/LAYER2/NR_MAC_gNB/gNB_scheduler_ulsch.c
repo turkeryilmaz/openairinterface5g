@@ -1241,7 +1241,7 @@ void handle_nr_srs_measurements(const module_id_t module_id,
 
     
     //call the response handler
-    mac->mac_rrc.positioning_measurement_response(&resp);
+    nrmac->mac_rrc.positioning_measurement_response(&resp);
 
     //for the moment this is all we need so return
     return;
@@ -1259,10 +1259,6 @@ void handle_nr_srs_measurements(const module_id_t module_id,
     NR_SCHED_UNLOCK(&nrmac->sched_lock);
     return;
   }
-
-  UE->ue_pos_info.toa_ns = srs_ind->timing_advance_offset_nsec;
-  UE->ue_pos_info.frame= frame;
-  UE->ue_pos_info.slot=slot;
 
   gNB_MAC_INST *nr_mac = RC.nrmac[module_id];
   NR_mac_stats_t *stats = &UE->mac_stats;
