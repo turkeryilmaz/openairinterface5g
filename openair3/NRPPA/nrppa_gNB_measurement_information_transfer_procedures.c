@@ -139,8 +139,320 @@ int nrppa_gNB_handle_Measurement(nrppa_gnb_ue_info_t *nrppa_msg_info, NRPPA_NRPP
   // false); NRPPA_SFNInitialisationTime_t sfn_time = ie->value.choice.SFNInitialisationTime;
 
   // IE SRSConfiguration (Optional)
-  // NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_MeasurementRequest_IEs_t, ie, container, NRPPA_ProtocolIE_ID_id_SRSConfiguration, false);
-  // NRPPA_SRSConfiguration_t srs_config = ie->value.choice.SRSConfiguration;
+  NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_MeasurementRequest_IEs_t, ie, container, NRPPA_ProtocolIE_ID_id_SRSConfiguration, false);
+  if (ie != NULL) {
+    NRPPA_SRSConfiguration_t srs_config = ie->value.choice.SRSConfiguration;
+    int maxnoSRScarrier = srs_config.sRSCarrier_List.list.count;
+    f1ap_req->srs_configuration.srs_carrier_list.srs_carrier_list_length= maxnoSRScarrier;
+    f1ap_req->srs_configuration.srs_carrier_list.srs_carrier_list_item = malloc(maxnoSRScarrier * sizeof(f1ap_srs_carrier_list_item_t));
+    DevAssert(f1ap_req->srs_configuration.srs_carrier_list.srs_carrier_list_item);
+    f1ap_srs_carrier_list_item_t *srs_carrier_list_item = f1ap_req->srs_configuration.srs_carrier_list.srs_carrier_list_item;
+    LOG_D(NRPPA,"Preparing srs_carrier_list for F1AP maxnoSRScarrier= %d", f1ap_req->srs_configuration.srs_carrier_list.srs_carrier_list_length);
+    
+    for (int i = 0; i < maxnoSRScarrier; i++) {
+      NRPPA_SRSCarrier_List_Item_t *CarrItem= srs_config.sRSCarrier_List.list.array[i];
+      srs_carrier_list_item->pointA = CarrItem->pointA; // (M)
+      srs_carrier_list_item->pci = CarrItem->pCI; // Optional Physical cell ID of the cell that contians the SRS carrier
+      // Preparing Active UL BWP information IE of SRSCarrier_List f1ap_active_ul_bwp_ active_ul_bwp; //(M)
+      f1ap_active_ul_bwp_t *f1_ul_bwp= &srs_carrier_list_item->active_ul_bwp;
+      NRPPA_ActiveULBWP_t *Nrppa_ULBWP =&CarrItem->activeULBWP;   
+      f1_ul_bwp->locationAndBandwidth = Nrppa_ULBWP->locationAndBandwidth; 
+      f1_ul_bwp->subcarrierSpacing = Nrppa_ULBWP->subcarrierSpacing;
+      f1_ul_bwp->cyclicPrefix = Nrppa_ULBWP->cyclicPrefix; 
+      f1_ul_bwp->txDirectCurrentLocation = Nrppa_ULBWP->txDirectCurrentLocation;
+      f1_ul_bwp->shift7dot5kHz = Nrppa_ULBWP->shift7dot5kHz; 
+      
+      f1ap_srs_config_t *f1_srsConf= &f1_ul_bwp->sRSConfig;  
+      // Preparing sRSResource_List IE of SRSConfig (IE of activeULBWP)
+      NRPPA_SRSResource_List_t *NrppaRes_list =Nrppa_ULBWP->sRSConfig.sRSResource_List;
+      int maxnoSRSResources = NrppaRes_list->list.count; 
+      f1_srsConf->sRSResource_List.srs_resource_list_length = maxnoSRSResources;
+      f1_srsConf->sRSResource_List.srs_resource = malloc(maxnoSRSResources * sizeof(f1ap_srs_resource_t));
+      DevAssert(f1_srsConf->sRSResource_List.srs_resource);
+      f1ap_srs_resource_t *F1ResItem = f1_srsConf->sRSResource_List.srs_resource;
+      LOG_D(NRPPA,"Preparing sRSResource_List for F1AP maxnoSRSResources=%d \n",
+            f1_srsConf->sRSResource_List.srs_resource_list_length);
+      for (int k = 0; k < maxnoSRSResources; k++) { // Preparing SRS Resource List
+        NRPPA_SRSResource_t *srs_res = NrppaRes_list->list.array[k];
+        F1ResItem->sRSResourceID = srs_res->sRSResourceID; //(M)
+        F1ResItem->nrofSRS_Ports = srs_res->nrofSRS_Ports; //(M) port1	= 0, ports2	= 1, ports4	= 2
+        F1ResItem->startPosition = srs_res->startPosition; //(M)
+        F1ResItem->nrofSymbols = srs_res->nrofSymbols; //(M)  n1	= 0, n2	= 1, n4	= 2
+        F1ResItem->repetitionFactor = srs_res->repetitionFactor; //(M)  n1	= 0, n2	= 1, n4	= 2
+        F1ResItem->freqDomainPosition = srs_res->freqDomainPosition; //(M)
+        F1ResItem->freqDomainShift = srs_res->freqDomainShift; //(M)
+        F1ResItem->c_SRS = srs_res->c_SRS; //(M)
+        F1ResItem->b_SRS = srs_res->b_SRS; //(M)
+        F1ResItem->b_hop = srs_res->b_hop; //(M)
+        F1ResItem->groupOrSequenceHopping = srs_res->groupOrSequenceHopping; //(M) neither	= 0, groupHopping	= 1, sequenceHopping	= 2
+        F1ResItem->slotOffset = srs_res->slotOffset; // (M)
+        F1ResItem->sequenceId = srs_res->sequenceId; //(M)
+
+          // IE transmissionComb
+        switch (srs_res->transmissionComb.present) {
+          case NRPPA_TransmissionComb_PR_n2: 
+            F1ResItem->transmissionComb.present = f1ap_transmission_comb_pr_n2;
+            F1ResItem->transmissionComb.choice.n2.combOffset_n2 = srs_res->transmissionComb.choice.n2->combOffset_n2;
+            F1ResItem->transmissionComb.choice.n2.cyclicShift_n2 = srs_res->transmissionComb.choice.n2->cyclicShift_n2;
+            break;
+          case NRPPA_TransmissionComb_PR_n4:
+            F1ResItem->transmissionComb.present = f1ap_transmission_comb_pr_n4;
+            F1ResItem->transmissionComb.choice.n4.combOffset_n4 = srs_res->transmissionComb.choice.n4->combOffset_n4;
+            F1ResItem->transmissionComb.choice.n4.cyclicShift_n4 = srs_res->transmissionComb.choice.n4->cyclicShift_n4;
+            break;
+          case NRPPA_TransmissionComb_PR_NOTHING:
+            F1ResItem->transmissionComb.present = f1ap_transmission_comb_pr_nothing;
+            break;
+          default:
+            LOG_E(NRPPA, "Unknown Resource Item TransmissionComb\n");
+            break;
+        }
+
+        // IE  resourceType
+        switch (srs_res->resourceType.present) {
+          case NRPPA_ResourceType_PR_periodic:
+            F1ResItem->resourceType.present = f1ap_resource_type_pr_periodic;
+            F1ResItem->resourceType.choice.periodic.periodicity= srs_res->resourceType.choice.periodic->periodicity;
+            F1ResItem->resourceType.choice.periodic.offset=srs_res->resourceType.choice.periodic->offset;
+            break;
+          case NRPPA_ResourceType_PR_aperiodic:
+            F1ResItem->resourceType.present = f1ap_resource_type_pr_aperiodic;
+            F1ResItem->resourceType.choice.aperiodic.aperiodicResourceType=srs_res->resourceType.choice.aperiodic->aperiodicResourceType;
+            break;
+          case NRPPA_ResourceType_PR_semi_persistent:
+            F1ResItem->resourceType.present = f1ap_resource_type_pr_semi_persistent;
+            F1ResItem->resourceType.choice.semi_persistent.periodicity=srs_res->resourceType.choice.semi_persistent->periodicity;
+            F1ResItem->resourceType.choice.semi_persistent.offset=srs_res->resourceType.choice.semi_persistent->offset;
+            break;
+          case NRPPA_ResourceType_PR_NOTHING:
+            F1ResItem->resourceType.present = f1ap_resource_type_pr_nothing;
+            break;
+          default:
+            LOG_E(NRPPA, "Unknown Resource Item resourceType\n");
+            break;
+        }
+        if (k < maxnoSRSResources - 1) {
+          F1ResItem++;
+        }
+      } // for(int k=0; k < nb_srsresource; k++)
+
+      // Preparing sRSResourceSet_List IE of SRSConfig (IE of activeULBWP)
+      NRPPA_SRSResourceSet_List_t *NrppaResSet_list =Nrppa_ULBWP->sRSConfig.sRSResourceSet_List;
+      int maxnoSRSResourceSets = NrppaResSet_list->list.count;
+      f1_srsConf->sRSResourceSet_List.srs_resource_set_list_length = maxnoSRSResourceSets;
+      f1_srsConf->sRSResourceSet_List.srs_resource_set =
+          malloc(maxnoSRSResourceSets * sizeof(f1ap_srs_resource_set_t));
+      DevAssert(f1_ul_bwp->sRSConfig.sRSResourceSet_List.srs_resource_set);
+      f1ap_srs_resource_set_t *F1ResSetItem =f1_srsConf->sRSResourceSet_List.srs_resource_set;
+      LOG_D(NRPPA, "Preparing sRSResourceSet_List for F1AP  maxnoSRSResourceSets=%d \n", maxnoSRSResourceSets);
+      for (int y = 0; y < maxnoSRSResourceSets; y++) { // Preparing SRS Resource Set List
+        NRPPA_SRSResourceSet_t *srs_resSet= NrppaResSet_list->list.array[y];  
+
+        // IE sRSResourceSetID (M)
+        F1ResSetItem->sRSResourceSetID= srs_resSet->sRSResourceSetID;
+
+        // IE resourceSetType
+        switch (srs_resSet->resourceSetType.present) {
+          case NRPPA_ResourceSetType_PR_periodic:
+            F1ResSetItem->resourceSetType.present = f1ap_resource_set_type_pr_periodic;
+            F1ResSetItem->resourceSetType.choice.periodic.periodicSet =srs_resSet->resourceSetType.choice.periodic->periodicSet;
+            break;
+          case NRPPA_ResourceSetType_PR_aperiodic:
+            F1ResSetItem->resourceSetType.present = f1ap_resource_set_type_pr_aperiodic;
+            F1ResSetItem->resourceSetType.choice.aperiodic.sRSResourceTrigger = srs_resSet->resourceSetType.choice.aperiodic->sRSResourceTrigger;
+            F1ResSetItem->resourceSetType.choice.aperiodic.slotoffset = srs_resSet->resourceSetType.choice.aperiodic->slotoffset; //1; // range 1-32
+            break;
+          case NRPPA_ResourceSetType_PR_semi_persistent:
+            F1ResSetItem->resourceSetType.present = f1ap_resource_set_type_pr_semi_persistent;
+            F1ResSetItem->resourceSetType.choice.semi_persistent.semi_persistentSet = srs_resSet->resourceSetType.choice.semi_persistent->semi_persistentSet;
+            break;
+          case NRPPA_ResourceSetType_PR_NOTHING:
+            F1ResSetItem->resourceSetType.present = f1ap_resource_set_type_pr_nothing;
+            break;
+          default:
+            LOG_E(NRPPA, "Unknown NRPPA_SRS_ResourceSet__resourceType \n");
+            break;
+        }
+
+        // IE sRSResourceID_List
+        int maxnoSRSResourcePerSets = srs_resSet->sRSResourceID_List.list.count;
+        F1ResSetItem->sRSResourceID_List.srs_resource_id_list_length= maxnoSRSResourcePerSets;
+        F1ResSetItem->sRSResourceID_List.srs_resource_id = malloc(maxnoSRSResourcePerSets * sizeof(uint8_t));
+        DevAssert(F1ResSetItem->sRSResourceID_List.srs_resource_id);
+        long *F1ResID= F1ResSetItem->sRSResourceID_List.srs_resource_id;
+        for (int z = 0; z < maxnoSRSResourcePerSets; z++) {
+          F1ResID = srs_resSet->sRSResourceID_List.list.array[z];//(M)
+          if (z < maxnoSRSResourcePerSets -1){
+            F1ResID++;
+          }
+        }
+        if (y < maxnoSRSResourceSets - 1) {
+          F1ResSetItem++;
+        }
+      } // for(int y=0; y < maxnoSRSResourceSets; y++)
+
+      // Preparing posSRSResource_List IE of SRSConfig (IE of activeULBWP) IE not found in  OAI srs_config so filled zero values
+      NRPPA_PosSRSResource_List_t  *NrppaPosRes_list = Nrppa_ULBWP->sRSConfig.posSRSResource_List;
+      int maxnoPosSRSResources = NrppaPosRes_list->list.count;
+      f1_srsConf->posSRSResource_List.pos_srs_resource_list_length = maxnoPosSRSResources;
+      f1_srsConf->posSRSResource_List.pos_srs_resource_item =
+          malloc(maxnoPosSRSResources * sizeof(f1ap_pos_srs_resource_item_t));
+      DevAssert(f1_srsConf->posSRSResource_List.pos_srs_resource_item);
+      f1ap_pos_srs_resource_item_t *F1PosResItem = f1_srsConf->posSRSResource_List.pos_srs_resource_item;
+      LOG_D(NRPPA,
+            "Preparing posSRSResource_List IE for F1AP maxnoPosSRSResources=%d \n",
+            f1_srsConf->posSRSResource_List.pos_srs_resource_list_length);
+      for (int z = 0; z < maxnoPosSRSResources; z++) { // Preparing Pos SRS Resource List
+        NRPPA_PosSRSResource_Item_t *srs_PosResItem= NrppaPosRes_list->list.array[z]; 
+        
+        F1PosResItem->srs_PosResourceId = srs_PosResItem->srs_PosResourceId; // (M)
+        F1PosResItem->startPosition = srs_PosResItem->startPosition; // (M)  range (0,1,...13)
+        F1PosResItem->nrofSymbols = srs_PosResItem->nrofSymbols; // (M)  n1	= 0, n2	= 1, n4	= 2, n8	= 3, n12 = 4
+        F1PosResItem->freqDomainShift = srs_PosResItem->freqDomainShift; // (M)
+        F1PosResItem->c_SRS = srs_PosResItem->c_SRS; // (M)
+        F1PosResItem->groupOrSequenceHopping = srs_PosResItem->groupOrSequenceHopping; // (M)  neither	= 0, groupHopping	= 1, sequenceHopping	= 2
+        F1PosResItem->sequenceId = srs_PosResItem->sequenceId; //(M)
+        // pos_resource_item->spatialRelationPos;	// OPTIONAL
+
+        // IE transmissionCombPos
+        NRPPA_TransmissionCombPos_t *nrppaTran = &srs_PosResItem->transmissionCombPos;
+        f1ap_transmission_comb_pos_t *F1Tran= &F1PosResItem->transmissionCombPos; 
+        switch (nrppaTran->present)
+        {
+        case NRPPA_TransmissionCombPos_PR_n2:
+          F1Tran->present = f1ap_transmission_comb_pos_pr_n2;
+          F1Tran->choice.n2.combOffset_n2 = nrppaTran->choice.n2->combOffset_n2;
+          F1Tran->choice.n2.cyclicShift_n2 = nrppaTran->choice.n2->cyclicShift_n2;
+          break;
+        case NRPPA_TransmissionCombPos_PR_n4:
+          F1Tran->present = f1ap_transmission_comb_pos_pr_n4;
+          F1Tran->choice.n4.combOffset_n4 =nrppaTran->choice.n4->combOffset_n4;
+          F1Tran->choice.n4.cyclicShift_n4 = nrppaTran->choice.n4->cyclicShift_n4;
+          break;
+        case NRPPA_TransmissionCombPos_PR_n8:
+          F1Tran->present = f1ap_transmission_comb_pos_pr_n8;
+          F1Tran->choice.n8.combOffset_n8 =nrppaTran->choice.n8->combOffset_n8;
+          F1Tran->choice.n8.cyclicShift_n8 = nrppaTran->choice.n8->cyclicShift_n8;
+          break;
+        case NRPPA_TransmissionCombPos_PR_NOTHING:
+          F1Tran->present = f1ap_transmission_comb_pos_pr_NOTHING;
+          break;
+        default:
+          LOG_E(NRPPA, "Unknown Pos Resource Item TransmissionComb\n");
+          break;
+        }
+
+        //IE resourceTypePos
+        NRPPA_ResourceTypePos_t *nrppaResTy = &srs_PosResItem->resourceTypePos;
+        f1ap_resource_type_pos_t *F1ResTy= &F1PosResItem->resourceTypePos; 
+        switch (nrppaResTy->present)
+        {
+        case NRPPA_ResourceTypePos_PR_periodic:
+          F1ResTy->present= f1ap_resource_type_pos_pr_periodic;
+          F1ResTy->choice.periodic.offset=nrppaResTy->choice.periodic->offset;
+          F1ResTy->choice.periodic.periodicity=nrppaResTy->choice.periodic->periodicity;
+          break;
+        case NRPPA_ResourceTypePos_PR_aperiodic:
+          F1ResTy->present=f1ap_resource_type_pos_pr_aperiodic;
+          F1ResTy->choice.aperiodic.slotOffset= nrppaResTy->choice.aperiodic->slotOffset;
+          break;
+        case NRPPA_ResourceTypePos_PR_semi_persistent:
+          F1ResTy->present=f1ap_resource_type_pos_pr_semi_persistent;
+          F1ResTy->choice.semi_persistent.offset= nrppaResTy->choice.semi_persistent->offset;
+          F1ResTy->choice.semi_persistent.periodicity= nrppaResTy->choice.semi_persistent->periodicity;
+          break;
+        case NRPPA_ResourceTypePos_PR_NOTHING:
+          F1ResTy->present=f1ap_resource_type_pos_pr_NOTHING;
+          break;
+        default:
+          LOG_E(NRPPA, "Unknown Pos Resource Item resourceTypePos\n");
+          break;
+        }
+        if (z < maxnoPosSRSResources - 1) {
+          F1PosResItem++;
+        }
+      } // for(int z=0; z < maxnoPosSRSResources; z++)
+
+      // Preparing posSRSResourceSet_List IE of SRSConfig (IE of activeULBWP) TODO IE not found in  OAI srs_config
+      NRPPA_PosSRSResourceSet_List_t *NrppaPosResSet_list= Nrppa_ULBWP->sRSConfig.posSRSResourceSet_List;
+      int maxnoPosSRSResourceSets = NrppaPosResSet_list->list.count;
+      f1_srsConf->posSRSResourceSet_List.pos_srs_resource_set_list_length = maxnoPosSRSResourceSets;
+      f1_srsConf->posSRSResourceSet_List.pos_srs_resource_set_item =
+          malloc(maxnoPosSRSResourceSets * sizeof(f1ap_pos_srs_resource_set_item_t));
+      DevAssert(f1_srsConf->posSRSResourceSet_List.pos_srs_resource_set_item);
+      f1ap_pos_srs_resource_set_item_t *F1PosResSetItem=f1_srsConf->posSRSResourceSet_List.pos_srs_resource_set_item;
+      //*pos_resourceSet_item= F1PosResSetItem
+      LOG_D(NRPPA, "Preparing posSRSResourceSet_List for F1AP  maxnoPosSRSResourceSets=%d \n", maxnoPosSRSResourceSets);
+      for (int f = 0; f < maxnoPosSRSResourceSets; f++) { // Preparing Pos SRS Resource Set List
+        NRPPA_PosSRSResourceSet_Item_t *srs_PosresSetItem= NrppaPosResSet_list->list.array[f];
+        // IE possrsResourceSetID
+        F1PosResSetItem->possrsResourceSetID=srs_PosresSetItem->possrsResourceSetID; //(M)
+        // IE possRSResourceID_List;
+        int maxnoPosSRSResourcePerSets = srs_PosresSetItem->possRSResourceID_List.list.count;
+        F1PosResSetItem->possRSResourceID_List.pos_srs_resource_id_list_length = maxnoPosSRSResourcePerSets;
+        F1PosResSetItem->possRSResourceID_List.srs_pos_resource_id = malloc(maxnoPosSRSResourcePerSets * sizeof(uint8_t));
+        DevAssert(F1PosResSetItem->possRSResourceID_List.srs_pos_resource_id);
+        long *F1PosResID= F1PosResSetItem->possRSResourceID_List.srs_pos_resource_id;
+        for (int z = 0; z < maxnoPosSRSResourcePerSets; z++) {
+          F1PosResID= srs_PosresSetItem->possRSResourceID_List.list.array[z]; // TODO pointer address update
+          if (z < maxnoPosSRSResourcePerSets - 1){
+            F1PosResID++;
+          }
+        }
+        //  IE posresourceSetType
+        NRPPA_PosResourceSetType_t *nrppaPosResSetTy= &srs_PosresSetItem->posresourceSetType;
+        f1ap_pos_resource_set_type_t *F1PosResSetTy= &F1PosResSetItem->posresourceSetType;
+        switch (nrppaPosResSetTy->present)
+        {
+        case NRPPA_PosResourceSetType_PR_periodic:
+          F1PosResSetTy->present=f1ap_pos_resource_set_type_pr_periodic;
+          F1PosResSetTy->choice.periodic.posperiodicSet=nrppaPosResSetTy->choice.periodic->posperiodicSet;
+          break;
+        case NRPPA_PosResourceSetType_PR_aperiodic:
+          F1PosResSetTy->present=f1ap_pos_resource_set_type_pr_aperiodic;
+          F1PosResSetTy->choice.aperiodic.sRSResourceTrigger_List=nrppaPosResSetTy->choice.aperiodic->sRSResourceTrigger;
+          break;
+        case NRPPA_PosResourceSetType_PR_semi_persistent:
+          F1PosResSetTy->present=f1ap_pos_resource_set_type_pr_semi_persistent;
+          F1PosResSetTy->choice.semi_persistent.possemi_persistentSet=nrppaPosResSetTy->choice.semi_persistent->possemi_persistentSet;
+          break;
+        case NRPPA_PosResourceSetType_PR_NOTHING:
+          F1PosResSetTy->present=f1ap_pos_resource_set_type_pr_nothing;
+          break;
+        default:
+          LOG_E(NRPPA, "Unknown NRPPA_PosSRS_ResourceSet__resourceType \n");
+          break;
+        }
+        if (f < maxnoSRSResourceSets-1){
+          F1PosResSetItem++;
+        }
+      } // for(int f=0; f < maxnoSRSResourceSets; f++)
+
+      //  Preparing Uplink Channel BW Per SCS List IE of SRSCarrier_List (M)
+      NRPPA_UplinkChannelBW_PerSCS_List_t *nrppa_UlChBW= &CarrItem->uplinkChannelBW_PerSCS_List;
+      f1ap_uplink_channel_bw_per_scs_list_t *F1UlChBW= &srs_carrier_list_item->uplink_channel_bw_per_scs_list;
+      int maxnoSCSs = nrppa_UlChBW->list.count;
+      F1UlChBW->scs_specific_carrier_list_length = maxnoSCSs;
+      F1UlChBW->scs_specific_carrier = malloc(maxnoSCSs * sizeof(f1ap_scs_specific_carrier_t));
+      DevAssert(F1UlChBW->scs_specific_carrier);
+      f1ap_scs_specific_carrier_t *F1ScsCar = F1UlChBW->scs_specific_carrier;
+      //*scs_specific_carrier_item *F1ScsCar
+      LOG_D(NRPPA, "Preparing Uplink Channel BW Per SCS List for F1AP maxnoSCSs=%d \n", maxnoSCSs);
+      for (int a = 0; a < maxnoSCSs; a++) {
+        NRPPA_SCS_SpecificCarrier_t *nrppaScsCar=  nrppa_UlChBW->list.array[a];
+        F1ScsCar->offsetToCarrier = nrppaScsCar->offsetToCarrier; // (M)
+        F1ScsCar->subcarrierSpacing = nrppaScsCar->subcarrierSpacing; // (M)
+        F1ScsCar->carrierBandwidth = nrppaScsCar->carrierBandwidth; // (M)
+        if (a < maxnoSCSs-1){
+          F1ScsCar++;
+        }
+      } // for(int a=0; a < maxnoSCSs; a++)
+      if (i < maxnoSRScarrier -1){
+        srs_carrier_list_item++;
+      }
+    } // for (int i = 0; i < maxnoSRScarrier; i++)
+  }
+  
 
   // IE MeasurementBeamInfoRequest (Optional)
   // NRPPA_FIND_PROTOCOLIE_BY_ID(NRPPA_MeasurementRequest_IEs_t, ie, container, NRPPA_ProtocolIE_ID_id_MeasurementBeamInfoRequest,

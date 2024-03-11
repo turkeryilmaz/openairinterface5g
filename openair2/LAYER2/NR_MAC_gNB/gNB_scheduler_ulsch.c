@@ -1234,6 +1234,8 @@ void handle_nr_srs_measurements(const module_id_t module_id,
   }
 
   UE->ue_pos_info.toa_ns = srs_ind->timing_advance_offset_nsec;
+  UE->ue_pos_info.frame= frame;
+  UE->ue_pos_info.slot=slot;
 
   gNB_MAC_INST *nr_mac = RC.nrmac[module_id];
   NR_mac_stats_t *stats = &UE->mac_stats;
