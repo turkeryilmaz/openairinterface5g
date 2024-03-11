@@ -333,78 +333,78 @@ static void positioning_information_response(const f1ap_positioning_information_
             case NR_SRS_Resource__resourceType_PR_periodic:
               resource_item->resourceType.present = f1ap_resource_type_pr_periodic;
               NR_SRS_PeriodicityAndOffset_t periodAndOff= srs_resource->resourceType.choice.periodic->periodicityAndOffset_p;
-              f1ap_resource_type_periodic_t periodic= resource_item->resourceType.choice.periodic;
+              f1ap_resource_type_periodic_t *periodic= &resource_item->resourceType.choice.periodic;
               switch (periodAndOff.present) {
                 case NR_SRS_PeriodicityAndOffset_PR_NOTHING:
-                  periodic.periodicity =-1; //TODO choice not available in periodAndOff
+                  periodic->periodicity =-1; //TODO choice not available in periodAndOff
                   break; 
                 case NR_SRS_PeriodicityAndOffset_PR_sl1:
-                  periodic.periodicity =0;
-                  periodic.offset =periodAndOff.choice.sl1;
+                  periodic->periodicity =0;
+                  periodic->offset =periodAndOff.choice.sl1;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl2:
-                  periodic.periodicity =1;
-                  periodic.offset =periodAndOff.choice.sl2;
+                  periodic->periodicity =1;
+                  periodic->offset =periodAndOff.choice.sl2;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl4:
-                  periodic.periodicity =2;
-                  periodic.offset =periodAndOff.choice.sl4;
+                  periodic->periodicity =2;
+                  periodic->offset =periodAndOff.choice.sl4;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl5:
-                  periodic.periodicity =3;
-                  periodic.offset =periodAndOff.choice.sl5;
+                  periodic->periodicity =3;
+                  periodic->offset =periodAndOff.choice.sl5;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl8:
-                  periodic.periodicity =4;
-                  periodic.offset =periodAndOff.choice.sl8;
+                  periodic->periodicity =4;
+                  periodic->offset =periodAndOff.choice.sl8;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl10:
-                  periodic.periodicity =5 ;
-                  periodic.offset =periodAndOff.choice.sl10;
+                  periodic->periodicity =5 ;
+                  periodic->offset =periodAndOff.choice.sl10;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl16:
-                  periodic.periodicity =6;
-                  periodic.offset =periodAndOff.choice.sl16;
+                  periodic->periodicity =6;
+                  periodic->offset =periodAndOff.choice.sl16;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl20:
-                  periodic.periodicity =7;
-                  periodic.offset =periodAndOff.choice.sl20;
+                  periodic->periodicity =7;
+                  periodic->offset =periodAndOff.choice.sl20;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl32:
-                  periodic.periodicity =8;
-                  periodic.offset =periodAndOff.choice.sl32;
+                  periodic->periodicity =8;
+                  periodic->offset =periodAndOff.choice.sl32;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl40:
-                  periodic.periodicity =9;
-                  periodic.offset =periodAndOff.choice.sl40;
+                  periodic->periodicity =9;
+                  periodic->offset =periodAndOff.choice.sl40;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl64:
-                  periodic.periodicity =10;
-                  periodic.offset =periodAndOff.choice.sl64;
+                  periodic->periodicity =10;
+                  periodic->offset =periodAndOff.choice.sl64;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl80:
-                  periodic.periodicity =11;
-                  periodic.offset =periodAndOff.choice.sl80;
+                  periodic->periodicity =11;
+                  periodic->offset =periodAndOff.choice.sl80;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl160:
-                  periodic.periodicity =12;
-                  periodic.offset =periodAndOff.choice.sl160;
+                  periodic->periodicity =12;
+                  periodic->offset =periodAndOff.choice.sl160;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl320:
-                  periodic.periodicity =13;
-                  periodic.offset =periodAndOff.choice.sl320;
+                  periodic->periodicity =13;
+                  periodic->offset =periodAndOff.choice.sl320;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl640:
-                  periodic.periodicity =14 ;
-                  periodic.offset =periodAndOff.choice.sl640;
+                  periodic->periodicity =14 ;
+                  periodic->offset =periodAndOff.choice.sl640;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl1280:
-                  periodic.periodicity =15;
-                  periodic.offset =periodAndOff.choice.sl1280;
+                  periodic->periodicity =15;
+                  periodic->offset =periodAndOff.choice.sl1280;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl2560:
-                  periodic.periodicity =16;
-                  periodic.offset =periodAndOff.choice.sl2560;
+                  periodic->periodicity =16;
+                  periodic->offset =periodAndOff.choice.sl2560;
                   break;
               }
               break;
@@ -417,78 +417,78 @@ static void positioning_information_response(const f1ap_positioning_information_
             case NR_SRS_Resource__resourceType_PR_semi_persistent:
               resource_item->resourceType.present = f1ap_resource_type_pr_semi_persistent;
               NR_SRS_PeriodicityAndOffset_t periodAndOff_sp= srs_resource->resourceType.choice.semi_persistent->periodicityAndOffset_sp;
-              f1ap_resource_type_semi_persistent_t semi_persistent= resource_item->resourceType.choice.semi_persistent;
+              f1ap_resource_type_semi_persistent_t *semi_persistent= &resource_item->resourceType.choice.semi_persistent;
               switch (periodAndOff_sp.present) {
                 case NR_SRS_PeriodicityAndOffset_PR_NOTHING:
-                  semi_persistent.periodicity =-1; //TODO choice not available in periodAndOff
+                  semi_persistent->periodicity =-1; //TODO choice not available in periodAndOff
                   break; 
                 case NR_SRS_PeriodicityAndOffset_PR_sl1:
-                  semi_persistent.periodicity =0;
-                  semi_persistent.offset =periodAndOff_sp.choice.sl1;
+                  semi_persistent->periodicity =0;
+                  semi_persistent->offset =periodAndOff_sp.choice.sl1;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl2:
-                  semi_persistent.periodicity =1;
-                  semi_persistent.offset =periodAndOff_sp.choice.sl2;
+                  semi_persistent->periodicity =1;
+                  semi_persistent->offset =periodAndOff_sp.choice.sl2;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl4:
-                  semi_persistent.periodicity =2;
-                  semi_persistent.offset =periodAndOff_sp.choice.sl4;
+                  semi_persistent->periodicity =2;
+                  semi_persistent->offset =periodAndOff_sp.choice.sl4;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl5:
-                  semi_persistent.periodicity =3;
-                  semi_persistent.offset =periodAndOff_sp.choice.sl5;
+                  semi_persistent->periodicity =3;
+                  semi_persistent->offset =periodAndOff_sp.choice.sl5;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl8:
-                  semi_persistent.periodicity =4;
-                  semi_persistent.offset =periodAndOff_sp.choice.sl8;
+                  semi_persistent->periodicity =4;
+                  semi_persistent->offset =periodAndOff_sp.choice.sl8;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl10:
-                  semi_persistent.periodicity =5 ;
-                  semi_persistent.offset =periodAndOff_sp.choice.sl10;
+                  semi_persistent->periodicity =5 ;
+                  semi_persistent->offset =periodAndOff_sp.choice.sl10;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl16:
-                  semi_persistent.periodicity =6;
-                  semi_persistent.offset =periodAndOff_sp.choice.sl16;
+                  semi_persistent->periodicity =6;
+                  semi_persistent->offset =periodAndOff_sp.choice.sl16;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl20:
-                  semi_persistent.periodicity =7;
-                  semi_persistent.offset =periodAndOff_sp.choice.sl20;
+                  semi_persistent->periodicity =7;
+                  semi_persistent->offset =periodAndOff_sp.choice.sl20;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl32:
-                  semi_persistent.periodicity =8;
-                  semi_persistent.offset =periodAndOff_sp.choice.sl32;
+                  semi_persistent->periodicity =8;
+                  semi_persistent->offset =periodAndOff_sp.choice.sl32;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl40:
-                  semi_persistent.periodicity =9;
-                  semi_persistent.offset =periodAndOff_sp.choice.sl40;
+                  semi_persistent->periodicity =9;
+                  semi_persistent->offset =periodAndOff_sp.choice.sl40;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl64:
-                  semi_persistent.periodicity =10;
-                  semi_persistent.offset =periodAndOff_sp.choice.sl64;
+                  semi_persistent->periodicity =10;
+                  semi_persistent->offset =periodAndOff_sp.choice.sl64;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl80:
-                  semi_persistent.periodicity =11;
-                  semi_persistent.offset =periodAndOff_sp.choice.sl80;
+                  semi_persistent->periodicity =11;
+                  semi_persistent->offset =periodAndOff_sp.choice.sl80;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl160:
-                  semi_persistent.periodicity =12;
-                  semi_persistent.offset =periodAndOff_sp.choice.sl160;
+                  semi_persistent->periodicity =12;
+                  semi_persistent->offset =periodAndOff_sp.choice.sl160;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl320:
-                  semi_persistent.periodicity =13;
-                  semi_persistent.offset =periodAndOff_sp.choice.sl320;
+                  semi_persistent->periodicity =13;
+                  semi_persistent->offset =periodAndOff_sp.choice.sl320;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl640:
-                  semi_persistent.periodicity =14 ;
-                  semi_persistent.offset =periodAndOff_sp.choice.sl640;
+                  semi_persistent->periodicity =14 ;
+                  semi_persistent->offset =periodAndOff_sp.choice.sl640;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl1280:
-                  semi_persistent.periodicity =15;
-                  semi_persistent.offset =periodAndOff_sp.choice.sl1280;
+                  semi_persistent->periodicity =15;
+                  semi_persistent->offset =periodAndOff_sp.choice.sl1280;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl2560:
-                  semi_persistent.periodicity =16;
-                  semi_persistent.offset =periodAndOff_sp.choice.sl2560;
+                  semi_persistent->periodicity =16;
+                  semi_persistent->offset =periodAndOff_sp.choice.sl2560;
                   break;
               }
               break;
