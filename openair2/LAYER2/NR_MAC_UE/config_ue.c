@@ -678,7 +678,7 @@ void nr_release_mac_config_logicalChannelBearer(NR_UE_MAC_INST_t *mac, long chan
         mac->order_list_count--;
         break;
       }else{
-        AssertFatal(0==1, "removing a rb not in ordered list\n");
+        LOG_W(NR_MAC, "releasing channel id %d, while it is not in ordered list\n", channel_identity);
       }
     }
   }
