@@ -84,7 +84,7 @@ services:
             timeout: 5s
             retries: 5
     oai-cu-cp:
-        image: oai-gnb:telnet
+        image: arorasagar/testing-images:oai-gnb-telnet
         privileged: true
         container_name: rfsim5g-oai-cucp
         environment:
@@ -136,7 +136,7 @@ services:
             timeout: 5s
             retries: 5
     oai-du:
-        image: oai-gnb:telnet
+        image: arorasagar/testing-images:oai-gnb-telnet
         privileged: true
         container_name: rfsim5g-oai-du
         environment:
@@ -158,7 +158,7 @@ services:
             ue_net:
                 ipv4_address: 192.168.78.2
         volumes:
-            - ../../conf_files/du.sa.band78.51prb.rfsim.conf:/opt/oai-gnb/etc/gnb.conf
+            - ../../conf_files/gnb-du.sa.band78.106prb.rfsim.conf:/opt/oai-gnb/etc/gnb.conf
         healthcheck:
             test: /bin/bash -c "pgrep nr-softmodem"
             interval: 10s

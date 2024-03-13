@@ -7,7 +7,7 @@
       </a>
     </td>
     <td style="border-collapse: collapse; border: none; vertical-align: center;">
-      <b><font size = "5">OAI Full Stack 5G-NR RF simulation with containers</font></b>
+      <b><font size = "5">Testing O1 in containers</font></b>
     </td>
   </tr>
 </table>
