@@ -689,13 +689,13 @@ uint8_t nr_ue_get_rach(module_id_t mod_id,
     }
   }
 
-  LOG_D(NR_MAC, "In %s: [UE %d][%d.%d]: ra_state %d, RA_active %d\n",
+  LOG_D(NR_MAC, "In %s: [UE %d][%d.%d]: ra_state %d, RA_active %d mac->state %d \n",
     __FUNCTION__,
     mod_id,
     frame,
     nr_slot_tx,
     ra->ra_state,
-    ra->RA_active);
+    ra->RA_active,mac->state);
 
   if (ra->ra_state > RA_UE_IDLE && ra->ra_state < RA_SUCCEEDED) {
 

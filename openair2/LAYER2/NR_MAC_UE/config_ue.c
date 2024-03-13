@@ -1391,7 +1391,7 @@ void nr_rrc_mac_config_req_reset(module_id_t module_id,
   NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
   reset_mac_inst(mac);
   reset_ra(&mac->ra);
-  release_mac_configuration(mac);
+  //release_mac_configuration(mac); W51 rebase: those MAC configuration should not be released, as MAC still need to monitoring DL signal and paging
   nr_ue_init_mac(module_id);
 
   // Sending to PHY a request to resync
@@ -1400,6 +1400,9 @@ void nr_rrc_mac_config_req_reset(module_id_t module_id,
   mac->synch_request.CC_id = 0;
   mac->synch_request.synch_req.target_Nid_cell = -1;
   mac->if_module->synch_request(&mac->synch_request);
+  if(reset_cause == GO_TO_IDLE){
+    mac->state = UE_STAY_WITH_DL_SYNC_ONLY;
+  }
 
 }
 

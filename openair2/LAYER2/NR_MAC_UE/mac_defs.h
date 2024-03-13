@@ -160,6 +160,7 @@
 /*!\brief UE layer 2 status */
 typedef enum {
   UE_NOT_SYNC = 0,
+  UE_STAY_WITH_DL_SYNC_ONLY,
   UE_SYNC,
   UE_PERFORMING_RA,
   UE_CONNECTED

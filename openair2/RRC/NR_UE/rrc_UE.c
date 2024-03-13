@@ -644,7 +644,9 @@ static void nr_ue_check_paging(const module_id_t module_id, const uint8_t gNB_in
     if (found) {
         LOG_I(NR_RRC, "%s: found ue_Identity in PCCH\n", __FUNCTION__);
         NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
+        mac->state = UE_SYNC;
         mac->ra.ra_state = WAIT_SIB;
+
     }
 }
 
@@ -948,7 +950,7 @@ static int8_t nr_rrc_ue_decode_NR_BCCH_DL_SCH_Message(instance_t instance,
           break;
         }else{
           NR_UE_MAC_INST_t *mac = get_mac_inst(0);
-          if( mac->ra.ra_state == RA_UE_IDLE){
+          if( mac->ra.ra_state == RA_UE_IDLE && mac->state != UE_STAY_WITH_DL_SYNC_ONLY){
             mac->ra.ra_state = GENERATE_PREAMBLE;
             LOG_D(NR_RRC,"  ra_state is set to  %d\n",GENERATE_PREAMBLE);
           }
