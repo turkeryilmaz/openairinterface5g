@@ -120,7 +120,7 @@ DTCH and forms BSR elements and PHR in MAC header.  CRNTI element is not support
 SDUs and generates header and forms the complete MAC SDU. \param[in]  mac pointer to MAC instance \param[in] frameP
 subframe number \param[in] slotP slot number
 */
-int8_t nr_ue_get_SR(NR_UE_MAC_INST_t *mac, frame_t frameP, slot_t slotP);
+int8_t nr_ue_get_SR(NR_UE_MAC_INST_t *mac, frame_t frame, slot_t slot, NR_SchedulingRequestId_t sr_id);
 
 int8_t nr_ue_process_dci(NR_UE_MAC_INST_t *mac,
                          int cc_id,
