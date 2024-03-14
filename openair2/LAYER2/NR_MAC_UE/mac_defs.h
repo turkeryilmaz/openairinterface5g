@@ -160,6 +160,7 @@
 /*!\brief UE layer 2 status */
 typedef enum {
   UE_NOT_SYNC = 0,
+  UE_STAY_WITH_DL_SYNC_ONLY,
   UE_SYNC,
   UE_PERFORMING_RA,
   UE_CONNECTED
@@ -242,11 +243,12 @@ typedef struct {
 
 typedef enum {
   RA_UE_IDLE = 0,
-  GENERATE_PREAMBLE = 1,
-  WAIT_RAR = 2,
-  WAIT_CONTENTION_RESOLUTION = 3,
-  RA_SUCCEEDED = 4,
-  RA_FAILED = 5
+  WAIT_SIB   = 1,
+  GENERATE_PREAMBLE = 2,
+  WAIT_RAR = 3,
+  WAIT_CONTENTION_RESOLUTION = 4,
+  RA_SUCCEEDED = 5,
+  RA_FAILED = 6
 } RA_state_t;
 
 typedef struct {
@@ -453,12 +455,13 @@ typedef struct {
 /*!\brief Top level UE MAC structure */
 typedef struct {
   NR_UE_L2_STATE_t state;
-  int servCellIndex;
-  long physCellId;
-  int first_sync_frame;
-  bool get_sib1;
-  bool get_otherSI;
-  NR_MIB_t *mib;
+  int                             servCellIndex;
+  long                            physCellId;
+  uint8_t                         phy_id;
+  int                             first_sync_frame;
+  bool                            get_sib1;
+  bool                            get_otherSI;
+  NR_MIB_t                        *mib;
   struct NR_SI_SchedulingInfo *si_SchedulingInfo;
   int si_window_start;
   ssb_list_info_t ssb_list;
@@ -517,6 +520,7 @@ typedef struct {
 
   // order lc info
   nr_lcordered_info_t lc_ordered_info[NR_MAX_NUM_LCID];
+  uint8_t order_list_count;
   NR_UE_SCHEDULING_INFO scheduling_info;
 
   /// PHR
@@ -546,6 +550,8 @@ typedef struct {
   nr_emulated_l1_t nr_ue_emul_l1;
 
   pthread_mutex_t mutex_dl_info;
+
+  rlm_t p7_cell_search_ind_rlm;
 
 } NR_UE_MAC_INST_t;
 

@@ -679,7 +679,7 @@ uint8_t nr_ue_get_rach(module_id_t mod_id,
   NR_PRACH_RESOURCES_t *prach_resources = &ra->prach_resources;
 
   // Delay init RA procedure to allow the convergence of the IIR filter on PRACH noise measurements at gNB side
-  if (ra->ra_state == RA_UE_IDLE) {
+  if (ra->ra_state == WAIT_SIB) {
     if ((mac->first_sync_frame > -1 || get_softmodem_params()->do_ra || get_softmodem_params()->nsa) &&
        ((MAX_FRAME_NUMBER + frame - mac->first_sync_frame) % MAX_FRAME_NUMBER) > 150) {
       ra->ra_state = GENERATE_PREAMBLE;
@@ -689,13 +689,13 @@ uint8_t nr_ue_get_rach(module_id_t mod_id,
     }
   }
 
-  LOG_D(NR_MAC, "In %s: [UE %d][%d.%d]: ra_state %d, RA_active %d\n",
+  LOG_D(NR_MAC, "In %s: [UE %d][%d.%d]: ra_state %d, RA_active %d mac->state %d \n",
     __FUNCTION__,
     mod_id,
     frame,
     nr_slot_tx,
     ra->ra_state,
-    ra->RA_active);
+    ra->RA_active,mac->state);
 
   if (ra->ra_state > RA_UE_IDLE && ra->ra_state < RA_SUCCEEDED) {
 
@@ -973,6 +973,8 @@ void prepare_msg4_feedback(NR_UE_MAC_INST_t *mac, int pid, int ack_nack)
   current_harq->active = false;
   current_harq->ack_received = false;
   if (get_softmodem_params()->emulate_l1) {
+    current_harq->active = true;
+    current_harq->ack_received = true;
     mac->nr_ue_emul_l1.harq[pid].active = true;
     mac->nr_ue_emul_l1.harq[pid].active_dl_harq_sfn = sched_frame;
     mac->nr_ue_emul_l1.harq[pid].active_dl_harq_slot = sched_slot;
