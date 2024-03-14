@@ -1,0 +1,1209 @@
+/*
+ * Copyright 2022 Sequans Communications.
+ *
+ * Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The OpenAirInterface Software Alliance licenses this file to You under
+ * the OAI Public License, Version 1.0  (the "License"); you may not use this file
+ * except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.openairinterface.org/?page_id=698
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * For more information about the OpenAirInterface (OAI) Software Alliance:
+ *      contact@openairinterface.org
+ */
+
+#pragma once
+
+// SIDL keywords.
+#include "msg.sidl"
+
+// SIDL commons.
+#include "SidlCommonBase.sidl"
+#include "SidlCommon.sidl"
+#include "SidlNrASN1.sidl"
+
+typedef UInt16_Type RNTI_Value_Type;
+
+typedef uint16_t NR_RACH_TimingAdvance_Type;
+typedef uint8_t NR_TimingAdvanceIndex_Type;
+typedef uint16_t NR_TimingAdvance_Period_Type;
+
+typedef int32_t NR_ServingCellIndex_Type;
+
+SIDL_UNION_ENUM(NR_RadioBearerId_Type) {
+	NR_RadioBearerId_Type_UNBOUND_VALUE,
+	NR_RadioBearerId_Type_Srb,
+	NR_RadioBearerId_Type_Drb
+};
+SIDL_UNION_BEGIN(NR_RadioBearerId_Type) {
+	SIDL_UNION_CASE(NR_RadioBearerId_Type_Srb)
+		SRB_Identity_Type Srb;
+	SIDL_UNION_CASE(NR_RadioBearerId_Type_Drb)
+		ASN_NR_NAME(DRB_Identity) Drb;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_RoutingInfo_Type) {
+	NR_RoutingInfo_Type_UNBOUND_VALUE,
+	NR_RoutingInfo_Type_None,
+	NR_RoutingInfo_Type_RadioBearerId,
+	NR_RoutingInfo_Type_QosFlow
+};
+SIDL_UNION_BEGIN(NR_RoutingInfo_Type) {
+	SIDL_UNION_CASE(NR_RoutingInfo_Type_None)
+		Null_Type None;
+	SIDL_UNION_CASE(NR_RoutingInfo_Type_RadioBearerId)
+		struct NR_RadioBearerId_Type RadioBearerId;
+	SIDL_UNION_CASE(NR_RoutingInfo_Type_QosFlow)
+		struct QosFlow_Identification_Type QosFlow;
+} SIDL_UNION_END;
+
+typedef Null_Type NR_RoutingInfoSUL_Type;
+
+struct MacBearerRouting_Type {
+	NR_CellId_Type NR;
+};
+
+struct NR_IndAspCommonPart_Type {
+	NR_CellId_Type CellId;
+	struct NR_RoutingInfo_Type RoutingInfo;
+	SIDL_OPTIONAL(NR_RoutingInfoSUL_Type, RoutingInfoSUL);
+	struct RlcBearerRouting_Type RlcBearerRouting;
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(NR_IndAspCommonPart_Type, MacBearerRouting_Type, MacBearerRouting);
+	struct TimingInfo_Type TimingInfo;
+	struct IndicationStatus_Type Status;
+};
+
+struct NR_ReqAspCommonPart_Type {
+	NR_CellId_Type CellId;
+	struct NR_RoutingInfo_Type RoutingInfo;
+	struct RlcBearerRouting_Type RlcBearerRouting;
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(NR_ReqAspCommonPart_Type, MacBearerRouting_Type, MacBearerRouting);
+	struct TimingInfo_Type TimingInfo;
+	struct ReqAspControlInfo_Type ControlInfo;
+};
+
+struct NR_CnfAspCommonPart_Type {
+	NR_CellId_Type CellId;
+	struct NR_RoutingInfo_Type RoutingInfo;
+	struct TimingInfo_Type TimingInfo;
+	struct ConfirmationResult_Type Result;
+};
+
+typedef enum {
+	NR_PdcpCount_Srb,
+	NR_PdcpCount_DrbSQN12,
+	NR_PdcpCount_DrbSQN18
+} NR_PdcpCountFormat_Type;
+
+struct NR_PdcpCount_Type {
+	NR_PdcpCountFormat_Type Format;
+	PdcpCountValue_Type Value;
+};
+
+struct NR_PdcpCountInfo_Type {
+	struct NR_RadioBearerId_Type RadioBearerId;
+	SIDL_OPTIONAL_OF_STRUCT(NR_PdcpCount_Type, UL);
+	SIDL_OPTIONAL_OF_STRUCT(NR_PdcpCount_Type, DL);
+};
+
+typedef SIDL_DYNAMIC_OF_STRUCT(NR_PdcpCountInfo_Type, NR_PdcpCountInfoList_Type);
+
+SIDL_UNION_ENUM(NR_PDCP_CountCnf_Type) {
+	NR_PDCP_CountCnf_Type_UNBOUND_VALUE,
+	NR_PDCP_CountCnf_Type_Get,
+	NR_PDCP_CountCnf_Type_Set
+};
+SIDL_UNION_BEGIN(NR_PDCP_CountCnf_Type) {
+	SIDL_UNION_CASE(NR_PDCP_CountCnf_Type_Get)
+		NR_PdcpCountInfoList_Type Get;
+	SIDL_UNION_CASE(NR_PDCP_CountCnf_Type_Set)
+		Null_Type Set;
+} SIDL_UNION_END;
+
+struct DeltaValues_Type {
+	int32_t DeltaNRf1;
+	int32_t DeltaNRf2;
+	int32_t DeltaNRf3;
+	int32_t DeltaNRf4;
+};
+
+struct UE_NR_DeltaValues_Type {
+	struct DeltaValues_Type DeltaPrimaryBand;
+	struct DeltaValues_Type DeltaSecondaryBand;
+};
+
+typedef enum {
+	NR_SearchSpaceType_cssType0,
+	NR_SearchSpaceType_cssType0A,
+	NR_SearchSpaceType_cssType1,
+	NR_SearchSpaceType_cssType2,
+	NR_SearchSpaceType_cssType3,
+	NR_SearchSpaceType_ussDL,
+	NR_SearchSpaceType_ussUL
+} NR_SearchSpaceType_Type;
+
+SIDL_UNION_ENUM(NR_Attenuation_Type) {
+	NR_Attenuation_Type_UNBOUND_VALUE,
+	NR_Attenuation_Type_Value,
+	NR_Attenuation_Type_Off
+};
+SIDL_UNION_BEGIN(NR_Attenuation_Type) {
+	SIDL_UNION_CASE(NR_Attenuation_Type_Value)
+		uint8_t Value;
+	SIDL_UNION_CASE(NR_Attenuation_Type_Off)
+		Null_Type Off;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_ASN1_TDD_UL_DL_SlotConfig_Type) {
+	NR_ASN1_TDD_UL_DL_SlotConfig_Type_UNBOUND_VALUE,
+	NR_ASN1_TDD_UL_DL_SlotConfig_Type_R15
+};
+SIDL_UNION_BEGIN(NR_ASN1_TDD_UL_DL_SlotConfig_Type) {
+	SIDL_UNION_CASE(NR_ASN1_TDD_UL_DL_SlotConfig_Type_R15)
+		struct ASN_NR_NAME(TDD_UL_DL_SlotConfig) R15;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_ASN1_TDD_UL_DL_ConfigCommon_Type) {
+	NR_ASN1_TDD_UL_DL_ConfigCommon_Type_UNBOUND_VALUE,
+	NR_ASN1_TDD_UL_DL_ConfigCommon_Type_R15
+};
+SIDL_UNION_BEGIN(NR_ASN1_TDD_UL_DL_ConfigCommon_Type) {
+	SIDL_UNION_CASE(NR_ASN1_TDD_UL_DL_ConfigCommon_Type_R15)
+		struct ASN_NR_NAME(TDD_UL_DL_ConfigCommon) R15;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_ASN1_FrequencyInfoDL_Type) {
+	NR_ASN1_FrequencyInfoDL_Type_UNBOUND_VALUE,
+	NR_ASN1_FrequencyInfoDL_Type_R15
+};
+SIDL_UNION_BEGIN(NR_ASN1_FrequencyInfoDL_Type) {
+	SIDL_UNION_CASE(NR_ASN1_FrequencyInfoDL_Type_R15)
+		struct ASN_NR_NAME(FrequencyInfoDL) R15;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_ASN1_PDSCH_ServingCellConfig_Type) {
+	NR_ASN1_PDSCH_ServingCellConfig_Type_UNBOUND_VALUE,
+	NR_ASN1_PDSCH_ServingCellConfig_Type_R15
+};
+SIDL_UNION_BEGIN(NR_ASN1_PDSCH_ServingCellConfig_Type) {
+	SIDL_UNION_CASE(NR_ASN1_PDSCH_ServingCellConfig_Type_R15)
+		struct ASN_NR_NAME(PDSCH_ServingCellConfig) R15;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_ASN1_RateMatchPattern_Type) {
+	NR_ASN1_RateMatchPattern_Type_UNBOUND_VALUE,
+	NR_ASN1_RateMatchPattern_Type_R15
+};
+SIDL_UNION_BEGIN(NR_ASN1_RateMatchPattern_Type) {
+	SIDL_UNION_CASE(NR_ASN1_RateMatchPattern_Type_R15)
+		struct ASN_NR_NAME(RateMatchPattern) R15;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_ASN1_RateMatchPatternLTE_CRS_Type) {
+	NR_ASN1_RateMatchPatternLTE_CRS_Type_UNBOUND_VALUE,
+	NR_ASN1_RateMatchPatternLTE_CRS_Type_R15
+};
+SIDL_UNION_BEGIN(NR_ASN1_RateMatchPatternLTE_CRS_Type) {
+	SIDL_UNION_CASE(NR_ASN1_RateMatchPatternLTE_CRS_Type_R15)
+		struct ASN_NR_NAME(RateMatchPatternLTE_CRS) R15;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_ASN1_BWP_Type) {
+	NR_ASN1_BWP_Type_UNBOUND_VALUE,
+	NR_ASN1_BWP_Type_R15
+};
+SIDL_UNION_BEGIN(NR_ASN1_BWP_Type) {
+	SIDL_UNION_CASE(NR_ASN1_BWP_Type_R15)
+		struct ASN_NR_NAME(BWP) R15;
+} SIDL_UNION_END;
+
+struct NR_ASN1_SearchSpace_Type {
+	struct ASN_NR_NAME(SearchSpace) R15;
+	SIDL_OPTIONAL_OF_STRUCT(ASN_NR_NAME(SearchSpaceExt_r16), R16);
+};
+
+SIDL_UNION_ENUM(NR_ASN1_ControlResourceSet_Type) {
+	NR_ASN1_ControlResourceSet_Type_UNBOUND_VALUE,
+	NR_ASN1_ControlResourceSet_Type_R15
+};
+SIDL_UNION_BEGIN(NR_ASN1_ControlResourceSet_Type) {
+	SIDL_UNION_CASE(NR_ASN1_ControlResourceSet_Type_R15)
+		struct ASN_NR_NAME(ControlResourceSet) R15;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_ASN1_PDSCH_ConfigCommon_Type) {
+	NR_ASN1_PDSCH_ConfigCommon_Type_UNBOUND_VALUE,
+	NR_ASN1_PDSCH_ConfigCommon_Type_R15
+};
+SIDL_UNION_BEGIN(NR_ASN1_PDSCH_ConfigCommon_Type) {
+	SIDL_UNION_CASE(NR_ASN1_PDSCH_ConfigCommon_Type_R15)
+		struct ASN_NR_NAME(PDSCH_ConfigCommon) R15;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_ASN1_PDSCH_Config_Type) {
+	NR_ASN1_PDSCH_Config_Type_UNBOUND_VALUE,
+	NR_ASN1_PDSCH_Config_Type_R15
+};
+SIDL_UNION_BEGIN(NR_ASN1_PDSCH_Config_Type) {
+	SIDL_UNION_CASE(NR_ASN1_PDSCH_Config_Type_R15)
+		struct ASN_NR_NAME(PDSCH_Config) R15;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_ASN1_SPS_Config_Type) {
+	NR_ASN1_SPS_Config_Type_UNBOUND_VALUE,
+	NR_ASN1_SPS_Config_Type_R15
+};
+SIDL_UNION_BEGIN(NR_ASN1_SPS_Config_Type) {
+	SIDL_UNION_CASE(NR_ASN1_SPS_Config_Type_R15)
+		struct ASN_NR_NAME(SPS_Config) R15;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_ASN1_FrequencyInfoUL_Type) {
+	NR_ASN1_FrequencyInfoUL_Type_UNBOUND_VALUE,
+	NR_ASN1_FrequencyInfoUL_Type_R15
+};
+SIDL_UNION_BEGIN(NR_ASN1_FrequencyInfoUL_Type) {
+	SIDL_UNION_CASE(NR_ASN1_FrequencyInfoUL_Type_R15)
+		struct ASN_NR_NAME(FrequencyInfoUL) R15;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_ASN1_BWP_UplinkCommon_Type) {
+	NR_ASN1_BWP_UplinkCommon_Type_UNBOUND_VALUE,
+	NR_ASN1_BWP_UplinkCommon_Type_R15
+};
+SIDL_UNION_BEGIN(NR_ASN1_BWP_UplinkCommon_Type) {
+	SIDL_UNION_CASE(NR_ASN1_BWP_UplinkCommon_Type_R15)
+		struct ASN_NR_NAME(BWP_UplinkCommon) R15;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_ASN1_BWP_UplinkDedicated_Type) {
+	NR_ASN1_BWP_UplinkDedicated_Type_UNBOUND_VALUE,
+	NR_ASN1_BWP_UplinkDedicated_Type_R15
+};
+SIDL_UNION_BEGIN(NR_ASN1_BWP_UplinkDedicated_Type) {
+	SIDL_UNION_CASE(NR_ASN1_BWP_UplinkDedicated_Type_R15)
+		struct ASN_NR_NAME(BWP_UplinkDedicated) R15;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_ASN1_RACH_ConfigDedicated_Type) {
+	NR_ASN1_RACH_ConfigDedicated_Type_UNBOUND_VALUE,
+	NR_ASN1_RACH_ConfigDedicated_Type_R15
+};
+SIDL_UNION_BEGIN(NR_ASN1_RACH_ConfigDedicated_Type) {
+	SIDL_UNION_CASE(NR_ASN1_RACH_ConfigDedicated_Type_R15)
+		struct ASN_NR_NAME(RACH_ConfigDedicated) R15;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_ASN1_SI_RequestConfig_Type) {
+	NR_ASN1_SI_RequestConfig_Type_UNBOUND_VALUE,
+	NR_ASN1_SI_RequestConfig_Type_R15
+};
+SIDL_UNION_BEGIN(NR_ASN1_SI_RequestConfig_Type) {
+	SIDL_UNION_CASE(NR_ASN1_SI_RequestConfig_Type_R15)
+		struct ASN_NR_NAME(SI_RequestConfig) R15;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_ASN1_PUSCH_ServingCellConfig_Type) {
+	NR_ASN1_PUSCH_ServingCellConfig_Type_UNBOUND_VALUE,
+	NR_ASN1_PUSCH_ServingCellConfig_Type_R15
+};
+SIDL_UNION_BEGIN(NR_ASN1_PUSCH_ServingCellConfig_Type) {
+	SIDL_UNION_CASE(NR_ASN1_PUSCH_ServingCellConfig_Type_R15)
+		struct ASN_NR_NAME(PUSCH_ServingCellConfig) R15;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_ASN1_DRX_Config_Type) {
+	NR_ASN1_DRX_Config_Type_UNBOUND_VALUE,
+	NR_ASN1_DRX_Config_Type_R15
+};
+SIDL_UNION_BEGIN(NR_ASN1_DRX_Config_Type) {
+	SIDL_UNION_CASE(NR_ASN1_DRX_Config_Type_R15)
+		struct ASN_NR_NAME(DRX_Config) R15;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_ASN1_MeasGapConfig_Type) {
+	NR_ASN1_MeasGapConfig_Type_UNBOUND_VALUE,
+	NR_ASN1_MeasGapConfig_Type_R15
+};
+SIDL_UNION_BEGIN(NR_ASN1_MeasGapConfig_Type) {
+	SIDL_UNION_CASE(NR_ASN1_MeasGapConfig_Type_R15)
+		struct ASN_NR_NAME(MeasGapConfig) R15;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_ASN1_MAC_CellGroupConfig_Type) {
+	NR_ASN1_MAC_CellGroupConfig_Type_UNBOUND_VALUE,
+	NR_ASN1_MAC_CellGroupConfig_Type_R15
+};
+SIDL_UNION_BEGIN(NR_ASN1_MAC_CellGroupConfig_Type) {
+	SIDL_UNION_CASE(NR_ASN1_MAC_CellGroupConfig_Type_R15)
+		struct ASN_NR_NAME(MAC_CellGroupConfig) R15;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_ASN1_PhysicalCellGroupConfig_Type) {
+	NR_ASN1_PhysicalCellGroupConfig_Type_UNBOUND_VALUE,
+	NR_ASN1_PhysicalCellGroupConfig_Type_R15
+};
+SIDL_UNION_BEGIN(NR_ASN1_PhysicalCellGroupConfig_Type) {
+	SIDL_UNION_CASE(NR_ASN1_PhysicalCellGroupConfig_Type_R15)
+		struct ASN_NR_NAME(PhysicalCellGroupConfig) R15;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_ASN1_ARFCN_ValueNR_Type) {
+	NR_ASN1_ARFCN_ValueNR_Type_UNBOUND_VALUE,
+	NR_ASN1_ARFCN_ValueNR_Type_R15
+};
+SIDL_UNION_BEGIN(NR_ASN1_ARFCN_ValueNR_Type) {
+	SIDL_UNION_CASE(NR_ASN1_ARFCN_ValueNR_Type_R15)
+		ASN_NR_NAME(ARFCN_ValueNR) R15;
+} SIDL_UNION_END;
+
+typedef SIDL_DYNAMIC(ASN_NR_NAME(BWP_Id), NR_BWP_Id_List_Type);
+
+struct NR_AssignedBWPs_Type {
+	SIDL_OPTIONAL(Null_Type, ActiveBWP);
+	SIDL_OPTIONAL(Null_Type, InitialBWP);
+	NR_BWP_Id_List_Type DedicatedBWPs;
+	SIDL_OPTIONAL(Null_Type, InitialBWP_RedCap);
+};
+
+typedef enum {
+	NR_ResourceAllocation_Type0,
+	NR_ResourceAllocation_Type1
+} NR_ResourceAllocationType_Type;
+
+struct NR_FreqDomainSchedulCommonDL_Type {
+	int32_t FirstRbIndex;
+	int32_t MaxRbCnt;
+};
+
+struct NR_FreqDomainSchedulExplicit_Type {
+	int32_t FirstRbIndex;
+	int32_t Nprb;
+};
+
+SIDL_UNION_ENUM(NR_FreqDomainResourceAssignmentDL_Type) {
+	NR_FreqDomainResourceAssignmentDL_Type_UNBOUND_VALUE,
+	NR_FreqDomainResourceAssignmentDL_Type_Automatic,
+	NR_FreqDomainResourceAssignmentDL_Type_Explicit
+};
+SIDL_UNION_BEGIN(NR_FreqDomainResourceAssignmentDL_Type) {
+	SIDL_UNION_CASE(NR_FreqDomainResourceAssignmentDL_Type_Automatic)
+		struct NR_FreqDomainSchedulCommonDL_Type Automatic;
+	SIDL_UNION_CASE(NR_FreqDomainResourceAssignmentDL_Type_Explicit)
+		struct NR_FreqDomainSchedulExplicit_Type Explicit;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_DciCommon_TimeDomainResourceAssignment_Type) {
+	NR_DciCommon_TimeDomainResourceAssignment_Type_UNBOUND_VALUE,
+	NR_DciCommon_TimeDomainResourceAssignment_Type_Index
+};
+SIDL_UNION_BEGIN(NR_DciCommon_TimeDomainResourceAssignment_Type) {
+	SIDL_UNION_CASE(NR_DciCommon_TimeDomainResourceAssignment_Type_Index)
+		BIT_STRING Index;
+} SIDL_UNION_END;
+
+typedef enum {
+	NR_ModulationSchemePDSCH_qpsk,
+	NR_ModulationSchemePDSCH_qam16,
+	NR_ModulationSchemePDSCH_qam64,
+	NR_ModulationSchemePDSCH_qam256
+} NR_ModulationSchemePDSCH_Type;
+
+typedef uint8_t NR_RedundancyVersion_Type;
+
+typedef SIDL_DYNAMIC(NR_RedundancyVersion_Type, NR_RedundancyVersionList_Type);
+
+struct NR_TransportBlockSchedulingDL_Automatic_Type {
+	NR_ModulationSchemePDSCH_Type TransportBlock1;
+	SIDL_OPTIONAL(NR_ModulationSchemePDSCH_Type, TransportBlock2);
+	SIDL_OPTIONAL(NR_RedundancyVersionList_Type, RedundancyVersionList);
+};
+
+SIDL_UNION_ENUM(RetransmissionTiming_Type) {
+	RetransmissionTiming_Type_UNBOUND_VALUE,
+	RetransmissionTiming_Type_SlotOffset,
+	RetransmissionTiming_Type_SubframeOffset,
+	RetransmissionTiming_Type_AnyTime
+};
+SIDL_UNION_BEGIN(RetransmissionTiming_Type) {
+	SIDL_UNION_CASE(RetransmissionTiming_Type_SlotOffset)
+		int32_t SlotOffset;
+	SIDL_UNION_CASE(RetransmissionTiming_Type_SubframeOffset)
+		int32_t SubframeOffset;
+	SIDL_UNION_CASE(RetransmissionTiming_Type_AnyTime)
+		Null_Type AnyTime;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(TransmissionTimingOffset_Type) {
+	TransmissionTimingOffset_Type_UNBOUND_VALUE,
+	TransmissionTimingOffset_Type_None,
+	TransmissionTimingOffset_Type_Retransmission
+};
+SIDL_UNION_BEGIN(TransmissionTimingOffset_Type) {
+	SIDL_UNION_CASE(TransmissionTimingOffset_Type_None)
+		Null_Type None;
+	SIDL_UNION_CASE(TransmissionTimingOffset_Type_Retransmission)
+		struct RetransmissionTiming_Type Retransmission;
+} SIDL_UNION_END;
+
+typedef uint8_t NR_ImcsValue_Type;
+
+struct NR_TransportBlockSingleTransmission_Type {
+	struct TransmissionTimingOffset_Type TimingOffset;
+	NR_ImcsValue_Type ImcsValue;
+	NR_RedundancyVersion_Type RedundancyVersion;
+	bool ToggleNDI;
+};
+
+typedef SIDL_DYNAMIC_OF_STRUCT(NR_TransportBlockSingleTransmission_Type, NR_TransportBlockRetransmissionList_Type);
+
+struct NR_TransportBlockSchedulingDL_Explicit_Type {
+	NR_TransportBlockRetransmissionList_Type TransportBlock1;
+	SIDL_OPTIONAL(NR_TransportBlockRetransmissionList_Type, TransportBlock2);
+};
+
+SIDL_UNION_ENUM(NR_TransportBlockSchedulingDL_Type) {
+	NR_TransportBlockSchedulingDL_Type_UNBOUND_VALUE,
+	NR_TransportBlockSchedulingDL_Type_Automatic,
+	NR_TransportBlockSchedulingDL_Type_Explicit
+};
+SIDL_UNION_BEGIN(NR_TransportBlockSchedulingDL_Type) {
+	SIDL_UNION_CASE(NR_TransportBlockSchedulingDL_Type_Automatic)
+		struct NR_TransportBlockSchedulingDL_Automatic_Type Automatic;
+	SIDL_UNION_CASE(NR_TransportBlockSchedulingDL_Type_Explicit)
+		struct NR_TransportBlockSchedulingDL_Explicit_Type Explicit;
+} SIDL_UNION_END;
+
+typedef int32_t NR_HarqProcessId_Type;
+typedef SIDL_DYNAMIC(NR_HarqProcessId_Type, NR_HarqProcessList_Type);
+
+SIDL_UNION_ENUM(NR_HarqProcessConfig_Type) {
+	NR_HarqProcessConfig_Type_UNBOUND_VALUE,
+	NR_HarqProcessConfig_Type_None,
+	NR_HarqProcessConfig_Type_Broadcast,
+	NR_HarqProcessConfig_Type_AnyProcess,
+	NR_HarqProcessConfig_Type_SpecificSubset
+};
+SIDL_UNION_BEGIN(NR_HarqProcessConfig_Type) {
+	SIDL_UNION_CASE(NR_HarqProcessConfig_Type_None)
+		Null_Type None;
+	SIDL_UNION_CASE(NR_HarqProcessConfig_Type_Broadcast)
+		Null_Type Broadcast;
+	SIDL_UNION_CASE(NR_HarqProcessConfig_Type_AnyProcess)
+		Null_Type AnyProcess;
+	SIDL_UNION_CASE(NR_HarqProcessConfig_Type_SpecificSubset)
+		NR_HarqProcessList_Type SpecificSubset;
+} SIDL_UNION_END;
+
+struct NR_DciFormat_1_X_ResourceAssignment_Type {
+	SIDL_OPTIONAL_WITH_PFX(NR_DciFormat_1_X_ResourceAssignment_Type, NR_ResourceAllocationType_Type, ResourceAllocationType);
+	SIDL_OPTIONAL_OF_STRUCT(NR_FreqDomainResourceAssignmentDL_Type, FreqDomain);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(NR_DciFormat_1_X_ResourceAssignment_Type, NR_DciCommon_TimeDomainResourceAssignment_Type, TimeDomain);
+	SIDL_OPTIONAL_OF_STRUCT(NR_TransportBlockSchedulingDL_Type, TransportBlockScheduling);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(NR_DciFormat_1_X_ResourceAssignment_Type, NR_HarqProcessConfig_Type, HarqProcessConfig);
+};
+
+SIDL_UNION_ENUM(NR_DciCommon_VrbPrbMapping_Type) {
+	NR_DciCommon_VrbPrbMapping_Type_UNBOUND_VALUE,
+	NR_DciCommon_VrbPrbMapping_Type_None,
+	NR_DciCommon_VrbPrbMapping_Type_Index
+};
+SIDL_UNION_BEGIN(NR_DciCommon_VrbPrbMapping_Type) {
+	SIDL_UNION_CASE(NR_DciCommon_VrbPrbMapping_Type_None)
+		Null_Type None;
+	SIDL_UNION_CASE(NR_DciCommon_VrbPrbMapping_Type_Index)
+		B1_Type Index;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(DAI_B2_Type) {
+	DAI_B2_Type_UNBOUND_VALUE,
+	DAI_B2_Type_Index,
+	DAI_B2_Type_Automatic
+};
+SIDL_UNION_BEGIN(DAI_B2_Type) {
+	SIDL_UNION_CASE(DAI_B2_Type_Index)
+		B2_Type Index;
+	SIDL_UNION_CASE(DAI_B2_Type_Automatic)
+		Null_Type Automatic;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_DciFormat_1_0_DAI_Type) {
+	NR_DciFormat_1_0_DAI_Type_UNBOUND_VALUE,
+	NR_DciFormat_1_0_DAI_Type_Index
+};
+SIDL_UNION_BEGIN(NR_DciFormat_1_0_DAI_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_1_0_DAI_Type_Index)
+		struct DAI_B2_Type Index;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_DciCommon_TpcCommand_Type) {
+	NR_DciCommon_TpcCommand_Type_UNBOUND_VALUE,
+	NR_DciCommon_TpcCommand_Type_Value
+};
+SIDL_UNION_BEGIN(NR_DciCommon_TpcCommand_Type) {
+	SIDL_UNION_CASE(NR_DciCommon_TpcCommand_Type_Value)
+		B2_Type Value;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_DciFormat_1_X_PucchResourceIndicator_Type) {
+	NR_DciFormat_1_X_PucchResourceIndicator_Type_UNBOUND_VALUE,
+	NR_DciFormat_1_X_PucchResourceIndicator_Type_Value
+};
+SIDL_UNION_BEGIN(NR_DciFormat_1_X_PucchResourceIndicator_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_1_X_PucchResourceIndicator_Type_Value)
+		B3_Type Value;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_DciFormat_1_X_PdschHarqTimingIndicator_Type) {
+	NR_DciFormat_1_X_PdschHarqTimingIndicator_Type_UNBOUND_VALUE,
+	NR_DciFormat_1_X_PdschHarqTimingIndicator_Type_Value
+};
+SIDL_UNION_BEGIN(NR_DciFormat_1_X_PdschHarqTimingIndicator_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_1_X_PdschHarqTimingIndicator_Type_Value)
+		BIT_STRING Value;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_DciFormat_X_0_ChannelAccessCPext_Type) {
+	NR_DciFormat_X_0_ChannelAccessCPext_Type_UNBOUND_VALUE,
+	NR_DciFormat_X_0_ChannelAccessCPext_Type_None,
+	NR_DciFormat_X_0_ChannelAccessCPext_Type_Value
+};
+SIDL_UNION_BEGIN(NR_DciFormat_X_0_ChannelAccessCPext_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_X_0_ChannelAccessCPext_Type_None)
+		Null_Type None;
+	SIDL_UNION_CASE(NR_DciFormat_X_0_ChannelAccessCPext_Type_Value)
+		B2_Type Value;
+} SIDL_UNION_END;
+
+struct NR_DciFormat_1_0_SpecificInfo_Type {
+	SIDL_OPTIONAL_OF_STRUCT(NR_DciFormat_1_0_DAI_Type, DAI);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(NR_DciFormat_1_0_SpecificInfo_Type, NR_DciCommon_TpcCommand_Type, TpcCommandPucch);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(NR_DciFormat_1_0_SpecificInfo_Type, NR_DciFormat_1_X_PucchResourceIndicator_Type, PucchResourceIndicator);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(NR_DciFormat_1_0_SpecificInfo_Type, NR_DciFormat_1_X_PdschHarqTimingIndicator_Type, PdschHarqTimingIndicator);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(NR_DciFormat_1_0_SpecificInfo_Type, NR_DciFormat_X_0_ChannelAccessCPext_Type, ChannelAccessCPext);
+};
+
+struct NR_DciFormat_1_0_P_RNTI_SpecificInfo_Type {
+	SIDL_OPTIONAL_WITH_PFX(NR_DciFormat_1_0_P_RNTI_SpecificInfo_Type, B2_Type, ShortMessageIndicator);
+	SIDL_OPTIONAL_WITH_PFX(NR_DciFormat_1_0_P_RNTI_SpecificInfo_Type, B8_Type, ShortMessages);
+	SIDL_OPTIONAL_WITH_PFX(NR_DciFormat_1_0_P_RNTI_SpecificInfo_Type, B2_Type, TbScaling);
+};
+
+struct NR_DciFormat_1_0_SI_RNTI_SpecificInfo_Type {
+	SIDL_OPTIONAL_WITH_PFX(NR_DciFormat_1_0_SI_RNTI_SpecificInfo_Type, B1_Type, SystemInfoIndicator);
+};
+
+SIDL_UNION_ENUM(NR_DciFormat_1_0_LSBsOfSFN_Type) {
+	NR_DciFormat_1_0_LSBsOfSFN_Type_UNBOUND_VALUE,
+	NR_DciFormat_1_0_LSBsOfSFN_Type_None,
+	NR_DciFormat_1_0_LSBsOfSFN_Type_Automatic
+};
+SIDL_UNION_BEGIN(NR_DciFormat_1_0_LSBsOfSFN_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_1_0_LSBsOfSFN_Type_None)
+		Null_Type None;
+	SIDL_UNION_CASE(NR_DciFormat_1_0_LSBsOfSFN_Type_Automatic)
+		Null_Type Automatic;
+} SIDL_UNION_END;
+
+struct NR_DciFormat_1_0_RA_RNTI_SpecificInfo_Type {
+	SIDL_OPTIONAL_WITH_PFX(NR_DciFormat_1_0_RA_RNTI_SpecificInfo_Type, B2_Type, TbScaling);
+	SIDL_OPTIONAL_OF_STRUCT(NR_DciFormat_1_0_LSBsOfSFN_Type, LSBsOfSFN);
+};
+
+SIDL_UNION_ENUM(NR_DciCommon_CarrierIndicator_Type) {
+	NR_DciCommon_CarrierIndicator_Type_UNBOUND_VALUE,
+	NR_DciCommon_CarrierIndicator_Type_None,
+	NR_DciCommon_CarrierIndicator_Type_CellIndex
+};
+SIDL_UNION_BEGIN(NR_DciCommon_CarrierIndicator_Type) {
+	SIDL_UNION_CASE(NR_DciCommon_CarrierIndicator_Type_None)
+		Null_Type None;
+	SIDL_UNION_CASE(NR_DciCommon_CarrierIndicator_Type_CellIndex)
+		B3_Type CellIndex;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_DciCommon_BWPIndicator_Type) {
+	NR_DciCommon_BWPIndicator_Type_UNBOUND_VALUE,
+	NR_DciCommon_BWPIndicator_Type_Index
+};
+SIDL_UNION_BEGIN(NR_DciCommon_BWPIndicator_Type) {
+	SIDL_UNION_CASE(NR_DciCommon_BWPIndicator_Type_Index)
+		BIT_STRING Index;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_DciFormat_1_1_PrbBundlingSizeIndicator_Type) {
+	NR_DciFormat_1_1_PrbBundlingSizeIndicator_Type_UNBOUND_VALUE,
+	NR_DciFormat_1_1_PrbBundlingSizeIndicator_Type_None,
+	NR_DciFormat_1_1_PrbBundlingSizeIndicator_Type_Dynamic
+};
+SIDL_UNION_BEGIN(NR_DciFormat_1_1_PrbBundlingSizeIndicator_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_1_1_PrbBundlingSizeIndicator_Type_None)
+		Null_Type None;
+	SIDL_UNION_CASE(NR_DciFormat_1_1_PrbBundlingSizeIndicator_Type_Dynamic)
+		B1_Type Dynamic;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_DciFormat_1_1_RateMatchingIndicator_Type) {
+	NR_DciFormat_1_1_RateMatchingIndicator_Type_UNBOUND_VALUE,
+	NR_DciFormat_1_1_RateMatchingIndicator_Type_Bitmap
+};
+SIDL_UNION_BEGIN(NR_DciFormat_1_1_RateMatchingIndicator_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_1_1_RateMatchingIndicator_Type_Bitmap)
+		BIT_STRING Bitmap;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_DciFormat_1_1_ZP_CSI_RS_Trigger_Type) {
+	NR_DciFormat_1_1_ZP_CSI_RS_Trigger_Type_UNBOUND_VALUE,
+	NR_DciFormat_1_1_ZP_CSI_RS_Trigger_Type_Index
+};
+SIDL_UNION_BEGIN(NR_DciFormat_1_1_ZP_CSI_RS_Trigger_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_1_1_ZP_CSI_RS_Trigger_Type_Index)
+		BIT_STRING Index;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(DAI_B1_Type) {
+	DAI_B1_Type_UNBOUND_VALUE,
+	DAI_B1_Type_Index,
+	DAI_B1_Type_Automatic
+};
+SIDL_UNION_BEGIN(DAI_B1_Type) {
+	SIDL_UNION_CASE(DAI_B1_Type_Index)
+		B1_Type Index;
+	SIDL_UNION_CASE(DAI_B1_Type_Automatic)
+		Null_Type Automatic;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(DAI_B4_Type) {
+	DAI_B4_Type_UNBOUND_VALUE,
+	DAI_B4_Type_Index,
+	DAI_B4_Type_Automatic
+};
+SIDL_UNION_BEGIN(DAI_B4_Type) {
+	SIDL_UNION_CASE(DAI_B4_Type_Index)
+		B4_Type Index;
+	SIDL_UNION_CASE(DAI_B4_Type_Automatic)
+		Null_Type Automatic;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(DAI_B6_Type) {
+	DAI_B6_Type_UNBOUND_VALUE,
+	DAI_B6_Type_Index,
+	DAI_B6_Type_Automatic
+};
+SIDL_UNION_BEGIN(DAI_B6_Type) {
+	SIDL_UNION_CASE(DAI_B6_Type_Index)
+		B6_Type Index;
+	SIDL_UNION_CASE(DAI_B6_Type_Automatic)
+		Null_Type Automatic;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_DciFormat_1_1_DAI_Type) {
+	NR_DciFormat_1_1_DAI_Type_UNBOUND_VALUE,
+	NR_DciFormat_1_1_DAI_Type_None,
+	NR_DciFormat_1_1_DAI_Type_TwoBits,
+	NR_DciFormat_1_1_DAI_Type_FourBits,
+	NR_DciFormat_1_1_DAI_Type_SixBits
+};
+SIDL_UNION_BEGIN(NR_DciFormat_1_1_DAI_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_1_1_DAI_Type_None)
+		Null_Type None;
+	SIDL_UNION_CASE(NR_DciFormat_1_1_DAI_Type_TwoBits)
+		struct DAI_B2_Type TwoBits;
+	SIDL_UNION_CASE(NR_DciFormat_1_1_DAI_Type_FourBits)
+		struct DAI_B4_Type FourBits;
+	SIDL_UNION_CASE(NR_DciFormat_1_1_DAI_Type_SixBits)
+		struct DAI_B6_Type SixBits;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_DciFormat_1_1_OneShotHarqAckRequest_Type) {
+	NR_DciFormat_1_1_OneShotHarqAckRequest_Type_UNBOUND_VALUE,
+	NR_DciFormat_1_1_OneShotHarqAckRequest_Type_None,
+	NR_DciFormat_1_1_OneShotHarqAckRequest_Type_Value
+};
+SIDL_UNION_BEGIN(NR_DciFormat_1_1_OneShotHarqAckRequest_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_1_1_OneShotHarqAckRequest_Type_None)
+		Null_Type None;
+	SIDL_UNION_CASE(NR_DciFormat_1_1_OneShotHarqAckRequest_Type_Value)
+		B1_Type Value;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_DciFormat_1_1_PdschGroupIndex_Type) {
+	NR_DciFormat_1_1_PdschGroupIndex_Type_UNBOUND_VALUE,
+	NR_DciFormat_1_1_PdschGroupIndex_Type_None,
+	NR_DciFormat_1_1_PdschGroupIndex_Type_Value
+};
+SIDL_UNION_BEGIN(NR_DciFormat_1_1_PdschGroupIndex_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_1_1_PdschGroupIndex_Type_None)
+		Null_Type None;
+	SIDL_UNION_CASE(NR_DciFormat_1_1_PdschGroupIndex_Type_Value)
+		B1_Type Value;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_DciFormat_1_1_NewFeedbackIndicator_Type) {
+	NR_DciFormat_1_1_NewFeedbackIndicator_Type_UNBOUND_VALUE,
+	NR_DciFormat_1_1_NewFeedbackIndicator_Type_None,
+	NR_DciFormat_1_1_NewFeedbackIndicator_Type_Value
+};
+SIDL_UNION_BEGIN(NR_DciFormat_1_1_NewFeedbackIndicator_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_1_1_NewFeedbackIndicator_Type_None)
+		Null_Type None;
+	SIDL_UNION_CASE(NR_DciFormat_1_1_NewFeedbackIndicator_Type_Value)
+		BIT_STRING Value;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_DciFormat_1_1_NumberRequestedPdschGroup_Type) {
+	NR_DciFormat_1_1_NumberRequestedPdschGroup_Type_UNBOUND_VALUE,
+	NR_DciFormat_1_1_NumberRequestedPdschGroup_Type_None,
+	NR_DciFormat_1_1_NumberRequestedPdschGroup_Type_Value
+};
+SIDL_UNION_BEGIN(NR_DciFormat_1_1_NumberRequestedPdschGroup_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_1_1_NumberRequestedPdschGroup_Type_None)
+		Null_Type None;
+	SIDL_UNION_CASE(NR_DciFormat_1_1_NumberRequestedPdschGroup_Type_Value)
+		B1_Type Value;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_DciFormat_1_1_AntennaPorts_Type) {
+	NR_DciFormat_1_1_AntennaPorts_Type_UNBOUND_VALUE,
+	NR_DciFormat_1_1_AntennaPorts_Type_Index
+};
+SIDL_UNION_BEGIN(NR_DciFormat_1_1_AntennaPorts_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_1_1_AntennaPorts_Type_Index)
+		BIT_STRING Index;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_DciFormat_1_1_TCI_Type) {
+	NR_DciFormat_1_1_TCI_Type_UNBOUND_VALUE,
+	NR_DciFormat_1_1_TCI_Type_None,
+	NR_DciFormat_1_1_TCI_Type_Value
+};
+SIDL_UNION_BEGIN(NR_DciFormat_1_1_TCI_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_1_1_TCI_Type_None)
+		Null_Type None;
+	SIDL_UNION_CASE(NR_DciFormat_1_1_TCI_Type_Value)
+		B3_Type Value;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_DciFormat_X_1_SrsRequest_Type) {
+	NR_DciFormat_X_1_SrsRequest_Type_UNBOUND_VALUE,
+	NR_DciFormat_X_1_SrsRequest_Type_SingleUL,
+	NR_DciFormat_X_1_SrsRequest_Type_UL_SUL
+};
+SIDL_UNION_BEGIN(NR_DciFormat_X_1_SrsRequest_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_X_1_SrsRequest_Type_SingleUL)
+		B2_Type SingleUL;
+	SIDL_UNION_CASE(NR_DciFormat_X_1_SrsRequest_Type_UL_SUL)
+		B3_Type UL_SUL;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_DciFormat_1_1_CBGTI_Type) {
+	NR_DciFormat_1_1_CBGTI_Type_UNBOUND_VALUE,
+	NR_DciFormat_1_1_CBGTI_Type_Bitmap
+};
+SIDL_UNION_BEGIN(NR_DciFormat_1_1_CBGTI_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_1_1_CBGTI_Type_Bitmap)
+		BIT_STRING Bitmap;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_DciFormat_1_1_CBGFI_Type) {
+	NR_DciFormat_1_1_CBGFI_Type_UNBOUND_VALUE,
+	NR_DciFormat_1_1_CBGFI_Type_None,
+	NR_DciFormat_1_1_CBGFI_Type_Flag
+};
+SIDL_UNION_BEGIN(NR_DciFormat_1_1_CBGFI_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_1_1_CBGFI_Type_None)
+		Null_Type None;
+	SIDL_UNION_CASE(NR_DciFormat_1_1_CBGFI_Type_Flag)
+		B1_Type Flag;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_DciFormat_X_1_DmrsSequenceInit_Type) {
+	NR_DciFormat_X_1_DmrsSequenceInit_Type_UNBOUND_VALUE,
+	NR_DciFormat_X_1_DmrsSequenceInit_Type_None,
+	NR_DciFormat_X_1_DmrsSequenceInit_Type_Value
+};
+SIDL_UNION_BEGIN(NR_DciFormat_X_1_DmrsSequenceInit_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_X_1_DmrsSequenceInit_Type_None)
+		Null_Type None;
+	SIDL_UNION_CASE(NR_DciFormat_X_1_DmrsSequenceInit_Type_Value)
+		B1_Type Value;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_DciFormat_X_1_PriorityIndicator_Type) {
+	NR_DciFormat_X_1_PriorityIndicator_Type_UNBOUND_VALUE,
+	NR_DciFormat_X_1_PriorityIndicator_Type_None,
+	NR_DciFormat_X_1_PriorityIndicator_Type_Value
+};
+SIDL_UNION_BEGIN(NR_DciFormat_X_1_PriorityIndicator_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_X_1_PriorityIndicator_Type_None)
+		Null_Type None;
+	SIDL_UNION_CASE(NR_DciFormat_X_1_PriorityIndicator_Type_Value)
+		B1_Type Value;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_DciFormat_1_1_ChannelAccessCPext_Type) {
+	NR_DciFormat_1_1_ChannelAccessCPext_Type_UNBOUND_VALUE,
+	NR_DciFormat_1_1_ChannelAccessCPext_Type_None,
+	NR_DciFormat_1_1_ChannelAccessCPext_Type_Value
+};
+SIDL_UNION_BEGIN(NR_DciFormat_1_1_ChannelAccessCPext_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_1_1_ChannelAccessCPext_Type_None)
+		Null_Type None;
+	SIDL_UNION_CASE(NR_DciFormat_1_1_ChannelAccessCPext_Type_Value)
+		BIT_STRING Value;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_DciFormat_X_1_MinimumApplicableSchedulingOffset_Type) {
+	NR_DciFormat_X_1_MinimumApplicableSchedulingOffset_Type_UNBOUND_VALUE,
+	NR_DciFormat_X_1_MinimumApplicableSchedulingOffset_Type_None,
+	NR_DciFormat_X_1_MinimumApplicableSchedulingOffset_Type_Value
+};
+SIDL_UNION_BEGIN(NR_DciFormat_X_1_MinimumApplicableSchedulingOffset_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_X_1_MinimumApplicableSchedulingOffset_Type_None)
+		Null_Type None;
+	SIDL_UNION_CASE(NR_DciFormat_X_1_MinimumApplicableSchedulingOffset_Type_Value)
+		B1_Type Value;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_DciFormat_X_1_SCellDormancyIndication_Type) {
+	NR_DciFormat_X_1_SCellDormancyIndication_Type_UNBOUND_VALUE,
+	NR_DciFormat_X_1_SCellDormancyIndication_Type_None,
+	NR_DciFormat_X_1_SCellDormancyIndication_Type_Value
+};
+SIDL_UNION_BEGIN(NR_DciFormat_X_1_SCellDormancyIndication_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_X_1_SCellDormancyIndication_Type_None)
+		Null_Type None;
+	SIDL_UNION_CASE(NR_DciFormat_X_1_SCellDormancyIndication_Type_Value)
+		BIT_STRING Value;
+} SIDL_UNION_END;
+
+struct NR_DciFormat_1_1_SpecificInfo_Type {
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(NR_DciFormat_1_1_SpecificInfo_Type, NR_DciCommon_CarrierIndicator_Type, CarrierIndicator);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(NR_DciFormat_1_1_SpecificInfo_Type, NR_DciCommon_BWPIndicator_Type, BWPIndicator);
+	SIDL_OPTIONAL_OF_STRUCT(NR_DciFormat_1_1_PrbBundlingSizeIndicator_Type, PrbBundlingSizeIndicator);
+	SIDL_OPTIONAL_OF_STRUCT(NR_DciFormat_1_1_RateMatchingIndicator_Type, RateMatchingIndicator);
+	SIDL_OPTIONAL_OF_STRUCT(NR_DciFormat_1_1_ZP_CSI_RS_Trigger_Type, ZP_CSI_RS_Trigger);
+	SIDL_OPTIONAL_OF_STRUCT(NR_DciFormat_1_1_DAI_Type, DAI);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(NR_DciFormat_1_1_SpecificInfo_Type, NR_DciCommon_TpcCommand_Type, TpcCommandPucch);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(NR_DciFormat_1_1_SpecificInfo_Type, NR_DciFormat_1_X_PucchResourceIndicator_Type, PucchResourceIndicator);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(NR_DciFormat_1_1_SpecificInfo_Type, NR_DciFormat_1_X_PdschHarqTimingIndicator_Type, PdschHarqTimingIndicator);
+	SIDL_OPTIONAL_OF_STRUCT(NR_DciFormat_1_1_OneShotHarqAckRequest_Type, OneShotHarqAckRequest);
+	SIDL_OPTIONAL_OF_STRUCT(NR_DciFormat_1_1_PdschGroupIndex_Type, PdschGroupIndex);
+	SIDL_OPTIONAL_OF_STRUCT(NR_DciFormat_1_1_NewFeedbackIndicator_Type, NewFeedbackIndicator);
+	SIDL_OPTIONAL_OF_STRUCT(NR_DciFormat_1_1_NumberRequestedPdschGroup_Type, NumberRequestedPdschGroup);
+	SIDL_OPTIONAL_OF_STRUCT(NR_DciFormat_1_1_AntennaPorts_Type, AntennaPorts);
+	SIDL_OPTIONAL_OF_STRUCT(NR_DciFormat_1_1_TCI_Type, TCI);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(NR_DciFormat_1_1_SpecificInfo_Type, NR_DciFormat_X_1_SrsRequest_Type, SrsRequest);
+	SIDL_OPTIONAL_OF_STRUCT(NR_DciFormat_1_1_CBGTI_Type, CBGTI);
+	SIDL_OPTIONAL_OF_STRUCT(NR_DciFormat_1_1_CBGFI_Type, CBGFI);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(NR_DciFormat_1_1_SpecificInfo_Type, NR_DciFormat_X_1_DmrsSequenceInit_Type, DmrsSequenceInit);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(NR_DciFormat_1_1_SpecificInfo_Type, NR_DciFormat_X_1_PriorityIndicator_Type, PriorityIndicator);
+	SIDL_OPTIONAL_OF_STRUCT(NR_DciFormat_1_1_ChannelAccessCPext_Type, ChannelAccessCPext);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(NR_DciFormat_1_1_SpecificInfo_Type, NR_DciFormat_X_1_MinimumApplicableSchedulingOffset_Type, MinimumApplicableSchedulingOffset);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(NR_DciFormat_1_1_SpecificInfo_Type, NR_DciFormat_X_1_SCellDormancyIndication_Type, SCellDormancyIndication);
+};
+
+SIDL_UNION_ENUM(NR_DciFormat_1_X_SpecificInfo_Type) {
+	NR_DciFormat_1_X_SpecificInfo_Type_UNBOUND_VALUE,
+	NR_DciFormat_1_X_SpecificInfo_Type_Format_1_0,
+	NR_DciFormat_1_X_SpecificInfo_Type_Format_1_0_P_RNTI,
+	NR_DciFormat_1_X_SpecificInfo_Type_Format_1_0_SI_RNTI,
+	NR_DciFormat_1_X_SpecificInfo_Type_Format_1_0_RA_RNTI,
+	NR_DciFormat_1_X_SpecificInfo_Type_Format_1_1
+};
+SIDL_UNION_BEGIN(NR_DciFormat_1_X_SpecificInfo_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_1_X_SpecificInfo_Type_Format_1_0)
+		struct NR_DciFormat_1_0_SpecificInfo_Type Format_1_0;
+	SIDL_UNION_CASE(NR_DciFormat_1_X_SpecificInfo_Type_Format_1_0_P_RNTI)
+		struct NR_DciFormat_1_0_P_RNTI_SpecificInfo_Type Format_1_0_P_RNTI;
+	SIDL_UNION_CASE(NR_DciFormat_1_X_SpecificInfo_Type_Format_1_0_SI_RNTI)
+		struct NR_DciFormat_1_0_SI_RNTI_SpecificInfo_Type Format_1_0_SI_RNTI;
+	SIDL_UNION_CASE(NR_DciFormat_1_X_SpecificInfo_Type_Format_1_0_RA_RNTI)
+		struct NR_DciFormat_1_0_RA_RNTI_SpecificInfo_Type Format_1_0_RA_RNTI;
+	SIDL_UNION_CASE(NR_DciFormat_1_X_SpecificInfo_Type_Format_1_1)
+		struct NR_DciFormat_1_1_SpecificInfo_Type Format_1_1;
+} SIDL_UNION_END;
+
+struct NR_DciDlInfo_Type {
+	SIDL_OPTIONAL_OF_STRUCT(NR_DciFormat_1_X_ResourceAssignment_Type, ResoureAssignment);
+	SIDL_OPTIONAL_OF_STRUCT(NR_DciCommon_VrbPrbMapping_Type, VrbPrbMapping);
+	SIDL_OPTIONAL_OF_STRUCT(NR_DciFormat_1_X_SpecificInfo_Type, Format);
+};
+
+struct NR_SearchSpaceDlDciAssignment_Type {
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(NR_SearchSpaceDlDciAssignment_Type, NR_AssignedBWPs_Type, AssignedBWPs);
+	SIDL_OPTIONAL_WITH_PFX(NR_SearchSpaceDlDciAssignment_Type, NR_SearchSpaceType_Type, SearchSpaceType);
+	SIDL_OPTIONAL_OF_STRUCT(NR_DciDlInfo_Type, DciInfo);
+};
+
+struct NR_DciFormat_0_X_ResourceAssignment_Type {
+	SIDL_OPTIONAL_WITH_PFX(NR_DciFormat_0_X_ResourceAssignment_Type, NR_ResourceAllocationType_Type, ResourceAllocationType);
+	SIDL_OPTIONAL_OF_STRUCT(NR_FreqDomainSchedulExplicit_Type, FreqDomain);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(NR_DciFormat_0_X_ResourceAssignment_Type, NR_DciCommon_TimeDomainResourceAssignment_Type, TimeDomain);
+	SIDL_OPTIONAL(NR_TransportBlockRetransmissionList_Type, TransportBlockScheduling);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(NR_DciFormat_0_X_ResourceAssignment_Type, NR_HarqProcessConfig_Type, HarqProcessConfig);
+};
+
+SIDL_UNION_ENUM(NR_DciFormat_0_X_PuschHoppingCtrl_Type) {
+	NR_DciFormat_0_X_PuschHoppingCtrl_Type_UNBOUND_VALUE,
+	NR_DciFormat_0_X_PuschHoppingCtrl_Type_None,
+	NR_DciFormat_0_X_PuschHoppingCtrl_Type_Flag
+};
+SIDL_UNION_BEGIN(NR_DciFormat_0_X_PuschHoppingCtrl_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_0_X_PuschHoppingCtrl_Type_None)
+		Null_Type None;
+	SIDL_UNION_CASE(NR_DciFormat_0_X_PuschHoppingCtrl_Type_Flag)
+		B1_Type Flag;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_DciCommon_UL_SUL_Indicator_Type) {
+	NR_DciCommon_UL_SUL_Indicator_Type_UNBOUND_VALUE,
+	NR_DciCommon_UL_SUL_Indicator_Type_None,
+	NR_DciCommon_UL_SUL_Indicator_Type_Value
+};
+SIDL_UNION_BEGIN(NR_DciCommon_UL_SUL_Indicator_Type) {
+	SIDL_UNION_CASE(NR_DciCommon_UL_SUL_Indicator_Type_None)
+		Null_Type None;
+	SIDL_UNION_CASE(NR_DciCommon_UL_SUL_Indicator_Type_Value)
+		B1_Type Value;
+} SIDL_UNION_END;
+
+struct NR_DciFormat_0_0_SpecificInfo_Type {
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(NR_DciFormat_0_0_SpecificInfo_Type, NR_DciFormat_X_0_ChannelAccessCPext_Type, ChannelAccessCPext);
+};
+
+SIDL_UNION_ENUM(NR_DciFormat_0_1_DfiFlag_Type) {
+	NR_DciFormat_0_1_DfiFlag_Type_UNBOUND_VALUE,
+	NR_DciFormat_0_1_DfiFlag_Type_None,
+	NR_DciFormat_0_1_DfiFlag_Type_Flag
+};
+SIDL_UNION_BEGIN(NR_DciFormat_0_1_DfiFlag_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_0_1_DfiFlag_Type_None)
+		Null_Type None;
+	SIDL_UNION_CASE(NR_DciFormat_0_1_DfiFlag_Type_Flag)
+		B1_Type Flag;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_DciFormat_0_1_FirstDAI_Type) {
+	NR_DciFormat_0_1_FirstDAI_Type_UNBOUND_VALUE,
+	NR_DciFormat_0_1_FirstDAI_Type_SemiStaticCodebook,
+	NR_DciFormat_0_1_FirstDAI_Type_DynamicCodebook,
+	NR_DciFormat_0_1_FirstDAI_Type_EnhancedDynamicCodebook
+};
+SIDL_UNION_BEGIN(NR_DciFormat_0_1_FirstDAI_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_0_1_FirstDAI_Type_SemiStaticCodebook)
+		struct DAI_B1_Type SemiStaticCodebook;
+	SIDL_UNION_CASE(NR_DciFormat_0_1_FirstDAI_Type_DynamicCodebook)
+		struct DAI_B2_Type DynamicCodebook;
+	SIDL_UNION_CASE(NR_DciFormat_0_1_FirstDAI_Type_EnhancedDynamicCodebook)
+		struct DAI_B4_Type EnhancedDynamicCodebook;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_DciFormat_0_1_SecondDAI_Type) {
+	NR_DciFormat_0_1_SecondDAI_Type_UNBOUND_VALUE,
+	NR_DciFormat_0_1_SecondDAI_Type_None,
+	NR_DciFormat_0_1_SecondDAI_Type_DynamicCodebook,
+	NR_DciFormat_0_1_SecondDAI_Type_EnhancedDynamicCodebook
+};
+SIDL_UNION_BEGIN(NR_DciFormat_0_1_SecondDAI_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_0_1_SecondDAI_Type_None)
+		Null_Type None;
+	SIDL_UNION_CASE(NR_DciFormat_0_1_SecondDAI_Type_DynamicCodebook)
+		struct DAI_B2_Type DynamicCodebook;
+	SIDL_UNION_CASE(NR_DciFormat_0_1_SecondDAI_Type_EnhancedDynamicCodebook)
+		struct DAI_B4_Type EnhancedDynamicCodebook;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_DciFormat_0_1_SrsResourceIndicator_Type) {
+	NR_DciFormat_0_1_SrsResourceIndicator_Type_UNBOUND_VALUE,
+	NR_DciFormat_0_1_SrsResourceIndicator_Type_NonCodeBook,
+	NR_DciFormat_0_1_SrsResourceIndicator_Type_CodeBook
+};
+SIDL_UNION_BEGIN(NR_DciFormat_0_1_SrsResourceIndicator_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_0_1_SrsResourceIndicator_Type_NonCodeBook)
+		BIT_STRING NonCodeBook;
+	SIDL_UNION_CASE(NR_DciFormat_0_1_SrsResourceIndicator_Type_CodeBook)
+		BIT_STRING CodeBook;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_DciFormat_0_1_PrecodingInfo_Type) {
+	NR_DciFormat_0_1_PrecodingInfo_Type_UNBOUND_VALUE,
+	NR_DciFormat_0_1_PrecodingInfo_Type_NonCodeBook,
+	NR_DciFormat_0_1_PrecodingInfo_Type_CodeBook
+};
+SIDL_UNION_BEGIN(NR_DciFormat_0_1_PrecodingInfo_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_0_1_PrecodingInfo_Type_NonCodeBook)
+		Null_Type NonCodeBook;
+	SIDL_UNION_CASE(NR_DciFormat_0_1_PrecodingInfo_Type_CodeBook)
+		BIT_STRING CodeBook;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_DciFormat_0_1_AntennaPorts_Type) {
+	NR_DciFormat_0_1_AntennaPorts_Type_UNBOUND_VALUE,
+	NR_DciFormat_0_1_AntennaPorts_Type_Index
+};
+SIDL_UNION_BEGIN(NR_DciFormat_0_1_AntennaPorts_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_0_1_AntennaPorts_Type_Index)
+		BIT_STRING Index;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_DciFormat_0_1_CsiRequest_Type) {
+	NR_DciFormat_0_1_CsiRequest_Type_UNBOUND_VALUE,
+	NR_DciFormat_0_1_CsiRequest_Type_Index
+};
+SIDL_UNION_BEGIN(NR_DciFormat_0_1_CsiRequest_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_0_1_CsiRequest_Type_Index)
+		BIT_STRING Index;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_DciFormat_0_1_CBGTI_Type) {
+	NR_DciFormat_0_1_CBGTI_Type_UNBOUND_VALUE,
+	NR_DciFormat_0_1_CBGTI_Type_Index
+};
+SIDL_UNION_BEGIN(NR_DciFormat_0_1_CBGTI_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_0_1_CBGTI_Type_Index)
+		BIT_STRING Index;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_DciFormat_0_1_PtrsDmrsAssociation_Type) {
+	NR_DciFormat_0_1_PtrsDmrsAssociation_Type_UNBOUND_VALUE,
+	NR_DciFormat_0_1_PtrsDmrsAssociation_Type_None,
+	NR_DciFormat_0_1_PtrsDmrsAssociation_Type_Value
+};
+SIDL_UNION_BEGIN(NR_DciFormat_0_1_PtrsDmrsAssociation_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_0_1_PtrsDmrsAssociation_Type_None)
+		Null_Type None;
+	SIDL_UNION_CASE(NR_DciFormat_0_1_PtrsDmrsAssociation_Type_Value)
+		B2_Type Value;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_DciFormat_0_1_BetaOffsetIndicator_Type) {
+	NR_DciFormat_0_1_BetaOffsetIndicator_Type_UNBOUND_VALUE,
+	NR_DciFormat_0_1_BetaOffsetIndicator_Type_None,
+	NR_DciFormat_0_1_BetaOffsetIndicator_Type_Value
+};
+SIDL_UNION_BEGIN(NR_DciFormat_0_1_BetaOffsetIndicator_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_0_1_BetaOffsetIndicator_Type_None)
+		Null_Type None;
+	SIDL_UNION_CASE(NR_DciFormat_0_1_BetaOffsetIndicator_Type_Value)
+		B2_Type Value;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_DciFormat_0_1_UlschIndicator_Type) {
+	NR_DciFormat_0_1_UlschIndicator_Type_UNBOUND_VALUE,
+	NR_DciFormat_0_1_UlschIndicator_Type_None,
+	NR_DciFormat_0_1_UlschIndicator_Type_Value
+};
+SIDL_UNION_BEGIN(NR_DciFormat_0_1_UlschIndicator_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_0_1_UlschIndicator_Type_None)
+		Null_Type None;
+	SIDL_UNION_CASE(NR_DciFormat_0_1_UlschIndicator_Type_Value)
+		B1_Type Value;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_DciFormat_0_1_ChannelAccessCPextCAPC_Type) {
+	NR_DciFormat_0_1_ChannelAccessCPextCAPC_Type_UNBOUND_VALUE,
+	NR_DciFormat_0_1_ChannelAccessCPextCAPC_Type_None,
+	NR_DciFormat_0_1_ChannelAccessCPextCAPC_Type_Value
+};
+SIDL_UNION_BEGIN(NR_DciFormat_0_1_ChannelAccessCPextCAPC_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_0_1_ChannelAccessCPextCAPC_Type_None)
+		Null_Type None;
+	SIDL_UNION_CASE(NR_DciFormat_0_1_ChannelAccessCPextCAPC_Type_Value)
+		BIT_STRING Value;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_DciFormat_0_1_OpenLoopPowerControl_Type) {
+	NR_DciFormat_0_1_OpenLoopPowerControl_Type_UNBOUND_VALUE,
+	NR_DciFormat_0_1_OpenLoopPowerControl_Type_None,
+	NR_DciFormat_0_1_OpenLoopPowerControl_Type_Value
+};
+SIDL_UNION_BEGIN(NR_DciFormat_0_1_OpenLoopPowerControl_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_0_1_OpenLoopPowerControl_Type_None)
+		Null_Type None;
+	SIDL_UNION_CASE(NR_DciFormat_0_1_OpenLoopPowerControl_Type_Value)
+		BIT_STRING Value;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_DciFormat_0_1_InvalidSymbolPatternIndicator_Type) {
+	NR_DciFormat_0_1_InvalidSymbolPatternIndicator_Type_UNBOUND_VALUE,
+	NR_DciFormat_0_1_InvalidSymbolPatternIndicator_Type_None,
+	NR_DciFormat_0_1_InvalidSymbolPatternIndicator_Type_Value
+};
+SIDL_UNION_BEGIN(NR_DciFormat_0_1_InvalidSymbolPatternIndicator_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_0_1_InvalidSymbolPatternIndicator_Type_None)
+		Null_Type None;
+	SIDL_UNION_CASE(NR_DciFormat_0_1_InvalidSymbolPatternIndicator_Type_Value)
+		B1_Type Value;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_DciFormat_0_1_SidelinkAssignmentIndex_Type) {
+	NR_DciFormat_0_1_SidelinkAssignmentIndex_Type_UNBOUND_VALUE,
+	NR_DciFormat_0_1_SidelinkAssignmentIndex_Type_None,
+	NR_DciFormat_0_1_SidelinkAssignmentIndex_Type_Value
+};
+SIDL_UNION_BEGIN(NR_DciFormat_0_1_SidelinkAssignmentIndex_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_0_1_SidelinkAssignmentIndex_Type_None)
+		Null_Type None;
+	SIDL_UNION_CASE(NR_DciFormat_0_1_SidelinkAssignmentIndex_Type_Value)
+		BIT_STRING Value;
+} SIDL_UNION_END;
+
+struct NR_DciFormat_0_1_SpecificInfo_Type {
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(NR_DciFormat_0_1_SpecificInfo_Type, NR_DciCommon_CarrierIndicator_Type, CarrierIndicator);
+	SIDL_OPTIONAL_OF_STRUCT(NR_DciFormat_0_1_DfiFlag_Type, DfiFlag);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(NR_DciFormat_0_1_SpecificInfo_Type, NR_DciCommon_BWPIndicator_Type, BWPIndicator);
+	SIDL_OPTIONAL_OF_STRUCT(NR_DciFormat_0_1_FirstDAI_Type, FirstDAI);
+	SIDL_OPTIONAL_OF_STRUCT(NR_DciFormat_0_1_SecondDAI_Type, SecondDAI);
+	SIDL_OPTIONAL_OF_STRUCT(NR_DciFormat_0_1_SrsResourceIndicator_Type, SrsResourceIndicator);
+	SIDL_OPTIONAL_OF_STRUCT(NR_DciFormat_0_1_PrecodingInfo_Type, PrecodingInfo);
+	SIDL_OPTIONAL_OF_STRUCT(NR_DciFormat_0_1_AntennaPorts_Type, AntennaPorts);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(NR_DciFormat_0_1_SpecificInfo_Type, NR_DciFormat_X_1_SrsRequest_Type, SrsRequest);
+	SIDL_OPTIONAL_OF_STRUCT(NR_DciFormat_0_1_CsiRequest_Type, CsiRequest);
+	SIDL_OPTIONAL_OF_STRUCT(NR_DciFormat_0_1_CBGTI_Type, CBGTI);
+	SIDL_OPTIONAL_OF_STRUCT(NR_DciFormat_0_1_PtrsDmrsAssociation_Type, PtrsDmrsAssociation);
+	SIDL_OPTIONAL_OF_STRUCT(NR_DciFormat_0_1_BetaOffsetIndicator_Type, BetaOffsetIndicator);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(NR_DciFormat_0_1_SpecificInfo_Type, NR_DciFormat_X_1_DmrsSequenceInit_Type, DmrsSequenceInit);
+	SIDL_OPTIONAL_OF_STRUCT(NR_DciFormat_0_1_UlschIndicator_Type, UlschIndicator);
+	SIDL_OPTIONAL_OF_STRUCT(NR_DciFormat_0_1_ChannelAccessCPextCAPC_Type, ChannelAccessCPextCAPC);
+	SIDL_OPTIONAL_OF_STRUCT(NR_DciFormat_0_1_OpenLoopPowerControl_Type, OpenLoopPowerControl);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(NR_DciFormat_0_1_SpecificInfo_Type, NR_DciFormat_X_1_PriorityIndicator_Type, PriorityIndicator);
+	SIDL_OPTIONAL_OF_STRUCT(NR_DciFormat_0_1_InvalidSymbolPatternIndicator_Type, InvalidSymbolPatternIndicator);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(NR_DciFormat_0_1_SpecificInfo_Type, NR_DciFormat_X_1_MinimumApplicableSchedulingOffset_Type, MinimumApplicableSchedulingOffset);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(NR_DciFormat_0_1_SpecificInfo_Type, NR_DciFormat_X_1_SCellDormancyIndication_Type, SCellDormancyIndication);
+	SIDL_OPTIONAL_OF_STRUCT(NR_DciFormat_0_1_SidelinkAssignmentIndex_Type, SidelinkAssignmentIndex);
+};
+
+SIDL_UNION_ENUM(NR_DciFormat_0_X_SpecificInfo_Type) {
+	NR_DciFormat_0_X_SpecificInfo_Type_UNBOUND_VALUE,
+	NR_DciFormat_0_X_SpecificInfo_Type_Format_0_0,
+	NR_DciFormat_0_X_SpecificInfo_Type_Format_0_1
+};
+SIDL_UNION_BEGIN(NR_DciFormat_0_X_SpecificInfo_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_0_X_SpecificInfo_Type_Format_0_0)
+		struct NR_DciFormat_0_0_SpecificInfo_Type Format_0_0;
+	SIDL_UNION_CASE(NR_DciFormat_0_X_SpecificInfo_Type_Format_0_1)
+		struct NR_DciFormat_0_1_SpecificInfo_Type Format_0_1;
+} SIDL_UNION_END;
+
+struct NR_DciUlInfo_Type {
+	SIDL_OPTIONAL_OF_STRUCT(NR_DciFormat_0_X_ResourceAssignment_Type, ResoureAssignment);
+	SIDL_OPTIONAL_OF_STRUCT(NR_DciFormat_0_X_PuschHoppingCtrl_Type, PuschHoppingCtrl);
+	SIDL_OPTIONAL_OF_STRUCT(NR_DciCommon_TpcCommand_Type, TpcCommandPusch);
+	SIDL_OPTIONAL_OF_STRUCT(NR_DciCommon_UL_SUL_Indicator_Type, UL_SUL_Indicator);
+	SIDL_OPTIONAL_OF_STRUCT(NR_DciFormat_0_X_SpecificInfo_Type, Format);
+};
+
+struct NR_SearchSpaceUlDciAssignment_Type {
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(NR_SearchSpaceUlDciAssignment_Type, NR_AssignedBWPs_Type, AssignedBWPs);
+	SIDL_OPTIONAL_WITH_PFX(NR_SearchSpaceUlDciAssignment_Type, NR_SearchSpaceType_Type, SearchSpaceType);
+	SIDL_OPTIONAL_OF_STRUCT(NR_DciUlInfo_Type, DciInfo);
+};

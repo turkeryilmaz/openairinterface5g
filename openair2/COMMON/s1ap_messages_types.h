@@ -76,6 +76,8 @@
 
 #define S1AP_MAX_NB_MME_IP_ADDRESS 10
 #define S1AP_IMSI_LENGTH           16
+#define NG_5G_S_TMSI_LENGTH        48
+#define I_RNTI_VALUE_LENGTH        40
 
 /* Security key length used within eNB
  * Even if only 16 bytes will be effectively used,
@@ -113,6 +115,10 @@ typedef enum cn_domain_s {
   CN_DOMAIN_PS = 1,
   CN_DOMAIN_CS = 2
 } cn_domain_t;
+
+typedef enum access_type_s {
+  ACCESS_TYPE_NON3GPP = 1
+} access_type_t;
 
 typedef uint64_t bitrate_t;
 
@@ -216,6 +222,30 @@ typedef struct ue_identity_s {
   s_tmsi_t s_tmsi;
   s1ap_gummei_t gummei;
 } ue_identity_t;
+
+typedef enum nr_ue_paging_identity_presenceMask_e {
+  NR_UE_PAGING_IDENTITY_NONE   = 0,
+  NR_UE_PAGING_IDENTITY_NG_5G_S_TMSI   = (1 << 1),
+  NR_UE_PAGING_IDENTITY_FULL_I_RNTI = (1 << 2),
+} nr_ue_paging_identity_presenceMask_t;
+
+typedef struct ng_5g_s_tmsi_s {
+  uint8_t  buffer[NG_5G_S_TMSI_LENGTH];
+  uint8_t  length;
+} ng_5g_s_tmsi_t;
+
+typedef struct i_rnti_value_s {
+  uint8_t  buffer[I_RNTI_VALUE_LENGTH];
+  uint8_t  length;
+} i_rnti_value_t;
+
+typedef struct nr_ue_paging_identity_s {
+  nr_ue_paging_identity_presenceMask_t presenceMask;
+  union {
+    ng_5g_s_tmsi_t ng_5g_s_tmsi;
+    i_rnti_value_t full_i_rnti;
+  } choice;
+} nr_ue_paging_identity_t;
 
 typedef struct nas_pdu_s {
   /* Octet string data */
