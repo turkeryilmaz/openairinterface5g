@@ -291,7 +291,7 @@ static void do_pdcp_data_ind(const protocol_ctxt_t *const ctxt_pP,
   /** TRACE PDCP PDU */
   nr_pdcp_pkt_info_t pdcp_pkt;
   pdcp_pkt.direction = 0; //PDCP_NR_DIRECTION_UPLINK
-  pdcp_pkt.ueid      = rntiMaybeUEid;
+  pdcp_pkt.ueid      = UEid;
 
   if (ctxt_pP->enb_flag)
     T(T_ENB_PDCP_UL, T_INT(ctxt_pP->module_id), T_INT(UEid), T_INT(rb_id), T_INT(sdu_buffer_size));
@@ -904,7 +904,7 @@ static void deliver_sdu_drb(void *_ue, nr_pdcp_entity_t *entity,
         &ctxt,
         0,
         entity->is_gnb,
-        ue->rntiMaybeUEid,
+        ue->ue_id,
         nr_pdcp_current_time_last_frame,
         nr_pdcp_current_time_last_subframe,
         0);
@@ -1045,9 +1045,9 @@ srb_found:
         SS_NRRRC_PDU_IND (message_p).sdu_size = size;
         SS_NRRRC_PDU_IND (message_p).srb_id = srb_id;
         SS_NRRRC_PDU_IND (message_p).frame = nr_pdcp_current_time_last_frame;
-        SS_NRRRC_PDU_IND (message_p).rnti = ue->rntiMaybeUEid;
+        SS_NRRRC_PDU_IND (message_p).rnti = ue->ue_id;
         if(RC.nrrrc != NULL){  /* RC.nrrrc => this instance is nr_ue instead of gNB*/
-          int CC_id = pdcp_find_nr_cell(ue->rntiMaybeUEid);
+          int CC_id = pdcp_find_nr_cell(ue->ue_id);
          SS_NRRRC_PDU_IND (message_p).physCellId = RC.nrrrc[0]->carrier[CC_id].physCellId;
         }
         SS_NRRRC_PDU_IND (message_p).subframe = nr_pdcp_current_time_last_subframe;
@@ -1595,7 +1595,7 @@ bool nr_pdcp_data_req_drb(protocol_ctxt_t *ctxt_pP,
   pdcp_pkt.direction  = 1; //PDCP_NR_DIRECTION_DOWNLINK
   if (ue != NULL)
   {
-    pdcp_pkt.ueid       = ue->rntiMaybeUEid;
+    pdcp_pkt.ueid       = ue->ue_id;
   }
   pdcp_pkt.bearerType = 8; //TODO
   pdcp_pkt.bearerId   = rb_id - 1;

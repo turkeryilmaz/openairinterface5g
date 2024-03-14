@@ -1921,8 +1921,8 @@ bool ss_task_sys_nr_handle_pdcpCount(struct NR_SYSTEM_CTRL_REQ *req)
   {
       struct NR_PDCP_CountCnf_Type PdcpCount = {};
       PdcpCount.d = NR_PDCP_CountCnf_Type_Get;
-
-      nr_pdcp_ue_t *ue = nr_pdcp_manager_get_ue_ex(nr_pdcp_ue_manager, rnti);
+      ue_id_t UEid = rnti;
+      nr_pdcp_ue_t *ue = nr_pdcp_manager_get_ue_ex(nr_pdcp_ue_manager, UEid);
 
       if (ue == NULL)
       {

@@ -1904,7 +1904,7 @@ static void rrc_handle_RRCReestablishmentRequest(gNB_RRC_INST *rrc, sctp_assoc_t
     LOG_E(NR_RRC, "Reestablishment request: no MIB/SIB1 of DU present, cannot do reestablishment, force setup request\n");
     rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_create_ue_context(assoc_id, msg->crnti, rrc, random_value, msg->gNB_DU_ue_id);
     ue_context_p->ue_context.Srb[1].Active = 1;
-    rrc_gNB_generate_RRCSetup(0, msg->crnti, ue_context_p, msg->du2cu_rrc_container, msg->du2cu_rrc_container_length);
+    rrc_gNB_generate_RRCSetup(0, msg->crnti, ue_context_p, msg->du2cu_rrc_container, msg->du2cu_rrc_container_length,ue_context_p->ue_context.primaryCC_id);
   }
 
   rnti_t old_rnti = req->ue_Identity.c_RNTI;

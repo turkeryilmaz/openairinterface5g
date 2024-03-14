@@ -430,7 +430,7 @@ void process_CellGroup(NR_CellGroupConfig_t *CellGroup, NR_UE_info_t *UE)
    process_rlcBearerConfig(CellGroup->rlc_BearerToAddModList, CellGroup->rlc_BearerToReleaseList, &UE->UE_sched_ctrl);
 }
 
-static void config_common(gNB_MAC_INST *nrmac, nr_pdsch_AntennaPorts_t pdsch_AntennaPorts, int pusch_AntennaPorts, NR_ServingCellConfigCommon_t *scc)
+static void config_common(gNB_MAC_INST *nrmac, nr_pdsch_AntennaPorts_t pdsch_AntennaPorts, int pusch_AntennaPorts, NR_ServingCellConfigCommon_t *scc, int CC_id)
 {
   nfapi_nr_config_request_scf_t *cfg = &nrmac->config[CC_id];
   nrmac->common_channels[CC_id].ServingCellConfigCommon = scc;
