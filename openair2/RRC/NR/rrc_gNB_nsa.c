@@ -120,7 +120,11 @@ void rrc_add_nsa_user(gNB_RRC_INST *rrc, rrc_gNB_ue_context_t *ue_context_p, x2a
 {
   AssertFatal(!get_softmodem_params()->sa, "%s() cannot be called in SA mode, it is intrinsically for NSA\n", __func__);
   // generate nr-Config-r15 containers for LTE RRC : inside message for X2 EN-DC (CG-Config Message from 38.331)
-  const nr_mac_config_t *configuration = &RC.nrmac[0]->radio_config;
+  const int CC_id = ue_context_p->ue_context.primaryCC_id;//TODO W38
+  const nr_mac_config_t *configuration = &RC.nrmac[0]->radio_config[CC_id];
+  // const int CC_id = ue_context_p->ue_context.primaryCC_id;
+  // rrc_gNB_carrier_data_t *carrier=&rrc->carrier[CC_id];
+  // const gNB_RrcConfigurationReq *configuration = &rrc->configuration[CC_id];
   MessageDef *msg;
   msg = itti_alloc_new_message(TASK_RRC_ENB, 0, X2AP_ENDC_SGNB_ADDITION_REQ_ACK);
   gtpv1u_enb_create_tunnel_req_t  create_tunnel_req;
@@ -369,7 +373,7 @@ void rrc_add_nsa_user(gNB_RRC_INST *rrc, rrc_gNB_ue_context_t *ue_context_p, x2a
               && secondaryCellGroup->spCellConfig->reconfigurationWithSync->rach_ConfigDedicated
               && secondaryCellGroup->spCellConfig->reconfigurationWithSync->rach_ConfigDedicated->choice.uplink->cfra);
     NR_SCHED_LOCK(&RC.nrmac[rrc->module_id]->sched_lock);
-    ret = nr_mac_prepare_ra_ue(RC.nrmac[rrc->module_id], du_ue_id, ue_context_p->ue_context.secondaryCellGroup);
+    ret = nr_mac_prepare_ra_ue(RC.nrmac[rrc->module_id], CC_id, du_ue_id, ue_context_p->ue_context.secondaryCellGroup);
     NR_SCHED_UNLOCK(&RC.nrmac[rrc->module_id]->sched_lock);
   }
   AssertFatal(ret, "cannot add NSA UE in MAC, aborting\n");
@@ -427,7 +431,7 @@ void rrc_remove_nsa_user(gNB_RRC_INST *rrc, int rnti) {
   // lock the scheduler before removing the UE. Note: mac_remove_nr_ue() checks
   // that the scheduler is actually locked!
   NR_SCHED_LOCK(&RC.nrmac[rrc->module_id]->sched_lock);
-  mac_remove_nr_ue(RC.nrmac[rrc->module_id], rnti);
+  mac_remove_nr_ue(RC.nrmac[rrc->module_id], 0, rnti);
   NR_SCHED_UNLOCK(&RC.nrmac[rrc->module_id]->sched_lock);
   gtpv1u_enb_delete_tunnel_req_t tmp={0};
   tmp.rnti=rnti;

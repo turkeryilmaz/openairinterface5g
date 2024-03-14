@@ -28,6 +28,7 @@
 #include "nr_rlc_entity_tm.h"
 
 #include "LOG/log.h"
+#include "LOG/ss-log.h"
 
 #include "common/utils/time_stat.h"
 
@@ -190,6 +191,8 @@ nr_rlc_entity_t *new_nr_rlc_entity_um(
   ret->common.delete_entity      = nr_rlc_entity_um_delete;
   ret->common.available_tx_space = nr_rlc_entity_um_available_tx_space;
   ret->common.get_stats       = nr_rlc_entity_get_stats;
+
+  ret->common.deliver_pdu     = nr_rlc_entity_um_deliver_pdu;
 
   ret->common.deliver_sdu                  = deliver_sdu;
   ret->common.deliver_sdu_data             = deliver_sdu_data;

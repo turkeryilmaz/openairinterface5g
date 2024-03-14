@@ -260,6 +260,7 @@ typedef struct f1ap_dl_rrc_message_s {
     uint8_t en_dc;
     uint8_t ngran;
   } RAT_frequency_priority_information;
+  uint64_t nr_cellid;
 } f1ap_dl_rrc_message_t;
 
 typedef struct f1ap_initial_ul_rrc_message_s {
