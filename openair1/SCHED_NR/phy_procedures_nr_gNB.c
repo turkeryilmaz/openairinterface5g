@@ -762,7 +762,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
   /*Extracting time domain IQ samples from Antenna: 0 ToDO: Multiple antenna*/
   if(nr_slot_select(&gNB->gNB_config, frame_rx, slot_rx)== NR_UPLINK_SLOT){
   int numsamples = gNB->frame_parms.get_samples_per_slot(slot_rx,&gNB->frame_parms);
-    T(T_GNB_PHY_INTPUT_SIGNAL,
+    T(T_GNB_PHY_INPUT_SIGNAL,
       T_INT(frame_rx),
       T_INT(0),
       T_INT(0),
