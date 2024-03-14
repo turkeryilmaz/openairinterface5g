@@ -8,7 +8,9 @@
 #include <inttypes.h>
 #include <sys/wait.h>
 #include <unistd.h>
-
+#ifndef _STANDALONE_TESTING_
+#include "common/utils/LOG/log.h"
+#endif
 /*
  * ENB_AM <rx_maxsize> <tx_maxsize> <t_reordering> <t_status_prohibit>
  *       <t_poll_retransmit> <poll_pdu> <poll_byte> <max_retx_threshold>
@@ -392,6 +394,11 @@ int main(int n, char **v)
   int status;
   int i;
   int no_fork = 0;
+
+#ifndef _STANDALONE_TESTING_
+  logInit();
+  set_glog(OAILOG_DISABLE);
+#endif
 
   for (i = 1; i < n; i++) {
     if (!strcmp(v[i], "-no-fork")) { no_fork = 1; continue; }
