@@ -1719,7 +1719,7 @@ static void configure_maccellgroup(NR_UE_MAC_INST_t *mac, const NR_MAC_CellGroup
                     si->sr_id == sr->schedulingRequestId,
                     "Current implementation cannot handle more than 1 SR configuration\n");
         si->sr_id = sr->schedulingRequestId;
-        si->sr_TransMax = sr->sr_TransMax;
+        si->sr_MaxTransmissions = 4 << sr->sr_TransMax;
         int target_ms = 0;
         if (sr->sr_ProhibitTimer)
           target_ms = 1 << *sr->sr_ProhibitTimer;
