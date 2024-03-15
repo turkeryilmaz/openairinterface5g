@@ -768,7 +768,7 @@ bool pdcp_data_ind(const protocol_ctxt_t *const ctxt_pP,
   pdcp_pkt.seqnum_length = pdcp_p->seq_num_size;
   pdcp_pkt.is_retx = false;
   pdcp_pkt.pdu_length = sdu_buffer_sizeP;
-  LOG_LTE_PDCP_PDU(OAILOG_INFO, "UL_LTE_PDCP_PDU", -1, -1, (pdcp_pkt), (unsigned char *)sdu_buffer_pP->data, sdu_buffer_sizeP);
+  LOG_LTE_PDCP_PDU(OAILOG_INFO, "UL_LTE_PDCP_PDU", -1, -1, (pdcp_pkt), (unsigned char *)sdu_buffer_pP, sdu_buffer_sizeP);
 
 
   if (ctxt_pP->enb_flag) {
@@ -1138,7 +1138,7 @@ bool pdcp_data_ind(const protocol_ctxt_t *const ctxt_pP,
         SS_DRB_PDU_IND (message_p).data_type = DRB_PdcpSdu;
         SS_DRB_PDU_IND (message_p).physCellId = RC.rrc[ctxt_pP->module_id]->carrier[CC_id].physCellId;
         memset(SS_DRB_PDU_IND (message_p).sdu, 0, SS_DRB_PDU_IND (message_p).sdu_size);
-        memcpy(&SS_DRB_PDU_IND (message_p).sdu, &sdu_buffer_pP + payload_offset, SS_DRB_PDU_IND (message_p).sdu_size);
+        memcpy(&SS_DRB_PDU_IND (message_p).sdu, sdu_buffer_pP + payload_offset, SS_DRB_PDU_IND (message_p).sdu_size);
         SS_DRB_PDU_IND (message_p).frame = ctxt_pP->frame;
         SS_DRB_PDU_IND (message_p).subframe = ctxt_pP->subframe;
 
