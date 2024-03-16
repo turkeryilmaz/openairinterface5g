@@ -143,7 +143,8 @@ void mac_rlc_data_ind(const module_id_t  module_idP,
 
   if (RC.ss.mode >= SS_SOFTMODEM) {
     LOG_D(RLC, "Packet received over RLC layer, DRB data type == %d\n", RC.nr_drb_data_type);
-    if ((tb_sizeP != 0) && (true == enb_flagP) && (channel_idP >= 4) && ((RC.nr_drb_data_type == DRB_RlcPdu) || (RC.nr_drb_data_type == DRB_RlcSdu))) {
+    if ((tb_sizeP != 0) && (true == enb_flagP) && (channel_idP >= 4) && (RC.nr_drb_data_type == DRB_RlcPdu)) {
+      /* We are working in loopback test mode and data test is RLC PDU . UL RLC PDU shall not go through RLC entity*/
       int drb_id = channel_idP - 3;
       int result;
       LOG_A(RLC, "Sending packet to SS, Calling SS_DRB_PDU_IND ue %x drb id %d size %u\n", rntiP, drb_id, tb_sizeP);
@@ -161,13 +162,8 @@ void mac_rlc_data_ind(const module_id_t  module_idP,
         if (result < 0) {
           LOG_E(RLC, "Error in itti_send_msg_to_task!\n");
         }
+        return; /*Indicate the RLC PDU to SS directly, not send to RLC entity any more */
       }
-
-      //if RLC packet is segmented, we shall not "reset" RLC packet in progress
-      if (RC.nr_drb_data_type == DRB_RlcPdu) {
-          RC.nr_drb_data_type = DRB_data_type_qty;
-      }
-      return;
     }
   }
 

@@ -3332,9 +3332,12 @@ void *rrc_gnb_task(void *args_p) {
                                         msg_p->ittiMsgHeader.lte_time.frame,
                                         msg_p->ittiMsgHeader.lte_time.slot);
 
-          if (SS_DRB_PDU_REQ(msg_p).data_type == DRB_RlcPdu || SS_DRB_PDU_REQ(msg_p).data_type == DRB_RlcSdu) {
+          if (SS_DRB_PDU_REQ(msg_p).data_type == DRB_RlcPdu) { 
             uint8_t *sdu = malloc16(SS_DRB_PDU_REQ(msg_p).sdu_size);
             memcpy(sdu, SS_DRB_PDU_REQ(msg_p).sdu, SS_DRB_PDU_REQ(msg_p).sdu_size);
+            //JPE can impact rlc am
+	    //mem_block_t *sdu = get_free_mem_block(SS_DRB_PDU_REQ(msg_p).sdu_size, __func__);
+            //memcpy(sdu->data, SS_DRB_PDU_REQ(msg_p).sdu, SS_DRB_PDU_REQ(msg_p).sdu_size);
             enqueue_mac_rlc_data_req(&ctxt,
                                      SRB_FLAG_NO,
                                      MBMS_FLAG_NO,
