@@ -26,5 +26,6 @@
 #define _NR_PDCP_H_
 
 void nr_pdcp_layer_init_ue(void);
+void nr_pdcp_config_set_smc(ue_id_t crntiMaybeUEid, bool complete);
 
 #endif /* _NR_PDCP_H_ */

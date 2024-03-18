@@ -50,7 +50,7 @@ queue_t nr_rx_ind_queue;
 queue_t nr_crc_ind_queue;
 queue_t nr_uci_ind_queue;
 queue_t nr_rach_ind_queue;
-
+#define CELLIDTOPHYID(a) (mac->phy_id);
 static void fill_uci_2_3_4(nfapi_nr_uci_pucch_pdu_format_2_3_4_t *pdu_2_3_4,
                            fapi_nr_ul_config_pucch_pdu *pucch_pdu)
 {
@@ -116,6 +116,7 @@ int8_t nr_ue_scheduled_response_stub(nr_scheduled_response_t *scheduled_response
           rach_ind->sfn = frame;
           rach_ind->slot = slot;
           rach_ind->header.message_id = NFAPI_NR_PHY_MSG_TYPE_RACH_INDICATION;
+          rach_ind->header.phy_id =CELLIDTOPHYID(mac->physCellId);
           uint8_t pdu_index = 0;
           rach_ind->pdu_list = CALLOC(1, sizeof(*rach_ind->pdu_list));
           rach_ind->number_of_pdus = 1;
@@ -138,7 +139,7 @@ int8_t nr_ue_scheduled_response_stub(nr_scheduled_response_t *scheduled_response
             free(rach_ind->pdu_list);
             free(rach_ind);
           }
-          LOG_D(NR_MAC, "We have successfully filled the rach_ind queue with the recently filled rach ind\n");
+          LOG_D(NR_MAC, "We have successfully filled the rach_ind queue with the recently filled rach ind, rach_ind->header.phy_id %d\n",rach_ind->header.phy_id);
           break;
         }
         case (FAPI_NR_UL_CONFIG_TYPE_PUSCH): {
@@ -147,6 +148,7 @@ int8_t nr_ue_scheduled_response_stub(nr_scheduled_response_t *scheduled_response
           nfapi_nr_ue_pusch_pdu_t *pusch_config_pdu = &it->pusch_config_pdu;
           if (pusch_config_pdu->tx_request_body.pdu) {
             rx_ind->header.message_id = NFAPI_NR_PHY_MSG_TYPE_RX_DATA_INDICATION;
+            rx_ind->header.phy_id = CELLIDTOPHYID(mac->physCellId);
             rx_ind->sfn = frame;
             rx_ind->slot = slot;
             rx_ind->number_of_pdus = 1;
@@ -167,6 +169,7 @@ int8_t nr_ue_scheduled_response_stub(nr_scheduled_response_t *scheduled_response
             }
 
             crc_ind->header.message_id = NFAPI_NR_PHY_MSG_TYPE_CRC_INDICATION;
+            crc_ind->header.phy_id = CELLIDTOPHYID(mac->physCellId);
             crc_ind->number_crcs = rx_ind->number_of_pdus;
             crc_ind->sfn = frame;
             crc_ind->slot = slot;
@@ -221,6 +224,7 @@ int8_t nr_ue_scheduled_response_stub(nr_scheduled_response_t *scheduled_response
         case FAPI_NR_UL_CONFIG_TYPE_PUCCH: {
           nfapi_nr_uci_indication_t *uci_ind = CALLOC(1, sizeof(*uci_ind));
           uci_ind->header.message_id = NFAPI_NR_PHY_MSG_TYPE_UCI_INDICATION;
+          uci_ind->header.phy_id = CELLIDTOPHYID(mac->physCellId);
           uci_ind->sfn = frame;
           uci_ind->slot = slot;
           uci_ind->num_ucis = 1;

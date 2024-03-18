@@ -230,6 +230,7 @@ typedef struct IttiMsgText_s {
 #include <openair2/COMMON/m2ap_messages_types.h>
 #include <openair2/COMMON/m3ap_messages_types.h>
 #include <openair2/COMMON/sctp_messages_types.h>
+#include <openair2/COMMON/ss_messages_types.h>
 #include <openair2/COMMON/udp_messages_types.h>
 #include <openair2/COMMON/gtpv1_u_messages_types.h>
 #include <openair2/COMMON/ngap_messages_types.h>
@@ -285,6 +286,7 @@ typedef struct {
   TASK_DEF(TASK_L2L1, 200)            \
   TASK_DEF(TASK_BM, 200)              \
   TASK_DEF(TASK_PHY_ENB, 200)         \
+  TASK_DEF(TASK_MAC_ENB, 200)         \
   TASK_DEF(TASK_MAC_GNB, 200)         \
   TASK_DEF(TASK_RLC_ENB, 200)         \
   TASK_DEF(TASK_RRC_ENB_NB_IoT, 200)  \
@@ -304,6 +306,22 @@ typedef struct {
   TASK_DEF(TASK_M3AP_MME, 200)        \
   TASK_DEF(TASK_M3AP_MCE, 200)        \
   TASK_DEF(TASK_SCTP, 200)            \
+  TASK_DEF(TASK_SS_PORTMAN,200)       \
+  TASK_DEF(TASK_SS_PORTMAN_GNB,  200) \
+  TASK_DEF(TASK_SS_PORTMAN_ACP,  200) \
+  TASK_DEF(TASK_SYS,  200)            \
+  TASK_DEF(TASK_SYS_GNB,  200)        \
+  TASK_DEF(TASK_SS_SYSIND,  200)      \
+  TASK_DEF(TASK_SS_SYSIND_ACP,  200)  \
+  TASK_DEF(TASK_SS_SRB,  200)         \
+  TASK_DEF(TASK_SS_SRB_ACP,  200)     \
+  TASK_DEF(TASK_SS_SRB_GNB,  200)     \
+  TASK_DEF(TASK_VNG,  200)            \
+  TASK_DEF(TASK_VTP,  200)            \
+  TASK_DEF(TASK_VTP_ACP, 200)         \
+  TASK_DEF(TASK_SS_DRB,  200)         \
+  TASK_DEF(TASK_SS_DRB_ACP,  200)     \
+  TASK_DEF(TASK_VT_TIMER,  200)       \
   TASK_DEF(TASK_ENB_APP, 200)         \
   TASK_DEF(TASK_GNB_APP, 200)         \
   TASK_DEF(TASK_MCE_APP, 200)         \
@@ -317,6 +335,7 @@ typedef struct {
   TASK_DEF(TASK_NAS_UE, 200)          \
   TASK_DEF(TASK_RAL_UE, 200)          \
   TASK_DEF(TASK_GTPV1_U, 1000)        \
+  TASK_DEF(TASK_UDP,     1000)        \
   TASK_DEF(TASK_CU_F1, 200)           \
   TASK_DEF(TASK_DU_F1, 200)           \
   TASK_DEF(TASK_CUCP_E1, 200)         \
@@ -487,6 +506,10 @@ typedef struct {
   void *(*shortcut_func)(void *);
 } ittiTask_parms_t;
 int itti_create_task(const task_id_t task_id, void *(*start_routine)(void *), const ittiTask_parms_t *args_p);
+
+int itti_create_task_prio(task_id_t task_id,
+                       void *(*start_routine)(void *),
+                       void *args_p,int addprio);
 
 int itti_create_queue(const task_info_t *task_info);
 

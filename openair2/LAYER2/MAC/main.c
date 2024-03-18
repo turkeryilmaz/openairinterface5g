@@ -42,8 +42,10 @@
 #include "intertask_interface.h"
 #include <pthread.h>
 
+uint8_t pdcchOrder_rcvd = 0;
 extern RAN_CONTEXT_t RC;
 extern int oai_exit;
+extern int cell_index;
 
 void lte_dump_mac_stats(eNB_MAC_INST *mac, FILE *fd)
 {
@@ -271,3 +273,79 @@ int l2_init_eNB(void)
 
     return (1);
 }
+
+//-----------------------------------------------------------------------------
+/*
+ * Main loop of MAC itti message handling
+ */
+void *mac_enb_task(void *arg)
+//-----------------------------------------------------------------------------
+{
+  MessageDef *received_msg = NULL;
+  int         result;
+
+  itti_mark_task_ready(TASK_MAC_ENB); // void function 10/2019
+  LOG_I(MAC,"Starting main loop of MAC message task\n");
+
+  while (1) {
+    itti_receive_msg(TASK_MAC_ENB, &received_msg);
+
+    switch (ITTI_MSG_ID(received_msg)) {
+      case SS_L1MACIND_CTRL:
+        LOG_I(MAC, "MAC Task Received SS_L1MACIND_CTRL\n");
+        int CC_id = received_msg->ittiMsg.ss_l1macind_ctrl.cell_index;
+        RC.ss.l1macind[CC_id].UL_HARQ_Ctrl = received_msg->ittiMsg.ss_l1macind_ctrl.UL_HARQ_Ctrl;
+        RC.ss.l1macind[CC_id].HarqError_Ctrl = received_msg->ittiMsg.ss_l1macind_ctrl.HarqError_Ctrl;
+        RC.ss.l1macind[CC_id].SchedReq_Ctrl = received_msg->ittiMsg.ss_l1macind_ctrl.SchedReq_Ctrl;
+        if (received_msg->ittiMsg.ss_l1macind_ctrl.bitmask & PDCCH_ORDER_PRESENT)
+        {
+          RC.rrc[0]->configuration.radioresourceconfig[cell_index].prach_preambleIndex = received_msg->ittiMsg.ss_l1macind_ctrl.pdcchOrder.preambleIndex;
+          RC.rrc[0]->configuration.radioresourceconfig[cell_index].prach_maskIndex = received_msg->ittiMsg.ss_l1macind_ctrl.pdcchOrder.prachMaskIndex;
+          LOG_I(MAC, "MAC Task Received SS_L1MACIND_CTRL for PdcchOrder for cell:%d. prach_preambleIndex:%d prach_maskIndex:%d\n",
+              cell_index,
+              RC.rrc[0]->configuration.radioresourceconfig[cell_index].prach_preambleIndex,
+              RC.rrc[0]->configuration.radioresourceconfig[cell_index].prach_maskIndex);
+          pdcchOrder_rcvd = 1;
+        }
+        if (received_msg->ittiMsg.ss_l1macind_ctrl.bitmask & RACH_PREAMBLE_PRESENT)
+        {
+          LOG_I(MAC, "MAC Task Received SS_L1MACIND_CTRL for RachPreamble. rachpreamble_enable:%d\n", RC.ss.l1macind[CC_id].rachpreamble_enable);
+          RC.ss.l1macind[CC_id].rachpreamble_enable = received_msg->ittiMsg.ss_l1macind_ctrl.rachpreamble_enable;
+        }
+        break;
+
+      case SS_ULGRANT_INFO:
+        /* This information will be used by scheduler function schedule_ulsch_ss & schedule_ue_spec_ss */
+        LOG_I(MAC, "Received SS_ULGRANT_INFO from SS for cell_index:%d\n", received_msg->ittiMsg.ss_ulgrant_info.cell_index);
+        memset(&RC.ss.ulgrant_info[received_msg->ittiMsg.ss_ulgrant_info.cell_index], 0, sizeof(ss_ulgrant_info_t));
+        memcpy(&RC.ss.ulgrant_info[received_msg->ittiMsg.ss_ulgrant_info.cell_index], &received_msg->ittiMsg.ss_ulgrant_info, sizeof(ss_ulgrant_info_t));
+        LOG_I(MAC,"cell_index:%d duration:%d numCycles:%d\n", 
+          received_msg->ittiMsg.ss_ulgrant_info.cell_index, 
+          received_msg->ittiMsg.ss_ulgrant_info.periodiGrantInfo.period.duration,
+          received_msg->ittiMsg.ss_ulgrant_info.periodiGrantInfo.transRepType.NumOfCycles);
+        LOG_I(MAC,"RC: duration:%d numCycles:%d\n", 
+            RC.ss.ulgrant_info[received_msg->ittiMsg.ss_ulgrant_info.cell_index].periodiGrantInfo.period.duration,
+            RC.ss.ulgrant_info[received_msg->ittiMsg.ss_ulgrant_info.cell_index].periodiGrantInfo.transRepType.NumOfCycles);
+        break;
+
+      case TERMINATE_MESSAGE:
+        LOG_W(MAC, " *** Exiting MAC thread\n");
+        itti_exit_task();
+        break;
+
+      default:
+        LOG_E(MAC, "MAC instance received unhandled message: %d:%s\n",
+              ITTI_MSG_ID(received_msg), 
+              ITTI_MSG_NAME(received_msg));
+        break;  
+    } // end switch
+
+    result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
+    AssertFatal(result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
+    
+    received_msg = NULL;
+  } // end while
+
+  return NULL;
+}
+
