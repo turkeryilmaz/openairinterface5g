@@ -178,6 +178,7 @@ void init_nrUE_standalone_thread(int ue_idx)
 
   NR_UE_MAC_INST_t *mac = get_mac_inst(0);
   pthread_mutex_init(&mac->mutex_dl_info, NULL);
+  pthread_mutex_init(&mac->mutex_ul_info, NULL);
 
   pthread_t thread;
   if (pthread_create(&thread, NULL, nrue_standalone_pnf_task, NULL) != 0) {

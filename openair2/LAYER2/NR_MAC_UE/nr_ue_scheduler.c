@@ -1080,7 +1080,7 @@ void nr_ue_ul_scheduler(nr_uplink_indication_t *ul_info)
     }
     pthread_mutex_unlock(&ul_config->mutex_ul_config);
   }
-
+  pthread_mutex_lock(&mac->mutex_ul_info);
   // update Bj for all active lcids before LCP procedure
   LOG_D(NR_MAC, "====================[Frame %d][Slot %d]Logical Channel Prioritization===========\n", frame_tx, slot_tx);
   for (nr_lcordered_info_t *lc_bearer = mac->lc_ordered_info; lc_bearer->logicalChannelConfig_ordered != NULL; lc_bearer++) {
@@ -1105,6 +1105,7 @@ void nr_ue_ul_scheduler(nr_uplink_indication_t *ul_info)
     // bj > max bucket size, set bj to max bucket size, as in ts38.321 5.4.3.1 Logical Channel Prioritization
     sched_lc->Bj = min(bj, bucketSize_max);
   }
+  pthread_mutex_unlock(&mac->mutex_ul_info);
 
   // Call BSR procedure as described in Section 5.4.5 in 38.321
 
