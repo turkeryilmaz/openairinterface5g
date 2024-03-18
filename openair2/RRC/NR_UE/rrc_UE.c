@@ -1728,10 +1728,13 @@ void *rrc_nrue(void *notUsed)
   itti_receive_msg(TASK_RRC_NRUE, &msg_p);
   instance_t instance = ITTI_MSG_DESTINATION_INSTANCE(msg_p);
   LOG_D(NR_RRC, "[UE %ld] Received %s\n", instance, ITTI_MSG_NAME(msg_p));
-
-  NR_UE_RRC_INST_t *rrc = &NR_UE_rrc_inst[instance];
-  AssertFatal(instance == rrc->ue_id, "Instance %ld received from ITTI doesn't matach with UE-ID %ld\n", instance, rrc->ue_id);
-
+  NR_UE_RRC_INST_t *rrc=NULL;
+   if(instance != 0xfffe){ // MSG PHY_FIND_CELL_IND is broadcast message
+    rrc = &NR_UE_rrc_inst[instance];
+    AssertFatal(instance == rrc->ue_id, "Instance %ld received from ITTI doesn't matach with UE-ID %ld\n", instance, rrc->ue_id);
+   }else{
+    rrc = &NR_UE_rrc_inst[0];  
+   }
   switch (ITTI_MSG_ID(msg_p)) {
   case TERMINATE_MESSAGE:
     LOG_W(NR_RRC, " *** Exiting RRC thread\n");
@@ -1772,6 +1775,7 @@ void *rrc_nrue(void *notUsed)
   case NR_RRC_MAC_BCCH_DATA_IND:
     LOG_D(NR_RRC, "[UE %ld] Received %s: gNB %d\n", rrc->ue_id, ITTI_MSG_NAME(msg_p), NR_RRC_MAC_BCCH_DATA_IND(msg_p).gnb_index);
     NRRrcMacBcchDataInd *bcch = &NR_RRC_MAC_BCCH_DATA_IND(msg_p);
+    LOG_D(NR_RRC,"dbg1 %s %d\n",__FUNCTION__,__LINE__);
     if (bcch->is_bch)
       nr_rrc_ue_decode_NR_BCCH_BCH_Message(rrc, bcch->gnb_index, bcch->sdu, bcch->sdu_size);
     else
