@@ -72,3 +72,196 @@ sequenceDiagram
   u->>c: BEARER CONTEXT MODIFICATION RESPONSE
   Note over c: e1apCUCP_handle_BEARER_CONTEXT_MODIFICATION_RESPONSE
 ```
+
+## DRB Setup over E1
+
+```mermaid
+sequenceDiagram
+    participant Network
+    participant CUCP
+    participant CUUP
+    participant DU
+    participant UE
+    Network->>CUCP: NGAP_PDUSESSION_SETUP_REQ
+    Note over CUCP: ngap_gNB_handle_pdusession_setup_request
+    CUCP->>CUCP: decodePDUSessionResourceSetup
+    CUCP->>CUCP: rrc_gNB_process_NGAP_PDUSESSION_SETUP_REQ
+    Note over CUCP: cp_pdusession_resource_item_to_pdusession
+    CUCP->>CUCP: E1AP: trigger_bearer_setup
+    Note over CUCP: fill Bearer Context Setup Request
+    loop nb_pdusessions_tosetup
+        CUCP->>CUCP: add_pduSession (&UE->pduSessions_to_addmod)
+        loop numDRB2Setup
+            CUCP->>CUCP: setup_rrc_drb_for_pdu_session
+            Note over CUCP: fill DRB ID, PDU Session, QoS in RRC DRB
+            CUCP->>CUCP: add_rrc_drb
+            CUCP->>CUCP: fill_drb_ngran_tosetup
+            Note over CUCP: fill SDAP, PDCP, QoS in E1 message
+        end
+    end
+    Note over CUCP: e1_bearer_context_setup
+    CUCP->>CUUP: BEARER CONTEXT SETUP REQUEST
+    Note over CUUP: e1apCUUP_handle_BEARER_CONTEXT_SETUP_REQUEST
+    Note over CUUP: set up DRBs, PDCP/SDAP entities, GTP tunnel
+    CUUP->>CUCP: E1AP_BEARER_CONTEXT_SETUP_RESP
+    Note over CUCP: rrc_gNB_process_e1_bearer_context_setup_resp
+    loop numPDUSessions
+        CUCP->>CUCP: find_pduSession (&UE->pduSessions_to_addmod)
+        Note over CUCP: Update N3 tunnel info in pdusession_t
+        loop numDRBSetup
+            CUCP->>CUCP: get_drb (from RRC)
+            Note over CUCP: update DRB F1 tunnel info
+        end
+    end
+    CUCP->>DU: F1 UE Context Setup Request / ue_context_modification_request
+    DU->>CUCP: F1 UE Context Setup Response
+    CUCP->>CUCP: rrc_CU_process_ue_context_setup_response / rrc_CU_process_ue_context_modification_response
+    Note over CUCP: e1_send_bearer_updates
+    CUCP->>CUUP: E1 BEARER CONTEXT MODIFICATION REQUEST
+    CUUP->>CUCP: E1 BEARER CONTEXT MODIFICATION RESPONSE
+    CUCP->>CUCP: rrc_gNB_generate_dedicatedRRCReconfiguration
+    Note over CUCP: RRC_PDUSESSION_ESTABLISH
+    CUCP->>DU: rrc_deliver_dl_rrc_message
+    DU->>UE: RRCReconfiguration
+    UE->>DU: RRCReconfigurationComplete
+    DU->>CUCP: F1AP_UL_RRC_MESSAGE
+    Note over CUCP: rrc_gNB_decode_dcch
+    Note over CUCP: handle_rrcReconfigurationComplete
+    CUCP->>CUCP: rrc_gNB_send_NGAP_INITIAL_CONTEXT_SETUP_RESP / rrc_gNB_send_NGAP_PDUSESSION_SETUP_RESP
+    loop pduSessions_to_addmod
+        Note over CUCP: Fill NGAP message (setup)
+        CUCP->>CUCP: add_pduSession (&UE->pduSessions)
+    end
+    loop UE->pduSessions_failed
+        Note over CUCP: Fill NGAP message (failed)
+    end
+    Note over CUCP: free UE->pduSessions_to_addmod
+    Note over CUCP: free UE->pduSessions_failed
+    CUCP->>Network: NGAP_PDUSESSION_SETUP_RESP
+    CUCP->>DU: ue_context_modification_request
+```
+
+# PDU Session Modification
+
+```mermaid
+sequenceDiagram
+    participant AMF
+    participant CUCP
+    participant DU
+    participant UE
+
+    AMF->>CUCP: PDUSessionResourceModifyRequest
+    Note over CUCP: ngap_gNB_handle_pdusession_modify_request
+    CUCP->>CUCP: decodePDUSessionResourceModify
+    CUCP->>CUCP: NGAP_PDUSESSION_MODIFY_REQ
+    CUCP->>CUCP: rrc_gNB_process_NGAP_PDUSESSION_MODIFY_REQ
+    opt UE not found or AMF_UE_ID mismatch
+        CUCP->>AMF: NGAP_PDUSESSION_MODIFY_RESP (Failed PDU Session)
+        Note over CUCP: stop further processing
+    end
+
+    loop nb_pdusessions_tomodify
+        CUCP->>CUCP: find_pduSession(UE->pduSessions)
+        alt Session not found
+            CUCP->>CUCP: fill pdusessions_failed
+        else Session found
+            CUCP->>CUCP: cp_pdusession_resource_item_to_pdusession
+            Note over CUCP: copy to pdusession_t item (including QoS add/modify/release)
+            CUCP->>CUCP: update PDU Session in RRC (&UE->pduSessions)
+            Note over CUCP: Update QoS mapping in DRB
+            CUCP->>CUCP: add_pduSession(&UE->pduSessions_to_addmod)
+        end
+    end
+
+    alt seq_arr_size(UE->pduSessions_to_addmod)
+        CUCP->>CUCP: rrc_gNB_modify_dedicatedRRCReconfiguration
+        Note over CUCP: RRC_PDUSESSION_MODIFY
+        CUCP->>CUCP: Build DRB list and NAS list
+        CUCP->>DU: rrc_deliver_dl_rrc_message
+        DU->>UE: RRCReconfiguration (DCCH)
+        UE->>DU: RRCReconfigurationComplete
+        DU->>CUCP: F1AP_UL_RRC_MESSAGE
+        Note over CUCP: rrc_gNB_decode_dcch
+        Note over CUCP: handle_rrcReconfigurationComplete
+        CUCP->>CUCP: rrc_gNB_send_NGAP_PDUSESSION_MODIFY_RESP
+        loop pduSessions_to_addmod
+            Note over CUCP: Fill NGAP message (modified)
+        end
+        loop UE->pduSessions_failed
+            Note over CUCP: Fill NGAP message (failed tp modify)
+        end
+        CUCP->>AMF: NGAP_PDUSESSION_MODIFY_RESP
+        Note over CUCP: free UE->pduSessions_to_addmod
+        Note over CUCP: free UE->pduSessions_failed
+        CUCP->>DU: ue_context_modification_request
+    else msg->nb_of_pdusessions_failed > 0
+        Note over CUCP: PDU Session failed to modify
+        CUCP->>AMF: NGAP_PDUSESSION_MODIFY_RESP
+    end
+```
+
+# PDU Session Release
+
+```mermaid
+sequenceDiagram
+    participant AMF
+    participant CUCP
+    participant CUUP
+    participant DU
+    participant UE
+
+    AMF->>CUCP: PDUSessionResourceReleaseCommand
+    Note over CUCP: ngap_gNB_handle_pdusession_release_command
+    CUCP->>CUCP: NGAP_PDUSESSION_RELEASE_COMMAND
+    CUCP->>CUCP: rrc_gNB_process_NGAP_PDUSESSION_RELEASE_COMMAND
+
+    loop nb_pdusessions_torelease
+        CUCP->>CUCP: find_pduSession(UE->pduSessions_failed)
+        alt PDU Session is in the failed list
+            CUCP->>CUCP: add_pduSession_to_release()
+        else
+            CUCP->>CUCP: find_pduSession(UE->pduSessions)
+            alt PDU Session not found in setup list
+                CUCP->>CUCP: add_failed_pduSession()
+            else PDU is setup, add to addmod list
+                CUCP->>CUCP: add_pduSession_to_addmod()
+                CUCP->>CUCP: rm_pduSession()
+                Note over CUCP: Add to addmod and remove from setup list
+                Note over CUCP: Cleanup established DRBs
+                CUCP->>CUCP: fill E1AP message (numPDUSessionsRem++)
+            end
+        end
+    end
+
+    alt req.numPDUSessionsRem > 0
+        opt E1AP available
+            CUCP->>CUUP: e1_bearer_context_mod
+            CUUP->>CUUP: newGtpuDeleteOneTunnel
+            CUUP->>CUUP: nr_pdcp_release_drbs
+            CUUP->>CUUP: nr_sdap_delete_entity
+        end
+        Note over CUCP: RRC_PDUSESSION_RELEASE
+        CUCP->>CUCP: rrc_gNB_generate_dedicatedRRCReconfiguration_release
+        Note over CUCP: Build DRB_ReleaseList and NAS message (if present)
+        CUCP->>DU: rrc_deliver_dl_rrc_message
+        CUCP->>UE: RRCReconfiguration (DRB release + optional NAS)
+        UE->>DU: RRCReconfigurationComplete
+        DU->>CUCP: F1AP_UL_RRC_MESSAGE
+        Note over CUCP: handle_rrcReconfigurationComplete()
+
+        loop UE->pduSessions_to_addmod
+            Note over CUCP: move to pduSessions_to_release
+            Note over CUCP: cleanup pduSessions_to_addmod
+        end
+
+        CUCP->>CUCP: rrc_gNB_send_NGAP_PDUSESSION_RELEASE_RESPONSE
+        Note over CUCP: loop through pduSessions_to_release and pduSessions_failed
+
+    else
+        # CUCP->>CUCP: release_pduSessions
+        # Note over CUCP: GTP tunnel deletion
+        CUCP->>CUCP: rrc_gNB_send_NGAP_PDUSESSION_RELEASE_RESPONSE
+        Note over CUCP: loop through pduSessions_to_release and pduSessions_failed
+    end
+
+```
