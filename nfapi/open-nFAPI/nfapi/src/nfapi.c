@@ -1138,6 +1138,47 @@ uint8_t pack_nr_tlv(uint16_t tag, void *tlv, uint8_t **ppWritePackedMsg, uint8_t
   return 1;
 }
 
+
+uint8_t pack_uint32_tlv_value(void *tlv, uint8_t **ppWritePackedMsg, uint8_t *end) {
+  nfapi_uint32_tlv_t *value = (nfapi_uint32_tlv_t *)tlv;
+  return push32(value->value, ppWritePackedMsg, end);
+}
+
+uint8_t unpack_uint32_tlv_value(void *tlv, uint8_t **ppReadPackedMsg, uint8_t *end) {
+  nfapi_uint32_tlv_t *value = (nfapi_uint32_tlv_t *)tlv;
+  return pull32(ppReadPackedMsg, &value->value, end);
+}
+
+
+uint8_t pack_uint16_tlv_value(void *tlv, uint8_t **ppWritePackedMsg, uint8_t *end) {
+  nfapi_uint16_tlv_t *value = (nfapi_uint16_tlv_t *)tlv;
+  return push16(value->value, ppWritePackedMsg, end);
+}
+
+uint8_t unpack_uint16_tlv_value(void *tlv, uint8_t **ppReadPackedMsg, uint8_t *end) {
+  nfapi_uint16_tlv_t *value = (nfapi_uint16_tlv_t *)tlv;
+  return pull16(ppReadPackedMsg, &value->value, end);
+}
+
+uint8_t pack_int16_tlv_value(void *tlv, uint8_t **ppWritePackedMsg, uint8_t *end) {
+  nfapi_int16_tlv_t *value = (nfapi_int16_tlv_t *)tlv;
+  return pushs16(value->value, ppWritePackedMsg, end);
+}
+
+uint8_t unpack_int16_tlv_value(void *tlv, uint8_t **ppReadPackedMsg, uint8_t *end) {
+  nfapi_int16_tlv_t *value = (nfapi_int16_tlv_t *)tlv;
+  return pulls16(ppReadPackedMsg, &value->value, end);
+}
+
+uint8_t pack_uint8_tlv_value(void *tlv, uint8_t **ppWritePackedMsg, uint8_t *end) {
+  nfapi_uint8_tlv_t *value = (nfapi_uint8_tlv_t *)tlv;
+  return push8(value->value, ppWritePackedMsg, end);
+}
+uint8_t unpack_uint8_tlv_value(void *tlv, uint8_t **ppReadPackedMsg, uint8_t *end) {
+  nfapi_uint8_tlv_t *value = (nfapi_uint8_tlv_t *)tlv;
+  return pull8(ppReadPackedMsg, &value->value, end);
+}
+
 const char *nfapi_error_code_to_str(nfapi_error_code_e value) {
   switch(value) {
     case NFAPI_MSG_OK:
