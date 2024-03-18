@@ -252,13 +252,17 @@ typedef struct xnap_ue_context_info_s {
   xnap_net_ip_address_t tnl_ip_source;
   uint32_t tnl_port_source;
   xnap_security_capabilities_t security_capabilities;
+  uint8_t kRRCenc[16];
+  uint8_t kRRCint[16];
   uint8_t as_security_key_ranstar[32];//bitstring 256, why array?
   uint32_t as_security_ncc;
   xnap_ambr_t ue_ambr;
   uint8_t rrc_buffer[8192 /* arbitrary, big enough */];
+  xnap_pdusession_tobe_setup_list_t pdusession_tobe_setup_list;
   xnap_uehistory_info_t uehistory_info;//most recent info added at top(upto 16). how many needed?
   int rrc_buffer_size;//rrc msg type needed?
   int target_assoc_id;
+  uint8_t nb_e_rabs_tobesetup;
 } xnap_ue_context_info_t;
 
 typedef struct xnap_handover_req_s {

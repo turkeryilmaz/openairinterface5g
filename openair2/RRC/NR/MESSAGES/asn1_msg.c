@@ -1138,7 +1138,30 @@ NR_MeasConfig_t *get_defaultMeasConfig(uint32_t ssb_arfcn, int band, int scs)
   asn1cCallocOne(monr1->ext1->freqBandIndicatorNR, band);
   mo1->measObject.choice.measObjectNR = monr1;
   asn1cSeqAdd(&mc->measObjectToAddModList->list, mo1);
-  
+ 
+ NR_MeasObjectToAddMod_t *mo3 = calloc(1, sizeof(*mo3));
+ int module_id;
+  mo3->measObjectId = 3;
+  mo3->measObject.present = NR_MeasObjectToAddMod__measObject_PR_measObjectNR;
+  NR_MeasObjectNR_t *monr3 = calloc(1, sizeof(*monr3));
+  asn1cCallocOne(monr3->ssbFrequency, ssb_arfcn);
+  asn1cCallocOne(monr3->ssbSubcarrierSpacing, scs);
+  for (int i = 0; i < RC.nb_nr_inst; i++) {
+    if ((i != module_id) && RC.nrrrc[i] && RC.nrrrc[i]->configuration.serving_cell_config_common && RC.nrrrc[i]->configuration.serving_cell_config_common->physCellId) {
+        if (monr3->cellsToAddModList == NULL) {
+          monr3->cellsToAddModList = calloc(1, sizeof(*monr3->cellsToAddModList));
+        }
+        NR_CellsToAddMod_t *cell = calloc(1, sizeof(*cell));
+        cell->physCellId = *RC.nrrrc[i]->configuration.serving_cell_config_common->physCellId;
+        ASN_SEQUENCE_ADD(&monr3->cellsToAddModList->list, cell);
+    }
+  }
+  monr3->quantityConfigIndex = 2;
+  monr3->ext1 = calloc(1, sizeof(*monr3->ext1));
+  asn1cCallocOne(monr3->ext1->freqBandIndicatorNR, band);
+  mo3->measObject.choice.measObjectNR = monr3;
+  asn1cSeqAdd(&mc->measObjectToAddModList->list, mo3);
+ //IMRAN
   // Reporting Configuration: Specifies how reporting should be done. This could be periodic or event-triggered.
   NR_ReportConfigToAddMod_t *rc = calloc(1, sizeof(*rc));
   rc->reportConfigId = 1;
@@ -1247,6 +1270,12 @@ NR_MeasConfig_t *get_defaultMeasConfig(uint32_t ssb_arfcn, int band, int scs)
   measid->measObjectId = 1;
   measid->reportConfigId = 1;
   asn1cSeqAdd(&mc->measIdToAddModList->list, measid);
+
+  NR_MeasIdToAddMod_t *measid_event_A3 = calloc(1, sizeof(*measid_event_A3));
+  measid_event_A3->measId = 3;
+  measid_event_A3->measObjectId = 3;
+  measid_event_A3->reportConfigId = 3;
+  asn1cSeqAdd(&mc->measIdToAddModList->list, measid_event_A3);
 
   // Quantity Configuration: Specifies parameters for layer 3 filtering of measurements. Only after filtering, reporting
   // criteria are evaluated. The formula used is F_n = (1-a)F_(n-1) + a*M_n, where M is the latest measurement, F is the

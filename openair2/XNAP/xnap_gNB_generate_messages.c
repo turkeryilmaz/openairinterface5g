@@ -767,15 +767,15 @@ int xnap_gNB_generate_xn_setup_response(sctp_assoc_t assoc_id, xnap_setup_resp_t
   uint32_t  len;
   int       ret = 0;
 //get intance from tree if needed
-  DevAssert(instance != NULL); //not pointer
+//  DevAssert(instance != NULL); //not pointer
 //  DevAssert(xnap_gNB_data_p != NULL);// not defined
 
  //  DevAssert(pdu != NULL);
    xnhandoverreq = &pdu.choice.initiatingMessage->value.choice.HandoverRequest;
     /* Send a xn setup failure with protocol cause unspecified */
-    MessageDef *message_p = itti_alloc_new_message(TASK_XNAP, 0, XNAP_FAILURE_REQ);// failure
+/*    MessageDef *message_p = itti_alloc_new_message(TASK_XNAP, 0, XNAP_FAILURE_REQ);// failure????
     message_p->ittiMsgHeader.originInstance = assoc_id;
-    itti_send_msg_to_task(TASK_XNAP, 0, message_p);
+    itti_send_msg_to_task(TASK_XNAP, 0, message_p);       */
   
   LOG_D(XNAP, "Received a new XN setup request\n");
 

@@ -1498,9 +1498,9 @@ void rrc_gNB_process_MeasurementReport(rrc_gNB_ue_context_t *ue_context_p, NR_Me
   NR_MeasResultNR_t *neighbour_measresult = ik_measResults->measResultNeighCells->choice.measResultListNR->list.array[0] ;  /* Need to review this whether to retain */
 
   /*Imran*/
-  MessageDef      *msg;
+//  MessageDef      *msg;
   //int ncell_index=0; 
-  msg = itti_alloc_new_message(TASK_RRC_GNB, 0, XNAP_HANDOVER_REQ);
+  MessageDef *msg = itti_alloc_new_message(TASK_RRC_GNB, 0, XNAP_HANDOVER_REQ);
 
   /* Need to add function to get best neighbour cells */
   rrc_gNB_process_HandoverPreparationInformation(
@@ -1509,8 +1509,9 @@ void rrc_gNB_process_MeasurementReport(rrc_gNB_ue_context_t *ue_context_p, NR_Me
      XNAP_HANDOVER_REQ(msg).ue_context.rrc_buffer,
      &XNAP_HANDOVER_REQ(msg).ue_context.rrc_buffer_size);
 
-     XNAP_HANDOVER_REQ(msg).target_cgi.cgi = ue_ctxt->measResults->measResultNeighCells->choice.
-        measResultListNR->list.array[0]->physCellId;//hardcoded to 0 , confirm if its phy cell id only, add plmn-mcc,mnc
+     XNAP_HANDOVER_REQ(msg).target_cgi.cgi = ue_ctxt->measResults->measResultNeighCells->choice.measResultListNR->list.array[0]->physCellId;//hardcoded to 0 , confirm if its phy cell id only, add plmn-mcc,mnc
+   // XNAP_HANDOVER_REQ(msg).target_cgi.cgi = ue_ctxt->measResults->measResultNeighCells->choice.
+
     XNAP_HANDOVER_REQ(msg).guami.plmn_id.mcc = ue_ctxt->ue_guami.mcc;
     XNAP_HANDOVER_REQ(msg).guami.plmn_id.mnc = ue_ctxt->ue_guami.mnc;
     XNAP_HANDOVER_REQ(msg).guami.plmn_id.mnc_digit_length = ue_ctxt->ue_guami.mnc_len;
@@ -1520,8 +1521,13 @@ void rrc_gNB_process_MeasurementReport(rrc_gNB_ue_context_t *ue_context_p, NR_Me
     XNAP_HANDOVER_REQ(msg).ue_context.security_capabilities = ue_ctxt->xnap_security_capabilities;
     // compute kgNB*
     // Need to add kgNB computation
+
+    nr_derive_key(RRC_ENC_ALG, ue_ctxt->ciphering_algorithm, ue_ctxt->kgnb,XNAP_HANDOVER_REQ(msg).ue_context.kRRCenc);  //need to review this again whether kgNB key has to be generated
+    nr_derive_key(RRC_INT_ALG, ue_ctxt->integrity_algorithm, ue_ctxt->kgnb,XNAP_HANDOVER_REQ(msg).ue_context. kRRCint);
+
 //    XNAP_HANDOVER_REQ(msg).kenb_ncc = ue_context_pP->ue_context.kenb_ncc;
- //   XNAP_HANDOVER_REQ(msg).nb_e_rabs_tobesetup = ue_context_pP->ue_context.setup_e_rabs; 
+ //   XNAP_HANDOVER_REQ(msg).ue_context.nb_e_rabs_tobesetup = ue_ctxt->ue_context.nb_of_e_rabs;
+    itti_send_msg_to_task(TASK_XNAP, 0, msg); 
 ////send to TASK_XNAP
 }
 

@@ -126,7 +126,7 @@ sctp_assoc_t *xnap_gNB_get_assoc_id(instance_t instanceP)
 {
   DevAssert(instanceP == 0);
   pthread_mutex_lock(&xn_inst_mtx);
-  sctp_assoc_t xnap_assoc_id = xn_inst[instanceP];// xnap_assoc_id is not correct
+  sctp_assoc_t *xnap_assoc_id = xn_inst[instanceP];// xnap_assoc_id is not correct
   pthread_mutex_unlock(&xn_inst_mtx);
   return xnap_assoc_id;
 }
