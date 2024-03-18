@@ -19,36 +19,34 @@
 *      contact@openairinterface.org
  */
 
-/*! \file fapi/oai-integration/fapi_nvIPC.h
-* \brief Header file for fapi_nvIPC.c
+/*! \file open-nFAPI/fapi/inc/nr_fapi_p5.h
+* \brief Defines the interface for packing/unpacking FAPI P5 messages (SCF 222)
 * \author Ruben S. Silva
-* \date 2023
+* \date 2024
 * \version 0.1
 * \company OpenAirInterface Software Alliance
 * \email: contact@openairinterface.org, rsilva@allbesmart.pt
 * \note
 * \warning
  */
-#ifdef ENABLE_AERIAL
-#ifndef OPENAIRINTERFACE_FAPI_NVIPC_H
-#define OPENAIRINTERFACE_FAPI_NVIPC_H
 
-#include "nv_ipc.h"
-#include "nv_ipc_utils.h"
-#include "nvlog.h"
-#include "nfapi/open-nFAPI/vnf/public_inc/nfapi_vnf_interface.h"
-#include "openair1/PHY/defs_gNB.h"
+#ifndef OPENAIRINTERFACE_NR_FAPI_P5_H
+#define OPENAIRINTERFACE_NR_FAPI_P5_H
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <inttypes.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
+#include "nfapi_nr_interface.h"
+#include "nfapi_interface.h"
+#include "nfapi_nr_interface_scf.h"
+#include "nfapi.h"
+
+#include "common/utils/LOG/log.h"
 #include "debug.h"
 
-int aerial_send_P5_msg(void *packedBuf, uint32_t packedMsgLength, nfapi_p4_p5_message_header_t *header);
-int aerial_send_P7_msg(void *packedBuf, uint32_t packedMsgLength, nfapi_p7_message_header_t *header);
-int aerial_send_P7_msg_with_data(void *packedBuf,
-                                      uint32_t packedMsgLength,
-                                      void *dataBuf,
-                                      uint32_t dataLength,
-                                      nfapi_p7_message_header_t *header);
-void set_config(nfapi_vnf_config_t *conf);
-int nvIPC_Init();
-
-#endif // OPENAIRINTERFACE_FAPI_NVIPC_H
-#endif
+uint8_t pack_nr_param_response(void *msg, uint8_t **ppWritePackedMsg, uint8_t *end, nfapi_p4_p5_codec_config_t *config);
+uint8_t unpack_nr_param_response(uint8_t **ppReadPackedMsg, uint8_t *end, void *msg, nfapi_p4_p5_codec_config_t *config);
+#endif // OPENAIRINTERFACE_NR_FAPI_P5_H

@@ -578,9 +578,11 @@ include_directories("${OPENAIR2_DIR}/UTIL/LOG")
 include_directories("${OPENAIR3_DIR}/COMMON")
 include_directories("${OPENAIR3_DIR}/UTILS")
 include_directories("${NFAPI_DIR}/nfapi/public_inc")
+include_directories("${NFAPI_DIR}/fapi/public_inc")
 include_directories("${NFAPI_DIR}/common/public_inc")
 include_directories("${NFAPI_DIR}/pnf/public_inc")
 include_directories("${NFAPI_DIR}/nfapi/inc")
+include_directories("${NFAPI_DIR}/fapi/inc")
 include_directories("${NFAPI_DIR}/sim_common/inc")
 include_directories("${NFAPI_DIR}/pnf_sim/inc")
 include_directories("${OPENAIR1_DIR}")
@@ -740,11 +742,14 @@ set(NFAPI_SRC
   ${NFAPI_DIR}/nfapi/src/nfapi_p4.c
   ${NFAPI_DIR}/nfapi/src/nfapi_p5.c
   ${NFAPI_DIR}/nfapi/src/nfapi_p7.c
+  ${NFAPI_DIR}/fapi/src/nr_fapi_p5.c
 )
 add_library(NFAPI_LIB ${NFAPI_SRC})
 
 include_directories(${NFAPI_DIR}/nfapi/public_inc)
 include_directories(${NFAPI_DIR}/nfapi/inc)
+include_directories(${NFAPI_DIR}/fapi/public_inc)
+include_directories(${NFAPI_DIR}/fapi/inc)
 
 set(NFAPI_PNF_SRC
   ${NFAPI_DIR}/pnf/src/pnf.c
@@ -1910,9 +1915,11 @@ add_library(SIMU_ETH STATIC
 target_link_libraries(SIMU_ETH PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
 include_directories("${NFAPI_DIR}/nfapi/public_inc")
+include_directories("${NFAPI_DIR}/fapi/public_inc")
 include_directories("${NFAPI_DIR}/common/public_inc")
 include_directories("${NFAPI_DIR}/pnf/public_inc")
 include_directories("${NFAPI_DIR}/nfapi/inc")
+include_directories("${NFAPI_DIR}/fapi/inc")
 include_directories("${NFAPI_DIR}/sim_common/inc")
 include_directories("${NFAPI_DIR}/pnf_sim/inc")
 

@@ -31,6 +31,7 @@
 #include "nfapi/oai_integration/aerial/fapi_nvIPC.h"
 #include "nfapi/oai_integration/aerial/fapi_vnf_p5.h"
 #endif
+#include "nr_fapi.h"
 #include "nfapi/oai_integration/vendor_ext.h"
 
 void* vnf_malloc(nfapi_vnf_config_t* config, size_t size)

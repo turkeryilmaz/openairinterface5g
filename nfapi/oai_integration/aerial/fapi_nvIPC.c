@@ -49,6 +49,7 @@
 #include <sys/epoll.h>
 #include "fapi_nvIPC.h"
 #include "nfapi_interface.h"
+#include "nr_fapi.h"
 #include "nfapi.h"
 #include "nfapi_nr_interface_scf.h"
 #include "nfapi/open-nFAPI/vnf/inc/vnf_p7.h"
@@ -116,7 +117,7 @@ static int ipc_handle_rx_msg(nv_ipc_t *ipc, nv_ipc_msg_t *msg)
   // unpack FAPI messages and handle them
   if (vnf_config != 0) {
     // first, unpack the header
-    fapi_phy_api_msg *fapi_msg = calloc(1, sizeof(fapi_phy_api_msg));
+    fapi_message_header_t *fapi_msg = calloc(1, sizeof(fapi_message_header_t));
     if (!(pull8(&pReadPackedMessage, &fapi_msg->num_msg, end) && pull8(&pReadPackedMessage, &fapi_msg->opaque_handle, end)
           && pull16(&pReadPackedMessage, &fapi_msg->message_id, end)
           && pull32(&pReadPackedMessage, &fapi_msg->message_length, end))) {
