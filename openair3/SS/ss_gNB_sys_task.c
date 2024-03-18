@@ -888,6 +888,7 @@ void *ss_gNB_sys_task(void *arg)
   {
     init_ss_gNB_context(SS_context.SSCell_list);
     LOG_A(GNB_APP, "TASK_SYS_GNB: fxn:%s line:%d RC.ss.mode:SS_STATE_NOT_CONFIGURED \n", __FUNCTION__, __LINE__);
+    SS_context.SSCell_list[nr_cell_index].State = 0;
   }
   // Set the state to CELL_ACTIVE for SRB processing mode
   /*else if (RC.ss.mode == SS_HWTMODEM)
@@ -1177,7 +1178,9 @@ bool ss_task_sys_nr_handle_cellConfig5G(struct NR_CellConfigRequest_Type *p_req,
               if(p_req->v.AddOrReconfigure.DcchDtchConfig.v.UL.v.SearchSpaceAndDci.v.DciInfo.v.ResoureAssignment.v.FreqDomain.d){
                 dcchDtchConfig->ul->dci_info->resoure_assignment->FirstRbIndex =
                 p_req->v.AddOrReconfigure.DcchDtchConfig.v.UL.v.SearchSpaceAndDci.v.DciInfo.v.ResoureAssignment.v.FreqDomain.v.FirstRbIndex;
-                //TODO bug #133016 with USRP board, system crashed if Nprb is 24 ie what is provided by TTCN which does make no sense. Need to understand why
+                //TODO bug #133016 with USRP board, system crashed if Nprb is 48 or 24 ie what is provided by TTCN which does make no sense. Need to understand why
+                // if NPrb is set to a different value from 0, type0_PDCCH_CSS_config will be filled and such config is used for dcch_dtch config during rach procedure
+                //if dcch_dtch config is not NULL, MAC will trigger rrc reconfiguration considering that UE under attachment has already been configured
                 if (RC.ss.mode == SS_HWTMODEM) {
                   dcchDtchConfig->ul->dci_info->resoure_assignment->Nprb = 0;
                 } else {
@@ -1185,6 +1188,7 @@ bool ss_task_sys_nr_handle_cellConfig5G(struct NR_CellConfigRequest_Type *p_req,
                           p_req->v.AddOrReconfigure.DcchDtchConfig.v.UL.v.SearchSpaceAndDci.v.DciInfo.v.ResoureAssignment.v.FreqDomain.v.Nprb;
                 }
 	      }
+
               if(p_req->v.AddOrReconfigure.DcchDtchConfig.v.UL.v.SearchSpaceAndDci.v.DciInfo.v.ResoureAssignment.v.TransportBlockScheduling.d) {
                 if(p_req->v.AddOrReconfigure.DcchDtchConfig.v.UL.v.SearchSpaceAndDci.v.DciInfo.v.ResoureAssignment.v.TransportBlockScheduling.v.d > 0){
                   struct NR_TransportBlockSingleTransmission_Type * tbst = &p_req->v.AddOrReconfigure.DcchDtchConfig.v.UL.v.SearchSpaceAndDci.v.DciInfo.v.ResoureAssignment.v.TransportBlockScheduling.v.v[0];
