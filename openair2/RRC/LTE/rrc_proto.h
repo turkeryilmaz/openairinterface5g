@@ -38,6 +38,8 @@
 
 //main.c
 int rrc_init_global_param(void);
+void rrc_init_global_cc_context(int CC_id, module_id_t module_id);
+
 int L3_xface_init(void);
 void openair_rrc_top_init(int eMBMS_active, char *uecap_xer, uint8_t cba_group_active,uint8_t HO_enabled);
 
@@ -588,6 +590,27 @@ mac_UE_get_rrc_status(
   const uint8_t     indexP
 );
 
+bool
+mac_eNB_get_rach_mode(
+  const module_id_t Mod_idP,
+  const rnti_t      rntiP
+);
+
+void
+mac_eNB_set_rach_mode(
+  const module_id_t Mod_idP,
+  const rnti_t      rntiP,
+  const bool  isRachModeCFRA
+);
+
+void
+rrc_mac_data_req(
+  const rnti_t         rnti,
+  const uint8_t        lc_id,
+  const sdu_size_t     sdu_buffer_size,
+  unsigned char *const sdu_buffer_p
+);
+
 void
 rrc_eNB_generate_UECapabilityEnquiry(
   const protocol_ctxt_t *const ctxt_pP,
@@ -664,7 +687,7 @@ long binary_search_int(const int elements[], long numElem, int value);
 
 long binary_search_float(const float elements[], long numElem, float value);
 
-void openair_rrc_top_init_eNB(int eMBMS_active,uint8_t HO_active);
+void openair_rrc_top_init_eNB(int CC_id,int eMBMS_active,uint8_t HO_active);
 
 void openair_rrc_top_init_ue(
   int eMBMS_active,
