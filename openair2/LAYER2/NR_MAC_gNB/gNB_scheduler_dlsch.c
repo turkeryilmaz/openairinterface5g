@@ -1474,7 +1474,7 @@ uint32_t schedule_control_paging(module_id_t module_id,
 
   const uint16_t bwpSize = type0_PDCCH_CSS_config->num_rbs;
   int rbStart = type0_PDCCH_CSS_config->cset_start_rb;
-  if(RC.ss.mode >= SS_SOFTMODEM)
+  if(RC.ss.mode == SS_SOFTMODEM)
     rbStart = 27;
 
   // Calculate number of PRB_DMRS
@@ -1497,14 +1497,12 @@ uint32_t schedule_control_paging(module_id_t module_id,
                          nr_get_code_rate_dl(pdsch->mcs, mcsTableIdx),
                          rbSize, tda_info->nrOfSymbols, N_PRB_DMRS * dmrs_length,0, 0,1) >> 3;
   } while (TBS < gNB_mac->sched_ctrlCommon[CC_id]->num_total_bytes);
-
-
   AssertFatal(TBS>=gNB_mac->sched_ctrlCommon[CC_id]->num_total_bytes,"Couldn't allocate enough resources for %d bytes in Paging PDSCH\n",
               gNB_mac->sched_ctrlCommon[CC_id]->num_total_bytes);
 
   pdsch->rbSize = rbSize;
-  pdsch->rbStart = 0;
-
+  pdsch->rbStart = rbStart;
+  
   LOG_D(NR_MAC,"mcs = %i\n", pdsch->mcs);
   LOG_D(NR_MAC,"startSymbolIndex = %i\n", tda_info->startSymbolIndex);
   LOG_D(NR_MAC,"nrOfSymbols = %i\n", tda_info->nrOfSymbols);
@@ -1513,6 +1511,20 @@ uint32_t schedule_control_paging(module_id_t module_id,
   LOG_D(NR_MAC,"dmrs_length %d\n",dmrs_length);
   LOG_D(NR_MAC,"N_PRB_DMRS = %d\n",N_PRB_DMRS);
   LOG_D(NR_MAC,"mappingtype = %d\n", tda_info->mapping_type);
+
+  LOG_D(NR_MAC,"active = %d\n", type0_PDCCH_CSS_config->active);
+  LOG_D(NR_MAC,"cset_start_rb = %d\n", type0_PDCCH_CSS_config->cset_start_rb);
+  LOG_D(NR_MAC,"first_symbol_index = %d\n", type0_PDCCH_CSS_config->first_symbol_index);
+  LOG_D(NR_MAC,"frame = %d\n", type0_PDCCH_CSS_config->frame);
+  LOG_D(NR_MAC, "n_0 = %d\n", type0_PDCCH_CSS_config->n_0);
+  LOG_D(NR_MAC,"n_c = %d\n", type0_PDCCH_CSS_config->n_c);
+  LOG_D(NR_MAC,"num_rbs = %d\n", type0_PDCCH_CSS_config->num_rbs);
+  LOG_D(NR_MAC,"num_symbols = %d\n", type0_PDCCH_CSS_config->num_symbols);
+  LOG_D(NR_MAC,"rb_offset = %d\n", type0_PDCCH_CSS_config->rb_offset);
+  LOG_D(NR_MAC,"scs_pdcch = %d\n", type0_PDCCH_CSS_config->scs_pdcch);
+  LOG_D(NR_MAC,"search_space_duration = %d\n", type0_PDCCH_CSS_config->search_space_duration);
+  LOG_D(NR_MAC,"search_space_period = %d\n", type0_PDCCH_CSS_config->search_space_frame_period);
+
   // Mark the corresponding RBs as used
   fill_pdcch_vrb_map(gNB_mac,
                      CC_id,
@@ -1676,67 +1688,87 @@ void schedule_nr_PCH(module_id_t module_idP,
 
   start_meas(&gNB_mac->schedule_pch);
 
-  // for (int CC_id = 0; CC_id < RC.nb_nr_mac_CC[module_idP]; CC_id++) {
-    NR_COMMON_channels_t *cc = &gNB_mac->common_channels[CC_id];
-    NR_ServingCellConfigCommon_t *scc = cc->ServingCellConfigCommon;
-    uint8_t *pcch_sdu = &cc->PCCH_pdu.payload[0];
-    nfapi_nr_dl_tti_request_body_t *dl_req = &DL_req->dl_tti_request_body;
+  NR_COMMON_channels_t *cc = &gNB_mac->common_channels[CC_id];
+  NR_ServingCellConfigCommon_t *scc = cc->ServingCellConfigCommon;
+  uint8_t *pcch_sdu = &cc->PCCH_pdu.payload[0];
+  nfapi_nr_dl_tti_request_body_t *dl_req = &DL_req->dl_tti_request_body;
 
-    for (uint16_t i = 0; i < MAX_MOBILES_PER_GNB; i++) {
-      UE_PF_PO_t *ue_pf_po = &UE_PF_PO[CC_id][i];
+  for (uint16_t i = 0; i < MAX_MOBILES_PER_GNB; i++) {
+    UE_PF_PO_t *ue_pf_po = &UE_PF_PO[CC_id][i];
 
-      if (ue_pf_po->enable_flag != true) {
+    if (ue_pf_po->enable_flag != true) {
+      continue;
+    }
+
+    if (frameP % ue_pf_po->T == ue_pf_po->PF_min && slotP == ue_pf_po->PO) {   //W38: note: no more mac_rrc_nr_data_req, paging is replaced by below quick(ugly) implement
+      memcpy(pcch_sdu, RC.nrrrc[module_idP]->carrier[CC_id].paging, RC.nrrrc[module_idP]->carrier[CC_id].sizeof_paging);
+      uint16_t pcch_sdu_length = RC.nrrrc[module_idP]->carrier[CC_id].sizeof_paging;
+      LOG_D(NR_RRC, "[gNB %d] PCCH  activated , it has %d bytes\n", module_idP, RC.nrrrc[module_idP]->carrier[CC_id].sizeof_paging);
+      if (pcch_sdu_length == 0) {
+        LOG_D(NR_MAC, "[gNB %d] Frame %d slot %d: PCCH not active(size = 0 byte)\n",
+              module_idP,
+              frameP,
+              slotP);
         continue;
       }
 
-      if (frameP % ue_pf_po->T == ue_pf_po->PF_min && slotP == ue_pf_po->PO) {   //W38: note: no more mac_rrc_nr_data_req, paging is replaced by below quick(ugly) implement
-        memcpy(pcch_sdu, RC.nrrrc[module_idP]->carrier[CC_id].paging, RC.nrrrc[module_idP]->carrier[CC_id].sizeof_paging);                                      
-        uint16_t pcch_sdu_length = RC.nrrrc[module_idP]->carrier[CC_id].sizeof_paging;                                      
-        LOG_D(NR_RRC, "[gNB %d] PCCH  activated , it has %d bytes\n", module_idP, RC.nrrrc[module_idP]->carrier[CC_id].sizeof_paging);
-        if (pcch_sdu_length == 0) {
-          LOG_D(NR_MAC, "[gNB %d] Frame %d slot %d: PCCH not active(size = 0 byte)\n",
-                module_idP,
-                frameP,
-                slotP);
-          continue;
-        }
+      LOG_D(NR_MAC, "[gNB %d] Frame %d slot %d: PCCH->PCH CC_id %d UE_id %d, Received %d bytes \n",
+            module_idP,
+            frameP,
+            slotP,
+            CC_id,
+            i,
+            pcch_sdu_length);
 
-        LOG_D(NR_MAC, "[gNB %d] Frame %d slot %d: PCCH->PCH CC_id %d UE_id %d, Received %d bytes \n",
-              module_idP,
-              frameP,
-              slotP,
-              CC_id,
-              i,
-              pcch_sdu_length);
+      int L_max;
+      switch (scc->ssb_PositionsInBurst->present) {
+        case 1:
+          L_max = 4;
+          break;
+        case 2:
+          L_max = 8;
+          break;
+        case 3:
+          L_max = 64;
+          break;
+        default:
+          AssertFatal(0,"SSB bitmap size value %d undefined (allowed values 1,2,3)\n",
+                  scc->ssb_PositionsInBurst->present);
+      }
 
-        NR_Type0_PDCCH_CSS_config_t *type0_PDCCH_CSS_config = gNB_mac->type0_PDCCH_CSS_config;
+      for (int i=0; i<L_max; i++) {
+	NR_Type0_PDCCH_CSS_config_t *type0_PDCCH_CSS_config = &(gNB_mac->type0_PDCCH_CSS_config[CC_id][i]);
+	//TODO the condition shall be the same for Simulation and USRP setups. To be cleaned up
+        if ((RC.ss.mode == SS_SOFTMODEM) ||  ((frameP%2 == type0_PDCCH_CSS_config->sfn_c) &&
+           (slotP == type0_PDCCH_CSS_config->n_0) &&
+           (type0_PDCCH_CSS_config->num_rbs > 0) &&
+           (type0_PDCCH_CSS_config->active == true))) {
 
-        int time_domain_allocation = get_dl_tda(gNB_mac, CC_id, scc, slotP);
+          int time_domain_allocation = get_dl_tda(gNB_mac, CC_id, scc, slotP);
+          int startSymbolIndex = 0;
+          int nrOfSymbols = 0;
+          bool is_typeA = false;
 
-        int startSymbolIndex = 0;
-        int nrOfSymbols = 0;
-        bool is_typeA = false;
-
-        LOG_D(NR_MAC, "paging:type0_pdcch_ss_mux_pattern: %i\n", type0_PDCCH_CSS_config->type0_pdcch_ss_mux_pattern);
-        LOG_D(NR_MAC, "paging:time_domain_allocation: %i\n", time_domain_allocation);
-        LOG_D(NR_MAC, "paging:dmrs_TypeA_Position: %li\n", scc->dmrs_TypeA_Position);
-        get_info_from_tda_tables(type0_PDCCH_CSS_config->type0_pdcch_ss_mux_pattern,
+          LOG_I(NR_MAC, "paging:type0_pdcch_ss_mux_pattern: %i\n", type0_PDCCH_CSS_config->type0_pdcch_ss_mux_pattern);
+          LOG_I(NR_MAC, "paging:time_domain_allocation: %i\n", time_domain_allocation);
+          LOG_I(NR_MAC, "paging:dmrs_TypeA_Position: %li\n", scc->dmrs_TypeA_Position);
+          get_info_from_tda_tables(type0_PDCCH_CSS_config->type0_pdcch_ss_mux_pattern,
                                  time_domain_allocation,
                                  gNB_mac->common_channels->ServingCellConfigCommon->dmrs_TypeA_Position,
                                  1);
 
-        NR_tda_info_t tda_info = {
-          .mapping_type = is_typeA ? typeA : typeB,
-          .startSymbolIndex = startSymbolIndex,
-          .nrOfSymbols = nrOfSymbols
-        };
+          NR_tda_info_t tda_info = {
+            .mapping_type = is_typeA ? typeA : typeB,
+            .startSymbolIndex = startSymbolIndex,
+            .nrOfSymbols = nrOfSymbols
+          };
 
-        NR_pdsch_dmrs_t dmrs_parms = get_dl_dmrs_params(scc,
+          NR_pdsch_dmrs_t dmrs_parms = get_dl_dmrs_params(scc,
                                                         NULL,
                                                         &tda_info,
                                                         1);
 
-        uint32_t TBS = schedule_control_paging(module_idP,
+          uint32_t TBS = schedule_control_paging(module_idP,
                                                CC_id,
                                                type0_PDCCH_CSS_config,
                                                time_domain_allocation,
@@ -1745,8 +1777,8 @@ void schedule_nr_PCH(module_id_t module_idP,
                                                pcch_sdu_length);
 
 
-        int pdu_index = gNB_mac->pdu_index[0]++;
-        nr_fill_nfapi_dl_paging_pdu(module_idP,
+          int pdu_index = gNB_mac->pdu_index[0]++;
+          nr_fill_nfapi_dl_paging_pdu(module_idP,
                                     CC_id,
                                     dl_req,
                                     pdu_index,
@@ -1755,54 +1787,55 @@ void schedule_nr_PCH(module_id_t module_idP,
                                     startSymbolIndex,
                                     nrOfSymbols);
 
-        // Add padding header and zero rest out if there is space left
-        if (pcch_sdu_length < TBS) {
-          NR_MAC_SUBHEADER_FIXED *padding = (NR_MAC_SUBHEADER_FIXED *) &pcch_sdu[pcch_sdu_length];
-          padding->R = 0;
-          padding->LCID = DL_SCH_LCID_PADDING;
-          for (int k = pcch_sdu_length + 1; k < TBS; k++) {
-            pcch_sdu[k] = 0;
+          // Add padding header and zero rest out if there is space left
+          if (pcch_sdu_length < TBS) {
+            NR_MAC_SUBHEADER_FIXED *padding = (NR_MAC_SUBHEADER_FIXED *) &pcch_sdu[pcch_sdu_length];
+            padding->R = 0;
+            padding->LCID = DL_SCH_LCID_PADDING;
+            for (int k = pcch_sdu_length + 1; k < TBS; k++) {
+              pcch_sdu[k] = 0;
+            }
           }
-        }
 
-        const int ntx_req = TX_req->Number_of_PDUs;
-        nfapi_nr_pdu_t *tx_req = &TX_req->pdu_list[ntx_req];
+          const int ntx_req = TX_req->Number_of_PDUs;
+          nfapi_nr_pdu_t *tx_req = &TX_req->pdu_list[ntx_req];
 
-        // Data to be transmitted
-        memcpy(tx_req->TLVs[0].value.direct, pcch_sdu, TBS);
+          // Data to be transmitted
+          memcpy(tx_req->TLVs[0].value.direct, pcch_sdu, TBS);
 
-        tx_req->PDU_length = TBS;
-        tx_req->PDU_index  = pdu_index;
-        tx_req->num_TLV = 1;
-        tx_req->TLVs[0].length = TBS + 2;
-        TX_req->Number_of_PDUs++;
-        TX_req->SFN = frameP;
-        TX_req->Slot = slotP;
+          tx_req->PDU_length = TBS;
+          tx_req->PDU_index  = pdu_index;
+          tx_req->num_TLV = 1;
+          tx_req->TLVs[0].length = TBS + 2;
+          TX_req->Number_of_PDUs++;
+          TX_req->SFN = frameP;
+          TX_req->Slot = slotP;
 
-        // Trace MACPDU
-        mac_pkt_info_t mac_pkt;
-        mac_pkt.direction = DIR_DOWNLINK;
-        mac_pkt.rnti_type = map_nr_rnti_type(TYPE_P_RNTI_);
-        mac_pkt.rnti      = P_RNTI;
-        mac_pkt.harq_pid  = 0;
-        mac_pkt.preamble  = -1; /* TODO */
-        LOG_MAC_P(OAILOG_DEBUG, "MAC_PCCH_PDU", frameP, slotP, mac_pkt, pcch_sdu, pcch_sdu_length);
+          // Trace MACPDU
+          mac_pkt_info_t mac_pkt;
+          mac_pkt.direction = DIR_DOWNLINK;
+          mac_pkt.rnti_type = map_nr_rnti_type(NR_RNTI_P);
+          mac_pkt.rnti      = P_RNTI;
+          mac_pkt.harq_pid  = 0;
+          mac_pkt.preamble  = -1; /* TODO */
+          LOG_MAC_P(OAILOG_DEBUG, "MAC_PCCH_PDU", frameP, slotP, mac_pkt, pcch_sdu, pcch_sdu_length);
 
-        // Paging log
-        LOG_A(NR_MAC, "[gNB %d] Frame %d slot %d PCH: paging_ue_index %d pcch_sdu_length %d\n",
+          // Paging log
+          LOG_A(NR_MAC, "[gNB %d] Frame %d slot %d PCH: paging_ue_index %d pcch_sdu_length %d\n",
               module_idP,
               frameP,
               slotP,
               ue_pf_po->ue_index_value,
               pcch_sdu_length);
 
-        pthread_mutex_lock(&ue_pf_po_mutex);
-        memset(ue_pf_po, 0, sizeof(UE_PF_PO_t));
-        pthread_mutex_unlock(&ue_pf_po_mutex);
+          pthread_mutex_lock(&ue_pf_po_mutex);
+          memset(ue_pf_po, 0, sizeof(UE_PF_PO_t));
+          pthread_mutex_unlock(&ue_pf_po_mutex);
+        }
+        /* this might be misleading when pcch is inactive */
+        stop_meas(&gNB_mac->schedule_pch);
+        break;
       }
     }
-  //}
-
-  /* this might be misleading when pcch is inactive */
-  stop_meas(&gNB_mac->schedule_pch);
+  }
 }
