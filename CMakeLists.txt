@@ -2072,8 +2072,6 @@ add_executable(nr-softmodem
   ${OPENAIR1_DIR}/PHY/TOOLS/phy_scope_interface.c
   )
 
-include(${OPENAIR_DIR}/nfapi/CMakeLists.txt)
-
 target_link_libraries(nr-softmodem PRIVATE
   -Wl,--start-group
   UTIL HASHTABLE SCTP_CLIENT SCHED_LIB SCHED_RU_LIB SCHED_NR_LIB PHY_NR PHY PHY_COMMON PHY_NR_COMMON PHY_RU GTPV1U SECURITY
@@ -2483,4 +2481,4 @@ add_subdirectory(openair1)
 add_subdirectory(openair2)
 add_subdirectory(openair3)
 add_subdirectory(radio)
-add_subdirectory(nfapi/tests)
+add_subdirectory(nfapi)
