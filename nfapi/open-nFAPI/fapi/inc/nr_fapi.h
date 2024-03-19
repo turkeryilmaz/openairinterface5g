@@ -44,9 +44,10 @@
 #include "nfapi_interface.h"
 #include "nfapi_nr_interface_scf.h"
 #include "nfapi.h"
-
-#include "common/utils/LOG/log.h"
+#include "assertions.h"
 #include "debug.h"
+
+#define DEBUG_FAPI_NFAPI_MSGS 0
 
 typedef struct {
   uint8_t num_msg;

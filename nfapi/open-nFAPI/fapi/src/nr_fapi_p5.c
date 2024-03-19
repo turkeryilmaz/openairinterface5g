@@ -11,24 +11,19 @@ int fapi_nr_p5_message_header_unpack(uint8_t **pMessageBuf,
                                      nfapi_p4_p5_codec_config_t *config)
 {
   uint8_t **pReadPackedMessage = pMessageBuf;
-  fapi_message_header_t *fapi_msg = pUnpackedBuf;
+  nfapi_p4_p5_message_header_t *header = pUnpackedBuf;
+  fapi_message_header_t fapi_msg;
 
-  if (pMessageBuf == NULL || pUnpackedBuf == NULL) {
-    NFAPI_TRACE(NFAPI_TRACE_ERROR, "P5 header unpack supplied pointers are null\n");
-    return -1;
-  }
-
+  AssertFatal(pMessageBuf != NULL && pUnpackedBuf != NULL, "P5 header unpack supplied pointers are null");
   uint8_t *end = *pMessageBuf + messageBufLen;
-
-  if (messageBufLen < NFAPI_HEADER_LENGTH || unpackedBufLen < sizeof(nfapi_p4_p5_message_header_t)) {
-    NFAPI_TRACE(NFAPI_TRACE_ERROR, "P5 header unpack supplied message buffer is too small %d, %d\n", messageBufLen, unpackedBufLen);
-    return -1;
-  }
+  AssertFatal(messageBufLen >= NFAPI_HEADER_LENGTH && unpackedBufLen >= sizeof(nfapi_p4_p5_message_header_t),
+              "P5 header unpack supplied message buffer is too small %d, %d\n",
+              messageBufLen,
+              unpackedBufLen);
   // process the header
   int result =
-      (pull8(pReadPackedMessage, &fapi_msg->num_msg, end) && pull8(pReadPackedMessage, &fapi_msg->opaque_handle, end)
-       && pull16(pReadPackedMessage, &fapi_msg->message_id, end) && pull32(pReadPackedMessage, &fapi_msg->message_length, end));
-  //**pMessageBuf += NFAPI_HEADER_LENGTH;
+      (pull8(pReadPackedMessage, &fapi_msg.num_msg, end) && pull8(pReadPackedMessage, &fapi_msg.opaque_handle, end)
+       && pull16(pReadPackedMessage, &header->message_id, end) && pull32(pReadPackedMessage, &header->message_length, end));
   return (result);
 }
 
@@ -38,7 +33,7 @@ int fapi_nr_p5_message_pack(void *pMessageBuf,
                             uint32_t packedBufLen,
                             nfapi_p4_p5_codec_config_t *config)
 {
-  fapi_message_header_t *pMessageHeader = pMessageBuf;
+  nfapi_p4_p5_message_header_t *pMessageHeader = pMessageBuf;
   uint8_t *pWritePackedMessage = pPackedBuf;
   AssertFatal(pMessageHeader->message_id >= 0x00 && pMessageHeader->message_id <= 0xFF,
               "FAPI message IDs are defined between 0x00 and 0xFF the message provided 0x%02x, which is not a FAPI message",
@@ -46,24 +41,19 @@ int fapi_nr_p5_message_pack(void *pMessageBuf,
   uint32_t packedMsgLen;
   uint32_t packedBodyLen;
   uint16_t packedMsgLen16;
+  AssertFatal(pMessageBuf != NULL && pPackedBuf != NULL, "P5 Pack supplied pointers are null");
 
-  if (pMessageBuf == NULL || pPackedBuf == NULL) {
-    NFAPI_TRACE(NFAPI_TRACE_ERROR, "P5 Pack supplied pointers are null\n");
-    return -1;
-  }
   uint8_t *pPackMessageEnd = pPackedBuf + packedBufLen;
   uint8_t *pPackedLengthField = &pWritePackedMessage[4];
   uint8_t *pPacketBodyField = &pWritePackedMessage[8];
   uint8_t *pPacketBodyFieldStart = &pWritePackedMessage[8];
 
   uint8_t res = fapi_nr_p5_message_body_pack(pMessageHeader, &pPacketBodyField, pPackMessageEnd, config);
-  if (res < 0) {
-    NFAPI_TRACE(NFAPI_TRACE_ERROR, "fapi_nr_p5_message_body_pack error packing message body %d\n", res);
-    return -1;
-  }
+  AssertFatal(res >= 0, "fapi_nr_p5_message_body_pack error packing message body %d\n", res);
+
   // PHY API message header
-  push8(pMessageHeader->num_msg, &pWritePackedMessage, pPackMessageEnd); // Number of messages
-  push8(pMessageHeader->opaque_handle, &pWritePackedMessage, pPackMessageEnd); // Opaque handle
+  push8(1, &pWritePackedMessage, pPackMessageEnd); // Number of messages
+  push8(0, &pWritePackedMessage, pPackMessageEnd); // Opaque handle
 
   // PHY API Message structure
   push16(pMessageHeader->message_id, &pWritePackedMessage, pPackMessageEnd); // Message type ID
@@ -78,15 +68,12 @@ int fapi_nr_p5_message_pack(void *pMessageBuf,
       || pMessageHeader->message_id == NFAPI_NR_PHY_MSG_TYPE_STOP_INDICATION) {
     // These messages don't have a body, length is 0
     packedMsgLen16 = 0;
-  } else if (packedMsgLen > 0xFFFF || packedMsgLen > packedBufLen) {
-    NFAPI_TRACE(NFAPI_TRACE_ERROR,
-                "Packed message 0x%02x length error %d, buffer supplied %d\n",
-                pMessageHeader->message_id,
-                packedMsgLen,
-                packedBufLen);
-    return -1;
   }
-
+  AssertFatal(packedMsgLen <= 0xFFFF && packedMsgLen <= packedBufLen,
+              "Packed message 0x%02x length error %d, buffer supplied %d\n",
+              pMessageHeader->message_id,
+              packedMsgLen,
+              packedBufLen);
   // Update the message length in the header
   if (!push32(packedMsgLen16, &pPackedLengthField, pPackMessageEnd))
     return -1;
@@ -95,7 +82,7 @@ int fapi_nr_p5_message_pack(void *pMessageBuf,
   return (int)(packedMsgLen);
 }
 
-uint8_t fapi_nr_p5_message_body_pack(fapi_message_header_t *header,
+uint8_t fapi_nr_p5_message_body_pack(nfapi_p4_p5_message_header_t *header,
                                      uint8_t **ppWritePackedMsg,
                                      uint8_t *end,
                                      nfapi_p4_p5_codec_config_t *config)
@@ -157,18 +144,13 @@ int fapi_nr_p5_message_unpack(void *pMessageBuf,
   fapi_message_header_t *pMessageHeader = pUnpackedBuf;
   uint8_t *pReadPackedMessage = pMessageBuf;
 
-  if (pMessageBuf == NULL || pUnpackedBuf == NULL) {
-    NFAPI_TRACE(NFAPI_TRACE_ERROR, "P5 unpack supplied pointers are null\n");
-    return -1;
-  }
-
+  AssertFatal(pMessageBuf != NULL && pUnpackedBuf != NULL, "P5 unpack supplied pointers are null");
   uint8_t *end = (uint8_t *)pMessageBuf + messageBufLen;
-
-  if (messageBufLen < NFAPI_HEADER_LENGTH || unpackedBufLen < sizeof(fapi_message_header_t)) {
-    NFAPI_TRACE(NFAPI_TRACE_ERROR, "P5 unpack supplied message buffer is too small %d, %d\n", messageBufLen, unpackedBufLen);
-    return -1;
-  }
-
+  AssertFatal(messageBufLen >= NFAPI_HEADER_LENGTH && unpackedBufLen >= sizeof(fapi_message_header_t),
+              "P5 unpack supplied message buffer is too small %d, %d\n",
+              messageBufLen,
+              unpackedBufLen);
+#if DEBUG_FAPI_NFAPI_MSGS
   uint8_t *ptr = pReadPackedMessage;
   printf("\n Read NR message unpack: ");
 
@@ -178,15 +160,11 @@ int fapi_nr_p5_message_unpack(void *pMessageBuf,
   }
 
   printf("\n");
+#endif
   // clean the supplied buffer for - tag value blanking
   (void)memset(pUnpackedBuf, 0, unpackedBufLen);
-  printf("pReadPackedMessage %p\n", pReadPackedMessage);
-
-  if (!(fapi_nr_p5_message_header_unpack(&pReadPackedMessage,
-                                         NFAPI_HEADER_LENGTH,
-                                         pMessageHeader,
-                                         sizeof(fapi_message_header_t),
-                                         0))) {
+  if (fapi_nr_p5_message_header_unpack(&pReadPackedMessage, NFAPI_HEADER_LENGTH, pMessageHeader, sizeof(fapi_message_header_t), 0)
+      < 0) {
     // failed to read the header
     return -1;
   }
@@ -260,15 +238,16 @@ int check_nr_fapi_unpack_length(nfapi_nr_phy_msg_type_e msgId, uint32_t unpacked
     NFAPI_NR_PHY_MSG_TYPE_STOP_INDICATION=0X06,
     NFAPI_NR_PHY_MSG_TYPE_ERROR_INDICATION=0X07
     */
+  // check for size of nFAPI struct without the nFAPI specific parameters
   switch (msgId) {
     case NFAPI_NR_PHY_MSG_TYPE_PARAM_REQUEST:
-      if (unpackedBufLen >= sizeof(fapi_nr_param_request_scf_t))
-        retLen = sizeof(fapi_nr_param_request_scf_t);
+      if (unpackedBufLen >= sizeof(nfapi_nr_param_request_scf_t) - sizeof(nfapi_vendor_extension_tlv_t))
+        retLen = sizeof(fapi_message_header_t);
 
       break;
     case NFAPI_NR_PHY_MSG_TYPE_PARAM_RESPONSE:
-      if (unpackedBufLen >= sizeof(fapi_nr_param_response_scf_t))
-        retLen = sizeof(fapi_nr_param_request_scf_t);
+      if (unpackedBufLen >= sizeof(nfapi_nr_param_response_scf_t) - sizeof(nfapi_vendor_extension_tlv_t) - sizeof(nfapi_nr_nfapi_t))
+        retLen = sizeof(nfapi_nr_param_request_scf_t);
 
       break;
     default:
@@ -282,7 +261,7 @@ int check_nr_fapi_unpack_length(nfapi_nr_phy_msg_type_e msgId, uint32_t unpacked
 uint8_t pack_nr_param_response(void *msg, uint8_t **ppWritePackedMsg, uint8_t *end, nfapi_p4_p5_codec_config_t *config)
 {
   printf("\nRUNNING pack_param_response\n");
-  fapi_nr_param_response_scf_t *pNfapiMsg = (fapi_nr_param_response_scf_t *)msg;
+  nfapi_nr_param_response_scf_t *pNfapiMsg = (nfapi_nr_param_response_scf_t *)msg;
   return (push8(pNfapiMsg->error_code, ppWritePackedMsg, end) && push8(pNfapiMsg->num_tlv, ppWritePackedMsg, end)
           && pack_nr_tlv(NFAPI_NR_PARAM_TLV_RELEASE_CAPABILITY_TAG,
                          &(pNfapiMsg->cell_param.release_capability),
@@ -548,12 +527,60 @@ uint8_t pack_nr_param_response(void *msg, uint8_t **ppWritePackedMsg, uint8_t *e
                          &(pNfapiMsg->measurement_param.rssi_measurement_support),
                          ppWritePackedMsg,
                          end,
-                         &pack_uint8_tlv_value));
+                         &pack_uint8_tlv_value)
+          &&
+          // config: // Wont pack nFAPI specific TLVs if the tags are not set
+          pack_nr_tlv(NFAPI_NR_NFAPI_P7_VNF_ADDRESS_IPV4_TAG,
+                      &(pNfapiMsg->nfapi_config.p7_vnf_address_ipv4),
+                      ppWritePackedMsg,
+                      end,
+                      &pack_ipv4_address_value)
+          && pack_nr_tlv(NFAPI_NR_NFAPI_P7_VNF_ADDRESS_IPV6_TAG,
+                         &(pNfapiMsg->nfapi_config.p7_vnf_address_ipv6),
+                         ppWritePackedMsg,
+                         end,
+                         &pack_ipv6_address_value)
+          && pack_nr_tlv(NFAPI_NR_NFAPI_P7_VNF_PORT_TAG,
+                         &(pNfapiMsg->nfapi_config.p7_vnf_port),
+                         ppWritePackedMsg,
+                         end,
+                         &pack_uint16_tlv_value)
+          && pack_nr_tlv(NFAPI_NR_NFAPI_P7_PNF_ADDRESS_IPV4_TAG,
+                         &(pNfapiMsg->nfapi_config.p7_pnf_address_ipv4),
+                         ppWritePackedMsg,
+                         end,
+                         &pack_ipv4_address_value)
+          && pack_nr_tlv(NFAPI_NR_NFAPI_P7_PNF_ADDRESS_IPV6_TAG,
+                         &(pNfapiMsg->nfapi_config.p7_pnf_address_ipv6),
+                         ppWritePackedMsg,
+                         end,
+                         &pack_ipv6_address_value)
+          && pack_nr_tlv(NFAPI_NR_NFAPI_P7_PNF_PORT_TAG,
+                         &(pNfapiMsg->nfapi_config.p7_pnf_port),
+                         ppWritePackedMsg,
+                         end,
+                         &pack_uint16_tlv_value)
+          && pack_nr_tlv(NFAPI_NR_NFAPI_TIMING_WINDOW_TAG,
+                         &(pNfapiMsg->nfapi_config.timing_window),
+                         ppWritePackedMsg,
+                         end,
+                         &pack_uint8_tlv_value)
+          && pack_nr_tlv(NFAPI_NR_NFAPI_TIMING_INFO_MODE_TAG,
+                         &(pNfapiMsg->nfapi_config.timing_info_mode),
+                         ppWritePackedMsg,
+                         end,
+                         &pack_uint8_tlv_value)
+          && pack_nr_tlv(NFAPI_NR_NFAPI_TIMING_INFO_PERIOD_TAG,
+                         &(pNfapiMsg->nfapi_config.timing_info_period),
+                         ppWritePackedMsg,
+                         end,
+                         &pack_uint8_tlv_value)
+          && pack_vendor_extension_tlv(pNfapiMsg->vendor_extension, ppWritePackedMsg, end, config));
 }
 
 uint8_t unpack_nr_param_response(uint8_t **ppReadPackedMsg, uint8_t *end, void *msg, nfapi_p4_p5_codec_config_t *config)
 {
-  fapi_nr_param_response_scf_t *pNfapiMsg = (fapi_nr_param_response_scf_t *)msg;
+  nfapi_nr_param_response_scf_t *pNfapiMsg = (nfapi_nr_param_response_scf_t *)msg;
   unpack_tlv_t unpack_fns[] = {
       {NFAPI_NR_PARAM_TLV_RELEASE_CAPABILITY_TAG, &(pNfapiMsg->cell_param.release_capability), &unpack_uint16_tlv_value},
       {NFAPI_NR_PARAM_TLV_PHY_STATE_TAG, &(pNfapiMsg->cell_param.phy_state), &unpack_uint16_tlv_value},
@@ -649,7 +676,7 @@ uint8_t unpack_nr_param_response(uint8_t **ppReadPackedMsg, uint8_t *end, void *
       {NFAPI_NR_PARAM_TLV_RSSI_MEASUREMENT_SUPPORT_TAG,
        &(pNfapiMsg->measurement_param.rssi_measurement_support),
        &unpack_uint8_tlv_value}};
-  // print ppReadPackedMsg
+#if DEBUG_FAPI_NFAPI_MSGS
   uint8_t *ptr = *ppReadPackedMsg;
   printf("\n Read message unpack_param_response: ");
 
@@ -659,6 +686,7 @@ uint8_t unpack_nr_param_response(uint8_t **ppReadPackedMsg, uint8_t *end, void *
   }
 
   printf("\n");
+#endif
   return (pull8(ppReadPackedMsg, &pNfapiMsg->error_code, end) && pull8(ppReadPackedMsg, &pNfapiMsg->num_tlv, end)
           && unpack_nr_tlv_list(unpack_fns, sizeof(unpack_fns) / sizeof(unpack_tlv_t), ppReadPackedMsg, end, config, NULL));
 }
