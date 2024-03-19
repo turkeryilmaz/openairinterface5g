@@ -551,7 +551,7 @@ typedef struct NR_UE_MAC_INST_s {
   nr_emulated_l1_t nr_ue_emul_l1;
 
   pthread_mutex_t mutex_dl_info;
-
+  pthread_mutex_t mutex_ul_info;
   rlm_t p7_cell_search_ind_rlm;
 
 } NR_UE_MAC_INST_t;
