@@ -21,6 +21,8 @@
 
 #include "mac_defs.h"
 #include "mac_proto.h"
+#include "openair2/LAYER2/NR_MAC_COMMON/nr_mac_common.h"
+#include "executables/softmodem-common.h"
 
 #define SL_DEBUG
 
@@ -665,6 +667,7 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
   NR_UE_MAC_INST_t *mac = get_mac_inst(module_idP);
   int frame = rx_ind->sfn;
   int slot = rx_ind->slot;
+  int scs = get_softmodem_params()->numerology;
   uint16_t sched_frame, sched_slot;
   if (!pduP){
     return;
@@ -684,8 +687,8 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
     int delta_slots = (slot + psfch_min_time_gap) % psfch_period ? psfch_period - (slot + psfch_min_time_gap) % psfch_period: 0;
     sched_slot = slot + psfch_min_time_gap + delta_slots;
     sched_frame = frame;
-    if (sched_slot >= NR_MAX_SLOTS_PER_FRAME) {
-      sched_slot %= NR_MAX_SLOTS_PER_FRAME;
+    if (sched_slot >= nr_slots_per_frame[scs]) {
+      sched_slot %= nr_slots_per_frame[scs];
       sched_frame = (sched_frame + 1) % 1024;
     }
 
