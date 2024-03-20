@@ -730,10 +730,24 @@ target_link_libraries(SCHED_NR_UE_LIB PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs
 
 # nFAPI
 #################################
+
+# nFAPI user defined code
+#############################
+set(NFAPI_USER_SRC
+        ${NFAPI_USER_DIR}/nfapi.c
+        ${NFAPI_USER_DIR}/nfapi_pnf.c
+        ${NFAPI_USER_DIR}/nfapi_vnf.c
+        ${NFAPI_USER_DIR}/gnb_ind_vars.c
+)
+add_library(NFAPI_USER_LIB ${NFAPI_USER_SRC})
+target_link_libraries(NFAPI_USER_LIB PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
+include_directories(${NFAPI_USER_DIR})
+
 set(NFAPI_COMMON_SRC
   ${NFAPI_DIR}/common/src/debug.c
   )
 add_library(NFAPI_COMMON_LIB ${NFAPI_COMMON_SRC})
+target_link_libraries(NFAPI_COMMON_LIB PRIVATE NFAPI_USER_LIB)
 
 include_directories(${NFAPI_DIR}/common/public_inc)
 
@@ -744,14 +758,20 @@ set(NFAPI_SRC
   ${NFAPI_DIR}/nfapi/src/nfapi_p7.c
 )
 add_library(NFAPI_LIB ${NFAPI_SRC})
+target_link_libraries(NFAPI_LIB PRIVATE NFAPI_COMMON_LIB)
 
 set(NFAPI_NR_SRC
-        ${NFAPI_DIR}/nfapi/src/nfapi.c
-        ${NFAPI_DIR}/nfapi/src/nfapi_p5.c
   ${NFAPI_DIR}/fapi/src/nr_fapi_p5.c
   ${NFAPI_DIR}/nfapi/src/nr_nfapi_p5.c
 )
+
 add_library(NFAPI_NR_LIB ${NFAPI_NR_SRC})
+target_link_libraries(NFAPI_NR_LIB PRIVATE NFAPI_LIB)
+set(NFAPI_LTE_SRC
+        ${NFAPI_DIR}/nfapi/src/lte_nfapi_p5.c
+)
+add_library(NFAPI_LTE_LIB ${NFAPI_LTE_SRC})
+target_link_libraries(NFAPI_LTE_LIB PRIVATE NFAPI_LIB)
 
 include_directories(${NFAPI_DIR}/nfapi/public_inc)
 include_directories(${NFAPI_DIR}/nfapi/inc)
@@ -765,7 +785,7 @@ set(NFAPI_PNF_SRC
   ${NFAPI_DIR}/pnf/src/pnf_p7_interface.c
 )
 add_library(NFAPI_PNF_LIB ${NFAPI_PNF_SRC})
-target_link_libraries(NFAPI_PNF_LIB PRIVATE NFAPI_NR_LIB asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
+target_link_libraries(NFAPI_PNF_LIB PRIVATE NFAPI_NR_LIB NFAPI_LTE_LIB asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
 
 include_directories(${NFAPI_DIR}/pnf/public_inc)
 include_directories(${NFAPI_DIR}/pnf/inc)
@@ -777,22 +797,10 @@ set(NFAPI_VNF_SRC
   ${NFAPI_DIR}/vnf/src/vnf_p7_interface.c
 )
 add_library(NFAPI_VNF_LIB ${NFAPI_VNF_SRC})
-target_link_libraries(NFAPI_VNF_LIB PRIVATE NFAPI_NR_LIB asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
+target_link_libraries(NFAPI_VNF_LIB PRIVATE NFAPI_NR_LIB NFAPI_LTE_LIB asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
 
 include_directories(${NFAPI_DIR}/vnf/public_inc)
 include_directories(${NFAPI_DIR}/vnf/inc)
-
-# nFAPI user defined code
-#############################
-set(NFAPI_USER_SRC
-  ${NFAPI_USER_DIR}/nfapi.c
-  ${NFAPI_USER_DIR}/nfapi_pnf.c
-  ${NFAPI_USER_DIR}/nfapi_vnf.c
-  ${NFAPI_USER_DIR}/gnb_ind_vars.c
-)
-add_library(NFAPI_USER_LIB ${NFAPI_USER_SRC})
-target_link_libraries(NFAPI_USER_LIB PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
-include_directories(${NFAPI_USER_DIR})
 
 # Layer 1
 #############################
@@ -2083,7 +2091,7 @@ target_link_libraries(nr-softmodem PRIVATE
   -Wl,--start-group
   UTIL HASHTABLE SCTP_CLIENT SCHED_LIB SCHED_RU_LIB SCHED_NR_LIB PHY_NR PHY PHY_COMMON PHY_NR_COMMON PHY_RU GTPV1U SECURITY
   ITTI ${NAS_UE_LIB} lte_rrc nr_rrc
-  ngap s1ap L2_LTE_NR L2_NR MAC_NR_COMMON NFAPI_COMMON_LIB NFAPI_NR_LIB NFAPI_LIB NFAPI_VNF_LIB NFAPI_PNF_LIB NFAPI_USER_LIB SIMU SIMU_ETH
+  ngap s1ap L2_LTE_NR L2_NR MAC_NR_COMMON NFAPI_COMMON_LIB NFAPI_LIB NFAPI_VNF_LIB NFAPI_PNF_LIB NFAPI_USER_LIB SIMU SIMU_ETH
   x2ap f1ap m2ap m3ap e1ap shlib_loader
   -Wl,--end-group z dl)
 
@@ -2379,7 +2387,7 @@ if (${T_TRACER})
         oai_eth_transpro oai_mobipass coding HASHTABLE UTIL OMG_SUMO
         SECURITY SCHED_LIB SCHED_NR_LIB SCHED_RU_LIB SCHED_UE_LIB SCHED_NR_UE_LIB default_sched remote_sched RAL
         NFAPI_COMMON_LIB NFAPI_LIB NFAPI_PNF_LIB NFAPI_VNF_LIB NFAPI_USER_LIB
-        MISC_NFAPI_LTE_LIB MISC_NFAPI_NR_LIB
+        MISC_NFAPI_LTE_LIB MISC_NFAPI_NR_LIB NFAPI_NR_LIB NFAPI_LTE_LIB
         PHY_COMMON PHY PHY_UE PHY_NR PHY_NR_COMMON PHY_NR_UE PHY_RU PHY_MEX
         L2 L2_LTE L2_NR L2_LTE_NR L2_UE NR_L2_UE L2_UE_LTE_NR MAC_NR_COMMON MAC_UE_NR ngap
         CN_UTILS GTPV1U SCTP_CLIENT MME_APP LIB_NAS_UE NB_IoT SIMU SIMU_ETH OPENAIR0_LIB
