@@ -743,7 +743,9 @@ static void configure_logicalChannelBearer(module_id_t module_id,
                                            struct NR_CellGroupConfig__rlc_BearerToAddModList *rlc_toadd_list,
                                            struct NR_CellGroupConfig__rlc_BearerToReleaseList *rlc_torelease_list)
 {
+  
   NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
+  pthread_mutex_lock(&mac->mutex_ul_info);
   if (rlc_torelease_list) {
     for (int i = 0; i < rlc_torelease_list->list.count; i++) {
       if (rlc_torelease_list->list.array[i]) {
@@ -800,6 +802,7 @@ static void configure_logicalChannelBearer(module_id_t module_id,
     // reorder the logical channels as per its priority
     qsort_r(mac->lc_ordered_info, rlc_toadd_list->list.count, sizeof(nr_lcordered_info_t), lcid_cmp, mac);
   }
+  pthread_mutex_unlock(&mac->mutex_ul_info);
 }
 
 int nr_rrc_mac_config_req_ue_cell_selection(module_id_t module_id,

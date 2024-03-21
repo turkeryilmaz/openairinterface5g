@@ -943,6 +943,7 @@ static int8_t nr_rrc_ue_decode_NR_BCCH_DL_SCH_Message(NR_UE_RRC_INST_t *rrc,
         if (rrc->nrRrcState == RRC_STATE_IDLE_NR) {
           rrc->ra_trigger = INITIAL_ACCESS_FROM_RRC_IDLE;
           // preparing RRC setup request payload in advance
+          nr_rlc_activate_srb0(rrc->ue_id, NULL, send_srb0_rrc); //w2404 rebase: need to activate SRB0 before put SDU to RLC. SRB0 is deactivated when RRC release.
           nr_rrc_ue_prepare_RRCSetupRequest(rrc);
         }
         // configure default SI
