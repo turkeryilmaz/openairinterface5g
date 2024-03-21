@@ -579,14 +579,6 @@ void aerial_configure_nr_fapi_vnf()
     // P7 thread already running.
   }
 }
-uint8_t aerial_unpack_nr_param_response(uint8_t **ppReadPackedMsg, uint8_t *end, void *msg, nfapi_p4_p5_codec_config_t *config)
-{
-  return unpack_nr_param_response(ppReadPackedMsg, end, msg, config);
-}
-uint8_t aerial_unpack_nr_config_response(uint8_t **ppReadPackedMsg, uint8_t *end, void *msg, nfapi_p4_p5_codec_config_t *config)
-{
-  return unpack_nr_config_response(ppReadPackedMsg, end, msg, config);
-}
 
 // monitor the p7 endpoints and the timing loop and
 // send indications to mac

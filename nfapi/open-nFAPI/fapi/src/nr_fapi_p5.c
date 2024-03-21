@@ -53,7 +53,9 @@ int fapi_nr_p5_message_header_unpack(uint8_t **pMessageBuf,
   // process the header
   int result =
       (pull8(pReadPackedMessage, &fapi_msg.num_msg, end) && pull8(pReadPackedMessage, &fapi_msg.opaque_handle, end)
-       && pull16(pReadPackedMessage, &header->message_id, end) && pull32(pReadPackedMessage, &header->message_length, end));
+       && pull16(pReadPackedMessage, &header->message_id, end) && pull32(pReadPackedMessage, &fapi_msg.message_length, end));
+  DevAssert(fapi_msg.message_length <= 0xFFFF);
+  header->message_length = fapi_msg.message_length;
   return (result);
 }
 
@@ -216,28 +218,25 @@ int fapi_nr_p5_message_unpack(void *pMessageBuf,
       break;
 
     case NFAPI_NR_PHY_MSG_TYPE_CONFIG_REQUEST:
-      // result = unpack_nr_config_request(&pReadPackedMessage, end, pMessageHeader, config);
+       result = unpack_nr_config_request(&pReadPackedMessage, end, pMessageHeader, config);
       break;
 
     case NFAPI_NR_PHY_MSG_TYPE_CONFIG_RESPONSE:
-      // result = unpack_nr_config_response(&pReadPackedMessage, end, pMessageHeader, config);
+       result = unpack_nr_config_response(&pReadPackedMessage, end, pMessageHeader, config);
       break;
 
     case NFAPI_NR_PHY_MSG_TYPE_START_REQUEST:
-      // result = unpack_nr_start_request(&pReadPackedMessage, end, pMessageHeader, config);
+       result = unpack_nr_start_request(&pReadPackedMessage, end, pMessageHeader, config);
       break;
 
     case NFAPI_NR_PHY_MSG_TYPE_START_RESPONSE:
-      // result = unpack_nr_start_response(&pReadPackedMessage, end, pMessageHeader, config);
+       result = unpack_nr_start_response(&pReadPackedMessage, end, pMessageHeader, config);
       break;
 
     case NFAPI_NR_PHY_MSG_TYPE_STOP_REQUEST:
-      // result = unpack_stop_request(&pReadPackedMessage, end, pMessageHeader, config);
+       result = unpack_nr_stop_request(&pReadPackedMessage, end, pMessageHeader, config);
       break;
 
-    case NFAPI_NR_PHY_MSG_TYPE_STOP_RESPONSE:
-      // result = unpack_stop_response(&pReadPackedMessage, end, pMessageHeader, config);
-      break;
     default:
       if (pMessageHeader->message_id >= NFAPI_VENDOR_EXT_MSG_MIN && pMessageHeader->message_id <= NFAPI_VENDOR_EXT_MSG_MAX) {
         NFAPI_TRACE(NFAPI_TRACE_ERROR,

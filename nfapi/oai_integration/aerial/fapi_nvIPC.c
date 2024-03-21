@@ -1,34 +1,34 @@
 /*
-* Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
-* contributor license agreements.  See the NOTICE file distributed with
-* this work for additional information regarding copyright ownership.
-* The OpenAirInterface Software Alliance licenses this file to You under
-* the OAI Public License, Version 1.1  (the "License"); you may not use this file
-* except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*      http://www.openairinterface.org/?page_id=698
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*-------------------------------------------------------------------------------
-* For more information about the OpenAirInterface (OAI) Software Alliance:
-*      contact@openairinterface.org
-*/
+ * Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The OpenAirInterface Software Alliance licenses this file to You under
+ * the OAI Public License, Version 1.1  (the "License"); you may not use this file
+ * except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.openairinterface.org/?page_id=698
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *-------------------------------------------------------------------------------
+ * For more information about the OpenAirInterface (OAI) Software Alliance:
+ *      contact@openairinterface.org
+ */
 
 /*! \file fapi/oai-integration/fapi_nvIPC.c
-* \brief OAI MAC/Aerial L1 interface file using FAPI over shared memory
-* \author Ruben S. Silva
-* \date 2023
-* \version 0.1
-* \company OpenAirInterface Software Alliance
-* \email: contact@openairinterface.org, rsilva@allbesmart.pt
-* \note
-* \warning
-*/
+ * \brief OAI MAC/Aerial L1 interface file using FAPI over shared memory
+ * \author Ruben S. Silva
+ * \date 2023
+ * \version 0.1
+ * \company OpenAirInterface Software Alliance
+ * \email: contact@openairinterface.org, rsilva@allbesmart.pt
+ * \note
+ * \warning
+ */
 #ifdef ENABLE_AERIAL
 #define _GNU_SOURCE
 #include <sched.h>
@@ -114,71 +114,104 @@ static int ipc_handle_rx_msg(nv_ipc_t *ipc, nv_ipc_msg_t *msg)
   uint8_t *end = msgbuf + messageBufLen;
   uint8_t *data_end = databuf + dataBufLen;
 
+  uint32_t header_buffer_size = NFAPI_HEADER_LENGTH;
+  uint8_t header_buffer[header_buffer_size];
+  for (int idx = 0; idx < header_buffer_size; idx++) {
+    header_buffer[idx] = msgbuf[idx];
+  }
+  uint8_t *pReadPackedHeader = header_buffer;
   // unpack FAPI messages and handle them
+  // first, unpack the header
   if (vnf_config != 0) {
-    // first, unpack the header
-    fapi_message_header_t *fapi_msg = calloc(1, sizeof(fapi_message_header_t));
-    if (!(pull8(&pReadPackedMessage, &fapi_msg->num_msg, end) && pull8(&pReadPackedMessage, &fapi_msg->opaque_handle, end)
-          && pull16(&pReadPackedMessage, &fapi_msg->message_id, end)
-          && pull32(&pReadPackedMessage, &fapi_msg->message_length, end))) {
-      NFAPI_TRACE(NFAPI_TRACE_ERROR, "FAPI message header unpack failed\n");
-      return -1;
+    nfapi_p4_p5_message_header_t fapi_msg;
+    int unpack_header_result =
+        fapi_nr_p5_message_header_unpack(&pReadPackedHeader, NFAPI_HEADER_LENGTH, &fapi_msg, sizeof(fapi_msg), 0);
+    DevAssert(unpack_header_result >= 0);
+    // If it's a P5 message ( 0x00 - 0x07 ), unpack via the FAPI P5 handlers
+    if (fapi_msg.message_id >= NFAPI_NR_PHY_MSG_TYPE_PARAM_REQUEST
+        && fapi_msg.message_id <= NFAPI_NR_PHY_MSG_TYPE_ERROR_INDICATION) {
+      switch (fapi_msg.message_id) {
+        case NFAPI_NR_PHY_MSG_TYPE_PARAM_REQUEST:
+          break;
+        case NFAPI_NR_PHY_MSG_TYPE_PARAM_RESPONSE:
+
+          if (vnf_config->nr_param_resp) {
+            nfapi_nr_param_response_scf_t msg_param_resp;
+            int unpack_result = fapi_nr_p5_message_unpack(pReadPackedMessage,
+                                                          fapi_msg.message_length + NFAPI_HEADER_LENGTH,
+                                                          &msg_param_resp,
+                                                          sizeof(msg_param_resp),
+                                                          NULL);
+            DevAssert(unpack_result >= 0);
+            (vnf_config->nr_param_resp)(vnf_config, vnf_config->pnf_list->p5_idx, &msg_param_resp);
+          }
+          break;
+
+        case NFAPI_NR_PHY_MSG_TYPE_CONFIG_REQUEST:
+          break;
+        case NFAPI_NR_PHY_MSG_TYPE_CONFIG_RESPONSE: {
+          // unpack message
+          nfapi_nr_config_response_scf_t msg_config_response;
+          int unpack_result = fapi_nr_p5_message_unpack(pReadPackedMessage,
+                                                        fapi_msg.message_length + NFAPI_HEADER_LENGTH,
+                                                        &msg_config_response,
+                                                        sizeof(msg_config_response),
+                                                        NULL);
+          DevAssert(unpack_result >= 0);
+          // Check the error code
+          if (msg_config_response.error_code == NFAPI_NR_CONFIG_MSG_OK) {
+            // Invoke the call back
+            if (vnf_config->nr_config_resp) {
+              (vnf_config->nr_config_resp)(vnf_config, vnf_config->pnf_list->p5_idx, &msg_config_response);
+            }
+          } else {
+            // Error code not OK (MSG_INVALID_CONFIG)
+            /* MSG_INVALID_CONFIG.response structure
+             * Error code uint8_t
+             * Number of invalid or unsupported TLVs uint8_t
+             * Number of invalid TLVs that can only be configured in IDLE state uint8_t
+             * Number of invalid TLVs that can only be configured in RUNNING state uint8_t
+             * Number of missing TLVs uint8_t
+             * List of invalid or unsupported TLVs
+             * List of invalid TLVs that can only be configured in IDLE state
+             * List of invalid TLVs that can only be configured in RUNNING state
+             * List of missing TLVs
+             * */
+          }
+          break;
+        }
+
+        case NFAPI_NR_PHY_MSG_TYPE_START_REQUEST:
+          break;
+        case NFAPI_NR_PHY_MSG_TYPE_STOP_REQUEST:
+          break;
+        case NFAPI_NR_PHY_MSG_TYPE_STOP_INDICATION: {
+          // TODO : ADD Support for NFAPI_NR_PHY_MSG_TYPE_STOP_INDICATION (0x06)
+          LOG_D(NFAPI_VNF, "Received NFAPI_NR_PHY_MSG_TYPE_STOP_INDICATION\n");
+          break;
+        }
+        case NFAPI_NR_PHY_MSG_TYPE_ERROR_INDICATION: {
+          // TODO: Add Support for NFAPI_NR_PHY_MSG_TYPE_ERROR_INDICATION (0x07)
+          LOG_D(NFAPI_VNF, "Received NFAPI_NR_PHY_MSG_TYPE_ERROR_INDICATION\n");
+          LOG_D(NFAPI_VNF, "old sfn %u\n", old_sfn);
+          LOG_D(NFAPI_VNF, "old slot %u\n", old_slot);
+          break;
+        }
+        default:
+          break;
+      }
     }
 
-    switch (fapi_msg->message_id) {
+    switch (fapi_msg.message_id) {
+      case NFAPI_NR_PHY_MSG_TYPE_PARAM_REQUEST:
       case NFAPI_NR_PHY_MSG_TYPE_PARAM_RESPONSE:
-
-        if (vnf_config->nr_param_resp) {
-          nfapi_nr_param_response_scf_t msg_param_resp;
-          aerial_unpack_nr_param_response(&pReadPackedMessage, end, &msg_param_resp, &vnf_config->codec_config);
-          (vnf_config->nr_param_resp)(vnf_config, vnf_config->pnf_list->p5_idx, &msg_param_resp);
-        }
+      case NFAPI_NR_PHY_MSG_TYPE_CONFIG_REQUEST:
+      case NFAPI_NR_PHY_MSG_TYPE_CONFIG_RESPONSE:
+      case NFAPI_NR_PHY_MSG_TYPE_START_REQUEST:
+      case NFAPI_NR_PHY_MSG_TYPE_STOP_REQUEST:
+      case NFAPI_NR_PHY_MSG_TYPE_STOP_INDICATION:
+      case NFAPI_NR_PHY_MSG_TYPE_ERROR_INDICATION:
         break;
-
-      case NFAPI_NR_PHY_MSG_TYPE_CONFIG_RESPONSE: {
-        // unpack message
-        nfapi_nr_config_response_scf_t msg_config_response;
-        aerial_unpack_nr_config_response(&pReadPackedMessage, end, &msg_config_response, &vnf_config->codec_config);
-        // Check the error code
-        if (msg_config_response.error_code == NFAPI_NR_CONFIG_MSG_OK) {
-          // Invoke the call back
-          if (vnf_config->nr_config_resp) {
-            (vnf_config->nr_config_resp)(vnf_config, vnf_config->pnf_list->p5_idx, &msg_config_response);
-          }
-        } else {
-          // Error code not OK (MSG_INVALID_CONFIG)
-          /* MSG_INVALID_CONFIG.response structure
-           * Error code uint8_t
-           * Number of invalid or unsupported TLVs uint8_t
-           * Number of invalid TLVs that can only be configured in IDLE state uint8_t
-           * Number of invalid TLVs that can only be configured in RUNNING state uint8_t
-           * Number of missing TLVs uint8_t
-           * List of invalid or unsupported TLVs
-           * List of invalid TLVs that can only be configured in IDLE state
-           * List of invalid TLVs that can only be configured in RUNNING state
-           * List of missing TLVs
-           * */
-        }
-        break;
-      }
-
-      case NFAPI_NR_PHY_MSG_TYPE_STOP_INDICATION: {
-        // TODO : ADD Support for NFAPI_NR_PHY_MSG_TYPE_STOP_INDICATION (0x06)
-        LOG_D(NFAPI_VNF,"Received NFAPI_NR_PHY_MSG_TYPE_STOP_INDICATION\n");
-        break;
-      }
-
-      case NFAPI_NR_PHY_MSG_TYPE_ERROR_INDICATION: {
-        // TODO: Add Support for NFAPI_NR_PHY_MSG_TYPE_ERROR_INDICATION (0x07)
-        LOG_D(NFAPI_VNF,"Received NFAPI_NR_PHY_MSG_TYPE_ERROR_INDICATION\n");
-        //for (int i = 0; i < msg->msg_len; i++) {
-        //  printf(" msg->msg_buf[%d] = 0x%02x\n", i, ((uint8_t *) msg->msg_buf)[i]);
-        //}
-        LOG_D(NFAPI_VNF,"old sfn %u\n", old_sfn);
-        LOG_D(NFAPI_VNF,"old slot %u\n", old_slot);
-
-        break;
-      }
       // P7 Messages
       // P7 Message Handlers -> ((vnf_info *)vnf_config->user_data)->p7_vnfs->config->
       case NFAPI_NR_PHY_MSG_TYPE_SLOT_INDICATION: {
@@ -211,8 +244,8 @@ static int ipc_handle_rx_msg(nv_ipc_t *ipc, nv_ipc_msg_t *msg)
 
       case NFAPI_NR_PHY_MSG_TYPE_RX_DATA_INDICATION: {
         nfapi_nr_rx_data_indication_t ind;
-        ind.header.message_id = fapi_msg->message_id;
-        ind.header.message_length = fapi_msg->message_length;
+        ind.header.message_id = fapi_msg.message_id;
+        ind.header.message_length = fapi_msg.message_length;
         aerial_unpack_nr_rx_data_indication(
             &pReadPackedMessage,
             end,
@@ -229,8 +262,8 @@ static int ipc_handle_rx_msg(nv_ipc_t *ipc, nv_ipc_msg_t *msg)
 
       case NFAPI_NR_PHY_MSG_TYPE_CRC_INDICATION: {
         nfapi_nr_crc_indication_t crc_ind;
-        crc_ind.header.message_id = fapi_msg->message_id;
-        crc_ind.header.message_length = fapi_msg->message_length;
+        crc_ind.header.message_id = fapi_msg.message_id;
+        crc_ind.header.message_length = fapi_msg.message_length;
         aerial_unpack_nr_crc_indication(&pReadPackedMessage,
                                         end,
                                         &crc_ind,
@@ -280,7 +313,7 @@ static int ipc_handle_rx_msg(nv_ipc_t *ipc, nv_ipc_msg_t *msg)
       }
 
       default: {
-        NFAPI_TRACE(NFAPI_TRACE_ERROR, "%s P5 Unknown message ID %d\n", __FUNCTION__, fapi_msg->message_id);
+        NFAPI_TRACE(NFAPI_TRACE_ERROR, "%s P5 Unknown message ID %d\n", __FUNCTION__, fapi_msg.message_id);
 
         break;
       }
@@ -339,12 +372,12 @@ int aerial_send_P5_msg(void *packedBuf, uint32_t packedMsgLength, nfapi_p4_p5_me
 
   memcpy(send_msg.msg_buf, packedBuf, send_msg.msg_len);
   LOG_D(NFAPI_VNF,
-         "send: cell_id=%d msg_id=0x%02X msg_len=%d data_len=%d data_pool=%d\n",
-         send_msg.cell_id,
-         send_msg.msg_id,
-         send_msg.msg_len,
-         send_msg.data_len,
-         send_msg.data_pool);
+        "send: cell_id=%d msg_id=0x%02X msg_len=%d data_len=%d data_pool=%d\n",
+        send_msg.cell_id,
+        send_msg.msg_id,
+        send_msg.msg_len,
+        send_msg.data_len,
+        send_msg.data_pool);
   // Send the message
   int send_retval = ipc->tx_send_msg(ipc, &send_msg);
   if (send_retval < 0) {
@@ -426,12 +459,12 @@ int aerial_send_P7_msg(void *packedBuf, uint32_t packedMsgLength, nfapi_p7_messa
 
   memcpy(send_msg.msg_buf, packedBuf, send_msg.msg_len);
   LOG_D(NFAPI_VNF,
-         "send: cell_id=%d msg_id=0x%02X msg_len=%d data_len=%d data_pool=%d\n",
-         send_msg.cell_id,
-         send_msg.msg_id,
-         send_msg.msg_len,
-         send_msg.data_len,
-         send_msg.data_pool);
+        "send: cell_id=%d msg_id=0x%02X msg_len=%d data_len=%d data_pool=%d\n",
+        send_msg.cell_id,
+        send_msg.msg_id,
+        send_msg.msg_len,
+        send_msg.data_len,
+        send_msg.data_pool);
   // Send the message
   int send_retval = ipc->tx_send_msg(ipc, &send_msg);
   if (send_retval < 0) {
@@ -445,10 +478,10 @@ int aerial_send_P7_msg(void *packedBuf, uint32_t packedMsgLength, nfapi_p7_messa
 }
 
 int aerial_send_P7_msg_with_data(void *packedBuf,
-                                      uint32_t packedMsgLength,
-                                      void *dataBuf,
-                                      uint32_t dataLength,
-                                      nfapi_p7_message_header_t *header)
+                                 uint32_t packedMsgLength,
+                                 void *dataBuf,
+                                 uint32_t dataLength,
+                                 nfapi_p7_message_header_t *header)
 {
   if (ipc == NULL) {
     return -1;
@@ -516,12 +549,12 @@ int aerial_send_P7_msg_with_data(void *packedBuf,
   memcpy(send_msg.msg_buf, packedBuf, send_msg.msg_len);
   memcpy(send_msg.data_buf, dataBuf, send_msg.data_len);
   LOG_D(NFAPI_VNF,
-         "send: cell_id=%d msg_id=0x%02X msg_len=%d data_len=%d data_pool=%d\n",
-         send_msg.cell_id,
-         send_msg.msg_id,
-         send_msg.msg_len,
-         send_msg.data_len,
-         send_msg.data_pool);
+        "send: cell_id=%d msg_id=0x%02X msg_len=%d data_len=%d data_pool=%d\n",
+        send_msg.cell_id,
+        send_msg.msg_id,
+        send_msg.msg_len,
+        send_msg.data_len,
+        send_msg.data_pool);
   // Send the message
   int send_retval = ipc->tx_send_msg(ipc, &send_msg);
   if (send_retval != 0) {
@@ -549,12 +582,12 @@ static int aerial_recv_msg(nv_ipc_t *ipc, nv_ipc_msg_t *recv_msg)
     return -1;
   }
   LOG_D(NFAPI_VNF,
-         "recv: cell_id=%d msg_id=0x%02X msg_len=%d data_len=%d data_pool=%d\n",
-         recv_msg->cell_id,
-         recv_msg->msg_id,
-         recv_msg->msg_len,
-         recv_msg->data_len,
-         recv_msg->data_pool);
+        "recv: cell_id=%d msg_id=0x%02X msg_len=%d data_len=%d data_pool=%d\n",
+        recv_msg->cell_id,
+        recv_msg->msg_id,
+        recv_msg->msg_len,
+        recv_msg->data_len,
+        recv_msg->data_pool);
   ipc_handle_rx_msg(ipc, recv_msg);
 
   // Release buffer of RX message
@@ -584,7 +617,7 @@ void *epoll_recv_task(void *arg)
 {
   struct epoll_event ev, events[MAX_EVENTS];
   stick_this_thread_to_core(10);
-  LOG_D(NFAPI_VNF,"Aerial recv task start \n");
+  LOG_D(NFAPI_VNF, "Aerial recv task start \n");
   int epoll_fd = epoll_create1(0);
   if (epoll_fd == -1) {
     LOG_E(NFAPI_VNF, "%s epoll_create failed\n", __func__);
@@ -655,7 +688,7 @@ int load_hard_code_config(nv_ipc_config_t *config, int module_type, nv_ipc_trans
 #else
   int test_cuda_device_id = -1;
 #endif
-  LOG_D(NFAPI_VNF,"CUDA device ID configured : %d \n", test_cuda_device_id);
+  LOG_D(NFAPI_VNF, "CUDA device ID configured : %d \n", test_cuda_device_id);
   config->transport_config.shm.cuda_device_id = test_cuda_device_id;
   if (test_cuda_device_id >= 0) {
     config->transport_config.shm.mempool_size[NV_IPC_MEMPOOL_CUDA_DATA].pool_len = 128;
@@ -666,8 +699,9 @@ int load_hard_code_config(nv_ipc_config_t *config, int module_type, nv_ipc_trans
   return 0;
 }
 
-int nvIPC_Init() {
-// Want to use transport SHM, type epoll, module secondary (reads the created shm from cuphycontroller)
+int nvIPC_Init()
+{
+  // Want to use transport SHM, type epoll, module secondary (reads the created shm from cuphycontroller)
   load_hard_code_config(&nv_ipc_config, NV_IPC_MODULE_SECONDARY, NV_IPC_TRANSPORT_SHM);
   // Create nv_ipc_t instance
   if ((ipc = create_nv_ipc_interface(&nv_ipc_config)) == NULL) {
@@ -677,7 +711,9 @@ int nvIPC_Init() {
   LOG_I(NFAPI_VNF, "%s: create IPC interface successful\n", __func__);
   sleep(1);
   create_recv_thread();
-  while(!recv_task_running){usleep(100000);}
+  while (!recv_task_running) {
+    usleep(100000);
+  }
   aerial_pnf_nr_connection_indication_cb(vnf_config, 1);
   return 0;
 }
