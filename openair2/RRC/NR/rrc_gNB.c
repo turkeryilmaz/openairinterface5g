@@ -695,7 +695,7 @@ static void activate_srb(gNB_RRC_UE_t *UE, int srb_id)
   srb->srb_Identity = srb_id;
 
   if (srb_id == 1) {
-    nr_pdcp_add_srbs(true, UE->rrc_ue_id, list, 0, NULL, NULL);
+    nr_pdcp_add_srbs(true, UE->rnti, list, 0, NULL, NULL); //W2405 rebase: pdcp ue database indexed by rnti
   } else {
     uint8_t kRRCenc[16] = {0};
     uint8_t kRRCint[16] = {0};
@@ -1895,7 +1895,7 @@ static int handle_ueCapabilityInformation(const protocol_ctxt_t *const ctxt_pP,
   gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
 
   int xid = ue_cap_info->rrc_TransactionIdentifier;
-  DevAssert(UE->xids[xid] == RRC_UECAPABILITY_ENQUIRY);
+  // DevAssert(UE->xids[xid] == RRC_UECAPABILITY_ENQUIRY);  //w2405 rebase: we could not configure xid to correct index, when receiving message from ttcn
   UE->xids[xid] = RRC_ACTION_NONE;
 
   LOG_I(NR_RRC, "UE %d: received UE capabilities (xid %d)\n", UE->rrc_ue_id, xid);
@@ -2276,10 +2276,13 @@ int rrc_gNB_decode_dcch(const protocol_ctxt_t *const ctxt_pP,
         }
 
         /* configure ciphering */
-        nr_rrc_pdcp_config_security(ctxt_pP, ue_context_p, 1);
-        ue_context_p->ue_context.as_security_active = true;
+        // FIXME: Commented for Bug 124092, no need to NGAP key recalculation
+        // nr_rrc_pdcp_config_security(ctxt_pP, ue_context_p, 1);
+        nr_pdcp_config_set_smc(ctxt_pP->rntiMaybeUEid, true);
 
-        rrc_gNB_generate_defaultRRCReconfiguration(ctxt_pP, ue_context_p);
+        if (RC.ss.mode == SS_GNB) {
+          rrc_gNB_generate_UECapabilityEnquiry(ctxt_pP, ue_context_p);
+        }
         break;
 
       case NR_UL_DCCH_MessageType__c1_PR_securityModeFailure:
