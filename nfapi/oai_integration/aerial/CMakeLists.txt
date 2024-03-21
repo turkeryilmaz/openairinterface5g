@@ -24,7 +24,6 @@ if (OAI_AERIAL)
         message(STATUS "  nvlog library found in ${NVLOG_LIB}")
     endif ()
 
-    target_compile_definitions(nr-softmodem PRIVATE ENABLE_L2_SLT_RSP FAPI_BYTE_ORDERING_BIG_ENDIAN ENABLE_AERIAL)
     target_link_libraries(nr-softmodem PRIVATE  "${NVLOG_LIB}" "${NVIPC_LIB}")
 else()
     message(STATUS "No Support for Aerial")

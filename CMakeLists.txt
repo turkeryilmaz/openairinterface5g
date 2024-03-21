@@ -2087,6 +2087,9 @@ add_executable(nr-softmodem
   ${OPENAIR1_DIR}/PHY/TOOLS/phy_scope_interface.c
   )
 
+if (OAI_AERIAL)
+  add_compile_definitions(ENABLE_L2_SLT_RSP FAPI_BYTE_ORDERING_BIG_ENDIAN ENABLE_AERIAL)
+endif()
 target_link_libraries(nr-softmodem PRIVATE
   -Wl,--start-group
   UTIL HASHTABLE SCTP_CLIENT SCHED_LIB SCHED_RU_LIB SCHED_NR_LIB PHY_NR PHY PHY_COMMON PHY_NR_COMMON PHY_RU GTPV1U SECURITY
