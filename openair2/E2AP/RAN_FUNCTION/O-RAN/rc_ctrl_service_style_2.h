@@ -1,6 +1,14 @@
 #ifndef OPENAIRINTERFACE_RC_CTRL_SERVICE_STYLE_2_H
 #define OPENAIRINTERFACE_RC_CTRL_SERVICE_STYLE_2_H
 
+#include "openair2/E2AP/flexric/src/sm/rc_sm/ie/ir/lst_ran_param.h"
+#include "openair2/E2AP/flexric/src/sm/rc_sm/ie/ir/ran_param_list.h"
+#include "openair2/E2AP/flexric/src/sm/rc_sm/ie/ir/ran_parameter_value.h"
+#include "openair2/E2AP/flexric/src/sm/rc_sm/ie/ir/ran_parameter_value_type.h"
+#include "openair2/E2AP/flexric/src/sm/slice_sm/ie/slice_data_ie.h"
+
+bool add_mod_rc_slice(int mod_id, size_t slices_len, ran_param_list_t* lst);
+
 typedef enum{
   DRX_parameter_configuration_7_6_3_1 = 1,
   SR_periodicity_configuration_7_6_3_1 = 2,
