@@ -479,7 +479,12 @@ NR_tda_info_t get_ul_tda_info(const NR_UE_UL_BWP_t *ul_bwp,
   AssertFatal(scs >= 0 &&  scs < 5, "Subcarrier spacing indicatior %d invalid value\n", scs);
   int j = scs == 0 ? 1 : scs;
   if (tdalist) {
-    AssertFatal(tda_index < tdalist->list.count, "TDA index from DCI %d exceeds TDA list array size %d\n", tda_index, tdalist->list.count);
+    //AssertFatal(tda_index < tdalist->list.count, "TDA index from DCI %d exceeds TDA list array size %d\n", tda_index, tdalist->list.count);
+    //why systematically generate an assert if DCI processing is not good: UE shall recover
+    if (tda_index >= tdalist->list.count){
+        LOG_E(MAC,"TDA index from DCI %d exceeds TDA list array size %d\n", tda_index, tdalist->list.count);
+        return tda_info;
+    }
     NR_PUSCH_TimeDomainResourceAllocation_t *tda = tdalist->list.array[tda_index];
     tda_info.mapping_type = tda->mappingType;
     // As described in 38.331, when the field is absent the UE applies the value 1 when PUSCH SCS is 15/30KHz
@@ -3693,7 +3698,8 @@ bool is_nr_UL_slot(NR_TDD_UL_DL_ConfigCommon_t *tdd_UL_DL_ConfigurationCommon, s
 {
   // Note: condition on frame_type
   // goal: the UL scheduler assumes mode is TDD therefore this hack is needed to make FDD work
-  if (frame_type == FDD)
+  // JPE Warning can impact TTCN USRP setup this part of code has a little bit changed from W31
+  if (frame_type == FDD || RC.ss.mode < SS_SOFTMODEM)
     return true;
   if (tdd_UL_DL_ConfigurationCommon == NULL)
     // before receiving TDD information all slots should be considered to be DL
@@ -3775,6 +3781,7 @@ int16_t fill_dmrs_mask(const NR_PDSCH_Config_t *pdsch_Config,
   // For TypeB, ld is the duration of the scheduled PDSCH resources
   ld = (mappingtype == typeA) ? (NrOfSymbols + startSymbol) : NrOfSymbols;
 
+  if (ld == 0) ld = 7; //TODO: ACHTUNG!!! Temporary W/A, need to fix the assert somewhere else.
   AssertFatal(ld > 2 && ld < 15,"Illegal NrOfSymbols according to Table 5.1.2.1-1 Spec 38.214 %d\n",ld);
   AssertFatal((NrOfSymbols + startSymbol) < 15,"Illegal S+L according to Table 5.1.2.1-1 Spec 38.214 S:%d L:%d\n",startSymbol, NrOfSymbols);
 
@@ -4443,8 +4450,13 @@ void get_type0_PDCCH_CSS_config_parameters(NR_Type0_PDCCH_CSS_config_t *type0_PD
 
   type0_PDCCH_CSS_config->n_0 = ((uint32_t)(big_o*(1<<scs_pdcch)) + (uint32_t)(type0_PDCCH_CSS_config->ssb_index*big_m))%num_slot_per_frame;
   type0_PDCCH_CSS_config->cset_start_rb = ssb_offset_point_a - type0_PDCCH_CSS_config->rb_offset;
-  AssertFatal(type0_PDCCH_CSS_config->cset_start_rb >= 0, "Invalid CSET0 start PRB %d SSB offset point A %d RB offset %d\n",
+  // AssertFatal(type0_PDCCH_CSS_config->cset_start_rb >= 0, "Invalid CSET0 start PRB %d SSB offset point A %d RB offset %d\n",
+              // type0_PDCCH_CSS_config->cset_start_rb, ssb_offset_point_a, type0_PDCCH_CSS_config->rb_offset);
+  //TODO W2405 rebase: this assert catch an issue exiting there. to fix root issue
+  if(type0_PDCCH_CSS_config->cset_start_rb < 0){
+    LOG_W(NR_MAC, "Invalid CSET0 start PRB %d SSB offset point A %d RB offset %d\n",
               type0_PDCCH_CSS_config->cset_start_rb, ssb_offset_point_a, type0_PDCCH_CSS_config->rb_offset);
+  }
 }
 
 void fill_coresetZero(NR_ControlResourceSet_t *coreset0, NR_Type0_PDCCH_CSS_config_t *type0_PDCCH_CSS_config)

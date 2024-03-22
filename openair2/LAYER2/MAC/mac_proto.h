@@ -33,6 +33,11 @@
 #include "PHY/defs_common.h" // for PRACH_RESOURCES_t and lte_subframe_t
 #include "openair2/COMMON/mac_messages_types.h"
 
+
+
+void schedule_dlsch_ss(module_id_t module_idP, frame_t frameP,
+                    sub_frame_t subframe, int *mbsfn_flag);
+
 /** \fn void schedule_fembms_mib(module_id_t module_idP,frame_t frameP,sub_frame_t subframe);
 \brief MIB scheduling for PBCH. This function requests the MIB from RRC and provides it to L1.
 @param module_idP Instance ID of eNB
@@ -1048,6 +1053,8 @@ int get_phich_resource_times6(COMMON_channels_t *cc);
 uint8_t frame_subframe2_dl_harq_pid(LTE_TDD_Config_t *tdd_Config, int abs_frameP, sub_frame_t subframeP);
 
 uint8_t ul_subframe2_k_phich(COMMON_channels_t *cc, sub_frame_t ul_subframe);
+
+void schedule_ulsch_ss(module_id_t module_idP, frame_t frameP, sub_frame_t subframe);
 
 unsigned char ul_ACK_subframe2M(LTE_TDD_Config_t *tdd_Config,unsigned char subframe);
 

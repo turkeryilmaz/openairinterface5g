@@ -180,6 +180,31 @@ do {                                            \
     INT8_TO_BUFFER(x, (aSN)->buf);              \
 } while(0)
 
+
+#define BIT_OCTET_TO_UINT8(dST, sRC, lEN)             \
+do {                                                  \
+    uint8_t len = (lEN);                              \
+    while (len-- > 0) {                               \
+      if(sRC[len]){                                   \
+        dST |= (1 << (lEN - len - 1));                \
+      }                                               \
+    }                                                 \
+} while(0)
+
+
+#define UINT8_TO_BIT_OCTET(dST, sRC, lEN)             \
+do {                                                  \
+    uint8_t len = (lEN);                              \
+    while (len-- > 0) {                               \
+      if(sRC & (1 << len)){                           \
+        dST[lEN - len - 1] = 0x01;                    \
+      }else{                                          \
+        dST[lEN - len - 1] = 0x00;                    \
+      }                                               \
+    }                                                 \
+} while(0)
+
+
 #define MME_CODE_TO_OCTET_STRING INT8_TO_OCTET_STRING
 #define M_TMSI_TO_OCTET_STRING   INT32_TO_OCTET_STRING
 #define MME_GID_TO_OCTET_STRING  INT16_TO_OCTET_STRING
@@ -601,5 +626,31 @@ do {                                                    \
 #define TAC_TO_ASN1 INT16_TO_OCTET_STRING
 #define GTP_TEID_TO_ASN1 INT32_TO_OCTET_STRING
 #define OCTET_STRING_TO_TAC OCTET_STRING_TO_INT16
+
+#define OCTET_STRING_TO_BIT_STRING(dST, sRC, lEN)      \
+do {                                                   \
+    const char *src = (sRC);                           \
+    char *dst = (dST);                                 \
+    int len = (lEN);                                   \
+    int off = 0;                                       \
+    while (len-- > 0) {                                \
+        int bit = *src++ ? 1 : 0;                      \
+        dst[off / 8] |= bit << (7 - off % 8);          \
+        off++;                                         \
+    }                                                  \
+} while(0)
+
+#define BIT_STRING_TO_OCTET_STRING(dST, sRC, lEN)      \
+do {                                                   \
+    const char *src = (sRC);                           \
+    char *dst = (dST);                                 \
+    int len = (lEN);                                   \
+    int off = 0;                                       \
+    while (len-- > 0) {                                \
+        int bit = src[off / 8] & (1 << (7 - off % 8)); \
+        *dst++ = bit ? 0x01 : 0x00;                    \
+        off++;                                         \
+    }                                                  \
+} while(0)
 
 #endif /* CONVERSIONS_H_ */

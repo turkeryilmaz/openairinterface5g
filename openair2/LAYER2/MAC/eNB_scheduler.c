@@ -87,7 +87,7 @@ void schedule_SRS(module_id_t module_idP,
   LTE_SoundingRS_UL_ConfigCommon_t *soundingRS_UL_ConfigCommon = NULL;
   struct LTE_SoundingRS_UL_ConfigDedicated *soundingRS_UL_ConfigDedicated = NULL;
 
-  for (CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
+  for (CC_id = 0; CC_id < RC.nb_mac_CC[module_idP]; CC_id++) {
     soundingRS_UL_ConfigCommon = &(cc[CC_id].radioResourceConfigCommon->soundingRS_UL_ConfigCommon);
 
     /* Check if SRS is enabled in this frame/subframe */
@@ -108,7 +108,7 @@ void schedule_SRS(module_id_t module_idP,
       if ((1 << tmp) & deltaTSFC) {
         /* This is an SRS subframe, loop over UEs */
         for (UE_id = 0; UE_id < MAX_MOBILES_PER_ENB; UE_id++) {
-          if (!UE_info->active[UE_id]) {
+          if (!UE_info->active[CC_id][UE_id]) {
             continue;
           }
 
@@ -118,8 +118,8 @@ void schedule_SRS(module_id_t module_idP,
           }
 
           if(UE_info->UE_template[CC_id][UE_id].physicalConfigDedicated == NULL) {
-            LOG_E(MAC,"physicalConfigDedicated is null for UE %d\n",UE_id);
-            printf("physicalConfigDedicated is null for UE %d\n",UE_id);
+            LOG_E(MAC,"physicalConfigDedicated is null for UE %d, CC_id: %d\n",UE_id,CC_id);
+            printf("physicalConfigDedicated is null for UE %d, CC_id: %d \n",UE_id,CC_id);
             return;
           }
 
@@ -191,23 +191,30 @@ void schedule_CSI(module_id_t module_idP,
   COMMON_channels_t              *cc = NULL;
   nfapi_ul_config_request_body_t *ul_req = NULL;
   UE_sched_ctrl_t *UE_scheduling_control = NULL;
+  rnti_t                            rnti = NOT_A_RNTI;
 
-  for (CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
+  for (CC_id = 0; CC_id < RC.nb_mac_CC[module_idP]; CC_id++) {
     cc = &eNB->common_channels[CC_id];
 
     for (UE_id = 0; UE_id < MAX_MOBILES_PER_ENB; UE_id++) {
-      if (UE_info->active[UE_id] == false) {
+      if (UE_info->active[CC_id][UE_id] == false) {
         continue;
       }
 
+      /* If not Valid RNTI found then skip as UE context isn't valid*/  
+      rnti = UE_RNTI(module_idP, UE_id);
+      if (rnti == NOT_A_RNTI) {
+              continue;
+      }
+
       /* Drop the allocation if the UE hasn't sent RRCConnectionSetupComplete yet */
-      if (mac_eNB_get_rrc_status(module_idP, UE_RNTI(module_idP, UE_id)) < RRC_CONNECTED) {
+      if (mac_eNB_get_rrc_status(module_idP, rnti) < RRC_CONNECTED) {
         continue;
       }
 
       AssertFatal(UE_info->UE_template[CC_id][UE_id].physicalConfigDedicated != NULL,
-                  "physicalConfigDedicated is null for UE %d\n",
-                  UE_id);
+                  "physicalConfigDedicated is null for UE %d, CC_id: %d\n",
+                  UE_id,CC_id);
       /*
       * CDRX condition on Active Time and CSI report on PUCCH (36.321 5.7).
       * Here we consider classic periodic reports on PUCCH without PUSCH simultaneous transmission condition.
@@ -307,11 +314,11 @@ schedule_SR (module_id_t module_idP,
   nfapi_ul_config_sr_information sr;
   memset(&sr, 0, sizeof(sr));
 
-  for (int CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
+  for (int CC_id = 0; CC_id < RC.nb_mac_CC[module_idP]; CC_id++) {
     eNB->UL_req[CC_id].sfn_sf = (frameP << 4) + subframeP;
 
     for (int UE_id = 0; UE_id < MAX_MOBILES_PER_ENB; UE_id++) {
-      if (!UE_info->active[UE_id]) {
+      if (!UE_info->active[CC_id][UE_id]) {
         continue;
       }
 
@@ -513,7 +520,7 @@ copy_ulreq(module_id_t module_idP, frame_t frameP, sub_frame_t subframeP) {
   int CC_id;
   eNB_MAC_INST *mac = RC.mac[module_idP];
 
-  for (CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
+  for (CC_id = 0; CC_id < RC.nb_mac_CC[module_idP]; CC_id++) {
     nfapi_ul_config_request_t *ul_req_tmp             = &mac->UL_req_tmp[CC_id][subframeP];
     nfapi_ul_config_request_t *ul_req                 = &mac->UL_req[CC_id];
     nfapi_ul_config_request_pdu_t *ul_req_pdu         = ul_req->ul_config_request_body.ul_config_pdu_list;
@@ -574,7 +581,7 @@ eNB_dlsch_ulsch_scheduler(module_id_t module_idP,
   eNB->frame    = frameP;
   eNB->subframe = subframeP;
 
-  for (CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
+  for (CC_id = 0; CC_id < RC.nb_mac_CC[module_idP]; CC_id++) {
     mbsfn_status[CC_id] = 0;
     /* Clear vrb_maps */
     memset(cc[CC_id].vrb_map, 0, 100);
@@ -600,11 +607,12 @@ eNB_dlsch_ulsch_scheduler(module_id_t module_idP,
     }
   }
 
+  for (CC_id = 0; CC_id < RC.nb_mac_CC[module_idP]; CC_id++) {
   /* Refresh UE list based on UEs dropped by PHY in previous subframe */
   for (UE_id = 0; UE_id < MAX_MOBILES_PER_ENB; UE_id++) {
-    if (UE_info->active[UE_id]) {
+    if (UE_info->active[CC_id][UE_id]) {
       rnti = UE_RNTI(module_idP, UE_id);
-      CC_id = UE_PCCID(module_idP, UE_id);
+      //CC_id = UE_PCCID(module_idP, UE_id);
       UE_scheduling_control = &(UE_info->UE_sched_ctrl[UE_id]);
 
 /* to be merged with MAC_stats.log generation. probably redundant
@@ -958,12 +966,14 @@ eNB_dlsch_ulsch_scheduler(module_id_t module_idP,
   PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, module_idP, ENB_FLAG_YES, NOT_A_RNTI, frameP, subframeP, module_idP);
   rlc_tick(frameP, subframeP);
   pdcp_run(&ctxt);
-  pdcp_mbms_run(&ctxt);
+  //TODO: comment here for workaround as something wrong make tun read block
+  //pdcp_mbms_run(&ctxt);
   rrc_rx_tx(&ctxt, CC_id);
 #endif
+  }
 
   int do_fembms_si=0;
-  for (CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
+  for (CC_id = 0; CC_id < RC.nb_mac_CC[module_idP]; CC_id++) {
     if (cc[CC_id].MBMS_flag > 0) {
       start_meas(&RC.mac[module_idP]->schedule_mch);
       int(*schedule_mch)(module_id_t module_idP, uint8_t CC_id, frame_t frameP, sub_frame_t subframe) = NULL;
@@ -983,7 +993,11 @@ eNB_dlsch_ulsch_scheduler(module_id_t module_idP,
   void (*schedule_ulsch_p)(module_id_t module_idP, frame_t frameP, sub_frame_t subframe) = NULL;
   void (*schedule_ue_spec_p)(module_id_t module_idP, frame_t frameP, sub_frame_t subframe, int *mbsfn_flag) = NULL;
 
-  if (eNB->scheduler_mode == SCHED_MODE_DEFAULT) {
+  if (RC.ss.mode >= SS_SOFTMODEM) {
+    schedule_ulsch_p = schedule_ulsch_ss;
+    schedule_ue_spec_p = schedule_dlsch_ss;
+  }
+  else if (eNB->scheduler_mode == SCHED_MODE_DEFAULT) {
     schedule_ulsch_p = schedule_ulsch;
     schedule_ue_spec_p = schedule_dlsch;
   } else if (eNB->scheduler_mode == SCHED_MODE_FAIR_RR) {
@@ -1053,7 +1067,7 @@ eNB_dlsch_ulsch_scheduler(module_id_t module_idP,
   }
 
   /* Allocate CCEs for good after scheduling is done */
-  for (CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
+  for (CC_id = 0; CC_id < RC.nb_mac_CC[module_idP]; CC_id++) {
     if (cc[CC_id].tdd_Config == NULL || !(is_UL_sf(&cc[CC_id],subframeP))) {
       int rc = allocate_CCEs(module_idP, CC_id, frameP, subframeP, 2);
       if (rc < 0)

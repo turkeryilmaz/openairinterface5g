@@ -59,7 +59,7 @@ void *nrmac_stats_thread(void *arg) {
   while (oai_exit == 0) {
     char *p = output;
     NR_SCHED_LOCK(&gNB->sched_lock);
-    p += dump_mac_stats(gNB, p, end - p, false);
+    p += dump_mac_stats(gNB, 0, p, end - p, false);
     NR_SCHED_UNLOCK(&gNB->sched_lock);
     p += snprintf(p, end - p, "\n");
     p += print_meas_log(&gNB->eNB_scheduler, "DL & UL scheduling timing", NULL, NULL, p, end - p);
@@ -78,12 +78,12 @@ void *nrmac_stats_thread(void *arg) {
 }
 
 void clear_mac_stats(gNB_MAC_INST *gNB) {
-  UE_iterator(gNB->UE_info.list, UE) {
+  UE_iterator(gNB->UE_info.list[0], UE) { //TODO bugz128620 0=>ccid
     memset(&UE->mac_stats,0,sizeof(UE->mac_stats));
   }
 }
 
-size_t dump_mac_stats(gNB_MAC_INST *gNB, char *output, size_t strlen, bool reset_rsrp)
+size_t dump_mac_stats(gNB_MAC_INST *gNB, int CC_id, char *output, size_t strlen, bool reset_rsrp)
 {
   const char *begin = output;
   const char *end = output + strlen;
@@ -93,7 +93,7 @@ size_t dump_mac_stats(gNB_MAC_INST *gNB, char *output, size_t strlen, bool reset
   NR_SCHED_ENSURE_LOCKED(&gNB->sched_lock);
 
   NR_SCHED_LOCK(&gNB->UE_info.mutex);
-  UE_iterator(gNB->UE_info.list, UE) {
+  UE_iterator(gNB->UE_info.list[CC_id], UE) {
     NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
     NR_mac_stats_t *stats = &UE->mac_stats;
     const int avg_rsrp = stats->num_rsrp_meas > 0 ? stats->cumul_rsrp / stats->num_rsrp_meas : 0;
@@ -202,7 +202,51 @@ static void mac_rrc_init(gNB_MAC_INST *mac, ngran_node_t node_type)
       break;
   }
 }
+void nr_mac_update_config(void){
 
+  //get_new_MIB_NR
+  for(int CC_id=0;CC_id<MAX_NUM_CCs;CC_id++){
+    
+    NR_SCHED_LOCK(&(RC.nrmac[0]->sched_lock));
+    if(RC.nrmac[0]->common_channels[CC_id].mib){
+      free_MIB_NR(RC.nrmac[0]->common_channels[CC_id].mib);
+    }
+    RC.nrmac[0]->common_channels[CC_id].mib = get_new_MIB_NR(RC.nrmac[0]->common_channels[CC_id].ServingCellConfigCommon);
+    NR_SCHED_UNLOCK(&(RC.nrmac[0]->sched_lock));
+
+    f1ap_plmn_t plmn;
+    plmn.mcc = RC.nrrrc[0]->configuration[CC_id].mcc[0];
+    plmn.mnc = RC.nrrrc[0]->configuration[CC_id].mnc[0];
+    plmn.mnc_digit_length = RC.nrrrc[0]->configuration[CC_id].mnc_digit_length[0];
+   
+    nr_mac_configure_sib1(RC.nrmac[0], &plmn, RC.nrrrc[0]->configuration[CC_id].cell_identity, RC.nrrrc[0]->configuration[CC_id].tac, CC_id);
+ 
+    //W38 note ttcn does not config below part, so only a copy from local param list, //TODO W38: to double check 
+#if 0    
+    nr_mac_config_t config;
+    config.pdsch_AntennaPorts.N1 = RC.nrrrc[0]->configuration[CC_id].pdsch_AntennaPorts.N1;
+    config.pdsch_AntennaPorts.N2 = RC.nrrrc[0]->configuration[CC_id].pdsch_AntennaPorts.N2;
+    config.pdsch_AntennaPorts.XP =  RC.nrrrc[0]->configuration[CC_id].pdsch_AntennaPorts.XP;
+    config.pusch_AntennaPorts =  RC.nrrrc[0]->configuration[CC_id].pusch_AntennaPorts;
+    config.minRXTXTIME =  RC.nrrrc[0]->configuration[CC_id].minRXTXTIME;
+    config.sib1_tda = RC.nrrrc[0]->configuration[CC_id].sib1_tda;
+    config.do_CSIRS = RC.nrrrc[0]->configuration[CC_id].do_CSIRS; 
+    config.do_SRS = RC.nrrrc[0]->configuration[CC_id].do_SRS;
+    config.force_256qam_off = RC.nrrrc[0]->configuration[CC_id].force_256qam_off;
+
+    nr_mac_config_scc(RC.nrmac[0], RC.nrmac[0]->common_channels[CC_id].ServingCellConfigCommon, &config, CC_id);
+#else
+    nr_mac_config_scc(RC.nrmac[0], RC.nrmac[0]->common_channels[CC_id].ServingCellConfigCommon, &RC.nrmac[0]->radio_config[CC_id], CC_id);
+#endif  
+ 
+  }
+
+  
+  
+ 
+  
+  
+}
 void mac_top_init_gNB(ngran_node_t node_type,
                       NR_ServingCellConfigCommon_t *scc,
                       NR_ServingCellConfig_t *scd,
@@ -213,7 +257,7 @@ void mac_top_init_gNB(ngran_node_t node_type,
 
   AssertFatal(RC.nb_nr_macrlc_inst == 1, "what is the point of calling %s() if you don't need exactly one MAC?\n", __func__);
 
-  LOG_I(MAC, "[MAIN] Init function start:nb_nr_macrlc_inst=%d\n",RC.nb_nr_macrlc_inst);
+  LOG_I(MAC, "[MAIN] Init function start:nb_nr_macrlc_inst=%d %s\n",RC.nb_nr_macrlc_inst, __FUNCTION__);
 
   if (RC.nb_nr_macrlc_inst > 0) {
 
@@ -241,16 +285,16 @@ void mac_top_init_gNB(ngran_node_t node_type,
       memset((void*)RC.nrmac[i]->tag,0,sizeof(NR_TAG_t));
         
       RC.nrmac[i]->ul_handle = 0;
-
+      
       RC.nrmac[i]->common_channels[0].ServingCellConfigCommon = scc;
-      RC.nrmac[i]->radio_config = *config;
+      RC.nrmac[i]->radio_config[0] = *config;
 
       RC.nrmac[i]->common_channels[0].pre_ServingCellConfig = scd;
 
-      RC.nrmac[i]->first_MIB = true;
+      RC.nrmac[i]->first_MIB[0] = true;
       RC.nrmac[i]->common_channels[0].mib = get_new_MIB_NR(scc);
 
-      RC.nrmac[i]->cset0_bwp_start = 0;
+      RC.nrmac[i]->cset0_bwp_start = 0;  //TODO W38： to check if mc support needed for this two variables
       RC.nrmac[i]->cset0_bwp_size = 0;
 
       pthread_mutex_init(&RC.nrmac[i]->sched_lock, NULL);
@@ -312,7 +356,56 @@ void mac_top_init_gNB(ngran_node_t node_type,
   srand48(0);
 
   // triggers also PYH initialization in case we have L1 via FAPI
-  nr_mac_config_scc(RC.nrmac[0], scc, config);
+  nr_mac_config_scc(RC.nrmac[0], scc, config, 0);
+  
+  
+}
+
+
+void mac_init_more_cell(ngran_node_t node_type,
+                      NR_ServingCellConfigCommon_t *scc,
+                      NR_ServingCellConfig_t *scd,
+                      const nr_mac_config_t *config, int CC_id)
+{
+  module_id_t     i;
+  gNB_MAC_INST    *nrmac;
+
+  AssertFatal(RC.nb_nr_macrlc_inst == 1, "what is the point of calling %s() if you don't need exactly one MAC?\n", __func__);
+
+  LOG_I(MAC, "[MAIN] Init function start:nb_nr_macrlc_inst=%d %s\n",RC.nb_nr_macrlc_inst, __FUNCTION__);
+
+  if (RC.nb_nr_macrlc_inst > 0) {
+
+    //RC.nrmac = (gNB_MAC_INST **) malloc16(RC.nb_nr_macrlc_inst *sizeof(gNB_MAC_INST *)); //rc.nrmac is already initialized.
+    
+    AssertFatal(RC.nrmac != NULL,"can't ALLOCATE %zu Bytes for %d gNB_MAC_INST with size %zu \n",
+                RC.nb_nr_macrlc_inst * sizeof(gNB_MAC_INST *),
+                RC.nb_nr_macrlc_inst, sizeof(gNB_MAC_INST));
+
+    for (i = 0; i < RC.nb_nr_macrlc_inst; i++) {
+
+         
+      RC.nrmac[i]->common_channels[CC_id].ServingCellConfigCommon = scc;
+      RC.nrmac[i]->radio_config[CC_id] = *config;
+
+      RC.nrmac[i]->common_channels[CC_id].pre_ServingCellConfig = scd;
+
+      RC.nrmac[i]->first_MIB[CC_id] = true;
+      RC.nrmac[i]->common_channels[CC_id].mib = get_new_MIB_NR(scc);
+
+      RC.nrmac[i]->cset0_bwp_start = 0;  //TODO W38： to check if mc support needed for this two variables
+      RC.nrmac[i]->cset0_bwp_size = 0;
+
+      
+    }//END for (i = 0; i < RC.nb_nr_macrlc_inst; i++)
+
+    
+  } else {
+    RC.nrmac = NULL;
+  }
+  // triggers also PYH initialization in case we have L1 via FAPI
+  nr_mac_config_scc(RC.nrmac[0], scc, config, CC_id);
+  
 }
 
 void nr_mac_send_f1_setup_req(void)
