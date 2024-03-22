@@ -2368,6 +2368,7 @@ void nr_rrc_going_to_IDLE(NR_UE_RRC_INST_t *rrc,
         nr_rlc_release_entity(rrc->ue_id, i);
       }
     }
+    nr_sdap_delete_ue_entities(rrc->ue_id);
   }
 
   for (int i = 0; i < NB_CNX_UE; i++) {
