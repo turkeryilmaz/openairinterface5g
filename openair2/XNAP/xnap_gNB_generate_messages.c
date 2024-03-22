@@ -761,7 +761,7 @@ int xnap_gNB_generate_xn_setup_response(sctp_assoc_t assoc_id, xnap_setup_resp_t
   XNAP_XnAP_PDU_t                     pdu;
   XNAP_HandoverRequest_t              *xnhandoverreq;
   XNAP_HandoverRequest_IEs_t          *ie;
-  instance_t  instance;
+ // instance_t  instance;
 
   uint8_t  *buffer;
   uint32_t  len;

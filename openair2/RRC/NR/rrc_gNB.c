@@ -1495,7 +1495,7 @@ void rrc_gNB_process_MeasurementReport(rrc_gNB_ue_context_t *ue_context_p, NR_Me
   LOG_D(RRC, "NR MeasID %ld\n", id);
 
   /*ALL NeighbourCell*/
-  NR_MeasResultNR_t *neighbour_measresult = ik_measResults->measResultNeighCells->choice.measResultListNR->list.array[0] ;  /* Need to review this whether to retain */
+ // NR_MeasResultNR_t *neighbour_measresult = ik_measResults->measResultNeighCells->choice.measResultListNR->list.array[0] ;  /* Need to review this whether to retain */
 
   /*Imran*/
 //  MessageDef      *msg;

@@ -29,9 +29,9 @@
 #include <stdint.h>
 #include "intertask_interface.h"
 #include "xnap_common.h"
+#include "xnap_ids.h"
 #include "xnap_gNB_defs.h"
 #include "xnap_gNB_handler.h"
-#include "xnap_ids.h"
 #include "xnap_gNB_interface_management.h"
 #include "assertions.h"
 #include "conversions.h"

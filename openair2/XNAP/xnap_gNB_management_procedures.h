@@ -30,6 +30,7 @@ void xnap_dump_trees(const instance_t instance);
 
 xnap_gNB_instance_t *xnap_gNB_get_instance(instance_t instanceP);
 
+sctp_assoc_t *xnap_gNB_get_assoc_id(instance_t instanceP);
 // uint16_t xnap_gNB_fetch_add_global_cnx_id(void);
 
 // void xnap_gNB_prepare_internal_data(void);
