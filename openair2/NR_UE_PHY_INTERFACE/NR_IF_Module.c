@@ -72,7 +72,7 @@ pthread_mutex_t mac_IF_mutex;
 static void save_pdsch_pdu_for_crnti(nfapi_nr_dl_tti_request_t *dl_tti_request);
 
 // Forward declarations
-static void handle_rlm(rlm_t rlm_result, int frame, module_id_t module_id);
+static bool handle_rlm(rlm_t rlm_result, int frame, module_id_t module_id);
 
 static bool is_ipaddress(const char* s)
 {
@@ -1310,12 +1310,13 @@ static int8_t handle_dlsch(NR_UE_MAC_INST_t *mac, nr_downlink_indication_t *dl_i
   return 0;
 }
 
-static void handle_rlm(rlm_t rlm_result, int frame, module_id_t module_id)
+static bool handle_rlm(rlm_t rlm_result, int frame, module_id_t module_id)
 {
   if (rlm_result == RLM_no_monitoring)
     return;
   bool is_sync = rlm_result == RLM_in_sync ? true : false;
   nr_mac_rrc_sync_ind(module_id, frame, is_sync);
+  return is_sync;
 }
 
 static int8_t handle_csirs_measurements(module_id_t module_id,
@@ -1441,14 +1442,22 @@ static uint32_t nr_ue_dl_processing(nr_downlink_indication_t *dl_info)
 
         switch(rx_indication_body.pdu_type){
           case FAPI_NR_RX_PDU_TYPE_SSB:
-            if (false /*TODO: need to check for RC.ss.mode != SS_SOFTMODEM*/)
-            handle_rlm(rx_indication_body.ssb_pdu.radiolink_monitoring,
+            bool is_sync;
+            if (false /*TODO: need to check for RC.ss.mode != SS_SOFTMODEM*/){
+              is_sync = handle_rlm(rx_indication_body.ssb_pdu.radiolink_monitoring,
                        dl_info->frame,
                        dl_info->module_id);
-            else
-            handle_rlm(mac->p7_cell_search_ind_rlm,
+            }
+            else{
+              is_sync = handle_rlm(mac->p7_cell_search_ind_rlm,
                        dl_info->frame,
                        dl_info->module_id);;
+                
+                       
+            }
+            if(is_sync == false){
+              break;
+            }
             if(rx_indication_body.ssb_pdu.decoded_pdu) {
               handle_ssb_meas(mac,
                               rx_indication_body.ssb_pdu.ssb_index,
