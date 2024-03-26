@@ -105,8 +105,13 @@ int user_api_initialize(user_api_id_t *user_api_id, const char* host, const char
 
   if (devname != NULL) {
     /* Initialize device handlers */
-    user_api_id->open  = device_open;
+    if (strcmp(devname, "psudoterm") == 0) {
+      user_api_id->open = device_open_psudoterm;
+    } else {
+      user_api_id->open = device_open;
+    }
     user_api_id->getfd = device_get_fd;
+    user_api_id->getname = device_get_name;
     user_api_id->recv  = device_read;
     user_api_id->send  = device_write;
     user_api_id->close = device_close;

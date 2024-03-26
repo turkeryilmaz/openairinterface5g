@@ -39,6 +39,7 @@ typedef struct {
   /* Connection endpoint handlers */
   void*   (*open) (int, const char*, const char*);
   int     (*getfd)(const void*);
+  char* (*getname)(const void*);
   ssize_t (*recv) (void*, char*, size_t);
   ssize_t (*send) (const void*, const char*, size_t);
   void    (*close)(void*);

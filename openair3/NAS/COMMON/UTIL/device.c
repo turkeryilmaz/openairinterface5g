@@ -43,6 +43,8 @@ Description Implements Linux/UNIX I/O device handlers
 #include <stdlib.h> // malloc, free
 #include <string.h> // strncpy
 #include <unistd.h> // read, write, close
+#include <pty.h> // openpty
+#include <termios.h>
 
 #include <sys/stat.h>
 #include <fcntl.h>  // open
@@ -74,6 +76,64 @@ struct device_id_s {
 /****************************************************************************/
 /******************  E X P O R T E D    F U N C T I O N S  ******************/
 /****************************************************************************/
+
+/****************************************************************************
+ **                                                                        **
+ ** Name:  device_open_psudoterm()                                             **
+ **                                                                        **
+ ** Description: Create a PTY device pair to perform read **
+ **    and write I/O operations                                  **
+ **                                                                        **
+ ** Inputs:  None                           **
+ **                                                                        **
+ ** Outputs:   None                                                      **
+ **    Return:        A pointer to the device identifier alloca- **
+ **       ted for I/O operations. NULL if the device **
+ **       has not been successfully opened.          **
+ **    Others:  None                                       **
+ **                                                                        **
+ ***************************************************************************/
+void* device_open_psudoterm(int type, const char* devpath, const char* params)
+{
+  if (type != DEVICE) {
+    return NULL;
+  }
+
+  int master_fd, slave_fd;
+  char slave_name[DEVICE_PATHNAME_SIZE];
+
+  /* Create a PTY pair */
+  if (openpty(&master_fd, &slave_fd, slave_name, NULL, NULL) == -1) {
+    perror("failed during openpty()");
+    return NULL;
+  }
+
+  /* Set echo mode to dispay characters */
+  struct termios slave_settings;
+
+  if (tcsetattr(slave_fd, TCSANOW, &slave_settings) == -1) {
+    perror("failed during tcsetattr()");
+    return NULL;
+  }
+
+  slave_settings.c_lflag |= ECHO;
+  if (tcsetattr(slave_fd, TCSANOW, &slave_settings) == -1) {
+    perror("failed during tcsetattr()");
+    return NULL;
+  }
+
+  /* The device has been successfully created */
+  device_id_t* devid = (device_id_t*)malloc(sizeof(struct device_id_s));
+
+  if (devid != NULL) {
+    strncpy(devid->pathname, slave_name, DEVICE_PATHNAME_SIZE);
+    devid->fd = master_fd;
+  }
+
+  printf("Serial interface for AT command: %s\n", slave_name);
+
+  return devid;
+}
 
 /****************************************************************************
  **                                                                        **
@@ -247,6 +307,29 @@ int device_get_fd(const void* id)
   return RETURNerror;
 }
 
+/****************************************************************************
+ **                                                                        **
+ ** Name:  device_get_name()                                           **
+ **                                                                        **
+ ** Description: Get the value of the file descriptor created to handle    **
+ **    the device with the given identifier                      **
+ **                                                                        **
+ ** Inputs:  id:    The identifier of the device               **
+ **      Others:  None                                       **
+ **                                                                        **
+ ** Outputs:   None                                                      **
+ **      Return:  The path and name of the device          **
+ **      Others:  None                                       **
+ **                                                                        **
+ ***************************************************************************/
+char* device_get_name(const void* id)
+{
+  if (id) {
+    return ((device_id_t*)id)->pathname;
+  }
+
+  return NULL;
+}
 /****************************************************************************/
 /*********************  L O C A L    F U N C T I O N S  *********************/
 /****************************************************************************/

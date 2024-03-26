@@ -62,8 +62,10 @@ typedef struct device_id_s device_id_t;
 /******************  E X P O R T E D    F U N C T I O N S  ******************/
 /****************************************************************************/
 
+void* device_open_psudoterm(int type, const char* devpath, const char* params);
 void* device_open(int type, const char* devname, const char* params);
 int device_get_fd(const void* id);
+char* device_get_name(const void* id);
 
 ssize_t device_read(void* id, char* buffer, size_t length);
 ssize_t device_write(const void* id, const char* buffer, size_t length);

@@ -17,6 +17,11 @@
 #define  CONFIG_HLP_AUTONOMOUS_TA          "Autonomously update TA based on DL drift (useful if main contribution to DL drift is movement, e.g. LEO satellite)\n"
 #define  CONFIG_HLP_AGC                    "Rx Gain control used for UE\n"
 
+#define CONFIG_HLP_AT_IF                                                                                                         \
+  "Name of the serial interface to be used by uesoftmodem to receive AT commands. Usually a pair of interface is created with "  \
+  "socat and one interface is specified here. By default, the uesoftmodem creates a pair and prints the device name to send AT " \
+  "commands."
+
 /***************************************************************************************************************************************/
 /* command line options definitions, CMDLINE_XXXX_DESC macros are used to initialize paramdef_t arrays which are then used as argument
    when calling config_get or config_getlist functions                                                                                 */
@@ -71,6 +76,8 @@
   {"ntn-ta-commondrift",           CONFIG_HLP_NTN_TA_COMMONDRIFT, 0,            .dblptr=&(nrUE_params.ntn_ta_commondrift),   .defdblval=0.0,    TYPE_DOUBLE,   0}, \
   {"autonomous-ta",                CONFIG_HLP_AUTONOMOUS_TA,   PARAMFLAG_BOOL,  .iptr=&(nrUE_params.autonomous_ta),          .defintval=0,      TYPE_INT,      0}, \
   {"agc",                          CONFIG_HLP_AGC,             PARAMFLAG_BOOL,  .iptr=&(nrUE_params.agc),                    .defintval=0,      TYPE_INT,      0}, \
+  {"agc",                          CONFIG_HLP_AGC,             PARAMFLAG_BOOL,  .iptr=&(nrUE_params.agc),                   .defintval=0,       TYPE_INT,   0}, \
+  {"at-interface",             CONFIG_HLP_AT_IF,               0,               .strptr=&(nrUE_params.at_interface_name), .defstrval="psudoterm", TYPE_STRING, 0}, \
 }
 // clang-format on
 
@@ -109,6 +116,7 @@ typedef struct {
   double rx_gain_off;
   int vcdflag;
   int tx_max_power;
+  char *at_interface_name;
 } nrUE_params_t;
 extern uint64_t get_nrUE_optmask(void);
 extern uint64_t set_nrUE_optmask(uint64_t bitmask);

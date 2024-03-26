@@ -153,6 +153,8 @@ int create_tasks_nrue(uint32_t ue_nb) {
     if (itti_create_task(TASK_NAS_NRUE, nas_nrue_task, &parmsNAS) < 0) {
       LOG_E(NR_RRC, "Create task for NAS UE failed\n");
       return -1;
+    } else {
+      nas_nrue_user((void *)&parmsNAS);
     }
   }
 
