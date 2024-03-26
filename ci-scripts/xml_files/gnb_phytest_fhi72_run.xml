@@ -34,7 +34,7 @@
 		<class>Initialize_eNB</class>
 		<desc>Initialize gNB FHI 7.2</desc>
 		<Initialize_eNB_args>-O targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb.sa.band78.273prb.fhi72.4x4-phy-test.conf --phy-test -q --log_config.global_log_options level,nocolor,time --thread-pool 11,12,13,14,15,16,17</Initialize_eNB_args>
-    <rt_stats_cfg>datalog_rt_stats.default.yaml</rt_stats_cfg>
+    <rt_stats_cfg>datalog_rt_stats.fhi72.100.4x4.phytest.yaml</rt_stats_cfg>
 		<air_interface>NR</air_interface>
 		<USRP_IPAddress>none</USRP_IPAddress>
 		<cmd_prefix></cmd_prefix>
