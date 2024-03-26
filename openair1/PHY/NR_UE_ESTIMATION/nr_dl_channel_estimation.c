@@ -1545,13 +1545,6 @@ int nr_pdsch_channel_estimation(PHY_VARS_NR_UE *ue,
   // Note: pilot returned by the following function is already the complex conjugate of the transmitted DMRS
   nr_pdsch_dmrs_rx(ue, Ns, ue->nr_gold_pdsch[gNB_id][Ns][symbol][nscid], pilot, 1000 + p, 0, nb_rb_pdsch + rb_offset, config_type);
 
-  uint8_t nushift = 0;
-  if (config_type == NFAPI_NR_DMRS_TYPE1) {
-    nushift = (p >> 1) & 1;
-  } else { // NFAPI_NR_DMRS_TYPE2
-    nushift = delta;
-  }
-
   delay_t delay = {0};
 
   for (int aarx = 0; aarx < ue->frame_parms.nb_antennas_rx; aarx++) {
@@ -1562,7 +1555,7 @@ int nr_pdsch_channel_estimation(PHY_VARS_NR_UE *ue,
     printf("============================================\n");
 #endif
 
-    c16_t *rxF = &rxdataF[aarx][symbol_offset + nushift];
+    c16_t *rxF = &rxdataF[aarx][symbol_offset + delta];
     c16_t *dl_ch = (c16_t *)&dl_ch_estimates[nl * ue->frame_parms.nb_antennas_rx + aarx][ch_offset];
     memset(dl_ch, 0, sizeof(*dl_ch) * ue->frame_parms.ofdm_symbol_size);
 
