@@ -562,6 +562,7 @@ static void nr_fill_nfapi_srs(int module_id,
   memset(srs_pdu, 0, sizeof(nfapi_nr_srs_pdu_t));
   future_ul_tti_req->n_pdus += 1;
   index = ul_buffer_index(frame, slot, UE->current_UL_BWP.scs, RC.nrmac[module_id]->vrb_map_UL_size);
+  LOG_I(MAC,"nr_fill_nfapi_srs: is_f1ap %d, num_pdu %d\n",is_f1ap,future_ul_tti_req->n_pdus);
   if (is_f1ap)
     nr_configure_srs_f1ap(srs_pdu,
 			  slot,
@@ -668,7 +669,7 @@ void nr_schedule_srs(int module_id, frame_t frame, int slot)
 
       // Check if UE will transmit the SRS in this frame
       if ((sched_frame * n_slots_frame + sched_slot - offset) % period == 0) {
-        LOG_D(NR_MAC," %d.%d Scheduling SRS reception for %d.%d\n", frame, slot, sched_frame, sched_slot);
+        LOG_I(NR_MAC," %d.%d Scheduling SRS reception for %d.%d\n", frame, slot, sched_frame, sched_slot);
         nr_fill_nfapi_srs(module_id, CC_id, UE, sched_frame, sched_slot, srs_resource_set, srs_resource, 0);
         sched_ctrl->sched_srs.frame = sched_frame;
         sched_ctrl->sched_srs.slot = sched_slot;
@@ -737,9 +738,12 @@ void nr_schedule_srs_secondary(int module_id, frame_t frame, int slot) {
     
     NR_BWP_t ubwp = scc->uplinkConfigCommon->initialUplinkBWP->genericParameters;
 
-    uint16_t period = srs_period[srs_resource->resourceType.choice.periodic.periodicity];
+    //we have to add 1 here since the first entry of the field srs_period corresponds to the RRC enmum NR_SRS_PeriodicityAndOffset_PR_NOTHING which does not exist in the NRPPA or F1AP structure. 
+    uint16_t period = srs_period[srs_resource->resourceType.choice.periodic.periodicity+1];
     uint16_t offset = srs_resource->resourceType.choice.periodic.offset;
-    
+   
+    LOG_I(MAC, "nr_schedule_srs_secondary: period %d, offset %d\n",period,offset);
+
     int n_slots_frame = nr_slots_per_frame[ubwp.subcarrierSpacing];
     
     NR_UE_info_t dummy_ue_info;
