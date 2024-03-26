@@ -42,6 +42,9 @@
 #include "FGSUplinkNasTransport.h"
 #include <openair3/UICC/usim_interface.h>
 #include "secu_defs.h"
+#include <openair3/NAS/UE/API/USER/user_api_defs.h>
+#include "openair3/NAS/UE/API/USER/at_response.h"
+#include "openair3/NAS/UE/user_defs.h"
 
 #define PLAIN_5GS_MSG                                      0b0000
 #define INTEGRITY_PROTECTED                                0b0001
@@ -111,6 +114,8 @@ typedef struct {
   uint8_t  *registration_request_buf;
   uint32_t  registration_request_len;
   instance_t UE_id;
+  nr_nas_msg_snssai_t nas_allowed_nssai[8];
+  nas_user_t *nas_user;
 } nr_ue_nas_t;
 
 typedef enum fgs_protocol_discriminator_e {
@@ -197,6 +202,7 @@ void generateRegistrationRequest(as_nas_info_t *initialNasMsg, nr_ue_nas_t *nas)
 void *nas_nrue_task(void *args_p);
 void *nas_nrue(void *args_p);
 void nr_ue_create_ip_if(const char *ipv4, const char *ipv6, int ue_id, int pdu_session_id);
+void nas_nrue_user(void *args_p);
 
 #endif /* __NR_NAS_MSG_SIM_H__*/
 

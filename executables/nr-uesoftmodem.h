@@ -17,6 +17,12 @@
 #define  CONFIG_HLP_AUTONOMOUS_TA          "Autonomously update TA based on DL drift (useful if main contribution to DL drift is movement, e.g. LEO satellite)\n"
 #define  CONFIG_HLP_AGC                    "Rx Gain control used for UE\n"
 
+#define CONFIG_HLP_AT_IF                                                                                                      \
+  "Name of the virtual serial interface to be used by UE process (used along with --AT). Use 'socat' utility to connect two " \
+  "virtual serial ports and "                                                                                                 \
+  "access the AT command interface. One interface (given here) will be used by the UE process and other interface can be "    \
+  "accessed via minicom or screen.\n"
+#define CONFIG_HLP_AT "Enable AT-command interface\n"
 /***************************************************************************************************************************************/
 /* command line options definitions, CMDLINE_XXXX_DESC macros are used to initialize paramdef_t arrays which are then used as argument
    when calling config_get or config_getlist functions                                                                                 */
@@ -71,6 +77,9 @@
   {"ntn-ta-commondrift",           CONFIG_HLP_NTN_TA_COMMONDRIFT, 0,            .dblptr=&(nrUE_params.ntn_ta_commondrift),   .defdblval=0.0,    TYPE_DOUBLE,   0}, \
   {"autonomous-ta",                CONFIG_HLP_AUTONOMOUS_TA,   PARAMFLAG_BOOL,  .iptr=&(nrUE_params.autonomous_ta),          .defintval=0,      TYPE_INT,      0}, \
   {"agc",                          CONFIG_HLP_AGC,             PARAMFLAG_BOOL,  .iptr=&(nrUE_params.agc),                    .defintval=0,      TYPE_INT,      0}, \
+  {"agc",                          CONFIG_HLP_AGC,             PARAMFLAG_BOOL,  .iptr=&(nrUE_params.agc),                   .defintval=0,       TYPE_INT,   0}, \
+  {"AT",                       CONFIG_HLP_AT,                  PARAMFLAG_BOOL,  .iptr=&(nrUE_params.enable_AT),                     .defintval=0,      TYPE_INT,      0}, \
+  {"AT-interface",             CONFIG_HLP_AT_IF,               0,               .strptr=&(nrUE_params.at_interface_name), .defstrval="/dev/pts/7", TYPE_STRING, 0}, \
 }
 // clang-format on
 
@@ -109,6 +118,8 @@ typedef struct {
   double rx_gain_off;
   int vcdflag;
   int tx_max_power;
+  int enable_AT;
+  char *at_interface_name;
 } nrUE_params_t;
 extern uint64_t get_nrUE_optmask(void);
 extern uint64_t set_nrUE_optmask(uint64_t bitmask);
