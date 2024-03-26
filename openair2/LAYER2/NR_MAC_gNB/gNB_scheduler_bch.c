@@ -401,6 +401,19 @@ static uint32_t schedule_control_sib1(module_id_t module_id,
   LOG_D(NR_MAC,"dmrs_length %d\n",dmrs_length);
   LOG_D(NR_MAC,"N_PRB_DMRS = %d\n",N_PRB_DMRS);
   LOG_D(NR_MAC,"mappingtype = %d\n", tda_info->mapping_type);
+  LOG_D(NR_MAC,"active = %d\n", type0_PDCCH_CSS_config->active);
+  LOG_D(NR_MAC,"cset_start_rb = %d\n", type0_PDCCH_CSS_config->cset_start_rb);
+  LOG_D(NR_MAC,"first_symbol_index = %d\n", type0_PDCCH_CSS_config->first_symbol_index);
+  LOG_D(NR_MAC,"frame = %d\n", type0_PDCCH_CSS_config->frame);
+  LOG_D(NR_MAC, "n_0 = %d\n", type0_PDCCH_CSS_config->n_0);
+  LOG_D(NR_MAC,"n_c = %d\n", type0_PDCCH_CSS_config->n_c);
+  LOG_D(NR_MAC,"num_rbs = %d\n", type0_PDCCH_CSS_config->num_rbs);
+  LOG_D(NR_MAC,"num_symbols = %d\n", type0_PDCCH_CSS_config->num_symbols);
+  LOG_D(NR_MAC,"rb_offset = %d\n", type0_PDCCH_CSS_config->rb_offset);
+  LOG_D(NR_MAC,"scs_pdcch = %d\n", type0_PDCCH_CSS_config->scs_pdcch);
+  LOG_D(NR_MAC,"search_space_duration = %d\n", type0_PDCCH_CSS_config->search_space_duration);
+  LOG_D(NR_MAC,"search_space_period = %d\n", type0_PDCCH_CSS_config->search_space_frame_period);
+
   // Mark the corresponding RBs as used
   fill_pdcch_vrb_map(gNB_mac,
                      CC_id,
