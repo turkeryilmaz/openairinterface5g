@@ -245,11 +245,12 @@ typedef struct {
 
 typedef enum {
   nrRA_UE_IDLE = 0,
-  nrRA_GENERATE_PREAMBLE = 1,
-  nrRA_WAIT_RAR = 2,
-  nrRA_WAIT_CONTENTION_RESOLUTION = 3,
-  nrRA_SUCCEEDED = 4,
-  nrRA_FAILED = 5
+  nrRA_GENERATE_PREAMBLE,
+  nrRA_WAIT_RAR,
+  nrRA_WAIT_CONTENTION_RESOLUTION,
+  nrRA_MSG4_RETX,
+  nrRA_SUCCEEDED,
+  nrRA_FAILED
 } nrRA_UE_state_t;
 
 static const char *const nrra_ue_text[] =
@@ -332,6 +333,8 @@ typedef struct {
 
   /// Random-access Contention Resolution Timer
   NR_timer_t contention_resolution_timer;
+  /// Msg4 complete timer. To wait for Msg4 false retx from gNB.
+  NR_timer_t msg4_retx_timer;
   /// Transmitted UE Contention Resolution Identifier
   uint8_t cont_res_id[6];
 

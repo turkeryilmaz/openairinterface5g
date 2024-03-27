@@ -159,6 +159,11 @@ void update_mac_timers(NR_UE_MAC_INST_t *mac)
     AssertFatal(!nr_timer_tick(&mac->scheduling_info.lc_sched_info[i].Bj_timer),
                 "Bj timer for LCID %d expired! That should never happen\n",
                 i);
+  if (nr_timer_tick(&mac->ra.msg4_retx_timer)) {
+    mac->ra.t_crnti = 0;
+    mac->ra.ra_state = nrRA_SUCCEEDED;
+    nr_timer_stop(&mac->ra.msg4_retx_timer);
+  }
 }
 
 void remove_ul_config_last_item(fapi_nr_ul_config_request_pdu_t *pdu)

@@ -821,13 +821,16 @@ void nr_ra_succeeded(NR_UE_MAC_INST_t *mac, const uint8_t gNB_index, const frame
     LOG_A(MAC, "[UE %d][%d.%d][RAPROC] RA procedure succeeded. CB-RA: Contention Resolution is successful.\n", mac->ue_id, frame, slot);
     nr_timer_stop(&ra->contention_resolution_timer);
     mac->crnti = ra->t_crnti;
-    ra->t_crnti = 0;
     LOG_D(MAC, "[UE %d][%d.%d] CB-RA: cleared contention resolution timer...\n", mac->ue_id, frame, slot);
   }
 
   LOG_D(MAC, "[UE %d] clearing RA_active flag...\n", mac->ue_id);
   ra->RA_active = 0;
-  ra->ra_state = nrRA_SUCCEEDED;
+  ra->ra_state = nrRA_MSG4_RETX;
+  long mu = mac->current_UL_BWP->scs;
+  int slots_per_frame = nr_slots_per_frame[mu];
+  nr_timer_setup(&ra->msg4_retx_timer, 5 * slots_per_frame, 1);
+  nr_timer_start(&ra->msg4_retx_timer);
   mac->state = UE_CONNECTED;
   free_and_zero(ra->Msg3_buffer);
   nr_mac_rrc_ra_ind(mac->ue_id, frame, true);

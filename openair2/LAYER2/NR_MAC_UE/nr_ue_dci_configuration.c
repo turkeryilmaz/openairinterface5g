@@ -514,6 +514,10 @@ void ue_dci_configuration(NR_UE_MAC_INST_t *mac, fapi_nr_dl_config_request_t *dl
       config_dci_pdu(mac, dl_config, rnti_type, slot, pdcch_config->ra_SS);
     }
   } else if (mac->state == UE_CONNECTED) {
+    if (is_ss_monitor_occasion(frame, slot, slots_per_frame, pdcch_config->ra_SS) && mac->ra.ra_state == nrRA_MSG4_RETX) {
+      int rnti_type = TYPE_TC_RNTI_;
+      config_dci_pdu(mac, dl_config, rnti_type, slot, pdcch_config->ra_SS);
+    }
     for (int i = 0; i < pdcch_config->list_SS.count; i++) {
       NR_SearchSpace_t *ss = pdcch_config->list_SS.array[i];
       if (is_ss_monitor_occasion(frame, slot, slots_per_frame, ss))
