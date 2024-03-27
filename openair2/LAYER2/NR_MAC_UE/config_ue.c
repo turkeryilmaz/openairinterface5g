@@ -704,7 +704,6 @@ static void configure_logicalChannelBearer(NR_UE_MAC_INST_t *mac,
                                            struct NR_CellGroupConfig__rlc_BearerToReleaseList *rlc_torelease_list)
 {
   
-  NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
   pthread_mutex_lock(&mac->mutex_ul_info);
   if (rlc_torelease_list) {
     for (int i = 0; i < rlc_torelease_list->list.count; i++) {

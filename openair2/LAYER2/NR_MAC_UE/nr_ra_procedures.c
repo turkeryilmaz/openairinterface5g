@@ -683,7 +683,7 @@ void nr_ue_get_rach(NR_UE_MAC_INST_t *mac, int CC_id, frame_t frame, uint8_t gNB
     }
   }
 
-  LOG_D(NR_MAC, "[UE %d][%d.%d]: ra_state %d, RA_active %d  mac->state %d\n", mac->ue_id, frame, nr_slot_tx, ra->ra_state, ra->RA_active, ,mac->state);
+  LOG_D(NR_MAC, "[UE %d][%d.%d]: ra_state %d, RA_active %d  mac->state %d\n", mac->ue_id, frame, nr_slot_tx, ra->ra_state, ra->RA_active, mac->state);
 
   if (ra->ra_state > RA_UE_IDLE && ra->ra_state < RA_SUCCEEDED) {
 

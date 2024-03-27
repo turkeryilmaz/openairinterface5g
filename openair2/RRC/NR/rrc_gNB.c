@@ -1494,6 +1494,126 @@ rrc_gNB_generate_dedicatedRRCReconfiguration_release(
 }
 
 //-----------------------------------------------------------------------------
+/*
+* Process the RRC Reconfiguration Complete from the UE
+*/
+static void rrc_gNB_process_RRCReconfigurationComplete(const protocol_ctxt_t *const ctxt_pP, rrc_gNB_ue_context_t *ue_context_pP, const uint8_t xid)
+{
+  int                                 drb_id;
+  uint8_t kRRCenc[16] = {0};
+  uint8_t kRRCint[16] = {0};
+  uint8_t kUPenc[16] = {0};
+  uint8_t kUPint[16] = {0};
+  gNB_RRC_UE_t *ue_p = &ue_context_pP->ue_context;
+  NR_DRB_ToAddModList_t *DRB_configList = createDRBlist(ue_p, false);
+
+  if (RC.ss.mode > SS_GNB) {
+    // todo fix: use ue ctx instead of static vars 
+    memcpy(kRRCenc, _nr_control_plane_cip_key, 16);
+    memcpy(kRRCint, _nr_control_plane_int_key, 16);
+    memcpy(kUPint, _nr_data_plane_int_key, 16);
+    memcpy(kUPenc, _nr_data_plane_cip_key, 16);
+
+    ue_p->integrity_algorithm = _int_algo;
+    ue_p->ciphering_algorithm = _cip_algo;
+  } else {
+    /* Derive the keys from kgnb */
+    if (DRB_configList != NULL) {
+      nr_derive_key(UP_ENC_ALG, ue_p->ciphering_algorithm, ue_p->kgnb, kUPenc);
+      nr_derive_key(UP_INT_ALG, ue_p->integrity_algorithm, ue_p->kgnb, kUPint);
+    }
+    nr_derive_key(RRC_ENC_ALG, ue_p->ciphering_algorithm, ue_p->kgnb, kRRCenc);
+    nr_derive_key(RRC_INT_ALG, ue_p->integrity_algorithm, ue_p->kgnb, kRRCint);
+  }
+
+  /* Refresh SRBs/DRBs */
+  LOG_D(NR_RRC, "Configuring PDCP DRBs/SRBs for UE %04x\n", ue_p->rnti);
+  //ue_context_pP->ue_context.ue_reconfiguration_after_reestablishment_counter++;
+
+  NR_SRB_ToAddModList_t *SRBs = createSRBlist(ue_p, false);
+
+  nr_pdcp_add_srbs(ctxt_pP->enb_flag,
+                   ctxt_pP->rntiMaybeUEid,
+                   SRBs,
+                   (ue_p->integrity_algorithm << 4) | ue_p->ciphering_algorithm,
+                   kRRCenc,
+                   kRRCint);
+  nr_pdcp_add_drbs(ctxt_pP->enb_flag,
+                   ctxt_pP->rntiMaybeUEid,
+                   DRB_configList,
+                   (ue_p->integrity_algorithm << 4) | ue_p->ciphering_algorithm,
+                   kUPenc,
+                   kUPint);
+
+  /* Refresh DRBs */
+  if (!NODE_IS_CU(RC.nrrrc[ctxt_pP->module_id]->node_type)) {
+    LOG_D(NR_RRC,"Configuring RLC DRBs/SRBs for UE %04x\n",ue_context_pP->ue_context.rnti);
+    const struct NR_CellGroupConfig__rlc_BearerToAddModList *bearer_list =
+        ue_context_pP->ue_context.masterCellGroup->rlc_BearerToAddModList;
+    if (RC.ss.mode > SS_GNB) {
+      // AGP: removed in OAI@W32. Left in SQN version for compatibility
+      nr_rrc_addmod_srbs(ctxt_pP->rntiMaybeUEid, ue_p->Srb, maxSRBs, bearer_list);
+    }
+    nr_rrc_addmod_drbs(ctxt_pP->rntiMaybeUEid, DRB_configList, bearer_list);
+  }
+  freeSRBlist(SRBs);
+
+  /* Loop through DRBs and establish if necessary */
+  if (DRB_configList != NULL) {
+    for (int i = 0; i < DRB_configList->list.count; i++) {
+      if (DRB_configList->list.array[i]) {
+        drb_id = (int)DRB_configList->list.array[i]->drb_Identity;
+        LOG_A(NR_RRC,
+              "[gNB %d] Frame  %d : Logical Channel UL-DCCH, Received NR_RRCReconfigurationComplete from UE rnti %lx, reconfiguring DRB %d\n",
+              ctxt_pP->module_id,
+              ctxt_pP->frame,
+              ctxt_pP->rntiMaybeUEid,
+              (int)DRB_configList->list.array[i]->drb_Identity);
+        //(int)*DRB_configList->list.array[i]->pdcp_Config->moreThanOneRLC->primaryPath.logicalChannel);
+        if(ue_p->established_drbs[drb_id - 1].status == DRB_INACTIVE){
+        
+          ue_p->established_drbs[drb_id - 1].status = DRB_ACTIVE;
+          LOG_D(NR_RRC, "[gNB %d] Frame %d: Establish RLC UM Bidirectional, DRB %d Active\n",
+                  ctxt_pP->module_id, ctxt_pP->frame, (int)DRB_configList->list.array[i]->drb_Identity);
+
+          LOG_D(NR_RRC,
+                  PROTOCOL_NR_RRC_CTXT_UE_FMT" RRC_gNB --- MAC_CONFIG_REQ  (DRB) ---> MAC_gNB\n",
+                  PROTOCOL_NR_RRC_CTXT_UE_ARGS(ctxt_pP));
+
+          //if (DRB_configList->list.array[i]->pdcp_Config->moreThanOneRLC->primaryPath.logicalChannel) {
+          //  nr_DRB2LCHAN[i] = (uint8_t) * DRB_configList->list.array[i]->pdcp_Config->moreThanOneRLC->primaryPath.logicalChannel;
+          //}
+
+            // rrc_mac_config_req_eNB
+        } else { // remove LCHAN from MAC/PHY
+          if (ue_p->established_drbs[drb_id - 1].status == DRB_ACTIVE) {
+            /* TODO : It may be needed if gNB goes into full stack working. */
+            // DRB has just been removed so remove RLC + PDCP for DRB
+            /*      rrc_pdcp_config_req (ctxt_pP->module_id, frameP, 1, CONFIG_ACTION_REMOVE,
+            (ue_mod_idP * NB_RB_MAX) + DRB2LCHAN[i],UNDEF_SECURITY_MODE);
+            */
+            /*rrc_rlc_config_req(ctxt_pP,
+                                SRB_FLAG_NO,
+                                MBMS_FLAG_NO,
+                                CONFIG_ACTION_REMOVE,
+                                nr_DRB2LCHAN[i]);*/
+          }
+
+          // ue_p->DRB_active[drb_id] = 0;
+          LOG_D(NR_RRC, PROTOCOL_NR_RRC_CTXT_UE_FMT" RRC_eNB --- MAC_CONFIG_REQ  (DRB) ---> MAC_eNB\n",
+                  PROTOCOL_NR_RRC_CTXT_UE_ARGS(ctxt_pP));
+
+          // rrc_mac_config_req_eNB
+
+        } // end else of if (ue_p->DRB_active[drb_id] == 0)
+      } // end if (DRB_configList->list.array[i])
+    } // end for (int i = 0; i < DRB_configList->list.count; i++)
+
+  } // end if DRB_configList != NULL
+  freeDRBlist(DRB_configList);
+}
+
+//-----------------------------------------------------------------------------
 static void rrc_gNB_generate_RRCReestablishment(rrc_gNB_ue_context_t *ue_context_pP,
                                                 const uint8_t *masterCellGroup_from_DU,
                                                 const rnti_t old_rnti,
@@ -2009,23 +2129,25 @@ static int handle_ueCapabilityInformation(const protocol_ctxt_t *const ctxt_pP,
       cu2du.uE_CapabilityRAT_ContainerList_length = UE->ue_cap_buffer.len;
     }
 
-    f1_ue_data_t ue_data = cu_get_f1_ue_data(UE->rrc_ue_id);
+    f1_ue_data_t ue_data = cu_get_f1_ue_data(UE->rnti);
     if (ue_data.du_assoc_id == 0) {
       LOG_E(NR_RRC, "cannot send data: invalid assoc_id 0, DU offline\n");
       return -1;
     }
-    gNB_RRC_INST *rrc = RC.nrrrc[0];
-    f1ap_ue_context_modif_req_t ue_context_modif_req = {
-        .gNB_CU_ue_id = UE->rrc_ue_id,
-        .gNB_DU_ue_id = ue_data.secondary_ue,
-        .plmn.mcc = rrc->configuration[UE->primaryCC_id].mcc[0],
-        .plmn.mnc = rrc->configuration[UE->primaryCC_id].mnc[0],
-        .plmn.mnc_digit_length = rrc->configuration[UE->primaryCC_id].mnc_digit_length[0],
-        .nr_cellid = rrc->nr_cellid,
-        .servCellId = 0, /* TODO: correct value? */
-        .cu_to_du_rrc_information = &cu2du,
-    };
-    rrc->mac_rrc.ue_context_modification_request(ue_data.du_assoc_id, &ue_context_modif_req);
+    if(RC.ss.mode < SS_SOFTMODEM){
+      gNB_RRC_INST *rrc = RC.nrrrc[0];
+      f1ap_ue_context_modif_req_t ue_context_modif_req = {
+          .gNB_CU_ue_id = UE->rrc_ue_id,
+          .gNB_DU_ue_id = ue_data.secondary_ue,
+          .plmn.mcc = rrc->configuration[UE->primaryCC_id].mcc[0],
+          .plmn.mnc = rrc->configuration[UE->primaryCC_id].mnc[0],
+          .plmn.mnc_digit_length = rrc->configuration[UE->primaryCC_id].mnc_digit_length[0],
+          .nr_cellid = rrc->nr_cellid,
+          .servCellId = 0, /* TODO: correct value? */
+          .cu_to_du_rrc_information = &cu2du,
+      };
+      rrc->mac_rrc.ue_context_modification_request(ue_data.du_assoc_id, &ue_context_modif_req);
+    }
   }
 
   return 0;
@@ -2108,6 +2230,7 @@ static void handle_rrcReconfigurationComplete(const protocol_ctxt_t *const ctxt_
   gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
 
   uint8_t xid = reconfig_complete->rrc_TransactionIdentifier;
+  rrc_gNB_process_RRCReconfigurationComplete(ctxt_pP, ue_context_p, xid);
   UE->ue_reconfiguration_counter++;
   LOG_I(NR_RRC, "UE %d: Receive RRC Reconfiguration Complete message (xid %d)\n", UE->rrc_ue_id, xid);
 
@@ -2134,8 +2257,12 @@ static void handle_rrcReconfigurationComplete(const protocol_ctxt_t *const ctxt_
       /* do nothing */
       break;
     case RRC_ACTION_NONE:
-      LOG_E(RRC, "UE %d: Received RRC Reconfiguration Complete with xid %d while no transaction is ongoing\n", UE->rrc_ue_id, xid);
-      successful_reconfig = false;
+      if(RC.ss.mode >= SS_SOFTMODEM){
+          successful_reconfig = true;   // W2405 rebase: let's leave transacition id checking to TTCN
+      }else{
+        LOG_E(RRC, "UE %d: Received RRC Reconfiguration Complete with xid %d while no transaction is ongoing\n", UE->rrc_ue_id, xid);
+        successful_reconfig = false;
+      }
       break;
     default:
       LOG_E(RRC, "UE %d: Received unexpected transaction type %d for xid %d\n", UE->rrc_ue_id, UE->xids[xid], xid);
@@ -2168,8 +2295,11 @@ static void handle_rrcReconfigurationComplete(const protocol_ctxt_t *const ctxt_
    * only happen on the first time a reconfiguration arrives. Afterwards, we
    * should have them. If the UE does not give us anything, we will re-request
    * the capabilities after each reconfiguration, which is a finite number */
-  if (UE->ue_cap_buffer.len == 0) {
-    rrc_gNB_generate_UECapabilityEnquiry(ctxt_pP, ue_context_p);
+  if(RC.ss.mode >= SS_SOFTMODEM){}
+  else{
+    if (UE->ue_cap_buffer.len == 0) {
+      rrc_gNB_generate_UECapabilityEnquiry(ctxt_pP, ue_context_p);
+    }
   }
 }
 //-----------------------------------------------------------------------------
@@ -3354,9 +3484,12 @@ void *rrc_gnb_task(void *args_p) {
                                         msg_p->ittiMsgHeader.lte_time.frame,
                                         msg_p->ittiMsgHeader.lte_time.slot);
 
-          if (SS_DRB_PDU_REQ(msg_p).data_type == DRB_RlcPdu || SS_DRB_PDU_REQ(msg_p).data_type == DRB_RlcSdu) {
+          if (SS_DRB_PDU_REQ(msg_p).data_type == DRB_RlcPdu) { 
             uint8_t *sdu = malloc16(SS_DRB_PDU_REQ(msg_p).sdu_size);
             memcpy(sdu, SS_DRB_PDU_REQ(msg_p).sdu, SS_DRB_PDU_REQ(msg_p).sdu_size);
+            //JPE can impact rlc am
+	    //mem_block_t *sdu = get_free_mem_block(SS_DRB_PDU_REQ(msg_p).sdu_size, __func__);
+            //memcpy(sdu->data, SS_DRB_PDU_REQ(msg_p).sdu, SS_DRB_PDU_REQ(msg_p).sdu_size);
             enqueue_mac_rlc_data_req(&ctxt,
                                      SRB_FLAG_NO,
                                      MBMS_FLAG_NO,
