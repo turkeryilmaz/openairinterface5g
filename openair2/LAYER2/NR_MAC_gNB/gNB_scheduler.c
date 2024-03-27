@@ -50,6 +50,8 @@
 #include "nfapi/oai_integration/vendor_ext.h"
 #include "executables/nr-softmodem.h"
 
+#include "ss_gNB_context.h"
+
 #include <errno.h>
 #include <string.h>
 
@@ -211,12 +213,12 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, frame_t frame, sub_frame_
   //JPE to be controlled
   //schedule_nr_bwp_switch(module_idP, frame, slot, CC_id);
 
+  if (get_softmodem_params()->sa == 1 && RC.ss.State  >= SS_STATE_CELL_ACTIVE ){ 
   // This schedules MIB
   schedule_nr_mib(module_idP, frame, slot, &sched_info->DL_req, CC_id);
 
   // This schedules SIB1
-  if (get_softmodem_params()->sa == 1)
-    schedule_nr_sib1(module_idP, frame, slot, &sched_info->DL_req, &sched_info->TX_req, CC_id);
+  schedule_nr_sib1(module_idP, frame, slot, &sched_info->DL_req, &sched_info->TX_req, CC_id);
 
   // This schedule PRACH if we are not in phy_test mode
   if (get_softmodem_params()->phy_test == 0) {
@@ -262,6 +264,7 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, frame_t frame, sub_frame_
   nr_sr_reporting(gNB, CC_id,  frame, slot);
  
   nr_schedule_pucch(gNB, CC_id, frame,  slot);
+  }
 
   /* TODO: we copy from gNB->UL_tti_req_ahead[0][current_index], ie. CC_id == 0,
    * is more than 1 CC supported? 
