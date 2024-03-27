@@ -199,37 +199,9 @@ int nfapi_nr_vnf_p7_start(nfapi_vnf_p7_config_t* config)
 					gNB->UL_INFO.CC_id     = CC_id;
 					gNB->if_inst->NR_UL_indication(&gNB->UL_INFO);
 					
-					int spf = get_spf(cfg);
-					int sched_frame = (slot_ind->sfn + ((slot_ind->slot > (spf - 1 - gNB->if_inst->sl_ahead)) ? 1 : 0)) % 1024;
-					int sched_slot  =  (slot_ind->slot + gNB->if_inst->sl_ahead) % spf;
+					gNB->if_inst->NR_slot_indication(gNB->Mod_id, CC_id, slot_ind->sfn, slot_ind->slot);
 
-					gNB->if_inst->NR_slot_indication(gNB->Mod_id, CC_id, sched_frame, sched_slot);
-
-				    if(CC_id == RC.nb_nr_CC[0]-1){
-						if (NFAPI_MODE == NFAPI_MODE_VNF){
-						extern int oai_nfapi_slot_ind(nfapi_nr_slot_indication_scf_t * slot_ind);
-						nfapi_nr_slot_indication_scf_t slot_ind;
-						slot_ind.sfn = sched_info->frame;
-						slot_ind.slot = sched_info->slot;
-						oai_nfapi_slot_ind(&slot_ind);
-						}
-
-						if (RC.ss.mode >= SS_SOFTMODEM)
-						{
-							MessageDef *message_p = itti_alloc_new_message(TASK_VT_TIMER, INSTANCE_DEFAULT, SS_NRUPD_TIM_INFO);
-							if (message_p)
-							{
-								SS_NRUPD_TIM_INFO(message_p).slot = sched_info->slot;
-								SS_NRUPD_TIM_INFO(message_p).sfn = sched_info->frame;
-
-								int send_res = itti_send_msg_to_task(TASK_VT_TIMER, INSTANCE_DEFAULT, message_p);
-								if (send_res < 0)
-								{
-								LOG_E(NR_PHY, "[SS] Error in L1_Thread itti_send_msg_to_task");
-								}
-							}
-						}
-      				} 
+				  
 					
 				}
 				prev_slot = gNB->UL_INFO.slot;

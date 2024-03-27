@@ -1444,7 +1444,7 @@ static uint32_t nr_ue_dl_processing(nr_downlink_indication_t *dl_info)
             if (false /*TODO: need to check for RC.ss.mode != SS_SOFTMODEM*/){
               is_sync = handle_rlm(rx_indication_body.ssb_pdu.radiolink_monitoring,
                        dl_info->frame,
-                       dl_info->module_id);
+                       mac);
             }
             else{
               is_sync = handle_rlm(mac->p7_cell_search_ind_rlm,

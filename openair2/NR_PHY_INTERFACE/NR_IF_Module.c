@@ -393,13 +393,22 @@ static void run_scheduler(module_id_t module_id, int CC_id, int frame, int slot)
   NR_IF_Module_t *ifi = nr_if_inst[module_id];
   // gNB_MAC_INST     *mac        = RC.nrmac[module_id];
 
+  gNB_MAC_INST     *mac        = RC.nrmac[module_id];
+  nfapi_nr_config_request_scf_t *cfg = &mac->config[CC_id];
+	int spf = get_spf(cfg);
+	int sched_frame = (frame + ((slot > (spf - 1 - ifi->sl_ahead)) ? 1 : 0)) % 1024;
+	int sched_slot  =  (slot + ifi->sl_ahead) % spf;
+
+
   NR_Sched_Rsp_t *sched_info;
-  LOG_D(NR_MAC, "Calling scheduler for %d.%d\n", frame, slot);
+  LOG_D(NR_MAC, "Calling scheduler for %d.%d\n", sched_frame, sched_slot);
   sched_info = allocate_sched_response();
 
   // clear UL DCI prior to handling ULSCH
   sched_info->UL_dci_req.numPdus = 0;
-  gNB_dlsch_ulsch_scheduler(module_id, frame, slot, sched_info, CC_id);
+
+  
+  gNB_dlsch_ulsch_scheduler(module_id, sched_frame, sched_slot, sched_info, CC_id);
   ifi->CC_mask = 0;
   sched_info->module_id = module_id;
   sched_info->CC_id = CC_id;
@@ -420,11 +429,40 @@ static void run_scheduler(module_id_t module_id, int CC_id, int frame, int slot)
   AssertFatal(ifi->NR_Schedule_response != NULL, "nr_schedule_response is null (mod %d, cc %d)\n", module_id, CC_id);
   ifi->NR_Schedule_response(sched_info);
 
+
+
   LOG_D(NR_PHY,
         "NR_Schedule_response: SFN SLOT:%d %d dl_pdus:%d\n",
         sched_info->frame,
         sched_info->slot,
         sched_info->DL_req.dl_tti_request_body.nPDUs);
+
+
+  if(CC_id == RC.nb_nr_CC[0]-1){
+    if (NFAPI_MODE == NFAPI_MODE_VNF){
+      extern int oai_nfapi_slot_ind(nfapi_nr_slot_indication_scf_t * slot_ind);
+      nfapi_nr_slot_indication_scf_t slot_ind;
+      slot_ind.sfn = sched_info->frame;
+      slot_ind.slot = sched_info->slot;
+      oai_nfapi_slot_ind(&slot_ind);
+    }
+
+    if (RC.ss.mode >= SS_SOFTMODEM)
+    {
+      MessageDef *message_p = itti_alloc_new_message(TASK_VT_TIMER, INSTANCE_DEFAULT, SS_NRUPD_TIM_INFO);
+      if (message_p)
+      {
+        SS_NRUPD_TIM_INFO(message_p).slot = sched_info->slot;
+        SS_NRUPD_TIM_INFO(message_p).sfn = sched_info->frame;
+
+        int send_res = itti_send_msg_to_task(TASK_VT_TIMER, INSTANCE_DEFAULT, message_p);
+        if (send_res < 0)
+        {
+        LOG_E(NR_PHY, "[SS] Error in L1_Thread itti_send_msg_to_task");
+        }
+      }
+    }
+  } 
 }
 
 void NR_UL_indication(NR_UL_IND_t *UL_info) {
