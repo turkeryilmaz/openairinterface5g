@@ -1315,7 +1315,7 @@ void nr_rlc_srb_recv_sdu(const int rnti, const logical_chan_id_t channel_id, uns
   } else {
     rb = ue->srb[channel_id - 1];
   }
-  LOG_D(NR_RRC,"dbg2 SDU sent to unknown RB RNTI %04x SRB %d rb %lx\n", rnti, channel_id, rb);
+  
   AssertFatal(rb != NULL, "SDU sent to unknown RB RNTI %04x SRB %d\n", rnti, channel_id);
 
   rb->set_time(rb, nr_rlc_current_time);
