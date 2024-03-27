@@ -575,13 +575,13 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
 
   /* at last symbol in a slot calculate LLR's for whole slot */
   if(symbol == (startSymbIdx + nbSymb -1)) {
-
+    
     const uint32_t rx_llr_layer_size = (dlsch0_harq->G + dlsch[0].Nl - 1) / dlsch[0].Nl;
-
+    LOG_W(PHY, "rx_llr_layer_size %d, G %d, Nl, %d\n",  rx_llr_layer_size, dlsch0_harq->G, dlsch[0].Nl);
     int16_t* layer_llr[NR_MAX_NB_LAYERS];
     for (int i = 0; i < NR_MAX_NB_LAYERS; i++)
       layer_llr[i] = (int16_t *)malloc16_clear(rx_llr_layer_size * sizeof(int16_t));
-    for(uint8_t i = startSymbIdx; i < (startSymbIdx+nbSymb); i++) {
+    for(int i = startSymbIdx; i < startSymbIdx+nbSymb; i++) {
       /* re evaluating the first symbol flag as LLR's are done in symbol loop  */
       if(i == startSymbIdx && i < 3)
         first_symbol_flag = 1;
@@ -609,7 +609,7 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
                    dlsch,
                    llr_offset);
     }
-
+    
     nr_dlsch_layer_demapping(llr,
                              dlsch[0].Nl,
                              dlsch[0].dlsch_config.qamModOrder,
@@ -620,17 +620,17 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
     // if (llr[0][0]) abort();
     for (int i=0; i<NR_MAX_NB_LAYERS; i++)
       free(layer_llr[i]);
-  // Please keep it: useful for debugging
+    // Please keep it: useful for debugging
 #ifdef DEBUG_PDSCH_RX
     char filename[50];
     uint8_t aa = 0;
-
+    
     snprintf(filename, 50, "rxdataF0_symb_%d_nr_slot_rx_%d.m", symbol, nr_slot_rx);
     write_output(filename, "rxdataF0", &rxdataF[0][0], NR_SYMBOLS_PER_SLOT*frame_parms->ofdm_symbol_size, 1, 1);
-
+    
     snprintf(filename, 50, "dl_ch_estimates0%d_symb_%d_nr_slot_rx_%d.m", aa, symbol, nr_slot_rx);
     write_output(filename, "dl_ch_estimates", &dl_ch_estimates[aa][0], NR_SYMBOLS_PER_SLOT*frame_parms->ofdm_symbol_size, 1, 1);
-
+    
     snprintf(filename, 50, "rxdataF_ext0%d_symb_%d_nr_slot_rx_%d.m", aa, symbol, nr_slot_rx);
     write_output(filename, "rxdataF_ext", &rxdataF_ext[aa][0], NR_SYMBOLS_PER_SLOT*frame_parms->N_RB_DL*NR_NB_SC_PER_RB, 1, 1);
 
@@ -1101,7 +1101,7 @@ void nr_dlsch_scale_channel(uint32_t rx_size_symbol,
 
 
 //compute average channel_level on each (TX,RX) antenna pair
-void nr_dlsch_channel_level(uint32_t rx_size_symbol,
+static void nr_dlsch_channel_level(uint32_t rx_size_symbol,
                             int32_t dl_ch_estimates_ext[][rx_size_symbol],
                             NR_DL_FRAME_PARMS *frame_parms,
                             uint8_t n_tx,

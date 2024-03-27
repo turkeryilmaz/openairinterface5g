@@ -481,7 +481,7 @@ int nr_ue_pdcch_procedures(PHY_VARS_NR_UE *ue,
   return (dci_ind.number_of_dcis);
 }
 
-static int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
+__attribute__((optimize(0))) static int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
                                   const UE_nr_rxtx_proc_t *proc,
                                   NR_UE_DLSCH_t dlsch[2],
                                   int16_t *llr[2],
@@ -501,8 +501,24 @@ static int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
     uint16_t s0             = dlsch0->dlsch_config.start_symbol;
     uint16_t s1             = dlsch0->dlsch_config.number_symbols;
 
-    AssertFatal(dlsch0->dlsch_config.resource_alloc == 1,
-                "DLSCH resource allocation type0 not supported at PHY\n");
+    if (dlsch0->dlsch_config.resource_alloc == 0) {
+      int state=0;
+      for (int i=0; i < sizeof(dlsch0->dlsch_config.rb_bitmap)*8; i++) {
+	int allocated=dlsch0->dlsch_config.rb_bitmap[i/8] & (1<<(i%8));
+	if (allocated) {
+	  if (state==0) {
+	    pdsch_start_rb=i;
+	    state=1;
+	  } else
+	    AssertFatal(state==1,"hole\n");
+	} else {
+	  if (state==1) {
+	    state=2;
+	    dlsch0->dlsch_config.number_rbs= pdsch_nb_rb = i-pdsch_start_rb;
+	  }
+	}
+      }
+    }
 
     LOG_D(PHY,"[UE %d] nr_slot_rx %d, harq_pid %d (%d), BWP start %d, rb_start %d, nb_rb %d, symbol_start %d, nb_symbols %d, DMRS mask %x, Nl %d\n",
           ue->Mod_id,nr_slot_rx,harq_pid,dlsch0_harq->status,BWPStart,pdsch_start_rb,pdsch_nb_rb,s0,s1,dlsch0->dlsch_config.dlDmrsSymbPos, dlsch0->Nl);

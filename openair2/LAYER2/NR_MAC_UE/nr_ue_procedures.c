@@ -293,6 +293,7 @@ int8_t nr_ue_process_dci_freq_dom_resource_assignment(nfapi_nr_ue_pusch_pdu_t *p
         pdsch_Config->resourceAllocation == NR_PDSCH_Config__resourceAllocation_resourceAllocationType0) {
       // TS 38.214 subclause 5.1.2.2.1 Downlink resource allocation type 0
       dlsch_config_pdu->resource_alloc = 0;
+      memset(dlsch_config_pdu->rb_bitmap, 0, sizeof(dlsch_config_pdu->rb_bitmap));
       int P = getRBGSize(n_RB_DLBWP, pdsch_Config->rbg_Size);
       int n_RBG = frequency_domain_assignment.nbits;
       int index = 0;
