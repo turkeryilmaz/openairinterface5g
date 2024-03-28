@@ -1,0 +1,367 @@
+diff --git a/ci-scripts/conf_files/gnb.sa.band78.51prb.aw2s.ddsuu.conf b/ci-scripts/conf_files/gnb.sa.band78.51prb.aw2s.ddsuu.conf
+index 802d2b2290..21ea97e779 100644
+--- a/ci-scripts/conf_files/gnb.sa.band78.51prb.aw2s.ddsuu.conf
++++ b/ci-scripts/conf_files/gnb.sa.band78.51prb.aw2s.ddsuu.conf
+@@ -1,4 +1,4 @@
+-Active_gNBs = ( "gNB-Eurecom-n78_20");
++Active_gNBs = ( "gNB-OAI");
+ # Asn1_verbosity, choice in: none, info, annoying
+ Asn1_verbosity = "none";
+ 
+@@ -10,21 +10,23 @@ gNBs =
+ (
+  {
+     ////////// Identification parameters:
+-    gNB_ID = 0xe00;
+-
+-    gNB_name  =  "gNB-Eurecom-n78_20";
++    gNB_ID    =  0xe00;
++    gNB_name  =  "gNB-OAI";
+ 
+     // Tracking area code, 0x0000 and 0xfffe are reserved values
+-    tracking_area_code  =  0x1;
+-    plmn_list = ({ mcc = 208; mnc = 97; mnc_length = 2; snssaiList = ({ sst =0x1; }) });
+-
++    tracking_area_code  =  1;
++    plmn_list = ({ mcc = 001; mnc = 01; mnc_length = 2; snssaiList = ({ sst = 1;}) });
++    //plmn_list = ({ mcc = 001; mnc = 01; mnc_length = 2; snssaiList = ({ sst = 1; sd=0x1 }) });
++    
+     nr_cellid = 12345678L
+ 
+     ////////// Physical parameters:
+-    pdsch_AntennaPorts_XP                                     = 2;
+-    pusch_AntennaPorts                                        = 2;
++    pdsch_AntennaPorts_XP                                     = 1;
++    pusch_AntennaPorts                                        = 1;
+     do_CSIRS                                                  = 1;
+-    do_SRS                                                    = 1;
++    do_SRS                                                    = 0;
++    
++    min_rxtxtime                                              = 6;
+ 
+     servingCellConfigCommon = (
+     {
+@@ -89,7 +91,7 @@ gNBs =
+         powerRampingStep                                            = 1;
+ #ra_ReponseWindow
+ #1,2,4,8,10,20,40,80
+-        ra_ResponseWindow                                           = 4;
++        ra_ResponseWindow                                           = 5;
+ #ssb_perRACH_OccasionAndCB_PreamblesPerSSB_PR
+ #1=oneeighth,2=onefourth,3=half,4=one,5=two,6=four,7=eight,8=sixteen
+         ssb_perRACH_OccasionAndCB_PreamblesPerSSB_PR                = 3;
+@@ -111,7 +113,7 @@ gNBs =
+         restrictedSetConfig                                         = 0,
+ 
+         msg3_DeltaPreamble                                          = 1;
+-        p0_NominalWithGrant                                         =-96;
++        p0_NominalWithGrant                                         =-96; //
+ 
+ # pucch-ConfigCommon setup :
+ # pucchGroupHopping
+@@ -150,7 +152,7 @@ gNBs =
+       nrofUplinkSlots                                               = 2;
+       nrofUplinkSymbols                                             = 4;
+ 
+-  ssPBCH_BlockPower                                             = -10;
++  ssPBCH_BlockPower                                             = -5;
+   }
+ 
+   );
+@@ -166,8 +168,8 @@ gNBs =
+ 
+ 
+     ////////// AMF parameters:
+-    amf_ip_address      = ( { ipv4       = "172.21.6.100";
+-                              ipv6       = "192:168:30::17";
++    amf_ip_address      = ( { ipv4       = "172.22.0.10"//"192.168.70.132"; //172.22.0.10
++                              ipv6       = "192:168:30::17";  //172:22:30::17
+                               active     = "yes";
+                               preference = "ipv4";
+                             }
+@@ -176,10 +178,10 @@ gNBs =
+     NETWORK_INTERFACES :
+     {
+ 
+-        GNB_INTERFACE_NAME_FOR_NG_AMF            = "eno33np0";
+-        GNB_IPV4_ADDRESS_FOR_NG_AMF              = "172.21.16.124/20";
+-        GNB_INTERFACE_NAME_FOR_NGU               = "eno33np0";
+-        GNB_IPV4_ADDRESS_FOR_NGU                 = "172.21.16.124/20";
++        GNB_INTERFACE_NAME_FOR_NG_AMF            = "internet; "//"demo-oai";  // internet
++        GNB_IPV4_ADDRESS_FOR_NG_AMF              = "172.22.0.1/24";//"192.168.70.129/24"; // 172.22.0.1/24
++        GNB_INTERFACE_NAME_FOR_NGU               = "internet";//"demo-oai";  //internet
++        GNB_IPV4_ADDRESS_FOR_NGU                 = "172.22.0.1/24";//"192.168.70.129/24"; // 172.22.0.1/24
+         GNB_PORT_FOR_S1U                         = 2152; # Spec 2152
+     };
+   }
+@@ -208,48 +210,43 @@ L1s = (
+ );
+ 
+ RUs = (
+-    {
+-        local_if_name  = "ens7f3";
+-        remote_address = "192.168.80.239";
+-        local_address  = "192.168.80.24";
+-        local_portc    = 50000;
+-        remote_portc   = 55444;
+-        local_portd    = 52001;
+-        remote_portd   = 52183;
+-        local_rf       = "no"
+-        tr_preference  = "udp_ecpri_if5"
+-        nb_tx          = 2
+-        nb_rx          = 2
+-        att_tx         = 18
+-        att_rx         = 0;
+-        num_tp_cores   = 4;
+-        rxfh_core_id   = 9;
+-        txfh_core_id   = 10;
+-        tp_cores       = [11,12,13,14];
+-        nr_flag        = 1;
+-        eNB_instances  = [0];
+-        bands          = [78];
+-        sl_ahead       = 5;
+-        ##beamforming 1x2 matrix: 1 layer x 2 antennas
+-        bf_weights = [0x00007fff, 0x0000];
+-        ##beamforming 1x4 matrix: 1 layer x 4 antennas
+-        #bf_weights = [0x00007fff, 0x0000,0x0000, 0x0000];
+-        ## beamforming 2x2 matrix:
+-        # bf_weights = [0x00007fff, 0x00000000, 0x00000000, 0x00007fff];
+-        ## beamforming 4x4 matrix:
+-        #bf_weights = [0x00007fff, 0x0000, 0x0000, 0x0000, 0x00000000, 0x00007fff, 0x0000, 0x0000, 0x0000, 0x0000, 0x00007fff, 0x0000, 0x0000, 0x0000, 0x0000, 0x00007fff];
+-    }
++{
++  local_rf       = "yes"
++  nb_tx          = 1
++  nb_rx          = 1
++  att_tx         = 30
++  att_rx         = 0;
++  bands          = [78];
++  max_pdschReferenceSignalPower = -27;
++  max_rxgain                    = 68;
++  sf_extension                  = 0;
++  eNB_instances  = [0];
++  sl_ahead       = 8;
++  #beamforming 1x1 matrix:
++  bf_weights = [0x00007fff];
++  clock_src = "internal";
++  sdr_addrs = "mgmt_addr=192.168.10.2,addr=192.168.20.2,second_addr=192.168.10.2,clock_source=internal,time_source=internal"
++}
+ );
+ 
+ THREAD_STRUCT = (
+   {
+     #three config for level of parallelism "PARALLEL_SINGLE_THREAD", "PARALLEL_RU_L1_SPLIT", or "PARALLEL_RU_L1_TRX_SPLIT"
+-    parallel_config    = "PARALLEL_SINGLE_THREAD";
++    parallel_config    = "PARALLEL_RU_L1_TRX_SPLIT";
+     #two option for worker "WORKER_DISABLE" or "WORKER_ENABLE"
+     worker_config      = "WORKER_ENABLE";
+   }
+ );
+ 
++rfsimulator :
++{
++  serveraddr = "server";
++  serverport = 4043;
++  options = (); #("saviq"); or/and "chanmod"
++  modelname = "AWGN";
++  IQfile = "/tmp/rfsimulator.iqs";
++};
++
+ security = {
+   # preferred ciphering algorithms
+   # the first one of the list that an UE supports in chosen
+@@ -264,7 +261,7 @@ security = {
+   # setting 'drb_ciphering' to "no" disables ciphering for DRBs, no matter
+   # what 'ciphering_algorithms' configures; same thing for 'drb_integrity'
+   drb_ciphering = "yes";
+-  drb_integrity = "yes";
++  drb_integrity = "no";
+ };
+ 
+      log_config :
+diff --git a/openair1/PHY/NR_TRANSPORT/nr_dci.c b/openair1/PHY/NR_TRANSPORT/nr_dci.c
+index 6f1a112669..665ca33a3e 100644
+--- a/openair1/PHY/NR_TRANSPORT/nr_dci.c
++++ b/openair1/PHY/NR_TRANSPORT/nr_dci.c
+@@ -237,7 +237,7 @@ void nr_generate_dci(PHY_VARS_gNB *gNB,
+       } // reg_count
+     } // symbol_idx
+ 
+-    LOG_D(PHY,
++    LOG_E(PHY,
+           "DCI: payloadSize = %d | payload = %llx\n",
+           dci_pdu->PayloadSizeBits,
+           *(unsigned long long *)dci_pdu->Payload);
+diff --git a/openair1/SCHED_NR/fapi_nr_l1.c b/openair1/SCHED_NR/fapi_nr_l1.c
+index 23f22a9f2a..46a9a89b58 100644
+--- a/openair1/SCHED_NR/fapi_nr_l1.c
++++ b/openair1/SCHED_NR/fapi_nr_l1.c
+@@ -219,7 +219,7 @@ void nr_schedule_response(NR_Sched_Rsp_t *Sched_INFO)
+           nr_fill_ulsch(gNB,UL_tti_req->SFN, UL_tti_req->Slot, &UL_tti_req->pdus_list[i].pusch_pdu);
+           break;
+         case NFAPI_NR_UL_CONFIG_PUCCH_PDU_TYPE:
+-          LOG_D(NR_PHY,"frame %d, slot %d, Got NFAPI_NR_UL_TTI_PUCCH_PDU_TYPE for %d.%d\n", frame, slot, UL_tti_req->SFN, UL_tti_req->Slot);
++          LOG_E(NR_PHY,"frame %d, slot %d, Got NFAPI_NR_UL_TTI_PUCCH_PDU_TYPE for %d.%d\n", frame, slot, UL_tti_req->SFN, UL_tti_req->Slot);
+           nr_fill_pucch(gNB,UL_tti_req->SFN, UL_tti_req->Slot, &UL_tti_req->pdus_list[i].pucch_pdu);
+           break;
+         case NFAPI_NR_UL_CONFIG_PRACH_PDU_TYPE:
+diff --git a/openair2/LAYER2/NR_MAC_gNB/gNB_scheduler_dlsch.c b/openair2/LAYER2/NR_MAC_gNB/gNB_scheduler_dlsch.c
+index 54a5bd4b6a..f114e51c28 100644
+--- a/openair2/LAYER2/NR_MAC_gNB/gNB_scheduler_dlsch.c
++++ b/openair2/LAYER2/NR_MAC_gNB/gNB_scheduler_dlsch.c
+@@ -596,7 +596,8 @@ static void pf_dl(module_id_t module_id,
+                   int max_num_ue,
+                   int n_rb_sched,
+                   uint16_t *rballoc_mask)
+-{
++{ 
++  LOG_E(NR_MAC, "------------------------DL Scheduling at frame %u and slot %u--------------------------\n", frame, slot);
+   gNB_MAC_INST *mac = RC.nrmac[module_id];
+   NR_ServingCellConfigCommon_t *scc=mac->common_channels[0].ServingCellConfigCommon;
+   // UEs that could be scheduled
+@@ -742,7 +743,7 @@ static void pf_dl(module_id_t module_id,
+     const int alloc = nr_acknack_scheduling(mac, iterator->UE, frame, slot, r_pucch, 0);
+ 
+     if (alloc<0) {
+-      LOG_D(NR_MAC, "[UE %04x][%4d.%2d] could not find PUCCH for DL DCI\n",
++      LOG_E(NR_MAC, "[UE %04x][%4d.%2d] could not find PUCCH for DL DCI\n",
+             rnti,
+             frame,
+             slot);
+diff --git a/openair2/LAYER2/NR_MAC_gNB/gNB_scheduler_ulsch.c b/openair2/LAYER2/NR_MAC_gNB/gNB_scheduler_ulsch.c
+index b3aadd816d..c5701fcf3d 100644
+--- a/openair2/LAYER2/NR_MAC_gNB/gNB_scheduler_ulsch.c
++++ b/openair2/LAYER2/NR_MAC_gNB/gNB_scheduler_ulsch.c
+@@ -611,7 +611,7 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
+         T_BUFFER(sduP, sdu_lenP));
+ 
+     UE->mac_stats.ul.total_bytes += sdu_lenP;
+-    LOG_D(NR_MAC, "[gNB %d][PUSCH %d] CC_id %d %d.%d Received ULSCH sdu from PHY (rnti %04x) ul_cqi %d TA %d sduP %p, rssi %d\n",
++    LOG_E(NR_MAC, "[gNB %d][PUSCH %d] CC_id %d %d.%d Received ULSCH sdu from PHY (rnti %04x) ul_cqi %d TA %d sduP %p, rssi %d\n",
+           gnb_mod_idP,
+           harq_pid,
+           CC_idP,
+@@ -631,10 +631,10 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
+       UE_scheduling_control->raw_rssi = rssi;
+       UE_scheduling_control->pusch_snrx10 = ul_cqi * 5 - 640;
+ 
+-      LOG_D(NR_MAC, "[UE %04x] PUSCH TPC %d and TA %d\n",UE->rnti,UE_scheduling_control->tpc0,UE_scheduling_control->ta_update);
++      LOG_E(NR_MAC, "[UE %04x] PUSCH TPC %d and TA %d\n",UE->rnti,UE_scheduling_control->tpc0,UE_scheduling_control->ta_update);
+     }
+     else{
+-      LOG_D(NR_MAC,"[UE %04x] Detected DTX : increasing UE TX power\n",UE->rnti);
++      LOG_E(NR_MAC,"[UE %04x] Detected DTX : increasing UE TX power\n",UE->rnti);
+       UE_scheduling_control->tpc0 = 1;
+     }
+ 
+@@ -651,7 +651,7 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
+ #endif
+ 
+     if (sduP != NULL){
+-      LOG_D(NR_MAC, "Received PDU at MAC gNB \n");
++      LOG_E(NR_MAC, "Received PDU at MAC gNB \n");
+ 
+       UE->UE_sched_ctrl.pusch_consecutive_dtx_cnt = 0;
+       const uint32_t tb_size = UE_scheduling_control->ul_harq_processes[harq_pid].sched_pusch.tb_size;
+@@ -674,12 +674,17 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
+         UE->UE_sched_ctrl.pusch_consecutive_dtx_cnt++;
+         UE->mac_stats.ulsch_DTX++;
+       }
+-
++      
++      LOG_E(NR_MAC,
++              "UE %04x: [Test]Detected UL Failure on PUSCH after %d PUSCH DTX, stopping scheduling\n",
++              UE->rnti,
++              UE->UE_sched_ctrl.pusch_consecutive_dtx_cnt);
+       if (!get_softmodem_params()->phy_test && UE->UE_sched_ctrl.pusch_consecutive_dtx_cnt >= pusch_failure_thres) {
+-        LOG_W(NR_MAC,
++        LOG_E(NR_MAC,
+               "UE %04x: Detected UL Failure on PUSCH after %d PUSCH DTX, stopping scheduling\n",
+               UE->rnti,
+               UE->UE_sched_ctrl.pusch_consecutive_dtx_cnt);
++        DevAssert(0==1);
+         nr_mac_trigger_ul_failure(&UE->UE_sched_ctrl, UE->current_UL_BWP.scs);
+       }
+     }
+@@ -1658,7 +1663,7 @@ static void pf_ul(module_id_t module_id,
+     if (UE->Msg4_ACKed != true || sched_ctrl->ul_failure)
+       continue;
+ 
+-    LOG_D(NR_MAC,"pf_ul: preparing UL scheduling for UE %04x\n",UE->rnti);
++    LOG_E(NR_MAC,"pf_ul: preparing UL scheduling for UE %04x\n",UE->rnti);
+     NR_UE_UL_BWP_t *current_BWP = &UE->current_UL_BWP;
+ 
+     int rbStart = 0; // wrt BWP start
+@@ -1683,13 +1688,13 @@ static void pf_ul(module_id_t module_id,
+       const int tda = get_ul_tda(nrmac, scc, sched_pusch->frame, sched_pusch->slot);
+       bool r = allocate_ul_retransmission(nrmac, frame, slot, rballoc_mask, &n_rb_sched, UE, sched_pusch->ul_harq_pid, scc, tda);
+       if (!r) {
+-        LOG_D(NR_MAC, "[UE %04x][%4d.%2d] UL retransmission could not be allocated\n",
++        LOG_E(NR_MAC, "[UE %04x][%4d.%2d] UL retransmission could not be allocated\n",
+               UE->rnti,
+               frame,
+               slot);
+         continue;
+       }
+-      else LOG_D(NR_MAC,"%4d.%2d UL Retransmission UE RNTI %04x to be allocated, max_num_ue %d\n",frame,slot,UE->rnti,max_num_ue);
++      else LOG_E(NR_MAC,"%4d.%2d UL Retransmission UE RNTI %04x to be allocated, max_num_ue %d\n",frame,slot,UE->rnti,max_num_ue);
+ 
+       /* reduce max_num_ue once we are sure UE can be allocated, i.e., has CCE */
+       remainUEs--;
+@@ -1711,7 +1716,7 @@ static void pf_ul(module_id_t module_id,
+     /* preprocessor computed sched_frame/sched_slot */
+     const bool do_sched = nr_UE_is_to_be_scheduled(scc, 0, UE, sched_pusch->frame, sched_pusch->slot, nrmac->ulsch_max_frame_inactivity);
+ 
+-    LOG_D(NR_MAC,"pf_ul: do_sched UE %04x => %s\n",UE->rnti,do_sched ? "yes" : "no");
++    LOG_E(NR_MAC,"pf_ul: do_sched UE %04x => %s\n",UE->rnti,do_sched ? "yes" : "no");
+     if ((B == 0 && !do_sched) || (sched_ctrl->rrc_processing_timer > 0)) {
+       continue;
+     }
+@@ -2068,6 +2073,7 @@ nr_pp_impl_ul nr_init_fr1_ulsch_preprocessor(int CC_id)
+ 
+ void nr_schedule_ulsch(module_id_t module_id, frame_t frame, sub_frame_t slot, nfapi_nr_ul_dci_request_t *ul_dci_req)
+ {
++  LOG_E(NR_MAC, "-----------------------UL Scheduling at frame %u and slot %u--------------------------\n", frame, slot);
+   gNB_MAC_INST *nr_mac = RC.nrmac[module_id];
+   /* already mutex protected: held in gNB_dlsch_ulsch_scheduler() */
+   NR_SCHED_ENSURE_LOCKED(&nr_mac->sched_lock);
+@@ -2169,7 +2175,7 @@ void nr_schedule_ulsch(module_id_t module_id, frame_t frame, sub_frame_t slot, n
+     sched_ctrl->last_ul_frame = sched_pusch->frame;
+     sched_ctrl->last_ul_slot = sched_pusch->slot;
+ 
+-    LOG_D(NR_MAC,
++    LOG_E(NR_MAC,
+           "ULSCH/PUSCH: %4d.%2d RNTI %04x UL sched %4d.%2d DCI L %d start %2d RBS %3d startSymbol %2d nb_symbol %2d dmrs_pos %x MCS Table %2d MCS %2d nrOfLayers %2d num_dmrs_cdm_grps_no_data %2d TBS %4d HARQ PID %2d round %d RV %d NDI %d est %6d sched %6d est BSR %6d TPC %d\n",
+           frame,
+           slot,
+@@ -2217,7 +2223,7 @@ void nr_schedule_ulsch(module_id_t module_id, frame_t frame, sub_frame_t slot, n
+     memset(pusch_pdu, 0, sizeof(nfapi_nr_pusch_pdu_t));
+     future_ul_tti_req->n_pdus += 1;
+ 
+-    LOG_D(NR_MAC, "%4d.%2d Scheduling UE specific PUSCH for sched %d.%d, ul_tti_req %d.%d\n", frame, slot,
++    LOG_E(NR_MAC, "%4d.%2d Scheduling UE specific PUSCH for sched %d.%d, ul_tti_req %d.%d\n", frame, slot,
+     sched_pusch->frame,sched_pusch->slot,future_ul_tti_req->SFN,future_ul_tti_req->Slot);
+ 
+     pusch_pdu->pdu_bit_map = PUSCH_PDU_BITMAP_PUSCH_DATA;
+@@ -2363,7 +2369,7 @@ void nr_schedule_ulsch(module_id_t module_id, frame_t frame, sub_frame_t slot, n
+       pdcch_pdu_coreset[coresetid] = pdcch_pdu;
+     }
+ 
+-    LOG_D(NR_MAC,"Configuring ULDCI/PDCCH in %d.%d at CCE %d, rnti %04x\n", frame,slot,sched_ctrl->cce_index,rnti);
++    LOG_E(NR_MAC,"Configuring ULDCI/PDCCH in %d.%d at CCE %d, rnti %04x\n", frame,slot,sched_ctrl->cce_index,rnti);
+ 
+     /* Fill PDCCH DL DCI PDU */
+     nfapi_nr_dl_dci_pdu_t *dci_pdu = &pdcch_pdu->dci_pdu[pdcch_pdu->numDlDci];
+diff --git a/openair2/NR_PHY_INTERFACE/NR_IF_Module.c b/openair2/NR_PHY_INTERFACE/NR_IF_Module.c
+index 37bedddf46..4fef554fc0 100644
+--- a/openair2/NR_PHY_INTERFACE/NR_IF_Module.c
++++ b/openair2/NR_PHY_INTERFACE/NR_IF_Module.c
+@@ -190,7 +190,7 @@ void handle_nr_ulsch(NR_UL_IND_t *UL_info)
+       AssertFatal(crc->rnti == rx->rnti, "mis-match between CRC RNTI %04x and RX RNTI %04x\n",
+                   crc->rnti, rx->rnti);
+ 
+-      LOG_D(NR_MAC,
++      LOG_E(NR_MAC,
+             "%4d.%2d Calling rx_sdu (CRC %s/tb_crc_status %d)\n",
+             UL_info->frame,
+             UL_info->slot,

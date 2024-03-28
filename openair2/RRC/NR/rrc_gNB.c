@@ -2047,7 +2047,8 @@ void rrc_gNB_process_e1_bearer_context_setup_resp(e1ap_bearer_setup_resp_t *resp
         drb->drb_info.flows_mapped_to_drb[j].qfi = drb_config->qosFlows[j].qfi;
 
         pdusession_level_qos_parameter_t *in_qos_char = get_qos_characteristics(drb_config->qosFlows[j].qfi, RRC_pduSession);
-        qos_characteristics_t *qos_char = &drb->drb_info.flows_mapped_to_drb[j].qos_params.qos_characteristics;
+        qos_flow_level_qos_parameters_t *qos_params = &drb->drb_info.flows_mapped_to_drb[j].qos_params;
+        qos_characteristics_t *qos_char = &qos_params->qos_characteristics;
         if (in_qos_char->fiveQI_type == dynamic) {
           qos_char->qos_type = dynamic;
           qos_char->dynamic.fiveqi = in_qos_char->fiveQI;
@@ -2057,6 +2058,12 @@ void rrc_gNB_process_e1_bearer_context_setup_resp(e1ap_bearer_setup_resp_t *resp
           qos_char->non_dynamic.fiveqi = in_qos_char->fiveQI;
           qos_char->non_dynamic.qos_priority_level = in_qos_char->qos_priority;
         }
+        
+        asn1cCalloc(qos_params->gbr_qos_flow_info, gbr_info);
+        gbr_info->guar_flow_bit_rate_dl = in_qos_char->gbr_qos_flow_level_qos_params.guar_flow_bit_rate_dl;
+        gbr_info->guar_flow_bit_rate_ul = in_qos_char->gbr_qos_flow_level_qos_params.guar_flow_bit_rate_ul;
+        gbr_info->max_flow_bit_rate_dl = in_qos_char->gbr_qos_flow_level_qos_params.max_flow_bit_rate_dl;
+        gbr_info->max_flow_bit_rate_ul = in_qos_char->gbr_qos_flow_level_qos_params.max_flow_bit_rate_ul;
       }
       /* the DRB QoS parameters: we just reuse the ones from the first flow */
       get_drb_characteristics((qos_flow_to_setup_t *)drb->drb_info.flows_mapped_to_drb,

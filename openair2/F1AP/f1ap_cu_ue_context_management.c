@@ -1292,12 +1292,12 @@ int CU_send_UE_CONTEXT_MODIFICATION_REQUEST(sctp_assoc_t assoc_id, f1ap_ue_conte
 
           /* OPTIONAL */
           /* gBR_QoS_Flow_Information */
-          if (0) {
+          if (drb_qos_in->gbr_qos_flow_info) {
             asn1cCalloc(DRB_Information->dRB_QoS.gBR_QoS_Flow_Information, tmp);
-            asn_long2INTEGER(&tmp->maxFlowBitRateDownlink, 1L);
-            asn_long2INTEGER(&tmp->maxFlowBitRateUplink, 1L);
-            asn_long2INTEGER(&tmp->guaranteedFlowBitRateDownlink, 1L);
-            asn_long2INTEGER(&tmp->guaranteedFlowBitRateUplink, 1L);
+            asn_long2INTEGER(&tmp->maxFlowBitRateDownlink, drb_qos_in->gbr_qos_flow_info->max_flow_bit_rate_dl);
+            asn_long2INTEGER(&tmp->maxFlowBitRateUplink, drb_qos_in->gbr_qos_flow_info->max_flow_bit_rate_ul);
+            asn_long2INTEGER(&tmp->guaranteedFlowBitRateDownlink, drb_qos_in->gbr_qos_flow_info->guar_flow_bit_rate_dl);
+            asn_long2INTEGER(&tmp->guaranteedFlowBitRateUplink, drb_qos_in->gbr_qos_flow_info->guar_flow_bit_rate_ul);
 
             /* OPTIONAL */
             /* maxPacketLossRateDownlink */
@@ -1406,12 +1406,12 @@ int CU_send_UE_CONTEXT_MODIFICATION_REQUEST(sctp_assoc_t assoc_id, f1ap_ue_conte
 
             /* OPTIONAL */
             /* gBR_QoS_Flow_Information */
-            if (0) {
+            if (flow_qos_params_in->gbr_qos_flow_info) {
               asn1cCalloc(flows_mapped_to_drb_item->qoSFlowLevelQoSParameters.gBR_QoS_Flow_Information, tmp);
-              asn_long2INTEGER(&tmp->maxFlowBitRateDownlink, 1L);
-              asn_long2INTEGER(&tmp->maxFlowBitRateUplink, 1L);
-              asn_long2INTEGER(&tmp->guaranteedFlowBitRateDownlink, 1L);
-              asn_long2INTEGER(&tmp->guaranteedFlowBitRateUplink, 1L);
+              asn_long2INTEGER(&tmp->maxFlowBitRateDownlink, flow_qos_params_in->gbr_qos_flow_info->max_flow_bit_rate_dl);
+              asn_long2INTEGER(&tmp->maxFlowBitRateUplink, flow_qos_params_in->gbr_qos_flow_info->max_flow_bit_rate_ul);
+              asn_long2INTEGER(&tmp->guaranteedFlowBitRateDownlink, flow_qos_params_in->gbr_qos_flow_info->guar_flow_bit_rate_dl);
+              asn_long2INTEGER(&tmp->guaranteedFlowBitRateUplink, flow_qos_params_in->gbr_qos_flow_info->guar_flow_bit_rate_ul);
 
               /* OPTIONAL */
               /* maxPacketLossRateDownlink */

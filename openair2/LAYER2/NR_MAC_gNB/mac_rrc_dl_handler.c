@@ -244,33 +244,43 @@ static void set_nssaiConfig(const int drb_len, const f1ap_drb_to_be_setup_t *req
   }
 }
 
-static void set_LCpriority(const f1ap_ue_context_modif_req_t *req, NR_UE_sched_ctrl_t *sched_ctrl)
+static void set_LC_Config(const f1ap_ue_context_modif_req_t *req, NR_UE_sched_ctrl_t *sched_ctrl) 
 {
   AssertFatal(req != NULL, "f1ap_ue_context_modif_req is NULL\n");
   uint8_t drb_count = req->drbs_to_be_setup_length;
   uint8_t srb_count = req->srbs_to_be_setup_length;
-  LOG_I(NR_MAC, "Number of DRBs = %d and SRBs = %d\n", drb_count, srb_count);
 
   /* SRBs*/
   for (int i = 0; i < srb_count; i++) {
     f1ap_srb_to_be_setup_t *srb_p = &req->srbs_to_be_setup[i];
     long srb_id = srb_p->srb_id;
     long lc_id = get_lcid_from_srbid(srb_id);
-    sched_ctrl->dl_lc_ids_priorities[lc_id] = srb_id;
+    sched_ctrl->dl_lc_config[lc_id].priority = srb_id;
+    sched_ctrl->dl_lc_config[lc_id].guaranteed_bitrate = UINT64_MAX;
   }
+
   /* DRBs*/
   for (int i = 0; i < drb_count; i++) {
     f1ap_drb_to_be_setup_t *drb_p = &req->drbs_to_be_setup[i];
+    gbr_qos_flow_information_t *gbr_qos_info_drb = drb_p->drb_info.drb_qos.gbr_qos_flow_info;
+    qos_characteristics_t *qos_char = &drb_p->drb_info.drb_qos.qos_characteristics;
+
     long drb_id = drb_p->drb_id;
     long lc_id = get_lcid_from_drbid(drb_id);
+    sched_ctrl->dl_lc_config[lc_id].lcid = lc_id;
 
-    qos_characteristics_t *qos_char = &drb_p->drb_info.drb_qos.qos_characteristics;
     if (qos_char->qos_type == non_dynamic) {
       long fiveqi = qos_char->non_dynamic.fiveqi;
-      sched_ctrl->dl_lc_ids_priorities[lc_id] = get_flow_priority(fiveqi);
+      sched_ctrl->dl_lc_config[lc_id].priority = params_5QI[get_5QI_id(fiveqi)].priority_level;
     } else {
-      sched_ctrl->dl_lc_ids_priorities[lc_id] = qos_char->dynamic.qos_priority_level;
+      sched_ctrl->dl_lc_config[lc_id].priority = qos_char->dynamic.qos_priority_level;
     }
+
+    if (gbr_qos_info_drb) {
+      sched_ctrl->dl_lc_config[lc_id].guaranteed_bitrate = gbr_qos_info_drb->guar_flow_bit_rate_dl;
+      sched_ctrl->dl_lc_config[lc_id].max_bitrate = gbr_qos_info_drb->max_flow_bit_rate_dl;
+    }
+
   }
 }
 
@@ -335,7 +345,7 @@ void ue_context_setup_request(const f1ap_ue_context_setup_t *req)
   resp.du_to_cu_rrc_information->cellGroupConfig_length = (enc_rval.encoded + 7) >> 3;
 
   /* Fill the QoS config in MAC for each active DRB */
-  set_LCpriority(req, &UE->UE_sched_ctrl);
+  set_LC_Config(req, &UE->UE_sched_ctrl);
 
   /* TODO: need to apply after UE context reconfiguration confirmed? */
   nr_mac_prepare_cellgroup_update(mac, UE, new_CellGroup);
@@ -439,7 +449,7 @@ void ue_context_modification_request(const f1ap_ue_context_modif_req_t *req)
     resp.du_to_cu_rrc_information->cellGroupConfig_length = (enc_rval.encoded + 7) >> 3;
 
     /* Fill the QoS config in MAC for each active DRB */
-    set_LCpriority(req, &UE->UE_sched_ctrl);
+    set_LC_Config(req, &UE->UE_sched_ctrl);
 
     nr_mac_prepare_cellgroup_update(mac, UE, new_CellGroup);
 

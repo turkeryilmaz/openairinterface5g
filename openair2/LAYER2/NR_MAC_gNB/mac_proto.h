@@ -78,6 +78,16 @@ void nr_schedule_ue_spec(module_id_t module_id,
 /* \brief default FR1 DL preprocessor init routine, returns preprocessor to call */
 nr_pp_impl_dl nr_init_fr1_dlsch_preprocessor(int CC_id);
 
+void get_start_stop_allocation(gNB_MAC_INST *mac, NR_UE_info_t *UE, int *rbStart, int *rbStop);
+
+bool allocate_dl_retransmission(module_id_t module_id,
+                                frame_t frame,
+                                sub_frame_t slot,
+                                uint16_t *rballoc_mask,
+                                int *n_rb_sched,
+                                NR_UE_info_t *UE,
+                                int current_harq_pid);
+
 void schedule_nr_sib1(module_id_t module_idP,
                       frame_t frameP,
                       sub_frame_t slotP,

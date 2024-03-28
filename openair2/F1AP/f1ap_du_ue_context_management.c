@@ -931,6 +931,19 @@ int DU_handle_UE_CONTEXT_MODIFICATION_REQUEST(instance_t instance, sctp_assoc_t 
                   dRB_QoS->nGRANallocationRetentionPriority.pre_emptionVulnerability;
               drb_qos->alloc_reten_priority.preemption_capability =
                   dRB_QoS->nGRANallocationRetentionPriority.pre_emptionVulnerability;
+
+              /* gbr qos information */
+              if (dRB_QoS->gBR_QoS_Flow_Information) {
+                asn1cCalloc(drb_qos->gbr_qos_flow_info, tmp);
+                asn_INTEGER2long(&dRB_QoS->gBR_QoS_Flow_Information->guaranteedFlowBitRateDownlink,
+                                 &tmp->guar_flow_bit_rate_dl);
+                asn_INTEGER2long(&dRB_QoS->gBR_QoS_Flow_Information->guaranteedFlowBitRateUplink,
+                                 &tmp->guar_flow_bit_rate_ul);
+                asn_INTEGER2long(&dRB_QoS->gBR_QoS_Flow_Information->maxFlowBitRateDownlink,
+                                 &tmp->max_flow_bit_rate_dl);
+                asn_INTEGER2long(&dRB_QoS->gBR_QoS_Flow_Information->maxFlowBitRateUplink,
+                                 &tmp->max_flow_bit_rate_ul);
+              }
             } // dRB_QoS
 
             // 12.1.2.4 flows_Mapped_To_DRB_List
@@ -980,6 +993,15 @@ int DU_handle_UE_CONTEXT_MODIFICATION_REQUEST(instance_t instance, sctp_assoc_t 
                     Flow_QoS->nGRANallocationRetentionPriority.pre_emptionVulnerability;
                 flow_qos->alloc_reten_priority.preemption_capability =
                     Flow_QoS->nGRANallocationRetentionPriority.pre_emptionVulnerability;
+
+                /* gbr qos information */
+                if (Flow_QoS->gBR_QoS_Flow_Information) {
+                  asn1cCalloc(flow_qos->gbr_qos_flow_info, tmp);
+                  asn_INTEGER2long(&Flow_QoS->gBR_QoS_Flow_Information->guaranteedFlowBitRateDownlink, &tmp->guar_flow_bit_rate_dl);
+                  asn_INTEGER2long(&Flow_QoS->gBR_QoS_Flow_Information->guaranteedFlowBitRateUplink, &tmp->guar_flow_bit_rate_ul); 
+                  asn_INTEGER2long(&Flow_QoS->gBR_QoS_Flow_Information->maxFlowBitRateDownlink, &tmp->max_flow_bit_rate_dl);
+                  asn_INTEGER2long(&Flow_QoS->gBR_QoS_Flow_Information->maxFlowBitRateUplink, &tmp->max_flow_bit_rate_ul);
+                }
               }
             }
 

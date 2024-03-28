@@ -1912,6 +1912,9 @@ static void nr_generate_Msg4(module_id_t module_idP,
     }
 
     ra->state = WAIT_Msg4_ACK;
+    sched_ctrl->dl_lc_config[DL_SCH_LCID_DCCH].priority = DL_SCH_LCID_DCCH;
+    sched_ctrl->dl_lc_config[DL_SCH_LCID_DCCH].guaranteed_bitrate = UINT64_MAX;
+    sched_ctrl->dl_lc_config[DL_SCH_LCID_DCCH].bucket_size = UINT64_MAX;
     LOG_I(NR_MAC,"UE %04x Generate msg4: feedback at %4d.%2d, payload %d bytes, next state WAIT_Msg4_ACK\n", ra->rnti, pucch->frame, pucch->ul_slot, harq->tb_size);
   }
 }

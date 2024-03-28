@@ -448,6 +448,13 @@ static void trigger_bearer_setup(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, int n, pdu
         rent_priority->priority_level = (uint16_t)rent_priority_in->priority_level;
         rent_priority->preemption_capability = (preemption_capability_t)((uint16_t)rent_priority_in->pre_emp_capability);
         rent_priority->preemption_vulnerability = (preemption_vulnerability_t)((uint16_t)rent_priority_in->pre_emp_vulnerability);
+
+        /* todo: should be modified here for gbr info of the qos flow (temporary fix) */
+        if ((qos_char->qos_type == non_dynamic && qos_session->fiveQI < 5) || qos_char->qos_type == dynamic ) {
+          qos_session->gbr_qos_flow_level_qos_params.guar_flow_bit_rate_dl = (long)ueAggMaxBitRateDownlink;
+          asn1cCalloc(qos_flow->qos_params.gbr_qos_flow_info, gbr_ie);
+          gbr_ie->guar_flow_bit_rate_dl = qos_session->gbr_qos_flow_level_qos_params.guar_flow_bit_rate_dl;
+        }
       }
     }
   }

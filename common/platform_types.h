@@ -111,11 +111,14 @@ typedef enum rlc_mode_e { RLC_MODE_NONE = 0, RLC_MODE_AM = 1, RLC_MODE_UM = 2, R
  */
 typedef struct {
   rlc_buffer_occupancy_t bytes_in_buffer; /*!< \brief Bytes buffered in RLC protocol instance. */
+  rlc_buffer_occupancy_t prioritized_bytes_in_buffer;
   rlc_buffer_occupancy_t pdus_in_buffer; /*!< \brief Number of PDUs buffered in RLC protocol instance (OBSOLETE). */
   frame_t head_sdu_creation_time; /*!< \brief Head SDU creation time. */
   sdu_size_t head_sdu_remaining_size_to_send; /*!< \brief remaining size of sdu: could be the total size or the remaining size of
                                                  already segmented sdu */
   bool head_sdu_is_segmented; /*!< \brief 0 if head SDU has not been segmented, 1 if already segmented */
+  uint32_t hol_delay;
+
 } mac_rlc_status_resp_t;
 
 #define SDU_CONFIRM_NO false

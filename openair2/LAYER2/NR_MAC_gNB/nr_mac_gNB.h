@@ -450,6 +450,9 @@ typedef struct NR_sched_pdsch {
   // time_domain_allocation is the index of a list of tda
   int time_domain_allocation;
   NR_tda_info_t tda_info;
+
+  /* lc related info */
+  uint32_t lc_data_thru[32];
 } NR_sched_pdsch_t;
 
 typedef struct NR_UE_harq {
@@ -542,6 +545,16 @@ typedef struct NR_QoS_config_s {
   uint64_t fiveQI;
   uint64_t priority;
 } NR_QoS_config_t;
+
+typedef struct nr_lcconfig_s {
+  uint8_t lcid;
+  long priority;
+  uint64_t max_bitrate;
+  uint64_t guaranteed_bitrate;
+  uint64_t bucket_size;        // Bucket size per lcid
+  uint32_t bucket_size_duration;
+  int64_t Bj;
+} nr_lcconfig_t;
 
 /*! \brief scheduling control information set through an API */
 #define MAX_CSI_REPORTS 48
@@ -642,6 +655,8 @@ typedef struct {
   uint8_t dl_lc_num;
   /// order in which DLSCH scheduler should allocate LCs
   uint8_t dl_lc_ids[NR_MAX_NUM_LCID];
+  
+  nr_lcconfig_t dl_lc_config[NR_MAX_NUM_LCID];
 
   /// Timer for RRC processing procedures
   uint32_t rrc_processing_timer;
@@ -649,9 +664,6 @@ typedef struct {
   /// sri, ul_ri and tpmi based on SRS
   nr_srs_feedback_t srs_feedback;
   nssai_t dl_lc_nssai[NR_MAX_NUM_LCID];
-
-  // priorities of lcids
-  uint8_t dl_lc_ids_priorities[NR_MAX_NUM_LCID];
 } NR_UE_sched_ctrl_t;
 
 typedef struct {
@@ -664,6 +676,7 @@ typedef struct NR_mac_dir_stats {
   uint64_t errors;
   uint64_t total_bytes;
   uint32_t current_bytes;
+  uint32_t current_bytes_lc[32];
   uint64_t total_sdu_bytes;
   uint32_t total_rbs;
   uint32_t total_rbs_retx;
@@ -722,6 +735,7 @@ typedef struct {
   bool Msg4_ACKed;
   float ul_thr_ue;
   float dl_thr_ue;
+  float dl_thr_lc[32];
   long pdsch_HARQ_ACK_Codebook;
 } NR_UE_info_t;
 
