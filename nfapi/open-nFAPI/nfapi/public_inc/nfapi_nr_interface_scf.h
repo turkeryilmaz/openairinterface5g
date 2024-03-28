@@ -684,6 +684,9 @@ typedef struct {
   
 } nfapi_nr_slot_indication_scf_t;
 
+/** VTUESLOT.indication sent from UE as an ACK in the virtual time scenario */
+typedef nfapi_nr_slot_indication_scf_t nfapi_ue_slot_indication_vt_t;
+
 // 3.4.2
 
 //for pdcch_pdu:
@@ -975,6 +978,25 @@ typedef struct
 
 } nfapi_nr_bch_payload_t;
 
+/**
+ * SSB/PBCH Maintenance Parameters added in FAPIv3
+ * @see SCF222_5G-FAPI_PHY_SPI_Specification-JULY-22-1.pdf Table 3-88
+*/
+typedef struct {
+  /// Unique PDU id across all SSB PDUs signaled in this slot
+  uint8_t ssbPduIndex; 
+  /// First symbol mapping for candidate SSB location, per [3GPP TS 38.213 [4], sec 4.1]
+  uint8_t caseType;
+  /// subcarrierSpacing [3GPP TS 38.211 [2], sec 4.2]
+  uint8_t SubcarrierSpacing;
+  /// L max , as defined in 3GPP TS 38.214 [5], section 7.4.1.4.1.
+  uint8_t lMax;
+  /// Baseband power scaling applied to SS-PBCH signal [3GPP TS 38.211 [2], sec 7.4.2.3.1)
+  int16_t ssPbchBlockPowerScaling;
+  /// Ratio of PSS EPRE to SSS EPRE.
+  int16_t betaPSSProfileSSS;
+} nfapi_nr_dl_ssb_pbch_pdu_maintenance_fapiv3_t;
+
 typedef struct {
   /// Physical Cell ID Value 0~>1007
   uint16_t PhysCellId;
@@ -992,6 +1014,8 @@ typedef struct {
   /// A value indicating the channel quality between the gNB and nrUE. Value: 0->255 dBM
   uint8_t  ssbRsrp;
   nfapi_nr_tx_precoding_and_beamforming_t precoding_and_beamforming;
+  /// SSB/PBCH Maintenance Parameters added in FAPIv3
+  nfapi_nr_dl_ssb_pbch_pdu_maintenance_fapiv3_t  ssb_pbch_pdu_maintenance_fapiv3;
 } nfapi_nr_dl_tti_ssb_pdu_rel15_t;
 
 typedef struct {

@@ -1,0 +1,689 @@
+/*
+ * Copyright 2022 Sequans Communications.
+ *
+ * Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The OpenAirInterface Software Alliance licenses this file to You under
+ * the OAI Public License, Version 1.0  (the "License"); you may not use this file
+ * except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.openairinterface.org/?page_id=698
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * For more information about the OpenAirInterface (OAI) Software Alliance:
+ *      contact@openairinterface.org
+ */
+
+#include "msg.sidl"
+
+// SIDL common TTCN types and definitions.
+#include "TtcnCommon.sidl"
+
+// Interface name.
+METADATA_VAR(itf_name, "NrSys");
+
+// Restricted RATs.
+METADATA_VAR(rats, "NR");
+
+// TTCN namespaces.
+METADATA_VAR(namespaces, "NR_ASP_TypeDefs");
+
+struct NR_CellAttenuationConfig_Type {
+	NR_CellId_Type CellId;
+	struct NR_Attenuation_Type Attenuation;
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(NR, TimingInfo_Type, TimingInfo);
+};
+
+SIDL_UNION_ENUM(NR_PdcpCountGetReq_Type) {
+	NR_PdcpCountGetReq_Type_UNBOUND_VALUE,
+	NR_PdcpCountGetReq_Type_AllRBs,
+	NR_PdcpCountGetReq_Type_SingleRB
+};
+SIDL_UNION_BEGIN(NR_PdcpCountGetReq_Type) {
+	SIDL_UNION_CASE(NR_PdcpCountGetReq_Type_AllRBs)
+		Null_Type AllRBs;
+	SIDL_UNION_CASE(NR_PdcpCountGetReq_Type_SingleRB)
+		struct NR_RadioBearerId_Type SingleRB;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_PDCP_CountReq_Type) {
+	NR_PDCP_CountReq_Type_UNBOUND_VALUE,
+	NR_PDCP_CountReq_Type_Get,
+	NR_PDCP_CountReq_Type_Set
+};
+SIDL_UNION_BEGIN(NR_PDCP_CountReq_Type) {
+	SIDL_UNION_CASE(NR_PDCP_CountReq_Type_Get)
+		struct NR_PdcpCountGetReq_Type Get;
+	SIDL_UNION_CASE(NR_PDCP_CountReq_Type_Set)
+		NR_PdcpCountInfoList_Type Set;
+} SIDL_UNION_END;
+
+typedef enum {
+	SDAP_Header_Type_Present,
+	SDAP_Header_Type_Absent
+} SDAP_Header_Type;
+
+typedef SIDL_DYNAMIC(int32_t, QFI_List_Type);
+
+struct SdapConfig_Type {
+	int32_t Pdu_SessionId;
+	SIDL_OPTIONAL(SDAP_Header_Type, Sdap_HeaderDL);
+	SIDL_OPTIONAL(QFI_List_Type, MappedQoS_Flows);
+};
+
+struct SdapTransparentMode_Type {
+	SDAP_Header_Type Sdap_HeaderUL;
+};
+
+SIDL_UNION_ENUM(SdapConfigInfo_Type) {
+	SdapConfigInfo_Type_UNBOUND_VALUE,
+	SdapConfigInfo_Type_SdapConfig,
+	SdapConfigInfo_Type_TransparentMode
+};
+SIDL_UNION_BEGIN(SdapConfigInfo_Type) {
+	SIDL_UNION_CASE(SdapConfigInfo_Type_SdapConfig)
+		struct SdapConfig_Type SdapConfig;
+	SIDL_UNION_CASE(SdapConfigInfo_Type_TransparentMode)
+		struct SdapTransparentMode_Type TransparentMode;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(SDAP_Configuration_Type) {
+	SDAP_Configuration_Type_UNBOUND_VALUE,
+	SDAP_Configuration_Type_None,
+	SDAP_Configuration_Type_Config
+};
+SIDL_UNION_BEGIN(SDAP_Configuration_Type) {
+	SIDL_UNION_CASE(SDAP_Configuration_Type_None)
+		Null_Type None;
+	SIDL_UNION_CASE(SDAP_Configuration_Type_Config)
+		struct SdapConfigInfo_Type Config;
+} SIDL_UNION_END;
+
+typedef enum {
+	NR_PDCP_SNLength12,
+	NR_PDCP_SNLength18
+} NR_PDCP_SN_Size_Type;
+
+SIDL_UNION_ENUM(NR_PDCP_DRB_HeaderCompression_Type) {
+	NR_PDCP_DRB_HeaderCompression_Type_UNBOUND_VALUE,
+	NR_PDCP_DRB_HeaderCompression_Type_None
+};
+SIDL_UNION_BEGIN(NR_PDCP_DRB_HeaderCompression_Type) {
+	SIDL_UNION_CASE(NR_PDCP_DRB_HeaderCompression_Type_None)
+		Null_Type None;
+} SIDL_UNION_END;
+
+struct NR_PDCP_DRB_Config_Parameters_Type {
+	NR_PDCP_SN_Size_Type SN_SizeUL;
+	NR_PDCP_SN_Size_Type SN_SizeDL;
+	struct NR_PDCP_DRB_HeaderCompression_Type HeaderCompression;
+	bool IntegrityProtectionEnabled;
+};
+
+SIDL_UNION_ENUM(NR_PDCP_RB_Config_Parameters_Type) {
+	NR_PDCP_RB_Config_Parameters_Type_UNBOUND_VALUE,
+	NR_PDCP_RB_Config_Parameters_Type_Srb,
+	NR_PDCP_RB_Config_Parameters_Type_Drb
+};
+SIDL_UNION_BEGIN(NR_PDCP_RB_Config_Parameters_Type) {
+	SIDL_UNION_CASE(NR_PDCP_RB_Config_Parameters_Type_Srb)
+		Null_Type Srb;
+	SIDL_UNION_CASE(NR_PDCP_RB_Config_Parameters_Type_Drb)
+		struct NR_PDCP_DRB_Config_Parameters_Type Drb;
+} SIDL_UNION_END;
+
+struct NR_PDCP_Config_Parameters_Type {
+	struct NR_PDCP_RB_Config_Parameters_Type Rb;
+};
+
+struct NR_PDCP_TransparentMode {
+	NR_PDCP_SN_Size_Type SN_Size;
+};
+
+SIDL_UNION_ENUM(NR_PDCP_RbConfig_Type) {
+	NR_PDCP_RbConfig_Type_UNBOUND_VALUE,
+	NR_PDCP_RbConfig_Type_Params,
+	NR_PDCP_RbConfig_Type_TransparentMode
+};
+SIDL_UNION_BEGIN(NR_PDCP_RbConfig_Type) {
+	SIDL_UNION_CASE(NR_PDCP_RbConfig_Type_Params)
+		struct NR_PDCP_Config_Parameters_Type Params;
+	SIDL_UNION_CASE(NR_PDCP_RbConfig_Type_TransparentMode)
+		struct NR_PDCP_TransparentMode TransparentMode;
+} SIDL_UNION_END;
+
+struct NR_PDCP_RBTerminating_Type {
+	SIDL_OPTIONAL_OF_STRUCT(NR_PDCP_RbConfig_Type, RbConfig);
+	SIDL_OPTIONAL_OF_STRUCT(RlcBearerRouting_Type, LinkToOtherCellGroup);
+};
+
+struct NR_PDCP_Proxy_Type {
+	struct RlcBearerRouting_Type LinkToOtherNode;
+};
+
+SIDL_UNION_ENUM(NR_PDCP_Configuration_Type) {
+	NR_PDCP_Configuration_Type_UNBOUND_VALUE,
+	NR_PDCP_Configuration_Type_None,
+	NR_PDCP_Configuration_Type_RBTerminating,
+	NR_PDCP_Configuration_Type_Proxy
+};
+SIDL_UNION_BEGIN(NR_PDCP_Configuration_Type) {
+	SIDL_UNION_CASE(NR_PDCP_Configuration_Type_None)
+		Null_Type None;
+	SIDL_UNION_CASE(NR_PDCP_Configuration_Type_RBTerminating)
+		struct NR_PDCP_RBTerminating_Type RBTerminating;
+	SIDL_UNION_CASE(NR_PDCP_Configuration_Type_Proxy)
+		struct NR_PDCP_Proxy_Type Proxy;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_ASN1_UL_AM_RLC_Type) {
+	NR_ASN1_UL_AM_RLC_Type_UNBOUND_VALUE,
+	NR_ASN1_UL_AM_RLC_Type_R15
+};
+SIDL_UNION_BEGIN(NR_ASN1_UL_AM_RLC_Type) {
+	SIDL_UNION_CASE(NR_ASN1_UL_AM_RLC_Type_R15)
+		struct ASN_NR_NAME(UL_AM_RLC) R15;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_ASN1_DL_AM_RLC_Type) {
+	NR_ASN1_DL_AM_RLC_Type_UNBOUND_VALUE,
+	NR_ASN1_DL_AM_RLC_Type_R15
+};
+SIDL_UNION_BEGIN(NR_ASN1_DL_AM_RLC_Type) {
+	SIDL_UNION_CASE(NR_ASN1_DL_AM_RLC_Type_R15)
+		struct ASN_NR_NAME(DL_AM_RLC) R15;
+} SIDL_UNION_END;
+
+struct NR_SS_RLC_AM_Type {
+	SIDL_OPTIONAL_OF_STRUCT(NR_ASN1_UL_AM_RLC_Type, Tx);
+	SIDL_OPTIONAL_OF_STRUCT(NR_ASN1_DL_AM_RLC_Type, Rx);
+};
+
+SIDL_UNION_ENUM(NR_ASN1_UL_UM_RLC_Type) {
+	NR_ASN1_UL_UM_RLC_Type_UNBOUND_VALUE,
+	NR_ASN1_UL_UM_RLC_Type_R15
+};
+SIDL_UNION_BEGIN(NR_ASN1_UL_UM_RLC_Type) {
+	SIDL_UNION_CASE(NR_ASN1_UL_UM_RLC_Type_R15)
+		struct ASN_NR_NAME(UL_UM_RLC) R15;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_ASN1_DL_UM_RLC_Type) {
+	NR_ASN1_DL_UM_RLC_Type_UNBOUND_VALUE,
+	NR_ASN1_DL_UM_RLC_Type_R15
+};
+SIDL_UNION_BEGIN(NR_ASN1_DL_UM_RLC_Type) {
+	SIDL_UNION_CASE(NR_ASN1_DL_UM_RLC_Type_R15)
+		struct ASN_NR_NAME(DL_UM_RLC) R15;
+} SIDL_UNION_END;
+
+struct NR_SS_RLC_UM_Type {
+	SIDL_OPTIONAL_OF_STRUCT(NR_ASN1_UL_UM_RLC_Type, Tx);
+	SIDL_OPTIONAL_OF_STRUCT(NR_ASN1_DL_UM_RLC_Type, Rx);
+};
+
+typedef Null_Type NR_SS_RLC_TM_Type;
+
+SIDL_UNION_ENUM(NR_RLC_RbConfig_Type) {
+	NR_RLC_RbConfig_Type_UNBOUND_VALUE,
+	NR_RLC_RbConfig_Type_AM,
+	NR_RLC_RbConfig_Type_UM,
+	NR_RLC_RbConfig_Type_TM
+};
+SIDL_UNION_BEGIN(NR_RLC_RbConfig_Type) {
+	SIDL_UNION_CASE(NR_RLC_RbConfig_Type_AM)
+		struct NR_SS_RLC_AM_Type AM;
+	SIDL_UNION_CASE(NR_RLC_RbConfig_Type_UM)
+		struct NR_SS_RLC_UM_Type UM;
+	SIDL_UNION_CASE(NR_RLC_RbConfig_Type_TM)
+		NR_SS_RLC_TM_Type TM;
+} SIDL_UNION_END;
+
+typedef enum {
+	NR_RLC_ACK_Prohibit_Type_Prohibit,
+	NR_RLC_ACK_Prohibit_Type_Continue
+} NR_RLC_ACK_Prohibit_Type;
+
+typedef enum {
+	NR_RLC_NotACK_NextRLC_PDU_Type_Start
+} NR_RLC_NotACK_NextRLC_PDU_Type;
+
+SIDL_UNION_ENUM(NR_RLC_TransparentMode) {
+	NR_RLC_TransparentMode_UNBOUND_VALUE,
+	NR_RLC_TransparentMode_Umd,
+	NR_RLC_TransparentMode_Amd
+};
+SIDL_UNION_BEGIN(NR_RLC_TransparentMode) {
+	SIDL_UNION_CASE(NR_RLC_TransparentMode_Umd)
+		ASN_ENUM(ASN_NR_NAME(SN_FieldLengthUM)) Umd;
+	SIDL_UNION_CASE(NR_RLC_TransparentMode_Amd)
+		ASN_ENUM(ASN_NR_NAME(SN_FieldLengthUM)) Amd;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_RLC_TestModeInfo_Type) {
+	NR_RLC_TestModeInfo_Type_UNBOUND_VALUE,
+	NR_RLC_TestModeInfo_Type_AckProhibit,
+	NR_RLC_TestModeInfo_Type_NotACK_NextRLC_PDU,
+	NR_RLC_TestModeInfo_Type_TransparentMode
+};
+SIDL_UNION_BEGIN(NR_RLC_TestModeInfo_Type) {
+	SIDL_UNION_CASE(NR_RLC_TestModeInfo_Type_AckProhibit)
+		NR_RLC_ACK_Prohibit_Type AckProhibit;
+	SIDL_UNION_CASE(NR_RLC_TestModeInfo_Type_NotACK_NextRLC_PDU)
+		NR_RLC_NotACK_NextRLC_PDU_Type NotACK_NextRLC_PDU;
+	SIDL_UNION_CASE(NR_RLC_TestModeInfo_Type_TransparentMode)
+		struct NR_RLC_TransparentMode /* TTCN defines this type without _Type sfx */ TransparentMode;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_RLC_TestModeConfig_Type) {
+	NR_RLC_TestModeConfig_Type_UNBOUND_VALUE,
+	NR_RLC_TestModeConfig_Type_None,
+	NR_RLC_TestModeConfig_Type_Info
+};
+SIDL_UNION_BEGIN(NR_RLC_TestModeConfig_Type) {
+	SIDL_UNION_CASE(NR_RLC_TestModeConfig_Type_None)
+		Null_Type None;
+	SIDL_UNION_CASE(NR_RLC_TestModeConfig_Type_Info)
+		struct NR_RLC_TestModeInfo_Type Info;
+} SIDL_UNION_END;
+
+struct NR_RLC_Configuration_Type {
+	SIDL_OPTIONAL_OF_STRUCT(NR_RLC_RbConfig_Type, Rb);
+	SIDL_OPTIONAL_OF_STRUCT(NR_RLC_TestModeConfig_Type, TestMode);
+};
+
+typedef ASN_ENUM(ASN_NR_NAME(LogicalChannelConfig, ul_SpecificParameters, prioritisedBitRate)) NR_PrioritizedBitRate_Type;
+
+struct NR_MAC_LogicalChannelConfig_Type {
+	int32_t Priority;
+	NR_PrioritizedBitRate_Type PrioritizedBitRate;
+};
+
+typedef UInt_Type NR_LogicalChannelId_Type;
+
+struct NR_MAC_Test_DLLogChID_Type {
+	NR_LogicalChannelId_Type LogChId;
+	Null_Type ConfigLchId;
+};
+
+typedef enum {
+	NR_MAC_Test_SCH_NoHeaderManipulation_Type_NormalMode,
+	NR_MAC_Test_SCH_NoHeaderManipulation_Type_DL_SCH_Only,
+	NR_MAC_Test_SCH_NoHeaderManipulation_Type_DL_UL_SCH,
+} NR_MAC_Test_SCH_NoHeaderManipulation_Type;
+
+struct NR_MAC_TestModeInfo_Type {
+	struct NR_MAC_Test_DLLogChID_Type DiffLogChId;
+	NR_MAC_Test_SCH_NoHeaderManipulation_Type No_HeaderManipulation;
+};
+
+SIDL_UNION_ENUM(NR_MAC_TestModeConfig_Type) {
+	NR_MAC_TestModeConfig_Type_UNBOUND_VALUE,
+	NR_MAC_TestModeConfig_Type_None,
+	NR_MAC_TestModeConfig_Type_Info
+};
+SIDL_UNION_BEGIN(NR_MAC_TestModeConfig_Type) {
+	SIDL_UNION_CASE(NR_MAC_TestModeConfig_Type_None)
+		Null_Type None;
+	SIDL_UNION_CASE(NR_MAC_TestModeConfig_Type_Info)
+		struct NR_MAC_TestModeInfo_Type Info;
+} SIDL_UNION_END;
+
+struct NR_MAC_Configuration_Type {
+	SIDL_OPTIONAL_OF_STRUCT(NR_MAC_LogicalChannelConfig_Type, LogicalChannel);
+	SIDL_OPTIONAL_OF_STRUCT(NR_MAC_TestModeConfig_Type, TestMode);
+};
+
+struct NR_RlcBearerConfigInfo_Type {
+	SIDL_OPTIONAL_OF_STRUCT(NR_RLC_Configuration_Type, Rlc);
+	SIDL_OPTIONAL(NR_LogicalChannelId_Type, LogicalChannelId);
+	SIDL_OPTIONAL_OF_STRUCT(NR_MAC_Configuration_Type, Mac);
+	SIDL_OPTIONAL_WITH_PFX(NR_RlcBearerConfigInfo_Type, bool, DiscardULData);
+};
+
+SIDL_UNION_ENUM(NR_RlcBearerConfig_Type) {
+	NR_RlcBearerConfig_Type_UNBOUND_VALUE,
+	NR_RlcBearerConfig_Type_Config,
+	NR_RlcBearerConfig_Type_None
+};
+SIDL_UNION_BEGIN(NR_RlcBearerConfig_Type) {
+	SIDL_UNION_CASE(NR_RlcBearerConfig_Type_Config)
+		struct NR_RlcBearerConfigInfo_Type Config;
+	SIDL_UNION_CASE(NR_RlcBearerConfig_Type_None)
+		Null_Type None;
+} SIDL_UNION_END;
+
+struct NR_RadioBearerConfigInfo_Type {
+	SIDL_OPTIONAL_OF_STRUCT(SDAP_Configuration_Type, Sdap);
+	SIDL_OPTIONAL_OF_STRUCT(NR_PDCP_Configuration_Type, Pdcp);
+	SIDL_OPTIONAL_OF_STRUCT(NR_RlcBearerConfig_Type, RlcBearer);
+};
+
+SIDL_UNION_ENUM(NR_RadioBearerConfig_Type) {
+	NR_RadioBearerConfig_Type_UNBOUND_VALUE,
+	NR_RadioBearerConfig_Type_AddOrReconfigure,
+	NR_RadioBearerConfig_Type_Release
+};
+SIDL_UNION_BEGIN(NR_RadioBearerConfig_Type) {
+	SIDL_UNION_CASE(NR_RadioBearerConfig_Type_AddOrReconfigure)
+		struct NR_RadioBearerConfigInfo_Type AddOrReconfigure;
+	SIDL_UNION_CASE(NR_RadioBearerConfig_Type_Release)
+		Null_Type Release;
+} SIDL_UNION_END;
+
+struct NR_RadioBearer_Type {
+	struct NR_RadioBearerId_Type Id;
+	struct NR_RadioBearerConfig_Type Config;
+};
+
+struct NR_PdcpSQN_Type {
+	NR_PdcpCountFormat_Type Format;
+	int32_t Value;
+};
+
+SIDL_UNION_ENUM(NR_PDCP_ActTime_Type) {
+	NR_PDCP_ActTime_Type_UNBOUND_VALUE,
+	NR_PDCP_ActTime_Type_None,
+	NR_PDCP_ActTime_Type_SQN
+};
+SIDL_UNION_BEGIN(NR_PDCP_ActTime_Type) {
+	SIDL_UNION_CASE(NR_PDCP_ActTime_Type_None)
+		Null_Type None;
+	SIDL_UNION_CASE(NR_PDCP_ActTime_Type_SQN)
+		struct NR_PdcpSQN_Type SQN;
+} SIDL_UNION_END;
+
+struct NR_SecurityActTime_Type {
+	struct NR_RadioBearerId_Type RadioBearerId;
+	struct NR_PDCP_ActTime_Type UL;
+	struct NR_PDCP_ActTime_Type DL;
+};
+
+typedef SIDL_DYNAMIC_OF_STRUCT(NR_SecurityActTime_Type, NR_SecurityActTimeList_Type);
+
+struct NR_AS_IntegrityInfo_Type {
+	ASN_ENUM(ASN_NR_NAME(IntegrityProtAlgorithm)) Algorithm;
+	B128_Key_Type KRRCint;
+	SIDL_OPTIONAL(B128_Key_Type, KUPint);
+	SIDL_OPTIONAL(NR_SecurityActTimeList_Type, ActTimeList);
+};
+
+struct NR_AS_CipheringInfo_Type {
+	ASN_ENUM(ASN_NR_NAME(CipheringAlgorithm)) Algorithm;
+	B128_Key_Type KRRCenc;
+	B128_Key_Type KUPenc;
+	NR_SecurityActTimeList_Type ActTimeList;
+};
+
+struct NR_AS_SecStartRestart_Type {
+	SIDL_OPTIONAL_OF_STRUCT(NR_AS_IntegrityInfo_Type, Integrity);
+	SIDL_OPTIONAL_OF_STRUCT(NR_AS_CipheringInfo_Type, Ciphering);
+};
+
+SIDL_UNION_ENUM(NR_AS_Security_Type) {
+	NR_AS_Security_Type_UNBOUND_VALUE,
+	NR_AS_Security_Type_StartRestart,
+	NR_AS_Security_Type_Release
+};
+SIDL_UNION_BEGIN(NR_AS_Security_Type) {
+	SIDL_UNION_CASE(NR_AS_Security_Type_StartRestart)
+		struct NR_AS_SecStartRestart_Type StartRestart;
+	SIDL_UNION_CASE(NR_AS_Security_Type_Release)
+		Null_Type Release;
+} SIDL_UNION_END;
+
+typedef SIDL_DYNAMIC(int32_t, NR_SlotOffsetList_Type);
+
+struct NR_PagingTrigger_Type {
+	struct ASN_NR_NAME(PCCH_Message) Paging;
+	SIDL_OPTIONAL_WITH_PFX(NR_PagingTrigger_Type, NR_SlotOffsetList_Type, SlotOffsetList);
+};
+
+typedef SIDL_DYNAMIC_OF_STRUCT(NR_CellAttenuationConfig_Type, NR_CellAttenuationList_Type);
+typedef SIDL_DYNAMIC_OF_STRUCT(NR_RadioBearer_Type, NR_RadioBearerList_Type);
+
+struct Band_SsbInfo_Type {
+	ASN_NR_NAME(FreqBandIndicatorNR) DeltaBand;
+	SIDL_OPTIONAL_OF_STRUCT(NR_ASN1_ARFCN_ValueNR_Type, Ssb_NRf1);
+	SIDL_OPTIONAL_OF_STRUCT(NR_ASN1_ARFCN_ValueNR_Type, Ssb_NRf2);
+	SIDL_OPTIONAL_OF_STRUCT(NR_ASN1_ARFCN_ValueNR_Type, Ssb_NRf3);
+	SIDL_OPTIONAL_OF_STRUCT(NR_ASN1_ARFCN_ValueNR_Type, Ssb_NRf4);
+};
+
+struct NR_Band_SsbForDelta_Type {
+	struct Band_SsbInfo_Type DeltaPrimary;
+	struct Band_SsbInfo_Type DeltaSecondary;
+};
+
+struct NR_PDCCH_Order_Type {
+	B6_Type RA_PreambleIndex;
+	struct NR_DciCommon_UL_SUL_Indicator_Type UL_SUL_Indicator;
+	B6_Type SSB_Index;
+	B4_Type PrachMaskIndex;
+};
+
+struct NR_DciWithShortMessageOnly_Type {
+	B2_Type ShortMessageIndicator;
+	B8_Type ShortMessages;
+	SIDL_OPTIONAL_WITH_PFX(NR_DciWithShortMessageOnly_Type, NR_SlotOffsetList_Type, SlotOffsetList);
+};
+
+typedef SIDL_DYNAMIC(BIT_STRING, NR_DciFormat_2_0_SfiList_Type);
+
+struct NR_DciFormat_2_0_Type {
+	NR_DciFormat_2_0_SfiList_Type SfiList;
+};
+
+typedef SIDL_DYNAMIC(B14_Type, NR_DciFormat_2_1_IntValueList_Type); // (1..9)
+
+struct NR_DciFormat_2_1_Type {
+	NR_DciFormat_2_1_IntValueList_Type IntValueList;
+};
+
+struct NR_DciFormat_2_2_ClosedLoopIndicator_Type {
+	Null_Type None;
+	B1_Type Index;
+};
+
+SIDL_UNION_ENUM(NR_DciFormat_2_2_TpcBlock_Type) {
+	NR_DciFormat_2_2_TpcBlock_Type_UNBOUND_VALUE,
+	NR_DciFormat_2_2_TpcBlock_Type_ClosedLoopIndicator,
+	NR_DciFormat_2_2_TpcBlock_Type_TpcCommand
+};
+SIDL_UNION_BEGIN(NR_DciFormat_2_2_TpcBlock_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_2_2_TpcBlock_Type_ClosedLoopIndicator)
+		struct NR_DciFormat_2_2_ClosedLoopIndicator_Type ClosedLoopIndicator;
+	SIDL_UNION_CASE(NR_DciFormat_2_2_TpcBlock_Type_TpcCommand)
+		struct NR_DciCommon_TpcCommand_Type TpcCommand;
+} SIDL_UNION_END;
+
+typedef SIDL_DYNAMIC_OF_STRUCT(NR_DciFormat_2_2_TpcBlock_Type, NR_DciFormat_2_2_TpcBlockList_Type);
+
+struct NR_DciFormat_2_2_Type {
+	NR_DciFormat_2_2_TpcBlockList_Type TpcBlockList;
+};
+
+struct NR_DciFormat_2_3_SrsRequest_Type {
+	Null_Type None;
+	B2_Type SrsRequestValue;
+};
+
+typedef SIDL_DYNAMIC_OF_STRUCT(NR_DciCommon_TpcCommand_Type, NR_DciCommon_TpcCommandList_Type);
+
+struct NR_DciFormat_2_3_TypeA_Type {
+	struct NR_DciFormat_2_3_SrsRequest_Type SrsRequest;
+	NR_DciCommon_TpcCommandList_Type TpcCommandList;
+};
+
+struct NR_DciFormat_2_3_SingleBlockTypeB_Type {
+	struct NR_DciFormat_2_3_SrsRequest_Type SrsRequest;
+	struct NR_DciCommon_TpcCommand_Type TpcCommand;
+};
+
+typedef SIDL_DYNAMIC_OF_STRUCT(NR_DciFormat_2_3_SingleBlockTypeB_Type, NR_DciFormat_2_3_TypeB_Type);
+
+SIDL_UNION_ENUM(NR_DciFormat_2_3_TypeA_B_Type) {
+	NR_DciFormat_2_3_TypeA_B_Type_UNBOUND_VALUE,
+	NR_DciFormat_2_3_TypeA_B_Type_TypeA,
+	NR_DciFormat_2_3_TypeA_B_Type_TypeB
+};
+SIDL_UNION_BEGIN(NR_DciFormat_2_3_TypeA_B_Type) {
+	SIDL_UNION_CASE(NR_DciFormat_2_3_TypeA_B_Type_TypeA)
+		struct NR_DciFormat_2_3_TypeA_Type TypeA;
+	SIDL_UNION_CASE(NR_DciFormat_2_3_TypeA_B_Type_TypeB)
+		NR_DciFormat_2_3_TypeB_Type TypeB;
+} SIDL_UNION_END;
+
+struct NR_DciFormat_2_3_Type {
+	struct NR_DciFormat_2_3_TypeA_B_Type TypeA_B;
+};
+
+struct NR_DciFormat_2_6_Block_Type {
+	B1_Type WakeupIndication;
+	struct NR_DciFormat_X_1_SCellDormancyIndication_Type SCellDormacyIndication;
+};
+
+typedef SIDL_DYNAMIC_OF_STRUCT(NR_DciFormat_2_6_Block_Type, NR_DciFormat_2_6_Block_List_Type);
+
+struct NR_DciFormat_2_6_Type {
+	NR_DciFormat_2_6_Block_List_Type BlockList;
+};
+
+SIDL_UNION_ENUM(NR_DCI_TriggerFormat_Type) {
+	NR_DCI_TriggerFormat_Type_UNBOUND_VALUE,
+	NR_DCI_TriggerFormat_Type_PdcchOrder,
+	NR_DCI_TriggerFormat_Type_ShortMessage,
+	NR_DCI_TriggerFormat_Type_DciFormat_2_0,
+	NR_DCI_TriggerFormat_Type_DciFormat_2_1,
+	NR_DCI_TriggerFormat_Type_DciFormat_2_2,
+	NR_DCI_TriggerFormat_Type_DciFormat_2_3,
+	NR_DCI_TriggerFormat_Type_DciFormat_2_6
+};
+SIDL_UNION_BEGIN(NR_DCI_TriggerFormat_Type) {
+	SIDL_UNION_CASE(NR_DCI_TriggerFormat_Type_PdcchOrder)
+		struct NR_PDCCH_Order_Type PdcchOrder;
+	SIDL_UNION_CASE(NR_DCI_TriggerFormat_Type_ShortMessage)
+		struct NR_DciWithShortMessageOnly_Type ShortMessage;
+	SIDL_UNION_CASE(NR_DCI_TriggerFormat_Type_DciFormat_2_0)
+		struct NR_DciFormat_2_0_Type DciFormat_2_0;
+	SIDL_UNION_CASE(NR_DCI_TriggerFormat_Type_DciFormat_2_1)
+		struct NR_DciFormat_2_1_Type DciFormat_2_1;
+	SIDL_UNION_CASE(NR_DCI_TriggerFormat_Type_DciFormat_2_2)
+		struct NR_DciFormat_2_2_Type DciFormat_2_2;
+	SIDL_UNION_CASE(NR_DCI_TriggerFormat_Type_DciFormat_2_3)
+		struct NR_DciFormat_2_3_Type DciFormat_2_3;
+	SIDL_UNION_CASE(NR_DCI_TriggerFormat_Type_DciFormat_2_6)
+		struct NR_DciFormat_2_6_Type DciFormat_2_6;
+} SIDL_UNION_END;
+
+struct NR_DCI_Trigger_Type {
+	struct NR_AssignedBWPs_Type AssignedBWPs;
+	NR_SearchSpaceType_Type SearchSpaceType;
+	struct NR_DCI_TriggerFormat_Type DciFormat;
+};
+
+SIDL_UNION_ENUM(NR_SystemRequest_Type) {
+	NR_SystemRequest_Type_UNBOUND_VALUE,
+	NR_SystemRequest_Type_Cell,
+	NR_SystemRequest_Type_CellAttenuationList,
+	NR_SystemRequest_Type_RadioBearerList,
+	NR_SystemRequest_Type_EnquireTiming,
+	NR_SystemRequest_Type_AS_Security,
+	// NR_SystemRequest_Type_SystemIndCtrl,
+	NR_SystemRequest_Type_PdcpCount = 7,
+	NR_SystemRequest_Type_DciTrigger,
+	NR_SystemRequest_Type_Paging,
+	// NR_SystemRequest_Type_MacCommandTrigger,
+	// NR_SystemRequest_Type_L1_TestMode,
+	// NR_SystemRequest_Type_PdcpHandoverControl,
+	NR_SystemRequest_Type_DeltaValues = 13,
+	// NR_SystemRequest_Type_SpsCg
+};
+SIDL_UNION_BEGIN(NR_SystemRequest_Type) {
+	SIDL_UNION_CASE(NR_SystemRequest_Type_Cell)
+		struct NR_CellConfigRequest_Type Cell;
+	SIDL_UNION_CASE(NR_SystemRequest_Type_CellAttenuationList)
+		NR_CellAttenuationList_Type CellAttenuationList;
+	SIDL_UNION_CASE(NR_SystemRequest_Type_RadioBearerList)
+		NR_RadioBearerList_Type RadioBearerList;
+	SIDL_UNION_CASE(NR_SystemRequest_Type_EnquireTiming)
+		Null_Type EnquireTiming;
+	SIDL_UNION_CASE(NR_SystemRequest_Type_AS_Security)
+		struct NR_AS_Security_Type AS_Security;
+	// SIDL_UNION_CASE(NR_SystemRequest_Type_SystemIndCtrl)
+	SIDL_UNION_CASE(NR_SystemRequest_Type_PdcpCount)
+		struct NR_PDCP_CountReq_Type PdcpCount;
+	SIDL_UNION_CASE(NR_SystemRequest_Type_DciTrigger)
+		struct NR_DCI_Trigger_Type DciTrigger;
+	SIDL_UNION_CASE(NR_SystemRequest_Type_Paging)
+		struct NR_PagingTrigger_Type Paging;
+	// SIDL_UNION_CASE(NR_SystemRequest_Type_MacCommandTrigger)
+	// SIDL_UNION_CASE(NR_SystemRequest_Type_L1_TestMode)
+	// SIDL_UNION_CASE(NR_SystemRequest_Type_PdcpHandoverControl)
+	SIDL_UNION_CASE(NR_SystemRequest_Type_DeltaValues)
+		struct NR_Band_SsbForDelta_Type DeltaValues;
+	// SIDL_UNION_CASE(NR_SystemRequest_Type_SpsCg)
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_SystemConfirm_Type) {
+	NR_SystemConfirm_Type_UNBOUND_VALUE,
+	NR_SystemConfirm_Type_Cell,
+	NR_SystemConfirm_Type_CellAttenuationList,
+	NR_SystemConfirm_Type_RadioBearerList,
+	NR_SystemConfirm_Type_EnquireTiming,
+	NR_SystemConfirm_Type_AS_Security,
+	NR_SystemConfirm_Type_SystemIndCtrl,
+	NR_SystemConfirm_Type_PdcpCount,
+	NR_SystemConfirm_Type_DciTrigger,
+	NR_SystemConfirm_Type_MacCommandTrigger,
+	NR_SystemConfirm_Type_L1_TestMode,
+	NR_SystemConfirm_Type_PdcpHandoverControl,
+	NR_SystemConfirm_Type_DeltaValues,
+	NR_SystemConfirm_Type_SpsCg
+};
+SIDL_UNION_BEGIN(NR_SystemConfirm_Type) {
+	SIDL_UNION_CASE(NR_SystemConfirm_Type_Cell)
+		Null_Type Cell;
+	SIDL_UNION_CASE(NR_SystemConfirm_Type_CellAttenuationList)
+		Null_Type CellAttenuationList;
+	SIDL_UNION_CASE(NR_SystemConfirm_Type_RadioBearerList)
+		Null_Type RadioBearerList;
+	SIDL_UNION_CASE(NR_SystemConfirm_Type_EnquireTiming)
+		Null_Type EnquireTiming;
+	SIDL_UNION_CASE(NR_SystemConfirm_Type_AS_Security)
+		Null_Type AS_Security;
+	SIDL_UNION_CASE(NR_SystemConfirm_Type_SystemIndCtrl)
+		Null_Type SystemIndCtrl;
+	SIDL_UNION_CASE(NR_SystemConfirm_Type_PdcpCount)
+		struct NR_PDCP_CountCnf_Type PdcpCount;
+	SIDL_UNION_CASE(NR_SystemConfirm_Type_DciTrigger)
+		Null_Type DciTrigger;
+	SIDL_UNION_CASE(NR_SystemConfirm_Type_MacCommandTrigger)
+		Null_Type MacCommandTrigger;
+	SIDL_UNION_CASE(NR_SystemConfirm_Type_L1_TestMode)
+		Null_Type L1_TestMode;
+	SIDL_UNION_CASE(NR_SystemConfirm_Type_PdcpHandoverControl)
+		Null_Type PdcpHandoverControl;
+	SIDL_UNION_CASE(NR_SystemConfirm_Type_DeltaValues)
+		struct UE_NR_DeltaValues_Type DeltaValues;
+	SIDL_UNION_CASE(NR_SystemConfirm_Type_SpsCg)
+		Null_Type SpsCg;
+} SIDL_UNION_END;
+
+struct NR_SYSTEM_CTRL_REQ {
+	struct NR_ReqAspCommonPart_Type Common;
+	struct NR_SystemRequest_Type Request;
+};
+
+struct NR_SYSTEM_CTRL_CNF {
+	struct NR_CnfAspCommonPart_Type Common;
+	struct NR_SystemConfirm_Type Confirm;
+};
+
+COMMAND Process(const struct NR_SYSTEM_CTRL_REQ* FromSS, struct NR_SYSTEM_CTRL_CNF* ToSS);

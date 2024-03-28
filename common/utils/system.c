@@ -228,7 +228,12 @@ int rt_sleep_ns (uint64_t x)
 void threadCreate(pthread_t* t, void * (*func)(void*), void * param, char* name, int affinity, int priority){
   pthread_attr_t attr;
   int ret;
+ //To not impact HW TTCN setup with USRP, best is to keep OAI thread configuration with RT
+ #ifndef OAI_USRP
+  int settingPriority = 0;
+ #else
   int settingPriority = 1;
+#endif
   ret=pthread_attr_init(&attr);
   AssertFatal(ret == 0, "Error in pthread_attr_init(): ret: %d, errno: %d\n", ret, errno);
 

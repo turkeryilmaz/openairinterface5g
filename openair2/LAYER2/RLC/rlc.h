@@ -192,6 +192,31 @@ tbs_size_t            mac_rlc_data_req     (const module_id_t, const rnti_t, con
     ,const uint32_t destinationL2Id
                                            );
 
+/*! \fn rlc_op_status_t enqueue_mac_rlc_data_req     (const protocol_ctxt_t* const ctxtP, const  srb_flag_t srb_flagP,  const  MBMS_flag_t MBMS_flagP, const  rb_id_t rb_idP, mui_t muiP, confirm_t confirmP, sdu_size_t sdu_sizeP, mem_block_t *sduP)
+* \brief    Interface with higher layers, map request to the RLC corresponding to the radio bearer.
+* \param[in]  ctxtP            Running context.
+* \param[in]  srb_flagP        Flag to indicate SRB (1) or DRB (0)
+* \param[in]  MBMS_flagP       Flag to indicate whether this is the MBMS service (1) or not (0)
+* \param[in]  rb_idP           Radio bearer identifier.
+* \param[in]  muiP             Message Unit identifier.
+* \param[in]  confirmP         Boolean, is confirmation requested.
+* \param[in]  sdu_sizeP        Size of SDU in bytes.
+* \param[in]  sduP             SDU.
+* \return     A status about the processing, OK or error code.
+*/
+rlc_op_status_t enqueue_mac_rlc_data_req     (
+  const protocol_ctxt_t *const,
+  const  srb_flag_t,
+  const  MBMS_flag_t,
+  const  rb_id_t,
+  const  mui_t,
+  const confirm_t,
+  const sdu_size_t,
+  uint8_t*,
+  const uint32_t *const,
+  const uint32_t *const
+);
+
 /*! \fn void mac_rlc_data_ind     (const module_id_t mod_idP, const rnti_t rntiP, const frame_t frameP, const  eNB_flag_t eNB_flagP, const  MBMS_flag_t MBMS_flagP, logical_chan_id_t rb_idP, uint32_t frameP, char* bufferP, tb_size_t tb_sizeP, num_tb_t num_tbP, crc_t *crcs)
 * \brief    Interface with MAC layer, deserialize the transport blocks sent by MAC, then map data indication to the RLC instance corresponding to the radio bearer identifier.
 * \param[in]  mod_idP          Virtualized module identifier.

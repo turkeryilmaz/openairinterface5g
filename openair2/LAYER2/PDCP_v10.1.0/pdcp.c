@@ -54,6 +54,7 @@
 #include "intertask_interface.h"
 #include "openair3/S1AP/s1ap_eNB.h"
 #include <pthread.h>
+#include "LTE_DL-DCCH-Message.h"
 #include "pdcp.h"
 
 #include "openair3/ocp-gtpu/gtp_itf.h"
@@ -79,7 +80,8 @@ hash_table_t  *pdcp_coll_p = NULL;
 
   static int mbms_socket = -1;
 #endif
-
+extern NRBearerTypeE lchannelType;
+extern BCCHTransportType_e  bcchTransportType;
 uint32_t Pdcp_stats_tx_window_ms[MAX_eNB][MAX_MOBILES_PER_ENB];
 uint32_t Pdcp_stats_tx_bytes[MAX_eNB][MAX_MOBILES_PER_ENB][NB_RB_MAX];
 uint32_t Pdcp_stats_tx_bytes_w[MAX_eNB][MAX_MOBILES_PER_ENB][NB_RB_MAX];
@@ -187,7 +189,7 @@ void *pdcp_stats_thread(void *param) {
                    pdcp_enb[0].rnti[UE_id],drb_id,
                    Pdcp_stats_tx_bytes[0][UE_id][drb_id],
                    (double)((Pdcp_stats_tx_bytes[0][UE_id][drb_id]-old_byte_cnt[UE_id][drb_id])<<3));
-           fprintf(fd,"                              rx_bytes %d, UL Throughput %e\n",             
+           fprintf(fd,"                              rx_bytes %d, UL Throughput %e\n",
                    Pdcp_stats_rx_bytes[0][UE_id][drb_id],
                    (double)((Pdcp_stats_rx_bytes[0][UE_id][drb_id]-old_byte_cnt_rx[UE_id][drb_id])<<3));
            old_byte_cnt[UE_id][drb_id]=Pdcp_stats_tx_bytes[0][UE_id][drb_id];
@@ -238,11 +240,34 @@ bool pdcp_data_req(protocol_ctxt_t  *ctxt_pP,
   uint16_t           pdcp_uid=0;
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PDCP_DATA_REQ,VCD_FUNCTION_IN);
   CHECK_CTXT_ARGS(ctxt_pP);
+  pdcp_info_t pdcp_pkt;
 #if T_TRACER
 
   if (ctxt_pP->enb_flag != ENB_FLAG_NO)
     T(T_ENB_PDCP_DL, T_INT(ctxt_pP->module_id), T_INT(ctxt_pP->rntiMaybeUEid), T_INT(rb_idP), T_INT(sdu_buffer_sizeP));
 
+  // TRACE DL PDCP PDUs (Control/Data) here
+#if 0
+  nr_pdcp_pkt_info_t pdcp_pkt;
+  pdcp_pkt.direction = DOWNLINK_DIRECTION;
+  pdcp_pkt.ueid = 0;
+  pdcp_pkt.bearerType = rb_idP; //FIXME
+  pdcp_pkt.bearerId = rb_idP;
+
+  pdcp_pkt.plane = (srb_flagP) ? 1: 2;
+  pdcp_pkt.seqnum_length = ;
+  pdcp_pkt.maci_present;
+  pdcp_pkt.ciphering_disabled;
+  pdcp_pkt.sdap_header;
+
+  pdcp_pkt.rohc;
+
+  pdcp_pkt.is_retx;
+
+  pdcp_pkt.pdu_length;
+
+  LOG_PDCP_P();
+#endif
 #endif
 
   if (sdu_buffer_sizeP == 0) {
@@ -298,6 +323,23 @@ bool pdcp_data_req(protocol_ctxt_t  *ctxt_pP,
            LOG_UI(PDCP, "Before rlc_data_req 1, srb_flagP: %d, rb_idP: %ld \n", srb_flagP, rb_idP);
       }
 
+      /*PDCP Tracepoint marker : DL TM Mode PDU */
+      pdcp_pkt.direction = 1; /* Assuming DL is 1 */
+      pdcp_pkt.ueid = pdcp_enb[ctxt_pP->module_id].rnti[pdcp_uid];
+      pdcp_pkt.channelType = lchannelType;
+      pdcp_pkt.channelId = rb_idP - 1;
+      pdcp_pkt.BCCHTransport = bcchTransportType;
+      pdcp_pkt.no_header_pdu= false;
+      pdcp_pkt.plane= CONTROL_PLANE_E;
+      pdcp_pkt.seqnum_length =0 ;
+      pdcp_pkt.is_retx = 0;
+      pdcp_pkt.pdu_length =sdu_buffer_sizeP;
+      if (pdcp_pkt.channelType != Bearer_UNDEFINED_e && pdcp_pkt.BCCHTransport != UNDEFINED_TRANSPORT)
+        LOG_LTE_PDCP_PDU(OAILOG_INFO, "DL_LTE_PDCP_PDU", -1, -1, (pdcp_pkt), (unsigned char *)sdu_buffer_pP, sdu_buffer_sizeP);
+
+      lchannelType = Bearer_UNDEFINED_e;
+      bcchTransportType = UNDEFINED_TRANSPORT;
+      memset(&pdcp_pkt, 0, sizeof (pdcp_pkt));
       rlc_status = pdcp_params.send_rlc_data_req_func(ctxt_pP, srb_flagP, MBMS_FLAG_YES, rb_idP, muiP,
                    confirmP, sdu_buffer_sizeP, pdcp_pdu_p,NULL,NULL);
     } else {
@@ -407,7 +449,25 @@ bool pdcp_data_req(protocol_ctxt_t  *ctxt_pP,
       if ((pdcp_p->security_activated != 0) &&
           (((pdcp_p->cipheringAlgorithm) != 0) ||
            ((pdcp_p->integrityProtAlgorithm) != 0))) {
+
+        uint8_t ciphyeringAlgorithm = pdcp_p->cipheringAlgorithm;
         if (ctxt_pP->enb_flag == ENB_FLAG_YES) {
+          if (RC.ss.mode >= SS_SOFTMODEM) {
+            if(srb_flagP && rb_idP==1){
+              LTE_DL_DCCH_Message_t *dl_dcch_msg = NULL;
+              uper_decode(NULL,   &asn_DEF_LTE_DL_DCCH_Message,
+                  (void **)&dl_dcch_msg,
+                  (const void *)sdu_buffer_pP,
+                  sdu_buffer_sizeP, 0, 0);
+              if(dl_dcch_msg){
+                if(dl_dcch_msg->message.choice.c1.present == LTE_DL_DCCH_MessageType__c1_PR_securityModeCommand){
+                  pdcp_p->cipheringAlgorithm = 0;
+                  pdcp_p->security_confirmed= 0;
+                }
+                ASN_STRUCT_FREE(asn_DEF_LTE_DL_DCCH_Message,dl_dcch_msg);
+              }
+            }
+          }
           start_meas(&eNB_pdcp_stats[ctxt_pP->module_id].apply_security);
         } else {
           start_meas(&UE_pdcp_stats[ctxt_pP->module_id].apply_security);
@@ -422,7 +482,8 @@ bool pdcp_data_req(protocol_ctxt_t  *ctxt_pP,
                             pdcp_pdu_p,
                             sdu_buffer_sizeP);
 
-        if (ctxt_pP->enb_flag == ENB_FLAG_NO) {
+        if (ctxt_pP->enb_flag == ENB_FLAG_YES) {
+          pdcp_p->cipheringAlgorithm = ciphyeringAlgorithm;
           stop_meas(&eNB_pdcp_stats[ctxt_pP->module_id].apply_security);
         } else {
           stop_meas(&UE_pdcp_stats[ctxt_pP->module_id].apply_security);
@@ -467,6 +528,24 @@ bool pdcp_data_req(protocol_ctxt_t  *ctxt_pP,
     if ((pdcp_pdu_p!=NULL) && (srb_flagP == 0) && (ctxt_pP->enb_flag == 1)) {
       LOG_D(PDCP, "pdcp data req on drb %ld, size %d, rnti %lx\n", rb_idP, pdcp_pdu_size, ctxt_pP->rntiMaybeUEid);
 
+      /* PDCP Tracepoint marker: DL DRB PDU  */
+      pdcp_pkt.direction = 1; /* Assuming DL is 1 */
+      pdcp_pkt.ueid = pdcp_enb[ctxt_pP->module_id].rnti[pdcp_uid];
+      pdcp_pkt.channelType = lchannelType;
+      pdcp_pkt.channelId = rb_idP - 1;
+      pdcp_pkt.BCCHTransport = bcchTransportType;
+      pdcp_pkt.no_header_pdu= true;
+      pdcp_pkt.plane= DATA_PLANE_E;
+      pdcp_pkt.seqnum_length = pdcp_p->seq_num_size;
+      pdcp_pkt.is_retx = false;
+      pdcp_pkt.pdu_length = pdcp_pdu_size;
+      if (pdcp_pkt.channelType != Bearer_UNDEFINED_e && pdcp_pkt.BCCHTransport != NR_PLANE_UNDEFINED_E)
+        LOG_LTE_PDCP_PDU(OAILOG_INFO, "DL_LTE_PDCP_PDU", -1, -1, (pdcp_pkt), (unsigned char *)sdu_buffer_pP, sdu_buffer_sizeP);
+
+      lchannelType = Bearer_UNDEFINED_e;
+      bcchTransportType = UNDEFINED_TRANSPORT;
+
+      memset(&pdcp_pkt, 0, sizeof (pdcp_pkt));
       rlc_status = pdcp_params.send_rlc_data_req_func(ctxt_pP, srb_flagP, MBMS_FLAG_NO, rb_idP, muiP,
                    confirmP, pdcp_pdu_size, pdcp_pdu_p,sourceL2Id,
                    destinationL2Id);
@@ -494,46 +573,63 @@ bool pdcp_data_req(protocol_ctxt_t  *ctxt_pP,
           break;
       } // switch case
     } else { // SRB
-      rlc_status = rlc_data_req(ctxt_pP
-                                , srb_flagP
-                                , MBMS_FLAG_NO
-                                , rb_idP
-                                , muiP
-                                , confirmP
-                                , pdcp_pdu_size
-                                , pdcp_pdu_p
-                                ,NULL
-                                ,NULL
-                               );
+        /*PDCP Tracepoint marker: DL SRB PDU   */
+        pdcp_pkt.direction = 1; /* Assuming DL is 1 */
+        pdcp_pkt.ueid = pdcp_enb[ctxt_pP->module_id].rnti[pdcp_uid];
+        pdcp_pkt.channelType = lchannelType;
+        pdcp_pkt.BCCHTransport = bcchTransportType;
+        pdcp_pkt.no_header_pdu= false;
+        pdcp_pkt.plane= CONTROL_PLANE_E;
+        pdcp_pkt.seqnum_length = pdcp_p->seq_num_size;
+        pdcp_pkt.is_retx = false;
+        pdcp_pkt.pdu_length = pdcp_pdu_size;
+        if (pdcp_pkt.channelType != Bearer_UNDEFINED_e && pdcp_pkt.BCCHTransport != UNDEFINED_TRANSPORT)
+          LOG_LTE_PDCP_PDU(OAILOG_INFO, "DL_LTE_PDCP_PDU", -1, -1, (pdcp_pkt), (unsigned char *)sdu_buffer_pP, sdu_buffer_sizeP);
 
-      switch (rlc_status) {
-        case RLC_OP_STATUS_OK:
-          LOG_D(PDCP, "Data sending request over RLC succeeded!\n");
-          ret=true;
-          break;
 
-        case RLC_OP_STATUS_BAD_PARAMETER:
-          LOG_W(PDCP, "Data sending request over RLC failed with 'Bad Parameter' reason!\n");
-          ret= false;
-          break;
+        lchannelType = Bearer_UNDEFINED_e;
+        bcchTransportType = NR_PLANE_UNDEFINED_E;
+        memset(&pdcp_pkt, 0, sizeof (pdcp_pkt));
+        rlc_status = rlc_data_req(ctxt_pP
+                                  , srb_flagP
+                                  , MBMS_FLAG_NO
+                                  , rb_idP
+                                  , muiP
+                                  , confirmP
+                                  , pdcp_pdu_size
+                                  , pdcp_pdu_p
+                                  ,NULL
+                                  ,NULL
+                                 );
 
-        case RLC_OP_STATUS_INTERNAL_ERROR:
-          LOG_W(PDCP, "Data sending request over RLC failed with 'Internal Error' reason!\n");
-          ret= false;
-          break;
+        switch (rlc_status) {
+          case RLC_OP_STATUS_OK:
+            LOG_D(PDCP, "Data sending request over RLC succeeded!\n");
+            ret=true;
+            break;
 
-        case RLC_OP_STATUS_OUT_OF_RESSOURCES:
-          LOG_W(PDCP, "Data sending request over RLC failed with 'Out of Resources' reason!\n");
-          ret= false;
-          break;
+          case RLC_OP_STATUS_BAD_PARAMETER:
+            LOG_W(PDCP, "Data sending request over RLC failed with 'Bad Parameter' reason!\n");
+            ret= false;
+            break;
 
-        default:
-          LOG_W(PDCP, "RLC returned an unknown status code after PDCP placed the order to send some data (Status Code:%d)\n", rlc_status);
-          ret= false;
-          break;
-      } // switch case
+          case RLC_OP_STATUS_INTERNAL_ERROR:
+            LOG_W(PDCP, "Data sending request over RLC failed with 'Internal Error' reason!\n");
+            ret= false;
+            break;
+
+          case RLC_OP_STATUS_OUT_OF_RESSOURCES:
+            LOG_W(PDCP, "Data sending request over RLC failed with 'Out of Resources' reason!\n");
+            ret= false;
+            break;
+
+          default:
+            LOG_W(PDCP, "RLC returned an unknown status code after PDCP placed the order to send some data (Status Code:%d)\n", rlc_status);
+            ret= false;
+            break;
+        } // switch case
+      }
     }
-  }
 
   if (ctxt_pP->enb_flag == ENB_FLAG_YES) {
     stop_meas(&eNB_pdcp_stats[ctxt_pP->module_id].data_req);
@@ -600,6 +696,9 @@ bool pdcp_data_ind(const protocol_ctxt_t *const ctxt_pP,
               "[MSG] PDCP UL %s PDU on rb_id %ld\n",
               (srb_flagP) ? "CONTROL" : "DATA",
               rb_idP);
+  LOG_D(PDCP, "ctxt->rntiMaybeUEid: %ld\n", ctxt_pP->rntiMaybeUEid);
+  pdcp_info_t pdcp_pkt;
+  memset(&pdcp_pkt, 0, sizeof (pdcp_pkt));
 
   if (MBMS_flagP) {
     AssertError(rb_idP < NB_RB_MBMS_MAX, return false, "RB id is too high (%ld/%d) %u rnti %lx!\n", rb_idP, NB_RB_MBMS_MAX, ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid);
@@ -646,6 +745,31 @@ bool pdcp_data_ind(const protocol_ctxt_t *const ctxt_pP,
     LOG_W(PDCP, "SDU buffer size is zero! Ignoring this chunk!\n");
     return false;
   }
+
+  pdcp_pkt.direction = 2;
+  pdcp_pkt.ueid = pdcp_enb[ctxt_pP->module_id].rnti[pdcp_uid];
+  if (srb_flagP == 1) {
+    if (rb_id < 1 || rb_id > 2)
+      LOG_W(PDCP, "invalid rb_id \n");
+    else {
+      (rb_id == 1)?(pdcp_pkt.channelType = 4):(pdcp_pkt.channelType= 1);
+      (rb_id == 1)?(pdcp_pkt.channelId= 0):(pdcp_pkt.channelId = 1);
+      pdcp_pkt.plane     = CONTROL_PLANE_E;
+    }
+  } else {
+    if (rb_id < 1 || rb_id > 5);
+    else {
+      pdcp_pkt.channelType = Bearer_DCCH_e;
+      pdcp_pkt.channelType = 1;
+      pdcp_pkt.channelId = rb_id -1;
+      pdcp_pkt.plane     = DATA_PLANE_E;
+    }
+  }
+  pdcp_pkt.seqnum_length = pdcp_p->seq_num_size;
+  pdcp_pkt.is_retx = false;
+  pdcp_pkt.pdu_length = sdu_buffer_sizeP;
+  LOG_LTE_PDCP_PDU(OAILOG_INFO, "UL_LTE_PDCP_PDU", -1, -1, (pdcp_pkt), (unsigned char *)sdu_buffer_pP, sdu_buffer_sizeP);
+
 
   if (ctxt_pP->enb_flag) {
     start_meas(&eNB_pdcp_stats[ctxt_pP->module_id].data_ind);
@@ -729,6 +853,8 @@ bool pdcp_data_ind(const protocol_ctxt_t *const ctxt_pP,
 
 #endif
 
+    // Trace UL PDCP PDU here (Control/Data)
+
     // SRB1/2: control-plane data
     if (srb_flagP) {
       /* process as described in 36.323 5.1.2.2 */
@@ -741,7 +867,13 @@ bool pdcp_data_ind(const protocol_ctxt_t *const ctxt_pP,
       }
 
       if (pdcp_p->security_activated == 1) {
-        if (ctxt_pP->enb_flag == ENB_FLAG_NO) {
+        uint8_t cipheringAlgorithm = pdcp_p->cipheringAlgorithm;
+        if (ctxt_pP->enb_flag == ENB_FLAG_YES) {
+          if(rb_idP == 1 && !pdcp_p->security_confirmed){
+            //When security_activated, the first UL control message on srb1 should be SecurityModeComplete which is not ciphered
+            pdcp_p->cipheringAlgorithm = 0;
+            pdcp_p->security_confirmed=1;
+          }
           start_meas(&eNB_pdcp_stats[ctxt_pP->module_id].validate_security);
         } else {
           start_meas(&UE_pdcp_stats[ctxt_pP->module_id].validate_security);
@@ -758,7 +890,8 @@ bool pdcp_data_ind(const protocol_ctxt_t *const ctxt_pP,
                                              sdu_buffer_sizeP - pdcp_tailer_len)
                       == 0;
 
-        if (ctxt_pP->enb_flag == ENB_FLAG_NO) {
+        if (ctxt_pP->enb_flag == ENB_FLAG_YES) {
+          pdcp_p->cipheringAlgorithm = cipheringAlgorithm;
           stop_meas(&eNB_pdcp_stats[ctxt_pP->module_id].validate_security);
         } else {
           stop_meas(&UE_pdcp_stats[ctxt_pP->module_id].validate_security);
@@ -852,7 +985,7 @@ bool pdcp_data_ind(const protocol_ctxt_t *const ctxt_pP,
         }
 
         if (pdcp_p->security_activated == 1) {
-          if (ctxt_pP->enb_flag == ENB_FLAG_NO) {
+          if (ctxt_pP->enb_flag == ENB_FLAG_YES) {
             start_meas(&eNB_pdcp_stats[ctxt_pP->module_id].validate_security);
           } else {
             start_meas(&UE_pdcp_stats[ctxt_pP->module_id].validate_security);
@@ -869,7 +1002,7 @@ bool pdcp_data_ind(const protocol_ctxt_t *const ctxt_pP,
                                                sdu_buffer_sizeP - pdcp_tailer_len)
                         == 0;
 
-          if (ctxt_pP->enb_flag == ENB_FLAG_NO) {
+          if (ctxt_pP->enb_flag == ENB_FLAG_YES) {
             stop_meas(&eNB_pdcp_stats[ctxt_pP->module_id].validate_security);
           } else {
             stop_meas(&UE_pdcp_stats[ctxt_pP->module_id].validate_security);
@@ -920,7 +1053,7 @@ bool pdcp_data_ind(const protocol_ctxt_t *const ctxt_pP,
         }
 
         if (pdcp_p->security_activated == 1) {
-          if (ctxt_pP->enb_flag == ENB_FLAG_NO) {
+          if (ctxt_pP->enb_flag == ENB_FLAG_YES) {
             start_meas(&eNB_pdcp_stats[ctxt_pP->module_id].validate_security);
           } else {
             start_meas(&UE_pdcp_stats[ctxt_pP->module_id].validate_security);
@@ -937,7 +1070,7 @@ bool pdcp_data_ind(const protocol_ctxt_t *const ctxt_pP,
                                                sdu_buffer_sizeP - pdcp_tailer_len)
                         == 0;
 
-          if (ctxt_pP->enb_flag == ENB_FLAG_NO) {
+          if (ctxt_pP->enb_flag == ENB_FLAG_YES) {
             stop_meas(&eNB_pdcp_stats[ctxt_pP->module_id].validate_security);
           } else {
             stop_meas(&UE_pdcp_stats[ctxt_pP->module_id].validate_security);
@@ -987,26 +1120,60 @@ bool pdcp_data_ind(const protocol_ctxt_t *const ctxt_pP,
    * from its second byte (skipping 0th and 1st octets, i.e.
    * PDCP header)
    */
-
-  if (LINK_ENB_PDCP_TO_GTPV1U) {
+  if (RC.ss.mode >= SS_SOFTMODEM) {
     if ((true == ctxt_pP->enb_flag) && (false == srb_flagP)) {
-      LOG_D(PDCP, "Sending packet to GTP, Calling GTPV1U_TUNNEL_DATA_REQ  ue %lx rab %ld len %u\n", ctxt_pP->rntiMaybeUEid, rb_id + 4, sdu_buffer_sizeP - payload_offset);
-      message_p = itti_alloc_new_message_sized(TASK_PDCP_ENB, 0, GTPV1U_TUNNEL_DATA_REQ,
-                                              sizeof(gtpv1u_tunnel_data_req_t) +
-                                              sdu_buffer_sizeP - payload_offset + GTPU_HEADER_OVERHEAD_MAX );
-      AssertFatal(message_p != NULL, "OUT OF MEMORY");
-      gtpv1u_tunnel_data_req_t *req=&GTPV1U_TUNNEL_DATA_REQ(message_p);
-      req->buffer       = (uint8_t*)(req+1);
-      memcpy(req->buffer + GTPU_HEADER_OVERHEAD_MAX, sdu_buffer_pP + payload_offset, sdu_buffer_sizeP - payload_offset);
-      req->length       = sdu_buffer_sizeP - payload_offset;
-      req->offset       = GTPU_HEADER_OVERHEAD_MAX;
-      req->ue_id = ctxt_pP->rntiMaybeUEid;
-      req->bearer_id    = rb_id + 4;
-      itti_send_msg_to_task(TASK_GTPV1_U, INSTANCE_DEFAULT, message_p);
-      packet_forwarded = true;
+      LOG_A(PDCP, "Sending packet to SS, Calling SS_DRB_PDU_IND ue %#lx drb id %ld len %u\n",
+            ctxt_pP->rntiMaybeUEid,
+            rb_id,
+            sdu_buffer_sizeP - payload_offset );
+
+      MessageDef *message_p = itti_alloc_new_message (TASK_SS_DRB, 0,  SS_DRB_PDU_IND);
+      if (message_p) {
+        /* Populate the message to SS */
+        //Find the CC_id from module_id and rnti
+        int UE_id = find_UE_id(ctxt_pP->module_id,ctxt_pP->rntiMaybeUEid);
+        int CC_id = UE_id>=0? UE_PCCID(ctxt_pP->module_id,UE_id):0;
+        SS_DRB_PDU_IND (message_p).sdu_size = sdu_buffer_sizeP - payload_offset;
+        SS_DRB_PDU_IND (message_p).drb_id = rb_id;
+        SS_DRB_PDU_IND (message_p).data_type = DRB_PdcpSdu;
+        SS_DRB_PDU_IND (message_p).physCellId = RC.rrc[ctxt_pP->module_id]->carrier[CC_id].physCellId;
+        memset(SS_DRB_PDU_IND (message_p).sdu, 0, SS_DRB_PDU_IND (message_p).sdu_size);
+        memcpy(&SS_DRB_PDU_IND (message_p).sdu, sdu_buffer_pP + payload_offset, SS_DRB_PDU_IND (message_p).sdu_size);
+        SS_DRB_PDU_IND (message_p).frame = ctxt_pP->frame;
+        SS_DRB_PDU_IND (message_p).subframe = ctxt_pP->subframe;
+
+        /* Workaround fix for not getting SS_DRB_PDU_IND in other test cases */
+        if(SS_DRB_PDU_IND (message_p).sdu_size > 0) {
+          int send_res = itti_send_msg_to_task (TASK_SS_DRB, INSTANCE_DEFAULT, message_p);
+          if(send_res < 0) {
+            LOG_E(PDCP,"Error in itti_send_msg_to_task");
+          }
+        } else {
+          LOG_A(PDCP,"sdu size:%d in SS_DRB_PDU_IND is not greater then zero \n",SS_DRB_PDU_IND (message_p).sdu_size);
+        }
+      }
     }
   } else {
-    packet_forwarded = false;
+    if (LINK_ENB_PDCP_TO_GTPV1U) {
+      if ((true == ctxt_pP->enb_flag) && (false == srb_flagP)) {
+        LOG_D(PDCP, "Sending packet to GTP, Calling GTPV1U_TUNNEL_DATA_REQ  ue %lx rab %ld len %u\n", ctxt_pP->rntiMaybeUEid, rb_id + 4, sdu_buffer_sizeP - payload_offset);
+        message_p = itti_alloc_new_message_sized(TASK_PDCP_ENB, 0, GTPV1U_TUNNEL_DATA_REQ,
+                                                sizeof(gtpv1u_tunnel_data_req_t) +
+                                                sdu_buffer_sizeP - payload_offset + GTPU_HEADER_OVERHEAD_MAX );
+        AssertFatal(message_p != NULL, "OUT OF MEMORY");
+        gtpv1u_tunnel_data_req_t *req=&GTPV1U_TUNNEL_DATA_REQ(message_p);
+        req->buffer       = (uint8_t*)(req+1);
+        memcpy(req->buffer + GTPU_HEADER_OVERHEAD_MAX, sdu_buffer_pP + payload_offset, sdu_buffer_sizeP - payload_offset);
+        req->length       = sdu_buffer_sizeP - payload_offset;
+        req->offset       = GTPU_HEADER_OVERHEAD_MAX;
+        req->ue_id = ctxt_pP->rntiMaybeUEid;
+        req->bearer_id    = rb_id + 4;
+        itti_send_msg_to_task(TASK_GTPV1_U, INSTANCE_DEFAULT, message_p);
+        packet_forwarded = true;
+      }
+    } else {
+      packet_forwarded = false;
+    }
   }
 
 #ifdef MBMS_MULTICAST_OUT
@@ -1082,7 +1249,7 @@ bool pdcp_data_ind(const protocol_ctxt_t *const ctxt_pP,
       if( LOG_DEBUGFLAG(DEBUG_PDCP) )
 	log_dump(PDCP, pdcpHead+1, min(sdu_buffer_sizeP - payload_offset,30) , LOG_DUMP_CHAR,
 	         "Printing first bytes of PDCP SDU before adding it to the list: \n");
-      pushNotifiedFIFO(&pdcp_sdu_list, new_sdu_p); 
+      pushNotifiedFIFO(&pdcp_sdu_list, new_sdu_p);
 
     /* Print octets of incoming data in hexadecimal form */
       LOG_D(PDCP, "Following content has been received from RLC (%d,%d)(PDCP header has already been removed):\n",
@@ -1171,6 +1338,74 @@ void pdcp_update_stats(const protocol_ctxt_t *const  ctxt_pP) {
 }
 
 
+int pdcp_fill_ss_pdcp_cnt (
+  pdcp_t *pdcp_p,
+  uint32_t rb_id,
+  ss_get_pdcp_cnt_t *pc
+)
+{
+  LOG_D (PDCP, "Fill PDCPCount for pdcp_p->rb_id : %ld is_srb? : %d \n",
+                  pdcp_p->rb_id, pdcp_p->is_srb);
+  if (NULL == pc) return -1;
+
+  pc->size += 1;
+  if (pdcp_p->is_srb) {
+    pc->rb_info[rb_id].rb_id = pdcp_p->rb_id;;
+    pc->rb_info[rb_id].is_srb = true;
+    pc->rb_info[rb_id].ul_format = E_PdcpCount_Srb;
+    pc->rb_info[rb_id].dl_format = E_PdcpCount_Srb;
+    if (pdcp_p->next_pdcp_rx_sn > 0)
+      pc->rb_info[rb_id].ul_count = pdcp_get_next_count_rx(pdcp_p, 1, pdcp_p->rx_hfn, pdcp_p->next_pdcp_rx_sn - 1);
+    else
+      pc->rb_info[rb_id].ul_count = pdcp_get_next_count_rx(pdcp_p, 1, pdcp_p->rx_hfn, 0);
+    if (pdcp_p->next_pdcp_tx_sn)
+      pc->rb_info[rb_id].dl_count = pdcp_get_next_count_tx(pdcp_p, 1, pdcp_p->next_pdcp_tx_sn - 1);
+    else
+      pc->rb_info[rb_id].dl_count = pdcp_get_next_count_tx(pdcp_p, 1, 0);
+    LOG_D (PDCP, "SRB DL Count (dec): %d UL Count (dec): %d \n \
+                  RX_HFN: %d TX_HFN: %d \n \
+                  RX Seq Num: %d TX Seq Num: %d \n",
+                  pc->rb_info[rb_id].dl_count,
+                  pc->rb_info[rb_id].ul_count,
+                  pdcp_p->rx_hfn, pdcp_p->tx_hfn,
+                  pdcp_p->next_pdcp_rx_sn - 1,
+                  pdcp_p->next_pdcp_tx_sn - 1);
+  } else {
+    pc->rb_info[rb_id].rb_id = pdcp_p->rb_id + 3;
+    LOG_D(PDCP, "Updated rb_id for DRB: %d (+3)\n", pc->rb_info[rb_id].rb_id);
+    pc->rb_info[rb_id].is_srb = false;
+    if (pdcp_p->seq_num_size == 7) {
+      pc->rb_info[rb_id].ul_format = E_PdcpCount_DrbShortSQN;
+      pc->rb_info[rb_id].dl_format = E_PdcpCount_DrbShortSQN;
+      LOG_D (PDCP, "DRB Short SQN\n");
+    } else {
+      pc->rb_info[rb_id].ul_format = E_PdcpCount_DrbLongSQN;
+      pc->rb_info[rb_id].dl_format = E_PdcpCount_DrbLongSQN;
+      LOG_D (PDCP, "DRB Long SQN\n");
+    }
+    if (pdcp_p->next_pdcp_rx_sn > 0)
+      pc->rb_info[rb_id].ul_count = pdcp_get_next_count_rx(pdcp_p, 0, pdcp_p->rx_hfn, pdcp_p->next_pdcp_rx_sn - 1);
+    else
+      pc->rb_info[rb_id].ul_count = pdcp_get_next_count_rx(pdcp_p, 0, pdcp_p->rx_hfn, 0);
+    if (pdcp_p->next_pdcp_tx_sn > 0)
+      pc->rb_info[rb_id].dl_count = pdcp_get_next_count_tx(pdcp_p, 0, pdcp_p->next_pdcp_tx_sn - 1);
+    else
+      pc->rb_info[rb_id].dl_count = pdcp_get_next_count_tx(pdcp_p, 0, 0);
+    LOG_D (PDCP, "DRB DL Count (dec): %d UL Count (dec): %d \n \
+                  RX_HFN: %d TX_HFN: %d \n \
+                  RX Seq Num: %d TX Seq Num: %d \n",
+                  pc->rb_info[rb_id].dl_count,
+                  pc->rb_info[rb_id].ul_count,
+                  pdcp_p->rx_hfn, pdcp_p->tx_hfn,
+                  pdcp_p->next_pdcp_rx_sn - 1,
+                  pdcp_p->next_pdcp_tx_sn - 1);
+
+  }
+
+  return 0;
+}
+
+
 //-----------------------------------------------------------------------------
 void
 pdcp_run (
@@ -1217,7 +1452,9 @@ pdcp_run (
                 RRC_DCCH_DATA_REQ (msg_p).muip,
                 RRC_DCCH_DATA_REQ (msg_p).confirmp,
                 RRC_DCCH_DATA_REQ (msg_p).mode);
-          LOG_D(PDCP, "Before calling pdcp_data_req from pdcp_run! RRC_DCCH_DATA_REQ (msg_p).rb_id: %ld \n", RRC_DCCH_DATA_REQ (msg_p).rb_id);
+          LOG_D(PDCP, "Before calling pdcp_data_req from pdcp_run! RRC_DCCH_DATA_REQ (msg_p).rb_id: %ld frame %d subframe %d\n",
+           RRC_DCCH_DATA_REQ (msg_p).rb_id,ctxt_pP->frame,ctxt_pP->subframe);
+
           result = pdcp_data_req (&ctxt,
                                   SRB_FLAG_YES,
                                   RRC_DCCH_DATA_REQ (msg_p).rb_id,
@@ -1252,6 +1489,126 @@ pdcp_run (
           LOG_D(PDCP, "PDCP Received RRC_PCCH_DATA_REQ CC_id %d length %d \n", CC_id, sdu_buffer_sizeP);
         }
         break;
+
+        case SS_SET_PDCP_CNT:
+          LOG_D(PDCP, "PDCP Received SS_SET_PDCP_CNT");
+          break;
+
+        case SS_REQ_PDCP_CNT:
+          LOG_D(PDCP, "PDCP Received SS_GET_PDCP_CNT \n");
+
+          pdcp_t *pdcp_p = NULL;
+          hash_key_t key = HASHTABLE_NOT_A_KEY_VALUE;
+          hashtable_rc_t h_rc;
+          MessageDef                            *message_p;
+          uint8_t rbid_;
+          rnti_t ue_rnti;
+
+          if (NULL == ctxt_pP) {
+            LOG_E(PDCP, "No context to get PdcpCount\n");
+            break;
+          }
+
+          message_p = itti_alloc_new_message (TASK_PDCP_ENB, 0, SS_GET_PDCP_CNT);
+
+          SS_GET_PDCP_CNT(message_p).size = 0;
+
+
+          ue_rnti = SS_REQ_PDCP_CNT(msg_p).rnti;
+          int UE_id = find_UE_id(ctxt_pP->module_id,ue_rnti);
+          /*
+           * The PDCP_GET_CNT request can be received when the UE is being released
+           * check if UE is active : fill the RB details
+           * if UE not Active : Update one SRB with 0 a dummy response as TTCN expects
+           * proper PDCP_GET_response
+           */
+          if (UE_id != -1)
+          {
+            uint8_t rb_idx = 0;
+            if (SS_REQ_PDCP_CNT(msg_p).rb_id == 0xFF)
+            {
+              LOG_D(PDCP, "PDCP Received request PDCP COUNT for all RB's\n");
+              for (int i = 0; i < MAX_RBS; i++)
+              {
+              if (i < 3)
+              {
+                rbid_ = i;
+                key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ue_rnti, ctxt_pP->enb_flag, rbid_, 1);
+              }
+              else
+              {
+                rbid_ = i - 3;
+                key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ue_rnti, ctxt_pP->enb_flag, rbid_, 0);
+              }
+
+              h_rc = hashtable_get(pdcp_coll_p, key, (void **)&pdcp_p);
+
+              if (h_rc == HASH_TABLE_OK)
+              {
+                /** Fill response */
+                LOG_D(PDCP, "Found entry on hastable for rbid_ : %d ctxt module_id %d rnti %d enb_flag %d\n",
+                      rbid_, ctxt_pP->module_id, ue_rnti, ctxt_pP->enb_flag);
+                pdcp_fill_ss_pdcp_cnt(pdcp_p, rb_idx, &(SS_GET_PDCP_CNT(message_p)));
+                /** Increase the array index for next RB IDX */
+                rb_idx++;
+              }
+              else
+              {
+                LOG_E(PDCP, "No entry on hastable for rbid_: %d ctxt module_id %d rnti %d enb_flag %d\n",
+                      rbid_, ctxt_pP->module_id, ue_rnti, ctxt_pP->enb_flag);
+              }
+              }
+            }
+            else
+            {
+              rb_idx = SS_REQ_PDCP_CNT(msg_p).rb_id;
+              LOG_A(PDCP, "PDCP Received request PDCP COUNT for Single RB:%d\n",
+                    SS_REQ_PDCP_CNT(message_p).rb_id);
+              if (rb_idx < 3)
+              {
+              rbid_ = rb_idx;
+              key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ue_rnti, ctxt_pP->enb_flag, rbid_, 1);
+              }
+              else
+              {
+              rbid_ = rb_idx - 3;
+              key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ue_rnti, ctxt_pP->enb_flag, rbid_, 0);
+              }
+
+              h_rc = hashtable_get(pdcp_coll_p, key, (void **)&pdcp_p);
+              if (h_rc == HASH_TABLE_OK)
+              {
+              if (SS_REQ_PDCP_CNT(message_p).rb_id <= MAX_RBS)
+              {
+                /** For single RB always updating at the 0th index only */
+                pdcp_fill_ss_pdcp_cnt(pdcp_p, 0, &(SS_GET_PDCP_CNT(message_p)));
+              }
+              }
+              else
+              {
+              LOG_E(PDCP, "No entry for single RB on hastable for rbid_: %d\n", rbid_);
+              }
+            }
+          }
+          else
+          {
+            //Filling the dummy PDCP_CNT response as UE is not ACTIVE
+            ss_get_pdcp_cnt_t *pc = &(SS_GET_PDCP_CNT(message_p));
+            pc->size += 1;
+            pc->rb_info[0].rb_id = 0;
+            pc->rb_info[0].is_srb = true;
+            pc->rb_info[0].ul_format = E_PdcpCount_Srb;
+            pc->rb_info[0].dl_format = E_PdcpCount_Srb;
+            pc->rb_info[0].ul_count = 0;
+            pc->rb_info[0].dl_count = 0;
+            LOG_D(PDCP, "SRB %d DL Count (dec): %d UL Count (dec): %d\n",  pc->rb_info[0].rb_id,
+                  pc->rb_info[0].dl_count,
+                  pc->rb_info[0].ul_count);
+          }
+
+          itti_send_msg_to_task (TASK_SYS, ctxt_pP->module_id, message_p);
+          break;
+
 
         default:
           LOG_E(PDCP, "Received unexpected message %s\n", ITTI_MSG_NAME (msg_p));
@@ -2103,6 +2460,19 @@ static bool pdcp_config_req_asn1(const protocol_ctxt_t *const ctxt_pP,
 
 //-----------------------------------------------------------------------------
 void
+pdcp_config_set_security_cipher(
+  pdcp_t          *pdcp_pP,
+  uint8_t         security_modeP)
+//-----------------------------------------------------------------------------
+{
+  DevAssert(pdcp_pP != NULL);
+  pdcp_pP->cipheringAlgorithm     = security_modeP;
+  pdcp_pP->security_activated = 1;
+  LOG_D(PDCP, "fxn:%s security_activated = 1\n", __FUNCTION__);
+}
+
+//-----------------------------------------------------------------------------
+void
 pdcp_config_set_security(
   const protocol_ctxt_t *const  ctxt_pP,
   pdcp_t          *const pdcp_pP,
@@ -2125,11 +2495,17 @@ pdcp_config_set_security(
           pdcp_pP->integrityProtAlgorithm);
 
     kRRCenc != NULL ? memcpy(pdcp_pP->kRRCenc, kRRCenc, 32) : memset(pdcp_pP->kRRCenc, 0, 32);
-    kRRCint != NULL ? memcpy(pdcp_pP->kRRCint, kRRCint, 32) : memset(pdcp_pP->kRRCint, 0, 32);
+    /** According to 3GPP specs 36.523-3 rel 16 if integrity is omit/null then keep integrity parameters as it **/
+    if(kRRCint != NULL)
+    {
+	    memcpy(pdcp_pP->kRRCint, kRRCint, 32);
+    }
+
     kUPenc != NULL ? memcpy(pdcp_pP->kUPenc, kUPenc, 32) : memset(pdcp_pP->kUPenc, 0, 32);
 
     /* Activate security */
     pdcp_pP->security_activated = 1;
+    LOG_D(PDCP, "fxn:%s security_activated = 1\n", __FUNCTION__);
   }
 }
 
@@ -2197,6 +2573,7 @@ void rrc_pdcp_config_req (
         pdcp_p->seq_num_size = 0;
         pdcp_p->first_missing_pdu = -1;
         pdcp_p->security_activated = 0;
+        pdcp_p->security_confirmed = 0;
         h_rc = hashtable_remove(pdcp_coll_p, key);
         break;
 
@@ -2299,6 +2676,7 @@ uint64_t pdcp_module_init( uint64_t pdcp_optmask, int id) {
         ((LINK_ENB_PDCP_TO_GTPV1U)?"usegtp":""),
         ((PDCP_USE_NETLINK)?"usenetlink":""));
 
+  if (RC.ss.mode < SS_SOFTMODEM) {
   if (PDCP_USE_NETLINK) {
     nas_getparams();
 
@@ -2315,7 +2693,7 @@ uint64_t pdcp_module_init( uint64_t pdcp_optmask, int id) {
       nas_config(1, 1, 1, "enb");
       if(pdcp_optmask & ENB_NAS_USE_TUN_W_MBMS_BIT){
         netlink_init_mbms_tun("enm", 0);
-      	nas_config_mbms(1, 2, 1, "enm"); 
+      	nas_config_mbms(1, 2, 1, "enm");
       	LOG_I(PDCP, "ENB pdcp will use mbms tun interface\n");
       }
       LOG_I(PDCP, "ENB pdcp will use tun interface\n");
@@ -2331,7 +2709,7 @@ uint64_t pdcp_module_init( uint64_t pdcp_optmask, int id) {
          }else
              LOG_E(PDCP, "ENB pdcp will not use tun interface\n");
    }
-
+  }
   pthread_create(&pdcp_stats_thread_desc,NULL,pdcp_stats_thread,NULL);
 
   return pdcp_params.optmask ;
@@ -2350,6 +2728,7 @@ pdcp_free (
   if (pdcp_p != NULL) {
     memset(pdcp_pP, 0, sizeof(pdcp_t));
     free(pdcp_pP);
+    pdcp_pP = NULL;
   }
 }
 
@@ -2438,6 +2817,13 @@ void pdcp_layer_init(void)
   memset(Pdcp_stats_rx_aiat, 0, sizeof(Pdcp_stats_rx_aiat));
   memset(Pdcp_stats_rx_iat, 0, sizeof(Pdcp_stats_rx_iat));
   memset(Pdcp_stats_rx_outoforder, 0, sizeof(Pdcp_stats_rx_outoforder));
+
+  RC.ss.ss_pdcp_api = calloc (1, sizeof(ss_rrc_pdcp_api_t));
+  ss_rrc_pdcp_api_t *ss_pdcp_api = RC.ss.ss_pdcp_api;
+
+  if (RC.ss.mode == 1) {
+    ss_pdcp_api->set_pdcp_cnt    = pdcp_fill_ss_pdcp_cnt;
+  }
 }
 
 //-----------------------------------------------------------------------------

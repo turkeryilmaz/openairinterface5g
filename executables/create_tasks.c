@@ -28,6 +28,7 @@
   #include "sctp_eNB_task.h"
   #include "x2ap_eNB.h"
   #include "s1ap_eNB.h"
+  #include "udp_eNB_task.h"
   #include "openair3/ocp-gtpu/gtp_itf.h"
   #if ENABLE_RAL
     #include "lteRALue.h"
@@ -37,6 +38,15 @@
 # include "enb_app.h"
 # include "openair2/LAYER2/MAC/mac_proto.h"
 #include <openair3/ocp-gtpu/gtp_itf.h>
+# include "ss_eNB_sys_task.h"
+# include "ss_eNB_port_man_task.h"
+# include "ss_eNB_srb_task.h"
+# include "ss_eNB_vng_task.h"
+# include "ss_eNB_vtp_task.h"
+# include "ss_eNB_drb_task.h"
+# include "ss_eNB_vt_timer_task.h"
+# include "ss_eNB_sysind_task.h"
+
 
 extern RAN_CONTEXT_t RC;
 
@@ -45,6 +55,51 @@ int create_tasks(uint32_t enb_nb) {
   int rc;
 
   if (enb_nb == 0) return 0;
+
+  if (RC.ss.mode >= SS_SOFTMODEM)
+  {
+    rc = itti_create_task(TASK_SS_PORTMAN, ss_eNB_port_man_eNB_task, NULL);
+    AssertFatal(rc >= 0, "Create task for SS manager failed\n");
+
+    rc = itti_create_task(TASK_SYS, ss_eNB_sys_task, NULL);
+    AssertFatal(rc >= 0, "Create task for SS failed\n");
+
+    rc = itti_create_task(TASK_SS_SRB_ACP, ss_eNB_srb_acp_task, NULL);
+    AssertFatal(rc >= 0, "Create task for SS SRB ACP failed\n");
+
+    rc = itti_create_task(TASK_SS_SYSIND, ss_eNB_sysind_task, NULL);
+    AssertFatal(rc >= 0, "Create task for SS SYSIND failed\n");
+
+    rc = itti_create_task(TASK_SS_SYSIND_ACP, ss_eNB_sysind_acp_task, NULL);
+    AssertFatal(rc >= 0, "Create task for SS SYSIND ACP failed\n");
+
+    rc = itti_create_task(TASK_SS_SRB, ss_eNB_srb_task, NULL);
+    AssertFatal(rc >= 0, "Create task for SS SRB failed\n");
+
+    rc = itti_create_task(TASK_VNG, ss_eNB_vng_task, NULL);
+    AssertFatal(rc >= 0, "Create task for SS VNG failed\n");
+
+    rc = itti_create_task(TASK_SS_DRB, ss_eNB_drb_task, NULL);
+    AssertFatal(rc >= 0, "Create task for SS DRB failed\n");
+
+    rc = itti_create_task(TASK_SS_DRB_ACP, ss_eNB_drb_acp_task, NULL);
+    AssertFatal(rc >= 0, "Create task for SS DRB ACP failed\n");
+
+    /* Task for support Virtual Time for TTCN  engine */
+    rc = itti_create_task(TASK_VTP, ss_eNB_vtp_task, NULL);
+    AssertFatal(rc >= 0, "Create task for SS VTP failed\n");
+
+    /* Task for support Virtual Time timer management */
+    rc = itti_create_task_prio(TASK_VT_TIMER, ss_eNB_vt_timer_task, NULL, 10);
+    AssertFatal(rc >= 0, "Create task for SS_VT_TIMER failed\n");
+
+    LOG_I(MAC,"Creating MAC eNB Task\n");
+    rc = itti_create_task(TASK_MAC_ENB, mac_enb_task, NULL);
+    AssertFatal(rc >= 0, "Create task for MAC eNB failed\n");
+
+    rc = itti_create_task(TASK_UDP, udp_eNB_task, NULL);
+    AssertFatal(rc >= 0, "Create task for UDP failed\n");
+  }
 
   LOG_I(ENB_APP, "Creating ENB_APP eNB Task\n");
   rc = itti_create_task (TASK_ENB_APP, eNB_app_task, NULL);

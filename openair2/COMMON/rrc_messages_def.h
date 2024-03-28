@@ -54,7 +54,17 @@ MESSAGE_DEF(RRC_STATE_IND,              MESSAGE_PRIORITY_MED,       RrcStateInd,
 //-------------------------------------------------------------------------------------------//
 // eNB: ENB_APP -> RRC messages
 MESSAGE_DEF(RRC_CONFIGURATION_REQ,      MESSAGE_PRIORITY_MED,       RrcConfigurationReq,        rrc_configuration_req)
+MESSAGE_DEF(RRC_CONFIGURATION_CNF,      MESSAGE_PRIORITY_MED,       RrcConfigurationCnf,      rrc_configuration_cnf)
+MESSAGE_DEF(RRC_RBLIST_CFG_REQ,         MESSAGE_PRIORITY_MED,       RrcRblistCfgReq,            rrc_rblist_cfg_req)
+MESSAGE_DEF(RRC_RBLIST_CFG_CNF,         MESSAGE_PRIORITY_MED,       RrcRblistCfgCnf,            rrc_rblist_cfg_cnf)
+MESSAGE_DEF(RRC_UE_CAT_INFO,            MESSAGE_PRIORITY_MED,       rrcUECatInfo,               rrc_ue_cat_info)
+MESSAGE_DEF(RRC_AS_SECURITY_CONFIG_REQ, MESSAGE_PRIORITY_MED,       RrcAsSecurityConfigReq,     rrc_as_security_config_req)
+MESSAGE_DEF(RRC_AS_SECURITY_CONFIG_CNF, MESSAGE_PRIORITY_MED,       RrcAsSecurityConfigCnf,     rrc_as_security_config_cnf)
 MESSAGE_DEF(NBIOTRRC_CONFIGURATION_REQ, MESSAGE_PRIORITY_MED,       NbIoTRrcConfigurationReq,   nbiotrrc_configuration_req)
+
+// gNB: gNB_APP -> RRC messages
+MESSAGE_DEF(NRRRC_CONFIGURATION_REQ,    MESSAGE_PRIORITY_MED,       NRRrcConfigurationReqList,    nrrrc_configuration_req) //W3 8 TO DO: remove or keep
+MESSAGE_DEF(NRRRC_RBLIST_CFG_REQ,    MESSAGE_PRIORITY_MED,  NRRrcRblistCfgReq,    nrrrc_rblist_cfg_req)
 
 // UE: NAS -> RRC messages
 MESSAGE_DEF(NAS_KENB_REFRESH_REQ,       MESSAGE_PRIORITY_MED,       NasKenbRefreshReq,          nas_kenb_refresh_req)
