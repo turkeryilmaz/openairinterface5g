@@ -167,12 +167,11 @@ void gNB_I0_measurements(PHY_VARS_gNB *gNB,int slot, int first_symb,int num_symb
       int32_t *ul_ch = (int32_t *)&common_vars->rxdataF[aarx][offset0 + frame_parms->first_carrier_offset];
       for (rb = 0; rb < frame_parms->N_RB_UL; rb++) {
         if ((gNB->rb_mask_ul[s][rb >> 5] & (1U << (rb & 31))) == 0 && // check that rb was not used in this subframe
-            !(I0_SKIP_DC
-              && rb == frame_parms->N_RB_UL >> 1)) { // skip middle PRB because of artificial noise possibly created by FFT
+            !(I0_SKIP_DC && rb == frame_parms->N_RB_UL >> 1)) { // skip middle PRB because of artificial noise possibly created by FFT
           if (aarx == 0)
             nb_symb[rb]++;
           int32_t signal_energy;
-          if (rb == (frame_parms->N_RB_UL >> 1)) {
+          if (!I0_SKIP_DC && rb == (frame_parms->N_RB_UL >> 1)) {
             if ((frame_parms->N_RB_UL & 1) == 1) {
               signal_energy = signal_energy_nodc(ul_ch, 6);
               ul_ch = (int32_t *)&common_vars->rxdataF[aarx][offset0];
@@ -189,6 +188,17 @@ void gNB_I0_measurements(PHY_VARS_gNB *gNB,int slot, int first_symb,int num_symb
           }
           n0_subband_power[aarx][rb] += signal_energy;
           LOG_D(PHY,"slot %d symbol %d RB %d aarx %d n0_subband_power %d\n", slot, s, rb, aarx, signal_energy);
+        } else {
+          if (rb == (frame_parms->N_RB_UL >> 1)) {
+            ul_ch = (int32_t *)&common_vars->rxdataF[aarx][offset0];
+            if ((frame_parms->N_RB_UL & 1) == 1) {
+              ul_ch += 6;
+            } else {
+              ul_ch += 12;
+            }
+          } else {
+            ul_ch += 12;
+          }
         }
       } // rb
     } // antenna
