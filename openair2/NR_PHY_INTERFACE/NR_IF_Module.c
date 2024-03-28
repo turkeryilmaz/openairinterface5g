@@ -412,8 +412,8 @@ static void run_scheduler(module_id_t module_id, int CC_id, int frame, int slot)
   ifi->CC_mask = 0;
   sched_info->module_id = module_id;
   sched_info->CC_id = CC_id;
-  sched_info->frame = frame;
-  sched_info->slot = slot;
+  sched_info->frame = sched_frame;
+  sched_info->slot = sched_slot;
   /*
   sched_info->DL_req      = &mac->DL_req[CC_id];
   sched_info->UL_dci_req  = &mac->UL_dci_req[CC_id];
