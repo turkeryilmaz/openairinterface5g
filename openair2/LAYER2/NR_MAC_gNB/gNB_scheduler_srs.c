@@ -711,7 +711,7 @@ void nr_schedule_srs_secondary(int module_id, frame_t frame, int slot) {
     LOG_D(MAC,"No F1AP Measurement Request, skipping SRS measurement\n");
     return;
   }
-  LOG_I(MAC,"Got F1AP Measurement Request, programming SRS measurement\n");
+  LOG_D(MAC,"Got F1AP Measurement Request, programming SRS measurement\n");
   
   f1ap_srs_configuration_t *srs_configuration = &f1ap_meas_req->srs_configuration;
   if (!srs_configuration) {
@@ -742,7 +742,7 @@ void nr_schedule_srs_secondary(int module_id, frame_t frame, int slot) {
     uint16_t period = srs_period[srs_resource->resourceType.choice.periodic.periodicity+1];
     uint16_t offset = srs_resource->resourceType.choice.periodic.offset;
    
-    LOG_I(MAC, "nr_schedule_srs_secondary: period %d, offset %d\n",period,offset);
+    LOG_D(MAC, "nr_schedule_srs_secondary: period %d, offset %d\n",period,offset);
 
     int n_slots_frame = nr_slots_per_frame[ubwp.subcarrierSpacing];
     
@@ -753,10 +753,11 @@ void nr_schedule_srs_secondary(int module_id, frame_t frame, int slot) {
     dummy_ue_info.rnti = NON_UE_ASSOCIATED_SRS_DUMMY_RNTI;
     
     // Check if UE will transmit the SRS in this frame
-    if ( ((frame - offset/n_slots_frame)*n_slots_frame)%period == 0) {
+    //if ( ((frame - offset/n_slots_frame)*n_slots_frame)%period == 0) {
+    if ( (frame*n_slots_frame + slot)%period == offset) {  	    
       LOG_I(NR_MAC,"Scheduling non-ue associated SRS measurement for %d.%d\n", frame, offset%n_slots_frame);
-      nr_fill_nfapi_srs(module_id, CC_id, &dummy_ue_info, frame, slot, srs_resource_set, srs_resource, 1);
-      RC.nrmac[module_id]->f1ap_meas_req = NULL;
+      nr_fill_nfapi_srs(module_id, CC_id, &dummy_ue_info, frame, offset%n_slots_frame, srs_resource_set, srs_resource, 1);
+      //RC.nrmac[module_id]->f1ap_meas_req = NULL;
     }
   }
 }
