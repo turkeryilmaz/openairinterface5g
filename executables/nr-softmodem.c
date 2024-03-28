@@ -315,7 +315,10 @@ static int create_gNB_tasks(ngran_node_t node_type, configmodule_interface_t *cf
   LOG_I(PHY, "%s() Task ready initialize structures\n", __FUNCTION__);
 
   RCconfig_verify(cfg, node_type);
-  RCconfig_nr_ssparam();  
+  RCconfig_nr_ssparam();
+  if(RC.ss.mode >= SS_SOFTMODEM){  
+    RCconfig_NR_L1();
+  }
   RCconfig_nr_prs();
 
   if (RC.nb_nr_macrlc_inst > 0)
