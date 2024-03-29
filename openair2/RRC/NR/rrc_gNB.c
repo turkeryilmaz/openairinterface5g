@@ -1580,7 +1580,7 @@ static void cuup_notify_reestablishment(gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue_p)
     /* PDCP configuration */
     bearer_context_pdcp_config_t *pdcp_config = &drb_e1->pdcp_config;
     drb_t *rrc_drb = get_drb(ue_p, drb_id);
-    set_bearer_context_pdcp_config(pdcp_config, rrc_drb, rrc->configuration.um_on_default_drb);
+    set_bearer_context_pdcp_config(pdcp_config, rrc_drb, rrc->configuration[ue_p->primaryCC_id].um_on_default_drb);
     pdcp_config->pDCP_Reestablishment = true;
     /* increase DRB to modify counter */
     pdu_e1->numDRB2Modify += 1;
@@ -1651,6 +1651,7 @@ static void rrc_gNB_process_RRCReconfigurationComplete(const protocol_ctxt_t *co
     LOG_D(NR_RRC,"Configuring RLC DRBs/SRBs for UE %04x\n",ue_context_pP->ue_context.rnti);
     const struct NR_CellGroupConfig__rlc_BearerToAddModList *bearer_list =
         ue_context_pP->ue_context.masterCellGroup->rlc_BearerToAddModList;
+#define maxSRBs 4
     if (RC.ss.mode > SS_GNB) {
       // AGP: removed in OAI@W32. Left in SQN version for compatibility
       nr_rrc_addmod_srbs(ctxt_pP->rntiMaybeUEid, ue_p->Srb, maxSRBs, bearer_list);
