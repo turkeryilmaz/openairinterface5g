@@ -104,12 +104,13 @@ static void nr_dlsch_layer_demapping(int16_t *llr_cw[2],
                                      uint32_t length,
                                      int32_t codeword_TB0,
                                      int32_t codeword_TB1,
-                                     int16_t *llr_layers[NR_MAX_NB_LAYERS]);
+                                     int16_t llr_layers[][Nl]);
 
 /* compute LLR */
 static int nr_dlsch_llr(uint32_t rx_size_symbol,
                         int nbRx,
-                        int16_t *layer_llr[NR_MAX_NB_LAYERS],
+                        NR_UE_DLSCH_t dlsch[2],
+                        int16_t layer_llr[][dlsch[0].Nl],
                         NR_DL_FRAME_PARMS *frame_parms,
                         int32_t rxdataF_comp[][nbRx][rx_size_symbol * NR_SYMBOLS_PER_SLOT],
                         int32_t dl_ch_mag[rx_size_symbol],
@@ -125,8 +126,8 @@ static int nr_dlsch_llr(uint32_t rx_size_symbol,
                         int32_t codeword_TB1,
                         uint32_t len,
                         uint8_t nr_slot_rx,
-                        NR_UE_DLSCH_t dlsch[2],
-                        uint32_t llr_offset[NR_SYMBOLS_PER_SLOT]);
+                        uint32_t llr_offset[14]);
+
 /** \fn nr_dlsch_extract_rbs
     \brief This function extracts the received resource blocks, both channel estimates and data symbols,    for the current
    allocation and for multiple layer antenna gNB transmission.
@@ -577,10 +578,12 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
   if(symbol == (startSymbIdx + nbSymb -1)) {
     
     const uint32_t rx_llr_layer_size = (dlsch0_harq->G + dlsch[0].Nl - 1) / dlsch[0].Nl;
-    LOG_W(PHY, "rx_llr_layer_size %d, G %d, Nl, %d\n",  rx_llr_layer_size, dlsch0_harq->G, dlsch[0].Nl);
-    int16_t* layer_llr[NR_MAX_NB_LAYERS];
-    for (int i = 0; i < NR_MAX_NB_LAYERS; i++)
-      layer_llr[i] = (int16_t *)malloc16_clear(rx_llr_layer_size * sizeof(int16_t));
+    if (dlsch[0].Nl == 0 || rx_llr_layer_size == 0 || rx_llr_layer_size > 10 * 1000 * 1000) {
+      LOG_E(PHY, "rx_llr_layer_size %d, G %d, Nl, %d, discarding this pdsch\n", rx_llr_layer_size, dlsch0_harq->G, dlsch[0].Nl);
+      return -1;
+    }
+
+    int16_t layer_llr[dlsch[0].Nl][rx_llr_layer_size];
     for(int i = startSymbIdx; i < startSymbIdx+nbSymb; i++) {
       /* re evaluating the first symbol flag as LLR's are done in symbol loop  */
       if(i == startSymbIdx && i < 3)
@@ -590,6 +593,7 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
       /* Calculate LLR's for each symbol */
       nr_dlsch_llr(rx_size_symbol,
                    nbRx,
+                   dlsch,
                    layer_llr,
                    frame_parms,
                    rxdataF_comp,
@@ -606,10 +610,9 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
                    codeword_TB1,
                    dl_valid_re[i - 1],
                    nr_slot_rx,
-                   dlsch,
                    llr_offset);
     }
-    
+
     nr_dlsch_layer_demapping(llr,
                              dlsch[0].Nl,
                              dlsch[0].dlsch_config.qamModOrder,
@@ -617,9 +620,6 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
                              codeword_TB0,
                              codeword_TB1,
                              layer_llr);
-    // if (llr[0][0]) abort();
-    for (int i=0; i<NR_MAX_NB_LAYERS; i++)
-      free(layer_llr[i]);
     // Please keep it: useful for debugging
 #ifdef DEBUG_PDSCH_RX
     char filename[50];
@@ -1874,8 +1874,8 @@ static void nr_dlsch_layer_demapping(int16_t *llr_cw[2],
                                      uint32_t length,
                                      int32_t codeword_TB0,
                                      int32_t codeword_TB1,
-                                     int16_t *llr_layers[NR_MAX_NB_LAYERS]) {
-
+                                     int16_t llr_layers[][Nl])
+{
   switch (Nl) {
     case 1:
       if (codeword_TB1 == -1)
@@ -1908,7 +1908,8 @@ static void nr_dlsch_layer_demapping(int16_t *llr_cw[2],
 
 static int nr_dlsch_llr(uint32_t rx_size_symbol,
                         int nbRx,
-                        int16_t *layer_llr[NR_MAX_NB_LAYERS],
+                        NR_UE_DLSCH_t dlsch[2],
+                        int16_t layer_llr[][dlsch[0].Nl],
                         NR_DL_FRAME_PARMS *frame_parms,
                         int32_t rxdataF_comp[][nbRx][rx_size_symbol * NR_SYMBOLS_PER_SLOT],
                         int32_t dl_ch_mag[rx_size_symbol],
@@ -1924,7 +1925,6 @@ static int nr_dlsch_llr(uint32_t rx_size_symbol,
                         int32_t codeword_TB1,
                         uint32_t len,
                         uint8_t nr_slot_rx,
-                        NR_UE_DLSCH_t dlsch[2],
                         uint32_t llr_offset[14])
 {
   uint32_t llr_offset_symbol;
