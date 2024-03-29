@@ -103,6 +103,10 @@ int config_sync_var=-1;
 uint16_t runtime_phy_rx[29][6]; // SISO [MCS 0-28][RBs 0-5 : 6, 15, 25, 50, 75, 100]
 uint16_t runtime_phy_tx[29][6]; // SISO [MCS 0-28][RBs 0-5 : 6, 15, 25, 50, 75, 100]
 
+/** FC Cell config */
+pthread_cond_t cell_config_done_cond;
+pthread_mutex_t cell_config_done_mutex;
+int cell_config_done=-1;
 
 int oai_exit = 0;
 int NB_UE_INST = 0;
@@ -424,6 +428,17 @@ static void init_pdcp(void)
   pdcp_set_pdcp_data_ind_func(pdcp_data_ind);
 }
 
+static  void wait_cell_config(char *thread_name) {
+  printf( "waiting for [SYS] CELL CONFIG Indication (%s)\n",thread_name);
+  pthread_mutex_lock( &cell_config_done_mutex );
+
+  while ( cell_config_done < 0 )
+    pthread_cond_wait( &cell_config_done_cond, &cell_config_done_mutex );
+
+  pthread_mutex_unlock(&cell_config_done_mutex );
+  printf( "SYS: got cell config (%s)\n", thread_name);
+}
+
 static  void wait_nfapi_init(char *thread_name) {
   printf( "waiting for NFAPI PNF connection and population of global structure (%s)\n",thread_name);
   pthread_mutex_lock( &nfapi_sync_mutex );
@@ -495,11 +510,19 @@ int main ( int argc, char **argv )
       exit(-1);
     }
 
-    for (int enb_id = 0; enb_id < RC.nb_inst; enb_id++) {
-      MessageDef *msg_p = itti_alloc_new_message (TASK_ENB_APP, 0, RRC_CONFIGURATION_REQ);
-      RRC_CONFIGURATION_REQ(msg_p) = RC.rrc[enb_id]->configuration;
-      itti_send_msg_to_task (TASK_RRC_ENB, ENB_MODULE_ID_TO_INSTANCE(enb_id), msg_p);
+    /** TODO FC: Wait for Cell config, if SS RRC_CONFIGURATION_REQ will be triggered by TASK_SYS */
+    if (RC.ss.mode == SS_SOFTMODEM) {
+      /** wait for signal */
+      wait_cell_config("TASK_SYS");
       rrc_enb_process_itti_msg(NULL);
+    } else
+    {
+      for (int enb_id = 0; enb_id < RC.nb_inst; enb_id++) {
+        MessageDef *msg_p = itti_alloc_new_message (TASK_ENB_APP, 0, RRC_CONFIGURATION_REQ);
+        RRC_CONFIGURATION_REQ(msg_p) = RC.rrc[enb_id]->configuration;
+        itti_send_msg_to_task (TASK_RRC_ENB, ENB_MODULE_ID_TO_INSTANCE(enb_id), msg_p);
+        rrc_enb_process_itti_msg(NULL);
+      }
     }
   }
 

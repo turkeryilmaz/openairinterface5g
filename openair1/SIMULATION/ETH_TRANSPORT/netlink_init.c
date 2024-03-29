@@ -144,7 +144,7 @@ int netlink_init_tun(char *ifprefix, int num_if, int id) {//for UE, id = 1, 2, .
 
     if (nas_sock_fd[i] == -1) {
       LOG_E(PDCP, "TUN: Error opening socket %s (%d:%s)\n",ifname,errno, strerror(errno));
-      exit(1);
+      //exit(1);
     }
 
     LOG_I(PDCP, "TUN: Opened socket %s with fd nas_sock_fd[%d]=%d\n",
@@ -154,9 +154,9 @@ int netlink_init_tun(char *ifprefix, int num_if, int id) {//for UE, id = 1, 2, .
     if (ret == -1) {
       LOG_E(PDCP, "TUN: Error fcntl (%d:%s)\n",errno, strerror(errno));
 
-      if (LINK_ENB_PDCP_TO_IP_DRIVER) {
+      /*if (LINK_ENB_PDCP_TO_IP_DRIVER) {
         exit(1);
-      }
+      }*/
     }
   } /* for */
 

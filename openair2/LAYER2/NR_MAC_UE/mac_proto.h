@@ -145,6 +145,8 @@
     }                                                                   \
   } while (0)
 
+
+#define NR_INVALID_CELL_ID                         (0xffff)
 /**\brief initialize the field in nr_mac instance
    \param mac      MAC pointer */
 void nr_ue_init_mac(NR_UE_MAC_INST_t *mac);
@@ -177,6 +179,24 @@ int8_t nr_ue_decode_BCCH_DL_SCH(NR_UE_MAC_INST_t *mac,
 void release_dl_BWP(NR_UE_MAC_INST_t *mac, int index);
 void release_ul_BWP(NR_UE_MAC_INST_t *mac, int index);
 void nr_release_mac_config_logicalChannelBearer(NR_UE_MAC_INST_t *mac, long channel_identity);
+
+void nr_rrc_mac_config_req_ue_logicalChannelBearer(module_id_t module_id,
+                                                   struct NR_CellGroupConfig__rlc_BearerToAddModList *rlc_toadd_list,
+                                                   struct NR_CellGroupConfig__rlc_BearerToReleaseList *rlc_torelease_list);
+int8_t nr_ue_decode_paging(nr_downlink_indication_t *dl_info, int pdu_id);
+
+
+/**\brief primitive from RRC layer to MAC layer for configuration cell selection information
+   \param module_id                 module id
+   \param cc_id                     component carrier id
+   \param gNB_index                 gNB index
+   \param physCellId                selected cell id*/
+ 
+int nr_rrc_mac_config_req_ue_cell_selection(module_id_t module_id,
+                             int cc_idP,
+                             uint8_t gNB_index,
+                          long physCellId,
+                          uint8_t phy_id);
 
 void nr_rrc_mac_config_req_cg(module_id_t module_id,
                               int cc_idP,

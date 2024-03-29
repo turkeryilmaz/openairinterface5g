@@ -34,7 +34,7 @@ void nas_stream_encrypt_eea2(nas_stream_cipher_t const *stream_cipher, uint8_t *
 {
   DevAssert(stream_cipher != NULL);
   DevAssert(stream_cipher->key != NULL);
-  DevAssert(stream_cipher->key_length == 32);
+  DevAssert(stream_cipher->key_length == 16);
   DevAssert(stream_cipher->bearer < 32);
   DevAssert(stream_cipher->direction < 2);
   DevAssert(stream_cipher->message != NULL);

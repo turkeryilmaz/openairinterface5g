@@ -471,6 +471,19 @@ int logInit (void)
   register_log_component("eRAL","",RAL_ENB);
   register_log_component("mRAL","",RAL_UE);
   register_log_component("ENB_APP","log",ENB_APP);
+  register_log_component("ENB_SS","log",ENB_SS);
+  register_log_component("ENB_SS_PORTMAN","log",ENB_SS_PORTMAN);
+  register_log_component("ENB_SS_PORTMAN_ACP","log",ENB_SS_PORTMAN_ACP);
+  register_log_component("ENB_SS_SYS_TASK","log",ENB_SS_SYS_TASK);
+  register_log_component("ENB_SS_SRB_ACP","log",ENB_SS_SRB_ACP);
+  register_log_component("ENB_SS_SYSIND","log",ENB_SS_SYSIND);
+  register_log_component("ENB_SS_SYSIND_ACP","log",ENB_SS_SYSIND_ACP);
+  register_log_component("ENB_SS_SRB","log",ENB_SS_SRB);
+  register_log_component("ENB_SS_DRB","log",ENB_SS_DRB);
+  register_log_component("ENB_SS_DRB_ACP","log",ENB_SS_DRB_ACP);
+  register_log_component("ENB_SS_VNG","log",ENB_SS_VNG);
+  register_log_component("ENB_SS_VTP","log",ENB_SS_VTP);
+  register_log_component("ENB_SS_VT_TIMER","log",ENB_SS_VT_TIMER);
   register_log_component("MCE_APP","log",MCE_APP);
   register_log_component("MME_APP","log",MME_APP);
   register_log_component("TMR","",TMR);
@@ -503,6 +516,7 @@ int logInit (void)
   register_log_component("NGAP","",NGAP);
   register_log_component("ITTI","log",ITTI);
   register_log_component("UTIL","log",UTIL);
+  register_log_component("PKT", "log", PKT);
 
   for (int i=0 ; log_level_names[i].name != NULL ; i++)
     g_log->level2string[i]           = toupper(log_level_names[i].name[0]); // uppercased first letter of level name
@@ -604,6 +618,30 @@ void logRecord_mt(const char *file,
   va_start(args,format);
   log_output_memory(c, file,func,line,comp,level,format,args);
   va_end(args);
+}
+
+void logRecord_tp(const char *file,
+		  const char *func,
+		  int line,
+		  int comp,
+		  int level,
+		  const char *format,
+		  ... )
+{
+	log_component_t *c = &g_log->log_component[comp];
+	char header[48];
+	char buf[1024];
+	va_list args;
+	va_start(args, format);
+	vsnprintf(buf, sizeof(buf)-1, format, args);
+	va_end(args);
+
+	if(map_int_to_str(log_level_names, level) != NULL)
+		snprintf(header, sizeof(header)-1, "SS-%s %s", c->name, map_int_to_str(log_level_names, level));
+	else
+		snprintf(header, sizeof(header)-1, "SS-%s", c->name);
+
+	LOG_SS(header, func, line, buf) ;
 }
 
 void vlogRecord_mt(const char *file,

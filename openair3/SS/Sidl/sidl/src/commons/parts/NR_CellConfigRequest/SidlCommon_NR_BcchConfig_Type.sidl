@@ -1,0 +1,97 @@
+/*
+ * Copyright 2022 Sequans Communications.
+ *
+ * Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The OpenAirInterface Software Alliance licenses this file to You under
+ * the OAI Public License, Version 1.0  (the "License"); you may not use this file
+ * except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.openairinterface.org/?page_id=698
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * For more information about the OpenAirInterface (OAI) Software Alliance:
+ *      contact@openairinterface.org
+ */
+
+#pragma once
+
+// SIDL keywords.
+#include "msg.sidl"
+
+// SIDL commons.
+#include "SidlNrCommon.sidl"
+
+typedef Null_Type NR_BcchToPbchConfig_Type;
+
+typedef SIDL_DYNAMIC(int32_t, IntegerList_Type);
+
+struct NR_Sib1Schedul_Type {
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(NR_Sib1Schedul_Type, NR_SearchSpaceDlDciAssignment_Type, SearchSpaceAndDci);
+	SIDL_OPTIONAL_WITH_PFX(NR_Sib1Schedul_Type, int32_t, Periodicity);
+	SIDL_OPTIONAL(IntegerList_Type, SlotOffsetList);
+};
+
+typedef ASN_ENUM(ASN_NR_NAME(SI_SchedulingInfo, si_WindowLength)) NR_SiWindowLength_Type;
+
+typedef ASN_ENUM(ASN_NR_NAME(SchedulingInfo, si_Periodicity)) NR_SiPeriodicity_Type;
+
+struct NR_SingleSiSchedul_Type {
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(NR_SingleSiSchedul_Type, NR_SearchSpaceDlDciAssignment_Type, SearchSpaceAndDci);
+	SIDL_OPTIONAL_WITH_PFX(NR_SingleSiSchedul_Type, int32_t, SlotOffset);
+};
+
+struct NR_OtherSiSchedul_Type {
+	SIDL_OPTIONAL(NR_SiPeriodicity_Type, Periodicity);
+	SIDL_DYNAMIC_OPTIONAL_OF_STRUCT(NR_SingleSiSchedul_Type, Window);
+};
+
+typedef SIDL_DYNAMIC_OF_STRUCT(NR_OtherSiSchedul_Type, NR_OtherSiSchedulList_Type);
+
+struct NR_AllOtherSiSchedul_Type {
+	SIDL_OPTIONAL(NR_SiWindowLength_Type, WindowLength);
+	SIDL_OPTIONAL(NR_OtherSiSchedulList_Type, SiList);
+	SIDL_OPTIONAL(NR_OtherSiSchedulList_Type, SegmentedSiList);
+};
+
+struct NR_BcchToPdschConfig_Type {
+	SIDL_OPTIONAL_OF_STRUCT(NR_Sib1Schedul_Type, Sib1Schedul);
+	SIDL_OPTIONAL_OF_STRUCT(NR_AllOtherSiSchedul_Type, SiSchedul);
+};
+
+typedef SIDL_DYNAMIC_OF_STRUCT(ASN_NR_NAME(BCCH_DL_SCH_Message), NR_SI_List_Type);
+typedef SIDL_DYNAMIC(NR_SI_List_Type, NR_SegmentedSI_List_Type);
+
+SIDL_UNION_ENUM(NR_PosSI_Type) {
+	NR_PosSI_Type_UNBOUND_VALUE,
+	NR_PosSI_Type_PosSI,
+	NR_PosSI_Type_SegmentedPosSIs
+};
+SIDL_UNION_BEGIN(NR_PosSI_Type) {
+	SIDL_UNION_CASE(NR_PosSI_Type_PosSI)
+		struct ASN_NR_NAME(BCCH_DL_SCH_Message) PosSI;
+	SIDL_UNION_CASE(NR_PosSI_Type_SegmentedPosSIs)
+		NR_SI_List_Type SegmentedPosSIs;
+} SIDL_UNION_END;
+
+typedef SIDL_DYNAMIC_OF_STRUCT(NR_PosSI_Type, NR_PosSI_List_Type);
+
+struct NR_BcchInfo_Type {
+	SIDL_OPTIONAL_OF_STRUCT(ASN_NR_NAME(BCCH_BCH_Message), MIB);
+	SIDL_OPTIONAL_OF_STRUCT(ASN_NR_NAME(BCCH_DL_SCH_Message), SIB1);
+	SIDL_OPTIONAL(NR_SI_List_Type, SIs);
+	SIDL_OPTIONAL(NR_SegmentedSI_List_Type, SegmentedSIs);
+	SIDL_OPTIONAL(NR_PosSI_List_Type, PosSIs);
+};
+
+struct NR_BcchConfig_Type {
+	SIDL_OPTIONAL(NR_BcchToPbchConfig_Type, Pbch);
+	SIDL_OPTIONAL_OF_STRUCT(NR_BcchToPdschConfig_Type, Pdsch);
+	SIDL_OPTIONAL_OF_STRUCT(NR_BcchInfo_Type, BcchInfo);
+};

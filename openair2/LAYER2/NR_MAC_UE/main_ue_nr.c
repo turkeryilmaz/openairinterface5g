@@ -231,6 +231,7 @@ void release_mac_configuration(NR_UE_MAC_INST_t *mac)
     asn_sequence_del(&mac->lc_ordered_list, i, 0);
     free(lc_info);
   }
+  mac->order_list_count = 0;
 
   memset(&mac->ssb_measurements, 0, sizeof(mac->ssb_measurements));
   memset(&mac->csirs_measurements, 0, sizeof(mac->csirs_measurements));

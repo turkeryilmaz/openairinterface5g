@@ -304,5 +304,6 @@ int nr_ue_dl_indication(nr_downlink_indication_t *dl_info);
 
 int nr_ue_ul_indication(nr_uplink_indication_t *ul_info);
 
+void check_and_process_slot_ind(nfapi_ue_slot_indication_vt_t *slot_ind, uint16_t frame, uint16_t slot);
 #endif
 

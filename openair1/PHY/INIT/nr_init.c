@@ -524,9 +524,10 @@ void nr_phy_config_request_sim(PHY_VARS_gNB *gNB,
 void nr_phy_config_request(NR_PHY_Config_t *phy_config)
 {
   uint8_t Mod_id = phy_config->Mod_id;
+  int CC_id = phy_config->CC_id;
   uint8_t short_sequence, num_sequences, rootSequenceIndex, fd_occasion;
-  NR_DL_FRAME_PARMS *fp = &RC.gNB[Mod_id]->frame_parms;
-  nfapi_nr_config_request_scf_t *gNB_config = &RC.gNB[Mod_id]->gNB_config;
+  NR_DL_FRAME_PARMS *fp = &RC.gNB[CC_id]->frame_parms;
+  nfapi_nr_config_request_scf_t *gNB_config = &RC.gNB[CC_id]->gNB_config;
 
   memcpy((void*)gNB_config,phy_config->cfg,sizeof(*phy_config->cfg));
 
@@ -542,8 +543,9 @@ void nr_phy_config_request(NR_PHY_Config_t *phy_config)
   LOG_I(PHY, "DL frequency %lu Hz, UL frequency %lu Hz: band %d, uldl offset %d Hz\n", fp->dl_CarrierFreq, fp->ul_CarrierFreq, fp->nr_band, dlul_offset);
 
   fp->threequarter_fs = get_softmodem_params()->threequarter_fs;
-  LOG_A(PHY,"Configuring MIB for instance %d, : (Nid_cell %d,DL freq %llu, UL freq %llu)\n",
+  LOG_A(PHY,"Configuring MIB for instance %d, CC_id %d, : (Nid_cell %d,DL freq %llu, UL freq %llu)\n",
         Mod_id,
+        CC_id,
         gNB_config->cell_config.phy_cell_id.value,
         (unsigned long long)fp->dl_CarrierFreq,
         (unsigned long long)fp->ul_CarrierFreq);
@@ -551,7 +553,7 @@ void nr_phy_config_request(NR_PHY_Config_t *phy_config)
   nr_init_frame_parms(gNB_config, fp);
   
 
-  if (RC.gNB[Mod_id]->configured == 1) {
+  if (RC.gNB[CC_id]->configured == 1) {
     LOG_E(PHY,"Already gNB already configured, do nothing\n");
     return;
   }
@@ -563,11 +565,11 @@ void nr_phy_config_request(NR_PHY_Config_t *phy_config)
   num_sequences = prach_config->num_prach_fd_occasions_list[fd_occasion].num_root_sequences.value;
   rootSequenceIndex = prach_config->num_prach_fd_occasions_list[fd_occasion].prach_root_sequence_index.value;
 
-  compute_nr_prach_seq(short_sequence, num_sequences, rootSequenceIndex, RC.gNB[Mod_id]->X_u);
+  compute_nr_prach_seq(short_sequence, num_sequences, rootSequenceIndex, RC.gNB[CC_id]->X_u);
 //  }
-  RC.gNB[Mod_id]->configured     = 1;
+  RC.gNB[CC_id]->configured     = 1;
 
-  fp->ofdm_offset_divisor = RC.gNB[Mod_id]->ofdm_offset_divisor;
+  fp->ofdm_offset_divisor = RC.gNB[CC_id]->ofdm_offset_divisor;
   init_symbol_rotation(fp);
   init_timeshift_rotation(fp);
 

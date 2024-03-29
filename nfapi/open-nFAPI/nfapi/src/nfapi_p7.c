@@ -38,9 +38,11 @@
 #include <nfapi.h>
 #include <debug.h>
 #include "nfapi_nr_interface_scf.h"
+#include "vendor_ext.h"
 
 extern int nfapi_unpack_p7_vendor_extension(nfapi_p7_message_header_t *header, uint8_t **ppReadPackedMsg, void *user_data);
 extern int nfapi_pack_p7_vendor_extension(nfapi_p7_message_header_t *header, uint8_t **ppWritePackedMsg, void *user_data);
+static uint8_t pack_p7_cell_search_indication(void *msg, uint8_t **ppWritePackedMsg, uint8_t *end, nfapi_p7_codec_config_t* config);
 
 uint32_t nfapi_calculate_checksum(uint8_t *buffer, uint16_t len) {
   uint32_t chksum = 0;
@@ -346,9 +348,17 @@ static uint8_t pack_dl_tti_ssb_pdu_rel15_value(void *tlv, uint8_t **ppWritePacke
         && push16(value->ssbOffsetPointA, ppWritePackedMsg, end) && push8(value->bchPayloadFlag, ppWritePackedMsg, end)
         && push8((value->bchPayload >> 16) & 0xff, ppWritePackedMsg, end)
         && push8((value->bchPayload >> 8) & 0xff, ppWritePackedMsg, end) && push8(value->bchPayload & 0xff, ppWritePackedMsg, end)
-        && push8(0, ppWritePackedMsg, end) &&
+        && push8(0, ppWritePackedMsg, end) 
+        && push8(0, ppWritePackedMsg, end) && push8(0, ppWritePackedMsg, end) &&
+        	 push8(value->ssbRsrp, ppWritePackedMsg, end) &&  		// TODO: pack precoding_and_beamforming too
+           push8(value->ssb_pbch_pdu_maintenance_fapiv3.ssbPduIndex, ppWritePackedMsg, end) &&
+           push8(value->ssb_pbch_pdu_maintenance_fapiv3.caseType, ppWritePackedMsg, end) &&
+           push8(value->ssb_pbch_pdu_maintenance_fapiv3.SubcarrierSpacing, ppWritePackedMsg, end) &&
+           push8(value->ssb_pbch_pdu_maintenance_fapiv3.lMax, ppWritePackedMsg, end) &&
+           push16(value->ssb_pbch_pdu_maintenance_fapiv3.ssPbchBlockPowerScaling, ppWritePackedMsg, end) &&
+           push16(value->ssb_pbch_pdu_maintenance_fapiv3.betaPSSProfileSSS, ppWritePackedMsg, end)
         // TODO add Tx Power Info
-        push8(0, ppWritePackedMsg, end) && push8(0, ppWritePackedMsg, end)
+        
         && push16(value->precoding_and_beamforming.num_prgs, ppWritePackedMsg, end)
         && push16(value->precoding_and_beamforming.prg_size, ppWritePackedMsg, end)
         && push8(value->precoding_and_beamforming.dig_bf_interfaces, ppWritePackedMsg, end))) {
@@ -3583,6 +3593,13 @@ static uint8_t pack_nr_uci_pusch(void *tlv, uint8_t **ppWritePackedMsg, uint8_t 
   return 1;
 }
 
+static uint8_t pack_subframe_indication(void *msg, uint8_t **ppWritePackedMsg, uint8_t *end, nfapi_p7_codec_config_t* config)
+{
+	nfapi_subframe_indication_t *pNfapiMsg = (nfapi_subframe_indication_t*)msg;
+
+	return (push16(pNfapiMsg->sfn_sf, ppWritePackedMsg, end));
+}
+
 static uint8_t pack_nr_uci_indication_body(nfapi_nr_uci_t* value, uint8_t **ppWritePackedMsg, uint8_t *end)
 {
   if (!push16(value->pdu_type, ppWritePackedMsg, end))
@@ -3726,21 +3743,34 @@ int nfapi_nr_p7_message_pack(void *pMessageBuf, void *pPackedBuf, uint32_t packe
       result = pack_nr_timing_info(pMessageHeader, &pWritePackedMessage, end, config);
       break;
 
-    default: {
-      if (pMessageHeader->message_id >= NFAPI_VENDOR_EXT_MSG_MIN && pMessageHeader->message_id <= NFAPI_VENDOR_EXT_MSG_MAX) {
-        if (config && config->pack_p7_vendor_extension) {
-          result = (config->pack_p7_vendor_extension)(pMessageHeader, &pWritePackedMessage, end, config);
-        } else {
-          NFAPI_TRACE(NFAPI_TRACE_ERROR,
-                      "%s VE NFAPI message ID %d. No ve ecoder provided\n",
-                      __FUNCTION__,
-                      pMessageHeader->message_id);
-        }
-      } else {
-        NFAPI_TRACE(NFAPI_TRACE_ERROR, "%s NFAPI Unknown message ID %d\n", __FUNCTION__, pMessageHeader->message_id);
-      }
-    } break;
-  }
+		default:
+			{
+				if(pMessageHeader->message_id >= NFAPI_VENDOR_EXT_MSG_MIN &&
+				   pMessageHeader->message_id <= NFAPI_VENDOR_EXT_MSG_MAX)
+				{
+					if (pMessageHeader->message_id == P7_CELL_SEARCH_IND)
+					{
+						result = pack_p7_cell_search_indication(pMessageHeader, &pWritePackedMessage, end, config);
+					}
+					else
+					{
+						if(config && config->pack_p7_vendor_extension)
+						{
+							result = (config->pack_p7_vendor_extension)(pMessageHeader, &pWritePackedMessage, end, config);
+						}
+						else
+						{
+							NFAPI_TRACE(NFAPI_TRACE_ERROR, "%s VE NFAPI message ID %d. No ve ecoder provided\n", __FUNCTION__, pMessageHeader->message_id);
+						}
+					}
+				}
+				else
+				{
+					NFAPI_TRACE(NFAPI_TRACE_ERROR, "%s NFAPI Unknown message ID %d\n", __FUNCTION__, pMessageHeader->message_id);
+				}
+			}
+			break;
+	}
 
   if (result == 0) {
     NFAPI_TRACE(NFAPI_TRACE_ERROR, "P7 Pack failed to pack message\n");
@@ -3777,6 +3807,44 @@ int nfapi_nr_p7_message_pack(void *pMessageBuf, void *pPackedBuf, uint32_t packe
   }
 
   return (packedMsgLen);
+}
+
+
+
+static uint8_t pack_p7_lte_cell_search_indication_value(void *msg, uint8_t **ppWritePackedMsg, uint8_t *end)
+{
+        nfapi_lte_cell_search_indication_t* value = (nfapi_lte_cell_search_indication_t*)msg;
+        uint16_t idx = 0;
+
+        if(push16(value->number_of_lte_cells_found, ppWritePackedMsg, end) == 0)
+                return 0;
+
+        for(idx = 0; idx < value->number_of_lte_cells_found; ++idx)
+        {
+                if(!(push16(value->lte_found_cells[idx].pci, ppWritePackedMsg, end) &&
+                         push8(value->lte_found_cells[idx].rsrp, ppWritePackedMsg, end) &&
+                         push8(value->lte_found_cells[idx].rsrq, ppWritePackedMsg, end) &&
+                         pushs16(value->lte_found_cells[idx].frequency_offset, ppWritePackedMsg, end)))
+                        return 0;
+        }
+        return 1;
+}
+
+
+static uint8_t pack_p7_cell_search_indication(void *msg, uint8_t **ppWritePackedMsg, uint8_t *end, nfapi_p7_codec_config_t* config)
+{
+        vendor_nfapi_cell_search_indication_t *pNfapiMsg = (vendor_nfapi_cell_search_indication_t*)msg;
+
+        return (push32(pNfapiMsg->error_code, ppWritePackedMsg, end) &&
+                        pack_tlv(NFAPI_LTE_CELL_SEARCH_INDICATION_TAG, &pNfapiMsg->lte_cell_search_indication, ppWritePackedMsg, end, &pack_p7_lte_cell_search_indication_value) &&
+#if 0 /** FC: Lets do LTE for now */
+                        pack_tlv(NFAPI_UTRAN_CELL_SEARCH_INDICATION_TAG, &pNfapiMsg->utran_cell_search_indication, ppWritePackedMsg, end, &pack_utran_cell_search_indication_value) &&
+                        pack_tlv(NFAPI_GERAN_CELL_SEARCH_INDICATION_TAG, &pNfapiMsg->geran_cell_search_indication, ppWritePackedMsg, end, &pack_geran_cell_search_indication_value) &&
+                        pack_tlv(NFAPI_PNF_CELL_SEARCH_STATE_TAG, &pNfapiMsg->pnf_cell_search_state, ppWritePackedMsg, end, &pack_opaque_data_value) &&
+                        pack_tlv(NFAPI_NB_IOT_CELL_SEARCH_INDICATION_TAG, &pNfapiMsg->nb_iot_cell_search_indication, ppWritePackedMsg, end, &pack_nb_iot_cell_search_indication_value) &&
+#endif
+                        pack_p7_vendor_extension_tlv(pNfapiMsg->vendor_extension, ppWritePackedMsg, end, config));
+
 }
 
 int nfapi_p7_message_pack(void *pMessageBuf, void *pPackedBuf, uint32_t packedBufLen, nfapi_p7_codec_config_t *config) {
@@ -3893,13 +3961,21 @@ int nfapi_p7_message_pack(void *pMessageBuf, void *pPackedBuf, uint32_t packedBu
       result = pack_timing_info(pMessageHeader, &pWritePackedMessage, end, config);
       break;
 
+    case NFAPI_SUBFRAME_INDICATION:
+      result = pack_subframe_indication(pMessageHeader, &pWritePackedMessage, end, config);
+      break;
+
     default: {
       if(pMessageHeader->message_id >= NFAPI_VENDOR_EXT_MSG_MIN &&
           pMessageHeader->message_id <= NFAPI_VENDOR_EXT_MSG_MAX) {
-        if(config && config->pack_p7_vendor_extension) {
-          result = (config->pack_p7_vendor_extension)(pMessageHeader, &pWritePackedMessage, end, config);
+        if (pMessageHeader->message_id == P7_CELL_SEARCH_IND) {
+          result = pack_p7_cell_search_indication(pMessageHeader, &pWritePackedMessage, end, config);
         } else {
-          NFAPI_TRACE(NFAPI_TRACE_ERROR, "%s VE NFAPI message ID %d. No ve ecoder provided\n", __FUNCTION__, pMessageHeader->message_id);
+          if(config && config->pack_p7_vendor_extension) {
+            result = (config->pack_p7_vendor_extension)(pMessageHeader, &pWritePackedMessage, end, config);
+          } else {
+            NFAPI_TRACE(NFAPI_TRACE_ERROR, "%s VE NFAPI message ID %d. No ve ecoder provided\n", __FUNCTION__, pMessageHeader->message_id);
+          }
         }
       } else {
         NFAPI_TRACE(NFAPI_TRACE_ERROR, "%s NFAPI Unknown message ID %d\n", __FUNCTION__, pMessageHeader->message_id);
@@ -4088,7 +4164,8 @@ static uint8_t unpack_dl_tti_ssb_pdu_rel15_value(void *tlv, uint8_t **ppReadPack
         && pull8(ppReadPackedMsg, &value->SsbBlockIndex, end) && pull8(ppReadPackedMsg, &value->SsbSubcarrierOffset, end)
         && pull16(ppReadPackedMsg, &value->ssbOffsetPointA, end) && pull8(ppReadPackedMsg, &value->bchPayloadFlag, end)
         && pull8(ppReadPackedMsg, &byte3, end) && pull8(ppReadPackedMsg, &byte2, end) && pull8(ppReadPackedMsg, &byte1, end)
-        && pull8(ppReadPackedMsg, &byte0, end))) { // this should be always 0, bchpayload is 24 bits
+        && pull8(ppReadPackedMsg, &byte0, end)
+        )) { // this should be always 0, bchpayload is 24 bits
     return 0;
   }
   // rebuild the bchpayload
@@ -4098,7 +4175,14 @@ static uint8_t unpack_dl_tti_ssb_pdu_rel15_value(void *tlv, uint8_t **ppReadPack
   value->bchPayload = value->bchPayload << 8;
   value->bchPayload |= byte1;
   // TODO add Tx Power Info
-  if (!(pull8(ppReadPackedMsg, &byte1, end) && pull8(ppReadPackedMsg, &byte0, end)
+  if (!(pull8(ppReadPackedMsg, &byte1, end) && pull8(ppReadPackedMsg, &byte0, end) &&
+        	 pull8(ppReadPackedMsg, &value->ssbRsrp, end) && // TODO: pack precoding_and_beamforming too
+           pull8(ppReadPackedMsg, &value->ssb_pbch_pdu_maintenance_fapiv3.ssbPduIndex, end) &&
+           pull8(ppReadPackedMsg, &value->ssb_pbch_pdu_maintenance_fapiv3.caseType, end) &&
+           pull8(ppReadPackedMsg, &value->ssb_pbch_pdu_maintenance_fapiv3.SubcarrierSpacing, end) &&
+           pull8(ppReadPackedMsg, &value->ssb_pbch_pdu_maintenance_fapiv3.lMax, end) &&
+           pull16(ppReadPackedMsg, &value->ssb_pbch_pdu_maintenance_fapiv3.ssPbchBlockPowerScaling, end) &&
+           pull16(ppReadPackedMsg, &value->ssb_pbch_pdu_maintenance_fapiv3.betaPSSProfileSSS, end)
         && pull16(ppReadPackedMsg, &value->precoding_and_beamforming.num_prgs, end)
         && pull16(ppReadPackedMsg, &value->precoding_and_beamforming.prg_size, end)
         && pull8(ppReadPackedMsg, &value->precoding_and_beamforming.dig_bf_interfaces, end))) {
@@ -5576,6 +5660,16 @@ static uint8_t unpack_ul_config_request(uint8_t **ppReadPackedMsg, uint8_t *end,
   };
   return (pull16(ppReadPackedMsg, &pNfapiMsg->sfn_sf, end) &&
           unpack_p7_tlv_list(unpack_fns, sizeof(unpack_fns)/sizeof(unpack_tlv_t), ppReadPackedMsg, end, config, &pNfapiMsg->vendor_extension));
+}
+
+static uint8_t unpack_subframe_indication(uint8_t **ppReadPackedMsg, uint8_t *end, void *msg, nfapi_p7_codec_config_t* config)
+{
+  nfapi_subframe_indication_t *pNfapiMsg = (nfapi_subframe_indication_t *)msg;
+
+  if (!(pull16(ppReadPackedMsg, &pNfapiMsg->sfn_sf , end) ))
+    return 0;
+
+  return 1;
 }
 
 static uint8_t unpack_hi_dci0_hi_pdu_rel8_value(void *tlv, uint8_t **ppReadPackedMsg, uint8_t *end) {
@@ -7907,6 +8001,55 @@ static uint8_t unpack_nr_timing_info(uint8_t **ppReadPackedMsg, uint8_t *end, vo
           && unpack_nr_p7_tlv_list(NULL, 0, ppReadPackedMsg, end, config, &pNfapiMsg->vendor_extension));
 }
 
+static uint8_t unpack_p7_lte_cell_search_indication_value(void *tlv, uint8_t **ppReadPackedMsg, uint8_t *end, nfapi_p7_codec_config_t* config)
+{
+	nfapi_lte_cell_search_indication_t* value = (nfapi_lte_cell_search_indication_t*)tlv;
+
+	uint16_t idx = 0;
+	if(pull16(ppReadPackedMsg, &value->number_of_lte_cells_found, end) == 0)
+		return 0;
+
+	if(value->number_of_lte_cells_found <= NFAPI_MAX_LTE_CELLS_FOUND)
+	{
+		for(idx = 0; idx < value->number_of_lte_cells_found; ++idx)
+		{
+			if(!(pull16(ppReadPackedMsg, &value->lte_found_cells[idx].pci, end) &&
+				 pull8(ppReadPackedMsg, &value->lte_found_cells[idx].rsrp, end) &&
+				 pull8(ppReadPackedMsg, &value->lte_found_cells[idx].rsrq, end) &&
+				 pulls16(ppReadPackedMsg, &value->lte_found_cells[idx].frequency_offset, end)))
+				return 0;
+		}
+	}
+	else
+	{
+		NFAPI_TRACE(NFAPI_TRACE_ERROR, "More found LTE cells than we can decode %d \n", value->number_of_lte_cells_found);
+		return 0;
+	}
+	return 1;
+}
+
+static uint8_t unpack_p7_cell_search_indication(uint8_t **ppReadPackedMsg, uint8_t *end, void *msg, nfapi_p7_codec_config_t* config)
+{
+	vendor_nfapi_cell_search_indication_t *pNfapiMsg = (vendor_nfapi_cell_search_indication_t*)msg;
+
+	unpack_p7_tlv_t unpack_fns[] =
+	{
+		{ NFAPI_LTE_CELL_SEARCH_INDICATION_TAG, &pNfapiMsg->lte_cell_search_indication, &unpack_p7_lte_cell_search_indication_value},
+#if 0 /** FC: Lets do LTE for now */
+		{ NFAPI_UTRAN_CELL_SEARCH_INDICATION_TAG, &pNfapiMsg->utran_cell_search_indication, &unpack_utran_cell_search_indication_value},
+		{ NFAPI_GERAN_CELL_SEARCH_INDICATION_TAG, &pNfapiMsg->geran_cell_search_indication, &unpack_geran_cell_search_indication_value},
+		{ NFAPI_PNF_CELL_SEARCH_STATE_TAG, &pNfapiMsg->pnf_cell_search_state, &unpack_opaque_data_value},
+		{ NFAPI_NB_IOT_CELL_SEARCH_INDICATION_TAG, &pNfapiMsg->nb_iot_cell_search_indication, &unpack_nb_iot_cell_search_indication_value},
+#endif
+	};
+
+	return (pull32(ppReadPackedMsg, &pNfapiMsg->error_code, end) &&
+			unpack_p7_tlv_list(unpack_fns, sizeof(unpack_fns)/sizeof(unpack_tlv_t), ppReadPackedMsg, end, config, &pNfapiMsg->vendor_extension));
+		
+}
+
+
+
 // unpack length check
 
 static int check_unpack_length(nfapi_message_id_e msgId, uint32_t unpackedBufLen) {
@@ -8203,6 +8346,14 @@ int nfapi_p7_message_unpack(void *pMessageBuf, uint32_t messageBufLen, void *pUn
 
   // look for the specific message
   switch (pMessageHeader->message_id) {
+    case NFAPI_SUBFRAME_INDICATION:
+      if (check_unpack_length(NFAPI_SUBFRAME_INDICATION, unpackedBufLen)){
+        nfapi_subframe_indication_t* msg = (nfapi_subframe_indication_t*) pMessageHeader;
+        result = unpack_subframe_indication(&pReadPackedMessage,  end, msg, config);
+      }
+      else
+        return -1;
+      break;
     case NFAPI_DL_CONFIG_REQUEST:
       if (check_unpack_length(NFAPI_DL_CONFIG_REQUEST, unpackedBufLen))
         result = unpack_dl_config_request(&pReadPackedMessage,  end, pMessageHeader, config);
@@ -8366,13 +8517,26 @@ int nfapi_p7_message_unpack(void *pMessageBuf, uint32_t messageBufLen, void *pUn
     default:
       if(pMessageHeader->message_id >= NFAPI_VENDOR_EXT_MSG_MIN &&
           pMessageHeader->message_id <= NFAPI_VENDOR_EXT_MSG_MAX) {
-        if(config && config->unpack_p7_vendor_extension) {
-          result = (config->unpack_p7_vendor_extension)(pMessageHeader, &pReadPackedMessage, end, config);
-        } else {
-          NFAPI_TRACE(NFAPI_TRACE_ERROR, "%s VE NFAPI message ID %d. No ve decoder provided\n", __FUNCTION__, pMessageHeader->message_id);
+        if ( pMessageHeader->message_id == P7_CELL_SEARCH_IND )
+	{
+          result = unpack_p7_cell_search_indication(&pReadPackedMessage, end, pMessageHeader, config);
+          break;
         }
-      } else {
-        NFAPI_TRACE(NFAPI_TRACE_ERROR, "%s NFAPI Unknown message ID %d\n", __FUNCTION__, pMessageHeader->message_id);
+        else 
+        {
+          if(config && config->unpack_p7_vendor_extension) 
+          {
+            result = (config->unpack_p7_vendor_extension)(pMessageHeader, &pReadPackedMessage, end, config);
+          } 
+          else 
+          {
+            NFAPI_TRACE(NFAPI_TRACE_ERROR, "%s VE NFAPI message ID %d. No ve decoder provided\n", __FUNCTION__, pMessageHeader->message_id);
+          }
+        }
+      } 
+      else 
+      {
+          NFAPI_TRACE(NFAPI_TRACE_ERROR, "%s NFAPI Unknown message ID %d\n", __FUNCTION__, pMessageHeader->message_id);
       }
 
       break;
@@ -8530,6 +8694,11 @@ int nfapi_nr_p7_message_unpack(void *pMessageBuf, uint32_t messageBufLen, void *
 			if(pMessageHeader->message_id >= NFAPI_VENDOR_EXT_MSG_MIN &&
 			   pMessageHeader->message_id <= NFAPI_VENDOR_EXT_MSG_MAX)
 			{
+                            if ( pMessageHeader->message_id == P7_CELL_SEARCH_IND) {
+                                result = unpack_p7_cell_search_indication(&pReadPackedMessage, end, pMessageHeader, config);
+                                break;
+                            }
+                            else {
 				if(config && config->unpack_p7_vendor_extension)
 				{
 					result = (config->unpack_p7_vendor_extension)(pMessageHeader, &pReadPackedMessage, end, config);
@@ -8538,6 +8707,7 @@ int nfapi_nr_p7_message_unpack(void *pMessageBuf, uint32_t messageBufLen, void *
 				{
 					NFAPI_TRACE(NFAPI_TRACE_ERROR, "%s VE NFAPI message ID %d. No ve decoder provided\n", __FUNCTION__, pMessageHeader->message_id);
 				}
+                            }
 			}
 			else
 			{

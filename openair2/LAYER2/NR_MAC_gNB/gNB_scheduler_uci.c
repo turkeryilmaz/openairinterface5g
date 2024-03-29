@@ -39,6 +39,7 @@ extern RAN_CONTEXT_t RC;
 
 
 static void nr_fill_nfapi_pucch(gNB_MAC_INST *nrmac,
+                                int CC_id,
                                 frame_t frame,
                                 sub_frame_t slot,
                                 const NR_sched_pucch_t *pucch,
@@ -46,7 +47,7 @@ static void nr_fill_nfapi_pucch(gNB_MAC_INST *nrmac,
 {
 
   const int index = ul_buffer_index(pucch->frame, pucch->ul_slot, UE->current_UL_BWP.scs, nrmac->UL_tti_req_ahead_size);
-  nfapi_nr_ul_tti_request_t *future_ul_tti_req = &nrmac->UL_tti_req_ahead[0][index];
+  nfapi_nr_ul_tti_request_t *future_ul_tti_req = &nrmac->UL_tti_req_ahead[CC_id][index];
   if (future_ul_tti_req->SFN != pucch->frame || future_ul_tti_req->Slot != pucch->ul_slot)
     LOG_W(MAC,
           "Current %d.%d : future UL_tti_req's frame.slot %4d.%2d does not match PUCCH %4d.%2d\n",
@@ -165,6 +166,7 @@ static int get_pucch_index(int frame, int slot, int n_slots_frame, const NR_TDD_
 }
 
 void nr_schedule_pucch(gNB_MAC_INST *nrmac,
+                       int CC_id,
                        frame_t frameP,
                        sub_frame_t slotP)
 {
@@ -174,13 +176,13 @@ void nr_schedule_pucch(gNB_MAC_INST *nrmac,
   if (!is_xlsch_in_slot(nrmac->ulsch_slot_bitmap[slotP / 64], slotP))
     return;
 
-  UE_iterator(nrmac->UE_info.list, UE) {
+  UE_iterator(nrmac->UE_info.list[CC_id], UE) {
     NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
     NR_UE_UL_BWP_t *ul_bwp = &UE->current_UL_BWP;
     const int n_slots_frame = nr_slots_per_frame[ul_bwp->scs];
-    const NR_ServingCellConfigCommon_t *scc = nrmac->common_channels[0].ServingCellConfigCommon;
+    const NR_ServingCellConfigCommon_t *scc = nrmac->common_channels[CC_id].ServingCellConfigCommon;
     const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
-    AssertFatal(tdd || nrmac->common_channels[0].frame_type == FDD, "Dynamic TDD not handled yet\n");
+    AssertFatal(tdd || nrmac->common_channels[CC_id].frame_type == FDD, "Dynamic TDD not handled yet\n");
     const int pucch_index = get_pucch_index(frameP, slotP, n_slots_frame, tdd, sched_ctrl->sched_pucch_size);
     NR_sched_pucch_t *curr_pucch = &UE->UE_sched_ctrl.sched_pucch[pucch_index];
     if (!curr_pucch->active)
@@ -201,7 +203,7 @@ void nr_schedule_pucch(gNB_MAC_INST *nrmac,
     const uint8_t O_sr = curr_pucch->sr_flag;
     LOG_D(NR_MAC,"Scheduling PUCCH[%d] RX for UE %04x in %4d.%2d O_ack %d, O_sr %d, O_csi %d\n",
           pucch_index,UE->rnti,curr_pucch->frame,curr_pucch->ul_slot,O_ack,O_sr,O_csi);
-    nr_fill_nfapi_pucch(nrmac, frameP, slotP, curr_pucch, UE);
+    nr_fill_nfapi_pucch(nrmac, CC_id, frameP, slotP, curr_pucch, UE);
     memset(curr_pucch, 0, sizeof(*curr_pucch));
 
   }
@@ -209,13 +211,14 @@ void nr_schedule_pucch(gNB_MAC_INST *nrmac,
 
 void nr_csi_meas_reporting(int Mod_idP,
                            frame_t frame,
-                           sub_frame_t slot)
+                           sub_frame_t slot,
+                           int CC_id)
 {
   /* already mutex protected: held in gNB_dlsch_ulsch_scheduler() */
   gNB_MAC_INST *nrmac = RC.nrmac[Mod_idP];
   NR_SCHED_ENSURE_LOCKED(&nrmac->sched_lock);
 
-  UE_iterator(nrmac->UE_info.list, UE ) {
+  UE_iterator(nrmac->UE_info.list[CC_id], UE ) {
     NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
     NR_UE_UL_BWP_t *ul_bwp = &UE->current_UL_BWP;
     const int n_slots_frame = nr_slots_per_frame[ul_bwp->scs];
@@ -260,9 +263,10 @@ void nr_csi_meas_reporting(int Mod_idP,
       AssertFatal(res_index < n,
                   "CSI pucch resource %ld not found among PUCCH resources\n", pucchcsires->pucch_Resource);
 
-      const NR_ServingCellConfigCommon_t *scc = nrmac->common_channels[0].ServingCellConfigCommon;
+      const NR_ServingCellConfigCommon_t *scc = nrmac->common_channels[CC_id].ServingCellConfigCommon;
       const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
-      AssertFatal(tdd || nrmac->common_channels[0].frame_type == FDD, "Dynamic TDD not handled yet\n");
+
+      AssertFatal(tdd || nrmac->common_channels[CC_id].frame_type == FDD, "Dynamic TDD not handled yet\n");
       const int pucch_index = get_pucch_index(sched_frame, sched_slot, n_slots_frame, tdd, sched_ctrl->sched_pucch_size);
       NR_sched_pucch_t *curr_pucch = &sched_ctrl->sched_pucch[pucch_index];
       AssertFatal(curr_pucch->active == false, "CSI structure is scheduled in advance. It should be free!\n");
@@ -277,7 +281,7 @@ void nr_csi_meas_reporting(int Mod_idP,
 
       // going through the list of PUCCH resources to find the one indexed by resource_id
       const int index = ul_buffer_index(sched_frame, sched_slot, ul_bwp->scs, nrmac->vrb_map_UL_size);
-      uint16_t *vrb_map_UL = &nrmac->common_channels[0].vrb_map_UL[index * MAX_BWP_SIZE];
+      uint16_t *vrb_map_UL = &nrmac->common_channels[CC_id].vrb_map_UL[index * MAX_BWP_SIZE];
       const int m = pucch_Config->resourceToAddModList->list.count;
       for (int j = 0; j < m; j++) {
         NR_PUCCH_Resource_t *pucchres = pucch_Config->resourceToAddModList->list.array[j];
@@ -742,6 +746,8 @@ static void evaluate_rsrp_report(NR_UE_info_t *UE,
     LOG_E(NR_MAC, "UE %04x: reported RSRP index %d invalid\n", UE->rnti, rsrp_index);
     return;
   }
+  UE->rsrpReportStatus = true;
+  UE->ssb_rsrp = strongest_ssb_rsrp;
   NR_mac_stats_t *stats = &UE->mac_stats;
   // including ssb rsrp in mac stats
   stats->cumul_rsrp += strongest_ssb_rsrp;
@@ -1007,13 +1013,14 @@ static NR_UE_harq_t *find_harq(frame_t frame, sub_frame_t slot, NR_UE_info_t * U
 }
 
 void handle_nr_uci_pucch_0_1(module_id_t mod_id,
+                             int CC_id,
                              frame_t frame,
                              sub_frame_t slot,
                              const nfapi_nr_uci_pucch_pdu_format_0_1_t *uci_01)
 {
   gNB_MAC_INST *nrmac = RC.nrmac[mod_id];
   NR_SCHED_LOCK(&nrmac->sched_lock);
-  NR_UE_info_t * UE = find_nr_UE(&nrmac->UE_info, uci_01->rnti);
+  NR_UE_info_t * UE = find_nr_UE(&nrmac->UE_info, CC_id, uci_01->rnti);
   if (!UE) {
     LOG_E(NR_MAC, "%s(): unknown RNTI %04x in PUCCH UCI\n", __func__, uci_01->rnti);
     NR_SCHED_UNLOCK(&nrmac->sched_lock);
@@ -1062,6 +1069,7 @@ void handle_nr_uci_pucch_0_1(module_id_t mod_id,
 }
 
 void handle_nr_uci_pucch_2_3_4(module_id_t mod_id,
+                               int CC_id,
                                frame_t frame,
                                sub_frame_t slot,
                                const nfapi_nr_uci_pucch_pdu_format_2_3_4_t *uci_234)
@@ -1069,7 +1077,7 @@ void handle_nr_uci_pucch_2_3_4(module_id_t mod_id,
   gNB_MAC_INST *nrmac = RC.nrmac[mod_id];
   NR_SCHED_LOCK(&nrmac->sched_lock);
 
-  NR_UE_info_t * UE = find_nr_UE(&nrmac->UE_info, uci_234->rnti);
+  NR_UE_info_t * UE = find_nr_UE(&nrmac->UE_info,  CC_id, uci_234->rnti);
   if (!UE) {
     NR_SCHED_UNLOCK(&nrmac->sched_lock);
     LOG_E(NR_MAC, "%s(): unknown RNTI %04x in PUCCH UCI\n", __func__, uci_234->rnti);
@@ -1111,7 +1119,7 @@ void handle_nr_uci_pucch_2_3_4(module_id_t mod_id,
   }
   if ((uci_234->pduBitmap >> 2) & 0x01) {
     //API to parse the csi report and store it into sched_ctrl
-    extract_pucch_csi_report(csi_MeasConfig, uci_234, frame, slot, UE, nrmac->common_channels->ServingCellConfigCommon);
+    extract_pucch_csi_report(csi_MeasConfig, uci_234, frame, slot, UE, nrmac->common_channels[CC_id].ServingCellConfigCommon);
     //TCI handling function
     tci_handling(UE,frame, slot);
     free(uci_234->csi_part1.csi_part1_payload);
@@ -1235,8 +1243,8 @@ int nr_acknack_scheduling(gNB_MAC_INST *mac,
   /* we assume that this function is mutex-protected from outside. Since it is
    * called often, don't try to lock every time */
 
-  const int CC_id = 0;
-  const int minfbtime = mac->radio_config.minRXTXTIME;
+  const int CC_id = 0; //todo w38:
+  const int minfbtime = mac->radio_config[CC_id].minRXTXTIME;
   const NR_ServingCellConfigCommon_t *scc = mac->common_channels[CC_id].ServingCellConfigCommon;
   const NR_UE_UL_BWP_t *ul_bwp = &UE->current_UL_BWP;
   const int n_slots_frame = nr_slots_per_frame[ul_bwp->scs];
@@ -1350,15 +1358,14 @@ int nr_acknack_scheduling(gNB_MAC_INST *mac,
 }
 
 
-void nr_sr_reporting(gNB_MAC_INST *nrmac, frame_t SFN, sub_frame_t slot)
+void nr_sr_reporting(gNB_MAC_INST *nrmac, int CC_id, frame_t SFN, sub_frame_t slot)
 {
   /* already mutex protected: held in gNB_dlsch_ulsch_scheduler() */
   NR_SCHED_ENSURE_LOCKED(&nrmac->sched_lock);
 
   if (!is_xlsch_in_slot(nrmac->ulsch_slot_bitmap[slot / 64], slot))
     return;
-  const int CC_id = 0;
-  UE_iterator(nrmac->UE_info.list, UE) {
+  UE_iterator(nrmac->UE_info.list[CC_id], UE) {
     NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
     NR_UE_UL_BWP_t *ul_bwp = &UE->current_UL_BWP;
     const int n_slots_frame = nr_slots_per_frame[ul_bwp->scs];

@@ -215,7 +215,7 @@ void nr_ue_decode_mib(NR_UE_MAC_INST_t *mac, int cc_id)
   for (int i = 0; i < 4; i++)
     frame_number_4lsb |= ((extra_bits >> i) & 1) << (3 - i);
 
-  uint8_t ssb_subcarrier_offset_msb = (extra_bits >> 5) & 0x1;    //	extra bits[5]
+  uint8_t ssb_subcarrier_offset_msb = (extra_bits >> 5) & 0x1;    //  extra bits[5]
   uint8_t ssb_subcarrier_offset = (uint8_t)mac->mib->ssb_SubcarrierOffset;
 
   frame = frame << 4;
@@ -229,7 +229,7 @@ void nr_ue_decode_mib(NR_UE_MAC_INST_t *mac, int cc_id)
   }
 
 #ifdef DEBUG_MIB
-  uint8_t half_frame_bit = (extra_bits >> 4) & 0x1; //	extra bits[4]
+  uint8_t half_frame_bit = (extra_bits >> 4) & 0x1; //  extra bits[4]
   LOG_I(MAC,"system frame number(6 MSB bits): %d\n",  mac->mib->systemFrameNumber.buf[0]);
   LOG_I(MAC,"system frame number(with LSB): %d\n", (int) mac->mib_frame);
   LOG_I(MAC,"subcarrier spacing (0=15or60, 1=30or120): %d\n", (int)mac->mib->subCarrierSpacingCommon);
@@ -271,6 +271,23 @@ int8_t nr_ue_decode_BCCH_DL_SCH(NR_UE_MAC_INST_t *mac,
   else
     LOG_E(NR_MAC, "Got NACK on NR-BCCH-DL-SCH-Message (%s)\n", mac->get_sib1 ? "SIB1" : "other SI");
   return 0;
+}
+
+int8_t nr_ue_decode_paging(nr_downlink_indication_t *dl_info, int pdu_id)
+{
+  module_id_t module_id = dl_info->module_id;
+  uint8_t CC_id         = dl_info->cc_id;
+  uint8_t gNB_index     = dl_info->gNB_index;
+  frame_t frame         = dl_info->frame;
+  int slot              = dl_info->slot;
+  uint8_t *pduP         = (dl_info->rx_ind->rx_indication_body + pdu_id)->pdsch_pdu.pdu;
+  int32_t pdu_len       = (int32_t)(dl_info->rx_ind->rx_indication_body + pdu_id)->pdsch_pdu.pdu_length;
+  return nr_mac_rrc_data_ind_ue(module_id, CC_id, gNB_index, frame, slot, P_RNTI, PCCH, pduP, pdu_len);
+}
+
+//  TODO: change to UE parameter, scs: 15KHz, slot duration: 1ms
+uint32_t get_ssb_frame(uint32_t test){
+  return test;
 }
 
 /*
@@ -797,11 +814,20 @@ static int nr_ue_process_dci_dl_10(NR_UE_MAC_INST_t *mac,
     return -1;
   }
 
-  if (dci_ind->rnti != mac->ra.ra_rnti && dci_ind->rnti != SI_RNTI)
+  if (dci_ind->rnti != mac->ra.ra_rnti && dci_ind->rnti != SI_RNTI && dci_ind->rnti!= P_RNTI){
+   #if 0
     AssertFatal(1 + dci->pdsch_to_harq_feedback_timing_indicator.val > DURATION_RX_TO_TX,
                 "PDSCH to HARQ feedback time (%d) needs to be higher than DURATION_RX_TO_TX (%d).\n",
                 1 + dci->pdsch_to_harq_feedback_timing_indicator.val,
                 DURATION_RX_TO_TX);
+   #else
+    if (1 + dci->pdsch_to_harq_feedback_timing_indicator.val <= DURATION_RX_TO_TX) {
+        LOG_E(MAC, "PDSCH to HARQ feedback time (%d) needs to be higher than DURATION_RX_TO_TX (%d).\n",
+              1 + dci->pdsch_to_harq_feedback_timing_indicator.val, DURATION_RX_TO_TX);
+        return -1;
+      }
+   #endif             
+  }
 
   // set the harq status at MAC for feedback
   set_harq_status(mac,
@@ -1111,7 +1137,11 @@ static int nr_ue_process_dci_dl_11(NR_UE_MAC_INST_t *mac,
   }
 
   /* SRS_REQUEST */
-  AssertFatal(dci->srs_request.nbits == 2, "If SUL is supported in the cell, there is an additional bit in SRS request field\n");
+    //AssertFatal(dci->srs_request.nbits == 2, "If SUL is supported in the cell, there is an additional bit in SRS request field\n");
+  if (dci->srs_request.nbits !=2){
+    LOG_E(MAC, "If SUL is supported in the cell, there is an additional bit in SRS request field\n");
+    return -1;
+  }
   if (dci->srs_request.val > 0)
     nr_ue_aperiodic_srs_scheduling(mac, dci->srs_request.val, frame, slot);
   /* CBGTI */
@@ -2887,6 +2917,9 @@ void nr_ue_send_sdu(NR_UE_MAC_INST_t *mac, nr_downlink_indication_t *dl_info, in
     case FAPI_NR_RX_PDU_TYPE_RAR:
       nr_ue_process_rar(mac, dl_info, pdu_id);
     break;
+    case FAPI_NR_RX_PDU_TYPE_PCH:
+    nr_ue_decode_paging(dl_info, pdu_id);
+    break;
     default:
     break;
   }
@@ -3411,6 +3444,7 @@ void nr_ue_process_mac_pdu(NR_UE_MAC_INST_t *mac, nr_downlink_indication_t *dl_i
                            mac_len,
                            1,
                            NULL);
+       //   nr_mac_rrc_data_ind_ue(module_idP, CC_id, gNB_index, frameP, slot >> 1, mac->crnti, CCCH, pduP+mac_subheader_len, mac_len); //W42 rebase to check
         }
         break;
       case DL_SCH_LCID_TCI_STATE_ACT_UE_SPEC_PDSCH:
@@ -3511,14 +3545,14 @@ void nr_ue_process_mac_pdu(NR_UE_MAC_INST_t *mac, nr_downlink_indication_t *dl_i
                 pduP[6]);
 
           bool ra_success = true;
-	  if (!IS_SOFTMODEM_IQPLAYER) { // Control is bypassed when replaying IQs (BMC)
-	    for(int i = 0; i<mac_len; i++) {
-	      if(ra->cont_res_id[i] != pduP[i+1]) {
-		ra_success = false;
-		break;
-	      }
-	    }
-	  }
+    if (!IS_SOFTMODEM_IQPLAYER) { // Control is bypassed when replaying IQs (BMC)
+      for(int i = 0; i<mac_len; i++) {
+        if(ra->cont_res_id[i] != pduP[i+1]) {
+    ra_success = false;
+    break;
+        }
+      }
+    }
 
           if ( (ra->RA_active == 1) && ra_success) {
             nr_ra_succeeded(mac, gNB_index, frameP, slot);
@@ -3625,7 +3659,7 @@ int nr_write_ce_ulsch_pdu(uint8_t *mac_ce,
 
   if (truncated_bsr) {
 
-	// MAC CE fixed subheader
+  // MAC CE fixed subheader
     ((NR_MAC_SUBHEADER_FIXED *) mac_ce)->R = 0;
     ((NR_MAC_SUBHEADER_FIXED *) mac_ce)->LCID = UL_SCH_LCID_S_TRUNCATED_BSR;
     mac_ce++;
@@ -3643,7 +3677,7 @@ int nr_write_ce_ulsch_pdu(uint8_t *mac_ce,
 
   } else if (short_bsr) {
 
-	// MAC CE fixed subheader
+  // MAC CE fixed subheader
     ((NR_MAC_SUBHEADER_FIXED *) mac_ce)->R = 0;
     ((NR_MAC_SUBHEADER_FIXED *) mac_ce)->LCID = UL_SCH_LCID_S_BSR;
     mac_ce++;
@@ -3660,7 +3694,7 @@ int nr_write_ce_ulsch_pdu(uint8_t *mac_ce,
           short_bsr->Buffer_size, short_bsr->LcgID, pdu, mac_ce);
   } else if (long_bsr) {
 
-	// MAC CE variable subheader
+  // MAC CE variable subheader
     // ch 6.1.3.1. TS 38.321
     ((NR_MAC_SUBHEADER_SHORT *) mac_ce)->R = 0;
     ((NR_MAC_SUBHEADER_SHORT *) mac_ce)->F = 0;

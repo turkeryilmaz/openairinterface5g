@@ -1119,7 +1119,7 @@ void nr_ue_ul_scheduler(NR_UE_MAC_INST_t *mac, nr_uplink_indication_t *ul_info)
                                                   .phy_data = ul_info->phy_data};
     mac->if_module->scheduled_response(&scheduled_response);
   }
-
+  pthread_mutex_lock(&mac->mutex_ul_info);
   // update Bj for all active lcids before LCP procedure
   LOG_D(NR_MAC, "====================[Frame %d][Slot %d]Logical Channel Prioritization===========\n", frame_tx, slot_tx);
   for (int i = 0; i < mac->lc_ordered_list.count; i++) {
@@ -1127,7 +1127,11 @@ void nr_ue_ul_scheduler(NR_UE_MAC_INST_t *mac, nr_uplink_indication_t *ul_info)
     int lcid = lc_info->lcid;
     // max amount of data that can be buffered/accumulated in a logical channel buffer
     int32_t bucketSize_max = lc_info->bucket_size;
-    AssertFatal(bucketSize_max >= 0, "negative bucketSize_max %d, will never schedule UE: lcid %d\n",bucketSize_max, lcid);
+    if(bucketSize_max < 0){
+      LOG_W(NR_MAC, "negative bucketSize_max %d, will never schedule UE: lcid %d\n",bucketSize_max, lcid);
+      break;
+    }
+    //AssertFatal(bucketSize_max >= 0, "negative bucketSize_max %d, will never schedule UE: lcid %d\n",bucketSize_max, lcid);
 
     /*
       measure Bj
@@ -1142,6 +1146,7 @@ void nr_ue_ul_scheduler(NR_UE_MAC_INST_t *mac, nr_uplink_indication_t *ul_info)
     // bj > max bucket size, set bj to max bucket size, as in ts38.321 5.4.3.1 Logical Channel Prioritization
     mac->scheduling_info.lc_sched_info[lcid - 1].Bj = min(bj, bucketSize_max);
   }
+  pthread_mutex_unlock(&mac->mutex_ul_info);
 
   // Call BSR procedure as described in Section 5.4.5 in 38.321
 
@@ -3308,9 +3313,13 @@ uint8_t nr_ue_get_sdu(NR_UE_MAC_INST_t *mac,
   nr_ue_get_sdu_mac_ce_post(mac, CC_id, frameP, subframe, gNB_index, ulsch_buffer, buflen, mac_ce_p);
 
   if (mac_ce_p->tot_mac_ce_len > 0) {
-
+    int actual_mac_ce_len = 0;
     LOG_D(NR_MAC, "In %s copying %d bytes of MAC CEs to the UL PDU \n", __FUNCTION__, mac_ce_p->tot_mac_ce_len);
-    nr_write_ce_ulsch_pdu(pdu, mac, 0, NULL, mac_ce_p->bsr_t, mac_ce_p->bsr_s, mac_ce_p->bsr_l);
+    actual_mac_ce_len = nr_write_ce_ulsch_pdu(pdu, mac, 0, NULL, mac_ce_p->bsr_t, mac_ce_p->bsr_s, mac_ce_p->bsr_l);
+    LOG_D(NR_MAC, "In %s actual copy %d bytes of MAC CEs to the UL PDU \n", __FUNCTION__, actual_mac_ce_len);
+    mac_ce_p->total_mac_pdu_header_len -= (mac_ce_p->tot_mac_ce_len);
+    mac_ce_p->total_mac_pdu_header_len += actual_mac_ce_len;
+    mac_ce_p->tot_mac_ce_len = actual_mac_ce_len;
     pdu += (unsigned char) mac_ce_p->tot_mac_ce_len;
 
 #ifdef ENABLE_MAC_PAYLOAD_DEBUG
