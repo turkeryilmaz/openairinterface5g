@@ -181,7 +181,7 @@ static bool nssai_matches(nssai_t a_nssai, uint8_t b_sst, const uint32_t *b_sd)
 {
   AssertFatal(b_sd == NULL || *b_sd <= 0xffffff, "illegal SD %d\n", *b_sd);
   if (b_sd == NULL) {
-    return a_nssai.sst == b_sst && a_nssai.sd == 0xffffff;
+    return a_nssai.sst == b_sst;
   } else {
     return a_nssai.sst == b_sst && a_nssai.sd == *b_sd;
   }
