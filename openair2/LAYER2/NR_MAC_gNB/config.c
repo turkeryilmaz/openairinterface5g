@@ -642,9 +642,9 @@ static void config_common(gNB_MAC_INST *nrmac, nr_pdsch_AntennaPorts_t pdsch_Ant
                                  scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA,
                                  *scc->ssbSubcarrierSpacing);
 
-  AssertFatal(cfg->ssb_table.ssb_subcarrier_offset.value < 16,
+  AssertFatal(cfg->ssb_table.ssb_subcarrier_offset.value <= 18,
               "cannot handle ssb_subcarrier_offset %d resulting from Point A %ld SSB %ld: please increase dl_absoluteFrequencyPointA "
-              "in the config by 16\n",
+              "in the config by 18\n",
               cfg->ssb_table.ssb_subcarrier_offset.value,
               scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA,
               *scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB);
