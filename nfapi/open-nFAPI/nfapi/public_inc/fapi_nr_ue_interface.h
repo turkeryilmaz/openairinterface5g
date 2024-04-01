@@ -132,6 +132,7 @@ typedef struct {
   uint16_t cell_id;
   uint16_t ssb_start_subcarrier;
   short rsrp_dBm;
+  long arfcn;
   rlm_t radiolink_monitoring; // -1 no monitoring, 0 out_of_sync, 1 in_sync
 } fapi_nr_ssb_pdu_t;
 
@@ -493,6 +494,7 @@ typedef struct {
   uint32_t tbslbrm;
   uint8_t nscid;
   uint16_t dlDmrsScramblingId;
+  uint16_t dlDataScramblingId;
   uint16_t pduBitmap;
   uint32_t k1_feedback;
   uint8_t ldpcBaseGraph;
@@ -547,6 +549,7 @@ typedef struct {
  int ta_frame;
  int ta_slot;
  int ta_command;
+ bool is_rar;
 } fapi_nr_ta_command_pdu;
 
 typedef struct {

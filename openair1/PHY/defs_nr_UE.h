@@ -86,9 +86,6 @@
 #define openair_sched_exit() exit(-1)
 
 #define bzero(s,n) (memset((s),0,(n)))
-#define cmax(a,b)  ((a>b) ? (a) : (b))
-#define cmin(a,b)  ((a<b) ? (a) : (b))
-#define cmax3(a,b,c) ((cmax(a,b)>c) ? (cmax(a,b)) : (c))
 /// suppress compiler warning for unused arguments
 #define UNUSED(x) (void)x;
 
@@ -485,12 +482,8 @@ typedef struct PHY_VARS_NR_UE_s {
   uint8_t               init_sync_frame;
   /// temporary offset during cell search prior to MIB decoding
   int              ssb_offset;
-  uint16_t         symbol_offset;  /// offset in terms of symbols for detected ssb in sync
-  int              rx_offset;      /// Timing offset
-  int              rx_offset_diff; /// Timing adjustment for ofdm symbol0 on HW USRP
-  int64_t          max_pos_fil;    /// Timing offset IIR filter
-  bool             apply_timing_offset;     /// Do time sync for current frame
-  int              time_sync_cell;
+  uint16_t symbol_offset; /// offset in terms of symbols for detected ssb in sync
+  int64_t max_pos_avg; /// Timing offset IIR filter
 
   /// Timing Advance updates variables
   /// Timing advance update computed from the TA command signalled from gNB
@@ -511,10 +504,6 @@ typedef struct PHY_VARS_NR_UE_s {
 
   /// Flag to initialize averaging of PHY measurements
   int init_averaging;
-
-  /// \brief sinr for all subcarriers of the current link (used only for abstraction).
-  /// - first index: ? [0..12*N_RB_DL[
-  double *sinr_dB;
 
   /// sinr_effective used for CQI calulcation
   double sinr_eff;
@@ -610,7 +599,7 @@ typedef struct PHY_VARS_NR_UE_s {
   void *phy_sim_pdsch_dl_ch_estimates;
   void *phy_sim_pdsch_dl_ch_estimates_ext;
   uint8_t *phy_sim_dlsch_b;
-  notifiedFIFO_t phy_config_ind;
+
   notifiedFIFO_t tx_resume_ind_fifo[NR_MAX_SLOTS_PER_FRAME];
 } PHY_VARS_NR_UE;
 
@@ -648,6 +637,7 @@ typedef struct nr_rxtx_thread_data_s {
   int writeBlockSize;
   nr_phy_data_t phy_data;
   int tx_wait_for_dlsch;
+  int rx_offset;
 } nr_rxtx_thread_data_t;
 
 typedef struct LDPCDecode_ue_s {

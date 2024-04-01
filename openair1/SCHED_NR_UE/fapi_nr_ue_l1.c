@@ -320,7 +320,7 @@ static void configure_dlsch(NR_UE_DLSCH_t *dlsch0,
   }
 }
 
-void configure_ta_command(PHY_VARS_NR_UE *ue, fapi_nr_ta_command_pdu *ta_command_pdu)
+static void configure_ta_command(PHY_VARS_NR_UE *ue, fapi_nr_ta_command_pdu *ta_command_pdu)
 {
 
   /* Time Alignment procedure
@@ -365,13 +365,19 @@ void configure_ta_command(PHY_VARS_NR_UE *ue, fapi_nr_ta_command_pdu *ta_command
   const double t_subframe = 1.0; // subframe duration of 1 msec
   const int ul_tx_timing_adjustment = 1 + (int)ceil(slots_per_subframe*(N_t_1 + N_t_2 + N_TA_max + 0.5)/t_subframe);
 
-  ue->ta_slot = (ta_command_pdu->ta_slot + ul_tx_timing_adjustment) % slots_per_frame;
-  if (ta_command_pdu->ta_slot + ul_tx_timing_adjustment > slots_per_frame)
-    ue->ta_frame = (ta_command_pdu->ta_frame + 1) % 1024;
-  else
+  if (ta_command_pdu->is_rar) {
+    ue->ta_slot = ta_command_pdu->ta_slot;
     ue->ta_frame = ta_command_pdu->ta_frame;
-
-  ue->ta_command = ta_command_pdu->ta_command;
+    ue->timing_advance = 0;
+    ue->ta_command = ta_command_pdu->ta_command + 31; // To use TA adjustment algo in ue_ta_procedures()
+  } else {
+    ue->ta_slot = (ta_command_pdu->ta_slot + ul_tx_timing_adjustment) % slots_per_frame;
+    if (ta_command_pdu->ta_slot + ul_tx_timing_adjustment > slots_per_frame)
+      ue->ta_frame = (ta_command_pdu->ta_frame + 1) % 1024;
+    else
+      ue->ta_frame = ta_command_pdu->ta_frame;
+    ue->ta_command = ta_command_pdu->ta_command;
+  }
   LOG_D(PHY,"TA command received in Frame.Slot %d.%d -- Starting UL time alignment procedures. TA update will be applied at frame %d slot %d\n",
         ta_command_pdu->ta_frame, ta_command_pdu->ta_slot, ue->ta_frame, ue->ta_slot);
 }
@@ -538,7 +544,6 @@ int8_t nr_ue_phy_config_request(nr_phy_config_t *phy_config)
   fapi_nr_config_request_t *nrUE_config = &PHY_vars_UE_g[phy_config->Mod_id][phy_config->CC_id]->nrUE_config;
   if(phy_config != NULL) {
     memcpy(nrUE_config, &phy_config->config_req, sizeof(fapi_nr_config_request_t));
-    pushNotifiedFIFO(&PHY_vars_UE_g[phy_config->Mod_id][phy_config->CC_id]->phy_config_ind, newNotifiedFIFO_elt(1,0,NULL,NULL));
   }
   return 0;
 }

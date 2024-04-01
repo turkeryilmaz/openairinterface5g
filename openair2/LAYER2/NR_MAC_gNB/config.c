@@ -106,261 +106,318 @@ nfapi_nr_pm_list_t init_DL_MIMO_codebook(gNB_MAC_INST *gNB, nr_pdsch_AntennaPort
   mat.pmi_pdu = pmi_pdu;
 
   // Generation of codebook Type1 with codebookMode 1 (num_antenna_ports < 16)
-  if (num_antenna_ports < 16) {
-    //Generate DFT vertical beams
-    //ll: index of a vertical beams vector (represented by i1_1 in TS 38.214)
-    const int max_l = N1 * O1 + (K1 - 1) * O1;
-    double complex v[max_l][N1];
-    for (int ll = 0; ll < max_l; ll++) { //i1_1
-      for (int nn = 0; nn < N1; nn++) {
-        v[ll][nn] = cexp(I * (2 * M_PI * nn * ll) / (N1 * O1));
-        LOG_D(PHY,"v[%d][%d] = %f +j %f\n", ll, nn, creal(v[ll][nn]), cimag(v[ll][nn]));
-      }
+  AssertFatal(num_antenna_ports < 16, "Max number of antenna ports supported is currently 16\n");
+  // Generate DFT vertical beams
+  // ll: index of a vertical beams vector (represented by i1_1 in TS 38.214)
+  const int max_l = N1 * O1 + (K1 - 1) * O1;
+  double complex v[max_l][N1];
+  for (int ll = 0; ll < max_l; ll++) { // i1_1
+    for (int nn = 0; nn < N1; nn++) {
+      v[ll][nn] = cexp(I * (2 * M_PI * nn * ll) / (N1 * O1));
+      LOG_D(PHY, "v[%d][%d] = %f +j %f\n", ll, nn, creal(v[ll][nn]), cimag(v[ll][nn]));
     }
-    //Generate DFT Horizontal beams
-    //mm: index of a Horizontal beams vector (represented by i1_2 in TS 38.214)
-    const int max_m = N2 * O2 + (K2 - 1) * O2;
-    double complex u[max_m][N2];
-    for (int mm = 0; mm < max_m; mm++) { //i1_2
-      for (int nn = 0; nn < N2; nn++) {
-        u[mm][nn] = cexp(I * (2 * M_PI * nn * mm) / (N2 * O2));
-        LOG_D(PHY,"u[%d][%d] = %f +j %f\n", mm, nn, creal(u[mm][nn]), cimag(u[mm][nn]));
-      }
-    }
-    //Generate co-phasing angles
-    //i_2: index of a co-phasing vector
-    //i1_1, i1_2, and i_2 are reported from UEs
-    double complex theta_n[4];
-    for (int nn = 0; nn < 4; nn++) {
-      theta_n[nn] = cexp(I * M_PI * nn / 2);
-      LOG_D(PHY,"theta_n[%d] = %f +j %f\n", nn, creal(theta_n[nn]), cimag(theta_n[nn]));
-    }
-    //Kronecker product v_lm
-    double complex v_lm[max_l][max_m][N2 * N1];
-    //v_ll_mm_codebook denotes the elements of a precoding matrix W_i1,1_i_1,2
-    for(int ll = 0; ll < max_l; ll++) { //i_1_1
-      for (int mm = 0; mm < max_m; mm++) { //i_1_2
-        for (int nn1 = 0; nn1 < N1; nn1++) {
-          for (int nn2 = 0; nn2 < N2; nn2++) {
-            v_lm[ll][mm][nn1 * N2 + nn2] = v[ll][nn1] * u[mm][nn2];
-            LOG_D(PHY,"v_lm[%d][%d][%d] = %f +j %f\n",ll, mm, nn1 * N2 + nn2, creal(v_lm[ll][mm][nn1*N2+nn2]), cimag(v_lm[ll][mm][nn1*N2+nn2]));
-          }
-        }
-      }
-    }
-
-    double complex res_code;
-
-    //Table 5.2.2.2.1-5:
-    int pmiq = 0;
-    //Codebook for 1-layer CSI reporting using antenna ports 3000 to 2999+PCSI-RS
-    for(int ll = 0; ll < N1 * O1; ll++) { //i_1_1
-      for (int mm = 0; mm < N2 * O2; mm++) { //i_1_2
-        for (int nn = 0; nn < 4; nn++) {
-          pmiq = ll * N2 * O2 * 4 + mm * 4 + nn;
-          pmi_pdu[pmiq].pm_idx = pmiq + 1; // index 0 is the identity matrix
-          pmi_pdu[pmiq].numLayers = 1;
-          pmi_pdu[pmiq].num_ant_ports = num_antenna_ports;
-          LOG_D(PHY, "layer 1 Codebook pmiq = %d\n", pmiq);
-          for (int len = 0; len < N1 * N2; len++) {
-            nfapi_nr_pm_weights_t *weights = &pmi_pdu[pmiq].weights[0][len];
-            res_code = sqrt( 1 /(double)num_antenna_ports) * v_lm[ll][mm][len];
-            c16_t precoder_weight = convert_precoder_weight(res_code);
-            weights->precoder_weight_Re = precoder_weight.r;
-            weights->precoder_weight_Im = precoder_weight.i;
-            LOG_D(PHY, "1 Layer Precoding Matrix[0][pmi %d][antPort %d]= %f+j %f -> Fixed Point %d+j %d \n",
-                  pmiq, len, creal(res_code), cimag(res_code), weights->precoder_weight_Re, weights->precoder_weight_Im);
-          }
-
-          for(int len = N1 * N2; len < 2 * N1 * N2; len++) {
-            nfapi_nr_pm_weights_t *weights = &pmi_pdu[pmiq].weights[0][len];
-            res_code = sqrt(1 / (double)num_antenna_ports) * theta_n[nn] * v_lm[ll][mm][len-N1*N2];
-            c16_t precoder_weight = convert_precoder_weight(res_code);
-            weights->precoder_weight_Re = precoder_weight.r;
-            weights->precoder_weight_Im = precoder_weight.i;
-            LOG_D(PHY, "1 Layer Precoding Matrix[0][pmi %d][antPort %d]= %f+j %f -> Fixed Point %d+j %d \n",
-                  pmiq, len, creal(res_code), cimag(res_code), weights->precoder_weight_Re, weights->precoder_weight_Im);
-          }
-        }
-      }
-    }
-    int llc = 0;
-    int mmc = 0;
-    double complex phase_sign = 0;
-    //Table 5.2.2.2.1-6:
-    //Codebook for 2-layer CSI reporting using antenna ports 3000 to 2999+PCSI-RS
-    //Compute the code book size for generating 2 layers out of Tx antenna ports
-
-    //pmi=1,...,pmi_size, we construct
-    for(int ll = 0; ll < N1 * O1; ll++) { //i_1_1
-      for (int mm = 0; mm < N2 * O2; mm++) { // i_1_2
-        for(int k1 = 0; k1 < K1; k1++) {
-          for (int k2 = 0; k2 < K2; k2++) {
-            for (int nn = 0; nn < 2; nn++) {  // i_2
-              pmiq ++;
-              pmi_pdu[pmiq].pm_idx = pmiq + 1;  // index 0 is the identity matrix
-              pmi_pdu[pmiq].numLayers = 2;
-              pmi_pdu[pmiq].num_ant_ports = num_antenna_ports;
-              LOG_D(PHY, "layer 2 Codebook pmiq = %d\n", pmiq);
-              for(int j_col = 0; j_col < 2; j_col++) {
-                if (j_col == 0) {
-                  llc = ll;
-                  mmc = mm;
-                  phase_sign = 1;
-                }
-                if (j_col == 1) {
-                  llc = ll + k1 * O1;
-                  mmc = mm + k2 * O2;
-                  phase_sign = -1;
-                }
-                for (int i_rows = 0; i_rows < N1 * N2; i_rows++) {
-                  nfapi_nr_pm_weights_t *weights = &pmi_pdu[pmiq].weights[j_col][i_rows];
-                  res_code = sqrt(1 / (double)(2 * num_antenna_ports)) * v_lm[llc][mmc][i_rows];
-                  c16_t precoder_weight = convert_precoder_weight(res_code);
-                  weights->precoder_weight_Re = precoder_weight.r;
-                  weights->precoder_weight_Im = precoder_weight.i;
-                  LOG_D(PHY, "2 Layer Precoding Matrix[1][pmi %d][antPort %d][layerIdx %d]= %f+j %f -> Fixed Point %d+j %d \n",
-                        pmiq, i_rows, j_col, creal(res_code), cimag(res_code), weights->precoder_weight_Re, weights->precoder_weight_Im);
-                }
-                for (int i_rows = N1 * N2; i_rows < 2 * N1 * N2; i_rows++) {
-                  nfapi_nr_pm_weights_t *weights = &pmi_pdu[pmiq].weights[j_col][i_rows];
-                  res_code = sqrt(1 / (double)(2 * num_antenna_ports)) * (phase_sign) * theta_n[nn] * v_lm[llc][mmc][i_rows - N1 * N2];
-                  c16_t precoder_weight = convert_precoder_weight(res_code);
-                  weights->precoder_weight_Re = precoder_weight.r;
-                  weights->precoder_weight_Im = precoder_weight.i;
-                  LOG_D(PHY, "2 Layer Precoding Matrix[1][pmi %d][antPort %d][layerIdx %d]= %f+j %f -> Fixed Point %d+j %d \n",
-                        pmiq, i_rows, j_col, creal(res_code), cimag(res_code), weights->precoder_weight_Re, weights->precoder_weight_Im);
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-
-    if(max_mimo_layers < 3)
-      return mat;
-
-    //Table 5.2.2.2.1-7:
-    //Codebook for 3-layer CSI reporting using antenna ports 3000 to 2999+PCSI-RS
-
-    //pmi=1,...,pmi_size are computed as follows
-    for(int ll = 0; ll < N1 * O1; ll++) { //i_1_1
-      for (int mm = 0; mm < N2 * O2; mm++) { // i_1_2
-        for(int k1 = 0; k1 < K1; k1++) {
-          for (int k2 = 0; k2 < K2; k2++) {
-            for (int nn = 0; nn < 2; nn++) {  // i_2
-              pmiq ++;
-              pmi_pdu[pmiq].pm_idx = pmiq + 1;  // index 0 is the identity matrix
-              pmi_pdu[pmiq].numLayers = 3;
-              pmi_pdu[pmiq].num_ant_ports = num_antenna_ports;
-              LOG_D(PHY, "layer 3 Codebook pmiq = %d\n",pmiq);
-              for(int j_col = 0; j_col < 3; j_col++) {
-                if (j_col == 0) {
-                  llc = ll;
-                  mmc = mm;
-                  phase_sign = 1;
-                }
-                if (j_col==1) {
-                  llc = ll + k1 * O1;
-                  mmc = mm + k2 * O2;
-                  phase_sign = 1;
-                }
-                if (j_col==2) {
-                  llc = ll;
-                  mmc = mm;
-                  phase_sign = -1;
-                }
-                for (int i_rows = 0; i_rows < N1 * N2; i_rows++) {
-                  nfapi_nr_pm_weights_t *weights = &pmi_pdu[pmiq].weights[j_col][i_rows];
-                  res_code = sqrt(1 / (double)(3 * num_antenna_ports)) * v_lm[llc][mmc][i_rows];
-                  c16_t precoder_weight = convert_precoder_weight(res_code);
-                  weights->precoder_weight_Re = precoder_weight.r;
-                  weights->precoder_weight_Im = precoder_weight.i;
-                  LOG_D(PHY, "3 Layer Precoding Matrix[1][pmi %d][antPort %d][layerIdx %d]= %f+j %f -> Fixed Point %d+j %d \n",
-                        pmiq, i_rows, j_col, creal(res_code), cimag(res_code), weights->precoder_weight_Re, weights->precoder_weight_Im);
-                }
-                for (int i_rows = N1 * N2; i_rows < 2 * N1 * N2; i_rows++) {
-                  nfapi_nr_pm_weights_t *weights = &pmi_pdu[pmiq].weights[j_col][i_rows];
-                  res_code=sqrt(1 / (double)(3 * num_antenna_ports)) * (phase_sign) * theta_n[nn] * v_lm[llc][mmc][i_rows - N1 * N2];
-                  c16_t precoder_weight = convert_precoder_weight(res_code);
-                  weights->precoder_weight_Re = precoder_weight.r;
-                  weights->precoder_weight_Im = precoder_weight.i;
-                  LOG_D(PHY, "3 Layer Precoding Matrix[1][pmi %d][antPort %d][layerIdx %d]= %f+j %f -> Fixed Point %d+j %d \n",
-                        pmiq, i_rows, j_col, creal(res_code), cimag(res_code), weights->precoder_weight_Re, weights->precoder_weight_Im);
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-
-    if(max_mimo_layers < 4)
-      return mat;
-
-    //Table 5.2.2.2.1-8:
-    //Codebook for 4-layer CSI reporting using antenna ports 3000 to 2999+PCSI-RS
-
-    for(int ll = 0; ll < N1 * O1; ll++) { //i_1_1
-      for (int mm = 0; mm < N2 * O2; mm++) { // i_1_2
-        for(int k1 = 0; k1 < K1; k1++) {
-          for (int k2 = 0; k2 < K2; k2++) {
-            for (int nn = 0; nn < 2; nn++) {  // i_2
-              pmiq ++;
-              pmi_pdu[pmiq].pm_idx = pmiq + 1;  // index 0 is the identity matrix
-              pmi_pdu[pmiq].numLayers = 4;
-              pmi_pdu[pmiq].num_ant_ports = num_antenna_ports;
-              LOG_D(PHY, "layer 4 pmiq = %d\n", pmiq);
-              for(int j_col = 0; j_col < 4; j_col++) {
-                if (j_col == 0) {
-                  llc = ll;
-                  mmc = mm;
-                  phase_sign = 1;
-                }
-                if (j_col == 1) {
-                  llc = ll + k1 * O1;
-                  mmc = mm + k2 * O2;
-                  phase_sign = 1;
-                }
-                if (j_col == 2) {
-                  llc = ll;
-                  mmc = mm;
-                  phase_sign = -1;
-                }
-                if (j_col == 3) {
-                  llc = ll + k1 * O1;
-                  mmc = mm + k2 * O2;
-                  phase_sign = -1;
-                }
-                for (int i_rows = 0; i_rows < N1 * N2; i_rows++) {
-                  nfapi_nr_pm_weights_t *weights = &pmi_pdu[pmiq].weights[j_col][i_rows];
-                  res_code=sqrt(1 / (double)(4 * num_antenna_ports)) * v_lm[llc][mmc][i_rows];
-                  c16_t precoder_weight = convert_precoder_weight(res_code);
-                  weights->precoder_weight_Re = precoder_weight.r;
-                  weights->precoder_weight_Im = precoder_weight.i;
-                  LOG_D(PHY, "4 Layer Precoding Matrix[1][pmi %d][antPort %d][layerIdx %d]= %f+j %f -> Fixed Point %d+j %d \n",
-                        pmiq, i_rows, j_col, creal(res_code), cimag(res_code), weights->precoder_weight_Re, weights->precoder_weight_Im);
-                }
-                for (int i_rows = N1 * N2; i_rows < 2 * N1 * N2; i_rows++) {
-                  nfapi_nr_pm_weights_t *weights = &pmi_pdu[pmiq].weights[j_col][i_rows];
-                  res_code=sqrt(1 / (double)(4 * num_antenna_ports)) * (phase_sign) * theta_n[nn] * v_lm[llc][mmc][i_rows - N1 * N2];
-                  c16_t precoder_weight = convert_precoder_weight(res_code);
-                  weights->precoder_weight_Re = precoder_weight.r;
-                  weights->precoder_weight_Im = precoder_weight.i;
-                  LOG_D(PHY, "4 Layer Precoding Matrix[1][pmi %d][antPort %d][layerIdx %d]= %f+j %f -> Fixed Point %d+j %d \n",
-                        pmiq, i_rows, j_col, creal(res_code), cimag(res_code), weights->precoder_weight_Re, weights->precoder_weight_Im);
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-    return mat;
   }
-  else
-    AssertFatal(false, "Max number of antenna ports supported is currently 16\n");
+  // Generate DFT Horizontal beams
+  // mm: index of a Horizontal beams vector (represented by i1_2 in TS 38.214)
+  const int max_m = N2 * O2 + (K2 - 1) * O2;
+  double complex u[max_m][N2];
+  for (int mm = 0; mm < max_m; mm++) { // i1_2
+    for (int nn = 0; nn < N2; nn++) {
+      u[mm][nn] = cexp(I * (2 * M_PI * nn * mm) / (N2 * O2));
+      LOG_D(PHY, "u[%d][%d] = %f +j %f\n", mm, nn, creal(u[mm][nn]), cimag(u[mm][nn]));
+    }
+  }
+  // Generate co-phasing angles
+  // i_2: index of a co-phasing vector
+  // i1_1, i1_2, and i_2 are reported from UEs
+  double complex theta_n[4];
+  for (int nn = 0; nn < 4; nn++) {
+    theta_n[nn] = cexp(I * M_PI * nn / 2);
+    LOG_D(PHY, "theta_n[%d] = %f +j %f\n", nn, creal(theta_n[nn]), cimag(theta_n[nn]));
+  }
+  // Kronecker product v_lm
+  double complex v_lm[max_l][max_m][N2 * N1];
+  // v_ll_mm_codebook denotes the elements of a precoding matrix W_i1,1_i_1,2
+  for (int ll = 0; ll < max_l; ll++) { // i_1_1
+    for (int mm = 0; mm < max_m; mm++) { // i_1_2
+      for (int nn1 = 0; nn1 < N1; nn1++) {
+        for (int nn2 = 0; nn2 < N2; nn2++) {
+          v_lm[ll][mm][nn1 * N2 + nn2] = v[ll][nn1] * u[mm][nn2];
+          LOG_D(PHY,
+                "v_lm[%d][%d][%d] = %f +j %f\n",
+                ll,
+                mm,
+                nn1 * N2 + nn2,
+                creal(v_lm[ll][mm][nn1 * N2 + nn2]),
+                cimag(v_lm[ll][mm][nn1 * N2 + nn2]));
+        }
+      }
+    }
+  }
+
+  double complex res_code;
+
+  // Table 5.2.2.2.1-5:
+  int pmiq = 0;
+  // Codebook for 1-layer CSI reporting using antenna ports 3000 to 2999+PCSI-RS
+  for (int ll = 0; ll < N1 * O1; ll++) { // i_1_1
+    for (int mm = 0; mm < N2 * O2; mm++) { // i_1_2
+      for (int nn = 0; nn < 4; nn++) {
+        pmiq = ll * N2 * O2 * 4 + mm * 4 + nn;
+        pmi_pdu[pmiq].pm_idx = pmiq + 1; // index 0 is the identity matrix
+        pmi_pdu[pmiq].numLayers = 1;
+        pmi_pdu[pmiq].num_ant_ports = num_antenna_ports;
+        LOG_D(PHY, "layer 1 Codebook pmiq = %d\n", pmiq);
+        for (int len = 0; len < N1 * N2; len++) {
+          nfapi_nr_pm_weights_t *weights = &pmi_pdu[pmiq].weights[0][len];
+          res_code = sqrt(1 / (double)num_antenna_ports) * v_lm[ll][mm][len];
+          c16_t precoder_weight = convert_precoder_weight(res_code);
+          weights->precoder_weight_Re = precoder_weight.r;
+          weights->precoder_weight_Im = precoder_weight.i;
+          LOG_D(PHY,
+                "1 Layer Precoding Matrix[0][pmi %d][antPort %d]= %f+j %f -> Fixed Point %d+j %d \n",
+                pmiq,
+                len,
+                creal(res_code),
+                cimag(res_code),
+                weights->precoder_weight_Re,
+                weights->precoder_weight_Im);
+        }
+
+        for (int len = N1 * N2; len < 2 * N1 * N2; len++) {
+          nfapi_nr_pm_weights_t *weights = &pmi_pdu[pmiq].weights[0][len];
+          res_code = sqrt(1 / (double)num_antenna_ports) * theta_n[nn] * v_lm[ll][mm][len - N1 * N2];
+          c16_t precoder_weight = convert_precoder_weight(res_code);
+          weights->precoder_weight_Re = precoder_weight.r;
+          weights->precoder_weight_Im = precoder_weight.i;
+          LOG_D(PHY,
+                "1 Layer Precoding Matrix[0][pmi %d][antPort %d]= %f+j %f -> Fixed Point %d+j %d \n",
+                pmiq,
+                len,
+                creal(res_code),
+                cimag(res_code),
+                weights->precoder_weight_Re,
+                weights->precoder_weight_Im);
+        }
+      }
+    }
+  }
+  int llc = 0;
+  int mmc = 0;
+  double complex phase_sign = 0;
+  // Table 5.2.2.2.1-6:
+  // Codebook for 2-layer CSI reporting using antenna ports 3000 to 2999+PCSI-RS
+  // Compute the code book size for generating 2 layers out of Tx antenna ports
+
+  // pmi=1,...,pmi_size, we construct
+  for (int ll = 0; ll < N1 * O1; ll++) { // i_1_1
+    for (int mm = 0; mm < N2 * O2; mm++) { // i_1_2
+      for (int k1 = 0; k1 < K1; k1++) {
+        for (int k2 = 0; k2 < K2; k2++) {
+          for (int nn = 0; nn < 2; nn++) { // i_2
+            pmiq++;
+            pmi_pdu[pmiq].pm_idx = pmiq + 1; // index 0 is the identity matrix
+            pmi_pdu[pmiq].numLayers = 2;
+            pmi_pdu[pmiq].num_ant_ports = num_antenna_ports;
+            LOG_D(PHY, "layer 2 Codebook pmiq = %d\n", pmiq);
+            for (int j_col = 0; j_col < 2; j_col++) {
+              if (j_col == 0) {
+                llc = ll;
+                mmc = mm;
+                phase_sign = 1;
+              }
+              if (j_col == 1) {
+                llc = ll + k1 * O1;
+                mmc = mm + k2 * O2;
+                phase_sign = -1;
+              }
+              for (int i_rows = 0; i_rows < N1 * N2; i_rows++) {
+                nfapi_nr_pm_weights_t *weights = &pmi_pdu[pmiq].weights[j_col][i_rows];
+                res_code = sqrt(1 / (double)(2 * num_antenna_ports)) * v_lm[llc][mmc][i_rows];
+                c16_t precoder_weight = convert_precoder_weight(res_code);
+                weights->precoder_weight_Re = precoder_weight.r;
+                weights->precoder_weight_Im = precoder_weight.i;
+                LOG_D(PHY,
+                      "2 Layer Precoding Matrix[1][pmi %d][antPort %d][layerIdx %d]= %f+j %f -> Fixed Point %d+j %d \n",
+                      pmiq,
+                      i_rows,
+                      j_col,
+                      creal(res_code),
+                      cimag(res_code),
+                      weights->precoder_weight_Re,
+                      weights->precoder_weight_Im);
+              }
+              for (int i_rows = N1 * N2; i_rows < 2 * N1 * N2; i_rows++) {
+                nfapi_nr_pm_weights_t *weights = &pmi_pdu[pmiq].weights[j_col][i_rows];
+                res_code = sqrt(1 / (double)(2 * num_antenna_ports)) * (phase_sign)*theta_n[nn] * v_lm[llc][mmc][i_rows - N1 * N2];
+                c16_t precoder_weight = convert_precoder_weight(res_code);
+                weights->precoder_weight_Re = precoder_weight.r;
+                weights->precoder_weight_Im = precoder_weight.i;
+                LOG_D(PHY,
+                      "2 Layer Precoding Matrix[1][pmi %d][antPort %d][layerIdx %d]= %f+j %f -> Fixed Point %d+j %d \n",
+                      pmiq,
+                      i_rows,
+                      j_col,
+                      creal(res_code),
+                      cimag(res_code),
+                      weights->precoder_weight_Re,
+                      weights->precoder_weight_Im);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (max_mimo_layers < 3)
+    return mat;
+
+  // Table 5.2.2.2.1-7:
+  // Codebook for 3-layer CSI reporting using antenna ports 3000 to 2999+PCSI-RS
+
+  // pmi=1,...,pmi_size are computed as follows
+  for (int ll = 0; ll < N1 * O1; ll++) { // i_1_1
+    for (int mm = 0; mm < N2 * O2; mm++) { // i_1_2
+      for (int k1 = 0; k1 < K1; k1++) {
+        for (int k2 = 0; k2 < K2; k2++) {
+          for (int nn = 0; nn < 2; nn++) { // i_2
+            pmiq++;
+            pmi_pdu[pmiq].pm_idx = pmiq + 1; // index 0 is the identity matrix
+            pmi_pdu[pmiq].numLayers = 3;
+            pmi_pdu[pmiq].num_ant_ports = num_antenna_ports;
+            LOG_D(PHY, "layer 3 Codebook pmiq = %d\n", pmiq);
+            for (int j_col = 0; j_col < 3; j_col++) {
+              if (j_col == 0) {
+                llc = ll;
+                mmc = mm;
+                phase_sign = 1;
+              }
+              if (j_col == 1) {
+                llc = ll + k1 * O1;
+                mmc = mm + k2 * O2;
+                phase_sign = 1;
+              }
+              if (j_col == 2) {
+                llc = ll;
+                mmc = mm;
+                phase_sign = -1;
+              }
+              for (int i_rows = 0; i_rows < N1 * N2; i_rows++) {
+                nfapi_nr_pm_weights_t *weights = &pmi_pdu[pmiq].weights[j_col][i_rows];
+                res_code = sqrt(1 / (double)(3 * num_antenna_ports)) * v_lm[llc][mmc][i_rows];
+                c16_t precoder_weight = convert_precoder_weight(res_code);
+                weights->precoder_weight_Re = precoder_weight.r;
+                weights->precoder_weight_Im = precoder_weight.i;
+                LOG_D(PHY,
+                      "3 Layer Precoding Matrix[1][pmi %d][antPort %d][layerIdx %d]= %f+j %f -> Fixed Point %d+j %d \n",
+                      pmiq,
+                      i_rows,
+                      j_col,
+                      creal(res_code),
+                      cimag(res_code),
+                      weights->precoder_weight_Re,
+                      weights->precoder_weight_Im);
+              }
+              for (int i_rows = N1 * N2; i_rows < 2 * N1 * N2; i_rows++) {
+                nfapi_nr_pm_weights_t *weights = &pmi_pdu[pmiq].weights[j_col][i_rows];
+                res_code = sqrt(1 / (double)(3 * num_antenna_ports)) * (phase_sign)*theta_n[nn] * v_lm[llc][mmc][i_rows - N1 * N2];
+                c16_t precoder_weight = convert_precoder_weight(res_code);
+                weights->precoder_weight_Re = precoder_weight.r;
+                weights->precoder_weight_Im = precoder_weight.i;
+                LOG_D(PHY,
+                      "3 Layer Precoding Matrix[1][pmi %d][antPort %d][layerIdx %d]= %f+j %f -> Fixed Point %d+j %d \n",
+                      pmiq,
+                      i_rows,
+                      j_col,
+                      creal(res_code),
+                      cimag(res_code),
+                      weights->precoder_weight_Re,
+                      weights->precoder_weight_Im);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (max_mimo_layers < 4)
+    return mat;
+
+  // Table 5.2.2.2.1-8:
+  // Codebook for 4-layer CSI reporting using antenna ports 3000 to 2999+PCSI-RS
+
+  for (int ll = 0; ll < N1 * O1; ll++) { // i_1_1
+    for (int mm = 0; mm < N2 * O2; mm++) { // i_1_2
+      for (int k1 = 0; k1 < K1; k1++) {
+        for (int k2 = 0; k2 < K2; k2++) {
+          for (int nn = 0; nn < 2; nn++) { // i_2
+            pmiq++;
+            pmi_pdu[pmiq].pm_idx = pmiq + 1; // index 0 is the identity matrix
+            pmi_pdu[pmiq].numLayers = 4;
+            pmi_pdu[pmiq].num_ant_ports = num_antenna_ports;
+            LOG_D(PHY, "layer 4 pmiq = %d\n", pmiq);
+            for (int j_col = 0; j_col < 4; j_col++) {
+              if (j_col == 0) {
+                llc = ll;
+                mmc = mm;
+                phase_sign = 1;
+              }
+              if (j_col == 1) {
+                llc = ll + k1 * O1;
+                mmc = mm + k2 * O2;
+                phase_sign = 1;
+              }
+              if (j_col == 2) {
+                llc = ll;
+                mmc = mm;
+                phase_sign = -1;
+              }
+              if (j_col == 3) {
+                llc = ll + k1 * O1;
+                mmc = mm + k2 * O2;
+                phase_sign = -1;
+              }
+              for (int i_rows = 0; i_rows < N1 * N2; i_rows++) {
+                nfapi_nr_pm_weights_t *weights = &pmi_pdu[pmiq].weights[j_col][i_rows];
+                res_code = sqrt(1 / (double)(4 * num_antenna_ports)) * v_lm[llc][mmc][i_rows];
+                c16_t precoder_weight = convert_precoder_weight(res_code);
+                weights->precoder_weight_Re = precoder_weight.r;
+                weights->precoder_weight_Im = precoder_weight.i;
+                LOG_D(PHY,
+                      "4 Layer Precoding Matrix[1][pmi %d][antPort %d][layerIdx %d]= %f+j %f -> Fixed Point %d+j %d \n",
+                      pmiq,
+                      i_rows,
+                      j_col,
+                      creal(res_code),
+                      cimag(res_code),
+                      weights->precoder_weight_Re,
+                      weights->precoder_weight_Im);
+              }
+              for (int i_rows = N1 * N2; i_rows < 2 * N1 * N2; i_rows++) {
+                nfapi_nr_pm_weights_t *weights = &pmi_pdu[pmiq].weights[j_col][i_rows];
+                res_code = sqrt(1 / (double)(4 * num_antenna_ports)) * (phase_sign)*theta_n[nn] * v_lm[llc][mmc][i_rows - N1 * N2];
+                c16_t precoder_weight = convert_precoder_weight(res_code);
+                weights->precoder_weight_Re = precoder_weight.r;
+                weights->precoder_weight_Im = precoder_weight.i;
+                LOG_D(PHY,
+                      "4 Layer Precoding Matrix[1][pmi %d][antPort %d][layerIdx %d]= %f+j %f -> Fixed Point %d+j %d \n",
+                      pmiq,
+                      i_rows,
+                      j_col,
+                      creal(res_code),
+                      cimag(res_code),
+                      weights->precoder_weight_Re,
+                      weights->precoder_weight_Im);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  return mat;
 }
 
 static void process_rlcBearerConfig(struct NR_CellGroupConfig__rlc_BearerToAddModList *rlc_bearer2add_list,
@@ -651,6 +708,12 @@ static void config_common(gNB_MAC_INST *nrmac, nr_pdsch_AntennaPorts_t pdsch_Ant
   cfg->ssb_table.ssb_subcarrier_offset.tl.tag = NFAPI_NR_CONFIG_SSB_SUBCARRIER_OFFSET_TAG;
   cfg->num_tlv++;
 
+  uint8_t *mib_payload = nrmac->common_channels[0].MIB_pdu;
+  uint32_t mib = (mib_payload[2] << 16) | (mib_payload[1] << 8) | mib_payload[0];
+  cfg->ssb_table.MIB.tl.tag = NFAPI_NR_CONFIG_MIB_TAG;
+  cfg->ssb_table.MIB.value = mib;
+  cfg->num_tlv++;
+
   nrmac->ssb_SubcarrierOffset = cfg->ssb_table.ssb_subcarrier_offset.value;
   nrmac->ssb_OffsetPointA = cfg->ssb_table.ssb_offset_point_a.value;
   LOG_I(NR_MAC,
@@ -780,11 +843,8 @@ void nr_mac_config_scc(gNB_MAC_INST *nrmac, NR_ServingCellConfigCommon_t *scc, c
 
   config_common(nrmac, config->pdsch_AntennaPorts, config->pusch_AntennaPorts, scc);
 
-  if (NFAPI_MODE == NFAPI_MODE_PNF || NFAPI_MODE == NFAPI_MODE_VNF) {
-    // fake that the gNB is configured in nFAPI mode, which would normally be
-    // done in a NR_PHY_config_req, but in this mode, there is no PHY
-    RC.gNB[0]->configured = 1;
-  } else {
+  if (NFAPI_MODE == NFAPI_MONOLITHIC) {
+    // nothing to be sent in the other cases
     NR_PHY_Config_t phycfg = {.Mod_id = 0, .CC_id = 0, .cfg = &nrmac->config[0]};
     DevAssert(nrmac->if_inst->NR_PHY_config_req);
     nrmac->if_inst->NR_PHY_config_req(&phycfg);
@@ -882,7 +942,8 @@ bool nr_mac_prepare_ra_ue(gNB_MAC_INST *nrmac, uint32_t rnti, NR_CellGroupConfig
   uint8_t ra_index = 0;
   /* checking for free RA process */
   for(; ra_index < NR_NB_RA_PROC_MAX; ra_index++) {
-    if((cc->ra[ra_index].state == RA_IDLE) && (!cc->ra[ra_index].cfra)) break;
+    if ((cc->ra[ra_index].ra_state == nrRA_gNB_IDLE) && (!cc->ra[ra_index].cfra))
+      break;
   }
   if (ra_index == NR_NB_RA_PROC_MAX) {
     LOG_E(NR_MAC, "RA processes are not available for CFRA RNTI %04x\n", rnti);

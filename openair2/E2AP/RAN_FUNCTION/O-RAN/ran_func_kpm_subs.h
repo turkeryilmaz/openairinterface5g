@@ -19,16 +19,31 @@
  *      contact@openairinterface.org
  */
 
-/*! \file log_if.h
-* \brief log interface
-* \author Navid Nikaein
-* \date 2009 - 2014
-* \version 0.3
-* \warning This component can be runned only in user-space
-* @ingroup routing
-*/
+#ifndef RAN_FUNC_SM_KPM_SUBSCRIPTION_AGENT_H
+#define RAN_FUNC_SM_KPM_SUBSCRIPTION_AGENT_H
 
-// LTS: kept this file for compatibility
-// this file was probably a trial to separate internal functions and external ones
-// but it has never been finished, most source code include directly log.h (not log_if.h)
-#include "log.h"
+#include "openair2/E2AP/flexric/src/sm/kpm_sm/kpm_data_ie_wrapper.h"
+
+#include "openair2/LAYER2/NR_MAC_gNB/mac_proto.h"
+#include "openair2/LAYER2/nr_pdcp/nr_pdcp_oai_api.h"
+#include "openair2/LAYER2/nr_rlc/nr_rlc_oai_api.h"
+
+typedef struct {
+  uint32_t rrc_ue_id;
+  NR_UE_info_t* ue;
+
+} cudu_ue_info_pair_t;
+
+typedef meas_record_lst_t (*kpm_meas_fp)(uint32_t gran_period_ms, cudu_ue_info_pair_t ue_info, const size_t ue_idx);
+
+typedef struct{ 
+  char* key; 
+  kpm_meas_fp value;
+} kv_measure_t;
+
+
+void init_kpm_subs_data(void);
+
+meas_record_lst_t get_kpm_meas_value(char* kpm_meas_name, uint32_t gran_period_ms, cudu_ue_info_pair_t ue_info, const size_t ue_idx);
+
+#endif

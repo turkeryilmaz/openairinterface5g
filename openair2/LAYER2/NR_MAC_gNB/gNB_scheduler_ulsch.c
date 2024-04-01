@@ -223,7 +223,7 @@ static int nr_process_mac_pdu(instance_t module_idP,
 
         for (int i = 0; i < NR_NB_RA_PROC_MAX; i++) {
           NR_RA_t *ra = &RC.nrmac[module_idP]->common_channels[CC_id].ra[i];
-          if (ra->state >= WAIT_Msg3 && ra->rnti == UE->rnti) {
+          if (ra->ra_state >= nrRA_WAIT_Msg3 && ra->rnti == UE->rnti) {
             // remove UE context just created after Msg.3 in some milliseconds
             // as the UE is one already known (not now, as the UE context is
             // still needed for the moment)
@@ -231,7 +231,7 @@ static int nr_process_mac_pdu(instance_t module_idP,
             //mac_remove_nr_ue(RC.nrmac[module_idP], ra->rnti);
             // this UE is the one identified by the RNTI in pduP
             ra->rnti = ((pduP[1]&0xFF)<<8)|(pduP[2]&0xFF);
-            ra->state = Msg3_dcch_dtch;
+            ra->ra_state = nrRA_Msg3_dcch_dtch;
             break;
           }
         }
@@ -315,7 +315,7 @@ static int nr_process_mac_pdu(instance_t module_idP,
         NR_UE_info_t* UE_idx = UE;
         for (int i = 0; i < NR_NB_RA_PROC_MAX; i++) {
           NR_RA_t *ra = &RC.nrmac[module_idP]->common_channels[CC_id].ra[i];
-          if (ra->state >= WAIT_Msg3 && ra->rnti == UE->rnti) {
+          if (ra->ra_state >= nrRA_WAIT_Msg3 && ra->rnti == UE->rnti) {
             uint8_t *next_subpduP = pduP + mac_subheader_len + mac_len;
             if ((pduP[mac_subheader_len+mac_len] & 0x3F) == UL_SCH_LCID_C_RNTI) {
               crnti = ((next_subpduP[1]&0xFF)<<8)|(next_subpduP[2]&0xFF);
@@ -488,7 +488,7 @@ static bool get_UE_waiting_CFRA_msg3(const gNB_MAC_INST *gNB_mac, const int CC_i
   bool UE_waiting_CFRA_msg3 = false;
   for (int i = 0; i < NR_NB_RA_PROC_MAX; i++) {
     const NR_RA_t *ra = &gNB_mac->common_channels[CC_id].ra[i];
-    if (ra->cfra == true && ra->state == WAIT_Msg3 && frame == ra->Msg3_frame && slot == ra->Msg3_slot) {
+    if (ra->cfra == true && ra->ra_state == nrRA_WAIT_Msg3 && frame == ra->Msg3_frame && slot == ra->Msg3_slot) {
       UE_waiting_CFRA_msg3 = true;
       break;
     }
@@ -512,7 +512,7 @@ void handle_nr_ul_harq(const int CC_idP,
     LOG_D(NR_MAC, "handle harq for rnti %04x, in RA process\n", crc_pdu->rnti);
     for (int i = 0; i < NR_NB_RA_PROC_MAX; ++i) {
       NR_RA_t *ra = &nrmac->common_channels[CC_idP].ra[i];
-      if (ra->state >= WAIT_Msg3 && ra->rnti == crc_pdu->rnti) {
+      if (ra->ra_state >= nrRA_WAIT_Msg3 && ra->rnti == crc_pdu->rnti) {
         NR_SCHED_UNLOCK(&nrmac->sched_lock);
         return;
       }
@@ -625,11 +625,13 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
 
     // if not missed detection (10dB threshold for now)
     if (rssi>0) {
-      UE_scheduling_control->tpc0 = nr_get_tpc(target_snrx10,ul_cqi,30);
+      UE_scheduling_control->pusch_snrx10 = ul_cqi * 5 - 640;
+      if (ul_cqi != 0xff) {
+        UE_scheduling_control->tpc0 = nr_get_tpc(target_snrx10, UE_scheduling_control->pusch_snrx10, 30);
+      }
       if (timing_advance != 0xffff)
         UE_scheduling_control->ta_update = timing_advance;
       UE_scheduling_control->raw_rssi = rssi;
-      UE_scheduling_control->pusch_snrx10 = ul_cqi * 5 - 640;
 
       LOG_D(NR_MAC, "[UE %04x] PUSCH TPC %d and TA %d\n",UE->rnti,UE_scheduling_control->tpc0,UE_scheduling_control->ta_update);
     }
@@ -670,7 +672,7 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
         if (UE_scheduling_control->sched_ul_bytes < 0)
           UE_scheduling_control->sched_ul_bytes = 0;
       }
-      if (ul_cqi <= 128) {
+      if (ul_cqi == 0xff || ul_cqi <= 128) {
         UE->UE_sched_ctrl.pusch_consecutive_dtx_cnt++;
         UE->mac_stats.ulsch_DTX++;
       }
@@ -700,17 +702,17 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
     T(T_GNB_MAC_UL_PDU_WITH_DATA, T_INT(gnb_mod_idP), T_INT(CC_idP),
       T_INT(rntiP), T_INT(frameP), T_INT(slotP), T_INT(-1) /* harq_pid */,
       T_BUFFER(sduP, sdu_lenP));
-
+    
     /* we don't know this UE (yet). Check whether there is a ongoing RA (Msg 3)
      * and check the corresponding UE's RNTI match, in which case we activate
      * it. */
     for (int i = 0; i < NR_NB_RA_PROC_MAX; ++i) {
       NR_RA_t *ra = &gNB_mac->common_channels[CC_idP].ra[i];
-      if (ra->state != WAIT_Msg3)
+      if (ra->ra_state != nrRA_WAIT_Msg3)
         continue;
-
+      
       if(no_sig) {
-        LOG_D(NR_MAC, "Random Access %i failed at state %i (no signal)\n", i, ra->state);
+        LOG_D(NR_MAC, "Random Access %i failed at state %s (no signal)\n", i, nrra_text[ra->ra_state]);
         nr_clear_ra_proc(gnb_mod_idP, CC_idP, frameP, ra);
       } else {
 
@@ -722,7 +724,12 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
                 current_rnti);
 
           if( (frameP==ra->Msg3_frame) && (slotP==ra->Msg3_slot) ) {
-            LOG_D(NR_MAC, "Random Access %i failed at state %i (TC_RNTI %04x RNTI %04x)\n", i, ra->state,ra->rnti,current_rnti);
+            LOG_D(NR_MAC,
+                  "Random Access %i failed at state %s (TC_RNTI %04x RNTI %04x)\n",
+                  i,
+                  nrra_text[ra->ra_state],
+                  ra->rnti,
+                  current_rnti);
             nr_clear_ra_proc(gnb_mod_idP, CC_idP, frameP, ra);
           }
 
@@ -731,7 +738,12 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
 
         NR_UE_info_t *UE_msg3_stage = UE ? UE : add_new_nr_ue(gNB_mac, ra->rnti, ra->CellGroup);
         if (!UE_msg3_stage) {
-          LOG_W(NR_MAC, "Random Access %i discarded at state %i (TC_RNTI %04x RNTI %04x): max number of users achieved!\n", i, ra->state, ra->rnti, current_rnti);
+          LOG_W(NR_MAC,
+                "Random Access %i discarded at state %s (TC_RNTI %04x RNTI %04x): max number of users achieved!\n",
+                i,
+                nrra_text[ra->ra_state],
+                ra->rnti,
+                current_rnti);
 
           nr_clear_ra_proc(gnb_mod_idP, CC_idP, frameP, ra);
           return;
@@ -756,11 +768,13 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
 
         NR_UE_sched_ctrl_t *UE_scheduling_control = &UE_msg3_stage->UE_sched_ctrl;
 
-        UE_scheduling_control->tpc0 = nr_get_tpc(target_snrx10, ul_cqi, 30);
+        if (ul_cqi != 0xff) {
+          UE_scheduling_control->pusch_snrx10 = ul_cqi * 5 - 640;
+          UE_scheduling_control->tpc0 = nr_get_tpc(target_snrx10, UE_scheduling_control->pusch_snrx10, 30);
+        }
         if (timing_advance != 0xffff)
           UE_scheduling_control->ta_update = timing_advance;
         UE_scheduling_control->raw_rssi = rssi;
-        UE_scheduling_control->pusch_snrx10 = ul_cqi * 5 - 640;
         LOG_D(NR_MAC, "[UE %04x] PUSCH TPC %d and TA %d\n", UE_msg3_stage->rnti, UE_scheduling_control->tpc0, UE_scheduling_control->ta_update);
         if (ra->cfra) {
           LOG_A(NR_MAC, "(rnti 0x%04x) CFRA procedure succeeded!\n", ra->rnti);
@@ -785,8 +799,7 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
           // harq_pid set a non valid value because it is not used in this call
           // the function is only called to decode the contention resolution sub-header
           if (nr_process_mac_pdu(gnb_mod_idP, UE_msg3_stage, CC_idP, frameP, slotP, sduP, sdu_lenP, -1) == 0) {
-
-            if (ra->state == Msg3_dcch_dtch) {
+            if (ra->ra_state == nrRA_Msg3_dcch_dtch) {
               // Check if the UE identified by C-RNTI still exists at the gNB
               NR_UE_info_t * UE_C = find_nr_UE(&gNB_mac->UE_info, ra->rnti);
               if (!UE_C) {
@@ -811,11 +824,9 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
                 LOG_I(NR_MAC, "Received UL_SCH_LCID_C_RNTI with C-RNTI 0x%04x, triggering RRC Reconfiguration\n", UE_C->rnti);
                 nr_mac_trigger_reconfiguration(RC.nrmac[gnb_mod_idP], UE_C);
               }
-            }
-            else {
-              LOG_I(NR_MAC, "Activating scheduling RA-Msg4 for TC_RNTI 0x%04x (state %d)\n",
-                    ra->rnti, ra->state);
-              ra->state = Msg4;
+            } else {
+              LOG_I(NR_MAC, "Activating scheduling RA-Msg4 for TC_RNTI 0x%04x (state %s)\n", ra->rnti, nrra_text[ra->ra_state]);
+              ra->ra_state = nrRA_Msg4;
             }
           }
           else {
@@ -828,7 +839,7 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
   } else {
     for (int i = 0; i < NR_NB_RA_PROC_MAX; ++i) {
       NR_RA_t *ra = &gNB_mac->common_channels[CC_idP].ra[i];
-      if (ra->state != WAIT_Msg3)
+      if (ra->ra_state != nrRA_WAIT_Msg3)
         continue;
 
       if( (frameP!=ra->Msg3_frame) || (slotP!=ra->Msg3_slot))
@@ -836,13 +847,13 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
 
       // for CFRA (NSA) do not schedule retransmission of msg3
       if (ra->cfra) {
-        LOG_D(NR_MAC, "Random Access %i failed at state %i (NSA msg3 reception failed)\n", i, ra->state);
+        LOG_D(NR_MAC, "Random Access %i failed at state %s (NSA msg3 reception failed)\n", i, nrra_text[ra->ra_state]);
         nr_clear_ra_proc(gnb_mod_idP, CC_idP, frameP, ra);
         return;
       }
 
       if (ra->msg3_round >= gNB_mac->ul_bler.harq_round_max - 1) {
-        LOG_W(NR_MAC, "Random Access %i failed at state %i (Reached msg3 max harq rounds)\n", i, ra->state);
+        LOG_W(NR_MAC, "Random Access %i failed at state %s (Reached msg3 max harq rounds)\n", i, nrra_text[ra->ra_state]);
         nr_clear_ra_proc(gnb_mod_idP, CC_idP, frameP, ra);
         return;
       }
@@ -850,7 +861,7 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
       LOG_D(NR_MAC, "Random Access %i Msg3 CRC did not pass)\n", i);
 
       ra->msg3_round++;
-      ra->state = Msg3_retransmission;
+      ra->ra_state = nrRA_Msg3_retransmission;
     }
   }
 }
@@ -1648,7 +1659,7 @@ static void pf_ul(module_id_t module_id,
   const int CC_id = 0;
   gNB_MAC_INST *nrmac = RC.nrmac[module_id];
   NR_ServingCellConfigCommon_t *scc = nrmac->common_channels[CC_id].ServingCellConfigCommon;
-
+  
   const int min_rb = 5;
   // UEs that could be scheduled
   UEsched_t UE_sched[MAX_MOBILES_PER_GNB] = {0};
@@ -1698,7 +1709,7 @@ static void pf_ul(module_id_t module_id,
       /* reduce max_num_ue once we are sure UE can be allocated, i.e., has CCE */
       remainUEs--;
       continue;
-    }
+    } 
 
     /* skip this UE if there are no free HARQ processes. This can happen e.g.
      * if the UE disconnected in L2sim, in which case the gNB is not notified
@@ -2017,7 +2028,7 @@ static bool nr_fr1_ulsch_preprocessor(module_id_t module_id, frame_t frame, sub_
   st = e - len + 1;
 
   LOG_D(NR_MAC,"UL %d.%d : start_prb %d, end PRB %d\n",frame,slot,st,e);
-
+  
   uint16_t rballoc_mask[bwpSize];
 
   /* Calculate mask: if any RB in vrb_map_UL is blocked (1), the current RB will be 0 */
@@ -2027,6 +2038,9 @@ static bool nr_fr1_ulsch_preprocessor(module_id_t module_id, frame_t frame, sub_
   int bw = scc->uplinkConfigCommon->frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth;
   int average_agg_level = 4; // TODO find a better estimation
   int max_sched_ues = bw / (average_agg_level * NR_NB_REG_PER_CCE);
+
+  // FAPI cannot handle more than MAX_DCI_CORESET DCIs
+  max_sched_ues = min(max_sched_ues, MAX_DCI_CORESET);
 
   /* proportional fair scheduling algorithm */
   pf_ul(module_id,
@@ -2249,11 +2263,15 @@ void nr_schedule_ulsch(module_id_t module_id, frame_t frame, sub_frame_t slot, n
     pusch_pdu->num_dmrs_cdm_grps_no_data = sched_pusch->dmrs_info.num_dmrs_cdm_grps_no_data;
 
     /* FAPI: DMRS */
+    pusch_pdu->num_dmrs_cdm_grps_no_data = sched_pusch->dmrs_info.num_dmrs_cdm_grps_no_data;
+    pusch_pdu->dmrs_ports = ((1<<sched_pusch->nrOfLayers) - 1);
     pusch_pdu->ul_dmrs_symb_pos = sched_pusch->dmrs_info.ul_dmrs_symb_pos;
     pusch_pdu->dmrs_config_type = sched_pusch->dmrs_info.dmrs_config_type;
+    pusch_pdu->scid = 0;      // DMRS sequence initialization [TS38.211, sec 6.4.1.1.1]
     const NR_DMRS_UplinkConfig_t *NR_DMRS_UplinkConfig = get_DMRS_UplinkConfig(current_BWP->pusch_Config, &sched_pusch->tda_info);
     if (pusch_pdu->transform_precoding) { // transform precoding disabled
       long *scramblingid=NULL;
+      pusch_pdu->pusch_identity = *scc->physCellId;
       if (NR_DMRS_UplinkConfig && pusch_pdu->scid == 0)
         scramblingid = NR_DMRS_UplinkConfig->transformPrecodingDisabled->scramblingID0;
       else if (NR_DMRS_UplinkConfig)
@@ -2360,7 +2378,7 @@ void nr_schedule_ulsch(module_id_t module_id, frame_t frame, sub_frame_t slot, n
       nfapi_nr_ul_dci_request_pdus_t *ul_dci_request_pdu = &ul_dci_req->ul_dci_pdu_list[ul_dci_req->numPdus];
       memset(ul_dci_request_pdu, 0, sizeof(nfapi_nr_ul_dci_request_pdus_t));
       ul_dci_request_pdu->PDUType = NFAPI_NR_DL_TTI_PDCCH_PDU_TYPE;
-      ul_dci_request_pdu->PDUSize = (uint8_t)(2+sizeof(nfapi_nr_dl_tti_pdcch_pdu));
+      ul_dci_request_pdu->PDUSize = (uint8_t)(4+sizeof(nfapi_nr_dl_tti_pdcch_pdu));
       pdcch_pdu = &ul_dci_request_pdu->pdcch_pdu.pdcch_pdu_rel15;
       ul_dci_req->numPdus += 1;
       nr_configure_pdcch(pdcch_pdu, coreset, &sched_ctrl->sched_pdcch);

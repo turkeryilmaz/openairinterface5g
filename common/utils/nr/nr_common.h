@@ -158,6 +158,13 @@ bool nr_timer_expired(NR_timer_t timer);
  * @return Indication if the timer is active or not
  */
 bool is_nr_timer_active(NR_timer_t timer);
+/**
+ * @brief To return how much time has passed since start of timer
+ * @param timer Timer to be checked
+ * @return Time passed since start of timer
+ */
+uint32_t nr_timer_elapsed_time(NR_timer_t timer);
+
 
 extern const nr_bandentry_t nr_bandtable[];
 
@@ -168,7 +175,8 @@ static inline int get_num_dmrs(uint16_t dmrs_mask ) {
 }
 
 uint64_t reverse_bits(uint64_t in, int n_bits);
-
+uint64_t from_nrarfcn(int nr_bandP, uint8_t scs_index, uint32_t dl_nrarfcn);
+uint32_t to_nrarfcn(int nr_bandP, uint64_t dl_CarrierFreq, uint8_t scs_index, uint32_t bw);
 int get_first_ul_slot(int nrofDownlinkSlots, int nrofDownlinkSymbols, int nrofUplinkSymbols);
 int cce_to_reg_interleaving(const int R, int k, int n_shift, const int C, int L, const int N_regs);
 int get_SLIV(uint8_t S, uint8_t L);
@@ -213,10 +221,6 @@ void nr_est_delay(int ofdm_symbol_size, const c16_t *ls_est, c16_t *ch_estimates
 
 #define CEILIDIV(a,b) ((a+b-1)/b)
 #define ROUNDIDIV(a,b) (((a<<1)+b)/(b<<1))
-
-#define cmax(a,b)  ((a>b) ? (a) : (b))
-#define cmax3(a,b,c) ((cmax(a,b)>c) ? (cmax(a,b)) : (c))
-#define cmin(a,b)  ((a<b) ? (a) : (b))
 
 #ifdef __cplusplus
 #ifdef min
