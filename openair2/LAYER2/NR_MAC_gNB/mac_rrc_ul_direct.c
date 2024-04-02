@@ -742,7 +742,7 @@ static void trp_information_response(const f1ap_trp_information_resp_t *resp)
   f1ap_msg->nrppa_msg_info.routing_id_length = resp->nrppa_msg_info.routing_id_length;
   
   
-  // IE TRP Information List (M)
+  /*// IE TRP Information List (M)
   // TODO fill pdu using f1ap_trp_information_resp_t *resp
   {
     // TODO Retrieve TRP information from RAN Context
@@ -781,11 +781,11 @@ static void trp_information_response(const f1ap_trp_information_resp_t *resp)
         //rspItem->choice.nG_RAN_CGI.pLMN_Identity.size
         // TODO adeel retrive relevent info and add
         
-        /*trpinfo_item->choice.pCI_NR = 0; // long dummy value
-        trpinfo_item->choice.sSBinformation = NULL; // dummy values
-        trpinfo_item->choice.nG_RAN_CGI = NULL; // dummy values
-        trpinfo_item->choice.pRSConfiguration = NULL; // dummy values
-        trpinfo_item->choice.geographicalCoordinates = NULL; // dummy values*/
+        //trpinfo_item->choice.pCI_NR = 0; // long dummy value
+        //trpinfo_item->choice.sSBinformation = NULL; // dummy values
+        //trpinfo_item->choice.nG_RAN_CGI = NULL; // dummy values
+        //trpinfo_item->choice.pRSConfiguration = NULL; // dummy values
+        //trpinfo_item->choice.geographicalCoordinates = NULL; // dummy values
         if (k < nb_tRPInfoTypes-1){
           rspItem++;
         }

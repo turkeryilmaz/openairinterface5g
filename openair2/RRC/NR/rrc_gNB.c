@@ -2401,6 +2401,12 @@ static void rrc_CU_process_trp_information_request(f1ap_trp_information_req_t *r
   //  f1_ue_data_t ue_data = cu_get_f1_ue_data(UE->rrc_ue_id);
   gNB_RRC_INST *rrc = RC.nrrrc[req->nrppa_msg_info.instance];
   LOG_I(RRC, "Processing Received TRPInformationRequest transaction_id=%d\n", req->transaction_id);
+  //.plmn.mcc = rrc->configuration.mcc[0],
+  //.plmn.mnc = rrc->configuration.mnc[0],
+  //.plmn.mnc_digit_length = rrc->configuration.mnc_digit_length[0],
+  //.nr_cellid = rrc->nr_cellid,
+  //.servCellId = 0, /* TODO: correct value? */
+
   rrc->mac_rrc.trp_information_request(req);
 }
 
@@ -2540,6 +2546,60 @@ static void rrc_CU_process_trp_information_response(MessageDef *msg_p, instance_
   f1ap_msg->nrppa_msg_info.ue_rnti = resp->nrppa_msg_info.ue_rnti;
   f1ap_msg->nrppa_msg_info.routing_id_buffer = resp->nrppa_msg_info.routing_id_buffer;
   f1ap_msg->nrppa_msg_info.routing_id_length = resp->nrppa_msg_info.routing_id_length;
+
+
+  // TODO Filling the TRP info here instead of MAC
+  gNB_RRC_INST *rrc = RC.nrrrc[resp->nrppa_msg_info.instance];
+  // IE TRP Information List (M)
+  {
+    // TODO Retrieve TRP information from RAN Context
+    int nb_of_TRP = 1; // TODO find the acutal number for TRP and add here
+    f1ap_msg->trp_information_list.trp_information_list_length=nb_of_TRP;
+    f1ap_msg->trp_information_list.trp_information_item= malloc(nb_of_TRP * sizeof(f1ap_trp_information_item_t));
+    DevAssert(f1ap_msg->trp_information_list.trp_information_item);
+    f1ap_trp_information_item_t *trp_info_item= f1ap_msg->trp_information_list.trp_information_item;
+    LOG_D(MAC, "Preparing trp information list for NRPPA nb_of_TRP=%d \n", nb_of_TRP);
+    for (int i = 0; i < nb_of_TRP; i++) {
+      trp_info_item->tRPInformation.tRPID=0;//   item->tRP_ID = 0; // long NRPPA_TRP_ID_t
+
+      // Preparing tRPInformation IE of TRPInformationList__Member
+      
+      int nb_tRPInfoTypes = rrc->configuration.num_plmn; // TODO find the acutal size add here
+      f1ap_trp_information_type_response_list_t *rspList =&trp_info_item->tRPInformation.tRPInformationTypeResponseList;
+      rspList->trp_information_type_response_list_length= nb_tRPInfoTypes;
+      rspList->trp_information_type_response_item=malloc(nb_tRPInfoTypes*sizeof(f1ap_trp_information_type_response_item_u));
+      DevAssert(rspList->trp_information_type_response_item);
+      f1ap_trp_information_type_response_item_t *rspItem= rspList->trp_information_type_response_item;
+      for (int k = 0; k < nb_tRPInfoTypes; k++) // Preparing NRPPA_TRPInformation_t a list of  TRPInformation_item
+      {
+        rspItem->present=f1ap_trp_information_type_response_item_pr_nG_RAN_CGI;
+        // bit_string_t nRCellIdentity; // typedef BIT_STRING_t	 F1AP_NRCellIdentity_t;
+        //rspItem->choice.nG_RAN_CGI.nRCellIdentity.bits_unused= ;
+        //rspItem->choice.nG_RAN_CGI.nRCellIdentity.buf= ;
+        //rspItem->choice.nG_RAN_CGI.nRCellIdentity.size=;
+        
+        //nRCellIdentity
+        MACRO_GNB_ID_TO_CELL_IDENTITY(rrc->nr_cellid, 0, // Cell ID,
+                                  &rspItem->choice.nG_RAN_CGI.nRCellIdentity);
+        // octet_string_t pLMN_Identity; // typedef OCTET_STRING_t	 F1AP_PLMN_Identity_t;
+        //rspItem->choice.nG_RAN_CGI.pLMN_Identity.buf=
+        //rspItem->choice.nG_RAN_CGI.pLMN_Identity.size
+        
+        MCC_MNC_TO_TBCD(rrc->configuration.mcc[k], rrc->configuration.mnc[k],
+                rrc->configuration.mnc_digit_length[k], &rspItem->choice.nG_RAN_CGI.pLMN_Identity);
+        // TODO adeel other items
+        if (k < nb_tRPInfoTypes-1){
+          rspItem++;
+        }
+      } // for(int k=0; k < nb_tRPInfoTypes; k++)
+      if (i < nb_of_TRP-1){
+        trp_info_item++;
+      }
+    } // for (int i = 0; i < nb_of_TRP; i++)
+  } // IE Information List */
+ 
+
+
 
   itti_send_msg_to_task(TASK_NRPPA, instance, msg);
 }

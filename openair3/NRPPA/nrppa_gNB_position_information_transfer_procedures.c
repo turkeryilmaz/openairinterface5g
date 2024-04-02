@@ -536,8 +536,8 @@ int nrppa_gNB_PositioningInformationResponse(instance_t instance, MessageDef *ms
       } // for(int j=0; j < nb_possrsresourceset; j++)*/
       //printf("\n AM TEST NRPPA PIR \n \n SRS configuration in PIR \n");
       //xer_fprint(stdout, &asn_DEF_NRPPA_SRSConfig, &item->activeULBWP.sRSConfig);
-      printf("\n AM TEST NRPPA PIR \n \n ActiveULBWP as in PIR \n");
-      xer_fprint(stdout, &asn_DEF_NRPPA_ActiveULBWP, &item->activeULBWP);
+      //printf("\n AM TEST NRPPA PIR \n \n ActiveULBWP as in PIR \n");
+      //xer_fprint(stdout, &asn_DEF_NRPPA_ActiveULBWP, &item->activeULBWP);
 
       //  Preparing Uplink Channel BW Per SCS List information IE of SRSCarrier_List
       int size_SpecificCarrier_list = carrier_list_item->uplink_channel_bw_per_scs_list.scs_specific_carrier_list_length;
@@ -873,6 +873,8 @@ int nrppa_gNB_PositioningActivationResponse(instance_t instance, MessageDef *msg
     ie->value.choice.SlotNumber = resp->slot_number;
   }
 
+  LOG_I(NRPPA, "Calling encoder for PositioningActivationResponse \n");
+  xer_fprint(stdout, &asn_DEF_NRPPA_NRPPA_PDU, &pdu);
   /* Encode NRPPA message */
   uint8_t *buffer = NULL;
   uint32_t length = 0;
