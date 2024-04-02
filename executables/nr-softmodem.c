@@ -316,7 +316,7 @@ static int create_gNB_tasks(ngran_node_t node_type, configmodule_interface_t *cf
 
   RCconfig_verify(cfg, node_type);
   RCconfig_nr_ssparam();
-  if(RC.ss.mode >= SS_SOFTMODEM){  
+  if(RC.ss.mode == SS_SOFTMODEM){
     RCconfig_NR_L1();
   }
   RCconfig_nr_prs();

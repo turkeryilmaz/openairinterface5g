@@ -392,12 +392,17 @@ static void run_scheduler(module_id_t module_id, int CC_id, int frame, int slot)
 {
   NR_IF_Module_t *ifi = nr_if_inst[module_id];
   // gNB_MAC_INST     *mac        = RC.nrmac[module_id];
-
-  gNB_MAC_INST     *mac        = RC.nrmac[module_id];
-  nfapi_nr_config_request_scf_t *cfg = &mac->config[CC_id];
-	int spf = get_spf(cfg);
-	int sched_frame = (frame + ((slot > (spf - 1 - ifi->sl_ahead)) ? 1 : 0)) % 1024;
-	int sched_slot  =  (slot + ifi->sl_ahead) % spf;
+  int sched_frame = frame;
+  int sched_slot = slot;
+  int spf = 0;
+//TODO Scheduler differs between Simu and USRP setups
+  if (RC.ss.mode == SS_SOFTMODEM) {
+    gNB_MAC_INST     *mac        = RC.nrmac[module_id];
+    nfapi_nr_config_request_scf_t *cfg = &mac->config[CC_id];
+	 spf = get_spf(cfg);
+	 sched_frame = (frame + ((slot > (spf - 1 - ifi->sl_ahead)) ? 1 : 0)) % 1024;
+	 sched_slot  =  (slot + ifi->sl_ahead) % spf;
+}
 
 
   NR_Sched_Rsp_t *sched_info;
@@ -437,18 +442,16 @@ static void run_scheduler(module_id_t module_id, int CC_id, int frame, int slot)
         sched_info->slot,
         sched_info->DL_req.dl_tti_request_body.nPDUs);
 
-
-  if(CC_id == RC.nb_nr_CC[0]-1){
-    if (NFAPI_MODE == NFAPI_MODE_VNF){
-      extern int oai_nfapi_slot_ind(nfapi_nr_slot_indication_scf_t * slot_ind);
-      nfapi_nr_slot_indication_scf_t slot_ind;
-      slot_ind.sfn = sched_info->frame;
-      slot_ind.slot = sched_info->slot;
-      oai_nfapi_slot_ind(&slot_ind);
-    }
-
-    if (RC.ss.mode >= SS_SOFTMODEM)
-    {
+  if (RC.ss.mode == SS_SOFTMODEM)
+  {
+    if(CC_id == RC.nb_nr_CC[0]-1){
+      if (NFAPI_MODE == NFAPI_MODE_VNF){
+        extern int oai_nfapi_slot_ind(nfapi_nr_slot_indication_scf_t * slot_ind);
+        nfapi_nr_slot_indication_scf_t slot_ind;
+        slot_ind.sfn = sched_info->frame;
+        slot_ind.slot = sched_info->slot;
+        oai_nfapi_slot_ind(&slot_ind);
+      }
       MessageDef *message_p = itti_alloc_new_message(TASK_VT_TIMER, INSTANCE_DEFAULT, SS_NRUPD_TIM_INFO);
       if (message_p)
       {
@@ -479,7 +482,7 @@ void NR_UL_indication(NR_UL_IND_t *UL_info) {
         gnb_crc_ind_queue[CC_id].num_items,
         gnb_slot_ind_queue.num_items);
 
-  if (RC.ss.mode >= SS_SOFTMODEM)
+  if (RC.ss.mode == SS_SOFTMODEM)
   {
       MessageDef *message_p = itti_alloc_new_message(TASK_SYS_GNB, INSTANCE_DEFAULT, SS_NRUPD_TIM_INFO);
       if (message_p)
