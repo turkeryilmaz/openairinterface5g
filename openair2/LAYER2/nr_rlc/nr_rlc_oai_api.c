@@ -143,7 +143,7 @@ void mac_rlc_data_ind(const module_id_t  module_idP,
 
   if (RC.ss.mode >= SS_SOFTMODEM) {
     LOG_D(RLC, "Packet received over RLC layer, DRB data type == %d\n", RC.nr_drb_data_type);
-    if ((tb_sizeP != 0) && (true == enb_flagP) && (channel_idP >= 4) && (RC.nr_drb_data_type == DRB_RlcPdu)) {
+    if ((true == enb_flagP) && (channel_idP >= 4) && (RC.nr_drb_data_type == DRB_RlcPdu)) {
       /* We are working in loopback test mode and data test is RLC PDU . UL RLC PDU shall not go through RLC entity*/
       int drb_id = channel_idP - 3;
       int result;
@@ -156,7 +156,9 @@ void mac_rlc_data_ind(const module_id_t  module_idP,
         SS_DRB_PDU_IND (message_p).subframe = nr_rlc_current_time_last_subframe;
         SS_DRB_PDU_IND (message_p).physCellId = RC.nrrrc[module_idP]->carrier[0].physCellId;
         SS_DRB_PDU_IND (message_p).sdu_size = tb_sizeP;
-        memcpy(SS_DRB_PDU_IND (message_p).sdu, buffer_pP, tb_sizeP);
+        if(tb_sizeP > 0){
+          memcpy(SS_DRB_PDU_IND (message_p).sdu, buffer_pP, tb_sizeP);
+        }
 
         result = itti_send_msg_to_task (TASK_SS_DRB, ENB_MODULE_ID_TO_INSTANCE(module_idP), message_p);
         if (result < 0) {

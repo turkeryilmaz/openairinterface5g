@@ -37,6 +37,9 @@
 #include "LAYER2/NR_MAC_COMMON/nr_mac_extern.h"
 #include "LAYER2/nr_rlc/nr_rlc_oai_api.h"
 #include "LAYER2/RLC/rlc.h"
+#include "common/ran_context.h"
+
+extern RAN_CONTEXT_t RC;
 
 //#define SRS_IND_DEBUG
 
@@ -126,6 +129,8 @@ static int nr_process_mac_pdu(instance_t module_idP,
   int sdus = 0;
   NR_UE_UL_BWP_t *ul_bwp = &UE->current_UL_BWP;
   NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
+  uint8_t mac_contains_dtch = 0;
+  uint8_t mac_dtch_lcid = 0;
 
   UE->CC_id = CC_id;
 
@@ -428,6 +433,10 @@ static int nr_process_mac_pdu(instance_t module_idP,
                          mac_len,
                          1,
                          NULL);
+        if(rx_lcid >=4){
+          mac_contains_dtch = 1;
+          mac_dtch_lcid = rx_lcid;
+        }
 
         sdus += 1;
         /* Updated estimated buffer when receiving data */
@@ -466,6 +475,20 @@ static int nr_process_mac_pdu(instance_t module_idP,
         printf("\n");
         return 0;
       }
+  }
+  if ((RC.ss.mode >= SS_SOFTMODEM) && (RC.nr_drb_data_type == DRB_RlcPdu) && mac_contains_dtch) {
+    /* Indicate the end of the mac DTCH SDU of this slot(mac PDU) */
+    mac_rlc_data_ind(module_idP,
+                         UE->rnti,
+                         module_idP,
+                         frameP,
+                         ENB_FLAG_YES,
+                         MBMS_FLAG_NO,
+                         mac_dtch_lcid,
+                         NULL,
+                         0,
+                         0,
+                         NULL);
   }
 
   UE->mac_stats.ul.num_mac_sdu += sdus;
