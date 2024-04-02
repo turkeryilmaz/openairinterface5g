@@ -109,7 +109,7 @@ services:
             timeout: 5s
             retries: 5
     oai-cu-up:
-        image: oaisoftwarealliance/oai-nr-cuup:develop
+        image: oaisoftwarealliance/oai-nr-cuup:v2.1.0
         privileged: true
         container_name: rfsim5g-oai-cuup
         environment:
@@ -165,15 +165,15 @@ services:
             timeout: 5s
             retries: 5
     oai-nr-ue:
-        image: oaisoftwarealliance/oai-nr-ue:develop
+        image: oaisoftwarealliance/oai-nr-ue:v2.1.0
         privileged: true
         container_name: rfsim5g-oai-nr-ue
         environment:
             USE_ADDITIONAL_OPTIONS: --sa --rfsim --log_config.global_log_options level,nocolor,time
-                                    -r 106 --numerology 1 -C 3410400000
+                                    -r 106 --numerology 1 -C 3619200000
                                     --uicc0.imsi 208990100001100
                                     --rfsimulator.serveraddr 192.168.78.2
-        depends_on: #--ssb 186 
+        depends_on:
             - oai-du
         networks:
             ue_net:
