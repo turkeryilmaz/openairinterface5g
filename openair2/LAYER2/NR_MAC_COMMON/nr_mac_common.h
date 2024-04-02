@@ -260,7 +260,19 @@ void csi_period_offset(NR_CSI_ReportConfig_t *csirep,
                        struct NR_CSI_ResourcePeriodicityAndOffset *periodicityAndOffset,
                        int *period, int *offset);
 
-void reverse_n_bits(uint8_t *value, uint16_t bitlen);
+static inline uint8_t reverse_n_bits(const uint8_t value, const uint16_t bitlen)
+{
+  uint8_t ret = value;
+  if (!bitlen)
+    return ret;
+  for (int j = bitlen - 1, i = 0; j > i; j--, i++) {
+    if (((ret >> j) & 1) != ((ret >> i) & 1)) {
+      ret ^= (1 << j);
+      ret ^= (1 << i);
+    }
+  }
+  return ret;
+}
 
 bool set_dl_ptrs_values(NR_PTRS_DownlinkConfig_t *ptrs_config,
                         uint16_t rbSize, uint8_t mcsIndex, uint8_t mcsTable,

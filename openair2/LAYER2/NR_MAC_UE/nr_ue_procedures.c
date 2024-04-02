@@ -731,8 +731,10 @@ static int nr_ue_process_dci_dl_10(NR_UE_MAC_INST_t *mac,
     // storing for possible retransmissions
     current_harq->R = dlsch_pdu->targetCodeRate;
     if (!dlsch_pdu->new_data_indicator && current_harq->TBS != dlsch_pdu->TBS) {
-      LOG_W(NR_MAC, "NDI indicates re-transmission but computed TBS %d doesn't match with what previously stored %d\n",
-            dlsch_pdu->TBS, current_harq->TBS);
+      LOG_W(NR_MAC,
+            "DCI format 10, NDI indicates re-transmission but computed TBS %d doesn't match with what previously stored %d\n",
+            dlsch_pdu->TBS,
+            current_harq->TBS);
       dlsch_pdu->new_data_indicator = true; // treated as new data
     }
     current_harq->TBS = dlsch_pdu->TBS;
@@ -1181,8 +1183,10 @@ static int nr_ue_process_dci_dl_11(NR_UE_MAC_INST_t *mac,
                                     Nl);
     // storing for possible retransmissions
     if (!dlsch_pdu->new_data_indicator && current_harq->TBS != dlsch_pdu->TBS) {
-      LOG_W(NR_MAC, "NDI indicates re-transmission but computed TBS %d doesn't match with what previously stored %d\n",
-            dlsch_pdu->TBS, current_harq->TBS);
+      LOG_W(NR_MAC,
+            "DCI format 11, NDI indicates re-transmission but computed TBS %d doesn't match with what previously stored %d\n",
+            dlsch_pdu->TBS,
+            current_harq->TBS);
       dlsch_pdu->new_data_indicator = true; // treated as new data
     }
     current_harq->R = dlsch_pdu->targetCodeRate;
@@ -2449,8 +2453,7 @@ bool get_downlink_ack(NR_UE_MAC_INST_t *mac, frame_t frame, int slot, PUCCH_sche
     pucch->pucch_resource = acknack_resource;
     LOG_D(MAC, "frame %d slot %d pucch acknack payload %d\n", frame, slot, o_ACK);
   }
-  reverse_n_bits(&o_ACK, number_harq_feedback);
-  pucch->ack_payload = o_ACK;
+  pucch->ack_payload = reverse_n_bits(o_ACK, number_harq_feedback);
   pucch->n_harq = number_harq_feedback;
 
   return (number_harq_feedback > 0);
@@ -2710,29 +2713,21 @@ csi_payload_t get_ssb_rsrp_payload(NR_UE_MAC_INST_t *mac,
       AssertFatal(*SSB_resource.list.array[ssb_rsrp[0][0]] == mac->mib_ssb, "Couldn't find corresponding SSB in csi_SSB_ResourceList\n");
       ssb_rsrp[1][0] = mac->ssb_measurements.ssb_rsrp_dBm;
 
-      uint8_t ssbi;
-
       if (ssbri_bits > 0) {
-        ssbi = ssb_rsrp[0][0];
-        reverse_n_bits(&ssbi, ssbri_bits);
-        temp_payload = ssbi;
+        temp_payload = reverse_n_bits(ssb_rsrp[0][0], ssbri_bits);
         bits += ssbri_bits;
       }
 
-      uint8_t rsrp_idx = get_rsrp_index(ssb_rsrp[1][0]);
-      reverse_n_bits(&rsrp_idx, 7);
+      uint8_t rsrp_idx = reverse_n_bits(get_rsrp_index(ssb_rsrp[1][0]), 7);
       temp_payload |= (rsrp_idx<<bits);
       bits += 7; // 7 bits for highest RSRP
 
       // from the second SSB, differential report
       for (int i=1; i<nb_meas; i++){
-        ssbi = ssb_rsrp[0][i];
-        reverse_n_bits(&ssbi, ssbri_bits);
-        temp_payload = ssbi;
+        temp_payload = reverse_n_bits(ssb_rsrp[0][i], ssbri_bits);
         bits += ssbri_bits;
 
-        rsrp_idx = get_rsrp_diff_index(ssb_rsrp[1][0],ssb_rsrp[1][i]);
-        reverse_n_bits(&rsrp_idx, 4);
+        rsrp_idx = reverse_n_bits(get_rsrp_diff_index(ssb_rsrp[1][0], ssb_rsrp[1][i]), 4);
         temp_payload |= (rsrp_idx<<bits);
         bits += 4; // 7 bits for highest RSRP
       }
@@ -2755,9 +2750,11 @@ csi_payload_t get_csirs_RI_PMI_CQI_payload(NR_UE_MAC_INST_t *mac,
 {
   int p1_bits = 0;
   int p2_bits = 0;
-  uint32_t temp_payload_1 = 0;
-  uint32_t temp_payload_2 = 0;
   AssertFatal(mapping_type != SUBBAND_ON_PUCCH, "CSI mapping for subband PMI and CQI not implemented\n");
+  union {
+    uint32_t w;
+    uint8_t b[4];
+  } temp_payload_1 = {0}, temp_payload_2 = {0};
 
   for (int csi_resourceidx = 0; csi_resourceidx < csi_MeasConfig->csi_ResourceConfigToAddModList->list.count; csi_resourceidx++) {
 
@@ -2798,32 +2795,31 @@ csi_payload_t get_csirs_RI_PMI_CQI_payload(NR_UE_MAC_INST_t *mac,
           if (mapping_type == ON_PUSCH) {
             p1_bits = cri_bitlen + ri_bitlen + cqi_bitlen;
             p2_bits = pmi_x1_bitlen + pmi_x2_bitlen;
-            temp_payload_1 = (0/*mac->csi_measurements.cri*/ << (cqi_bitlen + ri_bitlen)) |
+            temp_payload_1.w = (0/*mac->csi_measurements.cri*/ << (cqi_bitlen + ri_bitlen)) |
                              (mac->csirs_measurements.rank_indicator << cqi_bitlen) |
                              (mac->csirs_measurements.cqi);
-            temp_payload_2 = (mac->csirs_measurements.i1 << pmi_x2_bitlen) |
+            temp_payload_2.w = (mac->csirs_measurements.i1 << pmi_x2_bitlen) |
                              mac->csirs_measurements.i2;
           }
           else {
             p1_bits = nr_get_csi_bitlen(csi_report);
             padding_bitlen = p1_bits - (cri_bitlen + ri_bitlen + pmi_x1_bitlen + pmi_x2_bitlen + cqi_bitlen);
-            temp_payload_1 = (0/*mac->csi_measurements.cri*/ << (cqi_bitlen + pmi_x2_bitlen + pmi_x1_bitlen + padding_bitlen + ri_bitlen)) |
+            temp_payload_1.w = (0/*mac->csi_measurements.cri*/ << (cqi_bitlen + pmi_x2_bitlen + pmi_x1_bitlen + padding_bitlen + ri_bitlen)) |
                              (mac->csirs_measurements.rank_indicator << (cqi_bitlen + pmi_x2_bitlen + pmi_x1_bitlen + padding_bitlen)) |
                              (mac->csirs_measurements.i1 << (cqi_bitlen + pmi_x2_bitlen)) |
                              (mac->csirs_measurements.i2 << (cqi_bitlen)) |
                              (mac->csirs_measurements.cqi);
           }
 
-          reverse_n_bits((uint8_t *)&temp_payload_1, p1_bits);
-          reverse_n_bits((uint8_t *)&temp_payload_2, p2_bits);
-
+          temp_payload_1.b[0]=reverse_n_bits(temp_payload_1.b[0], p1_bits);
+          temp_payload_2.b[0]=reverse_n_bits(temp_payload_2.b[0], p2_bits);
           LOG_D(NR_MAC, "cri_bitlen = %d\n", cri_bitlen);
           LOG_D(NR_MAC, "ri_bitlen = %d\n", ri_bitlen);
           LOG_D(NR_MAC, "pmi_x1_bitlen = %d\n", pmi_x1_bitlen);
           LOG_D(NR_MAC, "pmi_x2_bitlen = %d\n", pmi_x2_bitlen);
           LOG_D(NR_MAC, "cqi_bitlen = %d\n", cqi_bitlen);
-          LOG_D(NR_MAC, "csi_part1_payload = 0x%x\n", temp_payload_1);
-          LOG_D(NR_MAC, "csi_part2_payload = 0x%x\n", temp_payload_2);
+          LOG_D(NR_MAC, "csi_part1_payload = 0x%x\n", temp_payload_1.w);
+          LOG_D(NR_MAC, "csi_part2_payload = 0x%x\n", temp_payload_2.w);
           LOG_D(NR_MAC, "part1_bits = %d\n", p1_bits);
           LOG_D(NR_MAC, "part2_bits = %d\n", p2_bits);
           break;
@@ -2833,8 +2829,8 @@ csi_payload_t get_csirs_RI_PMI_CQI_payload(NR_UE_MAC_INST_t *mac,
   }
   AssertFatal(p1_bits <= 32 && p2_bits <= 32, "Not supporting CSI report with more than 32 bits\n");
   csi_payload_t csi;
-  csi.part1_payload = temp_payload_1;
-  csi.part2_payload = temp_payload_2;
+  csi.part1_payload = temp_payload_1.w;
+  csi.part2_payload = temp_payload_2.w;
   csi.p1_bits = p1_bits;
   csi.p2_bits = p2_bits;
   return csi;
@@ -2846,7 +2842,10 @@ csi_payload_t get_csirs_RSRP_payload(NR_UE_MAC_INST_t *mac,
                                      NR_CSI_MeasConfig_t *csi_MeasConfig)
 {
   int n_bits = 0;
-  uint32_t temp_payload = 0;
+  union {
+    uint32_t w;
+    uint8_t b[4];
+  } temp_payload = {0};
 
   for (int csi_resourceidx = 0; csi_resourceidx < csi_MeasConfig->csi_ResourceConfigToAddModList->list.count; csi_resourceidx++) {
 
@@ -2878,21 +2877,21 @@ csi_payload_t get_csirs_RSRP_payload(NR_UE_MAC_INST_t *mac,
           // TS 38.133 - Table 10.1.6.1-1
           int rsrp_dBm = mac->csirs_measurements.rsrp_dBm;
           if (rsrp_dBm < -140) {
-            temp_payload = 16;
+            temp_payload.w = 16;
           } else if (rsrp_dBm > -44) {
-            temp_payload = 113;
+            temp_payload.w = 113;
           } else {
-            temp_payload = mac->csirs_measurements.rsrp_dBm + 157;
+            temp_payload.w = mac->csirs_measurements.rsrp_dBm + 157;
           }
 
-          reverse_n_bits((uint8_t *)&temp_payload, n_bits);
+          temp_payload.b[0] = reverse_n_bits(temp_payload.b[0], n_bits);
 
           LOG_D(NR_MAC, "cri_ssbri_bitlen = %d\n", cri_ssbri_bitlen);
           LOG_D(NR_MAC, "rsrp_bitlen = %d\n", rsrp_bitlen);
           LOG_D(NR_MAC, "diff_rsrp_bitlen = %d\n", diff_rsrp_bitlen);
 
           LOG_D(NR_MAC, "n_bits = %d\n", n_bits);
-          LOG_D(NR_MAC, "csi_part1_payload = 0x%x\n", temp_payload);
+          LOG_D(NR_MAC, "csi_part1_payload = 0x%x\n", temp_payload.w);
 
           break;
         }
@@ -2901,7 +2900,7 @@ csi_payload_t get_csirs_RSRP_payload(NR_UE_MAC_INST_t *mac,
   }
   AssertFatal(n_bits <= 32, "Not supporting CSI report with more than 32 bits\n");
   csi_payload_t csi;
-  csi.part1_payload = temp_payload;
+  csi.part1_payload = temp_payload.w;
   csi.p1_bits = n_bits;
   csi.p2_bits = 0;
   return csi;
