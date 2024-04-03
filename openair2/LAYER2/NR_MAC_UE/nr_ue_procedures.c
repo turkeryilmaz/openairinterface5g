@@ -293,46 +293,66 @@ int8_t nr_ue_process_dci_freq_dom_resource_assignment(nfapi_nr_ue_pusch_pdu_t *p
         pdsch_Config->resourceAllocation == NR_PDSCH_Config__resourceAllocation_resourceAllocationType0) {
       // TS 38.214 subclause 5.1.2.2.1 Downlink resource allocation type 0
       dlsch_config_pdu->resource_alloc = 0;
+      memset(dlsch_config_pdu->rb_bitmap, 0, sizeof(dlsch_config_pdu->rb_bitmap));
       int P = getRBGSize(n_RB_DLBWP, pdsch_Config->rbg_Size);
       int n_RBG = frequency_domain_assignment.nbits;
       int index = 0;
       for (int i = 0; i < n_RBG; i++) {
-        // The order of RBG bitmap is such that RBG 0 to RBG n_RBG − 1 are mapped from MSB to LSB
-        int bit_rbg = (frequency_domain_assignment.val >> (n_RBG - 1 - i)) & 0x01;
-        int size_RBG;
-        if (i == n_RBG - 1)
-          size_RBG = (start_DLBWP + n_RB_DLBWP) % P > 0 ?
-                     (start_DLBWP + n_RB_DLBWP) % P :
-                     P;
-        else if (i == 0)
-          size_RBG = P - (start_DLBWP % P);
-        else
-          size_RBG = P;
-        for (int j = index; j < size_RBG; j++)
-          dlsch_config_pdu->rb_bitmap[j / 8] |= bit_rbg << (j % 8);
-        index += size_RBG;
+	// The order of RBG bitmap is such that RBG 0 to RBG n_RBG − 1 are mapped from MSB to LSB
+	int bit_rbg = (frequency_domain_assignment.val >> (n_RBG - 1 - i)) & 0x01;
+	int size_RBG;
+	if (i == n_RBG - 1)
+	  size_RBG = (start_DLBWP + n_RB_DLBWP) % P > 0 ? (start_DLBWP + n_RB_DLBWP) % P : P;
+	else if (i == 0)
+	  size_RBG = P - (start_DLBWP % P);
+	else
+	  size_RBG = P;
+	for (int j = index; j < size_RBG; j++)
+	  dlsch_config_pdu->rb_bitmap[j / 8] |= bit_rbg << (j % 8);
+	index += size_RBG;
+      }
+      dlsch_config_pdu->number_rbs = count_bits(dlsch_config_pdu->rb_bitmap, sizeofArray(dlsch_config_pdu->rb_bitmap));
+      // Temporary code to process type0 as type1 when the RB allocation is contiguous
+      int state = 0;
+      for (int i = 0; i < sizeof(dlsch_config_pdu->rb_bitmap) * 8; i++) {
+	int allocated = dlsch_config_pdu->rb_bitmap[i / 8] & (1 << (i % 8));
+	if (allocated) {
+	  if (state == 0) {
+	    dlsch_config_pdu->start_rb = i;
+	    state = 1;
+	  } else
+	    AssertFatal(state == 1, "hole, not implemented\n");
+	} else {
+	  if (state == 1) {
+	    state = 2;
+	  }
+	}
       }
     }
     else if (pdsch_Config &&
              pdsch_Config->resourceAllocation == NR_PDSCH_Config__resourceAllocation_dynamicSwitch)
       AssertFatal(false, "DLSCH dynamic switch allocation not yet supported\n");
     else {
-      // TS 38.214 subclause 5.1.2.2.2 Downlink resource allocation type 1
-      dlsch_config_pdu->resource_alloc = 1;
-      int riv = frequency_domain_assignment.val;
-      dlsch_config_pdu->number_rbs = NRRIV2BW(riv,n_RB_DLBWP);
-      dlsch_config_pdu->start_rb   = NRRIV2PRBOFFSET(riv,n_RB_DLBWP);
+        // TS 38.214 subclause 5.1.2.2.2 Downlink resource allocation type 1
+        dlsch_config_pdu->resource_alloc = 1;
+        int riv = frequency_domain_assignment.val;
+        dlsch_config_pdu->number_rbs = NRRIV2BW(riv, n_RB_DLBWP);
+        dlsch_config_pdu->start_rb = NRRIV2PRBOFFSET(riv, n_RB_DLBWP);
 
-      // Sanity check in case a false or erroneous DCI is received
-      if ((dlsch_config_pdu->number_rbs < 1) || (dlsch_config_pdu->number_rbs > n_RB_DLBWP - dlsch_config_pdu->start_rb)) {
-        // DCI is invalid!
-        LOG_W(MAC, "Frequency domain assignment values are invalid! #RBs: %d, Start RB: %d, n_RB_DLBWP: %d \n", dlsch_config_pdu->number_rbs, dlsch_config_pdu->start_rb, n_RB_DLBWP);
-        return -1;
-      }
-      LOG_D(MAC,"DLSCH riv = %i\n", riv);
-      LOG_D(MAC,"DLSCH n_RB_DLBWP = %i\n", n_RB_DLBWP);
-      LOG_D(MAC,"DLSCH number_rbs = %i\n", dlsch_config_pdu->number_rbs);
-      LOG_D(MAC,"DLSCH start_rb = %i\n", dlsch_config_pdu->start_rb);
+        // Sanity check in case a false or erroneous DCI is received
+        if ((dlsch_config_pdu->number_rbs < 1) || (dlsch_config_pdu->number_rbs > n_RB_DLBWP - dlsch_config_pdu->start_rb)) {
+          // DCI is invalid!
+          LOG_W(MAC,
+                "Frequency domain assignment values are invalid! #RBs: %d, Start RB: %d, n_RB_DLBWP: %d \n",
+                dlsch_config_pdu->number_rbs,
+                dlsch_config_pdu->start_rb,
+                n_RB_DLBWP);
+          return -1;
+        }
+        LOG_D(MAC, "DLSCH riv = %i\n", riv);
+        LOG_D(MAC, "DLSCH n_RB_DLBWP = %i\n", n_RB_DLBWP);
+        LOG_D(MAC, "DLSCH number_rbs = %i\n", dlsch_config_pdu->number_rbs);
+        LOG_D(MAC, "DLSCH start_rb = %i\n", dlsch_config_pdu->start_rb);
     }
   }
   if(pusch_config_pdu != NULL){
