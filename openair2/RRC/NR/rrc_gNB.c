@@ -2564,34 +2564,50 @@ static void rrc_CU_process_trp_information_response(MessageDef *msg_p, instance_
 
       // Preparing tRPInformation IE of TRPInformationList__Member
       
-      int nb_tRPInfoTypes = rrc->configuration.num_plmn; // TODO find the acutal size add here
+      int nb_tRPInfoTypes = 2;//rrc->configuration.num_plmn; // TODO it is hard coded 
       f1ap_trp_information_type_response_list_t *rspList =&trp_info_item->tRPInformation.tRPInformationTypeResponseList;
       rspList->trp_information_type_response_list_length= nb_tRPInfoTypes;
-      rspList->trp_information_type_response_item=malloc(nb_tRPInfoTypes*sizeof(f1ap_trp_information_type_response_item_u));
+      rspList->trp_information_type_response_item=malloc(1*sizeof(f1ap_trp_information_type_response_item_t));
       DevAssert(rspList->trp_information_type_response_item);
       f1ap_trp_information_type_response_item_t *rspItem= rspList->trp_information_type_response_item;
-      for (int k = 0; k < nb_tRPInfoTypes; k++) // Preparing NRPPA_TRPInformation_t a list of  TRPInformation_item
-      {
-        rspItem->present=f1ap_trp_information_type_response_item_pr_nG_RAN_CGI;
-        // bit_string_t nRCellIdentity; // typedef BIT_STRING_t	 F1AP_NRCellIdentity_t;
-        //rspItem->choice.nG_RAN_CGI.nRCellIdentity.bits_unused= ;
-        //rspItem->choice.nG_RAN_CGI.nRCellIdentity.buf= ;
-        //rspItem->choice.nG_RAN_CGI.nRCellIdentity.size=;
-        
-        //nRCellIdentity
-        MACRO_GNB_ID_TO_CELL_IDENTITY(rrc->nr_cellid, 0, // Cell ID,
-                                  &rspItem->choice.nG_RAN_CGI.nRCellIdentity);
-        // octet_string_t pLMN_Identity; // typedef OCTET_STRING_t	 F1AP_PLMN_Identity_t;
-        //rspItem->choice.nG_RAN_CGI.pLMN_Identity.buf=
-        //rspItem->choice.nG_RAN_CGI.pLMN_Identity.size
-        
-        MCC_MNC_TO_TBCD(rrc->configuration.mcc[k], rrc->configuration.mnc[k],
-                rrc->configuration.mnc_digit_length[k], &rspItem->choice.nG_RAN_CGI.pLMN_Identity);
-        // TODO adeel other items
-        if (k < nb_tRPInfoTypes-1){
-          rspItem++;
-        }
-      } // for(int k=0; k < nb_tRPInfoTypes; k++)
+      // Preparing f1ap_TRPInformation_t a list of  TRPInformation_item
+
+      // First Type Item nG_RAN_CGI
+      rspItem->present=f1ap_trp_information_type_response_item_pr_nG_RAN_CGI;
+      MACRO_GNB_ID_TO_CELL_IDENTITY(rrc->nr_cellid, 0, &rspItem->choice.nG_RAN_CGI.nRCellIdentity);
+      //pLMN_Identity; // typedef OCTET_STRING_t	 F1AP_PLMN_Identity_t;
+      // TODO Adeel the following function causes "double free or corruption (out)" error if we use 
+      // malloc(nb_tRPInfoTypes*sizeof(f1ap_trp_information_type_response_item_t)) for nb_tRPInfoTypes>1 this need to reslove this error
+      MCC_MNC_TO_TBCD(rrc->configuration.mcc[0], rrc->configuration.mnc[0],
+              rrc->configuration.mnc_digit_length[0], &rspItem->choice.nG_RAN_CGI.pLMN_Identity);
+
+      // Second Type item 
+      rspItem++;
+      rspItem->present=f1ap_trp_information_type_response_item_pr_geographicalCoordinates;
+      //IE tRPPositionDefinitionType
+      f1ap_trp_position_definition_type_t *trpPosDef= &rspItem->choice.geographicalCoordinates.tRPPositionDefinitionType;
+      trpPosDef->present= f1ap_trp_position_definition_type_pr_referenced;
+      //IE referencePoint
+      trpPosDef->choice.referenced.referencePoint.present=f1ap_reference_point_pr_coordinateID;
+      trpPosDef->choice.referenced.referencePoint.choice.coordinateID= 2;
+
+      //IE referencePointType
+      trpPosDef->choice.referenced.referencePointType.present=f1ap_trp_reference_point_type_pr_tRPPositionRelativeCartesian;
+      f1ap_trp_reference_point_type_u  *RefPoTy= &trpPosDef->choice.referenced.referencePointType.choice;
+      RefPoTy->tRPPositionRelativeCartesian.xvalue=7;
+      RefPoTy->tRPPositionRelativeCartesian.xYZunit=1;
+      RefPoTy->tRPPositionRelativeCartesian.yvalue=4;
+      RefPoTy->tRPPositionRelativeCartesian.zvalue=5;
+      RefPoTy->tRPPositionRelativeCartesian.locationUncertainty.horizontalConfidence=10;
+      RefPoTy->tRPPositionRelativeCartesian.locationUncertainty.horizontalUncertainty=30;
+      RefPoTy->tRPPositionRelativeCartesian.locationUncertainty.verticalConfidence=40;
+      RefPoTy->tRPPositionRelativeCartesian.locationUncertainty.verticalUncertainty=60;
+
+      //IE dLPRSResourceCoordinates; // optional
+      //rspItem->choice.geographicalCoordinates.dLPRSResourceCoordinates; // optional
+      
+      // TODO adeel other items possible 
+      
       if (i < nb_of_TRP-1){
         trp_info_item++;
       }

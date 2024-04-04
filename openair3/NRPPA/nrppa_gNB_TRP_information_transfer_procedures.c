@@ -147,16 +147,78 @@ int nrppa_gNB_TRPInformationResponse(instance_t instance, MessageDef *msg_p)
           nG_RAN_CGI->nG_RANcell.choice.nR_CellID.bits_unused=resItem->choice.nG_RAN_CGI.nRCellIdentity.bits_unused;
           nG_RAN_CGI->nG_RANcell.choice.nR_CellID.buf=resItem->choice.nG_RAN_CGI.nRCellIdentity.buf;
           nG_RAN_CGI->nG_RANcell.choice.nR_CellID.size=resItem->choice.nG_RAN_CGI.nRCellIdentity.size;
-          //trpinfo_item->choice.nG_RAN_CGI->nG_RANcell.choice.nR_CellID.bits_unused=resItem->choice.nG_RAN_CGI.nRCellIdentity.bits_unused;
-          //trpinfo_item->choice.nG_RAN_CGI->nG_RANcell.choice.nR_CellID.buf=resItem->choice.nG_RAN_CGI.nRCellIdentity.buf;
-          //trpinfo_item->choice.nG_RAN_CGI->nG_RANcell.choice.nR_CellID.size=resItem->choice.nG_RAN_CGI.nRCellIdentity.size;
-          
           // pLMN_Identity
           nG_RAN_CGI->pLMN_Identity.buf = resItem->choice.nG_RAN_CGI.pLMN_Identity.buf;
-          nG_RAN_CGI->pLMN_Identity.size = resItem->choice.nG_RAN_CGI.pLMN_Identity.size;
-          //trpinfo_item->choice.nG_RAN_CGI->pLMN_Identity.buf = resItem->choice.nG_RAN_CGI.pLMN_Identity.buf;
-          //trpinfo_item->choice.nG_RAN_CGI->pLMN_Identity.size = resItem->choice.nG_RAN_CGI.pLMN_Identity.size;
-          
+          nG_RAN_CGI->pLMN_Identity.size = resItem->choice.nG_RAN_CGI.pLMN_Identity.size;          
+          break;
+        case f1ap_trp_information_type_response_item_pr_geographicalCoordinates:
+          trpinfo_item->present= NRPPA_TRPInformationItem_PR_geographicalCoordinates;
+          asn1cCalloc(trpinfo_item->choice.geographicalCoordinates, geoCord);
+          f1ap_trp_position_definition_type_t *f1_trpPosDef= &resItem->choice.geographicalCoordinates.tRPPositionDefinitionType;
+          NRPPA_TRPPositionDefinitionType_t *nrppa_trpPosDef= &geoCord->tRPPositionDefinitionType;
+          switch (f1_trpPosDef->present){
+          case f1ap_trp_position_definition_type_pr_NOTHING:
+            nrppa_trpPosDef->present = NRPPA_TRPPositionDefinitionType_PR_NOTHING;
+            break;
+          case f1ap_trp_position_definition_type_pr_direct:
+            nrppa_trpPosDef->present = NRPPA_TRPPositionDefinitionType_PR_direct;
+            NRPPA_ERROR(" TODO at RRC/F1AP TRP Position Definition Type Direct\n");
+            break;
+          case f1ap_trp_position_definition_type_pr_referenced:
+            asn1cCalloc(nrppa_trpPosDef->choice.referenced, referenced);
+            nrppa_trpPosDef->present = NRPPA_TRPPositionDefinitionType_PR_referenced;
+            
+            // IE referencePoint
+            switch (f1_trpPosDef->choice.referenced.referencePoint.present){
+            case f1ap_reference_point_pr_NOTHING:
+              referenced->referencePoint.present=NRPPA_ReferencePoint_PR_NOTHING;
+              break;
+            case f1ap_reference_point_pr_coordinateID:
+              referenced->referencePoint.present=NRPPA_ReferencePoint_PR_relativeCoordinateID;
+              referenced->referencePoint.choice.relativeCoordinateID=f1_trpPosDef->choice.referenced.referencePoint.choice.coordinateID;
+              break;
+            case f1ap_reference_point_pr_referencePointCoordinate:
+              NRPPA_ERROR(" TODO at RRC/F1AP TRP referencePointCoordinate\n");
+              break;
+            case f1ap_reference_point_pr_referencePointCoordinateHA:
+              NRPPA_ERROR(" TODO at RRC/F1AP TRP referencePointCoordinateHA\n");
+              break;
+            default:
+              NRPPA_ERROR("Unknown TRP referencePoint\n");
+              break;
+            }
+
+            // IE referencePointType
+            switch (f1_trpPosDef->choice.referenced.referencePointType.present){
+            case f1ap_trp_reference_point_type_pr_NOTHING:
+              referenced->referencePointType.present=NRPPA_TRPReferencePointType_PR_NOTHING;
+              break;
+            case f1ap_trp_reference_point_type_pr_tRPPositionRelativeGeodetic:
+              referenced->referencePointType.present=NRPPA_TRPReferencePointType_PR_tRPPositionRelativeGeodetic;
+              NRPPA_ERROR(" TODO F1AP not done TRP Reference Point Type\n");
+              break;
+            case f1ap_trp_reference_point_type_pr_tRPPositionRelativeCartesian:
+              referenced->referencePointType.present=NRPPA_TRPReferencePointType_PR_tRPPositionRelativeCartesian; 
+              asn1cCalloc(referenced->referencePointType.choice.tRPPositionRelativeCartesian, RelCart);
+              f1ap_relative_cartesian_location_t *f1_RelCart=&f1_trpPosDef->choice.referenced.referencePointType.choice.tRPPositionRelativeCartesian;
+              RelCart->xvalue=f1_RelCart->xvalue;
+              RelCart->xYZunit=f1_RelCart->xYZunit;
+              RelCart->yvalue=f1_RelCart->yvalue;
+              RelCart->zvalue=f1_RelCart->zvalue;
+              RelCart->locationUncertainty.horizontalConfidence=f1_RelCart->locationUncertainty.horizontalConfidence;
+              RelCart->locationUncertainty.horizontalUncertainty=f1_RelCart->locationUncertainty.horizontalUncertainty;
+              RelCart->locationUncertainty.verticalConfidence=f1_RelCart->locationUncertainty.verticalConfidence;
+              RelCart->locationUncertainty.verticalUncertainty=f1_RelCart->locationUncertainty.verticalUncertainty;
+              break;
+            default:
+              NRPPA_ERROR(" Unknown TRP Reference Point Type\n");
+              break;
+            }
+            break;
+          default:
+            NRPPA_ERROR("Unknown TRP Position Definition Type\n");
+            break;
+          }
           break;
 
         /*TODO following options are not filled at RRC level  
@@ -185,16 +247,20 @@ int nrppa_gNB_TRPInformationResponse(instance_t instance, MessageDef *msg_p)
           trpinfo_item->present= NRPPA_TRPInformationItem_PR_spatialDirectionInformation;
           trpinfo_item->choice.spatialDirectionInformation = resItem->choice.spatialDirectionInformation;
           break;
-        case f1ap_trp_information_type_response_item_pr_geographicalCoordinates:
-          trpinfo_item->present= NRPPA_TRPInformationItem_PR_geographicalCoordinates;
-          trpinfo_item->choice.geographicalCoordinates = resItem->choice.geographicalCoordinates;
-          break;
           */
         default:
           NRPPA_ERROR("Unknown TRP Information Item\n");
           break;
         }
+        if (k < nb_tRPInfoTypes - 1) {
+          printf("\n NRPPA TRP TEST 5 \n");
+          resItem++;
+        }
       } // for(int k=0; k < nb_tRPInfoTypes; k++)
+      if (i < nb_of_TRP - 1) {
+          printf("\n NRPPA TRP TEST 6 \n");
+          trpInfItem++;
+        }
     } // for (int i = 0; i < nb_of_TRP; i++)
 
   } // IE Information List
@@ -209,7 +275,7 @@ int nrppa_gNB_TRPInformationResponse(instance_t instance, MessageDef *msg_p)
 
   LOG_I(NRPPA, "Calling encoder for TRPInformationResponse \n");
   xer_fprint(stdout, &asn_DEF_NRPPA_NRPPA_PDU, &pdu);
-  
+
   /* Encode NRPPA message */
   uint8_t *buffer = NULL;
   uint32_t length = 0;

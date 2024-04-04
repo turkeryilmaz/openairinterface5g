@@ -726,7 +726,6 @@ static void positioning_activation_failure(const f1ap_positioning_activation_fai
 static void trp_information_response(const f1ap_trp_information_resp_t *resp)
 {
   LOG_I(MAC, "UL Prepring TRPInformationResponse transaction_id=%d\n", resp->transaction_id);
-  //AssertFatal(false, " Not Implemented \n");
   MessageDef *msg = itti_alloc_new_message(TASK_MAC_GNB, 0, F1AP_TRP_INFORMATION_RESP);
   f1ap_trp_information_resp_t *f1ap_msg = &F1AP_TRP_INFORMATION_RESP(msg);
 

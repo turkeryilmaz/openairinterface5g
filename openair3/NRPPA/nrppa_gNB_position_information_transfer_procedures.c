@@ -259,7 +259,7 @@ int nrppa_gNB_PositioningInformationResponse(instance_t instance, MessageDef *ms
     f1ap_srs_carrier_list_item_t *carrier_list_item = resp->srs_configuration.srs_carrier_list.srs_carrier_list_item;
 
     LOG_D(NRPPA, "Positioning_information_response(); nb_of_srscarrier= %d \n", nb_of_srscarrier);
-    for (int carrier_ind = 0; carrier_ind < nb_of_srscarrier; carrier_ind++) {
+    for (int ci = 0; ci < nb_of_srscarrier; ci++) {
       asn1cSequenceAdd(ie->value.choice.SRSConfiguration.sRSCarrier_List.list, NRPPA_SRSCarrier_List_Item_t, item);
 
       item->pointA = carrier_list_item->pointA; // IE of SRSCarrier_List_Item
@@ -278,8 +278,7 @@ int nrppa_gNB_PositioningInformationResponse(instance_t instance, MessageDef *ms
       int nb_srsresource = carrier_list_item->active_ul_bwp.sRSConfig.sRSResource_List.srs_resource_list_length;
       asn1cCalloc(item->activeULBWP.sRSConfig.sRSResource_List, srsresource_list);
       f1ap_srs_resource_t *res_item = carrier_list_item->active_ul_bwp.sRSConfig.sRSResource_List.srs_resource;
-      for (int k = 0; k < nb_srsresource; k++) // Preparing SRS Resource List
-      {
+      for (int k = 0; k < nb_srsresource; k++){ // Preparing SRS Resource List
         asn1cSequenceAdd(srsresource_list->list, NRPPA_SRSResource_t, resource_item);
         resource_item->sRSResourceID = res_item->sRSResourceID; //(M)
         resource_item->nrofSRS_Ports = res_item->nrofSRS_Ports; //(M) port1	= 0, ports2	= 1, ports4	= 2
@@ -553,7 +552,10 @@ int nrppa_gNB_PositioningInformationResponse(instance_t instance, MessageDef *ms
         }
 
       } // for(int b=0; b < size_SpecificCarrier_list; b++)
-    } // for (int i = 0; i < nb_of_srscarrier; i++)
+      if (ci < nb_of_srscarrier - 1) {
+          carrier_list_item++;
+        }
+    } // for (int ci = 0; ci < nb_of_srscarrier; ci++)
   }
 
   /*// IE 9.2.36 SFN Initialisation Time (Optional)
