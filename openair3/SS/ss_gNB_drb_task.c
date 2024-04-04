@@ -152,15 +152,25 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind,int cell_index)
 
     case DRB_RlcPdu:
     {
+        static int pdu_num = 0;
+        static struct NR_RLC_PDU_Type * rlcPduList = NULL;
         LOG_A(GNB_APP, "[SS_DRB] RLC PDU received in NR_DRB_COMMON_IND\n");
-        // Populating the PDU
-        ind.U_Plane.SlotData.NoOfTTIs = 1;
-        ind.U_Plane.SlotData.PduSduList.d = NR_L2DataList_Type_RlcPdu;
-        ind.U_Plane.SlotData.PduSduList.v.RlcPdu.d = 1;
-        ind.U_Plane.SlotData.PduSduList.v.RlcPdu.v = CALLOC(1, (ind.U_Plane.SlotData.PduSduList.v.RlcPdu.d) * (sizeof(struct NR_RLC_PDU_Type)));
-        DevAssert(ind.U_Plane.SlotData.PduSduList.v.RlcPdu.v != NULL);
-        for (int i = 0; i < ind.U_Plane.SlotData.PduSduList.v.RlcPdu.d; i++) {
-            struct NR_RLC_PDU_Type* rlcPdu = &ind.U_Plane.SlotData.PduSduList.v.RlcPdu.v[i];
+        if(pdu_ind->sdu_size==0 && pdu_num && rlcPduList){
+            /* End of the PDU list of this slot, ready to indicate to TTCN */
+            ind.U_Plane.SlotData.NoOfTTIs = 1;
+            ind.U_Plane.SlotData.PduSduList.d = NR_L2DataList_Type_RlcPdu;
+            ind.U_Plane.SlotData.PduSduList.v.RlcPdu.d = pdu_num;
+            ind.U_Plane.SlotData.PduSduList.v.RlcPdu.v = rlcPduList;
+            pdu_num = 0;
+            rlcPduList = NULL;
+        }
+        else
+        {
+            pdu_num ++;
+            rlcPduList = REALLOC(rlcPduList,pdu_num * sizeof(struct NR_RLC_PDU_Type));
+            DevAssert(rlcPduList!=NULL);
+            struct NR_RLC_PDU_Type* rlcPdu = &rlcPduList[pdu_num-1];
+            memset(rlcPdu,0,sizeof(struct NR_RLC_PDU_Type));
             long *sn_FieldLength = NULL;
             NR_RLC_BearerConfig_t *rlcBearer = RC.NR_RB_Config[cell_index][pdu_ind->drb_id+2].RlcBearer;
             if (rlcBearer && rlcBearer->rlc_Config && (rlcBearer->rlc_Config->present == NR_RLC_Config_PR_um_Bi_Directional))
@@ -344,6 +354,7 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind,int cell_index)
             {
                 LOG_E(GNB_APP, "[SS_DRB] only UMD/AMD/Status RLC PDU are handled in NR_DRB_COMMON_IND\n");
             }
+            return;
         }
     }
     break;
@@ -393,6 +404,7 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind,int cell_index)
         LOG_A(GNB_APP, "[SS_DRB] NR_DRB_COMMON_IND acpSendMsg Success\n");
     }
 
+    /* TODO: memory free is not handled correctly.  All structure shall be allocated through serMalloc instead of calloc,realloc ... */
     /* acpNrDrbProcessToSSFree0SrvClt(&ind); */
 }
 
