@@ -150,20 +150,22 @@ void nr_fill_rx_indication(fapi_nr_rx_indication_t *rx_ind,
                            uint8_t *b);
 
 int nr_ue_pdcch_procedures(PHY_VARS_NR_UE *ue,
+
+void nr_pdcch_generate_llr(const PHY_VARS_NR_UE *ue,
                            const UE_nr_rxtx_proc_t *proc,
-                           int32_t pdcch_est_size,
-                           c16_t pdcch_dl_ch_estimates[][pdcch_est_size],
-                           nr_phy_data_t *phy_data,
-                           int n_ss,
-                           c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP]);
+                           const int symbol,
+                           const nr_phy_data_t *phy_data,
+                           const int llrSize,
+                           const int max_monOcc,
+                           const c16_t rxdataF[ue->frame_parms.nb_antennas_rx][ue->frame_parms.ofdm_symbol_size],
+                           c16_t llr[phy_data->phy_pdcch_config.nb_search_space * max_monOcc * llrSize]);
 
-int nr_ue_csi_im_procedures(PHY_VARS_NR_UE *ue,
-                            const UE_nr_rxtx_proc_t *proc,
-                            c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP]);
-
-void nr_ue_csi_rs_procedures(PHY_VARS_NR_UE *ue,
-                             const UE_nr_rxtx_proc_t *proc,
-                             c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP]);
+void nr_pdcch_dci_indication(const UE_nr_rxtx_proc_t *proc,
+                             const int llrSize,
+                             const int max_monOcc,
+                             PHY_VARS_NR_UE *ue,
+                             nr_phy_data_t *phy_data,
+                             const c16_t llr[phy_data->phy_pdcch_config.nb_search_space * max_monOcc * llrSize]);
 
 #endif
 /** @}*/
