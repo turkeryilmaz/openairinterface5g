@@ -26,6 +26,14 @@
 #include "nr_rlc_sdu.h"
 #include "nr_rlc_pdu.h"
 
+#include "LOG/ss-log.h"
+
+typedef struct nr_rlc_extra_pdu_t {
+  char *data;
+  int size;
+  struct nr_rlc_extra_pdu_t *next;
+} nr_rlc_extra_pdu_t;
+
 typedef struct {
   nr_rlc_entity_t common;
 
@@ -84,21 +92,28 @@ typedef struct {
   nr_rlc_sdu_segment_t *wait_end;
 
   nr_rlc_sdu_segment_t *retransmit_list;
+
+  /* TTCN DRB support: contains the RLC AM PDU list to be sent to MAC directly */
+  nr_rlc_extra_pdu_t *tx_extra_list;
+  nr_rlc_extra_pdu_t *tx_extra_end;
 } nr_rlc_entity_am_t;
+
+
 
 void nr_rlc_entity_am_recv_sdu(nr_rlc_entity_t *entity,
                                char *buffer, int size,
                                int sdu_id);
-void nr_rlc_entity_am_recv_pdu(nr_rlc_entity_t *entity,
-                               char *buffer, int size);
+void nr_rlc_entity_am_recv_pdu(nr_rlc_entity_t *entity, char *buffer,
+		int size, nr_rlc_pkt_info_t *rlc_info);
 nr_rlc_entity_buffer_status_t nr_rlc_entity_am_buffer_status(
     nr_rlc_entity_t *entity, int maxsize);
 int nr_rlc_entity_am_generate_pdu(nr_rlc_entity_t *entity,
-                                  char *buffer, int size);
+                                  char *buffer, int size, nr_rlc_pkt_info_t *rlc_info);
 void nr_rlc_entity_am_set_time(nr_rlc_entity_t *entity, uint64_t now);
 void nr_rlc_entity_am_discard_sdu(nr_rlc_entity_t *_entity, int sdu_id);
 void nr_rlc_entity_am_reestablishment(nr_rlc_entity_t *_entity);
 void nr_rlc_entity_am_delete(nr_rlc_entity_t *entity);
 int nr_rlc_entity_am_available_tx_space(nr_rlc_entity_t *entity);
+int nr_rlc_entity_am_deliver_pdu(nr_rlc_entity_t *entity, char *buffer, int size);
 
 #endif /* _NR_RLC_ENTITY_AM_H_ */

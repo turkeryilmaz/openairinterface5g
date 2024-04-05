@@ -249,6 +249,8 @@ typedef struct {
   /// Outgoing BCCH pdu for PHY
   uint8_t sib1_bcch_pdu[NR_MAX_SIB_LENGTH / 8];
   int sib1_bcch_length;
+  /// Outgoing PCCH pdu for PHY
+  PCCH_PDU PCCH_pdu;
   /// Template for RA computations
   NR_RA_t ra[NR_NB_RA_PROC_MAX];
   /// VRB map for common channels
@@ -685,6 +687,7 @@ typedef struct nr_mac_rrc_ul_if_s {
 
 /*! \brief UE list used by gNB to order UEs/CC for scheduling*/
 typedef struct {
+  int CC_id;
   rnti_t rnti;
   uid_t uid; // unique ID of this UE
   /// scheduling control info
@@ -707,24 +710,28 @@ typedef struct {
   float ul_thr_ue;
   float dl_thr_ue;
   long pdsch_HARQ_ACK_Codebook;
+  bool rsrpReportStatus;
+  int ssb_rsrp;
 } NR_UE_info_t;
 
 typedef struct {
   /// scheduling control info
   // last element always NULL
   pthread_mutex_t mutex;
-  NR_UE_info_t *list[MAX_MOBILES_PER_GNB+1];
+  NR_UE_info_t *list[MAX_NUM_CCs][MAX_MOBILES_PER_GNB+1];
   // bitmap of CSI-RS already scheduled in current slot
   int sched_csirs;
-  uid_allocator_t uid_allocator;
+  uid_allocator_t uid_allocator[MAX_NUM_CCs];
 } NR_UEs_t;
 
 #define UE_iterator(BaSe, VaR) NR_UE_info_t ** VaR##pptr=BaSe, *VaR; while ((VaR=*(VaR##pptr++)))
 
 typedef void (*nr_pp_impl_dl)(module_id_t mod_id,
+                              int CC_id,
                               frame_t frame,
                               sub_frame_t slot);
 typedef bool (*nr_pp_impl_ul)(module_id_t mod_id,
+                              int CC_id,
                               frame_t frame,
                               sub_frame_t slot);
 
@@ -758,8 +765,8 @@ typedef struct gNB_MAC_INST_s {
   /// PUSCH Failure threshold (compared to consecutive PUSCH DTX)
   int                             pusch_failure_thres;
   /// Subcarrier Offset
-  int                             ssb_SubcarrierOffset;
-  int                             ssb_OffsetPointA;
+  int                             ssb_SubcarrierOffset[MAX_NUM_CCs];
+  int                             ssb_OffsetPointA[MAX_NUM_CCs];
 
   /// Common cell resources
   NR_COMMON_channels_t common_channels[NFAPI_CC_MAX];
@@ -830,18 +837,21 @@ typedef struct gNB_MAC_INST_s {
   /// UL preprocessor for differentiated scheduling
   nr_pp_impl_ul pre_processor_ul;
 
-  nr_mac_config_t radio_config;
+  nr_mac_config_t radio_config[MAX_NUM_CCs]; //TODO W38
 
-  NR_UE_sched_ctrl_t *sched_ctrlCommon;
+  NR_UE_sched_ctrl_t *sched_ctrlCommon[MAX_NUM_CCs];
   uint16_t cset0_bwp_start;
   uint16_t cset0_bwp_size;
-  NR_Type0_PDCCH_CSS_config_t type0_PDCCH_CSS_config[64];
+  NR_Type0_PDCCH_CSS_config_t type0_PDCCH_CSS_config[MAX_NUM_CCs][64];
 
-  bool first_MIB;
+  bool first_MIB[MAX_NUM_CCs];
   NR_bler_options_t dl_bler;
   NR_bler_options_t ul_bler;
   uint8_t min_grant_prb;
   uint8_t min_grant_mcs;
+  uint8_t grant_prb;
+  uint8_t grant_mcs;
+  uint8_t grant_rbStart;
   bool identity_pm;
   int precoding_matrix_size[NR_MAX_NB_LAYERS];
 
@@ -852,6 +862,7 @@ typedef struct gNB_MAC_INST_s {
   int16_t slot;
 
   pthread_mutex_t sched_lock;
+  
 
 } gNB_MAC_INST;
 

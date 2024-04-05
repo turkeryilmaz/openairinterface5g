@@ -53,6 +53,7 @@ typedef struct {
   char *dnnStr;
   int  nssai_sst;
   int  nssai_sd;
+  uint8_t use_milenage;
   uint8_t key[16];
   uint8_t opc[16];
   uint8_t amf[2];

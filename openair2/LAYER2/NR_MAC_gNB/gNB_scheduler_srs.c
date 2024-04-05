@@ -510,7 +510,7 @@ static void nr_fill_nfapi_srs(int module_id,
 *                Only for periodic scheduling yet.
 *
 *********************************************************************/
-void nr_schedule_srs(int module_id, frame_t frame, int slot)
+void nr_schedule_srs(int module_id, frame_t frame, int slot, int CC_id)
  {
   /* already mutex protected: held in gNB_dlsch_ulsch_scheduler() */
   gNB_MAC_INST *nrmac = RC.nrmac[module_id];
@@ -518,8 +518,8 @@ void nr_schedule_srs(int module_id, frame_t frame, int slot)
 
   NR_UEs_t *UE_info = &nrmac->UE_info;
 
-  UE_iterator(UE_info->list, UE) {
-    const int CC_id = 0;
+  UE_iterator(UE_info->list[CC_id], UE) {
+    //const int CC_id = 0;
     NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
     NR_UE_UL_BWP_t *current_BWP = &UE->current_UL_BWP;
 

@@ -60,21 +60,25 @@ typedef struct {
   nr_rlc_sdu_segment_t *tx_end;
   int                  tx_size;
   int                  tx_maxsize;
+
+  /* TTCN DRB support: contains the RLC PDU list to be sent to MAC directly */
+  nr_rlc_pdu_t *tx_extra_list;
 } nr_rlc_entity_um_t;
 
 void nr_rlc_entity_um_recv_sdu(nr_rlc_entity_t *entity,
                                char *buffer, int size,
                                int sdu_id);
 void nr_rlc_entity_um_recv_pdu(nr_rlc_entity_t *entity,
-                               char *buffer, int size);
+                               char *buffer, int size, nr_rlc_pkt_info_t *rlc_info);
 nr_rlc_entity_buffer_status_t nr_rlc_entity_um_buffer_status(
     nr_rlc_entity_t *entity, int maxsize);
 int nr_rlc_entity_um_generate_pdu(nr_rlc_entity_t *entity,
-                                  char *buffer, int size);
+                                  char *buffer, int size, nr_rlc_pkt_info_t *rlc_info);
 void nr_rlc_entity_um_set_time(nr_rlc_entity_t *entity, uint64_t now);
 void nr_rlc_entity_um_discard_sdu(nr_rlc_entity_t *_entity, int sdu_id);
 void nr_rlc_entity_um_reestablishment(nr_rlc_entity_t *_entity);
 void nr_rlc_entity_um_delete(nr_rlc_entity_t *entity);
 int nr_rlc_entity_um_available_tx_space(nr_rlc_entity_t *entity);
+int nr_rlc_entity_um_deliver_pdu(nr_rlc_entity_t *entity, char *buffer, int size);
 
 #endif /* _NR_RLC_ENTITY_UM_H_ */

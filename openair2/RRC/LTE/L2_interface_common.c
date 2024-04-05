@@ -38,11 +38,12 @@
 
 #include "intertask_interface.h"
 
+#include "openair3/SS/ss_eNB_context.h"
 //#define RRC_DATA_REQ_DEBUG
 //#define DEBUG_RRC 1
 
 extern RAN_CONTEXT_t RC;
-
+extern SSConfigContext_t SS_context;
 //------------------------------------------------------------------------------
 uint8_t
 rrc_data_req(
@@ -108,6 +109,34 @@ rrc_data_ind(
           ctxt_pP->module_id, ctxt_pP->frame, DCCH_index,Srb_id,sdu_sizeP,  ctxt_pP->eNB_index);
   } else {
     LOG_D(RRC, "[eNB %d] Frame %d: received a DCCH %ld message on SRB %ld with Size %d from UE %lx\n", ctxt_pP->module_id, ctxt_pP->frame, DCCH_index, Srb_id, sdu_sizeP, ctxt_pP->rntiMaybeUEid);
+    DevAssert(sdu_sizeP < CCCH_SDU_SIZE);
+//#ifdef ENB_SS
+    if (RC.ss.mode >= SS_SOFTMODEM && RC.ss.State >= SS_STATE_CELL_ACTIVE)
+    {
+      LOG_I(RRC,"L2 Interface Sending DCCH PDU_IND /SS_RRC_PDU_IND (msg_Id:%d )to TASK_SS_SRB\n", SS_RRC_PDU_IND);
+      MessageDef *message_p = itti_alloc_new_message (TASK_RRC_ENB, 0, SS_RRC_PDU_IND);
+      if (message_p) {
+        /* Populate the message and send to SS */
+        //Find the CC_id from module_id and rnti
+        int UE_id = find_UE_id(ctxt_pP->module_id,ctxt_pP->rntiMaybeUEid);
+        int CC_id = UE_id>=0? UE_PCCID(ctxt_pP->module_id,UE_id):0;
+        SS_RRC_PDU_IND (message_p).physCellId = RC.rrc[ctxt_pP->module_id]->carrier[CC_id].physCellId;
+        SS_RRC_PDU_IND (message_p).sdu_size = sdu_sizeP;
+        SS_RRC_PDU_IND (message_p).srb_id = DCCH_index;
+        SS_RRC_PDU_IND (message_p).frame = ctxt_pP->frame;
+        SS_RRC_PDU_IND (message_p).rnti = ctxt_pP->rntiMaybeUEid;
+        SS_RRC_PDU_IND (message_p).subframe = ctxt_pP->subframe;
+        memset (SS_RRC_PDU_IND (message_p).sdu, 0, CCCH_SDU_SIZE);
+        memcpy (SS_RRC_PDU_IND (message_p).sdu, buffer_pP, sdu_sizeP);
+
+        int send_res = itti_send_msg_to_task (TASK_SS_SRB, 0, message_p);
+        if(send_res < 0) {
+          LOG_E(RRC,"Error in sending PDU_IND /SS_RRC_PDU_IND (msg_Id:%d )to TASK_SS_SRB\n", SS_RRC_PDU_IND);
+        }
+      }
+    }
+//#endif /** ENB_SS */
+
   }
 
   {

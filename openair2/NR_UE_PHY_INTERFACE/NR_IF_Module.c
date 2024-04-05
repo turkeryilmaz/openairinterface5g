@@ -31,6 +31,8 @@
  */
 
 #include <sys/socket.h>
+#include <sys/un.h>
+#include <sys/types.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
@@ -47,6 +49,7 @@
 #include "radio/ETHERNET/if_defs.h"
 #include <stdio.h>
 #include "openair2/GNB_APP/MACRLC_nr_paramdef.h"
+#include "vendor_ext.h"
 
 #define MAX_IF_MODULES 100
 
@@ -68,7 +71,17 @@ queue_t nr_ul_tti_req_queue;
 pthread_mutex_t mac_IF_mutex;
 static void save_pdsch_pdu_for_crnti(nfapi_nr_dl_tti_request_t *dl_tti_request);
 
-void nrue_init_standalone_socket(int tx_port, int rx_port)
+// Forward declarations
+static bool handle_rlm(rlm_t rlm_result, int frame, NR_UE_MAC_INST_t *mac);
+
+static bool is_ipaddress(const char* s)
+{
+    struct sockaddr_in sa;
+    return 1 == inet_pton(AF_INET, s, &sa.sin_addr);
+}
+
+
+static void nrue_init_ip_socket(const char* addr, int tx_port, int rx_port)
 {
   {
     struct sockaddr_in server_address;
@@ -84,7 +97,7 @@ void nrue_init_standalone_socket(int tx_port, int rx_port)
       return;
     }
 
-    if (inet_pton(server_address.sin_family, stub_eth_params.remote_addr, &server_address.sin_addr) <= 0)
+    if (inet_pton(server_address.sin_family, addr, &server_address.sin_addr) <= 0)
     {
       LOG_E(NR_MAC, "Invalid standalone PNF Address\n");
       close(sd);
@@ -128,8 +141,88 @@ void nrue_init_standalone_socket(int tx_port, int rx_port)
     ue_rx_sock_descriptor = sd;
     LOG_T(NR_RRC, "Successfully set up rx_socket in %s.\n", __FUNCTION__);
   }
-  LOG_D(NR_RRC, "NRUE standalone socket info: tx_port %d  rx_port %d on %s.\n",
-        tx_port, rx_port, stub_eth_params.remote_addr);
+  LOG_I(NR_RRC, "NRUE standalone socket info: tx_port %d  rx_port %d on %s.\n",
+        tx_port, rx_port, addr);
+}
+
+static bool nrue_init_unixsocket(const char *addr)
+{
+    {
+        struct sockaddr_un server_address;
+        int addr_len = sizeof(server_address);
+
+        server_address.sun_family = AF_UNIX;
+        snprintf(server_address.sun_path, sizeof(server_address.sun_path), "%s.tx", addr);
+        LOG_I(NR_RRC,"Proxy::TX Socket address: %s \r\n", server_address.sun_path);
+        int sd = socket(server_address.sun_family, SOCK_DGRAM, 0);
+        if (sd < 0)
+        {
+            assert(false);
+        }
+
+        if (connect(sd, (struct sockaddr *)&server_address, addr_len) < 0)
+        {
+            LOG_E(NR_RRC,"Proxy::Connection TX to standalone PNF failed: %s\n", strerror(errno));
+            close(sd);
+            assert(false);
+        }
+
+        assert(ue_tx_sock_descriptor == -1);
+        ue_tx_sock_descriptor = sd;
+    }
+
+    {
+        struct sockaddr_un server_address;
+        struct sockaddr_un client_address;
+
+        server_address.sun_family = AF_UNIX;
+        snprintf(server_address.sun_path, sizeof(server_address.sun_path), "%s.rx", addr);
+        srand(0xdeadc0de);
+
+        client_address.sun_family = AF_UNIX;
+        snprintf(client_address.sun_path, sizeof(client_address.sun_path), "%s_%d.rx", addr, rand());
+        unlink(client_address.sun_path);
+        LOG_I(NR_RRC,"Proxy::RX Socket address: Proxy: %s UE: %s \r\n", server_address.sun_path, client_address.sun_path);
+
+        int sd = socket(server_address.sun_family, SOCK_DGRAM, 0);
+        if (sd < 0)
+        {
+            assert(false);
+        }
+
+        assert(sd);
+
+        if( 0 != (bind(sd, (struct sockaddr*)&client_address, sizeof(struct sockaddr_un))))
+        {
+            LOG_E(NR_RRC,"Proxy::Connection RX to standalone PNF failed: %d %s\n",errno, strerror(errno));
+            close(sd);
+            assert(false);
+        }
+
+        // handshake
+        uint8_t buffer[4] = {0xde,0xad,0xc0,0xde};
+        sendto(sd, buffer, sizeof(buffer), 0, (const struct sockaddr *)&server_address, sizeof(server_address));
+
+        assert(ue_rx_sock_descriptor == -1);
+        ue_rx_sock_descriptor = sd;
+    }
+
+    LOG_I(NR_RRC,"Proxy::NRUE standalone Unix socket, on %s.\n", addr);
+    return true;
+}
+
+void nrue_init_standalone_socket(int tx_port, int rx_port)
+{
+    printf("--- %s \n", getenv("UE_ADDR"));
+    const char *standalone_addr = getenv("UE_ADDR") ? getenv("UE_ADDR") : stub_eth_params.remote_addr;
+  if(is_ipaddress(standalone_addr))
+  {
+    nrue_init_ip_socket(standalone_addr, tx_port, rx_port);
+  }
+  else
+  {
+    nrue_init_unixsocket(standalone_addr);
+  }
 }
 
 void send_nsa_standalone_msg(NR_UL_IND_t *UL_INFO, uint16_t msg_id)
@@ -218,6 +311,31 @@ void send_nsa_standalone_msg(NR_UL_IND_t *UL_INFO, uint16_t msg_id)
     }
     case NFAPI_NR_PHY_MSG_TYPE_SRS_INDICATION:
     break;
+    case NFAPI_NR_PHY_MSG_TYPE_SLOT_INDICATION:
+    {
+        char buffer[NFAPI_MAX_PACKED_MESSAGE_SIZE];
+        LOG_T(NR_MAC, "SLOT IND header id :%d\n", UL_INFO->vt_ue_slot_ind.header.message_id);
+        int encoded_size = nfapi_nr_p7_message_pack(&UL_INFO->vt_ue_slot_ind, buffer, sizeof(buffer), NULL);
+        if (encoded_size <= 0)
+        {
+                LOG_E(NR_MAC, "nfapi_nr_p7_message_pack has failed. Encoded size = %d\n", encoded_size);
+                return;
+        }
+
+        LOG_D(NR_MAC, "SLOT_IND sent to Proxy, Size: %d Frame %d Slot %d\n", encoded_size,
+                UL_INFO->vt_ue_slot_ind.sfn, UL_INFO->vt_ue_slot_ind.slot);
+        if (send(ue_tx_sock_descriptor, buffer, encoded_size, 0) < 0)
+        {
+                LOG_E(NR_MAC, "Send Proxy NR_UE failed\n");
+                return;
+        }
+        else
+        {
+                LOG_D(NR_MAC, "Send Proxy SLOT_IND Success\n");
+        }
+        break;
+    }
+
     default:
     break;
   }
@@ -344,11 +462,13 @@ static bool is_my_dci(NR_UE_MAC_INST_t *mac, nfapi_nr_dl_dci_pdu_t *received_pdu
       return false;
   }
   if (get_softmodem_params()->sa) {
+    if (received_pdu->RNTI == 0xFFFE)
+      return true;
     if (mac->state == UE_NOT_SYNC)
       return false;
     if (received_pdu->RNTI == 0xFFFF && mac->phy_config_request_sent)
       return false;
-    if (received_pdu->RNTI != mac->crnti && mac->ra.ra_state == RA_SUCCEEDED)
+    if (received_pdu->RNTI != mac->crnti  && received_pdu->RNTI != 0xFFFF && mac->ra.ra_state == RA_SUCCEEDED)
       return false;
     if (received_pdu->RNTI != mac->ra.t_crnti && mac->ra.ra_state == WAIT_CONTENTION_RESOLUTION)
       return false;
@@ -367,9 +487,12 @@ static void copy_dl_tti_req_to_dl_info(nr_downlink_indication_t *dl_info, nfapi_
     memset(mac->nr_ue_emul_l1.index_has_sib, 0, sizeof(mac->nr_ue_emul_l1.index_has_sib));
     mac->nr_ue_emul_l1.expected_rar = false;
     memset(mac->nr_ue_emul_l1.index_has_rar, 0, sizeof(mac->nr_ue_emul_l1.index_has_rar));
+    mac->nr_ue_emul_l1.expected_paging = false;
+    memset(mac->nr_ue_emul_l1.index_has_paging, 0, sizeof(mac->nr_ue_emul_l1.index_has_paging));
     mac->nr_ue_emul_l1.expected_dci = false;
     memset(mac->nr_ue_emul_l1.index_has_dci, 0, sizeof(mac->nr_ue_emul_l1.index_has_dci));
     int pdu_idx = 0;
+    int expected_idx=0;
 
     int num_pdus = dl_tti_request->dl_tti_request_body.nPDUs;
     AssertFatal(num_pdus >= 0, "Invalid dl_tti_request number of PDUS\n");
@@ -403,27 +526,37 @@ static void copy_dl_tti_req_to_dl_info(nr_downlink_indication_t *dl_info, nfapi_
                     nfapi_nr_dl_dci_pdu_t *dci_pdu_list = &pdu_list->pdcch_pdu.pdcch_pdu_rel15.dci_pdu[j];
                     if (!is_my_dci(mac, dci_pdu_list))
                     {
+
+                        LOG_D(NR_MAC,"pdu with RNTI %x filtered out, mac state %d mac->phy_config_request_sent %d mac->ra.ra_state %d\n", 
+                        dci_pdu_list->RNTI,mac->state,mac->phy_config_request_sent,mac->ra.ra_state);
                         continue;
                     }
                     fill_dl_info_with_pdcch(dl_info->dci_ind, dci_pdu_list, pdu_idx);
                     if (dci_pdu_list->RNTI == 0xffff)
                     {
                         mac->nr_ue_emul_l1.expected_sib = true;
-                        mac->nr_ue_emul_l1.index_has_sib[j] = true;
-                        LOG_T(NR_MAC, "Setting index_has_sib[%d] = true\n", j);
+                        mac->nr_ue_emul_l1.index_has_sib[expected_idx] = true;
+                        LOG_D(NR_MAC, "Setting index_has_sib[%d] = true\n", expected_idx);
                     }
                     else if (dci_pdu_list->RNTI == mac->ra.ra_rnti)
                     {
                         mac->nr_ue_emul_l1.expected_rar = true;
-                        mac->nr_ue_emul_l1.index_has_rar[j] = true;
-                        LOG_T(NR_MAC, "Setting index_has_rar[%d] = true\n", j);
+                        mac->nr_ue_emul_l1.index_has_rar[expected_idx] = true;
+                        LOG_D(NR_MAC, "Setting index_has_rar[%d] = true\n", expected_idx);
+                    }
+                    else if (dci_pdu_list->RNTI == 0xfffe)
+                    {
+                        mac->nr_ue_emul_l1.expected_paging = true;
+                        mac->nr_ue_emul_l1.index_has_paging[expected_idx] = true;
+                        LOG_D(NR_MAC, "Setting index_has_paging[%d] = true\n", expected_idx);
                     }
                     else
                     {
                         mac->nr_ue_emul_l1.expected_dci = true;
-                        mac->nr_ue_emul_l1.index_has_dci[j] = true;
-                        LOG_T(NR_MAC, "Setting index_has_dci[%d] = true\n", j);
+                        mac->nr_ue_emul_l1.index_has_dci[expected_idx] = true;
+                        LOG_D(NR_MAC, "Setting index_has_dci[%d] = true\n", expected_idx);
                     }
+                    expected_idx++;
                     pdu_idx++;
                 }
             }
@@ -518,6 +651,11 @@ static void copy_tx_data_req_to_dl_info(nr_downlink_indication_t *dl_info, nfapi
         else if (mac->nr_ue_emul_l1.index_has_rar[i])
         {
             fill_rx_ind(pdu_list, rx_ind, pdu_idx, FAPI_NR_RX_PDU_TYPE_RAR);
+            pdu_idx++;
+        }
+        else if (mac->nr_ue_emul_l1.index_has_paging[i])
+        {
+            fill_rx_ind(pdu_list, rx_ind, pdu_idx, FAPI_NR_RX_PDU_TYPE_PCH);
             pdu_idx++;
         }
         else if (mac->nr_ue_emul_l1.index_has_dci[i])
@@ -645,16 +783,19 @@ static void fill_dci_from_dl_config(nr_downlink_indication_t*dl_ind, fapi_nr_dl_
   AssertFatal(dl_config->number_pdus < sizeof(dl_config->dl_config_list) / sizeof(dl_config->dl_config_list[0]),
               "Too many dl_config pdus %d", dl_config->number_pdus);
   for (int i = 0; i < dl_config->number_pdus; i++) {
-    LOG_D(PHY, "Filling DCI with a total of %d total DL PDUs (dl_config %p) \n",
-          dl_config->number_pdus, dl_config);
+    LOG_D(PHY, "In %s: filling DCI with a total of %d total DL PDUs (dl_config %p), current dl_config->dl_config_list[%d].pdu_type=%d\n",
+          __FUNCTION__, dl_config->number_pdus, dl_config,i, dl_config->dl_config_list[i].pdu_type);
+    if(dl_config->dl_config_list[i].pdu_type != FAPI_NR_DL_CONFIG_TYPE_DCI){
+      /* Why consider fapi_nr_dl_config_dlsch_pdu same as fapi_nr_dl_config_dci_pdu ?? */
+      continue;
+    }
     fapi_nr_dl_config_dci_dl_pdu_rel15_t *rel15_dci = &dl_config->dl_config_list[i].dci_config_pdu.dci_config_rel15;
     int num_dci_options = rel15_dci->num_dci_options;
     if (num_dci_options <= 0)
       LOG_D(NR_MAC, "num_dci_opts = %d for pdu[%d] in dl_config_list\n", rel15_dci->num_dci_options, i);
     AssertFatal(num_dci_options <= sizeof(rel15_dci->dci_length_options) / sizeof(rel15_dci->dci_length_options[0]),
-                "num_dci_options %d > dci_length_options array\n", num_dci_options);
-    AssertFatal(num_dci_options <= sizeof(rel15_dci->dci_format_options) / sizeof(rel15_dci->dci_format_options[0]),
-                "num_dci_options %d > dci_format_options array\n", num_dci_options);
+      "num_dci_options %d > dci_length_options array num_dci_options number_pdus %d i %d pdu_type %d\n",
+      num_dci_options,dl_config->number_pdus,i,dl_config->dl_config_list[i].pdu_type);
 
     for (int j = 0; j < num_dci_options; j++) {
       int num_dcis = dl_ind->dci_ind->number_of_dcis;
@@ -676,7 +817,27 @@ static void fill_dci_from_dl_config(nr_downlink_indication_t*dl_ind, fapi_nr_dl_
   }
 }
 
+// The check_and_process_slot_ind() was removed in tags/2023.w28. Left it to make the build compile
 // This piece of code is not used in "normal" ue, but in "fapi mode"
+void check_and_process_slot_ind(nfapi_ue_slot_indication_vt_t *slot_ind, uint16_t frame, uint16_t slot)
+{
+    NR_UE_MAC_INST_t *mac = get_mac_inst(0);
+
+    if (pthread_mutex_lock(&mac->mutex_dl_info)) abort();
+
+    if (slot_ind)
+    {
+        slot_ind->header.message_id = NFAPI_NR_PHY_MSG_TYPE_SLOT_INDICATION;
+        slot_ind->header.message_length = sizeof(nfapi_ue_slot_indication_vt_t);
+        slot_ind->header.phy_id = 0;
+        slot_ind->sfn = frame;
+        slot_ind->slot = slot;
+        LOG_D(NR_PHY, "[%d, %d] SLOT Indication\n", frame, slot);
+    }
+
+    if (pthread_mutex_unlock(&mac->mutex_dl_info)) abort();
+}
+
 void check_and_process_dci(nfapi_nr_dl_tti_request_t *dl_tti_request,
                            nfapi_nr_tx_data_request_t *tx_data_request,
                            nfapi_nr_ul_dci_request_t *ul_dci_request,
@@ -700,8 +861,9 @@ void check_and_process_dci(nfapi_nr_dl_tti_request_t *dl_tti_request,
        RAR hasn't been processed yet, we do not want to be filtering the
        tx_data_requests. */
     if (tx_data_request) {
-        if (mac->nr_ue_emul_l1.expected_sib ||
-            mac->nr_ue_emul_l1.expected_rar ||
+        if (mac->nr_ue_emul_l1.expected_sib    ||
+            mac->nr_ue_emul_l1.expected_rar    ||
+            mac->nr_ue_emul_l1.expected_paging ||
             mac->nr_ue_emul_l1.expected_dci) {
             frame = tx_data_request->SFN;
             slot = tx_data_request->Slot;
@@ -768,7 +930,7 @@ void save_nr_measurement_info(nfapi_nr_dl_tti_request_t *dl_tti_request)
         nfapi_nr_dl_tti_request_pdu_t *pdu_list = &dl_tti_request->dl_tti_request_body.dl_tti_pdu_list[i];
         if (pdu_list->PDUType == NFAPI_NR_DL_TTI_SSB_PDU_TYPE)
         {
-            LOG_T(NR_PHY, "Cell_id: %d, the ssb_block_idx %d, sc_offset: %d and payload %d\n",
+            LOG_I(NR_PHY, "Cell_id: %d, the ssb_block_idx %d, sc_offset: %d and payload %d\n",
                 pdu_list->ssb_pdu.ssb_pdu_rel15.PhysCellId,
                 pdu_list->ssb_pdu.ssb_pdu_rel15.SsbBlockIndex,
                 pdu_list->ssb_pdu.ssb_pdu_rel15.SsbSubcarrierOffset,
@@ -793,6 +955,10 @@ void save_nr_measurement_info(nfapi_nr_dl_tti_request_t *dl_tti_request)
 static void enqueue_nr_nfapi_msg(void *buffer, ssize_t len, nfapi_p7_message_header_t header)
 {
     NR_UE_MAC_INST_t *mac = get_mac_inst(0);
+    if (header.message_id != P7_CELL_SEARCH_IND && header.phy_id != mac->phy_id){
+        LOG_W(NR_PHY,"A nfapi message is skipped msg id %d, phyid%d   mac phycell id %ld mac phyid %d\n",header.message_id,header.phy_id,mac->physCellId,mac->phy_id);      
+       return;
+     }
     switch (header.message_id)
     {
         case NFAPI_NR_PHY_MSG_TYPE_DL_TTI_REQUEST:
@@ -895,7 +1061,49 @@ static void enqueue_nr_nfapi_msg(void *buffer, ssize_t len, nfapi_p7_message_hea
             }
             break;
         }
+        case P7_CELL_SEARCH_IND:
+        {
+            vendor_nfapi_cell_search_indication_t cell_ind;
+            LOG_D(NR_PHY, "CELL SEARCH IND Receievd\n");
+            if (nfapi_p7_message_unpack((void *)buffer, len, &cell_ind,
+                        sizeof(vendor_nfapi_cell_search_indication_t), NULL) < 0)
+            {
+                LOG_E(NR_PHY, "Message cell_ind failed to unpack\n");
+                break;
+            }
 
+            int good_cells = 0;
+
+            MessageDef *message_p;
+            int         i;
+            message_p = itti_alloc_new_message(TASK_UNKNOWN, 0, PHY_FIND_CELL_IND);
+            for (i = 0 ; i <  cell_ind.lte_cell_search_indication.number_of_lte_cells_found; i++) {
+                // TO DO
+                PHY_FIND_CELL_IND (message_p).cell_nb = i+1;
+                /** FIXME: What we need is EARFCN not Freq Offset. */
+                PHY_FIND_CELL_IND (message_p).cells[i].earfcn = cell_ind.lte_cell_search_indication.lte_found_cells[i].frequency_offset;
+                // TO DO
+                PHY_FIND_CELL_IND (message_p).cells[i].cell_id = cell_ind.lte_cell_search_indication.lte_found_cells[i].pci;
+                PHY_FIND_CELL_IND (message_p).cells[i].rsrp = 141-cell_ind.lte_cell_search_indication.lte_found_cells[i].rsrp;
+                PHY_FIND_CELL_IND (message_p).cells[i].rsrq = 39-2*cell_ind.lte_cell_search_indication.lte_found_cells[i].rsrq;
+
+                LOG_D(NR_PHY, "Cell No: %d PCI: %d EARFCN: %d RSRP: %d RSRQ: %d \n", PHY_FIND_CELL_IND (message_p).cell_nb,
+                        PHY_FIND_CELL_IND (message_p).cells[i].cell_id,
+                        PHY_FIND_CELL_IND (message_p).cells[i].earfcn,
+                        PHY_FIND_CELL_IND (message_p).cells[i].rsrp-141,
+                        (PHY_FIND_CELL_IND (message_p).cells[i].rsrq-39)/2);
+
+                // TODO: compare with current cell?
+                if (PHY_FIND_CELL_IND (message_p).cells[i].rsrp > 0) {
+                    good_cells++;
+                }
+            }
+            mac->p7_cell_search_ind_rlm = good_cells ? RLM_in_sync : RLM_out_of_sync;
+            itti_send_msg_to_task(TASK_RRC_NRUE, INSTANCE_DEFAULT, message_p);
+
+            break;
+
+        }
         default:
             LOG_E(NR_PHY, "Invalid nFAPI message. Header ID %d\n",
                   header.message_id);
@@ -1024,6 +1232,7 @@ void *nrue_standalone_pnf_task(void *context)
         LOG_E(NR_PHY, "Header unpack failed for nrue_standalone pnf\n");
         continue;
       }
+      LOG_D(NR_PHY, "recieved nfapi_p7_message from phy %d, msgid %d\n",header.phy_id,header.message_id);
       enqueue_nr_nfapi_msg(buffer, len, header);
     }
   } //while(true)
@@ -1100,12 +1309,13 @@ static int8_t handle_dlsch(NR_UE_MAC_INST_t *mac, nr_downlink_indication_t *dl_i
   return 0;
 }
 
-static void handle_rlm(rlm_t rlm_result, int frame, NR_UE_MAC_INST_t *mac)
+static bool handle_rlm(rlm_t rlm_result, int frame, NR_UE_MAC_INST_t *mac)
 {
   if (rlm_result == RLM_no_monitoring)
     return;
   bool is_sync = rlm_result == RLM_in_sync ? true : false;
   nr_mac_rrc_sync_ind(mac->ue_id, frame, is_sync);
+  return is_sync;
 }
 
 static int8_t handle_csirs_measurements(NR_UE_MAC_INST_t *mac,
@@ -1113,9 +1323,28 @@ static int8_t handle_csirs_measurements(NR_UE_MAC_INST_t *mac,
                                         int slot,
                                         fapi_nr_csirs_measurements_t *csirs_measurements)
 {
-  handle_rlm(csirs_measurements->radiolink_monitoring, frame, mac);
+  bool is_sync;
+  is_sync = handle_rlm(csirs_measurements->radiolink_monitoring, frame, mac);
   return nr_ue_process_csirs_measurements(mac, frame, slot, csirs_measurements);
 }
+
+int8_t handle_pch(NR_UE_MAC_INST_t *mac, nr_downlink_indication_t *dl_info, int pdu_id){
+  /* L1 assigns harq_pid, but in emulated L1 mode we need to assign
+     the harq_pid based on the saved global g_harq_pid. Because we are
+     emulating L1, no antenna measurements are conducted to calculate
+     a harq_pid, therefore we must set it here. */
+  if (get_softmodem_params()->emulate_l1)
+    dl_info->rx_ind->rx_indication_body[pdu_id].pdsch_pdu.harq_pid = g_harq_pid;
+
+  update_harq_status(mac,
+                     dl_info->rx_ind->rx_indication_body[pdu_id].pdsch_pdu.harq_pid,
+                     dl_info->rx_ind->rx_indication_body[pdu_id].pdsch_pdu.ack_nack);
+  if(dl_info->rx_ind->rx_indication_body[pdu_id].pdsch_pdu.ack_nack)
+    nr_ue_send_sdu(mac, dl_info, pdu_id);
+
+  return 0;
+}
+
 
 void update_harq_status(NR_UE_MAC_INST_t *mac, uint8_t harq_pid, uint8_t ack_nack)
 {
@@ -1211,9 +1440,22 @@ static uint32_t nr_ue_dl_processing(nr_downlink_indication_t *dl_info)
 
         switch(rx_indication_body.pdu_type){
           case FAPI_NR_RX_PDU_TYPE_SSB:
-            handle_rlm(rx_indication_body.ssb_pdu.radiolink_monitoring,
+            bool is_sync;
+            if (false /*TODO: need to check for RC.ss.mode != SS_SOFTMODEM*/){
+              is_sync = handle_rlm(rx_indication_body.ssb_pdu.radiolink_monitoring,
                        dl_info->frame,
                        mac);
+            }
+            else{
+              is_sync = handle_rlm(mac->p7_cell_search_ind_rlm,
+                       dl_info->frame,
+                       mac);
+                
+                       
+            }
+            if(is_sync == false){
+              break;
+            }
             if(rx_indication_body.ssb_pdu.decoded_pdu) {
               handle_ssb_meas(mac,
                               rx_indication_body.ssb_pdu.ssb_index,
@@ -1252,6 +1494,9 @@ static uint32_t nr_ue_dl_processing(nr_downlink_indication_t *dl_info)
                                                    dl_info->frame,
                                                    dl_info->slot,
                                                    &rx_indication_body.csirs_measurements)) << FAPI_NR_CSIRS_IND;
+            break;
+          case FAPI_NR_RX_PDU_TYPE_PCH:
+            ret_mask |= (handle_pch(mac, dl_info, i)) << FAPI_NR_RX_PDU_TYPE_RAR;
             break;
           default:
             break;

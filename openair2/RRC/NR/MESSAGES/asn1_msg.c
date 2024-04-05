@@ -144,7 +144,6 @@
 #include "conversions.h"
 
 //#define XER_PRINT
-
 typedef struct xer_sprint_string_s {
   char *string;
   size_t string_size;
@@ -196,8 +195,8 @@ int xer_nr_sprint (char *string, size_t string_size, asn_TYPE_descriptor_t *td, 
 
 //------------------------------------------------------------------------------
 
-uint8_t do_SIB23_NR(rrc_gNB_carrier_data_t *carrier)
-{
+uint8_t do_SIB23_NR(rrc_gNB_carrier_data_t *carrier,
+                    gNB_RrcConfigurationReq *configuration) {
   asn_enc_rval_t enc_rval;
   SystemInformation_IEs__sib_TypeAndInfo__Member *sib2 = NULL;
   SystemInformation_IEs__sib_TypeAndInfo__Member *sib3 = NULL;
@@ -207,7 +206,7 @@ uint8_t do_SIB23_NR(rrc_gNB_carrier_data_t *carrier)
   sib_message->message.choice.c1 = CALLOC(1,sizeof(struct NR_BCCH_DL_SCH_MessageType__c1));
   sib_message->message.choice.c1->present = NR_BCCH_DL_SCH_MessageType__c1_PR_systemInformation;
   sib_message->message.choice.c1->choice.systemInformation = CALLOC(1,sizeof(struct NR_SystemInformation));
-  
+
   struct NR_SystemInformation *sib = sib_message->message.choice.c1->choice.systemInformation;
   sib->criticalExtensions.present = NR_SystemInformation__criticalExtensions_PR_systemInformation;
   sib->criticalExtensions.choice.systemInformation = CALLOC(1, sizeof(struct NR_SystemInformation_IEs));
@@ -219,7 +218,7 @@ uint8_t do_SIB23_NR(rrc_gNB_carrier_data_t *carrier)
   sib2->choice.sib2->cellReselectionInfoCommon.q_Hyst = NR_SIB2__cellReselectionInfoCommon__q_Hyst_dB1;
   sib2->choice.sib2->cellReselectionServingFreqInfo.threshServingLowP = 2; // INTEGER (0..31)
   sib2->choice.sib2->cellReselectionServingFreqInfo.cellReselectionPriority =  2; // INTEGER (0..7)
-  sib2->choice.sib2->intraFreqCellReselectionInfo.q_RxLevMin = -50; // INTEGER (-70..-22)
+  sib2->choice.sib2->intraFreqCellReselectionInfo.q_RxLevMin = (long)configuration->q_RxLevMinSIB2;
   sib2->choice.sib2->intraFreqCellReselectionInfo.s_IntraSearchP = 2; // INTEGER (0..31)
   sib2->choice.sib2->intraFreqCellReselectionInfo.t_ReselectionNR = 2; // INTEGER (0..7)
   sib2->choice.sib2->intraFreqCellReselectionInfo.deriveSSB_IndexFromCell = true;
@@ -232,6 +231,7 @@ uint8_t do_SIB23_NR(rrc_gNB_carrier_data_t *carrier)
 
   //encode SIB to data
   // carrier->SIB23 = (uint8_t *) malloc16(128);
+  xer_fprint(stdout, &asn_DEF_NR_BCCH_DL_SCH_Message, (void*)sib_message);
   enc_rval = uper_encode_to_buffer(&asn_DEF_NR_BCCH_DL_SCH_Message,
                                    NULL,
                                    (void *)sib_message,
@@ -239,6 +239,34 @@ uint8_t do_SIB23_NR(rrc_gNB_carrier_data_t *carrier)
                                    100);
   AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
                enc_rval.failed_type->name, enc_rval.encoded);
+  LOG_D(RRC,"[eNB] SystemInformation Encoded %zd bits (%zd bytes)\n", enc_rval.encoded, (enc_rval.encoded+7)/8);
+  LOG_P(OAILOG_INFO, "BCCH_DL_SCH_Message", (uint8_t *)carrier->SIB23, 100);
+
+  if (sib3->choice.sib3 != NULL)
+    RRM_FREE(sib3->choice.sib3);
+
+  if (sib3 != NULL)
+    RRM_FREE(sib3);
+
+  if (sib2->choice.sib2 != NULL)
+    RRM_FREE(sib2->choice.sib2);
+
+  if (sib2 != NULL)
+    RRM_FREE(sib2);
+
+  if (sib->criticalExtensions.choice.systemInformation != NULL)
+    RRM_FREE(sib->criticalExtensions.choice.systemInformation);
+
+  if (sib_message->message.choice.c1 != NULL)
+    RRM_FREE(sib_message->message.choice.c1);
+
+  if (sib_message != NULL)
+    RRM_FREE(sib_message);
+
+  if (enc_rval.encoded==-1) {
+    return(-1);
+  }
+
   return((enc_rval.encoded+7)/8);
 }
 
@@ -280,6 +308,137 @@ int do_RRCReject(uint8_t *const buffer)
             enc_rval.encoded,(enc_rval.encoded+7)/8);
     return (enc_rval.encoded + 7) / 8;
 }
+
+NR_RLC_Config_t * fill_rb_rlc_config(NR_RLC_Config_t * ss_rlc_config)
+{
+  NR_RLC_Config_t      *rlc_Config  = NULL;
+
+  rlc_Config = calloc(1, sizeof(NR_RLC_Config_t));
+  if(ss_rlc_config){
+    rlc_Config->present                                              = ss_rlc_config->present;
+    if(rlc_Config->present == NR_RLC_Config_PR_am){
+      rlc_Config->choice.am                                            = calloc(1, sizeof(*rlc_Config->choice.am));
+      rlc_Config->choice.am->dl_AM_RLC.sn_FieldLength      = calloc(1, sizeof(NR_SN_FieldLengthAM_t));
+      if(ss_rlc_config->choice.am->dl_AM_RLC.sn_FieldLength){
+        *(rlc_Config->choice.am->dl_AM_RLC.sn_FieldLength) =*(ss_rlc_config->choice.am->dl_AM_RLC.sn_FieldLength);
+      }else {
+        *(rlc_Config->choice.am->dl_AM_RLC.sn_FieldLength)               = NR_SN_FieldLengthAM_size12;
+      }
+      rlc_Config->choice.am->dl_AM_RLC.t_Reassembly                   = ss_rlc_config->choice.am->dl_AM_RLC.t_Reassembly;
+      rlc_Config->choice.am->dl_AM_RLC.t_StatusProhibit                = ss_rlc_config->choice.am->dl_AM_RLC.t_StatusProhibit;
+      rlc_Config->choice.am->ul_AM_RLC.sn_FieldLength                  = calloc(1, sizeof(NR_SN_FieldLengthAM_t));
+      if(ss_rlc_config->choice.am->ul_AM_RLC.sn_FieldLength){
+        *(rlc_Config->choice.am->ul_AM_RLC.sn_FieldLength)               =*(ss_rlc_config->choice.am->ul_AM_RLC.sn_FieldLength);
+      }else{
+        *(rlc_Config->choice.am->ul_AM_RLC.sn_FieldLength)               = NR_SN_FieldLengthAM_size12;
+      }
+      rlc_Config->choice.am->ul_AM_RLC.t_PollRetransmit             = ss_rlc_config->choice.am->ul_AM_RLC.t_PollRetransmit;
+      rlc_Config->choice.am->ul_AM_RLC.pollPDU                         = ss_rlc_config->choice.am->ul_AM_RLC.pollPDU;
+      rlc_Config->choice.am->ul_AM_RLC.pollByte                        = ss_rlc_config->choice.am->ul_AM_RLC.pollByte;
+      rlc_Config->choice.am->ul_AM_RLC.maxRetxThreshold           = ss_rlc_config->choice.am->ul_AM_RLC.maxRetxThreshold;
+    } else if(rlc_Config->present == NR_RLC_Config_PR_um_Bi_Directional){
+      rlc_Config->choice.um_Bi_Directional                      = calloc(1,sizeof(*rlc_Config->choice.um_Bi_Directional));
+      rlc_Config->choice.um_Bi_Directional->dl_UM_RLC.sn_FieldLength = calloc(1,sizeof(NR_SN_FieldLengthUM_t));
+      if(ss_rlc_config->choice.um_Bi_Directional->dl_UM_RLC.sn_FieldLength){
+        *(rlc_Config->choice.um_Bi_Directional->dl_UM_RLC.sn_FieldLength) = *(ss_rlc_config->choice.um_Bi_Directional->dl_UM_RLC.sn_FieldLength);
+      } else {
+        *(rlc_Config->choice.um_Bi_Directional->dl_UM_RLC.sn_FieldLength) = NR_SN_FieldLengthUM_size12;
+      }
+      rlc_Config->choice.um_Bi_Directional->dl_UM_RLC.t_Reassembly = ss_rlc_config->choice.um_Bi_Directional->dl_UM_RLC.t_Reassembly;
+
+      rlc_Config->choice.um_Bi_Directional->ul_UM_RLC.sn_FieldLength = calloc(1,sizeof(NR_SN_FieldLengthUM_t));
+      if(ss_rlc_config->choice.um_Bi_Directional->ul_UM_RLC.sn_FieldLength){
+        *(rlc_Config->choice.um_Bi_Directional->ul_UM_RLC.sn_FieldLength) = *(ss_rlc_config->choice.um_Bi_Directional->ul_UM_RLC.sn_FieldLength);
+      } else {
+        *(rlc_Config->choice.um_Bi_Directional->ul_UM_RLC.sn_FieldLength) = NR_SN_FieldLengthUM_size12;
+      }
+    } else if(rlc_Config->present == NR_RLC_Config_PR_um_Uni_Directional_DL){
+      rlc_Config->choice.um_Uni_Directional_DL            = calloc(1,sizeof(*rlc_Config->choice.um_Uni_Directional_DL));
+      if(ss_rlc_config->choice.um_Uni_Directional_DL->dl_UM_RLC.sn_FieldLength){
+        *(rlc_Config->choice.um_Uni_Directional_DL->dl_UM_RLC.sn_FieldLength) = *(ss_rlc_config->choice.um_Uni_Directional_DL->dl_UM_RLC.sn_FieldLength);
+      } else {
+        *(rlc_Config->choice.um_Uni_Directional_DL->dl_UM_RLC.sn_FieldLength) = NR_SN_FieldLengthUM_size12;
+      }
+      rlc_Config->choice.um_Uni_Directional_DL->dl_UM_RLC.t_Reassembly = ss_rlc_config->choice.um_Uni_Directional_DL->dl_UM_RLC.t_Reassembly;
+    } else if(rlc_Config->present == NR_RLC_Config_PR_um_Uni_Directional_UL){
+      rlc_Config->choice.um_Uni_Directional_UL            = calloc(1,sizeof(*rlc_Config->choice.um_Uni_Directional_UL));
+      rlc_Config->choice.um_Uni_Directional_UL->ul_UM_RLC.sn_FieldLength = calloc(1,sizeof(NR_SN_FieldLengthUM_t));
+      if(ss_rlc_config->choice.um_Uni_Directional_UL->ul_UM_RLC.sn_FieldLength){
+        *(rlc_Config->choice.um_Uni_Directional_UL->ul_UM_RLC.sn_FieldLength) = *(ss_rlc_config->choice.um_Uni_Directional_UL->ul_UM_RLC.sn_FieldLength);
+      } else {
+        *(rlc_Config->choice.um_Uni_Directional_UL->ul_UM_RLC.sn_FieldLength) = NR_SN_FieldLengthUM_size12;
+      }
+
+    }
+  }else {
+    rlc_Config->present                                              = NR_RLC_Config_PR_am;
+    rlc_Config->choice.am                                            = calloc(1, sizeof(*rlc_Config->choice.am));
+    rlc_Config->choice.am->dl_AM_RLC.sn_FieldLength                  = calloc(1, sizeof(NR_SN_FieldLengthAM_t));
+    *(rlc_Config->choice.am->dl_AM_RLC.sn_FieldLength)               = NR_SN_FieldLengthAM_size12;
+    rlc_Config->choice.am->dl_AM_RLC.t_Reassembly                    = NR_T_Reassembly_ms35;
+    rlc_Config->choice.am->dl_AM_RLC.t_StatusProhibit                = NR_T_StatusProhibit_ms0;
+    rlc_Config->choice.am->ul_AM_RLC.sn_FieldLength                  = calloc(1, sizeof(NR_SN_FieldLengthAM_t));
+    *(rlc_Config->choice.am->ul_AM_RLC.sn_FieldLength)               = NR_SN_FieldLengthAM_size12;
+    rlc_Config->choice.am->ul_AM_RLC.t_PollRetransmit                = NR_T_PollRetransmit_ms45;
+    rlc_Config->choice.am->ul_AM_RLC.pollPDU                         = NR_PollPDU_infinity;
+    rlc_Config->choice.am->ul_AM_RLC.pollByte                        = NR_PollByte_infinity;
+    rlc_Config->choice.am->ul_AM_RLC.maxRetxThreshold                = NR_UL_AM_RLC__maxRetxThreshold_t8;
+  }
+
+  return rlc_Config;
+}
+
+void fill_rb_RLC_BearerConfig(int rbIndex,NR_RLC_BearerConfig_t *rlc_BearerConfig,NR_RLC_BearerConfig_t  *ss_rlc_BearerConfig)
+{
+
+  NR_RLC_Config_t                                  *rlc_Config           = NULL;
+  NR_LogicalChannelConfig_t                      *logicalChannelConfig = NULL;
+  long *logicalChannelGroup = NULL;
+
+  bool isSrb = rbIndex < 3? true:false;
+
+  if(!rlc_BearerConfig){
+    return;
+  }
+
+  if(ss_rlc_BearerConfig && ss_rlc_BearerConfig->logicalChannelIdentity){
+    rlc_BearerConfig->logicalChannelIdentity = ss_rlc_BearerConfig->logicalChannelIdentity;
+  } else {
+    rlc_BearerConfig->logicalChannelIdentity                         = isSrb?rbIndex:(rbIndex-2);
+  }
+  rlc_BearerConfig->servedRadioBearer                              = calloc(1, sizeof(*rlc_BearerConfig->servedRadioBearer));
+  rlc_BearerConfig->servedRadioBearer->present                     = isSrb?(NR_RLC_BearerConfig__servedRadioBearer_PR_srb_Identity):(NR_RLC_BearerConfig__servedRadioBearer_PR_drb_Identity);
+  if(isSrb){
+    rlc_BearerConfig->servedRadioBearer->choice.srb_Identity         = rbIndex;
+  }else{
+    rlc_BearerConfig->servedRadioBearer->choice.drb_Identity = rbIndex-2;
+  }
+  rlc_BearerConfig->reestablishRLC                                 = NULL;
+
+  rlc_Config = fill_rb_rlc_config(ss_rlc_BearerConfig->rlc_Config);
+  rlc_BearerConfig->rlc_Config                                     = rlc_Config;
+
+  logicalChannelConfig                                             = calloc(1, sizeof(NR_LogicalChannelConfig_t));
+  logicalChannelConfig->ul_SpecificParameters                      = calloc(1, sizeof(*logicalChannelConfig->ul_SpecificParameters));
+  if(ss_rlc_BearerConfig && ss_rlc_BearerConfig->mac_LogicalChannelConfig && ss_rlc_BearerConfig->mac_LogicalChannelConfig->ul_SpecificParameters){
+    logicalChannelConfig->ul_SpecificParameters->priority = ss_rlc_BearerConfig->mac_LogicalChannelConfig->ul_SpecificParameters->priority;
+    logicalChannelConfig->ul_SpecificParameters->prioritisedBitRate = ss_rlc_BearerConfig->mac_LogicalChannelConfig->ul_SpecificParameters->prioritisedBitRate;
+  } else {
+    logicalChannelConfig->ul_SpecificParameters->priority            = (rbIndex == 1)? 1 :3;
+    logicalChannelConfig->ul_SpecificParameters->prioritisedBitRate  = isSrb?(NR_LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_infinity):(NR_LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_kBps8);
+  }
+  logicalChannelConfig->ul_SpecificParameters->bucketSizeDuration  = isSrb?(NR_LogicalChannelConfig__ul_SpecificParameters__bucketSizeDuration_ms5):(NR_LogicalChannelConfig__ul_SpecificParameters__bucketSizeDuration_ms100);
+
+  logicalChannelGroup                                              = CALLOC(1, sizeof(long));
+  *logicalChannelGroup                                             = isSrb?0:1;
+  logicalChannelConfig->ul_SpecificParameters->logicalChannelGroup = logicalChannelGroup;
+  logicalChannelConfig->ul_SpecificParameters->schedulingRequestID = CALLOC(1, sizeof(*logicalChannelConfig->ul_SpecificParameters->schedulingRequestID));
+  *logicalChannelConfig->ul_SpecificParameters->schedulingRequestID = 0;
+  logicalChannelConfig->ul_SpecificParameters->logicalChannelSR_Mask = 0;
+  logicalChannelConfig->ul_SpecificParameters->logicalChannelSR_DelayTimerApplied = 0;
+  rlc_BearerConfig->mac_LogicalChannelConfig                       = logicalChannelConfig;
+}
+
 
 NR_RLC_BearerConfig_t *get_SRB_RLC_BearerConfig(long channelId,
                                                 long priority,
@@ -463,6 +622,34 @@ void free_nr_noS1_bearer_config(NR_RadioBearerConfig_t **rbconfig,
   }
 }
 
+
+
+bool update_rrcReconfig_cellGroupConfig(const protocol_ctxt_t     *const ctxt_pP,
+            rrc_gNB_ue_context_t      *ue_context_pP,
+            NR_CellGroupConfig_t *cellGroupConfig)
+{
+  int CC_id = ue_context_pP->ue_context.primaryCC_id;
+  bool update_flag = false;
+  if(RC.ss.mode < SS_SOFTMODEM){
+    return update_flag;
+  }
+
+  if(cellGroupConfig && cellGroupConfig->rlc_BearerToAddModList){
+    for(int i = 0; i < cellGroupConfig->rlc_BearerToAddModList->list.count; i++){
+      NR_RLC_BearerConfig_t * rlc_BearerConfig = cellGroupConfig->rlc_BearerToAddModList->list.array[i];
+      /* only check rlc_config as it is missing from TTCN */
+      if(!rlc_BearerConfig->rlc_Config && rlc_BearerConfig->servedRadioBearer){
+        int rbIndex = (rlc_BearerConfig->servedRadioBearer->present == NR_RLC_BearerConfig__servedRadioBearer_PR_srb_Identity)? rlc_BearerConfig->servedRadioBearer->choice.srb_Identity : (rlc_BearerConfig->servedRadioBearer->choice.drb_Identity +2);
+        if(RC.NR_RB_Config[CC_id][rbIndex].isRBConfigValid && RC.NR_RB_Config[CC_id][rbIndex].RlcBearer){
+          rlc_BearerConfig->rlc_Config = fill_rb_rlc_config(RC.NR_RB_Config[CC_id][rbIndex].RlcBearer->rlc_Config);
+          update_flag = true;
+        }
+      }
+    }
+  }
+  return update_flag;
+}
+
 //------------------------------------------------------------------------------
 int do_RRCSetup(rrc_gNB_ue_context_t *const ue_context_pP,
                 uint8_t *const buffer,
@@ -499,6 +686,8 @@ int do_RRCSetup(rrc_gNB_ue_context_t *const ue_context_pP,
   AssertFatal(ie->masterCellGroup.buf != NULL, "could not allocate memory for masterCellGroup\n");
   memcpy(ie->masterCellGroup.buf, masterCellGroup, masterCellGroup_len);
   ie->masterCellGroup.size = masterCellGroup_len;
+  // decode masterCellGroup OCTET_STRING received from DU and place in ue context
+  ue_p->masterCellGroup = decode_cellGroupConfig(masterCellGroup, masterCellGroup_len); //W38 removed by OAI @w38. keep it for SS
 
   if (LOG_DEBUGFLAG(DEBUG_ASN1)) {
     xer_fprint(stdout, &asn_DEF_NR_CellGroupConfig, ue_p->masterCellGroup);
@@ -506,6 +695,7 @@ int do_RRCSetup(rrc_gNB_ue_context_t *const ue_context_pP,
   }
 
   asn_enc_rval_t enc_rval = uper_encode_to_buffer(&asn_DEF_NR_DL_CCCH_Message, NULL, (void *)&dl_ccch_msg, buffer, 1000);
+  LOG_P(OAILOG_DEBUG, "DL_CCCH_Message", buffer, 1000);
 
   AssertFatal(enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n", enc_rval.failed_type->name, enc_rval.encoded);
   // free what we did not allocate ourselves
@@ -592,7 +782,7 @@ uint8_t do_NR_SA_UECapabilityEnquiry( const protocol_ctxt_t *const ctxt_pP,
   sa_band_info = (NR_FreqBandInformation_t*)calloc(1,sizeof(NR_FreqBandInformation_t));
   sa_band_info->present = NR_FreqBandInformation_PR_bandInformationNR;
   sa_band_info->choice.bandInformationNR = sa_band_infoNR;
-  
+
   sa_band_list = (NR_FreqBandList_t *)calloc(1, sizeof(NR_FreqBandList_t));
   asn1cSeqAdd(&sa_band_list->list, sa_band_info);
 
@@ -745,6 +935,26 @@ int16_t do_RRCReconfiguration(const gNB_RRC_UE_t *UE,
                                      buffer,
                                      buffer_size);
 
+    {
+      //Free content of dl_dcch_msg
+      if(ie->radioBearerConfig){
+        ie->radioBearerConfig->srb_ToAddModList  = NULL;
+        ie->radioBearerConfig->drb_ToAddModList  = NULL;
+        ie->radioBearerConfig->securityConfig    = NULL;
+        ie->radioBearerConfig->srb3_ToRelease    = NULL;
+        ie->radioBearerConfig->drb_ToReleaseList = NULL;
+      }
+      ie->measConfig = NULL;
+      if(ie->nonCriticalExtension){
+        ie->nonCriticalExtension->dedicatedNAS_MessageList = NULL;
+        if(ie->nonCriticalExtension->masterCellGroup){
+          ie->nonCriticalExtension->masterCellGroup->buf = NULL;
+          ie->nonCriticalExtension->masterCellGroup->size = 0;
+        }
+      }
+      ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_NR_DL_DCCH_Message,&dl_dcch_msg);
+    }
+
     AssertFatal(enc_rval.encoded >0, "ASN1 message encoding failed (%s, %lu)!\n",
                 enc_rval.failed_type->name, enc_rval.encoded);
 
@@ -770,8 +980,9 @@ int16_t do_RRCReconfiguration(const gNB_RRC_UE_t *UE,
     return((enc_rval.encoded+7)/8);
 }
 
-int do_RRCSetupRequest(uint8_t *buffer, size_t buffer_size, uint8_t *rv)
-{
+
+int do_RRCSetupRequest(uint8_t *buffer, size_t buffer_size, uint8_t *rv, NR_EstablishmentCause_t establishmentCause) {
+  uint8_t buf[5],buf2=0;
   NR_UL_CCCH_Message_t ul_ccch_msg = {0};
   ul_ccch_msg.message.present           = NR_UL_CCCH_MessageType_PR_c1;
   asn1cCalloc(ul_ccch_msg.message.choice.c1, c1);
@@ -798,7 +1009,7 @@ int do_RRCSetupRequest(uint8_t *buffer, size_t buffer_size, uint8_t *rv)
     str->buf[0] = 0x12;
   }
 
-  rrcSetupRequest->rrcSetupRequest.establishmentCause = NR_EstablishmentCause_mo_Signalling; //EstablishmentCause_mo_Data;
+  rrcSetupRequest->rrcSetupRequest.establishmentCause = establishmentCause;
   rrcSetupRequest->rrcSetupRequest.spare.buf = CALLOC(1, 1);
   rrcSetupRequest->rrcSetupRequest.spare.buf[0] = 0; // spare not used
   rrcSetupRequest->rrcSetupRequest.spare.size=1;
@@ -1130,7 +1341,7 @@ NR_MeasConfig_t *get_defaultMeasConfig(uint32_t ssb_arfcn, int band, int scs)
   asn1cCallocOne(monr1->ext1->freqBandIndicatorNR, band);
   mo1->measObject.choice.measObjectNR = monr1;
   asn1cSeqAdd(&mc->measObjectToAddModList->list, mo1);
-  
+
   // Reporting Configuration: Specifies how reporting should be done. This could be periodic or event-triggered.
   NR_ReportConfigToAddMod_t *rc = calloc(1, sizeof(*rc));
   rc->reportConfigId = 1;
@@ -1188,41 +1399,70 @@ void free_defaultMeasConfig(NR_MeasConfig_t *mc)
   ASN_STRUCT_FREE(asn_DEF_NR_MeasConfig, mc);
 }
 
-uint8_t do_NR_Paging(uint8_t Mod_id, uint8_t *buffer, uint32_t tmsi)
-{
+uint8_t do_NR_Paging(uint8_t Mod_id, uint8_t *buffer, uint32_t *tmsi, size_t num_paging_record, ss_nr_paging_identity_t *paging_recordList) {
   LOG_D(NR_RRC, "[gNB %d] do_NR_Paging start\n", Mod_id);
   NR_PCCH_Message_t pcch_msg;
-  pcch_msg.message.present           = NR_PCCH_MessageType_PR_c1;
+  memset((void *)&pcch_msg, 0, sizeof(NR_PCCH_Message_t));
+
+  pcch_msg.message.present = NR_PCCH_MessageType_PR_c1;
   asn1cCalloc(pcch_msg.message.choice.c1, c1);
   c1->present = NR_PCCH_MessageType__c1_PR_paging;
   c1->choice.paging = CALLOC(1, sizeof(NR_Paging_t));
-  c1->choice.paging->pagingRecordList = CALLOC(
-      1, sizeof(*pcch_msg.message.choice.c1->choice.paging->pagingRecordList));
+  c1->choice.paging->pagingRecordList = CALLOC(1, sizeof(*pcch_msg.message.choice.c1->choice.paging->pagingRecordList));
   c1->choice.paging->nonCriticalExtension = NULL;
   asn_set_empty(&c1->choice.paging->pagingRecordList->list);
   c1->choice.paging->pagingRecordList->list.count = 0;
 
-  asn1cSequenceAdd(c1->choice.paging->pagingRecordList->list, NR_PagingRecord_t,
-                   paging_record_p);
-  /* convert ue_paging_identity_t to PagingUE_Identity_t */
-  paging_record_p->ue_Identity.present = NR_PagingUE_Identity_PR_ng_5G_S_TMSI;
-  // set ng_5G_S_TMSI
-  INT32_TO_BIT_STRING(tmsi, &paging_record_p->ue_Identity.choice.ng_5G_S_TMSI);
+  if (num_paging_record) {
+    DevAssert(paging_recordList != NULL);
 
-  /* add to list */
-  LOG_D(NR_RRC, "[gNB %d] do_Paging paging_record: PagingRecordList.count %d\n",
-        Mod_id, c1->choice.paging->pagingRecordList->list.count);
-  asn_enc_rval_t enc_rval = uper_encode_to_buffer(
-      &asn_DEF_NR_PCCH_Message, NULL, (void *)&pcch_msg, buffer, RRC_BUF_SIZE);
-  ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_NR_PCCH_Message, &pcch_msg);
-  if(enc_rval.encoded == -1) {
-    LOG_I(NR_RRC, "[gNB AssertFatal]ASN1 message encoding failed (%s, %lu)!\n",
-          enc_rval.failed_type->name, enc_rval.encoded);
-    return -1;
+    for (size_t i = 0; i < num_paging_record; i++) {
+      asn1cSequenceAdd(c1->choice.paging->pagingRecordList->list, NR_PagingRecord_t, paging_record_p);
+      if (paging_recordList[i].ue_paging_identity.presenceMask == NR_UE_PAGING_IDENTITY_NG_5G_S_TMSI) {
+        paging_record_p->ue_Identity.present = NR_PagingUE_Identity_PR_ng_5G_S_TMSI;
+        paging_record_p->ue_Identity.choice.ng_5G_S_TMSI.size = (paging_recordList[i].ue_paging_identity.choice.ng_5g_s_tmsi.length + 7) / 8;
+        paging_record_p->ue_Identity.choice.ng_5G_S_TMSI.bits_unused = 0;
+        paging_record_p->ue_Identity.choice.ng_5G_S_TMSI.buf = CALLOC(1, paging_record_p->ue_Identity.choice.ng_5G_S_TMSI.size);
+        OCTET_STRING_TO_BIT_STRING((char *)paging_record_p->ue_Identity.choice.ng_5G_S_TMSI.buf, (char *)paging_recordList[i].ue_paging_identity.choice.ng_5g_s_tmsi.buffer, paging_recordList[i].ue_paging_identity.choice.ng_5g_s_tmsi.length);
+      } else if (paging_recordList[i].ue_paging_identity.presenceMask == NR_UE_PAGING_IDENTITY_FULL_I_RNTI) {
+        paging_record_p->ue_Identity.present = NR_PagingUE_Identity_PR_fullI_RNTI;
+        paging_record_p->ue_Identity.choice.fullI_RNTI.size = (paging_recordList[i].ue_paging_identity.choice.full_i_rnti.length + 7) / 8;
+        paging_record_p->ue_Identity.choice.fullI_RNTI.bits_unused = 0;
+        paging_record_p->ue_Identity.choice.fullI_RNTI.buf = CALLOC(1, paging_record_p->ue_Identity.choice.fullI_RNTI.size);
+        OCTET_STRING_TO_BIT_STRING((char *)paging_record_p->ue_Identity.choice.fullI_RNTI.buf, (char *)paging_recordList[i].ue_paging_identity.choice.full_i_rnti.buffer, paging_recordList[i].ue_paging_identity.choice.full_i_rnti.length);
+      } else {
+        LOG_E(NR_RRC, "[gNB %d] in do_NR_Paging: invalid ue_paging_identity.presenceMask\n", Mod_id);
+        abort();
+      }
+      if (paging_recordList[i].bAccessTypePresent) {
+        paging_record_p->accessType = CALLOC(1, sizeof(*paging_record_p->accessType));
+        *paging_record_p->accessType = paging_recordList[i].access_type;
+      } else {
+        paging_record_p->accessType = NULL;
+      }
+    }
+  } else {
+    DevAssert(tmsi != NULL);
+    asn1cSequenceAdd(c1->choice.paging->pagingRecordList->list, NR_PagingRecord_t, paging_record_p);
+    /* convert ue_paging_identity_t to PagingUE_Identity_t */
+    paging_record_p->ue_Identity.present = NR_PagingUE_Identity_PR_ng_5G_S_TMSI;
+    // set ng_5G_S_TMSI
+    INT32_TO_BIT_STRING(*tmsi, &paging_record_p->ue_Identity.choice.ng_5G_S_TMSI);
   }
 
+  /* add to list */
+  LOG_D(NR_RRC, "[gNB %d] do_NR_Paging paging_record: PagingRecordList.count %d\n", Mod_id, c1->choice.paging->pagingRecordList->list.count);
+  asn_enc_rval_t enc_rval = uper_encode_to_buffer(&asn_DEF_NR_PCCH_Message, NULL, (void *)&pcch_msg, buffer, RRC_BUF_SIZE);
   if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
-    xer_fprint(stdout, &asn_DEF_NR_PCCH_Message, (void *)&pcch_msg);
+    if (enc_rval.encoded != -1) {
+      xer_fprint(stdout, &asn_DEF_NR_PCCH_Message, (void *)&pcch_msg);
+    }
+  }
+  ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_NR_PCCH_Message, &pcch_msg);
+  if (enc_rval.encoded == -1) {
+    LOG_E(NR_RRC, "[gNB AssertFatal]ASN1 message encoding failed (%s, %lu)!\n",
+          enc_rval.failed_type->name, enc_rval.encoded);
+    return -1;
   }
 
   return((enc_rval.encoded+7)/8);

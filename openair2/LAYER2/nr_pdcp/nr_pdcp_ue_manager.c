@@ -82,7 +82,32 @@ void nr_pdcp_manager_unlock(nr_pdcp_ue_manager_t *_m)
 }
 
 /* must be called with lock acquired */
+nr_pdcp_ue_t *nr_pdcp_manager_get_ue_ex(nr_pdcp_ue_manager_t *_m, ue_id_t UEid)
+{
+  nr_pdcp_ue_manager_internal_t *m = _m;
+  nr_pdcp_ue_t* ret = NULL;
+  int i;
+  
+  if (_m == NULL) {
+    return NULL;
+  }
+
+  nr_pdcp_manager_lock(m);
+  for (i = 0; i < m->ue_count; i++)
+  {
+    if (m->ue_list[i]->ue_id == UEid)
+    {
+      ret = m->ue_list[i];
+      break;
+    }
+  }
+  nr_pdcp_manager_unlock(m);
+  return ret;
+}
+
+/* must be called with lock acquired */
 nr_pdcp_ue_t *nr_pdcp_manager_get_ue(nr_pdcp_ue_manager_t *_m, ue_id_t UEid)
+
 {
   /* TODO: optimze */
   nr_pdcp_ue_manager_internal_t *m = _m;
@@ -216,3 +241,13 @@ bool nr_pdcp_get_first_ue_id(nr_pdcp_ue_manager_t *_m, ue_id_t *ret)
   *ret = m->ue_list[0]->ue_id;
   return true;
 }
+
+bool nr_pdcp_get_last_ue_id(nr_pdcp_ue_manager_t *_m, ue_id_t *ret)
+{
+  nr_pdcp_ue_manager_internal_t *m = _m;
+  if (m->ue_count == 0)
+    return false;
+  *ret = m->ue_list[m->ue_count-1]->ue_id;
+  return true;
+}
+

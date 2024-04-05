@@ -80,10 +80,12 @@ nr_rlc_ue_t *nr_rlc_manager_get_ue(nr_rlc_ue_manager_t *_m, int rnti)
   /* TODO: optimze */
   nr_rlc_ue_manager_internal_t *m = _m;
   int i;
-
+  LOG_I(RLC, "%s:%d:%s: %x\n", __FILE__, __LINE__, __FUNCTION__, m->ue_count);
   for (i = 0; i < m->ue_count; i++)
-    if (m->ue_list[i]->rnti == rnti)
+    if (m->ue_list[i]->rnti == rnti){
+      LOG_D(RLC, "%s:%d:%s: found UE with RNTI 0x%x  m->ue_list[i] %lx\n", __FILE__, __LINE__, __FUNCTION__, rnti,m->ue_list[i]);
       return m->ue_list[i];
+    }
 
   LOG_D(RLC, "%s:%d:%s: new UE with RNTI 0x%x\n", __FILE__, __LINE__, __FUNCTION__, rnti);
 

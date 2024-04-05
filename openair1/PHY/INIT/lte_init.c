@@ -140,7 +140,12 @@ void phy_config_request(PHY_Config_t *phy_config) {
     fp->frame_type = FDD;
 
   init_frame_parms (fp, 1);
-  init_lte_top (fp);
+
+  /* MultiCell: Initilization needed for 1st CC id only */
+  if(CC_id == 0)
+  {
+    init_lte_top (fp);
+  }
 
   if (cfg->subframe_config.duplex_mode.value == 0) {
     fp->tdd_config = cfg->tdd_frame_structure_config.subframe_assignment.value;

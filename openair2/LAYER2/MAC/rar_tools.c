@@ -85,6 +85,13 @@ fill_rar(const module_id_t module_idP,
   rar[1] |= (rballoc >> 7) & 7; // Hopping = 0 (bit 3), 3 MSBs of rballoc
   rar[2] = ((uint8_t) (rballoc & 0xff)) << 1; // 7 LSBs of rballoc
   ra->msg3_mcs = 10;
+  if (RC.ss.mode > SS_ENB)
+  {
+    /* update the RAR mcs to 9 for SS mode configuration this shall be updated
+     * as per the TTCN request for each TC
+     */
+    ra->msg3_mcs = 9;
+  }
   ra->msg3_TPC = 3;
   ra->msg3_ULdelay = 0;
   ra->msg3_cqireq = 0;

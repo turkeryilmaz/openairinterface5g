@@ -28,7 +28,9 @@
 
 #include "LOG/log.h"
 #include "common/utils/time_stat.h"
+#include "common/ran_context.h"
 
+extern RAN_CONTEXT_t RC;
 /* for a given SDU/SDU segment, computes the corresponding PDU header size */
 static int compute_pdu_header_size(nr_rlc_entity_am_t *entity,
                                    nr_rlc_sdu_segment_t *sdu)
@@ -746,7 +748,7 @@ err:
 }
 
 void nr_rlc_entity_am_recv_pdu(nr_rlc_entity_t *_entity,
-                               char *buffer, int size)
+                               char *buffer, int size, nr_rlc_pkt_info_t *rlc_info)
 {
 #define R(d) do { if (nr_rlc_pdu_decoder_in_error(&d)) goto err; } while (0)
   nr_rlc_entity_am_t *entity = (nr_rlc_entity_am_t *)_entity;
@@ -766,6 +768,11 @@ void nr_rlc_entity_am_recv_pdu(nr_rlc_entity_t *_entity,
 
   nr_rlc_pdu_decoder_init(&decoder, buffer, size);
   dc = nr_rlc_pdu_decoder_get_bits(&decoder, 1); R(decoder);
+  rlc_info->rlcMode   = 4; /** TODO AM Mode */
+  rlc_info->pduLength = size;
+  rlc_info->sequenceNumberLength = entity->sn_field_length;
+
+  LOG_RLC_P(OAILOG_INFO, "UL_RLC_AM_PDU", -1, -1, *(rlc_info), (unsigned char *)buffer, size);
 
   if (dc == 0)
     return process_control_pdu(entity, buffer, size);
@@ -1723,24 +1730,76 @@ nr_rlc_entity_buffer_status_t nr_rlc_entity_am_buffer_status(
 }
 
 int nr_rlc_entity_am_generate_pdu(nr_rlc_entity_t *_entity,
-                                  char *buffer, int size)
+                                  char *buffer, int size, nr_rlc_pkt_info_t *rlc_info)
 {
   nr_rlc_entity_am_t *entity = (nr_rlc_entity_am_t *)_entity;
-  int ret;
+  int ret=0;
+
+  rlc_info->rlcMode = 4; /** AM Mode */
+  rlc_info->sequenceNumberLength = entity->sn_field_length;
+
+  if(entity->tx_extra_list != NULL){    
+    nr_rlc_extra_pdu_t *extra_pdu = entity->tx_extra_list;
+    if(extra_pdu->size <= size){      
+      memcpy(buffer, extra_pdu->data,extra_pdu->size);
+      ret = extra_pdu->size;
+      entity->tx_extra_list = extra_pdu->next;
+      free(extra_pdu->data);
+      free(extra_pdu);
+      rlc_info->pduLength = ret;
+      /* update buffer status */
+      entity->common.bstatus.tx_size -= ret;
+      LOG_D(RLC, "%s:%d:%s: extra PDU tx:%d, buf status tx:%d \n", __FILE__, __LINE__, __FUNCTION__, ret,entity->common.bstatus.tx_size);
+      return ret;
+    }
+  }
 
   if (status_to_report(entity)) {
     ret = generate_status(entity, buffer, size);
+    rlc_info->pduLength = ret;
     if (ret != 0)
       return ret;
   }
 
   if (entity->retransmit_list != NULL) {
     ret = generate_retx_pdu(entity, buffer, size);
+    rlc_info->pduLength = ret;
     if (ret != 0)
       return ret;
   }
 
-  return generate_tx_pdu(entity, buffer, size);
+  ret = generate_tx_pdu(entity, buffer, size);
+  rlc_info->pduLength = ret;
+  return ret;
+}
+
+static void deliver_extra_pdu(nr_rlc_entity_am_t *entity, char *buffer, int size)
+{
+    nr_rlc_extra_pdu_t * extra_pdu = calloc(1,sizeof(nr_rlc_extra_pdu_t));
+    extra_pdu->next = NULL;
+    extra_pdu->data = malloc(size);
+    memcpy(extra_pdu->data,buffer,size);
+    extra_pdu->size = size;
+
+    if (entity->tx_extra_list == NULL) {
+      entity->tx_extra_list = extra_pdu;
+      entity->tx_extra_end = entity->tx_extra_list;
+    }else {
+      entity->tx_extra_end->next = extra_pdu;
+      entity->tx_extra_end = extra_pdu;
+    }
+    /* update buffer status */
+    entity->common.bstatus.tx_size += size;
+
+    LOG_D(RLC, "%s:%d:%s: PDU size:%d \n",
+          __FILE__, __LINE__, __FUNCTION__, size);
+    return;
+}
+
+int nr_rlc_entity_am_deliver_pdu(nr_rlc_entity_t *_entity, char *buffer, int size)
+{
+  deliver_extra_pdu((nr_rlc_entity_am_t *)_entity, buffer, size);
+  return 0;
 }
 
 /*************************************************************************/
@@ -1984,6 +2043,7 @@ void nr_rlc_entity_am_discard_sdu(nr_rlc_entity_t *_entity, int sdu_id)
 static void clear_entity(nr_rlc_entity_am_t *entity)
 {
   nr_rlc_pdu_t *cur_rx;
+  nr_rlc_extra_pdu_t * extra_pdu;
 
   entity->rx_next                = 0;
   entity->rx_next_status_trigger = 0;
@@ -2032,6 +2092,15 @@ static void clear_entity(nr_rlc_entity_am_t *entity)
 
   entity->common.bstatus.tx_size   = 0;
   entity->common.bstatus.retx_size = 0;
+
+  extra_pdu = entity->tx_extra_list;
+  while(extra_pdu != NULL) {
+    nr_rlc_extra_pdu_t * p = extra_pdu;
+    extra_pdu = p->next;
+    free(p->data);
+    free(p);
+  }
+  entity->tx_extra_list = NULL;
 }
 
 void nr_rlc_entity_am_reestablishment(nr_rlc_entity_t *_entity)

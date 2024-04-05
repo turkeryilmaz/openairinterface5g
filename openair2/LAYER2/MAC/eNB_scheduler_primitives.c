@@ -1366,6 +1366,7 @@ get_V_UL_DAI(module_id_t module_idP,
   nfapi_hi_dci0_request_body_t *HI_DCI0_req = &RC.mac[module_idP]->HI_DCI0_req[CC_idP][subframeP].hi_dci0_request_body;
   nfapi_hi_dci0_request_pdu_t *hi_dci0_pdu  = &HI_DCI0_req->hi_dci0_pdu_list[0];
 
+ 
   for (int i = 0; i < HI_DCI0_req->number_of_dci; i++) {
     if (hi_dci0_pdu[i].pdu_type == NFAPI_HI_DCI0_DCI_PDU_TYPE &&
         hi_dci0_pdu[i].dci_pdu.dci_pdu_rel8.rnti == rntiP) {
@@ -1416,13 +1417,16 @@ fill_nfapi_ulsch_harq_information(module_id_t                            module_
     case 6:
     case 7:
       if (cc->tdd_Config == NULL) // FDD
+      {
         harq_information_rel10->harq_size = 1;
+        harq_information_rel10->ack_nack_mode = 0xff; // ack_nack_mode set to invalid for FDD mode 
+      }
       else {
         if (harq_information_rel10->ack_nack_mode == 1)
-          harq_information_rel10->harq_size = get_V_UL_DAI(module_idP,
+          harq_information_rel10->harq_size = (get_V_UL_DAI(module_idP,
                                               CC_idP,
                                               rntiP,
-                                              subframeP);
+                                              subframeP) +1);
         else
           harq_information_rel10->harq_size = 1;
       }
@@ -1432,12 +1436,13 @@ fill_nfapi_ulsch_harq_information(module_id_t                            module_
     default:      // for any other TM we need 2 bits harq
       if (cc->tdd_Config == NULL) {
         harq_information_rel10->harq_size = 2;
+        harq_information_rel10->ack_nack_mode = 0xff; // ack_nack_mode set to invalid for FDD mode 
       } else {
         if (harq_information_rel10->ack_nack_mode == 1)
-          harq_information_rel10->harq_size = get_V_UL_DAI(module_idP,
+          harq_information_rel10->harq_size = (get_V_UL_DAI(module_idP,
                                               CC_idP,
                                               rntiP,
-                                              subframeP);
+                                              subframeP) + 1);
         else
           harq_information_rel10->harq_size = 2;
       }
@@ -1977,13 +1982,14 @@ find_UE_id(module_id_t mod_idP,
            rnti_t rntiP)
 //------------------------------------------------------------------------------
 {
+  int UE_id;
   UE_info_t *UE_info = &RC.mac[mod_idP]->UE_info;
   if(!UE_info)
     return -1;
 
-  for (int UE_id = 0; UE_id < MAX_MOBILES_PER_ENB; UE_id++) {
-    if (UE_info->active[UE_id] == true) {
-      int CC_id = UE_PCCID(mod_idP, UE_id);
+  for (UE_id = 0; UE_id < MAX_MOBILES_PER_ENB; UE_id++) {
+    int CC_id = UE_PCCID(mod_idP, UE_id);
+    if (UE_info->active[CC_id][UE_id] == true) {
       if (CC_id>=0 && CC_id<NFAPI_CC_MAX && UE_info->UE_template[CC_id][UE_id].rnti == rntiP) {
         return UE_id;
       }
@@ -2060,7 +2066,7 @@ is_UE_active(module_id_t mod_idP,
              int ue_idP)
 //------------------------------------------------------------------------------
 {
-  return (RC.mac[mod_idP]->UE_info.active[ue_idP]);
+  return (RC.mac[mod_idP]->UE_info.active[0][ue_idP]);
 }
 
 //------------------------------------------------------------------------------
@@ -2180,10 +2186,10 @@ add_new_ue(module_id_t mod_idP,
         UE_info->num_UEs);
 
   for (i = 0; i < MAX_MOBILES_PER_ENB; i++) {
-    if (UE_info->active[i] == true)
+    if (UE_info->active[cc_idP][i] == true)
       continue;
 
-    UE_id = i;
+    UE_id = i + cc_idP;
     memset(&UE_info->UE_template[cc_idP][UE_id], 0, sizeof(UE_TEMPLATE));
     UE_info->UE_template[cc_idP][UE_id].rnti = rntiP;
     UE_info->UE_template[cc_idP][UE_id].configured = false;
@@ -2193,7 +2199,7 @@ add_new_ue(module_id_t mod_idP,
     UE_info->ordered_CCids[0][UE_id] = cc_idP;
     UE_info->ordered_ULCCids[0][UE_id] = cc_idP;
     UE_info->num_UEs++;
-    UE_info->active[UE_id] = true;
+    UE_info->active[cc_idP][UE_id] = true;
     add_ue_list(&UE_info->list, UE_id);
     dump_ue_list(&UE_info->list);
     pp_impl_param_t* dl = &RC.mac[mod_idP]->pre_processor_dl;
@@ -2271,7 +2277,7 @@ rrc_mac_remove_ue(module_id_t mod_idP,
         UE_id,
         pCC_id,
         rntiP);
-  UE_info->active[UE_id] = false;
+  UE_info->active[pCC_id][UE_id] = false;
   UE_info->num_UEs--;
 
   remove_ue_list(&UE_info->list, UE_id);
@@ -2966,6 +2972,10 @@ getnquad(COMMON_channels_t *cc,
 
       case 50:
         Nreg = 100 + (num_pdcch_symbols - 1) * 150;
+      	break;
+      
+      case 75:
+        Nreg = 150 + (num_pdcch_symbols - 1) * 225;
         break;
 
       case 100:
@@ -5022,9 +5032,22 @@ SR_indication(module_id_t mod_idP,
       }
 
       UE_info->UE_template[cc_idP][UE_id].ul_SR = 1;
+      LOG_D(MAC, "fxn:%s ul_SR=1 for ue:%d\n", __FUNCTION__, rntiP );
       UE_info->UE_template[cc_idP][UE_id].ul_active = true;
       VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_SR_INDICATION, 1);
       VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_SR_INDICATION, 0);
+      if(IndCtrlMode_ENABLE == RC.ss.l1macind[cc_idP].SchedReq_Ctrl)
+      {
+          // Populate and send the SS<_SYSTEM_IND to System Simulator
+          MessageDef *m = itti_alloc_new_message(TASK_MAC_ENB, 0, SS_SYSTEM_IND);
+          SS_SYSTEM_IND(m).physCellId = RC.mac[mod_idP]->common_channels[cc_idP].physCellId;
+          SS_SYSTEM_IND(m).sysind_type = SysInd_Type_SchedReq;
+          SS_SYSTEM_IND(m).sfn = frameP;
+          SS_SYSTEM_IND(m).sf = subframeP;
+          itti_send_msg_to_task(TASK_SS_SYSIND, 0, m);
+          LOG_A(MAC,"MAC Sending SS_SYSTEM_IND with Type %d to System Simulator frame %d Subframe %d\n",
+           SS_SYSTEM_IND(m).sysind_type, frameP,subframeP);
+      }
     }
   } else {
     LOG_D(MAC, "[eNB %d][SR %x] Frame %d subframeP %d Signaling SR for UE %d (unknown UE_id) on CC_id %d\n",
@@ -5147,6 +5170,39 @@ harq_indication(module_id_t mod_idP,
                  (void *) &harq_pdu->harq_indication_fdd_rel13,
                  channel);
   }
+
+    if(IndCtrlMode_ENABLE == RC.ss.l1macind[CC_idP].UL_HARQ_Ctrl)
+    {
+      int i;
+      int ack_nack;
+      unsigned int number_of_ack_nack = 0;
+      if(harq_pdu->harq_indication_tdd_rel13.tl.tag == NFAPI_HARQ_INDICATION_TDD_REL13_TAG)
+      {
+        number_of_ack_nack = harq_pdu->harq_indication_tdd_rel13.number_of_ack_nack; 
+      }
+      else if(harq_pdu->harq_indication_fdd_rel13.tl.tag == NFAPI_HARQ_INDICATION_FDD_REL13_TAG)
+      {
+        number_of_ack_nack = harq_pdu->harq_indication_fdd_rel13.number_of_ack_nack; 
+      }
+      LOG_I(MAC, "HARQ number_of_ack_nack=%d\n", number_of_ack_nack);
+      for (i = 0; i < number_of_ack_nack; i++) 
+      {
+          ack_nack = (harq_pdu->harq_indication_tdd_rel13.tl.tag == NFAPI_HARQ_INDICATION_TDD_REL13_TAG)?harq_pdu->harq_indication_tdd_rel13.harq_data[i].bundling.value_0:harq_pdu->harq_indication_fdd_rel13.harq_tb_n[i];
+          LOG_I(MAC, "HARQ index %d ACK/NACK %d\n", i, ack_nack);
+
+          // Populate and send the SS_SYSTEM_IND to System Simulator
+          MessageDef *m = itti_alloc_new_message(TASK_MAC_ENB, 0, SS_SYSTEM_IND);
+          SS_SYSTEM_IND(m).physCellId = RC.mac[mod_idP]->common_channels[CC_idP].physCellId;
+          SS_SYSTEM_IND(m).sysind_type = SysInd_Type_UL_HARQ;
+          SS_SYSTEM_IND(m).sfn = frameP;
+          SS_SYSTEM_IND(m).sf = subframeP;
+          SS_SYSTEM_IND(m).UL_Harq = ack_nack;
+          itti_send_msg_to_task(TASK_SS_SYSIND, 0, m);
+          LOG_A(MAC,"MAC Sending SS_SYSTEM_IND with Type %d and UL_Harq %d to System Simulator frame %d Subframe %d\n",
+           SS_SYSTEM_IND(m).sysind_type, SS_SYSTEM_IND(m).UL_Harq,frameP,subframeP);
+     }
+    }
+
 
   /* don't care about cqi reporting if NACK/DTX is there */
   if (channel == 0 && !nack_or_dtx_reported(cc,

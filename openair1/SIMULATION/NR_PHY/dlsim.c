@@ -167,7 +167,7 @@ void nr_dlsim_preprocessor(module_id_t module_id,
   /* the following might override the table that is mandated by RRC
    * configuration */
   current_BWP->mcsTableIdx = g_mcsTableIdx;
-  sched_pdsch->time_domain_allocation = get_dl_tda(RC.nrmac[module_id], scc, slot);
+  sched_pdsch->time_domain_allocation = get_dl_tda(RC.nrmac[module_id], CC_idP, scc, slot);
   AssertFatal(sched_pdsch->time_domain_allocation >= 0,"Unable to find PDSCH time domain allocation in list\n");
 
   sched_pdsch->tda_info = get_dl_tda_info(current_BWP,
@@ -727,7 +727,7 @@ int main(int argc, char **argv)
   N_RB_DL = gNB->frame_parms.N_RB_DL;
   NR_UE_info_t *UE_info = RC.nrmac[0]->UE_info.list[0];
 
-  configure_UE_BWP(RC.nrmac[0], scc, &UE_info->UE_sched_ctrl, NULL, UE_info, -1, -1);
+  configure_UE_BWP(RC.nrmac[0], 0, scc, &UE_info->UE_sched_ctrl, NULL, UE_info, -1, -1);
 
   // stub to configure frame_parms
   //  nr_phy_config_request_sim(gNB,N_RB_DL,N_RB_DL,mu,Nid_cell,SSB_positions);
