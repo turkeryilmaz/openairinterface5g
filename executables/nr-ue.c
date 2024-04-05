@@ -817,9 +817,15 @@ static void remaining_pdsch_procedures(void *parms)
   nr_ue_symb_data_t *symbData = (nr_ue_symb_data_t *)parms;
   nr_ue_pdsch_procedures(parms);
   /* Tell TX thread to not wait anymore */
-  const int ack_nack_slot =
-      (symbData->valProc.nr_slot_rx + symbData->dlsch[0].dlsch_config.k1_feedback) % symbData->UE->frame_parms.slots_per_frame;
-  send_dl_done_to_tx_thread(&symbData->UE->tx_resume_ind_fifo[ack_nack_slot], symbData->valProc.nr_slot_rx);
+  const int slot_rx = symbData->valProc.nr_slot_rx;
+  const int k1 = symbData->dlsch[0].dlsch_config.k1_feedback;
+  if (symbData->dlsch[0].rnti_type == TYPE_C_RNTI_) {
+    const int ack_nack_slot = (slot_rx + k1) % symbData->UE->frame_parms.slots_per_frame;
+    if (k1 >= DURATION_RX_TO_TX)
+      send_dl_done_to_tx_thread(&symbData->UE->tx_resume_ind_fifo[ack_nack_slot], symbData->valProc.nr_slot_rx);
+    else
+      LOG_E(NR_PHY, "Incompatible k1 value. Should be rejected by MAC\n");
+  }
   free(symbData->rxdataF_ext);
   symbData->rxdataF_ext = NULL;
   free(symbData->pdsch_dl_ch_estimates);
@@ -979,7 +985,10 @@ static void slot_process(PHY_VARS_NR_UE *UE,
             // indicate to tx thread to wait for DLSCH decoding
             const int ack_nack_slot =
                 (proc->nr_slot_rx + phy_data.dlsch[0].dlsch_config.k1_feedback) % UE->frame_parms.slots_per_frame;
-            tx_wait_for_dlsch[ack_nack_slot]++;
+            if (phy_data.dlsch[0].dlsch_config.k1_feedback >= DURATION_RX_TO_TX)
+              tx_wait_for_dlsch[ack_nack_slot]++;
+            else
+              LOG_E(NR_PHY, "Incompatible k1 value. Should be rejected by MAC\n");
           }
           csirs_state = (phy_data.csirs_vars.active) ? SCHEDULED : DONE;
           csiim_state = (phy_data.csiim_vars.active) ? SCHEDULED : DONE;
