@@ -36,6 +36,7 @@ extern int nr_cell_index;
 
 acpCtx_t nrctx_g = NULL;
 bool ss_gNB_portman_acp_task_exit = false;
+pthread_mutex_t acp_msg_mutex;
 
 enum MsgUserId
 {
@@ -237,10 +238,13 @@ static inline void ss_gNB_read_from_socket(acpCtx_t ctx)
   struct NR_SYSTEM_CTRL_REQ *req = NULL;
   const size_t size = 16 * 1024;
   size_t msgSize = size; //2
+
+  pthread_mutex_lock(&acp_msg_mutex);
   unsigned char *buffer = (unsigned char *)acpMalloc(size);
   DevAssert(buffer);
 
   int userId = acpRecvMsg(ctx, &msgSize, buffer);
+
 
   // Error handling
   if (userId < 0)
@@ -271,8 +275,8 @@ static inline void ss_gNB_read_from_socket(acpCtx_t ctx)
     else
     {
       LOG_A(GNB_APP, "[SS-PORTMAN-ACP] fxn:%s line:%d\n", __FUNCTION__, __LINE__);
-      return;
     }
+    pthread_mutex_unlock(&acp_msg_mutex);
   }
   else if (userId == 0)
   {
@@ -299,6 +303,7 @@ static inline void ss_gNB_read_from_socket(acpCtx_t ctx)
       }
 #endif
     }
+    pthread_mutex_unlock(&acp_msg_mutex);
   }
   else
   {
@@ -306,6 +311,7 @@ static inline void ss_gNB_read_from_socket(acpCtx_t ctx)
     if (acpNrSysProcessDecSrv(ctx, buffer, msgSize, &req) != 0)
     {
       LOG_A(GNB_APP, "[SS-PORTMAN-ACP] fxn:%s line:%d\n", __FUNCTION__, __LINE__);
+      pthread_mutex_unlock(&acp_msg_mutex);
       return;
     }
 
@@ -322,6 +328,8 @@ static inline void ss_gNB_read_from_socket(acpCtx_t ctx)
         itti_send_msg_to_task(TASK_SYS_GNB, INSTANCE_DEFAULT, message_p);
         LOG_A(GNB_APP, "[SS-PORTMAN-ACP] fxn:%s line:%d Msg sent to TASK_SYS_GNB \n", __FUNCTION__, __LINE__);
       }
+    } else {
+      pthread_mutex_unlock(&acp_msg_mutex);
     }
   }
   acpNrSysProcessFreeSrv(req);
