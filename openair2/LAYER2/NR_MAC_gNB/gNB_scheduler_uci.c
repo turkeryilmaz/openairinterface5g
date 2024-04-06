@@ -207,15 +207,13 @@ void nr_schedule_pucch(gNB_MAC_INST *nrmac,
   }
 }
 
-void nr_csi_meas_reporting(int Mod_idP,
-                           frame_t frame,
-                           sub_frame_t slot)
+void nr_csi_meas_reporting(int Mod_idP, frame_t frame, sub_frame_t slot)
 {
   /* already mutex protected: held in gNB_dlsch_ulsch_scheduler() */
   gNB_MAC_INST *nrmac = RC.nrmac[Mod_idP];
   NR_SCHED_ENSURE_LOCKED(&nrmac->sched_lock);
 
-  UE_iterator(nrmac->UE_info.list, UE ) {
+  UE_iterator(nrmac->UE_info.list, UE) {
     NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
     NR_UE_UL_BWP_t *ul_bwp = &UE->current_UL_BWP;
     const int n_slots_frame = nr_slots_per_frame[ul_bwp->scs];
@@ -229,11 +227,10 @@ void nr_csi_meas_reporting(int Mod_idP,
                 "NO CSI report configuration available");
     NR_PUCCH_Config_t *pucch_Config = ul_bwp->pucch_Config;
 
-    for (int csi_report_id = 0; csi_report_id < csi_measconfig->csi_ReportConfigToAddModList->list.count; csi_report_id++){
+    for (int csi_report_id = 0; csi_report_id < csi_measconfig->csi_ReportConfigToAddModList->list.count; csi_report_id++) {
       NR_CSI_ReportConfig_t *csirep = csi_measconfig->csi_ReportConfigToAddModList->list.array[csi_report_id];
 
-      AssertFatal(csirep->reportConfigType.choice.periodic,
-                  "Only periodic CSI reporting is implemented currently\n");
+      AssertFatal(csirep->reportConfigType.choice.periodic, "Only periodic CSI reporting is implemented currently\n");
 
       const NR_PUCCH_CSI_Resource_t *pucchcsires = csirep->reportConfigType.choice.periodic->pucch_CSI_ResourceList.list.array[0];
       if(pucchcsires->uplinkBandwidthPartId != ul_bwp->bwp_id)
@@ -247,7 +244,8 @@ void nr_csi_meas_reporting(int Mod_idP,
       // prepare to schedule csi measurement reception according to 5.2.1.4 in 38.214
       if ((sched_frame * n_slots_frame + sched_slot - offset) % period != 0)
         continue;
-
+      bool ret = beam_allocation_procedure(&nrmac->beam_info, sched_frame, sched_slot, UE->UE_beam_index, n_slots_frame);
+      AssertFatal(ret, "Couldn't allocate periodic CSI reporting in a beam\n");
       AssertFatal(is_xlsch_in_slot(nrmac->ulsch_slot_bitmap[sched_slot / 64], sched_slot), "CSI reporting slot %d is not set for an uplink slot\n", sched_slot);
       LOG_D(NR_MAC, "CSI reporting in frame %d slot %d CSI report ID %ld\n", sched_frame, sched_slot, csirep->reportConfigId);
 
@@ -1439,6 +1437,13 @@ void nr_sr_reporting(gNB_MAC_INST *nrmac, frame_t SFN, sub_frame_t slot)
           LOG_E(NR_MAC,"Cannot schedule SR. PRBs not available\n");
           continue;
         }
+        ret = beam_allocation_procedure(&nrmac->beam_info, SFN, slot, UE->UE_beam_index, n_slots_frame);
+        // for analog beamforming
+        // if there is no beam allocation available for SR we need to schedule anyway
+        // it is unlikely to receive the SR if not on the right beam
+        // but we can afford to lose few SR occasions without breaking the connection
+        if (!ret)
+          LOG_D(NR_MAC, "Couldn't allocate a beam for SR\n");
         curr_pucch->frame = SFN;
         curr_pucch->ul_slot = slot;
         curr_pucch->sr_flag = true;

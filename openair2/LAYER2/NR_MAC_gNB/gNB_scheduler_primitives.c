@@ -2747,19 +2747,19 @@ void nr_csirs_scheduling(int Mod_idP, frame_t frame, sub_frame_t slot, int n_slo
 
       nfapi_nr_dl_tti_request_body_t *dl_req = &DL_req->dl_tti_request_body;
 
-      for (int id = 0; id < csi_measconfig->nzp_CSI_RS_ResourceToAddModList->list.count; id++){
+      for (int id = 0; id < csi_measconfig->nzp_CSI_RS_ResourceToAddModList->list.count; id++) {
         nzpcsi = csi_measconfig->nzp_CSI_RS_ResourceToAddModList->list.array[id];
         // transmitting CSI-RS only for current BWP
         if (nzpcsi->nzp_CSI_RS_ResourceId != *nzp)
           continue;
 
         NR_CSI_RS_ResourceMapping_t  resourceMapping = nzpcsi->resourceMapping;
-        csi_period_offset(NULL,nzpcsi->periodicityAndOffset,&period,&offset);
+        csi_period_offset(NULL, nzpcsi->periodicityAndOffset, &period, &offset);
 
-        if((frame*n_slots_frame+slot-offset)%period == 0) {
-
-          LOG_D(NR_MAC,"Scheduling CSI-RS in frame %d slot %d Resource ID %ld\n",
-                frame, slot, nzpcsi->nzp_CSI_RS_ResourceId);
+        if ((frame * n_slots_frame + slot - offset) % period == 0) {
+          bool ret = beam_allocation_procedure(&gNB_mac->beam_info, frame, slot, UE->UE_beam_index, n_slots_frame);
+          AssertFatal(ret, "Couldn't allocate periodic CSI-RS in a beam\n");
+          LOG_D(NR_MAC,"Scheduling CSI-RS in frame %d slot %d Resource ID %ld\n", frame, slot, nzpcsi->nzp_CSI_RS_ResourceId);
           UE_info->sched_csirs |= (1 << dl_bwp->bwp_id);
 
           nfapi_nr_dl_tti_request_pdu_t *dl_tti_csirs_pdu = &dl_req->dl_tti_pdu_list[dl_req->nPDUs];

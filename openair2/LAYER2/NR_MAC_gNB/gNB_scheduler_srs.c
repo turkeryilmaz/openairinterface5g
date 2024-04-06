@@ -585,6 +585,8 @@ void nr_schedule_srs(int module_id, frame_t frame, int slot)
 
       // Check if UE will transmit the SRS in this frame
       if ((sched_frame * n_slots_frame + sched_slot - offset) % period == 0) {
+        bool ret = beam_allocation_procedure(&nrmac->beam_info, sched_frame, sched_slot, UE->UE_beam_index, n_slots_frame);
+        AssertFatal(ret, "Couldn't allocate periodic SRS in a beam\n");
         LOG_D(NR_MAC," %d.%d Scheduling SRS reception for %d.%d\n", frame, slot, sched_frame, sched_slot);
         nr_fill_nfapi_srs(module_id, CC_id, UE, sched_frame, sched_slot, srs_resource_set, srs_resource);
         sched_ctrl->sched_srs.frame = sched_frame;
