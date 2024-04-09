@@ -504,8 +504,13 @@ class Containerize():
 		mySSH = SSH.SSHConnection()
 		mySSH.open(lIpAddr, lUserName, lPassWord)
 
+		#new code
+		#mySSH = cls_cmd.getConnection(lIpAddr)
+
+
 		# Check that we are on Ubuntu
 		mySSH.command('hostnamectl', '\$', 5)
+		#mySSH.run('hostnamectl', 5)
 		result = re.search('Ubuntu',  mySSH.getBefore())
 		self.host = result.group(0)
 		if self.host != 'Ubuntu':
@@ -519,6 +524,7 @@ class Containerize():
 		# Workaround for some servers, we need to erase completely the workspace
 		if self.forcedWorkspaceCleanup:
 			mySSH.command('echo ' + lPassWord + ' | sudo -S rm -Rf ' + lSourcePath, '\$', 15)
+			#mySSH.run('echo ' + lPassWord + ' | sudo -S rm -Rf ' + lSourcePath, 15)
 
 		oldRanCommidID = self.ranCommitID
 		oldRanRepository = self.ranRepository
@@ -537,13 +543,15 @@ class Containerize():
 
 		# Let's remove any previous run artifacts if still there
 		mySSH.command(self.cli + ' image prune --force', '\$', 30)
+		#mySSH.run(self.cli + ' image prune --force', 30)
 		# Remove any previous proxy image
 		mySSH.command(self.cli + ' image rm oai-lte-multi-ue-proxy:latest || true', '\$', 30)
-
+		#mySSH.run(self.cli + ' image prune --force', 30)
 		tag = self.proxyCommit
 		logging.debug('building L2sim proxy image for tag ' + tag)
 		# check if the corresponding proxy image with tag exists. If not, build it
 		mySSH.command(self.cli + ' image inspect --format=\'Size = {{.Size}} bytes\' proxy:' + tag, '\$', 5)
+		#mySSH.run(self.cli + ' image inspect --format=\'Size = {{.Size}} bytes\' proxy:' + tag, 5)
 		buildProxy = mySSH.getBefore().count('o such image') != 0
 		if buildProxy:
 			mySSH.command(self.cli + ' build ' + self.cliBuildOptions + ' --target oai-lte-multi-ue-proxy --tag proxy:' + tag + ' --file docker/Dockerfile.ubuntu18.04 . > cmake_targets/log/proxy-build.log 2>&1', '\$', 180)
@@ -551,6 +559,8 @@ class Containerize():
 			# here, as the flatten script is not in the proxy repo
 			mySSH.command(self.cli + ' image inspect --format=\'Size = {{.Size}} bytes\' proxy:' + tag, '\$', 5)
 			mySSH.command(self.cli + ' image prune --force || true','\$', 15)
+			# mySSH.run(self.cli + ' image inspect --format=\'Size = {{.Size}} bytes\' proxy:' + tag, 5)
+			# mySSH.run(self.cli + ' image prune --force || true', 15)
 			if mySSH.getBefore().count('o such image') != 0:
 				logging.error('\u001B[1m Build of L2sim proxy failed\u001B[0m')
 				mySSH.close()
@@ -562,10 +572,12 @@ class Containerize():
 
 		# retag the build images to that we pick it up later
 		mySSH.command('docker image tag proxy:' + tag + ' oai-lte-multi-ue-proxy:latest', '\$', 5)
+		#mySSH.run('docker image tag proxy:' + tag + ' oai-lte-multi-ue-proxy:latest', 5)
 
 		# no merge: is a push to develop, tag the image so we can push it to the registry
 		if not self.ranAllowMerge:
 			mySSH.command('docker image tag proxy:' + tag + ' proxy:develop', '\$', 5)
+			# mySSH.run('docker image tag proxy:' + tag + ' proxy:develop', 5)
 
 		# we assume that the host on which this is built will also run the proxy. The proxy
 		# currently requires the following command, and the docker-compose up mechanism of
@@ -573,6 +585,7 @@ class Containerize():
 		# belongs to the deployment, not the build of the proxy...
 		logging.warning('the following command belongs to deployment, but no mechanism exists to exec it there!')
 		mySSH.command('sudo ifconfig lo: 127.0.0.2 netmask 255.0.0.0 up', '\$', 5)
+		# mySSH.run('sudo ifconfig lo: 127.0.0.2 netmask 255.0.0.0 up', 5)
 
 		# Analyzing the logs
 		if buildProxy:
@@ -580,12 +593,17 @@ class Containerize():
 			mySSH.command('cd ' + lSourcePath + '/cmake_targets', '\$', 5)
 			mySSH.command('mkdir -p proxy_build_log_' + self.testCase_id, '\$', 5)
 			mySSH.command('mv log/* ' + 'proxy_build_log_' + self.testCase_id, '\$', 5)
+			# mySSH.cd(lSourcePath + '/cmake_targets')
+			# mySSH.run('mkdir -p proxy_build_log_' + self.testCase_id, 5)
+			# mySSH.run('mv log/* ' + 'proxy_build_log_' + self.testCase_id, 5)
 			if (os.path.isfile('./proxy_build_log_' + self.testCase_id + '.zip')):
 				os.remove('./proxy_build_log_' + self.testCase_id + '.zip')
 			if (os.path.isdir('./proxy_build_log_' + self.testCase_id)):
 				shutil.rmtree('./proxy_build_log_' + self.testCase_id)
-			mySSH.command('zip -r -qq proxy_build_log_' + self.testCase_id + '.zip proxy_build_log_' + self.testCase_id, '\$', 5)
+			mySSH.command('zip -r -qq proxy_build_log_' + self.testCase_id + '.zip proxy_build_log_' + self.testCase_id, 5)
+			# mySSH.run('zip -r -qq proxy_build_log_' + self.testCase_id + '.zip proxy_build_log_' + self.testCase_id, '\$', 5)
 			mySSH.copyin(lIpAddr, lUserName, lPassWord, lSourcePath + '/cmake_targets/build_log_' + self.testCase_id + '.zip', '.')
+			#mySSH.copyin(lSourcePath + '/cmake_targets/build_log_' + self.testCase_id + '.zip', '.') #zip file shouldn't need recursive
 			# don't delete such that we might recover the zips
 			#mySSH.command('rm -f build_log_' + self.testCase_id + '.zip','\$', 5)
 
@@ -600,9 +618,11 @@ class Containerize():
 		collectInfo = {}
 		collectInfo['proxy'] = files
 		mySSH.command('docker image inspect --format=\'Size = {{.Size}} bytes\' proxy:' + tag, '\$', 5)
+		# mySSH.run('docker image inspect --format=\'Size = {{.Size}} bytes\' proxy:' + tag, 5)
 		result = re.search('Size *= *(?P<size>[0-9\-]+) *bytes', mySSH.getBefore())
 		# Cleaning any created tmp volume
 		mySSH.command(self.cli + ' volume prune --force || true','\$', 15)
+		# mySSH.run(self.cli + ' volume prune --force || true', 15)
 		mySSH.close()
 
 		allImagesSize = {}
@@ -859,47 +879,40 @@ class Containerize():
 	def DeployObject(self, HTML, EPC):
 		if self.eNB_serverId[self.eNB_instance] == '0':
 			lIpAddr = self.eNBIPAddress
-			lUserName = self.eNBUserName
-			lPassWord = self.eNBPassword
 			lSourcePath = self.eNBSourceCodePath
 		elif self.eNB_serverId[self.eNB_instance] == '1':
 			lIpAddr = self.eNB1IPAddress
-			lUserName = self.eNB1UserName
-			lPassWord = self.eNB1Password
 			lSourcePath = self.eNB1SourceCodePath
 		elif self.eNB_serverId[self.eNB_instance] == '2':
 			lIpAddr = self.eNB2IPAddress
-			lUserName = self.eNB2UserName
-			lPassWord = self.eNB2Password
 			lSourcePath = self.eNB2SourceCodePath
-		if lIpAddr == '' or lUserName == '' or lPassWord == '' or lSourcePath == '':
+		if lIpAddr == '' or lSourcePath == '':
 			HELP.GenericHelp(CONST.Version)
 			sys.exit('Insufficient Parameter')
 		logging.debug('\u001B[1m Deploying OAI Object on server: ' + lIpAddr + '\u001B[0m')
 		self.deployKind[self.eNB_instance] = True
 
-		mySSH = SSH.SSHConnection()
-		mySSH.open(lIpAddr, lUserName, lPassWord)
-
+		mySSH = cls_cmd.getConnection(lIpAddr)
 		CreateWorkspace(mySSH, lSourcePath, self.ranRepository, self.ranCommitID, self.ranTargetBranch, self.ranAllowMerge)
 
-		mySSH.command('cd ' + lSourcePath + '/' + self.yamlPath[self.eNB_instance], '\$', 5)
-		mySSH.command('cp docker-compose.y*ml ci-docker-compose.yml', '\$', 5)
+		mySSH.cd(lSourcePath + '/' + self.yamlPath[self.eNB_instance])
+		mySSH.run('cp docker-compose.y*ml ci-docker-compose.yml', 5)
+
 		for image in IMAGES:
 			imageTag = ImageTagToUse(image, self.ranCommitID, self.ranBranch, self.ranAllowMerge)
-			mySSH.command(f'sed -i -e "s#image: {image}:latest#image: oai-ci/{imageTag}#" ci-docker-compose.yml', '\$', 2)
+			mySSH.run(f'sed -i -e "s#image: {image}:latest#image: oai-ci/{imageTag}#" ci-docker-compose.yml', 2)
 
 		# Currently support only one
 		svcName = self.services[self.eNB_instance]
 		if svcName == '':
 			logging.warning('no service name given: starting all services in ci-docker-compose.yml!')
 
-		mySSH.command(f'docker compose --file ci-docker-compose.yml up -d -- {svcName}', '\$', 30)
+		mySSH.run(f'docker compose --file ci-docker-compose.yml up -d -- {svcName}', 30)
 
 		# Checking Status
 		grep = ''
 		if svcName != '': grep = f' | grep -A3 --color=never {svcName}'
-		mySSH.command(f'docker compose --file ci-docker-compose.yml config {grep}', '\$', 5)
+		mySSH.run(f'docker compose --file ci-docker-compose.yml config {grep}', 5)
 		result = re.search('container_name: (?P<container_name>[a-zA-Z0-9\-\_]+)', mySSH.getBefore())
 		unhealthyNb = 0
 		healthyNb = 0
@@ -912,7 +925,7 @@ class Containerize():
 			time.sleep(5)
 			cnt = 0
 			while (cnt < 3):
-				mySSH.command('docker inspect --format="{{.State.Health.Status}}" ' + containerName, '\$', 5)
+				mySSH.run('docker inspect --format="{{.State.Health.Status}}" ' + containerName, 5)
 				unhealthyNb = mySSH.getBefore().count('unhealthy')
 				healthyNb = mySSH.getBefore().count('healthy') - unhealthyNb
 				startingNb = mySSH.getBefore().count('starting')
@@ -922,13 +935,13 @@ class Containerize():
 					time.sleep(10)
 					cnt += 1
 
-			mySSH.command('docker inspect --format="ImageUsed: {{.Config.Image}}" ' + containerName, '\$', 5)
+			mySSH.run('docker inspect --format="ImageUsed: {{.Config.Image}}" ' + containerName, 5)
 			for stdoutLine in mySSH.getBefore().split('\n'):
 				if stdoutLine.count('ImageUsed: oai-ci'):
 					usedImage = stdoutLine.replace('ImageUsed: oai-ci', 'oai-ci').strip()
 					logging.debug('Used image is ' + usedImage)
 			if usedImage != '':
-				mySSH.command('docker image inspect --format "* Size     = {{.Size}} bytes\n* Creation = {{.Created}}\n* Id       = {{.Id}}" ' + usedImage, '\$', 5, silent=True)
+				mySSH.run('docker image inspect --format "* Size     = {{.Size}} bytes\n* Creation = {{.Created}}\n* Id       = {{.Id}}" ' + usedImage, 5, silent=True)
 				for stdoutLine in mySSH.getBefore().split('\n'):
 					if re.search('Size     = [0-9]', stdoutLine) is not None:
 						imageInfo += stdoutLine.strip() + '\n'
@@ -947,7 +960,7 @@ class Containerize():
 		if healthyNb == 1:
 			cnt = 0
 			while (cnt < 20):
-				mySSH.command('docker logs ' + containerName + ' | egrep --text --color=never -i "wait|sync|Starting|ready"', '\$', 30)
+				mySSH.run('docker logs ' + containerName + ' | egrep --text --color=never -i "wait|sync|Starting|ready"', 30)
 				result = re.search('got sync|Starting E1AP at CU UP|Starting F1AP at CU|Got sync|Waiting for RUs to be configured|cuPHYController initialized|Received CONFIG.response, gNB is ready', mySSH.getBefore())
 				if result is None:
 					time.sleep(6)
@@ -960,8 +973,9 @@ class Containerize():
 			# containers are unhealthy, so we won't start. However, logs are stored at the end
 			# in UndeployObject so we here store the logs of the unhealthy container to report it
 			logfilename = f'{lSourcePath}/cmake_targets/log/{self.eNB_logFile[self.eNB_instance]}'
-			mySSH.command(f'docker logs {containerName} > {logfilename}', '\$', 30)
-			mySSH.copyin(lIpAddr, lUserName, lPassWord, logfilename, '.')
+			mySSH.run(f'docker logs {containerName} > {logfilename}', 30)
+			mySSH.copyin(logfilename, '.',True)
+
 		mySSH.close()
 
 		message = ''
@@ -979,7 +993,6 @@ class Containerize():
 		else:
 			self.exitStatus = 1
 			HTML.CreateHtmlTestRowQueue('N/A', 'KO', [message])
-
 
 	def UndeployObject(self, HTML, RAN):
 		if self.eNB_serverId[self.eNB_instance] == '0':
