@@ -483,13 +483,8 @@ class Containerize():
 		mySSH = SSH.SSHConnection()
 		mySSH.open(lIpAddr, lUserName, lPassWord)
 
-		#new code
-		#mySSH = cls_cmd.getConnection(lIpAddr)
-
-
 		# Check that we are on Ubuntu
 		mySSH.command('hostnamectl', '\$', 5)
-		#mySSH.run('hostnamectl', 5)
 		result = re.search('Ubuntu',  mySSH.getBefore())
 		self.host = result.group(0)
 		if self.host != 'Ubuntu':
@@ -503,7 +498,6 @@ class Containerize():
 		# Workaround for some servers, we need to erase completely the workspace
 		if self.forcedWorkspaceCleanup:
 			mySSH.command('echo ' + lPassWord + ' | sudo -S rm -Rf ' + lSourcePath, '\$', 15)
-			#mySSH.run('echo ' + lPassWord + ' | sudo -S rm -Rf ' + lSourcePath, 15)
 
 		oldRanCommidID = self.ranCommitID
 		oldRanRepository = self.ranRepository
@@ -522,15 +516,12 @@ class Containerize():
 
 		# Let's remove any previous run artifacts if still there
 		mySSH.command(self.cli + ' image prune --force', '\$', 30)
-		#mySSH.run(self.cli + ' image prune --force', 30)
 		# Remove any previous proxy image
 		mySSH.command(self.cli + ' image rm oai-lte-multi-ue-proxy:latest || true', '\$', 30)
-		#mySSH.run(self.cli + ' image prune --force', 30)
 		tag = self.proxyCommit
 		logging.debug('building L2sim proxy image for tag ' + tag)
 		# check if the corresponding proxy image with tag exists. If not, build it
 		mySSH.command(self.cli + ' image inspect --format=\'Size = {{.Size}} bytes\' proxy:' + tag, '\$', 5)
-		#mySSH.run(self.cli + ' image inspect --format=\'Size = {{.Size}} bytes\' proxy:' + tag, 5)
 		buildProxy = mySSH.getBefore().count('o such image') != 0
 		if buildProxy:
 			mySSH.command(self.cli + ' build ' + self.cliBuildOptions + ' --target oai-lte-multi-ue-proxy --tag proxy:' + tag + ' --file docker/Dockerfile.ubuntu18.04 . > cmake_targets/log/proxy-build.log 2>&1', '\$', 180)
@@ -538,8 +529,6 @@ class Containerize():
 			# here, as the flatten script is not in the proxy repo
 			mySSH.command(self.cli + ' image inspect --format=\'Size = {{.Size}} bytes\' proxy:' + tag, '\$', 5)
 			mySSH.command(self.cli + ' image prune --force || true','\$', 15)
-			# mySSH.run(self.cli + ' image inspect --format=\'Size = {{.Size}} bytes\' proxy:' + tag, 5)
-			# mySSH.run(self.cli + ' image prune --force || true', 15)
 			if mySSH.getBefore().count('o such image') != 0:
 				logging.error('\u001B[1m Build of L2sim proxy failed\u001B[0m')
 				mySSH.close()
@@ -551,12 +540,10 @@ class Containerize():
 
 		# retag the build images to that we pick it up later
 		mySSH.command('docker image tag proxy:' + tag + ' oai-lte-multi-ue-proxy:latest', '\$', 5)
-		#mySSH.run('docker image tag proxy:' + tag + ' oai-lte-multi-ue-proxy:latest', 5)
 
 		# no merge: is a push to develop, tag the image so we can push it to the registry
 		if not self.ranAllowMerge:
 			mySSH.command('docker image tag proxy:' + tag + ' proxy:develop', '\$', 5)
-			# mySSH.run('docker image tag proxy:' + tag + ' proxy:develop', 5)
 
 		# we assume that the host on which this is built will also run the proxy. The proxy
 		# currently requires the following command, and the docker-compose up mechanism of
@@ -564,7 +551,6 @@ class Containerize():
 		# belongs to the deployment, not the build of the proxy...
 		logging.warning('the following command belongs to deployment, but no mechanism exists to exec it there!')
 		mySSH.command('sudo ifconfig lo: 127.0.0.2 netmask 255.0.0.0 up', '\$', 5)
-		# mySSH.run('sudo ifconfig lo: 127.0.0.2 netmask 255.0.0.0 up', 5)
 
 		# Analyzing the logs
 		if buildProxy:
@@ -572,17 +558,12 @@ class Containerize():
 			mySSH.command('cd ' + lSourcePath + '/cmake_targets', '\$', 5)
 			mySSH.command('mkdir -p proxy_build_log_' + self.testCase_id, '\$', 5)
 			mySSH.command('mv log/* ' + 'proxy_build_log_' + self.testCase_id, '\$', 5)
-			# mySSH.cd(lSourcePath + '/cmake_targets')
-			# mySSH.run('mkdir -p proxy_build_log_' + self.testCase_id, 5)
-			# mySSH.run('mv log/* ' + 'proxy_build_log_' + self.testCase_id, 5)
 			if (os.path.isfile('./proxy_build_log_' + self.testCase_id + '.zip')):
 				os.remove('./proxy_build_log_' + self.testCase_id + '.zip')
 			if (os.path.isdir('./proxy_build_log_' + self.testCase_id)):
 				shutil.rmtree('./proxy_build_log_' + self.testCase_id)
 			mySSH.command('zip -r -qq proxy_build_log_' + self.testCase_id + '.zip proxy_build_log_' + self.testCase_id, 5)
-			# mySSH.run('zip -r -qq proxy_build_log_' + self.testCase_id + '.zip proxy_build_log_' + self.testCase_id, '\$', 5)
 			mySSH.copyin(lIpAddr, lUserName, lPassWord, lSourcePath + '/cmake_targets/build_log_' + self.testCase_id + '.zip', '.')
-			#mySSH.copyin(lSourcePath + '/cmake_targets/build_log_' + self.testCase_id + '.zip', '.') #zip file shouldn't need recursive
 			# don't delete such that we might recover the zips
 			#mySSH.command('rm -f build_log_' + self.testCase_id + '.zip','\$', 5)
 
@@ -597,11 +578,9 @@ class Containerize():
 		collectInfo = {}
 		collectInfo['proxy'] = files
 		mySSH.command('docker image inspect --format=\'Size = {{.Size}} bytes\' proxy:' + tag, '\$', 5)
-		# mySSH.run('docker image inspect --format=\'Size = {{.Size}} bytes\' proxy:' + tag, 5)
 		result = re.search('Size *= *(?P<size>[0-9\-]+) *bytes', mySSH.getBefore())
 		# Cleaning any created tmp volume
 		mySSH.command(self.cli + ' volume prune --force || true','\$', 15)
-		# mySSH.run(self.cli + ' volume prune --force || true', 15)
 		mySSH.close()
 
 		allImagesSize = {}
