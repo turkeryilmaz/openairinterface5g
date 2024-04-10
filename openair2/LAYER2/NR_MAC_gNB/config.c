@@ -865,6 +865,10 @@ void nr_mac_config_scc(gNB_MAC_INST *nrmac, NR_ServingCellConfigCommon_t *scc, c
     NR_PHY_Config_t phycfg = {.Mod_id = 0, .CC_id = 0, .cfg = &nrmac->config[CC_id]};
     DevAssert(nrmac->if_inst->NR_PHY_config_req);
     nrmac->if_inst->NR_PHY_config_req(&phycfg);
+  }else if (NFAPI_MODE == NFAPI_MODE_PNF || NFAPI_MODE == NFAPI_MODE_VNF) {  // keep this for SQN SS
+    // fake that the gNB is configured in nFAPI mode, which would normally be
+    // done in a NR_PHY_config_req, but in this mode, there is no PHY
+    RC.gNB[0]->configured = 1;
   }
 
   find_SSB_and_RO_available(nrmac, CC_id);

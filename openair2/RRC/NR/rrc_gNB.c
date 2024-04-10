@@ -820,7 +820,7 @@ int rrc_gNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_name, insta
             instance, sib1->servingCellConfigCommon->downlinkConfigCommon.pcch_Config.ns);
       return (-1);
   }
-#if 0
+
   /* insert data to UE_PF_PO or update data in UE_PF_PO */
   pthread_mutex_lock(&ue_pf_po_mutex);
   uint8_t i = 0;
@@ -873,7 +873,7 @@ int rrc_gNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_name, insta
   }
 
   pthread_mutex_unlock(&ue_pf_po_mutex);
-#endif  
+  
   (void) N; /* not used, suppress warning */
   (void) Ns; /* not used, suppress warning */
   (void) pfoffset; /* not used, suppress warning */
@@ -3841,12 +3841,14 @@ rrc_gNB_generate_RRCRelease(
 int rrc_gNB_generate_pcch_msg(sctp_assoc_t assoc_id, const NR_SIB1_t *sib1, uint32_t tmsi, uint8_t paging_drx)
 {
   instance_t instance = 0;
+  uint8_t CC_id = 0;
   const unsigned int Ttab[4] = {32,64,128,256};
   uint8_t Tc;
   uint8_t Tue;
   uint32_t pfoffset;
   uint32_t N;  /* N: min(T,nB). total count of PF in one DRX cycle */
   uint32_t Ns = 0;  /* Ns: max(1,nB/T) */
+  uint8_t i_s;  /* i_s = floor(UE_ID/N) mod Ns */
   uint32_t T;  /* DRX cycle */
   uint32_t length;
   uint8_t buffer[RRC_BUF_SIZE];

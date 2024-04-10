@@ -348,7 +348,15 @@ static uint8_t pack_dl_tti_ssb_pdu_rel15_value(void *tlv, uint8_t **ppWritePacke
         && push16(value->ssbOffsetPointA, ppWritePackedMsg, end) && push8(value->bchPayloadFlag, ppWritePackedMsg, end)
         && push8((value->bchPayload >> 16) & 0xff, ppWritePackedMsg, end)
         && push8((value->bchPayload >> 8) & 0xff, ppWritePackedMsg, end) && push8(value->bchPayload & 0xff, ppWritePackedMsg, end)
-        && push8(0, ppWritePackedMsg, end)
+        && push8(0, ppWritePackedMsg, end) //below part is for SQN SS, refer to bugz128590
+        && push8(0, ppWritePackedMsg, end) && push8(0, ppWritePackedMsg, end) &&
+           push8(value->ssbRsrp, ppWritePackedMsg, end) &&  		// TODO: pack precoding_and_beamforming too
+           push8(value->ssb_pbch_pdu_maintenance_fapiv3.ssbPduIndex, ppWritePackedMsg, end) &&
+           push8(value->ssb_pbch_pdu_maintenance_fapiv3.caseType, ppWritePackedMsg, end) &&
+           push8(value->ssb_pbch_pdu_maintenance_fapiv3.SubcarrierSpacing, ppWritePackedMsg, end) &&
+           push8(value->ssb_pbch_pdu_maintenance_fapiv3.lMax, ppWritePackedMsg, end) &&
+           push16(value->ssb_pbch_pdu_maintenance_fapiv3.ssPbchBlockPowerScaling, ppWritePackedMsg, end) &&
+           push16(value->ssb_pbch_pdu_maintenance_fapiv3.betaPSSProfileSSS, ppWritePackedMsg, end)
         // TODO add Tx Power Info
         && push16(value->precoding_and_beamforming.num_prgs, ppWritePackedMsg, end)
         && push16(value->precoding_and_beamforming.prg_size, ppWritePackedMsg, end)
