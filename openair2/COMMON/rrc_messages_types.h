@@ -43,6 +43,25 @@
 #include "NR_RACH-ConfigCommon.h"
 #include "NR_ServingCellConfigCommon.h"
 #include "NR_ServingCellConfig.h"
+#include "LTE_LogicalChannelConfig.h"
+#include "LTE_SecurityAlgorithmConfig.h"
+#include "LTE_CipheringAlgorithm-r12.h"
+#include "LTE_SIB-Type.h"
+#include "LTE_Q-OffsetRange.h"
+#include "LTE_SchedulingInfo.h"
+#include "LTE_SpeedStateScaleFactors.h"
+#include "LTE_InterFreqNeighCellInfo.h"
+#include "LTE_PhysCellIdRange.h"
+#include "LTE_NeighCellConfig.h"
+#include "NR_SDAP-Config.h"
+#include "NR_PDCP-Config.h"
+#include "NR_RLC-BearerConfig.h"
+#include "NR_asn_constant.h"
+#include "LTE_PDCP-Config.h"
+#include "LTE_RLC-Config.h"
+
+#define MAX_RBS (LTE_maxDRB + 3)
+#define MAX_NR_RBS (NR_maxDRB+3)
 
 //-------------------------------------------------------------------------------------------//
 // Messages for RRC logging
@@ -67,8 +86,21 @@
 #define RRC_STATE_IND(mSGpTR)           (mSGpTR)->ittiMsg.rrc_state_ind
 
 #define RRC_CONFIGURATION_REQ(mSGpTR)   (mSGpTR)->ittiMsg.rrc_configuration_req
+#define RRC_CONFIGURATION_CNF(mSGpTR)   (mSGpTR)->ittiMsg.rrc_configuration_cnf
+
+#define RRC_RBLIST_CFG_REQ(mSGpTR)      (mSGpTR)->ittiMsg.rrc_rblist_cfg_req
+#define RRC_RBLIST_CFG_CNF(mSGpTR)      (mSGpTR)->ittiMsg.rrc_rblist_cfg_cnf
+
+#define RRC_UE_CAT_INFO(mSGpTR)      (mSGpTR)->ittiMsg.rrc_ue_cat_info
+
+#define RRC_AS_SECURITY_CONFIG_REQ(mSGpTR)      (mSGpTR)->ittiMsg.rrc_as_security_config_req
+#define RRC_AS_SECURITY_CONFIG_CNF(mSGpTR)      (mSGpTR)->ittiMsg.rrc_as_security_config_cnf
 
 #define NBIOTRRC_CONFIGURATION_REQ(mSGpTR)   (mSGpTR)->ittiMsg.nbiotrrc_configuration_req
+
+#define NRRRC_CONFIGURATION_REQ(mSGpTR)   (mSGpTR)->ittiMsg.nrrrc_configuration_req  //W38 TO DO: to remove or keep it?
+
+#define NRRRC_RBLIST_CFG_REQ(mSGpTR)      (mSGpTR)->ittiMsg.nrrrc_rblist_cfg_req
 
 #define NAS_KENB_REFRESH_REQ(mSGpTR)    (mSGpTR)->ittiMsg.nas_kenb_refresh_req
 #define NAS_CELL_SELECTION_REQ(mSGpTR)  (mSGpTR)->ittiMsg.nas_cell_selection_req
@@ -98,12 +130,135 @@
 #define NAS_PDU_SESSION_REQ(mSGpTR) (mSGpTR)->ittiMsg.nas_pdu_session_req
 
 //-------------------------------------------------------------------------------------------//
+enum SecurityAct_Type_e {
+        Pdcp_Count_Srb = 0,
+        Pdcp_Count_DrbLongSQN = 1,
+        Pdcp_Count_DrbShortSQN = 2,
+        NrPdcp_Count_Srb = 3,
+        NrPdcp_Count_DrbSQN12 = 4,
+        NrPdcp_Count_DrbSQN18 = 5,
+};
+
+typedef enum SecurityAct_Type_e SecurityAct_Type_e;
+
+typedef struct ActTime_Type_s {
+      SecurityAct_Type_e format;
+      uint32_t sqn;
+}ActTime_Type;
+
+typedef struct SecurityActTimeType_s {
+        uint8_t       rb_id;
+        ActTime_Type  UL;
+        ActTime_Type  DL;
+}SecurityActTimeType;
+
+typedef struct SecurityActTimeList_s {
+        int size;
+        SecurityActTimeType SecurityActTime[MAX_RBS];
+}SecurityActTimeList;
+
+typedef struct AS_IntegrityInfo_s {
+        e_LTE_SecurityAlgorithmConfig__integrityProtAlgorithm integrity_algorithm;
+        uint8_t                  *kRRCint;
+        bool isUPIntegrityInfoPresent;
+        uint8_t                  *kUPint;
+        SecurityActTimeList      ActTimeList;
+}AS_IntegrityInfo;
+
+typedef struct AS_CipheringInfo_s {
+        LTE_CipheringAlgorithm_r12_t ciphering_algorithm;
+        uint8_t                  *kRRCenc;
+        uint8_t                  *kUPenc;
+        SecurityActTimeList      ActTimeList;
+}AS_CipheringInfo;
+
+typedef struct RrcAsSecurityConfigReq_s {
+        bool isIntegrityInfoPresent;
+        AS_IntegrityInfo Integrity;
+        bool isCipheringInfoPresent;
+        AS_CipheringInfo Ciphering;
+        int rnti;
+}RrcAsSecurityConfigReq;
+
+typedef struct RrcAsSecurityConfigCnf_s {
+  bool status;
+}RrcAsSecurityConfigCnf;
+
+enum ue_CategoryDL_v1310_e {
+        ue_CategoryDL_v1310_e_n17 = 0,
+        ue_CategoryDL_v1310_e_m1 = 1,
+};
+typedef enum ue_CategoryDL_v1310_e ue_CategoryDL_v1310_e;
+
+enum ue_CategoryDL_v1350_e {
+        ue_CategoryDL_v1350_e_oneBis = 0,
+};
+
+typedef enum ue_CategoryDL_v1350_e ue_CategoryDL_v1350_e;
+
+typedef struct rrcUECatInfo_s {
+        uint8_t ue_Category;
+        bool is_ue_Category_V1020_present;
+        uint8_t ue_Category_V1020;
+        bool is_ue_Category_v1170_present;
+        uint8_t ue_Category_v1170;
+        bool is_ue_Category_v11a0_present;
+        uint8_t ue_Category_v11a0;
+        bool is_ue_Category_v1250_present;
+        uint8_t ue_Category_v1250;
+        bool is_ue_CategoryDL_r12_present;
+        uint8_t ue_CategoryDL_r12;
+        bool is_ue_CategoryDL_v1260_present;
+        uint8_t ue_CategoryDL_v1260;
+        bool is_ue_CategoryDL_v1310_present;
+        ue_CategoryDL_v1310_e ue_CategoryDL_v1310;
+        bool is_ue_CategoryDL_v1330_present;
+        uint8_t ue_CategoryDL_v1330;
+        bool is_ue_CategoryDL_v1350_present;
+        ue_CategoryDL_v1350_e ue_CategoryDL_v1350;
+        bool is_ue_CategoryDL_v1460_present;
+        uint8_t ue_CategoryDL_v1460;
+}rrcUECatInfo;
+
+
+typedef struct RadioBearerConfig_s {
+        bool isPDCPConfigValid;
+        bool isRLCConfigValid;
+        bool isLogicalChannelIdValid;
+        bool isMacConfigValid;
+        bool isDiscardULDataValid;
+        bool isMacTestModeValid;
+        LTE_PDCP_Config_t Pdcp;
+        LTE_RLC_Config_t  Rlc;
+        long LogicalChannelId;
+        long MacTestModeLogicalChannelId;
+        LTE_LogicalChannelConfig_t Mac;
+        bool DiscardULData;
+}RadioBearerConfig;
+
+typedef struct rb_info_s {
+  uint8_t  RbId;
+  RadioBearerConfig RbConfig;
+} rb_info;
+
+typedef struct RrcRblistCfgReq_s {
+  int rb_count;
+  int cell_index;
+  rb_info rb_list[MAX_RBS];
+} RrcRblistCfgReq;
+
+typedef struct RrcRblistCfgCnf_s {
+  bool status;
+}RrcRblistCfgCnf;
+
 typedef struct RrcStateInd_s {
   Rrc_State_t     state;
   Rrc_Sub_State_t sub_state;
 } RrcStateInd;
 
 typedef struct RadioResourceConfig_s {
+  uint8_t                 prach_preambleIndex;
+  uint8_t                 prach_maskIndex;
   long                    prach_root;
   long                    prach_config_index;
   BOOLEAN_t               prach_high_speed;
@@ -171,7 +326,7 @@ typedef struct RadioResourceConfig_s {
   long                    ue_TransmissionMode;
   long                    ue_multiple_max;
   //SIB2 BR Options
-  long       preambleTransMax_CE_r13;
+  long       *preambleTransMax_CE_r13;
   BOOLEAN_t     prach_ConfigCommon_v1310;
   BOOLEAN_t            *mpdcch_startSF_CSS_RA_r13;
   long        mpdcch_startSF_CSS_RA_r13_val;
@@ -179,14 +334,87 @@ typedef struct RadioResourceConfig_s {
   BOOLEAN_t     mbms_dedicated_serving_cell;
 } RadioResourceConfig;
 
+typedef struct lte_sib_MappingInfo_s {
+  e_LTE_SIB_Type  LTE_SIB_Type[5];
+  int size;
+}lte_sib_MappingInfo_t;
+
+typedef struct lte_SchedulingInfo_s {
+  e_LTE_SI_Periodicity_r12     si_Periodicity;
+  lte_sib_MappingInfo_t    sib_MappingInfo;
+}lte_SchedulingInfo_t;
+
+typedef struct PhysCellIdRange_s {
+  long         start;
+  bool         range_Present;
+  e_LTE_PhysCellIdRange__range range;
+}PhysCellIdRange_t;
+
+typedef struct threshX_Q_r9_s {
+  long    threshX_HighQ_r9;
+  long     threshX_LowQ_r9;
+}threshX_Q_r9_t;
+
+typedef struct InterFreqCarrierFreqInfo_s {
+  long         dl_CarrierFreq;
+  long         q_RxLevMin;
+  bool         p_Max_Present;
+  long         p_Max; /* OPTIONAL */
+  long         t_ReselectionEUTRA;
+  bool         t_ReselectionEUTRA_SF_Present;
+  LTE_SpeedStateScaleFactors_t         *t_ReselectionEUTRA_SF; /* OPTIONAL */
+  long         threshX_High;
+  long         threshX_Low;
+  long         allowedMeasBandwidth;
+  bool         presenceAntennaPort1;
+  bool         cellReselectionPriority_Present;
+  long         *cellReselectionPriority;/* OPTIONAL */
+  uint8_t     neighCellConfig;
+  bool         q_OffsetFreqPresent;
+  e_LTE_Q_OffsetRange         *q_OffsetFreq;/* OPTIONAL */
+  bool                            interFreqNeighCellList_Present;
+  LTE_InterFreqNeighCellInfo_t    *interFreqNeighCellList;/* OPTIONAL */
+  bool                        interFreqExcludedCellList_Present;
+  PhysCellIdRange_t           *interFreqExcludedCellList;/* OPTIONAL */
+  bool          q_QualMin_r9_Present;
+  long          *q_QualMin_r9;/* OPTIONAL */
+  bool          threshX_Q_r9_Present;
+  threshX_Q_r9_t          threshX_Q_r9;/* OPTIONAL */
+  bool          q_QualMinWB_r11_Present;
+  long          *q_QualMinWB_r11;/* OPTIONAL */
+}InterFreqCarrierFreqInfo_t;
+
+typedef struct IntraFreqNeighCellInfo_s {
+  long                    physCellId;
+  long                    q_OffsetCell;
+}IntraFreqNeighCellInfo_t;
+
+/*SS possible max rach attempt for simulation*/
+#define SS_MAX_RACH_PROC    10
+
+typedef struct Rar_s {
+  bool       b_rarResponse;
+  uint16_t   Temp_C_RNTI;
+}Rar_t;
+
+typedef struct Cell_ActiveParam_s {
+  bool       b_C_RNTI_Present;
+  uint16_t   C_RNTI;
+  uint8_t    numRar;
+  Rar_t      Rar[SS_MAX_RACH_PROC];
+}Cell_ActiveParam_t;
+
 // eNB: ENB_APP -> RRC messages
 typedef struct RrcConfigurationReq_s {
-  uint32_t                cell_identity;
-  uint16_t                tac;
-  uint16_t                mcc[PLMN_LIST_MAX_SIZE];
-  uint16_t                mnc[PLMN_LIST_MAX_SIZE];
-  uint8_t                 mnc_digit_length[PLMN_LIST_MAX_SIZE];
-  uint8_t                 num_plmn;
+  uint32_t                cell_identity[MAX_NUM_CCs];
+  uint16_t                tac[MAX_NUM_CCs];
+  long                      cellBarred[MAX_NUM_CCs];
+  long                      intraFreqReselection[MAX_NUM_CCs];
+  uint16_t                mcc[MAX_NUM_CCs][PLMN_LIST_MAX_SIZE];
+  uint16_t                mnc[MAX_NUM_CCs][PLMN_LIST_MAX_SIZE];
+  uint8_t                 mnc_digit_length[MAX_NUM_CCs][PLMN_LIST_MAX_SIZE];
+  uint32_t                cellReservedForOperatorUse[MAX_NUM_CCs][PLMN_LIST_MAX_SIZE];
+  uint8_t                 num_plmn[MAX_NUM_CCs];
   int                     enable_measurement_reports;
   int                     enable_x2;
   uint32_t                rrc_inactivity_timer_thres; // for testing, maybe change later
@@ -207,6 +435,9 @@ typedef struct RrcConfigurationReq_s {
   int                     eMBMS_M2_configured;
   int                     eMTC_configured;
   int                     SL_configured;
+  uint8_t                 systemInfoValueTag[MAX_NUM_CCs];
+  int                     schedulingInfo_count[MAX_NUM_CCs];
+  lte_SchedulingInfo_t    * schedulingInfo[MAX_NUM_CCs];
 
   RadioResourceConfig     radioresourceconfig[MAX_NUM_CCs];
   RadioResourceConfig     radioresourceconfig_BR[MAX_NUM_CCs];
@@ -215,6 +446,7 @@ typedef struct RrcConfigurationReq_s {
   //MIB
   long        schedulingInfoSIB1_BR_r13[MAX_NUM_CCs];
   //SIB1 BR options
+  BOOLEAN_t stopSib1Transmission[MAX_NUM_CCs];
   uint16_t     *hyperSFN_r13                           [MAX_NUM_CCs];
   long       *eDRX_Allowed_r13                       [MAX_NUM_CCs];
   BOOLEAN_t     cellSelectionInfoCE_r13                [MAX_NUM_CCs];
@@ -288,6 +520,32 @@ typedef struct RrcConfigurationReq_s {
   long  *pusch_repetitionLevelCEmodeA_r13				   [MAX_NUM_CCs];
   long  *pusch_HoppingOffset_v1310                         [MAX_NUM_CCs];
 
+  //SIB3
+  long     q_Hyst[MAX_NUM_CCs];
+  long     threshServingLow[MAX_NUM_CCs];
+  long     cellReselectionPriority[MAX_NUM_CCs];
+  long     sib3_q_RxLevMin[MAX_NUM_CCs];
+  long     t_ReselectionEUTRA[MAX_NUM_CCs];
+  uint8_t neighCellConfig[MAX_NUM_CCs];
+  long     *sib3_q_QualMin[MAX_NUM_CCs];
+  long     *sib3_threshServingLowQ[MAX_NUM_CCs];
+  long     *sib3_s_NonIntraSearchP[MAX_NUM_CCs];
+  long     *sib3_s_NonIntraSearchQ[MAX_NUM_CCs];
+
+  //SIB4
+  bool                       sib4_Present[MAX_NUM_CCs];
+  bool                       intraFreqNeighCellListPresent[MAX_NUM_CCs];
+  int                        intraFreqNeighCellListCount[MAX_NUM_CCs];
+  IntraFreqNeighCellInfo_t  *intraFreqNeighCellList[MAX_NUM_CCs];
+  bool                       intraFreqExcludedCellListPresent[MAX_NUM_CCs];
+  int                        intraFreqExcludedCellListCount[MAX_NUM_CCs];
+  PhysCellIdRange_t         *intraFreqExcludedCellList[MAX_NUM_CCs];
+
+  //SIB5
+  bool                         sib5_Present[MAX_NUM_CCs];
+  int                          InterFreqCarrierFreqInfoCount[MAX_NUM_CCs];
+  InterFreqCarrierFreqInfo_t   *InterFreqCarrierFreqInfo[MAX_NUM_CCs];
+
   //SIB18
   e_LTE_SL_CP_Len_r12            rxPool_sc_CP_Len[MAX_NUM_CCs];
   e_LTE_SL_PeriodComm_r12        rxPool_sc_Period[MAX_NUM_CCs];
@@ -333,7 +591,24 @@ typedef struct RrcConfigurationReq_s {
   long                           discRxPoolPS_ResourceConfig_subframeBitmap_choice_bs_bits_unused[MAX_NUM_CCs];
   //Nr secondary cell group SSB central frequency (for ENDC NSA)
   int                            nr_scg_ssb_freq;
+
+  //SS: Cell Config
+  long     q_RxLevMin[MAX_NUM_CCs];
+  long     q_QualMin[MAX_NUM_CCs];
+  
+  bool     ActiveParamPresent[MAX_NUM_CCs];
+  Cell_ActiveParam_t ActiveParam[MAX_NUM_CCs];
+  //SS: Cell Config Active Params
+  bool     RlcPduCCCH_Present[MAX_NUM_CCs];
+  uint8_t  RlcPduCCCH_Size[MAX_NUM_CCs];
+  uint8_t  RlcPduCCCH[MAX_NUM_CCs][100];
+
 } RrcConfigurationReq;
+
+typedef struct RrcConfigurationCnf_s
+{
+  bool status;
+}RrcConfigurationCnf;
 
 #define MAX_NUM_NBIOT_CELEVELS    3
 
@@ -405,8 +680,15 @@ typedef struct NbIoTRrcConfigurationReq_s {
   long                    ue_TimersAndConstants_n311_NB;
 } NbIoTRrcConfigurationReq;
 
+typedef struct {
+  int N1;
+  int N2;
+  int XP;
+} rrc_pdsch_AntennaPorts_t;
+
 // gNB: GNB_APP -> RRC messages
 typedef struct NRRrcConfigurationReq_s {
+  uint64_t                cell_identity;
   uint32_t                tac;
   uint16_t                mcc[PLMN_LIST_MAX_SIZE];
   uint16_t                mnc[PLMN_LIST_MAX_SIZE];
@@ -416,13 +698,54 @@ typedef struct NRRrcConfigurationReq_s {
   bool um_on_default_drb;
   bool                    enable_sdap;
   int                     drbs;
+
+//TODO: W38 below are moved to MAC, better to define a struct to keep them
+  NR_ServingCellConfigCommon_t *scc;
+  int                     ssb_SubcarrierOffset;
+  int                     sib1_tda;
+  rrc_pdsch_AntennaPorts_t pdsch_AntennaPorts;
+  int                     pusch_AntennaPorts;
+  int                     minRXTXTIME;
+  int                     do_CSIRS;
+  int                     do_SRS;
+  bool                    force_256qam_off;
+  int                     pusch_TargetSNRx10;
+  int                     pucch_TargetSNRx10; 
+  long                     q_RxLevMinSIB1;
+  long                     q_RxLevMinSIB2;
+  long                     cellBarred;
 } gNB_RrcConfigurationReq;
+
+
+typedef struct _NRRrcConfigurationReqList {
+  gNB_RrcConfigurationReq configuration[MAX_NUM_CCs];
+}NRRrcConfigurationReqList;
 
 typedef struct NRDuDlReq_s {
   rnti_t rnti;
   uint8_t *buf;
   uint64_t srb_id;
 }  NRDuDlReq_t; 
+
+typedef struct NRRadioBearerConfig_s {
+  NR_SDAP_Config_t *Sdap;
+  NR_PDCP_Config_t *Pdcp;
+  long *pdcpTransparentSN_Size;
+  NR_RLC_BearerConfig_t * RlcBearer;
+  bool *DiscardULData;
+}NRRadioBearerConfig;
+
+typedef struct nr_rb_info_s {
+  uint8_t  RbId;
+  NRRadioBearerConfig RbConfig;
+} nr_rb_info;
+
+typedef struct NRRrcRblistCfgReq_s {
+  int rb_count;
+  int cell_index;
+  nr_rb_info rb_list[MAX_NR_RBS];
+}NRRrcRblistCfgReq;
+
 
 // UE: NAS -> RRC messages
 typedef kenb_refresh_req_t      NasKenbRefreshReq;

@@ -127,8 +127,8 @@ void set_scs_parameters (NR_DL_FRAME_PARMS *fp, int mu, int N_RB_DL)
       fp->slots_per_subframe = nr_slots_per_subframe[NR_MU_1];
        while(nr_ssb_table[idx][0]!=fp->nr_band ||
              nr_ssb_table[idx][1]!=30) {
-        AssertFatal(nr_ssb_table[idx][0]<=fp->nr_band,"SCS %d not applicable to band %d\n",
-                    fp->subcarrier_spacing,fp->nr_band);
+       /*AssertFatal(nr_ssb_table[idx][0]<=fp->nr_band,"SCS %d not applicable to band %d\n",
+                    fp->subcarrier_spacing,fp->nr_band);*/
         idx++;
       }
       fp->ssb_type = nr_ssb_table[idx][2];

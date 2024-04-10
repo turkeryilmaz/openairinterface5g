@@ -36,6 +36,23 @@
 #include <pthread.h>
 #include <stdint.h>
 
+#include "radio/SS/ss_config.h"
+#include "RRC/NR/nr_rrc_defs.h"
+
+#include "OCTET_STRING.h"
+
+// Used for loopback message routing in DRB-specific TC's
+typedef enum {
+  DRB_MacPdu = 0,
+  DRB_RlcPdu,
+  DRB_RlcSdu,
+  DRB_PdcpPdu,
+  DRB_PdcpSdu,
+  DRB_SdapPdu,
+  DRB_SdapSdu,
+  DRB_data_type_qty
+} nr_drb_data_t;
+
 // forward declarations to avoid including the full typess ***eNB;
 struct PHY_VARS_gNB_s;
 struct PHY_VARS_eNB_NB_IoT_s;
@@ -46,6 +63,26 @@ struct eNB_MAC_INST_NB_IoT_s;
 struct gNB_MAC_INST_s;
 struct gtpv1u_data_s;
 struct RU_t_s;
+
+typedef struct RBConfig_s {
+        bool isRBConfigValid;
+        bool isMacTestModeValid;
+        LTE_PDCP_Config_t PdcpCfg;
+        LTE_RLC_Config_t  RlcCfg;
+        long LogicalChannelId;
+        long MacTestModeLogicalChannelId;
+        LTE_LogicalChannelConfig_t Mac;
+        bool DiscardULData;
+}RBConfig;
+
+typedef struct NRRBConfig_s {
+  bool isRBConfigValid;
+  NR_SDAP_Config_t * Sdap;
+  NR_PDCP_Config_t * Pdcp;
+  long *pdcpTransparentSN_Size;
+  NR_RLC_BearerConfig_t * RlcBearer;
+  bool *DiscardULData;
+}NRRBConfig;
 
 typedef struct {
   /// RAN context config file name
@@ -70,6 +107,8 @@ typedef struct {
   int *nb_mac_CC;
   /// Number of component carriers per instance in this node
   int *nb_nr_mac_CC;
+  /// MAC test PDU container received from TTCN (By-passing RLC/PDCP)
+  ss_DRB_MacTestPdu_t macTestPdu_Buffer;
   /// Number of L1 instances in this node
   int nb_L1_inst;
   /// Number of NB_IoT L1 instances in this node
@@ -108,6 +147,16 @@ typedef struct {
   pthread_mutex_t ru_mutex;
   /// condition variable for signaling setup completion of an RU
   pthread_cond_t ru_cond;
+  /// SS Config variables
+  struct ss_config_s ss;
+  // Variable to store Transaction ID for SS in case of RRCReconfiguration
+  long rrc_Transaction_Identifier;
+  // Loopback mode can operate on either sdap, pdcp or rlc
+  nr_drb_data_t nr_drb_data_type;
+  RBConfig RB_Config[MAX_NUM_CCs][MAX_RBS];
+  NRRBConfig NR_RB_Config[MAX_NUM_CCs][MAX_NR_RBS];
+  /// CellGroupConfig given by SS/TTCN
+  OCTET_STRING_t *cellGroupConfig;
 } RAN_CONTEXT_t;
 
 extern RAN_CONTEXT_t RC;

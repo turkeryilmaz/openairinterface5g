@@ -482,15 +482,15 @@ void process_CellGroup(NR_CellGroupConfig_t *CellGroup, NR_UE_info_t *UE)
    if (CellGroup->spCellConfig && CellGroup->spCellConfig->reconfigurationWithSync
        && CellGroup->spCellConfig->reconfigurationWithSync->rach_ConfigDedicated
        && CellGroup->spCellConfig->reconfigurationWithSync->rach_ConfigDedicated->choice.uplink->cfra) {
-    nr_mac_prepare_ra_ue(RC.nrmac[0], UE->rnti, CellGroup);
+    nr_mac_prepare_ra_ue(RC.nrmac[0], UE->CC_id, UE->rnti, CellGroup);
    }
    process_rlcBearerConfig(CellGroup->rlc_BearerToAddModList, CellGroup->rlc_BearerToReleaseList, &UE->UE_sched_ctrl);
 }
 
-static void config_common(gNB_MAC_INST *nrmac, nr_pdsch_AntennaPorts_t pdsch_AntennaPorts, int pusch_AntennaPorts, NR_ServingCellConfigCommon_t *scc)
+static void config_common(gNB_MAC_INST *nrmac, nr_pdsch_AntennaPorts_t pdsch_AntennaPorts, int pusch_AntennaPorts, NR_ServingCellConfigCommon_t *scc, int CC_id)
 {
-  nfapi_nr_config_request_scf_t *cfg = &nrmac->config[0];
-  nrmac->common_channels[0].ServingCellConfigCommon = scc;
+  nfapi_nr_config_request_scf_t *cfg = &nrmac->config[CC_id];
+  nrmac->common_channels[CC_id].ServingCellConfigCommon = scc;
 
   // Carrier configuration
   struct NR_FrequencyInfoDL *frequencyInfoDL = scc->downlinkConfigCommon->frequencyInfoDL;
@@ -564,7 +564,7 @@ static void config_common(gNB_MAC_INST *nrmac, nr_pdsch_AntennaPorts_t pdsch_Ant
   frequency_range_t frequency_range = band < 100 ? FR1 : FR2;
 
   frame_type_t frame_type = get_frame_type(*frequencyInfoDL->frequencyBandList.list.array[0], *scc->ssbSubcarrierSpacing);
-  nrmac->common_channels[0].frame_type = frame_type;
+  nrmac->common_channels[CC_id].frame_type = frame_type;
 
   // Cell configuration
   cfg->cell_config.phy_cell_id.value = *scc->physCellId;
@@ -699,23 +699,23 @@ static void config_common(gNB_MAC_INST *nrmac, nr_pdsch_AntennaPorts_t pdsch_Ant
                                  scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA,
                                  *scc->ssbSubcarrierSpacing);
 
-  AssertFatal(cfg->ssb_table.ssb_subcarrier_offset.value < 16,
+  AssertFatal(cfg->ssb_table.ssb_subcarrier_offset.value <= 18,
               "cannot handle ssb_subcarrier_offset %d resulting from Point A %ld SSB %ld: please increase dl_absoluteFrequencyPointA "
-              "in the config by 16\n",
+              "in the config by 18\n",
               cfg->ssb_table.ssb_subcarrier_offset.value,
               scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA,
               *scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB);
   cfg->ssb_table.ssb_subcarrier_offset.tl.tag = NFAPI_NR_CONFIG_SSB_SUBCARRIER_OFFSET_TAG;
   cfg->num_tlv++;
 
-  uint8_t *mib_payload = nrmac->common_channels[0].MIB_pdu;
+  uint8_t *mib_payload = nrmac->common_channels[CC_id].MIB_pdu;
   uint32_t mib = (mib_payload[2] << 16) | (mib_payload[1] << 8) | mib_payload[0];
   cfg->ssb_table.MIB.tl.tag = NFAPI_NR_CONFIG_MIB_TAG;
   cfg->ssb_table.MIB.value = mib;
   cfg->num_tlv++;
 
-  nrmac->ssb_SubcarrierOffset = cfg->ssb_table.ssb_subcarrier_offset.value;
-  nrmac->ssb_OffsetPointA = cfg->ssb_table.ssb_offset_point_a.value;
+  nrmac->ssb_SubcarrierOffset[CC_id] = cfg->ssb_table.ssb_subcarrier_offset.value;
+  nrmac->ssb_OffsetPointA[CC_id] = cfg->ssb_table.ssb_offset_point_a.value;
   LOG_I(NR_MAC,
         "ssb_OffsetPointA %d, ssb_SubcarrierOffset %d\n",
         cfg->ssb_table.ssb_offset_point_a.value,
@@ -820,7 +820,24 @@ static void config_common(gNB_MAC_INST *nrmac, nr_pdsch_AntennaPorts_t pdsch_Ant
   cfg->pmi_list = init_DL_MIMO_codebook(nrmac, pdsch_AntennaPorts);
 }
 
-void nr_mac_config_scc(gNB_MAC_INST *nrmac, NR_ServingCellConfigCommon_t *scc, const nr_mac_config_t *config)
+int rrc_mac_config_dedicate_scheduling(module_id_t Mod_idP, NR_DcchDtchConfig_t *dcchDtchConfig)
+{
+  gNB_MAC_INST *nrmac = RC.nrmac[Mod_idP];
+  if(dcchDtchConfig!=NULL){
+    if(dcchDtchConfig->ul && dcchDtchConfig->ul->dci_info){
+      NR_DciFormat_0_X_ResourceAssignment_t * dci0_resouceAssignment = dcchDtchConfig->ul->dci_info->resoure_assignment;
+      if(dci0_resouceAssignment){
+        nrmac->min_grant_prb = dci0_resouceAssignment->Nprb;
+        nrmac->grant_prb = dci0_resouceAssignment->Nprb;
+        nrmac->grant_mcs= dci0_resouceAssignment->transportBlock_scheduling.imcs;
+        nrmac->grant_rbStart = dci0_resouceAssignment->FirstRbIndex;
+        LOG_I(NR_MAC,"config mac PUSCH scheduler rbSize:%d, mcs:%d, rbStart:%d \n",nrmac->grant_prb,nrmac->grant_mcs,nrmac->grant_rbStart);
+      }
+    }
+  }
+  return 0;
+}
+void nr_mac_config_scc(gNB_MAC_INST *nrmac, NR_ServingCellConfigCommon_t *scc, const nr_mac_config_t *config, int CC_id)
 {
   DevAssert(nrmac != NULL);
   DevAssert(scc != NULL);
@@ -834,23 +851,27 @@ void nr_mac_config_scc(gNB_MAC_INST *nrmac, NR_ServingCellConfigCommon_t *scc, c
   int n = nr_slots_per_frame[*scc->ssbSubcarrierSpacing];
   if (*scc->ssbSubcarrierSpacing == 0)
     n <<= 1; // to have enough room for feedback possibly beyond the frame we need a larger array at 15kHz SCS
-  nrmac->common_channels[0].vrb_map_UL = calloc(n * MAX_BWP_SIZE, sizeof(uint16_t));
+  nrmac->common_channels[CC_id].vrb_map_UL = calloc(n * MAX_BWP_SIZE, sizeof(uint16_t));
   nrmac->vrb_map_UL_size = n;
-  AssertFatal(nrmac->common_channels[0].vrb_map_UL,
-              "could not allocate memory for RC.nrmac[]->common_channels[0].vrb_map_UL\n");
+  AssertFatal(nrmac->common_channels[CC_id].vrb_map_UL,
+              "could not allocate memory for RC.nrmac[]->common_channels[CC_id].vrb_map_UL\n");
 
   LOG_I(NR_MAC, "Configuring common parameters from NR ServingCellConfig\n");
 
-  config_common(nrmac, config->pdsch_AntennaPorts, config->pusch_AntennaPorts, scc);
+  config_common(nrmac, config->pdsch_AntennaPorts, config->pusch_AntennaPorts, scc, CC_id);
 
   if (NFAPI_MODE == NFAPI_MONOLITHIC) {
     // nothing to be sent in the other cases
-    NR_PHY_Config_t phycfg = {.Mod_id = 0, .CC_id = 0, .cfg = &nrmac->config[0]};
+    NR_PHY_Config_t phycfg = {.Mod_id = 0, .CC_id = 0, .cfg = &nrmac->config[CC_id]};
     DevAssert(nrmac->if_inst->NR_PHY_config_req);
     nrmac->if_inst->NR_PHY_config_req(&phycfg);
+  }else if (NFAPI_MODE == NFAPI_MODE_PNF || NFAPI_MODE == NFAPI_MODE_VNF) {  // keep this for SQN SS
+    // fake that the gNB is configured in nFAPI mode, which would normally be
+    // done in a NR_PHY_config_req, but in this mode, there is no PHY
+    RC.gNB[0]->configured = 1;
   }
 
-  find_SSB_and_RO_available(nrmac);
+  find_SSB_and_RO_available(nrmac, CC_id);
 
   const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
 
@@ -886,7 +907,7 @@ void nr_mac_config_scc(gNB_MAC_INST *nrmac, NR_ServingCellConfigCommon_t *scc, c
   }
 
   if (get_softmodem_params()->sa > 0) {
-    NR_COMMON_channels_t *cc = &nrmac->common_channels[0];
+    NR_COMMON_channels_t *cc = &nrmac->common_channels[CC_id];
     for (int n = 0; n < NR_NB_RA_PROC_MAX; n++) {
       NR_RA_t *ra = &cc->ra[n];
       ra->cfra = false;
@@ -900,17 +921,27 @@ void nr_mac_config_scc(gNB_MAC_INST *nrmac, NR_ServingCellConfigCommon_t *scc, c
   //NR_SCHED_UNLOCK(&nrmac->sched_lock);
 }
 
-void nr_mac_configure_sib1(gNB_MAC_INST *nrmac, const f1ap_plmn_t *plmn, uint64_t cellID, int tac)
+void nr_mac_configure_sib1(gNB_MAC_INST *nrmac, const f1ap_plmn_t *plmn, uint64_t cellID, int tac, int CC_id)
 {
   AssertFatal(get_softmodem_params()->sa > 0, "error: SIB1 only applicable for SA\n");
-
-  NR_COMMON_channels_t *cc = &nrmac->common_channels[0];
+  NR_SCHED_LOCK(&nrmac->sched_lock);
+  NR_COMMON_channels_t *cc = &nrmac->common_channels[CC_id];
   NR_ServingCellConfigCommon_t *scc = cc->ServingCellConfigCommon;
-  NR_BCCH_DL_SCH_Message_t *sib1 = get_SIB1_NR(scc, plmn, cellID, tac);
-  cc->sib1 = sib1;
-  cc->sib1_bcch_length = encode_SIB1_NR(sib1, cc->sib1_bcch_pdu, sizeof(cc->sib1_bcch_pdu));
+
+  
+  
+  if(cc->sib1){
+    reconfig_SIB1_NR(cc->sib1, scc, plmn, cellID, tac);
+  }else{
+    NR_BCCH_DL_SCH_Message_t *sib1 = get_SIB1_NR(scc, plmn, cellID, tac);
+    cc->sib1 = sib1;
+  }
+  
+  cc->sib1_bcch_length = encode_SIB1_NR(cc->sib1, cc->sib1_bcch_pdu, sizeof(cc->sib1_bcch_pdu));
+  NR_SCHED_UNLOCK(&nrmac->sched_lock);
   AssertFatal(cc->sib1_bcch_length > 0, "could not encode SIB1\n");
 }
+
 
 bool nr_mac_add_test_ue(gNB_MAC_INST *nrmac, uint32_t rnti, NR_CellGroupConfig_t *CellGroup)
 {
@@ -919,7 +950,7 @@ bool nr_mac_add_test_ue(gNB_MAC_INST *nrmac, uint32_t rnti, NR_CellGroupConfig_t
   DevAssert(get_softmodem_params()->phy_test);
   NR_SCHED_LOCK(&nrmac->sched_lock);
 
-  NR_UE_info_t* UE = add_new_nr_ue(nrmac, rnti, CellGroup);
+  NR_UE_info_t* UE = add_new_nr_ue(nrmac, rnti, 0, CellGroup); //bugz128620 to do: 0 is not good
   if (UE) {
     LOG_I(NR_MAC,"Force-added new UE %x with initial CellGroup\n", rnti);
     process_CellGroup(CellGroup, UE);
@@ -930,14 +961,14 @@ bool nr_mac_add_test_ue(gNB_MAC_INST *nrmac, uint32_t rnti, NR_CellGroupConfig_t
   return UE != NULL;
 }
 
-bool nr_mac_prepare_ra_ue(gNB_MAC_INST *nrmac, uint32_t rnti, NR_CellGroupConfig_t *CellGroup)
+bool nr_mac_prepare_ra_ue(gNB_MAC_INST *nrmac, int CC_id, uint32_t rnti, NR_CellGroupConfig_t *CellGroup)
 {
   DevAssert(nrmac != NULL);
   DevAssert(CellGroup != NULL);
   NR_SCHED_ENSURE_LOCKED(&nrmac->sched_lock);
 
   // NSA case: need to pre-configure CFRA
-  const int CC_id = 0;
+  //const int CC_id = 0;
   NR_COMMON_channels_t *cc = &nrmac->common_channels[CC_id];
   uint8_t ra_index = 0;
   /* checking for free RA process */

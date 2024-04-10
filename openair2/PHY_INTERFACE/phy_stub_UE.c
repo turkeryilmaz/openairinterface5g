@@ -46,6 +46,7 @@ void configure_nfapi_pnf(char *vnf_ip_addr,
                          int pnf_p7_port,
                          int vnf_p7_port);
 
+extern RAN_CONTEXT_t RC;
 UL_IND_t *UL_INFO = NULL;
 
 queue_t dl_config_req_tx_req_queue;
@@ -1347,11 +1348,13 @@ void *ue_standalone_pnf_task(void *context)
       {
       case NFAPI_DL_CONFIG_REQUEST:
       {
-        if (dl_config_req_valid)
+		printf("Received NFAPI_DL_CONFIG_REQUEST from phy_id:%d frame: %u, subframe: %u\n", 
+			header.phy_id, dl_config_req.sfn_sf >> 4, dl_config_req.sfn_sf & 15);
+/*        if (dl_config_req_valid)
         {
           LOG_W(MAC, "Received consecutive dl_config_reqs. Previous dl_config_req frame: %u, subframe: %u\n",
                 dl_config_req.sfn_sf >> 4, dl_config_req.sfn_sf & 15);
-        }
+        }*/
         if (nfapi_p7_message_unpack((void *)buffer, len, &dl_config_req,
                                     sizeof(dl_config_req), NULL) < 0)
         {
@@ -1385,11 +1388,13 @@ void *ue_standalone_pnf_task(void *context)
       }
       case NFAPI_TX_REQUEST:
       {
-        if (tx_req_valid)
+		printf("Received NFAPI_TX_REQUEST from phy_id:%d frame: %u, subframe: %u\n", 
+			header.phy_id, dl_config_req.sfn_sf >> 4, dl_config_req.sfn_sf & 15);
+/*        if (tx_req_valid)
         {
           LOG_W(MAC, "Received consecutive tx_reqs. Previous tx_req frame: %u, subframe: %u\n",
                 tx_req.sfn_sf >> 4, tx_req.sfn_sf & 15);
-        }
+        }*/
         if (nfapi_p7_message_unpack((void *)buffer, len, &tx_req,
                                     sizeof(tx_req), NULL) < 0)
         {
@@ -1450,6 +1455,46 @@ void *ue_standalone_pnf_task(void *context)
 
         break;
       }
+      case P7_CELL_SEARCH_IND:
+	  {
+		  vendor_nfapi_cell_search_indication_t cell_ind;
+		  if (nfapi_p7_message_unpack((void *)buffer, len, &cell_ind,
+					  sizeof(vendor_nfapi_cell_search_indication_t), NULL) < 0)
+		  {
+			  LOG_E(MAC, "Message cell_ind failed to unpack\n");
+			  break;
+		  }
+		  LOG_D(MAC, "P7_CELL_SEARCH_IND Received: numlteCells:%d cell[1]:%d cell[2]:%d\n",
+				cell_ind.lte_cell_search_indication.number_of_lte_cells_found,
+				cell_ind.lte_cell_search_indication.lte_found_cells[0].pci,
+				cell_ind.lte_cell_search_indication.lte_found_cells[1].pci);
+
+		  MessageDef *message_p;
+		  int  i;
+		  message_p = itti_alloc_new_message(TASK_UNKNOWN, 0, PHY_FIND_CELL_IND);
+//		  for (i = 0 ; i <  cell_ind.lte_cell_search_indication.number_of_lte_cells_found; i++) {
+		  for (i = 0 ; i <  1; i++) {
+			  // TO DO
+			  PHY_FIND_CELL_IND (message_p).cell_nb = i+1;
+			  /** FIXME: What we need is EARFCN not Freq Offset. */
+			  PHY_FIND_CELL_IND (message_p).cells[i].earfcn = cell_ind.lte_cell_search_indication.lte_found_cells[i].frequency_offset;
+			  // TO DO
+			  PHY_FIND_CELL_IND (message_p).cells[i].cell_id = cell_ind.lte_cell_search_indication.lte_found_cells[i].pci;
+			  PHY_FIND_CELL_IND (message_p).cells[i].rsrp = cell_ind.lte_cell_search_indication.lte_found_cells[i].rsrp;
+			  PHY_FIND_CELL_IND (message_p).cells[i].rsrq = cell_ind.lte_cell_search_indication.lte_found_cells[i].rsrq;
+
+			  LOG_A(MAC, "Cell No: %d PCI: %d EARFCN: %d RSRP: %d RSRQ: %d \n", PHY_FIND_CELL_IND (message_p).cell_nb,
+					  PHY_FIND_CELL_IND (message_p).cells[i].cell_id,
+					  PHY_FIND_CELL_IND (message_p).cells[i].earfcn,
+					  PHY_FIND_CELL_IND (message_p).cells[i].rsrp,
+					  PHY_FIND_CELL_IND (message_p).cells[i].rsrq);
+			  itti_send_msg_to_task(TASK_RRC_UE, INSTANCE_DEFAULT, message_p);
+		  }
+
+
+		  break;
+
+	  }
       default:
         LOG_E(MAC, "Case Statement has no corresponding nfapi message\n");
         break;
@@ -1684,6 +1729,11 @@ static void print_rx_ind(nfapi_rx_indication_t *p)
       encoded_size = nfapi_p7_message_pack(&UL->sr_ind, buffer, sizeof(buffer), NULL);
       LOG_I(MAC, "SR_IND sent to Proxy, Size: %d\n", encoded_size);
       break;
+    case NFAPI_SUBFRAME_INDICATION:
+      encoded_size = nfapi_p7_message_pack(&UL->vt_ue_sf_ind, buffer, sizeof(buffer), NULL);
+      LOG_I(MAC, "UE_SF_IND sent to Proxy, Size: %d\n", encoded_size);
+      break;
+
     default:
       LOG_I(MAC, "%s Unknown Message msg_type :: %u\n", __func__, msg_type);
       return;
@@ -1833,6 +1883,24 @@ char *nfapi_ul_config_req_to_string(nfapi_ul_config_request_t *req)
     }
     return result;
 }
+
+
+void fill_ue_slot_indication_UE_MAC(int Mod_id,
+                               int frame,
+                               int subframe,
+			       uint16_t ack_sfn_sf,
+                               UL_IND_t *UL_INFO)
+{
+  pthread_mutex_lock(&fill_ul_mutex.vt_ue_sf_mutex);
+
+  nfapi_ue_sf_indication_vt_t *ue_sf_ind = &UL_INFO->vt_ue_sf_ind;
+
+  ue_sf_ind->sfn_sf = frame << 4 | subframe;
+  ue_sf_ind->header.message_id = NFAPI_SUBFRAME_INDICATION;
+
+  pthread_mutex_unlock(&fill_ul_mutex.vt_ue_sf_mutex);
+}
+
 
 /* Dummy functions*/
 
@@ -2147,4 +2215,35 @@ static bool should_drop_transport_block(int sf, uint16_t rnti)
     abort();
   }
   return false;
+}
+
+//------------------------------------------------------------------------------
+int
+find_UE_id(module_id_t mod_idP,
+           rnti_t rntiP)
+//------------------------------------------------------------------------------
+{
+  int UE_id;
+  UE_info_t *UE_info = &RC.mac[mod_idP]->UE_info;
+  if(!UE_info)
+    return -1;
+
+  for (UE_id = 0; UE_id < MAX_MOBILES_PER_ENB; UE_id++) {
+    int CC_id = UE_PCCID(mod_idP, UE_id);
+    if (UE_info->active[CC_id][UE_id] == true) {
+      if (CC_id>=0 && CC_id<NFAPI_CC_MAX && UE_info->UE_template[CC_id][UE_id].rnti == rntiP) {
+        return UE_id;
+      }
+    }
+  }
+  return -1;
+}
+
+//------------------------------------------------------------------------------
+int
+UE_PCCID(module_id_t mod_idP,
+         int ue_idP)
+//------------------------------------------------------------------------------
+{
+  return (RC.mac[mod_idP]->UE_info.pCC_id[ue_idP]);
 }

@@ -272,6 +272,8 @@ void release_mac_configuration(NR_UE_MAC_INST_t *mac,
   for (int i = first_bwp_rel; i < mac->ul_BWPs.count; i++)
     release_ul_BWP(mac, i);
 
+  mac->order_list_count = 0;//TODO w2411 rebase to check
+
   memset(&mac->ssb_measurements, 0, sizeof(mac->ssb_measurements));
   memset(&mac->csirs_measurements, 0, sizeof(mac->csirs_measurements));
   memset(&mac->ul_time_alignment, 0, sizeof(mac->ul_time_alignment));

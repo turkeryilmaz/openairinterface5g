@@ -83,6 +83,14 @@ unsigned short config_frames[4] = {2,9,11,13};
 #ifdef ENABLE_AERIAL
 #include "nfapi/oai_integration/aerial/fapi_nvIPC.h"
 #endif
+#include "ss_gNB_sys_task.h"
+#include "ss_gNB_port_man_task.h"
+#include "ss_gNB_srb_task.h"
+#include "udp_eNB_task.h"
+#include "ss_gNB_drb_task.h"
+#include "ss_gNB_vtp_task.h"
+#include "ss_gNB_vt_timer_task.h"
+
 #ifdef E2_AGENT
 #include "openair2/E2AP/flexric/src/agent/e2_agent_api.h"
 #include "openair2/E2AP/RAN_FUNCTION/init_ran_func.h"
@@ -164,6 +172,16 @@ static char *worker_config = NULL;
 eth_params_t *eth_params;
 
 double cpuf;
+
+/** FC Cell config */
+pthread_cond_t cell_config_done_cond;
+pthread_mutex_t cell_config_done_mutex;
+int cell_config_done=-1;
+
+pthread_cond_t cell_config_5G_done_cond;
+pthread_mutex_t cell_config_5G_done_mutex;
+extern int cell_config_5G_done;
+static  void wait_cell_config_5G(char *thread_name);
 
 /* hack: pdcp_run() is required by 4G scheduler which is compiled into
  * nr-softmodem because of linker issues */
@@ -292,7 +310,10 @@ static int create_gNB_tasks(ngran_node_t node_type, configmodule_interface_t *cf
 #endif
 
   RCconfig_verify(cfg, node_type);
-
+  RCconfig_nr_ssparam();
+  if(RC.ss.mode == SS_SOFTMODEM){
+    RCconfig_NR_L1();
+  }
   if(NFAPI_MODE != NFAPI_MODE_AERIAL){
     RCconfig_nr_prs();
   }
@@ -315,6 +336,18 @@ static int create_gNB_tasks(ngran_node_t node_type, configmodule_interface_t *cf
     RC.nrrrc = calloc(1, sizeof(*RC.nrrrc));
     RC.nrrrc[0] = calloc(1,sizeof(gNB_RRC_INST));
     RCconfig_NRRRC(RC.nrrrc[0]);
+
+    sync_inited_params_for_ss();
+  
+    //if (RC.ss.mode == SS_SOFTMODEM)  //W38 note: this is useless, ss.mode has not been initialized yet. same issue before W38. //TODO: if neccessary, need to implement new sync with ttcn cell config
+    {
+      /** wait for signal */
+      //wait_cell_config_5G("TASK_SYS_GNB");
+      //LOG_I(GNB_APP, "fxn:%s: Received Cell Config 5G SA\n", __FUNCTION__);
+      // msg_p = itti_alloc_new_message (TASK_GNB_APP, 0, NRRRC_CONFIGURATION_REQ);
+      // LOG_I(GNB_APP,"Sending configuration message to NR_RRC task\n");
+      // itti_send_msg_to_task (TASK_RRC_GNB, GNB_MODULE_ID_TO_INSTANCE(gnb_id), msg_p);
+    }
   }
 
   if (RC.nb_nr_inst > 0 &&
@@ -383,9 +416,70 @@ static int create_gNB_tasks(ngran_node_t node_type, configmodule_interface_t *cf
   }
 
   if (gnb_nb > 0) {
+//    RCconfig_nr_ssparam();  
     if (itti_create_task (TASK_GNB_APP, gNB_app_task, NULL) < 0) {
       LOG_E(GNB_APP, "Create task for gNB APP failed\n");
       return -1;
+    }
+    if (RC.ss.mode >= SS_SOFTMODEM)
+    {
+      if(itti_create_task(TASK_SS_PORTMAN_GNB, ss_gNB_port_man_task, NULL) < 0)
+      {
+        LOG_E(GNB_APP, "Create task for SS Port manager GNB failed\n");
+        return -1;
+      }
+      if(itti_create_task(TASK_SS_PORTMAN_ACP, ss_gNB_port_man_acp_task, NULL) < 0)
+      {
+        LOG_E(GNB_APP, "Create task for SS Port manager ACP failed\n");
+        return -1;
+      }
+      /* This sleep is for gNB_app_task to load the RRC configuration */
+      usleep(1000);
+      if(itti_create_task(TASK_SYS_GNB, ss_gNB_sys_task, NULL) < 0)
+      {
+        LOG_E(GNB_APP, "Create task for SS GNB failed\n");
+        return -1;
+      }
+
+      if(itti_create_task(TASK_UDP, udp_eNB_task, NULL) < 0) {
+        LOG_E(SCTP, "Create task for UDP failed\n");
+        return -1;
+      }
+
+      if(itti_create_task(TASK_SS_SRB_GNB, ss_gNB_srb_task, NULL) < 0) {
+        LOG_E(SCTP, "Create task for SS SRB GNB failed\n");
+        return -1;
+      }
+
+      if(itti_create_task(TASK_SS_SRB_ACP, ss_gNB_srb_acp_task, NULL) < 0) {
+        LOG_E(SCTP, "Create task for SS SRB ACP failed\n");
+        return -1;
+      }
+
+      if(itti_create_task(TASK_SS_DRB, ss_gNB_drb_task, NULL) < 0) {
+        LOG_E(SCTP, "Create task for SS DRB failed\n");
+        return -1;
+      }
+
+      if(itti_create_task(TASK_SS_DRB_ACP, ss_gNB_drb_acp_task, NULL) < 0) {
+        LOG_E(SCTP, "Create task for SS DRB ACP failed\n");
+        return -1;
+      }
+
+      if(itti_create_task(TASK_VTP, ss_gNB_vtp_task, NULL) < 0) {
+        LOG_E(SCTP, "Create task for TASK_VTP failed\n");
+        return -1;
+      }
+
+      if(itti_create_task(TASK_VTP_ACP, ss_gNB_vtp_acp_task, NULL) < 0) {
+        LOG_E(SCTP, "Create task for TASK VTP ACP failed\n");
+        return -1;
+      }
+
+      if(itti_create_task(TASK_VT_TIMER, ss_gNB_vt_timer_task, NULL) < 0) {
+        LOG_E(SCTP, "Create task for TASK_VT_TIMER failed\n");
+        return -1;
+      }
     }
 
     if (!NODE_IS_DU(node_type)) {
@@ -686,6 +780,9 @@ int main( int argc, char **argv ) {
     AssertFatal(ret == 0, "cannot create ITTI tasks\n");
   }
 
+  // init UE_PF_PO and mutex lock
+  pthread_mutex_init(&ue_pf_po_mutex, NULL);
+  memset (&UE_PF_PO[0][0], 0, sizeof(UE_PF_PO_t)*NUMBER_OF_UE_MAX*MAX_NUM_CCs);
   mlockall(MCL_CURRENT | MCL_FUTURE);
   pthread_cond_init(&sync_cond,NULL);
   pthread_mutex_init(&sync_mutex, NULL);
@@ -840,4 +937,16 @@ int main( int argc, char **argv ) {
   logClean();
   printf("Bye.\n");
   return 0;
+}
+
+static  void wait_cell_config_5G(char *thread_name) {
+             
+  LOG_A(GNB_APP, "waiting for [SYS 5G] CELL CONFIG Indication (%s)\n",thread_name);
+  pthread_mutex_lock( &cell_config_5G_done_mutex );
+      
+  while ( cell_config_5G_done < 0 )
+    pthread_cond_wait( &cell_config_5G_done_cond, &cell_config_5G_done_mutex );
+  
+  pthread_mutex_unlock(&cell_config_5G_done_mutex );
+  LOG_A( GNB_APP,"[SYS 5G]: got cell config (%s)\n", thread_name);
 }

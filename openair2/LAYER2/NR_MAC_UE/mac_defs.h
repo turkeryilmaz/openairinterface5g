@@ -159,6 +159,7 @@
 /*!\brief UE layer 2 status */
 typedef enum {
   UE_NOT_SYNC = 0,
+  UE_STAY_WITH_DL_SYNC_ONLY,
   UE_SYNC,
   UE_PERFORMING_RA,
   UE_CONNECTED
@@ -239,11 +240,12 @@ typedef struct {
 
 typedef enum {
   nrRA_UE_IDLE = 0,
-  nrRA_GENERATE_PREAMBLE = 1,
-  nrRA_WAIT_RAR = 2,
-  nrRA_WAIT_CONTENTION_RESOLUTION = 3,
-  nrRA_SUCCEEDED = 4,
-  nrRA_FAILED = 5
+  nrRA_WAIT_SIB   = 1,
+  nrRA_GENERATE_PREAMBLE = 2,
+  nrRA_WAIT_RAR = 3,
+  nrRA_WAIT_CONTENTION_RESOLUTION = 4,
+  nrRA_SUCCEEDED = 5,
+  nrRA_FAILED = 6
 } nrRA_UE_state_t;
 
 static const char *const nrra_ue_text[] =
@@ -464,12 +466,13 @@ typedef struct {
 typedef struct NR_UE_MAC_INST_s {
   module_id_t ue_id;
   NR_UE_L2_STATE_t state;
-  int servCellIndex;
-  long physCellId;
-  int first_sync_frame;
-  bool get_sib1;
-  bool get_otherSI;
-  NR_MIB_t *mib;
+  int                             servCellIndex;
+  long                            physCellId;
+  uint8_t                         phy_id;
+  int                             first_sync_frame;
+  bool                            get_sib1;
+  bool                            get_otherSI;
+  NR_MIB_t                        *mib;
   struct NR_SI_SchedulingInfo *si_SchedulingInfo;
   int si_window_start;
   ssb_list_info_t ssb_list[MAX_NUM_BWP_UE];
@@ -526,7 +529,7 @@ typedef struct NR_UE_MAC_INST_s {
 
   // order lc info
   A_SEQUENCE_OF(nr_lcordered_info_t) lc_ordered_list;
-
+  uint8_t order_list_count;
   NR_UE_SCHEDULING_INFO scheduling_info;
 
   /// PHR
@@ -556,6 +559,8 @@ typedef struct NR_UE_MAC_INST_s {
   nr_emulated_l1_t nr_ue_emul_l1;
 
   pthread_mutex_t mutex_dl_info;
+  pthread_mutex_t mutex_ul_info;
+  rlm_t p7_cell_search_ind_rlm;
 
   //SIDELINK MAC PARAMETERS
   sl_nr_ue_mac_params_t *SL_MAC_PARAMS;

@@ -29,6 +29,9 @@
 #include <string.h>
 #include <pthread.h>
 
+#include "common/ran_context.h"
+extern RAN_CONTEXT_t RC;
+
 typedef struct {
   nr_sdap_entity_t *sdap_entity_llist;
 } nr_sdap_entity_info;
@@ -205,6 +208,21 @@ static bool nr_sdap_tx_entity(nr_sdap_entity_t *entity,
   return ret;
 }
 
+extern void enqueue_sdap_data_req(
+    const uint8_t gnb_flag,
+    const ue_id_t ue_id,
+    const srb_flag_t srb_flag,
+    const rb_id_t rb_id,
+    const mui_t mui,
+    const confirm_t confirm,
+    const sdu_size_t sdu_buffer_size,
+    unsigned char *const sdu_buffer,
+    const pdcp_transmission_mode_t pt_mode,
+    const uint8_t qfi,
+    const bool rqi,
+    const int pdu_sessionId,
+    const uint8_t delaySeconds);
+
 static void nr_sdap_rx_entity(nr_sdap_entity_t *entity,
                               rb_id_t pdcp_entity,
                               int is_gnb,
@@ -218,9 +236,12 @@ static void nr_sdap_rx_entity(nr_sdap_entity_t *entity,
   int offset=0;
 
   if (is_gnb) { // gNB
+    uint8_t qfi =1;
+    bool rqi = false;
     if (has_sdap_rx) { // Handling the SDAP Header
       offset = SDAP_HDR_LENGTH;
       nr_sdap_ul_hdr_t *sdap_hdr = (nr_sdap_ul_hdr_t *)buf;
+      qfi = sdap_hdr->QFI;
       LOG_D(SDAP, "RX Entity Received QFI:    %u\n", sdap_hdr->QFI);
       LOG_D(SDAP, "RX Entity Received R bit:  %u\n", sdap_hdr->R);
       LOG_D(SDAP, "RX Entity Received DC bit: %u\n", sdap_hdr->DC);
@@ -236,6 +257,22 @@ static void nr_sdap_rx_entity(nr_sdap_entity_t *entity,
       }
     }
 
+    if(RC.ss.mode >= SS_SOFTMODEM){
+        enqueue_sdap_data_req(GNB_FLAG_YES,
+            ue_id,
+            SRB_FLAG_NO,
+            pdcp_entity,
+            RLC_MUI_UNDEFINED,
+            RLC_SDU_CONFIRM_NO,
+            size - offset,
+            (unsigned char *)(buf+offset),
+            PDCP_TRANSMISSION_MODE_DATA,
+            qfi,
+            rqi,
+            pdusession_id,
+            0);
+        return;
+    }
     // Pushing SDAP SDU to GTP-U Layer
     MessageDef *message_p = itti_alloc_new_message_sized(TASK_PDCP_ENB,
                                                          0,
@@ -255,6 +292,8 @@ static void nr_sdap_rx_entity(nr_sdap_entity_t *entity,
     // very very dirty hack gloabl var N3GTPUInst
     itti_send_msg_to_task(TASK_GTPV1_U, *N3GTPUInst, message_p);
   } else { //nrUE
+    extern uint8_t nas_qfi;
+    uint8_t qfi = nas_qfi;
     /*
      * TS 37.324 5.2 Data transfer
      * 5.2.2 Downlink
@@ -271,7 +310,7 @@ static void nr_sdap_rx_entity(nr_sdap_entity_t *entity,
       LOG_D(SDAP, "RX Entity Received QFI : %u\n", sdap_hdr->QFI);
       LOG_D(SDAP, "RX Entity Received RQI : %u\n", sdap_hdr->RQI);
       LOG_D(SDAP, "RX Entity Received RDI : %u\n", sdap_hdr->RDI);
-
+      qfi = sdap_hdr->QFI;
       /*
        * TS 37.324 5.2 Data transfer
        * 5.2.2 Downlink
@@ -322,6 +361,28 @@ static void nr_sdap_rx_entity(nr_sdap_entity_t *entity,
         LOG_W(SDAP, "UE - TODD 5.4\n");
       }
     } /*  else - retrieve the SDAP SDU from the DL SDAP data PDU as specified in the subclause 6.2.2.1 */
+
+    /* TS38.509 5.3.4.2 UE test loop mode B operation */
+    extern bool sdap_test_loop;
+    extern uint8_t sdap_testLoopDelayTimeSeconds;
+    if(sdap_test_loop){
+      LOG_D(SDAP, "SDAP loop back SDU\n");
+      bool dc = SDAP_HDR_UL_DATA_PDU;
+      enqueue_sdap_data_req(GNB_FLAG_NO,
+            ue_id,
+            SRB_FLAG_NO,
+            pdcp_entity,
+            RLC_MUI_UNDEFINED,
+            RLC_SDU_CONFIRM_NO,
+            size - offset,
+            (unsigned char *)(buf+offset),
+            PDCP_TRANSMISSION_MODE_DATA,
+            qfi,
+            dc,
+            pdusession_id,
+            sdap_testLoopDelayTimeSeconds);
+      return;
+    }
 
     /*
      * TS 37.324 5.2 Data transfer

@@ -157,8 +157,8 @@ typedef enum {
 #define RU_IF_FREQ_OFFSET             27
 #define RU_DO_PRECODING               28
 #define RU_SF_AHEAD                   29
-#define RU_SL_AHEAD                   30 
-#define RU_NR_FLAG                    31 
+#define RU_SL_AHEAD                   30
+#define RU_NR_FLAG                    31
 #define RU_NR_SCS_FOR_RASTER          32
 #define RU_TX_SUBDEV                  33
 #define RU_RX_SUBDEV                  34
@@ -398,6 +398,59 @@ typedef enum {
   { .s1 = { config_check_intval,   MNC_DIGIT_LENGTH_OKVALUES, 2 } }, \
 }
 // clang-format on
+
+/*-------------------------------------------------------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------------------------------------------------------*/
+
+/* SS configuration */
+
+#define CONFIG_SS                                          "SSConfig"
+#define CONFIG_SS_HOSTIP                                   "hostIp"
+#define CONFIG_SS_SYSPORT                                  "Sys_port"
+#define CONFIG_SS_SYSHOST                                  "Sys_host"
+#define CONFIG_SS_SRBPORT                                  "Srb_port"
+#define CONFIG_SS_SRBHOST                                  "Srb_host"
+#define CONFIG_SS_VNGPORT                                  "Vng_port"
+#define CONFIG_SS_VNGHOST                                  "Vng_host"
+#define CONFIG_SS_VTPPORT                                  "Vtp_port"
+#define CONFIG_SS_VTPHOST                                  "Vtp_host"
+#define CONFIG_SS_SYSINDPORT                               "SysInd_port"
+#define CONFIG_SS_SYSINDHOST                               "SysInd_host"
+#define CONFIG_SS_DRBPORT                                  "Drb_port"
+#define CONFIG_SS_DRBHOST                                  "Drb_host"
+#define CONFIG_SS_MODE                                     "SSMode"
+
+#define CONFIG_SS_HOSTIP_IDX     0
+#define CONFIG_SS_SYSPORT_IDX    1
+#define CONFIG_SS_SYSHOST_IDX    2
+#define CONFIG_SS_SRBPORT_IDX    3
+#define CONFIG_SS_SRBHOST_IDX    4
+#define CONFIG_SS_VNGPORT_IDX    5
+#define CONFIG_SS_VNGHOST_IDX    6
+#define CONFIG_SS_VTPPORT_IDX    7
+#define CONFIG_SS_VTPHOST_IDX    8
+#define CONFIG_SS_SYSINDPORT_IDX 9
+#define CONFIG_SS_SYSINDHOST_IDX 10
+#define CONFIG_SS_DRBPORT_IDX    11
+#define CONFIG_SS_DRBHOST_IDX    12
+#define CONFIG_SS_MODE_IDX    13
+
+#define SSPARAMS_DESC {                                                                  \
+{CONFIG_SS_HOSTIP          ,                     NULL,     0,          uptr:NULL,        defstrval:"127.0.0.1",    TYPE_STRING,   0},     \
+{CONFIG_SS_SYSPORT         ,                     NULL,     0,          uptr:NULL,        defintval:0000,           TYPE_UINT,     0},   \
+{CONFIG_SS_SYSHOST         ,                     NULL,     0,          uptr:NULL,        defstrval:"127.0.0.1",    TYPE_STRING,   0},   \
+{CONFIG_SS_SRBPORT         ,                     NULL,     0,          uptr:NULL,        defintval:0000,           TYPE_UINT,     0},   \
+{CONFIG_SS_SRBHOST         ,                     NULL,     0,          uptr:NULL,        defstrval:"127.0.0.1",    TYPE_STRING,   0},   \
+{CONFIG_SS_VNGPORT         ,                     NULL,     0,          uptr:NULL,        defintval:0000,           TYPE_UINT,     0},   \
+{CONFIG_SS_VNGHOST         ,                     NULL,     0,          uptr:NULL,        defstrval:"127.0.0.1",    TYPE_STRING,   0},   \
+{CONFIG_SS_VTPPORT         ,                     NULL,     0,          uptr:NULL,        defintval:0000,           TYPE_UINT,     0},   \
+{CONFIG_SS_VTPHOST         ,                     NULL,     0,          uptr:NULL,        defstrval:"127.0.0.1",    TYPE_STRING,   0},   \
+{CONFIG_SS_SYSINDPORT      ,                     NULL,     0,          uptr:NULL,        defintval:0000,           TYPE_UINT,     0},   \
+{CONFIG_SS_SYSINDHOST      ,                     NULL,     0,          uptr:NULL,        defstrval:"127.0.0.1",    TYPE_STRING,   0},   \
+{CONFIG_SS_DRBPORT         ,                     NULL,     0,          uptr:NULL,        defintval:0000,           TYPE_UINT,     0},   \
+{CONFIG_SS_DRBHOST         ,                     NULL,     0,          uptr:NULL,        defstrval:"127.0.0.1",    TYPE_STRING,   0},   \
+{CONFIG_SS_MODE            ,                     NULL,     0,          uptr:NULL,        defintval:0000,           TYPE_UINT,     0},   \
+}
 
 /*-------------------------------------------------------------------------------------------------------------------------------------------------*/
 #define ENB_CONFIG_STRING_MBMS_CONFIGURATION_DATA_LIST                     "mbms_configuration_data_list"

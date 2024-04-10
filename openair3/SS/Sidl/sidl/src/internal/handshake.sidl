@@ -1,0 +1,75 @@
+/*
+ * Copyright 2022 Sequans Communications.
+ *
+ * Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The OpenAirInterface Software Alliance licenses this file to You under
+ * the OAI Public License, Version 1.0  (the "License"); you may not use this file
+ * except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.openairinterface.org/?page_id=698
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * For more information about the OpenAirInterface (OAI) Software Alliance:
+ *      contact@openairinterface.org
+ */
+
+#include "msg.sidl"
+
+struct AcpHandshakeVersion {
+	char release[32];
+	char checksum[64];
+};
+
+struct AcpHandshakeReqControlInfo {
+	bool productMode;
+	char* desc;
+};
+
+typedef enum {
+	ACP_HANDSHAKE_OK,
+	ACP_HANDSHAKE_GENERAL_ERROR,
+	ACP_HANDSHAKE_VERSION_ERROR,
+	ACP_HANDSHAKE_SERVICE_ERROR
+} AcpHandshakeCnfResult;
+
+struct AcpHandshakeReqCommon {
+	struct AcpHandshakeVersion version;
+	struct AcpHandshakeReqControlInfo control;
+};
+
+struct AcpHandshakeCnfCommon {
+	struct AcpHandshakeVersion version;
+	AcpHandshakeCnfResult result;
+};
+
+struct AcpHandshakeService {
+	uint32_t id;
+	char* name;
+};
+
+struct AcpHandshakeReqService {
+	SIDL_DYNAMIC_OF_STRUCT_WITH_PFX(AcpHandshakeReqService, AcpHandshakeService, services);
+};
+
+struct AcpHandshakeCnfService {
+	SIDL_DYNAMIC_OF_STRUCT_WITH_PFX(AcpHandshakeCnfService, AcpHandshakeService, services);
+};
+
+struct AcpHandshakeReq {
+	struct AcpHandshakeReqCommon common;
+	struct AcpHandshakeReqService request;
+};
+
+struct AcpHandshakeCnf {
+	struct AcpHandshakeCnfCommon common;
+	struct AcpHandshakeCnfService confirm;
+};
+
+COMMAND Process(const struct AcpHandshakeReq* FromSS, struct AcpHandshakeCnf* ToSS);

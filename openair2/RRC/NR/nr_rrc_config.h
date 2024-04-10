@@ -34,6 +34,8 @@
 #include "nr_rrc_defs.h"
 #include "openair2/RRC/NR/MESSAGES/asn1_msg.h"
 
+#include "OCTET_STRING.h"
+
 // forward declaration of MAC configuration parameters, definition is included in C file
 struct nr_mac_config_t;
 typedef struct nr_mac_config_t nr_mac_config_t;
@@ -59,6 +61,7 @@ int encode_MIB_NR(NR_BCCH_BCH_Message_t *mib, int frame, uint8_t *buf, int buf_s
 
 #define NR_MAX_SIB_LENGTH 2976 // 3GPP TS 38.331 section 5.2.1
 NR_BCCH_DL_SCH_Message_t *get_SIB1_NR(const NR_ServingCellConfigCommon_t *scc, const f1ap_plmn_t *plmn, uint64_t cellID, int tac);
+void reconfig_SIB1_NR(NR_BCCH_DL_SCH_Message_t *sib1_message, const NR_ServingCellConfigCommon_t *scc, const f1ap_plmn_t *plmn, uint64_t cellID, int tac);
 void free_SIB1_NR(NR_BCCH_DL_SCH_Message_t *sib1);
 int encode_SIB1_NR(NR_BCCH_DL_SCH_Message_t *sib1, uint8_t *buffer, int max_buffer_size);
 
@@ -71,6 +74,7 @@ void update_cellGroupConfig(NR_CellGroupConfig_t *cellGroupConfig,
                             NR_UE_NR_Capability_t *uecap,
                             const nr_mac_config_t *configuration,
                             const NR_ServingCellConfigCommon_t *scc);
+void update_cellGroupConfig2(NR_CellGroupConfig_t *cellGroupConfig, const OCTET_STRING_t *data);
 void free_cellGroupConfig(NR_CellGroupConfig_t *cellGroupConfig);
 int encode_cellGroupConfig(NR_CellGroupConfig_t *cellGroupConfig, uint8_t *buffer, int max_buffer_size);
 NR_CellGroupConfig_t *decode_cellGroupConfig(const uint8_t *buffer, int max_buffer_size);
