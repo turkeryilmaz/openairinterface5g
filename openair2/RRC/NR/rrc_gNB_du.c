@@ -69,12 +69,13 @@ void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *req, sctp_assoc_t assoc_id)
   }
   f1ap_served_cell_info_t *cell_info = &req->cell[0].info;
   if (!rrc_gNB_plmn_matches(rrc, cell_info)) {
-    LOG_E(NR_RRC,
+    //JPE LOG to be cleaned up
+    /*LOG_E(NR_RRC,
           "PLMN mismatch: CU %d%d, DU %d%d\n",
           rrc->configuration.mcc[0],
           rrc->configuration.mnc[0],
           cell_info->plmn.mcc,
-          cell_info->plmn.mnc);
+          cell_info->plmn.mnc);*/
     f1ap_setup_failure_t fail = {.cause = F1AP_CauseRadioNetwork_plmn_not_served_by_the_gNB_CU};
     rrc->mac_rrc.f1_setup_failure(assoc_id, &fail);
     return;

@@ -731,7 +731,6 @@ int DU_handle_UE_CONTEXT_RELEASE_COMMAND(instance_t instance, sctp_assoc_t assoc
   F1AP_FIND_PROTOCOLIE_BY_ID(F1AP_UEContextReleaseCommandIEs_t, ie, container,
                              F1AP_ProtocolIE_ID_id_gNB_DU_UE_F1AP_ID, true);
   f1ap_ue_context_release_cmd->gNB_DU_ue_id = ie->value.choice.GNB_DU_UE_F1AP_ID;
-
   // We don't need the Cause
   // Optional RRC Container: if present, send to UE
   F1AP_FIND_PROTOCOLIE_BY_ID(F1AP_UEContextReleaseCommandIEs_t, ie, container,
@@ -1178,7 +1177,7 @@ int DU_send_UE_CONTEXT_MODIFICATION_RESPONSE(sctp_assoc_t assoc_id, f1ap_ue_cont
       F1AP_DRBs_Modified_Item_t *drbs_modified_item= &drbs_modified_item_ies->value.choice.DRBs_Modified_Item;
       /* dRBID */
       drbs_modified_item->dRBID = resp->drbs_to_be_modified[i].drb_id;
-      
+
       /* ULTunnels_Modified_List */
       for (int j=0;  j<resp->drbs_to_be_modified[i].up_dl_tnl_length;  j++) {
         /*  DLTunnels_Modified_Item */

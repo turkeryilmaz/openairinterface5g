@@ -39,8 +39,8 @@
 
 
 #define GNB_CONFIG_STRING_CC_NODE_FUNCTION        "node_function"
-#define GNB_CONFIG_STRING_CC_NODE_TIMING          "node_timing"   
-#define GNB_CONFIG_STRING_CC_NODE_SYNCH_REF       "node_synch_ref"   
+#define GNB_CONFIG_STRING_CC_NODE_TIMING          "node_timing"
+#define GNB_CONFIG_STRING_CC_NODE_SYNCH_REF       "node_synch_ref"
 
 
 // OTG config per GNB-UE DL
@@ -227,7 +227,7 @@ typedef enum {
 }
 
 /*-------------------------------------------------------------------------------------------------------------------------------------------------*/
-/*-------------------------------------------------------------------------------------------------------------------------------------------------*/		  
+/*-------------------------------------------------------------------------------------------------------------------------------------------------*/
 
 /* PLMN ID configuration */
 
@@ -257,7 +257,54 @@ typedef enum {
   { .s1 = { config_check_intval,   MNC_DIGIT_LENGTH_OKVALUES, 2 } }, \
 }
 
+/*-------------------------------------------------------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------------------------------------------------------*/
 
+/* NR-SS configuration */
+
+#define GNB_CONFIG_SS                                          "SSConfig"
+#define GNB_CONFIG_SS_HOSTIP                                   "hostIp"
+#define GNB_CONFIG_SS_SYSPORT                                  "Sys_port"
+#define GNB_CONFIG_SS_SYSHOST                                  "Sys_host"
+#define GNB_CONFIG_SS_SRBPORT                                  "Srb_port"
+#define GNB_CONFIG_SS_SRBHOST                                  "Srb_host"
+#define GNB_CONFIG_SS_VNGPORT                                  "Vng_port"
+#define GNB_CONFIG_SS_VNGHOST                                  "Vng_host"
+#define GNB_CONFIG_SS_VTPPORT                                  "Vtp_port"
+#define GNB_CONFIG_SS_VTPHOST                                  "Vtp_host"
+#define GNB_CONFIG_SS_DRBPORT                                  "Drb_port"
+#define GNB_CONFIG_SS_DRBHOST                                  "Drb_host"
+#define GNB_CONFIG_SS_MODE                                     "SSMode"
+
+#define GNB_CONFIG_SS_HOSTIP_IDX     0
+#define GNB_CONFIG_SS_SYSPORT_IDX    1
+#define GNB_CONFIG_SS_SYSHOST_IDX    2
+#define GNB_CONFIG_SS_SRBPORT_IDX    3
+#define GNB_CONFIG_SS_SRBHOST_IDX    4
+#define GNB_CONFIG_SS_VNGPORT_IDX    5
+#define GNB_CONFIG_SS_VNGHOST_IDX    6
+#define GNB_CONFIG_SS_VTPPORT_IDX    7
+#define GNB_CONFIG_SS_VTPHOST_IDX    8
+#define GNB_CONFIG_SS_DRBPORT_IDX    9
+#define GNB_CONFIG_SS_DRBHOST_IDX    10
+#define GNB_CONFIG_SS_MODE_IDX       11
+
+#define GNB_SSPARAMS_DESC {                                                                  \
+{GNB_CONFIG_SS_HOSTIP          ,                     NULL,     0,          uptr:NULL,        defstrval:"127.0.0.1",      TYPE_STRING,   0},     \
+{GNB_CONFIG_SS_SYSPORT         ,                     NULL,     0,          uptr:NULL,        defintval:0000,           TYPE_UINT,     0},   \
+{GNB_CONFIG_SS_SYSHOST          ,                    NULL,     0,          uptr:NULL,        defstrval:"127.0.0.1",      TYPE_STRING,   0},     \
+{GNB_CONFIG_SS_SRBPORT         ,                     NULL,     0,          uptr:NULL,        defintval:0000,           TYPE_UINT,     0},   \
+{GNB_CONFIG_SS_SRBHOST          ,                    NULL,     0,          uptr:NULL,        defstrval:"127.0.0.1",      TYPE_STRING,   0},     \
+{GNB_CONFIG_SS_VNGPORT         ,                     NULL,     0,          uptr:NULL,        defintval:0000,           TYPE_UINT,     0},   \
+{GNB_CONFIG_SS_VNGHOST          ,                    NULL,     0,          uptr:NULL,        defstrval:"127.0.0.1",      TYPE_STRING,   0},     \
+{GNB_CONFIG_SS_VTPPORT         ,                     NULL,     0,          uptr:NULL,        defintval:0000,           TYPE_UINT,     0},   \
+{GNB_CONFIG_SS_VTPHOST          ,                    NULL,     0,          uptr:NULL,        defstrval:"127.0.0.1",      TYPE_STRING,   0},     \
+{GNB_CONFIG_SS_DRBPORT         ,                     NULL,     0,          uptr:NULL,        defintval:0000,           TYPE_UINT,     0},   \
+{GNB_CONFIG_SS_DRBHOST          ,                    NULL,     0,          uptr:NULL,        defstrval:"127.0.0.1",      TYPE_STRING,   0},     \
+{GNB_CONFIG_SS_MODE            ,                     NULL,     0,          uptr:NULL,        defintval:0000,           TYPE_UINT,     0},   \
+}
+
+/*-------------------------------------------------------------------------------------------------------------------------------------------------*/
 /* SNSSAI ID configuration */
 
 #define GNB_CONFIG_STRING_SNSSAI_LIST                   "snssaiList"

@@ -114,9 +114,9 @@ typedef struct timer_elm_s {
     // to reduce the number of logs, we give a message each increase of 25%
     if ((s > t->last_log_size * 1.25) && (s > t->admin.queue_size / 10)) {
       if (s > t->admin.queue_size) {
-        LOG_E(TMR, "Queue for %s task contains %ld messages\n", itti_get_task_name(destination_task_id), s);
+        LOG_D(TMR, "Queue for %s task contains %ld messages\n", itti_get_task_name(destination_task_id), s);
       } else {
-        LOG_I(ITTI,
+        LOG_D(ITTI,
               "Queue for %s task size: %ld (last message %s)\n",
               itti_get_task_name(destination_task_id),
               s + 1,
@@ -125,7 +125,7 @@ typedef struct timer_elm_s {
       t->last_log_size = s;
     } else if (t->last_log_size && s < t->admin.queue_size / 10) {
       // Inform when the queue decreases
-      LOG_I(ITTI, "Queue for %s task size is back under 10%% of max size\n", itti_get_task_name(destination_task_id));
+      LOG_D(ITTI, "Queue for %s task size is back under 10%% of max size\n", itti_get_task_name(destination_task_id));
       t->last_log_size = 0;
     }
 
@@ -140,7 +140,7 @@ typedef struct timer_elm_s {
     task_list_t *t=tasks[destination_task_id];
     pthread_mutex_lock (&t->queue_cond_lock);
     int ret=itti_send_msg_to_task_locked(destination_task_id, destinationInstance, message);
-
+    LOG_D(ITTI, "src task:%s dest task:%s msg_name:%s\n",ITTI_MSG_ORIGIN_NAME(message), ITTI_MSG_DESTINATION_NAME(message), ITTI_MSG_NAME(message) );
     while (t->message_queue.size() > 0 && t->task_parms.shortcut_func != NULL) {
       if (t->message_queue.size()>1)
         LOG_W(ITTI,"queue in no thread mode is %ld\n", t->message_queue.size());
@@ -233,8 +233,8 @@ typedef struct timer_elm_s {
 
     AssertFatal (nb_events >=0,
                  "epoll_wait failed for task %s, nb fds %d, timeout %lu: %s!\n",
-                 itti_get_task_name(task_id), t->nb_fd_epoll, 
-                 t->next_timer != UINT64_MAX ? t->next_timer-current_time : -1, 
+                 itti_get_task_name(task_id), t->nb_fd_epoll,
+                 t->next_timer != UINT64_MAX ? t->next_timer-current_time : -1,
                  strerror(errno));
     LOG_D(ITTI,"receive on %d descriptors for %s\n", nb_events, itti_get_task_name(task_id));
 
@@ -285,7 +285,7 @@ typedef struct timer_elm_s {
     } else {
       *received_msg=t->message_queue.back();
       t->message_queue.pop_back();
-      LOG_D(ITTI,"task %s received a message\n",t->admin.name);
+      LOG_D(ITTI,"task %s received message from task:%s \n",t->admin.name, ITTI_MSG_ORIGIN_NAME(*received_msg));
     }
 
     pthread_mutex_unlock (&t->queue_cond_lock);
@@ -320,6 +320,15 @@ typedef struct timer_elm_s {
                  (char *)itti_get_task_name(task_id),
                  -1,
                  OAI_PRIORITY_RT);
+    LOG_I(ITTI,"Created Posix thread %s\n",  itti_get_task_name(task_id) );
+    return 0;
+  }
+
+  int itti_create_task_prio(task_id_t task_id,
+                       void *(*start_routine)(void *),
+                       void *args_p,int addprio) {
+    task_list_t *t=tasks[task_id];
+    threadCreate (&t->thread, start_routine, args_p, (char *)itti_get_task_name(task_id),-1,(OAI_PRIORITY_RT)+addprio);
     LOG_I(ITTI,"Created Posix thread %s\n",  itti_get_task_name(task_id) );
     return 0;
   }

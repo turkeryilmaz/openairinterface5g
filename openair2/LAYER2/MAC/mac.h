@@ -83,7 +83,7 @@
 
 #define MAX_MAC_INST 16
 #define BCCH_PAYLOAD_SIZE_MAX 128
-#define CCCH_PAYLOAD_SIZE_MAX 512 
+#define CCCH_PAYLOAD_SIZE_MAX 512
 #define PCCH_PAYLOAD_SIZE_MAX 128
 #define RAR_PAYLOAD_SIZE_MAX 128
 
@@ -124,8 +124,8 @@
 /*!\brief logical channl group ID 3 */
 #define LCGID3 3
 /*!\brief Maximum number of logical chanels */
-#define MAX_NUM_LCID 11
-/*!\brief Maximum number od control elemenets */
+#define MAX_NUM_LCID 32
+/*!\brief Maximum number of control elemenets */
 #define MAX_NUM_CE 5
 /*!\brief Maximum number of random access process */
 #define NB_RA_PROC_MAX 4
@@ -505,15 +505,15 @@ typedef struct {
 } __attribute__ ((__packed__)) ULDCH_PDU;
 
 /*!\brief RA process state*/
-typedef enum { IDLE = 0, MSG2, WAITMSG3, MSG4, WAITMSG4ACK, MSGCRNTI, MSGCRNTI_ACK } eRA_state;
-static const char *const era_text[] = {"IDLE", "Ms2", "WAITMSG3", "WAITMSG4ACK", "MSGCRNTI", "MSGCRNTIACK"};
-
+typedef enum { IDLE = 0, MSG2, WAITMSG3, MSG4, WAITMSG4ACK, MSGCRNTI, MSGCRNTI_ACK, CBRAMSG4, WAITMSG5} eRA_state;
+static const char *const era_text[] = {"IDLE", "Ms2", "WAITMSG3", "WAITMSG4ACK", "MSGCRNTI", "MSGCRNTIACK","CBRAMSG4","WAITMSG5"};
 /*!\brief  UE DLSCH scheduling states*/
 typedef enum { S_DL_NONE = 0, S_DL_SCHEDULED } UE_DLSCH_STATUS;
 /*!\brief  scheduler mode */
 typedef enum {
-  SCHED_MODE_DEFAULT = 0, /// default cheduler
-  SCHED_MODE_FAIR_RR /// fair raund robin
+  SCHED_MODE_DEFAULT = 0,     /// default cheduler
+  SCHED_MODE_FAIR_RR,      /// fair raund robin
+  SCHED_MODE_SS           // Scheduler for SS_SOFTMODEM mode
 } SCHEDULER_MODES;
 /*! \brief temp struct for DLSCH sched */
 typedef struct {
@@ -1128,7 +1128,7 @@ typedef struct {
   UE_sched_ctrl_t UE_sched_ctrl[MAX_MOBILES_PER_ENB];
   UE_list_t list;
   int num_UEs;
-  bool active[MAX_MOBILES_PER_ENB];
+  bool active[MAX_NUM_CCs][MAX_MOBILES_PER_ENB];
 } UE_info_t;
 
 /*! \brief deleting control information*/
@@ -1310,7 +1310,7 @@ typedef struct eNB_MAC_INST_s {
   /// Pointer to IF module instance for PHY
   IF_Module_t *if_inst;
   /// Common cell resources
-  COMMON_channels_t common_channels[NFAPI_CC_MAX];
+  COMMON_channels_t common_channels[MAX_NUM_CCs];
   /// current PDU index (BCH,MCH,DLSCH)
   int16_t pdu_index[NFAPI_CC_MAX];
 

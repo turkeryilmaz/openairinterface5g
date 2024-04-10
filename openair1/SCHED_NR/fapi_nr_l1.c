@@ -135,6 +135,7 @@ void nr_schedule_response(NR_Sched_Rsp_t *Sched_INFO)
 {
   // copy data from L2 interface into L1 structures
   module_id_t                   Mod_id       = Sched_INFO->module_id;
+  int                           CC_id = Sched_INFO->CC_id;
   nfapi_nr_dl_tti_request_t     *DL_req      = &Sched_INFO->DL_req;
   nfapi_nr_tx_data_request_t    *TX_req      = &Sched_INFO->TX_req;
   nfapi_nr_ul_tti_request_t     *UL_tti_req  = &Sched_INFO->UL_tti_req;
@@ -241,19 +242,26 @@ void nr_schedule_response(NR_Sched_Rsp_t *Sched_INFO)
 
   if (NFAPI_MODE == NFAPI_MODE_VNF) { // If VNF, oai_nfapi functions send respective p7 msgs to PNF for which nPDUs > 0
 
-    if (number_ul_tti_pdu > 0)
+    if(number_ul_tti_pdu > 0) {
+      UL_tti_req->header.phy_id = Sched_INFO->CC_id + 1;
       oai_nfapi_ul_tti_req(UL_tti_req);
+    }
 
-    if (number_ul_dci_pdu > 0)
+    if (number_ul_dci_pdu > 0) {
+      UL_dci_req->header.phy_id = Sched_INFO->CC_id + 1;
       oai_nfapi_ul_dci_req(UL_dci_req);
+    }
 
-    if (number_dl_pdu > 0)
+    if (number_dl_pdu > 0){
+      DL_req->header.phy_id = Sched_INFO->CC_id + 1;
       oai_nfapi_dl_tti_req(DL_req);
-
-    if (number_tx_data_pdu > 0)
+    }
+    if (number_tx_data_pdu > 0){
+      TX_req->header.phy_id = Sched_INFO->CC_id + 1;
       oai_nfapi_tx_data_req(TX_req);
+    }
 
-  } else if (NFAPI_MODE == NFAPI_MODE_AERIAL) {
+  } else if (NFAPI_MODE == NFAPI_MODE_AERIAL) { //TODO: w2410 rebase: for now, no mulitcell for Aerial mode. 
 #ifdef ENABLE_AERIAL
     bool send_slt_resp = false;
     if (number_dl_pdu > 0) {

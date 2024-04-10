@@ -20,6 +20,7 @@
  */
 
 #include "openair2/RRC/NR_UE/rrc_proto.h"
+#include "RRC/NR_UE/rrc_defs.h"
 
 void init_SI_timers(NR_UE_RRC_SI_INFO *SInfo)
 {
@@ -117,8 +118,14 @@ void nr_rrc_SI_timers(NR_UE_RRC_SI_INFO *SInfo)
 
 void nr_rrc_handle_timers(NR_UE_RRC_INST_t *rrc)
 {
+
   NR_UE_Timers_Constants_t *timers = &rrc->timers_and_constants;
 
+  LOG_D(NR_RRC, "Timers [enter %s]: T300_active=%d, T301_active=%d, T304_active=%d, T310_active=%d, T311_active=%d, T319_active=%d\n",
+        __FUNCTION__, timers->T300.active, timers->T301.active, timers->T304.active, timers->T310.active, timers->T311.active, timers->T319.active);
+  LOG_D(NR_RRC, "        N310_k=%d, N310_cnt=%d, T310_cnt=%d, N311_k=%d, N311_cnt=%d,  T311_cnt=%d,  T304_cnt=%d\n",
+        timers->N310_k, timers->N310_cnt,  timers->T310.counter, timers->N311_k, timers->N311_cnt, timers->T311.counter, timers->T304.counter);
+  
   bool t300_expired = nr_timer_tick(&timers->T300);
   if(t300_expired) {
     LOG_W(NR_RRC, "Timer T300 expired! No timely response to RRCSetupRequest\n");
@@ -149,7 +156,9 @@ void nr_rrc_handle_timers(NR_UE_RRC_INST_t *rrc)
     // TODO
     // handle detection of radio link failure
     // as described in 5.3.10.3 of 38.331
-    AssertFatal(false, "Radio link failure! Not handled yet!\n");
+    //AssertFatal(false, "Radio link failure! Not handled yet!\n");
+    nr_timer_stop(&timers->T310);
+    nr_timer_start(&timers->T311);
   }
 
   bool t311_expired = nr_timer_tick(&timers->T311);
@@ -545,6 +554,7 @@ void nr_rrc_handle_SetupRelease_RLF_TimersAndConstants(NR_UE_RRC_INST_t *rrc,
         nr_timer_setup(&tac->T311, k, 10); // 10ms step
       }
       reset_rlf_timers_and_constants(tac);
+      LOG_A(NR_RRC," Updated RLF timers from RrcSetup:  n310=%u n311=%u\n",  tac->N310_k, tac->N311_k);
       break;
     default :
       AssertFatal(false, "Invalid rlf_TimersAndConstants\n");
@@ -554,6 +564,11 @@ void nr_rrc_handle_SetupRelease_RLF_TimersAndConstants(NR_UE_RRC_INST_t *rrc,
 void handle_rlf_sync(NR_UE_Timers_Constants_t *tac,
                      nr_sync_msg_t sync_msg)
 {
+  LOG_D(NR_RRC, "Timers [enter %s (sync_msg=%s)]: T300_active=%d, T301_active=%d, T304_active=%d, T310_active=%d, T311_active=%d, T319_active=%d\n",
+        __FUNCTION__, sync_msg == IN_SYNC ? "IN_SYNC" : "OUT_OF_SYNC",
+        tac->T300.active, tac->T301.active, tac->T304.active, tac->T310.active, tac->T311.active, tac->T319.active);
+  LOG_D(NR_RRC, "        N310_k=%d, N310_cnt=%d, T310_cnt=%d, N311_k=%d, N311_cnt=%d, T311_cnt=%d\n",
+        tac->N310_k, tac->N310_cnt,  tac->T310.counter, tac->N311_k, tac->N311_cnt, tac->T311.counter);
   if (sync_msg == IN_SYNC) {
     tac->N310_cnt = 0;
     if (is_nr_timer_active(tac->T310)) {
@@ -582,6 +597,7 @@ void handle_rlf_sync(NR_UE_Timers_Constants_t *tac,
       // start timer T310
       nr_timer_start(&tac->T310);
       tac->N310_cnt = 0;
+      nr_timer_stop(&tac->T311);
     }
   }
 }
@@ -599,6 +615,7 @@ void reset_rlf_timers_and_constants(NR_UE_Timers_Constants_t *tac)
 {
   // stop timer T310 for this cell group, if running
   nr_timer_stop(&tac->T310);
+  nr_timer_stop(&tac->T311);
   // reset the counters N310 and N311
   tac->N310_cnt = 0;
   tac->N311_cnt = 0;

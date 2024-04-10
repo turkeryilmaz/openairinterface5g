@@ -7,8 +7,6 @@
 #include <errno.h>
 #include "utils.h"
 
-
-
 const char *hexdump(const void *data, size_t data_len, char *out, size_t out_len)
 {
     char *p = out;
@@ -121,6 +119,10 @@ char *itoa(int i) {
 
 void set_priority(int priority)
 {
+  //bug 129248, to deploy our CI on any server with strong security constraints (no possibility to be root)
+  // for USRP setup we can be root and let's not modify priority behaviour
+  // sched_setscheduler could be used potentially in the same way than TTCN simu as we don't have any constraints on performances
+  #ifdef OAI_USRP
   struct sched_param param =
   {
     .sched_priority = priority,
@@ -131,6 +133,7 @@ void set_priority(int priority)
     fprintf(stderr, "sched_setscheduler: %s\n", strerror(errno));
     abort();
   }
+ #endif
 }
 
 /**

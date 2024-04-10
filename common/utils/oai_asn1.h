@@ -217,6 +217,8 @@ static inline uint64_t BIT_STRING_to_uint64(const BIT_STRING_t *asn) {
 #define asn1cSeqAdd(VaR, PtR) if (ASN_SEQUENCE_ADD(VaR,PtR)!=0) AssertFatal(false, "ASN.1 encoding error " #VaR "\n")
 #define asn1cCallocOne(VaR, VaLue) \
   VaR = calloc(1,sizeof(*VaR)); *VaR=VaLue
+#define asn1cReConfigOne(VaR, Value) \
+  *VaR=Value
 #define asn1cCalloc(VaR, lOcPtr) \
   typeof(VaR) lOcPtr = VaR = calloc(1,sizeof(*VaR))
 #define asn1cSequenceAdd(VaR, TyPe, lOcPtr) \
@@ -229,4 +231,6 @@ static inline uint64_t BIT_STRING_to_uint64(const BIT_STRING_t *asn) {
     STRUCT = NULL;                      \
   } while (0)
 
+#define asn1cNoCalloc(VaR, lOcPtr) \  
+  typeof(VaR) lOcPtr=VaR
 #endif

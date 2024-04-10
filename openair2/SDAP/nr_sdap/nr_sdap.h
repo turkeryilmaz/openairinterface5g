@@ -63,4 +63,6 @@ void sdap_data_ind(rb_id_t pdcp_entity,
 
 void set_qfi_pduid(uint8_t qfi, uint8_t pduid);
 
+void set_sdap_loopback(bool enable, uint8_t testLoopDelayTimeSeconds);
+
 #endif

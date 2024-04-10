@@ -386,8 +386,6 @@ void compute_prach_seq(uint16_t rootSequenceIndex,
 #ifdef PRACH_DEBUG
   LOG_I(PHY,"compute_prach_seq: NCS_config %d, prach_fmt %d\n",zeroCorrelationZoneConfig, prach_fmt);
 #endif
-  AssertFatal(prach_fmt<4,
-              "PRACH sequence is only precomputed for prach_fmt<4 (have %"PRIu8")\n", prach_fmt );
   N_ZC = (prach_fmt < 4) ? 839 : 139;
   //init_prach_tables(N_ZC); //moved to phy_init_lte_ue/eNB, since it takes to long in real-time
 

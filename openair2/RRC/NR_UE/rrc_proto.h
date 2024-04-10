@@ -60,6 +60,35 @@ void process_nsa_message(NR_UE_RRC_INST_t *rrc, nsa_message_t nsa_message_type, 
 
 void nr_rrc_cellgroup_configuration(NR_UE_RRC_INST_t *rrc, NR_CellGroupConfig_t *cellGroupConfig);
 
+//JPE TO BE REMOVED?
+/**\brief Process NR RRC connection reconfiguration via SRB3
+   \param rrcReconfiguration  decoded rrc connection reconfiguration*/
+//int8_t nr_rrc_ue_process_rrcReconfiguration(const module_id_t module_id, NR_RRCReconfiguration_t *rrcReconfiguration);
+
+/**\prief Process measurement config from NR RRC connection reconfiguration message
+   \param meas_config   measurement configuration*/
+//int8_t nr_rrc_ue_process_meas_config(NR_MeasConfig_t *meas_config);
+
+/*void nr_rrc_ue_process_RadioBearerConfig(const protocol_ctxt_t *const ctxt_pP,
+                                         const uint8_t gNB_index,
+                                         NR_RadioBearerConfig_t *const radioBearerConfig);
+*/
+/**\brief decode NR BCCH-BCH (MIB) message
+   \param module_idP    module id
+   \param gNB_index     gNB index
+   \param sduP          pointer to buffer of ASN message BCCH-BCH
+   \param sdu_len       length of buffer*/
+//int8_t nr_rrc_ue_decode_NR_BCCH_BCH_Message(const module_id_t module_id, const uint8_t gNB_index, uint8_t *const bufferP, const uint8_t buffer_len);
+
+//int8_t nr_rrc_ue_decode_NR_DL_DCCH_Message(const module_id_t module_id, const uint8_t gNB_index, const uint8_t *buffer, const uint32_t size);
+
+/**\brief decode NR PCCH (Paging) message
+   \param module_id    module id
+   \param gNB_index    gNB index
+   \param buffer       pointer to buffer of ASN message PCCH-PCH
+   \param size         length of buffer*/
+int8_t nr_rrc_ue_decode_NR_PCCH_Message(const module_id_t module_id, const uint8_t gNB_index, uint8_t *const buffer, const uint16_t size);
+
 /**\brief interface between MAC and RRC thru SRB0 (RLC TM/no PDCP)
    \param module_id  module id
    \param CC_id      component carrier id
