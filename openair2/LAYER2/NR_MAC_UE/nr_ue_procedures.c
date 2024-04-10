@@ -2243,6 +2243,9 @@ void multiplex_pucch_resource(NR_UE_MAC_INST_t *mac, PUCCH_sched_t *pucch, int n
       if (overlap) {
         o++;
         j++;
+      } else {
+        LOG_E(MAC, "impossible multiplex_pucch_resource case\n");
+        return;
       }
     } else {
       if (o > 0) {
