@@ -53,6 +53,8 @@
 extern RAN_CONTEXT_t RC;
 extern SSConfigContext_t SS_context;
 
+extern pthread_mutex_t acp_msg_mutex;
+
 extern pthread_cond_t cell_config_5G_done_cond;
 extern pthread_mutex_t cell_config_5G_done_mutex;
 
@@ -606,6 +608,7 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
         if (false == ss_task_sys_nr_handle_cellConfig5G(&req->Request.v.Cell, SS_context.SSCell_list[nr_cell_index].State) )
         {
           LOG_A(GNB_APP, "[SYS-GNB] Error handling Cell Config 5G for NR_SystemRequest_Type_Cell \n");
+          pthread_mutex_unlock(&acp_msg_mutex);
           return;
         }
         cell_config_5G_done_indication();
@@ -712,6 +715,7 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
               if (false == ss_task_sys_nr_handle_cellConfigRadioBearer(req) )
               {
                 LOG_A(GNB_APP, "[SYS-GNB] Error handling Cell Config 5G for NR_SystemRequest_Type_Cell \n");
+                pthread_mutex_unlock(&acp_msg_mutex);
                 return;
               }
             }
@@ -723,6 +727,7 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
               if (false == ss_task_sys_nr_handle_cellConfigAttenuation(req) )
               {
                 LOG_A(GNB_APP, "[SYS-GNB] Error handling Cell Config 5G for NR_SystemRequest_Type_Cell \n");
+                pthread_mutex_unlock(&acp_msg_mutex);
                 return;
               }
             }
@@ -779,6 +784,7 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
   }
   LOG_A(GNB_APP, "[SYS-GNB] SS_STATE %d New SS_STATE %d received SystemRequest_Type %d\n",
       enterState, SS_context.SSCell_list[nr_cell_index].State, req->Request.d);
+  pthread_mutex_unlock(&acp_msg_mutex);
 }
 
 
