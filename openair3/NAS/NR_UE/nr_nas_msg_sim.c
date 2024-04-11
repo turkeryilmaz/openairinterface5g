@@ -744,7 +744,7 @@ static void make_eap_msg(nr_ue_nas_t *nas, OctetString *msg)
   uint8_t mac[32];
   memcpy(kaut, mk + 16, 32); // RFC 5448 cl. 3.3 K_aut to be used for computing MAC
   byte_array_t data = {.buf = tmpl, .len = len};
-  kdf(kaut, data, 16, mac);
+  kdf(kaut, data, sizeof(mac), mac);
   memcpy(macPtr, mac, 16);
 
   msg->length = len;
