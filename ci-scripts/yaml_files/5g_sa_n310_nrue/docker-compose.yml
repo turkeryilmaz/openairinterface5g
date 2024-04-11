@@ -1,7 +1,7 @@
 version: '3.8'
 services:
     oai-nr-ue:
-        image: oai-nr-ue:latest
+        image: oaisoftwarealliance/oai-nr-ue:develop
         privileged: true
         network_mode: host
         container_name: oai-nr-ue

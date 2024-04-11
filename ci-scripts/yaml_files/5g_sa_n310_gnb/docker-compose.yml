@@ -1,7 +1,7 @@
 version: '3.8'
 services:
     oai-gnb:
-        image: oai-gnb:latest
+        image: oaisoftwarealliance/oai-gnb:develop
         privileged: true
         network_mode: "host"
         container_name: oai-gnb
