@@ -1000,21 +1000,28 @@ static int8_t nr_rrc_ue_decode_NR_BCCH_DL_SCH_Message(NR_UE_RRC_INST_t *rrc,
         {
           LOG_E(NR_RRC, "Cell Selection Crieteria not met \n");
           break;
-        }else{
-          NR_UE_MAC_INST_t *mac = get_mac_inst(0);
-          if( mac->ra.ra_state == nrRA_UE_IDLE && mac->state != UE_STAY_WITH_DL_SYNC_ONLY){
-            mac->ra.ra_state = nrRA_GENERATE_PREAMBLE;
-            LOG_D(NR_RRC,"  ra_state is set to  %d\n", nrRA_GENERATE_PREAMBLE);
-          }
-  
-          if( sib1->cellAccessRelatedInfo.plmn_IdentityInfoList.list.array[0]->trackingAreaCode != NULL &&
-              BIT_STRING_to_uint32(sib1->cellAccessRelatedInfo.plmn_IdentityInfoList.list.array[0]->trackingAreaCode) !=  NR_UE_rrc_inst[0].tac){
-      
-              NR_UE_rrc_inst[0].tac = BIT_STRING_to_uint32(sib1->cellAccessRelatedInfo.plmn_IdentityInfoList.list.array[0]->trackingAreaCode);
-              need_registration = true;
-              LOG_D(NR_RRC,"tac is %d\n",NR_UE_rrc_inst[0].tac);
-          }             
         }
+        
+        // configure default SI
+        nr_rrc_configure_default_SI(SI_info, sib1);
+        // configure timers and constant
+        nr_rrc_set_sib1_timers_and_constants(&rrc->timers_and_constants, sib1);
+        nr_rrc_mac_config_req_sib1(rrc->ue_id, 0, sib1->si_SchedulingInfo, sib1->servingCellConfigCommon);
+        
+        NR_UE_MAC_INST_t *mac = get_mac_inst(0);
+        if( mac->ra.ra_state == nrRA_UE_IDLE && mac->state != UE_STAY_WITH_DL_SYNC_ONLY){
+          mac->ra.ra_state = nrRA_GENERATE_PREAMBLE;
+          LOG_D(NR_RRC,"  ra_state is set to  %d\n", nrRA_GENERATE_PREAMBLE);
+        }
+
+        if( sib1->cellAccessRelatedInfo.plmn_IdentityInfoList.list.array[0]->trackingAreaCode != NULL &&
+            BIT_STRING_to_uint32(sib1->cellAccessRelatedInfo.plmn_IdentityInfoList.list.array[0]->trackingAreaCode) !=  NR_UE_rrc_inst[0].tac){
+    
+            NR_UE_rrc_inst[0].tac = BIT_STRING_to_uint32(sib1->cellAccessRelatedInfo.plmn_IdentityInfoList.list.array[0]->trackingAreaCode);
+            need_registration = true;
+            LOG_D(NR_RRC,"tac is %d\n",NR_UE_rrc_inst[0].tac);
+        }             
+        
         /* Cell_Search_5G e */
         // FIXME: improve condition for the RA trigger
         if (rrc->nrRrcState == RRC_STATE_IDLE_NR) {
@@ -1023,11 +1030,7 @@ static int8_t nr_rrc_ue_decode_NR_BCCH_DL_SCH_Message(NR_UE_RRC_INST_t *rrc,
           nr_rlc_activate_srb0(rrc->ue_id, NULL, send_srb0_rrc); //w2404 rebase: need to activate SRB0 before put SDU to RLC. SRB0 is deactivated when RRC release.
           nr_rrc_ue_prepare_RRCSetupRequest(rrc);
         }
-        // configure default SI
-        nr_rrc_configure_default_SI(SI_info, sib1);
-        // configure timers and constant
-        nr_rrc_set_sib1_timers_and_constants(&rrc->timers_and_constants, sib1);
-        nr_rrc_mac_config_req_sib1(rrc->ue_id, 0, sib1->si_SchedulingInfo, sib1->servingCellConfigCommon);
+        
         break;
       case NR_BCCH_DL_SCH_MessageType__c1_PR_systemInformation:
         LOG_I(NR_RRC, "[UE %ld] Decoding SI\n", rrc->ue_id);
