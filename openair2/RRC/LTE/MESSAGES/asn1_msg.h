@@ -126,6 +126,30 @@ uint8_t do_SIB23(uint8_t Mod_id,int CC_id, BOOLEAN_t brOption,
                 );
 
 /**
+\brief Generate a default configuration for SIB4 in one System Information PDU (eNB).
+@param Mod_id Index of eNB (used to derive some parameters)
+@param buffer Pointer to PER-encoded ASN.1 description of SI PDU
+@param systemInformation Pointer to asn1c C representation of SI PDU
+@param sib4 Pointer (returned) to sib4 component withing SI PDU
+@return size of encoded bit stream in bytes*/
+
+uint8_t do_SIB4(uint8_t Mod_id,int CC_id, BOOLEAN_t brOption,
+  RrcConfigurationReq *configuration
+                );
+
+/**
+\brief Generate a default configuration for SIB5 in one System Information PDU (eNB).
+@param Mod_id Index of eNB (used to derive some parameters)
+@param buffer Pointer to PER-encoded ASN.1 description of SI PDU
+@param systemInformation Pointer to asn1c C representation of SI PDU
+@param sib5 Pointer (returned) to sib5 component withing SI PDU
+@return size of encoded bit stream in bytes*/
+
+uint8_t do_SIB5(uint8_t Mod_id,int CC_id, BOOLEAN_t brOption,
+  RrcConfigurationReq *configuration
+                );
+
+/**
 \brief Generate an RRCConnectionRequest UL-CCCH-Message (UE) based on random string or S-TMSI.  This
 routine only generates an mo-data establishment cause.
 @param buffer Pointer to PER-encoded ASN.1 description of UL-DCCH-Message PDU
@@ -359,8 +383,8 @@ ssize_t do_nrMeasurementReport(uint8_t *buffer,
 
 uint8_t do_DLInformationTransfer(uint8_t Mod_id, uint8_t **buffer, uint8_t transaction_id, uint32_t pdu_length, uint8_t *pdu_buffer);
 
-uint8_t do_Paging(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size,
-                  ue_paging_identity_t ue_paging_identity, cn_domain_t cn_domain);
+int16_t do_Paging(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size,
+                  ue_paging_identity_t ue_paging_identity, cn_domain_t cn_domain, bool systemInfoModification, uint8_t pagingRecordCount);
 
 uint8_t do_ULInformationTransfer(uint8_t **buffer, uint32_t pdu_length, uint8_t *pdu_buffer);
 

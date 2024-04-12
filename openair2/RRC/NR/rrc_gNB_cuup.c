@@ -167,13 +167,13 @@ int rrc_gNB_process_e1_setup_req(sctp_assoc_t assoc_id, e1ap_setup_req_t *req)
 
   for (int i = 0; i < req->supported_plmns; i++) {
     PLMN_ID_t *id = &req->plmn[i].id;
-    if (rrc->configuration.mcc[i] != id->mcc || rrc->configuration.mnc[i] != id->mnc) {
+    if (rrc->configuration[0].mcc[i] != id->mcc || rrc->configuration[0].mnc[i] != id->mnc) {
       LOG_E(NR_RRC,
             "PLMNs received from CUUP (mcc:%d, mnc:%d) did not match with PLMNs in RRC (mcc:%d, mnc:%d)\n",
             id->mcc,
             id->mnc,
-            rrc->configuration.mcc[i],
-            rrc->configuration.mnc[i]);
+            rrc->configuration[0].mcc[i],
+            rrc->configuration[0].mnc[i]);
       e1ap_setup_failure(assoc_id, req->transac_id);
       return -1;
     }

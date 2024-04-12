@@ -90,6 +90,8 @@ rrc_gNB_generate_SecurityModeCommand(
 
 unsigned int rrc_gNB_get_next_transaction_identifier(module_id_t gnb_mod_idP);
 
+unsigned int rrc_gNB_get_next_transaction_identifier_reset(module_id_t gnb_mod_idP, bool reset);
+
 void
 rrc_gNB_generate_UECapabilityEnquiry(
   const protocol_ctxt_t *const ctxt_pP,
@@ -105,6 +107,9 @@ rrc_gNB_generate_RRCRelease(
 /**\brief RRC eNB task.
    \param args_p Pointer on arguments to start the task. */
 void *rrc_gnb_task(void *args_p);
+
+/* Trigger RRC periodic processing. To be called once per ms */
+void nr_rrc_trigger(protocol_ctxt_t *ctxt, int frame, int subframe);
 
 /**\ Function to set or overwrite PTRS DL RRC parameters.
    \ *bwp Pointer to dedicated RC config structure

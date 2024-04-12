@@ -29,7 +29,9 @@
 
 
 PHY_VARS_UE ***PHY_vars_UE_g;
-UL_RCC_IND_t UL_RCC_INFO;
+UL_RCC_IND_t UL_RCC_INFO[MAX_NUM_CCs];
+
+
 unsigned char NB_RU=0;
 int number_of_cards;
 uint8_t max_turbo_iterations=4;

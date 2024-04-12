@@ -90,7 +90,7 @@ nfapi_vnf_p7_connection_info_t* vnf_p7_connection_info_list_find(vnf_p7_t* vnf_p
 	nfapi_vnf_p7_connection_info_t* curr = vnf_p7->p7_connections;
 	while(curr != 0)
 	{
-		if(curr->phy_id == phy_id)
+		if(curr->phy_id == 1)//phy_id)
 		{
 			return curr;
 		}
@@ -419,12 +419,43 @@ uint16_t increment_sfn_sf_by(uint16_t sfn_sf, uint8_t increment)
 	return sfn_sf;
 }
 
-int send_mac_slot_indications(vnf_p7_t* vnf_p7)
+
+void vnf_handle_subframe_indication(void *pRecvMsg, int recvMsgLen, vnf_p7_t* vnf_p7)
+{
+        if (pRecvMsg == NULL || vnf_p7 == NULL)
+        {
+                NFAPI_TRACE(NFAPI_TRACE_ERROR, "%s: NULL parameters\n", __FUNCTION__);
+        }
+        else
+        {
+                nfapi_subframe_indication_t ind;
+
+                if(nfapi_p7_message_unpack(pRecvMsg, recvMsgLen, &ind, sizeof(ind), &vnf_p7->_public.codec_config) < 0)
+                {
+                        NFAPI_TRACE(NFAPI_TRACE_ERROR, "%s: Failed to unpack message\n", __FUNCTION__);
+                }
+                else
+                {
+		        uint8_t *p = (uint8_t *)pRecvMsg;
+			/** TODO: FC: Change this way of extracting sfn_sf */
+			uint16_t sfnsf = p[16] << 8 | p[17];
+
+			vnf_p7->sf_start_time_hr = vnf_get_current_time_hr();
+                        if(vnf_p7->_public.subframe_indication)
+                        {
+				send_mac_subframe_indications(vnf_p7, sfnsf);
+                        }
+                }
+
+        }
+}
+
+int send_mac_slot_indications(vnf_p7_t* vnf_p7, uint16_t sfn, uint16_t slot)
 {
 	nfapi_vnf_p7_connection_info_t* curr = vnf_p7->p7_connections;
 	while(curr != 0)
 	{
-		if(curr->in_sync == 1)
+		if(curr->in_sync == 1 || 1 /** FIXME: System simulator mode */)
 		{
 			// ask for subframes in the future
 			//uint16_t sfn_sf_adv = increment_sfn_sf_by(curr->sfn_sf, 2);
@@ -432,7 +463,11 @@ int send_mac_slot_indications(vnf_p7_t* vnf_p7)
 			//vnf_p7->_public.subframe_indication(&(vnf_p7->_public), curr->phy_id, sfn_sf_adv);
             // suggestion fix by Haruki NAOI
 			//printf("\nsfn:%d, slot:%d\n",curr->sfn,curr->slot);
-			vnf_p7->_public.slot_indication(&(vnf_p7->_public), curr->phy_id, curr->sfn,curr->slot);
+                        if (1) {
+			    vnf_p7->_public.slot_indication(&(vnf_p7->_public), curr->phy_id, sfn, slot);
+                        }
+                        else
+			    vnf_p7->_public.slot_indication(&(vnf_p7->_public), curr->phy_id, curr->sfn,curr->slot);
 		}
 
 		curr = curr->next;
@@ -441,19 +476,22 @@ int send_mac_slot_indications(vnf_p7_t* vnf_p7)
 	return 0;
 }
 
-int send_mac_subframe_indications(vnf_p7_t* vnf_p7)
+int send_mac_subframe_indications(vnf_p7_t* vnf_p7, uint16_t sfn_sf)
 {
 	nfapi_vnf_p7_connection_info_t* curr = vnf_p7->p7_connections;
 	while(curr != 0)
 	{
-		if(curr->in_sync == 1)
+		if(curr->in_sync == 1 || 1 /** FIXME: Mode is System Simulator */)
 		{
 			// ask for subframes in the future
 			//uint16_t sfn_sf_adv = increment_sfn_sf_by(curr->sfn_sf, 2);
 
 			//vnf_p7->_public.subframe_indication(&(vnf_p7->_public), curr->phy_id, sfn_sf_adv);
             // suggestion fix by Haruki NAOI
-			vnf_p7->_public.subframe_indication(&(vnf_p7->_public), curr->phy_id, curr->sfn_sf);
+                        if (1 /** FIXME: Mode is system simulator */)
+			    vnf_p7->_public.subframe_indication(&(vnf_p7->_public), curr->phy_id, sfn_sf);
+                        else
+			    vnf_p7->_public.subframe_indication(&(vnf_p7->_public), curr->phy_id, curr->sfn_sf);
 		}
 
 		curr = curr->next;
@@ -1475,7 +1513,7 @@ void vnf_handle_nr_slot_indication(void *pRecvMsg, int recvMsgLen, vnf_p7_t* vnf
 		}
 		else
 		{
-			NFAPI_TRACE(NFAPI_TRACE_DEBUG, "%s: Handling NR SLOT Indication\n", __FUNCTION__);
+			NFAPI_TRACE(NFAPI_TRACE_DEBUG, "%s: Handling NR SLOT Indication sfn:%d slot:%d\n", __FUNCTION__, ind.sfn, ind.slot);
                         if(vnf_p7->_public.nr_slot_indication)
 			{
 				(vnf_p7->_public.nr_slot_indication)(&ind);
@@ -1501,7 +1539,7 @@ void vnf_handle_nr_rx_data_indication(void *pRecvMsg, int recvMsgLen, vnf_p7_t* 
 		}
 		else
 		{
-			NFAPI_TRACE(NFAPI_TRACE_INFO, "%s: Handling RX Indication\n", __FUNCTION__);
+			NFAPI_TRACE(NFAPI_TRACE_INFO, "%s: Handling RX Indication sfn:%d slot:%d\n", __FUNCTION__, ind.sfn, ind.slot);
                         if(vnf_p7->_public.nr_rx_data_indication)
 			{
 				(vnf_p7->_public.nr_rx_data_indication)(&ind);
@@ -1527,7 +1565,7 @@ void vnf_handle_nr_crc_indication(void *pRecvMsg, int recvMsgLen, vnf_p7_t* vnf_
 		}
 		else
 		{
-		        NFAPI_TRACE(NFAPI_TRACE_INFO, "%s: Handling CRC Indication\n", __FUNCTION__);
+		        NFAPI_TRACE(NFAPI_TRACE_INFO, "%s: Handling CRC Indication sfn:%d slot:%d\n", __FUNCTION__, ind.sfn, ind.slot);
 			if(vnf_p7->_public.nr_crc_indication)
 			{
 				(vnf_p7->_public.nr_crc_indication)(&ind);
@@ -1553,6 +1591,7 @@ void vnf_handle_nr_srs_indication(void *pRecvMsg, int recvMsgLen, vnf_p7_t* vnf_
 		}
 		else
 		{
+		        NFAPI_TRACE(NFAPI_TRACE_INFO, "%s: Handling SRS Indication sfn:%d slot:%d\n", __FUNCTION__, ind.sfn, ind.slot);
 			if(vnf_p7->_public.nr_srs_indication)
 			{
 				(vnf_p7->_public.nr_srs_indication)(&ind);
@@ -1578,7 +1617,7 @@ void vnf_handle_nr_uci_indication(void *pRecvMsg, int recvMsgLen, vnf_p7_t* vnf_
 		}
 		else
 		{
-		        NFAPI_TRACE(NFAPI_TRACE_INFO, "%s: Handling UCI Indication\n", __FUNCTION__);
+		        NFAPI_TRACE(NFAPI_TRACE_INFO, "%s: Handling UCI Indication sfn:%d slot:%d\n", __FUNCTION__, ind.sfn, ind.slot);
 			if(vnf_p7->_public.nr_uci_indication)
 			{
 				(vnf_p7->_public.nr_uci_indication)(&ind);
@@ -1604,7 +1643,7 @@ void vnf_handle_nr_rach_indication(void *pRecvMsg, int recvMsgLen, vnf_p7_t* vnf
 		}
 		else
 		{
-		        NFAPI_TRACE(NFAPI_TRACE_INFO, "%s: Handling RACH Indication\n", __FUNCTION__);
+		        NFAPI_TRACE(NFAPI_TRACE_INFO, "%s: Handling RACH Indication sfn:%d slot:%d\n", __FUNCTION__, ind.sfn, ind.slot);
 			if(vnf_p7->_public.nr_rach_indication)
 			{
 				(vnf_p7->_public.nr_rach_indication)(&ind);
@@ -2147,6 +2186,10 @@ void vnf_dispatch_p7_message(void *pRecvMsg, int recvMsgLen, vnf_p7_t* vnf_p7)
 		case NFAPI_UE_RELEASE_RESPONSE:
 			vnf_handle_ue_release_resp(pRecvMsg, recvMsgLen, vnf_p7);
 			break;
+
+		case NFAPI_SUBFRAME_INDICATION: /** FC */
+			vnf_handle_subframe_indication(pRecvMsg, recvMsgLen, vnf_p7);
+                        break;
 
 		default:
 			{

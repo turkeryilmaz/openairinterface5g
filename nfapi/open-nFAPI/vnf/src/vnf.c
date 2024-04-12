@@ -1146,6 +1146,7 @@ void vnf_handle_p4_p5_message(void *pRecvMsg, int recvMsgLen, int p5_idx, nfapi_
 		return;
 	}
 
+	NFAPI_TRACE(NFAPI_TRACE_INFO, "received messageId:%d\n", messageHeader.message_id);
 	switch (messageHeader.message_id)
 	{
 		case NFAPI_PNF_PARAM_RESPONSE:

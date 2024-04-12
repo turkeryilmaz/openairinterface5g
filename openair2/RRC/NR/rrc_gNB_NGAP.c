@@ -195,6 +195,11 @@ rrc_gNB_send_NGAP_NAS_FIRST_REQ(
   req->nas_pdu.buffer = malloc(req->nas_pdu.length);
   AssertFatal(req->nas_pdu.buffer != NULL, "out of memory\n");
   memcpy(req->nas_pdu.buffer, rrcSetupComplete->dedicatedNAS_Message.buf, req->nas_pdu.length);
+
+  if(RC.ss.mode == SS_GNB)
+  {
+    LOG_NAS_P(OAILOG_INFO, "NR_NAS_PDU", rrcSetupComplete->dedicatedNAS_Message.buf, rrcSetupComplete->dedicatedNAS_Message.size);
+  }
   // extract_imsi(NGAP_NAS_FIRST_REQ (message_p).nas_pdu.buffer,
   //              NGAP_NAS_FIRST_REQ (message_p).nas_pdu.length,
   //              ue_context_pP);
@@ -402,7 +407,7 @@ static void trigger_bearer_setup(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, int n, pdu
     drb_t *rrc_drb = generateDRB(UE,
                                  drb_id,
                                  pduSession,
-                                 rrc->configuration.enable_sdap,
+                                 rrc->configuration[UE->primaryCC_id].enable_sdap,
                                  rrc->security.do_drb_integrity,
                                  rrc->security.do_drb_ciphering);
 
@@ -417,7 +422,7 @@ static void trigger_bearer_setup(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, int n, pdu
       drb->sdap_config.sDAP_Header_UL = sdap_config->sdap_HeaderUL;
       drb->sdap_config.sDAP_Header_DL = sdap_config->sdap_HeaderDL;
       /* PDCP */
-      set_bearer_context_pdcp_config(&drb->pdcp_config, rrc_drb, rrc->configuration.um_on_default_drb);
+      set_bearer_context_pdcp_config(&drb->pdcp_config, rrc_drb, rrc->configuration[UE->primaryCC_id].um_on_default_drb);
 
       drb->numCellGroups = 1; // assume one cell group associated with a DRB
 
@@ -734,6 +739,11 @@ rrc_gNB_send_NGAP_UPLINK_NAS(
         NGAP_UPLINK_NAS(msg_p).gNB_ue_ngap_id = UE->rrc_ue_id;
         NGAP_UPLINK_NAS (msg_p).nas_pdu.length = nas->size;
         NGAP_UPLINK_NAS (msg_p).nas_pdu.buffer = buf;
+
+        if(RC.ss.mode == SS_GNB)
+        {
+          LOG_NAS_P(OAILOG_INFO, "NR_NAS_PDU", buf, nas->size);
+        }
         // extract_imsi(NGAP_UPLINK_NAS (msg_p).nas_pdu.buffer,
         //               NGAP_UPLINK_NAS (msg_p).nas_pdu.length,
         //               ue_context_pP);
@@ -847,6 +857,7 @@ void rrc_gNB_process_NGAP_PDUSESSION_SETUP_REQ(MessageDef *msg_p, instance_t ins
   gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
   PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, 0, GNB_FLAG_YES, UE->rnti, 0, 0, 0);
   gNB_RRC_INST *rrc = RC.nrrrc[ctxt.module_id];
+  const int CC_id = UE->primaryCC_id;
   LOG_I(NR_RRC, "[gNB %ld] gNB_ue_ngap_id %u \n", instance, msg->gNB_ue_ngap_id);
 
   if (ue_context_p == NULL) {
@@ -1417,17 +1428,16 @@ int rrc_gNB_process_PAGING_IND(MessageDef *msg_p, instance_t instance)
     LOG_I(NR_RRC,"[gNB %ld] In NGAP_PAGING_IND: MCC %d, MNC %d, TAC %d\n", instance, NGAP_PAGING_IND(msg_p).plmn_identity[tai_size].mcc,
           NGAP_PAGING_IND(msg_p).plmn_identity[tai_size].mnc, NGAP_PAGING_IND(msg_p).tac[tai_size]);
 
-    for (uint8_t j = 0; j < RC.nrrrc[instance]->configuration.num_plmn; j++) {
-      if (RC.nrrrc[instance]->configuration.mcc[j] == NGAP_PAGING_IND(msg_p).plmn_identity[tai_size].mcc
-          && RC.nrrrc[instance]->configuration.mnc[j] == NGAP_PAGING_IND(msg_p).plmn_identity[tai_size].mnc
-          && RC.nrrrc[instance]->configuration.tac == NGAP_PAGING_IND(msg_p).tac[tai_size]) {
-        for (uint8_t CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
-          AssertFatal(false, "to be implemented properly\n");
+    for (uint8_t CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
+      for (uint8_t j = 0; j < RC.nrrrc[instance]->configuration[CC_id].num_plmn; j++) {
+        if (RC.nrrrc[instance]->configuration[CC_id].mcc[j] == NGAP_PAGING_IND(msg_p).plmn_identity[tai_size].mcc
+            && RC.nrrrc[instance]->configuration[CC_id].mnc[j] == NGAP_PAGING_IND(msg_p).plmn_identity[tai_size].mnc
+            && RC.nrrrc[instance]->configuration[CC_id].tac == NGAP_PAGING_IND(msg_p).tac[tai_size]) {
           if (NODE_IS_CU(RC.nrrrc[instance]->node_type)) {
             MessageDef *m = itti_alloc_new_message(TASK_RRC_GNB, 0, F1AP_PAGING_IND);
-            F1AP_PAGING_IND(m).plmn.mcc = RC.nrrrc[j]->configuration.mcc[0];
-            F1AP_PAGING_IND(m).plmn.mnc = RC.nrrrc[j]->configuration.mnc[0];
-            F1AP_PAGING_IND(m).plmn.mnc_digit_length = RC.nrrrc[j]->configuration.mnc_digit_length[0];
+            F1AP_PAGING_IND(m).plmn.mcc = RC.nrrrc[j]->configuration[CC_id].mcc[0];
+            F1AP_PAGING_IND(m).plmn.mnc = RC.nrrrc[j]->configuration[CC_id].mnc[0];
+            F1AP_PAGING_IND(m).plmn.mnc_digit_length = RC.nrrrc[j]->configuration[CC_id].mnc_digit_length[0];
             F1AP_PAGING_IND (m).nr_cellid        = RC.nrrrc[j]->nr_cellid;
             F1AP_PAGING_IND (m).ueidentityindexvalue = (uint16_t)(NGAP_PAGING_IND(msg_p).ue_paging_identity.s_tmsi.m_tmsi%1024);
             F1AP_PAGING_IND (m).fiveg_s_tmsi = NGAP_PAGING_IND(msg_p).ue_paging_identity.s_tmsi.m_tmsi;
@@ -1437,9 +1447,9 @@ int rrc_gNB_process_PAGING_IND(MessageDef *msg_p, instance_t instance)
           } else {
             //rrc_gNB_generate_pcch_msg(NGAP_PAGING_IND(msg_p).ue_paging_identity.s_tmsi.m_tmsi,(uint8_t)NGAP_PAGING_IND(msg_p).paging_drx, instance, CC_id);
           } // end of nodetype check
-        } // end of cc loop
-      } // end of mcc mnc check
-    } // end of num_plmn
+        } // end of mcc mnc check
+      } // end of num plmn loop
+    } // end of cc loop
   } // end of tai size
 
   return 0;

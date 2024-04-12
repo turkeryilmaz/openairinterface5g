@@ -186,6 +186,7 @@ typedef struct pdcp_s {
   uint8_t kRRCenc[32];
 
   uint8_t security_activated;
+  uint8_t security_confirmed;
 
   rlc_mode_t rlc_mode;
   uint8_t status_report;
@@ -385,6 +386,18 @@ pdcp_data_ind_func_t get_pdcp_data_ind_func(void);
 int pdcp_fifo_flush_mbms_sdus                      ( const protocol_ctxt_t *const  ctxt_pP);
 int pdcp_fifo_read_input_mbms_sdus_fromtun       ( const protocol_ctxt_t *const  ctxt_pP);
 
+uint32_t pdcp_get_next_count_tx(
+  pdcp_t * const pdcp_pP,
+  const srb_flag_t srb_flagP,
+  const uint16_t pdcp_sn
+);
+
+uint32_t pdcp_get_next_count_rx(
+  pdcp_t * const pdcp_pP,
+  const srb_flag_t srb_flagP,
+  const uint32_t hfn,
+  const int sn
+);
 /*
  * Following two types are utilized between NAS driver and PDCP
  */
@@ -505,6 +518,18 @@ extern notifiedFIFO_t         pdcp_sdu_list;
    (((hash_key_t)(0x0000000000000001))  << 63))
 
 extern hash_table_t  *pdcp_coll_p;
+
+// ----------------------------------------------------------------------------
+
+typedef   int (*ss_set_pdcp_cnt_cb)(pdcp_t *pdcp_p , uint32_t rb_id, ss_get_pdcp_cnt_t *pc);
+typedef   void (*ss_set_secu_cipher_cb)(pdcp_t *pdcp_p , uint8_t  security_modeP);
+
+typedef struct ss_rrc_pdcp_api_s {
+  ss_set_pdcp_cnt_cb    set_pdcp_cnt;
+  ss_set_secu_cipher_cb set_secu_cipher;
+} ss_rrc_pdcp_api_t;
+// ----------------------------------------------------------------------------
+
 
 #endif
 /** @}*/

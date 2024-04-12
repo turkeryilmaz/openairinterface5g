@@ -269,8 +269,9 @@ void rx_func(void *param)
     gNB->UL_INFO.frame = frame_rx;
     gNB->UL_INFO.slot = slot_rx;
     gNB->UL_INFO.module_id = gNB->Mod_id;
+
     gNB->UL_INFO.CC_id = gNB->CC_id;
-    gNB->if_inst->NR_UL_indication(&gNB->UL_INFO);
+    gNB->if_inst->NR_UL_indication(&gNB->UL_INFO); //TODO w2406: need to iteriate all cc_id?
     stop_meas(&gNB->ul_indication_stats);
 
     notifiedFIFO_elt_t *res = newNotifiedFIFO_elt(sizeof(processingData_L1_t), 0, &gNB->L1_rx_out, NULL);

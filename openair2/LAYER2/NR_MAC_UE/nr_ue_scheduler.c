@@ -1289,6 +1289,7 @@ void nr_ue_ul_scheduler(NR_UE_MAC_INST_t *mac, nr_uplink_indication_t *ul_info)
   if(mac->state == UE_CONNECTED)
     nr_trigger_sr(mac);
 
+  pthread_mutex_lock(&mac->mutex_ul_info);
   // update Bj for all active lcids before LCP procedure
   LOG_D(NR_MAC, "====================[Frame %d][Slot %d]Logical Channel Prioritization===========\n", frame_tx, slot_tx);
   for (int i = 0; i < mac->lc_ordered_list.count; i++) {
@@ -1317,6 +1318,7 @@ void nr_ue_ul_scheduler(NR_UE_MAC_INST_t *mac, nr_uplink_indication_t *ul_info)
     // reset bj timer
     nr_timer_start(&sched_info->Bj_timer);
   }
+  pthread_mutex_unlock(&mac->mutex_ul_info);
 
   if(mac->state >= UE_PERFORMING_RA)
     nr_ue_pucch_scheduler(mac, frame_tx, slot_tx, ul_info->phy_data);
@@ -3082,9 +3084,13 @@ uint8_t nr_ue_get_sdu(NR_UE_MAC_INST_t *mac,
   nr_ue_get_sdu_mac_ce_post(mac, CC_id, frame, slot, gNB_index, ulsch_buffer, buflen, mac_ce_p);
 
   if (mac_ce_p->tot_mac_ce_len > 0) {
-
+    int actual_mac_ce_len = 0;
     LOG_D(NR_MAC, "In %s copying %d bytes of MAC CEs to the UL PDU \n", __FUNCTION__, mac_ce_p->tot_mac_ce_len);
-    nr_write_ce_ulsch_pdu(pdu, mac, 0, NULL, mac_ce_p->bsr_t, mac_ce_p->bsr_s, mac_ce_p->bsr_l);
+    actual_mac_ce_len = nr_write_ce_ulsch_pdu(pdu, mac, 0, NULL, mac_ce_p->bsr_t, mac_ce_p->bsr_s, mac_ce_p->bsr_l);
+    LOG_D(NR_MAC, "In %s actual copy %d bytes of MAC CEs to the UL PDU \n", __FUNCTION__, actual_mac_ce_len);
+    mac_ce_p->total_mac_pdu_header_len -= (mac_ce_p->tot_mac_ce_len);
+    mac_ce_p->total_mac_pdu_header_len += actual_mac_ce_len;
+    mac_ce_p->tot_mac_ce_len = actual_mac_ce_len;
     pdu += (unsigned char) mac_ce_p->tot_mac_ce_len;
 
 #ifdef ENABLE_MAC_PAYLOAD_DEBUG

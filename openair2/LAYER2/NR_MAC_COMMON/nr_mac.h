@@ -286,6 +286,8 @@ typedef struct {
   bool index_has_sib[NR_MAX_HARQ_PROCESSES];
   bool expected_rar;
   bool index_has_rar[NR_MAX_HARQ_PROCESSES];
+  bool expected_paging;
+  bool index_has_paging[NR_MAX_HARQ_PROCESSES];
   bool expected_dci;
   bool index_has_dci[NR_MAX_HARQ_PROCESSES];
   emul_l1_harq_t harq[NR_MAX_HARQ_PROCESSES];
