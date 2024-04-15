@@ -2365,6 +2365,7 @@ bool valid_sys_msg(struct SYSTEM_CTRL_REQ *req)
   bool valid = false;
   enum ConfirmationResult_Type_Sel resType = ConfirmationResult_Type_Success;
   bool resVal = true;
+  bool sendDummyCnf = true;
   enum SystemConfirm_Type_Sel cnfType = 0;
 
   // if (req->Common.ControlInfo.CnfFlag == FALSE)
@@ -2380,6 +2381,7 @@ bool valid_sys_msg(struct SYSTEM_CTRL_REQ *req)
       if (SS_context.SSCell_list[cell_index].State >= SS_STATE_NOT_CONFIGURED)
       {
         valid = true;
+        sendDummyCnf = false;
       }
       else
       {
@@ -2388,25 +2390,30 @@ bool valid_sys_msg(struct SYSTEM_CTRL_REQ *req)
       break;
 
     case SystemRequest_Type_EnquireTiming:
+      sendDummyCnf = false;
       break;
     case SystemRequest_Type_CellAttenuationList:
       if (SS_context.SSCell_list[cell_index].State == SS_STATE_CELL_ACTIVE)
       {
         valid = true;
+        sendDummyCnf = false;
       }
       break;
     case SystemRequest_Type_RadioBearerList:
       cnfType = SystemConfirm_Type_RadioBearerList;
       valid = true;
+      sendDummyCnf = false;
       break;
     case SystemRequest_Type_AS_Security:
       cnfType = SystemConfirm_Type_AS_Security;
       valid = true;
+      sendDummyCnf = false;
       break;
     case SystemRequest_Type_PdcpCount:
       if (SS_context.SSCell_list[cell_index].State == SS_STATE_CELL_ACTIVE)
       {
         valid = true;
+        sendDummyCnf = false;
       }
       //cnfType = SystemConfirm_Type_PdcpCount;
       break;
@@ -2416,26 +2423,37 @@ bool valid_sys_msg(struct SYSTEM_CTRL_REQ *req)
     break;
    case SystemRequest_Type_Paging:
     valid = true;
+    sendDummyCnf = false;
     cnfType = SystemConfirm_Type_Paging;
     break;
    case SystemRequest_Type_L1MacIndCtrl:
     valid = true;
+    sendDummyCnf = false;
     cnfType = SystemConfirm_Type_L1MacIndCtrl;
     break;
    case SystemRequest_Type_PdcchOrder:
     valid = true;
+    sendDummyCnf = false;
     cnfType = SystemConfirm_Type_PdcchOrder;
     break;
    case SystemRequest_Type_PdcpHandoverControl:
     valid = true;
+    sendDummyCnf = false;
     cnfType = SystemConfirm_Type_PdcpHandoverControl;
     break;
   default:
     valid = false;
+    sendDummyCnf = false;
   }
-  
-  reqCnfFlag_g = req->Common.ControlInfo.CnfFlag; 
 
+  reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
+  if (sendDummyCnf)
+  {
+    send_sys_cnf(resType, resVal, cnfType, NULL);
+    LOG_A(ENB_SS_SYS_TASK, "Sending Dummy OK Req %d cnTfype %d ResType %d ResValue %d\n",
+          req->Request.d, cnfType, resType, resVal);
+    sys_confirm_done_indication();
+  }
   return valid;
 }
 
