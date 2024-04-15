@@ -1090,6 +1090,8 @@ int sys_handle_cell_config_req(struct SYSTEM_CTRL_REQ *req)
   {
   case CellConfigRequest_Type_AddOrReconfigure:
 
+    //reset cell configuration status
+    cell_config_done = -1;
     LOG_A(ENB_SS_SYS_TASK, "CellConfigRequest_Type_AddOrReconfigure receivied\n");
     status = sys_add_reconfig_cell(req,&isRrcConfigReqSent);
     if (status)
@@ -2378,15 +2380,8 @@ bool valid_sys_msg(struct SYSTEM_CTRL_REQ *req)
   switch (req->Request.d)
   {
     case SystemRequest_Type_Cell:
-      if (SS_context.SSCell_list[cell_index].State > SS_STATE_NOT_CONFIGURED)
-      {
-        valid = true;
-        sendDummyCnf = false;
-      }
-      else
-      {
-        cnfType = SystemConfirm_Type_Cell;
-      }
+      valid = true;
+      sendDummyCnf = false;
       break;
 
     case SystemRequest_Type_EnquireTiming:
