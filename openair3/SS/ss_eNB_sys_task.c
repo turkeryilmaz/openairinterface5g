@@ -2378,7 +2378,7 @@ bool valid_sys_msg(struct SYSTEM_CTRL_REQ *req)
   switch (req->Request.d)
   {
     case SystemRequest_Type_Cell:
-      if (SS_context.SSCell_list[cell_index].State >= SS_STATE_NOT_CONFIGURED)
+      if (SS_context.SSCell_list[cell_index].State > SS_STATE_NOT_CONFIGURED)
       {
         valid = true;
         sendDummyCnf = false;
