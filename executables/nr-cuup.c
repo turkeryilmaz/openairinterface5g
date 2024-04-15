@@ -31,6 +31,7 @@
 #include "openair2/F1AP/f1ap_ids.h"
 #include "openair2/GNB_APP/gnb_config.h"
 #include "nr_pdcp/nr_pdcp_oai_api.h"
+#include "openair2/SDAP/nr_sdap/nr_sdap_entity.h"
 
 RAN_CONTEXT_t RC;
 THREAD_STRUCT thread_struct;
@@ -168,6 +169,7 @@ int main(int argc, char **argv)
   AssertFatal(rc >= 0, "Create task for GTPV1U failed\n");
   rc = itti_create_task(TASK_CUUP_E1, E1AP_CUUP_task, NULL);
   AssertFatal(rc >= 0, "Create task for CUUP E1 failed\n");
+  sdap_init();
   nr_pdcp_layer_init();
   cu_init_f1_ue_data(); // for CU-UP/CP mapping: we use the same
   E1_t e1type = UPtype;
