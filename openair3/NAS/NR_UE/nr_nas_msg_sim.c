@@ -50,6 +50,7 @@
 #include "openair2/SDAP/nr_sdap/nr_sdap.h"
 #include "openair3/SECU/nas_stream_eia2.h"
 #include "openair3/UTILS/conversions.h"
+#include "executables/nr-uesoftmodem.h"
 
 #define MAX_NAS_UE 4
 
@@ -848,7 +849,25 @@ static void generateRegistrationComplete(nr_ue_nas_t *nas,
   }
 }
 
-void decodeDownlinkNASTransport(as_nas_info_t *initialNasMsg, uint8_t *pdu_buffer)
+void nr_ue_create_ip_if(const char *ifnameprefix, const char *ipv4, const char *ipv6, int ue_id, int pdu_session_id)
+{
+  char ifname[20];
+  char ifsuffix[10];
+  sprintf(ifsuffix, "p%d", pdu_session_id);
+  int default_pdu = get_softmodem_params()->default_pdu_session_id;
+  const char *p_ifsuffix = (pdu_session_id == default_pdu) ? NULL : ifsuffix;
+  snprintf(ifname, sizeof(ifname), "%s%d%s", ifnameprefix, ue_id, (p_ifsuffix) ? p_ifsuffix : "");
+  if (doesInterfaceExist(ifname)) {
+    LOG_W(NAS, "Interface %s already exists. Do nothing.\n", ifname);
+    return;
+  }
+  const int sock = tun_alloc(ifname);
+  tun_config(ue_id, ipv4, ipv6, "oaitun_ue", p_ifsuffix);
+  setup_ue_ipv4_route(ue_id, pdu_session_id, ipv4, "oaitun_ue", p_ifsuffix);
+  start_sdap_tun_ue(ue_id - 1, pdu_session_id, sock); // interface name suffix is ue_id+1
+}
+
+void decodeDownlinkNASTransport(as_nas_info_t *initialNasMsg, uint8_t * pdu_buffer, int instance)
 {
   uint8_t msg_type = *(pdu_buffer + 16);
   if (msg_type == FGS_PDU_SESSION_ESTABLISHMENT_ACC) {
@@ -856,8 +875,8 @@ void decodeDownlinkNASTransport(as_nas_info_t *initialNasMsg, uint8_t *pdu_buffe
     char ip[20];
     sprintf(ip, "%d.%d.%d.%d", *(ip_p), *(ip_p + 1), *(ip_p + 2), *(ip_p + 3));
     LOG_A(NAS, "Received PDU Session Establishment Accept\n");
-    tun_config(1, ip, NULL, "oaitun_ue");
-    setup_ue_ipv4_route(1, ip, "oaitun_ue");
+    const int pdu_session_id = *(pdu_buffer + 14);
+    nr_ue_create_ip_if("oaitun_ue", ip, NULL, instance + 1, pdu_session_id);
   } else {
     LOG_E(NAS, "Received unexpected message in DLinformationTransfer %d\n", msg_type);
   }
@@ -1192,7 +1211,7 @@ static void get_allowed_nssai(nr_nas_msg_snssai_t nssai[8], const uint8_t *pdu_b
 static void request_default_pdusession(nr_ue_nas_t *nas, int nssai_idx)
 {
   MessageDef *message_p = itti_alloc_new_message(TASK_NAS_NRUE, nas->UE_id, NAS_PDU_SESSION_REQ);
-  NAS_PDU_SESSION_REQ(message_p).pdusession_id = 10; /* first or default pdu session */
+  NAS_PDU_SESSION_REQ(message_p).pdusession_id = get_softmodem_params()->default_pdu_session_id;
   NAS_PDU_SESSION_REQ(message_p).pdusession_type = 0x91; // 0x91 = IPv4, 0x92 = IPv6, 0x93 = IPv4v6
   NAS_PDU_SESSION_REQ(message_p).sst = nas_allowed_nssai[nssai_idx].sst;
   NAS_PDU_SESSION_REQ(message_p).sd = nas_allowed_nssai[nssai_idx].sd;
@@ -1415,7 +1434,7 @@ void *nas_nrue(void *args_p)
             handle_security_mode_command(nas, &initialNasMsg, pdu_buffer, pdu_length);
             break;
           case FGS_DOWNLINK_NAS_TRANSPORT:
-            decodeDownlinkNASTransport(&initialNasMsg, pdu_buffer);
+            decodeDownlinkNASTransport(&initialNasMsg, pdu_buffer, nas->UE_id);
             break;
           case REGISTRATION_ACCEPT:
             handle_registration_accept(nas, pdu_buffer, pdu_length);
@@ -1434,6 +1453,7 @@ void *nas_nrue(void *args_p)
             if (offset < NAS_CONN_ESTABLI_CNF(msg_p).nasMsg.length)
               payload_container = pdu_buffer + offset;
 
+            int pdu_session_id = ((dl_nas_transport_t *)(pdu_buffer + offset))->sm_nas_msg_header.pdu_session_id;
             while (offset < payload_container_length) {
               if (*(payload_container + offset) == 0x29) { // PDU address IEI
                 if ((*(payload_container + offset + 1) == 0x05) && (*(payload_container + offset + 2) == 0x01)) { // IPV4
@@ -1441,8 +1461,7 @@ void *nas_nrue(void *args_p)
                   char ip[20];
                   snprintf(ip, sizeof(ip), "%d.%d.%d.%d", *(ip_p), *(ip_p + 1), *(ip_p + 2), *(ip_p + 3));
                   LOG_I(NAS, "Received PDU Session Establishment Accept, UE IP: %s\n", ip);
-                  tun_config(1, ip, NULL, "oaitun_ue");
-                  setup_ue_ipv4_route(1, ip, "oaitun_ue");
+                  nr_ue_create_ip_if("oaitun_ue", ip, NULL, nas->UE_id + 1, pdu_session_id);
                   break;
                 }
               }
@@ -1462,6 +1481,22 @@ void *nas_nrue(void *args_p)
         if (initialNasMsg.length > 0)
           send_nas_uplink_data_req(nas, &initialNasMsg);
       } break;
+
+      case NAS_INIT_NOS1_IF: {
+        const int pdu_session_id = get_softmodem_params()->default_pdu_session_id;
+        const char *ip = !get_softmodem_params()->nsa ? "10.0.1.2" : "10.0.1.3";
+        const int qfi = 7;
+        nr_ue_create_ip_if("oaitun_ue", ip, NULL, nas->UE_id + 1, pdu_session_id);
+        set_qfi(qfi, pdu_session_id, nas->UE_id);
+        break;
+      }
+
+      case NAS_PDU_SESSION_REL: {
+        // TODO: Initiate PDU session release request & send NAS signal to network
+        nas_pdu_session_req_t *pdu_rel = &NAS_PDU_SESSION_REL(msg_p);
+        remove_ue_ip_if(nas->UE_id, pdu_rel->pdusession_id);
+        break;
+      }
 
       default:
         LOG_E(NAS, "[UE %ld] Received unexpected message %s\n", nas->UE_id, ITTI_MSG_NAME(msg_p));
