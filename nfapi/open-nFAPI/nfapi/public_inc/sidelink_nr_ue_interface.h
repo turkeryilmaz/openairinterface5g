@@ -11,6 +11,24 @@
 #define SL_NR_MAX_PSSCH_SCI_LENGTH_IN_BYTES 8
 #define SL_NR_MAX_SCI_LENGTH_IN_BYTES 8
 
+typedef struct sl_nr_tti_csi_rs_pdu {
+  uint8_t subcarrier_spacing;       // subcarrierSpacing [3GPP TS 38.211, sec 4.2], Value:0->4
+  uint8_t cyclic_prefix;            // Cyclic prefix type [3GPP TS 38.211, sec 4.2], 0: Normal; 1: Extended
+  uint16_t start_rb;                // PRB where this CSI resource starts related to common resource block #0 (CRB#0). Only multiples of 4 are allowed. [3GPP TS 38.331, sec 6.3.2 parameter CSIFrequencyOccupation], Value: 0 ->274
+  uint16_t nr_of_rbs;               // Number of PRBs across which this CSI resource spans. Only multiples of 4 are allowed. [3GPP TS 38.331, sec 6.3.2 parameter CSI-FrequencyOccupation], Value: 24 -> 276
+  uint8_t csi_type;                 // CSI Type [3GPP TS 38.211, sec 7.4.1.5], Value: 0:TRS; 1:CSI-RS NZP; 2:CSI-RS ZP
+  uint8_t row;                      // Row entry into the CSI Resource location table. [3GPP TS 38.211, sec 7.4.1.5.3 and table 7.4.1.5.3-1], Value: 1-18
+  uint16_t freq_domain;             // Bitmap defining the frequencyDomainAllocation [3GPP TS 38.211, sec 7.4.1.5.3] [3GPP TS 38.331 CSIResourceMapping], Value: Up to the 12 LSBs, actual size is determined by the Row parameter
+  uint8_t symb_l0;                  // The time domain location l0 and firstOFDMSymbolInTimeDomain [3GPP TS 38.211, sec 7.4.1.5.3], Value: 0->13
+  uint8_t symb_l1;                  // The time domain location l1 and firstOFDMSymbolInTimeDomain2 [3GPP TS 38.211, sec 7.4.1.5.3], Value: 2->12
+  uint8_t cdm_type;                 // The cdm-Type field [3GPP TS 38.211, sec 7.4.1.5.3 and table 7.4.1.5.3-1], Value: 0: noCDM; 1: fd-CDM2; 2: cdm4-FD2-TD2; 3: cdm8-FD2-TD4
+  uint8_t freq_density;             // The density field, p and comb offset (for dot5). [3GPP TS 38.211, sec 7.4.1.5.3 and table 7.4.1.5.3-1], Value: 0: dot5 (even RB); 1: dot5 (odd RB); 2: one; 3: three
+  uint16_t scramb_id;               // ScramblingID of the CSI-RS [3GPP TS 38.214, sec 5.2.2.3.1], Value: 0->1023
+  uint8_t power_control_offset;     // Ratio of PDSCH EPRE to NZP CSI-RSEPRE [3GPP TS 38.214, sec 5.2.2.3.1], Value: 0->23 representing -8 to 15 dB in 1dB steps; 255: L1 is configured with ProfileSSS
+  uint8_t power_control_offset_ss;  // Ratio of NZP CSI-RS EPRE to SSB/PBCH block EPRE [3GPP TS 38.214, sec 5.2.2.3.1], Values: 0: -3dB; 1: 0dB; 2: 3dB; 3: 6dB; 255: L1 is configured with ProfileSSS
+  uint8_t measurement_bitmap;       // bit 0 RSRP, bit 1 RI, bit 2 LI, bit 3 PMI, bit 4 CQI, bit 5 i1
+} sl_nr_tti_csi_rs_pdu_t;
+
 typedef enum sl_sci_format_type_enum {
   SL_SCI_INVALID_FORMAT,
   SL_SCI_FORMAT_1A_ON_PSCCH,
@@ -30,6 +48,7 @@ typedef enum sl_nr_rx_config_type_enum {
   SL_NR_CONFIG_TYPE_RX_PSCCH,
   SL_NR_CONFIG_TYPE_RX_PSSCH_SCI,
   SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH,
+  SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH_CSI_RS,
   SL_NR_CONFIG_TYPE_RX_MAXIMUM
 } sl_nr_rx_config_type_enum_t;
 
@@ -38,6 +57,8 @@ typedef enum sl_nr_tx_config_type_enum {
   SL_NR_CONFIG_TYPE_TX_PSBCH = SL_NR_CONFIG_TYPE_RX_MAXIMUM + 1,
   SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH,
   SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH,
+  SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_CSI_RS,
+  SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH_CSI_RS,
   SL_NR_CONFIG_TYPE_TX_MAXIMUM
 } sl_nr_tx_config_type_enum_t;
 
@@ -198,6 +219,7 @@ typedef struct {
     sl_nr_rx_config_pssch_sci_pdu_t rx_sci2_config_pdu;
     sl_nr_rx_config_pssch_pdu_t rx_pssch_config_pdu;
   };
+  sl_nr_tti_csi_rs_pdu_t rx_csi_rs_config_pdu;
 } sl_nr_rx_config_request_pdu_t;
 
 // MAC commands PHY to perform an action on RX RESOURCE POOL or RX PSBCH using this RX CONFIG
@@ -225,7 +247,7 @@ typedef struct sl_nr_tx_config_psfch_pdu {
   uint8_t bit_len_harq;
 } sl_nr_tx_config_psfch_pdu_t;
 //MAC commands PHY to transmit Data on PSCCH, PSSCH.
-typedef struct sl_nr_tx_config_pscch_pssch_psfch_pdu {
+typedef struct sl_nr_tx_config_pscch_pssch_pdu {
 
   //SCI 1A Payload Prepared by MAC, to be sent on PSCCH
   uint8_t pscch_sci_payload[SL_NR_MAX_PSCCH_SCI_LENGTH_IN_BYTES];
@@ -288,6 +310,9 @@ typedef struct sl_nr_tx_config_pscch_pssch_psfch_pdu {
   sl_nr_tx_config_psfch_pdu_t psfch_pdu;
   //....TBD.. any additional parameters
 
+  // CSI-RS related parameters
+  sl_nr_tti_csi_rs_pdu_t nr_sl_csi_rs_pdu;
+
   //TX Power for PSSCH in symbol without PSCCH.
   // Power for PSCCH and power for PSSCH in symbol with PSCCH is calculated
   // from this value according to 38.213 section 16
@@ -295,7 +320,7 @@ typedef struct sl_nr_tx_config_pscch_pssch_psfch_pdu {
 
   uint16_t slsch_payload_length;
   uint8_t *slsch_payload;
-} sl_nr_tx_config_pscch_pssch_psfch_pdu_t;
+} sl_nr_tx_config_pscch_pssch_pdu_t;
 
 // MAC indicates PHY to send PSBCH.
 typedef struct sl_nr_tx_config_psbch_pdu {
@@ -311,7 +336,7 @@ typedef struct {
   sl_nr_tx_config_type_enum_t pdu_type; // indicates the type of TX config request
   union {
     sl_nr_tx_config_psbch_pdu_t tx_psbch_config_pdu;
-    sl_nr_tx_config_pscch_pssch_psfch_pdu_t tx_pscch_pssch_psfch_config_pdu;
+    sl_nr_tx_config_pscch_pssch_pdu_t tx_pscch_pssch_config_pdu;
   };
 } sl_nr_tx_config_request_pdu_t;
 

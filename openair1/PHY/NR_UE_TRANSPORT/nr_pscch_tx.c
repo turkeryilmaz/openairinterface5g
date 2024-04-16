@@ -55,7 +55,7 @@ uint32_t nr_generate_sci1(const PHY_VARS_NR_UE *ue,
                           const NR_DL_FRAME_PARMS *frame_parms,
                           const int16_t amp,
                           const int nr_slot_tx,
-                          const sl_nr_tx_config_pscch_pssch_psfch_pdu_t *pscch_pssch_pdu)
+                          const sl_nr_tx_config_pscch_pssch_pdu_t *pscch_pssch_pdu)
 {
 
   nfapi_nr_dl_tti_pdcch_pdu_rel15_t pdcch_pdu_rel15={0};

@@ -43,7 +43,11 @@
 
 bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP,int slotP, nr_sci_pdu_t *sci_pdu,nr_sci_pdu_t *sci2_pdu,uint8_t *slsch_pdu,nr_sci_format_t format2, uint16_t *slsch_pdu_length_max) {
 
-   mac_rlc_status_resp_t rlc_status = mac_rlc_status_ind(0, mac->src_id, 0,frameP,slotP,ENB_FLAG_NO,MBMS_FLAG_NO, 4, 0, 0);
+  mac_rlc_status_resp_t rlc_status = mac_rlc_status_ind(0, mac->src_id, 0, frameP, slotP, ENB_FLAG_NO, MBMS_FLAG_NO, 4, 0, 0);
+
+  sl_nr_ue_mac_params_t *sl_mac = mac->SL_MAC_PARAMS;
+  uint8_t mu = sl_mac->sl_phy_config.sl_config_req.sl_bwp_config.sl_scs;
+  uint8_t slots_per_frame = nr_slots_per_frame[mu];
 
   uint8_t psfch_period = 0;
   if (mac->sl_tx_res_pool->sl_PSFCH_Config_r16)
@@ -69,28 +73,29 @@ bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP,int slotP, nr_sci_pdu_t
 
 // Fill SCI2A
      sci2_pdu->harq_pid = 0;
-     sci2_pdu->ndi = (1-sci2_pdu->ndi)&1; 
-     sci2_pdu->rv_index=0;
+     sci2_pdu->ndi = (1-sci2_pdu->ndi)&1;
+     sci2_pdu->rv_index = 0;
      sci2_pdu->source_id = get_softmodem_params()->node_number;
      sci2_pdu->dest_id=0xabcd;
      sci2_pdu->harq_feedback = psfch_period ? 1 : 0;
      sci2_pdu->cast_type = 1;
-     if (format2==NR_SL_SCI_FORMAT_2C || format2==NR_SL_SCI_FORMAT_2A)
-       sci2_pdu->csi_req=1;
-     if (format2==NR_SL_SCI_FORMAT_2B)
-       sci2_pdu->zone_id=0;   
+     if (format2 == NR_SL_SCI_FORMAT_2C || format2 == NR_SL_SCI_FORMAT_2A) {
+       sci2_pdu->csi_req = ((slots_per_frame * frameP + slotP - sl_mac->slot_offset) % sl_mac->slot_periodicity) && (!mac->SL_MAC_PARAMS->sl_CSI_Acquisition) ? 0 : 1;
+     }
+     if (format2 == NR_SL_SCI_FORMAT_2B)
+       sci2_pdu->zone_id = 0;
    // Fill in for R17: communication_range
      sci2_pdu->communication_range.val = 0;
-     if (format2==NR_SL_SCI_FORMAT_2C) {
+     if (format2 == NR_SL_SCI_FORMAT_2C) {
        sci2_pdu->providing_req_ind = 0;
        // Fill in for R17 : resource combinations
        sci2_pdu->resource_combinations.val = 0;
        sci2_pdu->first_resource_location = 0;
        // Fill in for R17 : reference_slot_location
        sci2_pdu->reference_slot_location.val = 0;
-       sci2_pdu->resource_set_type=0;
+       sci2_pdu->resource_set_type = 0;
        // Fill in for R17 : lowest_subchannel_indices
-       sci2_pdu->lowest_subchannel_indices.val=0;
+       sci2_pdu->lowest_subchannel_indices.val = 0;
      }
 
 // Set SLSCH

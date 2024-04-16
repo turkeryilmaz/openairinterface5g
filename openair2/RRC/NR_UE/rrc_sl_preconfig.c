@@ -498,7 +498,7 @@ NR_SL_PreconfigurationNR_r16_t *prepare_NR_SL_PRECONFIGURATION(uint16_t num_tx_p
   sl_preconfig->sl_UE_SelectedPreConfig_r16 = NULL;
 
   // indicates if CSI reporting supported in SL unicast.
-  sl_preconfig->sl_CSI_Acquisition_r16 = NULL;
+  sl_preconfig->sl_CSI_Acquisition_r16 = calloc(1, sizeof(*sl_preconfig->sl_CSI_Acquisition_r16));
 
   // ROHC profiles for NR SL
   sl_preconfig->sl_RoHC_Profiles_r16 = NULL;

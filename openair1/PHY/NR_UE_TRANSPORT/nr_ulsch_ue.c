@@ -42,6 +42,7 @@
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "PHY/NR_TRANSPORT/nr_transport_common_proto.h"
 #include "PHY/NR_TRANSPORT/nr_sch_dmrs.h"
+#include "PHY/NR_TRANSPORT/nr_dci.h"
 #include "PHY/defs_nr_common.h"
 #include "PHY/TOOLS/tools_defs.h"
 #include "executables/nr-softmodem.h"
@@ -99,7 +100,7 @@ void nr_pusch_codeword_scrambling_sci(uint32_t *in,
                                       uint32_t* out)
 {
   uint8_t reset, b_idx;
-  uint32_t x1 = 0, x2 = 0, s = 0, temp_out = 0;
+  uint32_t x1 = 0, x2 = 0, s = 0;
 
   reset = 1;
   x2 = (Nid<<15) + 1010;
@@ -122,7 +123,7 @@ void nr_pusch_codeword_scrambling_sci_2layer(uint32_t *in,
                                              uint32_t* out)
 {
   uint8_t reset, b_idx;
-  uint32_t x1 = 0, x2 = 0, s = 0, temp_out = 0;
+  uint32_t x1 = 0, x2 = 0, s = 0;
 
   reset = 1;
   x2 = (Nid<<15) + 1010;
@@ -173,11 +174,17 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
   int i;
   int sample_offsetF, N_RE_prime;
 
+  bool is_csi_rs_slot = false;
+  if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_CSI_RS ||
+      phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH_CSI_RS)
+    is_csi_rs_slot = true;
+  nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *csi_params = (nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *)&phy_data->nr_sl_pssch_pscch_pdu.nr_sl_csi_rs_pdu;
+  LOG_D(NR_PHY, "Tx start_rb %i, cdm_type %i, csi_type %i, freq_density %i, nr_of_rbs %i, row %i\n", csi_params->start_rb, csi_params->cdm_type, csi_params->csi_type, csi_params->freq_density, csi_params->nr_of_rbs, csi_params->row);
   int      N_PRB_oh = 0; // higher layer (RRC) parameter xOverhead in PUSCH-ServingCellConfig
   uint16_t number_dmrs_symbols = 0;
 
   NR_UE_ULSCH_t *ulsch_ue = &phy_data->ulsch;
-  sl_nr_tx_config_pscch_pssch_psfch_pdu_t *pscch_pssch_pdu = &phy_data->nr_sl_pssch_pscch_psfch_pdu;
+  sl_nr_tx_config_pscch_pssch_pdu_t *pscch_pssch_pdu = &phy_data->nr_sl_pssch_pscch_pdu;
   NR_UL_UE_HARQ_t *harq_process_ul_ue = &UE->ul_harq_processes[harq_pid];
   const nfapi_nr_ue_pusch_pdu_t *pusch_pdu = &ulsch_ue->pusch_pdu;
 
@@ -197,14 +204,23 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
  
   if (start_sc >= frame_parms->ofdm_symbol_size)
     start_sc -= frame_parms->ofdm_symbol_size;
-
   ulsch_ue->Nid_cell = frame_parms->Nid_cell;
-
+  uint8_t first_dmrs_symbol = 0;
+  bool is_first_dmrs_symbol = true;
   for (int i = start_symbol; i < start_symbol + number_of_symbols; i++) {
-    if((ul_dmrs_symb_pos >> i) & 0x01)
+    if((ul_dmrs_symb_pos >> i) & 0x01) {
       number_dmrs_symbols += 1;
+      if (is_first_dmrs_symbol) {
+        first_dmrs_symbol = i;
+        is_first_dmrs_symbol = false;
+      }
+      if (csi_params->symb_l0 != 0)
+        AssertFatal(i != csi_params->symb_l0, "CSI-RS MUST not be sent in DMRS symbol\n");
+    }
   }
 
+  if (csi_params->symb_l0 != 0)
+    AssertFatal(csi_params->symb_l0 > pscch_pssch_pdu->pscch_numsym, "CSI-RS MUST not be sent in PSCCH symbol\n");
   nb_dmrs_re_per_rb = ((dmrs_type == pusch_dmrs_type1) ? 6:4)*cdm_grps_no_data;
 
   //LOG_I(NR_PHY,"%s TX %x : start_rb %d nb_rb %d mod_order %d Nl %d Tpmi %d bwp_start %d start_sc %d start_symbol %d num_symbols %d cdmgrpsnodata %d num_dmrs %d dmrs_re_per_rb %d\n",pscch_pssch_pdu==NULL?"PUSCH":"PSSCH",
@@ -232,9 +248,22 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
   unsigned int G = (pscch_pssch_pdu==NULL) ? nr_get_G(nb_rb, number_of_symbols,
                                                       nb_dmrs_re_per_rb, number_dmrs_symbols, mod_order, Nl):
                                              nr_get_G_SL(nb_rb, number_of_symbols,6,number_dmrs_symbols,sci1_dmrs_overlap,pscch_pssch_pdu->pscch_numsym,pscch_pssch_pdu->pscch_numrbs,sci2_re,mod_order,Nl);
-    
-  uint32_t Gsci2 = sci2_re*2*Nl;
 
+  G -= (is_csi_rs_slot ? csi_params->nr_of_rbs/csi_params->freq_density*mod_order*Nl : 0);
+  LOG_D(NR_PHY, "%d.%d, is_csi_rs_slot %d, G %i, number_of_symbols %i, mod_order %i, freq_density %i, nr_of_rbs %i\n", frame, slot, is_csi_rs_slot, G, number_of_symbols, mod_order, csi_params->freq_density, csi_params->nr_of_rbs);
+  // Following code checks, after PSCCH symbols and DMRS symbols, whether PSSCH symbols are used by SCI2 or not,
+  // If true, then CSI-RS MUST not be sent in those PSSCH symbols containing SCI2.
+  if (csi_params->symb_l0 != 0) {
+    int32_t next_symbs_sci2_re = 0;
+    int32_t sci1_re = 12 * pscch_pssch_pdu->pscch_numrbs;
+    int32_t non_sci1_re = 12 * nb_rb - sci1_re;
+    next_symbs_sci2_re = first_dmrs_symbol <= pscch_pssch_pdu->pscch_numsym ? sci2_re - (non_sci1_re / 2 - (non_sci1_re * (pscch_pssch_pdu->pscch_numsym - 1)) - (12 * nb_rb) / 2) : sci2_re - (12 * nb_rb) / 2;
+    int8_t remaining_sci2_symb = next_symbs_sci2_re > 0 ? ceil(next_symbs_sci2_re / (12 * nb_rb)) : 0;
+    int8_t non_csi_rs_symbs = pscch_pssch_pdu->pscch_numsym + 1 + remaining_sci2_symb; // 1 is for first dmrs symbol
+    AssertFatal(csi_params->symb_l0 > non_csi_rs_symbs, "CSI-RS MUST not be sent in PSSCH symbol containing SCI2");
+  }
+
+  uint32_t Gsci2 = sci2_re*2*Nl;
   trace_NRpdu(DIRECTION_UPLINK,
               harq_process_ul_ue->a,
               pscch_pssch_pdu==NULL?pusch_pdu->pusch_data.tb_size:pscch_pssch_pdu->tb_size,
@@ -266,7 +295,6 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
   memset(scrambled_output, 0, ((available_bits>>5)+1)*sizeof(uint32_t));
   memset(scrambled_output_sci, 0, ((Gsci2>>5)+1)*sizeof(uint32_t));
 
-  
 //  for (int i=0;i<(Gsci2>>5)+1;i++) LOG_I(NR_PHY,"sci2_encoded[%d] %x\n",i,sci2_encoded_output[i]); 
 //  for (int g=0;g<G;g++) LOG_I(NR_PHY,"coded_output_f[%d] %d\n",g,harq_process_ul_ue->f[g]);
 //  LOG_I(NR_PHY,"Scrambling with Nid %x\n",phy_data->pscch_Nid);
@@ -478,11 +506,17 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
       uint16_t k = start_sc;
       uint16_t n = 0;
       uint8_t is_dmrs_sym = 0;
+      uint8_t is_csi_rs_sym = 0;
       uint8_t is_ptrs_sym = 0;
       uint16_t dmrs_idx = 0, ptrs_idx = 0;
+      int16_t csi_rs_rb = csi_params->start_rb;
       int is_pscch_sym = 0;
       if (pscch_pssch_pdu && l<(start_symbol + pscch_pssch_pdu->pscch_numsym)) { 
         is_pscch_sym = 1; 
+      }
+
+      if (is_csi_rs_slot && l == csi_params->symb_l0) {
+        is_csi_rs_sym = 1;
       }
 
       if ((ul_dmrs_symb_pos >> l) & 0x01) {
@@ -521,6 +555,8 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
       for (i=0; i< nb_rb*NR_NB_SC_PER_RB; i++) {
         uint8_t is_dmrs = 0;
         uint8_t is_ptrs = 0;
+        uint8_t is_csi_rs = 0;
+
         if (is_pscch_sym && i==(pscch_pssch_pdu->startrb)) {
            i+=(pscch_pssch_pdu->pscch_numrbs*NR_NB_SC_PER_RB);
            k+=(pscch_pssch_pdu->pscch_numrbs*NR_NB_SC_PER_RB);
@@ -530,7 +566,7 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
            }
         }
 
-	LOG_D(NR_PHY,"symbol %d re %d/%d k %d\n",l,i,nb_rb*NR_NB_SC_PER_RB, k);
+        LOG_D(NR_PHY, "symbol %d re %d/%d k %d\n", l, i, nb_rb*NR_NB_SC_PER_RB, k);
         sample_offsetF = l*frame_parms->ofdm_symbol_size + k;
 
         if (is_dmrs_sym) {
@@ -546,6 +582,21 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
                                        pusch_pdu->pusch_ptrs.ptrs_ports_list[0].ptrs_re_offset,
                                        start_sc,
                                        frame_parms->ofdm_symbol_size);
+        }
+
+        if (is_csi_rs_sym) {
+          if ((k >= csi_params->start_rb * NR_NB_SC_PER_RB) && (i % NR_NB_SC_PER_RB == 0) && (csi_rs_rb < csi_params->nr_of_rbs)) {
+            csi_rs_params_t table_params;
+            get_csi_rs_params_from_table(csi_params, &table_params);
+            port_freq_indices_t *port_freq_indices = (port_freq_indices_t *)malloc(table_params.ports*sizeof(port_freq_indices));
+            get_csi_rs_freq_ind_sl(frame_parms, csi_rs_rb, csi_params, &table_params, port_freq_indices);
+            if (k == port_freq_indices[nl].k) {
+              is_csi_rs = 1;
+              csi_rs_rb++;
+              LOG_D(NR_PHY, "Tx port_freq_indices.p %i, port_freq_indices.k %d, is_csi_rs %d, k = %i, RE %i, csi_rs_rb %i\n", port_freq_indices[nl].p, port_freq_indices[nl].k, is_csi_rs, k, i, csi_rs_rb);
+            }
+            free(port_freq_indices);
+          }
         }
 
         if (is_dmrs == 1) {
@@ -575,8 +626,13 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
           ptrs_idx++;
         } else if (!is_dmrs_sym || allowed_xlsch_re_in_dmrs_symbol(k, start_sc, frame_parms->ofdm_symbol_size, cdm_grps_no_data, dmrs_type)) {
           if (pscch_pssch_pdu || pusch_pdu->transform_precoding == transformPrecoder_disabled) {
-            ((int16_t*)tx_precoding[nl])[(sample_offsetF)<<1]       = ((int16_t *)tx_layers[nl])[m<<1];
-            ((int16_t*)tx_precoding[nl])[((sample_offsetF)<<1) + 1] = ((int16_t *)tx_layers[nl])[(m<<1) + 1];
+            if (!is_csi_rs) {
+              ((int16_t*)tx_precoding[nl])[(sample_offsetF)<<1]       = ((int16_t *)tx_layers[nl])[m<<1];
+              ((int16_t*)tx_precoding[nl])[((sample_offsetF)<<1) + 1] = ((int16_t *)tx_layers[nl])[(m<<1) + 1];
+            } else {
+              ((int16_t*)tx_precoding[nl])[(sample_offsetF)<<1]       = 0;
+              ((int16_t*)tx_precoding[nl])[((sample_offsetF)<<1) + 1] = 0;
+            }
           }
           else {
             ((int16_t*)tx_precoding[nl])[(sample_offsetF)<<1]       = ((int16_t *) y)[m<<1];
@@ -589,7 +645,8 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
                  ((int16_t*)tx_precoding[nl])[((sample_offsetF)<<1) + 1]);
 #endif
 
-          m++;
+          if (!is_csi_rs)
+            m++;
 
         } else {
           ((int16_t*)tx_precoding[nl])[(sample_offsetF)<<1]       = 0;
