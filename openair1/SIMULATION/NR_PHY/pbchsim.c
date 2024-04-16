@@ -106,15 +106,8 @@ void nr_fill_rx_indication(fapi_nr_rx_indication_t *rx_ind,
 {
 }
 
-int nr_ue_pdcch_procedures(PHY_VARS_NR_UE *ue,
-                           const UE_nr_rxtx_proc_t *proc,
-                           int32_t pdcch_est_size,
-                           c16_t pdcch_dl_ch_estimates[][pdcch_est_size],
-                           int n_ss,
-                           c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP],
-                           nr_downlink_indication_t *dl_indication)
+void nr_ue_pdcch_procedures(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_downlink_indication_t *dl_indication)
 {
-  return 0;
 }
 
 void nr_phy_config_request_sim_pbchsim(PHY_VARS_gNB *gNB,
