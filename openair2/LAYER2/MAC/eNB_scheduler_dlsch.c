@@ -117,8 +117,7 @@ generate_dlsch_header(unsigned char *mac_header,
     mac_header_ptr->LCID = DRX_CMD;
     last_size = 1;
   }
-
-  if (timing_advance_cmd != 31) {
+  if (timing_advance_cmd != INVALID_TA_CMD) {
     if (first_element > 0) {
       mac_header_ptr->E = 1;
       mac_header_ptr++;
@@ -791,42 +790,29 @@ schedule_ue_spec(module_id_t module_idP,
       const uint32_t rbc = allocate_prbs_sub(nb_rb, N_RB_DL, N_RBG, ue_sched_ctrl->rballoc_sub_UE[CC_id]);
 
       // add the length for  all the control elements (timing adv, drx, etc) : header + payload
-
-      if (ue_sched_ctrl->ta_timer)
-        ue_sched_ctrl->ta_timer--;
-
-      int ta_update = 31;
-      if (ue_sched_ctrl->ta_timer == 0) {
-        ta_update = ue_sched_ctrl->ta_update;
-
-        /* if we send TA then set timer to not send it for a while */
-        if (ta_update != 31 && (RC.ss.mode == SS_ENB)) {
-          ue_sched_ctrl->ta_timer = 20;
-        }
-
-        /* reset ta_update */
-        ue_sched_ctrl->ta_update = 31;
-        ue_sched_ctrl->ta_update_f = 31.0;
+      uint8_t   ta_update = ue_sched_ctrl->ta_update;
+      uint8_t   ta_len = 0;
+      if ( (false == ue_sched_ctrl->ta_sched_enabled) || (ue_sched_ctrl->last_ta_cmd_time < MAX_TIME_TA_APPLY_BY_UE))
+      {
+	 /* Prohibit to send TA command in this time as
+	  * 1. TA scheduling is prohibited
+	  * 2. Last sent ta_cmd is not yet applied */
       }
+      /*If TA timer is about to expire OR valid TA other than no change in TA is received*/
+      else if( (ue_sched_ctrl->ta_timer < (ue_sched_ctrl->last_ta_cmd_time + MAX_TIME_TA_APPLY_BY_UE)) || (ta_update != NO_CHANGE_TA_CMD) )
+      {
+        /* Now schedule TA. So,
+	 * 1. Set the ta_len
+	 * 2. Reset the last_ta_cmd_time */
+         ta_len = 2;
+         ue_sched_ctrl->last_ta_cmd_time = 0;
+ 
+         LOG_D(MAC,"TA cmd:%d scheduled SFN %d SF %d\n", ta_update, frameP, subframeP);
 
-     if(RC.ss.mode == SS_SOFTMODEM )
-        {
-          if(ue_sched_ctrl->ta_timer == 100)
-          {
-            ta_update = 2;
-            ue_sched_ctrl->ta_timer =0 ;
-            LOG_D(MAC,"TA scheduled SFN %d SF %d\n",frameP,subframeP);
-          }
-          else
-          {
-            ue_sched_ctrl->ta_timer++;
-            ta_update = 31;
-            ue_sched_ctrl->ta_update = 31;
-          }
-        }
-      int ta_len = (ta_update != 31) ? 2 : 0;
-
-
+      }
+      if(!ta_len)
+         ta_update = INVALID_TA_CMD;
+     
       int num_sdus = 0;
       uint16_t sdu_lengths[NB_RB_MAX];
       int sdu_length_total = 0;
@@ -990,7 +976,7 @@ schedule_ue_spec(module_id_t module_idP,
                                                  post_padding);
 
         //#ifdef DEBUG_eNB_SCHEDULER
-        if (ta_update != 31) {
+        if (ta_update != INVALID_TA_CMD) {
           LOG_D(MAC,
                 "[eNB %d][DLSCH] Frame %d Generate header for UE_id %d on CC_id %d: sdu_length_total %d, num_sdus %d, sdu_lengths[0] %d, sdu_lcids[0] %d => payload offset %d,timing advance value : %d, padding %d,post_padding %d,(mcs %d, TBS %d, nb_rb %d),header_length %d\n",
                 module_idP,

@@ -1090,6 +1090,8 @@ int sys_handle_cell_config_req(struct SYSTEM_CTRL_REQ *req)
   {
   case CellConfigRequest_Type_AddOrReconfigure:
 
+    //reset cell configuration status
+    cell_config_done = -1;
     LOG_A(ENB_SS_SYS_TASK, "CellConfigRequest_Type_AddOrReconfigure receivied\n");
     status = sys_add_reconfig_cell(req,&isRrcConfigReqSent);
     if (status)
@@ -2378,16 +2380,8 @@ bool valid_sys_msg(struct SYSTEM_CTRL_REQ *req)
   switch (req->Request.d)
   {
     case SystemRequest_Type_Cell:
-      if (SS_context.SSCell_list[cell_index].State >= SS_STATE_NOT_CONFIGURED)
-      {
-        valid = true;
-        sendDummyCnf = false;
-        reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
-      }
-      else
-      {
-        cnfType = SystemConfirm_Type_Cell;
-      }
+      valid = true;
+      sendDummyCnf = false;
       break;
 
     case SystemRequest_Type_EnquireTiming:
@@ -2398,27 +2392,23 @@ bool valid_sys_msg(struct SYSTEM_CTRL_REQ *req)
       {
         valid = true;
         sendDummyCnf = false;
-        reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
       }
       break;
     case SystemRequest_Type_RadioBearerList:
       cnfType = SystemConfirm_Type_RadioBearerList;
       valid = true;
       sendDummyCnf = false;
-      reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
       break;
     case SystemRequest_Type_AS_Security:
       cnfType = SystemConfirm_Type_AS_Security;
       valid = true;
       sendDummyCnf = false;
-      reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
       break;
     case SystemRequest_Type_PdcpCount:
       if (SS_context.SSCell_list[cell_index].State == SS_STATE_CELL_ACTIVE)
       {
         valid = true;
         sendDummyCnf = false;
-        reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
       }
       //cnfType = SystemConfirm_Type_PdcpCount;
       break;
@@ -2430,30 +2420,28 @@ bool valid_sys_msg(struct SYSTEM_CTRL_REQ *req)
     valid = true;
     sendDummyCnf = false;
     cnfType = SystemConfirm_Type_Paging;
-    reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
     break;
    case SystemRequest_Type_L1MacIndCtrl:
     valid = true;
     sendDummyCnf = false;
     cnfType = SystemConfirm_Type_L1MacIndCtrl;
-    reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
     break;
    case SystemRequest_Type_PdcchOrder:
     valid = true;
     sendDummyCnf = false;
     cnfType = SystemConfirm_Type_PdcchOrder;
-    reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
     break;
    case SystemRequest_Type_PdcpHandoverControl:
     valid = true;
     sendDummyCnf = false;
     cnfType = SystemConfirm_Type_PdcpHandoverControl;
-    reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
     break;
   default:
     valid = false;
     sendDummyCnf = false;
   }
+
+  reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
   if (sendDummyCnf)
   {
     send_sys_cnf(resType, resVal, cnfType, NULL);

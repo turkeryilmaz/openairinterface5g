@@ -127,6 +127,12 @@
 #define MAX_NUM_LCID 32
 /*!\brief Maximum number of control elemenets */
 #define MAX_NUM_CE 5
+/*!\brief Maximum time(no. of SF) after which UE applies the TA received*/
+#define MAX_TIME_TA_APPLY_BY_UE   20
+/*!\brief if TA received is NO CHANGE*/
+#define NO_CHANGE_TA_CMD   31
+/*!\brief if TA not received or TA invalid to schedule*/
+#define INVALID_TA_CMD   0XFF
 /*!\brief Maximum number of random access process */
 #define NB_RA_PROC_MAX 4
 /*!\brief size of buffer status report table */
@@ -915,6 +921,8 @@ typedef struct {
   unsigned char rballoc_sub_UE[NFAPI_CC_MAX][N_RBG_MAX];
   int pre_dci_dl_pdu_idx;
   uint16_t ta_timer;
+  /// Time lapsed(no. of SF) after last TA scheduled
+  uint16_t last_ta_cmd_time;
   double ta_update_f;
   int16_t ta_update;
   uint16_t ul_consecutive_errors;
@@ -952,6 +960,8 @@ typedef struct {
   uint16_t feedback_cnt[NFAPI_CC_MAX];
   uint16_t timing_advance;
   uint16_t timing_advance_r9;
+  /* This flag is set to true if TA scheduling is allowed */
+  bool     ta_sched_enabled;
   int8_t pusch_tpc_accumulated[NFAPI_CC_MAX];
   int8_t pucch_tpc_accumulated[NFAPI_CC_MAX];
   uint8_t periodic_wideband_cqi[NFAPI_CC_MAX];

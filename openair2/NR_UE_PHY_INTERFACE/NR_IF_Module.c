@@ -1434,7 +1434,7 @@ static uint32_t nr_ue_dl_processing(nr_downlink_indication_t *dl_info)
               dl_info->rx_ind->number_pdus);
 
         switch(rx_indication_body.pdu_type){
-          case FAPI_NR_RX_PDU_TYPE_SSB:
+          case FAPI_NR_RX_PDU_TYPE_SSB:;
             bool is_sync;
             if (false /*TODO: need to check for RC.ss.mode != SS_SOFTMODEM*/){
               is_sync = handle_rlm(rx_indication_body.ssb_pdu.radiolink_monitoring,
