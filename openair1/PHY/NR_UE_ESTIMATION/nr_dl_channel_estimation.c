@@ -748,7 +748,7 @@ int nr_pbch_channel_estimation(const NR_DL_FRAME_PARMS *fp,
   return(0);
 }
 
-static inline c16_t *incrementK(c16_t *base, int *k, int max)
+static inline const c16_t *incrementK(const c16_t *base, int *k, int max)
 {
   int tmp = *k + 4;
   if (tmp >= max)
@@ -811,8 +811,8 @@ void nr_pdcch_channel_estimation(const PHY_VARS_NR_UE *ue,
   for (uint aarx = 0; aarx < ue->frame_parms.nb_antennas_rx; aarx++) {
     int k = coreset_start_subcarrier;
     c16_t *pil = pilot + dmrs_ref * 3;
-    c16_t *base = rxdataF[aarx];
-    c16_t *rxF = base + k + 1;
+    const c16_t *base = rxdataF[aarx];
+    const c16_t *rxF = base + k + 1;
     c16_t *dl_ch = pdcch_dl_ch_estimates[aarx];
     memset(dl_ch, 0, sizeof(*dl_ch) * symbolSz);
 
