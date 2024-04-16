@@ -181,7 +181,7 @@ rx_sdu(const module_id_t enb_mod_idP,
        * lte_est_timing_advance_pusch, maybe it's not necessary?
        * maybe it's even not correct at all?
        */
-      UE_scheduling_control->ta_update_f = ((double)UE_scheduling_control->ta_update_f * 3 + (double)timing_advance) / 4;
+      UE_scheduling_control->ta_update_f = 31.0 + (((double)UE_scheduling_control->ta_update_f - 31.0) * 3 + (double)timing_advance) / 4;
       UE_scheduling_control->ta_update = (int)UE_scheduling_control->ta_update_f;
       int tmp_snr = (5 * ul_cqi - 640) / 10;
       UE_scheduling_control->pusch_snr[CC_idP] = tmp_snr;
