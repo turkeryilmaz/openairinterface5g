@@ -901,10 +901,6 @@ printf("%d\n", slot);
   UE_mac->state = UE_CONNECTED;
   UE_mac->ra.ra_state = nrRA_SUCCEEDED;
 
-  nr_phy_data_t phy_data = {0};
-  fapi_nr_dl_config_request_t dl_config = {.sfn = frame, .slot = slot};
-  nr_scheduled_response_t scheduled_response = {.dl_config = &dl_config, .phy_data = &phy_data, .mac = UE_mac};
-
   nr_ue_phy_config_request(&UE_mac->phy_config);
   //NR_COMMON_channels_t *cc = RC.nrmac[0]->common_channels;
   int n_errs = 0;
@@ -989,6 +985,10 @@ printf("%d\n", slot);
     if (n_trials== 1) num_rounds = 1;
 
     for (trial = 0; trial < n_trials && !stop; trial++) {
+
+      nr_phy_data_t phy_data = {0};
+      fapi_nr_dl_config_request_t dl_config = {.sfn = frame, .slot = slot};
+      nr_scheduled_response_t scheduled_response = {.dl_config = &dl_config, .phy_data = &phy_data, .mac = UE_mac};
 
       errors_bit = 0;
       //multipath channel
@@ -1161,9 +1161,8 @@ printf("%d\n", slot);
         ue_dci_configuration(UE_mac, &dl_config, frame, slot);
         nr_ue_scheduled_response(&scheduled_response);
 
-        pbch_pdcch_processing(UE,
-                              &UE_proc,
-                              &phy_data);
+        pbch_processing(UE, &UE_proc, &phy_data);
+        nr_ue_pdcch_procedures(UE, &UE_proc, &phy_data);
         pdsch_processing(UE,
                          &UE_proc,
                          &phy_data);

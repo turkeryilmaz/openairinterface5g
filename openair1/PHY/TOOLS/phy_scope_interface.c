@@ -58,7 +58,7 @@ int end_forms(void) {
   return -1;
 }
 
-void copyData(void *scopeData, enum scopeDataType type, void *dataIn, int elementSz, int colSz, int lineSz, int offset, metadata *meta)
+void copyData(void *scopeData, enum scopeDataType type, const void *dataIn, int elementSz, int colSz, int lineSz, int offset, metadata *meta)
 {
   if (type >= MAX_SCOPE_TYPES) {
     return;
