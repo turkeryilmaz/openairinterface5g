@@ -101,7 +101,7 @@ typedef struct scopeData_s {
   RU_t *ru;
   PHY_VARS_gNB *gNB;
   scopeGraphData_t *liveData[MAX_SCOPE_TYPES];
-  void (*copyData)(void *, enum scopeDataType, void *data, int elementSz, int colSz, int lineSz, int offset, metadata *meta);
+  void (*copyData)(void *, enum scopeDataType, const void *data, int elementSz, int colSz, int lineSz, int offset, metadata *meta);
   pthread_mutex_t copyDataMutex;
   scopeGraphData_t *copyDataBufs[MAX_SCOPE_TYPES][COPIES_MEM];
   int copyDataBufsIdx[MAX_SCOPE_TYPES];
@@ -114,7 +114,7 @@ typedef struct scopeData_s {
 int load_softscope(char *exectype, void *initarg);
 int end_forms(void) ;
 int copyDataMutexInit(scopeData_t *);
-void copyData(void *, enum scopeDataType type, void *dataIn, int elementSz, int colSz, int lineSz, int offset, metadata *meta);
+void copyData(void *, enum scopeDataType type, const void *dataIn, int elementSz, int colSz, int lineSz, int offset, metadata *meta);
 
 #define UEscopeCopyWithMetadata(ue, type, ...) \
   if (ue->scopeData) {               \
