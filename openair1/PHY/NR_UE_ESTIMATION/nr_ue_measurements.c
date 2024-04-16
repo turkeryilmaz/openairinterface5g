@@ -179,29 +179,22 @@ void nr_ue_measurements(PHY_VARS_NR_UE *ue,
 // - RSRP:    W (dBW)
 // - RX Gain  dB
 void nr_ue_ssb_rsrp_measurements(PHY_VARS_NR_UE *ue,
-                                 int ssb_index,
+                                 const int ssb_index,
                                  const UE_nr_rxtx_proc_t *proc,
-                                 c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP])
+                                 const c16_t rxdataF[ue->frame_parms.nb_antennas_rx][ue->frame_parms.ofdm_symbol_size])
 {
-  int k_start = 56;
-  int k_end   = 183;
-  int slot = proc->nr_slot_rx;
-  unsigned int ssb_offset = ue->frame_parms.first_carrier_offset + ue->frame_parms.ssb_start_subcarrier;
-  int symbol_offset = nr_get_ssb_start_symbol(&ue->frame_parms,ssb_index);
-
-  if (ue->frame_parms.half_frame_bit)
-    symbol_offset += (ue->frame_parms.slots_per_frame>>1)*ue->frame_parms.symbols_per_slot;
-
-  uint8_t l_sss = (symbol_offset + 2) % ue->frame_parms.symbols_per_slot;
+  const int k_start = 56;
+  const int k_end = 183;
+  const int slot = proc->nr_slot_rx;
+  const unsigned int ssb_offset = ue->frame_parms.first_carrier_offset + ue->frame_parms.ssb_start_subcarrier;
 
   uint32_t rsrp = 0;
 
-  LOG_D(PHY, "In %s: [UE %d] slot %d l_sss %d ssb_offset %d\n", __FUNCTION__, ue->Mod_id, slot, l_sss, ssb_offset);
+  LOG_D(PHY, "In %s: [UE %d] slot %d \n", __FUNCTION__, ue->Mod_id, slot);
   int nb_re = 0;
 
   for (int aarx = 0; aarx < ue->frame_parms.nb_antennas_rx; aarx++) {
-
-    int16_t *rxF_sss = (int16_t *)&rxdataF[aarx][l_sss*ue->frame_parms.ofdm_symbol_size];
+    int16_t *rxF_sss = (int16_t *)rxdataF[aarx];
 
     for(int k = k_start; k < k_end; k++){
 
@@ -236,59 +229,52 @@ void nr_ue_ssb_rsrp_measurements(PHY_VARS_NR_UE *ue,
 // - psd_awgn (AWGN power spectral density):     dBm/Hz
 void nr_ue_rrc_measurements(PHY_VARS_NR_UE *ue,
                             const UE_nr_rxtx_proc_t *proc,
-                            c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP])
+                            const c16_t rxdataF[ue->frame_parms.nb_antennas_rx][ue->frame_parms.ofdm_symbol_size])
 {
-  uint8_t k;
-  int slot = proc->nr_slot_rx;
-  int aarx;
-  int16_t *rxF_sss;
+  const int slot = proc->nr_slot_rx;
+  const int16_t *rxF_sss;
   const uint8_t k_left = 48;
   const uint8_t k_right = 183;
   const uint8_t k_length = 8;
-  uint8_t l_sss = (ue->symbol_offset + 2) % ue->frame_parms.symbols_per_slot;
-  unsigned int ssb_offset = ue->frame_parms.first_carrier_offset + ue->frame_parms.ssb_start_subcarrier;
-  double rx_gain = openair0_cfg[0].rx_gain[0];
-  double rx_gain_offset = openair0_cfg[0].rx_gain_offset[0];
+  const unsigned int ssb_offset = ue->frame_parms.first_carrier_offset + ue->frame_parms.ssb_start_subcarrier;
+  const double rx_gain = openair0_cfg[0].rx_gain[0];
+  const double rx_gain_offset = openair0_cfg[0].rx_gain_offset[0];
 
   ue->measurements.n0_power_tot = 0;
 
-  LOG_D(PHY, "In %s doing measurements for ssb_offset %d l_sss %d \n", __FUNCTION__, ssb_offset, l_sss);
+  LOG_D(PHY, "In %s doing measurements for ssb_offset %d \n", __FUNCTION__, ssb_offset);
 
-  for (aarx = 0; aarx<ue->frame_parms.nb_antennas_rx; aarx++) {
-
+  for (int aarx = 0; aarx < ue->frame_parms.nb_antennas_rx; aarx++) {
     ue->measurements.n0_power[aarx] = 0;
-    rxF_sss = (int16_t *)&rxdataF[aarx][l_sss*ue->frame_parms.ofdm_symbol_size];
+    rxF_sss = (int16_t *)rxdataF[aarx];
 
     //-ve spectrum from SSS
-    for(k = k_left; k < k_left + k_length; k++){
-
+    for (int k = k_left; k < k_left + k_length; k++) {
       int re = (ssb_offset + k) % ue->frame_parms.ofdm_symbol_size;
 
       #ifdef DEBUG_MEAS_RRC
       LOG_I(PHY, "In %s -rxF_sss %d %d\n", __FUNCTION__, rxF_sss[re*2], rxF_sss[re*2 + 1]);
       #endif
 
-      ue->measurements.n0_power[aarx] += (((int32_t)rxF_sss[re*2]*rxF_sss[re*2]) + ((int32_t)rxF_sss[re*2 + 1]*rxF_sss[re*2 + 1]));
-
+      ue->measurements.n0_power[aarx] +=
+          (((int32_t)rxF_sss[re * 2] * rxF_sss[re * 2]) + ((int32_t)rxF_sss[re * 2 + 1] * rxF_sss[re * 2 + 1]));
     }
 
     //+ve spectrum from SSS
-    for(k = k_right; k < k_right + k_length; k++){
-
+    for (int k = k_right; k < k_right + k_length; k++) {
       int re = (ssb_offset + k) % ue->frame_parms.ofdm_symbol_size;
 
       #ifdef DEBUG_MEAS_RRC
       LOG_I(PHY, "In %s +rxF_sss %d %d\n", __FUNCTION__, rxF_sss[re*2], rxF_sss[re*2 + 1]);
       #endif
 
-      ue->measurements.n0_power[aarx] += (((int32_t)rxF_sss[re*2]*rxF_sss[re*2]) + ((int32_t)rxF_sss[re*2 + 1]*rxF_sss[re*2 + 1]));
-
+      ue->measurements.n0_power[aarx] +=
+          (((int32_t)rxF_sss[re * 2] * rxF_sss[re * 2]) + ((int32_t)rxF_sss[re * 2 + 1] * rxF_sss[re * 2 + 1]));
     }
 
     ue->measurements.n0_power[aarx] /= 2*k_length;
     ue->measurements.n0_power_dB[aarx] = (unsigned short) dB_fixed(ue->measurements.n0_power[aarx]);
     ue->measurements.n0_power_tot += ue->measurements.n0_power[aarx];
-
   }
 
   ue->measurements.n0_power_tot_dB = (unsigned short) dB_fixed(ue->measurements.n0_power_tot);
@@ -312,12 +298,14 @@ void nr_ue_rrc_measurements(PHY_VARS_NR_UE *ue,
 
 // PSBCH RSRP calculations according to 38.215 section 5.1.22
 void nr_sl_psbch_rsrp_measurements(sl_nr_ue_phy_params_t *sl_phy_params,
-                                   NR_DL_FRAME_PARMS *fp,
-                                   c16_t rxdataF[][fp->samples_per_slot_wCP],
+                                   const NR_DL_FRAME_PARMS *fp,
+                                   const int symbol,
+                                   const c16_t rxdataF[][fp->ofdm_symbol_size],
                                    bool use_SSS)
 {
   SL_NR_UE_PSBCH_t *psbch_rx = &sl_phy_params->psbch;
-  uint8_t numsym = (fp->Ncp) ? SL_NR_NUM_SYMBOLS_SSB_EXT_CP : SL_NR_NUM_SYMBOLS_SSB_NORMAL_CP;
+  uint8_t maxsym = (fp->Ncp) ? SL_NR_NUM_SYMBOLS_SSB_EXT_CP : SL_NR_NUM_SYMBOLS_SSB_NORMAL_CP;
+  uint8_t numsym = (fp->Ncp) ? 8 : 10;
   uint32_t re_offset = fp->first_carrier_offset + fp->ssb_start_subcarrier;
   uint32_t rsrp = 0, num_re = 0;
 
@@ -325,18 +313,15 @@ void nr_sl_psbch_rsrp_measurements(sl_nr_ue_phy_params_t *sl_phy_params,
 
   for (int aarx = 0; aarx < fp->nb_antennas_rx; aarx++) {
     // Calculate PSBCH RSRP based from DMRS REs
-    for (uint8_t symbol = 0; symbol < numsym;) {
-      struct complex16 *rxF = &rxdataF[aarx][symbol * fp->ofdm_symbol_size];
+    const struct complex16 *rxF = rxdataF[aarx];
 
-      for (int re = 0; re < SL_NR_NUM_PSBCH_RE_IN_ONE_SYMBOL; re++) {
-        if (re % 4 == 0) { // DMRS RE
-          uint16_t offset = (re_offset + re) % fp->ofdm_symbol_size;
+    for (int re = 0; re < SL_NR_NUM_PSBCH_RE_IN_ONE_SYMBOL; re++) {
+      if (re % 4 == 0) { // DMRS RE
+        uint16_t offset = (re_offset + re) % fp->ofdm_symbol_size;
 
-          rsrp += c16amp2(rxF[offset]);
-          num_re++;
-        }
+        rsrp += c16amp2(rxF[offset]);
+        num_re++;
       }
-      symbol = (symbol == 0) ? 5 : symbol + 1;
     }
   }
 
@@ -346,14 +331,27 @@ void nr_sl_psbch_rsrp_measurements(sl_nr_ue_phy_params_t *sl_phy_params,
     // If needed this can be implemented. Reference Spec 38.215
   }
 
-  psbch_rx->rsrp_dB_per_RE = 10 * log10(rsrp / num_re);
-  psbch_rx->rsrp_dBm_per_RE = psbch_rx->rsrp_dB_per_RE + 30 - SQ15_SQUARED_NORM_FACTOR_DB
-                              - ((int)openair0_cfg[0].rx_gain[0] - (int)openair0_cfg[0].rx_gain_offset[0])
-                              - dB_fixed(fp->ofdm_symbol_size);
+  // Reset values
+  if (symbol == 0) {
+    psbch_rx->rsrp_dB_per_RE = 0;
+    psbch_rx->rsrp_dBm_per_RE = 0;
+    psbch_rx->rsrp_sum = 0;
+    psbch_rx->rsrp_re_sum = 0;
+  }
+  // Sum uptill symbol
+  psbch_rx->rsrp_sum += rsrp;
+  psbch_rx->rsrp_re_sum += num_re;
 
-  LOG_D(PHY,
-        "PSBCH RSRP (DMRS REs): numREs:%d RSRP :%d dB/RE ,RSRP:%d dBm/RE\n",
-        num_re,
-        psbch_rx->rsrp_dB_per_RE,
-        psbch_rx->rsrp_dBm_per_RE);
+  // Average of all REs in slot
+  if (symbol == maxsym - 1) {
+    psbch_rx->rsrp_dB_per_RE = 10 * log10(psbch_rx->rsrp_sum / psbch_rx->rsrp_re_sum);
+    psbch_rx->rsrp_dBm_per_RE = psbch_rx->rsrp_dB_per_RE + 30 - SQ15_SQUARED_NORM_FACTOR_DB
+                                - ((int)openair0_cfg[0].rx_gain[0] - (int)openair0_cfg[0].rx_gain_offset[0])
+                                - dB_fixed(fp->ofdm_symbol_size);
+    LOG_D(PHY,
+          "PSBCH RSRP (DMRS REs): numREs:%d RSRP :%d dB/RE ,RSRP:%d dBm/RE\n",
+          psbch_rx->rsrp_re_sum,
+          psbch_rx->rsrp_dB_per_RE,
+          psbch_rx->rsrp_dBm_per_RE);
+  }
 }
