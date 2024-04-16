@@ -39,6 +39,7 @@
 #include "common/utils/nr/nr_common.h"
 #include "PHY/NR_TRANSPORT/nr_transport_proto.h"
 #include "PHY/NR_UE_ESTIMATION/filt16a_32.h"
+#include "executables/nr-uesoftmodem.h"
 
 // 10*log10(pow(2,30))
 #define pow_2_30_dB 90
@@ -205,7 +206,7 @@ int nr_get_csi_rs_signal(const PHY_VARS_NR_UE *ue,
     for (int rb = csirs_config_pdu->start_rb; rb < (csirs_config_pdu->start_rb+csirs_config_pdu->nr_of_rbs); rb++) {
 
       // for freq density 0.5 checks if even or odd RB
-      if(csirs_config_pdu->freq_density <= 1 && csirs_config_pdu->freq_density != (rb % 2)) {
+      if(csirs_config_pdu->freq_density <= 1 && get_softmodem_params()->sl_mode ? 0 : csirs_config_pdu->freq_density != (rb % 2)) {
         continue;
       }
 
@@ -230,9 +231,9 @@ int nr_get_csi_rs_signal(const PHY_VARS_NR_UE *ue,
                            ((int32_t)(rx_csi_rs_signal[k].i)*rx_csi_rs_signal[k].i));
 
               meas_count++;
-
+              LOG_D(NR_PHY, "RX CSI-RS symbol_offset %li k %i symbol_offset+k=%li\n", symbol_offset, k, symbol_offset+k);
 #ifdef NR_CSIRS_DEBUG
-              int dataF_offset = proc->nr_slot_rx*ue->frame_parms.samples_per_slot_wCP;
+              int dataF_offset = get_softmodem_params()->sl_mode == 2 ? 0 : proc->nr_slot_rx * ue->frame_parms.samples_per_slot_wCP;
               uint16_t port_tx = s+j_cdm[cdm_id]*CDM_group_size;
               c16_t *tx_csi_rs_signal = (c16_t*)&nr_csi_info->csi_rs_generated_signal[port_tx][symbol_offset+dataF_offset];
               LOG_I(NR_PHY, "l,k (%2d,%4d) |\tport_tx %d (%4d,%4d)\tant_rx %d (%4d,%4d)\n",
@@ -270,7 +271,7 @@ uint32_t calc_power_csirs(const uint16_t *x, const fapi_nr_dl_config_csirs_pdu_r
   uint64_t sum_x2 = 0;
   uint16_t size = 0;
   for (int rb = 0; rb < csirs_config_pdu->nr_of_rbs; rb++) {
-    if (csirs_config_pdu->freq_density <= 1 && csirs_config_pdu->freq_density != ((rb + csirs_config_pdu->start_rb) % 2)) {
+    if (csirs_config_pdu->freq_density <= 1 && get_softmodem_params()->sl_mode ? 0 : csirs_config_pdu->freq_density != ((rb + csirs_config_pdu->start_rb) % 2)) {
       continue;
     }
     sum_x = sum_x + x[rb];
@@ -302,7 +303,7 @@ int nr_csi_rs_channel_estimation(const PHY_VARS_NR_UE *ue,
                                  uint32_t *noise_power) {
 
   const NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
-  const int dataF_offset = proc->nr_slot_rx*ue->frame_parms.samples_per_slot_wCP;
+  const int dataF_offset = get_softmodem_params()->sl_mode == 2 ? 0 : proc->nr_slot_rx * ue->frame_parms.samples_per_slot_wCP;
   *noise_power = 0;
   int maxh = 0;
   int count = 0;
@@ -318,7 +319,7 @@ int nr_csi_rs_channel_estimation(const PHY_VARS_NR_UE *ue,
     for (int rb = csirs_config_pdu->start_rb; rb < (csirs_config_pdu->start_rb+csirs_config_pdu->nr_of_rbs); rb++) {
 
       // for freq density 0.5 checks if even or odd RB
-      if(csirs_config_pdu->freq_density <= 1 && csirs_config_pdu->freq_density != (rb % 2)) {
+      if(csirs_config_pdu->freq_density <= 1 && get_softmodem_params()->sl_mode ? 0 : csirs_config_pdu->freq_density != (rb % 2)) {
         continue;
       }
 
@@ -386,7 +387,7 @@ int nr_csi_rs_channel_estimation(const PHY_VARS_NR_UE *ue,
     for (int rb = csirs_config_pdu->start_rb; rb < (csirs_config_pdu->start_rb+csirs_config_pdu->nr_of_rbs); rb++) {
 
       // for freq density 0.5 checks if even or odd RB
-      if(csirs_config_pdu->freq_density <= 1 && csirs_config_pdu->freq_density != (rb % 2)) {
+      if(csirs_config_pdu->freq_density <= 1 && get_softmodem_params()->sl_mode ? 0 : csirs_config_pdu->freq_density != (rb % 2)) {
         continue;
       }
 
@@ -634,7 +635,7 @@ int nr_csi_rs_pmi_estimation(const PHY_VARS_NR_UE *ue,
 
     for (int rb = csirs_config_pdu->start_rb; rb < (csirs_config_pdu->start_rb+csirs_config_pdu->nr_of_rbs); rb++) {
 
-      if (csirs_config_pdu->freq_density <= 1 && csirs_config_pdu->freq_density != (rb % 2)) {
+      if (csirs_config_pdu->freq_density <= 1 && get_softmodem_params()->sl_mode ? 0 : csirs_config_pdu->freq_density != (rb % 2)) {
         continue;
       }
       uint16_t k = (frame_parms->first_carrier_offset + rb * NR_NB_SC_PER_RB) % frame_parms->ofdm_symbol_size;
@@ -842,7 +843,7 @@ void nr_ue_csi_rs_procedures(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, c16_t 
     return;
   }
 
-  const fapi_nr_dl_config_csirs_pdu_rel15_t *csirs_config_pdu = (fapi_nr_dl_config_csirs_pdu_rel15_t*)&ue->csirs_vars[gNB_id]->csirs_config_pdu;
+  fapi_nr_dl_config_csirs_pdu_rel15_t *csirs_config_pdu = (fapi_nr_dl_config_csirs_pdu_rel15_t*)&ue->csirs_vars[gNB_id]->csirs_config_pdu;
 
 #ifdef NR_CSIRS_DEBUG
   LOG_I(NR_PHY, "csirs_config_pdu->subcarrier_spacing = %i\n", csirs_config_pdu->subcarrier_spacing);
@@ -887,9 +888,15 @@ void nr_ue_csi_rs_procedures(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, c16_t 
   uint8_t i1[3];
   uint8_t i2[1];
 
+  uint8_t num_of_layers = min(get_nrUE_params()->nb_antennas_tx, get_nrUE_params()->nb_antennas_rx);
+  AssertFatal(num_of_layers > 0, "Number of layers MUST be greater than zero!!!");
+  uint16_t beta_csirs = get_softmodem_params()->sl_mode ? (uint16_t)(AMP * (ceil(sqrt(num_of_layers / frame_parms->nb_antennas_tx)))) & 0xFFFF : AMP;
+  csirs_config_pdu->scramb_id = ue->slsch[0].harq_process->pssch_pdu->Nid % (1 << 10);
+  LOG_D(NR_PHY, "Rx beta_csirs: %d, scramb_id %i, frame.slot (%d.%d)\n", beta_csirs, csirs_config_pdu->scramb_id, proc->frame_rx, proc->nr_slot_rx);
+
   nr_generate_csi_rs(frame_parms,
                      ue->nr_csi_info->csi_rs_generated_signal,
-                     AMP,
+                     beta_csirs,
                      ue->nr_csi_info,
                      (nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *) csirs_config_pdu,
                      proc->nr_slot_rx,
@@ -991,7 +998,7 @@ void nr_ue_csi_rs_procedures(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, c16_t 
             rank_indicator + 1, i1[0], i1[1], i1[2], i2[0], precoded_sinr_dB, cqi);
       break;
     case 27 :
-      LOG_I(NR_PHY, "RSRP = %i dBm, RI = %i i1 = %i.%i.%i, i2 = %i, SINR = %i dB, CQI = %i\n",
+      LOG_D(NR_PHY, "RSRP = %i dBm, RI = %i i1 = %i.%i.%i, i2 = %i, SINR = %i dB, CQI = %i\n",
             rsrp_dBm, rank_indicator + 1, i1[0], i1[1], i1[2], i2[0], precoded_sinr_dB, cqi);
       break;
     default :

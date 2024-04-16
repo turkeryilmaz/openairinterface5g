@@ -23,6 +23,36 @@
 #include "openair2/LAYER2/NR_MAC_UE/nr_ue_sci.h"
 #include "NR_SidelinkPreconfigNR-r16.h"
 #include "mac_proto.h"
+#include "common/config/config_paramdesc.h"
+#include <executables/nr-uesoftmodem.h>
+
+#define SL_CONFIG_STRING_SL_PRECONFIGURATION                        "SIDELINK_PRECONFIGURATION"
+
+/* Sidelink CSI-RS configuration parameters for MAC*/
+#define SL_CONFIG_STRING_SL_CSI_RS_LIST                             "sl_csi_rs"
+#define SL_CONFIG_STRING_SL_CSI_RS_SYMB_L0                          "symb_l0"
+#define SL_CONFIG_STRING_SL_CSI_RS_CSI_TYPE                         "csi_type"
+#define SL_CONFIG_STRING_SL_CSI_RS_SLOT_OFFSET                      "slot_offset"
+#define SL_CONFIG_STRING_SL_CSI_RS_SLOT_PERIODICITY                 "slot_periodicity"
+#define SL_CONFIG_STRING_SL_CSI_RS_POWER_CONTROL_OFFSET             "power_control_offset"
+#define SL_CONFIG_STRING_SL_CSI_RS_POWER_CONTROL_OFFSET_SS          "power_control_offset_ss"
+
+#define SL_CSI_RS_DESC(sl_csi_info) { \
+{SL_CONFIG_STRING_SL_CSI_RS_SYMB_L0,NULL,0,.u8ptr=&sl_csi_info->symb_l0,.defuintval=1,TYPE_UINT8,0}, \
+{SL_CONFIG_STRING_SL_CSI_RS_CSI_TYPE,NULL,0,.u8ptr=&sl_csi_info->csi_type,.defuintval=1,TYPE_UINT8,0}, \
+{SL_CONFIG_STRING_SL_CSI_RS_POWER_CONTROL_OFFSET,NULL,0,.u8ptr=&sl_csi_info->power_control_offset,.defuintval=1,TYPE_UINT8,0}, \
+{SL_CONFIG_STRING_SL_CSI_RS_POWER_CONTROL_OFFSET_SS,NULL,0,.u8ptr=&sl_csi_info->power_control_offset_ss,.defuintval=1,TYPE_UINT8,0}, \
+{SL_CONFIG_STRING_SL_CSI_RS_SLOT_OFFSET,NULL,0,.u8ptr=&sl_csi_info->slot_offset,.defuintval=1,TYPE_UINT8,0}, \
+{SL_CONFIG_STRING_SL_CSI_RS_SLOT_PERIODICITY,NULL,0,.u8ptr=&sl_csi_info->slot_periodicity,.defuintval=1,TYPE_UINT8,0}}
+
+typedef struct sl_csi_info {
+  uint8_t symb_l0;
+  uint8_t csi_type;
+  uint8_t slot_offset;
+  uint8_t slot_periodicity;
+  uint8_t power_control_offset;
+  uint8_t power_control_offset_ss;
+} sl_csi_info_t;
 
 void sl_ue_mac_free(uint8_t module_id)
 {
@@ -155,6 +185,7 @@ static void  sl_prepare_phy_config(int module_id,
                                    NR_TDD_UL_DL_ConfigCommon_t *sl_TDD_config)
 {
 
+  NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
 
   phycfg->sl_sync_source.sync_source = sync_source;
   LOG_I(NR_MAC, "Sidelink CFG: sync source:%d\n", phycfg->sl_sync_source.sync_source);
@@ -454,6 +485,9 @@ int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
     sl_mac->sl_TDD_config = NULL;
   }
 
+  // Configuring CSI-RS parameters locally at MAC.
+  nr_sl_params_read_conf(module_id);
+
   nr_sl_phy_config_t *sl_phy_cfg = &sl_mac->sl_phy_config;
   sl_phy_cfg->Mod_id = module_id;
   sl_phy_cfg->CC_id = 0;
@@ -617,4 +651,45 @@ void nr_rrc_mac_config_req_sl_mib(module_id_t module_id,
     mac->if_module->sl_phy_config_request(&sl_mac->sl_phy_config);
   }
 
+}
+
+void nr_sl_params_read_conf(module_id_t module_id) {
+  NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
+  sl_nr_ue_mac_params_t *sl_mac = mac->SL_MAC_PARAMS;
+
+  char aprefix[MAX_OPTNAME_SIZE*2 + 8];
+  sl_csi_info_t *sl_csi_rs_info = (sl_csi_info_t *)malloc(sizeof(sl_csi_info_t));
+  paramdef_t SL_CRI_RS_INFO[] = SL_CSI_RS_DESC(sl_csi_rs_info);
+  paramlist_def_t SL_CRI_RS_List = {SL_CONFIG_STRING_SL_CSI_RS_LIST, NULL, 0};
+  sprintf(aprefix, "%s.[%d]", SL_CONFIG_STRING_SL_PRECONFIGURATION, 0);
+  config_getlist(&SL_CRI_RS_List, NULL, 0, aprefix);
+  sprintf(aprefix, "%s.[%i].%s.[%i]", SL_CONFIG_STRING_SL_PRECONFIGURATION, 0, SL_CONFIG_STRING_SL_CSI_RS_LIST, 0);
+  config_get(SL_CRI_RS_INFO, sizeof(SL_CRI_RS_INFO)/sizeof(paramdef_t), aprefix);
+
+  sl_mac->csi_type = sl_csi_rs_info->csi_type;
+  sl_mac->symb_l0 = sl_csi_rs_info->symb_l0;
+  sl_mac->power_control_offset = sl_csi_rs_info->power_control_offset;
+  sl_mac->power_control_offset_ss = sl_csi_rs_info->power_control_offset_ss;
+  sl_mac->slot_offset = sl_csi_rs_info->slot_offset;
+  sl_mac->slot_periodicity = sl_csi_rs_info->slot_periodicity;
+  sl_mac->measurement_bitmap = 0b00011011;
+  // Based on 38211 Table 7.4.1.5.3-1, for density of 1 and ports 1 & 2 ENUMERATED {noCDM, fd-CDM2}
+  sl_mac->cdm_type = get_nrUE_params()->nb_antennas_tx == 1 ? 0 : 1;
+  sl_mac->row = get_nrUE_params()->nb_antennas_tx == 1 ? 2 : 3;
+  // Only 1 is supported (38211, 8.4.1.5.3) - means CSI-RS transmission in every resource block
+  sl_mac->freq_density = 1;
+  sl_mac->freq_domain = 0b000000000001; //bitmap size is dependent upon row size; for row 2 length is 12 bits else 6 bits;
+  int loc_bw = mac->sl_bwp->sl_BWP_Generic_r16->sl_BWP_r16->locationAndBandwidth;
+  uint16_t bwp_start = NRRIV2PRBOFFSET(loc_bw, MAX_BWP_SIZE);
+  // PRB where this CSI resource starts in relation to common resource block #0 (CRB#0) on the common resource block grid.
+  // Only multiples of 4 are allowed (0, 4, ...)
+  // INTEGER (0..maxNrofPhysicalResourceBlocks-1)
+  sl_mac->start_rb = (bwp_start % 4 == 0) ? bwp_start : ((bwp_start >> 2) << 2) + 4;
+  // Number of PRBs across which this CSI resource spans. The smallest configurable number is the minimum of 24 and the width of the associated BWP
+  // Only multiples of 4 are allowed.
+  // INTEGER (24..maxNrofPhysicalResourceBlocksPlus1)
+  uint16_t max_allowable_num_rbs = (NRRIV2BW(loc_bw, MAX_BWP_SIZE) >> 2) << 2;
+  sl_mac->nr_of_rbs = min(24, max_allowable_num_rbs);
+
+  LOG_D(NR_MAC, "loc_bw %i, start_rb %i, nr_of_rbs %i, max_allowable_num_rbs %i\n", loc_bw, sl_mac->start_rb, sl_mac->nr_of_rbs, max_allowable_num_rbs);
 }

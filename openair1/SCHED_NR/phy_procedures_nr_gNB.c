@@ -890,7 +890,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
 
       VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_RX_PUSCH, 1);
       start_meas(&gNB->rx_pusch_stats);
-      nr_rx_pusch(gNB, NULL, gNB->common_vars.rxdataF,ULSCH_id, frame_rx, slot_rx, ulsch->harq_pid);
+      nr_rx_pusch(gNB, NULL, gNB->common_vars.rxdataF, ULSCH_id, frame_rx, slot_rx, ulsch->harq_pid);
       NR_gNB_PUSCH *pusch_vars = &gNB->pusch_vars[ULSCH_id];
       pusch_vars->ulsch_power_tot = 0;
       pusch_vars->ulsch_noise_power_tot = 0;

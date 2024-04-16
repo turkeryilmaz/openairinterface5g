@@ -40,7 +40,7 @@ uint32_t nr_get_G(uint16_t nb_rb, uint16_t nb_symb_sch,uint8_t nb_re_dmrs,uint16
 	return(G);
 }
 
-nr_get_G_SL(uint16_t nb_rb, uint16_t nb_symb_sch,uint8_t nb_re_dmrs,uint16_t length_dmrs,uint8_t sci1_dmrs_overlap,uint8_t sci1_symb,uint16_t sci1_rb,uint16_t sci2_re,uint8_t Qm,uint8_t Nl) {
+uint32_t nr_get_G_SL(uint16_t nb_rb, uint16_t nb_symb_sch, uint8_t nb_re_dmrs, uint16_t length_dmrs, uint8_t sci1_dmrs_overlap, uint8_t sci1_symb, uint16_t sci1_rb, uint16_t sci2_re, uint8_t Qm, uint8_t Nl) {
 
         uint32_t G_SL;   
 	G_SL = ((NR_NB_SC_PER_RB*nb_symb_sch)-(nb_re_dmrs*length_dmrs))*nb_rb*Qm*Nl;

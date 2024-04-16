@@ -43,7 +43,7 @@
 
 int nr_ulsch_encoding(PHY_VARS_NR_UE *ue,
                       NR_UE_ULSCH_t *ulsch,
-                      sl_nr_tx_config_pscch_pssch_psfch_pdu_t *pscch_pssch_pdu,
+                      sl_nr_tx_config_pscch_pssch_pdu_t *pscch_pssch_pdu,
                       NR_DL_FRAME_PARMS* frame_parms,
                       uint8_t harq_pid,
                       unsigned int G) {

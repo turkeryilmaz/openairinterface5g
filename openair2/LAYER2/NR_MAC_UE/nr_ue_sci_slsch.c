@@ -36,6 +36,7 @@
 
 /* exe */
 #include "executables/nr-softmodem.h"
+#include "executables/nr-uesoftmodem.h"
 
 /* RRC*/
 #include "RRC/NR_UE/rrc_proto.h"
@@ -49,7 +50,7 @@
 #include "NR_MAC_COMMON/nr_mac_extern.h"
 #include "common/utils/nr/nr_common.h"
 #include "openair2/NR_UE_PHY_INTERFACE/NR_Packet_Drop.h"
-
+#include "openair1/PHY/phy_extern_nr_ue.h"
 /* PHY */
 #include "executables/softmodem-common.h"
 #include "openair1/PHY/defs_nr_UE.h"
@@ -194,7 +195,17 @@ int get_nREDMRS(const NR_SL_ResourcePool_r16_t *sl_res_pool) {
   return(nREDMRS/cnt);
 }
 
-void fill_pssch_pscch_pdu(sl_nr_tx_config_pscch_pssch_psfch_pdu_t *nr_sl_pssch_pscch_pdu,
+int get_nRECSI_RS(uint8_t freq_density,
+                  uint16_t nr_of_rbs) {
+  AssertFatal(freq_density > 0, "freq_density must be greater than 1\n");
+  uint8_t nr_rbs_w_csi_rs = nr_of_rbs / freq_density;
+  // Actually, kprime + 1 sub-carriers are used by csi-rs. kprime can be 0 or 1 but nb_antennas_tx can be greater than 2.
+  uint8_t subcarriers_used = get_nrUE_params()->nb_antennas_tx > 2 ? 2 : get_nrUE_params()->nb_antennas_tx;
+  return nr_rbs_w_csi_rs * subcarriers_used;
+}
+
+void fill_pssch_pscch_pdu(sl_nr_ue_mac_params_t *sl_mac_params,
+                          sl_nr_tx_config_pscch_pssch_pdu_t *nr_sl_pssch_pscch_pdu,
                           const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp,
                           const NR_SL_ResourcePool_r16_t *sl_res_pool,
                           nr_sci_pdu_t *sci_pdu,
@@ -332,7 +343,8 @@ void fill_pssch_pscch_pdu(sl_nr_tx_config_pscch_pssch_psfch_pdu_t *nr_sl_pssch_p
   nr_sl_pssch_pscch_pdu->mcs=sci_pdu->mcs;
   int nohPRB    = (sl_res_pool->sl_X_Overhead_r16) ? 3*(*sl_res_pool->sl_X_Overhead_r16) : 0;
   int nREDMRS   = get_nREDMRS(sl_res_pool);  
-  int N_REprime = 12*nr_sl_pssch_pscch_pdu->pssch_numsym - nohPRB - nREDMRS;
+  int nrRECSI_RS= sci2_pdu->csi_req ? get_nRECSI_RS(sl_mac_params->freq_density, sl_mac_params->nr_of_rbs) : 0;
+  int N_REprime = 12*nr_sl_pssch_pscch_pdu->pssch_numsym - nohPRB - nREDMRS - nrRECSI_RS;
   int N_REsci1  = 12*nr_sl_pssch_pscch_pdu->pscch_numrbs*nr_sl_pssch_pscch_pdu->pscch_numsym;
   AssertFatal(*sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_Scaling_r16 < 4, "Illegal index %d to alpha table\n",(int)*sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_Scaling_r16);
   int N_REsci2  = get_NREsci2(nr_sl_pssch_pscch_pdu->sci2_alpha_times_100,
@@ -632,9 +644,10 @@ int nr_ue_process_sci1_indication_pdu(NR_UE_MAC_INST_t *mac,module_id_t mod_id,f
 
 
 void config_pssch_slsch_pdu_rx(sl_nr_rx_config_pssch_pdu_t *nr_sl_pssch_pdu,
-			       nr_sci_pdu_t *sci_pdu,
-	  	               const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp, 
-                               const NR_SL_ResourcePool_r16_t *sl_res_pool){
+                               nr_sci_pdu_t *sci_pdu,
+                               const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp,
+                               const NR_SL_ResourcePool_r16_t *sl_res_pool,
+                               sl_nr_ue_mac_params_t *sl_mac_params) {
 
 
   nr_sl_pssch_pdu->target_coderate = nr_get_code_rate_ul(sci_pdu->mcs,sci_pdu->additional_mcs.val);
@@ -663,9 +676,11 @@ void config_pssch_slsch_pdu_rx(sl_nr_rx_config_pssch_pdu_t *nr_sl_pssch_pdu,
   int subchannel_size=subch_to_rb[*sl_res_pool->sl_SubchannelSize_r16];
   int nohPRB    = (sl_res_pool->sl_X_Overhead_r16) ? 3*(*sl_res_pool->sl_X_Overhead_r16) : 0;
   int nREDMRS   = get_nREDMRS(sl_res_pool);  
+  int nrRECSI_RS= sci_pdu->csi_req ? get_nRECSI_RS(sl_mac_params->freq_density, sl_mac_params->nr_of_rbs) : 0;
+  LOG_D(NR_MAC, "nrRECSI_RS %d\n", nrRECSI_RS);
   int pscch_numsym = pscch_tda[*sl_res_pool->sl_PSCCH_Config_r16->choice.setup->sl_TimeResourcePSCCH_r16];
   int pscch_numrbs = pscch_rb_table[*sl_res_pool->sl_PSCCH_Config_r16->choice.setup->sl_FreqResourcePSCCH_r16];
-  int N_REprime = 12*pssch_numsym - nohPRB - nREDMRS;
+  int N_REprime = 12*pssch_numsym - nohPRB - nREDMRS - nrRECSI_RS;
   int N_REsci1  = 12*pscch_numrbs*pscch_numsym;
   AssertFatal(*sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_Scaling_r16 < 4, "Illegal index %d to alpha table\n",(int)*sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_Scaling_r16);
   int sci2_beta_offset = *sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_BetaOffsets2ndSCI_r16->list.array[sci_pdu->beta_offset_indicator];
@@ -786,9 +801,10 @@ int config_pssch_sci_pdu_rx(sl_nr_rx_config_pssch_sci_pdu_t *nr_sl_pssch_sci_pdu
 }
 
 
-int nr_ue_process_sci2_indication_pdu(NR_UE_MAC_INST_t *mac,module_id_t mod_id,frame_t frame, int slot, sl_nr_sci_indication_pdu_t *sci,void *phy_data) {
+int nr_ue_process_sci2_indication_pdu(NR_UE_MAC_INST_t *mac, module_id_t mod_id, int cc_id, frame_t frame, int slot, sl_nr_sci_indication_pdu_t *sci, void *phy_data) {
 
   nr_sci_pdu_t *sci_pdu = &mac->sci_pdu_rx;  //&mac->def_sci_pdu[slot][sci->sci_format_type];
+  sl_nr_ue_mac_params_t *sl_mac_params = mac->SL_MAC_PARAMS;
   const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp = mac->sl_bwp;
   const NR_SL_ResourcePool_r16_t *sl_res_pool = mac->sl_rx_res_pool; 
   LOG_D(NR_MAC,"Received sci indication (sci format %d, Nid %x, subChannelIndex %d, payloadSize %d,payload %llx)\n",
@@ -803,10 +819,16 @@ int nr_ue_process_sci2_indication_pdu(NR_UE_MAC_INST_t *mac,module_id_t mod_id,f
   rx_config.sfn = frame;
   rx_config.slot = slot;
   config_pssch_slsch_pdu_rx(&rx_config.sl_rx_config_list[0].rx_pssch_config_pdu,
-                                  sci_pdu,
-                                  sl_bwp,
-                                  sl_res_pool);
+                            sci_pdu,
+                            sl_bwp,
+                            sl_res_pool,
+                            sl_mac_params);
   rx_config.sl_rx_config_list[0].pdu_type =  SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH;
+  if (sci_pdu->csi_req) {
+    sl_nr_phy_config_request_t *sl_cfg = &sl_mac_params->sl_phy_config.sl_config_req;
+    uint8_t mu = sl_cfg->sl_bwp_config.sl_scs;
+    nr_ue_sl_csi_rs_scheduler(mac, mu, mac->sl_bwp, NULL, &rx_config, NULL);
+  }
 
   nr_scheduled_response_t scheduled_response;
   memset(&scheduled_response,0, sizeof(nr_scheduled_response_t));
@@ -817,10 +839,10 @@ int nr_ue_process_sci2_indication_pdu(NR_UE_MAC_INST_t *mac,module_id_t mod_id,f
       mac->if_module->scheduled_response(&scheduled_response);
   return 1;
 }
-extract_pssch_sci_pdu(uint64_t *sci2_payload, int len,
-	  	      const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp, 
-                      const NR_SL_ResourcePool_r16_t *sl_res_pool,
-		      nr_sci_pdu_t *sci_pdu) { 
+void extract_pssch_sci_pdu(uint64_t *sci2_payload, int len,
+                           const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp,
+                           const NR_SL_ResourcePool_r16_t *sl_res_pool,
+                           nr_sci_pdu_t *sci_pdu) {
   int pos=0,fsize;
   int sci2_size = nr_sci_size(sl_res_pool,sci_pdu,NR_SL_SCI_FORMAT_2A);
   AssertFatal(sci2_size == len,"sci2a size %d is not the same sci_indication %d\n",sci2_size,len);

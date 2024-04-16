@@ -3,11 +3,15 @@
 #include "nr_transport_proto.h"
 #include "PHY/impl_defs_top.h"
 #include "PHY/NR_TRANSPORT/nr_sch_dmrs.h"
+#include "PHY/NR_UE_TRANSPORT/nr_transport_proto_ue.h"
 #include "PHY/NR_REFSIG/dmrs_nr.h"
 #include "PHY/NR_REFSIG/ptrs_nr.h"
 #include "PHY/NR_ESTIMATION/nr_ul_estimation.h"
 #include "PHY/defs_nr_common.h"
 #include "common/utils/nr/nr_common.h"
+#include "PHY/NR_REFSIG/refsig_defs_ue.h"
+#include "executables/nr-uesoftmodem.h"
+#include "SCHED_NR_UE/defs.h"
 
 //#define DEBUG_CH_COMP
 //#define DEBUG_RB_EXT
@@ -304,18 +308,20 @@ void nr_idft(int32_t *z, uint32_t Msc_PUSCH) {
 
 
 void nr_ulsch_extract_rbs(int rxFSz,
-		          c16_t rxdataF[][rxFSz],
+                          c16_t rxdataF[][rxFSz],
                           NR_gNB_PUSCH *pusch_vars,
                           int slot,
                           unsigned char symbol,
                           uint8_t is_dmrs_symbol,
+                          uint8_t is_csirs_symbol,
                           uint32_t bwp_start,
-			  uint32_t rb_start,
-			  uint32_t rb_size,
-			  uint32_t nrOfLayers,
-			  uint32_t num_dmrs_cdm_grps_no_data,
-			  uint32_t dmrs_config_type,
-                          NR_DL_FRAME_PARMS *frame_parms) {
+                          uint32_t rb_start,
+                          uint32_t rb_size,
+                          uint32_t nrOfLayers,
+                          uint32_t num_dmrs_cdm_grps_no_data,
+                          uint32_t dmrs_config_type,
+                          NR_DL_FRAME_PARMS *frame_parms,
+                          nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *csi_params) {
  
   unsigned short start_re, re, nb_re_pusch;
   unsigned char aarx, aatx;
@@ -341,23 +347,69 @@ void nr_ulsch_extract_rbs(int rxFSz,
 
     rxF = (int16_t *)&rxdataF[aarx][soffset+(symbol * frame_parms->ofdm_symbol_size)];
     rxF_ext = (int16_t *)&pusch_vars->rxdataF_ext[aarx][symbol * nb_re_pusch2]; // [hna] rxdataF_ext isn't contiguous in order to solve an alignment problem ib llr computation in case of mod_order = 4, 6
+    AssertFatal(soffset + (symbol * frame_parms->ofdm_symbol_size) + start_re < rxFSz, "rxF offset is greater than the buffer size\n");
+    AssertFatal(symbol * nb_re_pusch2 + nb_re_pusch < nb_re_pusch2 * frame_parms->symbols_per_slot, "Copied PUSCH data is more than rxF_ext size\n");
     LOG_D(NR_PHY,"symbol %d : rxF energy %d\n",symbol,dB_fixed(signal_energy_nodc((int32_t*)rxF,frame_parms->ofdm_symbol_size))); 
     if (is_dmrs_symbol == 0) {
-      if (start_re + nb_re_pusch <= frame_parms->ofdm_symbol_size) {
-        memcpy1((void*)rxF_ext, (void*)&rxF[start_re*2], nb_re_pusch*sizeof(int32_t));
+      if (is_csirs_symbol == 0) {
+        if (start_re + nb_re_pusch <= frame_parms->ofdm_symbol_size) {
+          memcpy1((void*)rxF_ext, (void*)&rxF[start_re*2], nb_re_pusch*sizeof(int32_t));
+        } else {
+          int neg_length = frame_parms->ofdm_symbol_size-start_re;
+          int pos_length = nb_re_pusch-neg_length;
+          memcpy1((void*)rxF_ext, (void*)&rxF[start_re*2], neg_length*sizeof(int32_t));
+          memcpy1((void*)&rxF_ext[2*neg_length], (void*)rxF, pos_length*sizeof(int32_t));
+        }
+
+        for (aatx = 0; aatx < nrOfLayers; aatx++) {
+          ul_ch0 = &pusch_vars->ul_ch_estimates[aatx*frame_parms->nb_antennas_rx+aarx][pusch_vars->dmrs_symbol*frame_parms->ofdm_symbol_size]; // update channel estimates if new dmrs symbol are available
+          ul_ch0_ext = &pusch_vars->ul_ch_estimates_ext[aatx*frame_parms->nb_antennas_rx+aarx][symbol*nb_re_pusch2];
+          memcpy1((void*)ul_ch0_ext, (void*)ul_ch0,nb_re_pusch*sizeof(int32_t));
+        }
       } else {
-        int neg_length = frame_parms->ofdm_symbol_size-start_re;
-        int pos_length = nb_re_pusch-neg_length;
-        memcpy1((void*)rxF_ext,(void*)&rxF[start_re*2],neg_length*sizeof(int32_t));
-        memcpy1((void*)&rxF_ext[2*neg_length],(void*)rxF,pos_length*sizeof(int32_t));
-      }
+        int16_t csi_rs_rb = csi_params->start_rb;
+        for (aatx = 0; aatx < nrOfLayers; aatx++) {
+          ul_ch0 = &pusch_vars->ul_ch_estimates[aatx*frame_parms->nb_antennas_rx+aarx][pusch_vars->dmrs_symbol*frame_parms->ofdm_symbol_size]; // update channel estimates if new dmrs symbol are available
+          ul_ch0_ext = &pusch_vars->ul_ch_estimates_ext[aatx*frame_parms->nb_antennas_rx+aarx][symbol*nb_re_pusch2];
 
-      for (aatx = 0; aatx < nrOfLayers; aatx++) {
-        ul_ch0 = &pusch_vars->ul_ch_estimates[aatx*frame_parms->nb_antennas_rx+aarx][pusch_vars->dmrs_symbol*frame_parms->ofdm_symbol_size]; // update channel estimates if new dmrs symbol are available
-        ul_ch0_ext = &pusch_vars->ul_ch_estimates_ext[aatx*frame_parms->nb_antennas_rx+aarx][symbol*nb_re_pusch2];
-        memcpy1((void*)ul_ch0_ext,(void*)ul_ch0,nb_re_pusch*sizeof(int32_t));
-      }
+          rxF_ext_index = 0;
+          ul_ch0_ext_index = 0;
+          ul_ch0_index = 0;
+          for (re = 0; re < nb_re_pusch; re++) {
+            uint8_t is_csi_rs = 0;
+            uint16_t k = start_re + re;
+            if ((k >= csi_params->start_rb * NR_NB_SC_PER_RB) && (re % NR_NB_SC_PER_RB == 0) && (csi_rs_rb < csi_params->nr_of_rbs)) {
+              csi_rs_params_t table_params;
+              get_csi_rs_params_from_table(csi_params, &table_params);
+              port_freq_indices_t *port_freq_indices = (port_freq_indices_t *)malloc(table_params.ports*sizeof(port_freq_indices));
+              get_csi_rs_freq_ind_sl(frame_parms, csi_rs_rb, csi_params, &table_params, port_freq_indices);
+              if (k == port_freq_indices[aatx].k) {
+                is_csi_rs = 1;
+                csi_rs_rb++;
+              }
+              free(port_freq_indices);
+            }
 
+            if (++k >= frame_parms->ofdm_symbol_size) {
+              k -= frame_parms->ofdm_symbol_size;
+            }
+
+            // save only data and respective channel estimates
+            if (is_csi_rs == 0) {
+              if (aatx == 0) {
+                rxF_ext[rxF_ext_index]     = (rxF[ ((start_re + re)*2)      % (frame_parms->ofdm_symbol_size*2)]);
+                rxF_ext[rxF_ext_index + 1] = (rxF[(((start_re + re)*2) + 1) % (frame_parms->ofdm_symbol_size*2)]);
+                rxF_ext_index +=2;
+              }
+
+              ul_ch0_ext[ul_ch0_ext_index] = ul_ch0[ul_ch0_index];
+              ul_ch0_ext_index++;
+
+            }
+            ul_ch0_index++;
+          }
+        }
+      }
     } else {
 
       for (aatx = 0; aatx < nrOfLayers; aatx++) {
@@ -394,7 +446,7 @@ void nr_ulsch_extract_rbs(int rxFSz,
                  is_dmrs_symbol,rxF_ext_index>>1, rxF_ext[rxF_ext_index],rxF_ext[rxF_ext_index+1],
                  ul_ch0_ext_index,  ((int16_t*)&ul_ch0_ext[ul_ch0_ext_index])[0],  ((int16_t*)&ul_ch0_ext[ul_ch0_ext_index])[1]);
             #endif          
-          } 
+          }
           ul_ch0_index++;
         }
       }
@@ -1899,21 +1951,23 @@ uint8_t nr_ulsch_mmse_2layers(NR_DL_FRAME_PARMS *frame_parms,
 
 /* Main Function */
 void nr_rx_pusch(PHY_VARS_gNB *gNB,
-		 PHY_VARS_NR_UE *ue,
+                 PHY_VARS_NR_UE *ue,
                  UE_nr_rxtx_proc_t *proc,
                  nr_phy_data_t *phy_data,
-		 int rxFSz,
-		 c16_t rxdataF[][rxFSz],
+                 int rxFSz,
+                 c16_t rxdataF[][rxFSz],
                  uint8_t ulsch_id,
                  uint32_t frame,
                  uint8_t slot,
-                 unsigned char harq_pid)
+                 unsigned char harq_pid,
+                 bool *is_csi_rs_slot)
 {
 
   uint8_t aarx, aatx;
   uint32_t nb_re_pusch, bwp_start_subcarrier;
   int avgs = 0;
 
+  nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *csi_params = NULL;
   AssertFatal((gNB && !ue) || (!gNB && ue),"Both gNB and UE cannot be non-null\n");
   NR_DL_FRAME_PARMS *frame_parms = gNB ? &gNB->frame_parms : &ue->SL_UE_PHY_PARAMS.sl_frame_params;
   NR_gNB_ULSCH_t *ulsch = gNB ? &gNB->ulsch[ulsch_id] : &ue->slsch[ulsch_id];
@@ -2061,9 +2115,53 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
   }
 
   for(uint8_t symbol = start_symbol_index; symbol < (start_symbol_index + nr_of_symbols); symbol++) {
+
+    uint8_t csi_rs_symbol_flag = 0;
+    if (phy_data->sl_rx_action == SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH_CSI_RS) {
+      *is_csi_rs_slot = true;
+      csi_params = (nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *)&ue->csirs_vars[0]->csirs_config_pdu;
+    } else {
+      *is_csi_rs_slot = false;
+    }
+    if (*is_csi_rs_slot && (csi_params->symb_l0 == symbol)) {
+      csi_rs_symbol_flag = 1;
+      AssertFatal(csi_params->freq_density > 0, "freq_density MUST be greater than zero");
+      AssertFatal(csi_params->nr_of_rbs > 0, "nr_of_rbs MUST be greater than zero");
+      LOG_D(NR_PHY, "%d.%d symbol %i, freq_density %i symb_l0 %i csi_type %i power_control_offset %i power_control_offset_ss %i measurement_bitmap %i cdm_type %i row %i freq_domain %i start_rb %i nr_of_rbs %i\n",
+            frame,
+            slot,
+            symbol,
+            csi_params->freq_density,
+            csi_params->symb_l0,
+            csi_params->csi_type,
+            csi_params->power_control_offset,
+            csi_params->power_control_offset_ss,
+            csi_params->measurement_bitmap,
+            csi_params->cdm_type,
+            csi_params->row,
+            csi_params->freq_domain,
+            csi_params->start_rb,
+            csi_params->nr_of_rbs);
+      if (phy_data->sl_rx_action == SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH_CSI_RS) {
+        if (ue->csirs_vars[proc->gNB_id]->active == 1) {
+          LOG_D(NR_PHY, "%d.%d CSI-RS Received\n", proc->frame_rx, proc->nr_slot_rx);
+          nr_slot_fep(ue, frame_parms, proc, symbol, rxdataF, link_type_sl);
+          nr_ue_csi_rs_procedures(ue, proc, rxdataF);
+          ue->csirs_vars[proc->gNB_id]->active = 0;
+        }
+      }
+    }
+
     uint8_t dmrs_symbol_flag = (ul_dmrs_symb_pos >> symbol) & 0x01;
     int sci2_cnt_thissymb=0;
-    if (dmrs_symbol_flag == 1) {
+    if (csi_rs_symbol_flag) {
+      uint8_t freq_subcarriers_per_rb = 12;
+      uint8_t nr_rbs_w_csi_rs = csi_params->nr_of_rbs / csi_params->freq_density;
+      uint8_t nr_rbs_wo_csi_rs = (rb_size - nr_rbs_w_csi_rs);
+      // Actually, kprime + 1 sub-carriers are used by csi-rs. kprime can be 0 or 1 but nb_antennas_tx can be greater than 2.
+      uint8_t subcarriers_used = get_nrUE_params()->nb_antennas_tx > 2 ? 2 : get_nrUE_params()->nb_antennas_tx;
+      nb_re_pusch = nr_rbs_wo_csi_rs * freq_subcarriers_per_rb  + nr_rbs_w_csi_rs * (freq_subcarriers_per_rb - subcarriers_used);
+    } else if (dmrs_symbol_flag == 1) {
       if ((ul_dmrs_symb_pos >> ((symbol + 1) % frame_parms->symbols_per_slot)) & 0x01)
         AssertFatal(1==0,"Double DMRS configuration is not yet supported\n");
 
@@ -2091,7 +2189,7 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
     if (nb_re_pusch > 0) {
       LOG_D(NR_PHY,"extract RBs : frame   %d, slot %d symbol %d nb_re_pusch %d\n", frame,slot,symbol, nb_re_pusch);
       if (gNB) start_meas(&gNB->ulsch_rbs_extraction_stats);
-      nr_ulsch_extract_rbs(rxFSz,rxdataF, pusch_vars, slot, symbol, dmrs_symbol_flag, bwp_start,rb_start,rb_size,nrOfLayers, num_dmrs_cdm_grps_no_data, dmrs_config_type, frame_parms);
+      nr_ulsch_extract_rbs(rxFSz, rxdataF, pusch_vars, slot, symbol, dmrs_symbol_flag, csi_rs_symbol_flag, bwp_start, rb_start, rb_size, nrOfLayers, num_dmrs_cdm_grps_no_data, dmrs_config_type, frame_parms, csi_params);
       if (gNB) stop_meas(&gNB->ulsch_rbs_extraction_stats);
 
       //----------------------------------------------------------
@@ -2223,7 +2321,7 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
       }
       if (ml_rx == false || nrOfLayers == 1) {       
         if (pssch_pdu && sci2_left>0){
-	  LOG_D(NR_PHY,"valid_re_per_slot[%d] %d\n",symbol,pusch_vars->ul_valid_re_per_slot[symbol]);
+	  LOG_D(NR_PHY, "valid_re_per_slot[%d] %d\n", symbol, pusch_vars->ul_valid_re_per_slot[symbol]);
 	  int available_sci2_res_in_symb = pusch_vars->ul_valid_re_per_slot[symbol];
 	  int slsch_res_in_symbol;
 	  LOG_D(NR_PHY,"available_sci2_res_in_symb[%d] %d (sci1_re %d)\n",symbol,available_sci2_res_in_symb,sci1_re_per_symb);
@@ -2241,7 +2339,7 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
 	       memcpy(&sci2_llrs[2*sci2_cnt_prev],&pusch_vars->rxdataF_comp[0][(symbol * (off + rb_size * NR_NB_SC_PER_RB))+sci1_re_per_symb],
 			         sci2_left*sizeof(int32_t));
 	       slsch_res_in_symbol=available_sci2_res_in_symb-sci2_left;
-	       LOG_D(NR_PHY,"SCI2 taking %d REs, SLSCH taking %d\n",sci2_left,slsch_res_in_symbol);
+	       LOG_D(NR_PHY, "SCI2 taking %d REs, SLSCH taking %d\n", sci2_left, slsch_res_in_symbol);
 	       pusch_vars->ul_valid_re_per_slot[symbol]=slsch_res_in_symbol;
 	       sci2_cnt_thissymb=sci2_left;
                sci2_left=0;
@@ -2283,7 +2381,7 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
                //
 	  }
         } // (not ML || nrOfLayers==1 ) AND pssch and sci2 REs to handle	
-	if (pssch_pdu) LOG_D(NR_PHY,"symbol %d: PSSCH REs %d (sci1 %d,sci2 %d)\n",symbol,pusch_vars->ul_valid_re_per_slot[symbol],sci1_offset,sci2_cnt_thissymb); 
+	if (pssch_pdu) LOG_D(NR_PHY, "symbol %d: PSSCH REs %d (sci1 %d,sci2 %d)\n", symbol, pusch_vars->ul_valid_re_per_slot[symbol], sci1_offset, sci2_cnt_thissymb);
         for (aatx=0; aatx < nrOfLayers; aatx++) {
           nr_ulsch_compute_llr(&pusch_vars->rxdataF_comp[aatx * frame_parms->nb_antennas_rx][symbol * (off + rb_size * NR_NB_SC_PER_RB)+sci1_offset+sci2_cnt_thissymb],
                                pusch_vars->ul_ch_mag0[aatx * frame_parms->nb_antennas_rx],

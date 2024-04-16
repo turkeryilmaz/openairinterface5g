@@ -23,7 +23,10 @@
 
 #include "PHY/defs_nr_UE.h"
 #include <openair1/PHY/TOOLS/phy_scope_interface.h>
+#include "openair1/PHY/NR_TRANSPORT/nr_ulsch.h"
+#include "openair1/PHY/NR_TRANSPORT/nr_transport_proto.h"
 #include "common/utils/LOG/log.h"
+#include "common/utils/utils.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "UTIL/OPT/opt.h"
 #include "intertask_interface.h"
@@ -123,13 +126,21 @@ void nr_fill_sl_rx_indication(sl_nr_rx_indication_t *rx_ind,
 }
 
 extern int dmrs_pscch_mask[2];
-int nr_slsch_procedures(PHY_VARS_NR_UE *ue, int frame_rx, int slot_rx, int SLSCH_id, UE_nr_rxtx_proc_t *proc,nr_phy_data_t *phy_data) {
+int nr_slsch_procedures(PHY_VARS_NR_UE *ue, int frame_rx, int slot_rx, int SLSCH_id, UE_nr_rxtx_proc_t *proc, nr_phy_data_t *phy_data, bool is_csi_rs_slot) {
 
 
   sl_nr_ue_phy_params_t *sl_phy_params = &ue->SL_UE_PHY_PARAMS;
   NR_DL_FRAME_PARMS *fp = &sl_phy_params->sl_frame_params;
   sl_nr_rx_config_pssch_pdu_t *slsch_pdu = &phy_data->nr_sl_pssch_pdu; //ue->slsch[SLSCH_id].harq_process->slsch_pdu;
   sl_nr_rx_config_pssch_sci_pdu_t *pssch_pdu = &phy_data->nr_sl_pssch_sci_pdu; //ue->slsch[SLSCH_id].harq_process->pssch_pdu;
+
+  uint8_t  freq_density;
+  uint8_t  nr_of_rbs;
+  if (is_csi_rs_slot) {
+    freq_density = ue->csirs_vars[0]->csirs_config_pdu.freq_density;
+    nr_of_rbs = ue->csirs_vars[0]->csirs_config_pdu.nr_of_rbs;
+    AssertFatal((freq_density == 1) || (nr_of_rbs > 0), "CSI-RS parameters are not properly configured\n");
+  }
   int harq_pid = slsch_pdu->harq_pid;
   uint16_t nb_re_dmrs;
   uint16_t start_symbol = 1;
@@ -162,6 +173,8 @@ int nr_slsch_procedures(PHY_VARS_NR_UE *ue, int frame_rx, int slot_rx, int SLSCH
 			   sci2_re,
                            pssch_pdu->mod_order,
                            pssch_pdu->num_layers);
+
+  G -= is_csi_rs_slot ? nr_of_rbs/freq_density*pssch_pdu->mod_order*pssch_pdu->num_layers : 0;
 
   AssertFatal(G>0,"G is 0 : rb_size %u, number_symbols %d, nb_re_dmrs %d, number_dmrs_symbols %d, qam_mod_order %u, nrOfLayer %u\n",
 	      rb_size,
@@ -401,6 +414,7 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
   int nr_slot_rx = proc->nr_slot_rx;
   sl_nr_ue_phy_params_t *sl_phy_params = &ue->SL_UE_PHY_PARAMS;
   NR_DL_FRAME_PARMS *fp = &sl_phy_params->sl_frame_params;
+  bool is_csi_rs_slot = false;
 
   //VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_UE_RX_SL, VCD_FUNCTION_IN);
   start_meas(&sl_phy_params->phy_proc_sl_rx);
@@ -577,8 +591,8 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
     nr_ue_pdcch_procedures(ue, proc, 1, pscch_est_size, pscch_dl_ch_estimates, phy_data, 0, rxdataF); 
     LOG_D(NR_PHY,"returned from nr_ue_pdcch_procedures\n");
   }
-  if (phy_data->sl_rx_action == SL_NR_CONFIG_TYPE_RX_PSSCH_SCI){
 
+  if (phy_data->sl_rx_action == SL_NR_CONFIG_TYPE_RX_PSSCH_SCI) {
     LOG_D(NR_PHY,"sci2_len = %d\n",phy_data->nr_sl_pssch_sci_pdu.sci2_len);
     LOG_D(NR_PHY,"sci2_beta_offset = %d\n",phy_data->nr_sl_pssch_sci_pdu.sci2_beta_offset);
     LOG_D(NR_PHY,"sci2_alpha_times_100= %d\n",phy_data->nr_sl_pssch_sci_pdu.sci2_alpha_times_100);
@@ -630,7 +644,8 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
                 0,
                 frame_rx,
                 nr_slot_rx,
-                0);
+                0,
+                &is_csi_rs_slot);
       NR_gNB_PUSCH *pssch_vars = &ue->pssch_vars[0];
       pssch_vars->ulsch_power_tot = 0;
       pssch_vars->ulsch_noise_power_tot = 0;
@@ -666,7 +681,7 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
               ue->pssch_thres);
 
         pssch_vars->DTX = 0;
-        int totalDecode = nr_slsch_procedures(ue, frame_rx, nr_slot_rx, 0, proc,phy_data);
+        int totalDecode = nr_slsch_procedures(ue, frame_rx, nr_slot_rx, 0, proc, phy_data, is_csi_rs_slot);
       }
   }
 
@@ -687,6 +702,10 @@ int phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
   int frame_tx = proc->frame_tx;
   int tx_action = 0;
 
+  const char *sl_tx_actions[] = {"PSBCH", "PSCCH_PSSCH", "PSCCH_PSSCH_PSFCH", "PSCCH_PSSCH_CSI_RS", "PSCCH_PSSCH_PSFCH_CSI_RS"};
+  if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_CSI_RS || phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH_CSI_RS) {
+    LOG_D(NR_PHY, "Generating %s (%d.%d)\n", sl_tx_actions[phy_data->sl_tx_action - SL_NR_CONFIG_TYPE_TX_PSBCH], frame_tx, slot_tx);
+  }
   sl_nr_ue_phy_params_t *sl_phy_params = &ue->SL_UE_PHY_PARAMS;
   NR_DL_FRAME_PARMS *fp = &sl_phy_params->sl_frame_params;
 
@@ -712,23 +731,46 @@ int phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
     tx_action = 1;
   }
   else if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH ||
-          phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH) {
-    LOG_D(NR_PHY, "Generating PSCCH (%d.%d) \n", frame_tx, slot_tx);
-    phy_data->pscch_Nid = nr_generate_sci1(ue, txdataF[0], fp, AMP, slot_tx, &phy_data->nr_sl_pssch_pscch_psfch_pdu) &0xFFFF;
-
+           phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_CSI_RS ||
+           phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH ||
+           phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH_CSI_RS) {
+    if (phy_data->sl_tx_action >= SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH && phy_data->sl_tx_action <= SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH_CSI_RS)
+      LOG_D(NR_PHY, "Generating %s (%d.%d)\n", sl_tx_actions[phy_data->sl_tx_action - SL_NR_CONFIG_TYPE_TX_PSBCH], frame_tx, slot_tx);
+    phy_data->pscch_Nid = nr_generate_sci1(ue, txdataF[0], fp, AMP, slot_tx, &phy_data->nr_sl_pssch_pscch_pdu) &0xFFFF;
+    nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *csi_params = (nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *)&phy_data->nr_sl_pssch_pscch_pdu.nr_sl_csi_rs_pdu;
+    csi_params->scramb_id = phy_data->pscch_Nid % (1 << 10);
     nr_ue_ulsch_procedures(ue,0,frame_tx,slot_tx,0,phy_data,txdataF);
 
     sl_phy_params->pscch.num_pscch_tx ++;
     sl_phy_params->pssch.num_pssch_sci2_tx ++;
     sl_phy_params->pssch.num_pssch_tx ++;
-    if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH) {
-      LOG_D(NR_PHY, "Generating PSFCH (%d.%d) \n", frame_tx, slot_tx);
+    if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_CSI_RS ||
+        phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH_CSI_RS) {
+      uint16_t beta_csirs = get_softmodem_params()->sl_mode ? (uint16_t)(AMP * (ceil(sqrt(phy_data->nr_sl_pssch_pscch_pdu.num_layers / fp->nb_antennas_tx)))) & 0xFFFF : AMP;
+      LOG_D(NR_PHY, "Tx beta_csirs: %d, scramb_id %i (%d.%d)\n", beta_csirs, csi_params->scramb_id, frame_tx, slot_tx);
+      nr_generate_csi_rs(fp,
+                         (int32_t **)txdataF,
+                         beta_csirs,
+                         ue->nr_csi_info,
+                         csi_params,
+                         slot_tx,
+                         NULL,
+                         NULL,
+                         NULL,
+                         NULL,
+                         NULL,
+                         NULL,
+                         NULL,
+                         NULL);
+    }
+    if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH ||
+        phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH_CSI_RS) {
       nr_generate_psfch0(ue,
                         txdataF,
                         fp,
                         AMP,
                         slot_tx,
-                        &phy_data->nr_sl_pssch_pscch_psfch_pdu.psfch_pdu);
+                        &phy_data->nr_sl_pssch_pscch_pdu.psfch_pdu);
       sl_phy_params->psfch.num_psfch_tx ++;
     }
     tx_action = 1;
