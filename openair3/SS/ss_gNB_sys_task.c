@@ -1287,7 +1287,8 @@ bool ss_task_sys_nr_handle_cellConfig5G(struct NR_CellConfigRequest_Type *p_req,
     /* Populating frequency band list */
     if( p_req->v.AddOrReconfigure.PhysicalLayer.d == true &&
         p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.d == true &&
-        p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.d == true && 0){
+        p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.d == true &&
+        p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.d == NR_ASN1_FrequencyInfoDL_Type_R15){
         for (int i = 0; i < p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.v.R15.frequencyBandList.d; i++)
         {
           //LOG_I(GNB_APP,"mark: fxn:%s %d \n", __FUNCTION__,__LINE__);
