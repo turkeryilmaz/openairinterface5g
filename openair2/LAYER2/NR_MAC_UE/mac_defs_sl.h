@@ -142,6 +142,24 @@ typedef struct sl_nr_ue_mac_params {
   //or TDD config decoded from SL-MIB
   NR_TDD_UL_DL_ConfigCommon_t *sl_TDD_config;
 
+  // CSI params configured locally
+  uint8_t symb_l0;
+  uint8_t csi_type;
+  uint8_t power_control_offset;
+  uint8_t power_control_offset_ss;
+  uint8_t slot_offset;
+  uint8_t slot_periodicity;
+  uint8_t  freq_density;
+  uint8_t subcarrier_spacing;
+  uint8_t cyclic_prefix;
+  uint16_t start_rb;
+  uint16_t nr_of_rbs;
+  uint8_t row;
+  uint16_t freq_domain;
+  uint8_t cdm_type;
+  uint16_t scramb_id;
+  uint8_t measurement_bitmap;
+
   //Configured from RRC
   uint32_t sl_MaxNumConsecutiveDTX;
   uint32_t sl_SSB_PriorityNR;

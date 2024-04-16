@@ -127,15 +127,17 @@ void free_gNB_dlsch(NR_gNB_DLSCH_t *dlsch, uint16_t N_RB, const NR_DL_FRAME_PARM
     @param harq_pid HARQ process ID
 */
 void nr_rx_pusch(PHY_VARS_gNB *gNB,
-		 PHY_VARS_NR_UE *ue,
-		 UE_nr_rxtx_proc_t *proc,
+                 PHY_VARS_NR_UE *ue,
+                 UE_nr_rxtx_proc_t *proc,
                  nr_phy_data_t *phy_data,
-		 int rxFSz,
-		 c16_t rxdataF[][rxFSz],
+                 int rxFSz,
+                 c16_t rxdataF[][rxFSz],
                  uint8_t UE_id,
                  uint32_t frame,
                  uint8_t slot,
-                 unsigned char harq_pid);
+                 unsigned char harq_pid,
+                 bool *is_csi_rs_slot
+                 );
 
 /** \brief This function performs RB extraction (signal and channel estimates) (currently signal only until channel estimation and compensation are implemented)
     @param rxdataF pointer to the received frequency domain signal
@@ -147,18 +149,20 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
     @param frame_parms, Pointer to frame descriptor structure
 */
 void nr_ulsch_extract_rbs(int rxFSz,
-		          c16_t rxdataF[][rxFSz],
+                          c16_t rxdataF[][rxFSz],
                           NR_gNB_PUSCH *pusch_vars,
                           int slot,
                           unsigned char symbol,
                           uint8_t is_dmrs_symbol,
+                          uint8_t is_csirs_symbol,
                           uint32_t bwp_start,
-			  uint32_t rb_start,
-			  uint32_t rb_size,
-			  uint32_t nrOfLayers,
-			  uint32_t num_dmrs_cdm_grps_no_data,
-			  uint32_t dmrs_config_type,
-                          NR_DL_FRAME_PARMS *frame_parms);
+                          uint32_t rb_start,
+                          uint32_t rb_size,
+                          uint32_t nrOfLayers,
+                          uint32_t num_dmrs_cdm_grps_no_data,
+                          uint32_t dmrs_config_type,
+                          NR_DL_FRAME_PARMS *frame_parms,
+                          nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *csi_params);
 
 void nr_ulsch_scale_channel(int32_t **ul_ch_estimates_ext,
                             NR_DL_FRAME_PARMS *frame_parms,

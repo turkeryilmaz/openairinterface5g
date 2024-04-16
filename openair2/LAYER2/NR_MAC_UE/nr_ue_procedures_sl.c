@@ -40,10 +40,10 @@ typedef struct psfch_params {
 } psfch_params_t;
 
 void print_prb_set_allocation(psfch_params_t *psfch_params, uint8_t psfch_period, uint8_t  num_subchannels) {
-  LOG_D(NR_PHY, "PSSCH Slot mod PSFCH period | Subchannel  | Start PRB | End PRB\n");
+  LOG_D(NR_PHY, "PSSCH Slot mod PSFCH period |   Subchannel   |   Start PRB   |    End PRB\n");
   for (int i = 0; i < psfch_period; i++) {
     for (int j = 0; j < num_subchannels; j++) {
-      LOG_D(NR_PHY, "%d | %d  | %d | %d\n", i, j, psfch_params->prbs_sets->start_prb[i][j], psfch_params->prbs_sets->end_prb[i][j]);
+      LOG_D(NR_PHY, "\t\t    %d \t\t|\t%d\t|\t%d\t| \t %d\n", i, j, psfch_params->prbs_sets->start_prb[i][j], psfch_params->prbs_sets->end_prb[i][j]);
     }
   }
 }
@@ -696,7 +696,17 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
     harq_proc->feedback_frame = sched_frame;
     harq_proc->is_active = true;
 
-    LOG_D(NR_MAC, "harq pid: %d:%d psfch_period %ld, delta_slots %d, feedback frame:slot %d:%d, frame:slot %d:%d, time_gap %d, harq feedback %d\n", harq_pid, mac->sl_info.list[0]->UE_sched_ctrl.sl_harq_processes[harq_pid].is_active, psfch_period, delta_slots, harq_proc->feedback_frame, harq_proc->feedback_slot, frame, slot, psfch_min_time_gap, mac->sci_pdu_rx.harq_feedback);
+    LOG_D(NR_MAC, "harq pid: %d:%d psfch_period %ld, delta_slots %d, feedback frame:slot %d:%d, frame:slot %d:%d, time_gap %d, harq feedback %d\n",
+          harq_pid,
+          mac->sl_info.list[0]->UE_sched_ctrl.sl_harq_processes[harq_pid].is_active,
+          psfch_period,
+          delta_slots,
+          harq_proc->feedback_frame,
+          harq_proc->feedback_slot,
+          frame,
+          slot,
+          psfch_min_time_gap,
+          mac->sci_pdu_rx.harq_feedback);
 
     uint8_t ack_nack = (rx_ind->rx_indication_body + pdu_id)->rx_slsch_pdu.ack_nack;
     mac->sl_tx_config_psfch_pdu[harq_pid] = calloc(1, sizeof(sl_nr_tx_config_psfch_pdu_t));

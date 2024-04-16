@@ -1456,11 +1456,11 @@ void handle_sl_sci1a(module_id_t module_id,uint32_t frame, uint32_t slot, sl_nr_
   nr_ue_process_sci1_indication_pdu(mac,module_id,frame,slot,sci,phy_data);
 }
 
-void handle_sl_sci2(module_id_t module_id,uint32_t frame, uint32_t slot, sl_nr_sci_indication_pdu_t *const sci,void *phy_data) {
+void handle_sl_sci2(module_id_t module_id, int cc_id, uint32_t frame, uint32_t slot, sl_nr_sci_indication_pdu_t *const sci, void *phy_data) {
 
 
   NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
-  nr_ue_process_sci2_indication_pdu(mac,module_id,frame,slot,sci,phy_data);
+  nr_ue_process_sci2_indication_pdu(mac, module_id, cc_id, frame, slot, sci, phy_data);
 }
 
 /*
@@ -1515,7 +1515,7 @@ void sl_nr_process_rx_ind(uint16_t mod_id,
 
 /* Process SCI indication from PHY */
 
-void sl_nr_process_sci_ind(uint16_t module_id, uint32_t frame, uint32_t slot, sl_nr_ue_mac_params_t *sl_mac, sl_nr_sci_indication_t *sci_ind, void *phy_data) {
+void sl_nr_process_sci_ind(uint16_t module_id, int cc_id, uint32_t frame, uint32_t slot, sl_nr_ue_mac_params_t *sl_mac, sl_nr_sci_indication_t *sci_ind, void *phy_data) {
 
 
   uint8_t num_SCIs = sci_ind->number_of_SCIs;
@@ -1529,7 +1529,7 @@ void sl_nr_process_sci_ind(uint16_t module_id, uint32_t frame, uint32_t slot, sl
        break;
       case SL_SCI_FORMAT_2_ON_PSSCH:
          LOG_D(NR_MAC,"%s%d.%d Received PSSCH PDU %d/%d PSSCH RSRP %d, length %d, payload %llx\n", KBLU,sci_ind->sfn,sci_ind->slot,1+idx,num_SCIs,sci_ind->sci_pdu[idx].pscch_rsrp,sci_ind->sci_pdu[idx].sci_payloadlen,*(unsigned long long*)sci_ind->sci_pdu[idx].sci_payloadBits);       
-         handle_sl_sci2(module_id,frame,slot,&sci_ind->sci_pdu[idx],phy_data); 
+         handle_sl_sci2(module_id, cc_id, frame, slot, &sci_ind->sci_pdu[idx], phy_data);
        break;
       default:
        AssertFatal(1==0,"Unhandled or unknown sci format %d\n",sci_ind->sci_pdu[idx].sci_format_type);
@@ -1549,6 +1549,7 @@ int nr_ue_sl_indication(nr_sidelink_indication_t *sl_indication)
 
   //NR_UE_L2_STATE_t ret;
   module_id_t module_id = sl_indication->module_id;
+  int cc_id = sl_indication->cc_id;
   NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
 
   uint16_t slot = sl_indication->slot_rx;
@@ -1559,7 +1560,7 @@ int nr_ue_sl_indication(nr_sidelink_indication_t *sl_indication)
   if (sl_indication->rx_ind) {
     sl_nr_process_rx_ind(module_id, frame, slot, sl_mac, sl_indication->rx_ind);
   } if (sl_indication->sci_ind) {
-    sl_nr_process_sci_ind(module_id, frame, slot, sl_mac, sl_indication->sci_ind,sl_indication->phy_data);
+    sl_nr_process_sci_ind(module_id, cc_id, frame, slot, sl_mac, sl_indication->sci_ind, sl_indication->phy_data);
   } else {
     nr_ue_sidelink_scheduler(sl_indication);
   }

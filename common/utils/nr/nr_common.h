@@ -114,6 +114,18 @@ uint32_t get_ssb_offset_to_pointA(uint32_t absoluteFrequencySSB,
                                   uint32_t absoluteFrequencyPointA,
                                   int ssbSubcarrierSpacing,
                                   int frequency_range);
+
+int get_NREsci2(const int sci2_alpha,
+                const int sci2_payload_len,
+                const int sci2_beta_offset,
+                const int pssch_numsym,
+                const int pscch_numsym,
+                const int pscch_numrbs,
+                const int l_subch,
+                const int subchannel_size,
+                const int mcs,
+                const int mcs_tb_ind);
+
 int get_ssb_subcarrier_offset(uint32_t absoluteFrequencySSB, uint32_t absoluteFrequencyPointA);
 
 
