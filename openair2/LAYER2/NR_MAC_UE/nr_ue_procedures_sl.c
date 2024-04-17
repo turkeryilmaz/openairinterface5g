@@ -746,11 +746,14 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
     return;
 
   LOG_D(NR_MAC, "In %s : processing PDU %d (with length %d) of %d total number of PDUs...\n", __FUNCTION__, pdu_id, pdu_len, rx_ind->number_pdus);
-
-  while (!done && pdu_len > 0){
+  NR_SLSCH_MAC_SUBHEADER_FIXED *sl_sch_subheader = (NR_SLSCH_MAC_SUBHEADER_FIXED *) pduP;
+  LOG_D(NR_PHY, "Rx V %d R %d SRC %d DST %d\n", sl_sch_subheader->V , sl_sch_subheader->R, sl_sch_subheader->SRC, sl_sch_subheader->DST);
+  pduP += sizeof(*sl_sch_subheader);
+  pdu_len -= sizeof(*sl_sch_subheader);
+  while (!done && pdu_len > 0) {
     uint16_t mac_len = 0x0000;
     uint16_t mac_subheader_len = 0x0001; //  default to fixed-length subheader = 1-oct
-    uint8_t rx_lcid = ((NR_MAC_SUBHEADER_LONG *)(pduP + sizeof(NR_SLSCH_MAC_SUBHEADER_FIXED)))->LCID;
+    uint8_t rx_lcid = ((NR_MAC_SUBHEADER_LONG *)(pduP))->LCID;
 
     LOG_D(NR_MAC, "[UE %x] LCID %d, PDU length %d\n", mac->src_id, rx_lcid, pdu_len);
     switch(rx_lcid){
