@@ -50,6 +50,7 @@ int encode_fgs_security_mode_complete(fgs_security_mode_complete_msg *fgs_securi
       return encode_result;
     } else {
       encoded += encode_result;
+      #if 0
       if ((encode_result =
             encode_fgc_nas_message_container(&fgs_security_mode_comp->fgsnasmessagecontainer, 0x71, buffer +
                                       encoded, len - encoded)) < 0) {
@@ -57,6 +58,7 @@ int encode_fgs_security_mode_complete(fgs_security_mode_complete_msg *fgs_securi
       } else {
         encoded += encode_result;
       }
+      #endif
     }
 
     return encoded;
