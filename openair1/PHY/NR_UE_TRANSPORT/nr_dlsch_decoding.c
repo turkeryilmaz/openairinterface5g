@@ -119,7 +119,15 @@ static bool nr_ue_postDecode(PHY_VARS_NR_UE *phy_vars_ue,
           LOG_D(PHY, "DLSCH received nok \n");
           return true; //stop
         }
+	int i=0;
+	while (b[i] == 0 && i <A) i++;
+	if (i == A) {
+	  LOG_E(PHY,"received all 0 pdu, consider it false recepetion\n");
+	  dlsch->last_iteration_cnt = dlsch->max_ldpc_iterations + 1;
+	  return true; //stop
+	}
       }
+	
       //LOG_D(PHY,"[UE %d] DLSCH: Setting ACK for nr_slot_rx %d TBS %d mcs %d nb_rb %d harq_process->round %d\n",
       //      phy_vars_ue->Mod_id,nr_slot_rx,harq_process->TBS,harq_process->mcs,harq_process->nb_rb, harq_process->round);
       harq_process->status = SCH_IDLE;
