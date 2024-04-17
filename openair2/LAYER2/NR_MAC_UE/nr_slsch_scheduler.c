@@ -80,7 +80,8 @@ bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP,int slotP, nr_sci_pdu_t
      sci2_pdu->harq_feedback = psfch_period ? 1 : 0;
      sci2_pdu->cast_type = 1;
      if (format2 == NR_SL_SCI_FORMAT_2C || format2 == NR_SL_SCI_FORMAT_2A) {
-       sci2_pdu->csi_req = ((slots_per_frame * frameP + slotP - sl_mac->slot_offset) % sl_mac->slot_periodicity) && (!mac->SL_MAC_PARAMS->sl_CSI_Acquisition) ? 0 : 1;
+       sci2_pdu->csi_req = mac->SL_MAC_PARAMS->sl_CSI_Acquisition ? 0 :
+                           ((slots_per_frame * frameP + slotP - sl_mac->slot_offset) % sl_mac->slot_periodicity) && (!mac->SL_MAC_PARAMS->sl_CSI_Acquisition) ? 0 : 1;
      }
      if (format2 == NR_SL_SCI_FORMAT_2B)
        sci2_pdu->zone_id = 0;
