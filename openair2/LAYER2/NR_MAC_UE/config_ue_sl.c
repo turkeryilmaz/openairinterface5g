@@ -31,11 +31,12 @@
 /* Sidelink CSI-RS configuration parameters for MAC*/
 #define SL_CONFIG_STRING_SL_CSI_RS_LIST                             "sl_csi_rs"
 #define SL_CONFIG_STRING_SL_CSI_RS_SYMB_L0                          "symb_l0"
-#define SL_CONFIG_STRING_SL_CSI_RS_CSI_TYPE                         "csi_type"
-#define SL_CONFIG_STRING_SL_CSI_RS_SLOT_OFFSET                      "slot_offset"
-#define SL_CONFIG_STRING_SL_CSI_RS_SLOT_PERIODICITY                 "slot_periodicity"
-#define SL_CONFIG_STRING_SL_CSI_RS_POWER_CONTROL_OFFSET             "power_control_offset"
-#define SL_CONFIG_STRING_SL_CSI_RS_POWER_CONTROL_OFFSET_SS          "power_control_offset_ss"
+#define SL_CONFIG_STRING_SL_CSI_RS_CSI_TYPE                         "csi_Type"
+#define SL_CONFIG_STRING_SL_CSI_RS_SLOT_OFFSET                      "slot_Offset"
+#define SL_CONFIG_STRING_SL_CSI_RS_SLOT_PERIODICITY                 "slot_Periodicity"
+#define SL_CONFIG_STRING_SL_CSI_RS_POWER_CONTROL_OFFSET             "sl_powerControlOffset"
+#define SL_CONFIG_STRING_SL_CSI_RS_POWER_CONTROL_OFFSET_SS          "sl_powerControlOffsetSS"
+#define SL_CONFIG_STRING_SL_CSI_RS_SL_CSI_ACQUISITION               "sl_CSI_Acquisition"
 
 #define SL_CSI_RS_DESC(sl_csi_info) { \
 {SL_CONFIG_STRING_SL_CSI_RS_SYMB_L0,NULL,0,.u8ptr=&sl_csi_info->symb_l0,.defuintval=1,TYPE_UINT8,0}, \
@@ -43,7 +44,8 @@
 {SL_CONFIG_STRING_SL_CSI_RS_POWER_CONTROL_OFFSET,NULL,0,.u8ptr=&sl_csi_info->power_control_offset,.defuintval=1,TYPE_UINT8,0}, \
 {SL_CONFIG_STRING_SL_CSI_RS_POWER_CONTROL_OFFSET_SS,NULL,0,.u8ptr=&sl_csi_info->power_control_offset_ss,.defuintval=1,TYPE_UINT8,0}, \
 {SL_CONFIG_STRING_SL_CSI_RS_SLOT_OFFSET,NULL,0,.u8ptr=&sl_csi_info->slot_offset,.defuintval=1,TYPE_UINT8,0}, \
-{SL_CONFIG_STRING_SL_CSI_RS_SLOT_PERIODICITY,NULL,0,.u8ptr=&sl_csi_info->slot_periodicity,.defuintval=1,TYPE_UINT8,0}}
+{SL_CONFIG_STRING_SL_CSI_RS_SLOT_PERIODICITY,NULL,0,.u8ptr=&sl_csi_info->slot_periodicity,.defuintval=1,TYPE_UINT8,0}, \
+{SL_CONFIG_STRING_SL_CSI_RS_SL_CSI_ACQUISITION,NULL,0,.u8ptr=&sl_csi_info->sl_csi_acquisition,.defuintval=1,TYPE_UINT8,0}}
 
 typedef struct sl_csi_info {
   uint8_t symb_l0;
@@ -52,6 +54,7 @@ typedef struct sl_csi_info {
   uint8_t slot_periodicity;
   uint8_t power_control_offset;
   uint8_t power_control_offset_ss;
+  uint8_t sl_csi_acquisition;
 } sl_csi_info_t;
 
 void sl_ue_mac_free(uint8_t module_id)
@@ -393,9 +396,6 @@ int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
   sl_mac->sl_SSB_PriorityNR = (sl_preconfig->sl_SSB_PriorityNR_r16)
                                       ? *sl_preconfig->sl_SSB_PriorityNR_r16 : 0;
 
-  //Indicates if CSI Reporting is enabled in UNICAST. is 0-ENABLED, 1-DISABLED
-  sl_mac->sl_CSI_Acquisition = (sl_preconfig->sl_CSI_Acquisition_r16) ? 0 : 1;
-
   //Used for DFN calculation in case Sync source = GNSS.
   uint32_t sl_OffsetDFN = (sl_preconfig->sl_OffsetDFN_r16)
                                 ? *sl_preconfig->sl_OffsetDFN_r16 : 0;
@@ -673,6 +673,7 @@ void nr_sl_params_read_conf(module_id_t module_id) {
   sl_mac->slot_offset = sl_csi_rs_info->slot_offset;
   sl_mac->slot_periodicity = sl_csi_rs_info->slot_periodicity;
   sl_mac->measurement_bitmap = 0b00011011;
+  sl_mac->sl_CSI_Acquisition = sl_csi_rs_info->sl_csi_acquisition;
   // Based on 38211 Table 7.4.1.5.3-1, for density of 1 and ports 1 & 2 ENUMERATED {noCDM, fd-CDM2}
   sl_mac->cdm_type = get_nrUE_params()->nb_antennas_tx == 1 ? 0 : 1;
   sl_mac->row = get_nrUE_params()->nb_antennas_tx == 1 ? 2 : 3;
