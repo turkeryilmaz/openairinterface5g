@@ -232,7 +232,8 @@ int nr_get_csi_rs_signal(const PHY_VARS_NR_UE *ue,
 
               meas_count++;
               LOG_D(NR_PHY, "RX CSI-RS symbol_offset %li k %i symbol_offset+k=%li\n", symbol_offset, k, symbol_offset+k);
-#ifdef NR_CSIRS_DEBUG
+#if 1
+if (!get_nrUE_params()->sync_ref) {
               int dataF_offset = get_softmodem_params()->sl_mode == 2 ? 0 : proc->nr_slot_rx * ue->frame_parms.samples_per_slot_wCP;
               uint16_t port_tx = s+j_cdm[cdm_id]*CDM_group_size;
               c16_t *tx_csi_rs_signal = (c16_t*)&nr_csi_info->csi_rs_generated_signal[port_tx][symbol_offset+dataF_offset];
@@ -245,6 +246,7 @@ int nr_get_csi_rs_signal(const PHY_VARS_NR_UE *ue,
                     ant_rx,
                     rx_csi_rs_signal[k].r,
                     rx_csi_rs_signal[k].i);
+}
 #endif
             }
           }
