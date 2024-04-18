@@ -824,7 +824,13 @@ int nr_ue_process_sci2_indication_pdu(NR_UE_MAC_INST_t *mac, module_id_t mod_id,
                             sl_res_pool,
                             sl_mac_params);
   rx_config.sl_rx_config_list[0].pdu_type =  SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH;
-  if (sci_pdu->csi_req) {
+  sl_nr_phy_config_request_t *sl_cfg = &mac->SL_MAC_PARAMS->sl_phy_config.sl_config_req;
+  uint8_t mu = sl_cfg->sl_bwp_config.sl_scs;
+  uint8_t slots_per_frame = nr_slots_per_frame[mu];
+
+  if ((!mac->SL_MAC_PARAMS->sl_CSI_Acquisition) &&
+     (((slots_per_frame * frame + slot - mac->SL_MAC_PARAMS->slot_offset) % mac->SL_MAC_PARAMS->slot_periodicity) == 0) &&
+     sci_pdu->csi_req) {
     sl_nr_phy_config_request_t *sl_cfg = &sl_mac_params->sl_phy_config.sl_config_req;
     uint8_t mu = sl_cfg->sl_bwp_config.sl_scs;
     nr_ue_sl_csi_rs_scheduler(mac, mu, mac->sl_bwp, NULL, &rx_config, NULL);
