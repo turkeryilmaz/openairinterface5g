@@ -248,7 +248,7 @@ void fill_pssch_pscch_pdu(sl_nr_ue_mac_params_t *sl_mac_params,
   //Guard symbol + AGC symbol are also excluded
   //Indicates the number of symbols for PSCCH+PSSCH txn
   int num_psfch_symbols=0;
-  LOG_I(NR_MAC,"startrb %d, pscch_numsym %d, pscch_numrbs %d,pscch_dmrs_scrambling_id %d,num_subch%d,subchannel_size%d\n",
+  LOG_D(NR_MAC,"startrb %d, pscch_numsym %d, pscch_numrbs %d,pscch_dmrs_scrambling_id %d,num_subch%d,subchannel_size%d\n",
   nr_sl_pssch_pscch_pdu->startrb,
   nr_sl_pssch_pscch_pdu->pscch_numsym,
   nr_sl_pssch_pscch_pdu->pscch_numrbs,
@@ -261,7 +261,6 @@ void fill_pssch_pscch_pdu(sl_nr_ue_mac_params_t *sl_mac_params,
   }
   nr_sl_pssch_pscch_pdu->pssch_numsym=7+*sl_bwp->sl_BWP_Generic_r16->sl_LengthSymbols_r16-num_psfch_symbols-2;
   nr_sl_pssch_pscch_pdu->pssch_startsym = *sl_bwp->sl_BWP_Generic_r16->sl_StartSymbol_r16;
-  LOG_D(NR_PHY, "pssch_numsym %ld, total symbols %ld\n", nr_sl_pssch_pscch_pdu->pssch_numsym, 7+*sl_bwp->sl_BWP_Generic_r16->sl_LengthSymbols_r16);
 
   nr_sl_pssch_pscch_pdu->sci2_beta_offset = *sl_res_pool->sl_PSSCH_Config_r16->choice.setup->sl_BetaOffsets2ndSCI_r16->list.array[sci_pdu->beta_offset_indicator];
   if (sl_res_pool->sl_PowerControl_r16) {
@@ -507,7 +506,6 @@ void config_pscch_pdu_rx(sl_nr_rx_config_pscch_pdu_t *nr_sl_pscch_pdu,
      num_psfch_symbols = 3;
   }
   nr_sl_pscch_pdu->pssch_numsym=7+*sl_bwp->sl_BWP_Generic_r16->sl_LengthSymbols_r16-num_psfch_symbols-2;
-  LOG_D(NR_PHY, "pssch_numsym %ld, total symbols %ld\n", nr_sl_pscch_pdu->pssch_numsym, 7+*sl_bwp->sl_BWP_Generic_r16->sl_LengthSymbols_r16);
   //sci 1A length used to decode on PSCCH.
   nr_sl_pscch_pdu->sci_1a_length = nr_sci_size(sl_res_pool,&dummy_sci,NR_SL_SCI_FORMAT_1A);
   //This paramter is set if PSCCH RX is triggered on TX resource pool
@@ -669,7 +667,6 @@ void config_pssch_slsch_pdu_rx(sl_nr_rx_config_pssch_pdu_t *nr_sl_pssch_pdu,
      num_psfch_symbols = 3;
   }
   int pssch_numsym=7+*sl_bwp->sl_BWP_Generic_r16->sl_LengthSymbols_r16-num_psfch_symbols-2;
-  LOG_D(NR_PHY, "pssch_numsym %ld, total symbols %ld\n", pssch_numsym, 7+*sl_bwp->sl_BWP_Generic_r16->sl_LengthSymbols_r16);
   uint16_t l_subch;
   convNRFRIV(sci_pdu->frequency_resource_assignment.val,
 	     *sl_res_pool->sl_NumSubchannel_r16,

@@ -250,7 +250,7 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
                                              nr_get_G_SL(nb_rb, number_of_symbols,6,number_dmrs_symbols,sci1_dmrs_overlap,pscch_pssch_pdu->pscch_numsym,pscch_pssch_pdu->pscch_numrbs,sci2_re,mod_order,Nl);
 
   G -= (is_csi_rs_slot ? csi_params->nr_of_rbs/csi_params->freq_density*mod_order*Nl : 0);
-  LOG_I(NR_PHY, "%d.%d, is_csi_rs_slot %d, G %i, number_of_symbols %i, mod_order %i, freq_density %i, nr_of_rbs %i\n", frame, slot, is_csi_rs_slot, G, number_of_symbols, mod_order, csi_params->freq_density, csi_params->nr_of_rbs);
+  LOG_D(NR_PHY, "%d.%d, is_csi_rs_slot %d, G %i, number_of_symbols %i, mod_order %i, freq_density %i, nr_of_rbs %i\n", frame, slot, is_csi_rs_slot, G, number_of_symbols, mod_order, csi_params->freq_density, csi_params->nr_of_rbs);
   // Following code checks, after PSCCH symbols and DMRS symbols, whether PSSCH symbols are used by SCI2 or not,
   // If true, then CSI-RS MUST not be sent in those PSSCH symbols containing SCI2.
   if (csi_params->symb_l0 != 0) {
@@ -261,7 +261,6 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
     int8_t remaining_sci2_symb = next_symbs_sci2_re > 0 ? ceil(next_symbs_sci2_re / (12 * nb_rb)) : 0;
     int8_t non_csi_rs_symbs = pscch_pssch_pdu->pscch_numsym + 1 + remaining_sci2_symb; // 1 is for first dmrs symbol
     AssertFatal(csi_params->symb_l0 > non_csi_rs_symbs, "CSI-RS MUST not be sent in PSSCH symbol containing SCI2");
-    LOG_I(NR_PHY, "CSI-RS %d, non_csi_rs_symbs %d\n", csi_params->symb_l0, non_csi_rs_symbs);
   }
 
   uint32_t Gsci2 = sci2_re*2*Nl;
@@ -594,7 +593,7 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
             if (k == port_freq_indices[nl].k) {
               is_csi_rs = 1;
               csi_rs_rb++;
-              LOG_I(NR_PHY, "Tx port_freq_indices.p %i, port_freq_indices.k %d, is_csi_rs %d, k = %i, RE %i, csi_rs_rb %i\n", port_freq_indices[nl].p, port_freq_indices[nl].k, is_csi_rs, k, i, csi_rs_rb);
+              LOG_D(NR_PHY, "Tx port_freq_indices.p %i, port_freq_indices.k %d, is_csi_rs %d, k = %i, RE %i, csi_rs_rb %i\n", port_freq_indices[nl].p, port_freq_indices[nl].k, is_csi_rs, k, i, csi_rs_rb);
             }
             free(port_freq_indices);
           }
