@@ -13,7 +13,7 @@ typedef enum {
   UP_ENC_ALG = 0x05,
   UP_INT_ALG = 0x06
 } algorithm_type_dist_t;
-
+static const char * const algTxt[]={ "error", "NAS_ENC_ALG", "NAS_INT_ALG", "RRC_ENC_ALG", "RRC_INT_ALG", "UP_ENC_ALG", "UP_INT_ALG"};
 void derive_keNB(const uint8_t kasme[32], const uint32_t nas_count, uint8_t *keNB);
 
 void derive_keNB_star(const uint8_t *kenb_32,

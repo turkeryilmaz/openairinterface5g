@@ -122,6 +122,8 @@ void nr_derive_key(algorithm_type_dist_t alg_type, uint8_t alg_id, const uint8_t
 
   // Only the last 16 bytes are needed in 5G
   memcpy(out, &tmp[16], 16);
+  LOG_I(SECU,"made key for type %s, algo %d: ", algTxt[alg_type],alg_id);
+  log_dump(SECU, out, 16, LOG_DUMP_CHAR, "key=");
 }
 
 /*!
