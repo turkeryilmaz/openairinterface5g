@@ -747,7 +747,7 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
 
   LOG_D(NR_MAC, "In %s : processing PDU %d (with length %d) of %d total number of PDUs...\n", __FUNCTION__, pdu_id, pdu_len, rx_ind->number_pdus);
   NR_SLSCH_MAC_SUBHEADER_FIXED *sl_sch_subheader = (NR_SLSCH_MAC_SUBHEADER_FIXED *) pduP;
-  LOG_D(NR_PHY, "Rx V %d R %d SRC %d DST %d\n", sl_sch_subheader->V , sl_sch_subheader->R, sl_sch_subheader->SRC, sl_sch_subheader->DST);
+  LOG_D(NR_PHY, "Rx V %d R %d SRC %d DST %d\n", sl_sch_subheader->V, sl_sch_subheader->R, sl_sch_subheader->SRC, sl_sch_subheader->DST);
   pduP += sizeof(*sl_sch_subheader);
   pdu_len -= sizeof(*sl_sch_subheader);
   while (!done && pdu_len > 0) {
