@@ -92,7 +92,7 @@ void nr_fill_sl_rx_indication(sl_nr_rx_indication_t *rx_ind,
         sl_nr_slsch_pdu_t *rx_slsch_pdu = &rx_ind->rx_indication_body[n_pdus - 1].rx_slsch_pdu;
         slsch_status_t *slsch_status = (slsch_status_t *)typeSpecific;
         rx_slsch_pdu->pdu        = slsch_status->rdata->ulsch_harq->b;
-        rx_slsch_pdu->pdu_length = slsch_status->rdata->ulsch_harq->TBS;
+        rx_slsch_pdu->pdu_length = slsch_status->rdata->ulsch_harq->TBS>>3;
         rx_slsch_pdu->harq_pid   = slsch_status->rdata->harq_pid;
         rx_slsch_pdu->ack_nack   = (slsch_status->rxok==true) ? 1 : 0;
 
@@ -263,7 +263,7 @@ void nr_postDecode_slsch(PHY_VARS_NR_UE *UE, notifiedFIFO_elt_t *req,UE_nr_rxtx_
     nr_sidelink_indication_t sl_indication;	  
     slsch_status_t slsch_status;
     if (!check_abort(&slsch_harq->abort_decode) && !UE->pssch_vars[rdata->ulsch_id].DTX) {
-      LOG_D(NR_PHY,
+      LOG_I(NR_PHY,
             "[UE] SLSCH: Setting ACK for SFN/SF %d.%d (pid %d, ndi %d, status %d, round %d, TBS %d, Max interation "
             "(all seg) %d)\n",
             slsch->frame,

@@ -123,6 +123,23 @@ typedef struct {
 }__attribute__ ((__packed__)) NR_SLSCH_MAC_SUBHEADER_FIXED;
 
 static inline int get_mac_len(uint8_t* pdu, int pdu_len, uint16_t *mac_ce_len, uint16_t *mac_subheader_len) {
+  if ( pdu_len < (int)sizeof(NR_MAC_SUBHEADER_SHORT))
+      return false;
+  NR_MAC_SUBHEADER_SHORT *s = (NR_MAC_SUBHEADER_SHORT*) pdu;
+  NR_MAC_SUBHEADER_LONG *l = (NR_MAC_SUBHEADER_LONG*) pdu;
+  if (s->F && pdu_len < (int)sizeof(NR_MAC_SUBHEADER_LONG))
+    return false;
+  if (s->F) {
+    *mac_subheader_len = sizeof(*l);
+    *mac_ce_len = ntohs(l->L);
+  } else {
+    *mac_subheader_len = sizeof(*s);
+    *mac_ce_len = s->L;
+  }
+  return true;
+}
+
+static inline int get_mac_len_sl(uint8_t* pdu, int pdu_len, uint16_t *mac_ce_len, uint16_t *mac_subheader_len) {
   uint8_t sl_sch_header_len = (int)sizeof(NR_SLSCH_MAC_SUBHEADER_FIXED);
   if (pdu_len < sl_sch_header_len)
     return false;
