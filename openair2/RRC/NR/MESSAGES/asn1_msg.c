@@ -926,6 +926,68 @@ uint8_t do_RRCSetupComplete(uint8_t *buffer,
   return((enc_rval.encoded+7)/8);
 }
 
+uint8_t do_RRCSetupComplete_IAB(uint8_t *buffer,
+                            size_t buffer_size,
+                            const uint8_t Transaction_id,
+                            uint8_t sel_plmn_id,
+                            const int dedicatedInfoNASLength,
+                            const char *dedicatedInfoNAS)
+{
+    NR_UL_DCCH_Message_t ul_dcch_msg = {0};
+    ul_dcch_msg.message.present = NR_UL_DCCH_MessageType_PR_c1;
+    ul_dcch_msg.message.choice.c1 = CALLOC(1,sizeof(struct NR_UL_DCCH_MessageType__c1));
+    ul_dcch_msg.message.choice.c1->present = NR_UL_DCCH_MessageType__c1_PR_rrcSetupComplete;
+    ul_dcch_msg.message.choice.c1->choice.rrcSetupComplete = CALLOC(1, sizeof(NR_RRCSetupComplete_t));
+    NR_RRCSetupComplete_t *RrcSetupComplete = ul_dcch_msg.message.choice.c1->choice.rrcSetupComplete;
+    RrcSetupComplete->rrc_TransactionIdentifier = Transaction_id;
+    RrcSetupComplete->criticalExtensions.present = NR_RRCSetupComplete__criticalExtensions_PR_rrcSetupComplete;
+    RrcSetupComplete->criticalExtensions.choice.rrcSetupComplete = CALLOC(1, sizeof(NR_RRCSetupComplete_IEs_t));
+    NR_RRCSetupComplete_IEs_t *ies = RrcSetupComplete->criticalExtensions.choice.rrcSetupComplete;
+    ies->selectedPLMN_Identity = sel_plmn_id;
+    ies->registeredAMF = NULL;
+
+    ies->ng_5G_S_TMSI_Value = CALLOC(1, sizeof(struct NR_RRCSetupComplete_IEs__ng_5G_S_TMSI_Value));
+    ies->ng_5G_S_TMSI_Value->present = NR_RRCSetupComplete_IEs__ng_5G_S_TMSI_Value_PR_ng_5G_S_TMSI;
+    NR_NG_5G_S_TMSI_t *stmsi = &ies->ng_5G_S_TMSI_Value->choice.ng_5G_S_TMSI;
+    stmsi->size = 6;
+    stmsi->buf = calloc(stmsi->size, sizeof(*stmsi->buf));
+    AssertFatal(stmsi->buf != NULL, "out of memory\n");
+    stmsi->buf[0] = 0x12;
+    stmsi->buf[1] = 0x34;
+    stmsi->buf[2] = 0x56;
+    stmsi->buf[3] = 0x78;
+    stmsi->buf[4] = 0x9A;
+    stmsi->buf[5] = 0xBC;
+
+    memset(&ies->dedicatedNAS_Message,0,sizeof(OCTET_STRING_t));
+    OCTET_STRING_fromBuf(&ies->dedicatedNAS_Message, dedicatedInfoNAS, dedicatedInfoNASLength);
+    
+    // ----IAB related params---- 
+    ies->nonCriticalExtension = CALLOC(1, sizeof(NR_RRCSetupComplete_v1610_IEs_t));
+    NR_RRCSetupComplete_v1610_IEs_t *v1610_ies = ies->nonCriticalExtension;
+    v1610_ies->iab_NodeIndication_r16 = CALLOC(1, sizeof(long));
+    *v1610_ies->iab_NodeIndication_r16 = NR_RRCSetupComplete_v1610_IEs__iab_NodeIndication_r16_true;
+    // --------------------------
+
+
+
+    if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
+        xer_fprint(stdout, &asn_DEF_NR_UL_DCCH_Message, (void *)&ul_dcch_msg);
+    }
+
+    asn_enc_rval_t enc_rval = uper_encode_to_buffer(&asn_DEF_NR_UL_DCCH_Message,
+                                                    NULL,
+                                                    (void *)&ul_dcch_msg,
+                                                    buffer,
+                                                    buffer_size);
+    AssertFatal(enc_rval.encoded > 0,"ASN1 message encoding failed (%s, %lu)!\n",
+                enc_rval.failed_type->name,enc_rval.encoded);
+    LOG_D(NR_RRC,"RRCSetupComplete Encoded %zd bits (%zd bytes)\n",enc_rval.encoded,(enc_rval.encoded+7)/8);
+
+    ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_NR_UL_DCCH_Message, &ul_dcch_msg);
+    return((enc_rval.encoded+7)/8);
+}
+
 uint8_t do_NR_DLInformationTransfer(uint8_t *buffer,
                                     size_t buffer_len,
                                     uint8_t transaction_id,

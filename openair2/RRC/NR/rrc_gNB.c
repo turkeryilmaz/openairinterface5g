@@ -145,6 +145,7 @@ typedef struct deliver_dl_rrc_message_data_s {
   f1ap_dl_rrc_message_t *dl_rrc;
   sctp_assoc_t assoc_id;
 } deliver_dl_rrc_message_data_t;
+
 static void rrc_deliver_dl_rrc_message(void *deliver_pdu_data, ue_id_t ue_id, int srb_id, char *buf, int size, int sdu_id)
 {
   DevAssert(deliver_pdu_data != NULL);
@@ -600,6 +601,7 @@ static void rrc_gNB_generate_defaultRRCReconfiguration(const protocol_ctxt_t *co
                                    measconfig,
                                    dedicatedNAS_MessageList,
                                    ue_p->masterCellGroup);
+                                   
   AssertFatal(size > 0, "cannot encode RRCReconfiguration in %s()\n", __func__);
   free_defaultMeasConfig(measconfig);
   freeSRBlist(SRBs);
@@ -1538,6 +1540,19 @@ static int handle_rrcSetupComplete(const protocol_ctxt_t *const ctxt_pP,
       UE->random_ue_identity = fiveg_s_TMSI;
     }
   }
+
+  // [IAB] related configs
+  if (setup_complete_ies->nonCriticalExtension != NULL){
+    if (*setup_complete_ies->nonCriticalExtension->iab_NodeIndication_r16 == NR_RRCSetupComplete_v1610_IEs__iab_NodeIndication_r16_true){
+      LOG_I(NR_RRC, "IAB Node Indication received and set to true\n");
+      UE->is_iab_mt = true;
+      // Call UE Context modification request.
+      
+    } else{
+      UE->is_iab_mt = false;
+    }
+  }
+  // -------------------
 
   rrc_gNB_process_RRCSetupComplete(ctxt_pP, ue_context_p, setup_complete->criticalExtensions.choice.rrcSetupComplete);
   LOG_I(NR_RRC, PROTOCOL_NR_RRC_CTXT_UE_FMT " UE State = NR_RRC_CONNECTED \n", PROTOCOL_NR_RRC_CTXT_UE_ARGS(ctxt_pP));

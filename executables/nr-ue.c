@@ -816,16 +816,16 @@ void *UE_thread(void *arg)
         delNotifiedFIFO_elt(res);
         start_rx_stream=0;
       } else {
-	if (IS_SOFTMODEM_IQPLAYER || IS_SOFTMODEM_IQRECORDER) {
-	  // For IQ recorder/player we force synchronization to happen in 280 ms
-	  while (trashed_frames != 28) {
-	    readFrame(UE, &timestamp, true);
-	    trashed_frames+=2;
-	  }
-	} else {
-	  readFrame(UE, &timestamp, true);
-	  trashed_frames+=2;
-	}
+        if (IS_SOFTMODEM_IQPLAYER || IS_SOFTMODEM_IQRECORDER) {
+          // For IQ recorder/player we force synchronization to happen in 280 ms
+          while (trashed_frames != 28) {
+            readFrame(UE, &timestamp, true);
+            trashed_frames+=2;
+          }
+        } else {
+          readFrame(UE, &timestamp, true);
+          trashed_frames+=2;
+        }
         continue;
       }
     }
