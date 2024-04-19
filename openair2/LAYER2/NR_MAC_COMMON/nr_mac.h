@@ -124,7 +124,7 @@ typedef struct {
 
 static inline int get_mac_len(uint8_t* pdu, int pdu_len, uint16_t *mac_ce_len, uint16_t *mac_subheader_len) {
   if ( pdu_len < (int)sizeof(NR_MAC_SUBHEADER_SHORT))
-    return false;
+      return false;
   NR_MAC_SUBHEADER_SHORT *s = (NR_MAC_SUBHEADER_SHORT*) pdu;
   NR_MAC_SUBHEADER_LONG *l = (NR_MAC_SUBHEADER_LONG*) pdu;
   if (s->F && pdu_len < (int)sizeof(NR_MAC_SUBHEADER_LONG))
@@ -138,7 +138,7 @@ static inline int get_mac_len(uint8_t* pdu, int pdu_len, uint16_t *mac_ce_len, u
   }
   return true;
 }
-    
+
 // SL BSR MAC CEs
 // TS 38.321 ch. 6.1.3.33
 // Short BSR for a specific logical channel group ID

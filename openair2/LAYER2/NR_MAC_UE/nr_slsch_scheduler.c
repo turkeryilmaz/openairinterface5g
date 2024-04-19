@@ -50,7 +50,7 @@ bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP,int slotP, nr_sci_pdu_t
   uint8_t slots_per_frame = nr_slots_per_frame[mu];
 
   uint8_t psfch_period = 0;
-  if (mac->sl_tx_res_pool->sl_PSFCH_Config_r16)
+  if (mac->sl_tx_res_pool->sl_PSFCH_Config_r16 && mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16)
     psfch_period = *mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16;
 //   rlc_status.bytes_in_buffer = 0;
    *slsch_pdu_length_max = 0;
