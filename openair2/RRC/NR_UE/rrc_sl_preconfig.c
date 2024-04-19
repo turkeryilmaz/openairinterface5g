@@ -242,7 +242,7 @@ static void prepare_NR_SL_ResourcePool(NR_SL_ResourcePool_r16_t *sl_res_pool,
   config_get(SL_POOLPARAMS,sizeof(SL_POOLPARAMS)/sizeof(paramdef_t),aprefix);
 
   struct NR_SL_PSFCH_Config_r16 *nr_sl_psfch_config = sl_res_pool->sl_PSFCH_Config_r16->choice.setup;
-  if (*nr_sl_psfch_config->sl_PSFCH_Period_r16 > 0) { 
+  if (*nr_sl_psfch_config->sl_PSFCH_Period_r16 > 0) {
     const uint8_t psfch_periods[] = {0,1,2,4};
     AssertFatal(*nr_sl_psfch_config->sl_PSFCH_Period_r16 < 4, "sl_PSFCH_Period_r16 index must be less than 4\n");
     LOG_I(NR_PHY,"Configuring PSFCH Period %d\n",*nr_sl_psfch_config->sl_PSFCH_Period_r16);
@@ -261,9 +261,8 @@ static void prepare_NR_SL_ResourcePool(NR_SL_ResourcePool_r16_t *sl_res_pool,
     if ( num_prbs % 8 != 0 )
       sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_RB_Set_r16->buf[num_prbs/8] = remaining_prbs;
     LOG_D(RRC, "M: %d, PRBs %d, size in bytes %d, unused bits %d, full size bytes %d, remaining prbs %d\n", prod_numCh_period, num_prbs, num_bytes, (num_prbs % 8) ? 8 - (num_prbs % 8) : 0, num_prbs / 8, remaining_prbs);
-  }
-  else {
-    LOG_I(NR_RRC,"Freeing sl_PSFCH_Config_r16\n");	  
+  } else {
+    LOG_I(NR_RRC,"Freeing sl_PSFCH_Config_r16\n");
     free(sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_CandidateResourceType_r16);
     free(sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_HopID_r16);
     free(sl_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_MinTimeGapPSFCH_r16);
@@ -590,7 +589,8 @@ void nr_UE_configure_Sidelink(uint8_t id, uint8_t is_sync_source) {
   sprintf(aprefix, "%s.[%i].%s.[%i]", SL_CONFIG_STRING_SL_PRECONFIGURATION, 0, SL_CONFIG_STRING_UEINFO, 0);
   config_get(SL_UEINFO,sizeof(SL_UEINFO)/sizeof(paramdef_t),aprefix);
   LOG_I(NR_RRC,"SL L2 SRCid %x, SL ipv4 addr X.X.%d.%d\n",ueinfo.srcid,ueinfo.thirdOctet,ueinfo.fourthOctet);
-  nas_config(1+ueinfo.srcid,ueinfo.thirdOctet,ueinfo.fourthOctet,"oai_sl_tun");
+  nas_config(1,ueinfo.thirdOctet,ueinfo.fourthOctet,"oai_sl_tun");
+  nas_config(1 + ueinfo.srcid,ueinfo.thirdOctet,ueinfo.fourthOctet + ueinfo.srcid,"oai_sl_tun");
   nr_rrc_mac_config_req_sl_preconfig(id, sl_preconfig, sync_source, ueinfo.srcid);
 
 

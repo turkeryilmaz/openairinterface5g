@@ -3384,8 +3384,8 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
     //nr_ue_get_sdu_mac_ce_pre updates all mac_ce related header field related to length
     mac_ce_p->tot_mac_ce_len = nr_ue_get_sdu_mac_ce_pre(0, 0, frame, slot, 0, pdu, buflen, mac_ce_p);
     buflen_remain -= mac_ce_p->tot_mac_ce_len;
-
-    LOG_I(NR_PHY, "buflen_remain %d, total_mac_pdu_header_len %d, adding tot_mac_ce_len %d, \n", buflen_remain, mac_ce_p->total_mac_pdu_header_len, mac_ce_p->tot_mac_ce_len);
+    pdu += mac_ce_p->tot_mac_ce_len;
+    LOG_D(NR_PHY, "buflen_remain %d, total_mac_pdu_header_len %d, adding tot_mac_ce_len %d, \n", buflen_remain, mac_ce_p->total_mac_pdu_header_len, mac_ce_p->tot_mac_ce_len);
   }
 
   if (buflen_remain > 0) {
