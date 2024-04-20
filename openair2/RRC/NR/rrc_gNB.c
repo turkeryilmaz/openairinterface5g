@@ -1100,6 +1100,7 @@ rrc_gNB_store_RRCReconfiguration(
 
   AssertFatal (rrcReconfiguration!=NULL, "%s rrcReconfiguration is NULL\n",__FUNCTION__);
   xid = rrcReconfiguration->rrc_TransactionIdentifier;
+  ue_p->xids[xid] = RRC_DEDICATED_RECONF;
   LOG_D(NR_RRC, "rrc_gNB_store_RRCReconfiguration for transaction %ld\n",xid);
 
   drb2addList = fill_DRB_configList(ue_p);
@@ -1146,8 +1147,8 @@ rrc_gNB_store_RRCReconfiguration(
             ue_p->established_drbs[drb_id].cnAssociation.sdap_config.pdusession_id = drb2addList->list.array[i]->cnAssociation->choice.sdap_Config->pdu_Session;
             ue_p->established_drbs[drb_id].cnAssociation.sdap_config.sdap_HeaderDL = drb2addList->list.array[i]->cnAssociation->choice.sdap_Config->sdap_HeaderDL;
             ue_p->established_drbs[drb_id].cnAssociation.sdap_config.sdap_HeaderUL = drb2addList->list.array[i]->cnAssociation->choice.sdap_Config->sdap_HeaderUL;
-            for (int j = 0; j < drb2addList->list.array[i]->cnAssociation->choice.sdap_Config->mappedQoS_FlowsToAdd->list.count; ++j) {
-              ue_p->established_drbs[drb_id].cnAssociation.sdap_config.mappedQoS_FlowsToAdd[i] = drb2addList->list.array[i]->cnAssociation->choice.sdap_Config->mappedQoS_FlowsToAdd->list.array[j];
+	    for (int j = 0; j < drb2addList->list.array[i]->cnAssociation->choice.sdap_Config->mappedQoS_FlowsToAdd->list.count; ++j) {
+              ue_p->established_drbs[drb_id].cnAssociation.sdap_config.mappedQoS_FlowsToAdd[j] = *(drb2addList->list.array[i]->cnAssociation->choice.sdap_Config->mappedQoS_FlowsToAdd->list.array[j]);
             }
           }
           // Struct is marked as OPTIONAL, but no present flag to check
@@ -3628,6 +3629,17 @@ void *rrc_gnb_task(void *args_p) {
                         SS_DRB_PDU_REQ(msg_p).qfi,
                         0,
                         SS_DRB_PDU_REQ(msg_p).pdu_sessionId);
+          } else if (SS_DRB_PDU_REQ(msg_p).data_type == DRB_SdapPdu) {
+            nr_pdcp_data_req_drb(&ctxt,
+                                 SRB_FLAG_NO,
+                                 SS_DRB_PDU_REQ(msg_p).drb_id,
+                                 RLC_MUI_UNDEFINED,
+                                 SDU_CONFIRM_NO,
+                                 SS_DRB_PDU_REQ(msg_p).sdu_size,
+                                 SS_DRB_PDU_REQ(msg_p).sdu,
+                                 PDCP_TRANSMISSION_MODE_DATA,
+                                 NULL,
+                                 NULL);
           } else {
             AssertFatal(RC.nr_drb_data_type != RC.nr_drb_data_type, "Invalid DRB data type (%d)!\n", RC.nr_drb_data_type);
           }

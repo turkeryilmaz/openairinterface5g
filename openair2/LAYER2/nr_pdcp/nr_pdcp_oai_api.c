@@ -660,12 +660,13 @@ void enqueue_sdap_data_req(
 
     if(gnb_flag){
       if(RC.nr_drb_data_type == DRB_SdapSdu){
-          LOG_I(SDAP, "Sending SDAP SDU to SS DBR task\n");
+          LOG_I(SDAP, "Sending SDAP SDU to SS DRB task\n");
 
           MessageDef *message_p = itti_alloc_new_message(TASK_SS_DRB, 0, SS_DRB_PDU_IND);
           AssertFatal(message_p != NULL, "Failed to allocate msg\n");
           SS_DRB_PDU_IND(message_p).frame = nr_pdcp_current_time_last_frame;
           SS_DRB_PDU_IND(message_p).subframe = nr_pdcp_current_time_last_subframe;
+          SS_DRB_PDU_IND(message_p).drb_id = rb_id;
           SS_DRB_PDU_IND(message_p).data_type = DRB_SdapSdu;
           /*TODO: physCellId shall be filled if multicell through ue_id(rnti) */
           //SS_DRB_PDU_IND(message_p).physCellId =
@@ -679,6 +680,28 @@ void enqueue_sdap_data_req(
             LOG_E(SDAP, "Error in itti_send_msg_to_task!\n");
           }
         }
+      else if(RC.nr_drb_data_type == DRB_SdapPdu){
+          LOG_I(SDAP, "Sending SDAP PDU to SS DRB task\n");
+
+          MessageDef *message_p = itti_alloc_new_message(TASK_SS_DRB, 0, SS_DRB_PDU_IND);
+          AssertFatal(message_p != NULL, "Failed to allocate msg\n");
+          SS_DRB_PDU_IND(message_p).frame = nr_pdcp_current_time_last_frame;
+          SS_DRB_PDU_IND(message_p).subframe = nr_pdcp_current_time_last_subframe;
+          SS_DRB_PDU_IND(message_p).drb_id = rb_id;
+          SS_DRB_PDU_IND(message_p).data_type = DRB_SdapPdu;
+          /*TODO: physCellId shall be filled if multicell through ue_id(rnti) */
+          //SS_DRB_PDU_IND(message_p).physCellId =
+          SS_DRB_PDU_IND(message_p).sdu_size = sdu_buffer_size;
+          memcpy(SS_DRB_PDU_IND(message_p).sdu, sdu_buffer, sdu_buffer_size);
+          SS_DRB_PDU_IND(message_p).pdu_sessionId = pdu_sessionId;
+          SS_DRB_PDU_IND(message_p).qfi = qfi;
+
+          result = itti_send_msg_to_task(TASK_SS_DRB, ctxt.module_id, message_p);
+          if (result < 0) {
+            LOG_E(SDAP, "Error in itti_send_msg_to_task!\n");
+          }
+        }
+
     }else {
       LOG_I(SDAP, "Sending NR_SDAP_DATA_REQ to RRC NRUE, ue 0x%lx drb id %ld len %u\n",
             ctxt.rntiMaybeUEid, rb_id, sdu_buffer_size);
@@ -1192,6 +1215,7 @@ void add_drb(int is_gnb,
   bool is_sdap_DefaultDRB = false;
   NR_QFI_t *mappedQFIs2Add = NULL;
   uint8_t mappedQFIs2AddCount=0;
+  uint8_t i;
   if (s->cnAssociation->present == NR_DRB_ToAddMod__cnAssociation_PR_eps_BearerIdentity)
      pdusession_id = s->cnAssociation->choice.eps_BearerIdentity;
   else {
@@ -1203,9 +1227,12 @@ void add_drb(int is_gnb,
     has_sdap_rx = is_sdap_rx(is_gnb, s->cnAssociation->choice.sdap_Config);
     has_sdap_tx = is_sdap_tx(is_gnb, s->cnAssociation->choice.sdap_Config);
     is_sdap_DefaultDRB = s->cnAssociation->choice.sdap_Config->defaultDRB == true ? 1 : 0;
-    mappedQFIs2Add = (NR_QFI_t*)s->cnAssociation->choice.sdap_Config->mappedQoS_FlowsToAdd->list.array[0]; 
     mappedQFIs2AddCount = s->cnAssociation->choice.sdap_Config->mappedQoS_FlowsToAdd->list.count;
-    LOG_D(SDAP, "Captured mappedQoS_FlowsToAdd from RRC: %ld \n", *mappedQFIs2Add);
+    mappedQFIs2Add = (NR_QFI_t*)malloc(mappedQFIs2AddCount*sizeof(mappedQFIs2Add[0]));
+    for(i=0;i<mappedQFIs2AddCount;i++){
+    mappedQFIs2Add[i] = *(s->cnAssociation->choice.sdap_Config->mappedQoS_FlowsToAdd->list.array[i]); 
+    }
+    LOG_D(SDAP, "Captured mappedQoS_FlowsToAdd from RRC: %ld  count=%d \n", mappedQFIs2Add[0],mappedQFIs2AddCount);
   }
   /* TODO(?): accept different UL and DL SN sizes? */
   if (sn_size_ul != sn_size_dl) {

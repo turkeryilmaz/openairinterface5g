@@ -258,19 +258,36 @@ static void nr_sdap_rx_entity(nr_sdap_entity_t *entity,
     }
 
     if(RC.ss.mode >= SS_SOFTMODEM){
-        enqueue_sdap_data_req(GNB_FLAG_YES,
-            ue_id,
-            SRB_FLAG_NO,
-            pdcp_entity,
-            RLC_MUI_UNDEFINED,
-            RLC_SDU_CONFIRM_NO,
-            size - offset,
-            (unsigned char *)(buf+offset),
-            PDCP_TRANSMISSION_MODE_DATA,
-            qfi,
-            rqi,
-            pdusession_id,
-            0);
+	if(RC.nr_drb_data_type == DRB_SdapSdu){
+          enqueue_sdap_data_req(GNB_FLAG_YES,
+              ue_id,
+              SRB_FLAG_NO,
+              pdcp_entity,
+              RLC_MUI_UNDEFINED,
+              RLC_SDU_CONFIRM_NO,
+              size - offset,
+              (unsigned char *)(buf+offset),
+              PDCP_TRANSMISSION_MODE_DATA,
+              qfi,
+              rqi,
+              pdusession_id,
+              0);
+	}else if(RC.nr_drb_data_type == DRB_SdapPdu){
+          enqueue_sdap_data_req(GNB_FLAG_YES,
+              ue_id,
+              SRB_FLAG_NO,
+              pdcp_entity,
+              RLC_MUI_UNDEFINED,
+              RLC_SDU_CONFIRM_NO,
+              size,
+              (unsigned char *)(buf),
+              PDCP_TRANSMISSION_MODE_DATA,
+              qfi,
+              rqi,
+              pdusession_id,
+              0);
+	}
+
         return;
     }
     // Pushing SDAP SDU to GTP-U Layer
