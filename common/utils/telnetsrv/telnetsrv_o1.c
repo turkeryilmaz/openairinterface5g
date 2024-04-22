@@ -323,8 +323,6 @@ static int set_config(char *buf, int debug, telnet_printfunc_t prnt)
   return 0;
 }
 
-extern int8_t threequarter_fs;
-extern openair0_config_t openair0_cfg[MAX_CARDS];
 static int set_bwconfig(char *buf, int debug, telnet_printfunc_t prnt)
 {
   if (running)
@@ -352,8 +350,7 @@ static int set_bwconfig(char *buf, int debug, telnet_printfunc_t prnt)
     initialDL->locationAndBandwidth = 28875;
     frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth = 106;
     initialUL->locationAndBandwidth = 28875;
-    threequarter_fs = 1;
-    openair0_cfg[0].threequarter_fs = 1;
+    get_softmodem_params()->threequarter_fs = 1;
   } else if (strcmp(buf, "20") == 0) {
     *scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB = 641280;
     frequencyInfoDL->absoluteFrequencyPointA = 640596;
@@ -362,8 +359,7 @@ static int set_bwconfig(char *buf, int debug, telnet_printfunc_t prnt)
     initialDL->locationAndBandwidth = 13750;
     frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth = 51;
     initialUL->locationAndBandwidth = 13750;
-    threequarter_fs = 0;
-    openair0_cfg[0].threequarter_fs = 0;
+    get_softmodem_params()->threequarter_fs = 0;
   } else {
     ERROR_MSG_RET("unhandled option %s\n", buf);
   }
