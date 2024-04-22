@@ -263,7 +263,7 @@ void nr_postDecode_slsch(PHY_VARS_NR_UE *UE, notifiedFIFO_elt_t *req,UE_nr_rxtx_
     nr_sidelink_indication_t sl_indication;	  
     slsch_status_t slsch_status;
     if (!check_abort(&slsch_harq->abort_decode) && !UE->pssch_vars[rdata->ulsch_id].DTX) {
-      LOG_I(NR_PHY,
+      LOG_D(NR_PHY,
             "[UE] SLSCH: Setting ACK for SFN/SF %d.%d (pid %d, ndi %d, status %d, round %d, TBS %d, Max interation "
             "(all seg) %d)\n",
             slsch->frame,
