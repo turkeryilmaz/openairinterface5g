@@ -3283,7 +3283,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
 
   if (!schedule_slsch) return false;
 
-  LOG_I(NR_MAC,"SLSCH : slsch_pdu_length_max %d\n",slsch_pdu_length_max);
+  LOG_D(NR_MAC,"SLSCH : slsch_pdu_length_max %d\n",slsch_pdu_length_max);
 
   const uint8_t sh_size = sizeof(NR_MAC_SUBHEADER_LONG);
   uint8_t *pdu = tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu.slsch_payload;
@@ -3305,7 +3305,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
 
   int buflen = tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu.tb_size;
 
-  LOG_I(NR_MAC, "[UE%d] TTI-%d:%d TX PSCCH_PSSCH REQ  TBS %d\n", sl_ind->module_id, frame, slot, buflen);
+  LOG_D(NR_MAC, "[UE%d] TTI-%d:%d TX PSCCH_PSSCH REQ  TBS %d\n", sl_ind->module_id, frame, slot, buflen);
   
   NR_SLSCH_MAC_SUBHEADER_FIXED *sl_sch_subheader = (NR_SLSCH_MAC_SUBHEADER_FIXED *) pdu;
   sl_sch_subheader->V = 0;
@@ -3315,7 +3315,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
   pdu += sizeof(NR_SLSCH_MAC_SUBHEADER_FIXED);
   LOG_D(NR_PHY, "V %d, R %d, SRC %d, DST %d\n", sl_sch_subheader->V, sl_sch_subheader->R, sl_sch_subheader->SRC, sl_sch_subheader->DST);
   int buflen_remain = buflen - sizeof(NR_SLSCH_MAC_SUBHEADER_FIXED);
-  LOG_I(NR_PHY, "buflen_remain after adding SL_SCH_MAC_SUBHEADER_FIXED %d\n", buflen_remain);
+  LOG_D(NR_PHY, "buflen_remain after adding SL_SCH_MAC_SUBHEADER_FIXED %d\n", buflen_remain);
 
   int num_sdus=0;
   while (buflen_remain > 0) {
@@ -3345,7 +3345,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
                 buflen_remain);
     if (sdu_length > 0) {
 
-      LOG_I(NR_MAC, "In %s: [UE %d] [%d.%d] SL-DXCH -> SLSCH, Generating SL MAC sub-PDU for SDU %d, length %d bytes, RB with LCID 0x%02x (buflen (TBS) %d bytes)\n",
+      LOG_D(NR_MAC, "In %s: [UE %d] [%d.%d] SL-DXCH -> SLSCH, Generating SL MAC sub-PDU for SDU %d, length %d bytes, RB with LCID 0x%02x (buflen (TBS) %d bytes)\n",
         __FUNCTION__,
         0,
         frame,
@@ -3363,7 +3363,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
       sdu_length_total += sdu_length;
       total_mac_pdu_header_len += sh_size;
       buflen_remain -= (sh_size + sdu_length);
-      LOG_I(NR_PHY, "buflen_remain %d, subtracting (sh_size + sdu_length) %d, total_mac_pdu_header_len %hhu sdu total length %d, sdu_length %d\n", buflen_remain, (sh_size + sdu_length), total_mac_pdu_header_len, sdu_length_total, sdu_length);
+      LOG_D(NR_PHY, "buflen_remain %d, subtracting (sh_size + sdu_length) %d, total_mac_pdu_header_len %hhu sdu total length %d, sdu_length %d\n", buflen_remain, (sh_size + sdu_length), total_mac_pdu_header_len, sdu_length_total, sdu_length);
       num_sdus++;
 
     } else {
@@ -3391,7 +3391,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
   }
 
   if (buflen_remain > 0) {
-    LOG_I(NR_MAC, "In %s filling remainder %d bytes to the UL PDU \n", __FUNCTION__, buflen_remain);
+    LOG_D(NR_MAC, "In %s filling remainder %d bytes to the UL PDU \n", __FUNCTION__, buflen_remain);
     ((NR_MAC_SUBHEADER_FIXED *) pdu)->R = 0;
     ((NR_MAC_SUBHEADER_FIXED *) pdu)->LCID = SL_SCH_LCID_SL_PADDING;
     pdu++;
