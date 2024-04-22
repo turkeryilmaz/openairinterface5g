@@ -645,6 +645,12 @@ int main( int argc, char **argv ) {
   if (get_softmodem_params()->sa)
     AssertFatal(get_softmodem_params()->phy_test == 0,"Standalone mode and phy_test are mutually exclusive\n");
 
+//////////////////////////////////
+//// Init the E3 Agent
+#ifdef E3_AGENT
+  e3_agent_init();
+#endif // E3_AGENT
+
 #if T_TRACER
   T_Config_Init();
 #endif
@@ -741,12 +747,6 @@ int main( int argc, char **argv ) {
   }
 
 #endif // E2_AGENT
-
-//////////////////////////////////
-//// Init the E3 Agent
-#ifdef E3_AGENT
-  e3_agent_init();
-#endif // E3_AGENT
 
   if (NFAPI_MODE==NFAPI_MODE_PNF) {
     wait_nfapi_init("main?");
