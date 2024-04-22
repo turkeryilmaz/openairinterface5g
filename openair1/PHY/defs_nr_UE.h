@@ -39,6 +39,7 @@
 
 #include "defs_nr_common.h"
 #include "CODING/nrPolar_tools/nr_polar_pbch_defs.h"
+#include "PHY/defs_nr_sl_UE.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -306,16 +307,6 @@ typedef struct {
   bool active;
   fapi_nr_ul_config_srs_pdu srs_config_pdu;
 } NR_UE_SRS;
-
-// structure used for multiple SSB detection
-typedef struct NR_UE_SSB {
-  uint8_t i_ssb;   // i_ssb between 0 and 7 (it corresponds to ssb_index only for Lmax=4,8)
-  uint8_t n_hf;    // n_hf = 0,1 for Lmax =4 or n_hf = 0 for Lmax =8,64
-  uint32_t metric; // metric to order SSB hypothesis
-  uint32_t c_re;
-  uint32_t c_im;
-  struct NR_UE_SSB *next_ssb;
-} NR_UE_SSB;
 
 typedef struct UE_NR_SCAN_INFO_s {
   /// 10 best amplitudes (linear) for each pss signals
@@ -601,6 +592,10 @@ typedef struct PHY_VARS_NR_UE_s {
   uint8_t *phy_sim_dlsch_b;
 
   notifiedFIFO_t tx_resume_ind_fifo[NR_MAX_SLOTS_PER_FRAME];
+
+  // Sidelink parameters
+  sl_nr_sidelink_mode_t sl_mode;
+  sl_nr_ue_phy_params_t SL_UE_PHY_PARAMS;
 } PHY_VARS_NR_UE;
 
 typedef struct {
@@ -622,11 +617,20 @@ typedef struct {
 typedef struct nr_phy_data_tx_s {
   NR_UE_ULSCH_t ulsch;
   NR_UE_PUCCH pucch_vars;
+
+  // Sidelink Rx action decided by MAC
+  sl_nr_tx_config_type_enum_t sl_tx_action;
+  sl_nr_tx_config_psbch_pdu_t psbch_vars;
+
 } nr_phy_data_tx_t;
 
 typedef struct nr_phy_data_s {
   NR_UE_PDCCH_CONFIG phy_pdcch_config;
   NR_UE_DLSCH_t dlsch[2];
+
+  // Sidelink Rx action decided by MAC
+  sl_nr_rx_config_type_enum_t sl_rx_action;
+
 } nr_phy_data_t;
 /* this structure is used to pass both UE phy vars and
  * proc to the function UE_thread_rxn_txnp4

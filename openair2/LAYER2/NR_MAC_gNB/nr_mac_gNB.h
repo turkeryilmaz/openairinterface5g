@@ -116,9 +116,8 @@ typedef enum {
   nrRA_Msg2 = 1,
   nrRA_WAIT_Msg3 = 2,
   nrRA_Msg3_retransmission = 3,
-  nrRA_Msg3_dcch_dtch = 4,
-  nrRA_Msg4 = 5,
-  nrRA_WAIT_Msg4_ACK = 6
+  nrRA_Msg4 = 4,
+  nrRA_WAIT_Msg4_ACK = 5,
 } RA_gNB_state_t;
 static const char *const nrra_text[] =
     {"IDLE", "Msg2", "WAIT_Msg3", "Msg3_retransmission", "Msg3_dcch_dtch", "Msg4", "WAIT_Msg4_ACK"};
@@ -165,8 +164,14 @@ typedef struct {
   RA_gNB_state_t ra_state;
   /// CORESET0 configured flag
   int coreset0_configured;
+  /// Frame where preamble was received
+  int preamble_frame;
   /// Slot where preamble was received
   uint8_t preamble_slot;
+  /// Received preamble_index
+  uint8_t preamble_index;
+  /// Timing offset indicated by PHY
+  int16_t timing_offset;
   /// Subframe where Msg2 is to be sent
   uint8_t Msg2_slot;
   /// Frame where Msg2 is to be sent
@@ -183,14 +188,8 @@ typedef struct {
   rnti_t rnti;
   /// RA RNTI allocated from received PRACH
   uint16_t RA_rnti;
-  /// Received preamble_index
-  uint8_t preamble_index;
   /// Received UE Contention Resolution Identifier
   uint8_t cont_res_id[6];
-  /// Timing offset indicated by PHY
-  int16_t timing_offset;
-  /// Timeout for RRC connection
-  int16_t RRC_timer;
   /// Msg3 first RB
   int msg3_first_rb;
   /// Msg3 number of RB
@@ -745,6 +744,8 @@ typedef struct f1_config_t {
 typedef struct gNB_MAC_INST_s {
   /// Ethernet parameters for northbound midhaul interface
   eth_params_t                    eth_params_n;
+  /// address for F1U to bind, ports in eth_params_n
+  char *f1u_addr;
   /// Ethernet parameters for fronthaul interface
   eth_params_t                    eth_params_s;
   /// Module

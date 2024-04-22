@@ -119,7 +119,7 @@ static void config_common_ue_sa(NR_UE_MAC_INST_t *mac,
   AssertFatal(frequencyInfoDL->frequencyBandList.list.array[0]->freqBandIndicatorNR, "Field mandatory present for DL in SIB1\n");
   mac->nr_band = *frequencyInfoDL->frequencyBandList.list.array[0]->freqBandIndicatorNR;
   int bw_index = get_supported_band_index(frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing,
-                                          mac->nr_band,
+                                          mac->nr_band > 256 ? FR2 : FR1,
                                           frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth);
   cfg->carrier_config.dl_bandwidth = get_supported_bw_mhz(mac->frequency_range, bw_index);
 
@@ -141,7 +141,7 @@ static void config_common_ue_sa(NR_UE_MAC_INST_t *mac,
   NR_FrequencyInfoUL_SIB_t *frequencyInfoUL = &scc->uplinkConfigCommon->frequencyInfoUL;
   mac->p_Max = frequencyInfoUL->p_Max ? *frequencyInfoUL->p_Max : INT_MIN;
   bw_index = get_supported_band_index(frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing,
-                                      mac->nr_band,
+                                      mac->nr_band > 256 ? FR2 : FR1,
                                       frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth);
   cfg->carrier_config.uplink_bandwidth = get_supported_bw_mhz(mac->frequency_range, bw_index);
 
@@ -263,7 +263,7 @@ static void config_common_ue(NR_UE_MAC_INST_t *mac,
     mac->frequency_range = mac->nr_band < 256 ? FR1 : FR2;
 
     int bw_index = get_supported_band_index(frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing,
-                                            mac->nr_band,
+                                            mac->nr_band > 256 ? FR2 : FR1,
                                             frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth);
     cfg->carrier_config.dl_bandwidth = get_supported_bw_mhz(mac->frequency_range, bw_index);
 
@@ -288,7 +288,7 @@ static void config_common_ue(NR_UE_MAC_INST_t *mac,
     mac->p_Max = frequencyInfoUL->p_Max ? *frequencyInfoUL->p_Max : INT_MIN;
 
     int bw_index = get_supported_band_index(frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing,
-                                            *frequencyInfoUL->frequencyBandList->list.array[0],
+                                            *frequencyInfoUL->frequencyBandList->list.array[0] > 256 ? FR2 : FR1,
                                             frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth);
     cfg->carrier_config.uplink_bandwidth = get_supported_bw_mhz(mac->frequency_range, bw_index);
 
@@ -755,6 +755,7 @@ static void nr_configure_lc_config(NR_UE_MAC_INST_t *mac,
   AssertFatal(mac_lc_config->ul_SpecificParameters, "UL parameters shouldn't be NULL for DRBs\n");
   struct NR_LogicalChannelConfig__ul_SpecificParameters *ul_parm = mac_lc_config->ul_SpecificParameters;
   lc_info->priority = ul_parm->priority;
+  lc_info->sr_id = ul_parm->schedulingRequestID ? *ul_parm->schedulingRequestID : -1;
   lc_info->sr_DelayTimerApplied = ul_parm->logicalChannelSR_DelayTimerApplied;
   lc_info->lc_SRMask = ul_parm->logicalChannelSR_Mask;
   lc_info->pbr = nr_get_pbr(ul_parm->prioritisedBitRate);
@@ -779,11 +780,8 @@ static void configure_logicalChannelBearer(NR_UE_MAC_INST_t *mac,
         if (id == mac->lc_ordered_list.array[j]->lcid)
           break;
       }
-      if (j < mac->lc_ordered_list.count) {
-        nr_lcordered_info_t *lc_info = mac->lc_ordered_list.array[j];
-        asn_sequence_del(&mac->lc_ordered_list, j, 0);
-        free(lc_info);
-      }
+      if (j < mac->lc_ordered_list.count)
+        asn_sequence_del(&mac->lc_ordered_list, j, 1);
       else
         LOG_E(NR_MAC, "Element not present in the list, impossible to release\n");
     }
@@ -1302,10 +1300,10 @@ static void configure_dedicated_BWP_dl(NR_UE_MAC_INST_t *mac, int bwp_id, NR_BWP
     }
     if (dl_dedicated->pdcch_Config) {
       if (dl_dedicated->pdcch_Config->present == NR_SetupRelease_PDCCH_Config_PR_release) {
-        for (int i = 0; pdcch->list_Coreset.count; i++)
-          asn_sequence_del(&pdcch->list_Coreset, i, 1);
-        for (int i = 0; pdcch->list_SS.count; i++)
-          asn_sequence_del(&pdcch->list_SS, i, 1);
+        for (int i = pdcch->list_Coreset.count; i > 0 ; i--)
+          asn_sequence_del(&pdcch->list_Coreset, i - 1, 1);
+        for (int i = pdcch->list_SS.count; i > 0 ; i--)
+          asn_sequence_del(&pdcch->list_SS, i - 1, 1);
       }
       if (dl_dedicated->pdcch_Config->present == NR_SetupRelease_PDCCH_Config_PR_setup)
         configure_ss_coreset(pdcch, dl_dedicated->pdcch_Config->choice.setup);
@@ -1428,7 +1426,7 @@ void nr_rrc_mac_config_req_reset(module_id_t module_id,
   NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
   switch (cause) {
     case GO_TO_IDLE:
-      reset_ra(&mac->ra);
+      reset_ra(mac, cause);
       release_mac_configuration(mac, cause);
       nr_ue_init_mac(mac);
       nr_ue_mac_default_configs(mac);
@@ -1436,14 +1434,16 @@ void nr_rrc_mac_config_req_reset(module_id_t module_id,
       nr_ue_send_synch_request(mac, module_id, 0, -1);
       break;
     case DETACH:
-      reset_ra(&mac->ra);
+      LOG_A(NR_MAC, "Received detach indication\n");
+      reset_ra(mac, cause);
       reset_mac_inst(mac);
       nr_ue_reset_sync_state(mac);
       release_mac_configuration(mac, cause);
+      mac->state = UE_DETACHING;
       break;
     case T300_EXPIRY:
+      reset_ra(mac, cause);
       reset_mac_inst(mac);
-      reset_ra(&mac->ra);
       mac->state = UE_SYNC; // still in sync but need to restart RA
       break;
     case RE_ESTABLISHMENT:
@@ -1694,37 +1694,35 @@ static uint32_t nr_get_sf_periodicBSRTimer(long periodicBSR)
 static void configure_maccellgroup(NR_UE_MAC_INST_t *mac, const NR_MAC_CellGroupConfig_t *mcg)
 {
   NR_UE_SCHEDULING_INFO *si = &mac->scheduling_info;
+  int scs = mac->current_UL_BWP->scs;
   if (mcg->drx_Config)
     LOG_E(NR_MAC, "DRX not implemented! Configuration not handled!\n");
   if (mcg->schedulingRequestConfig) {
     const NR_SchedulingRequestConfig_t *src = mcg->schedulingRequestConfig;
     if (src->schedulingRequestToReleaseList) {
       for (int i = 0; i < src->schedulingRequestToReleaseList->list.count; i++) {
-        if (*src->schedulingRequestToReleaseList->list.array[i] == si->sr_id) {
-          si->SR_COUNTER = 0;
-          si->sr_ProhibitTimer = 0;
-          si->sr_ProhibitTimer_Running = 0;
-          si->sr_id = -1; // invalid init value
-        }
-        else
-          LOG_E(NR_MAC, "Cannot release SchedulingRequestConfig. Not configured.\n");
+        NR_SchedulingRequestId_t id = *src->schedulingRequestToReleaseList->list.array[i];
+        memset(&si->sr_info[id], 0, sizeof(si->sr_info[id]));
       }
     }
     if (src->schedulingRequestToAddModList) {
       for (int i = 0; i < src->schedulingRequestToAddModList->list.count; i++) {
         NR_SchedulingRequestToAddMod_t *sr = src->schedulingRequestToAddModList->list.array[i];
-        AssertFatal(si->sr_id == -1 ||
-                    si->sr_id == sr->schedulingRequestId,
-                    "Current implementation cannot handle more than 1 SR configuration\n");
-        si->sr_id = sr->schedulingRequestId;
-        si->sr_TransMax = sr->sr_TransMax;
+        nr_sr_info_t *sr_info = &si->sr_info[sr->schedulingRequestId];
+        sr_info->active_SR_ID = true;
+        // NR_SchedulingRequestToAddMod__sr_TransMax_n4	= 0 and so on
+        // to obtain the value to configure we need to right shift 4 by the RRC parameter
+        sr_info->maxTransmissions = 4 << sr->sr_TransMax;
+        int target_ms = 0;
         if (sr->sr_ProhibitTimer)
-          LOG_E(NR_MAC, "SR prohibit timer not properly implemented\n");
+          target_ms = 1 << *sr->sr_ProhibitTimer;
+        // length of slot is (1/2^scs)ms
+        nr_timer_setup(&sr_info->prohibitTimer, target_ms << scs, 1); // 1 slot update rate
       }
     }
   }
   if (mcg->bsr_Config) {
-    int subframes_per_slot = nr_slots_per_frame[mac->current_UL_BWP->scs] / 10;
+    int subframes_per_slot = nr_slots_per_frame[scs] / 10;
     uint32_t periodic_sf = nr_get_sf_periodicBSRTimer(mcg->bsr_Config->periodicBSR_Timer);
     uint32_t target = periodic_sf < UINT_MAX ? periodic_sf * subframes_per_slot : periodic_sf;
     nr_timer_setup(&si->periodicBSR_Timer, target, 1); // 1 slot update rate
@@ -2060,10 +2058,10 @@ void release_dl_BWP(NR_UE_MAC_INST_t *mac, int index)
 
   NR_BWP_PDCCH_t *pdcch = &mac->config_BWP_PDCCH[bwp_id];
   release_common_ss_cset(pdcch);
-  for (int i = 0; pdcch->list_Coreset.count; i++)
-    asn_sequence_del(&pdcch->list_Coreset, i, 1);
-  for (int i = 0; pdcch->list_SS.count; i++)
-    asn_sequence_del(&pdcch->list_SS, i, 1);
+  for (int i = pdcch->list_Coreset.count; i > 0 ; i--)
+    asn_sequence_del(&pdcch->list_Coreset, i - 1, 1);
+  for (int i = pdcch->list_SS.count; i > 0 ; i--)
+    asn_sequence_del(&pdcch->list_SS, i - 1, 1);
 }
 
 void release_ul_BWP(NR_UE_MAC_INST_t *mac, int index)

@@ -485,12 +485,11 @@ static int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
                                   const UE_nr_rxtx_proc_t *proc,
                                   NR_UE_DLSCH_t dlsch[2],
                                   int16_t *llr[2],
-                                  c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP])
+                                  c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP],
+                                  int G)
 {
   int frame_rx = proc->frame_rx;
   int nr_slot_rx = proc->nr_slot_rx;
-  int m;
-  int first_symbol_flag=0;
 
   // We handle only one CW now
   if (!(NR_MAX_NB_LAYERS>4)) {
@@ -523,13 +522,14 @@ static int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
     __attribute__((aligned(32))) int32_t rxdataF_comp[dlsch[0].Nl][ue->frame_parms.nb_antennas_rx][rx_size_symbol * NR_SYMBOLS_PER_SLOT];
     memset(rxdataF_comp, 0, sizeof(rxdataF_comp));
 
-    for (m = s0; m < (s0 +s1); m++) {
+    for (int m = s0; m < (s0 +s1); m++) {
       if (dlsch0->dlsch_config.dlDmrsSymbPos & (1 << m)) {
-        for (uint8_t aatx=0; aatx<dlsch0->Nl; aatx++) {//for MIMO Config: it shall loop over no_layers
-          LOG_D(PHY,"PDSCH Channel estimation gNB id %d, PDSCH antenna port %d, slot %d, symbol %d\n",0,aatx,nr_slot_rx,m);
+        for (int nl = 0; nl < dlsch0->Nl; nl++) { //for MIMO Config: it shall loop over no_layers
+          LOG_D(PHY,"PDSCH Channel estimation layer %d, slot %d, symbol %d\n", nl, nr_slot_rx, m);
           nr_pdsch_channel_estimation(ue,
                                       proc,
-                                      get_dmrs_port(aatx,dlsch0->dlsch_config.dmrs_ports),
+                                      nl,
+                                      get_dmrs_port(nl,dlsch0->dlsch_config.dmrs_ports),
                                       m,
                                       dlsch0->dlsch_config.nscid,
                                       dlsch0->dlsch_config.dlDmrsScramblingId,
@@ -546,9 +546,9 @@ static int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
           int nr_frame_rx = proc->frame_rx;
           char filename[100];
           for (uint8_t aarx=0; aarx<ue->frame_parms.nb_antennas_rx; aarx++) {
-            sprintf(filename,"PDSCH_CHANNEL_frame%d_slot%d_sym%d_port%d_rx%d.m", nr_frame_rx, nr_slot_rx, m, aatx,aarx);
+            sprintf(filename,"PDSCH_CHANNEL_frame%d_slot%d_sym%d_port%d_rx%d.m", nr_frame_rx, nr_slot_rx, m, nl, aarx);
             int **dl_ch_estimates = ue->pdsch_vars[gNB_id]->dl_ch_estimates;
-            LOG_M(filename,"channel_F",&dl_ch_estimates[aatx*ue->frame_parms.nb_antennas_rx+aarx][ue->frame_parms.ofdm_symbol_size*m],ue->frame_parms.ofdm_symbol_size, 1, 1);
+            LOG_M(filename,"channel_F",&dl_ch_estimates[nl*ue->frame_parms.nb_antennas_rx+aarx][ue->frame_parms.ofdm_symbol_size*m],ue->frame_parms.ofdm_symbol_size, 1, 1);
           }
 #endif
         }
@@ -582,12 +582,10 @@ static int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
 
     int32_t log2_maxh = 0;
     start_meas(&ue->rx_pdsch_stats);
-    for (m = s0; m < (s1 + s0); m++) {
- 
-      if (m==first_symbol_with_data)
-        first_symbol_flag = 1;
-      else
-        first_symbol_flag = 0;
+    for (int m = s0; m < (s1 + s0); m++) {
+      bool first_symbol_flag = false;
+      if (m == first_symbol_with_data)
+        first_symbol_flag = true;
 
       uint8_t slot = 0;
       if(m >= ue->frame_parms.symbols_per_slot>>1)
@@ -612,7 +610,8 @@ static int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
                       ue->frame_parms.nb_antennas_rx,
                       rxdataF_comp,
                       ptrs_phase_per_slot,
-                      ptrs_re_per_slot)
+                      ptrs_re_per_slot,
+                      G)
           < 0)
         return -1;
 
@@ -642,7 +641,11 @@ static void send_dl_done_to_tx_thread(notifiedFIFO_t *nf, int rx_slot)
   }
 }
 
-static bool nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, NR_UE_DLSCH_t dlsch[2], int16_t *llr[2])
+static bool nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue,
+                                   const UE_nr_rxtx_proc_t *proc,
+                                   NR_UE_DLSCH_t dlsch[2],
+                                   int16_t *llr[2],
+                                   int G)
 {
   if (dlsch[0].active == false) {
     LOG_E(PHY, "DLSCH should be active when calling this function\n");
@@ -688,12 +691,7 @@ static bool nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *
   }
 
   start_meas(&ue->dlsch_unscrambling_stats);
-  nr_dlsch_unscrambling(llr[0],
-                        dl_harq0->G,
-                        0,
-                        dlsch[0].dlsch_config.dlDataScramblingId,
-                        dlsch[0].rnti);
-    
+  nr_dlsch_unscrambling(llr[0], G, 0, dlsch[0].dlsch_config.dlDataScramblingId, dlsch[0].rnti);
 
   stop_meas(&ue->dlsch_unscrambling_stats);
 
@@ -721,7 +719,8 @@ static bool nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *
                           nr_slot_rx,
                           harq_pid,
                           dlsch_bytes,
-                          p_b);
+                          p_b,
+                          G);
 
   LOG_T(PHY,"dlsch decoding, ret = %d\n", ret);
 
@@ -776,19 +775,10 @@ static bool nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *
       int ptrsSymbPerSlot = get_ptrs_symbols_in_slot(ptrsSymbPos, dlsch_config->start_symbol, dlsch_config->number_symbols);
       unav_res = n_ptrs * ptrsSymbPerSlot;
     }
-    dl_harq1->G = nr_get_G(dlsch_config->number_rbs,
-                           nb_symb_sch,
-                           nb_re_dmrs,
-                           dmrs_len,
-                           unav_res,
-                           dlsch_config->qamModOrder,
-                           dlsch[1].Nl);
+    int G1 =
+        nr_get_G(dlsch_config->number_rbs, nb_symb_sch, nb_re_dmrs, dmrs_len, unav_res, dlsch_config->qamModOrder, dlsch[1].Nl);
     start_meas(&ue->dlsch_unscrambling_stats);
-    nr_dlsch_unscrambling(llr[1],
-                          dl_harq1->G,
-                          0,
-                          dlsch[1].dlsch_config.dlDataScramblingId,
-                          dlsch[1].rnti);
+    nr_dlsch_unscrambling(llr[1], G1, 0, dlsch[1].dlsch_config.dlDataScramblingId, dlsch[1].rnti);
     stop_meas(&ue->dlsch_unscrambling_stats);
 
     start_meas(&ue->dlsch_decoding_stats);
@@ -805,7 +795,8 @@ static bool nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *
                              nr_slot_rx,
                              harq_pid,
                              dlsch_bytes,
-                             p_b);
+                             p_b,
+                             G);
     LOG_T(PHY,"CW dlsch decoding, ret1 = %d\n", ret1);
 
     stop_meas(&ue->dlsch_decoding_stats);
@@ -874,22 +865,22 @@ int pbch_pdcch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_
           __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates_time[fp->nb_antennas_rx][fp->ofdm_symbol_size];
 
           for (int i=1; i<4; i++) {
-            nr_slot_fep(ue,
-                        proc,
-                        (ssb_start_symbol+i)%(fp->symbols_per_slot),
-                        rxdataF);
+            nr_slot_fep(ue, fp, proc, (ssb_start_symbol + i) % (fp->symbols_per_slot), rxdataF, link_type_dl);
 
             start_meas(&ue->dlsch_channel_estimation_stats);
             nr_pbch_channel_estimation(ue,
+                                       &ue->frame_parms,
                                        estimateSz,
                                        dl_ch_estimates,
                                        dl_ch_estimates_time,
                                        proc,
-                                       (ssb_start_symbol+i)%(fp->symbols_per_slot),
-                                       i-1,
-                                       ssb_index&7,
+                                       (ssb_start_symbol + i) % (fp->symbols_per_slot),
+                                       i - 1,
+                                       ssb_index & 7,
                                        ssb_slot_2 == nr_slot_rx,
-                                       rxdataF);
+                                       rxdataF,
+                                       false,
+                                       fp->Nid_cell);
             stop_meas(&ue->dlsch_channel_estimation_stats);
           }
 
@@ -930,10 +921,7 @@ int pbch_pdcch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_
         {
           for(int j = prs_config->SymbolStart; j < (prs_config->SymbolStart+prs_config->NumPRSSymbols); j++)
           {
-            nr_slot_fep(ue,
-                        proc,
-                        (j%fp->symbols_per_slot),
-                        rxdataF);
+            nr_slot_fep(ue, fp, proc, (j % fp->symbols_per_slot), rxdataF, link_type_dl);
           }
           nr_prs_channel_estimation(gNB_id, rsc_id, i, ue, proc, fp, rxdataF);
         }
@@ -964,10 +952,7 @@ int pbch_pdcch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_
   for (uint16_t l=0; l<nb_symb_pdcch; l++) {
 
     start_meas(&ue->ofdm_demod_stats);
-    nr_slot_fep(ue,
-                proc,
-                l,
-                rxdataF);
+    nr_slot_fep(ue, fp, proc, l, rxdataF, link_type_dl);
   }
 
     // Hold the channel estimates in frequency domain.
@@ -1025,9 +1010,11 @@ void pdsch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_phy_
 
     for (uint16_t m=start_symb_sch;m<(nb_symb_sch+start_symb_sch) ; m++){
       nr_slot_fep(ue,
+                  &ue->frame_parms,
                   proc,
-                  m,  //to be updated from higher layer
-                  rxdataF);
+                  m, // to be updated from higher layer
+                  rxdataF,
+                  link_type_dl);
     }
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_UE_SLOT_FEP_PDSCH, VCD_FUNCTION_OUT);
 
@@ -1051,15 +1038,14 @@ void pdsch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_phy_
       int ptrsSymbPerSlot = get_ptrs_symbols_in_slot(ptrsSymbPos, dlsch_config->start_symbol, dlsch_config->number_symbols);
       unav_res = n_ptrs * ptrsSymbPerSlot;
     }
-    NR_DL_UE_HARQ_t *dlsch0_harq = &ue->dl_harq_processes[0][dlsch_config->harq_process_nbr];
-    dlsch0_harq->G = nr_get_G(dlsch_config->number_rbs,
-                              dlsch_config->number_symbols,
-                              nb_re_dmrs,
-                              dmrs_len,
-                              unav_res,
-                              dlsch_config->qamModOrder,
-                              dlsch[0].Nl);
-    const uint32_t rx_llr_buf_sz = ((dlsch0_harq->G + 15) / 16) * 16;
+    int G = nr_get_G(dlsch_config->number_rbs,
+                     dlsch_config->number_symbols,
+                     nb_re_dmrs,
+                     dmrs_len,
+                     unav_res,
+                     dlsch_config->qamModOrder,
+                     dlsch[0].Nl);
+    const uint32_t rx_llr_buf_sz = ((G + 15) / 16) * 16;
     const uint32_t nb_codewords = NR_MAX_NB_LAYERS > 4 ? 2 : 1;
     int16_t* llr[2];
     for (int i = 0; i < nb_codewords; i++)
@@ -1067,11 +1053,11 @@ void pdsch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_phy_
 
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PDSCH_PROC_C, VCD_FUNCTION_IN);
     // it returns -1 in case of internal failure, or 0 in case of normal result
-    int ret_pdsch = nr_ue_pdsch_procedures(ue, proc, dlsch, llr, rxdataF);
+    int ret_pdsch = nr_ue_pdsch_procedures(ue, proc, dlsch, llr, rxdataF, G);
 
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PDSCH_PROC_C, VCD_FUNCTION_OUT);
 
-    UEscopeCopy(ue, pdschLlr, llr[0], sizeof(int16_t), 1, dlsch0_harq->G, 0);
+    UEscopeCopy(ue, pdschLlr, llr[0], sizeof(int16_t), 1, G, 0);
 
     LOG_D(PHY, "DLSCH data reception at nr_slot_rx: %d\n", nr_slot_rx);
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PDSCH_PROC, VCD_FUNCTION_IN);
@@ -1079,7 +1065,7 @@ void pdsch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_phy_
     start_meas(&ue->dlsch_procedures_stat);
 
     if (ret_pdsch >= 0)
-      nr_ue_dlsch_procedures(ue, proc, dlsch, llr);
+      nr_ue_dlsch_procedures(ue, proc, dlsch, llr, G);
     else {
       LOG_E(NR_PHY, "Demodulation impossible, internal error\n");
       send_dl_done_to_tx_thread(
@@ -1116,7 +1102,7 @@ void pdsch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_phy_
       }
       l_csiim[symb_idx] = ue->csiim_vars[gNB_id]->csiim_config_pdu.l_csiim[symb_idx];
       if(nr_slot_fep_done == false) {
-        nr_slot_fep(ue, proc, ue->csiim_vars[gNB_id]->csiim_config_pdu.l_csiim[symb_idx], rxdataF);
+        nr_slot_fep(ue, &ue->frame_parms, proc, ue->csiim_vars[gNB_id]->csiim_config_pdu.l_csiim[symb_idx], rxdataF, link_type_dl);
       }
     }
     nr_ue_csi_im_procedures(ue, proc, rxdataF);
@@ -1127,7 +1113,7 @@ void pdsch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_phy_
   if ((ue->csirs_vars[gNB_id]) && (ue->csirs_vars[gNB_id]->active == 1)) {
     for(int symb = 0; symb < NR_SYMBOLS_PER_SLOT; symb++) {
       if(is_csi_rs_in_symbol(ue->csirs_vars[gNB_id]->csirs_config_pdu,symb)) {
-        nr_slot_fep(ue, proc, symb, rxdataF);
+        nr_slot_fep(ue, &ue->frame_parms, proc, symb, rxdataF, link_type_dl);
       }
     }
     nr_ue_csi_rs_procedures(ue, proc, rxdataF);

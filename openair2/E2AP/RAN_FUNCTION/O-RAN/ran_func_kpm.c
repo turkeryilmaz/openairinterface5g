@@ -179,10 +179,10 @@ static void capture_sst_sd(test_cond_value_t* test_cond_value, uint8_t *sst, uin
 
 static bool nssai_matches(nssai_t a_nssai, uint8_t b_sst, const uint32_t *b_sd)
 {
-  AssertFatal(b_sd == NULL || *b_sd <= 0xffffff, "illegal SD %d\n", *b_sd);
   if (b_sd == NULL) {
     return a_nssai.sst == b_sst && a_nssai.sd == 0xffffff;
   } else {
+    AssertFatal(*b_sd <= 0xffffff, "illegal SD %d\n", *b_sd);
     return a_nssai.sst == b_sst && a_nssai.sd == *b_sd;
   }
 }
@@ -420,26 +420,29 @@ bool read_kpm_sm(void* data)
 }
 
 static const char* kpm_meas_du[] = {
-  "DRB.RlcSduDelayDl", 
-  "DRB.UEThpDl", 
-  "DRB.UEThpUl", 
-  "RRU.PrbTotDl", 
+  "DRB.RlcSduDelayDl",
+  "DRB.UEThpDl",
+  "DRB.UEThpUl",
+  "RRU.PrbTotDl",
   "RRU.PrbTotUl",
+  NULL,
 };
 
 static const char* kpm_meas_gnb[] = {
-  "DRB.PdcpSduVolumeDL", 
-  "DRB.PdcpSduVolumeUL", 
-  "DRB.RlcSduDelayDl", 
-  "DRB.UEThpDl", 
-  "DRB.UEThpUl", 
-  "RRU.PrbTotDl", 
+  "DRB.PdcpSduVolumeDL",
+  "DRB.PdcpSduVolumeUL",
+  "DRB.RlcSduDelayDl",
+  "DRB.UEThpDl",
+  "DRB.UEThpUl",
+  "RRU.PrbTotDl",
   "RRU.PrbTotUl",
+  NULL,
 };
 
 static const char* kpm_meas_cuup[] = {
-  "DRB.PdcpSduVolumeDL", 
-  "DRB.PdcpSduVolumeUL", 
+  "DRB.PdcpSduVolumeDL",
+  "DRB.PdcpSduVolumeUL",
+  NULL,
 };
 
 typedef const char** meas_list;

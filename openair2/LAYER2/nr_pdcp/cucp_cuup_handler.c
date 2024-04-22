@@ -116,7 +116,7 @@ static int drb_gtpu_create(instance_t instance,
 static instance_t get_n3_gtp_instance(void)
 {
   const e1ap_upcp_inst_t *inst = getCxtE1(0);
-  AssertFatal(inst != NULL, "need to have E1 instance\n");
+  AssertFatal(inst, "need to have E1 instance\n");
   return inst->gtpInstN3;
 }
 
@@ -283,11 +283,12 @@ void e1_bearer_release_cmd(const e1ap_bearer_release_cmd_t *cmd)
   newGtpuDeleteAllTunnels(n3inst, cmd->gNB_cu_up_ue_id);
   if (f1inst >= 0)  // is there F1-U?
     newGtpuDeleteAllTunnels(f1inst, cmd->gNB_cu_up_ue_id);
-  nr_pdcp_remove_UE(cmd->gNB_cu_up_ue_id);
-  nr_sdap_delete_ue_entities(cmd->gNB_cu_up_ue_id);
   if (need_ue_id_mgmt) {
+    // see issue #706: in monolithic, gNB will free PDCP of UE
+    nr_pdcp_remove_UE(cmd->gNB_cu_up_ue_id);
     cu_remove_f1_ue_data(cmd->gNB_cu_up_ue_id);
   }
+  nr_sdap_delete_ue_entities(cmd->gNB_cu_up_ue_id);
 
   e1ap_bearer_release_cplt_t cplt = {
     .gNB_cu_cp_ue_id = cmd->gNB_cu_cp_ue_id,

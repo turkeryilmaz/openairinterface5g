@@ -260,7 +260,7 @@ static int handle_ue_context_drbs_release(int rnti,
         newGtpuDeleteOneTunnel(f1inst, rnti, drb->rb_id);
       asn_sequence_del(&cellGroupConfig->rlc_BearerToAddModList->list, idx, 1);
       long *plcid = malloc(sizeof(*plcid));
-      AssertFatal(plcid != NULL, "out of memory\n");
+      AssertFatal(plcid, "out of memory\n");
       *plcid = lcid;
       int ret = ASN_SEQUENCE_ADD(&cellGroupConfig->rlc_BearerToReleaseList->list, plcid);
       DevAssert(ret == 0);
@@ -392,7 +392,7 @@ void ue_context_setup_request(const f1ap_ue_context_setup_t *req)
   NR_SCHED_LOCK(&mac->sched_lock);
 
   NR_UE_info_t *UE = find_nr_UE(&RC.nrmac[0]->UE_info, req->gNB_DU_ue_id);
-  AssertFatal(UE != NULL, "did not find UE with RNTI %04x, but UE Context Setup Failed not implemented\n", req->gNB_DU_ue_id);
+  AssertFatal(UE, "did not find UE with RNTI %04x, but UE Context Setup Failed not implemented\n", req->gNB_DU_ue_id);
 
   NR_CellGroupConfig_t *new_CellGroup = clone_CellGroupConfig(UE->CellGroup);
 
@@ -612,7 +612,7 @@ void ue_context_modification_refuse(const f1ap_ue_context_modif_refuse_t *refuse
   for (int i = 0; i < NR_NB_RA_PROC_MAX; i++) {
     NR_RA_t *ra = &cc->ra[i];
     if (ra->rnti == UE->rnti)
-      nr_clear_ra_proc(0, CC_id, 0 /* frame */, ra);
+      nr_clear_ra_proc(ra);
   }
   NR_SCHED_UNLOCK(&mac->sched_lock);
 
@@ -715,7 +715,7 @@ void dl_rrc_message_transfer(const f1ap_dl_rrc_message_t *dl_rrc)
     mac_remove_nr_ue(mac, *dl_rrc->old_gNB_DU_ue_id);
     pthread_mutex_unlock(&mac->sched_lock);
     nr_rlc_remove_ue(dl_rrc->gNB_DU_ue_id);
-    nr_rlc_update_rnti(*dl_rrc->old_gNB_DU_ue_id, dl_rrc->gNB_DU_ue_id);
+    nr_rlc_update_id(*dl_rrc->old_gNB_DU_ue_id, dl_rrc->gNB_DU_ue_id);
     instance_t f1inst = get_f1_gtp_instance();
     if (f1inst >= 0) // we actually use F1-U
       gtpv1u_update_ue_id(f1inst, *dl_rrc->old_gNB_DU_ue_id, dl_rrc->gNB_DU_ue_id);

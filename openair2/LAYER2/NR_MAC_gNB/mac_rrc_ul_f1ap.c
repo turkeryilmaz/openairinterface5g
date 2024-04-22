@@ -29,7 +29,7 @@
 
 #include "mac_rrc_ul.h"
 
-static f1ap_net_config_t read_DU_IP_config(const eth_params_t *f1_params)
+static f1ap_net_config_t read_DU_IP_config(const eth_params_t* f1_params, const char *f1u_ip_addr)
 {
   f1ap_net_config_t nc = {0};
 
@@ -37,16 +37,17 @@ static f1ap_net_config_t read_DU_IP_config(const eth_params_t *f1_params)
   nc.CU_f1_ip_address.ipv4 = 1;
   strcpy(nc.CU_f1_ip_address.ipv4_address, f1_params->remote_addr);
   nc.CUport = f1_params->remote_portd;
-  LOG_I(GNB_APP,
-        "FIAP: CU_ip4_address in DU %p, strlen %d\n",
-        nc.CU_f1_ip_address.ipv4_address,
-        (int)strlen(f1_params->remote_addr));
 
-  nc.DU_f1_ip_address.ipv6 = 0;
-  nc.DU_f1_ip_address.ipv4 = 1;
-  strcpy(nc.DU_f1_ip_address.ipv4_address, f1_params->my_addr);
+  nc.DU_f1c_ip_address.ipv6 = 0;
+  nc.DU_f1c_ip_address.ipv4 = 1;
+  strcpy(nc.DU_f1c_ip_address.ipv4_address, f1_params->my_addr);
+  nc.DU_f1u_ip_address = strdup(f1u_ip_addr);
   nc.DUport = f1_params->my_portd;
-  LOG_I(GNB_APP, "FIAP: DU_ip4_address in DU %p, strlen %ld\n", nc.DU_f1_ip_address.ipv4_address, strlen(f1_params->my_addr));
+  LOG_I(F1AP,
+        "F1-C DU IPaddr %s, connect to F1-C CU %s, binding GTP to %s\n",
+        nc.DU_f1c_ip_address.ipv4_address,
+        nc.CU_f1_ip_address.ipv4_address,
+        nc.DU_f1u_ip_address);
 
   // sctp_in_streams/sctp_out_streams are given by SCTP layer
   return nc;
@@ -73,17 +74,17 @@ static void f1_setup_request_f1ap(const f1ap_setup_req_t *req)
     if (req->cell[n].sys_info) {
       f1ap_gnb_du_system_info_t *orig_sys_info = req->cell[n].sys_info;
       f1ap_gnb_du_system_info_t *copy_sys_info = calloc(1, sizeof(*copy_sys_info));
-      AssertFatal(copy_sys_info != NULL, "out of memory\n");
+      AssertFatal(copy_sys_info, "out of memory\n");
       f1ap_setup->cell[n].sys_info = copy_sys_info;
 
       copy_sys_info->mib = calloc(orig_sys_info->mib_length, sizeof(uint8_t));
-      AssertFatal(copy_sys_info->mib != NULL, "out of memory\n");
+      AssertFatal(copy_sys_info->mib, "out of memory\n");
       memcpy(copy_sys_info->mib, orig_sys_info->mib, orig_sys_info->mib_length);
       copy_sys_info->mib_length = orig_sys_info->mib_length;
 
       if (orig_sys_info->sib1_length > 0) {
         copy_sys_info->sib1 = calloc(orig_sys_info->sib1_length, sizeof(uint8_t));
-        AssertFatal(copy_sys_info->sib1 != NULL, "out of memory\n");
+        AssertFatal(copy_sys_info->sib1, "out of memory\n");
         memcpy(copy_sys_info->sib1, orig_sys_info->sib1, orig_sys_info->sib1_length);
         copy_sys_info->sib1_length = orig_sys_info->sib1_length;
       }
@@ -91,7 +92,7 @@ static void f1_setup_request_f1ap(const f1ap_setup_req_t *req)
   }
   memcpy(f1ap_setup->rrc_ver, req->rrc_ver, sizeof(req->rrc_ver));
 
-  F1AP_DU_REGISTER_REQ(msg).net_config = read_DU_IP_config(&RC.nrmac[0]->eth_params_n);
+  F1AP_DU_REGISTER_REQ(msg).net_config = read_DU_IP_config(&RC.nrmac[0]->eth_params_n, RC.nrmac[0]->f1u_addr);
 
   itti_send_msg_to_task(TASK_DU_F1, 0, msg);
 }
@@ -180,26 +181,21 @@ static void ue_context_modification_required_f1ap(const f1ap_ue_context_modif_re
     f1ap_msg->du_to_cu_rrc_information = calloc(1, sizeof(*f1ap_msg->du_to_cu_rrc_information));
     AssertFatal(f1ap_msg->du_to_cu_rrc_information != NULL, "out of memory\n");
     du_to_cu_rrc_information_t *du2cu = f1ap_msg->du_to_cu_rrc_information;
-    AssertFatal(required->du_to_cu_rrc_information->cellGroupConfig != NULL
-                    && required->du_to_cu_rrc_information->cellGroupConfig_length > 0,
+    AssertFatal(required->du_to_cu_rrc_information->cellGroupConfig != NULL && required->du_to_cu_rrc_information->cellGroupConfig_length > 0,
                 "cellGroupConfig is mandatory\n");
     du2cu->cellGroupConfig_length = required->du_to_cu_rrc_information->cellGroupConfig_length;
     du2cu->cellGroupConfig = malloc(du2cu->cellGroupConfig_length * sizeof(*du2cu->cellGroupConfig));
     AssertFatal(du2cu->cellGroupConfig != NULL, "out of memory\n");
     memcpy(du2cu->cellGroupConfig, required->du_to_cu_rrc_information->cellGroupConfig, du2cu->cellGroupConfig_length);
-    AssertFatal(
-        required->du_to_cu_rrc_information->measGapConfig == NULL && required->du_to_cu_rrc_information->measGapConfig_length == 0,
-        "not handled yet\n");
-    AssertFatal(required->du_to_cu_rrc_information->requestedP_MaxFR1 == NULL
-                    && required->du_to_cu_rrc_information->requestedP_MaxFR1_length == 0,
-                "not handled yet\n");
+    AssertFatal(required->du_to_cu_rrc_information->measGapConfig == NULL && required->du_to_cu_rrc_information->measGapConfig_length == 0, "not handled yet\n");
+    AssertFatal(required->du_to_cu_rrc_information->requestedP_MaxFR1 == NULL && required->du_to_cu_rrc_information->requestedP_MaxFR1_length == 0, "not handled yet\n");
   }
   f1ap_msg->cause = required->cause;
   f1ap_msg->cause_value = required->cause_value;
   itti_send_msg_to_task(TASK_DU_F1, 0, msg);
 }
 
-static void ue_context_release_request_f1ap(const f1ap_ue_context_release_req_t *req)
+static void ue_context_release_request_f1ap(const f1ap_ue_context_release_req_t* req)
 {
   MessageDef *msg = itti_alloc_new_message(TASK_MAC_GNB, 0, F1AP_UE_CONTEXT_RELEASE_REQ);
   f1ap_ue_context_release_req_t *f1ap_msg = &F1AP_UE_CONTEXT_RELEASE_REQ(msg);
