@@ -29,6 +29,7 @@
 #include "nfapi/open-nFAPI/nfapi/public_inc/nfapi_interface.h"
 #include "nfapi/open-nFAPI/nfapi/public_inc/nfapi_nr_interface.h"
 #include "fapi_nr_l1.h"
+#include "nfapi.h"
 #include "common/utils/LOG/log.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "PHY/INIT/nr_phy_init.h"
@@ -1022,28 +1023,32 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
         srs_indication->rnti = srs_pdu->rnti;
 
 	uint8_t N_ap = 1<<srs_pdu->num_ant_ports;
+	int16_t srs_toa_ns[N_ap];
 	
         start_meas(&gNB->srs_timing_advance_stats);
         srs_indication->timing_advance_offset = srs_est >= 0 ? nr_est_timing_advance_srs(frame_parms, N_ap, srs_estimated_channel_time[0]) : 0xFFFF;
         stop_meas(&gNB->srs_timing_advance_stats);
-        srs_indication->timing_advance_offset_nsec = srs_est >= 0 ? nr_est_toa_ns_srs(frame_parms, N_ap, srs_estimated_channel_freq[0]) : 0xFFFF;
+        srs_indication->timing_advance_offset_nsec = srs_est >= 0 ? nr_est_toa_ns_srs(frame_parms, N_ap, srs_estimated_channel_freq[0], srs_toa_ns) : 0xFFFF;
 
 	  //(int16_t)((((int32_t)srs_indication->timing_advance_offset - 31) * ((int32_t)TC_NSEC_x32768)) >> 15) : 0xFFFF;
         switch (srs_pdu->srs_parameters_v4.usage) {
           case 0:
             LOG_W(NR_PHY, "SRS report was not requested by MAC\n");
             return 0;
-          case 1 << NR_SRS_ResourceSet__usage_beamManagement:
+          case 1 << NFAPI_NR_SRS_usage_beamManagement:
             srs_indication->srs_usage = NR_SRS_ResourceSet__usage_beamManagement;
             break;
-          case 1 << NR_SRS_ResourceSet__usage_codebook:
+          case 1 << NFAPI_NR_SRS_usage_codebook:
             srs_indication->srs_usage = NR_SRS_ResourceSet__usage_codebook;
             break;
-          case 1 << NR_SRS_ResourceSet__usage_nonCodebook:
+          case 1 << NFAPI_NR_SRS_usage_nonCodebook:
             srs_indication->srs_usage = NR_SRS_ResourceSet__usage_nonCodebook;
             break;
-          case 1 << NR_SRS_ResourceSet__usage_antennaSwitching:
+          case 1 << NFAPI_NR_SRS_usage_antennaSwitching:
             srs_indication->srs_usage = NR_SRS_ResourceSet__usage_antennaSwitching;
+            break;
+	  case 1 << NFAPI_NR_SRS_usage_localization: //bit 4 is reserved in the standard
+            srs_indication->srs_usage = NFAPI_NR_SRS_usage_localization;
             break;
           default:
             LOG_E(NR_PHY, "Invalid srs_pdu->srs_parameters_v4.usage %i\n", srs_pdu->srs_parameters_v4.usage);
@@ -1149,6 +1154,18 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
             LOG_W(NR_PHY, "PHY procedures for this SRS usage are not implemented yet!\n");
             break;
 
+	  case NFAPI_NR_SRS_usage_localization: {
+	    // this is a custom usage not in the standard
+	    // we send Timing advance offset in nanoseconds for each TRP (= antenna)
+
+	    uint8_t *pWritePackedMessage = (uint8_t*) report_tlv->value;
+	    uint8_t *end = (uint8_t*) report_tlv->value + sizeof(report_tlv->value);
+
+	    for (int p_index = 0; p_index < N_ap; p_index++) {
+	      report_tlv->length += push16(srs_toa_ns[p_index],&pWritePackedMessage,end);
+	    }
+	    break;
+	  }  
           default:
             AssertFatal(1 == 0, "Invalid SRS usage\n");
         }

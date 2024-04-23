@@ -1222,7 +1222,24 @@ void handle_nr_srs_measurements(const module_id_t module_id,
 
   if (srs_ind->rnti == NON_UE_ASSOCIATED_SRS_DUMMY_RNTI) {
     LOG_I(NR_MAC, "Received Non-UE associated SRS with ToA %d (ns)\n",srs_ind->timing_advance_offset_nsec);
-    nrmac->meas_pos_info.toa_ns = srs_ind->timing_advance_offset_nsec;
+    nrmac->meas_pos_info.toa_ns[0] = srs_ind->timing_advance_offset_nsec;
+
+    if (srs_ind->srs_usage != NFAPI_NR_SRS_usage_localization) {
+      LOG_W(NR_MAC,"received SRS indication with NON_UE_ASSOCIATED but SRS usage not for localization");
+    } else {
+
+      uint32_t *pReadPackedMessage   = srs_ind->report_tlv.value;
+      uint32_t *endReadPackedMessage = srs_ind->report_tlv.value+srs_ind->report_tlv.length;
+      uint16_t bytesRead = 0;
+
+      memset(nrmac->meas_pos_info.toa_ns, 0, sizeof(nrmac->meas_pos_info.toa_ns));
+
+      for (int p_index = 0; p_index < srs_ind->report_tlv.length/2; p_index++) {
+	bytesRead += pull16(&pReadPackedMessage, &nrmac->meas_pos_info.toa_ns[p_index], endReadPackedMessage);
+      }
+    }
+      
+
 
     f1ap_measurement_req_t *req = nrmac->f1ap_meas_req;
     /* response has same type as request... */
@@ -1265,7 +1282,7 @@ void handle_nr_srs_measurements(const module_id_t module_id,
   nfapi_srs_report_tlv_t *report_tlv = &srs_ind->report_tlv;
 
   switch (srs_ind->srs_usage) {
-    case NR_SRS_ResourceSet__usage_beamManagement: {
+    case NFAPI_NR_SRS_usage_beamManagement: {
       nfapi_nr_srs_beamforming_report_t nr_srs_bf_report;
       unpack_nr_srs_beamforming_report(report_tlv->value,
                                        report_tlv->length,
@@ -1313,7 +1330,7 @@ void handle_nr_srs_measurements(const module_id_t module_id,
       break;
     }
 
-    case NR_SRS_ResourceSet__usage_codebook: {
+    case NFAPI_NR_SRS_usage_codebook: {
       nfapi_nr_srs_normalized_channel_iq_matrix_t nr_srs_channel_iq_matrix;
       unpack_nr_srs_normalized_channel_iq_matrix(report_tlv->value,
                                                  report_tlv->length,
@@ -1369,8 +1386,8 @@ void handle_nr_srs_measurements(const module_id_t module_id,
       break;
     }
 
-    case NR_SRS_ResourceSet__usage_nonCodebook:
-    case NR_SRS_ResourceSet__usage_antennaSwitching:
+    case NFAPI_NR_SRS_usage_nonCodebook:
+    case NFAPI_NR_SRS_usage_antennaSwitching:
       LOG_W(NR_MAC, "MAC procedures for this SRS usage are not implemented yet!\n");
       break;
 

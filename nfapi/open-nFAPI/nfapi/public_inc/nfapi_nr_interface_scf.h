@@ -1730,6 +1730,14 @@ typedef struct {
   uint32_t value[16384];                // tag=0: Only the most significant bytes of the size indicated by ‘length’ field are valid. Remaining bytes are zero padded to the nearest 32-bit bit boundary; Tag=2 Offset from the end of the control portion of the message to the payload is in the value field. Occupies 32-bits.
 } nfapi_srs_report_tlv_t;
 
+typedef enum{
+  NFAPI_NR_SRS_usage_beamManagement	= 0,
+  NFAPI_NR_SRS_usage_codebook	= 1,
+  NFAPI_NR_SRS_usage_nonCodebook	= 2,
+  NFAPI_NR_SRS_usage_antennaSwitching	= 3,
+  NFAPI_NR_SRS_usage_localization = 4
+} nfapi_nr_srs_usage_type_e;
+
 typedef struct {
   uint32_t handle;                      // The handle passed to the PHY in the the UL_TTI.request SRS PDU.
   uint16_t rnti;                        // The RNTI passed to the PHY in the UL_TTI.request SRS PDU. Value: 1 -> 65535.
