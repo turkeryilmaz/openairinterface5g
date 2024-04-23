@@ -969,8 +969,6 @@ uint8_t do_RRCSetupComplete_IAB(uint8_t *buffer,
     *v1610_ies->iab_NodeIndication_r16 = NR_RRCSetupComplete_v1610_IEs__iab_NodeIndication_r16_true;
     // --------------------------
 
-
-
     if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
         xer_fprint(stdout, &asn_DEF_NR_UL_DCCH_Message, (void *)&ul_dcch_msg);
     }

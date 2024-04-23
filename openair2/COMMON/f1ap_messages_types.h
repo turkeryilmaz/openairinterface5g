@@ -356,6 +356,84 @@ typedef struct f1ap_srb_to_be_setup_s {
   uint8_t        lcid;
 } f1ap_srb_to_be_setup_t;
 
+/* [IAB] related structures -- */
+typedef struct f1ap_iPHeaderInformation_s{
+  union destinationIABTNLAddress{
+    uint32_t ipv4Address;
+    // ipv6Address;
+    // ipv6Prefix;
+  };
+  enum {
+    ipv4Address,
+    ipv6Address,
+    ipv6Prefix
+  } destinationIABTNLAddress_type;
+  uint8_t *dsInformationList;
+  int infoList_length;
+  uint32_t iPv6FlowLabel;
+}f1ap_iPHeaderInformation_t;
+
+typedef struct f1ap_bAPRoutingID_s{
+  uint16_t bAPAddress;
+  uint16_t bAPPathID;
+}f1ap_bAPRoutingID_t;
+
+typedef struct f1ap_EgressBHRLCCHItem_s{
+  uint16_t nextHopBAPAddress;
+  uint16_t bHRLCChannelID;
+}f1ap_EgressBHRLCCHItem_t;
+
+typedef struct f1ap_bHInfo_s{
+  f1ap_bAPRoutingID_t bAProutingID;
+  f1ap_EgressBHRLCCHItem_t *egressBHRLCCHList;
+  int egressList_length;
+}f1ap_bHInfo_t;
+
+typedef struct f1ap_iPtolayer2TrafficMappingInfo_Item_s{
+  uint32_t mappingInformationIndex;
+  f1ap_iPHeaderInformation_t iPHeaderInformation;
+  f1ap_bHInfo_t bHInfo;
+}f1ap_iPtolayer2TrafficMappingInfo_Item_t;
+
+typedef struct f1ap_bAPlayerBHRLCchannelMappingInfo_Item_s{
+  uint32_t mappingInformationIndex;
+  uint16_t priorHopBAPAddress;
+  uint32_t ingressbHRLCChannelID;
+  uint16_t nextHopBAPAddress;
+  uint32_t egressbHRLCChannelID;
+}f1ap_bAPlayerBHRLCchannelMappingInfo_Item_t;
+
+typedef struct traffic_mapping_info_s{
+  union {
+    struct{
+      f1ap_iPtolayer2TrafficMappingInfo_Item_t *iPtolayer2TrafficMappingInfoToAdd;
+      int add_length;
+      uint32_t *iPtolayer2TrafficMappingInfoToRemove;
+      int remove_length;
+    }iPtolayer2TrafficMappingInfo;
+    struct{
+      f1ap_bAPlayerBHRLCchannelMappingInfo_Item_t *bAPlayerBHRLCchannelMappingInfoToAdd;
+      int add_length;
+      uint32_t *bAPlayerBHRLCchannelMappingInfoToRemove;
+      int remove_length;
+    }bAPlayerBHRLCchannelMappingInfo;
+  };
+  enum  {
+    iPtolayer2TrafficMappingInfo,
+    bAPlayerBHRLCchannelMappingInfo
+  } type;
+}traffic_mapping_info_t;
+
+typedef struct f1ap_bhchannel_to_be_setup_s {
+  long           bhch_id;
+  /* TODO: f1ap_qos_flow_level_qos_parameters_t bhch_qos; */
+  rlc_mode_t     rlc_mode;
+  long           is_bap_Ctrl_PDU_Channel;
+  traffic_mapping_info_t trafficMappingInfo;
+} f1ap_bhchannel_to_be_setup_t;
+
+/* -- [IAB] end of related structures */
+
 typedef struct f1ap_rb_failed_to_be_setup_s {
   long           rb_id;
 } f1ap_rb_failed_to_be_setup_t;
@@ -385,6 +463,7 @@ typedef struct du_to_cu_rrc_information_s {
 typedef enum QoS_information_e {
   NG_RAN_QoS    = 0,
   EUTRAN_QoS    = 1,
+  bHRLCCH_QoS   = 2,
 } QoS_information_t;
 
 typedef enum ReconfigurationCompl_e {
@@ -423,7 +502,44 @@ typedef struct f1ap_ue_context_setup_s {
   ReconfigurationCompl_t ReconfigComplOutcome;
   uint8_t *rrc_container;
   int      rrc_container_length;
-} f1ap_ue_context_setup_t, f1ap_ue_context_modif_req_t, f1ap_ue_context_modif_resp_t;
+} f1ap_ue_context_setup_t, f1ap_ue_context_modif_resp_t;
+
+typedef struct f1ap_ue_context_modif_req_s {
+  uint32_t gNB_CU_ue_id;
+  uint32_t gNB_DU_ue_id;
+  // SpCell Info
+  f1ap_plmn_t plmn;
+  uint64_t nr_cellid;
+  uint8_t servCellIndex;
+  uint8_t *cellULConfigured;
+  uint32_t servCellId;
+  cu_to_du_rrc_information_t *cu_to_du_rrc_information;
+  uint8_t  cu_to_du_rrc_information_length;
+  //uint8_t *du_to_cu_rrc_information;
+  du_to_cu_rrc_information_t *du_to_cu_rrc_information;
+  uint32_t  du_to_cu_rrc_information_length;
+  f1ap_drb_to_be_setup_t *drbs_to_be_setup;
+  uint8_t  drbs_to_be_setup_length;
+  f1ap_drb_to_be_setup_t *drbs_to_be_modified;
+  uint8_t  drbs_to_be_modified_length;
+  QoS_information_t QoS_information_type;
+  uint8_t  drbs_failed_to_be_setup_length;
+  f1ap_rb_failed_to_be_setup_t *drbs_failed_to_be_setup;
+  f1ap_srb_to_be_setup_t *srbs_to_be_setup;
+  uint8_t  srbs_to_be_setup_length;
+  uint8_t  srbs_failed_to_be_setup_length;
+  uint8_t drbs_to_be_released_length;
+  f1ap_drb_to_be_released_t *drbs_to_be_released;
+  f1ap_rb_failed_to_be_setup_t *srbs_failed_to_be_setup;
+  ReconfigurationCompl_t ReconfigComplOutcome;
+  uint8_t *rrc_container;
+  int      rrc_container_length;
+
+  // [IAB] BH RLC channels
+  f1ap_bhchannel_to_be_setup_t *bhchannels_to_be_setup;
+  uint8_t bhchannels_to_be_setup_length;
+
+} f1ap_ue_context_modif_req_t;
 
 typedef enum F1ap_Cause_e {
   F1AP_CAUSE_NOTHING,  /* No components present */

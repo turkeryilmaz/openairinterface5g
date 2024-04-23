@@ -3748,7 +3748,7 @@ PositioningMeasurementRequestIEs F1AP-PROTOCOL-IES ::= {
 	{ ID id-TRP-MeasurementRequestList				CRITICALITY reject	TYPE TRP-MeasurementRequestList					PRESENCE mandatory}|
 	{ ID id-PosReportCharacteristics				CRITICALITY reject	TYPE PosReportCharacteristics				PRESENCE mandatory}|
 	{ ID id-PosMeasurementPeriodicity				CRITICALITY reject	TYPE PosMeasurementPeriodicity					PRESENCE conditional }|
-	-- The above IE shall be present if the PosReportCharacteristics IE is set to “periodic” --
+	-- The above IE shall be present if the PosReportCharacteristics IE is set to ï¿½periodicï¿½ --
 	{ ID id-PosMeasurementQuantities				CRITICALITY reject	TYPE PosMeasurementQuantities					PRESENCE mandatory}|
 	{ ID id-SFNInitialisationTime					CRITICALITY ignore	TYPE SFNInitialisationTime	PRESENCE optional	}|
 	{ ID id-SRSConfiguration						CRITICALITY ignore	TYPE SRSConfiguration								PRESENCE optional}|
@@ -4223,7 +4223,7 @@ E-CIDMeasurementInitiationRequest-IEs F1AP-PROTOCOL-IES ::= {
 	{ ID id-RAN-UE-MeasurementID			CRITICALITY reject	TYPE RAN-UE-MeasurementID				PRESENCE mandatory	}|
 	{ ID id-E-CID-ReportCharacteristics		CRITICALITY reject	TYPE E-CID-ReportCharacteristics		PRESENCE mandatory	}|
 	{ ID id-E-CID-MeasurementPeriodicity	CRITICALITY reject	TYPE E-CID-MeasurementPeriodicity		PRESENCE conditional	}|
--- The above IE shall be present if the E-CID-ReportCharacteristics IE is set to “periodic” –-
+-- The above IE shall be present if the E-CID-ReportCharacteristics IE is set to ï¿½periodicï¿½ ï¿½-
 	{ ID id-E-CID-MeasurementQuantities		CRITICALITY reject	TYPE E-CID-MeasurementQuantities		PRESENCE mandatory},
 	...
 }
@@ -6854,7 +6854,8 @@ IPtolayer2TrafficMappingInfoList ::= SEQUENCE (SIZE(1..maxnoofMappingEntries)) O
 IPtolayer2TrafficMappingInfo-Item ::= SEQUENCE {
 	mappingInformationIndex		MappingInformationIndex,		
 	iPHeaderInformation			IPHeaderInformation,
-	bHInfo	 					BHInfo,	iE-Extensions				ProtocolExtensionContainer { { IPtolayer2TrafficMappingInfo-ItemExtIEs} } OPTIONAL,
+	bHInfo	 					BHInfo,	
+	iE-Extensions				ProtocolExtensionContainer { { IPtolayer2TrafficMappingInfo-ItemExtIEs} } OPTIONAL,
 	...
 }
 
