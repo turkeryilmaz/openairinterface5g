@@ -2424,7 +2424,7 @@ static void rrc_CU_process_measurement_request(f1ap_measurement_req_t *req)
   gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
   // f1_ue_data_t ue_data = cu_get_f1_ue_data(UE->rrc_ue_id);
   req->nrppa_msg_info.ue_rnti = UE->rnti;*/
-  req->nrppa_msg_info.ue_rnti =-1;
+  req->nrppa_msg_info.ue_rnti =NON_UE_ASSOCIATED_SRS_DUMMY_RNTI;
   // req->gNB_DU_ue_id = ue_data.secondary_ue;
   // req->gNB_CU_ue_id = UE->rrc_ue_id;
 

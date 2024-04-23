@@ -828,7 +828,7 @@ void positioning_measurement_request(const f1ap_measurement_req_t *req)
 
   // move this to the response function
   /* response has same type as request... */
-  f1ap_measurement_resp_t resp = {
+  /*f1ap_measurement_resp_t resp = {
       .transaction_id = req->transaction_id,
       .lmf_measurement_id = req->lmf_measurement_id,
       .ran_measurement_id = req->ran_measurement_id,
@@ -839,11 +839,12 @@ void positioning_measurement_request(const f1ap_measurement_req_t *req)
       .nrppa_msg_info.ue_rnti = req->nrppa_msg_info.ue_rnti,
       .nrppa_msg_info.routing_id_buffer = req->nrppa_msg_info.routing_id_buffer,
       .nrppa_msg_info.routing_id_length = req->nrppa_msg_info.routing_id_length,
-  };
+  };*/
 
   // call the response handler
   gNB_MAC_INST *mac = RC.nrmac[req->nrppa_msg_info.instance];
-  mac->mac_rrc.positioning_measurement_response(&resp);
+  //mac->mac_rrc.positioning_measurement_response(&resp);
+  mac->f1ap_meas_req = req;
 }
 
 void positioning_measurement_update(const f1ap_measurement_update_t *update)

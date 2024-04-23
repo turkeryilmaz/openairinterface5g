@@ -1242,6 +1242,33 @@ void handle_nr_srs_measurements(const module_id_t module_id,
   LOG_I(NR_MAC, "srs_ind->report_type = %i\n", srs_ind->report_type);
 #endif
 
+  if (srs_ind->rnti == NON_UE_ASSOCIATED_SRS_DUMMY_RNTI) {
+    LOG_I(NR_MAC, "Received Non-UE associated SRS with ToA %d (ns)\n",srs_ind->timing_advance_offset_nsec);
+    nrmac->meas_pos_info.toa_ns = srs_ind->timing_advance_offset_nsec;
+
+    f1ap_measurement_req_t *req = nrmac->f1ap_meas_req;
+    /* response has same type as request... */
+    f1ap_measurement_resp_t resp = {
+      .transaction_id = req->transaction_id,
+      .lmf_measurement_id = req->lmf_measurement_id,
+      .ran_measurement_id = req->ran_measurement_id,
+      .nrppa_msg_info.nrppa_transaction_id = req->nrppa_msg_info.nrppa_transaction_id,
+      .nrppa_msg_info.instance = req->nrppa_msg_info.instance,
+      .nrppa_msg_info.gNB_ue_ngap_id = req->nrppa_msg_info.gNB_ue_ngap_id,
+      .nrppa_msg_info.amf_ue_ngap_id = req->nrppa_msg_info.amf_ue_ngap_id,
+      .nrppa_msg_info.ue_rnti = req->nrppa_msg_info.ue_rnti,
+      .nrppa_msg_info.routing_id_buffer = req->nrppa_msg_info.routing_id_buffer,
+      .nrppa_msg_info.routing_id_length = req->nrppa_msg_info.routing_id_length,
+    };
+
+    
+    //call the response handler
+    nrmac->mac_rrc.positioning_measurement_response(&resp);
+
+    //for the moment this is all we need so return
+    return;
+  }
+  
   NR_UE_info_t *UE = find_nr_UE(&RC.nrmac[module_id]->UE_info, srs_ind->rnti);
   if (!UE) {
     LOG_W(NR_MAC, "Could not find UE for RNTI %04x\n", srs_ind->rnti);
@@ -1255,9 +1282,6 @@ void handle_nr_srs_measurements(const module_id_t module_id,
     return;
   }
 
-  UE->ue_pos_info.toa_ns = srs_ind->timing_advance_offset_nsec;
-  UE->ue_pos_info.frame= frame;
-  UE->ue_pos_info.slot=slot;
 
   gNB_MAC_INST *nr_mac = RC.nrmac[module_id];
   NR_mac_stats_t *stats = &UE->mac_stats;

@@ -703,10 +703,12 @@ static void positioning_activation_response(const f1ap_positioning_activation_re
       // IE 9.2.2 CriticalityDiagnostics (O)
       // IE  SystemFrameNumber (O) 
       // here we will send the preconfigured info as changing on fly is not possible
-      f1ap_msg->system_frame_number=UE->ue_pos_info.frame; // TODO retireve the actual values and fill it
+      //f1ap_msg->system_frame_number=UE->ue_pos_info.frame; // TODO retireve the actual values and fill it
+      f1ap_msg->system_frame_number=0; 
       // IE  SlotNumber (O)
       // here we will send the preconfigured info as changing on fly is not possible
-      f1ap_msg->slot_number=UE->ue_pos_info.slot; // TODO retireve the actual values and fill it
+      //f1ap_msg->slot_number=UE->ue_pos_info.slot; // TODO retireve the actual values and fill it
+      f1ap_msg->slot_number=0;
     }
   }
 itti_send_msg_to_task(TASK_RRC_GNB, 0, msg);
@@ -880,11 +882,15 @@ static void positioning_measurement_response(const f1ap_measurement_resp_t *resp
       f1ap_measured_results_value_t *MeasResVal= &posMeasRes->pos_measurement_result_item->measuredResultsValue;
       MeasResVal->present = f1ap_measured_results_value_pr_ul_rtoa;
       MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.present = f1ap_ulrtoameas_pr_k1;
-      MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k1 =0;
-          //(int32_t)(((int64_t)UE->ue_pos_info.toa_ns * (int64_t)T_inv) / T_ns_inv);
+      if (mac->meas_pos_info.toa_ns >=0) 
+        MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k1 =
+          (int32_t)(((int64_t)mac->meas_pos_info.toa_ns * (int64_t)T_inv) / T_ns_inv);
+      else
+        MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k1 = 0;
+
       LOG_I(MAC,
             "Extracting uL_RTOA info of MeasurementResponse for ue rnti= %04x, k1=%d \n",
-            resp->nrppa_msg_info.ue_rnti,0);
+            resp->nrppa_msg_info.ue_rnti,MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k1);
       // TODO IE timeStamp.measurementTime
       posMeasRes->pos_measurement_result_item->timeStamp.systemFrameNumber = mac->frame;
       // TODO IE timeStamp.slotIndex
