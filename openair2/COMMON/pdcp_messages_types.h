@@ -67,6 +67,10 @@ typedef struct RrcDcchDataInd_s {
   uint8_t      eNB_index; // LG: needed in UE
 } RrcDcchDataInd;
 
+typedef struct RrcDcchDataResp_s {
+  /* nothing */
+} RrcDcchDataResp;
+
 typedef struct RrcDcchDataCopyInd_s {
   uint8_t dcch_index;
   uint32_t sdu_size;

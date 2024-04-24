@@ -1779,6 +1779,8 @@ void *rrc_nrue(void *notUsed)
 			  NR_RRC_DCCH_DATA_IND(msg_p).sdu_size,
 			  NR_RRC_DCCH_DATA_IND(msg_p).gNB_index,
 			  &NR_RRC_DCCH_DATA_IND(msg_p).msg_integrity);
+    MessageDef *msg = itti_alloc_new_message(TASK_PDCP_UE, 0, NR_RRC_DCCH_DATA_RESP);
+    itti_send_msg_to_task(TASK_PDCP_UE, rrc->ue_id, msg);
     break;
 
   case NAS_KENB_REFRESH_REQ:

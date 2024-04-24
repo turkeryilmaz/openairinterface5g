@@ -281,8 +281,10 @@ static void do_pdcp_data_ind(const protocol_ctxt_t *const ctxt_pP,
   ue = nr_pdcp_manager_get_ue(nr_pdcp_ue_manager, UEid);
   rb = nr_pdcp_get_rb(ue, rb_id, srb_flagP);
 
+  int ret = -1;
+
   if (rb != NULL) {
-    rb->recv_pdu(rb, (char *)sdu_buffer, sdu_buffer_size);
+    ret = rb->recv_pdu(rb, (char *)sdu_buffer, sdu_buffer_size);
   } else {
     LOG_E(PDCP, "pdcp_data_ind: no RB found (rb_id %ld, srb_flag %d)\n", rb_id, srb_flagP);
   }
@@ -290,6 +292,14 @@ static void do_pdcp_data_ind(const protocol_ctxt_t *const ctxt_pP,
   nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
 
   free(sdu_buffer);
+
+  /* UE: wait for RRC to indicate the processing of the message */
+  if (ctxt_pP->enb_flag == 0 && srb_flagP && ret == 0) {
+    MessageDef *Resp;
+    itti_receive_msg(TASK_PDCP_UE, &Resp);
+    AssertFatal(ITTI_MSG_ID(Resp) == NR_RRC_DCCH_DATA_RESP, "bad response from NR RRC\n");
+    itti_free(ITTI_MSG_ORIGIN_ID(Resp), Resp);
+  }
 }
 
 static void *pdcp_data_ind_thread(void *_)
