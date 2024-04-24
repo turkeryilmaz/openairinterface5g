@@ -358,11 +358,11 @@ typedef struct f1ap_srb_to_be_setup_s {
 
 /* [IAB] related structures -- */
 typedef struct f1ap_iPHeaderInformation_s{
-  union destinationIABTNLAddress{
-    uint32_t ipv4Address;
+  union DestinationIABTNLAddress{
+    in_addr_t ipv4Address;
     // ipv6Address;
     // ipv6Prefix;
-  };
+  } destinationIABTNLAddress;
   enum {
     ipv4Address,
     ipv6Address,
@@ -419,17 +419,18 @@ typedef struct traffic_mapping_info_s{
     }bAPlayerBHRLCchannelMappingInfo;
   };
   enum  {
-    iPtolayer2TrafficMappingInfo,
-    bAPlayerBHRLCchannelMappingInfo
+    mapping_info_iPtolayer2TrafficMappingInfo,
+    mapping_info_bAPlayerBHRLCchannelMappingInfo
   } type;
 }traffic_mapping_info_t;
 
 typedef struct f1ap_bhchannel_to_be_setup_s {
-  long           bhch_id;
+  uint16_t           bHRLCChannelID;
   /* TODO: f1ap_qos_flow_level_qos_parameters_t bhch_qos; */
   rlc_mode_t     rlc_mode;
-  long           is_bap_Ctrl_PDU_Channel;
+  int            is_bap_Ctrl_PDU_Channel; // should be ENUMERATED {true, ...}
   traffic_mapping_info_t trafficMappingInfo;
+  bool           is_trafficMappingInfo_set;
 } f1ap_bhchannel_to_be_setup_t;
 
 /* -- [IAB] end of related structures */

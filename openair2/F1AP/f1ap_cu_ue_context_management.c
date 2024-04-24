@@ -1596,8 +1596,9 @@ int CU_send_UE_CONTEXT_MODIFICATION_REQUEST(sctp_assoc_t assoc_id, f1ap_ue_conte
       F1AP_BHChannels_ToBeSetupMod_Item_t *bhchs_toBeSetupMod_item=
           &bhchs_toBeSetupMod_item_ies->value.choice.BHChannels_ToBeSetupMod_Item;
       
-      /* 31.1.1 bHRLCChannelID */
-      bhchs_toBeSetupMod_item->bHRLCChannelID = f1ap_ue_context_modification_req->bhchannels_to_be_setup[i].bhch_id;      
+      /* 31.1.1 bHRLCChannelID */ 
+      NR_BHRLCCHANNELID_TO_BIT_STRING(f1ap_ue_context_modification_req->bhchannels_to_be_setup[i].bHRLCChannelID,
+      &bhchs_toBeSetupMod_item->bHRLCChannelID);
 
       /* 31.1.2 bHQoSInformation CHOICE*/
       if(f1ap_ue_context_modification_req->QoS_information_type == bHRLCCH_QoS){
@@ -1613,29 +1614,28 @@ int CU_send_UE_CONTEXT_MODIFICATION_REQUEST(sctp_assoc_t assoc_id, f1ap_ue_conte
       }else{
         /* cPTrafficType */
         bhchs_toBeSetupMod_item->bHQoSInformation.present = F1AP_BHQoSInformation_PR_cPTrafficType;
-        *bhchs_toBeSetupMod_item->bHQoSInformation.choice.cPTrafficType = 1; // integer (hardcoded for now)
+        bhchs_toBeSetupMod_item->bHQoSInformation.choice.cPTrafficType = 1; // integer (hardcoded for now)
       }
 
       /* 31.1.3 rLCmode */
-      if(f1ap_ue_context_modification_req->bhchannels_to_be_setup[i].rlc_mode != NULL){
-        bhchs_toBeSetupMod_item->rLCmode = calloc(1, sizeof(F1AP_RLCMode_t));
-        bhchs_toBeSetupMod_item->rLCmode = f1ap_ue_context_modification_req->bhchannels_to_be_setup[i].rlc_mode;
-      }
+      bhchs_toBeSetupMod_item->rLCmode = f1ap_ue_context_modification_req->bhchannels_to_be_setup[i].rlc_mode;
+    
 
       /* 31.1.4 bAPCtrlPDUChannel */
-      if(f1ap_ue_context_modification_req->bhchannels_to_be_setup[i].is_bap_Ctrl_PDU_Channel != NULL){
-        bhchs_toBeSetupMod_item->bAPCtrlPDUChannel = calloc(1, sizeof(long));
-        bhchs_toBeSetupMod_item->bAPCtrlPDUChannel = f1ap_ue_context_modification_req->bhchannels_to_be_setup[i].is_bap_Ctrl_PDU_Channel;
+      if(f1ap_ue_context_modification_req->bhchannels_to_be_setup[i].is_bap_Ctrl_PDU_Channel == 1){ // 1 being true 
+        bhchs_toBeSetupMod_item->bAPCtrlPDUChannel = calloc(1, sizeof(F1AP_BAPCtrlPDUChannel_t));
+        bhchs_toBeSetupMod_item->bAPCtrlPDUChannel = F1AP_BAPCtrlPDUChannel_true;
       }
+      
 
       /* 31.1.5 trafficMappingInfo */
-      if(f1ap_ue_context_modification_req->bhchannels_to_be_setup[i].trafficMappingInfo != NULL){
+      if(f1ap_ue_context_modification_req->bhchannels_to_be_setup[i].is_trafficMappingInfo_set){
         bhchs_toBeSetupMod_item->trafficMappingInfo = calloc(1, sizeof(F1AP_TrafficMappingInfo_t));
-        traffic_mapping_info_t *traffic_mapping_info = f1ap_ue_context_modification_req->bhchannels_to_be_setup[i].trafficMappingInfo;
+        traffic_mapping_info_t traffic_mapping_info = f1ap_ue_context_modification_req->bhchannels_to_be_setup[i].trafficMappingInfo;
         // iPtolayer2TrafficMappingInfo
-        if (traffic_mapping_info.type == iPtolayer2TrafficMappingInfo){
-          bhchs_toBeSetupMod_item->trafficMappingInfo.present = F1AP_TrafficMappingInfo_PR_IPtolayer2TrafficMappingInfo;
-          asn1cCalloc(bhchs_toBeSetupMod_item->trafficMappingInfo.choice.iPtolayer2TrafficMappingInfo, iPToL2Info);
+        if (traffic_mapping_info.type == mapping_info_iPtolayer2TrafficMappingInfo){
+          bhchs_toBeSetupMod_item->trafficMappingInfo->present = F1AP_TrafficMappingInfo_PR_iPtolayer2TrafficMappingInfo;
+          asn1cCalloc(bhchs_toBeSetupMod_item->trafficMappingInfo->choice.iPtolayer2TrafficMappingInfo, iPToL2Info);
           
           if(traffic_mapping_info->iPtolayer2TrafficMappingInfo->iPtolayer2TrafficMappingInfoToAdd != NULL && 
           traffic_mapping_info->iPtolayer2TrafficMappingInfo.add_length > 0){
@@ -1654,8 +1654,8 @@ int CU_send_UE_CONTEXT_MODIFICATION_REQUEST(sctp_assoc_t assoc_id, f1ap_ue_conte
               /* Only IPv4 implemented for now, 
               missing IPv6 address and IPv6 prefix */
               if(this_ip2l2_item->iPHeaderInformation.destinationIABTNLAddress_type == ipv4Address){
-                iPToL2Item->iPHeaderInformation->destinationIABTNLAddress.present = F1AP_IABTNLAddress_pr_iPv4Address;
-                iPToL2Item->iPHeaderInformation->destinationIABTNLAddress.choice.ipv4Address = this_ip2l2_item->iPHeaderInformation->destinationIABTNLAddress.ipv4Address;
+                iPToL2Item->iPHeaderInformation->destinationIABTNLAddress.present = F1AP_IABTNLAddress_PR_iPv4Address;
+                iPToL2Item->iPHeaderInformation->destinationIABTNLAddress.choice.ipv4Address = this_ip2l2_item->iPHeaderInformation.destinationIABTNLAddress.ipv4Address;
               }
 
               if(this_ip2l2_item->iPHeaderInformation->dsInformationList != NULL && 
@@ -1703,7 +1703,7 @@ int CU_send_UE_CONTEXT_MODIFICATION_REQUEST(sctp_assoc_t assoc_id, f1ap_ue_conte
         }          
 
         // bAPlayerBHRLCchannelMappingInfo
-        else if (traffic_mapping_info.type == bAPlayerBHRLCchannelMappingInfo){
+        else if (traffic_mapping_info.type == mapping_info_bAPlayerBHRLCchannelMappingInfo){
           bhchs_toBeSetupMod_item->trafficMappingInfo.present = F1AP_TrafficMappingInfo_PR_BAPlayerBHRLCchannelMappingInfo;
           asn1cCalloc(bhchs_toBeSetupMod_item->trafficMappingInfo.choice.bAPlayerBHRLCchannelMappingInfo, bapBHInfo);
           

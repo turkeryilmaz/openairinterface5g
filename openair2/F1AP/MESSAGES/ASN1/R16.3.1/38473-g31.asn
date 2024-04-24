@@ -6854,8 +6854,7 @@ IPtolayer2TrafficMappingInfoList ::= SEQUENCE (SIZE(1..maxnoofMappingEntries)) O
 IPtolayer2TrafficMappingInfo-Item ::= SEQUENCE {
 	mappingInformationIndex		MappingInformationIndex,		
 	iPHeaderInformation			IPHeaderInformation,
-	bHInfo	 					BHInfo,	
-	iE-Extensions				ProtocolExtensionContainer { { IPtolayer2TrafficMappingInfo-ItemExtIEs} } OPTIONAL,
+	bHInfo	 					BHInfo,	iE-Extensions				ProtocolExtensionContainer { { IPtolayer2TrafficMappingInfo-ItemExtIEs} } OPTIONAL,
 	...
 }
 

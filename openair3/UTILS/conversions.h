@@ -455,6 +455,18 @@ do {                                                    \
     (bITsTRING)->bits_unused = 4;                       \
 } while(0)
 
+/* TS 38.331 BH-RLC-ChannelID
+ * uint16_t to BIT STRING (SIZE(16))
+ */
+#define NR_BHRLCCHANNELID_TO_BIT_STRING(mACRO, bITsTRING)      \
+do {                                                    \
+    (bITsTRING)->buf = calloc(2, sizeof(uint8_t));      \
+    (bITsTRING)->buf[0] = ((mACRO) >> 8) & 0xff;                 \
+    (bITsTRING)->buf[1] = (mACRO) & 0xff;               \
+    (bITsTRING)->size = 2;                              \
+    (bITsTRING)->bits_unused = 0;                       \
+} while(0)
+
 /*
 #define INT16_TO_3_BYTE_BUFFER(x, buf) \
 do {                            \
