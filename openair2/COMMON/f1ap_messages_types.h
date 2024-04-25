@@ -359,7 +359,7 @@ typedef struct f1ap_srb_to_be_setup_s {
 /* [IAB] related structures -- */
 typedef struct f1ap_iPHeaderInformation_s{
   union DestinationIABTNLAddress{
-    in_addr_t ipv4Address;
+    in_addr_t iPv4Address;
     // ipv6Address;
     // ipv6Prefix;
   } destinationIABTNLAddress;
@@ -385,6 +385,7 @@ typedef struct f1ap_EgressBHRLCCHItem_s{
 
 typedef struct f1ap_bHInfo_s{
   f1ap_bAPRoutingID_t bAProutingID;
+  bool is_bAProutingID_set;
   f1ap_EgressBHRLCCHItem_t *egressBHRLCCHList;
   int egressList_length;
 }f1ap_bHInfo_t;
@@ -398,9 +399,9 @@ typedef struct f1ap_iPtolayer2TrafficMappingInfo_Item_s{
 typedef struct f1ap_bAPlayerBHRLCchannelMappingInfo_Item_s{
   uint32_t mappingInformationIndex;
   uint16_t priorHopBAPAddress;
-  uint32_t ingressbHRLCChannelID;
+  uint16_t ingressbHRLCChannelID;
   uint16_t nextHopBAPAddress;
-  uint32_t egressbHRLCChannelID;
+  uint16_t egressbHRLCChannelID;
 }f1ap_bAPlayerBHRLCchannelMappingInfo_Item_t;
 
 typedef struct traffic_mapping_info_s{

@@ -455,17 +455,82 @@ do {                                                    \
     (bITsTRING)->bits_unused = 4;                       \
 } while(0)
 
+// [IAB] Related macros
+
 /* TS 38.331 BH-RLC-ChannelID
  * uint16_t to BIT STRING (SIZE(16))
  */
 #define NR_BHRLCCHANNELID_TO_BIT_STRING(mACRO, bITsTRING)      \
 do {                                                    \
     (bITsTRING)->buf = calloc(2, sizeof(uint8_t));      \
-    (bITsTRING)->buf[0] = ((mACRO) >> 8) & 0xff;                 \
+    (bITsTRING)->buf[0] = ((mACRO) >> 8) & 0xff;        \
     (bITsTRING)->buf[1] = (mACRO) & 0xff;               \
     (bITsTRING)->size = 2;                              \
     (bITsTRING)->bits_unused = 0;                       \
 } while(0)
+
+/* MappingInformationIndex
+ * uint32_t to BIT STRING (SIZE(26))
+ */
+#define NR_MAPPINGINFORMATIONINDEX_TO_BIT_STRING(mACRO, bITsTRING)      \
+do {                                                    \
+    (bITsTRING)->buf = calloc(4, sizeof(uint8_t));      \
+    (bITsTRING)->buf[0] = ((mACRO) >> 18) & 0xff;       \
+    (bITsTRING)->buf[1] = ((mACRO) >> 10) & 0xff;       \
+    (bITsTRING)->buf[2] = ((mACRO) >> 2) & 0xff;        \
+    (bITsTRING)->buf[3] = ((mACRO) & 0x03) << 6;        \
+    (bITsTRING)->size = 4;                              \
+    (bITsTRING)->bits_unused = 6;                       \
+} while(0)
+
+
+#define IABTNL_ADRESS_IPv4_TO_BIT_STRING(mACRO, bITsTRING)  \
+do {                                                    \
+    (bITsTRING)->buf = calloc(4, sizeof(uint8_t));      \
+    (bITsTRING)->buf[3] = (mACRO) >> 24 & 0xFF;         \
+    (bITsTRING)->buf[2] = (mACRO) >> 16 & 0xFF;         \
+    (bITsTRING)->buf[1] = (mACRO) >> 8 & 0xFF;          \
+    (bITsTRING)->buf[0] = (mACRO) &  0xFF;              \
+    (bITsTRING)->size = 4;                              \
+    (bITsTRING)->bits_unused = 0;                       \
+} while(0)
+
+/* DSCP
+ * uint8_t to BIT STRING (SIZE(6))
+ */
+#define DSCP_TO_BIT_STRING(mACRO, bITsTRING)      \
+do {                                                   \
+    (bITsTRING)->buf = calloc(1, sizeof(uint8_t));     \
+    (bITsTRING)->buf[0] = ((mACRO) & 0x3f) << 2;              \
+    (bITsTRING)->size = 1;                             \
+    (bITsTRING)->bits_unused = 2;                      \
+} while(0)
+
+/* BAPAddress
+ * uint16_t to BIT STRING (SIZE(10))
+ */
+#define NR_BAPADDRESS_TO_BIT_STRING(mACRO, bITsTRING)      \
+do {                                                    \
+    (bITsTRING)->buf = calloc(2, sizeof(uint8_t));      \
+    (bITsTRING)->buf[0] = ((mACRO) >> 8) & 0xff;        \
+    (bITsTRING)->buf[1] = ((mACRO) & 0xff) << 6;               \
+    (bITsTRING)->size = 2;                              \
+    (bITsTRING)->bits_unused = 6;                       \
+} while(0)
+
+/* BAPPathID
+ * uint16_t to BIT STRING (SIZE(10))
+ */
+#define NR_BAPPATHID_TO_BIT_STRING(mACRO, bITsTRING)      \
+do {                                                    \
+    (bITsTRING)->buf = calloc(2, sizeof(uint8_t));      \
+    (bITsTRING)->buf[0] = ((mACRO) >> 8) & 0xff;        \
+    (bITsTRING)->buf[1] = ((mACRO) & 0xff) << 6;               \
+    (bITsTRING)->size = 2;                              \
+    (bITsTRING)->bits_unused = 6;                       \
+} while(0)
+
+// [IAB] End related macros
 
 /*
 #define INT16_TO_3_BYTE_BUFFER(x, buf) \
