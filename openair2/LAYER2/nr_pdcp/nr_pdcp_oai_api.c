@@ -152,7 +152,7 @@ static void init_nr_rlc_data_req_queue(void)
     exit(1);
   }*/
 
-  threadCreate(&t,rlc_data_req_thread,NULL,"rlc_data_req_thread",7,OAI_PRIORITY_RT_MAX-1);
+  threadCreate(&t,rlc_data_req_thread,NULL,"rlc_data_req_thread",-1,OAI_PRIORITY_RT_MAX-1);
 }
 
 static void enqueue_rlc_data_req(const protocol_ctxt_t *const ctxt_pP,
@@ -519,7 +519,7 @@ static void start_pdcp_tun_ue(void)
     LOG_E(PDCP, "%s:%d:%s: fatal\n", __FILE__, __LINE__, __FUNCTION__);
     exit(1);
   }*/
-  threadCreate(&t,ue_tun_read_thread,NULL,"ue_tun_read_thread",7,OAI_PRIORITY_RT_MAX-1);
+  threadCreate(&t,ue_tun_read_thread,NULL,"ue_tun_read_thread",-1,OAI_PRIORITY_RT_MAX-1);
 }
 
 /****************************************************************************/
