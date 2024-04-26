@@ -11,7 +11,6 @@
 
 #include "stddef.h"
 #include "nfapi_interface.h"
-#include "nfapi_nr_interface.h"
 
 #define NFAPI_NR_MAX_NB_CCE_AGGREGATION_LEVELS 5
 #define NFAPI_NR_MAX_NB_TCI_STATES_PDCCH 64
@@ -25,13 +24,6 @@
 #define NFAPI_MAX_NUM_CB 8
 
 // Extension to the generic structures for single tlv values
-
-
-typedef enum {
-  NFAPI_NR_DMRS_TYPE1=0,
-  NFAPI_NR_DMRS_TYPE2
-} nfapi_nr_dmrs_type_e;
-
 
 typedef struct {
   /// Value: 0 -> 1, 0: Payload is carried directly in the value field, 1: Pointer to payload is in the value field 
@@ -328,6 +320,7 @@ typedef struct
 #define NFAPI_NR_CONFIG_SLOT_CONFIG_TAG 0x1027
 
 #define NFAPI_NR_CONFIG_RSSI_MEASUREMENT_TAG 0x1028
+#define NFAPI_NR_CONFIG_TDD_TABLE 0x1035
 
 //table 3-21
 typedef struct 
@@ -1467,11 +1460,9 @@ typedef enum {
 
 //table 3-58
 #define NFAPI_NR_MAX_TX_REQUEST_TLV 2
-typedef struct {
-  uint16_t PDU_length; // SCF 222.10.02 The total length (in bytes) of the PDU description and  PDU data, without the padding bytes.
-                       // (2 bytes PDU_Length + 2 bytes PDU_Index + 4 bytes num_TLV + TLV size ( 2 bytes tag + 2 bytes length +
-                       // value size without padding))
-                       // TBS + 12
+typedef struct
+{
+  uint32_t PDU_length;
   uint16_t PDU_index;
   uint32_t num_TLV;
   nfapi_nr_tx_data_request_tlv_t TLVs[NFAPI_NR_MAX_TX_REQUEST_TLV];
@@ -1505,7 +1496,7 @@ typedef struct
   uint32_t handle;
   uint16_t rnti;
   uint8_t  harq_id;
-  uint16_t pdu_length;
+  uint32_t pdu_length;// For Aerial, RX_DATA.indication PDULength is changed to 32 bit field
   uint8_t  ul_cqi;
   uint16_t timing_advance;//Timing advance 𝑇𝐴 measured for the UE [TS 38.213, Section 4.2] NTA_new = NTA_old + (TA − 31) ⋅ 16 ⋅ 64⁄2μ Value: 0 → 63 0xffff should be set if this field is invalid
   uint16_t rssi;
@@ -1730,14 +1721,6 @@ typedef struct {
   uint32_t value[16384];                // tag=0: Only the most significant bytes of the size indicated by ‘length’ field are valid. Remaining bytes are zero padded to the nearest 32-bit bit boundary; Tag=2 Offset from the end of the control portion of the message to the payload is in the value field. Occupies 32-bits.
 } nfapi_srs_report_tlv_t;
 
-typedef enum{
-  NFAPI_NR_SRS_usage_beamManagement	= 0,
-  NFAPI_NR_SRS_usage_codebook	= 1,
-  NFAPI_NR_SRS_usage_nonCodebook	= 2,
-  NFAPI_NR_SRS_usage_antennaSwitching	= 3,
-  NFAPI_NR_SRS_usage_localization = 4
-} nfapi_nr_srs_usage_type_e;
-
 typedef struct {
   uint32_t handle;                      // The handle passed to the PHY in the the UL_TTI.request SRS PDU.
   uint16_t rnti;                        // The RNTI passed to the PHY in the UL_TTI.request SRS PDU. Value: 1 -> 65535.
@@ -1776,7 +1759,7 @@ typedef struct{
   uint8_t  avg_rssi;
   uint8_t  avg_snr;
   uint8_t  num_preamble;
-  nfapi_nr_prach_indication_preamble_t* preamble_list;
+  nfapi_nr_prach_indication_preamble_t preamble_list[64];
 
 }nfapi_nr_prach_indication_pdu_t;
 

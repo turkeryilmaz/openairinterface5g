@@ -519,7 +519,6 @@ target_link_libraries(shlib_loader PRIVATE CONFIG_LIB)
 ##########################################################
 
 add_boolean_option(ENABLE_LDPC_T2 OFF "Build support for LDPC Offload to T2 library" OFF)
-set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/usr/local/lib/x86_64-linux-gnu/pkgconfig")
 if (ENABLE_LDPC_T2)
   pkg_check_modules(LIBDPDK_T2 REQUIRED libdpdk=20.11.9)
   find_library(PMD_T2 NAMES rte_baseband_accl_ldpc HINTS ${LIBDPDK_T2_LIBRARY_DIRS})
@@ -739,6 +738,7 @@ target_link_libraries(SCHED_UE_LIB PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
 
 set(SCHED_SRC_NR_UE
   ${OPENAIR1_DIR}/SCHED_NR_UE/phy_procedures_nr_ue.c
+  ${OPENAIR1_DIR}/SCHED_NR_UE/phy_procedures_nr_ue_sl.c
   ${OPENAIR1_DIR}/SCHED_NR_UE/fapi_nr_ue_l1.c
   ${OPENAIR1_DIR}/SCHED_NR_UE/phy_frame_config_nr_ue.c
   ${OPENAIR1_DIR}/SCHED_NR_UE/harq_nr.c
@@ -746,7 +746,6 @@ set(SCHED_SRC_NR_UE
 )
 add_library(SCHED_NR_UE_LIB ${SCHED_SRC_NR_UE})
 target_link_libraries(SCHED_NR_UE_LIB PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
-
 
 # nFAPI
 #################################
@@ -1107,8 +1106,11 @@ set(PHY_SRC_UE
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/sss_nr.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/cic_filter_nr.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_initial_sync.c
+  ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_initial_sync_sl.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_ue_rf_helpers.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_pbch.c
+  ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_psbch_rx.c
+  ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_psbch_tx.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_dlsch_demodulation.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_ulsch_coding.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_dlsch_decoding.c
@@ -1255,7 +1257,7 @@ set(NR_SDAP_SRC
   ${OPENAIR2_DIR}/SDAP/nr_sdap/nr_sdap.c
   ${OPENAIR2_DIR}/SDAP/nr_sdap/nr_sdap_entity.c
   )
-
+  
 set(L2_SRC
   ${PDCP_DIR}/pdcp.c
   ${PDCP_DIR}/pdcp_fifo.c
@@ -1457,8 +1459,7 @@ target_link_libraries(L2 PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
 
 if(E2_AGENT)
   target_link_libraries(L2 PUBLIC e2_agent e2_agent_arg e2_ran_func_du_cucp_cuup)
-  target_compile_definitions(L2 PRIVATE E2_AGENT)
-  target_compile_definitions(L2 PRIVATE ${E2AP_VERSION} ${KPM_VERSION})
+  target_compile_definitions(L2 PRIVATE ${E2AP_VERSION} ${KPM_VERSION} E2_AGENT)
 endif()
 
 
@@ -1484,8 +1485,7 @@ target_link_libraries(e1_if PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs asn1_f1ap
 target_link_libraries(L2_NR PRIVATE f1ap x2ap s1ap ngap nr_rrc e1ap nr_rlc)
 if(E2_AGENT)
   target_link_libraries(L2_NR PUBLIC e2_agent e2_agent_arg e2_ran_func_du_cucp_cuup)
-  target_compile_definitions(L2_NR PRIVATE ${E2AP_VERSION} ${KPM_VERSION})
-  target_compile_definitions(L2_NR PRIVATE E2_AGENT)
+  target_compile_definitions(L2_NR PRIVATE ${E2AP_VERSION} ${KPM_VERSION} E2_AGENT)
 endif()
 
 add_library(L2_LTE_NR
@@ -2004,8 +2004,7 @@ target_link_libraries(lte-softmodem PRIVATE ${T_LIB})
 target_link_libraries(lte-softmodem PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
 if(E2_AGENT)
-  target_compile_definitions(lte-softmodem PRIVATE E2_AGENT)
-  target_compile_definitions(lte-softmodem PRIVATE ${E2AP_VERSION} ${KPM_VERSION})
+  target_compile_definitions(lte-softmodem PRIVATE ${E2AP_VERSION} ${KPM_VERSION} E2_AGENT)
 endif()
 
 add_executable(oairu
@@ -2090,6 +2089,8 @@ add_executable(nr-softmodem
   ${OPENAIR1_DIR}/PHY/TOOLS/phy_scope_interface.c
   )
 
+include(${OPENAIR_DIR}/nfapi/CMakeLists.txt)
+
 target_link_libraries(nr-softmodem PRIVATE
   -Wl,--start-group
   UTIL HASHTABLE SCTP_CLIENT SCHED_LIB SCHED_RU_LIB SCHED_NR_LIB PHY_NR PHY PHY_COMMON PHY_NR_COMMON PHY_RU GTPV1U SECURITY
@@ -2103,7 +2104,7 @@ target_link_libraries(nr-softmodem PRIVATE ${T_LIB})
 target_link_libraries(nr-softmodem PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 target_link_libraries(nr-softmodem PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 if(E2_AGENT)
-  target_compile_definitions(nr-softmodem PRIVATE ${E2AP_VERSION} ${KPM_VERSION})
+  target_compile_definitions(nr-softmodem PRIVATE ${E2AP_VERSION} ${KPM_VERSION} E2_AGENT)
 endif()
 
 
@@ -2116,10 +2117,6 @@ endif()
 # force the generation of ASN.1 so that we don't need to wait during the build
 target_link_libraries(nr-softmodem PRIVATE
   asn1_lte_rrc asn1_nr_rrc asn1_s1ap asn1_ngap asn1_m2ap asn1_m3ap asn1_x2ap asn1_f1ap asn1_lpp asn1_nrppa)
-if(E2_AGENT)
-  target_compile_definitions(nr-softmodem PRIVATE E2_AGENT)
-endif()
-
 
 add_executable(nr-cuup
   executables/nr-cuup.c
@@ -2265,6 +2262,22 @@ target_link_libraries(nr_pbchsim PRIVATE
 )
 target_link_libraries(nr_pbchsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
+add_executable(nr_psbchsim
+  ${OPENAIR1_DIR}/SIMULATION/NR_PHY/psbchsim.c
+  ${OPENAIR1_DIR}/SIMULATION/NR_PHY/nr_dummy_functions.c
+  ${OPENAIR_DIR}/common/utils/nr/nr_common.c
+  ${OPENAIR_DIR}/executables/softmodem-common.c
+  ${OPENAIR2_DIR}/RRC/NAS/nas_config.c
+  ${NR_UE_RRC_DIR}/rrc_nsa.c
+  ${NFAPI_USER_DIR}/nfapi.c
+  ${NFAPI_USER_DIR}/gnb_ind_vars.c
+  ${PHY_INTERFACE_DIR}/queue_t.c
+  )
+target_link_libraries(nr_psbchsim PRIVATE
+  -Wl,--start-group UTIL SIMU SIMU_ETH PHY_COMMON PHY_NR_COMMON PHY_NR PHY_NR_UE SCHED_NR_LIB SCHED_NR_UE_LIB MAC_UE_NR MAC_NR_COMMON CONFIG_LIB L2_NR -lz -Wl,--end-group
+  m pthread ${T_LIB} ITTI dl shlib_loader
+  )
+target_link_libraries(nr_psbchsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
 #PUCCH ---> Prashanth
 add_executable(nr_pucchsim

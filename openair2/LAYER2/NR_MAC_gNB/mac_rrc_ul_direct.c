@@ -45,17 +45,17 @@ static void f1_setup_request_direct(const f1ap_setup_req_t *req)
     if (req->cell[n].sys_info) {
       f1ap_gnb_du_system_info_t *orig_sys_info = req->cell[n].sys_info;
       f1ap_gnb_du_system_info_t *copy_sys_info = calloc(1, sizeof(*copy_sys_info));
-      AssertFatal(copy_sys_info != NULL, "out of memory\n");
+      AssertFatal(copy_sys_info, "out of memory\n");
       f1ap_msg->cell[n].sys_info = copy_sys_info;
 
       copy_sys_info->mib = calloc(orig_sys_info->mib_length, sizeof(uint8_t));
-      AssertFatal(copy_sys_info->mib != NULL, "out of memory\n");
+      AssertFatal(copy_sys_info->mib, "out of memory\n");
       memcpy(copy_sys_info->mib, orig_sys_info->mib, orig_sys_info->mib_length);
       copy_sys_info->mib_length = orig_sys_info->mib_length;
 
       if (orig_sys_info->sib1_length > 0) {
         copy_sys_info->sib1 = calloc(orig_sys_info->sib1_length, sizeof(uint8_t));
-        AssertFatal(copy_sys_info->sib1 != NULL, "out of memory\n");
+        AssertFatal(copy_sys_info->sib1, "out of memory\n");
         memcpy(copy_sys_info->sib1, orig_sys_info->sib1, orig_sys_info->sib1_length);
         copy_sys_info->sib1_length = orig_sys_info->sib1_length;
       }
@@ -724,7 +724,6 @@ static void positioning_activation_failure(const f1ap_positioning_activation_fai
 static void trp_information_response(const f1ap_trp_information_resp_t *resp)
 {
   LOG_I(MAC, "UL Prepring TRPInformationResponse transaction_id=%d\n", resp->transaction_id);
-  //AssertFatal(false, " Not Implemented \n");
   MessageDef *msg = itti_alloc_new_message(TASK_MAC_GNB, 0, F1AP_TRP_INFORMATION_RESP);
   f1ap_trp_information_resp_t *f1ap_msg = &F1AP_TRP_INFORMATION_RESP(msg);
 
@@ -740,7 +739,7 @@ static void trp_information_response(const f1ap_trp_information_resp_t *resp)
   f1ap_msg->nrppa_msg_info.routing_id_length = resp->nrppa_msg_info.routing_id_length;
   
   
-  // IE TRP Information List (M)
+  /*// IE TRP Information List (M)
   // TODO fill pdu using f1ap_trp_information_resp_t *resp
   {
     // TODO Retrieve TRP information from RAN Context
@@ -779,11 +778,11 @@ static void trp_information_response(const f1ap_trp_information_resp_t *resp)
         //rspItem->choice.nG_RAN_CGI.pLMN_Identity.size
         // TODO adeel retrive relevent info and add
         
-        /*trpinfo_item->choice.pCI_NR = 0; // long dummy value
-        trpinfo_item->choice.sSBinformation = NULL; // dummy values
-        trpinfo_item->choice.nG_RAN_CGI = NULL; // dummy values
-        trpinfo_item->choice.pRSConfiguration = NULL; // dummy values
-        trpinfo_item->choice.geographicalCoordinates = NULL; // dummy values*/
+        //trpinfo_item->choice.pCI_NR = 0; // long dummy value
+        //trpinfo_item->choice.sSBinformation = NULL; // dummy values
+        //trpinfo_item->choice.nG_RAN_CGI = NULL; // dummy values
+        //trpinfo_item->choice.pRSConfiguration = NULL; // dummy values
+        //trpinfo_item->choice.geographicalCoordinates = NULL; // dummy values
         if (k < nb_tRPInfoTypes-1){
           rspItem++;
         }

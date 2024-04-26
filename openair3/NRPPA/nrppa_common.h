@@ -202,6 +202,12 @@
 #include "NRPPA_MeasurementBeamInfo.h"
 #include "NRPPA_SystemFrameNumber.h"
 #include "NRPPA_SlotNumber.h"
+#include "NRPPA_TRPReferencePointType.h"
+#include "NRPPA_ReferencePoint.h"
+#include "NRPPA_TRPPositionReferenced.h"
+#include "NRPPA_RelativeGeodeticLocation.h"
+#include "NRPPA_RelativeCartesianLocation.h"
+#include "NRPPA_TRPPositionDefinitionType.h"
 
 /* END: ad**l todo add all nrppa ASN genrated header files here*/
 

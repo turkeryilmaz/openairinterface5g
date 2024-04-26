@@ -873,7 +873,7 @@ int main(int argc, char **argv)
   asn1cFreeStruc(asn_DEF_NR_CellGroupConfig, UE_CellGroup);
 
   UE_mac->state = UE_CONNECTED;
-  UE_mac->ra.ra_state = RA_SUCCEEDED;
+  UE_mac->ra.ra_state = nrRA_SUCCEEDED;
 
   nr_phy_data_t phy_data = {0};
   fapi_nr_dl_config_request_t dl_config = {.sfn = frame, .slot = slot};
@@ -917,6 +917,11 @@ int main(int argc, char **argv)
     csv_file = fopen(filename_csv, "a");
     if (csv_file == NULL) {
       printf("Can't open file \"%s\", errno %d\n", filename_csv, errno);
+      free(s_re);
+      free(s_im);
+      free(r_re);
+      free(r_im);
+      free(txdata);
       return 1;
     }
     // adding name of parameters into file
@@ -959,7 +964,6 @@ int main(int argc, char **argv)
       //multipath channel
       //multipath_channel(gNB2UE,s_re,s_im,r_re,r_im,frame_length_complex_samples,0);
 
-      UE->rx_offset=0;
       UE_proc.frame_rx = frame;
       UE_proc.nr_slot_rx = slot;
       UE_proc.gNB_id = 0;
@@ -1219,8 +1223,7 @@ int main(int argc, char **argv)
       printStatIndent3(&gNB->dlsch_rate_matching_stats,"DLSCH Rate Mataching time");
       printStatIndent3(&gNB->dlsch_interleaving_stats,  "DLSCH Interleaving time");
       printStatIndent2(&gNB->dlsch_modulation_stats,"DLSCH modulation time");
-      printStatIndent2(&gNB->dlsch_scrambling_stats,  "DLSCH scrambling time");
-      printStatIndent2(&gNB->dlsch_layer_mapping_stats, "DLSCH Layer Mapping time");
+      printStatIndent2(&gNB->dlsch_scrambling_stats, "DLSCH scrambling time");
       printStatIndent2(&gNB->dlsch_resource_mapping_stats, "DLSCH Resource Mapping time");
       printStatIndent2(&gNB->dlsch_precoding_stats,"DLSCH Layer Precoding time");
 
