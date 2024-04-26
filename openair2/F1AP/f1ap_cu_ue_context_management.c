@@ -53,6 +53,7 @@
 #include "F1AP_MappingInformationIndex.h"
 #include "F1AP_MappingInformationtoRemove.h"
 #include "F1AP_BAPlayerBHRLCchannelMappingInfoList.h"
+#include "F1AP_ProtocolExtensionContainer.h"
 
 static void setQos(F1AP_NonDynamic5QIDescriptor_t **toFill)
 {
@@ -1457,12 +1458,36 @@ int CU_send_UE_CONTEXT_MODIFICATION_REQUEST(sctp_assoc_t assoc_id, f1ap_ue_conte
         uLUPTNLInformation_ToBeSetup_Item->uLUPTNLInformation.present = F1AP_UPTransportLayerInformation_PR_gTPTunnel;
         asn1cCalloc( uLUPTNLInformation_ToBeSetup_Item->uLUPTNLInformation.choice.gTPTunnel,
                    gTPTunnel);
-        /* 12.3.1.1.1 transportLayerAddress */
+        /* 12.1.3.1.1.1 transportLayerAddress */
         TRANSPORT_LAYER_ADDRESS_IPv4_TO_BIT_STRING(f1ap_ue_context_modification_req->drbs_to_be_setup[i].up_ul_tnl[j].tl_address,
                           &gTPTunnel->transportLayerAddress);
-        /* 12.3.1.1.2 gTP_TEID */
+        /* 12.1.3.1.1.2 gTP_TEID */
         INT32_TO_OCTET_STRING(f1ap_ue_context_modification_req->drbs_to_be_setup[i].up_ul_tnl[j].teid,
                 &gTPTunnel->gTP_TEID);
+        
+        /* 12.1.3.2 BHInfo [IAB] */
+        if(f1ap_ue_context_modification_req->drbs_to_be_setup[i].up_ul_tnl[j].is_bh_info_set){
+          f1ap_bHInfo_t *bh_info =  &f1ap_ue_context_modification_req->drbs_to_be_setup[i].up_ul_tnl[j].bh_info;
+          asn1cSequenceAdd(uLUPTNLInformation_ToBeSetup_Item->iE_Extensions, F1AP_ULUPTNLInformation_ToBeSetup_ItemExtIEs_t,  ulupinfo_ie);
+          ulupinfo_ie->id                     = F1AP_ProtocolIE_ID_id_BHInfo;
+          ulupinfo_ie->criticality            = F1AP_Criticality_ignore;
+          ulupinfo_ie->extensionValue.present = F1AP_ULUPTNLInformation_ToBeSetup_ItemExtIEs__extensionValue_PR_BHInfo;
+
+          F1AP_BHInfo_t *Bhinfo = &ulupinfo_ie->extensionValue.choice.BHInfo;
+          if(bh_info->is_bAProutingID_set){
+            Bhinfo->bAProutingID = calloc(1, sizeof(F1AP_BAPRoutingID_t));
+            NR_BAPADDRESS_TO_BIT_STRING(bh_info->bAProutingID.bAPAddress, &Bhinfo->bAProutingID->bAPAddress);
+            NR_BAPPATHID_TO_BIT_STRING(bh_info->bAProutingID.bAPPathID, &Bhinfo->bAProutingID->bAPPathID);
+          }
+          if(bh_info->egressList_length > 0){
+            Bhinfo->egressBHRLCCHList = calloc(bh_info->egressList_length, sizeof(F1AP_EgressBHRLCCHItem_t));
+            for(int k = 0; k < bh_info->egressList_length; k++){
+              asn1cSequenceAdd(Bhinfo->egressBHRLCCHList->list, F1AP_EgressBHRLCCHItem_t, egressLink);
+              NR_BAPADDRESS_TO_BIT_STRING(bh_info->egressBHRLCCHList[k].nextHopBAPAddress, &egressLink->nextHopBAPAddress);
+              NR_BHRLCCHANNELID_TO_BIT_STRING(bh_info->egressBHRLCCHList[k].bHRLCChannelID, &egressLink->bHRLCChannelID);
+            }
+          }
+        }
       }
       /* 12.1.4 rLCMode */
       /* TODO use rlc_mode from f1ap_drb_to_be_setup */

@@ -1545,11 +1545,34 @@ static int handle_rrcSetupComplete(const protocol_ctxt_t *const ctxt_pP,
   if (setup_complete_ies->nonCriticalExtension != NULL){
     if (*setup_complete_ies->nonCriticalExtension->iab_NodeIndication_r16 == NR_RRCSetupComplete_v1610_IEs__iab_NodeIndication_r16_true){
       LOG_I(NR_RRC, "IAB Node Indication received and set to true\n");
-      UE->is_iab_mt = true;
+      UE->is_iab_mt = true; // not used
       // Call UE Context modification request.
+      gNB_RRC_INST *rrc = RC.nrrrc[0];
+      f1_ue_data_t ue_data = cu_get_f1_ue_data(UE->rrc_ue_id);
+      RETURN_IF_INVALID_ASSOC_ID(ue_data);
+      f1ap_ue_context_modif_req_t ue_context_modif_req = {
+        .gNB_CU_ue_id = UE->rrc_ue_id,
+        .gNB_DU_ue_id = ue_data.secondary_ue,
+        .plmn.mcc = rrc->configuration.mcc[0],
+        .plmn.mnc = rrc->configuration.mnc[0],
+        .plmn.mnc_digit_length = rrc->configuration.mnc_digit_length[0],
+        .nr_cellid = rrc->nr_cellid,
+        .servCellId = 0, /* TODO: correct value? */
+        
+      };
+      rrc->mac_rrc.ue_context_modification_request(ue_data.du_assoc_id, &ue_context_modif_req);
+
+      /* if we did not receive any UE Capabilities, let's do that now. It should
+      * only happen on the first time a reconfiguration arrives. Afterwards, we
+      * should have them. If the UE does not give us anything, we will re-request
+      * the capabilities after each reconfiguration, which is a finite number 
+      if (UE->ue_cap_buffer.len == 0) {
+        rrc_gNB_generate_UECapabilityEnquiry(ctxt_pP, ue_context_p);
+      }
+      */
       
     } else{
-      UE->is_iab_mt = false;
+      UE->is_iab_mt = false; // not used
     }
   }
   // -------------------

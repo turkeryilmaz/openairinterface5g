@@ -283,10 +283,34 @@ typedef struct f1ap_ul_rrc_message_s {
   int      rrc_container_length;
 } f1ap_ul_rrc_message_t;
 
+/* [IAB] related structs */
+typedef struct f1ap_bAPRoutingID_s{
+  uint16_t bAPAddress;
+  uint16_t bAPPathID;
+}f1ap_bAPRoutingID_t;
+
+typedef struct f1ap_EgressBHRLCCHItem_s{
+  uint16_t nextHopBAPAddress;
+  uint16_t bHRLCChannelID;
+}f1ap_EgressBHRLCCHItem_t;
+
+typedef struct f1ap_bHInfo_s{
+  f1ap_bAPRoutingID_t bAProutingID;
+  bool is_bAProutingID_set;
+  f1ap_EgressBHRLCCHItem_t *egressBHRLCCHList;
+  int egressList_length;
+}f1ap_bHInfo_t;
+
+/* [IAB] end*/
+
 typedef struct f1ap_up_tnl_s {
   in_addr_t tl_address; // currently only IPv4 supported
   teid_t  teid;
   uint16_t port;
+  // [IAB] info
+  f1ap_bHInfo_t bh_info;
+  bool is_bh_info_set;
+  // ----------
 } f1ap_up_tnl_t;
 
 typedef enum preemption_capability_e {
@@ -372,23 +396,6 @@ typedef struct f1ap_iPHeaderInformation_s{
   int infoList_length;
   uint32_t iPv6FlowLabel;
 }f1ap_iPHeaderInformation_t;
-
-typedef struct f1ap_bAPRoutingID_s{
-  uint16_t bAPAddress;
-  uint16_t bAPPathID;
-}f1ap_bAPRoutingID_t;
-
-typedef struct f1ap_EgressBHRLCCHItem_s{
-  uint16_t nextHopBAPAddress;
-  uint16_t bHRLCChannelID;
-}f1ap_EgressBHRLCCHItem_t;
-
-typedef struct f1ap_bHInfo_s{
-  f1ap_bAPRoutingID_t bAProutingID;
-  bool is_bAProutingID_set;
-  f1ap_EgressBHRLCCHItem_t *egressBHRLCCHList;
-  int egressList_length;
-}f1ap_bHInfo_t;
 
 typedef struct f1ap_iPtolayer2TrafficMappingInfo_Item_s{
   uint32_t mappingInformationIndex;
