@@ -673,7 +673,7 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
     return;
   }
 
-  if (mac->sci_pdu_rx.harq_feedback) {
+  if (mac->sci_pdu_rx.harq_feedback && mac->sl_tx_res_pool->sl_PSFCH_Config_r16 && mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup) {
     NR_SL_PSFCH_Config_r16_t *sl_psfch_config = mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup;
     const uint8_t time_gap[] = {2, 3};
     uint8_t psfch_min_time_gap = time_gap[*sl_psfch_config->sl_MinTimeGapPSFCH_r16];
