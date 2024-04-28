@@ -3610,7 +3610,7 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind) {
       mac->sci2_pdu.csi_req = 0;
       LOG_D(NR_MAC, "%d.%d Scheduling CSI-RS\n", frame, slot);
     }
-    if (mac->sci_pdu_rx.harq_feedback) {
+    if (mac->sci_pdu_rx.harq_feedback &&  mac->sl_tx_res_pool->sl_PSFCH_Config_r16 &&  mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup) {
       NR_SL_PSFCH_Config_r16_t *sl_psfch_config = mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup;
       const uint8_t psfch_periods[] = {0,1,2,4};
       long psfch_period = (sl_psfch_config->sl_PSFCH_Period_r16)
