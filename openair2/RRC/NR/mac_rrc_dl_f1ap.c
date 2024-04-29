@@ -123,6 +123,8 @@ static void ue_context_modification_request_f1ap(sctp_assoc_t assoc_id, const f1
     f1ap_msg->rrc_container_length = req->rrc_container_length;
     memcpy(f1ap_msg->rrc_container, req->rrc_container, req->rrc_container_length);
   }
+
+  // Why is it sending to the CU??
   itti_send_msg_to_task(TASK_CU_F1, 0, msg);
 }
 

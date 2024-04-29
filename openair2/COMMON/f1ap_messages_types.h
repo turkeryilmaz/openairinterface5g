@@ -436,7 +436,7 @@ typedef struct f1ap_bhchannel_to_be_setup_s {
   uint16_t           bHRLCChannelID;
   /* TODO: f1ap_qos_flow_level_qos_parameters_t bhch_qos; */
   rlc_mode_t     rlc_mode;
-  int            is_bap_Ctrl_PDU_Channel; // should be ENUMERATED {true, ...}
+  bool            is_bap_Ctrl_PDU_Channel; // should be ENUMERATED {true, ...}
   traffic_mapping_info_t trafficMappingInfo;
   bool           is_trafficMappingInfo_set;
 } f1ap_bhchannel_to_be_setup_t;
@@ -543,7 +543,6 @@ typedef struct f1ap_ue_context_modif_req_s {
   ReconfigurationCompl_t ReconfigComplOutcome;
   uint8_t *rrc_container;
   int      rrc_container_length;
-
   // [IAB] BH RLC channels
   f1ap_bhchannel_to_be_setup_t *bhchannels_to_be_setup;
   uint8_t bhchannels_to_be_setup_length;

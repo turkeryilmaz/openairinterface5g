@@ -1074,6 +1074,52 @@ int DU_handle_UE_CONTEXT_MODIFICATION_REQUEST(instance_t instance, sctp_assoc_t 
     }
   }
 
+  /* [IAB] related params */
+  F1AP_UEContextModificationRequestIEs_t *ieBhrlc;
+  F1AP_FIND_PROTOCOLIE_BY_ID(F1AP_UEContextModificationRequestIEs_t, ieBhrlc, container,
+                   F1AP_ProtocolIE_ID_id_BHChannels_ToBeSetupMod_List, false);
+  if(ieBhrlc != NULL){
+    f1ap_ue_context_modification_req->bhchannels_to_be_setup_length = ieBhrlc->value.choice.BHChannels_ToBeSetupMod_List.list.count;
+    f1ap_ue_context_modification_req->bhchannels_to_be_setup = calloc(f1ap_ue_context_modification_req->bhchannels_to_be_setup_length,
+                                                              sizeof(f1ap_bhchannel_to_be_setup_t));
+    
+    AssertFatal(f1ap_ue_context_modification_req->bhchannels_to_be_setup,
+          "could not allocate memory for f1ap_ue_context_modification_req->bhchannels_to_be_setup\n");
+
+    for(i = 0; i < f1ap_ue_context_modification_req->bhchannels_to_be_setup_length; i++){
+      f1ap_bhchannel_to_be_setup_t *bhrlc_p = &f1ap_ue_context_modification_req->bhchannels_to_be_setup[i];
+      F1AP_BHChannels_ToBeSetupMod_Item_t *bhrlc_tobesetupmod_item_p =
+          &((F1AP_BHChannels_ToBeSetupMod_ItemIEs_t *)ieBhrlc->value.choice.BHChannels_ToBeSetupMod_List.list.array[i])->value.choice.BHChannels_ToBeSetupMod_Item;
+      BIT_STRING_TO_NR_BHRLCCHANNELID(&bhrlc_tobesetupmod_item_p->bHRLCChannelID, bhrlc_p->bHRLCChannelID);
+
+      switch (bhrlc_tobesetupmod_item_p->rLCmode) {
+      case F1AP_RLCMode_rlc_am:
+        bhrlc_p->rlc_mode = RLC_MODE_AM;
+        break;
+        /*
+      case F1AP_RLCMode_rlc_um:
+        bhrlc_p->rlc_mode = RLC_MODE_UM;
+        */
+      default:
+        bhrlc_p->rlc_mode = RLC_MODE_TM;
+        break;
+      }
+
+      if(bhrlc_tobesetupmod_item_p->bAPCtrlPDUChannel == F1AP_BAPCtrlPDUChannel_true){
+        bhrlc_p->is_bap_Ctrl_PDU_Channel = true;
+      }
+
+      if(bhrlc_tobesetupmod_item_p->trafficMappingInfo != NULL){
+        bhrlc_p->is_trafficMappingInfo_set = true;
+        // TODO: Traffic mapping info configurations
+      }else{
+        bhrlc_p->is_trafficMappingInfo_set = false;
+      }
+    }
+  }
+  /* [IAB] end */
+
+
   ue_context_modification_request(f1ap_ue_context_modification_req);
   return 0;
 }

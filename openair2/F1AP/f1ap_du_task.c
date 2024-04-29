@@ -102,6 +102,7 @@ void *F1AP_DU_task(void *arg) {
     instance_t myInstance=ITTI_MSG_DESTINATION_INSTANCE(msg);
     sctp_assoc_t assoc_id = getCxt(0) != NULL ? getCxt(0)->du.assoc_id : 0;
     LOG_D(F1AP, "DU Task Received %s for instance %ld: sending SCTP messages via assoc_id %d\n", ITTI_MSG_NAME(msg), myInstance, assoc_id);
+    LOG_D(F1AP, "Current Received message %d\n", msg->ittiMsgHeader.messageId);
     switch (ITTI_MSG_ID(msg)) {
       case F1AP_SETUP_REQ:
         AssertFatal(false, "the F1AP_SETUP_REQ should not be received; use the F1AP_DU_REGISTER_REQ instead\n");

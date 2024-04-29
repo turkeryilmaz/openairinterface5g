@@ -99,6 +99,7 @@
 #include "openair2/SDAP/nr_sdap/nr_sdap_entity.h"
 #include "openair2/E1AP/e1ap.h"
 #include "cucp_cuup_if.h"
+#include "openair2/LAYER2/nr_rlc/nr_rlc_entity.h"
 
 #include "BIT_STRING.h"
 #include "assertions.h"
@@ -1550,6 +1551,14 @@ static int handle_rrcSetupComplete(const protocol_ctxt_t *const ctxt_pP,
       gNB_RRC_INST *rrc = RC.nrrrc[0];
       f1_ue_data_t ue_data = cu_get_f1_ue_data(UE->rrc_ue_id);
       RETURN_IF_INVALID_ASSOC_ID(ue_data);
+
+      f1ap_bhchannel_to_be_setup_t bhch_buf[1];
+      bhch_buf[0].bHRLCChannelID = 1;
+      bhch_buf[0].rlc_mode = NR_RLC_AM;
+      bhch_buf[0].is_trafficMappingInfo_set = false;
+
+      f1ap_bhchannel_to_be_setup_t *bh_rlc_channels = bhch_buf;           
+
       f1ap_ue_context_modif_req_t ue_context_modif_req = {
         .gNB_CU_ue_id = UE->rrc_ue_id,
         .gNB_DU_ue_id = ue_data.secondary_ue,
@@ -1557,11 +1566,12 @@ static int handle_rrcSetupComplete(const protocol_ctxt_t *const ctxt_pP,
         .plmn.mnc = rrc->configuration.mnc[0],
         .plmn.mnc_digit_length = rrc->configuration.mnc_digit_length[0],
         .nr_cellid = rrc->nr_cellid,
-        .servCellId = 0, /* TODO: correct value? */
-        
+        .servCellId = 0, /* TODO: correct value? */     
+        .bhchannels_to_be_setup = bh_rlc_channels,
+        .bhchannels_to_be_setup_length = 1
       };
       rrc->mac_rrc.ue_context_modification_request(ue_data.du_assoc_id, &ue_context_modif_req);
-
+      
       /* if we did not receive any UE Capabilities, let's do that now. It should
       * only happen on the first time a reconfiguration arrives. Afterwards, we
       * should have them. If the UE does not give us anything, we will re-request

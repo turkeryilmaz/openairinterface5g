@@ -1660,7 +1660,7 @@ int CU_send_UE_CONTEXT_MODIFICATION_REQUEST(sctp_assoc_t assoc_id, f1ap_ue_conte
     
 
       /* 31.1.4 bAPCtrlPDUChannel */
-      if(f1ap_ue_context_modification_req->bhchannels_to_be_setup[i].is_bap_Ctrl_PDU_Channel == 1){ // 1 being true 
+      if(f1ap_ue_context_modification_req->bhchannels_to_be_setup[i].is_bap_Ctrl_PDU_Channel == true){ // 1 being true 
         bhchs_toBeSetupMod_item->bAPCtrlPDUChannel = calloc(1, sizeof(F1AP_BAPCtrlPDUChannel_t));
         bhchs_toBeSetupMod_item->bAPCtrlPDUChannel = F1AP_BAPCtrlPDUChannel_true;
       }
@@ -1668,6 +1668,7 @@ int CU_send_UE_CONTEXT_MODIFICATION_REQUEST(sctp_assoc_t assoc_id, f1ap_ue_conte
 
       /* 31.1.5 trafficMappingInfo */
       if(f1ap_ue_context_modification_req->bhchannels_to_be_setup[i].is_trafficMappingInfo_set){
+        LOG_I(F1AP, "Mapping Info triggered\n");
         bhchs_toBeSetupMod_item->trafficMappingInfo = calloc(1, sizeof(F1AP_TrafficMappingInfo_t));
         traffic_mapping_info_t traffic_mapping_info = f1ap_ue_context_modification_req->bhchannels_to_be_setup[i].trafficMappingInfo;
         // iPtolayer2TrafficMappingInfo

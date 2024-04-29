@@ -530,6 +530,17 @@ do {                                                    \
     (bITsTRING)->bits_unused = 6;                       \
 } while(0)
 
+/*
+ * BIT STRING (SIZE(16)) to uint16_t
+ */
+#define BIT_STRING_TO_NR_BHRLCCHANNELID(bITsTRING, mACRO) \
+do {                                                      \
+    DevCheck((bITsTRING)->size == 2, (bITsTRING)->size, 2, 0); \
+    DevCheck((bITsTRING)->bits_unused == 0, (bITsTRING)->bits_unused, 0, 0); \
+    mACRO = (((uint16_t) (bITsTRING)->buf[0]) << 8) +     \
+            ((uint16_t) (bITsTRING)->buf[1]);              \
+} while (0)
+
 // [IAB] End related macros
 
 /*
