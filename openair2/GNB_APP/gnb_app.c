@@ -154,6 +154,14 @@ void *gNB_app_task(void *args_p)
       itti_send_msg_to_task(TASK_CUCP_E1, 0, msg);
     }
 
+    if (is_xnap_enabled()) {
+      if (itti_create_task(TASK_CU_XNAP, xnap_task, NULL) < 0) {
+        LOG_E(XNAP, "Create task for XNAP failed\n");
+      }
+    } else {
+      LOG_I(XNAP, "XNAP is disabled.\n");
+    } 
+
     if (node_type == ngran_gNB_CUUP) {
       AssertFatal(false, "To run CU-UP use executable nr-cuup\n");
     }
