@@ -578,7 +578,5 @@ void fill_psfch_pdu(sl_nr_tx_config_psfch_pdu_t *mac_psfch_pdu,
                     sl_nr_tx_config_request_t *tx_config,
                     int num_psfch_symbols);
 
-int get_nRECSI_RS(uint8_t  freq_density,
-                 uint16_t nr_of_rbs);
 #endif
 /** @}*/

@@ -388,6 +388,7 @@ void nr_ulsch_extract_rbs(int rxFSz,
                 csi_rs_rb++;
               }
               free(port_freq_indices);
+              port_freq_indices = NULL;
             }
 
             if (++k >= frame_parms->ofdm_symbol_size) {
@@ -2143,11 +2144,11 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
             csi_params->start_rb,
             csi_params->nr_of_rbs);
       if (phy_data->sl_rx_action == SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH_CSI_RS) {
-        if (ue->csirs_vars[proc->gNB_id]->active == 1) {
+        if (ue->csirs_vars[0]->active == 1) {
           LOG_D(NR_PHY, "%d.%d CSI-RS Received\n", proc->frame_rx, proc->nr_slot_rx);
           nr_slot_fep(ue, frame_parms, proc, symbol, rxdataF, link_type_sl);
           nr_ue_csi_rs_procedures(ue, proc, rxdataF);
-          ue->csirs_vars[proc->gNB_id]->active = 0;
+          ue->csirs_vars[0]->active = 0;
         }
       }
     }

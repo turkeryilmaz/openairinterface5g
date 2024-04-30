@@ -540,6 +540,7 @@ typedef struct {
   NR_SL_BWP_ConfigCommon_r16_t *sl_bwp;
   NR_SL_ResourcePool_r16_t *sl_rx_res_pool;
   NR_SL_ResourcePool_r16_t *sl_tx_res_pool;
+  nr_sl_csi_report_t *sl_csi_report;
 
   bool phy_config_request_sent;
   frame_type_t frame_type;
