@@ -39,6 +39,13 @@ static long get_lcid_from_drbid(int drb_id)
   return drb_id + 3; /* LCID is DRB + 3 */
 }
 
+/* [IAB] related */
+static long get_lcid_from_bhchid(uint16_t bhch_id)
+{
+  return 32 - bhch_id; // Temporary solution to prevent conflicts
+}
+/* [IAB] end */
+
 static long get_lcid_from_srbid(int srb_id)
 {
   return srb_id;
@@ -188,6 +195,42 @@ static int handle_ue_context_drbs_release(int rnti,
   }
   return drbs_len;
 }
+
+/* [IAB] related function */
+static NR_RLC_BearerConfig_t *get_bearerconfig_from_bhch(const f1ap_bhchannel_to_be_setup_t *bhch, long drb_id)
+{
+  const NR_RLC_Config_PR rlc_conf = bhch->rlc_mode == RLC_MODE_UM ? NR_RLC_Config_PR_um_Bi_Directional : NR_RLC_Config_PR_am;
+  long priority = 13; // hardcoded for the moment
+  return get_DRB_RLC_BearerConfig(get_lcid_from_bhchid(bhch->bHRLCChannelID), drb_id, rlc_conf, priority);
+}
+
+static int handle_ue_context_bhchannels_setup(int rnti,
+                                              int bhchs_len,
+                                              const f1ap_bhchannel_to_be_setup_t *req_bhchs,
+                                              f1ap_bhchannel_to_be_setup_t **resp_bhchs,
+                                              NR_CellGroupConfig_t *cellGroupConfig)
+{
+  DevAssert(req_bhchs != NULL && resp_bhchs != NULL && cellGroupConfig != NULL);
+  
+  /* Note: the actual GTP tunnels are created in the F1AP breanch of
+   * ue_context_*_response() */
+  *resp_bhchs = calloc(bhchs_len, sizeof(**resp_bhchs));
+  AssertFatal(*resp_drbs != NULL, "out of memory\n");
+  long drb_id; // DRB for the RLC entity that implements the BH RLC Channel
+  for(int i=0; i<bhchs_len; i++){
+    const f1ap_bhchannel_to_be_setup_t *bhch = &req_bhchs[i];
+    drb_id = 32 - bhch->bHRLCChannelID;
+    NR_RLC_BearerConfig_t *rlc_BearerConfig = get_bearerconfig_from_bhch(bhch, drb_id);
+    bap_add_bhch_drb(rnti, bhch->bHRLCChannelID, drb_id, rlc_BearerConfig);
+
+    (*resp_bhchs)[i] = *bhch;
+
+    int ret = ASN_SEQUENCE_ADD(&cellGroupConfig->rlc_BearerToAddModList->list, rlc_BearerConfig);
+    DevAssert(ret == 0);
+  }
+  return drbs_len;
+}
+/* [IAB] end */
 
 static NR_UE_NR_Capability_t *get_ue_nr_cap(int rnti, uint8_t *buf, uint32_t len)
 {
@@ -418,6 +461,16 @@ void ue_context_modification_request(const f1ap_ue_context_modif_req_t *req)
                                                                 &resp.drbs_to_be_setup,
                                                                 new_CellGroup);
   }
+
+  /* [IAB] related configs */
+  if (req->bhchannels_to_be_setup_length > 0){
+    resp.bhchannels_to_be_setup_length = handle_ue_context_bhchannels_setup(req->gNB_DU_ue_id,
+                                                                            req->bhchannels_to_be_setup_length,
+                                                                            req->bhchannels_to_be_setup,
+                                                                            &resp.bhchannels_to_be_setup,
+                                                                            new_CellGroup);
+  }
+  /* [IAB] end */
 
   if (req->drbs_to_be_released_length > 0) {
     resp.drbs_to_be_released_length =
