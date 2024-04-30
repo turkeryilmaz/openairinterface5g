@@ -40,13 +40,14 @@
 #include "PHY/NR_TRANSPORT/nr_transport_proto.h"
 #include "PHY/NR_UE_ESTIMATION/filt16a_32.h"
 #include "executables/nr-uesoftmodem.h"
-
+#include "PHY/NR_REFSIG/refsig_defs_ue.h"
 // 10*log10(pow(2,30))
 #define pow_2_30_dB 90
 
 // Additional memory allocation, because of applying the filter and the memory offset to ensure memory alignment
 #define FILTER_MARGIN 32
-
+//#define DEBUG_CSI_PRINTS  // To enable CSI SNR debug logs
+extern short nr_qpsk_mod_table[8];
 //#define NR_CSIRS_DEBUG
 //#define NR_CSIIM_DEBUG
 
@@ -179,6 +180,87 @@ bool is_csi_rs_in_symbol(const fapi_nr_dl_config_csirs_pdu_rel15_t csirs_config_
   }
 
   return ret;
+}
+
+int32_t sl_csi_rs_snr_estimation(PHY_VARS_NR_UE *ue,
+                                 UE_nr_rxtx_proc_t *proc,
+                                 const NR_DL_FRAME_PARMS *frame_parms,
+                                 c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP])
+{
+  //FIXME: This function needs to be updated for two ports
+  nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *csi_params = (nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *)&ue->csirs_vars[0]->csirs_config_pdu;
+  csi_rs_params_t table_params;
+  get_csi_rs_params_from_table(csi_params, &table_params);
+  const int16_t *fl;
+  switch (table_params.kprime) {
+    case 0:
+      fl  = filt8_l0;
+      break;
+    case 1:
+      fl  = filt8_l1;
+      break;
+    default:
+      LOG_I(PHY, "%s: ERROR!! Invalid k_prime=%d, symbol %d\n",__FUNCTION__, table_params.kprime, csi_params->symb_l0);
+      return(-1);
+      break;
+  }
+  // Pilots generation and modulation
+  uint32_t **nr_gold_csi_rs = ue->nr_csi_info->nr_gold_csi_rs[proc->nr_slot_rx];
+  int nrRECSI_RS = get_nRECSI_RS(csi_params->freq_density, csi_params->nr_of_rbs);
+  int16_t mod_csi[nrRECSI_RS << 1];
+  for (int m = 0; m < nrRECSI_RS; m++) {
+    uint8_t idx = (((nr_gold_csi_rs[csi_params->symb_l0][(m<<1)>>5])>>((m<<1)&0x1f))&3);
+    mod_csi[m<<1]     = nr_qpsk_mod_table[idx<<1];
+    mod_csi[(m<<1)+1] = nr_qpsk_mod_table[(idx<<1) + 1];
+  }
+
+  port_freq_indices_t *port_freq_indices = (port_freq_indices_t *)malloc(table_params.ports*sizeof(port_freq_indices));
+  int32_t snr = 0;
+  int16_t ch[2] = {0}, noiseFig[2] = {0};
+  for (uint8_t rxAnt = 0; rxAnt < frame_parms->nb_antennas_rx; rxAnt++) {
+    snr = 0;
+    int16_t *pil = (int16_t *)&mod_csi[0];
+    for (uint8_t rb = csi_params->start_rb; rb < csi_params->start_rb + csi_params->nr_of_rbs; rb++) {
+      // calculate RE offset
+      get_csi_rs_freq_ind_sl(frame_parms, rb, csi_params, &table_params, port_freq_indices);
+      // Channel estimation and interpolation
+      int16_t *rxF = (int16_t *)&rxdataF[rxAnt][csi_params->symb_l0 * frame_parms->ofdm_symbol_size + port_freq_indices[rxAnt].k];
+
+      //Start pilot
+      c16_t ch_tmp_buf[ue->frame_parms.ofdm_symbol_size] __attribute__((aligned(32)));
+      memset(ch_tmp_buf, 0, sizeof(ch_tmp_buf));
+      ch[0] = (int16_t)(((int32_t)rxF[0]*pil[0] + (int32_t)rxF[1]*pil[1])>>15);
+      ch[1] = (int16_t)(((int32_t)rxF[1]*pil[0] - (int32_t)rxF[0]*pil[1])>>15);
+      multadd_real_vector_complex_scalar(fl, ch, (int16_t *)ch_tmp_buf, 8);
+
+      //SNR estimation
+      noiseFig[0] = rxF[0] - (int16_t)(((int32_t)ch[0]*pil[0] - (int32_t)ch[1]*pil[1])>>15);
+      noiseFig[1] = rxF[1] - (int16_t)(((int32_t)ch[1]*pil[0] + (int32_t)ch[0]*pil[1])>>15);
+      snr += 10 * log10(squaredMod(*(c16_t*)rxF) - squaredMod(*(c16_t*)noiseFig)) - 10 * log10(squaredMod(*(c16_t*)noiseFig));
+#ifdef DEBUG_CSI_PRINTS
+      LOG_I(NR_PHY, "[Rx %d] symbol %d, carrier %d, SNR %+2d dB: rxF - > (%+3d, %+3d) addr %p  ch -> (%+3d, %+3d), pil -> (%+d, %+d) \n",
+            rxAnt,
+            csi_params->symb_l0,
+            port_freq_indices[rxAnt].k,
+            snr/((rb-csi_params->start_rb)+1),
+            rxF[0],
+            rxF[1],
+            &rxF[0],
+            ch[0],
+            ch[1],
+            pil[0],
+            pil[1]);
+#endif
+      pil += 2;
+    } // iterate over all rbs
+    snr = snr / nrRECSI_RS;
+#ifdef DEBUG_CSI_PRINTS
+    LOG_I(NR_PHY, "[Rx %d] symbol %d Avg SNR %+2d dB, Number of pilots %d\n", rxAnt, csi_params->symb_l0, snr, nrRECSI_RS);
+#endif
+  }
+  free(port_freq_indices);
+  port_freq_indices = NULL;
+  return snr;
 }
 
 int nr_get_csi_rs_signal(const PHY_VARS_NR_UE *ue,
@@ -838,12 +920,12 @@ int nr_ue_csi_im_procedures(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, c16_t r
 void nr_ue_csi_rs_procedures(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP])
 {
 
-  int gNB_id = proc->gNB_id;
-  if(!ue->csirs_vars[gNB_id]->active) {
+  int id = get_softmodem_params()->sl_mode == 2 ? 0 : proc->gNB_id;
+  if (!ue->csirs_vars[id]->active) {
     return;
   }
 
-  fapi_nr_dl_config_csirs_pdu_rel15_t *csirs_config_pdu = (fapi_nr_dl_config_csirs_pdu_rel15_t*)&ue->csirs_vars[gNB_id]->csirs_config_pdu;
+  fapi_nr_dl_config_csirs_pdu_rel15_t *csirs_config_pdu = (fapi_nr_dl_config_csirs_pdu_rel15_t*)&ue->csirs_vars[id]->csirs_config_pdu;
 
 #ifdef NR_CSIRS_DEBUG
   LOG_I(NR_PHY, "csirs_config_pdu->subcarrier_spacing = %i\n", csirs_config_pdu->subcarrier_spacing);
@@ -971,22 +1053,31 @@ void nr_ue_csi_rs_procedures(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, c16_t 
 
   // bit 3 in bitmap to indicate RI measurment
   if (csirs_config_pdu->measurement_bitmap & 8) {
-    nr_csi_rs_pmi_estimation(ue,
-                             csirs_config_pdu,
-                             ue->nr_csi_info,
-                             N_ports,
-                             mem_offset,
-                             csi_rs_estimated_channel_freq,
-                             ue->nr_csi_info->csi_im_meas_computed ? ue->nr_csi_info->interference_plus_noise_power : noise_power,
-                             rank_indicator,
-                             log2_re,
-                             i1,
-                             i2,
-                             &precoded_sinr_dB);
+    if (get_softmodem_params()->sl_mode != 2)
+      nr_csi_rs_pmi_estimation(ue,
+                              csirs_config_pdu,
+                              ue->nr_csi_info,
+                              N_ports,
+                              mem_offset,
+                              csi_rs_estimated_channel_freq,
+                              ue->nr_csi_info->csi_im_meas_computed ? ue->nr_csi_info->interference_plus_noise_power : noise_power,
+                              rank_indicator,
+                              log2_re,
+                              i1,
+                              i2,
+                              &precoded_sinr_dB);
 
     // bit 4 in bitmap to indicate RI measurment
-    if(csirs_config_pdu->measurement_bitmap & 16)
-      nr_csi_rs_cqi_estimation(precoded_sinr_dB, &cqi);
+    if (csirs_config_pdu->measurement_bitmap & 16) {
+      if (get_softmodem_params()->sl_mode == 2) {
+        uint32_t snr = sl_csi_rs_snr_estimation(ue,
+                                                proc,
+                                                frame_parms,
+                                                rxdataF);
+        nr_csi_rs_cqi_estimation(snr, &cqi);
+      } else
+        nr_csi_rs_cqi_estimation(precoded_sinr_dB, &cqi);
+    }
   }
 
   switch (csirs_config_pdu->measurement_bitmap) {

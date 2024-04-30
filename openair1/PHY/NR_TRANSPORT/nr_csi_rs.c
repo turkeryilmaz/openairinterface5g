@@ -87,7 +87,7 @@ void get_csi_rs_freq_ind_sl(const NR_DL_FRAME_PARMS *frame_parms,
       for (int s = 0 ; s < gs; s++)  { // loop over each CDM group size
         port_freq_indices[s].p = s; // port index
         for (kp = 0; kp <= table_params->kprime; kp++) { // loop over frequency resource elements within a group
-          port_freq_indices[s].k = (start_sc + (n * NR_NB_SC_PER_RB) + table_params->koverline[ji] + kp) % (frame_parms->ofdm_symbol_size);  // frequency index of current resource element
+          port_freq_indices[kp].k = (start_sc + (n * NR_NB_SC_PER_RB) + table_params->koverline[ji] + kp) % (frame_parms->ofdm_symbol_size);  // frequency index of current resource element
         }
       }
     }
@@ -101,6 +101,7 @@ void get_csi_rs_params_from_table(const nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *csi_
   uint8_t j[16], k_n[6], koverline[16], loverline[16];
   int found = 0;
   uint8_t fi = 0;
+  double rho, alpha;
   switch (csi_params->row) {
     // implementation of table 7.4.1.5.3-1 of 38.211
     // lprime and kprime are the max value of l' and k'
@@ -466,6 +467,58 @@ void get_csi_rs_params_from_table(const nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *csi_
     default:
       AssertFatal(0==1, "Row %d is not valid for CSI Table 7.4.1.5.3-1\n", csi_params->row);
   }
+
+    // setting the frequency density from its index
+  switch (csi_params->freq_density) {
+
+    case 0:
+      rho = 0.5;
+      break;
+
+    case 1:
+      rho = get_softmodem_params()->sl_mode ? 1 : 0.5;
+      break;
+
+    case 2:
+      rho = 1;
+      break;
+
+    case 3:
+      rho = 3;
+      break;
+
+    default:
+      AssertFatal(0==1, "Invalid frequency density index for CSI\n");
+  }
+
+  if (ports == 1)
+    alpha = rho;
+  else
+    alpha = 2*rho;
+
+  uint8_t gs = 0;
+  // CDM group size from CDM type index
+  switch (csi_params->cdm_type) {
+
+    case 0:
+      gs = 1;
+      break;
+
+    case 1:
+      gs = 2;
+      break;
+
+    case 2:
+      gs = 4;
+      break;
+
+    case 3:
+      gs = 8;
+      break;
+
+    default:
+      AssertFatal(0==1, "Invalid cdm type index for CSI\n");
+  }
   memcpy(table_params->j, j, sizeof(j));
   memcpy(table_params->k_n, k_n, sizeof(k_n));
   memcpy(table_params->koverline, koverline, sizeof(koverline));
@@ -474,6 +527,9 @@ void get_csi_rs_params_from_table(const nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *csi_
   table_params->kprime = kprime;
   table_params->lprime = lprime;
   table_params->size = size;
+  table_params->alpha = alpha;
+  table_params->rho = rho;
+  table_params->gs = gs;
 }
 
 void nr_generate_csi_rs(const NR_DL_FRAME_PARMS *frame_parms,
@@ -515,10 +571,9 @@ void nr_generate_csi_rs(const NR_DL_FRAME_PARMS *frame_parms,
   int16_t mod_csi[frame_parms->symbols_per_slot][csi_rs_length>>1] __attribute__((aligned(16)));
   uint16_t b = csi_params->freq_domain;
   uint16_t n, p, k, l, mprime, na, kpn;
-  uint8_t size, ports, kprime, lprime, gs;
+  uint8_t size, ports, kprime, lprime;
   uint8_t j[16], k_n[6], koverline[16], loverline[16];
   int wf, wt, lp, kp, symb;
-  double rho, alpha;
   uint32_t beta = amp;
   nr_csi_info->csi_rs_generated_signal_bits = log2_approx(amp);
 
@@ -555,71 +610,19 @@ void nr_generate_csi_rs(const NR_DL_FRAME_PARMS *frame_parms,
   printf("\n");
 #endif
 
-
-  // setting the frequency density from its index
-  switch (csi_params->freq_density) {
-  
-  case 0:
-    rho = 0.5;
-    break;
-  
-  case 1:
-    rho = get_softmodem_params()->sl_mode ? 1 : 0.5;
-    break;
-
-   case 2:
-    rho = 1;
-    break;
-
-   case 3:
-    rho = 3;
-    break;
-
-  default:
-    AssertFatal(0==1, "Invalid frequency density index for CSI\n");
-  }
-
-  if (ports == 1)
-    alpha = rho;
-  else
-    alpha = 2*rho; 
-
 #ifdef NR_CSIRS_DEBUG
     printf(" rho %f, alpha %f\n",rho,alpha);
 #endif
 
-  // CDM group size from CDM type index
-  switch (csi_params->cdm_type) {
-  
-  case 0:
-    gs = 1;
-    break;
-  
-  case 1:
-    gs = 2;
-    break;
-
-  case 2:
-    gs = 4;
-    break;
-
-  case 3:
-    gs = 8;
-    break;
-
-  default:
-    AssertFatal(0==1, "Invalid cdm type index for CSI\n");
-  }
-
   uint16_t csi_length;
-  if (rho < 1) {
+  if (table_params.rho < 1) {
     if (csi_params->freq_density == 0) {
       csi_length = (((csi_params->start_rb + csi_params->nr_of_rbs)>>1)<<kprime)<<1;
     } else {
       csi_length = ((((csi_params->start_rb + csi_params->nr_of_rbs)>>1)<<kprime)+1)<<1;
     }
   } else {
-    csi_length = (((uint16_t) rho*(csi_params->start_rb + csi_params->nr_of_rbs))<<kprime)<<1;
+    csi_length = (((uint16_t) table_params.rho*(csi_params->start_rb + csi_params->nr_of_rbs))<<kprime)<<1;
   }
 
 #ifdef NR_CSIRS_DEBUG
@@ -672,8 +675,8 @@ void nr_generate_csi_rs(const NR_DL_FRAME_PARMS *frame_parms,
   for (n=csi_params->start_rb; n<(csi_params->start_rb+csi_params->nr_of_rbs); n++) {
    if ( (csi_params->freq_density > 1) || get_softmodem_params()->sl_mode ? csi_params->freq_density : (csi_params->freq_density == (n%2))) {  // for freq density 0.5 checks if even or odd RB
     for (int ji=0; ji<size; ji++) { // loop over CDM groups
-      for (int s=0 ; s<gs; s++)  { // loop over each CDM group size
-        p = s+j[ji]*gs; // port index
+      for (int s=0 ; s<table_params.gs; s++)  { // loop over each CDM group size
+        p = s+j[ji]*table_params.gs; // port index
         for (kp=0; kp<=kprime; kp++) { // loop over frequency resource elements within a group
           k = (start_sc+(n*NR_NB_SC_PER_RB)+koverline[ji]+kp)%(frame_parms->ofdm_symbol_size);  // frequency index of current resource element
           // wf according to tables 7.4.5.3-2 to 7.4.5.3-5
@@ -681,8 +684,8 @@ void nr_generate_csi_rs(const NR_DL_FRAME_PARMS *frame_parms,
             wf = 1;
           else
             wf = -2*(s%2)+1;
-          na = n*alpha;
-          kpn = (rho*koverline[ji])/NR_NB_SC_PER_RB;
+          na = n*table_params.alpha;
+          kpn = (table_params.rho*koverline[ji])/NR_NB_SC_PER_RB;
           mprime = na + kp + kpn; // sequence index
           for (lp=0; lp<=lprime; lp++) { // loop over frequency resource elements within a group
             l = lp + loverline[ji];
@@ -721,7 +724,7 @@ void nr_generate_csi_rs(const NR_DL_FRAME_PARMS *frame_parms,
    }
   }
   if (N_cdm_groups) *N_cdm_groups = size;
-  if (CDM_group_size) *CDM_group_size = gs;
+  if (CDM_group_size) *CDM_group_size = table_params.gs;
   if (k_prime) *k_prime = kprime;
   if (l_prime) *l_prime = lprime;
   if (N_ports) *N_ports = ports;

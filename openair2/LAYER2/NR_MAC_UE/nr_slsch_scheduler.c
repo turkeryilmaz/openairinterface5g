@@ -52,15 +52,15 @@ bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP,int slotP, nr_sci_pdu_t
   uint8_t psfch_period = 0;
   if (mac->sl_tx_res_pool->sl_PSFCH_Config_r16 && mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16)
     psfch_period = *mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16;
-//   rlc_status.bytes_in_buffer = 0;
-   *slsch_pdu_length_max = 0;
-
-  if (rlc_status.bytes_in_buffer > 0 || mac->sci_pdu_rx.harq_feedback) {
-// Fill SCI1A
+  *slsch_pdu_length_max = 0;
+  bool csi_acq = !mac->SL_MAC_PARAMS->sl_CSI_Acquisition;
+  bool csi_req_slot = !((slots_per_frame * frameP + slotP - sl_mac->slot_offset) % sl_mac->slot_periodicity);
+  if (rlc_status.bytes_in_buffer > 0 || mac->sci_pdu_rx.harq_feedback || (csi_acq && csi_req_slot)) {
+     // Fill SCI1A
      sci_pdu->priority = 0;
-     sci_pdu->frequency_resource_assignment.val=0;
-     sci_pdu->time_resource_assignment.val=0;
-     sci_pdu->resource_reservation_period.val=0;   
+     sci_pdu->frequency_resource_assignment.val = 0;
+     sci_pdu->time_resource_assignment.val = 0;
+     sci_pdu->resource_reservation_period.val = 0;
      sci_pdu->dmrs_pattern.val = 0;
      sci_pdu->second_stage_sci_format = 0;
      sci_pdu->number_of_dmrs_port = 0;
@@ -71,21 +71,21 @@ bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP,int slotP, nr_sci_pdu_t
      sci_pdu->conflict_information_receiver.val = 0;
      sci_pdu->beta_offset_indicator = 0;
 
-// Fill SCI2A
+     // Fill SCI2A
      sci2_pdu->harq_pid = 0;
-     sci2_pdu->ndi = (1-sci2_pdu->ndi)&1;
+     sci2_pdu->ndi = (1 - sci2_pdu->ndi) & 1;
      sci2_pdu->rv_index = 0;
      sci2_pdu->source_id = get_softmodem_params()->node_number;
-     sci2_pdu->dest_id=0xabcd;
+     sci2_pdu->dest_id = 0xabcd;
      sci2_pdu->harq_feedback = psfch_period ? 1 : 0;
      sci2_pdu->cast_type = 1;
      if (format2 == NR_SL_SCI_FORMAT_2C || format2 == NR_SL_SCI_FORMAT_2A) {
-       sci2_pdu->csi_req = mac->SL_MAC_PARAMS->sl_CSI_Acquisition ? 0 :
-                           ((slots_per_frame * frameP + slotP - sl_mac->slot_offset) % sl_mac->slot_periodicity) && (!mac->SL_MAC_PARAMS->sl_CSI_Acquisition) ? 0 : 1;
+       sci2_pdu->csi_req = (csi_acq && csi_req_slot) ? 1 : 0;
+       LOG_D(NR_MAC, "Setting sci2_pdu->csi_req %d (%d.%d)\n", sci2_pdu->csi_req, frameP, slotP);
      }
      if (format2 == NR_SL_SCI_FORMAT_2B)
        sci2_pdu->zone_id = 0;
-   // Fill in for R17: communication_range
+     // Fill in for R17: communication_range
      sci2_pdu->communication_range.val = 0;
      if (format2 == NR_SL_SCI_FORMAT_2C) {
        sci2_pdu->providing_req_ind = 0;
@@ -98,11 +98,9 @@ bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP,int slotP, nr_sci_pdu_t
        // Fill in for R17 : lowest_subchannel_indices
        sci2_pdu->lowest_subchannel_indices.val = 0;
      }
-
-// Set SLSCH
-
+     // Set SLSCH
      *slsch_pdu_length_max = rlc_status.bytes_in_buffer;
-     return true; 
+     return true;
    }
    return false;
 }

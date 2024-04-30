@@ -3306,14 +3306,14 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
   int buflen = tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu.tb_size;
 
   LOG_D(NR_MAC, "[UE%d] TTI-%d:%d TX PSCCH_PSSCH REQ  TBS %d\n", sl_ind->module_id, frame, slot, buflen);
-  
+
   NR_SLSCH_MAC_SUBHEADER_FIXED *sl_sch_subheader = (NR_SLSCH_MAC_SUBHEADER_FIXED *) pdu;
   sl_sch_subheader->V = 0;
   sl_sch_subheader->R = 0;
   sl_sch_subheader->SRC = get_softmodem_params()->node_number;
   sl_sch_subheader->DST = 0xab;
   pdu += sizeof(NR_SLSCH_MAC_SUBHEADER_FIXED);
-  LOG_D(NR_PHY, "V %d, R %d, SRC %d, DST %d\n", sl_sch_subheader->V, sl_sch_subheader->R, sl_sch_subheader->SRC, sl_sch_subheader->DST);
+  LOG_D(NR_PHY, "Tx V %d, R %d, SRC %d, DST %d\n", sl_sch_subheader->V, sl_sch_subheader->R, sl_sch_subheader->SRC, sl_sch_subheader->DST);
   int buflen_remain = buflen - sizeof(NR_SLSCH_MAC_SUBHEADER_FIXED);
   LOG_D(NR_PHY, "buflen_remain after adding SL_SCH_MAC_SUBHEADER_FIXED %d\n", buflen_remain);
 
@@ -3381,13 +3381,29 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
     mac_ce_p->phr_len = 0;
     mac_ce_p->sdu_length_total = sdu_length_total;
     mac_ce_p->total_mac_pdu_header_len = total_mac_pdu_header_len;
-    LOG_D(NR_MAC, "[UE%d] TTI-%d:%d TX PSCCH_PSSCH REQ  TBS %d\n", sl_ind->module_id, frame, slot, buflen);
 
     //nr_ue_get_sdu_mac_ce_pre updates all mac_ce related header field related to length
     mac_ce_p->tot_mac_ce_len = nr_ue_get_sdu_mac_ce_pre(0, 0, frame, slot, 0, pdu, buflen, mac_ce_p);
     buflen_remain -= mac_ce_p->tot_mac_ce_len;
     pdu += mac_ce_p->tot_mac_ce_len;
-    LOG_D(NR_PHY, "buflen_remain %d, total_mac_pdu_header_len %d, adding tot_mac_ce_len %d, \n", buflen_remain, mac_ce_p->total_mac_pdu_header_len, mac_ce_p->tot_mac_ce_len);
+    LOG_D(NR_PHY, "buflen_remain %d, sdu_length_total %d, total_mac_pdu_header_len %d, adding tot_mac_ce_len %d, \n", buflen_remain, mac_ce_p->sdu_length_total, mac_ce_p->total_mac_pdu_header_len, mac_ce_p->tot_mac_ce_len);
+  }
+
+  if (buflen_remain > 0) {
+    if (mac->sl_csi_report != NULL) {
+      ((NR_MAC_SUBHEADER_FIXED *) pdu)->R = 0;
+      ((NR_MAC_SUBHEADER_FIXED *) pdu)->LCID = SL_SCH_LCID_SL_CSI_REPORT;
+      pdu++;
+      buflen_remain--;
+      ((nr_sl_csi_report_t *) pdu)->RI = mac->sl_csi_report->RI;
+      ((nr_sl_csi_report_t *) pdu)->CQI = mac->sl_csi_report->CQI;
+      ((nr_sl_csi_report_t *) pdu)->R = mac->sl_csi_report->R;
+      LOG_D(NR_MAC, "%4d.%2d Sending sl_csi_report with CQI %i, RI %i\n", frame, slot, ((nr_sl_csi_report_t *) pdu)->CQI, ((nr_sl_csi_report_t *) pdu)->RI);
+      pdu++;
+      buflen_remain--;
+      free(mac->sl_csi_report);
+      mac->sl_csi_report = NULL;
+    }
   }
 
   if (buflen_remain > 0) {
@@ -3599,7 +3615,7 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind) {
       nr_ue_sl_pscch_rx_scheduler(sl_ind, mac->sl_bwp, mac->sl_rx_res_pool,&rx_config, &tti_action);
   }
 
-  if (!is_psbch_slot && tx_allowed && sl_ind->slot_type == SIDELINK_SLOT_TYPE_TX) {
+  if (!is_psbch_slot && tx_allowed) {
     //Check if reserved slot or a sidelink resource configured in Rx/Tx resource pool timeresource bitmap
     bool schedule_slsch = nr_ue_sl_pssch_scheduler(mac, sl_ind, mac->sl_bwp, mac->sl_tx_res_pool, &tx_config, &tti_action);
     bool is_csi_rs_sent = false;
@@ -3607,10 +3623,9 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind) {
           schedule_slsch && mac->sci2_pdu.csi_req) {
       nr_ue_sl_csi_rs_scheduler(mac, mu, mac->sl_bwp, &tx_config, NULL, &tti_action);
       is_csi_rs_sent = true;
-      mac->sci2_pdu.csi_req = 0;
-      LOG_D(NR_MAC, "%d.%d Scheduling CSI-RS\n", frame, slot);
+      LOG_D(NR_MAC, "%4d.%2d Scheduling CSI-RS\n", frame, slot);
     }
-    if (mac->sci_pdu_rx.harq_feedback &&  mac->sl_tx_res_pool->sl_PSFCH_Config_r16 &&  mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup) {
+    if (mac->sci_pdu_rx.harq_feedback) {
       NR_SL_PSFCH_Config_r16_t *sl_psfch_config = mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup;
       const uint8_t psfch_periods[] = {0,1,2,4};
       long psfch_period = (sl_psfch_config->sl_PSFCH_Period_r16)
