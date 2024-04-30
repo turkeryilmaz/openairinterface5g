@@ -139,6 +139,7 @@ static void gnb_du_configuration_update_f1ap(const f1ap_gnb_du_configuration_upd
 
 static void ue_context_setup_response_f1ap(const f1ap_ue_context_setup_t *req, const f1ap_ue_context_setup_t *resp)
 {
+  LOG_I(GNB_APP,"UE Context response f1ap");
   DevAssert(req->drbs_to_be_setup_length == resp->drbs_to_be_setup_length);
 
   DevAssert(req->srbs_to_be_setup_length == resp->srbs_to_be_setup_length);
@@ -161,10 +162,15 @@ static void ue_context_setup_response_f1ap(const f1ap_ue_context_setup_t *req, c
     for (int i = 0; i < f1ap_msg->drbs_to_be_setup_length; ++i)
       f1ap_msg->drbs_to_be_setup[i] = resp->drbs_to_be_setup[i];
   }
+ // LOG_I(GNB_APP,"resp crnti in ue_context_setup_response_f1ap  %d\n",*resp->crnti);
   if (resp->crnti) {
-    f1ap_msg->crnti = calloc(1, sizeof(uint16_t));
+     
+     LOG_I(GNB_APP,"resp crnti in ue_context_setup_response_f1ap and not null %d\n",*resp->crnti);
+     LOG_I(GNB_APP,"resp crnti in ue_context_setup_response_f1ap and not null %p\n",*resp->crnti);
+     f1ap_msg->crnti = calloc(1, sizeof(uint16_t));
     *f1ap_msg->crnti = *resp->crnti;
   }
+
 
   f1ap_msg->du_to_cu_rrc_information = malloc(sizeof(*resp->du_to_cu_rrc_information));
   AssertFatal(f1ap_msg->du_to_cu_rrc_information != NULL, "out of memory\n");

@@ -1,5 +1,4 @@
-/*
- * Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
+/* Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.
  * The OpenAirInterface Software Alliance licenses this file to You under
@@ -19,22 +18,24 @@
  *      contact@openairinterface.org
  */
 
-/*! \file nr_rrc_extern.h
-* \brief rrc external vars
-* \author Navid Nikaein and Raymond Knopp, WEI-TAI CHEN
-* \date 2011, 2018
-* \version 1.0
-* \company Eurecom, NTUST
-* \email: navid.nikaein@eurecom.fr, kroempa@gmail.com
-*/
+#include <stdio.h>
+#include <stdint.h>
 
-#ifndef __OPENAIR_NR_RRC_EXTERN_H__
-#define __OPENAIR_NR_RRC_EXTERN_H__
-#include "nr_rrc_defs.h"
-#include "COMMON/mac_rrc_primitives.h"
-#include "LAYER2/RLC/rlc.h"
-#include "openair2/RRC/common.h"
-extern uint16_t ho_rnti_map[NUMBER_OF_DU_PER_CU_MAX][4];
+#ifndef XNAP_H_
+#define XNAP_H_
 
-void openair_rrc_gNB_configuration(gNB_RRC_INST *rrc, gNB_RrcConfigurationReq *configuration);
-#endif
+#define XNAP_SCTP_PPID (61) ///< XNAP SCTP Payload Protocol Identifier (PPID)
+#include "xnap_gNB_defs.h"
+
+int xnap_gNB_init_sctp(instance_t instance_p, xnap_net_config_t *nc);
+
+void *xnap_task(void *arg);
+
+int is_xnap_enabled(void);
+void xnap_trigger(void);
+
+#endif /* XNAP_H_ */
+
+/**
+ * @}
+ */

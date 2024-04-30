@@ -97,6 +97,7 @@
 #define NR_UE_MODULE_INVALID ((module_id_t) ~0) // FIXME attention! depends on type uint8_t!!!
 #define NR_UE_INDEX_INVALID  ((module_id_t) ~0) // FIXME attention! depends on type uint8_t!!! used to be -1
 
+#define MAX_NUM_NR_NEIGH_CELLs 6 /* maximum neighbouring cells number */
 typedef enum {
   NR_RRC_OK=0,
   NR_RRC_ConnSetup_failed,
@@ -174,6 +175,28 @@ typedef struct nr_rrc_guami_s {
   uint16_t amf_set_id;
   uint8_t  amf_pointer;
 } nr_rrc_guami_t;
+
+typedef enum {HANDOVER_TYPE_INTRA_CU, HANDOVER_TYPE_INTER_CU} nr_handover_type_t;
+typedef struct nr_handover_intra_cu_s {
+  sctp_assoc_t source_du;
+  sctp_assoc_t target_du;
+  uint32_t source_secondary_ue;
+  rnti_t new_rnti;
+  uint32_t target_secondary_ue;
+} nr_handover_intra_cu_t;
+typedef struct nr_handover_inter_cu_s {
+  // TODO additional data needed?
+  int dummy;
+} nr_handover_inter_cu_t;
+typedef struct nr_handover_context_s {
+  nr_handover_type_t type;
+  union {
+    nr_handover_intra_cu_t intra_cu;
+    nr_handover_inter_cu_t inter_cu;
+  } data;
+  // TODO fptr for success, failure
+} nr_handover_context_t;
+
 
 typedef enum pdu_session_satus_e {
   PDU_SESSION_STATUS_NEW,
@@ -255,6 +278,7 @@ typedef struct gNB_RRC_UE_s {
   time_t last_seen; // last time this UE has been accessed
 
   drb_t                              established_drbs[MAX_DRBS_PER_UE];
+  uint8_t                            DRB_active[MAX_DRBS_PER_UE];
   NR_DRB_ToReleaseList_t            *DRB_ReleaseList;
 
   NR_SRB_INFO_TABLE_ENTRY Srb[NR_NUM_SRB];
@@ -301,6 +325,7 @@ typedef struct gNB_RRC_UE_s {
   nr_rrc_guami_t                     ue_guami;
 
   ngap_security_capabilities_t       security_capabilities;
+  xnap_security_capabilities_t       xnap_security_capabilities;
   //NSA block
   /* Number of NSA e_rab */
   int                                nb_of_e_rabs;
@@ -438,6 +463,14 @@ typedef struct nr_rrc_cuup_container_t {
   sctp_assoc_t assoc_id;
 } nr_rrc_cuup_container_t;
 
+typedef struct nr_rrc_neighcells_container_t {
+  /* Tree-related data */
+  RB_ENTRY(nr_rrc_neighcells_container_t) entries;
+
+  uint64_t nr_cellid;
+  sctp_assoc_t assoc_id;
+} nr_rrc_neighcells_container_t;
+
 //---NR---(completely change)---------------------
 typedef struct gNB_RRC_INST_s {
 
@@ -460,6 +493,8 @@ typedef struct gNB_RRC_INST_s {
 
   char *uecap_file;
 
+ // int num_nr_neigh_cells;
+ // uint32_t nr_neigh_cells_id[MAX_NUM_NR_NEIGH_CELLs];
   // security configuration (preferred algorithms)
   nr_security_configuration_t security;
 
@@ -473,6 +508,10 @@ typedef struct gNB_RRC_INST_s {
 
   RB_HEAD(rrc_cuup_tree, nr_rrc_cuup_container_t) cuups; // CU-UPs, indexed by assoc_id
   size_t num_cuups;
+
+  RB_HEAD(rrc_neigh_cell_tree, nr_rrc_neighcells_container_t) neighs; // Neighbouring cells, indexed by assoc_id
+  size_t num_neighs;
+  instance_t                                          f1_instance;
 
 } gNB_RRC_INST;
 

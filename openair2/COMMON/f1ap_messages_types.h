@@ -504,6 +504,7 @@ typedef struct f1ap_ue_context_modif_required_t {
   du_to_cu_rrc_information_t *du_to_cu_rrc_information;
   f1ap_Cause_t cause;
   long cause_value;
+  uint8_t *transmission_action_indicator; //not sure
 } f1ap_ue_context_modif_required_t;
 
 typedef struct f1ap_ue_context_modif_confirm_t {

@@ -19,22 +19,22 @@
  *      contact@openairinterface.org
  */
 
-/*! \file nr_rrc_extern.h
-* \brief rrc external vars
-* \author Navid Nikaein and Raymond Knopp, WEI-TAI CHEN
-* \date 2011, 2018
-* \version 1.0
-* \company Eurecom, NTUST
-* \email: navid.nikaein@eurecom.fr, kroempa@gmail.com
-*/
+#include "intertask_interface.h"
+#include "xnap_gNB_itti_messaging.h"
 
-#ifndef __OPENAIR_NR_RRC_EXTERN_H__
-#define __OPENAIR_NR_RRC_EXTERN_H__
-#include "nr_rrc_defs.h"
-#include "COMMON/mac_rrc_primitives.h"
-#include "LAYER2/RLC/rlc.h"
-#include "openair2/RRC/common.h"
-extern uint16_t ho_rnti_map[NUMBER_OF_DU_PER_CU_MAX][4];
+void xnap_gNB_itti_send_sctp_data_req(sctp_assoc_t assoc_id, uint8_t *buffer, uint32_t buffer_length, uint16_t stream)
+{
+  MessageDef *message_p;
+  sctp_data_req_t *sctp_data_req;
+  instance_t instance = 0; // we have only one instance
 
-void openair_rrc_gNB_configuration(gNB_RRC_INST *rrc, gNB_RrcConfigurationReq *configuration);
-#endif
+  message_p = itti_alloc_new_message(TASK_XNAP, 0, SCTP_DATA_REQ);
+  sctp_data_req = &message_p->ittiMsg.sctp_data_req;
+
+  sctp_data_req->assoc_id = assoc_id;
+  sctp_data_req->buffer = buffer;
+  sctp_data_req->buffer_length = buffer_length;
+  sctp_data_req->stream = stream;
+  itti_send_msg_to_task(TASK_SCTP, instance, message_p);
+}
+

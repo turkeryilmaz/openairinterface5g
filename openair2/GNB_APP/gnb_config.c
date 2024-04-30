@@ -2360,6 +2360,70 @@ int gNB_app_handle_f1ap_gnb_cu_configuration_update(f1ap_gnb_cu_configuration_up
   return(ret);
 }
 
+xnap_net_config_t Read_IPconfig_Xn(void)
+{
+  char *cidr = NULL;
+  char *address = NULL;
+  char *gnb_ipv4_address_for_NGU = NULL;
+  uint32_t gnb_port_for_NGU = 0;
+  char *gnb_ipv4_address_for_S1U = NULL;
+  uint32_t gnb_port_for_S1U = 0;
+  xnap_net_config_t nc = {0};
+  paramdef_t XnParams[] = XnPARAMS_DESC;
+  paramlist_def_t XnParamList = {GNB_CONFIG_STRING_TARGET_GNB_Xn_IP_ADDRESS, NULL, 0};
+  paramdef_t NETParams[] = GNBNETPARAMS_DESC;
+  paramdef_t SCTPParams[] = GNBSCTPPARAMS_DESC;
+  char aprefix[MAX_OPTNAME_SIZE * 2 + 8];
+  config_getlist(config_get_if(), &XnParamList, XnParams, sizeofArray(XnParams), aprefix);
+  AssertFatal(XnParamList.numelt <= XNAP_MAX_NB_GNB_IP_ADDRESS,
+              "value of XnParamList.numelt %d must be lower than XnAP_MAX_NB_GNB_IP_ADDRESS %d value: reconsider to increase "
+              "XNAP_MAX_NB_GNB_IP_ADDRESS\n",
+              XnParamList.numelt,
+              XNAP_MAX_NB_GNB_IP_ADDRESS);
+  for (int l = 0; l < XnParamList.numelt; l++) {
+    nc.nb_xn += 1;
+    strcpy(nc.target_gnb_xn_ip_address[l].ipv4_address, *(XnParamList.paramarray[l][GNB_Xn_IPV4_ADDRESS_IDX].strptr));
+    strcpy(nc.target_gnb_xn_ip_address[l].ipv6_address, *(XnParamList.paramarray[l][GNB_Xn_IPV6_ADDRESS_IDX].strptr));
+
+    if (strcmp(*(XnParamList.paramarray[l][GNB_Xn_IP_ADDRESS_PREFERENCE_IDX].strptr), "ipv4") == 0) {
+      nc.target_gnb_xn_ip_address[l].ipv4 = 1;
+      nc.target_gnb_xn_ip_address[l].ipv6 = 0;
+    } else if (strcmp(*(XnParamList.paramarray[l][GNB_Xn_IP_ADDRESS_PREFERENCE_IDX].strptr), "ipv6") == 0) {
+      nc.target_gnb_xn_ip_address[l].ipv4 = 0;
+      nc.target_gnb_xn_ip_address[l].ipv6 = 1;
+    } else if (strcmp(*(XnParamList.paramarray[l][GNB_Xn_IP_ADDRESS_PREFERENCE_IDX].strptr), "no") == 0) {
+      nc.target_gnb_xn_ip_address[l].ipv4 = 1;
+      nc.target_gnb_xn_ip_address[l].ipv6 = 1;
+    }
+  }
+  sprintf(aprefix, "%s.[%i].%s", GNB_CONFIG_STRING_GNB_LIST, 0, GNB_CONFIG_STRING_NETWORK_INTERFACES_CONFIG);
+  // NETWORK_INTERFACES
+  config_get(config_get_if(), NETParams, sizeofArray(NETParams), aprefix);
+  nc.gnb_port_for_XNC = (uint32_t) * (NETParams[GNB_PORT_FOR_XNC_IDX].uptr);
+  if ((NETParams[GNB_IPV4_ADDR_FOR_XNC_IDX].strptr == NULL) || (nc.gnb_port_for_XNC == 0)) {
+    LOG_E(RRC, "Add gNB IPv4 address and/or port for XNC in the CONF file!\n");
+    exit(1);
+  }
+  cidr = *(NETParams[GNB_IPV4_ADDR_FOR_XNC_IDX].strptr);
+  char *save = NULL;
+  address = strtok_r(cidr, "/", &save);
+  nc.gnb_xn_ip_address.ipv6 = 0;
+  nc.gnb_xn_ip_address.ipv4 = 1;
+  strcpy(nc.gnb_xn_ip_address.ipv4_address, address);
+
+  // SCTP SETTING
+  nc.sctp_streams.sctp_out_streams = SCTP_OUT_STREAMS;
+  nc.sctp_streams.sctp_in_streams = SCTP_IN_STREAMS;
+  if (get_softmodem_params()->sa) {
+    // sprintf(aprefix, "%s.[%i].%s", GNB_CONFIG_STRING_GNB_LIST, 0, GNB_CONFIG_STRING_SCTP_CONFIG);
+    config_get(config_get_if(), SCTPParams, sizeofArray(SCTPParams), aprefix);
+    nc.sctp_streams.sctp_in_streams = (uint16_t) * (SCTPParams[GNB_SCTP_INSTREAMS_IDX].uptr);
+    nc.sctp_streams.sctp_out_streams = (uint16_t) * (SCTPParams[GNB_SCTP_OUTSTREAMS_IDX].uptr);
+  }
+  return nc;
+}
+
+
 ngran_node_t get_node_type(void)
 {
   paramdef_t        MacRLC_Params[] = MACRLCPARAMS_DESC;

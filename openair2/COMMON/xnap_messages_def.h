@@ -19,22 +19,22 @@
  *      contact@openairinterface.org
  */
 
-/*! \file nr_rrc_extern.h
-* \brief rrc external vars
-* \author Navid Nikaein and Raymond Knopp, WEI-TAI CHEN
-* \date 2011, 2018
-* \version 1.0
-* \company Eurecom, NTUST
-* \email: navid.nikaein@eurecom.fr, kroempa@gmail.com
-*/
+/*! \file xnap_messages_def.h
+ * \author Sreeshma Shiv <sreeshmau@iisc.ac.in>
+ * \date August 2023
+ * \version 1.0
+ */
 
-#ifndef __OPENAIR_NR_RRC_EXTERN_H__
-#define __OPENAIR_NR_RRC_EXTERN_H__
-#include "nr_rrc_defs.h"
-#include "COMMON/mac_rrc_primitives.h"
-#include "LAYER2/RLC/rlc.h"
-#include "openair2/RRC/common.h"
-extern uint16_t ho_rnti_map[NUMBER_OF_DU_PER_CU_MAX][4];
+#include "openair2/COMMON/xnap_messages_types.h"
 
-void openair_rrc_gNB_configuration(gNB_RRC_INST *rrc, gNB_RrcConfigurationReq *configuration);
-#endif
+/* gNB application layer -> XNAP messages */
+MESSAGE_DEF(XNAP_REGISTER_GNB_REQ, MESSAGE_PRIORITY_MED, xnap_register_gnb_req_t, xnap_register_gnb_req)
+/* XNAP -> gNB application layer messages */
+
+/* handover messages XNAP <-> RRC */
+MESSAGE_DEF(XNAP_SETUP_REQ, MESSAGE_PRIORITY_MED, xnap_setup_req_t, xnap_setup_req)
+MESSAGE_DEF(XNAP_SETUP_RESP, MESSAGE_PRIORITY_MED, xnap_setup_resp_t, xnap_setup_resp)
+MESSAGE_DEF(XNAP_SETUP_FAILURE, MESSAGE_PRIORITY_MED, xnap_setup_failure_t, xnap_setup_failure)
+MESSAGE_DEF(XNAP_HANDOVER_REQ, MESSAGE_PRIORITY_MED, xnap_handover_req_t, xnap_handover_req)
+MESSAGE_DEF(XNAP_HANDOVER_REQ_FAILURE, MESSAGE_PRIORITY_MED, xnap_handover_req_failure_t, xnap_handover_req_failure)
+MESSAGE_DEF(XNAP_HANDOVER_REQ_ACK, MESSAGE_PRIORITY_MED, xnap_handover_req_ack_t, xnap_handover_req_ack)

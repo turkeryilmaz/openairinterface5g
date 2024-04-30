@@ -38,6 +38,7 @@
 #include "f1ap_cu_task.h"
 #include <openair3/ocp-gtpu/gtp_itf.h>
 
+
 //Fixme: Uniq dirty DU instance, by global var, datamodel need better management
 instance_t CUuniqInstance=0;
 
@@ -111,6 +112,54 @@ static void cu_task_send_sctp_init_req(instance_t instance, char *my_addr)
   init->bind_address = addr_buf;
   memcpy(addr_buf, my_addr, addr_len);
   itti_send_msg_to_task(TASK_SCTP, instance, message_p);
+}
+
+void cu_register_xn(uint32_t gnb_id_num,f1ap_served_cell_info_t *cell , xnap_net_config_t nc);
+
+void cu_register_xn(uint32_t gnb_id_num,f1ap_served_cell_info_t *cell , xnap_net_config_t nc)
+{
+  MessageDef *msg;
+
+  for (uint32_t gnb_id = 0; (gnb_id < gnb_id_num); gnb_id++) {
+    msg = itti_alloc_new_message(TASK_CU_F1, 0, XNAP_REGISTER_GNB_REQ);
+   // uint64_t id;
+    xnap_register_gnb_req_t *req = &XNAP_REGISTER_GNB_REQ(msg);
+    req->setup_req.info.tac =(*cell->tac); 
+    req->setup_req.info.plmn.mcc = cell->plmn.mcc;
+    req->setup_req.info.plmn.mnc = cell->plmn.mnc;
+    req->setup_req.info.plmn.mnc_digit_length = cell->plmn.mnc_digit_length;
+    req->setup_req.info.nr_cellid = cell->nr_cellid;
+    req->setup_req.info.nr_pci = cell->nr_pci;
+    if (cell->mode == F1AP_MODE_TDD) {
+    req->setup_req.info.mode = XNAP_MODE_TDD;
+    req->setup_req.info.tdd.freqinfo.arfcn = cell->tdd.freqinfo.arfcn;
+    req->setup_req.info.tdd.tbw.scs = cell->tdd.tbw.scs;
+    req->setup_req.info.tdd.tbw.nrb = cell->tdd.tbw.nrb;
+    req->setup_req.info.tdd.freqinfo.band = cell->tdd.freqinfo.band;
+    } else {
+    req->setup_req.info.mode = XNAP_MODE_FDD;
+    req->setup_req.info.fdd.dl_freqinfo.arfcn = cell->fdd.dl_freqinfo.arfcn;
+    req->setup_req.info.fdd.ul_freqinfo.arfcn = cell->fdd.ul_freqinfo.arfcn;
+    req->setup_req.info.fdd.dl_tbw.scs = cell->fdd.ul_tbw.scs;
+    req->setup_req.info.fdd.ul_tbw.scs = cell->fdd.ul_tbw.scs;
+    req->setup_req.info.fdd.dl_tbw.nrb = cell->fdd.dl_tbw.nrb;
+    req->setup_req.info.fdd.ul_tbw.nrb = cell->fdd.ul_tbw.nrb;
+    req->setup_req.info.fdd.dl_freqinfo.band = cell->fdd.dl_freqinfo.band;
+    req->setup_req.info.fdd.ul_freqinfo.band = cell->fdd.ul_freqinfo.band;
+    }
+    req->setup_req.info.measurement_timing_information = cell->measurement_timing_information;
+    gNB_RRC_INST *rrc = RC.nrrrc[0];
+    req->setup_req.gNB_id = rrc->node_id;
+    req->setup_req.tai_support = *cell->tac;
+    req->setup_req.plmn_support.mcc = cell->plmn.mcc;
+    req->setup_req.plmn_support.mnc = cell->plmn.mnc;
+    req->setup_req.plmn_support.mnc_digit_length = cell->plmn.mnc_digit_length;
+    req->net_config = nc;
+    req->gNB_name = rrc->node_name;
+    void updateXninst(instance_t instanceP, xnap_setup_req_t *req, xnap_net_config_t *nc,sctp_assoc_t assoc_id);
+    updateXninst(0, &req->setup_req,NULL,0);
+    itti_send_msg_to_task(TASK_XNAP, GNB_MODULE_ID_TO_INSTANCE(gnb_id), msg);
+  }
 }
 
 void *F1AP_CU_task(void *arg) {

@@ -29,6 +29,9 @@
 #include "executables/softmodem-common.h"
 #include "common/utils/ds/seq_arr.h"
 #include "common/utils/alg/foreach.h"
+#include "openair2/XNAP/xnap_gNB_defs.h"
+#include "openair2/XNAP/xnap_gNB_management_procedures.h"
+
 
 int get_dl_band(const struct f1ap_served_cell_info_t *cell_info)
 {
@@ -297,7 +300,7 @@ void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *req, sctp_assoc_t assoc_id)
   du->mtc = mtc;
   RB_INSERT(rrc_du_tree, &rrc->dus, du);
   rrc->num_dus++;
-
+  LOG_I(RRC,"Num_dus %d\n",rrc->num_dus);
   served_cells_to_activate_t cell = {
       .plmn = cell_info->plmn,
       .nr_cellid = cell_info->nr_cellid,
@@ -315,6 +318,15 @@ void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *req, sctp_assoc_t assoc_id)
   AssertFatal(num == 3, "could not read RRC version string %s\n", TO_STRING(NR_RRC_VERSION));
   if (rrc->node_name != NULL)
     resp.gNB_CU_name = strdup(rrc->node_name);
+  xnap_gNB_instance_t *instance_xn = xnap_gNB_get_instance(0);
+  if (instance_xn != NULL) {
+    LOG_D(NR_RRC, "XNAP is enabled, Triggering SCTP Association \n");
+    void cu_register_xn(uint32_t gnb_id_num,f1ap_served_cell_info_t *cell , xnap_net_config_t nc); //function prototype add
+    if (instance_xn->setup_req.gNB_id == 0) {
+      cu_register_xn(1, cell_info,instance_xn->net_config);
+    }
+  }
+
   rrc->mac_rrc.f1_setup_response(assoc_id, &resp);
 }
 
@@ -530,30 +542,27 @@ void dump_du_info(const gNB_RRC_INST *rrc, FILE *f)
   }
 }
 
-nr_rrc_du_container_t *find_target_du(gNB_RRC_INST *rrc, sctp_assoc_t source_assoc_id)
+
+nr_rrc_du_container_t *find_target_du(gNB_RRC_INST *rrc, long nci)
 {
-  nr_rrc_du_container_t *target_du = NULL;
+  LOG_I(NR_RRC,"Find Target_du \n");
+ /* nr_rrc_du_container_t e = {.assoc_id = assoc_id};
+  nr_rrc_du_container_t *du = RB_FIND(rrc_du_tree, &rrc->dus, &e);
+  if(du != NULL)
+  {
+          return du;
+  }
+  else{
+        LOG_I(NR_RRC,"Target DU is null");
+  }*/
   nr_rrc_du_container_t *it = NULL;
-  bool next_du = false;
+  //bool next_du = false;
+  LOG_I(RRC,"Num_dus in find target du %d\n",rrc->num_dus);
   RB_FOREACH (it, rrc_du_tree, &rrc->dus) {
-    if (next_du == false && source_assoc_id != it->assoc_id) {
-      continue;
-    } else if (source_assoc_id == it->assoc_id) {
-      next_du = true;
-    } else {
-      target_du = it;
-      break;
+    if (it->setup_req->cell[0].info.nr_cellid == nci) {
+      LOG_I(NR_RRC,"ASSOC ID of DU in DU tree %d \n",it->assoc_id);
+      return it;
     }
   }
-  if (target_du == NULL) {
-    RB_FOREACH (it, rrc_du_tree, &rrc->dus) {
-      if (source_assoc_id == it->assoc_id) {
-        continue;
-      } else {
-        target_du = it;
-        break;
-      }
-    }
-  }
-  return target_du;
+  return 0;
 }

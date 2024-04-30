@@ -19,22 +19,33 @@
  *      contact@openairinterface.org
  */
 
-/*! \file nr_rrc_extern.h
-* \brief rrc external vars
-* \author Navid Nikaein and Raymond Knopp, WEI-TAI CHEN
-* \date 2011, 2018
-* \version 1.0
-* \company Eurecom, NTUST
-* \email: navid.nikaein@eurecom.fr, kroempa@gmail.com
-*/
+#ifndef XNAP_TIMERS_H_
+#define XNAP_TIMERS_H_
 
-#ifndef __OPENAIR_NR_RRC_EXTERN_H__
-#define __OPENAIR_NR_RRC_EXTERN_H__
-#include "nr_rrc_defs.h"
-#include "COMMON/mac_rrc_primitives.h"
-#include "LAYER2/RLC/rlc.h"
-#include "openair2/RRC/common.h"
-extern uint16_t ho_rnti_map[NUMBER_OF_DU_PER_CU_MAX][4];
+#include <stdint.h>
+//#include "platform_types.h"
 
-void openair_rrc_gNB_configuration(gNB_RRC_INST *rrc, gNB_RrcConfigurationReq *configuration);
-#endif
+typedef struct {
+  /* incremented every TTI (every millisecond when in realtime).
+   * Used to check timers.
+   * 64 bits gives us more than 500 million years of (realtime) processing.
+   * It should be enough.
+   */
+  uint64_t tti;
+
+  /* timer values (unit: TTI, ie. millisecond when in realtime) */
+  int      t_reloc_prep;
+  int      tx2_reloc_overall;
+  int      t_dc_prep;
+  int      t_dc_overall;
+} xnap_timers_t;
+
+void xnap_timers_init(xnap_timers_t *t,
+    int t_reloc_prep,
+    int tx2_reloc_overall,
+    int t_dc_prep,
+    int t_dc_overall);
+//void xnap_check_timers(instance_t instance);
+uint64_t xnap_timer_get_tti(xnap_timers_t *t);
+
+#endif /* X2AP_TIMERS_H_ */

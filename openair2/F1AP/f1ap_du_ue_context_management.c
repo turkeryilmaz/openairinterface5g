@@ -117,6 +117,7 @@ static void f1ap_read_drb_nssai(const F1AP_SNSSAI_t *asn1_nssai, nssai_t *nssai)
 
 int DU_handle_UE_CONTEXT_SETUP_REQUEST(instance_t instance, sctp_assoc_t assoc_id, uint32_t stream, F1AP_F1AP_PDU_t *pdu)
 {
+  LOG_I(F1AP,"DU handling UE Context request");
   F1AP_UEContextSetupRequest_t    *container;
   int i;
   DevAssert(pdu);
@@ -129,7 +130,7 @@ int DU_handle_UE_CONTEXT_SETUP_REQUEST(instance_t instance, sctp_assoc_t assoc_i
                              F1AP_ProtocolIE_ID_id_gNB_CU_UE_F1AP_ID, true);
   f1ap_ue_context_setup_req->gNB_CU_ue_id = ieCU->value.choice.GNB_CU_UE_F1AP_ID;
   /* optional */
-  /* GNB_DU_UE_F1AP_ID */
+  /* GNB_DU_UE_F1AP_ID*/ 
   F1AP_UEContextSetupRequestIEs_t *ieDU_UE;
   F1AP_FIND_PROTOCOLIE_BY_ID(F1AP_UEContextSetupRequestIEs_t, ieDU_UE, container,
                              F1AP_ProtocolIE_ID_id_gNB_DU_UE_F1AP_ID, false);
@@ -202,6 +203,7 @@ int DU_handle_UE_CONTEXT_SETUP_REQUEST(instance_t instance, sctp_assoc_t assoc_i
       }
     }
   }
+
 
   /* DRB */
   F1AP_UEContextSetupRequestIEs_t *ieDrb;
@@ -313,13 +315,14 @@ int DU_handle_UE_CONTEXT_SETUP_REQUEST(instance_t instance, sctp_assoc_t assoc_i
   } else {
     LOG_W(F1AP, "can't find RRCContainer in UEContextSetupRequestIEs by id %ld \n", F1AP_ProtocolIE_ID_id_RRCContainer);
   }
-
+  LOG_I(F1AP, "F1AP UE context setup handled in DU\n");
   ue_context_setup_request(f1ap_ue_context_setup_req);
   return 0;
 }
 
 int DU_send_UE_CONTEXT_SETUP_RESPONSE(sctp_assoc_t assoc_id, f1ap_ue_context_setup_t *resp)
 {
+  LOG_I(F1AP, "F1AP UE context setup resp in DU");
   F1AP_F1AP_PDU_t                  pdu= {0};
   F1AP_UEContextSetupResponse_t    *out;
   uint8_t  *buffer=NULL;
@@ -346,7 +349,7 @@ int DU_send_UE_CONTEXT_SETUP_RESPONSE(sctp_assoc_t assoc_id, f1ap_ue_context_set
   ie2->criticality                    = F1AP_Criticality_reject;
   ie2->value.present                  = F1AP_UEContextSetupResponseIEs__value_PR_GNB_DU_UE_F1AP_ID;
   ie2->value.choice.GNB_DU_UE_F1AP_ID = resp->gNB_DU_ue_id;
-
+  LOG_I(F1AP,"DU UE ID in DU_send_UE_CONTEXT_SETUP_RESPONSE  %d\n", resp->gNB_DU_ue_id);
   /* mandatory */
   /* c3. DUtoCURRCInformation */
   if(resp->du_to_cu_rrc_information){
@@ -383,6 +386,12 @@ int DU_send_UE_CONTEXT_SETUP_RESPONSE(sctp_assoc_t assoc_id, f1ap_ue_context_set
     ie4->criticality                    = F1AP_Criticality_ignore;
     ie4->value.present                  = F1AP_UEContextSetupResponseIEs__value_PR_C_RNTI;
     ie4->value.choice.C_RNTI            = *resp->crnti;
+    LOG_I(F1AP,"rnti in  DU_send_UE_CONTEXT_SETUP_RESPONSE %d\n", *resp->crnti);
+
+    //C_RNTI_TO_BIT_STRING(rntiP, &ie->value.choice.C_RNTI);
+    //ie4->value.choice.C_RNTI=0;
+   // AssertFatal(false, "not implemented\n");
+   // LOG_E(F1AP,"RNTI to code!\n");
   }
 
   /* optional */

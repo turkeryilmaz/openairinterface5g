@@ -53,6 +53,8 @@
 #include "openair2/E1AP/e1ap.h"
 #include "gnb_config.h"
 #include "openair2/LAYER2/NR_MAC_gNB/mac_proto.h"
+#include "openair2/XNAP/xnap_gNB_task.h"
+#include "openair2/XNAP/xnap_gNB_management_procedures.h"
 
 extern unsigned char NB_gNB_INST;
 
@@ -153,6 +155,17 @@ void *gNB_app_task(void *args_p)
       // it does NOT use the E1AP part
       itti_send_msg_to_task(TASK_CUCP_E1, 0, msg);
     }
+
+    if (is_xnap_enabled()) {
+      if (itti_create_task(TASK_XNAP, xnap_task, NULL) < 0) {
+        LOG_E(XNAP, "Create task for XNAP failed\n");
+      }
+      xnap_net_config_t xn_net_config = Read_IPconfig_Xn();
+      createXninst(0, NULL, &xn_net_config);
+
+    } else {
+        LOG_I(XNAP, "XNAP is disabled.\n");
+    } 
 
     if (node_type == ngran_gNB_CUUP) {
       AssertFatal(false, "To run CU-UP use executable nr-cuup\n");

@@ -32,6 +32,7 @@
 
 #include "uper_decoder.h"
 #include "uper_encoder.h"
+#include "NR_HandoverPreparationInformation.h"
 
 // Standarized 5QI values and Default Priority levels as mentioned in 3GPP TS 23.501 Table 5.7.4-1
 const uint64_t qos_fiveqi[26] = {1, 2, 3, 4, 65, 66, 67, 71, 72, 73, 74, 76, 5, 6, 7, 8, 9, 69, 70, 79, 80, 82, 83, 84, 85, 86};
@@ -424,8 +425,97 @@ static NR_UE_info_t *create_new_UE_handover(gNB_MAC_INST *mac, uint32_t cu_id)
   return UE;
 }
 
+
+
+static NR_UE_NR_Capability_t *get_nr_cap(const NR_UE_CapabilityRAT_ContainerList_t *clist)
+{
+  for (int i = 0; i < clist->list.count; i++) {
+    const NR_UE_CapabilityRAT_Container_t *c = clist->list.array[i];
+    if (c->rat_Type != NR_RAT_Type_nr) {
+      LOG_W(NR_MAC, "ignoring capability of type %ld\n", c->rat_Type);
+      continue;
+    }
+
+    NR_UE_NR_Capability_t *cap = NULL;
+    asn_dec_rval_t dec_rval = uper_decode(NULL,
+                                          &asn_DEF_NR_UE_NR_Capability,
+                                          (void **)&cap,
+                                          c->ue_CapabilityRAT_Container.buf,
+                                          c->ue_CapabilityRAT_Container.size,
+                                          0,
+                                          0);
+    if (dec_rval.code != RC_OK) {
+      LOG_W(NR_MAC, "cannot decode NR UE capability, ignoring\n");
+      ASN_STRUCT_FREE(asn_DEF_NR_UE_NR_Capability, cap);
+      continue;
+    }
+    return cap;
+  }
+  return NULL;
+}
+
+
+static NR_UE_NR_Capability_t *get_ue_nr_cap_from_ho_prep_info(uint8_t *buf, uint32_t len)
+{
+  if (buf == NULL || len == 0)
+    return NULL;
+  NR_HandoverPreparationInformation_t *hpi = NULL;
+  asn_dec_rval_t dec_rval = uper_decode_complete(NULL, &asn_DEF_NR_HandoverPreparationInformation, (void **)&hpi, buf, len);
+  if (dec_rval.code != RC_OK) {
+    LOG_W(NR_MAC, "cannot decode HandoverPreparationInformation, ignoring capabilities\n");
+    return NULL;
+  }
+  NR_UE_NR_Capability_t *cap = NULL;
+  if (hpi->criticalExtensions.present != NR_HandoverPreparationInformation__criticalExtensions_PR_c1
+      || hpi->criticalExtensions.choice.c1 == NULL
+      || hpi->criticalExtensions.choice.c1->present
+             != NR_HandoverPreparationInformation__criticalExtensions__c1_PR_handoverPreparationInformation
+      || hpi->criticalExtensions.choice.c1->choice.handoverPreparationInformation == NULL) {
+  } else {
+    const NR_HandoverPreparationInformation_IEs_t *hpi_ie = hpi->criticalExtensions.choice.c1->choice.handoverPreparationInformation;
+    cap = get_nr_cap(&hpi_ie->ue_CapabilityRAT_List);
+  }
+  ASN_STRUCT_FREE(asn_DEF_NR_HandoverPreparationInformation, hpi);
+  return cap;
+}
+
+
+
+static NR_UE_info_t *create_new_UE_handover(gNB_MAC_INST *mac, uint32_t cu_id)
+{
+  int CC_id = 0;
+  const NR_COMMON_channels_t *cc = &mac->common_channels[CC_id];
+  rnti_t rnti;
+  bool found = nr_mac_get_new_rnti(&mac->UE_info, cc->ra, sizeofArray(cc->ra), &rnti);
+  if (!found)
+    return NULL;
+
+  NR_UE_info_t* UE = add_new_nr_ue(mac, rnti, NULL);
+  if (!UE)
+    return NULL;
+
+  f1_ue_data_t new_ue_data = {.secondary_ue = cu_id};
+  du_add_f1_ue_data(rnti, &new_ue_data);
+
+  const NR_ServingCellConfigCommon_t *scc = mac->common_channels[CC_id].ServingCellConfigCommon;
+  const NR_ServingCellConfig_t *sccd = mac->common_channels[CC_id].pre_ServingCellConfig;
+  NR_CellGroupConfig_t *cellGroupConfig = get_initial_cellGroupConfig(UE->uid, scc, sccd, &mac->radio_config);
+  // note: we don't pass it to add_new_nr_ue() because the internal logic is
+  // such that we then assume having received the ack of Msg4 (which is not the
+  // case)
+  UE->Msg4_ACKed = true;
+  UE->CellGroup = cellGroupConfig;
+  UE->CellGroup->spCellConfig->reconfigurationWithSync = get_reconfiguration_with_sync(UE->rnti, UE->uid, scc);
+  nr_rlc_activate_srb0(UE->rnti, UE, NULL);
+
+  nr_mac_prepare_ra_ue(mac, rnti, UE->CellGroup);
+  return UE;
+}
+
+
 void ue_context_setup_request(const f1ap_ue_context_setup_t *req)
 {
+  LOG_I(NR_MAC,"UE Context request IN MAC");
   gNB_MAC_INST *mac = RC.nrmac[0];
   /* response has same type as request... */
   f1ap_ue_context_setup_t resp = {
@@ -455,6 +545,7 @@ void ue_context_setup_request(const f1ap_ue_context_setup_t *req)
   NR_UE_info_t *UE = NULL;
   if (handover) {
     UE = create_new_UE_handover(mac, req->gNB_CU_ue_id);
+    LOG_I(F1AP,"UE RNTI in  ue_context_setup_request  %d\n",UE->rnti );
     resp.gNB_DU_ue_id = UE->rnti;
     resp.crnti = &UE->rnti;
   } else {
@@ -518,6 +609,7 @@ void ue_context_setup_request(const f1ap_ue_context_setup_t *req)
   free(resp.du_to_cu_rrc_information->cellGroupConfig);
   free(resp.du_to_cu_rrc_information);
 }
+
 
 void ue_context_modification_request(const f1ap_ue_context_modif_req_t *req)
 {

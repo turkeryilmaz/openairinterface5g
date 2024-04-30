@@ -154,4 +154,8 @@ NR_MeasConfig_t *get_MeasConfig(const NR_MeasTiming_t *mt,
 void free_MeasConfig(NR_MeasConfig_t *mc);
 int do_NR_Paging(uint8_t Mod_id, uint8_t *buffer, uint32_t tmsi);
 
+int do_NRHandoverPreparation(char *ho_buf, int ho_size, NR_UE_NR_Capability_t  *ue_nr_cap, int rrc_size);
+int16_t do_NR_HandoverCommand(uint8_t *ho_buf, int16_t ho_size, uint8_t *rrc_buffer, int16_t rrc_size);
+int do_NR_HandoverPreparationInformation(const uint8_t *uecap_buf, int uecap_buf_size, uint8_t *buf, int buf_size);
+
 #endif  /* __RRC_NR_MESSAGES_ASN1_MSG__H__ */
