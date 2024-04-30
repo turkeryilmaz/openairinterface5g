@@ -92,7 +92,7 @@ void nr_fill_sl_rx_indication(sl_nr_rx_indication_t *rx_ind,
         sl_nr_slsch_pdu_t *rx_slsch_pdu = &rx_ind->rx_indication_body[n_pdus - 1].rx_slsch_pdu;
         slsch_status_t *slsch_status = (slsch_status_t *)typeSpecific;
         rx_slsch_pdu->pdu        = slsch_status->rdata->ulsch_harq->b;
-        rx_slsch_pdu->pdu_length = slsch_status->rdata->ulsch_harq->TBS>>3;
+        rx_slsch_pdu->pdu_length = slsch_status->rdata->ulsch_harq->TBS;
         rx_slsch_pdu->harq_pid   = slsch_status->rdata->harq_pid;
         rx_slsch_pdu->ack_nack   = (slsch_status->rxok==true) ? 1 : 0;
 

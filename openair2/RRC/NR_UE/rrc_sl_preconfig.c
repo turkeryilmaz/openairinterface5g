@@ -589,8 +589,8 @@ void nr_UE_configure_Sidelink(uint8_t id, uint8_t is_sync_source) {
   sprintf(aprefix, "%s.[%i].%s.[%i]", SL_CONFIG_STRING_SL_PRECONFIGURATION, 0, SL_CONFIG_STRING_UEINFO, 0);
   config_get(SL_UEINFO,sizeof(SL_UEINFO)/sizeof(paramdef_t),aprefix);
   LOG_I(NR_RRC,"SL L2 SRCid %x, SL ipv4 addr X.X.%d.%d\n",ueinfo.srcid,ueinfo.thirdOctet,ueinfo.fourthOctet);
-  nas_config(1,ueinfo.thirdOctet,ueinfo.fourthOctet,"oai_sl_tun");
-  nas_config(1 + ueinfo.srcid,ueinfo.thirdOctet,ueinfo.fourthOctet + ueinfo.srcid,"oai_sl_tun");
+  nas_config(1, ueinfo.thirdOctet,ueinfo.fourthOctet, "oai_sl_tun");
+  nas_config(1 + ueinfo.srcid, ueinfo.thirdOctet, ueinfo.fourthOctet + ueinfo.srcid, "oai_sl_tun");
   nr_rrc_mac_config_req_sl_preconfig(id, sl_preconfig, sync_source, ueinfo.srcid);
 
 

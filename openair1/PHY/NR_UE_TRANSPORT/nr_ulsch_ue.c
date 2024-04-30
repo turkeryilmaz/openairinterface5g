@@ -596,6 +596,7 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
               LOG_D(NR_PHY, "Tx port_freq_indices.p %i, port_freq_indices.k %d, is_csi_rs %d, k = %i, RE %i, csi_rs_rb %i\n", port_freq_indices[nl].p, port_freq_indices[nl].k, is_csi_rs, k, i, csi_rs_rb);
             }
             free(port_freq_indices);
+            port_freq_indices = NULL;
           }
         }
 

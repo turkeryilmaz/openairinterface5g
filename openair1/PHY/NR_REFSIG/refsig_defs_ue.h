@@ -41,6 +41,9 @@ typedef struct csi_rs_params {
   uint8_t ports;
   uint8_t koverline[16];
   uint8_t loverline[16];
+  double rho;
+  double alpha;
+  uint8_t gs;
 } csi_rs_params_t;
 
 /*!\brief This function generates the NR Gold sequence (38-211, Sec 5.2.1) for the PBCH DMRS.
