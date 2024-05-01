@@ -30,6 +30,7 @@
 #include "rrc_defs.h"
 #include "rrc_vars.h"
 #include "LAYER2/NR_MAC_UE/mac_proto.h"
+#include "RRC/NAS/nas_config.h"
 
 #define GNSS_SUPPORT 0
 
@@ -245,7 +246,7 @@ static void prepare_NR_SL_ResourcePool(NR_SL_ResourcePool_r16_t *sl_res_pool,
   if (*nr_sl_psfch_config->sl_PSFCH_Period_r16 > 0) {
     const uint8_t psfch_periods[] = {0,1,2,4};
     AssertFatal(*nr_sl_psfch_config->sl_PSFCH_Period_r16 < 4, "sl_PSFCH_Period_r16 index must be less than 4\n");
-    LOG_I(NR_PHY,"Configuring PSFCH Period %d\n",*nr_sl_psfch_config->sl_PSFCH_Period_r16);
+    LOG_I(NR_PHY, "Configuring PSFCH Period %ld\n", *nr_sl_psfch_config->sl_PSFCH_Period_r16);
     uint8_t psfch_period = psfch_periods[*nr_sl_psfch_config->sl_PSFCH_Period_r16];
     uint16_t prod_numCh_period = *sl_res_pool->sl_NumSubchannel_r16*psfch_period;
     uint16_t num_prbs = (*sl_res_pool->sl_RB_Number_r16 / prod_numCh_period) * prod_numCh_period;
@@ -589,8 +590,7 @@ void nr_UE_configure_Sidelink(uint8_t id, uint8_t is_sync_source) {
   sprintf(aprefix, "%s.[%i].%s.[%i]", SL_CONFIG_STRING_SL_PRECONFIGURATION, 0, SL_CONFIG_STRING_UEINFO, 0);
   config_get(SL_UEINFO,sizeof(SL_UEINFO)/sizeof(paramdef_t),aprefix);
   LOG_I(NR_RRC,"SL L2 SRCid %x, SL ipv4 addr X.X.%d.%d\n",ueinfo.srcid,ueinfo.thirdOctet,ueinfo.fourthOctet);
-  nas_config(1, ueinfo.thirdOctet,ueinfo.fourthOctet, "oai_sl_tun");
-  nas_config(1 + ueinfo.srcid, ueinfo.thirdOctet, ueinfo.fourthOctet + ueinfo.srcid, "oai_sl_tun");
+  nas_config(1 + ueinfo.srcid, ueinfo.thirdOctet, ueinfo.fourthOctet, "oai_sl_tun");
   nr_rrc_mac_config_req_sl_preconfig(id, sl_preconfig, sync_source, ueinfo.srcid);
 
 
