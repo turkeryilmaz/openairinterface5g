@@ -43,6 +43,166 @@
 
 RB_PROTOTYPE(xnap_gnb_tree, xnap_gNB_data_t, entry, xnap_gNB_compare_assoc_id);
 
+static void xnap_gNB_handle_sctp_data_ind(instance_t instance, sctp_data_ind_t *sctp_data_ind);
+
+static void xnap_gNB_handle_sctp_association_ind(instance_t instance, sctp_new_association_ind_t *sctp_new_association_ind);
+
+// static void xnap_gNB_handle_register_gNB(instance_t instance, xnap_register_gnb_req_t *xnap_register_gNB);
+
+static void xnap_gNB_send_sctp_assoc_req(instance_t instance_p, xnap_net_config_t *nc, int index);
+static void xnap_gNB_handle_sctp_association_resp(instance_t instance, sctp_new_association_resp_t *sctp_new_association_resp);
+
+static void xnap_gNB_handle_sctp_data_ind(instance_t instance, sctp_data_ind_t *sctp_data_ind)
+{
+  int result;
+  DevAssert(sctp_data_ind != NULL);
+  xnap_gNB_handle_message(instance,
+                          sctp_data_ind->assoc_id,
+                          sctp_data_ind->stream,
+                          sctp_data_ind->buffer,
+                          sctp_data_ind->buffer_length);
+  result = itti_free(TASK_UNKNOWN, sctp_data_ind->buffer);
+  AssertFatal(result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
+}
+
+static void xnap_gNB_handle_sctp_association_resp(instance_t instance, sctp_new_association_resp_t *sctp_new_association_resp)
+{
+  xnap_gNB_instance_t *instance_xn = xnap_gNB_get_instance(instance); // managementproc;
+  DevAssert(sctp_new_association_resp != NULL);
+  DevAssert(instance_xn != NULL);
+  /*Return if connection to gNB failed- to be modified if needed. (Exit on error in X2AP)*/
+  if (sctp_new_association_resp->sctp_state == SCTP_STATE_UNREACHABLE) {
+    LOG_E(XNAP,
+          "association with gNB failed, is it running? If no, run it first. If yes, check IP addresses in your configuration "
+          "file.\n");
+    return;
+  }
+  if (sctp_new_association_resp->sctp_state != SCTP_STATE_ESTABLISHED) {
+    LOG_W(XNAP,
+          "Received unsuccessful result for SCTP association state (%u), assoc_id (%d), instance %ld, cnx_id %u \n",
+          sctp_new_association_resp->sctp_state,
+          sctp_new_association_resp->assoc_id,
+          instance,
+          sctp_new_association_resp->ulp_cnx_id);
+    xnap_handle_xn_setup_message(instance,
+                                 sctp_new_association_resp->assoc_id,
+                                 sctp_new_association_resp->sctp_state == SCTP_STATE_SHUTDOWN);
+    // sleep(3);
+    // xnap_gNB_send_sctp_assoc_req(instance, &instance_xn->net_config, sctp_new_association_resp->ulp_cnx_id);
+    return; // exit -1 for debugging
+  }
+
+  xnap_gNB_data_t *xnap_gnb_data_p = calloc(1, sizeof(*xnap_gnb_data_p));
+  AssertFatal(xnap_gnb_data_p != NULL, "out of memory\n");
+  xnap_gnb_data_p->cnx_id = sctp_new_association_resp->ulp_cnx_id;
+  xnap_gnb_data_p->assoc_id = sctp_new_association_resp->assoc_id;
+  xnap_gnb_data_p->state = XNAP_GNB_STATE_WAITING;
+  xnap_gnb_data_p->in_streams = sctp_new_association_resp->in_streams;
+  xnap_gnb_data_p->out_streams = sctp_new_association_resp->out_streams;
+  //xnap_dump_trees(instance);
+  xnap_insert_gnb(instance, xnap_gnb_data_p);
+  xnap_dump_trees(instance);
+  xnap_gNB_generate_xn_setup_request(sctp_new_association_resp->assoc_id, &instance_xn->setup_req);
+}
+
+int xnap_gNB_init_sctp(instance_t instance_p, xnap_net_config_t *nc)
+{
+  // Create and alloc new message
+  MessageDef *message;
+  sctp_init_t *sctp_init = NULL;
+  DevAssert(nc != NULL);
+  message = itti_alloc_new_message(TASK_XNAP, 0, SCTP_INIT_MSG_MULTI_REQ);
+  sctp_init = &message->ittiMsg.sctp_init_multi;
+  sctp_init->port = nc->gnb_port_for_XNC;
+  sctp_init->ppid = XNAP_SCTP_PPID;
+  sctp_init->ipv4 = 1;
+  sctp_init->ipv6 = 0;
+  sctp_init->nb_ipv4_addr = 1;
+#if 0
+  memcpy(&sctp_init->ipv4_address,
+         nc->gnb_xn_ip_address,
+         sizeof(*nc->gnb_xn_ip_address));
+#endif
+  sctp_init->ipv4_address[0] = inet_addr(nc->gnb_xn_ip_address.ipv4_address);
+  sctp_init->nb_ipv6_addr = 0;
+  sctp_init->ipv6_address[0] = "0:0:0:0:0:0:0:1";
+  return itti_send_msg_to_task(TASK_SCTP, instance_p, message);
+}
+
+static void xnap_gNB_send_sctp_assoc_req(instance_t instance, xnap_net_config_t *nc, int index)
+{
+  MessageDef *message = NULL;
+  sctp_new_association_req_t *sctp_new_association_req = NULL;
+  DevAssert(nc != NULL);
+  message = itti_alloc_new_message(TASK_XNAP, 0, SCTP_NEW_ASSOCIATION_REQ);
+  sctp_new_association_req = &message->ittiMsg.sctp_new_association_req;
+  sctp_new_association_req->port = nc->gnb_port_for_XNC;
+  sctp_new_association_req->ppid = XNAP_SCTP_PPID;
+  sctp_new_association_req->in_streams = nc->sctp_streams.sctp_in_streams;
+  sctp_new_association_req->out_streams = nc->sctp_streams.sctp_out_streams;
+
+  memcpy(&sctp_new_association_req->remote_address,
+         &nc->target_gnb_xn_ip_address[index],
+         sizeof(nc->target_gnb_xn_ip_address[index]));
+  memcpy(&sctp_new_association_req->local_address, &nc->gnb_xn_ip_address, sizeof(nc->gnb_xn_ip_address));
+  sctp_new_association_req->ulp_cnx_id = index;
+  itti_send_msg_to_task(TASK_SCTP, instance, message);
+}
+
+static void xnap_gNB_handle_sctp_init_msg_multi_cnf(instance_t instance, sctp_init_msg_multi_cnf_t *m)
+{
+  xnap_gNB_instance_t *instance_xn = xnap_gNB_get_instance(instance);
+  DevAssert(m != NULL);
+  DevAssert(instance_xn != NULL);
+  // instance->multi_sd = m->multi_sd;
+
+  /* Exit if CNF message reports failure.
+   * Failure means multi_sd < 0.
+   */
+  if (m->multi_sd < 0) {
+    LOG_E(XNAP, "Error: be sure to properly configure XN in your configuration file.\n");
+    DevAssert(m->multi_sd >= 0);
+  }
+
+  /* Trying to connect to the provided list of gNB ip address */
+
+  for (int index = 0; index < instance_xn->net_config.nb_xn; index++) {
+    LOG_I(XNAP, "gNB[%ld] gNB id %lx index %d acting as an initiator (client)\n", instance, instance_xn->setup_req.gNB_id, index);
+    instance_xn->xn_target_gnb_pending_nb++;
+    xnap_gNB_send_sctp_assoc_req(instance, &instance_xn->net_config, index);
+  }
+}
+
+static void xnap_gNB_handle_sctp_association_ind(instance_t instance, sctp_new_association_ind_t *sctp_new_association_ind)
+{
+  xnap_gNB_instance_t *instance_p = xnap_gNB_get_instance(instance);
+  DevAssert(instance_p != NULL);
+  xnap_gNB_data_t *xnap_gnb_data_p;
+  DevAssert(sctp_new_association_ind != NULL);
+  LOG_W(XNAP, "SCTP Association IND Received.\n");
+  //xnap_dump_trees(instance);
+  xnap_gnb_data_p = xnap_get_gNB(instance, sctp_new_association_ind->assoc_id);
+  if (xnap_gnb_data_p == NULL) {
+    LOG_W(XNAP, "xnap_gnb_data_p does not exist, creating new descriptor\n");
+    /* TODO: Create new gNB descriptor-not yet associated? */
+    xnap_gNB_data_t *xnap_gnb_data_p = calloc(1, sizeof(*xnap_gnb_data_p));
+    AssertFatal(xnap_gnb_data_p != NULL, "out of memory\n");
+    xnap_gnb_data_p->assoc_id = sctp_new_association_ind->assoc_id;
+    xnap_gnb_data_p->state = XNAP_GNB_STATE_WAITING;
+    xnap_gnb_data_p->in_streams = sctp_new_association_ind->in_streams;
+    xnap_gnb_data_p->out_streams = sctp_new_association_ind->out_streams;
+    //xnap_dump_trees(instance);
+    xnap_insert_gnb(instance, xnap_gnb_data_p);
+    xnap_dump_trees(instance);
+  } else {
+    xnap_gnb_data_p->in_streams = sctp_new_association_ind->in_streams;
+    xnap_gnb_data_p->out_streams = sctp_new_association_ind->out_streams;
+    LOG_W(XNAP, "Updated streams for assoc id: %d \n", sctp_new_association_ind->assoc_id);
+  }
+  xnap_dump_trees(instance);
+}
+
+
 void *xnap_task(void *arg)
 {
   MessageDef *received_msg = NULL;

@@ -177,6 +177,12 @@ void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *req, sctp_assoc_t assoc_id)
   AssertFatal(num == 3, "could not read RRC version string %s\n", TO_STRING(NR_RRC_VERSION));
   if (rrc->node_name != NULL)
     resp.gNB_CU_name = strdup(rrc->node_name);
+  xnap_gNB_instance_t *instance_xn = xnap_gNB_get_instance(instance);
+  if (instance_xn != NULL) {
+    LOG_D(NR_RRC, "XNAP is enabled, Triggering SCTP Association \n");
+    if (instance_xn.setup_req ==NULL) {
+      CU_register_xn(cell_info,instance_xn->nc);
+
   rrc->mac_rrc.f1_setup_response(assoc_id, &resp);
 
   /*

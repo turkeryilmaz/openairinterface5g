@@ -79,6 +79,19 @@ void createXninst(instance_t instanceP, xnap_setup_req_t *req, xnap_net_config_t
   pthread_mutex_unlock(&xn_inst_mtx);
 }
 
+void updateXninst(instance_t instanceP, xnap_setup_req_t *req, xnap_net_config_t *nc)
+{
+  DevAssert(instanceP == 0);
+  pthread_mutex_lock(&xn_inst_mtx);
+  AssertFatal(xn_inst[instanceP] != NULL, "XN instance not found\n");
+  if (req)
+    xn_inst[instanceP]->setup_req = *req;
+  if (nc)
+    xn_inst[instanceP]->net_config = *nc;
+  pthread_mutex_unlock(&xn_inst_mtx);
+}
+
+
 void xnap_dump_trees(const instance_t instance)
 {
   pthread_mutex_lock(&xn_inst_mtx);
