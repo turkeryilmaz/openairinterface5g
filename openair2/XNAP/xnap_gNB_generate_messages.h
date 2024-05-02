@@ -19,19 +19,24 @@
  *      contact@openairinterface.org
  */
 
-/*! \file xnap_messages_def.h
- * \author Sreeshma Shiv <sreeshmau@iisc.ac.in>
- * \date August 2023
+/*! \file xnap_gNB_generate_messages.h
+ * \brief xnap procedures for gNB
+ * \date 2023 July
  * \version 1.0
  */
 
-#include "openair2/COMMON/xnap_messages_types.h"
+#ifndef XNAP_GNB_GENERATE_MESSAGES_H_
+#define XNAP_GNB_GENERATE_MESSAGES_H_
 
-/* gNB application layer -> XNAP messages */
-MESSAGE_DEF(XNAP_REGISTER_GNB_REQ, MESSAGE_PRIORITY_MED, xnap_register_gnb_req_t, xnap_register_gnb_req)
-/* XNAP -> gNB application layer messages */
+#include "xnap_gNB_defs.h"
+#include "xnap_common.h"
 
-/* handover messages XNAP <-> RRC */
-MESSAGE_DEF(XNAP_SETUP_REQ, MESSAGE_PRIORITY_MED, xnap_setup_req_t, xnap_setup_req)
-MESSAGE_DEF(XNAP_SETUP_RESP, MESSAGE_PRIORITY_MED, xnap_setup_resp_t, xnap_setup_resp)
-MESSAGE_DEF(XNAP_SETUP_FAILURE, MESSAGE_PRIORITY_MED, xnap_setup_failure_t, xnap_setup_failure)
+int xnap_gNB_generate_xn_setup_request(sctp_assoc_t assoc_id, xnap_setup_req_t *req);
+
+int xnap_gNB_generate_xn_setup_response(sctp_assoc_t assoc_id, xnap_setup_resp_t *resp);
+
+int xnap_gNB_generate_xn_setup_failure(sctp_assoc_t assoc_id, xnap_setup_failure_t *fail);
+
+int xnap_gNB_set_cause(XNAP_Cause_t *cause_p, XNAP_Cause_PR cause_type, long cause_value);
+
+#endif /*  XNAP_GNB_GENERATE_MESSAGES_H_ */

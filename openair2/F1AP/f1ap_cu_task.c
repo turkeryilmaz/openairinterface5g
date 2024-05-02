@@ -118,7 +118,7 @@ static void cu_task_send_sctp_init_req(instance_t instance, char *my_addr) {
   itti_send_msg_to_task(TASK_SCTP, instance, message_p);
 }
 
-void cu_register_xn(uint32_t gnb_id_num,*cell)
+void cu_register_xn(uint32_t gnb_id_num,f1ap_served_cell_info_t *cell)
 {
   MessageDef *msg;
 
@@ -127,20 +127,20 @@ void cu_register_xn(uint32_t gnb_id_num,*cell)
     LOG_I(XNAP, "GNB_ID: %d \n", gnb_id);
     uint64_t id;
     char *name = NULL;
-    xnap_register_gnb_req_t *req = &XNAP_REGISTER_GNB_REQ(message_p);
-    req->setup_req.info->tac = cell->tac;
-    req->setup_req.info->plmn = cell->plmn;
-    req->setup_req.info->nr_cellid = cell->nr_cellid;
-    req->setup_req.info->nr_pci = cell->nr_pci;
+    xnap_register_gnb_req_t *req = &XNAP_REGISTER_GNB_REQ(msg);
+    req->setup_req.info.tac = cell->tac;
+    req->setup_req.info.plmn = cell->plmn;
+    req->setup_req.info.nr_cellid = cell->nr_cellid;
+    req->setup_req.info.nr_pci = cell->nr_pci;
     if (cell->mode == F1AP_MODE_TDD) {
-    req->setup_req.info->mode = XNAP_MODE_TDD;
+    req->setup_req.info.mode = XNAP_MODE_TDD;
     req->setup_req.info.tdd = cell->tdd;
     /*tdd->freqinfo.arfcn = frequencyInfoDL->absoluteFrequencyPointA;
     tdd->tbw.scs = frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing;
     tdd->tbw.nrb = frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth;
     tdd->freqinfo.band = *frequencyInfoDL->frequencyBandList.list.array[0];*/
     } else {
-    req->setup_req.info->mode = XNAP_MODE_FDD;
+    req->setup_req.info.mode = XNAP_MODE_FDD;
     req->setup_req.info.fdd = cell->fdd;
     /*fdd->dl_freqinfo.arfcn = frequencyInfoDL->absoluteFrequencyPointA;
     fdd->ul_freqinfo.arfcn = *scc->uplinkConfigCommon->frequencyInfoUL->absoluteFrequencyPointA;
@@ -151,7 +151,7 @@ void cu_register_xn(uint32_t gnb_id_num,*cell)
     fdd->dl_freqinfo.band = *frequencyInfoDL->frequencyBandList.list.array[0];
     fdd->ul_freqinfo.band = *scc->uplinkConfigCommon->frequencyInfoUL->frequencyBandList->list.array[0];*/
     }
-    req->setup_req.info->measurement_timing_information = cell->measurement_timing_information;
+    req->setup_req.info.measurement_timing_information = cell->measurement_timing_information;
     gNB_RRC_INST *rrc = RC.nrrrc[0];
     req->setup_req.gNB_id = rrc->node_id;
     req->setup_req.tai_support = cell->tac;
