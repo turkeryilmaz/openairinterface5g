@@ -969,11 +969,13 @@ void nr_ue_csi_rs_procedures(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, c16_t 
   uint8_t cqi = 0;
   uint8_t i1[3];
   uint8_t i2[1];
+
   uint8_t num_of_layers = min(get_nrUE_params()->nb_antennas_tx, get_nrUE_params()->nb_antennas_rx);
   AssertFatal(num_of_layers > 0, "Number of layers MUST be greater than zero!!!");
   uint16_t beta_csirs = get_softmodem_params()->sl_mode ? (uint16_t)(AMP * (ceil(sqrt(num_of_layers / frame_parms->nb_antennas_tx)))) & 0xFFFF : AMP;
   csirs_config_pdu->scramb_id = ue->slsch[0].harq_process->pssch_pdu->Nid % (1 << 10);
   LOG_D(NR_PHY, "Rx beta_csirs: %d, scramb_id %i, frame.slot (%d.%d)\n", beta_csirs, csirs_config_pdu->scramb_id, proc->frame_rx, proc->nr_slot_rx);
+
   nr_generate_csi_rs(frame_parms,
                      ue->nr_csi_info->csi_rs_generated_signal,
                      beta_csirs,
