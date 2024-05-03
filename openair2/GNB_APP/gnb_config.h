@@ -109,6 +109,7 @@ void wait_f1_setup_response(void);
 int gNB_app_handle_f1ap_gnb_cu_configuration_update(f1ap_gnb_cu_configuration_update_t *gnb_cu_cfg_update);
 MessageDef *RCconfig_NR_CU_E1(const E1_t *entity);
 ngran_node_t get_node_type(void);
+xnap_net_config_t Read_IPconfig_Xn(void);
 
 #ifdef E2_AGENT
 #include "openair2/E2AP/e2_agent_arg.h"

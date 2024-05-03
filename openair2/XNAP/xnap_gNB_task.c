@@ -210,7 +210,7 @@ void *xnap_task(void *arg)
   LOG_D(XNAP, "Starting XNAP layer\n");
   itti_mark_task_ready(TASK_XNAP);
   const int instance = 0;
-  xnap_net_config_t xn_net_config = Read_IPconfig_Xn();
+  xnap_net_config_t *xn_net_config = Read_IPconfig_Xn();
   createXninst(instance, NULL, xn_net_config);
 
   while (1) {
@@ -223,6 +223,7 @@ void *xnap_task(void *arg)
         break;
 
       case XNAP_REGISTER_GNB_REQ: {
+        xnap_net_config_t *xn_nc = &XNAP_REGISTER_GNB_REQ(received_msg).net_config;
         xnap_gNB_init_sctp(ITTI_MSG_DESTINATION_INSTANCE(received_msg), xn_nc);
       } break;
 
