@@ -26,7 +26,8 @@
 #include "openair2/F1AP/f1ap_common.h"
 #include "openair2/F1AP/f1ap_ids.h"
 #include "executables/softmodem-common.h"
-
+#include "openair2/XNAP/xnap_gNB_defs.h"
+#include "openair2/XNAP/xnap_gNB_management_procedures.h"
 
 static int du_compare(const nr_rrc_du_container_t *a, const nr_rrc_du_container_t *b)
 {
@@ -177,11 +178,13 @@ void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *req, sctp_assoc_t assoc_id)
   AssertFatal(num == 3, "could not read RRC version string %s\n", TO_STRING(NR_RRC_VERSION));
   if (rrc->node_name != NULL)
     resp.gNB_CU_name = strdup(rrc->node_name);
-  xnap_gNB_instance_t *instance_xn = xnap_gNB_get_instance(instance);
+  xnap_gNB_instance_t *instance_xn = xnap_gNB_get_instance(0);
   if (instance_xn != NULL) {
     LOG_D(NR_RRC, "XNAP is enabled, Triggering SCTP Association \n");
-    if (instance_xn.setup_req ==NULL) {
-      CU_register_xn(cell_info,instance_xn->nc);
+    if (instance_xn->setup_req.gNB_id == 0) {
+      cu_register_xn(1, cell_info,instance_xn->net_config);
+    }
+  }
 
   rrc->mac_rrc.f1_setup_response(assoc_id, &resp);
 

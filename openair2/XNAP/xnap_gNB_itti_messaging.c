@@ -19,10 +19,22 @@
  *      contact@openairinterface.org
  */
 
-#ifndef F1AP_CU_TASK_H_
-#define F1AP_CU_TASK_H_
+#include "intertask_interface.h"
+#include "xnap_gNB_itti_messaging.h"
 
-void cu_register_xn(uint32_t gnb_id_num,f1ap_served_cell_info_t *cell , xnap_net_config_t nc);
-void *F1AP_CU_task(void *arg);
+void xnap_gNB_itti_send_sctp_data_req(sctp_assoc_t assoc_id, uint8_t *buffer, uint32_t buffer_length, uint16_t stream)
+{
+  MessageDef *message_p;
+  sctp_data_req_t *sctp_data_req;
+  instance_t instance = 0; // we have only one instance
 
-#endif /* F1AP_CU_TASK_H_ */
+  message_p = itti_alloc_new_message(TASK_XNAP, 0, SCTP_DATA_REQ);
+  sctp_data_req = &message_p->ittiMsg.sctp_data_req;
+
+  sctp_data_req->assoc_id = assoc_id;
+  sctp_data_req->buffer = buffer;
+  sctp_data_req->buffer_length = buffer_length;
+  sctp_data_req->stream = stream;
+  itti_send_msg_to_task(TASK_SCTP, instance, message_p);
+}
+

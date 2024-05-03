@@ -19,10 +19,16 @@
  *      contact@openairinterface.org
  */
 
-#ifndef F1AP_CU_TASK_H_
-#define F1AP_CU_TASK_H_
+/*! \file xnap_gNB_itti_messaging.h
+ * \brief xnap itti messaging for gNB
+ * \date 2023 July
+ * \version 1.0
+ */
 
-void cu_register_xn(uint32_t gnb_id_num,f1ap_served_cell_info_t *cell , xnap_net_config_t nc);
-void *F1AP_CU_task(void *arg);
+#ifndef XNAP_GNB_ITTI_MESSAGING_H_
+#define XNAP_GNB_ITTI_MESSAGING_H_
 
-#endif /* F1AP_CU_TASK_H_ */
+void xnap_gNB_itti_send_sctp_data_req(sctp_assoc_t assoc_id, uint8_t *buffer, uint32_t buffer_length, uint16_t stream);
+
+
+#endif /* XNAP_GNB_ITTI_MESSAGING_H_ */

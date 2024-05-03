@@ -53,6 +53,7 @@
 #include "openair2/E1AP/e1ap.h"
 #include "gnb_config.h"
 #include "openair2/LAYER2/NR_MAC_gNB/mac_proto.h"
+#include "openair2/XNAP/xnap_gNB_task.h"
 
 extern unsigned char NB_gNB_INST;
 
@@ -155,7 +156,7 @@ void *gNB_app_task(void *args_p)
     }
 
     if (is_xnap_enabled()) {
-      if (itti_create_task(TASK_CU_XNAP, xnap_task, NULL) < 0) {
+      if (itti_create_task(TASK_XNAP, xnap_task, NULL) < 0) {
         LOG_E(XNAP, "Create task for XNAP failed\n");
       }
     } else {
