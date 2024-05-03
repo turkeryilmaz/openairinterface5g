@@ -19,9 +19,21 @@
  *      contact@openairinterface.org
  */
 
-#ifndef F1AP_CU_TASK_H_
-#define F1AP_CU_TASK_H_
+/*! \file xnap_gNB_handler.h
+ * \brief xnap handler procedures for gNB
+ * \date 2023 July
+ * \version 1.0
+ */
 
-void *F1AP_CU_task(void *arg);
+#ifndef XNAP_GNB_HANDLERS_H_
+#define XNAP_GNB_HANDLERS_H_
 
-#endif /* F1AP_CU_TASK_H_ */
+#include "xnap_gNB_defs.h"
+
+int xnap_gNB_handle_message(instance_t instance,
+                            sctp_assoc_t assoc_id,
+                            int32_t stream,
+                            const uint8_t *const data,
+                            const uint32_t data_length);
+
+#endif /* XNAP_GNB_HANDLERS_H_ */

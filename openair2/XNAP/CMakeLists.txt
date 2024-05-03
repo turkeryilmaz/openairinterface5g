@@ -4,7 +4,8 @@ add_library(xnap
 	      xnap_gNB_generate_messages.c
 	      xnap_gNB_management_procedures.c
 	      xnap_gNB_task.c
-              xnap_gNB_itti_messaging.c)
+              xnap_gNB_itti_messaging.c
+	      xnap_gNB_handler.c)
 target_link_libraries(xnap
                         PUBLIC asn1_xnap
                         PRIVATE nr_rrc)

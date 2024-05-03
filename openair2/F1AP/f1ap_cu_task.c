@@ -118,6 +118,8 @@ static void cu_task_send_sctp_init_req(instance_t instance, char *my_addr) {
   itti_send_msg_to_task(TASK_SCTP, instance, message_p);
 }
 
+void cu_register_xn(uint32_t gnb_id_num,f1ap_served_cell_info_t *cell , xnap_net_config_t nc);
+
 void cu_register_xn(uint32_t gnb_id_num,f1ap_served_cell_info_t *cell , xnap_net_config_t nc)
 {
   MessageDef *msg;
