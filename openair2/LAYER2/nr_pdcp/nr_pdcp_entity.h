@@ -90,6 +90,9 @@ typedef struct nr_pdcp_entity_t {
   int (*process_sdu)(struct nr_pdcp_entity_t *entity, char *buffer, int size,
                      int sdu_id, char *pdu_buffer, int pdu_max_size);
   void (*delete_entity)(struct nr_pdcp_entity_t *entity);
+  void (*release_entity)(struct nr_pdcp_entity_t *entity);
+  void (*suspend_entity)(struct nr_pdcp_entity_t *entity);
+  void (*reestablish_entity)(struct nr_pdcp_entity_t *entity);
   void (*get_stats)(struct nr_pdcp_entity_t *entity, nr_pdcp_statistics_t *out);
 
   /* set_security: pass -1 to integrity_algorithm / ciphering_algorithm
@@ -135,7 +138,7 @@ typedef struct nr_pdcp_entity_t {
   uint64_t t_current;
 
   /* timers (stores the ms of activation, 0 means not active) */
-  int t_reordering_start;
+  uint64_t t_reordering_start;
 
   /* security */
   nr_pdcp_entity_ciphering_state_t has_ciphering;
@@ -165,6 +168,18 @@ typedef struct nr_pdcp_entity_t {
   int           rx_size;
   int           rx_maxsize;
   nr_pdcp_statistics_t stats;
+  // WARNING: This is a hack!
+  // 3GPP TS 38.331 (RRC) version 15.3 
+  // Section 5.3.4.3 Reception of the SecurityModeCommand by the UE 
+  // The UE needs to send the Security Mode Complete message. However, the message 
+  // needs to be sent without being ciphered. 
+  // However:
+  // 1- The Security Mode Command arrives to the UE with the cipher algo (e.g., nea2).
+  // 2- The UE is configured with the cipher algo.
+  // 3- The Security Mode Complete message is sent to the itti task queue.
+  // 4- The ITTI task, forwards the message ciphering (e.g., nea2) it. 
+  // 5- The gNB cannot understand the ciphered Security Mode Complete message.
+  bool security_mode_completed;
 } nr_pdcp_entity_t;
 
 nr_pdcp_entity_t *new_nr_pdcp_entity(

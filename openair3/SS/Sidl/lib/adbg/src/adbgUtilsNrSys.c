@@ -209,6 +209,38 @@ const char* adbgUtilsNrSysNR_AS_Security_TypeToStr(int select)
 	}
 }
 
+const char* adbgUtilsNrSysNR_DciFormat_2_2_TpcBlock_TypeToStr(int select)
+{
+	switch (select) {
+		case NR_DciFormat_2_2_TpcBlock_Type_ClosedLoopIndicator: return "ClosedLoopIndicator";
+		case NR_DciFormat_2_2_TpcBlock_Type_TpcCommand: return "TpcCommand";
+		default: return "unknown";
+	}
+}
+
+const char* adbgUtilsNrSysNR_DciFormat_2_3_TypeA_B_TypeToStr(int select)
+{
+	switch (select) {
+		case NR_DciFormat_2_3_TypeA_B_Type_TypeA: return "TypeA";
+		case NR_DciFormat_2_3_TypeA_B_Type_TypeB: return "TypeB";
+		default: return "unknown";
+	}
+}
+
+const char* adbgUtilsNrSysNR_DCI_TriggerFormat_TypeToStr(int select)
+{
+	switch (select) {
+		case NR_DCI_TriggerFormat_Type_PdcchOrder: return "PdcchOrder";
+		case NR_DCI_TriggerFormat_Type_ShortMessage: return "ShortMessage";
+		case NR_DCI_TriggerFormat_Type_DciFormat_2_0: return "DciFormat_2_0";
+		case NR_DCI_TriggerFormat_Type_DciFormat_2_1: return "DciFormat_2_1";
+		case NR_DCI_TriggerFormat_Type_DciFormat_2_2: return "DciFormat_2_2";
+		case NR_DCI_TriggerFormat_Type_DciFormat_2_3: return "DciFormat_2_3";
+		case NR_DCI_TriggerFormat_Type_DciFormat_2_6: return "DciFormat_2_6";
+		default: return "unknown";
+	}
+}
+
 const char* adbgUtilsNrSysNR_SystemRequest_TypeToStr(int select)
 {
 	switch (select) {
@@ -218,6 +250,7 @@ const char* adbgUtilsNrSysNR_SystemRequest_TypeToStr(int select)
 		case NR_SystemRequest_Type_EnquireTiming: return "EnquireTiming";
 		case NR_SystemRequest_Type_AS_Security: return "AS_Security";
 		case NR_SystemRequest_Type_PdcpCount: return "PdcpCount";
+		case NR_SystemRequest_Type_DciTrigger: return "DciTrigger";
 		case NR_SystemRequest_Type_Paging: return "Paging";
 		case NR_SystemRequest_Type_DeltaValues: return "DeltaValues";
 		default: return "unknown";

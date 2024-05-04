@@ -424,9 +424,20 @@ struct RLC_Configuration_Type {
 
 typedef int32_t TestLogicalChannelId_Type;
 
-struct MAC_Test_DLLogChID_Type {
+enum MAC_Test_DLLogChID_Type_Sel {
+	MAC_Test_DLLogChID_Type_UNBOUND_VALUE = 0,
+	MAC_Test_DLLogChID_Type_LogChId = 1,
+	MAC_Test_DLLogChID_Type_ConfigLchId = 2,
+};
+
+union MAC_Test_DLLogChID_Type_Value {
 	TestLogicalChannelId_Type LogChId;
 	Null_Type ConfigLchId;
+};
+
+struct MAC_Test_DLLogChID_Type {
+	enum MAC_Test_DLLogChID_Type_Sel d;
+	union MAC_Test_DLLogChID_Type_Value v;
 };
 
 enum MAC_Test_SCH_NoHeaderManipulation_Type {

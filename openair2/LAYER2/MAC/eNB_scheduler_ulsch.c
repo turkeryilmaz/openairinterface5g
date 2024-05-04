@@ -69,14 +69,14 @@ extern int oai_nfapi_ul_config_req(nfapi_ul_config_request_t *ul_config_req);
 
 
 // This table holds the allowable PRB sizes for ULSCH transmissions
-uint8_t rb_table[34] = {
-  1, 2, 3, 4, 5,      // 0-4
-  6, 8, 9, 10, 12,    // 5-9
-  15, 16, 18, 20, 24, // 10-14
-  25, 27, 30, 32, 36, // 15-19
-  40, 45, 48, 50, 54, // 20-24
-  60, 64, 72, 75, 80, // 25-29
-  81, 90, 96, 100     // 30-33
+const uint8_t rb_table[34] = {
+    1,  2,  3,  4,  5, // 0-4
+    6,  8,  9,  10, 12, // 5-9
+    15, 16, 18, 20, 24, // 10-14
+    25, 27, 30, 32, 36, // 15-19
+    40, 45, 48, 50, 54, // 20-24
+    60, 64, 72, 75, 80, // 25-29
+    81, 90, 96, 100 // 30-33
 };
 
 // This table hold the possible number of MTC repetition for CE ModeA
@@ -167,6 +167,14 @@ rx_sdu(const module_id_t enb_mod_idP,
       UE_scheduling_control->ul_failure_timer = 0;
       UE_scheduling_control->ul_scheduled &= (~(1 << harq_pid));
       UE_scheduling_control->pusch_rx_num[CC_idP]++;
+
+       /* Enabling ULSCH scheduling for CFRA mode HO UE only.
+        * Otherwise ULSCH scheduling enabled after msg4.*/
+       if(mac_eNB_get_rach_mode(enb_mod_idP, current_rnti))
+       {
+           UE_template_ptr->configured = true;
+           mac_eNB_set_rach_mode(enb_mod_idP, current_rnti, false);
+       }
 
       /* Update with smoothing: 3/4 of old value and 1/4 of new.
        * This is the logic that was done in the function
@@ -963,15 +971,46 @@ rx_sdu(const module_id_t enb_mod_idP,
                 UE_template_ptr->scheduled_ul_bytes = 0;
               }
             }
-            if (RC.ss.mode > SS_ENB)
-            {
-            	RC.ss.mac_rlc_data_ind_frame = frameP;
-            	RC.ss.mac_rlc_data_ind_subframe = subframeP;
+	    //Loopback MAC test PDU to be sent to SS (By-passing RLC/PDCP)
+	    if(RC.macTestPdu_Buffer.isLoopBackData){
+                MessageDef *message_p = itti_alloc_new_message (TASK_SS_DRB, 0,  SS_DRB_PDU_IND);
+                LOG_D(MAC, "RLC sdu size %d, lcid %d \n",rx_lengths[i], rx_lcids[i]);
+                SS_DRB_PDU_IND (message_p).sdu_size = rx_lengths[i];
+                SS_DRB_PDU_IND (message_p).drb_id = rx_lcids[i] - 2; //DRB ID conversion
+                SS_DRB_PDU_IND (message_p).data_type = DRB_MacPdu;
+                SS_DRB_PDU_IND (message_p).physCellId = RC.rrc[enb_mod_idP]->carrier[CC_idP].physCellId;
+                memset(SS_DRB_PDU_IND (message_p).sdu, 0, SS_DRB_PDU_IND (message_p).sdu_size);
+                memcpy(&SS_DRB_PDU_IND (message_p).sdu, (char *) payload_ptr, SS_DRB_PDU_IND (message_p).sdu_size);
+                SS_DRB_PDU_IND (message_p).frame = frameP;
+                SS_DRB_PDU_IND (message_p).subframe = subframeP;
+                RC.macTestPdu_Buffer.isLoopBackData = false;
+
+                if(SS_DRB_PDU_IND (message_p).sdu_size > 0){
+                   int send_res = itti_send_msg_to_task (TASK_SS_DRB, INSTANCE_DEFAULT, message_p);
+                   if(send_res < 0){
+                      LOG_E(PDCP,"Error in itti_send_msg_to_task");
+                   }
+                }else{
+                     LOG_A(PDCP,"sdu size:%d in SS_DRB_PDU_IND is not greater then zero \n",SS_DRB_PDU_IND (message_p).sdu_size);
+                }
+                if (RC.ss.mode > SS_ENB){
+                   RC.ss.mac_rlc_data_ind_frame = frameP;
+                   RC.ss.mac_rlc_data_ind_subframe = subframeP;
+                }
+	        rx_lengths[i] = 0;  //MAC test PDU to bypass RLC
+                mac_rlc_data_ind(enb_mod_idP, current_rnti, enb_mod_idP, frameP, ENB_FLAG_YES, MBMS_FLAG_NO, rx_lcids[i], (char *) payload_ptr, rx_lengths[i], 1, NULL);
+                UE_info->eNB_UE_stats[CC_idP][UE_id].num_pdu_rx[rx_lcids[i]] += 0; //MAC test PDU to bypass RLC
+                UE_info->eNB_UE_stats[CC_idP][UE_id].num_bytes_rx[rx_lcids[i]] += rx_lengths[i];
+	    }else{/*Send UL data to RLC--PDCP */
+	       if (RC.ss.mode > SS_ENB){
+                   RC.ss.mac_rlc_data_ind_frame = frameP;
+                   RC.ss.mac_rlc_data_ind_subframe = subframeP;
+               }
+               mac_rlc_data_ind(enb_mod_idP, current_rnti, enb_mod_idP, frameP, ENB_FLAG_YES, MBMS_FLAG_NO, rx_lcids[i], (char *) payload_ptr, rx_lengths[i], 1, NULL);
+               UE_info->eNB_UE_stats[CC_idP][UE_id].num_pdu_rx[rx_lcids[i]] += 1;
+               UE_info->eNB_UE_stats[CC_idP][UE_id].num_bytes_rx[rx_lcids[i]] += rx_lengths[i];
             }
-              mac_rlc_data_ind(enb_mod_idP, current_rnti, enb_mod_idP, frameP, ENB_FLAG_YES, MBMS_FLAG_NO, rx_lcids[i], (char *) payload_ptr, rx_lengths[i], 1, NULL);
-              UE_info->eNB_UE_stats[CC_idP][UE_id].num_pdu_rx[rx_lcids[i]] += 1;
-              UE_info->eNB_UE_stats[CC_idP][UE_id].num_bytes_rx[rx_lcids[i]] += rx_lengths[i];
-              /* Clear uplane_inactivity_timer */
+	       /* Clear uplane_inactivity_timer */
               UE_scheduling_control->uplane_inactivity_timer = 0;
               /* Reset RRC inactivity timer after uplane activity */
                 ue_contextP->ue_context.ue_rrc_inactivity_timer = 1;
@@ -2438,28 +2477,57 @@ bool check_ulGrant_Schedule(frame_t frameP, sub_frame_t subframeP, int CC_id, ui
 {
   LOG_D(MAC, "%s current frame:%d subframe:%d subframe_counter value:%d\n", __FUNCTION__, frameP, subframeP, RC.ss.ulgrant_info[CC_id].periodiGrantInfo.subframe_counter);
 
-  if (RC.ss.ulgrant_info[CC_id].ulGrantType == NONE_PRESENT)
+  if(true == RC.macTestPdu_Buffer.isLoopBackData)
   {
-    LOG_D(MAC, "%s ulGrantType = NONE_PRESENT\n", __FUNCTION__);
-    return true;
-  }
-
-  if (RC.ss.ulgrant_info[CC_id].ulGrantType == ON_SR_RECEPTION_PRESENT )
-  {
-    LOG_I(MAC, "%s ulGrantType = ON_SR_RECEPTION_PRESENT\n", __FUNCTION__);
-    //if (SR_received == 1)
+    if (RC.ss.ulgrant_info[CC_id].ulGrantType == NONE_PRESENT)
     {
-      LOG_D(MAC, " %s ULGrantType: ON_SR_RECEPTION_PRESENT. ULGrant Scheduled at frame:%d subframe:%d\n",
-          __FUNCTION__,
-          frameP,
-          subframeP);
+      LOG_D(MAC, "%s ulGrantType = NONE_PRESENT\n", __FUNCTION__);
+      return false;
+    }
+
+    if (RC.ss.ulgrant_info[CC_id].ulGrantType == ON_SR_RECEPTION_PRESENT )
+    {
+      LOG_I(MAC, "%s ulGrantType = ON_SR_RECEPTION_PRESENT\n", __FUNCTION__);
+      if (SR_received == 1)
+      {
+        LOG_D(MAC, " %s ULGrantType: ON_SR_RECEPTION_PRESENT. ULGrant Scheduled at frame:%d subframe:%d\n",
+            __FUNCTION__,
+            frameP,
+            subframeP);
+        return true;
+      }
+      else
+      {
+         LOG_I(MAC, "%s ulGrantType = ON_SR_RECEPTION_PRESENT but NOT scheduling\n", __FUNCTION__);
+        return false;
+      }
+    }
+  }
+  else
+  {
+    if (RC.ss.ulgrant_info[CC_id].ulGrantType == NONE_PRESENT)
+    {
+      LOG_D(MAC, "%s ulGrantType = NONE_PRESENT\n", __FUNCTION__);
       return true;
     }
-    //else
-   // {
-      //LOG_I(MAC, "%s ulGrantType = ON_SR_RECEPTION_PRESENT but NOT scheduling\n", __FUNCTION__);
-      //return false;
-   // }
+
+    if (RC.ss.ulgrant_info[CC_id].ulGrantType == ON_SR_RECEPTION_PRESENT )
+    {
+      LOG_I(MAC, "%s ulGrantType = ON_SR_RECEPTION_PRESENT\n", __FUNCTION__);
+      //if (SR_received == 1)
+      {
+        LOG_D(MAC, " %s ULGrantType: ON_SR_RECEPTION_PRESENT. ULGrant Scheduled at frame:%d subframe:%d\n",
+            __FUNCTION__,
+            frameP,
+            subframeP);
+        return true;
+      }
+      //else
+      //{
+        // LOG_I(MAC, "%s ulGrantType = ON_SR_RECEPTION_PRESENT but NOT scheduling\n", __FUNCTION__);
+        //return false;
+      //}
+    }
   }
 
   /* Handling periodic UL_Grant Configuration */

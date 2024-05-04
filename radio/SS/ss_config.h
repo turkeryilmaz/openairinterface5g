@@ -43,13 +43,18 @@ typedef enum ss_mode {
 #define SS_ENB  		(0x00)
 #define SS_GNB                  (0x00)
 #define SS_SOFTMODEM    	(0x01)
-#define SS_SOFTMODEM_SRB        (0x02)
+#define SS_HWTMODEM             (0x02)
 #endif
+
 typedef struct ss_crnti_config_s {
-  bool b_C_RNTI_Present;
-  uint16_t C_RNTI;
-  bool b_Temp_RNTI_Present;
-  uint16_t Temp_C_RNTI;
+  bool        b_C_RNTI_Present;
+  uint16_t    C_RNTI;
+  bool        b_Temp_RNTI_Present;
+  uint16_t    Temp_C_RNTI;
+  uint8_t     numRar;
+  bool        b_rarResponse[SS_MAX_RACH_PROC];
+  uint8_t     Rar_Response_Index;
+  bool        b_ignore_rlf_sdu_ind;      //If RAR restricted, ignore unsuccesful rlc sdu indication for RLF
 }ss_crnti_config_t;
 
 typedef struct RrcHOAsSecurityConfigReq_s {

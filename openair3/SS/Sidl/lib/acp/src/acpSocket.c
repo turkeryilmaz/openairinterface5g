@@ -35,7 +35,6 @@
 #include <string.h>
 #include <regex.h>
 
-
 // Internal includes
 #include "acpSocket.h"
 #include "adbg.h"
@@ -73,7 +72,6 @@ static int acpSocketSetOpts(int sock)
 		return -1;
 	}
 
-
 	int arg = fcntl(sock, F_GETFL, NULL);
 	if (arg == -1) {
 		ACP_DEBUG_EXIT_LOG(strerror(errno));
@@ -100,9 +98,10 @@ static int acpIsIp(const char* ip)
 	return reti;
 }
 
-static int acpPrepareSocket(const char* host, int port, struct sockaddr ** sin, size_t* sinsz)
+static int acpPrepareSocket(const char* host, int port, struct sockaddr** sin, size_t* sinsz)
 {
 	int sock = -1;
+
 	uint8_t isUnixSocket = acpIsIp(host);
 	if (!isUnixSocket) {
 
@@ -173,7 +172,7 @@ int acpSocketConnect(const char* host, int port)
 	ACP_DEBUG_ENTER_LOG();
 
 	int sock = -1;
-	struct sockaddr * sin = NULL;
+	struct sockaddr* sin = NULL;
 	size_t sinsz = 0;
 
 	sock = acpPrepareSocket(host, port, &sin, &sinsz);
@@ -220,7 +219,7 @@ int acpSocketListen(const char* host, int port)
 	ACP_DEBUG_ENTER_LOG();
 
 	int sock = -1;
-	struct sockaddr * sin = NULL;
+	struct sockaddr* sin = NULL;
 	size_t sinsz = 0;
 
 	if (acpIsIp(host)) {

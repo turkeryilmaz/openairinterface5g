@@ -32,8 +32,10 @@
 #include "acpNrSys.h"
 
 extern RAN_CONTEXT_t RC;
+extern int nr_cell_index;
 
 acpCtx_t nrctx_g = NULL;
+bool ss_gNB_portman_acp_task_exit = false;
 
 enum MsgUserId
 {
@@ -142,7 +144,7 @@ void ss_nr_port_man_send_data(
     size_t msgSize = size;
     memset(&cnf, 0, sizeof(cnf));
 	/*TODO: */
-    cnf.Common.CellId = SS_context.eutra_cellId;
+    cnf.Common.CellId = SS_context.SSCell_list[nr_cell_index].nr_cellId;
     cnf.Common.RoutingInfo.d = NR_RoutingInfo_Type_None;
     cnf.Common.RoutingInfo.v.None = true;
     cnf.Common.TimingInfo.d = TimingInfo_Type_Now;
@@ -169,6 +171,9 @@ void ss_nr_port_man_send_data(
     cnf.Common.TimingInfo.v.SubFrame.Slot.d = SlotTimingInfo_Type_SlotOffset;
     cnf.Common.TimingInfo.v.SubFrame.Slot.v.SlotOffset.d = SlotOffset_Type_Numerology1;
     cnf.Common.TimingInfo.v.SubFrame.Slot.v.SlotOffset.v.Numerology1  = tinfo->slot % 2;
+
+    cnf.Common.TimingInfo.v.SubFrame.Symbol.d = SymbolTimingInfo_Type_Any;
+    cnf.Common.TimingInfo.v.SubFrame.Symbol.v.Any = true;
 
     /* Encode message
      */
@@ -198,8 +203,6 @@ void ss_nr_port_man_send_data(
 //------------------------------------------------------------------------------
 void ss_gNB_port_man_init(void)
 {
-    LOG_A(GNB_APP, "[SS-PORTMAN-GNB] Starting GNB System Simulator Manager\n");
-
     // Port number
     int port = RC.ss.SysportNR;
 
@@ -210,7 +213,7 @@ void ss_gNB_port_man_init(void)
         // The last element should be NULL
         {NULL, 0}};
     // Arena size to decode received message
-    const size_t aSize = 32 * 1024;
+    const size_t aSize = 128 * 1024;
 
     // Start listening server and get ACP context,
     // after the connection is performed, we can use all services
@@ -242,17 +245,17 @@ static inline void ss_gNB_read_from_socket(acpCtx_t ctx)
   // Error handling
   if (userId < 0)
   {
-    LOG_A(GNB_APP, "[SS-PORTMAN-GNB] fxn:%s userId:%d\n", __FUNCTION__, userId);
+    LOG_A(GNB_APP, "[SS-PORTMAN-ACP] fxn:%s userId:%d\n", __FUNCTION__, userId);
     if (userId == -ACP_ERR_SERVICE_NOT_MAPPED)
     {
-      LOG_A(GNB_APP, "[SS-PORTMAN-GNB] fxn:%s userId:-ACP_ERR_SERVICE_NOT_MAPPED \n", __FUNCTION__);
+      LOG_A(GNB_APP, "[SS-PORTMAN-ACP] fxn:%s userId:-ACP_ERR_SERVICE_NOT_MAPPED \n", __FUNCTION__);
       // Message not mapped to user id,
       // this error should not appear on server side for the messages
       // received from clients
     }
     else if (userId == -ACP_ERR_SIDL_FAILURE)
     {
-      LOG_A(GNB_APP, "[SS-PORTMAN-GNB] fxn:%s userId:-ACP_ERR_SIDL_FAILURE\n", __FUNCTION__);
+      LOG_A(GNB_APP, "[SS-PORTMAN-ACP] fxn:%s userId:-ACP_ERR_SIDL_FAILURE\n", __FUNCTION__);
       // Server returned service error,
       // this error should not appear on server side for the messages
       // received from clients
@@ -260,22 +263,23 @@ static inline void ss_gNB_read_from_socket(acpCtx_t ctx)
       acpGetMsgSidlStatus(msgSize, buffer, &sidlStatus);
     }
     else if (userId == -ACP_PEER_DISCONNECTED){
-      LOG_A(GNB_APP, "[SS-PORTMAN-GNB] Peer ordered shutdown\n");
+      LOG_A(GNB_APP, "[SS-PORTMAN-ACP] Peer ordered shutdown\n");
     }
     else if (userId == -ACP_PEER_CONNECTED){
-      LOG_A(GNB_APP, "[SS-PORTMAN-GNB] Peer connection established\n");
+      LOG_A(GNB_APP, "[SS-PORTMAN-ACP] Peer connection established\n");
     }
     else
     {
-      LOG_A(GNB_APP, "[SS-PORTMAN-GNB] fxn:%s line:%d\n", __FUNCTION__, __LINE__);
+      LOG_A(GNB_APP, "[SS-PORTMAN-ACP] fxn:%s line:%d\n", __FUNCTION__, __LINE__);
       return;
     }
   }
   else if (userId == 0)
   {
     // No message (timeout on socket)
-    if (RC.ss.mode >= SS_SOFTMODEM && RC.ss.State >= SS_STATE_CELL_ACTIVE)
+    if (RC.ss.mode >= SS_SOFTMODEM && SS_context.SSCell_list[nr_cell_index].State >= SS_STATE_CELL_ACTIVE)
     {
+#if 0 /* Disable by Yangxiong. There is no need to send wake up signal to TASK_SS_SRB */
       LOG_A(ENB_SS,"[SS-PORTMAN] Sending Wake up signal/SS_NRRRC_PDU_IND (msg_Id:%d) to TASK_SS_SRB task \n", SS_NRRRC_PDU_IND);
       MessageDef *message_p = itti_alloc_new_message(TASK_SS_PORTMAN, 0, SS_NRRRC_PDU_IND);
       if (message_p)
@@ -293,15 +297,15 @@ static inline void ss_gNB_read_from_socket(acpCtx_t ctx)
           LOG_A(ENB_SS, "Error in sending Wake up signal /SS_NRRRC_PDU_IND (msg_Id:%d)  to TASK_SS_SRB_GNB\n", SS_NRRRC_PDU_IND);
         }
       }
+#endif
     }
-
   }
   else
   {
-    LOG_A(GNB_APP, "[SS-PORTMAN-GNB] received msg %d from the client.\n", userId);
+    LOG_A(GNB_APP, "[SS-PORTMAN-ACP] received msg %d from the client.\n", userId);
     if (acpNrSysProcessDecSrv(ctx, buffer, msgSize, &req) != 0)
     {
-      LOG_A(GNB_APP, "[SS-PORTMAN-GNB] fxn:%s line:%d\n", __FUNCTION__, __LINE__);
+      LOG_A(GNB_APP, "[SS-PORTMAN-ACP] fxn:%s line:%d\n", __FUNCTION__, __LINE__);
       return;
     }
 
@@ -309,14 +313,14 @@ static inline void ss_gNB_read_from_socket(acpCtx_t ctx)
 
     if (userId == MSG_NrSysProcess_userId)
     {
-      LOG_A(GNB_APP, "[SS-PORTMAN-GNB] fxn:%s userId: MSG_NrSysProcess_userId\n", __FUNCTION__);
+      LOG_A(GNB_APP, "[SS-PORTMAN-ACP] fxn:%s userId: MSG_NrSysProcess_userId\n", __FUNCTION__);
       MessageDef *message_p = itti_alloc_new_message(TASK_SS_PORTMAN_GNB, INSTANCE_DEFAULT,  SS_NR_SYS_PORT_MSG_IND);
       if (message_p)
       {
         SS_NR_SYS_PORT_MSG_IND(message_p).req = req;
         SS_NR_SYS_PORT_MSG_IND(message_p).userId = userId;
         itti_send_msg_to_task(TASK_SYS_GNB, INSTANCE_DEFAULT, message_p);
-        LOG_A(GNB_APP, "[SS-PORTMAN-GNB] fxn:%s line:%d Msg sent to TASK_SYS_GNB \n", __FUNCTION__, __LINE__);
+        LOG_A(GNB_APP, "[SS-PORTMAN-ACP] fxn:%s line:%d Msg sent to TASK_SYS_GNB \n", __FUNCTION__, __LINE__);
       }
     }
   }
@@ -327,67 +331,83 @@ static inline void ss_gNB_read_from_socket(acpCtx_t ctx)
 //------------------------------------------------------------------------------
 void *ss_port_man_5G_NR_process_itti_msg(void *notUsed)
 {
-  MessageDef *received_msg = NULL;
-  int result = EXIT_SUCCESS;
+	MessageDef *received_msg = NULL;
+	int result = EXIT_SUCCESS;
 
-  itti_poll_msg(TASK_SS_PORTMAN_GNB, &received_msg);
+	/* itti_poll_msg(TASK_SS_PORTMAN_GNB, &received_msg);*/
+	itti_receive_msg(TASK_SS_PORTMAN_GNB, &received_msg);
 
-  /* Check if there is a packet to handle */
-  if (received_msg != NULL)
-  {
+	/* Check if there is a packet to handle */
+	if (received_msg != NULL) {
+		LOG_A(GNB_APP, "[SS-PORTMAN-GNB] Received a message id : %d \n", ITTI_MSG_ID(received_msg));
+		switch (ITTI_MSG_ID(received_msg)) {
+			case SS_NRSET_TIM_INFO:
+			{
+				LOG_A(GNB_APP, "[SS-PORTMAN-GNB] Received NR timing info \n");
+				ss_nr_port_man_send_data(0, 0, &received_msg->ittiMsg.ss_nrset_timinfo);
+				result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
+			}
+			break;
 
-    LOG_A(GNB_APP, "[SS-PORTMAN-GNB] Received a message id : %d \n",
-        ITTI_MSG_ID(received_msg));
-    switch (ITTI_MSG_ID(received_msg))
-    {
-      case SS_NRSET_TIM_INFO:
-        {
-          LOG_A(GNB_APP, "[SS-PORTMAN-GNB] Received NR timing info \n");
-          ss_nr_port_man_send_data(0, 0, &received_msg->ittiMsg.ss_nrset_timinfo);
-          result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
-        }
-        break;
-      case SS_NR_SYS_PORT_MSG_CNF:
-        {
-          LOG_A(GNB_APP, "[SS-PORTMAN-GNB] Received SS_NR_SYS_PORT_MSG_CNF \n");
-	  ss_nr_port_man_send_cnf(*(SS_NR_SYS_PORT_MSG_CNF(received_msg).cnf));
-          result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
-        }
-        break;
-      case TERMINATE_MESSAGE:
-        {
-          LOG_A(GNB_APP, "[SS-PORTMAN-GNB] Received TERMINATE_MESSAGE\n");
-          itti_exit_task();
-        }
-        break;
+			case SS_NR_SYS_PORT_MSG_CNF:
+			{
+				LOG_A(GNB_APP, "[SS-PORTMAN-GNB] Received SS_NR_SYS_PORT_MSG_CNF \n");
+				ss_nr_port_man_send_cnf(*(SS_NR_SYS_PORT_MSG_CNF(received_msg).cnf));
+				result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
+			}
+			break;
 
-      default:
-        LOG_A(GNB_APP, "[SS-PORTMAN-GNB] Received unhandled message %d:%s\n",
-            ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
-        break;
-    }
+			case TERMINATE_MESSAGE:
+			{
+				LOG_A(GNB_APP, "[SS-PORTMAN-GNB] Received TERMINATE_MESSAGE\n");
+				ss_gNB_portman_acp_task_exit = true;
+				itti_exit_task();
+			}
+			break;
 
-    AssertFatal(result == EXIT_SUCCESS, "Failed to free memory (%d)!\n",
-        result);
-    received_msg = NULL;
-  }
+			default:
+				LOG_A(GNB_APP, "[SS-PORTMAN-GNB] Received unhandled message %d:%s\n",
+						ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
+				break;
+		}
 
-  DevAssert(nrctx_g);
-  ss_gNB_read_from_socket(nrctx_g);
+		AssertFatal(result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
+		received_msg = NULL;
+	}
 
-  return NULL;
+	return NULL;
 }
 
 //------------------------------------------------------------------------------
+void *ss_gNB_port_man_acp_task(void *arg)
+{
+	LOG_A(GNB_APP, "[SS_PORTMAN_ACP] Starting System Simulator SS_PORTMAN_ACP Thread \n");
+	ss_gNB_port_man_init();
+	while(1) {
+		if(nrctx_g) {
+			ss_gNB_read_from_socket(nrctx_g);
+		} else {
+			sleep(10);
+		}
+
+		if(ss_gNB_portman_acp_task_exit) {
+			ss_gNB_portman_acp_task_exit = false;
+			LOG_A(GNB_APP, "[SS_PORTMAN_ACP] TERMINATE \n");
+			pthread_exit (NULL);
+		}
+	}
+
+	return NULL;
+}
+
 void *ss_gNB_port_man_task(void *arg)
 {
-    ss_gNB_port_man_init();
+	LOG_A(GNB_APP, "[SS-PORTMAN-GNB] Starting GNB System Simulator Manager\n");
 
-    while (1)
-    {
-        /* Now handle notifications for other sockets */
-        (void)ss_port_man_5G_NR_process_itti_msg(NULL);
-    }
+	while (1) {
+		/* Now handle notifications for other sockets */
+		(void)ss_port_man_5G_NR_process_itti_msg(NULL);
+	}
 
-    return NULL;
+	return NULL;
 }

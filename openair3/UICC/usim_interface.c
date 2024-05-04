@@ -48,11 +48,12 @@ extern uint16_t NB_UE_INST;
       {"nssai_sst",        "UE nssai\n",           0,         .iptr=&uicc->nssai_sst,              .defintval=1,    TYPE_INT,    0 }, \
       {"nssai_sd",         "UE nssai\n",           0,         .iptr=&uicc->nssai_sd,               .defintval=0xffffff,  TYPE_INT,       0 }, \
       {"imeisv",           "IMEISV\n",             0,         .strptr=&uicc->imeisvStr,            .defstrval="6754567890123413",           TYPE_STRING,    0 }, \
+      {"use_milenage",     "use Milenage\n",       0,         .strptr=&uicc->use_milenage,         .defstrval=0, TYPE_UINT8,    0 }, \
   };
 
 static uicc_t** uiccArray=NULL;
 
-const char *hexTable="0123456789abcdef";
+const char *const hexTable = "0123456789abcdef";
 static inline uint8_t mkDigit(unsigned char in) {
   for (int i=0; i<16; i++)
     if (tolower(in)==hexTable[i])
@@ -73,13 +74,13 @@ uicc_t *init_uicc(char *sectionName) {
   // here we call usim simulation, but calling actual usim is quite simple
   // the code is in open-cells.com => program_uicc open source
   // we can read the IMSI from the USIM
-  // key, OPc, sqn, amf don't need to be read from the true USIM 
-  int ret = config_get( uicc_params,sizeof(uicc_params)/sizeof(paramdef_t),sectionName);
+  // key, OPc, sqn, amf don't need to be read from the true USIM
+  int ret = config_get(config_get_if(), uicc_params, sizeofArray(uicc_params), sectionName);
   AssertFatal(ret >= 0, "configuration couldn't be performed for uicc name: %s", sectionName);
   LOG_I(SIM,
-        "UICC simulation: IMSI=%s, IMEISV=%s, Ki=%s, OPc=%s, DNN=%s, SST=0x%02x, SD=0x%06x\n",
+        "UICC simulation: IMSI=%s, IMEISV=%s, Ki=%s, OPc=%s, DNN=%s, SST=0x%02x, SD=0x%06x, Use Milenage: %s\n",
         uicc->imsiStr, uicc->imeisvStr, uicc->keyStr, uicc->opcStr,
-        uicc->dnnStr, uicc->nssai_sst, uicc->nssai_sd);
+        uicc->dnnStr, uicc->nssai_sst, uicc->nssai_sd, uicc->use_milenage ? "true" : "false");
   to_hex(uicc->keyStr,uicc->key, sizeof(uicc->key) );
   to_hex(uicc->opcStr,uicc->opc, sizeof(uicc->opc) );
   to_hex(uicc->sqnStr,uicc->sqn, sizeof(uicc->sqn) );

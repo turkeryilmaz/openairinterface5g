@@ -19,7 +19,7 @@
  *      contact@openairinterface.org
  */
 
-/*! \file lte-enb.c
+/*! \file nr-gnb.c
  * \brief Top-level threads for gNodeB
  * \author R. Knopp, F. Kaltenberger, Navid Nikaein
  * \date 2012
@@ -112,25 +112,28 @@ time_stats_t softmodem_stats_rx_sf; // total rx time
 
 void tx_func(void *param) 
 {
-
   processingData_L1tx_t *info = (processingData_L1tx_t *) param;
+  PHY_VARS_gNB *gNB = info->gNB;
   int frame_tx = info->frame;
   int slot_tx = info->slot;
-
-  int absslot_tx = info->timestamp_tx/info->gNB->frame_parms.get_samples_per_slot(slot_tx,&info->gNB->frame_parms);
-  int absslot_rx = absslot_tx-info->gNB->RU_list[0]->sl_ahead;
+  int cumul_samples = gNB->frame_parms.get_samples_per_slot(0, &gNB->frame_parms);
+  int i = 1;
+  for (; i < gNB->frame_parms.slots_per_subframe / 2; i++)
+    cumul_samples += gNB->frame_parms.get_samples_per_slot(i, &gNB->frame_parms);
+  int samples = cumul_samples / i;
+  int absslot_tx = info->timestamp_tx / samples;
+  int absslot_rx = absslot_tx - gNB->RU_list[0]->sl_ahead;
   int rt_prof_idx = absslot_rx % RT_PROF_DEPTH;
-  start_meas(&info->gNB->phy_proc_tx);
+  start_meas(&gNB->phy_proc_tx);
 
-  clock_gettime(CLOCK_MONOTONIC,&info->gNB->rt_L1_profiling.start_L1_TX[rt_prof_idx]);
+  clock_gettime(CLOCK_MONOTONIC, &gNB->rt_L1_profiling.start_L1_TX[rt_prof_idx]);
   phy_procedures_gNB_TX(info,
                         frame_tx,
                         slot_tx,
                         1);
-  clock_gettime(CLOCK_MONOTONIC,&info->gNB->rt_L1_profiling.return_L1_TX[rt_prof_idx]);
+  clock_gettime(CLOCK_MONOTONIC, &gNB->rt_L1_profiling.return_L1_TX[rt_prof_idx]);
 
   if (get_softmodem_params()->reorder_thread_disable) {
-    PHY_VARS_gNB *gNB = info->gNB;
     processingData_RU_t syncMsgRU;
     syncMsgRU.frame_tx = frame_tx;
     syncMsgRU.slot_tx = slot_tx;
@@ -141,7 +144,7 @@ void tx_func(void *param)
   }
   /* this thread is done with the sched_info, decrease the reference counter */
   deref_sched_response(info->sched_response_id);
-  stop_meas(&info->gNB->phy_proc_tx);
+  stop_meas(&gNB->phy_proc_tx);
 }
 
 
@@ -179,11 +182,14 @@ void rx_func(void *param)
   int frame_tx = info->frame_tx;
   int slot_tx = info->slot_tx;
   nfapi_nr_config_request_scf_t *cfg = &gNB->gNB_config;
-
-  int absslot_tx = info->timestamp_tx/gNB->frame_parms.get_samples_per_slot(slot_rx,&gNB->frame_parms);
+  int cumul_samples = gNB->frame_parms.get_samples_per_slot(0, &gNB->frame_parms);
+  int i = 1;
+  for (; i < gNB->frame_parms.slots_per_subframe / 2; i++)
+    cumul_samples += gNB->frame_parms.get_samples_per_slot(i, &gNB->frame_parms);
+  int samples = cumul_samples / i;
+  int absslot_tx = info->timestamp_tx / samples;
   int absslot_rx = absslot_tx - gNB->RU_list[0]->sl_ahead;
   int rt_prof_idx = absslot_rx % RT_PROF_DEPTH;
-
   clock_gettime(CLOCK_MONOTONIC,&info->gNB->rt_L1_profiling.start_L1_RX[rt_prof_idx]);
   start_meas(&softmodem_stats_rxtx_sf);
 
@@ -231,12 +237,16 @@ void rx_func(void *param)
     //WA: comment rotation in tx/rx
     if((gNB->num_RU == 1) && (gNB->RU_list[0]->if_south != REMOTE_IF4p5)) {
       //apply the rx signal rotation here
+      int soffset = (slot_rx & 3) * gNB->frame_parms.symbols_per_slot * gNB->frame_parms.ofdm_symbol_size;
       for (int aa = 0; aa < gNB->frame_parms.nb_antennas_rx; aa++) {
-        apply_nr_rotation_ul(&gNB->frame_parms,
-            gNB->common_vars.rxdataF[aa],
-            slot_rx,
-            0,
-            gNB->frame_parms.Ncp==EXTENDED?12:14);
+        apply_nr_rotation_RX(&gNB->frame_parms,
+                             gNB->common_vars.rxdataF[aa],
+                             gNB->frame_parms.symbol_rotation[1],
+                             slot_rx,
+                             gNB->frame_parms.N_RB_UL,
+                             soffset,
+                             0,
+                             gNB->frame_parms.Ncp == EXTENDED ? 12 : 14);
       }
     }
     phy_procedures_gNB_uespec_RX(gNB, frame_rx, slot_rx);
@@ -252,9 +262,11 @@ void rx_func(void *param)
   gNB->UL_INFO.frame     = frame_rx;
   gNB->UL_INFO.slot      = slot_rx;
   gNB->UL_INFO.module_id = gNB->Mod_id;
-  gNB->UL_INFO.CC_id     = gNB->CC_id;
-  gNB->if_inst->NR_UL_indication(&gNB->UL_INFO);
-//  pthread_mutex_unlock(&gNB->UL_INFO_mutex);
+  for (int CC_id =0 ; CC_id < RC.nb_nr_CC[0];CC_id++) {
+    gNB->UL_INFO.CC_id     = CC_id;
+    gNB->if_inst->NR_UL_indication(&gNB->UL_INFO);
+  }
+  // pthread_mutex_unlock(&gNB->UL_INFO_mutex);
   stop_meas(&gNB->ul_indication_stats);
 
   int tx_slot_type = nr_slot_select(cfg,frame_tx,slot_tx);
@@ -280,7 +292,7 @@ void rx_func(void *param)
       pushTpool(&gNB->threadPool, res);
     }
   } else if (get_softmodem_params()->continuous_tx) {
-    notifiedFIFO_elt_t *res = pullTpool(&gNB->L1_tx_free, &gNB->threadPool);
+    notifiedFIFO_elt_t *res = pullNotifiedFIFO(&gNB->L1_tx_free);
     if (res == NULL)
       return; // Tpool has been stopped
     processingData_L1tx_t *syncMsg = (processingData_L1tx_t *)NotifiedFifoData(res);
@@ -410,10 +422,8 @@ void *nrL1_stats_thread(void *param) {
 // two parallel L1 tx threads.
 void *tx_reorder_thread(void* param) {
   PHY_VARS_gNB *gNB = (PHY_VARS_gNB *)param;
-    notifiedFIFO_elt_t *resL1Reserve = NULL;
   
-
-  resL1Reserve = pullTpool(&gNB->L1_tx_out, &gNB->threadPool);
+  notifiedFIFO_elt_t *resL1Reserve = pullNotifiedFIFO(&gNB->L1_tx_out);
   AssertFatal(resL1Reserve != NULL, "pullTpool() did not return start message in %s\n", __func__);
   int next_tx_slot=((processingData_L1tx_t *)NotifiedFifoData(resL1Reserve))->slot;
   
@@ -426,15 +436,15 @@ void *tx_reorder_thread(void* param) {
        if (((processingData_L1tx_t *)NotifiedFifoData(resL1))->slot != next_tx_slot) {
          LOG_E(PHY,"order mistake\n");
          resL1Reserve = NULL;
-         resL1 = pullTpool(&gNB->L1_tx_out, &gNB->threadPool);
+         resL1 = pullNotifiedFIFO(&gNB->L1_tx_out);
        }
-     } else { 
-       resL1 = pullTpool(&gNB->L1_tx_out, &gNB->threadPool);
+     } else {
+       resL1 = pullNotifiedFIFO(&gNB->L1_tx_out);
        if (resL1 != NULL && ((processingData_L1tx_t *)NotifiedFifoData(resL1))->slot != next_tx_slot) {
           if (resL1Reserve)
               LOG_E(PHY,"error, have a stored packet, then a second one\n");
           resL1Reserve = resL1;
-          resL1 = pullTpool(&gNB->L1_tx_out, &gNB->threadPool);
+          resL1 = pullNotifiedFIFO(&gNB->L1_tx_out);
           if (((processingData_L1tx_t *)NotifiedFifoData(resL1))->slot != next_tx_slot)
             LOG_E(PHY,"error, pull two msg, none is good\n");
        }
@@ -465,10 +475,12 @@ void init_gNB_Tpool(int inst) {
   PHY_VARS_gNB *gNB;
   gNB = RC.gNB[inst];
   gNB_L1_proc_t *proc = &gNB->proc;
-
+  // PUSCH symbols per thread need to be calculated by how many threads we have
+  gNB->num_pusch_symbols_per_thread = 1;
   // ULSCH decoding threadpool
   initTpool(get_softmodem_params()->threadPoolConfig, &gNB->threadPool, cpumeas(CPUMEAS_GETSTATE));
   // ULSCH decoder result FIFO
+  initNotifiedFIFO(&gNB->respPuschSymb);
   initNotifiedFIFO(&gNB->respDecode);
 
   // L1 RX result FIFO 

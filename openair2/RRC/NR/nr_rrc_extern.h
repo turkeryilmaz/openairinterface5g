@@ -35,6 +35,8 @@
 #include "LAYER2/RLC/rlc.h"
 #include "openair2/RRC/common.h"
 
+void openair_rrc_gNB_configuration(gNB_RRC_INST *rrc, NRRrcConfigurationReqList *configuration);
+
 extern UE_RRC_INST *UE_rrc_inst;
 
 extern uint8_t DRB2LCHAN[8];
@@ -52,5 +54,7 @@ extern MAC_AVG_T BCCH_MEAS_AVG,CCCH_MEAS_AVG,DCCH_MEAS_AVG, DTCH_MEAS_AVG;
 extern UE_PF_PO_t UE_PF_PO[NFAPI_CC_MAX][MAX_MOBILES_PER_ENB];
 
 extern pthread_mutex_t ue_pf_po_mutex;
+
+extern uint16_t reestablish_rnti_map[MAX_MOBILES_PER_ENB][2];
 
 #endif

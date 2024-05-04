@@ -57,7 +57,7 @@ struct acpMsgTable {
 #define ACP_KEEPALIVE_HANDLE 0xAAAAAAAA
 
 /** Default socket timeout (for acpInit), in milli-seconds. */
-#define ACP_DEFAULT_TIMEOUT 1000
+#define ACP_DEFAULT_TIMEOUT 10
 
 /** Creates an ACP context.
  *

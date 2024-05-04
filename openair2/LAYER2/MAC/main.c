@@ -64,8 +64,8 @@ void lte_dump_mac_stats(eNB_MAC_INST *mac, FILE *fd)
         total_bler = (double)UE_scheduling_control->pusch_rx_error_num[CC_id] / (double)(UE_scheduling_control->pusch_rx_error_num[CC_id] + UE_scheduling_control->pusch_rx_num[CC_id]) * 100;
       }
       fprintf(fd,
-              "MAC UE rnti %x : %s, PHR %d DLCQI %d PUSCH %d PUCCH %d RLC disc %d UL-stat rcv %lu err %lu bler %lf (%lf/%lf) total_bler %lf mcsoff %d pre_allocated nb_rb %d, mcs %d, bsr %u sched %u "
-              "tbs %lu cnt %u , DL-stat tbs %lu cnt %u rb %u buf %u 1st %u ret %u ri %d inactivity timer %d\n",
+              "MAC UE rnti %x : %s, PHR %d DLCQI %d PUSCH %d PUCCH %d RLC disc %u UL-stat rcv %lu err %lu bler %lf (%lf/%lf) total_bler %lf mcsoff %d pre_allocated nb_rb %d, mcs %d, bsr %d sched %d "
+              "tbs %lu cnt %u , DL-stat tbs %lu cnt %u rb %u buf %d 1st %u ret %u ri %d inactivity timer %d\n",
               rnti,
               UE_scheduling_control->ul_out_of_sync == 0 ? "in synch" : "out of sync",
               UE_info->UE_template[CC_id][UE_id].phr_info,
@@ -296,6 +296,7 @@ void *mac_enb_task(void *arg)
         int CC_id = received_msg->ittiMsg.ss_l1macind_ctrl.cell_index;
         RC.ss.l1macind[CC_id].UL_HARQ_Ctrl = received_msg->ittiMsg.ss_l1macind_ctrl.UL_HARQ_Ctrl;
         RC.ss.l1macind[CC_id].HarqError_Ctrl = received_msg->ittiMsg.ss_l1macind_ctrl.HarqError_Ctrl;
+        RC.ss.l1macind[CC_id].SchedReq_Ctrl = received_msg->ittiMsg.ss_l1macind_ctrl.SchedReq_Ctrl;
         if (received_msg->ittiMsg.ss_l1macind_ctrl.bitmask & PDCCH_ORDER_PRESENT)
         {
           RC.rrc[0]->configuration.radioresourceconfig[cell_index].prach_preambleIndex = received_msg->ittiMsg.ss_l1macind_ctrl.pdcchOrder.preambleIndex;

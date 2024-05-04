@@ -83,12 +83,19 @@
 #define FGS_PDU_SESSION_ESTABLISHMENT_ACC                  0b11000010 /* 194= 0xc2 */
 
 #define INITIAL_REGISTRATION                               0b001
-
+#define MOBILITY_REGISTRATION_UPDATING                     0b010
 #define PLAIN_5GS_NAS_MESSAGE_HEADER_LENGTH                3
 #define SECURITY_PROTECTED_5GS_NAS_MESSAGE_HEADER_LENGTH   7
 #define PAYLOAD_CONTAINER_LENGTH_MIN                       3
 #define PAYLOAD_CONTAINER_LENGTH_MAX                       65537
 
+/* List of allowed NSSAI from NAS messaging. */
+typedef struct {
+  int sst;
+  int hplmn_sst;
+  int sd;
+  int hplmn_sd;
+} nr_nas_msg_snssai_t;
 #define NR_NAS_CIP_INT_KEY_LEN_BYTES                       (16)
 
 
@@ -212,6 +219,7 @@ nr_ue_nas_t *get_ue_nas_info(module_id_t module_id);
 void generateRegistrationRequest(as_nas_info_t *initialNasMsg, nr_ue_nas_t *nas);
 void generateServiceRequest(as_nas_info_t *initialNasMsg, nr_ue_nas_t *nas);
 void *nas_nrue_task(void *args_p);
+void *nas_nrue(void *args_p);
 
 /**
  * The helper function to recalculate the kgnb, where kgnb=f(kamf, ulNasCount).

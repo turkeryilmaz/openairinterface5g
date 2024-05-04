@@ -57,8 +57,6 @@ struct acpCtx {
 	void* handle;
 	/** ACP server handle. */
 	void* sHandle;
-	/** Socket type (AF_INET/AF_UNIX) */
-	int sockType;
 	/** Socket descriptor (on client side, or master socket on server side). */
 	int sock;
 	/** Peers socket descriptors on server side. */

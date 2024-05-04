@@ -25,6 +25,7 @@
 // Main SIDL includes and SidlASN1 defs.
 #include "SidlASN1Base.sidl"
 
+typedef BIT_STRING_ELEMENT B1[1];
 typedef BIT_STRING_ELEMENT B2[2];
 typedef BIT_STRING_ELEMENT B3[3];
 typedef BIT_STRING_ELEMENT B4[4];
@@ -265,13 +266,26 @@ struct ASN_NAME(PHICH_Config) {
 	ASN_ENUM(ASN_NAME(PHICH_Config, phich_Resource)) phich_Resource;
 };
 
+SIDL_UNION_ENUM(ASN_NAME(MasterInformationBlock, partEARFCN_17)) {
+	ASN_ENUM_VAL(ASN_NAME(MasterInformationBlock, partEARFCN_17), UNBOUND_VALUE),
+	ASN_ENUM_VAL(ASN_NAME(MasterInformationBlock, partEARFCN_17), spare),
+	ASN_ENUM_VAL(ASN_NAME(MasterInformationBlock, partEARFCN_17), earfcn_LSB)
+};
+SIDL_UNION_BEGIN(ASN_NAME(MasterInformationBlock, partEARFCN_17)) {
+	SIDL_UNION_CASE(ASN_NAME(MasterInformationBlock, partEARFCN_17)_spare)
+		B2 spare; // SIZE (2)
+	SIDL_UNION_CASE(ASN_NAME(MasterInformationBlock, partEARFCN_17)_earfcn_LSB)
+		B2 earfcn_LSB; // SIZE (2)
+} SIDL_UNION_END;
+
 struct ASN_NAME(MasterInformationBlock) {
 	ASN_ENUM(ASN_NAME(MasterInformationBlock, dl_Bandwidth)) dl_Bandwidth;
 	struct ASN_NAME(PHICH_Config) phich_Config;
 	B8 systemFrameNumber; // SIZE (8)
 	uint8_t schedulingInfoSIB1_BR_r13; // OF (0..31)
 	bool systemInfoUnchanged_BR_r15;
-	B4 spare; // SIZE (4)
+	struct ASN_NAME(MasterInformationBlock, partEARFCN_17) partEARFCN_17;
+	B1 spare; // SIZE (1)
 };
 
 struct ASN_NAME(BCCH_BCH_Message) {
@@ -1621,6 +1635,81 @@ typedef enum {
 	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(RadioResourceConfigCommonSIB, rss_MeasNonNCL_r16)), enabled)
 } ASN_ENUM(ASN_NAME(RadioResourceConfigCommonSIB, rss_MeasNonNCL_r16));
 
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(PCCH_Config_v1700, ranPagingInIdlePO_r17)), true)
+} ASN_ENUM(ASN_NAME(PCCH_Config_v1700, ranPagingInIdlePO_r17));
+
+struct ASN_NAME(PCCH_Config_v1700) {
+	ASN_ENUM(ASN_NAME(PCCH_Config_v1700, ranPagingInIdlePO_r17)) ranPagingInIdlePO_r17;
+};
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(RadioResourceConfigCommonSIB, ntn_ConfigCommon_r17, ta_Report_r17)), enabled)
+} ASN_ENUM(ASN_NAME(RadioResourceConfigCommonSIB, ntn_ConfigCommon_r17, ta_Report_r17));
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(RadioResourceConfigCommonSIB, ntn_ConfigCommon_r17, t318_r17)), ms0),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(RadioResourceConfigCommonSIB, ntn_ConfigCommon_r17, t318_r17)), ms50),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(RadioResourceConfigCommonSIB, ntn_ConfigCommon_r17, t318_r17)), ms100),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(RadioResourceConfigCommonSIB, ntn_ConfigCommon_r17, t318_r17)), ms200),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(RadioResourceConfigCommonSIB, ntn_ConfigCommon_r17, t318_r17)), ms500),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(RadioResourceConfigCommonSIB, ntn_ConfigCommon_r17, t318_r17)), ms1000),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(RadioResourceConfigCommonSIB, ntn_ConfigCommon_r17, t318_r17)), ms2000),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(RadioResourceConfigCommonSIB, ntn_ConfigCommon_r17, t318_r17)), ms4000)
+} ASN_ENUM(ASN_NAME(RadioResourceConfigCommonSIB, ntn_ConfigCommon_r17, t318_r17));
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(PRACH_TxDuration_r17, prach_TxDuration_r17)), n1),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(PRACH_TxDuration_r17, prach_TxDuration_r17)), n2),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(PRACH_TxDuration_r17, prach_TxDuration_r17)), n4),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(PRACH_TxDuration_r17, prach_TxDuration_r17)), n8),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(PRACH_TxDuration_r17, prach_TxDuration_r17)), n16),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(PRACH_TxDuration_r17, prach_TxDuration_r17)), n32),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(PRACH_TxDuration_r17, prach_TxDuration_r17)), n64),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(PRACH_TxDuration_r17, prach_TxDuration_r17)), n128)
+} ASN_ENUM(ASN_NAME(PRACH_TxDuration_r17, prach_TxDuration_r17));
+
+struct ASN_NAME(PRACH_TxDuration_r17) {
+	ASN_ENUM(ASN_NAME(PRACH_TxDuration_r17, prach_TxDuration_r17)) prach_TxDuration_r17;
+};
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(PUCCH_TxDuration_r17, pucch_TxDuration_r17)), sf2),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(PUCCH_TxDuration_r17, pucch_TxDuration_r17)), sf4),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(PUCCH_TxDuration_r17, pucch_TxDuration_r17)), sf8),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(PUCCH_TxDuration_r17, pucch_TxDuration_r17)), sf16),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(PUCCH_TxDuration_r17, pucch_TxDuration_r17)), sf32),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(PUCCH_TxDuration_r17, pucch_TxDuration_r17)), sf64),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(PUCCH_TxDuration_r17, pucch_TxDuration_r17)), sf128)
+} ASN_ENUM(ASN_NAME(PUCCH_TxDuration_r17, pucch_TxDuration_r17));
+
+struct ASN_NAME(PUCCH_TxDuration_r17) {
+	ASN_ENUM(ASN_NAME(PUCCH_TxDuration_r17, pucch_TxDuration_r17)) pucch_TxDuration_r17;
+};
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(PUSCH_TxDuration_r17, pusch_TxDuration_r17)), n2),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(PUSCH_TxDuration_r17, pusch_TxDuration_r17)), n4),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(PUSCH_TxDuration_r17, pusch_TxDuration_r17)), n8),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(PUSCH_TxDuration_r17, pusch_TxDuration_r17)), n16),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(PUSCH_TxDuration_r17, pusch_TxDuration_r17)), n32),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(PUSCH_TxDuration_r17, pusch_TxDuration_r17)), n64),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(PUSCH_TxDuration_r17, pusch_TxDuration_r17)), n128),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(PUSCH_TxDuration_r17, pusch_TxDuration_r17)), n256)
+} ASN_ENUM(ASN_NAME(PUSCH_TxDuration_r17, pusch_TxDuration_r17));
+
+struct ASN_NAME(PUSCH_TxDuration_r17) {
+	ASN_ENUM(ASN_NAME(PUSCH_TxDuration_r17, pusch_TxDuration_r17)) pusch_TxDuration_r17;
+};
+
+struct ASN_NAME(RadioResourceConfigCommonSIB, ntn_ConfigCommon_r17) {
+	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(RadioResourceConfigCommonSIB, ntn_ConfigCommon_r17, ta_Report_r17)), ta_Report_r17);
+	ASN_ENUM(ASN_NAME(RadioResourceConfigCommonSIB, ntn_ConfigCommon_r17, t318_r17)) t318_r17;
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(RadioResourceConfigCommonSIB, ntn_ConfigCommon_r17), ASN_NAME(PRACH_TxDuration_r17), prach_TxDuration_r17);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(RadioResourceConfigCommonSIB, ntn_ConfigCommon_r17), ASN_NAME(PUCCH_TxDuration_r17), pucch_TxDuration_r17);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(RadioResourceConfigCommonSIB, ntn_ConfigCommon_r17), ASN_NAME(PUSCH_TxDuration_r17), pusch_TxDuration_r17);
+};
+
 struct ASN_NAME(RadioResourceConfigCommonSIB) {
 	struct ASN_NAME(RACH_ConfigCommon) rach_ConfigCommon;
 	struct ASN_NAME(BCCH_Config) bcch_Config;
@@ -1660,6 +1749,8 @@ struct ASN_NAME(RadioResourceConfigCommonSIB) {
 	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(RadioResourceConfigCommonSIB, rss_MeasNonNCL_r16)), rss_MeasNonNCL_r16);
 	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(RadioResourceConfigCommonSIB), B2, puncturedSubcarriersDL_r16); // SIZE (2)
 	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(RadioResourceConfigCommonSIB), bool, highSpeedInterRAT_NR_r16);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(RadioResourceConfigCommonSIB), ASN_NAME(PCCH_Config_v1700), pcch_Config_v1700);
+	SIDL_OPTIONAL_OF_STRUCT(ASN_NAME(RadioResourceConfigCommonSIB, ntn_ConfigCommon_r17), ntn_ConfigCommon_r17);
 };
 
 typedef enum {
@@ -2374,6 +2465,8 @@ struct ASN_NAME(CellReselectionServingFreqInfo_v1610) {
 	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(CellReselectionServingFreqInfo_v1610), ASN_ENUM(ASN_NAME(CellReselectionSubPriority_r13)), altCellReselectionSubPriority_r16);
 };
 
+typedef uint32_t ASN_NAME(TimeOffsetUTC_r17); // OF (0..1048575)
+
 struct ASN_NAME(SystemInformationBlockType3) {
 	struct ASN_NAME(SystemInformationBlockType3, cellReselectionInfoCommon) cellReselectionInfoCommon;
 	struct ASN_NAME(SystemInformationBlockType3, cellReselectionServingFreqInfo) cellReselectionServingFreqInfo;
@@ -2396,6 +2489,7 @@ struct ASN_NAME(SystemInformationBlockType3) {
 	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(SystemInformationBlockType3), ASN_NAME(CellSelectionInfoCE_v1530), cellSelectionInfoCE_v1530);
 	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(SystemInformationBlockType3, crs_IntfMitigNeighCellsCE_r15)), crs_IntfMitigNeighCellsCE_r15);
 	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(SystemInformationBlockType3), ASN_NAME(CellReselectionServingFreqInfo_v1610), cellReselectionServingFreqInfo_v1610);
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(SystemInformationBlockType3), ASN_NAME(TimeOffsetUTC_r17), t_Service_r17);
 };
 
 typedef uint16_t ASN_NAME(PhysCellId); // OF (0..503)
@@ -2465,7 +2559,7 @@ struct ASN_NAME(PhysCellIdRange) {
 	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(PhysCellIdRange, range)), range);
 };
 
-typedef SIDL_DYNAMIC_OF_STRUCT(ASN_NAME(PhysCellIdRange), ASN_NAME(IntraFreqBlackCellList)); // SIZE (1..16)
+typedef SIDL_DYNAMIC_OF_STRUCT(ASN_NAME(PhysCellIdRange), ASN_NAME(IntraFreqExcludedCellList)); // SIZE (1..16)
 
 typedef SIDL_DYNAMIC_OF_STRUCT(ASN_NAME(PhysCellIdRange), ASN_NAME(IntraFreqNeighHSDN_CellList_r15)); // SIZE (1..16)
 
@@ -2504,7 +2598,7 @@ typedef SIDL_DYNAMIC_OF_STRUCT(ASN_NAME(IntraFreqNeighCellInfo_v1610), ASN_NAME(
 
 struct ASN_NAME(SystemInformationBlockType4) {
 	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(SystemInformationBlockType4), ASN_NAME(IntraFreqNeighCellList), intraFreqNeighCellList);
-	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(SystemInformationBlockType4), ASN_NAME(IntraFreqBlackCellList), intraFreqBlackCellList);
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(SystemInformationBlockType4), ASN_NAME(IntraFreqExcludedCellList), intraFreqExcludedCellList);
 	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(SystemInformationBlockType4), ASN_NAME(PhysCellIdRange), csg_PhysCellIdRange);
 	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(SystemInformationBlockType4), OCTET_STRING, lateNonCriticalExtension);
 	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(SystemInformationBlockType4), ASN_NAME(IntraFreqNeighHSDN_CellList_r15), intraFreqNeighHSDN_CellList_r15);
@@ -2519,7 +2613,7 @@ struct ASN_NAME(InterFreqNeighCellInfo) {
 
 typedef SIDL_DYNAMIC_OF_STRUCT(ASN_NAME(InterFreqNeighCellInfo), ASN_NAME(InterFreqNeighCellList)); // SIZE (1..16)
 
-typedef SIDL_DYNAMIC_OF_STRUCT(ASN_NAME(PhysCellIdRange), ASN_NAME(InterFreqBlackCellList)); // SIZE (1..16)
+typedef SIDL_DYNAMIC_OF_STRUCT(ASN_NAME(PhysCellIdRange), ASN_NAME(InterFreqExcludedCellList)); // SIZE (1..16)
 
 struct ASN_NAME(InterFreqCarrierFreqInfo, threshX_Q_r9) {
 	ASN_NAME(ReselectionThresholdQ_r9) threshX_HighQ_r9;
@@ -2540,7 +2634,7 @@ struct ASN_NAME(InterFreqCarrierFreqInfo) {
 	ASN_NAME(NeighCellConfig) neighCellConfig;
 	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(InterFreqCarrierFreqInfo), ASN_ENUM(ASN_NAME(Q_OffsetRange)), q_OffsetFreq);
 	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(InterFreqCarrierFreqInfo), ASN_NAME(InterFreqNeighCellList), interFreqNeighCellList);
-	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(InterFreqCarrierFreqInfo), ASN_NAME(InterFreqBlackCellList), interFreqBlackCellList);
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(InterFreqCarrierFreqInfo), ASN_NAME(InterFreqExcludedCellList), interFreqExcludedCellList);
 	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(InterFreqCarrierFreqInfo), ASN_NAME(Q_QualMin_r9), q_QualMin_r9);
 	SIDL_OPTIONAL_OF_STRUCT(ASN_NAME(InterFreqCarrierFreqInfo, threshX_Q_r9), threshX_Q_r9);
 	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(InterFreqCarrierFreqInfo), ASN_NAME(Q_QualMin_r9), q_QualMinWB_r11);
@@ -2588,7 +2682,7 @@ struct ASN_NAME(InterFreqCarrierFreqInfo_r12) {
 	ASN_NAME(NeighCellConfig) neighCellConfig_r12;
 	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(InterFreqCarrierFreqInfo_r12), ASN_ENUM(ASN_NAME(Q_OffsetRange)), q_OffsetFreq_r12);
 	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(InterFreqCarrierFreqInfo_r12), ASN_NAME(InterFreqNeighCellList), interFreqNeighCellList_r12);
-	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(InterFreqCarrierFreqInfo_r12), ASN_NAME(InterFreqBlackCellList), interFreqBlackCellList_r12);
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(InterFreqCarrierFreqInfo_r12), ASN_NAME(InterFreqExcludedCellList), interFreqExcludedCellList_r12);
 	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(InterFreqCarrierFreqInfo_r12), ASN_NAME(Q_QualMin_r9), q_QualMin_r12);
 	SIDL_OPTIONAL_OF_STRUCT(ASN_NAME(InterFreqCarrierFreqInfo_r12, threshX_Q_r12), threshX_Q_r12);
 	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(InterFreqCarrierFreqInfo_r12), ASN_NAME(Q_QualMin_r9), q_QualMinWB_r12);
@@ -2857,6 +2951,11 @@ struct ASN_NAME(BeamMeasConfigIdleNR_r16) {
 	bool reportRS_IndexResultsNR_r16;
 };
 
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(MeasIdleCarrierNR_r16, subcarrierSpacingSSB_r17)), kHz480),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(MeasIdleCarrierNR_r16, subcarrierSpacingSSB_r17)), spare1)
+} ASN_ENUM(ASN_NAME(MeasIdleCarrierNR_r16, subcarrierSpacingSSB_r17));
+
 struct ASN_NAME(MeasIdleCarrierNR_r16) {
 	ASN_NAME(ARFCN_ValueNR_r15) carrierFreqNR_r16;
 	ASN_ENUM(ASN_NAME(MeasIdleCarrierNR_r16, subcarrierSpacingSSB_r16)) subcarrierSpacingSSB_r16;
@@ -2866,6 +2965,7 @@ struct ASN_NAME(MeasIdleCarrierNR_r16) {
 	SIDL_OPTIONAL_OF_STRUCT(ASN_NAME(MeasIdleCarrierNR_r16, qualityThresholdNR_r16), qualityThresholdNR_r16);
 	SIDL_OPTIONAL_OF_STRUCT(ASN_NAME(MeasIdleCarrierNR_r16, ssb_MeasConfig_r16), ssb_MeasConfig_r16);
 	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(MeasIdleCarrierNR_r16), ASN_NAME(BeamMeasConfigIdleNR_r16), beamMeasConfigIdle_r16);
+	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(MeasIdleCarrierNR_r16, subcarrierSpacingSSB_r17)), subcarrierSpacingSSB_r17);
 };
 
 typedef SIDL_DYNAMIC_OF_STRUCT(ASN_NAME(MeasIdleCarrierNR_r16), ASN_NAME(NR_CarrierList_r16)); // SIZE (1..8)
@@ -3495,7 +3595,7 @@ typedef enum {
 	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(MBSFN_AreaInfo_r16, subcarrierSpacingMBMS_r16)), kHz2dot5),
 	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(MBSFN_AreaInfo_r16, subcarrierSpacingMBMS_r16)), kHz1dot25),
 	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(MBSFN_AreaInfo_r16, subcarrierSpacingMBMS_r16)), kHz0dot37),
-	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(MBSFN_AreaInfo_r16, subcarrierSpacingMBMS_r16)), spare4),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(MBSFN_AreaInfo_r16, subcarrierSpacingMBMS_r16)), kHz15_v1710),
 	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(MBSFN_AreaInfo_r16, subcarrierSpacingMBMS_r16)), spare3),
 	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(MBSFN_AreaInfo_r16, subcarrierSpacingMBMS_r16)), spare2),
 	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(MBSFN_AreaInfo_r16, subcarrierSpacingMBMS_r16)), spare1)
@@ -3516,12 +3616,27 @@ struct ASN_NAME(MBSFN_AreaInfo_r16) {
 
 typedef SIDL_DYNAMIC_OF_STRUCT(ASN_NAME(MBSFN_AreaInfo_r16), ASN_NAME(MBSFN_AreaInfoList_r16)); // SIZE (1..8)
 
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(MBSFN_AreaInfo_r17, pmch_Bandwidth_r17)), n40),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(MBSFN_AreaInfo_r17, pmch_Bandwidth_r17)), n35),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(MBSFN_AreaInfo_r17, pmch_Bandwidth_r17)), n30),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(MBSFN_AreaInfo_r17, pmch_Bandwidth_r17)), spare1)
+} ASN_ENUM(ASN_NAME(MBSFN_AreaInfo_r17, pmch_Bandwidth_r17));
+
+struct ASN_NAME(MBSFN_AreaInfo_r17) {
+	struct ASN_NAME(MBSFN_AreaInfo_r16) mbsfn_AreaInfo_r17;
+	ASN_ENUM(ASN_NAME(MBSFN_AreaInfo_r17, pmch_Bandwidth_r17)) pmch_Bandwidth_r17;
+};
+
+typedef SIDL_DYNAMIC_OF_STRUCT(ASN_NAME(MBSFN_AreaInfo_r17), ASN_NAME(MBSFN_AreaInfoList_r17)); // SIZE (1..8)
+
 struct ASN_NAME(SystemInformationBlockType13_r9) {
 	ASN_NAME(MBSFN_AreaInfoList_r9) mbsfn_AreaInfoList_r9;
 	struct ASN_NAME(MBMS_NotificationConfig_r9) notificationConfig_r9;
 	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(SystemInformationBlockType13_r9), OCTET_STRING, lateNonCriticalExtension);
 	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(SystemInformationBlockType13_r9), ASN_NAME(MBMS_NotificationConfig_v1430), notificationConfig_v1430);
 	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(SystemInformationBlockType13_r9), ASN_NAME(MBSFN_AreaInfoList_r16), mbsfn_AreaInfoList_r16);
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(SystemInformationBlockType13_r9), ASN_NAME(MBSFN_AreaInfoList_r17), mbsfn_AreaInfoList_r17);
 };
 
 typedef enum {
@@ -5196,7 +5311,7 @@ typedef enum {
 	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(SSB_PositionQCL_RelationNR_r16)), n8)
 } ASN_ENUM(ASN_NAME(SSB_PositionQCL_RelationNR_r16));
 
-typedef SIDL_DYNAMIC(ASN_NAME(PhysCellIdNR_r15), ASN_NAME(WhiteCellListNR_r16)); // SIZE (1..16)
+typedef SIDL_DYNAMIC(ASN_NAME(PhysCellIdNR_r15), ASN_NAME(AllowedCellListNR_r16)); // SIZE (1..16)
 
 typedef enum {
 	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(CarrierFreqNR_v1610, highSpeedCarrierNR_r16)), true)
@@ -5205,11 +5320,36 @@ typedef enum {
 struct ASN_NAME(CarrierFreqNR_v1610) {
 	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(CarrierFreqNR_v1610), ASN_NAME(MTC_SSB2_LP_NR_r16), smtc2_LP_r16);
 	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(CarrierFreqNR_v1610), ASN_ENUM(ASN_NAME(SSB_PositionQCL_RelationNR_r16)), ssb_PositionQCL_CommonNR_r16);
-	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(CarrierFreqNR_v1610), ASN_NAME(WhiteCellListNR_r16), whiteCellListNR_r16);
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(CarrierFreqNR_v1610), ASN_NAME(AllowedCellListNR_r16), allowedCellListNR_r16);
 	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(CarrierFreqNR_v1610, highSpeedCarrierNR_r16)), highSpeedCarrierNR_r16);
 };
 
 typedef SIDL_DYNAMIC_OF_STRUCT(ASN_NAME(CarrierFreqNR_v1610), ASN_NAME(CarrierFreqListNR_v1610)); // SIZE (1..8)
+
+typedef SIDL_DYNAMIC_OF_STRUCT(ASN_NAME(PhysCellIdRangeNR_r16), ASN_NAME(NR_FreqNeighHSDN_CellList_r17)); // SIZE (1..8)
+
+struct ASN_NAME(CarrierFreqNR_v1700) {
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(CarrierFreqNR_v1700), ASN_NAME(NR_FreqNeighHSDN_CellList_r17), nr_FreqNeighHSDN_CellList_r17);
+};
+
+typedef SIDL_DYNAMIC_OF_STRUCT(ASN_NAME(CarrierFreqNR_v1700), ASN_NAME(CarrierFreqListNR_v1700)); // SIZE (1..8)
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(CarrierFreqNR_v1720, subcarrierSpacingSSB_r17)), kHz480),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(CarrierFreqNR_v1720, subcarrierSpacingSSB_r17)), spare1)
+} ASN_ENUM(ASN_NAME(CarrierFreqNR_v1720, subcarrierSpacingSSB_r17));
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(SSB_PositionQCL_RelationNR_r17)), n32),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(SSB_PositionQCL_RelationNR_r17)), n64)
+} ASN_ENUM(ASN_NAME(SSB_PositionQCL_RelationNR_r17));
+
+struct ASN_NAME(CarrierFreqNR_v1720) {
+	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(CarrierFreqNR_v1720, subcarrierSpacingSSB_r17)), subcarrierSpacingSSB_r17);
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(CarrierFreqNR_v1720), ASN_ENUM(ASN_NAME(SSB_PositionQCL_RelationNR_r17)), ssb_PositionQCL_CommonNR_r17);
+};
+
+typedef SIDL_DYNAMIC_OF_STRUCT(ASN_NAME(CarrierFreqNR_v1720), ASN_NAME(CarrierFreqListNR_v1720)); // SIZE (1..8)
 
 struct ASN_NAME(SystemInformationBlockType24_r15) {
 	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(SystemInformationBlockType24_r15), ASN_NAME(CarrierFreqListNR_r15), carrierFreqListNR_r15);
@@ -5217,6 +5357,8 @@ struct ASN_NAME(SystemInformationBlockType24_r15) {
 	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(SystemInformationBlockType24_r15), ASN_NAME(SpeedStateScaleFactors), t_ReselectionNR_SF_r15);
 	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(SystemInformationBlockType24_r15), OCTET_STRING, lateNonCriticalExtension);
 	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(SystemInformationBlockType24_r15), ASN_NAME(CarrierFreqListNR_v1610), carrierFreqListNR_v1610);
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(SystemInformationBlockType24_r15), ASN_NAME(CarrierFreqListNR_v1700), carrierFreqListNR_v1700);
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(SystemInformationBlockType24_r15), ASN_NAME(CarrierFreqListNR_v1720), carrierFreqListNR_v1720);
 };
 
 typedef uint8_t ASN_NAME(UAC_BarringInfoSetIndex_r15); // OF (1..8)
@@ -5310,6 +5452,38 @@ typedef enum {
 	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(SystemInformationBlockType25_r15, ab_PerRSRP_r16)), thresh3)
 } ASN_ENUM(ASN_NAME(SystemInformationBlockType25_r15, ab_PerRSRP_r16));
 
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(UAC_AC1_SelectAssistInfo_r16)), a),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(UAC_AC1_SelectAssistInfo_r16)), b),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(UAC_AC1_SelectAssistInfo_r16)), c),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(UAC_AC1_SelectAssistInfo_r16)), notConfigured)
+} ASN_ENUM(ASN_NAME(UAC_AC1_SelectAssistInfo_r16));
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(UAC_BarringInfoSet_v1700, uac_BarringFactorForAI3_r17)), p00),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(UAC_BarringInfoSet_v1700, uac_BarringFactorForAI3_r17)), p05),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(UAC_BarringInfoSet_v1700, uac_BarringFactorForAI3_r17)), p10),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(UAC_BarringInfoSet_v1700, uac_BarringFactorForAI3_r17)), p15),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(UAC_BarringInfoSet_v1700, uac_BarringFactorForAI3_r17)), p20),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(UAC_BarringInfoSet_v1700, uac_BarringFactorForAI3_r17)), p25),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(UAC_BarringInfoSet_v1700, uac_BarringFactorForAI3_r17)), p30),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(UAC_BarringInfoSet_v1700, uac_BarringFactorForAI3_r17)), p40),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(UAC_BarringInfoSet_v1700, uac_BarringFactorForAI3_r17)), p50),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(UAC_BarringInfoSet_v1700, uac_BarringFactorForAI3_r17)), p60),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(UAC_BarringInfoSet_v1700, uac_BarringFactorForAI3_r17)), p70),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(UAC_BarringInfoSet_v1700, uac_BarringFactorForAI3_r17)), p75),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(UAC_BarringInfoSet_v1700, uac_BarringFactorForAI3_r17)), p80),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(UAC_BarringInfoSet_v1700, uac_BarringFactorForAI3_r17)), p85),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(UAC_BarringInfoSet_v1700, uac_BarringFactorForAI3_r17)), p90),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(UAC_BarringInfoSet_v1700, uac_BarringFactorForAI3_r17)), p95)
+} ASN_ENUM(ASN_NAME(UAC_BarringInfoSet_v1700, uac_BarringFactorForAI3_r17));
+
+struct ASN_NAME(UAC_BarringInfoSet_v1700) {
+	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(UAC_BarringInfoSet_v1700, uac_BarringFactorForAI3_r17)), uac_BarringFactorForAI3_r17);
+};
+
+typedef SIDL_DYNAMIC_OF_STRUCT(ASN_NAME(UAC_BarringInfoSet_v1700), ASN_NAME(UAC_BarringInfoSetList_v1700)); // SIZE (1..8)
+
 struct ASN_NAME(SystemInformationBlockType25_r15) {
 	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(SystemInformationBlockType25_r15), ASN_NAME(UAC_BarringPerCatList_r15), uac_BarringForCommon_r15);
 	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(SystemInformationBlockType25_r15), ASN_NAME(UAC_BarringPerPLMN_List_r15), uac_BarringPerPLMN_List_r15);
@@ -5317,6 +5491,8 @@ struct ASN_NAME(SystemInformationBlockType25_r15) {
 	SIDL_OPTIONAL_OF_STRUCT(ASN_NAME(SystemInformationBlockType25_r15, uac_AC1_SelectAssistInfo_r15), uac_AC1_SelectAssistInfo_r15);
 	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(SystemInformationBlockType25_r15), OCTET_STRING, lateNonCriticalExtension);
 	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(SystemInformationBlockType25_r15, ab_PerRSRP_r16)), ab_PerRSRP_r16);
+	SIDL_DYNAMIC_OPTIONAL_WITH_PFX(ASN_NAME(SystemInformationBlockType25_r15), ASN_ENUM(ASN_NAME(UAC_AC1_SelectAssistInfo_r16)), uac_AC1_SelectAssistInfo_r16); // SIZE (2..6)
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(SystemInformationBlockType25_r15), ASN_NAME(UAC_BarringInfoSetList_v1700), uac_BarringInfoSetList_v1700);
 };
 
 struct ASN_NAME(SL_PPPP_TxConfigIndex_r15) {
@@ -5534,6 +5710,154 @@ struct ASN_NAME(SystemInformationBlockType29_r16) {
 	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(SystemInformationBlockType29_r16), OCTET_STRING, lateNonCriticalExtension);
 };
 
+SIDL_UNION_ENUM(ASN_NAME(ApplicableDisasterInfo_r17)) {
+	ASN_ENUM_VAL(ASN_NAME(ApplicableDisasterInfo_r17), UNBOUND_VALUE),
+	ASN_ENUM_VAL(ASN_NAME(ApplicableDisasterInfo_r17), noDisasterRoaming_r17),
+	ASN_ENUM_VAL(ASN_NAME(ApplicableDisasterInfo_r17), disasterRoamingFromAnyPLMN_r17),
+	ASN_ENUM_VAL(ASN_NAME(ApplicableDisasterInfo_r17), commonPLMNs_r17),
+	ASN_ENUM_VAL(ASN_NAME(ApplicableDisasterInfo_r17), dedicatedPLMNs_r17)
+};
+SIDL_UNION_BEGIN(ASN_NAME(ApplicableDisasterInfo_r17)) {
+	SIDL_UNION_CASE(ASN_NAME(ApplicableDisasterInfo_r17)_noDisasterRoaming_r17)
+		Null noDisasterRoaming_r17;
+	SIDL_UNION_CASE(ASN_NAME(ApplicableDisasterInfo_r17)_disasterRoamingFromAnyPLMN_r17)
+		Null disasterRoamingFromAnyPLMN_r17;
+	SIDL_UNION_CASE(ASN_NAME(ApplicableDisasterInfo_r17)_commonPLMNs_r17)
+		Null commonPLMNs_r17;
+	SIDL_UNION_CASE(ASN_NAME(ApplicableDisasterInfo_r17)_dedicatedPLMNs_r17)
+		SIDL_DYNAMIC_OF_STRUCT_WITH_PFX(ASN_NAME(ApplicableDisasterInfo_r17), ASN_NAME(PLMN_Identity), dedicatedPLMNs_r17); // SIZE (1..6)
+} SIDL_UNION_END;
+
+struct ASN_NAME(SystemInformationBlockType30_r17) {
+	SIDL_DYNAMIC_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(SystemInformationBlockType30_r17), ASN_NAME(PLMN_Identity), commonPLMNsWithDisasterCondition_r17); // SIZE (1..6)
+	SIDL_DYNAMIC_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(SystemInformationBlockType30_r17), ASN_NAME(ApplicableDisasterInfo_r17), applicableDisasterInfoList_r17); // SIZE (1..6)
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(SystemInformationBlockType30_r17), OCTET_STRING, lateNonCriticalExtension);
+};
+
+typedef int32_t ASN_NAME(PositionStateVector_r17); // OF (-33554432..33554431)
+
+typedef int32_t ASN_NAME(VelocityStateVector_r17); // OF (-131072..131071)
+
+struct ASN_NAME(EphemerisStateVectors_r17) {
+	ASN_NAME(PositionStateVector_r17) positionX_r17;
+	ASN_NAME(PositionStateVector_r17) positionY_r17;
+	ASN_NAME(PositionStateVector_r17) positionZ_r17;
+	ASN_NAME(VelocityStateVector_r17) velocityVX_r17;
+	ASN_NAME(VelocityStateVector_r17) velocityVY_r17;
+	ASN_NAME(VelocityStateVector_r17) velocityVZ_r17;
+};
+
+struct ASN_NAME(EphemerisOrbitalParameters_r17) {
+	uint64_t semiMajorAxis_r17; // OF (0..8589934591)
+	uint32_t eccentricity_r17; // OF (0..1048575)
+	uint32_t periapsis_r17; // OF (0..268435455)
+	uint32_t longitude_r17; // OF (0..268435455)
+	int32_t inclination_r17; // OF (-67108864..67108863)
+	uint32_t anomaly_r17; // OF (0..268435455)
+};
+
+SIDL_UNION_ENUM(ASN_NAME(ServingSatelliteInfo_r17, ephemerisInfo_r17)) {
+	ASN_ENUM_VAL(ASN_NAME(ServingSatelliteInfo_r17, ephemerisInfo_r17), UNBOUND_VALUE),
+	ASN_ENUM_VAL(ASN_NAME(ServingSatelliteInfo_r17, ephemerisInfo_r17), stateVectors),
+	ASN_ENUM_VAL(ASN_NAME(ServingSatelliteInfo_r17, ephemerisInfo_r17), orbitalParameters)
+};
+SIDL_UNION_BEGIN(ASN_NAME(ServingSatelliteInfo_r17, ephemerisInfo_r17)) {
+	SIDL_UNION_CASE(ASN_NAME(ServingSatelliteInfo_r17, ephemerisInfo_r17)_stateVectors)
+		struct ASN_NAME(EphemerisStateVectors_r17) stateVectors;
+	SIDL_UNION_CASE(ASN_NAME(ServingSatelliteInfo_r17, ephemerisInfo_r17)_orbitalParameters)
+		struct ASN_NAME(EphemerisOrbitalParameters_r17) orbitalParameters;
+} SIDL_UNION_END;
+
+struct ASN_NAME(ServingSatelliteInfo_r17, nta_CommonParameters_17) {
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(ServingSatelliteInfo_r17, nta_CommonParameters_17), uint32_t, nta_Common_r17); // OF (0..8316827)
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(ServingSatelliteInfo_r17, nta_CommonParameters_17), int32_t, nta_CommonDrift_r17); // OF (-261935..261935)
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(ServingSatelliteInfo_r17, nta_CommonParameters_17), uint16_t, nta_CommonDriftVariation_r17); // OF (0..29479)
+};
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(ServingSatelliteInfo_r17, ul_SyncValidityDuration_r17)), s5),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(ServingSatelliteInfo_r17, ul_SyncValidityDuration_r17)), s10),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(ServingSatelliteInfo_r17, ul_SyncValidityDuration_r17)), s15),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(ServingSatelliteInfo_r17, ul_SyncValidityDuration_r17)), s20),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(ServingSatelliteInfo_r17, ul_SyncValidityDuration_r17)), s25),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(ServingSatelliteInfo_r17, ul_SyncValidityDuration_r17)), s30),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(ServingSatelliteInfo_r17, ul_SyncValidityDuration_r17)), s35),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(ServingSatelliteInfo_r17, ul_SyncValidityDuration_r17)), s40),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(ServingSatelliteInfo_r17, ul_SyncValidityDuration_r17)), s45),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(ServingSatelliteInfo_r17, ul_SyncValidityDuration_r17)), s50),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(ServingSatelliteInfo_r17, ul_SyncValidityDuration_r17)), s55),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(ServingSatelliteInfo_r17, ul_SyncValidityDuration_r17)), s60),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(ServingSatelliteInfo_r17, ul_SyncValidityDuration_r17)), s120),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(ServingSatelliteInfo_r17, ul_SyncValidityDuration_r17)), s180),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(ServingSatelliteInfo_r17, ul_SyncValidityDuration_r17)), s240),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(ServingSatelliteInfo_r17, ul_SyncValidityDuration_r17)), s900)
+} ASN_ENUM(ASN_NAME(ServingSatelliteInfo_r17, ul_SyncValidityDuration_r17));
+
+struct ASN_NAME(ServingSatelliteInfo_r17, epochTime_r17) {
+	uint16_t startSFN_r17; // OF (0..1023)
+	uint8_t startSubFrame_r17; // OF (0..9)
+};
+
+struct ASN_NAME(ServingSatelliteInfo_r17) {
+	struct ASN_NAME(ServingSatelliteInfo_r17, ephemerisInfo_r17) ephemerisInfo_r17;
+	struct ASN_NAME(ServingSatelliteInfo_r17, nta_CommonParameters_17) nta_CommonParameters_17;
+	ASN_ENUM(ASN_NAME(ServingSatelliteInfo_r17, ul_SyncValidityDuration_r17)) ul_SyncValidityDuration_r17;
+	SIDL_OPTIONAL_OF_STRUCT(ASN_NAME(ServingSatelliteInfo_r17, epochTime_r17), epochTime_r17);
+	uint16_t k_Offset_r17; // OF (0..1023)
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(ServingSatelliteInfo_r17), uint16_t, k_Mac_r17); // OF (1..512)
+};
+
+struct ASN_NAME(SystemInformationBlockType31_r17) {
+	struct ASN_NAME(ServingSatelliteInfo_r17) servingSatelliteInfo_r17;
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(SystemInformationBlockType31_r17), OCTET_STRING, lateNonCriticalExtension);
+};
+
+struct ASN_NAME(TLE_EphemerisParameters_r17) {
+	uint32_t inclination_r17; // OF (0..2097151)
+	uint32_t argumentPerigee_r17; // OF (0..4194303)
+	uint32_t rightAscension_r17; // OF (0..4194303)
+	uint32_t meanAnomaly_r17; // OF (0..4194303)
+	uint32_t eccentricity_r17; // OF (0..16777215)
+	uint64_t meanMotion_r17; // OF (0..17179869183)
+	int32_t bStarDecimal_r17; // OF (-99999..99999)
+	int8_t bStarExponent_r17; // OF (-9..9)
+	int32_t epochStar_r17; // OF (-1048575..1048575)
+};
+
+struct ASN_NAME(SatelliteInfo_r17, serviceInfo_r17) {
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(SatelliteInfo_r17, serviceInfo_r17), ASN_NAME(TLE_EphemerisParameters_r17), tle_EphemerisParameters_r17);
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(SatelliteInfo_r17, serviceInfo_r17), ASN_NAME(TimeOffsetUTC_r17), t_ServiceStart_r17);
+};
+
+struct ASN_NAME(SatelliteInfo_r17, footprintInfo_r17, referencePoint_r17) {
+	int32_t longitude_r17; // OF (-131072..131071)
+	int32_t latitude_r17; // OF (-131072..131071)
+};
+
+struct ASN_NAME(SatelliteInfo_r17, footprintInfo_r17, elevationAngles_r17) {
+	int8_t elevationAngleRight_r17; // OF (-14..14)
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(SatelliteInfo_r17, footprintInfo_r17, elevationAngles_r17), int8_t, elevationAngleLeft_r17); // OF (-14..14)
+};
+
+struct ASN_NAME(SatelliteInfo_r17, footprintInfo_r17) {
+	SIDL_OPTIONAL_OF_STRUCT(ASN_NAME(SatelliteInfo_r17, footprintInfo_r17, referencePoint_r17), referencePoint_r17);
+	SIDL_OPTIONAL_OF_STRUCT(ASN_NAME(SatelliteInfo_r17, footprintInfo_r17, elevationAngles_r17), elevationAngles_r17);
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(SatelliteInfo_r17, footprintInfo_r17), uint16_t, radius_r17); // OF (1..256)
+};
+
+struct ASN_NAME(SatelliteInfo_r17) {
+	uint8_t satelliteId_r17; // OF (0..255)
+	struct ASN_NAME(SatelliteInfo_r17, serviceInfo_r17) serviceInfo_r17;
+	struct ASN_NAME(SatelliteInfo_r17, footprintInfo_r17) footprintInfo_r17;
+};
+
+typedef SIDL_DYNAMIC_OF_STRUCT(ASN_NAME(SatelliteInfo_r17), ASN_NAME(SatelliteInfoList_r17)); // SIZE (1..4)
+
+struct ASN_NAME(SystemInformationBlockType32_r17) {
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(SystemInformationBlockType32_r17), ASN_NAME(SatelliteInfoList_r17), satelliteInfoList_r17);
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(SystemInformationBlockType32_r17), OCTET_STRING, lateNonCriticalExtension);
+};
+
 SIDL_UNION_ENUM(ASN_NAME(SystemInformation_r8_IEs, sib_TypeAndInfo_s)) {
 	ASN_ENUM_VAL(ASN_NAME(SystemInformation_r8_IEs, sib_TypeAndInfo_s), UNBOUND_VALUE),
 	ASN_ENUM_VAL(ASN_NAME(SystemInformation_r8_IEs, sib_TypeAndInfo_s), sib2),
@@ -5562,7 +5886,10 @@ SIDL_UNION_ENUM(ASN_NAME(SystemInformation_r8_IEs, sib_TypeAndInfo_s)) {
 	ASN_ENUM_VAL(ASN_NAME(SystemInformation_r8_IEs, sib_TypeAndInfo_s), sib26a_v1610),
 	ASN_ENUM_VAL(ASN_NAME(SystemInformation_r8_IEs, sib_TypeAndInfo_s), sib27_v1610),
 	ASN_ENUM_VAL(ASN_NAME(SystemInformation_r8_IEs, sib_TypeAndInfo_s), sib28_v1610),
-	ASN_ENUM_VAL(ASN_NAME(SystemInformation_r8_IEs, sib_TypeAndInfo_s), sib29_v1610)
+	ASN_ENUM_VAL(ASN_NAME(SystemInformation_r8_IEs, sib_TypeAndInfo_s), sib29_v1610),
+	ASN_ENUM_VAL(ASN_NAME(SystemInformation_r8_IEs, sib_TypeAndInfo_s), sib30_v1700),
+	ASN_ENUM_VAL(ASN_NAME(SystemInformation_r8_IEs, sib_TypeAndInfo_s), sib31_v1700),
+	ASN_ENUM_VAL(ASN_NAME(SystemInformation_r8_IEs, sib_TypeAndInfo_s), sib32_v1700)
 };
 SIDL_UNION_BEGIN(ASN_NAME(SystemInformation_r8_IEs, sib_TypeAndInfo_s)) {
 	SIDL_UNION_CASE(ASN_NAME(SystemInformation_r8_IEs, sib_TypeAndInfo_s)_sib2)
@@ -5619,6 +5946,12 @@ SIDL_UNION_BEGIN(ASN_NAME(SystemInformation_r8_IEs, sib_TypeAndInfo_s)) {
 		struct ASN_NAME(SystemInformationBlockType28_r16) sib28_v1610;
 	SIDL_UNION_CASE(ASN_NAME(SystemInformation_r8_IEs, sib_TypeAndInfo_s)_sib29_v1610)
 		struct ASN_NAME(SystemInformationBlockType29_r16) sib29_v1610;
+	SIDL_UNION_CASE(ASN_NAME(SystemInformation_r8_IEs, sib_TypeAndInfo_s)_sib30_v1700)
+		struct ASN_NAME(SystemInformationBlockType30_r17) sib30_v1700;
+	SIDL_UNION_CASE(ASN_NAME(SystemInformation_r8_IEs, sib_TypeAndInfo_s)_sib31_v1700)
+		struct ASN_NAME(SystemInformationBlockType31_r17) sib31_v1700;
+	SIDL_UNION_CASE(ASN_NAME(SystemInformation_r8_IEs, sib_TypeAndInfo_s)_sib32_v1700)
+		struct ASN_NAME(SystemInformationBlockType32_r17) sib32_v1700;
 } SIDL_UNION_END;
 
 typedef SIDL_DYNAMIC_OF_STRUCT(ASN_NAME(SystemInformation_r8_IEs, sib_TypeAndInfo_s), ASN_NAME(SystemInformation_r8_IEs, sib_TypeAndInfo)); // SIZE (1..32)
@@ -6171,7 +6504,9 @@ typedef enum {
 	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(PosSIB_Type_r15, posSibType_r15)), posSibType2_24_v1610),
 	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(PosSIB_Type_r15, posSibType_r15)), posSibType2_25_v1610),
 	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(PosSIB_Type_r15, posSibType_r15)), posSibType4_1_v1610),
-	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(PosSIB_Type_r15, posSibType_r15)), posSibType5_1_v1610)
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(PosSIB_Type_r15, posSibType_r15)), posSibType5_1_v1610),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(PosSIB_Type_r15, posSibType_r15)), posSibType1_9_v1700),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(PosSIB_Type_r15, posSibType_r15)), posSibType1_10_v1700)
 } ASN_ENUM(ASN_NAME(PosSIB_Type_r15, posSibType_r15));
 
 struct ASN_NAME(PosSIB_Type_r15) {
@@ -6303,7 +6638,30 @@ struct ASN_NAME(PLMN_IdentityInfo_v1610) {
 
 typedef SIDL_DYNAMIC_OF_STRUCT(ASN_NAME(PLMN_IdentityInfo_v1610), ASN_NAME(PLMN_IdentityList_v1610)); // SIZE (1..6)
 
-struct ASN_NAME(SystemInformationBlockType1_v1610_IEs, nonCriticalExtension) {
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(SystemInformationBlockType1_v1700_IEs, cellAccessRelatedInfo_NTN_r17, cellBarred_NTN_r17)), barred),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(SystemInformationBlockType1_v1700_IEs, cellAccessRelatedInfo_NTN_r17, cellBarred_NTN_r17)), notBarred)
+} ASN_ENUM(ASN_NAME(SystemInformationBlockType1_v1700_IEs, cellAccessRelatedInfo_NTN_r17, cellBarred_NTN_r17));
+
+typedef SIDL_DYNAMIC(ASN_NAME(TrackingAreaCode), ASN_NAME(TrackingAreaList_r17)); // SIZE (1..12)
+
+struct ASN_NAME(PLMN_IdentityInfo_v1700) {
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(PLMN_IdentityInfo_v1700), ASN_NAME(TrackingAreaList_r17), trackingAreaList_r17);
+};
+
+typedef SIDL_DYNAMIC_OF_STRUCT(ASN_NAME(PLMN_IdentityInfo_v1700), ASN_NAME(PLMN_IdentityList_v1700)); // SIZE (1..6)
+
+struct ASN_NAME(SystemInformationBlockType1_v1700_IEs, cellAccessRelatedInfo_NTN_r17) {
+	ASN_ENUM(ASN_NAME(SystemInformationBlockType1_v1700_IEs, cellAccessRelatedInfo_NTN_r17, cellBarred_NTN_r17)) cellBarred_NTN_r17;
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(SystemInformationBlockType1_v1700_IEs, cellAccessRelatedInfo_NTN_r17), ASN_NAME(PLMN_IdentityList_v1700), plmn_IdentityList_v1700);
+};
+
+struct ASN_NAME(SystemInformationBlockType1_v1700_IEs, nonCriticalExtension) {
+};
+
+struct ASN_NAME(SystemInformationBlockType1_v1700_IEs) {
+	SIDL_OPTIONAL_OF_STRUCT(ASN_NAME(SystemInformationBlockType1_v1700_IEs, cellAccessRelatedInfo_NTN_r17), cellAccessRelatedInfo_NTN_r17);
+	SIDL_OPTIONAL_OF_STRUCT(ASN_NAME(SystemInformationBlockType1_v1700_IEs, nonCriticalExtension), nonCriticalExtension);
 };
 
 struct ASN_NAME(SystemInformationBlockType1_v1610_IEs) {
@@ -6311,7 +6669,7 @@ struct ASN_NAME(SystemInformationBlockType1_v1610_IEs) {
 	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(SystemInformationBlockType1_v1610_IEs, transmissionInControlChRegion_r16)), transmissionInControlChRegion_r16);
 	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(SystemInformationBlockType1_v1610_IEs, campingAllowedInCE_r16)), campingAllowedInCE_r16);
 	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(SystemInformationBlockType1_v1610_IEs), ASN_NAME(PLMN_IdentityList_v1610), plmn_IdentityList_v1610);
-	SIDL_OPTIONAL_OF_STRUCT(ASN_NAME(SystemInformationBlockType1_v1610_IEs, nonCriticalExtension), nonCriticalExtension);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(SystemInformationBlockType1_v1610_IEs), ASN_NAME(SystemInformationBlockType1_v1700_IEs), nonCriticalExtension);
 };
 
 struct ASN_NAME(SystemInformationBlockType1_v1540_IEs) {
@@ -8735,13 +9093,28 @@ typedef enum {
 	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(Paging_v1610_IEs, uac_ParamModification_r16)), true)
 } ASN_ENUM(ASN_NAME(Paging_v1610_IEs, uac_ParamModification_r16));
 
-struct ASN_NAME(Paging_v1610_IEs, nonCriticalExtension) {
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(PagingRecord_v1700, pagingCause_r17)), voice)
+} ASN_ENUM(ASN_NAME(PagingRecord_v1700, pagingCause_r17));
+
+struct ASN_NAME(PagingRecord_v1700) {
+	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(PagingRecord_v1700, pagingCause_r17)), pagingCause_r17);
+};
+
+typedef SIDL_DYNAMIC_OF_STRUCT(ASN_NAME(PagingRecord_v1700), ASN_NAME(PagingRecordList_v1700)); // SIZE (1..16)
+
+struct ASN_NAME(Paging_v1700_IEs, nonCriticalExtension) {
+};
+
+struct ASN_NAME(Paging_v1700_IEs) {
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(Paging_v1700_IEs), ASN_NAME(PagingRecordList_v1700), pagingRecordList_v1700);
+	SIDL_OPTIONAL_OF_STRUCT(ASN_NAME(Paging_v1700_IEs, nonCriticalExtension), nonCriticalExtension);
 };
 
 struct ASN_NAME(Paging_v1610_IEs) {
 	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(Paging_v1610_IEs), ASN_NAME(PagingRecordList_v1610), pagingRecordList_v1610);
 	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(Paging_v1610_IEs, uac_ParamModification_r16)), uac_ParamModification_r16);
-	SIDL_OPTIONAL_OF_STRUCT(ASN_NAME(Paging_v1610_IEs, nonCriticalExtension), nonCriticalExtension);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(Paging_v1610_IEs), ASN_NAME(Paging_v1700_IEs), nonCriticalExtension);
 };
 
 struct ASN_NAME(Paging_v1530_IEs) {
@@ -9161,6 +9534,23 @@ SIDL_UNION_BEGIN(ASN_NAME(SetupRelease_PDCP_Config, ethernetHeaderCompression_r1
 		struct ASN_NAME(EthernetHeaderCompression_r16) setup;
 } SIDL_UNION_END;
 
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(DiscardTimerExt_r17)), ms2000),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(DiscardTimerExt_r17)), spare)
+} ASN_ENUM(ASN_NAME(DiscardTimerExt_r17));
+
+SIDL_UNION_ENUM(ASN_NAME(SetupRelease_PDCP_Config, discardTimerExt_r17)) {
+	ASN_ENUM_VAL(ASN_NAME(SetupRelease_PDCP_Config, discardTimerExt_r17), UNBOUND_VALUE),
+	ASN_ENUM_VAL(ASN_NAME(SetupRelease_PDCP_Config, discardTimerExt_r17), release),
+	ASN_ENUM_VAL(ASN_NAME(SetupRelease_PDCP_Config, discardTimerExt_r17), setup)
+};
+SIDL_UNION_BEGIN(ASN_NAME(SetupRelease_PDCP_Config, discardTimerExt_r17)) {
+	SIDL_UNION_CASE(ASN_NAME(SetupRelease_PDCP_Config, discardTimerExt_r17)_release)
+		Null release;
+	SIDL_UNION_CASE(ASN_NAME(SetupRelease_PDCP_Config, discardTimerExt_r17)_setup)
+		ASN_ENUM(ASN_NAME(DiscardTimerExt_r17)) setup;
+} SIDL_UNION_END;
+
 struct ASN_NAME(PDCP_Config) {
 	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(PDCP_Config, discardTimer)), discardTimer);
 	SIDL_OPTIONAL_OF_STRUCT(ASN_NAME(PDCP_Config, rlc_AM), rlc_AM);
@@ -9178,6 +9568,7 @@ struct ASN_NAME(PDCP_Config) {
 	SIDL_OPTIONAL_OF_STRUCT(ASN_NAME(PDCP_Config, uplinkDataCompression_r15), uplinkDataCompression_r15);
 	SIDL_OPTIONAL_OF_STRUCT(ASN_NAME(PDCP_Config, pdcp_DuplicationConfig_r15), pdcp_DuplicationConfig_r15);
 	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(PDCP_Config), ASN_NAME(SetupRelease_PDCP_Config, ethernetHeaderCompression_r16), ethernetHeaderCompression_r16);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(PDCP_Config), ASN_NAME(SetupRelease_PDCP_Config, discardTimerExt_r17), discardTimerExt_r17);
 };
 
 struct ASN_NAME(PRACH_Config) {

@@ -387,6 +387,7 @@ int acpSendMsg(acpCtx_t ctx, size_t size, const unsigned char* buffer)
 #ifdef ACP_DEBUG_TRACE_FLOOD
 	ACP_DEBUG_ENTER_TRACE_CLOG(ctx);
 #endif
+	int ret = -ACP_ERR_INTERNAL;
 
 	if (!acpCtxIsValid(ctx)) {
 		ACP_DEBUG_EXIT_TRACE_CLOG(ctx, "ACP_ERR_INVALID_CTX");
@@ -419,8 +420,6 @@ int acpSendMsg(acpCtx_t ctx, size_t size, const unsigned char* buffer)
 	ACP_DEBUG_CLOG(ctx, "Sending message '%s'", acpGetMsgName(ACP_HEADER_SIZE, buffer));
 #endif
 
-	int ret = -	ACP_ERR_INTERNAL;
-
 	int sock = ACP_CTX_CAST(ctx)->sock;
 	if (ACP_CTX_CAST(ctx)->isServer) {
 		if (kind == ACP_CMD) {
@@ -430,6 +429,8 @@ int acpSendMsg(acpCtx_t ctx, size_t size, const unsigned char* buffer)
 			SIDL_ASSERT(ACP_CTX_CAST(ctx)->lastPeer == -1);
 		}
 	}
+
+	ret = 0;
 
 	/* Write SIDL message */
 	if (kind != ACP_NTF) {
@@ -600,7 +601,6 @@ int acpServerInit(acpCtx_t ctx, const char* host, int port, size_t aSize)
 
 int acpServerInitWithCtx(const char* host, int port, const struct acpMsgTable* msgTable, size_t aSize, acpCtx_t* ctx)
 {
-	SIDL_ASSERT(host);
 	SIDL_ASSERT(ctx);
 	ACP_DEBUG_ENTER_LOG();
 

@@ -60,7 +60,7 @@
 #include "common/utils/LOG/log.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "radio/COMMON/common_lib.h"
-#include "radio/ETHERNET/USERSPACE/LIB/ethernet_lib.h"
+#include "radio/ETHERNET/ethernet_lib.h"
 
 /* these variables have to be defined before including ENB_APP/enb_paramdef.h */
 static int DEFBANDS[] = {7};
@@ -212,7 +212,6 @@ void fh_if4p5_south_in(RU_t *ru,
   uint16_t packet_type;
   uint32_t symbol_number=0;
   uint32_t symbol_mask_full;
-  int pultick_received=0;
 
   if ((fp->frame_type == TDD) && (subframe_select(fp,*subframe)==SF_S))
     symbol_mask_full = (1<<fp->ul_symbols_in_S_subframe)-1;
@@ -232,7 +231,6 @@ void fh_if4p5_south_in(RU_t *ru,
       if (packet_type == IF4p5_PULFFT) proc->symbol_mask[sf] = proc->symbol_mask[sf] | (1<<symbol_number);
       else if (packet_type == IF4p5_PULTICK) {
         proc->symbol_mask[sf] = 0xffff;
-        pultick_received++;
         /*
                  if ((proc->first_rx==0) && (f!=*frame)) LOG_E(PHY,"rx_fh_if4p5: PULTICK received frame %d != expected %d (RU %d) \n",f,*frame, ru->idx);
                  else if ((proc->first_rx==0) && (sf!=*subframe)) LOG_E(PHY,"rx_fh_if4p5: PULTICK received subframe %d != expected %d (first_rx %d)\n",sf,*subframe,proc->first_rx);
@@ -2891,7 +2889,7 @@ RU_t **RCconfig_RU(int nb_RU,int nb_L1_inst,PHY_VARS_eNB ***eNB,uint64_t *ru_mas
   int i = 0;
   paramdef_t RUParams[] = RUPARAMS_DESC;
   paramlist_def_t RUParamList = {CONFIG_STRING_RU_LIST,NULL,0};
-  config_getlist( &RUParamList,RUParams,sizeof(RUParams)/sizeof(paramdef_t), NULL);
+  config_getlist(config_get_if(), &RUParamList, RUParams, sizeofArray(RUParams), NULL);
   RU_t **ru=NULL;
   if ( RUParamList.numelt > 0) {
     ru = (RU_t **)malloc(nb_RU*sizeof(RU_t *));

@@ -101,6 +101,9 @@ static void ss_send_sysind_data(ss_system_ind_t *p_ind,int cell_index)
         ind.Common.TimingInfo.v.SubFrame.Slot.d = SlotTimingInfo_Type_Any;
         ind.Common.TimingInfo.v.SubFrame.Slot.v.Any = true;
 
+        ind.Common.TimingInfo.v.SubFrame.Symbol.d = SymbolTimingInfo_Type_Any;
+        ind.Common.TimingInfo.v.SubFrame.Symbol.v.Any = true;
+
         ind.Common.Status.d = IndicationStatus_Type_Ok;
         ind.Common.Status.v.Ok = true;
 
@@ -119,7 +122,13 @@ static void ss_send_sysind_data(ss_system_ind_t *p_ind,int cell_index)
            ind.Indication.v.RachPreamble.RepetitionsPerPreambleAttempt.d = true;
            ind.Indication.v.RachPreamble.RepetitionsPerPreambleAttempt.v = p_ind->repetitionsPerPreambleAttempt;
         }
-        if(SysInd_Type_UL_HARQ == p_ind->sysind_type)
+        if(SysInd_Type_SchedReq == p_ind->sysind_type)
+        {
+          LOG_A(ENB_SS_SYSIND, "[SS_SYSIND] SYSTEM_IND with UL SR\n");
+          ind.Indication.d = SystemIndication_Type_SchedReq;
+          ind.Indication.v.SchedReq = true;
+	}
+	if(SysInd_Type_UL_HARQ == p_ind->sysind_type)
         {
           LOG_A(ENB_SS_SYSIND, "[SS_SYSIND] SYSTEM_IND with UL HARQ %d\n", p_ind->UL_Harq);
           ind.Indication.d = SystemIndication_Type_UL_HARQ;
@@ -256,7 +265,7 @@ void ss_eNB_sysind_init(void)
                 {NULL, 0}};
 
         // Arena size to decode received message
-        const size_t aSize = 32 * 1024;
+        const size_t aSize = 128 * 1024;
 
         // Start listening server and get ACP context,
         // after the connection is performed, we can use all services

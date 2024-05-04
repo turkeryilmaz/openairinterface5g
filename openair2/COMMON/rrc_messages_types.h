@@ -96,7 +96,7 @@
 
 #define NBIOTRRC_CONFIGURATION_REQ(mSGpTR)   (mSGpTR)->ittiMsg.nbiotrrc_configuration_req
 
-#define NRRRC_CONFIGURATION_REQ(mSGpTR)   (mSGpTR)->ittiMsg.nrrrc_configuration_req
+#define NRRRC_CONFIGURATION_REQ(mSGpTR)   (mSGpTR)->ittiMsg.nrrrc_configuration_req  //W38 TO DO: to remove or keep it?
 
 #define NRRRC_RBLIST_CFG_REQ(mSGpTR)      (mSGpTR)->ittiMsg.nrrrc_rblist_cfg_req
 
@@ -117,11 +117,13 @@
 #define NAS_DOWNLINK_DATA_IND(mSGpTR)   (mSGpTR)->ittiMsg.nas_dl_data_ind
 
 #define RRC_SUBFRAME_PROCESS(mSGpTR)    (mSGpTR)->ittiMsg.rrc_subframe_process
+#define NRRRC_FRAME_PROCESS(mSGpTR)     (mSGpTR)->ittiMsg.nr_rrc_frame_process
 
 #define RLC_SDU_INDICATION(mSGpTR)      (mSGpTR)->ittiMsg.rlc_sdu_indication
 #define NRDuDlReq(mSGpTR)      (mSGpTR)->ittiMsg.nr_du_dl_req
 
 #define NAS_OAI_TUN_NSA(mSGpTR)         (mSGpTR)->ittiMsg.nas_oai_tun_nsa
+#define NAS_PDU_SESSION_REQ(mSGpTR) (mSGpTR)->ittiMsg.nas_pdu_session_req
 
 //-------------------------------------------------------------------------------------------//
 enum SecurityAct_Type_e {
@@ -182,7 +184,6 @@ enum ue_CategoryDL_v1310_e {
         ue_CategoryDL_v1310_e_n17 = 0,
         ue_CategoryDL_v1310_e_m1 = 1,
 };
-
 typedef enum ue_CategoryDL_v1310_e ue_CategoryDL_v1310_e;
 
 enum ue_CategoryDL_v1350_e {
@@ -215,15 +216,18 @@ typedef struct rrcUECatInfo_s {
         uint8_t ue_CategoryDL_v1460;
 }rrcUECatInfo;
 
+
 typedef struct RadioBearerConfig_s {
         bool isPDCPConfigValid;
         bool isRLCConfigValid;
         bool isLogicalChannelIdValid;
         bool isMacConfigValid;
         bool isDiscardULDataValid;
+        bool isMacTestModeValid;
         LTE_PDCP_Config_t Pdcp;
         LTE_RLC_Config_t  Rlc;
         long LogicalChannelId;
+        long MacTestModeLogicalChannelId;
         LTE_LogicalChannelConfig_t Mac;
         bool DiscardULData;
 }RadioBearerConfig;
@@ -332,7 +336,7 @@ typedef struct lte_sib_MappingInfo_s {
 }lte_sib_MappingInfo_t;
 
 typedef struct lte_SchedulingInfo_s {
-  e_LTE_SchedulingInfo__si_Periodicity     si_Periodicity;
+  e_LTE_SI_Periodicity_r12     si_Periodicity;
   lte_sib_MappingInfo_t    sib_MappingInfo;
 }lte_SchedulingInfo_t;
 
@@ -366,8 +370,8 @@ typedef struct InterFreqCarrierFreqInfo_s {
   e_LTE_Q_OffsetRange         *q_OffsetFreq;/* OPTIONAL */
   bool                            interFreqNeighCellList_Present;
   LTE_InterFreqNeighCellInfo_t    *interFreqNeighCellList;/* OPTIONAL */
-  bool                        interFreqBlackCellList_Present;
-  PhysCellIdRange_t           *interFreqBlackCellList;/* OPTIONAL */
+  bool                        interFreqExcludedCellList_Present;
+  PhysCellIdRange_t           *interFreqExcludedCellList;/* OPTIONAL */
   bool          q_QualMin_r9_Present;
   long          *q_QualMin_r9;/* OPTIONAL */
   bool          threshX_Q_r9_Present;
@@ -381,15 +385,19 @@ typedef struct IntraFreqNeighCellInfo_s {
   long                    q_OffsetCell;
 }IntraFreqNeighCellInfo_t;
 
+/*SS possible max rach attempt for simulation*/
+#define SS_MAX_RACH_PROC    10
+
 typedef struct Rar_s {
-  uint16_t Temp_C_RNTI;
+  bool       b_rarResponse;
+  uint16_t   Temp_C_RNTI;
 }Rar_t;
 
 typedef struct Cell_ActiveParam_s {
-  bool b_C_RNTI_Present;
-  uint16_t C_RNTI;
-  uint8_t numRar;
-  Rar_t   Rar[10];
+  bool       b_C_RNTI_Present;
+  uint16_t   C_RNTI;
+  uint8_t    numRar;
+  Rar_t      Rar[SS_MAX_RACH_PROC];
 }Cell_ActiveParam_t;
 
 // eNB: ENB_APP -> RRC messages
@@ -525,9 +533,9 @@ typedef struct RrcConfigurationReq_s {
   bool                       intraFreqNeighCellListPresent[MAX_NUM_CCs];
   int                        intraFreqNeighCellListCount[MAX_NUM_CCs];
   IntraFreqNeighCellInfo_t  *intraFreqNeighCellList[MAX_NUM_CCs];
-  bool                       intraFreqBlackCellListPresent[MAX_NUM_CCs];
-  int                        intraFreqBlackCellListCount[MAX_NUM_CCs];
-  PhysCellIdRange_t         *intraFreqBlackCellList[MAX_NUM_CCs];
+  bool                       intraFreqExcludedCellListPresent[MAX_NUM_CCs];
+  int                        intraFreqExcludedCellListCount[MAX_NUM_CCs];
+  PhysCellIdRange_t         *intraFreqExcludedCellList[MAX_NUM_CCs];
 
   //SIB5
   bool                         sib5_Present[MAX_NUM_CCs];
@@ -682,8 +690,13 @@ typedef struct NRRrcConfigurationReq_s {
   uint16_t                mnc[PLMN_LIST_MAX_SIZE];
   uint8_t                 mnc_digit_length[PLMN_LIST_MAX_SIZE];
   uint8_t                 num_plmn;
+
+  bool um_on_default_drb;
+  bool                    enable_sdap;
+  int                     drbs;
+
+//TODO: W38 below are moved to MAC, better to define a struct to keep them
   NR_ServingCellConfigCommon_t *scc;
-  NR_ServingCellConfig_t  *scd;
   int                     ssb_SubcarrierOffset;
   int                     sib1_tda;
   rrc_pdsch_AntennaPorts_t pdsch_AntennaPorts;
@@ -693,10 +706,16 @@ typedef struct NRRrcConfigurationReq_s {
   int                     do_SRS;
   bool                    force_256qam_off;
   int                     pusch_TargetSNRx10;
-  int                     pucch_TargetSNRx10;
-  bool                    enable_sdap;
-  int                     drbs;
+  int                     pucch_TargetSNRx10; 
+  long                     q_RxLevMinSIB1;
+  long                     q_RxLevMinSIB2;
+  long                     cellBarred;
 } gNB_RrcConfigurationReq;
+
+
+typedef struct _NRRrcConfigurationReqList {
+  gNB_RrcConfigurationReq configuration[MAX_NUM_CCs];
+}NRRrcConfigurationReqList;
 
 typedef struct NRDuDlReq_s {
   rnti_t rnti;
@@ -747,8 +766,13 @@ typedef dl_info_transfer_ind_t  NasDlDataInd;
 // eNB: realtime -> RRC messages
 typedef struct rrc_subframe_process_s {
   protocol_ctxt_t ctxt;
-  int             CC_id;
+  int CC_id;
 } RrcSubframeProcess;
+
+typedef struct nrrrc_frame_process_s {
+  int frame;
+  int gnb_id;
+} NRRrcFrameProcess;
 
 // eNB: RLC -> RRC messages
 typedef struct rlc_sdu_indication_s {

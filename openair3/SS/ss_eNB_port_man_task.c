@@ -264,6 +264,10 @@ void ss_port_man_send_data(
     cnf.Common.TimingInfo.v.SubFrame.Slot.d = SlotTimingInfo_Type_FirstSlot;
     cnf.Common.TimingInfo.v.SubFrame.Slot.v.FirstSlot = true;
 
+    /** TODO: Always marking as any symbol, need to change this */
+    cnf.Common.TimingInfo.v.SubFrame.Symbol.d = SymbolTimingInfo_Type_Any;
+    cnf.Common.TimingInfo.v.SubFrame.Symbol.v.Any = true;
+
     /* Encode message
      */
     if (acpSysProcessEncSrv(ctx_g, buffer, &msgSize, &cnf) != 0)
@@ -306,7 +310,7 @@ void ss_eNB_port_man_init(void)
     // Port number
     int port = RC.ss.Sysport;
 
-    acpInit(malloc, free, 1000);
+    acpInit(malloc, free, 0);
 
     const struct acpMsgTable msgTable[] = {
         {"SysProcess", MSG_SysProcess_userId},
@@ -315,7 +319,7 @@ void ss_eNB_port_man_init(void)
         {NULL, 0}};
 
     // Arena size to decode received message
-    const size_t aSize = 32 * 1024;
+    const size_t aSize = 128 * 1024;
 
     // Start listening server and get ACP context,
     // after the connection is performed, we can use all services
@@ -577,6 +581,9 @@ bool ss_eNB_port_man_handle_enquiryTiming(struct SYSTEM_CTRL_REQ *sys_req)
 
   cnf.Common.TimingInfo.v.SubFrame.Slot.d = SlotTimingInfo_Type_FirstSlot;
   cnf.Common.TimingInfo.v.SubFrame.Slot.v.FirstSlot = true;
+
+  cnf.Common.TimingInfo.v.SubFrame.Symbol.d = SymbolTimingInfo_Type_Any;
+  cnf.Common.TimingInfo.v.SubFrame.Symbol.v.Any = true;
 
   cnf.Common.Result.d = ConfirmationResult_Type_Success;
   cnf.Common.Result.v.Success = true;

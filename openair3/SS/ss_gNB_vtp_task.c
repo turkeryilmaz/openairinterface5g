@@ -29,9 +29,9 @@
 #include "ss_gNB_proxy_iface.h"
 #include "SIDL_VIRTUAL_TIME_PORT.h"
 #include "acpSysVT.h"
-#include "enb_config.h"
-
-extern SSConfigContext_t SS_context;
+#include "ss_gNB_multicell_helper.h"
+#include "enb_config.h"//bugz128620 gnb_config.h?
+int nrcellIndex = 0;
 extern RAN_CONTEXT_t RC;
 
 static acpCtx_t ctx_vtp_g = NULL;
@@ -46,6 +46,8 @@ char *vtp_local_address = "127.0.0.1";
 int vtp_proxy_send_port = 7776;
 int vtp_proxy_recv_port = 7777;
 
+bool ss_gNB_vtp_acp_task_ready_go = false;
+bool ss_gNB_vtp_acp_task_exit = false;
 
 static void _ss_log_vt(struct VirtualTimeInfo_Type* virtualTime, const char* prefix) {
 
@@ -255,7 +257,8 @@ static void ss_send_vtp_resp(struct VirtualTimeInfo_Type *virtualTime)
     req->header.preamble = 0xFEEDC0DE;
     req->header.msg_id = SS_VTP_RESP;
     req->header.length = sizeof(proxy_ss_header_t);
-    req->header.cell_id = SS_context.cellId;
+    req->header.cell_id = SS_context.SSCell_list[nrcellIndex].PhysicalCellId;
+    req->header.cell_index = 0;
 
     req->tinfo.mu = -1;
 
@@ -284,6 +287,9 @@ static void ss_send_vtp_resp(struct VirtualTimeInfo_Type *virtualTime)
 
     req->tinfo.sfn = virtualTime->TimingInfo.SFN.v.Number;
     req->tinfo.sf = virtualTime->TimingInfo.Subframe.v.Number;
+    
+    LOG_A(GNB_APP, "VTP_ACK Command to proxy sent for cell_id: %d SFN: %d SF: %d mu: %d slot: %d cell_index: %d\n",
+        req->header.cell_id,req->tinfo.sfn ,req->tinfo.sf, req->tinfo.mu, req->tinfo.slot,req->header.cell_index);
 
     vtp_send_proxy((void *)req, sizeof(VtpCmdReq_t));
 
@@ -318,12 +324,12 @@ static inline uint8_t ss_gNB_read_from_vtp_socket(acpCtx_t ctx)
                 SidlStatus sidlStatus = -1;
                 acpGetMsgSidlStatus(msgSize, buffer, &sidlStatus);
             }
-   			else if (userId == -ACP_PEER_DISCONNECTED){
-    			LOG_A(GNB_APP, "[SS_SRB] Peer ordered shutdown\n");
+            else if (userId == -ACP_PEER_DISCONNECTED){
+                LOG_A(GNB_APP, "[SS-VTP-ACP] Peer ordered shutdown\n");
                 return 1;
             }
             else if (userId == -ACP_PEER_CONNECTED){
-	            LOG_A(GNB_APP, "[SS_SRB] Peer connection established\n");
+	            LOG_A(GNB_APP, "[SS-VTP-ACP] Peer connection established\n");
             }
         }
 
@@ -337,7 +343,7 @@ static inline uint8_t ss_gNB_read_from_vtp_socket(acpCtx_t ctx)
             struct VirtualTimeInfo_Type *virtualTime = NULL;
             if (acpSysVTEnquireTimingAckDecSrv(ctx, buffer, msgSize, &virtualTime) != 0)
             {
-                LOG_E(GNB_APP, "[SS-VTP] acpVngProcessDecSrv failed \n");
+                LOG_E(GNB_APP, "[SS-VTP-ACP] acpVngProcessDecSrv failed \n");
                 break;
             }
 
@@ -359,47 +365,46 @@ static inline uint8_t ss_gNB_read_from_vtp_socket(acpCtx_t ctx)
 
 uint8_t ss_gNB_vtp_process_itti_msg(void)
 {
-    MessageDef *received_msg = NULL;
-    int result;
-    itti_receive_msg(TASK_VTP, &received_msg);
+	MessageDef *received_msg = NULL;
+	int result;
 
-    /* Check if there is a packet to handle */
-    if (received_msg != NULL)
-    {
-        switch (ITTI_MSG_ID(received_msg))
-        {
-        case SS_NRUPD_TIM_INFO:
-        {
-            ss_set_timinfo_t tinfo;
-            tinfo.mu = SS_context.mu;
-            uint8_t slotsPerSubFrame = 1<<tinfo.mu;
-            tinfo.slot = SS_NRUPD_TIM_INFO(received_msg).slot % slotsPerSubFrame;
-            tinfo.sf = SS_NRUPD_TIM_INFO(received_msg).slot /slotsPerSubFrame;
-            tinfo.sfn = SS_NRUPD_TIM_INFO(received_msg).sfn;
-            tinfo.hsfn = SS_context.hsfn;
+	itti_receive_msg(TASK_VTP, &received_msg);
 
-            if (SS_context.vtp_enabled == 1) {
-                ss_vtp_send_tinfo(TASK_VTP, &tinfo);
-            }
-        }
-        break;
+	/* Check if there is a packet to handle */
+	if (received_msg != NULL) {
+		switch (ITTI_MSG_ID(received_msg)) {
+			case SS_NRUPD_TIM_INFO:
+			{
+				ss_set_timinfo_t tinfo;
+				tinfo.mu = SS_context.mu;
+				uint8_t slotsPerSubFrame = 1<<tinfo.mu;
+				tinfo.slot = SS_NRUPD_TIM_INFO(received_msg).slot % slotsPerSubFrame;
+				tinfo.sf = SS_NRUPD_TIM_INFO(received_msg).slot /slotsPerSubFrame;
+				tinfo.sfn = SS_NRUPD_TIM_INFO(received_msg).sfn;
+				tinfo.hsfn = SS_context.hsfn;
 
-        case TERMINATE_MESSAGE:
-        {
-            itti_exit_task();
-            break;
-        }
-        default:
-            LOG_E(GNB_APP, "[SS-VTP] Received unhandled message %d:%s\n",
-                  ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
-        }
-        result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
-        AssertFatal(result == EXIT_SUCCESS, "[SYS] Failed to free memory (%d)!\n", result);
-        received_msg = NULL;
-    }
+				if (SS_context.vtp_enabled == 1) {
+					ss_vtp_send_tinfo(TASK_VTP, &tinfo);
+				}
+			}
+			break;
 
+			case TERMINATE_MESSAGE:
+			{
+				ss_gNB_vtp_acp_task_exit = true;
+				itti_exit_task();
+				break;
+			}
+			default:
+				LOG_E(GNB_APP, "[SS-VTP] Received unhandled message %d:%s\n",
+						ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
+		}
+		result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
+		AssertFatal(result == EXIT_SUCCESS, "[SYS] Failed to free memory (%d)!\n", result);
+		received_msg = NULL;
+	}
 
-    return ss_gNB_read_from_vtp_socket(ctx_vtp_g);
+	return NULL;
 }
 
 //------------------------------------------------------------------------------
@@ -418,7 +423,7 @@ int ss_gNB_vtp_init(void)
             NULL, 0}};
 
     // Arena size to decode received message
-    const size_t aSize = 32 * 1024;
+    const size_t aSize = 128 * 1024;
 
     // Start listening server and get ACP context,
     // after the connection is performed, we can use all services
@@ -445,48 +450,72 @@ static void ss_gNB_vt_ena(void) {
     req->header.preamble = 0xFEEDC0DE;
     req->header.msg_id = SS_VTP_ENABLE;
     req->header.length = sizeof(proxy_ss_header_t);
-    req->header.cell_id = SS_context.cellId;
+    req->header.cell_id = SS_context.SSCell_list[nrcellIndex].PhysicalCellId;
     req->tinfo.mu = -1;
     req->tinfo.sfn = 0;
     req->tinfo.sf = 0;
     req->tinfo.slot = 0;
+    req->header.cell_index = nrcellIndex;
     LOG_A(GNB_APP, "[SS-VTP] VT enable sent \n");
     vtp_send_proxy((void *)req, sizeof(VtpCmdReq_t));
 }
 
 static void ss_gNB_wait_first_msg(void)
 {
-    const size_t size = 16 * 1024;
-    unsigned char *buffer = (unsigned char *)acpMalloc(size);
-    assert(buffer);
+	const size_t size = 16 * 1024;
+	unsigned char *buffer = (unsigned char *)acpMalloc(size);
+	assert(buffer);
 	size_t msg_sz = size;
-	while (1)
-	{
+	while (1) {
 		int ret = acpRecvMsg(ctx_vtp_g, &msg_sz, buffer);
-		if (ret == MSG_SysVTEnquireTimingAck_userId || ret == -ACP_PEER_CONNECTED)
-		{
+		if (ret == MSG_SysVTEnquireTimingAck_userId || ret == -ACP_PEER_CONNECTED) {
 			LOG_A(GNB_APP, "[SS_VTP] First VT-ACK From Client Received (on-start) \n");
-            struct VirtualTimeInfo_Type *virtualTime = NULL;
+			struct VirtualTimeInfo_Type *virtualTime = NULL;
 
-            if (acpSysVTEnquireTimingAckDecSrv(ctx_vtp_g, buffer, msg_sz, &virtualTime) != 0)
-            {
-                LOG_E(GNB_APP, "[SS-VTP] acpVngProcessDecSrv failed \n");
-                break;
-            }
+			if (acpSysVTEnquireTimingAckDecSrv(ctx_vtp_g, buffer, msg_sz, &virtualTime) != 0) {
+				LOG_E(GNB_APP, "[SS-VTP] acpVngProcessDecSrv failed \n");
+				break;
+			}
 
-            if (virtualTime->Enable) {
-                ss_gNB_vt_ena();
-            }
-			
+			if (virtualTime->Enable) {
+				ss_gNB_vt_ena();
+			}
 
-            _ss_log_vt(virtualTime, " => (enable message) ");
-            acpSysVTEnquireTimingAckFreeSrv(virtualTime);
-            break;
+			_ss_log_vt(virtualTime, " => (enable message) ");
+			acpSysVTEnquireTimingAckFreeSrv(virtualTime);
+			break;
 		}
-        LOG_A(GNB_APP, "[SS_VTP] Waiting for First VT-ACK From Client(on-start) \n");
+		LOG_A(GNB_APP, "[SS_VTP] Waiting for First VT-ACK From Client(on-start) \n");
 	}
 }
 //------------------------------------------------------------------------------
+void *ss_gNB_vtp_acp_task(void *arg)
+{
+	LOG_A(GNB_APP, "[SS-VTP-ACP] Starting System Simulator VTP_ACP Thread \n");
+
+	while(ss_gNB_vtp_acp_task_ready_go == false) {
+		sleep(5);
+	}
+
+	LOG_A(GNB_APP, "[SS-VTP-ACP] System Simulator VTP_ACP Thread Ready Go!\n");
+	while(1) {
+		if(ctx_vtp_g) {
+			ss_gNB_read_from_vtp_socket(ctx_vtp_g);
+		} else {
+			sleep(10);
+		}
+
+		if(ss_gNB_vtp_acp_task_exit) {
+			ss_gNB_vtp_acp_task_exit = false;
+			ss_gNB_vtp_acp_task_ready_go = false;
+			LOG_A(GNB_APP, "[SS-VTP-ACP] TERMINATE \n");
+			pthread_exit (NULL);
+		}
+	}
+
+	return NULL;
+}
+
 void* ss_gNB_vtp_task(void *arg) {
 	vtp_udpSockReq_t req;
 	req.address = vtp_local_address;
@@ -502,14 +531,17 @@ void* ss_gNB_vtp_task(void *arg) {
 		RC.ss.vtp_ready = 1;
 
 		sleep(1);
+
+		/* Ready to trigger SS-VTP-ACP task */
+		ss_gNB_vtp_acp_task_ready_go = true;
+
 		while (1) {
 			if(ss_gNB_vtp_process_itti_msg()) {
-                break;
-            }
+				break;
+			}
 		}
 	} else {
-
-		LOG_A(GNB_APP, "[SS-VTP] VTP port disabled at eNB \n");
+		LOG_A(GNB_APP, "[SS-VTP] VTP port disabled at gNB \n");
 		sleep(10);
 	}
 

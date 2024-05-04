@@ -66,24 +66,27 @@ static telnetsrv_params_t telnetparams;
 #define TELNETSRV_OPTNAME_STATICMOD   "staticmod"
 #define TELNETSRV_OPTNAME_SHRMOD      "shrmod"
 
+// clang-format off
 paramdef_t telnetoptions[] = {
     /*-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
     /*                                            configuration parameters for telnet utility                                                                                      */
     /*   optname                              helpstr                paramflags           XXXptr                               defXXXval               type                 numelt */
     /*-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
-    {"listenaddr", "<listen ip address>\n", 0, uptr : &telnetparams.listenaddr, defstrval : "0.0.0.0", TYPE_IPV4ADDR, 0},
-    {"listenport", "<local port>\n", 0, uptr : &(telnetparams.listenport), defuintval : 9090, TYPE_UINT, 0},
-    {"listenstdin", "enable input from stdin\n", PARAMFLAG_BOOL, uptr : &(telnetparams.listenstdin), defuintval : 0, TYPE_UINT, 0},
-    {"priority", "<scheduling policy (0-99)\n", 0, iptr : &telnetparams.priority, defuintval : 0, TYPE_INT, 0},
-    {"debug", "<debug level>\n", 0, uptr : NULL, defuintval : 0, TYPE_UINT, 0},
-    {"loopcount", "<loop command iterations>\n", 0, uptr : &(telnetparams.loopcount), defuintval : 10, TYPE_UINT, 0},
-    {"loopdelay", "<loop command delay (ms)>\n", 0, uptr : &(telnetparams.loopdelay), defuintval : 5000, TYPE_UINT, 0},
-    {"histfile", "<history file name>\n", PARAMFLAG_NOFREE, strptr : &(telnetparams.histfile), defstrval : "oaitelnet.history", TYPE_STRING, 0},
-    {"histsize", "<history sizes>\n", 0, iptr : &(telnetparams.histsize), defuintval : 50, TYPE_INT, 0},
-    {"logfile", "log file when redirecting", PARAMFLAG_NOFREE, strptr : &(telnetparams.logfile), defstrval : "oaisoftmodem.log", TYPE_STRING, 0},
-    {"phypbsize", "<phy dump buff size (bytes)>\n", 0, uptr : &(telnetparams.phyprntbuff_size), defuintval : 65000, TYPE_UINT, 0},
-    {TELNETSRV_OPTNAME_STATICMOD, "<static modules selection>\n", 0, strlistptr : NULL, defstrlistval : telnet_defstatmod, TYPE_STRINGLIST, (sizeof(telnet_defstatmod) / sizeof(char *))},
-    {TELNETSRV_OPTNAME_SHRMOD, "<dynamic modules selection>\n", 0, strlistptr : NULL, defstrlistval : NULL, TYPE_STRINGLIST, 0}};
+    {"listenaddr", "<listen ip address>\n", 0, .uptr = &telnetparams.listenaddr, .defstrval = "0.0.0.0", TYPE_IPV4ADDR, 0},
+    {"listenport", "<local port>\n", 0, .uptr = &telnetparams.listenport, .defuintval = 9090, TYPE_UINT, 0},
+    {"listenstdin", "enable input from stdin\n", PARAMFLAG_BOOL, .uptr = &telnetparams.listenstdin, .defuintval = 0, TYPE_UINT, 0},
+    {"priority", "<scheduling policy (0-99)\n", 0, .iptr = &telnetparams.priority, .defuintval = 0, TYPE_INT, 0},
+    {"debug", "<debug level>\n", 0, .uptr = NULL, .defuintval = 0, TYPE_UINT, 0},
+    {"loopcount", "<loop command iterations>\n", 0, .uptr = &telnetparams.loopcount, .defuintval = 10, TYPE_UINT, 0},
+    {"loopdelay", "<loop command delay (ms)>\n", 0, .uptr = &telnetparams.loopdelay, .defuintval = 5000, TYPE_UINT, 0},
+    {"histfile", "<history file name>\n", PARAMFLAG_NOFREE, .strptr = &telnetparams.histfile, .defstrval = "oaitelnet.history", TYPE_STRING, 0},
+    {"histsize", "<history sizes>\n", 0, .iptr = &telnetparams.histsize, .defuintval = 50, TYPE_INT, 0},
+    {"logfile", "log file when redirecting", PARAMFLAG_NOFREE, .strptr = &telnetparams.logfile, .defstrval = "oaisoftmodem.log", TYPE_STRING, 0},
+    {"phypbsize", "<phy dump buff size (bytes)>\n", 0, .uptr = &telnetparams.phyprntbuff_size, .defuintval = 65000, TYPE_UINT, 0},
+    {TELNETSRV_OPTNAME_STATICMOD, "<static modules selection>\n", 0, .strlistptr = NULL, .defstrlistval = telnet_defstatmod, TYPE_STRINGLIST, (sizeof(telnet_defstatmod) / sizeof(char *))},
+    {TELNETSRV_OPTNAME_SHRMOD, "<dynamic modules selection>\n", 0, .strlistptr = NULL, .defstrlistval = NULL, TYPE_STRINGLIST, 0}
+};
+// clang-format on
 
 int get_phybsize(void) {
   return telnetparams.phyprntbuff_size;
@@ -335,9 +338,6 @@ int history_cmd(char *buff, int debug, telnet_printfunc_t prnt) {
   char cmds[TELNET_MAX_MSGLENGTH/TELNET_CMD_MAXSIZE][TELNET_CMD_MAXSIZE];
   memset(cmds,0,sizeof(cmds));
   sscanf(buff,"%9s %9s %9s %9s %9s", cmds[0],cmds[1],cmds[2],cmds[3],cmds[4]  );
-
-  if (cmds[0] == NULL)
-    return CMDSTATUS_VARNOTFOUND;
 
   if (strncasecmp(cmds[0],"list",4) == 0) {
     HIST_ENTRY **hist = history_list();
@@ -844,7 +844,7 @@ static bool exec_moduleinit(char *modname) {
 
 int add_embeddedmodules(void) {
   int ret=0;
-  int pindex = config_paramidx_fromname(telnetoptions,sizeof(telnetoptions)/sizeof(paramdef_t), TELNETSRV_OPTNAME_STATICMOD); 
+  int pindex = config_paramidx_fromname(telnetoptions, sizeofArray(telnetoptions), TELNETSRV_OPTNAME_STATICMOD);
   for(int i=0; i<telnetoptions[pindex].numelt; i++) {
     bool success = exec_moduleinit(telnetoptions[pindex].strlistptr[i]);
     if (success)
@@ -856,7 +856,7 @@ int add_embeddedmodules(void) {
 
 int add_sharedmodules(void) {
   int ret=0;
-  int pindex = config_paramidx_fromname(telnetoptions,sizeof(telnetoptions)/sizeof(paramdef_t), TELNETSRV_OPTNAME_SHRMOD); 
+  int pindex = config_paramidx_fromname(telnetoptions, sizeofArray(telnetoptions), TELNETSRV_OPTNAME_SHRMOD);
   for(int i=0; i<telnetoptions[pindex].numelt; i++) {
     char *name = telnetoptions[pindex].strlistptr[i];
     char libname[256];
@@ -875,7 +875,7 @@ int add_sharedmodules(void) {
 */
 int telnetsrv_autoinit(void) {
   memset(&telnetparams,0,sizeof(telnetparams));
-  config_get( telnetoptions,sizeof(telnetoptions)/sizeof(paramdef_t),"telnetsrv");
+  config_get(config_get_if(), telnetoptions, sizeofArray(telnetoptions), "telnetsrv");
   /* possibly load a exec specific shared lib */
   char *execfunc=get_softmodem_function(NULL);
   char libname[64];

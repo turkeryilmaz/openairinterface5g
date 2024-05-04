@@ -27,6 +27,7 @@
 #include "common/ran_context.h"
 #include "nfapi/oai_integration/vendor_ext.h"
 #include "openair2/F1AP/f1ap_common.h"
+#include "openair2/F1AP/f1ap_ids.h"
 #include "openair2/GNB_APP/gnb_config.h"
 #include "nr_pdcp/nr_pdcp_oai_api.h"
 
@@ -84,7 +85,7 @@ int nr_rlc_get_available_tx_space(const rnti_t rntiP, const logical_chan_id_t ch
   return 0;
 }
 
-void rrc_gNB_generate_dedicatedRRCReconfiguration(const protocol_ctxt_t *const ctxt_pP, rrc_gNB_ue_context_t *ue_context_pP, NR_CellGroupConfig_t *cell_groupConfig_from_DU)
+void rrc_gNB_generate_dedicatedRRCReconfiguration(const protocol_ctxt_t *const ctxt_pP, rrc_gNB_ue_context_t *ue_context_pP)
 {
   abort();
 }
@@ -94,32 +95,27 @@ void nr_rlc_add_drb(int rnti, int drb_id, const NR_RLC_BearerConfig_t *rlc_Beare
   abort();
 }
 
-int nr_rrc_gNB_process_GTPV1U_CREATE_TUNNEL_RESP(const protocol_ctxt_t *const ctxt_pP, const gtpv1u_gnb_create_tunnel_resp_t *const create_tunnel_resp_p, int offset)
-{
-  abort();
-  return 0;
-}
-
 void prepare_and_send_ue_context_modification_f1(rrc_gNB_ue_context_t *ue_context_p, e1ap_bearer_setup_resp_t *e1ap_resp)
 {
   abort();
 }
 
-f1ap_cudu_inst_t *getCxt(F1_t isCU, instance_t instanceP)
+f1ap_cudu_inst_t *getCxt(instance_t instanceP)
 {
-  abort();
-  return NULL;
+  // the E1 module uses F1's getCxt() to decide whether there is F1-U and if
+  // so, what is the GTP instance. In the CU-UP, we don't start the F1 module,
+  // and instead, E1 handles the GTP-U endpoint. In the following, we fake the
+  // instance and put the right GTP-U instance number in.
+  const e1ap_upcp_inst_t *e1inst = getCxtE1(instanceP);
+  static f1ap_cudu_inst_t fake = {0};
+  fake.gtpInst = e1inst->gtpInstF1U;
+  return &fake;
 }
-
-void fill_DRB_configList(const protocol_ctxt_t *const ctxt_pP, rrc_gNB_ue_context_t *ue_context_pP, uint8_t xid)
-{
-  abort();
-}
-
+configmodule_interface_t *uniqCfg = NULL;
 int main(int argc, char **argv)
 {
   /// static configuration for NR at the moment
-  if (load_configmodule(argc, argv, CONFIG_ENABLECMDLINEONLY) == NULL) {
+  if ((uniqCfg = load_configmodule(argc, argv, CONFIG_ENABLECMDLINEONLY)) == NULL) {
     exit_fun("[SOFTMODEM] Error, configuration module init failed\n");
   }
   logInit();
@@ -132,8 +128,10 @@ int main(int argc, char **argv)
   AssertFatal(rc >= 0, "Create task for GTPV1U failed\n");
   rc = itti_create_task(TASK_CUUP_E1, E1AP_CUUP_task, NULL);
   AssertFatal(rc >= 0, "Create task for CUUP E1 failed\n");
-  nr_pdcp_layer_init();
-  MessageDef *msg = RCconfig_NR_CU_E1(true);
+  nr_pdcp_layer_init(true);
+  cu_init_f1_ue_data(); // for CU-UP/CP mapping: we use the same
+  E1_t e1type = UPtype;
+  MessageDef *msg = RCconfig_NR_CU_E1(&e1type);
   AssertFatal(msg != NULL, "Send init to task for E1AP UP failed\n");
   itti_send_msg_to_task(TASK_CUUP_E1, 0, msg);
 

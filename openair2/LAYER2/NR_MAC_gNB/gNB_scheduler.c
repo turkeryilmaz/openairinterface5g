@@ -40,7 +40,7 @@
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "UTIL/OPT/opt.h"
 
-#include "RRC/NR/nr_rrc_extern.h"
+#include "openair2/X2AP/x2ap_eNB.h"
 
 #include "nr_pdcp/nr_pdcp_oai_api.h"
 
@@ -49,6 +49,8 @@
 #include "executables/softmodem-common.h"
 #include "nfapi/oai_integration/vendor_ext.h"
 #include "executables/nr-softmodem.h"
+
+#include "ss_gNB_context.h"
 
 #include <errno.h>
 #include <string.h>
@@ -65,7 +67,7 @@ void clear_nr_nfapi_information(gNB_MAC_INST *gNB,
 {
   /* called below and in simulators, so we assume a lock but don't require it */
 
-  NR_ServingCellConfigCommon_t *scc = gNB->common_channels->ServingCellConfigCommon;
+  NR_ServingCellConfigCommon_t *scc = gNB->common_channels[CC_idP].ServingCellConfigCommon;
   const int num_slots = nr_slots_per_frame[*scc->ssbSubcarrierSpacing];
 
   UL_tti_req_ahead_initialization(gNB, scc, num_slots, CC_idP, frameP, slotP, *scc->ssbSubcarrierSpacing);
@@ -141,15 +143,16 @@ static void copy_ul_tti_req(nfapi_nr_ul_tti_request_t *to, nfapi_nr_ul_tti_reque
     to->groups_list[i] = from->groups_list[i];
 }
 
-void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, frame_t frame, sub_frame_t slot, NR_Sched_Rsp_t *sched_info)
+void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, frame_t frame, sub_frame_t slot, NR_Sched_Rsp_t *sched_info, int CC_id)
 {
-  LOG_D(NR_MAC, "fxn:%s Entry\n", __FUNCTION__);
+  LOG_D(NR_MAC, "fxn:%s Entry CC_id: %d\n", __FUNCTION__,CC_id);
   protocol_ctxt_t ctxt = {0};
   PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, module_idP, ENB_FLAG_YES, NOT_A_RNTI, frame, slot,module_idP);
 
   gNB_MAC_INST *gNB = RC.nrmac[module_idP];
+ // NR_COMMON_channels_t *cc = &(gNB->common_channels[CC_id]);
   NR_COMMON_channels_t *cc = gNB->common_channels;
-  NR_ServingCellConfigCommon_t        *scc     = cc->ServingCellConfigCommon;
+  NR_ServingCellConfigCommon_t        *scc     = cc[CC_id].ServingCellConfigCommon;
 
   NR_SCHED_LOCK(&gNB->sched_lock);
 
@@ -169,16 +172,22 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, frame_t frame, sub_frame_
   start_meas(&gNB->eNB_scheduler);
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_gNB_DLSCH_ULSCH_SCHEDULER,VCD_FUNCTION_IN);
 
-  /* send tick to RLC and RRC every ms */
+  /* send tick to RLC, PDCP, and X2AP every ms */
   if ((slot & ((1 << *scc->ssbSubcarrierSpacing) - 1)) == 0) {
     void nr_rlc_tick(int frame, int subframe);
     void nr_pdcp_tick(int frame, int subframe);
     nr_rlc_tick(frame, slot >> *scc->ssbSubcarrierSpacing);
     nr_pdcp_tick(frame, slot >> *scc->ssbSubcarrierSpacing);
-    nr_rrc_trigger(&ctxt, 0 /*CC_id*/, frame, slot >> *scc->ssbSubcarrierSpacing);
+    if(RC.ss.mode >= SS_SOFTMODEM){
+      nr_rrc_trigger(&ctxt, frame, slot >> *scc->ssbSubcarrierSpacing);
+    }
+    if (is_x2ap_enabled())
+      x2ap_trigger();
   }
 
-  for (int CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
+ //LOG_I(NR_MAC, "LINE: %d nb_nr_CC %d ,module_idP %d MAX_NUM_CCs %d ccid %d\n", __LINE__,RC.nb_nr_CC[module_idP],module_idP, MAX_NUM_CCs,CC_id);  
+  //  for (int CC_id = 0; CC_id < RC.nb_nr_CC[module_idP]; CC_id++) {
+  //for (int CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
     //mbsfn_status[CC_id] = 0;
 
     // clear vrb_maps
@@ -191,24 +200,25 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, frame_t frame, sub_frame_
     memcpy(&vrb_map_UL[prev_slot % size * MAX_BWP_SIZE], &gNB->ulprbbl, sizeof(uint16_t) * MAX_BWP_SIZE);
 
     clear_nr_nfapi_information(gNB, CC_id, frame, slot, &sched_info->DL_req, &sched_info->TX_req, &sched_info->UL_dci_req);
-  }
+  
 
   if ((slot == 0) && (frame & 127) == 0) {
     char stats_output[16000] = {0};
-    dump_mac_stats(gNB, stats_output, sizeof(stats_output), true);
-    LOG_I(NR_MAC, "Frame.Slot %d.%d\n%s\n", frame, slot, stats_output);
+    dump_mac_stats(gNB, CC_id, stats_output, sizeof(stats_output), true);
+    LOG_I(NR_MAC, "Frame.Slot %d.%d ccid %d\n%s\n", frame, slot, CC_id, stats_output);
   }
 
-  nr_mac_update_timers(module_idP, frame, slot);
+  nr_mac_update_timers(module_idP, frame, slot, CC_id);
 
-  schedule_nr_bwp_switch(module_idP, frame, slot);
+  //JPE to be controlled
+  //schedule_nr_bwp_switch(module_idP, frame, slot, CC_id);
 
+  if (get_softmodem_params()->sa == 1 && RC.ss.State  >= SS_STATE_CELL_ACTIVE ){ 
   // This schedules MIB
-  schedule_nr_mib(module_idP, frame, slot, &sched_info->DL_req);
+  schedule_nr_mib(module_idP, frame, slot, &sched_info->DL_req, CC_id);
 
   // This schedules SIB1
-  if (get_softmodem_params()->sa == 1)
-    schedule_nr_sib1(module_idP, frame, slot, &sched_info->DL_req, &sched_info->TX_req);
+  schedule_nr_sib1(module_idP, frame, slot, &sched_info->DL_req, &sched_info->TX_req, CC_id);
 
   // This schedule PRACH if we are not in phy_test mode
   if (get_softmodem_params()->phy_test == 0) {
@@ -221,46 +231,48 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, frame_t frame, sub_frame_
     const sub_frame_t n_slots_ahead = nr_slots_per_frame[*scc->ssbSubcarrierSpacing] - 1;
     const frame_t f = (frame + (slot + n_slots_ahead) / nr_slots_per_frame[*scc->ssbSubcarrierSpacing]) % 1024;
     const sub_frame_t s = (slot + n_slots_ahead) % nr_slots_per_frame[*scc->ssbSubcarrierSpacing];
-    schedule_nr_prach(module_idP, f, s);
+    schedule_nr_prach(module_idP, f, s, CC_id);
   }
 
   // Schedule CSI-RS transmission
-  nr_csirs_scheduling(module_idP, frame, slot, nr_slots_per_frame[*scc->ssbSubcarrierSpacing], &sched_info->DL_req);
+  nr_csirs_scheduling(module_idP, frame, slot, nr_slots_per_frame[*scc->ssbSubcarrierSpacing], &sched_info->DL_req, CC_id);
 
   // Schedule CSI measurement reporting
-  nr_csi_meas_reporting(module_idP, frame, slot);
+  nr_csi_meas_reporting(module_idP, frame, slot, CC_id);
 
-  nr_schedule_srs(module_idP, frame, slot);
+  nr_schedule_srs(module_idP, frame, slot, CC_id);
 
   // This schedule RA procedure if not in phy_test mode
   // Otherwise consider 5G already connected
   if (get_softmodem_params()->phy_test == 0) {
-    nr_schedule_RA(module_idP, frame, slot, &sched_info->UL_dci_req, &sched_info->DL_req, &sched_info->TX_req);
+    nr_schedule_RA(module_idP, CC_id, frame, slot, &sched_info->UL_dci_req, &sched_info->DL_req, &sched_info->TX_req);
   }
 
   // This schedules the DCI for Uplink and subsequently PUSCH
-  nr_schedule_ulsch(module_idP, frame, slot, &sched_info->UL_dci_req);
+  nr_schedule_ulsch(module_idP, CC_id, frame, slot, &sched_info->UL_dci_req);
 
   // This schedules the DCI for Downlink and PDSCH
   start_meas(&gNB->schedule_dlsch);
-  nr_schedule_ue_spec(module_idP, frame, slot, &sched_info->DL_req, &sched_info->TX_req);
+  nr_schedule_ue_spec(module_idP, CC_id, frame, slot, &sched_info->DL_req, &sched_info->TX_req);
   stop_meas(&gNB->schedule_dlsch);
 
   if (RC.ss.mode >= SS_SOFTMODEM)
   {
     // This schedules Paging in slot
-    schedule_nr_PCH(module_idP, frame, slot, &sched_info->DL_req, &sched_info->TX_req);
+    schedule_nr_PCH(module_idP, CC_id, frame, slot, &sched_info->DL_req, &sched_info->TX_req);
   }
-  nr_sr_reporting(gNB, frame, slot);
-
-  nr_schedule_pucch(gNB, frame, slot);
+  nr_sr_reporting(gNB, CC_id,  frame, slot);
+ 
+  nr_schedule_pucch(gNB, CC_id, frame,  slot);
+  }
 
   /* TODO: we copy from gNB->UL_tti_req_ahead[0][current_index], ie. CC_id == 0,
-   * is more than 1 CC supported?
+   * is more than 1 CC supported? 
+   * yes
    */
-  AssertFatal(MAX_NUM_CCs == 1, "only 1 CC supported\n");
+  
   const int current_index = ul_buffer_index(frame, slot, *scc->ssbSubcarrierSpacing, gNB->UL_tti_req_ahead_size);
-  copy_ul_tti_req(&sched_info->UL_tti_req, &gNB->UL_tti_req_ahead[0][current_index]);
+  copy_ul_tti_req(&(sched_info->UL_tti_req), &gNB->UL_tti_req_ahead[CC_id][current_index]);
 
   stop_meas(&gNB->eNB_scheduler);
   NR_SCHED_UNLOCK(&gNB->sched_lock);

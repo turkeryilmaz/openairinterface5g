@@ -377,6 +377,39 @@ static int _serDrbEncSlotTimingInfo_Type(unsigned char* _buffer, size_t _size, s
 	return SIDL_STATUS_OK;
 }
 
+static int _serDrbEncSymbolTimingInfo_Type_Value(unsigned char* _buffer, size_t _size, size_t* _lidx, const union SymbolTimingInfo_Type_Value* p, enum SymbolTimingInfo_Type_Sel d)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	if (d == SymbolTimingInfo_Type_SymbolOffset) {
+		HTON_8(&_buffer[*_lidx], p->SymbolOffset, _lidx);
+		return SIDL_STATUS_OK;
+	}
+	if (d == SymbolTimingInfo_Type_FirstSymbol) {
+		HTON_8(&_buffer[*_lidx], p->FirstSymbol, _lidx);
+		return SIDL_STATUS_OK;
+	}
+	if (d == SymbolTimingInfo_Type_Any) {
+		HTON_8(&_buffer[*_lidx], p->Any, _lidx);
+		return SIDL_STATUS_OK;
+	}
+
+	return SIDL_STATUS_ERROR;
+}
+
+static int _serDrbEncSymbolTimingInfo_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SymbolTimingInfo_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp = (size_t)p->d;
+		HTON_32(&_buffer[*_lidx], _tmp, _lidx);
+	}
+	_serDrbEncSymbolTimingInfo_Type_Value(_buffer, _size, _lidx, &p->v, p->d);
+
+	return SIDL_STATUS_OK;
+}
+
 static int _serDrbEncSubFrameTiming_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SubFrameTiming_Type* p)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -385,6 +418,7 @@ static int _serDrbEncSubFrameTiming_Type(unsigned char* _buffer, size_t _size, s
 	_serDrbEncSubFrameInfo_Type(_buffer, _size, _lidx, &p->Subframe);
 	_serDrbEncHyperSystemFrameNumberInfo_Type(_buffer, _size, _lidx, &p->HSFN);
 	_serDrbEncSlotTimingInfo_Type(_buffer, _size, _lidx, &p->Slot);
+	_serDrbEncSymbolTimingInfo_Type(_buffer, _size, _lidx, &p->Symbol);
 
 	return SIDL_STATUS_OK;
 }
@@ -2153,7 +2187,7 @@ static int _serDrbEncPDCP_Ctrl_UDC_FB_PDU_Type(unsigned char* _buffer, size_t _s
 	return SIDL_STATUS_OK;
 }
 
-static int _serDrbEncPDCP_Ctrl_EHC_FB_PDU_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct PDCP_Ctrl_EHC_FB_PDU_Type* p)
+static int _serDrbEncPDCP_Ctrl_EHC_FB_PDU_ShortCID_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct PDCP_Ctrl_EHC_FB_PDU_ShortCID_Type* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
@@ -2167,7 +2201,33 @@ static int _serDrbEncPDCP_Ctrl_EHC_FB_PDU_Type(unsigned char* _buffer, size_t _s
 		HTON_8(&_buffer[*_lidx], p->Reserved[i3], _lidx);
 	}
 	for (size_t i3 = 0; i3 < 1; i3++) {
-		HTON_8(&_buffer[*_lidx], p->EHC_FB[i3], _lidx);
+		HTON_8(&_buffer[*_lidx], p->Reserved2[i3], _lidx);
+	}
+	for (size_t i3 = 0; i3 < 7; i3++) {
+		HTON_8(&_buffer[*_lidx], p->CID[i3], _lidx);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serDrbEncPDCP_Ctrl_EHC_FB_PDU_LongCID_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct PDCP_Ctrl_EHC_FB_PDU_LongCID_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	for (size_t i3 = 0; i3 < 1; i3++) {
+		HTON_8(&_buffer[*_lidx], p->D_C[i3], _lidx);
+	}
+	for (size_t i3 = 0; i3 < 3; i3++) {
+		HTON_8(&_buffer[*_lidx], p->PDU_Type[i3], _lidx);
+	}
+	for (size_t i3 = 0; i3 < 4; i3++) {
+		HTON_8(&_buffer[*_lidx], p->Reserved[i3], _lidx);
+	}
+	for (size_t i3 = 0; i3 < 1; i3++) {
+		HTON_8(&_buffer[*_lidx], p->Reserved2[i3], _lidx);
+	}
+	for (size_t i3 = 0; i3 < 15; i3++) {
+		HTON_8(&_buffer[*_lidx], p->CID[i3], _lidx);
 	}
 
 	return SIDL_STATUS_OK;
@@ -2257,8 +2317,12 @@ static int _serDrbEncPDCP_PDU_Type_Value(unsigned char* _buffer, size_t _size, s
 		_serDrbEncPDCP_Ctrl_UDC_FB_PDU_Type(_buffer, _size, _lidx, &p->UdcFeedback);
 		return SIDL_STATUS_OK;
 	}
-	if (d == PDCP_PDU_Type_EhcFeedback) {
-		_serDrbEncPDCP_Ctrl_EHC_FB_PDU_Type(_buffer, _size, _lidx, &p->EhcFeedback);
+	if (d == PDCP_PDU_Type_EhcFeedback_ShortCID) {
+		_serDrbEncPDCP_Ctrl_EHC_FB_PDU_ShortCID_Type(_buffer, _size, _lidx, &p->EhcFeedback_ShortCID);
+		return SIDL_STATUS_OK;
+	}
+	if (d == PDCP_PDU_Type_EhcFeedback_LongCID) {
+		_serDrbEncPDCP_Ctrl_EHC_FB_PDU_LongCID_Type(_buffer, _size, _lidx, &p->EhcFeedback_LongCID);
 		return SIDL_STATUS_OK;
 	}
 
@@ -2757,6 +2821,40 @@ static int _serDrbDecSlotTimingInfo_Type(const unsigned char* _buffer, size_t _s
 	return SIDL_STATUS_OK;
 }
 
+static int _serDrbDecSymbolTimingInfo_Type_Value(const unsigned char* _buffer, size_t _size, size_t* _lidx, union SymbolTimingInfo_Type_Value* p, enum SymbolTimingInfo_Type_Sel d)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	if (d == SymbolTimingInfo_Type_SymbolOffset) {
+		NTOH_8(p->SymbolOffset, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
+	}
+	if (d == SymbolTimingInfo_Type_FirstSymbol) {
+		NTOH_8(p->FirstSymbol, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
+	}
+	if (d == SymbolTimingInfo_Type_Any) {
+		NTOH_8(p->Any, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
+	}
+
+	return SIDL_STATUS_ERROR;
+}
+
+static int _serDrbDecSymbolTimingInfo_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SymbolTimingInfo_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp;
+		NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
+		p->d = (enum SymbolTimingInfo_Type_Sel)_tmp;
+	}
+	_serDrbDecSymbolTimingInfo_Type_Value(_buffer, _size, _lidx, &p->v, p->d);
+
+	return SIDL_STATUS_OK;
+}
+
 static int _serDrbDecSubFrameTiming_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SubFrameTiming_Type* p)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -2765,6 +2863,7 @@ static int _serDrbDecSubFrameTiming_Type(const unsigned char* _buffer, size_t _s
 	_serDrbDecSubFrameInfo_Type(_buffer, _size, _lidx, &p->Subframe);
 	_serDrbDecHyperSystemFrameNumberInfo_Type(_buffer, _size, _lidx, &p->HSFN);
 	_serDrbDecSlotTimingInfo_Type(_buffer, _size, _lidx, &p->Slot);
+	_serDrbDecSymbolTimingInfo_Type(_buffer, _size, _lidx, &p->Symbol);
 
 	return SIDL_STATUS_OK;
 }
@@ -4580,7 +4679,7 @@ static int _serDrbDecPDCP_Ctrl_UDC_FB_PDU_Type(const unsigned char* _buffer, siz
 	return SIDL_STATUS_OK;
 }
 
-static int _serDrbDecPDCP_Ctrl_EHC_FB_PDU_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct PDCP_Ctrl_EHC_FB_PDU_Type* p)
+static int _serDrbDecPDCP_Ctrl_EHC_FB_PDU_ShortCID_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct PDCP_Ctrl_EHC_FB_PDU_ShortCID_Type* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
@@ -4594,7 +4693,33 @@ static int _serDrbDecPDCP_Ctrl_EHC_FB_PDU_Type(const unsigned char* _buffer, siz
 		NTOH_8(p->Reserved[i3], &_buffer[*_lidx], _lidx);
 	}
 	for (size_t i3 = 0; i3 < 1; i3++) {
-		NTOH_8(p->EHC_FB[i3], &_buffer[*_lidx], _lidx);
+		NTOH_8(p->Reserved2[i3], &_buffer[*_lidx], _lidx);
+	}
+	for (size_t i3 = 0; i3 < 7; i3++) {
+		NTOH_8(p->CID[i3], &_buffer[*_lidx], _lidx);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serDrbDecPDCP_Ctrl_EHC_FB_PDU_LongCID_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct PDCP_Ctrl_EHC_FB_PDU_LongCID_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	for (size_t i3 = 0; i3 < 1; i3++) {
+		NTOH_8(p->D_C[i3], &_buffer[*_lidx], _lidx);
+	}
+	for (size_t i3 = 0; i3 < 3; i3++) {
+		NTOH_8(p->PDU_Type[i3], &_buffer[*_lidx], _lidx);
+	}
+	for (size_t i3 = 0; i3 < 4; i3++) {
+		NTOH_8(p->Reserved[i3], &_buffer[*_lidx], _lidx);
+	}
+	for (size_t i3 = 0; i3 < 1; i3++) {
+		NTOH_8(p->Reserved2[i3], &_buffer[*_lidx], _lidx);
+	}
+	for (size_t i3 = 0; i3 < 15; i3++) {
+		NTOH_8(p->CID[i3], &_buffer[*_lidx], _lidx);
 	}
 
 	return SIDL_STATUS_OK;
@@ -4684,8 +4809,12 @@ static int _serDrbDecPDCP_PDU_Type_Value(const unsigned char* _buffer, size_t _s
 		_serDrbDecPDCP_Ctrl_UDC_FB_PDU_Type(_buffer, _size, _lidx, &p->UdcFeedback);
 		return SIDL_STATUS_OK;
 	}
-	if (d == PDCP_PDU_Type_EhcFeedback) {
-		_serDrbDecPDCP_Ctrl_EHC_FB_PDU_Type(_buffer, _size, _lidx, &p->EhcFeedback);
+	if (d == PDCP_PDU_Type_EhcFeedback_ShortCID) {
+		_serDrbDecPDCP_Ctrl_EHC_FB_PDU_ShortCID_Type(_buffer, _size, _lidx, &p->EhcFeedback_ShortCID);
+		return SIDL_STATUS_OK;
+	}
+	if (d == PDCP_PDU_Type_EhcFeedback_LongCID) {
+		_serDrbDecPDCP_Ctrl_EHC_FB_PDU_LongCID_Type(_buffer, _size, _lidx, &p->EhcFeedback_LongCID);
 		return SIDL_STATUS_OK;
 	}
 

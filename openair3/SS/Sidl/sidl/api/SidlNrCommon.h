@@ -78,9 +78,18 @@ struct NR_RoutingInfo_Type {
 
 typedef Null_Type NR_RoutingInfoSUL_Type;
 
+struct MacBearerRouting_Type {
+	NR_CellId_Type NR;
+};
+
 struct NR_RoutingInfoSUL_Type_RoutingInfoSUL_Optional {
 	bool d;
 	NR_RoutingInfoSUL_Type v;
+};
+
+struct MacBearerRouting_Type_NR_IndAspCommonPart_Type_MacBearerRouting_Optional {
+	bool d;
+	struct MacBearerRouting_Type v;
 };
 
 struct NR_IndAspCommonPart_Type {
@@ -88,14 +97,21 @@ struct NR_IndAspCommonPart_Type {
 	struct NR_RoutingInfo_Type RoutingInfo;
 	struct NR_RoutingInfoSUL_Type_RoutingInfoSUL_Optional RoutingInfoSUL;
 	struct RlcBearerRouting_Type RlcBearerRouting;
+	struct MacBearerRouting_Type_NR_IndAspCommonPart_Type_MacBearerRouting_Optional MacBearerRouting;
 	struct TimingInfo_Type TimingInfo;
 	struct IndicationStatus_Type Status;
+};
+
+struct MacBearerRouting_Type_NR_ReqAspCommonPart_Type_MacBearerRouting_Optional {
+	bool d;
+	struct MacBearerRouting_Type v;
 };
 
 struct NR_ReqAspCommonPart_Type {
 	NR_CellId_Type CellId;
 	struct NR_RoutingInfo_Type RoutingInfo;
 	struct RlcBearerRouting_Type RlcBearerRouting;
+	struct MacBearerRouting_Type_NR_ReqAspCommonPart_Type_MacBearerRouting_Optional MacBearerRouting;
 	struct TimingInfo_Type TimingInfo;
 	struct ReqAspControlInfo_Type ControlInfo;
 };
@@ -297,18 +313,14 @@ struct NR_ASN1_BWP_Type {
 	union NR_ASN1_BWP_Type_Value v;
 };
 
-enum NR_ASN1_SearchSpace_Type_Sel {
-	NR_ASN1_SearchSpace_Type_UNBOUND_VALUE = 0,
-	NR_ASN1_SearchSpace_Type_R15 = 1,
-};
-
-union NR_ASN1_SearchSpace_Type_Value {
-	struct SQN_NR_SearchSpace R15;
+struct SQN_NR_SearchSpaceExt_r16_R16_Optional {
+	bool d;
+	struct SQN_NR_SearchSpaceExt_r16 v;
 };
 
 struct NR_ASN1_SearchSpace_Type {
-	enum NR_ASN1_SearchSpace_Type_Sel d;
-	union NR_ASN1_SearchSpace_Type_Value v;
+	struct SQN_NR_SearchSpace R15;
+	struct SQN_NR_SearchSpaceExt_r16_R16_Optional R16;
 };
 
 enum NR_ASN1_ControlResourceSet_Type_Sel {
@@ -538,10 +550,16 @@ struct Null_Type_InitialBWP_Optional {
 	Null_Type v;
 };
 
+struct Null_Type_InitialBWP_RedCap_Optional {
+	bool d;
+	Null_Type v;
+};
+
 struct NR_AssignedBWPs_Type {
 	struct Null_Type_ActiveBWP_Optional ActiveBWP;
 	struct Null_Type_InitialBWP_Optional InitialBWP;
 	NR_BWP_Id_List_Type DedicatedBWPs;
+	struct Null_Type_InitialBWP_RedCap_Optional InitialBWP_RedCap;
 };
 
 enum NR_ResourceAllocationType_Type {

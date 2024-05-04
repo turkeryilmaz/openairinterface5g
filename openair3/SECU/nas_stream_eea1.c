@@ -26,13 +26,10 @@
 
 #include "assertions.h"
 #include "conversions.h"
-#include "secu_defs.h"
+#include "nas_stream_eea1.h"
 #include "snow3g.h"
 
-// #define SECU_DEBUG
-
-
-int nas_stream_encrypt_eea1(nas_stream_cipher_t *stream_cipher, uint8_t *out)
+void nas_stream_encrypt_eea1(nas_stream_cipher_t const *stream_cipher, uint8_t *out)
 {
   snow_3g_context_t snow_3g_context;
   int       n ;
@@ -48,6 +45,8 @@ int nas_stream_encrypt_eea1(nas_stream_cipher_t *stream_cipher, uint8_t *out)
   DevAssert(out != NULL);
 
   n = ( stream_cipher->blength + 31 ) / 32;
+  int actual_buf_size = stream_cipher->blength >> 3;
+
   zero_bit = stream_cipher->blength & 0x7;
   //byte_length = stream_cipher->blength >> 3;
 
@@ -89,7 +88,7 @@ int nas_stream_encrypt_eea1(nas_stream_cipher_t *stream_cipher, uint8_t *out)
 
   /* Exclusive-OR the input data with keystream to generate the output bit
   stream */
-  for (i=0; i<n*4; i++) {
+  for (i=0; i<actual_buf_size; i++) {
     stream_cipher->message[i] ^= *(((uint8_t*)KS)+i);
   }
 
@@ -101,11 +100,5 @@ int nas_stream_encrypt_eea1(nas_stream_cipher_t *stream_cipher, uint8_t *out)
   }
 
   free(KS);
-  memcpy(out, stream_cipher->message, n*4);
-
-  if (zero_bit > 0) {
-    out[ceil_index - 1] = stream_cipher->message[ceil_index - 1];
-  }
-
-  return 0;
+  memmove(out, stream_cipher->message, actual_buf_size);
 }

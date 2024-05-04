@@ -38,6 +38,7 @@
 #include "collection/tree.h"
 #include "collection/linear_alloc.h"
 #include "nr_rrc_common.h"
+#include "ds/byte_array.h"
 
 #include "common/ngran_types.h"
 #include "common/platform_constants.h"
@@ -223,7 +224,6 @@ typedef struct drb_s {
 } drb_t;
 
 typedef enum {
-  RRC_FIRST_RECONF,
   RRC_SETUP,
   RRC_SETUP_FOR_REESTABLISHMENT,
   RRC_REESTABLISH,
@@ -236,21 +236,17 @@ typedef enum {
 } rrc_action_t;
 
 typedef struct gNB_RRC_UE_s {
-  uint8_t                            primaryCC_id;
-  NR_SRB_ToAddModList_t             *SRB_configList;
-  NR_SRB_ToAddModList_t             *SRB_configList2[NR_RRC_TRANSACTION_IDENTIFIER_NUMBER];
-  NR_DRB_ToAddModList_t             *DRB_configList;
-  NR_DRB_ToAddModList_t             *DRB_configList2[NR_RRC_TRANSACTION_IDENTIFIER_NUMBER];
-  NR_DRB_ToReleaseList_t            *DRB_Release_configList2[NR_RRC_TRANSACTION_IDENTIFIER_NUMBER];
-  drb_t                              established_drbs[NGAP_MAX_DRBS_PER_UE];
-  uint8_t                            DRB_active[NGAP_MAX_DRBS_PER_UE];
+  uint8_t primaryCC_id;
+  drb_t                              established_drbs[MAX_DRBS_PER_UE];
+  uint8_t                            DRB_active[MAX_DRBS_PER_UE];
+  NR_DRB_ToReleaseList_t            *DRB_ReleaseList;
 
   NR_SRB_INFO_TABLE_ENTRY Srb[maxSRBs]; // 3gpp max is 3 SRBs, number 1..3, we waste the entry 0 for code simplicity
   NR_MeasConfig_t                   *measConfig;
   NR_HANDOVER_INFO                  *handover_info;
   NR_MeasResults_t                  *measResults;
 
-
+  byte_array_t ue_cap_buffer;
   NR_UE_NR_Capability_t*             UE_Capability_nr;
   int                                UE_Capability_size;
   NR_UE_MRDC_Capability_t*           UE_Capability_MRDC;
@@ -260,9 +256,6 @@ typedef struct gNB_RRC_UE_s {
   NR_CellGroupConfig_t               *masterCellGroup;
   NR_RRCReconfiguration_t            *reconfig;
   NR_RadioBearerConfig_t             *rb_config;
-
-  /* Pointer to save spCellConfig during RRC Reestablishment procedures */
-  NR_SpCellConfig_t                  *spCellConfigReestablishment;
 
   ImsiMobileIdentity_t               imsi;
 
@@ -289,12 +282,7 @@ typedef struct gNB_RRC_UE_s {
   /* Information from UE RRCReestablishmentRequest */
   NR_ReestablishmentCause_t          reestablishment_cause;
 
-  /* UE id for initial connection to S1AP */
-  uint16_t                           ue_initial_id;
-
-  /* Information from S1AP initial_context_setup_req */
-  uint32_t                           gNB_ue_s1ap_id :24;
-  uint32_t                           gNB_ue_ngap_id;
+  uint32_t                           rrc_ue_id;
   uint64_t amf_ue_ngap_id;
   nr_rrc_guami_t                     ue_guami;
 
@@ -313,17 +301,8 @@ typedef struct gNB_RRC_UE_s {
   int nb_of_pdusessions;
   rrc_pdu_session_param_t pduSession[NGAP_MAX_PDU_SESSION];
   rrc_action_t xids[NR_RRC_TRANSACTION_IDENTIFIER_NUMBER];
-  uint32_t                           ul_failure_timer;
-  uint32_t                           ue_release_timer;
-  uint32_t                           ue_release_timer_thres;
-  uint32_t                           ue_release_timer_s1;
-  uint32_t                           ue_release_timer_thres_s1;
-  uint32_t                           ue_release_timer_ng;
-  uint32_t                           ue_release_timer_thres_ng;
   uint32_t                           ue_release_timer_rrc;
   uint32_t                           ue_release_timer_thres_rrc;
-  uint32_t                           ue_reestablishment_timer;
-  uint32_t                           ue_reestablishment_timer_thres;
   uint8_t e_rab_release_command_flag;
   uint32_t ue_rrc_inactivity_timer;
   uint32_t                           ue_reestablishment_counter;
@@ -387,43 +366,15 @@ typedef struct NR_DcchDtchConfig {
 
 typedef struct {
 
-  uint8_t                                   *SIB1;
-  uint16_t                                  sizeof_SIB1;
-
   uint8_t                                   *SIB23;
   uint8_t                                   sizeof_SIB23;
 
-  int                                       physCellId;
+  long                                      physCellId;
 
-  NR_BCCH_BCH_Message_t                    *mib;
-  NR_SIB1_t                                *siblock1_DU;
-  NR_SIB1_t                                *sib1;
-  NR_SIB2_t                                *sib2;
-  NR_SIB3_t                                *sib3;
-  NR_BCCH_DL_SCH_Message_t                  systemInformation; // SIB23
-  int ssb_SubcarrierOffset;
-  int sib1_tda;
-  int pdsch_AntennaPorts;
-  int pusch_AntennaPorts;
-  int minRXTXTIME;
-  int do_CSIRS;
-  int do_SRS;
-  NR_BCCH_DL_SCH_Message_t                  *siblock1;
-  NR_ServingCellConfigCommon_t              *servingcellconfigcommon;
-  NR_ServingCellConfig_t                    *cellConfigDedicated;
-  NR_PDCCH_ConfigSIB1_t                     *pdcch_ConfigSIB1;
-  /* ServingCellConfig */
-  NR_CellGroupId_t                                cell_GroupId;
-  NR_MAC_CellGroupConfig_t                  *mac_cellGroupConfig;
-  NR_PhysicalCellGroupConfig_t               *physicalCellGroupConfig;
 
   /* dedicate Scheduler Config */
   NR_DcchDtchConfig_t                       *dcchDtchConfig;
 
-  NR_CellGroupConfig_t                      *secondaryCellGroup[MAX_NR_RRC_UE_CONTEXTS];
-  NR_SRB_INFO                               SI;
-  NR_SRB_INFO                               Srb0;
-  int                                       p_gNB;
 
   uint8_t                           *paging;
   uint32_t                           sizeof_paging;
@@ -446,20 +397,39 @@ typedef struct {
 } nr_security_configuration_t;
 
 typedef struct nr_mac_rrc_dl_if_s {
-  /* TODO add other message types as necessary */
+  f1_setup_response_func_t f1_setup_response;
+  f1_setup_failure_func_t f1_setup_failure;
   ue_context_setup_request_func_t ue_context_setup_request;
+  ue_context_modification_request_func_t ue_context_modification_request;
+  ue_context_modification_confirm_func_t ue_context_modification_confirm;
+  ue_context_modification_refuse_func_t ue_context_modification_refuse;
+  ue_context_release_command_func_t ue_context_release_command;
   dl_rrc_message_transfer_func_t dl_rrc_message_transfer;
 } nr_mac_rrc_dl_if_t;
 
 typedef struct cucp_cuup_if_s {
   cucp_cuup_bearer_context_setup_func_t bearer_context_setup;
   cucp_cuup_bearer_context_setup_func_t bearer_context_mod;
+  cucp_cuup_bearer_context_release_func_t bearer_context_release;
 } cucp_cuup_if_t;
 
-typedef struct nr_reestablish_rnti_map_s {
-  ue_id_t ue_id;
-  rnti_t c_rnti;
-} nr_reestablish_rnti_map_t;
+typedef struct nr_rrc_du_container_t {
+  /* Tree-related data */
+  RB_ENTRY(nr_rrc_du_container_t) entries;
+
+  sctp_assoc_t assoc_id;
+  f1ap_setup_req_t *setup_req;
+  NR_MIB_t *mib;
+  NR_SIB1_t *sib1;
+} nr_rrc_du_container_t;
+
+typedef struct nr_rrc_cuup_container_t {
+  /* Tree-related data */
+  RB_ENTRY(nr_rrc_cuup_container_t) entries;
+
+  e1ap_setup_req_t *setup_req;
+  sctp_assoc_t assoc_id;
+} nr_rrc_cuup_container_t;
 
 //---NR---(completely change)---------------------
 typedef struct gNB_RRC_INST_s {
@@ -469,53 +439,35 @@ typedef struct gNB_RRC_INST_s {
   char                                               *node_name;
   int                                                 module_id;
   eth_params_t                                        eth_params_s;
-  rrc_gNB_carrier_data_t                              carrier;
+  rrc_gNB_carrier_data_t                              carrier[MAX_NUM_CCs];
   uid_allocator_t                                     uid_allocator;
   RB_HEAD(rrc_nr_ue_tree_s, rrc_gNB_ue_context_s) rrc_ue_head; // ue_context tree key search by rnti
   /// NR cell id
   uint64_t nr_cellid;
 
   // RRC configuration
-  gNB_RrcConfigurationReq configuration;
+  gNB_RrcConfigurationReq configuration[MAX_NUM_CCs];
 
   // gNB N3 GTPU instance
   instance_t e1_inst;
-
-  // other PLMN parameters
-  /// Mobile country code
-  int mcc;
-  /// Mobile network code
-  int mnc;
-  /// number of mnc digits
-  int mnc_digit_length;
-
-  // other RAN parameters
-  int srb1_timer_poll_retransmit;
-  int srb1_poll_pdu;
-  int srb1_poll_byte;
-  int srb1_max_retx_threshold;
-  int srb1_timer_reordering;
-  int srb1_timer_status_prohibit;
-  int um_on_default_drb;
-  int srs_enable[MAX_NUM_CCs];
-  uint16_t sctp_in_streams;
-  uint16_t sctp_out_streams;
-  int cell_info_configured;
-  pthread_mutex_t cell_info_mutex;
 
   char *uecap_file;
 
   // security configuration (preferred algorithms)
   nr_security_configuration_t security;
 
-  nr_reestablish_rnti_map_t nr_reestablish_rnti_map[MAX_MOBILES_PER_GNB];
-
   nr_mac_rrc_dl_if_t mac_rrc;
   cucp_cuup_if_t cucp_cuup;
 
+  RB_HEAD(rrc_du_tree, nr_rrc_du_container_t) dus; // DUs, indexed by assoc_id
+  size_t num_dus;
+
+  RB_HEAD(rrc_cuup_tree, nr_rrc_cuup_container_t) cuups; // CU-UPs, indexed by assoc_id
+  size_t num_cuups;
+
+  int rrc_configuration_flag[MAX_NUM_CCs];
 } gNB_RRC_INST;
 
 #include "nr_rrc_proto.h" //should be put here otherwise compilation error
 
 #endif
-/** @} */

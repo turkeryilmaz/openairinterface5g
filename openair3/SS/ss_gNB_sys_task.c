@@ -32,15 +32,23 @@
 #include "gnb_config.h"
 #include "ss_gNB_sys_task.h"
 #include "ss_gNB_context.h"
+#include "ss_gNB_proxy_iface.h"
 
 #include "openair2/LAYER2/nr_pdcp/nr_pdcp_entity.h"
 #include "openair2/LAYER2/nr_pdcp/nr_pdcp_ue_manager.h"
-#include "openair2/LAYER2/NR_MAC_gNB/gNB_scheduler_primitives.c"
+
+#include "constr_TYPE.h"
+#include "OCTET_STRING.h"
+#include "NR_DL-CCCH-Message.h"
 
 #include "common/utils/LOG/ss-log.h"
 #include "ss_utils.h"
 #include "softmodem-common.h"
 #include "../../openair2/LAYER2/NR_MAC_gNB/nr_mac_gNB.h"
+#include "ss_gNB_multicell_helper.h"
+
+#include "SidlCommon_NR_RachProcedureConfig_Type.h"
+
 
 extern RAN_CONTEXT_t RC;
 extern SSConfigContext_t SS_context;
@@ -61,8 +69,9 @@ typedef enum
   CellConfig = 2
 } sidl_msg_id;
 
+int nr_cell_index = 0;
+static bool reqCnfFlag_g = false;
 static void ss_task_sys_nr_handle_deltaValues(struct NR_SYSTEM_CTRL_REQ *req);
-
 int cell_config_5G_done=-1;
 int cell_config_5G_done_indication();
 bool ss_task_sys_nr_handle_cellConfig5G (struct NR_CellConfigRequest_Type *p_req,int cell_State);
@@ -73,6 +82,7 @@ static void sys_5G_send_proxy(void *msg, int msgLen);
 int proxy_5G_send_port = 7776;
 int proxy_5G_recv_port = 7770;
 bool ss_task_sys_nr_handle_pdcpCount(struct NR_SYSTEM_CTRL_REQ *req);
+
 
 /*
  * Utility function to convert integer to binary
@@ -90,7 +100,53 @@ static void int_to_bin(uint32_t in, int count, uint8_t *out)
   }
 }
 
+static void process_RachProcedureMsg4RrcMsg(const struct NR_RachProcedureMsg4RrcMsg_Type *rrcMsg)
+{
+  switch (rrcMsg->d) {
+    case NR_RachProcedureMsg4RrcMsg_Type_RrcCcchMsg:
+      {
+        NR_DL_CCCH_Message_t *dl_ccch_msg = NULL;
+        asn_dec_rval_t dec_rval = uper_decode(NULL, &asn_DEF_NR_DL_CCCH_Message, (void **)&dl_ccch_msg, rrcMsg->v.RrcCcchMsg.v, rrcMsg->v.RrcCcchMsg.d, 0, 0);
+        AssertFatal(dec_rval.code == RC_OK, "Failed to decode DL-CCCH-Message");
 
+        OCTET_STRING_t *masterCellGroup = NULL;
+
+        if (dl_ccch_msg->message.present == NR_DL_CCCH_MessageType_PR_c1 &&
+            dl_ccch_msg->message.choice.c1->present == NR_DL_CCCH_MessageType__c1_PR_rrcSetup)
+        {
+          NR_RRCSetup_t *rrcSetup = dl_ccch_msg->message.choice.c1->choice.rrcSetup;
+          if (rrcSetup->criticalExtensions.present == NR_RRCSetup__criticalExtensions_PR_rrcSetup)
+          {
+            masterCellGroup = &rrcSetup->criticalExtensions.choice.rrcSetup->masterCellGroup;
+          }
+        }
+
+        if (masterCellGroup != NULL)
+        {
+          LOG_A(GNB_APP, "[SYS-GNB] Store CellGroupConfig for RrcSetup\n");
+          if (RC.cellGroupConfig != NULL)
+          {
+            ASN_STRUCT_FREE(asn_DEF_OCTET_STRING, RC.cellGroupConfig);
+          }
+          RC.cellGroupConfig = OCTET_STRING_new_fromBuf(&asn_DEF_OCTET_STRING, (const char *)masterCellGroup->buf, masterCellGroup->size);
+          AssertFatal(RC.cellGroupConfig != NULL, "Allocation for cellGroupConfig failed");
+        }
+        else
+        {
+          LOG_E(GNB_APP, "%s: masterCellGroup not found\n", __FUNCTION__);
+        }
+
+        ASN_STRUCT_FREE(asn_DEF_NR_DL_CCCH_Message, dl_ccch_msg);
+
+        break;
+      }
+    default:
+      {
+        LOG_W(GNB_APP, "RachProcedure Msg4RrcMsg not handled\n");
+        break;
+      }
+  }
+}
 
 /*
  * Function : send_sys_cnf
@@ -111,7 +167,7 @@ static void send_sys_cnf(enum ConfirmationResult_Type_Sel resType,
   MessageDef *message_p = itti_alloc_new_message(TASK_SYS_GNB, INSTANCE_DEFAULT, SS_NR_SYS_PORT_MSG_CNF);
   assert(message_p);
 
-  msgCnf->Common.CellId = SS_context.eutra_cellId;
+  msgCnf->Common.CellId =  SS_context.SSCell_list[nr_cell_index].nr_cellId;
   msgCnf->Common.Result.d = resType;
   msgCnf->Common.Result.v.Success = resVal;
   msgCnf->Confirm.d = cnfType;
@@ -197,7 +253,7 @@ static void sys_handle_nr_enquire_timing(ss_nrset_timinfo_t *tinfo)
  * Function : sys_nr_cell_attn_update
  * Description: Sends the attenuation updates received from TTCN to proxy
  */
-static void sys_nr_cell_attn_update(uint8_t cellId, uint8_t attnVal)
+static void sys_nr_cell_attn_update(uint8_t cellId, uint8_t attnVal,int nr_cell_index)
 {
   LOG_A(GNB_APP, "In sys_nr_cell_attn_update\n");
   attenuationConfigReq_t *attnConf = NULL;
@@ -207,7 +263,9 @@ static void sys_nr_cell_attn_update(uint8_t cellId, uint8_t attnVal)
   attnConf->header.msg_id = SS_ATTN_LIST;
   attnConf->header.cell_id = cellId;
   attnConf->attnVal = attnVal;
+  attnConf->header.cell_index = nr_cell_index;
 
+  LOG_A(ENB_SS,"5G Cell Attenuation received for cell_id: %d AttnValue : %d cell_index: %d\n",attnConf->header.cell_id,attnConf->attnVal,attnConf->header.cell_index);
   /** Send to proxy */
   sys_5G_send_proxy((void *)attnConf, sizeof(attenuationConfigReq_t));
   LOG_A(GNB_APP, "Out sys_nr_cell_attn_update\n");
@@ -223,20 +281,20 @@ static void sys_handle_nr_cell_attn_req(struct NR_CellAttenuationConfig_Type_NR_
   for(int i=0;i<CellAttenuationList->d;i++) {
     uint8_t cellId = (uint8_t)CellAttenuationList->v[i].CellId;
     uint8_t attnVal = 0; // default set it Off
-
+    uint8_t NrCellIndex = get_cell_index(cellId, SS_context.SSCell_list);
     switch (CellAttenuationList->v[i].Attenuation.d)
     {
     case Attenuation_Type_Value:
       attnVal = CellAttenuationList->v[i].Attenuation.v.Value;
       LOG_A(GNB_APP, "[SYS-GNB] CellAttenuationList for Cell_id %d value %d dBm received\n",
             cellId, attnVal);
-      sys_nr_cell_attn_update(cellId, attnVal);
+      sys_nr_cell_attn_update(cellId, attnVal, NrCellIndex);
       break;
     case Attenuation_Type_Off:
-      attnVal = 80; /* TODO: attnVal hardcoded currently but Need to handle proper Attenuation_Type_Off */
+      attnVal = 53; /* TODO: attnVal hardcoded currently but Need to handle proper Attenuation_Type_Off */
       LOG_A(GNB_APP, "[SYS-GNB] CellAttenuationList turn off for Cell_id %d received with attnVal : %d\n",
             cellId,attnVal);
-      sys_nr_cell_attn_update(cellId, attnVal);
+      sys_nr_cell_attn_update(cellId, attnVal, NrCellIndex);
       break;
     case Attenuation_Type_UNBOUND_VALUE:
       LOG_A(GNB_APP, "[SYS-GNB] CellAttenuationList Attenuation_Type_UNBOUND_VALUE received\n");
@@ -257,13 +315,13 @@ static void sys_handle_nr_cell_attn_req(struct NR_CellAttenuationConfig_Type_NR_
  * newState: No impact on state machine.
  *
  */
-static void sys_handle_nr_as_security_req(struct NR_AS_Security_Type *ASSecurity)
+static void sys_handle_nr_as_security_req(struct NR_AS_Security_Type *ASSecurity, int CC_id)
 {
   MessageDef *msg_p = itti_alloc_new_message(TASK_SYS_GNB, INSTANCE_DEFAULT, RRC_AS_SECURITY_CONFIG_REQ);
   if(msg_p)
   {
     LOG_I(GNB_APP,"[SYS-GNB] AS Security Request Received\n");
-    RRC_AS_SECURITY_CONFIG_REQ(msg_p).rnti = SS_context.ss_rnti_g;
+    RRC_AS_SECURITY_CONFIG_REQ(msg_p).rnti = SS_context.SSCell_list[CC_id].ss_rnti_g;
 
     switch(ASSecurity->d) {
     case NR_AS_Security_Type_StartRestart:
@@ -521,43 +579,73 @@ static void sys_handle_nr_paging_req(struct NR_PagingTrigger_Type *pagingRequest
 */
 static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_timinfo_t *tinfo)
 {
-  int enterState = RC.ss.State;
+  int enterState =  SS_context.SSCell_list[nr_cell_index].State;
   if (req->Common.CellId > 0) {
-    SS_context.eutra_cellId = req->Common.CellId;
+    nr_cell_index = get_gNB_cell_index(req->Common.CellId, SS_context.SSCell_list);
+      SS_context.SSCell_list[nr_cell_index].nr_cellId = req->Common.CellId;
+    LOG_A(GNB_APP, "[SYS-GNB] Current SS_STATE %d received SystemRequest_Type %d nr_cellId %d cnf_flag %d cell_index: %d\n",
+        SS_context.SSCell_list[nr_cell_index].State, 
+        req->Request.d, 
+        SS_context.SSCell_list[nr_cell_index].nr_cellId, 
+        req->Common.ControlInfo.CnfFlag,nr_cell_index);
   }
 
-  LOG_A(GNB_APP, "[SYS-GNB] Current SS_STATE %d received SystemRequest_Type %d eutra_cellId %d cnf_flag %d\n",
-      RC.ss.State, req->Request.d, SS_context.eutra_cellId, req->Common.ControlInfo.CnfFlag);
 
-  switch (RC.ss.State)
+
+  switch (SS_context.SSCell_list[nr_cell_index].State)
   {
     case SS_STATE_NOT_CONFIGURED:
       if (req->Request.d == NR_SystemRequest_Type_Cell)
       {
         LOG_A(GNB_APP, "[SYS-GNB] NR_SystemRequest_Type_Cell received\n");
-        if (false == ss_task_sys_nr_handle_cellConfig5G(&req->Request.v.Cell,RC.ss.State) )
+        init_gnb_cell_context(nr_cell_index);
+        //bugz128620 rebase RC.nrrrc[0]->carrier[nr_cell_index].pdcch_ConfigSIB1 seems not being used 
+        //LOG_I(GNB_APP,"controlResourceSetZero: %d controlResourceSetZero1: %d searchSpaceZero: %d searchSpaceZero1: %d\n",RC.nrrrc[0]->carrier[nr_cell_index].pdcch_ConfigSIB1->controlResourceSetZero,RC.nrrrc[0]->carrier[nr_cell_index].pdcch_ConfigSIB1->searchSpaceZero);
+        SS_context.SSCell_list[nr_cell_index].PhysicalCellId = req->Request.v.Cell.v.AddOrReconfigure.PhysicalLayer.v.Common.v.PhysicalCellId.v;
+        LOG_I(NR_RRC, "PhysicalCellId:%d for cell_index:%d\n", SS_context.SSCell_list[nr_cell_index].PhysicalCellId, nr_cell_index);
+        if (false == ss_task_sys_nr_handle_cellConfig5G(&req->Request.v.Cell, SS_context.SSCell_list[nr_cell_index].State) )
         {
           LOG_A(GNB_APP, "[SYS-GNB] Error handling Cell Config 5G for NR_SystemRequest_Type_Cell \n");
           return;
         }
         cell_config_5G_done_indication();
 
-        if (RC.ss.State == SS_STATE_NOT_CONFIGURED)
+        RC.ss.State  = SS_STATE_CELL_ACTIVE; //bugz128620 to clear this flag. and remove this comment
+        if (SS_context.SSCell_list[nr_cell_index].State == SS_STATE_NOT_CONFIGURED)
         {
-          SS_context.eutra_cellId = req->Common.CellId;
-          RC.ss.State  = SS_STATE_CELL_ACTIVE;
-          SS_context.State = SS_STATE_CELL_ACTIVE;
-          LOG_A(GNB_APP, "[SYS-GNB] RC.ss.State changed to ACTIVE \n");
+            //The flag is used to initilize the cell in the RRC layer during init_NR_SI funciton
+            RC.ss.CC_conf_flag[nr_cell_index] = 1; 
+            printf("fxn: %s cell_index: %d RC.ss.CC_conf_flag[cell_index]: %d\n",__FUNCTION__,nr_cell_index,RC.ss.CC_conf_flag[nr_cell_index]);
+
+            LOG_A (GNB_APP,"current Configured CC are %d current CC_index %d nb_nr_mac_CC %d\n",
+                  RC.nb_nr_CC[0],nr_cell_index,*RC.nb_nr_mac_CC);
+            //Increment nb_cc only from 2nd cell as the initilization is done for 1 CC
+            if (nr_cell_index)
+            {
+              //Increment the nb_CC supported as new cell is confiured
+              RC.nb_nr_CC[0] ++;
+
+              //Set the number of MAC_CC to current configured CC value
+              *RC.nb_nr_mac_CC= RC.nb_nr_CC[0];
+
+              LOG_A (GNB_APP,"CC-MGMT nb_cc is incremented current Configured CC are %d current CC_index %d nb_nr_mac_CC %d\n",
+                  RC.nb_nr_CC[0],nr_cell_index,*RC.nb_nr_mac_CC);
+            }
+
+          SS_context.SSCell_list[nr_cell_index].State = SS_STATE_CELL_ACTIVE;
+          LOG_A(GNB_APP, "[SYS-GNB] New State for cell:%d changed to %d\n", nr_cell_index, SS_context.SSCell_list[nr_cell_index].State);
         }
 
-       send_sys_cnf(ConfirmationResult_Type_Success, true, NR_SystemConfirm_Type_Cell, NULL);
+        send_sys_cnf(ConfirmationResult_Type_Success, true, NR_SystemConfirm_Type_Cell, NULL);
+
+       
 
         if (req->Request.v.Cell.d == NR_CellConfigRequest_Type_AddOrReconfigure)
         {
           CellConfig5GReq_t	*cellConfig = NULL;
           struct NR_CellConfigInfo_Type *p_cellConfig = NULL;
           p_cellConfig = &req->Request.v.Cell.v.AddOrReconfigure;
-          SS_context.maxRefPower = p_cellConfig->CellConfigCommon.v.InitialCellPower.v.MaxReferencePower;
+          SS_context.SSCell_list[nr_cell_index].maxRefPower = p_cellConfig->CellConfigCommon.v.InitialCellPower.v.MaxReferencePower;
           cellConfig = (CellConfig5GReq_t*)malloc(sizeof(CellConfig5GReq_t));
           if (cellConfig == NULL)
           {
@@ -566,19 +654,20 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
           cellConfig->header.preamble = 0xFEEDC0DE;
           cellConfig->header.msg_id = SS_CELL_CONFIG;
           cellConfig->header.length = sizeof(proxy_ss_header_t);
-          cellConfig->initialAttenuation = 0;
+          //cellConfig->initialAttenuation = 0;
+          cellConfig->initialAttenuation = p_cellConfig->CellConfigCommon.v.InitialCellPower.v.Attenuation.v.Off==true?53:p_cellConfig->CellConfigCommon.v.InitialCellPower.v.Attenuation.v.Value;
           if (req->Request.v.Cell.v.AddOrReconfigure.PhysicalLayer.v.Common.v.PhysicalCellId.d == true)
           {
             cellConfig->header.cell_id = req->Request.v.Cell.v.AddOrReconfigure.PhysicalLayer.v.Common.v.PhysicalCellId.v;
           }
           cellConfig->maxRefPower= p_cellConfig->CellConfigCommon.v.InitialCellPower.v.MaxReferencePower;
           cellConfig->absoluteFrequencyPointA = p_cellConfig->PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.v.R15.absoluteFrequencyPointA;
-          LOG_A(GNB_APP,"5G Cell configuration received for cell_id: %d Initial attenuation: %d \
-              Max ref power: %d\n for absoluteFrequencyPointA : %ld =================================== \n",
+          cellConfig->header.cell_index = nr_cell_index;
+          LOG_A(ENB_SS,"5G Cell configuration received for cell_id: %d Initial attenuation: %d \
+              Max ref power: %d\n for absoluteFrequencyPointA : %ld cell_index: %d =================================== \n",
               cellConfig->header.cell_id,
               cellConfig->initialAttenuation, cellConfig->maxRefPower,
-              cellConfig->absoluteFrequencyPointA);
-          //send_to_proxy();
+              cellConfig->absoluteFrequencyPointA, cellConfig->header.cell_index);
           sys_5G_send_proxy((void *)cellConfig, sizeof(CellConfig5GReq_t));
         }
 
@@ -592,7 +681,7 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
       else
       {
         LOG_E(GNB_APP, "[SYS-GNB] Error ! SS_STATE %d  Invalid SystemRequest_Type %d received\n",
-            RC.ss.State, req->Request.d);
+            SS_context.SSCell_list[nr_cell_index].State , req->Request.d);
       }
       break;
     case SS_STATE_CELL_ACTIVE:
@@ -601,7 +690,7 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
         {
           case NR_SystemRequest_Type_Cell:
             {
-              if (false == ss_task_sys_nr_handle_cellConfig5G(&req->Request.v.Cell,RC.ss.State) )
+              if (false == ss_task_sys_nr_handle_cellConfig5G(&req->Request.v.Cell, SS_context.SSCell_list[nr_cell_index].State) )
               {
                 LOG_E(GNB_APP, "[SYS-GNB] Error handling Cell Config 5G for NR_SystemRequest_Type_Cell \n");
               }
@@ -647,7 +736,7 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
           case NR_SystemRequest_Type_AS_Security:
             {
               LOG_A(GNB_APP, "[SYS-GNB] Handling for NR_SystemRequest_Type_AS_Security\n");
-              sys_handle_nr_as_security_req(&(req->Request.v.AS_Security));
+              sys_handle_nr_as_security_req(&(req->Request.v.AS_Security),nr_cell_index);
               if (req->Common.ControlInfo.CnfFlag) {
                 send_sys_cnf(ConfirmationResult_Type_Success, true, NR_SystemConfirm_Type_AS_Security, NULL);
               }
@@ -680,7 +769,8 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
             break;
           default:
             {
-              LOG_E(GNB_APP, "[SYS-GNB] Error ! SS_STATE %d  Invalid SystemRequest_Type %d received\n", RC.ss.State, req->Request.d);
+              LOG_E(GNB_APP, "[SYS-GNB] Error ! SS_STATE %d  Invalid SystemRequest_Type %d received\n",
+                  SS_context.SSCell_list[nr_cell_index].State , req->Request.d);
             }
             break;
         }
@@ -688,7 +778,7 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
       break;
   }
   LOG_A(GNB_APP, "[SYS-GNB] SS_STATE %d New SS_STATE %d received SystemRequest_Type %d\n",
-      enterState, RC.ss.State, req->Request.d);
+      enterState, SS_context.SSCell_list[nr_cell_index].State, req->Request.d);
 }
 
 
@@ -753,9 +843,12 @@ void *ss_gNB_sys_process_itti_msg(void *notUsed)
 						case SS_CELL_CONFIG_CNF:
 							LOG_A(GNB_APP, "[TASK_SYS_GNB] received UDP_DATA_IND with Message SS_NR_SYS_PORT_MSG_CNF\n");
 							break;
+            case SS_ATTN_LIST_CNF:
+              LOG_A(GNB_APP, "[TASK_SYS_GNB] received UDP_DATA_IND with Message SS_ATTN_LIST_CNF\n");
+							break;
 
 						default:
-							LOG_E(GNB_APP, "[TASK_SYS_GNB] received unhandled message \n");
+							LOG_E(GNB_APP, "[TASK_SYS_GNB] received unhandled message:%d \n",hdr.msg_id);
 					}
 				}
 				break;
@@ -790,28 +883,23 @@ void *ss_gNB_sys_task(void *arg)
   req.port = proxy_5G_recv_port;
   sys_5G_send_init_udp(&req);
   sleep(5);
-  if (RC.ss.configured == 0)
-  {
-    //RCconfig_nr_ssparam();
-    RC.ss.configured = 1;
-  }
   // Set the state to NOT_CONFIGURED for Cell Config processing mode
-  if (RC.ss.mode == SS_SOFTMODEM)
+  if (RC.ss.mode == SS_SOFTMODEM || RC.ss.mode == SS_HWTMODEM)
   {
-    RC.ss.State = SS_STATE_NOT_CONFIGURED;
+    init_ss_gNB_context(SS_context.SSCell_list);
     LOG_A(GNB_APP, "TASK_SYS_GNB: fxn:%s line:%d RC.ss.mode:SS_STATE_NOT_CONFIGURED \n", __FUNCTION__, __LINE__);
+    SS_context.SSCell_list[nr_cell_index].State = 0;
   }
   // Set the state to CELL_ACTIVE for SRB processing mode
-  else if (RC.ss.mode == SS_SOFTMODEM_SRB)
+  /*else if (RC.ss.mode == SS_HWTMODEM)
   {
-    RC.ss.State = SS_STATE_CELL_ACTIVE;
-    SS_context.State = SS_STATE_CELL_ACTIVE;
-    LOG_A(GNB_APP, "TASK_SYS_GNB: fxn:%s line:%d RC.ss.mode:SS_STATE_CELL_ACTIVE \n", __FUNCTION__, __LINE__);
-  }
+    SS_context.SSCell_list[nr_cell_index].State = SS_STATE_CELL_ACTIVE;
+    LOG_A(GNB_APP, "TASK_SYS_GNB: fxn:%s line:%d SS_STATE_CELL_ACTIVE \n", __FUNCTION__, __LINE__);
+  }*/
 
   while (1)
   {
-    (void) ss_gNB_sys_process_itti_msg(NULL);
+    ss_gNB_sys_process_itti_msg(NULL);
   }
 
   return NULL;
@@ -826,16 +914,28 @@ void *ss_gNB_sys_task(void *arg)
 static void ss_task_sys_nr_handle_deltaValues(struct NR_SYSTEM_CTRL_REQ *req)
 {
 	LOG_A(GNB_APP, "[SYS-GNB] Entry in fxn:%s\n", __FUNCTION__);
-	struct NR_SYSTEM_CTRL_CNF *msgCnf = CALLOC(1, sizeof(struct NR_SYSTEM_CTRL_CNF));
-	MessageDef *message_p = itti_alloc_new_message(TASK_SYS_GNB, INSTANCE_DEFAULT, SS_NR_SYS_PORT_MSG_CNF);
+  int CC_id = RC.nb_nr_CC[0];
+  NR_UE_info_t *UE = NULL;
+  if(req->Common.CellId){ 
+    CC_id = get_gNB_cell_index(req->Common.CellId, SS_context.SSCell_list);
+  }else{   // req->Common.CellId ==0  means no specific cell in this command
+    for(CC_id = 0; CC_id < RC.nb_nr_CC[0];CC_id++){
+      UE = find_nr_UE(&RC.nrmac[0]->UE_info,CC_id, SS_context.SSCell_list[CC_id].ss_rnti_g);
+      if(UE!= NULL){
+        break;
+      }
+    }
 
-	if (!message_p)
+  }
+  struct NR_SYSTEM_CTRL_CNF *msgCnf = CALLOC(1, sizeof(struct NR_SYSTEM_CTRL_CNF));
+	MessageDef *message_p = itti_alloc_new_message(TASK_SYS_GNB, INSTANCE_DEFAULT, SS_NR_SYS_PORT_MSG_CNF);
+  if (!message_p)
 	{
 		LOG_A(GNB_APP, "[SYS-GNB] Error Allocating Memory for message NR_SYSTEM_CTRL_CNF \n");
 		return ;
 
 	}
-	msgCnf->Common.CellId = 0;
+	msgCnf->Common.CellId = req->Common.CellId;
 	msgCnf->Common.RoutingInfo.d = NR_RoutingInfo_Type_None;
 	msgCnf->Common.RoutingInfo.v.None = true;
 	msgCnf->Common.TimingInfo.d = TimingInfo_Type_None;
@@ -857,58 +957,58 @@ static void ss_task_sys_nr_handle_deltaValues(struct NR_SYSTEM_CTRL_REQ *req)
 	deltaSecondaryBand->DeltaNRf2 = 0;
 	deltaSecondaryBand->DeltaNRf3 = 0;
 	deltaSecondaryBand->DeltaNRf4 = 0;
-  NR_UE_info_t *UE = NULL;
-  LOG_A(GNB_APP, "[SYS-GNB] absoluteFrequencySSB:%ld\n",
-      *RC.nrrrc[0]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB);
-
-  if ((get_softmodem_params()->numerology >= 1 || get_softmodem_params()->numerology <= 2) && (RC.ss.State == SS_STATE_CELL_ACTIVE))
+  if(CC_id != RC.nb_nr_CC[0]){
+    LOG_A(GNB_APP, "[SYS-GNB] absoluteFrequencySSB:%ld\n",
+      *RC.nrrrc[0]->configuration[CC_id].scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB);
+  }
+  if ((get_softmodem_params()->numerology >= 1 || get_softmodem_params()->numerology <= 2) && (SS_context.SSCell_list[CC_id].State == SS_STATE_CELL_ACTIVE) && CC_id != RC.nb_nr_CC[0])
   {
-      UE = find_nr_UE(&RC.nrmac[0]->UE_info, SS_context.ss_rnti_g);
+      UE = find_nr_UE(&RC.nrmac[0]->UE_info,CC_id, SS_context.SSCell_list[CC_id].ss_rnti_g);
       if(UE->rsrpReportStatus){
       LOG_A(GNB_APP, "[SYS-GNB] received SYSTEM_CTRL_REQ with DeltaValues in Active State for Primary Band \n");
-      if (req->Request.v.DeltaValues.DeltaPrimary.Ssb_NRf1.v.v.R15 == *RC.nrrrc[0]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB)
+      if (req->Request.v.DeltaValues.DeltaPrimary.Ssb_NRf1.v.v.R15 == *RC.nrrrc[0]->configuration[CC_id].scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB)
       {
         deltaPrimaryBand->DeltaNRf1 = UE->ssb_rsrp + 82;
         LOG_A(GNB_APP, "updated DeltaNRf1:%d for deltaPrimaryBand \n", deltaPrimaryBand->DeltaNRf1);
       }
-      if (req->Request.v.DeltaValues.DeltaPrimary.Ssb_NRf2.v.v.R15 == *RC.nrrrc[0]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB)
+      if (req->Request.v.DeltaValues.DeltaPrimary.Ssb_NRf2.v.v.R15 == *RC.nrrrc[0]->configuration[CC_id].scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB)
       {
         deltaPrimaryBand->DeltaNRf2 = UE->ssb_rsrp + 82;
         LOG_A(GNB_APP, "updated DeltaNRf2:%d for deltaPrimaryBand \n", deltaPrimaryBand->DeltaNRf2);
       }
-      if (req->Request.v.DeltaValues.DeltaPrimary.Ssb_NRf3.v.v.R15 == *RC.nrrrc[0]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB)
+      if (req->Request.v.DeltaValues.DeltaPrimary.Ssb_NRf3.v.v.R15 == *RC.nrrrc[0]->configuration[CC_id].scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB)
       {
         deltaPrimaryBand->DeltaNRf3 = UE->ssb_rsrp + 82;
         LOG_A(GNB_APP, "updated DeltaNRf3:%d for deltaPrimaryBand \n", deltaPrimaryBand->DeltaNRf3);
       }
-      if (req->Request.v.DeltaValues.DeltaPrimary.Ssb_NRf4.v.v.R15 == *RC.nrrrc[0]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB)
+      if (req->Request.v.DeltaValues.DeltaPrimary.Ssb_NRf4.v.v.R15 == *RC.nrrrc[0]->configuration[CC_id].scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB)
       {
         deltaPrimaryBand->DeltaNRf4 = UE->ssb_rsrp + 82;
         LOG_A(GNB_APP, "updated DeltaNRf4:%d for deltaPrimaryBand \n", deltaPrimaryBand->DeltaNRf4);
       }
     }
   }
-  else if ((get_softmodem_params()->numerology >= 2 && RC.ss.State == SS_STATE_CELL_ACTIVE) && (UE->rsrpReportStatus))
+  else if ((get_softmodem_params()->numerology >= 2 && SS_context.SSCell_list[CC_id].State == SS_STATE_CELL_ACTIVE) && (UE->rsrpReportStatus) && CC_id != RC.nb_nr_CC[0])
   {
-      UE = find_nr_UE(&RC.nrmac[0]->UE_info, SS_context.ss_rnti_g);
+      UE = find_nr_UE(&RC.nrmac[0]->UE_info, CC_id, SS_context.SSCell_list[CC_id].ss_rnti_g);
       if(UE->rsrpReportStatus){
       LOG_A(GNB_APP, "[SYS-GNB] received SYSTEM_CTRL_REQ with DeltaValues in Active State for Secondary Band \n");
-      if (req->Request.v.DeltaValues.DeltaSecondary.Ssb_NRf1.v.v.R15 == *RC.nrrrc[0]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB)
+      if (req->Request.v.DeltaValues.DeltaSecondary.Ssb_NRf1.v.v.R15 == *RC.nrrrc[0]->configuration[CC_id].scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB)
       {
         deltaSecondaryBand->DeltaNRf1 = UE->ssb_rsrp + 82;
         LOG_A(GNB_APP, "updated DeltaNRf1:%d for deltaSecondaryBand \n", deltaSecondaryBand->DeltaNRf1);
       }
-      if (req->Request.v.DeltaValues.DeltaSecondary.Ssb_NRf2.v.v.R15 == *RC.nrrrc[0]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB)
+      if (req->Request.v.DeltaValues.DeltaSecondary.Ssb_NRf2.v.v.R15 == *RC.nrrrc[0]->configuration[CC_id].scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB)
       {
         deltaPrimaryBand->DeltaNRf2 = UE->ssb_rsrp + 82;
         LOG_A(GNB_APP, "updated DeltaNRf2:%d for deltaSecondaryBand \n", deltaSecondaryBand->DeltaNRf2);
       }
-      if (req->Request.v.DeltaValues.DeltaSecondary.Ssb_NRf3.v.v.R15 == *RC.nrrrc[0]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB)
+      if (req->Request.v.DeltaValues.DeltaSecondary.Ssb_NRf3.v.v.R15 == *RC.nrrrc[0]->configuration[CC_id].scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB)
       {
         deltaPrimaryBand->DeltaNRf3 = UE->ssb_rsrp + 82;
         LOG_A(GNB_APP, "updated DeltaNRf3:%d for deltaSecondaryBand \n", deltaSecondaryBand->DeltaNRf3);
       }
-      if (req->Request.v.DeltaValues.DeltaSecondary.Ssb_NRf4.v.v.R15 == *RC.nrrrc[0]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB)
+      if (req->Request.v.DeltaValues.DeltaSecondary.Ssb_NRf4.v.v.R15 == *RC.nrrrc[0]->configuration[CC_id].scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB)
       {
         deltaPrimaryBand->DeltaNRf4 = UE->ssb_rsrp + 82;
         LOG_A(GNB_APP, "updated DeltaNRf4:%d for deltaSecondaryBand \n", deltaSecondaryBand->DeltaNRf4);
@@ -938,6 +1038,7 @@ bool ss_task_sys_nr_handle_cellConfig5G(struct NR_CellConfigRequest_Type *p_req,
   uint32_t gnbId = 0;
   if (p_req->d == NR_CellConfigRequest_Type_AddOrReconfigure)
   {
+    
     /* populate each config */
     /* 1. StaticResource Config */
     if(p_req->v.AddOrReconfigure.StaticResourceConfig.d)
@@ -950,7 +1051,6 @@ bool ss_task_sys_nr_handle_cellConfig5G(struct NR_CellConfigRequest_Type *p_req,
     {
 
     }
-
     /* 3.  PhysicalLayer */
     /* TODO: populate fields to
          RC.nrrrc[gnbId]->carrier.servingcellconfigcommon
@@ -967,8 +1067,59 @@ bool ss_task_sys_nr_handle_cellConfig5G(struct NR_CellConfigRequest_Type *p_req,
               RC.nrrrc[gnbId]->carrier.siblock1
               RC.nrrrc[gnbId]->carrier.systemInformation
      */
-    if(p_req->v.AddOrReconfigure.BcchConfig.d)
+    if(p_req->v.AddOrReconfigure.BcchConfig.d)  //W38 note: we are decoding mib/sib from ttcn and configure cell configuration to gnb cells, and then mac regenerate it 
     {
+      if (p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.MIB.d == true )
+      {
+        RC.nrrrc[gnbId]->configuration[nr_cell_index].cellBarred = 
+          p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.MIB.v.message.v.mib.cellBarred;
+        LOG_I(GNB_APP, "Cell Barred Status:%d for cell_index:%d\n", 
+            RC.nrrrc[gnbId]->configuration[nr_cell_index].cellBarred,
+            nr_cell_index);
+      }
+
+      if (p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.SIB1.d == true && 
+          p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.SIB1.v.message.v.c1.d == SQN_NR_BCCH_DL_SCH_MessageType_c1_systemInformationBlockType1  &&
+          p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.SIB1.v.message.v.c1.v.systemInformationBlockType1.cellSelectionInfo.d == true)
+      {
+        RC.nrrrc[gnbId]->configuration[nr_cell_index].q_RxLevMinSIB1 = 
+          p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.SIB1.v.message.v.c1.v.systemInformationBlockType1.cellSelectionInfo.v.q_RxLevMin;
+        LOG_I(GNB_APP, "SIB1 q_RxLevMin:%d for cell_index:%d\n", RC.nrrrc[gnbId]->configuration[nr_cell_index].q_RxLevMinSIB1, nr_cell_index);
+      }
+      if (p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.SIB1.d == true &&
+          p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.SIB1.v.message.v.c1.d == SQN_NR_BCCH_DL_SCH_MessageType_c1_systemInformationBlockType1  &&
+          p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.SIB1.v.message.v.c1.v.systemInformationBlockType1.cellAccessRelatedInfo.plmn_IdentityInfoList.d == true )
+      {
+       
+        RC.nrrrc[gnbId]->configuration[nr_cell_index].cell_identity = 0;
+        for (int i = 0; i < 36; i++)
+        {
+          RC.nrrrc[gnbId]->configuration[nr_cell_index].cell_identity += 
+          (uint64_t)(p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.SIB1.v.message.v.c1.v.systemInformationBlockType1.cellAccessRelatedInfo.plmn_IdentityInfoList.v->cellIdentity[i])<<(35-i);
+        }
+        
+        if( p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.SIB1.v.message.v.c1.v.systemInformationBlockType1.cellAccessRelatedInfo.plmn_IdentityInfoList.v->trackingAreaCode.d == true )
+        RC.nrrrc[gnbId]->configuration[nr_cell_index].tac = 0;
+        for (int i = 0; i < 24; i++)
+          {
+            RC.nrrrc[gnbId]->configuration[nr_cell_index].tac  +=p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.SIB1.v.message.v.c1.v.systemInformationBlockType1.cellAccessRelatedInfo.plmn_IdentityInfoList.v->trackingAreaCode.v[i] << (23 - i);
+          }
+        //BIT_STRING_to_uint32(p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.SIB1.v.message.v.c1.v.systemInformationBlockType1.cellAccessRelatedInfo.plmn_IdentityInfoList.v->trackingAreaCode.v);
+          
+        LOG_I(GNB_APP, "SIB1 tac:%d for cell_index:%d RC.nrrrc[gnbId]->configuration[nr_cell_index].cell_identity %ld\n", RC.nrrrc[gnbId]->configuration[nr_cell_index].tac , nr_cell_index, RC.nrrrc[gnbId]->configuration[nr_cell_index].cell_identity);
+      }
+          
+      if (p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.SIs.d == true && 
+          p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.SIs.v.d == true &&
+          p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.SIs.v.v->message.v.c1.d == SQN_NR_BCCH_DL_SCH_MessageType_c1_systemInformation &&
+          p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.SIs.v.v->message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation.sib_TypeAndInfo.v->d ==
+          SQN_NR_SystemInformation_IEs_sib_TypeAndInfo_s_sib2 )
+      {
+        RC.nrrrc[gnbId]->configuration[nr_cell_index].q_RxLevMinSIB2 = 
+          p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.SIs.v.v->message.v.c1.v.systemInformation.criticalExtensions.
+          v.systemInformation.sib_TypeAndInfo.v->v.sib2.intraFreqCellReselectionInfo.q_RxLevMin;
+        LOG_I(ENB_SS, "SIB2 q_RxLevMin:%d for cell_index:%d\n", RC.nrrrc[gnbId]->configuration[nr_cell_index].q_RxLevMinSIB2, nr_cell_index);
+      }
 
     }
 
@@ -981,16 +1132,29 @@ bool ss_task_sys_nr_handle_cellConfig5G(struct NR_CellConfigRequest_Type *p_req,
     /* 6. RachProcedureConfig */
     if(p_req->v.AddOrReconfigure.RachProcedureConfig.d)
     {
-
+      if (p_req->v.AddOrReconfigure.RachProcedureConfig.v.RachProcedureList.d
+          && p_req->v.AddOrReconfigure.RachProcedureConfig.v.RachProcedureList.v.d)
+      {
+        if (p_req->v.AddOrReconfigure.RachProcedureConfig.v.RachProcedureList.v.d != 1)
+        {
+          LOG_W(GNB_APP, "RachProcedureList != 1 (not handled other elements)\n");
+        }
+        if (p_req->v.AddOrReconfigure.RachProcedureConfig.v.RachProcedureList.v.v[0].ContentionResolution.d &&
+            p_req->v.AddOrReconfigure.RachProcedureConfig.v.RachProcedureList.v.v[0].ContentionResolution.v.d == NR_ContentionResolutionCtrl_Type_Msg4_Based &&
+            p_req->v.AddOrReconfigure.RachProcedureConfig.v.RachProcedureList.v.v[0].ContentionResolution.v.v.Msg4_Based.RrcPdu.d)
+        {
+          process_RachProcedureMsg4RrcMsg(&p_req->v.AddOrReconfigure.RachProcedureConfig.v.RachProcedureList.v.v[0].ContentionResolution.v.v.Msg4_Based.RrcPdu.v);
+        }
+      }
     }
 
     /* 7. DcchDtchConfig */
     if(p_req->v.AddOrReconfigure.DcchDtchConfig.d)
     {
-      if(NULL == RC.nrrrc[gnbId]->carrier.dcchDtchConfig){
-        RC.nrrrc[gnbId]->carrier.dcchDtchConfig = calloc(1,sizeof(NR_DcchDtchConfig_t));
+      if(NULL == RC.nrrrc[gnbId]->carrier[nr_cell_index].dcchDtchConfig){
+        RC.nrrrc[gnbId]->carrier[nr_cell_index].dcchDtchConfig = calloc(1,sizeof(NR_DcchDtchConfig_t));
       }
-      NR_DcchDtchConfig_t * dcchDtchConfig = RC.nrrrc[gnbId]->carrier.dcchDtchConfig;
+      NR_DcchDtchConfig_t * dcchDtchConfig = RC.nrrrc[gnbId]->carrier[nr_cell_index].dcchDtchConfig;
       if(p_req->v.AddOrReconfigure.DcchDtchConfig.v.DL.d)
       {
 
@@ -1013,10 +1177,18 @@ bool ss_task_sys_nr_handle_cellConfig5G(struct NR_CellConfigRequest_Type *p_req,
               }
               if(p_req->v.AddOrReconfigure.DcchDtchConfig.v.UL.v.SearchSpaceAndDci.v.DciInfo.v.ResoureAssignment.v.FreqDomain.d){
                 dcchDtchConfig->ul->dci_info->resoure_assignment->FirstRbIndex =
-                            p_req->v.AddOrReconfigure.DcchDtchConfig.v.UL.v.SearchSpaceAndDci.v.DciInfo.v.ResoureAssignment.v.FreqDomain.v.FirstRbIndex;
-                dcchDtchConfig->ul->dci_info->resoure_assignment->Nprb =
-                            p_req->v.AddOrReconfigure.DcchDtchConfig.v.UL.v.SearchSpaceAndDci.v.DciInfo.v.ResoureAssignment.v.FreqDomain.v.Nprb;
-              }
+                p_req->v.AddOrReconfigure.DcchDtchConfig.v.UL.v.SearchSpaceAndDci.v.DciInfo.v.ResoureAssignment.v.FreqDomain.v.FirstRbIndex;
+                //TODO bug #133016 with USRP board, system crashed if Nprb is 48 or 24 ie what is provided by TTCN which does make no sense. Need to understand why
+                // if NPrb is set to a different value from 0, type0_PDCCH_CSS_config will be filled and such config is used for dcch_dtch config during rach procedure
+                //if dcch_dtch config is not NULL, MAC will trigger rrc reconfiguration considering that UE under attachment has already been configured
+                if (RC.ss.mode == SS_HWTMODEM) {
+                  dcchDtchConfig->ul->dci_info->resoure_assignment->Nprb = 0;
+                } else {
+                  dcchDtchConfig->ul->dci_info->resoure_assignment->Nprb =
+                          p_req->v.AddOrReconfigure.DcchDtchConfig.v.UL.v.SearchSpaceAndDci.v.DciInfo.v.ResoureAssignment.v.FreqDomain.v.Nprb;
+                }
+	      }
+
               if(p_req->v.AddOrReconfigure.DcchDtchConfig.v.UL.v.SearchSpaceAndDci.v.DciInfo.v.ResoureAssignment.v.TransportBlockScheduling.d) {
                 if(p_req->v.AddOrReconfigure.DcchDtchConfig.v.UL.v.SearchSpaceAndDci.v.DciInfo.v.ResoureAssignment.v.TransportBlockScheduling.v.d > 0){
                   struct NR_TransportBlockSingleTransmission_Type * tbst = &p_req->v.AddOrReconfigure.DcchDtchConfig.v.UL.v.SearchSpaceAndDci.v.DciInfo.v.ResoureAssignment.v.TransportBlockScheduling.v.v[0];
@@ -1051,149 +1223,217 @@ bool ss_task_sys_nr_handle_cellConfig5G(struct NR_CellConfigRequest_Type *p_req,
     {
 
     }
-    if(cell_State != SS_STATE_NOT_CONFIGURED){
+    #if 0
+      if(cell_State != SS_STATE_NOT_CONFIGURED){
       /* Trigger RRC Cell reconfig when cell is active */
       MessageDef *msg_p = NULL;
       msg_p = itti_alloc_new_message (TASK_GNB_APP, 0, NRRRC_CONFIGURATION_REQ);
-      LOG_I(GNB_APP,"ss_gNB Sending configuration message to NR_RRC task\n");
+      LOG_I(GNB_APP,"ss_gNB Sending configuration message to NR_RRC task %lx\n", &RC.nrrrc[gnbId]->configuration);
       memcpy(&NRRRC_CONFIGURATION_REQ(msg_p), &RC.nrrrc[gnbId]->configuration,sizeof(NRRRC_CONFIGURATION_REQ(msg_p)));
       itti_send_msg_to_task (TASK_RRC_GNB, GNB_MODULE_ID_TO_INSTANCE(gnbId), msg_p);
+
+ 
       return true;
     }
-
+    #endif
     /* following code shall be optimized and moved to "PhysicalLayer" populating*/
     /*****************************************************************************/
     /* Populating PhyCellId */
-    if (p_req->v.AddOrReconfigure.PhysicalLayer.v.Common.v.PhysicalCellId.d == true)
+    if (p_req->v.AddOrReconfigure.PhysicalLayer.v.Common.v.PhysicalCellId.d == true && p_req->v.AddOrReconfigure.PhysicalLayer.d == true)
     {
-      RC.nrrrc[gnbId]->carrier.physCellId = p_req->v.AddOrReconfigure.PhysicalLayer.v.Common.v.PhysicalCellId.v;
-      *RC.nrrrc[gnbId]->configuration.scc->physCellId = p_req->v.AddOrReconfigure.PhysicalLayer.v.Common.v.PhysicalCellId.v;
+      RC.nrrrc[gnbId]->carrier[nr_cell_index].physCellId = p_req->v.AddOrReconfigure.PhysicalLayer.v.Common.v.PhysicalCellId.v;
+   // *(RC.nrrrc[gnbId]->carrier[nr_cell_index].servingcellconfigcommon->physCellId) = p_req->v.AddOrReconfigure.PhysicalLayer.v.Common.v.PhysicalCellId.v;
+      LOG_A(GNB_APP," %s gnbId %d, nr_cell_index %d, physCellId %d \n",__FUNCTION__,gnbId,nr_cell_index,RC.nrrrc[gnbId]->carrier[nr_cell_index].physCellId );
+    //note W38: scc and sib1 moved to mac. let's say rrc does not need physcellid => still needed, where rrc report message to ttcn, phycell id is needed.
+      *RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->physCellId = p_req->v.AddOrReconfigure.PhysicalLayer.v.Common.v.PhysicalCellId.v;
     }
 
     /* Populating NR_ARFCN */
-    if (p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.d == NR_ASN1_FrequencyInfoDL_Type_R15)
-    {
-      RC.nrrrc[gnbId]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA =
-        p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.v.R15.absoluteFrequencyPointA;
-      LOG_A(GNB_APP, "fxn:%s DL absoluteFrequencyPointA :%ld\n", __FUNCTION__,
-          RC.nrrrc[gnbId]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA);
-    }
+    /*
+     TTCN configuraton: offsettopointA = 4, controlResourceSetZero =2 drived from absoluteFrequencyPointA and absoluteFrequencySSB
+     json parameter: offsettopointA = 86, controlResourceSetZero =12
+     since 7cca085ff0b16db04c53d24bf4dccbbae9f98486 above two are mixed: offsettoPointA = 4, controlResourceSetZero =12
+     this caused vrb_map[...] out of bound, then various segment faults.
+     previous WA: controlResourceSetZero to 2 caused regressions. this WA is to give up absoluteFrequencyPointA and absoluteFrequencySSB from TTCN, so offsettoPointA=86
+  
+    */
+    if (RC.ss.mode == SS_HWTMODEM) { 
+      if (p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.d == NR_ASN1_FrequencyInfoDL_Type_R15)
+      {
+        RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA =
+          p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.v.R15.absoluteFrequencyPointA;
+        LOG_A(GNB_APP, "fxn:%s DL absoluteFrequencyPointA :%ld\n", __FUNCTION__, 
+            RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA);
+      }
 
-    /* Populating absoluteFrequencySSB */
-    if (p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.v.R15.absoluteFrequencySSB.d == true)
-    {
-      *RC.nrrrc[gnbId]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB =
-        p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.v.R15.absoluteFrequencySSB.v;
-      LOG_A(GNB_APP, "fxn:%s DL absoluteFrequencySSB:%ld\n", __FUNCTION__,
-          *RC.nrrrc[gnbId]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB);
+      /* Populating absoluteFrequencySSB */
+      if (p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.v.R15.absoluteFrequencySSB.d == true &&
+          p_req->v.AddOrReconfigure.PhysicalLayer.d == true )
+      {
+        *RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB =
+          p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.v.R15.absoluteFrequencySSB.v;
+        LOG_A(GNB_APP, "fxn:%s DL absoluteFrequencySSB:%ld\n", __FUNCTION__, 
+            *RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB);  //W38 note: we have only one copy of SCC, fortunately, ttcn does not update its item after cell activated.
+        // note: no need to recover offsetToPointA as it can be deduced from absoluteFrequencySSB: get_ssb_offset_to_pointA API
+      }
     }
 
     /* Populating frequency band list */
+    if( p_req->v.AddOrReconfigure.PhysicalLayer.d == true &&
+        p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.d == true &&
+        p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.d == true && 0){
+        for (int i = 0; i < p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.v.R15.frequencyBandList.d; i++)
+        {
+          //LOG_I(GNB_APP,"mark: fxn:%s %d \n", __FUNCTION__,__LINE__);
+         
+          *RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[i] =
+            p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.v.R15.frequencyBandList.v[i];
+          
 
-    for (int i = 0; i < p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.v.R15.frequencyBandList.d; i++)
-    {
-      *RC.nrrrc[gnbId]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[i] =
-        p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.v.R15.frequencyBandList.v[i];
+          if (p_req->v.AddOrReconfigure.PhysicalLayer.v.Common.v.DuplexMode.v.d == NR_DuplexMode_Type_TDD)
+          {
+            LOG_A(NR_MAC, "Duplex mode TDD\n");
+            *RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->uplinkConfigCommon->frequencyInfoUL->frequencyBandList->list.array[i]= 
+              p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.v.R15.frequencyBandList.v[i];
 
-      if (p_req->v.AddOrReconfigure.PhysicalLayer.v.Common.v.DuplexMode.v.d == NR_DuplexMode_Type_TDD)
-      {
-        LOG_A(NR_MAC, "Duplex mode TDD\n");
-        *RC.nrrrc[gnbId]->configuration.scc->uplinkConfigCommon->frequencyInfoUL->frequencyBandList->list.array[i]=
-          p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.v.R15.frequencyBandList.v[i];
+          }
+          LOG_A(GNB_APP, "fxn:%s DL band[%d]:%ld UL band[%d]:%ld\n", __FUNCTION__, i, 
+              *RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[i],
+              i,
+              *RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->uplinkConfigCommon->frequencyInfoUL->frequencyBandList->list.array[i]);
+        
+        }
+	// LOG_I(GNB_APP,"mark: fxn:%s %d \n", __FUNCTION__,__LINE__);
+        for (int i = 0; i < p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.v.R15.scs_SpecificCarrierList.d; i++)
+        {
+            RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->downlinkConfigCommon->frequencyInfoDL->scs_SpecificCarrierList.list.array[i]->offsetToCarrier =
+              p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.v.R15.scs_SpecificCarrierList.v[i].offsetToCarrier;
 
-      }
-      LOG_A(GNB_APP, "fxn:%s DL band[%d]:%ld UL band[%d]:%ld\n", __FUNCTION__, i,
-          *RC.nrrrc[gnbId]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[i],
-          i,
-          *RC.nrrrc[gnbId]->configuration.scc->uplinkConfigCommon->frequencyInfoUL->frequencyBandList->list.array[i]);
+            RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->downlinkConfigCommon->frequencyInfoDL->scs_SpecificCarrierList.list.array[i]->subcarrierSpacing =
+              p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.v.R15.scs_SpecificCarrierList.v[i].subcarrierSpacing;
 
+            RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->downlinkConfigCommon->frequencyInfoDL->scs_SpecificCarrierList.list.array[i]->carrierBandwidth =
+              p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.v.R15.scs_SpecificCarrierList.v[i].carrierBandwidth;
+
+            *RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->ssbSubcarrierSpacing = 
+              RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->downlinkConfigCommon->frequencyInfoDL->scs_SpecificCarrierList.list.array[i]->subcarrierSpacing;
+            SS_context.mu =      RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->downlinkConfigCommon->frequencyInfoDL->scs_SpecificCarrierList.list.array[i]->subcarrierSpacing;
+        }
     }
-
+    
     /* Populating scs_SpecificCarrierList */
-    for (int i = 0; i < p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.v.R15.scs_SpecificCarrierList.d; i++)
+    if( p_req->v.AddOrReconfigure.PhysicalLayer.d == true &&
+        p_req->v.AddOrReconfigure.PhysicalLayer.v.Common.d == true &&
+        p_req->v.AddOrReconfigure.PhysicalLayer.v.Common.v.DuplexMode.d == true &&
+        p_req->v.AddOrReconfigure.PhysicalLayer.v.Common.v.DuplexMode.v.v.TDD.v.Config.Common.d == true)
     {
-      RC.nrrrc[gnbId]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->scs_SpecificCarrierList.list.array[i]->offsetToCarrier =
-        p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.v.R15.scs_SpecificCarrierList.v[i].offsetToCarrier;
+           
+        RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->tdd_UL_DL_ConfigurationCommon->referenceSubcarrierSpacing = 
+          p_req->v.AddOrReconfigure.PhysicalLayer.v.Common.v.DuplexMode.v.v.TDD.v.Config.Common.v.v.R15.referenceSubcarrierSpacing;
 
-      RC.nrrrc[gnbId]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->scs_SpecificCarrierList.list.array[i]->subcarrierSpacing =
-        p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.v.R15.scs_SpecificCarrierList.v[i].subcarrierSpacing;
+        RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->tdd_UL_DL_ConfigurationCommon->pattern1.dl_UL_TransmissionPeriodicity = 
+          p_req->v.AddOrReconfigure.PhysicalLayer.v.Common.v.DuplexMode.v.v.TDD.v.Config.Common.v.v.R15.pattern1.dl_UL_TransmissionPeriodicity;
 
-      RC.nrrrc[gnbId]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->scs_SpecificCarrierList.list.array[i]->carrierBandwidth =
-        p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.v.R15.scs_SpecificCarrierList.v[i].carrierBandwidth;
+        RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofDownlinkSlots = 
+          p_req->v.AddOrReconfigure.PhysicalLayer.v.Common.v.DuplexMode.v.v.TDD.v.Config.Common.v.v.R15.pattern1.nrofDownlinkSlots;
 
-      *RC.nrrrc[gnbId]->configuration.scc->ssbSubcarrierSpacing =
-        RC.nrrrc[gnbId]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->scs_SpecificCarrierList.list.array[i]->subcarrierSpacing;
-      SS_context.mu = 	RC.nrrrc[gnbId]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->scs_SpecificCarrierList.list.array[i]->subcarrierSpacing;
+        RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofDownlinkSymbols = 
+          p_req->v.AddOrReconfigure.PhysicalLayer.v.Common.v.DuplexMode.v.v.TDD.v.Config.Common.v.v.R15.pattern1.nrofDownlinkSymbols;
 
+        RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSlots = 
+          p_req->v.AddOrReconfigure.PhysicalLayer.v.Common.v.DuplexMode.v.v.TDD.v.Config.Common.v.v.R15.pattern1.nrofUplinkSlots;
 
-      LOG_A(GNB_APP, "fxn:%s DL scs_SpecificCarrierList.offsetToCarrier :%ld subcarrierSpacing:%ld carrierBandwidth:%ld \n",
-          __FUNCTION__,
-          RC.nrrrc[gnbId]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->scs_SpecificCarrierList.list.array[i]->offsetToCarrier,
-          RC.nrrrc[gnbId]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->scs_SpecificCarrierList.list.array[i]->subcarrierSpacing,
-          RC.nrrrc[gnbId]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->scs_SpecificCarrierList.list.array[i]->carrierBandwidth);
+        RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSymbols = 
+          p_req->v.AddOrReconfigure.PhysicalLayer.v.Common.v.DuplexMode.v.v.TDD.v.Config.Common.v.v.R15.pattern1.nrofUplinkSymbols;
     }
+    
 
-    if (p_req->v.AddOrReconfigure.PhysicalLayer.v.Common.v.DuplexMode.v.d == NR_DuplexMode_Type_TDD)
+    if (p_req->v.AddOrReconfigure.BcchConfig.d == true &&
+        p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.d == true &&
+      p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.MIB.d == true)
     {
-      RC.nrrrc[gnbId]->configuration.scc->tdd_UL_DL_ConfigurationCommon->referenceSubcarrierSpacing =
-        p_req->v.AddOrReconfigure.PhysicalLayer.v.Common.v.DuplexMode.v.v.TDD.v.Config.Common.v.v.R15.referenceSubcarrierSpacing;
-
-      RC.nrrrc[gnbId]->configuration.scc->tdd_UL_DL_ConfigurationCommon->pattern1.dl_UL_TransmissionPeriodicity =
-        p_req->v.AddOrReconfigure.PhysicalLayer.v.Common.v.DuplexMode.v.v.TDD.v.Config.Common.v.v.R15.pattern1.dl_UL_TransmissionPeriodicity;
-
-      RC.nrrrc[gnbId]->configuration.scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofDownlinkSlots =
-        p_req->v.AddOrReconfigure.PhysicalLayer.v.Common.v.DuplexMode.v.v.TDD.v.Config.Common.v.v.R15.pattern1.nrofDownlinkSlots;
-
-      RC.nrrrc[gnbId]->configuration.scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofDownlinkSymbols =
-        p_req->v.AddOrReconfigure.PhysicalLayer.v.Common.v.DuplexMode.v.v.TDD.v.Config.Common.v.v.R15.pattern1.nrofDownlinkSymbols;
-
-      RC.nrrrc[gnbId]->configuration.scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSlots =
-        p_req->v.AddOrReconfigure.PhysicalLayer.v.Common.v.DuplexMode.v.v.TDD.v.Config.Common.v.v.R15.pattern1.nrofUplinkSlots;
-
-      RC.nrrrc[gnbId]->configuration.scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSymbols =
-        p_req->v.AddOrReconfigure.PhysicalLayer.v.Common.v.DuplexMode.v.v.TDD.v.Config.Common.v.v.R15.pattern1.nrofUplinkSymbols;
-
+      RC.nrrrc[gnbId]->configuration[nr_cell_index].ssb_SubcarrierOffset = 
+        p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.MIB.v.message.v.mib.ssb_SubcarrierOffset;
     }
+    
 
-    RC.nrrrc[gnbId]->configuration.ssb_SubcarrierOffset =
-      p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.MIB.v.message.v.mib.ssb_SubcarrierOffset;
-
+    if (p_req->v.AddOrReconfigure.BcchConfig.d == true &&
+        p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.d == true &&
+        p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.MIB.d == true &&
+        p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.MIB.v.message.d ==true)
+    {
+        
+        NR_ControlResourceSetZero_t *pNR_ControlResourceSetZero_t =RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->downlinkConfigCommon->initialDownlinkBWP->pdcch_ConfigCommon->choice.setup->controlResourceSetZero;
+        LOG_D(NR_RRC,"mark %s line %d ccid %d \n  \
+        %d pNR_ControlResourceSetZero_t[%d] %x \n \
+        *pNR_ControlResourceSetZero_t[%d] %d \n \
+        scc[%d]->downlinkConfigCommon->initialDownlinkBWP->pdcch_ConfigCommon->choice.setup->controlResourceSetZero %x \n",
+            __FUNCTION__,
+        __LINE__, 
+        nr_cell_index,
+        __LINE__,  nr_cell_index,pNR_ControlResourceSetZero_t,
+        nr_cell_index, *pNR_ControlResourceSetZero_t,
+        nr_cell_index,  p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.MIB.v.message.v.mib.pdcch_ConfigSIB1.controlResourceSetZero);
+        //TODO setting up such params in simu causes unstabilities
+        if (RC.ss.mode == SS_HWTMODEM){
+	      RC.nrrrc[gnbId]->configuration[nr_cell_index].ssb_SubcarrierOffset =
+          p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.MIB.v.message.v.mib.ssb_SubcarrierOffset;
+          *RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->downlinkConfigCommon->initialDownlinkBWP->pdcch_ConfigCommon->choice.setup->controlResourceSetZero =
+          p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.MIB.v.message.v.mib.pdcch_ConfigSIB1.controlResourceSetZero;
+          *RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->downlinkConfigCommon->initialDownlinkBWP->pdcch_ConfigCommon->choice.setup->searchSpaceZero =
+           p_req->v.AddOrReconfigure.BcchConfig.v.BcchInfo.v.MIB.v.message.v.mib.pdcch_ConfigSIB1.searchSpaceZero;
+        }
+    }
+   
     /* UL Absolute Frequency Population  */
     /* Populating NR_ARFCN */
-    if (p_req->v.AddOrReconfigure.PhysicalLayer.v.Uplink.v.Uplink.v.v.Config.FrequencyInfoUL.v.d == NR_ASN1_FrequencyInfoUL_Type_R15)
+    if (p_req->v.AddOrReconfigure.PhysicalLayer.d ==true &&
+        p_req->v.AddOrReconfigure.PhysicalLayer.v.Uplink.d ==true &&
+        p_req->v.AddOrReconfigure.PhysicalLayer.v.Uplink.v.Uplink.d == true &&
+        p_req->v.AddOrReconfigure.PhysicalLayer.v.Uplink.v.Uplink.v.d == NR_Uplink_Type_Config &&
+        p_req->v.AddOrReconfigure.PhysicalLayer.v.Uplink.v.Uplink.v.v.Config.FrequencyInfoUL.d == true &&
+        p_req->v.AddOrReconfigure.PhysicalLayer.v.Uplink.v.Uplink.v.v.Config.FrequencyInfoUL.v.d == NR_ASN1_FrequencyInfoUL_Type_R15)
     {
-
-      LOG_I(NR_MAC,"fxn:%s Populating FrequencyInfoUL from TTCN. number of scs:%ld \n",
-      __FUNCTION__,
-      p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.v.R15.scs_SpecificCarrierList.d);
 
       /* Populating scs_SpecificCarrierList */
       for (int i = 0; i < p_req->v.AddOrReconfigure.PhysicalLayer.v.Uplink.v.Uplink.v.v.Config.FrequencyInfoUL.v.v.R15.scs_SpecificCarrierList.d; i++)
       {
 
-        RC.nrrrc[gnbId]->configuration.scc->uplinkConfigCommon->frequencyInfoUL->scs_SpecificCarrierList.list.array[i]->carrierBandwidth=
-          p_req->v.AddOrReconfigure.PhysicalLayer.v.Uplink.v.Uplink.v.v.Config.FrequencyInfoUL.v.v.R15.scs_SpecificCarrierList.v[i].carrierBandwidth;
+        if (p_req->v.AddOrReconfigure.PhysicalLayer.v.Uplink.v.Uplink.v.v.Config.FrequencyInfoUL.d == true  &&
+            p_req->v.AddOrReconfigure.PhysicalLayer.d == true )
+        {
+          RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->uplinkConfigCommon->frequencyInfoUL->scs_SpecificCarrierList.list.array[i]->carrierBandwidth=
+            p_req->v.AddOrReconfigure.PhysicalLayer.v.Uplink.v.Uplink.v.v.Config.FrequencyInfoUL.v.v.R15.scs_SpecificCarrierList.v[i].carrierBandwidth;
 
-        RC.nrrrc[gnbId]->configuration.scc->uplinkConfigCommon->frequencyInfoUL->scs_SpecificCarrierList.list.array[i]->offsetToCarrier =
-          p_req->v.AddOrReconfigure.PhysicalLayer.v.Uplink.v.Uplink.v.v.Config.FrequencyInfoUL.v.v.R15.scs_SpecificCarrierList.v[i].offsetToCarrier;
+          RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->uplinkConfigCommon->frequencyInfoUL->scs_SpecificCarrierList.list.array[i]->offsetToCarrier =
+            p_req->v.AddOrReconfigure.PhysicalLayer.v.Uplink.v.Uplink.v.v.Config.FrequencyInfoUL.v.v.R15.scs_SpecificCarrierList.v[i].offsetToCarrier;
 
-        RC.nrrrc[gnbId]->configuration.scc->uplinkConfigCommon->frequencyInfoUL->scs_SpecificCarrierList.list.array[i]->subcarrierSpacing =
-          p_req->v.AddOrReconfigure.PhysicalLayer.v.Uplink.v.Uplink.v.v.Config.FrequencyInfoUL.v.v.R15.scs_SpecificCarrierList.v[i].subcarrierSpacing;
-        LOG_A(GNB_APP,
-            "fxn:%s UL scs_SpecificCarrierList.carrierBandwidth:%ld\n scs_SpecificCarrierList.offsetToCarrier:%ld\n scs_SpecificCarrierList.subcarrierSpacing:%ld",
-            __FUNCTION__,
-            RC.nrrrc[gnbId]->configuration.scc->uplinkConfigCommon->frequencyInfoUL->scs_SpecificCarrierList.list.array[i]->carrierBandwidth,
-            RC.nrrrc[gnbId]->configuration.scc->uplinkConfigCommon->frequencyInfoUL->scs_SpecificCarrierList.list.array[i]->offsetToCarrier,
-            RC.nrrrc[gnbId]->configuration.scc->uplinkConfigCommon->frequencyInfoUL->scs_SpecificCarrierList.list.array[i]->subcarrierSpacing);
+          RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->uplinkConfigCommon->frequencyInfoUL->scs_SpecificCarrierList.list.array[i]->subcarrierSpacing =
+            p_req->v.AddOrReconfigure.PhysicalLayer.v.Uplink.v.Uplink.v.v.Config.FrequencyInfoUL.v.v.R15.scs_SpecificCarrierList.v[i].subcarrierSpacing;
+          LOG_A(GNB_APP, 
+              "fxn:%s UL scs_SpecificCarrierList.carrierBandwidth:%ld\n scs_SpecificCarrierList.offsetToCarrier:%ld\n scs_SpecificCarrierList.subcarrierSpacing:%ld", 
+              __FUNCTION__, 
+              RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->uplinkConfigCommon->frequencyInfoUL->scs_SpecificCarrierList.list.array[i]->carrierBandwidth,
+              RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->uplinkConfigCommon->frequencyInfoUL->scs_SpecificCarrierList.list.array[i]->offsetToCarrier,
+              RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->uplinkConfigCommon->frequencyInfoUL->scs_SpecificCarrierList.list.array[i]->subcarrierSpacing);
+
+          *RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->uplinkConfigCommon->frequencyInfoUL->p_Max =
+            p_req->v.AddOrReconfigure.PhysicalLayer.v.Uplink.v.Uplink.v.v.Config.FrequencyInfoUL.v.v.R15.p_Max.v;
+          LOG_A(GNB_APP, "fxn:%s UL p_Max :%ld\n", __FUNCTION__, 
+              *RC.nrrrc[gnbId]->configuration[nr_cell_index].scc->uplinkConfigCommon->frequencyInfoUL->p_Max);
+        }
       }
-      *RC.nrrrc[gnbId]->configuration.scc->uplinkConfigCommon->frequencyInfoUL->p_Max =
-        p_req->v.AddOrReconfigure.PhysicalLayer.v.Uplink.v.Uplink.v.v.Config.FrequencyInfoUL.v.v.R15.p_Max.v;
 
-      LOG_A(GNB_APP, "fxn:%s UL p_Max :%ld\n", __FUNCTION__,
-          *RC.nrrrc[gnbId]->configuration.scc->uplinkConfigCommon->frequencyInfoUL->p_Max);
 
     }
+
+   
     /*****************************************************************************/
+    MessageDef *msg_p = NULL;
+    msg_p = itti_alloc_new_message (TASK_SYS_GNB, 0, NRRRC_CONFIGURATION_REQ);
+    LOG_I(GNB_APP,"ss_gNB Sending configuration message to NR_RRC task for cells\n");
+    memcpy(&NRRRC_CONFIGURATION_REQ(msg_p), &RC.nrrrc[gnbId]->configuration,sizeof(NRRRC_CONFIGURATION_REQ(msg_p)));
+    itti_send_msg_to_task (TASK_RRC_GNB, GNB_MODULE_ID_TO_INSTANCE(gnbId), msg_p);
   }
   return true;
 }
@@ -1234,7 +1474,8 @@ bool ss_task_sys_nr_handle_cellConfigRadioBearer(struct NR_SYSTEM_CTRL_REQ *req)
   {
     LOG_A(GNB_APP, "[SYS-GNB] BearerList size:%lu\n", BearerList->d);
     NRRRC_RBLIST_CFG_REQ(msg_p).rb_count = 0;
-    NRRRC_RBLIST_CFG_REQ(msg_p).cell_index = 0;  //TODO: change to multicell index later
+    NRRRC_RBLIST_CFG_REQ(msg_p).cell_index = get_gNB_cell_index(req->Common.CellId, SS_context.SSCell_list); //TODO: change to multicell index later
+    
     for (int i = 0; i < BearerList->d; i++)
     {
       LOG_A(GNB_APP,"[SYS-GNB] RB Index i:%d\n", i);
@@ -1274,7 +1515,7 @@ bool ss_task_sys_nr_handle_cellConfigRadioBearer(struct NR_SYSTEM_CTRL_REQ *req)
                   NR_QFI_t * qfi = CALLOC(1,sizeof(NR_QFI_t));
                   *qfi = BearerList->v[i].Config.v.AddOrReconfigure.Sdap.v.v.Config.v.SdapConfig.MappedQoS_Flows.v.v[j];
                   ASN_SEQUENCE_ADD(&sdap->mappedQoS_FlowsToAdd->list,qfi);
-                }
+                } 
               }
               rbConfig->Sdap = sdap;
             }else if(BearerList->v[i].Config.v.AddOrReconfigure.Sdap.v.v.Config.d == SdapConfigInfo_Type_TransparentMode){
@@ -1674,8 +1915,8 @@ bool ss_task_sys_nr_handle_pdcpCount(struct NR_SYSTEM_CTRL_REQ *req)
 {
   (void)req;
 
-  //uint16_t rnti = SS_context.SSCell_list[req->Common.CellId].ss_rnti_g;
-  uint16_t rnti = SS_context.ss_rnti_g;
+  uint16_t rnti = SS_context.SSCell_list[nr_cell_index].ss_rnti_g;
+  //uint16_t rnti = SS_context.ss_rnti_g;
   if (!req->Common.ControlInfo.CnfFlag) {
     return true;
   }

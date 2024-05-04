@@ -153,6 +153,17 @@ static void _adbgNrSys__RlcBearerRouting_Type(acpCtx_t _ctx, const struct RlcBea
 	_adbgNrSys__RlcBearerRouting_Type_Value(_ctx, &p->v, p->d);
 }
 
+static void _adbgNrSys__MacBearerRouting_Type(acpCtx_t _ctx, const struct MacBearerRouting_Type* p)
+{
+	adbgPrintLog(_ctx, "NR := %s (%d)", adbgNrSys__NR_CellId_Type__ToString(p->NR), (int)p->NR);
+}
+
+static void _adbgNrSys__MacBearerRouting_Type_NR_ReqAspCommonPart_Type_MacBearerRouting_Optional(acpCtx_t _ctx, const struct MacBearerRouting_Type_NR_ReqAspCommonPart_Type_MacBearerRouting_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__MacBearerRouting_Type(_ctx, &p->v);
+}
+
 static void _adbgNrSys__SystemFrameNumberInfo_Type_Value(acpCtx_t _ctx, const union SystemFrameNumberInfo_Type_Value* p, enum SystemFrameNumberInfo_Type_Sel d)
 {
 	if (d == SystemFrameNumberInfo_Type_Number) {
@@ -248,6 +259,28 @@ static void _adbgNrSys__SlotTimingInfo_Type(acpCtx_t _ctx, const struct SlotTimi
 	_adbgNrSys__SlotTimingInfo_Type_Value(_ctx, &p->v, p->d);
 }
 
+static void _adbgNrSys__SymbolTimingInfo_Type_Value(acpCtx_t _ctx, const union SymbolTimingInfo_Type_Value* p, enum SymbolTimingInfo_Type_Sel d)
+{
+	if (d == SymbolTimingInfo_Type_SymbolOffset) {
+		adbgPrintLog(_ctx, "SymbolOffset := %u", (unsigned int)p->SymbolOffset);
+		return;
+	}
+	if (d == SymbolTimingInfo_Type_FirstSymbol) {
+		adbgPrintLog(_ctx, "FirstSymbol := %s", (p->FirstSymbol ? "true" : "false"));
+		return;
+	}
+	if (d == SymbolTimingInfo_Type_Any) {
+		adbgPrintLog(_ctx, "Any := %s", (p->Any ? "true" : "false"));
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SymbolTimingInfo_Type(acpCtx_t _ctx, const struct SymbolTimingInfo_Type* p)
+{
+	_adbgNrSys__SymbolTimingInfo_Type_Value(_ctx, &p->v, p->d);
+}
+
 static void _adbgNrSys__SubFrameTiming_Type(acpCtx_t _ctx, const struct SubFrameTiming_Type* p)
 {
 	adbgPrintLog(_ctx, "SFN := { ");
@@ -264,6 +297,10 @@ static void _adbgNrSys__SubFrameTiming_Type(acpCtx_t _ctx, const struct SubFrame
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "Slot := { ");
 	_adbgNrSys__SlotTimingInfo_Type(_ctx, &p->Slot);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "Symbol := { ");
+	_adbgNrSys__SymbolTimingInfo_Type(_ctx, &p->Symbol);
 	adbgPrintLog(_ctx, " }");
 }
 
@@ -310,6 +347,11 @@ static void _adbgNrSys__NR_ReqAspCommonPart_Type(acpCtx_t _ctx, const struct NR_
 	_adbgNrSys__RlcBearerRouting_Type(_ctx, &p->RlcBearerRouting);
 	adbgPrintLog(_ctx, " }");
 	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "MacBearerRouting := ");
+	if (p->MacBearerRouting.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__MacBearerRouting_Type_NR_ReqAspCommonPart_Type_MacBearerRouting_Optional(_ctx, &p->MacBearerRouting);
+	if (p->MacBearerRouting.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "TimingInfo := { ");
 	_adbgNrSys__TimingInfo_Type(_ctx, &p->TimingInfo);
 	adbgPrintLog(_ctx, " }");
@@ -319,32 +361,20 @@ static void _adbgNrSys__NR_ReqAspCommonPart_Type(acpCtx_t _ctx, const struct NR_
 	adbgPrintLog(_ctx, " }");
 }
 
-static const char* adbgNrSys__NR_CellCapability_Type__ToString(NR_CellCapability_Type v)
+static const char* adbgNrSys__NR_CellCA_Capability_Type__ToString(NR_CellCA_Capability_Type v)
 {
 	switch(v) {
-		case NR_CellCapability_broadcastOnlyCell: return "NR_CellCapability_broadcastOnlyCell";
-		case NR_CellCapability_minimumUplinkCell: return "NR_CellCapability_minimumUplinkCell";
-		case NR_CellCapability_fullCell: return "NR_CellCapability_fullCell";
-		default: return "Unknown";
-	}
-}
-
-static const char* adbgNrSys__NR_CellInitialCAConfig_Type__ToString(NR_CellInitialCAConfig_Type v)
-{
-	switch(v) {
-		case NR_CellInitialCAConfig_SpCell: return "NR_CellInitialCAConfig_SpCell";
-		case NR_CellInitialCAConfig_Scell_Active: return "NR_CellInitialCAConfig_Scell_Active";
-		case NR_CellInitialCAConfig_Scell_Inactive: return "NR_CellInitialCAConfig_Scell_Inactive";
-		case NR_CellInitialCAConfig_Scell_None: return "NR_CellInitialCAConfig_Scell_None";
+		case NR_CellCA_Capability_SpCell: return "NR_CellCA_Capability_SpCell";
+		case NR_CellCA_Capability_Scell_Active: return "NR_CellCA_Capability_Scell_Active";
+		case NR_CellCA_Capability_Scell_Inactive: return "NR_CellCA_Capability_Scell_Inactive";
+		case NR_CellCA_Capability_None: return "NR_CellCA_Capability_None";
 		default: return "Unknown";
 	}
 }
 
 static void _adbgNrSys__NR_SS_StaticCellResourceConfig_Type(acpCtx_t _ctx, const struct NR_SS_StaticCellResourceConfig_Type* p)
 {
-	adbgPrintLog(_ctx, "CellCapability := %s (%d)", adbgNrSys__NR_CellCapability_Type__ToString(p->CellCapability), (int)p->CellCapability);
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "CarrierAggregation := %s (%d)", adbgNrSys__NR_CellInitialCAConfig_Type__ToString(p->CarrierAggregation), (int)p->CarrierAggregation);
+	adbgPrintLog(_ctx, "CA_Capability := %s (%d)", adbgNrSys__NR_CellCA_Capability_Type__ToString(p->CA_Capability), (int)p->CA_Capability);
 }
 
 static void _adbgNrSys__NR_SS_StaticCellResourceConfig_Type_StaticResourceConfig_Optional(acpCtx_t _ctx, const struct NR_SS_StaticCellResourceConfig_Type_StaticResourceConfig_Optional* p)
@@ -458,8 +488,8 @@ static const char* adbgNrSys__SQN_NR_SubcarrierSpacing_e__ToString(SQN_NR_Subcar
 		case SQN_NR_SubcarrierSpacing_e_kHz60: return "SQN_NR_SubcarrierSpacing_e_kHz60";
 		case SQN_NR_SubcarrierSpacing_e_kHz120: return "SQN_NR_SubcarrierSpacing_e_kHz120";
 		case SQN_NR_SubcarrierSpacing_e_kHz240: return "SQN_NR_SubcarrierSpacing_e_kHz240";
-		case SQN_NR_SubcarrierSpacing_e_spare3: return "SQN_NR_SubcarrierSpacing_e_spare3";
-		case SQN_NR_SubcarrierSpacing_e_spare2: return "SQN_NR_SubcarrierSpacing_e_spare2";
+		case SQN_NR_SubcarrierSpacing_e_kHz480_v1700: return "SQN_NR_SubcarrierSpacing_e_kHz480_v1700";
+		case SQN_NR_SubcarrierSpacing_e_kHz960_v1700: return "SQN_NR_SubcarrierSpacing_e_kHz960_v1700";
 		case SQN_NR_SubcarrierSpacing_e_spare1: return "SQN_NR_SubcarrierSpacing_e_spare1";
 		default: return "Unknown";
 	}
@@ -1540,6 +1570,48 @@ static void _adbgNrSys__SQN_NR_SetupRelease_PDSCH_ServingCellConfig_pdsch_CodeBl
 	_adbgNrSys__SQN_NR_SetupRelease_PDSCH_ServingCellConfig_pdsch_CodeBlockGroupTransmissionList_r16(_ctx, &p->v);
 }
 
+static void _adbgNrSys__SQN_NR_SetupRelease_PDSCH_ServingCellConfig_downlinkHARQ_FeedbackDisabled_r17_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_PDSCH_ServingCellConfig_downlinkHARQ_FeedbackDisabled_r17_Value* p, enum SQN_NR_SetupRelease_PDSCH_ServingCellConfig_downlinkHARQ_FeedbackDisabled_r17_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_PDSCH_ServingCellConfig_downlinkHARQ_FeedbackDisabled_r17_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_PDSCH_ServingCellConfig_downlinkHARQ_FeedbackDisabled_r17_setup) {
+		adbgPrintLog(_ctx, "setup := '");
+		for (size_t i1 = 0; i1 < 32; i1++) {
+			adbgPrintLog(_ctx, "%02X", p->setup[i1]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PDSCH_ServingCellConfig_downlinkHARQ_FeedbackDisabled_r17(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PDSCH_ServingCellConfig_downlinkHARQ_FeedbackDisabled_r17* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_PDSCH_ServingCellConfig_downlinkHARQ_FeedbackDisabled_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PDSCH_ServingCellConfig_downlinkHARQ_FeedbackDisabled_r17_SQN_NR_PDSCH_ServingCellConfig_downlinkHARQ_FeedbackDisabled_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PDSCH_ServingCellConfig_downlinkHARQ_FeedbackDisabled_r17_SQN_NR_PDSCH_ServingCellConfig_downlinkHARQ_FeedbackDisabled_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_PDSCH_ServingCellConfig_downlinkHARQ_FeedbackDisabled_r17(_ctx, &p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PDSCH_ServingCellConfig_nrofHARQ_ProcessesForPDSCH_v1700_e__ToString(SQN_NR_PDSCH_ServingCellConfig_nrofHARQ_ProcessesForPDSCH_v1700_e v)
+{
+	switch(v) {
+		case SQN_NR_PDSCH_ServingCellConfig_nrofHARQ_ProcessesForPDSCH_v1700_e_n32: return "SQN_NR_PDSCH_ServingCellConfig_nrofHARQ_ProcessesForPDSCH_v1700_e_n32";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PDSCH_ServingCellConfig_nrofHARQ_ProcessesForPDSCH_v1700_e_nrofHARQ_ProcessesForPDSCH_v1700_Optional(acpCtx_t _ctx, const struct SQN_NR_PDSCH_ServingCellConfig_nrofHARQ_ProcessesForPDSCH_v1700_e_nrofHARQ_ProcessesForPDSCH_v1700_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PDSCH_ServingCellConfig_nrofHARQ_ProcessesForPDSCH_v1700_e__ToString(p->v), (int)p->v);
+}
+
 static void _adbgNrSys__SQN_NR_PDSCH_ServingCellConfig(acpCtx_t _ctx, const struct SQN_NR_PDSCH_ServingCellConfig* p)
 {
 	adbgPrintLog(_ctx, "codeBlockGroupTransmission := ");
@@ -1566,6 +1638,14 @@ static void _adbgNrSys__SQN_NR_PDSCH_ServingCellConfig(acpCtx_t _ctx, const stru
 	if (p->pdsch_CodeBlockGroupTransmissionList_r16.d) { adbgPrintLog(_ctx, "{ "); };
 	_adbgNrSys__SQN_NR_SetupRelease_PDSCH_ServingCellConfig_pdsch_CodeBlockGroupTransmissionList_r16_SQN_NR_PDSCH_ServingCellConfig_pdsch_CodeBlockGroupTransmissionList_r16_Optional(_ctx, &p->pdsch_CodeBlockGroupTransmissionList_r16);
 	if (p->pdsch_CodeBlockGroupTransmissionList_r16.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "downlinkHARQ_FeedbackDisabled_r17 := ");
+	if (p->downlinkHARQ_FeedbackDisabled_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SetupRelease_PDSCH_ServingCellConfig_downlinkHARQ_FeedbackDisabled_r17_SQN_NR_PDSCH_ServingCellConfig_downlinkHARQ_FeedbackDisabled_r17_Optional(_ctx, &p->downlinkHARQ_FeedbackDisabled_r17);
+	if (p->downlinkHARQ_FeedbackDisabled_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "nrofHARQ_ProcessesForPDSCH_v1700 := ");
+	_adbgNrSys__SQN_NR_PDSCH_ServingCellConfig_nrofHARQ_ProcessesForPDSCH_v1700_e_nrofHARQ_ProcessesForPDSCH_v1700_Optional(_ctx, &p->nrofHARQ_ProcessesForPDSCH_v1700);
 }
 
 static void _adbgNrSys__NR_ASN1_PDSCH_ServingCellConfig_Type_Value(acpCtx_t _ctx, const union NR_ASN1_PDSCH_ServingCellConfig_Type_Value* p, enum NR_ASN1_PDSCH_ServingCellConfig_Type_Sel d)
@@ -2236,20 +2316,320 @@ static void _adbgNrSys__SQN_NR_SearchSpace(acpCtx_t _ctx, const struct SQN_NR_Se
 	if (p->searchSpaceType.d) { adbgPrintLog(_ctx, " }"); };
 }
 
-static void _adbgNrSys__NR_ASN1_SearchSpace_Type_Value(acpCtx_t _ctx, const union NR_ASN1_SearchSpace_Type_Value* p, enum NR_ASN1_SearchSpace_Type_Sel d)
+static void _adbgNrSys__SQN_NR_ControlResourceSetId_r16_SQN_NR_SearchSpaceExt_r16_controlResourceSetId_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_ControlResourceSetId_r16_SQN_NR_SearchSpaceExt_r16_controlResourceSetId_r16_Optional* p)
 {
-	if (d == NR_ASN1_SearchSpace_Type_R15) {
-		adbgPrintLog(_ctx, "R15 := { ");
-		_adbgNrSys__SQN_NR_SearchSpace(_ctx, &p->R15);
-		adbgPrintLog(_ctx, " }");
-		return;
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel1_r16_e__ToString(SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel1_r16_e v)
+{
+	switch(v) {
+		case SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel1_r16_e_n1: return "SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel1_r16_e_n1";
+		case SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel1_r16_e_n2: return "SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel1_r16_e_n2";
+		default: return "Unknown";
 	}
-	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel1_r16_e_aggregationLevel1_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel1_r16_e_aggregationLevel1_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel1_r16_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel2_r16_e__ToString(SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel2_r16_e v)
+{
+	switch(v) {
+		case SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel2_r16_e_n1: return "SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel2_r16_e_n1";
+		case SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel2_r16_e_n2: return "SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel2_r16_e_n2";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel2_r16_e_aggregationLevel2_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel2_r16_e_aggregationLevel2_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel2_r16_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel4_r16_e__ToString(SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel4_r16_e v)
+{
+	switch(v) {
+		case SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel4_r16_e_n1: return "SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel4_r16_e_n1";
+		case SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel4_r16_e_n2: return "SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel4_r16_e_n2";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel4_r16_e_aggregationLevel4_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel4_r16_e_aggregationLevel4_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel4_r16_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel8_r16_e__ToString(SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel8_r16_e v)
+{
+	switch(v) {
+		case SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel8_r16_e_n1: return "SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel8_r16_e_n1";
+		case SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel8_r16_e_n2: return "SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel8_r16_e_n2";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel8_r16_e_aggregationLevel8_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel8_r16_e_aggregationLevel8_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel8_r16_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel16_r16_e__ToString(SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel16_r16_e v)
+{
+	switch(v) {
+		case SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel16_r16_e_n1: return "SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel16_r16_e_n1";
+		case SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel16_r16_e_n2: return "SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel16_r16_e_n2";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel16_r16_e_aggregationLevel16_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel16_r16_e_aggregationLevel16_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel16_r16_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16* p)
+{
+	adbgPrintLog(_ctx, "aggregationLevel1_r16 := ");
+	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel1_r16_e_aggregationLevel1_r16_Optional(_ctx, &p->aggregationLevel1_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "aggregationLevel2_r16 := ");
+	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel2_r16_e_aggregationLevel2_r16_Optional(_ctx, &p->aggregationLevel2_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "aggregationLevel4_r16 := ");
+	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel4_r16_e_aggregationLevel4_r16_Optional(_ctx, &p->aggregationLevel4_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "aggregationLevel8_r16 := ");
+	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel8_r16_e_aggregationLevel8_r16_Optional(_ctx, &p->aggregationLevel8_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "aggregationLevel16_r16 := ");
+	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel16_r16_e_aggregationLevel16_r16_Optional(_ctx, &p->aggregationLevel16_r16);
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16* p)
+{
+	adbgPrintLog(_ctx, "nrofCandidates_CI_r16 := { ");
+	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16(_ctx, &p->nrofCandidates_CI_r16);
+	adbgPrintLog(_ctx, " }");
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16_dci_Format2_4_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16_dci_Format2_4_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16(_ctx, &p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel1_r16_e__ToString(SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel1_r16_e v)
+{
+	switch(v) {
+		case SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel1_r16_e_n1: return "SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel1_r16_e_n1";
+		case SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel1_r16_e_n2: return "SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel1_r16_e_n2";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel1_r16_e_aggregationLevel1_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel1_r16_e_aggregationLevel1_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel1_r16_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel2_r16_e__ToString(SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel2_r16_e v)
+{
+	switch(v) {
+		case SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel2_r16_e_n1: return "SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel2_r16_e_n1";
+		case SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel2_r16_e_n2: return "SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel2_r16_e_n2";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel2_r16_e_aggregationLevel2_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel2_r16_e_aggregationLevel2_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel2_r16_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel4_r16_e__ToString(SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel4_r16_e v)
+{
+	switch(v) {
+		case SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel4_r16_e_n1: return "SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel4_r16_e_n1";
+		case SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel4_r16_e_n2: return "SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel4_r16_e_n2";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel4_r16_e_aggregationLevel4_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel4_r16_e_aggregationLevel4_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel4_r16_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel8_r16_e__ToString(SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel8_r16_e v)
+{
+	switch(v) {
+		case SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel8_r16_e_n1: return "SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel8_r16_e_n1";
+		case SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel8_r16_e_n2: return "SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel8_r16_e_n2";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel8_r16_e_aggregationLevel8_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel8_r16_e_aggregationLevel8_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel8_r16_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel16_r16_e__ToString(SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel16_r16_e v)
+{
+	switch(v) {
+		case SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel16_r16_e_n1: return "SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel16_r16_e_n1";
+		case SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel16_r16_e_n2: return "SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel16_r16_e_n2";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel16_r16_e_aggregationLevel16_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel16_r16_e_aggregationLevel16_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel16_r16_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16* p)
+{
+	adbgPrintLog(_ctx, "aggregationLevel1_r16 := ");
+	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel1_r16_e_aggregationLevel1_r16_Optional(_ctx, &p->aggregationLevel1_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "aggregationLevel2_r16 := ");
+	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel2_r16_e_aggregationLevel2_r16_Optional(_ctx, &p->aggregationLevel2_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "aggregationLevel4_r16 := ");
+	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel4_r16_e_aggregationLevel4_r16_Optional(_ctx, &p->aggregationLevel4_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "aggregationLevel8_r16 := ");
+	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel8_r16_e_aggregationLevel8_r16_Optional(_ctx, &p->aggregationLevel8_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "aggregationLevel16_r16 := ");
+	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel16_r16_e_aggregationLevel16_r16_Optional(_ctx, &p->aggregationLevel16_r16);
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16* p)
+{
+	adbgPrintLog(_ctx, "nrofCandidates_IAB_r16 := { ");
+	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16(_ctx, &p->nrofCandidates_IAB_r16);
+	adbgPrintLog(_ctx, " }");
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16_dci_Format2_5_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16_dci_Format2_5_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_6_r16(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_6_r16* p)
+{
+	(void)_ctx;
+	(void)p;
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_6_r16_dci_Format2_6_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_6_r16_dci_Format2_6_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_6_r16(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16* p)
+{
+	adbgPrintLog(_ctx, "dci_Format2_4_r16 := ");
+	if (p->dci_Format2_4_r16.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16_dci_Format2_4_r16_Optional(_ctx, &p->dci_Format2_4_r16);
+	if (p->dci_Format2_4_r16.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "dci_Format2_5_r16 := ");
+	if (p->dci_Format2_5_r16.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16_dci_Format2_5_r16_Optional(_ctx, &p->dci_Format2_5_r16);
+	if (p->dci_Format2_5_r16.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "dci_Format2_6_r16 := ");
+	if (p->dci_Format2_6_r16.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_6_r16_dci_Format2_6_r16_Optional(_ctx, &p->dci_Format2_6_r16);
+	if (p->dci_Format2_6_r16.d) { adbgPrintLog(_ctx, " }"); };
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16* p)
+{
+	adbgPrintLog(_ctx, "common_r16 := { ");
+	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16(_ctx, &p->common_r16);
+	adbgPrintLog(_ctx, " }");
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_searchSpaceType_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_searchSpaceType_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16(_ctx, &p->v);
+}
+
+static void _adbgNrSys__Uint8_t_SQN_NR_SearchSpaceExt_r16_searchSpaceGroupIdList_r16_DynamicOptional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_SearchSpaceExt_r16_searchSpaceGroupIdList_r16_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "'");
+	for (size_t i3 = 0; i3 < p->v.d; i3++) {
+		adbgPrintLog(_ctx, "%02X", p->v.v[i3]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static void _adbgNrSys__B5_SQN_NR_SearchSpaceExt_r16_freqMonitorLocations_r16_Optional(acpCtx_t _ctx, const struct B5_SQN_NR_SearchSpaceExt_r16_freqMonitorLocations_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "'");
+	for (size_t i3 = 0; i3 < 5; i3++) {
+		adbgPrintLog(_ctx, "%02X", p->v[i3]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16* p)
+{
+	adbgPrintLog(_ctx, "controlResourceSetId_r16 := ");
+	_adbgNrSys__SQN_NR_ControlResourceSetId_r16_SQN_NR_SearchSpaceExt_r16_controlResourceSetId_r16_Optional(_ctx, &p->controlResourceSetId_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "searchSpaceType_r16 := ");
+	if (p->searchSpaceType_r16.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_searchSpaceType_r16_Optional(_ctx, &p->searchSpaceType_r16);
+	if (p->searchSpaceType_r16.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "searchSpaceGroupIdList_r16 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_SearchSpaceExt_r16_searchSpaceGroupIdList_r16_DynamicOptional(_ctx, &p->searchSpaceGroupIdList_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "freqMonitorLocations_r16 := ");
+	_adbgNrSys__B5_SQN_NR_SearchSpaceExt_r16_freqMonitorLocations_r16_Optional(_ctx, &p->freqMonitorLocations_r16);
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_R16_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_R16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SearchSpaceExt_r16(_ctx, &p->v);
 }
 
 static void _adbgNrSys__NR_ASN1_SearchSpace_Type(acpCtx_t _ctx, const struct NR_ASN1_SearchSpace_Type* p)
 {
-	_adbgNrSys__NR_ASN1_SearchSpace_Type_Value(_ctx, &p->v, p->d);
+	adbgPrintLog(_ctx, "R15 := { ");
+	_adbgNrSys__SQN_NR_SearchSpace(_ctx, &p->R15);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "R16 := ");
+	if (p->R16.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_R16_Optional(_ctx, &p->R16);
+	if (p->R16.d) { adbgPrintLog(_ctx, " }"); };
 }
 
 static void _adbgNrSys__NR_BWP_SearchSpaceConfig_Type(acpCtx_t _ctx, const struct NR_BWP_SearchSpaceConfig_Type* p)
@@ -2408,6 +2788,20 @@ static void _adbgNrSys__SQN_NR_ControlResourceSetId_v1610_SQN_NR_ControlResource
 	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
 }
 
+static const char* adbgNrSys__SQN_NR_ControlResourceSet_followUnifiedTCIstate_r17_e__ToString(SQN_NR_ControlResourceSet_followUnifiedTCIstate_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_ControlResourceSet_followUnifiedTCIstate_r17_e_enabled: return "SQN_NR_ControlResourceSet_followUnifiedTCIstate_r17_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_ControlResourceSet_followUnifiedTCIstate_r17_e_followUnifiedTCIstate_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_ControlResourceSet_followUnifiedTCIstate_r17_e_followUnifiedTCIstate_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_ControlResourceSet_followUnifiedTCIstate_r17_e__ToString(p->v), (int)p->v);
+}
+
 static void _adbgNrSys__SQN_NR_ControlResourceSet(acpCtx_t _ctx, const struct SQN_NR_ControlResourceSet* p)
 {
 	adbgPrintLog(_ctx, "controlResourceSetId := %u", (unsigned int)p->controlResourceSetId);
@@ -2449,6 +2843,9 @@ static void _adbgNrSys__SQN_NR_ControlResourceSet(acpCtx_t _ctx, const struct SQ
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "controlResourceSetId_v1610 := ");
 	_adbgNrSys__SQN_NR_ControlResourceSetId_v1610_SQN_NR_ControlResourceSet_controlResourceSetId_v1610_Optional(_ctx, &p->controlResourceSetId_v1610);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "followUnifiedTCIstate_r17 := ");
+	_adbgNrSys__SQN_NR_ControlResourceSet_followUnifiedTCIstate_r17_e_followUnifiedTCIstate_r17_Optional(_ctx, &p->followUnifiedTCIstate_r17);
 }
 
 static void _adbgNrSys__NR_ASN1_ControlResourceSet_Type_Value(acpCtx_t _ctx, const union NR_ASN1_ControlResourceSet_Type_Value* p, enum NR_ASN1_ControlResourceSet_Type_Sel d)
@@ -2917,6 +3314,24 @@ static void _adbgNrSys__SQN_NR_QCL_Info_SQN_NR_TCI_State_qcl_Type2_Optional(acpC
 	_adbgNrSys__SQN_NR_QCL_Info(_ctx, &p->v);
 }
 
+static void _adbgNrSys__SQN_NR_AdditionalPCIIndex_r17_SQN_NR_TCI_State_additionalPCI_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_AdditionalPCIIndex_r17_SQN_NR_TCI_State_additionalPCI_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_PUSCH_PathlossReferenceRS_Id_r17_SQN_NR_TCI_State_pathlossReferenceRS_Id_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PUSCH_PathlossReferenceRS_Id_r17_SQN_NR_TCI_State_pathlossReferenceRS_Id_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_Uplink_powerControlId_r17_SQN_NR_TCI_State_ul_powerControl_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_Uplink_powerControlId_r17_SQN_NR_TCI_State_ul_powerControl_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
 static void _adbgNrSys__SQN_NR_TCI_State(acpCtx_t _ctx, const struct SQN_NR_TCI_State* p)
 {
 	adbgPrintLog(_ctx, "tci_StateId := %u", (unsigned int)p->tci_StateId);
@@ -2929,6 +3344,15 @@ static void _adbgNrSys__SQN_NR_TCI_State(acpCtx_t _ctx, const struct SQN_NR_TCI_
 	if (p->qcl_Type2.d) { adbgPrintLog(_ctx, "{ "); };
 	_adbgNrSys__SQN_NR_QCL_Info_SQN_NR_TCI_State_qcl_Type2_Optional(_ctx, &p->qcl_Type2);
 	if (p->qcl_Type2.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "additionalPCI_r17 := ");
+	_adbgNrSys__SQN_NR_AdditionalPCIIndex_r17_SQN_NR_TCI_State_additionalPCI_r17_Optional(_ctx, &p->additionalPCI_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pathlossReferenceRS_Id_r17 := ");
+	_adbgNrSys__SQN_NR_PUSCH_PathlossReferenceRS_Id_r17_SQN_NR_TCI_State_pathlossReferenceRS_Id_r17_Optional(_ctx, &p->pathlossReferenceRS_Id_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "ul_powerControl_r17 := ");
+	_adbgNrSys__SQN_NR_Uplink_powerControlId_r17_SQN_NR_TCI_State_ul_powerControl_r17_Optional(_ctx, &p->ul_powerControl_r17);
 }
 
 static void _adbgNrSys__SQN_NR_TCI_State_SQN_NR_PDSCH_Config_tci_StatesToAddModList_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_TCI_State_SQN_NR_PDSCH_Config_tci_StatesToAddModList_DynamicOptional* p)
@@ -3742,6 +4166,12 @@ static void _adbgNrSys__SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_repetition
 	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_repetitionNumber_r16_e__ToString(p->v), (int)p->v);
 }
 
+static void _adbgNrSys__Uint8_t_SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_k0_v1710_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_k0_v1710_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
 static void _adbgNrSys__SQN_NR_PDSCH_TimeDomainResourceAllocation_r16(acpCtx_t _ctx, const struct SQN_NR_PDSCH_TimeDomainResourceAllocation_r16* p)
 {
 	adbgPrintLog(_ctx, "k0_r16 := ");
@@ -3753,6 +4183,9 @@ static void _adbgNrSys__SQN_NR_PDSCH_TimeDomainResourceAllocation_r16(acpCtx_t _
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "repetitionNumber_r16 := ");
 	_adbgNrSys__SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_repetitionNumber_r16_e_repetitionNumber_r16_Optional(_ctx, &p->repetitionNumber_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "k0_v1710 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_PDSCH_TimeDomainResourceAllocation_r16_k0_v1710_Optional(_ctx, &p->k0_v1710);
 }
 
 static void _adbgNrSys__SQN_NR_SetupRelease_PDSCH_Config_pdsch_TimeDomainAllocationListDCI_1_2_r16_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_PDSCH_Config_pdsch_TimeDomainAllocationListDCI_1_2_r16_Value* p, enum SQN_NR_SetupRelease_PDSCH_Config_pdsch_TimeDomainAllocationListDCI_1_2_r16_Sel d)
@@ -4069,7 +4502,7 @@ static const char* adbgNrSys__SQN_NR_SlotBased_r16_tciMapping_r16_e__ToString(SQ
 {
 	switch(v) {
 		case SQN_NR_SlotBased_r16_tciMapping_r16_e_cyclicMapping: return "SQN_NR_SlotBased_r16_tciMapping_r16_e_cyclicMapping";
-		case SQN_NR_SlotBased_r16_tciMapping_r16_e_sequenticalMapping: return "SQN_NR_SlotBased_r16_tciMapping_r16_e_sequenticalMapping";
+		case SQN_NR_SlotBased_r16_tciMapping_r16_e_sequentialMapping: return "SQN_NR_SlotBased_r16_tciMapping_r16_e_sequentialMapping";
 		default: return "Unknown";
 	}
 }
@@ -4078,7 +4511,7 @@ static void _adbgNrSys__SQN_NR_SlotBased_r16(acpCtx_t _ctx, const struct SQN_NR_
 {
 	adbgPrintLog(_ctx, "tciMapping_r16 := %s (%d)", adbgNrSys__SQN_NR_SlotBased_r16_tciMapping_r16_e__ToString(p->tciMapping_r16), (int)p->tciMapping_r16);
 	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "sequenceOffsetforRV_r16 := %u", (unsigned int)p->sequenceOffsetforRV_r16);
+	adbgPrintLog(_ctx, "sequenceOffsetForRV_r16 := %u", (unsigned int)p->sequenceOffsetForRV_r16);
 }
 
 static void _adbgNrSys__SQN_NR_SetupRelease_RepetitionSchemeConfig_r16_slotBased_r16_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_RepetitionSchemeConfig_r16_slotBased_r16_Value* p, enum SQN_NR_SetupRelease_RepetitionSchemeConfig_r16_slotBased_r16_Sel d)
@@ -4147,6 +4580,402 @@ static void _adbgNrSys__SQN_NR_SetupRelease_PDSCH_Config_repetitionSchemeConfig_
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
 	_adbgNrSys__SQN_NR_SetupRelease_PDSCH_Config_repetitionSchemeConfig_r16(_ctx, &p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_SlotBased_v1630_tciMapping_r16_e__ToString(SQN_NR_SlotBased_v1630_tciMapping_r16_e v)
+{
+	switch(v) {
+		case SQN_NR_SlotBased_v1630_tciMapping_r16_e_cyclicMapping: return "SQN_NR_SlotBased_v1630_tciMapping_r16_e_cyclicMapping";
+		case SQN_NR_SlotBased_v1630_tciMapping_r16_e_sequentialMapping: return "SQN_NR_SlotBased_v1630_tciMapping_r16_e_sequentialMapping";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SlotBased_v1630(acpCtx_t _ctx, const struct SQN_NR_SlotBased_v1630* p)
+{
+	adbgPrintLog(_ctx, "tciMapping_r16 := %s (%d)", adbgNrSys__SQN_NR_SlotBased_v1630_tciMapping_r16_e__ToString(p->tciMapping_r16), (int)p->tciMapping_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "sequenceOffsetForRV_r16 := %u", (unsigned int)p->sequenceOffsetForRV_r16);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_RepetitionSchemeConfig_v1630_slotBased_v1630_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_RepetitionSchemeConfig_v1630_slotBased_v1630_Value* p, enum SQN_NR_SetupRelease_RepetitionSchemeConfig_v1630_slotBased_v1630_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_RepetitionSchemeConfig_v1630_slotBased_v1630_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_RepetitionSchemeConfig_v1630_slotBased_v1630_setup) {
+		adbgPrintLog(_ctx, "setup := { ");
+		_adbgNrSys__SQN_NR_SlotBased_v1630(_ctx, &p->setup);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_RepetitionSchemeConfig_v1630_slotBased_v1630(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_RepetitionSchemeConfig_v1630_slotBased_v1630* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_RepetitionSchemeConfig_v1630_slotBased_v1630_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_RepetitionSchemeConfig_v1630(acpCtx_t _ctx, const struct SQN_NR_RepetitionSchemeConfig_v1630* p)
+{
+	adbgPrintLog(_ctx, "slotBased_v1630 := { ");
+	_adbgNrSys__SQN_NR_SetupRelease_RepetitionSchemeConfig_v1630_slotBased_v1630(_ctx, &p->slotBased_v1630);
+	adbgPrintLog(_ctx, " }");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PDSCH_Config_repetitionSchemeConfig_v1630_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_PDSCH_Config_repetitionSchemeConfig_v1630_Value* p, enum SQN_NR_SetupRelease_PDSCH_Config_repetitionSchemeConfig_v1630_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_PDSCH_Config_repetitionSchemeConfig_v1630_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_PDSCH_Config_repetitionSchemeConfig_v1630_setup) {
+		adbgPrintLog(_ctx, "setup := { ");
+		_adbgNrSys__SQN_NR_RepetitionSchemeConfig_v1630(_ctx, &p->setup);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PDSCH_Config_repetitionSchemeConfig_v1630(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PDSCH_Config_repetitionSchemeConfig_v1630* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_PDSCH_Config_repetitionSchemeConfig_v1630_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PDSCH_Config_repetitionSchemeConfig_v1630_SQN_NR_PDSCH_Config_repetitionSchemeConfig_v1630_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PDSCH_Config_repetitionSchemeConfig_v1630_SQN_NR_PDSCH_Config_repetitionSchemeConfig_v1630_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_PDSCH_Config_repetitionSchemeConfig_v1630(_ctx, &p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_OneShotFeedbackDCI_1_2_r17_e__ToString(SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_OneShotFeedbackDCI_1_2_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_OneShotFeedbackDCI_1_2_r17_e_enabled: return "SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_OneShotFeedbackDCI_1_2_r17_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_OneShotFeedbackDCI_1_2_r17_e_pdsch_HARQ_ACK_OneShotFeedbackDCI_1_2_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_OneShotFeedbackDCI_1_2_r17_e_pdsch_HARQ_ACK_OneShotFeedbackDCI_1_2_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_OneShotFeedbackDCI_1_2_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_EnhType3DCI_1_2_r17_e__ToString(SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_EnhType3DCI_1_2_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_EnhType3DCI_1_2_r17_e_enabled: return "SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_EnhType3DCI_1_2_r17_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_EnhType3DCI_1_2_r17_e_pdsch_HARQ_ACK_EnhType3DCI_1_2_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_EnhType3DCI_1_2_r17_e_pdsch_HARQ_ACK_EnhType3DCI_1_2_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_EnhType3DCI_1_2_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_EnhType3DCI_Field_1_2_r17_e__ToString(SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_EnhType3DCI_Field_1_2_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_EnhType3DCI_Field_1_2_r17_e_enabled: return "SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_EnhType3DCI_Field_1_2_r17_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_EnhType3DCI_Field_1_2_r17_e_pdsch_HARQ_ACK_EnhType3DCI_Field_1_2_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_EnhType3DCI_Field_1_2_r17_e_pdsch_HARQ_ACK_EnhType3DCI_Field_1_2_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_EnhType3DCI_Field_1_2_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_RetxDCI_1_2_r17_e__ToString(SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_RetxDCI_1_2_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_RetxDCI_1_2_r17_e_enabled: return "SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_RetxDCI_1_2_r17_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_RetxDCI_1_2_r17_e_pdsch_HARQ_ACK_RetxDCI_1_2_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_RetxDCI_1_2_r17_e_pdsch_HARQ_ACK_RetxDCI_1_2_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_RetxDCI_1_2_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PDSCH_Config_pucch_sSCellDynDCI_1_2_r17_e__ToString(SQN_NR_PDSCH_Config_pucch_sSCellDynDCI_1_2_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PDSCH_Config_pucch_sSCellDynDCI_1_2_r17_e_enabled: return "SQN_NR_PDSCH_Config_pucch_sSCellDynDCI_1_2_r17_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PDSCH_Config_pucch_sSCellDynDCI_1_2_r17_e_pucch_sSCellDynDCI_1_2_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PDSCH_Config_pucch_sSCellDynDCI_1_2_r17_e_pucch_sSCellDynDCI_1_2_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PDSCH_Config_pucch_sSCellDynDCI_1_2_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_TCI_State_SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17_explicitlist_dl_OrJoint_TCI_State_ToAddModList_r17_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_TCI_State_SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17_explicitlist_dl_OrJoint_TCI_State_ToAddModList_r17_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		adbgPrintLog(_ctx, "{ ");
+		_adbgNrSys__SQN_NR_TCI_State(_ctx, &p->v.v[i2]);
+		adbgPrintLog(_ctx, " }");
+		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgNrSys__SQN_NR_TCI_StateId_SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17_explicitlist_dl_OrJoint_TCI_State_ToReleaseList_r17_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_TCI_StateId_SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17_explicitlist_dl_OrJoint_TCI_State_ToReleaseList_r17_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "'");
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		adbgPrintLog(_ctx, "%02X", p->v.v[i2]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static void _adbgNrSys__SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17_explicitlist(acpCtx_t _ctx, const struct SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17_explicitlist* p)
+{
+	adbgPrintLog(_ctx, "dl_OrJoint_TCI_State_ToAddModList_r17 := ");
+	if (p->dl_OrJoint_TCI_State_ToAddModList_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_TCI_State_SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17_explicitlist_dl_OrJoint_TCI_State_ToAddModList_r17_DynamicOptional(_ctx, &p->dl_OrJoint_TCI_State_ToAddModList_r17);
+	if (p->dl_OrJoint_TCI_State_ToAddModList_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "dl_OrJoint_TCI_State_ToReleaseList_r17 := ");
+	_adbgNrSys__SQN_NR_TCI_StateId_SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17_explicitlist_dl_OrJoint_TCI_State_ToReleaseList_r17_DynamicOptional(_ctx, &p->dl_OrJoint_TCI_State_ToReleaseList_r17);
+}
+
+static void _adbgNrSys__SQN_NR_ServingCellAndBWP_Id_r17(acpCtx_t _ctx, const struct SQN_NR_ServingCellAndBWP_Id_r17* p)
+{
+	adbgPrintLog(_ctx, "servingcell_r17 := %u", (unsigned int)p->servingcell_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "bwp_r17 := %u", (unsigned int)p->bwp_r17);
+}
+
+static void _adbgNrSys__SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17_Value(acpCtx_t _ctx, const union SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17_Value* p, enum SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17_Sel d)
+{
+	if (d == SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17_explicitlist) {
+		adbgPrintLog(_ctx, "explicitlist := { ");
+		_adbgNrSys__SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17_explicitlist(_ctx, &p->explicitlist);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17_unifiedTCI_StateRef_r17) {
+		adbgPrintLog(_ctx, "unifiedTCI_StateRef_r17 := { ");
+		_adbgNrSys__SQN_NR_ServingCellAndBWP_Id_r17(_ctx, &p->unifiedTCI_StateRef_r17);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17(acpCtx_t _ctx, const struct SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17* p)
+{
+	_adbgNrSys__SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17_dl_OrJoint_TCIStateList_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17_dl_OrJoint_TCIStateList_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17(_ctx, &p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PDSCH_Config_beamAppTime_r17_e__ToString(SQN_NR_PDSCH_Config_beamAppTime_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PDSCH_Config_beamAppTime_r17_e_n1: return "SQN_NR_PDSCH_Config_beamAppTime_r17_e_n1";
+		case SQN_NR_PDSCH_Config_beamAppTime_r17_e_n2: return "SQN_NR_PDSCH_Config_beamAppTime_r17_e_n2";
+		case SQN_NR_PDSCH_Config_beamAppTime_r17_e_n4: return "SQN_NR_PDSCH_Config_beamAppTime_r17_e_n4";
+		case SQN_NR_PDSCH_Config_beamAppTime_r17_e_n7: return "SQN_NR_PDSCH_Config_beamAppTime_r17_e_n7";
+		case SQN_NR_PDSCH_Config_beamAppTime_r17_e_n14: return "SQN_NR_PDSCH_Config_beamAppTime_r17_e_n14";
+		case SQN_NR_PDSCH_Config_beamAppTime_r17_e_n28: return "SQN_NR_PDSCH_Config_beamAppTime_r17_e_n28";
+		case SQN_NR_PDSCH_Config_beamAppTime_r17_e_n42: return "SQN_NR_PDSCH_Config_beamAppTime_r17_e_n42";
+		case SQN_NR_PDSCH_Config_beamAppTime_r17_e_n56: return "SQN_NR_PDSCH_Config_beamAppTime_r17_e_n56";
+		case SQN_NR_PDSCH_Config_beamAppTime_r17_e_n70: return "SQN_NR_PDSCH_Config_beamAppTime_r17_e_n70";
+		case SQN_NR_PDSCH_Config_beamAppTime_r17_e_n84: return "SQN_NR_PDSCH_Config_beamAppTime_r17_e_n84";
+		case SQN_NR_PDSCH_Config_beamAppTime_r17_e_n98: return "SQN_NR_PDSCH_Config_beamAppTime_r17_e_n98";
+		case SQN_NR_PDSCH_Config_beamAppTime_r17_e_n112: return "SQN_NR_PDSCH_Config_beamAppTime_r17_e_n112";
+		case SQN_NR_PDSCH_Config_beamAppTime_r17_e_n224: return "SQN_NR_PDSCH_Config_beamAppTime_r17_e_n224";
+		case SQN_NR_PDSCH_Config_beamAppTime_r17_e_n336: return "SQN_NR_PDSCH_Config_beamAppTime_r17_e_n336";
+		case SQN_NR_PDSCH_Config_beamAppTime_r17_e_spare2: return "SQN_NR_PDSCH_Config_beamAppTime_r17_e_spare2";
+		case SQN_NR_PDSCH_Config_beamAppTime_r17_e_spare1: return "SQN_NR_PDSCH_Config_beamAppTime_r17_e_spare1";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PDSCH_Config_beamAppTime_r17_e_beamAppTime_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PDSCH_Config_beamAppTime_r17_e_beamAppTime_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PDSCH_Config_beamAppTime_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_MultiPDSCH_TDRA_r17(acpCtx_t _ctx, const struct SQN_NR_MultiPDSCH_TDRA_r17* p)
+{
+	adbgPrintLog(_ctx, "pdsch_TDRA_List_r17 := { ");
+	for (size_t i3 = 0; i3 < p->pdsch_TDRA_List_r17.d; i3++) {
+		adbgPrintLog(_ctx, "{ ");
+		_adbgNrSys__SQN_NR_PDSCH_TimeDomainResourceAllocation_r16(_ctx, &p->pdsch_TDRA_List_r17.v[i3]);
+		adbgPrintLog(_ctx, " }");
+		if (i3 != p->pdsch_TDRA_List_r17.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+	adbgPrintLog(_ctx, " }");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PDSCH_Config_pdsch_TimeDomainAllocationListForMultiPDSCH_r17_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_PDSCH_Config_pdsch_TimeDomainAllocationListForMultiPDSCH_r17_Value* p, enum SQN_NR_SetupRelease_PDSCH_Config_pdsch_TimeDomainAllocationListForMultiPDSCH_r17_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_PDSCH_Config_pdsch_TimeDomainAllocationListForMultiPDSCH_r17_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_PDSCH_Config_pdsch_TimeDomainAllocationListForMultiPDSCH_r17_setup) {
+		adbgPrintLog(_ctx, "setup := { ");
+		for (size_t i2 = 0; i2 < p->setup.d; i2++) {
+			adbgPrintLog(_ctx, "{ ");
+			_adbgNrSys__SQN_NR_MultiPDSCH_TDRA_r17(_ctx, &p->setup.v[i2]);
+			adbgPrintLog(_ctx, " }");
+			if (i2 != p->setup.d - 1) { adbgPrintLog(_ctx, ", "); }
+		}
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PDSCH_Config_pdsch_TimeDomainAllocationListForMultiPDSCH_r17(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PDSCH_Config_pdsch_TimeDomainAllocationListForMultiPDSCH_r17* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_PDSCH_Config_pdsch_TimeDomainAllocationListForMultiPDSCH_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PDSCH_Config_pdsch_TimeDomainAllocationListForMultiPDSCH_r17_SQN_NR_PDSCH_Config_pdsch_TimeDomainAllocationListForMultiPDSCH_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PDSCH_Config_pdsch_TimeDomainAllocationListForMultiPDSCH_r17_SQN_NR_PDSCH_Config_pdsch_TimeDomainAllocationListForMultiPDSCH_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_PDSCH_Config_pdsch_TimeDomainAllocationListForMultiPDSCH_r17(_ctx, &p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PDSCH_Config_dmrs_FD_OCC_DisabledForRank1_PDSCH_r17_e__ToString(SQN_NR_PDSCH_Config_dmrs_FD_OCC_DisabledForRank1_PDSCH_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PDSCH_Config_dmrs_FD_OCC_DisabledForRank1_PDSCH_r17_e_true: return "SQN_NR_PDSCH_Config_dmrs_FD_OCC_DisabledForRank1_PDSCH_r17_e_true";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PDSCH_Config_dmrs_FD_OCC_DisabledForRank1_PDSCH_r17_e_dmrs_FD_OCC_DisabledForRank1_PDSCH_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PDSCH_Config_dmrs_FD_OCC_DisabledForRank1_PDSCH_r17_e_dmrs_FD_OCC_DisabledForRank1_PDSCH_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PDSCH_Config_dmrs_FD_OCC_DisabledForRank1_PDSCH_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PDSCH_Config_minimumSchedulingOffsetK0_r17_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_PDSCH_Config_minimumSchedulingOffsetK0_r17_Value* p, enum SQN_NR_SetupRelease_PDSCH_Config_minimumSchedulingOffsetK0_r17_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_PDSCH_Config_minimumSchedulingOffsetK0_r17_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_PDSCH_Config_minimumSchedulingOffsetK0_r17_setup) {
+		adbgPrintLog(_ctx, "setup := '");
+		for (size_t i2 = 0; i2 < p->setup.d; i2++) {
+			adbgPrintLog(_ctx, "%02X", p->setup.v[i2]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PDSCH_Config_minimumSchedulingOffsetK0_r17(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PDSCH_Config_minimumSchedulingOffsetK0_r17* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_PDSCH_Config_minimumSchedulingOffsetK0_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PDSCH_Config_minimumSchedulingOffsetK0_r17_SQN_NR_PDSCH_Config_minimumSchedulingOffsetK0_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PDSCH_Config_minimumSchedulingOffsetK0_r17_SQN_NR_PDSCH_Config_minimumSchedulingOffsetK0_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_PDSCH_Config_minimumSchedulingOffsetK0_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__Uint8_t_SQN_NR_PDSCH_Config_harq_ProcessNumberSizeDCI_1_2_v1700_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_PDSCH_Config_harq_ProcessNumberSizeDCI_1_2_v1700_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__Uint8_t_SQN_NR_PDSCH_Config_harq_ProcessNumberSizeDCI_1_1_r17_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_PDSCH_Config_harq_ProcessNumberSizeDCI_1_1_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PDSCH_Config_mcs_Table_r17_e__ToString(SQN_NR_PDSCH_Config_mcs_Table_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PDSCH_Config_mcs_Table_r17_e_qam1024: return "SQN_NR_PDSCH_Config_mcs_Table_r17_e_qam1024";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PDSCH_Config_mcs_Table_r17_e_mcs_Table_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PDSCH_Config_mcs_Table_r17_e_mcs_Table_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PDSCH_Config_mcs_Table_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PDSCH_Config_mcs_TableDCI_1_2_r17_e__ToString(SQN_NR_PDSCH_Config_mcs_TableDCI_1_2_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PDSCH_Config_mcs_TableDCI_1_2_r17_e_qam1024: return "SQN_NR_PDSCH_Config_mcs_TableDCI_1_2_r17_e_qam1024";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PDSCH_Config_mcs_TableDCI_1_2_r17_e_mcs_TableDCI_1_2_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PDSCH_Config_mcs_TableDCI_1_2_r17_e_mcs_TableDCI_1_2_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PDSCH_Config_mcs_TableDCI_1_2_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PDSCH_Config_xOverheadMulticast_r17_e__ToString(SQN_NR_PDSCH_Config_xOverheadMulticast_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PDSCH_Config_xOverheadMulticast_r17_e_xOh6: return "SQN_NR_PDSCH_Config_xOverheadMulticast_r17_e_xOh6";
+		case SQN_NR_PDSCH_Config_xOverheadMulticast_r17_e_xOh12: return "SQN_NR_PDSCH_Config_xOverheadMulticast_r17_e_xOh12";
+		case SQN_NR_PDSCH_Config_xOverheadMulticast_r17_e_xOh18: return "SQN_NR_PDSCH_Config_xOverheadMulticast_r17_e_xOh18";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PDSCH_Config_xOverheadMulticast_r17_e_xOverheadMulticast_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PDSCH_Config_xOverheadMulticast_r17_e_xOverheadMulticast_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PDSCH_Config_xOverheadMulticast_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PDSCH_Config_priorityIndicatorDCI_4_2_r17_e__ToString(SQN_NR_PDSCH_Config_priorityIndicatorDCI_4_2_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PDSCH_Config_priorityIndicatorDCI_4_2_r17_e_enabled: return "SQN_NR_PDSCH_Config_priorityIndicatorDCI_4_2_r17_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PDSCH_Config_priorityIndicatorDCI_4_2_r17_e_priorityIndicatorDCI_4_2_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PDSCH_Config_priorityIndicatorDCI_4_2_r17_e_priorityIndicatorDCI_4_2_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PDSCH_Config_priorityIndicatorDCI_4_2_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__Uint8_t_SQN_NR_PDSCH_Config_sizeDCI_4_2_r17_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_PDSCH_Config_sizeDCI_4_2_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
 }
 
 static void _adbgNrSys__SQN_NR_PDSCH_Config(acpCtx_t _ctx, const struct SQN_NR_PDSCH_Config* p)
@@ -4337,6 +5166,68 @@ static void _adbgNrSys__SQN_NR_PDSCH_Config(acpCtx_t _ctx, const struct SQN_NR_P
 	if (p->repetitionSchemeConfig_r16.d) { adbgPrintLog(_ctx, "{ "); };
 	_adbgNrSys__SQN_NR_SetupRelease_PDSCH_Config_repetitionSchemeConfig_r16_SQN_NR_PDSCH_Config_repetitionSchemeConfig_r16_Optional(_ctx, &p->repetitionSchemeConfig_r16);
 	if (p->repetitionSchemeConfig_r16.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "repetitionSchemeConfig_v1630 := ");
+	if (p->repetitionSchemeConfig_v1630.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SetupRelease_PDSCH_Config_repetitionSchemeConfig_v1630_SQN_NR_PDSCH_Config_repetitionSchemeConfig_v1630_Optional(_ctx, &p->repetitionSchemeConfig_v1630);
+	if (p->repetitionSchemeConfig_v1630.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pdsch_HARQ_ACK_OneShotFeedbackDCI_1_2_r17 := ");
+	_adbgNrSys__SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_OneShotFeedbackDCI_1_2_r17_e_pdsch_HARQ_ACK_OneShotFeedbackDCI_1_2_r17_Optional(_ctx, &p->pdsch_HARQ_ACK_OneShotFeedbackDCI_1_2_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pdsch_HARQ_ACK_EnhType3DCI_1_2_r17 := ");
+	_adbgNrSys__SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_EnhType3DCI_1_2_r17_e_pdsch_HARQ_ACK_EnhType3DCI_1_2_r17_Optional(_ctx, &p->pdsch_HARQ_ACK_EnhType3DCI_1_2_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pdsch_HARQ_ACK_EnhType3DCI_Field_1_2_r17 := ");
+	_adbgNrSys__SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_EnhType3DCI_Field_1_2_r17_e_pdsch_HARQ_ACK_EnhType3DCI_Field_1_2_r17_Optional(_ctx, &p->pdsch_HARQ_ACK_EnhType3DCI_Field_1_2_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pdsch_HARQ_ACK_RetxDCI_1_2_r17 := ");
+	_adbgNrSys__SQN_NR_PDSCH_Config_pdsch_HARQ_ACK_RetxDCI_1_2_r17_e_pdsch_HARQ_ACK_RetxDCI_1_2_r17_Optional(_ctx, &p->pdsch_HARQ_ACK_RetxDCI_1_2_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pucch_sSCellDynDCI_1_2_r17 := ");
+	_adbgNrSys__SQN_NR_PDSCH_Config_pucch_sSCellDynDCI_1_2_r17_e_pucch_sSCellDynDCI_1_2_r17_Optional(_ctx, &p->pucch_sSCellDynDCI_1_2_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "dl_OrJoint_TCIStateList_r17 := ");
+	if (p->dl_OrJoint_TCIStateList_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_PDSCH_Config_dl_OrJoint_TCIStateList_r17_dl_OrJoint_TCIStateList_r17_Optional(_ctx, &p->dl_OrJoint_TCIStateList_r17);
+	if (p->dl_OrJoint_TCIStateList_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "beamAppTime_r17 := ");
+	_adbgNrSys__SQN_NR_PDSCH_Config_beamAppTime_r17_e_beamAppTime_r17_Optional(_ctx, &p->beamAppTime_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pdsch_TimeDomainAllocationListForMultiPDSCH_r17 := ");
+	if (p->pdsch_TimeDomainAllocationListForMultiPDSCH_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SetupRelease_PDSCH_Config_pdsch_TimeDomainAllocationListForMultiPDSCH_r17_SQN_NR_PDSCH_Config_pdsch_TimeDomainAllocationListForMultiPDSCH_r17_Optional(_ctx, &p->pdsch_TimeDomainAllocationListForMultiPDSCH_r17);
+	if (p->pdsch_TimeDomainAllocationListForMultiPDSCH_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "dmrs_FD_OCC_DisabledForRank1_PDSCH_r17 := ");
+	_adbgNrSys__SQN_NR_PDSCH_Config_dmrs_FD_OCC_DisabledForRank1_PDSCH_r17_e_dmrs_FD_OCC_DisabledForRank1_PDSCH_r17_Optional(_ctx, &p->dmrs_FD_OCC_DisabledForRank1_PDSCH_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "minimumSchedulingOffsetK0_r17 := ");
+	if (p->minimumSchedulingOffsetK0_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SetupRelease_PDSCH_Config_minimumSchedulingOffsetK0_r17_SQN_NR_PDSCH_Config_minimumSchedulingOffsetK0_r17_Optional(_ctx, &p->minimumSchedulingOffsetK0_r17);
+	if (p->minimumSchedulingOffsetK0_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "harq_ProcessNumberSizeDCI_1_2_v1700 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_PDSCH_Config_harq_ProcessNumberSizeDCI_1_2_v1700_Optional(_ctx, &p->harq_ProcessNumberSizeDCI_1_2_v1700);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "harq_ProcessNumberSizeDCI_1_1_r17 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_PDSCH_Config_harq_ProcessNumberSizeDCI_1_1_r17_Optional(_ctx, &p->harq_ProcessNumberSizeDCI_1_1_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "mcs_Table_r17 := ");
+	_adbgNrSys__SQN_NR_PDSCH_Config_mcs_Table_r17_e_mcs_Table_r17_Optional(_ctx, &p->mcs_Table_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "mcs_TableDCI_1_2_r17 := ");
+	_adbgNrSys__SQN_NR_PDSCH_Config_mcs_TableDCI_1_2_r17_e_mcs_TableDCI_1_2_r17_Optional(_ctx, &p->mcs_TableDCI_1_2_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "xOverheadMulticast_r17 := ");
+	_adbgNrSys__SQN_NR_PDSCH_Config_xOverheadMulticast_r17_e_xOverheadMulticast_r17_Optional(_ctx, &p->xOverheadMulticast_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "priorityIndicatorDCI_4_2_r17 := ");
+	_adbgNrSys__SQN_NR_PDSCH_Config_priorityIndicatorDCI_4_2_r17_e_priorityIndicatorDCI_4_2_r17_Optional(_ctx, &p->priorityIndicatorDCI_4_2_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "sizeDCI_4_2_r17 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_PDSCH_Config_sizeDCI_4_2_r17_Optional(_ctx, &p->sizeDCI_4_2_r17);
 }
 
 static void _adbgNrSys__NR_ASN1_PDSCH_Config_Type_Value(acpCtx_t _ctx, const union NR_ASN1_PDSCH_Config_Type_Value* p, enum NR_ASN1_PDSCH_Config_Type_Sel d)
@@ -4505,6 +5396,36 @@ static void _adbgNrSys__SQN_NR_SPS_Config_pdsch_AggregationFactor_r16_e_pdsch_Ag
 	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SPS_Config_pdsch_AggregationFactor_r16_e__ToString(p->v), (int)p->v);
 }
 
+static void _adbgNrSys__Uint8_t_SQN_NR_SPS_Config_sps_HARQ_Deferral_r17_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_SPS_Config_sps_HARQ_Deferral_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_PUCCH_ResourceId_SQN_NR_SPS_Config_n1PUCCH_AN_PUCCHsSCell_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PUCCH_ResourceId_SQN_NR_SPS_Config_n1PUCCH_AN_PUCCHsSCell_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__Uint16_t_SQN_NR_SPS_Config_periodicityExt_r17_Optional(acpCtx_t _ctx, const struct uint16_t_SQN_NR_SPS_Config_periodicityExt_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__Uint8_t_SQN_NR_SPS_Config_nrofHARQ_Processes_v1710_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_SPS_Config_nrofHARQ_Processes_v1710_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__Uint8_t_SQN_NR_SPS_Config_harq_ProcID_Offset_v1700_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_SPS_Config_harq_ProcID_Offset_v1700_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
 static void _adbgNrSys__SQN_NR_SPS_Config(acpCtx_t _ctx, const struct SQN_NR_SPS_Config* p)
 {
 	adbgPrintLog(_ctx, "periodicity := %s (%d)", adbgNrSys__SQN_NR_SPS_Config_periodicity_e__ToString(p->periodicity), (int)p->periodicity);
@@ -4531,6 +5452,21 @@ static void _adbgNrSys__SQN_NR_SPS_Config(acpCtx_t _ctx, const struct SQN_NR_SPS
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "pdsch_AggregationFactor_r16 := ");
 	_adbgNrSys__SQN_NR_SPS_Config_pdsch_AggregationFactor_r16_e_pdsch_AggregationFactor_r16_Optional(_ctx, &p->pdsch_AggregationFactor_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "sps_HARQ_Deferral_r17 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_SPS_Config_sps_HARQ_Deferral_r17_Optional(_ctx, &p->sps_HARQ_Deferral_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "n1PUCCH_AN_PUCCHsSCell_r17 := ");
+	_adbgNrSys__SQN_NR_PUCCH_ResourceId_SQN_NR_SPS_Config_n1PUCCH_AN_PUCCHsSCell_r17_Optional(_ctx, &p->n1PUCCH_AN_PUCCHsSCell_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "periodicityExt_r17 := ");
+	_adbgNrSys__Uint16_t_SQN_NR_SPS_Config_periodicityExt_r17_Optional(_ctx, &p->periodicityExt_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "nrofHARQ_Processes_v1710 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_SPS_Config_nrofHARQ_Processes_v1710_Optional(_ctx, &p->nrofHARQ_Processes_v1710);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "harq_ProcID_Offset_v1700 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_SPS_Config_harq_ProcID_Offset_v1700_Optional(_ctx, &p->harq_ProcID_Offset_v1700);
 }
 
 static void _adbgNrSys__NR_ASN1_SPS_Config_Type_Value(acpCtx_t _ctx, const union NR_ASN1_SPS_Config_Type_Value* p, enum NR_ASN1_SPS_Config_Type_Sel d)
@@ -4971,6 +5907,26 @@ static void _adbgNrSys__Uint16_t_SQN_NR_RACH_ConfigGeneric_prach_ConfigurationIn
 	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
 }
 
+static const char* adbgNrSys__SQN_NR_RACH_ConfigGeneric_ra_ResponseWindow_v1700_e__ToString(SQN_NR_RACH_ConfigGeneric_ra_ResponseWindow_v1700_e v)
+{
+	switch(v) {
+		case SQN_NR_RACH_ConfigGeneric_ra_ResponseWindow_v1700_e_sl240: return "SQN_NR_RACH_ConfigGeneric_ra_ResponseWindow_v1700_e_sl240";
+		case SQN_NR_RACH_ConfigGeneric_ra_ResponseWindow_v1700_e_sl320: return "SQN_NR_RACH_ConfigGeneric_ra_ResponseWindow_v1700_e_sl320";
+		case SQN_NR_RACH_ConfigGeneric_ra_ResponseWindow_v1700_e_sl640: return "SQN_NR_RACH_ConfigGeneric_ra_ResponseWindow_v1700_e_sl640";
+		case SQN_NR_RACH_ConfigGeneric_ra_ResponseWindow_v1700_e_sl960: return "SQN_NR_RACH_ConfigGeneric_ra_ResponseWindow_v1700_e_sl960";
+		case SQN_NR_RACH_ConfigGeneric_ra_ResponseWindow_v1700_e_sl1280: return "SQN_NR_RACH_ConfigGeneric_ra_ResponseWindow_v1700_e_sl1280";
+		case SQN_NR_RACH_ConfigGeneric_ra_ResponseWindow_v1700_e_sl1920: return "SQN_NR_RACH_ConfigGeneric_ra_ResponseWindow_v1700_e_sl1920";
+		case SQN_NR_RACH_ConfigGeneric_ra_ResponseWindow_v1700_e_sl2560: return "SQN_NR_RACH_ConfigGeneric_ra_ResponseWindow_v1700_e_sl2560";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_RACH_ConfigGeneric_ra_ResponseWindow_v1700_e_ra_ResponseWindow_v1700_Optional(acpCtx_t _ctx, const struct SQN_NR_RACH_ConfigGeneric_ra_ResponseWindow_v1700_e_ra_ResponseWindow_v1700_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_RACH_ConfigGeneric_ra_ResponseWindow_v1700_e__ToString(p->v), (int)p->v);
+}
+
 static void _adbgNrSys__SQN_NR_RACH_ConfigGeneric(acpCtx_t _ctx, const struct SQN_NR_RACH_ConfigGeneric* p)
 {
 	adbgPrintLog(_ctx, "prach_ConfigurationIndex := %u", (unsigned int)p->prach_ConfigurationIndex);
@@ -5003,6 +5959,9 @@ static void _adbgNrSys__SQN_NR_RACH_ConfigGeneric(acpCtx_t _ctx, const struct SQ
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "prach_ConfigurationIndex_v1610 := ");
 	_adbgNrSys__Uint16_t_SQN_NR_RACH_ConfigGeneric_prach_ConfigurationIndex_v1610_Optional(_ctx, &p->prach_ConfigurationIndex_v1610);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "ra_ResponseWindow_v1700 := ");
+	_adbgNrSys__SQN_NR_RACH_ConfigGeneric_ra_ResponseWindow_v1700_e_ra_ResponseWindow_v1700_Optional(_ctx, &p->ra_ResponseWindow_v1700);
 }
 
 static void _adbgNrSys__Uint8_t_SQN_NR_RACH_ConfigCommon_totalNumberOfRA_Preambles_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_RACH_ConfigCommon_totalNumberOfRA_Preambles_Optional* p)
@@ -5373,832 +6332,241 @@ static void _adbgNrSys__SQN_NR_RACH_ConfigCommon_prach_RootSequenceIndex_r16_pra
 	_adbgNrSys__SQN_NR_RACH_ConfigCommon_prach_RootSequenceIndex_r16(_ctx, &p->v);
 }
 
-static void _adbgNrSys__SQN_NR_RACH_ConfigCommon(acpCtx_t _ctx, const struct SQN_NR_RACH_ConfigCommon* p)
+static void _adbgNrSys__SQN_NR_RA_PrioritizationSliceInfo_r17(acpCtx_t _ctx, const struct SQN_NR_RA_PrioritizationSliceInfo_r17* p)
 {
-	adbgPrintLog(_ctx, "rach_ConfigGeneric := { ");
-	_adbgNrSys__SQN_NR_RACH_ConfigGeneric(_ctx, &p->rach_ConfigGeneric);
+	adbgPrintLog(_ctx, "{");
+	for (size_t i3 = 0; i3 < p->nsag_ID_List_r17.d; i3++) {
+		adbgPrintLog(_ctx, "'");
+		for (size_t i4 = 0; i4 < 8; i4++) {
+			adbgPrintLog(_ctx, "%02X", p->nsag_ID_List_r17.v[i3][i4]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		if (i3 != p->nsag_ID_List_r17.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
 	adbgPrintLog(_ctx, " }");
 	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "totalNumberOfRA_Preambles := ");
-	_adbgNrSys__Uint8_t_SQN_NR_RACH_ConfigCommon_totalNumberOfRA_Preambles_Optional(_ctx, &p->totalNumberOfRA_Preambles);
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "ssb_perRACH_OccasionAndCB_PreamblesPerSSB := ");
-	if (p->ssb_perRACH_OccasionAndCB_PreamblesPerSSB.d) { adbgPrintLog(_ctx, "{ "); };
-	_adbgNrSys__SQN_NR_RACH_ConfigCommon_ssb_perRACH_OccasionAndCB_PreamblesPerSSB_ssb_perRACH_OccasionAndCB_PreamblesPerSSB_Optional(_ctx, &p->ssb_perRACH_OccasionAndCB_PreamblesPerSSB);
-	if (p->ssb_perRACH_OccasionAndCB_PreamblesPerSSB.d) { adbgPrintLog(_ctx, " }"); };
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "groupBconfigured := ");
-	if (p->groupBconfigured.d) { adbgPrintLog(_ctx, "{ "); };
-	_adbgNrSys__SQN_NR_RACH_ConfigCommon_groupBconfigured_groupBconfigured_Optional(_ctx, &p->groupBconfigured);
-	if (p->groupBconfigured.d) { adbgPrintLog(_ctx, " }"); };
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "ra_ContentionResolutionTimer := %s (%d)", adbgNrSys__SQN_NR_RACH_ConfigCommon_ra_ContentionResolutionTimer_e__ToString(p->ra_ContentionResolutionTimer), (int)p->ra_ContentionResolutionTimer);
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "rsrp_ThresholdSSB := ");
-	_adbgNrSys__SQN_NR_RSRP_Range_SQN_NR_RACH_ConfigCommon_rsrp_ThresholdSSB_Optional(_ctx, &p->rsrp_ThresholdSSB);
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "rsrp_ThresholdSSB_SUL := ");
-	_adbgNrSys__SQN_NR_RSRP_Range_SQN_NR_RACH_ConfigCommon_rsrp_ThresholdSSB_SUL_Optional(_ctx, &p->rsrp_ThresholdSSB_SUL);
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "prach_RootSequenceIndex := { ");
-	_adbgNrSys__SQN_NR_RACH_ConfigCommon_prach_RootSequenceIndex(_ctx, &p->prach_RootSequenceIndex);
+	adbgPrintLog(_ctx, "ra_Prioritization_r17 := { ");
+	_adbgNrSys__SQN_NR_RA_Prioritization(_ctx, &p->ra_Prioritization_r17);
 	adbgPrintLog(_ctx, " }");
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "msg1_SubcarrierSpacing := ");
-	_adbgNrSys__SQN_NR_SubcarrierSpacing_e_SQN_NR_RACH_ConfigCommon_msg1_SubcarrierSpacing_Optional(_ctx, &p->msg1_SubcarrierSpacing);
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "restrictedSetConfig := %s (%d)", adbgNrSys__SQN_NR_RACH_ConfigCommon_restrictedSetConfig_e__ToString(p->restrictedSetConfig), (int)p->restrictedSetConfig);
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "msg3_transformPrecoder := ");
-	_adbgNrSys__SQN_NR_RACH_ConfigCommon_msg3_transformPrecoder_e_msg3_transformPrecoder_Optional(_ctx, &p->msg3_transformPrecoder);
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "ra_PrioritizationForAccessIdentity_r16 := ");
-	if (p->ra_PrioritizationForAccessIdentity_r16.d) { adbgPrintLog(_ctx, "{ "); };
-	_adbgNrSys__SQN_NR_RACH_ConfigCommon_ra_PrioritizationForAccessIdentity_r16_ra_PrioritizationForAccessIdentity_r16_Optional(_ctx, &p->ra_PrioritizationForAccessIdentity_r16);
-	if (p->ra_PrioritizationForAccessIdentity_r16.d) { adbgPrintLog(_ctx, " }"); };
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "prach_RootSequenceIndex_r16 := ");
-	if (p->prach_RootSequenceIndex_r16.d) { adbgPrintLog(_ctx, "{ "); };
-	_adbgNrSys__SQN_NR_RACH_ConfigCommon_prach_RootSequenceIndex_r16_prach_RootSequenceIndex_r16_Optional(_ctx, &p->prach_RootSequenceIndex_r16);
-	if (p->prach_RootSequenceIndex_r16.d) { adbgPrintLog(_ctx, " }"); };
 }
 
-static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommon_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommon_Value* p, enum SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommon_Sel d)
+static void _adbgNrSys__SQN_NR_RA_PrioritizationForSlicing_r17(acpCtx_t _ctx, const struct SQN_NR_RA_PrioritizationForSlicing_r17* p)
 {
-	if (d == SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommon_release) {
-		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
-		return;
-	}
-	if (d == SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommon_setup) {
-		adbgPrintLog(_ctx, "setup := { ");
-		_adbgNrSys__SQN_NR_RACH_ConfigCommon(_ctx, &p->setup);
+	adbgPrintLog(_ctx, "ra_PrioritizationSliceInfoList_r17 := { ");
+	for (size_t i2 = 0; i2 < p->ra_PrioritizationSliceInfoList_r17.d; i2++) {
+		adbgPrintLog(_ctx, "{ ");
+		_adbgNrSys__SQN_NR_RA_PrioritizationSliceInfo_r17(_ctx, &p->ra_PrioritizationSliceInfoList_r17.v[i2]);
 		adbgPrintLog(_ctx, " }");
-		return;
+		if (i2 != p->ra_PrioritizationSliceInfoList_r17.d - 1) { adbgPrintLog(_ctx, ", "); }
 	}
-	adbgPrintLog(_ctx, "INVALID");
-}
-
-static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommon(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommon* p)
-{
-	_adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommon_Value(_ctx, &p->v, p->d);
-}
-
-static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommon_SQN_NR_BWP_UplinkCommon_rach_ConfigCommon_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommon_SQN_NR_BWP_UplinkCommon_rach_ConfigCommon_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	_adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommon(_ctx, &p->v);
-}
-
-static const char* adbgNrSys__SQN_NR_PUSCH_ConfigCommon_groupHoppingEnabledTransformPrecoding_e__ToString(SQN_NR_PUSCH_ConfigCommon_groupHoppingEnabledTransformPrecoding_e v)
-{
-	switch(v) {
-		case SQN_NR_PUSCH_ConfigCommon_groupHoppingEnabledTransformPrecoding_e_enabled: return "SQN_NR_PUSCH_ConfigCommon_groupHoppingEnabledTransformPrecoding_e_enabled";
-		default: return "Unknown";
-	}
-}
-
-static void _adbgNrSys__SQN_NR_PUSCH_ConfigCommon_groupHoppingEnabledTransformPrecoding_e_groupHoppingEnabledTransformPrecoding_Optional(acpCtx_t _ctx, const struct SQN_NR_PUSCH_ConfigCommon_groupHoppingEnabledTransformPrecoding_e_groupHoppingEnabledTransformPrecoding_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PUSCH_ConfigCommon_groupHoppingEnabledTransformPrecoding_e__ToString(p->v), (int)p->v);
-}
-
-static void _adbgNrSys__Uint8_t_SQN_NR_PUSCH_TimeDomainResourceAllocation_k2_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_PUSCH_TimeDomainResourceAllocation_k2_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
-}
-
-static const char* adbgNrSys__SQN_NR_PUSCH_TimeDomainResourceAllocation_mappingType_e__ToString(SQN_NR_PUSCH_TimeDomainResourceAllocation_mappingType_e v)
-{
-	switch(v) {
-		case SQN_NR_PUSCH_TimeDomainResourceAllocation_mappingType_e_typeA: return "SQN_NR_PUSCH_TimeDomainResourceAllocation_mappingType_e_typeA";
-		case SQN_NR_PUSCH_TimeDomainResourceAllocation_mappingType_e_typeB: return "SQN_NR_PUSCH_TimeDomainResourceAllocation_mappingType_e_typeB";
-		default: return "Unknown";
-	}
-}
-
-static void _adbgNrSys__SQN_NR_PUSCH_TimeDomainResourceAllocation(acpCtx_t _ctx, const struct SQN_NR_PUSCH_TimeDomainResourceAllocation* p)
-{
-	adbgPrintLog(_ctx, "k2 := ");
-	_adbgNrSys__Uint8_t_SQN_NR_PUSCH_TimeDomainResourceAllocation_k2_Optional(_ctx, &p->k2);
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "mappingType := %s (%d)", adbgNrSys__SQN_NR_PUSCH_TimeDomainResourceAllocation_mappingType_e__ToString(p->mappingType), (int)p->mappingType);
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "startSymbolAndLength := %u", (unsigned int)p->startSymbolAndLength);
-}
-
-static void _adbgNrSys__SQN_NR_PUSCH_TimeDomainResourceAllocationList_SQN_NR_PUSCH_ConfigCommon_pusch_TimeDomainAllocationList_Optional(acpCtx_t _ctx, const struct SQN_NR_PUSCH_TimeDomainResourceAllocationList_SQN_NR_PUSCH_ConfigCommon_pusch_TimeDomainAllocationList_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	for (size_t i2 = 0; i2 < p->v.d; i2++) {
-		_adbgNrSys__SQN_NR_PUSCH_TimeDomainResourceAllocation(_ctx, &p->v.v[i2]);
-		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
-	}
-}
-
-static void _adbgNrSys__Int8_t_SQN_NR_PUSCH_ConfigCommon_msg3_DeltaPreamble_Optional(acpCtx_t _ctx, const struct int8_t_SQN_NR_PUSCH_ConfigCommon_msg3_DeltaPreamble_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "%d", (int)p->v);
-}
-
-static void _adbgNrSys__Int16_t_SQN_NR_PUSCH_ConfigCommon_p0_NominalWithGrant_Optional(acpCtx_t _ctx, const struct int16_t_SQN_NR_PUSCH_ConfigCommon_p0_NominalWithGrant_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "%d", (int)p->v);
-}
-
-static void _adbgNrSys__SQN_NR_PUSCH_ConfigCommon(acpCtx_t _ctx, const struct SQN_NR_PUSCH_ConfigCommon* p)
-{
-	adbgPrintLog(_ctx, "groupHoppingEnabledTransformPrecoding := ");
-	_adbgNrSys__SQN_NR_PUSCH_ConfigCommon_groupHoppingEnabledTransformPrecoding_e_groupHoppingEnabledTransformPrecoding_Optional(_ctx, &p->groupHoppingEnabledTransformPrecoding);
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "pusch_TimeDomainAllocationList := ");
-	if (p->pusch_TimeDomainAllocationList.d) { adbgPrintLog(_ctx, "{ "); };
-	_adbgNrSys__SQN_NR_PUSCH_TimeDomainResourceAllocationList_SQN_NR_PUSCH_ConfigCommon_pusch_TimeDomainAllocationList_Optional(_ctx, &p->pusch_TimeDomainAllocationList);
-	if (p->pusch_TimeDomainAllocationList.d) { adbgPrintLog(_ctx, " }"); };
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "msg3_DeltaPreamble := ");
-	_adbgNrSys__Int8_t_SQN_NR_PUSCH_ConfigCommon_msg3_DeltaPreamble_Optional(_ctx, &p->msg3_DeltaPreamble);
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "p0_NominalWithGrant := ");
-	_adbgNrSys__Int16_t_SQN_NR_PUSCH_ConfigCommon_p0_NominalWithGrant_Optional(_ctx, &p->p0_NominalWithGrant);
-}
-
-static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_pusch_ConfigCommon_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_BWP_UplinkCommon_pusch_ConfigCommon_Value* p, enum SQN_NR_SetupRelease_BWP_UplinkCommon_pusch_ConfigCommon_Sel d)
-{
-	if (d == SQN_NR_SetupRelease_BWP_UplinkCommon_pusch_ConfigCommon_release) {
-		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
-		return;
-	}
-	if (d == SQN_NR_SetupRelease_BWP_UplinkCommon_pusch_ConfigCommon_setup) {
-		adbgPrintLog(_ctx, "setup := { ");
-		_adbgNrSys__SQN_NR_PUSCH_ConfigCommon(_ctx, &p->setup);
-		adbgPrintLog(_ctx, " }");
-		return;
-	}
-	adbgPrintLog(_ctx, "INVALID");
-}
-
-static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_pusch_ConfigCommon(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_BWP_UplinkCommon_pusch_ConfigCommon* p)
-{
-	_adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_pusch_ConfigCommon_Value(_ctx, &p->v, p->d);
-}
-
-static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_pusch_ConfigCommon_SQN_NR_BWP_UplinkCommon_pusch_ConfigCommon_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_BWP_UplinkCommon_pusch_ConfigCommon_SQN_NR_BWP_UplinkCommon_pusch_ConfigCommon_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	_adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_pusch_ConfigCommon(_ctx, &p->v);
-}
-
-static void _adbgNrSys__Uint8_t_SQN_NR_PUCCH_ConfigCommon_pucch_ResourceCommon_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_PUCCH_ConfigCommon_pucch_ResourceCommon_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
-}
-
-static const char* adbgNrSys__SQN_NR_PUCCH_ConfigCommon_pucch_GroupHopping_e__ToString(SQN_NR_PUCCH_ConfigCommon_pucch_GroupHopping_e v)
-{
-	switch(v) {
-		case SQN_NR_PUCCH_ConfigCommon_pucch_GroupHopping_e_neither: return "SQN_NR_PUCCH_ConfigCommon_pucch_GroupHopping_e_neither";
-		case SQN_NR_PUCCH_ConfigCommon_pucch_GroupHopping_e_enable: return "SQN_NR_PUCCH_ConfigCommon_pucch_GroupHopping_e_enable";
-		case SQN_NR_PUCCH_ConfigCommon_pucch_GroupHopping_e_disable: return "SQN_NR_PUCCH_ConfigCommon_pucch_GroupHopping_e_disable";
-		default: return "Unknown";
-	}
-}
-
-static void _adbgNrSys__Uint16_t_SQN_NR_PUCCH_ConfigCommon_hoppingId_Optional(acpCtx_t _ctx, const struct uint16_t_SQN_NR_PUCCH_ConfigCommon_hoppingId_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
-}
-
-static void _adbgNrSys__Int16_t_SQN_NR_PUCCH_ConfigCommon_p0_nominal_Optional(acpCtx_t _ctx, const struct int16_t_SQN_NR_PUCCH_ConfigCommon_p0_nominal_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "%d", (int)p->v);
-}
-
-static void _adbgNrSys__SQN_NR_PUCCH_ConfigCommon(acpCtx_t _ctx, const struct SQN_NR_PUCCH_ConfigCommon* p)
-{
-	adbgPrintLog(_ctx, "pucch_ResourceCommon := ");
-	_adbgNrSys__Uint8_t_SQN_NR_PUCCH_ConfigCommon_pucch_ResourceCommon_Optional(_ctx, &p->pucch_ResourceCommon);
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "pucch_GroupHopping := %s (%d)", adbgNrSys__SQN_NR_PUCCH_ConfigCommon_pucch_GroupHopping_e__ToString(p->pucch_GroupHopping), (int)p->pucch_GroupHopping);
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "hoppingId := ");
-	_adbgNrSys__Uint16_t_SQN_NR_PUCCH_ConfigCommon_hoppingId_Optional(_ctx, &p->hoppingId);
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "p0_nominal := ");
-	_adbgNrSys__Int16_t_SQN_NR_PUCCH_ConfigCommon_p0_nominal_Optional(_ctx, &p->p0_nominal);
-}
-
-static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_pucch_ConfigCommon_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_BWP_UplinkCommon_pucch_ConfigCommon_Value* p, enum SQN_NR_SetupRelease_BWP_UplinkCommon_pucch_ConfigCommon_Sel d)
-{
-	if (d == SQN_NR_SetupRelease_BWP_UplinkCommon_pucch_ConfigCommon_release) {
-		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
-		return;
-	}
-	if (d == SQN_NR_SetupRelease_BWP_UplinkCommon_pucch_ConfigCommon_setup) {
-		adbgPrintLog(_ctx, "setup := { ");
-		_adbgNrSys__SQN_NR_PUCCH_ConfigCommon(_ctx, &p->setup);
-		adbgPrintLog(_ctx, " }");
-		return;
-	}
-	adbgPrintLog(_ctx, "INVALID");
-}
-
-static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_pucch_ConfigCommon(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_BWP_UplinkCommon_pucch_ConfigCommon* p)
-{
-	_adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_pucch_ConfigCommon_Value(_ctx, &p->v, p->d);
-}
-
-static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_pucch_ConfigCommon_SQN_NR_BWP_UplinkCommon_pucch_ConfigCommon_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_BWP_UplinkCommon_pucch_ConfigCommon_SQN_NR_BWP_UplinkCommon_pucch_ConfigCommon_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	_adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_pucch_ConfigCommon(_ctx, &p->v);
-}
-
-static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommonIAB_r16_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommonIAB_r16_Value* p, enum SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommonIAB_r16_Sel d)
-{
-	if (d == SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommonIAB_r16_release) {
-		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
-		return;
-	}
-	if (d == SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommonIAB_r16_setup) {
-		adbgPrintLog(_ctx, "setup := { ");
-		_adbgNrSys__SQN_NR_RACH_ConfigCommon(_ctx, &p->setup);
-		adbgPrintLog(_ctx, " }");
-		return;
-	}
-	adbgPrintLog(_ctx, "INVALID");
-}
-
-static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommonIAB_r16(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommonIAB_r16* p)
-{
-	_adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommonIAB_r16_Value(_ctx, &p->v, p->d);
-}
-
-static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommonIAB_r16_SQN_NR_BWP_UplinkCommon_rach_ConfigCommonIAB_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommonIAB_r16_SQN_NR_BWP_UplinkCommon_rach_ConfigCommonIAB_r16_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	_adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommonIAB_r16(_ctx, &p->v);
-}
-
-static const char* adbgNrSys__SQN_NR_BWP_UplinkCommon_useInterlacePUCCH_PUSCH_r16_e__ToString(SQN_NR_BWP_UplinkCommon_useInterlacePUCCH_PUSCH_r16_e v)
-{
-	switch(v) {
-		case SQN_NR_BWP_UplinkCommon_useInterlacePUCCH_PUSCH_r16_e_enabled: return "SQN_NR_BWP_UplinkCommon_useInterlacePUCCH_PUSCH_r16_e_enabled";
-		default: return "Unknown";
-	}
-}
-
-static void _adbgNrSys__SQN_NR_BWP_UplinkCommon_useInterlacePUCCH_PUSCH_r16_e_useInterlacePUCCH_PUSCH_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_BWP_UplinkCommon_useInterlacePUCCH_PUSCH_r16_e_useInterlacePUCCH_PUSCH_r16_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_BWP_UplinkCommon_useInterlacePUCCH_PUSCH_r16_e__ToString(p->v), (int)p->v);
-}
-
-static void _adbgNrSys__Uint16_t_SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PRACH_ConfigurationIndex_r16_Optional(acpCtx_t _ctx, const struct uint16_t_SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PRACH_ConfigurationIndex_r16_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
-}
-
-static const char* adbgNrSys__SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e__ToString(SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e v)
-{
-	switch(v) {
-		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e_one: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e_one";
-		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e_two: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e_two";
-		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e_four: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e_four";
-		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e_eight: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e_eight";
-		default: return "Unknown";
-	}
-}
-
-static void _adbgNrSys__SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e_msgA_RO_FDM_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e_msgA_RO_FDM_r16_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e__ToString(p->v), (int)p->v);
-}
-
-static void _adbgNrSys__Uint16_t_SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FrequencyStart_r16_Optional(acpCtx_t _ctx, const struct uint16_t_SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FrequencyStart_r16_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
-}
-
-static void _adbgNrSys__Uint8_t_SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_ZeroCorrelationZoneConfig_r16_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_ZeroCorrelationZoneConfig_r16_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
-}
-
-static const char* adbgNrSys__SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e__ToString(SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e v)
-{
-	switch(v) {
-		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e_dB0: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e_dB0";
-		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e_dB2: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e_dB2";
-		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e_dB4: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e_dB4";
-		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e_dB6: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e_dB6";
-		default: return "Unknown";
-	}
-}
-
-static void _adbgNrSys__SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e_msgA_PreamblePowerRampingStep_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e_msgA_PreamblePowerRampingStep_r16_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e__ToString(p->v), (int)p->v);
-}
-
-static void _adbgNrSys__Int16_t_SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreambleReceivedTargetPower_r16_Optional(acpCtx_t _ctx, const struct int16_t_SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreambleReceivedTargetPower_r16_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "%d", (int)p->v);
-}
-
-static const char* adbgNrSys__SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e__ToString(SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e v)
-{
-	switch(v) {
-		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl1: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl1";
-		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl2: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl2";
-		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl4: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl4";
-		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl8: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl8";
-		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl10: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl10";
-		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl20: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl20";
-		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl40: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl40";
-		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl80: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl80";
-		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl160: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl160";
-		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl320: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl320";
-		default: return "Unknown";
-	}
-}
-
-static void _adbgNrSys__SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_msgB_ResponseWindow_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_msgB_ResponseWindow_r16_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e__ToString(p->v), (int)p->v);
-}
-
-static const char* adbgNrSys__SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e__ToString(SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e v)
-{
-	switch(v) {
-		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n3: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n3";
-		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n4: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n4";
-		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n5: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n5";
-		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n6: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n6";
-		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n7: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n7";
-		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n8: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n8";
-		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n10: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n10";
-		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n20: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n20";
-		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n50: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n50";
-		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n100: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n100";
-		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n200: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n200";
-		default: return "Unknown";
-	}
-}
-
-static void _adbgNrSys__SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_preambleTransMax_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_preambleTransMax_r16_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e__ToString(p->v), (int)p->v);
-}
-
-static void _adbgNrSys__SQN_NR_RACH_ConfigGenericTwoStepRA_r16(acpCtx_t _ctx, const struct SQN_NR_RACH_ConfigGenericTwoStepRA_r16* p)
-{
-	adbgPrintLog(_ctx, "msgA_PRACH_ConfigurationIndex_r16 := ");
-	_adbgNrSys__Uint16_t_SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PRACH_ConfigurationIndex_r16_Optional(_ctx, &p->msgA_PRACH_ConfigurationIndex_r16);
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "msgA_RO_FDM_r16 := ");
-	_adbgNrSys__SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e_msgA_RO_FDM_r16_Optional(_ctx, &p->msgA_RO_FDM_r16);
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "msgA_RO_FrequencyStart_r16 := ");
-	_adbgNrSys__Uint16_t_SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FrequencyStart_r16_Optional(_ctx, &p->msgA_RO_FrequencyStart_r16);
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "msgA_ZeroCorrelationZoneConfig_r16 := ");
-	_adbgNrSys__Uint8_t_SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_ZeroCorrelationZoneConfig_r16_Optional(_ctx, &p->msgA_ZeroCorrelationZoneConfig_r16);
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "msgA_PreamblePowerRampingStep_r16 := ");
-	_adbgNrSys__SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e_msgA_PreamblePowerRampingStep_r16_Optional(_ctx, &p->msgA_PreamblePowerRampingStep_r16);
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "msgA_PreambleReceivedTargetPower_r16 := ");
-	_adbgNrSys__Int16_t_SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreambleReceivedTargetPower_r16_Optional(_ctx, &p->msgA_PreambleReceivedTargetPower_r16);
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "msgB_ResponseWindow_r16 := ");
-	_adbgNrSys__SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_msgB_ResponseWindow_r16_Optional(_ctx, &p->msgB_ResponseWindow_r16);
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "preambleTransMax_r16 := ");
-	_adbgNrSys__SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_preambleTransMax_r16_Optional(_ctx, &p->preambleTransMax_r16);
-}
-
-static void _adbgNrSys__Uint8_t_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TotalNumberOfRA_Preambles_r16_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TotalNumberOfRA_Preambles_r16_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
-}
-
-static const char* adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e__ToString(SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e v)
-{
-	switch(v) {
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n4: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n4";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n8: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n8";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n12: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n12";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n16: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n16";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n20: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n20";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n24: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n24";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n28: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n28";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n32: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n32";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n36: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n36";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n40: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n40";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n44: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n44";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n48: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n48";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n52: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n52";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n56: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n56";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n60: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n60";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n64: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n64";
-		default: return "Unknown";
-	}
-}
-
-static const char* adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e__ToString(SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e v)
-{
-	switch(v) {
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n4: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n4";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n8: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n8";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n12: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n12";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n16: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n16";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n20: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n20";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n24: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n24";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n28: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n28";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n32: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n32";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n36: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n36";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n40: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n40";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n44: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n44";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n48: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n48";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n52: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n52";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n56: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n56";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n60: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n60";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n64: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n64";
-		default: return "Unknown";
-	}
-}
-
-static const char* adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e__ToString(SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e v)
-{
-	switch(v) {
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n4: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n4";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n8: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n8";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n12: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n12";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n16: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n16";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n20: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n20";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n24: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n24";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n28: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n28";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n32: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n32";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n36: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n36";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n40: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n40";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n44: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n44";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n48: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n48";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n52: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n52";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n56: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n56";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n60: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n60";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n64: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n64";
-		default: return "Unknown";
-	}
-}
-
-static const char* adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e__ToString(SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e v)
-{
-	switch(v) {
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n4: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n4";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n8: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n8";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n12: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n12";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n16: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n16";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n20: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n20";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n24: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n24";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n28: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n28";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n32: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n32";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n36: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n36";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n40: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n40";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n44: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n44";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n48: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n48";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n52: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n52";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n56: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n56";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n60: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n60";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n64: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n64";
-		default: return "Unknown";
-	}
-}
-
-static const char* adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e__ToString(SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e v)
-{
-	switch(v) {
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n4: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n4";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n8: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n8";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n12: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n12";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n16: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n16";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n20: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n20";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n24: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n24";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n28: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n28";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n32: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n32";
-		default: return "Unknown";
-	}
-}
-
-static void _adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_Value(acpCtx_t _ctx, const union SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_Value* p, enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_Sel d)
-{
-	if (d == SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth) {
-		adbgPrintLog(_ctx, "oneEighth := %s (%d)", adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e__ToString(p->oneEighth), (int)p->oneEighth);
-		return;
-	}
-	if (d == SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth) {
-		adbgPrintLog(_ctx, "oneFourth := %s (%d)", adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e__ToString(p->oneFourth), (int)p->oneFourth);
-		return;
-	}
-	if (d == SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf) {
-		adbgPrintLog(_ctx, "oneHalf := %s (%d)", adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e__ToString(p->oneHalf), (int)p->oneHalf);
-		return;
-	}
-	if (d == SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one) {
-		adbgPrintLog(_ctx, "one := %s (%d)", adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e__ToString(p->one), (int)p->one);
-		return;
-	}
-	if (d == SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two) {
-		adbgPrintLog(_ctx, "two := %s (%d)", adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e__ToString(p->two), (int)p->two);
-		return;
-	}
-	if (d == SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_four) {
-		adbgPrintLog(_ctx, "four := %u", (unsigned int)p->four);
-		return;
-	}
-	if (d == SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_eight) {
-		adbgPrintLog(_ctx, "eight := %u", (unsigned int)p->eight);
-		return;
-	}
-	if (d == SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_sixteen) {
-		adbgPrintLog(_ctx, "sixteen := %u", (unsigned int)p->sixteen);
-		return;
-	}
-	adbgPrintLog(_ctx, "INVALID");
-}
-
-static void _adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16(acpCtx_t _ctx, const struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16* p)
-{
-	_adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_Value(_ctx, &p->v, p->d);
-}
-
-static void _adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	_adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16(_ctx, &p->v);
-}
-
-static void _adbgNrSys__Uint8_t_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_CB_PreamblesPerSSB_PerSharedRO_r16_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_CB_PreamblesPerSSB_PerSharedRO_r16_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
-}
-
-static void _adbgNrSys__Uint8_t_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_SharedRO_MaskIndex_r16_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_SharedRO_MaskIndex_r16_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
-}
-
-static const char* adbgNrSys__SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e__ToString(SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e v)
-{
-	switch(v) {
-		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b56: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b56";
-		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b144: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b144";
-		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b208: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b208";
-		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b256: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b256";
-		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b282: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b282";
-		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b480: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b480";
-		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b640: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b640";
-		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b800: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b800";
-		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b1000: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b1000";
-		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b72: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b72";
-		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_spare6: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_spare6";
-		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_spare5: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_spare5";
-		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_spare4: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_spare4";
-		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_spare3: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_spare3";
-		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_spare2: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_spare2";
-		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_spare1: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_spare1";
-		default: return "Unknown";
-	}
-}
-
-static const char* adbgNrSys__SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e__ToString(SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e v)
-{
-	switch(v) {
-		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_minusinfinity: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_minusinfinity";
-		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB0: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB0";
-		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB5: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB5";
-		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB8: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB8";
-		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB10: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB10";
-		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB12: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB12";
-		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB15: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB15";
-		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB18: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB18";
-		default: return "Unknown";
-	}
-}
-
-static void _adbgNrSys__SQN_NR_GroupB_ConfiguredTwoStepRA_r16(acpCtx_t _ctx, const struct SQN_NR_GroupB_ConfiguredTwoStepRA_r16* p)
-{
-	adbgPrintLog(_ctx, "ra_MsgA_SizeGroupA := %s (%d)", adbgNrSys__SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e__ToString(p->ra_MsgA_SizeGroupA), (int)p->ra_MsgA_SizeGroupA);
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "messagePowerOffsetGroupB := %s (%d)", adbgNrSys__SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e__ToString(p->messagePowerOffsetGroupB), (int)p->messagePowerOffsetGroupB);
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "numberofRA_PreamblesGroupA := %u", (unsigned int)p->numberofRA_PreamblesGroupA);
-}
-
-static void _adbgNrSys__SQN_NR_GroupB_ConfiguredTwoStepRA_r16_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_groupB_ConfiguredTwoStepRA_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_GroupB_ConfiguredTwoStepRA_r16_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_groupB_ConfiguredTwoStepRA_r16_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	_adbgNrSys__SQN_NR_GroupB_ConfiguredTwoStepRA_r16(_ctx, &p->v);
-}
-
-static void _adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_Value(acpCtx_t _ctx, const union SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_Value* p, enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_Sel d)
-{
-	if (d == SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_l839) {
-		adbgPrintLog(_ctx, "l839 := %u", (unsigned int)p->l839);
-		return;
-	}
-	if (d == SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_l139) {
-		adbgPrintLog(_ctx, "l139 := %u", (unsigned int)p->l139);
-		return;
-	}
-	if (d == SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_l571) {
-		adbgPrintLog(_ctx, "l571 := %u", (unsigned int)p->l571);
-		return;
-	}
-	if (d == SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_l1151) {
-		adbgPrintLog(_ctx, "l1151 := %u", (unsigned int)p->l1151);
-		return;
-	}
-	adbgPrintLog(_ctx, "INVALID");
-}
-
-static void _adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16(acpCtx_t _ctx, const struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16* p)
-{
-	_adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_Value(_ctx, &p->v, p->d);
-}
-
-static void _adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_msgA_PRACH_RootSequenceIndex_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_msgA_PRACH_RootSequenceIndex_r16_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	_adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16(_ctx, &p->v);
-}
-
-static const char* adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e__ToString(SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e v)
-{
-	switch(v) {
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n1: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n1";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n2: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n2";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n4: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n4";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n6: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n6";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n8: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n8";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n10: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n10";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n20: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n20";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n50: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n50";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n100: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n100";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n200: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n200";
-		default: return "Unknown";
-	}
-}
-
-static void _adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_msgA_TransMax_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_msgA_TransMax_r16_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e__ToString(p->v), (int)p->v);
-}
-
-static void _adbgNrSys__SQN_NR_RSRP_Range_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RSRP_Threshold_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_RSRP_Range_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RSRP_Threshold_r16_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
-}
-
-static void _adbgNrSys__SQN_NR_RSRP_Range_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RSRP_ThresholdSSB_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_RSRP_Range_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RSRP_ThresholdSSB_r16_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
-}
-
-static void _adbgNrSys__SQN_NR_SubcarrierSpacing_e_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SubcarrierSpacing_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_SubcarrierSpacing_e_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SubcarrierSpacing_r16_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SubcarrierSpacing_e__ToString(p->v), (int)p->v);
-}
-
-static const char* adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e__ToString(SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e v)
-{
-	switch(v) {
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e_unrestrictedSet: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e_unrestrictedSet";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e_restrictedSetTypeA: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e_restrictedSetTypeA";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e_restrictedSetTypeB: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e_restrictedSetTypeB";
-		default: return "Unknown";
-	}
-}
-
-static void _adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e_msgA_RestrictedSetConfig_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e_msgA_RestrictedSetConfig_r16_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e__ToString(p->v), (int)p->v);
-}
-
-static void _adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_PrioritizationForAccessIdentityTwoStep_r16(acpCtx_t _ctx, const struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_PrioritizationForAccessIdentityTwoStep_r16* p)
-{
-	adbgPrintLog(_ctx, "ra_Prioritization_r16 := { ");
-	_adbgNrSys__SQN_NR_RA_Prioritization(_ctx, &p->ra_Prioritization_r16);
 	adbgPrintLog(_ctx, " }");
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "ra_PrioritizationForAI_r16 := '");
-	for (size_t i2 = 0; i2 < 2; i2++) {
-		adbgPrintLog(_ctx, "%02X", p->ra_PrioritizationForAI_r16[i2]);
-	}
-	adbgPrintLog(_ctx, "'O");
 }
 
-static void _adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_PrioritizationForAccessIdentityTwoStep_r16_ra_PrioritizationForAccessIdentityTwoStep_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_PrioritizationForAccessIdentityTwoStep_r16_ra_PrioritizationForAccessIdentityTwoStep_r16_Optional* p)
+static void _adbgNrSys__SQN_NR_RA_PrioritizationForSlicing_r17_SQN_NR_RACH_ConfigCommon_ra_PrioritizationForSlicing_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_RA_PrioritizationForSlicing_r17_SQN_NR_RACH_ConfigCommon_ra_PrioritizationForSlicing_r17_Optional* p)
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	_adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_PrioritizationForAccessIdentityTwoStep_r16(_ctx, &p->v);
+	_adbgNrSys__SQN_NR_RA_PrioritizationForSlicing_r17(_ctx, &p->v);
 }
 
-static const char* adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e__ToString(SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e v)
+static const char* adbgNrSys__SQN_NR_FeatureCombination_r17_redCap_r17_e__ToString(SQN_NR_FeatureCombination_r17_redCap_r17_e v)
 {
 	switch(v) {
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf8: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf8";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf16: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf16";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf24: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf24";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf32: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf32";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf40: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf40";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf48: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf48";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf56: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf56";
-		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf64: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf64";
+		case SQN_NR_FeatureCombination_r17_redCap_r17_e_true: return "SQN_NR_FeatureCombination_r17_redCap_r17_e_true";
 		default: return "Unknown";
 	}
 }
 
-static void _adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_ra_ContentionResolutionTimer_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_ra_ContentionResolutionTimer_r16_Optional* p)
+static void _adbgNrSys__SQN_NR_FeatureCombination_r17_redCap_r17_e_redCap_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_FeatureCombination_r17_redCap_r17_e_redCap_r17_Optional* p)
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e__ToString(p->v), (int)p->v);
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_FeatureCombination_r17_redCap_r17_e__ToString(p->v), (int)p->v);
 }
 
-static void _adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16(acpCtx_t _ctx, const struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16* p)
+static const char* adbgNrSys__SQN_NR_FeatureCombination_r17_smallData_r17_e__ToString(SQN_NR_FeatureCombination_r17_smallData_r17_e v)
 {
-	adbgPrintLog(_ctx, "rach_ConfigGenericTwoStepRA_r16 := { ");
-	_adbgNrSys__SQN_NR_RACH_ConfigGenericTwoStepRA_r16(_ctx, &p->rach_ConfigGenericTwoStepRA_r16);
+	switch(v) {
+		case SQN_NR_FeatureCombination_r17_smallData_r17_e_true: return "SQN_NR_FeatureCombination_r17_smallData_r17_e_true";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_FeatureCombination_r17_smallData_r17_e_smallData_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_FeatureCombination_r17_smallData_r17_e_smallData_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_FeatureCombination_r17_smallData_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_NSAG_List_r17_SQN_NR_FeatureCombination_r17_nsag_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_NSAG_List_r17_SQN_NR_FeatureCombination_r17_nsag_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "{");
+	for (size_t i3 = 0; i3 < p->v.d; i3++) {
+		adbgPrintLog(_ctx, "'");
+		for (size_t i4 = 0; i4 < 8; i4++) {
+			adbgPrintLog(_ctx, "%02X", p->v.v[i3][i4]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		if (i3 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
 	adbgPrintLog(_ctx, " }");
+}
+
+static const char* adbgNrSys__SQN_NR_FeatureCombination_r17_msg3_Repetitions_r17_e__ToString(SQN_NR_FeatureCombination_r17_msg3_Repetitions_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_FeatureCombination_r17_msg3_Repetitions_r17_e_true: return "SQN_NR_FeatureCombination_r17_msg3_Repetitions_r17_e_true";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_FeatureCombination_r17_msg3_Repetitions_r17_e_msg3_Repetitions_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_FeatureCombination_r17_msg3_Repetitions_r17_e_msg3_Repetitions_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_FeatureCombination_r17_msg3_Repetitions_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_FeatureCombination_r17_spare4_e__ToString(SQN_NR_FeatureCombination_r17_spare4_e v)
+{
+	switch(v) {
+		case SQN_NR_FeatureCombination_r17_spare4_e_true: return "SQN_NR_FeatureCombination_r17_spare4_e_true";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_FeatureCombination_r17_spare4_e_spare4_Optional(acpCtx_t _ctx, const struct SQN_NR_FeatureCombination_r17_spare4_e_spare4_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_FeatureCombination_r17_spare4_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_FeatureCombination_r17_spare3_e__ToString(SQN_NR_FeatureCombination_r17_spare3_e v)
+{
+	switch(v) {
+		case SQN_NR_FeatureCombination_r17_spare3_e_true: return "SQN_NR_FeatureCombination_r17_spare3_e_true";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_FeatureCombination_r17_spare3_e_spare3_Optional(acpCtx_t _ctx, const struct SQN_NR_FeatureCombination_r17_spare3_e_spare3_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_FeatureCombination_r17_spare3_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_FeatureCombination_r17_spare2_e__ToString(SQN_NR_FeatureCombination_r17_spare2_e v)
+{
+	switch(v) {
+		case SQN_NR_FeatureCombination_r17_spare2_e_true: return "SQN_NR_FeatureCombination_r17_spare2_e_true";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_FeatureCombination_r17_spare2_e_spare2_Optional(acpCtx_t _ctx, const struct SQN_NR_FeatureCombination_r17_spare2_e_spare2_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_FeatureCombination_r17_spare2_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_FeatureCombination_r17_spare1_e__ToString(SQN_NR_FeatureCombination_r17_spare1_e v)
+{
+	switch(v) {
+		case SQN_NR_FeatureCombination_r17_spare1_e_true: return "SQN_NR_FeatureCombination_r17_spare1_e_true";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_FeatureCombination_r17_spare1_e_spare1_Optional(acpCtx_t _ctx, const struct SQN_NR_FeatureCombination_r17_spare1_e_spare1_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_FeatureCombination_r17_spare1_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_FeatureCombination_r17(acpCtx_t _ctx, const struct SQN_NR_FeatureCombination_r17* p)
+{
+	adbgPrintLog(_ctx, "redCap_r17 := ");
+	_adbgNrSys__SQN_NR_FeatureCombination_r17_redCap_r17_e_redCap_r17_Optional(_ctx, &p->redCap_r17);
 	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "msgA_TotalNumberOfRA_Preambles_r16 := ");
-	_adbgNrSys__Uint8_t_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TotalNumberOfRA_Preambles_r16_Optional(_ctx, &p->msgA_TotalNumberOfRA_Preambles_r16);
+	adbgPrintLog(_ctx, "smallData_r17 := ");
+	_adbgNrSys__SQN_NR_FeatureCombination_r17_smallData_r17_e_smallData_r17_Optional(_ctx, &p->smallData_r17);
 	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16 := ");
-	if (p->msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16.d) { adbgPrintLog(_ctx, "{ "); };
-	_adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_Optional(_ctx, &p->msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16);
-	if (p->msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, "nsag_r17 := ");
+	if (p->nsag_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_NSAG_List_r17_SQN_NR_FeatureCombination_r17_nsag_r17_Optional(_ctx, &p->nsag_r17);
+	if (p->nsag_r17.d) { adbgPrintLog(_ctx, " }"); };
 	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "msgA_CB_PreamblesPerSSB_PerSharedRO_r16 := ");
-	_adbgNrSys__Uint8_t_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_CB_PreamblesPerSSB_PerSharedRO_r16_Optional(_ctx, &p->msgA_CB_PreamblesPerSSB_PerSharedRO_r16);
+	adbgPrintLog(_ctx, "msg3_Repetitions_r17 := ");
+	_adbgNrSys__SQN_NR_FeatureCombination_r17_msg3_Repetitions_r17_e_msg3_Repetitions_r17_Optional(_ctx, &p->msg3_Repetitions_r17);
 	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "msgA_SSB_SharedRO_MaskIndex_r16 := ");
-	_adbgNrSys__Uint8_t_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_SharedRO_MaskIndex_r16_Optional(_ctx, &p->msgA_SSB_SharedRO_MaskIndex_r16);
+	adbgPrintLog(_ctx, "spare4 := ");
+	_adbgNrSys__SQN_NR_FeatureCombination_r17_spare4_e_spare4_Optional(_ctx, &p->spare4);
 	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "groupB_ConfiguredTwoStepRA_r16 := ");
-	if (p->groupB_ConfiguredTwoStepRA_r16.d) { adbgPrintLog(_ctx, "{ "); };
-	_adbgNrSys__SQN_NR_GroupB_ConfiguredTwoStepRA_r16_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_groupB_ConfiguredTwoStepRA_r16_Optional(_ctx, &p->groupB_ConfiguredTwoStepRA_r16);
-	if (p->groupB_ConfiguredTwoStepRA_r16.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, "spare3 := ");
+	_adbgNrSys__SQN_NR_FeatureCombination_r17_spare3_e_spare3_Optional(_ctx, &p->spare3);
 	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "msgA_PRACH_RootSequenceIndex_r16 := ");
-	if (p->msgA_PRACH_RootSequenceIndex_r16.d) { adbgPrintLog(_ctx, "{ "); };
-	_adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_msgA_PRACH_RootSequenceIndex_r16_Optional(_ctx, &p->msgA_PRACH_RootSequenceIndex_r16);
-	if (p->msgA_PRACH_RootSequenceIndex_r16.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, "spare2 := ");
+	_adbgNrSys__SQN_NR_FeatureCombination_r17_spare2_e_spare2_Optional(_ctx, &p->spare2);
 	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "msgA_TransMax_r16 := ");
-	_adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_msgA_TransMax_r16_Optional(_ctx, &p->msgA_TransMax_r16);
+	adbgPrintLog(_ctx, "spare1 := ");
+	_adbgNrSys__SQN_NR_FeatureCombination_r17_spare1_e_spare1_Optional(_ctx, &p->spare1);
+}
+
+static void _adbgNrSys__Uint8_t_SQN_NR_FeatureCombinationPreambles_r17_ssb_SharedRO_MaskIndex_r17_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_FeatureCombinationPreambles_r17_ssb_SharedRO_MaskIndex_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e__ToString(SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_b56: return "SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_b56";
+		case SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_b144: return "SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_b144";
+		case SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_b208: return "SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_b208";
+		case SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_b256: return "SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_b256";
+		case SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_b282: return "SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_b282";
+		case SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_b480: return "SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_b480";
+		case SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_b640: return "SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_b640";
+		case SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_b800: return "SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_b800";
+		case SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_b1000: return "SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_b1000";
+		case SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_b72: return "SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_b72";
+		case SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_spare6: return "SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_spare6";
+		case SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_spare5: return "SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_spare5";
+		case SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_spare4: return "SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_spare4";
+		case SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_spare3: return "SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_spare3";
+		case SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_spare2: return "SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_spare2";
+		case SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_spare1: return "SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e_spare1";
+		default: return "Unknown";
+	}
+}
+
+static const char* adbgNrSys__SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_messagePowerOffsetGroupB_r17_e__ToString(SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_messagePowerOffsetGroupB_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_messagePowerOffsetGroupB_r17_e_minusinfinity: return "SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_messagePowerOffsetGroupB_r17_e_minusinfinity";
+		case SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_messagePowerOffsetGroupB_r17_e_dB0: return "SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_messagePowerOffsetGroupB_r17_e_dB0";
+		case SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_messagePowerOffsetGroupB_r17_e_dB5: return "SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_messagePowerOffsetGroupB_r17_e_dB5";
+		case SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_messagePowerOffsetGroupB_r17_e_dB8: return "SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_messagePowerOffsetGroupB_r17_e_dB8";
+		case SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_messagePowerOffsetGroupB_r17_e_dB10: return "SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_messagePowerOffsetGroupB_r17_e_dB10";
+		case SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_messagePowerOffsetGroupB_r17_e_dB12: return "SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_messagePowerOffsetGroupB_r17_e_dB12";
+		case SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_messagePowerOffsetGroupB_r17_e_dB15: return "SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_messagePowerOffsetGroupB_r17_e_dB15";
+		case SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_messagePowerOffsetGroupB_r17_e_dB18: return "SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_messagePowerOffsetGroupB_r17_e_dB18";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17(acpCtx_t _ctx, const struct SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17* p)
+{
+	adbgPrintLog(_ctx, "ra_SizeGroupA_r17 := %s (%d)", adbgNrSys__SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_ra_SizeGroupA_r17_e__ToString(p->ra_SizeGroupA_r17), (int)p->ra_SizeGroupA_r17);
 	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "msgA_RSRP_Threshold_r16 := ");
-	_adbgNrSys__SQN_NR_RSRP_Range_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RSRP_Threshold_r16_Optional(_ctx, &p->msgA_RSRP_Threshold_r16);
+	adbgPrintLog(_ctx, "messagePowerOffsetGroupB_r17 := %s (%d)", adbgNrSys__SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_messagePowerOffsetGroupB_r17_e__ToString(p->messagePowerOffsetGroupB_r17), (int)p->messagePowerOffsetGroupB_r17);
 	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "msgA_RSRP_ThresholdSSB_r16 := ");
-	_adbgNrSys__SQN_NR_RSRP_Range_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RSRP_ThresholdSSB_r16_Optional(_ctx, &p->msgA_RSRP_ThresholdSSB_r16);
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "msgA_SubcarrierSpacing_r16 := ");
-	_adbgNrSys__SQN_NR_SubcarrierSpacing_e_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SubcarrierSpacing_r16_Optional(_ctx, &p->msgA_SubcarrierSpacing_r16);
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "msgA_RestrictedSetConfig_r16 := ");
-	_adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e_msgA_RestrictedSetConfig_r16_Optional(_ctx, &p->msgA_RestrictedSetConfig_r16);
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "ra_PrioritizationForAccessIdentityTwoStep_r16 := ");
-	if (p->ra_PrioritizationForAccessIdentityTwoStep_r16.d) { adbgPrintLog(_ctx, "{ "); };
-	_adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_PrioritizationForAccessIdentityTwoStep_r16_ra_PrioritizationForAccessIdentityTwoStep_r16_Optional(_ctx, &p->ra_PrioritizationForAccessIdentityTwoStep_r16);
-	if (p->ra_PrioritizationForAccessIdentityTwoStep_r16.d) { adbgPrintLog(_ctx, " }"); };
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "ra_ContentionResolutionTimer_r16 := ");
-	_adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_ra_ContentionResolutionTimer_r16_Optional(_ctx, &p->ra_ContentionResolutionTimer_r16);
+	adbgPrintLog(_ctx, "numberOfRA_PreamblesGroupA_r17 := %u", (unsigned int)p->numberOfRA_PreamblesGroupA_r17);
+}
+
+static void _adbgNrSys__SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_groupBconfigured_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_groupBconfigured_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17(_ctx, &p->v);
 }
 
 static const char* adbgNrSys__SQN_NR_MsgA_PUSCH_Resource_r16_nrofMsgA_PO_PerSlot_r16_e__ToString(SQN_NR_MsgA_PUSCH_Resource_r16_nrofMsgA_PO_PerSlot_r16_e v)
@@ -6274,8 +6642,8 @@ static void _adbgNrSys__B2_SQN_NR_MsgA_PUSCH_Resource_r16_msgA_HoppingBits_r16_O
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
 	adbgPrintLog(_ctx, "'");
-	for (size_t i2 = 0; i2 < 2; i2++) {
-		adbgPrintLog(_ctx, "%02X", p->v[i2]);
+	for (size_t i3 = 0; i3 < 2; i3++) {
+		adbgPrintLog(_ctx, "%02X", p->v[i3]);
 	}
 	adbgPrintLog(_ctx, "'O");
 }
@@ -6501,6 +6869,1021 @@ static void _adbgNrSys__SQN_NR_MsgA_PUSCH_Config_r16(acpCtx_t _ctx, const struct
 	_adbgNrSys__Int8_t_SQN_NR_MsgA_PUSCH_Config_r16_msgA_DeltaPreamble_r16_Optional(_ctx, &p->msgA_DeltaPreamble_r16);
 }
 
+static void _adbgNrSys__SQN_NR_MsgA_PUSCH_Config_r16_SQN_NR_FeatureCombinationPreambles_r17_separateMsgA_PUSCH_Config_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_MsgA_PUSCH_Config_r16_SQN_NR_FeatureCombinationPreambles_r17_separateMsgA_PUSCH_Config_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_MsgA_PUSCH_Config_r16(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_RSRP_Range_SQN_NR_FeatureCombinationPreambles_r17_msgA_RSRP_Threshold_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_RSRP_Range_SQN_NR_FeatureCombinationPreambles_r17_msgA_RSRP_Threshold_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_RSRP_Range_SQN_NR_FeatureCombinationPreambles_r17_rsrp_ThresholdSSB_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_RSRP_Range_SQN_NR_FeatureCombinationPreambles_r17_rsrp_ThresholdSSB_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__Int8_t_SQN_NR_FeatureCombinationPreambles_r17_deltaPreamble_r17_Optional(acpCtx_t _ctx, const struct int8_t_SQN_NR_FeatureCombinationPreambles_r17_deltaPreamble_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%d", (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_FeatureCombinationPreambles_r17(acpCtx_t _ctx, const struct SQN_NR_FeatureCombinationPreambles_r17* p)
+{
+	adbgPrintLog(_ctx, "featureCombination_r17 := { ");
+	_adbgNrSys__SQN_NR_FeatureCombination_r17(_ctx, &p->featureCombination_r17);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "startPreambleForThisPartition_r17 := %u", (unsigned int)p->startPreambleForThisPartition_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "numberOfPreamblesPerSSB_ForThisPartition_r17 := %u", (unsigned int)p->numberOfPreamblesPerSSB_ForThisPartition_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "ssb_SharedRO_MaskIndex_r17 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_FeatureCombinationPreambles_r17_ssb_SharedRO_MaskIndex_r17_Optional(_ctx, &p->ssb_SharedRO_MaskIndex_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "groupBconfigured_r17 := ");
+	if (p->groupBconfigured_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_FeatureCombinationPreambles_r17_groupBconfigured_r17_groupBconfigured_r17_Optional(_ctx, &p->groupBconfigured_r17);
+	if (p->groupBconfigured_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "separateMsgA_PUSCH_Config_r17 := ");
+	if (p->separateMsgA_PUSCH_Config_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_MsgA_PUSCH_Config_r16_SQN_NR_FeatureCombinationPreambles_r17_separateMsgA_PUSCH_Config_r17_Optional(_ctx, &p->separateMsgA_PUSCH_Config_r17);
+	if (p->separateMsgA_PUSCH_Config_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "msgA_RSRP_Threshold_r17 := ");
+	_adbgNrSys__SQN_NR_RSRP_Range_SQN_NR_FeatureCombinationPreambles_r17_msgA_RSRP_Threshold_r17_Optional(_ctx, &p->msgA_RSRP_Threshold_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "rsrp_ThresholdSSB_r17 := ");
+	_adbgNrSys__SQN_NR_RSRP_Range_SQN_NR_FeatureCombinationPreambles_r17_rsrp_ThresholdSSB_r17_Optional(_ctx, &p->rsrp_ThresholdSSB_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "deltaPreamble_r17 := ");
+	_adbgNrSys__Int8_t_SQN_NR_FeatureCombinationPreambles_r17_deltaPreamble_r17_Optional(_ctx, &p->deltaPreamble_r17);
+}
+
+static void _adbgNrSys__SQN_NR_FeatureCombinationPreambles_r17_SQN_NR_RACH_ConfigCommon_featureCombinationPreamblesList_r17_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_FeatureCombinationPreambles_r17_SQN_NR_RACH_ConfigCommon_featureCombinationPreamblesList_r17_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		adbgPrintLog(_ctx, "{ ");
+		_adbgNrSys__SQN_NR_FeatureCombinationPreambles_r17(_ctx, &p->v.v[i2]);
+		adbgPrintLog(_ctx, " }");
+		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgNrSys__SQN_NR_RACH_ConfigCommon(acpCtx_t _ctx, const struct SQN_NR_RACH_ConfigCommon* p)
+{
+	adbgPrintLog(_ctx, "rach_ConfigGeneric := { ");
+	_adbgNrSys__SQN_NR_RACH_ConfigGeneric(_ctx, &p->rach_ConfigGeneric);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "totalNumberOfRA_Preambles := ");
+	_adbgNrSys__Uint8_t_SQN_NR_RACH_ConfigCommon_totalNumberOfRA_Preambles_Optional(_ctx, &p->totalNumberOfRA_Preambles);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "ssb_perRACH_OccasionAndCB_PreamblesPerSSB := ");
+	if (p->ssb_perRACH_OccasionAndCB_PreamblesPerSSB.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_RACH_ConfigCommon_ssb_perRACH_OccasionAndCB_PreamblesPerSSB_ssb_perRACH_OccasionAndCB_PreamblesPerSSB_Optional(_ctx, &p->ssb_perRACH_OccasionAndCB_PreamblesPerSSB);
+	if (p->ssb_perRACH_OccasionAndCB_PreamblesPerSSB.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "groupBconfigured := ");
+	if (p->groupBconfigured.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_RACH_ConfigCommon_groupBconfigured_groupBconfigured_Optional(_ctx, &p->groupBconfigured);
+	if (p->groupBconfigured.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "ra_ContentionResolutionTimer := %s (%d)", adbgNrSys__SQN_NR_RACH_ConfigCommon_ra_ContentionResolutionTimer_e__ToString(p->ra_ContentionResolutionTimer), (int)p->ra_ContentionResolutionTimer);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "rsrp_ThresholdSSB := ");
+	_adbgNrSys__SQN_NR_RSRP_Range_SQN_NR_RACH_ConfigCommon_rsrp_ThresholdSSB_Optional(_ctx, &p->rsrp_ThresholdSSB);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "rsrp_ThresholdSSB_SUL := ");
+	_adbgNrSys__SQN_NR_RSRP_Range_SQN_NR_RACH_ConfigCommon_rsrp_ThresholdSSB_SUL_Optional(_ctx, &p->rsrp_ThresholdSSB_SUL);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "prach_RootSequenceIndex := { ");
+	_adbgNrSys__SQN_NR_RACH_ConfigCommon_prach_RootSequenceIndex(_ctx, &p->prach_RootSequenceIndex);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "msg1_SubcarrierSpacing := ");
+	_adbgNrSys__SQN_NR_SubcarrierSpacing_e_SQN_NR_RACH_ConfigCommon_msg1_SubcarrierSpacing_Optional(_ctx, &p->msg1_SubcarrierSpacing);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "restrictedSetConfig := %s (%d)", adbgNrSys__SQN_NR_RACH_ConfigCommon_restrictedSetConfig_e__ToString(p->restrictedSetConfig), (int)p->restrictedSetConfig);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "msg3_transformPrecoder := ");
+	_adbgNrSys__SQN_NR_RACH_ConfigCommon_msg3_transformPrecoder_e_msg3_transformPrecoder_Optional(_ctx, &p->msg3_transformPrecoder);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "ra_PrioritizationForAccessIdentity_r16 := ");
+	if (p->ra_PrioritizationForAccessIdentity_r16.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_RACH_ConfigCommon_ra_PrioritizationForAccessIdentity_r16_ra_PrioritizationForAccessIdentity_r16_Optional(_ctx, &p->ra_PrioritizationForAccessIdentity_r16);
+	if (p->ra_PrioritizationForAccessIdentity_r16.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "prach_RootSequenceIndex_r16 := ");
+	if (p->prach_RootSequenceIndex_r16.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_RACH_ConfigCommon_prach_RootSequenceIndex_r16_prach_RootSequenceIndex_r16_Optional(_ctx, &p->prach_RootSequenceIndex_r16);
+	if (p->prach_RootSequenceIndex_r16.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "ra_PrioritizationForSlicing_r17 := ");
+	if (p->ra_PrioritizationForSlicing_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_RA_PrioritizationForSlicing_r17_SQN_NR_RACH_ConfigCommon_ra_PrioritizationForSlicing_r17_Optional(_ctx, &p->ra_PrioritizationForSlicing_r17);
+	if (p->ra_PrioritizationForSlicing_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "featureCombinationPreamblesList_r17 := ");
+	if (p->featureCombinationPreamblesList_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_FeatureCombinationPreambles_r17_SQN_NR_RACH_ConfigCommon_featureCombinationPreamblesList_r17_DynamicOptional(_ctx, &p->featureCombinationPreamblesList_r17);
+	if (p->featureCombinationPreamblesList_r17.d) { adbgPrintLog(_ctx, " }"); };
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommon_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommon_Value* p, enum SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommon_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommon_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommon_setup) {
+		adbgPrintLog(_ctx, "setup := { ");
+		_adbgNrSys__SQN_NR_RACH_ConfigCommon(_ctx, &p->setup);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommon(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommon* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommon_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommon_SQN_NR_BWP_UplinkCommon_rach_ConfigCommon_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommon_SQN_NR_BWP_UplinkCommon_rach_ConfigCommon_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommon(_ctx, &p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PUSCH_ConfigCommon_groupHoppingEnabledTransformPrecoding_e__ToString(SQN_NR_PUSCH_ConfigCommon_groupHoppingEnabledTransformPrecoding_e v)
+{
+	switch(v) {
+		case SQN_NR_PUSCH_ConfigCommon_groupHoppingEnabledTransformPrecoding_e_enabled: return "SQN_NR_PUSCH_ConfigCommon_groupHoppingEnabledTransformPrecoding_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PUSCH_ConfigCommon_groupHoppingEnabledTransformPrecoding_e_groupHoppingEnabledTransformPrecoding_Optional(acpCtx_t _ctx, const struct SQN_NR_PUSCH_ConfigCommon_groupHoppingEnabledTransformPrecoding_e_groupHoppingEnabledTransformPrecoding_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PUSCH_ConfigCommon_groupHoppingEnabledTransformPrecoding_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__Uint8_t_SQN_NR_PUSCH_TimeDomainResourceAllocation_k2_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_PUSCH_TimeDomainResourceAllocation_k2_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PUSCH_TimeDomainResourceAllocation_mappingType_e__ToString(SQN_NR_PUSCH_TimeDomainResourceAllocation_mappingType_e v)
+{
+	switch(v) {
+		case SQN_NR_PUSCH_TimeDomainResourceAllocation_mappingType_e_typeA: return "SQN_NR_PUSCH_TimeDomainResourceAllocation_mappingType_e_typeA";
+		case SQN_NR_PUSCH_TimeDomainResourceAllocation_mappingType_e_typeB: return "SQN_NR_PUSCH_TimeDomainResourceAllocation_mappingType_e_typeB";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PUSCH_TimeDomainResourceAllocation(acpCtx_t _ctx, const struct SQN_NR_PUSCH_TimeDomainResourceAllocation* p)
+{
+	adbgPrintLog(_ctx, "k2 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_PUSCH_TimeDomainResourceAllocation_k2_Optional(_ctx, &p->k2);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "mappingType := %s (%d)", adbgNrSys__SQN_NR_PUSCH_TimeDomainResourceAllocation_mappingType_e__ToString(p->mappingType), (int)p->mappingType);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "startSymbolAndLength := %u", (unsigned int)p->startSymbolAndLength);
+}
+
+static void _adbgNrSys__SQN_NR_PUSCH_TimeDomainResourceAllocationList_SQN_NR_PUSCH_ConfigCommon_pusch_TimeDomainAllocationList_Optional(acpCtx_t _ctx, const struct SQN_NR_PUSCH_TimeDomainResourceAllocationList_SQN_NR_PUSCH_ConfigCommon_pusch_TimeDomainAllocationList_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		_adbgNrSys__SQN_NR_PUSCH_TimeDomainResourceAllocation(_ctx, &p->v.v[i2]);
+		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgNrSys__Int8_t_SQN_NR_PUSCH_ConfigCommon_msg3_DeltaPreamble_Optional(acpCtx_t _ctx, const struct int8_t_SQN_NR_PUSCH_ConfigCommon_msg3_DeltaPreamble_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%d", (int)p->v);
+}
+
+static void _adbgNrSys__Int16_t_SQN_NR_PUSCH_ConfigCommon_p0_NominalWithGrant_Optional(acpCtx_t _ctx, const struct int16_t_SQN_NR_PUSCH_ConfigCommon_p0_NominalWithGrant_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%d", (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_PUSCH_ConfigCommon(acpCtx_t _ctx, const struct SQN_NR_PUSCH_ConfigCommon* p)
+{
+	adbgPrintLog(_ctx, "groupHoppingEnabledTransformPrecoding := ");
+	_adbgNrSys__SQN_NR_PUSCH_ConfigCommon_groupHoppingEnabledTransformPrecoding_e_groupHoppingEnabledTransformPrecoding_Optional(_ctx, &p->groupHoppingEnabledTransformPrecoding);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pusch_TimeDomainAllocationList := ");
+	if (p->pusch_TimeDomainAllocationList.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_PUSCH_TimeDomainResourceAllocationList_SQN_NR_PUSCH_ConfigCommon_pusch_TimeDomainAllocationList_Optional(_ctx, &p->pusch_TimeDomainAllocationList);
+	if (p->pusch_TimeDomainAllocationList.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "msg3_DeltaPreamble := ");
+	_adbgNrSys__Int8_t_SQN_NR_PUSCH_ConfigCommon_msg3_DeltaPreamble_Optional(_ctx, &p->msg3_DeltaPreamble);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "p0_NominalWithGrant := ");
+	_adbgNrSys__Int16_t_SQN_NR_PUSCH_ConfigCommon_p0_NominalWithGrant_Optional(_ctx, &p->p0_NominalWithGrant);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_pusch_ConfigCommon_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_BWP_UplinkCommon_pusch_ConfigCommon_Value* p, enum SQN_NR_SetupRelease_BWP_UplinkCommon_pusch_ConfigCommon_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_BWP_UplinkCommon_pusch_ConfigCommon_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_BWP_UplinkCommon_pusch_ConfigCommon_setup) {
+		adbgPrintLog(_ctx, "setup := { ");
+		_adbgNrSys__SQN_NR_PUSCH_ConfigCommon(_ctx, &p->setup);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_pusch_ConfigCommon(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_BWP_UplinkCommon_pusch_ConfigCommon* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_pusch_ConfigCommon_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_pusch_ConfigCommon_SQN_NR_BWP_UplinkCommon_pusch_ConfigCommon_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_BWP_UplinkCommon_pusch_ConfigCommon_SQN_NR_BWP_UplinkCommon_pusch_ConfigCommon_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_pusch_ConfigCommon(_ctx, &p->v);
+}
+
+static void _adbgNrSys__Uint8_t_SQN_NR_PUCCH_ConfigCommon_pucch_ResourceCommon_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_PUCCH_ConfigCommon_pucch_ResourceCommon_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PUCCH_ConfigCommon_pucch_GroupHopping_e__ToString(SQN_NR_PUCCH_ConfigCommon_pucch_GroupHopping_e v)
+{
+	switch(v) {
+		case SQN_NR_PUCCH_ConfigCommon_pucch_GroupHopping_e_neither: return "SQN_NR_PUCCH_ConfigCommon_pucch_GroupHopping_e_neither";
+		case SQN_NR_PUCCH_ConfigCommon_pucch_GroupHopping_e_enable: return "SQN_NR_PUCCH_ConfigCommon_pucch_GroupHopping_e_enable";
+		case SQN_NR_PUCCH_ConfigCommon_pucch_GroupHopping_e_disable: return "SQN_NR_PUCCH_ConfigCommon_pucch_GroupHopping_e_disable";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__Uint16_t_SQN_NR_PUCCH_ConfigCommon_hoppingId_Optional(acpCtx_t _ctx, const struct uint16_t_SQN_NR_PUCCH_ConfigCommon_hoppingId_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__Int16_t_SQN_NR_PUCCH_ConfigCommon_p0_nominal_Optional(acpCtx_t _ctx, const struct int16_t_SQN_NR_PUCCH_ConfigCommon_p0_nominal_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%d", (int)p->v);
+}
+
+static void _adbgNrSys__Uint8_t_SQN_NR_PUCCH_ConfigCommon_nrofPRBs_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_PUCCH_ConfigCommon_nrofPRBs_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PUCCH_ConfigCommon_intra_SlotFH_r17_e__ToString(SQN_NR_PUCCH_ConfigCommon_intra_SlotFH_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PUCCH_ConfigCommon_intra_SlotFH_r17_e_fromLowerEdge: return "SQN_NR_PUCCH_ConfigCommon_intra_SlotFH_r17_e_fromLowerEdge";
+		case SQN_NR_PUCCH_ConfigCommon_intra_SlotFH_r17_e_fromUpperEdge: return "SQN_NR_PUCCH_ConfigCommon_intra_SlotFH_r17_e_fromUpperEdge";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PUCCH_ConfigCommon_intra_SlotFH_r17_e_intra_SlotFH_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PUCCH_ConfigCommon_intra_SlotFH_r17_e_intra_SlotFH_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PUCCH_ConfigCommon_intra_SlotFH_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__Uint8_t_SQN_NR_PUCCH_ConfigCommon_pucch_ResourceCommonRedCap_r17_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_PUCCH_ConfigCommon_pucch_ResourceCommonRedCap_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PUCCH_ConfigCommon_additionalPRBOffset_r17_e__ToString(SQN_NR_PUCCH_ConfigCommon_additionalPRBOffset_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PUCCH_ConfigCommon_additionalPRBOffset_r17_e_n2: return "SQN_NR_PUCCH_ConfigCommon_additionalPRBOffset_r17_e_n2";
+		case SQN_NR_PUCCH_ConfigCommon_additionalPRBOffset_r17_e_n3: return "SQN_NR_PUCCH_ConfigCommon_additionalPRBOffset_r17_e_n3";
+		case SQN_NR_PUCCH_ConfigCommon_additionalPRBOffset_r17_e_n4: return "SQN_NR_PUCCH_ConfigCommon_additionalPRBOffset_r17_e_n4";
+		case SQN_NR_PUCCH_ConfigCommon_additionalPRBOffset_r17_e_n6: return "SQN_NR_PUCCH_ConfigCommon_additionalPRBOffset_r17_e_n6";
+		case SQN_NR_PUCCH_ConfigCommon_additionalPRBOffset_r17_e_n8: return "SQN_NR_PUCCH_ConfigCommon_additionalPRBOffset_r17_e_n8";
+		case SQN_NR_PUCCH_ConfigCommon_additionalPRBOffset_r17_e_n9: return "SQN_NR_PUCCH_ConfigCommon_additionalPRBOffset_r17_e_n9";
+		case SQN_NR_PUCCH_ConfigCommon_additionalPRBOffset_r17_e_n10: return "SQN_NR_PUCCH_ConfigCommon_additionalPRBOffset_r17_e_n10";
+		case SQN_NR_PUCCH_ConfigCommon_additionalPRBOffset_r17_e_n12: return "SQN_NR_PUCCH_ConfigCommon_additionalPRBOffset_r17_e_n12";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PUCCH_ConfigCommon_additionalPRBOffset_r17_e_additionalPRBOffset_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PUCCH_ConfigCommon_additionalPRBOffset_r17_e_additionalPRBOffset_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PUCCH_ConfigCommon_additionalPRBOffset_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_PUCCH_ConfigCommon(acpCtx_t _ctx, const struct SQN_NR_PUCCH_ConfigCommon* p)
+{
+	adbgPrintLog(_ctx, "pucch_ResourceCommon := ");
+	_adbgNrSys__Uint8_t_SQN_NR_PUCCH_ConfigCommon_pucch_ResourceCommon_Optional(_ctx, &p->pucch_ResourceCommon);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pucch_GroupHopping := %s (%d)", adbgNrSys__SQN_NR_PUCCH_ConfigCommon_pucch_GroupHopping_e__ToString(p->pucch_GroupHopping), (int)p->pucch_GroupHopping);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "hoppingId := ");
+	_adbgNrSys__Uint16_t_SQN_NR_PUCCH_ConfigCommon_hoppingId_Optional(_ctx, &p->hoppingId);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "p0_nominal := ");
+	_adbgNrSys__Int16_t_SQN_NR_PUCCH_ConfigCommon_p0_nominal_Optional(_ctx, &p->p0_nominal);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "nrofPRBs := ");
+	_adbgNrSys__Uint8_t_SQN_NR_PUCCH_ConfigCommon_nrofPRBs_Optional(_ctx, &p->nrofPRBs);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "intra_SlotFH_r17 := ");
+	_adbgNrSys__SQN_NR_PUCCH_ConfigCommon_intra_SlotFH_r17_e_intra_SlotFH_r17_Optional(_ctx, &p->intra_SlotFH_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pucch_ResourceCommonRedCap_r17 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_PUCCH_ConfigCommon_pucch_ResourceCommonRedCap_r17_Optional(_ctx, &p->pucch_ResourceCommonRedCap_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "additionalPRBOffset_r17 := ");
+	_adbgNrSys__SQN_NR_PUCCH_ConfigCommon_additionalPRBOffset_r17_e_additionalPRBOffset_r17_Optional(_ctx, &p->additionalPRBOffset_r17);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_pucch_ConfigCommon_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_BWP_UplinkCommon_pucch_ConfigCommon_Value* p, enum SQN_NR_SetupRelease_BWP_UplinkCommon_pucch_ConfigCommon_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_BWP_UplinkCommon_pucch_ConfigCommon_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_BWP_UplinkCommon_pucch_ConfigCommon_setup) {
+		adbgPrintLog(_ctx, "setup := { ");
+		_adbgNrSys__SQN_NR_PUCCH_ConfigCommon(_ctx, &p->setup);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_pucch_ConfigCommon(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_BWP_UplinkCommon_pucch_ConfigCommon* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_pucch_ConfigCommon_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_pucch_ConfigCommon_SQN_NR_BWP_UplinkCommon_pucch_ConfigCommon_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_BWP_UplinkCommon_pucch_ConfigCommon_SQN_NR_BWP_UplinkCommon_pucch_ConfigCommon_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_pucch_ConfigCommon(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommonIAB_r16_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommonIAB_r16_Value* p, enum SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommonIAB_r16_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommonIAB_r16_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommonIAB_r16_setup) {
+		adbgPrintLog(_ctx, "setup := { ");
+		_adbgNrSys__SQN_NR_RACH_ConfigCommon(_ctx, &p->setup);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommonIAB_r16(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommonIAB_r16* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommonIAB_r16_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommonIAB_r16_SQN_NR_BWP_UplinkCommon_rach_ConfigCommonIAB_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommonIAB_r16_SQN_NR_BWP_UplinkCommon_rach_ConfigCommonIAB_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_rach_ConfigCommonIAB_r16(_ctx, &p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_BWP_UplinkCommon_useInterlacePUCCH_PUSCH_r16_e__ToString(SQN_NR_BWP_UplinkCommon_useInterlacePUCCH_PUSCH_r16_e v)
+{
+	switch(v) {
+		case SQN_NR_BWP_UplinkCommon_useInterlacePUCCH_PUSCH_r16_e_enabled: return "SQN_NR_BWP_UplinkCommon_useInterlacePUCCH_PUSCH_r16_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_BWP_UplinkCommon_useInterlacePUCCH_PUSCH_r16_e_useInterlacePUCCH_PUSCH_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_BWP_UplinkCommon_useInterlacePUCCH_PUSCH_r16_e_useInterlacePUCCH_PUSCH_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_BWP_UplinkCommon_useInterlacePUCCH_PUSCH_r16_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__Uint16_t_SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PRACH_ConfigurationIndex_r16_Optional(acpCtx_t _ctx, const struct uint16_t_SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PRACH_ConfigurationIndex_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e__ToString(SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e v)
+{
+	switch(v) {
+		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e_one: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e_one";
+		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e_two: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e_two";
+		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e_four: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e_four";
+		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e_eight: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e_eight";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e_msgA_RO_FDM_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e_msgA_RO_FDM_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__Uint16_t_SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FrequencyStart_r16_Optional(acpCtx_t _ctx, const struct uint16_t_SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FrequencyStart_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__Uint8_t_SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_ZeroCorrelationZoneConfig_r16_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_ZeroCorrelationZoneConfig_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e__ToString(SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e v)
+{
+	switch(v) {
+		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e_dB0: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e_dB0";
+		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e_dB2: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e_dB2";
+		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e_dB4: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e_dB4";
+		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e_dB6: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e_dB6";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e_msgA_PreamblePowerRampingStep_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e_msgA_PreamblePowerRampingStep_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__Int16_t_SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreambleReceivedTargetPower_r16_Optional(acpCtx_t _ctx, const struct int16_t_SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreambleReceivedTargetPower_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%d", (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e__ToString(SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e v)
+{
+	switch(v) {
+		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl1: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl1";
+		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl2: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl2";
+		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl4: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl4";
+		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl8: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl8";
+		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl10: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl10";
+		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl20: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl20";
+		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl40: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl40";
+		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl80: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl80";
+		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl160: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl160";
+		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl320: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_sl320";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_msgB_ResponseWindow_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_msgB_ResponseWindow_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e__ToString(SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e v)
+{
+	switch(v) {
+		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n3: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n3";
+		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n4: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n4";
+		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n5: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n5";
+		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n6: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n6";
+		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n7: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n7";
+		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n8: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n8";
+		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n10: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n10";
+		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n20: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n20";
+		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n50: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n50";
+		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n100: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n100";
+		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n200: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_n200";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_preambleTransMax_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_preambleTransMax_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_v1700_e__ToString(SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_v1700_e v)
+{
+	switch(v) {
+		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_v1700_e_sl240: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_v1700_e_sl240";
+		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_v1700_e_sl640: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_v1700_e_sl640";
+		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_v1700_e_sl960: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_v1700_e_sl960";
+		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_v1700_e_sl1280: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_v1700_e_sl1280";
+		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_v1700_e_sl1920: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_v1700_e_sl1920";
+		case SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_v1700_e_sl2560: return "SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_v1700_e_sl2560";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_v1700_e_msgB_ResponseWindow_v1700_Optional(acpCtx_t _ctx, const struct SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_v1700_e_msgB_ResponseWindow_v1700_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_v1700_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_RACH_ConfigGenericTwoStepRA_r16(acpCtx_t _ctx, const struct SQN_NR_RACH_ConfigGenericTwoStepRA_r16* p)
+{
+	adbgPrintLog(_ctx, "msgA_PRACH_ConfigurationIndex_r16 := ");
+	_adbgNrSys__Uint16_t_SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PRACH_ConfigurationIndex_r16_Optional(_ctx, &p->msgA_PRACH_ConfigurationIndex_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "msgA_RO_FDM_r16 := ");
+	_adbgNrSys__SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FDM_r16_e_msgA_RO_FDM_r16_Optional(_ctx, &p->msgA_RO_FDM_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "msgA_RO_FrequencyStart_r16 := ");
+	_adbgNrSys__Uint16_t_SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_RO_FrequencyStart_r16_Optional(_ctx, &p->msgA_RO_FrequencyStart_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "msgA_ZeroCorrelationZoneConfig_r16 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_ZeroCorrelationZoneConfig_r16_Optional(_ctx, &p->msgA_ZeroCorrelationZoneConfig_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "msgA_PreamblePowerRampingStep_r16 := ");
+	_adbgNrSys__SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreamblePowerRampingStep_r16_e_msgA_PreamblePowerRampingStep_r16_Optional(_ctx, &p->msgA_PreamblePowerRampingStep_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "msgA_PreambleReceivedTargetPower_r16 := ");
+	_adbgNrSys__Int16_t_SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgA_PreambleReceivedTargetPower_r16_Optional(_ctx, &p->msgA_PreambleReceivedTargetPower_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "msgB_ResponseWindow_r16 := ");
+	_adbgNrSys__SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_r16_e_msgB_ResponseWindow_r16_Optional(_ctx, &p->msgB_ResponseWindow_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "preambleTransMax_r16 := ");
+	_adbgNrSys__SQN_NR_RACH_ConfigGenericTwoStepRA_r16_preambleTransMax_r16_e_preambleTransMax_r16_Optional(_ctx, &p->preambleTransMax_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "msgB_ResponseWindow_v1700 := ");
+	_adbgNrSys__SQN_NR_RACH_ConfigGenericTwoStepRA_r16_msgB_ResponseWindow_v1700_e_msgB_ResponseWindow_v1700_Optional(_ctx, &p->msgB_ResponseWindow_v1700);
+}
+
+static void _adbgNrSys__Uint8_t_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TotalNumberOfRA_Preambles_r16_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TotalNumberOfRA_Preambles_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e__ToString(SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e v)
+{
+	switch(v) {
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n4: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n4";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n8: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n8";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n12: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n12";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n16: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n16";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n20: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n20";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n24: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n24";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n28: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n28";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n32: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n32";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n36: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n36";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n40: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n40";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n44: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n44";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n48: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n48";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n52: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n52";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n56: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n56";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n60: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n60";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n64: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e_n64";
+		default: return "Unknown";
+	}
+}
+
+static const char* adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e__ToString(SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e v)
+{
+	switch(v) {
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n4: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n4";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n8: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n8";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n12: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n12";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n16: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n16";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n20: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n20";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n24: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n24";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n28: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n28";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n32: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n32";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n36: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n36";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n40: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n40";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n44: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n44";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n48: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n48";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n52: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n52";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n56: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n56";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n60: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n60";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n64: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e_n64";
+		default: return "Unknown";
+	}
+}
+
+static const char* adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e__ToString(SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e v)
+{
+	switch(v) {
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n4: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n4";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n8: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n8";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n12: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n12";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n16: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n16";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n20: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n20";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n24: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n24";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n28: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n28";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n32: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n32";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n36: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n36";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n40: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n40";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n44: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n44";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n48: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n48";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n52: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n52";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n56: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n56";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n60: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n60";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n64: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e_n64";
+		default: return "Unknown";
+	}
+}
+
+static const char* adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e__ToString(SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e v)
+{
+	switch(v) {
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n4: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n4";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n8: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n8";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n12: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n12";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n16: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n16";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n20: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n20";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n24: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n24";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n28: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n28";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n32: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n32";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n36: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n36";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n40: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n40";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n44: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n44";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n48: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n48";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n52: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n52";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n56: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n56";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n60: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n60";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n64: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e_n64";
+		default: return "Unknown";
+	}
+}
+
+static const char* adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e__ToString(SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e v)
+{
+	switch(v) {
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n4: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n4";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n8: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n8";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n12: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n12";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n16: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n16";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n20: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n20";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n24: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n24";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n28: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n28";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n32: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e_n32";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_Value(acpCtx_t _ctx, const union SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_Value* p, enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_Sel d)
+{
+	if (d == SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth) {
+		adbgPrintLog(_ctx, "oneEighth := %s (%d)", adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneEighth_e__ToString(p->oneEighth), (int)p->oneEighth);
+		return;
+	}
+	if (d == SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth) {
+		adbgPrintLog(_ctx, "oneFourth := %s (%d)", adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneFourth_e__ToString(p->oneFourth), (int)p->oneFourth);
+		return;
+	}
+	if (d == SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf) {
+		adbgPrintLog(_ctx, "oneHalf := %s (%d)", adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_oneHalf_e__ToString(p->oneHalf), (int)p->oneHalf);
+		return;
+	}
+	if (d == SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one) {
+		adbgPrintLog(_ctx, "one := %s (%d)", adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_one_e__ToString(p->one), (int)p->one);
+		return;
+	}
+	if (d == SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two) {
+		adbgPrintLog(_ctx, "two := %s (%d)", adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_two_e__ToString(p->two), (int)p->two);
+		return;
+	}
+	if (d == SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_four) {
+		adbgPrintLog(_ctx, "four := %u", (unsigned int)p->four);
+		return;
+	}
+	if (d == SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_eight) {
+		adbgPrintLog(_ctx, "eight := %u", (unsigned int)p->eight);
+		return;
+	}
+	if (d == SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_sixteen) {
+		adbgPrintLog(_ctx, "sixteen := %u", (unsigned int)p->sixteen);
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16(acpCtx_t _ctx, const struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16* p)
+{
+	_adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16(_ctx, &p->v);
+}
+
+static void _adbgNrSys__Uint8_t_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_CB_PreamblesPerSSB_PerSharedRO_r16_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_CB_PreamblesPerSSB_PerSharedRO_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__Uint8_t_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_SharedRO_MaskIndex_r16_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_SharedRO_MaskIndex_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e__ToString(SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e v)
+{
+	switch(v) {
+		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b56: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b56";
+		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b144: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b144";
+		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b208: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b208";
+		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b256: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b256";
+		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b282: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b282";
+		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b480: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b480";
+		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b640: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b640";
+		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b800: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b800";
+		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b1000: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b1000";
+		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b72: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_b72";
+		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_spare6: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_spare6";
+		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_spare5: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_spare5";
+		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_spare4: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_spare4";
+		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_spare3: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_spare3";
+		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_spare2: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_spare2";
+		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_spare1: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e_spare1";
+		default: return "Unknown";
+	}
+}
+
+static const char* adbgNrSys__SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e__ToString(SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e v)
+{
+	switch(v) {
+		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_minusinfinity: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_minusinfinity";
+		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB0: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB0";
+		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB5: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB5";
+		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB8: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB8";
+		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB10: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB10";
+		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB12: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB12";
+		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB15: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB15";
+		case SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB18: return "SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e_dB18";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_GroupB_ConfiguredTwoStepRA_r16(acpCtx_t _ctx, const struct SQN_NR_GroupB_ConfiguredTwoStepRA_r16* p)
+{
+	adbgPrintLog(_ctx, "ra_MsgA_SizeGroupA := %s (%d)", adbgNrSys__SQN_NR_GroupB_ConfiguredTwoStepRA_r16_ra_MsgA_SizeGroupA_e__ToString(p->ra_MsgA_SizeGroupA), (int)p->ra_MsgA_SizeGroupA);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "messagePowerOffsetGroupB := %s (%d)", adbgNrSys__SQN_NR_GroupB_ConfiguredTwoStepRA_r16_messagePowerOffsetGroupB_e__ToString(p->messagePowerOffsetGroupB), (int)p->messagePowerOffsetGroupB);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "numberOfRA_PreamblesGroupA := %u", (unsigned int)p->numberOfRA_PreamblesGroupA);
+}
+
+static void _adbgNrSys__SQN_NR_GroupB_ConfiguredTwoStepRA_r16_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_groupB_ConfiguredTwoStepRA_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_GroupB_ConfiguredTwoStepRA_r16_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_groupB_ConfiguredTwoStepRA_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_GroupB_ConfiguredTwoStepRA_r16(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_Value(acpCtx_t _ctx, const union SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_Value* p, enum SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_Sel d)
+{
+	if (d == SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_l839) {
+		adbgPrintLog(_ctx, "l839 := %u", (unsigned int)p->l839);
+		return;
+	}
+	if (d == SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_l139) {
+		adbgPrintLog(_ctx, "l139 := %u", (unsigned int)p->l139);
+		return;
+	}
+	if (d == SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_l571) {
+		adbgPrintLog(_ctx, "l571 := %u", (unsigned int)p->l571);
+		return;
+	}
+	if (d == SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_l1151) {
+		adbgPrintLog(_ctx, "l1151 := %u", (unsigned int)p->l1151);
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16(acpCtx_t _ctx, const struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16* p)
+{
+	_adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_msgA_PRACH_RootSequenceIndex_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_msgA_PRACH_RootSequenceIndex_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16(_ctx, &p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e__ToString(SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e v)
+{
+	switch(v) {
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n1: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n1";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n2: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n2";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n4: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n4";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n6: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n6";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n8: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n8";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n10: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n10";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n20: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n20";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n50: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n50";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n100: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n100";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n200: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_n200";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_msgA_TransMax_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_msgA_TransMax_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_RSRP_Range_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RSRP_Threshold_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_RSRP_Range_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RSRP_Threshold_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_RSRP_Range_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RSRP_ThresholdSSB_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_RSRP_Range_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RSRP_ThresholdSSB_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SubcarrierSpacing_e_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SubcarrierSpacing_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_SubcarrierSpacing_e_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SubcarrierSpacing_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SubcarrierSpacing_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e__ToString(SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e v)
+{
+	switch(v) {
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e_unrestrictedSet: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e_unrestrictedSet";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e_restrictedSetTypeA: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e_restrictedSetTypeA";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e_restrictedSetTypeB: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e_restrictedSetTypeB";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e_msgA_RestrictedSetConfig_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e_msgA_RestrictedSetConfig_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_PrioritizationForAccessIdentityTwoStep_r16(acpCtx_t _ctx, const struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_PrioritizationForAccessIdentityTwoStep_r16* p)
+{
+	adbgPrintLog(_ctx, "ra_Prioritization_r16 := { ");
+	_adbgNrSys__SQN_NR_RA_Prioritization(_ctx, &p->ra_Prioritization_r16);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "ra_PrioritizationForAI_r16 := '");
+	for (size_t i2 = 0; i2 < 2; i2++) {
+		adbgPrintLog(_ctx, "%02X", p->ra_PrioritizationForAI_r16[i2]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static void _adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_PrioritizationForAccessIdentityTwoStep_r16_ra_PrioritizationForAccessIdentityTwoStep_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_PrioritizationForAccessIdentityTwoStep_r16_ra_PrioritizationForAccessIdentityTwoStep_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_PrioritizationForAccessIdentityTwoStep_r16(_ctx, &p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e__ToString(SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e v)
+{
+	switch(v) {
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf8: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf8";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf16: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf16";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf24: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf24";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf32: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf32";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf40: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf40";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf48: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf48";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf56: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf56";
+		case SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf64: return "SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_sf64";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_ra_ContentionResolutionTimer_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_ra_ContentionResolutionTimer_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_RA_PrioritizationForSlicing_r17_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_PrioritizationForSlicingTwoStep_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_RA_PrioritizationForSlicing_r17_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_PrioritizationForSlicingTwoStep_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_RA_PrioritizationForSlicing_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_FeatureCombinationPreambles_r17_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_featureCombinationPreamblesList_r17_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_FeatureCombinationPreambles_r17_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_featureCombinationPreamblesList_r17_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		adbgPrintLog(_ctx, "{ ");
+		_adbgNrSys__SQN_NR_FeatureCombinationPreambles_r17(_ctx, &p->v.v[i2]);
+		adbgPrintLog(_ctx, " }");
+		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16(acpCtx_t _ctx, const struct SQN_NR_RACH_ConfigCommonTwoStepRA_r16* p)
+{
+	adbgPrintLog(_ctx, "rach_ConfigGenericTwoStepRA_r16 := { ");
+	_adbgNrSys__SQN_NR_RACH_ConfigGenericTwoStepRA_r16(_ctx, &p->rach_ConfigGenericTwoStepRA_r16);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "msgA_TotalNumberOfRA_Preambles_r16 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TotalNumberOfRA_Preambles_r16_Optional(_ctx, &p->msgA_TotalNumberOfRA_Preambles_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16 := ");
+	if (p->msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16_Optional(_ctx, &p->msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16);
+	if (p->msgA_SSB_PerRACH_OccasionAndCB_PreamblesPerSSB_r16.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "msgA_CB_PreamblesPerSSB_PerSharedRO_r16 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_CB_PreamblesPerSSB_PerSharedRO_r16_Optional(_ctx, &p->msgA_CB_PreamblesPerSSB_PerSharedRO_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "msgA_SSB_SharedRO_MaskIndex_r16 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SSB_SharedRO_MaskIndex_r16_Optional(_ctx, &p->msgA_SSB_SharedRO_MaskIndex_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "groupB_ConfiguredTwoStepRA_r16 := ");
+	if (p->groupB_ConfiguredTwoStepRA_r16.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_GroupB_ConfiguredTwoStepRA_r16_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_groupB_ConfiguredTwoStepRA_r16_Optional(_ctx, &p->groupB_ConfiguredTwoStepRA_r16);
+	if (p->groupB_ConfiguredTwoStepRA_r16.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "msgA_PRACH_RootSequenceIndex_r16 := ");
+	if (p->msgA_PRACH_RootSequenceIndex_r16.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_PRACH_RootSequenceIndex_r16_msgA_PRACH_RootSequenceIndex_r16_Optional(_ctx, &p->msgA_PRACH_RootSequenceIndex_r16);
+	if (p->msgA_PRACH_RootSequenceIndex_r16.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "msgA_TransMax_r16 := ");
+	_adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_TransMax_r16_e_msgA_TransMax_r16_Optional(_ctx, &p->msgA_TransMax_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "msgA_RSRP_Threshold_r16 := ");
+	_adbgNrSys__SQN_NR_RSRP_Range_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RSRP_Threshold_r16_Optional(_ctx, &p->msgA_RSRP_Threshold_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "msgA_RSRP_ThresholdSSB_r16 := ");
+	_adbgNrSys__SQN_NR_RSRP_Range_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RSRP_ThresholdSSB_r16_Optional(_ctx, &p->msgA_RSRP_ThresholdSSB_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "msgA_SubcarrierSpacing_r16 := ");
+	_adbgNrSys__SQN_NR_SubcarrierSpacing_e_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_SubcarrierSpacing_r16_Optional(_ctx, &p->msgA_SubcarrierSpacing_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "msgA_RestrictedSetConfig_r16 := ");
+	_adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_msgA_RestrictedSetConfig_r16_e_msgA_RestrictedSetConfig_r16_Optional(_ctx, &p->msgA_RestrictedSetConfig_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "ra_PrioritizationForAccessIdentityTwoStep_r16 := ");
+	if (p->ra_PrioritizationForAccessIdentityTwoStep_r16.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_PrioritizationForAccessIdentityTwoStep_r16_ra_PrioritizationForAccessIdentityTwoStep_r16_Optional(_ctx, &p->ra_PrioritizationForAccessIdentityTwoStep_r16);
+	if (p->ra_PrioritizationForAccessIdentityTwoStep_r16.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "ra_ContentionResolutionTimer_r16 := ");
+	_adbgNrSys__SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_ContentionResolutionTimer_r16_e_ra_ContentionResolutionTimer_r16_Optional(_ctx, &p->ra_ContentionResolutionTimer_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "ra_PrioritizationForSlicingTwoStep_r17 := ");
+	if (p->ra_PrioritizationForSlicingTwoStep_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_RA_PrioritizationForSlicing_r17_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_ra_PrioritizationForSlicingTwoStep_r17_Optional(_ctx, &p->ra_PrioritizationForSlicingTwoStep_r17);
+	if (p->ra_PrioritizationForSlicingTwoStep_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "featureCombinationPreamblesList_r17 := ");
+	if (p->featureCombinationPreamblesList_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_FeatureCombinationPreambles_r17_SQN_NR_RACH_ConfigCommonTwoStepRA_r16_featureCombinationPreamblesList_r17_DynamicOptional(_ctx, &p->featureCombinationPreamblesList_r17);
+	if (p->featureCombinationPreamblesList_r17.d) { adbgPrintLog(_ctx, " }"); };
+}
+
 static void _adbgNrSys__SQN_NR_MsgA_PUSCH_Config_r16_SQN_NR_MsgA_ConfigCommon_r16_msgA_PUSCH_Config_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_MsgA_PUSCH_Config_r16_SQN_NR_MsgA_ConfigCommon_r16_msgA_PUSCH_Config_r16_Optional* p)
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
@@ -6545,6 +7928,109 @@ static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_msgA_ConfigCommon_r
 	_adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_msgA_ConfigCommon_r16(_ctx, &p->v);
 }
 
+static void _adbgNrSys__Bool_SQN_NR_BWP_UplinkCommon_enableRA_PrioritizationForSlicing_r17_Optional(acpCtx_t _ctx, const struct bool_SQN_NR_BWP_UplinkCommon_enableRA_PrioritizationForSlicing_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s", (p->v ? "true" : "false"));
+}
+
+static void _adbgNrSys__SQN_NR_RACH_ConfigCommon_SQN_NR_AdditionalRACH_Config_r17_rach_ConfigCommon_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_RACH_ConfigCommon_SQN_NR_AdditionalRACH_Config_r17_rach_ConfigCommon_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_RACH_ConfigCommon(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_MsgA_ConfigCommon_r16_SQN_NR_AdditionalRACH_Config_r17_msgA_ConfigCommon_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_MsgA_ConfigCommon_r16_SQN_NR_AdditionalRACH_Config_r17_msgA_ConfigCommon_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_MsgA_ConfigCommon_r16(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_AdditionalRACH_Config_r17(acpCtx_t _ctx, const struct SQN_NR_AdditionalRACH_Config_r17* p)
+{
+	adbgPrintLog(_ctx, "rach_ConfigCommon_r17 := ");
+	if (p->rach_ConfigCommon_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_RACH_ConfigCommon_SQN_NR_AdditionalRACH_Config_r17_rach_ConfigCommon_r17_Optional(_ctx, &p->rach_ConfigCommon_r17);
+	if (p->rach_ConfigCommon_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "msgA_ConfigCommon_r17 := ");
+	if (p->msgA_ConfigCommon_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_MsgA_ConfigCommon_r16_SQN_NR_AdditionalRACH_Config_r17_msgA_ConfigCommon_r17_Optional(_ctx, &p->msgA_ConfigCommon_r17);
+	if (p->msgA_ConfigCommon_r17.d) { adbgPrintLog(_ctx, " }"); };
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_additionalRACH_ConfigList_r17_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_BWP_UplinkCommon_additionalRACH_ConfigList_r17_Value* p, enum SQN_NR_SetupRelease_BWP_UplinkCommon_additionalRACH_ConfigList_r17_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_BWP_UplinkCommon_additionalRACH_ConfigList_r17_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_BWP_UplinkCommon_additionalRACH_ConfigList_r17_setup) {
+		adbgPrintLog(_ctx, "setup := { ");
+		for (size_t i2 = 0; i2 < p->setup.d; i2++) {
+			adbgPrintLog(_ctx, "{ ");
+			_adbgNrSys__SQN_NR_AdditionalRACH_Config_r17(_ctx, &p->setup.v[i2]);
+			adbgPrintLog(_ctx, " }");
+			if (i2 != p->setup.d - 1) { adbgPrintLog(_ctx, ", "); }
+		}
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_additionalRACH_ConfigList_r17(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_BWP_UplinkCommon_additionalRACH_ConfigList_r17* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_additionalRACH_ConfigList_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_additionalRACH_ConfigList_r17_SQN_NR_BWP_UplinkCommon_additionalRACH_ConfigList_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_BWP_UplinkCommon_additionalRACH_ConfigList_r17_SQN_NR_BWP_UplinkCommon_additionalRACH_ConfigList_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_additionalRACH_ConfigList_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_RSRP_Range_SQN_NR_BWP_UplinkCommon_rsrp_ThresholdMsg3_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_RSRP_Range_SQN_NR_BWP_UplinkCommon_rsrp_ThresholdMsg3_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_NumberOfMsg3_Repetitions_r17_e__ToString(SQN_NR_NumberOfMsg3_Repetitions_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_NumberOfMsg3_Repetitions_r17_e_n1: return "SQN_NR_NumberOfMsg3_Repetitions_r17_e_n1";
+		case SQN_NR_NumberOfMsg3_Repetitions_r17_e_n2: return "SQN_NR_NumberOfMsg3_Repetitions_r17_e_n2";
+		case SQN_NR_NumberOfMsg3_Repetitions_r17_e_n3: return "SQN_NR_NumberOfMsg3_Repetitions_r17_e_n3";
+		case SQN_NR_NumberOfMsg3_Repetitions_r17_e_n4: return "SQN_NR_NumberOfMsg3_Repetitions_r17_e_n4";
+		case SQN_NR_NumberOfMsg3_Repetitions_r17_e_n7: return "SQN_NR_NumberOfMsg3_Repetitions_r17_e_n7";
+		case SQN_NR_NumberOfMsg3_Repetitions_r17_e_n8: return "SQN_NR_NumberOfMsg3_Repetitions_r17_e_n8";
+		case SQN_NR_NumberOfMsg3_Repetitions_r17_e_n12: return "SQN_NR_NumberOfMsg3_Repetitions_r17_e_n12";
+		case SQN_NR_NumberOfMsg3_Repetitions_r17_e_n16: return "SQN_NR_NumberOfMsg3_Repetitions_r17_e_n16";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_NumberOfMsg3_Repetitions_r17_e_SQN_NR_BWP_UplinkCommon_numberOfMsg3_RepetitionsList_r17_ArrayOptional(acpCtx_t _ctx, const struct SQN_NR_NumberOfMsg3_Repetitions_r17_e_SQN_NR_BWP_UplinkCommon_numberOfMsg3_RepetitionsList_r17_ArrayOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "'");
+	for (size_t i2 = 0; i2 < 4; i2++) {
+		adbgPrintLog(_ctx, "v := %s (%d)", adbgNrSys__SQN_NR_NumberOfMsg3_Repetitions_r17_e__ToString(p->v[i2]), (int)p->v[i2]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static void _adbgNrSys__Uint8_t_SQN_NR_BWP_UplinkCommon_mcs_Msg3_Repetitions_r17_ArrayOptional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_BWP_UplinkCommon_mcs_Msg3_Repetitions_r17_ArrayOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "'");
+	for (size_t i2 = 0; i2 < 8; i2++) {
+		adbgPrintLog(_ctx, "%02X", p->v[i2]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
 static void _adbgNrSys__SQN_NR_BWP_UplinkCommon(acpCtx_t _ctx, const struct SQN_NR_BWP_UplinkCommon* p)
 {
 	adbgPrintLog(_ctx, "genericParameters := { ");
@@ -6578,6 +8064,23 @@ static void _adbgNrSys__SQN_NR_BWP_UplinkCommon(acpCtx_t _ctx, const struct SQN_
 	if (p->msgA_ConfigCommon_r16.d) { adbgPrintLog(_ctx, "{ "); };
 	_adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_msgA_ConfigCommon_r16_SQN_NR_BWP_UplinkCommon_msgA_ConfigCommon_r16_Optional(_ctx, &p->msgA_ConfigCommon_r16);
 	if (p->msgA_ConfigCommon_r16.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "enableRA_PrioritizationForSlicing_r17 := ");
+	_adbgNrSys__Bool_SQN_NR_BWP_UplinkCommon_enableRA_PrioritizationForSlicing_r17_Optional(_ctx, &p->enableRA_PrioritizationForSlicing_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "additionalRACH_ConfigList_r17 := ");
+	if (p->additionalRACH_ConfigList_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkCommon_additionalRACH_ConfigList_r17_SQN_NR_BWP_UplinkCommon_additionalRACH_ConfigList_r17_Optional(_ctx, &p->additionalRACH_ConfigList_r17);
+	if (p->additionalRACH_ConfigList_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "rsrp_ThresholdMsg3_r17 := ");
+	_adbgNrSys__SQN_NR_RSRP_Range_SQN_NR_BWP_UplinkCommon_rsrp_ThresholdMsg3_r17_Optional(_ctx, &p->rsrp_ThresholdMsg3_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "numberOfMsg3_RepetitionsList_r17 := ");
+	_adbgNrSys__SQN_NR_NumberOfMsg3_Repetitions_r17_e_SQN_NR_BWP_UplinkCommon_numberOfMsg3_RepetitionsList_r17_ArrayOptional(_ctx, &p->numberOfMsg3_RepetitionsList_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "mcs_Msg3_Repetitions_r17 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_BWP_UplinkCommon_mcs_Msg3_Repetitions_r17_ArrayOptional(_ctx, &p->mcs_Msg3_Repetitions_r17);
 }
 
 static void _adbgNrSys__NR_ASN1_BWP_UplinkCommon_Type_Value(acpCtx_t _ctx, const union NR_ASN1_BWP_UplinkCommon_Type_Value* p, enum NR_ASN1_BWP_UplinkCommon_Type_Sel d)
@@ -7450,125 +8953,161 @@ static void _adbgNrSys__SQN_NR_PUCCH_PowerControl_SQN_NR_PUCCH_Config_pucch_Powe
 	_adbgNrSys__SQN_NR_PUCCH_PowerControl(_ctx, &p->v);
 }
 
-static void _adbgNrSys__SQN_NR_PUCCH_ResourceExt_r16_interlaceAllocation_r16_interlace0_Value(acpCtx_t _ctx, const union SQN_NR_PUCCH_ResourceExt_r16_interlaceAllocation_r16_interlace0_Value* p, enum SQN_NR_PUCCH_ResourceExt_r16_interlaceAllocation_r16_interlace0_Sel d)
+static void _adbgNrSys__SQN_NR_PUCCH_ResourceExt_v1610_interlaceAllocation_r16_interlace0_r16_Value(acpCtx_t _ctx, const union SQN_NR_PUCCH_ResourceExt_v1610_interlaceAllocation_r16_interlace0_r16_Value* p, enum SQN_NR_PUCCH_ResourceExt_v1610_interlaceAllocation_r16_interlace0_r16_Sel d)
 {
-	if (d == SQN_NR_PUCCH_ResourceExt_r16_interlaceAllocation_r16_interlace0_scs15) {
+	if (d == SQN_NR_PUCCH_ResourceExt_v1610_interlaceAllocation_r16_interlace0_r16_scs15) {
 		adbgPrintLog(_ctx, "scs15 := %u", (unsigned int)p->scs15);
 		return;
 	}
-	if (d == SQN_NR_PUCCH_ResourceExt_r16_interlaceAllocation_r16_interlace0_scs30) {
+	if (d == SQN_NR_PUCCH_ResourceExt_v1610_interlaceAllocation_r16_interlace0_r16_scs30) {
 		adbgPrintLog(_ctx, "scs30 := %u", (unsigned int)p->scs30);
 		return;
 	}
 	adbgPrintLog(_ctx, "INVALID");
 }
 
-static void _adbgNrSys__SQN_NR_PUCCH_ResourceExt_r16_interlaceAllocation_r16_interlace0(acpCtx_t _ctx, const struct SQN_NR_PUCCH_ResourceExt_r16_interlaceAllocation_r16_interlace0* p)
+static void _adbgNrSys__SQN_NR_PUCCH_ResourceExt_v1610_interlaceAllocation_r16_interlace0_r16(acpCtx_t _ctx, const struct SQN_NR_PUCCH_ResourceExt_v1610_interlaceAllocation_r16_interlace0_r16* p)
 {
-	_adbgNrSys__SQN_NR_PUCCH_ResourceExt_r16_interlaceAllocation_r16_interlace0_Value(_ctx, &p->v, p->d);
+	_adbgNrSys__SQN_NR_PUCCH_ResourceExt_v1610_interlaceAllocation_r16_interlace0_r16_Value(_ctx, &p->v, p->d);
 }
 
-static void _adbgNrSys__SQN_NR_PUCCH_ResourceExt_r16_interlaceAllocation_r16(acpCtx_t _ctx, const struct SQN_NR_PUCCH_ResourceExt_r16_interlaceAllocation_r16* p)
+static void _adbgNrSys__SQN_NR_PUCCH_ResourceExt_v1610_interlaceAllocation_r16(acpCtx_t _ctx, const struct SQN_NR_PUCCH_ResourceExt_v1610_interlaceAllocation_r16* p)
 {
-	adbgPrintLog(_ctx, "rb_SetIndex := %u", (unsigned int)p->rb_SetIndex);
+	adbgPrintLog(_ctx, "rb_SetIndex_r16 := %u", (unsigned int)p->rb_SetIndex_r16);
 	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "interlace0 := { ");
-	_adbgNrSys__SQN_NR_PUCCH_ResourceExt_r16_interlaceAllocation_r16_interlace0(_ctx, &p->interlace0);
+	adbgPrintLog(_ctx, "interlace0_r16 := { ");
+	_adbgNrSys__SQN_NR_PUCCH_ResourceExt_v1610_interlaceAllocation_r16_interlace0_r16(_ctx, &p->interlace0_r16);
 	adbgPrintLog(_ctx, " }");
 }
 
-static void _adbgNrSys__SQN_NR_PUCCH_ResourceExt_r16_interlaceAllocation_r16_interlaceAllocation_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_PUCCH_ResourceExt_r16_interlaceAllocation_r16_interlaceAllocation_r16_Optional* p)
+static void _adbgNrSys__SQN_NR_PUCCH_ResourceExt_v1610_interlaceAllocation_r16_interlaceAllocation_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_PUCCH_ResourceExt_v1610_interlaceAllocation_r16_interlaceAllocation_r16_Optional* p)
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	_adbgNrSys__SQN_NR_PUCCH_ResourceExt_r16_interlaceAllocation_r16(_ctx, &p->v);
+	_adbgNrSys__SQN_NR_PUCCH_ResourceExt_v1610_interlaceAllocation_r16(_ctx, &p->v);
 }
 
-static const char* adbgNrSys__SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Length_v1610_e__ToString(SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Length_v1610_e v)
+static const char* adbgNrSys__SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Length_v1610_e__ToString(SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Length_v1610_e v)
 {
 	switch(v) {
-		case SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Length_v1610_e_n2: return "SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Length_v1610_e_n2";
-		case SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Length_v1610_e_n4: return "SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Length_v1610_e_n4";
+		case SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Length_v1610_e_n2: return "SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Length_v1610_e_n2";
+		case SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Length_v1610_e_n4: return "SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Length_v1610_e_n4";
 		default: return "Unknown";
 	}
 }
 
-static void _adbgNrSys__SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Length_v1610_e_occ_Length_v1610_Optional(acpCtx_t _ctx, const struct SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Length_v1610_e_occ_Length_v1610_Optional* p)
+static void _adbgNrSys__SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Length_v1610_e_occ_Length_v1610_Optional(acpCtx_t _ctx, const struct SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Length_v1610_e_occ_Length_v1610_Optional* p)
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Length_v1610_e__ToString(p->v), (int)p->v);
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Length_v1610_e__ToString(p->v), (int)p->v);
 }
 
-static const char* adbgNrSys__SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Index_v1610_e__ToString(SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Index_v1610_e v)
+static const char* adbgNrSys__SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Index_v1610_e__ToString(SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Index_v1610_e v)
 {
 	switch(v) {
-		case SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Index_v1610_e_n0: return "SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Index_v1610_e_n0";
-		case SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Index_v1610_e_n1: return "SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Index_v1610_e_n1";
-		case SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Index_v1610_e_n2: return "SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Index_v1610_e_n2";
-		case SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Index_v1610_e_n3: return "SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Index_v1610_e_n3";
+		case SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Index_v1610_e_n0: return "SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Index_v1610_e_n0";
+		case SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Index_v1610_e_n1: return "SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Index_v1610_e_n1";
+		case SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Index_v1610_e_n2: return "SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Index_v1610_e_n2";
+		case SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Index_v1610_e_n3: return "SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Index_v1610_e_n3";
 		default: return "Unknown";
 	}
 }
 
-static void _adbgNrSys__SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Index_v1610_e_occ_Index_v1610_Optional(acpCtx_t _ctx, const struct SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Index_v1610_e_occ_Index_v1610_Optional* p)
+static void _adbgNrSys__SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Index_v1610_e_occ_Index_v1610_Optional(acpCtx_t _ctx, const struct SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Index_v1610_e_occ_Index_v1610_Optional* p)
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Index_v1610_e__ToString(p->v), (int)p->v);
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Index_v1610_e__ToString(p->v), (int)p->v);
 }
 
-static void _adbgNrSys__SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610(acpCtx_t _ctx, const struct SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610* p)
+static void _adbgNrSys__SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610(acpCtx_t _ctx, const struct SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610* p)
 {
 	adbgPrintLog(_ctx, "occ_Length_v1610 := ");
-	_adbgNrSys__SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Length_v1610_e_occ_Length_v1610_Optional(_ctx, &p->occ_Length_v1610);
+	_adbgNrSys__SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Length_v1610_e_occ_Length_v1610_Optional(_ctx, &p->occ_Length_v1610);
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "occ_Index_v1610 := ");
-	_adbgNrSys__SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610_occ_Index_v1610_e_occ_Index_v1610_Optional(_ctx, &p->occ_Index_v1610);
+	_adbgNrSys__SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610_occ_Index_v1610_e_occ_Index_v1610_Optional(_ctx, &p->occ_Index_v1610);
 }
 
-static void _adbgNrSys__SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_Value(acpCtx_t _ctx, const union SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_Value* p, enum SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_Sel d)
+static void _adbgNrSys__SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_Value(acpCtx_t _ctx, const union SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_Value* p, enum SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_Sel d)
 {
-	if (d == SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_interlace1_v1610) {
+	if (d == SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_interlace1_v1610) {
 		adbgPrintLog(_ctx, "interlace1_v1610 := %u", (unsigned int)p->interlace1_v1610);
 		return;
 	}
-	if (d == SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610) {
+	if (d == SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610) {
 		adbgPrintLog(_ctx, "occ_v1610 := { ");
-		_adbgNrSys__SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_occ_v1610(_ctx, &p->occ_v1610);
+		_adbgNrSys__SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_occ_v1610(_ctx, &p->occ_v1610);
 		adbgPrintLog(_ctx, " }");
 		return;
 	}
 	adbgPrintLog(_ctx, "INVALID");
 }
 
-static void _adbgNrSys__SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610(acpCtx_t _ctx, const struct SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610* p)
+static void _adbgNrSys__SQN_NR_PUCCH_ResourceExt_v1610_format_v1610(acpCtx_t _ctx, const struct SQN_NR_PUCCH_ResourceExt_v1610_format_v1610* p)
 {
-	_adbgNrSys__SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_Value(_ctx, &p->v, p->d);
+	_adbgNrSys__SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_Value(_ctx, &p->v, p->d);
 }
 
-static void _adbgNrSys__SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_formatExt_v1610_Optional(acpCtx_t _ctx, const struct SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_formatExt_v1610_Optional* p)
+static void _adbgNrSys__SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_format_v1610_Optional(acpCtx_t _ctx, const struct SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_format_v1610_Optional* p)
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	_adbgNrSys__SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610(_ctx, &p->v);
+	_adbgNrSys__SQN_NR_PUCCH_ResourceExt_v1610_format_v1610(_ctx, &p->v);
 }
 
-static void _adbgNrSys__SQN_NR_PUCCH_ResourceExt_r16(acpCtx_t _ctx, const struct SQN_NR_PUCCH_ResourceExt_r16* p)
+static void _adbgNrSys__SQN_NR_PUCCH_ResourceExt_v1610_formatExt_v1700(acpCtx_t _ctx, const struct SQN_NR_PUCCH_ResourceExt_v1610_formatExt_v1700* p)
+{
+	adbgPrintLog(_ctx, "nrofPRBs_r17 := %u", (unsigned int)p->nrofPRBs_r17);
+}
+
+static void _adbgNrSys__SQN_NR_PUCCH_ResourceExt_v1610_formatExt_v1700_formatExt_v1700_Optional(acpCtx_t _ctx, const struct SQN_NR_PUCCH_ResourceExt_v1610_formatExt_v1700_formatExt_v1700_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_PUCCH_ResourceExt_v1610_formatExt_v1700(_ctx, &p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PUCCH_ResourceExt_v1610_pucch_RepetitionNrofSlots_r17_e__ToString(SQN_NR_PUCCH_ResourceExt_v1610_pucch_RepetitionNrofSlots_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PUCCH_ResourceExt_v1610_pucch_RepetitionNrofSlots_r17_e_n1: return "SQN_NR_PUCCH_ResourceExt_v1610_pucch_RepetitionNrofSlots_r17_e_n1";
+		case SQN_NR_PUCCH_ResourceExt_v1610_pucch_RepetitionNrofSlots_r17_e_n2: return "SQN_NR_PUCCH_ResourceExt_v1610_pucch_RepetitionNrofSlots_r17_e_n2";
+		case SQN_NR_PUCCH_ResourceExt_v1610_pucch_RepetitionNrofSlots_r17_e_n4: return "SQN_NR_PUCCH_ResourceExt_v1610_pucch_RepetitionNrofSlots_r17_e_n4";
+		case SQN_NR_PUCCH_ResourceExt_v1610_pucch_RepetitionNrofSlots_r17_e_n8: return "SQN_NR_PUCCH_ResourceExt_v1610_pucch_RepetitionNrofSlots_r17_e_n8";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PUCCH_ResourceExt_v1610_pucch_RepetitionNrofSlots_r17_e_pucch_RepetitionNrofSlots_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PUCCH_ResourceExt_v1610_pucch_RepetitionNrofSlots_r17_e_pucch_RepetitionNrofSlots_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PUCCH_ResourceExt_v1610_pucch_RepetitionNrofSlots_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_PUCCH_ResourceExt_v1610(acpCtx_t _ctx, const struct SQN_NR_PUCCH_ResourceExt_v1610* p)
 {
 	adbgPrintLog(_ctx, "interlaceAllocation_r16 := ");
 	if (p->interlaceAllocation_r16.d) { adbgPrintLog(_ctx, "{ "); };
-	_adbgNrSys__SQN_NR_PUCCH_ResourceExt_r16_interlaceAllocation_r16_interlaceAllocation_r16_Optional(_ctx, &p->interlaceAllocation_r16);
+	_adbgNrSys__SQN_NR_PUCCH_ResourceExt_v1610_interlaceAllocation_r16_interlaceAllocation_r16_Optional(_ctx, &p->interlaceAllocation_r16);
 	if (p->interlaceAllocation_r16.d) { adbgPrintLog(_ctx, " }"); };
 	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "formatExt_v1610 := ");
-	if (p->formatExt_v1610.d) { adbgPrintLog(_ctx, "{ "); };
-	_adbgNrSys__SQN_NR_PUCCH_ResourceExt_r16_formatExt_v1610_formatExt_v1610_Optional(_ctx, &p->formatExt_v1610);
-	if (p->formatExt_v1610.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, "format_v1610 := ");
+	if (p->format_v1610.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_PUCCH_ResourceExt_v1610_format_v1610_format_v1610_Optional(_ctx, &p->format_v1610);
+	if (p->format_v1610.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "formatExt_v1700 := ");
+	if (p->formatExt_v1700.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_PUCCH_ResourceExt_v1610_formatExt_v1700_formatExt_v1700_Optional(_ctx, &p->formatExt_v1700);
+	if (p->formatExt_v1700.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pucch_RepetitionNrofSlots_r17 := ");
+	_adbgNrSys__SQN_NR_PUCCH_ResourceExt_v1610_pucch_RepetitionNrofSlots_r17_e_pucch_RepetitionNrofSlots_r17_Optional(_ctx, &p->pucch_RepetitionNrofSlots_r17);
 }
 
-static void _adbgNrSys__SQN_NR_PUCCH_ResourceExt_r16_SQN_NR_PUCCH_Config_resourceToAddModListExt_r16_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_PUCCH_ResourceExt_r16_SQN_NR_PUCCH_Config_resourceToAddModListExt_r16_DynamicOptional* p)
+static void _adbgNrSys__SQN_NR_PUCCH_ResourceExt_v1610_SQN_NR_PUCCH_Config_resourceToAddModListExt_v1610_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_PUCCH_ResourceExt_v1610_SQN_NR_PUCCH_Config_resourceToAddModListExt_v1610_DynamicOptional* p)
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		adbgPrintLog(_ctx, "{ ");
-		_adbgNrSys__SQN_NR_PUCCH_ResourceExt_r16(_ctx, &p->v.v[i2]);
+		_adbgNrSys__SQN_NR_PUCCH_ResourceExt_v1610(_ctx, &p->v.v[i2]);
 		adbgPrintLog(_ctx, " }");
 		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
 	}
@@ -7720,7 +9259,7 @@ static void _adbgNrSys__SQN_NR_PUCCH_Config_dmrs_UplinkTransformPrecodingPUCCH_r
 	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PUCCH_Config_dmrs_UplinkTransformPrecodingPUCCH_r16_e__ToString(p->v), (int)p->v);
 }
 
-static void _adbgNrSys__SQN_NR_PUCCH_SpatialRelationInfo_SQN_NR_PUCCH_Config_spatialRelationInfoToAddModList2_r16_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_PUCCH_SpatialRelationInfo_SQN_NR_PUCCH_Config_spatialRelationInfoToAddModList2_r16_DynamicOptional* p)
+static void _adbgNrSys__SQN_NR_PUCCH_SpatialRelationInfo_SQN_NR_PUCCH_Config_spatialRelationInfoToAddModListSizeExt_v1610_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_PUCCH_SpatialRelationInfo_SQN_NR_PUCCH_Config_spatialRelationInfoToAddModListSizeExt_v1610_DynamicOptional* p)
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
@@ -7731,7 +9270,7 @@ static void _adbgNrSys__SQN_NR_PUCCH_SpatialRelationInfo_SQN_NR_PUCCH_Config_spa
 	}
 }
 
-static void _adbgNrSys__SQN_NR_PUCCH_SpatialRelationInfoId_SQN_NR_PUCCH_Config_spatialRelationInfoToReleaseList2_r16_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_PUCCH_SpatialRelationInfoId_SQN_NR_PUCCH_Config_spatialRelationInfoToReleaseList2_r16_DynamicOptional* p)
+static void _adbgNrSys__SQN_NR_PUCCH_SpatialRelationInfoId_SQN_NR_PUCCH_Config_spatialRelationInfoToReleaseListSizeExt_v1610_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_PUCCH_SpatialRelationInfoId_SQN_NR_PUCCH_Config_spatialRelationInfoToReleaseListSizeExt_v1610_DynamicOptional* p)
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
 	adbgPrintLog(_ctx, "'");
@@ -7762,7 +9301,7 @@ static void _adbgNrSys__SQN_NR_PUCCH_SpatialRelationInfoExt_r16(acpCtx_t _ctx, c
 	_adbgNrSys__SQN_NR_PUCCH_PathlossReferenceRS_Id_v1610_SQN_NR_PUCCH_SpatialRelationInfoExt_r16_pucch_PathlossReferenceRS_Id_v1610_Optional(_ctx, &p->pucch_PathlossReferenceRS_Id_v1610);
 }
 
-static void _adbgNrSys__SQN_NR_PUCCH_SpatialRelationInfoExt_r16_SQN_NR_PUCCH_Config_spatialRelationInfoToAddModListExt_r16_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_PUCCH_SpatialRelationInfoExt_r16_SQN_NR_PUCCH_Config_spatialRelationInfoToAddModListExt_r16_DynamicOptional* p)
+static void _adbgNrSys__SQN_NR_PUCCH_SpatialRelationInfoExt_r16_SQN_NR_PUCCH_Config_spatialRelationInfoToAddModListExt_v1610_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_PUCCH_SpatialRelationInfoExt_r16_SQN_NR_PUCCH_Config_spatialRelationInfoToAddModListExt_v1610_DynamicOptional* p)
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
@@ -7773,7 +9312,7 @@ static void _adbgNrSys__SQN_NR_PUCCH_SpatialRelationInfoExt_r16_SQN_NR_PUCCH_Con
 	}
 }
 
-static void _adbgNrSys__SQN_NR_PUCCH_SpatialRelationInfoId_r16_SQN_NR_PUCCH_Config_spatialRelationInfoToReleaseList_r16_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_PUCCH_SpatialRelationInfoId_r16_SQN_NR_PUCCH_Config_spatialRelationInfoToReleaseList_r16_DynamicOptional* p)
+static void _adbgNrSys__SQN_NR_PUCCH_SpatialRelationInfoId_r16_SQN_NR_PUCCH_Config_spatialRelationInfoToReleaseListExt_v1610_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_PUCCH_SpatialRelationInfoId_r16_SQN_NR_PUCCH_Config_spatialRelationInfoToReleaseListExt_v1610_DynamicOptional* p)
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
 	adbgPrintLog(_ctx, "'");
@@ -7860,36 +9399,574 @@ static void _adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_sps_PUCCH_AN_List_r16_S
 	_adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_sps_PUCCH_AN_List_r16(_ctx, &p->v);
 }
 
-static const char* adbgNrSys__SQN_NR_SchedulingRequestResourceConfig_v1610_phy_PriorityIndex_r16_e__ToString(SQN_NR_SchedulingRequestResourceConfig_v1610_phy_PriorityIndex_r16_e v)
+static const char* adbgNrSys__SQN_NR_SchedulingRequestResourceConfigExt_v1610_phy_PriorityIndex_r16_e__ToString(SQN_NR_SchedulingRequestResourceConfigExt_v1610_phy_PriorityIndex_r16_e v)
 {
 	switch(v) {
-		case SQN_NR_SchedulingRequestResourceConfig_v1610_phy_PriorityIndex_r16_e_p0: return "SQN_NR_SchedulingRequestResourceConfig_v1610_phy_PriorityIndex_r16_e_p0";
-		case SQN_NR_SchedulingRequestResourceConfig_v1610_phy_PriorityIndex_r16_e_p1: return "SQN_NR_SchedulingRequestResourceConfig_v1610_phy_PriorityIndex_r16_e_p1";
+		case SQN_NR_SchedulingRequestResourceConfigExt_v1610_phy_PriorityIndex_r16_e_p0: return "SQN_NR_SchedulingRequestResourceConfigExt_v1610_phy_PriorityIndex_r16_e_p0";
+		case SQN_NR_SchedulingRequestResourceConfigExt_v1610_phy_PriorityIndex_r16_e_p1: return "SQN_NR_SchedulingRequestResourceConfigExt_v1610_phy_PriorityIndex_r16_e_p1";
 		default: return "Unknown";
 	}
 }
 
-static void _adbgNrSys__SQN_NR_SchedulingRequestResourceConfig_v1610_phy_PriorityIndex_r16_e_phy_PriorityIndex_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_SchedulingRequestResourceConfig_v1610_phy_PriorityIndex_r16_e_phy_PriorityIndex_r16_Optional* p)
+static void _adbgNrSys__SQN_NR_SchedulingRequestResourceConfigExt_v1610_phy_PriorityIndex_r16_e_phy_PriorityIndex_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_SchedulingRequestResourceConfigExt_v1610_phy_PriorityIndex_r16_e_phy_PriorityIndex_r16_Optional* p)
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SchedulingRequestResourceConfig_v1610_phy_PriorityIndex_r16_e__ToString(p->v), (int)p->v);
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SchedulingRequestResourceConfigExt_v1610_phy_PriorityIndex_r16_e__ToString(p->v), (int)p->v);
 }
 
-static void _adbgNrSys__SQN_NR_SchedulingRequestResourceConfig_v1610(acpCtx_t _ctx, const struct SQN_NR_SchedulingRequestResourceConfig_v1610* p)
+static void _adbgNrSys__SQN_NR_SchedulingRequestResourceConfigExt_v1610(acpCtx_t _ctx, const struct SQN_NR_SchedulingRequestResourceConfigExt_v1610* p)
 {
 	adbgPrintLog(_ctx, "phy_PriorityIndex_r16 := ");
-	_adbgNrSys__SQN_NR_SchedulingRequestResourceConfig_v1610_phy_PriorityIndex_r16_e_phy_PriorityIndex_r16_Optional(_ctx, &p->phy_PriorityIndex_r16);
+	_adbgNrSys__SQN_NR_SchedulingRequestResourceConfigExt_v1610_phy_PriorityIndex_r16_e_phy_PriorityIndex_r16_Optional(_ctx, &p->phy_PriorityIndex_r16);
 }
 
-static void _adbgNrSys__SQN_NR_SchedulingRequestResourceConfig_v1610_SQN_NR_PUCCH_Config_schedulingRequestResourceToAddModList_v1610_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_SchedulingRequestResourceConfig_v1610_SQN_NR_PUCCH_Config_schedulingRequestResourceToAddModList_v1610_DynamicOptional* p)
+static void _adbgNrSys__SQN_NR_SchedulingRequestResourceConfigExt_v1610_SQN_NR_PUCCH_Config_schedulingRequestResourceToAddModListExt_v1610_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_SchedulingRequestResourceConfigExt_v1610_SQN_NR_PUCCH_Config_schedulingRequestResourceToAddModListExt_v1610_DynamicOptional* p)
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		adbgPrintLog(_ctx, "{ ");
-		_adbgNrSys__SQN_NR_SchedulingRequestResourceConfig_v1610(_ctx, &p->v.v[i2]);
+		_adbgNrSys__SQN_NR_SchedulingRequestResourceConfigExt_v1610(_ctx, &p->v.v[i2]);
 		adbgPrintLog(_ctx, " }");
 		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
 	}
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_format0_r17_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_PUCCH_Config_format0_r17_Value* p, enum SQN_NR_SetupRelease_PUCCH_Config_format0_r17_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_PUCCH_Config_format0_r17_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_PUCCH_Config_format0_r17_setup) {
+		adbgPrintLog(_ctx, "setup := { ");
+		_adbgNrSys__SQN_NR_PUCCH_FormatConfig(_ctx, &p->setup);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_format0_r17(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUCCH_Config_format0_r17* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_format0_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_format0_r17_SQN_NR_PUCCH_Config_format0_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUCCH_Config_format0_r17_SQN_NR_PUCCH_Config_format0_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_format0_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_PUCCH_MaxCodeRate_e_SQN_NR_PUCCH_FormatConfigExt_r17_maxCodeRateLP_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PUCCH_MaxCodeRate_e_SQN_NR_PUCCH_FormatConfigExt_r17_maxCodeRateLP_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PUCCH_MaxCodeRate_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_PUCCH_FormatConfigExt_r17(acpCtx_t _ctx, const struct SQN_NR_PUCCH_FormatConfigExt_r17* p)
+{
+	adbgPrintLog(_ctx, "maxCodeRateLP_r17 := ");
+	_adbgNrSys__SQN_NR_PUCCH_MaxCodeRate_e_SQN_NR_PUCCH_FormatConfigExt_r17_maxCodeRateLP_r17_Optional(_ctx, &p->maxCodeRateLP_r17);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_format2Ext_r17_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_PUCCH_Config_format2Ext_r17_Value* p, enum SQN_NR_SetupRelease_PUCCH_Config_format2Ext_r17_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_PUCCH_Config_format2Ext_r17_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_PUCCH_Config_format2Ext_r17_setup) {
+		adbgPrintLog(_ctx, "setup := { ");
+		_adbgNrSys__SQN_NR_PUCCH_FormatConfigExt_r17(_ctx, &p->setup);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_format2Ext_r17(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUCCH_Config_format2Ext_r17* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_format2Ext_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_format2Ext_r17_SQN_NR_PUCCH_Config_format2Ext_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUCCH_Config_format2Ext_r17_SQN_NR_PUCCH_Config_format2Ext_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_format2Ext_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_format3Ext_r17_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_PUCCH_Config_format3Ext_r17_Value* p, enum SQN_NR_SetupRelease_PUCCH_Config_format3Ext_r17_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_PUCCH_Config_format3Ext_r17_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_PUCCH_Config_format3Ext_r17_setup) {
+		adbgPrintLog(_ctx, "setup := { ");
+		_adbgNrSys__SQN_NR_PUCCH_FormatConfigExt_r17(_ctx, &p->setup);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_format3Ext_r17(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUCCH_Config_format3Ext_r17* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_format3Ext_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_format3Ext_r17_SQN_NR_PUCCH_Config_format3Ext_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUCCH_Config_format3Ext_r17_SQN_NR_PUCCH_Config_format3Ext_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_format3Ext_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_format4Ext_r17_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_PUCCH_Config_format4Ext_r17_Value* p, enum SQN_NR_SetupRelease_PUCCH_Config_format4Ext_r17_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_PUCCH_Config_format4Ext_r17_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_PUCCH_Config_format4Ext_r17_setup) {
+		adbgPrintLog(_ctx, "setup := { ");
+		_adbgNrSys__SQN_NR_PUCCH_FormatConfigExt_r17(_ctx, &p->setup);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_format4Ext_r17(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUCCH_Config_format4Ext_r17* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_format4Ext_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_format4Ext_r17_SQN_NR_PUCCH_Config_format4Ext_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUCCH_Config_format4Ext_r17_SQN_NR_PUCCH_Config_format4Ext_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_format4Ext_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_2_r17_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_2_r17_Value* p, enum SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_2_r17_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_2_r17_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_2_r17_setup) {
+		adbgPrintLog(_ctx, "setup := '");
+		for (size_t i2 = 0; i2 < p->setup.d; i2++) {
+			adbgPrintLog(_ctx, "%02X", p->setup.v[i2]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_2_r17(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_2_r17* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_2_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_2_r17_SQN_NR_PUCCH_Config_ul_AccessConfigListDCI_1_2_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_2_r17_SQN_NR_PUCCH_Config_ul_AccessConfigListDCI_1_2_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_2_r17(_ctx, &p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PUCCH_Config_mappingPattern_r17_e__ToString(SQN_NR_PUCCH_Config_mappingPattern_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PUCCH_Config_mappingPattern_r17_e_cyclicMapping: return "SQN_NR_PUCCH_Config_mappingPattern_r17_e_cyclicMapping";
+		case SQN_NR_PUCCH_Config_mappingPattern_r17_e_sequentialMapping: return "SQN_NR_PUCCH_Config_mappingPattern_r17_e_sequentialMapping";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PUCCH_Config_mappingPattern_r17_e_mappingPattern_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PUCCH_Config_mappingPattern_r17_e_mappingPattern_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PUCCH_Config_mappingPattern_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PUCCH_PowerControlSetInfo_r17_pucch_ClosedLoopIndex_r17_e__ToString(SQN_NR_PUCCH_PowerControlSetInfo_r17_pucch_ClosedLoopIndex_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PUCCH_PowerControlSetInfo_r17_pucch_ClosedLoopIndex_r17_e_i0: return "SQN_NR_PUCCH_PowerControlSetInfo_r17_pucch_ClosedLoopIndex_r17_e_i0";
+		case SQN_NR_PUCCH_PowerControlSetInfo_r17_pucch_ClosedLoopIndex_r17_e_i1: return "SQN_NR_PUCCH_PowerControlSetInfo_r17_pucch_ClosedLoopIndex_r17_e_i1";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PUCCH_PowerControlSetInfo_r17(acpCtx_t _ctx, const struct SQN_NR_PUCCH_PowerControlSetInfo_r17* p)
+{
+	adbgPrintLog(_ctx, "pucch_PowerControlSetInfoId_r17 := %u", (unsigned int)p->pucch_PowerControlSetInfoId_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "p0_PUCCH_Id_r17 := %u", (unsigned int)p->p0_PUCCH_Id_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pucch_ClosedLoopIndex_r17 := %s (%d)", adbgNrSys__SQN_NR_PUCCH_PowerControlSetInfo_r17_pucch_ClosedLoopIndex_r17_e__ToString(p->pucch_ClosedLoopIndex_r17), (int)p->pucch_ClosedLoopIndex_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pucch_PathlossReferenceRS_Id_r17 := %u", (unsigned int)p->pucch_PathlossReferenceRS_Id_r17);
+}
+
+static void _adbgNrSys__SQN_NR_PUCCH_PowerControlSetInfo_r17_SQN_NR_PUCCH_Config_powerControlSetInfoToAddModList_r17_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_PUCCH_PowerControlSetInfo_r17_SQN_NR_PUCCH_Config_powerControlSetInfoToAddModList_r17_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		adbgPrintLog(_ctx, "{ ");
+		_adbgNrSys__SQN_NR_PUCCH_PowerControlSetInfo_r17(_ctx, &p->v.v[i2]);
+		adbgPrintLog(_ctx, " }");
+		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PUCCH_PowerControlSetInfoId_r17_SQN_NR_PUCCH_Config_powerControlSetInfoToReleaseList_r17_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_PUCCH_PowerControlSetInfoId_r17_SQN_NR_PUCCH_Config_powerControlSetInfoToReleaseList_r17_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "'");
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		adbgPrintLog(_ctx, "%02X", p->v.v[i2]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static const char* adbgNrSys__SQN_NR_PUCCH_Config_secondTPCFieldDCI_1_1_r17_e__ToString(SQN_NR_PUCCH_Config_secondTPCFieldDCI_1_1_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PUCCH_Config_secondTPCFieldDCI_1_1_r17_e_enabled: return "SQN_NR_PUCCH_Config_secondTPCFieldDCI_1_1_r17_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PUCCH_Config_secondTPCFieldDCI_1_1_r17_e_secondTPCFieldDCI_1_1_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PUCCH_Config_secondTPCFieldDCI_1_1_r17_e_secondTPCFieldDCI_1_1_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PUCCH_Config_secondTPCFieldDCI_1_1_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PUCCH_Config_secondTPCFieldDCI_1_2_r17_e__ToString(SQN_NR_PUCCH_Config_secondTPCFieldDCI_1_2_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PUCCH_Config_secondTPCFieldDCI_1_2_r17_e_enabled: return "SQN_NR_PUCCH_Config_secondTPCFieldDCI_1_2_r17_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PUCCH_Config_secondTPCFieldDCI_1_2_r17_e_secondTPCFieldDCI_1_2_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PUCCH_Config_secondTPCFieldDCI_1_2_r17_e_secondTPCFieldDCI_1_2_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PUCCH_Config_secondTPCFieldDCI_1_2_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_r17_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_r17_Value* p, enum SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_r17_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_r17_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_r17_setup) {
+		adbgPrintLog(_ctx, "setup := '");
+		for (size_t i2 = 0; i2 < p->setup.d; i2++) {
+			adbgPrintLog(_ctx, "%02X", p->setup.v[i2]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_r17(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_r17* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_r17_SQN_NR_PUCCH_Config_dl_DataToUL_ACK_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_r17_SQN_NR_PUCCH_Config_dl_DataToUL_ACK_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_DCI_1_2_r17_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_DCI_1_2_r17_Value* p, enum SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_DCI_1_2_r17_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_DCI_1_2_r17_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_DCI_1_2_r17_setup) {
+		adbgPrintLog(_ctx, "setup := '");
+		for (size_t i2 = 0; i2 < p->setup.d; i2++) {
+			adbgPrintLog(_ctx, "%02X", p->setup.v[i2]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_DCI_1_2_r17(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_DCI_1_2_r17* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_DCI_1_2_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_DCI_1_2_r17_SQN_NR_PUCCH_Config_dl_DataToUL_ACK_DCI_1_2_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_DCI_1_2_r17_SQN_NR_PUCCH_Config_dl_DataToUL_ACK_DCI_1_2_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_DCI_1_2_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_1_r17_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_1_r17_Value* p, enum SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_1_r17_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_1_r17_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_1_r17_setup) {
+		adbgPrintLog(_ctx, "setup := '");
+		for (size_t i2 = 0; i2 < p->setup.d; i2++) {
+			adbgPrintLog(_ctx, "%02X", p->setup.v[i2]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_1_r17(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_1_r17* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_1_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_1_r17_SQN_NR_PUCCH_Config_ul_AccessConfigListDCI_1_1_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_1_r17_SQN_NR_PUCCH_Config_ul_AccessConfigListDCI_1_1_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_1_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SchedulingRequestResourceConfigExt_v1700_periodicityAndOffset_r17_Value(acpCtx_t _ctx, const union SQN_NR_SchedulingRequestResourceConfigExt_v1700_periodicityAndOffset_r17_Value* p, enum SQN_NR_SchedulingRequestResourceConfigExt_v1700_periodicityAndOffset_r17_Sel d)
+{
+	if (d == SQN_NR_SchedulingRequestResourceConfigExt_v1700_periodicityAndOffset_r17_sl1280) {
+		adbgPrintLog(_ctx, "sl1280 := %u", (unsigned int)p->sl1280);
+		return;
+	}
+	if (d == SQN_NR_SchedulingRequestResourceConfigExt_v1700_periodicityAndOffset_r17_sl2560) {
+		adbgPrintLog(_ctx, "sl2560 := %u", (unsigned int)p->sl2560);
+		return;
+	}
+	if (d == SQN_NR_SchedulingRequestResourceConfigExt_v1700_periodicityAndOffset_r17_sl5120) {
+		adbgPrintLog(_ctx, "sl5120 := %u", (unsigned int)p->sl5120);
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SchedulingRequestResourceConfigExt_v1700_periodicityAndOffset_r17(acpCtx_t _ctx, const struct SQN_NR_SchedulingRequestResourceConfigExt_v1700_periodicityAndOffset_r17* p)
+{
+	_adbgNrSys__SQN_NR_SchedulingRequestResourceConfigExt_v1700_periodicityAndOffset_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SchedulingRequestResourceConfigExt_v1700_periodicityAndOffset_r17_periodicityAndOffset_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SchedulingRequestResourceConfigExt_v1700_periodicityAndOffset_r17_periodicityAndOffset_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SchedulingRequestResourceConfigExt_v1700_periodicityAndOffset_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SchedulingRequestResourceConfigExt_v1700(acpCtx_t _ctx, const struct SQN_NR_SchedulingRequestResourceConfigExt_v1700* p)
+{
+	adbgPrintLog(_ctx, "periodicityAndOffset_r17 := ");
+	if (p->periodicityAndOffset_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SchedulingRequestResourceConfigExt_v1700_periodicityAndOffset_r17_periodicityAndOffset_r17_Optional(_ctx, &p->periodicityAndOffset_r17);
+	if (p->periodicityAndOffset_r17.d) { adbgPrintLog(_ctx, " }"); };
+}
+
+static void _adbgNrSys__SQN_NR_SchedulingRequestResourceConfigExt_v1700_SQN_NR_PUCCH_Config_schedulingRequestResourceToAddModListExt_v1700_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_SchedulingRequestResourceConfigExt_v1700_SQN_NR_PUCCH_Config_schedulingRequestResourceToAddModListExt_v1700_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		adbgPrintLog(_ctx, "{ ");
+		_adbgNrSys__SQN_NR_SchedulingRequestResourceConfigExt_v1700(_ctx, &p->v.v[i2]);
+		adbgPrintLog(_ctx, " }");
+		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static const char* adbgNrSys__SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_DMRS_Bundling_r17_e__ToString(SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_DMRS_Bundling_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_DMRS_Bundling_r17_e_enabled: return "SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_DMRS_Bundling_r17_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_DMRS_Bundling_r17_e_pucch_DMRS_Bundling_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_DMRS_Bundling_r17_e_pucch_DMRS_Bundling_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_DMRS_Bundling_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__Uint8_t_SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_TimeDomainWindowLength_r17_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_TimeDomainWindowLength_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_WindowRestart_r17_e__ToString(SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_WindowRestart_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_WindowRestart_r17_e_enabled: return "SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_WindowRestart_r17_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_WindowRestart_r17_e_pucch_WindowRestart_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_WindowRestart_r17_e_pucch_WindowRestart_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_WindowRestart_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_FrequencyHoppingInterval_r17_e__ToString(SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_FrequencyHoppingInterval_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_FrequencyHoppingInterval_r17_e_s2: return "SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_FrequencyHoppingInterval_r17_e_s2";
+		case SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_FrequencyHoppingInterval_r17_e_s4: return "SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_FrequencyHoppingInterval_r17_e_s4";
+		case SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_FrequencyHoppingInterval_r17_e_s5: return "SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_FrequencyHoppingInterval_r17_e_s5";
+		case SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_FrequencyHoppingInterval_r17_e_s10: return "SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_FrequencyHoppingInterval_r17_e_s10";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_FrequencyHoppingInterval_r17_e_pucch_FrequencyHoppingInterval_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_FrequencyHoppingInterval_r17_e_pucch_FrequencyHoppingInterval_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_FrequencyHoppingInterval_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_DMRS_BundlingPUCCH_Config_r17(acpCtx_t _ctx, const struct SQN_NR_DMRS_BundlingPUCCH_Config_r17* p)
+{
+	adbgPrintLog(_ctx, "pucch_DMRS_Bundling_r17 := ");
+	_adbgNrSys__SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_DMRS_Bundling_r17_e_pucch_DMRS_Bundling_r17_Optional(_ctx, &p->pucch_DMRS_Bundling_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pucch_TimeDomainWindowLength_r17 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_TimeDomainWindowLength_r17_Optional(_ctx, &p->pucch_TimeDomainWindowLength_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pucch_WindowRestart_r17 := ");
+	_adbgNrSys__SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_WindowRestart_r17_e_pucch_WindowRestart_r17_Optional(_ctx, &p->pucch_WindowRestart_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pucch_FrequencyHoppingInterval_r17 := ");
+	_adbgNrSys__SQN_NR_DMRS_BundlingPUCCH_Config_r17_pucch_FrequencyHoppingInterval_r17_e_pucch_FrequencyHoppingInterval_r17_Optional(_ctx, &p->pucch_FrequencyHoppingInterval_r17);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_dmrs_BundlingPUCCH_Config_r17_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_PUCCH_Config_dmrs_BundlingPUCCH_Config_r17_Value* p, enum SQN_NR_SetupRelease_PUCCH_Config_dmrs_BundlingPUCCH_Config_r17_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_PUCCH_Config_dmrs_BundlingPUCCH_Config_r17_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_PUCCH_Config_dmrs_BundlingPUCCH_Config_r17_setup) {
+		adbgPrintLog(_ctx, "setup := { ");
+		_adbgNrSys__SQN_NR_DMRS_BundlingPUCCH_Config_r17(_ctx, &p->setup);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_dmrs_BundlingPUCCH_Config_r17(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUCCH_Config_dmrs_BundlingPUCCH_Config_r17* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_dmrs_BundlingPUCCH_Config_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_dmrs_BundlingPUCCH_Config_r17_SQN_NR_PUCCH_Config_dmrs_BundlingPUCCH_Config_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUCCH_Config_dmrs_BundlingPUCCH_Config_r17_SQN_NR_PUCCH_Config_dmrs_BundlingPUCCH_Config_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_dmrs_BundlingPUCCH_Config_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_v1700_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_v1700_Value* p, enum SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_v1700_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_v1700_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_v1700_setup) {
+		adbgPrintLog(_ctx, "setup := '");
+		for (size_t i2 = 0; i2 < p->setup.d; i2++) {
+			adbgPrintLog(_ctx, "%02X", p->setup.v[i2]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_v1700(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_v1700* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_v1700_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_v1700_SQN_NR_PUCCH_Config_dl_DataToUL_ACK_v1700_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_v1700_SQN_NR_PUCCH_Config_dl_DataToUL_ACK_v1700_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_v1700(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_MulticastDCI_Format4_1_r17_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_MulticastDCI_Format4_1_r17_Value* p, enum SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_MulticastDCI_Format4_1_r17_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_MulticastDCI_Format4_1_r17_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_MulticastDCI_Format4_1_r17_setup) {
+		adbgPrintLog(_ctx, "setup := '");
+		for (size_t i2 = 0; i2 < p->setup.d; i2++) {
+			adbgPrintLog(_ctx, "%02X", p->setup.v[i2]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_MulticastDCI_Format4_1_r17(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_MulticastDCI_Format4_1_r17* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_MulticastDCI_Format4_1_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_MulticastDCI_Format4_1_r17_SQN_NR_PUCCH_Config_dl_DataToUL_ACK_MulticastDCI_Format4_1_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_MulticastDCI_Format4_1_r17_SQN_NR_PUCCH_Config_dl_DataToUL_ACK_MulticastDCI_Format4_1_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_MulticastDCI_Format4_1_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_sps_PUCCH_AN_ListMulticast_r17_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_PUCCH_Config_sps_PUCCH_AN_ListMulticast_r17_Value* p, enum SQN_NR_SetupRelease_PUCCH_Config_sps_PUCCH_AN_ListMulticast_r17_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_PUCCH_Config_sps_PUCCH_AN_ListMulticast_r17_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_PUCCH_Config_sps_PUCCH_AN_ListMulticast_r17_setup) {
+		adbgPrintLog(_ctx, "setup := { ");
+		for (size_t i2 = 0; i2 < p->setup.d; i2++) {
+			adbgPrintLog(_ctx, "{ ");
+			_adbgNrSys__SQN_NR_SPS_PUCCH_AN_r16(_ctx, &p->setup.v[i2]);
+			adbgPrintLog(_ctx, " }");
+			if (i2 != p->setup.d - 1) { adbgPrintLog(_ctx, ", "); }
+		}
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_sps_PUCCH_AN_ListMulticast_r17(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUCCH_Config_sps_PUCCH_AN_ListMulticast_r17* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_sps_PUCCH_AN_ListMulticast_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_sps_PUCCH_AN_ListMulticast_r17_SQN_NR_PUCCH_Config_sps_PUCCH_AN_ListMulticast_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUCCH_Config_sps_PUCCH_AN_ListMulticast_r17_SQN_NR_PUCCH_Config_sps_PUCCH_AN_ListMulticast_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_sps_PUCCH_AN_ListMulticast_r17(_ctx, &p->v);
 }
 
 static void _adbgNrSys__SQN_NR_PUCCH_Config(acpCtx_t _ctx, const struct SQN_NR_PUCCH_Config* p)
@@ -7957,10 +10034,10 @@ static void _adbgNrSys__SQN_NR_PUCCH_Config(acpCtx_t _ctx, const struct SQN_NR_P
 	_adbgNrSys__SQN_NR_PUCCH_PowerControl_SQN_NR_PUCCH_Config_pucch_PowerControl_Optional(_ctx, &p->pucch_PowerControl);
 	if (p->pucch_PowerControl.d) { adbgPrintLog(_ctx, " }"); };
 	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "resourceToAddModListExt_r16 := ");
-	if (p->resourceToAddModListExt_r16.d) { adbgPrintLog(_ctx, "{ "); };
-	_adbgNrSys__SQN_NR_PUCCH_ResourceExt_r16_SQN_NR_PUCCH_Config_resourceToAddModListExt_r16_DynamicOptional(_ctx, &p->resourceToAddModListExt_r16);
-	if (p->resourceToAddModListExt_r16.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, "resourceToAddModListExt_v1610 := ");
+	if (p->resourceToAddModListExt_v1610.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_PUCCH_ResourceExt_v1610_SQN_NR_PUCCH_Config_resourceToAddModListExt_v1610_DynamicOptional(_ctx, &p->resourceToAddModListExt_v1610);
+	if (p->resourceToAddModListExt_v1610.d) { adbgPrintLog(_ctx, " }"); };
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "dl_DataToUL_ACK_r16 := ");
 	if (p->dl_DataToUL_ACK_r16.d) { adbgPrintLog(_ctx, "{ "); };
@@ -7988,21 +10065,21 @@ static void _adbgNrSys__SQN_NR_PUCCH_Config(acpCtx_t _ctx, const struct SQN_NR_P
 	adbgPrintLog(_ctx, "dmrs_UplinkTransformPrecodingPUCCH_r16 := ");
 	_adbgNrSys__SQN_NR_PUCCH_Config_dmrs_UplinkTransformPrecodingPUCCH_r16_e_dmrs_UplinkTransformPrecodingPUCCH_r16_Optional(_ctx, &p->dmrs_UplinkTransformPrecodingPUCCH_r16);
 	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "spatialRelationInfoToAddModList2_r16 := ");
-	if (p->spatialRelationInfoToAddModList2_r16.d) { adbgPrintLog(_ctx, "{ "); };
-	_adbgNrSys__SQN_NR_PUCCH_SpatialRelationInfo_SQN_NR_PUCCH_Config_spatialRelationInfoToAddModList2_r16_DynamicOptional(_ctx, &p->spatialRelationInfoToAddModList2_r16);
-	if (p->spatialRelationInfoToAddModList2_r16.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, "spatialRelationInfoToAddModListSizeExt_v1610 := ");
+	if (p->spatialRelationInfoToAddModListSizeExt_v1610.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_PUCCH_SpatialRelationInfo_SQN_NR_PUCCH_Config_spatialRelationInfoToAddModListSizeExt_v1610_DynamicOptional(_ctx, &p->spatialRelationInfoToAddModListSizeExt_v1610);
+	if (p->spatialRelationInfoToAddModListSizeExt_v1610.d) { adbgPrintLog(_ctx, " }"); };
 	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "spatialRelationInfoToReleaseList2_r16 := ");
-	_adbgNrSys__SQN_NR_PUCCH_SpatialRelationInfoId_SQN_NR_PUCCH_Config_spatialRelationInfoToReleaseList2_r16_DynamicOptional(_ctx, &p->spatialRelationInfoToReleaseList2_r16);
+	adbgPrintLog(_ctx, "spatialRelationInfoToReleaseListSizeExt_v1610 := ");
+	_adbgNrSys__SQN_NR_PUCCH_SpatialRelationInfoId_SQN_NR_PUCCH_Config_spatialRelationInfoToReleaseListSizeExt_v1610_DynamicOptional(_ctx, &p->spatialRelationInfoToReleaseListSizeExt_v1610);
 	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "spatialRelationInfoToAddModListExt_r16 := ");
-	if (p->spatialRelationInfoToAddModListExt_r16.d) { adbgPrintLog(_ctx, "{ "); };
-	_adbgNrSys__SQN_NR_PUCCH_SpatialRelationInfoExt_r16_SQN_NR_PUCCH_Config_spatialRelationInfoToAddModListExt_r16_DynamicOptional(_ctx, &p->spatialRelationInfoToAddModListExt_r16);
-	if (p->spatialRelationInfoToAddModListExt_r16.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, "spatialRelationInfoToAddModListExt_v1610 := ");
+	if (p->spatialRelationInfoToAddModListExt_v1610.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_PUCCH_SpatialRelationInfoExt_r16_SQN_NR_PUCCH_Config_spatialRelationInfoToAddModListExt_v1610_DynamicOptional(_ctx, &p->spatialRelationInfoToAddModListExt_v1610);
+	if (p->spatialRelationInfoToAddModListExt_v1610.d) { adbgPrintLog(_ctx, " }"); };
 	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "spatialRelationInfoToReleaseList_r16 := ");
-	_adbgNrSys__SQN_NR_PUCCH_SpatialRelationInfoId_r16_SQN_NR_PUCCH_Config_spatialRelationInfoToReleaseList_r16_DynamicOptional(_ctx, &p->spatialRelationInfoToReleaseList_r16);
+	adbgPrintLog(_ctx, "spatialRelationInfoToReleaseListExt_v1610 := ");
+	_adbgNrSys__SQN_NR_PUCCH_SpatialRelationInfoId_r16_SQN_NR_PUCCH_Config_spatialRelationInfoToReleaseListExt_v1610_DynamicOptional(_ctx, &p->spatialRelationInfoToReleaseListExt_v1610);
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "resourceGroupToAddModList_r16 := ");
 	if (p->resourceGroupToAddModList_r16.d) { adbgPrintLog(_ctx, "{ "); };
@@ -8017,10 +10094,92 @@ static void _adbgNrSys__SQN_NR_PUCCH_Config(acpCtx_t _ctx, const struct SQN_NR_P
 	_adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_sps_PUCCH_AN_List_r16_SQN_NR_PUCCH_Config_sps_PUCCH_AN_List_r16_Optional(_ctx, &p->sps_PUCCH_AN_List_r16);
 	if (p->sps_PUCCH_AN_List_r16.d) { adbgPrintLog(_ctx, " }"); };
 	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "schedulingRequestResourceToAddModList_v1610 := ");
-	if (p->schedulingRequestResourceToAddModList_v1610.d) { adbgPrintLog(_ctx, "{ "); };
-	_adbgNrSys__SQN_NR_SchedulingRequestResourceConfig_v1610_SQN_NR_PUCCH_Config_schedulingRequestResourceToAddModList_v1610_DynamicOptional(_ctx, &p->schedulingRequestResourceToAddModList_v1610);
-	if (p->schedulingRequestResourceToAddModList_v1610.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, "schedulingRequestResourceToAddModListExt_v1610 := ");
+	if (p->schedulingRequestResourceToAddModListExt_v1610.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SchedulingRequestResourceConfigExt_v1610_SQN_NR_PUCCH_Config_schedulingRequestResourceToAddModListExt_v1610_DynamicOptional(_ctx, &p->schedulingRequestResourceToAddModListExt_v1610);
+	if (p->schedulingRequestResourceToAddModListExt_v1610.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "format0_r17 := ");
+	if (p->format0_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_format0_r17_SQN_NR_PUCCH_Config_format0_r17_Optional(_ctx, &p->format0_r17);
+	if (p->format0_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "format2Ext_r17 := ");
+	if (p->format2Ext_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_format2Ext_r17_SQN_NR_PUCCH_Config_format2Ext_r17_Optional(_ctx, &p->format2Ext_r17);
+	if (p->format2Ext_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "format3Ext_r17 := ");
+	if (p->format3Ext_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_format3Ext_r17_SQN_NR_PUCCH_Config_format3Ext_r17_Optional(_ctx, &p->format3Ext_r17);
+	if (p->format3Ext_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "format4Ext_r17 := ");
+	if (p->format4Ext_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_format4Ext_r17_SQN_NR_PUCCH_Config_format4Ext_r17_Optional(_ctx, &p->format4Ext_r17);
+	if (p->format4Ext_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "ul_AccessConfigListDCI_1_2_r17 := ");
+	if (p->ul_AccessConfigListDCI_1_2_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_2_r17_SQN_NR_PUCCH_Config_ul_AccessConfigListDCI_1_2_r17_Optional(_ctx, &p->ul_AccessConfigListDCI_1_2_r17);
+	if (p->ul_AccessConfigListDCI_1_2_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "mappingPattern_r17 := ");
+	_adbgNrSys__SQN_NR_PUCCH_Config_mappingPattern_r17_e_mappingPattern_r17_Optional(_ctx, &p->mappingPattern_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "powerControlSetInfoToAddModList_r17 := ");
+	if (p->powerControlSetInfoToAddModList_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_PUCCH_PowerControlSetInfo_r17_SQN_NR_PUCCH_Config_powerControlSetInfoToAddModList_r17_DynamicOptional(_ctx, &p->powerControlSetInfoToAddModList_r17);
+	if (p->powerControlSetInfoToAddModList_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "powerControlSetInfoToReleaseList_r17 := ");
+	_adbgNrSys__SQN_NR_PUCCH_PowerControlSetInfoId_r17_SQN_NR_PUCCH_Config_powerControlSetInfoToReleaseList_r17_DynamicOptional(_ctx, &p->powerControlSetInfoToReleaseList_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "secondTPCFieldDCI_1_1_r17 := ");
+	_adbgNrSys__SQN_NR_PUCCH_Config_secondTPCFieldDCI_1_1_r17_e_secondTPCFieldDCI_1_1_r17_Optional(_ctx, &p->secondTPCFieldDCI_1_1_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "secondTPCFieldDCI_1_2_r17 := ");
+	_adbgNrSys__SQN_NR_PUCCH_Config_secondTPCFieldDCI_1_2_r17_e_secondTPCFieldDCI_1_2_r17_Optional(_ctx, &p->secondTPCFieldDCI_1_2_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "dl_DataToUL_ACK_r17 := ");
+	if (p->dl_DataToUL_ACK_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_r17_SQN_NR_PUCCH_Config_dl_DataToUL_ACK_r17_Optional(_ctx, &p->dl_DataToUL_ACK_r17);
+	if (p->dl_DataToUL_ACK_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "dl_DataToUL_ACK_DCI_1_2_r17 := ");
+	if (p->dl_DataToUL_ACK_DCI_1_2_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_DCI_1_2_r17_SQN_NR_PUCCH_Config_dl_DataToUL_ACK_DCI_1_2_r17_Optional(_ctx, &p->dl_DataToUL_ACK_DCI_1_2_r17);
+	if (p->dl_DataToUL_ACK_DCI_1_2_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "ul_AccessConfigListDCI_1_1_r17 := ");
+	if (p->ul_AccessConfigListDCI_1_1_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_ul_AccessConfigListDCI_1_1_r17_SQN_NR_PUCCH_Config_ul_AccessConfigListDCI_1_1_r17_Optional(_ctx, &p->ul_AccessConfigListDCI_1_1_r17);
+	if (p->ul_AccessConfigListDCI_1_1_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "schedulingRequestResourceToAddModListExt_v1700 := ");
+	if (p->schedulingRequestResourceToAddModListExt_v1700.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SchedulingRequestResourceConfigExt_v1700_SQN_NR_PUCCH_Config_schedulingRequestResourceToAddModListExt_v1700_DynamicOptional(_ctx, &p->schedulingRequestResourceToAddModListExt_v1700);
+	if (p->schedulingRequestResourceToAddModListExt_v1700.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "dmrs_BundlingPUCCH_Config_r17 := ");
+	if (p->dmrs_BundlingPUCCH_Config_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_dmrs_BundlingPUCCH_Config_r17_SQN_NR_PUCCH_Config_dmrs_BundlingPUCCH_Config_r17_Optional(_ctx, &p->dmrs_BundlingPUCCH_Config_r17);
+	if (p->dmrs_BundlingPUCCH_Config_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "dl_DataToUL_ACK_v1700 := ");
+	if (p->dl_DataToUL_ACK_v1700.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_v1700_SQN_NR_PUCCH_Config_dl_DataToUL_ACK_v1700_Optional(_ctx, &p->dl_DataToUL_ACK_v1700);
+	if (p->dl_DataToUL_ACK_v1700.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "dl_DataToUL_ACK_MulticastDCI_Format4_1_r17 := ");
+	if (p->dl_DataToUL_ACK_MulticastDCI_Format4_1_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_dl_DataToUL_ACK_MulticastDCI_Format4_1_r17_SQN_NR_PUCCH_Config_dl_DataToUL_ACK_MulticastDCI_Format4_1_r17_Optional(_ctx, &p->dl_DataToUL_ACK_MulticastDCI_Format4_1_r17);
+	if (p->dl_DataToUL_ACK_MulticastDCI_Format4_1_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "sps_PUCCH_AN_ListMulticast_r17 := ");
+	if (p->sps_PUCCH_AN_ListMulticast_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SetupRelease_PUCCH_Config_sps_PUCCH_AN_ListMulticast_r17_SQN_NR_PUCCH_Config_sps_PUCCH_AN_ListMulticast_r17_Optional(_ctx, &p->sps_PUCCH_AN_ListMulticast_r17);
+	if (p->sps_PUCCH_AN_ListMulticast_r17.d) { adbgPrintLog(_ctx, " }"); };
 }
 
 static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_Config_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_Config_Value* p, enum SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_Config_Sel d)
@@ -9568,6 +11727,62 @@ static void _adbgNrSys__SQN_NR_PUSCH_Allocation_r16_numberOfRepetitions_r16_e_nu
 	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PUSCH_Allocation_r16_numberOfRepetitions_r16_e__ToString(p->v), (int)p->v);
 }
 
+static const char* adbgNrSys__SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e__ToString(SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_n1: return "SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_n1";
+		case SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_n2: return "SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_n2";
+		case SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_n3: return "SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_n3";
+		case SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_n4: return "SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_n4";
+		case SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_n7: return "SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_n7";
+		case SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_n8: return "SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_n8";
+		case SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_n12: return "SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_n12";
+		case SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_n16: return "SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_n16";
+		case SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_n20: return "SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_n20";
+		case SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_n24: return "SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_n24";
+		case SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_n28: return "SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_n28";
+		case SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_n32: return "SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_n32";
+		case SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_spare4: return "SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_spare4";
+		case SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_spare3: return "SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_spare3";
+		case SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_spare2: return "SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_spare2";
+		case SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_spare1: return "SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_spare1";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_numberOfRepetitionsExt_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_numberOfRepetitionsExt_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PUSCH_Allocation_r16_numberOfSlotsTBoMS_r17_e__ToString(SQN_NR_PUSCH_Allocation_r16_numberOfSlotsTBoMS_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PUSCH_Allocation_r16_numberOfSlotsTBoMS_r17_e_n1: return "SQN_NR_PUSCH_Allocation_r16_numberOfSlotsTBoMS_r17_e_n1";
+		case SQN_NR_PUSCH_Allocation_r16_numberOfSlotsTBoMS_r17_e_n2: return "SQN_NR_PUSCH_Allocation_r16_numberOfSlotsTBoMS_r17_e_n2";
+		case SQN_NR_PUSCH_Allocation_r16_numberOfSlotsTBoMS_r17_e_n4: return "SQN_NR_PUSCH_Allocation_r16_numberOfSlotsTBoMS_r17_e_n4";
+		case SQN_NR_PUSCH_Allocation_r16_numberOfSlotsTBoMS_r17_e_n8: return "SQN_NR_PUSCH_Allocation_r16_numberOfSlotsTBoMS_r17_e_n8";
+		case SQN_NR_PUSCH_Allocation_r16_numberOfSlotsTBoMS_r17_e_spare4: return "SQN_NR_PUSCH_Allocation_r16_numberOfSlotsTBoMS_r17_e_spare4";
+		case SQN_NR_PUSCH_Allocation_r16_numberOfSlotsTBoMS_r17_e_spare3: return "SQN_NR_PUSCH_Allocation_r16_numberOfSlotsTBoMS_r17_e_spare3";
+		case SQN_NR_PUSCH_Allocation_r16_numberOfSlotsTBoMS_r17_e_spare2: return "SQN_NR_PUSCH_Allocation_r16_numberOfSlotsTBoMS_r17_e_spare2";
+		case SQN_NR_PUSCH_Allocation_r16_numberOfSlotsTBoMS_r17_e_spare1: return "SQN_NR_PUSCH_Allocation_r16_numberOfSlotsTBoMS_r17_e_spare1";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PUSCH_Allocation_r16_numberOfSlotsTBoMS_r17_e_numberOfSlotsTBoMS_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PUSCH_Allocation_r16_numberOfSlotsTBoMS_r17_e_numberOfSlotsTBoMS_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PUSCH_Allocation_r16_numberOfSlotsTBoMS_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__Uint8_t_SQN_NR_PUSCH_Allocation_r16_extendedK2_r17_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_PUSCH_Allocation_r16_extendedK2_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
 static void _adbgNrSys__SQN_NR_PUSCH_Allocation_r16(acpCtx_t _ctx, const struct SQN_NR_PUSCH_Allocation_r16* p)
 {
 	adbgPrintLog(_ctx, "mappingType_r16 := ");
@@ -9584,6 +11799,15 @@ static void _adbgNrSys__SQN_NR_PUSCH_Allocation_r16(acpCtx_t _ctx, const struct 
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "numberOfRepetitions_r16 := ");
 	_adbgNrSys__SQN_NR_PUSCH_Allocation_r16_numberOfRepetitions_r16_e_numberOfRepetitions_r16_Optional(_ctx, &p->numberOfRepetitions_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "numberOfRepetitionsExt_r17 := ");
+	_adbgNrSys__SQN_NR_PUSCH_Allocation_r16_numberOfRepetitionsExt_r17_e_numberOfRepetitionsExt_r17_Optional(_ctx, &p->numberOfRepetitionsExt_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "numberOfSlotsTBoMS_r17 := ");
+	_adbgNrSys__SQN_NR_PUSCH_Allocation_r16_numberOfSlotsTBoMS_r17_e_numberOfSlotsTBoMS_r17_Optional(_ctx, &p->numberOfSlotsTBoMS_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "extendedK2_r17 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_PUSCH_Allocation_r16_extendedK2_r17_Optional(_ctx, &p->extendedK2_r17);
 }
 
 static void _adbgNrSys__SQN_NR_PUSCH_TimeDomainResourceAllocation_r16(acpCtx_t _ctx, const struct SQN_NR_PUSCH_TimeDomainResourceAllocation_r16* p)
@@ -9895,7 +12119,7 @@ static void _adbgNrSys__SQN_NR_PUSCH_PathlossReferenceRS_r16(acpCtx_t _ctx, cons
 	adbgPrintLog(_ctx, " }");
 }
 
-static void _adbgNrSys__SQN_NR_PUSCH_PathlossReferenceRS_r16_SQN_NR_PUSCH_PowerControl_v1610_pathlossReferenceRSToAddModList2_r16_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_PUSCH_PathlossReferenceRS_r16_SQN_NR_PUSCH_PowerControl_v1610_pathlossReferenceRSToAddModList2_r16_DynamicOptional* p)
+static void _adbgNrSys__SQN_NR_PUSCH_PathlossReferenceRS_r16_SQN_NR_PUSCH_PowerControl_v1610_pathlossReferenceRSToAddModListSizeExt_v1610_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_PUSCH_PathlossReferenceRS_r16_SQN_NR_PUSCH_PowerControl_v1610_pathlossReferenceRSToAddModListSizeExt_v1610_DynamicOptional* p)
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
@@ -9906,7 +12130,7 @@ static void _adbgNrSys__SQN_NR_PUSCH_PathlossReferenceRS_r16_SQN_NR_PUSCH_PowerC
 	}
 }
 
-static void _adbgNrSys__SQN_NR_PUSCH_PathlossReferenceRS_Id_v1610_SQN_NR_PUSCH_PowerControl_v1610_pathlossReferenceRSToReleaseList2_r16_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_PUSCH_PathlossReferenceRS_Id_v1610_SQN_NR_PUSCH_PowerControl_v1610_pathlossReferenceRSToReleaseList2_r16_DynamicOptional* p)
+static void _adbgNrSys__SQN_NR_PUSCH_PathlossReferenceRS_Id_v1610_SQN_NR_PUSCH_PowerControl_v1610_pathlossReferenceRSToReleaseListSizeExt_v1610_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_PUSCH_PathlossReferenceRS_Id_v1610_SQN_NR_PUSCH_PowerControl_v1610_pathlossReferenceRSToReleaseListSizeExt_v1610_DynamicOptional* p)
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
 	adbgPrintLog(_ctx, "'");
@@ -9972,15 +12196,72 @@ static void _adbgNrSys__SQN_NR_PUSCH_PowerControl_v1610_olpc_ParameterSet_olpc_P
 	_adbgNrSys__SQN_NR_PUSCH_PowerControl_v1610_olpc_ParameterSet(_ctx, &p->v);
 }
 
+static void _adbgNrSys__SQN_NR_SRI_PUSCH_PowerControl_SQN_NR_PUSCH_PowerControl_v1610_sri_PUSCH_MappingToAddModList2_r17_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_SRI_PUSCH_PowerControl_SQN_NR_PUSCH_PowerControl_v1610_sri_PUSCH_MappingToAddModList2_r17_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		adbgPrintLog(_ctx, "{ ");
+		_adbgNrSys__SQN_NR_SRI_PUSCH_PowerControl(_ctx, &p->v.v[i2]);
+		adbgPrintLog(_ctx, " }");
+		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SRI_PUSCH_PowerControlId_SQN_NR_PUSCH_PowerControl_v1610_sri_PUSCH_MappingToReleaseList2_r17_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_SRI_PUSCH_PowerControlId_SQN_NR_PUSCH_PowerControl_v1610_sri_PUSCH_MappingToReleaseList2_r17_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "'");
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		adbgPrintLog(_ctx, "%02X", p->v.v[i2]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static void _adbgNrSys__SQN_NR_P0_PUSCH_Set_r16_SQN_NR_PUSCH_PowerControl_v1610_p0_PUSCH_SetList2_r17_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_P0_PUSCH_Set_r16_SQN_NR_PUSCH_PowerControl_v1610_p0_PUSCH_SetList2_r17_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		adbgPrintLog(_ctx, "{ ");
+		_adbgNrSys__SQN_NR_P0_PUSCH_Set_r16(_ctx, &p->v.v[i2]);
+		adbgPrintLog(_ctx, " }");
+		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgNrSys__SQN_NR_AdditionalPCIIndex_r17_SQN_NR_PUSCH_PathlossReferenceRS_v1710_additionalPCI_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_AdditionalPCIIndex_r17_SQN_NR_PUSCH_PathlossReferenceRS_v1710_additionalPCI_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_PUSCH_PathlossReferenceRS_v1710(acpCtx_t _ctx, const struct SQN_NR_PUSCH_PathlossReferenceRS_v1710* p)
+{
+	adbgPrintLog(_ctx, "pusch_PathlossReferenceRS_Id_r17 := %u", (unsigned int)p->pusch_PathlossReferenceRS_Id_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "additionalPCI_r17 := ");
+	_adbgNrSys__SQN_NR_AdditionalPCIIndex_r17_SQN_NR_PUSCH_PathlossReferenceRS_v1710_additionalPCI_r17_Optional(_ctx, &p->additionalPCI_r17);
+}
+
+static void _adbgNrSys__SQN_NR_PUSCH_PathlossReferenceRS_v1710_SQN_NR_PUSCH_PowerControl_v1610_pathlossReferenceRSToAddModListExt_v1710_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_PUSCH_PathlossReferenceRS_v1710_SQN_NR_PUSCH_PowerControl_v1610_pathlossReferenceRSToAddModListExt_v1710_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		adbgPrintLog(_ctx, "{ ");
+		_adbgNrSys__SQN_NR_PUSCH_PathlossReferenceRS_v1710(_ctx, &p->v.v[i2]);
+		adbgPrintLog(_ctx, " }");
+		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
 static void _adbgNrSys__SQN_NR_PUSCH_PowerControl_v1610(acpCtx_t _ctx, const struct SQN_NR_PUSCH_PowerControl_v1610* p)
 {
-	adbgPrintLog(_ctx, "pathlossReferenceRSToAddModList2_r16 := ");
-	if (p->pathlossReferenceRSToAddModList2_r16.d) { adbgPrintLog(_ctx, "{ "); };
-	_adbgNrSys__SQN_NR_PUSCH_PathlossReferenceRS_r16_SQN_NR_PUSCH_PowerControl_v1610_pathlossReferenceRSToAddModList2_r16_DynamicOptional(_ctx, &p->pathlossReferenceRSToAddModList2_r16);
-	if (p->pathlossReferenceRSToAddModList2_r16.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, "pathlossReferenceRSToAddModListSizeExt_v1610 := ");
+	if (p->pathlossReferenceRSToAddModListSizeExt_v1610.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_PUSCH_PathlossReferenceRS_r16_SQN_NR_PUSCH_PowerControl_v1610_pathlossReferenceRSToAddModListSizeExt_v1610_DynamicOptional(_ctx, &p->pathlossReferenceRSToAddModListSizeExt_v1610);
+	if (p->pathlossReferenceRSToAddModListSizeExt_v1610.d) { adbgPrintLog(_ctx, " }"); };
 	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "pathlossReferenceRSToReleaseList2_r16 := ");
-	_adbgNrSys__SQN_NR_PUSCH_PathlossReferenceRS_Id_v1610_SQN_NR_PUSCH_PowerControl_v1610_pathlossReferenceRSToReleaseList2_r16_DynamicOptional(_ctx, &p->pathlossReferenceRSToReleaseList2_r16);
+	adbgPrintLog(_ctx, "pathlossReferenceRSToReleaseListSizeExt_v1610 := ");
+	_adbgNrSys__SQN_NR_PUSCH_PathlossReferenceRS_Id_v1610_SQN_NR_PUSCH_PowerControl_v1610_pathlossReferenceRSToReleaseListSizeExt_v1610_DynamicOptional(_ctx, &p->pathlossReferenceRSToReleaseListSizeExt_v1610);
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "p0_PUSCH_SetList_r16 := ");
 	if (p->p0_PUSCH_SetList_r16.d) { adbgPrintLog(_ctx, "{ "); };
@@ -9991,6 +12272,24 @@ static void _adbgNrSys__SQN_NR_PUSCH_PowerControl_v1610(acpCtx_t _ctx, const str
 	if (p->olpc_ParameterSet.d) { adbgPrintLog(_ctx, "{ "); };
 	_adbgNrSys__SQN_NR_PUSCH_PowerControl_v1610_olpc_ParameterSet_olpc_ParameterSet_Optional(_ctx, &p->olpc_ParameterSet);
 	if (p->olpc_ParameterSet.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "sri_PUSCH_MappingToAddModList2_r17 := ");
+	if (p->sri_PUSCH_MappingToAddModList2_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SRI_PUSCH_PowerControl_SQN_NR_PUSCH_PowerControl_v1610_sri_PUSCH_MappingToAddModList2_r17_DynamicOptional(_ctx, &p->sri_PUSCH_MappingToAddModList2_r17);
+	if (p->sri_PUSCH_MappingToAddModList2_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "sri_PUSCH_MappingToReleaseList2_r17 := ");
+	_adbgNrSys__SQN_NR_SRI_PUSCH_PowerControlId_SQN_NR_PUSCH_PowerControl_v1610_sri_PUSCH_MappingToReleaseList2_r17_DynamicOptional(_ctx, &p->sri_PUSCH_MappingToReleaseList2_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "p0_PUSCH_SetList2_r17 := ");
+	if (p->p0_PUSCH_SetList2_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_P0_PUSCH_Set_r16_SQN_NR_PUSCH_PowerControl_v1610_p0_PUSCH_SetList2_r17_DynamicOptional(_ctx, &p->p0_PUSCH_SetList2_r17);
+	if (p->p0_PUSCH_SetList2_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pathlossReferenceRSToAddModListExt_v1710 := ");
+	if (p->pathlossReferenceRSToAddModListExt_v1710.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_PUSCH_PathlossReferenceRS_v1710_SQN_NR_PUSCH_PowerControl_v1610_pathlossReferenceRSToAddModListExt_v1710_DynamicOptional(_ctx, &p->pathlossReferenceRSToAddModListExt_v1710);
+	if (p->pathlossReferenceRSToAddModListExt_v1710.d) { adbgPrintLog(_ctx, " }"); };
 }
 
 static void _adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_pusch_PowerControl_v1610_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_PUSCH_Config_pusch_PowerControl_v1610_Value* p, enum SQN_NR_SetupRelease_PUSCH_Config_pusch_PowerControl_v1610_Sel d)
@@ -10024,7 +12323,7 @@ static const char* adbgNrSys__SQN_NR_PUSCH_Config_ul_FullPowerTransmission_r16_e
 	switch(v) {
 		case SQN_NR_PUSCH_Config_ul_FullPowerTransmission_r16_e_fullpower: return "SQN_NR_PUSCH_Config_ul_FullPowerTransmission_r16_e_fullpower";
 		case SQN_NR_PUSCH_Config_ul_FullPowerTransmission_r16_e_fullpowerMode1: return "SQN_NR_PUSCH_Config_ul_FullPowerTransmission_r16_e_fullpowerMode1";
-		case SQN_NR_PUSCH_Config_ul_FullPowerTransmission_r16_e_fullpoweMode2: return "SQN_NR_PUSCH_Config_ul_FullPowerTransmission_r16_e_fullpoweMode2";
+		case SQN_NR_PUSCH_Config_ul_FullPowerTransmission_r16_e_fullpowerMode2: return "SQN_NR_PUSCH_Config_ul_FullPowerTransmission_r16_e_fullpowerMode2";
 		default: return "Unknown";
 	}
 }
@@ -10070,6 +12369,521 @@ static void _adbgNrSys__Uint8_t_SQN_NR_PUSCH_Config_numberOfInvalidSymbolsForDL_
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
 	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_2_r17_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_2_r17_Value* p, enum SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_2_r17_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_2_r17_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_2_r17_setup) {
+		adbgPrintLog(_ctx, "setup := '");
+		for (size_t i2 = 0; i2 < p->setup.d; i2++) {
+			adbgPrintLog(_ctx, "%02X", p->setup.v[i2]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_2_r17(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_2_r17* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_2_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_2_r17_SQN_NR_PUSCH_Config_ul_AccessConfigListDCI_0_2_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_2_r17_SQN_NR_PUSCH_Config_ul_AccessConfigListDCI_0_2_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_2_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_BetaOffsetsCrossPriSel_r17_Value(acpCtx_t _ctx, const union SQN_NR_BetaOffsetsCrossPriSel_r17_Value* p, enum SQN_NR_BetaOffsetsCrossPriSel_r17_Sel d)
+{
+	if (d == SQN_NR_BetaOffsetsCrossPriSel_r17_dynamic_r17) {
+		adbgPrintLog(_ctx, "dynamic_r17 := '");
+		for (size_t i2 = 0; i2 < 4; i2++) {
+			adbgPrintLog(_ctx, "dynamic_r17 := '");
+			for (size_t i3 = 0; i3 < 3; i3++) {
+				adbgPrintLog(_ctx, "%02X", p->dynamic_r17[i2][i3]);
+			}
+			adbgPrintLog(_ctx, "'O");
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	if (d == SQN_NR_BetaOffsetsCrossPriSel_r17_semiStatic_r17) {
+		adbgPrintLog(_ctx, "semiStatic_r17 := '");
+		for (size_t i2 = 0; i2 < 3; i2++) {
+			adbgPrintLog(_ctx, "%02X", p->semiStatic_r17[i2]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_BetaOffsetsCrossPriSel_r17(acpCtx_t _ctx, const struct SQN_NR_BetaOffsetsCrossPriSel_r17* p)
+{
+	_adbgNrSys__SQN_NR_BetaOffsetsCrossPriSel_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0_r17_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0_r17_Value* p, enum SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0_r17_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0_r17_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0_r17_setup) {
+		adbgPrintLog(_ctx, "setup := { ");
+		_adbgNrSys__SQN_NR_BetaOffsetsCrossPriSel_r17(_ctx, &p->setup);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0_r17(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0_r17* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0_r17_SQN_NR_PUSCH_Config_betaOffsetsCrossPri0_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0_r17_SQN_NR_PUSCH_Config_betaOffsetsCrossPri0_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1_r17_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1_r17_Value* p, enum SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1_r17_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1_r17_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1_r17_setup) {
+		adbgPrintLog(_ctx, "setup := { ");
+		_adbgNrSys__SQN_NR_BetaOffsetsCrossPriSel_r17(_ctx, &p->setup);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1_r17(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1_r17* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1_r17_SQN_NR_PUSCH_Config_betaOffsetsCrossPri1_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1_r17_SQN_NR_PUSCH_Config_betaOffsetsCrossPri1_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_BetaOffsetsCrossPriSelDCI_0_2_r17_dynamicDCI_0_2_r17_Value(acpCtx_t _ctx, const union SQN_NR_BetaOffsetsCrossPriSelDCI_0_2_r17_dynamicDCI_0_2_r17_Value* p, enum SQN_NR_BetaOffsetsCrossPriSelDCI_0_2_r17_dynamicDCI_0_2_r17_Sel d)
+{
+	if (d == SQN_NR_BetaOffsetsCrossPriSelDCI_0_2_r17_dynamicDCI_0_2_r17_oneBit_r17) {
+		adbgPrintLog(_ctx, "oneBit_r17 := '");
+		for (size_t i2 = 0; i2 < 2; i2++) {
+			adbgPrintLog(_ctx, "oneBit_r17 := '");
+			for (size_t i3 = 0; i3 < 3; i3++) {
+				adbgPrintLog(_ctx, "%02X", p->oneBit_r17[i2][i3]);
+			}
+			adbgPrintLog(_ctx, "'O");
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	if (d == SQN_NR_BetaOffsetsCrossPriSelDCI_0_2_r17_dynamicDCI_0_2_r17_twoBits_r17) {
+		adbgPrintLog(_ctx, "twoBits_r17 := '");
+		for (size_t i2 = 0; i2 < 4; i2++) {
+			adbgPrintLog(_ctx, "twoBits_r17 := '");
+			for (size_t i3 = 0; i3 < 3; i3++) {
+				adbgPrintLog(_ctx, "%02X", p->twoBits_r17[i2][i3]);
+			}
+			adbgPrintLog(_ctx, "'O");
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_BetaOffsetsCrossPriSelDCI_0_2_r17_dynamicDCI_0_2_r17(acpCtx_t _ctx, const struct SQN_NR_BetaOffsetsCrossPriSelDCI_0_2_r17_dynamicDCI_0_2_r17* p)
+{
+	_adbgNrSys__SQN_NR_BetaOffsetsCrossPriSelDCI_0_2_r17_dynamicDCI_0_2_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_BetaOffsetsCrossPriSelDCI_0_2_r17_Value(acpCtx_t _ctx, const union SQN_NR_BetaOffsetsCrossPriSelDCI_0_2_r17_Value* p, enum SQN_NR_BetaOffsetsCrossPriSelDCI_0_2_r17_Sel d)
+{
+	if (d == SQN_NR_BetaOffsetsCrossPriSelDCI_0_2_r17_dynamicDCI_0_2_r17) {
+		adbgPrintLog(_ctx, "dynamicDCI_0_2_r17 := { ");
+		_adbgNrSys__SQN_NR_BetaOffsetsCrossPriSelDCI_0_2_r17_dynamicDCI_0_2_r17(_ctx, &p->dynamicDCI_0_2_r17);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == SQN_NR_BetaOffsetsCrossPriSelDCI_0_2_r17_semiStaticDCI_0_2_r17) {
+		adbgPrintLog(_ctx, "semiStaticDCI_0_2_r17 := '");
+		for (size_t i2 = 0; i2 < 3; i2++) {
+			adbgPrintLog(_ctx, "%02X", p->semiStaticDCI_0_2_r17[i2]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_BetaOffsetsCrossPriSelDCI_0_2_r17(acpCtx_t _ctx, const struct SQN_NR_BetaOffsetsCrossPriSelDCI_0_2_r17* p)
+{
+	_adbgNrSys__SQN_NR_BetaOffsetsCrossPriSelDCI_0_2_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0DCI_0_2_r17_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0DCI_0_2_r17_Value* p, enum SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0DCI_0_2_r17_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0DCI_0_2_r17_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0DCI_0_2_r17_setup) {
+		adbgPrintLog(_ctx, "setup := { ");
+		_adbgNrSys__SQN_NR_BetaOffsetsCrossPriSelDCI_0_2_r17(_ctx, &p->setup);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0DCI_0_2_r17(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0DCI_0_2_r17* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0DCI_0_2_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0DCI_0_2_r17_SQN_NR_PUSCH_Config_betaOffsetsCrossPri0DCI_0_2_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0DCI_0_2_r17_SQN_NR_PUSCH_Config_betaOffsetsCrossPri0DCI_0_2_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0DCI_0_2_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1DCI_0_2_r17_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1DCI_0_2_r17_Value* p, enum SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1DCI_0_2_r17_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1DCI_0_2_r17_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1DCI_0_2_r17_setup) {
+		adbgPrintLog(_ctx, "setup := { ");
+		_adbgNrSys__SQN_NR_BetaOffsetsCrossPriSelDCI_0_2_r17(_ctx, &p->setup);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1DCI_0_2_r17(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1DCI_0_2_r17* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1DCI_0_2_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1DCI_0_2_r17_SQN_NR_PUSCH_Config_betaOffsetsCrossPri1DCI_0_2_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1DCI_0_2_r17_SQN_NR_PUSCH_Config_betaOffsetsCrossPri1DCI_0_2_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1DCI_0_2_r17(_ctx, &p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PUSCH_Config_mappingPattern_r17_e__ToString(SQN_NR_PUSCH_Config_mappingPattern_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PUSCH_Config_mappingPattern_r17_e_cyclicMapping: return "SQN_NR_PUSCH_Config_mappingPattern_r17_e_cyclicMapping";
+		case SQN_NR_PUSCH_Config_mappingPattern_r17_e_sequentialMapping: return "SQN_NR_PUSCH_Config_mappingPattern_r17_e_sequentialMapping";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PUSCH_Config_mappingPattern_r17_e_mappingPattern_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PUSCH_Config_mappingPattern_r17_e_mappingPattern_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PUSCH_Config_mappingPattern_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PUSCH_Config_secondTPCFieldDCI_0_1_r17_e__ToString(SQN_NR_PUSCH_Config_secondTPCFieldDCI_0_1_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PUSCH_Config_secondTPCFieldDCI_0_1_r17_e_enabled: return "SQN_NR_PUSCH_Config_secondTPCFieldDCI_0_1_r17_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PUSCH_Config_secondTPCFieldDCI_0_1_r17_e_secondTPCFieldDCI_0_1_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PUSCH_Config_secondTPCFieldDCI_0_1_r17_e_secondTPCFieldDCI_0_1_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PUSCH_Config_secondTPCFieldDCI_0_1_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PUSCH_Config_secondTPCFieldDCI_0_2_r17_e__ToString(SQN_NR_PUSCH_Config_secondTPCFieldDCI_0_2_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PUSCH_Config_secondTPCFieldDCI_0_2_r17_e_enabled: return "SQN_NR_PUSCH_Config_secondTPCFieldDCI_0_2_r17_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PUSCH_Config_secondTPCFieldDCI_0_2_r17_e_secondTPCFieldDCI_0_2_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PUSCH_Config_secondTPCFieldDCI_0_2_r17_e_secondTPCFieldDCI_0_2_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PUSCH_Config_secondTPCFieldDCI_0_2_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__Uint8_t_SQN_NR_PUSCH_Config_sequenceOffsetForRV_r17_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_PUSCH_Config_sequenceOffsetForRV_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_1_r17_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_1_r17_Value* p, enum SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_1_r17_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_1_r17_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_1_r17_setup) {
+		adbgPrintLog(_ctx, "setup := '");
+		for (size_t i2 = 0; i2 < p->setup.d; i2++) {
+			adbgPrintLog(_ctx, "%02X", p->setup.v[i2]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_1_r17(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_1_r17* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_1_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_1_r17_SQN_NR_PUSCH_Config_ul_AccessConfigListDCI_0_1_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_1_r17_SQN_NR_PUSCH_Config_ul_AccessConfigListDCI_0_1_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_1_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_minimumSchedulingOffsetK2_r17_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_PUSCH_Config_minimumSchedulingOffsetK2_r17_Value* p, enum SQN_NR_SetupRelease_PUSCH_Config_minimumSchedulingOffsetK2_r17_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_PUSCH_Config_minimumSchedulingOffsetK2_r17_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_PUSCH_Config_minimumSchedulingOffsetK2_r17_setup) {
+		adbgPrintLog(_ctx, "setup := '");
+		for (size_t i2 = 0; i2 < p->setup.d; i2++) {
+			adbgPrintLog(_ctx, "%02X", p->setup.v[i2]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_minimumSchedulingOffsetK2_r17(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUSCH_Config_minimumSchedulingOffsetK2_r17* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_minimumSchedulingOffsetK2_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_minimumSchedulingOffsetK2_r17_SQN_NR_PUSCH_Config_minimumSchedulingOffsetK2_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUSCH_Config_minimumSchedulingOffsetK2_r17_SQN_NR_PUSCH_Config_minimumSchedulingOffsetK2_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_minimumSchedulingOffsetK2_r17(_ctx, &p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PUSCH_Config_availableSlotCounting_r17_e__ToString(SQN_NR_PUSCH_Config_availableSlotCounting_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PUSCH_Config_availableSlotCounting_r17_e_enabled: return "SQN_NR_PUSCH_Config_availableSlotCounting_r17_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PUSCH_Config_availableSlotCounting_r17_e_availableSlotCounting_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PUSCH_Config_availableSlotCounting_r17_e_availableSlotCounting_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PUSCH_Config_availableSlotCounting_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_DMRS_Bundling_r17_e__ToString(SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_DMRS_Bundling_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_DMRS_Bundling_r17_e_enabled: return "SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_DMRS_Bundling_r17_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_DMRS_Bundling_r17_e_pusch_DMRS_Bundling_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_DMRS_Bundling_r17_e_pusch_DMRS_Bundling_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_DMRS_Bundling_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__Uint8_t_SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_TimeDomainWindowLength_r17_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_TimeDomainWindowLength_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_WindowRestart_r17_e__ToString(SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_WindowRestart_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_WindowRestart_r17_e_enabled: return "SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_WindowRestart_r17_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_WindowRestart_r17_e_pusch_WindowRestart_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_WindowRestart_r17_e_pusch_WindowRestart_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_WindowRestart_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e__ToString(SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e_s2: return "SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e_s2";
+		case SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e_s4: return "SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e_s4";
+		case SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e_s5: return "SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e_s5";
+		case SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e_s6: return "SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e_s6";
+		case SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e_s8: return "SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e_s8";
+		case SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e_s10: return "SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e_s10";
+		case SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e_s12: return "SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e_s12";
+		case SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e_s14: return "SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e_s14";
+		case SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e_s16: return "SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e_s16";
+		case SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e_s20: return "SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e_s20";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e_pusch_FrequencyHoppingInterval_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e_pusch_FrequencyHoppingInterval_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_DMRS_BundlingPUSCH_Config_r17(acpCtx_t _ctx, const struct SQN_NR_DMRS_BundlingPUSCH_Config_r17* p)
+{
+	adbgPrintLog(_ctx, "pusch_DMRS_Bundling_r17 := ");
+	_adbgNrSys__SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_DMRS_Bundling_r17_e_pusch_DMRS_Bundling_r17_Optional(_ctx, &p->pusch_DMRS_Bundling_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pusch_TimeDomainWindowLength_r17 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_TimeDomainWindowLength_r17_Optional(_ctx, &p->pusch_TimeDomainWindowLength_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pusch_WindowRestart_r17 := ");
+	_adbgNrSys__SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_WindowRestart_r17_e_pusch_WindowRestart_r17_Optional(_ctx, &p->pusch_WindowRestart_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pusch_FrequencyHoppingInterval_r17 := ");
+	_adbgNrSys__SQN_NR_DMRS_BundlingPUSCH_Config_r17_pusch_FrequencyHoppingInterval_r17_e_pusch_FrequencyHoppingInterval_r17_Optional(_ctx, &p->pusch_FrequencyHoppingInterval_r17);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_dmrs_BundlingPUSCH_Config_r17_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_PUSCH_Config_dmrs_BundlingPUSCH_Config_r17_Value* p, enum SQN_NR_SetupRelease_PUSCH_Config_dmrs_BundlingPUSCH_Config_r17_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_PUSCH_Config_dmrs_BundlingPUSCH_Config_r17_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_PUSCH_Config_dmrs_BundlingPUSCH_Config_r17_setup) {
+		adbgPrintLog(_ctx, "setup := { ");
+		_adbgNrSys__SQN_NR_DMRS_BundlingPUSCH_Config_r17(_ctx, &p->setup);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_dmrs_BundlingPUSCH_Config_r17(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUSCH_Config_dmrs_BundlingPUSCH_Config_r17* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_dmrs_BundlingPUSCH_Config_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_dmrs_BundlingPUSCH_Config_r17_SQN_NR_PUSCH_Config_dmrs_BundlingPUSCH_Config_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUSCH_Config_dmrs_BundlingPUSCH_Config_r17_SQN_NR_PUSCH_Config_dmrs_BundlingPUSCH_Config_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_dmrs_BundlingPUSCH_Config_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__Uint8_t_SQN_NR_PUSCH_Config_harq_ProcessNumberSizeDCI_0_2_v1700_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_PUSCH_Config_harq_ProcessNumberSizeDCI_0_2_v1700_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__Uint8_t_SQN_NR_PUSCH_Config_harq_ProcessNumberSizeDCI_0_1_r17_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_PUSCH_Config_harq_ProcessNumberSizeDCI_0_1_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_ServCellIndex_SQN_NR_MPE_Resource_r17_cell_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_ServCellIndex_SQN_NR_MPE_Resource_r17_cell_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_AdditionalPCIIndex_r17_SQN_NR_MPE_Resource_r17_additionalPCI_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_AdditionalPCIIndex_r17_SQN_NR_MPE_Resource_r17_additionalPCI_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_MPE_Resource_r17_mpe_ReferenceSignal_r17_Value(acpCtx_t _ctx, const union SQN_NR_MPE_Resource_r17_mpe_ReferenceSignal_r17_Value* p, enum SQN_NR_MPE_Resource_r17_mpe_ReferenceSignal_r17_Sel d)
+{
+	if (d == SQN_NR_MPE_Resource_r17_mpe_ReferenceSignal_r17_csi_RS_Resource_r17) {
+		adbgPrintLog(_ctx, "csi_RS_Resource_r17 := %u", (unsigned int)p->csi_RS_Resource_r17);
+		return;
+	}
+	if (d == SQN_NR_MPE_Resource_r17_mpe_ReferenceSignal_r17_ssb_Resource_r17) {
+		adbgPrintLog(_ctx, "ssb_Resource_r17 := %u", (unsigned int)p->ssb_Resource_r17);
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_MPE_Resource_r17_mpe_ReferenceSignal_r17(acpCtx_t _ctx, const struct SQN_NR_MPE_Resource_r17_mpe_ReferenceSignal_r17* p)
+{
+	_adbgNrSys__SQN_NR_MPE_Resource_r17_mpe_ReferenceSignal_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_MPE_Resource_r17(acpCtx_t _ctx, const struct SQN_NR_MPE_Resource_r17* p)
+{
+	adbgPrintLog(_ctx, "mpe_ResourceId_r17 := %u", (unsigned int)p->mpe_ResourceId_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "cell_r17 := ");
+	_adbgNrSys__SQN_NR_ServCellIndex_SQN_NR_MPE_Resource_r17_cell_r17_Optional(_ctx, &p->cell_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "additionalPCI_r17 := ");
+	_adbgNrSys__SQN_NR_AdditionalPCIIndex_r17_SQN_NR_MPE_Resource_r17_additionalPCI_r17_Optional(_ctx, &p->additionalPCI_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "mpe_ReferenceSignal_r17 := { ");
+	_adbgNrSys__SQN_NR_MPE_Resource_r17_mpe_ReferenceSignal_r17(_ctx, &p->mpe_ReferenceSignal_r17);
+	adbgPrintLog(_ctx, " }");
+}
+
+static void _adbgNrSys__SQN_NR_MPE_Resource_r17_SQN_NR_PUSCH_Config_mpe_ResourcePoolToAddModList_r17_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_MPE_Resource_r17_SQN_NR_PUSCH_Config_mpe_ResourcePoolToAddModList_r17_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		adbgPrintLog(_ctx, "{ ");
+		_adbgNrSys__SQN_NR_MPE_Resource_r17(_ctx, &p->v.v[i2]);
+		adbgPrintLog(_ctx, " }");
+		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgNrSys__SQN_NR_MPE_ResourceId_r17_SQN_NR_PUSCH_Config_mpe_ResourcePoolToReleaseList_r17_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_MPE_ResourceId_r17_SQN_NR_PUSCH_Config_mpe_ResourcePoolToReleaseList_r17_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "'");
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		adbgPrintLog(_ctx, "%02X", p->v.v[i2]);
+	}
+	adbgPrintLog(_ctx, "'O");
 }
 
 static void _adbgNrSys__SQN_NR_PUSCH_Config(acpCtx_t _ctx, const struct SQN_NR_PUSCH_Config* p)
@@ -10258,6 +13072,75 @@ static void _adbgNrSys__SQN_NR_PUSCH_Config(acpCtx_t _ctx, const struct SQN_NR_P
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "numberOfInvalidSymbolsForDL_UL_Switching_r16 := ");
 	_adbgNrSys__Uint8_t_SQN_NR_PUSCH_Config_numberOfInvalidSymbolsForDL_UL_Switching_r16_Optional(_ctx, &p->numberOfInvalidSymbolsForDL_UL_Switching_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "ul_AccessConfigListDCI_0_2_r17 := ");
+	if (p->ul_AccessConfigListDCI_0_2_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_2_r17_SQN_NR_PUSCH_Config_ul_AccessConfigListDCI_0_2_r17_Optional(_ctx, &p->ul_AccessConfigListDCI_0_2_r17);
+	if (p->ul_AccessConfigListDCI_0_2_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "betaOffsetsCrossPri0_r17 := ");
+	if (p->betaOffsetsCrossPri0_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0_r17_SQN_NR_PUSCH_Config_betaOffsetsCrossPri0_r17_Optional(_ctx, &p->betaOffsetsCrossPri0_r17);
+	if (p->betaOffsetsCrossPri0_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "betaOffsetsCrossPri1_r17 := ");
+	if (p->betaOffsetsCrossPri1_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1_r17_SQN_NR_PUSCH_Config_betaOffsetsCrossPri1_r17_Optional(_ctx, &p->betaOffsetsCrossPri1_r17);
+	if (p->betaOffsetsCrossPri1_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "betaOffsetsCrossPri0DCI_0_2_r17 := ");
+	if (p->betaOffsetsCrossPri0DCI_0_2_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri0DCI_0_2_r17_SQN_NR_PUSCH_Config_betaOffsetsCrossPri0DCI_0_2_r17_Optional(_ctx, &p->betaOffsetsCrossPri0DCI_0_2_r17);
+	if (p->betaOffsetsCrossPri0DCI_0_2_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "betaOffsetsCrossPri1DCI_0_2_r17 := ");
+	if (p->betaOffsetsCrossPri1DCI_0_2_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_betaOffsetsCrossPri1DCI_0_2_r17_SQN_NR_PUSCH_Config_betaOffsetsCrossPri1DCI_0_2_r17_Optional(_ctx, &p->betaOffsetsCrossPri1DCI_0_2_r17);
+	if (p->betaOffsetsCrossPri1DCI_0_2_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "mappingPattern_r17 := ");
+	_adbgNrSys__SQN_NR_PUSCH_Config_mappingPattern_r17_e_mappingPattern_r17_Optional(_ctx, &p->mappingPattern_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "secondTPCFieldDCI_0_1_r17 := ");
+	_adbgNrSys__SQN_NR_PUSCH_Config_secondTPCFieldDCI_0_1_r17_e_secondTPCFieldDCI_0_1_r17_Optional(_ctx, &p->secondTPCFieldDCI_0_1_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "secondTPCFieldDCI_0_2_r17 := ");
+	_adbgNrSys__SQN_NR_PUSCH_Config_secondTPCFieldDCI_0_2_r17_e_secondTPCFieldDCI_0_2_r17_Optional(_ctx, &p->secondTPCFieldDCI_0_2_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "sequenceOffsetForRV_r17 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_PUSCH_Config_sequenceOffsetForRV_r17_Optional(_ctx, &p->sequenceOffsetForRV_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "ul_AccessConfigListDCI_0_1_r17 := ");
+	if (p->ul_AccessConfigListDCI_0_1_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_ul_AccessConfigListDCI_0_1_r17_SQN_NR_PUSCH_Config_ul_AccessConfigListDCI_0_1_r17_Optional(_ctx, &p->ul_AccessConfigListDCI_0_1_r17);
+	if (p->ul_AccessConfigListDCI_0_1_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "minimumSchedulingOffsetK2_r17 := ");
+	if (p->minimumSchedulingOffsetK2_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_minimumSchedulingOffsetK2_r17_SQN_NR_PUSCH_Config_minimumSchedulingOffsetK2_r17_Optional(_ctx, &p->minimumSchedulingOffsetK2_r17);
+	if (p->minimumSchedulingOffsetK2_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "availableSlotCounting_r17 := ");
+	_adbgNrSys__SQN_NR_PUSCH_Config_availableSlotCounting_r17_e_availableSlotCounting_r17_Optional(_ctx, &p->availableSlotCounting_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "dmrs_BundlingPUSCH_Config_r17 := ");
+	if (p->dmrs_BundlingPUSCH_Config_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SetupRelease_PUSCH_Config_dmrs_BundlingPUSCH_Config_r17_SQN_NR_PUSCH_Config_dmrs_BundlingPUSCH_Config_r17_Optional(_ctx, &p->dmrs_BundlingPUSCH_Config_r17);
+	if (p->dmrs_BundlingPUSCH_Config_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "harq_ProcessNumberSizeDCI_0_2_v1700 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_PUSCH_Config_harq_ProcessNumberSizeDCI_0_2_v1700_Optional(_ctx, &p->harq_ProcessNumberSizeDCI_0_2_v1700);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "harq_ProcessNumberSizeDCI_0_1_r17 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_PUSCH_Config_harq_ProcessNumberSizeDCI_0_1_r17_Optional(_ctx, &p->harq_ProcessNumberSizeDCI_0_1_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "mpe_ResourcePoolToAddModList_r17 := ");
+	if (p->mpe_ResourcePoolToAddModList_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_MPE_Resource_r17_SQN_NR_PUSCH_Config_mpe_ResourcePoolToAddModList_r17_DynamicOptional(_ctx, &p->mpe_ResourcePoolToAddModList_r17);
+	if (p->mpe_ResourcePoolToAddModList_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "mpe_ResourcePoolToReleaseList_r17 := ");
+	_adbgNrSys__SQN_NR_MPE_ResourceId_r17_SQN_NR_PUSCH_Config_mpe_ResourcePoolToReleaseList_r17_DynamicOptional(_ctx, &p->mpe_ResourcePoolToReleaseList_r17);
 }
 
 static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkDedicated_pusch_Config_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_BWP_UplinkDedicated_pusch_Config_Value* p, enum SQN_NR_SetupRelease_BWP_UplinkDedicated_pusch_Config_Sel d)
@@ -10579,6 +13462,202 @@ static void _adbgNrSys__SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_t
 	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_timeReferenceSFN_r16_e__ToString(p->v), (int)p->v);
 }
 
+static void _adbgNrSys__Uint8_t_SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_pathlossReferenceIndex2_r17_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_pathlossReferenceIndex2_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__Uint8_t_SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_srs_ResourceIndicator2_r17_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_srs_ResourceIndicator2_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__Uint8_t_SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_precodingAndNumberOfLayers2_r17_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_precodingAndNumberOfLayers2_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__Uint8_t_SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_timeDomainAllocation_v1710_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_timeDomainAllocation_v1710_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__Uint16_t_SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_timeDomainOffset_r17_Optional(acpCtx_t _ctx, const struct uint16_t_SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_timeDomainOffset_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__Uint8_t_SQN_NR_CG_SDT_Configuration_r17_cg_SDT_RetransmissionTimer_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_CG_SDT_Configuration_r17_cg_SDT_RetransmissionTimer_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_Subset_r17_Value(acpCtx_t _ctx, const union SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_Subset_r17_Value* p, enum SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_Subset_r17_Sel d)
+{
+	if (d == SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_Subset_r17_shortBitmap_r17) {
+		adbgPrintLog(_ctx, "shortBitmap_r17 := '");
+		for (size_t i2 = 0; i2 < 4; i2++) {
+			adbgPrintLog(_ctx, "%02X", p->shortBitmap_r17[i2]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	if (d == SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_Subset_r17_mediumBitmap_r17) {
+		adbgPrintLog(_ctx, "mediumBitmap_r17 := '");
+		for (size_t i2 = 0; i2 < 8; i2++) {
+			adbgPrintLog(_ctx, "%02X", p->mediumBitmap_r17[i2]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	if (d == SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_Subset_r17_longBitmap_r17) {
+		adbgPrintLog(_ctx, "longBitmap_r17 := '");
+		for (size_t i2 = 0; i2 < 64; i2++) {
+			adbgPrintLog(_ctx, "%02X", p->longBitmap_r17[i2]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_Subset_r17(acpCtx_t _ctx, const struct SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_Subset_r17* p)
+{
+	_adbgNrSys__SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_Subset_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_Subset_r17_sdt_SSB_Subset_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_Subset_r17_sdt_SSB_Subset_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_Subset_r17(_ctx, &p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_PerCG_PUSCH_r17_e__ToString(SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_PerCG_PUSCH_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_PerCG_PUSCH_r17_e_oneEighth: return "SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_PerCG_PUSCH_r17_e_oneEighth";
+		case SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_PerCG_PUSCH_r17_e_oneFourth: return "SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_PerCG_PUSCH_r17_e_oneFourth";
+		case SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_PerCG_PUSCH_r17_e_half: return "SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_PerCG_PUSCH_r17_e_half";
+		case SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_PerCG_PUSCH_r17_e_one: return "SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_PerCG_PUSCH_r17_e_one";
+		case SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_PerCG_PUSCH_r17_e_two: return "SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_PerCG_PUSCH_r17_e_two";
+		case SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_PerCG_PUSCH_r17_e_four: return "SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_PerCG_PUSCH_r17_e_four";
+		case SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_PerCG_PUSCH_r17_e_eight: return "SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_PerCG_PUSCH_r17_e_eight";
+		case SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_PerCG_PUSCH_r17_e_sixteen: return "SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_PerCG_PUSCH_r17_e_sixteen";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_PerCG_PUSCH_r17_e_sdt_SSB_PerCG_PUSCH_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_PerCG_PUSCH_r17_e_sdt_SSB_PerCG_PUSCH_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_PerCG_PUSCH_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__Int8_t_SQN_NR_CG_SDT_Configuration_r17_sdt_P0_PUSCH_r17_Optional(acpCtx_t _ctx, const struct int8_t_SQN_NR_CG_SDT_Configuration_r17_sdt_P0_PUSCH_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%d", (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_CG_SDT_Configuration_r17_sdt_Alpha_r17_e__ToString(SQN_NR_CG_SDT_Configuration_r17_sdt_Alpha_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_CG_SDT_Configuration_r17_sdt_Alpha_r17_e_alpha0: return "SQN_NR_CG_SDT_Configuration_r17_sdt_Alpha_r17_e_alpha0";
+		case SQN_NR_CG_SDT_Configuration_r17_sdt_Alpha_r17_e_alpha04: return "SQN_NR_CG_SDT_Configuration_r17_sdt_Alpha_r17_e_alpha04";
+		case SQN_NR_CG_SDT_Configuration_r17_sdt_Alpha_r17_e_alpha05: return "SQN_NR_CG_SDT_Configuration_r17_sdt_Alpha_r17_e_alpha05";
+		case SQN_NR_CG_SDT_Configuration_r17_sdt_Alpha_r17_e_alpha06: return "SQN_NR_CG_SDT_Configuration_r17_sdt_Alpha_r17_e_alpha06";
+		case SQN_NR_CG_SDT_Configuration_r17_sdt_Alpha_r17_e_alpha07: return "SQN_NR_CG_SDT_Configuration_r17_sdt_Alpha_r17_e_alpha07";
+		case SQN_NR_CG_SDT_Configuration_r17_sdt_Alpha_r17_e_alpha08: return "SQN_NR_CG_SDT_Configuration_r17_sdt_Alpha_r17_e_alpha08";
+		case SQN_NR_CG_SDT_Configuration_r17_sdt_Alpha_r17_e_alpha09: return "SQN_NR_CG_SDT_Configuration_r17_sdt_Alpha_r17_e_alpha09";
+		case SQN_NR_CG_SDT_Configuration_r17_sdt_Alpha_r17_e_alpha1: return "SQN_NR_CG_SDT_Configuration_r17_sdt_Alpha_r17_e_alpha1";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_CG_SDT_Configuration_r17_sdt_Alpha_r17_e_sdt_Alpha_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_CG_SDT_Configuration_r17_sdt_Alpha_r17_e_sdt_Alpha_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_CG_SDT_Configuration_r17_sdt_Alpha_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_CG_SDT_Configuration_r17_sdt_DMRS_Ports_r17_Value(acpCtx_t _ctx, const union SQN_NR_CG_SDT_Configuration_r17_sdt_DMRS_Ports_r17_Value* p, enum SQN_NR_CG_SDT_Configuration_r17_sdt_DMRS_Ports_r17_Sel d)
+{
+	if (d == SQN_NR_CG_SDT_Configuration_r17_sdt_DMRS_Ports_r17_dmrsType1_r17) {
+		adbgPrintLog(_ctx, "dmrsType1_r17 := '");
+		for (size_t i2 = 0; i2 < 8; i2++) {
+			adbgPrintLog(_ctx, "%02X", p->dmrsType1_r17[i2]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	if (d == SQN_NR_CG_SDT_Configuration_r17_sdt_DMRS_Ports_r17_dmrsType2_r17) {
+		adbgPrintLog(_ctx, "dmrsType2_r17 := '");
+		for (size_t i2 = 0; i2 < 12; i2++) {
+			adbgPrintLog(_ctx, "%02X", p->dmrsType2_r17[i2]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_CG_SDT_Configuration_r17_sdt_DMRS_Ports_r17(acpCtx_t _ctx, const struct SQN_NR_CG_SDT_Configuration_r17_sdt_DMRS_Ports_r17* p)
+{
+	_adbgNrSys__SQN_NR_CG_SDT_Configuration_r17_sdt_DMRS_Ports_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_CG_SDT_Configuration_r17_sdt_DMRS_Ports_r17_sdt_DMRS_Ports_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_CG_SDT_Configuration_r17_sdt_DMRS_Ports_r17_sdt_DMRS_Ports_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_CG_SDT_Configuration_r17_sdt_DMRS_Ports_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__Uint8_t_SQN_NR_CG_SDT_Configuration_r17_sdt_NrofDMRS_Sequences_r17_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_CG_SDT_Configuration_r17_sdt_NrofDMRS_Sequences_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_CG_SDT_Configuration_r17(acpCtx_t _ctx, const struct SQN_NR_CG_SDT_Configuration_r17* p)
+{
+	adbgPrintLog(_ctx, "cg_SDT_RetransmissionTimer := ");
+	_adbgNrSys__Uint8_t_SQN_NR_CG_SDT_Configuration_r17_cg_SDT_RetransmissionTimer_Optional(_ctx, &p->cg_SDT_RetransmissionTimer);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "sdt_SSB_Subset_r17 := ");
+	if (p->sdt_SSB_Subset_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_Subset_r17_sdt_SSB_Subset_r17_Optional(_ctx, &p->sdt_SSB_Subset_r17);
+	if (p->sdt_SSB_Subset_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "sdt_SSB_PerCG_PUSCH_r17 := ");
+	_adbgNrSys__SQN_NR_CG_SDT_Configuration_r17_sdt_SSB_PerCG_PUSCH_r17_e_sdt_SSB_PerCG_PUSCH_r17_Optional(_ctx, &p->sdt_SSB_PerCG_PUSCH_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "sdt_P0_PUSCH_r17 := ");
+	_adbgNrSys__Int8_t_SQN_NR_CG_SDT_Configuration_r17_sdt_P0_PUSCH_r17_Optional(_ctx, &p->sdt_P0_PUSCH_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "sdt_Alpha_r17 := ");
+	_adbgNrSys__SQN_NR_CG_SDT_Configuration_r17_sdt_Alpha_r17_e_sdt_Alpha_r17_Optional(_ctx, &p->sdt_Alpha_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "sdt_DMRS_Ports_r17 := ");
+	if (p->sdt_DMRS_Ports_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_CG_SDT_Configuration_r17_sdt_DMRS_Ports_r17_sdt_DMRS_Ports_r17_Optional(_ctx, &p->sdt_DMRS_Ports_r17);
+	if (p->sdt_DMRS_Ports_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "sdt_NrofDMRS_Sequences_r17 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_CG_SDT_Configuration_r17_sdt_NrofDMRS_Sequences_r17_Optional(_ctx, &p->sdt_NrofDMRS_Sequences_r17);
+}
+
+static void _adbgNrSys__SQN_NR_CG_SDT_Configuration_r17_SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_cg_SDT_Configuration_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_CG_SDT_Configuration_r17_SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_cg_SDT_Configuration_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_CG_SDT_Configuration_r17(_ctx, &p->v);
+}
+
 static void _adbgNrSys__SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant(acpCtx_t _ctx, const struct SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant* p)
 {
 	adbgPrintLog(_ctx, "timeDomainOffset := %u", (unsigned int)p->timeDomainOffset);
@@ -10616,6 +13695,26 @@ static void _adbgNrSys__SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant(a
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "timeReferenceSFN_r16 := ");
 	_adbgNrSys__SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_timeReferenceSFN_r16_e_timeReferenceSFN_r16_Optional(_ctx, &p->timeReferenceSFN_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pathlossReferenceIndex2_r17 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_pathlossReferenceIndex2_r17_Optional(_ctx, &p->pathlossReferenceIndex2_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "srs_ResourceIndicator2_r17 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_srs_ResourceIndicator2_r17_Optional(_ctx, &p->srs_ResourceIndicator2_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "precodingAndNumberOfLayers2_r17 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_precodingAndNumberOfLayers2_r17_Optional(_ctx, &p->precodingAndNumberOfLayers2_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "timeDomainAllocation_v1710 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_timeDomainAllocation_v1710_Optional(_ctx, &p->timeDomainAllocation_v1710);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "timeDomainOffset_r17 := ");
+	_adbgNrSys__Uint16_t_SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_timeDomainOffset_r17_Optional(_ctx, &p->timeDomainOffset_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "cg_SDT_Configuration_r17 := ");
+	if (p->cg_SDT_Configuration_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_CG_SDT_Configuration_r17_SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_cg_SDT_Configuration_r17_Optional(_ctx, &p->cg_SDT_Configuration_r17);
+	if (p->cg_SDT_Configuration_r17.d) { adbgPrintLog(_ctx, " }"); };
 }
 
 static void _adbgNrSys__SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_rrc_ConfiguredUplinkGrant_Optional(acpCtx_t _ctx, const struct SQN_NR_ConfiguredGrantConfig_rrc_ConfiguredUplinkGrant_rrc_ConfiguredUplinkGrant_Optional* p)
@@ -10725,18 +13824,18 @@ static void _adbgNrSys__SQN_NR_CG_StartingOffsets_r16_SQN_NR_ConfiguredGrantConf
 	_adbgNrSys__SQN_NR_CG_StartingOffsets_r16(_ctx, &p->v);
 }
 
-static const char* adbgNrSys__SQN_NR_ConfiguredGrantConfig_cg_UCI_Multiplexing_e__ToString(SQN_NR_ConfiguredGrantConfig_cg_UCI_Multiplexing_e v)
+static const char* adbgNrSys__SQN_NR_ConfiguredGrantConfig_cg_UCI_Multiplexing_r16_e__ToString(SQN_NR_ConfiguredGrantConfig_cg_UCI_Multiplexing_r16_e v)
 {
 	switch(v) {
-		case SQN_NR_ConfiguredGrantConfig_cg_UCI_Multiplexing_e_enabled: return "SQN_NR_ConfiguredGrantConfig_cg_UCI_Multiplexing_e_enabled";
+		case SQN_NR_ConfiguredGrantConfig_cg_UCI_Multiplexing_r16_e_enabled: return "SQN_NR_ConfiguredGrantConfig_cg_UCI_Multiplexing_r16_e_enabled";
 		default: return "Unknown";
 	}
 }
 
-static void _adbgNrSys__SQN_NR_ConfiguredGrantConfig_cg_UCI_Multiplexing_e_cg_UCI_Multiplexing_Optional(acpCtx_t _ctx, const struct SQN_NR_ConfiguredGrantConfig_cg_UCI_Multiplexing_e_cg_UCI_Multiplexing_Optional* p)
+static void _adbgNrSys__SQN_NR_ConfiguredGrantConfig_cg_UCI_Multiplexing_r16_e_cg_UCI_Multiplexing_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_ConfiguredGrantConfig_cg_UCI_Multiplexing_r16_e_cg_UCI_Multiplexing_r16_Optional* p)
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_ConfiguredGrantConfig_cg_UCI_Multiplexing_e__ToString(p->v), (int)p->v);
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_ConfiguredGrantConfig_cg_UCI_Multiplexing_r16_e__ToString(p->v), (int)p->v);
 }
 
 static void _adbgNrSys__Uint8_t_SQN_NR_ConfiguredGrantConfig_cg_COT_SharingOffset_r16_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_ConfiguredGrantConfig_cg_COT_SharingOffset_r16_Optional* p)
@@ -10865,6 +13964,216 @@ static void _adbgNrSys__SQN_NR_ConfiguredGrantConfig_autonomousTx_r16_e_autonomo
 	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_ConfiguredGrantConfig_autonomousTx_r16_e__ToString(p->v), (int)p->v);
 }
 
+static void _adbgNrSys__SQN_NR_BetaOffsetsCrossPriSelCG_r17_Value(acpCtx_t _ctx, const union SQN_NR_BetaOffsetsCrossPriSelCG_r17_Value* p, enum SQN_NR_BetaOffsetsCrossPriSelCG_r17_Sel d)
+{
+	if (d == SQN_NR_BetaOffsetsCrossPriSelCG_r17_dynamic_r17) {
+		adbgPrintLog(_ctx, "{");
+		for (size_t i2 = 0; i2 < p->dynamic_r17.d; i2++) {
+			adbgPrintLog(_ctx, "'");
+			for (size_t i3 = 0; i3 < 3; i3++) {
+				adbgPrintLog(_ctx, "%02X", p->dynamic_r17.v[i2][i3]);
+			}
+			adbgPrintLog(_ctx, "'O");
+			if (i2 != p->dynamic_r17.d - 1) { adbgPrintLog(_ctx, ", "); }
+		}
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == SQN_NR_BetaOffsetsCrossPriSelCG_r17_semiStatic_r17) {
+		adbgPrintLog(_ctx, "semiStatic_r17 := '");
+		for (size_t i2 = 0; i2 < 3; i2++) {
+			adbgPrintLog(_ctx, "%02X", p->semiStatic_r17[i2]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_BetaOffsetsCrossPriSelCG_r17(acpCtx_t _ctx, const struct SQN_NR_BetaOffsetsCrossPriSelCG_r17* p)
+{
+	_adbgNrSys__SQN_NR_BetaOffsetsCrossPriSelCG_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri0_r17_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri0_r17_Value* p, enum SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri0_r17_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri0_r17_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri0_r17_setup) {
+		adbgPrintLog(_ctx, "setup := { ");
+		_adbgNrSys__SQN_NR_BetaOffsetsCrossPriSelCG_r17(_ctx, &p->setup);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri0_r17(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri0_r17* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri0_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri0_r17_SQN_NR_ConfiguredGrantConfig_cg_betaOffsetsCrossPri0_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri0_r17_SQN_NR_ConfiguredGrantConfig_cg_betaOffsetsCrossPri0_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri0_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri1_r17_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri1_r17_Value* p, enum SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri1_r17_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri1_r17_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri1_r17_setup) {
+		adbgPrintLog(_ctx, "setup := { ");
+		_adbgNrSys__SQN_NR_BetaOffsetsCrossPriSelCG_r17(_ctx, &p->setup);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri1_r17(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri1_r17* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri1_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri1_r17_SQN_NR_ConfiguredGrantConfig_cg_betaOffsetsCrossPri1_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri1_r17_SQN_NR_ConfiguredGrantConfig_cg_betaOffsetsCrossPri1_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri1_r17(_ctx, &p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_ConfiguredGrantConfig_mappingPattern_r17_e__ToString(SQN_NR_ConfiguredGrantConfig_mappingPattern_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_ConfiguredGrantConfig_mappingPattern_r17_e_cyclicMapping: return "SQN_NR_ConfiguredGrantConfig_mappingPattern_r17_e_cyclicMapping";
+		case SQN_NR_ConfiguredGrantConfig_mappingPattern_r17_e_sequentialMapping: return "SQN_NR_ConfiguredGrantConfig_mappingPattern_r17_e_sequentialMapping";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_ConfiguredGrantConfig_mappingPattern_r17_e_mappingPattern_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_ConfiguredGrantConfig_mappingPattern_r17_e_mappingPattern_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_ConfiguredGrantConfig_mappingPattern_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__Uint8_t_SQN_NR_ConfiguredGrantConfig_sequenceOffsetForRV_r17_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_ConfiguredGrantConfig_sequenceOffsetForRV_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_P0_PUSCH_AlphaSetId_SQN_NR_ConfiguredGrantConfig_p0_PUSCH_Alpha2_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_P0_PUSCH_AlphaSetId_SQN_NR_ConfiguredGrantConfig_p0_PUSCH_Alpha2_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_ConfiguredGrantConfig_powerControlLoopToUse2_r17_e__ToString(SQN_NR_ConfiguredGrantConfig_powerControlLoopToUse2_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_ConfiguredGrantConfig_powerControlLoopToUse2_r17_e_n0: return "SQN_NR_ConfiguredGrantConfig_powerControlLoopToUse2_r17_e_n0";
+		case SQN_NR_ConfiguredGrantConfig_powerControlLoopToUse2_r17_e_n1: return "SQN_NR_ConfiguredGrantConfig_powerControlLoopToUse2_r17_e_n1";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_ConfiguredGrantConfig_powerControlLoopToUse2_r17_e_powerControlLoopToUse2_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_ConfiguredGrantConfig_powerControlLoopToUse2_r17_e_powerControlLoopToUse2_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_ConfiguredGrantConfig_powerControlLoopToUse2_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_CG_COT_Sharing_r17_cot_Sharing_r17(acpCtx_t _ctx, const struct SQN_NR_CG_COT_Sharing_r17_cot_Sharing_r17* p)
+{
+	adbgPrintLog(_ctx, "duration_r17 := %u", (unsigned int)p->duration_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "offset_r17 := %u", (unsigned int)p->offset_r17);
+}
+
+static void _adbgNrSys__SQN_NR_CG_COT_Sharing_r17_Value(acpCtx_t _ctx, const union SQN_NR_CG_COT_Sharing_r17_Value* p, enum SQN_NR_CG_COT_Sharing_r17_Sel d)
+{
+	if (d == SQN_NR_CG_COT_Sharing_r17_noCOT_Sharing_r17) {
+		adbgPrintLog(_ctx, "noCOT_Sharing_r17 := %s", (p->noCOT_Sharing_r17 ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_CG_COT_Sharing_r17_cot_Sharing_r17) {
+		adbgPrintLog(_ctx, "cot_Sharing_r17 := { ");
+		_adbgNrSys__SQN_NR_CG_COT_Sharing_r17_cot_Sharing_r17(_ctx, &p->cot_Sharing_r17);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_CG_COT_Sharing_r17(acpCtx_t _ctx, const struct SQN_NR_CG_COT_Sharing_r17* p)
+{
+	_adbgNrSys__SQN_NR_CG_COT_Sharing_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_CG_COT_Sharing_r17_SQN_NR_ConfiguredGrantConfig_cg_COT_SharingList_r17_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_CG_COT_Sharing_r17_SQN_NR_ConfiguredGrantConfig_cg_COT_SharingList_r17_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		adbgPrintLog(_ctx, "{ ");
+		_adbgNrSys__SQN_NR_CG_COT_Sharing_r17(_ctx, &p->v.v[i2]);
+		adbgPrintLog(_ctx, " }");
+		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgNrSys__Uint16_t_SQN_NR_ConfiguredGrantConfig_periodicityExt_r17_Optional(acpCtx_t _ctx, const struct uint16_t_SQN_NR_ConfiguredGrantConfig_periodicityExt_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_ConfiguredGrantConfig_repK_v1710_e__ToString(SQN_NR_ConfiguredGrantConfig_repK_v1710_e v)
+{
+	switch(v) {
+		case SQN_NR_ConfiguredGrantConfig_repK_v1710_e_n12: return "SQN_NR_ConfiguredGrantConfig_repK_v1710_e_n12";
+		case SQN_NR_ConfiguredGrantConfig_repK_v1710_e_n16: return "SQN_NR_ConfiguredGrantConfig_repK_v1710_e_n16";
+		case SQN_NR_ConfiguredGrantConfig_repK_v1710_e_n24: return "SQN_NR_ConfiguredGrantConfig_repK_v1710_e_n24";
+		case SQN_NR_ConfiguredGrantConfig_repK_v1710_e_n32: return "SQN_NR_ConfiguredGrantConfig_repK_v1710_e_n32";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_ConfiguredGrantConfig_repK_v1710_e_repK_v1710_Optional(acpCtx_t _ctx, const struct SQN_NR_ConfiguredGrantConfig_repK_v1710_e_repK_v1710_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_ConfiguredGrantConfig_repK_v1710_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__Uint8_t_SQN_NR_ConfiguredGrantConfig_nrofHARQ_Processes_v1700_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_ConfiguredGrantConfig_nrofHARQ_Processes_v1700_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__Uint8_t_SQN_NR_ConfiguredGrantConfig_harq_ProcID_Offset2_v1700_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_ConfiguredGrantConfig_harq_ProcID_Offset2_v1700_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__Uint16_t_SQN_NR_ConfiguredGrantConfig_configuredGrantTimer_v1700_Optional(acpCtx_t _ctx, const struct uint16_t_SQN_NR_ConfiguredGrantConfig_configuredGrantTimer_v1700_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__Uint16_t_SQN_NR_ConfiguredGrantConfig_cg_minDFI_Delay_v1710_Optional(acpCtx_t _ctx, const struct uint16_t_SQN_NR_ConfiguredGrantConfig_cg_minDFI_Delay_v1710_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
 static void _adbgNrSys__SQN_NR_ConfiguredGrantConfig(acpCtx_t _ctx, const struct SQN_NR_ConfiguredGrantConfig* p)
 {
 	adbgPrintLog(_ctx, "frequencyHopping := ");
@@ -10931,8 +14240,8 @@ static void _adbgNrSys__SQN_NR_ConfiguredGrantConfig(acpCtx_t _ctx, const struct
 	_adbgNrSys__SQN_NR_CG_StartingOffsets_r16_SQN_NR_ConfiguredGrantConfig_cg_StartingOffsets_r16_Optional(_ctx, &p->cg_StartingOffsets_r16);
 	if (p->cg_StartingOffsets_r16.d) { adbgPrintLog(_ctx, " }"); };
 	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "cg_UCI_Multiplexing := ");
-	_adbgNrSys__SQN_NR_ConfiguredGrantConfig_cg_UCI_Multiplexing_e_cg_UCI_Multiplexing_Optional(_ctx, &p->cg_UCI_Multiplexing);
+	adbgPrintLog(_ctx, "cg_UCI_Multiplexing_r16 := ");
+	_adbgNrSys__SQN_NR_ConfiguredGrantConfig_cg_UCI_Multiplexing_r16_e_cg_UCI_Multiplexing_r16_Optional(_ctx, &p->cg_UCI_Multiplexing_r16);
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "cg_COT_SharingOffset_r16 := ");
 	_adbgNrSys__Uint8_t_SQN_NR_ConfiguredGrantConfig_cg_COT_SharingOffset_r16_Optional(_ctx, &p->cg_COT_SharingOffset_r16);
@@ -10968,6 +14277,51 @@ static void _adbgNrSys__SQN_NR_ConfiguredGrantConfig(acpCtx_t _ctx, const struct
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "autonomousTx_r16 := ");
 	_adbgNrSys__SQN_NR_ConfiguredGrantConfig_autonomousTx_r16_e_autonomousTx_r16_Optional(_ctx, &p->autonomousTx_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "cg_betaOffsetsCrossPri0_r17 := ");
+	if (p->cg_betaOffsetsCrossPri0_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri0_r17_SQN_NR_ConfiguredGrantConfig_cg_betaOffsetsCrossPri0_r17_Optional(_ctx, &p->cg_betaOffsetsCrossPri0_r17);
+	if (p->cg_betaOffsetsCrossPri0_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "cg_betaOffsetsCrossPri1_r17 := ");
+	if (p->cg_betaOffsetsCrossPri1_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SetupRelease_ConfiguredGrantConfig_cg_betaOffsetsCrossPri1_r17_SQN_NR_ConfiguredGrantConfig_cg_betaOffsetsCrossPri1_r17_Optional(_ctx, &p->cg_betaOffsetsCrossPri1_r17);
+	if (p->cg_betaOffsetsCrossPri1_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "mappingPattern_r17 := ");
+	_adbgNrSys__SQN_NR_ConfiguredGrantConfig_mappingPattern_r17_e_mappingPattern_r17_Optional(_ctx, &p->mappingPattern_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "sequenceOffsetForRV_r17 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_ConfiguredGrantConfig_sequenceOffsetForRV_r17_Optional(_ctx, &p->sequenceOffsetForRV_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "p0_PUSCH_Alpha2_r17 := ");
+	_adbgNrSys__SQN_NR_P0_PUSCH_AlphaSetId_SQN_NR_ConfiguredGrantConfig_p0_PUSCH_Alpha2_r17_Optional(_ctx, &p->p0_PUSCH_Alpha2_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "powerControlLoopToUse2_r17 := ");
+	_adbgNrSys__SQN_NR_ConfiguredGrantConfig_powerControlLoopToUse2_r17_e_powerControlLoopToUse2_r17_Optional(_ctx, &p->powerControlLoopToUse2_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "cg_COT_SharingList_r17 := ");
+	if (p->cg_COT_SharingList_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_CG_COT_Sharing_r17_SQN_NR_ConfiguredGrantConfig_cg_COT_SharingList_r17_DynamicOptional(_ctx, &p->cg_COT_SharingList_r17);
+	if (p->cg_COT_SharingList_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "periodicityExt_r17 := ");
+	_adbgNrSys__Uint16_t_SQN_NR_ConfiguredGrantConfig_periodicityExt_r17_Optional(_ctx, &p->periodicityExt_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "repK_v1710 := ");
+	_adbgNrSys__SQN_NR_ConfiguredGrantConfig_repK_v1710_e_repK_v1710_Optional(_ctx, &p->repK_v1710);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "nrofHARQ_Processes_v1700 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_ConfiguredGrantConfig_nrofHARQ_Processes_v1700_Optional(_ctx, &p->nrofHARQ_Processes_v1700);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "harq_ProcID_Offset2_v1700 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_ConfiguredGrantConfig_harq_ProcID_Offset2_v1700_Optional(_ctx, &p->harq_ProcID_Offset2_v1700);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "configuredGrantTimer_v1700 := ");
+	_adbgNrSys__Uint16_t_SQN_NR_ConfiguredGrantConfig_configuredGrantTimer_v1700_Optional(_ctx, &p->configuredGrantTimer_v1700);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "cg_minDFI_Delay_v1710 := ");
+	_adbgNrSys__Uint16_t_SQN_NR_ConfiguredGrantConfig_cg_minDFI_Delay_v1710_Optional(_ctx, &p->cg_minDFI_Delay_v1710);
 }
 
 static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkDedicated_configuredGrantConfig_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_BWP_UplinkDedicated_configuredGrantConfig_Value* p, enum SQN_NR_SetupRelease_BWP_UplinkDedicated_configuredGrantConfig_Sel d)
@@ -11206,6 +14560,44 @@ static void _adbgNrSys__SQN_NR_SetupRelease_SRS_ResourceSet_pathlossReferenceRSL
 	_adbgNrSys__SQN_NR_SetupRelease_SRS_ResourceSet_pathlossReferenceRSList_r16(_ctx, &p->v);
 }
 
+static const char* adbgNrSys__SQN_NR_SRS_ResourceSet_usagePDC_r17_e__ToString(SQN_NR_SRS_ResourceSet_usagePDC_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_SRS_ResourceSet_usagePDC_r17_e_true: return "SQN_NR_SRS_ResourceSet_usagePDC_r17_e_true";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SRS_ResourceSet_usagePDC_r17_e_usagePDC_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SRS_ResourceSet_usagePDC_r17_e_usagePDC_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SRS_ResourceSet_usagePDC_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_AvailableSlotOffset_r17_SQN_NR_SRS_ResourceSet_availableSlotOffsetList_r17_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_AvailableSlotOffset_r17_SQN_NR_SRS_ResourceSet_availableSlotOffsetList_r17_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "'");
+	for (size_t i3 = 0; i3 < p->v.d; i3++) {
+		adbgPrintLog(_ctx, "%02X", p->v.v[i3]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static const char* adbgNrSys__SQN_NR_SRS_ResourceSet_followUnifiedTCIstateSRS_r17_e__ToString(SQN_NR_SRS_ResourceSet_followUnifiedTCIstateSRS_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_SRS_ResourceSet_followUnifiedTCIstateSRS_r17_e_enabled: return "SQN_NR_SRS_ResourceSet_followUnifiedTCIstateSRS_r17_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SRS_ResourceSet_followUnifiedTCIstateSRS_r17_e_followUnifiedTCIstateSRS_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SRS_ResourceSet_followUnifiedTCIstateSRS_r17_e_followUnifiedTCIstateSRS_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SRS_ResourceSet_followUnifiedTCIstateSRS_r17_e__ToString(p->v), (int)p->v);
+}
+
 static void _adbgNrSys__SQN_NR_SRS_ResourceSet(acpCtx_t _ctx, const struct SQN_NR_SRS_ResourceSet* p)
 {
 	adbgPrintLog(_ctx, "srs_ResourceSetId := %u", (unsigned int)p->srs_ResourceSetId);
@@ -11237,6 +14629,15 @@ static void _adbgNrSys__SQN_NR_SRS_ResourceSet(acpCtx_t _ctx, const struct SQN_N
 	if (p->pathlossReferenceRSList_r16.d) { adbgPrintLog(_ctx, "{ "); };
 	_adbgNrSys__SQN_NR_SetupRelease_SRS_ResourceSet_pathlossReferenceRSList_r16_SQN_NR_SRS_ResourceSet_pathlossReferenceRSList_r16_Optional(_ctx, &p->pathlossReferenceRSList_r16);
 	if (p->pathlossReferenceRSList_r16.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "usagePDC_r17 := ");
+	_adbgNrSys__SQN_NR_SRS_ResourceSet_usagePDC_r17_e_usagePDC_r17_Optional(_ctx, &p->usagePDC_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "availableSlotOffsetList_r17 := ");
+	_adbgNrSys__SQN_NR_AvailableSlotOffset_r17_SQN_NR_SRS_ResourceSet_availableSlotOffsetList_r17_DynamicOptional(_ctx, &p->availableSlotOffsetList_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "followUnifiedTCIstateSRS_r17 := ");
+	_adbgNrSys__SQN_NR_SRS_ResourceSet_followUnifiedTCIstateSRS_r17_e_followUnifiedTCIstateSRS_r17_Optional(_ctx, &p->followUnifiedTCIstateSRS_r17);
 }
 
 static void _adbgNrSys__SQN_NR_SRS_ResourceSet_SQN_NR_SRS_Config_srs_ResourceSetToAddModList_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_SRS_ResourceSet_SQN_NR_SRS_Config_srs_ResourceSetToAddModList_DynamicOptional* p)
@@ -11583,6 +14984,205 @@ static void _adbgNrSys__SQN_NR_SRS_Resource_resourceMapping_r16_resourceMapping_
 	_adbgNrSys__SQN_NR_SRS_Resource_resourceMapping_r16(_ctx, &p->v);
 }
 
+static void _adbgNrSys__SQN_NR_SpatialRelationInfo_PDC_r17_referenceSignal_srs(acpCtx_t _ctx, const struct SQN_NR_SpatialRelationInfo_PDC_r17_referenceSignal_srs* p)
+{
+	adbgPrintLog(_ctx, "resourceId := %u", (unsigned int)p->resourceId);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "uplinkBWP := %u", (unsigned int)p->uplinkBWP);
+}
+
+static void _adbgNrSys__SQN_NR_SpatialRelationInfo_PDC_r17_referenceSignal_Value(acpCtx_t _ctx, const union SQN_NR_SpatialRelationInfo_PDC_r17_referenceSignal_Value* p, enum SQN_NR_SpatialRelationInfo_PDC_r17_referenceSignal_Sel d)
+{
+	if (d == SQN_NR_SpatialRelationInfo_PDC_r17_referenceSignal_ssb_Index) {
+		adbgPrintLog(_ctx, "ssb_Index := %u", (unsigned int)p->ssb_Index);
+		return;
+	}
+	if (d == SQN_NR_SpatialRelationInfo_PDC_r17_referenceSignal_csi_RS_Index) {
+		adbgPrintLog(_ctx, "csi_RS_Index := %u", (unsigned int)p->csi_RS_Index);
+		return;
+	}
+	if (d == SQN_NR_SpatialRelationInfo_PDC_r17_referenceSignal_dl_PRS_PDC) {
+		adbgPrintLog(_ctx, "dl_PRS_PDC := %u", (unsigned int)p->dl_PRS_PDC);
+		return;
+	}
+	if (d == SQN_NR_SpatialRelationInfo_PDC_r17_referenceSignal_srs) {
+		adbgPrintLog(_ctx, "srs := { ");
+		_adbgNrSys__SQN_NR_SpatialRelationInfo_PDC_r17_referenceSignal_srs(_ctx, &p->srs);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SpatialRelationInfo_PDC_r17_referenceSignal(acpCtx_t _ctx, const struct SQN_NR_SpatialRelationInfo_PDC_r17_referenceSignal* p)
+{
+	_adbgNrSys__SQN_NR_SpatialRelationInfo_PDC_r17_referenceSignal_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SpatialRelationInfo_PDC_r17(acpCtx_t _ctx, const struct SQN_NR_SpatialRelationInfo_PDC_r17* p)
+{
+	adbgPrintLog(_ctx, "referenceSignal := { ");
+	_adbgNrSys__SQN_NR_SpatialRelationInfo_PDC_r17_referenceSignal(_ctx, &p->referenceSignal);
+	adbgPrintLog(_ctx, " }");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_SRS_Resource_spatialRelationInfo_PDC_r17_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_SRS_Resource_spatialRelationInfo_PDC_r17_Value* p, enum SQN_NR_SetupRelease_SRS_Resource_spatialRelationInfo_PDC_r17_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_SRS_Resource_spatialRelationInfo_PDC_r17_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_SRS_Resource_spatialRelationInfo_PDC_r17_setup) {
+		adbgPrintLog(_ctx, "setup := { ");
+		_adbgNrSys__SQN_NR_SpatialRelationInfo_PDC_r17(_ctx, &p->setup);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_SRS_Resource_spatialRelationInfo_PDC_r17(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_SRS_Resource_spatialRelationInfo_PDC_r17* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_SRS_Resource_spatialRelationInfo_PDC_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_SRS_Resource_spatialRelationInfo_PDC_r17_SQN_NR_SRS_Resource_spatialRelationInfo_PDC_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_SRS_Resource_spatialRelationInfo_PDC_r17_SQN_NR_SRS_Resource_spatialRelationInfo_PDC_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_SRS_Resource_spatialRelationInfo_PDC_r17(_ctx, &p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_SRS_Resource_resourceMapping_r17_nrofSymbols_r17_e__ToString(SQN_NR_SRS_Resource_resourceMapping_r17_nrofSymbols_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_SRS_Resource_resourceMapping_r17_nrofSymbols_r17_e_n1: return "SQN_NR_SRS_Resource_resourceMapping_r17_nrofSymbols_r17_e_n1";
+		case SQN_NR_SRS_Resource_resourceMapping_r17_nrofSymbols_r17_e_n2: return "SQN_NR_SRS_Resource_resourceMapping_r17_nrofSymbols_r17_e_n2";
+		case SQN_NR_SRS_Resource_resourceMapping_r17_nrofSymbols_r17_e_n4: return "SQN_NR_SRS_Resource_resourceMapping_r17_nrofSymbols_r17_e_n4";
+		case SQN_NR_SRS_Resource_resourceMapping_r17_nrofSymbols_r17_e_n8: return "SQN_NR_SRS_Resource_resourceMapping_r17_nrofSymbols_r17_e_n8";
+		case SQN_NR_SRS_Resource_resourceMapping_r17_nrofSymbols_r17_e_n10: return "SQN_NR_SRS_Resource_resourceMapping_r17_nrofSymbols_r17_e_n10";
+		case SQN_NR_SRS_Resource_resourceMapping_r17_nrofSymbols_r17_e_n12: return "SQN_NR_SRS_Resource_resourceMapping_r17_nrofSymbols_r17_e_n12";
+		case SQN_NR_SRS_Resource_resourceMapping_r17_nrofSymbols_r17_e_n14: return "SQN_NR_SRS_Resource_resourceMapping_r17_nrofSymbols_r17_e_n14";
+		default: return "Unknown";
+	}
+}
+
+static const char* adbgNrSys__SQN_NR_SRS_Resource_resourceMapping_r17_repetitionFactor_r17_e__ToString(SQN_NR_SRS_Resource_resourceMapping_r17_repetitionFactor_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_SRS_Resource_resourceMapping_r17_repetitionFactor_r17_e_n1: return "SQN_NR_SRS_Resource_resourceMapping_r17_repetitionFactor_r17_e_n1";
+		case SQN_NR_SRS_Resource_resourceMapping_r17_repetitionFactor_r17_e_n2: return "SQN_NR_SRS_Resource_resourceMapping_r17_repetitionFactor_r17_e_n2";
+		case SQN_NR_SRS_Resource_resourceMapping_r17_repetitionFactor_r17_e_n4: return "SQN_NR_SRS_Resource_resourceMapping_r17_repetitionFactor_r17_e_n4";
+		case SQN_NR_SRS_Resource_resourceMapping_r17_repetitionFactor_r17_e_n5: return "SQN_NR_SRS_Resource_resourceMapping_r17_repetitionFactor_r17_e_n5";
+		case SQN_NR_SRS_Resource_resourceMapping_r17_repetitionFactor_r17_e_n6: return "SQN_NR_SRS_Resource_resourceMapping_r17_repetitionFactor_r17_e_n6";
+		case SQN_NR_SRS_Resource_resourceMapping_r17_repetitionFactor_r17_e_n7: return "SQN_NR_SRS_Resource_resourceMapping_r17_repetitionFactor_r17_e_n7";
+		case SQN_NR_SRS_Resource_resourceMapping_r17_repetitionFactor_r17_e_n8: return "SQN_NR_SRS_Resource_resourceMapping_r17_repetitionFactor_r17_e_n8";
+		case SQN_NR_SRS_Resource_resourceMapping_r17_repetitionFactor_r17_e_n10: return "SQN_NR_SRS_Resource_resourceMapping_r17_repetitionFactor_r17_e_n10";
+		case SQN_NR_SRS_Resource_resourceMapping_r17_repetitionFactor_r17_e_n12: return "SQN_NR_SRS_Resource_resourceMapping_r17_repetitionFactor_r17_e_n12";
+		case SQN_NR_SRS_Resource_resourceMapping_r17_repetitionFactor_r17_e_n14: return "SQN_NR_SRS_Resource_resourceMapping_r17_repetitionFactor_r17_e_n14";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SRS_Resource_resourceMapping_r17(acpCtx_t _ctx, const struct SQN_NR_SRS_Resource_resourceMapping_r17* p)
+{
+	adbgPrintLog(_ctx, "startPosition_r17 := %u", (unsigned int)p->startPosition_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "nrofSymbols_r17 := %s (%d)", adbgNrSys__SQN_NR_SRS_Resource_resourceMapping_r17_nrofSymbols_r17_e__ToString(p->nrofSymbols_r17), (int)p->nrofSymbols_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "repetitionFactor_r17 := %s (%d)", adbgNrSys__SQN_NR_SRS_Resource_resourceMapping_r17_repetitionFactor_r17_e__ToString(p->repetitionFactor_r17), (int)p->repetitionFactor_r17);
+}
+
+static void _adbgNrSys__SQN_NR_SRS_Resource_resourceMapping_r17_resourceMapping_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SRS_Resource_resourceMapping_r17_resourceMapping_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SRS_Resource_resourceMapping_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SRS_Resource_partialFreqSounding_r17_startRBIndexFScaling_r17_Value(acpCtx_t _ctx, const union SQN_NR_SRS_Resource_partialFreqSounding_r17_startRBIndexFScaling_r17_Value* p, enum SQN_NR_SRS_Resource_partialFreqSounding_r17_startRBIndexFScaling_r17_Sel d)
+{
+	if (d == SQN_NR_SRS_Resource_partialFreqSounding_r17_startRBIndexFScaling_r17_startRBIndexAndFreqScalingFactor2_r17) {
+		adbgPrintLog(_ctx, "startRBIndexAndFreqScalingFactor2_r17 := %u", (unsigned int)p->startRBIndexAndFreqScalingFactor2_r17);
+		return;
+	}
+	if (d == SQN_NR_SRS_Resource_partialFreqSounding_r17_startRBIndexFScaling_r17_startRBIndexAndFreqScalingFactor4_r17) {
+		adbgPrintLog(_ctx, "startRBIndexAndFreqScalingFactor4_r17 := %u", (unsigned int)p->startRBIndexAndFreqScalingFactor4_r17);
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SRS_Resource_partialFreqSounding_r17_startRBIndexFScaling_r17(acpCtx_t _ctx, const struct SQN_NR_SRS_Resource_partialFreqSounding_r17_startRBIndexFScaling_r17* p)
+{
+	_adbgNrSys__SQN_NR_SRS_Resource_partialFreqSounding_r17_startRBIndexFScaling_r17_Value(_ctx, &p->v, p->d);
+}
+
+static const char* adbgNrSys__SQN_NR_SRS_Resource_partialFreqSounding_r17_enableStartRBHopping_r17_e__ToString(SQN_NR_SRS_Resource_partialFreqSounding_r17_enableStartRBHopping_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_SRS_Resource_partialFreqSounding_r17_enableStartRBHopping_r17_e_enable: return "SQN_NR_SRS_Resource_partialFreqSounding_r17_enableStartRBHopping_r17_e_enable";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SRS_Resource_partialFreqSounding_r17_enableStartRBHopping_r17_e_enableStartRBHopping_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SRS_Resource_partialFreqSounding_r17_enableStartRBHopping_r17_e_enableStartRBHopping_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SRS_Resource_partialFreqSounding_r17_enableStartRBHopping_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SRS_Resource_partialFreqSounding_r17(acpCtx_t _ctx, const struct SQN_NR_SRS_Resource_partialFreqSounding_r17* p)
+{
+	adbgPrintLog(_ctx, "startRBIndexFScaling_r17 := { ");
+	_adbgNrSys__SQN_NR_SRS_Resource_partialFreqSounding_r17_startRBIndexFScaling_r17(_ctx, &p->startRBIndexFScaling_r17);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "enableStartRBHopping_r17 := ");
+	_adbgNrSys__SQN_NR_SRS_Resource_partialFreqSounding_r17_enableStartRBHopping_r17_e_enableStartRBHopping_r17_Optional(_ctx, &p->enableStartRBHopping_r17);
+}
+
+static void _adbgNrSys__SQN_NR_SRS_Resource_partialFreqSounding_r17_partialFreqSounding_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SRS_Resource_partialFreqSounding_r17_partialFreqSounding_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SRS_Resource_partialFreqSounding_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SRS_Resource_transmissionComb_n8_r17(acpCtx_t _ctx, const struct SQN_NR_SRS_Resource_transmissionComb_n8_r17* p)
+{
+	adbgPrintLog(_ctx, "combOffset_n8_r17 := %u", (unsigned int)p->combOffset_n8_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "cyclicShift_n8_r17 := %u", (unsigned int)p->cyclicShift_n8_r17);
+}
+
+static void _adbgNrSys__SQN_NR_SRS_Resource_transmissionComb_n8_r17_transmissionComb_n8_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SRS_Resource_transmissionComb_n8_r17_transmissionComb_n8_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SRS_Resource_transmissionComb_n8_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SRS_Resource_srs_TCIState_r17_Value(acpCtx_t _ctx, const union SQN_NR_SRS_Resource_srs_TCIState_r17_Value* p, enum SQN_NR_SRS_Resource_srs_TCIState_r17_Sel d)
+{
+	if (d == SQN_NR_SRS_Resource_srs_TCIState_r17_srs_UL_TCIState_r17) {
+		adbgPrintLog(_ctx, "srs_UL_TCIState_r17 := %u", (unsigned int)p->srs_UL_TCIState_r17);
+		return;
+	}
+	if (d == SQN_NR_SRS_Resource_srs_TCIState_r17_srs_DLorJoint_TCIState_r17) {
+		adbgPrintLog(_ctx, "srs_DLorJoint_TCIState_r17 := %u", (unsigned int)p->srs_DLorJoint_TCIState_r17);
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SRS_Resource_srs_TCIState_r17(acpCtx_t _ctx, const struct SQN_NR_SRS_Resource_srs_TCIState_r17* p)
+{
+	_adbgNrSys__SQN_NR_SRS_Resource_srs_TCIState_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SRS_Resource_srs_TCIState_r17_srs_TCIState_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SRS_Resource_srs_TCIState_r17_srs_TCIState_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SRS_Resource_srs_TCIState_r17(_ctx, &p->v);
+}
+
 static void _adbgNrSys__SQN_NR_SRS_Resource(acpCtx_t _ctx, const struct SQN_NR_SRS_Resource* p)
 {
 	adbgPrintLog(_ctx, "srs_ResourceId := %u", (unsigned int)p->srs_ResourceId);
@@ -11625,6 +15225,31 @@ static void _adbgNrSys__SQN_NR_SRS_Resource(acpCtx_t _ctx, const struct SQN_NR_S
 	if (p->resourceMapping_r16.d) { adbgPrintLog(_ctx, "{ "); };
 	_adbgNrSys__SQN_NR_SRS_Resource_resourceMapping_r16_resourceMapping_r16_Optional(_ctx, &p->resourceMapping_r16);
 	if (p->resourceMapping_r16.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "spatialRelationInfo_PDC_r17 := ");
+	if (p->spatialRelationInfo_PDC_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SetupRelease_SRS_Resource_spatialRelationInfo_PDC_r17_SQN_NR_SRS_Resource_spatialRelationInfo_PDC_r17_Optional(_ctx, &p->spatialRelationInfo_PDC_r17);
+	if (p->spatialRelationInfo_PDC_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "resourceMapping_r17 := ");
+	if (p->resourceMapping_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SRS_Resource_resourceMapping_r17_resourceMapping_r17_Optional(_ctx, &p->resourceMapping_r17);
+	if (p->resourceMapping_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "partialFreqSounding_r17 := ");
+	if (p->partialFreqSounding_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SRS_Resource_partialFreqSounding_r17_partialFreqSounding_r17_Optional(_ctx, &p->partialFreqSounding_r17);
+	if (p->partialFreqSounding_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "transmissionComb_n8_r17 := ");
+	if (p->transmissionComb_n8_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SRS_Resource_transmissionComb_n8_r17_transmissionComb_n8_r17_Optional(_ctx, &p->transmissionComb_n8_r17);
+	if (p->transmissionComb_n8_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "srs_TCIState_r17 := ");
+	if (p->srs_TCIState_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SRS_Resource_srs_TCIState_r17_srs_TCIState_r17_Optional(_ctx, &p->srs_TCIState_r17);
+	if (p->srs_TCIState_r17.d) { adbgPrintLog(_ctx, " }"); };
 }
 
 static void _adbgNrSys__SQN_NR_SRS_Resource_SQN_NR_SRS_Config_srs_ResourceToAddModList_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_SRS_Resource_SQN_NR_SRS_Config_srs_ResourceToAddModList_DynamicOptional* p)
@@ -11977,7 +15602,7 @@ static void _adbgNrSys__SQN_NR_SRS_PosResource_r16_transmissionComb_r16_n2_r16(a
 
 static void _adbgNrSys__SQN_NR_SRS_PosResource_r16_transmissionComb_r16_n4_r16(acpCtx_t _ctx, const struct SQN_NR_SRS_PosResource_r16_transmissionComb_r16_n4_r16* p)
 {
-	adbgPrintLog(_ctx, "combOffset_n4_16 := %u", (unsigned int)p->combOffset_n4_16);
+	adbgPrintLog(_ctx, "combOffset_n4_r16 := %u", (unsigned int)p->combOffset_n4_r16);
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "cyclicShift_n4_r16 := %u", (unsigned int)p->cyclicShift_n4_r16);
 }
@@ -12157,11 +15782,54 @@ static void _adbgNrSys__SQN_NR_SRS_PeriodicityAndOffset_r16(acpCtx_t _ctx, const
 	_adbgNrSys__SQN_NR_SRS_PeriodicityAndOffset_r16_Value(_ctx, &p->v, p->d);
 }
 
+static void _adbgNrSys__SQN_NR_SRS_PeriodicityAndOffsetExt_r16_Value(acpCtx_t _ctx, const union SQN_NR_SRS_PeriodicityAndOffsetExt_r16_Value* p, enum SQN_NR_SRS_PeriodicityAndOffsetExt_r16_Sel d)
+{
+	if (d == SQN_NR_SRS_PeriodicityAndOffsetExt_r16_sl128) {
+		adbgPrintLog(_ctx, "sl128 := %u", (unsigned int)p->sl128);
+		return;
+	}
+	if (d == SQN_NR_SRS_PeriodicityAndOffsetExt_r16_sl256) {
+		adbgPrintLog(_ctx, "sl256 := %u", (unsigned int)p->sl256);
+		return;
+	}
+	if (d == SQN_NR_SRS_PeriodicityAndOffsetExt_r16_sl512) {
+		adbgPrintLog(_ctx, "sl512 := %u", (unsigned int)p->sl512);
+		return;
+	}
+	if (d == SQN_NR_SRS_PeriodicityAndOffsetExt_r16_sl20480) {
+		adbgPrintLog(_ctx, "sl20480 := %u", (unsigned int)p->sl20480);
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SRS_PeriodicityAndOffsetExt_r16(acpCtx_t _ctx, const struct SQN_NR_SRS_PeriodicityAndOffsetExt_r16* p)
+{
+	_adbgNrSys__SQN_NR_SRS_PeriodicityAndOffsetExt_r16_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SRS_PeriodicityAndOffsetExt_r16_SQN_NR_SRS_PosResource_r16_resourceType_r16_semi_persistent_r16_periodicityAndOffset_sp_Ext_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_SRS_PeriodicityAndOffsetExt_r16_SQN_NR_SRS_PosResource_r16_resourceType_r16_semi_persistent_r16_periodicityAndOffset_sp_Ext_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SRS_PeriodicityAndOffsetExt_r16(_ctx, &p->v);
+}
+
 static void _adbgNrSys__SQN_NR_SRS_PosResource_r16_resourceType_r16_semi_persistent_r16(acpCtx_t _ctx, const struct SQN_NR_SRS_PosResource_r16_resourceType_r16_semi_persistent_r16* p)
 {
 	adbgPrintLog(_ctx, "periodicityAndOffset_sp_r16 := { ");
 	_adbgNrSys__SQN_NR_SRS_PeriodicityAndOffset_r16(_ctx, &p->periodicityAndOffset_sp_r16);
 	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "periodicityAndOffset_sp_Ext_r16 := ");
+	if (p->periodicityAndOffset_sp_Ext_r16.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SRS_PeriodicityAndOffsetExt_r16_SQN_NR_SRS_PosResource_r16_resourceType_r16_semi_persistent_r16_periodicityAndOffset_sp_Ext_r16_Optional(_ctx, &p->periodicityAndOffset_sp_Ext_r16);
+	if (p->periodicityAndOffset_sp_Ext_r16.d) { adbgPrintLog(_ctx, " }"); };
+}
+
+static void _adbgNrSys__SQN_NR_SRS_PeriodicityAndOffsetExt_r16_SQN_NR_SRS_PosResource_r16_resourceType_r16_periodic_r16_periodicityAndOffset_p_Ext_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_SRS_PeriodicityAndOffsetExt_r16_SQN_NR_SRS_PosResource_r16_resourceType_r16_periodic_r16_periodicityAndOffset_p_Ext_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SRS_PeriodicityAndOffsetExt_r16(_ctx, &p->v);
 }
 
 static void _adbgNrSys__SQN_NR_SRS_PosResource_r16_resourceType_r16_periodic_r16(acpCtx_t _ctx, const struct SQN_NR_SRS_PosResource_r16_resourceType_r16_periodic_r16* p)
@@ -12169,6 +15837,11 @@ static void _adbgNrSys__SQN_NR_SRS_PosResource_r16_resourceType_r16_periodic_r16
 	adbgPrintLog(_ctx, "periodicityAndOffset_p_r16 := { ");
 	_adbgNrSys__SQN_NR_SRS_PeriodicityAndOffset_r16(_ctx, &p->periodicityAndOffset_p_r16);
 	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "periodicityAndOffset_p_Ext_r16 := ");
+	if (p->periodicityAndOffset_p_Ext_r16.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SRS_PeriodicityAndOffsetExt_r16_SQN_NR_SRS_PosResource_r16_resourceType_r16_periodic_r16_periodicityAndOffset_p_Ext_r16_Optional(_ctx, &p->periodicityAndOffset_p_Ext_r16);
+	if (p->periodicityAndOffset_p_Ext_r16.d) { adbgPrintLog(_ctx, " }"); };
 }
 
 static void _adbgNrSys__SQN_NR_SRS_PosResource_r16_resourceType_r16_Value(acpCtx_t _ctx, const union SQN_NR_SRS_PosResource_r16_resourceType_r16_Value* p, enum SQN_NR_SRS_PosResource_r16_resourceType_r16_Sel d)
@@ -12609,6 +16282,20 @@ static void _adbgNrSys__SQN_NR_SetupRelease_BeamFailureRecoveryConfig_candidateB
 	_adbgNrSys__SQN_NR_SetupRelease_BeamFailureRecoveryConfig_candidateBeamRSListExt_v1610(_ctx, &p->v);
 }
 
+static const char* adbgNrSys__SQN_NR_BeamFailureRecoveryConfig_spCell_BFR_CBRA_r16_e__ToString(SQN_NR_BeamFailureRecoveryConfig_spCell_BFR_CBRA_r16_e v)
+{
+	switch(v) {
+		case SQN_NR_BeamFailureRecoveryConfig_spCell_BFR_CBRA_r16_e_true: return "SQN_NR_BeamFailureRecoveryConfig_spCell_BFR_CBRA_r16_e_true";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_BeamFailureRecoveryConfig_spCell_BFR_CBRA_r16_e_spCell_BFR_CBRA_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_BeamFailureRecoveryConfig_spCell_BFR_CBRA_r16_e_spCell_BFR_CBRA_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_BeamFailureRecoveryConfig_spCell_BFR_CBRA_r16_e__ToString(p->v), (int)p->v);
+}
+
 static void _adbgNrSys__SQN_NR_BeamFailureRecoveryConfig(acpCtx_t _ctx, const struct SQN_NR_BeamFailureRecoveryConfig* p)
 {
 	adbgPrintLog(_ctx, "rootSequenceIndex_BFR := ");
@@ -12656,6 +16343,9 @@ static void _adbgNrSys__SQN_NR_BeamFailureRecoveryConfig(acpCtx_t _ctx, const st
 	if (p->candidateBeamRSListExt_v1610.d) { adbgPrintLog(_ctx, "{ "); };
 	_adbgNrSys__SQN_NR_SetupRelease_BeamFailureRecoveryConfig_candidateBeamRSListExt_v1610_SQN_NR_BeamFailureRecoveryConfig_candidateBeamRSListExt_v1610_Optional(_ctx, &p->candidateBeamRSListExt_v1610);
 	if (p->candidateBeamRSListExt_v1610.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "spCell_BFR_CBRA_r16 := ");
+	_adbgNrSys__SQN_NR_BeamFailureRecoveryConfig_spCell_BFR_CBRA_r16_e_spCell_BFR_CBRA_r16_Optional(_ctx, &p->spCell_BFR_CBRA_r16);
 }
 
 static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkDedicated_beamFailureRecoveryConfig_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_BWP_UplinkDedicated_beamFailureRecoveryConfig_Value* p, enum SQN_NR_SetupRelease_BWP_UplinkDedicated_beamFailureRecoveryConfig_Sel d)
@@ -12858,6 +16548,262 @@ static void _adbgNrSys__SQN_NR_ConfiguredGrantConfigType2DeactivationStateList_r
 	}
 }
 
+static void _adbgNrSys__SQN_NR_ServCellIndex_SQN_NR_TCI_UL_State_r17_servingCellId_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_ServCellIndex_SQN_NR_TCI_UL_State_r17_servingCellId_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_BWP_Id_SQN_NR_TCI_UL_State_r17_bwp_Id_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_BWP_Id_SQN_NR_TCI_UL_State_r17_bwp_Id_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_TCI_UL_State_r17_referenceSignal_r17_Value(acpCtx_t _ctx, const union SQN_NR_TCI_UL_State_r17_referenceSignal_r17_Value* p, enum SQN_NR_TCI_UL_State_r17_referenceSignal_r17_Sel d)
+{
+	if (d == SQN_NR_TCI_UL_State_r17_referenceSignal_r17_ssb_Index_r17) {
+		adbgPrintLog(_ctx, "ssb_Index_r17 := %u", (unsigned int)p->ssb_Index_r17);
+		return;
+	}
+	if (d == SQN_NR_TCI_UL_State_r17_referenceSignal_r17_csi_RS_Index_r17) {
+		adbgPrintLog(_ctx, "csi_RS_Index_r17 := %u", (unsigned int)p->csi_RS_Index_r17);
+		return;
+	}
+	if (d == SQN_NR_TCI_UL_State_r17_referenceSignal_r17_srs_r17) {
+		adbgPrintLog(_ctx, "srs_r17 := %u", (unsigned int)p->srs_r17);
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_TCI_UL_State_r17_referenceSignal_r17(acpCtx_t _ctx, const struct SQN_NR_TCI_UL_State_r17_referenceSignal_r17* p)
+{
+	_adbgNrSys__SQN_NR_TCI_UL_State_r17_referenceSignal_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_AdditionalPCIIndex_r17_SQN_NR_TCI_UL_State_r17_additionalPCI_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_AdditionalPCIIndex_r17_SQN_NR_TCI_UL_State_r17_additionalPCI_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_Uplink_powerControlId_r17_SQN_NR_TCI_UL_State_r17_ul_powerControl_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_Uplink_powerControlId_r17_SQN_NR_TCI_UL_State_r17_ul_powerControl_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_PUSCH_PathlossReferenceRS_Id_r17_SQN_NR_TCI_UL_State_r17_pathlossReferenceRS_Id_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PUSCH_PathlossReferenceRS_Id_r17_SQN_NR_TCI_UL_State_r17_pathlossReferenceRS_Id_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_TCI_UL_State_r17(acpCtx_t _ctx, const struct SQN_NR_TCI_UL_State_r17* p)
+{
+	adbgPrintLog(_ctx, "tci_UL_State_Id_r17 := %u", (unsigned int)p->tci_UL_State_Id_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "servingCellId_r17 := ");
+	_adbgNrSys__SQN_NR_ServCellIndex_SQN_NR_TCI_UL_State_r17_servingCellId_r17_Optional(_ctx, &p->servingCellId_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "bwp_Id_r17 := ");
+	_adbgNrSys__SQN_NR_BWP_Id_SQN_NR_TCI_UL_State_r17_bwp_Id_r17_Optional(_ctx, &p->bwp_Id_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "referenceSignal_r17 := { ");
+	_adbgNrSys__SQN_NR_TCI_UL_State_r17_referenceSignal_r17(_ctx, &p->referenceSignal_r17);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "additionalPCI_r17 := ");
+	_adbgNrSys__SQN_NR_AdditionalPCIIndex_r17_SQN_NR_TCI_UL_State_r17_additionalPCI_r17_Optional(_ctx, &p->additionalPCI_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "ul_powerControl_r17 := ");
+	_adbgNrSys__SQN_NR_Uplink_powerControlId_r17_SQN_NR_TCI_UL_State_r17_ul_powerControl_r17_Optional(_ctx, &p->ul_powerControl_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pathlossReferenceRS_Id_r17 := ");
+	_adbgNrSys__SQN_NR_PUSCH_PathlossReferenceRS_Id_r17_SQN_NR_TCI_UL_State_r17_pathlossReferenceRS_Id_r17_Optional(_ctx, &p->pathlossReferenceRS_Id_r17);
+}
+
+static void _adbgNrSys__SQN_NR_TCI_UL_State_r17_SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17_explicitlist_ul_TCI_ToAddModList_r17_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_TCI_UL_State_r17_SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17_explicitlist_ul_TCI_ToAddModList_r17_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		adbgPrintLog(_ctx, "{ ");
+		_adbgNrSys__SQN_NR_TCI_UL_State_r17(_ctx, &p->v.v[i2]);
+		adbgPrintLog(_ctx, " }");
+		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgNrSys__SQN_NR_TCI_UL_State_Id_r17_SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17_explicitlist_ul_TCI_ToReleaseList_r17_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_TCI_UL_State_Id_r17_SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17_explicitlist_ul_TCI_ToReleaseList_r17_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "'");
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		adbgPrintLog(_ctx, "%02X", p->v.v[i2]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static void _adbgNrSys__SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17_explicitlist(acpCtx_t _ctx, const struct SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17_explicitlist* p)
+{
+	adbgPrintLog(_ctx, "ul_TCI_ToAddModList_r17 := ");
+	if (p->ul_TCI_ToAddModList_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_TCI_UL_State_r17_SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17_explicitlist_ul_TCI_ToAddModList_r17_DynamicOptional(_ctx, &p->ul_TCI_ToAddModList_r17);
+	if (p->ul_TCI_ToAddModList_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "ul_TCI_ToReleaseList_r17 := ");
+	_adbgNrSys__SQN_NR_TCI_UL_State_Id_r17_SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17_explicitlist_ul_TCI_ToReleaseList_r17_DynamicOptional(_ctx, &p->ul_TCI_ToReleaseList_r17);
+}
+
+static void _adbgNrSys__SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17_Value(acpCtx_t _ctx, const union SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17_Value* p, enum SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17_Sel d)
+{
+	if (d == SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17_explicitlist) {
+		adbgPrintLog(_ctx, "explicitlist := { ");
+		_adbgNrSys__SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17_explicitlist(_ctx, &p->explicitlist);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17_unifiedTCI_StateRef_r17) {
+		adbgPrintLog(_ctx, "unifiedTCI_StateRef_r17 := { ");
+		_adbgNrSys__SQN_NR_ServingCellAndBWP_Id_r17(_ctx, &p->unifiedTCI_StateRef_r17);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17(acpCtx_t _ctx, const struct SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17* p)
+{
+	_adbgNrSys__SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17_ul_TCI_StateList_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17_ul_TCI_StateList_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_Uplink_powerControlId_r17_SQN_NR_BWP_UplinkDedicated_ul_powerControl_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_Uplink_powerControlId_r17_SQN_NR_BWP_UplinkDedicated_ul_powerControl_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast1_r17_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast1_r17_Value* p, enum SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast1_r17_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast1_r17_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast1_r17_setup) {
+		adbgPrintLog(_ctx, "setup := { ");
+		for (size_t i2 = 0; i2 < p->setup.d; i2++) {
+			adbgPrintLog(_ctx, "{ ");
+			_adbgNrSys__SQN_NR_PUCCH_Config(_ctx, &p->setup.v[i2]);
+			adbgPrintLog(_ctx, " }");
+			if (i2 != p->setup.d - 1) { adbgPrintLog(_ctx, ", "); }
+		}
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast1_r17(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast1_r17* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast1_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast1_r17_SQN_NR_BWP_UplinkDedicated_pucch_ConfigurationListMulticast1_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast1_r17_SQN_NR_BWP_UplinkDedicated_pucch_ConfigurationListMulticast1_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast1_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast2_r17_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast2_r17_Value* p, enum SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast2_r17_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast2_r17_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast2_r17_setup) {
+		adbgPrintLog(_ctx, "setup := { ");
+		for (size_t i2 = 0; i2 < p->setup.d; i2++) {
+			adbgPrintLog(_ctx, "{ ");
+			_adbgNrSys__SQN_NR_PUCCH_Config(_ctx, &p->setup.v[i2]);
+			adbgPrintLog(_ctx, " }");
+			if (i2 != p->setup.d - 1) { adbgPrintLog(_ctx, ", "); }
+		}
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast2_r17(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast2_r17* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast2_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast2_r17_SQN_NR_BWP_UplinkDedicated_pucch_ConfigurationListMulticast2_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast2_r17_SQN_NR_BWP_UplinkDedicated_pucch_ConfigurationListMulticast2_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast2_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast1_r17_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast1_r17_Value* p, enum SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast1_r17_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast1_r17_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast1_r17_setup) {
+		adbgPrintLog(_ctx, "setup := { ");
+		_adbgNrSys__SQN_NR_PUCCH_Config(_ctx, &p->setup);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast1_r17(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast1_r17* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast1_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast1_r17_SQN_NR_BWP_UplinkDedicated_pucch_ConfigMulticast1_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast1_r17_SQN_NR_BWP_UplinkDedicated_pucch_ConfigMulticast1_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast1_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast2_r17_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast2_r17_Value* p, enum SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast2_r17_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast2_r17_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast2_r17_setup) {
+		adbgPrintLog(_ctx, "setup := { ");
+		_adbgNrSys__SQN_NR_PUCCH_Config(_ctx, &p->setup);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast2_r17(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast2_r17* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast2_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast2_r17_SQN_NR_BWP_UplinkDedicated_pucch_ConfigMulticast2_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast2_r17_SQN_NR_BWP_UplinkDedicated_pucch_ConfigMulticast2_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast2_r17(_ctx, &p->v);
+}
+
 static void _adbgNrSys__SQN_NR_BWP_UplinkDedicated(acpCtx_t _ctx, const struct SQN_NR_BWP_UplinkDedicated* p)
 {
 	adbgPrintLog(_ctx, "pucch_Config := ");
@@ -12923,6 +16869,34 @@ static void _adbgNrSys__SQN_NR_BWP_UplinkDedicated(acpCtx_t _ctx, const struct S
 	if (p->configuredGrantConfigType2DeactivationStateList_r16.d) { adbgPrintLog(_ctx, "{ "); };
 	_adbgNrSys__SQN_NR_ConfiguredGrantConfigType2DeactivationStateList_r16_SQN_NR_BWP_UplinkDedicated_configuredGrantConfigType2DeactivationStateList_r16_Optional(_ctx, &p->configuredGrantConfigType2DeactivationStateList_r16);
 	if (p->configuredGrantConfigType2DeactivationStateList_r16.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "ul_TCI_StateList_r17 := ");
+	if (p->ul_TCI_StateList_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_BWP_UplinkDedicated_ul_TCI_StateList_r17_ul_TCI_StateList_r17_Optional(_ctx, &p->ul_TCI_StateList_r17);
+	if (p->ul_TCI_StateList_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "ul_powerControl_r17 := ");
+	_adbgNrSys__SQN_NR_Uplink_powerControlId_r17_SQN_NR_BWP_UplinkDedicated_ul_powerControl_r17_Optional(_ctx, &p->ul_powerControl_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pucch_ConfigurationListMulticast1_r17 := ");
+	if (p->pucch_ConfigurationListMulticast1_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast1_r17_SQN_NR_BWP_UplinkDedicated_pucch_ConfigurationListMulticast1_r17_Optional(_ctx, &p->pucch_ConfigurationListMulticast1_r17);
+	if (p->pucch_ConfigurationListMulticast1_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pucch_ConfigurationListMulticast2_r17 := ");
+	if (p->pucch_ConfigurationListMulticast2_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigurationListMulticast2_r17_SQN_NR_BWP_UplinkDedicated_pucch_ConfigurationListMulticast2_r17_Optional(_ctx, &p->pucch_ConfigurationListMulticast2_r17);
+	if (p->pucch_ConfigurationListMulticast2_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pucch_ConfigMulticast1_r17 := ");
+	if (p->pucch_ConfigMulticast1_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast1_r17_SQN_NR_BWP_UplinkDedicated_pucch_ConfigMulticast1_r17_Optional(_ctx, &p->pucch_ConfigMulticast1_r17);
+	if (p->pucch_ConfigMulticast1_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pucch_ConfigMulticast2_r17 := ");
+	if (p->pucch_ConfigMulticast2_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SetupRelease_BWP_UplinkDedicated_pucch_ConfigMulticast2_r17_SQN_NR_BWP_UplinkDedicated_pucch_ConfigMulticast2_r17_Optional(_ctx, &p->pucch_ConfigMulticast2_r17);
+	if (p->pucch_ConfigMulticast2_r17.d) { adbgPrintLog(_ctx, " }"); };
 }
 
 static void _adbgNrSys__NR_ASN1_BWP_UplinkDedicated_Type_Value(acpCtx_t _ctx, const union NR_ASN1_BWP_UplinkDedicated_Type_Value* p, enum NR_ASN1_BWP_UplinkDedicated_Type_Sel d)
@@ -13028,7 +17002,7 @@ static void _adbgNrSys__SQN_NR_CFRA_occasions_occasions_Optional(acpCtx_t _ctx, 
 	_adbgNrSys__SQN_NR_CFRA_occasions(_ctx, &p->v);
 }
 
-static void _adbgNrSys__Uint16_t_SQN_NR_CFRA_SSB_Resource_msgA_PUSCH_resource_Index_r16_Optional(acpCtx_t _ctx, const struct uint16_t_SQN_NR_CFRA_SSB_Resource_msgA_PUSCH_resource_Index_r16_Optional* p)
+static void _adbgNrSys__Uint16_t_SQN_NR_CFRA_SSB_Resource_msgA_PUSCH_Resource_Index_r16_Optional(acpCtx_t _ctx, const struct uint16_t_SQN_NR_CFRA_SSB_Resource_msgA_PUSCH_Resource_Index_r16_Optional* p)
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
 	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
@@ -13040,8 +17014,8 @@ static void _adbgNrSys__SQN_NR_CFRA_SSB_Resource(acpCtx_t _ctx, const struct SQN
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "ra_PreambleIndex := %u", (unsigned int)p->ra_PreambleIndex);
 	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "msgA_PUSCH_resource_Index_r16 := ");
-	_adbgNrSys__Uint16_t_SQN_NR_CFRA_SSB_Resource_msgA_PUSCH_resource_Index_r16_Optional(_ctx, &p->msgA_PUSCH_resource_Index_r16);
+	adbgPrintLog(_ctx, "msgA_PUSCH_Resource_Index_r16 := ");
+	_adbgNrSys__Uint16_t_SQN_NR_CFRA_SSB_Resource_msgA_PUSCH_Resource_Index_r16_Optional(_ctx, &p->msgA_PUSCH_Resource_Index_r16);
 }
 
 static void _adbgNrSys__SQN_NR_CFRA_resources_ssb(acpCtx_t _ctx, const struct SQN_NR_CFRA_resources_ssb* p)
@@ -13586,6 +17560,48 @@ static void _adbgNrSys__SQN_NR_SetupRelease_PUSCH_ServingCellConfig_maxMIMO_Laye
 	_adbgNrSys__SQN_NR_SetupRelease_PUSCH_ServingCellConfig_maxMIMO_LayersDCI_0_2_r16(_ctx, &p->v);
 }
 
+static const char* adbgNrSys__SQN_NR_PUSCH_ServingCellConfig_nrofHARQ_ProcessesForPUSCH_r17_e__ToString(SQN_NR_PUSCH_ServingCellConfig_nrofHARQ_ProcessesForPUSCH_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PUSCH_ServingCellConfig_nrofHARQ_ProcessesForPUSCH_r17_e_n32: return "SQN_NR_PUSCH_ServingCellConfig_nrofHARQ_ProcessesForPUSCH_r17_e_n32";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PUSCH_ServingCellConfig_nrofHARQ_ProcessesForPUSCH_r17_e_nrofHARQ_ProcessesForPUSCH_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PUSCH_ServingCellConfig_nrofHARQ_ProcessesForPUSCH_r17_e_nrofHARQ_ProcessesForPUSCH_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PUSCH_ServingCellConfig_nrofHARQ_ProcessesForPUSCH_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUSCH_ServingCellConfig_uplinkHARQ_mode_r17_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_PUSCH_ServingCellConfig_uplinkHARQ_mode_r17_Value* p, enum SQN_NR_SetupRelease_PUSCH_ServingCellConfig_uplinkHARQ_mode_r17_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_PUSCH_ServingCellConfig_uplinkHARQ_mode_r17_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_PUSCH_ServingCellConfig_uplinkHARQ_mode_r17_setup) {
+		adbgPrintLog(_ctx, "setup := '");
+		for (size_t i1 = 0; i1 < 32; i1++) {
+			adbgPrintLog(_ctx, "%02X", p->setup[i1]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUSCH_ServingCellConfig_uplinkHARQ_mode_r17(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUSCH_ServingCellConfig_uplinkHARQ_mode_r17* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_PUSCH_ServingCellConfig_uplinkHARQ_mode_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PUSCH_ServingCellConfig_uplinkHARQ_mode_r17_SQN_NR_PUSCH_ServingCellConfig_uplinkHARQ_mode_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PUSCH_ServingCellConfig_uplinkHARQ_mode_r17_SQN_NR_PUSCH_ServingCellConfig_uplinkHARQ_mode_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_PUSCH_ServingCellConfig_uplinkHARQ_mode_r17(_ctx, &p->v);
+}
+
 static void _adbgNrSys__SQN_NR_PUSCH_ServingCellConfig(acpCtx_t _ctx, const struct SQN_NR_PUSCH_ServingCellConfig* p)
 {
 	adbgPrintLog(_ctx, "codeBlockGroupTransmission := ");
@@ -13609,6 +17625,14 @@ static void _adbgNrSys__SQN_NR_PUSCH_ServingCellConfig(acpCtx_t _ctx, const stru
 	if (p->maxMIMO_LayersDCI_0_2_r16.d) { adbgPrintLog(_ctx, "{ "); };
 	_adbgNrSys__SQN_NR_SetupRelease_PUSCH_ServingCellConfig_maxMIMO_LayersDCI_0_2_r16_SQN_NR_PUSCH_ServingCellConfig_maxMIMO_LayersDCI_0_2_r16_Optional(_ctx, &p->maxMIMO_LayersDCI_0_2_r16);
 	if (p->maxMIMO_LayersDCI_0_2_r16.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "nrofHARQ_ProcessesForPUSCH_r17 := ");
+	_adbgNrSys__SQN_NR_PUSCH_ServingCellConfig_nrofHARQ_ProcessesForPUSCH_r17_e_nrofHARQ_ProcessesForPUSCH_r17_Optional(_ctx, &p->nrofHARQ_ProcessesForPUSCH_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "uplinkHARQ_mode_r17 := ");
+	if (p->uplinkHARQ_mode_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SetupRelease_PUSCH_ServingCellConfig_uplinkHARQ_mode_r17_SQN_NR_PUSCH_ServingCellConfig_uplinkHARQ_mode_r17_Optional(_ctx, &p->uplinkHARQ_mode_r17);
+	if (p->uplinkHARQ_mode_r17.d) { adbgPrintLog(_ctx, " }"); };
 }
 
 static void _adbgNrSys__NR_ASN1_PUSCH_ServingCellConfig_Type_Value(acpCtx_t _ctx, const union NR_ASN1_PUSCH_ServingCellConfig_Type_Value* p, enum NR_ASN1_PUSCH_ServingCellConfig_Type_Sel d)
@@ -13715,6 +17739,12 @@ static void _adbgNrSys__Null_Type_InitialBWP_Optional(acpCtx_t _ctx, const struc
 	adbgPrintLog(_ctx, "%s", (p->v ? "true" : "false"));
 }
 
+static void _adbgNrSys__Null_Type_InitialBWP_RedCap_Optional(acpCtx_t _ctx, const struct Null_Type_InitialBWP_RedCap_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s", (p->v ? "true" : "false"));
+}
+
 static void _adbgNrSys__NR_AssignedBWPs_Type(acpCtx_t _ctx, const struct NR_AssignedBWPs_Type* p)
 {
 	adbgPrintLog(_ctx, "ActiveBWP := ");
@@ -13728,6 +17758,9 @@ static void _adbgNrSys__NR_AssignedBWPs_Type(acpCtx_t _ctx, const struct NR_Assi
 		adbgPrintLog(_ctx, "%02X", p->DedicatedBWPs.v[i1]);
 	}
 	adbgPrintLog(_ctx, "'O");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "InitialBWP_RedCap := ");
+	_adbgNrSys__Null_Type_InitialBWP_RedCap_Optional(_ctx, &p->InitialBWP_RedCap);
 }
 
 static void _adbgNrSys__NR_AssignedBWPs_Type_NR_SearchSpaceDlDciAssignment_Type_AssignedBWPs_Optional(acpCtx_t _ctx, const struct NR_AssignedBWPs_Type_NR_SearchSpaceDlDciAssignment_Type_AssignedBWPs_Optional* p)
@@ -15219,6 +19252,8 @@ static const char* adbgNrSys__NR_SiWindowLength_Type__ToString(NR_SiWindowLength
 		case SQN_NR_SI_SchedulingInfo_si_WindowLength_e_s320: return "SQN_NR_SI_SchedulingInfo_si_WindowLength_e_s320";
 		case SQN_NR_SI_SchedulingInfo_si_WindowLength_e_s640: return "SQN_NR_SI_SchedulingInfo_si_WindowLength_e_s640";
 		case SQN_NR_SI_SchedulingInfo_si_WindowLength_e_s1280: return "SQN_NR_SI_SchedulingInfo_si_WindowLength_e_s1280";
+		case SQN_NR_SI_SchedulingInfo_si_WindowLength_e_s2560_v1710: return "SQN_NR_SI_SchedulingInfo_si_WindowLength_e_s2560_v1710";
+		case SQN_NR_SI_SchedulingInfo_si_WindowLength_e_s5120_v1710: return "SQN_NR_SI_SchedulingInfo_si_WindowLength_e_s5120_v1710";
 		default: return "Unknown";
 	}
 }
@@ -16028,6 +20063,48 @@ static void _adbgNrSys__SQN_NR_SSB_PositionQCL_Relation_r16_e_SQN_NR_SIB2_intraF
 	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SSB_PositionQCL_Relation_r16_e__ToString(p->v), (int)p->v);
 }
 
+static const char* adbgNrSys__SQN_NR_SSB_PositionQCL_Relation_r17_e__ToString(SQN_NR_SSB_PositionQCL_Relation_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_SSB_PositionQCL_Relation_r17_e_n32: return "SQN_NR_SSB_PositionQCL_Relation_r17_e_n32";
+		case SQN_NR_SSB_PositionQCL_Relation_r17_e_n64: return "SQN_NR_SSB_PositionQCL_Relation_r17_e_n64";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SSB_PositionQCL_Relation_r17_e_SQN_NR_SIB2_intraFreqCellReselectionInfo_ssb_PositionQCL_Common_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SSB_PositionQCL_Relation_r17_e_SQN_NR_SIB2_intraFreqCellReselectionInfo_ssb_PositionQCL_Common_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SSB_PositionQCL_Relation_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_PhysCellId_SQN_NR_SSB_MTC4_r17_pci_List_r17_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_PhysCellId_SQN_NR_SSB_MTC4_r17_pci_List_r17_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "'");
+	for (size_t i3 = 0; i3 < p->v.d; i3++) {
+		adbgPrintLog(_ctx, "%02X", p->v.v[i3]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static void _adbgNrSys__SQN_NR_SSB_MTC4_r17(acpCtx_t _ctx, const struct SQN_NR_SSB_MTC4_r17* p)
+{
+	adbgPrintLog(_ctx, "pci_List_r17 := ");
+	_adbgNrSys__SQN_NR_PhysCellId_SQN_NR_SSB_MTC4_r17_pci_List_r17_DynamicOptional(_ctx, &p->pci_List_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "offset_r17 := %u", (unsigned int)p->offset_r17);
+}
+
+static void _adbgNrSys__SQN_NR_SSB_MTC4List_r17_SQN_NR_SIB2_intraFreqCellReselectionInfo_smtc4list_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SSB_MTC4List_r17_SQN_NR_SIB2_intraFreqCellReselectionInfo_smtc4list_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		_adbgNrSys__SQN_NR_SSB_MTC4_r17(_ctx, &p->v.v[i2]);
+		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
 static void _adbgNrSys__SQN_NR_SIB2_intraFreqCellReselectionInfo(acpCtx_t _ctx, const struct SQN_NR_SIB2_intraFreqCellReselectionInfo* p)
 {
 	adbgPrintLog(_ctx, "q_RxLevMin := %d", (int)p->q_RxLevMin);
@@ -16087,6 +20164,14 @@ static void _adbgNrSys__SQN_NR_SIB2_intraFreqCellReselectionInfo(acpCtx_t _ctx, 
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "ssb_PositionQCL_Common_r16 := ");
 	_adbgNrSys__SQN_NR_SSB_PositionQCL_Relation_r16_e_SQN_NR_SIB2_intraFreqCellReselectionInfo_ssb_PositionQCL_Common_r16_Optional(_ctx, &p->ssb_PositionQCL_Common_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "ssb_PositionQCL_Common_r17 := ");
+	_adbgNrSys__SQN_NR_SSB_PositionQCL_Relation_r17_e_SQN_NR_SIB2_intraFreqCellReselectionInfo_ssb_PositionQCL_Common_r17_Optional(_ctx, &p->ssb_PositionQCL_Common_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "smtc4list_r17 := ");
+	if (p->smtc4list_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SSB_MTC4List_r17_SQN_NR_SIB2_intraFreqCellReselectionInfo_smtc4list_r17_Optional(_ctx, &p->smtc4list_r17);
+	if (p->smtc4list_r17.d) { adbgPrintLog(_ctx, " }"); };
 }
 
 static const char* adbgNrSys__SQN_NR_SIB2_relaxedMeasurement_r16_lowMobilityEvaluation_r16_s_SearchDeltaP_r16_e__ToString(SQN_NR_SIB2_relaxedMeasurement_r16_lowMobilityEvaluation_r16_s_SearchDeltaP_r16_e v)
@@ -16213,6 +20298,112 @@ static void _adbgNrSys__SQN_NR_SIB2_relaxedMeasurement_r16_relaxedMeasurement_r1
 	_adbgNrSys__SQN_NR_SIB2_relaxedMeasurement_r16(_ctx, &p->v);
 }
 
+static void _adbgNrSys__Uint8_t_SQN_NR_SIB2_cellEquivalentSize_r17_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_SIB2_cellEquivalentSize_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_s_SearchDeltaP_Stationary_r17_e__ToString(SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_s_SearchDeltaP_Stationary_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_s_SearchDeltaP_Stationary_r17_e_dB2: return "SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_s_SearchDeltaP_Stationary_r17_e_dB2";
+		case SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_s_SearchDeltaP_Stationary_r17_e_dB3: return "SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_s_SearchDeltaP_Stationary_r17_e_dB3";
+		case SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_s_SearchDeltaP_Stationary_r17_e_dB6: return "SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_s_SearchDeltaP_Stationary_r17_e_dB6";
+		case SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_s_SearchDeltaP_Stationary_r17_e_dB9: return "SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_s_SearchDeltaP_Stationary_r17_e_dB9";
+		case SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_s_SearchDeltaP_Stationary_r17_e_dB12: return "SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_s_SearchDeltaP_Stationary_r17_e_dB12";
+		case SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_s_SearchDeltaP_Stationary_r17_e_dB15: return "SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_s_SearchDeltaP_Stationary_r17_e_dB15";
+		case SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_s_SearchDeltaP_Stationary_r17_e_spare2: return "SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_s_SearchDeltaP_Stationary_r17_e_spare2";
+		case SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_s_SearchDeltaP_Stationary_r17_e_spare1: return "SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_s_SearchDeltaP_Stationary_r17_e_spare1";
+		default: return "Unknown";
+	}
+}
+
+static const char* adbgNrSys__SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e__ToString(SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_s5: return "SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_s5";
+		case SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_s10: return "SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_s10";
+		case SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_s20: return "SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_s20";
+		case SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_s30: return "SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_s30";
+		case SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_s60: return "SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_s60";
+		case SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_s120: return "SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_s120";
+		case SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_s180: return "SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_s180";
+		case SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_s240: return "SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_s240";
+		case SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_s300: return "SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_s300";
+		case SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_spare7: return "SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_spare7";
+		case SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_spare6: return "SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_spare6";
+		case SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_spare5: return "SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_spare5";
+		case SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_spare4: return "SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_spare4";
+		case SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_spare3: return "SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_spare3";
+		case SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_spare2: return "SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_spare2";
+		case SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_spare1: return "SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e_spare1";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17(acpCtx_t _ctx, const struct SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17* p)
+{
+	adbgPrintLog(_ctx, "s_SearchDeltaP_Stationary_r17 := %s (%d)", adbgNrSys__SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_s_SearchDeltaP_Stationary_r17_e__ToString(p->s_SearchDeltaP_Stationary_r17), (int)p->s_SearchDeltaP_Stationary_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "t_SearchDeltaP_Stationary_r17 := %s (%d)", adbgNrSys__SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17_t_SearchDeltaP_Stationary_r17_e__ToString(p->t_SearchDeltaP_Stationary_r17), (int)p->t_SearchDeltaP_Stationary_r17);
+}
+
+static void _adbgNrSys__SQN_NR_ReselectionThresholdQ_SQN_NR_SIB2_relaxedMeasurement_r17_cellEdgeEvaluationWhileStationary_r17_s_SearchThresholdQ2_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_ReselectionThresholdQ_SQN_NR_SIB2_relaxedMeasurement_r17_cellEdgeEvaluationWhileStationary_r17_s_SearchThresholdQ2_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SIB2_relaxedMeasurement_r17_cellEdgeEvaluationWhileStationary_r17(acpCtx_t _ctx, const struct SQN_NR_SIB2_relaxedMeasurement_r17_cellEdgeEvaluationWhileStationary_r17* p)
+{
+	adbgPrintLog(_ctx, "s_SearchThresholdP2_r17 := %u", (unsigned int)p->s_SearchThresholdP2_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "s_SearchThresholdQ2_r17 := ");
+	_adbgNrSys__SQN_NR_ReselectionThresholdQ_SQN_NR_SIB2_relaxedMeasurement_r17_cellEdgeEvaluationWhileStationary_r17_s_SearchThresholdQ2_r17_Optional(_ctx, &p->s_SearchThresholdQ2_r17);
+}
+
+static void _adbgNrSys__SQN_NR_SIB2_relaxedMeasurement_r17_cellEdgeEvaluationWhileStationary_r17_cellEdgeEvaluationWhileStationary_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SIB2_relaxedMeasurement_r17_cellEdgeEvaluationWhileStationary_r17_cellEdgeEvaluationWhileStationary_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SIB2_relaxedMeasurement_r17_cellEdgeEvaluationWhileStationary_r17(_ctx, &p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_SIB2_relaxedMeasurement_r17_combineRelaxedMeasCondition2_r17_e__ToString(SQN_NR_SIB2_relaxedMeasurement_r17_combineRelaxedMeasCondition2_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_SIB2_relaxedMeasurement_r17_combineRelaxedMeasCondition2_r17_e_true: return "SQN_NR_SIB2_relaxedMeasurement_r17_combineRelaxedMeasCondition2_r17_e_true";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SIB2_relaxedMeasurement_r17_combineRelaxedMeasCondition2_r17_e_combineRelaxedMeasCondition2_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SIB2_relaxedMeasurement_r17_combineRelaxedMeasCondition2_r17_e_combineRelaxedMeasCondition2_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SIB2_relaxedMeasurement_r17_combineRelaxedMeasCondition2_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SIB2_relaxedMeasurement_r17(acpCtx_t _ctx, const struct SQN_NR_SIB2_relaxedMeasurement_r17* p)
+{
+	adbgPrintLog(_ctx, "stationaryMobilityEvaluation_r17 := { ");
+	_adbgNrSys__SQN_NR_SIB2_relaxedMeasurement_r17_stationaryMobilityEvaluation_r17(_ctx, &p->stationaryMobilityEvaluation_r17);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "cellEdgeEvaluationWhileStationary_r17 := ");
+	if (p->cellEdgeEvaluationWhileStationary_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SIB2_relaxedMeasurement_r17_cellEdgeEvaluationWhileStationary_r17_cellEdgeEvaluationWhileStationary_r17_Optional(_ctx, &p->cellEdgeEvaluationWhileStationary_r17);
+	if (p->cellEdgeEvaluationWhileStationary_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "combineRelaxedMeasCondition2_r17 := ");
+	_adbgNrSys__SQN_NR_SIB2_relaxedMeasurement_r17_combineRelaxedMeasCondition2_r17_e_combineRelaxedMeasCondition2_r17_Optional(_ctx, &p->combineRelaxedMeasCondition2_r17);
+}
+
+static void _adbgNrSys__SQN_NR_SIB2_relaxedMeasurement_r17_relaxedMeasurement_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SIB2_relaxedMeasurement_r17_relaxedMeasurement_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SIB2_relaxedMeasurement_r17(_ctx, &p->v);
+}
+
 static void _adbgNrSys__SQN_NR_SIB2(acpCtx_t _ctx, const struct SQN_NR_SIB2* p)
 {
 	adbgPrintLog(_ctx, "cellReselectionInfoCommon := { ");
@@ -16231,6 +20422,14 @@ static void _adbgNrSys__SQN_NR_SIB2(acpCtx_t _ctx, const struct SQN_NR_SIB2* p)
 	if (p->relaxedMeasurement_r16.d) { adbgPrintLog(_ctx, "{ "); };
 	_adbgNrSys__SQN_NR_SIB2_relaxedMeasurement_r16_relaxedMeasurement_r16_Optional(_ctx, &p->relaxedMeasurement_r16);
 	if (p->relaxedMeasurement_r16.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "cellEquivalentSize_r17 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_SIB2_cellEquivalentSize_r17_Optional(_ctx, &p->cellEquivalentSize_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "relaxedMeasurement_r17 := ");
+	if (p->relaxedMeasurement_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SIB2_relaxedMeasurement_r17_relaxedMeasurement_r17_Optional(_ctx, &p->relaxedMeasurement_r17);
+	if (p->relaxedMeasurement_r17.d) { adbgPrintLog(_ctx, " }"); };
 }
 
 static void _adbgNrSys__Uint8_t_SQN_NR_IntraFreqNeighCellInfo_q_RxLevMinOffsetCell_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_IntraFreqNeighCellInfo_q_RxLevMinOffsetCell_Optional* p)
@@ -16313,7 +20512,7 @@ static void _adbgNrSys__SQN_NR_PCI_Range(acpCtx_t _ctx, const struct SQN_NR_PCI_
 	_adbgNrSys__SQN_NR_PCI_Range_range_e_range_Optional(_ctx, &p->range);
 }
 
-static void _adbgNrSys__SQN_NR_IntraFreqBlackCellList_SQN_NR_SIB3_intraFreqBlackCellList_Optional(acpCtx_t _ctx, const struct SQN_NR_IntraFreqBlackCellList_SQN_NR_SIB3_intraFreqBlackCellList_Optional* p)
+static void _adbgNrSys__SQN_NR_IntraFreqExcludedCellList_SQN_NR_SIB3_intraFreqExcludedCellList_Optional(acpCtx_t _ctx, const struct SQN_NR_IntraFreqExcludedCellList_SQN_NR_SIB3_intraFreqExcludedCellList_Optional* p)
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
@@ -16353,7 +20552,7 @@ static void _adbgNrSys__SQN_NR_IntraFreqNeighCellList_v1610_SQN_NR_SIB3_intraFre
 	}
 }
 
-static void _adbgNrSys__SQN_NR_IntraFreqWhiteCellList_r16_SQN_NR_SIB3_intraFreqWhiteCellList_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_IntraFreqWhiteCellList_r16_SQN_NR_SIB3_intraFreqWhiteCellList_r16_Optional* p)
+static void _adbgNrSys__SQN_NR_IntraFreqAllowedCellList_r16_SQN_NR_SIB3_intraFreqAllowedCellList_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_IntraFreqAllowedCellList_r16_SQN_NR_SIB3_intraFreqAllowedCellList_r16_Optional* p)
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
@@ -16387,6 +20586,36 @@ static void _adbgNrSys__SQN_NR_IntraFreqCAG_CellListPerPLMN_r16_SQN_NR_SIB3_intr
 	}
 }
 
+static void _adbgNrSys__SQN_NR_IntraFreqNeighHSDN_CellList_r17_SQN_NR_SIB3_intraFreqNeighHSDN_CellList_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_IntraFreqNeighHSDN_CellList_r17_SQN_NR_SIB3_intraFreqNeighHSDN_CellList_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		_adbgNrSys__SQN_NR_PCI_Range(_ctx, &p->v.v[i2]);
+		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SSB_PositionQCL_Relation_r17_e_SQN_NR_IntraFreqNeighCellInfo_v1710_ssb_PositionQCL_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SSB_PositionQCL_Relation_r17_e_SQN_NR_IntraFreqNeighCellInfo_v1710_ssb_PositionQCL_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SSB_PositionQCL_Relation_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_IntraFreqNeighCellInfo_v1710(acpCtx_t _ctx, const struct SQN_NR_IntraFreqNeighCellInfo_v1710* p)
+{
+	adbgPrintLog(_ctx, "ssb_PositionQCL_r17 := ");
+	_adbgNrSys__SQN_NR_SSB_PositionQCL_Relation_r17_e_SQN_NR_IntraFreqNeighCellInfo_v1710_ssb_PositionQCL_r17_Optional(_ctx, &p->ssb_PositionQCL_r17);
+}
+
+static void _adbgNrSys__SQN_NR_IntraFreqNeighCellList_v1710_SQN_NR_SIB3_intraFreqNeighCellList_v1710_Optional(acpCtx_t _ctx, const struct SQN_NR_IntraFreqNeighCellList_v1710_SQN_NR_SIB3_intraFreqNeighCellList_v1710_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		_adbgNrSys__SQN_NR_IntraFreqNeighCellInfo_v1710(_ctx, &p->v.v[i2]);
+		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
 static void _adbgNrSys__SQN_NR_SIB3(acpCtx_t _ctx, const struct SQN_NR_SIB3* p)
 {
 	adbgPrintLog(_ctx, "intraFreqNeighCellList := ");
@@ -16394,10 +20623,10 @@ static void _adbgNrSys__SQN_NR_SIB3(acpCtx_t _ctx, const struct SQN_NR_SIB3* p)
 	_adbgNrSys__SQN_NR_IntraFreqNeighCellList_SQN_NR_SIB3_intraFreqNeighCellList_Optional(_ctx, &p->intraFreqNeighCellList);
 	if (p->intraFreqNeighCellList.d) { adbgPrintLog(_ctx, " }"); };
 	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "intraFreqBlackCellList := ");
-	if (p->intraFreqBlackCellList.d) { adbgPrintLog(_ctx, "{ "); };
-	_adbgNrSys__SQN_NR_IntraFreqBlackCellList_SQN_NR_SIB3_intraFreqBlackCellList_Optional(_ctx, &p->intraFreqBlackCellList);
-	if (p->intraFreqBlackCellList.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, "intraFreqExcludedCellList := ");
+	if (p->intraFreqExcludedCellList.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_IntraFreqExcludedCellList_SQN_NR_SIB3_intraFreqExcludedCellList_Optional(_ctx, &p->intraFreqExcludedCellList);
+	if (p->intraFreqExcludedCellList.d) { adbgPrintLog(_ctx, " }"); };
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "lateNonCriticalExtension := ");
 	if (p->lateNonCriticalExtension.d) { adbgPrintLog(_ctx, "{ "); };
@@ -16409,15 +20638,25 @@ static void _adbgNrSys__SQN_NR_SIB3(acpCtx_t _ctx, const struct SQN_NR_SIB3* p)
 	_adbgNrSys__SQN_NR_IntraFreqNeighCellList_v1610_SQN_NR_SIB3_intraFreqNeighCellList_v1610_Optional(_ctx, &p->intraFreqNeighCellList_v1610);
 	if (p->intraFreqNeighCellList_v1610.d) { adbgPrintLog(_ctx, " }"); };
 	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "intraFreqWhiteCellList_r16 := ");
-	if (p->intraFreqWhiteCellList_r16.d) { adbgPrintLog(_ctx, "{ "); };
-	_adbgNrSys__SQN_NR_IntraFreqWhiteCellList_r16_SQN_NR_SIB3_intraFreqWhiteCellList_r16_Optional(_ctx, &p->intraFreqWhiteCellList_r16);
-	if (p->intraFreqWhiteCellList_r16.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, "intraFreqAllowedCellList_r16 := ");
+	if (p->intraFreqAllowedCellList_r16.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_IntraFreqAllowedCellList_r16_SQN_NR_SIB3_intraFreqAllowedCellList_r16_Optional(_ctx, &p->intraFreqAllowedCellList_r16);
+	if (p->intraFreqAllowedCellList_r16.d) { adbgPrintLog(_ctx, " }"); };
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "intraFreqCAG_CellList_r16 := ");
 	if (p->intraFreqCAG_CellList_r16.d) { adbgPrintLog(_ctx, "{ "); };
 	_adbgNrSys__SQN_NR_IntraFreqCAG_CellListPerPLMN_r16_SQN_NR_SIB3_intraFreqCAG_CellList_r16_DynamicOptional(_ctx, &p->intraFreqCAG_CellList_r16);
 	if (p->intraFreqCAG_CellList_r16.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "intraFreqNeighHSDN_CellList_r17 := ");
+	if (p->intraFreqNeighHSDN_CellList_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_IntraFreqNeighHSDN_CellList_r17_SQN_NR_SIB3_intraFreqNeighHSDN_CellList_r17_Optional(_ctx, &p->intraFreqNeighHSDN_CellList_r17);
+	if (p->intraFreqNeighHSDN_CellList_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "intraFreqNeighCellList_v1710 := ");
+	if (p->intraFreqNeighCellList_v1710.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_IntraFreqNeighCellList_v1710_SQN_NR_SIB3_intraFreqNeighCellList_v1710_Optional(_ctx, &p->intraFreqNeighCellList_v1710);
+	if (p->intraFreqNeighCellList_v1710.d) { adbgPrintLog(_ctx, " }"); };
 }
 
 static void _adbgNrSys__SQN_NR_MultiFrequencyBandListNR_SIB_SQN_NR_InterFreqCarrierFreqInfo_frequencyBandList_Optional(acpCtx_t _ctx, const struct SQN_NR_MultiFrequencyBandListNR_SIB_SQN_NR_InterFreqCarrierFreqInfo_frequencyBandList_Optional* p)
@@ -16566,7 +20805,7 @@ static void _adbgNrSys__SQN_NR_InterFreqNeighCellList_SQN_NR_InterFreqCarrierFre
 	}
 }
 
-static void _adbgNrSys__SQN_NR_InterFreqBlackCellList_SQN_NR_InterFreqCarrierFreqInfo_interFreqBlackCellList_Optional(acpCtx_t _ctx, const struct SQN_NR_InterFreqBlackCellList_SQN_NR_InterFreqCarrierFreqInfo_interFreqBlackCellList_Optional* p)
+static void _adbgNrSys__SQN_NR_InterFreqExcludedCellList_SQN_NR_InterFreqCarrierFreqInfo_interFreqExcludedCellList_Optional(acpCtx_t _ctx, const struct SQN_NR_InterFreqExcludedCellList_SQN_NR_InterFreqCarrierFreqInfo_interFreqExcludedCellList_Optional* p)
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
@@ -16657,10 +20896,10 @@ static void _adbgNrSys__SQN_NR_InterFreqCarrierFreqInfo(acpCtx_t _ctx, const str
 	_adbgNrSys__SQN_NR_InterFreqNeighCellList_SQN_NR_InterFreqCarrierFreqInfo_interFreqNeighCellList_Optional(_ctx, &p->interFreqNeighCellList);
 	if (p->interFreqNeighCellList.d) { adbgPrintLog(_ctx, " }"); };
 	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "interFreqBlackCellList := ");
-	if (p->interFreqBlackCellList.d) { adbgPrintLog(_ctx, "{ "); };
-	_adbgNrSys__SQN_NR_InterFreqBlackCellList_SQN_NR_InterFreqCarrierFreqInfo_interFreqBlackCellList_Optional(_ctx, &p->interFreqBlackCellList);
-	if (p->interFreqBlackCellList.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, "interFreqExcludedCellList := ");
+	if (p->interFreqExcludedCellList.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_InterFreqExcludedCellList_SQN_NR_InterFreqCarrierFreqInfo_interFreqExcludedCellList_Optional(_ctx, &p->interFreqExcludedCellList);
+	if (p->interFreqExcludedCellList.d) { adbgPrintLog(_ctx, " }"); };
 }
 
 static void _adbgNrSys__OCTET_STRING_SQN_NR_SIB4_lateNonCriticalExtension_Optional(acpCtx_t _ctx, const struct OCTET_STRING_SQN_NR_SIB4_lateNonCriticalExtension_Optional* p)
@@ -16700,7 +20939,7 @@ static void _adbgNrSys__SQN_NR_SSB_MTC2_LP_r16_SQN_NR_InterFreqCarrierFreqInfo_v
 	_adbgNrSys__SQN_NR_SSB_MTC2_LP_r16(_ctx, &p->v);
 }
 
-static void _adbgNrSys__SQN_NR_InterFreqWhiteCellList_r16_SQN_NR_InterFreqCarrierFreqInfo_v1610_interFreqWhiteCellList_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_InterFreqWhiteCellList_r16_SQN_NR_InterFreqCarrierFreqInfo_v1610_interFreqWhiteCellList_r16_Optional* p)
+static void _adbgNrSys__SQN_NR_InterFreqAllowedCellList_r16_SQN_NR_InterFreqCarrierFreqInfo_v1610_interFreqAllowedCellList_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_InterFreqAllowedCellList_r16_SQN_NR_InterFreqCarrierFreqInfo_v1610_interFreqAllowedCellList_r16_Optional* p)
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
@@ -16752,10 +20991,10 @@ static void _adbgNrSys__SQN_NR_InterFreqCarrierFreqInfo_v1610(acpCtx_t _ctx, con
 	_adbgNrSys__SQN_NR_SSB_MTC2_LP_r16_SQN_NR_InterFreqCarrierFreqInfo_v1610_smtc2_LP_r16_Optional(_ctx, &p->smtc2_LP_r16);
 	if (p->smtc2_LP_r16.d) { adbgPrintLog(_ctx, " }"); };
 	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "interFreqWhiteCellList_r16 := ");
-	if (p->interFreqWhiteCellList_r16.d) { adbgPrintLog(_ctx, "{ "); };
-	_adbgNrSys__SQN_NR_InterFreqWhiteCellList_r16_SQN_NR_InterFreqCarrierFreqInfo_v1610_interFreqWhiteCellList_r16_Optional(_ctx, &p->interFreqWhiteCellList_r16);
-	if (p->interFreqWhiteCellList_r16.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, "interFreqAllowedCellList_r16 := ");
+	if (p->interFreqAllowedCellList_r16.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_InterFreqAllowedCellList_r16_SQN_NR_InterFreqCarrierFreqInfo_v1610_interFreqAllowedCellList_r16_Optional(_ctx, &p->interFreqAllowedCellList_r16);
+	if (p->interFreqAllowedCellList_r16.d) { adbgPrintLog(_ctx, " }"); };
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "ssb_PositionQCL_Common_r16 := ");
 	_adbgNrSys__SQN_NR_SSB_PositionQCL_Relation_r16_e_SQN_NR_InterFreqCarrierFreqInfo_v1610_ssb_PositionQCL_Common_r16_Optional(_ctx, &p->ssb_PositionQCL_Common_r16);
@@ -16771,6 +21010,127 @@ static void _adbgNrSys__SQN_NR_InterFreqCarrierFreqList_v1610_SQN_NR_SIB4_interF
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_adbgNrSys__SQN_NR_InterFreqCarrierFreqInfo_v1610(_ctx, &p->v.v[i2]);
+		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgNrSys__SQN_NR_InterFreqNeighHSDN_CellList_r17_SQN_NR_InterFreqCarrierFreqInfo_v1700_interFreqNeighHSDN_CellList_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_InterFreqNeighHSDN_CellList_r17_SQN_NR_InterFreqCarrierFreqInfo_v1700_interFreqNeighHSDN_CellList_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i3 = 0; i3 < p->v.d; i3++) {
+		_adbgNrSys__SQN_NR_PCI_Range(_ctx, &p->v.v[i3]);
+		if (i3 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static const char* adbgNrSys__SQN_NR_InterFreqCarrierFreqInfo_v1700_highSpeedMeasInterFreq_r17_e__ToString(SQN_NR_InterFreqCarrierFreqInfo_v1700_highSpeedMeasInterFreq_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_InterFreqCarrierFreqInfo_v1700_highSpeedMeasInterFreq_r17_e_true: return "SQN_NR_InterFreqCarrierFreqInfo_v1700_highSpeedMeasInterFreq_r17_e_true";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_InterFreqCarrierFreqInfo_v1700_highSpeedMeasInterFreq_r17_e_highSpeedMeasInterFreq_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_InterFreqCarrierFreqInfo_v1700_highSpeedMeasInterFreq_r17_e_highSpeedMeasInterFreq_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_InterFreqCarrierFreqInfo_v1700_highSpeedMeasInterFreq_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_InterFreqCarrierFreqInfo_v1700_redCapAccessAllowed_r17_e__ToString(SQN_NR_InterFreqCarrierFreqInfo_v1700_redCapAccessAllowed_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_InterFreqCarrierFreqInfo_v1700_redCapAccessAllowed_r17_e_true: return "SQN_NR_InterFreqCarrierFreqInfo_v1700_redCapAccessAllowed_r17_e_true";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_InterFreqCarrierFreqInfo_v1700_redCapAccessAllowed_r17_e_redCapAccessAllowed_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_InterFreqCarrierFreqInfo_v1700_redCapAccessAllowed_r17_e_redCapAccessAllowed_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_InterFreqCarrierFreqInfo_v1700_redCapAccessAllowed_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SSB_PositionQCL_Relation_r17_e_SQN_NR_InterFreqCarrierFreqInfo_v1700_ssb_PositionQCL_Common_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SSB_PositionQCL_Relation_r17_e_SQN_NR_InterFreqCarrierFreqInfo_v1700_ssb_PositionQCL_Common_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SSB_PositionQCL_Relation_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SSB_PositionQCL_Relation_r17_e_SQN_NR_InterFreqNeighCellInfo_v1710_ssb_PositionQCL_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SSB_PositionQCL_Relation_r17_e_SQN_NR_InterFreqNeighCellInfo_v1710_ssb_PositionQCL_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SSB_PositionQCL_Relation_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_InterFreqNeighCellInfo_v1710(acpCtx_t _ctx, const struct SQN_NR_InterFreqNeighCellInfo_v1710* p)
+{
+	adbgPrintLog(_ctx, "ssb_PositionQCL_r17 := ");
+	_adbgNrSys__SQN_NR_SSB_PositionQCL_Relation_r17_e_SQN_NR_InterFreqNeighCellInfo_v1710_ssb_PositionQCL_r17_Optional(_ctx, &p->ssb_PositionQCL_r17);
+}
+
+static void _adbgNrSys__SQN_NR_InterFreqNeighCellList_v1710_SQN_NR_InterFreqCarrierFreqInfo_v1700_interFreqNeighCellList_v1710_Optional(acpCtx_t _ctx, const struct SQN_NR_InterFreqNeighCellList_v1710_SQN_NR_InterFreqCarrierFreqInfo_v1700_interFreqNeighCellList_v1710_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i3 = 0; i3 < p->v.d; i3++) {
+		_adbgNrSys__SQN_NR_InterFreqNeighCellInfo_v1710(_ctx, &p->v.v[i3]);
+		if (i3 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgNrSys__SQN_NR_InterFreqCarrierFreqInfo_v1700(acpCtx_t _ctx, const struct SQN_NR_InterFreqCarrierFreqInfo_v1700* p)
+{
+	adbgPrintLog(_ctx, "interFreqNeighHSDN_CellList_r17 := ");
+	if (p->interFreqNeighHSDN_CellList_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_InterFreqNeighHSDN_CellList_r17_SQN_NR_InterFreqCarrierFreqInfo_v1700_interFreqNeighHSDN_CellList_r17_Optional(_ctx, &p->interFreqNeighHSDN_CellList_r17);
+	if (p->interFreqNeighHSDN_CellList_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "highSpeedMeasInterFreq_r17 := ");
+	_adbgNrSys__SQN_NR_InterFreqCarrierFreqInfo_v1700_highSpeedMeasInterFreq_r17_e_highSpeedMeasInterFreq_r17_Optional(_ctx, &p->highSpeedMeasInterFreq_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "redCapAccessAllowed_r17 := ");
+	_adbgNrSys__SQN_NR_InterFreqCarrierFreqInfo_v1700_redCapAccessAllowed_r17_e_redCapAccessAllowed_r17_Optional(_ctx, &p->redCapAccessAllowed_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "ssb_PositionQCL_Common_r17 := ");
+	_adbgNrSys__SQN_NR_SSB_PositionQCL_Relation_r17_e_SQN_NR_InterFreqCarrierFreqInfo_v1700_ssb_PositionQCL_Common_r17_Optional(_ctx, &p->ssb_PositionQCL_Common_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "interFreqNeighCellList_v1710 := ");
+	if (p->interFreqNeighCellList_v1710.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_InterFreqNeighCellList_v1710_SQN_NR_InterFreqCarrierFreqInfo_v1700_interFreqNeighCellList_v1710_Optional(_ctx, &p->interFreqNeighCellList_v1710);
+	if (p->interFreqNeighCellList_v1710.d) { adbgPrintLog(_ctx, " }"); };
+}
+
+static void _adbgNrSys__SQN_NR_InterFreqCarrierFreqList_v1700_SQN_NR_SIB4_interFreqCarrierFreqList_v1700_Optional(acpCtx_t _ctx, const struct SQN_NR_InterFreqCarrierFreqList_v1700_SQN_NR_SIB4_interFreqCarrierFreqList_v1700_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		_adbgNrSys__SQN_NR_InterFreqCarrierFreqInfo_v1700(_ctx, &p->v.v[i2]);
+		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SSB_MTC4List_r17_SQN_NR_InterFreqCarrierFreqInfo_v1720_smtc4list_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SSB_MTC4List_r17_SQN_NR_InterFreqCarrierFreqInfo_v1720_smtc4list_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i3 = 0; i3 < p->v.d; i3++) {
+		_adbgNrSys__SQN_NR_SSB_MTC4_r17(_ctx, &p->v.v[i3]);
+		if (i3 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgNrSys__SQN_NR_InterFreqCarrierFreqInfo_v1720(acpCtx_t _ctx, const struct SQN_NR_InterFreqCarrierFreqInfo_v1720* p)
+{
+	adbgPrintLog(_ctx, "smtc4list_r17 := ");
+	if (p->smtc4list_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SSB_MTC4List_r17_SQN_NR_InterFreqCarrierFreqInfo_v1720_smtc4list_r17_Optional(_ctx, &p->smtc4list_r17);
+	if (p->smtc4list_r17.d) { adbgPrintLog(_ctx, " }"); };
+}
+
+static void _adbgNrSys__SQN_NR_InterFreqCarrierFreqList_v1720_SQN_NR_SIB4_interFreqCarrierFreqList_v1720_Optional(acpCtx_t _ctx, const struct SQN_NR_InterFreqCarrierFreqList_v1720_SQN_NR_SIB4_interFreqCarrierFreqList_v1720_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		_adbgNrSys__SQN_NR_InterFreqCarrierFreqInfo_v1720(_ctx, &p->v.v[i2]);
 		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
 	}
 }
@@ -16795,6 +21155,16 @@ static void _adbgNrSys__SQN_NR_SIB4(acpCtx_t _ctx, const struct SQN_NR_SIB4* p)
 	if (p->interFreqCarrierFreqList_v1610.d) { adbgPrintLog(_ctx, "{ "); };
 	_adbgNrSys__SQN_NR_InterFreqCarrierFreqList_v1610_SQN_NR_SIB4_interFreqCarrierFreqList_v1610_Optional(_ctx, &p->interFreqCarrierFreqList_v1610);
 	if (p->interFreqCarrierFreqList_v1610.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "interFreqCarrierFreqList_v1700 := ");
+	if (p->interFreqCarrierFreqList_v1700.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_InterFreqCarrierFreqList_v1700_SQN_NR_SIB4_interFreqCarrierFreqList_v1700_Optional(_ctx, &p->interFreqCarrierFreqList_v1700);
+	if (p->interFreqCarrierFreqList_v1700.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "interFreqCarrierFreqList_v1720 := ");
+	if (p->interFreqCarrierFreqList_v1720.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_InterFreqCarrierFreqList_v1720_SQN_NR_SIB4_interFreqCarrierFreqList_v1720_Optional(_ctx, &p->interFreqCarrierFreqList_v1720);
+	if (p->interFreqCarrierFreqList_v1720.d) { adbgPrintLog(_ctx, " }"); };
 }
 
 static void _adbgNrSys__Int8_t_SQN_NR_EUTRA_NS_PmaxValue_additionalPmax_Optional(acpCtx_t _ctx, const struct int8_t_SQN_NR_EUTRA_NS_PmaxValue_additionalPmax_Optional* p)
@@ -16955,7 +21325,7 @@ static void _adbgNrSys__SQN_NR_EUTRA_PhysCellIdRange(acpCtx_t _ctx, const struct
 	_adbgNrSys__SQN_NR_EUTRA_PhysCellIdRange_range_e_range_Optional(_ctx, &p->range);
 }
 
-static void _adbgNrSys__SQN_NR_EUTRA_FreqBlackCellList_SQN_NR_CarrierFreqEUTRA_eutra_BlackCellList_Optional(acpCtx_t _ctx, const struct SQN_NR_EUTRA_FreqBlackCellList_SQN_NR_CarrierFreqEUTRA_eutra_BlackCellList_Optional* p)
+static void _adbgNrSys__SQN_NR_EUTRA_FreqExcludedCellList_SQN_NR_CarrierFreqEUTRA_eutra_ExcludedCellList_Optional(acpCtx_t _ctx, const struct SQN_NR_EUTRA_FreqExcludedCellList_SQN_NR_CarrierFreqEUTRA_eutra_ExcludedCellList_Optional* p)
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
@@ -17016,10 +21386,10 @@ static void _adbgNrSys__SQN_NR_CarrierFreqEUTRA(acpCtx_t _ctx, const struct SQN_
 	_adbgNrSys__SQN_NR_EUTRA_FreqNeighCellList_SQN_NR_CarrierFreqEUTRA_eutra_FreqNeighCellList_Optional(_ctx, &p->eutra_FreqNeighCellList);
 	if (p->eutra_FreqNeighCellList.d) { adbgPrintLog(_ctx, " }"); };
 	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "eutra_BlackCellList := ");
-	if (p->eutra_BlackCellList.d) { adbgPrintLog(_ctx, "{ "); };
-	_adbgNrSys__SQN_NR_EUTRA_FreqBlackCellList_SQN_NR_CarrierFreqEUTRA_eutra_BlackCellList_Optional(_ctx, &p->eutra_BlackCellList);
-	if (p->eutra_BlackCellList.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, "eutra_ExcludedCellList := ");
+	if (p->eutra_ExcludedCellList.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_EUTRA_FreqExcludedCellList_SQN_NR_CarrierFreqEUTRA_eutra_ExcludedCellList_Optional(_ctx, &p->eutra_ExcludedCellList);
+	if (p->eutra_ExcludedCellList.d) { adbgPrintLog(_ctx, " }"); };
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "allowedMeasBandwidth := %s (%d)", adbgNrSys__SQN_NR_EUTRA_AllowedMeasBandwidth_e__ToString(p->allowedMeasBandwidth), (int)p->allowedMeasBandwidth);
 	adbgPrintLog(_ctx, ", ");
@@ -17101,6 +21471,46 @@ static void _adbgNrSys__SQN_NR_CarrierFreqListEUTRA_v1610_SQN_NR_SIB5_carrierFre
 	}
 }
 
+static void _adbgNrSys__SQN_NR_EUTRA_FreqNeighHSDN_CellList_r17_SQN_NR_CarrierFreqEUTRA_v1700_eutra_FreqNeighHSDN_CellList_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_EUTRA_FreqNeighHSDN_CellList_r17_SQN_NR_CarrierFreqEUTRA_v1700_eutra_FreqNeighHSDN_CellList_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i3 = 0; i3 < p->v.d; i3++) {
+		_adbgNrSys__SQN_NR_EUTRA_PhysCellIdRange(_ctx, &p->v.v[i3]);
+		if (i3 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgNrSys__SQN_NR_CarrierFreqEUTRA_v1700(acpCtx_t _ctx, const struct SQN_NR_CarrierFreqEUTRA_v1700* p)
+{
+	adbgPrintLog(_ctx, "eutra_FreqNeighHSDN_CellList_r17 := ");
+	if (p->eutra_FreqNeighHSDN_CellList_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_EUTRA_FreqNeighHSDN_CellList_r17_SQN_NR_CarrierFreqEUTRA_v1700_eutra_FreqNeighHSDN_CellList_r17_Optional(_ctx, &p->eutra_FreqNeighHSDN_CellList_r17);
+	if (p->eutra_FreqNeighHSDN_CellList_r17.d) { adbgPrintLog(_ctx, " }"); };
+}
+
+static void _adbgNrSys__SQN_NR_CarrierFreqListEUTRA_v1700_SQN_NR_SIB5_carrierFreqListEUTRA_v1700_Optional(acpCtx_t _ctx, const struct SQN_NR_CarrierFreqListEUTRA_v1700_SQN_NR_SIB5_carrierFreqListEUTRA_v1700_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		_adbgNrSys__SQN_NR_CarrierFreqEUTRA_v1700(_ctx, &p->v.v[i2]);
+		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static const char* adbgNrSys__SQN_NR_SIB5_idleModeMeasVoiceFallback_r17_e__ToString(SQN_NR_SIB5_idleModeMeasVoiceFallback_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_SIB5_idleModeMeasVoiceFallback_r17_e_true: return "SQN_NR_SIB5_idleModeMeasVoiceFallback_r17_e_true";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SIB5_idleModeMeasVoiceFallback_r17_e_idleModeMeasVoiceFallback_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SIB5_idleModeMeasVoiceFallback_r17_e_idleModeMeasVoiceFallback_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SIB5_idleModeMeasVoiceFallback_r17_e__ToString(p->v), (int)p->v);
+}
+
 static void _adbgNrSys__SQN_NR_SIB5(acpCtx_t _ctx, const struct SQN_NR_SIB5* p)
 {
 	adbgPrintLog(_ctx, "carrierFreqListEUTRA := ");
@@ -17124,6 +21534,14 @@ static void _adbgNrSys__SQN_NR_SIB5(acpCtx_t _ctx, const struct SQN_NR_SIB5* p)
 	if (p->carrierFreqListEUTRA_v1610.d) { adbgPrintLog(_ctx, "{ "); };
 	_adbgNrSys__SQN_NR_CarrierFreqListEUTRA_v1610_SQN_NR_SIB5_carrierFreqListEUTRA_v1610_Optional(_ctx, &p->carrierFreqListEUTRA_v1610);
 	if (p->carrierFreqListEUTRA_v1610.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "carrierFreqListEUTRA_v1700 := ");
+	if (p->carrierFreqListEUTRA_v1700.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_CarrierFreqListEUTRA_v1700_SQN_NR_SIB5_carrierFreqListEUTRA_v1700_Optional(_ctx, &p->carrierFreqListEUTRA_v1700);
+	if (p->carrierFreqListEUTRA_v1700.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "idleModeMeasVoiceFallback_r17 := ");
+	_adbgNrSys__SQN_NR_SIB5_idleModeMeasVoiceFallback_r17_e_idleModeMeasVoiceFallback_r17_Optional(_ctx, &p->idleModeMeasVoiceFallback_r17);
 }
 
 static void _adbgNrSys__OCTET_STRING_SQN_NR_SIB6_lateNonCriticalExtension_Optional(acpCtx_t _ctx, const struct OCTET_STRING_SQN_NR_SIB6_lateNonCriticalExtension_Optional* p)
@@ -17828,9 +22246,9 @@ static void _adbgNrSys__SQN_NR_SIB13_r16(acpCtx_t _ctx, const struct SQN_NR_SIB1
 	}
 	adbgPrintLog(_ctx, "'O");
 	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "sl_Bandwidth_r16 := '");
-	for (size_t i2 = 0; i2 < p->sl_Bandwidth_r16.d; i2++) {
-		adbgPrintLog(_ctx, "%02X", p->sl_Bandwidth_r16.v[i2]);
+	adbgPrintLog(_ctx, "dummy := '");
+	for (size_t i2 = 0; i2 < p->dummy.d; i2++) {
+		adbgPrintLog(_ctx, "%02X", p->dummy.v[i2]);
 	}
 	adbgPrintLog(_ctx, "'O");
 	adbgPrintLog(_ctx, ", ");
@@ -17867,6 +22285,1094 @@ static void _adbgNrSys__SQN_NR_SIB14_r16(acpCtx_t _ctx, const struct SQN_NR_SIB1
 	adbgPrintLog(_ctx, "lateNonCriticalExtension := ");
 	if (p->lateNonCriticalExtension.d) { adbgPrintLog(_ctx, "{ "); };
 	_adbgNrSys__OCTET_STRING_SQN_NR_SIB14_r16_lateNonCriticalExtension_Optional(_ctx, &p->lateNonCriticalExtension);
+	if (p->lateNonCriticalExtension.d) { adbgPrintLog(_ctx, " }"); };
+}
+
+static void _adbgNrSys__SQN_NR_MCC_SQN_NR_PLMN_Identity_mcc_Optional(acpCtx_t _ctx, const struct SQN_NR_MCC_SQN_NR_PLMN_Identity_mcc_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "'");
+	for (size_t i3 = 0; i3 < 3; i3++) {
+		adbgPrintLog(_ctx, "%02X", p->v[i3]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static void _adbgNrSys__SQN_NR_PLMN_Identity(acpCtx_t _ctx, const struct SQN_NR_PLMN_Identity* p)
+{
+	adbgPrintLog(_ctx, "mcc := ");
+	_adbgNrSys__SQN_NR_MCC_SQN_NR_PLMN_Identity_mcc_Optional(_ctx, &p->mcc);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "mnc := '");
+	for (size_t i3 = 0; i3 < p->mnc.d; i3++) {
+		adbgPrintLog(_ctx, "%02X", p->mnc.v[i3]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static void _adbgNrSys__SQN_NR_PLMN_Identity_SQN_NR_SIB15_r17_commonPLMNsWithDisasterCondition_r17_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_PLMN_Identity_SQN_NR_SIB15_r17_commonPLMNsWithDisasterCondition_r17_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		adbgPrintLog(_ctx, "{ ");
+		_adbgNrSys__SQN_NR_PLMN_Identity(_ctx, &p->v.v[i2]);
+		adbgPrintLog(_ctx, " }");
+		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgNrSys__SQN_NR_ApplicableDisasterInfo_r17_Value(acpCtx_t _ctx, const union SQN_NR_ApplicableDisasterInfo_r17_Value* p, enum SQN_NR_ApplicableDisasterInfo_r17_Sel d)
+{
+	if (d == SQN_NR_ApplicableDisasterInfo_r17_noDisasterRoaming_r17) {
+		adbgPrintLog(_ctx, "noDisasterRoaming_r17 := %s", (p->noDisasterRoaming_r17 ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_ApplicableDisasterInfo_r17_disasterRoamingFromAnyPLMN_r17) {
+		adbgPrintLog(_ctx, "disasterRoamingFromAnyPLMN_r17 := %s", (p->disasterRoamingFromAnyPLMN_r17 ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_ApplicableDisasterInfo_r17_commonPLMNs_r17) {
+		adbgPrintLog(_ctx, "commonPLMNs_r17 := %s", (p->commonPLMNs_r17 ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_ApplicableDisasterInfo_r17_dedicatedPLMNs_r17) {
+		adbgPrintLog(_ctx, "dedicatedPLMNs_r17 := { ");
+		for (size_t i3 = 0; i3 < p->dedicatedPLMNs_r17.d; i3++) {
+			adbgPrintLog(_ctx, "{ ");
+			_adbgNrSys__SQN_NR_PLMN_Identity(_ctx, &p->dedicatedPLMNs_r17.v[i3]);
+			adbgPrintLog(_ctx, " }");
+			if (i3 != p->dedicatedPLMNs_r17.d - 1) { adbgPrintLog(_ctx, ", "); }
+		}
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_ApplicableDisasterInfo_r17(acpCtx_t _ctx, const struct SQN_NR_ApplicableDisasterInfo_r17* p)
+{
+	_adbgNrSys__SQN_NR_ApplicableDisasterInfo_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_ApplicableDisasterInfo_r17_SQN_NR_SIB15_r17_applicableDisasterInfoList_r17_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_ApplicableDisasterInfo_r17_SQN_NR_SIB15_r17_applicableDisasterInfoList_r17_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		adbgPrintLog(_ctx, "{ ");
+		_adbgNrSys__SQN_NR_ApplicableDisasterInfo_r17(_ctx, &p->v.v[i2]);
+		adbgPrintLog(_ctx, " }");
+		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgNrSys__OCTET_STRING_SQN_NR_SIB15_r17_lateNonCriticalExtension_Optional(acpCtx_t _ctx, const struct OCTET_STRING_SQN_NR_SIB15_r17_lateNonCriticalExtension_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "'");
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		adbgPrintLog(_ctx, "%02X", p->v.v[i2]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static void _adbgNrSys__SQN_NR_SIB15_r17(acpCtx_t _ctx, const struct SQN_NR_SIB15_r17* p)
+{
+	adbgPrintLog(_ctx, "commonPLMNsWithDisasterCondition_r17 := ");
+	if (p->commonPLMNsWithDisasterCondition_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_PLMN_Identity_SQN_NR_SIB15_r17_commonPLMNsWithDisasterCondition_r17_DynamicOptional(_ctx, &p->commonPLMNsWithDisasterCondition_r17);
+	if (p->commonPLMNsWithDisasterCondition_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "applicableDisasterInfoList_r17 := ");
+	if (p->applicableDisasterInfoList_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_ApplicableDisasterInfo_r17_SQN_NR_SIB15_r17_applicableDisasterInfoList_r17_DynamicOptional(_ctx, &p->applicableDisasterInfoList_r17);
+	if (p->applicableDisasterInfoList_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "lateNonCriticalExtension := ");
+	if (p->lateNonCriticalExtension.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__OCTET_STRING_SQN_NR_SIB15_r17_lateNonCriticalExtension_Optional(_ctx, &p->lateNonCriticalExtension);
+	if (p->lateNonCriticalExtension.d) { adbgPrintLog(_ctx, " }"); };
+}
+
+static void _adbgNrSys__SQN_NR_TrackingAreaCode_SQN_NR_NSAG_IdentityInfo_r17_trackingAreaCode_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_TrackingAreaCode_SQN_NR_NSAG_IdentityInfo_r17_trackingAreaCode_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "'");
+	for (size_t i4 = 0; i4 < 24; i4++) {
+		adbgPrintLog(_ctx, "%02X", p->v[i4]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static void _adbgNrSys__SQN_NR_NSAG_IdentityInfo_r17(acpCtx_t _ctx, const struct SQN_NR_NSAG_IdentityInfo_r17* p)
+{
+	adbgPrintLog(_ctx, "nsag_ID_r17 := '");
+	for (size_t i4 = 0; i4 < 8; i4++) {
+		adbgPrintLog(_ctx, "%02X", p->nsag_ID_r17[i4]);
+	}
+	adbgPrintLog(_ctx, "'O");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "trackingAreaCode_r17 := ");
+	_adbgNrSys__SQN_NR_TrackingAreaCode_SQN_NR_NSAG_IdentityInfo_r17_trackingAreaCode_r17_Optional(_ctx, &p->trackingAreaCode_r17);
+}
+
+static void _adbgNrSys__SQN_NR_CellReselectionPriority_SQN_NR_SliceInfo_r17_nsag_CellReselectionPriority_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_CellReselectionPriority_SQN_NR_SliceInfo_r17_nsag_CellReselectionPriority_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_CellReselectionSubPriority_e_SQN_NR_SliceInfo_r17_nsag_CellReselectionSubPriority_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_CellReselectionSubPriority_e_SQN_NR_SliceInfo_r17_nsag_CellReselectionSubPriority_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_CellReselectionSubPriority_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SliceInfo_r17_sliceCellListNR_r17_Value(acpCtx_t _ctx, const union SQN_NR_SliceInfo_r17_sliceCellListNR_r17_Value* p, enum SQN_NR_SliceInfo_r17_sliceCellListNR_r17_Sel d)
+{
+	if (d == SQN_NR_SliceInfo_r17_sliceCellListNR_r17_sliceAllowedCellListNR_r17) {
+		adbgPrintLog(_ctx, "sliceAllowedCellListNR_r17 := { ");
+		for (size_t i4 = 0; i4 < p->sliceAllowedCellListNR_r17.d; i4++) {
+			adbgPrintLog(_ctx, "{ ");
+			_adbgNrSys__SQN_NR_PCI_Range(_ctx, &p->sliceAllowedCellListNR_r17.v[i4]);
+			adbgPrintLog(_ctx, " }");
+			if (i4 != p->sliceAllowedCellListNR_r17.d - 1) { adbgPrintLog(_ctx, ", "); }
+		}
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == SQN_NR_SliceInfo_r17_sliceCellListNR_r17_sliceExcludedCellListNR_r17) {
+		adbgPrintLog(_ctx, "sliceExcludedCellListNR_r17 := { ");
+		for (size_t i4 = 0; i4 < p->sliceExcludedCellListNR_r17.d; i4++) {
+			adbgPrintLog(_ctx, "{ ");
+			_adbgNrSys__SQN_NR_PCI_Range(_ctx, &p->sliceExcludedCellListNR_r17.v[i4]);
+			adbgPrintLog(_ctx, " }");
+			if (i4 != p->sliceExcludedCellListNR_r17.d - 1) { adbgPrintLog(_ctx, ", "); }
+		}
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SliceInfo_r17_sliceCellListNR_r17(acpCtx_t _ctx, const struct SQN_NR_SliceInfo_r17_sliceCellListNR_r17* p)
+{
+	_adbgNrSys__SQN_NR_SliceInfo_r17_sliceCellListNR_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SliceInfo_r17_sliceCellListNR_r17_sliceCellListNR_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SliceInfo_r17_sliceCellListNR_r17_sliceCellListNR_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SliceInfo_r17_sliceCellListNR_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SliceInfo_r17(acpCtx_t _ctx, const struct SQN_NR_SliceInfo_r17* p)
+{
+	adbgPrintLog(_ctx, "nsag_IdentityInfo_r17 := { ");
+	_adbgNrSys__SQN_NR_NSAG_IdentityInfo_r17(_ctx, &p->nsag_IdentityInfo_r17);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "nsag_CellReselectionPriority_r17 := ");
+	_adbgNrSys__SQN_NR_CellReselectionPriority_SQN_NR_SliceInfo_r17_nsag_CellReselectionPriority_r17_Optional(_ctx, &p->nsag_CellReselectionPriority_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "nsag_CellReselectionSubPriority_r17 := ");
+	_adbgNrSys__SQN_NR_CellReselectionSubPriority_e_SQN_NR_SliceInfo_r17_nsag_CellReselectionSubPriority_r17_Optional(_ctx, &p->nsag_CellReselectionSubPriority_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "sliceCellListNR_r17 := ");
+	if (p->sliceCellListNR_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SliceInfo_r17_sliceCellListNR_r17_sliceCellListNR_r17_Optional(_ctx, &p->sliceCellListNR_r17);
+	if (p->sliceCellListNR_r17.d) { adbgPrintLog(_ctx, " }"); };
+}
+
+static void _adbgNrSys__SQN_NR_SliceInfoList_r17_SQN_NR_FreqPrioritySlicing_r17_sliceInfoList_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SliceInfoList_r17_SQN_NR_FreqPrioritySlicing_r17_sliceInfoList_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i3 = 0; i3 < p->v.d; i3++) {
+		_adbgNrSys__SQN_NR_SliceInfo_r17(_ctx, &p->v.v[i3]);
+		if (i3 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgNrSys__SQN_NR_FreqPrioritySlicing_r17(acpCtx_t _ctx, const struct SQN_NR_FreqPrioritySlicing_r17* p)
+{
+	adbgPrintLog(_ctx, "dl_ImplicitCarrierFreq_r17 := %u", (unsigned int)p->dl_ImplicitCarrierFreq_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "sliceInfoList_r17 := ");
+	if (p->sliceInfoList_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SliceInfoList_r17_SQN_NR_FreqPrioritySlicing_r17_sliceInfoList_r17_Optional(_ctx, &p->sliceInfoList_r17);
+	if (p->sliceInfoList_r17.d) { adbgPrintLog(_ctx, " }"); };
+}
+
+static void _adbgNrSys__SQN_NR_FreqPriorityListSlicing_r17_SQN_NR_SIB16_r17_freqPriorityListSlicing_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_FreqPriorityListSlicing_r17_SQN_NR_SIB16_r17_freqPriorityListSlicing_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		_adbgNrSys__SQN_NR_FreqPrioritySlicing_r17(_ctx, &p->v.v[i2]);
+		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgNrSys__OCTET_STRING_SQN_NR_SIB16_r17_lateNonCriticalExtension_Optional(acpCtx_t _ctx, const struct OCTET_STRING_SQN_NR_SIB16_r17_lateNonCriticalExtension_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "'");
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		adbgPrintLog(_ctx, "%02X", p->v.v[i2]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static void _adbgNrSys__SQN_NR_SIB16_r17(acpCtx_t _ctx, const struct SQN_NR_SIB16_r17* p)
+{
+	adbgPrintLog(_ctx, "freqPriorityListSlicing_r17 := ");
+	if (p->freqPriorityListSlicing_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_FreqPriorityListSlicing_r17_SQN_NR_SIB16_r17_freqPriorityListSlicing_r17_Optional(_ctx, &p->freqPriorityListSlicing_r17);
+	if (p->freqPriorityListSlicing_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "lateNonCriticalExtension := ");
+	if (p->lateNonCriticalExtension.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__OCTET_STRING_SQN_NR_SIB16_r17_lateNonCriticalExtension_Optional(_ctx, &p->lateNonCriticalExtension);
+	if (p->lateNonCriticalExtension.d) { adbgPrintLog(_ctx, " }"); };
+}
+
+static const char* adbgNrSys__SQN_NR_SIB17_r17_segmentType_r17_e__ToString(SQN_NR_SIB17_r17_segmentType_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_SIB17_r17_segmentType_r17_e_notLastSegment: return "SQN_NR_SIB17_r17_segmentType_r17_e_notLastSegment";
+		case SQN_NR_SIB17_r17_segmentType_r17_e_lastSegment: return "SQN_NR_SIB17_r17_segmentType_r17_e_lastSegment";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SIB17_r17(acpCtx_t _ctx, const struct SQN_NR_SIB17_r17* p)
+{
+	adbgPrintLog(_ctx, "segmentNumber_r17 := %u", (unsigned int)p->segmentNumber_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "segmentType_r17 := %s (%d)", adbgNrSys__SQN_NR_SIB17_r17_segmentType_r17_e__ToString(p->segmentType_r17), (int)p->segmentType_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "segmentContainer_r17 := '");
+	for (size_t i2 = 0; i2 < p->segmentContainer_r17.d; i2++) {
+		adbgPrintLog(_ctx, "%02X", p->segmentContainer_r17.v[i2]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static void _adbgNrSys__SQN_NR_GIN_Element_r17(acpCtx_t _ctx, const struct SQN_NR_GIN_Element_r17* p)
+{
+	adbgPrintLog(_ctx, "plmn_Identity_r17 := { ");
+	_adbgNrSys__SQN_NR_PLMN_Identity(_ctx, &p->plmn_Identity_r17);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "{");
+	for (size_t i3 = 0; i3 < p->nid_List_r17.d; i3++) {
+		adbgPrintLog(_ctx, "'");
+		for (size_t i4 = 0; i4 < 44; i4++) {
+			adbgPrintLog(_ctx, "%02X", p->nid_List_r17.v[i3][i4]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		if (i3 != p->nid_List_r17.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+	adbgPrintLog(_ctx, " }");
+}
+
+static void _adbgNrSys__SQN_NR_GIN_Element_r17_SQN_NR_SIB18_r17_gin_ElementList_r17_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_GIN_Element_r17_SQN_NR_SIB18_r17_gin_ElementList_r17_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		adbgPrintLog(_ctx, "{ ");
+		_adbgNrSys__SQN_NR_GIN_Element_r17(_ctx, &p->v.v[i2]);
+		adbgPrintLog(_ctx, " }");
+		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgNrSys__BIT_STRING_SQN_NR_GINs_PerSNPN_r17_supportedGINs_r17_Optional(acpCtx_t _ctx, const struct BIT_STRING_SQN_NR_GINs_PerSNPN_r17_supportedGINs_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "'");
+	for (size_t i3 = 0; i3 < p->v.d; i3++) {
+		adbgPrintLog(_ctx, "%02X", p->v.v[i3]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static void _adbgNrSys__SQN_NR_GINs_PerSNPN_r17(acpCtx_t _ctx, const struct SQN_NR_GINs_PerSNPN_r17* p)
+{
+	adbgPrintLog(_ctx, "supportedGINs_r17 := ");
+	if (p->supportedGINs_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__BIT_STRING_SQN_NR_GINs_PerSNPN_r17_supportedGINs_r17_Optional(_ctx, &p->supportedGINs_r17);
+	if (p->supportedGINs_r17.d) { adbgPrintLog(_ctx, " }"); };
+}
+
+static void _adbgNrSys__SQN_NR_GINs_PerSNPN_r17_SQN_NR_SIB18_r17_gins_PerSNPN_List_r17_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_GINs_PerSNPN_r17_SQN_NR_SIB18_r17_gins_PerSNPN_List_r17_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		adbgPrintLog(_ctx, "{ ");
+		_adbgNrSys__SQN_NR_GINs_PerSNPN_r17(_ctx, &p->v.v[i2]);
+		adbgPrintLog(_ctx, " }");
+		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgNrSys__OCTET_STRING_SQN_NR_SIB18_r17_lateNonCriticalExtension_Optional(acpCtx_t _ctx, const struct OCTET_STRING_SQN_NR_SIB18_r17_lateNonCriticalExtension_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "'");
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		adbgPrintLog(_ctx, "%02X", p->v.v[i2]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static void _adbgNrSys__SQN_NR_SIB18_r17(acpCtx_t _ctx, const struct SQN_NR_SIB18_r17* p)
+{
+	adbgPrintLog(_ctx, "gin_ElementList_r17 := ");
+	if (p->gin_ElementList_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_GIN_Element_r17_SQN_NR_SIB18_r17_gin_ElementList_r17_DynamicOptional(_ctx, &p->gin_ElementList_r17);
+	if (p->gin_ElementList_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "gins_PerSNPN_List_r17 := ");
+	if (p->gins_PerSNPN_List_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_GINs_PerSNPN_r17_SQN_NR_SIB18_r17_gins_PerSNPN_List_r17_DynamicOptional(_ctx, &p->gins_PerSNPN_List_r17);
+	if (p->gins_PerSNPN_List_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "lateNonCriticalExtension := ");
+	if (p->lateNonCriticalExtension.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__OCTET_STRING_SQN_NR_SIB18_r17_lateNonCriticalExtension_Optional(_ctx, &p->lateNonCriticalExtension);
+	if (p->lateNonCriticalExtension.d) { adbgPrintLog(_ctx, " }"); };
+}
+
+static void _adbgNrSys__SQN_NR_EpochTime_r17(acpCtx_t _ctx, const struct SQN_NR_EpochTime_r17* p)
+{
+	adbgPrintLog(_ctx, "sfn_r17 := %u", (unsigned int)p->sfn_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "subFrameNR_r17 := %u", (unsigned int)p->subFrameNR_r17);
+}
+
+static void _adbgNrSys__SQN_NR_EpochTime_r17_SQN_NR_NTN_Config_r17_epochTime_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_EpochTime_r17_SQN_NR_NTN_Config_r17_epochTime_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_EpochTime_r17(_ctx, &p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e__ToString(SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s5: return "SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s5";
+		case SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s10: return "SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s10";
+		case SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s15: return "SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s15";
+		case SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s20: return "SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s20";
+		case SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s25: return "SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s25";
+		case SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s30: return "SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s30";
+		case SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s35: return "SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s35";
+		case SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s40: return "SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s40";
+		case SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s45: return "SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s45";
+		case SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s50: return "SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s50";
+		case SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s55: return "SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s55";
+		case SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s60: return "SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s60";
+		case SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s120: return "SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s120";
+		case SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s180: return "SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s180";
+		case SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s240: return "SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s240";
+		case SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s900: return "SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_s900";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_ntn_UlSyncValidityDuration_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_ntn_UlSyncValidityDuration_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__Uint16_t_SQN_NR_NTN_Config_r17_cellSpecificKoffset_r17_Optional(acpCtx_t _ctx, const struct uint16_t_SQN_NR_NTN_Config_r17_cellSpecificKoffset_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__Uint16_t_SQN_NR_NTN_Config_r17_kmac_r17_Optional(acpCtx_t _ctx, const struct uint16_t_SQN_NR_NTN_Config_r17_kmac_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__Int32_t_SQN_NR_TA_Info_r17_ta_CommonDrift_r17_Optional(acpCtx_t _ctx, const struct int32_t_SQN_NR_TA_Info_r17_ta_CommonDrift_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%d", (int)p->v);
+}
+
+static void _adbgNrSys__Uint16_t_SQN_NR_TA_Info_r17_ta_CommonDriftVariant_r17_Optional(acpCtx_t _ctx, const struct uint16_t_SQN_NR_TA_Info_r17_ta_CommonDriftVariant_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_TA_Info_r17(acpCtx_t _ctx, const struct SQN_NR_TA_Info_r17* p)
+{
+	adbgPrintLog(_ctx, "ta_Common_r17 := %u", (unsigned int)p->ta_Common_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "ta_CommonDrift_r17 := ");
+	_adbgNrSys__Int32_t_SQN_NR_TA_Info_r17_ta_CommonDrift_r17_Optional(_ctx, &p->ta_CommonDrift_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "ta_CommonDriftVariant_r17 := ");
+	_adbgNrSys__Uint16_t_SQN_NR_TA_Info_r17_ta_CommonDriftVariant_r17_Optional(_ctx, &p->ta_CommonDriftVariant_r17);
+}
+
+static void _adbgNrSys__SQN_NR_TA_Info_r17_SQN_NR_NTN_Config_r17_ta_Info_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_TA_Info_r17_SQN_NR_NTN_Config_r17_ta_Info_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_TA_Info_r17(_ctx, &p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_NTN_Config_r17_ntn_PolarizationDL_r17_e__ToString(SQN_NR_NTN_Config_r17_ntn_PolarizationDL_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_NTN_Config_r17_ntn_PolarizationDL_r17_e_rhcp: return "SQN_NR_NTN_Config_r17_ntn_PolarizationDL_r17_e_rhcp";
+		case SQN_NR_NTN_Config_r17_ntn_PolarizationDL_r17_e_lhcp: return "SQN_NR_NTN_Config_r17_ntn_PolarizationDL_r17_e_lhcp";
+		case SQN_NR_NTN_Config_r17_ntn_PolarizationDL_r17_e_linear: return "SQN_NR_NTN_Config_r17_ntn_PolarizationDL_r17_e_linear";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_NTN_Config_r17_ntn_PolarizationDL_r17_e_ntn_PolarizationDL_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_NTN_Config_r17_ntn_PolarizationDL_r17_e_ntn_PolarizationDL_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_NTN_Config_r17_ntn_PolarizationDL_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_NTN_Config_r17_ntn_PolarizationUL_r17_e__ToString(SQN_NR_NTN_Config_r17_ntn_PolarizationUL_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_NTN_Config_r17_ntn_PolarizationUL_r17_e_rhcp: return "SQN_NR_NTN_Config_r17_ntn_PolarizationUL_r17_e_rhcp";
+		case SQN_NR_NTN_Config_r17_ntn_PolarizationUL_r17_e_lhcp: return "SQN_NR_NTN_Config_r17_ntn_PolarizationUL_r17_e_lhcp";
+		case SQN_NR_NTN_Config_r17_ntn_PolarizationUL_r17_e_linear: return "SQN_NR_NTN_Config_r17_ntn_PolarizationUL_r17_e_linear";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_NTN_Config_r17_ntn_PolarizationUL_r17_e_ntn_PolarizationUL_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_NTN_Config_r17_ntn_PolarizationUL_r17_e_ntn_PolarizationUL_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_NTN_Config_r17_ntn_PolarizationUL_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_PositionVelocity_r17(acpCtx_t _ctx, const struct SQN_NR_PositionVelocity_r17* p)
+{
+	adbgPrintLog(_ctx, "positionX_r17 := %d", (int)p->positionX_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "positionY_r17 := %d", (int)p->positionY_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "positionZ_r17 := %d", (int)p->positionZ_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "velocityVX_r17 := %d", (int)p->velocityVX_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "velocityVY_r17 := %d", (int)p->velocityVY_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "velocityVZ_r17 := %d", (int)p->velocityVZ_r17);
+}
+
+static void _adbgNrSys__SQN_NR_Orbital_r17(acpCtx_t _ctx, const struct SQN_NR_Orbital_r17* p)
+{
+	adbgPrintLog(_ctx, "semiMajorAxis_r17 := %u", (unsigned int)p->semiMajorAxis_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "eccentricity_r17 := %u", (unsigned int)p->eccentricity_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "periapsis_r17 := %u", (unsigned int)p->periapsis_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "longitude_r17 := %u", (unsigned int)p->longitude_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "inclination_r17 := %d", (int)p->inclination_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "meanAnomaly_r17 := %u", (unsigned int)p->meanAnomaly_r17);
+}
+
+static void _adbgNrSys__SQN_NR_EphemerisInfo_r17_Value(acpCtx_t _ctx, const union SQN_NR_EphemerisInfo_r17_Value* p, enum SQN_NR_EphemerisInfo_r17_Sel d)
+{
+	if (d == SQN_NR_EphemerisInfo_r17_positionVelocity_r17) {
+		adbgPrintLog(_ctx, "positionVelocity_r17 := { ");
+		_adbgNrSys__SQN_NR_PositionVelocity_r17(_ctx, &p->positionVelocity_r17);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == SQN_NR_EphemerisInfo_r17_orbital_r17) {
+		adbgPrintLog(_ctx, "orbital_r17 := { ");
+		_adbgNrSys__SQN_NR_Orbital_r17(_ctx, &p->orbital_r17);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_EphemerisInfo_r17(acpCtx_t _ctx, const struct SQN_NR_EphemerisInfo_r17* p)
+{
+	_adbgNrSys__SQN_NR_EphemerisInfo_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_EphemerisInfo_r17_SQN_NR_NTN_Config_r17_ephemerisInfo_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_EphemerisInfo_r17_SQN_NR_NTN_Config_r17_ephemerisInfo_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_EphemerisInfo_r17(_ctx, &p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_NTN_Config_r17_ta_Report_r17_e__ToString(SQN_NR_NTN_Config_r17_ta_Report_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_NTN_Config_r17_ta_Report_r17_e_enabled: return "SQN_NR_NTN_Config_r17_ta_Report_r17_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_NTN_Config_r17_ta_Report_r17_e_ta_Report_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_NTN_Config_r17_ta_Report_r17_e_ta_Report_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_NTN_Config_r17_ta_Report_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_NTN_Config_r17(acpCtx_t _ctx, const struct SQN_NR_NTN_Config_r17* p)
+{
+	adbgPrintLog(_ctx, "epochTime_r17 := ");
+	if (p->epochTime_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_EpochTime_r17_SQN_NR_NTN_Config_r17_epochTime_r17_Optional(_ctx, &p->epochTime_r17);
+	if (p->epochTime_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "ntn_UlSyncValidityDuration_r17 := ");
+	_adbgNrSys__SQN_NR_NTN_Config_r17_ntn_UlSyncValidityDuration_r17_e_ntn_UlSyncValidityDuration_r17_Optional(_ctx, &p->ntn_UlSyncValidityDuration_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "cellSpecificKoffset_r17 := ");
+	_adbgNrSys__Uint16_t_SQN_NR_NTN_Config_r17_cellSpecificKoffset_r17_Optional(_ctx, &p->cellSpecificKoffset_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "kmac_r17 := ");
+	_adbgNrSys__Uint16_t_SQN_NR_NTN_Config_r17_kmac_r17_Optional(_ctx, &p->kmac_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "ta_Info_r17 := ");
+	if (p->ta_Info_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_TA_Info_r17_SQN_NR_NTN_Config_r17_ta_Info_r17_Optional(_ctx, &p->ta_Info_r17);
+	if (p->ta_Info_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "ntn_PolarizationDL_r17 := ");
+	_adbgNrSys__SQN_NR_NTN_Config_r17_ntn_PolarizationDL_r17_e_ntn_PolarizationDL_r17_Optional(_ctx, &p->ntn_PolarizationDL_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "ntn_PolarizationUL_r17 := ");
+	_adbgNrSys__SQN_NR_NTN_Config_r17_ntn_PolarizationUL_r17_e_ntn_PolarizationUL_r17_Optional(_ctx, &p->ntn_PolarizationUL_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "ephemerisInfo_r17 := ");
+	if (p->ephemerisInfo_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_EphemerisInfo_r17_SQN_NR_NTN_Config_r17_ephemerisInfo_r17_Optional(_ctx, &p->ephemerisInfo_r17);
+	if (p->ephemerisInfo_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "ta_Report_r17 := ");
+	_adbgNrSys__SQN_NR_NTN_Config_r17_ta_Report_r17_e_ta_Report_r17_Optional(_ctx, &p->ta_Report_r17);
+}
+
+static void _adbgNrSys__SQN_NR_NTN_Config_r17_SQN_NR_SIB19_r17_ntn_Config_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_NTN_Config_r17_SQN_NR_SIB19_r17_ntn_Config_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_NTN_Config_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__Uint64_t_SQN_NR_SIB19_r17_t_Service_r17_Optional(acpCtx_t _ctx, const struct uint64_t_SQN_NR_SIB19_r17_t_Service_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_ReferenceLocation_r17_SQN_NR_SIB19_r17_referenceLocation_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_ReferenceLocation_r17_SQN_NR_SIB19_r17_referenceLocation_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "'");
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		adbgPrintLog(_ctx, "%02X", p->v.v[i2]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static void _adbgNrSys__Uint16_t_SQN_NR_SIB19_r17_distanceThresh_r17_Optional(acpCtx_t _ctx, const struct uint16_t_SQN_NR_SIB19_r17_distanceThresh_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_NTN_Config_r17_SQN_NR_NTN_NeighCellConfig_r17_ntn_Config_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_NTN_Config_r17_SQN_NR_NTN_NeighCellConfig_r17_ntn_Config_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_NTN_Config_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_ARFCN_ValueNR_SQN_NR_NTN_NeighCellConfig_r17_carrierFreq_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_ARFCN_ValueNR_SQN_NR_NTN_NeighCellConfig_r17_carrierFreq_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_PhysCellId_SQN_NR_NTN_NeighCellConfig_r17_physCellId_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PhysCellId_SQN_NR_NTN_NeighCellConfig_r17_physCellId_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_NTN_NeighCellConfig_r17(acpCtx_t _ctx, const struct SQN_NR_NTN_NeighCellConfig_r17* p)
+{
+	adbgPrintLog(_ctx, "ntn_Config_r17 := ");
+	if (p->ntn_Config_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_NTN_Config_r17_SQN_NR_NTN_NeighCellConfig_r17_ntn_Config_r17_Optional(_ctx, &p->ntn_Config_r17);
+	if (p->ntn_Config_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "carrierFreq_r17 := ");
+	_adbgNrSys__SQN_NR_ARFCN_ValueNR_SQN_NR_NTN_NeighCellConfig_r17_carrierFreq_r17_Optional(_ctx, &p->carrierFreq_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "physCellId_r17 := ");
+	_adbgNrSys__SQN_NR_PhysCellId_SQN_NR_NTN_NeighCellConfig_r17_physCellId_r17_Optional(_ctx, &p->physCellId_r17);
+}
+
+static void _adbgNrSys__SQN_NR_NTN_NeighCellConfigList_r17_SQN_NR_SIB19_r17_ntn_NeighCellConfigList_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_NTN_NeighCellConfigList_r17_SQN_NR_SIB19_r17_ntn_NeighCellConfigList_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		_adbgNrSys__SQN_NR_NTN_NeighCellConfig_r17(_ctx, &p->v.v[i2]);
+		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgNrSys__OCTET_STRING_SQN_NR_SIB19_r17_lateNonCriticalExtension_Optional(acpCtx_t _ctx, const struct OCTET_STRING_SQN_NR_SIB19_r17_lateNonCriticalExtension_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "'");
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		adbgPrintLog(_ctx, "%02X", p->v.v[i2]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static void _adbgNrSys__SQN_NR_NTN_NeighCellConfigList_r17_SQN_NR_SIB19_r17_ntn_NeighCellConfigListExt_v1720_Optional(acpCtx_t _ctx, const struct SQN_NR_NTN_NeighCellConfigList_r17_SQN_NR_SIB19_r17_ntn_NeighCellConfigListExt_v1720_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		_adbgNrSys__SQN_NR_NTN_NeighCellConfig_r17(_ctx, &p->v.v[i2]);
+		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SIB19_r17(acpCtx_t _ctx, const struct SQN_NR_SIB19_r17* p)
+{
+	adbgPrintLog(_ctx, "ntn_Config_r17 := ");
+	if (p->ntn_Config_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_NTN_Config_r17_SQN_NR_SIB19_r17_ntn_Config_r17_Optional(_ctx, &p->ntn_Config_r17);
+	if (p->ntn_Config_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "t_Service_r17 := ");
+	_adbgNrSys__Uint64_t_SQN_NR_SIB19_r17_t_Service_r17_Optional(_ctx, &p->t_Service_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "referenceLocation_r17 := ");
+	if (p->referenceLocation_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_ReferenceLocation_r17_SQN_NR_SIB19_r17_referenceLocation_r17_Optional(_ctx, &p->referenceLocation_r17);
+	if (p->referenceLocation_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "distanceThresh_r17 := ");
+	_adbgNrSys__Uint16_t_SQN_NR_SIB19_r17_distanceThresh_r17_Optional(_ctx, &p->distanceThresh_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "ntn_NeighCellConfigList_r17 := ");
+	if (p->ntn_NeighCellConfigList_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_NTN_NeighCellConfigList_r17_SQN_NR_SIB19_r17_ntn_NeighCellConfigList_r17_Optional(_ctx, &p->ntn_NeighCellConfigList_r17);
+	if (p->ntn_NeighCellConfigList_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "lateNonCriticalExtension := ");
+	if (p->lateNonCriticalExtension.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__OCTET_STRING_SQN_NR_SIB19_r17_lateNonCriticalExtension_Optional(_ctx, &p->lateNonCriticalExtension);
+	if (p->lateNonCriticalExtension.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "ntn_NeighCellConfigListExt_v1720 := ");
+	if (p->ntn_NeighCellConfigListExt_v1720.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_NTN_NeighCellConfigList_r17_SQN_NR_SIB19_r17_ntn_NeighCellConfigListExt_v1720_Optional(_ctx, &p->ntn_NeighCellConfigListExt_v1720);
+	if (p->ntn_NeighCellConfigListExt_v1720.d) { adbgPrintLog(_ctx, " }"); };
+}
+
+static void _adbgNrSys__SQN_NR_MCCH_RepetitionPeriodAndOffset_r17_Value(acpCtx_t _ctx, const union SQN_NR_MCCH_RepetitionPeriodAndOffset_r17_Value* p, enum SQN_NR_MCCH_RepetitionPeriodAndOffset_r17_Sel d)
+{
+	if (d == SQN_NR_MCCH_RepetitionPeriodAndOffset_r17_rf1_r17) {
+		adbgPrintLog(_ctx, "rf1_r17 := %u", (unsigned int)p->rf1_r17);
+		return;
+	}
+	if (d == SQN_NR_MCCH_RepetitionPeriodAndOffset_r17_rf2_r17) {
+		adbgPrintLog(_ctx, "rf2_r17 := %u", (unsigned int)p->rf2_r17);
+		return;
+	}
+	if (d == SQN_NR_MCCH_RepetitionPeriodAndOffset_r17_rf4_r17) {
+		adbgPrintLog(_ctx, "rf4_r17 := %u", (unsigned int)p->rf4_r17);
+		return;
+	}
+	if (d == SQN_NR_MCCH_RepetitionPeriodAndOffset_r17_rf8_r17) {
+		adbgPrintLog(_ctx, "rf8_r17 := %u", (unsigned int)p->rf8_r17);
+		return;
+	}
+	if (d == SQN_NR_MCCH_RepetitionPeriodAndOffset_r17_rf16_r17) {
+		adbgPrintLog(_ctx, "rf16_r17 := %u", (unsigned int)p->rf16_r17);
+		return;
+	}
+	if (d == SQN_NR_MCCH_RepetitionPeriodAndOffset_r17_rf32_r17) {
+		adbgPrintLog(_ctx, "rf32_r17 := %u", (unsigned int)p->rf32_r17);
+		return;
+	}
+	if (d == SQN_NR_MCCH_RepetitionPeriodAndOffset_r17_rf64_r17) {
+		adbgPrintLog(_ctx, "rf64_r17 := %u", (unsigned int)p->rf64_r17);
+		return;
+	}
+	if (d == SQN_NR_MCCH_RepetitionPeriodAndOffset_r17_rf128_r17) {
+		adbgPrintLog(_ctx, "rf128_r17 := %u", (unsigned int)p->rf128_r17);
+		return;
+	}
+	if (d == SQN_NR_MCCH_RepetitionPeriodAndOffset_r17_rf256_r17) {
+		adbgPrintLog(_ctx, "rf256_r17 := %u", (unsigned int)p->rf256_r17);
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_MCCH_RepetitionPeriodAndOffset_r17(acpCtx_t _ctx, const struct SQN_NR_MCCH_RepetitionPeriodAndOffset_r17* p)
+{
+	_adbgNrSys__SQN_NR_MCCH_RepetitionPeriodAndOffset_r17_Value(_ctx, &p->v, p->d);
+}
+
+static const char* adbgNrSys__SQN_NR_MCCH_Config_r17_mcch_WindowDuration_r17_e__ToString(SQN_NR_MCCH_Config_r17_mcch_WindowDuration_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_MCCH_Config_r17_mcch_WindowDuration_r17_e_sl2: return "SQN_NR_MCCH_Config_r17_mcch_WindowDuration_r17_e_sl2";
+		case SQN_NR_MCCH_Config_r17_mcch_WindowDuration_r17_e_sl4: return "SQN_NR_MCCH_Config_r17_mcch_WindowDuration_r17_e_sl4";
+		case SQN_NR_MCCH_Config_r17_mcch_WindowDuration_r17_e_sl8: return "SQN_NR_MCCH_Config_r17_mcch_WindowDuration_r17_e_sl8";
+		case SQN_NR_MCCH_Config_r17_mcch_WindowDuration_r17_e_sl10: return "SQN_NR_MCCH_Config_r17_mcch_WindowDuration_r17_e_sl10";
+		case SQN_NR_MCCH_Config_r17_mcch_WindowDuration_r17_e_sl20: return "SQN_NR_MCCH_Config_r17_mcch_WindowDuration_r17_e_sl20";
+		case SQN_NR_MCCH_Config_r17_mcch_WindowDuration_r17_e_sl40: return "SQN_NR_MCCH_Config_r17_mcch_WindowDuration_r17_e_sl40";
+		case SQN_NR_MCCH_Config_r17_mcch_WindowDuration_r17_e_sl80: return "SQN_NR_MCCH_Config_r17_mcch_WindowDuration_r17_e_sl80";
+		case SQN_NR_MCCH_Config_r17_mcch_WindowDuration_r17_e_sl160: return "SQN_NR_MCCH_Config_r17_mcch_WindowDuration_r17_e_sl160";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_MCCH_Config_r17_mcch_WindowDuration_r17_e_mcch_WindowDuration_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_MCCH_Config_r17_mcch_WindowDuration_r17_e_mcch_WindowDuration_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_MCCH_Config_r17_mcch_WindowDuration_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e__ToString(SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf2: return "SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf2";
+		case SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf4: return "SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf4";
+		case SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf8: return "SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf8";
+		case SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf16: return "SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf16";
+		case SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf32: return "SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf32";
+		case SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf64: return "SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf64";
+		case SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf128: return "SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf128";
+		case SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf256: return "SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf256";
+		case SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf512: return "SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf512";
+		case SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf1024: return "SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf1024";
+		case SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_r2048: return "SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_r2048";
+		case SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf4096: return "SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf4096";
+		case SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf8192: return "SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf8192";
+		case SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf16384: return "SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf16384";
+		case SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf32768: return "SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf32768";
+		case SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf65536: return "SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e_rf65536";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_MCCH_Config_r17(acpCtx_t _ctx, const struct SQN_NR_MCCH_Config_r17* p)
+{
+	adbgPrintLog(_ctx, "mcch_RepetitionPeriodAndOffset_r17 := { ");
+	_adbgNrSys__SQN_NR_MCCH_RepetitionPeriodAndOffset_r17(_ctx, &p->mcch_RepetitionPeriodAndOffset_r17);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "mcch_WindowStartSlot_r17 := %u", (unsigned int)p->mcch_WindowStartSlot_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "mcch_WindowDuration_r17 := ");
+	_adbgNrSys__SQN_NR_MCCH_Config_r17_mcch_WindowDuration_r17_e_mcch_WindowDuration_r17_Optional(_ctx, &p->mcch_WindowDuration_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "mcch_ModificationPeriod_r17 := %s (%d)", adbgNrSys__SQN_NR_MCCH_Config_r17_mcch_ModificationPeriod_r17_e__ToString(p->mcch_ModificationPeriod_r17), (int)p->mcch_ModificationPeriod_r17);
+}
+
+static void _adbgNrSys__SQN_NR_LocationAndBandwidthBroadcast_r17_Value(acpCtx_t _ctx, const union SQN_NR_LocationAndBandwidthBroadcast_r17_Value* p, enum SQN_NR_LocationAndBandwidthBroadcast_r17_Sel d)
+{
+	if (d == SQN_NR_LocationAndBandwidthBroadcast_r17_sameAsSib1ConfiguredLocationAndBW) {
+		adbgPrintLog(_ctx, "sameAsSib1ConfiguredLocationAndBW := %s", (p->sameAsSib1ConfiguredLocationAndBW ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_LocationAndBandwidthBroadcast_r17_locationAndBandwidth) {
+		adbgPrintLog(_ctx, "locationAndBandwidth := %u", (unsigned int)p->locationAndBandwidth);
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_LocationAndBandwidthBroadcast_r17(acpCtx_t _ctx, const struct SQN_NR_LocationAndBandwidthBroadcast_r17* p)
+{
+	_adbgNrSys__SQN_NR_LocationAndBandwidthBroadcast_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_LocationAndBandwidthBroadcast_r17_SQN_NR_CFR_ConfigMCCH_MTCH_r17_locationAndBandwidthBroadcast_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_LocationAndBandwidthBroadcast_r17_SQN_NR_CFR_ConfigMCCH_MTCH_r17_locationAndBandwidthBroadcast_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_LocationAndBandwidthBroadcast_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__Uint16_t_SQN_NR_PDSCH_ConfigPTM_r17_dataScramblingIdentityPDSCH_r17_Optional(acpCtx_t _ctx, const struct uint16_t_SQN_NR_PDSCH_ConfigPTM_r17_dataScramblingIdentityPDSCH_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__Uint16_t_SQN_NR_PDSCH_ConfigPTM_r17_dmrs_ScramblingID0_r17_Optional(acpCtx_t _ctx, const struct uint16_t_SQN_NR_PDSCH_ConfigPTM_r17_dmrs_ScramblingID0_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PDSCH_ConfigPTM_r17_pdsch_AggregationFactor_r17_e__ToString(SQN_NR_PDSCH_ConfigPTM_r17_pdsch_AggregationFactor_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PDSCH_ConfigPTM_r17_pdsch_AggregationFactor_r17_e_n2: return "SQN_NR_PDSCH_ConfigPTM_r17_pdsch_AggregationFactor_r17_e_n2";
+		case SQN_NR_PDSCH_ConfigPTM_r17_pdsch_AggregationFactor_r17_e_n4: return "SQN_NR_PDSCH_ConfigPTM_r17_pdsch_AggregationFactor_r17_e_n4";
+		case SQN_NR_PDSCH_ConfigPTM_r17_pdsch_AggregationFactor_r17_e_n8: return "SQN_NR_PDSCH_ConfigPTM_r17_pdsch_AggregationFactor_r17_e_n8";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PDSCH_ConfigPTM_r17_pdsch_AggregationFactor_r17_e_pdsch_AggregationFactor_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PDSCH_ConfigPTM_r17_pdsch_AggregationFactor_r17_e_pdsch_AggregationFactor_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PDSCH_ConfigPTM_r17_pdsch_AggregationFactor_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_PDSCH_ConfigPTM_r17(acpCtx_t _ctx, const struct SQN_NR_PDSCH_ConfigPTM_r17* p)
+{
+	adbgPrintLog(_ctx, "dataScramblingIdentityPDSCH_r17 := ");
+	_adbgNrSys__Uint16_t_SQN_NR_PDSCH_ConfigPTM_r17_dataScramblingIdentityPDSCH_r17_Optional(_ctx, &p->dataScramblingIdentityPDSCH_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "dmrs_ScramblingID0_r17 := ");
+	_adbgNrSys__Uint16_t_SQN_NR_PDSCH_ConfigPTM_r17_dmrs_ScramblingID0_r17_Optional(_ctx, &p->dmrs_ScramblingID0_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pdsch_AggregationFactor_r17 := ");
+	_adbgNrSys__SQN_NR_PDSCH_ConfigPTM_r17_pdsch_AggregationFactor_r17_e_pdsch_AggregationFactor_r17_Optional(_ctx, &p->pdsch_AggregationFactor_r17);
+}
+
+static void _adbgNrSys__SQN_NR_PDSCH_TimeDomainResourceAllocationList_r16_SQN_NR_PDSCH_ConfigBroadcast_r17_pdsch_TimeDomainAllocationList_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PDSCH_TimeDomainResourceAllocationList_r16_SQN_NR_PDSCH_ConfigBroadcast_r17_pdsch_TimeDomainAllocationList_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		_adbgNrSys__SQN_NR_PDSCH_TimeDomainResourceAllocation_r16(_ctx, &p->v.v[i2]);
+		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgNrSys__SQN_NR_RateMatchPattern_SQN_NR_PDSCH_ConfigBroadcast_r17_rateMatchPatternToAddModList_r17_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_RateMatchPattern_SQN_NR_PDSCH_ConfigBroadcast_r17_rateMatchPatternToAddModList_r17_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		adbgPrintLog(_ctx, "{ ");
+		_adbgNrSys__SQN_NR_RateMatchPattern(_ctx, &p->v.v[i2]);
+		adbgPrintLog(_ctx, " }");
+		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgNrSys__SQN_NR_RateMatchPatternLTE_CRS_SQN_NR_PDSCH_ConfigBroadcast_r17_lte_CRS_ToMatchAround_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_RateMatchPatternLTE_CRS_SQN_NR_PDSCH_ConfigBroadcast_r17_lte_CRS_ToMatchAround_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_RateMatchPatternLTE_CRS(_ctx, &p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PDSCH_ConfigBroadcast_r17_mcs_Table_r17_e__ToString(SQN_NR_PDSCH_ConfigBroadcast_r17_mcs_Table_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PDSCH_ConfigBroadcast_r17_mcs_Table_r17_e_qam256: return "SQN_NR_PDSCH_ConfigBroadcast_r17_mcs_Table_r17_e_qam256";
+		case SQN_NR_PDSCH_ConfigBroadcast_r17_mcs_Table_r17_e_qam64LowSE: return "SQN_NR_PDSCH_ConfigBroadcast_r17_mcs_Table_r17_e_qam64LowSE";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PDSCH_ConfigBroadcast_r17_mcs_Table_r17_e_mcs_Table_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PDSCH_ConfigBroadcast_r17_mcs_Table_r17_e_mcs_Table_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PDSCH_ConfigBroadcast_r17_mcs_Table_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PDSCH_ConfigBroadcast_r17_xOverhead_r17_e__ToString(SQN_NR_PDSCH_ConfigBroadcast_r17_xOverhead_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PDSCH_ConfigBroadcast_r17_xOverhead_r17_e_xOh6: return "SQN_NR_PDSCH_ConfigBroadcast_r17_xOverhead_r17_e_xOh6";
+		case SQN_NR_PDSCH_ConfigBroadcast_r17_xOverhead_r17_e_xOh12: return "SQN_NR_PDSCH_ConfigBroadcast_r17_xOverhead_r17_e_xOh12";
+		case SQN_NR_PDSCH_ConfigBroadcast_r17_xOverhead_r17_e_xOh18: return "SQN_NR_PDSCH_ConfigBroadcast_r17_xOverhead_r17_e_xOh18";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PDSCH_ConfigBroadcast_r17_xOverhead_r17_e_xOverhead_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PDSCH_ConfigBroadcast_r17_xOverhead_r17_e_xOverhead_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PDSCH_ConfigBroadcast_r17_xOverhead_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_PDSCH_ConfigBroadcast_r17(acpCtx_t _ctx, const struct SQN_NR_PDSCH_ConfigBroadcast_r17* p)
+{
+	adbgPrintLog(_ctx, "pdschConfigList_r17 := { ");
+	for (size_t i2 = 0; i2 < p->pdschConfigList_r17.d; i2++) {
+		adbgPrintLog(_ctx, "{ ");
+		_adbgNrSys__SQN_NR_PDSCH_ConfigPTM_r17(_ctx, &p->pdschConfigList_r17.v[i2]);
+		adbgPrintLog(_ctx, " }");
+		if (i2 != p->pdschConfigList_r17.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pdsch_TimeDomainAllocationList_r17 := ");
+	if (p->pdsch_TimeDomainAllocationList_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_PDSCH_TimeDomainResourceAllocationList_r16_SQN_NR_PDSCH_ConfigBroadcast_r17_pdsch_TimeDomainAllocationList_r17_Optional(_ctx, &p->pdsch_TimeDomainAllocationList_r17);
+	if (p->pdsch_TimeDomainAllocationList_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "rateMatchPatternToAddModList_r17 := ");
+	if (p->rateMatchPatternToAddModList_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_RateMatchPattern_SQN_NR_PDSCH_ConfigBroadcast_r17_rateMatchPatternToAddModList_r17_DynamicOptional(_ctx, &p->rateMatchPatternToAddModList_r17);
+	if (p->rateMatchPatternToAddModList_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "lte_CRS_ToMatchAround_r17 := ");
+	if (p->lte_CRS_ToMatchAround_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_RateMatchPatternLTE_CRS_SQN_NR_PDSCH_ConfigBroadcast_r17_lte_CRS_ToMatchAround_r17_Optional(_ctx, &p->lte_CRS_ToMatchAround_r17);
+	if (p->lte_CRS_ToMatchAround_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "mcs_Table_r17 := ");
+	_adbgNrSys__SQN_NR_PDSCH_ConfigBroadcast_r17_mcs_Table_r17_e_mcs_Table_r17_Optional(_ctx, &p->mcs_Table_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "xOverhead_r17 := ");
+	_adbgNrSys__SQN_NR_PDSCH_ConfigBroadcast_r17_xOverhead_r17_e_xOverhead_r17_Optional(_ctx, &p->xOverhead_r17);
+}
+
+static void _adbgNrSys__SQN_NR_PDSCH_ConfigBroadcast_r17_SQN_NR_CFR_ConfigMCCH_MTCH_r17_pdsch_ConfigMCCH_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PDSCH_ConfigBroadcast_r17_SQN_NR_CFR_ConfigMCCH_MTCH_r17_pdsch_ConfigMCCH_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_PDSCH_ConfigBroadcast_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_ControlResourceSet_SQN_NR_CFR_ConfigMCCH_MTCH_r17_commonControlResourceSetExt_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_ControlResourceSet_SQN_NR_CFR_ConfigMCCH_MTCH_r17_commonControlResourceSetExt_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_ControlResourceSet(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_CFR_ConfigMCCH_MTCH_r17(acpCtx_t _ctx, const struct SQN_NR_CFR_ConfigMCCH_MTCH_r17* p)
+{
+	adbgPrintLog(_ctx, "locationAndBandwidthBroadcast_r17 := ");
+	if (p->locationAndBandwidthBroadcast_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_LocationAndBandwidthBroadcast_r17_SQN_NR_CFR_ConfigMCCH_MTCH_r17_locationAndBandwidthBroadcast_r17_Optional(_ctx, &p->locationAndBandwidthBroadcast_r17);
+	if (p->locationAndBandwidthBroadcast_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pdsch_ConfigMCCH_r17 := ");
+	if (p->pdsch_ConfigMCCH_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_PDSCH_ConfigBroadcast_r17_SQN_NR_CFR_ConfigMCCH_MTCH_r17_pdsch_ConfigMCCH_r17_Optional(_ctx, &p->pdsch_ConfigMCCH_r17);
+	if (p->pdsch_ConfigMCCH_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "commonControlResourceSetExt_r17 := ");
+	if (p->commonControlResourceSetExt_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_ControlResourceSet_SQN_NR_CFR_ConfigMCCH_MTCH_r17_commonControlResourceSetExt_r17_Optional(_ctx, &p->commonControlResourceSetExt_r17);
+	if (p->commonControlResourceSetExt_r17.d) { adbgPrintLog(_ctx, " }"); };
+}
+
+static void _adbgNrSys__SQN_NR_CFR_ConfigMCCH_MTCH_r17_SQN_NR_SIB20_r17_cfr_ConfigMCCH_MTCH_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_CFR_ConfigMCCH_MTCH_r17_SQN_NR_SIB20_r17_cfr_ConfigMCCH_MTCH_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_CFR_ConfigMCCH_MTCH_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__OCTET_STRING_SQN_NR_SIB20_r17_lateNonCriticalExtension_Optional(acpCtx_t _ctx, const struct OCTET_STRING_SQN_NR_SIB20_r17_lateNonCriticalExtension_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "'");
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		adbgPrintLog(_ctx, "%02X", p->v.v[i2]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static void _adbgNrSys__SQN_NR_SIB20_r17(acpCtx_t _ctx, const struct SQN_NR_SIB20_r17* p)
+{
+	adbgPrintLog(_ctx, "mcch_Config_r17 := { ");
+	_adbgNrSys__SQN_NR_MCCH_Config_r17(_ctx, &p->mcch_Config_r17);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "cfr_ConfigMCCH_MTCH_r17 := ");
+	if (p->cfr_ConfigMCCH_MTCH_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_CFR_ConfigMCCH_MTCH_r17_SQN_NR_SIB20_r17_cfr_ConfigMCCH_MTCH_r17_Optional(_ctx, &p->cfr_ConfigMCCH_MTCH_r17);
+	if (p->cfr_ConfigMCCH_MTCH_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "lateNonCriticalExtension := ");
+	if (p->lateNonCriticalExtension.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__OCTET_STRING_SQN_NR_SIB20_r17_lateNonCriticalExtension_Optional(_ctx, &p->lateNonCriticalExtension);
+	if (p->lateNonCriticalExtension.d) { adbgPrintLog(_ctx, " }"); };
+}
+
+static void _adbgNrSys__SQN_NR_MBS_FSAI_List_r17_SQN_NR_SIB21_r17_mbs_FSAI_IntraFreq_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_MBS_FSAI_List_r17_SQN_NR_SIB21_r17_mbs_FSAI_IntraFreq_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "{");
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		adbgPrintLog(_ctx, "'");
+		for (size_t i3 = 0; i3 < 3; i3++) {
+			adbgPrintLog(_ctx, "%02X", p->v.v[i2][i3]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+	adbgPrintLog(_ctx, " }");
+}
+
+static void _adbgNrSys__SQN_NR_MBS_FSAI_InterFreq_r17(acpCtx_t _ctx, const struct SQN_NR_MBS_FSAI_InterFreq_r17* p)
+{
+	adbgPrintLog(_ctx, "dl_CarrierFreq_r17 := %u", (unsigned int)p->dl_CarrierFreq_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "{");
+	for (size_t i3 = 0; i3 < p->mbs_FSAI_List_r17.d; i3++) {
+		adbgPrintLog(_ctx, "'");
+		for (size_t i4 = 0; i4 < 3; i4++) {
+			adbgPrintLog(_ctx, "%02X", p->mbs_FSAI_List_r17.v[i3][i4]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		if (i3 != p->mbs_FSAI_List_r17.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+	adbgPrintLog(_ctx, " }");
+}
+
+static void _adbgNrSys__SQN_NR_MBS_FSAI_InterFreqList_r17_SQN_NR_SIB21_r17_mbs_FSAI_InterFreqList_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_MBS_FSAI_InterFreqList_r17_SQN_NR_SIB21_r17_mbs_FSAI_InterFreqList_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		_adbgNrSys__SQN_NR_MBS_FSAI_InterFreq_r17(_ctx, &p->v.v[i2]);
+		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgNrSys__OCTET_STRING_SQN_NR_SIB21_r17_lateNonCriticalExtension_Optional(acpCtx_t _ctx, const struct OCTET_STRING_SQN_NR_SIB21_r17_lateNonCriticalExtension_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "'");
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		adbgPrintLog(_ctx, "%02X", p->v.v[i2]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static void _adbgNrSys__SQN_NR_SIB21_r17(acpCtx_t _ctx, const struct SQN_NR_SIB21_r17* p)
+{
+	adbgPrintLog(_ctx, "mbs_FSAI_IntraFreq_r17 := ");
+	if (p->mbs_FSAI_IntraFreq_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_MBS_FSAI_List_r17_SQN_NR_SIB21_r17_mbs_FSAI_IntraFreq_r17_Optional(_ctx, &p->mbs_FSAI_IntraFreq_r17);
+	if (p->mbs_FSAI_IntraFreq_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "mbs_FSAI_InterFreqList_r17 := ");
+	if (p->mbs_FSAI_InterFreqList_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_MBS_FSAI_InterFreqList_r17_SQN_NR_SIB21_r17_mbs_FSAI_InterFreqList_r17_Optional(_ctx, &p->mbs_FSAI_InterFreqList_r17);
+	if (p->mbs_FSAI_InterFreqList_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "lateNonCriticalExtension := ");
+	if (p->lateNonCriticalExtension.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__OCTET_STRING_SQN_NR_SIB21_r17_lateNonCriticalExtension_Optional(_ctx, &p->lateNonCriticalExtension);
 	if (p->lateNonCriticalExtension.d) { adbgPrintLog(_ctx, " }"); };
 }
 
@@ -17947,6 +23453,48 @@ static void _adbgNrSys__SQN_NR_SystemInformation_IEs_sib_TypeAndInfo_s_Value(acp
 	if (d == SQN_NR_SystemInformation_IEs_sib_TypeAndInfo_s_sib14_v1610) {
 		adbgPrintLog(_ctx, "sib14_v1610 := { ");
 		_adbgNrSys__SQN_NR_SIB14_r16(_ctx, &p->sib14_v1610);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == SQN_NR_SystemInformation_IEs_sib_TypeAndInfo_s_sib15_v1700) {
+		adbgPrintLog(_ctx, "sib15_v1700 := { ");
+		_adbgNrSys__SQN_NR_SIB15_r17(_ctx, &p->sib15_v1700);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == SQN_NR_SystemInformation_IEs_sib_TypeAndInfo_s_sib16_v1700) {
+		adbgPrintLog(_ctx, "sib16_v1700 := { ");
+		_adbgNrSys__SQN_NR_SIB16_r17(_ctx, &p->sib16_v1700);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == SQN_NR_SystemInformation_IEs_sib_TypeAndInfo_s_sib17_v1700) {
+		adbgPrintLog(_ctx, "sib17_v1700 := { ");
+		_adbgNrSys__SQN_NR_SIB17_r17(_ctx, &p->sib17_v1700);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == SQN_NR_SystemInformation_IEs_sib_TypeAndInfo_s_sib18_v1700) {
+		adbgPrintLog(_ctx, "sib18_v1700 := { ");
+		_adbgNrSys__SQN_NR_SIB18_r17(_ctx, &p->sib18_v1700);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == SQN_NR_SystemInformation_IEs_sib_TypeAndInfo_s_sib19_v1700) {
+		adbgPrintLog(_ctx, "sib19_v1700 := { ");
+		_adbgNrSys__SQN_NR_SIB19_r17(_ctx, &p->sib19_v1700);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == SQN_NR_SystemInformation_IEs_sib_TypeAndInfo_s_sib20_v1700) {
+		adbgPrintLog(_ctx, "sib20_v1700 := { ");
+		_adbgNrSys__SQN_NR_SIB20_r17(_ctx, &p->sib20_v1700);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == SQN_NR_SystemInformation_IEs_sib_TypeAndInfo_s_sib21_v1700) {
+		adbgPrintLog(_ctx, "sib21_v1700 := { ");
+		_adbgNrSys__SQN_NR_SIB21_r17(_ctx, &p->sib21_v1700);
 		adbgPrintLog(_ctx, " }");
 		return;
 	}
@@ -18250,6 +23798,48 @@ static void _adbgNrSys__SQN_NR_PosSystemInformation_r16_IEs_posSIB_TypeAndInfo_r
 		adbgPrintLog(_ctx, " }");
 		return;
 	}
+	if (d == SQN_NR_PosSystemInformation_r16_IEs_posSIB_TypeAndInfo_r16_s_posSib1_9_v1700) {
+		adbgPrintLog(_ctx, "posSib1_9_v1700 := { ");
+		_adbgNrSys__SQN_NR_SIBpos_r16(_ctx, &p->posSib1_9_v1700);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == SQN_NR_PosSystemInformation_r16_IEs_posSIB_TypeAndInfo_r16_s_posSib1_10_v1700) {
+		adbgPrintLog(_ctx, "posSib1_10_v1700 := { ");
+		_adbgNrSys__SQN_NR_SIBpos_r16(_ctx, &p->posSib1_10_v1700);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == SQN_NR_PosSystemInformation_r16_IEs_posSIB_TypeAndInfo_r16_s_posSib2_24_v1700) {
+		adbgPrintLog(_ctx, "posSib2_24_v1700 := { ");
+		_adbgNrSys__SQN_NR_SIBpos_r16(_ctx, &p->posSib2_24_v1700);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == SQN_NR_PosSystemInformation_r16_IEs_posSIB_TypeAndInfo_r16_s_posSib2_25_v1700) {
+		adbgPrintLog(_ctx, "posSib2_25_v1700 := { ");
+		_adbgNrSys__SQN_NR_SIBpos_r16(_ctx, &p->posSib2_25_v1700);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == SQN_NR_PosSystemInformation_r16_IEs_posSIB_TypeAndInfo_r16_s_posSib6_4_v1700) {
+		adbgPrintLog(_ctx, "posSib6_4_v1700 := { ");
+		_adbgNrSys__SQN_NR_SIBpos_r16(_ctx, &p->posSib6_4_v1700);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == SQN_NR_PosSystemInformation_r16_IEs_posSIB_TypeAndInfo_r16_s_posSib6_5_v1700) {
+		adbgPrintLog(_ctx, "posSib6_5_v1700 := { ");
+		_adbgNrSys__SQN_NR_SIBpos_r16(_ctx, &p->posSib6_5_v1700);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == SQN_NR_PosSystemInformation_r16_IEs_posSIB_TypeAndInfo_r16_s_posSib6_6_v1700) {
+		adbgPrintLog(_ctx, "posSib6_6_v1700 := { ");
+		_adbgNrSys__SQN_NR_SIBpos_r16(_ctx, &p->posSib6_6_v1700);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
 	adbgPrintLog(_ctx, "INVALID");
 }
 
@@ -18406,28 +23996,6 @@ static void _adbgNrSys__SQN_NR_SIB1_cellSelectionInfo_cellSelectionInfo_Optional
 	_adbgNrSys__SQN_NR_SIB1_cellSelectionInfo(_ctx, &p->v);
 }
 
-static void _adbgNrSys__SQN_NR_MCC_SQN_NR_PLMN_Identity_mcc_Optional(acpCtx_t _ctx, const struct SQN_NR_MCC_SQN_NR_PLMN_Identity_mcc_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "'");
-	for (size_t i3 = 0; i3 < 3; i3++) {
-		adbgPrintLog(_ctx, "%02X", p->v[i3]);
-	}
-	adbgPrintLog(_ctx, "'O");
-}
-
-static void _adbgNrSys__SQN_NR_PLMN_Identity(acpCtx_t _ctx, const struct SQN_NR_PLMN_Identity* p)
-{
-	adbgPrintLog(_ctx, "mcc := ");
-	_adbgNrSys__SQN_NR_MCC_SQN_NR_PLMN_Identity_mcc_Optional(_ctx, &p->mcc);
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "mnc := '");
-	for (size_t i3 = 0; i3 < p->mnc.d; i3++) {
-		adbgPrintLog(_ctx, "%02X", p->mnc.v[i3]);
-	}
-	adbgPrintLog(_ctx, "'O");
-}
-
 static void _adbgNrSys__SQN_NR_TrackingAreaCode_SQN_NR_PLMN_IdentityInfo_trackingAreaCode_Optional(acpCtx_t _ctx, const struct SQN_NR_TrackingAreaCode_SQN_NR_PLMN_IdentityInfo_trackingAreaCode_Optional* p)
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
@@ -18467,6 +24035,27 @@ static void _adbgNrSys__SQN_NR_PLMN_IdentityInfo_iab_Support_r16_e_iab_Support_r
 	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PLMN_IdentityInfo_iab_Support_r16_e__ToString(p->v), (int)p->v);
 }
 
+static void _adbgNrSys__SQN_NR_TrackingAreaCode_SQN_NR_PLMN_IdentityInfo_trackingAreaList_r17_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_TrackingAreaCode_SQN_NR_PLMN_IdentityInfo_trackingAreaList_r17_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "{");
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		adbgPrintLog(_ctx, "'");
+		for (size_t i3 = 0; i3 < 24; i3++) {
+			adbgPrintLog(_ctx, "%02X", p->v.v[i2][i3]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+	adbgPrintLog(_ctx, " }");
+}
+
+static void _adbgNrSys__Uint8_t_SQN_NR_PLMN_IdentityInfo_gNB_ID_Length_r17_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_PLMN_IdentityInfo_gNB_ID_Length_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
 static void _adbgNrSys__SQN_NR_PLMN_IdentityInfo(acpCtx_t _ctx, const struct SQN_NR_PLMN_IdentityInfo* p)
 {
 	adbgPrintLog(_ctx, "plmn_IdentityList := { ");
@@ -18494,6 +24083,12 @@ static void _adbgNrSys__SQN_NR_PLMN_IdentityInfo(acpCtx_t _ctx, const struct SQN
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "iab_Support_r16 := ");
 	_adbgNrSys__SQN_NR_PLMN_IdentityInfo_iab_Support_r16_e_iab_Support_r16_Optional(_ctx, &p->iab_Support_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "trackingAreaList_r17 := ");
+	_adbgNrSys__SQN_NR_TrackingAreaCode_SQN_NR_PLMN_IdentityInfo_trackingAreaList_r17_DynamicOptional(_ctx, &p->trackingAreaList_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "gNB_ID_Length_r17 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_PLMN_IdentityInfo_gNB_ID_Length_r17_Optional(_ctx, &p->gNB_ID_Length_r17);
 }
 
 static const char* adbgNrSys__SQN_NR_CellAccessRelatedInfo_cellReservedForOtherUse_e__ToString(SQN_NR_CellAccessRelatedInfo_cellReservedForOtherUse_e v)
@@ -18568,8 +24163,8 @@ static void _adbgNrSys__SQN_NR_NPN_Identity_r16_pni_npn_r16(acpCtx_t _ctx, const
 
 static void _adbgNrSys__SQN_NR_NPN_Identity_r16_snpn_r16(acpCtx_t _ctx, const struct SQN_NR_NPN_Identity_r16_snpn_r16* p)
 {
-	adbgPrintLog(_ctx, "plmn_Identity := { ");
-	_adbgNrSys__SQN_NR_PLMN_Identity(_ctx, &p->plmn_Identity);
+	adbgPrintLog(_ctx, "plmn_Identity_r16 := { ");
+	_adbgNrSys__SQN_NR_PLMN_Identity(_ctx, &p->plmn_Identity_r16);
 	adbgPrintLog(_ctx, " }");
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "{");
@@ -18635,6 +24230,12 @@ static void _adbgNrSys__SQN_NR_NPN_IdentityInfo_r16_iab_Support_r16_e_iab_Suppor
 	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_NPN_IdentityInfo_r16_iab_Support_r16_e__ToString(p->v), (int)p->v);
 }
 
+static void _adbgNrSys__Uint8_t_SQN_NR_NPN_IdentityInfo_r16_gNB_ID_Length_r17_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_NPN_IdentityInfo_r16_gNB_ID_Length_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
 static void _adbgNrSys__SQN_NR_NPN_IdentityInfo_r16(acpCtx_t _ctx, const struct SQN_NR_NPN_IdentityInfo_r16* p)
 {
 	adbgPrintLog(_ctx, "npn_IdentityList_r16 := { ");
@@ -18665,6 +24266,9 @@ static void _adbgNrSys__SQN_NR_NPN_IdentityInfo_r16(acpCtx_t _ctx, const struct 
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "iab_Support_r16 := ");
 	_adbgNrSys__SQN_NR_NPN_IdentityInfo_r16_iab_Support_r16_e_iab_Support_r16_Optional(_ctx, &p->iab_Support_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "gNB_ID_Length_r17 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_NPN_IdentityInfo_r16_gNB_ID_Length_r17_Optional(_ctx, &p->gNB_ID_Length_r17);
 }
 
 static void _adbgNrSys__SQN_NR_NPN_IdentityInfoList_r16_SQN_NR_CellAccessRelatedInfo_npn_IdentityInfoList_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_NPN_IdentityInfoList_r16_SQN_NR_CellAccessRelatedInfo_npn_IdentityInfoList_r16_Optional* p)
@@ -18676,14 +24280,96 @@ static void _adbgNrSys__SQN_NR_NPN_IdentityInfoList_r16_SQN_NR_CellAccessRelated
 	}
 }
 
+static const char* adbgNrSys__SQN_NR_SNPN_AccessInfo_r17_extCH_Supported_r17_e__ToString(SQN_NR_SNPN_AccessInfo_r17_extCH_Supported_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_SNPN_AccessInfo_r17_extCH_Supported_r17_e_true: return "SQN_NR_SNPN_AccessInfo_r17_extCH_Supported_r17_e_true";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SNPN_AccessInfo_r17_extCH_Supported_r17_e_extCH_Supported_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SNPN_AccessInfo_r17_extCH_Supported_r17_e_extCH_Supported_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SNPN_AccessInfo_r17_extCH_Supported_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_SNPN_AccessInfo_r17_extCH_WithoutConfigAllowed_r17_e__ToString(SQN_NR_SNPN_AccessInfo_r17_extCH_WithoutConfigAllowed_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_SNPN_AccessInfo_r17_extCH_WithoutConfigAllowed_r17_e_true: return "SQN_NR_SNPN_AccessInfo_r17_extCH_WithoutConfigAllowed_r17_e_true";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SNPN_AccessInfo_r17_extCH_WithoutConfigAllowed_r17_e_extCH_WithoutConfigAllowed_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SNPN_AccessInfo_r17_extCH_WithoutConfigAllowed_r17_e_extCH_WithoutConfigAllowed_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SNPN_AccessInfo_r17_extCH_WithoutConfigAllowed_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_SNPN_AccessInfo_r17_onboardingEnabled_r17_e__ToString(SQN_NR_SNPN_AccessInfo_r17_onboardingEnabled_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_SNPN_AccessInfo_r17_onboardingEnabled_r17_e_true: return "SQN_NR_SNPN_AccessInfo_r17_onboardingEnabled_r17_e_true";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SNPN_AccessInfo_r17_onboardingEnabled_r17_e_onboardingEnabled_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SNPN_AccessInfo_r17_onboardingEnabled_r17_e_onboardingEnabled_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SNPN_AccessInfo_r17_onboardingEnabled_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_SNPN_AccessInfo_r17_imsEmergencySupportForSNPN_r17_e__ToString(SQN_NR_SNPN_AccessInfo_r17_imsEmergencySupportForSNPN_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_SNPN_AccessInfo_r17_imsEmergencySupportForSNPN_r17_e_true: return "SQN_NR_SNPN_AccessInfo_r17_imsEmergencySupportForSNPN_r17_e_true";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SNPN_AccessInfo_r17_imsEmergencySupportForSNPN_r17_e_imsEmergencySupportForSNPN_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SNPN_AccessInfo_r17_imsEmergencySupportForSNPN_r17_e_imsEmergencySupportForSNPN_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SNPN_AccessInfo_r17_imsEmergencySupportForSNPN_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SNPN_AccessInfo_r17(acpCtx_t _ctx, const struct SQN_NR_SNPN_AccessInfo_r17* p)
+{
+	adbgPrintLog(_ctx, "extCH_Supported_r17 := ");
+	_adbgNrSys__SQN_NR_SNPN_AccessInfo_r17_extCH_Supported_r17_e_extCH_Supported_r17_Optional(_ctx, &p->extCH_Supported_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "extCH_WithoutConfigAllowed_r17 := ");
+	_adbgNrSys__SQN_NR_SNPN_AccessInfo_r17_extCH_WithoutConfigAllowed_r17_e_extCH_WithoutConfigAllowed_r17_Optional(_ctx, &p->extCH_WithoutConfigAllowed_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "onboardingEnabled_r17 := ");
+	_adbgNrSys__SQN_NR_SNPN_AccessInfo_r17_onboardingEnabled_r17_e_onboardingEnabled_r17_Optional(_ctx, &p->onboardingEnabled_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "imsEmergencySupportForSNPN_r17 := ");
+	_adbgNrSys__SQN_NR_SNPN_AccessInfo_r17_imsEmergencySupportForSNPN_r17_e_imsEmergencySupportForSNPN_r17_Optional(_ctx, &p->imsEmergencySupportForSNPN_r17);
+}
+
+static void _adbgNrSys__SQN_NR_SNPN_AccessInfo_r17_SQN_NR_CellAccessRelatedInfo_snpn_AccessInfoList_r17_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_SNPN_AccessInfo_r17_SQN_NR_CellAccessRelatedInfo_snpn_AccessInfoList_r17_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i1 = 0; i1 < p->v.d; i1++) {
+		adbgPrintLog(_ctx, "{ ");
+		_adbgNrSys__SQN_NR_SNPN_AccessInfo_r17(_ctx, &p->v.v[i1]);
+		adbgPrintLog(_ctx, " }");
+		if (i1 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
 static void _adbgNrSys__SQN_NR_CellAccessRelatedInfo(acpCtx_t _ctx, const struct SQN_NR_CellAccessRelatedInfo* p)
 {
-	adbgPrintLog(_ctx, "plmn_IdentityList := { ");
-	for (size_t i1 = 0; i1 < p->plmn_IdentityList.d; i1++) {
+	adbgPrintLog(_ctx, "plmn_IdentityInfoList := { ");
+	for (size_t i1 = 0; i1 < p->plmn_IdentityInfoList.d; i1++) {
 		adbgPrintLog(_ctx, "{ ");
-		_adbgNrSys__SQN_NR_PLMN_IdentityInfo(_ctx, &p->plmn_IdentityList.v[i1]);
+		_adbgNrSys__SQN_NR_PLMN_IdentityInfo(_ctx, &p->plmn_IdentityInfoList.v[i1]);
 		adbgPrintLog(_ctx, " }");
-		if (i1 != p->plmn_IdentityList.d - 1) { adbgPrintLog(_ctx, ", "); }
+		if (i1 != p->plmn_IdentityInfoList.d - 1) { adbgPrintLog(_ctx, ", "); }
 	}
 	adbgPrintLog(_ctx, " }");
 	adbgPrintLog(_ctx, ", ");
@@ -18697,6 +24383,11 @@ static void _adbgNrSys__SQN_NR_CellAccessRelatedInfo(acpCtx_t _ctx, const struct
 	if (p->npn_IdentityInfoList_r16.d) { adbgPrintLog(_ctx, "{ "); };
 	_adbgNrSys__SQN_NR_NPN_IdentityInfoList_r16_SQN_NR_CellAccessRelatedInfo_npn_IdentityInfoList_r16_Optional(_ctx, &p->npn_IdentityInfoList_r16);
 	if (p->npn_IdentityInfoList_r16.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "snpn_AccessInfoList_r17 := ");
+	if (p->snpn_AccessInfoList_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SNPN_AccessInfo_r17_SQN_NR_CellAccessRelatedInfo_snpn_AccessInfoList_r17_DynamicOptional(_ctx, &p->snpn_AccessInfoList_r17);
+	if (p->snpn_AccessInfoList_r17.d) { adbgPrintLog(_ctx, " }"); };
 }
 
 static const char* adbgNrSys__SQN_NR_ConnEstFailureControl_connEstFailCount_e__ToString(SQN_NR_ConnEstFailureControl_connEstFailCount_e v)
@@ -18852,6 +24543,8 @@ static const char* adbgNrSys__SQN_NR_SI_SchedulingInfo_si_WindowLength_e__ToStri
 		case SQN_NR_SI_SchedulingInfo_si_WindowLength_e_s320: return "SQN_NR_SI_SchedulingInfo_si_WindowLength_e_s320";
 		case SQN_NR_SI_SchedulingInfo_si_WindowLength_e_s640: return "SQN_NR_SI_SchedulingInfo_si_WindowLength_e_s640";
 		case SQN_NR_SI_SchedulingInfo_si_WindowLength_e_s1280: return "SQN_NR_SI_SchedulingInfo_si_WindowLength_e_s1280";
+		case SQN_NR_SI_SchedulingInfo_si_WindowLength_e_s2560_v1710: return "SQN_NR_SI_SchedulingInfo_si_WindowLength_e_s2560_v1710";
+		case SQN_NR_SI_SchedulingInfo_si_WindowLength_e_s5120_v1710: return "SQN_NR_SI_SchedulingInfo_si_WindowLength_e_s5120_v1710";
 		default: return "Unknown";
 	}
 }
@@ -19067,304 +24760,6 @@ static void _adbgNrSys__SQN_NR_PDCCH_ConfigCommon_firstPDCCH_MonitoringOccasionO
 	_adbgNrSys__SQN_NR_PDCCH_ConfigCommon_firstPDCCH_MonitoringOccasionOfPO(_ctx, &p->v);
 }
 
-static void _adbgNrSys__SQN_NR_ControlResourceSetId_r16_SQN_NR_SearchSpaceExt_r16_controlResourceSetId_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_ControlResourceSetId_r16_SQN_NR_SearchSpaceExt_r16_controlResourceSetId_r16_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
-}
-
-static const char* adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel1_r16_e__ToString(SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel1_r16_e v)
-{
-	switch(v) {
-		case SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel1_r16_e_n1: return "SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel1_r16_e_n1";
-		case SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel1_r16_e_n2: return "SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel1_r16_e_n2";
-		default: return "Unknown";
-	}
-}
-
-static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel1_r16_e_aggregationLevel1_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel1_r16_e_aggregationLevel1_r16_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel1_r16_e__ToString(p->v), (int)p->v);
-}
-
-static const char* adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel2_r16_e__ToString(SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel2_r16_e v)
-{
-	switch(v) {
-		case SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel2_r16_e_n1: return "SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel2_r16_e_n1";
-		case SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel2_r16_e_n2: return "SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel2_r16_e_n2";
-		default: return "Unknown";
-	}
-}
-
-static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel2_r16_e_aggregationLevel2_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel2_r16_e_aggregationLevel2_r16_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel2_r16_e__ToString(p->v), (int)p->v);
-}
-
-static const char* adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel4_r16_e__ToString(SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel4_r16_e v)
-{
-	switch(v) {
-		case SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel4_r16_e_n1: return "SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel4_r16_e_n1";
-		case SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel4_r16_e_n2: return "SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel4_r16_e_n2";
-		default: return "Unknown";
-	}
-}
-
-static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel4_r16_e_aggregationLevel4_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel4_r16_e_aggregationLevel4_r16_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel4_r16_e__ToString(p->v), (int)p->v);
-}
-
-static const char* adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel8_r16_e__ToString(SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel8_r16_e v)
-{
-	switch(v) {
-		case SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel8_r16_e_n1: return "SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel8_r16_e_n1";
-		case SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel8_r16_e_n2: return "SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel8_r16_e_n2";
-		default: return "Unknown";
-	}
-}
-
-static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel8_r16_e_aggregationLevel8_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel8_r16_e_aggregationLevel8_r16_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel8_r16_e__ToString(p->v), (int)p->v);
-}
-
-static const char* adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel16_r16_e__ToString(SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel16_r16_e v)
-{
-	switch(v) {
-		case SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel16_r16_e_n1: return "SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel16_r16_e_n1";
-		case SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel16_r16_e_n2: return "SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel16_r16_e_n2";
-		default: return "Unknown";
-	}
-}
-
-static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel16_r16_e_aggregationLevel16_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel16_r16_e_aggregationLevel16_r16_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel16_r16_e__ToString(p->v), (int)p->v);
-}
-
-static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16* p)
-{
-	adbgPrintLog(_ctx, "aggregationLevel1_r16 := ");
-	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel1_r16_e_aggregationLevel1_r16_Optional(_ctx, &p->aggregationLevel1_r16);
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "aggregationLevel2_r16 := ");
-	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel2_r16_e_aggregationLevel2_r16_Optional(_ctx, &p->aggregationLevel2_r16);
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "aggregationLevel4_r16 := ");
-	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel4_r16_e_aggregationLevel4_r16_Optional(_ctx, &p->aggregationLevel4_r16);
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "aggregationLevel8_r16 := ");
-	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel8_r16_e_aggregationLevel8_r16_Optional(_ctx, &p->aggregationLevel8_r16);
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "aggregationLevel16_r16 := ");
-	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16aggregationLevel16_r16_e_aggregationLevel16_r16_Optional(_ctx, &p->aggregationLevel16_r16);
-}
-
-static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16* p)
-{
-	adbgPrintLog(_ctx, "nrofCandidates_CI_r16 := { ");
-	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16nrofCandidates_CI_r16(_ctx, &p->nrofCandidates_CI_r16);
-	adbgPrintLog(_ctx, " }");
-}
-
-static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16_dci_Format2_4_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16_dci_Format2_4_r16_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16(_ctx, &p->v);
-}
-
-static const char* adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel1_r16_e__ToString(SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel1_r16_e v)
-{
-	switch(v) {
-		case SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel1_r16_e_n1: return "SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel1_r16_e_n1";
-		case SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel1_r16_e_n2: return "SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel1_r16_e_n2";
-		default: return "Unknown";
-	}
-}
-
-static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel1_r16_e_aggregationLevel1_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel1_r16_e_aggregationLevel1_r16_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel1_r16_e__ToString(p->v), (int)p->v);
-}
-
-static const char* adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel2_r16_e__ToString(SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel2_r16_e v)
-{
-	switch(v) {
-		case SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel2_r16_e_n1: return "SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel2_r16_e_n1";
-		case SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel2_r16_e_n2: return "SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel2_r16_e_n2";
-		default: return "Unknown";
-	}
-}
-
-static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel2_r16_e_aggregationLevel2_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel2_r16_e_aggregationLevel2_r16_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel2_r16_e__ToString(p->v), (int)p->v);
-}
-
-static const char* adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel4_r16_e__ToString(SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel4_r16_e v)
-{
-	switch(v) {
-		case SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel4_r16_e_n1: return "SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel4_r16_e_n1";
-		case SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel4_r16_e_n2: return "SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel4_r16_e_n2";
-		default: return "Unknown";
-	}
-}
-
-static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel4_r16_e_aggregationLevel4_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel4_r16_e_aggregationLevel4_r16_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel4_r16_e__ToString(p->v), (int)p->v);
-}
-
-static const char* adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel8_r16_e__ToString(SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel8_r16_e v)
-{
-	switch(v) {
-		case SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel8_r16_e_n1: return "SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel8_r16_e_n1";
-		case SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel8_r16_e_n2: return "SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel8_r16_e_n2";
-		default: return "Unknown";
-	}
-}
-
-static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel8_r16_e_aggregationLevel8_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel8_r16_e_aggregationLevel8_r16_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel8_r16_e__ToString(p->v), (int)p->v);
-}
-
-static const char* adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel16_r16_e__ToString(SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel16_r16_e v)
-{
-	switch(v) {
-		case SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel16_r16_e_n1: return "SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel16_r16_e_n1";
-		case SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel16_r16_e_n2: return "SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel16_r16_e_n2";
-		default: return "Unknown";
-	}
-}
-
-static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel16_r16_e_aggregationLevel16_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel16_r16_e_aggregationLevel16_r16_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel16_r16_e__ToString(p->v), (int)p->v);
-}
-
-static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16* p)
-{
-	adbgPrintLog(_ctx, "aggregationLevel1_r16 := ");
-	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel1_r16_e_aggregationLevel1_r16_Optional(_ctx, &p->aggregationLevel1_r16);
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "aggregationLevel2_r16 := ");
-	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel2_r16_e_aggregationLevel2_r16_Optional(_ctx, &p->aggregationLevel2_r16);
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "aggregationLevel4_r16 := ");
-	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel4_r16_e_aggregationLevel4_r16_Optional(_ctx, &p->aggregationLevel4_r16);
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "aggregationLevel8_r16 := ");
-	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel8_r16_e_aggregationLevel8_r16_Optional(_ctx, &p->aggregationLevel8_r16);
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "aggregationLevel16_r16 := ");
-	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16aggregationLevel16_r16_e_aggregationLevel16_r16_Optional(_ctx, &p->aggregationLevel16_r16);
-}
-
-static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16* p)
-{
-	adbgPrintLog(_ctx, "nrofCandidates_IAB_r16 := { ");
-	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16nrofCandidates_IAB_r16(_ctx, &p->nrofCandidates_IAB_r16);
-	adbgPrintLog(_ctx, " }");
-}
-
-static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16_dci_Format2_5_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16_dci_Format2_5_r16_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16(_ctx, &p->v);
-}
-
-static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_6_r16(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_6_r16* p)
-{
-	(void)_ctx;
-	(void)p;
-}
-
-static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_6_r16_dci_Format2_6_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_6_r16_dci_Format2_6_r16_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_6_r16(_ctx, &p->v);
-}
-
-static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16* p)
-{
-	adbgPrintLog(_ctx, "dci_Format2_4_r16 := ");
-	if (p->dci_Format2_4_r16.d) { adbgPrintLog(_ctx, "{ "); };
-	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_4_r16_dci_Format2_4_r16_Optional(_ctx, &p->dci_Format2_4_r16);
-	if (p->dci_Format2_4_r16.d) { adbgPrintLog(_ctx, " }"); };
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "dci_Format2_5_r16 := ");
-	if (p->dci_Format2_5_r16.d) { adbgPrintLog(_ctx, "{ "); };
-	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_5_r16_dci_Format2_5_r16_Optional(_ctx, &p->dci_Format2_5_r16);
-	if (p->dci_Format2_5_r16.d) { adbgPrintLog(_ctx, " }"); };
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "dci_Format2_6_r16 := ");
-	if (p->dci_Format2_6_r16.d) { adbgPrintLog(_ctx, "{ "); };
-	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16_dci_Format2_6_r16_dci_Format2_6_r16_Optional(_ctx, &p->dci_Format2_6_r16);
-	if (p->dci_Format2_6_r16.d) { adbgPrintLog(_ctx, " }"); };
-}
-
-static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16* p)
-{
-	adbgPrintLog(_ctx, "common_r16 := { ");
-	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_common_r16(_ctx, &p->common_r16);
-	adbgPrintLog(_ctx, " }");
-}
-
-static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_searchSpaceType_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_searchSpaceType_r16_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16(_ctx, &p->v);
-}
-
-static void _adbgNrSys__Uint8_t_SQN_NR_SearchSpaceExt_r16_searchSpaceGroupIdList_r16_DynamicOptional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_SearchSpaceExt_r16_searchSpaceGroupIdList_r16_DynamicOptional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "'");
-	for (size_t i2 = 0; i2 < p->v.d; i2++) {
-		adbgPrintLog(_ctx, "%02X", p->v.v[i2]);
-	}
-	adbgPrintLog(_ctx, "'O");
-}
-
-static void _adbgNrSys__B5_SQN_NR_SearchSpaceExt_r16_freqMonitorLocations_r16_Optional(acpCtx_t _ctx, const struct B5_SQN_NR_SearchSpaceExt_r16_freqMonitorLocations_r16_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "'");
-	for (size_t i2 = 0; i2 < 5; i2++) {
-		adbgPrintLog(_ctx, "%02X", p->v[i2]);
-	}
-	adbgPrintLog(_ctx, "'O");
-}
-
-static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16* p)
-{
-	adbgPrintLog(_ctx, "controlResourceSetId_r16 := ");
-	_adbgNrSys__SQN_NR_ControlResourceSetId_r16_SQN_NR_SearchSpaceExt_r16_controlResourceSetId_r16_Optional(_ctx, &p->controlResourceSetId_r16);
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "searchSpaceType_r16 := ");
-	if (p->searchSpaceType_r16.d) { adbgPrintLog(_ctx, "{ "); };
-	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_searchSpaceType_r16_searchSpaceType_r16_Optional(_ctx, &p->searchSpaceType_r16);
-	if (p->searchSpaceType_r16.d) { adbgPrintLog(_ctx, " }"); };
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "searchSpaceGroupIdList_r16 := ");
-	_adbgNrSys__Uint8_t_SQN_NR_SearchSpaceExt_r16_searchSpaceGroupIdList_r16_DynamicOptional(_ctx, &p->searchSpaceGroupIdList_r16);
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "freqMonitorLocations_r16 := ");
-	_adbgNrSys__B5_SQN_NR_SearchSpaceExt_r16_freqMonitorLocations_r16_Optional(_ctx, &p->freqMonitorLocations_r16);
-}
-
 static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_SQN_NR_PDCCH_ConfigCommon_commonSearchSpaceListExt_r16_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_r16_SQN_NR_PDCCH_ConfigCommon_commonSearchSpaceListExt_r16_DynamicOptional* p)
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
@@ -19374,6 +24769,490 @@ static void _adbgNrSys__SQN_NR_SearchSpaceExt_r16_SQN_NR_PDCCH_ConfigCommon_comm
 		adbgPrintLog(_ctx, " }");
 		if (i1 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
 	}
+}
+
+static void _adbgNrSys__SQN_NR_PDCCH_ConfigCommon_sdt_SearchSpace_r17_Value(acpCtx_t _ctx, const union SQN_NR_PDCCH_ConfigCommon_sdt_SearchSpace_r17_Value* p, enum SQN_NR_PDCCH_ConfigCommon_sdt_SearchSpace_r17_Sel d)
+{
+	if (d == SQN_NR_PDCCH_ConfigCommon_sdt_SearchSpace_r17_newSearchSpace) {
+		adbgPrintLog(_ctx, "newSearchSpace := { ");
+		_adbgNrSys__SQN_NR_SearchSpace(_ctx, &p->newSearchSpace);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == SQN_NR_PDCCH_ConfigCommon_sdt_SearchSpace_r17_existingSearchSpace) {
+		adbgPrintLog(_ctx, "existingSearchSpace := %u", (unsigned int)p->existingSearchSpace);
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_PDCCH_ConfigCommon_sdt_SearchSpace_r17(acpCtx_t _ctx, const struct SQN_NR_PDCCH_ConfigCommon_sdt_SearchSpace_r17* p)
+{
+	_adbgNrSys__SQN_NR_PDCCH_ConfigCommon_sdt_SearchSpace_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_PDCCH_ConfigCommon_sdt_SearchSpace_r17_sdt_SearchSpace_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PDCCH_ConfigCommon_sdt_SearchSpace_r17_sdt_SearchSpace_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_PDCCH_ConfigCommon_sdt_SearchSpace_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceId_SQN_NR_PDCCH_ConfigCommon_searchSpaceMCCH_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceId_SQN_NR_PDCCH_ConfigCommon_searchSpaceMCCH_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceId_SQN_NR_PDCCH_ConfigCommon_searchSpaceMTCH_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceId_SQN_NR_PDCCH_ConfigCommon_searchSpaceMTCH_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_v1700_monitoringSlotPeriodicityAndOffset_v1710_Value(acpCtx_t _ctx, const union SQN_NR_SearchSpaceExt_v1700_monitoringSlotPeriodicityAndOffset_v1710_Value* p, enum SQN_NR_SearchSpaceExt_v1700_monitoringSlotPeriodicityAndOffset_v1710_Sel d)
+{
+	if (d == SQN_NR_SearchSpaceExt_v1700_monitoringSlotPeriodicityAndOffset_v1710_sl32) {
+		adbgPrintLog(_ctx, "sl32 := %u", (unsigned int)p->sl32);
+		return;
+	}
+	if (d == SQN_NR_SearchSpaceExt_v1700_monitoringSlotPeriodicityAndOffset_v1710_sl64) {
+		adbgPrintLog(_ctx, "sl64 := %u", (unsigned int)p->sl64);
+		return;
+	}
+	if (d == SQN_NR_SearchSpaceExt_v1700_monitoringSlotPeriodicityAndOffset_v1710_sl128) {
+		adbgPrintLog(_ctx, "sl128 := %u", (unsigned int)p->sl128);
+		return;
+	}
+	if (d == SQN_NR_SearchSpaceExt_v1700_monitoringSlotPeriodicityAndOffset_v1710_sl5120) {
+		adbgPrintLog(_ctx, "sl5120 := %u", (unsigned int)p->sl5120);
+		return;
+	}
+	if (d == SQN_NR_SearchSpaceExt_v1700_monitoringSlotPeriodicityAndOffset_v1710_sl10240) {
+		adbgPrintLog(_ctx, "sl10240 := %u", (unsigned int)p->sl10240);
+		return;
+	}
+	if (d == SQN_NR_SearchSpaceExt_v1700_monitoringSlotPeriodicityAndOffset_v1710_sl20480) {
+		adbgPrintLog(_ctx, "sl20480 := %u", (unsigned int)p->sl20480);
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_v1700_monitoringSlotPeriodicityAndOffset_v1710(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_v1700_monitoringSlotPeriodicityAndOffset_v1710* p)
+{
+	_adbgNrSys__SQN_NR_SearchSpaceExt_v1700_monitoringSlotPeriodicityAndOffset_v1710_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_v1700_monitoringSlotPeriodicityAndOffset_v1710_monitoringSlotPeriodicityAndOffset_v1710_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_v1700_monitoringSlotPeriodicityAndOffset_v1710_monitoringSlotPeriodicityAndOffset_v1710_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SearchSpaceExt_v1700_monitoringSlotPeriodicityAndOffset_v1710(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_v1700_monitoringSlotsWithinSlotGroup_r17_Value(acpCtx_t _ctx, const union SQN_NR_SearchSpaceExt_v1700_monitoringSlotsWithinSlotGroup_r17_Value* p, enum SQN_NR_SearchSpaceExt_v1700_monitoringSlotsWithinSlotGroup_r17_Sel d)
+{
+	if (d == SQN_NR_SearchSpaceExt_v1700_monitoringSlotsWithinSlotGroup_r17_slotGroupLength4_r17) {
+		adbgPrintLog(_ctx, "slotGroupLength4_r17 := '");
+		for (size_t i2 = 0; i2 < 4; i2++) {
+			adbgPrintLog(_ctx, "%02X", p->slotGroupLength4_r17[i2]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	if (d == SQN_NR_SearchSpaceExt_v1700_monitoringSlotsWithinSlotGroup_r17_slotGroupLength8_r17) {
+		adbgPrintLog(_ctx, "slotGroupLength8_r17 := '");
+		for (size_t i2 = 0; i2 < 8; i2++) {
+			adbgPrintLog(_ctx, "%02X", p->slotGroupLength8_r17[i2]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_v1700_monitoringSlotsWithinSlotGroup_r17(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_v1700_monitoringSlotsWithinSlotGroup_r17* p)
+{
+	_adbgNrSys__SQN_NR_SearchSpaceExt_v1700_monitoringSlotsWithinSlotGroup_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_v1700_monitoringSlotsWithinSlotGroup_r17_monitoringSlotsWithinSlotGroup_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_v1700_monitoringSlotsWithinSlotGroup_r17_monitoringSlotsWithinSlotGroup_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SearchSpaceExt_v1700_monitoringSlotsWithinSlotGroup_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__Uint16_t_SQN_NR_SearchSpaceExt_v1700_duration_r17_Optional(acpCtx_t _ctx, const struct uint16_t_SQN_NR_SearchSpaceExt_v1700_duration_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format4_0_r17(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format4_0_r17* p)
+{
+	(void)_ctx;
+	(void)p;
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format4_0_r17_dci_Format4_0_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format4_0_r17_dci_Format4_0_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format4_0_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format4_1_r17(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format4_1_r17* p)
+{
+	(void)_ctx;
+	(void)p;
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format4_1_r17_dci_Format4_1_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format4_1_r17_dci_Format4_1_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format4_1_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format4_2_r17(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format4_2_r17* p)
+{
+	(void)_ctx;
+	(void)p;
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format4_2_r17_dci_Format4_2_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format4_2_r17_dci_Format4_2_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format4_2_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format4_1_AndFormat4_2_r17(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format4_1_AndFormat4_2_r17* p)
+{
+	(void)_ctx;
+	(void)p;
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format4_1_AndFormat4_2_r17_dci_Format4_1_AndFormat4_2_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format4_1_AndFormat4_2_r17_dci_Format4_1_AndFormat4_2_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format4_1_AndFormat4_2_r17(_ctx, &p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel4_r17_e__ToString(SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel4_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel4_r17_e_n0: return "SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel4_r17_e_n0";
+		case SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel4_r17_e_n1: return "SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel4_r17_e_n1";
+		case SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel4_r17_e_n2: return "SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel4_r17_e_n2";
+		case SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel4_r17_e_n3: return "SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel4_r17_e_n3";
+		case SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel4_r17_e_n4: return "SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel4_r17_e_n4";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel4_r17_e_aggregationLevel4_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel4_r17_e_aggregationLevel4_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel4_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel8_r17_e__ToString(SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel8_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel8_r17_e_n0: return "SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel8_r17_e_n0";
+		case SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel8_r17_e_n1: return "SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel8_r17_e_n1";
+		case SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel8_r17_e_n2: return "SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel8_r17_e_n2";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel8_r17_e_aggregationLevel8_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel8_r17_e_aggregationLevel8_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel8_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel16_r17_e__ToString(SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel16_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel16_r17_e_n0: return "SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel16_r17_e_n0";
+		case SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel16_r17_e_n1: return "SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel16_r17_e_n1";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel16_r17_e_aggregationLevel16_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel16_r17_e_aggregationLevel16_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel16_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17* p)
+{
+	adbgPrintLog(_ctx, "aggregationLevel4_r17 := ");
+	_adbgNrSys__SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel4_r17_e_aggregationLevel4_r17_Optional(_ctx, &p->aggregationLevel4_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "aggregationLevel8_r17 := ");
+	_adbgNrSys__SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel8_r17_e_aggregationLevel8_r17_Optional(_ctx, &p->aggregationLevel8_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "aggregationLevel16_r17 := ");
+	_adbgNrSys__SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17aggregationLevel16_r17_e_aggregationLevel16_r17_Optional(_ctx, &p->aggregationLevel16_r17);
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17* p)
+{
+	adbgPrintLog(_ctx, "nrofCandidates_PEI_r17 := { ");
+	_adbgNrSys__SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17nrofCandidates_PEI_r17(_ctx, &p->nrofCandidates_PEI_r17);
+	adbgPrintLog(_ctx, " }");
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17_dci_Format2_7_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17_dci_Format2_7_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17* p)
+{
+	adbgPrintLog(_ctx, "dci_Format4_0_r17 := ");
+	if (p->dci_Format4_0_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format4_0_r17_dci_Format4_0_r17_Optional(_ctx, &p->dci_Format4_0_r17);
+	if (p->dci_Format4_0_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "dci_Format4_1_r17 := ");
+	if (p->dci_Format4_1_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format4_1_r17_dci_Format4_1_r17_Optional(_ctx, &p->dci_Format4_1_r17);
+	if (p->dci_Format4_1_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "dci_Format4_2_r17 := ");
+	if (p->dci_Format4_2_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format4_2_r17_dci_Format4_2_r17_Optional(_ctx, &p->dci_Format4_2_r17);
+	if (p->dci_Format4_2_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "dci_Format4_1_AndFormat4_2_r17 := ");
+	if (p->dci_Format4_1_AndFormat4_2_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format4_1_AndFormat4_2_r17_dci_Format4_1_AndFormat4_2_r17_Optional(_ctx, &p->dci_Format4_1_AndFormat4_2_r17);
+	if (p->dci_Format4_1_AndFormat4_2_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "dci_Format2_7_r17 := ");
+	if (p->dci_Format2_7_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17_dci_Format2_7_r17_dci_Format2_7_r17_Optional(_ctx, &p->dci_Format2_7_r17);
+	if (p->dci_Format2_7_r17.d) { adbgPrintLog(_ctx, " }"); };
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17* p)
+{
+	adbgPrintLog(_ctx, "common_r17 := { ");
+	_adbgNrSys__SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_common_r17(_ctx, &p->common_r17);
+	adbgPrintLog(_ctx, " }");
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_searchSpaceType_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_searchSpaceType_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__Uint8_t_SQN_NR_SearchSpaceExt_v1700_searchSpaceGroupIdList_r17_DynamicOptional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_SearchSpaceExt_v1700_searchSpaceGroupIdList_r17_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "'");
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		adbgPrintLog(_ctx, "%02X", p->v.v[i2]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static void _adbgNrSys__Uint8_t_SQN_NR_SearchSpaceExt_v1700_searchSpaceLinkingId_r17_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_SearchSpaceExt_v1700_searchSpaceLinkingId_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_v1700(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_v1700* p)
+{
+	adbgPrintLog(_ctx, "monitoringSlotPeriodicityAndOffset_v1710 := ");
+	if (p->monitoringSlotPeriodicityAndOffset_v1710.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SearchSpaceExt_v1700_monitoringSlotPeriodicityAndOffset_v1710_monitoringSlotPeriodicityAndOffset_v1710_Optional(_ctx, &p->monitoringSlotPeriodicityAndOffset_v1710);
+	if (p->monitoringSlotPeriodicityAndOffset_v1710.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "monitoringSlotsWithinSlotGroup_r17 := ");
+	if (p->monitoringSlotsWithinSlotGroup_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SearchSpaceExt_v1700_monitoringSlotsWithinSlotGroup_r17_monitoringSlotsWithinSlotGroup_r17_Optional(_ctx, &p->monitoringSlotsWithinSlotGroup_r17);
+	if (p->monitoringSlotsWithinSlotGroup_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "duration_r17 := ");
+	_adbgNrSys__Uint16_t_SQN_NR_SearchSpaceExt_v1700_duration_r17_Optional(_ctx, &p->duration_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "searchSpaceType_r17 := ");
+	if (p->searchSpaceType_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SearchSpaceExt_v1700_searchSpaceType_r17_searchSpaceType_r17_Optional(_ctx, &p->searchSpaceType_r17);
+	if (p->searchSpaceType_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "searchSpaceGroupIdList_r17 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_SearchSpaceExt_v1700_searchSpaceGroupIdList_r17_DynamicOptional(_ctx, &p->searchSpaceGroupIdList_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "searchSpaceLinkingId_r17 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_SearchSpaceExt_v1700_searchSpaceLinkingId_r17_Optional(_ctx, &p->searchSpaceLinkingId_r17);
+}
+
+static void _adbgNrSys__SQN_NR_SearchSpaceExt_v1700_SQN_NR_PDCCH_ConfigCommon_commonSearchSpaceListExt2_r17_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_SearchSpaceExt_v1700_SQN_NR_PDCCH_ConfigCommon_commonSearchSpaceListExt2_r17_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i1 = 0; i1 < p->v.d; i1++) {
+		adbgPrintLog(_ctx, "{ ");
+		_adbgNrSys__SQN_NR_SearchSpaceExt_v1700(_ctx, &p->v.v[i1]);
+		adbgPrintLog(_ctx, " }");
+		if (i1 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PDCCH_ConfigCommon_firstPDCCH_MonitoringOccasionOfPO_v1710_Value(acpCtx_t _ctx, const union SQN_NR_PDCCH_ConfigCommon_firstPDCCH_MonitoringOccasionOfPO_v1710_Value* p, enum SQN_NR_PDCCH_ConfigCommon_firstPDCCH_MonitoringOccasionOfPO_v1710_Sel d)
+{
+	if (d == SQN_NR_PDCCH_ConfigCommon_firstPDCCH_MonitoringOccasionOfPO_v1710_sCS480KHZoneEighthT) {
+		adbgPrintLog(_ctx, "sCS480KHZoneEighthT := '");
+		for (size_t i1 = 0; i1 < p->sCS480KHZoneEighthT.d; i1++) {
+			adbgPrintLog(_ctx, "%02X", p->sCS480KHZoneEighthT.v[i1]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	if (d == SQN_NR_PDCCH_ConfigCommon_firstPDCCH_MonitoringOccasionOfPO_v1710_sCS480KHZoneSixteenthT) {
+		adbgPrintLog(_ctx, "sCS480KHZoneSixteenthT := '");
+		for (size_t i1 = 0; i1 < p->sCS480KHZoneSixteenthT.d; i1++) {
+			adbgPrintLog(_ctx, "%02X", p->sCS480KHZoneSixteenthT.v[i1]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_PDCCH_ConfigCommon_firstPDCCH_MonitoringOccasionOfPO_v1710(acpCtx_t _ctx, const struct SQN_NR_PDCCH_ConfigCommon_firstPDCCH_MonitoringOccasionOfPO_v1710* p)
+{
+	_adbgNrSys__SQN_NR_PDCCH_ConfigCommon_firstPDCCH_MonitoringOccasionOfPO_v1710_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_PDCCH_ConfigCommon_firstPDCCH_MonitoringOccasionOfPO_v1710_firstPDCCH_MonitoringOccasionOfPO_v1710_Optional(acpCtx_t _ctx, const struct SQN_NR_PDCCH_ConfigCommon_firstPDCCH_MonitoringOccasionOfPO_v1710_firstPDCCH_MonitoringOccasionOfPO_v1710_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_PDCCH_ConfigCommon_firstPDCCH_MonitoringOccasionOfPO_v1710(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_Value(acpCtx_t _ctx, const union SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_Value* p, enum SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_Sel d)
+{
+	if (d == SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_sCS15KHZoneT) {
+		adbgPrintLog(_ctx, "sCS15KHZoneT := '");
+		for (size_t i1 = 0; i1 < p->sCS15KHZoneT.d; i1++) {
+			adbgPrintLog(_ctx, "%02X", p->sCS15KHZoneT.v[i1]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	if (d == SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_sCS30KHZoneT_SCS15KHZhalfT) {
+		adbgPrintLog(_ctx, "sCS30KHZoneT_SCS15KHZhalfT := '");
+		for (size_t i1 = 0; i1 < p->sCS30KHZoneT_SCS15KHZhalfT.d; i1++) {
+			adbgPrintLog(_ctx, "%02X", p->sCS30KHZoneT_SCS15KHZhalfT.v[i1]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	if (d == SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_sCS60KHZoneT_SCS30KHZhalfT_SCS15KHZquarterT) {
+		adbgPrintLog(_ctx, "sCS60KHZoneT_SCS30KHZhalfT_SCS15KHZquarterT := '");
+		for (size_t i1 = 0; i1 < p->sCS60KHZoneT_SCS30KHZhalfT_SCS15KHZquarterT.d; i1++) {
+			adbgPrintLog(_ctx, "%02X", p->sCS60KHZoneT_SCS30KHZhalfT_SCS15KHZquarterT.v[i1]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	if (d == SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_sCS120KHZoneT_SCS60KHZhalfT_SCS30KHZquarterT_SCS15KHZoneEighthT) {
+		adbgPrintLog(_ctx, "sCS120KHZoneT_SCS60KHZhalfT_SCS30KHZquarterT_SCS15KHZoneEighthT := '");
+		for (size_t i1 = 0; i1 < p->sCS120KHZoneT_SCS60KHZhalfT_SCS30KHZquarterT_SCS15KHZoneEighthT.d; i1++) {
+			adbgPrintLog(_ctx, "%02X", p->sCS120KHZoneT_SCS60KHZhalfT_SCS30KHZquarterT_SCS15KHZoneEighthT.v[i1]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	if (d == SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_sCS120KHZhalfT_SCS60KHZquarterT_SCS30KHZoneEighthT_SCS15KHZoneSixteenthT) {
+		adbgPrintLog(_ctx, "sCS120KHZhalfT_SCS60KHZquarterT_SCS30KHZoneEighthT_SCS15KHZoneSixteenthT := '");
+		for (size_t i1 = 0; i1 < p->sCS120KHZhalfT_SCS60KHZquarterT_SCS30KHZoneEighthT_SCS15KHZoneSixteenthT.d; i1++) {
+			adbgPrintLog(_ctx, "%02X", p->sCS120KHZhalfT_SCS60KHZquarterT_SCS30KHZoneEighthT_SCS15KHZoneSixteenthT.v[i1]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	if (d == SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_sCS480KHZoneT_SCS120KHZquarterT_SCS60KHZoneEighthT_SCS30KHZoneSixteenthT) {
+		adbgPrintLog(_ctx, "sCS480KHZoneT_SCS120KHZquarterT_SCS60KHZoneEighthT_SCS30KHZoneSixteenthT := '");
+		for (size_t i1 = 0; i1 < p->sCS480KHZoneT_SCS120KHZquarterT_SCS60KHZoneEighthT_SCS30KHZoneSixteenthT.d; i1++) {
+			adbgPrintLog(_ctx, "%02X", p->sCS480KHZoneT_SCS120KHZquarterT_SCS60KHZoneEighthT_SCS30KHZoneSixteenthT.v[i1]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	if (d == SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_sCS480KHZhalfT_SCS120KHZoneEighthT_SCS60KHZoneSixteenthT) {
+		adbgPrintLog(_ctx, "sCS480KHZhalfT_SCS120KHZoneEighthT_SCS60KHZoneSixteenthT := '");
+		for (size_t i1 = 0; i1 < p->sCS480KHZhalfT_SCS120KHZoneEighthT_SCS60KHZoneSixteenthT.d; i1++) {
+			adbgPrintLog(_ctx, "%02X", p->sCS480KHZhalfT_SCS120KHZoneEighthT_SCS60KHZoneSixteenthT.v[i1]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	if (d == SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_sCS480KHZquarterT_SCS120KHZoneSixteenthT) {
+		adbgPrintLog(_ctx, "sCS480KHZquarterT_SCS120KHZoneSixteenthT := '");
+		for (size_t i1 = 0; i1 < p->sCS480KHZquarterT_SCS120KHZoneSixteenthT.d; i1++) {
+			adbgPrintLog(_ctx, "%02X", p->sCS480KHZquarterT_SCS120KHZoneSixteenthT.v[i1]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	if (d == SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_sCS480KHZoneEighthT) {
+		adbgPrintLog(_ctx, "sCS480KHZoneEighthT := '");
+		for (size_t i1 = 0; i1 < p->sCS480KHZoneEighthT.d; i1++) {
+			adbgPrintLog(_ctx, "%02X", p->sCS480KHZoneEighthT.v[i1]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	if (d == SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_sCS480KHZoneSixteenthT) {
+		adbgPrintLog(_ctx, "sCS480KHZoneSixteenthT := '");
+		for (size_t i1 = 0; i1 < p->sCS480KHZoneSixteenthT.d; i1++) {
+			adbgPrintLog(_ctx, "%02X", p->sCS480KHZoneSixteenthT.v[i1]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17(acpCtx_t _ctx, const struct SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17* p)
+{
+	_adbgNrSys__SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17(acpCtx_t _ctx, const struct SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17* p)
+{
+	adbgPrintLog(_ctx, "pei_SearchSpace_r17 := %u", (unsigned int)p->pei_SearchSpace_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "firstPDCCH_MonitoringOccasionOfPEI_O_r17 := { ");
+	_adbgNrSys__SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_firstPDCCH_MonitoringOccasionOfPEI_O_r17(_ctx, &p->firstPDCCH_MonitoringOccasionOfPEI_O_r17);
+	adbgPrintLog(_ctx, " }");
+}
+
+static void _adbgNrSys__SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_pei_ConfigBWP_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_pei_ConfigBWP_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17(_ctx, &p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PDCCH_ConfigCommon_followUnifiedTCIstate_v1720_e__ToString(SQN_NR_PDCCH_ConfigCommon_followUnifiedTCIstate_v1720_e v)
+{
+	switch(v) {
+		case SQN_NR_PDCCH_ConfigCommon_followUnifiedTCIstate_v1720_e_enabled: return "SQN_NR_PDCCH_ConfigCommon_followUnifiedTCIstate_v1720_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PDCCH_ConfigCommon_followUnifiedTCIstate_v1720_e_followUnifiedTCIstate_v1720_Optional(acpCtx_t _ctx, const struct SQN_NR_PDCCH_ConfigCommon_followUnifiedTCIstate_v1720_e_followUnifiedTCIstate_v1720_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PDCCH_ConfigCommon_followUnifiedTCIstate_v1720_e__ToString(p->v), (int)p->v);
 }
 
 static void _adbgNrSys__SQN_NR_PDCCH_ConfigCommon(acpCtx_t _ctx, const struct SQN_NR_PDCCH_ConfigCommon* p)
@@ -19415,6 +25294,35 @@ static void _adbgNrSys__SQN_NR_PDCCH_ConfigCommon(acpCtx_t _ctx, const struct SQ
 	if (p->commonSearchSpaceListExt_r16.d) { adbgPrintLog(_ctx, "{ "); };
 	_adbgNrSys__SQN_NR_SearchSpaceExt_r16_SQN_NR_PDCCH_ConfigCommon_commonSearchSpaceListExt_r16_DynamicOptional(_ctx, &p->commonSearchSpaceListExt_r16);
 	if (p->commonSearchSpaceListExt_r16.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "sdt_SearchSpace_r17 := ");
+	if (p->sdt_SearchSpace_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_PDCCH_ConfigCommon_sdt_SearchSpace_r17_sdt_SearchSpace_r17_Optional(_ctx, &p->sdt_SearchSpace_r17);
+	if (p->sdt_SearchSpace_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "searchSpaceMCCH_r17 := ");
+	_adbgNrSys__SQN_NR_SearchSpaceId_SQN_NR_PDCCH_ConfigCommon_searchSpaceMCCH_r17_Optional(_ctx, &p->searchSpaceMCCH_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "searchSpaceMTCH_r17 := ");
+	_adbgNrSys__SQN_NR_SearchSpaceId_SQN_NR_PDCCH_ConfigCommon_searchSpaceMTCH_r17_Optional(_ctx, &p->searchSpaceMTCH_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "commonSearchSpaceListExt2_r17 := ");
+	if (p->commonSearchSpaceListExt2_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SearchSpaceExt_v1700_SQN_NR_PDCCH_ConfigCommon_commonSearchSpaceListExt2_r17_DynamicOptional(_ctx, &p->commonSearchSpaceListExt2_r17);
+	if (p->commonSearchSpaceListExt2_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "firstPDCCH_MonitoringOccasionOfPO_v1710 := ");
+	if (p->firstPDCCH_MonitoringOccasionOfPO_v1710.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_PDCCH_ConfigCommon_firstPDCCH_MonitoringOccasionOfPO_v1710_firstPDCCH_MonitoringOccasionOfPO_v1710_Optional(_ctx, &p->firstPDCCH_MonitoringOccasionOfPO_v1710);
+	if (p->firstPDCCH_MonitoringOccasionOfPO_v1710.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pei_ConfigBWP_r17 := ");
+	if (p->pei_ConfigBWP_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_PDCCH_ConfigCommon_pei_ConfigBWP_r17_pei_ConfigBWP_r17_Optional(_ctx, &p->pei_ConfigBWP_r17);
+	if (p->pei_ConfigBWP_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "followUnifiedTCIstate_v1720 := ");
+	_adbgNrSys__SQN_NR_PDCCH_ConfigCommon_followUnifiedTCIstate_v1720_e_followUnifiedTCIstate_v1720_Optional(_ctx, &p->followUnifiedTCIstate_v1720);
 }
 
 static void _adbgNrSys__SQN_NR_SetupRelease_BWP_DownlinkCommon_pdcch_ConfigCommon_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_BWP_DownlinkCommon_pdcch_ConfigCommon_Value* p, enum SQN_NR_SetupRelease_BWP_DownlinkCommon_pdcch_ConfigCommon_Sel d)
@@ -19595,26 +25503,26 @@ static void _adbgNrSys__SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_Val
 		adbgPrintLog(_ctx, "'O");
 		return;
 	}
-	if (d == SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_sCS120KHZquarterT_SCS60KHZoneEighthT_SCS30KHZoneSixteenthT) {
-		adbgPrintLog(_ctx, "sCS120KHZquarterT_SCS60KHZoneEighthT_SCS30KHZoneSixteenthT := '");
-		for (size_t i1 = 0; i1 < p->sCS120KHZquarterT_SCS60KHZoneEighthT_SCS30KHZoneSixteenthT.d; i1++) {
-			adbgPrintLog(_ctx, "%02X", p->sCS120KHZquarterT_SCS60KHZoneEighthT_SCS30KHZoneSixteenthT.v[i1]);
+	if (d == SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_sCS480KHZoneT_SCS120KHZquarterT_SCS60KHZoneEighthT_SCS30KHZoneSixteenthT) {
+		adbgPrintLog(_ctx, "sCS480KHZoneT_SCS120KHZquarterT_SCS60KHZoneEighthT_SCS30KHZoneSixteenthT := '");
+		for (size_t i1 = 0; i1 < p->sCS480KHZoneT_SCS120KHZquarterT_SCS60KHZoneEighthT_SCS30KHZoneSixteenthT.d; i1++) {
+			adbgPrintLog(_ctx, "%02X", p->sCS480KHZoneT_SCS120KHZquarterT_SCS60KHZoneEighthT_SCS30KHZoneSixteenthT.v[i1]);
 		}
 		adbgPrintLog(_ctx, "'O");
 		return;
 	}
-	if (d == SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_sCS120KHZoneEighthT_SCS60KHZoneSixteenthT) {
-		adbgPrintLog(_ctx, "sCS120KHZoneEighthT_SCS60KHZoneSixteenthT := '");
-		for (size_t i1 = 0; i1 < p->sCS120KHZoneEighthT_SCS60KHZoneSixteenthT.d; i1++) {
-			adbgPrintLog(_ctx, "%02X", p->sCS120KHZoneEighthT_SCS60KHZoneSixteenthT.v[i1]);
+	if (d == SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_sCS480KHZhalfT_SCS120KHZoneEighthT_SCS60KHZoneSixteenthT) {
+		adbgPrintLog(_ctx, "sCS480KHZhalfT_SCS120KHZoneEighthT_SCS60KHZoneSixteenthT := '");
+		for (size_t i1 = 0; i1 < p->sCS480KHZhalfT_SCS120KHZoneEighthT_SCS60KHZoneSixteenthT.d; i1++) {
+			adbgPrintLog(_ctx, "%02X", p->sCS480KHZhalfT_SCS120KHZoneEighthT_SCS60KHZoneSixteenthT.v[i1]);
 		}
 		adbgPrintLog(_ctx, "'O");
 		return;
 	}
-	if (d == SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_sCS120KHZoneSixteenthT) {
-		adbgPrintLog(_ctx, "sCS120KHZoneSixteenthT := '");
-		for (size_t i1 = 0; i1 < p->sCS120KHZoneSixteenthT.d; i1++) {
-			adbgPrintLog(_ctx, "%02X", p->sCS120KHZoneSixteenthT.v[i1]);
+	if (d == SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_sCS480KHZquarterT_SCS120KHZoneSixteenthT) {
+		adbgPrintLog(_ctx, "sCS480KHZquarterT_SCS120KHZoneSixteenthT := '");
+		for (size_t i1 = 0; i1 < p->sCS480KHZquarterT_SCS120KHZoneSixteenthT.d; i1++) {
+			adbgPrintLog(_ctx, "%02X", p->sCS480KHZquarterT_SCS120KHZoneSixteenthT.v[i1]);
 		}
 		adbgPrintLog(_ctx, "'O");
 		return;
@@ -19639,6 +25547,52 @@ static void _adbgNrSys__Uint8_t_SQN_NR_PCCH_Config_nrofPDCCH_MonitoringOccasionP
 	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
 }
 
+static const char* adbgNrSys__SQN_NR_PCCH_Config_ranPagingInIdlePO_r17_e__ToString(SQN_NR_PCCH_Config_ranPagingInIdlePO_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PCCH_Config_ranPagingInIdlePO_r17_e_true: return "SQN_NR_PCCH_Config_ranPagingInIdlePO_r17_e_true";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PCCH_Config_ranPagingInIdlePO_r17_e_ranPagingInIdlePO_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PCCH_Config_ranPagingInIdlePO_r17_e_ranPagingInIdlePO_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PCCH_Config_ranPagingInIdlePO_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_v1710_Value(acpCtx_t _ctx, const union SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_v1710_Value* p, enum SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_v1710_Sel d)
+{
+	if (d == SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_v1710_sCS480KHZoneEighthT) {
+		adbgPrintLog(_ctx, "sCS480KHZoneEighthT := '");
+		for (size_t i1 = 0; i1 < p->sCS480KHZoneEighthT.d; i1++) {
+			adbgPrintLog(_ctx, "%02X", p->sCS480KHZoneEighthT.v[i1]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	if (d == SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_v1710_sCS480KHZoneSixteenthT) {
+		adbgPrintLog(_ctx, "sCS480KHZoneSixteenthT := '");
+		for (size_t i1 = 0; i1 < p->sCS480KHZoneSixteenthT.d; i1++) {
+			adbgPrintLog(_ctx, "%02X", p->sCS480KHZoneSixteenthT.v[i1]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_v1710(acpCtx_t _ctx, const struct SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_v1710* p)
+{
+	_adbgNrSys__SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_v1710_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_v1710_firstPDCCH_MonitoringOccasionOfPO_v1710_Optional(acpCtx_t _ctx, const struct SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_v1710_firstPDCCH_MonitoringOccasionOfPO_v1710_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_v1710(_ctx, &p->v);
+}
+
 static void _adbgNrSys__SQN_NR_PCCH_Config(acpCtx_t _ctx, const struct SQN_NR_PCCH_Config* p)
 {
 	adbgPrintLog(_ctx, "defaultPagingCycle := %s (%d)", adbgNrSys__SQN_NR_PagingCycle_e__ToString(p->defaultPagingCycle), (int)p->defaultPagingCycle);
@@ -19656,6 +25610,81 @@ static void _adbgNrSys__SQN_NR_PCCH_Config(acpCtx_t _ctx, const struct SQN_NR_PC
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "nrofPDCCH_MonitoringOccasionPerSSB_InPO_r16 := ");
 	_adbgNrSys__Uint8_t_SQN_NR_PCCH_Config_nrofPDCCH_MonitoringOccasionPerSSB_InPO_r16_Optional(_ctx, &p->nrofPDCCH_MonitoringOccasionPerSSB_InPO_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "ranPagingInIdlePO_r17 := ");
+	_adbgNrSys__SQN_NR_PCCH_Config_ranPagingInIdlePO_r17_e_ranPagingInIdlePO_r17_Optional(_ctx, &p->ranPagingInIdlePO_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "firstPDCCH_MonitoringOccasionOfPO_v1710 := ");
+	if (p->firstPDCCH_MonitoringOccasionOfPO_v1710.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_PCCH_Config_firstPDCCH_MonitoringOccasionOfPO_v1710_firstPDCCH_MonitoringOccasionOfPO_v1710_Optional(_ctx, &p->firstPDCCH_MonitoringOccasionOfPO_v1710);
+	if (p->firstPDCCH_MonitoringOccasionOfPO_v1710.d) { adbgPrintLog(_ctx, " }"); };
+}
+
+static const char* adbgNrSys__SQN_NR_PEI_Config_r17_po_NumPerPEI_r17_e__ToString(SQN_NR_PEI_Config_r17_po_NumPerPEI_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PEI_Config_r17_po_NumPerPEI_r17_e_po1: return "SQN_NR_PEI_Config_r17_po_NumPerPEI_r17_e_po1";
+		case SQN_NR_PEI_Config_r17_po_NumPerPEI_r17_e_po2: return "SQN_NR_PEI_Config_r17_po_NumPerPEI_r17_e_po2";
+		case SQN_NR_PEI_Config_r17_po_NumPerPEI_r17_e_po4: return "SQN_NR_PEI_Config_r17_po_NumPerPEI_r17_e_po4";
+		case SQN_NR_PEI_Config_r17_po_NumPerPEI_r17_e_po8: return "SQN_NR_PEI_Config_r17_po_NumPerPEI_r17_e_po8";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__Uint8_t_SQN_NR_SubgroupConfig_r17_subgroupsNumForUEID_r17_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_SubgroupConfig_r17_subgroupsNumForUEID_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SubgroupConfig_r17(acpCtx_t _ctx, const struct SQN_NR_SubgroupConfig_r17* p)
+{
+	adbgPrintLog(_ctx, "subgroupsNumPerPO_r17 := %u", (unsigned int)p->subgroupsNumPerPO_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "subgroupsNumForUEID_r17 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_SubgroupConfig_r17_subgroupsNumForUEID_r17_Optional(_ctx, &p->subgroupsNumForUEID_r17);
+}
+
+static const char* adbgNrSys__SQN_NR_PEI_Config_r17_lastUsedCellOnly_r17_e__ToString(SQN_NR_PEI_Config_r17_lastUsedCellOnly_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PEI_Config_r17_lastUsedCellOnly_r17_e_true: return "SQN_NR_PEI_Config_r17_lastUsedCellOnly_r17_e_true";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PEI_Config_r17_lastUsedCellOnly_r17_e_lastUsedCellOnly_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PEI_Config_r17_lastUsedCellOnly_r17_e_lastUsedCellOnly_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PEI_Config_r17_lastUsedCellOnly_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_PEI_Config_r17(acpCtx_t _ctx, const struct SQN_NR_PEI_Config_r17* p)
+{
+	adbgPrintLog(_ctx, "po_NumPerPEI_r17 := %s (%d)", adbgNrSys__SQN_NR_PEI_Config_r17_po_NumPerPEI_r17_e__ToString(p->po_NumPerPEI_r17), (int)p->po_NumPerPEI_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "payloadSizeDCI_2_7_r17 := %u", (unsigned int)p->payloadSizeDCI_2_7_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pei_FrameOffset_r17 := %u", (unsigned int)p->pei_FrameOffset_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "subgroupConfig_r17 := { ");
+	_adbgNrSys__SQN_NR_SubgroupConfig_r17(_ctx, &p->subgroupConfig_r17);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "lastUsedCellOnly_r17 := ");
+	_adbgNrSys__SQN_NR_PEI_Config_r17_lastUsedCellOnly_r17_e_lastUsedCellOnly_r17_Optional(_ctx, &p->lastUsedCellOnly_r17);
+}
+
+static void _adbgNrSys__SQN_NR_PEI_Config_r17_SQN_NR_DownlinkConfigCommonSIB_pei_Config_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PEI_Config_r17_SQN_NR_DownlinkConfigCommonSIB_pei_Config_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_PEI_Config_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_BWP_DownlinkCommon_SQN_NR_DownlinkConfigCommonSIB_initialDownlinkBWP_RedCap_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_BWP_DownlinkCommon_SQN_NR_DownlinkConfigCommonSIB_initialDownlinkBWP_RedCap_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_BWP_DownlinkCommon(_ctx, &p->v);
 }
 
 static void _adbgNrSys__SQN_NR_DownlinkConfigCommonSIB(acpCtx_t _ctx, const struct SQN_NR_DownlinkConfigCommonSIB* p)
@@ -19675,6 +25704,16 @@ static void _adbgNrSys__SQN_NR_DownlinkConfigCommonSIB(acpCtx_t _ctx, const stru
 	adbgPrintLog(_ctx, "pcch_Config := { ");
 	_adbgNrSys__SQN_NR_PCCH_Config(_ctx, &p->pcch_Config);
 	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pei_Config_r17 := ");
+	if (p->pei_Config_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_PEI_Config_r17_SQN_NR_DownlinkConfigCommonSIB_pei_Config_r17_Optional(_ctx, &p->pei_Config_r17);
+	if (p->pei_Config_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "initialDownlinkBWP_RedCap_r17 := ");
+	if (p->initialDownlinkBWP_RedCap_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_BWP_DownlinkCommon_SQN_NR_DownlinkConfigCommonSIB_initialDownlinkBWP_RedCap_r17_Optional(_ctx, &p->initialDownlinkBWP_RedCap_r17);
+	if (p->initialDownlinkBWP_RedCap_r17.d) { adbgPrintLog(_ctx, " }"); };
 }
 
 static void _adbgNrSys__SQN_NR_MultiFrequencyBandListNR_SIB_SQN_NR_FrequencyInfoUL_SIB_frequencyBandList_Optional(acpCtx_t _ctx, const struct SQN_NR_MultiFrequencyBandListNR_SIB_SQN_NR_FrequencyInfoUL_SIB_frequencyBandList_Optional* p)
@@ -19835,22 +25874,22 @@ static void _adbgNrSys__SQN_NR_TDD_UL_DL_ConfigCommon_SQN_NR_ServingCellConfigCo
 	_adbgNrSys__SQN_NR_TDD_UL_DL_ConfigCommon(_ctx, &p->v);
 }
 
-static const char* adbgNrSys__SQN_NR_SemiStaticChannelAccessConfig_period_e__ToString(SQN_NR_SemiStaticChannelAccessConfig_period_e v)
+static const char* adbgNrSys__SQN_NR_SemiStaticChannelAccessConfig_r16_period_e__ToString(SQN_NR_SemiStaticChannelAccessConfig_r16_period_e v)
 {
 	switch(v) {
-		case SQN_NR_SemiStaticChannelAccessConfig_period_e_ms1: return "SQN_NR_SemiStaticChannelAccessConfig_period_e_ms1";
-		case SQN_NR_SemiStaticChannelAccessConfig_period_e_ms2: return "SQN_NR_SemiStaticChannelAccessConfig_period_e_ms2";
-		case SQN_NR_SemiStaticChannelAccessConfig_period_e_ms2dot5: return "SQN_NR_SemiStaticChannelAccessConfig_period_e_ms2dot5";
-		case SQN_NR_SemiStaticChannelAccessConfig_period_e_ms4: return "SQN_NR_SemiStaticChannelAccessConfig_period_e_ms4";
-		case SQN_NR_SemiStaticChannelAccessConfig_period_e_ms5: return "SQN_NR_SemiStaticChannelAccessConfig_period_e_ms5";
-		case SQN_NR_SemiStaticChannelAccessConfig_period_e_ms10: return "SQN_NR_SemiStaticChannelAccessConfig_period_e_ms10";
+		case SQN_NR_SemiStaticChannelAccessConfig_r16_period_e_ms1: return "SQN_NR_SemiStaticChannelAccessConfig_r16_period_e_ms1";
+		case SQN_NR_SemiStaticChannelAccessConfig_r16_period_e_ms2: return "SQN_NR_SemiStaticChannelAccessConfig_r16_period_e_ms2";
+		case SQN_NR_SemiStaticChannelAccessConfig_r16_period_e_ms2dot5: return "SQN_NR_SemiStaticChannelAccessConfig_r16_period_e_ms2dot5";
+		case SQN_NR_SemiStaticChannelAccessConfig_r16_period_e_ms4: return "SQN_NR_SemiStaticChannelAccessConfig_r16_period_e_ms4";
+		case SQN_NR_SemiStaticChannelAccessConfig_r16_period_e_ms5: return "SQN_NR_SemiStaticChannelAccessConfig_r16_period_e_ms5";
+		case SQN_NR_SemiStaticChannelAccessConfig_r16_period_e_ms10: return "SQN_NR_SemiStaticChannelAccessConfig_r16_period_e_ms10";
 		default: return "Unknown";
 	}
 }
 
-static void _adbgNrSys__SQN_NR_SemiStaticChannelAccessConfig(acpCtx_t _ctx, const struct SQN_NR_SemiStaticChannelAccessConfig* p)
+static void _adbgNrSys__SQN_NR_SemiStaticChannelAccessConfig_r16(acpCtx_t _ctx, const struct SQN_NR_SemiStaticChannelAccessConfig_r16* p)
 {
-	adbgPrintLog(_ctx, "period := %s (%d)", adbgNrSys__SQN_NR_SemiStaticChannelAccessConfig_period_e__ToString(p->period), (int)p->period);
+	adbgPrintLog(_ctx, "period := %s (%d)", adbgNrSys__SQN_NR_SemiStaticChannelAccessConfig_r16_period_e__ToString(p->period), (int)p->period);
 }
 
 static void _adbgNrSys__SQN_NR_ServingCellConfigCommonSIB_channelAccessMode_r16_Value(acpCtx_t _ctx, const union SQN_NR_ServingCellConfigCommonSIB_channelAccessMode_r16_Value* p, enum SQN_NR_ServingCellConfigCommonSIB_channelAccessMode_r16_Sel d)
@@ -19861,7 +25900,7 @@ static void _adbgNrSys__SQN_NR_ServingCellConfigCommonSIB_channelAccessMode_r16_
 	}
 	if (d == SQN_NR_ServingCellConfigCommonSIB_channelAccessMode_r16_semiStatic) {
 		adbgPrintLog(_ctx, "semiStatic := { ");
-		_adbgNrSys__SQN_NR_SemiStaticChannelAccessConfig(_ctx, &p->semiStatic);
+		_adbgNrSys__SQN_NR_SemiStaticChannelAccessConfig_r16(_ctx, &p->semiStatic);
 		adbgPrintLog(_ctx, " }");
 		return;
 	}
@@ -19941,6 +25980,121 @@ static void _adbgNrSys__SQN_NR_HighSpeedConfig_r16_SQN_NR_ServingCellConfigCommo
 	_adbgNrSys__SQN_NR_HighSpeedConfig_r16(_ctx, &p->v);
 }
 
+static const char* adbgNrSys__SQN_NR_ServingCellConfigCommonSIB_channelAccessMode2_r17_e__ToString(SQN_NR_ServingCellConfigCommonSIB_channelAccessMode2_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_ServingCellConfigCommonSIB_channelAccessMode2_r17_e_enabled: return "SQN_NR_ServingCellConfigCommonSIB_channelAccessMode2_r17_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_ServingCellConfigCommonSIB_channelAccessMode2_r17_e_channelAccessMode2_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_ServingCellConfigCommonSIB_channelAccessMode2_r17_e_channelAccessMode2_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_ServingCellConfigCommonSIB_channelAccessMode2_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_ServingCellConfigCommonSIB_discoveryBurstWindowLength_v1700_e__ToString(SQN_NR_ServingCellConfigCommonSIB_discoveryBurstWindowLength_v1700_e v)
+{
+	switch(v) {
+		case SQN_NR_ServingCellConfigCommonSIB_discoveryBurstWindowLength_v1700_e_ms0dot125: return "SQN_NR_ServingCellConfigCommonSIB_discoveryBurstWindowLength_v1700_e_ms0dot125";
+		case SQN_NR_ServingCellConfigCommonSIB_discoveryBurstWindowLength_v1700_e_ms0dot25: return "SQN_NR_ServingCellConfigCommonSIB_discoveryBurstWindowLength_v1700_e_ms0dot25";
+		case SQN_NR_ServingCellConfigCommonSIB_discoveryBurstWindowLength_v1700_e_ms0dot5: return "SQN_NR_ServingCellConfigCommonSIB_discoveryBurstWindowLength_v1700_e_ms0dot5";
+		case SQN_NR_ServingCellConfigCommonSIB_discoveryBurstWindowLength_v1700_e_ms0dot75: return "SQN_NR_ServingCellConfigCommonSIB_discoveryBurstWindowLength_v1700_e_ms0dot75";
+		case SQN_NR_ServingCellConfigCommonSIB_discoveryBurstWindowLength_v1700_e_ms1: return "SQN_NR_ServingCellConfigCommonSIB_discoveryBurstWindowLength_v1700_e_ms1";
+		case SQN_NR_ServingCellConfigCommonSIB_discoveryBurstWindowLength_v1700_e_ms1dot25: return "SQN_NR_ServingCellConfigCommonSIB_discoveryBurstWindowLength_v1700_e_ms1dot25";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_ServingCellConfigCommonSIB_discoveryBurstWindowLength_v1700_e_discoveryBurstWindowLength_v1700_Optional(acpCtx_t _ctx, const struct SQN_NR_ServingCellConfigCommonSIB_discoveryBurstWindowLength_v1700_e_discoveryBurstWindowLength_v1700_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_ServingCellConfigCommonSIB_discoveryBurstWindowLength_v1700_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_HighSpeedConfigFR2_r17_highSpeedMeasFlagFR2_r17_e__ToString(SQN_NR_HighSpeedConfigFR2_r17_highSpeedMeasFlagFR2_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_HighSpeedConfigFR2_r17_highSpeedMeasFlagFR2_r17_e_set1: return "SQN_NR_HighSpeedConfigFR2_r17_highSpeedMeasFlagFR2_r17_e_set1";
+		case SQN_NR_HighSpeedConfigFR2_r17_highSpeedMeasFlagFR2_r17_e_set2: return "SQN_NR_HighSpeedConfigFR2_r17_highSpeedMeasFlagFR2_r17_e_set2";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_HighSpeedConfigFR2_r17_highSpeedMeasFlagFR2_r17_e_highSpeedMeasFlagFR2_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_HighSpeedConfigFR2_r17_highSpeedMeasFlagFR2_r17_e_highSpeedMeasFlagFR2_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_HighSpeedConfigFR2_r17_highSpeedMeasFlagFR2_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_HighSpeedConfigFR2_r17_highSpeedDeploymentTypeFR2_r17_e__ToString(SQN_NR_HighSpeedConfigFR2_r17_highSpeedDeploymentTypeFR2_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_HighSpeedConfigFR2_r17_highSpeedDeploymentTypeFR2_r17_e_unidirectional: return "SQN_NR_HighSpeedConfigFR2_r17_highSpeedDeploymentTypeFR2_r17_e_unidirectional";
+		case SQN_NR_HighSpeedConfigFR2_r17_highSpeedDeploymentTypeFR2_r17_e_bidirectional: return "SQN_NR_HighSpeedConfigFR2_r17_highSpeedDeploymentTypeFR2_r17_e_bidirectional";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_HighSpeedConfigFR2_r17_highSpeedDeploymentTypeFR2_r17_e_highSpeedDeploymentTypeFR2_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_HighSpeedConfigFR2_r17_highSpeedDeploymentTypeFR2_r17_e_highSpeedDeploymentTypeFR2_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_HighSpeedConfigFR2_r17_highSpeedDeploymentTypeFR2_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_HighSpeedConfigFR2_r17_highSpeedLargeOneStepUL_TimingFR2_r17_e__ToString(SQN_NR_HighSpeedConfigFR2_r17_highSpeedLargeOneStepUL_TimingFR2_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_HighSpeedConfigFR2_r17_highSpeedLargeOneStepUL_TimingFR2_r17_e_true: return "SQN_NR_HighSpeedConfigFR2_r17_highSpeedLargeOneStepUL_TimingFR2_r17_e_true";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_HighSpeedConfigFR2_r17_highSpeedLargeOneStepUL_TimingFR2_r17_e_highSpeedLargeOneStepUL_TimingFR2_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_HighSpeedConfigFR2_r17_highSpeedLargeOneStepUL_TimingFR2_r17_e_highSpeedLargeOneStepUL_TimingFR2_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_HighSpeedConfigFR2_r17_highSpeedLargeOneStepUL_TimingFR2_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_HighSpeedConfigFR2_r17(acpCtx_t _ctx, const struct SQN_NR_HighSpeedConfigFR2_r17* p)
+{
+	adbgPrintLog(_ctx, "highSpeedMeasFlagFR2_r17 := ");
+	_adbgNrSys__SQN_NR_HighSpeedConfigFR2_r17_highSpeedMeasFlagFR2_r17_e_highSpeedMeasFlagFR2_r17_Optional(_ctx, &p->highSpeedMeasFlagFR2_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "highSpeedDeploymentTypeFR2_r17 := ");
+	_adbgNrSys__SQN_NR_HighSpeedConfigFR2_r17_highSpeedDeploymentTypeFR2_r17_e_highSpeedDeploymentTypeFR2_r17_Optional(_ctx, &p->highSpeedDeploymentTypeFR2_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "highSpeedLargeOneStepUL_TimingFR2_r17 := ");
+	_adbgNrSys__SQN_NR_HighSpeedConfigFR2_r17_highSpeedLargeOneStepUL_TimingFR2_r17_e_highSpeedLargeOneStepUL_TimingFR2_r17_Optional(_ctx, &p->highSpeedLargeOneStepUL_TimingFR2_r17);
+}
+
+static void _adbgNrSys__SQN_NR_HighSpeedConfigFR2_r17_SQN_NR_ServingCellConfigCommonSIB_highSpeedConfigFR2_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_HighSpeedConfigFR2_r17_SQN_NR_ServingCellConfigCommonSIB_highSpeedConfigFR2_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_HighSpeedConfigFR2_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_BWP_UplinkCommon_SQN_NR_UplinkConfigCommonSIB_v1700_initialUplinkBWP_RedCap_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_BWP_UplinkCommon_SQN_NR_UplinkConfigCommonSIB_v1700_initialUplinkBWP_RedCap_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_BWP_UplinkCommon(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_UplinkConfigCommonSIB_v1700(acpCtx_t _ctx, const struct SQN_NR_UplinkConfigCommonSIB_v1700* p)
+{
+	adbgPrintLog(_ctx, "initialUplinkBWP_RedCap_r17 := ");
+	if (p->initialUplinkBWP_RedCap_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_BWP_UplinkCommon_SQN_NR_UplinkConfigCommonSIB_v1700_initialUplinkBWP_RedCap_r17_Optional(_ctx, &p->initialUplinkBWP_RedCap_r17);
+	if (p->initialUplinkBWP_RedCap_r17.d) { adbgPrintLog(_ctx, " }"); };
+}
+
+static void _adbgNrSys__SQN_NR_UplinkConfigCommonSIB_v1700_SQN_NR_ServingCellConfigCommonSIB_uplinkConfigCommon_v1700_Optional(acpCtx_t _ctx, const struct SQN_NR_UplinkConfigCommonSIB_v1700_SQN_NR_ServingCellConfigCommonSIB_uplinkConfigCommon_v1700_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_UplinkConfigCommonSIB_v1700(_ctx, &p->v);
+}
+
 static void _adbgNrSys__SQN_NR_ServingCellConfigCommonSIB(acpCtx_t _ctx, const struct SQN_NR_ServingCellConfigCommonSIB* p)
 {
 	adbgPrintLog(_ctx, "downlinkConfigCommon := { ");
@@ -19985,6 +26139,22 @@ static void _adbgNrSys__SQN_NR_ServingCellConfigCommonSIB(acpCtx_t _ctx, const s
 	if (p->highSpeedConfig_r16.d) { adbgPrintLog(_ctx, "{ "); };
 	_adbgNrSys__SQN_NR_HighSpeedConfig_r16_SQN_NR_ServingCellConfigCommonSIB_highSpeedConfig_r16_Optional(_ctx, &p->highSpeedConfig_r16);
 	if (p->highSpeedConfig_r16.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "channelAccessMode2_r17 := ");
+	_adbgNrSys__SQN_NR_ServingCellConfigCommonSIB_channelAccessMode2_r17_e_channelAccessMode2_r17_Optional(_ctx, &p->channelAccessMode2_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "discoveryBurstWindowLength_v1700 := ");
+	_adbgNrSys__SQN_NR_ServingCellConfigCommonSIB_discoveryBurstWindowLength_v1700_e_discoveryBurstWindowLength_v1700_Optional(_ctx, &p->discoveryBurstWindowLength_v1700);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "highSpeedConfigFR2_r17 := ");
+	if (p->highSpeedConfigFR2_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_HighSpeedConfigFR2_r17_SQN_NR_ServingCellConfigCommonSIB_highSpeedConfigFR2_r17_Optional(_ctx, &p->highSpeedConfigFR2_r17);
+	if (p->highSpeedConfigFR2_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "uplinkConfigCommon_v1700 := ");
+	if (p->uplinkConfigCommon_v1700.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_UplinkConfigCommonSIB_v1700_SQN_NR_ServingCellConfigCommonSIB_uplinkConfigCommon_v1700_Optional(_ctx, &p->uplinkConfigCommon_v1700);
+	if (p->uplinkConfigCommon_v1700.d) { adbgPrintLog(_ctx, " }"); };
 }
 
 static void _adbgNrSys__SQN_NR_ServingCellConfigCommonSIB_SQN_NR_SIB1_servingCellConfigCommon_Optional(acpCtx_t _ctx, const struct SQN_NR_ServingCellConfigCommonSIB_SQN_NR_SIB1_servingCellConfigCommon_Optional* p)
@@ -20599,6 +26769,12 @@ static void _adbgNrSys__SQN_NR_SI_RequestConfig_SQN_NR_PosSI_SchedulingInfo_r16_
 	_adbgNrSys__SQN_NR_SI_RequestConfig(_ctx, &p->v);
 }
 
+static void _adbgNrSys__SQN_NR_SI_RequestConfig_SQN_NR_PosSI_SchedulingInfo_r16_posSI_RequestConfigRedCap_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SI_RequestConfig_SQN_NR_PosSI_SchedulingInfo_r16_posSI_RequestConfigRedCap_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SI_RequestConfig(_ctx, &p->v);
+}
+
 static void _adbgNrSys__SQN_NR_PosSI_SchedulingInfo_r16(acpCtx_t _ctx, const struct SQN_NR_PosSI_SchedulingInfo_r16* p)
 {
 	adbgPrintLog(_ctx, "posSchedulingInfoList_r16 := { ");
@@ -20619,6 +26795,11 @@ static void _adbgNrSys__SQN_NR_PosSI_SchedulingInfo_r16(acpCtx_t _ctx, const str
 	if (p->posSI_RequestConfigSUL_r16.d) { adbgPrintLog(_ctx, "{ "); };
 	_adbgNrSys__SQN_NR_SI_RequestConfig_SQN_NR_PosSI_SchedulingInfo_r16_posSI_RequestConfigSUL_r16_Optional(_ctx, &p->posSI_RequestConfigSUL_r16);
 	if (p->posSI_RequestConfigSUL_r16.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "posSI_RequestConfigRedCap_r17 := ");
+	if (p->posSI_RequestConfigRedCap_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SI_RequestConfig_SQN_NR_PosSI_SchedulingInfo_r16_posSI_RequestConfigRedCap_r17_Optional(_ctx, &p->posSI_RequestConfigRedCap_r17);
+	if (p->posSI_RequestConfigRedCap_r17.d) { adbgPrintLog(_ctx, " }"); };
 }
 
 static void _adbgNrSys__SQN_NR_PosSI_SchedulingInfo_r16_SQN_NR_SIB1_v1610_IEs_posSI_SchedulingInfo_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_PosSI_SchedulingInfo_r16_SQN_NR_SIB1_v1610_IEs_posSI_SchedulingInfo_r16_Optional* p)
@@ -20627,16 +26808,666 @@ static void _adbgNrSys__SQN_NR_PosSI_SchedulingInfo_r16_SQN_NR_SIB1_v1610_IEs_po
 	_adbgNrSys__SQN_NR_PosSI_SchedulingInfo_r16(_ctx, &p->v);
 }
 
-static void _adbgNrSys__SQN_NR_SIB1_v1610_IEs_nonCriticalExtension(acpCtx_t _ctx, const struct SQN_NR_SIB1_v1610_IEs_nonCriticalExtension* p)
+static const char* adbgNrSys__SQN_NR_UAC_AC1_SelectAssistInfo_r16_e__ToString(SQN_NR_UAC_AC1_SelectAssistInfo_r16_e v)
+{
+	switch(v) {
+		case SQN_NR_UAC_AC1_SelectAssistInfo_r16_e_a: return "SQN_NR_UAC_AC1_SelectAssistInfo_r16_e_a";
+		case SQN_NR_UAC_AC1_SelectAssistInfo_r16_e_b: return "SQN_NR_UAC_AC1_SelectAssistInfo_r16_e_b";
+		case SQN_NR_UAC_AC1_SelectAssistInfo_r16_e_c: return "SQN_NR_UAC_AC1_SelectAssistInfo_r16_e_c";
+		case SQN_NR_UAC_AC1_SelectAssistInfo_r16_e_notConfigured: return "SQN_NR_UAC_AC1_SelectAssistInfo_r16_e_notConfigured";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SIB1_v1630_IEs_uac_BarringInfo_v1630(acpCtx_t _ctx, const struct SQN_NR_SIB1_v1630_IEs_uac_BarringInfo_v1630* p)
+{
+	adbgPrintLog(_ctx, "uac_AC1_SelectAssistInfo_r16 := { ");
+	for (size_t i1 = 0; i1 < p->uac_AC1_SelectAssistInfo_r16.d; i1++) {
+		adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_UAC_AC1_SelectAssistInfo_r16_e__ToString(p->uac_AC1_SelectAssistInfo_r16.v[i1]), (int)p->uac_AC1_SelectAssistInfo_r16.v[i1]);
+		if (i1 != p->uac_AC1_SelectAssistInfo_r16.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+	adbgPrintLog(_ctx, " }");
+}
+
+static void _adbgNrSys__SQN_NR_SIB1_v1630_IEs_uac_BarringInfo_v1630_uac_BarringInfo_v1630_Optional(acpCtx_t _ctx, const struct SQN_NR_SIB1_v1630_IEs_uac_BarringInfo_v1630_uac_BarringInfo_v1630_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SIB1_v1630_IEs_uac_BarringInfo_v1630(_ctx, &p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_SIB1_v1700_IEs_hsdn_Cell_r17_e__ToString(SQN_NR_SIB1_v1700_IEs_hsdn_Cell_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_SIB1_v1700_IEs_hsdn_Cell_r17_e_true: return "SQN_NR_SIB1_v1700_IEs_hsdn_Cell_r17_e_true";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SIB1_v1700_IEs_hsdn_Cell_r17_e_hsdn_Cell_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SIB1_v1700_IEs_hsdn_Cell_r17_e_hsdn_Cell_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SIB1_v1700_IEs_hsdn_Cell_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e__ToString(SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p00: return "SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p00";
+		case SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p05: return "SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p05";
+		case SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p10: return "SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p10";
+		case SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p15: return "SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p15";
+		case SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p20: return "SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p20";
+		case SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p25: return "SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p25";
+		case SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p30: return "SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p30";
+		case SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p40: return "SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p40";
+		case SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p50: return "SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p50";
+		case SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p60: return "SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p60";
+		case SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p70: return "SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p70";
+		case SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p75: return "SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p75";
+		case SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p80: return "SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p80";
+		case SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p85: return "SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p85";
+		case SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p90: return "SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p90";
+		case SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p95: return "SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p95";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_uac_BarringFactorForAI3_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_uac_BarringFactorForAI3_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_UAC_BarringInfoSet_v1700(acpCtx_t _ctx, const struct SQN_NR_UAC_BarringInfoSet_v1700* p)
+{
+	adbgPrintLog(_ctx, "uac_BarringFactorForAI3_r17 := ");
+	_adbgNrSys__SQN_NR_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_uac_BarringFactorForAI3_r17_Optional(_ctx, &p->uac_BarringFactorForAI3_r17);
+}
+
+static void _adbgNrSys__SQN_NR_SIB1_v1700_IEs_uac_BarringInfo_v1700(acpCtx_t _ctx, const struct SQN_NR_SIB1_v1700_IEs_uac_BarringInfo_v1700* p)
+{
+	adbgPrintLog(_ctx, "uac_BarringInfoSetList_v1700 := { ");
+	for (size_t i1 = 0; i1 < p->uac_BarringInfoSetList_v1700.d; i1++) {
+		adbgPrintLog(_ctx, "{ ");
+		_adbgNrSys__SQN_NR_UAC_BarringInfoSet_v1700(_ctx, &p->uac_BarringInfoSetList_v1700.v[i1]);
+		adbgPrintLog(_ctx, " }");
+		if (i1 != p->uac_BarringInfoSetList_v1700.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+	adbgPrintLog(_ctx, " }");
+}
+
+static void _adbgNrSys__SQN_NR_SIB1_v1700_IEs_uac_BarringInfo_v1700_uac_BarringInfo_v1700_Optional(acpCtx_t _ctx, const struct SQN_NR_SIB1_v1700_IEs_uac_BarringInfo_v1700_uac_BarringInfo_v1700_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SIB1_v1700_IEs_uac_BarringInfo_v1700(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_RSRP_Range_SQN_NR_SDT_ConfigCommonSIB_r17_sdt_RSRP_Threshold_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_RSRP_Range_SQN_NR_SDT_ConfigCommonSIB_r17_sdt_RSRP_Threshold_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_SDT_ConfigCommonSIB_r17_sdt_LogicalChannelSR_DelayTimer_r17_e__ToString(SQN_NR_SDT_ConfigCommonSIB_r17_sdt_LogicalChannelSR_DelayTimer_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_SDT_ConfigCommonSIB_r17_sdt_LogicalChannelSR_DelayTimer_r17_e_sf20: return "SQN_NR_SDT_ConfigCommonSIB_r17_sdt_LogicalChannelSR_DelayTimer_r17_e_sf20";
+		case SQN_NR_SDT_ConfigCommonSIB_r17_sdt_LogicalChannelSR_DelayTimer_r17_e_sf40: return "SQN_NR_SDT_ConfigCommonSIB_r17_sdt_LogicalChannelSR_DelayTimer_r17_e_sf40";
+		case SQN_NR_SDT_ConfigCommonSIB_r17_sdt_LogicalChannelSR_DelayTimer_r17_e_sf64: return "SQN_NR_SDT_ConfigCommonSIB_r17_sdt_LogicalChannelSR_DelayTimer_r17_e_sf64";
+		case SQN_NR_SDT_ConfigCommonSIB_r17_sdt_LogicalChannelSR_DelayTimer_r17_e_sf128: return "SQN_NR_SDT_ConfigCommonSIB_r17_sdt_LogicalChannelSR_DelayTimer_r17_e_sf128";
+		case SQN_NR_SDT_ConfigCommonSIB_r17_sdt_LogicalChannelSR_DelayTimer_r17_e_sf512: return "SQN_NR_SDT_ConfigCommonSIB_r17_sdt_LogicalChannelSR_DelayTimer_r17_e_sf512";
+		case SQN_NR_SDT_ConfigCommonSIB_r17_sdt_LogicalChannelSR_DelayTimer_r17_e_sf1024: return "SQN_NR_SDT_ConfigCommonSIB_r17_sdt_LogicalChannelSR_DelayTimer_r17_e_sf1024";
+		case SQN_NR_SDT_ConfigCommonSIB_r17_sdt_LogicalChannelSR_DelayTimer_r17_e_sf2560: return "SQN_NR_SDT_ConfigCommonSIB_r17_sdt_LogicalChannelSR_DelayTimer_r17_e_sf2560";
+		case SQN_NR_SDT_ConfigCommonSIB_r17_sdt_LogicalChannelSR_DelayTimer_r17_e_spare1: return "SQN_NR_SDT_ConfigCommonSIB_r17_sdt_LogicalChannelSR_DelayTimer_r17_e_spare1";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SDT_ConfigCommonSIB_r17_sdt_LogicalChannelSR_DelayTimer_r17_e_sdt_LogicalChannelSR_DelayTimer_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SDT_ConfigCommonSIB_r17_sdt_LogicalChannelSR_DelayTimer_r17_e_sdt_LogicalChannelSR_DelayTimer_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SDT_ConfigCommonSIB_r17_sdt_LogicalChannelSR_DelayTimer_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e__ToString(SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte32: return "SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte32";
+		case SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte100: return "SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte100";
+		case SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte200: return "SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte200";
+		case SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte400: return "SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte400";
+		case SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte600: return "SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte600";
+		case SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte800: return "SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte800";
+		case SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte1000: return "SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte1000";
+		case SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte2000: return "SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte2000";
+		case SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte4000: return "SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte4000";
+		case SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte8000: return "SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte8000";
+		case SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte9000: return "SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte9000";
+		case SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte10000: return "SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte10000";
+		case SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte12000: return "SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte12000";
+		case SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte24000: return "SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte24000";
+		case SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte48000: return "SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte48000";
+		case SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte96000: return "SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e_byte96000";
+		default: return "Unknown";
+	}
+}
+
+static const char* adbgNrSys__SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e__ToString(SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_ms100: return "SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_ms100";
+		case SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_ms200: return "SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_ms200";
+		case SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_ms300: return "SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_ms300";
+		case SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_ms400: return "SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_ms400";
+		case SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_ms600: return "SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_ms600";
+		case SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_ms1000: return "SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_ms1000";
+		case SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_ms2000: return "SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_ms2000";
+		case SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_ms3000: return "SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_ms3000";
+		case SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_ms4000: return "SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_ms4000";
+		case SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_spare7: return "SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_spare7";
+		case SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_spare6: return "SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_spare6";
+		case SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_spare5: return "SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_spare5";
+		case SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_spare4: return "SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_spare4";
+		case SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_spare3: return "SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_spare3";
+		case SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_spare2: return "SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_spare2";
+		case SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_spare1: return "SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e_spare1";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SDT_ConfigCommonSIB_r17(acpCtx_t _ctx, const struct SQN_NR_SDT_ConfigCommonSIB_r17* p)
+{
+	adbgPrintLog(_ctx, "sdt_RSRP_Threshold_r17 := ");
+	_adbgNrSys__SQN_NR_RSRP_Range_SQN_NR_SDT_ConfigCommonSIB_r17_sdt_RSRP_Threshold_r17_Optional(_ctx, &p->sdt_RSRP_Threshold_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "sdt_LogicalChannelSR_DelayTimer_r17 := ");
+	_adbgNrSys__SQN_NR_SDT_ConfigCommonSIB_r17_sdt_LogicalChannelSR_DelayTimer_r17_e_sdt_LogicalChannelSR_DelayTimer_r17_Optional(_ctx, &p->sdt_LogicalChannelSR_DelayTimer_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "sdt_DataVolumeThreshold_r17 := %s (%d)", adbgNrSys__SQN_NR_SDT_ConfigCommonSIB_r17_sdt_DataVolumeThreshold_r17_e__ToString(p->sdt_DataVolumeThreshold_r17), (int)p->sdt_DataVolumeThreshold_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "t319a_r17 := %s (%d)", adbgNrSys__SQN_NR_SDT_ConfigCommonSIB_r17_t319a_r17_e__ToString(p->t319a_r17), (int)p->t319a_r17);
+}
+
+static void _adbgNrSys__SQN_NR_SDT_ConfigCommonSIB_r17_SQN_NR_SIB1_v1700_IEs_sdt_ConfigCommon_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SDT_ConfigCommonSIB_r17_SQN_NR_SIB1_v1700_IEs_sdt_ConfigCommon_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SDT_ConfigCommonSIB_r17(_ctx, &p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_RedCap_ConfigCommonSIB_r17_halfDuplexRedCapAllowed_r17_e__ToString(SQN_NR_RedCap_ConfigCommonSIB_r17_halfDuplexRedCapAllowed_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_RedCap_ConfigCommonSIB_r17_halfDuplexRedCapAllowed_r17_e_true: return "SQN_NR_RedCap_ConfigCommonSIB_r17_halfDuplexRedCapAllowed_r17_e_true";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_RedCap_ConfigCommonSIB_r17_halfDuplexRedCapAllowed_r17_e_halfDuplexRedCapAllowed_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_RedCap_ConfigCommonSIB_r17_halfDuplexRedCapAllowed_r17_e_halfDuplexRedCapAllowed_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_RedCap_ConfigCommonSIB_r17_halfDuplexRedCapAllowed_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_RedCap_ConfigCommonSIB_r17_cellBarredRedCap_r17_cellBarredRedCap1Rx_r17_e__ToString(SQN_NR_RedCap_ConfigCommonSIB_r17_cellBarredRedCap_r17_cellBarredRedCap1Rx_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_RedCap_ConfigCommonSIB_r17_cellBarredRedCap_r17_cellBarredRedCap1Rx_r17_e_barred: return "SQN_NR_RedCap_ConfigCommonSIB_r17_cellBarredRedCap_r17_cellBarredRedCap1Rx_r17_e_barred";
+		case SQN_NR_RedCap_ConfigCommonSIB_r17_cellBarredRedCap_r17_cellBarredRedCap1Rx_r17_e_notBarred: return "SQN_NR_RedCap_ConfigCommonSIB_r17_cellBarredRedCap_r17_cellBarredRedCap1Rx_r17_e_notBarred";
+		default: return "Unknown";
+	}
+}
+
+static const char* adbgNrSys__SQN_NR_RedCap_ConfigCommonSIB_r17_cellBarredRedCap_r17_cellBarredRedCap2Rx_r17_e__ToString(SQN_NR_RedCap_ConfigCommonSIB_r17_cellBarredRedCap_r17_cellBarredRedCap2Rx_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_RedCap_ConfigCommonSIB_r17_cellBarredRedCap_r17_cellBarredRedCap2Rx_r17_e_barred: return "SQN_NR_RedCap_ConfigCommonSIB_r17_cellBarredRedCap_r17_cellBarredRedCap2Rx_r17_e_barred";
+		case SQN_NR_RedCap_ConfigCommonSIB_r17_cellBarredRedCap_r17_cellBarredRedCap2Rx_r17_e_notBarred: return "SQN_NR_RedCap_ConfigCommonSIB_r17_cellBarredRedCap_r17_cellBarredRedCap2Rx_r17_e_notBarred";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_RedCap_ConfigCommonSIB_r17_cellBarredRedCap_r17(acpCtx_t _ctx, const struct SQN_NR_RedCap_ConfigCommonSIB_r17_cellBarredRedCap_r17* p)
+{
+	adbgPrintLog(_ctx, "cellBarredRedCap1Rx_r17 := %s (%d)", adbgNrSys__SQN_NR_RedCap_ConfigCommonSIB_r17_cellBarredRedCap_r17_cellBarredRedCap1Rx_r17_e__ToString(p->cellBarredRedCap1Rx_r17), (int)p->cellBarredRedCap1Rx_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "cellBarredRedCap2Rx_r17 := %s (%d)", adbgNrSys__SQN_NR_RedCap_ConfigCommonSIB_r17_cellBarredRedCap_r17_cellBarredRedCap2Rx_r17_e__ToString(p->cellBarredRedCap2Rx_r17), (int)p->cellBarredRedCap2Rx_r17);
+}
+
+static void _adbgNrSys__SQN_NR_RedCap_ConfigCommonSIB_r17_cellBarredRedCap_r17_cellBarredRedCap_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_RedCap_ConfigCommonSIB_r17_cellBarredRedCap_r17_cellBarredRedCap_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_RedCap_ConfigCommonSIB_r17_cellBarredRedCap_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_RedCap_ConfigCommonSIB_r17(acpCtx_t _ctx, const struct SQN_NR_RedCap_ConfigCommonSIB_r17* p)
+{
+	adbgPrintLog(_ctx, "halfDuplexRedCapAllowed_r17 := ");
+	_adbgNrSys__SQN_NR_RedCap_ConfigCommonSIB_r17_halfDuplexRedCapAllowed_r17_e_halfDuplexRedCapAllowed_r17_Optional(_ctx, &p->halfDuplexRedCapAllowed_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "cellBarredRedCap_r17 := ");
+	if (p->cellBarredRedCap_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_RedCap_ConfigCommonSIB_r17_cellBarredRedCap_r17_cellBarredRedCap_r17_Optional(_ctx, &p->cellBarredRedCap_r17);
+	if (p->cellBarredRedCap_r17.d) { adbgPrintLog(_ctx, " }"); };
+}
+
+static void _adbgNrSys__SQN_NR_RedCap_ConfigCommonSIB_r17_SQN_NR_SIB1_v1700_IEs_redCap_ConfigCommon_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_RedCap_ConfigCommonSIB_r17_SQN_NR_SIB1_v1700_IEs_redCap_ConfigCommon_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_RedCap_ConfigCommonSIB_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_FeaturePriority_r17_SQN_NR_SIB1_v1700_IEs_featurePriorities_r17_redCapPriority_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_FeaturePriority_r17_SQN_NR_SIB1_v1700_IEs_featurePriorities_r17_redCapPriority_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_FeaturePriority_r17_SQN_NR_SIB1_v1700_IEs_featurePriorities_r17_slicingPriority_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_FeaturePriority_r17_SQN_NR_SIB1_v1700_IEs_featurePriorities_r17_slicingPriority_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_FeaturePriority_r17_SQN_NR_SIB1_v1700_IEs_featurePriorities_r17_msg3_Repetitions_Priority_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_FeaturePriority_r17_SQN_NR_SIB1_v1700_IEs_featurePriorities_r17_msg3_Repetitions_Priority_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_FeaturePriority_r17_SQN_NR_SIB1_v1700_IEs_featurePriorities_r17_sdt_Priority_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_FeaturePriority_r17_SQN_NR_SIB1_v1700_IEs_featurePriorities_r17_sdt_Priority_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SIB1_v1700_IEs_featurePriorities_r17(acpCtx_t _ctx, const struct SQN_NR_SIB1_v1700_IEs_featurePriorities_r17* p)
+{
+	adbgPrintLog(_ctx, "redCapPriority_r17 := ");
+	_adbgNrSys__SQN_NR_FeaturePriority_r17_SQN_NR_SIB1_v1700_IEs_featurePriorities_r17_redCapPriority_r17_Optional(_ctx, &p->redCapPriority_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "slicingPriority_r17 := ");
+	_adbgNrSys__SQN_NR_FeaturePriority_r17_SQN_NR_SIB1_v1700_IEs_featurePriorities_r17_slicingPriority_r17_Optional(_ctx, &p->slicingPriority_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "msg3_Repetitions_Priority_r17 := ");
+	_adbgNrSys__SQN_NR_FeaturePriority_r17_SQN_NR_SIB1_v1700_IEs_featurePriorities_r17_msg3_Repetitions_Priority_r17_Optional(_ctx, &p->msg3_Repetitions_Priority_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "sdt_Priority_r17 := ");
+	_adbgNrSys__SQN_NR_FeaturePriority_r17_SQN_NR_SIB1_v1700_IEs_featurePriorities_r17_sdt_Priority_r17_Optional(_ctx, &p->sdt_Priority_r17);
+}
+
+static void _adbgNrSys__SQN_NR_SIB1_v1700_IEs_featurePriorities_r17_featurePriorities_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SIB1_v1700_IEs_featurePriorities_r17_featurePriorities_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SIB1_v1700_IEs_featurePriorities_r17(_ctx, &p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_SchedulingInfo2_r17_si_BroadcastStatus_r17_e__ToString(SQN_NR_SchedulingInfo2_r17_si_BroadcastStatus_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_SchedulingInfo2_r17_si_BroadcastStatus_r17_e_broadcasting: return "SQN_NR_SchedulingInfo2_r17_si_BroadcastStatus_r17_e_broadcasting";
+		case SQN_NR_SchedulingInfo2_r17_si_BroadcastStatus_r17_e_notBroadcasting: return "SQN_NR_SchedulingInfo2_r17_si_BroadcastStatus_r17_e_notBroadcasting";
+		default: return "Unknown";
+	}
+}
+
+static const char* adbgNrSys__SQN_NR_SchedulingInfo2_r17_si_Periodicity_r17_e__ToString(SQN_NR_SchedulingInfo2_r17_si_Periodicity_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_SchedulingInfo2_r17_si_Periodicity_r17_e_rf8: return "SQN_NR_SchedulingInfo2_r17_si_Periodicity_r17_e_rf8";
+		case SQN_NR_SchedulingInfo2_r17_si_Periodicity_r17_e_rf16: return "SQN_NR_SchedulingInfo2_r17_si_Periodicity_r17_e_rf16";
+		case SQN_NR_SchedulingInfo2_r17_si_Periodicity_r17_e_rf32: return "SQN_NR_SchedulingInfo2_r17_si_Periodicity_r17_e_rf32";
+		case SQN_NR_SchedulingInfo2_r17_si_Periodicity_r17_e_rf64: return "SQN_NR_SchedulingInfo2_r17_si_Periodicity_r17_e_rf64";
+		case SQN_NR_SchedulingInfo2_r17_si_Periodicity_r17_e_rf128: return "SQN_NR_SchedulingInfo2_r17_si_Periodicity_r17_e_rf128";
+		case SQN_NR_SchedulingInfo2_r17_si_Periodicity_r17_e_rf256: return "SQN_NR_SchedulingInfo2_r17_si_Periodicity_r17_e_rf256";
+		case SQN_NR_SchedulingInfo2_r17_si_Periodicity_r17_e_rf512: return "SQN_NR_SchedulingInfo2_r17_si_Periodicity_r17_e_rf512";
+		default: return "Unknown";
+	}
+}
+
+static const char* adbgNrSys__SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e__ToString(SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_sibType15: return "SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_sibType15";
+		case SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_sibType16: return "SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_sibType16";
+		case SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_sibType17: return "SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_sibType17";
+		case SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_sibType18: return "SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_sibType18";
+		case SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_sibType19: return "SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_sibType19";
+		case SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_sibType20: return "SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_sibType20";
+		case SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_sibType21: return "SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_sibType21";
+		case SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_spare9: return "SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_spare9";
+		case SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_spare8: return "SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_spare8";
+		case SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_spare7: return "SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_spare7";
+		case SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_spare6: return "SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_spare6";
+		case SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_spare5: return "SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_spare5";
+		case SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_spare4: return "SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_spare4";
+		case SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_spare3: return "SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_spare3";
+		case SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_spare2: return "SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_spare2";
+		case SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_spare1: return "SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e_spare1";
+		default: return "Unknown";
+	}
+}
+
+static const char* adbgNrSys__SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e__ToString(SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_posSibType1_9: return "SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_posSibType1_9";
+		case SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_posSibType1_10: return "SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_posSibType1_10";
+		case SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_posSibType2_24: return "SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_posSibType2_24";
+		case SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_posSibType2_25: return "SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_posSibType2_25";
+		case SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_posSibType6_4: return "SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_posSibType6_4";
+		case SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_posSibType6_5: return "SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_posSibType6_5";
+		case SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_posSibType6_6: return "SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_posSibType6_6";
+		case SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_spare9: return "SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_spare9";
+		case SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_spare8: return "SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_spare8";
+		case SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_spare7: return "SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_spare7";
+		case SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_spare6: return "SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_spare6";
+		case SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_spare5: return "SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_spare5";
+		case SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_spare4: return "SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_spare4";
+		case SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_spare3: return "SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_spare3";
+		case SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_spare2: return "SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_spare2";
+		case SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_spare1: return "SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e_spare1";
+		default: return "Unknown";
+	}
+}
+
+static const char* adbgNrSys__SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_encrypted_r17_e__ToString(SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_encrypted_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_encrypted_r17_e_true: return "SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_encrypted_r17_e_true";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_encrypted_r17_e_encrypted_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_encrypted_r17_e_encrypted_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_encrypted_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_GNSS_ID_r16_SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_gnss_id_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_GNSS_ID_r16_SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_gnss_id_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_GNSS_ID_r16(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SBAS_ID_r16_SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_sbas_id_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SBAS_ID_r16_SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_sbas_id_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SBAS_ID_r16(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17(acpCtx_t _ctx, const struct SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17* p)
+{
+	adbgPrintLog(_ctx, "posSibType_r17 := %s (%d)", adbgNrSys__SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_posSibType_r17_e__ToString(p->posSibType_r17), (int)p->posSibType_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "encrypted_r17 := ");
+	_adbgNrSys__SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_encrypted_r17_e_encrypted_r17_Optional(_ctx, &p->encrypted_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "gnss_id_r17 := ");
+	if (p->gnss_id_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_GNSS_ID_r16_SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_gnss_id_r17_Optional(_ctx, &p->gnss_id_r17);
+	if (p->gnss_id_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "sbas_id_r17 := ");
+	if (p->sbas_id_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SBAS_ID_r16_SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17_sbas_id_r17_Optional(_ctx, &p->sbas_id_r17);
+	if (p->sbas_id_r17.d) { adbgPrintLog(_ctx, " }"); };
+}
+
+static void _adbgNrSys__SQN_NR_SIB_TypeInfo_v1700_sibType_r17_Value(acpCtx_t _ctx, const union SQN_NR_SIB_TypeInfo_v1700_sibType_r17_Value* p, enum SQN_NR_SIB_TypeInfo_v1700_sibType_r17_Sel d)
+{
+	if (d == SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17) {
+		adbgPrintLog(_ctx, "type1_r17 := %s (%d)", adbgNrSys__SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type1_r17_e__ToString(p->type1_r17), (int)p->type1_r17);
+		return;
+	}
+	if (d == SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17) {
+		adbgPrintLog(_ctx, "type2_r17 := { ");
+		_adbgNrSys__SQN_NR_SIB_TypeInfo_v1700_sibType_r17_type2_r17(_ctx, &p->type2_r17);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SIB_TypeInfo_v1700_sibType_r17(acpCtx_t _ctx, const struct SQN_NR_SIB_TypeInfo_v1700_sibType_r17* p)
+{
+	_adbgNrSys__SQN_NR_SIB_TypeInfo_v1700_sibType_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__Uint8_t_SQN_NR_SIB_TypeInfo_v1700_valueTag_r17_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_SIB_TypeInfo_v1700_valueTag_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_SIB_TypeInfo_v1700_areaScope_r17_e__ToString(SQN_NR_SIB_TypeInfo_v1700_areaScope_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_SIB_TypeInfo_v1700_areaScope_r17_e_true: return "SQN_NR_SIB_TypeInfo_v1700_areaScope_r17_e_true";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SIB_TypeInfo_v1700_areaScope_r17_e_areaScope_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SIB_TypeInfo_v1700_areaScope_r17_e_areaScope_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SIB_TypeInfo_v1700_areaScope_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SIB_TypeInfo_v1700(acpCtx_t _ctx, const struct SQN_NR_SIB_TypeInfo_v1700* p)
+{
+	adbgPrintLog(_ctx, "sibType_r17 := { ");
+	_adbgNrSys__SQN_NR_SIB_TypeInfo_v1700_sibType_r17(_ctx, &p->sibType_r17);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "valueTag_r17 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_SIB_TypeInfo_v1700_valueTag_r17_Optional(_ctx, &p->valueTag_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "areaScope_r17 := ");
+	_adbgNrSys__SQN_NR_SIB_TypeInfo_v1700_areaScope_r17_e_areaScope_r17_Optional(_ctx, &p->areaScope_r17);
+}
+
+static void _adbgNrSys__SQN_NR_SchedulingInfo2_r17(acpCtx_t _ctx, const struct SQN_NR_SchedulingInfo2_r17* p)
+{
+	adbgPrintLog(_ctx, "si_BroadcastStatus_r17 := %s (%d)", adbgNrSys__SQN_NR_SchedulingInfo2_r17_si_BroadcastStatus_r17_e__ToString(p->si_BroadcastStatus_r17), (int)p->si_BroadcastStatus_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "si_WindowPosition_r17 := %u", (unsigned int)p->si_WindowPosition_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "si_Periodicity_r17 := %s (%d)", adbgNrSys__SQN_NR_SchedulingInfo2_r17_si_Periodicity_r17_e__ToString(p->si_Periodicity_r17), (int)p->si_Periodicity_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "sib_MappingInfo_r17 := { ");
+	for (size_t i2 = 0; i2 < p->sib_MappingInfo_r17.d; i2++) {
+		adbgPrintLog(_ctx, "{ ");
+		_adbgNrSys__SQN_NR_SIB_TypeInfo_v1700(_ctx, &p->sib_MappingInfo_r17.v[i2]);
+		adbgPrintLog(_ctx, " }");
+		if (i2 != p->sib_MappingInfo_r17.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+	adbgPrintLog(_ctx, " }");
+}
+
+static void _adbgNrSys__SQN_NR_SI_RequestConfig_SQN_NR_SI_SchedulingInfo_v1700_si_RequestConfigRedCap_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SI_RequestConfig_SQN_NR_SI_SchedulingInfo_v1700_si_RequestConfigRedCap_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SI_RequestConfig(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SI_SchedulingInfo_v1700(acpCtx_t _ctx, const struct SQN_NR_SI_SchedulingInfo_v1700* p)
+{
+	adbgPrintLog(_ctx, "schedulingInfoList2_r17 := { ");
+	for (size_t i1 = 0; i1 < p->schedulingInfoList2_r17.d; i1++) {
+		adbgPrintLog(_ctx, "{ ");
+		_adbgNrSys__SQN_NR_SchedulingInfo2_r17(_ctx, &p->schedulingInfoList2_r17.v[i1]);
+		adbgPrintLog(_ctx, " }");
+		if (i1 != p->schedulingInfoList2_r17.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "si_RequestConfigRedCap_r17 := ");
+	if (p->si_RequestConfigRedCap_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SI_RequestConfig_SQN_NR_SI_SchedulingInfo_v1700_si_RequestConfigRedCap_r17_Optional(_ctx, &p->si_RequestConfigRedCap_r17);
+	if (p->si_RequestConfigRedCap_r17.d) { adbgPrintLog(_ctx, " }"); };
+}
+
+static void _adbgNrSys__SQN_NR_SI_SchedulingInfo_v1700_SQN_NR_SIB1_v1700_IEs_si_SchedulingInfo_v1700_Optional(acpCtx_t _ctx, const struct SQN_NR_SI_SchedulingInfo_v1700_SQN_NR_SIB1_v1700_IEs_si_SchedulingInfo_v1700_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SI_SchedulingInfo_v1700(_ctx, &p->v);
+}
+
+static void _adbgNrSys__B10_SQN_NR_SIB1_v1700_IEs_hyperSFN_r17_Optional(acpCtx_t _ctx, const struct B10_SQN_NR_SIB1_v1700_IEs_hyperSFN_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "'");
+	for (size_t i1 = 0; i1 < 10; i1++) {
+		adbgPrintLog(_ctx, "%02X", p->v[i1]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static const char* adbgNrSys__SQN_NR_SIB1_v1700_IEs_eDRX_AllowedIdle_r17_e__ToString(SQN_NR_SIB1_v1700_IEs_eDRX_AllowedIdle_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_SIB1_v1700_IEs_eDRX_AllowedIdle_r17_e_true: return "SQN_NR_SIB1_v1700_IEs_eDRX_AllowedIdle_r17_e_true";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SIB1_v1700_IEs_eDRX_AllowedIdle_r17_e_eDRX_AllowedIdle_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SIB1_v1700_IEs_eDRX_AllowedIdle_r17_e_eDRX_AllowedIdle_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SIB1_v1700_IEs_eDRX_AllowedIdle_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_SIB1_v1700_IEs_eDRX_AllowedInactive_r17_e__ToString(SQN_NR_SIB1_v1700_IEs_eDRX_AllowedInactive_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_SIB1_v1700_IEs_eDRX_AllowedInactive_r17_e_true: return "SQN_NR_SIB1_v1700_IEs_eDRX_AllowedInactive_r17_e_true";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SIB1_v1700_IEs_eDRX_AllowedInactive_r17_e_eDRX_AllowedInactive_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SIB1_v1700_IEs_eDRX_AllowedInactive_r17_e_eDRX_AllowedInactive_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SIB1_v1700_IEs_eDRX_AllowedInactive_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_SIB1_v1700_IEs_intraFreqReselectionRedCap_r17_e__ToString(SQN_NR_SIB1_v1700_IEs_intraFreqReselectionRedCap_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_SIB1_v1700_IEs_intraFreqReselectionRedCap_r17_e_allowed: return "SQN_NR_SIB1_v1700_IEs_intraFreqReselectionRedCap_r17_e_allowed";
+		case SQN_NR_SIB1_v1700_IEs_intraFreqReselectionRedCap_r17_e_notAllowed: return "SQN_NR_SIB1_v1700_IEs_intraFreqReselectionRedCap_r17_e_notAllowed";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SIB1_v1700_IEs_intraFreqReselectionRedCap_r17_e_intraFreqReselectionRedCap_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SIB1_v1700_IEs_intraFreqReselectionRedCap_r17_e_intraFreqReselectionRedCap_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SIB1_v1700_IEs_intraFreqReselectionRedCap_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_SIB1_v1700_IEs_cellBarredNTN_r17_e__ToString(SQN_NR_SIB1_v1700_IEs_cellBarredNTN_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_SIB1_v1700_IEs_cellBarredNTN_r17_e_barred: return "SQN_NR_SIB1_v1700_IEs_cellBarredNTN_r17_e_barred";
+		case SQN_NR_SIB1_v1700_IEs_cellBarredNTN_r17_e_notBarred: return "SQN_NR_SIB1_v1700_IEs_cellBarredNTN_r17_e_notBarred";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SIB1_v1700_IEs_cellBarredNTN_r17_e_cellBarredNTN_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SIB1_v1700_IEs_cellBarredNTN_r17_e_cellBarredNTN_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SIB1_v1700_IEs_cellBarredNTN_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SIB1_v1700_IEs_nonCriticalExtension(acpCtx_t _ctx, const struct SQN_NR_SIB1_v1700_IEs_nonCriticalExtension* p)
 {
 	(void)_ctx;
 	(void)p;
 }
 
-static void _adbgNrSys__SQN_NR_SIB1_v1610_IEs_nonCriticalExtension_nonCriticalExtension_Optional(acpCtx_t _ctx, const struct SQN_NR_SIB1_v1610_IEs_nonCriticalExtension_nonCriticalExtension_Optional* p)
+static void _adbgNrSys__SQN_NR_SIB1_v1700_IEs_nonCriticalExtension_nonCriticalExtension_Optional(acpCtx_t _ctx, const struct SQN_NR_SIB1_v1700_IEs_nonCriticalExtension_nonCriticalExtension_Optional* p)
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	_adbgNrSys__SQN_NR_SIB1_v1610_IEs_nonCriticalExtension(_ctx, &p->v);
+	_adbgNrSys__SQN_NR_SIB1_v1700_IEs_nonCriticalExtension(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SIB1_v1700_IEs(acpCtx_t _ctx, const struct SQN_NR_SIB1_v1700_IEs* p)
+{
+	adbgPrintLog(_ctx, "hsdn_Cell_r17 := ");
+	_adbgNrSys__SQN_NR_SIB1_v1700_IEs_hsdn_Cell_r17_e_hsdn_Cell_r17_Optional(_ctx, &p->hsdn_Cell_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "uac_BarringInfo_v1700 := ");
+	if (p->uac_BarringInfo_v1700.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SIB1_v1700_IEs_uac_BarringInfo_v1700_uac_BarringInfo_v1700_Optional(_ctx, &p->uac_BarringInfo_v1700);
+	if (p->uac_BarringInfo_v1700.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "sdt_ConfigCommon_r17 := ");
+	if (p->sdt_ConfigCommon_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SDT_ConfigCommonSIB_r17_SQN_NR_SIB1_v1700_IEs_sdt_ConfigCommon_r17_Optional(_ctx, &p->sdt_ConfigCommon_r17);
+	if (p->sdt_ConfigCommon_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "redCap_ConfigCommon_r17 := ");
+	if (p->redCap_ConfigCommon_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_RedCap_ConfigCommonSIB_r17_SQN_NR_SIB1_v1700_IEs_redCap_ConfigCommon_r17_Optional(_ctx, &p->redCap_ConfigCommon_r17);
+	if (p->redCap_ConfigCommon_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "featurePriorities_r17 := ");
+	if (p->featurePriorities_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SIB1_v1700_IEs_featurePriorities_r17_featurePriorities_r17_Optional(_ctx, &p->featurePriorities_r17);
+	if (p->featurePriorities_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "si_SchedulingInfo_v1700 := ");
+	if (p->si_SchedulingInfo_v1700.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SI_SchedulingInfo_v1700_SQN_NR_SIB1_v1700_IEs_si_SchedulingInfo_v1700_Optional(_ctx, &p->si_SchedulingInfo_v1700);
+	if (p->si_SchedulingInfo_v1700.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "hyperSFN_r17 := ");
+	_adbgNrSys__B10_SQN_NR_SIB1_v1700_IEs_hyperSFN_r17_Optional(_ctx, &p->hyperSFN_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "eDRX_AllowedIdle_r17 := ");
+	_adbgNrSys__SQN_NR_SIB1_v1700_IEs_eDRX_AllowedIdle_r17_e_eDRX_AllowedIdle_r17_Optional(_ctx, &p->eDRX_AllowedIdle_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "eDRX_AllowedInactive_r17 := ");
+	_adbgNrSys__SQN_NR_SIB1_v1700_IEs_eDRX_AllowedInactive_r17_e_eDRX_AllowedInactive_r17_Optional(_ctx, &p->eDRX_AllowedInactive_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "intraFreqReselectionRedCap_r17 := ");
+	_adbgNrSys__SQN_NR_SIB1_v1700_IEs_intraFreqReselectionRedCap_r17_e_intraFreqReselectionRedCap_r17_Optional(_ctx, &p->intraFreqReselectionRedCap_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "cellBarredNTN_r17 := ");
+	_adbgNrSys__SQN_NR_SIB1_v1700_IEs_cellBarredNTN_r17_e_cellBarredNTN_r17_Optional(_ctx, &p->cellBarredNTN_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "nonCriticalExtension := ");
+	if (p->nonCriticalExtension.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SIB1_v1700_IEs_nonCriticalExtension_nonCriticalExtension_Optional(_ctx, &p->nonCriticalExtension);
+	if (p->nonCriticalExtension.d) { adbgPrintLog(_ctx, " }"); };
+}
+
+static void _adbgNrSys__SQN_NR_SIB1_v1700_IEs_SQN_NR_SIB1_v1630_IEs_nonCriticalExtension_Optional(acpCtx_t _ctx, const struct SQN_NR_SIB1_v1700_IEs_SQN_NR_SIB1_v1630_IEs_nonCriticalExtension_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SIB1_v1700_IEs(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SIB1_v1630_IEs(acpCtx_t _ctx, const struct SQN_NR_SIB1_v1630_IEs* p)
+{
+	adbgPrintLog(_ctx, "uac_BarringInfo_v1630 := ");
+	if (p->uac_BarringInfo_v1630.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SIB1_v1630_IEs_uac_BarringInfo_v1630_uac_BarringInfo_v1630_Optional(_ctx, &p->uac_BarringInfo_v1630);
+	if (p->uac_BarringInfo_v1630.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "nonCriticalExtension := ");
+	if (p->nonCriticalExtension.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SIB1_v1700_IEs_SQN_NR_SIB1_v1630_IEs_nonCriticalExtension_Optional(_ctx, &p->nonCriticalExtension);
+	if (p->nonCriticalExtension.d) { adbgPrintLog(_ctx, " }"); };
+}
+
+static void _adbgNrSys__SQN_NR_SIB1_v1630_IEs_SQN_NR_SIB1_v1610_IEs_nonCriticalExtension_Optional(acpCtx_t _ctx, const struct SQN_NR_SIB1_v1630_IEs_SQN_NR_SIB1_v1610_IEs_nonCriticalExtension_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SIB1_v1630_IEs(_ctx, &p->v);
 }
 
 static void _adbgNrSys__SQN_NR_SIB1_v1610_IEs(acpCtx_t _ctx, const struct SQN_NR_SIB1_v1610_IEs* p)
@@ -20654,7 +27485,7 @@ static void _adbgNrSys__SQN_NR_SIB1_v1610_IEs(acpCtx_t _ctx, const struct SQN_NR
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "nonCriticalExtension := ");
 	if (p->nonCriticalExtension.d) { adbgPrintLog(_ctx, "{ "); };
-	_adbgNrSys__SQN_NR_SIB1_v1610_IEs_nonCriticalExtension_nonCriticalExtension_Optional(_ctx, &p->nonCriticalExtension);
+	_adbgNrSys__SQN_NR_SIB1_v1630_IEs_SQN_NR_SIB1_v1610_IEs_nonCriticalExtension_Optional(_ctx, &p->nonCriticalExtension);
 	if (p->nonCriticalExtension.d) { adbgPrintLog(_ctx, " }"); };
 }
 
@@ -20808,6 +27639,42 @@ static void _adbgNrSys__NR_SegmentedSI_List_Type_SegmentedSIs_Optional(acpCtx_t 
 	}
 }
 
+static void _adbgNrSys__NR_PosSI_Type_Value(acpCtx_t _ctx, const union NR_PosSI_Type_Value* p, enum NR_PosSI_Type_Sel d)
+{
+	if (d == NR_PosSI_Type_PosSI) {
+		adbgPrintLog(_ctx, "PosSI := { ");
+		_adbgNrSys__SQN_NR_BCCH_DL_SCH_Message(_ctx, &p->PosSI);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == NR_PosSI_Type_SegmentedPosSIs) {
+		adbgPrintLog(_ctx, "SegmentedPosSIs := { ");
+		for (size_t i2 = 0; i2 < p->SegmentedPosSIs.d; i2++) {
+			adbgPrintLog(_ctx, "{ ");
+			_adbgNrSys__SQN_NR_BCCH_DL_SCH_Message(_ctx, &p->SegmentedPosSIs.v[i2]);
+			adbgPrintLog(_ctx, " }");
+			if (i2 != p->SegmentedPosSIs.d - 1) { adbgPrintLog(_ctx, ", "); }
+		}
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__NR_PosSI_Type(acpCtx_t _ctx, const struct NR_PosSI_Type* p)
+{
+	_adbgNrSys__NR_PosSI_Type_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__NR_PosSI_List_Type_PosSIs_Optional(acpCtx_t _ctx, const struct NR_PosSI_List_Type_PosSIs_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i1 = 0; i1 < p->v.d; i1++) {
+		_adbgNrSys__NR_PosSI_Type(_ctx, &p->v.v[i1]);
+		if (i1 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
 static void _adbgNrSys__NR_BcchInfo_Type(acpCtx_t _ctx, const struct NR_BcchInfo_Type* p)
 {
 	adbgPrintLog(_ctx, "MIB := ");
@@ -20829,6 +27696,11 @@ static void _adbgNrSys__NR_BcchInfo_Type(acpCtx_t _ctx, const struct NR_BcchInfo
 	if (p->SegmentedSIs.d) { adbgPrintLog(_ctx, "{ "); };
 	_adbgNrSys__NR_SegmentedSI_List_Type_SegmentedSIs_Optional(_ctx, &p->SegmentedSIs);
 	if (p->SegmentedSIs.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "PosSIs := ");
+	if (p->PosSIs.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__NR_PosSI_List_Type_PosSIs_Optional(_ctx, &p->PosSIs);
+	if (p->PosSIs.d) { adbgPrintLog(_ctx, " }"); };
 }
 
 static void _adbgNrSys__NR_BcchInfo_Type_BcchInfo_Optional(acpCtx_t _ctx, const struct NR_BcchInfo_Type_BcchInfo_Optional* p)
@@ -22784,6 +29656,280 @@ static void _adbgNrSys__SQN_NR_SetupRelease_MeasGapConfig_gapUE_SQN_NR_MeasGapCo
 	_adbgNrSys__SQN_NR_SetupRelease_MeasGapConfig_gapUE(_ctx, &p->v);
 }
 
+static const char* adbgNrSys__SQN_NR_GapConfig_r17_gapType_r17_e__ToString(SQN_NR_GapConfig_r17_gapType_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_GapConfig_r17_gapType_r17_e_perUE: return "SQN_NR_GapConfig_r17_gapType_r17_e_perUE";
+		case SQN_NR_GapConfig_r17_gapType_r17_e_perFR1: return "SQN_NR_GapConfig_r17_gapType_r17_e_perFR1";
+		case SQN_NR_GapConfig_r17_gapType_r17_e_perFR2: return "SQN_NR_GapConfig_r17_gapType_r17_e_perFR2";
+		default: return "Unknown";
+	}
+}
+
+static const char* adbgNrSys__SQN_NR_GapConfig_r17_mgl_r17_e__ToString(SQN_NR_GapConfig_r17_mgl_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_GapConfig_r17_mgl_r17_e_ms1: return "SQN_NR_GapConfig_r17_mgl_r17_e_ms1";
+		case SQN_NR_GapConfig_r17_mgl_r17_e_ms1dot5: return "SQN_NR_GapConfig_r17_mgl_r17_e_ms1dot5";
+		case SQN_NR_GapConfig_r17_mgl_r17_e_ms2: return "SQN_NR_GapConfig_r17_mgl_r17_e_ms2";
+		case SQN_NR_GapConfig_r17_mgl_r17_e_ms3: return "SQN_NR_GapConfig_r17_mgl_r17_e_ms3";
+		case SQN_NR_GapConfig_r17_mgl_r17_e_ms3dot5: return "SQN_NR_GapConfig_r17_mgl_r17_e_ms3dot5";
+		case SQN_NR_GapConfig_r17_mgl_r17_e_ms4: return "SQN_NR_GapConfig_r17_mgl_r17_e_ms4";
+		case SQN_NR_GapConfig_r17_mgl_r17_e_ms5: return "SQN_NR_GapConfig_r17_mgl_r17_e_ms5";
+		case SQN_NR_GapConfig_r17_mgl_r17_e_ms5dot5: return "SQN_NR_GapConfig_r17_mgl_r17_e_ms5dot5";
+		case SQN_NR_GapConfig_r17_mgl_r17_e_ms6: return "SQN_NR_GapConfig_r17_mgl_r17_e_ms6";
+		case SQN_NR_GapConfig_r17_mgl_r17_e_ms10: return "SQN_NR_GapConfig_r17_mgl_r17_e_ms10";
+		case SQN_NR_GapConfig_r17_mgl_r17_e_ms20: return "SQN_NR_GapConfig_r17_mgl_r17_e_ms20";
+		default: return "Unknown";
+	}
+}
+
+static const char* adbgNrSys__SQN_NR_GapConfig_r17_mgrp_r17_e__ToString(SQN_NR_GapConfig_r17_mgrp_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_GapConfig_r17_mgrp_r17_e_ms20: return "SQN_NR_GapConfig_r17_mgrp_r17_e_ms20";
+		case SQN_NR_GapConfig_r17_mgrp_r17_e_ms40: return "SQN_NR_GapConfig_r17_mgrp_r17_e_ms40";
+		case SQN_NR_GapConfig_r17_mgrp_r17_e_ms80: return "SQN_NR_GapConfig_r17_mgrp_r17_e_ms80";
+		case SQN_NR_GapConfig_r17_mgrp_r17_e_ms160: return "SQN_NR_GapConfig_r17_mgrp_r17_e_ms160";
+		default: return "Unknown";
+	}
+}
+
+static const char* adbgNrSys__SQN_NR_GapConfig_r17_mgta_r17_e__ToString(SQN_NR_GapConfig_r17_mgta_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_GapConfig_r17_mgta_r17_e_ms0: return "SQN_NR_GapConfig_r17_mgta_r17_e_ms0";
+		case SQN_NR_GapConfig_r17_mgta_r17_e_ms0dot25: return "SQN_NR_GapConfig_r17_mgta_r17_e_ms0dot25";
+		case SQN_NR_GapConfig_r17_mgta_r17_e_ms0dot5: return "SQN_NR_GapConfig_r17_mgta_r17_e_ms0dot5";
+		case SQN_NR_GapConfig_r17_mgta_r17_e_ms0dot75: return "SQN_NR_GapConfig_r17_mgta_r17_e_ms0dot75";
+		default: return "Unknown";
+	}
+}
+
+static const char* adbgNrSys__SQN_NR_GapConfig_r17_refServCellIndicator_r17_e__ToString(SQN_NR_GapConfig_r17_refServCellIndicator_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_GapConfig_r17_refServCellIndicator_r17_e_pCell: return "SQN_NR_GapConfig_r17_refServCellIndicator_r17_e_pCell";
+		case SQN_NR_GapConfig_r17_refServCellIndicator_r17_e_pSCell: return "SQN_NR_GapConfig_r17_refServCellIndicator_r17_e_pSCell";
+		case SQN_NR_GapConfig_r17_refServCellIndicator_r17_e_mcg_FR2: return "SQN_NR_GapConfig_r17_refServCellIndicator_r17_e_mcg_FR2";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_GapConfig_r17_refServCellIndicator_r17_e_refServCellIndicator_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_GapConfig_r17_refServCellIndicator_r17_e_refServCellIndicator_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_GapConfig_r17_refServCellIndicator_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_ServCellIndex_SQN_NR_GapConfig_r17_refFR2_ServCellAsyncCA_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_ServCellIndex_SQN_NR_GapConfig_r17_refFR2_ServCellAsyncCA_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_GapConfig_r17_preConfigInd_r17_e__ToString(SQN_NR_GapConfig_r17_preConfigInd_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_GapConfig_r17_preConfigInd_r17_e_true: return "SQN_NR_GapConfig_r17_preConfigInd_r17_e_true";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_GapConfig_r17_preConfigInd_r17_e_preConfigInd_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_GapConfig_r17_preConfigInd_r17_e_preConfigInd_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_GapConfig_r17_preConfigInd_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_GapConfig_r17_ncsgInd_r17_e__ToString(SQN_NR_GapConfig_r17_ncsgInd_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_GapConfig_r17_ncsgInd_r17_e_true: return "SQN_NR_GapConfig_r17_ncsgInd_r17_e_true";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_GapConfig_r17_ncsgInd_r17_e_ncsgInd_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_GapConfig_r17_ncsgInd_r17_e_ncsgInd_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_GapConfig_r17_ncsgInd_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_GapConfig_r17_gapAssociationPRS_r17_e__ToString(SQN_NR_GapConfig_r17_gapAssociationPRS_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_GapConfig_r17_gapAssociationPRS_r17_e_true: return "SQN_NR_GapConfig_r17_gapAssociationPRS_r17_e_true";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_GapConfig_r17_gapAssociationPRS_r17_e_gapAssociationPRS_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_GapConfig_r17_gapAssociationPRS_r17_e_gapAssociationPRS_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_GapConfig_r17_gapAssociationPRS_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_MeasGapSharingScheme_e__ToString(SQN_NR_MeasGapSharingScheme_e v)
+{
+	switch(v) {
+		case SQN_NR_MeasGapSharingScheme_e_scheme00: return "SQN_NR_MeasGapSharingScheme_e_scheme00";
+		case SQN_NR_MeasGapSharingScheme_e_scheme01: return "SQN_NR_MeasGapSharingScheme_e_scheme01";
+		case SQN_NR_MeasGapSharingScheme_e_scheme10: return "SQN_NR_MeasGapSharingScheme_e_scheme10";
+		case SQN_NR_MeasGapSharingScheme_e_scheme11: return "SQN_NR_MeasGapSharingScheme_e_scheme11";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_MeasGapSharingScheme_e_SQN_NR_GapConfig_r17_gapSharing_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_MeasGapSharingScheme_e_SQN_NR_GapConfig_r17_gapSharing_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_MeasGapSharingScheme_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_GapPriority_r17_SQN_NR_GapConfig_r17_gapPriority_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_GapPriority_r17_SQN_NR_GapConfig_r17_gapPriority_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_GapConfig_r17(acpCtx_t _ctx, const struct SQN_NR_GapConfig_r17* p)
+{
+	adbgPrintLog(_ctx, "measGapId_r17 := %u", (unsigned int)p->measGapId_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "gapType_r17 := %s (%d)", adbgNrSys__SQN_NR_GapConfig_r17_gapType_r17_e__ToString(p->gapType_r17), (int)p->gapType_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "gapOffset_r17 := %u", (unsigned int)p->gapOffset_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "mgl_r17 := %s (%d)", adbgNrSys__SQN_NR_GapConfig_r17_mgl_r17_e__ToString(p->mgl_r17), (int)p->mgl_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "mgrp_r17 := %s (%d)", adbgNrSys__SQN_NR_GapConfig_r17_mgrp_r17_e__ToString(p->mgrp_r17), (int)p->mgrp_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "mgta_r17 := %s (%d)", adbgNrSys__SQN_NR_GapConfig_r17_mgta_r17_e__ToString(p->mgta_r17), (int)p->mgta_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "refServCellIndicator_r17 := ");
+	_adbgNrSys__SQN_NR_GapConfig_r17_refServCellIndicator_r17_e_refServCellIndicator_r17_Optional(_ctx, &p->refServCellIndicator_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "refFR2_ServCellAsyncCA_r17 := ");
+	_adbgNrSys__SQN_NR_ServCellIndex_SQN_NR_GapConfig_r17_refFR2_ServCellAsyncCA_r17_Optional(_ctx, &p->refFR2_ServCellAsyncCA_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "preConfigInd_r17 := ");
+	_adbgNrSys__SQN_NR_GapConfig_r17_preConfigInd_r17_e_preConfigInd_r17_Optional(_ctx, &p->preConfigInd_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "ncsgInd_r17 := ");
+	_adbgNrSys__SQN_NR_GapConfig_r17_ncsgInd_r17_e_ncsgInd_r17_Optional(_ctx, &p->ncsgInd_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "gapAssociationPRS_r17 := ");
+	_adbgNrSys__SQN_NR_GapConfig_r17_gapAssociationPRS_r17_e_gapAssociationPRS_r17_Optional(_ctx, &p->gapAssociationPRS_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "gapSharing_r17 := ");
+	_adbgNrSys__SQN_NR_MeasGapSharingScheme_e_SQN_NR_GapConfig_r17_gapSharing_r17_Optional(_ctx, &p->gapSharing_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "gapPriority_r17 := ");
+	_adbgNrSys__SQN_NR_GapPriority_r17_SQN_NR_GapConfig_r17_gapPriority_r17_Optional(_ctx, &p->gapPriority_r17);
+}
+
+static void _adbgNrSys__SQN_NR_GapConfig_r17_SQN_NR_MeasGapConfig_gapToAddModList_r17_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_GapConfig_r17_SQN_NR_MeasGapConfig_gapToAddModList_r17_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i1 = 0; i1 < p->v.d; i1++) {
+		adbgPrintLog(_ctx, "{ ");
+		_adbgNrSys__SQN_NR_GapConfig_r17(_ctx, &p->v.v[i1]);
+		adbgPrintLog(_ctx, " }");
+		if (i1 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgNrSys__SQN_NR_MeasGapId_r17_SQN_NR_MeasGapConfig_gapToReleaseList_r17_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_MeasGapId_r17_SQN_NR_MeasGapConfig_gapToReleaseList_r17_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "'");
+	for (size_t i1 = 0; i1 < p->v.d; i1++) {
+		adbgPrintLog(_ctx, "%02X", p->v.v[i1]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static const char* adbgNrSys__SQN_NR_PosGapConfig_r17_mgl_r17_e__ToString(SQN_NR_PosGapConfig_r17_mgl_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PosGapConfig_r17_mgl_r17_e_ms1dot5: return "SQN_NR_PosGapConfig_r17_mgl_r17_e_ms1dot5";
+		case SQN_NR_PosGapConfig_r17_mgl_r17_e_ms3: return "SQN_NR_PosGapConfig_r17_mgl_r17_e_ms3";
+		case SQN_NR_PosGapConfig_r17_mgl_r17_e_ms3dot5: return "SQN_NR_PosGapConfig_r17_mgl_r17_e_ms3dot5";
+		case SQN_NR_PosGapConfig_r17_mgl_r17_e_ms4: return "SQN_NR_PosGapConfig_r17_mgl_r17_e_ms4";
+		case SQN_NR_PosGapConfig_r17_mgl_r17_e_ms5dot5: return "SQN_NR_PosGapConfig_r17_mgl_r17_e_ms5dot5";
+		case SQN_NR_PosGapConfig_r17_mgl_r17_e_ms6: return "SQN_NR_PosGapConfig_r17_mgl_r17_e_ms6";
+		case SQN_NR_PosGapConfig_r17_mgl_r17_e_ms10: return "SQN_NR_PosGapConfig_r17_mgl_r17_e_ms10";
+		case SQN_NR_PosGapConfig_r17_mgl_r17_e_ms20: return "SQN_NR_PosGapConfig_r17_mgl_r17_e_ms20";
+		default: return "Unknown";
+	}
+}
+
+static const char* adbgNrSys__SQN_NR_PosGapConfig_r17_mgrp_r17_e__ToString(SQN_NR_PosGapConfig_r17_mgrp_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PosGapConfig_r17_mgrp_r17_e_ms20: return "SQN_NR_PosGapConfig_r17_mgrp_r17_e_ms20";
+		case SQN_NR_PosGapConfig_r17_mgrp_r17_e_ms40: return "SQN_NR_PosGapConfig_r17_mgrp_r17_e_ms40";
+		case SQN_NR_PosGapConfig_r17_mgrp_r17_e_ms80: return "SQN_NR_PosGapConfig_r17_mgrp_r17_e_ms80";
+		case SQN_NR_PosGapConfig_r17_mgrp_r17_e_ms160: return "SQN_NR_PosGapConfig_r17_mgrp_r17_e_ms160";
+		default: return "Unknown";
+	}
+}
+
+static const char* adbgNrSys__SQN_NR_PosGapConfig_r17_mgta_r17_e__ToString(SQN_NR_PosGapConfig_r17_mgta_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PosGapConfig_r17_mgta_r17_e_ms0: return "SQN_NR_PosGapConfig_r17_mgta_r17_e_ms0";
+		case SQN_NR_PosGapConfig_r17_mgta_r17_e_ms0dot25: return "SQN_NR_PosGapConfig_r17_mgta_r17_e_ms0dot25";
+		case SQN_NR_PosGapConfig_r17_mgta_r17_e_ms0dot5: return "SQN_NR_PosGapConfig_r17_mgta_r17_e_ms0dot5";
+		default: return "Unknown";
+	}
+}
+
+static const char* adbgNrSys__SQN_NR_PosGapConfig_r17_gapType_r17_e__ToString(SQN_NR_PosGapConfig_r17_gapType_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PosGapConfig_r17_gapType_r17_e_perUE: return "SQN_NR_PosGapConfig_r17_gapType_r17_e_perUE";
+		case SQN_NR_PosGapConfig_r17_gapType_r17_e_perFR1: return "SQN_NR_PosGapConfig_r17_gapType_r17_e_perFR1";
+		case SQN_NR_PosGapConfig_r17_gapType_r17_e_perFR2: return "SQN_NR_PosGapConfig_r17_gapType_r17_e_perFR2";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PosGapConfig_r17(acpCtx_t _ctx, const struct SQN_NR_PosGapConfig_r17* p)
+{
+	adbgPrintLog(_ctx, "measPosPreConfigGapId_r17 := %u", (unsigned int)p->measPosPreConfigGapId_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "gapOffset_r17 := %u", (unsigned int)p->gapOffset_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "mgl_r17 := %s (%d)", adbgNrSys__SQN_NR_PosGapConfig_r17_mgl_r17_e__ToString(p->mgl_r17), (int)p->mgl_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "mgrp_r17 := %s (%d)", adbgNrSys__SQN_NR_PosGapConfig_r17_mgrp_r17_e__ToString(p->mgrp_r17), (int)p->mgrp_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "mgta_r17 := %s (%d)", adbgNrSys__SQN_NR_PosGapConfig_r17_mgta_r17_e__ToString(p->mgta_r17), (int)p->mgta_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "gapType_r17 := %s (%d)", adbgNrSys__SQN_NR_PosGapConfig_r17_gapType_r17_e__ToString(p->gapType_r17), (int)p->gapType_r17);
+}
+
+static void _adbgNrSys__SQN_NR_PosMeasGapPreConfigToAddModList_r17_SQN_NR_MeasGapConfig_posMeasGapPreConfigToAddModList_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PosMeasGapPreConfigToAddModList_r17_SQN_NR_MeasGapConfig_posMeasGapPreConfigToAddModList_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i1 = 0; i1 < p->v.d; i1++) {
+		_adbgNrSys__SQN_NR_PosGapConfig_r17(_ctx, &p->v.v[i1]);
+		if (i1 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PosMeasGapPreConfigToReleaseList_r17_SQN_NR_MeasGapConfig_posMeasGapPreConfigToReleaseList_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PosMeasGapPreConfigToReleaseList_r17_SQN_NR_MeasGapConfig_posMeasGapPreConfigToReleaseList_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "'");
+	for (size_t i1 = 0; i1 < p->v.d; i1++) {
+		adbgPrintLog(_ctx, "%02X", p->v.v[i1]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
 static void _adbgNrSys__SQN_NR_MeasGapConfig(acpCtx_t _ctx, const struct SQN_NR_MeasGapConfig* p)
 {
 	adbgPrintLog(_ctx, "gapFR2 := ");
@@ -22800,6 +29946,24 @@ static void _adbgNrSys__SQN_NR_MeasGapConfig(acpCtx_t _ctx, const struct SQN_NR_
 	if (p->gapUE.d) { adbgPrintLog(_ctx, "{ "); };
 	_adbgNrSys__SQN_NR_SetupRelease_MeasGapConfig_gapUE_SQN_NR_MeasGapConfig_gapUE_Optional(_ctx, &p->gapUE);
 	if (p->gapUE.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "gapToAddModList_r17 := ");
+	if (p->gapToAddModList_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_GapConfig_r17_SQN_NR_MeasGapConfig_gapToAddModList_r17_DynamicOptional(_ctx, &p->gapToAddModList_r17);
+	if (p->gapToAddModList_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "gapToReleaseList_r17 := ");
+	_adbgNrSys__SQN_NR_MeasGapId_r17_SQN_NR_MeasGapConfig_gapToReleaseList_r17_DynamicOptional(_ctx, &p->gapToReleaseList_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "posMeasGapPreConfigToAddModList_r17 := ");
+	if (p->posMeasGapPreConfigToAddModList_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_PosMeasGapPreConfigToAddModList_r17_SQN_NR_MeasGapConfig_posMeasGapPreConfigToAddModList_r17_Optional(_ctx, &p->posMeasGapPreConfigToAddModList_r17);
+	if (p->posMeasGapPreConfigToAddModList_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "posMeasGapPreConfigToReleaseList_r17 := ");
+	if (p->posMeasGapPreConfigToReleaseList_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_PosMeasGapPreConfigToReleaseList_r17_SQN_NR_MeasGapConfig_posMeasGapPreConfigToReleaseList_r17_Optional(_ctx, &p->posMeasGapPreConfigToReleaseList_r17);
+	if (p->posMeasGapPreConfigToReleaseList_r17.d) { adbgPrintLog(_ctx, " }"); };
 }
 
 static void _adbgNrSys__NR_ASN1_MeasGapConfig_Type_Value(acpCtx_t _ctx, const union NR_ASN1_MeasGapConfig_Type_Value* p, enum NR_ASN1_MeasGapConfig_Type_Sel d)
@@ -23241,6 +30405,81 @@ static void _adbgNrSys__SQN_NR_SetupRelease_PHR_Config_mpe_Reporting_FR2_r16_SQN
 	_adbgNrSys__SQN_NR_SetupRelease_PHR_Config_mpe_Reporting_FR2_r16(_ctx, &p->v);
 }
 
+static const char* adbgNrSys__SQN_NR_MPE_Config_FR2_r17_mpe_ProhibitTimer_r17_e__ToString(SQN_NR_MPE_Config_FR2_r17_mpe_ProhibitTimer_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_MPE_Config_FR2_r17_mpe_ProhibitTimer_r17_e_sf0: return "SQN_NR_MPE_Config_FR2_r17_mpe_ProhibitTimer_r17_e_sf0";
+		case SQN_NR_MPE_Config_FR2_r17_mpe_ProhibitTimer_r17_e_sf10: return "SQN_NR_MPE_Config_FR2_r17_mpe_ProhibitTimer_r17_e_sf10";
+		case SQN_NR_MPE_Config_FR2_r17_mpe_ProhibitTimer_r17_e_sf20: return "SQN_NR_MPE_Config_FR2_r17_mpe_ProhibitTimer_r17_e_sf20";
+		case SQN_NR_MPE_Config_FR2_r17_mpe_ProhibitTimer_r17_e_sf50: return "SQN_NR_MPE_Config_FR2_r17_mpe_ProhibitTimer_r17_e_sf50";
+		case SQN_NR_MPE_Config_FR2_r17_mpe_ProhibitTimer_r17_e_sf100: return "SQN_NR_MPE_Config_FR2_r17_mpe_ProhibitTimer_r17_e_sf100";
+		case SQN_NR_MPE_Config_FR2_r17_mpe_ProhibitTimer_r17_e_sf200: return "SQN_NR_MPE_Config_FR2_r17_mpe_ProhibitTimer_r17_e_sf200";
+		case SQN_NR_MPE_Config_FR2_r17_mpe_ProhibitTimer_r17_e_sf500: return "SQN_NR_MPE_Config_FR2_r17_mpe_ProhibitTimer_r17_e_sf500";
+		case SQN_NR_MPE_Config_FR2_r17_mpe_ProhibitTimer_r17_e_sf1000: return "SQN_NR_MPE_Config_FR2_r17_mpe_ProhibitTimer_r17_e_sf1000";
+		default: return "Unknown";
+	}
+}
+
+static const char* adbgNrSys__SQN_NR_MPE_Config_FR2_r17_mpe_Threshold_r17_e__ToString(SQN_NR_MPE_Config_FR2_r17_mpe_Threshold_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_MPE_Config_FR2_r17_mpe_Threshold_r17_e_dB3: return "SQN_NR_MPE_Config_FR2_r17_mpe_Threshold_r17_e_dB3";
+		case SQN_NR_MPE_Config_FR2_r17_mpe_Threshold_r17_e_dB6: return "SQN_NR_MPE_Config_FR2_r17_mpe_Threshold_r17_e_dB6";
+		case SQN_NR_MPE_Config_FR2_r17_mpe_Threshold_r17_e_dB9: return "SQN_NR_MPE_Config_FR2_r17_mpe_Threshold_r17_e_dB9";
+		case SQN_NR_MPE_Config_FR2_r17_mpe_Threshold_r17_e_dB12: return "SQN_NR_MPE_Config_FR2_r17_mpe_Threshold_r17_e_dB12";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_MPE_Config_FR2_r17(acpCtx_t _ctx, const struct SQN_NR_MPE_Config_FR2_r17* p)
+{
+	adbgPrintLog(_ctx, "mpe_ProhibitTimer_r17 := %s (%d)", adbgNrSys__SQN_NR_MPE_Config_FR2_r17_mpe_ProhibitTimer_r17_e__ToString(p->mpe_ProhibitTimer_r17), (int)p->mpe_ProhibitTimer_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "mpe_Threshold_r17 := %s (%d)", adbgNrSys__SQN_NR_MPE_Config_FR2_r17_mpe_Threshold_r17_e__ToString(p->mpe_Threshold_r17), (int)p->mpe_Threshold_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "numberOfN_r17 := %u", (unsigned int)p->numberOfN_r17);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PHR_Config_mpe_Reporting_FR2_r17_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_PHR_Config_mpe_Reporting_FR2_r17_Value* p, enum SQN_NR_SetupRelease_PHR_Config_mpe_Reporting_FR2_r17_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_PHR_Config_mpe_Reporting_FR2_r17_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_PHR_Config_mpe_Reporting_FR2_r17_setup) {
+		adbgPrintLog(_ctx, "setup := { ");
+		_adbgNrSys__SQN_NR_MPE_Config_FR2_r17(_ctx, &p->setup);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PHR_Config_mpe_Reporting_FR2_r17(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PHR_Config_mpe_Reporting_FR2_r17* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_PHR_Config_mpe_Reporting_FR2_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PHR_Config_mpe_Reporting_FR2_r17_SQN_NR_PHR_Config_mpe_Reporting_FR2_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PHR_Config_mpe_Reporting_FR2_r17_SQN_NR_PHR_Config_mpe_Reporting_FR2_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_PHR_Config_mpe_Reporting_FR2_r17(_ctx, &p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PHR_Config_twoPHRMode_r17_e__ToString(SQN_NR_PHR_Config_twoPHRMode_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PHR_Config_twoPHRMode_r17_e_enabled: return "SQN_NR_PHR_Config_twoPHRMode_r17_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PHR_Config_twoPHRMode_r17_e_twoPHRMode_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PHR_Config_twoPHRMode_r17_e_twoPHRMode_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PHR_Config_twoPHRMode_r17_e__ToString(p->v), (int)p->v);
+}
+
 static void _adbgNrSys__SQN_NR_PHR_Config(acpCtx_t _ctx, const struct SQN_NR_PHR_Config* p)
 {
 	adbgPrintLog(_ctx, "phr_PeriodicTimer := %s (%d)", adbgNrSys__SQN_NR_PHR_Config_phr_PeriodicTimer_e__ToString(p->phr_PeriodicTimer), (int)p->phr_PeriodicTimer);
@@ -23261,6 +30500,14 @@ static void _adbgNrSys__SQN_NR_PHR_Config(acpCtx_t _ctx, const struct SQN_NR_PHR
 	if (p->mpe_Reporting_FR2_r16.d) { adbgPrintLog(_ctx, "{ "); };
 	_adbgNrSys__SQN_NR_SetupRelease_PHR_Config_mpe_Reporting_FR2_r16_SQN_NR_PHR_Config_mpe_Reporting_FR2_r16_Optional(_ctx, &p->mpe_Reporting_FR2_r16);
 	if (p->mpe_Reporting_FR2_r16.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "mpe_Reporting_FR2_r17 := ");
+	if (p->mpe_Reporting_FR2_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SetupRelease_PHR_Config_mpe_Reporting_FR2_r17_SQN_NR_PHR_Config_mpe_Reporting_FR2_r17_Optional(_ctx, &p->mpe_Reporting_FR2_r17);
+	if (p->mpe_Reporting_FR2_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "twoPHRMode_r17 := ");
+	_adbgNrSys__SQN_NR_PHR_Config_twoPHRMode_r17_e_twoPHRMode_r17_Optional(_ctx, &p->twoPHRMode_r17);
 }
 
 static void _adbgNrSys__SQN_NR_SetupRelease_MAC_CellGroupConfig_phr_Config_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_MAC_CellGroupConfig_phr_Config_Value* p, enum SQN_NR_SetupRelease_MAC_CellGroupConfig_phr_Config_Sel d)
@@ -23382,109 +30629,109 @@ static void _adbgNrSys__SQN_NR_SchedulingRequestId_SQN_NR_MAC_CellGroupConfig_sc
 	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
 }
 
-static const char* adbgNrSys__SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e__ToString(SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e v)
+static const char* adbgNrSys__SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e__ToString(SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e v)
 {
 	switch(v) {
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms1: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms1";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms2: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms2";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms3: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms3";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms4: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms4";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms5: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms5";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms6: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms6";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms8: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms8";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms10: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms10";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms20: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms20";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms30: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms30";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms40: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms40";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms50: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms50";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms60: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms60";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms80: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms80";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms100: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms100";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms200: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms200";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms300: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms300";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms400: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms400";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms500: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms500";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms600: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms600";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms800: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms800";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms1000: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms1000";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms1200: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms1200";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms1600: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_ms1600";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_spare8: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_spare8";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_spare7: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_spare7";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_spare6: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_spare6";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_spare5: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_spare5";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_spare4: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_spare4";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_spare3: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_spare3";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_spare2: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_spare2";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_spare1: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e_spare1";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms1: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms1";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms2: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms2";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms3: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms3";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms4: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms4";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms5: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms5";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms6: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms6";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms8: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms8";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms10: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms10";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms20: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms20";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms30: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms30";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms40: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms40";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms50: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms50";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms60: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms60";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms80: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms80";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms100: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms100";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms200: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms200";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms300: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms300";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms400: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms400";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms500: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms500";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms600: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms600";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms800: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms800";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms1000: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms1000";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms1200: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms1200";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms1600: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_ms1600";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_spare8: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_spare8";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_spare7: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_spare7";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_spare6: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_spare6";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_spare5: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_spare5";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_spare4: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_spare4";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_spare3: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_spare3";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_spare2: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_spare2";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_spare1: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e_spare1";
 		default: return "Unknown";
 	}
 }
 
-static void _adbgNrSys__SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_Value(acpCtx_t _ctx, const union SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_Value* p, enum SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_Sel d)
+static void _adbgNrSys__SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_Value(acpCtx_t _ctx, const union SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_Value* p, enum SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_Sel d)
 {
-	if (d == SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_subMilliSeconds) {
+	if (d == SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_subMilliSeconds) {
 		adbgPrintLog(_ctx, "subMilliSeconds := %u", (unsigned int)p->subMilliSeconds);
 		return;
 	}
-	if (d == SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds) {
-		adbgPrintLog(_ctx, "milliSeconds := %s (%d)", adbgNrSys__SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_milliSeconds_e__ToString(p->milliSeconds), (int)p->milliSeconds);
+	if (d == SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds) {
+		adbgPrintLog(_ctx, "milliSeconds := %s (%d)", adbgNrSys__SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_milliSeconds_e__ToString(p->milliSeconds), (int)p->milliSeconds);
 		return;
 	}
 	adbgPrintLog(_ctx, "INVALID");
 }
 
-static void _adbgNrSys__SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer(acpCtx_t _ctx, const struct SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer* p)
+static void _adbgNrSys__SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16(acpCtx_t _ctx, const struct SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16* p)
 {
-	_adbgNrSys__SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer_Value(_ctx, &p->v, p->d);
+	_adbgNrSys__SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16_Value(_ctx, &p->v, p->d);
 }
 
-static const char* adbgNrSys__SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e__ToString(SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e v)
+static const char* adbgNrSys__SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e__ToString(SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e v)
 {
 	switch(v) {
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms0: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms0";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms1: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms1";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms2: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms2";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms3: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms3";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms4: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms4";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms5: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms5";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms6: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms6";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms8: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms8";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms10: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms10";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms20: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms20";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms30: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms30";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms40: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms40";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms50: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms50";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms60: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms60";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms80: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms80";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms100: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms100";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms200: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms200";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms300: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms300";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms500: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms500";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms750: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms750";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms1280: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms1280";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms1920: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms1920";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms2560: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_ms2560";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_spare9: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_spare9";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_spare8: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_spare8";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_spare7: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_spare7";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_spare6: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_spare6";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_spare5: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_spare5";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_spare4: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_spare4";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_spare3: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_spare3";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_spare2: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_spare2";
-		case SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_spare1: return "SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e_spare1";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms0: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms0";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms1: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms1";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms2: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms2";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms3: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms3";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms4: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms4";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms5: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms5";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms6: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms6";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms8: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms8";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms10: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms10";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms20: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms20";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms30: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms30";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms40: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms40";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms50: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms50";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms60: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms60";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms80: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms80";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms100: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms100";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms200: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms200";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms300: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms300";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms500: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms500";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms750: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms750";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms1280: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms1280";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms1920: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms1920";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms2560: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_ms2560";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_spare9: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_spare9";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_spare8: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_spare8";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_spare7: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_spare7";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_spare6: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_spare6";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_spare5: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_spare5";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_spare4: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_spare4";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_spare3: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_spare3";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_spare2: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_spare2";
+		case SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_spare1: return "SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e_spare1";
 		default: return "Unknown";
 	}
 }
 
-static void _adbgNrSys__SQN_NR_DRX_ConfigSecondaryGroup(acpCtx_t _ctx, const struct SQN_NR_DRX_ConfigSecondaryGroup* p)
+static void _adbgNrSys__SQN_NR_DRX_ConfigSecondaryGroup_r16(acpCtx_t _ctx, const struct SQN_NR_DRX_ConfigSecondaryGroup_r16* p)
 {
-	adbgPrintLog(_ctx, "drx_onDurationTimer := { ");
-	_adbgNrSys__SQN_NR_DRX_ConfigSecondaryGroup_drx_onDurationTimer(_ctx, &p->drx_onDurationTimer);
+	adbgPrintLog(_ctx, "drx_onDurationTimer_r16 := { ");
+	_adbgNrSys__SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_onDurationTimer_r16(_ctx, &p->drx_onDurationTimer_r16);
 	adbgPrintLog(_ctx, " }");
 	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "drx_InactivityTimer := %s (%d)", adbgNrSys__SQN_NR_DRX_ConfigSecondaryGroup_drx_InactivityTimer_e__ToString(p->drx_InactivityTimer), (int)p->drx_InactivityTimer);
+	adbgPrintLog(_ctx, "drx_InactivityTimer_r16 := %s (%d)", adbgNrSys__SQN_NR_DRX_ConfigSecondaryGroup_r16_drx_InactivityTimer_r16_e__ToString(p->drx_InactivityTimer_r16), (int)p->drx_InactivityTimer_r16);
 }
 
 static void _adbgNrSys__SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigSecondaryGroup_r16_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigSecondaryGroup_r16_Value* p, enum SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigSecondaryGroup_r16_Sel d)
@@ -23495,7 +30742,7 @@ static void _adbgNrSys__SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigSecond
 	}
 	if (d == SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigSecondaryGroup_r16_setup) {
 		adbgPrintLog(_ctx, "setup := { ");
-		_adbgNrSys__SQN_NR_DRX_ConfigSecondaryGroup(_ctx, &p->setup);
+		_adbgNrSys__SQN_NR_DRX_ConfigSecondaryGroup_r16(_ctx, &p->setup);
 		adbgPrintLog(_ctx, " }");
 		return;
 	}
@@ -23511,6 +30758,755 @@ static void _adbgNrSys__SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigSecond
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
 	_adbgNrSys__SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigSecondaryGroup_r16(_ctx, &p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_MAC_CellGroupConfig_enhancedSkipUplinkTxDynamic_r16_e__ToString(SQN_NR_MAC_CellGroupConfig_enhancedSkipUplinkTxDynamic_r16_e v)
+{
+	switch(v) {
+		case SQN_NR_MAC_CellGroupConfig_enhancedSkipUplinkTxDynamic_r16_e_true: return "SQN_NR_MAC_CellGroupConfig_enhancedSkipUplinkTxDynamic_r16_e_true";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_MAC_CellGroupConfig_enhancedSkipUplinkTxDynamic_r16_e_enhancedSkipUplinkTxDynamic_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_MAC_CellGroupConfig_enhancedSkipUplinkTxDynamic_r16_e_enhancedSkipUplinkTxDynamic_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_MAC_CellGroupConfig_enhancedSkipUplinkTxDynamic_r16_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_MAC_CellGroupConfig_enhancedSkipUplinkTxConfigured_r16_e__ToString(SQN_NR_MAC_CellGroupConfig_enhancedSkipUplinkTxConfigured_r16_e v)
+{
+	switch(v) {
+		case SQN_NR_MAC_CellGroupConfig_enhancedSkipUplinkTxConfigured_r16_e_true: return "SQN_NR_MAC_CellGroupConfig_enhancedSkipUplinkTxConfigured_r16_e_true";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_MAC_CellGroupConfig_enhancedSkipUplinkTxConfigured_r16_e_enhancedSkipUplinkTxConfigured_r16_Optional(acpCtx_t _ctx, const struct SQN_NR_MAC_CellGroupConfig_enhancedSkipUplinkTxConfigured_r16_e_enhancedSkipUplinkTxConfigured_r16_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_MAC_CellGroupConfig_enhancedSkipUplinkTxConfigured_r16_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_MAC_CellGroupConfig_intraCG_Prioritization_r17_e__ToString(SQN_NR_MAC_CellGroupConfig_intraCG_Prioritization_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_MAC_CellGroupConfig_intraCG_Prioritization_r17_e_enabled: return "SQN_NR_MAC_CellGroupConfig_intraCG_Prioritization_r17_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_MAC_CellGroupConfig_intraCG_Prioritization_r17_e_intraCG_Prioritization_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_MAC_CellGroupConfig_intraCG_Prioritization_r17_e_intraCG_Prioritization_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_MAC_CellGroupConfig_intraCG_Prioritization_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e__ToString(SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl0: return "SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl0";
+		case SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl1: return "SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl1";
+		case SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl2: return "SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl2";
+		case SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl4: return "SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl4";
+		case SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl6: return "SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl6";
+		case SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl8: return "SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl8";
+		case SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl16: return "SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl16";
+		case SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl24: return "SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl24";
+		case SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl33: return "SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl33";
+		case SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl40: return "SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl40";
+		case SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl64: return "SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl64";
+		case SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl80: return "SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl80";
+		case SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl96: return "SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl96";
+		case SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl112: return "SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl112";
+		case SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl128: return "SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl128";
+		case SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl160: return "SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl160";
+		case SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl320: return "SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_sl320";
+		case SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare15: return "SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare15";
+		case SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare14: return "SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare14";
+		case SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare13: return "SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare13";
+		case SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare12: return "SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare12";
+		case SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare11: return "SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare11";
+		case SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare10: return "SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare10";
+		case SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare9: return "SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare9";
+		case SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare8: return "SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare8";
+		case SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare7: return "SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare7";
+		case SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare6: return "SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare6";
+		case SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare5: return "SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare5";
+		case SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare4: return "SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare4";
+		case SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare3: return "SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare3";
+		case SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare2: return "SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare2";
+		case SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare1: return "SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e_spare1";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_DRX_ConfigSL_r17(acpCtx_t _ctx, const struct SQN_NR_DRX_ConfigSL_r17* p)
+{
+	adbgPrintLog(_ctx, "drx_HARQ_RTT_TimerSL_r17 := %u", (unsigned int)p->drx_HARQ_RTT_TimerSL_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "drx_RetransmissionTimerSL_r17 := %s (%d)", adbgNrSys__SQN_NR_DRX_ConfigSL_r17_drx_RetransmissionTimerSL_r17_e__ToString(p->drx_RetransmissionTimerSL_r17), (int)p->drx_RetransmissionTimerSL_r17);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigSL_r17_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigSL_r17_Value* p, enum SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigSL_r17_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigSL_r17_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigSL_r17_setup) {
+		adbgPrintLog(_ctx, "setup := { ");
+		_adbgNrSys__SQN_NR_DRX_ConfigSL_r17(_ctx, &p->setup);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigSL_r17(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigSL_r17* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigSL_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigSL_r17_SQN_NR_MAC_CellGroupConfig_drx_ConfigSL_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigSL_r17_SQN_NR_MAC_CellGroupConfig_drx_ConfigSL_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigSL_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_DRX_ConfigExt_v1700(acpCtx_t _ctx, const struct SQN_NR_DRX_ConfigExt_v1700* p)
+{
+	adbgPrintLog(_ctx, "drx_HARQ_RTT_TimerDL_r17 := %u", (unsigned int)p->drx_HARQ_RTT_TimerDL_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "drx_HARQ_RTT_TimerUL_r17 := %u", (unsigned int)p->drx_HARQ_RTT_TimerUL_r17);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigExt_v1700_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigExt_v1700_Value* p, enum SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigExt_v1700_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigExt_v1700_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigExt_v1700_setup) {
+		adbgPrintLog(_ctx, "setup := { ");
+		_adbgNrSys__SQN_NR_DRX_ConfigExt_v1700(_ctx, &p->setup);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigExt_v1700(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigExt_v1700* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigExt_v1700_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigExt_v1700_SQN_NR_MAC_CellGroupConfig_drx_ConfigExt_v1700_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigExt_v1700_SQN_NR_MAC_CellGroupConfig_drx_ConfigExt_v1700_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigExt_v1700(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SchedulingRequestId_SQN_NR_MAC_CellGroupConfig_schedulingRequestID_BFR_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SchedulingRequestId_SQN_NR_MAC_CellGroupConfig_schedulingRequestID_BFR_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SchedulingRequestId_SQN_NR_MAC_CellGroupConfig_schedulingRequestID_BFR2_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SchedulingRequestId_SQN_NR_MAC_CellGroupConfig_schedulingRequestID_BFR2_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e__ToString(SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e v)
+{
+	switch(v) {
+		case SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_ms192: return "SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_ms192";
+		case SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_ms256: return "SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_ms256";
+		case SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_ms320: return "SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_ms320";
+		case SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_ms384: return "SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_ms384";
+		case SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_ms448: return "SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_ms448";
+		case SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_ms512: return "SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_ms512";
+		case SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_ms576: return "SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_ms576";
+		case SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_ms640: return "SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_ms640";
+		case SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_ms1082: return "SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_ms1082";
+		case SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_spare7: return "SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_spare7";
+		case SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_spare6: return "SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_spare6";
+		case SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_spare5: return "SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_spare5";
+		case SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_spare4: return "SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_spare4";
+		case SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_spare3: return "SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_spare3";
+		case SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_spare2: return "SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_spare2";
+		case SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_spare1: return "SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_spare1";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_sr_ProhibitTimer_v1700_Optional(acpCtx_t _ctx, const struct SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_sr_ProhibitTimer_v1700_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SchedulingRequestToAddModExt_v1700(acpCtx_t _ctx, const struct SQN_NR_SchedulingRequestToAddModExt_v1700* p)
+{
+	adbgPrintLog(_ctx, "sr_ProhibitTimer_v1700 := ");
+	_adbgNrSys__SQN_NR_SchedulingRequestToAddModExt_v1700_sr_ProhibitTimer_v1700_e_sr_ProhibitTimer_v1700_Optional(_ctx, &p->sr_ProhibitTimer_v1700);
+}
+
+static void _adbgNrSys__SQN_NR_SchedulingRequestToAddModExt_v1700_SQN_NR_SchedulingRequestConfig_v1700_schedulingRequestToAddModListExt_v1700_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_SchedulingRequestToAddModExt_v1700_SQN_NR_SchedulingRequestConfig_v1700_schedulingRequestToAddModListExt_v1700_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i1 = 0; i1 < p->v.d; i1++) {
+		adbgPrintLog(_ctx, "{ ");
+		_adbgNrSys__SQN_NR_SchedulingRequestToAddModExt_v1700(_ctx, &p->v.v[i1]);
+		adbgPrintLog(_ctx, " }");
+		if (i1 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgNrSys__SQN_NR_SchedulingRequestConfig_v1700(acpCtx_t _ctx, const struct SQN_NR_SchedulingRequestConfig_v1700* p)
+{
+	adbgPrintLog(_ctx, "schedulingRequestToAddModListExt_v1700 := ");
+	if (p->schedulingRequestToAddModListExt_v1700.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SchedulingRequestToAddModExt_v1700_SQN_NR_SchedulingRequestConfig_v1700_schedulingRequestToAddModListExt_v1700_DynamicOptional(_ctx, &p->schedulingRequestToAddModListExt_v1700);
+	if (p->schedulingRequestToAddModListExt_v1700.d) { adbgPrintLog(_ctx, " }"); };
+}
+
+static void _adbgNrSys__SQN_NR_SchedulingRequestConfig_v1700_SQN_NR_MAC_CellGroupConfig_schedulingRequestConfig_v1700_Optional(acpCtx_t _ctx, const struct SQN_NR_SchedulingRequestConfig_v1700_SQN_NR_MAC_CellGroupConfig_schedulingRequestConfig_v1700_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SchedulingRequestConfig_v1700(_ctx, &p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e__ToString(SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms0dot5: return "SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms0dot5";
+		case SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms1: return "SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms1";
+		case SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms2: return "SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms2";
+		case SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms3: return "SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms3";
+		case SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms4: return "SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms4";
+		case SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms5: return "SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms5";
+		case SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms6: return "SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms6";
+		case SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms7: return "SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms7";
+		case SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms8: return "SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms8";
+		case SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms9: return "SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms9";
+		case SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms10: return "SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms10";
+		case SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms11: return "SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms11";
+		case SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms12: return "SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms12";
+		case SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms13: return "SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms13";
+		case SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms14: return "SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms14";
+		case SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms15: return "SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_ms15";
+		case SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_spare13: return "SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_spare13";
+		case SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_spare12: return "SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_spare12";
+		case SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_spare11: return "SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_spare11";
+		case SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_spare10: return "SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_spare10";
+		case SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_spare9: return "SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_spare9";
+		case SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_spare8: return "SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_spare8";
+		case SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_spare7: return "SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_spare7";
+		case SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_spare6: return "SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_spare6";
+		case SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_spare5: return "SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_spare5";
+		case SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_spare4: return "SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_spare4";
+		case SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_spare3: return "SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_spare3";
+		case SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_spare2: return "SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_spare2";
+		case SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_spare1: return "SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_spare1";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_offsetThresholdTA_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_offsetThresholdTA_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_TAR_Config_r17_timingAdvanceSR_r17_e__ToString(SQN_NR_TAR_Config_r17_timingAdvanceSR_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_TAR_Config_r17_timingAdvanceSR_r17_e_enabled: return "SQN_NR_TAR_Config_r17_timingAdvanceSR_r17_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_TAR_Config_r17_timingAdvanceSR_r17_e_timingAdvanceSR_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_TAR_Config_r17_timingAdvanceSR_r17_e_timingAdvanceSR_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_TAR_Config_r17_timingAdvanceSR_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_TAR_Config_r17(acpCtx_t _ctx, const struct SQN_NR_TAR_Config_r17* p)
+{
+	adbgPrintLog(_ctx, "offsetThresholdTA_r17 := ");
+	_adbgNrSys__SQN_NR_TAR_Config_r17_offsetThresholdTA_r17_e_offsetThresholdTA_r17_Optional(_ctx, &p->offsetThresholdTA_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "timingAdvanceSR_r17 := ");
+	_adbgNrSys__SQN_NR_TAR_Config_r17_timingAdvanceSR_r17_e_timingAdvanceSR_r17_Optional(_ctx, &p->timingAdvanceSR_r17);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_MAC_CellGroupConfig_tar_Config_r17_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_MAC_CellGroupConfig_tar_Config_r17_Value* p, enum SQN_NR_SetupRelease_MAC_CellGroupConfig_tar_Config_r17_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_MAC_CellGroupConfig_tar_Config_r17_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_MAC_CellGroupConfig_tar_Config_r17_setup) {
+		adbgPrintLog(_ctx, "setup := { ");
+		_adbgNrSys__SQN_NR_TAR_Config_r17(_ctx, &p->setup);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_MAC_CellGroupConfig_tar_Config_r17(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_MAC_CellGroupConfig_tar_Config_r17* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_MAC_CellGroupConfig_tar_Config_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_MAC_CellGroupConfig_tar_Config_r17_SQN_NR_MAC_CellGroupConfig_tar_Config_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_MAC_CellGroupConfig_tar_Config_r17_SQN_NR_MAC_CellGroupConfig_tar_Config_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_MAC_CellGroupConfig_tar_Config_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_MBS_RNTI_SpecificConfig_r17_groupCommon_RNTI_r17_Value(acpCtx_t _ctx, const union SQN_NR_MBS_RNTI_SpecificConfig_r17_groupCommon_RNTI_r17_Value* p, enum SQN_NR_MBS_RNTI_SpecificConfig_r17_groupCommon_RNTI_r17_Sel d)
+{
+	if (d == SQN_NR_MBS_RNTI_SpecificConfig_r17_groupCommon_RNTI_r17_g_RNTI) {
+		adbgPrintLog(_ctx, "g_RNTI := %u", (unsigned int)p->g_RNTI);
+		return;
+	}
+	if (d == SQN_NR_MBS_RNTI_SpecificConfig_r17_groupCommon_RNTI_r17_g_CS_RNTI) {
+		adbgPrintLog(_ctx, "g_CS_RNTI := %u", (unsigned int)p->g_CS_RNTI);
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_MBS_RNTI_SpecificConfig_r17_groupCommon_RNTI_r17(acpCtx_t _ctx, const struct SQN_NR_MBS_RNTI_SpecificConfig_r17_groupCommon_RNTI_r17* p)
+{
+	_adbgNrSys__SQN_NR_MBS_RNTI_SpecificConfig_r17_groupCommon_RNTI_r17_Value(_ctx, &p->v, p->d);
+}
+
+static const char* adbgNrSys__SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e__ToString(SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e v)
+{
+	switch(v) {
+		case SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms1: return "SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms1";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms2: return "SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms2";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms3: return "SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms3";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms4: return "SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms4";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms5: return "SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms5";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms6: return "SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms6";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms8: return "SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms8";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms10: return "SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms10";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms20: return "SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms20";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms30: return "SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms30";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms40: return "SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms40";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms50: return "SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms50";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms60: return "SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms60";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms80: return "SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms80";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms100: return "SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms100";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms200: return "SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms200";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms300: return "SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms300";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms400: return "SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms400";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms500: return "SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms500";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms600: return "SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms600";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms800: return "SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms800";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms1000: return "SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms1000";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms1200: return "SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms1200";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms1600: return "SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_ms1600";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_spare8: return "SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_spare8";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_spare7: return "SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_spare7";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_spare6: return "SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_spare6";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_spare5: return "SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_spare5";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_spare4: return "SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_spare4";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_spare3: return "SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_spare3";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_spare2: return "SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_spare2";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_spare1: return "SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e_spare1";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_Value(acpCtx_t _ctx, const union SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_Value* p, enum SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_Sel d)
+{
+	if (d == SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_subMilliSeconds) {
+		adbgPrintLog(_ctx, "subMilliSeconds := %u", (unsigned int)p->subMilliSeconds);
+		return;
+	}
+	if (d == SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds) {
+		adbgPrintLog(_ctx, "milliSeconds := %s (%d)", adbgNrSys__SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_milliSeconds_e__ToString(p->milliSeconds), (int)p->milliSeconds);
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17(acpCtx_t _ctx, const struct SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17* p)
+{
+	_adbgNrSys__SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17_Value(_ctx, &p->v, p->d);
+}
+
+static const char* adbgNrSys__SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e__ToString(SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms0: return "SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms0";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms1: return "SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms1";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms2: return "SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms2";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms3: return "SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms3";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms4: return "SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms4";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms5: return "SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms5";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms6: return "SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms6";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms8: return "SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms8";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms10: return "SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms10";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms20: return "SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms20";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms30: return "SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms30";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms40: return "SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms40";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms50: return "SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms50";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms60: return "SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms60";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms80: return "SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms80";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms100: return "SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms100";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms200: return "SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms200";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms300: return "SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms300";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms500: return "SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms500";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms750: return "SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms750";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms1280: return "SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms1280";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms1920: return "SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms1920";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms2560: return "SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_ms2560";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_spare9: return "SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_spare9";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_spare8: return "SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_spare8";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_spare7: return "SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_spare7";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_spare6: return "SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_spare6";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_spare5: return "SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_spare5";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_spare4: return "SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_spare4";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_spare3: return "SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_spare3";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_spare2: return "SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_spare2";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_spare1: return "SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e_spare1";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__Uint8_t_SQN_NR_DRX_ConfigPTM_r17_drx_HARQ_RTT_TimerDL_PTM_r17_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_DRX_ConfigPTM_r17_drx_HARQ_RTT_TimerDL_PTM_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e__ToString(SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl0: return "SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl0";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl1: return "SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl1";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl2: return "SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl2";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl4: return "SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl4";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl6: return "SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl6";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl8: return "SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl8";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl16: return "SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl16";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl24: return "SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl24";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl33: return "SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl33";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl40: return "SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl40";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl64: return "SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl64";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl80: return "SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl80";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl96: return "SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl96";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl112: return "SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl112";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl128: return "SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl128";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl160: return "SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl160";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl320: return "SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_sl320";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare15: return "SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare15";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare14: return "SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare14";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare13: return "SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare13";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare12: return "SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare12";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare11: return "SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare11";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare10: return "SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare10";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare9: return "SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare9";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare8: return "SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare8";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare7: return "SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare7";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare6: return "SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare6";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare5: return "SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare5";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare4: return "SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare4";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare3: return "SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare3";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare2: return "SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare2";
+		case SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare1: return "SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_spare1";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_drx_RetransmissionTimerDL_PTM_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_drx_RetransmissionTimerDL_PTM_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_Value(acpCtx_t _ctx, const union SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_Value* p, enum SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_Sel d)
+{
+	if (d == SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_ms10) {
+		adbgPrintLog(_ctx, "ms10 := %u", (unsigned int)p->ms10);
+		return;
+	}
+	if (d == SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_ms20) {
+		adbgPrintLog(_ctx, "ms20 := %u", (unsigned int)p->ms20);
+		return;
+	}
+	if (d == SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_ms32) {
+		adbgPrintLog(_ctx, "ms32 := %u", (unsigned int)p->ms32);
+		return;
+	}
+	if (d == SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_ms40) {
+		adbgPrintLog(_ctx, "ms40 := %u", (unsigned int)p->ms40);
+		return;
+	}
+	if (d == SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_ms60) {
+		adbgPrintLog(_ctx, "ms60 := %u", (unsigned int)p->ms60);
+		return;
+	}
+	if (d == SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_ms64) {
+		adbgPrintLog(_ctx, "ms64 := %u", (unsigned int)p->ms64);
+		return;
+	}
+	if (d == SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_ms70) {
+		adbgPrintLog(_ctx, "ms70 := %u", (unsigned int)p->ms70);
+		return;
+	}
+	if (d == SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_ms80) {
+		adbgPrintLog(_ctx, "ms80 := %u", (unsigned int)p->ms80);
+		return;
+	}
+	if (d == SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_ms128) {
+		adbgPrintLog(_ctx, "ms128 := %u", (unsigned int)p->ms128);
+		return;
+	}
+	if (d == SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_ms160) {
+		adbgPrintLog(_ctx, "ms160 := %u", (unsigned int)p->ms160);
+		return;
+	}
+	if (d == SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_ms256) {
+		adbgPrintLog(_ctx, "ms256 := %u", (unsigned int)p->ms256);
+		return;
+	}
+	if (d == SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_ms320) {
+		adbgPrintLog(_ctx, "ms320 := %u", (unsigned int)p->ms320);
+		return;
+	}
+	if (d == SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_ms512) {
+		adbgPrintLog(_ctx, "ms512 := %u", (unsigned int)p->ms512);
+		return;
+	}
+	if (d == SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_ms640) {
+		adbgPrintLog(_ctx, "ms640 := %u", (unsigned int)p->ms640);
+		return;
+	}
+	if (d == SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_ms1024) {
+		adbgPrintLog(_ctx, "ms1024 := %u", (unsigned int)p->ms1024);
+		return;
+	}
+	if (d == SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_ms1280) {
+		adbgPrintLog(_ctx, "ms1280 := %u", (unsigned int)p->ms1280);
+		return;
+	}
+	if (d == SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_ms2048) {
+		adbgPrintLog(_ctx, "ms2048 := %u", (unsigned int)p->ms2048);
+		return;
+	}
+	if (d == SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_ms2560) {
+		adbgPrintLog(_ctx, "ms2560 := %u", (unsigned int)p->ms2560);
+		return;
+	}
+	if (d == SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_ms5120) {
+		adbgPrintLog(_ctx, "ms5120 := %u", (unsigned int)p->ms5120);
+		return;
+	}
+	if (d == SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_ms10240) {
+		adbgPrintLog(_ctx, "ms10240 := %u", (unsigned int)p->ms10240);
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17(acpCtx_t _ctx, const struct SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17* p)
+{
+	_adbgNrSys__SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_DRX_ConfigPTM_r17(acpCtx_t _ctx, const struct SQN_NR_DRX_ConfigPTM_r17* p)
+{
+	adbgPrintLog(_ctx, "drx_onDurationTimerPTM_r17 := { ");
+	_adbgNrSys__SQN_NR_DRX_ConfigPTM_r17_drx_onDurationTimerPTM_r17(_ctx, &p->drx_onDurationTimerPTM_r17);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "drx_InactivityTimerPTM_r17 := %s (%d)", adbgNrSys__SQN_NR_DRX_ConfigPTM_r17_drx_InactivityTimerPTM_r17_e__ToString(p->drx_InactivityTimerPTM_r17), (int)p->drx_InactivityTimerPTM_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "drx_HARQ_RTT_TimerDL_PTM_r17 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_DRX_ConfigPTM_r17_drx_HARQ_RTT_TimerDL_PTM_r17_Optional(_ctx, &p->drx_HARQ_RTT_TimerDL_PTM_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "drx_RetransmissionTimerDL_PTM_r17 := ");
+	_adbgNrSys__SQN_NR_DRX_ConfigPTM_r17_drx_RetransmissionTimerDL_PTM_r17_e_drx_RetransmissionTimerDL_PTM_r17_Optional(_ctx, &p->drx_RetransmissionTimerDL_PTM_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "drx_LongCycleStartOffsetPTM_r17 := { ");
+	_adbgNrSys__SQN_NR_DRX_ConfigPTM_r17_drx_LongCycleStartOffsetPTM_r17(_ctx, &p->drx_LongCycleStartOffsetPTM_r17);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "drx_SlotOffsetPTM_r17 := %u", (unsigned int)p->drx_SlotOffsetPTM_r17);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_MBS_RNTI_SpecificConfig_r17_drx_ConfigPTM_r17_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_MBS_RNTI_SpecificConfig_r17_drx_ConfigPTM_r17_Value* p, enum SQN_NR_SetupRelease_MBS_RNTI_SpecificConfig_r17_drx_ConfigPTM_r17_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_MBS_RNTI_SpecificConfig_r17_drx_ConfigPTM_r17_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_MBS_RNTI_SpecificConfig_r17_drx_ConfigPTM_r17_setup) {
+		adbgPrintLog(_ctx, "setup := { ");
+		_adbgNrSys__SQN_NR_DRX_ConfigPTM_r17(_ctx, &p->setup);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_MBS_RNTI_SpecificConfig_r17_drx_ConfigPTM_r17(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_MBS_RNTI_SpecificConfig_r17_drx_ConfigPTM_r17* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_MBS_RNTI_SpecificConfig_r17_drx_ConfigPTM_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_MBS_RNTI_SpecificConfig_r17_drx_ConfigPTM_r17_SQN_NR_MBS_RNTI_SpecificConfig_r17_drx_ConfigPTM_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_MBS_RNTI_SpecificConfig_r17_drx_ConfigPTM_r17_SQN_NR_MBS_RNTI_SpecificConfig_r17_drx_ConfigPTM_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_MBS_RNTI_SpecificConfig_r17_drx_ConfigPTM_r17(_ctx, &p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_MBS_RNTI_SpecificConfig_r17_harq_FeedbackEnablerMulticast_r17_e__ToString(SQN_NR_MBS_RNTI_SpecificConfig_r17_harq_FeedbackEnablerMulticast_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_MBS_RNTI_SpecificConfig_r17_harq_FeedbackEnablerMulticast_r17_e_dci_enabler: return "SQN_NR_MBS_RNTI_SpecificConfig_r17_harq_FeedbackEnablerMulticast_r17_e_dci_enabler";
+		case SQN_NR_MBS_RNTI_SpecificConfig_r17_harq_FeedbackEnablerMulticast_r17_e_enabled: return "SQN_NR_MBS_RNTI_SpecificConfig_r17_harq_FeedbackEnablerMulticast_r17_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_MBS_RNTI_SpecificConfig_r17_harq_FeedbackEnablerMulticast_r17_e_harq_FeedbackEnablerMulticast_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_MBS_RNTI_SpecificConfig_r17_harq_FeedbackEnablerMulticast_r17_e_harq_FeedbackEnablerMulticast_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_MBS_RNTI_SpecificConfig_r17_harq_FeedbackEnablerMulticast_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_MBS_RNTI_SpecificConfig_r17_harq_FeedbackOptionMulticast_r17_e__ToString(SQN_NR_MBS_RNTI_SpecificConfig_r17_harq_FeedbackOptionMulticast_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_MBS_RNTI_SpecificConfig_r17_harq_FeedbackOptionMulticast_r17_e_ack_nack: return "SQN_NR_MBS_RNTI_SpecificConfig_r17_harq_FeedbackOptionMulticast_r17_e_ack_nack";
+		case SQN_NR_MBS_RNTI_SpecificConfig_r17_harq_FeedbackOptionMulticast_r17_e_nack_only: return "SQN_NR_MBS_RNTI_SpecificConfig_r17_harq_FeedbackOptionMulticast_r17_e_nack_only";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_MBS_RNTI_SpecificConfig_r17_harq_FeedbackOptionMulticast_r17_e_harq_FeedbackOptionMulticast_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_MBS_RNTI_SpecificConfig_r17_harq_FeedbackOptionMulticast_r17_e_harq_FeedbackOptionMulticast_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_MBS_RNTI_SpecificConfig_r17_harq_FeedbackOptionMulticast_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_MBS_RNTI_SpecificConfig_r17_pdsch_AggregationFactor_r17_e__ToString(SQN_NR_MBS_RNTI_SpecificConfig_r17_pdsch_AggregationFactor_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_MBS_RNTI_SpecificConfig_r17_pdsch_AggregationFactor_r17_e_n2: return "SQN_NR_MBS_RNTI_SpecificConfig_r17_pdsch_AggregationFactor_r17_e_n2";
+		case SQN_NR_MBS_RNTI_SpecificConfig_r17_pdsch_AggregationFactor_r17_e_n4: return "SQN_NR_MBS_RNTI_SpecificConfig_r17_pdsch_AggregationFactor_r17_e_n4";
+		case SQN_NR_MBS_RNTI_SpecificConfig_r17_pdsch_AggregationFactor_r17_e_n8: return "SQN_NR_MBS_RNTI_SpecificConfig_r17_pdsch_AggregationFactor_r17_e_n8";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_MBS_RNTI_SpecificConfig_r17_pdsch_AggregationFactor_r17_e_pdsch_AggregationFactor_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_MBS_RNTI_SpecificConfig_r17_pdsch_AggregationFactor_r17_e_pdsch_AggregationFactor_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_MBS_RNTI_SpecificConfig_r17_pdsch_AggregationFactor_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_MBS_RNTI_SpecificConfig_r17(acpCtx_t _ctx, const struct SQN_NR_MBS_RNTI_SpecificConfig_r17* p)
+{
+	adbgPrintLog(_ctx, "mbs_RNTI_SpecificConfigId_r17 := %u", (unsigned int)p->mbs_RNTI_SpecificConfigId_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "groupCommon_RNTI_r17 := { ");
+	_adbgNrSys__SQN_NR_MBS_RNTI_SpecificConfig_r17_groupCommon_RNTI_r17(_ctx, &p->groupCommon_RNTI_r17);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "drx_ConfigPTM_r17 := ");
+	if (p->drx_ConfigPTM_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SetupRelease_MBS_RNTI_SpecificConfig_r17_drx_ConfigPTM_r17_SQN_NR_MBS_RNTI_SpecificConfig_r17_drx_ConfigPTM_r17_Optional(_ctx, &p->drx_ConfigPTM_r17);
+	if (p->drx_ConfigPTM_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "harq_FeedbackEnablerMulticast_r17 := ");
+	_adbgNrSys__SQN_NR_MBS_RNTI_SpecificConfig_r17_harq_FeedbackEnablerMulticast_r17_e_harq_FeedbackEnablerMulticast_r17_Optional(_ctx, &p->harq_FeedbackEnablerMulticast_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "harq_FeedbackOptionMulticast_r17 := ");
+	_adbgNrSys__SQN_NR_MBS_RNTI_SpecificConfig_r17_harq_FeedbackOptionMulticast_r17_e_harq_FeedbackOptionMulticast_r17_Optional(_ctx, &p->harq_FeedbackOptionMulticast_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pdsch_AggregationFactor_r17 := ");
+	_adbgNrSys__SQN_NR_MBS_RNTI_SpecificConfig_r17_pdsch_AggregationFactor_r17_e_pdsch_AggregationFactor_r17_Optional(_ctx, &p->pdsch_AggregationFactor_r17);
+}
+
+static void _adbgNrSys__SQN_NR_MBS_RNTI_SpecificConfig_r17_SQN_NR_MAC_CellGroupConfig_g_RNTI_ConfigToAddModList_r17_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_MBS_RNTI_SpecificConfig_r17_SQN_NR_MAC_CellGroupConfig_g_RNTI_ConfigToAddModList_r17_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i1 = 0; i1 < p->v.d; i1++) {
+		adbgPrintLog(_ctx, "{ ");
+		_adbgNrSys__SQN_NR_MBS_RNTI_SpecificConfig_r17(_ctx, &p->v.v[i1]);
+		adbgPrintLog(_ctx, " }");
+		if (i1 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgNrSys__SQN_NR_MBS_RNTI_SpecificConfigId_r17_SQN_NR_MAC_CellGroupConfig_g_RNTI_ConfigToReleaseList_r17_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_MBS_RNTI_SpecificConfigId_r17_SQN_NR_MAC_CellGroupConfig_g_RNTI_ConfigToReleaseList_r17_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "'");
+	for (size_t i1 = 0; i1 < p->v.d; i1++) {
+		adbgPrintLog(_ctx, "%02X", p->v.v[i1]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static void _adbgNrSys__SQN_NR_MBS_RNTI_SpecificConfig_r17_SQN_NR_MAC_CellGroupConfig_g_CS_RNTI_ConfigToAddModList_r17_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_MBS_RNTI_SpecificConfig_r17_SQN_NR_MAC_CellGroupConfig_g_CS_RNTI_ConfigToAddModList_r17_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i1 = 0; i1 < p->v.d; i1++) {
+		adbgPrintLog(_ctx, "{ ");
+		_adbgNrSys__SQN_NR_MBS_RNTI_SpecificConfig_r17(_ctx, &p->v.v[i1]);
+		adbgPrintLog(_ctx, " }");
+		if (i1 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgNrSys__SQN_NR_MBS_RNTI_SpecificConfigId_r17_SQN_NR_MAC_CellGroupConfig_g_CS_RNTI_ConfigToReleaseList_r17_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_MBS_RNTI_SpecificConfigId_r17_SQN_NR_MAC_CellGroupConfig_g_CS_RNTI_ConfigToReleaseList_r17_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "'");
+	for (size_t i1 = 0; i1 < p->v.d; i1++) {
+		adbgPrintLog(_ctx, "%02X", p->v.v[i1]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static void _adbgNrSys__Bool_SQN_NR_MAC_CellGroupConfig_allowCSI_SRS_Tx_MulticastDRX_Active_r17_Optional(acpCtx_t _ctx, const struct bool_SQN_NR_MAC_CellGroupConfig_allowCSI_SRS_Tx_MulticastDRX_Active_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s", (p->v ? "true" : "false"));
+}
+
+static void _adbgNrSys__SQN_NR_SchedulingRequestId_SQN_NR_MAC_CellGroupConfig_schedulingRequestID_PosMG_Request_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SchedulingRequestId_SQN_NR_MAC_CellGroupConfig_schedulingRequestID_PosMG_Request_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_MAC_CellGroupConfig_drx_LastTransmissionUL_r17_e__ToString(SQN_NR_MAC_CellGroupConfig_drx_LastTransmissionUL_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_MAC_CellGroupConfig_drx_LastTransmissionUL_r17_e_enabled: return "SQN_NR_MAC_CellGroupConfig_drx_LastTransmissionUL_r17_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_MAC_CellGroupConfig_drx_LastTransmissionUL_r17_e_drx_LastTransmissionUL_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_MAC_CellGroupConfig_drx_LastTransmissionUL_r17_e_drx_LastTransmissionUL_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_MAC_CellGroupConfig_drx_LastTransmissionUL_r17_e__ToString(p->v), (int)p->v);
 }
 
 static void _adbgNrSys__SQN_NR_MAC_CellGroupConfig(acpCtx_t _ctx, const struct SQN_NR_MAC_CellGroupConfig* p)
@@ -23566,6 +31562,66 @@ static void _adbgNrSys__SQN_NR_MAC_CellGroupConfig(acpCtx_t _ctx, const struct S
 	if (p->drx_ConfigSecondaryGroup_r16.d) { adbgPrintLog(_ctx, "{ "); };
 	_adbgNrSys__SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigSecondaryGroup_r16_SQN_NR_MAC_CellGroupConfig_drx_ConfigSecondaryGroup_r16_Optional(_ctx, &p->drx_ConfigSecondaryGroup_r16);
 	if (p->drx_ConfigSecondaryGroup_r16.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "enhancedSkipUplinkTxDynamic_r16 := ");
+	_adbgNrSys__SQN_NR_MAC_CellGroupConfig_enhancedSkipUplinkTxDynamic_r16_e_enhancedSkipUplinkTxDynamic_r16_Optional(_ctx, &p->enhancedSkipUplinkTxDynamic_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "enhancedSkipUplinkTxConfigured_r16 := ");
+	_adbgNrSys__SQN_NR_MAC_CellGroupConfig_enhancedSkipUplinkTxConfigured_r16_e_enhancedSkipUplinkTxConfigured_r16_Optional(_ctx, &p->enhancedSkipUplinkTxConfigured_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "intraCG_Prioritization_r17 := ");
+	_adbgNrSys__SQN_NR_MAC_CellGroupConfig_intraCG_Prioritization_r17_e_intraCG_Prioritization_r17_Optional(_ctx, &p->intraCG_Prioritization_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "drx_ConfigSL_r17 := ");
+	if (p->drx_ConfigSL_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigSL_r17_SQN_NR_MAC_CellGroupConfig_drx_ConfigSL_r17_Optional(_ctx, &p->drx_ConfigSL_r17);
+	if (p->drx_ConfigSL_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "drx_ConfigExt_v1700 := ");
+	if (p->drx_ConfigExt_v1700.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SetupRelease_MAC_CellGroupConfig_drx_ConfigExt_v1700_SQN_NR_MAC_CellGroupConfig_drx_ConfigExt_v1700_Optional(_ctx, &p->drx_ConfigExt_v1700);
+	if (p->drx_ConfigExt_v1700.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "schedulingRequestID_BFR_r17 := ");
+	_adbgNrSys__SQN_NR_SchedulingRequestId_SQN_NR_MAC_CellGroupConfig_schedulingRequestID_BFR_r17_Optional(_ctx, &p->schedulingRequestID_BFR_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "schedulingRequestID_BFR2_r17 := ");
+	_adbgNrSys__SQN_NR_SchedulingRequestId_SQN_NR_MAC_CellGroupConfig_schedulingRequestID_BFR2_r17_Optional(_ctx, &p->schedulingRequestID_BFR2_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "schedulingRequestConfig_v1700 := ");
+	if (p->schedulingRequestConfig_v1700.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SchedulingRequestConfig_v1700_SQN_NR_MAC_CellGroupConfig_schedulingRequestConfig_v1700_Optional(_ctx, &p->schedulingRequestConfig_v1700);
+	if (p->schedulingRequestConfig_v1700.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "tar_Config_r17 := ");
+	if (p->tar_Config_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SetupRelease_MAC_CellGroupConfig_tar_Config_r17_SQN_NR_MAC_CellGroupConfig_tar_Config_r17_Optional(_ctx, &p->tar_Config_r17);
+	if (p->tar_Config_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "g_RNTI_ConfigToAddModList_r17 := ");
+	if (p->g_RNTI_ConfigToAddModList_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_MBS_RNTI_SpecificConfig_r17_SQN_NR_MAC_CellGroupConfig_g_RNTI_ConfigToAddModList_r17_DynamicOptional(_ctx, &p->g_RNTI_ConfigToAddModList_r17);
+	if (p->g_RNTI_ConfigToAddModList_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "g_RNTI_ConfigToReleaseList_r17 := ");
+	_adbgNrSys__SQN_NR_MBS_RNTI_SpecificConfigId_r17_SQN_NR_MAC_CellGroupConfig_g_RNTI_ConfigToReleaseList_r17_DynamicOptional(_ctx, &p->g_RNTI_ConfigToReleaseList_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "g_CS_RNTI_ConfigToAddModList_r17 := ");
+	if (p->g_CS_RNTI_ConfigToAddModList_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_MBS_RNTI_SpecificConfig_r17_SQN_NR_MAC_CellGroupConfig_g_CS_RNTI_ConfigToAddModList_r17_DynamicOptional(_ctx, &p->g_CS_RNTI_ConfigToAddModList_r17);
+	if (p->g_CS_RNTI_ConfigToAddModList_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "g_CS_RNTI_ConfigToReleaseList_r17 := ");
+	_adbgNrSys__SQN_NR_MBS_RNTI_SpecificConfigId_r17_SQN_NR_MAC_CellGroupConfig_g_CS_RNTI_ConfigToReleaseList_r17_DynamicOptional(_ctx, &p->g_CS_RNTI_ConfigToReleaseList_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "allowCSI_SRS_Tx_MulticastDRX_Active_r17 := ");
+	_adbgNrSys__Bool_SQN_NR_MAC_CellGroupConfig_allowCSI_SRS_Tx_MulticastDRX_Active_r17_Optional(_ctx, &p->allowCSI_SRS_Tx_MulticastDRX_Active_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "schedulingRequestID_PosMG_Request_r17 := ");
+	_adbgNrSys__SQN_NR_SchedulingRequestId_SQN_NR_MAC_CellGroupConfig_schedulingRequestID_PosMG_Request_r17_Optional(_ctx, &p->schedulingRequestID_PosMG_Request_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "drx_LastTransmissionUL_r17 := ");
+	_adbgNrSys__SQN_NR_MAC_CellGroupConfig_drx_LastTransmissionUL_r17_e_drx_LastTransmissionUL_r17_Optional(_ctx, &p->drx_LastTransmissionUL_r17);
 }
 
 static void _adbgNrSys__NR_ASN1_MAC_CellGroupConfig_Type_Value(acpCtx_t _ctx, const union NR_ASN1_MAC_CellGroupConfig_Type_Value* p, enum NR_ASN1_MAC_CellGroupConfig_Type_Sel d)
@@ -24173,6 +32229,480 @@ static void _adbgNrSys__SQN_NR_PhysicalCellGroupConfig_bdFactorR_r16_e_bdFactorR
 	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PhysicalCellGroupConfig_bdFactorR_r16_e__ToString(p->v), (int)p->v);
 }
 
+static void _adbgNrSys__SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_applicable_r17_Value(acpCtx_t _ctx, const union SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_applicable_r17_Value* p, enum SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_applicable_r17_Sel d)
+{
+	if (d == SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_applicable_r17_perCC) {
+		adbgPrintLog(_ctx, "perCC := '");
+		for (size_t i2 = 0; i2 < p->perCC.d; i2++) {
+			adbgPrintLog(_ctx, "%02X", p->perCC.v[i2]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	if (d == SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_applicable_r17_perHARQ) {
+		adbgPrintLog(_ctx, "{");
+		for (size_t i2 = 0; i2 < p->perHARQ.d; i2++) {
+			adbgPrintLog(_ctx, "'");
+			for (size_t i3 = 0; i3 < 16; i3++) {
+				adbgPrintLog(_ctx, "%02X", p->perHARQ.v[i2][i3]);
+			}
+			adbgPrintLog(_ctx, "'O");
+			if (i2 != p->perHARQ.d - 1) { adbgPrintLog(_ctx, ", "); }
+		}
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_applicable_r17(acpCtx_t _ctx, const struct SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_applicable_r17* p)
+{
+	_adbgNrSys__SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_applicable_r17_Value(_ctx, &p->v, p->d);
+}
+
+static const char* adbgNrSys__SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_pdsch_HARQ_ACK_EnhType3NDI_r17_e__ToString(SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_pdsch_HARQ_ACK_EnhType3NDI_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_pdsch_HARQ_ACK_EnhType3NDI_r17_e_true: return "SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_pdsch_HARQ_ACK_EnhType3NDI_r17_e_true";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_pdsch_HARQ_ACK_EnhType3NDI_r17_e_pdsch_HARQ_ACK_EnhType3NDI_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_pdsch_HARQ_ACK_EnhType3NDI_r17_e_pdsch_HARQ_ACK_EnhType3NDI_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_pdsch_HARQ_ACK_EnhType3NDI_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_pdsch_HARQ_ACK_EnhType3CBG_r17_e__ToString(SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_pdsch_HARQ_ACK_EnhType3CBG_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_pdsch_HARQ_ACK_EnhType3CBG_r17_e_true: return "SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_pdsch_HARQ_ACK_EnhType3CBG_r17_e_true";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_pdsch_HARQ_ACK_EnhType3CBG_r17_e_pdsch_HARQ_ACK_EnhType3CBG_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_pdsch_HARQ_ACK_EnhType3CBG_r17_e_pdsch_HARQ_ACK_EnhType3CBG_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_pdsch_HARQ_ACK_EnhType3CBG_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17(acpCtx_t _ctx, const struct SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17* p)
+{
+	adbgPrintLog(_ctx, "pdsch_HARQ_ACK_EnhType3Index_r17 := %u", (unsigned int)p->pdsch_HARQ_ACK_EnhType3Index_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "applicable_r17 := { ");
+	_adbgNrSys__SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_applicable_r17(_ctx, &p->applicable_r17);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pdsch_HARQ_ACK_EnhType3NDI_r17 := ");
+	_adbgNrSys__SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_pdsch_HARQ_ACK_EnhType3NDI_r17_e_pdsch_HARQ_ACK_EnhType3NDI_r17_Optional(_ctx, &p->pdsch_HARQ_ACK_EnhType3NDI_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pdsch_HARQ_ACK_EnhType3CBG_r17 := ");
+	_adbgNrSys__SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_pdsch_HARQ_ACK_EnhType3CBG_r17_e_pdsch_HARQ_ACK_EnhType3CBG_r17_Optional(_ctx, &p->pdsch_HARQ_ACK_EnhType3CBG_r17);
+}
+
+static void _adbgNrSys__SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3ToAddModList_r17_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3ToAddModList_r17_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i1 = 0; i1 < p->v.d; i1++) {
+		adbgPrintLog(_ctx, "{ ");
+		_adbgNrSys__SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17(_ctx, &p->v.v[i1]);
+		adbgPrintLog(_ctx, " }");
+		if (i1 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PDSCH_HARQ_ACK_EnhType3Index_r17_SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3ToReleaseList_r17_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_PDSCH_HARQ_ACK_EnhType3Index_r17_SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3ToReleaseList_r17_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "'");
+	for (size_t i1 = 0; i1 < p->v.d; i1++) {
+		adbgPrintLog(_ctx, "%02X", p->v.v[i1]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static void _adbgNrSys__SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3SecondaryToAddModList_r17_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3SecondaryToAddModList_r17_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i1 = 0; i1 < p->v.d; i1++) {
+		adbgPrintLog(_ctx, "{ ");
+		_adbgNrSys__SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17(_ctx, &p->v.v[i1]);
+		adbgPrintLog(_ctx, " }");
+		if (i1 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PDSCH_HARQ_ACK_EnhType3Index_r17_SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3SecondaryToReleaseList_r17_DynamicOptional(acpCtx_t _ctx, const struct SQN_NR_PDSCH_HARQ_ACK_EnhType3Index_r17_SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3SecondaryToReleaseList_r17_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "'");
+	for (size_t i1 = 0; i1 < p->v.d; i1++) {
+		adbgPrintLog(_ctx, "%02X", p->v.v[i1]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static const char* adbgNrSys__SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3DCI_FieldSecondaryPUCCHgroup_r17_e__ToString(SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3DCI_FieldSecondaryPUCCHgroup_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3DCI_FieldSecondaryPUCCHgroup_r17_e_enabled: return "SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3DCI_FieldSecondaryPUCCHgroup_r17_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3DCI_FieldSecondaryPUCCHgroup_r17_e_pdsch_HARQ_ACK_EnhType3DCI_FieldSecondaryPUCCHgroup_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3DCI_FieldSecondaryPUCCHgroup_r17_e_pdsch_HARQ_ACK_EnhType3DCI_FieldSecondaryPUCCHgroup_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3DCI_FieldSecondaryPUCCHgroup_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3DCI_Field_r17_e__ToString(SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3DCI_Field_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3DCI_Field_r17_e_enabled: return "SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3DCI_Field_r17_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3DCI_Field_r17_e_pdsch_HARQ_ACK_EnhType3DCI_Field_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3DCI_Field_r17_e_pdsch_HARQ_ACK_EnhType3DCI_Field_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3DCI_Field_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_Retx_r17_e__ToString(SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_Retx_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_Retx_r17_e_enabled: return "SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_Retx_r17_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_Retx_r17_e_pdsch_HARQ_ACK_Retx_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_Retx_r17_e_pdsch_HARQ_ACK_Retx_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_Retx_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_RetxSecondaryPUCCHgroup_r17_e__ToString(SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_RetxSecondaryPUCCHgroup_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_RetxSecondaryPUCCHgroup_r17_e_enabled: return "SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_RetxSecondaryPUCCHgroup_r17_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_RetxSecondaryPUCCHgroup_r17_e_pdsch_HARQ_ACK_RetxSecondaryPUCCHgroup_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_RetxSecondaryPUCCHgroup_r17_e_pdsch_HARQ_ACK_RetxSecondaryPUCCHgroup_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_RetxSecondaryPUCCHgroup_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SCellIndex_SQN_NR_PhysicalCellGroupConfig_pucch_sSCell_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SCellIndex_SQN_NR_PhysicalCellGroupConfig_pucch_sSCell_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SCellIndex_SQN_NR_PhysicalCellGroupConfig_pucch_sSCellSecondaryPUCCHgroup_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SCellIndex_SQN_NR_PhysicalCellGroupConfig_pucch_sSCellSecondaryPUCCHgroup_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PhysicalCellGroupConfig_pucch_sSCellDyn_r17_e__ToString(SQN_NR_PhysicalCellGroupConfig_pucch_sSCellDyn_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PhysicalCellGroupConfig_pucch_sSCellDyn_r17_e_enabled: return "SQN_NR_PhysicalCellGroupConfig_pucch_sSCellDyn_r17_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PhysicalCellGroupConfig_pucch_sSCellDyn_r17_e_pucch_sSCellDyn_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PhysicalCellGroupConfig_pucch_sSCellDyn_r17_e_pucch_sSCellDyn_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PhysicalCellGroupConfig_pucch_sSCellDyn_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PhysicalCellGroupConfig_pucch_sSCellDynSecondaryPUCCHgroup_r17_e__ToString(SQN_NR_PhysicalCellGroupConfig_pucch_sSCellDynSecondaryPUCCHgroup_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PhysicalCellGroupConfig_pucch_sSCellDynSecondaryPUCCHgroup_r17_e_enabled: return "SQN_NR_PhysicalCellGroupConfig_pucch_sSCellDynSecondaryPUCCHgroup_r17_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PhysicalCellGroupConfig_pucch_sSCellDynSecondaryPUCCHgroup_r17_e_pucch_sSCellDynSecondaryPUCCHgroup_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PhysicalCellGroupConfig_pucch_sSCellDynSecondaryPUCCHgroup_r17_e_pucch_sSCellDynSecondaryPUCCHgroup_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PhysicalCellGroupConfig_pucch_sSCellDynSecondaryPUCCHgroup_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__Uint8_t_SQN_NR_PhysicalCellGroupConfig_pucch_sSCellPattern_r17_DynamicOptional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_PhysicalCellGroupConfig_pucch_sSCellPattern_r17_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "'");
+	for (size_t i1 = 0; i1 < p->v.d; i1++) {
+		adbgPrintLog(_ctx, "%02X", p->v.v[i1]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static void _adbgNrSys__Uint8_t_SQN_NR_PhysicalCellGroupConfig_pucch_sSCellPatternSecondaryPUCCHgroup_r17_DynamicOptional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_PhysicalCellGroupConfig_pucch_sSCellPatternSecondaryPUCCHgroup_r17_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "'");
+	for (size_t i1 = 0; i1 < p->v.d; i1++) {
+		adbgPrintLog(_ctx, "%02X", p->v.v[i1]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static const char* adbgNrSys__SQN_NR_PhysicalCellGroupConfig_uci_MuxWithDiffPrio_r17_e__ToString(SQN_NR_PhysicalCellGroupConfig_uci_MuxWithDiffPrio_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PhysicalCellGroupConfig_uci_MuxWithDiffPrio_r17_e_enabled: return "SQN_NR_PhysicalCellGroupConfig_uci_MuxWithDiffPrio_r17_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PhysicalCellGroupConfig_uci_MuxWithDiffPrio_r17_e_uci_MuxWithDiffPrio_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PhysicalCellGroupConfig_uci_MuxWithDiffPrio_r17_e_uci_MuxWithDiffPrio_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PhysicalCellGroupConfig_uci_MuxWithDiffPrio_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PhysicalCellGroupConfig_uci_MuxWithDiffPrioSecondaryPUCCHgroup_r17_e__ToString(SQN_NR_PhysicalCellGroupConfig_uci_MuxWithDiffPrioSecondaryPUCCHgroup_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PhysicalCellGroupConfig_uci_MuxWithDiffPrioSecondaryPUCCHgroup_r17_e_enabled: return "SQN_NR_PhysicalCellGroupConfig_uci_MuxWithDiffPrioSecondaryPUCCHgroup_r17_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PhysicalCellGroupConfig_uci_MuxWithDiffPrioSecondaryPUCCHgroup_r17_e_uci_MuxWithDiffPrioSecondaryPUCCHgroup_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PhysicalCellGroupConfig_uci_MuxWithDiffPrioSecondaryPUCCHgroup_r17_e_uci_MuxWithDiffPrioSecondaryPUCCHgroup_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PhysicalCellGroupConfig_uci_MuxWithDiffPrioSecondaryPUCCHgroup_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PhysicalCellGroupConfig_simultaneousPUCCH_PUSCH_r17_e__ToString(SQN_NR_PhysicalCellGroupConfig_simultaneousPUCCH_PUSCH_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PhysicalCellGroupConfig_simultaneousPUCCH_PUSCH_r17_e_enabled: return "SQN_NR_PhysicalCellGroupConfig_simultaneousPUCCH_PUSCH_r17_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PhysicalCellGroupConfig_simultaneousPUCCH_PUSCH_r17_e_simultaneousPUCCH_PUSCH_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PhysicalCellGroupConfig_simultaneousPUCCH_PUSCH_r17_e_simultaneousPUCCH_PUSCH_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PhysicalCellGroupConfig_simultaneousPUCCH_PUSCH_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PhysicalCellGroupConfig_simultaneousPUCCH_PUSCH_SecondaryPUCCHgroup_r17_e__ToString(SQN_NR_PhysicalCellGroupConfig_simultaneousPUCCH_PUSCH_SecondaryPUCCHgroup_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PhysicalCellGroupConfig_simultaneousPUCCH_PUSCH_SecondaryPUCCHgroup_r17_e_enabled: return "SQN_NR_PhysicalCellGroupConfig_simultaneousPUCCH_PUSCH_SecondaryPUCCHgroup_r17_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PhysicalCellGroupConfig_simultaneousPUCCH_PUSCH_SecondaryPUCCHgroup_r17_e_simultaneousPUCCH_PUSCH_SecondaryPUCCHgroup_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PhysicalCellGroupConfig_simultaneousPUCCH_PUSCH_SecondaryPUCCHgroup_r17_e_simultaneousPUCCH_PUSCH_SecondaryPUCCHgroup_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PhysicalCellGroupConfig_simultaneousPUCCH_PUSCH_SecondaryPUCCHgroup_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PhysicalCellGroupConfig_prioLowDG_HighCG_r17_e__ToString(SQN_NR_PhysicalCellGroupConfig_prioLowDG_HighCG_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PhysicalCellGroupConfig_prioLowDG_HighCG_r17_e_enabled: return "SQN_NR_PhysicalCellGroupConfig_prioLowDG_HighCG_r17_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PhysicalCellGroupConfig_prioLowDG_HighCG_r17_e_prioLowDG_HighCG_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PhysicalCellGroupConfig_prioLowDG_HighCG_r17_e_prioLowDG_HighCG_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PhysicalCellGroupConfig_prioLowDG_HighCG_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PhysicalCellGroupConfig_prioHighDG_LowCG_r17_e__ToString(SQN_NR_PhysicalCellGroupConfig_prioHighDG_LowCG_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PhysicalCellGroupConfig_prioHighDG_LowCG_r17_e_enabled: return "SQN_NR_PhysicalCellGroupConfig_prioHighDG_LowCG_r17_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PhysicalCellGroupConfig_prioHighDG_LowCG_r17_e_prioHighDG_LowCG_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PhysicalCellGroupConfig_prioHighDG_LowCG_r17_e_prioHighDG_LowCG_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PhysicalCellGroupConfig_prioHighDG_LowCG_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PhysicalCellGroupConfig_twoQCLTypeDforPDCCHRepetition_r17_e__ToString(SQN_NR_PhysicalCellGroupConfig_twoQCLTypeDforPDCCHRepetition_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PhysicalCellGroupConfig_twoQCLTypeDforPDCCHRepetition_r17_e_enabled: return "SQN_NR_PhysicalCellGroupConfig_twoQCLTypeDforPDCCHRepetition_r17_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PhysicalCellGroupConfig_twoQCLTypeDforPDCCHRepetition_r17_e_twoQCLTypeDforPDCCHRepetition_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PhysicalCellGroupConfig_twoQCLTypeDforPDCCHRepetition_r17_e_twoQCLTypeDforPDCCHRepetition_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PhysicalCellGroupConfig_twoQCLTypeDforPDCCHRepetition_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_MulticastConfig_r17_pdsch_HARQ_ACK_CodebookListMulticast_r17_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_MulticastConfig_r17_pdsch_HARQ_ACK_CodebookListMulticast_r17_Value* p, enum SQN_NR_SetupRelease_MulticastConfig_r17_pdsch_HARQ_ACK_CodebookListMulticast_r17_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_MulticastConfig_r17_pdsch_HARQ_ACK_CodebookListMulticast_r17_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_MulticastConfig_r17_pdsch_HARQ_ACK_CodebookListMulticast_r17_setup) {
+		adbgPrintLog(_ctx, "setup := { ");
+		for (size_t i1 = 0; i1 < p->setup.d; i1++) {
+			adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PDSCH_HARQ_ACK_CodebookList_r16_e_e__ToString(p->setup.v[i1]), (int)p->setup.v[i1]);
+			if (i1 != p->setup.d - 1) { adbgPrintLog(_ctx, ", "); }
+		}
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_MulticastConfig_r17_pdsch_HARQ_ACK_CodebookListMulticast_r17(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_MulticastConfig_r17_pdsch_HARQ_ACK_CodebookListMulticast_r17* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_MulticastConfig_r17_pdsch_HARQ_ACK_CodebookListMulticast_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_MulticastConfig_r17_pdsch_HARQ_ACK_CodebookListMulticast_r17_SQN_NR_MulticastConfig_r17_pdsch_HARQ_ACK_CodebookListMulticast_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_MulticastConfig_r17_pdsch_HARQ_ACK_CodebookListMulticast_r17_SQN_NR_MulticastConfig_r17_pdsch_HARQ_ACK_CodebookListMulticast_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_MulticastConfig_r17_pdsch_HARQ_ACK_CodebookListMulticast_r17(_ctx, &p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_MulticastConfig_r17_type1_Codebook_GenerationMode_r17_e__ToString(SQN_NR_MulticastConfig_r17_type1_Codebook_GenerationMode_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_MulticastConfig_r17_type1_Codebook_GenerationMode_r17_e_mode1: return "SQN_NR_MulticastConfig_r17_type1_Codebook_GenerationMode_r17_e_mode1";
+		case SQN_NR_MulticastConfig_r17_type1_Codebook_GenerationMode_r17_e_mode2: return "SQN_NR_MulticastConfig_r17_type1_Codebook_GenerationMode_r17_e_mode2";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_MulticastConfig_r17_type1_Codebook_GenerationMode_r17_e_type1_Codebook_GenerationMode_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_MulticastConfig_r17_type1_Codebook_GenerationMode_r17_e_type1_Codebook_GenerationMode_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_MulticastConfig_r17_type1_Codebook_GenerationMode_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_MulticastConfig_r17(acpCtx_t _ctx, const struct SQN_NR_MulticastConfig_r17* p)
+{
+	adbgPrintLog(_ctx, "pdsch_HARQ_ACK_CodebookListMulticast_r17 := ");
+	if (p->pdsch_HARQ_ACK_CodebookListMulticast_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SetupRelease_MulticastConfig_r17_pdsch_HARQ_ACK_CodebookListMulticast_r17_SQN_NR_MulticastConfig_r17_pdsch_HARQ_ACK_CodebookListMulticast_r17_Optional(_ctx, &p->pdsch_HARQ_ACK_CodebookListMulticast_r17);
+	if (p->pdsch_HARQ_ACK_CodebookListMulticast_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "type1_Codebook_GenerationMode_r17 := ");
+	_adbgNrSys__SQN_NR_MulticastConfig_r17_type1_Codebook_GenerationMode_r17_e_type1_Codebook_GenerationMode_r17_Optional(_ctx, &p->type1_Codebook_GenerationMode_r17);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PhysicalCellGroupConfig_multicastConfig_r17_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_PhysicalCellGroupConfig_multicastConfig_r17_Value* p, enum SQN_NR_SetupRelease_PhysicalCellGroupConfig_multicastConfig_r17_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_PhysicalCellGroupConfig_multicastConfig_r17_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_PhysicalCellGroupConfig_multicastConfig_r17_setup) {
+		adbgPrintLog(_ctx, "setup := { ");
+		_adbgNrSys__SQN_NR_MulticastConfig_r17(_ctx, &p->setup);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PhysicalCellGroupConfig_multicastConfig_r17(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PhysicalCellGroupConfig_multicastConfig_r17* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_PhysicalCellGroupConfig_multicastConfig_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PhysicalCellGroupConfig_multicastConfig_r17_SQN_NR_PhysicalCellGroupConfig_multicastConfig_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PhysicalCellGroupConfig_multicastConfig_r17_SQN_NR_PhysicalCellGroupConfig_multicastConfig_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_PhysicalCellGroupConfig_multicastConfig_r17(_ctx, &p->v);
+}
+
+static void _adbgNrSys__Uint8_t_SQN_NR_PDCCH_BlindDetectionCA_CombIndicator_r17_pdcch_BlindDetectionCA1_r17_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_PDCCH_BlindDetectionCA_CombIndicator_r17_pdcch_BlindDetectionCA1_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__Uint8_t_SQN_NR_PDCCH_BlindDetectionCA_CombIndicator_r17_pdcch_BlindDetectionCA2_r17_Optional(acpCtx_t _ctx, const struct uint8_t_SQN_NR_PDCCH_BlindDetectionCA_CombIndicator_r17_pdcch_BlindDetectionCA2_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_PDCCH_BlindDetectionCA_CombIndicator_r17(acpCtx_t _ctx, const struct SQN_NR_PDCCH_BlindDetectionCA_CombIndicator_r17* p)
+{
+	adbgPrintLog(_ctx, "pdcch_BlindDetectionCA1_r17 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_PDCCH_BlindDetectionCA_CombIndicator_r17_pdcch_BlindDetectionCA1_r17_Optional(_ctx, &p->pdcch_BlindDetectionCA1_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pdcch_BlindDetectionCA2_r17 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_PDCCH_BlindDetectionCA_CombIndicator_r17_pdcch_BlindDetectionCA2_r17_Optional(_ctx, &p->pdcch_BlindDetectionCA2_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pdcch_BlindDetectionCA3_r17 := %u", (unsigned int)p->pdcch_BlindDetectionCA3_r17);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PhysicalCellGroupConfig_pdcch_BlindDetectionCA_CombIndicator_r17_Value(acpCtx_t _ctx, const union SQN_NR_SetupRelease_PhysicalCellGroupConfig_pdcch_BlindDetectionCA_CombIndicator_r17_Value* p, enum SQN_NR_SetupRelease_PhysicalCellGroupConfig_pdcch_BlindDetectionCA_CombIndicator_r17_Sel d)
+{
+	if (d == SQN_NR_SetupRelease_PhysicalCellGroupConfig_pdcch_BlindDetectionCA_CombIndicator_r17_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_NR_SetupRelease_PhysicalCellGroupConfig_pdcch_BlindDetectionCA_CombIndicator_r17_setup) {
+		adbgPrintLog(_ctx, "setup := { ");
+		_adbgNrSys__SQN_NR_PDCCH_BlindDetectionCA_CombIndicator_r17(_ctx, &p->setup);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PhysicalCellGroupConfig_pdcch_BlindDetectionCA_CombIndicator_r17(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PhysicalCellGroupConfig_pdcch_BlindDetectionCA_CombIndicator_r17* p)
+{
+	_adbgNrSys__SQN_NR_SetupRelease_PhysicalCellGroupConfig_pdcch_BlindDetectionCA_CombIndicator_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_SetupRelease_PhysicalCellGroupConfig_pdcch_BlindDetectionCA_CombIndicator_r17_SQN_NR_PhysicalCellGroupConfig_pdcch_BlindDetectionCA_CombIndicator_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_SetupRelease_PhysicalCellGroupConfig_pdcch_BlindDetectionCA_CombIndicator_r17_SQN_NR_PhysicalCellGroupConfig_pdcch_BlindDetectionCA_CombIndicator_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_SetupRelease_PhysicalCellGroupConfig_pdcch_BlindDetectionCA_CombIndicator_r17(_ctx, &p->v);
+}
+
+static const char* adbgNrSys__SQN_NR_PhysicalCellGroupConfig_simultaneousSR_PUSCH_diffPUCCH_Groups_r17_e__ToString(SQN_NR_PhysicalCellGroupConfig_simultaneousSR_PUSCH_diffPUCCH_Groups_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PhysicalCellGroupConfig_simultaneousSR_PUSCH_diffPUCCH_Groups_r17_e_enabled: return "SQN_NR_PhysicalCellGroupConfig_simultaneousSR_PUSCH_diffPUCCH_Groups_r17_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PhysicalCellGroupConfig_simultaneousSR_PUSCH_diffPUCCH_Groups_r17_e_simultaneousSR_PUSCH_diffPUCCH_Groups_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PhysicalCellGroupConfig_simultaneousSR_PUSCH_diffPUCCH_Groups_r17_e_simultaneousSR_PUSCH_diffPUCCH_Groups_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PhysicalCellGroupConfig_simultaneousSR_PUSCH_diffPUCCH_Groups_r17_e__ToString(p->v), (int)p->v);
+}
+
 static void _adbgNrSys__SQN_NR_PhysicalCellGroupConfig(acpCtx_t _ctx, const struct SQN_NR_PhysicalCellGroupConfig* p)
 {
 	adbgPrintLog(_ctx, "harq_ACK_SpatialBundlingPUCCH := ");
@@ -24292,6 +32822,86 @@ static void _adbgNrSys__SQN_NR_PhysicalCellGroupConfig(acpCtx_t _ctx, const stru
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "bdFactorR_r16 := ");
 	_adbgNrSys__SQN_NR_PhysicalCellGroupConfig_bdFactorR_r16_e_bdFactorR_r16_Optional(_ctx, &p->bdFactorR_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pdsch_HARQ_ACK_EnhType3ToAddModList_r17 := ");
+	if (p->pdsch_HARQ_ACK_EnhType3ToAddModList_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3ToAddModList_r17_DynamicOptional(_ctx, &p->pdsch_HARQ_ACK_EnhType3ToAddModList_r17);
+	if (p->pdsch_HARQ_ACK_EnhType3ToAddModList_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pdsch_HARQ_ACK_EnhType3ToReleaseList_r17 := ");
+	_adbgNrSys__SQN_NR_PDSCH_HARQ_ACK_EnhType3Index_r17_SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3ToReleaseList_r17_DynamicOptional(_ctx, &p->pdsch_HARQ_ACK_EnhType3ToReleaseList_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pdsch_HARQ_ACK_EnhType3SecondaryToAddModList_r17 := ");
+	if (p->pdsch_HARQ_ACK_EnhType3SecondaryToAddModList_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_PDSCH_HARQ_ACK_EnhType3_r17_SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3SecondaryToAddModList_r17_DynamicOptional(_ctx, &p->pdsch_HARQ_ACK_EnhType3SecondaryToAddModList_r17);
+	if (p->pdsch_HARQ_ACK_EnhType3SecondaryToAddModList_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pdsch_HARQ_ACK_EnhType3SecondaryToReleaseList_r17 := ");
+	_adbgNrSys__SQN_NR_PDSCH_HARQ_ACK_EnhType3Index_r17_SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3SecondaryToReleaseList_r17_DynamicOptional(_ctx, &p->pdsch_HARQ_ACK_EnhType3SecondaryToReleaseList_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pdsch_HARQ_ACK_EnhType3DCI_FieldSecondaryPUCCHgroup_r17 := ");
+	_adbgNrSys__SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3DCI_FieldSecondaryPUCCHgroup_r17_e_pdsch_HARQ_ACK_EnhType3DCI_FieldSecondaryPUCCHgroup_r17_Optional(_ctx, &p->pdsch_HARQ_ACK_EnhType3DCI_FieldSecondaryPUCCHgroup_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pdsch_HARQ_ACK_EnhType3DCI_Field_r17 := ");
+	_adbgNrSys__SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_EnhType3DCI_Field_r17_e_pdsch_HARQ_ACK_EnhType3DCI_Field_r17_Optional(_ctx, &p->pdsch_HARQ_ACK_EnhType3DCI_Field_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pdsch_HARQ_ACK_Retx_r17 := ");
+	_adbgNrSys__SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_Retx_r17_e_pdsch_HARQ_ACK_Retx_r17_Optional(_ctx, &p->pdsch_HARQ_ACK_Retx_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pdsch_HARQ_ACK_RetxSecondaryPUCCHgroup_r17 := ");
+	_adbgNrSys__SQN_NR_PhysicalCellGroupConfig_pdsch_HARQ_ACK_RetxSecondaryPUCCHgroup_r17_e_pdsch_HARQ_ACK_RetxSecondaryPUCCHgroup_r17_Optional(_ctx, &p->pdsch_HARQ_ACK_RetxSecondaryPUCCHgroup_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pucch_sSCell_r17 := ");
+	_adbgNrSys__SQN_NR_SCellIndex_SQN_NR_PhysicalCellGroupConfig_pucch_sSCell_r17_Optional(_ctx, &p->pucch_sSCell_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pucch_sSCellSecondaryPUCCHgroup_r17 := ");
+	_adbgNrSys__SQN_NR_SCellIndex_SQN_NR_PhysicalCellGroupConfig_pucch_sSCellSecondaryPUCCHgroup_r17_Optional(_ctx, &p->pucch_sSCellSecondaryPUCCHgroup_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pucch_sSCellDyn_r17 := ");
+	_adbgNrSys__SQN_NR_PhysicalCellGroupConfig_pucch_sSCellDyn_r17_e_pucch_sSCellDyn_r17_Optional(_ctx, &p->pucch_sSCellDyn_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pucch_sSCellDynSecondaryPUCCHgroup_r17 := ");
+	_adbgNrSys__SQN_NR_PhysicalCellGroupConfig_pucch_sSCellDynSecondaryPUCCHgroup_r17_e_pucch_sSCellDynSecondaryPUCCHgroup_r17_Optional(_ctx, &p->pucch_sSCellDynSecondaryPUCCHgroup_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pucch_sSCellPattern_r17 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_PhysicalCellGroupConfig_pucch_sSCellPattern_r17_DynamicOptional(_ctx, &p->pucch_sSCellPattern_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pucch_sSCellPatternSecondaryPUCCHgroup_r17 := ");
+	_adbgNrSys__Uint8_t_SQN_NR_PhysicalCellGroupConfig_pucch_sSCellPatternSecondaryPUCCHgroup_r17_DynamicOptional(_ctx, &p->pucch_sSCellPatternSecondaryPUCCHgroup_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "uci_MuxWithDiffPrio_r17 := ");
+	_adbgNrSys__SQN_NR_PhysicalCellGroupConfig_uci_MuxWithDiffPrio_r17_e_uci_MuxWithDiffPrio_r17_Optional(_ctx, &p->uci_MuxWithDiffPrio_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "uci_MuxWithDiffPrioSecondaryPUCCHgroup_r17 := ");
+	_adbgNrSys__SQN_NR_PhysicalCellGroupConfig_uci_MuxWithDiffPrioSecondaryPUCCHgroup_r17_e_uci_MuxWithDiffPrioSecondaryPUCCHgroup_r17_Optional(_ctx, &p->uci_MuxWithDiffPrioSecondaryPUCCHgroup_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "simultaneousPUCCH_PUSCH_r17 := ");
+	_adbgNrSys__SQN_NR_PhysicalCellGroupConfig_simultaneousPUCCH_PUSCH_r17_e_simultaneousPUCCH_PUSCH_r17_Optional(_ctx, &p->simultaneousPUCCH_PUSCH_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "simultaneousPUCCH_PUSCH_SecondaryPUCCHgroup_r17 := ");
+	_adbgNrSys__SQN_NR_PhysicalCellGroupConfig_simultaneousPUCCH_PUSCH_SecondaryPUCCHgroup_r17_e_simultaneousPUCCH_PUSCH_SecondaryPUCCHgroup_r17_Optional(_ctx, &p->simultaneousPUCCH_PUSCH_SecondaryPUCCHgroup_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "prioLowDG_HighCG_r17 := ");
+	_adbgNrSys__SQN_NR_PhysicalCellGroupConfig_prioLowDG_HighCG_r17_e_prioLowDG_HighCG_r17_Optional(_ctx, &p->prioLowDG_HighCG_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "prioHighDG_LowCG_r17 := ");
+	_adbgNrSys__SQN_NR_PhysicalCellGroupConfig_prioHighDG_LowCG_r17_e_prioHighDG_LowCG_r17_Optional(_ctx, &p->prioHighDG_LowCG_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "twoQCLTypeDforPDCCHRepetition_r17 := ");
+	_adbgNrSys__SQN_NR_PhysicalCellGroupConfig_twoQCLTypeDforPDCCHRepetition_r17_e_twoQCLTypeDforPDCCHRepetition_r17_Optional(_ctx, &p->twoQCLTypeDforPDCCHRepetition_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "multicastConfig_r17 := ");
+	if (p->multicastConfig_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SetupRelease_PhysicalCellGroupConfig_multicastConfig_r17_SQN_NR_PhysicalCellGroupConfig_multicastConfig_r17_Optional(_ctx, &p->multicastConfig_r17);
+	if (p->multicastConfig_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pdcch_BlindDetectionCA_CombIndicator_r17 := ");
+	if (p->pdcch_BlindDetectionCA_CombIndicator_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_SetupRelease_PhysicalCellGroupConfig_pdcch_BlindDetectionCA_CombIndicator_r17_SQN_NR_PhysicalCellGroupConfig_pdcch_BlindDetectionCA_CombIndicator_r17_Optional(_ctx, &p->pdcch_BlindDetectionCA_CombIndicator_r17);
+	if (p->pdcch_BlindDetectionCA_CombIndicator_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "simultaneousSR_PUSCH_diffPUCCH_Groups_r17 := ");
+	_adbgNrSys__SQN_NR_PhysicalCellGroupConfig_simultaneousSR_PUSCH_diffPUCCH_Groups_r17_e_simultaneousSR_PUSCH_diffPUCCH_Groups_r17_Optional(_ctx, &p->simultaneousSR_PUSCH_diffPUCCH_Groups_r17);
 }
 
 static void _adbgNrSys__NR_ASN1_PhysicalCellGroupConfig_Type_Value(acpCtx_t _ctx, const union NR_ASN1_PhysicalCellGroupConfig_Type_Value* p, enum NR_ASN1_PhysicalCellGroupConfig_Type_Sel d)
@@ -25867,6 +34477,296 @@ static void _adbgNrSys__NR_PDCP_CountReq_Type(acpCtx_t _ctx, const struct NR_PDC
 	_adbgNrSys__NR_PDCP_CountReq_Type_Value(_ctx, &p->v, p->d);
 }
 
+static void _adbgNrSys__NR_PDCCH_Order_Type(acpCtx_t _ctx, const struct NR_PDCCH_Order_Type* p)
+{
+	adbgPrintLog(_ctx, "RA_PreambleIndex := '");
+	for (size_t i1 = 0; i1 < 6; i1++) {
+		adbgPrintLog(_ctx, "%02X", p->RA_PreambleIndex[i1]);
+	}
+	adbgPrintLog(_ctx, "'O");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "UL_SUL_Indicator := { ");
+	_adbgNrSys__NR_DciCommon_UL_SUL_Indicator_Type(_ctx, &p->UL_SUL_Indicator);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "SSB_Index := '");
+	for (size_t i1 = 0; i1 < 6; i1++) {
+		adbgPrintLog(_ctx, "%02X", p->SSB_Index[i1]);
+	}
+	adbgPrintLog(_ctx, "'O");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "PrachMaskIndex := '");
+	for (size_t i1 = 0; i1 < 4; i1++) {
+		adbgPrintLog(_ctx, "%02X", p->PrachMaskIndex[i1]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static void _adbgNrSys__NR_SlotOffsetList_Type_NR_DciWithShortMessageOnly_Type_SlotOffsetList_Optional(acpCtx_t _ctx, const struct NR_SlotOffsetList_Type_NR_DciWithShortMessageOnly_Type_SlotOffsetList_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "'");
+	for (size_t i1 = 0; i1 < p->v.d; i1++) {
+		adbgPrintLog(_ctx, "%02X", p->v.v[i1]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static void _adbgNrSys__NR_DciWithShortMessageOnly_Type(acpCtx_t _ctx, const struct NR_DciWithShortMessageOnly_Type* p)
+{
+	adbgPrintLog(_ctx, "ShortMessageIndicator := '");
+	for (size_t i1 = 0; i1 < 2; i1++) {
+		adbgPrintLog(_ctx, "%02X", p->ShortMessageIndicator[i1]);
+	}
+	adbgPrintLog(_ctx, "'O");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "ShortMessages := '");
+	for (size_t i1 = 0; i1 < 8; i1++) {
+		adbgPrintLog(_ctx, "%02X", p->ShortMessages[i1]);
+	}
+	adbgPrintLog(_ctx, "'O");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "SlotOffsetList := ");
+	if (p->SlotOffsetList.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__NR_SlotOffsetList_Type_NR_DciWithShortMessageOnly_Type_SlotOffsetList_Optional(_ctx, &p->SlotOffsetList);
+	if (p->SlotOffsetList.d) { adbgPrintLog(_ctx, " }"); };
+}
+
+static void _adbgNrSys__NR_DciFormat_2_0_Type(acpCtx_t _ctx, const struct NR_DciFormat_2_0_Type* p)
+{
+	adbgPrintLog(_ctx, "SfiList := { ");
+	for (size_t i1 = 0; i1 < p->SfiList.d; i1++) {
+		adbgPrintLog(_ctx, "'");
+		for (size_t i2 = 0; i2 < p->SfiList.v[i1].d; i2++) {
+			adbgPrintLog(_ctx, "%02X", p->SfiList.v[i1].v[i2]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		if (i1 != p->SfiList.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+	adbgPrintLog(_ctx, " }");
+}
+
+static void _adbgNrSys__NR_DciFormat_2_1_Type(acpCtx_t _ctx, const struct NR_DciFormat_2_1_Type* p)
+{
+	adbgPrintLog(_ctx, "{");
+	for (size_t i1 = 0; i1 < p->IntValueList.d; i1++) {
+		adbgPrintLog(_ctx, "'");
+		for (size_t i2 = 0; i2 < 14; i2++) {
+			adbgPrintLog(_ctx, "%02X", p->IntValueList.v[i1][i2]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		if (i1 != p->IntValueList.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+	adbgPrintLog(_ctx, " }");
+}
+
+static void _adbgNrSys__NR_DciFormat_2_2_ClosedLoopIndicator_Type(acpCtx_t _ctx, const struct NR_DciFormat_2_2_ClosedLoopIndicator_Type* p)
+{
+	adbgPrintLog(_ctx, "None := %s", (p->None ? "true" : "false"));
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "Index := '");
+	for (size_t i2 = 0; i2 < 1; i2++) {
+		adbgPrintLog(_ctx, "%02X", p->Index[i2]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static void _adbgNrSys__NR_DciFormat_2_2_TpcBlock_Type_Value(acpCtx_t _ctx, const union NR_DciFormat_2_2_TpcBlock_Type_Value* p, enum NR_DciFormat_2_2_TpcBlock_Type_Sel d)
+{
+	if (d == NR_DciFormat_2_2_TpcBlock_Type_ClosedLoopIndicator) {
+		adbgPrintLog(_ctx, "ClosedLoopIndicator := { ");
+		_adbgNrSys__NR_DciFormat_2_2_ClosedLoopIndicator_Type(_ctx, &p->ClosedLoopIndicator);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == NR_DciFormat_2_2_TpcBlock_Type_TpcCommand) {
+		adbgPrintLog(_ctx, "TpcCommand := { ");
+		_adbgNrSys__NR_DciCommon_TpcCommand_Type(_ctx, &p->TpcCommand);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__NR_DciFormat_2_2_TpcBlock_Type(acpCtx_t _ctx, const struct NR_DciFormat_2_2_TpcBlock_Type* p)
+{
+	_adbgNrSys__NR_DciFormat_2_2_TpcBlock_Type_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__NR_DciFormat_2_2_Type(acpCtx_t _ctx, const struct NR_DciFormat_2_2_Type* p)
+{
+	adbgPrintLog(_ctx, "TpcBlockList := { ");
+	for (size_t i1 = 0; i1 < p->TpcBlockList.d; i1++) {
+		adbgPrintLog(_ctx, "{ ");
+		_adbgNrSys__NR_DciFormat_2_2_TpcBlock_Type(_ctx, &p->TpcBlockList.v[i1]);
+		adbgPrintLog(_ctx, " }");
+		if (i1 != p->TpcBlockList.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+	adbgPrintLog(_ctx, " }");
+}
+
+static void _adbgNrSys__NR_DciFormat_2_3_SrsRequest_Type(acpCtx_t _ctx, const struct NR_DciFormat_2_3_SrsRequest_Type* p)
+{
+	adbgPrintLog(_ctx, "None := %s", (p->None ? "true" : "false"));
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "SrsRequestValue := '");
+	for (size_t i1 = 0; i1 < 2; i1++) {
+		adbgPrintLog(_ctx, "%02X", p->SrsRequestValue[i1]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static void _adbgNrSys__NR_DciFormat_2_3_TypeA_Type(acpCtx_t _ctx, const struct NR_DciFormat_2_3_TypeA_Type* p)
+{
+	adbgPrintLog(_ctx, "SrsRequest := { ");
+	_adbgNrSys__NR_DciFormat_2_3_SrsRequest_Type(_ctx, &p->SrsRequest);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "TpcCommandList := { ");
+	for (size_t i1 = 0; i1 < p->TpcCommandList.d; i1++) {
+		adbgPrintLog(_ctx, "{ ");
+		_adbgNrSys__NR_DciCommon_TpcCommand_Type(_ctx, &p->TpcCommandList.v[i1]);
+		adbgPrintLog(_ctx, " }");
+		if (i1 != p->TpcCommandList.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+	adbgPrintLog(_ctx, " }");
+}
+
+static void _adbgNrSys__NR_DciFormat_2_3_SingleBlockTypeB_Type(acpCtx_t _ctx, const struct NR_DciFormat_2_3_SingleBlockTypeB_Type* p)
+{
+	adbgPrintLog(_ctx, "SrsRequest := { ");
+	_adbgNrSys__NR_DciFormat_2_3_SrsRequest_Type(_ctx, &p->SrsRequest);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "TpcCommand := { ");
+	_adbgNrSys__NR_DciCommon_TpcCommand_Type(_ctx, &p->TpcCommand);
+	adbgPrintLog(_ctx, " }");
+}
+
+static void _adbgNrSys__NR_DciFormat_2_3_TypeA_B_Type_Value(acpCtx_t _ctx, const union NR_DciFormat_2_3_TypeA_B_Type_Value* p, enum NR_DciFormat_2_3_TypeA_B_Type_Sel d)
+{
+	if (d == NR_DciFormat_2_3_TypeA_B_Type_TypeA) {
+		adbgPrintLog(_ctx, "TypeA := { ");
+		_adbgNrSys__NR_DciFormat_2_3_TypeA_Type(_ctx, &p->TypeA);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == NR_DciFormat_2_3_TypeA_B_Type_TypeB) {
+		adbgPrintLog(_ctx, "TypeB := { ");
+		for (size_t i1 = 0; i1 < p->TypeB.d; i1++) {
+			adbgPrintLog(_ctx, "{ ");
+			_adbgNrSys__NR_DciFormat_2_3_SingleBlockTypeB_Type(_ctx, &p->TypeB.v[i1]);
+			adbgPrintLog(_ctx, " }");
+			if (i1 != p->TypeB.d - 1) { adbgPrintLog(_ctx, ", "); }
+		}
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__NR_DciFormat_2_3_TypeA_B_Type(acpCtx_t _ctx, const struct NR_DciFormat_2_3_TypeA_B_Type* p)
+{
+	_adbgNrSys__NR_DciFormat_2_3_TypeA_B_Type_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__NR_DciFormat_2_3_Type(acpCtx_t _ctx, const struct NR_DciFormat_2_3_Type* p)
+{
+	adbgPrintLog(_ctx, "TypeA_B := { ");
+	_adbgNrSys__NR_DciFormat_2_3_TypeA_B_Type(_ctx, &p->TypeA_B);
+	adbgPrintLog(_ctx, " }");
+}
+
+static void _adbgNrSys__NR_DciFormat_2_6_Block_Type(acpCtx_t _ctx, const struct NR_DciFormat_2_6_Block_Type* p)
+{
+	adbgPrintLog(_ctx, "WakeupIndication := '");
+	for (size_t i2 = 0; i2 < 1; i2++) {
+		adbgPrintLog(_ctx, "%02X", p->WakeupIndication[i2]);
+	}
+	adbgPrintLog(_ctx, "'O");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "SCellDormacyIndication := { ");
+	_adbgNrSys__NR_DciFormat_X_1_SCellDormancyIndication_Type(_ctx, &p->SCellDormacyIndication);
+	adbgPrintLog(_ctx, " }");
+}
+
+static void _adbgNrSys__NR_DciFormat_2_6_Type(acpCtx_t _ctx, const struct NR_DciFormat_2_6_Type* p)
+{
+	adbgPrintLog(_ctx, "BlockList := { ");
+	for (size_t i1 = 0; i1 < p->BlockList.d; i1++) {
+		adbgPrintLog(_ctx, "{ ");
+		_adbgNrSys__NR_DciFormat_2_6_Block_Type(_ctx, &p->BlockList.v[i1]);
+		adbgPrintLog(_ctx, " }");
+		if (i1 != p->BlockList.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+	adbgPrintLog(_ctx, " }");
+}
+
+static void _adbgNrSys__NR_DCI_TriggerFormat_Type_Value(acpCtx_t _ctx, const union NR_DCI_TriggerFormat_Type_Value* p, enum NR_DCI_TriggerFormat_Type_Sel d)
+{
+	if (d == NR_DCI_TriggerFormat_Type_PdcchOrder) {
+		adbgPrintLog(_ctx, "PdcchOrder := { ");
+		_adbgNrSys__NR_PDCCH_Order_Type(_ctx, &p->PdcchOrder);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == NR_DCI_TriggerFormat_Type_ShortMessage) {
+		adbgPrintLog(_ctx, "ShortMessage := { ");
+		_adbgNrSys__NR_DciWithShortMessageOnly_Type(_ctx, &p->ShortMessage);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == NR_DCI_TriggerFormat_Type_DciFormat_2_0) {
+		adbgPrintLog(_ctx, "DciFormat_2_0 := { ");
+		_adbgNrSys__NR_DciFormat_2_0_Type(_ctx, &p->DciFormat_2_0);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == NR_DCI_TriggerFormat_Type_DciFormat_2_1) {
+		adbgPrintLog(_ctx, "DciFormat_2_1 := { ");
+		_adbgNrSys__NR_DciFormat_2_1_Type(_ctx, &p->DciFormat_2_1);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == NR_DCI_TriggerFormat_Type_DciFormat_2_2) {
+		adbgPrintLog(_ctx, "DciFormat_2_2 := { ");
+		_adbgNrSys__NR_DciFormat_2_2_Type(_ctx, &p->DciFormat_2_2);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == NR_DCI_TriggerFormat_Type_DciFormat_2_3) {
+		adbgPrintLog(_ctx, "DciFormat_2_3 := { ");
+		_adbgNrSys__NR_DciFormat_2_3_Type(_ctx, &p->DciFormat_2_3);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == NR_DCI_TriggerFormat_Type_DciFormat_2_6) {
+		adbgPrintLog(_ctx, "DciFormat_2_6 := { ");
+		_adbgNrSys__NR_DciFormat_2_6_Type(_ctx, &p->DciFormat_2_6);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__NR_DCI_TriggerFormat_Type(acpCtx_t _ctx, const struct NR_DCI_TriggerFormat_Type* p)
+{
+	_adbgNrSys__NR_DCI_TriggerFormat_Type_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__NR_DCI_Trigger_Type(acpCtx_t _ctx, const struct NR_DCI_Trigger_Type* p)
+{
+	adbgPrintLog(_ctx, "AssignedBWPs := { ");
+	_adbgNrSys__NR_AssignedBWPs_Type(_ctx, &p->AssignedBWPs);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "SearchSpaceType := %s (%d)", adbgNrSys__NR_SearchSpaceType_Type__ToString(p->SearchSpaceType), (int)p->SearchSpaceType);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "DciFormat := { ");
+	_adbgNrSys__NR_DCI_TriggerFormat_Type(_ctx, &p->DciFormat);
+	adbgPrintLog(_ctx, " }");
+}
+
 static void _adbgNrSys__SQN_NR_PagingUE_Identity_Value(acpCtx_t _ctx, const union SQN_NR_PagingUE_Identity_Value* p, enum SQN_NR_PagingUE_Identity_Sel d)
 {
 	if (d == SQN_NR_PagingUE_Identity_ng_5G_S_TMSI) {
@@ -25936,16 +34836,111 @@ static void _adbgNrSys__OCTET_STRING_SQN_NR_Paging_lateNonCriticalExtension_Opti
 	adbgPrintLog(_ctx, "'O");
 }
 
-static void _adbgNrSys__SQN_NR_Paging_nonCriticalExtension(acpCtx_t _ctx, const struct SQN_NR_Paging_nonCriticalExtension* p)
+static const char* adbgNrSys__SQN_NR_PagingRecord_v1700_pagingCause_r17_e__ToString(SQN_NR_PagingRecord_v1700_pagingCause_r17_e v)
+{
+	switch(v) {
+		case SQN_NR_PagingRecord_v1700_pagingCause_r17_e_voice: return "SQN_NR_PagingRecord_v1700_pagingCause_r17_e_voice";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgNrSys__SQN_NR_PagingRecord_v1700_pagingCause_r17_e_pagingCause_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PagingRecord_v1700_pagingCause_r17_e_pagingCause_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgNrSys__SQN_NR_PagingRecord_v1700_pagingCause_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgNrSys__SQN_NR_PagingRecord_v1700(acpCtx_t _ctx, const struct SQN_NR_PagingRecord_v1700* p)
+{
+	adbgPrintLog(_ctx, "pagingCause_r17 := ");
+	_adbgNrSys__SQN_NR_PagingRecord_v1700_pagingCause_r17_e_pagingCause_r17_Optional(_ctx, &p->pagingCause_r17);
+}
+
+static void _adbgNrSys__SQN_NR_PagingRecordList_v1700_SQN_NR_Paging_v1700_IEs_pagingRecordList_v1700_Optional(acpCtx_t _ctx, const struct SQN_NR_PagingRecordList_v1700_SQN_NR_Paging_v1700_IEs_pagingRecordList_v1700_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i1 = 0; i1 < p->v.d; i1++) {
+		_adbgNrSys__SQN_NR_PagingRecord_v1700(_ctx, &p->v.v[i1]);
+		if (i1 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgNrSys__SQN_NR_TMGI_r17_plmn_Id_r17_Value(acpCtx_t _ctx, const union SQN_NR_TMGI_r17_plmn_Id_r17_Value* p, enum SQN_NR_TMGI_r17_plmn_Id_r17_Sel d)
+{
+	if (d == SQN_NR_TMGI_r17_plmn_Id_r17_plmn_Index) {
+		adbgPrintLog(_ctx, "plmn_Index := %u", (unsigned int)p->plmn_Index);
+		return;
+	}
+	if (d == SQN_NR_TMGI_r17_plmn_Id_r17_explicitValue) {
+		adbgPrintLog(_ctx, "explicitValue := { ");
+		_adbgNrSys__SQN_NR_PLMN_Identity(_ctx, &p->explicitValue);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSys__SQN_NR_TMGI_r17_plmn_Id_r17(acpCtx_t _ctx, const struct SQN_NR_TMGI_r17_plmn_Id_r17* p)
+{
+	_adbgNrSys__SQN_NR_TMGI_r17_plmn_Id_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSys__SQN_NR_TMGI_r17(acpCtx_t _ctx, const struct SQN_NR_TMGI_r17* p)
+{
+	adbgPrintLog(_ctx, "plmn_Id_r17 := { ");
+	_adbgNrSys__SQN_NR_TMGI_r17_plmn_Id_r17(_ctx, &p->plmn_Id_r17);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "serviceId_r17 := '");
+	for (size_t i2 = 0; i2 < 3; i2++) {
+		adbgPrintLog(_ctx, "%02X", p->serviceId_r17[i2]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static void _adbgNrSys__SQN_NR_PagingGroupList_r17_SQN_NR_Paging_v1700_IEs_pagingGroupList_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_PagingGroupList_r17_SQN_NR_Paging_v1700_IEs_pagingGroupList_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i1 = 0; i1 < p->v.d; i1++) {
+		_adbgNrSys__SQN_NR_TMGI_r17(_ctx, &p->v.v[i1]);
+		if (i1 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgNrSys__SQN_NR_Paging_v1700_IEs_nonCriticalExtension(acpCtx_t _ctx, const struct SQN_NR_Paging_v1700_IEs_nonCriticalExtension* p)
 {
 	(void)_ctx;
 	(void)p;
 }
 
-static void _adbgNrSys__SQN_NR_Paging_nonCriticalExtension_nonCriticalExtension_Optional(acpCtx_t _ctx, const struct SQN_NR_Paging_nonCriticalExtension_nonCriticalExtension_Optional* p)
+static void _adbgNrSys__SQN_NR_Paging_v1700_IEs_nonCriticalExtension_nonCriticalExtension_Optional(acpCtx_t _ctx, const struct SQN_NR_Paging_v1700_IEs_nonCriticalExtension_nonCriticalExtension_Optional* p)
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	_adbgNrSys__SQN_NR_Paging_nonCriticalExtension(_ctx, &p->v);
+	_adbgNrSys__SQN_NR_Paging_v1700_IEs_nonCriticalExtension(_ctx, &p->v);
+}
+
+static void _adbgNrSys__SQN_NR_Paging_v1700_IEs(acpCtx_t _ctx, const struct SQN_NR_Paging_v1700_IEs* p)
+{
+	adbgPrintLog(_ctx, "pagingRecordList_v1700 := ");
+	if (p->pagingRecordList_v1700.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_PagingRecordList_v1700_SQN_NR_Paging_v1700_IEs_pagingRecordList_v1700_Optional(_ctx, &p->pagingRecordList_v1700);
+	if (p->pagingRecordList_v1700.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pagingGroupList_r17 := ");
+	if (p->pagingGroupList_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_PagingGroupList_r17_SQN_NR_Paging_v1700_IEs_pagingGroupList_r17_Optional(_ctx, &p->pagingGroupList_r17);
+	if (p->pagingGroupList_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "nonCriticalExtension := ");
+	if (p->nonCriticalExtension.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgNrSys__SQN_NR_Paging_v1700_IEs_nonCriticalExtension_nonCriticalExtension_Optional(_ctx, &p->nonCriticalExtension);
+	if (p->nonCriticalExtension.d) { adbgPrintLog(_ctx, " }"); };
+}
+
+static void _adbgNrSys__SQN_NR_Paging_v1700_IEs_SQN_NR_Paging_nonCriticalExtension_Optional(acpCtx_t _ctx, const struct SQN_NR_Paging_v1700_IEs_SQN_NR_Paging_nonCriticalExtension_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgNrSys__SQN_NR_Paging_v1700_IEs(_ctx, &p->v);
 }
 
 static void _adbgNrSys__SQN_NR_Paging(acpCtx_t _ctx, const struct SQN_NR_Paging* p)
@@ -25962,7 +34957,7 @@ static void _adbgNrSys__SQN_NR_Paging(acpCtx_t _ctx, const struct SQN_NR_Paging*
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "nonCriticalExtension := ");
 	if (p->nonCriticalExtension.d) { adbgPrintLog(_ctx, "{ "); };
-	_adbgNrSys__SQN_NR_Paging_nonCriticalExtension_nonCriticalExtension_Optional(_ctx, &p->nonCriticalExtension);
+	_adbgNrSys__SQN_NR_Paging_v1700_IEs_SQN_NR_Paging_nonCriticalExtension_Optional(_ctx, &p->nonCriticalExtension);
 	if (p->nonCriticalExtension.d) { adbgPrintLog(_ctx, " }"); };
 }
 
@@ -26021,7 +35016,7 @@ static void _adbgNrSys__SQN_NR_PCCH_Message(acpCtx_t _ctx, const struct SQN_NR_P
 	adbgPrintLog(_ctx, " }");
 }
 
-static void _adbgNrSys__NR_SlotOffsetList_Type_SlotOffsetList_Optional(acpCtx_t _ctx, const struct NR_SlotOffsetList_Type_SlotOffsetList_Optional* p)
+static void _adbgNrSys__NR_SlotOffsetList_Type_NR_PagingTrigger_Type_SlotOffsetList_Optional(acpCtx_t _ctx, const struct NR_SlotOffsetList_Type_NR_PagingTrigger_Type_SlotOffsetList_Optional* p)
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
 	adbgPrintLog(_ctx, "'");
@@ -26039,7 +35034,7 @@ static void _adbgNrSys__NR_PagingTrigger_Type(acpCtx_t _ctx, const struct NR_Pag
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "SlotOffsetList := ");
 	if (p->SlotOffsetList.d) { adbgPrintLog(_ctx, "{ "); };
-	_adbgNrSys__NR_SlotOffsetList_Type_SlotOffsetList_Optional(_ctx, &p->SlotOffsetList);
+	_adbgNrSys__NR_SlotOffsetList_Type_NR_PagingTrigger_Type_SlotOffsetList_Optional(_ctx, &p->SlotOffsetList);
 	if (p->SlotOffsetList.d) { adbgPrintLog(_ctx, " }"); };
 }
 
@@ -26160,6 +35155,12 @@ static void _adbgNrSys__NR_SystemRequest_Type_Value(acpCtx_t _ctx, const union N
 	if (d == NR_SystemRequest_Type_PdcpCount) {
 		adbgPrintLog(_ctx, "PdcpCount := { ");
 		_adbgNrSys__NR_PDCP_CountReq_Type(_ctx, &p->PdcpCount);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == NR_SystemRequest_Type_DciTrigger) {
+		adbgPrintLog(_ctx, "DciTrigger := { ");
+		_adbgNrSys__NR_DCI_Trigger_Type(_ctx, &p->DciTrigger);
 		adbgPrintLog(_ctx, " }");
 		return;
 	}

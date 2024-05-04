@@ -31,7 +31,8 @@
 #define RRC_ENB_C
 #include "oai_asn1.h"
 #include <asn_application.h>
-#include <per_encoder.h>
+#include "uper_encoder.h"
+#include "uper_decoder.h"
 #include "rrc_defs.h"
 #include "rrc_extern.h"
 #include "assertions.h"
@@ -44,7 +45,6 @@
 #include "RRC/LTE/MESSAGES/asn1_msg.h"
 #include "LTE_RRCConnectionRequest.h"
 #include "LTE_RRCConnectionReestablishmentRequest.h"
-//#include "ReestablishmentCause.h"
 #include "LTE_BCCH-BCH-Message.h"
 #include "LTE_UL-CCCH-Message.h"
 #include "LTE_DL-CCCH-Message.h"
@@ -81,16 +81,15 @@
 #include "RRC/NAS/nas_config.h"
 #include "RRC/NAS/rb_config.h"
 
-#include "UTIL/OSA/osa_defs.h"
-
 #include "rrc_eNB_S1AP.h"
 #include "rrc_eNB_GTPV1U.h"
 #include "rrc_eNB_M2AP.h"
 
 #include "pdcp.h"
+#include "openair3/SECU/key_nas_deriver.h"
+#include "openair3/SECU/secu_defs.h"
 #include "pdcp_primitives.h"
 #include "openair3/ocp-gtpu/gtp_itf.h"
-#include <openair3/ocp-gtpu/gtp_itf.h>
 
 #include "intertask_interface.h"
 #include "softmodem-common.h"
@@ -128,8 +127,9 @@ mui_t                               rrc_eNB_mui = 0;
 
 extern uint32_t to_earfcn_DL(int eutra_bandP, uint32_t dl_CarrierFreq, uint32_t bw);
 extern int rrc_eNB_process_security(const protocol_ctxt_t *const ctxt_pP, rrc_eNB_ue_context_t *const ue_context_pP, security_capabilities_t *security_capabilities_pP);
-extern void process_eNB_security_key (const protocol_ctxt_t *const ctxt_pP, rrc_eNB_ue_context_t *const ue_context_pP, uint8_t *security_key_pP);
-extern int derive_keNB_star(const uint8_t *kenb_32, const uint16_t pci, const uint32_t earfcn_dl, const bool is_rel8_only, uint8_t *kenb_star);
+extern void process_eNB_security_key(const protocol_ctxt_t *const ctxt_pP,
+                                     rrc_eNB_ue_context_t *const ue_context_pP,
+                                     uint8_t *security_key_pP);
 extern int rrc_eNB_generate_RRCConnectionReconfiguration_endc(protocol_ctxt_t *ctxt, rrc_eNB_ue_context_t *ue_context, unsigned char *buffer, int buffer_size, OCTET_STRING_t *scg_group_config,
     OCTET_STRING_t *scg_RB_config);
 extern struct rrc_eNB_ue_context_s *get_first_ue_context(eNB_RRC_INST *rrc_instance_pP);
@@ -139,8 +139,15 @@ pthread_mutex_t      rrc_release_freelist;
 RRC_release_list_t   rrc_release_info;
 pthread_mutex_t      lock_ue_freelist;
 pthread_mutex_t      lock_cell_si_config;
-pthread_mutex_t      cond_cell_si_config;
+pthread_cond_t      cond_cell_si_config;
 
+static bool _is_as_security_set = false;
+static uint8_t _kRRCenc[32] = {0};
+static uint8_t _kRRCint[32] = {0};
+static uint8_t _kUPenc[32] = {0};
+
+static uint8_t _integrity_algorithm = 0;
+static uint8_t _ciphering_algorithm = 0;
 
 uint8_t ul_sqn,dl_sqn;
 
@@ -267,7 +274,7 @@ init_SI(
         LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" SIB1-MBMS Subcarrier Spacing MBMS: %s\n",
               PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
               (*RC.rrc[ctxt_pP->module_id]->carrier[CC_id].sib1_MBMS->systemInformationBlockType13_r14->mbsfn_AreaInfoList_r9.list.array[i]->ext1->subcarrierSpacingMBMS_r14 ==
-               LTE_MBSFN_AreaInfo_r9__ext1__subcarrierSpacingMBMS_r14_khz_1dot25 ? "khz_1dot25": "khz_7dot5"));
+               LTE_MBSFN_AreaInfo_r9__ext1__subcarrierSpacingMBMS_r14_kHz1dot25 ? "khz_1dot25": "khz_7dot5"));
       }
     }
 
@@ -4023,17 +4030,17 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
       {
         if (pdcp_p->kRRCenc)
         {
-          kRRCenc = MALLOC(16);
+          kRRCenc = CALLOC(1,32);
           memcpy(kRRCenc, pdcp_p->kRRCenc, 16);
         }
         if (pdcp_p->kRRCint)
         {
-          kRRCint = MALLOC(32);
+          kRRCint = CALLOC(1,32);
           memcpy(kRRCint, pdcp_p->kRRCint, 32);
         }
         if (pdcp_p->kUPenc)
         {
-          kUPenc = MALLOC(16);
+          kUPenc = CALLOC(1,32);
           memcpy(kUPenc, pdcp_p->kUPenc, 16);
         }
 
@@ -4089,8 +4096,8 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
 
 //-----------------------------------------------------------------------------
 /**
- * @fn    :encode_CG_ConfigInfo
- * @param   :enc_buf to store the encoded bits
+ * @fn    encode_CG_ConfigInfo
+ * @param   :buffer to store the encoded bits
  * @param   :ue_context_pP ue context used to fill CG-ConfigInfo
  * @param   :enc_size to store thre size of encoded size
  *      this api is to fill and encode CG-ConfigInfo
@@ -4566,10 +4573,13 @@ void rrc_eNB_process_handoverPreparationInformation(int mod_id, x2ap_handover_re
 
   ue_context_target_p->ue_context.primaryCC_id = primary_ccId;
   RB_INSERT(rrc_ue_tree_s, &RC.rrc[mod_id]->rrc_ue_head, ue_context_target_p);
-  LOG_D(RRC, "eNB %d: Created new UE context uid %u\n", mod_id, ue_context_target_p->local_uid);
   ue_context_target_p->ue_context.handover_info = CALLOC(1, sizeof(*(ue_context_target_p->ue_context.handover_info)));
   //ue_context_target_p->ue_context.StatusRrc = RRC_HO_EXECUTION;
   //ue_context_target_p->ue_context.handover_info->state = HO_ACK;
+  /*Set rach mode in new ue context & reset in old ue context*/
+  (mac_eNB_get_rach_mode(mod_id,m->rnti)) ? (mac_eNB_set_rach_mode(mod_id, rnti, true)) : (mac_eNB_set_rach_mode(mod_id, rnti, false));
+  mac_eNB_set_rach_mode(mod_id, m->rnti, false);
+  LOG_D(RRC, "eNB %d: Created new UE context uid %u, isRachModeCFRA: %d\n", mod_id, ue_context_target_p->local_uid, mac_eNB_get_rach_mode(mod_id,rnti));
   ue_context_target_p->ue_context.handover_info->x2_id = m->x2_id;
   ue_context_target_p->ue_context.handover_info->ss_source_ue_rnti = m->rnti;
   ue_context_target_p->ue_context.handover_info->assoc_id = m->target_assoc_id;
@@ -4714,7 +4724,7 @@ void rrc_eNB_handover_ue_context_release(
     ue_context_p->ue_context.enb_gtp_ebi[e_rab] = 0;
   }
 
-  gtpv1u_delete_s1u_tunnel(ctxt_pP->module_id, &delete_tunnels);
+  gtpv1u_delete_all_s1u_tunnel(ctxt_pP->module_id, delete_tunnels.rnti);
   struct rrc_ue_s1ap_ids_s *rrc_ue_s1ap_ids = NULL;
   rrc_ue_s1ap_ids = rrc_eNB_S1AP_get_ue_ids(RC.rrc[ctxt_pP->module_id], 0, eNB_ue_s1ap_id);
 
@@ -6095,8 +6105,8 @@ rrc_eNB_configure_rbs_handover(struct rrc_eNB_ue_context_s *ue_context_p, protoc
         AssertFatal(NULL != RC.ss.ss_pdcp_api, "SS PDCP APIs NULL \n");
 
         kRRCint = CALLOC(1,32);
-        kUPenc = CALLOC(1,16);
-        kRRCenc = CALLOC(1,16);
+        kUPenc = CALLOC(1,32);
+        kRRCenc = CALLOC(1,32);
         memcpy(kRRCint,RC.ss.HOASSecurityCOnfig.Integrity.kRRCint, 32);
         memcpy(kUPenc,RC.ss.HOASSecurityCOnfig.Ciphering.kUPenc, 16);
         memcpy(kRRCenc,RC.ss.HOASSecurityCOnfig.Ciphering.kRRCenc, 16);
@@ -6171,9 +6181,9 @@ rrc_eNB_process_RRCConnectionReconfigurationComplete(
   int                                 drb_id;
   int                                 oip_ifup = 0;
   int                                 dest_ip_offset = 0;
-  uint8_t                            *kRRCenc = NULL;
-  uint8_t                            *kRRCint = NULL;
-  uint8_t                            *kUPenc = NULL;
+  uint8_t kRRCenc[32] = {0};
+  uint8_t kRRCint[32] = {0};
+  uint8_t kUPenc[32] = {0};
   LTE_DRB_ToAddModList_t             *DRB_configList = ue_context_pP->ue_context.DRB_configList2[xid];
   LTE_SRB_ToAddModList_t             *SRB_configList = ue_context_pP->ue_context.SRB_configList2[xid];
   LTE_DRB_ToReleaseList_t            *DRB_Release_configList2 = ue_context_pP->ue_context.DRB_Release_configList2[xid];
@@ -6201,24 +6211,25 @@ rrc_eNB_process_RRCConnectionReconfigurationComplete(
 
   /* End of CDRX processing */
   T(T_ENB_RRC_CONNECTION_RECONFIGURATION_COMPLETE, T_INT(ctxt_pP->module_id), T_INT(ctxt_pP->frame), T_INT(ctxt_pP->subframe), T_INT(ctxt_pP->rntiMaybeUEid));
-    int8_t security_modeP = 0xff;
-    if (RC.ss.mode == SS_ENB)
-    {
-      /* Derive the keys from kenb */
-      if (DRB_configList != NULL) {
-        derive_key_up_enc(ue_context_pP->ue_context.ciphering_algorithm,
-                          ue_context_pP->ue_context.kenb,
-                          &kUPenc);
-      }
-
-      derive_key_rrc_enc(ue_context_pP->ue_context.ciphering_algorithm,
-                         ue_context_pP->ue_context.kenb,
-                         &kRRCenc);
-      derive_key_rrc_int(ue_context_pP->ue_context.integrity_algorithm,
-                         ue_context_pP->ue_context.kenb,
-                         &kRRCint);
-      security_modeP = 0xff;
+  int8_t security_modeP = 0xff;
+  if (RC.ss.mode == SS_ENB)
+  {
+    /* Derive the keys from kenb */
+    if (DRB_configList != NULL) {
+      derive_key_nas(UP_ENC_ALG, ue_context_pP->ue_context.ciphering_algorithm, ue_context_pP->ue_context.kenb, kUPenc);
     }
+
+    derive_key_nas(RRC_ENC_ALG, ue_context_pP->ue_context.ciphering_algorithm, ue_context_pP->ue_context.kenb, kRRCenc);
+    derive_key_nas(RRC_INT_ALG, ue_context_pP->ue_context.integrity_algorithm, ue_context_pP->ue_context.kenb, kRRCint);
+  } else {
+    if (_is_as_security_set) {
+      memcpy(kRRCenc, _kRRCenc, 32);
+      memcpy(kRRCint, _kRRCint, 32);
+      memcpy(kUPenc, _kUPenc, 32);
+
+      security_modeP = (_ciphering_algorithm ) | (_integrity_algorithm << 4);
+    }
+  }
 
   /* Refresh SRBs/DRBs */
   rrc_pdcp_config_asn1_req(ctxt_pP,
@@ -6640,14 +6651,21 @@ char openair_rrc_eNB_configuration(
     if(configuration->ActiveParamPresent[CC_id] == true)
     {
       LOG_A(RRC,"CRNTI present=%d %d numRar=%d",configuration->ActiveParam[CC_id].b_C_RNTI_Present, configuration->ActiveParam[CC_id].C_RNTI, configuration->ActiveParam[CC_id].numRar);
-
       RC.ss.ss_crnti[CC_id].b_C_RNTI_Present = configuration->ActiveParam[CC_id].b_C_RNTI_Present;
       RC.ss.ss_crnti[CC_id].b_Temp_RNTI_Present = configuration->ActiveParam[CC_id].b_C_RNTI_Present;
+      RC.ss.ss_crnti[CC_id].numRar = configuration->ActiveParam[CC_id].numRar;
+      RC.ss.ss_crnti[CC_id].Rar_Response_Index = 0;     //Reset the rar index
 
       if (configuration->ActiveParam[CC_id].b_C_RNTI_Present)
       {
          RC.ss.ss_crnti[CC_id].C_RNTI = configuration->ActiveParam[CC_id].C_RNTI;
          RC.ss.ss_crnti[CC_id].Temp_C_RNTI = configuration->ActiveParam[CC_id].C_RNTI;
+      }
+
+      /*Populate the config values for all simulated rach attempts*/
+      for (int i = 0; i < RC.ss.ss_crnti[CC_id].numRar; i++)
+      {
+         RC.ss.ss_crnti[CC_id].b_rarResponse[i] = configuration->ActiveParam[CC_id].Rar[i].b_rarResponse;
       }
 
       RRCConnSetup_PDU_Present[CC_id] = configuration->RlcPduCCCH_Present[CC_id];
@@ -6931,6 +6949,12 @@ char rrc_eNB_rblist_configuration(
         RC.RB_Config[CC_id][rbIndex].Mac.ul_SpecificParameters->prioritisedBitRate = RblistConfig->rb_list[i].RbConfig.Mac.ul_SpecificParameters->prioritisedBitRate;
         free(RblistConfig->rb_list[i].RbConfig.Mac.ul_SpecificParameters);
      }
+     RC.RB_Config[CC_id][rbIndex].isMacTestModeValid = false;
+     if(RblistConfig->rb_list[i].RbConfig.isMacTestModeValid)
+     {
+       RC.RB_Config[CC_id][rbIndex].isMacTestModeValid = true;
+       RC.RB_Config[CC_id][rbIndex].MacTestModeLogicalChannelId = RblistConfig->rb_list[i].RbConfig.MacTestModeLogicalChannelId;
+     }
 
      if(RblistConfig->rb_list[i].RbConfig.Mac.ext3 != NULL) {
        if(RC.RB_Config[CC_id][rbIndex].Mac.ext3 == NULL) {
@@ -6979,11 +7003,27 @@ void rrc_eNB_as_security_configuration_req(
   if (NULL == ctxt_pP) {
     LOG_A(RRC, "No context to get PdcpCount\n");
   }
+  AssertFatal(ASSecConfReq!=NULL,"AS Security Config Request is NULL \n");
   LOG_A (RRC, "Update PDCP context for RNTI %d integrityProtAlgorithm=%d cipheringAlgorithm=%d \n",
          ASSecConfReq->rnti, ASSecConfReq->Integrity.integrity_algorithm,
          (int)ASSecConfReq->Ciphering.ciphering_algorithm);
-  AssertFatal(ASSecConfReq!=NULL,"AS Security Config Request is NULL \n");
+
   memcpy(&RC.ss.HOASSecurityCOnfig,ASSecConfReq,sizeof(RrcAsSecurityConfigReq));
+  _is_as_security_set = true;
+  _integrity_algorithm = ASSecConfReq->Integrity.integrity_algorithm;
+  _ciphering_algorithm = ASSecConfReq->Ciphering.ciphering_algorithm;
+  if(ASSecConfReq->Integrity.kRRCint) {
+    memset(_kRRCint, 0, sizeof(_kRRCint));
+    memcpy(_kRRCint,ASSecConfReq->Integrity.kRRCint, 32);
+  }
+  if(ASSecConfReq->Ciphering.kUPenc) {
+    memset(_kUPenc, 0, sizeof(_kUPenc));
+    memcpy(_kUPenc,ASSecConfReq->Ciphering.kUPenc, 16);
+  }
+  if(ASSecConfReq->Ciphering.kRRCenc) {
+    memset(_kRRCenc, 0, sizeof(_kRRCenc));
+    memcpy(_kRRCenc,ASSecConfReq->Ciphering.kRRCenc, 16);
+  }
 
   for (int i = 0; i < MAX_RBS; i++)
   {
@@ -7041,11 +7081,11 @@ void rrc_eNB_as_security_configuration_req(
           memcpy(kRRCint,ASSecConfReq->Integrity.kRRCint, 32);
         }
         if(ASSecConfReq->Ciphering.kUPenc) {
-          kUPenc = CALLOC(1,16);
+          kUPenc = CALLOC(1,32);
           memcpy(kUPenc,ASSecConfReq->Ciphering.kUPenc, 16);
         }
         if(ASSecConfReq->Ciphering.kRRCenc) {
-          kRRCenc = CALLOC(1,16);
+          kRRCenc = CALLOC(1,32);
           memcpy(kRRCenc,ASSecConfReq->Ciphering.kRRCenc, 16);
         }
 
@@ -7078,6 +7118,45 @@ void rrc_eNB_as_security_configuration_req(
                   rbid_, ctxt_pP->module_id, ASSecConfReq->rnti, ctxt_pP->enb_flag);
     }
   }
+}
+
+/*------------------------------------------------------------------------------*/
+/** rrc_eNB_MapT301InMs: Function to map T301 enums in 3GPP to value in Millisec  **/
+/*------------------------------------------------------------------------------*/
+static int rrc_eNB_MapT301InMs(long t301ms)
+{
+	int value=0;
+	switch(t301ms)
+	{
+		case LTE_UE_TimersAndConstants__t301_ms100:
+			value = 100;
+			break;
+		case LTE_UE_TimersAndConstants__t301_ms200:
+			value = 200;
+			break;
+		case LTE_UE_TimersAndConstants__t301_ms300:
+			value = 300;
+			break;
+		case LTE_UE_TimersAndConstants__t301_ms400:
+			value = 400;
+			break;
+		case LTE_UE_TimersAndConstants__t301_ms600:
+			value = 600;
+			break;
+		case LTE_UE_TimersAndConstants__t301_ms1000:
+			value = 1000;
+			break;
+		case LTE_UE_TimersAndConstants__t301_ms1500:
+			value = 1500;
+			break;
+		case LTE_UE_TimersAndConstants__t301_ms2000:
+			value = 2000;
+			break;
+		default: 
+			break;	
+	}
+        LOG_I(RRC,"t301 value= %d\n",value);
+	return value;
 }
 
 /*------------------------------------------------------------------------------*/
@@ -7253,12 +7332,24 @@ rrc_eNB_decode_ccch(
           }
 
           //c-plane not end
-          if((ue_context_p->ue_context.StatusRrc != RRC_RECONFIGURED) && (ue_context_p->ue_context.reestablishment_cause == LTE_ReestablishmentCause_spare1)) {
+          if((ue_context_p->ue_context.StatusRrc != RRC_RECONFIGURED && ue_context_p->ue_context.StatusRrc != RRC_HO_EXECUTION) && (ue_context_p->ue_context.reestablishment_cause == LTE_ReestablishmentCause_spare1)) {
             LOG_E(RRC,
                   PROTOCOL_RRC_CTXT_UE_FMT" LTE_RRCConnectionReestablishmentRequest (UE %x c-plane is not end), let's reject the UE\n",
                   PROTOCOL_RRC_CTXT_UE_ARGS(ctxt_pP),c_rnti);
             rrc_eNB_generate_RRCConnectionReestablishmentReject(ctxt_pP, ue_context_p, CC_id);
             break;
+          }
+
+          if(ue_context_p->ue_context.StatusRrc == RRC_HO_EXECUTION && ue_context_p->ue_context.handover_info && rrcConnectionReestablishmentRequest->reestablishmentCause == LTE_ReestablishmentCause_handoverFailure){
+            /* resume the old context because of HO failure, we need remove HO info and the failed target HO context */
+            struct rrc_eNB_ue_context_s *ho_target_ue_context_p = rrc_eNB_get_ue_context(RC.rrc[ctxt_pP->module_id], ue_context_p->ue_context.handover_info->ss_target_ue_rnti);
+            if(ho_target_ue_context_p){
+              ho_target_ue_context_p->ue_context.ue_release_timer_rrc = 1;
+              ho_target_ue_context_p->ue_context.ue_release_timer_thres_rrc = 1;
+            }
+            free(ue_context_p->ue_context.handover_info);
+            ue_context_p->ue_context.handover_info = NULL;
+            ue_context_p->ue_context.StatusRrc = RRC_IDLE;
           }
 
           if(ue_context_p->ue_context.ue_reestablishment_timer > 0) {
@@ -7294,8 +7385,12 @@ rrc_eNB_decode_ccch(
           /* reset timers */
           ue_context_p->ue_context.ul_failure_timer = 0;
           ue_context_p->ue_context.ue_release_timer = 0;
-          ue_context_p->ue_context.ue_reestablishment_timer = 0;
-          ue_context_p->ue_context.ue_release_timer_s1 = 0;
+
+	  /*125064: Start reestablishment timer in order to clear the UE context if reestablishment procedure is incomplete */
+	  LTE_SystemInformationBlockType2_t *sib2 = &RC.rrc[ctxt_pP->module_id]->carrier[CC_id].sib2;
+	  ue_context_p->ue_context.ue_reestablishment_timer = 1;
+	  ue_context_p->ue_context.ue_reestablishment_timer_thres = rrc_eNB_MapT301InMs(sib2->ue_TimersAndConstants.t301);
+	  ue_context_p->ue_context.ue_release_timer_s1 = 0;
           ue_context_p->ue_context.ue_release_timer_rrc = 0;
           ue_context_p->ue_context.reestablishment_xid = -1;
 
@@ -7432,6 +7527,10 @@ rrc_eNB_decode_ccch(
 
                 LOG_I(PHY, "remove RNTI %04x\n", ue_context_p->ue_context.rnti);
                 rrc_mac_remove_ue(ctxt_pP->module_id, ue_context_p->ue_context.rnti);
+                protocol_ctxt_t  ctxt = *ctxt_pP;
+                ctxt.rntiMaybeUEid = ue_context_p->ue_context.rnti;
+                rrc_rlc_remove_ue(&ctxt);
+                pdcp_remove_UE(&ctxt);
 
                 stmsi_received=1;
                 /* replace rnti in the context */
@@ -7448,6 +7547,7 @@ rrc_eNB_decode_ccch(
                 ue_context_p->ue_context.ue_release_timer_s1 = 0;
                 ue_context_p->ue_context.ue_release_timer_rrc = 0;
                 ue_context_p->ue_context.reestablishment_xid = -1;
+		ue_context_p->ue_context.StatusRrc=0;
               } else {
                 LOG_I(RRC," S-TMSI doesn't exist, setting Initialue_identity_s_TMSI.m_tmsi to %p => %x\n",ue_context_p,m_tmsi);
                 //              ue_context_p = rrc_eNB_get_next_free_ue_context(ctxt_pP, NOT_A_RANDOM_UE_IDENTITY);
@@ -7823,6 +7923,7 @@ rrc_eNB_decode_dcch(
   LTE_UL_DCCH_Message_t               *ul_dcch_msg = NULL; //&uldcchmsg;
   int i;
   struct rrc_eNB_ue_context_s        *ue_context_p = NULL;
+  struct rrc_eNB_ue_context_s        *src_ue_context_p = NULL;
   uint8_t                             xid;
   int dedicated_DRB=0;
   T(T_ENB_RRC_UL_DCCH_DATA_IN, T_INT(ctxt_pP->module_id), T_INT(ctxt_pP->frame), T_INT(ctxt_pP->subframe), T_INT(ctxt_pP->rntiMaybeUEid));
@@ -7920,7 +8021,10 @@ rrc_eNB_decode_dcch(
           MessageDef      *msg_p         = NULL;
 
           if(ue_context_p->ue_context.handover_info) {
-            if(ue_context_p->ue_context.handover_info->state == HO_COMPLETE) {
+            /*HO states are maintained in source UE context only */		  
+            src_ue_context_p = rrc_eNB_get_ue_context(RC.rrc[ctxt_pP->module_id], ue_context_p->ue_context.handover_info->ss_source_ue_rnti);
+            if( (src_ue_context_p) && (src_ue_context_p->ue_context.handover_info->state == HO_COMPLETE) ) {
+              LOG_A(RRC, "Releasing the X2AP as HO_COMPLETE\n");
               msg_p = itti_alloc_new_message (TASK_RRC_ENB, 0, X2AP_UE_CONTEXT_RELEASE);
               X2AP_UE_CONTEXT_RELEASE (msg_p).rnti = ue_context_p->ue_context.handover_info->ss_source_ue_rnti;
               X2AP_UE_CONTEXT_RELEASE (msg_p).source_assoc_id = ue_context_p->ue_context.handover_info->assoc_id;
@@ -8402,10 +8506,6 @@ rrc_eNB_decode_dcch(
           /* do NR only if at least one gNB connected */
           if (RC.rrc[ctxt_pP->module_id]->num_gnb_cells != 0)
           {
-            allocate_en_DC_r15(ue_context_p->ue_context.UE_Capability);
-            if (!is_en_dc_supported(ue_context_p->ue_context.UE_Capability)){
-                    LOG_E(RRC, "We did not properly allocate en_DC_r15 for UE_EUTRA_Capability\n");
-            }
             ue_context_p->ue_context.does_nr = is_en_dc_supported(ue_context_p->ue_context.UE_Capability);
           }
           else
@@ -8662,6 +8762,14 @@ void process_unsuccessful_rlc_sdu_indication(int instance, int rnti) {
   int release_num;
   int release_total;
   RRC_release_ctrl_t *release_ctrl;
+  int CC_id = UE_PCCID(ENB_INSTANCE_TO_MODULE_ID(instance), rnti);
+
+  if(RC.ss.mode >= SS_SOFTMODEM && (RC.ss.ss_crnti[CC_id].b_ignore_rlf_sdu_ind)){
+    LOG_I(RRC, "process_unsuccessful_rlc_sdu_indication:Special SS config no RAR,Do not consider as radio link failure\n");
+    RC.ss.ss_crnti[CC_id].b_ignore_rlf_sdu_ind = false;    //Reset the param
+    return;
+  }
+
   LOG_I(RRC, "process_unsuccessful_rlc_sdu_indication: radio link failure detected by RLC layer, remove UE\n");
   /* radio link failure detected by RLC layer, remove UE properly */
   pthread_mutex_lock(&rrc_release_freelist);
@@ -8793,12 +8901,12 @@ void rrc_subframe_process(protocol_ctxt_t *const ctxt_pP, const int CC_id) {
     if ((ctxt_pP->frame&127) == 0 && ctxt_pP->subframe ==0) {
       if (fd) {
         if (ue_context_p->ue_context.Initialue_identity_s_TMSI.presence == true) {
-          fprintf(fd,"RRC UE rnti %x: S-TMSI %x failure timer %d/8\n",
+          fprintf(fd,"RRC UE rnti %x: S-TMSI %x failure timer %u/8\n",
                 ue_context_p->ue_context.rnti,
                 ue_context_p->ue_context.Initialue_identity_s_TMSI.m_tmsi,
                 ue_context_p->ue_context.ul_failure_timer);
         } else {
-          fprintf(fd,"RRC UE rnti %x failure timer %d/8\n",
+          fprintf(fd,"RRC UE rnti %x failure timer %u/8\n",
                 ue_context_p->ue_context.rnti,
                 ue_context_p->ue_context.ul_failure_timer);
         }
@@ -8963,6 +9071,18 @@ void rrc_subframe_process(protocol_ctxt_t *const ctxt_pP, const int CC_id) {
               ue_context_p->ue_context.rnti);
         ue_context_p->ue_context.ul_failure_timer = 20000; // lead to send S1 UE_CONTEXT_RELEASE_REQ
         removed_ue_count = add_ue_to_remove(ue_to_be_removed, removed_ue_count, ue_context_p);
+
+	/*125064: Get RNTI maintained for Reestablishment procedure to clear UE context */
+        rnti_t previous_rnti = 0;
+
+        for (int i = 0; i < MAX_MOBILES_PER_ENB; i++) {
+          if (reestablish_rnti_map[i][1] == ue_context_p->ue_context.rnti) {
+              previous_rnti = reestablish_rnti_map[i][0];
+              break;
+          }     
+        }
+        put_UE_in_freelist(ctxt_pP->module_id, previous_rnti, 1);
+
         ue_context_p->ue_context.ue_reestablishment_timer = 0;
         break; // break RB_FOREACH
       }
@@ -9577,7 +9697,8 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
                      &X2AP_HANDOVER_REQ(msg).rrc_buffer_size);
                 X2AP_HANDOVER_REQ(msg).rnti = SS_RRC_PDU_REQ(msg_p).rnti;
                 ue_context_p->ue_context.handover_info->ss_target_ue_rnti = (mobilityControlInfo->newUE_Identity.buf[0]<<8)|mobilityControlInfo->newUE_Identity.buf[1];
-                LOG_A(RRC,"CRNTI in X2AP_HANDOVER_REQ: %d \n",X2AP_HANDOVER_REQ(msg).rnti);
+                (mobilityControlInfo->rach_ConfigDedicated) ? (mac_eNB_set_rach_mode(instance, SS_RRC_PDU_REQ(msg_p).rnti, true)) : (mac_eNB_set_rach_mode(instance, SS_RRC_PDU_REQ(msg_p).rnti, false));
+                LOG_A(RRC,"X2AP_HANDOVER_REQ CRNTI: %d, isRachModeCFRA: %d\n", X2AP_HANDOVER_REQ(msg).rnti, mac_eNB_get_rach_mode(instance, SS_RRC_PDU_REQ(msg_p).rnti));
                 X2AP_HANDOVER_REQ(msg).target_physCellId = dl_dcch_msg->message.choice.c1.choice.rrcConnectionReconfiguration.criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.mobilityControlInfo->targetPhysCellId;
                 X2AP_HANDOVER_REQ(msg).ue_gummei.mcc = ue_context_p->ue_context.ue_gummei.mcc;
                 X2AP_HANDOVER_REQ(msg).ue_gummei.mnc = ue_context_p->ue_context.ue_gummei.mnc;
@@ -9641,21 +9762,24 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
             {
               struct rrc_eNB_ue_context_s *ue_context_pP = NULL;
 
-              ue_context_pP = rrc_eNB_get_ue_context(RC.rrc[instance], SS_RRC_PDU_REQ(msg_p).rnti);
+              // ue_context_pP = rrc_eNB_get_ue_context(RC.rrc[instance], SS_RRC_PDU_REQ(msg_p).rnti);
               uint8_t cc_id = 0;
               LOG_A(RRC, "RRC Connection Release message received \n");
-              if (NULL == ue_context_pP)
-              {
-                LOG_W(RRC, "ue_context_pP is already NULL \n");
-              }
-              else {
-              cc_id = ue_context_pP->ue_context.primaryCC_id;
-              ue_context_pP->ue_context.ue_reestablishment_timer = 0;
-              ue_context_pP->ue_context.ue_release_timer = 1;
-              ue_context_pP->ue_context.ue_release_timer_thres = 10;
-              ue_context_pP->ue_context.ue_rrc_inactivity_timer = 0;
-              ue_context_pP->ue_context.ue_release_timer_rrc = 0;
-              ue_context_pP->ue_context.ue_release_timer_thres_rrc = 0;
+              /* Since TTCN test only support one UE(rrc connection) at a time,
+              we can release all pending unused UE context(no release from TTCN) here to avoid unused resource allocation */
+              RB_FOREACH(ue_context_pP, rrc_ue_tree_s, &(RC.rrc[instance]->rrc_ue_head)) {
+                if (ue_context_pP->ue_context.rnti == SS_RRC_PDU_REQ(msg_p).rnti) {
+                  cc_id = ue_context_pP->ue_context.primaryCC_id;
+                  ue_context_pP->ue_context.ue_reestablishment_timer = 0;
+                  ue_context_pP->ue_context.ue_release_timer = 1;
+                  ue_context_pP->ue_context.ue_release_timer_thres = 10;
+                  ue_context_pP->ue_context.ue_rrc_inactivity_timer = 0;
+                  ue_context_pP->ue_context.ue_release_timer_rrc = 0;
+                  ue_context_pP->ue_context.ue_release_timer_thres_rrc = 0;
+                } else {
+                  ue_context_pP->ue_context.ue_release_timer = 1;
+                  ue_context_pP->ue_context.ue_release_timer_thres = 0; /* release in next sf immediately */
+                }
               }
               if (RC.ss.CBRA_flag[cc_id])
               {
@@ -9769,9 +9893,16 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
                                       SS_DRB_PDU_REQ(msg_p).rnti,
                                       msg_p->ittiMsgHeader.lte_time.frame,
                                       msg_p->ittiMsgHeader.lte_time.slot);
-        lchannelType = Bearer_DCCH_e;
-        bcchTransportType = dlsch_TRANSPORT;
-        pdcp_data_req(&ctxt, SRB_FLAG_NO, SS_DRB_PDU_REQ(msg_p).drb_id, 0, 0, SS_DRB_PDU_REQ(msg_p).sdu_size, SS_DRB_PDU_REQ(msg_p).sdu, PDCP_TRANSMISSION_MODE_DATA, NULL, NULL);
+        if(SS_DRB_PDU_REQ(msg_p).data_type == DRB_PdcpSdu)
+        {
+           lchannelType = Bearer_DCCH_e;
+           bcchTransportType = dlsch_TRANSPORT;
+           pdcp_data_req(&ctxt, SRB_FLAG_NO, SS_DRB_PDU_REQ(msg_p).drb_id, 0, 0, SS_DRB_PDU_REQ(msg_p).sdu_size, SS_DRB_PDU_REQ(msg_p).sdu, PDCP_TRANSMISSION_MODE_DATA, NULL, NULL);
+        }
+        if(SS_DRB_PDU_REQ(msg_p).data_type == DRB_MacPdu)
+        {
+	    rrc_mac_data_req(SS_DRB_PDU_REQ(msg_p).rnti, SS_DRB_PDU_REQ(msg_p).drb_id, SS_DRB_PDU_REQ(msg_p).sdu_size, SS_DRB_PDU_REQ(msg_p).sdu);
+        }
         break;
 
         case RRC_AS_SECURITY_CONFIG_REQ:

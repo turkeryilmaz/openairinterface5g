@@ -97,8 +97,6 @@ uint16_t RIV2nb_rb_LUT100[6000];
 uint16_t RIV2first_rb_LUT100[6000];
 uint16_t RIV_max100=0;
 
-const int8_t *delta_PUCCH_lut = delta_PUSCH_acc;
-
 uint32_t check_phich_reg(LTE_DL_FRAME_PARMS *frame_parms,uint32_t kprime,uint8_t lprime,uint8_t mi)
 {
 
@@ -933,7 +931,7 @@ uint8_t subframe2harq_pid(LTE_DL_FRAME_PARMS *frame_parms,uint32_t frame,uint8_t
     }
   }
 
-  AssertFatal(ret != 255, "invalid harq_pid(%d) at SFN/SF = %d/%d\n", (int8_t)ret, frame, subframe);
+  AssertFatal(ret != 255, "invalid harq_pid(%u) at SFN/SF = %u/%u\n", ret, frame, subframe);
   return ret;
 }
 

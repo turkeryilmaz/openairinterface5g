@@ -32,7 +32,6 @@
 #include "acpSysVT.h"
 #include "enb_config.h"
 
-extern SSConfigContext_t SS_context;
 extern RAN_CONTEXT_t RC;
 int cellIndex = 0;
 
@@ -384,7 +383,7 @@ int ss_eNB_vtp_init(void)
     };
 
     // Arena size to decode received message
-    const size_t aSize = 32 * 1024;
+    const size_t aSize = 128 * 1024;
 
     // Start listening server and get ACP context,
     // after the connection is performed, we can use all services

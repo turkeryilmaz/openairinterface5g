@@ -251,11 +251,11 @@ void oai_enb_init(void) {
 
 void oai_create_gnb(void) {
   int bodge_counter=0;
-
-  if (RC.gNB == NULL) {
-    RC.gNB = (PHY_VARS_gNB **) calloc(1, sizeof(PHY_VARS_gNB *));
-    LOG_D(PHY,"gNB L1 structure RC.gNB allocated @ %p\n",RC.gNB);
-  }
+  for (int CC_id =0 ; CC_id < MAX_NUM_CCs;CC_id++) {
+    if (RC.gNB == NULL) {
+      RC.gNB = (PHY_VARS_gNB **) calloc(1+MAX_NUM_CCs, sizeof(PHY_VARS_gNB *));
+      LOG_D(PHY,"gNB L1 structure RC.gNB allocated @ %p\n",RC.gNB);
+    }
 
 
   if (RC.gNB[0] == NULL) {
@@ -266,31 +266,32 @@ void oai_create_gnb(void) {
   PHY_VARS_gNB *gNB = RC.gNB[0];
   RC.nb_nr_CC = (int *)malloc(sizeof(int)); // TODO: find a better function to place this in
 
-  gNB->Mod_id  = bodge_counter;
-  gNB->CC_id   = bodge_counter;
-  gNB->abstraction_flag   = 0;
-  gNB->single_thread_flag = 0;//single_thread_flag;
-  RC.nb_nr_CC[bodge_counter] = 1;
+    gNB->Mod_id  = bodge_counter;
+    gNB->CC_id   = CC_id;
+    gNB->abstraction_flag   = 0;
+    gNB->single_thread_flag = 0;//single_thread_flag;
+    RC.nb_nr_CC[bodge_counter] = 1;
 
-  if (gNB->if_inst==0) {
-    gNB->if_inst = NR_IF_Module_init(bodge_counter);
+    if (gNB->if_inst==0) {
+      gNB->if_inst = NR_IF_Module_init(bodge_counter);
+    }
+
+
+    // This will cause phy_config_request to be installed. That will result in RRC configuring the PHY
+    // that will result in gNB->configured being set to true.
+    // See we need to wait for that to happen otherwise the NFAPI message exchanges won't contain the right parameter values
+    if (RC.gNB[0]->if_inst==0 || RC.gNB[0]->if_inst->NR_PHY_config_req==0 || RC.gNB[0]->if_inst->NR_Schedule_response==0) {
+      NFAPI_TRACE(NFAPI_TRACE_INFO, "RC.gNB[CC_id]->if_inst->NR_PHY_config_req is not installed - install it\n");
+      install_nr_schedule_handlers(RC.gNB[0]->if_inst);
+    }
+
+    do {
+      NFAPI_TRACE(NFAPI_TRACE_INFO, "%s() Waiting for gNB to become configured (by RRC/PHY) - need to wait otherwise NFAPI messages won't contain correct values\n", __FUNCTION__);
+      usleep(50000);
+    } while(gNB->configured != 1);
+
+    NFAPI_TRACE(NFAPI_TRACE_INFO, "%s() gNB cell %d is now configured\n", __FUNCTION__,CC_id);
   }
-
-
-  // This will cause phy_config_request to be installed. That will result in RRC configuring the PHY
-  // that will result in gNB->configured being set to true.
-  // See we need to wait for that to happen otherwise the NFAPI message exchanges won't contain the right parameter values
-  if (RC.gNB[0]->if_inst==0 || RC.gNB[0]->if_inst->NR_PHY_config_req==0 || RC.gNB[0]->if_inst->NR_Schedule_response==0) {
-    NFAPI_TRACE(NFAPI_TRACE_INFO, "RC.gNB[0][0]->if_inst->NR_PHY_config_req is not installed - install it\n");
-    install_nr_schedule_handlers(RC.gNB[0]->if_inst);
-  }
-
-  do {
-    NFAPI_TRACE(NFAPI_TRACE_INFO, "%s() Waiting for gNB to become configured (by RRC/PHY) - need to wait otherwise NFAPI messages won't contain correct values\n", __FUNCTION__);
-    usleep(50000);
-  } while(gNB->configured != 1);
-
-  NFAPI_TRACE(NFAPI_TRACE_INFO, "%s() gNB is now configured\n", __FUNCTION__);
 }
 
 int pnf_connection_indication_cb(nfapi_vnf_config_t *config, int p5_idx) {
@@ -733,6 +734,7 @@ int phy_nr_rach_indication(nfapi_nr_rach_indication_t *ind)
   {
     nfapi_nr_rach_indication_t *rach_ind = CALLOC(1, sizeof(*rach_ind));
     rach_ind->header.message_id = ind->header.message_id;
+    rach_ind->header.phy_id = ind->header.phy_id;
     rach_ind->number_of_pdus = ind->number_of_pdus;
     rach_ind->sfn = ind->sfn;
     rach_ind->slot = ind->slot;
@@ -751,7 +753,7 @@ int phy_nr_rach_indication(nfapi_nr_rach_indication_t *ind)
         rach_ind->pdu_list[i].preamble_list[j].timing_advance = ind->pdu_list[i].preamble_list[j].timing_advance;
       }
     }
-    if (!put_queue(&gnb_rach_ind_queue, rach_ind))
+    if (!put_queue(&(gnb_rach_ind_queue[rach_ind->header.phy_id-1]), rach_ind))
     {
       LOG_E(NR_MAC, "Put_queue failed for rach_ind\n");
       for (int i = 0; i < ind->number_of_pdus; i++)
@@ -791,23 +793,9 @@ int phy_nr_uci_indication(nfapi_nr_uci_indication_t *ind)
           break;
 
         case NFAPI_NR_UCI_FORMAT_0_1_PDU_TYPE: {
-          nfapi_nr_uci_pucch_pdu_format_0_1_t *uci_ind_pdu = &uci_ind->uci_list[i].pucch_pdu_format_0_1;
-          nfapi_nr_uci_pucch_pdu_format_0_1_t *ind_pdu = &ind->uci_list[i].pucch_pdu_format_0_1;
-          if (ind_pdu->sr) {
-            uci_ind_pdu->sr = CALLOC(1, sizeof(*uci_ind_pdu->sr));
-            AssertFatal(uci_ind_pdu->sr != NULL, "Memory not allocated for uci_ind_pdu->harq in phy_nr_uci_indication.");
-            *uci_ind_pdu->sr = *ind_pdu->sr;
-          }
-          if (ind_pdu->harq) {
-            uci_ind_pdu->harq = CALLOC(1, sizeof(*uci_ind_pdu->harq));
-            AssertFatal(uci_ind_pdu->harq != NULL, "Memory not allocated for uci_ind_pdu->harq in phy_nr_uci_indication.");
-            *uci_ind_pdu->harq = *ind_pdu->harq;
-
-            uci_ind_pdu->harq->harq_list = CALLOC(uci_ind_pdu->harq->num_harq, sizeof(*uci_ind_pdu->harq->harq_list));
-            AssertFatal(uci_ind_pdu->harq->harq_list != NULL, "Memory not allocated for uci_ind_pdu->harq->harq_list in phy_nr_uci_indication.");
-            for (int j = 0; j < uci_ind_pdu->harq->num_harq; j++)
-                uci_ind_pdu->harq->harq_list[j].harq_value = ind_pdu->harq->harq_list[j].harq_value;
-          }
+          //nfapi_nr_uci_pucch_pdu_format_0_1_t *uci_ind_pdu = &uci_ind->uci_list[i].pucch_pdu_format_0_1;
+          //nfapi_nr_uci_pucch_pdu_format_0_1_t *ind_pdu = &ind->uci_list[i].pucch_pdu_format_0_1;
+          //Unused
           break;
         }
 
@@ -840,23 +828,13 @@ int phy_nr_uci_indication(nfapi_nr_uci_indication_t *ind)
       }
     }
 
-    if (!put_queue(&gnb_uci_ind_queue, uci_ind))
+    if (!put_queue(&gnb_uci_ind_queue[uci_ind->header.phy_id-1], uci_ind))
     {
       LOG_E(NR_MAC, "Put_queue failed for uci_ind\n");
       for (int i = 0; i < ind->num_ucis; i++)
       {
           if (uci_ind->uci_list[i].pdu_type == NFAPI_NR_UCI_FORMAT_0_1_PDU_TYPE)
           {
-            if (uci_ind->uci_list[i].pucch_pdu_format_0_1.harq) {
-              free(uci_ind->uci_list[i].pucch_pdu_format_0_1.harq->harq_list);
-              uci_ind->uci_list[i].pucch_pdu_format_0_1.harq->harq_list = NULL;
-              free(uci_ind->uci_list[i].pucch_pdu_format_0_1.harq);
-              uci_ind->uci_list[i].pucch_pdu_format_0_1.harq = NULL;
-            }
-            if (uci_ind->uci_list[i].pucch_pdu_format_0_1.sr) {
-              free(uci_ind->uci_list[i].pucch_pdu_format_0_1.sr);
-              uci_ind->uci_list[i].pucch_pdu_format_0_1.sr = NULL;
-            }
           }
           if (uci_ind->uci_list[i].pdu_type == NFAPI_NR_UCI_FORMAT_2_3_4_PDU_TYPE)
           {
@@ -971,6 +949,7 @@ int phy_nr_crc_indication(nfapi_nr_crc_indication_t *ind) {
   {
     nfapi_nr_crc_indication_t *crc_ind = CALLOC(1, sizeof(*crc_ind));
     crc_ind->header.message_id = ind->header.message_id;
+    crc_ind->header.phy_id = ind->header.phy_id;
     crc_ind->number_crcs = ind->number_crcs;
     crc_ind->sfn = ind->sfn;
     crc_ind->slot = ind->slot;
@@ -990,7 +969,7 @@ int phy_nr_crc_indication(nfapi_nr_crc_indication_t *ind) {
       LOG_D(NR_MAC, "Received crc_ind.harq_id = %d for %d index SFN SLot %u %u with rnti %x\n",
                     ind->crc_list[j].harq_id, j, ind->sfn, ind->slot, ind->crc_list[j].rnti);
     }
-    if (!put_queue(&gnb_crc_ind_queue, crc_ind))
+    if (!put_queue(&gnb_crc_ind_queue[crc_ind->header.phy_id-1], crc_ind))
     {
       LOG_E(NR_MAC, "Put_queue failed for crc_ind\n");
       free(crc_ind->crc_list);
@@ -1090,6 +1069,7 @@ int phy_nr_rx_data_indication(nfapi_nr_rx_data_indication_t *ind) {
   {
     nfapi_nr_rx_data_indication_t *rx_ind = CALLOC(1, sizeof(*rx_ind));
     rx_ind->header.message_id = ind->header.message_id;
+    rx_ind->header.phy_id = ind->header.phy_id;
     rx_ind->sfn = ind->sfn;
     rx_ind->slot = ind->slot;
     rx_ind->number_of_pdus = ind->number_of_pdus;
@@ -1107,8 +1087,9 @@ int phy_nr_rx_data_indication(nfapi_nr_rx_data_indication_t *ind) {
       rx_ind->pdu_list[j].rnti = ind->pdu_list[j].rnti;
       rx_ind->pdu_list[j].timing_advance = ind->pdu_list[j].timing_advance;
       rx_ind->pdu_list[j].ul_cqi = ind->pdu_list[j].ul_cqi;
+      rx_ind->pdu_list[j].rssi = ind->pdu_list[j].rssi;
     }
-    if (!put_queue(&gnb_rx_ind_queue, rx_ind))
+    if (!put_queue(&gnb_rx_ind_queue[rx_ind->header.phy_id-1], rx_ind))
     {
       LOG_E(NR_MAC, "Put_queue failed for rx_ind\n");
       free(rx_ind->pdu_list);
@@ -1452,10 +1433,12 @@ void set_thread_priority(int priority);
 
 void *vnf_nr_p7_thread_start(void *ptr) {
   set_thread_priority(79);
-  init_queue(&gnb_rach_ind_queue);
-  init_queue(&gnb_rx_ind_queue);
-  init_queue(&gnb_crc_ind_queue);
-  init_queue(&gnb_uci_ind_queue);
+  for (int i;  i< MAX_NUM_CCs;i++){
+    init_queue(&gnb_rach_ind_queue[i]);
+    init_queue(&gnb_rx_ind_queue[i]);
+    init_queue(&gnb_crc_ind_queue[i]);
+    init_queue(&gnb_uci_ind_queue[i]);
+  }
   init_queue(&gnb_slot_ind_queue);
 
   vnf_p7_info *p7_vnf = (vnf_p7_info *)ptr;

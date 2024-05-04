@@ -19,7 +19,7 @@
 *      contact@openairinterface.org
 */
 
-/*! \file LAYER2/MAC/defs.h
+/*! \file mac.h
 * \brief MAC data structures, constant, and function prototype
 * \author Navid Nikaein and Raymond Knopp
 * \date 2011
@@ -32,7 +32,7 @@
  * @{
  */
 
-/*@}*/
+/**@}*/
 
 #ifndef __LAYER2_MAC_DEFS_H__
 #define __LAYER2_MAC_DEFS_H__
@@ -124,8 +124,8 @@
 /*!\brief logical channl group ID 3 */
 #define LCGID3 3
 /*!\brief Maximum number of logical chanels */
-#define MAX_NUM_LCID 11
-/*!\brief Maximum number od control elemenets */
+#define MAX_NUM_LCID 32
+/*!\brief Maximum number of control elemenets */
 #define MAX_NUM_CE 5
 /*!\brief Maximum number of random access process */
 #define NB_RA_PROC_MAX 4
@@ -139,7 +139,7 @@
 #define MIN_CQI_VALUE  0
 /*!\brief maximum value for channel quality indicator */
 #define MAX_CQI_VALUE  15
-/*!\briefmaximum number of supported bandwidth (1.4, 5, 10, 20 MHz) */
+/*!\brief maximum number of supported bandwidth (1.4, 5, 10, 20 MHz) */
 #define MAX_SUPPORTED_BW  4
 /*!\brief CQI values range from 1 to 15 (4 bits) */
 #define CQI_VALUE_RANGE 16
@@ -467,7 +467,6 @@ typedef struct {
 #define SHORT_BSR 29
 /*!\brief LCID of long BSR for ULSCH */
 #define LONG_BSR 30
-/*!\bitmaps for BSR Triggers */
 #define BSR_TRIGGER_NONE    (0) /* No BSR Trigger */
 #define BSR_TRIGGER_REGULAR   (1) /* For Regular and ReTxBSR Expiry Triggers */
 #define BSR_TRIGGER_PERIODIC  (2) /* For BSR Periodic Timer Expiry Trigger */
@@ -1299,8 +1298,6 @@ typedef struct {
 /*! \brief top level eNB MAC structure */
 
 typedef struct eNB_MAC_INST_s {
-  /// Ethernet parameters for northbound midhaul interface
-  eth_params_t eth_params_n;
   /// Ethernet parameters for fronthaul interface
   eth_params_t eth_params_s;
   ///
@@ -1663,8 +1660,6 @@ typedef struct {
   int ra_frame;   // This variable keeps the frame in which the RA started for the specific UE. It is used in order
   // to make sure that different UEs RA starts within a number of frames difference.
 
-  eth_params_t         eth_params_n;
-
 } UE_MAC_INST;
 
 typedef struct {
@@ -1685,5 +1680,5 @@ typedef  struct {
 
 #include "mac_proto.h"
 
-/*@}*/
+/**@}*/
 #endif /*__LAYER2_MAC_DEFS_H__ */

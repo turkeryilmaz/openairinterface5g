@@ -96,7 +96,6 @@
 extern int asn_debug;
 extern int asn1_xer_print;
 
-#if defined(ENB_MODE)
 # include "common/utils/LOG/log.h"
 # include "ngap_gNB_default_values.h"
 # define NGAP_ERROR(x, args...) LOG_E(NGAP, x, ##args)
@@ -104,14 +103,6 @@ extern int asn1_xer_print;
 # define NGAP_TRAF(x, args...)  LOG_I(NGAP, x, ##args)
 # define NGAP_INFO(x, args...) LOG_I(NGAP, x, ##args)
 # define NGAP_DEBUG(x, args...) LOG_I(NGAP, x, ##args)
-#else
-# include "amf_default_values.h"
-# define NGAP_ERROR(x, args...) do { fprintf(stdout, "[NGAP][E]"x, ##args); } while(0)
-# define NGAP_WARN(x, args...)  do { fprintf(stdout, "[NGAP][W]"x, ##args); } while(0)
-# define NGAP_TRAF(x, args...)  do { fprintf(stdout, "[NGAP][T]"x, ##args); } while(0)
-# define NGAP_INFO(x, args...) do { fprintf(stdout, "[NGAP][I]"x, ##args); } while(0)
-# define NGAP_DEBUG(x, args...) do { fprintf(stdout, "[NGAP][D]"x, ##args); } while(0)
-#endif
 
 #define NGAP_FIND_PROTOCOLIE_BY_ID(IE_TYPE, ie, container, IE_ID, mandatory)                                                            \
   do {                                                                                                                                  \
@@ -136,16 +127,13 @@ extern int asn1_xer_print;
 
 /** \brief Function callback prototype.
  **/
-typedef int (*ngap_message_decoded_callback)(
-    uint32_t         assoc_id,
-    uint32_t         stream,
-    NGAP_NGAP_PDU_t *pdu
-);
+typedef int (*ngap_message_decoded_callback)(sctp_assoc_t assoc_id, uint32_t stream, NGAP_NGAP_PDU_t *pdu);
 
 /** \brief Handle criticality
  \param criticality Criticality of the IE
  @returns void
  **/
 void ngap_handle_criticality(NGAP_Criticality_t criticality);
+/** @}*/
 
 #endif /* NGAP_COMMON_H_ */

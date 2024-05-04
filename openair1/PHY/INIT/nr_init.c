@@ -28,6 +28,7 @@
 #include "PHY/CODING/nrPolar_tools/nr_polar_pbch_defs.h"
 #include "PHY/NR_TRANSPORT/nr_transport_proto.h"
 #include "PHY/NR_TRANSPORT/nr_transport_common_proto.h"
+#include "PHY/NR_ESTIMATION/nr_ul_estimation.h"
 #include "openair1/PHY/MODULATION/nr_modulation.h"
 #include "openair1/PHY/defs_RU.h"
 #include "openair1/PHY/CODING/nrLDPC_extern.h"
@@ -64,17 +65,6 @@ int l1_north_init_gNB() {
   }
 
   return(0);
-}
-
-void init_ul_delay_table(NR_DL_FRAME_PARMS *fp)
-{
-  for (int delay = -MAX_UL_DELAY_COMP; delay <= MAX_UL_DELAY_COMP; delay++) {
-    for (int k = 0; k < fp->ofdm_symbol_size; k++) {
-      double complex delay_cexp = cexp(I * (2.0 * M_PI * k * delay / fp->ofdm_symbol_size));
-      fp->ul_delay_table[MAX_UL_DELAY_COMP + delay][k].r = (int16_t)round(256 * creal(delay_cexp));
-      fp->ul_delay_table[MAX_UL_DELAY_COMP + delay][k].i = (int16_t)round(256 * cimag(delay_cexp));
-    }
-  }
 }
 
 NR_gNB_PHY_STATS_t *get_phy_stats(PHY_VARS_gNB *gNB, uint16_t rnti)
@@ -511,6 +501,9 @@ int init_codebook_gNB(PHY_VARS_gNB *gNB) {
   return 0;
 }
 
+// A global var to reduce the changes size
+ldpc_interface_t ldpc_interface = {0}, ldpc_interface_offload = {0};
+
 int phy_init_nr_gNB(PHY_VARS_gNB *gNB)
 {
   // shortcuts
@@ -536,15 +529,16 @@ int phy_init_nr_gNB(PHY_VARS_gNB *gNB)
   init_scrambling_luts();
   init_pucch2_luts();
 
-  load_nrLDPClib(NULL);
+  nr_init_fde(); // Init array for frequency equalization of transform precoding of PUSCH
+
+  load_LDPClib(NULL, &ldpc_interface);
 
   if (gNB->ldpc_offload_flag)
-    load_nrLDPClib_offload();
-
+    load_LDPClib("_t2", &ldpc_interface_offload);
   gNB->max_nb_pdsch = MAX_MOBILES_PER_GNB;
 
   init_codebook_gNB(gNB);
-  init_ul_delay_table(fp);
+  init_delay_table(fp->ofdm_symbol_size, MAX_DELAY_COMP, NR_MAX_OFDM_SYMBOL_SIZE, fp->delay_table);
 
   // PBCH DMRS gold sequences generation
   nr_init_pbch_dmrs(gNB);
@@ -694,7 +688,7 @@ int phy_init_nr_gNB(PHY_VARS_gNB *gNB)
   int n_buf = Prx*max_ul_mimo_layers;
 
   int nb_re_pusch = N_RB_UL * NR_NB_SC_PER_RB;
-  int nb_re_pusch2 = nb_re_pusch + (nb_re_pusch&7);
+  int nb_re_pusch2 = (nb_re_pusch + 15) & ~15;
 
   gNB->pusch_vars = (NR_gNB_PUSCH *)malloc16_clear(gNB->max_nb_pusch * sizeof(NR_gNB_PUSCH));
   for (int ULSCH_id = 0; ULSCH_id < gNB->max_nb_pusch; ULSCH_id++) {
@@ -705,24 +699,9 @@ int phy_init_nr_gNB(PHY_VARS_gNB *gNB)
     pusch->ptrs_phase_per_slot = (int32_t **)malloc16(n_buf * sizeof(int32_t *));
     pusch->ul_ch_estimates_time = (int32_t **)malloc16(n_buf * sizeof(int32_t *));
     pusch->rxdataF_comp = (int32_t **)malloc16(n_buf * sizeof(int32_t *));
-    pusch->ul_ch_mag0 = (int32_t **)malloc16(n_buf * sizeof(int32_t *));
-    pusch->ul_ch_magb0 = (int32_t **)malloc16(n_buf * sizeof(int32_t *));
-    pusch->ul_ch_magc0 = (int32_t **)malloc16(n_buf * sizeof(int32_t *));
-    pusch->ul_ch_mag = (int32_t **)malloc16(n_buf * sizeof(int32_t *));
-    pusch->ul_ch_magb = (int32_t **)malloc16(n_buf * sizeof(int32_t *));
-    pusch->ul_ch_magc = (int32_t **)malloc16(n_buf * sizeof(int32_t *));
-    pusch->rho = (int32_t ***)malloc16(Prx * sizeof(int32_t **));
     pusch->llr_layers = (int16_t **)malloc16(max_ul_mimo_layers * sizeof(int32_t *));
     for (i = 0; i < Prx; i++) {
       pusch->rxdataF_ext[i] = (int32_t *)malloc16_clear(sizeof(int32_t) * nb_re_pusch2 * fp->symbols_per_slot);
-      pusch->rho[i] = (int32_t **)malloc16_clear(NR_MAX_NB_LAYERS * NR_MAX_NB_LAYERS * sizeof(int32_t *));
-
-      for (int j = 0; j < max_ul_mimo_layers; j++) {
-        for (int k = 0; k < max_ul_mimo_layers; k++) {
-          pusch->rho[i][j * max_ul_mimo_layers + k] =
-              (int32_t *)malloc16_clear(sizeof(int32_t) * nb_re_pusch2 * fp->symbols_per_slot);
-        }
-      }
     }
     for (i = 0; i < n_buf; i++) {
       pusch->ul_ch_estimates[i] = (int32_t *)malloc16_clear(sizeof(int32_t) * fp->ofdm_symbol_size * fp->symbols_per_slot);
@@ -730,12 +709,6 @@ int phy_init_nr_gNB(PHY_VARS_gNB *gNB)
       pusch->ul_ch_estimates_time[i] = (int32_t *)malloc16_clear(sizeof(int32_t) * fp->ofdm_symbol_size);
       pusch->ptrs_phase_per_slot[i] = (int32_t *)malloc16_clear(sizeof(int32_t) * fp->symbols_per_slot); // symbols per slot
       pusch->rxdataF_comp[i] = (int32_t *)malloc16_clear(sizeof(int32_t) * nb_re_pusch2 * fp->symbols_per_slot);
-      pusch->ul_ch_mag0[i] = (int32_t *)malloc16_clear(sizeof(int32_t) * nb_re_pusch2 * fp->symbols_per_slot);
-      pusch->ul_ch_magb0[i] = (int32_t *)malloc16_clear(sizeof(int32_t) * nb_re_pusch2 * fp->symbols_per_slot);
-      pusch->ul_ch_magc0[i] = (int32_t *)malloc16_clear(sizeof(int32_t) * nb_re_pusch2 * fp->symbols_per_slot);
-      pusch->ul_ch_mag[i] = (int32_t *)malloc16_clear(sizeof(int32_t) * nb_re_pusch2 * fp->symbols_per_slot);
-      pusch->ul_ch_magb[i] = (int32_t *)malloc16_clear(sizeof(int32_t) * nb_re_pusch2 * fp->symbols_per_slot);
-      pusch->ul_ch_magc[i] = (int32_t *)malloc16_clear(sizeof(int32_t) * nb_re_pusch2 * fp->symbols_per_slot);
     }
 
     for (i=0; i< max_ul_mimo_layers; i++) {
@@ -859,11 +832,6 @@ void phy_free_nr_gNB(PHY_VARS_gNB *gNB)
       free_and_zero(pusch_vars->llr_layers[i]);
     for (int i = 0; i < Prx; i++) {
       free_and_zero(pusch_vars->rxdataF_ext[i]);
-      for (int j=0; j< max_ul_mimo_layers; j++) {
-        for (int k=0; k<max_ul_mimo_layers; k++)
-          free_and_zero(pusch_vars->rho[i][j * max_ul_mimo_layers + k]);
-      }
-      free_and_zero(pusch_vars->rho[i]);
     }
     for (int i = 0; i < n_buf; i++) {
       free_and_zero(pusch_vars->ul_ch_estimates[i]);
@@ -871,12 +839,6 @@ void phy_free_nr_gNB(PHY_VARS_gNB *gNB)
       free_and_zero(pusch_vars->ul_ch_estimates_time[i]);
       free_and_zero(pusch_vars->ptrs_phase_per_slot[i]);
       free_and_zero(pusch_vars->rxdataF_comp[i]);
-      free_and_zero(pusch_vars->ul_ch_mag0[i]);
-      free_and_zero(pusch_vars->ul_ch_magb0[i]);
-      free_and_zero(pusch_vars->ul_ch_magc0[i]);
-      free_and_zero(pusch_vars->ul_ch_mag[i]);
-      free_and_zero(pusch_vars->ul_ch_magb[i]);
-      free_and_zero(pusch_vars->ul_ch_magc[i]);
     }
     free_and_zero(pusch_vars->llr_layers);
     free_and_zero(pusch_vars->rxdataF_ext);
@@ -886,13 +848,6 @@ void phy_free_nr_gNB(PHY_VARS_gNB *gNB)
     free_and_zero(pusch_vars->ul_ch_estimates_time);
     free_and_zero(pusch_vars->ul_valid_re_per_slot);
     free_and_zero(pusch_vars->rxdataF_comp);
-    free_and_zero(pusch_vars->ul_ch_mag0);
-    free_and_zero(pusch_vars->ul_ch_magb0);
-    free_and_zero(pusch_vars->ul_ch_magc0);
-    free_and_zero(pusch_vars->ul_ch_mag);
-    free_and_zero(pusch_vars->ul_ch_magb);
-    free_and_zero(pusch_vars->ul_ch_magc);
-    free_and_zero(pusch_vars->rho);
 
     free_and_zero(pusch_vars->llr);
   } // ULSCH_id
@@ -980,9 +935,10 @@ void nr_phy_config_request_sim(PHY_VARS_gNB *gNB,
 void nr_phy_config_request(NR_PHY_Config_t *phy_config)
 {
   uint8_t Mod_id = phy_config->Mod_id;
+  int CC_id = phy_config->CC_id;
   uint8_t short_sequence, num_sequences, rootSequenceIndex, fd_occasion;
-  NR_DL_FRAME_PARMS *fp = &RC.gNB[Mod_id]->frame_parms;
-  nfapi_nr_config_request_scf_t *gNB_config = &RC.gNB[Mod_id]->gNB_config;
+  NR_DL_FRAME_PARMS *fp = &RC.gNB[CC_id]->frame_parms;
+  nfapi_nr_config_request_scf_t *gNB_config = &RC.gNB[CC_id]->gNB_config;
 
   memcpy((void*)gNB_config,phy_config->cfg,sizeof(*phy_config->cfg));
 
@@ -998,8 +954,9 @@ void nr_phy_config_request(NR_PHY_Config_t *phy_config)
   LOG_I(PHY, "DL frequency %lu Hz, UL frequency %lu Hz: band %d, uldl offset %d Hz\n", fp->dl_CarrierFreq, fp->ul_CarrierFreq, fp->nr_band, dlul_offset);
 
   fp->threequarter_fs = openair0_cfg[0].threequarter_fs;
-  LOG_A(PHY,"Configuring MIB for instance %d, : (Nid_cell %d,DL freq %llu, UL freq %llu)\n",
+  LOG_A(PHY,"Configuring MIB for instance %d, CC_id %d, : (Nid_cell %d,DL freq %llu, UL freq %llu)\n",
         Mod_id,
+        CC_id,
         gNB_config->cell_config.phy_cell_id.value,
         (unsigned long long)fp->dl_CarrierFreq,
         (unsigned long long)fp->ul_CarrierFreq);
@@ -1007,7 +964,7 @@ void nr_phy_config_request(NR_PHY_Config_t *phy_config)
   nr_init_frame_parms(gNB_config, fp);
   
 
-  if (RC.gNB[Mod_id]->configured == 1) {
+  if (RC.gNB[CC_id]->configured == 1) {
     LOG_E(PHY,"Already gNB already configured, do nothing\n");
     return;
   }
@@ -1019,11 +976,11 @@ void nr_phy_config_request(NR_PHY_Config_t *phy_config)
   num_sequences = prach_config->num_prach_fd_occasions_list[fd_occasion].num_root_sequences.value;
   rootSequenceIndex = prach_config->num_prach_fd_occasions_list[fd_occasion].prach_root_sequence_index.value;
 
-  compute_nr_prach_seq(short_sequence, num_sequences, rootSequenceIndex, RC.gNB[Mod_id]->X_u);
+  compute_nr_prach_seq(short_sequence, num_sequences, rootSequenceIndex, RC.gNB[CC_id]->X_u);
 //  }
-  RC.gNB[Mod_id]->configured     = 1;
+  RC.gNB[CC_id]->configured     = 1;
 
-  fp->ofdm_offset_divisor = RC.gNB[Mod_id]->ofdm_offset_divisor;
+  fp->ofdm_offset_divisor = RC.gNB[CC_id]->ofdm_offset_divisor;
   init_symbol_rotation(fp);
   init_timeshift_rotation(fp);
 

@@ -377,6 +377,39 @@ static int _serSysEncSlotTimingInfo_Type(unsigned char* _buffer, size_t _size, s
 	return SIDL_STATUS_OK;
 }
 
+static int _serSysEncSymbolTimingInfo_Type_Value(unsigned char* _buffer, size_t _size, size_t* _lidx, const union SymbolTimingInfo_Type_Value* p, enum SymbolTimingInfo_Type_Sel d)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	if (d == SymbolTimingInfo_Type_SymbolOffset) {
+		HTON_8(&_buffer[*_lidx], p->SymbolOffset, _lidx);
+		return SIDL_STATUS_OK;
+	}
+	if (d == SymbolTimingInfo_Type_FirstSymbol) {
+		HTON_8(&_buffer[*_lidx], p->FirstSymbol, _lidx);
+		return SIDL_STATUS_OK;
+	}
+	if (d == SymbolTimingInfo_Type_Any) {
+		HTON_8(&_buffer[*_lidx], p->Any, _lidx);
+		return SIDL_STATUS_OK;
+	}
+
+	return SIDL_STATUS_ERROR;
+}
+
+static int _serSysEncSymbolTimingInfo_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SymbolTimingInfo_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp = (size_t)p->d;
+		HTON_32(&_buffer[*_lidx], _tmp, _lidx);
+	}
+	_serSysEncSymbolTimingInfo_Type_Value(_buffer, _size, _lidx, &p->v, p->d);
+
+	return SIDL_STATUS_OK;
+}
+
 static int _serSysEncSubFrameTiming_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SubFrameTiming_Type* p)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -385,6 +418,7 @@ static int _serSysEncSubFrameTiming_Type(unsigned char* _buffer, size_t _size, s
 	_serSysEncSubFrameInfo_Type(_buffer, _size, _lidx, &p->Subframe);
 	_serSysEncHyperSystemFrameNumberInfo_Type(_buffer, _size, _lidx, &p->HSFN);
 	_serSysEncSlotTimingInfo_Type(_buffer, _size, _lidx, &p->Slot);
+	_serSysEncSymbolTimingInfo_Type(_buffer, _size, _lidx, &p->Symbol);
 
 	return SIDL_STATUS_OK;
 }
@@ -3091,6 +3125,39 @@ static int _serSysEncBcchToPdschConfig_Type_Pdsch_Optional(unsigned char* _buffe
 	return SIDL_STATUS_OK;
 }
 
+static int _serSysEncSQN_MasterInformationBlock_partEARFCN_17_Value(unsigned char* _buffer, size_t _size, size_t* _lidx, const union SQN_MasterInformationBlock_partEARFCN_17_Value* p, enum SQN_MasterInformationBlock_partEARFCN_17_Sel d)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	if (d == SQN_MasterInformationBlock_partEARFCN_17_spare) {
+		for (size_t i1 = 0; i1 < 2; i1++) {
+			HTON_8(&_buffer[*_lidx], p->spare[i1], _lidx);
+		}
+		return SIDL_STATUS_OK;
+	}
+	if (d == SQN_MasterInformationBlock_partEARFCN_17_earfcn_LSB) {
+		for (size_t i1 = 0; i1 < 2; i1++) {
+			HTON_8(&_buffer[*_lidx], p->earfcn_LSB[i1], _lidx);
+		}
+		return SIDL_STATUS_OK;
+	}
+
+	return SIDL_STATUS_ERROR;
+}
+
+static int _serSysEncSQN_MasterInformationBlock_partEARFCN_17(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_MasterInformationBlock_partEARFCN_17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp = (size_t)p->d;
+		HTON_32(&_buffer[*_lidx], _tmp, _lidx);
+	}
+	_serSysEncSQN_MasterInformationBlock_partEARFCN_17_Value(_buffer, _size, _lidx, &p->v, p->d);
+
+	return SIDL_STATUS_OK;
+}
+
 static int _serSysEncSQN_MasterInformationBlock(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_MasterInformationBlock* p)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -3105,7 +3172,8 @@ static int _serSysEncSQN_MasterInformationBlock(unsigned char* _buffer, size_t _
 	}
 	HTON_8(&_buffer[*_lidx], p->schedulingInfoSIB1_BR_r13, _lidx);
 	HTON_8(&_buffer[*_lidx], p->systemInfoUnchanged_BR_r15, _lidx);
-	for (size_t i1 = 0; i1 < 4; i1++) {
+	_serSysEncSQN_MasterInformationBlock_partEARFCN_17(_buffer, _size, _lidx, &p->partEARFCN_17);
+	for (size_t i1 = 0; i1 < 1; i1++) {
 		HTON_8(&_buffer[*_lidx], p->spare[i1], _lidx);
 	}
 
@@ -5076,6 +5144,139 @@ static int _serSysEncBool_SQN_RadioResourceConfigCommonSIB_highSpeedInterRAT_NR_
 	return SIDL_STATUS_OK;
 }
 
+static int _serSysEncSQN_PCCH_Config_v1700(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_PCCH_Config_v1700* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp = (size_t)p->ranPagingInIdlePO_r17;
+		HTON_32(&_buffer[*_lidx], _tmp, _lidx);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_PCCH_Config_v1700_SQN_RadioResourceConfigCommonSIB_pcch_Config_v1700_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_PCCH_Config_v1700_SQN_RadioResourceConfigCommonSIB_pcch_Config_v1700_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	_serSysEncSQN_PCCH_Config_v1700(_buffer, _size, _lidx, &p->v);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_ta_Report_r17_e_ta_Report_r17_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_ta_Report_r17_e_ta_Report_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	{
+		size_t _tmp = (size_t)p->v;
+		HTON_32(&_buffer[*_lidx], _tmp, _lidx);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_PRACH_TxDuration_r17(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_PRACH_TxDuration_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp = (size_t)p->prach_TxDuration_r17;
+		HTON_32(&_buffer[*_lidx], _tmp, _lidx);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_PRACH_TxDuration_r17_SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_prach_TxDuration_r17_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_PRACH_TxDuration_r17_SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_prach_TxDuration_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	_serSysEncSQN_PRACH_TxDuration_r17(_buffer, _size, _lidx, &p->v);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_PUCCH_TxDuration_r17(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_PUCCH_TxDuration_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp = (size_t)p->pucch_TxDuration_r17;
+		HTON_32(&_buffer[*_lidx], _tmp, _lidx);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_PUCCH_TxDuration_r17_SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_pucch_TxDuration_r17_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_PUCCH_TxDuration_r17_SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_pucch_TxDuration_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	_serSysEncSQN_PUCCH_TxDuration_r17(_buffer, _size, _lidx, &p->v);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_PUSCH_TxDuration_r17(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_PUSCH_TxDuration_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp = (size_t)p->pusch_TxDuration_r17;
+		HTON_32(&_buffer[*_lidx], _tmp, _lidx);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_PUSCH_TxDuration_r17_SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_pusch_TxDuration_r17_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_PUSCH_TxDuration_r17_SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_pusch_TxDuration_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	_serSysEncSQN_PUSCH_TxDuration_r17(_buffer, _size, _lidx, &p->v);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serSysEncSQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_ta_Report_r17_e_ta_Report_r17_Optional(_buffer, _size, _lidx, &p->ta_Report_r17);
+	{
+		size_t _tmp = (size_t)p->t318_r17;
+		HTON_32(&_buffer[*_lidx], _tmp, _lidx);
+	}
+	_serSysEncSQN_PRACH_TxDuration_r17_SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_prach_TxDuration_r17_Optional(_buffer, _size, _lidx, &p->prach_TxDuration_r17);
+	_serSysEncSQN_PUCCH_TxDuration_r17_SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_pucch_TxDuration_r17_Optional(_buffer, _size, _lidx, &p->pucch_TxDuration_r17);
+	_serSysEncSQN_PUSCH_TxDuration_r17_SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_pusch_TxDuration_r17_Optional(_buffer, _size, _lidx, &p->pusch_TxDuration_r17);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_ntn_ConfigCommon_r17_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_ntn_ConfigCommon_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	_serSysEncSQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17(_buffer, _size, _lidx, &p->v);
+
+	return SIDL_STATUS_OK;
+}
+
 static int _serSysEncSQN_RadioResourceConfigCommonSIB(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_RadioResourceConfigCommonSIB* p)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -5121,6 +5322,8 @@ static int _serSysEncSQN_RadioResourceConfigCommonSIB(unsigned char* _buffer, si
 	_serSysEncSQN_RadioResourceConfigCommonSIB_rss_MeasNonNCL_r16_e_rss_MeasNonNCL_r16_Optional(_buffer, _size, _lidx, &p->rss_MeasNonNCL_r16);
 	_serSysEncB2_SQN_RadioResourceConfigCommonSIB_puncturedSubcarriersDL_r16_Optional(_buffer, _size, _lidx, &p->puncturedSubcarriersDL_r16);
 	_serSysEncBool_SQN_RadioResourceConfigCommonSIB_highSpeedInterRAT_NR_r16_Optional(_buffer, _size, _lidx, &p->highSpeedInterRAT_NR_r16);
+	_serSysEncSQN_PCCH_Config_v1700_SQN_RadioResourceConfigCommonSIB_pcch_Config_v1700_Optional(_buffer, _size, _lidx, &p->pcch_Config_v1700);
+	_serSysEncSQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_ntn_ConfigCommon_r17_Optional(_buffer, _size, _lidx, &p->ntn_ConfigCommon_r17);
 
 	return SIDL_STATUS_OK;
 }
@@ -6697,6 +6900,17 @@ static int _serSysEncSQN_CellReselectionServingFreqInfo_v1610_SQN_SystemInformat
 	return SIDL_STATUS_OK;
 }
 
+static int _serSysEncSQN_TimeOffsetUTC_r17_SQN_SystemInformationBlockType3_t_Service_r17_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_TimeOffsetUTC_r17_SQN_SystemInformationBlockType3_t_Service_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	HTON_32(&_buffer[*_lidx], p->v, _lidx);
+
+	return SIDL_STATUS_OK;
+}
+
 static int _serSysEncSQN_SystemInformationBlockType3(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_SystemInformationBlockType3* p)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -6722,6 +6936,7 @@ static int _serSysEncSQN_SystemInformationBlockType3(unsigned char* _buffer, siz
 	_serSysEncSQN_CellSelectionInfoCE_v1530_SQN_SystemInformationBlockType3_cellSelectionInfoCE_v1530_Optional(_buffer, _size, _lidx, &p->cellSelectionInfoCE_v1530);
 	_serSysEncSQN_SystemInformationBlockType3_crs_IntfMitigNeighCellsCE_r15_e_crs_IntfMitigNeighCellsCE_r15_Optional(_buffer, _size, _lidx, &p->crs_IntfMitigNeighCellsCE_r15);
 	_serSysEncSQN_CellReselectionServingFreqInfo_v1610_SQN_SystemInformationBlockType3_cellReselectionServingFreqInfo_v1610_Optional(_buffer, _size, _lidx, &p->cellReselectionServingFreqInfo_v1610);
+	_serSysEncSQN_TimeOffsetUTC_r17_SQN_SystemInformationBlockType3_t_Service_r17_Optional(_buffer, _size, _lidx, &p->t_Service_r17);
 
 	return SIDL_STATUS_OK;
 }
@@ -6777,7 +6992,7 @@ static int _serSysEncSQN_PhysCellIdRange(unsigned char* _buffer, size_t _size, s
 	return SIDL_STATUS_OK;
 }
 
-static int _serSysEncSQN_IntraFreqBlackCellList_SQN_SystemInformationBlockType4_intraFreqBlackCellList_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_IntraFreqBlackCellList_SQN_SystemInformationBlockType4_intraFreqBlackCellList_Optional* p)
+static int _serSysEncSQN_IntraFreqExcludedCellList_SQN_SystemInformationBlockType4_intraFreqExcludedCellList_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_IntraFreqExcludedCellList_SQN_SystemInformationBlockType4_intraFreqExcludedCellList_Optional* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
@@ -6888,7 +7103,7 @@ static int _serSysEncSQN_SystemInformationBlockType4(unsigned char* _buffer, siz
 	(void)_size; // TODO: generate boundaries checking
 
 	_serSysEncSQN_IntraFreqNeighCellList_SQN_SystemInformationBlockType4_intraFreqNeighCellList_Optional(_buffer, _size, _lidx, &p->intraFreqNeighCellList);
-	_serSysEncSQN_IntraFreqBlackCellList_SQN_SystemInformationBlockType4_intraFreqBlackCellList_Optional(_buffer, _size, _lidx, &p->intraFreqBlackCellList);
+	_serSysEncSQN_IntraFreqExcludedCellList_SQN_SystemInformationBlockType4_intraFreqExcludedCellList_Optional(_buffer, _size, _lidx, &p->intraFreqExcludedCellList);
 	_serSysEncSQN_PhysCellIdRange_SQN_SystemInformationBlockType4_csg_PhysCellIdRange_Optional(_buffer, _size, _lidx, &p->csg_PhysCellIdRange);
 	_serSysEncOCTET_STRING_SQN_SystemInformationBlockType4_lateNonCriticalExtension_Optional(_buffer, _size, _lidx, &p->lateNonCriticalExtension);
 	_serSysEncSQN_IntraFreqNeighHSDN_CellList_r15_SQN_SystemInformationBlockType4_intraFreqNeighHSDN_CellList_r15_Optional(_buffer, _size, _lidx, &p->intraFreqNeighHSDN_CellList_r15);
@@ -6972,7 +7187,7 @@ static int _serSysEncSQN_InterFreqNeighCellList_SQN_InterFreqCarrierFreqInfo_int
 	return SIDL_STATUS_OK;
 }
 
-static int _serSysEncSQN_InterFreqBlackCellList_SQN_InterFreqCarrierFreqInfo_interFreqBlackCellList_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_InterFreqBlackCellList_SQN_InterFreqCarrierFreqInfo_interFreqBlackCellList_Optional* p)
+static int _serSysEncSQN_InterFreqExcludedCellList_SQN_InterFreqCarrierFreqInfo_interFreqExcludedCellList_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_InterFreqExcludedCellList_SQN_InterFreqCarrierFreqInfo_interFreqExcludedCellList_Optional* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
@@ -7051,7 +7266,7 @@ static int _serSysEncSQN_InterFreqCarrierFreqInfo(unsigned char* _buffer, size_t
 	}
 	_serSysEncSQN_Q_OffsetRange_e_SQN_InterFreqCarrierFreqInfo_q_OffsetFreq_Optional(_buffer, _size, _lidx, &p->q_OffsetFreq);
 	_serSysEncSQN_InterFreqNeighCellList_SQN_InterFreqCarrierFreqInfo_interFreqNeighCellList_Optional(_buffer, _size, _lidx, &p->interFreqNeighCellList);
-	_serSysEncSQN_InterFreqBlackCellList_SQN_InterFreqCarrierFreqInfo_interFreqBlackCellList_Optional(_buffer, _size, _lidx, &p->interFreqBlackCellList);
+	_serSysEncSQN_InterFreqExcludedCellList_SQN_InterFreqCarrierFreqInfo_interFreqExcludedCellList_Optional(_buffer, _size, _lidx, &p->interFreqExcludedCellList);
 	_serSysEncSQN_Q_QualMin_r9_SQN_InterFreqCarrierFreqInfo_q_QualMin_r9_Optional(_buffer, _size, _lidx, &p->q_QualMin_r9);
 	_serSysEncSQN_InterFreqCarrierFreqInfo_threshX_Q_r9_threshX_Q_r9_Optional(_buffer, _size, _lidx, &p->threshX_Q_r9);
 	_serSysEncSQN_Q_QualMin_r9_SQN_InterFreqCarrierFreqInfo_q_QualMinWB_r11_Optional(_buffer, _size, _lidx, &p->q_QualMinWB_r11);
@@ -7183,7 +7398,7 @@ static int _serSysEncSQN_InterFreqNeighCellList_SQN_InterFreqCarrierFreqInfo_r12
 	return SIDL_STATUS_OK;
 }
 
-static int _serSysEncSQN_InterFreqBlackCellList_SQN_InterFreqCarrierFreqInfo_r12_interFreqBlackCellList_r12_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_InterFreqBlackCellList_SQN_InterFreqCarrierFreqInfo_r12_interFreqBlackCellList_r12_Optional* p)
+static int _serSysEncSQN_InterFreqExcludedCellList_SQN_InterFreqCarrierFreqInfo_r12_interFreqExcludedCellList_r12_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_InterFreqExcludedCellList_SQN_InterFreqCarrierFreqInfo_r12_interFreqExcludedCellList_r12_Optional* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
@@ -7301,7 +7516,7 @@ static int _serSysEncSQN_InterFreqCarrierFreqInfo_r12(unsigned char* _buffer, si
 	}
 	_serSysEncSQN_Q_OffsetRange_e_SQN_InterFreqCarrierFreqInfo_r12_q_OffsetFreq_r12_Optional(_buffer, _size, _lidx, &p->q_OffsetFreq_r12);
 	_serSysEncSQN_InterFreqNeighCellList_SQN_InterFreqCarrierFreqInfo_r12_interFreqNeighCellList_r12_Optional(_buffer, _size, _lidx, &p->interFreqNeighCellList_r12);
-	_serSysEncSQN_InterFreqBlackCellList_SQN_InterFreqCarrierFreqInfo_r12_interFreqBlackCellList_r12_Optional(_buffer, _size, _lidx, &p->interFreqBlackCellList_r12);
+	_serSysEncSQN_InterFreqExcludedCellList_SQN_InterFreqCarrierFreqInfo_r12_interFreqExcludedCellList_r12_Optional(_buffer, _size, _lidx, &p->interFreqExcludedCellList_r12);
 	_serSysEncSQN_Q_QualMin_r9_SQN_InterFreqCarrierFreqInfo_r12_q_QualMin_r12_Optional(_buffer, _size, _lidx, &p->q_QualMin_r12);
 	_serSysEncSQN_InterFreqCarrierFreqInfo_r12_threshX_Q_r12_threshX_Q_r12_Optional(_buffer, _size, _lidx, &p->threshX_Q_r12);
 	_serSysEncSQN_Q_QualMin_r9_SQN_InterFreqCarrierFreqInfo_r12_q_QualMinWB_r12_Optional(_buffer, _size, _lidx, &p->q_QualMinWB_r12);
@@ -8261,6 +8476,20 @@ static int _serSysEncSQN_BeamMeasConfigIdleNR_r16_SQN_MeasIdleCarrierNR_r16_beam
 	return SIDL_STATUS_OK;
 }
 
+static int _serSysEncSQN_MeasIdleCarrierNR_r16_subcarrierSpacingSSB_r17_e_subcarrierSpacingSSB_r17_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_MeasIdleCarrierNR_r16_subcarrierSpacingSSB_r17_e_subcarrierSpacingSSB_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	{
+		size_t _tmp = (size_t)p->v;
+		HTON_32(&_buffer[*_lidx], _tmp, _lidx);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
 static int _serSysEncSQN_MeasIdleCarrierNR_r16(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_MeasIdleCarrierNR_r16* p)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -8279,6 +8508,7 @@ static int _serSysEncSQN_MeasIdleCarrierNR_r16(unsigned char* _buffer, size_t _s
 	_serSysEncSQN_MeasIdleCarrierNR_r16_qualityThresholdNR_r16_qualityThresholdNR_r16_Optional(_buffer, _size, _lidx, &p->qualityThresholdNR_r16);
 	_serSysEncSQN_MeasIdleCarrierNR_r16_ssb_MeasConfig_r16_ssb_MeasConfig_r16_Optional(_buffer, _size, _lidx, &p->ssb_MeasConfig_r16);
 	_serSysEncSQN_BeamMeasConfigIdleNR_r16_SQN_MeasIdleCarrierNR_r16_beamMeasConfigIdle_r16_Optional(_buffer, _size, _lidx, &p->beamMeasConfigIdle_r16);
+	_serSysEncSQN_MeasIdleCarrierNR_r16_subcarrierSpacingSSB_r17_e_subcarrierSpacingSSB_r17_Optional(_buffer, _size, _lidx, &p->subcarrierSpacingSSB_r17);
 
 	return SIDL_STATUS_OK;
 }
@@ -10038,6 +10268,33 @@ static int _serSysEncSQN_MBSFN_AreaInfoList_r16_SQN_SystemInformationBlockType13
 	return SIDL_STATUS_OK;
 }
 
+static int _serSysEncSQN_MBSFN_AreaInfo_r17(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_MBSFN_AreaInfo_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serSysEncSQN_MBSFN_AreaInfo_r16(_buffer, _size, _lidx, &p->mbsfn_AreaInfo_r17);
+	{
+		size_t _tmp = (size_t)p->pmch_Bandwidth_r17;
+		HTON_32(&_buffer[*_lidx], _tmp, _lidx);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_MBSFN_AreaInfoList_r17_SQN_SystemInformationBlockType13_r9_mbsfn_AreaInfoList_r17_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_MBSFN_AreaInfoList_r17_SQN_SystemInformationBlockType13_r9_mbsfn_AreaInfoList_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	HTON_32(&_buffer[*_lidx], p->v.d, _lidx);
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		_serSysEncSQN_MBSFN_AreaInfo_r17(_buffer, _size, _lidx, &p->v.v[i2]);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
 static int _serSysEncSQN_SystemInformationBlockType13_r9(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_SystemInformationBlockType13_r9* p)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -10050,6 +10307,7 @@ static int _serSysEncSQN_SystemInformationBlockType13_r9(unsigned char* _buffer,
 	_serSysEncOCTET_STRING_SQN_SystemInformationBlockType13_r9_lateNonCriticalExtension_Optional(_buffer, _size, _lidx, &p->lateNonCriticalExtension);
 	_serSysEncSQN_MBMS_NotificationConfig_v1430_SQN_SystemInformationBlockType13_r9_notificationConfig_v1430_Optional(_buffer, _size, _lidx, &p->notificationConfig_v1430);
 	_serSysEncSQN_MBSFN_AreaInfoList_r16_SQN_SystemInformationBlockType13_r9_mbsfn_AreaInfoList_r16_Optional(_buffer, _size, _lidx, &p->mbsfn_AreaInfoList_r16);
+	_serSysEncSQN_MBSFN_AreaInfoList_r17_SQN_SystemInformationBlockType13_r9_mbsfn_AreaInfoList_r17_Optional(_buffer, _size, _lidx, &p->mbsfn_AreaInfoList_r17);
 
 	return SIDL_STATUS_OK;
 }
@@ -14488,7 +14746,7 @@ static int _serSysEncSQN_SSB_PositionQCL_RelationNR_r16_e_SQN_CarrierFreqNR_v161
 	return SIDL_STATUS_OK;
 }
 
-static int _serSysEncSQN_WhiteCellListNR_r16_SQN_CarrierFreqNR_v1610_whiteCellListNR_r16_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_WhiteCellListNR_r16_SQN_CarrierFreqNR_v1610_whiteCellListNR_r16_Optional* p)
+static int _serSysEncSQN_AllowedCellListNR_r16_SQN_CarrierFreqNR_v1610_allowedCellListNR_r16_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_AllowedCellListNR_r16_SQN_CarrierFreqNR_v1610_allowedCellListNR_r16_Optional* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
@@ -14522,7 +14780,7 @@ static int _serSysEncSQN_CarrierFreqNR_v1610(unsigned char* _buffer, size_t _siz
 
 	_serSysEncSQN_MTC_SSB2_LP_NR_r16_SQN_CarrierFreqNR_v1610_smtc2_LP_r16_Optional(_buffer, _size, _lidx, &p->smtc2_LP_r16);
 	_serSysEncSQN_SSB_PositionQCL_RelationNR_r16_e_SQN_CarrierFreqNR_v1610_ssb_PositionQCL_CommonNR_r16_Optional(_buffer, _size, _lidx, &p->ssb_PositionQCL_CommonNR_r16);
-	_serSysEncSQN_WhiteCellListNR_r16_SQN_CarrierFreqNR_v1610_whiteCellListNR_r16_Optional(_buffer, _size, _lidx, &p->whiteCellListNR_r16);
+	_serSysEncSQN_AllowedCellListNR_r16_SQN_CarrierFreqNR_v1610_allowedCellListNR_r16_Optional(_buffer, _size, _lidx, &p->allowedCellListNR_r16);
 	_serSysEncSQN_CarrierFreqNR_v1610_highSpeedCarrierNR_r16_e_highSpeedCarrierNR_r16_Optional(_buffer, _size, _lidx, &p->highSpeedCarrierNR_r16);
 
 	return SIDL_STATUS_OK;
@@ -14542,6 +14800,95 @@ static int _serSysEncSQN_CarrierFreqListNR_v1610_SQN_SystemInformationBlockType2
 	return SIDL_STATUS_OK;
 }
 
+static int _serSysEncSQN_NR_FreqNeighHSDN_CellList_r17_SQN_CarrierFreqNR_v1700_nr_FreqNeighHSDN_CellList_r17_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_NR_FreqNeighHSDN_CellList_r17_SQN_CarrierFreqNR_v1700_nr_FreqNeighHSDN_CellList_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	HTON_32(&_buffer[*_lidx], p->v.d, _lidx);
+	for (size_t i3 = 0; i3 < p->v.d; i3++) {
+		_serSysEncSQN_PhysCellIdRangeNR_r16(_buffer, _size, _lidx, &p->v.v[i3]);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_CarrierFreqNR_v1700(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_CarrierFreqNR_v1700* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serSysEncSQN_NR_FreqNeighHSDN_CellList_r17_SQN_CarrierFreqNR_v1700_nr_FreqNeighHSDN_CellList_r17_Optional(_buffer, _size, _lidx, &p->nr_FreqNeighHSDN_CellList_r17);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_CarrierFreqListNR_v1700_SQN_SystemInformationBlockType24_r15_carrierFreqListNR_v1700_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_CarrierFreqListNR_v1700_SQN_SystemInformationBlockType24_r15_carrierFreqListNR_v1700_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	HTON_32(&_buffer[*_lidx], p->v.d, _lidx);
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		_serSysEncSQN_CarrierFreqNR_v1700(_buffer, _size, _lidx, &p->v.v[i2]);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_CarrierFreqNR_v1720_subcarrierSpacingSSB_r17_e_subcarrierSpacingSSB_r17_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_CarrierFreqNR_v1720_subcarrierSpacingSSB_r17_e_subcarrierSpacingSSB_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	{
+		size_t _tmp = (size_t)p->v;
+		HTON_32(&_buffer[*_lidx], _tmp, _lidx);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_SSB_PositionQCL_RelationNR_r17_e_SQN_CarrierFreqNR_v1720_ssb_PositionQCL_CommonNR_r17_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_SSB_PositionQCL_RelationNR_r17_e_SQN_CarrierFreqNR_v1720_ssb_PositionQCL_CommonNR_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	{
+		size_t _tmp = (size_t)p->v;
+		HTON_32(&_buffer[*_lidx], _tmp, _lidx);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_CarrierFreqNR_v1720(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_CarrierFreqNR_v1720* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serSysEncSQN_CarrierFreqNR_v1720_subcarrierSpacingSSB_r17_e_subcarrierSpacingSSB_r17_Optional(_buffer, _size, _lidx, &p->subcarrierSpacingSSB_r17);
+	_serSysEncSQN_SSB_PositionQCL_RelationNR_r17_e_SQN_CarrierFreqNR_v1720_ssb_PositionQCL_CommonNR_r17_Optional(_buffer, _size, _lidx, &p->ssb_PositionQCL_CommonNR_r17);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_CarrierFreqListNR_v1720_SQN_SystemInformationBlockType24_r15_carrierFreqListNR_v1720_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_CarrierFreqListNR_v1720_SQN_SystemInformationBlockType24_r15_carrierFreqListNR_v1720_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	HTON_32(&_buffer[*_lidx], p->v.d, _lidx);
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		_serSysEncSQN_CarrierFreqNR_v1720(_buffer, _size, _lidx, &p->v.v[i2]);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
 static int _serSysEncSQN_SystemInformationBlockType24_r15(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_SystemInformationBlockType24_r15* p)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -14551,6 +14898,8 @@ static int _serSysEncSQN_SystemInformationBlockType24_r15(unsigned char* _buffer
 	_serSysEncSQN_SpeedStateScaleFactors_SQN_SystemInformationBlockType24_r15_t_ReselectionNR_SF_r15_Optional(_buffer, _size, _lidx, &p->t_ReselectionNR_SF_r15);
 	_serSysEncOCTET_STRING_SQN_SystemInformationBlockType24_r15_lateNonCriticalExtension_Optional(_buffer, _size, _lidx, &p->lateNonCriticalExtension);
 	_serSysEncSQN_CarrierFreqListNR_v1610_SQN_SystemInformationBlockType24_r15_carrierFreqListNR_v1610_Optional(_buffer, _size, _lidx, &p->carrierFreqListNR_v1610);
+	_serSysEncSQN_CarrierFreqListNR_v1700_SQN_SystemInformationBlockType24_r15_carrierFreqListNR_v1700_Optional(_buffer, _size, _lidx, &p->carrierFreqListNR_v1700);
+	_serSysEncSQN_CarrierFreqListNR_v1720_SQN_SystemInformationBlockType24_r15_carrierFreqListNR_v1720_Optional(_buffer, _size, _lidx, &p->carrierFreqListNR_v1720);
 
 	return SIDL_STATUS_OK;
 }
@@ -14744,6 +15093,60 @@ static int _serSysEncSQN_SystemInformationBlockType25_r15_ab_PerRSRP_r16_e_ab_Pe
 	return SIDL_STATUS_OK;
 }
 
+static int _serSysEncSQN_UAC_AC1_SelectAssistInfo_r16_e_SQN_SystemInformationBlockType25_r15_uac_AC1_SelectAssistInfo_r16_DynamicOptional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_UAC_AC1_SelectAssistInfo_r16_e_SQN_SystemInformationBlockType25_r15_uac_AC1_SelectAssistInfo_r16_DynamicOptional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	HTON_32(&_buffer[*_lidx], p->v.d, _lidx);
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		{
+			size_t _tmp = (size_t)p->v.v[i2];
+			HTON_32(&_buffer[*_lidx], _tmp, _lidx);
+		}
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_uac_BarringFactorForAI3_r17_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_uac_BarringFactorForAI3_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	{
+		size_t _tmp = (size_t)p->v;
+		HTON_32(&_buffer[*_lidx], _tmp, _lidx);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_UAC_BarringInfoSet_v1700(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_UAC_BarringInfoSet_v1700* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serSysEncSQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_uac_BarringFactorForAI3_r17_Optional(_buffer, _size, _lidx, &p->uac_BarringFactorForAI3_r17);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_UAC_BarringInfoSetList_v1700_SQN_SystemInformationBlockType25_r15_uac_BarringInfoSetList_v1700_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_UAC_BarringInfoSetList_v1700_SQN_SystemInformationBlockType25_r15_uac_BarringInfoSetList_v1700_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	HTON_32(&_buffer[*_lidx], p->v.d, _lidx);
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		_serSysEncSQN_UAC_BarringInfoSet_v1700(_buffer, _size, _lidx, &p->v.v[i2]);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
 static int _serSysEncSQN_SystemInformationBlockType25_r15(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_SystemInformationBlockType25_r15* p)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -14757,6 +15160,8 @@ static int _serSysEncSQN_SystemInformationBlockType25_r15(unsigned char* _buffer
 	_serSysEncSQN_SystemInformationBlockType25_r15_uac_AC1_SelectAssistInfo_r15_uac_AC1_SelectAssistInfo_r15_Optional(_buffer, _size, _lidx, &p->uac_AC1_SelectAssistInfo_r15);
 	_serSysEncOCTET_STRING_SQN_SystemInformationBlockType25_r15_lateNonCriticalExtension_Optional(_buffer, _size, _lidx, &p->lateNonCriticalExtension);
 	_serSysEncSQN_SystemInformationBlockType25_r15_ab_PerRSRP_r16_e_ab_PerRSRP_r16_Optional(_buffer, _size, _lidx, &p->ab_PerRSRP_r16);
+	_serSysEncSQN_UAC_AC1_SelectAssistInfo_r16_e_SQN_SystemInformationBlockType25_r15_uac_AC1_SelectAssistInfo_r16_DynamicOptional(_buffer, _size, _lidx, &p->uac_AC1_SelectAssistInfo_r16);
+	_serSysEncSQN_UAC_BarringInfoSetList_v1700_SQN_SystemInformationBlockType25_r15_uac_BarringInfoSetList_v1700_Optional(_buffer, _size, _lidx, &p->uac_BarringInfoSetList_v1700);
 
 	return SIDL_STATUS_OK;
 }
@@ -15437,6 +15842,446 @@ static int _serSysEncSQN_SystemInformationBlockType29_r16(unsigned char* _buffer
 	return SIDL_STATUS_OK;
 }
 
+static int _serSysEncSQN_PLMN_Identity_SQN_SystemInformationBlockType30_r17_commonPLMNsWithDisasterCondition_r17_DynamicOptional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_PLMN_Identity_SQN_SystemInformationBlockType30_r17_commonPLMNsWithDisasterCondition_r17_DynamicOptional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	HTON_32(&_buffer[*_lidx], p->v.d, _lidx);
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		_serSysEncSQN_PLMN_Identity(_buffer, _size, _lidx, &p->v.v[i2]);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_ApplicableDisasterInfo_r17_Value(unsigned char* _buffer, size_t _size, size_t* _lidx, const union SQN_ApplicableDisasterInfo_r17_Value* p, enum SQN_ApplicableDisasterInfo_r17_Sel d)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	if (d == SQN_ApplicableDisasterInfo_r17_noDisasterRoaming_r17) {
+		HTON_8(&_buffer[*_lidx], p->noDisasterRoaming_r17, _lidx);
+		return SIDL_STATUS_OK;
+	}
+	if (d == SQN_ApplicableDisasterInfo_r17_disasterRoamingFromAnyPLMN_r17) {
+		HTON_8(&_buffer[*_lidx], p->disasterRoamingFromAnyPLMN_r17, _lidx);
+		return SIDL_STATUS_OK;
+	}
+	if (d == SQN_ApplicableDisasterInfo_r17_commonPLMNs_r17) {
+		HTON_8(&_buffer[*_lidx], p->commonPLMNs_r17, _lidx);
+		return SIDL_STATUS_OK;
+	}
+	if (d == SQN_ApplicableDisasterInfo_r17_dedicatedPLMNs_r17) {
+		HTON_32(&_buffer[*_lidx], p->dedicatedPLMNs_r17.d, _lidx);
+		for (size_t i3 = 0; i3 < p->dedicatedPLMNs_r17.d; i3++) {
+			_serSysEncSQN_PLMN_Identity(_buffer, _size, _lidx, &p->dedicatedPLMNs_r17.v[i3]);
+		}
+		return SIDL_STATUS_OK;
+	}
+
+	return SIDL_STATUS_ERROR;
+}
+
+static int _serSysEncSQN_ApplicableDisasterInfo_r17(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_ApplicableDisasterInfo_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp = (size_t)p->d;
+		HTON_32(&_buffer[*_lidx], _tmp, _lidx);
+	}
+	_serSysEncSQN_ApplicableDisasterInfo_r17_Value(_buffer, _size, _lidx, &p->v, p->d);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_ApplicableDisasterInfo_r17_SQN_SystemInformationBlockType30_r17_applicableDisasterInfoList_r17_DynamicOptional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_ApplicableDisasterInfo_r17_SQN_SystemInformationBlockType30_r17_applicableDisasterInfoList_r17_DynamicOptional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	HTON_32(&_buffer[*_lidx], p->v.d, _lidx);
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		_serSysEncSQN_ApplicableDisasterInfo_r17(_buffer, _size, _lidx, &p->v.v[i2]);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncOCTET_STRING_SQN_SystemInformationBlockType30_r17_lateNonCriticalExtension_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct OCTET_STRING_SQN_SystemInformationBlockType30_r17_lateNonCriticalExtension_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	HTON_32(&_buffer[*_lidx], p->v.d, _lidx);
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		HTON_8(&_buffer[*_lidx], p->v.v[i2], _lidx);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_SystemInformationBlockType30_r17(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_SystemInformationBlockType30_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serSysEncSQN_PLMN_Identity_SQN_SystemInformationBlockType30_r17_commonPLMNsWithDisasterCondition_r17_DynamicOptional(_buffer, _size, _lidx, &p->commonPLMNsWithDisasterCondition_r17);
+	_serSysEncSQN_ApplicableDisasterInfo_r17_SQN_SystemInformationBlockType30_r17_applicableDisasterInfoList_r17_DynamicOptional(_buffer, _size, _lidx, &p->applicableDisasterInfoList_r17);
+	_serSysEncOCTET_STRING_SQN_SystemInformationBlockType30_r17_lateNonCriticalExtension_Optional(_buffer, _size, _lidx, &p->lateNonCriticalExtension);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_EphemerisStateVectors_r17(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_EphemerisStateVectors_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_32(&_buffer[*_lidx], p->positionX_r17, _lidx);
+	HTON_32(&_buffer[*_lidx], p->positionY_r17, _lidx);
+	HTON_32(&_buffer[*_lidx], p->positionZ_r17, _lidx);
+	HTON_32(&_buffer[*_lidx], p->velocityVX_r17, _lidx);
+	HTON_32(&_buffer[*_lidx], p->velocityVY_r17, _lidx);
+	HTON_32(&_buffer[*_lidx], p->velocityVZ_r17, _lidx);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_EphemerisOrbitalParameters_r17(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_EphemerisOrbitalParameters_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_32(&_buffer[*_lidx], p->semiMajorAxis_r17, _lidx);
+	HTON_32(&_buffer[*_lidx], p->eccentricity_r17, _lidx);
+	HTON_32(&_buffer[*_lidx], p->periapsis_r17, _lidx);
+	HTON_32(&_buffer[*_lidx], p->longitude_r17, _lidx);
+	HTON_32(&_buffer[*_lidx], p->inclination_r17, _lidx);
+	HTON_32(&_buffer[*_lidx], p->anomaly_r17, _lidx);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_ServingSatelliteInfo_r17_ephemerisInfo_r17_Value(unsigned char* _buffer, size_t _size, size_t* _lidx, const union SQN_ServingSatelliteInfo_r17_ephemerisInfo_r17_Value* p, enum SQN_ServingSatelliteInfo_r17_ephemerisInfo_r17_Sel d)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	if (d == SQN_ServingSatelliteInfo_r17_ephemerisInfo_r17_stateVectors) {
+		_serSysEncSQN_EphemerisStateVectors_r17(_buffer, _size, _lidx, &p->stateVectors);
+		return SIDL_STATUS_OK;
+	}
+	if (d == SQN_ServingSatelliteInfo_r17_ephemerisInfo_r17_orbitalParameters) {
+		_serSysEncSQN_EphemerisOrbitalParameters_r17(_buffer, _size, _lidx, &p->orbitalParameters);
+		return SIDL_STATUS_OK;
+	}
+
+	return SIDL_STATUS_ERROR;
+}
+
+static int _serSysEncSQN_ServingSatelliteInfo_r17_ephemerisInfo_r17(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_ServingSatelliteInfo_r17_ephemerisInfo_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp = (size_t)p->d;
+		HTON_32(&_buffer[*_lidx], _tmp, _lidx);
+	}
+	_serSysEncSQN_ServingSatelliteInfo_r17_ephemerisInfo_r17_Value(_buffer, _size, _lidx, &p->v, p->d);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncUint32_t_SQN_ServingSatelliteInfo_r17_nta_CommonParameters_17_nta_Common_r17_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct uint32_t_SQN_ServingSatelliteInfo_r17_nta_CommonParameters_17_nta_Common_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	HTON_32(&_buffer[*_lidx], p->v, _lidx);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncInt32_t_SQN_ServingSatelliteInfo_r17_nta_CommonParameters_17_nta_CommonDrift_r17_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct int32_t_SQN_ServingSatelliteInfo_r17_nta_CommonParameters_17_nta_CommonDrift_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	HTON_32(&_buffer[*_lidx], p->v, _lidx);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncUint16_t_SQN_ServingSatelliteInfo_r17_nta_CommonParameters_17_nta_CommonDriftVariation_r17_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct uint16_t_SQN_ServingSatelliteInfo_r17_nta_CommonParameters_17_nta_CommonDriftVariation_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	HTON_16(&_buffer[*_lidx], p->v, _lidx);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_ServingSatelliteInfo_r17_nta_CommonParameters_17(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_ServingSatelliteInfo_r17_nta_CommonParameters_17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serSysEncUint32_t_SQN_ServingSatelliteInfo_r17_nta_CommonParameters_17_nta_Common_r17_Optional(_buffer, _size, _lidx, &p->nta_Common_r17);
+	_serSysEncInt32_t_SQN_ServingSatelliteInfo_r17_nta_CommonParameters_17_nta_CommonDrift_r17_Optional(_buffer, _size, _lidx, &p->nta_CommonDrift_r17);
+	_serSysEncUint16_t_SQN_ServingSatelliteInfo_r17_nta_CommonParameters_17_nta_CommonDriftVariation_r17_Optional(_buffer, _size, _lidx, &p->nta_CommonDriftVariation_r17);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_ServingSatelliteInfo_r17_epochTime_r17(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_ServingSatelliteInfo_r17_epochTime_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_16(&_buffer[*_lidx], p->startSFN_r17, _lidx);
+	HTON_8(&_buffer[*_lidx], p->startSubFrame_r17, _lidx);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_ServingSatelliteInfo_r17_epochTime_r17_epochTime_r17_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_ServingSatelliteInfo_r17_epochTime_r17_epochTime_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	_serSysEncSQN_ServingSatelliteInfo_r17_epochTime_r17(_buffer, _size, _lidx, &p->v);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncUint16_t_SQN_ServingSatelliteInfo_r17_k_Mac_r17_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct uint16_t_SQN_ServingSatelliteInfo_r17_k_Mac_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	HTON_16(&_buffer[*_lidx], p->v, _lidx);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_ServingSatelliteInfo_r17(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_ServingSatelliteInfo_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serSysEncSQN_ServingSatelliteInfo_r17_ephemerisInfo_r17(_buffer, _size, _lidx, &p->ephemerisInfo_r17);
+	_serSysEncSQN_ServingSatelliteInfo_r17_nta_CommonParameters_17(_buffer, _size, _lidx, &p->nta_CommonParameters_17);
+	{
+		size_t _tmp = (size_t)p->ul_SyncValidityDuration_r17;
+		HTON_32(&_buffer[*_lidx], _tmp, _lidx);
+	}
+	_serSysEncSQN_ServingSatelliteInfo_r17_epochTime_r17_epochTime_r17_Optional(_buffer, _size, _lidx, &p->epochTime_r17);
+	HTON_16(&_buffer[*_lidx], p->k_Offset_r17, _lidx);
+	_serSysEncUint16_t_SQN_ServingSatelliteInfo_r17_k_Mac_r17_Optional(_buffer, _size, _lidx, &p->k_Mac_r17);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncOCTET_STRING_SQN_SystemInformationBlockType31_r17_lateNonCriticalExtension_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct OCTET_STRING_SQN_SystemInformationBlockType31_r17_lateNonCriticalExtension_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	HTON_32(&_buffer[*_lidx], p->v.d, _lidx);
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		HTON_8(&_buffer[*_lidx], p->v.v[i2], _lidx);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_SystemInformationBlockType31_r17(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_SystemInformationBlockType31_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serSysEncSQN_ServingSatelliteInfo_r17(_buffer, _size, _lidx, &p->servingSatelliteInfo_r17);
+	_serSysEncOCTET_STRING_SQN_SystemInformationBlockType31_r17_lateNonCriticalExtension_Optional(_buffer, _size, _lidx, &p->lateNonCriticalExtension);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_TLE_EphemerisParameters_r17(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_TLE_EphemerisParameters_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_32(&_buffer[*_lidx], p->inclination_r17, _lidx);
+	HTON_32(&_buffer[*_lidx], p->argumentPerigee_r17, _lidx);
+	HTON_32(&_buffer[*_lidx], p->rightAscension_r17, _lidx);
+	HTON_32(&_buffer[*_lidx], p->meanAnomaly_r17, _lidx);
+	HTON_32(&_buffer[*_lidx], p->eccentricity_r17, _lidx);
+	HTON_32(&_buffer[*_lidx], p->meanMotion_r17, _lidx);
+	HTON_32(&_buffer[*_lidx], p->bStarDecimal_r17, _lidx);
+	HTON_8(&_buffer[*_lidx], p->bStarExponent_r17, _lidx);
+	HTON_32(&_buffer[*_lidx], p->epochStar_r17, _lidx);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_TLE_EphemerisParameters_r17_SQN_SatelliteInfo_r17_serviceInfo_r17_tle_EphemerisParameters_r17_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_TLE_EphemerisParameters_r17_SQN_SatelliteInfo_r17_serviceInfo_r17_tle_EphemerisParameters_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	_serSysEncSQN_TLE_EphemerisParameters_r17(_buffer, _size, _lidx, &p->v);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_TimeOffsetUTC_r17_SQN_SatelliteInfo_r17_serviceInfo_r17_t_ServiceStart_r17_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_TimeOffsetUTC_r17_SQN_SatelliteInfo_r17_serviceInfo_r17_t_ServiceStart_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	HTON_32(&_buffer[*_lidx], p->v, _lidx);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_SatelliteInfo_r17_serviceInfo_r17(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_SatelliteInfo_r17_serviceInfo_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serSysEncSQN_TLE_EphemerisParameters_r17_SQN_SatelliteInfo_r17_serviceInfo_r17_tle_EphemerisParameters_r17_Optional(_buffer, _size, _lidx, &p->tle_EphemerisParameters_r17);
+	_serSysEncSQN_TimeOffsetUTC_r17_SQN_SatelliteInfo_r17_serviceInfo_r17_t_ServiceStart_r17_Optional(_buffer, _size, _lidx, &p->t_ServiceStart_r17);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_SatelliteInfo_r17_footprintInfo_r17_referencePoint_r17(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_SatelliteInfo_r17_footprintInfo_r17_referencePoint_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_32(&_buffer[*_lidx], p->longitude_r17, _lidx);
+	HTON_32(&_buffer[*_lidx], p->latitude_r17, _lidx);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_SatelliteInfo_r17_footprintInfo_r17_referencePoint_r17_referencePoint_r17_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_SatelliteInfo_r17_footprintInfo_r17_referencePoint_r17_referencePoint_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	_serSysEncSQN_SatelliteInfo_r17_footprintInfo_r17_referencePoint_r17(_buffer, _size, _lidx, &p->v);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncInt8_t_SQN_SatelliteInfo_r17_footprintInfo_r17_elevationAngles_r17_elevationAngleLeft_r17_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct int8_t_SQN_SatelliteInfo_r17_footprintInfo_r17_elevationAngles_r17_elevationAngleLeft_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	HTON_8(&_buffer[*_lidx], p->v, _lidx);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_SatelliteInfo_r17_footprintInfo_r17_elevationAngles_r17(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_SatelliteInfo_r17_footprintInfo_r17_elevationAngles_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->elevationAngleRight_r17, _lidx);
+	_serSysEncInt8_t_SQN_SatelliteInfo_r17_footprintInfo_r17_elevationAngles_r17_elevationAngleLeft_r17_Optional(_buffer, _size, _lidx, &p->elevationAngleLeft_r17);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_SatelliteInfo_r17_footprintInfo_r17_elevationAngles_r17_elevationAngles_r17_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_SatelliteInfo_r17_footprintInfo_r17_elevationAngles_r17_elevationAngles_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	_serSysEncSQN_SatelliteInfo_r17_footprintInfo_r17_elevationAngles_r17(_buffer, _size, _lidx, &p->v);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncUint16_t_SQN_SatelliteInfo_r17_footprintInfo_r17_radius_r17_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct uint16_t_SQN_SatelliteInfo_r17_footprintInfo_r17_radius_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	HTON_16(&_buffer[*_lidx], p->v, _lidx);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_SatelliteInfo_r17_footprintInfo_r17(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_SatelliteInfo_r17_footprintInfo_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serSysEncSQN_SatelliteInfo_r17_footprintInfo_r17_referencePoint_r17_referencePoint_r17_Optional(_buffer, _size, _lidx, &p->referencePoint_r17);
+	_serSysEncSQN_SatelliteInfo_r17_footprintInfo_r17_elevationAngles_r17_elevationAngles_r17_Optional(_buffer, _size, _lidx, &p->elevationAngles_r17);
+	_serSysEncUint16_t_SQN_SatelliteInfo_r17_footprintInfo_r17_radius_r17_Optional(_buffer, _size, _lidx, &p->radius_r17);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_SatelliteInfo_r17(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_SatelliteInfo_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->satelliteId_r17, _lidx);
+	_serSysEncSQN_SatelliteInfo_r17_serviceInfo_r17(_buffer, _size, _lidx, &p->serviceInfo_r17);
+	_serSysEncSQN_SatelliteInfo_r17_footprintInfo_r17(_buffer, _size, _lidx, &p->footprintInfo_r17);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_SatelliteInfoList_r17_SQN_SystemInformationBlockType32_r17_satelliteInfoList_r17_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_SatelliteInfoList_r17_SQN_SystemInformationBlockType32_r17_satelliteInfoList_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	HTON_32(&_buffer[*_lidx], p->v.d, _lidx);
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		_serSysEncSQN_SatelliteInfo_r17(_buffer, _size, _lidx, &p->v.v[i2]);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncOCTET_STRING_SQN_SystemInformationBlockType32_r17_lateNonCriticalExtension_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct OCTET_STRING_SQN_SystemInformationBlockType32_r17_lateNonCriticalExtension_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	HTON_32(&_buffer[*_lidx], p->v.d, _lidx);
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		HTON_8(&_buffer[*_lidx], p->v.v[i2], _lidx);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_SystemInformationBlockType32_r17(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_SystemInformationBlockType32_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serSysEncSQN_SatelliteInfoList_r17_SQN_SystemInformationBlockType32_r17_satelliteInfoList_r17_Optional(_buffer, _size, _lidx, &p->satelliteInfoList_r17);
+	_serSysEncOCTET_STRING_SQN_SystemInformationBlockType32_r17_lateNonCriticalExtension_Optional(_buffer, _size, _lidx, &p->lateNonCriticalExtension);
+
+	return SIDL_STATUS_OK;
+}
+
 static int _serSysEncSQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_Value(unsigned char* _buffer, size_t _size, size_t* _lidx, const union SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_Value* p, enum SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_Sel d)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -15547,6 +16392,18 @@ static int _serSysEncSQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_Value(unsign
 	}
 	if (d == SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib29_v1610) {
 		_serSysEncSQN_SystemInformationBlockType29_r16(_buffer, _size, _lidx, &p->sib29_v1610);
+		return SIDL_STATUS_OK;
+	}
+	if (d == SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib30_v1700) {
+		_serSysEncSQN_SystemInformationBlockType30_r17(_buffer, _size, _lidx, &p->sib30_v1700);
+		return SIDL_STATUS_OK;
+	}
+	if (d == SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib31_v1700) {
+		_serSysEncSQN_SystemInformationBlockType31_r17(_buffer, _size, _lidx, &p->sib31_v1700);
+		return SIDL_STATUS_OK;
+	}
+	if (d == SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib32_v1700) {
+		_serSysEncSQN_SystemInformationBlockType32_r17(_buffer, _size, _lidx, &p->sib32_v1700);
 		return SIDL_STATUS_OK;
 	}
 
@@ -17101,7 +17958,70 @@ static int _serSysEncSQN_PLMN_IdentityList_v1610_SQN_SystemInformationBlockType1
 	return SIDL_STATUS_OK;
 }
 
-static int _serSysEncSQN_SystemInformationBlockType1_v1610_IEs_nonCriticalExtension(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_SystemInformationBlockType1_v1610_IEs_nonCriticalExtension* p)
+static int _serSysEncSQN_TrackingAreaList_r17_SQN_PLMN_IdentityInfo_v1700_trackingAreaList_r17_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_TrackingAreaList_r17_SQN_PLMN_IdentityInfo_v1700_trackingAreaList_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	HTON_32(&_buffer[*_lidx], p->v.d, _lidx);
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		for (size_t i3 = 0; i3 < 16; i3++) {
+			HTON_8(&_buffer[*_lidx], p->v.v[i2][i3], _lidx);
+		}
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_PLMN_IdentityInfo_v1700(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_PLMN_IdentityInfo_v1700* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serSysEncSQN_TrackingAreaList_r17_SQN_PLMN_IdentityInfo_v1700_trackingAreaList_r17_Optional(_buffer, _size, _lidx, &p->trackingAreaList_r17);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_PLMN_IdentityList_v1700_SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_plmn_IdentityList_v1700_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_PLMN_IdentityList_v1700_SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_plmn_IdentityList_v1700_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	HTON_32(&_buffer[*_lidx], p->v.d, _lidx);
+	for (size_t i1 = 0; i1 < p->v.d; i1++) {
+		_serSysEncSQN_PLMN_IdentityInfo_v1700(_buffer, _size, _lidx, &p->v.v[i1]);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp = (size_t)p->cellBarred_NTN_r17;
+		HTON_32(&_buffer[*_lidx], _tmp, _lidx);
+	}
+	_serSysEncSQN_PLMN_IdentityList_v1700_SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_plmn_IdentityList_v1700_Optional(_buffer, _size, _lidx, &p->plmn_IdentityList_v1700);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_cellAccessRelatedInfo_NTN_r17_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_cellAccessRelatedInfo_NTN_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	_serSysEncSQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17(_buffer, _size, _lidx, &p->v);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_SystemInformationBlockType1_v1700_IEs_nonCriticalExtension(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_SystemInformationBlockType1_v1700_IEs_nonCriticalExtension* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
@@ -17113,13 +18033,34 @@ static int _serSysEncSQN_SystemInformationBlockType1_v1610_IEs_nonCriticalExtens
 	return SIDL_STATUS_OK;
 }
 
-static int _serSysEncSQN_SystemInformationBlockType1_v1610_IEs_nonCriticalExtension_nonCriticalExtension_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_SystemInformationBlockType1_v1610_IEs_nonCriticalExtension_nonCriticalExtension_Optional* p)
+static int _serSysEncSQN_SystemInformationBlockType1_v1700_IEs_nonCriticalExtension_nonCriticalExtension_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_SystemInformationBlockType1_v1700_IEs_nonCriticalExtension_nonCriticalExtension_Optional* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
 	HTON_8(&_buffer[*_lidx], p->d, _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
-	_serSysEncSQN_SystemInformationBlockType1_v1610_IEs_nonCriticalExtension(_buffer, _size, _lidx, &p->v);
+	_serSysEncSQN_SystemInformationBlockType1_v1700_IEs_nonCriticalExtension(_buffer, _size, _lidx, &p->v);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_SystemInformationBlockType1_v1700_IEs(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_SystemInformationBlockType1_v1700_IEs* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serSysEncSQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_cellAccessRelatedInfo_NTN_r17_Optional(_buffer, _size, _lidx, &p->cellAccessRelatedInfo_NTN_r17);
+	_serSysEncSQN_SystemInformationBlockType1_v1700_IEs_nonCriticalExtension_nonCriticalExtension_Optional(_buffer, _size, _lidx, &p->nonCriticalExtension);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_SystemInformationBlockType1_v1700_IEs_SQN_SystemInformationBlockType1_v1610_IEs_nonCriticalExtension_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_SystemInformationBlockType1_v1700_IEs_SQN_SystemInformationBlockType1_v1610_IEs_nonCriticalExtension_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	_serSysEncSQN_SystemInformationBlockType1_v1700_IEs(_buffer, _size, _lidx, &p->v);
 
 	return SIDL_STATUS_OK;
 }
@@ -17132,7 +18073,7 @@ static int _serSysEncSQN_SystemInformationBlockType1_v1610_IEs(unsigned char* _b
 	_serSysEncSQN_SystemInformationBlockType1_v1610_IEs_transmissionInControlChRegion_r16_e_transmissionInControlChRegion_r16_Optional(_buffer, _size, _lidx, &p->transmissionInControlChRegion_r16);
 	_serSysEncSQN_SystemInformationBlockType1_v1610_IEs_campingAllowedInCE_r16_e_campingAllowedInCE_r16_Optional(_buffer, _size, _lidx, &p->campingAllowedInCE_r16);
 	_serSysEncSQN_PLMN_IdentityList_v1610_SQN_SystemInformationBlockType1_v1610_IEs_plmn_IdentityList_v1610_Optional(_buffer, _size, _lidx, &p->plmn_IdentityList_v1610);
-	_serSysEncSQN_SystemInformationBlockType1_v1610_IEs_nonCriticalExtension_nonCriticalExtension_Optional(_buffer, _size, _lidx, &p->nonCriticalExtension);
+	_serSysEncSQN_SystemInformationBlockType1_v1700_IEs_SQN_SystemInformationBlockType1_v1610_IEs_nonCriticalExtension_Optional(_buffer, _size, _lidx, &p->nonCriticalExtension);
 
 	return SIDL_STATUS_OK;
 }
@@ -28614,6 +29555,49 @@ static int _serSysEncSQN_SetupRelease_PDCP_Config_ethernetHeaderCompression_r16_
 	return SIDL_STATUS_OK;
 }
 
+static int _serSysEncSQN_SetupRelease_PDCP_Config_discardTimerExt_r17_Value(unsigned char* _buffer, size_t _size, size_t* _lidx, const union SQN_SetupRelease_PDCP_Config_discardTimerExt_r17_Value* p, enum SQN_SetupRelease_PDCP_Config_discardTimerExt_r17_Sel d)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	if (d == SQN_SetupRelease_PDCP_Config_discardTimerExt_r17_release) {
+		HTON_8(&_buffer[*_lidx], p->release, _lidx);
+		return SIDL_STATUS_OK;
+	}
+	if (d == SQN_SetupRelease_PDCP_Config_discardTimerExt_r17_setup) {
+		{
+			size_t _tmp = (size_t)p->setup;
+			HTON_32(&_buffer[*_lidx], _tmp, _lidx);
+		}
+		return SIDL_STATUS_OK;
+	}
+
+	return SIDL_STATUS_ERROR;
+}
+
+static int _serSysEncSQN_SetupRelease_PDCP_Config_discardTimerExt_r17(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_SetupRelease_PDCP_Config_discardTimerExt_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp = (size_t)p->d;
+		HTON_32(&_buffer[*_lidx], _tmp, _lidx);
+	}
+	_serSysEncSQN_SetupRelease_PDCP_Config_discardTimerExt_r17_Value(_buffer, _size, _lidx, &p->v, p->d);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_SetupRelease_PDCP_Config_discardTimerExt_r17_SQN_PDCP_Config_discardTimerExt_r17_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_SetupRelease_PDCP_Config_discardTimerExt_r17_SQN_PDCP_Config_discardTimerExt_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	_serSysEncSQN_SetupRelease_PDCP_Config_discardTimerExt_r17(_buffer, _size, _lidx, &p->v);
+
+	return SIDL_STATUS_OK;
+}
+
 static int _serSysEncSQN_PDCP_Config(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_PDCP_Config* p)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -28634,6 +29618,7 @@ static int _serSysEncSQN_PDCP_Config(unsigned char* _buffer, size_t _size, size_
 	_serSysEncSQN_PDCP_Config_uplinkDataCompression_r15_uplinkDataCompression_r15_Optional(_buffer, _size, _lidx, &p->uplinkDataCompression_r15);
 	_serSysEncSQN_PDCP_Config_pdcp_DuplicationConfig_r15_pdcp_DuplicationConfig_r15_Optional(_buffer, _size, _lidx, &p->pdcp_DuplicationConfig_r15);
 	_serSysEncSQN_SetupRelease_PDCP_Config_ethernetHeaderCompression_r16_SQN_PDCP_Config_ethernetHeaderCompression_r16_Optional(_buffer, _size, _lidx, &p->ethernetHeaderCompression_r16);
+	_serSysEncSQN_SetupRelease_PDCP_Config_discardTimerExt_r17_SQN_PDCP_Config_discardTimerExt_r17_Optional(_buffer, _size, _lidx, &p->discardTimerExt_r17);
 
 	return SIDL_STATUS_OK;
 }
@@ -29355,12 +30340,31 @@ static int _serSysEncMAC_LogicalChannelConfig_Type_LogicalChannel_Optional(unsig
 	return SIDL_STATUS_OK;
 }
 
+static int _serSysEncMAC_Test_DLLogChID_Type_Value(unsigned char* _buffer, size_t _size, size_t* _lidx, const union MAC_Test_DLLogChID_Type_Value* p, enum MAC_Test_DLLogChID_Type_Sel d)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	if (d == MAC_Test_DLLogChID_Type_LogChId) {
+		HTON_32(&_buffer[*_lidx], p->LogChId, _lidx);
+		return SIDL_STATUS_OK;
+	}
+	if (d == MAC_Test_DLLogChID_Type_ConfigLchId) {
+		HTON_8(&_buffer[*_lidx], p->ConfigLchId, _lidx);
+		return SIDL_STATUS_OK;
+	}
+
+	return SIDL_STATUS_ERROR;
+}
+
 static int _serSysEncMAC_Test_DLLogChID_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct MAC_Test_DLLogChID_Type* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
-	HTON_32(&_buffer[*_lidx], p->LogChId, _lidx);
-	HTON_8(&_buffer[*_lidx], p->ConfigLchId, _lidx);
+	{
+		size_t _tmp = (size_t)p->d;
+		HTON_32(&_buffer[*_lidx], _tmp, _lidx);
+	}
+	_serSysEncMAC_Test_DLLogChID_Type_Value(_buffer, _size, _lidx, &p->v, p->d);
 
 	return SIDL_STATUS_OK;
 }
@@ -29931,7 +30935,44 @@ static int _serSysEncSQN_Paging_v1610_IEs_uac_ParamModification_r16_e_uac_ParamM
 	return SIDL_STATUS_OK;
 }
 
-static int _serSysEncSQN_Paging_v1610_IEs_nonCriticalExtension(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_Paging_v1610_IEs_nonCriticalExtension* p)
+static int _serSysEncSQN_PagingRecord_v1700_pagingCause_r17_e_pagingCause_r17_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_PagingRecord_v1700_pagingCause_r17_e_pagingCause_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	{
+		size_t _tmp = (size_t)p->v;
+		HTON_32(&_buffer[*_lidx], _tmp, _lidx);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_PagingRecord_v1700(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_PagingRecord_v1700* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serSysEncSQN_PagingRecord_v1700_pagingCause_r17_e_pagingCause_r17_Optional(_buffer, _size, _lidx, &p->pagingCause_r17);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_PagingRecordList_v1700_SQN_Paging_v1700_IEs_pagingRecordList_v1700_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_PagingRecordList_v1700_SQN_Paging_v1700_IEs_pagingRecordList_v1700_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	HTON_32(&_buffer[*_lidx], p->v.d, _lidx);
+	for (size_t i1 = 0; i1 < p->v.d; i1++) {
+		_serSysEncSQN_PagingRecord_v1700(_buffer, _size, _lidx, &p->v.v[i1]);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_Paging_v1700_IEs_nonCriticalExtension(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_Paging_v1700_IEs_nonCriticalExtension* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
@@ -29943,13 +30984,34 @@ static int _serSysEncSQN_Paging_v1610_IEs_nonCriticalExtension(unsigned char* _b
 	return SIDL_STATUS_OK;
 }
 
-static int _serSysEncSQN_Paging_v1610_IEs_nonCriticalExtension_nonCriticalExtension_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_Paging_v1610_IEs_nonCriticalExtension_nonCriticalExtension_Optional* p)
+static int _serSysEncSQN_Paging_v1700_IEs_nonCriticalExtension_nonCriticalExtension_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_Paging_v1700_IEs_nonCriticalExtension_nonCriticalExtension_Optional* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
 	HTON_8(&_buffer[*_lidx], p->d, _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
-	_serSysEncSQN_Paging_v1610_IEs_nonCriticalExtension(_buffer, _size, _lidx, &p->v);
+	_serSysEncSQN_Paging_v1700_IEs_nonCriticalExtension(_buffer, _size, _lidx, &p->v);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_Paging_v1700_IEs(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_Paging_v1700_IEs* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serSysEncSQN_PagingRecordList_v1700_SQN_Paging_v1700_IEs_pagingRecordList_v1700_Optional(_buffer, _size, _lidx, &p->pagingRecordList_v1700);
+	_serSysEncSQN_Paging_v1700_IEs_nonCriticalExtension_nonCriticalExtension_Optional(_buffer, _size, _lidx, &p->nonCriticalExtension);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncSQN_Paging_v1700_IEs_SQN_Paging_v1610_IEs_nonCriticalExtension_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_Paging_v1700_IEs_SQN_Paging_v1610_IEs_nonCriticalExtension_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	_serSysEncSQN_Paging_v1700_IEs(_buffer, _size, _lidx, &p->v);
 
 	return SIDL_STATUS_OK;
 }
@@ -29960,7 +31022,7 @@ static int _serSysEncSQN_Paging_v1610_IEs(unsigned char* _buffer, size_t _size, 
 
 	_serSysEncSQN_PagingRecordList_v1610_SQN_Paging_v1610_IEs_pagingRecordList_v1610_Optional(_buffer, _size, _lidx, &p->pagingRecordList_v1610);
 	_serSysEncSQN_Paging_v1610_IEs_uac_ParamModification_r16_e_uac_ParamModification_r16_Optional(_buffer, _size, _lidx, &p->uac_ParamModification_r16);
-	_serSysEncSQN_Paging_v1610_IEs_nonCriticalExtension_nonCriticalExtension_Optional(_buffer, _size, _lidx, &p->nonCriticalExtension);
+	_serSysEncSQN_Paging_v1700_IEs_SQN_Paging_v1610_IEs_nonCriticalExtension_Optional(_buffer, _size, _lidx, &p->nonCriticalExtension);
 
 	return SIDL_STATUS_OK;
 }
@@ -31119,6 +32181,40 @@ static int _serSysDecSlotTimingInfo_Type(const unsigned char* _buffer, size_t _s
 	return SIDL_STATUS_OK;
 }
 
+static int _serSysDecSymbolTimingInfo_Type_Value(const unsigned char* _buffer, size_t _size, size_t* _lidx, union SymbolTimingInfo_Type_Value* p, enum SymbolTimingInfo_Type_Sel d)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	if (d == SymbolTimingInfo_Type_SymbolOffset) {
+		NTOH_8(p->SymbolOffset, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
+	}
+	if (d == SymbolTimingInfo_Type_FirstSymbol) {
+		NTOH_8(p->FirstSymbol, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
+	}
+	if (d == SymbolTimingInfo_Type_Any) {
+		NTOH_8(p->Any, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
+	}
+
+	return SIDL_STATUS_ERROR;
+}
+
+static int _serSysDecSymbolTimingInfo_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SymbolTimingInfo_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp;
+		NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
+		p->d = (enum SymbolTimingInfo_Type_Sel)_tmp;
+	}
+	_serSysDecSymbolTimingInfo_Type_Value(_buffer, _size, _lidx, &p->v, p->d);
+
+	return SIDL_STATUS_OK;
+}
+
 static int _serSysDecSubFrameTiming_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SubFrameTiming_Type* p)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -31127,6 +32223,7 @@ static int _serSysDecSubFrameTiming_Type(const unsigned char* _buffer, size_t _s
 	_serSysDecSubFrameInfo_Type(_buffer, _size, _lidx, &p->Subframe);
 	_serSysDecHyperSystemFrameNumberInfo_Type(_buffer, _size, _lidx, &p->HSFN);
 	_serSysDecSlotTimingInfo_Type(_buffer, _size, _lidx, &p->Slot);
+	_serSysDecSymbolTimingInfo_Type(_buffer, _size, _lidx, &p->Symbol);
 
 	return SIDL_STATUS_OK;
 }
@@ -33923,6 +35020,40 @@ static int _serSysDecBcchToPdschConfig_Type_Pdsch_Optional(const unsigned char* 
 	return SIDL_STATUS_OK;
 }
 
+static int _serSysDecSQN_MasterInformationBlock_partEARFCN_17_Value(const unsigned char* _buffer, size_t _size, size_t* _lidx, union SQN_MasterInformationBlock_partEARFCN_17_Value* p, enum SQN_MasterInformationBlock_partEARFCN_17_Sel d)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	if (d == SQN_MasterInformationBlock_partEARFCN_17_spare) {
+		for (size_t i1 = 0; i1 < 2; i1++) {
+			NTOH_8(p->spare[i1], &_buffer[*_lidx], _lidx);
+		}
+		return SIDL_STATUS_OK;
+	}
+	if (d == SQN_MasterInformationBlock_partEARFCN_17_earfcn_LSB) {
+		for (size_t i1 = 0; i1 < 2; i1++) {
+			NTOH_8(p->earfcn_LSB[i1], &_buffer[*_lidx], _lidx);
+		}
+		return SIDL_STATUS_OK;
+	}
+
+	return SIDL_STATUS_ERROR;
+}
+
+static int _serSysDecSQN_MasterInformationBlock_partEARFCN_17(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_MasterInformationBlock_partEARFCN_17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp;
+		NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
+		p->d = (enum SQN_MasterInformationBlock_partEARFCN_17_Sel)_tmp;
+	}
+	_serSysDecSQN_MasterInformationBlock_partEARFCN_17_Value(_buffer, _size, _lidx, &p->v, p->d);
+
+	return SIDL_STATUS_OK;
+}
+
 static int _serSysDecSQN_MasterInformationBlock(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_MasterInformationBlock* p)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -33938,7 +35069,8 @@ static int _serSysDecSQN_MasterInformationBlock(const unsigned char* _buffer, si
 	}
 	NTOH_8(p->schedulingInfoSIB1_BR_r13, &_buffer[*_lidx], _lidx);
 	NTOH_8(p->systemInfoUnchanged_BR_r15, &_buffer[*_lidx], _lidx);
-	for (size_t i1 = 0; i1 < 4; i1++) {
+	_serSysDecSQN_MasterInformationBlock_partEARFCN_17(_buffer, _size, _lidx, &p->partEARFCN_17);
+	for (size_t i1 = 0; i1 < 1; i1++) {
 		NTOH_8(p->spare[i1], &_buffer[*_lidx], _lidx);
 	}
 
@@ -36022,6 +37154,145 @@ static int _serSysDecBool_SQN_RadioResourceConfigCommonSIB_highSpeedInterRAT_NR_
 	return SIDL_STATUS_OK;
 }
 
+static int _serSysDecSQN_PCCH_Config_v1700(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_PCCH_Config_v1700* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp;
+		NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
+		p->ranPagingInIdlePO_r17 = (SQN_PCCH_Config_v1700_ranPagingInIdlePO_r17_e)_tmp;
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_PCCH_Config_v1700_SQN_RadioResourceConfigCommonSIB_pcch_Config_v1700_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_PCCH_Config_v1700_SQN_RadioResourceConfigCommonSIB_pcch_Config_v1700_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	_serSysDecSQN_PCCH_Config_v1700(_buffer, _size, _lidx, &p->v);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_ta_Report_r17_e_ta_Report_r17_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_ta_Report_r17_e_ta_Report_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	{
+		size_t _tmp;
+		NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
+		p->v = (SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_ta_Report_r17_e)_tmp;
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_PRACH_TxDuration_r17(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_PRACH_TxDuration_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp;
+		NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
+		p->prach_TxDuration_r17 = (SQN_PRACH_TxDuration_r17_prach_TxDuration_r17_e)_tmp;
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_PRACH_TxDuration_r17_SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_prach_TxDuration_r17_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_PRACH_TxDuration_r17_SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_prach_TxDuration_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	_serSysDecSQN_PRACH_TxDuration_r17(_buffer, _size, _lidx, &p->v);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_PUCCH_TxDuration_r17(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_PUCCH_TxDuration_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp;
+		NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
+		p->pucch_TxDuration_r17 = (SQN_PUCCH_TxDuration_r17_pucch_TxDuration_r17_e)_tmp;
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_PUCCH_TxDuration_r17_SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_pucch_TxDuration_r17_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_PUCCH_TxDuration_r17_SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_pucch_TxDuration_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	_serSysDecSQN_PUCCH_TxDuration_r17(_buffer, _size, _lidx, &p->v);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_PUSCH_TxDuration_r17(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_PUSCH_TxDuration_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp;
+		NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
+		p->pusch_TxDuration_r17 = (SQN_PUSCH_TxDuration_r17_pusch_TxDuration_r17_e)_tmp;
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_PUSCH_TxDuration_r17_SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_pusch_TxDuration_r17_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_PUSCH_TxDuration_r17_SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_pusch_TxDuration_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	_serSysDecSQN_PUSCH_TxDuration_r17(_buffer, _size, _lidx, &p->v);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serSysDecSQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_ta_Report_r17_e_ta_Report_r17_Optional(_buffer, _size, _lidx, &p->ta_Report_r17);
+	{
+		size_t _tmp;
+		NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
+		p->t318_r17 = (SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_t318_r17_e)_tmp;
+	}
+	_serSysDecSQN_PRACH_TxDuration_r17_SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_prach_TxDuration_r17_Optional(_buffer, _size, _lidx, &p->prach_TxDuration_r17);
+	_serSysDecSQN_PUCCH_TxDuration_r17_SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_pucch_TxDuration_r17_Optional(_buffer, _size, _lidx, &p->pucch_TxDuration_r17);
+	_serSysDecSQN_PUSCH_TxDuration_r17_SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_pusch_TxDuration_r17_Optional(_buffer, _size, _lidx, &p->pusch_TxDuration_r17);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_ntn_ConfigCommon_r17_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_ntn_ConfigCommon_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	_serSysDecSQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17(_buffer, _size, _lidx, &p->v);
+
+	return SIDL_STATUS_OK;
+}
+
 static int _serSysDecSQN_RadioResourceConfigCommonSIB(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_RadioResourceConfigCommonSIB* p)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -36068,6 +37339,8 @@ static int _serSysDecSQN_RadioResourceConfigCommonSIB(const unsigned char* _buff
 	_serSysDecSQN_RadioResourceConfigCommonSIB_rss_MeasNonNCL_r16_e_rss_MeasNonNCL_r16_Optional(_buffer, _size, _lidx, &p->rss_MeasNonNCL_r16);
 	_serSysDecB2_SQN_RadioResourceConfigCommonSIB_puncturedSubcarriersDL_r16_Optional(_buffer, _size, _lidx, &p->puncturedSubcarriersDL_r16);
 	_serSysDecBool_SQN_RadioResourceConfigCommonSIB_highSpeedInterRAT_NR_r16_Optional(_buffer, _size, _lidx, &p->highSpeedInterRAT_NR_r16);
+	_serSysDecSQN_PCCH_Config_v1700_SQN_RadioResourceConfigCommonSIB_pcch_Config_v1700_Optional(_buffer, _size, _lidx, &p->pcch_Config_v1700);
+	_serSysDecSQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_ntn_ConfigCommon_r17_Optional(_buffer, _size, _lidx, &p->ntn_ConfigCommon_r17);
 
 	return SIDL_STATUS_OK;
 }
@@ -37717,6 +38990,17 @@ static int _serSysDecSQN_CellReselectionServingFreqInfo_v1610_SQN_SystemInformat
 	return SIDL_STATUS_OK;
 }
 
+static int _serSysDecSQN_TimeOffsetUTC_r17_SQN_SystemInformationBlockType3_t_Service_r17_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_TimeOffsetUTC_r17_SQN_SystemInformationBlockType3_t_Service_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	NTOH_32(p->v, &_buffer[*_lidx], _lidx);
+
+	return SIDL_STATUS_OK;
+}
+
 static int _serSysDecSQN_SystemInformationBlockType3(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_SystemInformationBlockType3* p)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -37742,6 +39026,7 @@ static int _serSysDecSQN_SystemInformationBlockType3(const unsigned char* _buffe
 	_serSysDecSQN_CellSelectionInfoCE_v1530_SQN_SystemInformationBlockType3_cellSelectionInfoCE_v1530_Optional(_buffer, _size, _lidx, &p->cellSelectionInfoCE_v1530);
 	_serSysDecSQN_SystemInformationBlockType3_crs_IntfMitigNeighCellsCE_r15_e_crs_IntfMitigNeighCellsCE_r15_Optional(_buffer, _size, _lidx, &p->crs_IntfMitigNeighCellsCE_r15);
 	_serSysDecSQN_CellReselectionServingFreqInfo_v1610_SQN_SystemInformationBlockType3_cellReselectionServingFreqInfo_v1610_Optional(_buffer, _size, _lidx, &p->cellReselectionServingFreqInfo_v1610);
+	_serSysDecSQN_TimeOffsetUTC_r17_SQN_SystemInformationBlockType3_t_Service_r17_Optional(_buffer, _size, _lidx, &p->t_Service_r17);
 
 	return SIDL_STATUS_OK;
 }
@@ -37800,7 +39085,7 @@ static int _serSysDecSQN_PhysCellIdRange(const unsigned char* _buffer, size_t _s
 	return SIDL_STATUS_OK;
 }
 
-static int _serSysDecSQN_IntraFreqBlackCellList_SQN_SystemInformationBlockType4_intraFreqBlackCellList_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_IntraFreqBlackCellList_SQN_SystemInformationBlockType4_intraFreqBlackCellList_Optional* p)
+static int _serSysDecSQN_IntraFreqExcludedCellList_SQN_SystemInformationBlockType4_intraFreqExcludedCellList_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_IntraFreqExcludedCellList_SQN_SystemInformationBlockType4_intraFreqExcludedCellList_Optional* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
@@ -37918,7 +39203,7 @@ static int _serSysDecSQN_SystemInformationBlockType4(const unsigned char* _buffe
 	(void)_size; // TODO: generate boundaries checking
 
 	_serSysDecSQN_IntraFreqNeighCellList_SQN_SystemInformationBlockType4_intraFreqNeighCellList_Optional(_buffer, _size, _lidx, _mem, &p->intraFreqNeighCellList);
-	_serSysDecSQN_IntraFreqBlackCellList_SQN_SystemInformationBlockType4_intraFreqBlackCellList_Optional(_buffer, _size, _lidx, _mem, &p->intraFreqBlackCellList);
+	_serSysDecSQN_IntraFreqExcludedCellList_SQN_SystemInformationBlockType4_intraFreqExcludedCellList_Optional(_buffer, _size, _lidx, _mem, &p->intraFreqExcludedCellList);
 	_serSysDecSQN_PhysCellIdRange_SQN_SystemInformationBlockType4_csg_PhysCellIdRange_Optional(_buffer, _size, _lidx, &p->csg_PhysCellIdRange);
 	_serSysDecOCTET_STRING_SQN_SystemInformationBlockType4_lateNonCriticalExtension_Optional(_buffer, _size, _lidx, _mem, &p->lateNonCriticalExtension);
 	_serSysDecSQN_IntraFreqNeighHSDN_CellList_r15_SQN_SystemInformationBlockType4_intraFreqNeighHSDN_CellList_r15_Optional(_buffer, _size, _lidx, _mem, &p->intraFreqNeighHSDN_CellList_r15);
@@ -38005,7 +39290,7 @@ static int _serSysDecSQN_InterFreqNeighCellList_SQN_InterFreqCarrierFreqInfo_int
 	return SIDL_STATUS_OK;
 }
 
-static int _serSysDecSQN_InterFreqBlackCellList_SQN_InterFreqCarrierFreqInfo_interFreqBlackCellList_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_InterFreqBlackCellList_SQN_InterFreqCarrierFreqInfo_interFreqBlackCellList_Optional* p)
+static int _serSysDecSQN_InterFreqExcludedCellList_SQN_InterFreqCarrierFreqInfo_interFreqExcludedCellList_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_InterFreqExcludedCellList_SQN_InterFreqCarrierFreqInfo_interFreqExcludedCellList_Optional* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
@@ -38086,7 +39371,7 @@ static int _serSysDecSQN_InterFreqCarrierFreqInfo(const unsigned char* _buffer, 
 	}
 	_serSysDecSQN_Q_OffsetRange_e_SQN_InterFreqCarrierFreqInfo_q_OffsetFreq_Optional(_buffer, _size, _lidx, &p->q_OffsetFreq);
 	_serSysDecSQN_InterFreqNeighCellList_SQN_InterFreqCarrierFreqInfo_interFreqNeighCellList_Optional(_buffer, _size, _lidx, _mem, &p->interFreqNeighCellList);
-	_serSysDecSQN_InterFreqBlackCellList_SQN_InterFreqCarrierFreqInfo_interFreqBlackCellList_Optional(_buffer, _size, _lidx, _mem, &p->interFreqBlackCellList);
+	_serSysDecSQN_InterFreqExcludedCellList_SQN_InterFreqCarrierFreqInfo_interFreqExcludedCellList_Optional(_buffer, _size, _lidx, _mem, &p->interFreqExcludedCellList);
 	_serSysDecSQN_Q_QualMin_r9_SQN_InterFreqCarrierFreqInfo_q_QualMin_r9_Optional(_buffer, _size, _lidx, &p->q_QualMin_r9);
 	_serSysDecSQN_InterFreqCarrierFreqInfo_threshX_Q_r9_threshX_Q_r9_Optional(_buffer, _size, _lidx, &p->threshX_Q_r9);
 	_serSysDecSQN_Q_QualMin_r9_SQN_InterFreqCarrierFreqInfo_q_QualMinWB_r11_Optional(_buffer, _size, _lidx, &p->q_QualMinWB_r11);
@@ -38223,7 +39508,7 @@ static int _serSysDecSQN_InterFreqNeighCellList_SQN_InterFreqCarrierFreqInfo_r12
 	return SIDL_STATUS_OK;
 }
 
-static int _serSysDecSQN_InterFreqBlackCellList_SQN_InterFreqCarrierFreqInfo_r12_interFreqBlackCellList_r12_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_InterFreqBlackCellList_SQN_InterFreqCarrierFreqInfo_r12_interFreqBlackCellList_r12_Optional* p)
+static int _serSysDecSQN_InterFreqExcludedCellList_SQN_InterFreqCarrierFreqInfo_r12_interFreqExcludedCellList_r12_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_InterFreqExcludedCellList_SQN_InterFreqCarrierFreqInfo_r12_interFreqExcludedCellList_r12_Optional* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
@@ -38345,7 +39630,7 @@ static int _serSysDecSQN_InterFreqCarrierFreqInfo_r12(const unsigned char* _buff
 	}
 	_serSysDecSQN_Q_OffsetRange_e_SQN_InterFreqCarrierFreqInfo_r12_q_OffsetFreq_r12_Optional(_buffer, _size, _lidx, &p->q_OffsetFreq_r12);
 	_serSysDecSQN_InterFreqNeighCellList_SQN_InterFreqCarrierFreqInfo_r12_interFreqNeighCellList_r12_Optional(_buffer, _size, _lidx, _mem, &p->interFreqNeighCellList_r12);
-	_serSysDecSQN_InterFreqBlackCellList_SQN_InterFreqCarrierFreqInfo_r12_interFreqBlackCellList_r12_Optional(_buffer, _size, _lidx, _mem, &p->interFreqBlackCellList_r12);
+	_serSysDecSQN_InterFreqExcludedCellList_SQN_InterFreqCarrierFreqInfo_r12_interFreqExcludedCellList_r12_Optional(_buffer, _size, _lidx, _mem, &p->interFreqExcludedCellList_r12);
 	_serSysDecSQN_Q_QualMin_r9_SQN_InterFreqCarrierFreqInfo_r12_q_QualMin_r12_Optional(_buffer, _size, _lidx, &p->q_QualMin_r12);
 	_serSysDecSQN_InterFreqCarrierFreqInfo_r12_threshX_Q_r12_threshX_Q_r12_Optional(_buffer, _size, _lidx, &p->threshX_Q_r12);
 	_serSysDecSQN_Q_QualMin_r9_SQN_InterFreqCarrierFreqInfo_r12_q_QualMinWB_r12_Optional(_buffer, _size, _lidx, &p->q_QualMinWB_r12);
@@ -39338,6 +40623,21 @@ static int _serSysDecSQN_BeamMeasConfigIdleNR_r16_SQN_MeasIdleCarrierNR_r16_beam
 	return SIDL_STATUS_OK;
 }
 
+static int _serSysDecSQN_MeasIdleCarrierNR_r16_subcarrierSpacingSSB_r17_e_subcarrierSpacingSSB_r17_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_MeasIdleCarrierNR_r16_subcarrierSpacingSSB_r17_e_subcarrierSpacingSSB_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	{
+		size_t _tmp;
+		NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
+		p->v = (SQN_MeasIdleCarrierNR_r16_subcarrierSpacingSSB_r17_e)_tmp;
+	}
+
+	return SIDL_STATUS_OK;
+}
+
 static int _serSysDecSQN_MeasIdleCarrierNR_r16(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_MeasIdleCarrierNR_r16* p)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -39358,6 +40658,7 @@ static int _serSysDecSQN_MeasIdleCarrierNR_r16(const unsigned char* _buffer, siz
 	_serSysDecSQN_MeasIdleCarrierNR_r16_qualityThresholdNR_r16_qualityThresholdNR_r16_Optional(_buffer, _size, _lidx, &p->qualityThresholdNR_r16);
 	_serSysDecSQN_MeasIdleCarrierNR_r16_ssb_MeasConfig_r16_ssb_MeasConfig_r16_Optional(_buffer, _size, _lidx, _mem, &p->ssb_MeasConfig_r16);
 	_serSysDecSQN_BeamMeasConfigIdleNR_r16_SQN_MeasIdleCarrierNR_r16_beamMeasConfigIdle_r16_Optional(_buffer, _size, _lidx, &p->beamMeasConfigIdle_r16);
+	_serSysDecSQN_MeasIdleCarrierNR_r16_subcarrierSpacingSSB_r17_e_subcarrierSpacingSSB_r17_Optional(_buffer, _size, _lidx, &p->subcarrierSpacingSSB_r17);
 
 	return SIDL_STATUS_OK;
 }
@@ -41184,6 +42485,35 @@ static int _serSysDecSQN_MBSFN_AreaInfoList_r16_SQN_SystemInformationBlockType13
 	return SIDL_STATUS_OK;
 }
 
+static int _serSysDecSQN_MBSFN_AreaInfo_r17(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_MBSFN_AreaInfo_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serSysDecSQN_MBSFN_AreaInfo_r16(_buffer, _size, _lidx, &p->mbsfn_AreaInfo_r17);
+	{
+		size_t _tmp;
+		NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
+		p->pmch_Bandwidth_r17 = (SQN_MBSFN_AreaInfo_r17_pmch_Bandwidth_r17_e)_tmp;
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_MBSFN_AreaInfoList_r17_SQN_SystemInformationBlockType13_r9_mbsfn_AreaInfoList_r17_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_MBSFN_AreaInfoList_r17_SQN_SystemInformationBlockType13_r9_mbsfn_AreaInfoList_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
+	p->v.v = (struct SQN_MBSFN_AreaInfo_r17*)serMalloc(_mem, p->v.d * sizeof(struct SQN_MBSFN_AreaInfo_r17));
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		_serSysDecSQN_MBSFN_AreaInfo_r17(_buffer, _size, _lidx, &p->v.v[i2]);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
 static int _serSysDecSQN_SystemInformationBlockType13_r9(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_SystemInformationBlockType13_r9* p)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -41197,6 +42527,7 @@ static int _serSysDecSQN_SystemInformationBlockType13_r9(const unsigned char* _b
 	_serSysDecOCTET_STRING_SQN_SystemInformationBlockType13_r9_lateNonCriticalExtension_Optional(_buffer, _size, _lidx, _mem, &p->lateNonCriticalExtension);
 	_serSysDecSQN_MBMS_NotificationConfig_v1430_SQN_SystemInformationBlockType13_r9_notificationConfig_v1430_Optional(_buffer, _size, _lidx, &p->notificationConfig_v1430);
 	_serSysDecSQN_MBSFN_AreaInfoList_r16_SQN_SystemInformationBlockType13_r9_mbsfn_AreaInfoList_r16_Optional(_buffer, _size, _lidx, _mem, &p->mbsfn_AreaInfoList_r16);
+	_serSysDecSQN_MBSFN_AreaInfoList_r17_SQN_SystemInformationBlockType13_r9_mbsfn_AreaInfoList_r17_Optional(_buffer, _size, _lidx, _mem, &p->mbsfn_AreaInfoList_r17);
 
 	return SIDL_STATUS_OK;
 }
@@ -45804,7 +47135,7 @@ static int _serSysDecSQN_SSB_PositionQCL_RelationNR_r16_e_SQN_CarrierFreqNR_v161
 	return SIDL_STATUS_OK;
 }
 
-static int _serSysDecSQN_WhiteCellListNR_r16_SQN_CarrierFreqNR_v1610_whiteCellListNR_r16_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_WhiteCellListNR_r16_SQN_CarrierFreqNR_v1610_whiteCellListNR_r16_Optional* p)
+static int _serSysDecSQN_AllowedCellListNR_r16_SQN_CarrierFreqNR_v1610_allowedCellListNR_r16_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_AllowedCellListNR_r16_SQN_CarrierFreqNR_v1610_allowedCellListNR_r16_Optional* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
@@ -45840,7 +47171,7 @@ static int _serSysDecSQN_CarrierFreqNR_v1610(const unsigned char* _buffer, size_
 
 	_serSysDecSQN_MTC_SSB2_LP_NR_r16_SQN_CarrierFreqNR_v1610_smtc2_LP_r16_Optional(_buffer, _size, _lidx, _mem, &p->smtc2_LP_r16);
 	_serSysDecSQN_SSB_PositionQCL_RelationNR_r16_e_SQN_CarrierFreqNR_v1610_ssb_PositionQCL_CommonNR_r16_Optional(_buffer, _size, _lidx, &p->ssb_PositionQCL_CommonNR_r16);
-	_serSysDecSQN_WhiteCellListNR_r16_SQN_CarrierFreqNR_v1610_whiteCellListNR_r16_Optional(_buffer, _size, _lidx, _mem, &p->whiteCellListNR_r16);
+	_serSysDecSQN_AllowedCellListNR_r16_SQN_CarrierFreqNR_v1610_allowedCellListNR_r16_Optional(_buffer, _size, _lidx, _mem, &p->allowedCellListNR_r16);
 	_serSysDecSQN_CarrierFreqNR_v1610_highSpeedCarrierNR_r16_e_highSpeedCarrierNR_r16_Optional(_buffer, _size, _lidx, &p->highSpeedCarrierNR_r16);
 
 	return SIDL_STATUS_OK;
@@ -45861,6 +47192,100 @@ static int _serSysDecSQN_CarrierFreqListNR_v1610_SQN_SystemInformationBlockType2
 	return SIDL_STATUS_OK;
 }
 
+static int _serSysDecSQN_NR_FreqNeighHSDN_CellList_r17_SQN_CarrierFreqNR_v1700_nr_FreqNeighHSDN_CellList_r17_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_NR_FreqNeighHSDN_CellList_r17_SQN_CarrierFreqNR_v1700_nr_FreqNeighHSDN_CellList_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
+	p->v.v = (struct SQN_PhysCellIdRangeNR_r16*)serMalloc(_mem, p->v.d * sizeof(struct SQN_PhysCellIdRangeNR_r16));
+	for (size_t i3 = 0; i3 < p->v.d; i3++) {
+		_serSysDecSQN_PhysCellIdRangeNR_r16(_buffer, _size, _lidx, &p->v.v[i3]);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_CarrierFreqNR_v1700(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_CarrierFreqNR_v1700* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serSysDecSQN_NR_FreqNeighHSDN_CellList_r17_SQN_CarrierFreqNR_v1700_nr_FreqNeighHSDN_CellList_r17_Optional(_buffer, _size, _lidx, _mem, &p->nr_FreqNeighHSDN_CellList_r17);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_CarrierFreqListNR_v1700_SQN_SystemInformationBlockType24_r15_carrierFreqListNR_v1700_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_CarrierFreqListNR_v1700_SQN_SystemInformationBlockType24_r15_carrierFreqListNR_v1700_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
+	p->v.v = (struct SQN_CarrierFreqNR_v1700*)serMalloc(_mem, p->v.d * sizeof(struct SQN_CarrierFreqNR_v1700));
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		_serSysDecSQN_CarrierFreqNR_v1700(_buffer, _size, _lidx, _mem, &p->v.v[i2]);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_CarrierFreqNR_v1720_subcarrierSpacingSSB_r17_e_subcarrierSpacingSSB_r17_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_CarrierFreqNR_v1720_subcarrierSpacingSSB_r17_e_subcarrierSpacingSSB_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	{
+		size_t _tmp;
+		NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
+		p->v = (SQN_CarrierFreqNR_v1720_subcarrierSpacingSSB_r17_e)_tmp;
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_SSB_PositionQCL_RelationNR_r17_e_SQN_CarrierFreqNR_v1720_ssb_PositionQCL_CommonNR_r17_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_SSB_PositionQCL_RelationNR_r17_e_SQN_CarrierFreqNR_v1720_ssb_PositionQCL_CommonNR_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	{
+		size_t _tmp;
+		NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
+		p->v = (SQN_SSB_PositionQCL_RelationNR_r17_e)_tmp;
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_CarrierFreqNR_v1720(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_CarrierFreqNR_v1720* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serSysDecSQN_CarrierFreqNR_v1720_subcarrierSpacingSSB_r17_e_subcarrierSpacingSSB_r17_Optional(_buffer, _size, _lidx, &p->subcarrierSpacingSSB_r17);
+	_serSysDecSQN_SSB_PositionQCL_RelationNR_r17_e_SQN_CarrierFreqNR_v1720_ssb_PositionQCL_CommonNR_r17_Optional(_buffer, _size, _lidx, &p->ssb_PositionQCL_CommonNR_r17);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_CarrierFreqListNR_v1720_SQN_SystemInformationBlockType24_r15_carrierFreqListNR_v1720_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_CarrierFreqListNR_v1720_SQN_SystemInformationBlockType24_r15_carrierFreqListNR_v1720_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
+	p->v.v = (struct SQN_CarrierFreqNR_v1720*)serMalloc(_mem, p->v.d * sizeof(struct SQN_CarrierFreqNR_v1720));
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		_serSysDecSQN_CarrierFreqNR_v1720(_buffer, _size, _lidx, &p->v.v[i2]);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
 static int _serSysDecSQN_SystemInformationBlockType24_r15(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_SystemInformationBlockType24_r15* p)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -45870,6 +47295,8 @@ static int _serSysDecSQN_SystemInformationBlockType24_r15(const unsigned char* _
 	_serSysDecSQN_SpeedStateScaleFactors_SQN_SystemInformationBlockType24_r15_t_ReselectionNR_SF_r15_Optional(_buffer, _size, _lidx, &p->t_ReselectionNR_SF_r15);
 	_serSysDecOCTET_STRING_SQN_SystemInformationBlockType24_r15_lateNonCriticalExtension_Optional(_buffer, _size, _lidx, _mem, &p->lateNonCriticalExtension);
 	_serSysDecSQN_CarrierFreqListNR_v1610_SQN_SystemInformationBlockType24_r15_carrierFreqListNR_v1610_Optional(_buffer, _size, _lidx, _mem, &p->carrierFreqListNR_v1610);
+	_serSysDecSQN_CarrierFreqListNR_v1700_SQN_SystemInformationBlockType24_r15_carrierFreqListNR_v1700_Optional(_buffer, _size, _lidx, _mem, &p->carrierFreqListNR_v1700);
+	_serSysDecSQN_CarrierFreqListNR_v1720_SQN_SystemInformationBlockType24_r15_carrierFreqListNR_v1720_Optional(_buffer, _size, _lidx, _mem, &p->carrierFreqListNR_v1720);
 
 	return SIDL_STATUS_OK;
 }
@@ -46075,6 +47502,64 @@ static int _serSysDecSQN_SystemInformationBlockType25_r15_ab_PerRSRP_r16_e_ab_Pe
 	return SIDL_STATUS_OK;
 }
 
+static int _serSysDecSQN_UAC_AC1_SelectAssistInfo_r16_e_SQN_SystemInformationBlockType25_r15_uac_AC1_SelectAssistInfo_r16_DynamicOptional(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_UAC_AC1_SelectAssistInfo_r16_e_SQN_SystemInformationBlockType25_r15_uac_AC1_SelectAssistInfo_r16_DynamicOptional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
+	p->v.v = (SQN_UAC_AC1_SelectAssistInfo_r16_e*)serMalloc(_mem, p->v.d * sizeof(SQN_UAC_AC1_SelectAssistInfo_r16_e));
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		{
+			size_t _tmp;
+			NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
+			p->v.v[i2] = (SQN_UAC_AC1_SelectAssistInfo_r16_e)_tmp;
+		}
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_uac_BarringFactorForAI3_r17_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_uac_BarringFactorForAI3_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	{
+		size_t _tmp;
+		NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
+		p->v = (SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e)_tmp;
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_UAC_BarringInfoSet_v1700(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_UAC_BarringInfoSet_v1700* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serSysDecSQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_uac_BarringFactorForAI3_r17_Optional(_buffer, _size, _lidx, &p->uac_BarringFactorForAI3_r17);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_UAC_BarringInfoSetList_v1700_SQN_SystemInformationBlockType25_r15_uac_BarringInfoSetList_v1700_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_UAC_BarringInfoSetList_v1700_SQN_SystemInformationBlockType25_r15_uac_BarringInfoSetList_v1700_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
+	p->v.v = (struct SQN_UAC_BarringInfoSet_v1700*)serMalloc(_mem, p->v.d * sizeof(struct SQN_UAC_BarringInfoSet_v1700));
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		_serSysDecSQN_UAC_BarringInfoSet_v1700(_buffer, _size, _lidx, &p->v.v[i2]);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
 static int _serSysDecSQN_SystemInformationBlockType25_r15(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_SystemInformationBlockType25_r15* p)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -46089,6 +47574,8 @@ static int _serSysDecSQN_SystemInformationBlockType25_r15(const unsigned char* _
 	_serSysDecSQN_SystemInformationBlockType25_r15_uac_AC1_SelectAssistInfo_r15_uac_AC1_SelectAssistInfo_r15_Optional(_buffer, _size, _lidx, _mem, &p->uac_AC1_SelectAssistInfo_r15);
 	_serSysDecOCTET_STRING_SQN_SystemInformationBlockType25_r15_lateNonCriticalExtension_Optional(_buffer, _size, _lidx, _mem, &p->lateNonCriticalExtension);
 	_serSysDecSQN_SystemInformationBlockType25_r15_ab_PerRSRP_r16_e_ab_PerRSRP_r16_Optional(_buffer, _size, _lidx, &p->ab_PerRSRP_r16);
+	_serSysDecSQN_UAC_AC1_SelectAssistInfo_r16_e_SQN_SystemInformationBlockType25_r15_uac_AC1_SelectAssistInfo_r16_DynamicOptional(_buffer, _size, _lidx, _mem, &p->uac_AC1_SelectAssistInfo_r16);
+	_serSysDecSQN_UAC_BarringInfoSetList_v1700_SQN_SystemInformationBlockType25_r15_uac_BarringInfoSetList_v1700_Optional(_buffer, _size, _lidx, _mem, &p->uac_BarringInfoSetList_v1700);
 
 	return SIDL_STATUS_OK;
 }
@@ -46795,6 +48282,456 @@ static int _serSysDecSQN_SystemInformationBlockType29_r16(const unsigned char* _
 	return SIDL_STATUS_OK;
 }
 
+static int _serSysDecSQN_PLMN_Identity_SQN_SystemInformationBlockType30_r17_commonPLMNsWithDisasterCondition_r17_DynamicOptional(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_PLMN_Identity_SQN_SystemInformationBlockType30_r17_commonPLMNsWithDisasterCondition_r17_DynamicOptional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
+	p->v.v = (struct SQN_PLMN_Identity*)serMalloc(_mem, p->v.d * sizeof(struct SQN_PLMN_Identity));
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		_serSysDecSQN_PLMN_Identity(_buffer, _size, _lidx, _mem, &p->v.v[i2]);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_ApplicableDisasterInfo_r17_Value(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, union SQN_ApplicableDisasterInfo_r17_Value* p, enum SQN_ApplicableDisasterInfo_r17_Sel d)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	if (d == SQN_ApplicableDisasterInfo_r17_noDisasterRoaming_r17) {
+		NTOH_8(p->noDisasterRoaming_r17, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
+	}
+	if (d == SQN_ApplicableDisasterInfo_r17_disasterRoamingFromAnyPLMN_r17) {
+		NTOH_8(p->disasterRoamingFromAnyPLMN_r17, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
+	}
+	if (d == SQN_ApplicableDisasterInfo_r17_commonPLMNs_r17) {
+		NTOH_8(p->commonPLMNs_r17, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
+	}
+	if (d == SQN_ApplicableDisasterInfo_r17_dedicatedPLMNs_r17) {
+		NTOH_32(p->dedicatedPLMNs_r17.d, &_buffer[*_lidx], _lidx);
+		p->dedicatedPLMNs_r17.v = (struct SQN_PLMN_Identity*)serMalloc(_mem, p->dedicatedPLMNs_r17.d * sizeof(struct SQN_PLMN_Identity));
+		for (size_t i3 = 0; i3 < p->dedicatedPLMNs_r17.d; i3++) {
+			_serSysDecSQN_PLMN_Identity(_buffer, _size, _lidx, _mem, &p->dedicatedPLMNs_r17.v[i3]);
+		}
+		return SIDL_STATUS_OK;
+	}
+
+	return SIDL_STATUS_ERROR;
+}
+
+static int _serSysDecSQN_ApplicableDisasterInfo_r17(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_ApplicableDisasterInfo_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp;
+		NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
+		p->d = (enum SQN_ApplicableDisasterInfo_r17_Sel)_tmp;
+	}
+	_serSysDecSQN_ApplicableDisasterInfo_r17_Value(_buffer, _size, _lidx, _mem, &p->v, p->d);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_ApplicableDisasterInfo_r17_SQN_SystemInformationBlockType30_r17_applicableDisasterInfoList_r17_DynamicOptional(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_ApplicableDisasterInfo_r17_SQN_SystemInformationBlockType30_r17_applicableDisasterInfoList_r17_DynamicOptional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
+	p->v.v = (struct SQN_ApplicableDisasterInfo_r17*)serMalloc(_mem, p->v.d * sizeof(struct SQN_ApplicableDisasterInfo_r17));
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		_serSysDecSQN_ApplicableDisasterInfo_r17(_buffer, _size, _lidx, _mem, &p->v.v[i2]);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecOCTET_STRING_SQN_SystemInformationBlockType30_r17_lateNonCriticalExtension_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct OCTET_STRING_SQN_SystemInformationBlockType30_r17_lateNonCriticalExtension_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_SystemInformationBlockType30_r17(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_SystemInformationBlockType30_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serSysDecSQN_PLMN_Identity_SQN_SystemInformationBlockType30_r17_commonPLMNsWithDisasterCondition_r17_DynamicOptional(_buffer, _size, _lidx, _mem, &p->commonPLMNsWithDisasterCondition_r17);
+	_serSysDecSQN_ApplicableDisasterInfo_r17_SQN_SystemInformationBlockType30_r17_applicableDisasterInfoList_r17_DynamicOptional(_buffer, _size, _lidx, _mem, &p->applicableDisasterInfoList_r17);
+	_serSysDecOCTET_STRING_SQN_SystemInformationBlockType30_r17_lateNonCriticalExtension_Optional(_buffer, _size, _lidx, _mem, &p->lateNonCriticalExtension);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_EphemerisStateVectors_r17(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_EphemerisStateVectors_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_32(p->positionX_r17, &_buffer[*_lidx], _lidx);
+	NTOH_32(p->positionY_r17, &_buffer[*_lidx], _lidx);
+	NTOH_32(p->positionZ_r17, &_buffer[*_lidx], _lidx);
+	NTOH_32(p->velocityVX_r17, &_buffer[*_lidx], _lidx);
+	NTOH_32(p->velocityVY_r17, &_buffer[*_lidx], _lidx);
+	NTOH_32(p->velocityVZ_r17, &_buffer[*_lidx], _lidx);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_EphemerisOrbitalParameters_r17(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_EphemerisOrbitalParameters_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_32(p->semiMajorAxis_r17, &_buffer[*_lidx], _lidx);
+	NTOH_32(p->eccentricity_r17, &_buffer[*_lidx], _lidx);
+	NTOH_32(p->periapsis_r17, &_buffer[*_lidx], _lidx);
+	NTOH_32(p->longitude_r17, &_buffer[*_lidx], _lidx);
+	NTOH_32(p->inclination_r17, &_buffer[*_lidx], _lidx);
+	NTOH_32(p->anomaly_r17, &_buffer[*_lidx], _lidx);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_ServingSatelliteInfo_r17_ephemerisInfo_r17_Value(const unsigned char* _buffer, size_t _size, size_t* _lidx, union SQN_ServingSatelliteInfo_r17_ephemerisInfo_r17_Value* p, enum SQN_ServingSatelliteInfo_r17_ephemerisInfo_r17_Sel d)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	if (d == SQN_ServingSatelliteInfo_r17_ephemerisInfo_r17_stateVectors) {
+		_serSysDecSQN_EphemerisStateVectors_r17(_buffer, _size, _lidx, &p->stateVectors);
+		return SIDL_STATUS_OK;
+	}
+	if (d == SQN_ServingSatelliteInfo_r17_ephemerisInfo_r17_orbitalParameters) {
+		_serSysDecSQN_EphemerisOrbitalParameters_r17(_buffer, _size, _lidx, &p->orbitalParameters);
+		return SIDL_STATUS_OK;
+	}
+
+	return SIDL_STATUS_ERROR;
+}
+
+static int _serSysDecSQN_ServingSatelliteInfo_r17_ephemerisInfo_r17(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_ServingSatelliteInfo_r17_ephemerisInfo_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp;
+		NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
+		p->d = (enum SQN_ServingSatelliteInfo_r17_ephemerisInfo_r17_Sel)_tmp;
+	}
+	_serSysDecSQN_ServingSatelliteInfo_r17_ephemerisInfo_r17_Value(_buffer, _size, _lidx, &p->v, p->d);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecUint32_t_SQN_ServingSatelliteInfo_r17_nta_CommonParameters_17_nta_Common_r17_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct uint32_t_SQN_ServingSatelliteInfo_r17_nta_CommonParameters_17_nta_Common_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	NTOH_32(p->v, &_buffer[*_lidx], _lidx);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecInt32_t_SQN_ServingSatelliteInfo_r17_nta_CommonParameters_17_nta_CommonDrift_r17_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct int32_t_SQN_ServingSatelliteInfo_r17_nta_CommonParameters_17_nta_CommonDrift_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	NTOH_32(p->v, &_buffer[*_lidx], _lidx);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecUint16_t_SQN_ServingSatelliteInfo_r17_nta_CommonParameters_17_nta_CommonDriftVariation_r17_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct uint16_t_SQN_ServingSatelliteInfo_r17_nta_CommonParameters_17_nta_CommonDriftVariation_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	NTOH_16(p->v, &_buffer[*_lidx], _lidx);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_ServingSatelliteInfo_r17_nta_CommonParameters_17(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_ServingSatelliteInfo_r17_nta_CommonParameters_17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serSysDecUint32_t_SQN_ServingSatelliteInfo_r17_nta_CommonParameters_17_nta_Common_r17_Optional(_buffer, _size, _lidx, &p->nta_Common_r17);
+	_serSysDecInt32_t_SQN_ServingSatelliteInfo_r17_nta_CommonParameters_17_nta_CommonDrift_r17_Optional(_buffer, _size, _lidx, &p->nta_CommonDrift_r17);
+	_serSysDecUint16_t_SQN_ServingSatelliteInfo_r17_nta_CommonParameters_17_nta_CommonDriftVariation_r17_Optional(_buffer, _size, _lidx, &p->nta_CommonDriftVariation_r17);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_ServingSatelliteInfo_r17_epochTime_r17(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_ServingSatelliteInfo_r17_epochTime_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_16(p->startSFN_r17, &_buffer[*_lidx], _lidx);
+	NTOH_8(p->startSubFrame_r17, &_buffer[*_lidx], _lidx);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_ServingSatelliteInfo_r17_epochTime_r17_epochTime_r17_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_ServingSatelliteInfo_r17_epochTime_r17_epochTime_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	_serSysDecSQN_ServingSatelliteInfo_r17_epochTime_r17(_buffer, _size, _lidx, &p->v);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecUint16_t_SQN_ServingSatelliteInfo_r17_k_Mac_r17_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct uint16_t_SQN_ServingSatelliteInfo_r17_k_Mac_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	NTOH_16(p->v, &_buffer[*_lidx], _lidx);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_ServingSatelliteInfo_r17(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_ServingSatelliteInfo_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serSysDecSQN_ServingSatelliteInfo_r17_ephemerisInfo_r17(_buffer, _size, _lidx, &p->ephemerisInfo_r17);
+	_serSysDecSQN_ServingSatelliteInfo_r17_nta_CommonParameters_17(_buffer, _size, _lidx, &p->nta_CommonParameters_17);
+	{
+		size_t _tmp;
+		NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
+		p->ul_SyncValidityDuration_r17 = (SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e)_tmp;
+	}
+	_serSysDecSQN_ServingSatelliteInfo_r17_epochTime_r17_epochTime_r17_Optional(_buffer, _size, _lidx, &p->epochTime_r17);
+	NTOH_16(p->k_Offset_r17, &_buffer[*_lidx], _lidx);
+	_serSysDecUint16_t_SQN_ServingSatelliteInfo_r17_k_Mac_r17_Optional(_buffer, _size, _lidx, &p->k_Mac_r17);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecOCTET_STRING_SQN_SystemInformationBlockType31_r17_lateNonCriticalExtension_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct OCTET_STRING_SQN_SystemInformationBlockType31_r17_lateNonCriticalExtension_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_SystemInformationBlockType31_r17(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_SystemInformationBlockType31_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serSysDecSQN_ServingSatelliteInfo_r17(_buffer, _size, _lidx, &p->servingSatelliteInfo_r17);
+	_serSysDecOCTET_STRING_SQN_SystemInformationBlockType31_r17_lateNonCriticalExtension_Optional(_buffer, _size, _lidx, _mem, &p->lateNonCriticalExtension);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_TLE_EphemerisParameters_r17(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_TLE_EphemerisParameters_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_32(p->inclination_r17, &_buffer[*_lidx], _lidx);
+	NTOH_32(p->argumentPerigee_r17, &_buffer[*_lidx], _lidx);
+	NTOH_32(p->rightAscension_r17, &_buffer[*_lidx], _lidx);
+	NTOH_32(p->meanAnomaly_r17, &_buffer[*_lidx], _lidx);
+	NTOH_32(p->eccentricity_r17, &_buffer[*_lidx], _lidx);
+	NTOH_32(p->meanMotion_r17, &_buffer[*_lidx], _lidx);
+	NTOH_32(p->bStarDecimal_r17, &_buffer[*_lidx], _lidx);
+	NTOH_8(p->bStarExponent_r17, &_buffer[*_lidx], _lidx);
+	NTOH_32(p->epochStar_r17, &_buffer[*_lidx], _lidx);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_TLE_EphemerisParameters_r17_SQN_SatelliteInfo_r17_serviceInfo_r17_tle_EphemerisParameters_r17_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_TLE_EphemerisParameters_r17_SQN_SatelliteInfo_r17_serviceInfo_r17_tle_EphemerisParameters_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	_serSysDecSQN_TLE_EphemerisParameters_r17(_buffer, _size, _lidx, &p->v);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_TimeOffsetUTC_r17_SQN_SatelliteInfo_r17_serviceInfo_r17_t_ServiceStart_r17_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_TimeOffsetUTC_r17_SQN_SatelliteInfo_r17_serviceInfo_r17_t_ServiceStart_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	NTOH_32(p->v, &_buffer[*_lidx], _lidx);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_SatelliteInfo_r17_serviceInfo_r17(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_SatelliteInfo_r17_serviceInfo_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serSysDecSQN_TLE_EphemerisParameters_r17_SQN_SatelliteInfo_r17_serviceInfo_r17_tle_EphemerisParameters_r17_Optional(_buffer, _size, _lidx, &p->tle_EphemerisParameters_r17);
+	_serSysDecSQN_TimeOffsetUTC_r17_SQN_SatelliteInfo_r17_serviceInfo_r17_t_ServiceStart_r17_Optional(_buffer, _size, _lidx, &p->t_ServiceStart_r17);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_SatelliteInfo_r17_footprintInfo_r17_referencePoint_r17(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_SatelliteInfo_r17_footprintInfo_r17_referencePoint_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_32(p->longitude_r17, &_buffer[*_lidx], _lidx);
+	NTOH_32(p->latitude_r17, &_buffer[*_lidx], _lidx);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_SatelliteInfo_r17_footprintInfo_r17_referencePoint_r17_referencePoint_r17_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_SatelliteInfo_r17_footprintInfo_r17_referencePoint_r17_referencePoint_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	_serSysDecSQN_SatelliteInfo_r17_footprintInfo_r17_referencePoint_r17(_buffer, _size, _lidx, &p->v);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecInt8_t_SQN_SatelliteInfo_r17_footprintInfo_r17_elevationAngles_r17_elevationAngleLeft_r17_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct int8_t_SQN_SatelliteInfo_r17_footprintInfo_r17_elevationAngles_r17_elevationAngleLeft_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	NTOH_8(p->v, &_buffer[*_lidx], _lidx);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_SatelliteInfo_r17_footprintInfo_r17_elevationAngles_r17(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_SatelliteInfo_r17_footprintInfo_r17_elevationAngles_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->elevationAngleRight_r17, &_buffer[*_lidx], _lidx);
+	_serSysDecInt8_t_SQN_SatelliteInfo_r17_footprintInfo_r17_elevationAngles_r17_elevationAngleLeft_r17_Optional(_buffer, _size, _lidx, &p->elevationAngleLeft_r17);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_SatelliteInfo_r17_footprintInfo_r17_elevationAngles_r17_elevationAngles_r17_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_SatelliteInfo_r17_footprintInfo_r17_elevationAngles_r17_elevationAngles_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	_serSysDecSQN_SatelliteInfo_r17_footprintInfo_r17_elevationAngles_r17(_buffer, _size, _lidx, &p->v);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecUint16_t_SQN_SatelliteInfo_r17_footprintInfo_r17_radius_r17_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct uint16_t_SQN_SatelliteInfo_r17_footprintInfo_r17_radius_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	NTOH_16(p->v, &_buffer[*_lidx], _lidx);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_SatelliteInfo_r17_footprintInfo_r17(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_SatelliteInfo_r17_footprintInfo_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serSysDecSQN_SatelliteInfo_r17_footprintInfo_r17_referencePoint_r17_referencePoint_r17_Optional(_buffer, _size, _lidx, &p->referencePoint_r17);
+	_serSysDecSQN_SatelliteInfo_r17_footprintInfo_r17_elevationAngles_r17_elevationAngles_r17_Optional(_buffer, _size, _lidx, &p->elevationAngles_r17);
+	_serSysDecUint16_t_SQN_SatelliteInfo_r17_footprintInfo_r17_radius_r17_Optional(_buffer, _size, _lidx, &p->radius_r17);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_SatelliteInfo_r17(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_SatelliteInfo_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->satelliteId_r17, &_buffer[*_lidx], _lidx);
+	_serSysDecSQN_SatelliteInfo_r17_serviceInfo_r17(_buffer, _size, _lidx, &p->serviceInfo_r17);
+	_serSysDecSQN_SatelliteInfo_r17_footprintInfo_r17(_buffer, _size, _lidx, &p->footprintInfo_r17);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_SatelliteInfoList_r17_SQN_SystemInformationBlockType32_r17_satelliteInfoList_r17_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_SatelliteInfoList_r17_SQN_SystemInformationBlockType32_r17_satelliteInfoList_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
+	p->v.v = (struct SQN_SatelliteInfo_r17*)serMalloc(_mem, p->v.d * sizeof(struct SQN_SatelliteInfo_r17));
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		_serSysDecSQN_SatelliteInfo_r17(_buffer, _size, _lidx, &p->v.v[i2]);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecOCTET_STRING_SQN_SystemInformationBlockType32_r17_lateNonCriticalExtension_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct OCTET_STRING_SQN_SystemInformationBlockType32_r17_lateNonCriticalExtension_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_SystemInformationBlockType32_r17(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_SystemInformationBlockType32_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serSysDecSQN_SatelliteInfoList_r17_SQN_SystemInformationBlockType32_r17_satelliteInfoList_r17_Optional(_buffer, _size, _lidx, _mem, &p->satelliteInfoList_r17);
+	_serSysDecOCTET_STRING_SQN_SystemInformationBlockType32_r17_lateNonCriticalExtension_Optional(_buffer, _size, _lidx, _mem, &p->lateNonCriticalExtension);
+
+	return SIDL_STATUS_OK;
+}
+
 static int _serSysDecSQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_Value(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, union SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_Value* p, enum SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_Sel d)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -46905,6 +48842,18 @@ static int _serSysDecSQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_Value(const 
 	}
 	if (d == SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib29_v1610) {
 		_serSysDecSQN_SystemInformationBlockType29_r16(_buffer, _size, _lidx, _mem, &p->sib29_v1610);
+		return SIDL_STATUS_OK;
+	}
+	if (d == SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib30_v1700) {
+		_serSysDecSQN_SystemInformationBlockType30_r17(_buffer, _size, _lidx, _mem, &p->sib30_v1700);
+		return SIDL_STATUS_OK;
+	}
+	if (d == SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib31_v1700) {
+		_serSysDecSQN_SystemInformationBlockType31_r17(_buffer, _size, _lidx, _mem, &p->sib31_v1700);
+		return SIDL_STATUS_OK;
+	}
+	if (d == SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib32_v1700) {
+		_serSysDecSQN_SystemInformationBlockType32_r17(_buffer, _size, _lidx, _mem, &p->sib32_v1700);
 		return SIDL_STATUS_OK;
 	}
 
@@ -48530,7 +50479,73 @@ static int _serSysDecSQN_PLMN_IdentityList_v1610_SQN_SystemInformationBlockType1
 	return SIDL_STATUS_OK;
 }
 
-static int _serSysDecSQN_SystemInformationBlockType1_v1610_IEs_nonCriticalExtension(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_SystemInformationBlockType1_v1610_IEs_nonCriticalExtension* p)
+static int _serSysDecSQN_TrackingAreaList_r17_SQN_PLMN_IdentityInfo_v1700_trackingAreaList_r17_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_TrackingAreaList_r17_SQN_PLMN_IdentityInfo_v1700_trackingAreaList_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
+	p->v.v = (SQN_TrackingAreaCode*)serMalloc(_mem, p->v.d * sizeof(SQN_TrackingAreaCode));
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		for (size_t i3 = 0; i3 < 16; i3++) {
+			NTOH_8(p->v.v[i2][i3], &_buffer[*_lidx], _lidx);
+		}
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_PLMN_IdentityInfo_v1700(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_PLMN_IdentityInfo_v1700* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serSysDecSQN_TrackingAreaList_r17_SQN_PLMN_IdentityInfo_v1700_trackingAreaList_r17_Optional(_buffer, _size, _lidx, _mem, &p->trackingAreaList_r17);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_PLMN_IdentityList_v1700_SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_plmn_IdentityList_v1700_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_PLMN_IdentityList_v1700_SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_plmn_IdentityList_v1700_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
+	p->v.v = (struct SQN_PLMN_IdentityInfo_v1700*)serMalloc(_mem, p->v.d * sizeof(struct SQN_PLMN_IdentityInfo_v1700));
+	for (size_t i1 = 0; i1 < p->v.d; i1++) {
+		_serSysDecSQN_PLMN_IdentityInfo_v1700(_buffer, _size, _lidx, _mem, &p->v.v[i1]);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp;
+		NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
+		p->cellBarred_NTN_r17 = (SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_cellBarred_NTN_r17_e)_tmp;
+	}
+	_serSysDecSQN_PLMN_IdentityList_v1700_SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_plmn_IdentityList_v1700_Optional(_buffer, _size, _lidx, _mem, &p->plmn_IdentityList_v1700);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_cellAccessRelatedInfo_NTN_r17_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_cellAccessRelatedInfo_NTN_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	_serSysDecSQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17(_buffer, _size, _lidx, _mem, &p->v);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_SystemInformationBlockType1_v1700_IEs_nonCriticalExtension(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_SystemInformationBlockType1_v1700_IEs_nonCriticalExtension* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
@@ -48542,13 +50557,34 @@ static int _serSysDecSQN_SystemInformationBlockType1_v1610_IEs_nonCriticalExtens
 	return SIDL_STATUS_OK;
 }
 
-static int _serSysDecSQN_SystemInformationBlockType1_v1610_IEs_nonCriticalExtension_nonCriticalExtension_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_SystemInformationBlockType1_v1610_IEs_nonCriticalExtension_nonCriticalExtension_Optional* p)
+static int _serSysDecSQN_SystemInformationBlockType1_v1700_IEs_nonCriticalExtension_nonCriticalExtension_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_SystemInformationBlockType1_v1700_IEs_nonCriticalExtension_nonCriticalExtension_Optional* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
-	_serSysDecSQN_SystemInformationBlockType1_v1610_IEs_nonCriticalExtension(_buffer, _size, _lidx, &p->v);
+	_serSysDecSQN_SystemInformationBlockType1_v1700_IEs_nonCriticalExtension(_buffer, _size, _lidx, &p->v);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_SystemInformationBlockType1_v1700_IEs(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_SystemInformationBlockType1_v1700_IEs* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serSysDecSQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_cellAccessRelatedInfo_NTN_r17_Optional(_buffer, _size, _lidx, _mem, &p->cellAccessRelatedInfo_NTN_r17);
+	_serSysDecSQN_SystemInformationBlockType1_v1700_IEs_nonCriticalExtension_nonCriticalExtension_Optional(_buffer, _size, _lidx, &p->nonCriticalExtension);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_SystemInformationBlockType1_v1700_IEs_SQN_SystemInformationBlockType1_v1610_IEs_nonCriticalExtension_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_SystemInformationBlockType1_v1700_IEs_SQN_SystemInformationBlockType1_v1610_IEs_nonCriticalExtension_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	_serSysDecSQN_SystemInformationBlockType1_v1700_IEs(_buffer, _size, _lidx, _mem, &p->v);
 
 	return SIDL_STATUS_OK;
 }
@@ -48561,7 +50597,7 @@ static int _serSysDecSQN_SystemInformationBlockType1_v1610_IEs(const unsigned ch
 	_serSysDecSQN_SystemInformationBlockType1_v1610_IEs_transmissionInControlChRegion_r16_e_transmissionInControlChRegion_r16_Optional(_buffer, _size, _lidx, &p->transmissionInControlChRegion_r16);
 	_serSysDecSQN_SystemInformationBlockType1_v1610_IEs_campingAllowedInCE_r16_e_campingAllowedInCE_r16_Optional(_buffer, _size, _lidx, &p->campingAllowedInCE_r16);
 	_serSysDecSQN_PLMN_IdentityList_v1610_SQN_SystemInformationBlockType1_v1610_IEs_plmn_IdentityList_v1610_Optional(_buffer, _size, _lidx, _mem, &p->plmn_IdentityList_v1610);
-	_serSysDecSQN_SystemInformationBlockType1_v1610_IEs_nonCriticalExtension_nonCriticalExtension_Optional(_buffer, _size, _lidx, &p->nonCriticalExtension);
+	_serSysDecSQN_SystemInformationBlockType1_v1700_IEs_SQN_SystemInformationBlockType1_v1610_IEs_nonCriticalExtension_Optional(_buffer, _size, _lidx, _mem, &p->nonCriticalExtension);
 
 	return SIDL_STATUS_OK;
 }
@@ -60397,6 +62433,51 @@ static int _serSysDecSQN_SetupRelease_PDCP_Config_ethernetHeaderCompression_r16_
 	return SIDL_STATUS_OK;
 }
 
+static int _serSysDecSQN_SetupRelease_PDCP_Config_discardTimerExt_r17_Value(const unsigned char* _buffer, size_t _size, size_t* _lidx, union SQN_SetupRelease_PDCP_Config_discardTimerExt_r17_Value* p, enum SQN_SetupRelease_PDCP_Config_discardTimerExt_r17_Sel d)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	if (d == SQN_SetupRelease_PDCP_Config_discardTimerExt_r17_release) {
+		NTOH_8(p->release, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
+	}
+	if (d == SQN_SetupRelease_PDCP_Config_discardTimerExt_r17_setup) {
+		{
+			size_t _tmp;
+			NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
+			p->setup = (SQN_DiscardTimerExt_r17_e)_tmp;
+		}
+		return SIDL_STATUS_OK;
+	}
+
+	return SIDL_STATUS_ERROR;
+}
+
+static int _serSysDecSQN_SetupRelease_PDCP_Config_discardTimerExt_r17(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_SetupRelease_PDCP_Config_discardTimerExt_r17* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp;
+		NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
+		p->d = (enum SQN_SetupRelease_PDCP_Config_discardTimerExt_r17_Sel)_tmp;
+	}
+	_serSysDecSQN_SetupRelease_PDCP_Config_discardTimerExt_r17_Value(_buffer, _size, _lidx, &p->v, p->d);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_SetupRelease_PDCP_Config_discardTimerExt_r17_SQN_PDCP_Config_discardTimerExt_r17_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_SetupRelease_PDCP_Config_discardTimerExt_r17_SQN_PDCP_Config_discardTimerExt_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	_serSysDecSQN_SetupRelease_PDCP_Config_discardTimerExt_r17(_buffer, _size, _lidx, &p->v);
+
+	return SIDL_STATUS_OK;
+}
+
 static int _serSysDecSQN_PDCP_Config(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_PDCP_Config* p)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -60417,6 +62498,7 @@ static int _serSysDecSQN_PDCP_Config(const unsigned char* _buffer, size_t _size,
 	_serSysDecSQN_PDCP_Config_uplinkDataCompression_r15_uplinkDataCompression_r15_Optional(_buffer, _size, _lidx, &p->uplinkDataCompression_r15);
 	_serSysDecSQN_PDCP_Config_pdcp_DuplicationConfig_r15_pdcp_DuplicationConfig_r15_Optional(_buffer, _size, _lidx, &p->pdcp_DuplicationConfig_r15);
 	_serSysDecSQN_SetupRelease_PDCP_Config_ethernetHeaderCompression_r16_SQN_PDCP_Config_ethernetHeaderCompression_r16_Optional(_buffer, _size, _lidx, &p->ethernetHeaderCompression_r16);
+	_serSysDecSQN_SetupRelease_PDCP_Config_discardTimerExt_r17_SQN_PDCP_Config_discardTimerExt_r17_Optional(_buffer, _size, _lidx, &p->discardTimerExt_r17);
 
 	return SIDL_STATUS_OK;
 }
@@ -61164,12 +63246,32 @@ static int _serSysDecMAC_LogicalChannelConfig_Type_LogicalChannel_Optional(const
 	return SIDL_STATUS_OK;
 }
 
+static int _serSysDecMAC_Test_DLLogChID_Type_Value(const unsigned char* _buffer, size_t _size, size_t* _lidx, union MAC_Test_DLLogChID_Type_Value* p, enum MAC_Test_DLLogChID_Type_Sel d)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	if (d == MAC_Test_DLLogChID_Type_LogChId) {
+		NTOH_32(p->LogChId, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
+	}
+	if (d == MAC_Test_DLLogChID_Type_ConfigLchId) {
+		NTOH_8(p->ConfigLchId, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
+	}
+
+	return SIDL_STATUS_ERROR;
+}
+
 static int _serSysDecMAC_Test_DLLogChID_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct MAC_Test_DLLogChID_Type* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
-	NTOH_32(p->LogChId, &_buffer[*_lidx], _lidx);
-	NTOH_8(p->ConfigLchId, &_buffer[*_lidx], _lidx);
+	{
+		size_t _tmp;
+		NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
+		p->d = (enum MAC_Test_DLLogChID_Type_Sel)_tmp;
+	}
+	_serSysDecMAC_Test_DLLogChID_Type_Value(_buffer, _size, _lidx, &p->v, p->d);
 
 	return SIDL_STATUS_OK;
 }
@@ -61766,7 +63868,46 @@ static int _serSysDecSQN_Paging_v1610_IEs_uac_ParamModification_r16_e_uac_ParamM
 	return SIDL_STATUS_OK;
 }
 
-static int _serSysDecSQN_Paging_v1610_IEs_nonCriticalExtension(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_Paging_v1610_IEs_nonCriticalExtension* p)
+static int _serSysDecSQN_PagingRecord_v1700_pagingCause_r17_e_pagingCause_r17_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_PagingRecord_v1700_pagingCause_r17_e_pagingCause_r17_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	{
+		size_t _tmp;
+		NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
+		p->v = (SQN_PagingRecord_v1700_pagingCause_r17_e)_tmp;
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_PagingRecord_v1700(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_PagingRecord_v1700* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serSysDecSQN_PagingRecord_v1700_pagingCause_r17_e_pagingCause_r17_Optional(_buffer, _size, _lidx, &p->pagingCause_r17);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_PagingRecordList_v1700_SQN_Paging_v1700_IEs_pagingRecordList_v1700_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_PagingRecordList_v1700_SQN_Paging_v1700_IEs_pagingRecordList_v1700_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
+	p->v.v = (struct SQN_PagingRecord_v1700*)serMalloc(_mem, p->v.d * sizeof(struct SQN_PagingRecord_v1700));
+	for (size_t i1 = 0; i1 < p->v.d; i1++) {
+		_serSysDecSQN_PagingRecord_v1700(_buffer, _size, _lidx, &p->v.v[i1]);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_Paging_v1700_IEs_nonCriticalExtension(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_Paging_v1700_IEs_nonCriticalExtension* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
@@ -61778,13 +63919,34 @@ static int _serSysDecSQN_Paging_v1610_IEs_nonCriticalExtension(const unsigned ch
 	return SIDL_STATUS_OK;
 }
 
-static int _serSysDecSQN_Paging_v1610_IEs_nonCriticalExtension_nonCriticalExtension_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_Paging_v1610_IEs_nonCriticalExtension_nonCriticalExtension_Optional* p)
+static int _serSysDecSQN_Paging_v1700_IEs_nonCriticalExtension_nonCriticalExtension_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_Paging_v1700_IEs_nonCriticalExtension_nonCriticalExtension_Optional* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
-	_serSysDecSQN_Paging_v1610_IEs_nonCriticalExtension(_buffer, _size, _lidx, &p->v);
+	_serSysDecSQN_Paging_v1700_IEs_nonCriticalExtension(_buffer, _size, _lidx, &p->v);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_Paging_v1700_IEs(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_Paging_v1700_IEs* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serSysDecSQN_PagingRecordList_v1700_SQN_Paging_v1700_IEs_pagingRecordList_v1700_Optional(_buffer, _size, _lidx, _mem, &p->pagingRecordList_v1700);
+	_serSysDecSQN_Paging_v1700_IEs_nonCriticalExtension_nonCriticalExtension_Optional(_buffer, _size, _lidx, &p->nonCriticalExtension);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecSQN_Paging_v1700_IEs_SQN_Paging_v1610_IEs_nonCriticalExtension_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_Paging_v1700_IEs_SQN_Paging_v1610_IEs_nonCriticalExtension_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	_serSysDecSQN_Paging_v1700_IEs(_buffer, _size, _lidx, _mem, &p->v);
 
 	return SIDL_STATUS_OK;
 }
@@ -61795,7 +63957,7 @@ static int _serSysDecSQN_Paging_v1610_IEs(const unsigned char* _buffer, size_t _
 
 	_serSysDecSQN_PagingRecordList_v1610_SQN_Paging_v1610_IEs_pagingRecordList_v1610_Optional(_buffer, _size, _lidx, _mem, &p->pagingRecordList_v1610);
 	_serSysDecSQN_Paging_v1610_IEs_uac_ParamModification_r16_e_uac_ParamModification_r16_Optional(_buffer, _size, _lidx, &p->uac_ParamModification_r16);
-	_serSysDecSQN_Paging_v1610_IEs_nonCriticalExtension_nonCriticalExtension_Optional(_buffer, _size, _lidx, &p->nonCriticalExtension);
+	_serSysDecSQN_Paging_v1700_IEs_SQN_Paging_v1610_IEs_nonCriticalExtension_Optional(_buffer, _size, _lidx, _mem, &p->nonCriticalExtension);
 
 	return SIDL_STATUS_OK;
 }
@@ -63372,7 +65534,7 @@ static void _serSysFreeSQN_IntraFreqNeighCellList_SQN_SystemInformationBlockType
 	}
 }
 
-static void _serSysFreeSQN_IntraFreqBlackCellList_SQN_SystemInformationBlockType4_intraFreqBlackCellList_Optional(struct SQN_IntraFreqBlackCellList_SQN_SystemInformationBlockType4_intraFreqBlackCellList_Optional* p)
+static void _serSysFreeSQN_IntraFreqExcludedCellList_SQN_SystemInformationBlockType4_intraFreqExcludedCellList_Optional(struct SQN_IntraFreqExcludedCellList_SQN_SystemInformationBlockType4_intraFreqExcludedCellList_Optional* p)
 {
 	if (!p->d) return;
 	if (p->v.v) {
@@ -63426,7 +65588,7 @@ static void _serSysFreeSQN_IntraFreqNeighCellList_v1610_SQN_SystemInformationBlo
 static void _serSysFreeSQN_SystemInformationBlockType4(struct SQN_SystemInformationBlockType4* p)
 {
 	_serSysFreeSQN_IntraFreqNeighCellList_SQN_SystemInformationBlockType4_intraFreqNeighCellList_Optional(&p->intraFreqNeighCellList);
-	_serSysFreeSQN_IntraFreqBlackCellList_SQN_SystemInformationBlockType4_intraFreqBlackCellList_Optional(&p->intraFreqBlackCellList);
+	_serSysFreeSQN_IntraFreqExcludedCellList_SQN_SystemInformationBlockType4_intraFreqExcludedCellList_Optional(&p->intraFreqExcludedCellList);
 	_serSysFreeOCTET_STRING_SQN_SystemInformationBlockType4_lateNonCriticalExtension_Optional(&p->lateNonCriticalExtension);
 	_serSysFreeSQN_IntraFreqNeighHSDN_CellList_r15_SQN_SystemInformationBlockType4_intraFreqNeighHSDN_CellList_r15_Optional(&p->intraFreqNeighHSDN_CellList_r15);
 	_serSysFreeSQN_RSS_ConfigCarrierInfo_r16_SQN_SystemInformationBlockType4_rss_ConfigCarrierInfo_r16_Optional(&p->rss_ConfigCarrierInfo_r16);
@@ -63443,7 +65605,7 @@ static void _serSysFreeSQN_InterFreqNeighCellList_SQN_InterFreqCarrierFreqInfo_i
 	}
 }
 
-static void _serSysFreeSQN_InterFreqBlackCellList_SQN_InterFreqCarrierFreqInfo_interFreqBlackCellList_Optional(struct SQN_InterFreqBlackCellList_SQN_InterFreqCarrierFreqInfo_interFreqBlackCellList_Optional* p)
+static void _serSysFreeSQN_InterFreqExcludedCellList_SQN_InterFreqCarrierFreqInfo_interFreqExcludedCellList_Optional(struct SQN_InterFreqExcludedCellList_SQN_InterFreqCarrierFreqInfo_interFreqExcludedCellList_Optional* p)
 {
 	if (!p->d) return;
 	if (p->v.v) {
@@ -63456,7 +65618,7 @@ static void _serSysFreeSQN_InterFreqBlackCellList_SQN_InterFreqCarrierFreqInfo_i
 static void _serSysFreeSQN_InterFreqCarrierFreqInfo(struct SQN_InterFreqCarrierFreqInfo* p)
 {
 	_serSysFreeSQN_InterFreqNeighCellList_SQN_InterFreqCarrierFreqInfo_interFreqNeighCellList_Optional(&p->interFreqNeighCellList);
-	_serSysFreeSQN_InterFreqBlackCellList_SQN_InterFreqCarrierFreqInfo_interFreqBlackCellList_Optional(&p->interFreqBlackCellList);
+	_serSysFreeSQN_InterFreqExcludedCellList_SQN_InterFreqCarrierFreqInfo_interFreqExcludedCellList_Optional(&p->interFreqExcludedCellList);
 }
 
 static void _serSysFreeOCTET_STRING_SQN_SystemInformationBlockType5_lateNonCriticalExtension_Optional(struct OCTET_STRING_SQN_SystemInformationBlockType5_lateNonCriticalExtension_Optional* p)
@@ -63487,7 +65649,7 @@ static void _serSysFreeSQN_InterFreqNeighCellList_SQN_InterFreqCarrierFreqInfo_r
 	}
 }
 
-static void _serSysFreeSQN_InterFreqBlackCellList_SQN_InterFreqCarrierFreqInfo_r12_interFreqBlackCellList_r12_Optional(struct SQN_InterFreqBlackCellList_SQN_InterFreqCarrierFreqInfo_r12_interFreqBlackCellList_r12_Optional* p)
+static void _serSysFreeSQN_InterFreqExcludedCellList_SQN_InterFreqCarrierFreqInfo_r12_interFreqExcludedCellList_r12_Optional(struct SQN_InterFreqExcludedCellList_SQN_InterFreqCarrierFreqInfo_r12_interFreqExcludedCellList_r12_Optional* p)
 {
 	if (!p->d) return;
 	if (p->v.v) {
@@ -63508,7 +65670,7 @@ static void _serSysFreeSQN_MultiBandInfoList_r11_SQN_InterFreqCarrierFreqInfo_r1
 static void _serSysFreeSQN_InterFreqCarrierFreqInfo_r12(struct SQN_InterFreqCarrierFreqInfo_r12* p)
 {
 	_serSysFreeSQN_InterFreqNeighCellList_SQN_InterFreqCarrierFreqInfo_r12_interFreqNeighCellList_r12_Optional(&p->interFreqNeighCellList_r12);
-	_serSysFreeSQN_InterFreqBlackCellList_SQN_InterFreqCarrierFreqInfo_r12_interFreqBlackCellList_r12_Optional(&p->interFreqBlackCellList_r12);
+	_serSysFreeSQN_InterFreqExcludedCellList_SQN_InterFreqCarrierFreqInfo_r12_interFreqExcludedCellList_r12_Optional(&p->interFreqExcludedCellList_r12);
 	_serSysFreeSQN_MultiBandInfoList_r11_SQN_InterFreqCarrierFreqInfo_r12_multiBandInfoList_r12_Optional(&p->multiBandInfoList_r12);
 }
 
@@ -64338,6 +66500,16 @@ static void _serSysFreeSQN_MBSFN_AreaInfoList_r16_SQN_SystemInformationBlockType
 	}
 }
 
+static void _serSysFreeSQN_MBSFN_AreaInfoList_r17_SQN_SystemInformationBlockType13_r9_mbsfn_AreaInfoList_r17_Optional(struct SQN_MBSFN_AreaInfoList_r17_SQN_SystemInformationBlockType13_r9_mbsfn_AreaInfoList_r17_Optional* p)
+{
+	if (!p->d) return;
+	if (p->v.v) {
+		for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		}
+		serFree(p->v.v);
+	}
+}
+
 static void _serSysFreeSQN_SystemInformationBlockType13_r9(struct SQN_SystemInformationBlockType13_r9* p)
 {
 	if (p->mbsfn_AreaInfoList_r9.v) {
@@ -64347,6 +66519,7 @@ static void _serSysFreeSQN_SystemInformationBlockType13_r9(struct SQN_SystemInfo
 	}
 	_serSysFreeOCTET_STRING_SQN_SystemInformationBlockType13_r9_lateNonCriticalExtension_Optional(&p->lateNonCriticalExtension);
 	_serSysFreeSQN_MBSFN_AreaInfoList_r16_SQN_SystemInformationBlockType13_r9_mbsfn_AreaInfoList_r16_Optional(&p->mbsfn_AreaInfoList_r16);
+	_serSysFreeSQN_MBSFN_AreaInfoList_r17_SQN_SystemInformationBlockType13_r9_mbsfn_AreaInfoList_r17_Optional(&p->mbsfn_AreaInfoList_r17);
 }
 
 static void _serSysFreeSQN_SystemInformationBlockType14_r11_eab_Param_r11_Value(union SQN_SystemInformationBlockType14_r11_eab_Param_r11_Value* p, enum SQN_SystemInformationBlockType14_r11_eab_Param_r11_Sel d)
@@ -65416,7 +67589,7 @@ static void _serSysFreeSQN_MTC_SSB2_LP_NR_r16_SQN_CarrierFreqNR_v1610_smtc2_LP_r
 	_serSysFreeSQN_MTC_SSB2_LP_NR_r16(&p->v);
 }
 
-static void _serSysFreeSQN_WhiteCellListNR_r16_SQN_CarrierFreqNR_v1610_whiteCellListNR_r16_Optional(struct SQN_WhiteCellListNR_r16_SQN_CarrierFreqNR_v1610_whiteCellListNR_r16_Optional* p)
+static void _serSysFreeSQN_AllowedCellListNR_r16_SQN_CarrierFreqNR_v1610_allowedCellListNR_r16_Optional(struct SQN_AllowedCellListNR_r16_SQN_CarrierFreqNR_v1610_allowedCellListNR_r16_Optional* p)
 {
 	if (!p->d) return;
 	if (p->v.v) {
@@ -65427,7 +67600,7 @@ static void _serSysFreeSQN_WhiteCellListNR_r16_SQN_CarrierFreqNR_v1610_whiteCell
 static void _serSysFreeSQN_CarrierFreqNR_v1610(struct SQN_CarrierFreqNR_v1610* p)
 {
 	_serSysFreeSQN_MTC_SSB2_LP_NR_r16_SQN_CarrierFreqNR_v1610_smtc2_LP_r16_Optional(&p->smtc2_LP_r16);
-	_serSysFreeSQN_WhiteCellListNR_r16_SQN_CarrierFreqNR_v1610_whiteCellListNR_r16_Optional(&p->whiteCellListNR_r16);
+	_serSysFreeSQN_AllowedCellListNR_r16_SQN_CarrierFreqNR_v1610_allowedCellListNR_r16_Optional(&p->allowedCellListNR_r16);
 }
 
 static void _serSysFreeSQN_CarrierFreqListNR_v1610_SQN_SystemInformationBlockType24_r15_carrierFreqListNR_v1610_Optional(struct SQN_CarrierFreqListNR_v1610_SQN_SystemInformationBlockType24_r15_carrierFreqListNR_v1610_Optional* p)
@@ -65441,11 +67614,49 @@ static void _serSysFreeSQN_CarrierFreqListNR_v1610_SQN_SystemInformationBlockTyp
 	}
 }
 
+static void _serSysFreeSQN_NR_FreqNeighHSDN_CellList_r17_SQN_CarrierFreqNR_v1700_nr_FreqNeighHSDN_CellList_r17_Optional(struct SQN_NR_FreqNeighHSDN_CellList_r17_SQN_CarrierFreqNR_v1700_nr_FreqNeighHSDN_CellList_r17_Optional* p)
+{
+	if (!p->d) return;
+	if (p->v.v) {
+		for (size_t i3 = 0; i3 < p->v.d; i3++) {
+		}
+		serFree(p->v.v);
+	}
+}
+
+static void _serSysFreeSQN_CarrierFreqNR_v1700(struct SQN_CarrierFreqNR_v1700* p)
+{
+	_serSysFreeSQN_NR_FreqNeighHSDN_CellList_r17_SQN_CarrierFreqNR_v1700_nr_FreqNeighHSDN_CellList_r17_Optional(&p->nr_FreqNeighHSDN_CellList_r17);
+}
+
+static void _serSysFreeSQN_CarrierFreqListNR_v1700_SQN_SystemInformationBlockType24_r15_carrierFreqListNR_v1700_Optional(struct SQN_CarrierFreqListNR_v1700_SQN_SystemInformationBlockType24_r15_carrierFreqListNR_v1700_Optional* p)
+{
+	if (!p->d) return;
+	if (p->v.v) {
+		for (size_t i2 = 0; i2 < p->v.d; i2++) {
+			_serSysFreeSQN_CarrierFreqNR_v1700(&p->v.v[i2]);
+		}
+		serFree(p->v.v);
+	}
+}
+
+static void _serSysFreeSQN_CarrierFreqListNR_v1720_SQN_SystemInformationBlockType24_r15_carrierFreqListNR_v1720_Optional(struct SQN_CarrierFreqListNR_v1720_SQN_SystemInformationBlockType24_r15_carrierFreqListNR_v1720_Optional* p)
+{
+	if (!p->d) return;
+	if (p->v.v) {
+		for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		}
+		serFree(p->v.v);
+	}
+}
+
 static void _serSysFreeSQN_SystemInformationBlockType24_r15(struct SQN_SystemInformationBlockType24_r15* p)
 {
 	_serSysFreeSQN_CarrierFreqListNR_r15_SQN_SystemInformationBlockType24_r15_carrierFreqListNR_r15_Optional(&p->carrierFreqListNR_r15);
 	_serSysFreeOCTET_STRING_SQN_SystemInformationBlockType24_r15_lateNonCriticalExtension_Optional(&p->lateNonCriticalExtension);
 	_serSysFreeSQN_CarrierFreqListNR_v1610_SQN_SystemInformationBlockType24_r15_carrierFreqListNR_v1610_Optional(&p->carrierFreqListNR_v1610);
+	_serSysFreeSQN_CarrierFreqListNR_v1700_SQN_SystemInformationBlockType24_r15_carrierFreqListNR_v1700_Optional(&p->carrierFreqListNR_v1700);
+	_serSysFreeSQN_CarrierFreqListNR_v1720_SQN_SystemInformationBlockType24_r15_carrierFreqListNR_v1720_Optional(&p->carrierFreqListNR_v1720);
 }
 
 static void _serSysFreeSQN_UAC_BarringPerCatList_r15_SQN_SystemInformationBlockType25_r15_uac_BarringForCommon_r15_Optional(struct SQN_UAC_BarringPerCatList_r15_SQN_SystemInformationBlockType25_r15_uac_BarringForCommon_r15_Optional* p)
@@ -65526,6 +67737,24 @@ static void _serSysFreeOCTET_STRING_SQN_SystemInformationBlockType25_r15_lateNon
 	}
 }
 
+static void _serSysFreeSQN_UAC_AC1_SelectAssistInfo_r16_e_SQN_SystemInformationBlockType25_r15_uac_AC1_SelectAssistInfo_r16_DynamicOptional(struct SQN_UAC_AC1_SelectAssistInfo_r16_e_SQN_SystemInformationBlockType25_r15_uac_AC1_SelectAssistInfo_r16_DynamicOptional* p)
+{
+	if (!p->d) return;
+	if (p->v.v) {
+		serFree(p->v.v);
+	}
+}
+
+static void _serSysFreeSQN_UAC_BarringInfoSetList_v1700_SQN_SystemInformationBlockType25_r15_uac_BarringInfoSetList_v1700_Optional(struct SQN_UAC_BarringInfoSetList_v1700_SQN_SystemInformationBlockType25_r15_uac_BarringInfoSetList_v1700_Optional* p)
+{
+	if (!p->d) return;
+	if (p->v.v) {
+		for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		}
+		serFree(p->v.v);
+	}
+}
+
 static void _serSysFreeSQN_SystemInformationBlockType25_r15(struct SQN_SystemInformationBlockType25_r15* p)
 {
 	_serSysFreeSQN_UAC_BarringPerCatList_r15_SQN_SystemInformationBlockType25_r15_uac_BarringForCommon_r15_Optional(&p->uac_BarringForCommon_r15);
@@ -65537,6 +67766,8 @@ static void _serSysFreeSQN_SystemInformationBlockType25_r15(struct SQN_SystemInf
 	}
 	_serSysFreeSQN_SystemInformationBlockType25_r15_uac_AC1_SelectAssistInfo_r15_uac_AC1_SelectAssistInfo_r15_Optional(&p->uac_AC1_SelectAssistInfo_r15);
 	_serSysFreeOCTET_STRING_SQN_SystemInformationBlockType25_r15_lateNonCriticalExtension_Optional(&p->lateNonCriticalExtension);
+	_serSysFreeSQN_UAC_AC1_SelectAssistInfo_r16_e_SQN_SystemInformationBlockType25_r15_uac_AC1_SelectAssistInfo_r16_DynamicOptional(&p->uac_AC1_SelectAssistInfo_r16);
+	_serSysFreeSQN_UAC_BarringInfoSetList_v1700_SQN_SystemInformationBlockType25_r15_uac_BarringInfoSetList_v1700_Optional(&p->uac_BarringInfoSetList_v1700);
 }
 
 static void _serSysFreeSQN_SL_InterFreqInfoListV2X_r14_SQN_SystemInformationBlockType26_r15_v2x_InterFreqInfoList_r15_Optional(struct SQN_SL_InterFreqInfoListV2X_r14_SQN_SystemInformationBlockType26_r15_v2x_InterFreqInfoList_r15_Optional* p)
@@ -65736,6 +67967,98 @@ static void _serSysFreeSQN_SystemInformationBlockType29_r16(struct SQN_SystemInf
 	_serSysFreeOCTET_STRING_SQN_SystemInformationBlockType29_r16_lateNonCriticalExtension_Optional(&p->lateNonCriticalExtension);
 }
 
+static void _serSysFreeSQN_PLMN_Identity_SQN_SystemInformationBlockType30_r17_commonPLMNsWithDisasterCondition_r17_DynamicOptional(struct SQN_PLMN_Identity_SQN_SystemInformationBlockType30_r17_commonPLMNsWithDisasterCondition_r17_DynamicOptional* p)
+{
+	if (!p->d) return;
+	if (p->v.v) {
+		for (size_t i2 = 0; i2 < p->v.d; i2++) {
+			_serSysFreeSQN_PLMN_Identity(&p->v.v[i2]);
+		}
+		serFree(p->v.v);
+	}
+}
+
+static void _serSysFreeSQN_ApplicableDisasterInfo_r17_Value(union SQN_ApplicableDisasterInfo_r17_Value* p, enum SQN_ApplicableDisasterInfo_r17_Sel d)
+{
+	if (d == SQN_ApplicableDisasterInfo_r17_dedicatedPLMNs_r17) {
+		if (p->dedicatedPLMNs_r17.v) {
+			for (size_t i3 = 0; i3 < p->dedicatedPLMNs_r17.d; i3++) {
+				_serSysFreeSQN_PLMN_Identity(&p->dedicatedPLMNs_r17.v[i3]);
+			}
+			serFree(p->dedicatedPLMNs_r17.v);
+		}
+		return;
+	}
+}
+
+static void _serSysFreeSQN_ApplicableDisasterInfo_r17(struct SQN_ApplicableDisasterInfo_r17* p)
+{
+	_serSysFreeSQN_ApplicableDisasterInfo_r17_Value(&p->v, p->d);
+}
+
+static void _serSysFreeSQN_ApplicableDisasterInfo_r17_SQN_SystemInformationBlockType30_r17_applicableDisasterInfoList_r17_DynamicOptional(struct SQN_ApplicableDisasterInfo_r17_SQN_SystemInformationBlockType30_r17_applicableDisasterInfoList_r17_DynamicOptional* p)
+{
+	if (!p->d) return;
+	if (p->v.v) {
+		for (size_t i2 = 0; i2 < p->v.d; i2++) {
+			_serSysFreeSQN_ApplicableDisasterInfo_r17(&p->v.v[i2]);
+		}
+		serFree(p->v.v);
+	}
+}
+
+static void _serSysFreeOCTET_STRING_SQN_SystemInformationBlockType30_r17_lateNonCriticalExtension_Optional(struct OCTET_STRING_SQN_SystemInformationBlockType30_r17_lateNonCriticalExtension_Optional* p)
+{
+	if (!p->d) return;
+	if (p->v.v) {
+		serFree(p->v.v);
+	}
+}
+
+static void _serSysFreeSQN_SystemInformationBlockType30_r17(struct SQN_SystemInformationBlockType30_r17* p)
+{
+	_serSysFreeSQN_PLMN_Identity_SQN_SystemInformationBlockType30_r17_commonPLMNsWithDisasterCondition_r17_DynamicOptional(&p->commonPLMNsWithDisasterCondition_r17);
+	_serSysFreeSQN_ApplicableDisasterInfo_r17_SQN_SystemInformationBlockType30_r17_applicableDisasterInfoList_r17_DynamicOptional(&p->applicableDisasterInfoList_r17);
+	_serSysFreeOCTET_STRING_SQN_SystemInformationBlockType30_r17_lateNonCriticalExtension_Optional(&p->lateNonCriticalExtension);
+}
+
+static void _serSysFreeOCTET_STRING_SQN_SystemInformationBlockType31_r17_lateNonCriticalExtension_Optional(struct OCTET_STRING_SQN_SystemInformationBlockType31_r17_lateNonCriticalExtension_Optional* p)
+{
+	if (!p->d) return;
+	if (p->v.v) {
+		serFree(p->v.v);
+	}
+}
+
+static void _serSysFreeSQN_SystemInformationBlockType31_r17(struct SQN_SystemInformationBlockType31_r17* p)
+{
+	_serSysFreeOCTET_STRING_SQN_SystemInformationBlockType31_r17_lateNonCriticalExtension_Optional(&p->lateNonCriticalExtension);
+}
+
+static void _serSysFreeSQN_SatelliteInfoList_r17_SQN_SystemInformationBlockType32_r17_satelliteInfoList_r17_Optional(struct SQN_SatelliteInfoList_r17_SQN_SystemInformationBlockType32_r17_satelliteInfoList_r17_Optional* p)
+{
+	if (!p->d) return;
+	if (p->v.v) {
+		for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		}
+		serFree(p->v.v);
+	}
+}
+
+static void _serSysFreeOCTET_STRING_SQN_SystemInformationBlockType32_r17_lateNonCriticalExtension_Optional(struct OCTET_STRING_SQN_SystemInformationBlockType32_r17_lateNonCriticalExtension_Optional* p)
+{
+	if (!p->d) return;
+	if (p->v.v) {
+		serFree(p->v.v);
+	}
+}
+
+static void _serSysFreeSQN_SystemInformationBlockType32_r17(struct SQN_SystemInformationBlockType32_r17* p)
+{
+	_serSysFreeSQN_SatelliteInfoList_r17_SQN_SystemInformationBlockType32_r17_satelliteInfoList_r17_Optional(&p->satelliteInfoList_r17);
+	_serSysFreeOCTET_STRING_SQN_SystemInformationBlockType32_r17_lateNonCriticalExtension_Optional(&p->lateNonCriticalExtension);
+}
+
 static void _serSysFreeSQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_Value(union SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_Value* p, enum SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_Sel d)
 {
 	if (d == SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib2) {
@@ -65844,6 +68167,18 @@ static void _serSysFreeSQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_Value(unio
 	}
 	if (d == SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib29_v1610) {
 		_serSysFreeSQN_SystemInformationBlockType29_r16(&p->sib29_v1610);
+		return;
+	}
+	if (d == SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib30_v1700) {
+		_serSysFreeSQN_SystemInformationBlockType30_r17(&p->sib30_v1700);
+		return;
+	}
+	if (d == SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib31_v1700) {
+		_serSysFreeSQN_SystemInformationBlockType31_r17(&p->sib31_v1700);
+		return;
+	}
+	if (d == SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib32_v1700) {
+		_serSysFreeSQN_SystemInformationBlockType32_r17(&p->sib32_v1700);
 		return;
 	}
 }
@@ -66230,9 +68565,56 @@ static void _serSysFreeSQN_PLMN_IdentityList_v1610_SQN_SystemInformationBlockTyp
 	}
 }
 
+static void _serSysFreeSQN_TrackingAreaList_r17_SQN_PLMN_IdentityInfo_v1700_trackingAreaList_r17_Optional(struct SQN_TrackingAreaList_r17_SQN_PLMN_IdentityInfo_v1700_trackingAreaList_r17_Optional* p)
+{
+	if (!p->d) return;
+	if (p->v.v) {
+		serFree(p->v.v);
+	}
+}
+
+static void _serSysFreeSQN_PLMN_IdentityInfo_v1700(struct SQN_PLMN_IdentityInfo_v1700* p)
+{
+	_serSysFreeSQN_TrackingAreaList_r17_SQN_PLMN_IdentityInfo_v1700_trackingAreaList_r17_Optional(&p->trackingAreaList_r17);
+}
+
+static void _serSysFreeSQN_PLMN_IdentityList_v1700_SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_plmn_IdentityList_v1700_Optional(struct SQN_PLMN_IdentityList_v1700_SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_plmn_IdentityList_v1700_Optional* p)
+{
+	if (!p->d) return;
+	if (p->v.v) {
+		for (size_t i1 = 0; i1 < p->v.d; i1++) {
+			_serSysFreeSQN_PLMN_IdentityInfo_v1700(&p->v.v[i1]);
+		}
+		serFree(p->v.v);
+	}
+}
+
+static void _serSysFreeSQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17(struct SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17* p)
+{
+	_serSysFreeSQN_PLMN_IdentityList_v1700_SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_plmn_IdentityList_v1700_Optional(&p->plmn_IdentityList_v1700);
+}
+
+static void _serSysFreeSQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_cellAccessRelatedInfo_NTN_r17_Optional(struct SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_cellAccessRelatedInfo_NTN_r17_Optional* p)
+{
+	if (!p->d) return;
+	_serSysFreeSQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17(&p->v);
+}
+
+static void _serSysFreeSQN_SystemInformationBlockType1_v1700_IEs(struct SQN_SystemInformationBlockType1_v1700_IEs* p)
+{
+	_serSysFreeSQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_cellAccessRelatedInfo_NTN_r17_Optional(&p->cellAccessRelatedInfo_NTN_r17);
+}
+
+static void _serSysFreeSQN_SystemInformationBlockType1_v1700_IEs_SQN_SystemInformationBlockType1_v1610_IEs_nonCriticalExtension_Optional(struct SQN_SystemInformationBlockType1_v1700_IEs_SQN_SystemInformationBlockType1_v1610_IEs_nonCriticalExtension_Optional* p)
+{
+	if (!p->d) return;
+	_serSysFreeSQN_SystemInformationBlockType1_v1700_IEs(&p->v);
+}
+
 static void _serSysFreeSQN_SystemInformationBlockType1_v1610_IEs(struct SQN_SystemInformationBlockType1_v1610_IEs* p)
 {
 	_serSysFreeSQN_PLMN_IdentityList_v1610_SQN_SystemInformationBlockType1_v1610_IEs_plmn_IdentityList_v1610_Optional(&p->plmn_IdentityList_v1610);
+	_serSysFreeSQN_SystemInformationBlockType1_v1700_IEs_SQN_SystemInformationBlockType1_v1610_IEs_nonCriticalExtension_Optional(&p->nonCriticalExtension);
 }
 
 static void _serSysFreeSQN_SystemInformationBlockType1_v1610_IEs_SQN_SystemInformationBlockType1_v1540_IEs_nonCriticalExtension_Optional(struct SQN_SystemInformationBlockType1_v1610_IEs_SQN_SystemInformationBlockType1_v1540_IEs_nonCriticalExtension_Optional* p)
@@ -68361,9 +70743,31 @@ static void _serSysFreeSQN_PagingRecordList_v1610_SQN_Paging_v1610_IEs_pagingRec
 	}
 }
 
+static void _serSysFreeSQN_PagingRecordList_v1700_SQN_Paging_v1700_IEs_pagingRecordList_v1700_Optional(struct SQN_PagingRecordList_v1700_SQN_Paging_v1700_IEs_pagingRecordList_v1700_Optional* p)
+{
+	if (!p->d) return;
+	if (p->v.v) {
+		for (size_t i1 = 0; i1 < p->v.d; i1++) {
+		}
+		serFree(p->v.v);
+	}
+}
+
+static void _serSysFreeSQN_Paging_v1700_IEs(struct SQN_Paging_v1700_IEs* p)
+{
+	_serSysFreeSQN_PagingRecordList_v1700_SQN_Paging_v1700_IEs_pagingRecordList_v1700_Optional(&p->pagingRecordList_v1700);
+}
+
+static void _serSysFreeSQN_Paging_v1700_IEs_SQN_Paging_v1610_IEs_nonCriticalExtension_Optional(struct SQN_Paging_v1700_IEs_SQN_Paging_v1610_IEs_nonCriticalExtension_Optional* p)
+{
+	if (!p->d) return;
+	_serSysFreeSQN_Paging_v1700_IEs(&p->v);
+}
+
 static void _serSysFreeSQN_Paging_v1610_IEs(struct SQN_Paging_v1610_IEs* p)
 {
 	_serSysFreeSQN_PagingRecordList_v1610_SQN_Paging_v1610_IEs_pagingRecordList_v1610_Optional(&p->pagingRecordList_v1610);
+	_serSysFreeSQN_Paging_v1700_IEs_SQN_Paging_v1610_IEs_nonCriticalExtension_Optional(&p->nonCriticalExtension);
 }
 
 static void _serSysFreeSQN_Paging_v1610_IEs_SQN_Paging_v1530_IEs_nonCriticalExtension_Optional(struct SQN_Paging_v1610_IEs_SQN_Paging_v1530_IEs_nonCriticalExtension_Optional* p)

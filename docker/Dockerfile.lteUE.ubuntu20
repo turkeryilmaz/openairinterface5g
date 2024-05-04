@@ -29,12 +29,10 @@ FROM ran-base:latest AS lte-ue-base
 
 FROM ran-build:latest AS lte-ue-build 
 
-RUN python3 ./docker/scripts/generateTemplate.py ./docker/scripts/lte_ue_parameters.yaml && \
-    python3 ./docker/scripts/generateTemplate.py ./docker/scripts/lte_ue_sim_parameters.yaml && \
-    cp /oai-ran/docker/scripts/lte_ue_entrypoint.sh /oai-ran/docker/scripts/entrypoint.sh
 
 #start from scratch for target executable
 FROM ubuntu:focal as oai-lte-ue
+ARG BUILD_OPTION
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Europe/Paris
 
@@ -54,21 +52,27 @@ RUN apt-get update && \
         python3 \
         python3-six \
         python3-requests \
+        libpython3.8 \
         libusb-1.0-0 \
         iputils-ping \
         iproute2 \
         iperf && \
+# if the --sanitize option was used to build, additional packages are required
+    /bin/bash -c 'if [[ "$BUILD_OPTION" = "--sanitize" ]]; then DEBIAN_FRONTEND=noninteractive apt-get install --yes \
+        libasan5 \
+        libubsan1 \
+        liblapacke; fi' && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt/oai-lte-ue/bin
 COPY --from=lte-ue-build \
     /oai-ran/cmake_targets/ran_build/build/lte-uesoftmodem \
-    /oai-ran/docker/scripts/entrypoint.sh \
     /oai-ran/cmake_targets/nas_sim_tools/build/conf2uedata \
     /oai-ran/cmake_targets/nas_sim_tools/build/nvram \
     /oai-ran/cmake_targets/nas_sim_tools/build/usim \
     ./
 
+COPY ./docker/scripts/lte_ue_entrypoint.sh ./entrypoint.sh
 COPY --from=lte-ue-build \
     /oai-ran/cmake_targets/ran_build/build/liboai_eth_transpro.so \
     /oai-ran/cmake_targets/ran_build/build/librfsimulator.so \
@@ -96,11 +100,8 @@ COPY --from=lte-ue-base \
     /usr/lib/x86_64-linux-gnu/
 
 RUN /bin/bash -c "ln -s /usr/local/lib/liboai_usrpdevif.so /usr/local/lib/liboai_device.so" && \
-    ldconfig
-
-# Copy the relevant configuration files for UE
-WORKDIR /opt/oai-lte-ue/etc
-COPY --from=lte-ue-build /oai-ran/docker/etc .
+    ldconfig && \
+    ldd /opt/oai-lte-ue/bin/lte-uesoftmodem
 
 WORKDIR /opt/oai-lte-ue
 CMD ["/opt/oai-lte-ue/bin/lte-uesoftmodem"]

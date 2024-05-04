@@ -377,6 +377,39 @@ static int _serVngEncSlotTimingInfo_Type(unsigned char* _buffer, size_t _size, s
 	return SIDL_STATUS_OK;
 }
 
+static int _serVngEncSymbolTimingInfo_Type_Value(unsigned char* _buffer, size_t _size, size_t* _lidx, const union SymbolTimingInfo_Type_Value* p, enum SymbolTimingInfo_Type_Sel d)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	if (d == SymbolTimingInfo_Type_SymbolOffset) {
+		HTON_8(&_buffer[*_lidx], p->SymbolOffset, _lidx);
+		return SIDL_STATUS_OK;
+	}
+	if (d == SymbolTimingInfo_Type_FirstSymbol) {
+		HTON_8(&_buffer[*_lidx], p->FirstSymbol, _lidx);
+		return SIDL_STATUS_OK;
+	}
+	if (d == SymbolTimingInfo_Type_Any) {
+		HTON_8(&_buffer[*_lidx], p->Any, _lidx);
+		return SIDL_STATUS_OK;
+	}
+
+	return SIDL_STATUS_ERROR;
+}
+
+static int _serVngEncSymbolTimingInfo_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SymbolTimingInfo_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp = (size_t)p->d;
+		HTON_32(&_buffer[*_lidx], _tmp, _lidx);
+	}
+	_serVngEncSymbolTimingInfo_Type_Value(_buffer, _size, _lidx, &p->v, p->d);
+
+	return SIDL_STATUS_OK;
+}
+
 static int _serVngEncSubFrameTiming_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SubFrameTiming_Type* p)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -385,6 +418,7 @@ static int _serVngEncSubFrameTiming_Type(unsigned char* _buffer, size_t _size, s
 	_serVngEncSubFrameInfo_Type(_buffer, _size, _lidx, &p->Subframe);
 	_serVngEncHyperSystemFrameNumberInfo_Type(_buffer, _size, _lidx, &p->HSFN);
 	_serVngEncSlotTimingInfo_Type(_buffer, _size, _lidx, &p->Slot);
+	_serVngEncSymbolTimingInfo_Type(_buffer, _size, _lidx, &p->Symbol);
 
 	return SIDL_STATUS_OK;
 }
@@ -916,6 +950,40 @@ static int _serVngDecSlotTimingInfo_Type(const unsigned char* _buffer, size_t _s
 	return SIDL_STATUS_OK;
 }
 
+static int _serVngDecSymbolTimingInfo_Type_Value(const unsigned char* _buffer, size_t _size, size_t* _lidx, union SymbolTimingInfo_Type_Value* p, enum SymbolTimingInfo_Type_Sel d)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	if (d == SymbolTimingInfo_Type_SymbolOffset) {
+		NTOH_8(p->SymbolOffset, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
+	}
+	if (d == SymbolTimingInfo_Type_FirstSymbol) {
+		NTOH_8(p->FirstSymbol, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
+	}
+	if (d == SymbolTimingInfo_Type_Any) {
+		NTOH_8(p->Any, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
+	}
+
+	return SIDL_STATUS_ERROR;
+}
+
+static int _serVngDecSymbolTimingInfo_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SymbolTimingInfo_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp;
+		NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
+		p->d = (enum SymbolTimingInfo_Type_Sel)_tmp;
+	}
+	_serVngDecSymbolTimingInfo_Type_Value(_buffer, _size, _lidx, &p->v, p->d);
+
+	return SIDL_STATUS_OK;
+}
+
 static int _serVngDecSubFrameTiming_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SubFrameTiming_Type* p)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -924,6 +992,7 @@ static int _serVngDecSubFrameTiming_Type(const unsigned char* _buffer, size_t _s
 	_serVngDecSubFrameInfo_Type(_buffer, _size, _lidx, &p->Subframe);
 	_serVngDecHyperSystemFrameNumberInfo_Type(_buffer, _size, _lidx, &p->HSFN);
 	_serVngDecSlotTimingInfo_Type(_buffer, _size, _lidx, &p->Slot);
+	_serVngDecSymbolTimingInfo_Type(_buffer, _size, _lidx, &p->Symbol);
 
 	return SIDL_STATUS_OK;
 }

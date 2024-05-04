@@ -29,9 +29,9 @@ FROM ran-base:latest as gnb-base
 
 FROM ran-build:latest AS gnb-build
 
-RUN cp /oai-ran/docker/scripts/gnb_entrypoint.sh /oai-ran/docker/scripts/entrypoint.sh
 
 FROM ubuntu:focal as oai-nr-cuup
+ARG BUILD_OPTION
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Europe
 
@@ -41,19 +41,26 @@ RUN apt-get update && \
         libsctp1 \
         libconfig9 \
         openssl && \
+# if the --sanitize option was used to build, additional packages are required
+    /bin/bash -c 'if [[ "$BUILD_OPTION" = "--sanitize" ]]; then DEBIAN_FRONTEND=noninteractive apt-get install --yes \
+        libasan5 \
+        iproute2 \
+        net-tools \
+        libubsan1 \
+        liblapacke; fi' && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt/oai-gnb/bin
 COPY --from=gnb-build \
     /oai-ran/cmake_targets/ran_build/build/nr-cuup \
-    /oai-ran/docker/scripts/entrypoint.sh \
     ./
-
+COPY ./docker/scripts/gnb_entrypoint.sh ./entrypoint.sh
 COPY --from=gnb-build \
-    /oai-ran/cmake_targets/ran_build/build/librfsimulator.so \
     /oai-ran/cmake_targets/ran_build/build/libparams_libconfig.so \
     /oai-ran/cmake_targets/ran_build/build/libtelnetsrv.so \
     /usr/local/lib/
+
+RUN ldconfig && ldd /opt/oai-gnb/bin/nr-cuup
 
 # Create directory for configuration files
 WORKDIR /opt/oai-gnb/etc

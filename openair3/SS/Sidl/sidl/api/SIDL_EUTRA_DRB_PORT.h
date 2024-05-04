@@ -759,11 +759,20 @@ struct PDCP_Ctrl_UDC_FB_PDU_Type {
 	B3_Type Reserved;
 };
 
-struct PDCP_Ctrl_EHC_FB_PDU_Type {
+struct PDCP_Ctrl_EHC_FB_PDU_ShortCID_Type {
 	B1_Type D_C;
 	B3_Type PDU_Type;
 	B4_Type Reserved;
-	O1_Type EHC_FB;
+	B1_Type Reserved2;
+	B7_Type CID;
+};
+
+struct PDCP_Ctrl_EHC_FB_PDU_LongCID_Type {
+	B1_Type D_C;
+	B3_Type PDU_Type;
+	B4_Type Reserved;
+	B1_Type Reserved2;
+	B15_Type CID;
 };
 
 enum PDCP_PDU_Type_Sel {
@@ -788,7 +797,8 @@ enum PDCP_PDU_Type_Sel {
 	PDCP_PDU_Type_DataExtSN_UDC = 18,
 	PDCP_PDU_Type_Data18bitSN_UDC = 19,
 	PDCP_PDU_Type_UdcFeedback = 20,
-	PDCP_PDU_Type_EhcFeedback = 21,
+	PDCP_PDU_Type_EhcFeedback_ShortCID = 21,
+	PDCP_PDU_Type_EhcFeedback_LongCID = 22,
 };
 
 union PDCP_PDU_Type_Value {
@@ -812,7 +822,8 @@ union PDCP_PDU_Type_Value {
 	struct PDCP_DataPdu_ExtSN_UDC_Type DataExtSN_UDC;
 	struct PDCP_DataPdu_18bitSN_UDC_Type Data18bitSN_UDC;
 	struct PDCP_Ctrl_UDC_FB_PDU_Type UdcFeedback;
-	struct PDCP_Ctrl_EHC_FB_PDU_Type EhcFeedback;
+	struct PDCP_Ctrl_EHC_FB_PDU_ShortCID_Type EhcFeedback_ShortCID;
+	struct PDCP_Ctrl_EHC_FB_PDU_LongCID_Type EhcFeedback_LongCID;
 };
 
 struct PDCP_PDU_Type {

@@ -41,6 +41,7 @@
 #include <arpa/inet.h>
 
 #include "assertions.h"
+#include "conversions.h"
 #include "common/utils/system.h"
 #include "queue.h"
 #include "sctp_common.h"
@@ -97,30 +98,62 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind, int cell_index){
 	ind.Common.TimingInfo.v.SubFrame.Subframe.v.Number = pdu_ind->subframe;
 
 	ind.Common.TimingInfo.v.SubFrame.HSFN.d = SystemFrameNumberInfo_Type_Number;
-        ind.Common.TimingInfo.v.SubFrame.HSFN.v.Number = SS_context.hsfn;
+	ind.Common.TimingInfo.v.SubFrame.HSFN.v.Number = SS_context.hsfn;
 
 	ind.Common.TimingInfo.v.SubFrame.Slot.d = SlotTimingInfo_Type_Any;
-        ind.Common.TimingInfo.v.SubFrame.Slot.v.Any = true;
+	ind.Common.TimingInfo.v.SubFrame.Slot.v.Any = true;
+
+	ind.Common.TimingInfo.v.SubFrame.Symbol.d = SymbolTimingInfo_Type_Any;
+	ind.Common.TimingInfo.v.SubFrame.Symbol.v.Any = true;
 
 	ind.Common.Status.d = IndicationStatus_Type_Ok;
-        ind.Common.Status.v.Ok = true;
+	ind.Common.Status.v.Ok = true;
 
 	ind.Common.RlcBearerRouting.d = true;
         ind.Common.RlcBearerRouting.v.d = RlcBearerRouting_Type_EUTRA;
         ind.Common.RlcBearerRouting.v.v.EUTRA = SS_context.SSCell_list[cell_index].eutra_cellId;
+        LOG_A(ENB_SS_DRB, "[SS_DRB][DRB_COMMON_IND] data ind type %d \n",pdu_ind->data_type);
 
-	//Populating the PDU
-	ind.U_Plane.SubframeData.NoOfTTIs = 1;
-	ind.U_Plane.SubframeData.PduSduList.d = L2DataList_Type_PdcpSdu;
-	ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.d = 1;
-	LOG_A(ENB_SS_DRB, "[SS_DRB][DRB_COMMON_IND] PDCP SDU Count: %lu\n", ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.d);
-	for(int i = 0; i < ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.d; i++){
-                ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v = CALLOC(1,(ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.d)*(sizeof(PDCP_SDU_Type)));
-                DevAssert(ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v != NULL);
-                ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v[i].d = pdu_ind->sdu_size;
-                ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v[i].v = CALLOC(1,ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v[i].d);
-		memcpy(ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v[i].v, pdu_ind->sdu, pdu_ind->sdu_size);
-	}
+	if(pdu_ind->data_type == DRB_PdcpSdu)
+	{
+	   //Populating the PDCP SDU
+	   ind.U_Plane.SubframeData.NoOfTTIs = 1;
+	   ind.U_Plane.SubframeData.PduSduList.d = L2DataList_Type_PdcpSdu;
+	   ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.d = 1;
+	   LOG_A(ENB_SS_DRB, "[SS_DRB][DRB_COMMON_IND] PDCP SDU Count: %lu\n", ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.d);
+	   for(int i = 0; i < ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.d; i++){
+                   ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v = CALLOC(1,(ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.d)*(sizeof(PDCP_SDU_Type)));
+                   DevAssert(ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v != NULL);
+                   ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v[i].d = pdu_ind->sdu_size;
+                   ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v[i].v = CALLOC(1,ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v[i].d);
+		   memcpy(ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v[i].v, pdu_ind->sdu, pdu_ind->sdu_size);
+	   }
+        }else{
+          if(pdu_ind->data_type == DRB_MacPdu)
+	  {
+	      //Populating the MAC PDU
+              ind.U_Plane.SubframeData.NoOfTTIs = 1;
+              ind.U_Plane.SubframeData.PduSduList.d = L2DataList_Type_MacPdu;
+	      /* Only single indication expected in a PDU.To do if multiple indications*/
+              ind.U_Plane.SubframeData.PduSduList.v.MacPdu.d = 1;
+              ind.U_Plane.SubframeData.PduSduList.v.MacPdu.v = CALLOC(1,(ind.U_Plane.SubframeData.PduSduList.v.MacPdu.d)*(sizeof(MAC_PDUList_Type)));
+	      /* Only single indication expected in a PDU.To do if multiple indications*/
+              ind.U_Plane.SubframeData.PduSduList.v.MacPdu.v->Header.d = 1;
+              ind.U_Plane.SubframeData.PduSduList.v.MacPdu.v->Header.v = CALLOC(1,(ind.U_Plane.SubframeData.PduSduList.v.MacPdu.v->Header.d)*(sizeof(MAC_Header_Type)));
+
+              LOG_A(ENB_SS_DRB_ACP, "[SS_DRB][DRB_COMMON_IND] MAC PDU Received\n");
+              uint8_t lcid = pdu_ind->drb_id + 2;
+              /*Convert integer value to bit-octet(A bit packed as Byte)*/
+              UINT8_TO_BIT_OCTET(ind.U_Plane.SubframeData.PduSduList.v.MacPdu.v->Header.v[0].LCID, lcid, LCID_BIT_OCTET_SIZE);
+              ind.U_Plane.SubframeData.PduSduList.v.MacPdu.v->SduList.d = true;
+              /* Only single indication expected in a PDU.To do if multiple indications*/
+              ind.U_Plane.SubframeData.PduSduList.v.MacPdu.v->SduList.v.d = 1;
+              ind.U_Plane.SubframeData.PduSduList.v.MacPdu.v->SduList.v.v = CALLOC(1,(ind.U_Plane.SubframeData.PduSduList.v.MacPdu.v->SduList.v.d)*(sizeof(MAC_SDUList_Type)));
+              ind.U_Plane.SubframeData.PduSduList.v.MacPdu.v->SduList.v.v->d = pdu_ind->sdu_size;
+              ind.U_Plane.SubframeData.PduSduList.v.MacPdu.v->SduList.v.v->v = CALLOC(1,pdu_ind->sdu_size);
+              memcpy(ind.U_Plane.SubframeData.PduSduList.v.MacPdu.v->SduList.v.v->v, pdu_ind->sdu,pdu_ind->sdu_size);
+          }
+        }
 
 	//Encode Message
 	if (acpDrbProcessToSSEncSrv(ctx_drb_g, buffer, &msgSize, &ind) != 0)
@@ -157,11 +190,32 @@ static void ss_task_handle_drb_pdu_req(struct DRB_COMMON_REQ *req,int cell_index
 
     for(int i = 0; i < req->U_Plane.SubframeDataList.d; i++){
       if(req->U_Plane.SubframeDataList.v[i].PduSduList.d == L2DataList_Type_PdcpSdu){
-        LOG_A(ENB_SS_DRB_ACP, "PDCP SDU Received in DRB_COMMON_REQ");
+        LOG_A(ENB_SS_DRB_ACP, "PDCP SDU Received in DRB_COMMON_REQ \n");
         for(int j = 0; j < req->U_Plane.SubframeDataList.v[i].PduSduList.v.PdcpSdu.d; j++){
           SS_DRB_PDU_REQ(message_p).sdu_size = req->U_Plane.SubframeDataList.v[i].PduSduList.v.PdcpSdu.v[j].d;
+          SS_DRB_PDU_REQ(message_p).data_type = DRB_PdcpSdu;
           LOG_A(ENB_SS_DRB_ACP, "Length of PDCP SDU received in DRB_COMMON_REQ: %lu\n",  req->U_Plane.SubframeDataList.v[i].PduSduList.v.PdcpSdu.v[j].d);
           memcpy(SS_DRB_PDU_REQ(message_p).sdu, req->U_Plane.SubframeDataList.v[i].PduSduList.v.PdcpSdu.v[j].v, req->U_Plane.SubframeDataList.v[i].PduSduList.v.PdcpSdu.v[j].d);
+        }
+      }else{
+        if(req->U_Plane.SubframeDataList.v[i].PduSduList.d == L2DataList_Type_MacPdu){
+          SS_DRB_PDU_REQ(message_p).data_type = DRB_MacPdu;
+          /*Length is omitted in header of many MAC PDU. Altrnatively get from SDU size */
+          SS_DRB_PDU_REQ(message_p).sdu_size = req->U_Plane.SubframeDataList.v[i].PduSduList.v.MacPdu.v->SduList.v.v->d;
+          LOG_A(ENB_SS_DRB_ACP, "MAC PDU Received in DRB_COMMON_REQ size: %lu \n",SS_DRB_PDU_REQ(message_p).sdu_size);
+          for(int8_t k = 0; k < req->U_Plane.SubframeDataList.v[i].PduSduList.v.MacPdu.v->Header.d; k++){
+            uint8_t lcid = 0;
+	    /*Convert bit-octet(A bit packed as Byte) to integer value*/
+            BIT_OCTET_TO_UINT8(lcid, req->U_Plane.SubframeDataList.v[i].PduSduList.v.MacPdu.v->Header.v[k].LCID, LCID_BIT_OCTET_SIZE);
+            LOG_A(ENB_SS_DRB_ACP, "MAC PDU received in lcid: %lu \n", lcid);
+            /* Ignore padding bytes & its LCID --- would be taken care by eNB MAC during DLSCH Header generation*/
+            if(PADDING_BYTE_LCID == lcid){
+              continue;
+            }else{
+              SS_DRB_PDU_REQ(message_p).drb_id = lcid;
+              memcpy(SS_DRB_PDU_REQ(message_p).sdu, req->U_Plane.SubframeDataList.v[i].PduSduList.v.MacPdu.v->SduList.v.v->v, SS_DRB_PDU_REQ(message_p).sdu_size);
+	    }
+          }	
         }
       }
     }
@@ -179,7 +233,7 @@ static void
 ss_eNB_read_from_drb_socket(acpCtx_t ctx){
 
 	size_t msgSize = size; //2
-        int cell_index = 0;
+	int cell_index = 0;
 
 	LOG_A(ENB_SS_DRB_ACP, "Entry in fxn:%s\n", __FUNCTION__);
 	while (1)
@@ -223,7 +277,7 @@ ss_eNB_read_from_drb_socket(acpCtx_t ctx){
 		else if (MSG_DrbProcessFromSS_userId == userId)
 		{
 			struct DRB_COMMON_REQ *req = NULL;
-			LOG_A(ENB_SS_DRB_ACP, "[SS_DRB] DRB_COMMON_REQ Received \n");
+			LOG_A(ENB_SS_DRB_ACP, "[SS_DRB] DRB_COMMON_REQ Received msgSize: %d\n", msgSize);
 
 			if (acpDrbProcessFromSSDecSrv(ctx, buffer, msgSize, &req) != 0)
 			{
@@ -287,7 +341,7 @@ void *ss_eNB_drb_process_itti_msg(void *notUsed)
 				}
 				else
 	            {
-					LOG_A(ENB_SS_DRB, "[SS_DRB] Received SS_DRB_PDU_IND from RRC PDCP\n");
+					LOG_A(ENB_SS_DRB, "[SS_DRB] Received SS_DRB_PDU_IND from L2/L3\n");
 					if (SS_context.SSCell_list[cell_index].State >= SS_STATE_CELL_ACTIVE)
 	                {
 						instance_g = ITTI_MSG_DESTINATION_INSTANCE(received_msg);
@@ -336,7 +390,7 @@ void ss_eNB_drb_init(void)
     {NULL, 0}};
 
   // Arena size to decode received message
-  const size_t aSize = 32 * 1024;
+  const size_t aSize = 128 * 1024;
 
   // Start listening server and get ACP context,
   // after the connection is performed, we can use all services

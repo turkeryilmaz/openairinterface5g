@@ -377,6 +377,39 @@ static int _serSysSrbEncSlotTimingInfo_Type(unsigned char* _buffer, size_t _size
 	return SIDL_STATUS_OK;
 }
 
+static int _serSysSrbEncSymbolTimingInfo_Type_Value(unsigned char* _buffer, size_t _size, size_t* _lidx, const union SymbolTimingInfo_Type_Value* p, enum SymbolTimingInfo_Type_Sel d)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	if (d == SymbolTimingInfo_Type_SymbolOffset) {
+		HTON_8(&_buffer[*_lidx], p->SymbolOffset, _lidx);
+		return SIDL_STATUS_OK;
+	}
+	if (d == SymbolTimingInfo_Type_FirstSymbol) {
+		HTON_8(&_buffer[*_lidx], p->FirstSymbol, _lidx);
+		return SIDL_STATUS_OK;
+	}
+	if (d == SymbolTimingInfo_Type_Any) {
+		HTON_8(&_buffer[*_lidx], p->Any, _lidx);
+		return SIDL_STATUS_OK;
+	}
+
+	return SIDL_STATUS_ERROR;
+}
+
+static int _serSysSrbEncSymbolTimingInfo_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SymbolTimingInfo_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp = (size_t)p->d;
+		HTON_32(&_buffer[*_lidx], _tmp, _lidx);
+	}
+	_serSysSrbEncSymbolTimingInfo_Type_Value(_buffer, _size, _lidx, &p->v, p->d);
+
+	return SIDL_STATUS_OK;
+}
+
 static int _serSysSrbEncSubFrameTiming_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SubFrameTiming_Type* p)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -385,6 +418,7 @@ static int _serSysSrbEncSubFrameTiming_Type(unsigned char* _buffer, size_t _size
 	_serSysSrbEncSubFrameInfo_Type(_buffer, _size, _lidx, &p->Subframe);
 	_serSysSrbEncHyperSystemFrameNumberInfo_Type(_buffer, _size, _lidx, &p->HSFN);
 	_serSysSrbEncSlotTimingInfo_Type(_buffer, _size, _lidx, &p->Slot);
+	_serSysSrbEncSymbolTimingInfo_Type(_buffer, _size, _lidx, &p->Symbol);
 
 	return SIDL_STATUS_OK;
 }
@@ -905,6 +939,40 @@ static int _serSysSrbDecSlotTimingInfo_Type(const unsigned char* _buffer, size_t
 	return SIDL_STATUS_OK;
 }
 
+static int _serSysSrbDecSymbolTimingInfo_Type_Value(const unsigned char* _buffer, size_t _size, size_t* _lidx, union SymbolTimingInfo_Type_Value* p, enum SymbolTimingInfo_Type_Sel d)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	if (d == SymbolTimingInfo_Type_SymbolOffset) {
+		NTOH_8(p->SymbolOffset, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
+	}
+	if (d == SymbolTimingInfo_Type_FirstSymbol) {
+		NTOH_8(p->FirstSymbol, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
+	}
+	if (d == SymbolTimingInfo_Type_Any) {
+		NTOH_8(p->Any, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
+	}
+
+	return SIDL_STATUS_ERROR;
+}
+
+static int _serSysSrbDecSymbolTimingInfo_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SymbolTimingInfo_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp;
+		NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
+		p->d = (enum SymbolTimingInfo_Type_Sel)_tmp;
+	}
+	_serSysSrbDecSymbolTimingInfo_Type_Value(_buffer, _size, _lidx, &p->v, p->d);
+
+	return SIDL_STATUS_OK;
+}
+
 static int _serSysSrbDecSubFrameTiming_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SubFrameTiming_Type* p)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -913,6 +981,7 @@ static int _serSysSrbDecSubFrameTiming_Type(const unsigned char* _buffer, size_t
 	_serSysSrbDecSubFrameInfo_Type(_buffer, _size, _lidx, &p->Subframe);
 	_serSysSrbDecHyperSystemFrameNumberInfo_Type(_buffer, _size, _lidx, &p->HSFN);
 	_serSysSrbDecSlotTimingInfo_Type(_buffer, _size, _lidx, &p->Slot);
+	_serSysSrbDecSymbolTimingInfo_Type(_buffer, _size, _lidx, &p->Symbol);
 
 	return SIDL_STATUS_OK;
 }

@@ -26,20 +26,27 @@
 #include "ss_messages_types.h"
 #include "hashtable.h"
 
-typedef struct SSConfigContext_s {
+typedef struct SS_Cell_Context_s {
   int State;	
   uint16_t dl_earfcn;
   uint16_t ul_earfcn;
-  uint32_t dl_freq;
-  uint32_t ul_freq;
-  uint16_t curr_attn;
   uint16_t cellId;
   int16_t maxRefPower;
   //TO DO: Need to remove one of the following cellId
-  EUTRA_CellId_Type ttcn_cell_id;
-  uint16_t eutra_cellId;
   uint16_t nr_cellId;
+  uint16_t PhysicalCellId;
   uint16_t ss_rnti_g;
+  bool cell_configured_flag;
+  long absoluteFrequencyPointA;
+  /** TODO: To add more */
+} SS_Cell_Context_t;
+
+typedef struct SSConfigContext_s {
+  /** List of Cells */
+  SS_Cell_Context_t SSCell_list[8];
+ 
+ 
+ 
   uint8_t vtp_enabled;
   ss_set_timinfo_t vtinfo;
   hash_table_t *vt_timer_table   ; // key is SFN_SLOT

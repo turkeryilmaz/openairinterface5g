@@ -46,12 +46,15 @@
 #include "pdcp.h"
 #include "pdcp_primitives.h"
 
-#include "UTIL/OSA/osa_defs.h"
-
 #include "LTE_UERadioAccessCapabilityInformation.h"
+#include "uper_encoder.h"
 
 #include "openair3/ocp-gtpu/gtp_itf.h"
 #include <openair3/ocp-gtpu/gtp_itf.h>
+
+#include "openair3/SECU/secu_defs.h"
+#include "openair3/SECU/key_nas_deriver.h"
+
 #include "RRC/LTE/rrc_eNB_GTPV1U.h"
 
 #include "TLVDecoder.h"
@@ -332,13 +335,10 @@ get_next_ue_initial_id(
   return ue_initial_id[mod_id];
 }
 
-
-
-
-/*! \fn uint8_t get_UE_index_from_s1ap_ids(uint8_t mod_id, uint16_t ue_initial_id, uint32_t eNB_ue_s1ap_id)
+/*! \fn rrc_eNB_get_ue_context_from_s1ap_ids
  *\brief retrieve UE index in the eNB from the UE initial ID if not equal to UE_INDEX_INVALID or
  *\brief from the eNB_ue_s1ap_id previously transmitted by S1AP.
- *\param mod_id Instance ID of eNB.
+ *\param instanceP Instance ID of eNB.
  *\param ue_initial_id The UE initial ID sent to S1AP.
  *\param eNB_ue_s1ap_id The value sent by S1AP.
  *\return the UE index or UE_INDEX_INVALID if not found.
@@ -485,9 +485,9 @@ rrc_pdcp_config_security(
 //------------------------------------------------------------------------------
 {
   LTE_SRB_ToAddModList_t             *SRB_configList = ue_context_pP->ue_context.SRB_configList;
-  uint8_t                            *kRRCenc = NULL;
-  uint8_t                            *kRRCint = NULL;
-  uint8_t                            *kUPenc = NULL;
+  uint8_t kRRCenc[32] = {0};
+  uint8_t kRRCint[32] = {0};
+  uint8_t kUPenc[32] = {0};
   pdcp_t                             *pdcp_p   = NULL;
   static int                          print_keys= 1;
   hashtable_rc_t                      h_rc;
@@ -495,19 +495,13 @@ rrc_pdcp_config_security(
 
   /* Derive the keys from kenb */
   if (SRB_configList != NULL) {
-    derive_key_up_enc(ue_context_pP->ue_context.ciphering_algorithm,
-                      ue_context_pP->ue_context.kenb,
-                      &kUPenc);
+    derive_key_nas(UP_ENC_ALG, ue_context_pP->ue_context.ciphering_algorithm, ue_context_pP->ue_context.kenb, kUPenc);
   }
 
-  derive_key_rrc_enc(ue_context_pP->ue_context.ciphering_algorithm,
-                     ue_context_pP->ue_context.kenb,
-                     &kRRCenc);
-  derive_key_rrc_int(ue_context_pP->ue_context.integrity_algorithm,
-                     ue_context_pP->ue_context.kenb,
-                     &kRRCint);
- if (!IS_SOFTMODEM_IQPLAYER) {
-  SET_LOG_DUMP(DEBUG_SECURITY) ;
+  derive_key_nas(RRC_ENC_ALG, ue_context_pP->ue_context.ciphering_algorithm, ue_context_pP->ue_context.kenb, kRRCenc);
+  derive_key_nas(RRC_INT_ALG, ue_context_pP->ue_context.integrity_algorithm, ue_context_pP->ue_context.kenb, kRRCint);
+  if (!IS_SOFTMODEM_IQPLAYER) {
+    SET_LOG_DUMP(DEBUG_SECURITY);
  }
 
 
@@ -953,6 +947,7 @@ int rrc_eNB_process_S1AP_INITIAL_CONTEXT_SETUP_REQ(MessageDef *msg_p, const char
       &ctxt,
       ue_context_p,
       S1AP_INITIAL_CONTEXT_SETUP_REQ(msg_p).security_key);
+
     {
       uint8_t send_security_mode_command = true;
       rrc_pdcp_config_security(

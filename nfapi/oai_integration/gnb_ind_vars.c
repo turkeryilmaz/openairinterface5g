@@ -20,9 +20,15 @@
  */
 
 #include "gnb_ind_vars.h"
+#ifndef MAX_NUM_CCs
+#define MAX_GNB_IND_QUEUE 1
+#else
+#define MAX_GNB_IND_QUEUE  MAX_NUM_CCs
+#endif
+queue_t gnb_rach_ind_queue[MAX_GNB_IND_QUEUE];
 
-queue_t gnb_rach_ind_queue;
-queue_t gnb_rx_ind_queue;
-queue_t gnb_crc_ind_queue;
-queue_t gnb_uci_ind_queue;
+
+queue_t gnb_rx_ind_queue[MAX_GNB_IND_QUEUE];
+queue_t gnb_crc_ind_queue[MAX_GNB_IND_QUEUE];
+queue_t gnb_uci_ind_queue[MAX_GNB_IND_QUEUE];
 queue_t gnb_slot_ind_queue;

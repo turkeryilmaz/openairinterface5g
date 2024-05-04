@@ -39,6 +39,8 @@
 #define SS_NRUPD_TIM_INFO(mSGpTR)              (mSGpTR)->ittiMsg.ss_nrupd_timinfo
 #define SS_CELL_ATTN_LIST_IND(mSGpTR)          (mSGpTR)->ittiMsg.ss_cell_attn_list_ind
 #define SS_CELL_ATTN_LIST_CNF(mSGpTR)          (mSGpTR)->ittiMsg.ss_cell_attn_list_cnf
+#define LCID_BIT_OCTET_SIZE                    5
+#define PADDING_BYTE_LCID                      31
 
 /** PDCP Count */
 #define SS_REQ_PDCP_CNT(mSGpTR)                (mSGpTR)->ittiMsg.ss_req_pdcp_cnt
@@ -189,6 +191,7 @@ typedef struct ss_l1macind_ctrl_s {
   L1MacIndCtrl RachPreamble_Ctrl;
   L1MacIndCtrl UL_HARQ_Ctrl;
   L1MacIndCtrl HarqError_Ctrl;
+  L1MacIndCtrl SchedReq_Ctrl;
   pdcchOrder_t pdcchOrder;
 } ss_l1macind_ctrl_t;
 
@@ -225,6 +228,7 @@ typedef struct ss_nrrrc_pdu_ind_s {
   uint16_t  rnti;
   frame_t     frame;         /*!< \brief  NR frame number.*/
   sub_frame_t subframe;      /*!< \brief  NR sub frame number.*/
+  int       physCellId;
 } ss_nrrrc_pdu_ind_t;
 
 /** VNG */

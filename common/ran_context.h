@@ -39,6 +39,8 @@
 #include "radio/SS/ss_config.h"
 #include "RRC/NR/nr_rrc_defs.h"
 
+#include "OCTET_STRING.h"
+
 // Used for loopback message routing in DRB-specific TC's
 typedef enum {
   DRB_MacPdu = 0,
@@ -64,9 +66,11 @@ struct RU_t_s;
 
 typedef struct RBConfig_s {
         bool isRBConfigValid;
+        bool isMacTestModeValid;
         LTE_PDCP_Config_t PdcpCfg;
         LTE_RLC_Config_t  RlcCfg;
         long LogicalChannelId;
+        long MacTestModeLogicalChannelId;
         LTE_LogicalChannelConfig_t Mac;
         bool DiscardULData;
 }RBConfig;
@@ -103,6 +107,8 @@ typedef struct {
   int *nb_mac_CC;
   /// Number of component carriers per instance in this node
   int *nb_nr_mac_CC;
+  /// MAC test PDU container received from TTCN (By-passing RLC/PDCP)
+  ss_DRB_MacTestPdu_t macTestPdu_Buffer;
   /// Number of L1 instances in this node
   int nb_L1_inst;
   /// Number of NB_IoT L1 instances in this node
@@ -149,6 +155,8 @@ typedef struct {
   nr_drb_data_t nr_drb_data_type;
   RBConfig RB_Config[MAX_NUM_CCs][MAX_RBS];
   NRRBConfig NR_RB_Config[MAX_NUM_CCs][MAX_NR_RBS];
+  /// CellGroupConfig given by SS/TTCN
+  OCTET_STRING_t *cellGroupConfig;
 } RAN_CONTEXT_t;
 
 extern RAN_CONTEXT_t RC;

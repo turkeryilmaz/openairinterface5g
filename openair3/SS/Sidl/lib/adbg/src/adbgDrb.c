@@ -313,6 +313,28 @@ static void _adbgDrb__SlotTimingInfo_Type(acpCtx_t _ctx, const struct SlotTiming
 	_adbgDrb__SlotTimingInfo_Type_Value(_ctx, &p->v, p->d);
 }
 
+static void _adbgDrb__SymbolTimingInfo_Type_Value(acpCtx_t _ctx, const union SymbolTimingInfo_Type_Value* p, enum SymbolTimingInfo_Type_Sel d)
+{
+	if (d == SymbolTimingInfo_Type_SymbolOffset) {
+		adbgPrintLog(_ctx, "SymbolOffset := %u", (unsigned int)p->SymbolOffset);
+		return;
+	}
+	if (d == SymbolTimingInfo_Type_FirstSymbol) {
+		adbgPrintLog(_ctx, "FirstSymbol := %s", (p->FirstSymbol ? "true" : "false"));
+		return;
+	}
+	if (d == SymbolTimingInfo_Type_Any) {
+		adbgPrintLog(_ctx, "Any := %s", (p->Any ? "true" : "false"));
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgDrb__SymbolTimingInfo_Type(acpCtx_t _ctx, const struct SymbolTimingInfo_Type* p)
+{
+	_adbgDrb__SymbolTimingInfo_Type_Value(_ctx, &p->v, p->d);
+}
+
 static void _adbgDrb__SubFrameTiming_Type(acpCtx_t _ctx, const struct SubFrameTiming_Type* p)
 {
 	adbgPrintLog(_ctx, "SFN := { ");
@@ -329,6 +351,10 @@ static void _adbgDrb__SubFrameTiming_Type(acpCtx_t _ctx, const struct SubFrameTi
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "Slot := { ");
 	_adbgDrb__SlotTimingInfo_Type(_ctx, &p->Slot);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "Symbol := { ");
+	_adbgDrb__SymbolTimingInfo_Type(_ctx, &p->Symbol);
 	adbgPrintLog(_ctx, " }");
 }
 
@@ -2331,7 +2357,7 @@ static void _adbgDrb__PDCP_Ctrl_UDC_FB_PDU_Type(acpCtx_t _ctx, const struct PDCP
 	adbgPrintLog(_ctx, "'O");
 }
 
-static void _adbgDrb__PDCP_Ctrl_EHC_FB_PDU_Type(acpCtx_t _ctx, const struct PDCP_Ctrl_EHC_FB_PDU_Type* p)
+static void _adbgDrb__PDCP_Ctrl_EHC_FB_PDU_ShortCID_Type(acpCtx_t _ctx, const struct PDCP_Ctrl_EHC_FB_PDU_ShortCID_Type* p)
 {
 	adbgPrintLog(_ctx, "D_C := '");
 	for (size_t i3 = 0; i3 < 1; i3++) {
@@ -2351,9 +2377,48 @@ static void _adbgDrb__PDCP_Ctrl_EHC_FB_PDU_Type(acpCtx_t _ctx, const struct PDCP
 	}
 	adbgPrintLog(_ctx, "'O");
 	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "EHC_FB := '");
+	adbgPrintLog(_ctx, "Reserved2 := '");
 	for (size_t i3 = 0; i3 < 1; i3++) {
-		adbgPrintLog(_ctx, "%02X", p->EHC_FB[i3]);
+		adbgPrintLog(_ctx, "%02X", p->Reserved2[i3]);
+	}
+	adbgPrintLog(_ctx, "'O");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "CID := '");
+	for (size_t i3 = 0; i3 < 7; i3++) {
+		adbgPrintLog(_ctx, "%02X", p->CID[i3]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static void _adbgDrb__PDCP_Ctrl_EHC_FB_PDU_LongCID_Type(acpCtx_t _ctx, const struct PDCP_Ctrl_EHC_FB_PDU_LongCID_Type* p)
+{
+	adbgPrintLog(_ctx, "D_C := '");
+	for (size_t i3 = 0; i3 < 1; i3++) {
+		adbgPrintLog(_ctx, "%02X", p->D_C[i3]);
+	}
+	adbgPrintLog(_ctx, "'O");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "PDU_Type := '");
+	for (size_t i3 = 0; i3 < 3; i3++) {
+		adbgPrintLog(_ctx, "%02X", p->PDU_Type[i3]);
+	}
+	adbgPrintLog(_ctx, "'O");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "Reserved := '");
+	for (size_t i3 = 0; i3 < 4; i3++) {
+		adbgPrintLog(_ctx, "%02X", p->Reserved[i3]);
+	}
+	adbgPrintLog(_ctx, "'O");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "Reserved2 := '");
+	for (size_t i3 = 0; i3 < 1; i3++) {
+		adbgPrintLog(_ctx, "%02X", p->Reserved2[i3]);
+	}
+	adbgPrintLog(_ctx, "'O");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "CID := '");
+	for (size_t i3 = 0; i3 < 15; i3++) {
+		adbgPrintLog(_ctx, "%02X", p->CID[i3]);
 	}
 	adbgPrintLog(_ctx, "'O");
 }
@@ -2480,9 +2545,15 @@ static void _adbgDrb__PDCP_PDU_Type_Value(acpCtx_t _ctx, const union PDCP_PDU_Ty
 		adbgPrintLog(_ctx, " }");
 		return;
 	}
-	if (d == PDCP_PDU_Type_EhcFeedback) {
-		adbgPrintLog(_ctx, "EhcFeedback := { ");
-		_adbgDrb__PDCP_Ctrl_EHC_FB_PDU_Type(_ctx, &p->EhcFeedback);
+	if (d == PDCP_PDU_Type_EhcFeedback_ShortCID) {
+		adbgPrintLog(_ctx, "EhcFeedback_ShortCID := { ");
+		_adbgDrb__PDCP_Ctrl_EHC_FB_PDU_ShortCID_Type(_ctx, &p->EhcFeedback_ShortCID);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == PDCP_PDU_Type_EhcFeedback_LongCID) {
+		adbgPrintLog(_ctx, "EhcFeedback_LongCID := { ");
+		_adbgDrb__PDCP_Ctrl_EHC_FB_PDU_LongCID_Type(_ctx, &p->EhcFeedback_LongCID);
 		adbgPrintLog(_ctx, " }");
 		return;
 	}

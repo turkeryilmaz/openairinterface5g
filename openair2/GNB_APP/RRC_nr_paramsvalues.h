@@ -109,8 +109,22 @@
 #define GNB_CONFIG_STRING_NROFUPLINKSYMBOLS2                             "nrofUplinkSymbols2"
 #define GNB_CONFIG_STRING_SSPBCHBLOCKPOWER                               "ssPBCH_BlockPower"
 
+/*--------------------------------------------------------------------------------------------------------------------*/
+/*                                            pdcch_ConfigSIB1 parameters                                             */// bugz128620 this part was removed. to remove it again
+/*--------------------------------------------------------------------------------------------------------------------*/
+#define CONTROL_RESOURCE_SET_ZERO                   "controlResourceSetZero"
+#define SEARCH_SPACE_ZERO                           "searchSpaceZero"
 
 #define CARRIERBANDWIDTH_OKVALUES {11,18,24,25,31,32,38,51,52,65,66,78,79,93,106,107,121,132,133,135,160,162,189,216,217,245,264,270,273}
+
+#define PDCCH_CONFIGSIB1PARAMS_DESC(pdcch_ConfigSIB1) {                                                                                       \
+{CONTROL_RESOURCE_SET_ZERO,        NULL,     0,         i64ptr:&pdcch_ConfigSIB1->controlResourceSetZero,      defintval:0,     TYPE_INT64,        0},   \
+{SEARCH_SPACE_ZERO,                NULL,     0,         i64ptr:&pdcch_ConfigSIB1->searchSpaceZero,      defintval:0,     TYPE_INT64,        0}    \
+}
+
+#define CONTROL_RESOURCE_SET_ZERO_IDX                   0
+#define SEARCH_SPACE_ZERO_IDX                           1
+/*--------------------------------------------------------------------------------------------------------------------*/
 
 /* Serving Cell Config Dedicated */
 #define GNB_CONFIG_STRING_SERVINGCELLCONFIGDEDICATED                     "servingCellConfigDedicated"
@@ -174,7 +188,7 @@
 
 #define SCCPARAMS_DESC(scc) { \
 {GNB_CONFIG_STRING_PHYSCELLID,NULL,0,.i64ptr=scc->physCellId,.defint64val=0,TYPE_INT64,0/*0*/}, \
-{GNB_CONFIG_STRING_NTIMINGADVANCEOFFSET,NULL,0,.i64ptr=scc->n_TimingAdvanceOffset,.defint64val=NR_ServingCellConfigCommon__n_TimingAdvanceOffset_n0,TYPE_INT64,0/*1*/},\
+{GNB_CONFIG_STRING_NTIMINGADVANCEOFFSET,NULL,0,.i64ptr=scc->n_TimingAdvanceOffset,.defint64val=-1,TYPE_INT64,0/*1*/},\
 {GNB_CONFIG_STRING_SSBPERIODICITYSERVINGCELL,NULL,0,.i64ptr=scc->ssb_periodicityServingCell,.defint64val=NR_ServingCellConfigCommon__ssb_periodicityServingCell_ms20,TYPE_INT64,0/*2*/},\
 {GNB_CONFIG_STRING_DMRSTYPEAPOSITION,NULL,0,.i64ptr=&scc->dmrs_TypeA_Position,.defint64val=NR_ServingCellConfigCommon__dmrs_TypeA_Position_pos2,TYPE_INT64,0/*3*/},\
 {GNB_CONFIG_STRING_SUBCARRIERSPACING,NULL,0,.i64ptr=scc->ssbSubcarrierSpacing,.defint64val=NR_SubcarrierSpacing_kHz30,TYPE_INT64,0/*4*/},\

@@ -42,6 +42,8 @@
 #define NR_MAX_HARQ_PROCESSES 16
 #define NR_NB_REG_PER_CCE 6
 #define NR_NB_SC_PER_RB 12
+#define NR_MAX_NUM_LCID 32
+#define NR_MAX_NUM_QFI 64
 
 typedef enum {
   nr_FR1 = 0,
@@ -59,10 +61,27 @@ typedef struct nr_bandentry_s {
   uint8_t deltaf_raster;
 } nr_bandentry_t;
 
+typedef struct {
+  int band;
+  int scs_index;
+  int first_gscn;
+  int step_gscn;
+  int last_gscn;
+} sync_raster_t;
+
 typedef enum frequency_range_e {
   FR1 = 0,
   FR2
 } frequency_range_t;
+
+typedef struct {
+  /// Time shift in number of samples estimated based on DMRS-PDSCH/PUSCH
+  int est_delay;
+  /// Max position in OFDM symbol related to time shift estimation based on DMRS-PDSCH/PUSCH
+  int delay_max_pos;
+  /// Max value related to time shift estimation based on DMRS-PDSCH/PUSCH
+  int delay_max_val;
+} delay_t;
 
 extern const nr_bandentry_t nr_bandtable[];
 
@@ -71,6 +90,8 @@ static inline int get_num_dmrs(uint16_t dmrs_mask ) {
   for (int i=0;i<16;i++) num_dmrs+=((dmrs_mask>>i)&1);
   return(num_dmrs);
 }
+
+uint64_t reverse_bits(uint64_t in, int n_bits);
 
 int get_first_ul_slot(int nrofDownlinkSlots, int nrofDownlinkSymbols, int nrofUplinkSymbols);
 int cce_to_reg_interleaving(const int R, int k, int n_shift, const int C, int L, const int N_regs);
@@ -106,6 +127,14 @@ uint32_t get_ssb_offset_to_pointA(uint32_t absoluteFrequencySSB,
                                   int ssbSubcarrierSpacing,
                                   int frequency_range);
 int get_ssb_subcarrier_offset(uint32_t absoluteFrequencySSB, uint32_t absoluteFrequencyPointA);
+int get_delay_idx(int delay, int max_delay_comp);
+
+void freq2time(uint16_t ofdm_symbol_size,
+               int16_t *freq_signal,
+               int16_t *time_signal);
+
+void nr_est_delay(int ofdm_symbol_size, const c16_t *ls_est, c16_t *ch_estimates_time, delay_t *delay);
+
 #define CEILIDIV(a,b) ((a+b-1)/b)
 #define ROUNDIDIV(a,b) (((a<<1)+b)/(b<<1))
 

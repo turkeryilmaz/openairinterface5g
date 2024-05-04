@@ -19,7 +19,7 @@
  *      contact@openairinterface.org
  */
 
-/*! \file l2_interface.c
+/*! \file L2_interface.c
  * \brief layer 2 interface, used to support different RRC sublayer
  * \author Raymond Knopp and Navid Nikaein
  * \date 2010-2014
@@ -28,14 +28,13 @@
  * \email: raymond.knopp@eurecom.fr
  */
 
-/*! \file l2_interface.c
+/*! \file L2_interface.c
  * \brief layer 2 interface, added support for FeMBMS RRC sublayer
  * \author Javier Morgade
  * \date 2020
  * \version 1.0
  * \email: javier.morgade@ieee.org
  */
-
 
 #include "platform_types.h"
 #include "rrc_defs.h"
@@ -44,6 +43,7 @@
 #include "rrc_eNB_UE_context.h"
 #include "pdcp.h"
 #include "common/ran_context.h"
+#include "uper_encoder.h"
 
 #include "intertask_interface.h"
 
@@ -335,6 +335,24 @@ mac_rrc_data_req(
 
 
 //------------------------------------------------------------------------------
+void
+rrc_mac_data_req(
+  const rnti_t         rnti,
+  const uint8_t        lc_id,
+  const sdu_size_t     sdu_buffer_size,
+  unsigned char *const sdu_buffer_p
+)
+//------------------------------------------------------------------------------
+{
+      LOG_D(RRC,"Received data request for RNTI: %d, LCID: %d, Size: %d \n", rnti, lc_id, sdu_buffer_size);
+      RC.macTestPdu_Buffer.rnti = rnti;
+      RC.macTestPdu_Buffer.lc_id = lc_id;
+      RC.macTestPdu_Buffer.sdu_buffer_size = sdu_buffer_size;
+      RC.macTestPdu_Buffer.sdu_buffer_p = sdu_buffer_p;
+      RC.macTestPdu_Buffer.isTestMacPduValid = true;
+}
+
+//------------------------------------------------------------------------------
 int8_t
 mac_rrc_data_ind(
   const module_id_t     module_idP,
@@ -435,6 +453,50 @@ mac_eNB_get_rrc_status(
     return RRC_INACTIVE;
   }
 }
+
+
+//------------------------------------------------------------------------------
+/*
+* Get UE rach mode whether CFRA, otherwise CBRA of UE from RNTI
+*/
+bool
+mac_eNB_get_rach_mode(
+  const module_id_t Mod_idP,
+  const rnti_t      rntiP
+)
+//------------------------------------------------------------------------------
+{
+  struct rrc_eNB_ue_context_s *ue_context_p = NULL;
+  ue_context_p = rrc_eNB_get_ue_context(RC.rrc[Mod_idP], rntiP);
+
+  if (ue_context_p != NULL) {
+    return (ue_context_p->ue_context.isRachModeCFRA);
+  } else {
+    return false;
+  }
+}
+
+
+//------------------------------------------------------------------------------
+/*
+* Set UE rach mode whether CFRA with RNTI
+*/
+void
+mac_eNB_set_rach_mode(
+  const module_id_t Mod_idP,
+  const rnti_t      rntiP,
+  const bool  isRachModeCFRA
+)
+//------------------------------------------------------------------------------
+{
+  struct rrc_eNB_ue_context_s *ue_context_p = NULL;
+  ue_context_p = rrc_eNB_get_ue_context(RC.rrc[Mod_idP], rntiP);
+
+  if (ue_context_p != NULL) {
+    ue_context_p->ue_context.isRachModeCFRA = isRachModeCFRA;
+  }
+}
+
 
 void mac_eNB_rrc_ul_failure(const module_id_t Mod_instP,
                             const int CC_idP,

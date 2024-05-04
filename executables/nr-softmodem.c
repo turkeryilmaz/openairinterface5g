@@ -40,7 +40,7 @@
 //#undef FRAME_LENGTH_COMPLEX_SAMPLES //there are two conflicting definitions, so we better make sure we don't use it at all
 
 #include "radio/COMMON/common_lib.h"
-#include "radio/ETHERNET/USERSPACE/LIB/if_defs.h"
+#include "radio/ETHERNET/if_defs.h"
 
 //#undef FRAME_LENGTH_COMPLEX_SAMPLES //there are two conflicting definitions, so we better make sure we don't use it at all
 
@@ -80,7 +80,6 @@ unsigned short config_frames[4] = {2,9,11,13};
 #include "nfapi/oai_integration/vendor_ext.h"
 #include "gnb_config.h"
 #include "openair2/E1AP/e1ap_common.h"
-#include "openair2/E1AP/e1ap_api.h"
 #include "ss_gNB_sys_task.h"
 #include "ss_gNB_port_man_task.h"
 #include "ss_gNB_srb_task.h"
@@ -88,6 +87,12 @@ unsigned short config_frames[4] = {2,9,11,13};
 #include "ss_gNB_drb_task.h"
 #include "ss_gNB_vtp_task.h"
 #include "ss_gNB_vt_timer_task.h"
+
+#ifdef E2_AGENT
+#include "openair2/E2AP/flexric/src/agent/e2_agent_api.h"
+#include "openair2/E2AP/RAN_FUNCTION/init_ran_func.h"
+#endif
+
 
 pthread_cond_t nfapi_sync_cond;
 pthread_mutex_t nfapi_sync_mutex;
@@ -139,15 +144,9 @@ static int tx_max_power[MAX_NUM_CCs]; /* =  {0,0}*/;
 
 int chain_offset=0;
 
-
 uint8_t dci_Format = 0;
-uint8_t agregation_Level =0xFF;
-
 uint8_t nb_antenna_tx = 1;
 uint8_t nb_antenna_rx = 1;
-
-char ref[128] = "internal";
-char channels[128] = "0";
 
 int rx_input_level_dBm;
 
@@ -187,6 +186,11 @@ double cpuf;
 pthread_cond_t cell_config_done_cond;
 pthread_mutex_t cell_config_done_mutex;
 int cell_config_done=-1;
+
+pthread_cond_t cell_config_5G_done_cond;
+pthread_mutex_t cell_config_5G_done_mutex;
+extern int cell_config_5G_done;
+static  void wait_cell_config_5G(char *thread_name);
 
 /* hack: pdcp_run() is required by 4G scheduler which is compiled into
  * nr-softmodem because of linker issues */
@@ -301,9 +305,8 @@ void exit_function(const char *file, const char *function, const int line, const
   }
 }
 
-
-
-static int create_gNB_tasks(void) {
+static int create_gNB_tasks(ngran_node_t node_type, configmodule_interface_t *cfg)
+{
   uint32_t                        gnb_nb = RC.nb_nr_inst; 
   uint32_t                        gnb_id_start = 0;
   uint32_t                        gnb_id_end = gnb_id_start + gnb_nb;
@@ -311,10 +314,13 @@ static int create_gNB_tasks(void) {
   itti_wait_ready(1);
   LOG_I(PHY, "%s() Task ready initialize structures\n", __FUNCTION__);
 
+  RCconfig_verify(cfg, node_type);
+  RCconfig_nr_ssparam();  
   RCconfig_NR_L1();
   RCconfig_nr_prs();
 
-  if (RC.nb_nr_macrlc_inst>0) RCconfig_nr_macrlc();
+  if (RC.nb_nr_macrlc_inst > 0)
+    RCconfig_nr_macrlc(cfg);
 
   LOG_I(PHY, "%s() RC.nb_nr_L1_inst:%d\n", __FUNCTION__, RC.nb_nr_L1_inst);
 
@@ -326,13 +332,23 @@ static int create_gNB_tasks(void) {
 
   LOG_I(GNB_APP,"Allocating gNB_RRC_INST for %d instances\n",RC.nb_nr_inst);
 
-  RC.nrrrc = (gNB_RRC_INST **)malloc(RC.nb_nr_inst*sizeof(gNB_RRC_INST *));
-  LOG_I(PHY, "%s() RC.nb_nr_inst:%d RC.nrrrc:%p\n", __FUNCTION__, RC.nb_nr_inst, RC.nrrrc);
-  ngran_node_t node_type = get_node_type();
-  for (int gnb_id = gnb_id_start; (gnb_id < gnb_id_end) ; gnb_id++) {
-    RC.nrrrc[gnb_id] = (gNB_RRC_INST*)calloc(1,sizeof(gNB_RRC_INST));
-    LOG_I(PHY, "%s() Creating RRC instance RC.nrrrc[%d]:%p (%d of %d)\n", __FUNCTION__, gnb_id, RC.nrrrc[gnb_id], gnb_id+1, gnb_id_end);
-    configure_nr_rrc(gnb_id);
+  if (RC.nb_nr_inst > 0) {
+    AssertFatal(RC.nb_nr_inst == 1, "multiple RRC instances are not supported\n");
+    RC.nrrrc = calloc(1, sizeof(*RC.nrrrc));
+    RC.nrrrc[0] = calloc(1,sizeof(gNB_RRC_INST));
+    RCconfig_NRRRC(RC.nrrrc[0]);
+
+    sync_inited_params_for_ss();
+  
+    //if (RC.ss.mode == SS_SOFTMODEM)  //W38 note: this is useless, ss.mode has not been initialized yet. same issue before W38. //TODO: if neccessary, need to implement new sync with ttcn cell config
+    {
+      /** wait for signal */
+      //wait_cell_config_5G("TASK_SYS_GNB");
+      //LOG_I(GNB_APP, "fxn:%s: Received Cell Config 5G SA\n", __FUNCTION__);
+      // msg_p = itti_alloc_new_message (TASK_GNB_APP, 0, NRRRC_CONFIGURATION_REQ);
+      // LOG_I(GNB_APP,"Sending configuration message to NR_RRC task\n");
+      // itti_send_msg_to_task (TASK_RRC_GNB, GNB_MODULE_ID_TO_INSTANCE(gnb_id), msg_p);
+    }
   }
 
   if (RC.nb_nr_inst > 0 &&
@@ -381,8 +397,8 @@ static int create_gNB_tasks(void) {
     paramdef_t NETParams[]  =  GNBNETPARAMS_DESC;
     char aprefix[MAX_OPTNAME_SIZE*2 + 8];
     sprintf(aprefix,"%s.[%i].%s",GNB_CONFIG_STRING_GNB_LIST,0,GNB_CONFIG_STRING_NETWORK_INTERFACES_CONFIG);
-    config_get( NETParams,sizeof(NETParams)/sizeof(paramdef_t),aprefix);
-    
+    config_get(cfg, NETParams, sizeofArray(NETParams), aprefix);
+
     for(int i = GNB_INTERFACE_NAME_FOR_NG_AMF_IDX; i <= GNB_IPV4_ADDRESS_FOR_NG_AMF_IDX; i++) {
       if( NETParams[i].strptr == NULL) {
         LOG_E(NGAP, "No AMF configuration in the file.\n");
@@ -401,7 +417,7 @@ static int create_gNB_tasks(void) {
   }
 
   if (gnb_nb > 0) {
-    RCconfig_nr_ssparam();
+//    RCconfig_nr_ssparam();  
     if (itti_create_task (TASK_GNB_APP, gNB_app_task, NULL) < 0) {
       LOG_E(GNB_APP, "Create task for gNB APP failed\n");
       return -1;
@@ -411,6 +427,11 @@ static int create_gNB_tasks(void) {
       if(itti_create_task(TASK_SS_PORTMAN_GNB, ss_gNB_port_man_task, NULL) < 0)
       {
         LOG_E(GNB_APP, "Create task for SS Port manager GNB failed\n");
+        return -1;
+      }
+      if(itti_create_task(TASK_SS_PORTMAN_ACP, ss_gNB_port_man_acp_task, NULL) < 0)
+      {
+        LOG_E(GNB_APP, "Create task for SS Port manager ACP failed\n");
         return -1;
       }
       /* This sleep is for gNB_app_task to load the RRC configuration */
@@ -431,13 +452,28 @@ static int create_gNB_tasks(void) {
         return -1;
       }
 
+      if(itti_create_task(TASK_SS_SRB_ACP, ss_gNB_srb_acp_task, NULL) < 0) {
+        LOG_E(SCTP, "Create task for SS SRB ACP failed\n");
+        return -1;
+      }
+
       if(itti_create_task(TASK_SS_DRB, ss_gNB_drb_task, NULL) < 0) {
         LOG_E(SCTP, "Create task for SS DRB failed\n");
         return -1;
       }
 
+      if(itti_create_task(TASK_SS_DRB_ACP, ss_gNB_drb_acp_task, NULL) < 0) {
+        LOG_E(SCTP, "Create task for SS DRB ACP failed\n");
+        return -1;
+      }
+
       if(itti_create_task(TASK_VTP, ss_gNB_vtp_task, NULL) < 0) {
         LOG_E(SCTP, "Create task for TASK_VTP failed\n");
+        return -1;
+      }
+
+      if(itti_create_task(TASK_VTP_ACP, ss_gNB_vtp_acp_task, NULL) < 0) {
+        LOG_E(SCTP, "Create task for TASK VTP ACP failed\n");
         return -1;
       }
 
@@ -447,22 +483,27 @@ static int create_gNB_tasks(void) {
       }
     }
 
-    LOG_I(NR_RRC, "Creating NR RRC gNB Task, that will also create TASKS\n");
-    if (itti_create_task (TASK_RRC_GNB, rrc_gnb_task, NULL) < 0) {
-      LOG_E(NR_RRC, "Create task for NR RRC gNB failed\n");
-      return -1;
+    if (!NODE_IS_DU(node_type)) {
+      if (itti_create_task (TASK_RRC_GNB, rrc_gnb_task, NULL) < 0) {
+        LOG_E(NR_RRC, "Create task for NR RRC gNB failed\n");
+        return -1;
+      }
     }
 
     // If CU
     if (node_type == ngran_gNB_CU || node_type == ngran_gNB) {
-      MessageDef *msg = RCconfig_NR_CU_E1(false);
+      MessageDef *msg = RCconfig_NR_CU_E1(NULL);
       instance_t inst = 0;
-      createE1inst(UPtype, inst, &E1AP_SETUP_REQ(msg));
+      createE1inst(UPtype, inst, E1AP_REGISTER_REQ(msg).gnb_id, &E1AP_REGISTER_REQ(msg).net_config, NULL);
       cuup_init_n3(inst);
-      itti_free(TASK_UNKNOWN, msg);
-      getCxtE1(inst)->same_process = true;
-      ;
       RC.nrrrc[gnb_id_start]->e1_inst = inst; // stupid instance !!!*/
+
+      /* send E1 Setup Request to RRC */
+      MessageDef *new_msg = itti_alloc_new_message(TASK_GNB_APP, 0, E1AP_SETUP_REQ);
+      E1AP_SETUP_REQ(new_msg) = E1AP_REGISTER_REQ(msg).setup_req;
+      new_msg->ittiMsgHeader.originInstance = -1; /* meaning, it is local */
+      itti_send_msg_to_task(TASK_RRC_GNB, 0 /*unused by callee*/, new_msg);
+      itti_free(TASK_UNKNOWN, msg);
     }
 
     //Use check on x2ap to consider the NSA scenario 
@@ -477,12 +518,12 @@ static int create_gNB_tasks(void) {
   return 0;
 }
 
-
-static void get_options(void) {
+static void get_options(configmodule_interface_t *cfg)
+{
   paramdef_t cmdline_params[] = CMDLINE_PARAMS_DESC_GNB ;
   CONFIG_SETRTFLAG(CONFIG_NOEXITONHELP);
-  get_common_options(SOFTMODEM_GNB_BIT );
-  config_process_cmdline( cmdline_params,sizeof(cmdline_params)/sizeof(paramdef_t),NULL);
+  get_common_options(cfg, SOFTMODEM_GNB_BIT);
+  config_process_cmdline(cfg, cmdline_params, sizeofArray(cmdline_params), NULL);
   CONFIG_CLEARRTFLAG(CONFIG_NOEXITONHELP);
 
   if ( !(CONFIG_ISFLAGSET(CONFIG_ABORT)) ) {
@@ -498,7 +539,6 @@ static void get_options(void) {
 
   if(worker_config != NULL) set_worker_conf(worker_config);
 }
-
 
 void set_default_frame_parms(nfapi_nr_config_request_scf_t *config[MAX_NUM_CCs],
                              NR_DL_FRAME_PARMS *frame_parms[MAX_NUM_CCs]) {
@@ -616,17 +656,65 @@ void init_pdcp(void) {
     LINK_ENB_PDCP_TO_GTPV1U_BIT;
   
   if (!NODE_IS_DU(get_node_type())) {
-    nr_pdcp_layer_init();
+    nr_pdcp_layer_init(get_node_type() == ngran_gNB_CUCP);
     nr_pdcp_module_init(pdcp_initmask, 0);
   }
 }
 
+#ifdef E2_AGENT
+#include "openair2/LAYER2/NR_MAC_gNB/nr_mac_gNB.h" // need to get info from MAC
+static void initialize_agent(ngran_node_t node_type, e2_agent_args_t oai_args)
+{
+  AssertFatal(oai_args.sm_dir != NULL , "Please, specify the directory where the SMs are located in the config file, i.e., add in config file the next line: e2_agent = {near_ric_ip_addr = \"127.0.0.1\"; sm_dir = \"/usr/local/lib/flexric/\");} ");
+  AssertFatal(oai_args.ip != NULL , "Please, specify the IP address of the nearRT-RIC in the config file, i.e., e2_agent = {near_ric_ip_addr = \"127.0.0.1\"; sm_dir = \"/usr/local/lib/flexric/\"");
+
+  printf("After RCconfig_NR_E2agent %s %s \n",oai_args.sm_dir, oai_args.ip  );
+
+  fr_args_t args = { .ip = oai_args.ip }; // init_fr_args(0, NULL);
+  memcpy(args.libs_dir, oai_args.sm_dir, 128);
+
+  sleep(1);
+  const gNB_RRC_INST* rrc = RC.nrrrc[0];
+  assert(rrc != NULL && "rrc cannot be NULL");
+
+  const int mcc = rrc->configuration.mcc[0];
+  const int mnc = rrc->configuration.mnc[0];
+  const int mnc_digit_len = rrc->configuration.mnc_digit_length[0];
+  // const ngran_node_t node_type = rrc->node_type;
+  int nb_id = 0;
+  int cu_du_id = 0;
+  if (node_type == ngran_gNB) {
+    nb_id = rrc->node_id;
+  } else if (node_type == ngran_gNB_DU) {
+    const gNB_MAC_INST* mac = RC.nrmac[0];
+    AssertFatal(mac != NULL, "MAC not initialized\n");
+    cu_du_id = mac->f1_config.gnb_id;
+    nb_id = mac->f1_config.setup_req->gNB_DU_id;
+  } else if (node_type == ngran_gNB_CU) {
+    // agent buggy: the CU has no second ID, it is the CU-UP ID
+    // however, that is not a problem her for us, so put the same ID twice
+    nb_id = rrc->node_id;
+    cu_du_id = rrc->node_id;
+  } else {
+    LOG_E(NR_RRC, "not supported ran type detect\n");
+  }
+
+  printf("[E2 NODE]: mcc = %d mnc = %d mnc_digit = %d nb_id = %d \n", mcc, mnc, mnc_digit_len, nb_id);
+
+  printf("[E2 NODE]: Args %s %s \n", args.ip, args.libs_dir);
+
+  sm_io_ag_ran_t io = init_ran_func_ag();
+  init_agent_api(mcc, mnc, mnc_digit_len, nb_id, cu_du_id, node_type, io, &args);
+}
+#endif
+
+configmodule_interface_t *uniqCfg = NULL;
 int main( int argc, char **argv ) {
   int ru_id, CC_id = 0;
   start_background_system();
 
   ///static configuration for NR at the moment
-  if ( load_configmodule(argc,argv,CONFIG_ENABLECMDLINEONLY) == NULL) {
+  if ((uniqCfg = load_configmodule(argc, argv, CONFIG_ENABLECMDLINEONLY)) == NULL) {
     exit_fun("[SOFTMODEM] Error, configuration module init failed\n");
   }
 
@@ -641,7 +729,7 @@ int main( int argc, char **argv ) {
   logInit();
   set_latency_target();
   printf("Reading in command-line options\n");
-  get_options ();
+  get_options(uniqCfg);
 
   EPC_MODE_ENABLED = !IS_SOFTMODEM_NOS1;
 
@@ -688,8 +776,9 @@ int main( int argc, char **argv ) {
     RCconfig_NR_L1();
 
   // don't create if node doesn't connect to RRC/S1/GTP
+  const ngran_node_t node_type = get_node_type();
   if (NFAPI_MODE != NFAPI_MODE_PNF) {
-    int ret = create_gNB_tasks();
+    int ret = create_gNB_tasks(node_type, uniqCfg);
     AssertFatal(ret == 0, "cannot create ITTI tasks\n");
   }
 
@@ -723,7 +812,7 @@ int main( int argc, char **argv ) {
   int sl_ahead=6;
   if (RC.nb_RU >0) {
     printf("Initializing RU threads\n");
-    init_NR_RU(get_softmodem_params()->rf_config_file);
+    init_NR_RU(uniqCfg, get_softmodem_params()->rf_config_file);
 
     for (ru_id=0; ru_id<RC.nb_RU; ru_id++) {
       RC.ru[ru_id]->rf_map.card=0;
@@ -736,9 +825,33 @@ int main( int argc, char **argv ) {
 
   config_sync_var=0;
 
+
+#ifdef E2_AGENT
+
+//////////////////////////////////
+//////////////////////////////////
+//// Init the E2 Agent
+
+  // OAI Wrapper 
+  e2_agent_args_t oai_args = RCconfig_NR_E2agent();
+
+  if (oai_args.enabled) {
+    initialize_agent(node_type, oai_args);
+  }
+
+#endif // E2_AGENT
+
+
   if (NFAPI_MODE==NFAPI_MODE_PNF) {
     wait_nfapi_init("main?");
   }
+
+  // wait for F1 Setup Response before starting L1 for real
+  if (NODE_IS_DU(node_type) || NODE_IS_MONOLITHIC(node_type))
+    wait_f1_setup_response();
+
+  if (RC.nb_RU > 0)
+    start_NR_RU();
 
   if (RC.nb_nr_L1_inst > 0) {
     printf("wait RUs\n");
@@ -825,4 +938,16 @@ int main( int argc, char **argv ) {
   logClean();
   printf("Bye.\n");
   return 0;
+}
+
+static  void wait_cell_config_5G(char *thread_name) {
+             
+  LOG_A(GNB_APP, "waiting for [SYS 5G] CELL CONFIG Indication (%s)\n",thread_name);
+  pthread_mutex_lock( &cell_config_5G_done_mutex );
+      
+  while ( cell_config_5G_done < 0 )
+    pthread_cond_wait( &cell_config_5G_done_cond, &cell_config_5G_done_mutex );
+  
+  pthread_mutex_unlock(&cell_config_5G_done_mutex );
+  LOG_A( GNB_APP,"[SYS 5G]: got cell config (%s)\n", thread_name);
 }

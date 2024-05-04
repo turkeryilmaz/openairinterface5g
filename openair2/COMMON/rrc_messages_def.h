@@ -63,7 +63,7 @@ MESSAGE_DEF(RRC_AS_SECURITY_CONFIG_CNF, MESSAGE_PRIORITY_MED,       RrcAsSecurit
 MESSAGE_DEF(NBIOTRRC_CONFIGURATION_REQ, MESSAGE_PRIORITY_MED,       NbIoTRrcConfigurationReq,   nbiotrrc_configuration_req)
 
 // gNB: gNB_APP -> RRC messages
-MESSAGE_DEF(NRRRC_CONFIGURATION_REQ,    MESSAGE_PRIORITY_MED,       gNB_RrcConfigurationReq,    nrrrc_configuration_req)
+MESSAGE_DEF(NRRRC_CONFIGURATION_REQ,    MESSAGE_PRIORITY_MED,       NRRrcConfigurationReqList,    nrrrc_configuration_req) //W3 8 TO DO: remove or keep
 MESSAGE_DEF(NRRRC_RBLIST_CFG_REQ,    MESSAGE_PRIORITY_MED,  NRRrcRblistCfgReq,    nrrrc_rblist_cfg_req)
 
 // UE: NAS -> RRC messages
@@ -86,8 +86,10 @@ MESSAGE_DEF(NAS_CONN_RELEASE_IND,       MESSAGE_PRIORITY_MED,       NasConnRelea
 MESSAGE_DEF(NAS_UPLINK_DATA_CNF,        MESSAGE_PRIORITY_MED,       NasUlDataCnf,               nas_ul_data_cnf)
 MESSAGE_DEF(NAS_DOWNLINK_DATA_IND,      MESSAGE_PRIORITY_MED,       NasDlDataInd,               nas_dl_data_ind)
 
-// eNB: realtime -> RRC messages
+// xNB: realtime -> RRC messages
 MESSAGE_DEF(RRC_SUBFRAME_PROCESS,       MESSAGE_PRIORITY_MED,       RrcSubframeProcess,         rrc_subframe_process)
+MESSAGE_DEF(NRRRC_FRAME_PROCESS,        MESSAGE_PRIORITY_MED,       NRRrcFrameProcess,          nr_rrc_frame_process)
 
 // eNB: RLC -> RRC messages
 MESSAGE_DEF(RLC_SDU_INDICATION,         MESSAGE_PRIORITY_MED,       RlcSduIndication,           rlc_sdu_indication)
+MESSAGE_DEF(NAS_PDU_SESSION_REQ, MESSAGE_PRIORITY_MED, nas_pdu_session_req_t, nas_pdu_session_req)

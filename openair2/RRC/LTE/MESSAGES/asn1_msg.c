@@ -104,7 +104,7 @@
 
 
 #include "common/ran_context.h"
-#include "secu_defs.h"
+#include "key_nas_deriver.h"
 
 #if !defined (msg)
   #define msg printf
@@ -580,7 +580,7 @@ int do_SIB1_MBMS(rrc_eNB_carrier_data_t *carrier,
   (*sib1_MBMS)->cellAccessRelatedInfo_r14.cellIdentity_r14.bits_unused=4;
   (*sib1_MBMS)->freqBandIndicator_r14 = configuration->eutra_band[CC_id];
 
-  schedulingInfo->si_Periodicity_r14=LTE_SchedulingInfo__si_Periodicity_rf16;
+  schedulingInfo->si_Periodicity_r14=LTE_SI_Periodicity_r12_rf16;
   *sib_type = LTE_SIB_Type_MBMS_r14_sibType13_v920;
   asn1cSeqAdd(&schedulingInfo->sib_MappingInfo_r14.list, sib_type);
   asn1cSeqAdd(&(*sib1_MBMS)->schedulingInfoList_MBMS_r14.list, schedulingInfo);
@@ -618,7 +618,7 @@ int do_SIB1_MBMS(rrc_eNB_carrier_data_t *carrier,
     memset((MBSFN_Area1)->ext1,0,sizeof(*(MBSFN_Area1)->ext1));
     MBSFN_Area1->ext1->subcarrierSpacingMBMS_r14 = CALLOC(1,sizeof(*( MBSFN_Area1->ext1)->subcarrierSpacingMBMS_r14));
     memset(MBSFN_Area1->ext1->subcarrierSpacingMBMS_r14,0,sizeof(*((MBSFN_Area1)->ext1)->subcarrierSpacingMBMS_r14));
-    *(MBSFN_Area1->ext1->subcarrierSpacingMBMS_r14) = LTE_MBSFN_AreaInfo_r9__ext1__subcarrierSpacingMBMS_r14_khz_1dot25;
+    *(MBSFN_Area1->ext1->subcarrierSpacingMBMS_r14) = LTE_MBSFN_AreaInfo_r9__ext1__subcarrierSpacingMBMS_r14_kHz1dot25;
     asn1cSeqAdd(&MBSFNArea_list->list,MBSFN_Area1);
   }
 
@@ -1055,14 +1055,15 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
     // This is for SIB2/3
     (*sib1)->schedulingInfoList.list.free=free_LTE_SchedulingInfo_t;
     asn_sequence_empty(&(*sib1)->schedulingInfoList.list);
-    schedulingInfo[0].si_Periodicity=LTE_SchedulingInfo__si_Periodicity_rf8;
+    
+    schedulingInfo[0].si_Periodicity=LTE_SI_Periodicity_r12_rf8;
     sib_type[0]=LTE_SIB_Type_sibType3;
     asn1cSeqAdd(&schedulingInfo[0].sib_MappingInfo.list,&sib_type[0]);
     asn1cSeqAdd(&(*sib1)->schedulingInfoList.list,&schedulingInfo);
   }
   if(configuration->eMBMS_M2_configured){
       AssertFatal(schedulingInfo2, "schedulingInfo2 is null \r\n");
-       schedulingInfo2->si_Periodicity=LTE_SchedulingInfo__si_Periodicity_rf8;
+       schedulingInfo2->si_Periodicity=LTE_SI_Periodicity_r12_rf8;
   }
   if(configuration->eMBMS_M2_configured){
          *sib_type2=LTE_SIB_Type_sibType13_v920;
@@ -2433,17 +2434,18 @@ uint8_t do_SIB4(uint8_t Mod_id,
     }
   }
 
-  /* Checking if intraFreqBlackCellList is present in SIB4 */
-  if (true == configuration->intraFreqBlackCellListPresent[CC_id]) {
-    (*sib4)->intraFreqBlackCellList = CALLOC(configuration->intraFreqBlackCellListCount[CC_id], sizeof(struct LTE_IntraFreqBlackCellList));
+  /* Checking if intraFreqExcludedCellList is present in SIB4 */
+  if (true == configuration->intraFreqExcludedCellListPresent[CC_id]) {
+    // TODO: should be intraFreqExcludedCellList (LTE_IntraFreqExcludedCellList) in newer ASN.1 revision
+    (*sib4)->intraFreqBlackCellList = CALLOC(configuration->intraFreqExcludedCellListCount[CC_id], sizeof(struct LTE_IntraFreqBlackCellList));
     LTE_PhysCellIdRange_t *PhysCellIdRange;
-    /* Handling multiple entities in intraFreqBlackCellList for SIB4 message */
-    for (int i = 0; i < configuration->intraFreqBlackCellListCount[CC_id]; i++) {
+    /* Handling multiple entities in intraFreqExcludedCellList for SIB4 message */
+    for (int i = 0; i < configuration->intraFreqExcludedCellListCount[CC_id]; i++) {
       PhysCellIdRange = CALLOC(1, sizeof(struct LTE_PhysCellIdRange));
-      PhysCellIdRange->start = configuration->intraFreqBlackCellList[CC_id][i].start;
-      if (true == configuration->intraFreqBlackCellList[CC_id][i].range_Present) {
+      PhysCellIdRange->start = configuration->intraFreqExcludedCellList[CC_id][i].start;
+      if (true == configuration->intraFreqExcludedCellList[CC_id][i].range_Present) {
         PhysCellIdRange->range = CALLOC(1, sizeof(long));
-        PhysCellIdRange->range = (long *)configuration->intraFreqBlackCellList[CC_id][i].range;
+        PhysCellIdRange->range = (long *)configuration->intraFreqExcludedCellList[CC_id][i].range;
       }
       asn1cSeqAdd(&(*sib4)->intraFreqBlackCellList->list, PhysCellIdRange);
     }
@@ -2546,9 +2548,10 @@ uint8_t do_SIB5(uint8_t Mod_id,
       //InterFreqCarrierInfo->interFreqNeighCellList = CALLOC(1,sizeof(struct LTE_InterFreqNeighCellList));
       ASN_SEQUENCE_ADD(&InterFreqCarrierInfo->interFreqNeighCellList->list, configuration->InterFreqCarrierFreqInfo[CC_id][i].interFreqNeighCellList);
     }
-    if(true == configuration->InterFreqCarrierFreqInfo[CC_id][i].interFreqBlackCellList_Present) {
+    if(true == configuration->InterFreqCarrierFreqInfo[CC_id][i].interFreqExcludedCellList_Present) {
+      // TODO: should be interFreqExcludedCellList (LTE_InterFreqExcludedCellList) in newer ASN.1 revision
       //InterFreqCarrierInfo->interFreqBlackCellList = CALLOC(1,sizeof(struct LTE_InterFreqBlackCellList));
-      ASN_SEQUENCE_ADD(&InterFreqCarrierInfo->interFreqBlackCellList->list, configuration->InterFreqCarrierFreqInfo[CC_id][i].interFreqBlackCellList);
+      ASN_SEQUENCE_ADD(&InterFreqCarrierInfo->interFreqBlackCellList->list, configuration->InterFreqCarrierFreqInfo[CC_id][i].interFreqExcludedCellList);
     }
     if ((true == configuration->InterFreqCarrierFreqInfo[CC_id][i].threshX_Q_r9_Present) ||
     (true == configuration->InterFreqCarrierFreqInfo[CC_id][i].q_QualMin_r9_Present)) {

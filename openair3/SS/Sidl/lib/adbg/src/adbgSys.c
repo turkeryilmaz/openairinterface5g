@@ -313,6 +313,28 @@ static void _adbgSys__SlotTimingInfo_Type(acpCtx_t _ctx, const struct SlotTiming
 	_adbgSys__SlotTimingInfo_Type_Value(_ctx, &p->v, p->d);
 }
 
+static void _adbgSys__SymbolTimingInfo_Type_Value(acpCtx_t _ctx, const union SymbolTimingInfo_Type_Value* p, enum SymbolTimingInfo_Type_Sel d)
+{
+	if (d == SymbolTimingInfo_Type_SymbolOffset) {
+		adbgPrintLog(_ctx, "SymbolOffset := %u", (unsigned int)p->SymbolOffset);
+		return;
+	}
+	if (d == SymbolTimingInfo_Type_FirstSymbol) {
+		adbgPrintLog(_ctx, "FirstSymbol := %s", (p->FirstSymbol ? "true" : "false"));
+		return;
+	}
+	if (d == SymbolTimingInfo_Type_Any) {
+		adbgPrintLog(_ctx, "Any := %s", (p->Any ? "true" : "false"));
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgSys__SymbolTimingInfo_Type(acpCtx_t _ctx, const struct SymbolTimingInfo_Type* p)
+{
+	_adbgSys__SymbolTimingInfo_Type_Value(_ctx, &p->v, p->d);
+}
+
 static void _adbgSys__SubFrameTiming_Type(acpCtx_t _ctx, const struct SubFrameTiming_Type* p)
 {
 	adbgPrintLog(_ctx, "SFN := { ");
@@ -329,6 +351,10 @@ static void _adbgSys__SubFrameTiming_Type(acpCtx_t _ctx, const struct SubFrameTi
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "Slot := { ");
 	_adbgSys__SlotTimingInfo_Type(_ctx, &p->Slot);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "Symbol := { ");
+	_adbgSys__SymbolTimingInfo_Type(_ctx, &p->Symbol);
 	adbgPrintLog(_ctx, " }");
 }
 
@@ -2870,6 +2896,32 @@ static const char* adbgSys__SQN_MasterInformationBlock_dl_Bandwidth_e__ToString(
 	}
 }
 
+static void _adbgSys__SQN_MasterInformationBlock_partEARFCN_17_Value(acpCtx_t _ctx, const union SQN_MasterInformationBlock_partEARFCN_17_Value* p, enum SQN_MasterInformationBlock_partEARFCN_17_Sel d)
+{
+	if (d == SQN_MasterInformationBlock_partEARFCN_17_spare) {
+		adbgPrintLog(_ctx, "spare := '");
+		for (size_t i1 = 0; i1 < 2; i1++) {
+			adbgPrintLog(_ctx, "%02X", p->spare[i1]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	if (d == SQN_MasterInformationBlock_partEARFCN_17_earfcn_LSB) {
+		adbgPrintLog(_ctx, "earfcn_LSB := '");
+		for (size_t i1 = 0; i1 < 2; i1++) {
+			adbgPrintLog(_ctx, "%02X", p->earfcn_LSB[i1]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgSys__SQN_MasterInformationBlock_partEARFCN_17(acpCtx_t _ctx, const struct SQN_MasterInformationBlock_partEARFCN_17* p)
+{
+	_adbgSys__SQN_MasterInformationBlock_partEARFCN_17_Value(_ctx, &p->v, p->d);
+}
+
 static void _adbgSys__SQN_MasterInformationBlock(acpCtx_t _ctx, const struct SQN_MasterInformationBlock* p)
 {
 	adbgPrintLog(_ctx, "dl_Bandwidth := %s (%d)", adbgSys__SQN_MasterInformationBlock_dl_Bandwidth_e__ToString(p->dl_Bandwidth), (int)p->dl_Bandwidth);
@@ -2888,8 +2940,12 @@ static void _adbgSys__SQN_MasterInformationBlock(acpCtx_t _ctx, const struct SQN
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "systemInfoUnchanged_BR_r15 := %s", (p->systemInfoUnchanged_BR_r15 ? "true" : "false"));
 	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "partEARFCN_17 := { ");
+	_adbgSys__SQN_MasterInformationBlock_partEARFCN_17(_ctx, &p->partEARFCN_17);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "spare := '");
-	for (size_t i1 = 0; i1 < 4; i1++) {
+	for (size_t i1 = 0; i1 < 1; i1++) {
 		adbgPrintLog(_ctx, "%02X", p->spare[i1]);
 	}
 	adbgPrintLog(_ctx, "'O");
@@ -5343,6 +5399,160 @@ static void _adbgSys__Bool_SQN_RadioResourceConfigCommonSIB_highSpeedInterRAT_NR
 	adbgPrintLog(_ctx, "%s", (p->v ? "true" : "false"));
 }
 
+static const char* adbgSys__SQN_PCCH_Config_v1700_ranPagingInIdlePO_r17_e__ToString(SQN_PCCH_Config_v1700_ranPagingInIdlePO_r17_e v)
+{
+	switch(v) {
+		case SQN_PCCH_Config_v1700_ranPagingInIdlePO_r17_e_true: return "SQN_PCCH_Config_v1700_ranPagingInIdlePO_r17_e_true";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgSys__SQN_PCCH_Config_v1700(acpCtx_t _ctx, const struct SQN_PCCH_Config_v1700* p)
+{
+	adbgPrintLog(_ctx, "ranPagingInIdlePO_r17 := %s (%d)", adbgSys__SQN_PCCH_Config_v1700_ranPagingInIdlePO_r17_e__ToString(p->ranPagingInIdlePO_r17), (int)p->ranPagingInIdlePO_r17);
+}
+
+static void _adbgSys__SQN_PCCH_Config_v1700_SQN_RadioResourceConfigCommonSIB_pcch_Config_v1700_Optional(acpCtx_t _ctx, const struct SQN_PCCH_Config_v1700_SQN_RadioResourceConfigCommonSIB_pcch_Config_v1700_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgSys__SQN_PCCH_Config_v1700(_ctx, &p->v);
+}
+
+static const char* adbgSys__SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_ta_Report_r17_e__ToString(SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_ta_Report_r17_e v)
+{
+	switch(v) {
+		case SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_ta_Report_r17_e_enabled: return "SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_ta_Report_r17_e_enabled";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgSys__SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_ta_Report_r17_e_ta_Report_r17_Optional(acpCtx_t _ctx, const struct SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_ta_Report_r17_e_ta_Report_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgSys__SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_ta_Report_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgSys__SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_t318_r17_e__ToString(SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_t318_r17_e v)
+{
+	switch(v) {
+		case SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_t318_r17_e_ms0: return "SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_t318_r17_e_ms0";
+		case SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_t318_r17_e_ms50: return "SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_t318_r17_e_ms50";
+		case SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_t318_r17_e_ms100: return "SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_t318_r17_e_ms100";
+		case SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_t318_r17_e_ms200: return "SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_t318_r17_e_ms200";
+		case SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_t318_r17_e_ms500: return "SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_t318_r17_e_ms500";
+		case SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_t318_r17_e_ms1000: return "SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_t318_r17_e_ms1000";
+		case SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_t318_r17_e_ms2000: return "SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_t318_r17_e_ms2000";
+		case SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_t318_r17_e_ms4000: return "SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_t318_r17_e_ms4000";
+		default: return "Unknown";
+	}
+}
+
+static const char* adbgSys__SQN_PRACH_TxDuration_r17_prach_TxDuration_r17_e__ToString(SQN_PRACH_TxDuration_r17_prach_TxDuration_r17_e v)
+{
+	switch(v) {
+		case SQN_PRACH_TxDuration_r17_prach_TxDuration_r17_e_n1: return "SQN_PRACH_TxDuration_r17_prach_TxDuration_r17_e_n1";
+		case SQN_PRACH_TxDuration_r17_prach_TxDuration_r17_e_n2: return "SQN_PRACH_TxDuration_r17_prach_TxDuration_r17_e_n2";
+		case SQN_PRACH_TxDuration_r17_prach_TxDuration_r17_e_n4: return "SQN_PRACH_TxDuration_r17_prach_TxDuration_r17_e_n4";
+		case SQN_PRACH_TxDuration_r17_prach_TxDuration_r17_e_n8: return "SQN_PRACH_TxDuration_r17_prach_TxDuration_r17_e_n8";
+		case SQN_PRACH_TxDuration_r17_prach_TxDuration_r17_e_n16: return "SQN_PRACH_TxDuration_r17_prach_TxDuration_r17_e_n16";
+		case SQN_PRACH_TxDuration_r17_prach_TxDuration_r17_e_n32: return "SQN_PRACH_TxDuration_r17_prach_TxDuration_r17_e_n32";
+		case SQN_PRACH_TxDuration_r17_prach_TxDuration_r17_e_n64: return "SQN_PRACH_TxDuration_r17_prach_TxDuration_r17_e_n64";
+		case SQN_PRACH_TxDuration_r17_prach_TxDuration_r17_e_n128: return "SQN_PRACH_TxDuration_r17_prach_TxDuration_r17_e_n128";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgSys__SQN_PRACH_TxDuration_r17(acpCtx_t _ctx, const struct SQN_PRACH_TxDuration_r17* p)
+{
+	adbgPrintLog(_ctx, "prach_TxDuration_r17 := %s (%d)", adbgSys__SQN_PRACH_TxDuration_r17_prach_TxDuration_r17_e__ToString(p->prach_TxDuration_r17), (int)p->prach_TxDuration_r17);
+}
+
+static void _adbgSys__SQN_PRACH_TxDuration_r17_SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_prach_TxDuration_r17_Optional(acpCtx_t _ctx, const struct SQN_PRACH_TxDuration_r17_SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_prach_TxDuration_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgSys__SQN_PRACH_TxDuration_r17(_ctx, &p->v);
+}
+
+static const char* adbgSys__SQN_PUCCH_TxDuration_r17_pucch_TxDuration_r17_e__ToString(SQN_PUCCH_TxDuration_r17_pucch_TxDuration_r17_e v)
+{
+	switch(v) {
+		case SQN_PUCCH_TxDuration_r17_pucch_TxDuration_r17_e_sf2: return "SQN_PUCCH_TxDuration_r17_pucch_TxDuration_r17_e_sf2";
+		case SQN_PUCCH_TxDuration_r17_pucch_TxDuration_r17_e_sf4: return "SQN_PUCCH_TxDuration_r17_pucch_TxDuration_r17_e_sf4";
+		case SQN_PUCCH_TxDuration_r17_pucch_TxDuration_r17_e_sf8: return "SQN_PUCCH_TxDuration_r17_pucch_TxDuration_r17_e_sf8";
+		case SQN_PUCCH_TxDuration_r17_pucch_TxDuration_r17_e_sf16: return "SQN_PUCCH_TxDuration_r17_pucch_TxDuration_r17_e_sf16";
+		case SQN_PUCCH_TxDuration_r17_pucch_TxDuration_r17_e_sf32: return "SQN_PUCCH_TxDuration_r17_pucch_TxDuration_r17_e_sf32";
+		case SQN_PUCCH_TxDuration_r17_pucch_TxDuration_r17_e_sf64: return "SQN_PUCCH_TxDuration_r17_pucch_TxDuration_r17_e_sf64";
+		case SQN_PUCCH_TxDuration_r17_pucch_TxDuration_r17_e_sf128: return "SQN_PUCCH_TxDuration_r17_pucch_TxDuration_r17_e_sf128";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgSys__SQN_PUCCH_TxDuration_r17(acpCtx_t _ctx, const struct SQN_PUCCH_TxDuration_r17* p)
+{
+	adbgPrintLog(_ctx, "pucch_TxDuration_r17 := %s (%d)", adbgSys__SQN_PUCCH_TxDuration_r17_pucch_TxDuration_r17_e__ToString(p->pucch_TxDuration_r17), (int)p->pucch_TxDuration_r17);
+}
+
+static void _adbgSys__SQN_PUCCH_TxDuration_r17_SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_pucch_TxDuration_r17_Optional(acpCtx_t _ctx, const struct SQN_PUCCH_TxDuration_r17_SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_pucch_TxDuration_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgSys__SQN_PUCCH_TxDuration_r17(_ctx, &p->v);
+}
+
+static const char* adbgSys__SQN_PUSCH_TxDuration_r17_pusch_TxDuration_r17_e__ToString(SQN_PUSCH_TxDuration_r17_pusch_TxDuration_r17_e v)
+{
+	switch(v) {
+		case SQN_PUSCH_TxDuration_r17_pusch_TxDuration_r17_e_n2: return "SQN_PUSCH_TxDuration_r17_pusch_TxDuration_r17_e_n2";
+		case SQN_PUSCH_TxDuration_r17_pusch_TxDuration_r17_e_n4: return "SQN_PUSCH_TxDuration_r17_pusch_TxDuration_r17_e_n4";
+		case SQN_PUSCH_TxDuration_r17_pusch_TxDuration_r17_e_n8: return "SQN_PUSCH_TxDuration_r17_pusch_TxDuration_r17_e_n8";
+		case SQN_PUSCH_TxDuration_r17_pusch_TxDuration_r17_e_n16: return "SQN_PUSCH_TxDuration_r17_pusch_TxDuration_r17_e_n16";
+		case SQN_PUSCH_TxDuration_r17_pusch_TxDuration_r17_e_n32: return "SQN_PUSCH_TxDuration_r17_pusch_TxDuration_r17_e_n32";
+		case SQN_PUSCH_TxDuration_r17_pusch_TxDuration_r17_e_n64: return "SQN_PUSCH_TxDuration_r17_pusch_TxDuration_r17_e_n64";
+		case SQN_PUSCH_TxDuration_r17_pusch_TxDuration_r17_e_n128: return "SQN_PUSCH_TxDuration_r17_pusch_TxDuration_r17_e_n128";
+		case SQN_PUSCH_TxDuration_r17_pusch_TxDuration_r17_e_n256: return "SQN_PUSCH_TxDuration_r17_pusch_TxDuration_r17_e_n256";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgSys__SQN_PUSCH_TxDuration_r17(acpCtx_t _ctx, const struct SQN_PUSCH_TxDuration_r17* p)
+{
+	adbgPrintLog(_ctx, "pusch_TxDuration_r17 := %s (%d)", adbgSys__SQN_PUSCH_TxDuration_r17_pusch_TxDuration_r17_e__ToString(p->pusch_TxDuration_r17), (int)p->pusch_TxDuration_r17);
+}
+
+static void _adbgSys__SQN_PUSCH_TxDuration_r17_SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_pusch_TxDuration_r17_Optional(acpCtx_t _ctx, const struct SQN_PUSCH_TxDuration_r17_SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_pusch_TxDuration_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgSys__SQN_PUSCH_TxDuration_r17(_ctx, &p->v);
+}
+
+static void _adbgSys__SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17(acpCtx_t _ctx, const struct SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17* p)
+{
+	adbgPrintLog(_ctx, "ta_Report_r17 := ");
+	_adbgSys__SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_ta_Report_r17_e_ta_Report_r17_Optional(_ctx, &p->ta_Report_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "t318_r17 := %s (%d)", adbgSys__SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_t318_r17_e__ToString(p->t318_r17), (int)p->t318_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "prach_TxDuration_r17 := ");
+	if (p->prach_TxDuration_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgSys__SQN_PRACH_TxDuration_r17_SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_prach_TxDuration_r17_Optional(_ctx, &p->prach_TxDuration_r17);
+	if (p->prach_TxDuration_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pucch_TxDuration_r17 := ");
+	if (p->pucch_TxDuration_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgSys__SQN_PUCCH_TxDuration_r17_SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_pucch_TxDuration_r17_Optional(_ctx, &p->pucch_TxDuration_r17);
+	if (p->pucch_TxDuration_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pusch_TxDuration_r17 := ");
+	if (p->pusch_TxDuration_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgSys__SQN_PUSCH_TxDuration_r17_SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_pusch_TxDuration_r17_Optional(_ctx, &p->pusch_TxDuration_r17);
+	if (p->pusch_TxDuration_r17.d) { adbgPrintLog(_ctx, " }"); };
+}
+
+static void _adbgSys__SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_ntn_ConfigCommon_r17_Optional(acpCtx_t _ctx, const struct SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_ntn_ConfigCommon_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgSys__SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17(_ctx, &p->v);
+}
+
 static void _adbgSys__SQN_RadioResourceConfigCommonSIB(acpCtx_t _ctx, const struct SQN_RadioResourceConfigCommonSIB* p)
 {
 	adbgPrintLog(_ctx, "rach_ConfigCommon := { ");
@@ -5514,6 +5724,16 @@ static void _adbgSys__SQN_RadioResourceConfigCommonSIB(acpCtx_t _ctx, const stru
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "highSpeedInterRAT_NR_r16 := ");
 	_adbgSys__Bool_SQN_RadioResourceConfigCommonSIB_highSpeedInterRAT_NR_r16_Optional(_ctx, &p->highSpeedInterRAT_NR_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pcch_Config_v1700 := ");
+	if (p->pcch_Config_v1700.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgSys__SQN_PCCH_Config_v1700_SQN_RadioResourceConfigCommonSIB_pcch_Config_v1700_Optional(_ctx, &p->pcch_Config_v1700);
+	if (p->pcch_Config_v1700.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "ntn_ConfigCommon_r17 := ");
+	if (p->ntn_ConfigCommon_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgSys__SQN_RadioResourceConfigCommonSIB_ntn_ConfigCommon_r17_ntn_ConfigCommon_r17_Optional(_ctx, &p->ntn_ConfigCommon_r17);
+	if (p->ntn_ConfigCommon_r17.d) { adbgPrintLog(_ctx, " }"); };
 }
 
 static const char* adbgSys__SQN_UE_TimersAndConstants_t300_e__ToString(SQN_UE_TimersAndConstants_t300_e v)
@@ -7224,6 +7444,12 @@ static void _adbgSys__SQN_CellReselectionServingFreqInfo_v1610_SQN_SystemInforma
 	_adbgSys__SQN_CellReselectionServingFreqInfo_v1610(_ctx, &p->v);
 }
 
+static void _adbgSys__SQN_TimeOffsetUTC_r17_SQN_SystemInformationBlockType3_t_Service_r17_Optional(acpCtx_t _ctx, const struct SQN_TimeOffsetUTC_r17_SQN_SystemInformationBlockType3_t_Service_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
 static void _adbgSys__SQN_SystemInformationBlockType3(acpCtx_t _ctx, const struct SQN_SystemInformationBlockType3* p)
 {
 	adbgPrintLog(_ctx, "cellReselectionInfoCommon := { ");
@@ -7315,6 +7541,9 @@ static void _adbgSys__SQN_SystemInformationBlockType3(acpCtx_t _ctx, const struc
 	if (p->cellReselectionServingFreqInfo_v1610.d) { adbgPrintLog(_ctx, "{ "); };
 	_adbgSys__SQN_CellReselectionServingFreqInfo_v1610_SQN_SystemInformationBlockType3_cellReselectionServingFreqInfo_v1610_Optional(_ctx, &p->cellReselectionServingFreqInfo_v1610);
 	if (p->cellReselectionServingFreqInfo_v1610.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "t_Service_r17 := ");
+	_adbgSys__SQN_TimeOffsetUTC_r17_SQN_SystemInformationBlockType3_t_Service_r17_Optional(_ctx, &p->t_Service_r17);
 }
 
 static const char* adbgSys__SQN_Q_OffsetRange_e__ToString(SQN_Q_OffsetRange_e v)
@@ -7408,7 +7637,7 @@ static void _adbgSys__SQN_PhysCellIdRange(acpCtx_t _ctx, const struct SQN_PhysCe
 	_adbgSys__SQN_PhysCellIdRange_range_e_range_Optional(_ctx, &p->range);
 }
 
-static void _adbgSys__SQN_IntraFreqBlackCellList_SQN_SystemInformationBlockType4_intraFreqBlackCellList_Optional(acpCtx_t _ctx, const struct SQN_IntraFreqBlackCellList_SQN_SystemInformationBlockType4_intraFreqBlackCellList_Optional* p)
+static void _adbgSys__SQN_IntraFreqExcludedCellList_SQN_SystemInformationBlockType4_intraFreqExcludedCellList_Optional(acpCtx_t _ctx, const struct SQN_IntraFreqExcludedCellList_SQN_SystemInformationBlockType4_intraFreqExcludedCellList_Optional* p)
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
@@ -7510,10 +7739,10 @@ static void _adbgSys__SQN_SystemInformationBlockType4(acpCtx_t _ctx, const struc
 	_adbgSys__SQN_IntraFreqNeighCellList_SQN_SystemInformationBlockType4_intraFreqNeighCellList_Optional(_ctx, &p->intraFreqNeighCellList);
 	if (p->intraFreqNeighCellList.d) { adbgPrintLog(_ctx, " }"); };
 	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "intraFreqBlackCellList := ");
-	if (p->intraFreqBlackCellList.d) { adbgPrintLog(_ctx, "{ "); };
-	_adbgSys__SQN_IntraFreqBlackCellList_SQN_SystemInformationBlockType4_intraFreqBlackCellList_Optional(_ctx, &p->intraFreqBlackCellList);
-	if (p->intraFreqBlackCellList.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, "intraFreqExcludedCellList := ");
+	if (p->intraFreqExcludedCellList.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgSys__SQN_IntraFreqExcludedCellList_SQN_SystemInformationBlockType4_intraFreqExcludedCellList_Optional(_ctx, &p->intraFreqExcludedCellList);
+	if (p->intraFreqExcludedCellList.d) { adbgPrintLog(_ctx, " }"); };
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "csg_PhysCellIdRange := ");
 	if (p->csg_PhysCellIdRange.d) { adbgPrintLog(_ctx, "{ "); };
@@ -7581,7 +7810,7 @@ static void _adbgSys__SQN_InterFreqNeighCellList_SQN_InterFreqCarrierFreqInfo_in
 	}
 }
 
-static void _adbgSys__SQN_InterFreqBlackCellList_SQN_InterFreqCarrierFreqInfo_interFreqBlackCellList_Optional(acpCtx_t _ctx, const struct SQN_InterFreqBlackCellList_SQN_InterFreqCarrierFreqInfo_interFreqBlackCellList_Optional* p)
+static void _adbgSys__SQN_InterFreqExcludedCellList_SQN_InterFreqCarrierFreqInfo_interFreqExcludedCellList_Optional(acpCtx_t _ctx, const struct SQN_InterFreqExcludedCellList_SQN_InterFreqCarrierFreqInfo_interFreqExcludedCellList_Optional* p)
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
@@ -7656,10 +7885,10 @@ static void _adbgSys__SQN_InterFreqCarrierFreqInfo(acpCtx_t _ctx, const struct S
 	_adbgSys__SQN_InterFreqNeighCellList_SQN_InterFreqCarrierFreqInfo_interFreqNeighCellList_Optional(_ctx, &p->interFreqNeighCellList);
 	if (p->interFreqNeighCellList.d) { adbgPrintLog(_ctx, " }"); };
 	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "interFreqBlackCellList := ");
-	if (p->interFreqBlackCellList.d) { adbgPrintLog(_ctx, "{ "); };
-	_adbgSys__SQN_InterFreqBlackCellList_SQN_InterFreqCarrierFreqInfo_interFreqBlackCellList_Optional(_ctx, &p->interFreqBlackCellList);
-	if (p->interFreqBlackCellList.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, "interFreqExcludedCellList := ");
+	if (p->interFreqExcludedCellList.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgSys__SQN_InterFreqExcludedCellList_SQN_InterFreqCarrierFreqInfo_interFreqExcludedCellList_Optional(_ctx, &p->interFreqExcludedCellList);
+	if (p->interFreqExcludedCellList.d) { adbgPrintLog(_ctx, " }"); };
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "q_QualMin_r9 := ");
 	_adbgSys__SQN_Q_QualMin_r9_SQN_InterFreqCarrierFreqInfo_q_QualMin_r9_Optional(_ctx, &p->q_QualMin_r9);
@@ -7754,7 +7983,7 @@ static void _adbgSys__SQN_InterFreqNeighCellList_SQN_InterFreqCarrierFreqInfo_r1
 	}
 }
 
-static void _adbgSys__SQN_InterFreqBlackCellList_SQN_InterFreqCarrierFreqInfo_r12_interFreqBlackCellList_r12_Optional(acpCtx_t _ctx, const struct SQN_InterFreqBlackCellList_SQN_InterFreqCarrierFreqInfo_r12_interFreqBlackCellList_r12_Optional* p)
+static void _adbgSys__SQN_InterFreqExcludedCellList_SQN_InterFreqCarrierFreqInfo_r12_interFreqExcludedCellList_r12_Optional(acpCtx_t _ctx, const struct SQN_InterFreqExcludedCellList_SQN_InterFreqCarrierFreqInfo_r12_interFreqExcludedCellList_r12_Optional* p)
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
@@ -7859,10 +8088,10 @@ static void _adbgSys__SQN_InterFreqCarrierFreqInfo_r12(acpCtx_t _ctx, const stru
 	_adbgSys__SQN_InterFreqNeighCellList_SQN_InterFreqCarrierFreqInfo_r12_interFreqNeighCellList_r12_Optional(_ctx, &p->interFreqNeighCellList_r12);
 	if (p->interFreqNeighCellList_r12.d) { adbgPrintLog(_ctx, " }"); };
 	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "interFreqBlackCellList_r12 := ");
-	if (p->interFreqBlackCellList_r12.d) { adbgPrintLog(_ctx, "{ "); };
-	_adbgSys__SQN_InterFreqBlackCellList_SQN_InterFreqCarrierFreqInfo_r12_interFreqBlackCellList_r12_Optional(_ctx, &p->interFreqBlackCellList_r12);
-	if (p->interFreqBlackCellList_r12.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, "interFreqExcludedCellList_r12 := ");
+	if (p->interFreqExcludedCellList_r12.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgSys__SQN_InterFreqExcludedCellList_SQN_InterFreqCarrierFreqInfo_r12_interFreqExcludedCellList_r12_Optional(_ctx, &p->interFreqExcludedCellList_r12);
+	if (p->interFreqExcludedCellList_r12.d) { adbgPrintLog(_ctx, " }"); };
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "q_QualMin_r12 := ");
 	_adbgSys__SQN_Q_QualMin_r9_SQN_InterFreqCarrierFreqInfo_r12_q_QualMin_r12_Optional(_ctx, &p->q_QualMin_r12);
@@ -8649,6 +8878,21 @@ static void _adbgSys__SQN_BeamMeasConfigIdleNR_r16_SQN_MeasIdleCarrierNR_r16_bea
 	_adbgSys__SQN_BeamMeasConfigIdleNR_r16(_ctx, &p->v);
 }
 
+static const char* adbgSys__SQN_MeasIdleCarrierNR_r16_subcarrierSpacingSSB_r17_e__ToString(SQN_MeasIdleCarrierNR_r16_subcarrierSpacingSSB_r17_e v)
+{
+	switch(v) {
+		case SQN_MeasIdleCarrierNR_r16_subcarrierSpacingSSB_r17_e_kHz480: return "SQN_MeasIdleCarrierNR_r16_subcarrierSpacingSSB_r17_e_kHz480";
+		case SQN_MeasIdleCarrierNR_r16_subcarrierSpacingSSB_r17_e_spare1: return "SQN_MeasIdleCarrierNR_r16_subcarrierSpacingSSB_r17_e_spare1";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgSys__SQN_MeasIdleCarrierNR_r16_subcarrierSpacingSSB_r17_e_subcarrierSpacingSSB_r17_Optional(acpCtx_t _ctx, const struct SQN_MeasIdleCarrierNR_r16_subcarrierSpacingSSB_r17_e_subcarrierSpacingSSB_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgSys__SQN_MeasIdleCarrierNR_r16_subcarrierSpacingSSB_r17_e__ToString(p->v), (int)p->v);
+}
+
 static void _adbgSys__SQN_MeasIdleCarrierNR_r16(acpCtx_t _ctx, const struct SQN_MeasIdleCarrierNR_r16* p)
 {
 	adbgPrintLog(_ctx, "carrierFreqNR_r16 := %u", (unsigned int)p->carrierFreqNR_r16);
@@ -8681,6 +8925,9 @@ static void _adbgSys__SQN_MeasIdleCarrierNR_r16(acpCtx_t _ctx, const struct SQN_
 	if (p->beamMeasConfigIdle_r16.d) { adbgPrintLog(_ctx, "{ "); };
 	_adbgSys__SQN_BeamMeasConfigIdleNR_r16_SQN_MeasIdleCarrierNR_r16_beamMeasConfigIdle_r16_Optional(_ctx, &p->beamMeasConfigIdle_r16);
 	if (p->beamMeasConfigIdle_r16.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "subcarrierSpacingSSB_r17 := ");
+	_adbgSys__SQN_MeasIdleCarrierNR_r16_subcarrierSpacingSSB_r17_e_subcarrierSpacingSSB_r17_Optional(_ctx, &p->subcarrierSpacingSSB_r17);
 }
 
 static void _adbgSys__SQN_MeasIdleConfigSIB_NR_r16(acpCtx_t _ctx, const struct SQN_MeasIdleConfigSIB_NR_r16* p)
@@ -10495,7 +10742,7 @@ static const char* adbgSys__SQN_MBSFN_AreaInfo_r16_subcarrierSpacingMBMS_r16_e__
 		case SQN_MBSFN_AreaInfo_r16_subcarrierSpacingMBMS_r16_e_kHz2dot5: return "SQN_MBSFN_AreaInfo_r16_subcarrierSpacingMBMS_r16_e_kHz2dot5";
 		case SQN_MBSFN_AreaInfo_r16_subcarrierSpacingMBMS_r16_e_kHz1dot25: return "SQN_MBSFN_AreaInfo_r16_subcarrierSpacingMBMS_r16_e_kHz1dot25";
 		case SQN_MBSFN_AreaInfo_r16_subcarrierSpacingMBMS_r16_e_kHz0dot37: return "SQN_MBSFN_AreaInfo_r16_subcarrierSpacingMBMS_r16_e_kHz0dot37";
-		case SQN_MBSFN_AreaInfo_r16_subcarrierSpacingMBMS_r16_e_spare4: return "SQN_MBSFN_AreaInfo_r16_subcarrierSpacingMBMS_r16_e_spare4";
+		case SQN_MBSFN_AreaInfo_r16_subcarrierSpacingMBMS_r16_e_kHz15_v1710: return "SQN_MBSFN_AreaInfo_r16_subcarrierSpacingMBMS_r16_e_kHz15_v1710";
 		case SQN_MBSFN_AreaInfo_r16_subcarrierSpacingMBMS_r16_e_spare3: return "SQN_MBSFN_AreaInfo_r16_subcarrierSpacingMBMS_r16_e_spare3";
 		case SQN_MBSFN_AreaInfo_r16_subcarrierSpacingMBMS_r16_e_spare2: return "SQN_MBSFN_AreaInfo_r16_subcarrierSpacingMBMS_r16_e_spare2";
 		case SQN_MBSFN_AreaInfo_r16_subcarrierSpacingMBMS_r16_e_spare1: return "SQN_MBSFN_AreaInfo_r16_subcarrierSpacingMBMS_r16_e_spare1";
@@ -10543,6 +10790,35 @@ static void _adbgSys__SQN_MBSFN_AreaInfoList_r16_SQN_SystemInformationBlockType1
 	}
 }
 
+static const char* adbgSys__SQN_MBSFN_AreaInfo_r17_pmch_Bandwidth_r17_e__ToString(SQN_MBSFN_AreaInfo_r17_pmch_Bandwidth_r17_e v)
+{
+	switch(v) {
+		case SQN_MBSFN_AreaInfo_r17_pmch_Bandwidth_r17_e_n40: return "SQN_MBSFN_AreaInfo_r17_pmch_Bandwidth_r17_e_n40";
+		case SQN_MBSFN_AreaInfo_r17_pmch_Bandwidth_r17_e_n35: return "SQN_MBSFN_AreaInfo_r17_pmch_Bandwidth_r17_e_n35";
+		case SQN_MBSFN_AreaInfo_r17_pmch_Bandwidth_r17_e_n30: return "SQN_MBSFN_AreaInfo_r17_pmch_Bandwidth_r17_e_n30";
+		case SQN_MBSFN_AreaInfo_r17_pmch_Bandwidth_r17_e_spare1: return "SQN_MBSFN_AreaInfo_r17_pmch_Bandwidth_r17_e_spare1";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgSys__SQN_MBSFN_AreaInfo_r17(acpCtx_t _ctx, const struct SQN_MBSFN_AreaInfo_r17* p)
+{
+	adbgPrintLog(_ctx, "mbsfn_AreaInfo_r17 := { ");
+	_adbgSys__SQN_MBSFN_AreaInfo_r16(_ctx, &p->mbsfn_AreaInfo_r17);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "pmch_Bandwidth_r17 := %s (%d)", adbgSys__SQN_MBSFN_AreaInfo_r17_pmch_Bandwidth_r17_e__ToString(p->pmch_Bandwidth_r17), (int)p->pmch_Bandwidth_r17);
+}
+
+static void _adbgSys__SQN_MBSFN_AreaInfoList_r17_SQN_SystemInformationBlockType13_r9_mbsfn_AreaInfoList_r17_Optional(acpCtx_t _ctx, const struct SQN_MBSFN_AreaInfoList_r17_SQN_SystemInformationBlockType13_r9_mbsfn_AreaInfoList_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		_adbgSys__SQN_MBSFN_AreaInfo_r17(_ctx, &p->v.v[i2]);
+		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
 static void _adbgSys__SQN_SystemInformationBlockType13_r9(acpCtx_t _ctx, const struct SQN_SystemInformationBlockType13_r9* p)
 {
 	adbgPrintLog(_ctx, "mbsfn_AreaInfoList_r9 := { ");
@@ -10572,6 +10848,11 @@ static void _adbgSys__SQN_SystemInformationBlockType13_r9(acpCtx_t _ctx, const s
 	if (p->mbsfn_AreaInfoList_r16.d) { adbgPrintLog(_ctx, "{ "); };
 	_adbgSys__SQN_MBSFN_AreaInfoList_r16_SQN_SystemInformationBlockType13_r9_mbsfn_AreaInfoList_r16_Optional(_ctx, &p->mbsfn_AreaInfoList_r16);
 	if (p->mbsfn_AreaInfoList_r16.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "mbsfn_AreaInfoList_r17 := ");
+	if (p->mbsfn_AreaInfoList_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgSys__SQN_MBSFN_AreaInfoList_r17_SQN_SystemInformationBlockType13_r9_mbsfn_AreaInfoList_r17_Optional(_ctx, &p->mbsfn_AreaInfoList_r17);
+	if (p->mbsfn_AreaInfoList_r17.d) { adbgPrintLog(_ctx, " }"); };
 }
 
 static const char* adbgSys__SQN_EAB_Config_r11_eab_Category_r11_e__ToString(SQN_EAB_Config_r11_eab_Category_r11_e v)
@@ -14993,7 +15274,7 @@ static void _adbgSys__SQN_SSB_PositionQCL_RelationNR_r16_e_SQN_CarrierFreqNR_v16
 	adbgPrintLog(_ctx, "%s (%d)", adbgSys__SQN_SSB_PositionQCL_RelationNR_r16_e__ToString(p->v), (int)p->v);
 }
 
-static void _adbgSys__SQN_WhiteCellListNR_r16_SQN_CarrierFreqNR_v1610_whiteCellListNR_r16_Optional(acpCtx_t _ctx, const struct SQN_WhiteCellListNR_r16_SQN_CarrierFreqNR_v1610_whiteCellListNR_r16_Optional* p)
+static void _adbgSys__SQN_AllowedCellListNR_r16_SQN_CarrierFreqNR_v1610_allowedCellListNR_r16_Optional(acpCtx_t _ctx, const struct SQN_AllowedCellListNR_r16_SQN_CarrierFreqNR_v1610_allowedCellListNR_r16_Optional* p)
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
 	adbgPrintLog(_ctx, "'");
@@ -15027,10 +15308,10 @@ static void _adbgSys__SQN_CarrierFreqNR_v1610(acpCtx_t _ctx, const struct SQN_Ca
 	adbgPrintLog(_ctx, "ssb_PositionQCL_CommonNR_r16 := ");
 	_adbgSys__SQN_SSB_PositionQCL_RelationNR_r16_e_SQN_CarrierFreqNR_v1610_ssb_PositionQCL_CommonNR_r16_Optional(_ctx, &p->ssb_PositionQCL_CommonNR_r16);
 	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "whiteCellListNR_r16 := ");
-	if (p->whiteCellListNR_r16.d) { adbgPrintLog(_ctx, "{ "); };
-	_adbgSys__SQN_WhiteCellListNR_r16_SQN_CarrierFreqNR_v1610_whiteCellListNR_r16_Optional(_ctx, &p->whiteCellListNR_r16);
-	if (p->whiteCellListNR_r16.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, "allowedCellListNR_r16 := ");
+	if (p->allowedCellListNR_r16.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgSys__SQN_AllowedCellListNR_r16_SQN_CarrierFreqNR_v1610_allowedCellListNR_r16_Optional(_ctx, &p->allowedCellListNR_r16);
+	if (p->allowedCellListNR_r16.d) { adbgPrintLog(_ctx, " }"); };
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "highSpeedCarrierNR_r16 := ");
 	_adbgSys__SQN_CarrierFreqNR_v1610_highSpeedCarrierNR_r16_e_highSpeedCarrierNR_r16_Optional(_ctx, &p->highSpeedCarrierNR_r16);
@@ -15041,6 +15322,80 @@ static void _adbgSys__SQN_CarrierFreqListNR_v1610_SQN_SystemInformationBlockType
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_adbgSys__SQN_CarrierFreqNR_v1610(_ctx, &p->v.v[i2]);
+		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgSys__SQN_NR_FreqNeighHSDN_CellList_r17_SQN_CarrierFreqNR_v1700_nr_FreqNeighHSDN_CellList_r17_Optional(acpCtx_t _ctx, const struct SQN_NR_FreqNeighHSDN_CellList_r17_SQN_CarrierFreqNR_v1700_nr_FreqNeighHSDN_CellList_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i3 = 0; i3 < p->v.d; i3++) {
+		_adbgSys__SQN_PhysCellIdRangeNR_r16(_ctx, &p->v.v[i3]);
+		if (i3 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgSys__SQN_CarrierFreqNR_v1700(acpCtx_t _ctx, const struct SQN_CarrierFreqNR_v1700* p)
+{
+	adbgPrintLog(_ctx, "nr_FreqNeighHSDN_CellList_r17 := ");
+	if (p->nr_FreqNeighHSDN_CellList_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgSys__SQN_NR_FreqNeighHSDN_CellList_r17_SQN_CarrierFreqNR_v1700_nr_FreqNeighHSDN_CellList_r17_Optional(_ctx, &p->nr_FreqNeighHSDN_CellList_r17);
+	if (p->nr_FreqNeighHSDN_CellList_r17.d) { adbgPrintLog(_ctx, " }"); };
+}
+
+static void _adbgSys__SQN_CarrierFreqListNR_v1700_SQN_SystemInformationBlockType24_r15_carrierFreqListNR_v1700_Optional(acpCtx_t _ctx, const struct SQN_CarrierFreqListNR_v1700_SQN_SystemInformationBlockType24_r15_carrierFreqListNR_v1700_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		_adbgSys__SQN_CarrierFreqNR_v1700(_ctx, &p->v.v[i2]);
+		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static const char* adbgSys__SQN_CarrierFreqNR_v1720_subcarrierSpacingSSB_r17_e__ToString(SQN_CarrierFreqNR_v1720_subcarrierSpacingSSB_r17_e v)
+{
+	switch(v) {
+		case SQN_CarrierFreqNR_v1720_subcarrierSpacingSSB_r17_e_kHz480: return "SQN_CarrierFreqNR_v1720_subcarrierSpacingSSB_r17_e_kHz480";
+		case SQN_CarrierFreqNR_v1720_subcarrierSpacingSSB_r17_e_spare1: return "SQN_CarrierFreqNR_v1720_subcarrierSpacingSSB_r17_e_spare1";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgSys__SQN_CarrierFreqNR_v1720_subcarrierSpacingSSB_r17_e_subcarrierSpacingSSB_r17_Optional(acpCtx_t _ctx, const struct SQN_CarrierFreqNR_v1720_subcarrierSpacingSSB_r17_e_subcarrierSpacingSSB_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgSys__SQN_CarrierFreqNR_v1720_subcarrierSpacingSSB_r17_e__ToString(p->v), (int)p->v);
+}
+
+static const char* adbgSys__SQN_SSB_PositionQCL_RelationNR_r17_e__ToString(SQN_SSB_PositionQCL_RelationNR_r17_e v)
+{
+	switch(v) {
+		case SQN_SSB_PositionQCL_RelationNR_r17_e_n32: return "SQN_SSB_PositionQCL_RelationNR_r17_e_n32";
+		case SQN_SSB_PositionQCL_RelationNR_r17_e_n64: return "SQN_SSB_PositionQCL_RelationNR_r17_e_n64";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgSys__SQN_SSB_PositionQCL_RelationNR_r17_e_SQN_CarrierFreqNR_v1720_ssb_PositionQCL_CommonNR_r17_Optional(acpCtx_t _ctx, const struct SQN_SSB_PositionQCL_RelationNR_r17_e_SQN_CarrierFreqNR_v1720_ssb_PositionQCL_CommonNR_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgSys__SQN_SSB_PositionQCL_RelationNR_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgSys__SQN_CarrierFreqNR_v1720(acpCtx_t _ctx, const struct SQN_CarrierFreqNR_v1720* p)
+{
+	adbgPrintLog(_ctx, "subcarrierSpacingSSB_r17 := ");
+	_adbgSys__SQN_CarrierFreqNR_v1720_subcarrierSpacingSSB_r17_e_subcarrierSpacingSSB_r17_Optional(_ctx, &p->subcarrierSpacingSSB_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "ssb_PositionQCL_CommonNR_r17 := ");
+	_adbgSys__SQN_SSB_PositionQCL_RelationNR_r17_e_SQN_CarrierFreqNR_v1720_ssb_PositionQCL_CommonNR_r17_Optional(_ctx, &p->ssb_PositionQCL_CommonNR_r17);
+}
+
+static void _adbgSys__SQN_CarrierFreqListNR_v1720_SQN_SystemInformationBlockType24_r15_carrierFreqListNR_v1720_Optional(acpCtx_t _ctx, const struct SQN_CarrierFreqListNR_v1720_SQN_SystemInformationBlockType24_r15_carrierFreqListNR_v1720_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		_adbgSys__SQN_CarrierFreqNR_v1720(_ctx, &p->v.v[i2]);
 		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
 	}
 }
@@ -15068,6 +15423,16 @@ static void _adbgSys__SQN_SystemInformationBlockType24_r15(acpCtx_t _ctx, const 
 	if (p->carrierFreqListNR_v1610.d) { adbgPrintLog(_ctx, "{ "); };
 	_adbgSys__SQN_CarrierFreqListNR_v1610_SQN_SystemInformationBlockType24_r15_carrierFreqListNR_v1610_Optional(_ctx, &p->carrierFreqListNR_v1610);
 	if (p->carrierFreqListNR_v1610.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "carrierFreqListNR_v1700 := ");
+	if (p->carrierFreqListNR_v1700.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgSys__SQN_CarrierFreqListNR_v1700_SQN_SystemInformationBlockType24_r15_carrierFreqListNR_v1700_Optional(_ctx, &p->carrierFreqListNR_v1700);
+	if (p->carrierFreqListNR_v1700.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "carrierFreqListNR_v1720 := ");
+	if (p->carrierFreqListNR_v1720.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgSys__SQN_CarrierFreqListNR_v1720_SQN_SystemInformationBlockType24_r15_carrierFreqListNR_v1720_Optional(_ctx, &p->carrierFreqListNR_v1720);
+	if (p->carrierFreqListNR_v1720.d) { adbgPrintLog(_ctx, " }"); };
 }
 
 static void _adbgSys__SQN_UAC_BarringPerCat_r15(acpCtx_t _ctx, const struct SQN_UAC_BarringPerCat_r15* p)
@@ -15257,6 +15622,70 @@ static void _adbgSys__SQN_SystemInformationBlockType25_r15_ab_PerRSRP_r16_e_ab_P
 	adbgPrintLog(_ctx, "%s (%d)", adbgSys__SQN_SystemInformationBlockType25_r15_ab_PerRSRP_r16_e__ToString(p->v), (int)p->v);
 }
 
+static const char* adbgSys__SQN_UAC_AC1_SelectAssistInfo_r16_e__ToString(SQN_UAC_AC1_SelectAssistInfo_r16_e v)
+{
+	switch(v) {
+		case SQN_UAC_AC1_SelectAssistInfo_r16_e_a: return "SQN_UAC_AC1_SelectAssistInfo_r16_e_a";
+		case SQN_UAC_AC1_SelectAssistInfo_r16_e_b: return "SQN_UAC_AC1_SelectAssistInfo_r16_e_b";
+		case SQN_UAC_AC1_SelectAssistInfo_r16_e_c: return "SQN_UAC_AC1_SelectAssistInfo_r16_e_c";
+		case SQN_UAC_AC1_SelectAssistInfo_r16_e_notConfigured: return "SQN_UAC_AC1_SelectAssistInfo_r16_e_notConfigured";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgSys__SQN_UAC_AC1_SelectAssistInfo_r16_e_SQN_SystemInformationBlockType25_r15_uac_AC1_SelectAssistInfo_r16_DynamicOptional(acpCtx_t _ctx, const struct SQN_UAC_AC1_SelectAssistInfo_r16_e_SQN_SystemInformationBlockType25_r15_uac_AC1_SelectAssistInfo_r16_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		adbgPrintLog(_ctx, "%s (%d)", adbgSys__SQN_UAC_AC1_SelectAssistInfo_r16_e__ToString(p->v.v[i2]), (int)p->v.v[i2]);
+		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static const char* adbgSys__SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e__ToString(SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e v)
+{
+	switch(v) {
+		case SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p00: return "SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p00";
+		case SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p05: return "SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p05";
+		case SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p10: return "SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p10";
+		case SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p15: return "SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p15";
+		case SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p20: return "SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p20";
+		case SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p25: return "SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p25";
+		case SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p30: return "SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p30";
+		case SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p40: return "SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p40";
+		case SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p50: return "SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p50";
+		case SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p60: return "SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p60";
+		case SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p70: return "SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p70";
+		case SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p75: return "SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p75";
+		case SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p80: return "SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p80";
+		case SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p85: return "SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p85";
+		case SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p90: return "SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p90";
+		case SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p95: return "SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_p95";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgSys__SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_uac_BarringFactorForAI3_r17_Optional(acpCtx_t _ctx, const struct SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_uac_BarringFactorForAI3_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgSys__SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgSys__SQN_UAC_BarringInfoSet_v1700(acpCtx_t _ctx, const struct SQN_UAC_BarringInfoSet_v1700* p)
+{
+	adbgPrintLog(_ctx, "uac_BarringFactorForAI3_r17 := ");
+	_adbgSys__SQN_UAC_BarringInfoSet_v1700_uac_BarringFactorForAI3_r17_e_uac_BarringFactorForAI3_r17_Optional(_ctx, &p->uac_BarringFactorForAI3_r17);
+}
+
+static void _adbgSys__SQN_UAC_BarringInfoSetList_v1700_SQN_SystemInformationBlockType25_r15_uac_BarringInfoSetList_v1700_Optional(acpCtx_t _ctx, const struct SQN_UAC_BarringInfoSetList_v1700_SQN_SystemInformationBlockType25_r15_uac_BarringInfoSetList_v1700_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		_adbgSys__SQN_UAC_BarringInfoSet_v1700(_ctx, &p->v.v[i2]);
+		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
 static void _adbgSys__SQN_SystemInformationBlockType25_r15(acpCtx_t _ctx, const struct SQN_SystemInformationBlockType25_r15* p)
 {
 	adbgPrintLog(_ctx, "uac_BarringForCommon_r15 := ");
@@ -15290,6 +15719,14 @@ static void _adbgSys__SQN_SystemInformationBlockType25_r15(acpCtx_t _ctx, const 
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "ab_PerRSRP_r16 := ");
 	_adbgSys__SQN_SystemInformationBlockType25_r15_ab_PerRSRP_r16_e_ab_PerRSRP_r16_Optional(_ctx, &p->ab_PerRSRP_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "uac_AC1_SelectAssistInfo_r16 := ");
+	_adbgSys__SQN_UAC_AC1_SelectAssistInfo_r16_e_SQN_SystemInformationBlockType25_r15_uac_AC1_SelectAssistInfo_r16_DynamicOptional(_ctx, &p->uac_AC1_SelectAssistInfo_r16);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "uac_BarringInfoSetList_v1700 := ");
+	if (p->uac_BarringInfoSetList_v1700.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgSys__SQN_UAC_BarringInfoSetList_v1700_SQN_SystemInformationBlockType25_r15_uac_BarringInfoSetList_v1700_Optional(_ctx, &p->uac_BarringInfoSetList_v1700);
+	if (p->uac_BarringInfoSetList_v1700.d) { adbgPrintLog(_ctx, " }"); };
 }
 
 static void _adbgSys__SQN_SL_InterFreqInfoListV2X_r14_SQN_SystemInformationBlockType26_r15_v2x_InterFreqInfoList_r15_Optional(acpCtx_t _ctx, const struct SQN_SL_InterFreqInfoListV2X_r14_SQN_SystemInformationBlockType26_r15_v2x_InterFreqInfoList_r15_Optional* p)
@@ -15937,6 +16374,402 @@ static void _adbgSys__SQN_SystemInformationBlockType29_r16(acpCtx_t _ctx, const 
 	if (p->lateNonCriticalExtension.d) { adbgPrintLog(_ctx, " }"); };
 }
 
+static void _adbgSys__SQN_PLMN_Identity_SQN_SystemInformationBlockType30_r17_commonPLMNsWithDisasterCondition_r17_DynamicOptional(acpCtx_t _ctx, const struct SQN_PLMN_Identity_SQN_SystemInformationBlockType30_r17_commonPLMNsWithDisasterCondition_r17_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		adbgPrintLog(_ctx, "{ ");
+		_adbgSys__SQN_PLMN_Identity(_ctx, &p->v.v[i2]);
+		adbgPrintLog(_ctx, " }");
+		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgSys__SQN_ApplicableDisasterInfo_r17_Value(acpCtx_t _ctx, const union SQN_ApplicableDisasterInfo_r17_Value* p, enum SQN_ApplicableDisasterInfo_r17_Sel d)
+{
+	if (d == SQN_ApplicableDisasterInfo_r17_noDisasterRoaming_r17) {
+		adbgPrintLog(_ctx, "noDisasterRoaming_r17 := %s", (p->noDisasterRoaming_r17 ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_ApplicableDisasterInfo_r17_disasterRoamingFromAnyPLMN_r17) {
+		adbgPrintLog(_ctx, "disasterRoamingFromAnyPLMN_r17 := %s", (p->disasterRoamingFromAnyPLMN_r17 ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_ApplicableDisasterInfo_r17_commonPLMNs_r17) {
+		adbgPrintLog(_ctx, "commonPLMNs_r17 := %s", (p->commonPLMNs_r17 ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_ApplicableDisasterInfo_r17_dedicatedPLMNs_r17) {
+		adbgPrintLog(_ctx, "dedicatedPLMNs_r17 := { ");
+		for (size_t i3 = 0; i3 < p->dedicatedPLMNs_r17.d; i3++) {
+			adbgPrintLog(_ctx, "{ ");
+			_adbgSys__SQN_PLMN_Identity(_ctx, &p->dedicatedPLMNs_r17.v[i3]);
+			adbgPrintLog(_ctx, " }");
+			if (i3 != p->dedicatedPLMNs_r17.d - 1) { adbgPrintLog(_ctx, ", "); }
+		}
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgSys__SQN_ApplicableDisasterInfo_r17(acpCtx_t _ctx, const struct SQN_ApplicableDisasterInfo_r17* p)
+{
+	_adbgSys__SQN_ApplicableDisasterInfo_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgSys__SQN_ApplicableDisasterInfo_r17_SQN_SystemInformationBlockType30_r17_applicableDisasterInfoList_r17_DynamicOptional(acpCtx_t _ctx, const struct SQN_ApplicableDisasterInfo_r17_SQN_SystemInformationBlockType30_r17_applicableDisasterInfoList_r17_DynamicOptional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		adbgPrintLog(_ctx, "{ ");
+		_adbgSys__SQN_ApplicableDisasterInfo_r17(_ctx, &p->v.v[i2]);
+		adbgPrintLog(_ctx, " }");
+		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgSys__OCTET_STRING_SQN_SystemInformationBlockType30_r17_lateNonCriticalExtension_Optional(acpCtx_t _ctx, const struct OCTET_STRING_SQN_SystemInformationBlockType30_r17_lateNonCriticalExtension_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "'");
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		adbgPrintLog(_ctx, "%02X", p->v.v[i2]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static void _adbgSys__SQN_SystemInformationBlockType30_r17(acpCtx_t _ctx, const struct SQN_SystemInformationBlockType30_r17* p)
+{
+	adbgPrintLog(_ctx, "commonPLMNsWithDisasterCondition_r17 := ");
+	if (p->commonPLMNsWithDisasterCondition_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgSys__SQN_PLMN_Identity_SQN_SystemInformationBlockType30_r17_commonPLMNsWithDisasterCondition_r17_DynamicOptional(_ctx, &p->commonPLMNsWithDisasterCondition_r17);
+	if (p->commonPLMNsWithDisasterCondition_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "applicableDisasterInfoList_r17 := ");
+	if (p->applicableDisasterInfoList_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgSys__SQN_ApplicableDisasterInfo_r17_SQN_SystemInformationBlockType30_r17_applicableDisasterInfoList_r17_DynamicOptional(_ctx, &p->applicableDisasterInfoList_r17);
+	if (p->applicableDisasterInfoList_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "lateNonCriticalExtension := ");
+	if (p->lateNonCriticalExtension.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgSys__OCTET_STRING_SQN_SystemInformationBlockType30_r17_lateNonCriticalExtension_Optional(_ctx, &p->lateNonCriticalExtension);
+	if (p->lateNonCriticalExtension.d) { adbgPrintLog(_ctx, " }"); };
+}
+
+static void _adbgSys__SQN_EphemerisStateVectors_r17(acpCtx_t _ctx, const struct SQN_EphemerisStateVectors_r17* p)
+{
+	adbgPrintLog(_ctx, "positionX_r17 := %d", (int)p->positionX_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "positionY_r17 := %d", (int)p->positionY_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "positionZ_r17 := %d", (int)p->positionZ_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "velocityVX_r17 := %d", (int)p->velocityVX_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "velocityVY_r17 := %d", (int)p->velocityVY_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "velocityVZ_r17 := %d", (int)p->velocityVZ_r17);
+}
+
+static void _adbgSys__SQN_EphemerisOrbitalParameters_r17(acpCtx_t _ctx, const struct SQN_EphemerisOrbitalParameters_r17* p)
+{
+	adbgPrintLog(_ctx, "semiMajorAxis_r17 := %u", (unsigned int)p->semiMajorAxis_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "eccentricity_r17 := %u", (unsigned int)p->eccentricity_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "periapsis_r17 := %u", (unsigned int)p->periapsis_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "longitude_r17 := %u", (unsigned int)p->longitude_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "inclination_r17 := %d", (int)p->inclination_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "anomaly_r17 := %u", (unsigned int)p->anomaly_r17);
+}
+
+static void _adbgSys__SQN_ServingSatelliteInfo_r17_ephemerisInfo_r17_Value(acpCtx_t _ctx, const union SQN_ServingSatelliteInfo_r17_ephemerisInfo_r17_Value* p, enum SQN_ServingSatelliteInfo_r17_ephemerisInfo_r17_Sel d)
+{
+	if (d == SQN_ServingSatelliteInfo_r17_ephemerisInfo_r17_stateVectors) {
+		adbgPrintLog(_ctx, "stateVectors := { ");
+		_adbgSys__SQN_EphemerisStateVectors_r17(_ctx, &p->stateVectors);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == SQN_ServingSatelliteInfo_r17_ephemerisInfo_r17_orbitalParameters) {
+		adbgPrintLog(_ctx, "orbitalParameters := { ");
+		_adbgSys__SQN_EphemerisOrbitalParameters_r17(_ctx, &p->orbitalParameters);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgSys__SQN_ServingSatelliteInfo_r17_ephemerisInfo_r17(acpCtx_t _ctx, const struct SQN_ServingSatelliteInfo_r17_ephemerisInfo_r17* p)
+{
+	_adbgSys__SQN_ServingSatelliteInfo_r17_ephemerisInfo_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgSys__Uint32_t_SQN_ServingSatelliteInfo_r17_nta_CommonParameters_17_nta_Common_r17_Optional(acpCtx_t _ctx, const struct uint32_t_SQN_ServingSatelliteInfo_r17_nta_CommonParameters_17_nta_Common_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgSys__Int32_t_SQN_ServingSatelliteInfo_r17_nta_CommonParameters_17_nta_CommonDrift_r17_Optional(acpCtx_t _ctx, const struct int32_t_SQN_ServingSatelliteInfo_r17_nta_CommonParameters_17_nta_CommonDrift_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%d", (int)p->v);
+}
+
+static void _adbgSys__Uint16_t_SQN_ServingSatelliteInfo_r17_nta_CommonParameters_17_nta_CommonDriftVariation_r17_Optional(acpCtx_t _ctx, const struct uint16_t_SQN_ServingSatelliteInfo_r17_nta_CommonParameters_17_nta_CommonDriftVariation_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgSys__SQN_ServingSatelliteInfo_r17_nta_CommonParameters_17(acpCtx_t _ctx, const struct SQN_ServingSatelliteInfo_r17_nta_CommonParameters_17* p)
+{
+	adbgPrintLog(_ctx, "nta_Common_r17 := ");
+	_adbgSys__Uint32_t_SQN_ServingSatelliteInfo_r17_nta_CommonParameters_17_nta_Common_r17_Optional(_ctx, &p->nta_Common_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "nta_CommonDrift_r17 := ");
+	_adbgSys__Int32_t_SQN_ServingSatelliteInfo_r17_nta_CommonParameters_17_nta_CommonDrift_r17_Optional(_ctx, &p->nta_CommonDrift_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "nta_CommonDriftVariation_r17 := ");
+	_adbgSys__Uint16_t_SQN_ServingSatelliteInfo_r17_nta_CommonParameters_17_nta_CommonDriftVariation_r17_Optional(_ctx, &p->nta_CommonDriftVariation_r17);
+}
+
+static const char* adbgSys__SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e__ToString(SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e v)
+{
+	switch(v) {
+		case SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s5: return "SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s5";
+		case SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s10: return "SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s10";
+		case SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s15: return "SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s15";
+		case SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s20: return "SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s20";
+		case SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s25: return "SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s25";
+		case SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s30: return "SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s30";
+		case SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s35: return "SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s35";
+		case SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s40: return "SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s40";
+		case SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s45: return "SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s45";
+		case SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s50: return "SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s50";
+		case SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s55: return "SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s55";
+		case SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s60: return "SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s60";
+		case SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s120: return "SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s120";
+		case SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s180: return "SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s180";
+		case SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s240: return "SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s240";
+		case SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s900: return "SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e_s900";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgSys__SQN_ServingSatelliteInfo_r17_epochTime_r17(acpCtx_t _ctx, const struct SQN_ServingSatelliteInfo_r17_epochTime_r17* p)
+{
+	adbgPrintLog(_ctx, "startSFN_r17 := %u", (unsigned int)p->startSFN_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "startSubFrame_r17 := %u", (unsigned int)p->startSubFrame_r17);
+}
+
+static void _adbgSys__SQN_ServingSatelliteInfo_r17_epochTime_r17_epochTime_r17_Optional(acpCtx_t _ctx, const struct SQN_ServingSatelliteInfo_r17_epochTime_r17_epochTime_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgSys__SQN_ServingSatelliteInfo_r17_epochTime_r17(_ctx, &p->v);
+}
+
+static void _adbgSys__Uint16_t_SQN_ServingSatelliteInfo_r17_k_Mac_r17_Optional(acpCtx_t _ctx, const struct uint16_t_SQN_ServingSatelliteInfo_r17_k_Mac_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgSys__SQN_ServingSatelliteInfo_r17(acpCtx_t _ctx, const struct SQN_ServingSatelliteInfo_r17* p)
+{
+	adbgPrintLog(_ctx, "ephemerisInfo_r17 := { ");
+	_adbgSys__SQN_ServingSatelliteInfo_r17_ephemerisInfo_r17(_ctx, &p->ephemerisInfo_r17);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "nta_CommonParameters_17 := { ");
+	_adbgSys__SQN_ServingSatelliteInfo_r17_nta_CommonParameters_17(_ctx, &p->nta_CommonParameters_17);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "ul_SyncValidityDuration_r17 := %s (%d)", adbgSys__SQN_ServingSatelliteInfo_r17_ul_SyncValidityDuration_r17_e__ToString(p->ul_SyncValidityDuration_r17), (int)p->ul_SyncValidityDuration_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "epochTime_r17 := ");
+	if (p->epochTime_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgSys__SQN_ServingSatelliteInfo_r17_epochTime_r17_epochTime_r17_Optional(_ctx, &p->epochTime_r17);
+	if (p->epochTime_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "k_Offset_r17 := %u", (unsigned int)p->k_Offset_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "k_Mac_r17 := ");
+	_adbgSys__Uint16_t_SQN_ServingSatelliteInfo_r17_k_Mac_r17_Optional(_ctx, &p->k_Mac_r17);
+}
+
+static void _adbgSys__OCTET_STRING_SQN_SystemInformationBlockType31_r17_lateNonCriticalExtension_Optional(acpCtx_t _ctx, const struct OCTET_STRING_SQN_SystemInformationBlockType31_r17_lateNonCriticalExtension_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "'");
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		adbgPrintLog(_ctx, "%02X", p->v.v[i2]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static void _adbgSys__SQN_SystemInformationBlockType31_r17(acpCtx_t _ctx, const struct SQN_SystemInformationBlockType31_r17* p)
+{
+	adbgPrintLog(_ctx, "servingSatelliteInfo_r17 := { ");
+	_adbgSys__SQN_ServingSatelliteInfo_r17(_ctx, &p->servingSatelliteInfo_r17);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "lateNonCriticalExtension := ");
+	if (p->lateNonCriticalExtension.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgSys__OCTET_STRING_SQN_SystemInformationBlockType31_r17_lateNonCriticalExtension_Optional(_ctx, &p->lateNonCriticalExtension);
+	if (p->lateNonCriticalExtension.d) { adbgPrintLog(_ctx, " }"); };
+}
+
+static void _adbgSys__SQN_TLE_EphemerisParameters_r17(acpCtx_t _ctx, const struct SQN_TLE_EphemerisParameters_r17* p)
+{
+	adbgPrintLog(_ctx, "inclination_r17 := %u", (unsigned int)p->inclination_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "argumentPerigee_r17 := %u", (unsigned int)p->argumentPerigee_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "rightAscension_r17 := %u", (unsigned int)p->rightAscension_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "meanAnomaly_r17 := %u", (unsigned int)p->meanAnomaly_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "eccentricity_r17 := %u", (unsigned int)p->eccentricity_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "meanMotion_r17 := %u", (unsigned int)p->meanMotion_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "bStarDecimal_r17 := %d", (int)p->bStarDecimal_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "bStarExponent_r17 := %d", (int)p->bStarExponent_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "epochStar_r17 := %d", (int)p->epochStar_r17);
+}
+
+static void _adbgSys__SQN_TLE_EphemerisParameters_r17_SQN_SatelliteInfo_r17_serviceInfo_r17_tle_EphemerisParameters_r17_Optional(acpCtx_t _ctx, const struct SQN_TLE_EphemerisParameters_r17_SQN_SatelliteInfo_r17_serviceInfo_r17_tle_EphemerisParameters_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgSys__SQN_TLE_EphemerisParameters_r17(_ctx, &p->v);
+}
+
+static void _adbgSys__SQN_TimeOffsetUTC_r17_SQN_SatelliteInfo_r17_serviceInfo_r17_t_ServiceStart_r17_Optional(acpCtx_t _ctx, const struct SQN_TimeOffsetUTC_r17_SQN_SatelliteInfo_r17_serviceInfo_r17_t_ServiceStart_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgSys__SQN_SatelliteInfo_r17_serviceInfo_r17(acpCtx_t _ctx, const struct SQN_SatelliteInfo_r17_serviceInfo_r17* p)
+{
+	adbgPrintLog(_ctx, "tle_EphemerisParameters_r17 := ");
+	if (p->tle_EphemerisParameters_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgSys__SQN_TLE_EphemerisParameters_r17_SQN_SatelliteInfo_r17_serviceInfo_r17_tle_EphemerisParameters_r17_Optional(_ctx, &p->tle_EphemerisParameters_r17);
+	if (p->tle_EphemerisParameters_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "t_ServiceStart_r17 := ");
+	_adbgSys__SQN_TimeOffsetUTC_r17_SQN_SatelliteInfo_r17_serviceInfo_r17_t_ServiceStart_r17_Optional(_ctx, &p->t_ServiceStart_r17);
+}
+
+static void _adbgSys__SQN_SatelliteInfo_r17_footprintInfo_r17_referencePoint_r17(acpCtx_t _ctx, const struct SQN_SatelliteInfo_r17_footprintInfo_r17_referencePoint_r17* p)
+{
+	adbgPrintLog(_ctx, "longitude_r17 := %d", (int)p->longitude_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "latitude_r17 := %d", (int)p->latitude_r17);
+}
+
+static void _adbgSys__SQN_SatelliteInfo_r17_footprintInfo_r17_referencePoint_r17_referencePoint_r17_Optional(acpCtx_t _ctx, const struct SQN_SatelliteInfo_r17_footprintInfo_r17_referencePoint_r17_referencePoint_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgSys__SQN_SatelliteInfo_r17_footprintInfo_r17_referencePoint_r17(_ctx, &p->v);
+}
+
+static void _adbgSys__Int8_t_SQN_SatelliteInfo_r17_footprintInfo_r17_elevationAngles_r17_elevationAngleLeft_r17_Optional(acpCtx_t _ctx, const struct int8_t_SQN_SatelliteInfo_r17_footprintInfo_r17_elevationAngles_r17_elevationAngleLeft_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%d", (int)p->v);
+}
+
+static void _adbgSys__SQN_SatelliteInfo_r17_footprintInfo_r17_elevationAngles_r17(acpCtx_t _ctx, const struct SQN_SatelliteInfo_r17_footprintInfo_r17_elevationAngles_r17* p)
+{
+	adbgPrintLog(_ctx, "elevationAngleRight_r17 := %d", (int)p->elevationAngleRight_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "elevationAngleLeft_r17 := ");
+	_adbgSys__Int8_t_SQN_SatelliteInfo_r17_footprintInfo_r17_elevationAngles_r17_elevationAngleLeft_r17_Optional(_ctx, &p->elevationAngleLeft_r17);
+}
+
+static void _adbgSys__SQN_SatelliteInfo_r17_footprintInfo_r17_elevationAngles_r17_elevationAngles_r17_Optional(acpCtx_t _ctx, const struct SQN_SatelliteInfo_r17_footprintInfo_r17_elevationAngles_r17_elevationAngles_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgSys__SQN_SatelliteInfo_r17_footprintInfo_r17_elevationAngles_r17(_ctx, &p->v);
+}
+
+static void _adbgSys__Uint16_t_SQN_SatelliteInfo_r17_footprintInfo_r17_radius_r17_Optional(acpCtx_t _ctx, const struct uint16_t_SQN_SatelliteInfo_r17_footprintInfo_r17_radius_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%u", (unsigned int)p->v);
+}
+
+static void _adbgSys__SQN_SatelliteInfo_r17_footprintInfo_r17(acpCtx_t _ctx, const struct SQN_SatelliteInfo_r17_footprintInfo_r17* p)
+{
+	adbgPrintLog(_ctx, "referencePoint_r17 := ");
+	if (p->referencePoint_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgSys__SQN_SatelliteInfo_r17_footprintInfo_r17_referencePoint_r17_referencePoint_r17_Optional(_ctx, &p->referencePoint_r17);
+	if (p->referencePoint_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "elevationAngles_r17 := ");
+	if (p->elevationAngles_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgSys__SQN_SatelliteInfo_r17_footprintInfo_r17_elevationAngles_r17_elevationAngles_r17_Optional(_ctx, &p->elevationAngles_r17);
+	if (p->elevationAngles_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "radius_r17 := ");
+	_adbgSys__Uint16_t_SQN_SatelliteInfo_r17_footprintInfo_r17_radius_r17_Optional(_ctx, &p->radius_r17);
+}
+
+static void _adbgSys__SQN_SatelliteInfo_r17(acpCtx_t _ctx, const struct SQN_SatelliteInfo_r17* p)
+{
+	adbgPrintLog(_ctx, "satelliteId_r17 := %u", (unsigned int)p->satelliteId_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "serviceInfo_r17 := { ");
+	_adbgSys__SQN_SatelliteInfo_r17_serviceInfo_r17(_ctx, &p->serviceInfo_r17);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "footprintInfo_r17 := { ");
+	_adbgSys__SQN_SatelliteInfo_r17_footprintInfo_r17(_ctx, &p->footprintInfo_r17);
+	adbgPrintLog(_ctx, " }");
+}
+
+static void _adbgSys__SQN_SatelliteInfoList_r17_SQN_SystemInformationBlockType32_r17_satelliteInfoList_r17_Optional(acpCtx_t _ctx, const struct SQN_SatelliteInfoList_r17_SQN_SystemInformationBlockType32_r17_satelliteInfoList_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		_adbgSys__SQN_SatelliteInfo_r17(_ctx, &p->v.v[i2]);
+		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgSys__OCTET_STRING_SQN_SystemInformationBlockType32_r17_lateNonCriticalExtension_Optional(acpCtx_t _ctx, const struct OCTET_STRING_SQN_SystemInformationBlockType32_r17_lateNonCriticalExtension_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "'");
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		adbgPrintLog(_ctx, "%02X", p->v.v[i2]);
+	}
+	adbgPrintLog(_ctx, "'O");
+}
+
+static void _adbgSys__SQN_SystemInformationBlockType32_r17(acpCtx_t _ctx, const struct SQN_SystemInformationBlockType32_r17* p)
+{
+	adbgPrintLog(_ctx, "satelliteInfoList_r17 := ");
+	if (p->satelliteInfoList_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgSys__SQN_SatelliteInfoList_r17_SQN_SystemInformationBlockType32_r17_satelliteInfoList_r17_Optional(_ctx, &p->satelliteInfoList_r17);
+	if (p->satelliteInfoList_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "lateNonCriticalExtension := ");
+	if (p->lateNonCriticalExtension.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgSys__OCTET_STRING_SQN_SystemInformationBlockType32_r17_lateNonCriticalExtension_Optional(_ctx, &p->lateNonCriticalExtension);
+	if (p->lateNonCriticalExtension.d) { adbgPrintLog(_ctx, " }"); };
+}
+
 static void _adbgSys__SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_Value(acpCtx_t _ctx, const union SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_Value* p, enum SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_Sel d)
 {
 	if (d == SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib2) {
@@ -16098,6 +16931,24 @@ static void _adbgSys__SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_Value(acpCt
 	if (d == SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib29_v1610) {
 		adbgPrintLog(_ctx, "sib29_v1610 := { ");
 		_adbgSys__SQN_SystemInformationBlockType29_r16(_ctx, &p->sib29_v1610);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib30_v1700) {
+		adbgPrintLog(_ctx, "sib30_v1700 := { ");
+		_adbgSys__SQN_SystemInformationBlockType30_r17(_ctx, &p->sib30_v1700);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib31_v1700) {
+		adbgPrintLog(_ctx, "sib31_v1700 := { ");
+		_adbgSys__SQN_SystemInformationBlockType31_r17(_ctx, &p->sib31_v1700);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib32_v1700) {
+		adbgPrintLog(_ctx, "sib32_v1700 := { ");
+		_adbgSys__SQN_SystemInformationBlockType32_r17(_ctx, &p->sib32_v1700);
 		adbgPrintLog(_ctx, " }");
 		return;
 	}
@@ -17354,6 +18205,8 @@ static const char* adbgSys__SQN_PosSIB_Type_r15_posSibType_r15_e__ToString(SQN_P
 		case SQN_PosSIB_Type_r15_posSibType_r15_e_posSibType2_25_v1610: return "SQN_PosSIB_Type_r15_posSibType_r15_e_posSibType2_25_v1610";
 		case SQN_PosSIB_Type_r15_posSibType_r15_e_posSibType4_1_v1610: return "SQN_PosSIB_Type_r15_posSibType_r15_e_posSibType4_1_v1610";
 		case SQN_PosSIB_Type_r15_posSibType_r15_e_posSibType5_1_v1610: return "SQN_PosSIB_Type_r15_posSibType_r15_e_posSibType5_1_v1610";
+		case SQN_PosSIB_Type_r15_posSibType_r15_e_posSibType1_9_v1700: return "SQN_PosSIB_Type_r15_posSibType_r15_e_posSibType1_9_v1700";
+		case SQN_PosSIB_Type_r15_posSibType_r15_e_posSibType1_10_v1700: return "SQN_PosSIB_Type_r15_posSibType_r15_e_posSibType1_10_v1700";
 		default: return "Unknown";
 	}
 }
@@ -17688,16 +18541,92 @@ static void _adbgSys__SQN_PLMN_IdentityList_v1610_SQN_SystemInformationBlockType
 	}
 }
 
-static void _adbgSys__SQN_SystemInformationBlockType1_v1610_IEs_nonCriticalExtension(acpCtx_t _ctx, const struct SQN_SystemInformationBlockType1_v1610_IEs_nonCriticalExtension* p)
+static const char* adbgSys__SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_cellBarred_NTN_r17_e__ToString(SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_cellBarred_NTN_r17_e v)
+{
+	switch(v) {
+		case SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_cellBarred_NTN_r17_e_barred: return "SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_cellBarred_NTN_r17_e_barred";
+		case SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_cellBarred_NTN_r17_e_notBarred: return "SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_cellBarred_NTN_r17_e_notBarred";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgSys__SQN_TrackingAreaList_r17_SQN_PLMN_IdentityInfo_v1700_trackingAreaList_r17_Optional(acpCtx_t _ctx, const struct SQN_TrackingAreaList_r17_SQN_PLMN_IdentityInfo_v1700_trackingAreaList_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "{");
+	for (size_t i2 = 0; i2 < p->v.d; i2++) {
+		adbgPrintLog(_ctx, "'");
+		for (size_t i3 = 0; i3 < 16; i3++) {
+			adbgPrintLog(_ctx, "%02X", p->v.v[i2][i3]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		if (i2 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+	adbgPrintLog(_ctx, " }");
+}
+
+static void _adbgSys__SQN_PLMN_IdentityInfo_v1700(acpCtx_t _ctx, const struct SQN_PLMN_IdentityInfo_v1700* p)
+{
+	adbgPrintLog(_ctx, "trackingAreaList_r17 := ");
+	if (p->trackingAreaList_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgSys__SQN_TrackingAreaList_r17_SQN_PLMN_IdentityInfo_v1700_trackingAreaList_r17_Optional(_ctx, &p->trackingAreaList_r17);
+	if (p->trackingAreaList_r17.d) { adbgPrintLog(_ctx, " }"); };
+}
+
+static void _adbgSys__SQN_PLMN_IdentityList_v1700_SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_plmn_IdentityList_v1700_Optional(acpCtx_t _ctx, const struct SQN_PLMN_IdentityList_v1700_SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_plmn_IdentityList_v1700_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i1 = 0; i1 < p->v.d; i1++) {
+		_adbgSys__SQN_PLMN_IdentityInfo_v1700(_ctx, &p->v.v[i1]);
+		if (i1 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgSys__SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17(acpCtx_t _ctx, const struct SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17* p)
+{
+	adbgPrintLog(_ctx, "cellBarred_NTN_r17 := %s (%d)", adbgSys__SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_cellBarred_NTN_r17_e__ToString(p->cellBarred_NTN_r17), (int)p->cellBarred_NTN_r17);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "plmn_IdentityList_v1700 := ");
+	if (p->plmn_IdentityList_v1700.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgSys__SQN_PLMN_IdentityList_v1700_SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_plmn_IdentityList_v1700_Optional(_ctx, &p->plmn_IdentityList_v1700);
+	if (p->plmn_IdentityList_v1700.d) { adbgPrintLog(_ctx, " }"); };
+}
+
+static void _adbgSys__SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_cellAccessRelatedInfo_NTN_r17_Optional(acpCtx_t _ctx, const struct SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_cellAccessRelatedInfo_NTN_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgSys__SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17(_ctx, &p->v);
+}
+
+static void _adbgSys__SQN_SystemInformationBlockType1_v1700_IEs_nonCriticalExtension(acpCtx_t _ctx, const struct SQN_SystemInformationBlockType1_v1700_IEs_nonCriticalExtension* p)
 {
 	(void)_ctx;
 	(void)p;
 }
 
-static void _adbgSys__SQN_SystemInformationBlockType1_v1610_IEs_nonCriticalExtension_nonCriticalExtension_Optional(acpCtx_t _ctx, const struct SQN_SystemInformationBlockType1_v1610_IEs_nonCriticalExtension_nonCriticalExtension_Optional* p)
+static void _adbgSys__SQN_SystemInformationBlockType1_v1700_IEs_nonCriticalExtension_nonCriticalExtension_Optional(acpCtx_t _ctx, const struct SQN_SystemInformationBlockType1_v1700_IEs_nonCriticalExtension_nonCriticalExtension_Optional* p)
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	_adbgSys__SQN_SystemInformationBlockType1_v1610_IEs_nonCriticalExtension(_ctx, &p->v);
+	_adbgSys__SQN_SystemInformationBlockType1_v1700_IEs_nonCriticalExtension(_ctx, &p->v);
+}
+
+static void _adbgSys__SQN_SystemInformationBlockType1_v1700_IEs(acpCtx_t _ctx, const struct SQN_SystemInformationBlockType1_v1700_IEs* p)
+{
+	adbgPrintLog(_ctx, "cellAccessRelatedInfo_NTN_r17 := ");
+	if (p->cellAccessRelatedInfo_NTN_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgSys__SQN_SystemInformationBlockType1_v1700_IEs_cellAccessRelatedInfo_NTN_r17_cellAccessRelatedInfo_NTN_r17_Optional(_ctx, &p->cellAccessRelatedInfo_NTN_r17);
+	if (p->cellAccessRelatedInfo_NTN_r17.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "nonCriticalExtension := ");
+	if (p->nonCriticalExtension.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgSys__SQN_SystemInformationBlockType1_v1700_IEs_nonCriticalExtension_nonCriticalExtension_Optional(_ctx, &p->nonCriticalExtension);
+	if (p->nonCriticalExtension.d) { adbgPrintLog(_ctx, " }"); };
+}
+
+static void _adbgSys__SQN_SystemInformationBlockType1_v1700_IEs_SQN_SystemInformationBlockType1_v1610_IEs_nonCriticalExtension_Optional(acpCtx_t _ctx, const struct SQN_SystemInformationBlockType1_v1700_IEs_SQN_SystemInformationBlockType1_v1610_IEs_nonCriticalExtension_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgSys__SQN_SystemInformationBlockType1_v1700_IEs(_ctx, &p->v);
 }
 
 static void _adbgSys__SQN_SystemInformationBlockType1_v1610_IEs(acpCtx_t _ctx, const struct SQN_SystemInformationBlockType1_v1610_IEs* p)
@@ -17718,7 +18647,7 @@ static void _adbgSys__SQN_SystemInformationBlockType1_v1610_IEs(acpCtx_t _ctx, c
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "nonCriticalExtension := ");
 	if (p->nonCriticalExtension.d) { adbgPrintLog(_ctx, "{ "); };
-	_adbgSys__SQN_SystemInformationBlockType1_v1610_IEs_nonCriticalExtension_nonCriticalExtension_Optional(_ctx, &p->nonCriticalExtension);
+	_adbgSys__SQN_SystemInformationBlockType1_v1700_IEs_SQN_SystemInformationBlockType1_v1610_IEs_nonCriticalExtension_Optional(_ctx, &p->nonCriticalExtension);
 	if (p->nonCriticalExtension.d) { adbgPrintLog(_ctx, " }"); };
 }
 
@@ -27899,6 +28828,39 @@ static void _adbgSys__SQN_SetupRelease_PDCP_Config_ethernetHeaderCompression_r16
 	_adbgSys__SQN_SetupRelease_PDCP_Config_ethernetHeaderCompression_r16(_ctx, &p->v);
 }
 
+static const char* adbgSys__SQN_DiscardTimerExt_r17_e__ToString(SQN_DiscardTimerExt_r17_e v)
+{
+	switch(v) {
+		case SQN_DiscardTimerExt_r17_e_ms2000: return "SQN_DiscardTimerExt_r17_e_ms2000";
+		case SQN_DiscardTimerExt_r17_e_spare: return "SQN_DiscardTimerExt_r17_e_spare";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgSys__SQN_SetupRelease_PDCP_Config_discardTimerExt_r17_Value(acpCtx_t _ctx, const union SQN_SetupRelease_PDCP_Config_discardTimerExt_r17_Value* p, enum SQN_SetupRelease_PDCP_Config_discardTimerExt_r17_Sel d)
+{
+	if (d == SQN_SetupRelease_PDCP_Config_discardTimerExt_r17_release) {
+		adbgPrintLog(_ctx, "release := %s", (p->release ? "true" : "false"));
+		return;
+	}
+	if (d == SQN_SetupRelease_PDCP_Config_discardTimerExt_r17_setup) {
+		adbgPrintLog(_ctx, "setup := %s (%d)", adbgSys__SQN_DiscardTimerExt_r17_e__ToString(p->setup), (int)p->setup);
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgSys__SQN_SetupRelease_PDCP_Config_discardTimerExt_r17(acpCtx_t _ctx, const struct SQN_SetupRelease_PDCP_Config_discardTimerExt_r17* p)
+{
+	_adbgSys__SQN_SetupRelease_PDCP_Config_discardTimerExt_r17_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgSys__SQN_SetupRelease_PDCP_Config_discardTimerExt_r17_SQN_PDCP_Config_discardTimerExt_r17_Optional(acpCtx_t _ctx, const struct SQN_SetupRelease_PDCP_Config_discardTimerExt_r17_SQN_PDCP_Config_discardTimerExt_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgSys__SQN_SetupRelease_PDCP_Config_discardTimerExt_r17(_ctx, &p->v);
+}
+
 static void _adbgSys__SQN_PDCP_Config(acpCtx_t _ctx, const struct SQN_PDCP_Config* p)
 {
 	adbgPrintLog(_ctx, "discardTimer := ");
@@ -27967,6 +28929,11 @@ static void _adbgSys__SQN_PDCP_Config(acpCtx_t _ctx, const struct SQN_PDCP_Confi
 	if (p->ethernetHeaderCompression_r16.d) { adbgPrintLog(_ctx, "{ "); };
 	_adbgSys__SQN_SetupRelease_PDCP_Config_ethernetHeaderCompression_r16_SQN_PDCP_Config_ethernetHeaderCompression_r16_Optional(_ctx, &p->ethernetHeaderCompression_r16);
 	if (p->ethernetHeaderCompression_r16.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "discardTimerExt_r17 := ");
+	if (p->discardTimerExt_r17.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgSys__SQN_SetupRelease_PDCP_Config_discardTimerExt_r17_SQN_PDCP_Config_discardTimerExt_r17_Optional(_ctx, &p->discardTimerExt_r17);
+	if (p->discardTimerExt_r17.d) { adbgPrintLog(_ctx, " }"); };
 }
 
 static void _adbgSys__PDCP_Config_Type_Value(acpCtx_t _ctx, const union PDCP_Config_Type_Value* p, enum PDCP_Config_Type_Sel d)
@@ -28747,11 +29714,22 @@ static void _adbgSys__MAC_LogicalChannelConfig_Type_LogicalChannel_Optional(acpC
 	_adbgSys__MAC_LogicalChannelConfig_Type(_ctx, &p->v);
 }
 
+static void _adbgSys__MAC_Test_DLLogChID_Type_Value(acpCtx_t _ctx, const union MAC_Test_DLLogChID_Type_Value* p, enum MAC_Test_DLLogChID_Type_Sel d)
+{
+	if (d == MAC_Test_DLLogChID_Type_LogChId) {
+		adbgPrintLog(_ctx, "LogChId := %d", (int)p->LogChId);
+		return;
+	}
+	if (d == MAC_Test_DLLogChID_Type_ConfigLchId) {
+		adbgPrintLog(_ctx, "ConfigLchId := %s", (p->ConfigLchId ? "true" : "false"));
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
 static void _adbgSys__MAC_Test_DLLogChID_Type(acpCtx_t _ctx, const struct MAC_Test_DLLogChID_Type* p)
 {
-	adbgPrintLog(_ctx, "LogChId := %d", (int)p->LogChId);
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "ConfigLchId := %s", (p->ConfigLchId ? "true" : "false"));
+	_adbgSys__MAC_Test_DLLogChID_Type_Value(_ctx, &p->v, p->d);
 }
 
 static const char* adbgSys__MAC_Test_SCH_NoHeaderManipulation_Type__ToString(MAC_Test_SCH_NoHeaderManipulation_Type v)
@@ -29295,16 +30273,64 @@ static void _adbgSys__SQN_Paging_v1610_IEs_uac_ParamModification_r16_e_uac_Param
 	adbgPrintLog(_ctx, "%s (%d)", adbgSys__SQN_Paging_v1610_IEs_uac_ParamModification_r16_e__ToString(p->v), (int)p->v);
 }
 
-static void _adbgSys__SQN_Paging_v1610_IEs_nonCriticalExtension(acpCtx_t _ctx, const struct SQN_Paging_v1610_IEs_nonCriticalExtension* p)
+static const char* adbgSys__SQN_PagingRecord_v1700_pagingCause_r17_e__ToString(SQN_PagingRecord_v1700_pagingCause_r17_e v)
+{
+	switch(v) {
+		case SQN_PagingRecord_v1700_pagingCause_r17_e_voice: return "SQN_PagingRecord_v1700_pagingCause_r17_e_voice";
+		default: return "Unknown";
+	}
+}
+
+static void _adbgSys__SQN_PagingRecord_v1700_pagingCause_r17_e_pagingCause_r17_Optional(acpCtx_t _ctx, const struct SQN_PagingRecord_v1700_pagingCause_r17_e_pagingCause_r17_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s (%d)", adbgSys__SQN_PagingRecord_v1700_pagingCause_r17_e__ToString(p->v), (int)p->v);
+}
+
+static void _adbgSys__SQN_PagingRecord_v1700(acpCtx_t _ctx, const struct SQN_PagingRecord_v1700* p)
+{
+	adbgPrintLog(_ctx, "pagingCause_r17 := ");
+	_adbgSys__SQN_PagingRecord_v1700_pagingCause_r17_e_pagingCause_r17_Optional(_ctx, &p->pagingCause_r17);
+}
+
+static void _adbgSys__SQN_PagingRecordList_v1700_SQN_Paging_v1700_IEs_pagingRecordList_v1700_Optional(acpCtx_t _ctx, const struct SQN_PagingRecordList_v1700_SQN_Paging_v1700_IEs_pagingRecordList_v1700_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	for (size_t i1 = 0; i1 < p->v.d; i1++) {
+		_adbgSys__SQN_PagingRecord_v1700(_ctx, &p->v.v[i1]);
+		if (i1 != p->v.d - 1) { adbgPrintLog(_ctx, ", "); }
+	}
+}
+
+static void _adbgSys__SQN_Paging_v1700_IEs_nonCriticalExtension(acpCtx_t _ctx, const struct SQN_Paging_v1700_IEs_nonCriticalExtension* p)
 {
 	(void)_ctx;
 	(void)p;
 }
 
-static void _adbgSys__SQN_Paging_v1610_IEs_nonCriticalExtension_nonCriticalExtension_Optional(acpCtx_t _ctx, const struct SQN_Paging_v1610_IEs_nonCriticalExtension_nonCriticalExtension_Optional* p)
+static void _adbgSys__SQN_Paging_v1700_IEs_nonCriticalExtension_nonCriticalExtension_Optional(acpCtx_t _ctx, const struct SQN_Paging_v1700_IEs_nonCriticalExtension_nonCriticalExtension_Optional* p)
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	_adbgSys__SQN_Paging_v1610_IEs_nonCriticalExtension(_ctx, &p->v);
+	_adbgSys__SQN_Paging_v1700_IEs_nonCriticalExtension(_ctx, &p->v);
+}
+
+static void _adbgSys__SQN_Paging_v1700_IEs(acpCtx_t _ctx, const struct SQN_Paging_v1700_IEs* p)
+{
+	adbgPrintLog(_ctx, "pagingRecordList_v1700 := ");
+	if (p->pagingRecordList_v1700.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgSys__SQN_PagingRecordList_v1700_SQN_Paging_v1700_IEs_pagingRecordList_v1700_Optional(_ctx, &p->pagingRecordList_v1700);
+	if (p->pagingRecordList_v1700.d) { adbgPrintLog(_ctx, " }"); };
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "nonCriticalExtension := ");
+	if (p->nonCriticalExtension.d) { adbgPrintLog(_ctx, "{ "); };
+	_adbgSys__SQN_Paging_v1700_IEs_nonCriticalExtension_nonCriticalExtension_Optional(_ctx, &p->nonCriticalExtension);
+	if (p->nonCriticalExtension.d) { adbgPrintLog(_ctx, " }"); };
+}
+
+static void _adbgSys__SQN_Paging_v1700_IEs_SQN_Paging_v1610_IEs_nonCriticalExtension_Optional(acpCtx_t _ctx, const struct SQN_Paging_v1700_IEs_SQN_Paging_v1610_IEs_nonCriticalExtension_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	_adbgSys__SQN_Paging_v1700_IEs(_ctx, &p->v);
 }
 
 static void _adbgSys__SQN_Paging_v1610_IEs(acpCtx_t _ctx, const struct SQN_Paging_v1610_IEs* p)
@@ -29319,7 +30345,7 @@ static void _adbgSys__SQN_Paging_v1610_IEs(acpCtx_t _ctx, const struct SQN_Pagin
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "nonCriticalExtension := ");
 	if (p->nonCriticalExtension.d) { adbgPrintLog(_ctx, "{ "); };
-	_adbgSys__SQN_Paging_v1610_IEs_nonCriticalExtension_nonCriticalExtension_Optional(_ctx, &p->nonCriticalExtension);
+	_adbgSys__SQN_Paging_v1700_IEs_SQN_Paging_v1610_IEs_nonCriticalExtension_Optional(_ctx, &p->nonCriticalExtension);
 	if (p->nonCriticalExtension.d) { adbgPrintLog(_ctx, " }"); };
 }
 

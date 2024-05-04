@@ -278,7 +278,8 @@ set_ul_DAI(int module_idP,
   COMMON_channels_t *cc = &eNB->common_channels[CC_idP];
 
   if (cc->tdd_Config != NULL) {    //TDD
-    DAI = (UE_info->UE_template[CC_idP][UE_idP].DAI - 1) & 3;
+      DAI = (UE_info->UE_template[CC_idP][UE_idP].DAI > 0)?((UE_info->UE_template[CC_idP][UE_idP].DAI - 1) & 3):UE_info->UE_template[CC_idP][UE_idP].DAI;
+    
     LOG_D(MAC, "[eNB %d] CC_id %d Frame %d, subframe %d: DAI %d for UE %d\n",
           module_idP,
           CC_idP,
@@ -832,15 +833,26 @@ schedule_ue_spec(module_id_t module_idP,
       int header_length_total = 0;
       int header_length_last = 0;
       unsigned char sdu_lcids[NB_RB_MAX];
-      for (int i = 0; i < ue_sched_ctrl->dl_lc_num; ++i) {
-        const int lcid = ue_sched_ctrl->dl_lc_ids[i]; // will match DCCH, DCCH1, DTCH
+      uint8_t       active_lcid_num = 0;  
+
+      if(true == RC.macTestPdu_Buffer.isTestMacPduValid){
+        active_lcid_num = MAX_NUM_LCID;  //All including the reserved LCIDs
+      }else{
+        active_lcid_num = ue_sched_ctrl->dl_lc_num;  //Only configured LCIDs
+      }
+
+      /* Loop over all active LCIDs to estimate BO data */
+      for (uint8_t i = 0; i < active_lcid_num; ++i) {
+        int lcid = i; // will match DCCH, DCCH1, DTCH
+        if(i < ue_sched_ctrl->dl_lc_num){
+          lcid = ue_sched_ctrl->dl_lc_ids[i];
+        }
 
         if (TBS - ta_len - header_length_total - sdu_length_total - 3 <= 0)
           break;
 
         if (ue_sched_ctrl->dl_lc_bytes[i] == 0) // no data in this LC!
           continue;
-
         const uint32_t data =
             min(ue_sched_ctrl->dl_lc_bytes[i],
                 TBS - ta_len - header_length_total - sdu_length_total - 3);
@@ -854,7 +866,22 @@ schedule_ue_spec(module_id_t module_idP,
               CC_id,
               data);
 
-        sdu_lengths[num_sdus] = mac_rlc_data_req(module_idP,
+
+       if(true == RC.macTestPdu_Buffer.isTestMacPduValid){/*Copy the data from MAC test pdu buffer*/
+         if((rnti == RC.macTestPdu_Buffer.rnti) && (lcid == RC.macTestPdu_Buffer.lc_id))
+         {
+             LOG_D(MAC, "Data copied from mac test buffer for rnti  %d, lcid %d\n", rnti, lcid);
+             memcpy(&dlsch_buffer[sdu_length_total], RC.macTestPdu_Buffer.sdu_buffer_p, RC.macTestPdu_Buffer.sdu_buffer_size);
+             sdu_lengths[num_sdus] = RC.macTestPdu_Buffer.sdu_buffer_size;
+             //Reset the macTestPdu_Buffer
+             memset(&(RC.macTestPdu_Buffer), 0, sizeof(RC.macTestPdu_Buffer));
+             //DLSCH TX done. Test mac buffer is marked invalid.
+             RC.macTestPdu_Buffer.isTestMacPduValid = false;
+             //Although loopback data is expected only for valid LCIDs
+             RC.macTestPdu_Buffer.isLoopBackData = true;
+         }
+       }else{  /*Copy the data from DLSCH buffer of RLC*/
+         sdu_lengths[num_sdus] = mac_rlc_data_req(module_idP,
                                                  rnti,
                                                  module_idP,
                                                  frameP,
@@ -866,6 +893,7 @@ schedule_ue_spec(module_id_t module_idP,
                                                  0,
                                                  0
                                                );
+       }
 
 #ifdef DEBUG_eNB_SCHEDULER
           LOG_T(MAC, "[eNB %d][%d] CC_id %d Got %d bytes :",

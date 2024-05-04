@@ -19,7 +19,7 @@
  *      contact@openairinterface.org
  */
 
-/*! \file l2_interface.c
+/*! \file L2_interface_common.c
  * \brief layer 2 interface, used to support different RRC sublayer
  * \author Raymond Knopp and Navid Nikaein
  * \date 2010-2014
@@ -109,7 +109,7 @@ rrc_data_ind(
           ctxt_pP->module_id, ctxt_pP->frame, DCCH_index,Srb_id,sdu_sizeP,  ctxt_pP->eNB_index);
   } else {
     LOG_D(RRC, "[eNB %d] Frame %d: received a DCCH %ld message on SRB %ld with Size %d from UE %lx\n", ctxt_pP->module_id, ctxt_pP->frame, DCCH_index, Srb_id, sdu_sizeP, ctxt_pP->rntiMaybeUEid);
-
+    DevAssert(sdu_sizeP < CCCH_SDU_SIZE);
 //#ifdef ENB_SS
     if (RC.ss.mode >= SS_SOFTMODEM && RC.ss.State >= SS_STATE_CELL_ACTIVE)
     {
