@@ -41,6 +41,8 @@
 struct NR_RLC_Config;
 struct NR_LogicalChannelConfig;
 
+nr_rlc_ue_manager_t* get_rlc_ue_manager();
+
 void nr_rlc_add_srb(int rnti, int srb_id, const NR_RLC_BearerConfig_t *rlc_BearerConfig);
 void nr_rlc_add_drb(int rnti, int drb_id, const NR_RLC_BearerConfig_t *rlc_BearerConfig);
 

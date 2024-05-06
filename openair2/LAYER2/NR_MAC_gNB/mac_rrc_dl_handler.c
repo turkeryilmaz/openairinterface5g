@@ -25,6 +25,7 @@
 #include "openair2/F1AP/f1ap_ids.h"
 #include "openair2/LAYER2/nr_rlc/nr_rlc_oai_api.h"
 #include "F1AP_CauseRadioNetwork.h"
+#include "openair2/LAYER2/BAP/bap_oai_api.c"
 
 #include "uper_decoder.h"
 #include "uper_encoder.h"
@@ -215,7 +216,7 @@ static int handle_ue_context_bhchannels_setup(int rnti,
   /* Note: the actual GTP tunnels are created in the F1AP breanch of
    * ue_context_*_response() */
   *resp_bhchs = calloc(bhchs_len, sizeof(**resp_bhchs));
-  AssertFatal(*resp_drbs != NULL, "out of memory\n");
+  AssertFatal(*resp_bhchs != NULL, "out of memory\n");
   long drb_id; // DRB for the RLC entity that implements the BH RLC Channel
   for(int i=0; i<bhchs_len; i++){
     const f1ap_bhchannel_to_be_setup_t *bhch = &req_bhchs[i];
@@ -228,7 +229,7 @@ static int handle_ue_context_bhchannels_setup(int rnti,
     int ret = ASN_SEQUENCE_ADD(&cellGroupConfig->rlc_BearerToAddModList->list, rlc_BearerConfig);
     DevAssert(ret == 0);
   }
-  return drbs_len;
+  return bhchs_len;
 }
 /* [IAB] end */
 
@@ -296,7 +297,7 @@ static void set_QoSConfig(const f1ap_ue_context_modif_req_t *req, NR_UE_sched_ct
   AssertFatal(req != NULL, "f1ap_ue_context_modif_req is NULL\n");
   uint8_t drb_count = req->drbs_to_be_setup_length;
   uint8_t srb_count = req->srbs_to_be_setup_length;
-  LOG_I(NR_MAC, "Number of DRBs = %d and SRBs = %d\n", drb_count, srb_count);
+  LOG_I(NR_MAC, "QoSConfig: Number of DRBs = %d and SRBs = %d\n", drb_count, srb_count);
 
   /* DRBs*/
   for (int i = 0; i < drb_count; i++) {
@@ -495,7 +496,7 @@ void ue_context_modification_request(const f1ap_ue_context_modif_req_t *req)
   }
 
   if (req->srbs_to_be_setup_length > 0 || req->drbs_to_be_setup_length > 0 || req->drbs_to_be_released_length > 0
-      || ue_cap != NULL) {
+      || req->bhchannels_to_be_setup_length > 0 || ue_cap != NULL) {
     resp.du_to_cu_rrc_information = calloc(1, sizeof(du_to_cu_rrc_information_t));
     AssertFatal(resp.du_to_cu_rrc_information != NULL, "out of memory\n");
     resp.du_to_cu_rrc_information->cellGroupConfig = calloc(1, 1024);
@@ -530,6 +531,7 @@ void ue_context_modification_request(const f1ap_ue_context_modif_req_t *req)
   /* free the memory we allocated above */
   free(resp.srbs_to_be_setup);
   free(resp.drbs_to_be_setup);
+  free(resp.bhchannels_to_be_setup);
   if (resp.du_to_cu_rrc_information != NULL) {
     free(resp.du_to_cu_rrc_information->cellGroupConfig);
     free(resp.du_to_cu_rrc_information);

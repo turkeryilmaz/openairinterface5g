@@ -511,7 +511,7 @@ typedef struct f1ap_ue_context_setup_s {
   ReconfigurationCompl_t ReconfigComplOutcome;
   uint8_t *rrc_container;
   int      rrc_container_length;
-} f1ap_ue_context_setup_t, f1ap_ue_context_modif_resp_t;
+} f1ap_ue_context_setup_t;
 
 typedef struct f1ap_ue_context_modif_req_s {
   uint32_t gNB_CU_ue_id;
@@ -547,7 +547,7 @@ typedef struct f1ap_ue_context_modif_req_s {
   f1ap_bhchannel_to_be_setup_t *bhchannels_to_be_setup;
   uint8_t bhchannels_to_be_setup_length;
 
-} f1ap_ue_context_modif_req_t;
+} f1ap_ue_context_modif_req_t, f1ap_ue_context_modif_resp_t;
 
 typedef enum F1ap_Cause_e {
   F1AP_CAUSE_NOTHING,  /* No components present */

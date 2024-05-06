@@ -44,6 +44,7 @@ typedef struct nr_rlc_ue_t {
   nr_rlc_entity_t *srb[3];
   nr_rlc_entity_t *drb[MAX_DRBS_PER_UE];
   nr_rlc_rb_t lcid2rb[32];
+  nr_rlc_entity_t *bhch[32];
 } nr_rlc_ue_t;
 
 /***********************************************************************/
