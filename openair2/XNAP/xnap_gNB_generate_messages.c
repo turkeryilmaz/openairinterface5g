@@ -100,7 +100,7 @@ int xnap_gNB_generate_xn_setup_request(sctp_assoc_t assoc_id, xnap_setup_req_t *
   // for (int i=0;i<1;i++)
   {
     TAISupport_ItemIEs = (XNAP_TAISupport_Item_t *)calloc(1, sizeof(XNAP_TAISupport_Item_t));
-    INT24_TO_OCTET_STRING(req->tai_support, &TAISupport_ItemIEs->tac);
+    INT24_TO_OCTET_STRING(*req->tai_support, &TAISupport_ItemIEs->tac);
     {
       for (int j = 0; j < 1; j++) {
         e_BroadcastPLMNinTAISupport_ItemIE =
@@ -146,7 +146,7 @@ int xnap_gNB_generate_xn_setup_request(sctp_assoc_t assoc_id, xnap_setup_req_t *
       NR_CELL_ID_TO_BIT_STRING(req->gNB_id,
                                &servedCellMember->served_cell_info_NR.cellID.nr_CI); // bit string
 
-      INT24_TO_OCTET_STRING(req->tai_support, &servedCellMember->served_cell_info_NR.tac); // octet string
+      INT24_TO_OCTET_STRING(*req->tai_support, &servedCellMember->served_cell_info_NR.tac); // octet string
       for (int k = 0; k < 1; k++) {
         plmn = (XNAP_PLMN_Identity_t *)calloc(1, sizeof(XNAP_PLMN_Identity_t));
         {

@@ -40,6 +40,8 @@
 #include "queue.h"
 #include "assertions.h"
 #include "conversions.h"
+#include "xnap_gNB_generate_messages.h"
+#include "gnb_config.h"
 
 RB_PROTOTYPE(xnap_gnb_tree, xnap_gNB_data_t, entry, xnap_gNB_compare_assoc_id);
 
@@ -210,8 +212,8 @@ void *xnap_task(void *arg)
   LOG_D(XNAP, "Starting XNAP layer\n");
   itti_mark_task_ready(TASK_XNAP);
   const int instance = 0;
-  xnap_net_config_t *xn_net_config = Read_IPconfig_Xn();
-  createXninst(instance, NULL, xn_net_config);
+  xnap_net_config_t xn_net_config = Read_IPconfig_Xn();
+  createXninst(instance, NULL, &xn_net_config);
 
   while (1) {
     itti_receive_msg(TASK_XNAP, &received_msg);
