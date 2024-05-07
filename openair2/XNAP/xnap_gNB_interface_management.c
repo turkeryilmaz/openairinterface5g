@@ -93,7 +93,7 @@ int xnap_gNB_handle_xn_setup_request(instance_t instance, sctp_assoc_t assoc_id,
     return -1;
   } else {
     OCTET_STRING_TO_INT24(&ie->value.choice.TAISupport_List.list.array[0]->tac, req->tai_support);
-    LOG_I(XNAP, "tac %d \n", *req->tai_support);
+    LOG_I(XNAP, "tac %d \n", req->tai_support);
   }
   LOG_D(XNAP, "req->gNB id: %lu \n", req->gNB_id);
 

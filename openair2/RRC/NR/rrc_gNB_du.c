@@ -181,6 +181,7 @@ void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *req, sctp_assoc_t assoc_id)
   xnap_gNB_instance_t *instance_xn = xnap_gNB_get_instance(0);
   if (instance_xn != NULL) {
     LOG_D(NR_RRC, "XNAP is enabled, Triggering SCTP Association \n");
+    void cu_register_xn(uint32_t gnb_id_num,f1ap_served_cell_info_t *cell , xnap_net_config_t nc); //function prototype add
     if (instance_xn->setup_req.gNB_id == 0) {
       cu_register_xn(1, cell_info,instance_xn->net_config);
     }

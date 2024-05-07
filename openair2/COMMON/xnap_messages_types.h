@@ -107,7 +107,7 @@ typedef struct xnap_served_cell_info_t {
   uint16_t nr_pci;// NR Physical Cell Ids
 
   /* Tracking area code */
-  uint32_t *tac;
+  uint32_t tac;
 
   xnap_mode_t mode;
   union {
@@ -122,7 +122,7 @@ typedef struct xnap_setup_req_s {
   uint64_t gNB_id;
   /* Tracking area code */
   uint16_t num_tai;
-  uint32_t *tai_support;
+  uint32_t tai_support;
   xnap_plmn_t plmn_support;
   // Number of slide support items
   uint16_t num_snssai;

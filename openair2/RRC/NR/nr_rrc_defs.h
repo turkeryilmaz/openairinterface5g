@@ -95,6 +95,7 @@
 #define NR_UE_MODULE_INVALID ((module_id_t) ~0) // FIXME attention! depends on type uint8_t!!!
 #define NR_UE_INDEX_INVALID  ((module_id_t) ~0) // FIXME attention! depends on type uint8_t!!! used to be -1
 
+#define MAX_NUM_NR_NEIGH_CELLs 6 /* maximum neighbouring cells number */
 typedef enum {
   NR_RRC_OK=0,
   NR_RRC_ConnSetup_failed,
@@ -389,6 +390,14 @@ typedef struct nr_rrc_cuup_container_t {
   sctp_assoc_t assoc_id;
 } nr_rrc_cuup_container_t;
 
+typedef struct nr_rrc_neighcells_container_t {
+  /* Tree-related data */
+  RB_ENTRY(nr_rrc_neighcells_container_t) entries;
+
+  uint64_t nr_cellid;
+  sctp_assoc_t assoc_id;
+} nr_rrc_neighcells_container_t;
+
 //---NR---(completely change)---------------------
 typedef struct gNB_RRC_INST_s {
 
@@ -411,6 +420,8 @@ typedef struct gNB_RRC_INST_s {
 
   char *uecap_file;
 
+ // int num_nr_neigh_cells;
+ // uint32_t nr_neigh_cells_id[MAX_NUM_NR_NEIGH_CELLs];
   // security configuration (preferred algorithms)
   nr_security_configuration_t security;
 
@@ -423,6 +434,8 @@ typedef struct gNB_RRC_INST_s {
   RB_HEAD(rrc_cuup_tree, nr_rrc_cuup_container_t) cuups; // CU-UPs, indexed by assoc_id
   size_t num_cuups;
 
+  RB_HEAD(rrc_neigh_cell_tree, nr_rrc_neighcells_container_t) neighs; // Neighbouring cells, indexed by assoc_id
+  size_t num_neighs;
 } gNB_RRC_INST;
 
 #include "nr_rrc_proto.h" //should be put here otherwise compilation error

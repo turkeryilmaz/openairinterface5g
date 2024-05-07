@@ -99,6 +99,7 @@
 #include "openair2/SDAP/nr_sdap/nr_sdap_entity.h"
 #include "openair2/E1AP/e1ap.h"
 #include "cucp_cuup_if.h"
+#include "openair2/XNAP/xnap_gNB_defs.h"
 
 #include "BIT_STRING.h"
 #include "assertions.h"
@@ -125,6 +126,18 @@ mui_t rrc_gNB_mui = 0;
 
 ///---------------------------------------------------------------------------------------------------------------///
 ///---------------------------------------------------------------------------------------------------------------///
+
+static int neigh_compare(const nr_rrc_neighcells_container_t *a, const nr_rrc_neighcells_container_t *b)
+{
+  if (a->assoc_id > b->assoc_id)
+    return 1;
+  if (a->assoc_id == b->assoc_id)
+    return 0;
+  return -1; /* a->assoc_id < b->assoc_id */
+}
+
+/* Tree management functions */
+RB_GENERATE(rrc_neigh_cell_tree, nr_rrc_neighcells_container_t, entries, neigh_compare);
 
 static void clear_nas_pdu(ngap_pdu_t *pdu)
 {
@@ -2230,6 +2243,56 @@ void rrc_gNB_process_e1_bearer_context_release_cplt(const e1ap_bearer_release_cp
   LOG_I(RRC, "UE %d: received bearer release complete\n", cplt->gNB_cu_cp_ue_id);
 }
 
+void rrc_gNB_process_xn_setup_request(sctp_assoc_t assoc_id, xnap_setup_req_t *m, instance_t instance)
+{
+  gNB_RRC_INST *rrc = RC.nrrrc[0];
+  if (rrc->num_neighs > MAX_NUM_NR_NEIGH_CELLs) {
+    LOG_E(NR_RRC, "Error: number of neighbouring cells is exceeded \n");
+    MessageDef *msg = itti_alloc_new_message(TASK_RRC_GNB, 0, XNAP_SETUP_FAILURE);
+    msg->ittiMsgHeader.originInstance = assoc_id;
+    xnap_setup_failure_t *xnap_msg = &XNAP_SETUP_FAILURE(msg);
+    xnap_msg->cause_type = XNAP_CAUSE_PROTOCOL;
+    xnap_msg->cause_value = 6; //XNAP_CauseProtocol_unspecified;
+    itti_send_msg_to_task(TASK_XNAP, 0, msg);
+  }
+
+  //RC.nrrrc[0]->num_nr_neigh_cells++;
+  //RC.nrrrc[0]->nr_neigh_cells_id[RC.nrrrc[0]->num_neighs - 1] = m->info.nr_pci;
+  nr_rrc_neighcells_container_t *neigh_cell = malloc(sizeof(*neigh_cell));
+  AssertFatal(neigh_cell, "out of memory\n");
+  neigh_cell->assoc_id = assoc_id;
+  neigh_cell->nr_cellid = m->info.nr_cellid;
+  RB_INSERT(rrc_neigh_cell_tree, &rrc->neighs, neigh_cell);
+  rrc->num_neighs++;
+
+  MessageDef *msg = itti_alloc_new_message(TASK_RRC_GNB, 0, XNAP_SETUP_RESP);
+  msg->ittiMsgHeader.originInstance = assoc_id;
+  xnap_gNB_instance_t *xnap_gNB_get_instance(instance_t instanceP);
+  xnap_setup_resp_t *xnap_msg = &XNAP_SETUP_RESP(msg);
+  xnap_gNB_instance_t *instance_p = xnap_gNB_get_instance(instance);
+  xnap_msg->gNB_id = instance_p->setup_req.gNB_id;
+  xnap_msg->info = instance_p->setup_req.info;
+  //xnap_msg->gNB_id = m->gNB_id;
+  //xnap_msg->info = m->info;
+  itti_send_msg_to_task(TASK_XNAP, 0, msg);
+}
+
+void rrc_gNB_process_xn_setup_response(sctp_assoc_t assoc_id, xnap_setup_resp_t *m)
+{
+  gNB_RRC_INST *rrc = RC.nrrrc[0];
+  if (rrc->num_neighs > MAX_NUM_NR_NEIGH_CELLs) {
+    LOG_E(RRC, "Error: number of neighbouring cells is exceeded \n");
+    return;
+  }
+
+  nr_rrc_neighcells_container_t *neigh_cell = malloc(sizeof(*neigh_cell));
+  AssertFatal(neigh_cell, "out of memory\n");
+  neigh_cell->assoc_id = assoc_id;
+  neigh_cell->nr_cellid = m->info.nr_cellid;
+  RB_INSERT(rrc_neigh_cell_tree, &RC.nrrrc[0]->neighs, neigh_cell);
+  rrc->num_neighs++;
+}
+
 static void print_rrc_meas(FILE *f, const NR_MeasResults_t *measresults)
 {
   DevAssert(measresults->measResultServingMOList.list.count >= 1);
@@ -2454,6 +2517,16 @@ void *rrc_gnb_task(void *args_p) {
       case F1AP_LOST_CONNECTION:
         rrc_CU_process_f1_lost_connection(RC.nrrrc[0], &F1AP_LOST_CONNECTION(msg_p), msg_p->ittiMsgHeader.originInstance);
         break;
+
+    /*Messages from XNAP*/
+      case XNAP_SETUP_RESP:
+        rrc_gNB_process_xn_setup_response(ITTI_MSG_ORIGIN_INSTANCE(msg_p), &XNAP_SETUP_RESP(msg_p));
+        break;
+
+      case XNAP_SETUP_REQ:
+        rrc_gNB_process_xn_setup_request(ITTI_MSG_ORIGIN_INSTANCE(msg_p), &XNAP_SETUP_REQ(msg_p), instance);
+        break;
+
 
       /* Messages from X2AP */
       case X2AP_ENDC_SGNB_ADDITION_REQ:
