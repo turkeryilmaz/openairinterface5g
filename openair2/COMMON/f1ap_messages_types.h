@@ -433,12 +433,12 @@ typedef struct traffic_mapping_info_s{
 }traffic_mapping_info_t;
 
 typedef struct f1ap_bhchannel_to_be_setup_s {
-  uint16_t           bHRLCChannelID;
+  uint16_t            bHRLCChannelID;
   /* TODO: f1ap_qos_flow_level_qos_parameters_t bhch_qos; */
-  rlc_mode_t     rlc_mode;
-  bool            is_bap_Ctrl_PDU_Channel; // should be ENUMERATED {true, ...}
+  rlc_mode_t          rlc_mode;
+  bool                is_bap_Ctrl_PDU_Channel; // should be ENUMERATED {true, ...}
   traffic_mapping_info_t trafficMappingInfo;
-  bool           is_trafficMappingInfo_set;
+  bool                is_trafficMappingInfo_set;
 } f1ap_bhchannel_to_be_setup_t;
 
 /* -- [IAB] end of related structures */

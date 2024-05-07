@@ -43,7 +43,7 @@ static long get_lcid_from_drbid(int drb_id)
 /* [IAB] related */
 static long get_lcid_from_bhchid(uint16_t bhch_id)
 {
-  return 32 - bhch_id; // Temporary solution to prevent conflicts
+  return 33 - bhch_id; // Temporary solution to prevent conflicts
 }
 /* [IAB] end */
 
@@ -197,12 +197,12 @@ static int handle_ue_context_drbs_release(int rnti,
   return drbs_len;
 }
 
-/* [IAB] related function */
-static NR_RLC_BearerConfig_t *get_bearerconfig_from_bhch(const f1ap_bhchannel_to_be_setup_t *bhch, long drb_id)
-{
+/* [IAB] related function for BH RLC Channel */
+NR_BH_RLC_ChannelConfig_r16_t *get_bhchConfig(const f1ap_bhchannel_to_be_setup_t *bhch){
   const NR_RLC_Config_PR rlc_conf = bhch->rlc_mode == RLC_MODE_UM ? NR_RLC_Config_PR_um_Bi_Directional : NR_RLC_Config_PR_am;
+  long lcid = get_lcid_from_bhchid(bhch->bHRLCChannelID);
   long priority = 13; // hardcoded for the moment
-  return get_DRB_RLC_BearerConfig(get_lcid_from_bhchid(bhch->bHRLCChannelID), drb_id, rlc_conf, priority);
+  return get_BH_RLC_ChannelConfig(lcid, bhch->bHRLCChannelID, rlc_conf, priority);
 }
 
 static int handle_ue_context_bhchannels_setup(int rnti,
@@ -217,16 +217,14 @@ static int handle_ue_context_bhchannels_setup(int rnti,
    * ue_context_*_response() */
   *resp_bhchs = calloc(bhchs_len, sizeof(**resp_bhchs));
   AssertFatal(*resp_bhchs != NULL, "out of memory\n");
-  long drb_id; // DRB for the RLC entity that implements the BH RLC Channel
   for(int i=0; i<bhchs_len; i++){
     const f1ap_bhchannel_to_be_setup_t *bhch = &req_bhchs[i];
-    drb_id = 32 - bhch->bHRLCChannelID;
-    NR_RLC_BearerConfig_t *rlc_BearerConfig = get_bearerconfig_from_bhch(bhch, drb_id);
-    bap_add_bhch_drb(rnti, bhch->bHRLCChannelID, drb_id, rlc_BearerConfig);
+    NR_BH_RLC_ChannelConfig_r16_t *rlc_bhchConfig = get_bhchConfig(bhch);
+    bap_add_bhch(rnti, bhch->bHRLCChannelID, rlc_bhchConfig);
 
     (*resp_bhchs)[i] = *bhch;
-
-    int ret = ASN_SEQUENCE_ADD(&cellGroupConfig->rlc_BearerToAddModList->list, rlc_BearerConfig);
+    // TODO
+    int ret = ASN_SEQUENCE_ADD(&cellGroupConfig->ext2->bh_RLC_ChannelToAddModList_r16->list, rlc_bhchConfig);
     DevAssert(ret == 0);
   }
   return bhchs_len;

@@ -206,3 +206,22 @@ void nr_rlc_ue_add_drb_rlc_entity(nr_rlc_ue_t *ue, int drb_id, nr_rlc_entity_t *
 
   ue->drb[drb_id] = entity;
 }
+
+/* [IAB] related config */
+void nr_rlc_ue_add_bhch_rlc_entity(nr_rlc_ue_t *ue, int bhch_id, nr_rlc_entity_t *entity)
+{
+  if (bhch_id < 1 || bhch_id > 32) {
+    LOG_E(RLC, "%s:%d:%s: fatal, bad drb id\n", __FILE__, __LINE__, __FUNCTION__);
+    exit(1);
+  }
+
+  bhch_id--;
+
+  if (ue->bhch[bhch_id] != NULL) {
+    LOG_E(RLC, "%s:%d:%s: fatal, BH Channel already present\n",
+          __FILE__, __LINE__, __FUNCTION__);
+    exit(1);
+  }
+
+  ue->bhch[bhch_id] = entity;
+}

@@ -70,6 +70,8 @@ NR_RadioBearerConfig_t *get_default_rbconfig(int eps_bearer_id,
                                              e_NR_CipheringAlgorithm ciphering_algorithm,
                                              e_NR_SecurityConfig__keyToUse key_to_use);
 
+NR_BH_RLC_ChannelConfig_r16_t *get_BH_RLC_ChannelConfig(long lcChannelId, long bhch_id, NR_RLC_Config_PR rlc_conf, long priority);
+
 void fill_nr_noS1_bearer_config(NR_RadioBearerConfig_t **rbconfig,
                                 NR_RLC_BearerConfig_t **rlc_rbconfig);
 void free_nr_noS1_bearer_config(NR_RadioBearerConfig_t **rbconfig,

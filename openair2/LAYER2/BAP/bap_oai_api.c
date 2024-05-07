@@ -16,6 +16,7 @@
 #include "NR_RLC-Config.h"
 #include "common/ran_context.h"
 #include "NR_UL-CCCH-Message.h"
+#include "conversions.h"
 
 extern RAN_CONTEXT_t RC;
 
@@ -38,15 +39,15 @@ static void max_retx_reached(void *_ue, nr_rlc_entity_t *entity){
   // TODO
 }
 
-static void add_bhch_um(int rnti, int bhch_id, const NR_RLC_BearerConfig_t *rlc_BearerConfig)
+static void add_bhch_um(int rnti, int bhch_id, const NR_BH_RLC_ChannelConfig_r16_t *rlc_bhchConfig)
 {
-  struct NR_RLC_Config *r = rlc_BearerConfig->rlc_Config;
+  struct NR_RLC_Config *r = rlc_bhchConfig->rlc_Config_r16;
 
   int sn_field_length;
   int t_reassembly;
 
-  AssertFatal(drb_id > 0 && drb_id <= MAX_DRBS_PER_UE,
-              "Invalid DRB ID %d\n", drb_id);
+  AssertFatal(bhch_id > 0 && bhch_id <= 32,
+              "Invalid bhch ID %d\n", bhch_id);
 
   switch (r->present) {
   case NR_RLC_Config_PR_um_Bi_Directional: {
@@ -70,34 +71,33 @@ static void add_bhch_um(int rnti, int bhch_id, const NR_RLC_BearerConfig_t *rlc_
     
   nr_rlc_manager_lock(nr_rlc_ue_manager);
   nr_rlc_ue_t *ue = nr_rlc_manager_get_ue(nr_rlc_ue_manager, rnti);
-  AssertFatal(rlc_BearerConfig->servedRadioBearer &&
-              (rlc_BearerConfig->servedRadioBearer->present ==
-              NR_RLC_BearerConfig__servedRadioBearer_PR_drb_Identity),
-              "servedRadioBearer for DRB mandatory present when setting up an SRB RLC entity\n");
-  int local_id = rlc_BearerConfig->logicalChannelIdentity - 1; // LCID 0 for SRB 0 not mapped
-  ue->lcid2rb[local_id].type = NR_RLC_DRB;
-  ue->lcid2rb[local_id].choice.drb_id = rlc_BearerConfig->servedRadioBearer->choice.drb_Identity;
-  
-  ue->bhch[bhch_id].mapped_rb.drb_id = rlc_BearerConfig->servedRadioBearer->choice.drb_Identity;
 
-  if (ue->drb[drb_id-1] != NULL) {
-    LOG_E(RLC, "DEBUG add_drb_um %s:%d:%s: warning DRB %d already exist for IAB-MT %d, do nothing\n", __FILE__, __LINE__, __FUNCTION__, drb_id, rnti);
+  /*AssertFatal(rlc_bhchConfig->bh_LogicalChannelIdentity_r16->choice.bh_LogicalChannelIdentity_r16 != NULL, 
+              "Didn't pass Logical Channel ID during BH-RLC-Channel_config");
+  AssertFatal(rlc_bhchConfig->bh_LogicalChannelIdentity_r16->present == NR_BH_LogicalChannelIdentity_r16_PR_bh_LogicalChannelIdentity_r16,
+              "Given LogicalChannelIdentity isn't supported");
+  */
+  int local_id = rlc_bhchConfig->bh_LogicalChannelIdentity_r16->choice.bh_LogicalChannelIdentity_r16 - 1;
+  BIT_STRING_TO_NR_BHRLCCHANNELID(&rlc_bhchConfig->bh_RLC_ChannelID_r16, ue->lcid2bhch[local_id]);
+
+  if (ue->bhch[bhch_id-1] != NULL) {
+    LOG_E(RLC, "%s:%d:%s: BH Channel %d already exists for IAB-MT with RNTI %04x, do nothing\n", __FILE__, __LINE__, __FUNCTION__, bhch_id, rnti);
   } else {
     nr_rlc_entity_t *nr_rlc_um = new_nr_rlc_entity_um(RLC_RX_MAXSIZE,
                                                       RLC_TX_MAXSIZE,
                                                       deliver_sdu, ue,
                                                       t_reassembly,
                                                       sn_field_length);
-    nr_rlc_ue_add_drb_rlc_entity(ue, drb_id, nr_rlc_um);
+    nr_rlc_ue_add_bhch_rlc_entity(ue, bhch_id, nr_rlc_um);
 
-    LOG_D(RLC, "%s:%d:%s: added BH RLC Channel %d with drb %d to IAB-MT with RNTI 0x%x\n", __FILE__, __LINE__, __FUNCTION__, bhch_id, drb_id, rnti);
+    LOG_D(RLC, "%s:%d:%s: added BH RLC Channel %d to IAB-MT with RNTI 0x%x\n", __FILE__, __LINE__, __FUNCTION__, bhch_id, rnti);
   }
   nr_rlc_manager_unlock(nr_rlc_ue_manager);
 }
 
-static void add_bhch_am(int rnti, int bhch_id, const NR_RLC_BearerConfig_t *rlc_BearerConfig)
+static void add_bhch_am(int rnti, int bhch_id, const NR_BH_RLC_ChannelConfig_r16_t *rlc_bhchConfig)
 {
-  struct NR_RLC_Config *r = rlc_BearerConfig->rlc_Config;
+  struct NR_RLC_Config *r = rlc_bhchConfig->rlc_Config_r16;
 
   int t_status_prohibit;
   int t_poll_retransmit;
@@ -138,18 +138,16 @@ static void add_bhch_am(int rnti, int bhch_id, const NR_RLC_BearerConfig_t *rlc_
   nr_rlc_manager_lock(nr_rlc_ue_manager);
   nr_rlc_ue_t *ue = nr_rlc_manager_get_ue(nr_rlc_ue_manager, rnti);
 
-  AssertFatal(rlc_BearerConfig->servedRadioBearer &&
-              (rlc_BearerConfig->servedRadioBearer->present ==
-              NR_RLC_BearerConfig__servedRadioBearer_PR_drb_Identity),
-              "servedRadioBearer for DRB mandatory present when setting up an SRB RLC entity\n");
-  int local_id = rlc_BearerConfig->logicalChannelIdentity - 1; // LCID 0 for SRB 0 not mapped
-  ue->lcid2rb[local_id].type = NR_RLC_DRB;
-  ue->lcid2rb[local_id].choice.drb_id = rlc_BearerConfig->servedRadioBearer->choice.drb_Identity;
-  
-  ue->bhch[bhch_id].mapped_rb.drb_id = rlc_BearerConfig->servedRadioBearer->choice.drb_Identity;
+  /*AssertFatal(rlc_bhchConfig->bh_LogicalChannelIdentity_r16->choice.bh_LogicalChannelIdentity_r16 != NULL, 
+              "Didn't pass Logical Channel ID during BH-RLC-Channel_config");
+  AssertFatal(rlc_bhchConfig->bh_LogicalChannelIdentity_r16->present == NR_rlc_bhchConfig__bh_LogicalChannelIdentity_r16_PR_bh_LogicalChannelIdentity_r16,
+              "Given LogicalChannelIdentity isn't supported");
+  */
+  int local_id = rlc_bhchConfig->bh_LogicalChannelIdentity_r16->choice.bh_LogicalChannelIdentity_r16 - 1;
+  BIT_STRING_TO_NR_BHRLCCHANNELID(&rlc_bhchConfig->bh_RLC_ChannelID_r16, ue->lcid2bhch[local_id]);
 
-  if (ue->drb[drb_id-1] != NULL) {
-    LOG_E(RLC, "%s:%d:%s: DRB %d already exists for IAB-MT with RNTI %04x, do nothing\n", __FILE__, __LINE__, __FUNCTION__, drb_id, rnti);
+  if (ue->bhch[bhch_id-1] != NULL) {
+    LOG_E(RLC, "%s:%d:%s: BH Channel %d already exists for IAB-MT with RNTI %04x, do nothing\n", __FILE__, __LINE__, __FUNCTION__, bhch_id, rnti);
   } else {
     nr_rlc_entity_t *nr_rlc_am = new_nr_rlc_entity_am(RLC_RX_MAXSIZE,
                                                       RLC_TX_MAXSIZE,
@@ -160,23 +158,23 @@ static void add_bhch_am(int rnti, int bhch_id, const NR_RLC_BearerConfig_t *rlc_
                                                       t_reassembly, t_status_prohibit,
                                                       poll_pdu, poll_byte, max_retx_threshold,
                                                       sn_field_length);
-    nr_rlc_ue_add_drb_rlc_entity(ue, drb_id, nr_rlc_am);
+    nr_rlc_ue_add_bhch_rlc_entity(ue, bhch_id, nr_rlc_am);
 
-    LOG_I(RLC, "%s:%d:%s: added BH RLC Channel %d with drb %d to IAB-MT with RNTI 0x%x\n", __FILE__, __LINE__, __FUNCTION__, bhch_id, drb_id, rnti);
+    LOG_I(RLC, "%s:%d:%s: added BH RLC Channel %d to IAB-MT with RNTI 0x%x\n", __FILE__, __LINE__, __FUNCTION__, bhch_id, rnti);
   }
   nr_rlc_manager_unlock(nr_rlc_ue_manager);
 }
 
-void bap_add_bhch_drb(int rnti, int bhch_id, const NR_RLC_BearerConfig_t *rlc_BearerConfig){
-  switch (rlc_BearerConfig->rlc_Config->present) {
+void bap_add_bhch(int rnti, int bhch_id, const NR_BH_RLC_ChannelConfig_r16_t *rlc_bhchConfig){
+  switch (rlc_bhchConfig->rlc_Config_r16->present) {
   case NR_RLC_Config_PR_am:
-    add_bhch_am(rnti, bhch_id, rlc_BearerConfig);
+    add_bhch_am(rnti, bhch_id, rlc_bhchConfig);
     break;
   case NR_RLC_Config_PR_um_Bi_Directional:
-    add_bhch_um(rnti, bhch_id, rlc_BearerConfig);
+    add_bhch_um(rnti, bhch_id, rlc_bhchConfig);
     break;
   default:
-    LOG_E(RLC, "%s:%d:%s: fatal: unhandled DRB type\n",
+    LOG_E(RLC, "%s:%d:%s: fatal: unhandled BH Channel type\n",
           __FILE__, __LINE__, __FUNCTION__);
     exit(1);
   }

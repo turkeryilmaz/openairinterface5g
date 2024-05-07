@@ -393,6 +393,49 @@ NR_RLC_BearerConfig_t *get_DRB_RLC_BearerConfig(long lcChannelId, long drbId, NR
   return rlc_BearerConfig;
 }
 
+/* [IAB] BH rlc channel config */
+NR_BH_RLC_ChannelConfig_r16_t *get_BH_RLC_ChannelConfig(long lcChannelId, long bhch_id, NR_RLC_Config_PR rlc_conf, long priority){
+  NR_BH_RLC_ChannelConfig_r16_t *rlc_bhConfig               = calloc(1, sizeof(NR_BH_RLC_ChannelConfig_r16_t));
+  // Using only the old 0 to 32 lcid
+  rlc_bhConfig->bh_LogicalChannelIdentity_r16               = calloc(1, sizeof(NR_BH_LogicalChannelIdentity_r16_t));
+  rlc_bhConfig->bh_LogicalChannelIdentity_r16->present      = NR_BH_LogicalChannelIdentity_r16_PR_bh_LogicalChannelIdentity_r16;
+  rlc_bhConfig->bh_LogicalChannelIdentity_r16->choice.bh_LogicalChannelIdentity_r16 = lcChannelId;
+  
+  NR_BHRLCCHANNELID_TO_BIT_STRING(bhch_id, &rlc_bhConfig->bh_RLC_ChannelID_r16);
+  
+  rlc_bhConfig->reestablishRLC_r16                          = calloc(1, sizeof(e_NR_BH_RLC_ChannelConfig_r16__reestablishRLC_r16));
+  rlc_bhConfig->reestablishRLC_r16                          = NULL;
+
+  NR_RLC_Config_t *rlc_Config = calloc(1, sizeof(NR_RLC_Config_t));
+  // For now, re-use drb config 
+  nr_drb_config(rlc_Config, rlc_conf);
+  rlc_bhConfig->rlc_Config_r16 = rlc_Config;
+
+  NR_LogicalChannelConfig_t *logicalChannelConfig                 = calloc(1, sizeof(NR_LogicalChannelConfig_t));
+  logicalChannelConfig->ul_SpecificParameters                     = calloc(1, sizeof(*logicalChannelConfig->ul_SpecificParameters));
+  logicalChannelConfig->ul_SpecificParameters->priority           = priority;
+  logicalChannelConfig->ul_SpecificParameters->prioritisedBitRate = NR_LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_kBps8;
+  logicalChannelConfig->ul_SpecificParameters->bucketSizeDuration = NR_LogicalChannelConfig__ul_SpecificParameters__bucketSizeDuration_ms100;
+
+  long *logicalChannelGroupIAB                                    = CALLOC(1, sizeof(long));
+  /* Set LCG = 1 for BH rlc channels
+   * Since we are using this channel for IAB purposes, we can use the
+   * logicalChannelGroupIAB-Ext-r17, which is inside the range (0 to 255)
+   */
+  *logicalChannelGroupIAB                                                       = 1;
+  logicalChannelConfig->ul_SpecificParameters->ext2->logicalChannelGroupIAB_Ext_r17   = calloc(1, sizeof(int));
+  logicalChannelConfig->ul_SpecificParameters->ext2->logicalChannelGroupIAB_Ext_r17   = logicalChannelGroupIAB;
+
+  logicalChannelConfig->ul_SpecificParameters->schedulingRequestID              = CALLOC(1, sizeof(*logicalChannelConfig->ul_SpecificParameters->schedulingRequestID));
+  // Will choose 7 (maximum number) to avoid possible conflicts
+  *logicalChannelConfig->ul_SpecificParameters->schedulingRequestID             = 7;
+  logicalChannelConfig->ul_SpecificParameters->logicalChannelSR_Mask            = 0;
+  logicalChannelConfig->ul_SpecificParameters->logicalChannelSR_DelayTimerApplied = 0;
+  rlc_bhConfig->mac_LogicalChannelConfig_r16                                    = logicalChannelConfig;
+
+  return rlc_bhConfig;
+}
+
 /* returns a default radio bearer config suitable for NSA etc */
 NR_RadioBearerConfig_t *get_default_rbconfig(int eps_bearer_id,
                                              int rb_id,

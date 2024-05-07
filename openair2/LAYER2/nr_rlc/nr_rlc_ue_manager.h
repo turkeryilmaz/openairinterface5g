@@ -43,8 +43,9 @@ typedef struct nr_rlc_ue_t {
   nr_rlc_entity_t *srb0;
   nr_rlc_entity_t *srb[3];
   nr_rlc_entity_t *drb[MAX_DRBS_PER_UE];
-  nr_rlc_rb_t lcid2rb[32];
   nr_rlc_entity_t *bhch[32];
+  nr_rlc_rb_t lcid2rb[32];
+  uint16_t lcid2bhch[32];
 } nr_rlc_ue_t;
 
 /***********************************************************************/
@@ -67,5 +68,6 @@ void nr_rlc_manager_remove_ue(nr_rlc_ue_manager_t *m, int rnti);
 
 void nr_rlc_ue_add_srb_rlc_entity(nr_rlc_ue_t *ue, int srb_id, nr_rlc_entity_t *entity);
 void nr_rlc_ue_add_drb_rlc_entity(nr_rlc_ue_t *ue, int drb_id, nr_rlc_entity_t *entity);
+void nr_rlc_ue_add_bhch_rlc_entity(nr_rlc_ue_t *ue, int bhch_id, nr_rlc_entity_t *entity);
 
 #endif /* _NR_RLC_UE_MANAGER_H_ */
