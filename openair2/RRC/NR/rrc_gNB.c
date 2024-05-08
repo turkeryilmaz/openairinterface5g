@@ -2271,7 +2271,6 @@ void rrc_gNB_process_xn_setup_request(sctp_assoc_t assoc_id, xnap_setup_req_t *m
   xnap_setup_resp_t *xnap_msg = &XNAP_SETUP_RESP(msg);
   xnap_gNB_instance_t *instance_p = xnap_gNB_get_instance(instance);
   xnap_msg->gNB_id = instance_p->setup_req.gNB_id;
-  xnap_msg->tai_support = instance_p->setup_req.tai_support;
   xnap_msg->info = instance_p->setup_req.info;
   //xnap_msg->gNB_id = m->gNB_id;
   //xnap_msg->info = m->info;

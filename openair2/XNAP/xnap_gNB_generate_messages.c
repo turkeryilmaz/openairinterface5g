@@ -145,7 +145,7 @@ int xnap_gNB_generate_xn_setup_request(sctp_assoc_t assoc_id, xnap_setup_req_t *
       NR_CELL_ID_TO_BIT_STRING(req->info.nr_cellid,
                                &servedCellMember->served_cell_info_NR.cellID.nr_CI); // bit string
 
-      INT24_TO_OCTET_STRING(req->tai_support, &servedCellMember->served_cell_info_NR.tac); // octet string
+      INT24_TO_OCTET_STRING(req->info.tac, &servedCellMember->served_cell_info_NR.tac); // octet string
       for (int k = 0; k < 1; k++) {
         plmn = (XNAP_PLMN_Identity_t *)calloc(1, sizeof(XNAP_PLMN_Identity_t));
         {
@@ -561,7 +561,7 @@ int xnap_gNB_generate_xn_setup_response(sctp_assoc_t assoc_id, xnap_setup_resp_t
     NR_CELL_ID_TO_BIT_STRING(resp->info.nr_cellid,
                              &servedCellMember->served_cell_info_NR.cellID.nr_CI); // bit string
 
-    INT24_TO_OCTET_STRING(resp->tai_support, &servedCellMember->served_cell_info_NR.tac); // octet string
+    INT24_TO_OCTET_STRING(resp->info.tac, &servedCellMember->served_cell_info_NR.tac); // octet string
     for (int k = 0; k < 1; k++) {
       plmn = (XNAP_PLMN_Identity_t *)calloc(1, sizeof(XNAP_PLMN_Identity_t));
       {
