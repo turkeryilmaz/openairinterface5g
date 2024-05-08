@@ -127,11 +127,9 @@ void cu_register_xn(uint32_t gnb_id_num,f1ap_served_cell_info_t *cell , xnap_net
 
   for (uint32_t gnb_id = 0; (gnb_id < gnb_id_num); gnb_id++) {
     msg = itti_alloc_new_message(TASK_CU_F1, 0, XNAP_REGISTER_GNB_REQ);
-    LOG_I(XNAP, "GNB_ID: %d \n", gnb_id);
    // uint64_t id;
     xnap_register_gnb_req_t *req = &XNAP_REGISTER_GNB_REQ(msg);
-    req->setup_req.info.tac =(*cell->tac);
-    LOG_I(XNAP, "tac in cu_register %d \n", req->setup_req.info.tac);
+    req->setup_req.info.tac =(*cell->tac); 
     req->setup_req.info.plmn.mcc = cell->plmn.mcc;
     req->setup_req.info.plmn.mnc = cell->plmn.mnc;
     req->setup_req.info.plmn.mnc_digit_length = cell->plmn.mnc_digit_length;
