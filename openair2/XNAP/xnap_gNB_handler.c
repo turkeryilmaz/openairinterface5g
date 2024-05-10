@@ -34,10 +34,11 @@
 #include "xnap_gNB_interface_management.h"
 #include "assertions.h"
 #include "conversions.h"
+#include "xnap_ids.h"
 
 /* Placement of callback functions according to XNAP_ProcedureCode.h */
 static const xnap_message_decoded_callback xnap_messages_callback[][3] = {
-    {0, 0, 0},
+    {xnap_gNB_handle_handover_request, xnap_gNB_handle_handover_response, 0},  /* handoverPreparation */
     {0, 0, 0},
     {0, 0, 0},
     {0, 0, 0},

@@ -143,6 +143,10 @@
 #include "common/ran_context.h"
 #include "conversions.h"
 
+#include "cmake_targets/ran_build/build/openair2/RRC/NR/MESSAGES/NR_HandoverPreparationInformation.h"
+#include "cmake_targets/ran_build/build/openair2/RRC/NR/MESSAGES/NR_HandoverPreparationInformation-IEs.h"
+#include "cmake_targets/ran_build/build/openair2/RRC/NR/MESSAGES/NR_UE-CapabilityRAT-Container.h"
+
 //#define XER_PRINT
 
 typedef struct xer_sprint_string_s {
@@ -1230,3 +1234,42 @@ uint8_t do_NR_Paging(uint8_t Mod_id, uint8_t *buffer, uint32_t tmsi)
 
   return((enc_rval.encoded+7)/8);
 }
+
+int do_NRHandoverPreparation(char *ho_buf, int ho_size, NR_UE_NR_Capability_t  *ue_nr_cap, int rrc_size) {
+  asn_enc_rval_t enc_rval;
+  NR_HandoverPreparationInformation_t ho;
+  NR_HandoverPreparationInformation_IEs_t *ho_info;
+  NR_UE_CapabilityRAT_Container_t *ue_cap_rat_container;
+  char rrc_buf[rrc_size];
+  memset(rrc_buf, 0, rrc_size);
+  enc_rval = uper_encode_to_buffer(&asn_DEF_NR_UE_NR_Capability,
+                                   NULL,
+                                   ue_nr_cap,
+                                   rrc_buf,
+                                   rrc_size);
+  /* TODO: free the OCTET_STRING */
+  AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
+               enc_rval.failed_type->name, enc_rval.encoded);
+  memset(&ho, 0, sizeof(ho));
+  ho.criticalExtensions.present = NR_HandoverPreparationInformation__criticalExtensions_PR_c1;
+  ho.criticalExtensions.choice.c1->present = NR_HandoverPreparationInformation__criticalExtensions__c1_PR_handoverPreparationInformation;
+  ho_info = ho.criticalExtensions.choice.c1->choice.handoverPreparationInformation;
+  {
+    ue_cap_rat_container = (NR_UE_CapabilityRAT_Container_t *)calloc(1,sizeof(NR_UE_CapabilityRAT_Container_t));
+    ue_cap_rat_container->rat_Type = NR_RAT_Type_nr;
+    AssertFatal (OCTET_STRING_fromBuf(
+                   &ue_cap_rat_container->ue_CapabilityRAT_Container,
+                   rrc_buf, rrc_size) != -1, "fatal: OCTET_STRING_fromBuf failed\n");
+    asn1cSeqAdd(&ho_info->ue_CapabilityRAT_List.list, ue_cap_rat_container);
+  }
+  enc_rval = uper_encode_to_buffer(&asn_DEF_NR_HandoverPreparationInformation,
+                                   NULL,
+                                   &ho,
+                                   ho_buf,
+                                   ho_size);
+  /* TODO: free the OCTET_STRING */
+  AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
+               enc_rval.failed_type->name, enc_rval.encoded);
+  return((enc_rval.encoded+7)/8);
+}
+

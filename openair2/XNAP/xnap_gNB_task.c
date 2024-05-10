@@ -42,6 +42,7 @@
 #include "conversions.h"
 #include "xnap_gNB_generate_messages.h"
 #include "gnb_config.h"
+#include "xnap_ids.h"
 
 RB_PROTOTYPE(xnap_gnb_tree, xnap_gNB_data_t, entry, xnap_gNB_compare_assoc_id);
 
@@ -101,7 +102,7 @@ static void xnap_gNB_handle_sctp_association_resp(instance_t instance, sctp_new_
   xnap_gnb_data_p->state = XNAP_GNB_STATE_WAITING;
   xnap_gnb_data_p->in_streams = sctp_new_association_resp->in_streams;
   xnap_gnb_data_p->out_streams = sctp_new_association_resp->out_streams;
-  //xnap_dump_trees(instance);
+  xnap_gnb_data_p->nci = 12345678;
   xnap_insert_gnb(instance, xnap_gnb_data_p);
   xnap_dump_trees(instance);
   xnap_gNB_generate_xn_setup_request(sctp_new_association_resp->assoc_id, &instance_xn->setup_req);
@@ -190,6 +191,7 @@ static void xnap_gNB_handle_sctp_association_ind(instance_t instance, sctp_new_a
     xnap_gNB_data_t *xnap_gnb_data_p = calloc(1, sizeof(*xnap_gnb_data_p));
     AssertFatal(xnap_gnb_data_p != NULL, "out of memory\n");
     xnap_gnb_data_p->assoc_id = sctp_new_association_ind->assoc_id;
+    xnap_gnb_data_p->nci = 12345678;
     xnap_gnb_data_p->state = XNAP_GNB_STATE_WAITING;
     xnap_gnb_data_p->in_streams = sctp_new_association_ind->in_streams;
     xnap_gnb_data_p->out_streams = sctp_new_association_ind->out_streams;
@@ -202,6 +204,49 @@ static void xnap_gNB_handle_sctp_association_ind(instance_t instance, sctp_new_a
     LOG_W(XNAP, "Updated streams for assoc id: %d \n", sctp_new_association_ind->assoc_id);
   }
   xnap_dump_trees(instance);
+}
+
+static
+void xnap_gNB_handle_handover_req(instance_t instance,
+                                  xnap_handover_req_t *xnap_handover_req)
+{
+  xnap_gNB_instance_t *instance_p;
+  //xnap_gNB_data_t     *target;
+  xnap_id_manager     *id_manager;
+  int                 ue_id;
+  sctp_assoc_t assoc_id;
+  int target_nci = xnap_handover_req->target_cgi.cgi; 
+
+  instance_p = xnap_gNB_get_instance(instance);
+  DevAssert(instance_p != NULL);
+
+  //target = xnap_is_gNB_pci_in_list(target_pci);Write new function for this if needed
+  //DevAssert(target != NULL);
+
+  /* allocate xnap ID */
+  id_manager = &instance_p->id_manager;
+  xnap_id_manager_init(id_manager);
+  ue_id = xnap_allocate_new_id(id_manager);
+  //MessageDef *message_p = itti_alloc_new_message(TASK_XNAP, 0, XNAP_HANDOVER_REQ);
+  //message_p->ittiMsgHeader.originInstance = assoc_id;
+  assoc_id = xnap_gNB_get_assoc_id(instance_p,target_nci);
+  LOG_I(XNAP, "NR Cell ID: %d \n",target_nci);
+  LOG_I(XNAP, "Association ID: %d \n",assoc_id);
+  //xnap_handover_req_t *req = &XNAP_HANDOVER_REQ(message_p);
+  if (ue_id == -1) {
+    LOG_E(XNAP,"could not allocate a new XNAP UE ID\n");
+    /* TODO: cancel handover: send (to be defined) message to RRC */
+    exit(1);
+  }
+  /* id_source is ue_id, id_target is unknown yet */
+  //xnap_set_ids(id_manager, ue_id, xnap_handover_req->rnti, ue_id, -1); //use?ho req structure wont have rnti- take from where it belongs to.
+  //xnap_id_set_state(id_manager, ue_id, XNID_STATE_SOURCE_PREPARE);// use?
+  //xnap_set_reloc_prep_timer(id_manager, ue_id,
+                            //xnap_timer_get_tti(&instance_p->timers));
+  //xnap_id_set_target(id_manager, ue_id, target);
+
+  //xnap_gNB_generate_xn_handover_request(instance_p, target, xnap_handover_req, ue_id); //Review removed target here but needs it
+  xnap_gNB_generate_xn_handover_request(assoc_id, xnap_handover_req);
 }
 
 
@@ -222,8 +267,10 @@ void *xnap_task(void *arg)
         break;
 
       case XNAP_REGISTER_GNB_REQ: {
+        xnap_setup_req_t *xnsetupmsg = &XNAP_REGISTER_GNB_REQ(received_msg).setup_req;
         xnap_net_config_t *xn_nc = &XNAP_REGISTER_GNB_REQ(received_msg).net_config;
-	xnap_gNB_init_sctp(ITTI_MSG_DESTINATION_INSTANCE(received_msg), xn_nc);
+        createXninst(ITTI_MSG_DESTINATION_INSTANCE(received_msg), xnsetupmsg, xn_nc);
+        xnap_gNB_init_sctp(ITTI_MSG_DESTINATION_INSTANCE(received_msg), xn_nc);
       } break;
 
       case XNAP_SETUP_FAILURE: // from rrc/xnap
@@ -233,6 +280,16 @@ void *xnap_task(void *arg)
       case XNAP_SETUP_RESP: // from rrc
         xnap_gNB_generate_xn_setup_response(ITTI_MSG_ORIGIN_INSTANCE(received_msg), &XNAP_SETUP_RESP(received_msg));
         break;
+
+      case XNAP_HANDOVER_REQ: // from rrc
+        xnap_gNB_handle_handover_req(ITTI_MSG_ORIGIN_INSTANCE(received_msg),
+                                            &XNAP_HANDOVER_REQ(received_msg));
+	      break;
+       case XNAP_HANDOVER_REQ_ACK:
+        LOG_I(XNAP,"HANDOVER_ACK going into the function \n");
+        xnap_gNB_generate_xn_handover_request_ack(ITTI_MSG_ORIGIN_INSTANCE(received_msg), &XNAP_HANDOVER_REQ_ACK(received_msg),ITTI_MSG_DESTINATION_INSTANCE(received_msg));
+        break;
+
 
       case SCTP_INIT_MSG_MULTI_CNF:
         xnap_gNB_handle_sctp_init_msg_multi_cnf(ITTI_MSG_DESTINATION_INSTANCE(received_msg),

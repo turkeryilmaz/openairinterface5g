@@ -147,4 +147,6 @@ NR_MeasConfig_t *get_defaultMeasConfig(uint32_t absFreqSSB, int band, int scs);
 void free_defaultMeasConfig(NR_MeasConfig_t *mc);
 uint8_t do_NR_Paging(uint8_t Mod_id, uint8_t *buffer, uint32_t tmsi);
 
+int do_NRHandoverPreparation(char *ho_buf, int ho_size, NR_UE_NR_Capability_t  *ue_nr_cap, int rrc_size);
+
 #endif  /* __RRC_NR_MESSAGES_ASN1_MSG__H__ */

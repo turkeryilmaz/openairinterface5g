@@ -19,22 +19,33 @@
  *      contact@openairinterface.org
  */
 
-/*! \file xnap_messages_def.h
- * \author Sreeshma Shiv <sreeshmau@iisc.ac.in>
- * \date August 2023
- * \version 1.0
- */
+#ifndef XNAP_TIMERS_H_
+#define XNAP_TIMERS_H_
 
-#include "openair2/COMMON/xnap_messages_types.h"
+#include <stdint.h>
+//#include "platform_types.h"
 
-/* gNB application layer -> XNAP messages */
-MESSAGE_DEF(XNAP_REGISTER_GNB_REQ, MESSAGE_PRIORITY_MED, xnap_register_gnb_req_t, xnap_register_gnb_req)
-/* XNAP -> gNB application layer messages */
+typedef struct {
+  /* incremented every TTI (every millisecond when in realtime).
+   * Used to check timers.
+   * 64 bits gives us more than 500 million years of (realtime) processing.
+   * It should be enough.
+   */
+  uint64_t tti;
 
-/* handover messages XNAP <-> RRC */
-MESSAGE_DEF(XNAP_SETUP_REQ, MESSAGE_PRIORITY_MED, xnap_setup_req_t, xnap_setup_req)
-MESSAGE_DEF(XNAP_SETUP_RESP, MESSAGE_PRIORITY_MED, xnap_setup_resp_t, xnap_setup_resp)
-MESSAGE_DEF(XNAP_SETUP_FAILURE, MESSAGE_PRIORITY_MED, xnap_setup_failure_t, xnap_setup_failure)
-MESSAGE_DEF(XNAP_HANDOVER_REQ, MESSAGE_PRIORITY_MED, xnap_handover_req_t, xnap_handover_req)
-MESSAGE_DEF(XNAP_HANDOVER_REQ_FAILURE, MESSAGE_PRIORITY_MED, xnap_handover_req_failure_t, xnap_handover_req_failure)
-MESSAGE_DEF(XNAP_HANDOVER_REQ_ACK, MESSAGE_PRIORITY_MED, xnap_handover_req_ack_t, xnap_handover_req_ack)
+  /* timer values (unit: TTI, ie. millisecond when in realtime) */
+  int      t_reloc_prep;
+  int      tx2_reloc_overall;
+  int      t_dc_prep;
+  int      t_dc_overall;
+} xnap_timers_t;
+
+void xnap_timers_init(xnap_timers_t *t,
+    int t_reloc_prep,
+    int tx2_reloc_overall,
+    int t_dc_prep,
+    int t_dc_overall);
+//void xnap_check_timers(instance_t instance);
+uint64_t xnap_timer_get_tti(xnap_timers_t *t);
+
+#endif /* X2AP_TIMERS_H_ */

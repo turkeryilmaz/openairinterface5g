@@ -135,6 +135,18 @@ xnap_gNB_instance_t *xnap_gNB_get_instance(instance_t instanceP)
   return instance_xnap;
 }
 
+sctp_assoc_t xnap_gNB_get_assoc_id(xnap_gNB_instance_t *instance, long nci)
+{
+    struct xnap_gNB_data_t *entry;
+    RB_FOREACH(entry, xnap_gnb_tree, &instance->xnap_gnbs) {
+        if (entry->nci == nci) {
+            return entry->assoc_id;
+        }
+    }
+    return 0;
+}
+
+
 void xnap_insert_gnb(instance_t instance, xnap_gNB_data_t *xnap_gnb_data_p)
 {
   pthread_mutex_lock(&xn_inst_mtx);

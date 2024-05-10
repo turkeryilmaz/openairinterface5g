@@ -39,4 +39,8 @@ int xnap_gNB_generate_xn_setup_failure(sctp_assoc_t assoc_id, xnap_setup_failure
 
 int xnap_gNB_set_cause(XNAP_Cause_t *cause_p, XNAP_Cause_PR cause_type, long cause_value);
 
+int xnap_gNB_generate_xn_handover_request(sctp_assoc_t assoc_id, xnap_handover_req_t *xnap_handover_req); 
+
+int xnap_gNB_generate_xn_handover_request_ack(sctp_assoc_t assoc_id, xnap_handover_req_ack_t *xnap_handover_req_ack,instance_t instance);
+
 #endif /*  XNAP_GNB_GENERATE_MESSAGES_H_ */

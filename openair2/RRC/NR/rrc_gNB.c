@@ -97,12 +97,15 @@
 #include "openair2/F1AP/f1ap_common.h"
 #include "openair2/F1AP/f1ap_ids.h"
 #include "openair2/SDAP/nr_sdap/nr_sdap_entity.h"
-#include "openair2/E1AP/e1ap.h"
+#include "cmake_targets/ran_build/build/openair2/RRC/NR/MESSAGES/NR_HandoverPreparationInformation.h"
+#include "cmake_targets/ran_build/build/openair2/RRC/NR/MESSAGES/NR_UERadioAccessCapabilityInformation-IEs.h"
 #include "cucp_cuup_if.h"
-#include "openair2/XNAP/xnap_gNB_defs.h"
-
 #include "BIT_STRING.h"
 #include "assertions.h"
+#include "openair2/XNAP/xnap_gNB_management_procedures.c"
+#include "openair2/COMMON/xnap_messages_types.h"
+#include "openair2/XNAP/xnap_gNB_task.h"
+#include "openair2/RRC/NR/MESSAGES/asn1_msg.h"
 
 #ifdef E2_AGENT
 #include "openair2/E2AP/RAN_FUNCTION/O-RAN/ran_func_rc_extern.h"
@@ -1309,6 +1312,18 @@ fallback_rrc_setup:
   return;
 }
 
+void rrc_gNB_process_HandoverPreparationInformation(
+     rrc_gNB_ue_context_t *ue_context_p,
+     uint8_t    *buffer,
+     int        *size)
+{
+  memset(buffer, 0, 8192);
+  char *ho_buf = (char *) buffer;
+  int ho_size;
+  ho_size = do_NRHandoverPreparation(ho_buf, 8192, ue_context_p->ue_context.UE_Capability_nr, ue_context_p->ue_context.UE_Capability_size);
+  *size = ho_size;
+}
+
 static void rrc_gNB_process_MeasurementReport(rrc_gNB_ue_context_t *ue_context, NR_MeasurementReport_t *measurementReport)
 {
   if (LOG_DEBUGFLAG(DEBUG_ASN1))
@@ -1555,6 +1570,7 @@ static void handle_rrcReconfigurationComplete(const protocol_ctxt_t *const ctxt_
 {
   AssertFatal(ue_context_p != NULL, "Processing %s() for UE %lx, ue_context_p is NULL\n", __func__, ctxt_pP->rntiMaybeUEid);
   gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
+  gNB_RRC_UE_t *ue_ctxt = &ue_context_p->ue_context;
 
   uint8_t xid = reconfig_complete->rrc_TransactionIdentifier;
   UE->ue_reconfiguration_counter++;
@@ -1597,6 +1613,40 @@ static void handle_rrcReconfigurationComplete(const protocol_ctxt_t *const ctxt_
       LOG_I(RRC, "UE %d: transaction %d still ongoing for action %d\n", UE->rrc_ue_id, i, UE->xids[i]);
     }
   }
+  
+  MessageDef *msg = itti_alloc_new_message(TASK_RRC_GNB, 0, XNAP_HANDOVER_REQ);
+
+  /*rrc_gNB_process_HandoverPreparationInformation(
+      ue_context_p,
+      XNAP_HANDOVER_REQ(msg).rrc_buffer,
+      &XNAP_HANDOVER_REQ(msg).rrc_buffer_size); */
+
+
+  XNAP_HANDOVER_REQ(msg).target_cgi.cgi = 12345678; //ue_ctxt->measResults->measResultNeighCells->choice.measResultListNR->list.array[0]->physCellId;
+  XNAP_HANDOVER_REQ(msg).guami.plmn_id.mcc = ue_ctxt->ue_guami.mcc;
+  XNAP_HANDOVER_REQ(msg).guami.plmn_id.mnc = ue_ctxt->ue_guami.mnc;
+  XNAP_HANDOVER_REQ(msg).guami.plmn_id.mnc_digit_length = ue_ctxt->ue_guami.mnc_len;
+  XNAP_HANDOVER_REQ(msg).guami.amf_region_id = ue_ctxt->ue_guami.amf_region_id;
+  XNAP_HANDOVER_REQ(msg).guami.amf_set_id = ue_ctxt->ue_guami.amf_set_id;
+  XNAP_HANDOVER_REQ(msg).guami.amf_pointer = ue_ctxt->ue_guami.amf_pointer;
+  XNAP_HANDOVER_REQ(msg).ue_context.security_capabilities = ue_ctxt->xnap_security_capabilities;
+  //nr_derive_key(RRC_ENC_ALG, ue_ctxt->ciphering_algorithm, ue_ctxt->kgnb,XNAP_HANDOVER_REQ(msg).ue_context.security_capabilities.encryption_algorithms);
+  //nr_derive_key(RRC_INT_ALG, ue_ctxt->integrity_algorithm, ue_ctxt->kgnb,XNAP_HANDOVER_REQ(msg).ue_context.security_capabilities.integrity_algorithms);
+  /*XNAP_HANDOVER_REQ(msg).ue_context.ngc_ue_sig_ref = ue_ctxt->amf_ue_ngap_id;
+  XNAP_HANDOVER_REQ(msg).ue_context.as_security_ncc = ue_ctxt->kgnb_ncc;
+  XNAP_HANDOVER_REQ(msg).ue_context.as_security_key_ranstar = ue_ctxt->kgnb[0];
+  XNAP_HANDOVER_REQ(msg).ue_context.pdusession_tobe_setup_list.pdu[NGAP_MAX_PDUSESSION].pdusession_id = ue_ctxt->pduSession[NGAP_MAX_PDU_SESSION].param.pdusession_id;
+  XNAP_HANDOVER_REQ(msg).ue_context.pdusession_tobe_setup_list.pdu[NGAP_MAX_PDUSESSION].snssai.sst = ue_ctxt->pduSession[NGAP_MAX_PDU_SESSION].param.nssai.sst;
+  XNAP_HANDOVER_REQ(msg).ue_context.pdusession_tobe_setup_list.pdu[NGAP_MAX_PDUSESSION].pdu_session_type = ue_ctxt->pduSession[NGAP_MAX_PDU_SESSION].param.pdu_session_type;
+  XNAP_HANDOVER_REQ(msg).ue_context.pdusession_tobe_setup_list.pdu[NGAP_MAX_PDUSESSION].up_ngu_tnl_teid_upf = ue_ctxt->pduSession[NGAP_MAX_PDU_SESSION].param.gtp_teid;
+  XNAP_HANDOVER_REQ(msg).ue_context.pdusession_tobe_setup_list.pdu[NGAP_MAX_PDUSESSION].qos_list.qos[QOSFLOW_MAX_VALUE].qfi = ue_ctxt->pduSession[NGAP_MAX_PDU_SESSION].param.qos[QOSFLOW_MAX_VALUE].qfi;
+  XNAP_HANDOVER_REQ(msg).ue_context.pdusession_tobe_setup_list.pdu[NGAP_MAX_PDUSESSION].qos_list.qos[QOSFLOW_MAX_VALUE].qos_params.non_dynamic.fiveqi = ue_ctxt->pduSession[NGAP_MAX_PDU_SESSION].param.qos[QOSFLOW_MAX_VALUE].fiveQI;
+  XNAP_HANDOVER_REQ(msg).ue_context.pdusession_tobe_setup_list.pdu[NGAP_MAX_PDUSESSION].qos_list.qos[QOSFLOW_MAX_VALUE].qos_params.dynamic.qos_priority_level = ue_ctxt->pduSession[NGAP_MAX_PDU_SESSION].param.qos[QOSFLOW_MAX_VALUE].qos_priority;
+  XNAP_HANDOVER_REQ(msg).ue_context.pdusession_tobe_setup_list.pdu[NGAP_MAX_PDUSESSION].qos_list.num_qos = ue_ctxt->pduSession[NGAP_MAX_PDU_SESSION].param.nb_qos;
+  XNAP_HANDOVER_REQ(msg).ue_context.pdusession_tobe_setup_list.num_pdu = ue_ctxt->nb_of_pdusessions;*/
+  
+  itti_send_msg_to_task(TASK_XNAP, 0, msg);
+  LOG_I(NR_RRC, "Handover triggered :)\n");
 
   gNB_RRC_INST *rrc = RC.nrrrc[0];
   f1_ue_data_t ue_data = cu_get_f1_ue_data(UE->rrc_ue_id);
@@ -2402,6 +2452,44 @@ static void write_rrc_stats(const gNB_RRC_INST *rrc)
   fclose(f);
 }
 
+void rrc_gNB_process_handoverprepinfo(sctp_assoc_t assoc_id, xnap_handover_req_t *m)
+{
+	int rnti = taus() & 0xffff;
+
+	rrc_gNB_ue_context_t *ue_context_p;
+	//NR_HandoverPreparationInformation_t *handover;
+	//NR_HandoverPreparationInformation_IEs_t *handover_info;
+	instance_t instance;
+	instance = 0; //for time being
+	xnap_gNB_instance_t      *instance_p;
+	instance_p = xnap_gNB_get_instance(instance);
+
+	ue_context_p = rrc_gNB_get_ue_context(RC.nrrrc[0], rnti);
+	if (ue_context_p != NULL) {
+	LOG_E(NR_RRC, "\nError in obtaining free UE id in target gNB for handover \n");
+	return;
+	}
+
+	ue_context_p = rrc_gNB_allocate_new_ue_context(RC.nrrrc[0]);
+
+	if (ue_context_p == NULL) {
+	LOG_E(NR_RRC, "Cannot create new UE context\n");
+	return;
+	}
+
+	ue_context_p->ue_context.rnti = rnti;
+	//RB_INSERT(rrc_ue_tree_s, &RC.rrc[mod_id]->rrc_ue_head, ue_context_p);
+	MessageDef *message_p = itti_alloc_new_message(TASK_XNAP, 0, XNAP_HANDOVER_REQ_ACK);
+	message_p->ittiMsgHeader.originInstance = assoc_id;
+	xnap_handover_req_ack_t *ack = &XNAP_HANDOVER_REQ_ACK(message_p);
+	//ack->x2_id_target = ue_context_p->ue_context.handover_info->x2_id; 
+	ack->target_cgi=m->target_cgi ;
+       
+
+
+        itti_send_msg_to_task(TASK_XNAP, instance_p->instance, message_p);
+}
+
 void *rrc_gnb_task(void *args_p) {
   MessageDef *msg_p;
   instance_t                         instance;
@@ -2527,6 +2615,11 @@ void *rrc_gnb_task(void *args_p) {
       case XNAP_SETUP_REQ:
         rrc_gNB_process_xn_setup_request(ITTI_MSG_ORIGIN_INSTANCE(msg_p), &XNAP_SETUP_REQ(msg_p), instance);
         break;
+        
+      case XNAP_HANDOVER_REQ:
+        LOG_I(NR_RRC,"Received Handover request going into the function \n");
+        rrc_gNB_process_handoverprepinfo(ITTI_MSG_ORIGIN_INSTANCE(msg_p),&XNAP_HANDOVER_REQ(msg_p));
+        break; 
 
 
       /* Messages from X2AP */

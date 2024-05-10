@@ -6,7 +6,9 @@ add_library(xnap
 	      xnap_gNB_task.c
               xnap_gNB_itti_messaging.c
 	      xnap_gNB_handler.c
-	      xnap_gNB_interface_management.c)
+	      xnap_gNB_interface_management.c
+	      xnap_timers.c
+	      xnap_ids.c)
 target_link_libraries(xnap
                         PUBLIC asn1_xnap
                         PRIVATE nr_rrc)

@@ -23,6 +23,8 @@
 #include "tree.h"
 #include "sctp_eNB_defs.h"
 #include "xnap_messages_types.h"
+#include "xnap_timers.h"
+#include "xnap_ids.h"
 
 #ifndef XNAP_GNB_DEFS_H_
 #define XNAP_GNB_DEFS_H_
@@ -59,6 +61,7 @@ typedef struct xnap_gNB_data_t {
   /* gNB descriptors tree, ordered by sctp assoc id */
   RB_ENTRY(xnap_gNB_data_t) entry;
   char *gNB_name;
+  long nci;
   /*  target gNB ID */
   uint64_t gNB_id;
   /* Current gNB->gNB XnAP association state */
@@ -84,7 +87,7 @@ typedef struct xnap_gNB_instance_s {
   size_t num_gnbs;
   instance_t instance;
   xnap_setup_req_t setup_req;
-
+  xnap_id_manager  id_manager;
   /* The gNB IP address to bind */
   xnap_net_config_t net_config;
   /* SCTP information */
