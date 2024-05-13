@@ -162,6 +162,10 @@ typedef struct f1ap_setup_req_s {
     f1ap_served_cell_info_t info;
     f1ap_gnb_du_system_info_t *sys_info;
   } cell[F1AP_MAX_NB_CELLS];
+
+  // BIT STRING (SIZE(10))
+  uint16_t bap_address;
+
 } f1ap_setup_req_t;
 
 typedef struct f1ap_du_register_req_t {

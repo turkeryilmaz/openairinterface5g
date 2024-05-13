@@ -422,10 +422,13 @@ NR_BH_RLC_ChannelConfig_r16_t *get_BH_RLC_ChannelConfig(long lcChannelId, long b
    * Since we are using this channel for IAB purposes, we can use the
    * logicalChannelGroupIAB-Ext-r17, which is inside the range (0 to 255)
    */
-  *logicalChannelGroupIAB                                                       = 1;
-  logicalChannelConfig->ul_SpecificParameters->ext2->logicalChannelGroupIAB_Ext_r17   = calloc(1, sizeof(int));
-  logicalChannelConfig->ul_SpecificParameters->ext2->logicalChannelGroupIAB_Ext_r17   = logicalChannelGroupIAB;
 
+  *logicalChannelGroupIAB                                                       = 1;
+  logicalChannelConfig->ul_SpecificParameters->ext2  = calloc(1, sizeof(*logicalChannelConfig->ul_SpecificParameters->ext2));
+  logicalChannelConfig->ul_SpecificParameters->ext2->logicalChannelGroupIAB_Ext_r17   = CALLOC(1,sizeof(int));
+  logicalChannelConfig->ul_SpecificParameters->ext2->logicalChannelGroupIAB_Ext_r17   = logicalChannelGroupIAB;
+  
+  
   logicalChannelConfig->ul_SpecificParameters->schedulingRequestID              = CALLOC(1, sizeof(*logicalChannelConfig->ul_SpecificParameters->schedulingRequestID));
   // Will choose 7 (maximum number) to avoid possible conflicts
   *logicalChannelConfig->ul_SpecificParameters->schedulingRequestID             = 7;

@@ -1654,7 +1654,10 @@ static void handle_rrcReconfigurationComplete(const protocol_ctxt_t *const ctxt_
     .servCellId = 0, /* TODO: correct value? */
     .ReconfigComplOutcome = successful_reconfig ? RRCreconf_success : RRCreconf_failure,
   };
-  rrc->mac_rrc.ue_context_modification_request(ue_data.du_assoc_id, &ue_context_modif_req);
+  // [IAB] IAB-MT troubleshoot (it shouldn't send modification request again)
+  if(UE->is_iab_mt == false){
+    rrc->mac_rrc.ue_context_modification_request(ue_data.du_assoc_id, &ue_context_modif_req);
+  }
 
   /* if we did not receive any UE Capabilities, let's do that now. It should
    * only happen on the first time a reconfiguration arrives. Afterwards, we
@@ -2047,7 +2050,10 @@ static void rrc_CU_process_ue_context_modification_response(MessageDef *msg_p, i
       LOG_I(RRC, "UE %04x replacing existing CellGroupConfig with new one received from DU\n", UE->rnti);
     }
     UE->masterCellGroup = cellGroupConfig;
-
+    /* [IAB] Check
+      LOG_I(RRC, "Modification process logicalChannelGroupIAB-Ext-r17: %d\n", 
+      *cellGroupConfig->ext2->bh_RLC_ChannelToAddModList_r16->list.array[0]->mac_LogicalChannelConfig_r16->ul_SpecificParameters->ext2->logicalChannelGroupIAB_Ext_r17);
+    */
     rrc_gNB_generate_dedicatedRRCReconfiguration(&ctxt, ue_context_p);
   }
 }

@@ -202,6 +202,7 @@ NR_BH_RLC_ChannelConfig_r16_t *get_bhchConfig(const f1ap_bhchannel_to_be_setup_t
   const NR_RLC_Config_PR rlc_conf = bhch->rlc_mode == RLC_MODE_UM ? NR_RLC_Config_PR_um_Bi_Directional : NR_RLC_Config_PR_am;
   long lcid = get_lcid_from_bhchid(bhch->bHRLCChannelID);
   long priority = 13; // hardcoded for the moment
+  
   return get_BH_RLC_ChannelConfig(lcid, bhch->bHRLCChannelID, rlc_conf, priority);
 }
 
@@ -217,16 +218,21 @@ static int handle_ue_context_bhchannels_setup(int rnti,
    * ue_context_*_response() */
   *resp_bhchs = calloc(bhchs_len, sizeof(**resp_bhchs));
   AssertFatal(*resp_bhchs != NULL, "out of memory\n");
+  
+  cellGroupConfig->ext2 = calloc(1, sizeof(*cellGroupConfig->ext2));
+  cellGroupConfig->ext2->bh_RLC_ChannelToAddModList_r16 = calloc(bhchs_len, sizeof(NR_BH_RLC_ChannelConfig_r16_t));
+
   for(int i=0; i<bhchs_len; i++){
     const f1ap_bhchannel_to_be_setup_t *bhch = &req_bhchs[i];
     NR_BH_RLC_ChannelConfig_r16_t *rlc_bhchConfig = get_bhchConfig(bhch);
     bap_add_bhch(rnti, bhch->bHRLCChannelID, rlc_bhchConfig);
-
+    
     (*resp_bhchs)[i] = *bhch;
-    // TODO
+    
     int ret = ASN_SEQUENCE_ADD(&cellGroupConfig->ext2->bh_RLC_ChannelToAddModList_r16->list, rlc_bhchConfig);
     DevAssert(ret == 0);
   }
+  
   return bhchs_len;
 }
 /* [IAB] end */
@@ -444,6 +450,7 @@ void ue_context_modification_request(const f1ap_ue_context_modif_req_t *req)
   }
 
   NR_CellGroupConfig_t *new_CellGroup = clone_CellGroupConfig(UE->CellGroup);
+  // new_CellGroup comes with rlc-bearerToAddModList... (is it supposed to though?)
 
   if (req->srbs_to_be_setup_length > 0) {
     resp.srbs_to_be_setup_length = handle_ue_context_srbs_setup(req->gNB_DU_ue_id,

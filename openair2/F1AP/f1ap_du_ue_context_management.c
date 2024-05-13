@@ -1118,8 +1118,6 @@ int DU_handle_UE_CONTEXT_MODIFICATION_REQUEST(instance_t instance, sctp_assoc_t 
     }
   }
   /* [IAB] end */
-
-
   ue_context_modification_request(f1ap_ue_context_modification_req);
   return 0;
 }
