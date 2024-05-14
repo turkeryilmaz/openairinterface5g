@@ -103,6 +103,7 @@ typedef enum {
 #define GNB_CONFIG_STRING_GNB_ID                        "gNB_ID"
 #define GNB_CONFIG_STRING_CELL_TYPE                     "cell_type"
 #define GNB_CONFIG_STRING_GNB_NAME                      "gNB_name"
+#define GNB_CONFIG_STRING_BAP_ADDRESS                   "bap_address"
 #define GNB_CONFIG_STRING_TRACKING_AREA_CODE            "tracking_area_code"
 #define GNB_CONFIG_STRING_MOBILE_COUNTRY_CODE_OLD       "mobile_country_code"
 #define GNB_CONFIG_STRING_MOBILE_NETWORK_CODE_OLD       "mobile_network_code"
@@ -173,6 +174,7 @@ typedef enum {
 {GNB_CONFIG_STRING_DRBS, GNB_CONFIG_HLP_STRING_DRBS,     0,            .iptr=NULL,  .defintval=1,                 TYPE_INT,       0},  \
 {GNB_CONFIG_STRING_GNB_DU_ID, GNB_CONFIG_HLP_GNB_DU_ID,   0,          .u64ptr=NULL, .defint64val=1,               TYPE_UINT64,    0},  \
 {GNB_CONFIG_STRING_GNB_CU_UP_ID, GNB_CONFIG_HLP_GNB_CU_UP_ID, 0,      .u64ptr=NULL, .defint64val=1,               TYPE_UINT64,    0},  \
+{GNB_CONFIG_STRING_BAP_ADDRESS,                  NULL,   0,           .uptr=NULL,   .defuintval=0,                TYPE_UINT,      0},  \
 }
 // clang-format on
 
@@ -205,8 +207,10 @@ typedef enum {
 #define GNB_FORCE256QAMOFF_IDX          25
 #define GNB_ENABLE_SDAP_IDX             26
 #define GNB_DRBS                        27
-#define GNB_GNB_DU_ID_IDX 28
-#define GNB_GNB_CU_UP_ID_IDX 29
+#define GNB_GNB_DU_ID_IDX               28
+#define GNB_GNB_CU_UP_ID_IDX            29
+// [IAB] bap_address
+#define GNB_BAP_ADDRESS_IDX             30
 
 #define TRACKING_AREA_CODE_OKRANGE {0x0001,0xFFFD}
 #define GNBPARAMS_CHECK {                                         \

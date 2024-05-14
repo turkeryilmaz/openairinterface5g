@@ -268,7 +268,7 @@ static int get_ssb_arfcn(const f1ap_served_cell_info_t *cell_info, const NR_MIB_
 
 static void init_NR_SI(gNB_RRC_INST *rrc)
 {
-  if (!NODE_IS_DU(rrc->node_type)) {
+  if (!NODE_IS_DU(rrc->node_type) && !NODE_IS_DU_IAB(rrc->node_type)) {
     rrc->carrier.SIB23 = (uint8_t *) malloc16(100);
     AssertFatal(rrc->carrier.SIB23 != NULL, "cannot allocate memory for SIB");
     rrc->carrier.sizeof_SIB23 = do_SIB23_NR(&rrc->carrier);
@@ -308,6 +308,8 @@ static void rrc_gNB_CU_DU_init(gNB_RRC_INST *rrc)
       /* silently drop this, as we currently still need the RRC at the DU. As
        * soon as this is not the case anymore, we can add the AssertFatal() */
       //AssertFatal(1==0,"nothing to do for DU\n");
+      break;
+    case ngran_gNB_DU_IAB:
       break;
     default:
       AssertFatal(0 == 1, "Unknown node type %d\n", rrc->node_type);
@@ -622,6 +624,7 @@ static void rrc_gNB_generate_defaultRRCReconfiguration(const protocol_ctxt_t *co
 
   LOG_I(NR_RRC, "UE %d: Generate RRCReconfiguration (bytes %d, xid %d)\n", ue_p->rrc_ue_id, size, xid);
   AssertFatal(!NODE_IS_DU(rrc->node_type), "illegal node type DU!\n");
+  AssertFatal(!NODE_IS_DU_IAB(rrc->node_type), "illegal node type DU!\n");
 
   nr_rrc_transfer_protected_rrc_message(rrc, ue_p, DCCH, buffer, size);
 }
@@ -2490,6 +2493,7 @@ void *rrc_gnb_task(void *args_p) {
       /* Messages from F1AP task */
       case F1AP_SETUP_REQ:
         AssertFatal(!NODE_IS_DU(RC.nrrrc[instance]->node_type), "should not receive F1AP_SETUP_REQUEST in DU!\n");
+        AssertFatal(!NODE_IS_DU_IAB(RC.nrrrc[instance]->node_type), "should not receive F1AP_SETUP_REQUEST in DU-IAB!\n");
         rrc_gNB_process_f1_setup_req(&F1AP_SETUP_REQ(msg_p), msg_p->ittiMsgHeader.originInstance);
         break;
 
@@ -2620,6 +2624,7 @@ rrc_gNB_generate_SecurityModeCommand(
 
   gNB_RRC_INST *rrc = RC.nrrrc[ctxt_pP->module_id];
   AssertFatal(!NODE_IS_DU(rrc->node_type), "illegal node type DU!\n");
+  AssertFatal(!NODE_IS_DU_IAB(rrc->node_type), "illegal node type DU-IAB!\n");
 
   cu_to_du_rrc_information_t cu2du = {0};
   cu_to_du_rrc_information_t *cu2du_p = NULL;
@@ -2679,6 +2684,7 @@ rrc_gNB_generate_UECapabilityEnquiry(
 
   gNB_RRC_INST *rrc = RC.nrrrc[ctxt_pP->module_id];
   AssertFatal(!NODE_IS_DU(rrc->node_type), "illegal node type DU!\n");
+  AssertFatal(!NODE_IS_DU_IAB(rrc->node_type), "illegal node type DU_IAB!\n");
 
   nr_rrc_transfer_protected_rrc_message(rrc, ue, DCCH, buffer, size);
 }

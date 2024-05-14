@@ -126,6 +126,12 @@ int config_get(configmodule_interface_t *cfgif, paramdef_t *params, int numparam
 
   if (cfgif != NULL) {
     ret = cfgif->get(cfgif, params, numparams, prefix);
+    /* testing 
+    printf("Num params: %d\n", numparams);
+    for (int i = 0; i < numparams; i++){
+      printf("%d, %s\n", i, params[i].optname);
+    }
+     end testing */
 
     if (ret >= 0) {
       config_process_cmdline(cfgif, params, numparams, prefix);

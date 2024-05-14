@@ -158,13 +158,13 @@ void *gNB_app_task(void *args_p)
       AssertFatal(false, "To run CU-UP use executable nr-cuup\n");
     }
 
-    if (NODE_IS_DU(node_type)) {
+    if (NODE_IS_DU(node_type) || NODE_IS_DU_IAB(node_type)) {
       if (itti_create_task(TASK_DU_F1, F1AP_DU_task, NULL) < 0) {
         LOG_E(F1AP, "Create task for F1AP DU failed\n");
         AssertFatal(1==0,"exiting");
       }
     }
-    if (NODE_IS_DU(node_type) || NODE_IS_MONOLITHIC(node_type)) {
+    if (NODE_IS_DU(node_type) || NODE_IS_MONOLITHIC(node_type) || NODE_IS_DU_IAB(node_type)) {
       // need to check SA?
       nr_mac_send_f1_setup_req();
     }
@@ -236,6 +236,7 @@ void *gNB_app_task(void *args_p)
 
     case F1AP_GNB_CU_CONFIGURATION_UPDATE:
       AssertFatal(NODE_IS_DU(node_type), "Should not have received F1AP_GNB_CU_CONFIGURATION_UPDATE in CU/gNB\n");
+      AssertFatal(NODE_IS_DU_IAB(node_type), "Should not have received F1AP_GNB_CU_CONFIGURATION_UPDATE in CU/gNB\n");
 
       LOG_I(GNB_APP, "Received %s: associated ngran_gNB_CU %s with %d cells to activate\n", ITTI_MSG_NAME (msg_p),
       F1AP_GNB_CU_CONFIGURATION_UPDATE(msg_p).gNB_CU_name,F1AP_GNB_CU_CONFIGURATION_UPDATE(msg_p).num_cells_to_activate);

@@ -248,6 +248,9 @@ typedef struct ngap_gNB_instance_s {
   /* Tracking area code */
   uint32_t tac;
 
+  /* [IAB] donor-DU bap address */
+  uint16_t bap_address;
+
   /* gNB NGAP IP address */
   net_ip_address_t gNB_ng_ip;
   

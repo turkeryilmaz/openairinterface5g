@@ -354,6 +354,7 @@ configmodule_interface_t *load_configmodule(int argc,
 
     if (i ==  0) {
       printf("[CONFIG] config module %s loaded\n",cfgmode);
+      // Continue/Read from this
       int idx = config_paramidx_fromname(Config_Params, sizeofArray(Config_Params), CONFIGP_DEBUGFLAGS);
       Config_Params[idx].uptr = &(cfgptr->rtflags);
       idx = config_paramidx_fromname(Config_Params, sizeofArray(Config_Params), CONFIGP_TMPDIR);

@@ -194,6 +194,10 @@ static void mac_rrc_init(gNB_MAC_INST *mac, ngran_node_t node_type)
     case ngran_gNB_DU:
       mac_rrc_ul_f1ap_init(&mac->mac_rrc);
       break;
+    // [IAB] Temporary solution, maybe?
+    case ngran_gNB_DU_IAB:
+      mac_rrc_ul_f1ap_init(&mac->mac_rrc);
+      break;
     case ngran_gNB:
       mac_rrc_ul_direct_init(&mac->mac_rrc);
       break;
