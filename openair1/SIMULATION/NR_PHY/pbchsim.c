@@ -194,7 +194,7 @@ int main(int argc, char **argv)
   //int freq_offset;
   //  int subframe_offset;
   //  char fname[40], vname[40];
-  int trial,n_trials=1,n_errors=0,n_errors_payload=0;
+  int n_trials = 1;
   uint8_t transmission_mode = 1,n_tx=1,n_rx=1;
   uint16_t Nid_cell=0;
   uint64_t SSB_positions=0x01;
@@ -708,14 +708,15 @@ int main(int argc, char **argv)
 		  	  	  	  	    frame_parms->ofdm_symbol_size + frame_parms->nb_prefix_samples);
   printf("txlev %d (%f)\n",txlev,10*log10(txlev));*/
 
-  
+  int sum_errors = 0;
+  int sum_errors_payload = 0;
+  int total_trials = 0;
   for (SNR=snr0; SNR<snr1; SNR+=.2) {
+    int n_errors = 0;
+    int n_errors_payload = 0;
 
-    n_errors = 0;
-    n_errors_payload = 0;
-
-    for (trial=0; trial<n_trials; trial++) {
-
+    for (int trial = 0; trial < n_trials; trial++) {
+      total_trials++;
       for (i=0; i<frame_length_complex_samples; i++) {
         for (aa=0; aa<frame_parms->nb_antennas_tx; aa++) {
           r_re[aa][i] = (double)txdata[aa][i].r;
@@ -826,17 +827,14 @@ int main(int argc, char **argv)
           n_errors++;
       }
     } //noise trials
-    printf("SNR %f: trials %d, n_errors_crc = %d, n_errors_payload %d\n", SNR,n_trials,n_errors,n_errors_payload);
+    sum_errors += n_errors;
+    sum_errors_payload += n_errors_payload;
+    printf("SNR %f: trials %d, n_errors_crc = %d, n_errors_payload %d\n", SNR, n_trials, n_errors, n_errors_payload);
+  } // SNR
 
-    if (((float)n_errors/(float)n_trials <= target_error_rate) && (n_errors_payload==0)) {
-      printf("PBCH test OK\n");
-      break;
-    }
-      
-    if (n_trials==1)
-      break;
-
-  } // NSR
+  if (((float)sum_errors/(float)total_trials) <= target_error_rate && (sum_errors_payload == 0)) {
+    printf("PBCH test OK\n");
+  }
 
   free_channel_desc_scm(gNB2UE);
 
@@ -875,6 +873,6 @@ int main(int argc, char **argv)
   loader_reset();
   logTerm();
 
-  return(n_errors);
+  return(sum_errors);
 
 }
