@@ -40,7 +40,13 @@ stream_security_context_t *nr_pdcp_integrity_nia2_init(uint8_t integrity_key[16]
   return (stream_security_context_t *)ctx;
 }
 
-void nr_pdcp_integrity_nia2_integrity(stream_security_context_t *integrity_context, unsigned char *out, unsigned char *buffer, int length, int bearer, int count, int direction)
+void nr_pdcp_integrity_nia2_integrity(stream_security_context_t *integrity_context,
+                                      unsigned char *out,
+                                      unsigned char *buffer,
+                                      int length,
+                                      int bearer,
+                                      int count,
+                                      int direction)
 {
   DevAssert(integrity_context != NULL);
   DevAssert(out != NULL);
