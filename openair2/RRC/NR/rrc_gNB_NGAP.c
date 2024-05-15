@@ -415,6 +415,7 @@ int rrc_gNB_process_NGAP_INITIAL_CONTEXT_SETUP_REQ(MessageDef *msg_p, instance_t
 //------------------------------------------------------------------------------
 {
   ngap_initial_context_setup_req_t *req = &NGAP_INITIAL_CONTEXT_SETUP_REQ(msg_p);
+  LOG_D(NR_RRC, "Process NGAP_INITIAL_CONTEXT_SETUP_REQ\n");
 
   rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context(RC.nrrrc[instance], req->gNB_ue_ngap_id);
   gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
@@ -626,6 +627,7 @@ static void set_UE_security_algos(const gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, con
 int rrc_gNB_process_NGAP_DOWNLINK_NAS(MessageDef *msg_p, instance_t instance, mui_t *rrc_gNB_mui)
 //------------------------------------------------------------------------------
 {
+  LOG_D(NR_RRC, "Process NGAP_DOWNLINK_NAS\n");
   ngap_downlink_nas_t *req = &NGAP_DOWNLINK_NAS(msg_p);
   gNB_RRC_INST *rrc = RC.nrrrc[instance];
   rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context(rrc, req->gNB_ue_ngap_id);
@@ -743,6 +745,7 @@ void rrc_gNB_send_NGAP_PDUSESSION_SETUP_RESP(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE
 void rrc_gNB_process_NGAP_PDUSESSION_SETUP_REQ(MessageDef *msg_p, instance_t instance)
 //------------------------------------------------------------------------------
 {
+  LOG_D(NR_RRC, "Process NGAP_PDUSESSION_SETUP_REQ\n");
 
   ngap_pdusession_setup_req_t* msg=&NGAP_PDUSESSION_SETUP_REQ(msg_p);
   rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context(RC.nrrrc[instance], msg->gNB_ue_ngap_id);
@@ -879,6 +882,7 @@ static void decodePDUSessionResourceModify(pdusession_t *param, const ngap_pdu_t
 int rrc_gNB_process_NGAP_PDUSESSION_MODIFY_REQ(MessageDef *msg_p, instance_t instance)
 //------------------------------------------------------------------------------
 {
+  LOG_D(NR_RRC, "Process NGAP_PDUSESSION_MODIFY_REQ\n");
   rrc_gNB_ue_context_t *ue_context_p = NULL;
 
   ngap_pdusession_modify_req_t *req = &NGAP_PDUSESSION_MODIFY_REQ(msg_p);
@@ -1055,6 +1059,7 @@ void rrc_gNB_send_NGAP_UE_CONTEXT_RELEASE_REQ(const module_id_t gnb_mod_idP, con
 /*------------------------------------------------------------------------------*/
 int rrc_gNB_process_NGAP_UE_CONTEXT_RELEASE_REQ(MessageDef *msg_p, instance_t instance)
 {
+  LOG_D(NR_RRC, "Process NGAP_UE_CONTEXT_RELEASE_REQ\n");
   uint32_t gNB_ue_ngap_id;
   gNB_ue_ngap_id = NGAP_UE_CONTEXT_RELEASE_REQ(msg_p).gNB_ue_ngap_id;
   rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context(RC.nrrrc[instance], gNB_ue_ngap_id);
@@ -1217,6 +1222,7 @@ void rrc_gNB_send_NGAP_PDUSESSION_RELEASE_RESPONSE(gNB_RRC_INST *rrc, gNB_RRC_UE
 int rrc_gNB_process_NGAP_PDUSESSION_RELEASE_COMMAND(MessageDef *msg_p, instance_t instance)
 //------------------------------------------------------------------------------
 {
+  LOG_D(NR_RRC, "Process NGAP_PDUSESSION_RELEASE_COMMAND\n");
   uint32_t gNB_ue_ngap_id;
   ngap_pdusession_release_command_t *cmd = &NGAP_PDUSESSION_RELEASE_COMMAND(msg_p);
   gNB_ue_ngap_id = cmd->gNB_ue_ngap_id;

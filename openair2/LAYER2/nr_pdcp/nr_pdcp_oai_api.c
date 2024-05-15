@@ -1073,6 +1073,7 @@ bool nr_pdcp_data_req_srb(ue_id_t ue_id,
   char pdu_buf[max_size];
   int pdu_size = rb->process_sdu(rb, (char *)sdu_buffer, sdu_buffer_size, muiP, pdu_buf, max_size);
   if (pdu_size == -1) {
+    LOG_E(PDCP, "nr_pdcp_data_req_srb failed: could not process SDU\n");
     nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
     return 0;
   }
