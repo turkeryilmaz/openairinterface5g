@@ -96,7 +96,7 @@ drb_t *generateDRB(gNB_RRC_UE_t *ue,
 
   est_drb->status = DRB_ACTIVE;
   est_drb->drb_id = drb_id;
-  est_drb->cnAssociation.sdap_config.defaultDRB = true;
+  est_drb->cnAssociation.sdap_config.defaultDRB = drb_id == 1;
 
   /* SDAP Configuration */
   est_drb->cnAssociation.present = NR_DRB_ToAddMod__cnAssociation_PR_sdap_Config;
