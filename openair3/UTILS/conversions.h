@@ -512,7 +512,7 @@ do {                                                   \
 #define NR_BAPADDRESS_TO_BIT_STRING(mACRO, bITsTRING)      \
 do {                                                    \
     (bITsTRING)->buf = calloc(2, sizeof(uint8_t));      \
-    (bITsTRING)->buf[0] = ((mACRO) >> 8) & 0xff;        \
+    (bITsTRING)->buf[0] = ((mACRO) >> 2) & 0xff;        \
     (bITsTRING)->buf[1] = ((mACRO) & 0xff) << 6;               \
     (bITsTRING)->size = 2;                              \
     (bITsTRING)->bits_unused = 6;                       \
@@ -524,7 +524,7 @@ do {                                                    \
 #define NR_BAPPATHID_TO_BIT_STRING(mACRO, bITsTRING)      \
 do {                                                    \
     (bITsTRING)->buf = calloc(2, sizeof(uint8_t));      \
-    (bITsTRING)->buf[0] = ((mACRO) >> 8) & 0xff;        \
+    (bITsTRING)->buf[0] = ((mACRO) >> 2) & 0xff;        \
     (bITsTRING)->buf[1] = ((mACRO) & 0xff) << 6;               \
     (bITsTRING)->size = 2;                              \
     (bITsTRING)->bits_unused = 6;                       \
@@ -540,6 +540,17 @@ do {                                                      \
     mACRO = (((uint16_t) (bITsTRING)->buf[0]) << 8) +     \
             ((uint16_t) (bITsTRING)->buf[1]);              \
 } while (0)
+
+/*
+ * BIT STRING (SIZE(10)) to uint16_t
+ */
+#define BIT_STRING_TO_NR_BAPADDRESS(bITsTRING, mACRO) \
+do{                                                \
+    DevCheck((bITsTRING)->size == 2, (bITsTRING)->size, 2, 0); \
+    DevCheck((bITsTRING)->bits_unused == 6, (bITsTRING)->bits_unused, 6, 0); \
+    mACRO = (((uint16_t) (bITsTRING)->buf[0]) << 2) +     \
+            ((uint16_t) (bITsTRING)->buf[1] >> 6);         \
+} while(0)
 
 // [IAB] End related macros
 

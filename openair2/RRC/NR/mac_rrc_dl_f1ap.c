@@ -32,6 +32,9 @@ static void f1_setup_response_f1ap(sctp_assoc_t assoc_id, const f1ap_setup_resp_
   *f1ap_msg = *resp;
   if (resp->gNB_CU_name != NULL)
     f1ap_msg->gNB_CU_name = strdup(resp->gNB_CU_name);
+  if (resp->bap_address != 0){
+    f1ap_msg->bap_address = resp->bap_address;
+  }
   itti_send_msg_to_task(TASK_CU_F1, 0, msg);
 }
 

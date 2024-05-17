@@ -64,6 +64,9 @@ static void f1_setup_request_f1ap(const f1ap_setup_req_t *req)
   f1ap_setup->gNB_DU_id = req->gNB_DU_id;
   f1ap_setup->gNB_DU_name = strdup(req->gNB_DU_name);
   f1ap_setup->num_cells_available = req->num_cells_available;
+  if(req->bap_address != 0){
+    f1ap_setup->bap_address = req->bap_address;
+  }
   for (int n = 0; n < req->num_cells_available; ++n) {
     f1ap_setup->cell[n].info = req->cell[n].info; // copy most fields
     if (req->cell[n].info.tac) {

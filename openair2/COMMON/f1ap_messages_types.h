@@ -199,6 +199,8 @@ typedef struct f1ap_setup_resp_s {
   /// rrc version
   uint8_t rrc_ver[3];
 
+  uint16_t bap_address;
+
 } f1ap_setup_resp_t;
 
 typedef struct f1ap_gnb_cu_configuration_update_s {

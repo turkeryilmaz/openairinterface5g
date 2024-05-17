@@ -109,6 +109,12 @@ int CU_handle_F1_SETUP_REQUEST(instance_t instance, sctp_assoc_t assoc_id, uint3
     memcpy(req->gNB_DU_name, ie->value.choice.GNB_DU_Name.buf, ie->value.choice.GNB_DU_Name.size);
     LOG_D(F1AP, "req->gNB_DU_name %s \n", req->gNB_DU_name);
   }
+  /* BAPAddress*/
+  F1AP_FIND_PROTOCOLIE_BY_ID(F1AP_F1SetupRequestIEs_t, ie, container, F1AP_ProtocolIE_ID_id_BAPAddress, false);
+  if(ie != NULL){
+    BIT_STRING_TO_NR_BAPADDRESS(&ie->value.choice.BAPAddress, req->bap_address);
+    LOG_D(F1AP, "req->bap_address %d \n", req->bap_address);
+  }
   /* GNB_DU_Served_Cells_List */
   F1AP_FIND_PROTOCOLIE_BY_ID(F1AP_F1SetupRequestIEs_t, ie, container,
                              F1AP_ProtocolIE_ID_id_gNB_DU_Served_Cells_List, true);
@@ -345,6 +351,16 @@ int CU_send_F1_SETUP_RESPONSE(sctp_assoc_t assoc_id, f1ap_setup_resp_t *f1ap_set
   for (int i = 0; i < 3; ++i)
     os->buf[i] = f1ap_setup_resp->rrc_ver[i];
   ie4->value.choice.RRC_Version.iE_Extensions = (struct F1AP_ProtocolExtensionContainer *)p;
+
+  /* optional [IAB] */
+  /* c6. BAPAddress*/
+  if (f1ap_setup_resp->bap_address != 0) {
+    asn1cSequenceAdd(out->protocolIEs.list, F1AP_F1SetupResponseIEs_t, bap_addr);
+    bap_addr->id                        = F1AP_ProtocolIE_ID_id_BAPAddress;
+    bap_addr->criticality               = F1AP_Criticality_ignore;
+    bap_addr->value.present             = F1AP_F1SetupResponseIEs__value_PR_BAPAddress;
+    NR_BAPADDRESS_TO_BIT_STRING(f1ap_setup_resp->bap_address, &bap_addr->value.choice.BAPAddress);
+  }
 
   /* encode */
   if (f1ap_encode_pdu(&pdu, &buffer, &len) < 0) {

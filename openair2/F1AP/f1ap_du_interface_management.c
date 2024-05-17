@@ -316,6 +316,16 @@ int DU_send_F1_SETUP_REQUEST(sctp_assoc_t assoc_id, f1ap_setup_req_t *setup_req)
   for (int i = 0; i < 3; ++i)
     os->buf[i] = setup_req->rrc_ver[i];
   ie2->value.choice.RRC_Version.iE_Extensions = (struct F1AP_ProtocolExtensionContainer*)p;
+
+  /* optional */
+  /* c6. BAPAddress*/
+  if (setup_req->bap_address != 0) {
+    asn1cSequenceAdd(f1Setup->protocolIEs.list, F1AP_F1SetupRequestIEs_t, bap_addr);
+    bap_addr->id                        = F1AP_ProtocolIE_ID_id_BAPAddress;
+    bap_addr->criticality               = F1AP_Criticality_ignore;
+    bap_addr->value.present             = F1AP_F1SetupRequestIEs__value_PR_BAPAddress;
+    NR_BAPADDRESS_TO_BIT_STRING(setup_req->bap_address, &bap_addr->value.choice.BAPAddress);
+  }
   
   /* encode */
   if (f1ap_encode_pdu(&pdu, &buffer, &len) < 0) {
@@ -368,6 +378,15 @@ int DU_handle_F1_SETUP_RESPONSE(instance_t instance, sctp_assoc_t assoc_id, uint
         memcpy(resp.gNB_CU_name, ie->value.choice.GNB_CU_Name.buf, ie->value.choice.GNB_CU_Name.size);
         resp.gNB_CU_name[ie->value.choice.GNB_CU_Name.size] = '\0';
         LOG_D(F1AP, "F1AP: F1Setup-Resp: gNB_CU_name %s\n", resp.gNB_CU_name);
+        break;
+
+      case F1AP_ProtocolIE_ID_id_BAPAddress:
+        AssertFatal(ie->criticality == F1AP_Criticality_ignore,
+                    "ie->criticality != F1AP_Criticality_ignore\n");
+        AssertFatal(ie->value.present == F1AP_F1SetupResponseIEs__value_PR_BAPAddress,
+                    "ie->value.present != F1AP_F1SetupResponseIEs__value_PR_BAPAddress\n");
+        NR_BAPADDRESS_TO_BIT_STRING(resp.bap_address, &ie->value.choice.BAPAddress);
+        LOG_D(F1AP, "F1AP: F1Setup-Resp: BAPAddress %d\n", resp.bap_address);
         break;
 
       case F1AP_ProtocolIE_ID_id_GNB_CU_RRC_Version:

@@ -60,6 +60,7 @@ void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *req, sctp_assoc_t assoc_id)
   // - it is one cell
   // - PLMN and Cell ID matches
   // - no previous DU with the same ID
+  // - no previous DU with the same BAP Address
   // else reject
   if (req->num_cells_available != 1) {
     LOG_E(NR_RRC, "can only handle on DU cell, but gNB_DU %ld has %d\n", req->gNB_DU_id, req->num_cells_available);
@@ -87,6 +88,16 @@ void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *req, sctp_assoc_t assoc_id)
             it->setup_req->gNB_DU_name,
             it->assoc_id,
             it->setup_req->gNB_DU_id);
+      f1ap_setup_failure_t fail = {.cause = F1AP_CauseMisc_unspecified};
+      rrc->mac_rrc.f1_setup_failure(assoc_id, &fail);
+      return;
+    }
+    if (it->setup_req->bap_address == req->bap_address && req->bap_address != 0){
+      LOG_E(NR_RRC,
+            "BAPAddress: existing DU %s on assoc_id %d already has BAPAddress %d, rejecting requesting gNB-DU\n",
+            it->setup_req->gNB_DU_name,
+            it->assoc_id,
+            it->setup_req->bap_address);
       f1ap_setup_failure_t fail = {.cause = F1AP_CauseMisc_unspecified};
       rrc->mac_rrc.f1_setup_failure(assoc_id, &fail);
       return;
@@ -177,6 +188,12 @@ void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *req, sctp_assoc_t assoc_id)
   AssertFatal(num == 3, "could not read RRC version string %s\n", TO_STRING(NR_RRC_VERSION));
   if (rrc->node_name != NULL)
     resp.gNB_CU_name = strdup(rrc->node_name);
+
+  if (req->bap_address != 0){
+    resp.bap_address = req->bap_address;
+    LOG_I(RRC, "Accepted DU has BAPAddress = %d\n", resp.bap_address);
+  }
+  
   rrc->mac_rrc.f1_setup_response(assoc_id, &resp);
 
   /*
