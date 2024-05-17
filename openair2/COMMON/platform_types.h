@@ -153,7 +153,12 @@ typedef enum  ip_traffic_type_e {
   TRAFFIC_IPV4_TYPE_BROADCAST  =  7,
   TRAFFIC_IPV4_TYPE_UNKNOWN    =  8,
   TRAFFIC_PC5S_SIGNALLING      =  9,
-  TRAFFIC_PC5S_SESSION_INIT    =  10
+  TRAFFIC_PC5S_SESSION_INIT    =  10,
+  	// MC ADDED: New types for non-IP packets, for each type cast
+	TRAFFIC_NONIP_TYPE_UNKOWN	 = 11,
+	TRAFFIC_NONIP_TYPE_UNICAST	 = 12,
+	TRAFFIC_NONIP_TYPE_MULTICAST = 13,
+	TRAFFIC_NONIP_TYPE_BROADCAST = 14
 } ip_traffic_type_t;
 
 //-----------------------------------------------------------------------------
