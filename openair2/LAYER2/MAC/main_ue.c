@@ -112,8 +112,7 @@ int rlcmac_init_global_param_ue(void) {
   return 0;
 }
 
-int
-l2_init_ue(int eMBMS_active, char *uecap_xer, uint8_t cba_group_active,
+int l2_init_ue(int eMBMS_active, char *uecap_xer, uint8_t cba_group_active,
            uint8_t HO_active) {
   LOG_I(MAC, "[MAIN] MAC_INIT_GLOBAL_PARAM IN...\n");
   //    NB_NODE=2;

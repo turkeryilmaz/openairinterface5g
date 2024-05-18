@@ -60,6 +60,7 @@ unsigned short config_frames[4] = {2,9,11,13};
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "UTIL/OPT/opt.h"
 #include "LAYER2/nr_pdcp/nr_pdcp_oai_api.h"
+#include "LAYER2/BAP/bap_oai_api.h"
 
 #include "intertask_interface.h"
 
@@ -80,6 +81,8 @@ unsigned short config_frames[4] = {2,9,11,13};
 #include "nfapi/oai_integration/vendor_ext.h"
 #include "gnb_config.h"
 #include "openair2/E1AP/e1ap_common.h"
+
+#include "openair2/LAYER2/NR_MAC_gNB/nr_mac_gNB.h" // need to get info from MAC
 
 #ifdef E2_AGENT
 #include "openair2/E2AP/flexric/src/agent/e2_agent_api.h"
@@ -560,7 +563,6 @@ void init_pdcp(void) {
 }
 
 #ifdef E2_AGENT
-#include "openair2/LAYER2/NR_MAC_gNB/nr_mac_gNB.h" // need to get info from MAC
 static void initialize_agent(ngran_node_t node_type, e2_agent_args_t oai_args)
 {
   AssertFatal(oai_args.sm_dir != NULL , "Please, specify the directory where the SMs are located in the config file, i.e., add in config file the next line: e2_agent = {near_ric_ip_addr = \"127.0.0.1\"; sm_dir = \"/usr/local/lib/flexric/\");} ");
@@ -744,8 +746,17 @@ int main( int argc, char **argv ) {
   }
 
   // wait for F1 Setup Response before starting L1 for real
-  if (NODE_IS_DU(node_type) || NODE_IS_MONOLITHIC(node_type) || NODE_IS_DU_IAB(node_type))
+  if (NODE_IS_DU(node_type) || NODE_IS_MONOLITHIC(node_type) || NODE_IS_DU_IAB(node_type)){
     wait_f1_setup_response();
+
+    // [IAB] Initialize BAP Layer if BAPAddress is present
+    if(NODE_IS_DU_IAB(node_type)){
+      LOG_I(GNB_APP, "Initializing BAP layer\n");
+      bool is_du = true;
+      nr_bap_layer_init(is_du);
+    }
+
+  }
 
   if (RC.nb_RU > 0)
     start_NR_RU();

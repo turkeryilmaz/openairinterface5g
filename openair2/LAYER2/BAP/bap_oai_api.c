@@ -17,6 +17,7 @@
 #include "common/ran_context.h"
 #include "NR_UL-CCCH-Message.h"
 #include "conversions.h"
+#include "bap_oai_api.h"
 
 extern RAN_CONTEXT_t RC;
 
@@ -25,12 +26,12 @@ extern RAN_CONTEXT_t RC;
 #include <executables/softmodem-common.h>
 
 // Same as RLC?
-static void deliver_sdu(void *_ue, nr_rlc_entity_t *entity, char *buf, int size)
+static void deliver_bap_sdu(void *_ue, nr_rlc_entity_t *entity, char *buf, int size)
 {
   // TODO
 }
 
-static void successful_delivery(void *_ue, nr_rlc_entity_t *entity, int sdu_id)
+static void successful_bap_delivery(void *_ue, nr_rlc_entity_t *entity, int sdu_id)
 {
   // TODO
 }
@@ -85,7 +86,7 @@ static void add_bhch_um(int rnti, int bhch_id, const NR_BH_RLC_ChannelConfig_r16
   } else {
     nr_rlc_entity_t *nr_rlc_um = new_nr_rlc_entity_um(RLC_RX_MAXSIZE,
                                                       RLC_TX_MAXSIZE,
-                                                      deliver_sdu, ue,
+                                                      deliver_bap_sdu, ue,
                                                       t_reassembly,
                                                       sn_field_length);
     nr_rlc_ue_add_bhch_rlc_entity(ue, bhch_id, nr_rlc_um);
@@ -151,8 +152,8 @@ static void add_bhch_am(int rnti, int bhch_id, const NR_BH_RLC_ChannelConfig_r16
   } else {
     nr_rlc_entity_t *nr_rlc_am = new_nr_rlc_entity_am(RLC_RX_MAXSIZE,
                                                       RLC_TX_MAXSIZE,
-                                                      deliver_sdu, ue,
-                                                      successful_delivery, ue,
+                                                      deliver_bap_sdu, ue,
+                                                      successful_bap_delivery, ue,
                                                       max_retx_reached, ue,
                                                       t_poll_retransmit,
                                                       t_reassembly, t_status_prohibit,
@@ -179,4 +180,31 @@ void bap_add_bhch(int rnti, int bhch_id, const NR_BH_RLC_ChannelConfig_r16_t *rl
     exit(1);
   }
   LOG_I(RLC, "%s:%s:%d: added BH RLC Channel to IAB-MT with RNTI 0x%x\n", __FILE__, __FUNCTION__, __LINE__, rnti);
+}
+
+void nr_bap_layer_init(bool is_du)
+{
+  /* hack: be sure to initialize only once */
+  static pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
+  static int inited_DU = 0;
+  static int inited_MT = 0;
+
+  if (pthread_mutex_lock(&m) != 0) abort();
+  
+  if (is_du && inited_DU) {
+    LOG_E(RLC, "%s:%d:%s: fatal, inited_du already 1\n", __FILE__, __LINE__, __FUNCTION__);
+    exit(1);
+  }
+
+  if (!is_du && inited_MT) {
+    LOG_E(RLC, "%s:%d:%s: fatal, inited_mt already 1\n", __FILE__, __LINE__, __FUNCTION__);
+    exit(1);
+  }
+
+  if (is_du) inited_DU = 1;
+  if (!is_du) inited_MT = 1;
+
+  // nr_rlc_ue_manager = new_nr_rlc_ue_manager(enb_flag);
+
+  if (pthread_mutex_unlock(&m)) abort();
 }

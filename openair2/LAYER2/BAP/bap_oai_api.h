@@ -1,0 +1,1 @@
+void nr_bap_layer_init(bool is_du);

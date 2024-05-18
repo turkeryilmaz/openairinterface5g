@@ -385,7 +385,7 @@ int DU_handle_F1_SETUP_RESPONSE(instance_t instance, sctp_assoc_t assoc_id, uint
                     "ie->criticality != F1AP_Criticality_ignore\n");
         AssertFatal(ie->value.present == F1AP_F1SetupResponseIEs__value_PR_BAPAddress,
                     "ie->value.present != F1AP_F1SetupResponseIEs__value_PR_BAPAddress\n");
-        NR_BAPADDRESS_TO_BIT_STRING(resp.bap_address, &ie->value.choice.BAPAddress);
+        BIT_STRING_TO_NR_BAPADDRESS(&ie->value.choice.BAPAddress, resp.bap_address);
         LOG_D(F1AP, "F1AP: F1Setup-Resp: BAPAddress %d\n", resp.bap_address);
         break;
 
