@@ -36,6 +36,7 @@
 #include "f1ap_du_interface_management.h"
 #include "openair2/LAYER2/NR_MAC_gNB/mac_rrc_dl_handler.h"
 #include "assertions.h"
+#include "openair2/LAYER2/BAP/bap_oai_api.h"
 
 #include "GNB_APP/gnb_paramdef.h"
 
@@ -387,6 +388,7 @@ int DU_handle_F1_SETUP_RESPONSE(instance_t instance, sctp_assoc_t assoc_id, uint
                     "ie->value.present != F1AP_F1SetupResponseIEs__value_PR_BAPAddress\n");
         BIT_STRING_TO_NR_BAPADDRESS(&ie->value.choice.BAPAddress, resp.bap_address);
         LOG_D(F1AP, "F1AP: F1Setup-Resp: BAPAddress %d\n", resp.bap_address);
+        init_bap_entity(resp.bap_address, true);
         break;
 
       case F1AP_ProtocolIE_ID_id_GNB_CU_RRC_Version:

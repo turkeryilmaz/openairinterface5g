@@ -1,6 +1,5 @@
 /* from openair */
 #include "rlc.h"
-#include "LAYER2/nr_pdcp/nr_pdcp_oai_api.h"
 
 /* from nr rlc module */
 #include "openair2/LAYER2/nr_rlc/nr_rlc_asn1_utils.h"
@@ -19,11 +18,14 @@
 #include "conversions.h"
 #include "bap_oai_api.h"
 
+// Having trouble changing this to .h
+#include "bap_entity.c"
+
 extern RAN_CONTEXT_t RC;
 
-#include <stdint.h>
-
 #include <executables/softmodem-common.h>
+
+static bap_entity_t *bap_entity;
 
 // Same as RLC?
 static void deliver_bap_sdu(void *_ue, nr_rlc_entity_t *entity, char *buf, int size)
@@ -192,11 +194,13 @@ void nr_bap_layer_init(bool is_du)
   if (pthread_mutex_lock(&m) != 0) abort();
   
   if (is_du && inited_DU) {
+    // Change LOG to BAP
     LOG_E(RLC, "%s:%d:%s: fatal, inited_du already 1\n", __FILE__, __LINE__, __FUNCTION__);
     exit(1);
   }
 
   if (!is_du && inited_MT) {
+    // Change LOG to BAP
     LOG_E(RLC, "%s:%d:%s: fatal, inited_mt already 1\n", __FILE__, __LINE__, __FUNCTION__);
     exit(1);
   }
@@ -207,4 +211,13 @@ void nr_bap_layer_init(bool is_du)
   // nr_rlc_ue_manager = new_nr_rlc_ue_manager(enb_flag);
 
   if (pthread_mutex_unlock(&m)) abort();
+}
+
+void init_bap_entity(uint16_t bap_addr, bool is_du){
+  bap_entity = new_bap_entity(bap_addr, is_du);
+
+  if (is_du)
+    printf("[BAP]   BAP entity initialized as IAB-DU with BAPAddress = %d\n", bap_entity->bap_address);
+  else
+    printf("[BAP]   BAP entity initialized as IAB-MT with BAPAddress = %d\n", bap_entity->bap_address);
 }

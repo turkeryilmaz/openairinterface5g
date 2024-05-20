@@ -1149,6 +1149,9 @@ static f1ap_setup_req_t *RC_read_F1Setup(bool is_iab_du,
         req->cell[0].info.plmn.mnc,
         req->cell[0].info.plmn.mnc_digit_length,
         req->cell[0].info.nr_cellid);
+    LOG_I(GNB_APP, "F1AP: Initializing BAP layer\n");
+    bool is_du = true;
+    nr_bap_layer_init(is_du);
   }else{
     LOG_I(GNB_APP,
         "F1AP: gNB idx %d gNB_DU_id %ld, gNB_DU_name %s, TAC %d MCC/MNC/length %d/%d/%d cellID %ld\n",

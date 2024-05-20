@@ -748,14 +748,6 @@ int main( int argc, char **argv ) {
   // wait for F1 Setup Response before starting L1 for real
   if (NODE_IS_DU(node_type) || NODE_IS_MONOLITHIC(node_type) || NODE_IS_DU_IAB(node_type)){
     wait_f1_setup_response();
-
-    // [IAB] Initialize BAP Layer if BAPAddress is present
-    if(NODE_IS_DU_IAB(node_type)){
-      LOG_I(GNB_APP, "Initializing BAP layer\n");
-      bool is_du = true;
-      nr_bap_layer_init(is_du);
-    }
-
   }
 
   if (RC.nb_RU > 0)
