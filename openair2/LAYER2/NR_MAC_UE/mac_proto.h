@@ -217,7 +217,8 @@ int16_t get_pucch_tx_power_ue(NR_UE_MAC_INST_t *mac,
                               uint8_t add_dmrs_flag,
                               uint8_t N_symb_PUCCH,
                               int subframe_number,
-                              int O_uci);
+                              int O_uci,
+                              uint16_t start_prb);
 
 int get_deltatf(uint16_t nb_of_prbs,
                 uint8_t N_symb_PUCCH,
