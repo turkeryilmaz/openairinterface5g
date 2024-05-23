@@ -134,17 +134,22 @@ int phy_init_nr_gNB(PHY_VARS_gNB *gNB)
 
   nr_init_fde(); // Init array for frequency equalization of transform precoding of PUSCH
 
-  load_LDPClib("", &ldpc_interface);
+  load_LDPClib("", &ldpc_interface); //TODO Is it safe to remove this?
 
   gNB->nr_ulsch_decoding_interface_flag = 0;
   int ret_loader = load_nr_ulsch_decoding_interface(NULL, &nr_ulsch_decoding_interface);
-  if(ret_loader >= 0)
+  if (ret_loader >= 0) {
     gNB->nr_ulsch_decoding_interface_flag = 1;
-
-  if (gNB->ldpc_offload_flag)
-    load_LDPClib("_t2", &ldpc_interface_offload);
-  else
-    load_LDPClib(NULL, &ldpc_interface);
+    if (gNB->ldpc_offload_flag)
+      load_LDPClib("_t2", &ldpc_interface_offload);
+    else
+      load_LDPClib("", &ldpc_interface);
+  } else {
+    if (gNB->ldpc_offload_flag)
+      load_LDPClib("_t2", &ldpc_interface_offload);
+    else
+      load_LDPClib(NULL, &ldpc_interface);
+  }
 
   pthread_mutex_init(&gNB->UL_INFO.crc_rx_mutex, NULL);
 
