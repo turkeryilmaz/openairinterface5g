@@ -32,6 +32,7 @@
 
 #define RRC_UE
 #define RRC_UE_C
+#define RRC_CG_TYPE2
 
 #include "NR_DL-DCCH-Message.h"        //asn_DEF_NR_DL_DCCH_Message
 #include "NR_DL-CCCH-Message.h"        //asn_DEF_NR_DL_CCCH_Message
@@ -1856,8 +1857,22 @@ static void nr_rrc_ue_process_ueCapabilityEnquiry(NR_UE_RRC_INST_t *rrc, NR_UECa
     rrc->UECap.UE_NR_Capability = CALLOC(1, sizeof(NR_UE_NR_Capability_t));
     asn1cSequenceAdd(rrc->UECap.UE_NR_Capability->rf_Parameters.supportedBandListNR.list, NR_BandNR_t, nr_bandnr);
     nr_bandnr->bandNR = 1;
+    
+    rrc->UECap.UE_NR_Capability->phy_Parameters.phy_ParametersCommon = calloc(1, sizeof(NR_Phy_ParametersCommon_t));
+    rrc->UECap.UE_NR_Capability->phy_Parameters.phy_ParametersCommon->configuredUL_GrantType2 = 
+    calloc(1, sizeof(*rrc->UECap.UE_NR_Capability->phy_Parameters.phy_ParametersCommon->configuredUL_GrantType2));
   }
   xer_fprint(stdout, &asn_DEF_NR_UE_NR_Capability, (void *)rrc->UECap.UE_NR_Capability);
+
+#ifdef RRC_CG_TYPE2
+  if(rrc->UECap.UE_NR_Capability->phy_Parameters.phy_ParametersCommon && 
+     rrc->UECap.UE_NR_Capability->phy_Parameters.phy_ParametersCommon->configuredUL_GrantType2){
+    LOG_E(NR_RRC, "Configured Grant Type 2 is supported by UE\n");
+  }
+  else{
+    LOG_E(NR_RRC, "Configured Grant Type 2 is not supported by UE\n");
+  }
+#endif
 
   asn_enc_rval_t enc_rval = uper_encode_to_buffer(&asn_DEF_NR_UE_NR_Capability,
                                                   NULL,

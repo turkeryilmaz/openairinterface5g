@@ -963,6 +963,47 @@ static void setup_puschconfig(NR_PUSCH_Config_t *source, NR_PUSCH_Config_t *targ
   }
 }
 
+static void setup_CGconfig(NR_ConfiguredGrantConfig_t *source, NR_ConfiguredGrantConfig_t *target)
+{
+  UPDATE_IE(target->frequencyHopping, source->frequencyHopping, long);
+  UPDATE_IE(target->mcs_Table, source->mcs_Table, long);
+  UPDATE_IE(target->mcs_TableTransformPrecoder, source->mcs_TableTransformPrecoder, long);
+  UPDATE_IE(target->transformPrecoder, source->transformPrecoder, long);
+  UPDATE_IE(target->rbg_Size, source->rbg_Size, long);
+  UPDATE_IE(target->repK_RV, source->repK_RV, long);
+  UPDATE_IE(target->configuredGrantTimer, source->configuredGrantTimer, long);
+  
+  UPDATE_NP_IE(target->repK, source->repK, long);
+  UPDATE_NP_IE(target->resourceAllocation, source->resourceAllocation, long);
+  UPDATE_NP_IE(target->powerControlLoopToUse, source->powerControlLoopToUse, long);
+  UPDATE_NP_IE(target->nrofHARQ_Processes, source->nrofHARQ_Processes, long);
+  UPDATE_NP_IE(target->periodicity, source->periodicity, long);
+  
+  /*
+  if (source->uci_OnPUSCH) {
+    if (source->uci_OnPUSCH->present == NR_SetupRelease_CG_UCI_OnPUSCH_PR_release)
+      asn1cFreeStruc(asn_DEF_NR_UCI_OnPUSCH, target->uci_OnPUSCH);
+    if (source->uci_OnPUSCH->present == NR_SetupRelease_CG_UCI_OnPUSCH_PR_setup) {
+      if (target->uci_OnPUSCH) {
+        if (source->uci_OnPUSCH->choice.setup->present == NR_CG_UCI_OnPUSCH_PR_dynamic){
+          ADDMOD_IE_FROMLIST(target->uci_OnPUSCH->choice.setup->choice.dynamic,
+                             source->uci_OnPUSCH->choice.setup->choice.dynamic,
+                             betaOffsetACK_Index1,
+                             long);
+          ADDMOD_IE_FROMLIST(target->uci_OnPUSCH->choice.setup->choice.dynamic,
+                             source->uci_OnPUSCH->choice.setup->choice.dynamic,
+                             betaOffsetACK_Index2,
+                             long);
+        }
+        else{
+          LOG_E(NR_RRC, "Still not implemented\n");
+        }
+      }
+    }
+  }
+  */
+}
+
 static void setup_pdschconfig(NR_PDSCH_Config_t *source, NR_PDSCH_Config_t *target)
 {
   UPDATE_IE(target->dataScramblingIdentityPDSCH, source->dataScramblingIdentityPDSCH, long);
@@ -1339,7 +1380,18 @@ static void configure_dedicated_BWP_ul(NR_UE_MAC_INST_t *mac, int bwp_id, NR_BWP
         setup_srsconfig(ul_dedicated->srs_Config->choice.setup, bwp->srs_Config);
       }
     }
-    AssertFatal(!ul_dedicated->configuredGrantConfig, "configuredGrantConfig not supported\n");
+
+    if(ul_dedicated->configuredGrantConfig){
+      if(ul_dedicated->configuredGrantConfig->present == NR_SetupRelease_ConfiguredGrantConfig_PR_release)
+        asn1cFreeStruc(asn_DEF_NR_ConfiguredGrantConfig, bwp->configuredGrantConfig);
+      if(ul_dedicated->configuredGrantConfig->present == NR_SetupRelease_ConfiguredGrantConfig_PR_setup){
+        if(!bwp->configuredGrantConfig)
+          bwp->configuredGrantConfig = calloc(1, sizeof(*bwp->configuredGrantConfig));
+        setup_CGconfig(ul_dedicated->configuredGrantConfig->choice.setup, bwp->configuredGrantConfig);
+        LOG_E(NR_RRC, "Setting up the configured grant at UE\n");
+      }
+      
+    }
   }
 }
 

@@ -645,6 +645,63 @@ static struct NR_SRS_Resource__resourceType__periodic *configure_periodic_srs(co
   return periodic_srs;
 }
 
+static NR_SetupRelease_ConfiguredGrantConfig_t *get_config_CG(void){
+  NR_SetupRelease_ConfiguredGrantConfig_t *setup_release_CG_Config = calloc(1, sizeof(*setup_release_CG_Config));
+  setup_release_CG_Config->present = NR_SetupRelease_ConfiguredGrantConfig_PR_setup;
+  setup_release_CG_Config->choice.setup = calloc(1, sizeof(*setup_release_CG_Config->choice.setup));
+
+  NR_ConfiguredGrantConfig_t* cg_Config = setup_release_CG_Config->choice.setup;
+  cg_Config->frequencyHopping = calloc(1,sizeof(*cg_Config->frequencyHopping));
+  *cg_Config->frequencyHopping = NR_ConfiguredGrantConfig__frequencyHopping_interSlot;
+
+  NR_DMRS_UplinkConfig_t *NR_DMRS_UplinkConfig = &cg_Config->cg_DMRS_Configuration;
+  NR_DMRS_UplinkConfig->dmrs_Type = NULL;
+  NR_DMRS_UplinkConfig->dmrs_AdditionalPosition = NULL;
+  NR_DMRS_UplinkConfig->phaseTrackingRS = NULL;
+  NR_DMRS_UplinkConfig->maxLength = NULL;
+  if (!NR_DMRS_UplinkConfig->transformPrecodingDisabled)
+    NR_DMRS_UplinkConfig->transformPrecodingDisabled = calloc(1, sizeof(*NR_DMRS_UplinkConfig->transformPrecodingDisabled));
+  NR_DMRS_UplinkConfig->transformPrecodingDisabled->scramblingID0 = NULL;
+  NR_DMRS_UplinkConfig->transformPrecodingDisabled->scramblingID1 = NULL;
+  if (!NR_DMRS_UplinkConfig->transformPrecodingEnabled)
+    NR_DMRS_UplinkConfig->transformPrecodingEnabled = calloc(1, sizeof(*NR_DMRS_UplinkConfig->transformPrecodingEnabled));
+  NR_DMRS_UplinkConfig->transformPrecodingEnabled->nPUSCH_Identity = NULL;
+  NR_DMRS_UplinkConfig->transformPrecodingEnabled->sequenceHopping = NULL;
+  NR_DMRS_UplinkConfig->transformPrecodingEnabled->sequenceGroupHopping = NULL;
+
+  cg_Config->uci_OnPUSCH = NULL;
+  
+  cg_Config->mcs_Table = calloc(1,sizeof(*cg_Config->mcs_Table));
+  *cg_Config->mcs_Table = NR_ConfiguredGrantConfig__mcs_Table_qam256;
+
+  cg_Config->mcs_TableTransformPrecoder = calloc(1,sizeof(*cg_Config->mcs_TableTransformPrecoder));
+  *cg_Config->mcs_TableTransformPrecoder = NR_ConfiguredGrantConfig__mcs_TableTransformPrecoder_qam256;
+
+  cg_Config->rbg_Size = calloc(1,sizeof(*cg_Config->rbg_Size));
+  *cg_Config->rbg_Size = NR_ConfiguredGrantConfig__rbg_Size_config2;
+
+  cg_Config->transformPrecoder = calloc(1,sizeof(*cg_Config->transformPrecoder));
+  *cg_Config->transformPrecoder = NR_ConfiguredGrantConfig__transformPrecoder_enabled;
+
+  cg_Config->repK_RV = calloc(1,sizeof(*cg_Config->repK_RV));
+  *cg_Config->repK_RV= NR_ConfiguredGrantConfig__repK_RV_s1_0231;
+
+  cg_Config->configuredGrantTimer = calloc(1,sizeof(*cg_Config->configuredGrantTimer));
+  *cg_Config->configuredGrantTimer = 10;
+
+  cg_Config->resourceAllocation = NR_ConfiguredGrantConfig__resourceAllocation_resourceAllocationType0;
+
+  cg_Config->powerControlLoopToUse = NR_ConfiguredGrantConfig__powerControlLoopToUse_n0;
+
+  cg_Config->nrofHARQ_Processes = 5;
+
+  cg_Config->repK = NR_ConfiguredGrantConfig__repK_n1;
+
+  cg_Config->periodicity = NR_ConfiguredGrantConfig__periodicity_sym2;
+
+  return setup_release_CG_Config;
+}
+
 static NR_SetupRelease_SRS_Config_t *get_config_srs(const NR_ServingCellConfigCommon_t *scc,
                                                     const NR_UE_NR_Capability_t *uecap,
                                                     const int curr_bwp,
@@ -1114,11 +1171,13 @@ static void scheduling_request_config(const NR_ServingCellConfigCommon_t *scc, N
 
 static void set_ul_mcs_table(const NR_UE_NR_Capability_t *cap,
                              const NR_ServingCellConfigCommon_t *scc,
-                             NR_PUSCH_Config_t *pusch_Config)
+                             NR_PUSCH_Config_t *pusch_Config,
+                             NR_ConfiguredGrantConfig_t *cg_Config)
 {
 
   if (cap == NULL){
-    pusch_Config->mcs_Table = NULL;
+    if(pusch_Config){pusch_Config->mcs_Table = NULL;}
+    if(cg_Config){cg_Config->mcs_Table = NULL;}
     return;
   }
 
@@ -1135,22 +1194,45 @@ static void set_ul_mcs_table(const NR_UE_NR_Capability_t *cap,
       break;
     }
   }
-  if (supported) {
-    if(pusch_Config->transformPrecoder == NULL ||
-       *pusch_Config->transformPrecoder == NR_PUSCH_Config__transformPrecoder_disabled) {
-      if(pusch_Config->mcs_Table == NULL)
-        pusch_Config->mcs_Table = calloc(1, sizeof(*pusch_Config->mcs_Table));
-      *pusch_Config->mcs_Table = NR_PUSCH_Config__mcs_Table_qam256;
-    }
+
+  if (pusch_Config) {
+    if (supported) {
+      if (pusch_Config->transformPrecoder == NULL
+          || *pusch_Config->transformPrecoder == NR_PUSCH_Config__transformPrecoder_disabled) {
+        if (pusch_Config->mcs_Table == NULL)
+          pusch_Config->mcs_Table = calloc(1, sizeof(*pusch_Config->mcs_Table));
+        *pusch_Config->mcs_Table = NR_PUSCH_Config__mcs_Table_qam256;
+      } 
+      else {
+        if (pusch_Config->mcs_TableTransformPrecoder == NULL)
+          pusch_Config->mcs_TableTransformPrecoder = calloc(1, sizeof(*pusch_Config->mcs_TableTransformPrecoder));
+        *pusch_Config->mcs_TableTransformPrecoder = NR_PUSCH_Config__mcs_TableTransformPrecoder_qam256;
+      }
+    } 
     else {
-      if(pusch_Config->mcs_TableTransformPrecoder == NULL)
-        pusch_Config->mcs_TableTransformPrecoder = calloc(1, sizeof(*pusch_Config->mcs_TableTransformPrecoder));
-      *pusch_Config->mcs_TableTransformPrecoder = NR_PUSCH_Config__mcs_TableTransformPrecoder_qam256;
+      pusch_Config->mcs_Table = NULL;
+      pusch_Config->mcs_TableTransformPrecoder = NULL;
     }
   }
-  else {
-    pusch_Config->mcs_Table = NULL;
-    pusch_Config->mcs_TableTransformPrecoder = NULL;
+
+  if(cg_Config){
+    if(supported){
+      if (cg_Config->transformPrecoder == NULL
+          || *cg_Config->transformPrecoder == NR_ConfiguredGrantConfig__transformPrecoder_disabled) {
+        if (cg_Config->mcs_Table == NULL)
+          cg_Config->mcs_Table = calloc(1, sizeof(*cg_Config->mcs_Table));
+        *cg_Config->mcs_Table = NR_ConfiguredGrantConfig__mcs_Table_qam256;
+      } 
+      else {
+        if (cg_Config->mcs_TableTransformPrecoder == NULL)
+          cg_Config->mcs_TableTransformPrecoder = calloc(1, sizeof(*cg_Config->mcs_TableTransformPrecoder));
+        *cg_Config->mcs_TableTransformPrecoder = NR_ConfiguredGrantConfig__mcs_TableTransformPrecoder_qam256;
+      }
+    }
+    else{
+      cg_Config->mcs_Table = NULL;
+      cg_Config->mcs_TableTransformPrecoder = NULL;
+    }
   }
 }
 
@@ -1266,7 +1348,7 @@ static struct NR_SetupRelease_PUSCH_Config *config_pusch(NR_PUSCH_Config_t *pusc
   pusch_Config->resourceAllocation = NR_PUSCH_Config__resourceAllocation_resourceAllocationType1;
   pusch_Config->pusch_TimeDomainAllocationList = NULL;
   pusch_Config->pusch_AggregationFactor = NULL;
-  set_ul_mcs_table(uecap, scc, pusch_Config);
+  set_ul_mcs_table(uecap, scc, pusch_Config, NULL);
   pusch_Config->transformPrecoder = NULL;
   if (!pusch_Config->codebookSubset)
     pusch_Config->codebookSubset = calloc(1, sizeof(*pusch_Config->codebookSubset));
@@ -1480,7 +1562,6 @@ static void config_uplinkBWP(NR_BWP_Uplink_t *ubwp,
                             *servingcellconfigdedicated->uplinkConfig->pusch_ServingCellConfig->choice.setup->ext1->maxMIMO_Layers : 1;
 
   ubwp->bwp_Dedicated->srs_Config = get_config_srs(scc, NULL, curr_bwp, uid, bwp_loop + 1, maxMIMO_Layers, configuration->do_SRS);
-
   ubwp->bwp_Dedicated->configuredGrantConfig = NULL;
   ubwp->bwp_Dedicated->beamFailureRecoveryConfig = NULL;
 }
@@ -2351,6 +2432,7 @@ static NR_SpCellConfig_t *get_initial_SpCellConfig(int uid,
 
   // We are using do_srs = 0 here because the periodic SRS will only be enabled in update_cellGroupConfig() if do_srs == 1
   initialUplinkBWP->srs_Config = get_config_srs(scc, NULL, curr_bwp, uid, 0, maxMIMO_Layers, 0);
+  initialUplinkBWP->configuredGrantConfig = NULL;
 
   scheduling_request_config(scc, pucch_Config, scc->uplinkConfigCommon->initialUplinkBWP->genericParameters.subcarrierSpacing);
 
@@ -2657,6 +2739,13 @@ void update_cellGroupConfig(NR_CellGroupConfig_t *cellGroupConfig,
     uplinkConfig->initialUplinkBWP->srs_Config = get_config_srs(scc, uecap, curr_bwp, uid, 0, maxMIMO_Layers, configuration->do_SRS);
   }
 
+  // Configured grant Configuration
+  if(uecap->phy_Parameters.phy_ParametersCommon->configuredUL_GrantType2){
+    ASN_STRUCT_FREE(asn_DEF_NR_SetupRelease_ConfiguredGrantConfig, uplinkConfig->initialUplinkBWP->configuredGrantConfig);
+    uplinkConfig->initialUplinkBWP->configuredGrantConfig = get_config_CG();
+    LOG_E(NR_RRC, "Updating the configured grant in CellGroupConfig\n");
+  }
+
   // Set DL MCS table
   NR_BWP_DownlinkDedicated_t *bwp_Dedicated = SpCellConfig->spCellConfigDedicated->initialDownlinkBWP;
   set_dl_mcs_table(scc->downlinkConfigCommon->initialDownlinkBWP->genericParameters.subcarrierSpacing,
@@ -2665,7 +2754,8 @@ void update_cellGroupConfig(NR_CellGroupConfig_t *cellGroupConfig,
                    scc);
 
   NR_BWP_UplinkDedicated_t *ul_bwp_Dedicated = SpCellConfig->spCellConfigDedicated->uplinkConfig->initialUplinkBWP;
-  set_ul_mcs_table(configuration->force_256qam_off ? NULL : uecap, scc, ul_bwp_Dedicated->pusch_Config->choice.setup);
+  NR_ConfiguredGrantConfig_t *cg_Config_initial = ul_bwp_Dedicated->configuredGrantConfig ? ul_bwp_Dedicated->configuredGrantConfig->choice.setup : NULL;
+  set_ul_mcs_table(configuration->force_256qam_off ? NULL : uecap, scc, ul_bwp_Dedicated->pusch_Config->choice.setup, cg_Config_initial);
 
   struct NR_ServingCellConfig__downlinkBWP_ToAddModList *DL_BWP_list =
       SpCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList;
@@ -2683,7 +2773,8 @@ void update_cellGroupConfig(NR_CellGroupConfig_t *cellGroupConfig,
       int bwp_size = NRRIV2BW(ul_bwp->bwp_Common->genericParameters.locationAndBandwidth, MAX_BWP_SIZE);
       if (ul_bwp->bwp_Dedicated->pusch_Config) {
         NR_PUSCH_Config_t *pusch_Config = ul_bwp->bwp_Dedicated->pusch_Config->choice.setup;
-        set_ul_mcs_table(configuration->force_256qam_off ? NULL : uecap, scc, pusch_Config);
+        NR_ConfiguredGrantConfig_t *cg_Config_dedicated = ul_bwp->bwp_Dedicated->configuredGrantConfig ? ul_bwp->bwp_Dedicated->configuredGrantConfig->choice.setup : NULL;
+        set_ul_mcs_table(configuration->force_256qam_off ? NULL : uecap, scc, pusch_Config, cg_Config_dedicated);
         if (pusch_Config->maxRank == NULL) {
           pusch_Config->maxRank = calloc(1, sizeof(*pusch_Config->maxRank));
         }

@@ -35,6 +35,7 @@
             <dynamicHARQ-ACK-Codebook><supported/></dynamicHARQ-ACK-Codebook>
             <semiStaticHARQ-ACK-Codebook><supported/></semiStaticHARQ-ACK-Codebook>
             <pdsch-MappingTypeA><supported/></pdsch-MappingTypeA>
+            <configuredUL-GrantType2><supported/></configuredUL-GrantType2>
             <rateMatchingResrcSetSemi-Static><supported/></rateMatchingResrcSetSemi-Static>
             <ext2>
                 <maxLayersMIMO-Indication><supported/></maxLayersMIMO-Indication>
