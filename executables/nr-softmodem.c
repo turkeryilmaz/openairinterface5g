@@ -679,6 +679,7 @@ void read_mac_sm(mac_ind_msg_t* data)
    // const NR_UE_sched_ctrl_t* sched_ctrl = &UE->UE_sched_ctrl;
     //const NR_mac_stats_t* uestats = &UE->mac_stats;
     mac_ue_stats_impl_t* rd = &data->ue_stats[i];
+    //printf("fiiliing  by RC.nrmac[mod_id]->O_ul\n");
 
     rd->dl_aggr_tbs =RC.nrmac[mod_id]->O_dl; // uestats->dlsch_total_bytes;
     rd->ul_aggr_tbs = RC.nrmac[mod_id]->O_ul; //uestats->ulsch_total_bytes_rx;
