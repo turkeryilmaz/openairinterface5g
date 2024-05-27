@@ -848,7 +848,8 @@ static void nr_generate_Msg3_retransmission(module_id_t module_idP,
                        ss,
                        coreset,
                        (nr_sps_ctrl_t*)NULL,
-                       nr_mac->cset0_bwp_size);
+                       nr_mac->cset0_bwp_size,
+                       -1);
 
     // Mark the corresponding RBs as used
 
@@ -1376,7 +1377,8 @@ static void nr_generate_Msg2(module_id_t module_idP,
                        ss,
                        coreset,
                        (nr_sps_ctrl_t*)NULL,
-                       nr_mac->cset0_bwp_size);
+                       nr_mac->cset0_bwp_size,
+                       -1);
 
     // DL TX request
     nfapi_nr_pdu_t *tx_req = &TX_req->pdu_list[TX_req->Number_of_PDUs];
@@ -1600,7 +1602,8 @@ static void prepare_dl_pdus(gNB_MAC_INST *nr_mac,
                      ss,
                      coreset,
                      (nr_sps_ctrl_t*)NULL,
-                     nr_mac->cset0_bwp_size);
+                     nr_mac->cset0_bwp_size,
+                     -1);
 
     LOG_D(NR_MAC,"BWPSize: %i\n", pdcch_pdu_rel15->BWPSize);
     LOG_D(NR_MAC,"BWPStart: %i\n", pdcch_pdu_rel15->BWPStart);
@@ -1765,7 +1768,7 @@ static void nr_generate_Msg4(module_id_t module_idP,
 
     LOG_D(NR_MAC,"[RAPROC] Msg4 r_pucch %d (CCEIndex %d, delta_PRI %d)\n", r_pucch, CCEIndex, delta_PRI);
 
-    int alloc = nr_acknack_scheduling(nr_mac, UE, frameP, slotP, r_pucch, 1);
+    int alloc = nr_acknack_scheduling(nr_mac, UE, frameP, slotP, r_pucch, 1, -1);
     if (alloc < 0) {
       LOG_D(NR_MAC,"Couldn't find a pucch allocation for ack nack (msg4) in frame %d slot %d\n",frameP,slotP);
       return;

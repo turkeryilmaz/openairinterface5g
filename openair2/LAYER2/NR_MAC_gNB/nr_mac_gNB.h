@@ -373,6 +373,15 @@ typedef struct NR_sched_pucch {
   int start_symb;
 } NR_sched_pucch_t;
 
+typedef struct NR_sched_pucch_sps_dl {
+  bool active;
+  int frame;
+  int ul_slot;
+  int r_pucch;
+  int tx_frame;
+  int tx_slot;
+} NR_sched_pucch_sps_dl_t;
+
 typedef struct NR_pusch_dmrs {
   uint8_t N_PRB_DMRS;
   uint8_t num_dmrs_symb;
@@ -467,6 +476,7 @@ typedef struct NR_UE_harq {
   /// sched_pdsch keeps information on MCS etc used for the initial transmission
   NR_sched_pdsch_t sched_pdsch;
   bool is_sps_transmission;
+  bool is_dl;            // this is true if feedback is scheduled in dl slot for sps
 } NR_UE_harq_t;
 
 //! fixme : need to enhace for the multiple TB CQI report
@@ -542,6 +552,7 @@ typedef struct NR_UE_ul_harq {
 typedef struct NR_sched_sps {
   nr_sps_assignemnt_t *sps_assign;
   NR_sched_pdsch_t *initial_sched_pdsch;
+  NR_sched_pucch_t *initial_pucch; 
 } NR_sched_sps_t;
 
 /*! \brief scheduling control information set through an API */
@@ -567,6 +578,10 @@ typedef struct {
   /// There will be a structure for each UL slot in the active period determined by the size
   NR_sched_pucch_t *sched_pucch;
   int sched_pucch_size;
+  
+  // structure to store if the sps ack/nack falls in DL slot
+  NR_sched_pucch_sps_dl_t *sched_pucch_sps;
+  int sched_pucch_sps_size;
 
   /// Sched PUSCH: scheduling decisions, copied into HARQ and cleared every TTI
   NR_sched_pusch_t sched_pusch;
@@ -630,7 +645,7 @@ typedef struct {
   NR_list_t available_dl_harq;
   /// HARQ processes that await feedback
   NR_list_t feedback_dl_harq;
-  // HARQ processes that awaits feedback for sps (todo: separte queue for sps required??)
+  // HARQ processes that awaits feedback for sps in DL slots?? (todo: separte queue for sps required??)
   NR_list_t feedback_dl_harq_sps;
   /// HARQ processes that await retransmission
   NR_list_t retrans_dl_harq;

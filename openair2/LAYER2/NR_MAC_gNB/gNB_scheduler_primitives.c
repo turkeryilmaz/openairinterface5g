@@ -1049,10 +1049,10 @@ void set_r_pucch_parms(int rsetindex,
   *start_symbol_index = default_pucch_firstsymb[rsetindex];
 }
 
-static void nr_prepare_sps_dci(dci_pdu_rel15_t *dci_pdu_rel15, const NR_UE_DL_BWP_t *current_DL_BWP, int rnti_type, nr_sps_ctrl_t *sps_ctrl) {
+static void nr_prepare_sps_dci(dci_pdu_rel15_t *dci_pdu_rel15, const NR_UE_DL_BWP_t *current_DL_BWP, int rnti_type, nr_sps_ctrl_t *sps_ctrl, int round) {
   if (current_DL_BWP->sps_config && rnti_type == NR_RNTI_CS) {  // sps is configured by RRC
     
-    if (sps_ctrl->send_sps_activation) {
+    if (sps_ctrl->send_sps_activation && round == 0) {
       LOG_I(NR_MAC, "[SPS]Configure the pdcch dci with RNTI %x to send SPS activation\n", (uint16_t)*current_DL_BWP->cs_rnti);
       dci_pdu_rel15->ndi = 0;
       dci_pdu_rel15->harq_pid = 0;
@@ -1162,7 +1162,8 @@ void fill_dci_pdu_rel15(const NR_ServingCellConfigCommon_t *scc,
                         NR_SearchSpace_t *ss,
                         NR_ControlResourceSet_t *coreset,
                         nr_sps_ctrl_t *sps,
-                        uint16_t cset0_bwp_size)
+                        uint16_t cset0_bwp_size, 
+                        int harq_round)
 {
 
   uint8_t fsize = 0, pos = 0;
@@ -1242,7 +1243,7 @@ void fill_dci_pdu_rel15(const NR_ServingCellConfigCommon_t *scc,
     case NR_RNTI_C:
     case NR_RNTI_CS:
       // modify the dci fields for sending sps activation retransmission or release scrambled with cs-rnti
-      nr_prepare_sps_dci(dci_pdu_rel15, current_DL_BWP, rnti_type, sps);
+      nr_prepare_sps_dci(dci_pdu_rel15, current_DL_BWP, rnti_type, sps, harq_round);
 
       // indicating a DL DCI format 1bit
       pos++;
@@ -1676,7 +1677,7 @@ void fill_dci_pdu_rel15(const NR_ServingCellConfigCommon_t *scc,
 
   case NR_DL_DCI_FORMAT_1_1:
     // modify the dci fields for sending sps activation retransmission or release scrambled with cs-rnti
-    nr_prepare_sps_dci(dci_pdu_rel15, current_DL_BWP, rnti_type, sps);
+    nr_prepare_sps_dci(dci_pdu_rel15, current_DL_BWP, rnti_type, sps, harq_round);
       
     // Indicating a DL DCI format 1bit
     LOG_D(NR_MAC,"Filling Format 1_1 DCI of size %d\n",dci_size);
@@ -1759,6 +1760,33 @@ void fill_dci_pdu_rel15(const NR_ServingCellConfigCommon_t *scc,
     // DMRS sequence init
     pos += 1;
     *dci_pdu |= ((uint64_t)dci_pdu_rel15->dmrs_sequence_initialization.val & 0x1) << (dci_size - pos);
+
+    LOG_I(NR_MAC, "============= NR_UL_DCI_FORMAT_1_1 =============\n");
+    LOG_I(NR_MAC, "dci_size = %i\n", dci_size);
+    LOG_I(NR_MAC, "dci_pdu_rel15->format_indicator = %i\n", dci_pdu_rel15->format_indicator);
+    LOG_I(NR_MAC, "dci_pdu_rel15->carrier_indicator.val = %i\n", dci_pdu_rel15->carrier_indicator.val);
+    LOG_I(NR_MAC, "dci_pdu_rel15->ul_sul_indicator.val = %i\n", dci_pdu_rel15->ul_sul_indicator.val);
+    LOG_I(NR_MAC, "dci_pdu_rel15->bwp_indicator.val = %i\n", dci_pdu_rel15->bwp_indicator.val);
+    LOG_I(NR_MAC, "dci_pdu_rel15->frequency_domain_assignment.val = %i\n", dci_pdu_rel15->frequency_domain_assignment.val);
+    LOG_I(NR_MAC, "dci_pdu_rel15->time_domain_assignment.val = %i\n", dci_pdu_rel15->time_domain_assignment.val);
+    LOG_I(NR_MAC, "dci_pdu_rel15->frequency_hopping_flag.val = %i\n", dci_pdu_rel15->frequency_hopping_flag.val);
+    LOG_I(NR_MAC, "dci_pdu_rel15->mcs = %i\n", dci_pdu_rel15->mcs);
+    LOG_I(NR_MAC, "dci_pdu_rel15->ndi = %i\n", dci_pdu_rel15->ndi);
+    LOG_I(NR_MAC, "dci_pdu_rel15->rv= %i\n", dci_pdu_rel15->rv);
+    LOG_I(NR_MAC, "dci_pdu_rel15->harq_pid = %i\n", dci_pdu_rel15->harq_pid);
+    LOG_I(NR_MAC, "dci_pdu_rel15->dai[0].val = %i\n", dci_pdu_rel15->dai[0].val);
+    LOG_I(NR_MAC, "dci_pdu_rel15->dai[1].val = %i\n", dci_pdu_rel15->dai[1].val);
+    LOG_I(NR_MAC, "dci_pdu_rel15->tpc = %i\n", dci_pdu_rel15->tpc);
+    LOG_I(NR_MAC, "dci_pdu_rel15->srs_resource_indicator.val = %i\n", dci_pdu_rel15->srs_resource_indicator.val);
+    LOG_I(NR_MAC, "dci_pdu_rel15->precoding_information.val = %i\n", dci_pdu_rel15->precoding_information.val);
+    LOG_I(NR_MAC, "dci_pdu_rel15->antenna_ports.val = %i\n", dci_pdu_rel15->antenna_ports.val);
+    LOG_I(NR_MAC, "dci_pdu_rel15->srs_request.val = %i\n", dci_pdu_rel15->srs_request.val);
+    LOG_I(NR_MAC, "dci_pdu_rel15->csi_request.val = %i\n", dci_pdu_rel15->csi_request.val);
+    LOG_I(NR_MAC, "dci_pdu_rel15->cbgti.val = %i\n", dci_pdu_rel15->cbgti.val);
+    LOG_I(NR_MAC, "dci_pdu_rel15->ptrs_dmrs_association.val = %i\n", dci_pdu_rel15->ptrs_dmrs_association.val);
+    LOG_I(NR_MAC, "dci_pdu_rel15->beta_offset_indicator.val = %i\n", dci_pdu_rel15->beta_offset_indicator.val);
+    LOG_I(NR_MAC, "dci_pdu_rel15->dmrs_sequence_initialization.val = %i\n", dci_pdu_rel15->dmrs_sequence_initialization.val);
+    LOG_I(NR_MAC, "dci_pdu_rel15->ulsch_indicator = %i\n", dci_pdu_rel15->ulsch_indicator);
   }
   LOG_D(NR_MAC, "DCI has %d bits and the payload is %lx\n", dci_size, *dci_pdu);
 }
@@ -1992,6 +2020,7 @@ void delete_nr_ue_data(NR_UE_info_t *UE, NR_COMMON_channels_t *ccPtr, uid_alloca
   destroy_nr_list(&sched_ctrl->feedback_ul_harq);
   destroy_nr_list(&sched_ctrl->retrans_ul_harq);
   free_sched_pucch_list(sched_ctrl);
+  free_sched_pucch_list_sps(sched_ctrl);
   uid_linear_allocator_free(uia, UE->uid);
   LOG_I(NR_MAC, "Remove NR rnti 0x%04x\n", UE->rnti);
   free(UE);
@@ -2127,7 +2156,7 @@ void configure_UE_BWP(gNB_MAC_INST *nr_mac,
 
     DL_BWP->pdsch_Config = bwpd->pdsch_Config->choice.setup;
     DL_BWP->sps_config = bwpd->sps_Config ? bwpd->sps_Config->choice.setup : NULL;
-    sched_ctrl->sps_ctrl.send_sps_activation = false;//bwpd->sps_Config && DL_BWP->cs_rnti ? true : false;   //todo: when to send activation signal??
+    sched_ctrl->sps_ctrl.send_sps_activation = bwpd->sps_Config && DL_BWP->cs_rnti ? true : false;   //todo: when to send activation signal??
     LOG_I(NR_MAC, "Initial sps activation is %d\n", sched_ctrl->sps_ctrl.send_sps_activation);
     UL_BWP->configuredGrantConfig = ubwpd->configuredGrantConfig ? ubwpd->configuredGrantConfig->choice.setup : NULL;
     UL_BWP->pusch_Config = ubwpd->pusch_Config->choice.setup;
@@ -2234,6 +2263,7 @@ void configure_UE_BWP(gNB_MAC_INST *nr_mac,
 
     set_max_fb_time(UL_BWP, DL_BWP);
     set_sched_pucch_list(sched_ctrl, UL_BWP, scc);
+    set_sched_pucch_list_sps(sched_ctrl, UL_BWP, scc);
   }
 
   if(ra) {
@@ -2269,7 +2299,8 @@ void configure_UE_BWP(gNB_MAC_INST *nr_mac,
 
   // Set MCS tables
   long *dl_mcs_Table = DL_BWP->pdsch_Config ? DL_BWP->pdsch_Config->mcs_Table : NULL;
-  DL_BWP->mcsTableIdx = get_pdsch_mcs_table(dl_mcs_Table, DL_BWP->dci_format, NR_RNTI_C, target_ss, NULL);
+  const int rnti_type = sched_ctrl ? (sched_ctrl->sps_ctrl.send_sps_activation ? NR_RNTI_CS : NR_RNTI_C) : NR_RNTI_C;
+  DL_BWP->mcsTableIdx = get_pdsch_mcs_table(dl_mcs_Table, DL_BWP->dci_format, rnti_type, target_ss, DL_BWP->sps_config);
 
   // 0 precoding enabled 1 precoding disabled
   UL_BWP->transform_precoding = get_transformPrecoding(UL_BWP, UL_BWP->dci_format, 0);
@@ -2412,6 +2443,36 @@ void set_sched_pucch_list(NR_UE_sched_ctrl_t *sched_ctrl,
 void free_sched_pucch_list(NR_UE_sched_ctrl_t *sched_ctrl)
 {
   free(sched_ctrl->sched_pucch);
+}
+
+void set_sched_pucch_list_sps(NR_UE_sched_ctrl_t *sched_ctrl,
+                              const NR_UE_UL_BWP_t *ul_bwp,
+                              const NR_ServingCellConfigCommon_t *scc) {
+
+  const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
+  const int n_slots_frame = nr_slots_per_frame[ul_bwp->scs];
+  const int nr_slots_period = tdd ? n_slots_frame / get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity) : n_slots_frame;
+  const int n_dl_slots_period = tdd ? tdd->nrofDownlinkSlots + (tdd->nrofDownlinkSymbols > 0 ? 1 : 0) : n_slots_frame;
+  // PUCCH list size of sps is given by the number of DL slots in the PUCCH period
+  // the length PUCCH period is determined by max_fb_time since we may need to prepare PUCCH for ACK/NACK max_fb_time slots ahead
+  const int list_size = n_dl_slots_period << (ul_bwp->max_fb_time/nr_slots_period);
+  if(!sched_ctrl->sched_pucch_sps) {
+    sched_ctrl->sched_pucch_sps = calloc(list_size, sizeof(*sched_ctrl->sched_pucch_sps));
+    sched_ctrl->sched_pucch_sps_size = list_size;
+  }
+  else if (list_size > sched_ctrl->sched_pucch_sps_size) {
+    sched_ctrl->sched_pucch_sps = realloc(sched_ctrl->sched_pucch_sps, list_size * sizeof(*sched_ctrl->sched_pucch_sps));
+    for(int i=sched_ctrl->sched_pucch_sps_size; i<list_size; i++){
+      NR_sched_pucch_sps_dl_t *curr_pucch = &sched_ctrl->sched_pucch_sps[i];
+      memset(curr_pucch, 0, sizeof(*curr_pucch));
+    }
+    sched_ctrl->sched_pucch_sps_size = list_size;
+  }
+}
+
+void free_sched_pucch_list_sps(NR_UE_sched_ctrl_t *sched_ctrl)
+{
+  free(sched_ctrl->sched_pucch_sps);
 }
 
 void create_dl_harq_list(NR_UE_sched_ctrl_t *sched_ctrl,

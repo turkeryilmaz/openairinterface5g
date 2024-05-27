@@ -47,6 +47,7 @@ static void nr_fill_nfapi_pucch(gNB_MAC_INST *nrmac,
 
   const int index = ul_buffer_index(pucch->frame, pucch->ul_slot, UE->current_UL_BWP.scs, nrmac->UL_tti_req_ahead_size);
   nfapi_nr_ul_tti_request_t *future_ul_tti_req = &nrmac->UL_tti_req_ahead[0][index];
+  LOG_D(MAC, "future_ul_tti_req->SFN = %d, pucch->frame = %d, future_ul_tti_req->Slot = %d ,pucch->ul_slot = %d\n", future_ul_tti_req->SFN, pucch->frame, future_ul_tti_req->Slot, pucch->ul_slot);
   if (future_ul_tti_req->SFN != pucch->frame || future_ul_tti_req->Slot != pucch->ul_slot)
     LOG_W(MAC,
           "Current %d.%d : future UL_tti_req's frame.slot %4d.%2d does not match PUCCH %4d.%2d\n",
@@ -144,7 +145,7 @@ static const int diff_rsrp_ssb_csi_meas_10_1_6_1_2[16] = {
     -30 // 10 - 15
 };
 
-static int get_pucch_index(int frame, int slot, int n_slots_frame, const NR_TDD_UL_DL_Pattern_t *tdd, int sched_pucch_size)
+int get_pucch_index(int frame, int slot, int n_slots_frame, const NR_TDD_UL_DL_Pattern_t *tdd, int sched_pucch_size)
 {
   // PUCCH structures are indexed by slot in the PUCCH period determined by sched_pucch_size number of UL slots
   // this functions return the index to the structure for slot passed to the function
@@ -160,6 +161,25 @@ static int get_pucch_index(int frame, int slot, int n_slots_frame, const NR_TDD_
   const int ul_period_slot   = (slot % nr_slots_period) - first_ul_slot_period;
   // the sum gives the index of current UL slot in the frame which is normalized wrt sched_pucch_size
   return (frame_start + ul_period_start + ul_period_slot) % sched_pucch_size;
+
+}
+
+int get_pucch_index_sps(int frame, int slot, int n_slots_frame, const NR_TDD_UL_DL_Pattern_t *tdd, int sched_pucch_size)
+{
+  // PUCCH structures are indexed by slot in the PUCCH period determined by sched_pucch_size number of UL slots
+  // this functions return the index to the structure for slot passed to the function
+  const int first_dl_slot_period = 0;
+  const int n_dl_slots_period = tdd ? tdd->nrofDownlinkSlots + (tdd->nrofDownlinkSymbols > 0 ? 1 : 0) : n_slots_frame;
+  const int nr_slots_period = tdd ? n_slots_frame / get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity) : n_slots_frame;
+  const int n_dl_slots_frame = n_slots_frame / nr_slots_period * n_dl_slots_period;
+  // (frame * n_ul_slots_frame) adds up the number of UL slots in the previous frames
+  const int frame_start      = frame * n_dl_slots_frame;
+  // ((slot / nr_slots_period) * n_ul_slots_period) adds up the number of UL slots in the previous TDD periods of this frame
+  const int dl_period_start  = (slot / nr_slots_period) * n_dl_slots_period;
+  // ((slot % nr_slots_period) - first_ul_slot_period) gives the progressive number of the slot in this TDD period
+  const int dl_period_slot   = (slot % nr_slots_period) - first_dl_slot_period;
+  // the sum gives the index of current UL slot in the frame which is normalized wrt sched_pucch_size
+  return (frame_start + dl_period_start + dl_period_slot) % sched_pucch_size;
 
 }
 
@@ -184,6 +204,7 @@ void nr_schedule_pucch(gNB_MAC_INST *nrmac,
     NR_sched_pucch_t *curr_pucch = &UE->UE_sched_ctrl.sched_pucch[pucch_index];
     if (!curr_pucch->active)
       continue;
+    LOG_I(NR_MAC, "frameP %d, curr_pucch->frame = %d, slotP %d, curr_pucch->ul_slot = %d\n", frameP, curr_pucch->frame, slotP, curr_pucch->ul_slot);
     DevAssert(frameP == curr_pucch->frame && slotP == curr_pucch->ul_slot);
 
     const uint16_t O_ack = curr_pucch->dai_c;
@@ -366,12 +387,13 @@ int get_pucch_resourceid(NR_PUCCH_Config_t *pucch_Config, int O_uci, int pucch_r
   return *resource_id;
 }
 
-static void handle_dl_harq(NR_UE_info_t * UE,
-                           int8_t harq_pid,
-                           bool success,
-                           int harq_round_max)
+void handle_dl_harq(NR_UE_info_t * UE,
+                    int8_t harq_pid,
+                    bool success,
+                    int harq_round_max)
 {
   NR_UE_harq_t *harq = &UE->UE_sched_ctrl.harq_processes[harq_pid];
+  LOG_I(PHY, "[%d.%d]HARQ Rx : The current harq is for sps transmission ? %d: harq process id (%d),harq round (%d), success (%d) \n", harq->feedback_frame, harq->feedback_slot, harq->is_sps_transmission, harq_pid, harq->round, success);
   harq->feedback_slot = -1;
   harq->is_waiting = false;
   if (success) {
@@ -950,23 +972,38 @@ static NR_UE_harq_t *find_harq(frame_t frame, sub_frame_t slot, NR_UE_info_t * U
   if (pid < 0)
     return NULL;
   NR_UE_harq_t *harq = &sched_ctrl->harq_processes[pid];
-  /* old feedbacks we missed: mark for retransmission */
-  while (harq->feedback_frame != frame
-         || (harq->feedback_frame == frame && harq->feedback_slot < slot)) {
-    LOG_W(NR_MAC,
-          "UE %04x expected HARQ pid %d feedback at %4d.%2d, but is at %4d.%2d instead (HARQ feedback is in the past)\n",
-          UE->rnti,
-          pid,
-          harq->feedback_frame,
-          harq->feedback_slot,
-          frame,
-          slot);
-    remove_front_nr_list(&sched_ctrl->feedback_dl_harq);
-    handle_dl_harq(UE, pid, 0, harq_round_max);
-    pid = sched_ctrl->feedback_dl_harq.head;
+  while (harq->is_dl) {
+    pid = sched_ctrl->feedback_dl_harq.next[pid];
     if (pid < 0)
       return NULL;
     harq = &sched_ctrl->harq_processes[pid];
+  }
+  /* old feedbacks we missed: mark for retransmission */
+  while (harq->feedback_frame != frame
+         || (harq->feedback_frame == frame && harq->feedback_slot < slot)) {
+    if (harq->is_dl) {
+      pid = sched_ctrl->feedback_dl_harq.next[pid];
+      if (pid < 0) 
+        return NULL;
+      harq = &sched_ctrl->harq_processes[pid];
+    }
+    else {
+      LOG_W(NR_MAC,
+            "UE %04x expected HARQ pid %d feedback at %4d.%2d, but is at %4d.%2d instead (HARQ feedback is in the past)\n",
+            UE->rnti,
+            pid,
+            harq->feedback_frame,
+            harq->feedback_slot,
+            frame,
+            slot);
+      int next_pid = sched_ctrl->feedback_dl_harq.next[pid];
+      remove_nr_list(&sched_ctrl->feedback_dl_harq, pid);
+      handle_dl_harq(UE, pid, 0, harq_round_max);
+      pid = next_pid;
+      if (pid < 0)
+        return NULL;
+      harq = &sched_ctrl->harq_processes[pid];
+    }
   }
   /* feedbacks that we wait for in the future: don't do anything */
   if (harq->feedback_slot > slot) {
@@ -1004,6 +1041,7 @@ void handle_nr_uci_pucch_0_1(module_id_t mod_id,
       const uint8_t harq_value = uci_01->harq.harq_list[harq_bit].harq_value;
       const uint8_t harq_confidence = uci_01->harq.harq_confidence_level;
       NR_UE_harq_t *harq = find_harq(frame, slot, UE, nrmac->dl_bler.harq_round_max);
+      AssertFatal(harq, "This should not happen\n");
       if (!harq) {
         LOG_E(NR_MAC, "UE %04x: Could not find a HARQ process at %4d.%2d!\n", UE->rnti, frame, slot);
         break;
@@ -1100,15 +1138,18 @@ void handle_nr_uci_pucch_2_3_4(module_id_t mod_id,
   NR_SCHED_UNLOCK(&nrmac->sched_lock);
 }
 
-static void set_pucch_allocation(const NR_UE_UL_BWP_t *ul_bwp, const int r_pucch, const int bwp_size, NR_sched_pucch_t *pucch)
+static void set_pucch_allocation(const NR_UE_UL_BWP_t *ul_bwp, const int r_pucch, const int bwp_size, NR_sched_pucch_t *pucch, int resource_id)
 {
+  /*todo sps: for sps the resource should be selected based on resource index?? */
   if(r_pucch<0){
+
     const NR_PUCCH_Resource_t *resource = ul_bwp->pucch_Config->resourceToAddModList->list.array[0];
     DevAssert(resource->format.present == NR_PUCCH_Resource__format_PR_format0);
     pucch->second_hop_prb = resource->secondHopPRB!= NULL ?  *resource->secondHopPRB : 0;
     pucch->nr_of_symb = resource->format.choice.format0->nrofSymbols;
     pucch->start_symb = resource->format.choice.format0->startingSymbolIndex;
     pucch->prb_start = resource->startingPRB;
+    LOG_I(NR_MAC, "pucch resource allocation: second hop prb (%d), number of symbols (%d), start symbol (%d), start prb (%d)\n", pucch->second_hop_prb, pucch->nr_of_symb, pucch->start_symb, pucch->prb_start);
   }
   else{
     int rsetindex = *ul_bwp->pucch_ConfigCommon->pucch_ResourceCommon;
@@ -1207,7 +1248,8 @@ int nr_acknack_scheduling(gNB_MAC_INST *mac,
                           frame_t frame,
                           sub_frame_t slot,
                           int r_pucch,
-                          int is_common)
+                          int is_common,
+                          int resource_id)
 {
   /* we assume that this function is mutex-protected from outside. Since it is
    * called often, don't try to lock every time */
@@ -1250,8 +1292,8 @@ int nr_acknack_scheduling(gNB_MAC_INST *mac,
     if (curr_pucch->active &&
         curr_pucch->frame == pucch_frame &&
         curr_pucch->ul_slot == pucch_slot) { // if there is already a PUCCH in given frame and slot
-      LOG_D(NR_MAC, "pucch_acknack DL %4d.%2d, UL_ACK %4d.%2d Bits already in current PUCCH: DAI_C %d CSI %d\n",
-            frame, slot, pucch_frame, pucch_slot, curr_pucch->dai_c, curr_pucch->csi_bits);
+      LOG_D(NR_MAC, "pucch_acknack DL %4d.%2d, UL_ACK %4d.%2d Bits already in current PUCCH %d: DAI_C %d CSI %d\n",
+            frame, slot, pucch_frame, pucch_slot, pucch_index, curr_pucch->dai_c, curr_pucch->csi_bits);
       // we can't schedule if short pucch is already full
       if (curr_pucch->csi_bits == 0 &&
           curr_pucch->dai_c == 2)
@@ -1274,7 +1316,7 @@ int nr_acknack_scheduling(gNB_MAC_INST *mac,
       // no need to check VRB occupation because already done when PUCCH has been activated
       curr_pucch->timing_indicator = f;
       curr_pucch->dai_c++;
-      LOG_D(NR_MAC, "DL %4d.%2d, UL_ACK %4d.%2d Scheduling ACK/NACK in PUCCH %d with timing indicator %d DAI %d CSI %d\n",
+      LOG_I(NR_MAC, "DL %4d.%2d, UL_ACK %4d.%2d Scheduling ACK/NACK in PUCCH %d with timing indicator %d DAI %d CSI %d\n",
             frame,slot,curr_pucch->frame,curr_pucch->ul_slot,pucch_index,f,curr_pucch->dai_c,curr_pucch->csi_bits);
       return pucch_index; // index of current PUCCH structure
     }
@@ -1284,7 +1326,7 @@ int nr_acknack_scheduling(gNB_MAC_INST *mac,
     }
     else { // unoccupied occasion
       // checking if in ul_slot the resources potentially to be assigned to this PUCCH are available
-      set_pucch_allocation(ul_bwp, r_pucch, bwp_size, curr_pucch);
+      set_pucch_allocation(ul_bwp, r_pucch, bwp_size, curr_pucch, resource_id);
       const int index = ul_buffer_index(pucch_frame, pucch_slot, ul_bwp->scs, mac->vrb_map_UL_size);
       uint16_t *vrb_map_UL = &mac->common_channels[CC_id].vrb_map_UL[index * MAX_BWP_SIZE];
       bool ret = test_pucch0_vrb_occupation(curr_pucch,
@@ -1292,7 +1334,7 @@ int nr_acknack_scheduling(gNB_MAC_INST *mac,
                                             bwp_start,
                                             bwp_size);
       if(!ret) {
-        LOG_D(NR_MAC, "DL %4d.%2d, UL_ACK %4d.%2d PRB resources for this occasion are already occupied, move to the following occasion\n",
+        LOG_I(NR_MAC, "DL %4d.%2d, UL_ACK %4d.%2d PRB resources for this occasion are already occupied, move to the following occasion\n",
               frame, slot, pucch_frame, pucch_slot);
         continue;
       }
@@ -1305,7 +1347,7 @@ int nr_acknack_scheduling(gNB_MAC_INST *mac,
       curr_pucch->resource_indicator = 0; // each UE has dedicated PUCCH resources
       curr_pucch->r_pucch=r_pucch;
 
-      LOG_D(NR_MAC, "DL %4d.%2d, UL_ACK %4d.%2d Scheduling ACK/NACK in PUCCH %d with timing indicator %d DAI %d\n",
+      LOG_I(NR_MAC, "DL %4d.%2d, UL_ACK %4d.%2d Scheduling ACK/NACK in PUCCH %d with timing indicator %d DAI %d\n",
             frame, slot, curr_pucch->frame, curr_pucch->ul_slot, pucch_index, f, curr_pucch->dai_c);
 
       // blocking resources for current PUCCH in VRB map
@@ -1384,7 +1426,7 @@ void nr_sr_reporting(gNB_MAC_INST *nrmac, frame_t SFN, sub_frame_t slot)
         uint16_t *vrb_map_UL = &nrmac->common_channels[CC_id].vrb_map_UL[index * MAX_BWP_SIZE];
         const int bwp_start = ul_bwp->BWPStart;
         const int bwp_size = ul_bwp->BWPSize;
-        set_pucch_allocation(ul_bwp, -1, bwp_size, curr_pucch);
+        set_pucch_allocation(ul_bwp, -1, bwp_size, curr_pucch, SR_resource_id);
         bool ret = test_pucch0_vrb_occupation(curr_pucch,
                                               vrb_map_UL,
                                               bwp_start,

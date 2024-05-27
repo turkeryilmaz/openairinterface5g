@@ -3670,39 +3670,52 @@ bool is_nr_DL_slot(NR_TDD_UL_DL_ConfigCommon_t *tdd_UL_DL_ConfigurationCommon, s
     return slot_in_period <= slots1 + tdd_UL_DL_ConfigurationCommon->pattern2->nrofDownlinkSlots;
 }
 
-bool is_nr_SPS_DL_slot(frame_t frame, slot_t slot, NR_SPS_Config_t *sps_config, long *cs_rnti, uint8_t scs, nr_sps_assignemnt_t *sps_info) {
-  const uint16_t num_slots_per_frame = nr_slots_per_frame[scs];
-  int slot_num = num_slots_per_frame * frame + slot;
+bool is_nr_mixed_slot(NR_TDD_UL_DL_ConfigCommon_t	*tdd_UL_DL_ConfigurationCommon, slot_t slot, frame_type_t frame_type) {
+  // Note: condition on frame_type
+  if (frame_type == FDD)
+    return false;
+  if (tdd_UL_DL_ConfigurationCommon == NULL)
+    // before receiving TDD information all slots should be considered to be DL
+    return false;
+
+  bool is_mixed = is_nr_DL_slot(tdd_UL_DL_ConfigurationCommon, slot) && is_nr_UL_slot(tdd_UL_DL_ConfigurationCommon, slot, frame_type);
+  LOG_I(NR_MAC, "The slot is %s mixed slot\n", is_mixed ? "a" : "not a");
+
+  return is_mixed;
+}
+
+bool is_nr_SPS_DL_slot(frame_t frame, slot_t slot, NR_SPS_Config_t *sps_config, long *cs_rnti, uint8_t scs, nr_sps_assignemnt_t *sps_info, NR_ServingCellConfigCommon_t *scc, frame_type_t frame_type) {
+  NR_TDD_UL_DL_ConfigCommon_t *tdd = scc->tdd_UL_DL_ConfigurationCommon;
+  const uint16_t num_slots_frame = nr_slots_per_frame[scs];
+  int current_slot = (num_slots_frame * frame + slot) % (1024 * num_slots_frame);
   bool status = false;
   
   if (sps_config && cs_rnti && sps_info) {
-    int previous_slot_num = num_slots_per_frame * sps_info->previous_frame + sps_info->previous_slot;
-    LOG_D(NR_MAC, "previous slot num at frame = %d, slot = %d is %d\n", frame, slot, previous_slot_num);
-    LOG_D(NR_MAC, "current slot num at frame = %d, slot = %d is %d\n", frame, slot, slot_num);
+    int sps_start_slot = (num_slots_frame * sps_info->sps_start_frame + sps_info->sps_start_slot) % (1024 * num_slots_frame);
 
     /* perodicity in slots as per bwp scs */
-    int slots_in_period = num_slots_per_frame * (nr_get_periodicity_sps(sps_config->periodicity)/10);
-    /* the same function can be used at multiple files. So to not wrongly use the index of next occasion of sps, check should be
-       done to know if the corresponding slot is already checked before or not
-    */
-    LOG_D(NR_MAC, "are the two numbers %d and %d equal?%d\n", slot_num, previous_slot_num, slot_num == previous_slot_num);
-    sps_info->sps_assisgnment_index = (slot_num == previous_slot_num) ? sps_info->sps_assisgnment_index - 1 : sps_info->sps_assisgnment_index;
-    AssertFatal(sps_info->sps_assisgnment_index >= 0 , "Implementation issue for SPS slot check when same slot is checked more than once\n");
+    float period_ms = nr_get_periodicity_sps(sps_config->periodicity);
+    float periodicity = (num_slots_frame/10) * period_ms;
+    AssertFatal(periodicity - (int)periodicity == 0, "The sps periodicty of %f is not supported for the scs of %d khz\n", nr_get_periodicity_sps(sps_config->periodicity), 15 << scs);
+    AssertFatal(periodicity > 0, "Number of slots are not valid\n");
+
+    float slot_diff = current_slot -sps_start_slot;
+    bool is_slot_sps = (slot_diff - (int)slot_diff == 0) && ((int)slot_diff % (int)periodicity == 0);
+
+    /* check the type of current slot */
+    bool is_current_mixed_slot = is_nr_mixed_slot(tdd, slot, frame_type);
+
+    status = is_slot_sps && ((sps_info->is_mixed_slot == 0 && is_current_mixed_slot == 0) || (sps_info->is_mixed_slot == 1 && is_current_mixed_slot == 1) || (sps_info->is_mixed_slot == 1 && is_current_mixed_slot == 0));
     
-    // SPS DL assignment occurs in the slot for which the below condition is satisfied as specified in 3GPP TS 38.321 sec 5.8.1
-    int sps_slot = ((sps_info->sps_start_frame * num_slots_per_frame + sps_info->sps_start_slot) 
-                    + (slots_in_period * sps_info->sps_assisgnment_index * num_slots_per_frame/10)) 
-                    % (1024 * num_slots_per_frame);
-    if (slot_num == sps_slot) {
-      sps_info->previous_frame = frame;
-      sps_info->previous_slot = slot;
-      sps_info->sps_assisgnment_index++;
-      status = true;
-      LOG_D(NR_MAC, "sps indication is incremented at frame = %d, slot = %d\n", frame, slot);
+    if (status) {
+      int occasion = slot_diff/periodicity;
+      AssertFatal(occasion >= 0, "SPS occasion index must not be negative\n");
+      sps_info->sps_assisgnment_index = occasion;
+      LOG_I(NR_MAC, "[sps start: (%d.%d) and period %d]The %d sps occasion at frame %d and slot %d \n", sps_info->sps_start_frame, sps_info->sps_start_slot, (int)periodicity, sps_info->sps_assisgnment_index, frame, slot);
     }
   }
   return status;
-} 
+}
 
 /*
 In the case of dynamic resource allocations, the HARQ process identity is specified within the DCl associated with each individual
@@ -3710,11 +3723,17 @@ resource allocation. A UE docs not receive DCl for each individual transmission 
 (TS 38.321 sec 5.3.1) has specified a calculation to determine the HAR Process Identity
 */
 int get_harq_processid_sps(frame_t frame, slot_t slot, uint8_t scs, NR_SPS_Config_t *sps_config) {
-  const uint16_t num_slots_per_frame = nr_slots_per_frame[scs];
-  int current_slot = num_slots_per_frame * frame + slot;
-  int slots_in_period = num_slots_per_frame * (nr_get_periodicity_sps(sps_config->periodicity)/10);
+  const uint16_t num_slots_frame = nr_slots_per_frame[scs];
+  int current_slot = num_slots_frame * frame + slot;
+
+  /* perodicity in slots as per bwp scs */
+  float period_ms = nr_get_periodicity_sps(sps_config->periodicity);
+  float periodicity = (num_slots_frame/10) * period_ms;
+  AssertFatal(periodicity - (int)periodicity == 0, "The sps periodicty of %f is not supported for the scs of %d khz\n", nr_get_periodicity_sps(sps_config->periodicity), 15 << scs);
+  AssertFatal(periodicity > 0, "Number of slots are not valid\n");
+
   int harq_processid_offset = sps_config->ext1->harq_ProcID_Offset_r16 ? *sps_config->ext1->harq_ProcID_Offset_r16 : 0;
-  int harq_processid = ((int)(floor(current_slot * 10/(num_slots_per_frame * slots_in_period))) % (int)sps_config->nrofHARQ_Processes) + harq_processid_offset;
+  int harq_processid = ((int)(floor(current_slot * 10/(num_slots_frame * period_ms))) % (int)sps_config->nrofHARQ_Processes) + harq_processid_offset;
   return harq_processid;
 }
 
@@ -3841,17 +3860,18 @@ int16_t fill_dmrs_mask(const NR_PDSCH_Config_t *pdsch_Config,
   return l_prime;
 }
 
+// todo sps: modify as per rel 16 final version, i assume current version is rel16 version 2
 uint8_t get_pdsch_mcs_table(long *mcs_Table, int dci_format, int rnti_type, int ss_type, NR_SPS_Config_t *sps_config)
 {
 
-  // Set downlink MCS table (Semi-persistent scheduling ignored for now)
+  // Set downlink MCS table 
   uint8_t mcsTableIdx = 0; // default value
   if (mcs_Table &&
       *mcs_Table == NR_PDSCH_Config__mcs_Table_qam256 &&
       dci_format == NR_DL_DCI_FORMAT_1_1 &&
       rnti_type == NR_RNTI_C)
     mcsTableIdx = 1;
-  else if (rnti_type != NR_RNTI_MCS_C &&
+  else if (rnti_type != NR_RNTI_MCS_C && rnti_type == NR_RNTI_C &&
            mcs_Table &&
            *mcs_Table == NR_PDSCH_Config__mcs_Table_qam64LowSE &&
            ss_type == NR_SearchSpace__searchSpaceType_PR_ue_Specific)
@@ -3859,16 +3879,16 @@ uint8_t get_pdsch_mcs_table(long *mcs_Table, int dci_format, int rnti_type, int 
   else if (rnti_type == NR_RNTI_MCS_C)
     mcsTableIdx = 2;
   else if (((dci_format == NR_DL_DCI_FORMAT_1_1 && rnti_type == NR_RNTI_CS) || sps_config) &&
-            (sps_config && sps_config->mcs_Table == NULL && *mcs_Table == NR_PDSCH_Config__mcs_Table_qam256)
+            (sps_config && sps_config->mcs_Table == NULL && mcs_Table && *mcs_Table == NR_PDSCH_Config__mcs_Table_qam256)
            )
     mcsTableIdx = 1;
-  else if (sps_config && *sps_config->mcs_Table == NR_PDSCH_Config__mcs_Table_qam64LowSE &&
+  else if (sps_config && sps_config->mcs_Table && *sps_config->mcs_Table == NR_PDSCH_Config__mcs_Table_qam64LowSE &&
            (rnti_type == NR_RNTI_CS || sps_config)
            )
     mcsTableIdx = 2;
   
 
-  LOG_D(NR_MAC,"DL MCS Table Index: %d\n", mcsTableIdx);
+  LOG_D(NR_MAC,"DL MCS Table Index for DCI scrambled with %s: %d\n", rnti_type == NR_RNTI_C ? "C-RNTI" : "CS-RNTI" ,mcsTableIdx);
   return mcsTableIdx;
 
 }
@@ -4481,7 +4501,7 @@ void get_type0_PDCCH_CSS_config_parameters(NR_Type0_PDCCH_CSS_config_t *type0_PD
     type0_PDCCH_CSS_config->search_space_frame_period = ssb_period*nr_slots_per_frame[scs_ssb];
   }
 
-  /// MUX PATTERN 3
+  /// MUX PATTERN 3m
   if(type0_PDCCH_CSS_config->type0_pdcch_ss_mux_pattern == 3){
     if((scs_ssb == NR_SubcarrierSpacing_kHz120) && (scs_pdcch == NR_SubcarrierSpacing_kHz120)){
       //  38.213 Table 13-15
@@ -5422,7 +5442,7 @@ uint16_t nr_get_csi_bitlen(nr_csi_report_t *csi_report_template, uint8_t csi_rep
   return csi_bitlen;
 }
 
-uint32_t nr_get_periodicity_sps(long periodicity) {
+float nr_get_periodicity_sps(long periodicity) {
   /* return periodicity in ms */
   switch(periodicity) {
     case NR_SPS_Config__periodicity_ms10:
@@ -5445,6 +5465,18 @@ uint32_t nr_get_periodicity_sps(long periodicity) {
       return 320;
     case NR_SPS_Config__periodicity_ms640:
       return 640;
+    case NR_SPS_Config__periodicity_spare1:
+      return 1;
+    case NR_SPS_Config__periodicity_spare2:
+      return 2.5;
+    case NR_SPS_Config__periodicity_spare3:
+      return 4;
+    case NR_SPS_Config__periodicity_spare4: //
+      return 4.5;
+    case NR_SPS_Config__periodicity_spare5:
+      return 7;
+    case NR_SPS_Config__periodicity_spare6:
+      return 9;
     default:
       AssertFatal(1==0, "Undefined SPS Periodicity\n");
   }

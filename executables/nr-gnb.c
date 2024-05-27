@@ -228,6 +228,7 @@ void rx_func(void *param)
   // RX processing
   int rx_slot_type = nr_slot_select(cfg, frame_rx, slot_rx);
   if (rx_slot_type == NR_UPLINK_SLOT || rx_slot_type == NR_MIXED_SLOT) {
+    LOG_D(PHY, "===============Receive processing for %s at gNB of frame %d slot %d ================================\n", (rx_slot_type==2) ? "UPLINK": "MIXED", frame_rx, slot_rx);
     // UE-specific RX processing for subframe n
     // TODO: check if this is correct for PARALLEL_RU_L1_TRX_SPLIT
 
@@ -265,6 +266,7 @@ void rx_func(void *param)
   gNB->UL_INFO.CC_id     = gNB->CC_id;
   gNB->if_inst->NR_UL_indication(&gNB->UL_INFO);
 //  pthread_mutex_unlock(&gNB->UL_INFO_mutex);
+  LOG_D(PHY, "===============Call scheduler for %s slot at gNB of frame %d slot %d ================================\n", (rx_slot_type== 1) ? "DOWNLINK": (rx_slot_type==2 ? "UPLINK": "MIXED"),frame_rx, slot_rx);
   stop_meas(&gNB->ul_indication_stats);
 
   int tx_slot_type = nr_slot_select(cfg,frame_tx,slot_tx);
@@ -275,6 +277,7 @@ void rx_func(void *param)
     // so no need for checking for right slot
     if (get_softmodem_params()->reorder_thread_disable) {
       // call the TX function directly from this thread
+      LOG_D(PHY, "===============Transmit processing for %s slot at gNB of frame %d slot %d ================================\n", (tx_slot_type== 1) ? "DOWNLINK": "MIXED",frame_rx, slot_rx);
       syncMsg = gNB->msgDataTx;
       syncMsg->gNB = gNB; 
       syncMsg->timestamp_tx = info->timestamp_tx;

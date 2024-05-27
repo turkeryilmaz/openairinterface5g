@@ -572,9 +572,8 @@ typedef struct nr_ue_sps_ctrl {
 typedef struct nr_sps_assignment {
   int sps_start_frame;
   int sps_start_slot;
-  int sps_assisgnment_index;    
-  int previous_frame;
-  int previous_slot;
+  int sps_assisgnment_index;  
+  int is_mixed_slot;  
 } nr_sps_assignemnt_t;
 
 typedef struct NR_UE_DL_BWP {

@@ -181,7 +181,14 @@ int nr_acknack_scheduling(gNB_MAC_INST *mac,
                           frame_t frameP,
                           sub_frame_t slotP,
                           int r_pucch,
-                          int do_common);
+                          int do_common,
+                          int resource_id);
+
+int get_pucch_index(int frame, int slot, int n_slots_frame, 
+                    const NR_TDD_UL_DL_Pattern_t *tdd, int sched_pucch_size);
+
+int get_pucch_index_sps(int frame, int slot, int n_slots_frame, 
+                        const NR_TDD_UL_DL_Pattern_t *tdd, int sched_pucch_size);
 
 int get_pdsch_to_harq_feedback(NR_PUCCH_Config_t *pucch_Config,
                                nr_dci_format_t dci_format,
@@ -242,7 +249,8 @@ void fill_dci_pdu_rel15(const NR_ServingCellConfigCommon_t *scc,
                         NR_SearchSpace_t *ss,
                         NR_ControlResourceSet_t *coreset,
                         nr_sps_ctrl_t *sps,
-                        uint16_t cset0_bwp_size);
+                        uint16_t cset0_bwp_size, 
+                        int harq_round);
 
 void prepare_dci(const NR_CellGroupConfig_t *CellGroup, const NR_UE_DL_BWP_t *current_BWP, const NR_ControlResourceSet_t *coreset, dci_pdu_rel15_t *dci_pdu_rel15, nr_dci_format_t format);
 
@@ -393,7 +401,14 @@ uint8_t get_dl_nrOfLayers(const NR_UE_sched_ctrl_t *sched_ctrl, const nr_dci_for
 void set_sched_pucch_list(NR_UE_sched_ctrl_t *sched_ctrl,
                           const NR_UE_UL_BWP_t *ul_bwp,
                           const NR_ServingCellConfigCommon_t *scc);
+
+void set_sched_pucch_list_sps(NR_UE_sched_ctrl_t *sched_ctrl,
+                              const NR_UE_UL_BWP_t *ul_bwp,
+                              const NR_ServingCellConfigCommon_t *scc);
+
 void free_sched_pucch_list(NR_UE_sched_ctrl_t *sched_ctrl);
+
+void free_sched_pucch_list_sps(NR_UE_sched_ctrl_t *sched_ctrl);
 
 int get_dl_tda(const gNB_MAC_INST *nrmac, const NR_ServingCellConfigCommon_t *scc, int slot);
 int get_ul_tda(gNB_MAC_INST *nrmac, const NR_ServingCellConfigCommon_t *scc, int frame, int slot);
@@ -449,5 +464,7 @@ void nr_mac_reset_ul_failure(NR_UE_sched_ctrl_t *sched_ctrl);
 void nr_mac_check_ul_failure(const gNB_MAC_INST *nrmac, int rnti, NR_UE_sched_ctrl_t *sched_ctrl);
 
 void nr_mac_trigger_reconfiguration(const gNB_MAC_INST *nrmac, const NR_UE_info_t *UE);
+
+void handle_dl_harq(NR_UE_info_t * UE, int8_t harq_pid, bool success, int harq_round_max);
 
 #endif /*__LAYER2_NR_MAC_PROTO_H__*/

@@ -46,6 +46,7 @@ void nr_emulate_dlsch_payload(uint8_t* pdu, uint16_t size) {
 
 void nr_fill_dlsch(processingData_L1tx_t *msgTx, nfapi_nr_dl_tti_pdsch_pdu *pdsch_pdu, uint8_t *sdu)
 {
+  LOG_D(PHY, "[%d.%d]The num pdsch slot is %d\n", msgTx->frame, msgTx->slot, msgTx->num_pdsch_slot);
   NR_gNB_DLSCH_t *dlsch = &msgTx->dlsch[msgTx->num_pdsch_slot][0];
   NR_DL_gNB_HARQ_t *harq = &dlsch->harq_process;
   /// DLSCH struct

@@ -189,8 +189,8 @@ void nr_schedule_response(NR_Sched_Rsp_t *Sched_INFO)
             break;
 
           case NFAPI_NR_DL_TTI_PDCCH_PDU_TYPE:
-            LOG_D(PHY,"frame %d, slot %d, Got NFAPI_NR_DL_TTI_PDCCH_PDU_TYPE for %d.%d\n",frame,slot,DL_req->SFN,DL_req->Slot);
             if (!dl_tti_pdu->pdcch_pdu.pdcch_pdu_rel15.avoid_pdcch_pdu) {
+              LOG_D(PHY,"frame %d, slot %d, Got NFAPI_NR_DL_TTI_PDCCH_PDU_TYPE for %d.%d\n",frame,slot,DL_req->SFN,DL_req->Slot);
               msgTx->pdcch_pdu[msgTx->num_dl_pdcch] = dl_tti_pdu->pdcch_pdu;
               msgTx->num_dl_pdcch++;
             }
@@ -205,6 +205,7 @@ void nr_schedule_response(NR_Sched_Rsp_t *Sched_INFO)
             LOG_D(PHY,"frame %d, slot %d, Got NFAPI_NR_DL_TTI_PDSCH_PDU_TYPE for %d.%d\n",frame,slot,DL_req->SFN,DL_req->Slot);
             nfapi_nr_dl_tti_pdsch_pdu_rel15_t *pdsch_pdu_rel15 = &dl_tti_pdu->pdsch_pdu.pdsch_pdu_rel15;
             uint16_t pduIndex = pdsch_pdu_rel15->pduIndex;
+            LOG_D(PHY,"frame %d, slot %d, PDU Index %d\n",frame,slot,pduIndex);
             AssertFatal(TX_req->pdu_list[pduIndex].num_TLV == 1, "TX_req->pdu_list[%d].num_TLV %d != 1\n",
             pduIndex,TX_req->pdu_list[pduIndex].num_TLV);
             uint8_t *sdu = (uint8_t *)TX_req->pdu_list[pduIndex].TLVs[0].value.direct;

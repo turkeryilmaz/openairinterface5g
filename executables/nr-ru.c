@@ -1064,7 +1064,7 @@ void ru_tx_func(void *param) {
   int slot_tx = info->slot_tx;
   int print_frame = 8;
   char filename[40];
- 
+  LOG_D(PHY, "=============== Sending to RU for %s slot at gNB of frame %d slot %d ================================\n", "DOWNLINK",frame_tx, slot_tx);
   int cumul_samples = fp->get_samples_per_slot(0, fp);
   int i = 1;
   for (; i < fp->slots_per_subframe / 2; i++)

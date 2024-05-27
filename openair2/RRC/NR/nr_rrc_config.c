@@ -1123,7 +1123,7 @@ static struct NR_SetupRelease_SPS_Config *config_sps() {
   setup_sps_config->present = NR_SetupRelease_SPS_Config_PR_setup;
   NR_SPS_Config_t *sps_config = calloc(1, sizeof(NR_SPS_Config_t));
   setup_sps_config->choice.setup = sps_config;
-  sps_config->periodicity = NR_SPS_Config__periodicity_ms10;
+  sps_config->periodicity = NR_SPS_Config__periodicity_spare4; 
   sps_config->mcs_Table = NULL;
   sps_config->n1PUCCH_AN = NULL;
   sps_config->nrofHARQ_Processes = 8;
@@ -2060,11 +2060,12 @@ static NR_PhysicalCellGroupConfig_t *configure_phy_cellgroup(NR_PhysicalCellGrou
   }
   // should the CS_RNTI generation depend on UE Capabilities?? 
   if(uecap){
+    LOG_I(NR_RRC, "UE capabilities file present\n");
     if(uecap->phy_Parameters.phy_ParametersCommon && *uecap->phy_Parameters.phy_ParametersCommon->downlinkSPS==0 && !physicalCellGroupConfig->cs_RNTI) {
       LOG_I(NR_RRC, "Configured CS-RNTI\n");
       physicalCellGroupConfig->cs_RNTI = calloc(1, sizeof(physicalCellGroupConfig->cs_RNTI));
       physicalCellGroupConfig->cs_RNTI->present =  NR_SetupRelease_RNTI_Value_PR_setup;
-      physicalCellGroupConfig->cs_RNTI->choice.setup = get_softmodem_params()->phy_test == 1 ? 0x3456 : (taus() & 0xffff);
+      physicalCellGroupConfig->cs_RNTI->choice.setup = get_softmodem_params()->phy_test == 1 ? 0x3456 : (0x3456);  //(taus() & 0xffff)
     }
   }
   return physicalCellGroupConfig;

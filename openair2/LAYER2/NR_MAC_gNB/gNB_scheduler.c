@@ -228,7 +228,8 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, frame_t frame, sub_frame_
   nr_csirs_scheduling(module_idP, frame, slot, nr_slots_per_frame[*scc->ssbSubcarrierSpacing], &sched_info->DL_req);
 
   // Schedule CSI measurement reporting
-  nr_csi_meas_reporting(module_idP, frame, slot);
+  if (!sps_active) 
+    nr_csi_meas_reporting(module_idP, frame, slot);
 
   nr_schedule_srs(module_idP, frame, slot);
 
@@ -245,7 +246,6 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, frame_t frame, sub_frame_
   start_meas(&gNB->schedule_dlsch);
   nr_schedule_ue_spec(module_idP, frame, slot, &sched_info->DL_req, &sched_info->TX_req);
   stop_meas(&gNB->schedule_dlsch);
-
   nr_sr_reporting(gNB, frame, slot);
 
   nr_schedule_pucch(gNB, frame, slot);

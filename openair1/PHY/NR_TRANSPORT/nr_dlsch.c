@@ -162,6 +162,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx,
       uint32_t scrambled_output[(encoded_length>>5)+4]; // modulator acces by 4 bytes in some cases
       memset(scrambled_output, 0, sizeof(scrambled_output));
       if ( encoded_length > rel15->rbSize * NR_SYMBOLS_PER_SLOT * NR_NB_SC_PER_RB * Qm * rel15->nrOfLayers) abort();
+      // LOG_I(PHY, "check  at gnb if the rnti = %x, size = %d, q = %d, dataScramblingId = %dhere\n", rel15->rnti, encoded_length, q, rel15->dataScramblingId);
       nr_pdsch_codeword_scrambling(output,
                                    encoded_length,
                                    q,

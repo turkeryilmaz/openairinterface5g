@@ -730,6 +730,7 @@ int check_srs_pdu(const nfapi_nr_srs_pdu_t *srs_pdu, nfapi_nr_srs_pdu_t *saved_s
 int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
 {
   /* those variables to log T_GNB_PHY_PUCCH_PUSCH_IQ only when we try to decode */
+  LOG_D(PHY, "================= PHY PROCEDURES AT GNB FOR UE RX========================\n");
   int pucch_decode_done = 0;
   int pusch_decode_done = 0;
   int pusch_DTX = 0;

@@ -71,11 +71,20 @@ bool is_nr_DL_slot(NR_TDD_UL_DL_ConfigCommon_t *tdd_UL_DL_ConfigurationCommon, s
 
 bool is_nr_UL_slot(NR_TDD_UL_DL_ConfigCommon_t *tdd_UL_DL_ConfigurationCommon, slot_t slotP, frame_type_t frame_type);
 
-bool is_nr_SPS_DL_slot(frame_t frame, slot_t slot, NR_SPS_Config_t *sps_config, long *cs_rnti, uint8_t scs, nr_sps_assignemnt_t *sps_info);
+bool is_nr_mixed_slot(NR_TDD_UL_DL_ConfigCommon_t *tdd_UL_DL_ConfigurationCommon, slot_t slotP, frame_type_t frame_type);
+
+bool is_nr_SPS_DL_slot(frame_t frame, 
+                       slot_t slot, 
+                       NR_SPS_Config_t *sps_config, 
+                       long *cs_rnti, 
+                       uint8_t scs, 
+                       nr_sps_assignemnt_t *sps_info, 
+                       NR_ServingCellConfigCommon_t *scc, 
+                       frame_type_t frame_type);
 
 int get_harq_processid_sps(frame_t frame, slot_t slot, uint8_t scs, NR_SPS_Config_t *sps_config);
 
-uint32_t nr_get_periodicity_sps(long periodicity);
+float nr_get_periodicity_sps(long periodicity);
 
 uint8_t compute_srs_resource_indicator(NR_PUSCH_ServingCellConfig_t *pusch_servingcellconfig,
                                        NR_PUSCH_Config_t *pusch_Config,
