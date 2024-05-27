@@ -381,7 +381,6 @@ static void init_pdcp(int ue_id)
   if (get_softmodem_params()->nsa && rlc_module_init(0) != 0) {
     LOG_I(RLC, "Problem at RLC initiation \n");
   }
-  nr_pdcp_layer_init(false);
   nr_pdcp_module_init(pdcp_initmask, ue_id);
   pdcp_set_rlc_data_req_func((send_rlc_data_req_func_t) rlc_data_req);
   pdcp_set_pdcp_data_ind_func((pdcp_data_ind_func_t) pdcp_data_ind);
@@ -503,22 +502,28 @@ int main(int argc, char **argv)
   // strdup to put the sring in the core file for post mortem identification
   LOG_I(HW, "Version: %s\n", strdup(PACKAGE_VERSION));
 
-  PHY_vars_UE_g = malloc(sizeof(*PHY_vars_UE_g));
-  PHY_vars_UE_g[0] = malloc(sizeof(*PHY_vars_UE_g[0]) * MAX_NUM_CCs);
-  for (int CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
-    PHY_vars_UE_g[0][CC_id] = malloc(sizeof(*PHY_vars_UE_g[0][CC_id]));
-    memset(PHY_vars_UE_g[0][CC_id], 0, sizeof(*PHY_vars_UE_g[0][CC_id]));
+  PHY_vars_UE_g = malloc(sizeof(*PHY_vars_UE_g) * NB_UE_INST);
+  for (int inst = 0; inst < NB_UE_INST; inst++) {
+    PHY_vars_UE_g[inst] = malloc(sizeof(*PHY_vars_UE_g[inst]) * MAX_NUM_CCs);
+    for (int CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
+      PHY_vars_UE_g[inst][CC_id] = malloc(sizeof(*PHY_vars_UE_g[inst][CC_id]));
+      memset(PHY_vars_UE_g[inst][CC_id], 0, sizeof(*PHY_vars_UE_g[inst][CC_id]));
+    }
   }
 
+
+  nr_pdcp_layer_init(false);
   int mode_offset = get_softmodem_params()->nsa ? NUMBER_OF_UE_MAX : 1;
   uint16_t node_number = get_softmodem_params()->node_number;
-  ue_id_g = (node_number == 0) ? 0 : node_number - 2;
-  AssertFatal(ue_id_g >= 0, "UE id is expected to be nonnegative.\n");
+  for (int inst = 0; inst < NB_UE_INST; inst++) {
+    ue_id_g = (node_number == 0) ? inst + 1 : node_number - 2;
+    AssertFatal(ue_id_g >= 0, "UE id is expected to be nonnegative.\n");
 
-  if(node_number == 0)
-    init_pdcp(0);
-  else
-    init_pdcp(mode_offset + ue_id_g);
+    if(node_number == 0)
+      init_pdcp(inst + 1);
+    else
+      init_pdcp(mode_offset + ue_id_g);
+  }
 
   init_NR_UE(NB_UE_INST, uecap_file, reconfig_file, rbconfig_file);
 
@@ -537,33 +542,35 @@ int main(int argc, char **argv)
     start_oai_nrue_threads();
 
   if (!get_softmodem_params()->emulate_l1) {
-    PHY_VARS_NR_UE *UE[MAX_NUM_CCs];
-    for (int CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
-      UE[CC_id] = PHY_vars_UE_g[0][CC_id];
+    for (int inst = 0; inst < NB_UE_INST; inst++) {
+      PHY_VARS_NR_UE *UE[MAX_NUM_CCs];
+      for (int CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
+        UE[CC_id] = PHY_vars_UE_g[inst][CC_id];
 
-      set_options(CC_id, UE[CC_id]);
-      NR_UE_MAC_INST_t *mac = get_mac_inst(0);
+        set_options(CC_id, UE[CC_id]);
+        NR_UE_MAC_INST_t *mac = get_mac_inst(inst);
 
-      if (get_softmodem_params()->sa) { // set frame config to initial values from command line and assume that the SSB is centered on the grid
-        uint16_t nr_band = get_softmodem_params()->band;
-        mac->nr_band = nr_band;
-        mac->ssb_start_subcarrier = UE[CC_id]->frame_parms.ssb_start_subcarrier;
-        nr_init_frame_parms_ue_sa(&UE[CC_id]->frame_parms,
-                                  downlink_frequency[CC_id][0],
-                                  uplink_frequency_offset[CC_id][0],
-                                  get_softmodem_params()->numerology,
-                                  nr_band);
+        if (get_softmodem_params()->sa) { // set frame config to initial values from command line and assume that the SSB is centered on the grid
+          uint16_t nr_band = get_softmodem_params()->band;
+          mac->nr_band = nr_band;
+          mac->ssb_start_subcarrier = UE[CC_id]->frame_parms.ssb_start_subcarrier;
+          nr_init_frame_parms_ue_sa(&UE[CC_id]->frame_parms,
+                                    downlink_frequency[CC_id][0],
+                                    uplink_frequency_offset[CC_id][0],
+                                    get_softmodem_params()->numerology,
+                                    nr_band);
+        }
+        else{
+          DevAssert(mac->if_module != NULL && mac->if_module->phy_config_request != NULL);
+          mac->if_module->phy_config_request(&mac->phy_config);
+          mac->phy_config_request_sent = true;
+          fapi_nr_config_request_t *nrUE_config = &UE[CC_id]->nrUE_config;
+
+          nr_init_frame_parms_ue(&UE[CC_id]->frame_parms, nrUE_config, mac->nr_band);
+        }
+
+        init_nr_ue_vars(UE[CC_id], inst, abstraction_flag);
       }
-      else{
-        DevAssert(mac->if_module != NULL && mac->if_module->phy_config_request != NULL);
-        mac->if_module->phy_config_request(&mac->phy_config);
-        mac->phy_config_request_sent = true;
-        fapi_nr_config_request_t *nrUE_config = &UE[CC_id]->nrUE_config;
-
-        nr_init_frame_parms_ue(&UE[CC_id]->frame_parms, nrUE_config, mac->nr_band);
-      }
-
-      init_nr_ue_vars(UE[CC_id], 0, abstraction_flag);
     }
 
     init_openair0();
@@ -577,7 +584,10 @@ int main(int argc, char **argv)
       load_softscope("nr",PHY_vars_UE_g[0][0]);
     }
 
-    init_NR_UE_threads(1);
+    for (int inst = 0; inst < NB_UE_INST; inst++) {
+      LOG_I(PHY,"Intializing UE Threads for instance %d ...\n", inst);
+      init_NR_UE_threads(PHY_vars_UE_g[inst][0]);
+    }
     printf("UE threads created by %ld\n", gettid());
   }
 

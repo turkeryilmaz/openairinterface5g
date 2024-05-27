@@ -602,16 +602,6 @@ void nr_pdcp_layer_init(bool uses_e1)
 
 uint64_t nr_pdcp_module_init(uint64_t _pdcp_optmask, int id)
 {
-  /* hack: be sure to initialize only once */
-  static pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
-  static int initialized = 0;
-  if (pthread_mutex_lock(&m) != 0) abort();
-  if (initialized) {
-    abort();
-  }
-  initialized = 1;
-  if (pthread_mutex_unlock(&m) != 0) abort();
-
 #if 0
   pdcp_optmask = _pdcp_optmask;
   return pdcp_optmask;
