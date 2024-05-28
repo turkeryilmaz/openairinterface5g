@@ -62,6 +62,11 @@ int get_ul_tda(gNB_MAC_INST *nrmac, const NR_ServingCellConfigCommon_t *scc, int
       return 1;
   }
 
+  // Empty symbol in slot 8 for spectrum sensing. Symbol 12.ToDo handle when SRS is present
+  if(slot == 8) {
+    return 1;
+  }
+
   return 0; // if FDD or not mixed slot in TDD, for now use default TDA (TODO handle CSI-RS slots)
 }
 
