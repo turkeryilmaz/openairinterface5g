@@ -600,7 +600,7 @@ static void config_common(gNB_MAC_INST *nrmac, nr_pdsch_AntennaPorts_t pdsch_Ant
   for (int i = 0; i < 32; i++) {
     cfg->ssb_table.ssb_beam_id_list[i].beam_id.tl.tag = NFAPI_NR_CONFIG_BEAM_ID_TAG;
     if ((cfg->ssb_table.ssb_mask_list[0].ssb_mask.value >> (31 - i)) & 1) {
-      cfg->ssb_table.ssb_beam_id_list[i].beam_id.value = num_ssb;
+      cfg->ssb_table.ssb_beam_id_list[i].beam_id.value = i;    //  num_ssb;
       num_ssb++;
     }
     cfg->num_tlv++;
@@ -608,7 +608,7 @@ static void config_common(gNB_MAC_INST *nrmac, nr_pdsch_AntennaPorts_t pdsch_Ant
   for (int i = 0; i < 32; i++) {
     cfg->ssb_table.ssb_beam_id_list[32 + i].beam_id.tl.tag = NFAPI_NR_CONFIG_BEAM_ID_TAG;
     if ((cfg->ssb_table.ssb_mask_list[1].ssb_mask.value >> (31 - i)) & 1) {
-      cfg->ssb_table.ssb_beam_id_list[32 + i].beam_id.value = num_ssb;
+      cfg->ssb_table.ssb_beam_id_list[32 + i].beam_id.value = 32+i;  //num_ssb;
       num_ssb++;
     }
     cfg->num_tlv++;

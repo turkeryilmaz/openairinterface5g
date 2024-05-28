@@ -138,10 +138,10 @@ static int16_t ssb_index_from_prach(module_id_t module_idP,
   prach_occasion_id = (((frameP % (cc->max_association_period * config_period)) / config_period) * cc->total_prach_occasions_per_config_period) +
                       (RA_sfn_index + slot_index) * N_t_slot * fdm + start_symbol_index * fdm + freq_index; 
 
-  //one SSB have more than one continuous RO
+  // one RO is shared by one or more SSB  // dont think this statement is true, it should be one SSB is shared by multiple ROs like if it is 1/2 then two ROs shared the same SSB
   if(num_ssb_per_RO <= 1)
     index = (int) (prach_occasion_id / (int)(1 / num_ssb_per_RO)) % num_active_ssb;
-  //one RO is shared by one or more SSB
+  // one SSB have more than one continuous RO   // same applies here, i dont think it's true, should be one RO has more than one SSB like 8 SSBs
   else if (num_ssb_per_RO > 1) {
     index = (prach_occasion_id * (int)num_ssb_per_RO) % num_active_ssb;
     for(int j = 0; j < num_ssb_per_RO; j++) {
@@ -150,7 +150,7 @@ static int16_t ssb_index_from_prach(module_id_t module_idP,
     }
   }
 
-  LOG_D(NR_MAC, "Frame %d, Slot %d: Prach Occasion id = %d ssb per RO = %f number of active SSB %u index = %d fdm %u symbol index %u freq_index %u total_RApreambles %u\n",
+  LOG_I(NR_MAC, "Frame %d, Slot %d: Prach Occasion id = %d ssb per RO = %f number of active SSB %u index = %d fdm %u symbol index %u freq_index %u total_RApreambles %u\n",
         frameP, slotP, prach_occasion_id, num_ssb_per_RO, num_active_ssb, index, fdm, start_symbol_index, freq_index, total_RApreambles);
 
   return index;
@@ -248,14 +248,15 @@ void find_SSB_and_RO_available(gNB_MAC_INST *nrmac)
   cc->total_prach_occasions = total_RA_occasions - unused_RA_occasion;
   cc->num_active_ssb = num_active_ssb;
 
-  LOG_D(NR_MAC,
-        "Total available RO %d, num of active SSB %d: unused RO = %d association_period %u N_RA_sfn %u total_prach_occasions_per_config_period %u\n",
+  LOG_I(NR_MAC,
+        "Total available RO %d, num of active SSB %d: unused RO = %d association_period %u N_RA_sfn %u total_prach_occasions_per_config_period %u cc->ssb_index %d\n",
         cc->total_prach_occasions,
         cc->num_active_ssb,
         unused_RA_occasion,
         cc->max_association_period,
         N_RA_sfn,
-        cc->total_prach_occasions_per_config_period);
+        cc->total_prach_occasions_per_config_period,
+	cc->ssb_index[num_active_ssb-1]);
 }		
 		
 void schedule_nr_prach(module_id_t module_idP, frame_t frameP, sub_frame_t slotP)
@@ -331,13 +332,15 @@ void schedule_nr_prach(module_id_t module_idP, frame_t frameP, sub_frame_t slotP
           float num_ssb_per_RO = ssb_per_rach_occasion[cfg->prach_config.ssb_per_rach.value];
           if(num_ssb_per_RO <= 1) {
             int ssb_index = (int) (prach_occasion_id / (int)(1 / num_ssb_per_RO)) % cc->num_active_ssb;
-            bool ret = beam_allocation_procedure(&gNB->beam_info, frameP, slotP, ssb_index, nr_slots_per_frame[mu]);
+	    int beam_id = cc->ssb_index[ssb_index];
+            bool ret = beam_allocation_procedure(&gNB->beam_info, frameP, slotP, beam_id, nr_slots_per_frame[mu]);// this is absoultely wrong as this is not ssb_index but just an index and def notbeamID
             AssertFatal(ret, "Cannot allocate PRACH corresponding to SSB %d in any available beam\n", ssb_index);
           }
           else {
             int first_ssb_index = (prach_occasion_id * (int)num_ssb_per_RO) % cc->num_active_ssb;
             for(int j = first_ssb_index; j < num_ssb_per_RO; j++) {
-              bool ret = beam_allocation_procedure(&gNB->beam_info, frameP, slotP, j, nr_slots_per_frame[mu]);
+	      int beam_id = cc->ssb_index[j];    
+              bool ret = beam_allocation_procedure(&gNB->beam_info, frameP, slotP, beam_id , nr_slots_per_frame[mu]);
               AssertFatal(ret, "Cannot allocate PRACH corresponding to SSB %d in any available beam\n", j);
             }
           }
@@ -493,6 +496,7 @@ void nr_initiate_ra_proc(module_id_t module_idP,
                          uint8_t symbol,
                          int16_t timing_offset)
 {
+  timing_offset = 4;	
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_INITIATE_RA_PROC, 1);
 
   gNB_MAC_INST *nr_mac = RC.nrmac[module_idP];
@@ -542,7 +546,7 @@ void nr_initiate_ra_proc(module_id_t module_idP,
   NR_ServingCellConfigCommon_t *scc = cc->ServingCellConfigCommon;
   configure_UE_BWP(nr_mac, scc, NULL, ra, NULL, -1, -1);
 
-  uint8_t beam_index = ssb_index_from_prach(module_idP, frameP, slotP, preamble_index, freq_index, symbol);
+  uint8_t beam_index = ssb_index_from_prach(module_idP, frameP, slotP, preamble_index, freq_index, symbol);  // should be called index for the SSB array to give the beam index. 
   ra->beam_id = cc->ssb_index[beam_index];
 
   NR_SCHED_UNLOCK(&nr_mac->sched_lock);
@@ -1311,7 +1315,7 @@ static void nr_generate_Msg2(module_id_t module_idP,
     return;
   }
 
-  LOG_D(NR_MAC, "Msg2 startSymbolIndex.nrOfSymbols %d.%d\n", tda_info.startSymbolIndex, tda_info.nrOfSymbols);
+  LOG_I(NR_MAC, "Msg2 startSymbolIndex.nrOfSymbols %d.%d\n", tda_info.startSymbolIndex, tda_info.nrOfSymbols);
 
   // look up the PDCCH PDU for this CC, BWP, and CORESET. If it does not exist, create it. This is especially
   // important if we have multiple RAs, and the DLSCH has to reuse them, so we need to mark them
@@ -1340,7 +1344,7 @@ static void nr_generate_Msg2(module_id_t module_idP,
   pdsch_pdu_rel15->precodingAndBeamforming.prgs_list[0].pm_idx = 0;
   pdsch_pdu_rel15->precodingAndBeamforming.prgs_list[0].dig_bf_interface_list[0].beam_idx = 0;
 
-  LOG_A(NR_MAC,
+  LOG_I(NR_MAC,
         "UE %04x: %d.%d Generating RA-Msg2 DCI, RA RNTI 0x%x, state %d, CoreSetType %d, RAPID %d\n",
         ra->rnti,
         frameP,
@@ -1733,10 +1737,32 @@ static void nr_generate_Msg4(module_id_t module_idP,
   NR_COMMON_channels_t *cc = &nr_mac->common_channels[CC_id];
   NR_UE_DL_BWP_t *dl_bwp = &ra->DL_BWP;
 
+  // ADDED but might not be nessecary , just for forcing the MSG4 in certain slots////
+  NR_ServingCellConfigCommon_t *scc = cc->ServingCellConfigCommon;
+  const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
+  // lenght of tdd period in slots
+  const int n_slots_frame = nr_slots_per_frame[dl_bwp->scs];
+  int tdd_period_slot =n_slots_frame;
+  if (tdd) {
+    tdd_period_slot = n_slots_frame/get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity);
+  }
+  else{
+    if(cc->frame_type == TDD)
+      AssertFatal(cc->frame_type == FDD, "Dynamic TDD not handled yet\n");
+  }
+  // FR2 schedule Msg4 in slot 2 of TDD period
+  if (dl_bwp->scs >= 3 &&(!(slotP%tdd_period_slot == 4 || slotP%tdd_period_slot == 4 || slotP%tdd_period_slot == 2)))  return;
+
+  LOG_I(NR_MAC, "frame %d and slot %d\n",  frameP, slotP );
+ 
+
+  ///////end of not necessary //////
+
+
   // if it is a DL slot, if the RA is in MSG4 state
   if (is_xlsch_in_slot(nr_mac->dlsch_slot_bitmap[slotP / 64], slotP)) {
 
-    NR_ServingCellConfigCommon_t *scc = cc->ServingCellConfigCommon;
+   // NR_ServingCellConfigCommon_t *scc = cc->ServingCellConfigCommon;
     NR_SearchSpace_t *ss = ra->ra_ss;
 
     NR_ControlResourceSet_t *coreset = ra->coreset;
@@ -1984,7 +2010,11 @@ static void nr_generate_Msg4(module_id_t module_idP,
     }
 
     ra->ra_state = nrRA_WAIT_Msg4_ACK;
-    LOG_I(NR_MAC,"UE %04x Generate msg4: feedback at %4d.%2d, payload %d bytes, next state WAIT_Msg4_ACK\n", ra->rnti, pucch->frame, pucch->ul_slot, harq->tb_size);
+   // LOG_I(NR_MAC,"UE %04x Generate msg4: feedback at %4d.%2d, payload %d bytes, next state WAIT_Msg4_ACK\n", ra->rnti, pucch->frame, pucch->ul_slot, harq->tb_size);
+
+    LOG_I(NR_MAC,"UE %04x Generate msg4 in %d.%d: feedback at %4d.%2d, payload %d bytes, next state WAIT_Msg4_ACK\n", ra->rnti, frameP, slotP, pucch->frame, pucch->ul_slot, harq->tb_size);
+
+
   }
 }
 

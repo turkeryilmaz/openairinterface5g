@@ -102,6 +102,8 @@ int attach_rru(RU_t *ru);
 int connect_rau(RU_t *ru);
 static void NRRCconfig_RU(configmodule_interface_t *cfg);
 
+
+extern uint32_t timing_advance;
 extern int emulate_rf;
 extern int numerology;
 
@@ -752,7 +754,7 @@ static radio_tx_gpio_flag_t get_gpio_flags(RU_t *ru, int slot)
         const uint8_t *beam_ids = ru->common.beam_id[0];
         int prev_beam = beam_ids[prev_slot * fp->symbols_per_slot];
         int beam = beam_ids[slot * fp->symbols_per_slot];
-        if (prev_beam != beam) {
+        if (prev_beam != beam && beam!=255) {
           flags_gpio = beam | TX_GPIO_CHANGE; // enable change of gpio
           LOG_I(HW, "slot %d, beam %d\n", slot, ru->common.beam_id[0][slot * fp->symbols_per_slot]);
         }
@@ -761,16 +763,27 @@ static radio_tx_gpio_flag_t get_gpio_flags(RU_t *ru, int slot)
     case RU_GPIO_CONTROL_INTERDIGITAL: {
       // the beam index is written in bits 8-10 of the flags
       // bit 11 enables the gpio programming
-      int beam = 0;
-      if ((slot % 10 == 0) && ru->common.beam_id && (ru->common.beam_id[0][slot * fp->symbols_per_slot] < 64)) {
+      // the beam index is written in bits 8-10 of the flags
+      // bit 11 enables the gpio programming
+      int beam = 0; int beamID =0;
+      if (ru->common.beam_id) {
+     // if ((slot % 10 == 0) && ru->common.beam_id && (ru->common.beam_id[0][slot * fp->symbols_per_slot] < 64)) {
         // beam = ru->common.beam_id[0][slot*fp->symbols_per_slot] | 64;
-        beam = 1024; // hardcoded now for beam32 boresight
+        int prev_slot = (slot - 1 + fp->slots_per_frame) % fp->slots_per_frame;
+        const uint8_t *beam_ids = ru->common.beam_id[0];
+        int prev_beam = beam_ids[prev_slot * fp->symbols_per_slot];
+        beam = beam_ids[slot * fp->symbols_per_slot];
+        if (prev_beam != beam && beam!= 255) {
+
+          beamID = 32 + (beam * 32);
+        //int  beam = 1024; // hardcoded now for beam32 boresight
         // beam = 127; //for the sake of trying beam63
-        LOG_D(HW, "slot %d, beam %d\n", slot, beam);
-      }
-      flags_gpio = beam | TX_GPIO_CHANGE;
+          LOG_D(HW, "slot %d, beam %d\n", slot, beam);
+          flags_gpio = beamID | TX_GPIO_CHANGE;
       // flags_gpio |= beam << 8; // MSB 8 bits are used for beam
-      LOG_I(HW, "slot %d, beam %d, flags_gpio %d\n", slot, beam, flags_gpio);
+          LOG_D(HW, "slot %d, beamID %d, flags_gpio %d\n", slot, beamID, flags_gpio);
+        }
+      }
       break;
     }
     default:

@@ -89,6 +89,10 @@ static void schedule_ssb(frame_t frame,
   dl_req->nPDUs++;
 
   LOG_D(MAC,"Scheduling ssb %d at frame %d and slot %d\n",i_ssb,frame,slot);
+  LOG_D(MAC," Scheduling SSB %d with offsetPointA %d and Kssb %d\n", i_ssb, offset_pointa, scoffset);
+  LOG_D(MAC,"Scheduling the SSBBeamfromtheMAC %d\n", dl_config_pdu->ssb_pdu.ssb_pdu_rel15.precoding_and_beamforming.prgs_list[0].dig_bf_interface_list[0].beam_idx);
+
+
 }
 
 static void fill_ssb_vrb_map(NR_COMMON_channels_t *cc, int rbStart, int ssb_subcarrier_offset, uint16_t symStart, int CC_id)
@@ -241,7 +245,7 @@ void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP, 
               ssb_start_symbol = get_ssb_start_symbol(band, scs, i_ssb);
               // if start symbol is in current slot, schedule current SSB, fill VRB map and call get_type0_PDCCH_CSS_config_parameters
               if ((ssb_start_symbol / 14) == rel_slot){
-                bool ret = beam_allocation_procedure(&gNB->beam_info, frameP, slotP, i_ssb, n_slots_frame);
+                bool ret = beam_allocation_procedure(&gNB->beam_info, frameP, slotP, i_ssb, n_slots_frame);  //check this i_ssb thing
                 AssertFatal(ret, "Cannot allocate SSB %d in any available beam\n", i_ssb);
                 const int prb_offset = offset_pointa >> (scs-2); // reference 60kHz
                 schedule_ssb(frameP, slotP, scc, dl_req, i_ssb, ssbSubcarrierOffset, offset_pointa, mib_pdu);

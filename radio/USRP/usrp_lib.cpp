@@ -264,6 +264,8 @@ static int sync_to_gps(openair0_device *device) {
 #define ATR_RX   0x50 //data[4] and data[6]
 #define ATR_XX   0x20 //data[5]
 #define MAN_MASK ATR_MASK ^ 0xFFF // manually controlled pins
+#define MAN_MASK_ID 0x7E0  // manually controlled pins for ID in particular for Beams switching
+
 
 static void trx_usrp_start_interdigital_gpio(openair0_device *device, usrp_state_t *s)
 {
@@ -498,7 +500,10 @@ VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_BEAM_SWITCHI
     if ((flags_gpio & TX_GPIO_CHANGE) != 0) {
       // push GPIO bits 
       s->usrp->set_command_time(s->tx_md.time_spec);
-      s->usrp->set_gpio_attr(s->gpio_bank, "OUT", flags_gpio, MAN_MASK);
+      if (device->openair0_cfg->gpio_controller ==  RU_GPIO_CONTROL_INTERDIGITAL)
+        s->usrp->set_gpio_attr(s->gpio_bank, "OUT", flags_gpio, MAN_MASK_ID);
+      else
+        s->usrp->set_gpio_attr(s->gpio_bank, "OUT", flags_gpio, MAN_MASK);
       s->usrp->clear_command_time();
     }
 VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_BEAM_SWITCHING_GPIO,0);
@@ -627,7 +632,10 @@ void *trx_usrp_write_thread(void * arg){
     if (flags_gpio&0x1000) {
       // push GPIO bits 
       s->usrp->set_command_time(s->tx_md.time_spec);
-      s->usrp->set_gpio_attr(s->gpio_bank, "OUT", flags_gpio, MAN_MASK);
+      if (device->openair0_cfg->gpio_controller == RU_GPIO_CONTROL_INTERDIGITAL)
+        s->usrp->set_gpio_attr(s->gpio_bank, "OUT", flags_gpio, MAN_MASK_ID);
+      else
+        s->usrp->set_gpio_attr(s->gpio_bank, "OUT", flags_gpio, MAN_MASK);
       s->usrp->clear_command_time();
     }
 
@@ -1231,7 +1239,7 @@ extern "C" {
       case 184320000:
         // from usrp_time_offset
         // openair0_cfg[0].samples_per_packet    = 2048;
-        openair0_cfg[0].tx_sample_advance = 15; // to be checked
+        openair0_cfg[0].tx_sample_advance = 15;  // to be checked
         openair0_cfg[0].tx_bw = 100e6;
         openair0_cfg[0].rx_bw = 100e6;
         break;
@@ -1239,7 +1247,7 @@ extern "C" {
       case 122880000:
         // from usrp_time_offset
         //openair0_cfg[0].samples_per_packet    = 2048;
-        openair0_cfg[0].tx_sample_advance     = 15; //to be checked
+        openair0_cfg[0].tx_sample_advance     = 164;   //it was 15; //to be checked
         openair0_cfg[0].tx_bw                 = 80e6;
         openair0_cfg[0].rx_bw                 = 80e6;
         break;

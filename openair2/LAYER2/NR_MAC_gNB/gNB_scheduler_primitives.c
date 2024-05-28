@@ -3096,7 +3096,8 @@ bool beam_allocation_procedure(NR_beam_info_t *beam_info, int frame, int slot, i
   // if digital beamforming, no restriction
   if(!beam_info->beam_allocation)
     return true;
-  const int index = (frame * slots_per_frame + slot) % beam_info->beam_allocation_size;
+  const int curr_slot = (frame * slots_per_frame + slot) % beam_info->beam_allocation_size;
+  const int index = (int) (curr_slot / beam_info->slots_in_beam_period);
   for (int i = 0; i < beam_info->beams_per_period; i++) {
     if (beam_info->beam_allocation[i][index] == -1 ||
         beam_info->beam_allocation[i][index] == beam_index) {
@@ -3112,7 +3113,9 @@ void reset_beam_status(NR_beam_info_t *beam_info, int frame, int slot, int beam_
   // if digital beamforming, no restriction
   if(!beam_info->beam_allocation)
     return;
-  const int index = (frame * slots_per_frame + slot) % beam_info->beam_allocation_size;
+  const int curr_slot = (frame * slots_per_frame + slot) % beam_info->beam_allocation_size;
+  const int index = (int) (curr_slot / beam_info->slots_in_beam_period);
+  // const int index = (frame * slots_per_frame + slot) % beam_info->beam_allocation_size;
   for (int i = 0; i < beam_info->beams_per_period; i++) {
     if (beam_info->beam_allocation[i][index] == beam_index)
       beam_info->beam_allocation[i][index] = -1;

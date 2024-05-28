@@ -157,7 +157,7 @@ void clear_beam_information(NR_beam_info_t *beam_info, int frame, int slot, int 
   if(beam_info->beam_allocation_size == -1) {
     int size = mu == 0 ? slots_per_frame << 1 : slots_per_frame;
     // slots in beam period gives the number of consecutive slots tied the the same beam
-    AssertFatal(size % beam_info->slots_in_beam_period,
+    AssertFatal(size % beam_info->slots_in_beam_period == 0,
                 "Beam period %d should be divider of number of slots per frame %d\n",
                 beam_info->slots_in_beam_period, slots_per_frame);
     beam_info->beam_allocation_size = size / beam_info->slots_in_beam_period;
@@ -168,9 +168,14 @@ void clear_beam_information(NR_beam_info_t *beam_info, int frame, int slot, int 
     }
   }
   const int prev_slot = (frame * slots_per_frame + slot + beam_info->beam_allocation_size - 1) % beam_info->beam_allocation_size;
-  // resetting previous slot allocation
-  for (int i = 0; i < beam_info->beams_per_period; i++)
-    beam_info->beam_allocation[i][prev_slot] = -1;
+  // resetting previous beam allocation
+  int j =  (int) (prev_slot / beam_info->slots_in_beam_period);
+  int k =  (int) (slot / beam_info->slots_in_beam_period);
+  if(j == k)
+    return;
+  else   
+    for (int i = 0; i < beam_info->beams_per_period; i++)
+      beam_info->beam_allocation[i][j] = -1;
 }
 
 bool is_xlsch_in_slot(uint64_t bitmap, sub_frame_t slot) {
