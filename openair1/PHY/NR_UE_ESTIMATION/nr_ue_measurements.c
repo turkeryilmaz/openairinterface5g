@@ -157,7 +157,7 @@ void nr_ue_measurements(PHY_VARS_NR_UE *ue,
     ue->measurements.rx_power_avg_dB[gNB_id] = dB_fixed( ue->measurements.rx_power_avg[gNB_id]);
     ue->measurements.wideband_cqi_tot[gNB_id] = ue->measurements.rx_power_tot_dB[gNB_id] - ue->measurements.n0_power_tot_dB;
     ue->measurements.wideband_cqi_avg[gNB_id] = ue->measurements.rx_power_avg_dB[gNB_id] - dB_fixed(ue->measurements.n0_power_avg);
-    ue->measurements.rx_rssi_dBm[gNB_id] = ue->measurements.rx_power_avg_dB[gNB_id] + 30 - SQ15_SQUARED_NORM_FACTOR_DB - ((int)openair0_cfg[0].rx_gain[0] - (int)openair0_cfg[0].rx_gain_offset[0]) - dB_fixed(ue->frame_parms.ofdm_symbol_size);
+    ue->measurements.rx_rssi_dBm[gNB_id] = ue->measurements.rx_power_avg_dB[gNB_id] + 30 - SQ15_SQUARED_NORM_FACTOR_DB - (int)openair0_cfg[0].rx_gain[0] - dB_fixed(ue->frame_parms.ofdm_symbol_size);
 
     LOG_D(PHY, "[gNB %d] Slot %d, RSSI %d dB (%d dBm/RE), WBandCQI %d dB, rxPwrAvg %d, n0PwrAvg %d\n",
       gNB_id,
@@ -239,7 +239,7 @@ void nr_ue_ssb_rsrp_measurements(PHY_VARS_NR_UE *ue,
   openair0_config_t *cfg0 = &openair0_cfg[0];
 
   ue->measurements.ssb_rsrp_dBm[ssb_index] = rsrp_db_per_re + 30 - SQ15_SQUARED_NORM_FACTOR_DB
-                                             - ((int)cfg0->rx_gain[0] - (int)cfg0->rx_gain_offset[0])
+                                             - (int)cfg0->rx_gain[0]
                                              - dB_fixed(fp->ofdm_symbol_size);
 
   LOG_D(PHY,
@@ -267,7 +267,6 @@ void nr_ue_rrc_measurements(PHY_VARS_NR_UE *ue,
   uint8_t l_sss = (ue->symbol_offset + 2) % ue->frame_parms.symbols_per_slot;
   unsigned int ssb_offset = ue->frame_parms.first_carrier_offset + ue->frame_parms.ssb_start_subcarrier;
   double rx_gain = openair0_cfg[0].rx_gain[0];
-  double rx_gain_offset = openair0_cfg[0].rx_gain_offset[0];
 
   ue->measurements.n0_power_tot = 0;
 
@@ -315,7 +314,7 @@ void nr_ue_rrc_measurements(PHY_VARS_NR_UE *ue,
   #ifdef DEBUG_MEAS_RRC
   const int psd_awgn = -174;
   const int scs = 15000 * (1 << ue->frame_parms.numerology_index);
-  const int nf_usrp = ue->measurements.n0_power_tot_dB + 3 + 30 - ((int)rx_gain - (int)rx_gain_offset) - SQ15_SQUARED_NORM_FACTOR_DB - (psd_awgn + dB_fixed(scs) + dB_fixed(ue->frame_parms.ofdm_symbol_size));
+  const int nf_usrp = ue->measurements.n0_power_tot_dB + 3 + 30 - (int)rx_gain - SQ15_SQUARED_NORM_FACTOR_DB - (psd_awgn + dB_fixed(scs) + dB_fixed(ue->frame_parms.ofdm_symbol_size));
   LOG_D(PHY, "In [%s][slot:%d] NF USRP %d dB\n", __FUNCTION__, slot, nf_usrp);
   #endif
 
@@ -326,7 +325,7 @@ void nr_ue_rrc_measurements(PHY_VARS_NR_UE *ue,
         ue->measurements.n0_power_tot,
         ue->measurements.n0_power_tot_dB,
         ue->measurements.n0_power_tot_dB + 30 - SQ15_SQUARED_NORM_FACTOR_DB - dB_fixed(ue->frame_parms.ofdm_symbol_size)
-            - ((int)rx_gain - (int)rx_gain_offset));
+            - (int)rx_gain);
 }
 
 // This function implements:
@@ -373,7 +372,7 @@ int nr_sl_psbch_rsrp_measurements(sl_nr_ue_phy_params_t *sl_phy_params,
 
   psbch_rx->rsrp_dB_per_RE = 10 * log10(rsrp / num_re);
   psbch_rx->rsrp_dBm_per_RE = psbch_rx->rsrp_dB_per_RE + 30 - SQ15_SQUARED_NORM_FACTOR_DB
-                              - ((int)openair0_cfg[0].rx_gain[0] - (int)openair0_cfg[0].rx_gain_offset[0])
+                              - (int)openair0_cfg[0].rx_gain[0]
                               - dB_fixed(fp->ofdm_symbol_size);
 
   int adjust_rxgain = TARGET_RX_POWER - psbch_rx->rsrp_dB_per_RE;
