@@ -480,12 +480,13 @@ int main( int argc, char **argv ) {
   ue_id_g = (node_number == 0) ? 0 : node_number - 2;
   AssertFatal(ue_id_g >= 0, "UE id is expected to be nonnegative.\n");
   if(IS_SOFTMODEM_NOS1 || get_softmodem_params()->sa || get_softmodem_params()->nsa) {
-    if(node_number == 0) {
+    /*if(node_number == 0) {
       init_pdcp(0);
     }
     else {
       init_pdcp(mode_offset + ue_id_g);
-    }
+    }*/
+    init_pdcp(0);
   }
 
   PHY_vars_UE_g = malloc(sizeof(PHY_VARS_NR_UE **));

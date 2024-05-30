@@ -3305,7 +3305,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
 
   int buflen = tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu.tb_size;
 
-  LOG_D(NR_MAC, "[UE%d] TTI-%d:%d TX PSCCH_PSSCH REQ  TBS %d\n", sl_ind->module_id, frame, slot, buflen);
+  LOG_I(NR_MAC, "[UE%d] TTI-%d:%d TX PSCCH_PSSCH REQ  TBS %d\n", sl_ind->module_id, frame, slot, buflen);
 
   NR_SLSCH_MAC_SUBHEADER_FIXED *sl_sch_subheader = (NR_SLSCH_MAC_SUBHEADER_FIXED *) pdu;
   sl_sch_subheader->V = 0;
@@ -3313,7 +3313,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
   sl_sch_subheader->SRC = get_softmodem_params()->node_number;
   sl_sch_subheader->DST = 0xab;
   pdu += sizeof(NR_SLSCH_MAC_SUBHEADER_FIXED);
-  LOG_D(NR_PHY, "Tx V %d, R %d, SRC %d, DST %d\n", sl_sch_subheader->V, sl_sch_subheader->R, sl_sch_subheader->SRC, sl_sch_subheader->DST);
+  LOG_I(NR_PHY, "Tx V %d, R %d, SRC %d, DST %d\n", sl_sch_subheader->V, sl_sch_subheader->R, sl_sch_subheader->SRC, sl_sch_subheader->DST);
   int buflen_remain = buflen - sizeof(NR_SLSCH_MAC_SUBHEADER_FIXED);
   LOG_D(NR_PHY, "buflen_remain after adding SL_SCH_MAC_SUBHEADER_FIXED %d\n", buflen_remain);
 
@@ -3345,7 +3345,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
                 buflen_remain);
     if (sdu_length > 0) {
 
-      LOG_D(NR_MAC, "In %s: [UE %d] [%d.%d] SL-DXCH -> SLSCH, Generating SL MAC sub-PDU for SDU %d, length %d bytes, RB with LCID 0x%02x (buflen (TBS) %d bytes)\n",
+      LOG_I(NR_MAC, "In %s: [UE %d] [%d.%d] SL-DXCH -> SLSCH, Generating SL MAC sub-PDU for SDU %d, length %d bytes, RB with LCID 0x%02x (buflen (TBS) %d bytes)\n",
         __FUNCTION__,
         0,
         frame,
