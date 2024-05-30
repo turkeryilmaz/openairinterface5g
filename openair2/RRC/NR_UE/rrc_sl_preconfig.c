@@ -31,6 +31,7 @@
 #include "rrc_vars.h"
 #include "LAYER2/NR_MAC_UE/mac_proto.h"
 #include "RRC/NAS/nas_config.h"
+#include "executables/nr-uesoftmodem.h"
 
 #define GNSS_SUPPORT 0
 
@@ -560,7 +561,7 @@ int configure_NR_SL_Preconfig(uint8_t id,int sync_source)
 * RRC configures MAC with sidelink parameters
 * In case UE is a sync source/Master UE - then sends transmit SLSS REQ
 */
-void nr_UE_configure_Sidelink(uint8_t id, uint8_t is_sync_source) {
+void nr_UE_configure_Sidelink(uint8_t id, uint8_t is_sync_source, ueinfo_t *ueinfo) {
 
   NR_UE_RRC_INST_t *rrc = &NR_UE_rrc_inst[id];
 
@@ -576,31 +577,18 @@ void nr_UE_configure_Sidelink(uint8_t id, uint8_t is_sync_source) {
                                  : SL_SYNC_SOURCE_LOCAL_TIMING;
   }
 
-  struct { 
-	  int srcid;
-	  int thirdOctet;
-	  int fourthOctet;
-  } ueinfo;
-
-  char aprefix[MAX_OPTNAME_SIZE*2 + 8];
-  paramdef_t SL_UEINFO[] = SL_UEINFO_DESC(ueinfo);
-  paramlist_def_t SL_UEINFOList = {SL_CONFIG_STRING_UEINFO, NULL, 0};
-  sprintf(aprefix, "%s.[%d]", SL_CONFIG_STRING_SL_PRECONFIGURATION,0);
-  config_getlist(&SL_UEINFOList,NULL,0,aprefix);
-  sprintf(aprefix, "%s.[%i].%s.[%i]", SL_CONFIG_STRING_SL_PRECONFIGURATION, 0, SL_CONFIG_STRING_UEINFO, 0);
-  config_get(SL_UEINFO,sizeof(SL_UEINFO)/sizeof(paramdef_t),aprefix);
-  LOG_I(NR_RRC,"SL L2 SRCid %x, SL ipv4 addr X.X.%d.%d\n",ueinfo.srcid,ueinfo.thirdOctet,ueinfo.fourthOctet);
-  nas_config(1 + ueinfo.srcid, ueinfo.thirdOctet, ueinfo.fourthOctet, "oai_sl_tun");
-  nr_rrc_mac_config_req_sl_preconfig(id, sl_preconfig, sync_source, ueinfo.srcid);
+  LOG_D(NR_RRC, "SL L2 SRCid %x, SL ipv4 addr X.X.%d.%d\n", ueinfo->srcid, ueinfo->thirdOctet, ueinfo->fourthOctet);
+  nas_config(1 + ueinfo->srcid, ueinfo->thirdOctet, ueinfo->fourthOctet, "oai_sl_tun");
+  nr_rrc_mac_config_req_sl_preconfig(id, sl_preconfig, sync_source, ueinfo->srcid);
 
 
   // SL RadioBearers
-  for (int i=0;i<sl_preconfig->sidelinkPreconfigNR_r16.sl_RadioBearerPreConfigList_r16->list.count;i++) {
-    add_drb_sl(ueinfo.srcid,(NR_SL_RadioBearerConfig_r16_t *)sl_preconfig->sidelinkPreconfigNR_r16.sl_RadioBearerPreConfigList_r16->list.array[i],0,0,NULL,NULL);
+  for (int i=0; i<sl_preconfig->sidelinkPreconfigNR_r16.sl_RadioBearerPreConfigList_r16->list.count; i++) {
+    add_drb_sl(ueinfo->srcid, (NR_SL_RadioBearerConfig_r16_t *)sl_preconfig->sidelinkPreconfigNR_r16.sl_RadioBearerPreConfigList_r16->list.array[i], 0, 0, NULL, NULL);
   }
   // configure RLC
-  for (int i=0;i<sl_preconfig->sidelinkPreconfigNR_r16.sl_RLC_BearerPreConfigList_r16->list.count;i++) {
-    nr_rlc_add_drb_sl(ueinfo.srcid,1,(NR_SL_RLC_BearerConfig_r16_t *)sl_preconfig->sidelinkPreconfigNR_r16.sl_RLC_BearerPreConfigList_r16->list.array[i]);
+  for (int i=0; i<sl_preconfig->sidelinkPreconfigNR_r16.sl_RLC_BearerPreConfigList_r16->list.count; i++) {
+    nr_rlc_add_drb_sl(ueinfo->srcid, 1, (NR_SL_RLC_BearerConfig_r16_t *)sl_preconfig->sidelinkPreconfigNR_r16.sl_RLC_BearerPreConfigList_r16->list.array[i]);
   }
   //TBD.. These should be chosen by RRC according to 3GPP 38.331 RRC specification.
   //Currently hardcoding the values to these
@@ -631,7 +619,7 @@ void nr_UE_configure_Sidelink(uint8_t id, uint8_t is_sync_source) {
   AssertFatal(ssb_ta, "SSB_timeallocation cannot be NULL\n");
 
   if (sync_source == SL_SYNC_SOURCE_LOCAL_TIMING || sync_source == SL_SYNC_SOURCE_GNSS)
-    nr_rrc_mac_transmit_slss_req(id,sl_mib_payload, slss_id, ssb_ta);
+    nr_rrc_mac_transmit_slss_req(id, sl_mib_payload, slss_id, ssb_ta);
 
 }
 
