@@ -3313,7 +3313,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
   sl_sch_subheader->SRC = get_softmodem_params()->node_number;
   sl_sch_subheader->DST = 0xab;
   pdu += sizeof(NR_SLSCH_MAC_SUBHEADER_FIXED);
-  LOG_D(NR_PHY, "Tx V %d, R %d, SRC %d, DST %d\n", sl_sch_subheader->V, sl_sch_subheader->R, sl_sch_subheader->SRC, sl_sch_subheader->DST);
+  LOG_D(NR_PHY, "%4d.%2d Tx V %d, R %d, SRC %d, DST %d\n", frame, slot, sl_sch_subheader->V, sl_sch_subheader->R, sl_sch_subheader->SRC, sl_sch_subheader->DST);
   int buflen_remain = buflen - sizeof(NR_SLSCH_MAC_SUBHEADER_FIXED);
   LOG_D(NR_PHY, "buflen_remain after adding SL_SCH_MAC_SUBHEADER_FIXED %d\n", buflen_remain);
 
@@ -3609,13 +3609,13 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind) {
   }
   if (sl_ind->slot_type==SIDELINK_SLOT_TYPE_TX || sl_ind->phy_data==NULL) rx_allowed=false;
 
-  if (((get_nrUE_params()->sync_ref && sl_ind->slot_rx > 5) ||
-     (!get_nrUE_params()->sync_ref && sl_ind->slot_rx < 17)) && rx_allowed && !is_psbch_slot) {
-      LOG_D(NR_MAC,"Scheduling PSCCH RX processing slot %d, sync_ref %d\n",slot,get_nrUE_params()->sync_ref);
+  if (((get_nrUE_params()->sync_ref && (sl_ind->slot_rx == 2 || sl_ind->slot_rx == 13 || sl_ind->slot_rx == 12)) ||
+     (!get_nrUE_params()->sync_ref && (sl_ind->slot_rx == 3 || sl_ind->slot_rx == 5 || sl_ind->slot_rx == 15))) && rx_allowed && !is_psbch_slot) {
       nr_ue_sl_pscch_rx_scheduler(sl_ind, mac->sl_bwp, mac->sl_rx_res_pool,&rx_config, &tti_action);
   }
 
-  if (!is_psbch_slot && tx_allowed && sl_ind->slot_type == SIDELINK_SLOT_TYPE_TX) {
+  if ((!get_nrUE_params()->sync_ref && !is_psbch_slot && tx_allowed && sl_ind->slot_type == SIDELINK_SLOT_TYPE_TX && (slot == 2 || slot == 13 || slot == 12)) ||
+  (get_nrUE_params()->sync_ref && !is_psbch_slot && tx_allowed && sl_ind->slot_type == SIDELINK_SLOT_TYPE_TX && (slot == 3 || slot == 5 || slot == 15))) {
     //Check if reserved slot or a sidelink resource configured in Rx/Tx resource pool timeresource bitmap
     bool schedule_slsch = nr_ue_sl_pssch_scheduler(mac, sl_ind, mac->sl_bwp, mac->sl_tx_res_pool, &tx_config, &tti_action);
     bool is_csi_rs_sent = false;

@@ -5,7 +5,11 @@
 #include "PHY/defs_nr_UE.h"
 #include "SIMULATION/ETH_TRANSPORT/proto.h"
 
-
+typedef struct ueinfo {
+  int srcid;
+  int thirdOctet;
+  int fourthOctet;
+} ueinfo_t;
 
 #define  CONFIG_HLP_IF_FREQ                "IF frequency for RF, if needed\n"
 #define  CONFIG_HLP_IF_FREQ_OFF            "UL IF frequency offset for RF, if needed\n"

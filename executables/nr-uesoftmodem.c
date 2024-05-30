@@ -86,6 +86,7 @@ unsigned short config_frames[4] = {2,9,11,13};
 #include "nr_nas_msg_sim.h"
 #include <openair1/PHY/MODULATION/nr_modulation.h>
 #include "openair2/GNB_APP/gnb_paramdef.h"
+#include "openair2/RRC/NR_UE/sl_preconfig_paramvalues.h"
 
 extern const char *duplex_mode[];
 THREAD_STRUCT thread_struct;
@@ -323,7 +324,7 @@ void init_openair0(bool is_sidelink) {
     uint64_t dl_carrier, ul_carrier;
     openair0_cfg[card].configFilename    = NULL;
     openair0_cfg[card].threequarter_fs   = frame_parms->threequarter_fs;
-    openair0_cfg[card].sample_rate       = frame_parms->samples_per_subframe * 1e3;
+    openair0_cfg[card].sample_rate       = IS_SOFTMODEM_RFSIM ? frame_parms->samples_per_subframe * 1e3 : 46080000;
     openair0_cfg[card].samples_per_frame = frame_parms->samples_per_frame;
 
     if (frame_parms->frame_type==TDD)
@@ -479,11 +480,22 @@ int main( int argc, char **argv ) {
   uint16_t node_number = get_softmodem_params()->node_number;
   ue_id_g = (node_number == 0) ? 0 : node_number - 2;
   AssertFatal(ue_id_g >= 0, "UE id is expected to be nonnegative.\n");
+
+  ueinfo_t ueinfo;
+  char aprefix[MAX_OPTNAME_SIZE*2 + 8];
+  paramdef_t SL_UEINFO[] = SL_UEINFO_DESC(ueinfo);
+  paramlist_def_t SL_UEINFOList = {SL_CONFIG_STRING_UEINFO, NULL, 0};
+  sprintf(aprefix, "%s.[%d]", SL_CONFIG_STRING_SL_PRECONFIGURATION, 0);
+  config_getlist(&SL_UEINFOList, NULL, 0, aprefix);
+  sprintf(aprefix, "%s.[%i].%s.[%i]", SL_CONFIG_STRING_SL_PRECONFIGURATION, 0, SL_CONFIG_STRING_UEINFO, 0);
+  config_get(SL_UEINFO, sizeof(SL_UEINFO)/sizeof(paramdef_t), aprefix);
+
   if(IS_SOFTMODEM_NOS1 || get_softmodem_params()->sa || get_softmodem_params()->nsa) {
-    if(node_number == 0) {
+    if(node_number == 0 && get_softmodem_params()->sl_mode == 0) {
       init_pdcp(0);
-    }
-    else {
+    } else if (get_softmodem_params()->sl_mode == 2) {
+      init_pdcp(1+ueinfo.srcid);
+    } else {
       init_pdcp(mode_offset + ue_id_g);
     }
   }
@@ -538,7 +550,7 @@ int main( int argc, char **argv ) {
 
       if (UE[CC_id]->sl_mode) {
         AssertFatal(UE[CC_id]->sl_mode == 2, "Only Sidelink mode 2 supported. Mode 1 not yet supported\n");
-        nr_UE_configure_Sidelink(0, get_nrUE_params()->sync_ref);
+        nr_UE_configure_Sidelink(0, get_nrUE_params()->sync_ref, &ueinfo);
         DevAssert(mac->if_module != NULL && mac->if_module->sl_phy_config_request != NULL);
         sl_nr_ue_phy_params_t *sl_phy = &UE[CC_id]->SL_UE_PHY_PARAMS;
         mac->if_module->sl_phy_config_request(&mac->SL_MAC_PARAMS->sl_phy_config);
