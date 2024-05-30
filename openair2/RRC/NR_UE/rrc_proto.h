@@ -41,6 +41,7 @@
 #include "NR_RadioBearerConfig.h"
 #include "openair2/PHY_INTERFACE/queue_t.h"
 #include "common/utils/ocp_itti/intertask_interface.h"
+#include "executables/nr-uesoftmodem.h"
 
 extern queue_t nr_rach_ind_queue;
 extern queue_t nr_rx_ind_queue;
@@ -174,7 +175,7 @@ void nr_rrc_handle_SetupRelease_RLF_TimersAndConstants(NR_UE_RRC_INST_t *rrc,
                                                        struct NR_SetupRelease_RLF_TimersAndConstants *rlf_TimersAndConstants);
 
 int configure_NR_SL_Preconfig(uint8_t id,int sync_source);
-void nr_UE_configure_Sidelink(uint8_t id, uint8_t is_sync_source);
+void nr_UE_configure_Sidelink(uint8_t id, uint8_t is_sync_source, ueinfo_t *ueinfo);
 
 /** @}*/
 #endif
