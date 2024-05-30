@@ -64,9 +64,10 @@ void nr_rf_card_config_gain(openair0_config_t *openair0_cfg,
     if (tx_gain)
       openair0_cfg->tx_gain[i] = tx_gain;
     if (rx_gain)
-      openair0_cfg->rx_gain[i] = rx_gain - rx_gain_off;
+      openair0_cfg->rx_gain[i] = rx_gain;
 
     openair0_cfg->autocal[i] = 1;
+    openair0_cfg->rx_gain_offset[i] = rx_gain_off;
 
     if (i < openair0_cfg->rx_num_channels) {
       LOG_I(PHY, "HW: Configuring channel %d (rf_chain %d): setting tx_gain %.0f, rx_gain %.0f\n",

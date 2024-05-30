@@ -211,7 +211,7 @@ void set_options(int CC_id, PHY_VARS_NR_UE *UE){
   NR_DL_FRAME_PARMS *fp = &UE->frame_parms;
 
   // Set UE variables
-  UE->rx_total_gain_dB     = (int)nrUE_params.rx_gain + rx_gain_off;
+  UE->rx_total_gain_dB     = (int)nrUE_params.rx_gain;
   UE->tx_total_gain_dB     = (int)nrUE_params.tx_gain;
   UE->tx_power_max_dBm     = nrUE_params.tx_max_power;
   UE->rf_map.card          = 0;
