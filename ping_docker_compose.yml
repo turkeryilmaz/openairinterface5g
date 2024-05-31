@@ -1,0 +1,129 @@
+services:
+  build-ran-base:
+    image: ran-base
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.base.ubuntu20
+      tags:
+        - ran-base
+
+  build-ran-build:
+    image: ran-build
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.build.ubuntu20
+      tags:
+        - ran-build
+    depends_on:
+      build-ran-base:
+        condition: service_completed_successfully
+  
+  build-gnb-image:
+    image: gnb-local
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.gNB.ubuntu20
+      tags:
+        - gnb-local
+    depends_on:
+      build-ran-build:
+        condition: service_completed_successfully
+    entrypoint: ""
+    command: echo "gnb-image built"
+
+  build-ue-image:
+    image: ue-local
+    build:
+      context: .
+      dockerfile: dockerfile
+      tags:
+        - ue-local
+    depends_on:
+      build-ran-build:
+        condition: service_completed_successfully
+    entrypoint: ""
+    command: echo "ue-image built"
+
+  rebuild-ran-build:
+    image: ran-build
+    volumes:
+      - .:/oai-dir/
+    command:
+      bash -c "cd /oai-dir/ && mkdir -p cmake_targets/ran_build/build && cd cmake_targets/ran_build/build && cmake ../../../ -GNinja && cmake --build . --target nr-uesoftmodem rfsimulator nr-softmodem" # --num-ues 2
+    entrypoint: ""
+    depends_on:
+      build-gnb-image:
+        condition: service_completed_successfully
+      build-ue-image:
+        condition: service_completed_successfully
+
+  oai-gnb:
+    image: gnb-local
+    depends_on:
+      rebuild-ran-build:
+        condition: service_completed_successfully
+        restart: true
+    privileged: true
+    container_name: local-oai-gnb
+    environment:
+      USE_ADDITIONAL_OPTIONS: --do-ra --rfsim --rfsimulator.wait_timeout 20 --noS1 --log_config.global_log_options level,nocolor,time
+      ASAN_OPTIONS: detect_leaks=0
+    networks:
+      public_net:
+        ipv4_address: 192.168.71.140
+    volumes:
+      - ./ci-scripts/conf_files/gnb.band78.106prb.rfsim.phytest-dora.conf:/opt/oai-gnb/etc/gnb.conf
+      - rrc.config:/opt/oai-gnb
+      - ./cmake_targets/ran_build/build/nr-uesoftmodem:/opt/oai-gnb/bin/nr-uesoftmodem
+      - ./cmake_targets/ran_build/build/librfsimulator.so:/usr/local/lib/librfsimulator.so 
+    healthcheck:
+      test: /bin/bash -c "pgrep nr-softmodem"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  oai-nr-ue:
+    image: ue-local
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.nrUE.ubuntu20
+      tags:
+        - ue-local
+    depends_on:
+      build-ran-build:
+        condition: service_completed_successfully
+        restart: true
+      oai-gnb:
+        condition: service_started
+    privileged: true
+    container_name: local-oai-nr-ue
+    environment:
+      USE_ADDITIONAL_OPTIONS: --do-ra --rfsim --noS1 --reconfig-file etc/rrc/reconfig.raw --rbconfig-file etc/rrc/rbconfig.raw --rfsimulator.serveraddr 192.168.71.140 --log_config.global_log_options level,nocolor,time
+      ASAN_OPTIONS: detect_leaks=0
+    volumes:
+      - ./ci-scripts/conf_files/nrue.uicc.conf:/opt/oai-nr-ue/etc/nr-ue.conf
+      - rrc.config:/opt/oai-nr-ue/etc/rrc/
+      - ./cmake_targets/ran_build/build/nr-uesoftmodem:/opt/oai-nr-ue/bin/nr-uesoftmodem
+      - ./cmake_targets/ran_build/build/librfsimulator.so:/usr/local/lib/librfsimulator.so 
+      - ./crashdumps/:/cores/
+    networks:
+      public_net:
+        ipv4_address: 192.168.71.150
+    healthcheck:
+      test: /bin/bash -c "pgrep nr-uesoftmodem"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  rrc.config:
+
+networks:
+  public_net:
+    driver: bridge
+    name: rfsim5g-oai-public-net
+    ipam:
+      config:
+        - subnet: 192.168.71.128/26
+    driver_opts:
+      com.docker.network.bridge.name: "rfsim5g-public"

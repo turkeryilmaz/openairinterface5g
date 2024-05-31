@@ -1,0 +1,10 @@
+services:
+  oai-nr-ue:
+    depends_on:
+      build-ran-build:
+        condition: service_completed_successfully
+        restart: true
+    command: bash -c "gdb --directory /oai-dir/ --args /opt/oai-nr-ue/bin/nr-uesoftmodem --do-ra --rfsim --noS1 --reconfig-file etc/rrc/reconfig.raw --rbconfig-file etc/rrc/rbconfig.raw --rfsimulator.serveraddr 192.168.71.140 --log_config.global_log_options level,nocolor,time --num-ues 2"
+    stdin_open: true
+    tty: true
+    container_name: local-oai-nr-ue-gdb
