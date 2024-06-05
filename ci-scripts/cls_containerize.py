@@ -325,14 +325,10 @@ class Containerize():
 		if result is not None:
 			self.dockerfileprefix = '.ubuntu20.cross-arm64'
 		
-		# Workaround for some servers, we need to erase completely the workspace
-		if self.forcedWorkspaceCleanup:
-			cmd.run(f'sudo -S rm -Rf {lSourcePath}')
-	
 		self.testCase_id = HTML.testCase_id
 	
 		CreateWorkspace(cmd, lSourcePath, self.ranRepository, self.ranCommitID, self.ranTargetBranch, self.ranAllowMerge)
-
+		cmd.cd(lSourcePath)
 		# if asterix, copy the entitlement and subscription manager configurations
 		if self.host == 'Red Hat':
 			cmd.run('mkdir -p ./etc-pki-entitlement ./rhsm-conf ./rhsm-ca')
