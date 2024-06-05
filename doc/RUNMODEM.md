@@ -162,6 +162,44 @@ e.g.
 sudo ./nr-uesoftmodem --sa -r 106 --numerology 1 --band 78 -C 3319680000 --ue-nb-ant-tx 2 --ue-nb-ant-rx 2 --uecap_file /opt/oai-nr-ue/etc/uecap.xml
 ```
 
+## AT Command Interface in NR-UE
+
+NR UE features an interactive AT command interface. Users can use this interface to issue commands and to get specific information from the softmodem in the same manner as in Quectel or Sierra modems. At the moment, the UE supports only the following commands
+- `at+cgdcont`
+- `at+cfun`
+
+### Example Usage
+
+1. By default, the UE creates a pair of serial device and opens one interface to receive AT commands. The other interface is printed in the logs so that the user can open using tools like minicom to send AT commands. A sample log from UE looks like
+```
+[NAS]   Serial device for AT command: /dev/pts/66
+```
+2. Open the interface using minicom
+```
+sudo minicom -D /dev/pts/66
+```
+**Optional**: Alternatively, the user can create their own pair of virtual serail port using `socat`.
+```
+socat -d -d pty,raw,echo=1 pty,raw,echo=1
+```
+The output should be something like this
+```
+2024/06/05 13:14:57 socat[893875] N PTY is /dev/pts/12
+2024/06/05 13:14:57 socat[893875] N PTY is /dev/pts/13
+2024/06/05 13:14:57 socat[893875] N starting data transfer loop with FDs [5,5] and [7,7]
+```
+Provide one interface to the UE with `--at-interface "/dev/pts/12"` and open the other with minicom.
+
+### Example Commands
+1. Read back the configured PDP contexts
+```
+at+cgdcont?
+```
+2. Trigger deregistration from network
+```
+at+cfun=0
+```
+
 ## How to run a NTN configuration
 
 ### NTN channel
