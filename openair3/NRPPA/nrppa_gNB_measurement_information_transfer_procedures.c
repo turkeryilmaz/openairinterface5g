@@ -152,7 +152,7 @@ int nrppa_gNB_handle_Measurement(nrppa_gnb_ue_info_t *nrppa_msg_info, NRPPA_NRPP
     for (int i = 0; i < maxnoSRScarrier; i++) {
       NRPPA_SRSCarrier_List_Item_t *CarrItem= srs_config.sRSCarrier_List.list.array[i];
       srs_carrier_list_item->pointA = CarrItem->pointA; // (M)
-      srs_carrier_list_item->pci = CarrItem->pCI; // Optional Physical cell ID of the cell that contians the SRS carrier
+      srs_carrier_list_item->pci = CarrItem->pCI ? *CarrItem->pCI : 0; // Optional Physical cell ID of the cell that contians the SRS carrier
       // Preparing Active UL BWP information IE of SRSCarrier_List f1ap_active_ul_bwp_ active_ul_bwp; //(M)
       f1ap_active_ul_bwp_t *f1_ul_bwp= &srs_carrier_list_item->active_ul_bwp;
       NRPPA_ActiveULBWP_t *Nrppa_ULBWP =&CarrItem->activeULBWP;   
@@ -160,7 +160,7 @@ int nrppa_gNB_handle_Measurement(nrppa_gnb_ue_info_t *nrppa_msg_info, NRPPA_NRPP
       f1_ul_bwp->subcarrierSpacing = Nrppa_ULBWP->subcarrierSpacing;
       f1_ul_bwp->cyclicPrefix = Nrppa_ULBWP->cyclicPrefix; 
       f1_ul_bwp->txDirectCurrentLocation = Nrppa_ULBWP->txDirectCurrentLocation;
-      f1_ul_bwp->shift7dot5kHz = Nrppa_ULBWP->shift7dot5kHz; 
+      f1_ul_bwp->shift7dot5kHz = Nrppa_ULBWP->shift7dot5kHz ? *Nrppa_ULBWP->shift7dot5kHz : 0; 
       
       f1ap_srs_config_t *f1_srsConf= &f1_ul_bwp->sRSConfig;  
       // Preparing sRSResource_List IE of SRSConfig (IE of activeULBWP)
