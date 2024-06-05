@@ -240,6 +240,7 @@ class StaticCodeAnalysis():
 			full_ran_repo_name = self.ranRepository + '.git'
 
 		CreateWorkspace(cmd, lSourcePath, full_ran_repo_name, self.ranCommitID, self.ranTargetBranch, self.ranAllowMerge)
+		cmd.cd(lSourcePath)
 		check_options = ''
 		if self.ranAllowMerge:
 			check_options = f'--build-arg MERGE_REQUEST=true --build-arg SRC_BRANCH={self.ranBranch}'
