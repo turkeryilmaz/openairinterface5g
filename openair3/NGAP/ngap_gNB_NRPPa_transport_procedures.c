@@ -188,6 +188,7 @@ int ngap_gNB_UplinkNonUEAssociatedNRPPaTransport(instance_t instance, ngap_Uplin
   }
 
   /* Non UE-Associated signalling -> stream = 0 */
+  LOG_I(NGAP, "Sending sctp_data_req for ngap_gNB_UplinkNonUEAssociatedNRPPaTransport (assoc_id %d)\n",amf_desc_p->assoc_id);
   ngap_gNB_itti_send_sctp_data_req(ngap_gNB_instance_p->instance, amf_desc_p->assoc_id, buffer, length, 0);
   return 0;
 }
