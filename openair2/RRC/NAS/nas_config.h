@@ -38,18 +38,6 @@
  */
 void nas_getparams(void);
 
-/*! \fn int  NAS_config(char*, char*, char*, char*)
- * \brief This function initializes the nasmesh interface
- * \param[in] interfaceName, the name of the interface, e.g. nasmesh0 or nasmesh1
- * \param[in] ipAddress, the address of the interface, e.g. 10.0.1.1
- * \param[in] networkMask, the network mask to be used, e.g. 255.255.255.0
- * \param[in] broadcastAddress, the broadcast address for the subnet, e.g. 10.0.1.255
- * \return 0 on success, otherwise 1, if couldn't open a socket and 2 if the ioctl fails
- * \note
- * @ingroup  _nas
- */
-int NAS_config(char *interfaceName, char *ipAddress, char *networkMask, char *broadcastAddress);
-
 /*! \fn int  nas_config(char*, int, int)
  * \brief This function initializes the nasmesh interface using the basic values,
  * basic address, network mask and broadcast address, as the default configured

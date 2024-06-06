@@ -213,27 +213,6 @@ int bringInterfaceUp(char *interfaceName, int up) {
   close( sock_fd );
   return 0;
 }
-// non blocking full configuration of the interface (address, net mask, and broadcast mask)
-int NAS_config(char *interfaceName, char *ipAddress, char *networkMask, char *broadcastAddress) {
-  bringInterfaceUp(interfaceName, 0);
-  // sets the machine address
-  int returnValue= setInterfaceParameter(interfaceName, ipAddress,SIOCSIFADDR);
-
-  // sets the machine network mask
-  if(!returnValue)
-    returnValue= setInterfaceParameter(interfaceName, networkMask,SIOCSIFNETMASK);
-
-  // sets the machine broadcast address
-  if(!returnValue)
-    returnValue= setInterfaceParameter(interfaceName, broadcastAddress,SIOCSIFBRDADDR);
-
-  //  if(!returnValue)
-  //  returnValue=set_gateway(interfaceName, broadcastAddress);
-  if(!returnValue)
-    returnValue = bringInterfaceUp(interfaceName, 1);
-
-  return returnValue;
-}
 
 int nas_config_mbms(int interface_id, int thirdOctet, int fourthOctet, char *ifname) {
   //char buf[5];
@@ -473,7 +452,7 @@ int main(int argc,char **argv)
   }
 
   printf("Command: ifconfig %s %s networkMask %s broadcast %s\n", interfaceName, ipAddress, networkMask, broadcastAddress);
-  NAS_config(interfaceName, ipAddress, networkMask, broadcastAddress);
+
   //test
   //     setBaseNetAddress("11.11");
   //     nas_config(interfaceName, 33, 44);
