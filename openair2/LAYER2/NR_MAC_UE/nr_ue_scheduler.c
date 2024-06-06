@@ -3283,7 +3283,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
 
   if (!schedule_slsch) return false;
 
-  LOG_D(NR_MAC,"SLSCH : slsch_pdu_length_max %d\n",slsch_pdu_length_max);
+  LOG_D(NR_MAC, "SLSCH : slsch_pdu_length_max %d\n", slsch_pdu_length_max);
 
   const uint8_t sh_size = sizeof(NR_MAC_SUBHEADER_LONG);
   uint8_t *pdu = tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu.slsch_payload;
