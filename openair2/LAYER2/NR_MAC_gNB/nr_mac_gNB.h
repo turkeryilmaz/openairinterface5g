@@ -684,6 +684,12 @@ typedef struct nr_mac_rrc_ul_if_s {
 } nr_mac_rrc_ul_if_t;
 
 typedef struct {
+  uint8_t transaction_id; // IE 9.3.1.23 (M)
+  uint16_t lmf_measurement_id; // (M)
+  uint16_t ran_measurement_id; // (M)
+} f1ap_meas_resp_header_t;
+
+typedef struct {
   uint8_t pos_report_characteristics; // (M) //	ondemand	= 0, periodic	= 1
   uint8_t pos_measurement_periodicity; //(C) if report characteristics periodic	ms120=0, ms240=1, ms480=2, ms640=3, ms1024=4, ms20
   uint8_t pos_report_valid; // (C) if report has been received from L1 sets this to 1 and once response is sent its set back to 0
@@ -863,7 +869,13 @@ typedef struct gNB_MAC_INST_s {
   pthread_mutex_t sched_lock;
 
   //holds the SRS config for NRPPa measurement request
-  f1ap_measurement_req_t *f1ap_meas_req;
+  //f1ap_measurement_req_t *f1ap_meas_req;
+  uint8_t do_srs_meas;
+  f1ap_srs_resource_t srs_resource;
+  f1ap_srs_resource_set_t srs_resource_set;
+  f1ap_meas_resp_header_t f1ap_meas_resp_header;
+  nrppa_f1ap_info_t nrppa_msg_info;
+
   //holds measurement response (non-ue associated)
   NR_meas_pos_t meas_pos_info;
 } gNB_MAC_INST;

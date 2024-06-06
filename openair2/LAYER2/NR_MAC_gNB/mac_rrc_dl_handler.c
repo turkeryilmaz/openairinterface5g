@@ -826,13 +826,35 @@ void positioning_measurement_request(const f1ap_measurement_req_t *req)
     AssertFatal(false, "Not implemented\n");
   }
 
+  //store SRS config from measurement in MAC
+
+  f1ap_srs_configuration_t *srs_configuration = &req->srs_configuration;
+  if (!srs_configuration) {
+    LOG_I(MAC, "no srs configuration in F1AP measurement reuqest, skipping\n");
+    return;
+  }
+
+  if (srs_configuration->srs_carrier_list.srs_carrier_list_length !=1) {
+    LOG_I(MAC, "expecting exactly 1 item in srs carrier list, skipping\n");
+  }
+
+  f1ap_srs_config_t *sRSConfig = &srs_configuration->srs_carrier_list.srs_carrier_list_item[0].active_ul_bwp.sRSConfig;
+  if (sRSConfig->sRSResource_List.srs_resource_list_length != 1 ||
+      sRSConfig->sRSResourceSet_List.srs_resource_set_list_length != 1) {
+    LOG_I(MAC, "Need exactly 1 SRS Resoure and 1 SRS Resource set in F1AP measurment request\n");
+    return;
+  }
+
   gNB_MAC_INST *mac = RC.nrmac[req->nrppa_msg_info.instance];
+  mac->srs_resource = *sRSConfig->sRSResource_List.srs_resource; 
+  mac->srs_resource_set = *sRSConfig->sRSResourceSet_List.srs_resource_set; 
 
-  //store the whole measurement request (incl SRS config) from measurement in MAC
-  //TODO: we have to copy the whole memory of this nested structure
-  mac->f1ap_meas_req = req;
+  mac->f1ap_meas_resp_header.transaction_id = req->transaction_id;
+  mac->f1ap_meas_resp_header.lmf_measurement_id = req->lmf_measurement_id;
+  mac->f1ap_meas_resp_header.ran_measurement_id = req->ran_measurement_id;
+  mac->nrppa_msg_info = req->nrppa_msg_info;
 
-
+  mac->do_srs_meas = 1;
 }
 
 void positioning_measurement_update(const f1ap_measurement_update_t *update)

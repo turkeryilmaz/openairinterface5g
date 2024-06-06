@@ -1262,21 +1262,18 @@ void handle_nr_srs_measurements(const module_id_t module_id,
       }
     }
       
-
-
-    f1ap_measurement_req_t *req = nrmac->f1ap_meas_req;
     /* response has same type as request... */
     f1ap_measurement_resp_t resp = {
-      .transaction_id = req->transaction_id,
-      .lmf_measurement_id = req->lmf_measurement_id,
-      .ran_measurement_id = req->ran_measurement_id,
-      .nrppa_msg_info.nrppa_transaction_id = req->nrppa_msg_info.nrppa_transaction_id,
-      .nrppa_msg_info.instance = req->nrppa_msg_info.instance,
-      .nrppa_msg_info.gNB_ue_ngap_id = req->nrppa_msg_info.gNB_ue_ngap_id,
-      .nrppa_msg_info.amf_ue_ngap_id = req->nrppa_msg_info.amf_ue_ngap_id,
-      .nrppa_msg_info.ue_rnti = req->nrppa_msg_info.ue_rnti,
-      .nrppa_msg_info.routing_id_buffer = req->nrppa_msg_info.routing_id_buffer,
-      .nrppa_msg_info.routing_id_length = req->nrppa_msg_info.routing_id_length,
+      .transaction_id = nrmac->f1ap_meas_resp_header.transaction_id,
+      .lmf_measurement_id = nrmac->f1ap_meas_resp_header.lmf_measurement_id,
+      .ran_measurement_id = nrmac->f1ap_meas_resp_header.ran_measurement_id,
+      .nrppa_msg_info.nrppa_transaction_id = nrmac->nrppa_msg_info.nrppa_transaction_id,
+      .nrppa_msg_info.instance = nrmac->nrppa_msg_info.instance,
+      .nrppa_msg_info.gNB_ue_ngap_id = nrmac->nrppa_msg_info.gNB_ue_ngap_id,
+      .nrppa_msg_info.amf_ue_ngap_id = nrmac->nrppa_msg_info.amf_ue_ngap_id,
+      .nrppa_msg_info.ue_rnti = nrmac->nrppa_msg_info.ue_rnti,
+      .nrppa_msg_info.routing_id_buffer = nrmac->nrppa_msg_info.routing_id_buffer,
+      .nrppa_msg_info.routing_id_length = nrmac->nrppa_msg_info.routing_id_length,
     };
 
     
