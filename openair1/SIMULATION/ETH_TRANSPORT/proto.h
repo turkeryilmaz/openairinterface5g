@@ -32,7 +32,7 @@
 #define EMU_PROTO_H_
 
 int netlink_init(void);
-int netlink_init_tun(char *ifsuffix, int num_if, int id);
+int netlink_init_tun(const char *ifprefix, int num_if, int id);
 int netlink_init_mbms_tun(char *ifsuffix, int id);
 void netlink_cleanup(void);
 

@@ -769,7 +769,7 @@ rrc_ue_establish_drb(
     oip_ifup=nas_config(ip_addr_offset3+ue_mod_idP+1,   // interface_id
                         UE_NAS_USE_TUN?1:(ip_addr_offset3+ue_mod_idP+1), // third_octet
                         ip_addr_offset4+ue_mod_idP+1, // fourth_octet
-                        "oip");                        // interface suffix (when using kernel module)
+                        "oaitun_oip");
 
     if (oip_ifup == 0 && (!UE_NAS_USE_TUN)) { // interface is up --> send a config the DRB
       LOG_I(OIP,"[UE %d] Config the ue net interface %d to send/receive pkt on DRB %ld to/from the protocol stack\n",
