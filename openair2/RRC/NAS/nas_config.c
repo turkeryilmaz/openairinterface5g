@@ -80,7 +80,7 @@ void setNetMask (char *baseAddr) {
 
 // sets a genneric interface parameter
 // (SIOCSIFADDR, SIOCSIFNETMASK, SIOCSIFBRDADDR, SIOCSIFFLAGS)
-static int setInterfaceParameter(char *interfaceName, char *settingAddress, int operation)
+static int setInterfaceParameter(const char *interfaceName, const char *settingAddress, int operation)
 {
   int sock_fd;
   struct ifreq ifr;
