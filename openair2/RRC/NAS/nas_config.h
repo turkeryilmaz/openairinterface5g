@@ -98,30 +98,6 @@ int setInterfaceParameter(char *interfaceName, char *settingAddress, int operati
  */
 void setBaseNetAddress(char *baseAddr);
 
-/*! \fn char*  getBaseNetAddress()
- * \brief This function returns the basic network address used
- * \return the basic network address in use
- * \note
- * @ingroup  _nas
- */
-char *getBaseNetAddress(void);
-
-/*! \fn void  setNetMask(char*)
- * \brief This function sets the new default network mask used
- * \param[in] newNetworkMask, the new network mask e.g.for 255.255.0.0
- * \note
- * @ingroup  _nas
- */
-void setNetMask(char *baseAddr);
-
-/*! \fn char*  getNetMask()
- * \brief This function returns the network mask address in use
- * \return the network mask in use
- * \note
- * @ingroup  _nas
- */
-char *getNetMask(void);
-
 /*! \fn coid setBroadcastAddress(char*)
  * \brief This function sets the new broadcast address used
  * \param[in] newNetworkMask, the new broadcast address e.g.for 10.0.255.255
@@ -139,5 +115,13 @@ void setBroadcastAddress(char *baseAddr);
 char *getBroadcastAddress(void);
 
 int bringInterfaceUp(char *interfaceName, int up);
+
+/*! \fn void  setNetMask(char*)
+ * \brief This function sets the new default network mask used
+ * \param[in] newNetworkMask, the new network mask e.g.for 255.255.0.0
+ * \note
+ * @ingroup  _nas
+ */
+void setNetMask(char *baseAddr);
 
 #endif /*NAS_CONFIG_H_*/

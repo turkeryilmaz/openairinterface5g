@@ -77,24 +77,16 @@ void setBaseNetAddress (char *baseAddr) {
   strcpy(baseNetAddress,baseAddr);
 }
 
-char *getBaseNetAddress (void) {
-  return baseNetAddress;
-}
-
-void setNetMask (char *baseAddr) {
-  strcpy(netMask,baseAddr);
-}
-
-char *getNetMask  (void) {
-  return netMask;
-}
-
 void setBroadcastAddress (char *baseAddr) {
   strcpy(broadcastAddr, baseAddr);
 }
 
 char *getBroadcastAddress (void) {
   return broadcastAddr;
+}
+
+void setNetMask (char *baseAddr) {
+  strcpy(netMask,baseAddr);
 }
 
 // sets a genneric interface parameter
