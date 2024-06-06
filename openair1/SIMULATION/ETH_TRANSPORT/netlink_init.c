@@ -99,17 +99,12 @@ int netlink_init_mbms_tun(char *ifprefix, int id) {//for UE, id = 1, 2, ...,
   int ret;
   char ifname[64];
 
-    if (id > 0) {
-      sprintf(ifname, "oaitun_%.3s%d", ifprefix, id-1);
-    }
-    else {
-      sprintf(ifname, "oaitun_%.3s1", ifprefix); // added "1": for historical reasons
-    }
-    nas_sock_mbms_fd = tun_alloc(ifname);
+  sprintf(ifname, "%s%d", ifprefix, id);
+  nas_sock_mbms_fd = tun_alloc(ifname);
 
-    if (nas_sock_mbms_fd == -1) {
-      printf("[NETLINK] Error opening mbms socket %s (%d:%s)\n",ifname,errno, strerror(errno));
-      exit(1);
+  if (nas_sock_mbms_fd == -1) {
+    printf("[NETLINK] Error opening mbms socket %s (%d:%s)\n", ifname, errno, strerror(errno));
+    exit(1);
     }
 
     printf("[NETLINK]Opened socket %s with fd %d\n",ifname,nas_sock_mbms_fd);
