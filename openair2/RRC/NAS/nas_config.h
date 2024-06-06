@@ -103,16 +103,6 @@ int blocking_NAS_config(char *interfaceName, char *ipAddress, char *networkMask,
  */
 int setInterfaceParameter(char *interfaceName, char *settingAddress, int operation);
 
-/*! \fn int  set_gateway(char*, char*)
- * \brief This function sets the interface gateway
- * \param[in] interfaceName, the name of the interface, e.g. nasmesh0 or nasmesh1
- * \param[in] address, the address of the gateway, e.g. 10.0.1.2
- * \return 0 on success, otherwise 1, if couldn't open a socket and 2 if the ioctl fails
- * \note
- * @ingroup  _nas
- */
-int set_gateway(char *interfaceName, char *gateway);
-
 /*! \fn void  setBaseNetAddress(char*)
  * \brief This function sets the basic network address used
  * \param[in] baseAddr, the new basic address e.g.for 10.0.1.2, would be 10.0

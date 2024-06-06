@@ -97,54 +97,6 @@ char *getBroadcastAddress (void) {
   return broadcastAddr;
 }
 
-//Add Gateway to the interface
-int set_gateway(char *interfaceName, char *gateway) {
-  int sock_fd;
-  struct rtentry rt;
-  struct sockaddr_in addr;
-
-  if((sock_fd = socket(AF_INET,SOCK_DGRAM,0)) < 0) {
-    perror("socket failed");
-    return 1;
-  }
-
-  memset (&rt, 0, sizeof (rt));
-  addr.sin_family = AF_INET;
-  /*set Destination addr*/
-  inet_aton("0.0.0.0",&addr.sin_addr);
-  memcpy(&rt.rt_dst, &addr, sizeof(struct sockaddr_in));
-  /*set gateway addr*/
-  inet_aton(gateway,&addr.sin_addr);
-  memcpy(&rt.rt_gateway, &addr, sizeof(struct sockaddr_in));
-  /*set genmask addr*/
-  inet_aton("0.0.0.0",&addr.sin_addr);
-  memcpy(&rt.rt_genmask, &addr, sizeof(struct sockaddr_in));
-  rt.rt_dev = interfaceName;
-  //rt.rt_flags = RTF_UP|RTF_GATEWAY|RTF_DEFAULT;
-  /* SR: rt_flags on 16 bits but RTF_DEFAULT = 0x00010000
-   * therefore doesn't lie in container -> disable it
-   */
-  //rt.rt_flags = RTF_GATEWAY|RTF_DEFAULT;
-  rt.rt_flags = RTF_GATEWAY;
-
-  if (ioctl(sock_fd, SIOCADDRT, &rt) < 0) {
-    close(sock_fd);
-
-    if(strstr(strerror(errno),"File exists") == NULL) {
-      LOG_E(OIP,"ioctl SIOCADDRT failed : %s\n",strerror(errno));
-      return 2;
-    } else { /*if SIOCADDRT error is route exist, retrun success*/
-      LOG_I(OIP,"File Exist ...\n");
-      LOG_I(OIP,"set_gateway OK!\n");
-      return 0;
-    }
-  }
-
-  close(sock_fd);
-  LOG_D(OIP,"Set Gateway OK!\n");
-  return 0;
-}
-
 // sets a genneric interface parameter
 // (SIOCSIFADDR, SIOCSIFNETMASK, SIOCSIFBRDADDR, SIOCSIFFLAGS)
 int setInterfaceParameter(char *interfaceName, char *settingAddress, int operation) {
