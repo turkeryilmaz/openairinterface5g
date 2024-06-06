@@ -52,10 +52,8 @@
 
 char *baseNetAddress ;
 char *netMask ;
-char *broadcastAddr ;
 #define NASHLP_NETPREFIX "<NAS network prefix, two first bytes of network addresses>\n"
 #define NASHLP_NETMASK   "<NAS network mask>\n"
-#define NASHLP_BROADCASTADDR   "<NAS network broadcast address>\n"
 void nas_getparams(void) {
   // this datamodel require this static because we partially keep data like baseNetAddress (malloc on a global)
   // but we loose the opther attributes in nasoptions between two calls if is is not static !
@@ -67,7 +65,6 @@ void nas_getparams(void) {
     /*--------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
     {"NetworkPrefix",    NASHLP_NETPREFIX,       0,              .strptr=&baseNetAddress,        .defstrval="10.0",            TYPE_STRING,  0 },
     {"NetworkMask",      NASHLP_NETMASK,         0,              .strptr=&netMask,               .defstrval="255.255.255.0",   TYPE_STRING,  0 },
-    {"BroadcastAddr",    NASHLP_BROADCASTADDR,   0,              .strptr=&broadcastAddr,         .defstrval="10.0.255.255",    TYPE_STRING,  0 },
   };
   // clang-format on
   config_get(config_get_if(), nasoptions, sizeofArray(nasoptions), "nas.noS1");
@@ -75,14 +72,6 @@ void nas_getparams(void) {
 
 void setBaseNetAddress (char *baseAddr) {
   strcpy(baseNetAddress,baseAddr);
-}
-
-void setBroadcastAddress (char *baseAddr) {
-  strcpy(broadcastAddr, baseAddr);
-}
-
-char *getBroadcastAddress (void) {
-  return broadcastAddr;
 }
 
 void setNetMask (char *baseAddr) {

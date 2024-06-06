@@ -98,22 +98,6 @@ int setInterfaceParameter(char *interfaceName, char *settingAddress, int operati
  */
 void setBaseNetAddress(char *baseAddr);
 
-/*! \fn coid setBroadcastAddress(char*)
- * \brief This function sets the new broadcast address used
- * \param[in] newNetworkMask, the new broadcast address e.g.for 10.0.255.255
- * \note
- * @ingroup  _nas
- */
-void setBroadcastAddress(char *baseAddr);
-
-/*! \fn char*  getBroadcastAddress()
- * \brief This function returns the broadcast address in use
- * \return the broadcast address in use
- * \note
- * @ingroup  _nas
- */
-char *getBroadcastAddress(void);
-
 int bringInterfaceUp(char *interfaceName, int up);
 
 /*! \fn void  setNetMask(char*)
