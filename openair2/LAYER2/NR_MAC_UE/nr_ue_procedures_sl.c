@@ -804,7 +804,7 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
           break;
         }
       case SL_SCH_LCID_SL_PADDING:
-	      LOG_D(NR_MAC,"Received padding\n");
+	      LOG_D(NR_MAC, "Received padding\n");
 	      done = 1;
 	      break;
       case SL_SCH_LCID_SCCH_PC5_NOT_PROT:
