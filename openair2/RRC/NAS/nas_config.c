@@ -80,7 +80,8 @@ void setNetMask (char *baseAddr) {
 
 // sets a genneric interface parameter
 // (SIOCSIFADDR, SIOCSIFNETMASK, SIOCSIFBRDADDR, SIOCSIFFLAGS)
-int setInterfaceParameter(char *interfaceName, char *settingAddress, int operation) {
+static int setInterfaceParameter(char *interfaceName, char *settingAddress, int operation)
+{
   int sock_fd;
   struct ifreq ifr;
   struct sockaddr_in addr;
@@ -111,7 +112,8 @@ int setInterfaceParameter(char *interfaceName, char *settingAddress, int operati
 
 // sets a genneric interface parameter
 // (SIOCSIFADDR, SIOCSIFNETMASK, SIOCSIFBRDADDR, SIOCSIFFLAGS)
-int bringInterfaceUp(char *interfaceName, int up) {
+static int bringInterfaceUp(char *interfaceName, int up)
+{
   int sock_fd;
   struct ifreq ifr;
 
@@ -282,8 +284,11 @@ int nas_config(int interface_id, int thirdOctet, int fourthOctet, char *ifname) 
   return returnValue;
 }
 
+#ifdef STANDALONE
+
 // program help
-void helpOptions(char **argv) {
+static void helpOptions(char **argv)
+{
   printf("Help for %s\n",  argv[0]);
   printf("  -i <interfaceName>\n");
   printf("  -a <IP address>\n");
@@ -299,7 +304,8 @@ void helpOptions(char **argv) {
 }
 
 // creates the broadcast address if it wasn't set before
-void createBroadcast(char *broadcastAddress) {
+static void createBroadcast(char *broadcastAddress)
+{
   int pos=strlen(broadcastAddress)-1;
 
   while(broadcastAddress[pos]!='.')
@@ -310,7 +316,7 @@ void createBroadcast(char *broadcastAddress) {
   broadcastAddress[++pos]='5';
   broadcastAddress[++pos]='\0';
 }
-#ifdef STANDALONE
+
 // main function
 //---------------------------------------------------------------------------
 int main(int argc,char **argv)

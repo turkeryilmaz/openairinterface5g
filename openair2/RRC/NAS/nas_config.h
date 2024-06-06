@@ -77,19 +77,6 @@ int nas_config_mbms(int interface_id, int thirdOctet, int fourthOctet, char *ifs
  */
 int nas_config_mbms_s1(int interface_id, int thirdOctet, int fourthOctet, char *ifsuffix);
 
-/*! \fn int  setInterfaceParameter(char*, char*, int)
- * \brief This function sets an genneric interface parameter (SIOCSIFADDR,
- * SIOCSIFNETMASK, SIOCSIFBRDADDR, SIOCSIFFLAGS)
- * \param[in] interfaceName, the name of the interface, e.g. nasmesh0 or nasmesh1
- * \param[in] address, the value of the parameter to set, e.g. 10.0.1.255
- * \param[in] operation, the operation to perform, (SIOCSIFADDR, SIOCSIFNETMASK,
- *  SIOCSIFBRDADDR, SIOCSIFFLAGS), e.g. SIOCSIFBRDADDR
- * \return 0 on success, otherwise 1, if couldn't open a socket and 2 if the ioctl fails
- * \note
- * @ingroup  _nas
- */
-int setInterfaceParameter(char *interfaceName, char *settingAddress, int operation);
-
 /*! \fn void  setBaseNetAddress(char*)
  * \brief This function sets the basic network address used
  * \param[in] baseAddr, the new basic address e.g.for 10.0.1.2, would be 10.0
@@ -97,8 +84,6 @@ int setInterfaceParameter(char *interfaceName, char *settingAddress, int operati
  * @ingroup  _nas
  */
 void setBaseNetAddress(char *baseAddr);
-
-int bringInterfaceUp(char *interfaceName, int up);
 
 /*! \fn void  setNetMask(char*)
  * \brief This function sets the new default network mask used
