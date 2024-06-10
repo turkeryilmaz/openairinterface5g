@@ -976,22 +976,25 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
           srs_est = -1;
         }
 
+	for (int ant_rx = 0; ant_rx < gNB->frame_parms.nb_antennas_rx; ant_rx++) {
+
         T(T_GNB_PHY_UL_FREQ_CHANNEL_ESTIMATE,
-          T_INT(0),
+          T_INT(gNB->Mod_id),
           T_INT(srs_pdu->rnti),
           T_INT(frame_rx),
-          T_INT(0),
-          T_INT(0),
-          T_BUFFER(srs_estimated_channel_freq[0][0], frame_parms->ofdm_symbol_size * sizeof(int32_t)));
+          T_INT(slot_rx),
+          T_INT(ant_rx),
+          T_BUFFER(srs_estimated_channel_freq[ant_rx][0], frame_parms->ofdm_symbol_size * sizeof(int32_t)));
 
         T(T_GNB_PHY_UL_TIME_CHANNEL_ESTIMATE,
-          T_INT(0),
+          T_INT(gNB->Mod_id),
           T_INT(srs_pdu->rnti),
           T_INT(frame_rx),
-          T_INT(0),
-          T_INT(0),
-          T_BUFFER(srs_estimated_channel_time_shifted[0][0], frame_parms->ofdm_symbol_size * sizeof(int32_t)));
-
+          T_INT(slot_rx),
+          T_INT(ant_rx),
+          T_BUFFER(srs_estimated_channel_time_shifted[ant_rx][0], frame_parms->ofdm_symbol_size * sizeof(int32_t)));
+	}
+	
         gNB->UL_INFO.srs_ind.pdu_list = &gNB->srs_pdu_list[0];
         gNB->UL_INFO.srs_ind.sfn = frame_rx;
         gNB->UL_INFO.srs_ind.slot = slot_rx;
@@ -1001,12 +1004,13 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
         srs_indication->rnti = srs_pdu->rnti;
 
 	uint8_t N_ap = 1<<srs_pdu->num_ant_ports;
-	int16_t srs_toa_ns[N_ap];
+	uint8_t N_ant_rx = gNB->frame_parms.nb_antennas_rx;
+	int16_t srs_toa_ns[N_ant_rx];
 	
         start_meas(&gNB->srs_timing_advance_stats);
         srs_indication->timing_advance_offset = srs_est >= 0 ? nr_est_timing_advance_srs(frame_parms, N_ap, srs_estimated_channel_time[0]) : 0xFFFF;
         stop_meas(&gNB->srs_timing_advance_stats);
-        srs_indication->timing_advance_offset_nsec = srs_est >= 0 ? nr_est_toa_ns_srs(frame_parms, N_ap, srs_estimated_channel_freq[0], srs_toa_ns) : 0xFFFF;
+        srs_indication->timing_advance_offset_nsec = srs_est >= 0 ? nr_est_toa_ns_srs(frame_parms, N_ant_rx, N_ap, srs_estimated_channel_freq, srs_toa_ns) : 0xFFFF;
 
 	  //(int16_t)((((int32_t)srs_indication->timing_advance_offset - 31) * ((int32_t)TC_NSEC_x32768)) >> 15) : 0xFFFF;
         switch (srs_pdu->srs_parameters_v4.usage) {
@@ -1134,13 +1138,13 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
 
 	  case NFAPI_NR_SRS_LOCALIZATION: {
 	    // this is a custom usage not in the standard
-	    // we send Timing advance offset in nanoseconds for each TRP (= antenna)
+	    // we send Timing advance offset in nanoseconds for each TRP (= RX antenna)
 
 	    uint8_t *pWritePackedMessage = (uint8_t*) report_tlv->value;
 	    uint8_t *end = (uint8_t*) report_tlv->value + sizeof(report_tlv->value);
 
-	    for (int p_index = 0; p_index < N_ap; p_index++) {
-	      report_tlv->length += push16(srs_toa_ns[p_index],&pWritePackedMessage,end);
+	    for (int arx_index = 0; arx_index < N_ant_rx; arx_index++) {
+	      report_tlv->length += push16(srs_toa_ns[arx_index],&pWritePackedMessage,end);
 	    }
 	    break;
 	  }  

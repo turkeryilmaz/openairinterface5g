@@ -46,8 +46,9 @@
 
 /* Generic function to find the peak of channel estimation buffer */
 int32_t nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
+		          uint8_t N_arx,
 		          uint8_t N_ap,
-			  int32_t srs_estimated_channel_freq[N_ap][frame_parms->ofdm_symbol_size],
+			  int32_t srs_estimated_channel_freq[N_arx][N_ap][frame_parms->ofdm_symbol_size],
 			  int16_t *srs_toa_ns)
 {
 
@@ -59,24 +60,26 @@ int32_t nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
   int32_t max_val = 0, max_idx = 0, abs_val = 0, mean_val = 0;
 
   int16_t start_offset = (NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size)-(frame_parms->ofdm_symbol_size>>1);
+
+  for (int arx_index = 0; arx_index < N_arx; arx_index++) {
   
-  for (int p_index = 0; p_index < N_ap; p_index++) {
+    for (int ap_index = 0; ap_index < N_ap; ap_index++) {
     
-    // Place SRS channel estimates in FFT shifted format for oversampling
-    memcpy((int16_t *)&chF_interpol[p_index][0], &srs_estimated_channel_freq[p_index][0], (frame_parms->ofdm_symbol_size>>1) * sizeof(int32_t));
-    memcpy((int16_t *)&chF_interpol[p_index][start_offset], &srs_estimated_channel_freq[p_index][frame_parms->ofdm_symbol_size>>1], (frame_parms->ofdm_symbol_size>>1) * sizeof(int32_t));
-    
-    // Convert to time domain oversampled
-    freq2time(frame_parms->ofdm_symbol_size*NR_SRS_IDFT_OVERSAMP_FACTOR,
-	      (int16_t*) chF_interpol[p_index],
-	      (int16_t*) chT_interpol[p_index]);
-  }
+      // Place SRS channel estimates in FFT shifted format for oversampling
+      memcpy((int16_t *)&chF_interpol[ap_index][0], &srs_estimated_channel_freq[arx_index][ap_index][0], (frame_parms->ofdm_symbol_size>>1) * sizeof(int32_t));
+      memcpy((int16_t *)&chF_interpol[ap_index][start_offset], &srs_estimated_channel_freq[arx_index][ap_index][frame_parms->ofdm_symbol_size>>1], (frame_parms->ofdm_symbol_size>>1) * sizeof(int32_t));
+      
+      // Convert to time domain oversampled
+      freq2time(frame_parms->ofdm_symbol_size*NR_SRS_IDFT_OVERSAMP_FACTOR,
+		(int16_t*) chF_interpol[ap_index],
+		(int16_t*) chT_interpol[ap_index]);
+    }
 
 
-  for (int p_index = 0; p_index < N_ap; p_index++) {
     for(int k = 0; k < NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size; k++) {
       abs_val = 0;
-      abs_val += squaredMod(((c16_t*)chT_interpol[p_index])[k]);
+      for (int p_index = 0; p_index < N_ap; p_index++) 
+	abs_val += squaredMod(((c16_t*)chT_interpol[p_index])[k]);
       mean_val += (abs_val - mean_val)/(k+1);
       if(abs_val > max_val) {
 	  max_val = abs_val;
@@ -88,11 +91,11 @@ int32_t nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
       max_idx = max_idx - NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size;
 
     // Check for detection threshold
-    LOG_D(PHY, "SRS ToA estimator (ant %d): max_val %d, mean_val %d, max_idx %d\n", p_index, max_val, mean_val, max_idx);
+    LOG_D(PHY, "SRS ToA estimator (RX ant %d): max_val %d, mean_val %d, max_idx %d\n", arx_index, max_val, mean_val, max_idx);
     if ((mean_val != 0) && (max_val / mean_val > 10)) {
-      srs_toa_ns[p_index] = (max_idx*1e9)/(NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->samples_per_frame*100);
+      srs_toa_ns[arx_index] = (max_idx*1e9)/(NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->samples_per_frame*100);
     } else {
-      srs_toa_ns[p_index] = 0xFFFF;
+      srs_toa_ns[arx_index] = 0xFFFF;
     }
   }
   
