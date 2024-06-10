@@ -251,6 +251,7 @@ typedef enum {
 
 typedef struct gNB_RRC_UE_s {
   drb_t                              established_drbs[MAX_DRBS_PER_UE];
+  uint8_t                            DRB_active[MAX_DRBS_PER_UE];
   NR_DRB_ToReleaseList_t            *DRB_ReleaseList;
 
   NR_SRB_INFO_TABLE_ENTRY Srb[NR_NUM_SRB];
@@ -437,6 +438,8 @@ typedef struct gNB_RRC_INST_s {
 
   RB_HEAD(rrc_neigh_cell_tree, nr_rrc_neighcells_container_t) neighs; // Neighbouring cells, indexed by assoc_id
   size_t num_neighs;
+  instance_t                                          f1_instance;
+
 } gNB_RRC_INST;
 
 #include "nr_rrc_proto.h" //should be put here otherwise compilation error

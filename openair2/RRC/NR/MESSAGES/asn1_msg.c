@@ -146,6 +146,7 @@
 #include "cmake_targets/ran_build/build/openair2/RRC/NR/MESSAGES/NR_HandoverPreparationInformation.h"
 #include "cmake_targets/ran_build/build/openair2/RRC/NR/MESSAGES/NR_HandoverPreparationInformation-IEs.h"
 #include "cmake_targets/ran_build/build/openair2/RRC/NR/MESSAGES/NR_UE-CapabilityRAT-Container.h"
+#include "NR_HandoverCommand.h"
 
 //#define XER_PRINT
 
@@ -1271,5 +1272,32 @@ int do_NRHandoverPreparation(char *ho_buf, int ho_size, NR_UE_NR_Capability_t  *
   AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
                enc_rval.failed_type->name, enc_rval.encoded);
   return((enc_rval.encoded+7)/8);
+}
+
+
+int16_t do_NR_HandoverCommand(uint8_t *ho_buf, int16_t ho_size, uint8_t *rrc_buffer, int16_t rrc_size) {
+
+  NR_HandoverCommand_t *ho_command = calloc(1,sizeof(NR_HandoverCommand_t));
+  ho_command->criticalExtensions.present = NR_HandoverCommand__criticalExtensions_PR_c1;
+  ho_command->criticalExtensions.choice.c1 = calloc(1,sizeof(struct NR_HandoverCommand__criticalExtensions__c1));
+  ho_command->criticalExtensions.choice.c1->present = NR_HandoverCommand__criticalExtensions__c1_PR_handoverCommand;
+  ho_command->criticalExtensions.choice.c1->choice.handoverCommand = calloc(1,sizeof(struct NR_HandoverCommand_IEs));
+
+  AssertFatal(OCTET_STRING_fromBuf(&ho_command->criticalExtensions.choice.c1->choice.handoverCommand->handoverCommandMessage, (char *)rrc_buffer, rrc_size) != -1,
+              "fatal: OCTET_STRING_fromBuf failed\n");
+
+
+  xer_fprint(stdout,&asn_DEF_NR_HandoverCommand, ho_command);
+
+  asn_enc_rval_t enc_rval = uper_encode_to_buffer(&asn_DEF_NR_HandoverCommand,
+                                                  NULL,
+                                                  ho_command,
+                                                  ho_buf,
+                                                  ho_size);
+
+  AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
+              enc_rval.failed_type->name, enc_rval.encoded);
+
+  return ((enc_rval.encoded+7)/8);
 }
 

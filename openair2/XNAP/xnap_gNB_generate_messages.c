@@ -48,6 +48,13 @@
 #include "XNAP_NonDynamic5QIDescriptor.h"
 #include "XNAP_Dynamic5QIDescriptor.h"
 #include "xnap_ids.h"
+#include "NR_HandoverCommand.h"
+#include "NR_CellGroupConfig.h"
+#include "NR_RRCReconfiguration-IEs.h"
+#include "NR_SpCellConfig.h"
+#include "NR_ReconfigurationWithSync.h"
+#include "NR_DL-DCCH-Message.h"
+#include "SIMULATION/TOOLS/sim.h"
 
 int xnap_gNB_generate_xn_setup_request(sctp_assoc_t assoc_id, xnap_setup_req_t *req)
 {
@@ -806,7 +813,7 @@ int xnap_gNB_generate_xn_handover_request (sctp_assoc_t assoc_id, xnap_handover_
   ie->id = XNAP_ProtocolIE_ID_id_sourceNG_RANnodeUEXnAPID;
   ie->criticality = XNAP_Criticality_reject;
   ie->value.present = XNAP_HandoverRequest_IEs__value_PR_NG_RANnodeUEXnAPID;
- // ie->value.choice.UE_XnAP_ID = xnap_id_get_id_source(&instance_p->id_manager, ue_id);//// value to be added.
+  ie->value.choice.NG_RANnodeUEXnAPID = xnap_handover_req->s_ng_node_ue_xnap_id;//// value to be added.
   asn1cSeqAdd(&xnhandoverreq->protocolIEs.list, ie);
 
   /* mandatory */
@@ -962,6 +969,116 @@ if (xnap_gNB_encode_pdu(&pdu, &buffer, &len) < 0) {
   return ret;
 }
 
+
+int xnap_gNB_ho_cell_group_config(xnap_handover_req_ack_t *xnhandover_ack,uint8_t *buffer,size_t buffer_size)
+{
+  //NR_ServingCellConfigCommon_t *scc;
+  NR_RRCReconfiguration_IEs_t                      *ie;
+  NR_DL_DCCH_Message_t                             dl_dcch_msg={0};
+  asn_enc_rval_t                                   enc_rval;
+  //NR_FreqBandIndicatorNR_t                        *dl_frequencyBandList,*ul_frequencyBandList;
+  //struct NR_SCS_SpecificCarrier                   *dl_scs_SpecificCarrierList,*ul_scs_SpecificCarrierList;
+  dl_dcch_msg.message.present            = NR_DL_DCCH_MessageType_PR_c1;
+  asn1cCalloc(dl_dcch_msg.message.choice.c1, c1);//          = CALLOC(1, sizeof(struct NR_DL_DCCH_MessageType__c1));
+  c1->present = NR_DL_DCCH_MessageType__c1_PR_rrcReconfiguration;
+
+  asn1cCalloc(c1->choice.rrcReconfiguration, rrcReconf); // = calloc(1, sizeof(NR_RRCReconfiguration_t));
+  //rrcReconf->rrc_TransactionIdentifier = Transaction_id;
+  rrcReconf->criticalExtensions.present = NR_RRCReconfiguration__criticalExtensions_PR_rrcReconfiguration;
+  ie = (NR_RRCReconfiguration_IEs_t *)calloc(1, sizeof(NR_RRCReconfiguration_IEs_t));
+  ie->nonCriticalExtension = calloc(1, sizeof(NR_RRCReconfiguration_v1530_IEs_t));
+  ie->nonCriticalExtension->masterCellGroup = calloc(1,sizeof(OCTET_STRING_t));
+
+  uint8_t *buf = NULL;
+
+  NR_CellGroupConfig_t *cell_group_config = CALLOC(1,sizeof(NR_CellGroupConfig_t));
+  cell_group_config->spCellConfig = CALLOC(1,sizeof(NR_SpCellConfig_t));
+  cell_group_config->spCellConfig->reconfigurationWithSync = CALLOC(1,sizeof(NR_ReconfigurationWithSync_t));
+  NR_ReconfigurationWithSync_t *reconfigurationWithSync = cell_group_config->spCellConfig->reconfigurationWithSync;
+ //NR_ReconfigurationWithSync_t *reconfigurationWithSync = calloc(1, sizeof(*NR_ReconfigurationWithSync_t));
+  cell_group_config->spCellConfig->reconfigurationWithSync->spCellConfigCommon = CALLOC(1,sizeof(NR_ServingCellConfigCommon_t));
+  NR_ServingCellConfigCommon_t *scc = cell_group_config->spCellConfig->reconfigurationWithSync->spCellConfigCommon;
+ // NR_CellGroupConfig_t *secondaryCellGroup = calloc(1, sizeof(*secondaryCellGroup));
+
+  //reconfigurationWithSync->spCellConfigCommon = (NR_ServingCellConfigCommon_t *)scc;
+  reconfigurationWithSync->newUE_Identity = taus() & 0xffff;
+  reconfigurationWithSync->t304 = NR_ReconfigurationWithSync__t304_ms2000;
+  reconfigurationWithSync->rach_ConfigDedicated = NULL;
+
+  scc->physCellId                                = CALLOC(1,sizeof(NR_PhysCellId_t));
+  *scc->physCellId                               = 0;
+  /*==scc->dmrs_TypeA_Position=NR_ServingCellConfigCommon__dmrs_TypeA_Position_pos2;
+  scc->downlinkConfigCommon                      = CALLOC(1,sizeof(NR_DownlinkConfigCommon_t));
+  scc->downlinkConfigCommon->frequencyInfoDL     = CALLOC(1,sizeof(NR_FrequencyInfoDL_t));
+  scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB     = CALLOC(1,sizeof(NR_ARFCN_ValueNR_t));
+  *scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB    = 641280;
+  scc->ss_PBCH_BlockPower=20;
+ ==*/
+  xer_fprint(stdout, &asn_DEF_NR_CellGroupConfig, (const void *) cell_group_config);
+  ssize_t len = uper_encode_to_new_buffer(&asn_DEF_NR_CellGroupConfig, NULL, cell_group_config, (void **)&buf);
+  AssertFatal(len > 0, "ASN1 message encoding failed (%lu)!\n", len);
+  //if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
+  //xer_fprint(stdout, &asn_DEF_NR_CellGroupConfig, (const void *) cell_group_config);
+  //}
+  ie->nonCriticalExtension->masterCellGroup = calloc(1,sizeof(OCTET_STRING_t));
+  ie->nonCriticalExtension->masterCellGroup->buf = buf;
+  ie->nonCriticalExtension->masterCellGroup->size = len;
+  dl_dcch_msg.message.choice.c1->choice.rrcReconfiguration->criticalExtensions.choice.rrcReconfiguration = ie;
+
+  xer_fprint(stdout, &asn_DEF_NR_DL_DCCH_Message, (void *)&dl_dcch_msg);
+    if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
+      xer_fprint(stdout, &asn_DEF_NR_DL_DCCH_Message, (void *)&dl_dcch_msg);
+    }
+
+    enc_rval = uper_encode_to_buffer(&asn_DEF_NR_DL_DCCH_Message,
+                                     NULL,
+                                     (void *)&dl_dcch_msg,
+                                     buffer,
+                                     buffer_size);
+
+    AssertFatal(enc_rval.encoded >0, "ASN1 message encoding failed (%s, %lu)!\n",
+                enc_rval.failed_type->name, enc_rval.encoded);
+    
+/*    LOG_I(XNAP,"Before Free\n");
+    xer_fprint(stdout, &asn_DEF_NR_DL_DCCH_Message, (void *)&dl_dcch_msg);
+    ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_NR_DL_DCCH_Message, &dl_dcch_msg);
+
+    LOG_I(XNAP,"After Free\n");
+    xer_fprint(stdout, &asn_DEF_NR_DL_DCCH_Message, (void *)&dl_dcch_msg);
+*/
+    LOG_I(NR_RRC,
+          "RRCReconfiguration for UE : Encoded %zd bits (%zd bytes)\n",
+          enc_rval.encoded,
+          (enc_rval.encoded + 7) / 8);
+
+    return((enc_rval.encoded+7)/8);
+}
+
+/*int16_t handover_command(uint8_t *ho_buf, int16_t ho_size, uint8_t *rrc_buffer, int16_t rrc_size) {
+
+  NR_HandoverCommand_t *ho_command = calloc(1,sizeof(NR_HandoverCommand_t));
+  ho_command->criticalExtensions.present = NR_HandoverCommand__criticalExtensions_PR_c1;
+  ho_command->criticalExtensions.choice.c1 = calloc(1,sizeof(struct NR_HandoverCommand__criticalExtensions__c1));
+  ho_command->criticalExtensions.choice.c1->present = NR_HandoverCommand__criticalExtensions__c1_PR_handoverCommand;
+  ho_command->criticalExtensions.choice.c1->choice.handoverCommand = calloc(1,sizeof(struct NR_HandoverCommand_IEs));
+
+  AssertFatal(OCTET_STRING_fromBuf(&ho_command->criticalExtensions.choice.c1->choice.handoverCommand->handoverCommandMessage, (char *)rrc_buffer, rrc_size) != -1,
+              "fatal: OCTET_STRING_fromBuf failed\n");
+
+  xer_fprint(stdout,&asn_DEF_NR_HandoverCommand, ho_command);
+
+  asn_enc_rval_t enc_rval = uper_encode_to_buffer(&asn_DEF_NR_HandoverCommand,
+                                                  NULL,
+                                                  ho_command,
+                                                  ho_buf,
+                                                  ho_size);
+
+  AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
+              enc_rval.failed_type->name, enc_rval.encoded);
+
+  return ((enc_rval.encoded+7)/8);
+}
+*/
 int xnap_gNB_generate_xn_handover_request_ack(sctp_assoc_t assoc_id, xnap_handover_req_ack_t *xnap_handover_req_ack,instance_t instance)
 {
   XNAP_XnAP_PDU_t                     pdu;
@@ -971,19 +1088,15 @@ int xnap_gNB_generate_xn_handover_request_ack(sctp_assoc_t assoc_id, xnap_handov
   int                                    ue_id;
   int                                    id_source;
   //int                                    id_target;
-  
+  uint8_t rrc_buffer[RRC_BUF_SIZE];
+  uint8_t *rrc_buff =  calloc(1, RRC_BUF_SIZE*sizeof(uint8_t));
   uint8_t  *buffer;
   uint32_t  len;
   int       ret = 0;
   //xnap_gNB_instance_t *instance_p;
   //xnap_gNB_instance_t *xnap_gNB_get_instance(instance_t instanceP);
   //xnap_gNB_instance_t *instance_p = xnap_gNB_get_instance(instance);
-  xnap_handover_req_ack->xn_id_target = 1;
-  ue_id     =  xnap_handover_req_ack->xn_id_target;
-  printf("%d \n",ue_id);
-  id_source = 0; //xnap_id_get_id_source(&instance_p->id_manager, ue_id);
-  //id_target = 1; //ue_id;
-
+  
   memset(&pdu, 0, sizeof(pdu));
   pdu.present = XNAP_XnAP_PDU_PR_successfulOutcome;
   pdu.choice.successfulOutcome = (XNAP_SuccessfulOutcome_t *)calloc(1, sizeof(XNAP_SuccessfulOutcome_t));
@@ -997,28 +1110,59 @@ int xnap_gNB_generate_xn_handover_request_ack(sctp_assoc_t assoc_id, xnap_handov
   ie->criticality = XNAP_Criticality_ignore;
   ie->value.present = XNAP_HandoverRequest_IEs__value_PR_NG_RANnodeUEXnAPID;
  // ie->value.choice.UE_XnAP_ID = xnap_id_get_id_source(&instance_p->id_manager, ue_id);//// value to be added.
-  ie->value.choice.NG_RANnodeUEXnAPID = id_source;
+  ie->value.choice.NG_RANnodeUEXnAPID = xnap_handover_req_ack->s_ng_node_ue_xnap_id;//id_source;
   asn1cSeqAdd(&xnhandoverreqAck->protocolIEs.list, ie);
-/*
+
   ie = (XNAP_HandoverRequestAcknowledge_IEs_t *)calloc(1, sizeof(XNAP_HandoverRequestAcknowledge_IEs_t));
   ie->id = XNAP_ProtocolIE_ID_id_targetNG_RANnodeUEXnAPID;
   ie->criticality = XNAP_Criticality_ignore;
-  //ie->value.present = XNAP_HandoverRequest_IEs__value_PR_NG_RANnodeUEXnAPID_1;
-  ie->value.choice.NG_RANnodeUEXnAPID_1 = id_target;
+  ie->value.present = XNAP_HandoverRequestAcknowledge_IEs__value_PR_NG_RANnodeUEXnAPID_1;
+  ie->value.choice.NG_RANnodeUEXnAPID_1 = xnap_handover_req_ack->t_ng_node_ue_xnap_id;//id_target;
   asn1cSeqAdd(&xnhandoverreqAck->protocolIEs.list, ie);
 
-//  ie = (XNAP_HandoverRequestAcknowledge_IEs_t *)calloc(1, sizeof(XNAP_HandoverRequestAcknowledge_IEs_t));
- // ie->id = XNAP_ProtocolIE_ID_id_PDUSessionAdmittedAddedAddReqAck;
- // ie->criticality = XNAP_Criticality_ignore;
+/*  ie = (XNAP_HandoverRequestAcknowledge_IEs_t *)calloc(1, sizeof(XNAP_HandoverRequestAcknowledge_IEs_t));
+  ie->id = XNAP_ProtocolIE_ID_id_PDUSessionAdmittedAddedAddReqAck;
+  ie->criticality = XNAP_Criticality_ignore;
 */
+  //NR_HandoverCommand_t *ho_command = calloc(1,sizeof(NR_HandoverCommand_t));
+  uint8_t rrc_reconf_containing_cell_group = xnap_gNB_ho_cell_group_config(xnap_handover_req_ack,rrc_buffer,RRC_BUF_SIZE);
+  ie = (XNAP_HandoverRequestAcknowledge_IEs_t *)calloc(1, sizeof(XNAP_HandoverRequestAcknowledge_IEs_t));
+  ie->id =  XNAP_ProtocolIE_ID_id_Target2SourceNG_RANnodeTranspContainer;
+  ie->criticality= XNAP_Criticality_ignore;
+  ie->value.present = XNAP_HandoverRequestAcknowledge_IEs__value_PR_OCTET_STRING;
+  //ie->value.choice.OCTET_STRING.buf = (uint8_t *)calloc(xnap_handover_req_ack->rrc_buffer_size, sizeof(uint8_t));
+  //ie->value.choice.OCTET_STRING.buf = (uint8_t *)calloc(1,RRC_BUF_SIZE*sizeof(uint8_t));
+  memcpy(ie->value.choice.OCTET_STRING.buf, rrc_buffer,rrc_reconf_containing_cell_group);
+ // ie->value.choice.OCTET_STRING.size = xnap_handover_req_ack->rrc_buffer_size;
+ // OCTET_STRING_fromBuf(&ie->value.choice.OCTET_STRING, (char*)rrc_buffer, RRC_BUF_SIZE);
+ // OCTET_STRING_fromBuf(&ie->value.choice.OCTET_STRING, (char*) xnap_handover_req_ack->rrc_buffer, xnap_handover_req_ack->rrc_buffer_size);
 
-if (xnap_gNB_encode_pdu(&pdu, &buffer, &len) < 0) {
-   LOG_E(XNAP,"Failed to encode XN handover request ack\n");
+
+
+
+
+//  uint8_t rrc_reconf_containing_cell_group = xnap_gNB_ho_cell_group_config(xnap_handover_req_ack,rrc_buffer,RRC_BUF_SIZE);
+  //rrc_reconfig_msg= from asn?
+  //fill rrc_reconfig_buffer = buf from msg(rrc_reconfig_msg);---------------->generate_ho_rrc_reconfig+do_rrc_reconfig
+//  NR_HandoverCommand_t *ho_command = calloc(1,sizeof(NR_HandoverCommand_t));
+ // ho_command->criticalExtensions.present = NR_HandoverCommand__criticalExtensions_PR_c1;
+//  ho_command->criticalExtensions.choice.c1 = calloc(1,sizeof(struct NR_HandoverCommand__criticalExtensions__c1));
+//  ho_command->criticalExtensions.choice.c1->present = NR_HandoverCommand__criticalExtensions__c1_PR_handoverCommand;
+//  ho_command->criticalExtensions.choice.c1->choice.handoverCommand = calloc(1,sizeof(struct NR_HandoverCommand_IEs));
+  //OCTET_STRING_fromBuf(&ho_command->criticalExtensions.choice.c1->choice.handoverCommand->handoverCommandMessage, (char *)rrc_reconfig_buffer, rrc_reconfig_size);
+//  OCTET_STRING_fromBuf(&ho_command->criticalExtensions.choice.c1->choice.handoverCommand->handoverCommandMessage, (char *)rrc_buffer, rrc_reconf_containing_cell_group);
+  //fill rrc_ho_command_buff = buf from msg (ho_command); ---->do_ho_command;
+//  int16_t ho_size = handover_command(rrc_buff,RRC_BUF_SIZE,rrc_buffer,rrc_reconf_containing_cell_group);
+  //OCTET_STRING_fromBuf(&ie->value.choice.OCTET_STRING, (char*)rrc_ho_command_buffer, rrc_size);
+  //OCTET_STRING_fromBuf(&ie->value.choice.OCTET_STRING, (char*)rrc_buff ,ho_size);
+
+  asn1cSeqAdd(&xnhandoverreqAck->protocolIEs.list, ie);
+
+  if (xnap_gNB_encode_pdu(&pdu, &buffer, &len) < 0) {
+    LOG_E(XNAP,"Failed to encode XN handover request ack\n");
     return -1;
   }
 
-
-
-xnap_gNB_itti_send_sctp_data_req(assoc_id, buffer, len, 0);
-return ret;
+  xnap_gNB_itti_send_sctp_data_req(assoc_id, buffer, len, 0);
+  return ret;
 }

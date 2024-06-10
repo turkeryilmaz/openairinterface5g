@@ -423,6 +423,12 @@ typedef struct f1ap_ue_context_setup_s {
   ReconfigurationCompl_t ReconfigComplOutcome;
   uint8_t *rrc_container;
   int      rrc_container_length;
+  uint16_t mcc;
+  uint16_t mnc;
+  uint8_t  mnc_digit_length;
+  uint16_t *crnti;
+  uint8_t *transmission_action_indicator;
+
 } f1ap_ue_context_setup_t, f1ap_ue_context_modif_req_t, f1ap_ue_context_modif_resp_t;
 
 typedef enum F1ap_Cause_e {
@@ -439,6 +445,7 @@ typedef struct f1ap_ue_context_modif_required_t {
   du_to_cu_rrc_information_t *du_to_cu_rrc_information;
   f1ap_Cause_t cause;
   long cause_value;
+  uint8_t *transmission_action_indicator; //not sure
 } f1ap_ue_context_modif_required_t;
 
 typedef struct f1ap_ue_context_modif_confirm_t {

@@ -43,7 +43,7 @@ typedef enum {
 } xnid_state_t;
 
 typedef struct {
-  int           rnti;             /* -1 when free */
+  int           cu_ue_id;             /* -1 when free */
   int           id_source;
   int           id_target;
 
@@ -81,7 +81,8 @@ void xnap_set_dc_prep_timer(xnap_id_manager *m, int ue_id, uint64_t time);
 void xnap_set_dc_overall_timer(xnap_id_manager *m, int ue_id, uint64_t time);
 int xnap_id_get_id_source(xnap_id_manager *m, int ue_id);
 int xnap_id_get_id_target(xnap_id_manager *m, int ue_id);
-int xnap_id_get_rnti(xnap_id_manager *m, int ue_id);
+int xnap_id_get_ueid(xnap_id_manager *m, int xn_id);
+//int xnap_id_get_rnti(xnap_id_manager *m, int ue_id);
 void *xnap_id_get_target(xnap_id_manager *m, int ue_id);
 
 #endif /* X2AP_IDS_H_ */

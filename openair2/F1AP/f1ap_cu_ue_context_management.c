@@ -574,6 +574,7 @@ int CU_send_UE_CONTEXT_SETUP_REQUEST(sctp_assoc_t assoc_id, f1ap_ue_context_setu
   //   return -1;
   // }
   LOG_D(F1AP,"F1AP UEContextSetupRequest Encoded %u bits\n", len);
+  LOG_I(F1AP,"F1AP UEContextSetupRequest Encoded %u bits\n", len);
   f1ap_itti_send_sctp_data_req(assoc_id, buffer, len);
   return 0;
 }

@@ -269,9 +269,10 @@ typedef struct xnap_ue_context_info_s {
 } xnap_ue_context_info_t;
 
 typedef struct xnap_handover_req_s {
-  int rnti; /* used for RRC->XNAP in source */
-  int xn_id;  /* used for XNAP->RRC in target*/
-  uint32_t ng_node_ue_xnap_id;
+  int ue_id; /* used for RRC->XNAP in source */
+  //int xn_id;  /* used for XNAP->RRC in target*/
+  uint32_t s_ng_node_ue_xnap_id;
+  uint32_t t_ng_node_ue_xnap_id;
   xnap_plmn_t plmn_id;
   xnap_Cause_t cause_type;
   xnap_ngran_cgi_t target_cgi;
@@ -280,14 +281,16 @@ typedef struct xnap_handover_req_s {
 } xnap_handover_req_t;
 
 typedef struct xnap_handover_req_ack_s {
-  uint32_t ng_node_ue_xnap_id;
-  int rnti;
-  int xn_id_target;
+  int ue_id;
+  uint32_t s_ng_node_ue_xnap_id;
+  uint32_t t_ng_node_ue_xnap_id;
   xnap_ngran_cgi_t target_cgi;
   xnap_plmn_t plmn_id;
   xnap_guami_t guami;
   xnap_ue_context_info_t ue_context;
   xnap_uehistory_info_t uehistory_info;
+  uint8_t rrc_buffer[8192];
+  int rrc_buffer_size;
 } xnap_handover_req_ack_t;
 
 typedef struct xnap_handover_req_failure_s{

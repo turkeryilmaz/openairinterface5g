@@ -288,7 +288,7 @@ int DU_handle_UE_CONTEXT_SETUP_REQUEST(instance_t instance, sctp_assoc_t assoc_i
   } else {
     LOG_W(F1AP, "can't find RRCContainer in UEContextSetupRequestIEs by id %ld \n", F1AP_ProtocolIE_ID_id_RRCContainer);
   }
-
+  LOG_I(F1AP, "F1AP UE context setup handled in DU\n");
   ue_context_setup_request(f1ap_ue_context_setup_req);
   return 0;
 }

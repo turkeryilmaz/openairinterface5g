@@ -344,7 +344,7 @@ int xnap_gNB_handle_handover_request(instance_t instance, sctp_assoc_t assoc_id,
 	xnap_gNB_instance_t      *instance_p;
         xnap_id_manager     *id_manager;
 	//xnap_gNB_data_t          *xnap_gNB_data;
-        int ue_id;
+        int xn_id;
 
         instance_p = xnap_gNB_get_instance(instance);
 
@@ -372,25 +372,26 @@ int xnap_gNB_handle_handover_request(instance_t instance, sctp_assoc_t assoc_id,
    	LOG_E(XNAP, "XNAP_ProtocolIE_ID_id_sourceNG_RANnodeUEXnAPID, is NULL pointer \n");
     	return -1;
   	}else{
-	  LOG_I(XNAP, "ue xnap id %d \n", req->ng_node_ue_xnap_id);
+	  req->s_ng_node_ue_xnap_id = ie->value.choice.NG_RANnodeUEXnAPID;
+	  LOG_I(XNAP, "ue xnap id %d \n", req->s_ng_node_ue_xnap_id);
 
         }
 
 
        id_manager = &instance_p->id_manager;
        xnap_id_manager_init(id_manager);
-       ue_id = xnap_allocate_new_id(id_manager);
+       xn_id = xnap_allocate_new_id(id_manager);
 
-          if (ue_id == -1) {
+          if (xn_id == -1) {
                 LOG_E(XNAP,"could not allocate a new XNAP UE ID\n");
                 /* TODO: cancel handover: send HO preparation failure to source eNB */
                 exit(1);
 	  }
 
-	xnap_set_ids(&instance_p->id_manager, ue_id, 0, ie->value.choice.NG_RANnodeUEXnAPID, ue_id);
-        xnap_id_set_state(&instance_p->id_manager, ue_id, XNID_STATE_TARGET);
+	//xnap_set_ids(&instance_p->id_manager, xn_id , 0, req->s_ng_node_ue_xnap_id, xn_id);
+        //xnap_id_set_state(&instance_p->id_manager, xn_id, XNID_STATE_TARGET);
 
-  	XNAP_HANDOVER_REQ(message_p).xn_id = ue_id;
+  	req->t_ng_node_ue_xnap_id = xn_id;
 
         /*// Target Cell Global ID
         XNAP_FIND_PROTOCOLIE_BY_ID(XNAP_HandoverRequest_IEs_t, ie, xnHandoverRequest, XNAP_ProtocolIE_ID_id_TargetCellCGI,true);
@@ -428,27 +429,26 @@ int xnap_gNB_handle_handover_response(instance_t instance, sctp_assoc_t assoc_id
        XNAP_HandoverRequestAcknowledge_t             *xnHandoverRequestAck;
        XNAP_HandoverRequestAcknowledge_IEs_t         *ie;
        xnap_gNB_instance_t      *instance_p;
-       instance_p = xnap_gNB_get_instance(instance);
+       instance_p = xnap_gNB_get_instance(0);
 
-       //xnap_id_manager     *id_manager;
-       //xnap_gNB_data_t          *xnap_gNB_data;
-       int ue_id;
+       /*xnap_id_manager     *id_manager;
+       xnap_gNB_data_t          *xnap_gNB_data;
+        int ue_id;
         int      id_source;
         int      id_target;
-        int      rnti;
-
+        int      rnti;*/
 
        DevAssert (pdu != NULL);
        xnHandoverRequestAck = &pdu->choice.successfulOutcome->value.choice.HandoverRequestAcknowledge;
-
+/*
 if (stream == 0) {
     LOG_E(XNAP,"Received new xn handover response on stream == 0\n");
     return 0;
   }
-
+*/
         MessageDef *message_p = itti_alloc_new_message(TASK_XNAP, 0, XNAP_HANDOVER_REQ_ACK);
         message_p->ittiMsgHeader.originInstance = assoc_id;
-        //xnap_handover_req_ack_t *req = &XNAP_HANDOVER_REQ_ACK(message_p);
+        xnap_handover_req_ack_t *ack = &XNAP_HANDOVER_REQ_ACK(message_p);
 
         //Source NG-RAN node UE XnAP ID
         XNAP_FIND_PROTOCOLIE_BY_ID(XNAP_HandoverRequestAcknowledge_IEs_t, ie, xnHandoverRequestAck, XNAP_ProtocolIE_ID_id_sourceNG_RANnodeUEXnAPID, true);
@@ -458,16 +458,35 @@ if (stream == 0) {
        return -1;
        }
         
-
-
-       id_source = ie->value.choice.NG_RANnodeUEXnAPID;
-       XNAP_FIND_PROTOCOLIE_BY_ID(XNAP_HandoverRequestAcknowledge_IEs_t, ie, xnHandoverRequestAck, XNAP_ProtocolIE_ID_id_targetCellGlobalID, true);
+        ack->s_ng_node_ue_xnap_id = ie->value.choice.NG_RANnodeUEXnAPID;
+       
+      /* XNAP_FIND_PROTOCOLIE_BY_ID(XNAP_HandoverRequestAcknowledge_IEs_t, ie, xnHandoverRequestAck, XNAP_ProtocolIE_ID_id_targetCellGlobalID, true);
        if (ie == NULL) {
         LOG_E(XNAP, "XNAP_ProtocolIE_ID_id_targetCellGlobalID, is NULL pointer \n");
         itti_free(ITTI_MSG_ORIGIN_ID(message_p),message_p);
        return -1;
        }
+*/
 
+       XNAP_FIND_PROTOCOLIE_BY_ID(XNAP_HandoverRequestAcknowledge_IEs_t, ie, xnHandoverRequestAck, XNAP_ProtocolIE_ID_id_Target2SourceNG_RANnodeTranspContainer, true);
+       if (ie == NULL) {
+        LOG_E(XNAP, "iXNAP_ProtocolIE_ID_id_Target2SourceNG_RANnodeTranspContainer is NULL pointer \n");
+        itti_free(ITTI_MSG_ORIGIN_ID(message_p),message_p);
+       return -1;
+       }
+
+       OCTET_STRING_t *c = &ie->value.choice.OCTET_STRING;
+       if (c->size > 1024){
+         LOG_I(XNAP,"c is not NULL");
+       }
+       //{ printf("%s:%d: fatal: buffer too big\n", __FILE__, __LINE__); abort(); }
+     
+       memcpy(ack->rrc_buffer, c->buf, c->size);
+       ack->rrc_buffer_size = c->size;
+      
+      //memcpy(XNAP_HANDOVER_REQ_ACK(message_p).rrc_buffer, ie->value.choice.OCTET_STRING.buf, ie->value.choice.OCTET_STRING.size);
+      //XNAP_HANDOVER_REQ_ACK(message_p).rrc_buffer_size = ie->value.choice.OCTET_STRING.size;
+/*
        id_target = ie->value.choice.NG_RANnodeUEXnAPID_1;
        ue_id = id_source;
 
@@ -482,7 +501,7 @@ if (stream == 0) {
         //xnap_set_reloc_overall_timer(&instance_p->id_manager, ue_id,xnap_timer_get_tti(&instance_p->timers));
 
        XNAP_HANDOVER_REQ_ACK(message_p).rnti = rnti;
-
+*/
        itti_send_msg_to_task(TASK_RRC_GNB, instance_p->instance, message_p);
        return 0;
 

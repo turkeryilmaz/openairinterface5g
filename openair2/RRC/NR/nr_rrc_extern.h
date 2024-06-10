@@ -34,5 +34,7 @@
 #include "COMMON/mac_rrc_primitives.h"
 #include "LAYER2/RLC/rlc.h"
 #include "openair2/RRC/common.h"
+extern uint16_t ho_rnti_map[NUMBER_OF_DU_PER_CU_MAX][4];
+
 void openair_rrc_gNB_configuration(gNB_RRC_INST *rrc, gNB_RrcConfigurationReq *configuration);
 #endif

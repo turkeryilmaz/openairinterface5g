@@ -184,6 +184,25 @@ uint8_t get_next_available_drb_id(gNB_RRC_UE_t *ue)
   return DRB_INACTIVE;
 }
 
+uint8_t next_available_drb(gNB_RRC_UE_t *ue, rrc_pdu_session_param_t *pdusession, bool is_gbr)
+{
+  uint8_t drb_id;
+
+  if (0 /*!is_gbr*/) { /* Find if Non-GBR DRB exists in the same PDU Session */
+    for (drb_id = 0; drb_id < MAX_DRBS_PER_UE; drb_id++)
+      if (pdusession->param.used_drbs[drb_id] == DRB_ACTIVE_NONGBR)
+        return drb_id + 1;
+  }
+  /* GBR Flow  or a Non-GBR DRB does not exist in the same PDU Session, find an available DRB */
+  for (drb_id = 0; drb_id < MAX_DRBS_PER_UE; drb_id++)
+    if (ue->DRB_active[drb_id] == DRB_INACTIVE)
+      return drb_id + 1;
+  /* From this point, we need to handle the case that all DRBs are already used by the UE. */
+  LOG_E(RRC, "Error - All the DRBs are used - Handle this\n");
+  return DRB_INACTIVE;
+}
+
+
 bool drb_is_active(gNB_RRC_UE_t *ue, uint8_t drb_id)
 {
   drb_t *drb = get_drb(ue, drb_id);
