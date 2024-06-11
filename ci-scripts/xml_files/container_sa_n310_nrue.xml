@@ -83,8 +83,8 @@
   <testCase id="800814">
       <class>Create_Workspace</class>
       <desc>Creating new Workspace</desc>
-      <eNB_instance>0</eNB_instance>
-      <eNB_serverId>0</eNB_serverId>
+      <eNB_instance>1</eNB_instance>
+      <eNB_serverId>1</eNB_serverId>
   </testCase>
   <testCase id="020001">
     <class>Deploy_Object</class>

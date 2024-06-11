@@ -61,40 +61,7 @@ import cls_oaicitest
 IMAGES = ['oai-enb', 'oai-lte-ru', 'oai-lte-ue', 'oai-gnb', 'oai-nr-cuup', 'oai-gnb-aw2s', 'oai-nr-ue', 'oai-gnb-asan', 'oai-nr-ue-asan', 'oai-nr-cuup-asan', 'oai-gnb-aerial']
 
 def CreateWorkspace(sshSession, sourcePath, ranRepository, ranCommitID, ranTargetBranch, ranAllowMerge):
-	print('-------------------------------------------------- Skipping Old Create Workspace')
-	return
-	if ranCommitID == '':
-		logging.error('need ranCommitID in CreateWorkspace()')
-		sys.exit('Insufficient Parameter in CreateWorkspace()')
-
-	sshSession.command(f'rm -rf {sourcePath}', '\$', 10)
-	sshSession.command('mkdir -p ' + sourcePath, '\$', 5)
-	sshSession.command('cd ' + sourcePath, '\$', 5)
-	# Recent version of git (>2.20?) should handle missing .git extension # without problems
-	if ranTargetBranch == 'null':
-		ranTargetBranch = 'develop'
-	baseBranch = re.sub('origin/', '', ranTargetBranch)
-	sshSession.command(f'git clone --filter=blob:none -n -b {baseBranch} {ranRepository} .', '\$', 60)
-	if sshSession.getBefore().count('error') > 0 or sshSession.getBefore().count('error') > 0:
-		sys.exit('error during clone')
-	sshSession.command('git config user.email "jenkins@openairinterface.org"', '\$', 5)
-	sshSession.command('git config user.name "OAI Jenkins"', '\$', 5)
-
-	sshSession.command('mkdir -p cmake_targets/log', '\$', 5)
-	# if the commit ID is provided use it to point to it
-	sshSession.command(f'git checkout -f {ranCommitID}', '\$', 30)
-	if sshSession.getBefore().count(f'HEAD is now at {ranCommitID[:6]}') != 1:
-		sshSession.command('git log --oneline | head -n5', '\$', 5)
-		logging.warning(f'problems during checkout, is at: {sshSession.getBefore()}')
-	else:
-		logging.debug('successful checkout')
-	# if the branch is not develop, then it is a merge request and we need to do
-	# the potential merge. Note that merge conflicts should already been checked earlier
-	if ranAllowMerge:
-		if ranTargetBranch == '':
-			ranTargetBranch = 'develop'
-		logging.debug(f'Merging with the target branch: {ranTargetBranch}')
-		sshSession.command(f'git merge --ff origin/{ranTargetBranch} -m "Temporary merge for CI"', '\$', 30)
+	logging.info('This Create Workspace Method is depreciated. Please use the new XML Class')
 
 def ImageTagToUse(imageName, ranCommitID, ranBranch, ranAllowMerge):
 	shortCommit = ranCommitID[0:8]
@@ -327,7 +294,6 @@ class Containerize():
 		
 		self.testCase_id = HTML.testCase_id
 	
-		CreateWorkspace(cmd, lSourcePath, self.ranRepository, self.ranCommitID, self.ranTargetBranch, self.ranAllowMerge)
 		cmd.cd(lSourcePath)
 		# if asterix, copy the entitlement and subscription manager configurations
 		if self.host == 'Red Hat':
@@ -526,7 +492,8 @@ class Containerize():
 		self.ranRepository = 'https://github.com/EpiSci/oai-lte-5g-multi-ue-proxy.git'
 		self.ranAllowMerge = False
 		self.ranTargetBranch = 'master'
-		CreateWorkspace(mySSH, lSourcePath, self.ranRepository, self.ranCommitID, self.ranTargetBranch, self.ranAllowMerge)
+		# CreateWorkspace was here
+		mySSH.command('cd ' +lSourcePath, '\$', 3)
 		# to prevent accidentally overwriting data that might be used later
 		self.ranCommitID = oldRanCommidID
 		self.ranRepository = oldRanRepository
@@ -855,8 +822,7 @@ class Containerize():
 		return True
 
 	def Create_Workspace(self):
-		print('-------------------------------new Create Workspace Function')
-		print("running on server id",self.eNB_serverId)
+		logging.info("running on server id",self.eNB_serverId)
 		if self.eNB_serverId[self.eNB_instance] == '0':
 			lIpAddr = self.eNBIPAddress
 			lUserName = self.eNBUserName
@@ -891,9 +857,7 @@ class Containerize():
 
 		sshSession.command(f'rm -rf {sourcePath}', '\$', 10)
 		sshSession.command('mkdir -p ' + sourcePath, '\$', 5)
-		print("------------------------------PRINTING PWD",sshSession.command('pwd','\$',2), sshSession.getBefore())
 		sshSession.cd(sourcePath)
-		print(sshSession.command('pwd','\$',2),sshSession.getBefore())
 		# Recent version of git (>2.20?) should handle missing .git extension # without problems
 		if ranTargetBranch == 'null':
 			ranTargetBranch = 'develop'
@@ -919,7 +883,6 @@ class Containerize():
 				ranTargetBranch = 'develop'
 			logging.debug(f'Merging with the target branch: {ranTargetBranch}')
 			sshSession.command(f'git merge --ff origin/{ranTargetBranch} -m "Temporary merge for CI"', '\$', 30)
-		print('---------------------------------------End of Function new Create_Workspace')
 
 	def DeployObject(self, HTML, EPC):
 		if self.eNB_serverId[self.eNB_instance] == '0':
@@ -944,7 +907,7 @@ class Containerize():
 		self.deployKind[self.eNB_instance] = True
 
 		mySSH = cls_cmd.getConnection(lIpAddr)
-		CreateWorkspace(mySSH, lSourcePath, self.ranRepository, self.ranCommitID, self.ranTargetBranch, self.ranAllowMerge)
+		# CreateWorkspace was here
 
 		mySSH.cd(lSourcePath + '/' + self.yamlPath[self.eNB_instance])
 		mySSH.run('cp docker-compose.y*ml docker-compose-ci.yml', 5)
