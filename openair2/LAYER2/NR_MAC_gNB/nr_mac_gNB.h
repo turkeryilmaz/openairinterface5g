@@ -756,6 +756,8 @@ typedef struct gNB_MAC_INST_s {
   /// Pointer to IF module instance for PHY
   NR_IF_Module_t                  *if_inst;
   pthread_t                       stats_thread;
+  pthread_t                       prb_update_thread;
+  int                             prb_thread_listen_sock;
   /// Pusch target SNR
   int                             pusch_target_snrx10;
   /// Pucch target SNR
@@ -776,6 +778,7 @@ typedef struct gNB_MAC_INST_s {
   uint16_t pdu_index[NFAPI_CC_MAX];
   int num_ulprbbl;
   uint16_t ulprbbl[MAX_BWP_SIZE];
+  uint16_t dyn_prbbl[MAX_BWP_SIZE];
   /// NFAPI Config Request Structure
   nfapi_nr_config_request_scf_t     config[NFAPI_CC_MAX];
   /// a PDCCH PDU groups DCIs per BWP and CORESET. The following structure

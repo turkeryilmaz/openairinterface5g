@@ -189,6 +189,8 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, frame_t frame, sub_frame_
     const int prev_slot = frame * num_slots + slot + size - 1;
     uint16_t *vrb_map_UL = cc[CC_id].vrb_map_UL;
     memcpy(&vrb_map_UL[prev_slot % size * MAX_BWP_SIZE], &gNB->ulprbbl, sizeof(uint16_t) * MAX_BWP_SIZE);
+    // This for downlink PRBs
+    memcpy(&(cc[CC_id].vrb_map), &gNB->ulprbbl, sizeof(uint16_t) * MAX_BWP_SIZE);
 
     clear_nr_nfapi_information(gNB, CC_id, frame, slot, &sched_info->DL_req, &sched_info->TX_req, &sched_info->UL_dci_req);
   }
@@ -197,6 +199,7 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, frame_t frame, sub_frame_
     char stats_output[16000] = {0};
     dump_mac_stats(gNB, stats_output, sizeof(stats_output), true);
     LOG_I(NR_MAC, "Frame.Slot %d.%d\n%s\n", frame, slot, stats_output);
+    nr_update_prb_policy(module_idP, frame, slot);
   }
 
   nr_mac_update_timers(module_idP, frame, slot);
