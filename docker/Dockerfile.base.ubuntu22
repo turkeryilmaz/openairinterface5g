@@ -44,6 +44,11 @@ RUN apt-get update && \
        gcc-12 \
        g++-12 \
        xxd \
+       libpcre2-dev \
+       python3-dev \
+       bison \
+       flex \
+       m4 \
        # python3-pip for conf template generation
        python3-pip && \
     pip3 install --ignore-installed pyyaml && \
