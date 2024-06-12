@@ -86,6 +86,7 @@
                 <class>Attach_UE</class>
                 <desc>Attach OAI UE</desc>
                 <id>l2sim4g_ue</id>
+                <nodes>localhost</nodes>
         </testCase>
 
         <testCase id="020001">
