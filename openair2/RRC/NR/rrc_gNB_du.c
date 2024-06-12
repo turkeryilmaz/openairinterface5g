@@ -19,9 +19,11 @@
  *      contact@openairinterface.org
  */
 
+#include <string.h>
 #include "rrc_gNB_du.h"
 #include "common/ran_context.h"
 #include "nr_rrc_defs.h"
+#include "openair2/LAYER2/BAP/iab_info_management.h"
 #include "rrc_gNB_UE_context.h"
 #include "openair2/F1AP/f1ap_common.h"
 #include "openair2/F1AP/f1ap_ids.h"
@@ -53,6 +55,8 @@ void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *req, sctp_assoc_t assoc_id)
   AssertFatal(assoc_id != 0, "illegal assoc_id == 0: should be -1 (monolithic) or >0 (split)\n");
   gNB_RRC_INST *rrc = RC.nrrrc[0];
   DevAssert(rrc);
+
+  gNB_IAB_INFO *iab = RC.iab[0];
 
   LOG_I(NR_RRC, "Received F1 Setup Request from gNB_DU %lu (%s) on assoc_id %d\n", req->gNB_DU_id, req->gNB_DU_name, assoc_id);
 
@@ -186,13 +190,21 @@ void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *req, sctp_assoc_t assoc_id)
                             .cells_to_activate[0] = cell};
   int num = read_version(TO_STRING(NR_RRC_VERSION), &resp.rrc_ver[0], &resp.rrc_ver[1], &resp.rrc_ver[2]);
   AssertFatal(num == 3, "could not read RRC version string %s\n", TO_STRING(NR_RRC_VERSION));
-  if (rrc->node_name != NULL)
+  if (rrc->node_name != NULL){
     resp.gNB_CU_name = strdup(rrc->node_name);
+  }
+  
+  if(strstr(req->gNB_DU_name, "Donor") != NULL){
+    iab->iab_cu.last_given_bap_address += 1;
+    int new_bap_address = iab->iab_cu.last_given_bap_address;
+    printf("Giving BAP Address = %d\n", new_bap_address);
+    resp.bap_address = new_bap_address;
+  }
 
-  if (req->bap_address != 0){
+  /*if (req->bap_address != 0){
     resp.bap_address = req->bap_address;
     LOG_I(RRC, "Accepted DU has BAPAddress = %d\n", resp.bap_address);
-  }
+  }*/
   
   rrc->mac_rrc.f1_setup_response(assoc_id, &resp);
 

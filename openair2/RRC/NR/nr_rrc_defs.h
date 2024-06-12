@@ -399,7 +399,6 @@ typedef struct gNB_RRC_INST_s {
   ngran_node_t                                        node_type;
   uint32_t                                            node_id;
   char                                               *node_name;
-  uint16_t                                            bap_address;
   int                                                 module_id;
   eth_params_t                                        eth_params_s;
   rrc_gNB_carrier_data_t                              carrier;

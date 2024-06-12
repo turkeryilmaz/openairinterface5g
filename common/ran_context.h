@@ -41,6 +41,7 @@ struct PHY_VARS_gNB_s;
 struct PHY_VARS_eNB_NB_IoT_s;
 struct eNB_RRC_INST_s;
 struct gNB_RRC_INST_s;
+struct gNB_IAB_INFO_s;
 struct eNB_MAC_INST_s;
 struct eNB_MAC_INST_NB_IoT_s;
 struct gNB_MAC_INST_s;
@@ -92,6 +93,8 @@ typedef struct {
   //struct eNB_RRC_INST_NB_IoT_s **nb_iot_rrc;
   /// NR RRC context variables
   struct gNB_RRC_INST_s **nrrrc;
+  /// IAB context variables
+  struct gNB_IAB_INFO_s **iab;
   /// MAC context variables
   struct eNB_MAC_INST_s **mac;
   /// NB_IoT MAC context variables

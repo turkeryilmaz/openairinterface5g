@@ -472,7 +472,7 @@ rb_found:
     //   return;
     // }
 
-    if (NODE_IS_DU(type) || NODE_IS_DU_IAB(type)) {
+    if (NODE_IS_DU(type)) {
       if(is_srb) {
         MessageDef *msg;
         msg = itti_alloc_new_message(TASK_RLC_ENB, 0, F1AP_UL_RRC_MESSAGE);

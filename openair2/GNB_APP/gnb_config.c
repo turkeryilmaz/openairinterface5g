@@ -91,6 +91,7 @@
 #include "RRC/NR/nr_rrc_extern.h"
 #include "openair2/LAYER2/nr_pdcp/nr_pdcp.h"
 #include "nfapi/oai_integration/vendor_ext.h"
+#include "openair2/LAYER2/BAP/bap_oai_api.h"
 
 extern uint16_t sf_ahead;
 
@@ -707,14 +708,7 @@ void RCconfig_verify(configmodule_interface_t *cfg, ngran_node_t node_type)
 
     verify_section_notset(cfg, GNB_CONFIG_STRING_GNB_LIST ".", GNB_CONFIG_STRING_AMF_IP_ADDRESS);
     verify_section_notset(cfg, NULL, CONFIG_STRING_SECURITY);
-  } else if (NODE_IS_DU_IAB(node_type)) {
-    // Equal to normal DU, but might change in the future
-    verify_gnb_param_notset(gnbp, GNB_ENABLE_SDAP_IDX, GNB_CONFIG_STRING_ENABLE_SDAP);
-    verify_gnb_param_notset(gnbp, GNB_DRBS, GNB_CONFIG_STRING_DRBS);
-
-    verify_section_notset(cfg, GNB_CONFIG_STRING_GNB_LIST ".", GNB_CONFIG_STRING_AMF_IP_ADDRESS);
-    verify_section_notset(cfg, NULL, CONFIG_STRING_SECURITY);
-  }
+  } // Maybe add new things for Node_DU and Donor_DU in the future
    
   // else nothing to be checked
 
@@ -1044,11 +1038,10 @@ static NR_ServingCellConfig_t *get_scd_config(configmodule_interface_t *cfg)
 
 static int read_du_cell_info(configmodule_interface_t *cfg,
                              bool separate_du,
-                             bool separate_iab_du,
+                             /*bool separate_iab_du,*/
                              uint32_t *gnb_id,
                              uint64_t *gnb_du_id,
                              char **name,
-                             uint16_t *bap_address,
                              f1ap_served_cell_info_t *info,
                              int max_cell_info)
 {
@@ -1089,11 +1082,13 @@ static int read_du_cell_info(configmodule_interface_t *cfg,
   if (separate_du) {
     AssertFatal(config_isparamset(GNBParamList.paramarray[0], GNB_GNB_DU_ID_IDX), "%s is not defined in configuration file\n", GNB_CONFIG_STRING_GNB_DU_ID);
     *gnb_du_id = *GNBParamList.paramarray[0][GNB_GNB_DU_ID_IDX].u64ptr;
-  } else if (separate_iab_du) {
+  } 
+  /*else if (separate_iab_du) {
     AssertFatal(config_isparamset(GNBParamList.paramarray[0], GNB_GNB_DU_ID_IDX), "%s is not defined in configuration file\n", GNB_CONFIG_STRING_GNB_DU_ID);
     *gnb_du_id = *GNBParamList.paramarray[0][GNB_GNB_DU_ID_IDX].u64ptr;
     *bap_address = *GNBParamList.paramarray[0][GNB_BAP_ADDRESS_IDX].u16ptr;
-  } else {
+    
+  }*/ else {
     AssertFatal(!config_isparamset(GNBParamList.paramarray[0], GNB_GNB_DU_ID_IDX),
                 "%s should not be defined in configuration file for monolithic gNB\n",
                 GNB_CONFIG_STRING_GNB_DU_ID);
@@ -1118,10 +1113,10 @@ static int read_du_cell_info(configmodule_interface_t *cfg,
   return 1;
 }
 
-static f1ap_setup_req_t *RC_read_F1Setup(bool is_iab_du,
+static f1ap_setup_req_t *RC_read_F1Setup(/*bool is_iab_du,*/
                                          uint64_t id,
                                          const char *name,
-                                         uint16_t bap_address,
+                                         /*uint16_t bap_address,*/
                                          const f1ap_served_cell_info_t *info,
                                          const NR_ServingCellConfigCommon_t *scc,
                                          NR_BCCH_BCH_Message_t *mib,
@@ -1131,13 +1126,13 @@ static f1ap_setup_req_t *RC_read_F1Setup(bool is_iab_du,
   AssertFatal(req != NULL, "out of memory\n");
   req->gNB_DU_id = id;
   req->gNB_DU_name = strdup(name);
-  if(is_iab_du){
+  /*if(is_iab_du){
     req->bap_address = bap_address;
-  }
+  }*/
   req->num_cells_available = 1;
   req->cell[0].info = *info;
 
-  if (is_iab_du){
+  /*if (is_iab_du){
     LOG_I(GNB_APP,
         "F1AP: gNB idx %d gNB_DU_id %ld, gNB_DU_name %s, bap_address %d, TAC %d MCC/MNC/length %d/%d/%d cellID %ld\n",
         0,
@@ -1152,18 +1147,18 @@ static f1ap_setup_req_t *RC_read_F1Setup(bool is_iab_du,
     LOG_I(GNB_APP, "F1AP: Initializing BAP layer\n");
     bool is_du = true;
     nr_bap_layer_init(is_du);
-  }else{
-    LOG_I(GNB_APP,
-        "F1AP: gNB idx %d gNB_DU_id %ld, gNB_DU_name %s, TAC %d MCC/MNC/length %d/%d/%d cellID %ld\n",
-        0,
-        req->gNB_DU_id,
-        req->gNB_DU_name,
-        *req->cell[0].info.tac,
-        req->cell[0].info.plmn.mcc,
-        req->cell[0].info.plmn.mnc,
-        req->cell[0].info.plmn.mnc_digit_length,
-        req->cell[0].info.nr_cellid);
-  }
+    */
+  LOG_I(GNB_APP,
+      "F1AP: gNB idx %d gNB_DU_id %ld, gNB_DU_name %s, TAC %d MCC/MNC/length %d/%d/%d cellID %ld\n",
+      0,
+      req->gNB_DU_id,
+      req->gNB_DU_name,
+      *req->cell[0].info.tac,
+      req->cell[0].info.plmn.mcc,
+      req->cell[0].info.plmn.mnc,
+      req->cell[0].info.plmn.mnc_digit_length,
+      req->cell[0].info.nr_cellid);
+  
 
   req->cell[0].info.nr_pci = *scc->physCellId;
   struct NR_FrequencyInfoDL *frequencyInfoDL = scc->downlinkConfigCommon->frequencyInfoDL;
@@ -1365,9 +1360,10 @@ void RCconfig_nr_macrlc(configmodule_interface_t *cfg)
     uint64_t gnb_du_id = 0;
     uint32_t gnb_id = 0;
     char *name = NULL;
-    uint16_t bap_address = 0;
+    // uint16_t bap_address = 0;
     f1ap_served_cell_info_t info;
-    read_du_cell_info(cfg, NODE_IS_DU(node_type), NODE_IS_DU_IAB(node_type) , &gnb_id, &gnb_du_id, &name, &bap_address, &info, 1);
+    // read_du_cell_info(cfg, NODE_IS_DU(node_type), &gnb_id, &gnb_du_id, &name, &bap_address, &info, 1);
+    read_du_cell_info(cfg, NODE_IS_DU(node_type), &gnb_id, &gnb_du_id, &name, &info, 1);
 
     if (get_softmodem_params()->sa)
       nr_mac_configure_sib1(RC.nrmac[0], &info.plmn, info.nr_cellid, *info.tac);
@@ -1376,7 +1372,8 @@ void RCconfig_nr_macrlc(configmodule_interface_t *cfg)
     // and store it at MAC for sending later
     NR_BCCH_BCH_Message_t *mib = RC.nrmac[0]->common_channels[0].mib;
     const NR_BCCH_DL_SCH_Message_t *sib1 = RC.nrmac[0]->common_channels[0].sib1;
-    f1ap_setup_req_t *req = RC_read_F1Setup(NODE_IS_DU_IAB(node_type), gnb_du_id, name, bap_address, &info, scc, mib, sib1);
+    //f1ap_setup_req_t *req = RC_read_F1Setup(NODE_IS_DU_IAB(node_type), gnb_du_id, name, bap_address, &info, scc, mib, sib1);
+    f1ap_setup_req_t *req = RC_read_F1Setup(gnb_du_id, name, &info, scc, mib, sib1);
     AssertFatal(req != NULL, "could not read F1 Setup information\n");
     RC.nrmac[0]->f1_config.setup_req = req;
     RC.nrmac[0]->f1_config.gnb_id = gnb_id;
@@ -2293,10 +2290,12 @@ ngran_node_t get_node_type(void)
     RC.nb_nr_macrlc_inst = MacRLC_ParamList.numelt; 
     for (int j = 0; j < RC.nb_nr_macrlc_inst; j++) {
       if (strcmp(*(MacRLC_ParamList.paramarray[j][MACRLC_TRANSPORT_N_PREFERENCE_IDX].strptr), "f1") == 0) {
-        if (*GNBParamList.paramarray[0][GNB_BAP_ADDRESS_IDX].u16ptr == 0){
-          return ngran_gNB_DU; // MACRLCs present in config: it must be a DU
+        if (strstr(*(GNBParamList.paramarray[0][GNB_GNB_NAME_IDX].strptr), "Node") != NULL){
+          return ngran_gNB_IAB_node_DU;
+        } else if (strstr(*(GNBParamList.paramarray[0][GNB_GNB_NAME_IDX].strptr), "Donor") != NULL){
+          return ngran_gNB_IAB_donor_DU;
         }else{
-          return ngran_gNB_DU_IAB;
+          return ngran_gNB_DU;
         }
       }
     }

@@ -702,7 +702,6 @@ int rrc_gNB_process_NGAP_DOWNLINK_NAS(MessageDef *msg_p, instance_t instance, mu
    * switch UL or DL NAS message without RRC piggybacked to SRB2 if active.
    */
   AssertFatal(!NODE_IS_DU(RC.nrrrc[ctxt.module_id]->node_type), "illegal node type DU: receiving NGAP messages at this node\n");
-  AssertFatal(!NODE_IS_DU_IAB(RC.nrrrc[ctxt.module_id]->node_type), "illegal node type DU: receiving NGAP messages at this node\n");
   /* Transfer data to PDCP */
   rb_id_t srb_id = UE->Srb[2].Active ? DCCH1 : DCCH;
   nr_rrc_transfer_protected_rrc_message(RC.nrrrc[instance], UE, srb_id, buffer, length);

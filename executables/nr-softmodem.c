@@ -61,6 +61,7 @@ unsigned short config_frames[4] = {2,9,11,13};
 #include "UTIL/OPT/opt.h"
 #include "LAYER2/nr_pdcp/nr_pdcp_oai_api.h"
 #include "LAYER2/BAP/bap_oai_api.h"
+#include "LAYER2/BAP/iab_info_management.h"
 
 #include "intertask_interface.h"
 
@@ -311,6 +312,9 @@ static int create_gNB_tasks(ngran_node_t node_type, configmodule_interface_t *cf
     RC.nrrrc = calloc(1, sizeof(*RC.nrrrc));
     RC.nrrrc[0] = calloc(1,sizeof(gNB_RRC_INST));
     RCconfig_NRRRC(RC.nrrrc[0]);
+    // IAB
+    RC.iab = calloc(1, sizeof(*RC.iab));
+    RC.iab[0] = calloc(1, sizeof(gNB_IAB_INFO));
   }
 
   if (RC.nb_nr_inst > 0 &&
@@ -328,7 +332,7 @@ static int create_gNB_tasks(ngran_node_t node_type, configmodule_interface_t *cf
   /* For the CU case the gNB registration with the AMF might have to take place after the F1 setup, as the PLMN info
      * can originate from the DU. Add check on whether x2ap is enabled to account for ENDC NSA scenario.*/
   if ((get_softmodem_params()->sa || is_x2ap_enabled()) &&
-      !NODE_IS_DU(node_type) && !NODE_IS_DU_IAB(node_type)) {
+      !NODE_IS_DU(node_type)) {
     /* Try to register each gNB */
     //registered_gnb = 0;
     __attribute__((unused)) uint32_t register_gnb_pending = gNB_app_register (gnb_id_start, gnb_id_end);
@@ -350,7 +354,7 @@ static int create_gNB_tasks(ngran_node_t node_type, configmodule_interface_t *cf
   }
 
   if (get_softmodem_params()->sa &&
-      !NODE_IS_DU(node_type) && !NODE_IS_DU_IAB(node_type)) {
+      !NODE_IS_DU(node_type)) {
 
     char*             gnb_ipv4_address_for_NGU      = NULL;
     uint32_t          gnb_port_for_NGU              = 0;
@@ -384,7 +388,7 @@ static int create_gNB_tasks(ngran_node_t node_type, configmodule_interface_t *cf
       return -1;
     }
 
-    if (!NODE_IS_DU(node_type) && !NODE_IS_DU_IAB(node_type)) {
+    if (!NODE_IS_DU(node_type)) {
       if (itti_create_task (TASK_RRC_GNB, rrc_gnb_task, NULL) < 0) {
         LOG_E(NR_RRC, "Create task for NR RRC gNB failed\n");
         return -1;
@@ -556,7 +560,7 @@ void init_pdcp(void) {
     PDCP_USE_NETLINK_BIT | LINK_ENB_PDCP_TO_IP_DRIVER_BIT | ENB_NAS_USE_TUN_BIT | SOFTMODEM_NOKRNMOD_BIT:
     LINK_ENB_PDCP_TO_GTPV1U_BIT;
   
-  if (!NODE_IS_DU(get_node_type()) && !NODE_IS_DU_IAB(get_node_type())) {
+  if (!NODE_IS_DU(get_node_type())) {
     nr_pdcp_layer_init(get_node_type() == ngran_gNB_CUCP);
     nr_pdcp_module_init(pdcp_initmask, 0);
   }
@@ -746,7 +750,7 @@ int main( int argc, char **argv ) {
   }
 
   // wait for F1 Setup Response before starting L1 for real
-  if (NODE_IS_DU(node_type) || NODE_IS_MONOLITHIC(node_type) || NODE_IS_DU_IAB(node_type)){
+  if (NODE_IS_DU(node_type) || NODE_IS_MONOLITHIC(node_type)){
     wait_f1_setup_response();
   }
 

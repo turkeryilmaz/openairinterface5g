@@ -30,6 +30,7 @@
 struct f1ap_setup_req_s;
 struct f1ap_lost_connection_t;
 struct gNB_RRC_INST_s;
+struct gNB_IAB_INFO_s;
 struct nr_rrc_du_container_t;
 
 void rrc_gNB_process_f1_setup_req(struct f1ap_setup_req_s *req, sctp_assoc_t assoc_id);
