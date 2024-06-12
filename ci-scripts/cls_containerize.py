@@ -293,7 +293,7 @@ class Containerize():
 			self.dockerfileprefix = '.ubuntu20.cross-arm64'
 		
 		self.testCase_id = HTML.testCase_id
-	
+		#CreateWorkspace was here
 		cmd.cd(lSourcePath)
 		# if asterix, copy the entitlement and subscription manager configurations
 		if self.host == 'Red Hat':

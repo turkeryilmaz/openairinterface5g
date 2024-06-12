@@ -94,7 +94,7 @@
                 <id>rfsim5g_ue</id>
                 <nodes>localhost</nodes>
                 <svr_id>rfsim5g_ext_dn</svr_id>
-                <nodes>localhost</nodes>
+                <svr_node>localhost</svr_node>
                 <iperf_packetloss_threshold>5</iperf_packetloss_threshold>
                 <iperf_bitrate_threshold>90</iperf_bitrate_threshold>
         </testCase>
