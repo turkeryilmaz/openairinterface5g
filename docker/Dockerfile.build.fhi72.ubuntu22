@@ -61,28 +61,6 @@ RUN git clone https://gerrit.o-ran-sc.org/r/o-du/phy.git /opt/phy && \
     cd /opt/phy/fhi_lib/lib && \
     RTE_SDK=/oai-ran/dpdk-stable-20.11.9/ XRAN_DIR=/opt/phy/fhi_lib make XRAN_LIB_SO=1 
 
-## Build FlexRIC for SM Models
-RUN git clone https://github.com/swig/swig.git && \
-    cd swig && \
-    git checkout release-4.1 && \
-    ./autogen.sh && \
-    ./configure --prefix=/usr/ && \
-    make -j8 && \
-    make install && \
-    ldconfig
-
-RUN mkdir -p openair2/E2AP/flexric/build && \
-    cd openair2/E2AP/flexric/build && \
-    cmake -GNinja -DCMAKE_BUILD_TYPE=Release \
-          -DCMAKE_C_FLAGS_RELEASE="-O3" \
-          -DKPM_VERSION=$KPM_VERSION \
-          -DE2AP_VERSION=$E2AP_VERSION \
-          -DCMAKE_CXX_FLAGS_RELEASE="-O3" \
-          -DCMAKE_C_COMPILER=gcc-12 \
-          -DCMAKE_CXX_COMPILER=g++-12 .. && \
-    ninja && \
-    ninja install
-
 ## Build and install OAI
 #run build_oai to build the target image
 RUN /bin/sh oaienv && \ 
@@ -98,3 +76,18 @@ RUN /bin/sh oaienv && \
     ldd ran_build/build/nr-softmodem && \
     ldd ran_build/build/liboran_fhlib_5g.so && \
     ldd /opt/phy/fhi_lib/lib/build/libxran.so
+
+## Build FlexRIC for SM Models
+RUN mkdir -p openair2/E2AP/flexric/build && \
+    cd openair2/E2AP/flexric/build && \
+    cmake -GNinja -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_C_FLAGS_RELEASE="-O3" \
+          -DXAPP_MULTILANGUAGE=OFF \
+          -DKPM_VERSION=$KPM_VERSION \
+          -DE2AP_VERSION=$E2AP_VERSION \
+          -DCMAKE_CXX_FLAGS_RELEASE="-O3" \
+          -DCMAKE_C_COMPILER=gcc-12 \
+          -DCMAKE_CXX_COMPILER=g++-12 .. && \
+    ninja && \
+    ninja install
+    
