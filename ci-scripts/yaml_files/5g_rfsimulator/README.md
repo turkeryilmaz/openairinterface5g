@@ -535,3 +535,14 @@ snssais:
 ```
 
 The `ST` and `SD` values shall also match.
+
+
+# 6. Running with local changes
+
+You can run the testcase with local changes by substituting the gNB and/or UE executables. The local-override.yaml file  includes an image build service as well as code compilation service.
+This is necessary as the executable has to be linked against the same libraries that are present in the executing image.
+This might take a while the first time but other that that is very fast. Here is a list of commands (wait between each command)
+
+docker compose -f docker-compose.yaml -f local-override.yaml up -d mysql oai-amf oai-smf oai-upf oai-ext-dn
+docker compose -f docker-compose.yaml -f local-override.yaml up -d oai-gnb
+docker-compose -f docker-compose.yaml -f local-override.yaml up -d oai-nr-ue
