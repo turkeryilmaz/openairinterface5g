@@ -14,12 +14,13 @@
 
 ![Docker deploy 7.2](../../../doc/images/docker-deploy-oai-7-2.png)
 
-This docker-compose is designed to use `OAI-gNB` with a 7.2 compatible Radio Unit. Before using this docker compose you have to configure the host machine as per the [ORAN_FHI7.2_Tutorial](../../../doc/ORAN_FHI7.2_Tutorial.md). The container image used by the docker compose file is tested only on `Ubuntu 22.04` docker host. The image is present in our official docker hub account `docker.io/oaisoftwarealliance/oai-gnb-7.2:develop`. 
-
+This docker-compose is designed to use `OAI-gNB` with a 7.2 compatible Radio Unit. Before using this docker compose you have to configure the host machine as per the [ORAN_FHI7.2_Tutorial](../../../doc/ORAN_FHI7.2_Tutorial.md). The container image used by the docker compose file is tested only on `Ubuntu 22.04` docker host. 
 
 ## Build Image (Optional)
 
 If you wish to make your own image after modification or from a specific branch then you can build it manually, 
+
+### Ubuntu base image
 
 ```bash
 cd ../../../
@@ -28,17 +29,28 @@ docker build -f docker/Dockerfile.build.fhi72.ubuntu22 -t ran:build:latest .
 docker build -f docker/Dockerfile.gNB.fhi72.ubuntu22 -t oai-gnb-fhi72:<your-image-tag> .
 ```
 
-The new image will be `oai-gnb-fhi72:<your-image-tag>`. You will have to replace this new image with `docker.io/oaisoftwarealliance/oai-gnb-7.2:develop`. 
+### UBI base image
+
+```bash
+cd ../../../
+podman build -f docker/Dockerfile.base.rhel9 -t ran:base:latest .
+podman build -f docker/Dockerfile.build.fhi72.rhel9 -t ran:build:latest .
+podman build -f docker/Dockerfile.gNB.fhi72.rhel9 -t oai-gnb-fhi72:<your-image-tag> .
+```
+
+The new image will be `oai-gnb-fhi72:<your-image-tag>`. You will have to replace this new image with `oai-gnb-fhi72:latest`. 
 
 ## Configure Networking 
 
 ### SR-IOV Virtual Functions (VFs)
 
-In docker-compose environment there is no automated method to configure the VFs on the fly. The user will have to manually configure C/U plane VFs before starting the container `OAI-gNB`. You can follow the step [configure-network-interfaces-and-dpdk-vfs](../../../doc/ORAN_FHI7.2_Tutorial.md#configure-network-interfaces-and-dpdk-vfs).
+In docker-compose environment there is no automated method to configure the VFs on the fly. The user will have to manually configure C/U plane VFs before starting the container `OAI-gNB`. 
+
+You can follow the step [configure-network-interfaces-and-dpdk-vfs](../../../doc/ORAN_FHI7.2_Tutorial.md#configure-network-interfaces-and-dpdk-vfs).
 
 ### Interface towards AMF (N2)
 
-For N2 interface we are using `macvlan` driver of docker. 
+For `N2` interface we are using `macvlan` driver of docker. 
 
 You can use the `bridge` driver, in situation 
 
@@ -76,9 +88,14 @@ To configure `bridge` network you need to choose `ipam.config.subnet` as per you
 
 ## Deploy OAI-gNB Container
 
-The [configuration file](../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb.sa.band77.273prb.fhi72.4x4-vvdn.conf) used in by this docker compose is configured for VVDN GEN 3 RU (firmware version 03-v3.0.5). 
+The [configuration file](../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb.sa.band78.273prb.fhi72.4x4-benetel650.conf) used  by docker compose is configured for Benetel 650 RU (RAN650-1v1.0.4-dda1bf5). 
 
 ```bash
 docker-compose up -d
 ```
 
+To check the logs
+
+```bash
+docker logs oai-gnb -f
+```
