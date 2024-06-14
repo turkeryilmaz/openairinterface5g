@@ -188,7 +188,6 @@ void capture_pdu_session_establishment_accept_msg(instance_t instance, uint8_t *
     }
   }
 
-  const int ue_id = 0;
-  set_qfi(qos_rule.qfi, psea_msg.pdu_id, ue_id);
+  set_qfi(qos_rule.qfi, psea_msg.pdu_id, instance);
   return;
 }
