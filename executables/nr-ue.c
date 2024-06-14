@@ -896,27 +896,22 @@ void init_NR_UE(int nb_inst, char *uecap_file, char *reconfig_file, char *rbconf
     mac->if_module = nr_ue_if_module_init(i);
     AssertFatal(mac->if_module, "can not initialize IF module\n");
     if (!get_softmodem_params()->sa) {
-      init_nsa_message(rrc_inst, reconfig_file, rbconfig_file);
-      nr_rlc_activate_srb0(mac_inst->crnti, NULL, send_srb0_rrc);
+      init_nsa_message(&rrc_inst[i], reconfig_file, rbconfig_file);
+      nr_rlc_activate_srb0(mac_inst[i].crnti, NULL, send_srb0_rrc);
     }
     //TODO: Move this call to RRC
     start_sidelink((&rrc_inst[i])->ue_id);
   }
 }
 
-void init_NR_UE_threads(int nb_inst) {
-  int inst;
-
-  pthread_t threads[nb_inst];
-
-  for (inst=0; inst < nb_inst; inst++) {
-    PHY_VARS_NR_UE *UE = PHY_vars_UE_g[inst][0];
-
-    LOG_I(PHY,"Intializing UE Threads for instance %d (%p,%p)...\n",inst,PHY_vars_UE_g[inst],PHY_vars_UE_g[inst][0]);
-    threadCreate(&threads[inst], UE_thread, (void *)UE, "UEthread", -1, OAI_PRIORITY_RT_MAX);
-    if (!IS_SOFTMODEM_NOSTATS_BIT) {
-      pthread_t stat_pthread;
-      threadCreate(&stat_pthread, nrL1_UE_stats_thread, UE, "L1_UE_stats", -1, OAI_PRIORITY_RT_LOW);
-    }
+void init_NR_UE_threads(PHY_VARS_NR_UE *UE) {
+  pthread_t thread;
+  char thread_name[16];
+  sprintf(thread_name, "UEthread_%d", UE->Mod_id);
+  threadCreate(&thread, UE_thread, (void *)UE, thread_name, -1, OAI_PRIORITY_RT_MAX);
+  if (!IS_SOFTMODEM_NOSTATS_BIT) {
+    pthread_t stat_pthread;
+    sprintf(thread_name, "L1_UE_stats_%d", UE->Mod_id);
+    threadCreate(&stat_pthread, nrL1_UE_stats_thread, UE, thread_name, -1, OAI_PRIORITY_RT_LOW);
   }
 }
