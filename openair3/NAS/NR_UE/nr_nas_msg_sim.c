@@ -53,9 +53,12 @@
 #include "openair3/SECU/nas_stream_eia2.h"
 #include "openair3/UTILS/conversions.h"
 
+#define MAX_NAS_UE 4
+
 extern char *baseNetAddress;
 extern uint16_t NB_UE_INST;
-static nr_ue_nas_t nr_ue_nas = {0};
+
+static nr_ue_nas_t nr_ue_nas[MAX_NAS_UE] = {0};
 static nr_nas_msg_snssai_t nas_allowed_nssai[8];
 static nr_nas_thread_info_t softmodem_nas_info;
 
@@ -481,10 +484,10 @@ void derive_ue_keys(uint8_t *buf, nr_ue_nas_t *nas) {
 
 nr_ue_nas_t *get_ue_nas_info(module_id_t module_id)
 {
-  DevAssert(module_id == 0);
-  if (!nr_ue_nas.uicc)
-    nr_ue_nas.uicc = checkUicc(0);
-  return &nr_ue_nas;
+  if (!nr_ue_nas[module_id].uicc) {
+    nr_ue_nas[module_id].uicc = checkUicc(module_id);
+  }
+  return &nr_ue_nas[module_id];
 }
 
 void generateRegistrationRequest(as_nas_info_t *initialNasMsg, nr_ue_nas_t *nas)
@@ -1220,7 +1223,6 @@ void *nas_nrue_task(void *args_p)
   nr_nas_thread_info_t *nas_info = (nr_nas_thread_info_t *)args_p;
   softmodem_nas_info = *nas_info;
   free(nas_info);
-  nr_ue_nas.uicc = checkUicc(0);
   while (1) {
     nas_nrue(NULL);
   }
@@ -1252,12 +1254,15 @@ static void handle_registration_accept(instance_t instance,
 void *nas_nrue(void *args_p)
 {
   // Wait for a message or an event
-  nr_ue_nas.uicc = checkUicc(0);
   MessageDef *msg_p;
   itti_receive_msg(TASK_NAS_NRUE, &msg_p);
 
   if (msg_p != NULL) {
+<<<<<<< HEAD
     instance_t instance = msg_p->ittiMsgHeader.destinationInstance;
+=======
+    instance_t instance = msg_p->ittiMsgHeader.originInstance;
+>>>>>>> e59586918d (Lift NAS restriction of 1 UE / process in NR UE)
 
     switch (ITTI_MSG_ID(msg_p)) {
       case INITIALIZE_MESSAGE:
@@ -1306,7 +1311,7 @@ void *nas_nrue(void *args_p)
       case NAS_PDU_SESSION_REQ: {
         as_nas_info_t pduEstablishMsg = {0};
         nas_pdu_session_req_t *pduReq = &NAS_PDU_SESSION_REQ(msg_p);
-        nr_ue_nas_t *nas = get_ue_nas_info(0);
+        nr_ue_nas_t *nas = get_ue_nas_info(instance);
         generatePduSessionEstablishRequest(nas, &pduEstablishMsg, pduReq);
         if (pduEstablishMsg.length > 0) {
           send_nas_uplink_data_req(instance, &pduEstablishMsg);
@@ -1338,7 +1343,12 @@ void *nas_nrue(void *args_p)
         int msg_type = get_msg_type(pdu_buffer, pdu_length);
 
         if (msg_type == REGISTRATION_ACCEPT) {
+<<<<<<< HEAD
           handle_registration_accept(instance, nas, pdu_buffer, pdu_length);
+=======
+          nr_ue_nas_t *nas = get_ue_nas_info(instance);
+          handle_registration_accept(instance, nas, pdu_buffer, NAS_CONN_ESTABLI_CNF(msg_p).nasMsg.length);
+>>>>>>> e59586918d (Lift NAS restriction of 1 UE / process in NR UE)
         } else if (msg_type == FGS_PDU_SESSION_ESTABLISHMENT_ACC) {
           capture_pdu_session_establishment_accept_msg(instance, pdu_buffer, pdu_length);
         }
@@ -1349,7 +1359,7 @@ void *nas_nrue(void *args_p)
       case NR_NAS_CONN_RELEASE_IND:
         LOG_I(NAS, "[UE %ld] Received %s: cause %u\n",
               instance, ITTI_MSG_NAME (msg_p), NR_NAS_CONN_RELEASE_IND (msg_p).cause);
-        nr_ue_nas_t *nas = get_ue_nas_info(0);
+        nr_ue_nas_t *nas = get_ue_nas_info(instance);
         // TODO handle connection release
         if (nas->termination_procedure) {
           /* the following is not clean, but probably necessary: we need to give
@@ -1373,7 +1383,7 @@ void *nas_nrue(void *args_p)
 
       case NAS_DEREGISTRATION_REQ: {
         LOG_I(NAS, "[UE %ld] Received %s\n", instance, ITTI_MSG_NAME(msg_p));
-        nr_ue_nas_t *nas = get_ue_nas_info(0);
+        nr_ue_nas_t *nas = get_ue_nas_info(instance);
         nas_deregistration_req_t *req = &NAS_DEREGISTRATION_REQ(msg_p);
         if (nas->guti) {
           if (req->cause == AS_DETACH) {
@@ -1398,7 +1408,7 @@ void *nas_nrue(void *args_p)
               NAS_DOWNLINK_DATA_IND(msg_p).nasMsg.length,
               NAS_DOWNLINK_DATA_IND(msg_p).nasMsg.data);
         as_nas_info_t initialNasMsg = {0};
-        nr_ue_nas_t *nas = get_ue_nas_info(0);
+        nr_ue_nas_t *nas = get_ue_nas_info(instance);
 
         uint8_t *pdu_buffer = NAS_DOWNLINK_DATA_IND(msg_p).nasMsg.data;
         int pdu_length = NAS_DOWNLINK_DATA_IND(msg_p).nasMsg.length;
