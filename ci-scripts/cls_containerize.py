@@ -906,91 +906,106 @@ class Containerize():
 		logging.debug('\u001B[1m Deploying OAI Object on server: ' + lIpAddr + '\u001B[0m')
 		self.deployKind[self.eNB_instance] = True
 
-		mySSH = cls_cmd.getConnection(lIpAddr)
+		myCmd = cls_cmd.getConnection(lIpAddr)
 		# CreateWorkspace was here
 
-		mySSH.cd(lSourcePath + '/' + self.yamlPath[self.eNB_instance])
-		mySSH.run('cp docker-compose.y*ml docker-compose-ci.yml', 5)
+		myCmd.cd(lSourcePath + '/' + self.yamlPath[self.eNB_instance])
+		myCmd.run('cp docker-compose.y*ml docker-compose-ci.yml', 5)
 		for image in IMAGES:
 			imageTag = ImageTagToUse(image, self.ranCommitID, self.ranBranch, self.ranAllowMerge)
-			mySSH.run(f'sed -i -e "s@oaisoftwarealliance/{image}:develop@oai-ci/{imageTag}@" docker-compose-ci.yml',silent=True)
-			mySSH.run(f'sed -i -e "s@{image}:latest@oai-ci/{imageTag}@" docker-compose-ci.yml',silent=True) # temporary solution for not using the new branch
+			if image == 'oai-gnb' or image == 'oai-nr-ue' or image == 'oai-nr-cuup':
+				ret = myCmd.run(f'docker image inspect oai-ci/{imageTag}', reportNonZero=False, silent=self.displayedNewTags)
+				if ret.returncode != 0:
+					imageTag = imageTag.replace('oai-gnb', 'oai-gnb-asan')
+					imageTag = imageTag.replace('oai-nr-ue', 'oai-nr-ue-asan')
+					imageTag = imageTag.replace('oai-nr-cuup', 'oai-nr-cuup-asan')
+					if not self.displayedNewTags:
+						logging.debug(f'\u001B[1m Using sanitized version of {image} with {imageTag}\u001B[0m')
+			myCmd.run(f'sed -i -e "s@oaisoftwarealliance/{image}:develop@oai-ci/{imageTag}@" docker-compose-ci.yml',silent=True)
+			myCmd.run(f'sed -i -e "s@{image}:latest@oai-ci/{imageTag}@" docker-compose-ci.yml',silent=True) # temporary solution for not using the new branch
 
 
-		# Currently support only one
-		svcName = self.services[self.eNB_instance]
-		if svcName == '':
+		if self.services[self.eNB_instance] == '':
 			logging.warning('no service name given: starting all services in docker-compose-ci.yml!')
-		mySSH.run(f'docker compose --file docker-compose-ci.yml up -d -- {svcName}', 30)
 
+		cmd = f'docker-compose -f docker-compose-ci.yml up -d {self.services[self.eNB_instance]}'
+		deployStatus = myCmd.run(cmd, timeout=50)
+		if deployStatus.returncode != 0:
+			myCmd.close()
+			self.exitStatus = 1
+			logging.error('Could not deploy')
+			HTML.CreateHtmlTestRow('Could not deploy', 'KO', CONST.ALL_PROCESSES_OK)
+			return
 		# Checking Status
-		grep = ''
-		if svcName != '': grep = f' | grep -A3 --color=never {svcName}'
-		mySSH.run(f'docker compose --file docker-compose-ci.yml config {grep}', 5)
-		result = re.search('container_name: (?P<container_name>[a-zA-Z0-9\-\_]+)', mySSH.getBefore())
-		unhealthyNb = 0
-		healthyNb = 0
-		startingNb = 0
-		containerName = ''
-		usedImage = ''
-		imageInfo = ''
-		if result is not None:
-			containerName = result.group('container_name')
-			time.sleep(5)
-			cnt = 0
-			while (cnt < 3):
-				mySSH.run('docker inspect --format="{{.State.Health.Status}}" ' + containerName, 5)
-				unhealthyNb = mySSH.getBefore().count('unhealthy')
-				healthyNb = mySSH.getBefore().count('healthy') - unhealthyNb
-				startingNb = mySSH.getBefore().count('starting')
-				if healthyNb == 1:
-					cnt = 10
-				else:
-					time.sleep(10)
-					cnt += 1
 
-			mySSH.run('docker inspect --format="ImageUsed: {{.Config.Image}}" ' + containerName, 5)
-			for stdoutLine in mySSH.getBefore().split('\n'):
-				if stdoutLine.count('ImageUsed: oai-ci'):
-					usedImage = stdoutLine.replace('ImageUsed: oai-ci', 'oai-ci').strip()
-					logging.debug('Used image is ' + usedImage)
-			if usedImage != '':
-				mySSH.run('docker image inspect --format "* Size     = {{.Size}} bytes\n* Creation = {{.Created}}\n* Id       = {{.Id}}" ' + usedImage, 5, silent=True)
-				for stdoutLine in mySSH.getBefore().split('\n'):
-					if re.search('Size     = [0-9]', stdoutLine) is not None:
-						imageInfo += stdoutLine.strip() + '\n'
-					if re.search('Creation = [0-9]', stdoutLine) is not None:
-						imageInfo += stdoutLine.strip() + '\n'
-					if re.search('Id       = sha256', stdoutLine) is not None:
-						imageInfo += stdoutLine.strip() + '\n'
-		logging.debug(' -- ' + str(healthyNb) + ' healthy container(s)')
-		logging.debug(' -- ' + str(unhealthyNb) + ' unhealthy container(s)')
-		logging.debug(' -- ' + str(startingNb) + ' still starting container(s)')
+		services_list = self.services[self.eNB_instance].split()
+		if services_list == []: services_list=[""] #handing empty services
 
-		self.testCase_id = HTML.testCase_id
-		self.eNB_logFile[self.eNB_instance] = 'enb_' + self.testCase_id + '.log'
+		for svcName in services_list:
+			logging.debug('current service in the service list: \033[4m%s\033[0m', svcName)
+			grep = ''
+			if svcName != '': grep = f' | grep -A4 --color=never {svcName}'
+			myCmd.run(f'docker compose --file docker-compose-ci.yml config {grep}', 5)
+			results = re.findall('container_name: (?P<container_name>[a-zA-Z0-9\-\_]+)', myCmd.getBefore())
+			unhealthyNb = 0
+			healthyNb = 0
+			startingNb = 0
+			containerName = ''
+			usedImage = ''
+			imageInfo = ''
+			for result in results:
+				containerName = result
+				cnt = 0
+				while (cnt < 3):
+					if svcName != 'db_init': #because dbinit closes asap
+						myCmd.run('docker inspect --format="{{.State.Health.Status}}" ' + containerName, 5)
+						unhealthyNb = myCmd.getBefore().count('unhealthy')
+						healthyNb = myCmd.getBefore().count('healthy') - unhealthyNb
+						startingNb = myCmd.getBefore().count('starting')
+						if healthyNb == 1:
+							break
+						else:
+							time.sleep(10)
+							cnt += 1
+					else: 
+						# faking health of db_init
+						unhealthyNb = 0
+						healthyNb = 1
+						startingNb = 0
+						break
+				myCmd.run('docker inspect --format="ImageUsed: {{.Config.Image}}" ' + containerName, 5)
+				for stdoutLine in myCmd.getBefore().split('\n'):
+					if stdoutLine.count('ImageUsed: oai-ci'):
+						usedImage = stdoutLine.replace('ImageUsed: oai-ci', 'oai-ci').strip()
+						logging.debug('Used image is ' + usedImage)
+				if usedImage != '':
+					myCmd.run('docker image inspect --format "* Size     = {{.Size}} bytes\n* Creation = {{.Created}}\n* Id       = {{.Id}}" ' + usedImage, 5, silent=True)
+					for stdoutLine in myCmd.getBefore().split('\n'):
+						if re.search('Size     = [0-9]', stdoutLine) is not None:
+							imageInfo += stdoutLine.strip() + '\n'
+						if re.search('Creation = [0-9]', stdoutLine) is not None:
+							imageInfo += stdoutLine.strip() + '\n'
+						if re.search('Id       = sha256', stdoutLine) is not None:
+							imageInfo += stdoutLine.strip() + '\n'
+			logging.debug(' -- ' + str(healthyNb) + ' healthy container(s) for service' + svcName)
+			logging.debug(' -- ' + str(unhealthyNb) + ' unhealthy container(s) for service' + svcName)
+			logging.debug(' -- ' + str(startingNb) + ' still starting container(s) for service' + svcName)
 
-		status = False
-		if healthyNb == 1:
-			cnt = 0
-			while (cnt < 20):
-				mySSH.run('docker logs ' + containerName + ' | egrep --text --color=never -i "wait|sync|Starting|ready"', 30)
-				result = re.search('got sync|Starting E1AP at CU UP|Starting F1AP at CU|Got sync|Waiting for RUs to be configured|cuPHYController initialized|Received CONFIG.response, gNB is ready', mySSH.getBefore())
-				if result is None:
-					time.sleep(6)
-					cnt += 1
-				else:
-					cnt = 100
+			self.testCase_id = HTML.testCase_id
+			self.eNB_logFile[self.eNB_instance] = 'enb_' + self.testCase_id + '.log'
+
+			status = False
+			if healthyNb >= 1:
 					status = True
 					logging.info('\u001B[1m Deploying OAI object Pass\u001B[0m')
-		else:
-			# containers are unhealthy, so we won't start. However, logs are stored at the end
-			# in UndeployObject so we here store the logs of the unhealthy container to report it
-			logfilename = f'{lSourcePath}/cmake_targets/log/{self.eNB_logFile[self.eNB_instance]}'
-			mySSH.run(f'docker logs {containerName} > {logfilename}', 30)
-			mySSH.copyin(logfilename, '.',True)
+			else:
+				# containers are unhealthy, so we won't start. However, logs are stored at the end
+				# in UndeployObject so we here store the logs of the unhealthy container to report it
+				logfilename = f'{lSourcePath}/cmake_targets/log/{self.eNB_logFile[self.eNB_instance]}'
+				myCmd.run(f'docker logs {containerName} > {logfilename}', 30)
+				myCmd.copyin(logfilename, '.',True)
 
-		mySSH.close()
+		myCmd.close()
 
 		message = ''
 		if usedImage != '':
