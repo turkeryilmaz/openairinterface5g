@@ -68,7 +68,7 @@ static inline void to_hex(char *in, uint8_t *out, int size) {
 }
 
 uicc_t *init_uicc(char *sectionName) {
-  uicc_t *uicc=(uicc_t *)calloc(sizeof(uicc_t),1);
+  uicc_t *uicc=(uicc_t *)calloc(1, sizeof(uicc_t));
   paramdef_t uicc_params[] = UICC_PARAMS_DESC;
   // here we call usim simulation, but calling actual usim is quite simple
   // the code is in open-cells.com => program_uicc open source

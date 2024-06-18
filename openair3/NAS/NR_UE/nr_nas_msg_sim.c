@@ -860,7 +860,7 @@ void nr_ue_create_ip_if(const char *ifname, int ue_id, int pdu_session_id, bool 
   start_sdap_tun_ue(ue_id - 1, pdu_session_id, sock); // interface name suffix is ue_id+1
 }
 
-void decodeDownlinkNASTransport(as_nas_info_t *initialNasMsg, uint8_t * pdu_buffer){
+void decodeDownlinkNASTransport(instance_t instance, as_nas_info_t *initialNasMsg, uint8_t * pdu_buffer){
   uint8_t msg_type = *(pdu_buffer + 16);
   if(msg_type == FGS_PDU_SESSION_ESTABLISHMENT_ACC){
     sprintf(baseNetAddress, "%d.%d", *(pdu_buffer + 39),*(pdu_buffer + 40));
@@ -868,8 +868,8 @@ void decodeDownlinkNASTransport(as_nas_info_t *initialNasMsg, uint8_t * pdu_buff
     addr[0] = *(pdu_buffer + 41);
     addr[1] = *(pdu_buffer + 42);
     int pdu_session_id = *(pdu_buffer + 14);
-    LOG_A(NAS, "Received PDU Session Establishment Accept\n");
-    nr_ue_create_ip_if("oaitun_", 1, pdu_session_id, false, addr);
+    LOG_A(NAS, "[UE %ld] Received PDU Session Establishment Accept\n", instance);
+    nr_ue_create_ip_if("oaitun_", instance + 1, pdu_session_id, false, addr);
   } else {
     LOG_E(NAS, "Received unexpected message in DLinformationTransfer %d\n", msg_type);
   }
@@ -1231,7 +1231,7 @@ static void handle_registration_accept(instance_t instance,
                                        const uint8_t *pdu_buffer,
                                        uint32_t msg_length)
 {
-  LOG_I(NAS, "[UE] Received REGISTRATION ACCEPT message\n");
+  LOG_I(NAS, "[UE %ld] Received REGISTRATION ACCEPT message\n", instance);
   decodeRegistrationAccept(pdu_buffer, msg_length, nas);
   get_allowed_nssai(nas_allowed_nssai, pdu_buffer, msg_length);
 
@@ -1239,11 +1239,11 @@ static void handle_registration_accept(instance_t instance,
   generateRegistrationComplete(nas, &initialNasMsg, NULL);
   if (initialNasMsg.length > 0) {
     send_nas_uplink_data_req(instance, &initialNasMsg);
-    LOG_I(NAS, "Send NAS_UPLINK_DATA_REQ message(RegistrationComplete)\n");
+    LOG_I(NAS, "[UE %ld] Send NAS_UPLINK_DATA_REQ message(RegistrationComplete)\n", instance);
   }
   const int nssai_idx = get_user_nssai_idx(nas_allowed_nssai, nas);
   if (nssai_idx < 0) {
-    LOG_E(NAS, "NSSAI parameters not match with allowed NSSAI. Couldn't request PDU session.\n");
+    LOG_E(NAS, "[UE %ld] NSSAI parameters not match with allowed NSSAI. Couldn't request PDU session.\n", instance);
   } else {
     request_default_pdusession(instance, nssai_idx);
   }
@@ -1257,8 +1257,7 @@ void *nas_nrue(void *args_p)
   itti_receive_msg(TASK_NAS_NRUE, &msg_p);
 
   if (msg_p != NULL) {
-    instance_t instance = msg_p->ittiMsgHeader.originInstance;
-    AssertFatal(instance == 0, "cannot handle more than one UE!\n");
+    instance_t instance = msg_p->ittiMsgHeader.destinationInstance;
 
     switch (ITTI_MSG_ID(msg_p)) {
       case INITIALIZE_MESSAGE:
@@ -1341,7 +1340,7 @@ void *nas_nrue(void *args_p)
         if (msg_type == REGISTRATION_ACCEPT) {
           handle_registration_accept(instance, nas, pdu_buffer, pdu_length);
         } else if (msg_type == FGS_PDU_SESSION_ESTABLISHMENT_ACC) {
-          capture_pdu_session_establishment_accept_msg(pdu_buffer, pdu_length);
+          capture_pdu_session_establishment_accept_msg(instance, pdu_buffer, pdu_length);
         }
 
         break;
@@ -1385,7 +1384,7 @@ void *nas_nrue(void *args_p)
           generateDeregistrationRequest(nas, &initialNasMsg, req);
           send_nas_uplink_data_req(instance, &initialNasMsg);
         } else {
-          LOG_W(NAS, "No GUTI, cannot trigger deregistration request.\n");
+          LOG_W(NAS, "[UE %ld] No GUTI, cannot trigger deregistration request.\n", instance);
           if (req->cause == AS_DETACH)
             send_nas_detach_req(instance, false);
         }
@@ -1432,13 +1431,13 @@ void *nas_nrue(void *args_p)
             handle_security_mode_command(instance, nas, &initialNasMsg, pdu_buffer, pdu_length);
             break;
           case FGS_DOWNLINK_NAS_TRANSPORT:
-            decodeDownlinkNASTransport(&initialNasMsg, pdu_buffer);
+            decodeDownlinkNASTransport(instance, &initialNasMsg, pdu_buffer);
             break;
           case REGISTRATION_ACCEPT:
             handle_registration_accept(instance, nas, pdu_buffer, pdu_length);
             break;
           case FGS_DEREGISTRATION_ACCEPT:
-            LOG_I(NAS, "received deregistration accept\n");
+            LOG_I(NAS, "[UE %ld] received deregistration accept\n", instance);
             break;
           case FGS_PDU_SESSION_ESTABLISHMENT_ACC: {
             uint8_t offset = 0;
@@ -1461,12 +1460,13 @@ void *nas_nrue(void *args_p)
                   addr[0] = *(payload_container + offset + 5);
                   addr[1] = *(payload_container + offset + 6);
                   LOG_I(NAS,
-                        "Received PDU Session Establishment Accept, UE IP: %d.%d.%d.%d\n",
+                        "[UE %ld] Received PDU Session Establishment Accept, UE IP: %d.%d.%d.%d\n",
+                        instance,
                         *(payload_container + offset + 3),
                         *(payload_container + offset + 4),
                         *(payload_container + offset + 5),
                         *(payload_container + offset + 6));
-                  nr_ue_create_ip_if("oaitun_", 1, pdu_session_id, false, addr);
+                  nr_ue_create_ip_if("oaitun_", instance + 1, pdu_session_id, false, addr);
                   break;
                 }
               }
@@ -1474,7 +1474,7 @@ void *nas_nrue(void *args_p)
             }
           } break;
 	case FGS_PDU_SESSION_ESTABLISHMENT_REJ:
-	  LOG_E(NAS, "Received PDU Session Establishment reject\n");
+	  LOG_E(NAS, "[UE %ld] Received PDU Session Establishment reject\n", instance);
 	  break;
           default:
             LOG_W(NR_RRC, "unknown message type %d\n", msg_type);
