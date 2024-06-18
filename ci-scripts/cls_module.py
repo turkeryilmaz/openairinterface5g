@@ -49,9 +49,9 @@ class Module_UE:
 				raise Exception(f'no such module name "{module_name}" in "{filename}"')
 			self.module_name = module_name
 			if node !="" and m['Host'] !="%%current_host%%":
-				raise Exception(f'servername provided when host already present in "{filename}"')
+				raise Exception(f'node provided when host already present in "{filename}"')
 			elif m['Host']=="%%current_host%%" and node == "":
-				raise Exception(f'servername not provided when needed')
+				raise Exception(f'node not provided when needed')
 			elif m['Host']=="%%current_host%%":
 				self.host = node
 			else:

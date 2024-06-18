@@ -631,7 +631,12 @@ class OaiCiTest():
 			self.AutoTerminateUEandeNB(HTML, RAN, EPC, CONTAINERS)
 
 	def DetachUE(self, HTML):
-		ues = [cls_module.Module_UE(n.strip()) for n in self.ue_ids]
+		if self.ue_ids == []:
+			raise Exception("no module names in self.ue_ids provided")
+		if len(self.ue_ids) == len(self.nodes):
+			ues = [cls_module.Module_UE(ue_id, server_name) for ue_id, server_name in zip(self.ue_ids, self.nodes)]
+		else:
+			ues = [cls_module.Module_UE(n.strip()) for n in self.ue_ids]
 		with concurrent.futures.ThreadPoolExecutor() as executor:
 			futures = [executor.submit(ue.detach) for ue in ues]
 			[f.result() for f in futures]
