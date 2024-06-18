@@ -822,7 +822,7 @@ class Containerize():
 		return True
 
 	def Create_Workspace(self):
-		logging.info("running on server id",self.eNB_serverId)
+		logging.info(f"running on server id {self.eNB_serverId}")
 		if self.eNB_serverId[self.eNB_instance] == '0':
 			lIpAddr = self.eNBIPAddress
 			lUserName = self.eNBUserName
