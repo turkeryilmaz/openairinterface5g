@@ -34,7 +34,7 @@ static uint16_t getShort(uint8_t *input)
   return htons(tmp16);
 }
 
-void capture_pdu_session_establishment_accept_msg(uint8_t *buffer, uint32_t msg_length)
+void capture_pdu_session_establishment_accept_msg(instance_t instance, uint8_t *buffer, uint32_t msg_length)
 {
   security_protected_nas_5gs_msg_t       sec_nas_hdr;
   security_protected_plain_nas_5gs_msg_t sec_nas_msg;
@@ -115,7 +115,7 @@ void capture_pdu_session_establishment_accept_msg(uint8_t *buffer, uint32_t msg_
           uint8_t addr[IPV4V6_ADDR_LEN] = {0};
           addr[0] = psea_msg.pdu_addr_ie.pdu_addr_oct3;
           addr[1] = psea_msg.pdu_addr_ie.pdu_addr_oct4;
-          nr_ue_create_ip_if("", 1, psea_msg.pdu_id, false, addr);
+          nr_ue_create_ip_if("", instance + 1, psea_msg.pdu_id, false, addr);
           LOG_T(NAS, "PDU SESSION ESTABLISHMENT ACCEPT - Received UE IP: %d.%d.%d.%d\n",
                 psea_msg.pdu_addr_ie.pdu_addr_oct1,
                 psea_msg.pdu_addr_ie.pdu_addr_oct2,
