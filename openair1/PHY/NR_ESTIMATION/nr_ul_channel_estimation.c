@@ -46,6 +46,7 @@
 #define QOS         1
 #define TIMEOUT     100L
 
+#define  NR_SRS_IDFT_OVERSAMP_FACTOR 16
 //#define DEBUG_CH
 //#define DEBUG_PUSCH
 //#define SRS_DEBUG
@@ -141,6 +142,8 @@ int32_t nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
   }
 
 }
+
+void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int32_t gNB_id);
 
 /* Generic function to find the peak of channel estimation buffer */
 int32_t nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
