@@ -535,6 +535,8 @@ static void config_common(gNB_MAC_INST *nrmac,
   // logical antenna ports
   int num_pdsch_antenna_ports = pdsch_AntennaPorts.N1 * pdsch_AntennaPorts.N2 * pdsch_AntennaPorts.XP;
   cfg->carrier_config.num_tx_ant.value = num_pdsch_antenna_ports;
+  if(nrmac->beam_info.beam_allocation) // analog beamforming
+    cfg->carrier_config.num_tx_ant.value *= nrmac->beam_info.beams_per_period;
   AssertFatal(num_pdsch_antenna_ports > 0 && num_pdsch_antenna_ports < 33, "pdsch_AntennaPorts in 1...32\n");
   cfg->carrier_config.num_tx_ant.tl.tag = NFAPI_NR_CONFIG_NUM_TX_ANT_TAG;
 
@@ -560,14 +562,14 @@ static void config_common(gNB_MAC_INST *nrmac,
   AssertFatal(pusch_AntennaPorts > 0 && pusch_AntennaPorts < 13, "pusch_AntennaPorts in 1...12\n");
   cfg->carrier_config.num_rx_ant.tl.tag = NFAPI_NR_CONFIG_NUM_RX_ANT_TAG;
   LOG_I(NR_MAC,
-        "Set RX antenna number to %d, Set TX antenna number to %d (num ssb %d: %x,%x)\n",
+        "Set TX antenna number to %d, Set RX antenna number to %d (num ssb %d: %x,%x)\n",
         cfg->carrier_config.num_tx_ant.value,
         cfg->carrier_config.num_rx_ant.value,
         num_ssb,
         cfg->ssb_table.ssb_mask_list[0].ssb_mask.value,
         cfg->ssb_table.ssb_mask_list[1].ssb_mask.value);
   AssertFatal(cfg->carrier_config.num_tx_ant.value > 0,
-              "carrier_config.num_tx_ant.value %d !\n",
+              "carrier_config.num_tx_ant.value %d!\n",
               cfg->carrier_config.num_tx_ant.value);
   cfg->num_tlv++;
   cfg->num_tlv++;
@@ -671,6 +673,7 @@ void nr_mac_config_scc(gNB_MAC_INST *nrmac, NR_ServingCellConfigCommon_t *scc, c
   int nb_tx = config->nb_bfw[0]; // number of tx antennas
   int nb_beams = config->nb_bfw[1]; // number of beams
   config_common(nrmac, config->pdsch_AntennaPorts, config->pusch_AntennaPorts, nb_tx, nb_beams, config->bw_list, scc);
+  fapi_beam_index_allocation(scc, nrmac);
 
   if (NFAPI_MODE == NFAPI_MONOLITHIC) {
     // nothing to be sent in the other cases
