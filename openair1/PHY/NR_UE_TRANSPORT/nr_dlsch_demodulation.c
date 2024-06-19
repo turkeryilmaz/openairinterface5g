@@ -135,11 +135,12 @@ static int nr_dlsch_llr(uint32_t rx_size_symbol,
     @param n_dmrs_cdm_groups
     @param frame_parms Pointer to frame descriptor
 */
-static void nr_dlsch_extract_rbs(uint32_t rxdataF_sz,
+static void nr_dlsch_extract_rbs(NR_DL_FRAME_PARMS *frame_parms,
+                                 uint32_t rxdataF_sz,
                                  c16_t rxdataF[][rxdataF_sz],
                                  uint32_t rx_size_symbol,
                                  uint32_t pdsch_est_size,
-                                 c16_t dl_ch_estimates[][pdsch_est_size],
+                                 c16_t dl_ch_estimates[][frame_parms->nb_antennas_rx][pdsch_est_size],
                                  c16_t rxdataF_ext[][rx_size_symbol],
                                  c16_t dl_ch_estimates_ext[][rx_size_symbol],
                                  unsigned char symbol,
@@ -149,7 +150,6 @@ static void nr_dlsch_extract_rbs(uint32_t rxdataF_sz,
                                  unsigned short nb_rb_pdsch,
                                  uint8_t n_dmrs_cdm_groups,
                                  uint8_t Nl,
-                                 NR_DL_FRAME_PARMS *frame_parms,
                                  uint16_t dlDmrsSymbPos,
                                  uint32_t csi_res_bitmap,
                                  int chest_time_type);
@@ -316,20 +316,21 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
                 bool first_symbol_flag,
                 unsigned char harq_pid,
                 uint32_t pdsch_est_size,
-                c16_t dl_ch_estimates[][pdsch_est_size],
+                int nbRx,
+                c16_t dl_ch_estimates[][nbRx][pdsch_est_size],
                 int16_t *llr[2],
                 uint32_t dl_valid_re[NR_SYMBOLS_PER_SLOT],
                 c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP],
                 uint32_t llr_offset[NR_SYMBOLS_PER_SLOT],
                 int32_t *log2_maxh,
-                int rx_size_symbol,
-                int nbRx,
-                c16_t rxdataF_comp[][nbRx][rx_size_symbol * NR_SYMBOLS_PER_SLOT],
+                int rx_size,
+                c16_t rxdataF_comp[][nbRx][rx_size],
                 c16_t ptrs_phase_per_slot[][NR_SYMBOLS_PER_SLOT],
                 int32_t ptrs_re_per_slot[][NR_SYMBOLS_PER_SLOT],
                 int G,
                 uint32_t nvar)
 {
+  const int rx_size_symbol=rx_size/NR_SYMBOLS_PER_SLOT;
   const int nl = dlsch[0].Nl;
   const int matrixSz = ue->frame_parms.nb_antennas_rx * nl;
   __attribute__((aligned(32))) c16_t dl_ch_estimates_ext[matrixSz][rx_size_symbol];
@@ -452,7 +453,8 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
 
     LOG_D(PHY, "%d.%d symbol %d csi overlap bitmap %d\n", frame, nr_slot_rx, symbol, csi_res_bitmap);
 
-    nr_dlsch_extract_rbs(ue->frame_parms.samples_per_slot_wCP,
+    nr_dlsch_extract_rbs(frame_parms,
+                         ue->frame_parms.samples_per_slot_wCP,
                          rxdataF,
                          rx_size_symbol,
                          pdsch_est_size,
@@ -466,7 +468,6 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
                          nb_rb_pdsch,
                          dlsch_config->n_dmrs_cdm_groups,
                          nl,
-                         frame_parms,
                          dlsch_config->dlDmrsSymbPos,
                          csi_res_bitmap,
                          ue->chest_time);
@@ -1175,11 +1176,12 @@ static void nr_dlsch_channel_level_median(uint32_t rx_size_symbol,
 // Extraction functions
 //==============================================================================================
 
-static void nr_dlsch_extract_rbs(uint32_t rxdataF_sz,
+static void nr_dlsch_extract_rbs(NR_DL_FRAME_PARMS *frame_parms,
+                                 uint32_t rxdataF_sz,
                                  c16_t rxdataF[][rxdataF_sz],
                                  uint32_t rx_size_symbol,
                                  uint32_t pdsch_est_size,
-                                 c16_t dl_ch_estimates[][pdsch_est_size],
+                                 c16_t dl_ch_estimates[][frame_parms->nb_antennas_rx][pdsch_est_size],
                                  c16_t rxdataF_ext[][rx_size_symbol],
                                  c16_t dl_ch_estimates_ext[][rx_size_symbol],
                                  unsigned char symbol,
@@ -1189,7 +1191,6 @@ static void nr_dlsch_extract_rbs(uint32_t rxdataF_sz,
                                  unsigned short nb_rb_pdsch,
                                  uint8_t n_dmrs_cdm_groups,
                                  uint8_t Nl,
-                                 NR_DL_FRAME_PARMS *frame_parms,
                                  uint16_t dlDmrsSymbPos,
                                  uint32_t csi_res_bitmap,
                                  int chest_time_type)
@@ -1229,7 +1230,7 @@ static void nr_dlsch_extract_rbs(uint32_t rxdataF_sz,
     c16_t *rxF = &rxdataF[aarx][symbol * frame_parms->ofdm_symbol_size];
 
     for (unsigned char l = 0; l < Nl; l++) {
-      c16_t *dl_ch0 = &dl_ch_estimates[(l * frame_parms->nb_antennas_rx) + aarx][validDmrsEst * frame_parms->ofdm_symbol_size];
+      c16_t *dl_ch0 = &dl_ch_estimates[l][aarx][validDmrsEst * frame_parms->ofdm_symbol_size];
       c16_t *dl_ch0_ext = dl_ch_estimates_ext[(l * frame_parms->nb_antennas_rx) + aarx];
 
       if (pilots == 0 && csi_res_bitmap == 0) { // data symbol only

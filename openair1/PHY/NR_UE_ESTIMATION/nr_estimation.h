@@ -38,7 +38,6 @@ int nr_prs_channel_estimation(uint8_t gNB_id,
                               uint8_t rep_num,
                               PHY_VARS_NR_UE *ue,
                               const UE_nr_rxtx_proc_t *proc,
-                              NR_DL_FRAME_PARMS *frame_params,
                               c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP]);
 
 /*!
@@ -91,7 +90,7 @@ int nr_pdsch_channel_estimation(PHY_VARS_NR_UE *ue,
                                 unsigned short bwp_start_subcarrier,
                                 unsigned short nb_rb_pdsch,
                                 uint32_t pdsch_est_size,
-                                c16_t dl_ch_estimates[][pdsch_est_size],
+                                c16_t dl_ch_estimates[][ue->frame_parms.nb_antennas_rx][pdsch_est_size],
                                 int rxdataFsize,
                                 c16_t rxdataF[][rxdataFsize],
                                 uint32_t *nvar);
@@ -109,7 +108,7 @@ void nr_ue_measurements(PHY_VARS_NR_UE *ue,
                         const UE_nr_rxtx_proc_t *proc,
                         NR_UE_DLSCH_t *dlsch,
                         uint32_t pdsch_est_size,
-                        c16_t dl_ch_estimates[][pdsch_est_size]);
+                        c16_t dl_ch_estimates[][ue->frame_parms.nb_antennas_rx][pdsch_est_size]);
 
 int nr_ue_calculate_ssb_rsrp(const NR_DL_FRAME_PARMS *fp,
                              const UE_nr_rxtx_proc_t *proc,
