@@ -55,6 +55,8 @@
 #include "NR_ReconfigurationWithSync.h"
 #include "NR_DL-DCCH-Message.h"
 #include "SIMULATION/TOOLS/sim.h"
+#include "NR_RACH-ConfigGeneric.h"
+
 
 int xnap_gNB_generate_xn_setup_request(sctp_assoc_t assoc_id, xnap_setup_req_t *req)
 {
@@ -970,9 +972,33 @@ if (xnap_gNB_encode_pdu(&pdu, &buffer, &len) < 0) {
 }
 
 
+static uint64_t get_ssb_bitmap(const NR_ServingCellConfigCommon_t *scc)
+{
+  uint64_t bitmap=0;
+  switch (scc->ssb_PositionsInBurst->present) {
+    case 1 :
+      bitmap = ((uint64_t) scc->ssb_PositionsInBurst->choice.shortBitmap.buf[0])<<56;
+      break;
+    case 2 :
+      bitmap = ((uint64_t) scc->ssb_PositionsInBurst->choice.mediumBitmap.buf[0])<<56;
+      break;
+    case 3 :
+      for (int i=0; i<8; i++) {
+        bitmap |= (((uint64_t) scc->ssb_PositionsInBurst->choice.longBitmap.buf[i])<<((7-i)*8));
+      }
+      break;
+    default:
+      AssertFatal(1==0,"SSB bitmap size value %d undefined (allowed values 1,2,3) \n", scc->ssb_PositionsInBurst->present);
+  }
+  return bitmap;
+}
+
+
+
 int xnap_gNB_ho_cell_group_config(xnap_handover_req_ack_t *xnhandover_ack,uint8_t *buffer,size_t buffer_size)
 {
   //NR_ServingCellConfigCommon_t *scc;
+  uid_t uid = 0;
   NR_RRCReconfiguration_IEs_t                      *ie;
   NR_DL_DCCH_Message_t                             dl_dcch_msg={0};
   asn_enc_rval_t                                   enc_rval;
@@ -983,11 +1009,11 @@ int xnap_gNB_ho_cell_group_config(xnap_handover_req_ack_t *xnhandover_ack,uint8_
   c1->present = NR_DL_DCCH_MessageType__c1_PR_rrcReconfiguration;
 
   asn1cCalloc(c1->choice.rrcReconfiguration, rrcReconf); // = calloc(1, sizeof(NR_RRCReconfiguration_t));
-  //rrcReconf->rrc_TransactionIdentifier = Transaction_id;
+  rrcReconf->rrc_TransactionIdentifier = 1; //Transaction_id;
   rrcReconf->criticalExtensions.present = NR_RRCReconfiguration__criticalExtensions_PR_rrcReconfiguration;
   ie = (NR_RRCReconfiguration_IEs_t *)calloc(1, sizeof(NR_RRCReconfiguration_IEs_t));
   ie->nonCriticalExtension = calloc(1, sizeof(NR_RRCReconfiguration_v1530_IEs_t));
-  ie->nonCriticalExtension->masterCellGroup = calloc(1,sizeof(OCTET_STRING_t));
+  //ie->nonCriticalExtension->masterCellGroup = calloc(1,sizeof(OCTET_STRING_t));
 
   uint8_t *buf = NULL;
 
@@ -1001,9 +1027,12 @@ int xnap_gNB_ho_cell_group_config(xnap_handover_req_ack_t *xnhandover_ack,uint8_
  // NR_CellGroupConfig_t *secondaryCellGroup = calloc(1, sizeof(*secondaryCellGroup));
 
   //reconfigurationWithSync->spCellConfigCommon = (NR_ServingCellConfigCommon_t *)scc;
-  reconfigurationWithSync->newUE_Identity = taus() & 0xffff;
+  reconfigurationWithSync->newUE_Identity = 1;
   reconfigurationWithSync->t304 = NR_ReconfigurationWithSync__t304_ms2000;
-  reconfigurationWithSync->rach_ConfigDedicated = NULL;
+  //reconfigurationWithSync->rach_ConfigDedicated = NULL;
+ // cell_group_config->spCellConfig->reconfigurationWithSync->rach_ConfigDedicated = calloc(1, sizeof(NR_RACH_ConfigDedicated_t));
+ // NR_RACH_ConfigDedicated_t *uplink = cell_group_config->spCellConfig->reconfigurationWithSync->rach_ConfigDedicated->choice.uplink;
+ // uplink->ra_Prioritization = calloc(1, sizeof(NR_RA_Prioritization_t));
 
   scc->physCellId                                = CALLOC(1,sizeof(NR_PhysCellId_t));
   *scc->physCellId                               = 0;
@@ -1013,7 +1042,38 @@ int xnap_gNB_ho_cell_group_config(xnap_handover_req_ack_t *xnhandover_ack,uint8_
   scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB     = CALLOC(1,sizeof(NR_ARFCN_ValueNR_t));
   *scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB    = 641280;
   scc->ss_PBCH_BlockPower=20;
- ==*/
+ == 
+
+  cell_group_config->spCellConfig->reconfigurationWithSync->rach_ConfigDedicated = calloc(1, sizeof(NR_RACH_ConfigDedicated_t));
+  NR_RACH_ConfigDedicated_t *rach_config = cell_group_config->spCellConfig->reconfigurationWithSync->rach_ConfigDedicated;
+  cell_group_config->spCellConfig->reconfigurationWithSync->rach_ConfigDedicated->present = NR_ReconfigurationWithSync__rach_ConfigDedicated_PR_uplink;
+  NR_RACH_ConfigDedicated_t *uplink = calloc(1, sizeof(*uplink));
+  reconfigurationWithSync->rach_ConfigDedicated->choice.uplink = uplink;
+  uplink->ra_Prioritization = NULL;
+  uplink->cfra = calloc(1, sizeof(struct NR_CFRA));
+  uplink->cfra->ext1 = NULL;
+  uplink->cfra->occasions = calloc(1, sizeof(struct NR_CFRA__occasions));
+  memcpy(&uplink->cfra->occasions->rach_ConfigGeneric,
+         &scc->uplinkConfigCommon->initialUplinkBWP->rach_ConfigCommon->choice.setup->rach_ConfigGeneric,
+         sizeof(NR_RACH_ConfigGeneric_t));
+  asn1cCallocOne(uplink->cfra->occasions->ssb_perRACH_Occasion, NR_CFRA__occasions__ssb_perRACH_Occasion_one);
+  uplink->cfra->resources.present = NR_CFRA__resources_PR_ssb;
+  uplink->cfra->resources.choice.ssb = calloc(1, sizeof(struct NR_CFRA__resources__ssb));
+  uplink->cfra->resources.choice.ssb->ra_ssb_OccasionMaskIndex = 0;
+  uint64_t bitmap = 1; //get_ssb_bitmap(scc);
+  int n_ssb = 0;
+  struct NR_CFRA_SSB_Resource *ssbElem[64];
+  for (int i = 0; i < 64; i++) {
+    if ((bitmap >> (63 - i)) & 0x01) {
+      ssbElem[n_ssb] = calloc(1, sizeof(struct NR_CFRA_SSB_Resource));
+      ssbElem[n_ssb]->ssb = i;
+      ssbElem[n_ssb]->ra_PreambleIndex = 63 - (uid % 64);
+      n_ssb++;
+    }
+  }*/
+
+
+
   xer_fprint(stdout, &asn_DEF_NR_CellGroupConfig, (const void *) cell_group_config);
   ssize_t len = uper_encode_to_new_buffer(&asn_DEF_NR_CellGroupConfig, NULL, cell_group_config, (void **)&buf);
   AssertFatal(len > 0, "ASN1 message encoding failed (%lu)!\n", len);
@@ -1132,9 +1192,9 @@ int xnap_gNB_generate_xn_handover_request_ack(sctp_assoc_t assoc_id, xnap_handov
   ie->value.present = XNAP_HandoverRequestAcknowledge_IEs__value_PR_OCTET_STRING;
   //ie->value.choice.OCTET_STRING.buf = (uint8_t *)calloc(xnap_handover_req_ack->rrc_buffer_size, sizeof(uint8_t));
   //ie->value.choice.OCTET_STRING.buf = (uint8_t *)calloc(1,RRC_BUF_SIZE*sizeof(uint8_t));
-  memcpy(ie->value.choice.OCTET_STRING.buf, rrc_buffer,rrc_reconf_containing_cell_group);
+//  memcpy(ie->value.choice.OCTET_STRING.buf, rrc_buffer,rrc_reconf_containing_cell_group);
  // ie->value.choice.OCTET_STRING.size = xnap_handover_req_ack->rrc_buffer_size;
- // OCTET_STRING_fromBuf(&ie->value.choice.OCTET_STRING, (char*)rrc_buffer, RRC_BUF_SIZE);
+  OCTET_STRING_fromBuf(&ie->value.choice.OCTET_STRING, (char*)rrc_buffer, rrc_reconf_containing_cell_group);
  // OCTET_STRING_fromBuf(&ie->value.choice.OCTET_STRING, (char*) xnap_handover_req_ack->rrc_buffer, xnap_handover_req_ack->rrc_buffer_size);
 
 

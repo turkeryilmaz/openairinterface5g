@@ -371,10 +371,10 @@ static void set_QoSConfig(const f1ap_ue_context_modif_req_t *req, NR_UE_sched_ct
   }
 }
 
-void ue_context_setup_request(const f1ap_ue_context_setup_t *req)
+/*void ue_context_setup_request(const f1ap_ue_context_setup_t *req)
 {
   gNB_MAC_INST *mac = RC.nrmac[0];
-  /* response has same type as request... */
+  // response has same type as request... 
   f1ap_ue_context_setup_t resp = {
     .gNB_CU_ue_id = req->gNB_CU_ue_id,
     .gNB_DU_ue_id = req->gNB_DU_ue_id,
@@ -433,14 +433,142 @@ void ue_context_setup_request(const f1ap_ue_context_setup_t *req)
   AssertFatal(enc_rval.encoded > 0, "Could not encode CellGroup, failed element %s\n", enc_rval.failed_type->name);
   resp.du_to_cu_rrc_information->cellGroupConfig_length = (enc_rval.encoded + 7) >> 3;
 
-  /* TODO: need to apply after UE context reconfiguration confirmed? */
+  // TODO: need to apply after UE context reconfiguration confirmed? 
   nr_mac_prepare_cellgroup_update(mac, UE, new_CellGroup);
 
-  /* Fill the QoS config in MAC for each active DRB */
+ // Fill the QoS config in MAC for each active DRB 
   set_QoSConfig(req, &UE->UE_sched_ctrl);
 
-  /* Set NSSAI config in MAC for each active DRB */
+  // Set NSSAI config in MAC for each active DRB 
   set_nssaiConfig(req->drbs_to_be_setup_length, req->drbs_to_be_setup, &UE->UE_sched_ctrl);
+
+  NR_SCHED_UNLOCK(&mac->sched_lock);
+
+  // some sanity checks, since we use the same type for request and response 
+  DevAssert(resp.cu_to_du_rrc_information == NULL);
+  DevAssert(resp.du_to_cu_rrc_information != NULL);
+  DevAssert(resp.rrc_container == NULL && resp.rrc_container_length == 0);
+
+  mac->mac_rrc.ue_context_setup_response(req, &resp);
+
+  // free the memory we allocated above 
+  free(resp.srbs_to_be_setup);
+  free(resp.drbs_to_be_setup);
+  free(resp.du_to_cu_rrc_information->cellGroupConfig);
+  free(resp.du_to_cu_rrc_information);
+}
+*/
+
+static NR_UE_info_t *create_new_UE_handover(gNB_MAC_INST *mac, uint32_t cu_id)
+{
+  int CC_id = 0;
+  const NR_COMMON_channels_t *cc = &mac->common_channels[CC_id];
+  rnti_t rnti;
+  bool found = nr_mac_get_new_rnti(&mac->UE_info, cc->ra, sizeofArray(cc->ra), &rnti);
+  if (!found)
+    return NULL;
+
+  NR_UE_info_t* UE = add_new_nr_ue(mac, rnti, NULL);
+  if (!UE)
+    return NULL;
+
+  f1_ue_data_t new_ue_data = {.secondary_ue = cu_id};
+  du_add_f1_ue_data(rnti, &new_ue_data);
+
+  const NR_ServingCellConfigCommon_t *scc = mac->common_channels[CC_id].ServingCellConfigCommon;
+  const NR_ServingCellConfig_t *sccd = mac->common_channels[CC_id].pre_ServingCellConfig;
+  NR_CellGroupConfig_t *cellGroupConfig = get_initial_cellGroupConfig(UE->uid, scc, sccd, &mac->radio_config);
+  // note: we don't pass it to add_new_nr_ue() because the internal logic is
+  // such that we then assume having received the ack of Msg4 (which is not the
+  // case)
+  UE->Msg4_ACKed = true;
+  UE->CellGroup = cellGroupConfig;
+  UE->CellGroup->spCellConfig->reconfigurationWithSync = get_reconfiguration_with_sync(UE->rnti, UE->uid, scc);
+  nr_rlc_activate_srb0(UE->rnti, UE, NULL);
+
+  nr_mac_prepare_ra_ue(mac, rnti, UE->CellGroup);
+  return UE;
+}
+
+
+void ue_context_setup_request(const f1ap_ue_context_setup_t *req)
+{
+  gNB_MAC_INST *mac = RC.nrmac[0];
+  /* response has same type as request... */
+  f1ap_ue_context_setup_t resp = {
+    .gNB_CU_ue_id = req->gNB_CU_ue_id,
+    .gNB_DU_ue_id = req->gNB_DU_ue_id,
+  };
+
+  /* this is a hack, it should be decided depending on if req->gNB_DU_ue_id is
+   * present or not (because in F1, it's optional, but not in our structures) */
+  bool handover = false;
+
+  NR_UE_NR_Capability_t *ue_cap = NULL;
+  if (req->cu_to_du_rrc_information != NULL) {
+    const cu_to_du_rrc_information_t *cu2du = req->cu_to_du_rrc_information;
+    AssertFatal(cu2du->cG_ConfigInfo == NULL, "CG-ConfigInfo not handled\n");
+    if (cu2du->handoverPreparationInfo != NULL) {
+      handover = true;
+      ue_cap = get_ue_nr_cap_from_ho_prep_info(cu2du->handoverPreparationInfo, cu2du->handoverPreparationInfo_length);
+    } else if (cu2du->uE_CapabilityRAT_ContainerList != NULL) {
+      ue_cap = get_ue_nr_cap(req->gNB_DU_ue_id, cu2du->uE_CapabilityRAT_ContainerList, cu2du->uE_CapabilityRAT_ContainerList_length);
+    }
+    AssertFatal(cu2du->measConfig == NULL, "MeasConfig not handled\n");
+  }
+
+  NR_SCHED_LOCK(&mac->sched_lock);
+
+  NR_UE_info_t *UE = NULL;
+  if (handover) {
+    UE = create_new_UE_handover(mac, req->gNB_CU_ue_id);
+    resp.gNB_DU_ue_id = UE->rnti;
+    resp.crnti = &UE->rnti;
+  } else {
+    UE = find_nr_UE(&mac->UE_info, req->gNB_DU_ue_id);
+  }
+  AssertFatal(UE, "no UE found or could not be created, but UE Context Setup Failed not implemented\n");
+
+  NR_CellGroupConfig_t *new_CellGroup = clone_CellGroupConfig(UE->CellGroup);
+
+  if (req->srbs_to_be_setup_length > 0) {
+    resp.srbs_to_be_setup_length = handle_ue_context_srbs_setup(UE,
+                                                                req->srbs_to_be_setup_length,
+                                                                req->srbs_to_be_setup,
+                                                                &resp.srbs_to_be_setup,
+                                                                new_CellGroup);
+  }
+
+  if (req->drbs_to_be_setup_length > 0) {
+    resp.drbs_to_be_setup_length = handle_ue_context_drbs_setup(UE,
+                                                                req->drbs_to_be_setup_length,
+                                                                req->drbs_to_be_setup,
+                                                                &resp.drbs_to_be_setup,
+                                                                new_CellGroup);
+  }
+
+  if (req->rrc_container != NULL) {
+    logical_chan_id_t id = 1;
+    nr_rlc_srb_recv_sdu(req->gNB_DU_ue_id, id, req->rrc_container, req->rrc_container_length);
+  }
+
+  UE->capability = ue_cap;
+  if (ue_cap != NULL) {
+    // store the new UE capabilities, and update the cellGroupConfig
+    NR_ServingCellConfigCommon_t *scc = mac->common_channels[0].ServingCellConfigCommon;
+    update_cellGroupConfig(new_CellGroup, UE->uid, UE->capability, &mac->radio_config, scc);
+  }
+
+  resp.du_to_cu_rrc_information = calloc(1, sizeof(du_to_cu_rrc_information_t));
+  AssertFatal(resp.du_to_cu_rrc_information != NULL, "out of memory\n");
+  resp.du_to_cu_rrc_information->cellGroupConfig = calloc(1,1024);
+  AssertFatal(resp.du_to_cu_rrc_information->cellGroupConfig != NULL, "out of memory\n");
+  asn_enc_rval_t enc_rval =
+      uper_encode_to_buffer(&asn_DEF_NR_CellGroupConfig, NULL, new_CellGroup, resp.du_to_cu_rrc_information->cellGroupConfig, 1024);
+  AssertFatal(enc_rval.encoded > 0, "Could not encode CellGroup, failed element %s\n", enc_rval.failed_type->name);
+  resp.du_to_cu_rrc_information->cellGroupConfig_length = (enc_rval.encoded + 7) >> 3;
+
+  nr_mac_prepare_cellgroup_update(mac, UE, new_CellGroup);
 
   NR_SCHED_UNLOCK(&mac->sched_lock);
 
@@ -457,6 +585,7 @@ void ue_context_setup_request(const f1ap_ue_context_setup_t *req)
   free(resp.du_to_cu_rrc_information->cellGroupConfig);
   free(resp.du_to_cu_rrc_information);
 }
+
 
 void ue_context_modification_request(const f1ap_ue_context_modif_req_t *req)
 {
