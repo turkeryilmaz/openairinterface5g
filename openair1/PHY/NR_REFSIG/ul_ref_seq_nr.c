@@ -301,10 +301,10 @@ void free_ul_reference_signal_sequences(void)
   for (Msc_RS=0; Msc_RS < SRS_SB_CONF; Msc_RS++) {
     for (u=0; u < U_GROUP_NUMBER; u++) {
       for (v=0; v < V_BASE_SEQUENCE_NUMBER; v++) {
-        if (rv_ul_ref_sig[u][v][Msc_RS])
+        if ((rv_ul_ref_sig) && rv_ul_ref_sig[u][v][Msc_RS])
           free_and_zero(rv_ul_ref_sig[u][v][Msc_RS]);
         if ((v==0) && (Msc_RS < MAX_INDEX_DMRS_UL_ALLOCATED_REs))
-          if (dmrs_lowpaprtype1_ul_ref_sig[u][v][Msc_RS])
+          if ((dmrs_lowpaprtype1_ul_ref_sig) && dmrs_lowpaprtype1_ul_ref_sig[u][v][Msc_RS])
             free_and_zero(dmrs_lowpaprtype1_ul_ref_sig[u][v][Msc_RS]);
       }
     }

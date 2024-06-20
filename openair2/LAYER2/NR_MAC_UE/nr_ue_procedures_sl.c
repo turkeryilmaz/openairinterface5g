@@ -677,7 +677,6 @@ void configure_psfch_params(int module_idP,
   }
 
   uint8_t harq_pid = (rx_ind->rx_indication_body + pdu_id)->rx_slsch_pdu.harq_pid;
-  mac->sl_info.list[0] = calloc(1, sizeof(NR_SL_UE_info_t));
   NR_UE_sl_harq_t *harq_proc = &mac->sl_info.list[0]->UE_sched_ctrl.sl_harq_processes[harq_pid];
   harq_proc->feedback_slot = sched_slot;
   harq_proc->feedback_frame = sched_frame;
@@ -768,6 +767,7 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
   LOG_D(NR_MAC, "In %s : processing PDU %d (with length %d) of %d total number of PDUs...\n", __FUNCTION__, pdu_id, pdu_len, rx_ind->number_pdus);
   NR_SLSCH_MAC_SUBHEADER_FIXED *sl_sch_subheader = (NR_SLSCH_MAC_SUBHEADER_FIXED *) pduP;
   LOG_D(NR_PHY, "%4d.%2d Rx V %d R %d SRC %d DST %d\n", frame, slot, sl_sch_subheader->V, sl_sch_subheader->R, sl_sch_subheader->SRC, sl_sch_subheader->DST);
+  mac->dest_id = sl_sch_subheader->SRC;
   pduP += sizeof(*sl_sch_subheader);
   pdu_len -= sizeof(*sl_sch_subheader);
   while (!done && pdu_len > 0) {
@@ -801,6 +801,11 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
           mac_len = sizeof(*sub_pdu_header);
           nr_sl_csi_report_t* nr_sl_csi_report = (nr_sl_csi_report_t *) (pduP + mac_len);
           LOG_D(NR_MAC, "%4d.%2d: CQI: %i RI: %i\n", frame, slot, nr_sl_csi_report->CQI, nr_sl_csi_report->RI);
+          int indx = sl_sch_subheader->SRC%MAX_SL_UE_CONNECTIONS;
+          mac->sl_info.list[indx]->uid = mac->src_id;
+          mac->sl_info.list[indx]->dest_id = sl_sch_subheader->SRC;
+          mac->sl_info.list[indx]->UE_sched_ctrl.csi_report.cqi = nr_sl_csi_report->CQI;
+          mac->sl_info.list[indx]->UE_sched_ctrl.csi_report.ri = nr_sl_csi_report->RI;
           break;
         }
       case SL_SCH_LCID_SL_PADDING:

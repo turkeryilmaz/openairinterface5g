@@ -169,6 +169,15 @@ void nr_ue_init_mac(module_id_t module_idP)
   mac->phy_config_request_sent = false;
   mac->state = UE_NOT_SYNC;
   mac->si_window_start = -1;
+  for (int i = 0; i < MAX_SL_UE_CONNECTIONS; i++) {
+    mac->sl_info.list[i] = calloc(1, sizeof(NR_SL_UE_info_t));
+    mac->sl_info.list[i]->uid = 0;
+    mac->sl_info.list[i]->dest_id = 0;
+    mac->sl_info.list[i]->UE_sched_ctrl.csi_report.ri = 0;
+    mac->sl_info.list[i]->UE_sched_ctrl.csi_report.cqi = -1;
+    mac->sl_info.list[i]->UE_sched_ctrl.sl_max_mcs = 16;
+    mac->dest_id = -1;
+  }
 }
 
 void nr_ue_mac_default_configs(NR_UE_MAC_INST_t *mac)
