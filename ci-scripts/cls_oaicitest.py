@@ -805,7 +805,7 @@ class OaiCiTest():
 		bidirIperf = re.search('--bidir', iperf_opt) is not None
 		client_filename = f'iperf_client_{self.testCase_id}_{ue.getName()}.log'
 		server_filename = f'iperf_server_{self.testCase_id}_{ue.getName()}.log'
-		ymlPath = CONTAINERS.yamlPath[0].split('/')
+		ymlPath = next((path.split('/') for path in CONTAINERS.yamlPath if path), [])
 		logPath = f'../cmake_targets/log/{ymlPath[1]}'
 
 		if udpIperf:
