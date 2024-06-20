@@ -199,24 +199,39 @@ static int get_ssb_arfcn(const f1ap_served_cell_info_t *cell_info, const NR_MIB_
   int band = get_dl_band(cell_info);
   // FR1 includes frequency bands from 410 MHz (ARFCN 82000) to 7125 MHz (ARFCN 875000)
   // FR2 includes frequency bands from 24.25 GHz (ARFCN 2016667) to 71.0 GHz (ARFCN 2795832)
-  uint64_t scaling = 0;
+  //uint64_t scaling = 0;
+
+  uint64_t freqpointa = from_nrarfcn(band, scs, dl_arfcn);
+  uint64_t freqssb = 0;
+  // 3GPP TS 38.211 sections 7.4.3.1 and 4.4.4.2
+  // for FR1 offsetToPointA and k_SSB are expressed in terms of 15 kHz SCS
+  // for FR2 offsetToPointA is expressed in terms of 60 kHz SCS and k_SSB expressed in terms of the subcarrier spacing provided
+  // by the higher-layer parameter subCarrierSpacingCommon
+  // FR1 includes frequency bands from 410 MHz (ARFCN 82000) to 7125 MHz (ARFCN 875000)
+  // FR2 includes frequency bands from 24.25 GHz (ARFCN 2016667) to 71.0 GHz (ARFCN 2795832)
+
+
   if (dl_arfcn >= 82000 && dl_arfcn < 875000)
-    scaling = 1;
+    //scaling = 1;
+    freqssb = freqpointa + 15000 * (offsetToPointA * 12 + kssb + 1)  + 10ll * 12 * (1 << scs) * 15000;
+
   else if (dl_arfcn >= 2016667 && dl_arfcn < 2795832)
-    scaling = 4;
+    freqssb = freqpointa + 60000 * offsetToPointA * 12 + (1 << scs) * 15000 * (kssb  + 10ll * 12);
+
+    //scaling = 4;
   else
     AssertFatal(false, "Invalid absoluteFrequencyPointA: %d\n", dl_arfcn);
 
 
-  uint64_t freqpointa = from_nrarfcn(band, scs, dl_arfcn);
+  //uint64_t freqpointa = from_nrarfcn(band, scs, dl_arfcn);
   // offsetToPointA and kSSB are both on 15kHz SCS for FR1 and 60kHz SCS for FR2 (see 38.211 sections 7.4.3.1 and 4.4.4.2)
   // SSB uses the SCS of the cell and is 20 RBs wide, so use 10
-  uint64_t freqssb = freqpointa + scaling * 15000 * (offsetToPointA * 12 + kssb)  + 10ll * 12 * (1 << scs) * 15000;
+  //uint64_t freqssb = freqpointa + scaling * 15000 * (offsetToPointA * 12 + kssb)  + 10ll * 12 * (1 << scs) * 15000;
   int bw_index = get_supported_band_index(scs, band, get_dl_bw(cell_info));
   int band_size_hz = get_supported_bw_mhz(band > 256 ? FR2 : FR1, bw_index) * 1000 * 1000;
   uint32_t ssb_arfcn = to_nrarfcn(band, freqssb, scs, band_size_hz);
 
-  LOG_D(RRC, "freqpointa %ld Hz/%d offsetToPointA %ld kssb %ld scs %d band %d band_size_hz %d freqssb %ld Hz/%d\n", freqpointa, dl_arfcn, offsetToPointA, kssb, scs, band, band_size_hz, freqssb, ssb_arfcn);
+  LOG_I(RRC, "##########################################freqpointa %ld Hz/%d offsetToPointA %ld kssb %ld scs %d band %d band_size_hz %d freqssb %ld Hz/%d\n", freqpointa, dl_arfcn, offsetToPointA, kssb, scs, band, band_size_hz, freqssb, ssb_arfcn);
 
   if (RC.nrmac) {
     // debugging: let's test this is the correct ARFCN
@@ -554,6 +569,7 @@ static void rrc_gNB_generate_defaultRRCReconfiguration(const protocol_ctxt_t *co
   if (du->mib != NULL && du->sib1 != NULL) {
     /* we cannot calculate the default measurement config without MIB&SIB1, as
      * we don't know the DU's SSB ARFCN */
+    printf("we know MIB and SIB1#####################################################################################################\n");
     uint32_t ssb_arfcn = get_ssb_arfcn(cell_info, du->mib, du->sib1);
     measconfig = get_defaultMeasConfig(ssb_arfcn, band, scs);
   }
@@ -1065,7 +1081,7 @@ static void rrc_handle_RRCSetupRequest(gNB_RRC_INST *rrc, sctp_assoc_t assoc_id,
      */
     if ((ue_context_p = rrc_gNB_ue_context_random_exist(rrc, random_value))) {
       LOG_W(NR_RRC, "new UE rnti (coming with random value) is already there, removing UE %x from MAC/PHY\n", msg->crnti);
-      AssertFatal(false, "not implemented\n");
+      //AssertFatal(false, "not implemented\n");
     }
 
     ue_context_p = rrc_gNB_create_ue_context(assoc_id, msg->crnti, rrc, random_value, msg->gNB_DU_ue_id);

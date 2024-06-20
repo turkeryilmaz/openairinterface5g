@@ -692,7 +692,7 @@ static bool set_fh_prach_config(const openair0_config_t *oai0,
   prach_config->nPrachRestrictSet = 0;
   prach_config->nPrachRootSeqIdx = 0;
   prach_config->nPrachFreqStart = s7cfg->prach_freq_start;
-  prach_config->nPrachFreqOffset = (s7cfg->prach_freq_start * 12 - oai0->num_rb_dl * 6) * 2;
+  prach_config->nPrachFreqOffset = (s7cfg->prach_freq_start * 12 - oai0->num_rb_dl * 6) * 2 + 4;
   if (oai0->nr_band < 100)
     prach_config->nPrachFilterIdx = get_prach_filterindex_fr1(oai0->duplex_mode, s7cfg->prach_index);
   else
@@ -825,12 +825,12 @@ bool set_fh_config(int ru_idx, int num_rus, const openair0_config_t *oai0, struc
   fh_config->neAxc = oai0->tx_num_channels / num_rus;
   fh_config->neAxcUl = oai0->rx_num_channels / num_rus;
   fh_config->nAntElmTRx = oai0->tx_num_channels / num_rus;
-  fh_config->nDLFftSize = 0;
-  fh_config->nULFftSize = 0;
+  fh_config->nDLFftSize = 1024;
+  fh_config->nULFftSize = 1024;
   fh_config->nDLRBs = oai0->num_rb_dl;
   fh_config->nULRBs = oai0->num_rb_dl;
-  fh_config->nDLAbsFrePointA = 0;
-  fh_config->nULAbsFrePointA = 0;
+  fh_config->nDLAbsFrePointA = 27968160;
+  fh_config->nULAbsFrePointA = 27968160;
   fh_config->nDLCenterFreqARFCN = nDLCenterFreqARFCN;
   fh_config->nULCenterFreqARFCN = nULCenterFreqARFCN;
   fh_config->ttiCb = NULL;
@@ -881,8 +881,8 @@ bool set_fh_config(int ru_idx, int num_rus, const openair0_config_t *oai0, struc
   // fh_config->rx_cp_eAxC2Vf [not implemented by fhi_lib]
   // fh_config->rx_up_eAxC2Vf [not implemented by fhi_lib]
   fh_config->log_level = 1;
-  fh_config->max_sections_per_slot = 8;
-  fh_config->max_sections_per_symbol = 8;
+  fh_config->max_sections_per_slot = 14;
+  fh_config->max_sections_per_symbol = 14;
 
   return true;
 }

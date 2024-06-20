@@ -72,9 +72,16 @@ void nr_common_signal_procedures (PHY_VARS_gNB *gNB,int frame,int slot,nfapi_nr_
 
   // setting the first subcarrier
   const int scs = cfg->ssb_config.scs_common.value;
-  const int prb_offset = (fp->freq_range == nr_FR1) ? ssb_pdu.ssb_pdu_rel15.ssbOffsetPointA>>scs : ssb_pdu.ssb_pdu_rel15.ssbOffsetPointA>>(scs-2);
-  const int sc_offset = (fp->freq_range == nr_FR1) ? ssb_pdu.ssb_pdu_rel15.SsbSubcarrierOffset >> scs
-                                                   : ssb_pdu.ssb_pdu_rel15.SsbSubcarrierOffset >> (scs - 2);
+  //const int prb_offset = (fp->freq_range == nr_FR1) ? ssb_pdu.ssb_pdu_rel15.ssbOffsetPointA>>scs : ssb_pdu.ssb_pdu_rel15.ssbOffsetPointA>>(scs-2);
+  //const int sc_offset = (fp->freq_range == nr_FR1) ? ssb_pdu.ssb_pdu_rel15.SsbSubcarrierOffset >> scs
+                                                   //: ssb_pdu.ssb_pdu_rel15.SsbSubcarrierOffset >> (scs - 2);
+
+  const int prb_offset = (fp->freq_range == nr_FR1) ? ssb_pdu.ssb_pdu_rel15.ssbOffsetPointA >> scs
+                                                    : ssb_pdu.ssb_pdu_rel15.ssbOffsetPointA >> (scs - 2);
+  const int sc_offset =
+      (fp->freq_range == nr_FR1) ? ssb_pdu.ssb_pdu_rel15.SsbSubcarrierOffset >> scs : ssb_pdu.ssb_pdu_rel15.SsbSubcarrierOffset;
+
+
   fp->ssb_start_subcarrier = (12 * prb_offset + sc_offset);
   LOG_D(PHY, "SSB first subcarrier %d (%d,%d)\n", fp->ssb_start_subcarrier, prb_offset, sc_offset);
 
@@ -439,13 +446,13 @@ void nr_fill_indication(PHY_VARS_gNB *gNB, int frame, int slot_rx, int ULSCH_id,
   if (timing_advance_update < 0)  timing_advance_update = 0;
   if (timing_advance_update > 63) timing_advance_update = 63;
 
-  if (crc_flag == 0) LOG_D(PHY, "%d.%d : Received PUSCH : Estimated timing advance PUSCH is  = %d, timing_advance_update is %d \n", frame,slot_rx,sync_pos,timing_advance_update);
+  if (crc_flag == 0) LOG_I(PHY, "%d.%d : Received PUSCH : Estimated timing advance PUSCH is  = %d, timing_advance_update is %d \n", frame,slot_rx,sync_pos,timing_advance_update);
 
   // estimate UL_CQI for MAC
   int SNRtimes10 =
       dB_fixed_x10(gNB->pusch_vars[ULSCH_id].ulsch_power_tot) - dB_fixed_x10(gNB->pusch_vars[ULSCH_id].ulsch_noise_power_tot);
 
-  LOG_D(PHY,
+  LOG_I(PHY,
         "%d.%d: Estimated SNR for PUSCH is = %f dB (ulsch_power %f, noise %f) delay %d\n",
         frame,
         slot_rx,
@@ -460,7 +467,7 @@ void nr_fill_indication(PHY_VARS_gNB *gNB, int frame, int slot_rx, int ULSCH_id,
   else                        cqi=(640+SNRtimes10)/5;
 
 
-  if (0/*pusch_pdu->mcs_index == 9*/) {
+  if (0 && sync_pos>-10 && sync_pos<10 && SNRtimes10 > 50/*pusch_pdu->mcs_index == 9*/) {
       __attribute__((unused))
       int off = ((pusch_pdu->rb_size&1) == 1)? 4:0;
 
@@ -602,7 +609,7 @@ void fill_ul_rb_mask(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx) {
               rb2 = rb + pucch_pdu->bwp_start +
                     ((symbol < pucch_pdu->start_symbol_index+(pucch_pdu->nr_of_symbols>>1)) || (pucch_pdu->freq_hop_flag == 0) ?
                      pucch_pdu->prb_start : pucch_pdu->second_hop_prb);
-              gNB->rb_mask_ul[symbol][rb2>>5] |= (1<<(rb2&31));
+              gNB->rb_mask_ul[symbol][rb2>>5] |= (((uint32_t)1)<<(rb2&31));
             }
           }
         }

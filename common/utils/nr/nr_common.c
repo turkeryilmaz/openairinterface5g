@@ -773,6 +773,7 @@ int get_ssb_subcarrier_offset(uint32_t absoluteFrequencySSB, uint32_t absoluteFr
   // the assertion is to avoid having an offset of half a subcarrier
   if (scs == 1)
     AssertFatal(subcarrier_offset % 2 == 0, "ssb offset %d invalid for scs %d\n", subcarrier_offset, scs);
+  printf("######################subcoffset = %d\n",subcarrier_offset);  
   return subcarrier_offset;
 }
 

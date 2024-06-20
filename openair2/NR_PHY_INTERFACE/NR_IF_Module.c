@@ -190,7 +190,7 @@ void handle_nr_ulsch(NR_UL_IND_t *UL_info)
       AssertFatal(crc->rnti == rx->rnti, "mis-match between CRC RNTI %04x and RX RNTI %04x\n",
                   crc->rnti, rx->rnti);
 
-      LOG_D(NR_MAC,
+      LOG_I(NR_MAC,
             "%4d.%2d Calling rx_sdu (CRC %s/tb_crc_status %d)\n",
             UL_info->frame,
             UL_info->slot,

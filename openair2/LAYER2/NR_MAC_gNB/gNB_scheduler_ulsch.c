@@ -554,7 +554,7 @@ void handle_nr_ul_harq(const int CC_idP,
   if (!crc_pdu->tb_crc_status) {
     harq->ndi ^= 1;
     harq->round = 0;
-    LOG_D(NR_MAC,
+    LOG_I(NR_MAC,
           "Ulharq id %d crc passed for RNTI %04x\n",
           harq_pid,
           crc_pdu->rnti);
@@ -567,7 +567,7 @@ void handle_nr_ul_harq(const int CC_idP,
           harq_pid);
   } else {
     harq->round++;
-    LOG_D(NR_MAC,
+    LOG_I(NR_MAC,
           "Ulharq id %d crc failed for RNTI %04x\n",
           harq_pid,
           crc_pdu->rnti);
@@ -611,7 +611,7 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
         T_BUFFER(sduP, sdu_lenP));
 
     UE->mac_stats.ul.total_bytes += sdu_lenP;
-    LOG_D(NR_MAC, "[gNB %d][PUSCH %d] CC_id %d %d.%d Received ULSCH sdu from PHY (rnti %04x) ul_cqi %d TA %d sduP %p, rssi %d\n",
+    LOG_I(NR_MAC, "[gNB %d][PUSCH %d] CC_id %d %d.%d Received ULSCH sdu from PHY (rnti %04x) ul_cqi %d TA %d sduP %p, rssi %d\n",
           gnb_mod_idP,
           harq_pid,
           CC_idP,
@@ -631,10 +631,10 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
       UE_scheduling_control->raw_rssi = rssi;
       UE_scheduling_control->pusch_snrx10 = ul_cqi * 5 - 640;
 
-      LOG_D(NR_MAC, "[UE %04x] PUSCH TPC %d and TA %d\n",UE->rnti,UE_scheduling_control->tpc0,UE_scheduling_control->ta_update);
+      LOG_I(NR_MAC, "[UE %04x] PUSCH TPC %d and TA %d\n",UE->rnti,UE_scheduling_control->tpc0,UE_scheduling_control->ta_update);
     }
     else{
-      LOG_D(NR_MAC,"[UE %04x] Detected DTX : increasing UE TX power\n",UE->rnti);
+      LOG_I(NR_MAC,"[UE %04x] Detected DTX : increasing UE TX power\n",UE->rnti);
       UE_scheduling_control->tpc0 = 1;
     }
 
@@ -685,6 +685,7 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
     }
   } else if(sduP) {
 
+    printf("GETTING INSIDE SDU\n");
     bool no_sig = true;
     for (int k = 0; k < sdu_lenP; k++) {
       if(sduP[k]!=0) {
@@ -710,19 +711,19 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
         continue;
       
       if(no_sig) {
-        LOG_D(NR_MAC, "Random Access %i failed at state %i (no signal)\n", i, ra->state);
+        LOG_I(NR_MAC, "Random Access %i failed at state %i (no signal)\n", i, ra->state);
         nr_clear_ra_proc(gnb_mod_idP, CC_idP, frameP, ra);
       } else {
 
         // random access pusch with TC-RNTI
         if (ra->rnti != current_rnti) {
-          LOG_D(NR_MAC,
+          LOG_I(NR_MAC,
                 "expected TC_RNTI %04x to match current RNTI %04x\n",
                 ra->rnti,
                 current_rnti);
 
           if( (frameP==ra->Msg3_frame) && (slotP==ra->Msg3_slot) ) {
-            LOG_D(NR_MAC, "Random Access %i failed at state %i (TC_RNTI %04x RNTI %04x)\n", i, ra->state,ra->rnti,current_rnti);
+            LOG_I(NR_MAC, "Random Access %i failed at state %i (TC_RNTI %04x RNTI %04x)\n", i, ra->state,ra->rnti,current_rnti);
             nr_clear_ra_proc(gnb_mod_idP, CC_idP, frameP, ra);
           }
 
@@ -836,7 +837,7 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
 
       // for CFRA (NSA) do not schedule retransmission of msg3
       if (ra->cfra) {
-        LOG_D(NR_MAC, "Random Access %i failed at state %i (NSA msg3 reception failed)\n", i, ra->state);
+        LOG_I(NR_MAC, "Random Access %i failed at state %i (NSA msg3 reception failed)\n", i, ra->state);
         nr_clear_ra_proc(gnb_mod_idP, CC_idP, frameP, ra);
         return;
       }

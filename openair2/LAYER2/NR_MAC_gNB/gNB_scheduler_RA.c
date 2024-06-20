@@ -545,6 +545,9 @@ void nr_initiate_ra_proc(module_id_t module_idP,
                          uint8_t symbol,
                          int16_t timing_offset)
 {
+
+  //timing_offset = 6;
+
   gNB_MAC_INST *nr_mac = RC.nrmac[module_idP];
   NR_SCHED_LOCK(&nr_mac->sched_lock);
 
@@ -602,7 +605,7 @@ void nr_initiate_ra_proc(module_id_t module_idP,
 
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_INITIATE_RA_PROC, 1);
 
-    LOG_D(NR_MAC,
+    LOG_I(NR_MAC,
           "[gNB %d][RAPROC] CC_id %d Frame %d, Slot %d  Initiating RA procedure for preamble index %d\n",
           module_idP,
           CC_id,
@@ -929,6 +932,7 @@ static void nr_get_Msg3alloc(module_id_t module_id,
   uint8_t k2 = 0;
   if (frame_type == TDD) {
     int msg3_slot = get_first_ul_slot(tdd->nrofDownlinkSlots, tdd->nrofDownlinkSymbols, tdd->nrofUplinkSymbols);
+    //msg3_slot++;
     if (tdd->nrofUplinkSymbols != 0) {
       if (tdd->nrofUplinkSymbols < 3)
         msg3_slot++; // we can't trasmit msg3 in mixed slot if there are less than 3 symbols
@@ -943,11 +947,12 @@ static void nr_get_Msg3alloc(module_id_t module_id,
       startSymbolAndLength = pusch_TimeDomainAllocationList->list.array[i]->startSymbolAndLength;
       SLIV2SL(startSymbolAndLength, &StartSymbolIndex, &NrOfSymbols);
       k2 = *pusch_TimeDomainAllocationList->list.array[i]->k2;
-      LOG_D(NR_MAC,"Checking Msg3 TDA %d for Msg3_slot %d Msg3_start %d Msg3_nsymb %d: k2 %d, sliv %d,S %d L %d\n",
+      LOG_I(NR_MAC,"Checking Msg3 TDA %d for Msg3_slot %d Msg3_start %d Msg3_nsymb %d: k2 %d, sliv %d,S %d L %d\n",
             i, msg3_slot, Msg3start, Msg3maxsymb, (int)k2, (int)pusch_TimeDomainAllocationList->list.array[i]->startSymbolAndLength, StartSymbolIndex, NrOfSymbols);
       // we want to transmit in the uplink symbols of mixed slot or the first uplink slot
       abs_slot = (current_slot + k2 + DELTA[mu]);
       int temp_slot = abs_slot % nr_slots_per_frame[mu]; // msg3 slot according to 8.3 in 38.213
+      printf("abs_slot %d temp_slot %d\n",abs_slot, temp_slot);
       if ((temp_slot % nb_slots_per_period) == msg3_slot &&
           is_xlsch_in_slot(mac->ulsch_slot_bitmap[temp_slot / 64], temp_slot) &&
           StartSymbolIndex == Msg3start &&
@@ -1670,10 +1675,32 @@ static void nr_generate_Msg4(module_id_t module_idP,
   NR_COMMON_channels_t *cc = &nr_mac->common_channels[CC_id];
   NR_UE_DL_BWP_t *dl_bwp = &ra->DL_BWP;
 
+
+  NR_ServingCellConfigCommon_t *scc = cc->ServingCellConfigCommon;
+  const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
+  // lenght of tdd period in slots
+  const int n_slots_frame = nr_slots_per_frame[dl_bwp->scs];
+  int tdd_period_slot =n_slots_frame;
+  if (tdd) {
+    tdd_period_slot = n_slots_frame/get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity);
+  }
+  else{
+    if(cc->frame_type == TDD)
+      AssertFatal(cc->frame_type == FDD, "Dynamic TDD not handled yet\n");
+  }
+  // FR2 schedule Msg4 in slot 2 of TDD period
+  if (dl_bwp->scs >= 3 &&(!(slotP%tdd_period_slot == 4 || slotP%tdd_period_slot == 4 || slotP%tdd_period_slot == 2)))  return;
+
+  LOG_I(NR_MAC, "frame %d and slot %d\n",  frameP, slotP ); 
+
+
+
+
+
   // if it is a DL slot, if the RA is in MSG4 state
   if (is_xlsch_in_slot(nr_mac->dlsch_slot_bitmap[slotP / 64], slotP)) {
 
-    NR_ServingCellConfigCommon_t *scc = cc->ServingCellConfigCommon;
+    //NR_ServingCellConfigCommon_t *scc = cc->ServingCellConfigCommon;
     NR_SearchSpace_t *ss = ra->ra_ss;
 
     NR_ControlResourceSet_t *coreset = ra->coreset;
@@ -1912,8 +1939,7 @@ static void nr_generate_Msg4(module_id_t module_idP,
     }
 
     ra->state = WAIT_Msg4_ACK;
-    LOG_I(NR_MAC,"UE %04x Generate msg4: feedback at %4d.%2d, payload %d bytes, next state WAIT_Msg4_ACK\n", ra->rnti, pucch->frame, pucch->ul_slot, harq->tb_size);
-  }
+LOG_I(NR_MAC,"UE %04x Generate msg4 in %d.%d: feedback at %4d.%2d, payload %d bytes, next state WAIT_Msg4_ACK\n", ra->rnti, frameP, slotP, pucch->frame, pucch->ul_slot, harq->tb_size);  }
 }
 
 static void nr_check_Msg4_Ack(module_id_t module_id, int CC_id, frame_t frame, sub_frame_t slot, NR_RA_t *ra)

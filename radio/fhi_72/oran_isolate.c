@@ -170,14 +170,14 @@ int trx_oran_ctlrecv(openair0_device *device, void *msg, ssize_t msg_len)
     cap = (RRU_capabilities_t *)&rru_config_msg->msg[0];
     cap->FH_fmt = OAI_IF4p5_only;
     cap->num_bands = 1;
-    cap->band_list[0] = 78;
+    cap->band_list[0] = 257; //78;
     // cap->num_concurrent_bands             = 1; component carriers
-    cap->nb_rx[0] = 1; // device->openair0_cfg->rx_num_channels;
-    cap->nb_tx[0] = 1; // device->openair0_cfg->tx_num_channels;
+    cap->nb_rx[0] = 2; // device->openair0_cfg->rx_num_channels;
+    cap->nb_tx[0] = 2; // device->openair0_cfg->tx_num_channels;
     cap->max_pdschReferenceSignalPower[0] = -27;
     cap->max_rxgain[0] = 90;
-    cap->N_RB_DL[0] = 106;
-    cap->N_RB_UL[0] = 106;
+    cap->N_RB_DL[0] = 66;
+    cap->N_RB_UL[0] = 66;
 
     s->capabilities_sent = 1;
 
@@ -209,12 +209,12 @@ void oran_fh_if4p5_south_in(RU_t *ru, int *frame, int *slot)
     printf("ORAN: %d.%d ORAN_fh_if4p5_south_in ERROR in RX function \n", f, sl);
   }
 
-  int slots_per_frame = 10 << (ru->openair0_cfg.nr_scs_for_raster);
+  int slots_per_frame = 80; // 10 << (ru->openair0_cfg.nr_scs_for_raster);
   proc->tti_rx = sl;
   proc->frame_rx = f;
   proc->tti_tx = (sl + sl_ahead) % slots_per_frame;
   proc->frame_tx = (sl > (slots_per_frame - 1 - sl_ahead)) ? (f + 1) & 1023 : f;
-
+  //printf("received %d.%d, expected %d.%d\n", proc->frame_rx,proc->tti_rx,*frame,*slot);
   if (proc->first_rx == 0) {
     if (proc->tti_rx != *slot) {
       LOG_E(PHY,

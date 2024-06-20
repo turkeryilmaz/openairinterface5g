@@ -82,8 +82,8 @@
   {ORAN_FH_CONFIG_T1A_CP_UL,    "T1a_cp_ul" ORAN_FH_HLP_CPLT,  PARAMFLAG_MANDATORY, .uptr=NULL, .defintarrayval=0, TYPE_UINTARRAY, 0}, \
   {ORAN_FH_CONFIG_T1A_UP,       "T1a_up" ORAN_FH_HLP_CPLT,     PARAMFLAG_MANDATORY, .uptr=NULL, .defintarrayval=0, TYPE_UINTARRAY, 0}, \
   {ORAN_FH_CONFIG_TA4,          "Ta4" ORAN_FH_HLP_CPLT,        PARAMFLAG_MANDATORY, .uptr=NULL, .defintarrayval=0, TYPE_UINTARRAY, 0}, \
-  {ORAN_FH_CONFIG_CP_VLAN_TAG,  "not used by xran",            0,                   .uptr=NULL, .defuintval=0,     TYPE_UINT,      0}, \
-  {ORAN_FH_CONFIG_UP_VLAN_TAG,  "not used by xran",            0,                   .uptr=NULL, .defuintval=0,     TYPE_UINT,      0}, \
+  {ORAN_FH_CONFIG_CP_VLAN_TAG,  "not used by xran",            0,                   .uptr=NULL, .defuintval=566,     TYPE_UINT,      0}, \
+  {ORAN_FH_CONFIG_UP_VLAN_TAG,  "not used by xran",            0,                   .uptr=NULL, .defuintval=566,     TYPE_UINT,      0}, \
 }
 // clang-format on
 

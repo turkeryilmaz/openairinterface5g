@@ -94,7 +94,7 @@ static struct xran_prb_map get_xran_prb_map_dl(const struct xran_fh_config *f)
   e->numSymb = 14;
   e->nRBStart = 0;
   e->nRBSize = f->nDLRBs;
-  e->nBeamIndex = 0;
+  e->nBeamIndex = 1;
   e->compMethod = f->ru_conf.compMeth;
   e->iqWidth = f->ru_conf.iqWidth;
   return prbmap;
@@ -117,7 +117,7 @@ static struct xran_prb_map get_xran_prb_map_ul(const struct xran_fh_config *f)
   e->numSymb = 14;
   e->nRBStart = 0;
   e->nRBSize = f->nULRBs;
-  e->nBeamIndex = 0;
+  e->nBeamIndex = 1;
   e->compMethod = f->ru_conf.compMeth;
   e->iqWidth = f->ru_conf.iqWidth;
   return prbmap;

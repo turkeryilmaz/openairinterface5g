@@ -457,7 +457,7 @@ void rx_nr_prach(PHY_VARS_gNB *gNB,
   int log2_ifft_size=10;
   int16_t prach_ifft_tmp[2048*2] __attribute__((aligned(32)));
   int32_t *prach_ifft=(int32_t*)NULL;
-  
+  int32_t prach_ifft_max[2048*2]; 
   fp = &gNB->frame_parms;
 
   nb_rx = gNB->gNB_config.carrier_config.num_rx_ant.value;
@@ -661,6 +661,7 @@ void rx_nr_prach(PHY_VARS_gNB *gNB,
         *max_preamble_energy  = levdB;
         *max_preamble_delay   = i; // Note: This has to be normalized to the 30.72 Ms/s sampling rate
         *max_preamble         = preamble_index;
+        memcpy(prach_ifft_max,prach_ifft,256*4);
       }
     }
   }// preamble_index
@@ -690,9 +691,12 @@ void rx_nr_prach(PHY_VARS_gNB *gNB,
   else *TA = *TA/2;
 
 
-  if (LOG_DUMPFLAG(PRACH)) {
-    //int en = dB_fixed(signal_energy((int32_t*)&rxsigF[0][0],840));
-    //    if (en>60) {
+  if (1/*LOG_DUMPFLAG(PRACH)*/) {
+    int en = dB_fixed(signal_energy((int32_t*)&rxsigF[0][0],140));
+    //printf("en %d\n", en);
+      if (en>35) {
+        LOG_M("prach_ifft_max.m","prach_t0",prach_ifft_max,256,1,2);
+        exit(-1);
       int k = (12*n_ra_prb) - 6*fp->N_RB_UL;
       
       if (k<0) k+=fp->ofdm_symbol_size;
@@ -702,11 +706,13 @@ void rx_nr_prach(PHY_VARS_gNB *gNB,
       k*=2;
       
 
-      LOG_M("rxsigF.m","prach_rxF",&rxsigF[0][0],12288,1,1);
-      LOG_M("prach_rxF_comp0.m","prach_rxF_comp0",prachF,1024,1,1);
+      LOG_M("rxsigF.m","prach_rxF",&rxsigF[0][0],140,1,1);
+      LOG_M("prach_rxF_comp0.m","prach_rxF_comp0",prachF,256,1,1);
       LOG_M("Xu.m","xu",Xu,N_ZC,1,1);
       LOG_M("prach_ifft0.m","prach_t0",prach_ifft,1024,1,1);
-      //    }
+      printf("#######################dumped\n\n");
+      exit(-1);
+       }
   } /* LOG_DUMPFLAG(PRACH) */
   stop_meas(&gNB->rx_prach);
 

@@ -208,7 +208,7 @@ typedef enum {
   {CONFIG_STRING_RU_SF_AHEAD,                  HLP_RU_SF_AHEAD,                   0,       .iptr=NULL,       .defintval=4,                 TYPE_INT,         0}, \
   {CONFIG_STRING_RU_SL_AHEAD,                  HLP_RU_SL_AHEAD,                   0,       .iptr=NULL,       .defintval=6,                 TYPE_INT,         0}, \
   {CONFIG_STRING_RU_NR_FLAG,                   HLP_RU_NR_FLAG,                    0,       .iptr=NULL,       .defintval=0,                 TYPE_INT,         0}, \
-  {CONFIG_STRING_RU_NR_SCS_FOR_RASTER,         HLP_RU_NR_SCS_FOR_RASTER,          0,       .iptr=NULL,       .defintval=1,                 TYPE_INT,         0}, \
+  {CONFIG_STRING_RU_NR_SCS_FOR_RASTER,         HLP_RU_NR_SCS_FOR_RASTER,          0,       .iptr=NULL,       .defintval=3,                 TYPE_INT,         0}, \
   {CONFIG_STRING_RU_TX_SUBDEV,                 NULL,                              0,       .strptr=NULL,     .defstrval="",                TYPE_STRING,      0}, \
   {CONFIG_STRING_RU_RX_SUBDEV,                 NULL,                              0,       .strptr=NULL,     .defstrval="",                TYPE_STRING,      0}, \
   {CONFIG_STRING_RU_RXFH_CORE_ID,              HLP_RU_RXFH_CORE_ID,               0,       .uptr=NULL,       .defintval=0,                 TYPE_UINT,        0}, \

@@ -89,6 +89,7 @@ void oai_xran_fh_rx_callback(void *pCallbackTag, xran_status_t status)
   uint32_t rx_tti = callback_tag->slotiId;
 
   tti = xran_get_slot_idx_from_tti(rx_tti, &frame, &subframe, &slot, &second);
+  //printf("rx_sym %d rx_tti %d tti %d slot %d sf %d f %d rx_tti mod 8 = %d\n",rx_sym, rx_tti,tti , slot, subframe, frame, rx_tti%8 );
 
   rx_sym = callback_tag->symbol;
 
@@ -232,6 +233,15 @@ int read_prach_data(ru_info_t *ru, int frame, int slot)
           else
             for (idx = 0; idx < (139 * 2); idx++)
               dst[idx] += (local_dst[idx + g_kbar]);
+
+          if (dst != NULL )
+          {
+            int energy_level = dB_fixed(signal_energy((int32_t*)local_dst,139));
+            if (energy_level>25) 
+            {
+            printf("PRACH tti %d slot %d symb %d energy level %d\n", tti, slot, sym_idx, energy_level);
+            }
+          }
         } // COMPMETHOD_BLKFLOAT
       } // aa
     } // symb_indx
@@ -395,6 +405,14 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot)
             memcpy((void *)dst2, (void *)local_dst, neg_len * 4);
             memcpy((void *)dst1, (void *)&local_dst[neg_len], pos_len * 4);
             outcnt++;
+          if (local_dst != NULL )
+          {
+            int energy_level = dB_fixed(signal_energy((int32_t*)local_dst,(neg_len + pos_len)));
+            if (energy_level>30) 
+            {
+            printf("PUSCH tti %d slot %d symb %d energy level %d ra %d beamid %d\n", tti, *slot, sym_idx, energy_level,ant_id,pRbMap->prbMap[idxElm].nBeamIndex);
+            }
+          }
           } else {
             printf("pRbElm->compMethod == %d is not supported\n", pRbElm->compMethod);
             exit(-1);
@@ -436,7 +454,7 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot)
 
 int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp)
 {
-  int tti = /*frame*SUBFRAMES_PER_SYSTEMFRAME*SLOTNUM_PER_SUBFRAME+*/ 20 * frame
+  int tti = /*frame*SUBFRAMES_PER_SYSTEMFRAME*SLOTNUM_PER_SUBFRAME+*/ 80 * frame
             + slot; // commented out temporarily to check that compilation of oran 5g is working.
 
   void *ptr = NULL;
