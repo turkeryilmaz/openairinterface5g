@@ -263,6 +263,39 @@ int32_t sl_csi_rs_snr_estimation(PHY_VARS_NR_UE *ue,
   return snr;
 }
 
+int32_t sl_csi_rs_snr_estimation_ue(PHY_VARS_NR_UE *ue,
+                                 UE_nr_rxtx_proc_t *proc,
+                                 const NR_DL_FRAME_PARMS *frame_parms,
+                                 c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP],
+                                 uint32_t noise_power)
+{
+  float alpha = 0.6;
+  double s_power = 0.0;
+  static double snr = 0.0;
+  static double avg_snr = 0.0;
+  csi_rs_params_t table_params;
+
+  nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *csi_params = (nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *)&ue->csirs_vars[0]->csirs_config_pdu;
+  get_csi_rs_params_from_table(csi_params, &table_params);
+  for (uint8_t rxAnt = 0; rxAnt < frame_parms->nb_antennas_rx; rxAnt++) {
+    unsigned short nb_re_pusch = NR_NB_SC_PER_RB * csi_params->nr_of_rbs;
+    int nb_re_pusch2 = nb_re_pusch + (nb_re_pusch&7);
+    uint64_t symbol_offset = nb_re_pusch2 * csi_params->symb_l0;
+    s_power += signal_power(&ue->pssch_vars[0].ul_ch_estimates_ext[rxAnt][symbol_offset], 8);
+  }
+  s_power /= frame_parms->nb_antennas_rx;
+  double noise_re = (double)noise_power / ue->frame_parms.ofdm_symbol_size;
+  double signal_power_re = (double)s_power / ue->frame_parms.ofdm_symbol_size;
+  const uint8_t signal_power_bits = log2_approx(signal_power_re);
+  const uint8_t factor_bits = signal_power_bits < 32 ? 32 - signal_power_bits : 0; // 32 due to input of dB_fixed(uint32_t x)
+  const int32_t factor_dB = dB_fixed(1<<factor_bits);
+  AssertFatal(noise_re > 0, "noise power cannot be zero!!!");
+  snr = dB_fixed((int32_t)(s_power/noise_re)) - factor_dB;
+  avg_snr = ceil(alpha * avg_snr + (1 - alpha) * snr);
+  LOG_D(NR_PHY, "snr %lf avg snr %lf num_rbs\n", snr, avg_snr);
+  return avg_snr;
+}
+
 int nr_get_csi_rs_signal(const PHY_VARS_NR_UE *ue,
                          const UE_nr_rxtx_proc_t *proc,
                          const fapi_nr_dl_config_csirs_pdu_rel15_t *csirs_config_pdu,
@@ -383,7 +416,6 @@ int nr_csi_rs_channel_estimation(const PHY_VARS_NR_UE *ue,
                                  int16_t *log2_re,
                                  int16_t *log2_maxh,
                                  uint32_t *noise_power) {
-
   const NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
   const int dataF_offset = get_softmodem_params()->sl_mode == 2 ? 0 : proc->nr_slot_rx * ue->frame_parms.samples_per_slot_wCP;
   *noise_power = 0;
@@ -495,7 +527,7 @@ int nr_csi_rs_channel_estimation(const PHY_VARS_NR_UE *ue,
     uint16_t noise_real[frame_parms->nb_antennas_rx][N_ports][csirs_config_pdu->nr_of_rbs];
     uint16_t noise_imag[frame_parms->nb_antennas_rx][N_ports][csirs_config_pdu->nr_of_rbs];
     for (int rb = csirs_config_pdu->start_rb; rb < (csirs_config_pdu->start_rb+csirs_config_pdu->nr_of_rbs); rb++) {
-      if (csirs_config_pdu->freq_density <= 1 && csirs_config_pdu->freq_density != (rb % 2)) {
+      if (csirs_config_pdu->freq_density <= 1 && get_softmodem_params()->sl_mode ? 0 : csirs_config_pdu->freq_density != (rb % 2)) {
         continue;
       }
       uint16_t k = (frame_parms->first_carrier_offset + rb*NR_NB_SC_PER_RB) % frame_parms->ofdm_symbol_size;
@@ -508,8 +540,9 @@ int nr_csi_rs_channel_estimation(const PHY_VARS_NR_UE *ue,
         maxh = cmax3(maxh, abs(csi_rs_estimated_channel16->r), abs(csi_rs_estimated_channel16->i));
       }
     }
+
     for(uint16_t port_tx = 0; port_tx<N_ports; port_tx++) {
-      *noise_power += (calc_power_csirs(noise_real[ant_rx][port_tx], csirs_config_pdu) + calc_power_csirs(noise_imag[ant_rx][port_tx],csirs_config_pdu));
+      *noise_power += (calc_power_csirs(noise_real[ant_rx][port_tx], csirs_config_pdu) + calc_power_csirs(noise_imag[ant_rx][port_tx], csirs_config_pdu));
     }
 
 #ifdef NR_CSIRS_DEBUG
@@ -1070,10 +1103,11 @@ void nr_ue_csi_rs_procedures(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, c16_t 
     // bit 4 in bitmap to indicate RI measurment
     if (csirs_config_pdu->measurement_bitmap & 16) {
       if (get_softmodem_params()->sl_mode == 2) {
-        uint32_t snr = sl_csi_rs_snr_estimation(ue,
-                                                proc,
-                                                frame_parms,
-                                                rxdataF);
+        uint32_t snr = sl_csi_rs_snr_estimation_ue(ue,
+                                                   proc,
+                                                   frame_parms,
+                                                   rxdataF,
+                                                   noise_power);
         nr_csi_rs_cqi_estimation(snr, &cqi);
       } else
         nr_csi_rs_cqi_estimation(precoded_sinr_dB, &cqi);

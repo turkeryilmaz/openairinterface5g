@@ -3310,8 +3310,8 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
   NR_SLSCH_MAC_SUBHEADER_FIXED *sl_sch_subheader = (NR_SLSCH_MAC_SUBHEADER_FIXED *) pdu;
   sl_sch_subheader->V = 0;
   sl_sch_subheader->R = 0;
-  sl_sch_subheader->SRC = get_softmodem_params()->node_number;
-  sl_sch_subheader->DST = 0xab;
+  sl_sch_subheader->SRC = mac->sci2_pdu.source_id;
+  sl_sch_subheader->DST = mac->sci2_pdu.dest_id;
   pdu += sizeof(NR_SLSCH_MAC_SUBHEADER_FIXED);
   LOG_D(NR_PHY, "%4d.%2d Tx V %d, R %d, SRC %d, DST %d\n", frame, slot, sl_sch_subheader->V, sl_sch_subheader->R, sl_sch_subheader->SRC, sl_sch_subheader->DST);
   int buflen_remain = buflen - sizeof(NR_SLSCH_MAC_SUBHEADER_FIXED);
