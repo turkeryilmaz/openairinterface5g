@@ -142,6 +142,7 @@ uint32_t nr_sci_size(const NR_SL_ResourcePool_r16_t *sl_res_pool,
 	    sci_pdu->conflict_information_receiver.nbits=0;
             size+=sci_pdu->conflict_information_receiver.nbits;
 	    break;
+    case format2:
     case NR_SL_SCI_FORMAT_2A:
     case NR_SL_SCI_FORMAT_2B:
     case NR_SL_SCI_FORMAT_2C:
@@ -340,9 +341,9 @@ void fill_pssch_pscch_pdu(sl_nr_ue_mac_params_t *sl_mac_params,
   int mcs_tb_ind = 0;
   if (sci_pdu->additional_mcs.nbits > 0)
     mcs_tb_ind = sci_pdu->additional_mcs.val;
-  nr_sl_pssch_pscch_pdu->mcs=sci_pdu->mcs;
+  nr_sl_pssch_pscch_pdu->mcs = sci_pdu->mcs;
   int nohPRB    = (sl_res_pool->sl_X_Overhead_r16) ? 3*(*sl_res_pool->sl_X_Overhead_r16) : 0;
-  int nREDMRS   = get_nREDMRS(sl_res_pool);  
+  int nREDMRS   = get_nREDMRS(sl_res_pool);
   int nrRECSI_RS= sci2_pdu->csi_req ? get_nRECSI_RS(sl_mac_params->freq_density, sl_mac_params->nr_of_rbs) : 0;
   int N_REprime = 12*nr_sl_pssch_pscch_pdu->pssch_numsym - nohPRB - nREDMRS - nrRECSI_RS;
   int N_REsci1  = 12*nr_sl_pssch_pscch_pdu->pscch_numrbs*nr_sl_pssch_pscch_pdu->pscch_numsym;
@@ -355,7 +356,7 @@ void fill_pssch_pscch_pdu(sl_nr_ue_mac_params_t *sl_mac_params,
                               nr_sl_pssch_pscch_pdu->pscch_numrbs,
                               nr_sl_pssch_pscch_pdu->l_subch,
                               nr_sl_pssch_pscch_pdu->subchannel_size,
-                              nr_sl_pssch_pscch_pdu->mcs,
+                              get_softmodem_params()->sl_mode ? 1 : nr_sl_pssch_pscch_pdu->mcs,
                               mcs_tb_ind);
   int N_RE      = N_REprime*nr_sl_pssch_pscch_pdu->l_subch*nr_sl_pssch_pscch_pdu->subchannel_size - N_REsci1 - N_REsci2;
 
@@ -689,7 +690,7 @@ void config_pssch_slsch_pdu_rx(sl_nr_rx_config_pssch_pdu_t *nr_sl_pssch_pdu,
     sci2_alpha_times_100=50 + (*sl_res_pool->sl_PowerControl_r16->sl_Alpha_PSSCH_PSCCH_r16)*15;
     if (*sl_res_pool->sl_PowerControl_r16->sl_Alpha_PSSCH_PSCCH_r16 == 3) sci2_alpha_times_100=100;
   } else sci2_alpha_times_100 = 100;
-  int sci2_payload_len = nr_sci_size(sl_res_pool,sci_pdu,format2);
+  int sci2_payload_len = nr_sci_size(sl_res_pool, sci_pdu, NR_SL_SCI_FORMAT_2A);
   int N_REsci2  = get_NREsci2(sci2_alpha_times_100,
                               sci2_payload_len,
                               sci2_beta_offset,
@@ -698,7 +699,7 @@ void config_pssch_slsch_pdu_rx(sl_nr_rx_config_pssch_pdu_t *nr_sl_pssch_pdu,
                               pscch_numrbs,
                               l_subch,
                               subchannel_size,
-                              nr_sl_pssch_pdu->mcs,
+                              get_softmodem_params()->sl_mode ? 1 : nr_sl_pssch_pdu->mcs,
                               nr_sl_pssch_pdu->mcs_table);
   int N_RE      = N_REprime*l_subch*subchannel_size - N_REsci1 - N_REsci2;
   nr_sl_pssch_pdu->tb_size = nr_compute_tbs_sl(nr_sl_pssch_pdu->mod_order,

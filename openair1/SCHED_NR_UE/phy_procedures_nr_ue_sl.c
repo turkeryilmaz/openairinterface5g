@@ -162,19 +162,21 @@ int nr_slsch_procedures(PHY_VARS_NR_UE *ue, int frame_rx, int slot_rx, int SLSCH
                               pssch_pdu->pscch_numrbs,
                               pssch_pdu->l_subch,
                               pssch_pdu->subchannel_size,
-			      pssch_pdu->targetCodeRate);
+                              pssch_pdu->targetCodeRate,
+                              0);
+  uint16_t csi_rs_re = is_csi_rs_slot ? nr_of_rbs/freq_density : 0;
+  uint16_t sci1_re = pssch_pdu->pscch_numsym * pssch_pdu->pscch_numrbs * NR_NB_SC_PER_RB;
   uint32_t G = nr_get_G_SL(rb_size,
                            number_symbols,
                            nb_re_dmrs,
                            number_dmrs_symbols, // number of dmrs symbols irrespective of single or double symbol dmrs
                            sci1_dmrs_overlap,
-			   pssch_pdu->pscch_numsym,
-			   pssch_pdu->pscch_numrbs,
-			   sci2_re,
+                           sci1_re,
+                           pssch_pdu->pscch_numrbs,
+                           sci2_re,
+                           csi_rs_re,
                            pssch_pdu->mod_order,
                            pssch_pdu->num_layers);
-
-  G -= is_csi_rs_slot ? nr_of_rbs/freq_density*pssch_pdu->mod_order*pssch_pdu->num_layers : 0;
 
   AssertFatal(G>0,"G is 0 : rb_size %u, number_symbols %d, nb_re_dmrs %d, number_dmrs_symbols %d, qam_mod_order %u, nrOfLayer %u\n",
 	      rb_size,
@@ -184,13 +186,13 @@ int nr_slsch_procedures(PHY_VARS_NR_UE *ue, int frame_rx, int slot_rx, int SLSCH
 	      pssch_pdu->mod_order,
 	      pssch_pdu->num_layers);
   LOG_D(NR_PHY,"rb_size %d, number_symbols %d, nb_re_dmrs %d, dmrs symbol positions %d, number_dmrs_symbols %d, qam_mod_order %d, nrOfLayer %d\n",
-	rb_size,
-	number_symbols,
-	nb_re_dmrs,
+        rb_size,
+        number_symbols,
+        nb_re_dmrs,
         pssch_pdu->dmrs_symbol_position,
-	number_dmrs_symbols, // number of dmrs symbols irrespective of single or double symbol dmrs
-	pssch_pdu->mod_order,
-	pssch_pdu->num_layers);
+        number_dmrs_symbols, // number of dmrs symbols irrespective of single or double symbol dmrs
+        pssch_pdu->mod_order,
+        pssch_pdu->num_layers);
 
   nr_ulsch_layer_demapping(ue->pssch_vars[SLSCH_id].llr,
                            pssch_pdu->num_layers,
@@ -623,7 +625,8 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
                                 phy_data->nr_sl_pssch_sci_pdu.pscch_numrbs,
                                 phy_data->nr_sl_pssch_sci_pdu.l_subch,
                                 phy_data->nr_sl_pssch_sci_pdu.subchannel_size,
-                                phy_data->nr_sl_pssch_sci_pdu.targetCodeRate);
+                                phy_data->nr_sl_pssch_sci_pdu.targetCodeRate,
+                                0);
     LOG_D(NR_PHY,"Starting slot FEP for SLSCH (symbol %d to %d) pscch_numsym %d pssch_numsym %d\n",1+phy_data->nr_sl_pssch_sci_pdu.pscch_numsym,phy_data->nr_sl_pssch_sci_pdu.pssch_numsym,phy_data->nr_sl_pssch_sci_pdu.pscch_numsym,phy_data->nr_sl_pssch_sci_pdu.pssch_numsym); 
     for (int sym=1+phy_data->nr_sl_pssch_sci_pdu.pscch_numsym; sym<=phy_data->nr_sl_pssch_sci_pdu.pssch_numsym;sym++) {
       nr_slot_fep(ue,

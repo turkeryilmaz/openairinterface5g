@@ -41,6 +41,13 @@
 #include "NR_MAC_UE/nr_ue_sci.h"
 #include <executables/nr-uesoftmodem.h>
 
+uint8_t scalled_mcs(uint8_t current_mcs) {
+  uint8_t orig_scale_min = 1, orig_scale_max = 28;
+  uint8_t new_scale_min = 1, new_scale_max = 16;
+  uint8_t scaled_mcs = new_scale_min + ((current_mcs - orig_scale_min) * (new_scale_max - new_scale_min)) / (orig_scale_max - orig_scale_min);
+  return scaled_mcs;
+}
+
 bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP,int slotP, nr_sci_pdu_t *sci_pdu,nr_sci_pdu_t *sci2_pdu,uint8_t *slsch_pdu,nr_sci_format_t format2, uint16_t *slsch_pdu_length_max) {
 
   mac_rlc_status_resp_t rlc_status = mac_rlc_status_ind(0, mac->src_id, 0, frameP, slotP, ENB_FLAG_NO, MBMS_FLAG_NO, 4, 0, 0);
@@ -56,6 +63,26 @@ bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP,int slotP, nr_sci_pdu_t
   bool csi_acq = !mac->SL_MAC_PARAMS->sl_CSI_Acquisition;
   bool csi_req_slot = !((slots_per_frame * frameP + slotP - sl_mac->slot_offset) % sl_mac->slot_periodicity);
   if (rlc_status.bytes_in_buffer > 0 || mac->sci_pdu_rx.harq_feedback || (csi_acq && csi_req_slot) || mac->sl_csi_report) {
+     uint8_t cqi_Table = 0;
+     int8_t mcs = 11, ri = 0;
+     uint16_t dest = mac->dest_id != -1 ? mac->dest_id : 0xabcd;
+     uint16_t indx = dest%MAX_SL_UE_CONNECTIONS;
+     int8_t cqi = mac->dest_id != -1 ? mac->sl_info.list[indx]->UE_sched_ctrl.csi_report.cqi : -1;
+     if (cqi != -1) {
+      int mcs_tb_ind = 0;
+      if (sci_pdu->additional_mcs.nbits > 0)
+        mcs_tb_ind = sci_pdu->additional_mcs.val;
+      if (mcs_tb_ind == 0)
+        cqi_Table = NR_CSI_ReportConfig__cqi_Table_table1;
+      else if (mcs_tb_ind == 1)
+        cqi_Table = NR_CSI_ReportConfig__cqi_Table_table2;
+      else if (mcs_tb_ind == 2)
+        cqi_Table = NR_CSI_ReportConfig__cqi_Table_table3;
+
+      mcs = get_mcs_from_cqi(mcs_tb_ind, cqi_Table, cqi);
+      mac->sl_info.list[indx]->UE_sched_ctrl.sl_max_mcs = scalled_mcs(mcs);
+      ri = mac->sl_info.list[indx]->UE_sched_ctrl.csi_report.ri;
+     }
      // Fill SCI1A
      sci_pdu->priority = 0;
      sci_pdu->frequency_resource_assignment.val = 0;
@@ -63,8 +90,8 @@ bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP,int slotP, nr_sci_pdu_t
      sci_pdu->resource_reservation_period.val = 0;
      sci_pdu->dmrs_pattern.val = 0;
      sci_pdu->second_stage_sci_format = 0;
-     sci_pdu->number_of_dmrs_port = 0;
-     sci_pdu->mcs = 9;
+     sci_pdu->number_of_dmrs_port = ri;
+     sci_pdu->mcs = mac->sl_info.list[indx]->UE_sched_ctrl.sl_max_mcs;
      sci_pdu->additional_mcs.val = 0;
      sci_pdu->psfch_overhead.val = 0;
      sci_pdu->reserved.val = 0;
@@ -75,8 +102,8 @@ bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP,int slotP, nr_sci_pdu_t
      sci2_pdu->harq_pid = 0;
      sci2_pdu->ndi = (1 - sci2_pdu->ndi) & 1;
      sci2_pdu->rv_index = 0;
-     sci2_pdu->source_id = get_softmodem_params()->node_number;
-     sci2_pdu->dest_id = 0xabcd;
+     sci2_pdu->source_id = mac->src_id;
+     sci2_pdu->dest_id = dest;
      sci2_pdu->harq_feedback = psfch_period ? 1 : 0;
      sci2_pdu->cast_type = 1;
      if (format2 == NR_SL_SCI_FORMAT_2C || format2 == NR_SL_SCI_FORMAT_2A) {

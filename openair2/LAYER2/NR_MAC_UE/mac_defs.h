@@ -459,6 +459,12 @@ typedef struct {
   /// sched_pusch keeps information on MCS etc used for the initial transmission
   NR_sched_pssch_t sched_pssch;
 } NR_UE_sl_harq_t;
+
+typedef struct SL_CSI_Report {
+  uint8_t ri;
+  int8_t cqi;
+  uint8_t cqi_table;
+} SL_CSI_Report_t;
   //
 typedef struct {
 
@@ -479,6 +485,12 @@ typedef struct {
   /// UL HARQ processes that await retransmission
   NR_list_t retrans_sl_harq;
   //  NR_SLSCH 
+  // To hold the CSI report values received from different users
+  SL_CSI_Report_t csi_report;
+
+  /// UE-estimated maximum MCS (from CSI-RS)
+  uint8_t sl_max_mcs;
+
 } NR_SL_UE_sched_ctrl_t;
 
 #define MAX_SL_UE_CONNECTIONS 8
@@ -627,6 +639,7 @@ typedef struct {
   uint8_t slsch_payload[16384];
   time_stats_t rlc_data_req;
   int src_id;
+  int dest_id;
 } NR_UE_MAC_INST_t;
 
 /*@}*/

@@ -162,6 +162,8 @@ uint8_t compute_nr_root_seq(NR_RACH_ConfigCommon_t *rach_config,
 
 int ul_ant_bits(NR_DMRS_UplinkConfig_t *NR_DMRS_UplinkConfig, long transformPrecoder);
 
+uint8_t get_mcs_from_cqi(int mcs_table, int cqi_table, int cqi_idx);
+
 uint8_t get_pdsch_mcs_table(long *mcs_Table, int dci_format, int rnti_type, int ss_type);
 
 int get_format0(uint8_t index, uint8_t unpaired,frequency_range_t);
@@ -189,7 +191,6 @@ uint32_t nr_compute_tbs_sl(uint16_t Qm,
                            uint16_t R,
                            uint16_t nb_re,
                            uint8_t Nl);
-
 
 /** \brief Computes Q based on I_MCS PDSCH and table_idx for downlink. Implements MCS Tables from 38.214. */
 uint8_t nr_get_Qm_dl(uint8_t Imcs, uint8_t table_idx);
