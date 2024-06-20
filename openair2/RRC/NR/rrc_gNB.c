@@ -636,6 +636,62 @@ static void rrc_gNB_process_RRCSetupComplete(const protocol_ctxt_t *const ctxt_p
 #endif
 }
 
+
+static int rrc_gNB_encode_RRCReconfiguration(gNB_RRC_INST *rrc,
+                                             gNB_RRC_UE_t *UE,
+                                             uint8_t xid,
+                                             struct NR_RRCReconfiguration_v1530_IEs__dedicatedNAS_MessageList *nas_messages,
+                                             uint8_t *buf,
+                                             int max_len)
+{
+  NR_CellGroupConfig_t *cellGroupConfig = UE->masterCellGroup;
+  nr_rrc_du_container_t *du = get_du_for_ue(rrc, UE->rrc_ue_id);
+  DevAssert(du != NULL);
+ /* f1ap_served_cell_info_t *cell_info = &du->setup_req->cell[0].info;
+  NR_MeasConfig_t *measconfig = NULL;
+  if (du->mtc != NULL) {
+    int scs = get_ssb_scs(cell_info);
+    int band = get_dl_band(cell_info);
+    const NR_MeasTimingList_t *mtlist = du->mtc->criticalExtensions.choice.c1->choice.measTimingConf->measTiming;
+    const NR_MeasTiming_t *mt = mtlist->list.array[0];
+    const neighbour_cell_configuration_t *neighbour_config = get_neighbour_config(cell_info->nr_cellid);
+    seq_arr_t *neighbour_cells = NULL;
+    if (neighbour_config)
+      neighbour_cells = neighbour_config->neighbour_cells;
+
+    measconfig = get_MeasConfig(mt, band, scs, &rrc->measurementConfiguration, neighbour_cells);
+  }
+
+  if (UE->measConfig)
+    free_MeasConfig(UE->measConfig);
+
+  UE->measConfig = measconfig;
+*/
+  NR_SRB_ToAddModList_t *SRBs = createSRBlist(UE, false);
+  NR_DRB_ToAddModList_t *DRBs = createDRBlist(UE, false);
+
+  int size = do_RRCReconfiguration(UE,
+                                   buf,
+                                   max_len,
+                                   xid,
+                                   SRBs,
+                                   DRBs,
+                                   UE->DRB_ReleaseList,
+                                   NULL,
+                                   NULL,
+                                   nas_messages,
+                                   cellGroupConfig); //measconfig
+  LOG_DUMPMSG(NR_RRC, DEBUG_RRC, (char *)buf, size, "[MSG] RRC Reconfiguration\n");
+  freeSRBlist(SRBs);
+  freeDRBlist(DRBs);
+  ASN_STRUCT_FREE(asn_DEF_NR_DRB_ToReleaseList, UE->DRB_ReleaseList);
+  UE->DRB_ReleaseList = NULL;
+
+  return size;
+}
+
+
+
 //-----------------------------------------------------------------------------
 static void rrc_gNB_generate_defaultRRCReconfiguration(const protocol_ctxt_t *const ctxt_pP, rrc_gNB_ue_context_t *ue_context_pP)
 //-----------------------------------------------------------------------------
@@ -812,6 +868,51 @@ void rrc_gNB_generate_dedicatedRRCReconfiguration(const protocol_ctxt_t *const c
 
   nr_rrc_transfer_protected_rrc_message(rrc, ue_p, DCCH, buffer, size);
 }
+
+typedef struct deliver_ue_ctxt_modification_data_t {
+  gNB_RRC_INST *rrc;
+  f1ap_ue_context_modif_req_t *modification_req;
+  sctp_assoc_t assoc_id;
+} deliver_ue_ctxt_modification_data_t;
+static void rrc_deliver_ue_ctxt_modif_req(void *deliver_pdu_data, ue_id_t ue_id, int srb_id, char *buf, int size, int sdu_id)
+{
+  DevAssert(deliver_pdu_data != NULL);
+  deliver_ue_ctxt_modification_data_t *data = deliver_pdu_data;
+  data->modification_req->rrc_container = (uint8_t*)buf;
+  data->modification_req->rrc_container_length = size;
+  data->rrc->mac_rrc.ue_context_modification_request(data->assoc_id, data->modification_req);
+}
+void rrc_gNB_trigger_reconfiguration_for_handover(gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue, uint8_t *rrc_reconf, int rrc_reconf_len)
+{
+  f1_ue_data_t ue_data = cu_get_f1_ue_data(ue->rrc_ue_id);
+
+  TransmActionInd_t transmission_action_indicator = TransmActionInd_STOP;
+  RETURN_IF_INVALID_ASSOC_ID(ue_data);
+  f1ap_ue_context_modif_req_t ue_context_modif_req = {
+      .gNB_CU_ue_id = ue->rrc_ue_id,
+      .gNB_DU_ue_id = ue_data.secondary_ue,
+      .plmn.mcc = rrc->configuration.mcc[0],
+      .plmn.mnc = rrc->configuration.mnc[0],
+      .plmn.mnc_digit_length = rrc->configuration.mnc_digit_length[0],
+      .nr_cellid = 12345678,  // TODO target cell ID  rrc->nr_cellid
+      .servCellId = 0, // TODO: correct value?
+      .ReconfigComplOutcome = RRCreconf_success,
+      .transm_action_ind = &transmission_action_indicator,
+  };
+  deliver_ue_ctxt_modification_data_t data = {.rrc = rrc,
+                                              .modification_req = &ue_context_modif_req,
+                                              .assoc_id = ue_data.du_assoc_id};
+  int srb_id = 1;
+  nr_pdcp_data_req_srb(ue->rrc_ue_id,
+                       srb_id,
+                       rrc_gNB_mui++,
+                       rrc_reconf_len,
+                       (unsigned char *const)rrc_reconf,
+                       rrc_deliver_ue_ctxt_modif_req,
+                       &data);
+}
+
+
 
 int16_t rrc_gNB_generate_HO_RRCReconfiguration(const protocol_ctxt_t *ctxt_pP,
                                                const uint8_t modid_s,
@@ -2113,6 +2214,25 @@ static void rrc_CU_process_ue_context_setup_response(MessageDef *msg_p, instance
   /* at this point, we don't have to do anything: the UE context setup request
    * includes the Security Command, whose response will trigger the following
    * messages (UE capability, to be specific) */
+
+   if (UE->ho_context == NULL) {
+    protocol_ctxt_t ctxt = {.rntiMaybeUEid = resp->gNB_CU_ue_id, .module_id = instance};
+    rrc_gNB_generate_dedicatedRRCReconfiguration(&ctxt, ue_context_p);
+  } else {
+    // case of handover
+    DevAssert(resp->crnti != NULL);
+    UE->ho_context->data.intra_cu.new_rnti = *resp->crnti;
+    UE->ho_context->data.intra_cu.target_secondary_ue = resp->gNB_DU_ue_id;
+
+    uint8_t xid = rrc_gNB_get_next_transaction_identifier(instance);
+    UE->xids[xid] = RRC_DEDICATED_RECONF;
+
+    uint8_t buffer[RRC_BUF_SIZE] = {0};
+    int size = rrc_gNB_encode_RRCReconfiguration(rrc, UE, xid, NULL, buffer, sizeof(buffer));
+    DevAssert(size > 0 && size <= sizeof(buffer));
+    rrc_gNB_trigger_reconfiguration_for_handover(rrc, UE, buffer, size);
+  }
+
 }
 
 static void rrc_CU_process_ue_context_release_request(MessageDef *msg_p)

@@ -396,6 +396,13 @@ typedef enum ReconfigurationCompl_e {
   RRCreconf_success          = 2,
 } ReconfigurationCompl_t;
 
+
+typedef enum TransmActionInd_e {
+  TransmActionInd_STOP,
+  TransmActionInd_RESTART,
+} TransmActionInd_t;
+
+
 typedef struct f1ap_ue_context_setup_s {
   uint32_t gNB_CU_ue_id;
   uint32_t gNB_DU_ue_id;
@@ -431,7 +438,7 @@ typedef struct f1ap_ue_context_setup_s {
   uint8_t  mnc_digit_length;
   uint16_t *crnti;
   uint8_t *transmission_action_indicator;
-
+  TransmActionInd_t *transm_action_ind;
 } f1ap_ue_context_setup_t, f1ap_ue_context_modif_req_t, f1ap_ue_context_modif_resp_t;
 
 typedef enum F1ap_Cause_e {

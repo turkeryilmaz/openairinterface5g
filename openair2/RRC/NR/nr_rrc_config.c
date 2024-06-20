@@ -2956,3 +2956,60 @@ NR_CellGroupConfig_t *get_default_secondaryCellGroup(const NR_ServingCellConfigC
   }
   return secondaryCellGroup;
 }
+
+
+NR_ServingCellConfigCommon_t *clone_SCC(const NR_ServingCellConfigCommon_t *orig)
+{
+  uint8_t buf[16636];
+  asn_enc_rval_t enc_rval = uper_encode_to_buffer(&asn_DEF_NR_ServingCellConfigCommon, NULL, orig, buf, sizeof(buf));
+  AssertFatal(enc_rval.encoded > 0, "could not clone Serving Cell Config Common: problem while encoding\n");
+  NR_ServingCellConfigCommon_t *new = NULL;
+  asn_dec_rval_t dec_rval = uper_decode(NULL, &asn_DEF_NR_ServingCellConfigCommon, (void **)&new, buf, enc_rval.encoded, 0, 0);
+  AssertFatal(dec_rval.code == RC_OK && dec_rval.consumed == enc_rval.encoded,
+              "could not clone Serving Cell Config Common: problem while decoding\n");
+  return new;
+}
+
+NR_ReconfigurationWithSync_t *get_reconfiguration_with_sync(rnti_t rnti, uid_t uid, const NR_ServingCellConfigCommon_t *scc)
+{
+  NR_ReconfigurationWithSync_t *reconfigurationWithSync = calloc(1, sizeof(*reconfigurationWithSync));
+  reconfigurationWithSync->newUE_Identity = rnti;
+  reconfigurationWithSync->t304 = NR_ReconfigurationWithSync__t304_ms2000;
+  reconfigurationWithSync->rach_ConfigDedicated = NULL;
+  reconfigurationWithSync->ext1 = NULL;
+
+  reconfigurationWithSync->spCellConfigCommon = clone_SCC(scc);
+  scc->uplinkConfigCommon->dummy = NR_TimeAlignmentTimer_infinity;
+
+  reconfigurationWithSync->rach_ConfigDedicated = calloc(1, sizeof(*reconfigurationWithSync->rach_ConfigDedicated));
+  reconfigurationWithSync->rach_ConfigDedicated->present = NR_ReconfigurationWithSync__rach_ConfigDedicated_PR_uplink;
+  NR_RACH_ConfigDedicated_t *uplink = calloc(1, sizeof(*uplink));
+  reconfigurationWithSync->rach_ConfigDedicated->choice.uplink = uplink;
+  uplink->ra_Prioritization = NULL;
+  uplink->cfra = calloc(1, sizeof(struct NR_CFRA));
+  uplink->cfra->ext1 = NULL;
+  uplink->cfra->occasions = calloc(1, sizeof(struct NR_CFRA__occasions));
+  memcpy(&uplink->cfra->occasions->rach_ConfigGeneric,
+         &scc->uplinkConfigCommon->initialUplinkBWP->rach_ConfigCommon->choice.setup->rach_ConfigGeneric,
+         sizeof(NR_RACH_ConfigGeneric_t));
+  asn1cCallocOne(uplink->cfra->occasions->ssb_perRACH_Occasion, NR_CFRA__occasions__ssb_perRACH_Occasion_one);
+  uplink->cfra->resources.present = NR_CFRA__resources_PR_ssb;
+  uplink->cfra->resources.choice.ssb = calloc(1, sizeof(struct NR_CFRA__resources__ssb));
+  uplink->cfra->resources.choice.ssb->ra_ssb_OccasionMaskIndex = 0;
+
+  uint64_t bitmap = get_ssb_bitmap(scc);
+  for (int i = 0; i < 64; i++) {
+    if (((bitmap >> (63 - i)) & 0x01) == 0)
+      continue;
+
+    NR_CFRA_SSB_Resource_t *ssbElem = calloc(1, sizeof(*ssbElem));
+    ssbElem->ssb = i;
+    ssbElem->ra_PreambleIndex = 63 - (uid % 64);
+    asn1cSeqAdd(&uplink->cfra->resources.choice.ssb->ssb_ResourceList.list, ssbElem);
+  }
+
+  return reconfigurationWithSync;
+}
+
+
+

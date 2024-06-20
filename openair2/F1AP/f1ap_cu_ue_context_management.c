@@ -190,6 +190,7 @@ static void f1ap_write_flows_mapped(const f1ap_flows_mapped_to_drb_t *flows_mapp
 
 int CU_send_UE_CONTEXT_SETUP_REQUEST(sctp_assoc_t assoc_id, f1ap_ue_context_setup_t *f1ap_ue_context_setup_req)
 {
+  LOG_I(F1AP,"CU sending UE Context request");
   F1AP_F1AP_PDU_t  pdu= {0};
   /* Create */
   /* 0. Message Type */
@@ -272,8 +273,25 @@ int CU_send_UE_CONTEXT_SETUP_REQUEST(sctp_assoc_t assoc_id, f1ap_ue_context_setu
       OCTET_STRING_fromBuf(measConfig, (const char*)f1ap_ue_context_setup_req->cu_to_du_rrc_information->measConfig,
         f1ap_ue_context_setup_req->cu_to_du_rrc_information->measConfig_length);
     }
-  }
   
+  
+    /* optional */
+    /* HandoverPreparationInformation */
+    if (f1ap_ue_context_setup_req->cu_to_du_rrc_information->handoverPreparationInfo_length > 0) {
+      DevAssert(f1ap_ue_context_setup_req->cu_to_du_rrc_information->handoverPreparationInfo != NULL);
+      F1AP_ProtocolExtensionContainer_10696P60_t *p = calloc(1, sizeof(*p));
+      ie6->value.choice.CUtoDURRCInformation.iE_Extensions = (struct F1AP_ProtocolExtensionContainer *)p;
+      asn1cSequenceAdd(p->list, F1AP_CUtoDURRCInformation_ExtIEs_t, ie_ext);
+      ie_ext->id = F1AP_ProtocolIE_ID_id_HandoverPreparationInformation;
+      ie_ext->criticality = F1AP_Criticality_ignore;
+      ie_ext->extensionValue.present = F1AP_CUtoDURRCInformation_ExtIEs__extensionValue_PR_HandoverPreparationInformation;
+      OCTET_STRING_fromBuf(&ie_ext->extensionValue.choice.HandoverPreparationInformation,
+                           (const char *)f1ap_ue_context_setup_req->cu_to_du_rrc_information->handoverPreparationInfo,
+                           f1ap_ue_context_setup_req->cu_to_du_rrc_information->handoverPreparationInfo_length);
+    }
+  }
+
+
 
   /* mandatory */
   /* c7. Candidate_SpCell_List */
@@ -581,6 +599,7 @@ int CU_send_UE_CONTEXT_SETUP_REQUEST(sctp_assoc_t assoc_id, f1ap_ue_context_setu
 
 int CU_handle_UE_CONTEXT_SETUP_RESPONSE(instance_t instance, sctp_assoc_t assoc_id, uint32_t stream, F1AP_F1AP_PDU_t *pdu)
 {
+  LOG_I(F1AP,"CU_handle_UE_CONTEXT_SETUP_RESPONSE ");
   MessageDef                       *msg_p;
   F1AP_UEContextSetupResponse_t    *container;
   F1AP_UEContextSetupResponseIEs_t *ie;

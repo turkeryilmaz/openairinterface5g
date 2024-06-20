@@ -170,6 +170,28 @@ typedef struct nr_rrc_guami_s {
   uint8_t  amf_pointer;
 } nr_rrc_guami_t;
 
+typedef enum {HANDOVER_TYPE_INTRA_CU, HANDOVER_TYPE_INTER_CU} nr_handover_type_t;
+typedef struct nr_handover_intra_cu_s {
+  sctp_assoc_t source_du;
+  sctp_assoc_t target_du;
+  uint32_t source_secondary_ue;
+  rnti_t new_rnti;
+  uint32_t target_secondary_ue;
+} nr_handover_intra_cu_t;
+typedef struct nr_handover_inter_cu_s {
+  // TODO additional data needed?
+  int dummy;
+} nr_handover_inter_cu_t;
+typedef struct nr_handover_context_s {
+  nr_handover_type_t type;
+  union {
+    nr_handover_intra_cu_t intra_cu;
+    nr_handover_inter_cu_t inter_cu;
+  } data;
+  // TODO fptr for success, failure
+} nr_handover_context_t;
+
+
 typedef enum pdu_session_satus_e {
   PDU_SESSION_STATUS_NEW,
   PDU_SESSION_STATUS_DONE,
@@ -324,6 +346,7 @@ typedef struct gNB_RRC_UE_s {
 
   /* hack, see rrc_gNB_process_NGAP_PDUSESSION_SETUP_REQ() for more info */
   int max_delays_pdu_session;
+  nr_handover_context_t *ho_context;
 
 } gNB_RRC_UE_t;
 
