@@ -953,7 +953,7 @@ class Containerize():
 			containerName = ''
 			usedImage = ''
 			imageInfo = ''
-			for result in results:
+			for result in [results[0]]: #temp fix for a bug as multiple containers are not needed for each service #nondistructive
 				containerName = result
 				cnt = 0
 				while (cnt < 3):
@@ -1086,21 +1086,20 @@ class Containerize():
 			HTML.CreateHtmlTestRow('N/A', 'KO', CONST.ENB_PROCESS_NOLOGFILE_TO_ANALYZE)
 			self.exitStatus = 1
 		# use function for UE log analysis, when oai-nr-ue container is used
-		elif any(service_name == 'oai-nr-ue' or service_name == 'lte_ue0' for service_name, _ in services):
-			self.exitStatus == 0
-			logging.debug(f'Analyzing UE logfile {filename}')
-			logStatus = cls_oaicitest.OaiCiTest().AnalyzeLogFile_UE(f'{filename}', HTML, RAN)
-			if (logStatus < 0):
-				HTML.CreateHtmlTestRow('UE log Analysis', 'KO', logStatus)
-				self.exitStatus = 1
-			else:
-				HTML.CreateHtmlTestRow('UE log Analysis', 'OK', CONST.ALL_PROCESSES_OK)
 		else:
 			for service_name, _ in services:
-				if service_name == 'nv-cubb':
-					msg = 'Undeploy PNF/Nvidia CUBB'
-					HTML.CreateHtmlTestRow(msg, 'OK', CONST.ALL_PROCESSES_OK)
-				else:
+				if (any(sub in service_name for sub in ['oai_ue','oai-nr-ue','lte_ue'])):
+					self.exitStatus == 0
+					filename = f'{service_name}-{HTML.testCase_id}.log'
+					logging.debug(f'Analyzing UE logfile {filename}')
+					logStatus = cls_oaicitest.OaiCiTest().AnalyzeLogFile_UE(f'{filename}', HTML, RAN)
+					if (logStatus < 0):
+						HTML.CreateHtmlTestRow('UE log Analysis', 'KO', logStatus)
+						self.exitStatus = 1
+					else:
+						HTML.CreateHtmlTestRow('UE log Analysis', 'OK', CONST.ALL_PROCESSES_OK)
+				elif (any(sub in service_name for sub in ['oai_enb','oai-cu','oai-du','oai-gnb'])):
+					self.exitStatus == 0
 					filename = f'{service_name}-{HTML.testCase_id}.log'
 					logging.debug(f'\u001B[1m Analyzing logfile {filename}\u001B[0m')
 					logStatus = RAN.AnalyzeLogFile_eNB(filename, HTML, self.ran_checkers)
@@ -1109,9 +1108,16 @@ class Containerize():
 						self.exitStatus = 1
 					else:
 						HTML.CreateHtmlTestRow(RAN.runtime_stats, 'OK', CONST.ALL_PROCESSES_OK)
+				elif service_name == 'nv-cubb':
+					msg = 'Undeploy PNF/Nvidia CUBB'
+					HTML.CreateHtmlTestRow(msg, 'OK', CONST.ALL_PROCESSES_OK)
+				else:
+					logging.info(f'Skipping to analysize log for service name {service_name}')
+
 			# all the xNB run logs shall be on the server 0 for logCollecting
 			if self.eNB_serverId[self.eNB_instance] != '0':
 				mySSH.copyout(f'./*.log', f'{lSourcePath}/cmake_targets/', recursive=True)
+
 		if self.exitStatus == 0:
 			logging.info('\u001B[1m Undeploying OAI Object Pass\u001B[0m')
 		else:
