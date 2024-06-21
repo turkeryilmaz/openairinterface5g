@@ -110,16 +110,18 @@ static struct xran_prb_map get_xran_prb_map_ul(const struct xran_fh_config *f)
       .ru_port_id = 0,
       .tti_id = 0,
       .start_sym_id = 0,
-      .nPrbElm = 1,
+      .nPrbElm = 1,//14, // read this from config file to make it dynamic
   };
-  struct xran_prb_elm *e = &prbmap.prbMap[0];
+  for (int i=0; i < prbmap.nPrbElm; i++){
+  struct xran_prb_elm *e = &prbmap.prbMap[i];
   e->nStartSymb = 0;
-  e->numSymb = 14;
+  e->numSymb = 14;//1;
   e->nRBStart = 0;
   e->nRBSize = f->nULRBs;
   e->nBeamIndex = 1;
   e->compMethod = f->ru_conf.compMeth;
   e->iqWidth = f->ru_conf.iqWidth;
+  }
   return prbmap;
 }
 
@@ -333,6 +335,11 @@ static void oran_allocate_buffers(void *handle,
 
   struct xran_prb_map ulPm = get_xran_prb_map_ul(fh_config);
   struct xran_prb_map ulPmMixed = ulPm;
+  ulPmMixed.nPrbElm = 1;//info.num_ulsym; //1
+  /*for (int i=0; i < ulPmMixed.nPrbElm; i++){
+  struct xran_prb_elm *e = &ulPmMixed.prbMap[i];
+  e->nStartSymb = info.start_ulsym; // numSymb is always 1 for UL 
+  }*/
   ulPmMixed.prbMap[0].nStartSymb = info.start_ulsym;
   ulPmMixed.prbMap[0].numSymb = info.num_ulsym;
   oran_cplane_prb_config ulConf = {

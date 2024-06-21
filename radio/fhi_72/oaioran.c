@@ -88,8 +88,10 @@ void oai_xran_fh_rx_callback(void *pCallbackTag, xran_status_t status)
   static int rx_RU[XRAN_PORTS_NUM][160] = {0};
   uint32_t rx_tti = callback_tag->slotiId;
 
+  //tti = xran_get_slot_idx_from_tti(rx_tti, &frame, &subframe, &slot, &second);
   tti = xran_get_slot_idx_from_tti(rx_tti, &frame, &subframe, &slot, &second);
   //printf("rx_sym %d rx_tti %d tti %d slot %d sf %d f %d rx_tti mod 8 = %d\n",rx_sym, rx_tti,tti , slot, subframe, frame, rx_tti%8 );
+  //printf("rx_sym %d frame %d slot %d\n",rx_sym, frame, subframe*8 + slot);
 
   rx_sym = callback_tag->symbol;
 
@@ -291,13 +293,13 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot)
   LOG_D(PHY, "cnt %d, Reading %d.%d\n", cnt, *frame, *slot);
   last_slot = *slot;
 #endif
-  // return(0);
+   //return(0);
 
   struct xran_device_ctx *xran_ctx = xran_dev_get_ctx();
   int slots_per_frame = 10 << xran_ctx->fh_cfg.frame_conf.nNumerology;
 
   int tti = slots_per_frame * (*frame) + (*slot);
-
+ if (xran_ctx->fh_cfg.prachEnable)
   read_prach_data(ru, *frame, *slot);
 
   const struct xran_fh_init *fh_init = &xran_ctx->fh_init;
@@ -405,14 +407,14 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot)
             memcpy((void *)dst2, (void *)local_dst, neg_len * 4);
             memcpy((void *)dst1, (void *)&local_dst[neg_len], pos_len * 4);
             outcnt++;
-          if (local_dst != NULL )
+          /*if (local_dst != NULL )
           {
             int energy_level = dB_fixed(signal_energy((int32_t*)local_dst,(neg_len + pos_len)));
             if (energy_level>30) 
             {
             printf("PUSCH tti %d slot %d symb %d energy level %d ra %d beamid %d\n", tti, *slot, sym_idx, energy_level,ant_id,pRbMap->prbMap[idxElm].nBeamIndex);
             }
-          }
+          }*/
           } else {
             printf("pRbElm->compMethod == %d is not supported\n", pRbElm->compMethod);
             exit(-1);
