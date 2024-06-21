@@ -1003,7 +1003,8 @@ class Containerize():
 				# in UndeployObject so we here store the logs of the unhealthy container to report it
 				logfilename = f'{lSourcePath}/cmake_targets/log/{self.eNB_logFile[self.eNB_instance]}'
 				myCmd.run(f'docker logs {containerName} > {logfilename}', 30)
-				myCmd.copyin(logfilename, '.',True)
+				cwd = os.getcwd()
+				myCmd.copyin(logfilename,cwd,True)
 
 		myCmd.close()
 
@@ -1072,11 +1073,12 @@ class Containerize():
 
 		mySSH.run(f'docker compose -f {yamlDir}/docker-compose-ci.yml stop -t3')
 		copyin_res = True
+		cwd = os.getcwd()
 		for service_name, container_id in services:
 			# head -n -1 suppresses the final "X exited with status code Y"
 			filename = f'{service_name}-{HTML.testCase_id}.log'
 			mySSH.run(f'docker logs {container_id} &> {lSourcePath}/cmake_targets/log/{filename}')
-			copyin_res = mySSH.copyin(f'{lSourcePath}/cmake_targets/log/{filename}', f'{filename}') and copyin_res
+			copyin_res = mySSH.copyin(f'{lSourcePath}/cmake_targets/log/{filename}', f'{cwd}/{filename}') and copyin_res
 
 		mySSH.run(f'docker compose -f {yamlDir}/docker-compose-ci.yml down -v')
 
