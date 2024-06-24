@@ -37,18 +37,6 @@
   typedef signed char		   int8_t;
 */
 
-
-typedef struct {
-  uint8_t uci_format;
-  uint8_t uci_channel;
-  uint8_t harq_ack_bits;
-  uint32_t harq_ack;
-  uint8_t csi_bits;
-  uint32_t csi;
-  uint8_t sr_bits;
-  uint32_t sr;
-} fapi_nr_uci_pdu_rel15_t;
-
 typedef enum {
  RLM_no_monitoring = 0,
  RLM_out_of_sync = 1,
@@ -175,7 +163,7 @@ typedef struct {
 
 typedef struct {
   uint16_t pdu_length;
-  uint8_t* pdu;
+  uint8_t* fapiTxPdu;
 } fapi_nr_tx_request_body_t;
 
 ///
@@ -257,10 +245,16 @@ typedef struct
 
 typedef struct
 {
+  // payloads with fixed array size
+  // no place to free the dinamically allocated
+  // vector without L1 implementation
   uint16_t harq_ack_bit_length;
+  uint64_t harq_payload;
   uint16_t csi_part1_bit_length;
+  uint64_t csi_part1_payload;
   uint16_t csi_part2_bit_length;
-  uint8_t  alpha_scaling;
+  uint64_t csi_part2_payload;
+  uint8_t  alpha_scaling; // 0 = 0.5, 1 = 0.65, 2 = 0.8, 3 = 1
   uint8_t  beta_offset_harq_ack;
   uint8_t  beta_offset_csi1;
   uint8_t  beta_offset_csi2;
@@ -355,6 +349,7 @@ typedef struct
   uint8_t  nr_of_symbols;
   uint32_t tbslbrm;
   uint8_t ldpcBaseGraph;
+  uint8_t ulsch_indicator;
   //Optional Data only included if indicated in pduBitmap
   nfapi_nr_ue_pusch_data_t pusch_data;
   nfapi_nr_ue_pusch_uci_t  pusch_uci;
@@ -474,7 +469,6 @@ typedef struct {
   vrb_to_prb_mapping_t vrb_to_prb_mapping;
   uint8_t dai;
   double scaling_factor_S;
-  int8_t accumulated_delta_PUCCH;
   uint8_t pucch_resource_id;
   uint8_t pdsch_to_harq_feedback_time_ind;
   uint8_t n_dmrs_cdm_groups;
@@ -688,6 +682,7 @@ typedef struct
 
 typedef struct {
   int16_t target_Nid_cell;
+  bool ssb_bw_scan;
 } fapi_nr_synch_request_t;
 
 typedef struct {

@@ -343,13 +343,13 @@ typedef struct {
   /// \f$\log_2(\max|H_i|^2)\f$
   int16_t log2_maxh;
   /// measured RX power based on DRS
-  int ulsch_power[8];
+  uint32_t ulsch_power[8];
   /// total signal over antennas
-  int ulsch_power_tot;
+  uint32_t ulsch_power_tot;
   /// measured RX noise power
   int ulsch_noise_power[8];
   /// total noise over antennas
-  int ulsch_noise_power_tot;
+  uint32_t ulsch_noise_power_tot;
   /// \brief llr values.
   /// - first index: ? [0..1179743] (hard coded)
   int16_t *llr;
@@ -622,9 +622,6 @@ typedef struct PHY_VARS_gNB_s {
   /// PUSCH DMRS
   uint32_t ****nr_gold_pusch_dmrs;
 
-  // Mask of occupied RBs, per symbol and PRB
-  uint32_t rb_mask_ul[14][9];
-
   /// PRS sequence
   uint32_t ****nr_gold_prs;
 
@@ -716,7 +713,6 @@ typedef struct PHY_VARS_gNB_s {
   notifiedFIFO_t L1_rx_out;
   notifiedFIFO_t resp_RU_tx;
   tpool_t threadPool;
-  int nbSymb;
   int num_pusch_symbols_per_thread;
   pthread_t L1_rx_thread;
   int L1_rx_thread_core;
@@ -727,20 +723,6 @@ typedef struct PHY_VARS_gNB_s {
   /// structure for analyzing high-level RT measurements
   rt_L1_profiling_t rt_L1_profiling; 
 } PHY_VARS_gNB;
-
-typedef struct puschSymbolProc_s {
-  PHY_VARS_gNB *gNB;
-  NR_DL_FRAME_PARMS *frame_parms;
-  nfapi_nr_pusch_pdu_t *rel15_ul;
-  int ulsch_id;
-  int slot;
-  int startSymbol;
-  int numSymbols;
-  int16_t *llr;
-  int16_t **llr_layers;
-  int16_t *s;
-  uint32_t nvar;
-} puschSymbolProc_t;
 
 struct puschSymbolReqId {
   uint16_t ulsch_id;

@@ -534,8 +534,7 @@ void free_nr_ue_ul_harq(NR_UL_UE_HARQ_t harq_list[NR_MAX_ULSCH_HARQ_PROCESSES], 
   }
 
   for (int i = 0; i < number_of_processes; i++) {
-    free_and_zero(harq_list[i].a);
-    free_and_zero(harq_list[i].b);
+    free_and_zero(harq_list[i].payload_AB);
     for (int r = 0; r < a_segments; r++) {
       free_and_zero(harq_list[i].c[r]);
       free_and_zero(harq_list[i].d[r]);
@@ -598,13 +597,9 @@ void nr_init_ul_harq_processes(NR_UL_UE_HARQ_t harq_list[NR_MAX_ULSCH_HARQ_PROCE
 
     memset(harq_list + i, 0, sizeof(NR_UL_UE_HARQ_t));
 
-    harq_list[i].a = malloc16(ulsch_bytes);
-    DevAssert(harq_list[i].a);
-    bzero(harq_list[i].a, ulsch_bytes);
-
-    harq_list[i].b = malloc16(ulsch_bytes);
-    DevAssert(harq_list[i].b);
-    bzero(harq_list[i].b, ulsch_bytes);
+    harq_list[i].payload_AB = malloc16(ulsch_bytes);
+    DevAssert(harq_list[i].payload_AB);
+    bzero(harq_list[i].payload_AB, ulsch_bytes);
 
     harq_list[i].c = malloc16(a_segments*sizeof(uint8_t *));
     harq_list[i].d = malloc16(a_segments*sizeof(uint16_t *));
@@ -650,7 +645,7 @@ void clean_UE_harq(PHY_VARS_NR_UE *UE)
   for (int harq_pid = 0; harq_pid < NR_MAX_ULSCH_HARQ_PROCESSES; harq_pid++) {
     NR_UL_UE_HARQ_t *ul_harq_process = &UE->ul_harq_processes[harq_pid];
     ul_harq_process->tx_status = NEW_TRANSMISSION_HARQ;
-    ul_harq_process->status = SCH_IDLE;
+    ul_harq_process->ULstatus = SCH_IDLE;
     ul_harq_process->round = 0;
   }
 }
@@ -711,7 +706,6 @@ void phy_init_nr_top(PHY_VARS_NR_UE *ue) {
 void phy_term_nr_top(void)
 {
   free_ul_reference_signal_sequences();
-  free_context_synchro_nr();
 }
 
 static void sl_generate_psbch_dmrs_qpsk_sequences(PHY_VARS_NR_UE *UE, struct complex16 *modulated_dmrs_sym, uint16_t slss_id)

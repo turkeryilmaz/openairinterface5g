@@ -72,19 +72,19 @@ void nr_common_signal_procedures(PHY_VARS_gNB *gNB,int frame,int slot, nfapi_nr_
   // for FR2 offsetToPointA is expressed in terms of 60 kHz SCS and k_SSB expressed in terms of the subcarrier spacing provided
   // by the higher-layer parameter subCarrierSpacingCommon
   const int scs = cfg->ssb_config.scs_common.value;
-  const int prb_offset = (fp->freq_range == nr_FR1) ? ssb_pdu.ssb_pdu_rel15.ssbOffsetPointA >> scs
-                                                    : ssb_pdu.ssb_pdu_rel15.ssbOffsetPointA >> (scs - 2);
+  const int prb_offset = (fp->freq_range == FR1) ? ssb_pdu.ssb_pdu_rel15.ssbOffsetPointA >> scs
+                                                 : ssb_pdu.ssb_pdu_rel15.ssbOffsetPointA >> (scs - 2);
   const int sc_offset =
-      (fp->freq_range == nr_FR1) ? ssb_pdu.ssb_pdu_rel15.SsbSubcarrierOffset >> scs : ssb_pdu.ssb_pdu_rel15.SsbSubcarrierOffset;
+      (fp->freq_range == FR1) ? ssb_pdu.ssb_pdu_rel15.SsbSubcarrierOffset >> scs : ssb_pdu.ssb_pdu_rel15.SsbSubcarrierOffset;
   fp->ssb_start_subcarrier = (12 * prb_offset + sc_offset);
 
   if (fp->print_ue_help_cmdline_log && get_softmodem_params()->sa) {
     fp->print_ue_help_cmdline_log = false;
     if (fp->dl_CarrierFreq != fp->ul_CarrierFreq)
       LOG_A(PHY,
-            "Command line parameters for the UE: -C %lu --CO %lu -r %d --numerology %d --ssb %d\n",
+            "Command line parameters for the UE: -C %lu --CO %ld -r %d --numerology %d --ssb %d\n",
             fp->dl_CarrierFreq,
-            fp->dl_CarrierFreq - fp->ul_CarrierFreq,
+            fp->ul_CarrierFreq - fp->dl_CarrierFreq,
             fp->N_RB_DL,
             scs,
             fp->ssb_start_subcarrier);
@@ -135,7 +135,7 @@ void nr_common_signal_procedures(PHY_VARS_gNB *gNB,int frame,int slot, nfapi_nr_
 #endif
 
   // Beam_id is currently used only for FR2
-  if (fp->freq_range==nr_FR2){
+  if (fp->freq_range == FR2){
     LOG_D(PHY,"slot %d, ssb_index %d, beam %d\n",slot,ssb_index,cfg->ssb_table.ssb_beam_id_list[ssb_index].beam_id.value);
     for (int j=0;j<fp->symbols_per_slot;j++)
       gNB->common_vars.beam_id[0][slot*fp->symbols_per_slot+j] = cfg->ssb_table.ssb_beam_id_list[ssb_index].beam_id.value;
@@ -542,20 +542,20 @@ void nr_fill_indication(PHY_VARS_gNB *gNB, int frame, int slot_rx, int ULSCH_id,
 }
 
 // Function to fill UL RB mask to be used for N0 measurements
-void fill_ul_rb_mask(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx) {
-
+static void fill_ul_rb_mask(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, uint32_t rb_mask_ul[14][9])
+{
   int rb = 0;
   int rb2 = 0;
   int prbpos = 0;
 
   for (int symbol = 0; symbol < 14; symbol++) {
     for (int m = 0; m < 9; m++) {
-      gNB->rb_mask_ul[symbol][m] = 0;
+      rb_mask_ul[symbol][m] = 0;
       for (int i = 0; i < 32; i++) {
         prbpos = (m * 32) + i;
         if (prbpos>gNB->frame_parms.N_RB_UL)
           break;
-        gNB->rb_mask_ul[symbol][m] |= (gNB->ulprbbl[prbpos] > 0 ? 1U : 0) << i;
+        rb_mask_ul[symbol][m] |= (gNB->ulprbbl[prbpos] > 0 ? 1U : 0) << i;
       }
     }
   }
@@ -575,7 +575,7 @@ void fill_ul_rb_mask(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx) {
               rb2 = rb + pucch_pdu->bwp_start +
                     ((symbol < pucch_pdu->start_symbol_index+(pucch_pdu->nr_of_symbols>>1)) || (pucch_pdu->freq_hop_flag == 0) ?
                      pucch_pdu->prb_start : pucch_pdu->second_hop_prb);
-              gNB->rb_mask_ul[symbol][rb2>>5] |= (((uint32_t)1)<<(rb2&31));
+              rb_mask_ul[symbol][rb2>>5] |= (((uint32_t)1)<<(rb2&31));
             }
           }
         }
@@ -600,7 +600,7 @@ void fill_ul_rb_mask(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx) {
           LOG_D(PHY, "symbol %d Filling rb_mask_ul rb_size %d\n", symbol, ulsch_harq->ulsch_pdu.rb_size);
           for (rb = 0; rb < ulsch_harq->ulsch_pdu.rb_size; rb++) {
             rb2 = rb + ulsch_harq->ulsch_pdu.rb_start + ulsch_harq->ulsch_pdu.bwp_start;
-            gNB->rb_mask_ul[symbol][rb2 >> 5] |= 1U << (rb2 & 31);
+            rb_mask_ul[symbol][rb2 >> 5] |= 1U << (rb2 & 31);
           }
         }
       }
@@ -614,14 +614,13 @@ void fill_ul_rb_mask(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx) {
         nfapi_nr_srs_pdu_t *srs_pdu = &srs->srs_pdu;
         for(int symbol = 0; symbol<(1<<srs_pdu->num_symbols); symbol++) {
           for(rb = srs_pdu->bwp_start; rb < (srs_pdu->bwp_start+srs_pdu->bwp_size); rb++) {
-            gNB->rb_mask_ul[gNB->frame_parms.symbols_per_slot - srs_pdu->time_start_position - 1 + symbol][rb >> 5] |= 1U
+            rb_mask_ul[gNB->frame_parms.symbols_per_slot - srs_pdu->time_start_position - 1 + symbol][rb >> 5] |= 1U
                                                                                                                        << (rb & 31);
           }
         }
       }
     }
   }
-
 }
 
 int fill_srs_reported_symbol_list(nfapi_nr_srs_reported_symbol_t *prgs,
@@ -719,8 +718,9 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_gNB_UESPEC_RX,1);
   LOG_D(PHY,"phy_procedures_gNB_uespec_RX frame %d, slot %d\n",frame_rx,slot_rx);
-
-  fill_ul_rb_mask(gNB, frame_rx, slot_rx);
+  // Mask of occupied RBs, per symbol and PRB
+  uint32_t rb_mask_ul[14][9];
+  fill_ul_rb_mask(gNB, frame_rx, slot_rx, rb_mask_ul);
 
   int first_symb=0,num_symb=0;
   if (gNB->frame_parms.frame_type == TDD)
@@ -732,7 +732,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
     }
   else
     num_symb = NR_NUMBER_OF_SYMBOLS_PER_SLOT;
-  gNB_I0_measurements(gNB,slot_rx,first_symb,num_symb);
+  gNB_I0_measurements(gNB, slot_rx, first_symb, num_symb, rb_mask_ul);
 
   const int soffset = (slot_rx & 3) * gNB->frame_parms.symbols_per_slot * gNB->frame_parms.ofdm_symbol_size;
   int offset = 10 * gNB->frame_parms.ofdm_symbol_size + gNB->frame_parms.first_carrier_offset;

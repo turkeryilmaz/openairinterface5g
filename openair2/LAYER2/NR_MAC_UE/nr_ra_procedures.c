@@ -45,7 +45,7 @@ int16_t get_prach_tx_power(NR_UE_MAC_INST_t *mac)
 {
   RA_config_t *ra = &mac->ra;
   int16_t pathloss = compute_nr_SSB_PL(mac, mac->ssb_measurements.ssb_rsrp_dBm);
-  int16_t ra_preamble_rx_power = (int16_t)(ra->prach_resources.ra_PREAMBLE_RECEIVED_TARGET_POWER - pathloss + 30);
+  int16_t ra_preamble_rx_power = (int16_t)(ra->prach_resources.ra_PREAMBLE_RECEIVED_TARGET_POWER + pathloss);
   return min(ra->prach_resources.RA_PCMAX, ra_preamble_rx_power);
 }
 
@@ -61,7 +61,7 @@ void init_RA(NR_UE_MAC_INST_t *mac,
 {
   mac->state = UE_PERFORMING_RA;
   RA_config_t *ra = &mac->ra;
-  ra->RA_active = 1;
+  ra->RA_active = true;
   ra->ra_PreambleIndex = -1;
   ra->RA_usedGroupA = 1;
   ra->RA_RAPID_found = 0;
@@ -79,7 +79,16 @@ void init_RA(NR_UE_MAC_INST_t *mac,
   int n_prbs = get_N_RA_RB(prach_scs, mac->current_UL_BWP->scs);
   int start_prb = rach_ConfigGeneric->msg1_FrequencyStart + mac->current_UL_BWP->BWPStart;
   // PRACH shall be as specified for QPSK modulated DFT-s-OFDM of equivalent RB allocation (38.101-1)
-  prach_resources->RA_PCMAX = nr_get_Pcmax(mac, 2, false, prach_scs, cfg->carrier_config.dl_grid_size[prach_scs], true, n_prbs, start_prb);
+  prach_resources->RA_PCMAX = nr_get_Pcmax(mac->p_Max,
+                                           mac->nr_band,
+                                           mac->frequency_range,
+                                           2,
+                                           false,
+                                           prach_scs,
+                                           cfg->carrier_config.dl_grid_size[prach_scs],
+                                           true,
+                                           n_prbs,
+                                           start_prb);
   prach_resources->RA_PREAMBLE_TRANSMISSION_COUNTER = 1;
   prach_resources->RA_PREAMBLE_POWER_RAMPING_COUNTER = 1;
   prach_resources->POWER_OFFSET_2STEP_RA = 0;
@@ -582,17 +591,25 @@ void nr_Msg3_transmitted(NR_UE_MAC_INST_t *mac, uint8_t CC_id, frame_t frameP, s
   ra->ra_state = nrRA_WAIT_CONTENTION_RESOLUTION;
 }
 
-void nr_get_msg3_payload(NR_UE_MAC_INST_t *mac, uint8_t *buf, int TBS_max)
+static uint8_t *fill_msg3_crnti_pdu(RA_config_t *ra, uint8_t *pdu, uint16_t crnti)
+{
+  // RA triggered by UE MAC with C-RNTI in MAC CE
+  LOG_D(NR_MAC, "Generating MAC CE with C-RNTI for MSG3 %x\n", crnti);
+  *(NR_MAC_SUBHEADER_FIXED *)pdu = (NR_MAC_SUBHEADER_FIXED){.LCID = UL_SCH_LCID_C_RNTI, .R = 0};
+  pdu += sizeof(NR_MAC_SUBHEADER_FIXED);
+
+  // C-RNTI MAC CE (2 octets)
+  uint16_t rnti_pdu = ((crnti & 0xFF) << 8) | ((crnti >> 8) & 0xFF);
+  memcpy(pdu, &rnti_pdu, sizeof(rnti_pdu));
+  pdu += sizeof(rnti_pdu);
+  ra->t_crnti = crnti;
+  return pdu;
+}
+
+static uint8_t *fill_msg3_pdu_from_rlc(NR_UE_MAC_INST_t *mac, uint8_t *pdu, int TBS_max)
 {
   RA_config_t *ra = &mac->ra;
-
-  // we already stored MSG3 in the buffer, we can use that
-  if (ra->Msg3_buffer) {
-    buf = ra->Msg3_buffer;
-    return;
-  }
-
-  uint8_t *pdu = buf;
+  // regular MSG3 with PDU coming from higher layers
   *(NR_MAC_SUBHEADER_FIXED *)pdu = (NR_MAC_SUBHEADER_FIXED){.LCID = UL_SCH_LCID_CCCH};
   pdu += sizeof(NR_MAC_SUBHEADER_FIXED);
   tbs_size_t len = mac_rlc_data_req(mac->ue_id,
@@ -613,6 +630,25 @@ void nr_get_msg3_payload(NR_UE_MAC_INST_t *mac, uint8_t *buf, int TBS_max)
   // We copy from persisted memory to another persisted memory
   memcpy(ra->cont_res_id, pdu, sizeof(uint8_t) * 6);
   pdu += len;
+  return pdu;
+}
+
+void nr_get_msg3_payload(NR_UE_MAC_INST_t *mac, uint8_t *buf, int TBS_max)
+{
+  RA_config_t *ra = &mac->ra;
+
+  // we already stored MSG3 in the buffer, we can use that
+  if (ra->Msg3_buffer) {
+    memcpy(buf, ra->Msg3_buffer, sizeof(uint8_t) * TBS_max);
+    return;
+  }
+
+  uint8_t *pdu = buf;
+  if (ra->msg3_C_RNTI)
+    pdu = fill_msg3_crnti_pdu(ra, pdu, mac->crnti);
+  else 
+    pdu = fill_msg3_pdu_from_rlc(mac, pdu, TBS_max);
+
   AssertFatal(TBS_max >= pdu - buf, "Allocated resources are not enough for Msg3!\n");
   // Padding: fill remainder with 0
   LOG_D(NR_MAC, "Remaining %ld bytes, filling with padding\n", pdu - buf);
@@ -657,7 +693,7 @@ void nr_ue_get_rach(NR_UE_MAC_INST_t *mac, int CC_id, frame_t frame, uint8_t gNB
   LOG_D(NR_MAC, "[UE %d][%d.%d]: ra_state %d, RA_active %d\n", mac->ue_id, frame, nr_slot_tx, ra->ra_state, ra->RA_active);
 
   if (ra->ra_state > nrRA_UE_IDLE && ra->ra_state < nrRA_SUCCEEDED) {
-    if (ra->RA_active == 0) {
+    if (!ra->RA_active) {
       NR_RACH_ConfigCommon_t *setup = mac->current_UL_BWP->rach_ConfigCommon;
       NR_RACH_ConfigGeneric_t *rach_ConfigGeneric = &setup->rach_ConfigGeneric;
       init_RA(mac, &ra->prach_resources, setup, rach_ConfigGeneric, ra->rach_ConfigDedicated);
@@ -825,7 +861,8 @@ void nr_ra_succeeded(NR_UE_MAC_INST_t *mac, const uint8_t gNB_index, const frame
   }
 
   LOG_D(MAC, "[UE %d] clearing RA_active flag...\n", mac->ue_id);
-  ra->RA_active = 0;
+  ra->RA_active = false;
+  ra->msg3_C_RNTI = false;
   ra->ra_state = nrRA_SUCCEEDED;
   mac->state = UE_CONNECTED;
   free_and_zero(ra->Msg3_buffer);
@@ -875,6 +912,25 @@ void nr_ra_failed(NR_UE_MAC_INST_t *mac, uint8_t CC_id, NR_PRACH_RESOURCES_t *pr
   }
 }
 
+void schedule_RA_after_SR_failure(NR_UE_MAC_INST_t *mac)
+{
+  LOG_W(NR_MAC, "Triggering new RA procedure for UE with RNTI %x\n", mac->crnti);
+  mac->state = UE_SYNC;
+  reset_ra(mac, false);
+  mac->ra.msg3_C_RNTI = true;
+  // release PUCCH for all Serving Cells;
+  // release SRS for all Serving Cells;
+  release_PUCCH_SRS(mac);
+  // clear any configured downlink assignments and uplink grants;
+  int scs = mac->current_UL_BWP->scs;
+  if (mac->dl_config_request)
+    memset(mac->dl_config_request, 0, sizeof(*mac->dl_config_request));
+  if (mac->ul_config_request)
+    clear_ul_config_request(mac, scs);
+  // clear any PUSCH resources for semi-persistent CSI reporting
+  // TODO we don't have semi-persistent CSI reporting
+}
+
 void prepare_msg4_feedback(NR_UE_MAC_INST_t *mac, int pid, int ack_nack)
 {
   NR_UE_HARQ_STATUS_t *current_harq = &mac->dl_harq_info[pid];
@@ -883,7 +939,6 @@ void prepare_msg4_feedback(NR_UE_MAC_INST_t *mac, int pid, int ack_nack)
   mac->nr_ue_emul_l1.num_harqs = 1;
   PUCCH_sched_t pucch = {.n_CCE = current_harq->n_CCE,
                          .N_CCE = current_harq->N_CCE,
-                         .delta_pucch = current_harq->delta_pucch,
                          .ack_payload = ack_nack,
                          .n_harq = 1};
   current_harq->active = false;
@@ -896,7 +951,7 @@ void prepare_msg4_feedback(NR_UE_MAC_INST_t *mac, int pid, int ack_nack)
   fapi_nr_ul_config_request_pdu_t *pdu = lockGet_ul_config(mac, sched_frame, sched_slot, FAPI_NR_UL_CONFIG_TYPE_PUCCH);
   if (!pdu)
     return;
-  int ret = nr_ue_configure_pucch(mac, sched_slot, mac->ra.t_crnti, &pucch, &pdu->pucch_config_pdu);
+  int ret = nr_ue_configure_pucch(mac, sched_slot, sched_frame, mac->ra.t_crnti, &pucch, &pdu->pucch_config_pdu);
   if (ret != 0)
     remove_ul_config_last_item(pdu);
   release_ul_config(pdu, false);

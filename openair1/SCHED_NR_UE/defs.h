@@ -81,12 +81,6 @@
 #define DAQ_AGC_ON 1
 #define DAQ_AGC_OFF 0
 
-
-typedef struct {
-  uint8_t decoded_output[3]; // PBCH paylod not larger than 3B
-  uint8_t xtra_byte;
-} fapiPbch_t;
-
 /** @addtogroup _PHY_PROCEDURES_
  * @{
  */
@@ -116,8 +110,6 @@ int8_t nr_find_ue(uint16_t rnti, PHY_VARS_eNB *phy_vars_eNB);
   @param frame_tx
 */
 void ue_ta_procedures(PHY_VARS_NR_UE *ue, int slot_tx, int frame_tx);
-
-unsigned int nr_get_tx_amp(int power_dBm, int power_max_dBm, int N_RB_UL, int nb_rb);
 
 void set_tx_harq_id(NR_UE_ULSCH_t *ulsch, int harq_pid, int slot_tx);
 int get_tx_harq_id(NR_UE_ULSCH_t *ulsch, int slot_tx);

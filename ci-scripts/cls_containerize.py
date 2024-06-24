@@ -412,10 +412,10 @@ class Containerize():
 			elif image != 'ran-build':
 				cmd.run(f'sed -i -e "s#ran-build:latest#ran-build:{imageTag}#" docker/Dockerfile.{pattern}{self.dockerfileprefix}')
 			if image == 'oai-gnb-aerial':
-				cmd.run('cp -f /opt/nvidia-ipc/nvipc_src.2023.11.28.tar.gz .')
+				cmd.run('cp -f /opt/nvidia-ipc/nvipc_src.2024.05.23.tar.gz .')
 			ret = cmd.run(f'{self.cli} build {self.cliBuildOptions} --target {image} --tag {name}:{imageTag} --file docker/Dockerfile.{pattern}{self.dockerfileprefix} {option} . > cmake_targets/log/{name}.log 2>&1', timeout=1200)
 			if image == 'oai-gnb-aerial':
-				cmd.run('rm -f nvipc_src.2023.11.28.tar.gz')
+				cmd.run('rm -f nvipc_src.2024.05.23.tar.gz')
 			if image == 'ran-build' and ret.returncode == 0:
 				cmd.run(f"docker run --name test-log -d {name}:{imageTag} /bin/true")
 				cmd.run(f"docker cp test-log:/oai-ran/cmake_targets/log/ cmake_targets/log/{name}/")
@@ -668,7 +668,7 @@ class Containerize():
 				cmd.run(f'git diff HEAD..origin/develop -- cmake_targets/build_oai cmake_targets/tools/build_helper docker/Dockerfile.base{self.dockerfileprefix} | grep --colour=never -i INDEX')
 				result = re.search('index', cmd.getBefore())
 				if result is not None:
-					baseTag = 'develop'
+					baseTag = 'ci-temp'
 		ret = cmd.run(f"docker image inspect --format=\'Size = {{{{.Size}}}} bytes\' {baseImage}:{baseTag}")
 		if ret.returncode != 0:
 			logging.error(f'No {baseImage} image present, cannot build tests')
@@ -680,6 +680,8 @@ class Containerize():
 		dockerfile = "ci-scripts/docker/Dockerfile.unittest.ubuntu20"
 		ret = cmd.run(f'docker build --progress=plain --tag ran-unittests:{baseTag} --file {dockerfile} . &> {lSourcePath}/cmake_targets/log/unittest-build.log')
 		if ret.returncode != 0:
+			build_log_name = f'build_log_{self.testCase_id}'
+			CopyLogsToExecutor(cmd, lSourcePath, build_log_name)
 			logging.error(f'Cannot build unit tests')
 			HTML.CreateHtmlTestRow("Unit test build failed", 'KO', [dockerfile])
 			HTML.CreateHtmlTabFooter(False)
@@ -688,8 +690,8 @@ class Containerize():
 		HTML.CreateHtmlTestRowQueue("Build unit tests", 'OK', [dockerfile])
 
 		# it worked, build and execute tests, and close connection
-		ret = cmd.run(f'docker run -a STDOUT --rm ran-unittests:develop ctest --output-on-failure --no-label-summary -j$(nproc)')
-		cmd.run(f'docker rmi ran-unittests:develop')
+		ret = cmd.run(f'docker run -a STDOUT --rm ran-unittests:{baseTag} ctest --output-on-failure --no-label-summary -j$(nproc)')
+		cmd.run(f'docker rmi ran-unittests:{baseTag}')
 		build_log_name = f'build_log_{self.testCase_id}'
 		CopyLogsToExecutor(cmd, lSourcePath, build_log_name)
 		cmd.close()
@@ -897,9 +899,7 @@ class Containerize():
 		mySSH.command(f'docker compose --file ci-docker-compose.yml up -d -- {svcName}', '\$', 30)
 
 		# Checking Status
-		grep = ''
-		if svcName != '': grep = f' | grep -A3 --color=never {svcName}'
-		mySSH.command(f'docker compose --file ci-docker-compose.yml config {grep}', '\$', 5)
+		mySSH.command(f'docker compose --file ci-docker-compose.yml config {svcName}', '\$', 5)
 		result = re.search('container_name: (?P<container_name>[a-zA-Z0-9\-\_]+)', mySSH.getBefore())
 		unhealthyNb = 0
 		healthyNb = 0
@@ -1021,18 +1021,18 @@ class Containerize():
 		for s in allServices:
 			# outputs the hash if the container is running
 			ret = mySSH.run(f'docker compose -f {yamlDir}/ci-docker-compose.yml ps --all --quiet -- {s}')
-			running = ret.stdout.splitlines()
-			logging.debug(f'running services: {running}')
+			c = ret.stdout
+			logging.debug(f'running service {s} with container id {c}')
 			if ret.stdout != "" and ret.returncode == 0: # something is running for that service
-				services.append(s)
-		logging.info(f'stopping services {services}')
+				services.append((s, c))
+		logging.info(f'stopping services {[s for s, _ in services]}')
 
 		mySSH.run(f'docker compose -f {yamlDir}/ci-docker-compose.yml stop -t3')
 		copyin_res = True
-		for svcName in services:
+		for service_name, container_id in services:
 			# head -n -1 suppresses the final "X exited with status code Y"
-			filename = f'{svcName}-{HTML.testCase_id}.log'
-			mySSH.run(f'docker compose -f {yamlDir}/ci-docker-compose.yml logs --no-log-prefix -- {svcName} &> {lSourcePath}/cmake_targets/log/{filename}')
+			filename = f'{service_name}-{HTML.testCase_id}.log'
+			mySSH.run(f'docker logs {container_id} &> {lSourcePath}/cmake_targets/log/{filename}')
 			copyin_res = mySSH.copyin(f'{lSourcePath}/cmake_targets/log/{filename}', f'{filename}') and copyin_res
 
 		mySSH.run(f'docker compose -f {yamlDir}/ci-docker-compose.yml down -v')
@@ -1043,7 +1043,7 @@ class Containerize():
 			HTML.CreateHtmlTestRow('N/A', 'KO', CONST.ENB_PROCESS_NOLOGFILE_TO_ANALYZE)
 			self.exitStatus = 1
 		# use function for UE log analysis, when oai-nr-ue container is used
-		elif 'oai-nr-ue' in services or 'lte_ue0' in services:
+		elif any(service_name == 'oai-nr-ue' or service_name == 'lte_ue0' for service_name, _ in services):
 			self.exitStatus == 0
 			logging.debug(f'Analyzing UE logfile {filename}')
 			logStatus = cls_oaicitest.OaiCiTest().AnalyzeLogFile_UE(f'{filename}', HTML, RAN)
@@ -1053,12 +1053,12 @@ class Containerize():
 			else:
 				HTML.CreateHtmlTestRow('UE log Analysis', 'OK', CONST.ALL_PROCESSES_OK)
 		else:
-			for svcName in services:
-				if svcName == 'nv-cubb':
+			for service_name, _ in services:
+				if service_name == 'nv-cubb':
 					msg = 'Undeploy PNF/Nvidia CUBB'
 					HTML.CreateHtmlTestRow(msg, 'OK', CONST.ALL_PROCESSES_OK)
 				else:
-					filename = f'{svcName}-{HTML.testCase_id}.log'
+					filename = f'{service_name}-{HTML.testCase_id}.log'
 					logging.debug(f'\u001B[1m Analyzing logfile {filename}\u001B[0m')
 					logStatus = RAN.AnalyzeLogFile_eNB(filename, HTML, self.ran_checkers)
 					if (logStatus < 0):

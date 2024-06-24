@@ -60,9 +60,6 @@ static int      nr_pdcp_current_time_last_subframe;
 hash_table_t  *pdcp_coll_p;
 static uint64_t pdcp_optmask;
 
-uint8_t first_dcch = 0;
-uint8_t proto_agent_flag = 0;
-
 static ngran_node_t node_type;
 
 nr_pdcp_entity_t *nr_pdcp_get_rb(nr_pdcp_ue_t *ue, int rb_id, bool srb_flag)
@@ -406,8 +403,7 @@ static void reblock_tun_socket(void)
   f = fcntl(nas_sock_fd[0], F_GETFL, 0);
   f &= ~(O_NONBLOCK);
   if (fcntl(nas_sock_fd[0], F_SETFL, f) == -1) {
-    LOG_E(PDCP, "reblock_tun_socket failed\n");
-    exit(1);
+    LOG_E(PDCP, "fcntl(F_SETFL) failed on fd %d: errno %d, %s\n", nas_sock_fd[0], errno, strerror(errno));
   }
 }
 
@@ -425,8 +421,8 @@ static void *enb_tun_read_thread(void *_)
   while (1) {
     len = read(nas_sock_fd[0], &rx_buf, NL_MAX_PAYLOAD);
     if (len == -1) {
-      LOG_E(PDCP, "%s:%d:%s: fatal\n", __FILE__, __LINE__, __FUNCTION__);
-      exit(1);
+      LOG_E(PDCP, "could not read(): errno %d %s\n", errno, strerror(errno));
+      return NULL;
     }
 
     LOG_D(PDCP, "%s(): nas_sock_fd read returns len %d\n", __func__, len);
@@ -483,8 +479,8 @@ static void *ue_tun_read_thread(void *_)
   while (1) {
     len = read(nas_sock_fd[0], &rx_buf, NL_MAX_PAYLOAD);
     if (len == -1) {
-      LOG_E(PDCP, "%s:%d:%s: fatal\n", __FILE__, __LINE__, __FUNCTION__);
-      exit(1);
+      LOG_E(PDCP, "error: cannot read() from fd %d: errno %d, %s\n", nas_sock_fd[0], errno, strerror(errno));
+      return NULL; /* exit thread */
     }
 
     LOG_D(PDCP, "%s(): nas_sock_fd read returns len %d\n", __func__, len);

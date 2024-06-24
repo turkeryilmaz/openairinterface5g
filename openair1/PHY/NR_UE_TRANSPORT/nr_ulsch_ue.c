@@ -123,6 +123,11 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
   const nfapi_nr_ue_pusch_pdu_t *pusch_pdu = &ulsch_ue->pusch_pdu;
 
   uint32_t tb_size = pusch_pdu->pusch_data.tb_size;
+  AssertFatal(pusch_pdu->pusch_uci.harq_ack_bit_length == 0 &&
+              pusch_pdu->pusch_uci.csi_part1_bit_length == 0 &&
+              pusch_pdu->pusch_uci.csi_part2_bit_length == 0,
+              "UCI on PUSCH not supported at PHY\n");
+
   int start_symbol          = pusch_pdu->start_symbol_index;
   uint16_t ul_dmrs_symb_pos = pusch_pdu->ul_dmrs_symb_pos;
   uint8_t number_of_symbols = pusch_pdu->nr_of_symbols;
@@ -191,10 +196,7 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
                             mod_order,
                             Nl);
 
-  trace_NRpdu(DIRECTION_UPLINK,
-              harq_process_ul_ue->a,
-              tb_size,
-              WS_C_RNTI, rnti, frame, slot, 0, 0);
+  trace_NRpdu(DIRECTION_UPLINK, harq_process_ul_ue->payload_AB, tb_size, WS_C_RNTI, rnti, frame, slot, 0, 0);
 
   if (nr_ulsch_encoding(UE, ulsch_ue, frame_parms, harq_pid, tb_size, G) == -1)
     return;
@@ -560,7 +562,7 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
 
   NR_UL_UE_HARQ_t *harq_process_ulsch = NULL;
   harq_process_ulsch = &UE->ul_harq_processes[harq_pid];
-  harq_process_ulsch->status = SCH_IDLE;
+  harq_process_ulsch->ULstatus = SCH_IDLE;
   ///////////
   ////////////////////////////////////////////////////////////////////////
 }

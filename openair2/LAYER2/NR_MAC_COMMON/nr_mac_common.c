@@ -38,18 +38,6 @@
 
 #define reserved 0xffff
 
-
-void reverse_n_bits(uint8_t *value, uint16_t bitlen) {
-  uint16_t j;
-  uint8_t i;
-  for(j = bitlen - 1,i = 0; j > i; j--, i++) {
-    if(((*value>>j)&1) != ((*value>>i)&1)) {
-      *value ^= (1<<j);
-      *value ^= (1<<i);
-    }
-  }
-}
-
 //38.321 Table 6.1.3.1-1
 const uint32_t NR_SHORT_BSR_TABLE[NR_SHORT_BSR_TABLE_SIZE] = {
     0,    10,    14,    20,    28,     38,     53,     74,
@@ -702,8 +690,8 @@ static const int16_t N_RA_RB[16] = {6, 3, 2, 24, 12, 6, 12, 6, 3, 24, 12, 6, 12,
 
 /* Function to get number of RBs required for prach occasion based on
  * 38.211 Table 6.3.3.2-1 */
-int16_t get_N_RA_RB (int delta_f_RA_PRACH,int delta_f_PUSCH) {
-	
+int16_t get_N_RA_RB (int delta_f_RA_PRACH, int delta_f_PUSCH)
+{
   int8_t index = 0;
   switch(delta_f_RA_PRACH) {
     case 0 :
@@ -1694,7 +1682,7 @@ int get_nr_prach_occasion_info_from_index(uint8_t index,
   if (pointa > 2016666) { //FR2
     x = table_6_3_3_2_4_prachConfig_Index[index][2];
     s_map = table_6_3_3_2_4_prachConfig_Index[index][5];
-    *N_RA_sfn += count_bits_set(s_map);
+    *N_RA_sfn += count_bits64(s_map);
     *N_RA_slot = table_6_3_3_2_4_prachConfig_Index[index][7]; // Number of RACH slots within a subframe
     *max_association_period = 160/(x * 10); 
     if (start_symbol != NULL && N_t_slot != NULL && N_dur != NULL && format != NULL){
@@ -1721,7 +1709,7 @@ int get_nr_prach_occasion_info_from_index(uint8_t index,
     if (unpaired) {
       x = table_6_3_3_2_3_prachConfig_Index[index][2];
       s_map = table_6_3_3_2_3_prachConfig_Index[index][4];
-      *N_RA_sfn += count_bits_set(s_map);
+      *N_RA_sfn += count_bits64(s_map);
       *N_RA_slot = table_6_3_3_2_3_prachConfig_Index[index][6]; // Number of RACH slots within a subframe
       *max_association_period = 160/(x * 10); 
       if (start_symbol != NULL && N_t_slot != NULL && N_dur != NULL && format != NULL){
@@ -1746,7 +1734,7 @@ int get_nr_prach_occasion_info_from_index(uint8_t index,
     else { // FDD
       x = table_6_3_3_2_2_prachConfig_Index[index][2];
       s_map = table_6_3_3_2_2_prachConfig_Index[index][4];
-      *N_RA_sfn += count_bits_set(s_map);
+      *N_RA_sfn += count_bits64(s_map);
       *N_RA_slot = table_6_3_3_2_2_prachConfig_Index[index][6];
       if (start_symbol != NULL && N_t_slot != NULL && N_dur != NULL && format != NULL){
         *start_symbol = table_6_3_3_2_2_prachConfig_Index[index][5];
@@ -5030,7 +5018,8 @@ void compute_cqi_bitlen(struct NR_CSI_ReportConfig *csi_reportconfig,
 }
 
 //!TODO : same function can be written to handle csi_resources
-void compute_csi_bitlen(NR_CSI_MeasConfig_t *csi_MeasConfig, nr_csi_report_t *csi_report_template) {
+void compute_csi_bitlen(const NR_CSI_MeasConfig_t *csi_MeasConfig, nr_csi_report_t *csi_report_template)
+{
   uint8_t csi_report_id = 0;
   uint8_t nb_resources = 0;
   NR_CSI_ReportConfig__reportQuantity_PR reportQuantity_type;
@@ -5039,7 +5028,7 @@ void compute_csi_bitlen(NR_CSI_MeasConfig_t *csi_MeasConfig, nr_csi_report_t *cs
 
   // for each CSI measurement report configuration (list of CSI-ReportConfig)
   LOG_D(NR_MAC,"Searching %d csi_reports\n",csi_MeasConfig->csi_ReportConfigToAddModList->list.count);
-  for (csi_report_id=0; csi_report_id < csi_MeasConfig->csi_ReportConfigToAddModList->list.count; csi_report_id++){
+  for (csi_report_id = 0; csi_report_id < csi_MeasConfig->csi_ReportConfigToAddModList->list.count; csi_report_id++) {
     struct NR_CSI_ReportConfig *csi_reportconfig = csi_MeasConfig->csi_ReportConfigToAddModList->list.array[csi_report_id];
     // MAC structure for CSI measurement reports (per UE and per report)
     nr_csi_report_t *csi_report = &csi_report_template[csi_report_id];
@@ -5051,7 +5040,7 @@ void compute_csi_bitlen(NR_CSI_MeasConfig_t *csi_MeasConfig, nr_csi_report_t *cs
     int csi_resourceidx = 0;
     while (found_resource == 0 && csi_resourceidx < csi_MeasConfig->csi_ResourceConfigToAddModList->list.count) {
       csi_resourceconfig = csi_MeasConfig->csi_ResourceConfigToAddModList->list.array[csi_resourceidx];
-      if ( csi_resourceconfig->csi_ResourceConfigId == csi_ResourceConfigId)
+      if (csi_resourceconfig->csi_ResourceConfigId == csi_ResourceConfigId)
         found_resource = 1;
       csi_resourceidx++;
     }
@@ -5062,6 +5051,7 @@ void compute_csi_bitlen(NR_CSI_MeasConfig_t *csi_MeasConfig, nr_csi_report_t *cs
 
     reportQuantity_type = csi_reportconfig->reportQuantity.present;
     csi_report->reportQuantity_type = reportQuantity_type;
+    csi_report->reportConfigId = csi_reportconfig->reportConfigId;
 
     // setting the CSI or SSB index list
     if (NR_CSI_ReportConfig__reportQuantity_PR_ssb_Index_RSRP == csi_report->reportQuantity_type) {
@@ -5126,21 +5116,21 @@ void compute_csi_bitlen(NR_CSI_MeasConfig_t *csi_MeasConfig, nr_csi_report_t *cs
   }
 }
 
-uint16_t nr_get_csi_bitlen(nr_csi_report_t *csi_report_template, uint8_t csi_report_id) {
-
+uint16_t nr_get_csi_bitlen(nr_csi_report_t *csi_report)
+{
   uint16_t csi_bitlen = 0;
   uint16_t max_bitlen = 0;
   L1_RSRP_bitlen_t *CSI_report_bitlen = NULL;
   CSI_Meas_bitlen_t *csi_meas_bitlen = NULL;
 
-  if (csi_report_template[csi_report_id].reportQuantity_type == NR_CSI_ReportConfig__reportQuantity_PR_ssb_Index_RSRP ||
-      csi_report_template[csi_report_id].reportQuantity_type == NR_CSI_ReportConfig__reportQuantity_PR_cri_RSRP) {
-    CSI_report_bitlen = &(csi_report_template[csi_report_id].CSI_report_bitlen); // This might need to be moodif for Aperiodic CSI-RS measurements
+  if (csi_report->reportQuantity_type == NR_CSI_ReportConfig__reportQuantity_PR_ssb_Index_RSRP ||
+      csi_report->reportQuantity_type == NR_CSI_ReportConfig__reportQuantity_PR_cri_RSRP) {
+    CSI_report_bitlen = &(csi_report->CSI_report_bitlen); // This might need to be moodif for Aperiodic CSI-RS measurements
     csi_bitlen += ((CSI_report_bitlen->cri_ssbri_bitlen * CSI_report_bitlen->nb_ssbri_cri) +
                    CSI_report_bitlen->rsrp_bitlen +(CSI_report_bitlen->diff_rsrp_bitlen *
                                                     (CSI_report_bitlen->nb_ssbri_cri -1 )));
   } else {
-    csi_meas_bitlen = &(csi_report_template[csi_report_id].csi_meas_bitlen); //This might need to be moodif for Aperiodic CSI-RS measurements
+    csi_meas_bitlen = &(csi_report->csi_meas_bitlen); //This might need to be moodif for Aperiodic CSI-RS measurements
     uint16_t temp_bitlen;
     for (int i = 0; i < 8; i++) {
       temp_bitlen = (csi_meas_bitlen->cri_bitlen+
@@ -5154,8 +5144,60 @@ uint16_t nr_get_csi_bitlen(nr_csi_report_t *csi_report_template, uint8_t csi_rep
     }
     csi_bitlen += max_bitlen;
   }
-
   return csi_bitlen;
+}
+
+bool supported_bw_comparison(int bw_mhz, NR_SupportedBandwidth_t *supported_BW, long *support_90mhz)
+{
+  if (bw_mhz == 90)
+    return support_90mhz ? true : false;
+  switch (supported_BW->present) {
+    case NR_SupportedBandwidth_PR_fr1 :
+      switch (supported_BW->choice.fr1) {
+        case NR_SupportedBandwidth__fr1_mhz5 :
+          return bw_mhz == 5;
+        case NR_SupportedBandwidth__fr1_mhz10 :
+          return bw_mhz == 10;
+        case NR_SupportedBandwidth__fr1_mhz15 :
+          return bw_mhz == 15;
+        case NR_SupportedBandwidth__fr1_mhz20 :
+          return bw_mhz == 20;
+        case NR_SupportedBandwidth__fr1_mhz25 :
+          return bw_mhz == 25;
+        case NR_SupportedBandwidth__fr1_mhz30 :
+          return bw_mhz == 30;
+        case NR_SupportedBandwidth__fr1_mhz40 :
+          return bw_mhz == 40;
+        case NR_SupportedBandwidth__fr1_mhz50 :
+          return bw_mhz == 50;
+        case NR_SupportedBandwidth__fr1_mhz60 :
+          return bw_mhz == 60;
+        case NR_SupportedBandwidth__fr1_mhz80 :
+          return bw_mhz == 80;
+        case NR_SupportedBandwidth__fr1_mhz100 :
+          return bw_mhz == 100;
+        default :
+          AssertFatal(false, "Invalid FR1 supported band\n");
+      }
+      break;
+    case NR_SupportedBandwidth_PR_fr2 :
+      switch (supported_BW->choice.fr2) {
+        case NR_SupportedBandwidth__fr2_mhz50 :
+          return bw_mhz == 50;
+        case NR_SupportedBandwidth__fr2_mhz100 :
+          return bw_mhz == 100;
+        case NR_SupportedBandwidth__fr2_mhz200 :
+          return bw_mhz == 200;
+        case NR_SupportedBandwidth__fr2_mhz400 :
+          return bw_mhz == 400;
+        default :
+          AssertFatal(false, "Invalid FR2 supported band\n");
+      }
+      break;
+    default :
+      AssertFatal(false, "Invalid BW type\n");
+  }
+  return false;
 }
 
 uint16_t compute_PDU_length(uint32_t num_TLV, uint16_t total_length)
