@@ -1302,13 +1302,6 @@ void handle_nr_srs_measurements(const module_id_t module_id,
   if (srs_ind->rnti == NON_UE_ASSOCIATED_SRS_DUMMY_RNTI) {
     LOG_I(NR_MAC, "Received Non-UE associated SRS with ToA %d (ns)\n",srs_ind->timing_advance_offset_nsec);
     nrmac->meas_pos_info.toa_ns[0] = srs_ind->timing_advance_offset_nsec;
-    LOG_I(NR_MAC, "frame = %i\n", frame);
-    LOG_I(NR_MAC, "slot = %i\n", slot);
-    LOG_I(NR_MAC, "srs_ind->rnti = %04x\n", srs_ind->rnti);
-    LOG_I(NR_MAC, "srs_ind->timing_advance_offset = %i\n", srs_ind->timing_advance_offset);
-    LOG_I(NR_MAC, "srs_ind->timing_advance_offset_nsec = %i\n", srs_ind->timing_advance_offset_nsec);
-    LOG_I(NR_MAC, "srs_ind->srs_usage = %i\n", srs_ind->srs_usage);
-    LOG_I(NR_MAC, "srs_ind->report_type = %i\n", srs_ind->report_type);
 
     if (srs_ind->srs_usage != NFAPI_NR_SRS_LOCALIZATION) {
       LOG_W(NR_MAC,"received SRS indication with NON_UE_ASSOCIATED but SRS usage not for localization");
@@ -1321,11 +1314,11 @@ void handle_nr_srs_measurements(const module_id_t module_id,
       memset(nrmac->meas_pos_info.toa_ns, 0, sizeof(nrmac->meas_pos_info.toa_ns));
 
       for (int p_index = 0; p_index < srs_ind->report_tlv.length/2; p_index++) {
-	      bytesRead += pull16(&pReadPackedMessage, &nrmac->meas_pos_info.toa_ns[p_index], endReadPackedMessage);
+	bytesRead += pull16(&pReadPackedMessage, &nrmac->meas_pos_info.toa_ns[p_index], endReadPackedMessage);
       }
     }
       
-    // response has same type as request... 
+    /* response has same type as request... */
     f1ap_measurement_resp_t resp = {
       .transaction_id = nrmac->f1ap_meas_resp_header.transaction_id,
       .lmf_measurement_id = nrmac->f1ap_meas_resp_header.lmf_measurement_id,
@@ -1339,15 +1332,14 @@ void handle_nr_srs_measurements(const module_id_t module_id,
       .nrppa_msg_info.routing_id_length = nrmac->nrppa_msg_info.routing_id_length,
     };
 
+    
     //call the response handler
     nrmac->mac_rrc.positioning_measurement_response(&resp);
-    nrmac->do_srs_meas = 0;
 
     //for the moment this is all we need so return
     //return;
   }
-
-
+  
   NR_UE_info_t *UE = find_nr_UE(&RC.nrmac[module_id]->UE_info, srs_ind->rnti);
   if (!UE) {
     LOG_W(NR_MAC, "Could not find UE for RNTI %04x\n", srs_ind->rnti);
@@ -1470,7 +1462,7 @@ void handle_nr_srs_measurements(const module_id_t module_id,
       break;
     }
 
-    case NFAPI_NR_SRS_NONCODEBOOK: 
+    case NFAPI_NR_SRS_NONCODEBOOK:
     case NFAPI_NR_SRS_ANTENNASWITCH:
       LOG_W(NR_MAC, "MAC procedures for this SRS usage are not implemented yet!\n");
       break;

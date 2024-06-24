@@ -46,6 +46,8 @@
 
 #define NON_UE_ASSOCIATED_SRS_DUMMY_RNTI 0xcafe
 
+#define NON_UE_ASSOCIATED_SRS_DUMMY_RNTI 0xcafe
+
 #define NR_SCHED_LOCK(lock)                                        \
   do {                                                             \
     int rc = pthread_mutex_lock(lock);                             \
@@ -910,6 +912,7 @@ typedef struct gNB_MAC_INST_s {
 
   //holds measurement response (non-ue associated)
   NR_meas_pos_t meas_pos_info;
+
 } gNB_MAC_INST;
 
 #endif /*__LAYER2_NR_MAC_GNB_H__ */

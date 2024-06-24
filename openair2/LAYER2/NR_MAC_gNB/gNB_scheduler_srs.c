@@ -476,8 +476,6 @@ static void nr_configure_srs(nfapi_nr_srs_pdu_t *srs_pdu,
     vrb_map_UL[i + srs_pdu->bwp_start] |= mask;
 }
 
-
-
 static void nr_configure_srs_f1ap(nfapi_nr_srs_pdu_t *srs_pdu,
 				  int slot,
 				  int module_id,
@@ -532,22 +530,16 @@ static void nr_configure_srs_f1ap(nfapi_nr_srs_pdu_t *srs_pdu,
   srs_pdu->srs_parameters_v4.iq_representation = 1;
   srs_pdu->srs_parameters_v4.prg_size = 1;
   srs_pdu->srs_parameters_v4.num_total_ue_antennas = 1<<srs_pdu->num_ant_ports;
-  //if (/*usage==*/1) {
-  if (1) {
+  if (/*usage==*/1) {
     srs_pdu->beamforming.trp_scheme = 0;
     srs_pdu->beamforming.num_prgs = m_SRS[srs_pdu->config_index];
     srs_pdu->beamforming.prg_size = 1;
   }
 
-printf("\n ADEEL nr_configure_srs_f1ap TEST 1 \n");
- uint16_t *vrb_map_UL = &RC.nrmac[module_id]->common_channels[CC_id].vrb_map_UL[buffer_index * MAX_BWP_SIZE];
-printf("\n ADEEL nr_configure_srs_f1ap TEST 2 \n"); 
+  uint16_t *vrb_map_UL = &RC.nrmac[module_id]->common_channels[CC_id].vrb_map_UL[buffer_index * MAX_BWP_SIZE];
   uint64_t mask = SL_to_bitmap(13 - srs_pdu->time_start_position, srs_pdu->num_symbols);
-printf("\n ADEEL nr_configure_srs_f1ap TEST 3 \n");
-  for (int i = 0; i < srs_pdu->bwp_size; ++i){
+  for (int i = 0; i < srs_pdu->bwp_size; ++i)
     vrb_map_UL[i + srs_pdu->bwp_start] |= mask;
-  }
-printf("\n ADEEL nr_configure_srs_f1ap TEST 4 \n");
 }
 
 static void nr_fill_nfapi_srs(int module_id,
@@ -557,7 +549,7 @@ static void nr_fill_nfapi_srs(int module_id,
                               int slot,
                               void *srs_resource_set,
                               void *srs_resource,
-                              int is_f1ap)
+			      int is_f1ap)
 {
 
   int index = ul_buffer_index(frame, slot, UE->current_UL_BWP.scs, RC.nrmac[module_id]->UL_tti_req_ahead_size);
@@ -571,8 +563,8 @@ static void nr_fill_nfapi_srs(int module_id,
   memset(srs_pdu, 0, sizeof(nfapi_nr_srs_pdu_t));
   future_ul_tti_req->n_pdus += 1;
   index = ul_buffer_index(frame, slot, UE->current_UL_BWP.scs, RC.nrmac[module_id]->vrb_map_UL_size);
-  LOG_D(MAC,"nr_fill_nfapi_srs: is_f1ap %d, num_pdu %d\n",is_f1ap,future_ul_tti_req->n_pdus);
-  if (is_f1ap){
+  //LOG_I(MAC,"nr_fill_nfapi_srs: is_f1ap %d, num_pdu %d\n",is_f1ap,future_ul_tti_req->n_pdus);
+  if (is_f1ap)
     nr_configure_srs_f1ap(srs_pdu,
 			  slot,
 			  module_id,
@@ -581,8 +573,7 @@ static void nr_fill_nfapi_srs(int module_id,
 			  (f1ap_srs_resource_set_t *) srs_resource_set,
 			  (f1ap_srs_resource_t *) srs_resource,
 			  index);
-  }
-  else{
+  else
     nr_configure_srs(srs_pdu,
 		     slot,
 		     module_id,
@@ -591,8 +582,7 @@ static void nr_fill_nfapi_srs(int module_id,
 		     (NR_SRS_ResourceSet_t*) srs_resource_set,
 		     (NR_SRS_Resource_t*) srs_resource,
 		     index);
-  }
-
+    
 }
 
 /*******************************************************************
@@ -746,8 +736,6 @@ void nr_schedule_srs_secondary(int module_id, frame_t frame, int slot) {
   if ( (frame*n_slots_frame + slot)%period == offset) {  	    
     LOG_I(NR_MAC,"Scheduling non-ue associated SRS measurement for %d.%d\n", frame, offset%n_slots_frame);
     nr_fill_nfapi_srs(module_id, CC_id, &dummy_ue_info, frame, offset%n_slots_frame, srs_resource_set, srs_resource, 1);
-    //nr_fill_nfapi_srs(module_id, CC_id, &dummy_ue_info, frame, offset%n_slots_frame, NR_srs_resource_set, NR_srs_resource, 1);
-    //RC.nrmac[module_id]->f1ap_meas_req = NULL;
+    RC.nrmac[module_id]->do_srs_meas = 0;
   }
-
 }

@@ -165,7 +165,8 @@ int nrppa_gNB_TRPInformationResponse(instance_t instance, MessageDef *msg_p)
             NRPPA_ERROR(" TODO at RRC/F1AP TRP Position Definition Type Direct\n");
             break;
           case f1ap_trp_position_definition_type_pr_referenced:
-            asn1cCalloc(nrppa_trpPosDef->choice.referenced, referenced);
+            ;
+	    asn1cCalloc(nrppa_trpPosDef->choice.referenced, referenced);
             nrppa_trpPosDef->present = NRPPA_TRPPositionDefinitionType_PR_referenced;
             
             // IE referencePoint
