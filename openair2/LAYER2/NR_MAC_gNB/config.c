@@ -747,6 +747,7 @@ void nr_mac_config_scc(gNB_MAC_INST *nrmac, NR_ServingCellConfigCommon_t *scc, c
         ra->preambles.preamble_list[i] = i;
     }
   }
+  
   //NR_SCHED_UNLOCK(&nrmac->sched_lock);
 }
 

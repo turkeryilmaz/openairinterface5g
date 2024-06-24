@@ -826,25 +826,43 @@ void positioning_measurement_request(const f1ap_measurement_req_t *req)
     AssertFatal(false, "Not implemented\n");
   }
 
-  // move this to the response function
-  /* response has same type as request... */
-  /*f1ap_measurement_resp_t resp = {
-      .transaction_id = req->transaction_id,
-      .lmf_measurement_id = req->lmf_measurement_id,
-      .ran_measurement_id = req->ran_measurement_id,
-      .nrppa_msg_info.nrppa_transaction_id = req->nrppa_msg_info.nrppa_transaction_id,
-      .nrppa_msg_info.instance = req->nrppa_msg_info.instance,
-      .nrppa_msg_info.gNB_ue_ngap_id = req->nrppa_msg_info.gNB_ue_ngap_id,
-      .nrppa_msg_info.amf_ue_ngap_id = req->nrppa_msg_info.amf_ue_ngap_id,
-      .nrppa_msg_info.ue_rnti = req->nrppa_msg_info.ue_rnti,
-      .nrppa_msg_info.routing_id_buffer = req->nrppa_msg_info.routing_id_buffer,
-      .nrppa_msg_info.routing_id_length = req->nrppa_msg_info.routing_id_length,
-  };*/
+  //store SRS config from measurement in MAC
 
-  // call the response handler
+  f1ap_srs_configuration_t *srs_configuration = &req->srs_configuration;
+  if (!srs_configuration) {
+    LOG_I(MAC, "no srs configuration in F1AP measurement reuqest, skipping\n");
+    return;
+  }
+
+  if (srs_configuration->srs_carrier_list.srs_carrier_list_length !=1) {
+    LOG_I(MAC, "expecting exactly 1 item in srs carrier list, skipping\n");
+  }
+
+  f1ap_srs_config_t *sRSConfig = &srs_configuration->srs_carrier_list.srs_carrier_list_item[0].active_ul_bwp.sRSConfig;
+  if (sRSConfig->sRSResource_List.srs_resource_list_length != 1 ||
+      sRSConfig->sRSResourceSet_List.srs_resource_set_list_length != 1) {
+    LOG_I(MAC, "Need exactly 1 SRS Resoure and 1 SRS Resource set in F1AP measurment request\n");
+    return;
+  }
+
   gNB_MAC_INST *mac = RC.nrmac[req->nrppa_msg_info.instance];
-  //mac->mac_rrc.positioning_measurement_response(&resp);
-  mac->f1ap_meas_req = req;
+  mac->srs_resource = *sRSConfig->sRSResource_List.srs_resource; 
+  mac->srs_resource_set = *sRSConfig->sRSResourceSet_List.srs_resource_set; 
+
+  mac->f1ap_meas_resp_header.transaction_id = req->transaction_id;
+  mac->f1ap_meas_resp_header.lmf_measurement_id = req->lmf_measurement_id;
+  mac->f1ap_meas_resp_header.ran_measurement_id = req->ran_measurement_id;
+  //mac->nrppa_msg_info = req->nrppa_msg_info;
+  mac->nrppa_msg_info.nrppa_transaction_id = req->nrppa_msg_info.nrppa_transaction_id;
+  mac->nrppa_msg_info.instance = req->nrppa_msg_info.instance;
+  mac->nrppa_msg_info.gNB_ue_ngap_id = req->nrppa_msg_info.gNB_ue_ngap_id;
+  mac->nrppa_msg_info.amf_ue_ngap_id = req->nrppa_msg_info.amf_ue_ngap_id;
+  mac->nrppa_msg_info.ue_rnti = req->nrppa_msg_info.ue_rnti;
+  mac->nrppa_msg_info.routing_id_buffer = req->nrppa_msg_info.routing_id_buffer;
+  mac->nrppa_msg_info.routing_id_length = req->nrppa_msg_info.routing_id_length;
+
+
+  mac->do_srs_meas = 1;
 }
 
 void positioning_measurement_update(const f1ap_measurement_update_t *update)

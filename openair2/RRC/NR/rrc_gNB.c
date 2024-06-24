@@ -2644,7 +2644,8 @@ static void rrc_CU_process_measurement_response(MessageDef *msg_p, instance_t in
   f1ap_measurement_resp_t *f1ap_msg = &F1AP_MEASUREMENT_RESP(msg);
   /* copy all fields, but reallocate memory buffers! */
   *f1ap_msg = *resp;
-  f1ap_msg->transaction_id = resp->transaction_id, f1ap_msg->lmf_measurement_id = resp->lmf_measurement_id,
+  f1ap_msg->transaction_id = resp->transaction_id;
+  f1ap_msg->lmf_measurement_id = resp->lmf_measurement_id;
   f1ap_msg->ran_measurement_id = resp->ran_measurement_id;
   f1ap_msg->nrppa_msg_info.nrppa_transaction_id = resp->nrppa_msg_info.nrppa_transaction_id;
   f1ap_msg->nrppa_msg_info.instance = resp->nrppa_msg_info.instance;

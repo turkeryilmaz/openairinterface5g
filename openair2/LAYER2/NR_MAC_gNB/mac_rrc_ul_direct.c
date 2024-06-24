@@ -333,78 +333,78 @@ static void positioning_information_response(const f1ap_positioning_information_
             case NR_SRS_Resource__resourceType_PR_periodic:
               resource_item->resourceType.present = f1ap_resource_type_pr_periodic;
               NR_SRS_PeriodicityAndOffset_t periodAndOff= srs_resource->resourceType.choice.periodic->periodicityAndOffset_p;
-              f1ap_resource_type_periodic_t periodic= resource_item->resourceType.choice.periodic;
+              f1ap_resource_type_periodic_t *periodic= &resource_item->resourceType.choice.periodic;
               switch (periodAndOff.present) {
                 case NR_SRS_PeriodicityAndOffset_PR_NOTHING:
-                  periodic.periodicity =-1; //TODO choice not available in periodAndOff
+                  periodic->periodicity =-1; //TODO choice not available in periodAndOff
                   break; 
                 case NR_SRS_PeriodicityAndOffset_PR_sl1:
-                  periodic.periodicity =0;
-                  periodic.offset =periodAndOff.choice.sl1;
+                  periodic->periodicity =0;
+                  periodic->offset =periodAndOff.choice.sl1;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl2:
-                  periodic.periodicity =1;
-                  periodic.offset =periodAndOff.choice.sl2;
+                  periodic->periodicity =1;
+                  periodic->offset =periodAndOff.choice.sl2;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl4:
-                  periodic.periodicity =2;
-                  periodic.offset =periodAndOff.choice.sl4;
+                  periodic->periodicity =2;
+                  periodic->offset =periodAndOff.choice.sl4;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl5:
-                  periodic.periodicity =3;
-                  periodic.offset =periodAndOff.choice.sl5;
+                  periodic->periodicity =3;
+                  periodic->offset =periodAndOff.choice.sl5;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl8:
-                  periodic.periodicity =4;
-                  periodic.offset =periodAndOff.choice.sl8;
+                  periodic->periodicity =4;
+                  periodic->offset =periodAndOff.choice.sl8;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl10:
-                  periodic.periodicity =5 ;
-                  periodic.offset =periodAndOff.choice.sl10;
+                  periodic->periodicity =5 ;
+                  periodic->offset =periodAndOff.choice.sl10;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl16:
-                  periodic.periodicity =6;
-                  periodic.offset =periodAndOff.choice.sl16;
+                  periodic->periodicity =6;
+                  periodic->offset =periodAndOff.choice.sl16;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl20:
-                  periodic.periodicity =7;
-                  periodic.offset =periodAndOff.choice.sl20;
+                  periodic->periodicity =7;
+                  periodic->offset =periodAndOff.choice.sl20;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl32:
-                  periodic.periodicity =8;
-                  periodic.offset =periodAndOff.choice.sl32;
+                  periodic->periodicity =8;
+                  periodic->offset =periodAndOff.choice.sl32;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl40:
-                  periodic.periodicity =9;
-                  periodic.offset =periodAndOff.choice.sl40;
+                  periodic->periodicity =9;
+                  periodic->offset =periodAndOff.choice.sl40;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl64:
-                  periodic.periodicity =10;
-                  periodic.offset =periodAndOff.choice.sl64;
+                  periodic->periodicity =10;
+                  periodic->offset =periodAndOff.choice.sl64;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl80:
-                  periodic.periodicity =11;
-                  periodic.offset =periodAndOff.choice.sl80;
+                  periodic->periodicity =11;
+                  periodic->offset =periodAndOff.choice.sl80;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl160:
-                  periodic.periodicity =12;
-                  periodic.offset =periodAndOff.choice.sl160;
+                  periodic->periodicity =12;
+                  periodic->offset =periodAndOff.choice.sl160;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl320:
-                  periodic.periodicity =13;
-                  periodic.offset =periodAndOff.choice.sl320;
+                  periodic->periodicity =13;
+                  periodic->offset =periodAndOff.choice.sl320;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl640:
-                  periodic.periodicity =14 ;
-                  periodic.offset =periodAndOff.choice.sl640;
+                  periodic->periodicity =14 ;
+                  periodic->offset =periodAndOff.choice.sl640;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl1280:
-                  periodic.periodicity =15;
-                  periodic.offset =periodAndOff.choice.sl1280;
+                  periodic->periodicity =15;
+                  periodic->offset =periodAndOff.choice.sl1280;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl2560:
-                  periodic.periodicity =16;
-                  periodic.offset =periodAndOff.choice.sl2560;
+                  periodic->periodicity =16;
+                  periodic->offset =periodAndOff.choice.sl2560;
                   break;
               }
               break;
@@ -417,78 +417,78 @@ static void positioning_information_response(const f1ap_positioning_information_
             case NR_SRS_Resource__resourceType_PR_semi_persistent:
               resource_item->resourceType.present = f1ap_resource_type_pr_semi_persistent;
               NR_SRS_PeriodicityAndOffset_t periodAndOff_sp= srs_resource->resourceType.choice.semi_persistent->periodicityAndOffset_sp;
-              f1ap_resource_type_semi_persistent_t semi_persistent= resource_item->resourceType.choice.semi_persistent;
+              f1ap_resource_type_semi_persistent_t *semi_persistent= &resource_item->resourceType.choice.semi_persistent;
               switch (periodAndOff_sp.present) {
                 case NR_SRS_PeriodicityAndOffset_PR_NOTHING:
-                  semi_persistent.periodicity =-1; //TODO choice not available in periodAndOff
+                  semi_persistent->periodicity =-1; //TODO choice not available in periodAndOff
                   break; 
                 case NR_SRS_PeriodicityAndOffset_PR_sl1:
-                  semi_persistent.periodicity =0;
-                  semi_persistent.offset =periodAndOff_sp.choice.sl1;
+                  semi_persistent->periodicity =0;
+                  semi_persistent->offset =periodAndOff_sp.choice.sl1;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl2:
-                  semi_persistent.periodicity =1;
-                  semi_persistent.offset =periodAndOff_sp.choice.sl2;
+                  semi_persistent->periodicity =1;
+                  semi_persistent->offset =periodAndOff_sp.choice.sl2;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl4:
-                  semi_persistent.periodicity =2;
-                  semi_persistent.offset =periodAndOff_sp.choice.sl4;
+                  semi_persistent->periodicity =2;
+                  semi_persistent->offset =periodAndOff_sp.choice.sl4;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl5:
-                  semi_persistent.periodicity =3;
-                  semi_persistent.offset =periodAndOff_sp.choice.sl5;
+                  semi_persistent->periodicity =3;
+                  semi_persistent->offset =periodAndOff_sp.choice.sl5;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl8:
-                  semi_persistent.periodicity =4;
-                  semi_persistent.offset =periodAndOff_sp.choice.sl8;
+                  semi_persistent->periodicity =4;
+                  semi_persistent->offset =periodAndOff_sp.choice.sl8;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl10:
-                  semi_persistent.periodicity =5 ;
-                  semi_persistent.offset =periodAndOff_sp.choice.sl10;
+                  semi_persistent->periodicity =5 ;
+                  semi_persistent->offset =periodAndOff_sp.choice.sl10;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl16:
-                  semi_persistent.periodicity =6;
-                  semi_persistent.offset =periodAndOff_sp.choice.sl16;
+                  semi_persistent->periodicity =6;
+                  semi_persistent->offset =periodAndOff_sp.choice.sl16;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl20:
-                  semi_persistent.periodicity =7;
-                  semi_persistent.offset =periodAndOff_sp.choice.sl20;
+                  semi_persistent->periodicity =7;
+                  semi_persistent->offset =periodAndOff_sp.choice.sl20;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl32:
-                  semi_persistent.periodicity =8;
-                  semi_persistent.offset =periodAndOff_sp.choice.sl32;
+                  semi_persistent->periodicity =8;
+                  semi_persistent->offset =periodAndOff_sp.choice.sl32;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl40:
-                  semi_persistent.periodicity =9;
-                  semi_persistent.offset =periodAndOff_sp.choice.sl40;
+                  semi_persistent->periodicity =9;
+                  semi_persistent->offset =periodAndOff_sp.choice.sl40;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl64:
-                  semi_persistent.periodicity =10;
-                  semi_persistent.offset =periodAndOff_sp.choice.sl64;
+                  semi_persistent->periodicity =10;
+                  semi_persistent->offset =periodAndOff_sp.choice.sl64;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl80:
-                  semi_persistent.periodicity =11;
-                  semi_persistent.offset =periodAndOff_sp.choice.sl80;
+                  semi_persistent->periodicity =11;
+                  semi_persistent->offset =periodAndOff_sp.choice.sl80;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl160:
-                  semi_persistent.periodicity =12;
-                  semi_persistent.offset =periodAndOff_sp.choice.sl160;
+                  semi_persistent->periodicity =12;
+                  semi_persistent->offset =periodAndOff_sp.choice.sl160;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl320:
-                  semi_persistent.periodicity =13;
-                  semi_persistent.offset =periodAndOff_sp.choice.sl320;
+                  semi_persistent->periodicity =13;
+                  semi_persistent->offset =periodAndOff_sp.choice.sl320;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl640:
-                  semi_persistent.periodicity =14 ;
-                  semi_persistent.offset =periodAndOff_sp.choice.sl640;
+                  semi_persistent->periodicity =14 ;
+                  semi_persistent->offset =periodAndOff_sp.choice.sl640;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl1280:
-                  semi_persistent.periodicity =15;
-                  semi_persistent.offset =periodAndOff_sp.choice.sl1280;
+                  semi_persistent->periodicity =15;
+                  semi_persistent->offset =periodAndOff_sp.choice.sl1280;
                   break;
                 case NR_SRS_PeriodicityAndOffset_PR_sl2560:
-                  semi_persistent.periodicity =16;
-                  semi_persistent.offset =periodAndOff_sp.choice.sl2560;
+                  semi_persistent->periodicity =16;
+                  semi_persistent->offset =periodAndOff_sp.choice.sl2560;
                   break;
               }
               break;
@@ -702,13 +702,9 @@ static void positioning_activation_response(const f1ap_positioning_activation_re
             resp->nrppa_msg_info.ue_rnti);
       // IE 9.2.2 CriticalityDiagnostics (O)
       // IE  SystemFrameNumber (O) 
-      // here we will send the preconfigured info as changing on fly is not possible
-      //f1ap_msg->system_frame_number=UE->ue_pos_info.frame; // TODO retireve the actual values and fill it
-      f1ap_msg->system_frame_number=0; 
+      f1ap_msg->system_frame_number=0;  //UE->ue_pos_info.frame
       // IE  SlotNumber (O)
-      // here we will send the preconfigured info as changing on fly is not possible
-      //f1ap_msg->slot_number=UE->ue_pos_info.slot; // TODO retireve the actual values and fill it
-      f1ap_msg->slot_number=0;
+      f1ap_msg->slot_number=0; //UE->ue_pos_info.slot;
     }
   }
 itti_send_msg_to_task(TASK_RRC_GNB, 0, msg);
@@ -825,80 +821,64 @@ static void positioning_measurement_response(const f1ap_measurement_resp_t *resp
   MessageDef *msg = itti_alloc_new_message(TASK_MAC_GNB, 0, F1AP_MEASUREMENT_RESP);
   f1ap_measurement_resp_t *f1ap_resp= &F1AP_MEASUREMENT_RESP(msg);
 
-
   // prepare the common part of the response
   *f1ap_resp = *resp;
   f1ap_resp->transaction_id = resp->transaction_id;
   f1ap_resp->lmf_measurement_id = resp->lmf_measurement_id;
   f1ap_resp->ran_measurement_id = resp->ran_measurement_id;
-  f1ap_resp->nrppa_msg_info = resp->nrppa_msg_info;
+  //f1ap_resp->nrppa_msg_info = resp->nrppa_msg_info;
+  f1ap_resp->nrppa_msg_info.nrppa_transaction_id = resp->nrppa_msg_info.nrppa_transaction_id;
+  f1ap_resp->nrppa_msg_info.instance = resp->nrppa_msg_info.instance;
+  f1ap_resp->nrppa_msg_info.gNB_ue_ngap_id = resp->nrppa_msg_info.gNB_ue_ngap_id;
+  f1ap_resp->nrppa_msg_info.amf_ue_ngap_id = resp->nrppa_msg_info.amf_ue_ngap_id;
+  f1ap_resp->nrppa_msg_info.ue_rnti = resp->nrppa_msg_info.ue_rnti;
+  f1ap_resp->nrppa_msg_info.routing_id_buffer = resp->nrppa_msg_info.routing_id_buffer;
+  f1ap_resp->nrppa_msg_info.routing_id_length = resp->nrppa_msg_info.routing_id_length;
+
   f1ap_pos_measurement_result_list_t *measList=&f1ap_resp->pos_measurement_result_list;
-  measList->pos_measurement_result_list_length = 1;
-  measList->pos_measurement_result_list_item = malloc(sizeof(f1ap_pos_measurement_result_list_item_t));
-  measList->pos_measurement_result_list_item->tRPID =0; // TODO: needs to be added to config file
-  f1ap_pos_measurement_result_t *posMeasRes= &measList->pos_measurement_result_list_item->posMeasurementResult;
-  posMeasRes->f1ap_pos_measurement_result_length =1;
-  posMeasRes->pos_measurement_result_item =malloc(sizeof(f1ap_pos_measurement_result_item_t));
-
-  // criticality_diagnostics;
-
+  int noOfTRPs= NB_ANTENNAS_RX;
+  measList->pos_measurement_result_list_length = noOfTRPs;
+  measList->pos_measurement_result_list_item = malloc(noOfTRPs*sizeof(f1ap_pos_measurement_result_list_item_t));
+  DevAssert(measList->pos_measurement_result_list_item);
+  f1ap_pos_measurement_result_list_item_t *meas_res_list_item= measList->pos_measurement_result_list_item;
+  LOG_D(MAC, "Preparing pos_measurement_result_list for NRPPA noOfTRPs= %d", noOfTRPs);
   uint32_t Tc_inv = 4096 * 480000;
   uint16_t k = 1;
   uint64_t T_inv = Tc_inv / (1 << k);
   uint64_t T_ns_inv = 1000000000;
-
   gNB_MAC_INST *mac = RC.nrmac[resp->nrppa_msg_info.instance];
-  NR_UEs_t *UE_info = &mac->UE_info;
-  /*UE_iterator (UE_info->list, UE) {
-    if (UE->rnti == resp->nrppa_msg_info.ue_rnti) { // configuration details of specific UE // TODO manage non UE associated
-      LOG_I(MAC,
-            "Extracting uL_RTOA info of MeasurementResponse for ue rnti= %04x \n",
-            resp->nrppa_msg_info.ue_rnti); ////uid_t uid = &UE->uid;
-      // we assume we use UL_RTOA for now with k=1 (i.e. 8 times oversampling from 122.88e6 Msps)
-      f1ap_measured_results_value_t *MeasResVal= &posMeasRes->pos_measurement_result_item->measuredResultsValue;
-      MeasResVal->present = f1ap_measured_results_value_pr_ul_rtoa;
-      MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.present = f1ap_ulrtoameas_pr_k1;
+  
+  for (int trp_i=0; trp_i < noOfTRPs; trp_i++){
+    meas_res_list_item->tRPID =trp_i; // TODO: needs to be added to config file
+    f1ap_pos_measurement_result_t *posMeasRes= &meas_res_list_item->posMeasurementResult;
+    posMeasRes->f1ap_pos_measurement_result_length =1;
+    posMeasRes->pos_measurement_result_item =malloc(sizeof(f1ap_pos_measurement_result_item_t));
+    DevAssert(posMeasRes->pos_measurement_result_item);
+
+    // we assume we use UL_RTOA for now with k=1 (i.e. 8 times oversampling from 122.88e6 Msps)
+    f1ap_measured_results_value_t *MeasResVal= &posMeasRes->pos_measurement_result_item->measuredResultsValue;
+    MeasResVal->present = f1ap_measured_results_value_pr_ul_rtoa;
+    MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.present = f1ap_ulrtoameas_pr_k1;
+    if (mac->meas_pos_info.toa_ns[trp_i] >=0) {
       MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k1 =
-          (int32_t)(((int64_t)UE->ue_pos_info.toa_ns * (int64_t)T_inv) / T_ns_inv);
-      LOG_I(MAC,
-            "Extracting uL_RTOA info of MeasurementResponse for ue rnti= %04x, k1=%d \n",
-            resp->nrppa_msg_info.ue_rnti,
-            (int32_t)(((int64_t)UE->ue_pos_info.toa_ns * (int64_t)T_inv) / T_ns_inv));
-
-      // TODO IE timeStamp.measurementTime
-      posMeasRes->pos_measurement_result_item->timeStamp.systemFrameNumber = mac->frame;
-      // TODO IE timeStamp.slotIndex
-      posMeasRes->pos_measurement_result_item->timeStamp.slotIndex.present = f1ap_time_stamp_slot_index_pr_sCS_30;
-      posMeasRes->pos_measurement_result_item->timeStamp.slotIndex.choice.sCS_30 = mac->slot;
+        (int32_t)(((int64_t)mac->meas_pos_info.toa_ns[trp_i] * (int64_t)T_inv) / T_ns_inv);
     }
-  }*/
-
-  UE_iterator (UE_info->list, UE) {
-    if (1) { // configuration details of specific UE // TODO manage non UE associated
-      LOG_I(MAC,
-            "Extracting uL_RTOA info of MeasurementResponse for ue rnti= %04x \n",
-            resp->nrppa_msg_info.ue_rnti); ////uid_t uid = &UE->uid;
-      // we assume we use UL_RTOA for now with k=1 (i.e. 8 times oversampling from 122.88e6 Msps)
-      f1ap_measured_results_value_t *MeasResVal= &posMeasRes->pos_measurement_result_item->measuredResultsValue;
-      MeasResVal->present = f1ap_measured_results_value_pr_ul_rtoa;
-      MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.present = f1ap_ulrtoameas_pr_k1;
-      if (mac->meas_pos_info.toa_ns >=0) 
-        MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k1 =
-          (int32_t)(((int64_t)mac->meas_pos_info.toa_ns * (int64_t)T_inv) / T_ns_inv);
-      else
-        MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k1 = 0;
-
-      LOG_I(MAC,
-            "Extracting uL_RTOA info of MeasurementResponse for ue rnti= %04x, k1=%d \n",
-            resp->nrppa_msg_info.ue_rnti,MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k1);
-      // TODO IE timeStamp.measurementTime
-      posMeasRes->pos_measurement_result_item->timeStamp.systemFrameNumber = mac->frame;
-      // TODO IE timeStamp.slotIndex
-      posMeasRes->pos_measurement_result_item->timeStamp.slotIndex.present = f1ap_time_stamp_slot_index_pr_sCS_30;
-      posMeasRes->pos_measurement_result_item->timeStamp.slotIndex.choice.sCS_30 = mac->slot;
+    else{
+	    MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k1 = 0;
+        LOG_I(MAC,
+              "Extracting uL_RTOA info of MeasurementResponse, k1=%d \n",
+              MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k1);
+    }
+    // IE timeStamp.measurementTime
+    posMeasRes->pos_measurement_result_item->timeStamp.systemFrameNumber = mac->frame;
+    // IE timeStamp.slotIndex
+    posMeasRes->pos_measurement_result_item->timeStamp.slotIndex.present = f1ap_time_stamp_slot_index_pr_sCS_30;
+    posMeasRes->pos_measurement_result_item->timeStamp.slotIndex.choice.sCS_30 = mac->slot;
+    if (trp_i < noOfTRPs - 1) {
+      meas_res_list_item++;
     }
   }
-
+  
   itti_send_msg_to_task(TASK_RRC_GNB, 0, msg);
 }
 

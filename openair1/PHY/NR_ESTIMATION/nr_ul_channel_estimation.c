@@ -47,7 +47,8 @@
 /* Generic function to find the peak of channel estimation buffer */
 int32_t nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
 		       uint8_t N_ap,
-		       int32_t srs_estimated_channel_freq[N_ap][frame_parms->ofdm_symbol_size])
+		       int32_t srs_estimated_channel_freq[N_ap][frame_parms->ofdm_symbol_size],
+           int16_t *srs_toa_ns)
 {
 
   int32_t chF_interpol[N_ap][NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size] __attribute__((aligned(32)));
@@ -71,17 +72,28 @@ int32_t nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
 	      (int16_t*) chT_interpol[p_index]);
   }
 
-  for(int k = 0; k < NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size; k++) {
-    abs_val = 0;
-    for (int p_index = 0; p_index < N_ap; p_index++) {
+
+  for(int p_index = 0; p_index < N_ap; p_index++) {
+    for(int k = 0; k < NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size; k++) {
+      abs_val = 0;
       abs_val += squaredMod(((c16_t*)chT_interpol[p_index])[k]);
-    }
-    mean_val += (abs_val - mean_val)/(k+1);
-    if(abs_val > max_val)
-      {
-	max_val = abs_val;
-	max_idx = k;
+      mean_val += (abs_val - mean_val)/(k+1);
+      if(abs_val > max_val) {
+	      max_val = abs_val;
+	      max_idx = k;
       }
+    }
+
+    if(max_idx > NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size >>1)
+      max_idx = max_idx - NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size;
+    
+    // Check for detection threshold
+    LOG_D(PHY, "SRS ToA estimator (ant %d): max_val %d, mean_val %d, max_idx %d\n", p_index, max_val, mean_val, max_idx);
+    if((mean_val != 0) && (max_val / mean_val > 10)) {
+      srs_toa_ns[p_index] = (max_idx*1e9)/(NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->samples_per_frame*100);
+    } else {
+      srs_toa_ns[p_index] = 0xFFFF;
+    }
   }
 
   // Add T tracer to log these chF and chT
@@ -102,18 +114,9 @@ int32_t nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
     T_INT(0),
     T_BUFFER(chT_interpol[0][0], NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size * sizeof(int32_t)));
   */
-
-  if(max_idx > NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size >>1)
-    max_idx = max_idx - NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size;
-
-  // Check for detection threshold
-  LOG_D(PHY, "SRS ToA estimator: max_val %d, mean_val %d, max_idx %d\n", max_val, mean_val, max_idx);
-  if ((mean_val != 0) && (max_val / mean_val > 10)) {
-    return (max_idx*1e9)/(NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->samples_per_frame*100);
-  } else {
-    return 0xFFFF;
-  }
-
+ 
+  // return toa of first antenna for backward compatibility
+  return srs_toa_ns[0];
 }
 
 __attribute__((always_inline)) inline c16_t c32x16cumulVectVectWithSteps(c16_t *in1,

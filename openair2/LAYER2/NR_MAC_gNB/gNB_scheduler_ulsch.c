@@ -37,6 +37,7 @@
 #include "LAYER2/NR_MAC_COMMON/nr_mac_extern.h"
 #include "LAYER2/nr_rlc/nr_rlc_oai_api.h"
 #include "LAYER2/RLC/rlc.h"
+#include "nfapi.h"
 
 //#define SRS_IND_DEBUG
 
@@ -1244,31 +1245,53 @@ void handle_nr_srs_measurements(const module_id_t module_id,
 
   if (srs_ind->rnti == NON_UE_ASSOCIATED_SRS_DUMMY_RNTI) {
     LOG_I(NR_MAC, "Received Non-UE associated SRS with ToA %d (ns)\n",srs_ind->timing_advance_offset_nsec);
-    nrmac->meas_pos_info.toa_ns = srs_ind->timing_advance_offset_nsec;
+    nrmac->meas_pos_info.toa_ns[0] = srs_ind->timing_advance_offset_nsec;
+    LOG_I(NR_MAC, "frame = %i\n", frame);
+    LOG_I(NR_MAC, "slot = %i\n", slot);
+    LOG_I(NR_MAC, "srs_ind->rnti = %04x\n", srs_ind->rnti);
+    LOG_I(NR_MAC, "srs_ind->timing_advance_offset = %i\n", srs_ind->timing_advance_offset);
+    LOG_I(NR_MAC, "srs_ind->timing_advance_offset_nsec = %i\n", srs_ind->timing_advance_offset_nsec);
+    LOG_I(NR_MAC, "srs_ind->srs_usage = %i\n", srs_ind->srs_usage);
+    LOG_I(NR_MAC, "srs_ind->report_type = %i\n", srs_ind->report_type);
 
-    f1ap_measurement_req_t *req = nrmac->f1ap_meas_req;
-    /* response has same type as request... */
+    if (srs_ind->srs_usage != NFAPI_NR_SRS_LOCALIZATION) {
+      LOG_W(NR_MAC,"received SRS indication with NON_UE_ASSOCIATED but SRS usage not for localization");
+    } else {
+
+      uint32_t *pReadPackedMessage   = srs_ind->report_tlv.value;
+      uint32_t *endReadPackedMessage = srs_ind->report_tlv.value+srs_ind->report_tlv.length;
+      uint16_t bytesRead = 0;
+
+      memset(nrmac->meas_pos_info.toa_ns, 0, sizeof(nrmac->meas_pos_info.toa_ns));
+
+      for (int p_index = 0; p_index < srs_ind->report_tlv.length/2; p_index++) {
+	      bytesRead += pull16(&pReadPackedMessage, &nrmac->meas_pos_info.toa_ns[p_index], endReadPackedMessage);
+      }
+    }
+      
+    // response has same type as request... 
     f1ap_measurement_resp_t resp = {
-      .transaction_id = req->transaction_id,
-      .lmf_measurement_id = req->lmf_measurement_id,
-      .ran_measurement_id = req->ran_measurement_id,
-      .nrppa_msg_info.nrppa_transaction_id = req->nrppa_msg_info.nrppa_transaction_id,
-      .nrppa_msg_info.instance = req->nrppa_msg_info.instance,
-      .nrppa_msg_info.gNB_ue_ngap_id = req->nrppa_msg_info.gNB_ue_ngap_id,
-      .nrppa_msg_info.amf_ue_ngap_id = req->nrppa_msg_info.amf_ue_ngap_id,
-      .nrppa_msg_info.ue_rnti = req->nrppa_msg_info.ue_rnti,
-      .nrppa_msg_info.routing_id_buffer = req->nrppa_msg_info.routing_id_buffer,
-      .nrppa_msg_info.routing_id_length = req->nrppa_msg_info.routing_id_length,
+      .transaction_id = nrmac->f1ap_meas_resp_header.transaction_id,
+      .lmf_measurement_id = nrmac->f1ap_meas_resp_header.lmf_measurement_id,
+      .ran_measurement_id = nrmac->f1ap_meas_resp_header.ran_measurement_id,
+      .nrppa_msg_info.nrppa_transaction_id = nrmac->nrppa_msg_info.nrppa_transaction_id,
+      .nrppa_msg_info.instance = nrmac->nrppa_msg_info.instance,
+      .nrppa_msg_info.gNB_ue_ngap_id = nrmac->nrppa_msg_info.gNB_ue_ngap_id,
+      .nrppa_msg_info.amf_ue_ngap_id = nrmac->nrppa_msg_info.amf_ue_ngap_id,
+      .nrppa_msg_info.ue_rnti = nrmac->nrppa_msg_info.ue_rnti,
+      .nrppa_msg_info.routing_id_buffer = nrmac->nrppa_msg_info.routing_id_buffer,
+      .nrppa_msg_info.routing_id_length = nrmac->nrppa_msg_info.routing_id_length,
     };
 
-    
     //call the response handler
     nrmac->mac_rrc.positioning_measurement_response(&resp);
+    nrmac->do_srs_meas = 0;
 
     //for the moment this is all we need so return
-    return;
+    //return;
   }
-  
+
+
   NR_UE_info_t *UE = find_nr_UE(&RC.nrmac[module_id]->UE_info, srs_ind->rnti);
   if (!UE) {
     LOG_W(NR_MAC, "Could not find UE for RNTI %04x\n", srs_ind->rnti);
@@ -1282,13 +1305,12 @@ void handle_nr_srs_measurements(const module_id_t module_id,
     return;
   }
 
-
   gNB_MAC_INST *nr_mac = RC.nrmac[module_id];
   NR_mac_stats_t *stats = &UE->mac_stats;
   nfapi_srs_report_tlv_t *report_tlv = &srs_ind->report_tlv;
 
   switch (srs_ind->srs_usage) {
-    case NR_SRS_ResourceSet__usage_beamManagement: {
+    case NFAPI_NR_SRS_BEAMMANAGEMENT: {
       nfapi_nr_srs_beamforming_report_t nr_srs_bf_report;
       unpack_nr_srs_beamforming_report(report_tlv->value,
                                        report_tlv->length,
@@ -1336,7 +1358,7 @@ void handle_nr_srs_measurements(const module_id_t module_id,
       break;
     }
 
-    case NR_SRS_ResourceSet__usage_codebook: {
+    case NFAPI_NR_SRS_CODEBOOK: {
       nfapi_nr_srs_normalized_channel_iq_matrix_t nr_srs_channel_iq_matrix;
       unpack_nr_srs_normalized_channel_iq_matrix(report_tlv->value,
                                                  report_tlv->length,
@@ -1392,8 +1414,8 @@ void handle_nr_srs_measurements(const module_id_t module_id,
       break;
     }
 
-    case NR_SRS_ResourceSet__usage_nonCodebook:
-    case NR_SRS_ResourceSet__usage_antennaSwitching:
+    case NFAPI_NR_SRS_NONCODEBOOK: 
+    case NFAPI_NR_SRS_ANTENNASWITCH:
       LOG_W(NR_MAC, "MAC procedures for this SRS usage are not implemented yet!\n");
       break;
 
