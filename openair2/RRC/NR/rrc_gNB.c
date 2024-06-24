@@ -90,6 +90,7 @@
 
 #include "executables/softmodem-common.h"
 #include <openair2/RRC/NR/rrc_gNB_UE_context.h>
+#include <openair2/LAYER2/BAP/iab_info_management.h>
 #include <openair2/X2AP/x2ap_eNB.h>
 #include <openair3/SECU/key_nas_deriver.h>
 #include <openair3/ocp-gtpu/gtp_itf.h>
@@ -1551,6 +1552,16 @@ static int handle_rrcSetupComplete(const protocol_ctxt_t *const ctxt_pP,
     if (*setup_complete_ies->nonCriticalExtension->iab_NodeIndication_r16 == NR_RRCSetupComplete_v1610_IEs__iab_NodeIndication_r16_true){
       LOG_I(NR_RRC, "IAB Node Indication received and set to true\n");
       UE->is_iab_mt = true; // not used
+
+      /* Adds new IAB-node (with the IAB-MT). 
+       * Node DU is added later during F1 SETUP Procedure */
+      gNB_IAB_INFO *iab = RC.iab[0];
+      int *number_of_nodes = &iab->iab_cu.number_of_iab_nodes;
+      iab->iab_cu.iab_node[*number_of_nodes].iab_mt.rrc_ue_id = UE->rrc_ue_id;
+      iab->iab_cu.last_given_bap_address += 1;
+      int new_bap_address = iab->iab_cu.last_given_bap_address;
+      iab->iab_cu.iab_node->bap_address = new_bap_address;
+      *number_of_nodes += 1;
       // Call UE Context modification request.
       gNB_RRC_INST *rrc = RC.nrrrc[0];
       f1_ue_data_t ue_data = cu_get_f1_ue_data(UE->rrc_ue_id);
@@ -2058,6 +2069,17 @@ static void rrc_CU_process_ue_context_modification_response(MessageDef *msg_p, i
       LOG_I(RRC, "Modification process logicalChannelGroupIAB-Ext-r17: %d\n", 
       *cellGroupConfig->ext2->bh_RLC_ChannelToAddModList_r16->list.array[0]->mac_LogicalChannelConfig_r16->ul_SpecificParameters->ext2->logicalChannelGroupIAB_Ext_r17);
     */
+    if(UE->is_iab_mt){
+      gNB_IAB_INFO_s *iab = RC.iab[0];
+      for (int i=0; i<iab->iab_cu.number_of_iab_nodes; i++){
+        if(iab->iab_cu.iab_node[i]->iab_mt.rrc_ue_id == UE->rrc_ue_id){
+          // TODO
+          iab->iab_cu.last_given_bap_address += 1;
+          int new_bap_address = iab->iab_cu.last_given_bap_address;
+          iab->iab_cu.iab_node[i]->bap_address = new_bap_address;
+        }
+      }
+    }
     rrc_gNB_generate_dedicatedRRCReconfiguration(&ctxt, ue_context_p);
   }
 }

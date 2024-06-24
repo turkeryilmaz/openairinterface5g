@@ -325,7 +325,6 @@ typedef struct gNB_RRC_UE_s {
 
   /*[IAB] params*/
   bool                               is_iab_mt;
-
 } gNB_RRC_UE_t;
 
 typedef struct rrc_gNB_ue_context_s {

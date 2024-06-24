@@ -199,7 +199,20 @@ void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *req, sctp_assoc_t assoc_id)
     int new_bap_address = iab->iab_cu.last_given_bap_address;
     printf("Giving BAP Address = %d\n", new_bap_address);
     resp.bap_address = new_bap_address;
+    iab_donor_du_t *iab_donor_du = &iab->iab_cu.iab_donor_du[iab->iab_cu.number_of_iab_donor_dus];
+    iab_donor_du->du_id = req->gNB_DU_id;
+    iab_donor_du->bap_address = new_bap_address;
+    iab->iab_cu.number_of_iab_donor_dus += 1;
+  } else if (strstr(req->gNB_DU_name, "Node") != NULL) {
+    printf("Receiving BAP Address = %d\n", req->bap_address);
+    for (int i = 0; i < iab->iab_cu.number_of_iab_nodes; i++){
+      if (iab->iab_cu.iab_node[i].bap_address == req->bap_address){
+        iab->iab_cu.iab_node[i].iab_node_du.du_id = req->gNB_DU_id;
+        break;
+      } 
+    }
   }
+  
 
   /*if (req->bap_address != 0){
     resp.bap_address = req->bap_address;

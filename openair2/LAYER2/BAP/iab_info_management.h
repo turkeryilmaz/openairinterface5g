@@ -19,9 +19,7 @@ typedef struct iab_node_du_t {
 
 typedef struct iab_mt_t {
   uint64_t mt_id;
-  uint8_t mcc;
-  uint8_t mnc;
-  uint8_t msin;
+  uint32_t rrc_ue_id;
 } iab_mt_t;
 
 typedef struct iab_node_t {
@@ -31,9 +29,11 @@ typedef struct iab_node_t {
 } iab_node_t;
 
 typedef struct iab_cu_t {
-  iab_donor_du_t *iab_donor_du;
+  // Max 10 for now
+  iab_donor_du_t iab_donor_du[10];
   int number_of_iab_donor_dus;
-  iab_node_t *iab_node;
+  // max 30 for now
+  iab_node_t iab_node[30];
   int number_of_iab_nodes;
   int last_given_bap_address;
 } iab_cu_t;
