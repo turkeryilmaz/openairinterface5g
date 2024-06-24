@@ -2711,6 +2711,133 @@ static void write_rrc_stats(const gNB_RRC_INST *rrc)
   fclose(f);
 }
 
+
+void nr_initiate_handover_xn(const gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue, const nr_rrc_du_container_t *target_du, const nr_handover_context_t *ho_ctxt)
+{
+  LOG_I(NR_RRC,"nr_initiate_handover_xn \n");
+  if (ue->ho_context != NULL) {
+    LOG_E(NR_RRC, "handover for UE %u ongoing, cannot trigger new\n", ue->rrc_ue_id);
+    return;
+  }
+
+  ue->ho_context = malloc(sizeof(*ue->ho_context));
+  AssertFatal(ue->ho_context != NULL, "out of memory\n");
+  *ue->ho_context = *ho_ctxt;
+  LOG_I(NR_RRC, "Handover triggered for UE %u towards DU %ld\n", ue->rrc_ue_id, target_du->setup_req->gNB_DU_id);
+
+  // The gNB-CU sends a UE CONTEXT SETUP REQUEST message to the target gNB-DU to create a UE context and setup
+
+  uint8_t buf[RRC_BUF_SIZE];
+  int size = do_NR_HandoverPreparationInformation(ue->ue_cap_buffer.buf, ue->ue_cap_buffer.len, buf, RRC_BUF_SIZE);
+  cu_to_du_rrc_information_t cu2du = {
+      .handoverPreparationInfo = buf,
+      .handoverPreparationInfo_length = size,
+  };
+
+  /*f1ap_drb_to_be_setup_t drbs[32]; // maximum DRB can be 32
+  int nb_drb = 0;
+  for (int i = 0; i < 32; ++i) { // for each DRB 
+    drb_t *rrc_drb = &ue->established_drbs[i];
+    if (rrc_drb->status == DRB_INACTIVE)
+      continue;
+
+    f1ap_drb_to_be_setup_t *drb = &drbs[nb_drb];
+    nb_drb++;
+    drb->drb_id = rrc_drb->drb_id;
+    memcpy(&drb->up_ul_tnl[0].tl_address, &rrc_drb->cuup_tunnel_config.addr.buffer, sizeof(uint8_t) * 4);
+    drb->up_ul_tnl[0].port = rrc->eth_params_s.my_portd;
+    drb->up_ul_tnl[0].teid = rrc_drb->cuup_tunnel_config.teid;
+    drb->up_ul_tnl_length = 1;
+
+    // fetch an existing PDU session for this DRB 
+    rrc_pdu_session_param_t *pdu = find_pduSession_from_drbId(ue, drb->drb_id);
+    AssertFatal(pdu != NULL, "no PDU session for DRB ID %ld\n", drb->drb_id);
+    drb->nssai = pdu->param.nssai;
+
+    // for the moment, we only support one QoS flow. Put a reminder in case
+    // this changes
+    AssertFatal(pdu->param.nb_qos == 1, "only 1 Qos flow supported\n");
+    drb->drb_info.flows_to_be_setup_length = 1;
+    drb->drb_info.flows_mapped_to_drb = calloc(1, sizeof(f1ap_flows_mapped_to_drb_t));
+    AssertFatal(drb->drb_info.flows_mapped_to_drb, "could not allocate memory\n");
+    int qfi = rrc_drb->cnAssociation.sdap_config.mappedQoS_FlowsToAdd[0];
+    DevAssert(qfi > 0);
+    drb->drb_info.flows_mapped_to_drb[0].qfi = qfi;
+    pdusession_level_qos_parameter_t *in_qos_char = get_qos_characteristics(qfi, pdu);
+    drb->drb_info.flows_mapped_to_drb[0].qos_params.qos_characteristics = get_qos_char_from_qos_flow_param(in_qos_char);
+
+    // the DRB QoS parameters: we just reuse the ones from the first flow 
+    drb->drb_info.drb_qos = drb->drb_info.flows_mapped_to_drb[0].qos_params;
+  }
+
+  f1ap_srb_to_be_setup_t srbs[2] = {{.srb_id = 1, .lcid = 1}, {.srb_id = 2, .lcid = 2}};
+  */
+  //f1_ue_data_t ue_data = cu_get_f1_ue_data(ue->rrc_ue_id);
+  xnap_served_cell_info_t *cell_info = &target_du->setup_req->cell[0].info;
+  //RETURN_IF_INVALID_ASSOC_ID(ue_data);
+  f1ap_ue_context_setup_t ue_context_setup_req = {
+      .gNB_CU_ue_id = ue->rrc_ue_id,
+      .gNB_DU_ue_id = 0, /* TODO: this should be optional! */
+      .plmn.mcc = cell_info->plmn.mcc,
+      .plmn.mnc = cell_info->plmn.mnc,
+      .plmn.mnc_digit_length = cell_info->plmn.mnc_digit_length,
+      .nr_cellid = cell_info->nr_cellid,
+      .servCellId = 0, // TODO: correct value?
+      /*.srbs_to_be_setup_length = 2,
+      .srbs_to_be_setup = srbs,
+      .drbs_to_be_setup_length = nb_drb,
+      .drbs_to_be_setup = drbs,*/
+      .cu_to_du_rrc_information = &cu2du,
+  };
+  rrc->mac_rrc.ue_context_setup_request(target_du->assoc_id, &ue_context_setup_req);
+}
+
+
+
+
+nr_rrc_du_container_t *find_target_du(gNB_RRC_INST *rrc, sctp_assoc_t source_assoc_id)
+{
+  LOG_I(NR_RRC,"Find Target_du \n");
+  nr_rrc_du_container_t *target_du = NULL;
+  nr_rrc_du_container_t *it = NULL;
+  bool next_du = false;
+  RB_FOREACH (it, rrc_du_tree, &rrc->dus) {
+    if (next_du == false && source_assoc_id != it->assoc_id) {
+      continue;
+    } else if (source_assoc_id == it->assoc_id) {
+      next_du = true;
+    } else {
+      target_du = it;
+      break;
+    }
+  }
+  if (target_du == NULL) {
+    RB_FOREACH (it, rrc_du_tree, &rrc->dus) {
+      if (source_assoc_id == it->assoc_id) {
+        continue;
+      } else {
+        target_du = it;
+        break;
+      }
+    }
+  }
+
+ /* if (target_du == NULL){
+    RB_FOREACH (it, rrc_du_tree, &rrc->dus){
+	    target_du = it;
+    }
+  if(target_du != NULL)
+  {
+	  return target_du;
+  }
+  else{
+	LOG_I(NR_RRC,"Target DU is null");
+  }
+}*/
+}
+
+
+
 void rrc_gNB_process_handoverprepinfo(sctp_assoc_t assoc_id, xnap_handover_req_t *m)
 {
 	//int rnti = taus() & 0xffff;
@@ -2721,6 +2848,7 @@ void rrc_gNB_process_handoverprepinfo(sctp_assoc_t assoc_id, xnap_handover_req_t
 	instance_t instance;
 	instance = 0; //for time being
 	xnap_gNB_instance_t *instance_p = xnap_gNB_get_instance(instance);
+	gNB_RRC_INST *rrc = RC.nrrrc[instance];
 
 	//ue_context_p = rrc_gNB_get_ue_context(RC.nrrrc[0], m->ue_id);
 	//if (ue_context_p != NULL) {
@@ -2737,6 +2865,17 @@ void rrc_gNB_process_handoverprepinfo(sctp_assoc_t assoc_id, xnap_handover_req_t
 
 	//ue_context_p->ue_context.rnti = rnti;
 	//RB_INSERT(rrc_ue_tree_s, &RC.rrc[mod_id]->rrc_ue_head, ue_context_p);
+        nr_rrc_du_container_t *target_du = find_target_du(rrc, assoc_id); // get_du_by_cell_id(rrc, target_cell);
+	nr_handover_context_t ho_ctxt = {
+        //  .type = HANDOVER_TYPE_INTRA_CU,
+        //  .data.intra_cu.source_du = source_du->assoc_id,
+            .data.intra_cu.target_du = target_du->assoc_id,
+        //  .data.intra_cu.source_secondary_ue = ue_data.secondary_ue,
+  	};
+
+	nr_initiate_handover_xn(rrc, ue_context_p, target_du, &ho_ctxt);
+        
+/*
 	MessageDef *message_p = itti_alloc_new_message(TASK_XNAP, 0, XNAP_HANDOVER_REQ_ACK);
 	message_p->ittiMsgHeader.originInstance = assoc_id;
 	xnap_handover_req_ack_t *ack = &XNAP_HANDOVER_REQ_ACK(message_p);
@@ -2744,12 +2883,28 @@ void rrc_gNB_process_handoverprepinfo(sctp_assoc_t assoc_id, xnap_handover_req_t
 	ack->target_cgi=m->target_cgi ;
         ack->s_ng_node_ue_xnap_id = m->s_ng_node_ue_xnap_id;
 	ack->t_ng_node_ue_xnap_id = m->t_ng_node_ue_xnap_id;
+	
+	uint8_t buffer[RRC_BUF_SIZE] = {0};
+	ack->rrc_buffer = (uint8_t*)buffer;
+	gNB_RRC_INST *rrc = RC.nrrrc[instance];
+	int rrc_ue_id =  xnap_id_get_ueid(&instance_p->id_manager, m->s_ng_node_ue_xnap_id);
+	rrc_gNB_ue_context_t   *ue_context_p = rrc_gNB_get_ue_context(rrc, rrc_ue_id);
+  	if (ue_context_p == NULL)
+  	{	
+          LOG_I(RRC,"UE Context is NULL");
+  	}
+        gNB_RRC_UE_t *UE = &ue_context_p->ue_context;	
+	uint8_t xid = rrc_gNB_get_next_transaction_identifier(instance);
+        int size = rrc_gNB_encode_RRCReconfiguration(rrc, UE, xid, NULL, buffer, sizeof(buffer));
+	ack->rrc_buffer_size = size;
+
 	xnap_set_ids(&instance_p->id_manager, ack->t_ng_node_ue_xnap_id , ue_context_p->ue_context.rrc_ue_id ,ack->s_ng_node_ue_xnap_id, ack->t_ng_node_ue_xnap_id);
 	xnap_id_set_state(&instance_p->id_manager, ack->t_ng_node_ue_xnap_id, XNID_STATE_TARGET);
 	//F1 UE context setup
         //rrc_gNB_generate_SecurityModeCommand(NULL, ue_context_p, 0, NULL);
 
         itti_send_msg_to_task(TASK_XNAP, instance_p->instance, message_p);
+*/
 }
 
 /*struct rrc_gNB_ue_context_s *find_ho_ue_context_in_source(uint8_t modid_t, uint8_t *modid_s, uint8_t *ho_idx, sctp_assoc_t assoc_id)
