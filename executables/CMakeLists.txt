@@ -1,0 +1,1 @@
+add_subdirectory(nr_ue_rest_api)
