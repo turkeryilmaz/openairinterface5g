@@ -891,6 +891,13 @@ int nr_srs_channel_estimation(
         }
       }
 
+      // Compute signal power
+      uint32_t signal_power_ant = calc_power(&ch_real[base_idx], M_sc_b_SRS) + calc_power(&ch_imag[base_idx], M_sc_b_SRS);
+
+      //#ifdef SRS_DEBUG
+      LOG_I(NR_PHY, "signal_power(p_index %d, ant %d) = %d dB\n", p_index, ant, dB_fixed(signal_power_ant));
+      //#endif
+
 #ifdef SRS_DEBUG
       subcarrier = subcarrier_offset + nr_srs_info->k_0_p[p_index][0];
       if (subcarrier>frame_parms->ofdm_symbol_size) {
@@ -937,7 +944,6 @@ int nr_srs_channel_estimation(
       memcpy(&srs_estimated_channel_time_shifted[ant][p_index][gNB->frame_parms.ofdm_symbol_size>>1],
              &srs_estimated_channel_time[ant][p_index][0],
              (gNB->frame_parms.ofdm_symbol_size>>1)*sizeof(int32_t));
-
     } // for (int p_index = 0; p_index < N_ap; p_index++)
   } // for (int ant = 0; ant < frame_parms->nb_antennas_rx; ant++)
 
@@ -945,7 +951,7 @@ int nr_srs_channel_estimation(
   uint32_t signal_power = calc_power(ch_real, arr_len) + calc_power(ch_imag, arr_len);
 
 #ifdef SRS_DEBUG
-  LOG_I(NR_PHY,"signal_power = %u\n", signal_power);
+  LOG_I(NR_PHY, "signal_power(p_index %d, ant %d) = %d dB\n", p_index, ant, dB_fixed(signal_power));
 #endif
 
   if (signal_power == 0) {
@@ -954,7 +960,6 @@ int nr_srs_channel_estimation(
   }
 
   // Compute noise power
-
   const uint8_t signal_power_bits = log2_approx(signal_power);
   const uint8_t factor_bits = signal_power_bits < 32 ? 32 - signal_power_bits : 0; // 32 due to input of dB_fixed(uint32_t x)
   const int32_t factor_dB = dB_fixed(1<<factor_bits);
