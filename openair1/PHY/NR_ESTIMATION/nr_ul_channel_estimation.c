@@ -42,14 +42,14 @@
 
 #define NO_INTERP 1
 #define dBc(x,y) (dB_fixed(((int32_t)(x))*(x) + ((int32_t)(y))*(y)))
-#define NR_SRS_IDFT_OVERSAMP_FACTOR 16
+#define NR_SRS_IDFT_OVERSAMP_FACTOR 8
 
 /* Generic function to find the peak of channel estimation buffer */
 int32_t nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
                           uint8_t N_arx,
                           uint8_t N_ap,
                           int32_t srs_estimated_channel_freq[N_arx][N_ap][frame_parms->ofdm_symbol_size],
-                          int16_t *srs_toa_ns)
+                          int32_t *srs_toa_ns)
 {
   int32_t chF_interpol[N_ap][NR_SRS_IDFT_OVERSAMP_FACTOR * frame_parms->ofdm_symbol_size] __attribute__((aligned(32)));
   int32_t chT_interpol[N_ap][NR_SRS_IDFT_OVERSAMP_FACTOR * frame_parms->ofdm_symbol_size] __attribute__((aligned(32)));
@@ -97,6 +97,7 @@ int32_t nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
     } else {
       srs_toa_ns[arx_index] = 0xFFFF;
     }
+    LOG_I(PHY, "SRS ToA estimator (RX ant %d): toa %d ns\n", arx_index, srs_toa_ns[arx_index]);
   }
 
   // Add T tracer to log these chF and chT
