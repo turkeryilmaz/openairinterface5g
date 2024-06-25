@@ -133,34 +133,31 @@ int32_t nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
   return srs_toa_ns[0];
 }
 
-void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int32_t gNB_id, int16_t peak_idx)
-{
+void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int32_t gNB_id, int16_t peak_idx, int ant_idx) {
     // MQTT Part
     MQTTClient client;
     MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
     MQTTClient_message pubmsg = MQTTClient_message_initializer;
     MQTTClient_deliveryToken token;
     int rc;
-    
+
     MQTTClient_create(&client, ADDRESS, CLIENTID, MQTTCLIENT_PERSISTENCE_NONE, NULL);
     conn_opts.keepAliveInterval = 20;
     conn_opts.cleansession = 1;
-    
-    if ((rc = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS)
-    {
+
+    if ((rc = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS) {
         printf("[srs_toa_MQTT] Failed to connect, return code %d\n", rc);
         exit(EXIT_FAILURE);
     }
 
     cJSON *mqtt_payload = cJSON_CreateObject();
     cJSON_AddNumberToObject(mqtt_payload, "peak_index", peak_idx);
-    cJSON_AddNumberToObject(mqtt_payload, "source", (int)gNB_id);
-
-    cJSON_SetIntValue(cJSON_GetObjectItem(mqtt_payload, "peak_index"), peak_idx);
+    cJSON_AddNumberToObject(mqtt_payload, "source", gNB_id);
+    cJSON_AddNumberToObject(mqtt_payload, "antenna_index", ant_idx); // Add antenna index
 
     // PUBLISHING the Message
-    pubmsg.payload = cJSON_Print(mqtt_payload); // &PAYLOAD;
-    pubmsg.payloadlen = (int)strlen(pubmsg.payload); // sizeof(mqtt_payload); // strlen(PAYLOAD);
+    pubmsg.payload = cJSON_Print(mqtt_payload);
+    pubmsg.payloadlen = (int)strlen(pubmsg.payload);
     pubmsg.qos = QOS;
     pubmsg.retained = 0;
     MQTTClient_publishMessage(client, TOPIC, &pubmsg, &token);
@@ -988,7 +985,7 @@ int nr_srs_channel_estimation(
     int16_t srs_toa_ns[1] = {0};
     nr_est_toa_ns_srs((NR_DL_FRAME_PARMS *)frame_parms, frame_parms->nb_antennas_rx, N_ap, srs_estimated_channel_freq, srs_toa_ns);
     printf("srs_toa_ns[%d] = %d\n", ant, srs_toa_ns[ant]);
-    srs_toa_MQTT((int32_t *)srs_estimated_channel_time[ant], frame_parms->ofdm_symbol_size, ant, srs_toa_ns[ant]);
+    srs_toa_MQTT((int32_t *)srs_estimated_channel_time[ant], frame_parms->ofdm_symbol_size, ant, srs_toa_ns[ant], ant);
   } // for (int ant = 0; ant < frame_parms->nb_antennas_rx; ant++)
 
   // Compute signal power
