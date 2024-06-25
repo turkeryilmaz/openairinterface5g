@@ -39,8 +39,8 @@
 #include <stdlib.h>
 #include "cjson/cJSON.h"
 #include "MQTTClient.h"
+
 #define ADDRESS     "tcp://localhost:1883"
-//#define ADDRESS     "tcp://172.24.10.178:1883"
 #define CLIENTID    "Gnb1"
 #define TOPIC       "channel_est_Time"
 #define QOS         1
@@ -149,8 +149,8 @@ void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int32_t gNB_id);
 int32_t nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
 		          uint8_t N_arx,
 		          uint8_t N_ap,
-			  int32_t srs_estimated_channel_freq[N_arx][N_ap][frame_parms->ofdm_symbol_size],
-			  int16_t *srs_toa_ns)
+			        int32_t srs_estimated_channel_freq[N_arx][N_ap][frame_parms->ofdm_symbol_size],
+			        int16_t *srs_toa_ns)
 {
 
   int32_t chF_interpol[N_ap][NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size] __attribute__((aligned(32)));
@@ -222,6 +222,47 @@ int32_t nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
 
   // return toa of first antenna for backward compatibility
   return srs_toa_ns[0];
+}
+
+void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int32_t gNB_id, int16_t peak_idx)
+{
+    // MQTT Part
+    MQTTClient client;
+    MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
+    MQTTClient_message pubmsg = MQTTClient_message_initializer;
+    MQTTClient_deliveryToken token;
+    int rc;
+    
+    MQTTClient_create(&client, ADDRESS, CLIENTID, MQTTCLIENT_PERSISTENCE_NONE, NULL);
+    conn_opts.keepAliveInterval = 20;
+    conn_opts.cleansession = 1;
+    
+    if ((rc = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS)
+    {
+        printf("[srs_toa_MQTT] Failed to connect, return code %d\n", rc);
+        exit(EXIT_FAILURE);
+    }
+
+    cJSON *mqtt_payload = cJSON_CreateObject();
+    cJSON_AddNumberToObject(mqtt_payload, "peak_index", peak_idx);
+    cJSON_AddNumberToObject(mqtt_payload, "source", (int)gNB_id);
+    //cJSON *chest_json = NULL; // cJSON_CreateArray();
+    //chest_json = cJSON_AddArrayToObject(mqtt_payload, "ch_est_T");
+
+    cJSON_SetIntValue(cJSON_GetObjectItem(mqtt_payload, "peak_index"), peak_idx);
+
+    // PUBLISHING the Message
+    pubmsg.payload = cJSON_Print(mqtt_payload); // &PAYLOAD;
+    pubmsg.payloadlen = (int)strlen(pubmsg.payload); // sizeof(mqtt_payload); // strlen(PAYLOAD);
+    pubmsg.qos = QOS;
+    pubmsg.retained = 0;
+    MQTTClient_publishMessage(client, TOPIC, &pubmsg, &token);
+
+    rc = MQTTClient_waitForCompletion(client, token, TIMEOUT);
+    printf("[srs_toa_MQTT] Message with delivery token %d delivered\n", token);
+
+    MQTTClient_disconnect(client, 10);
+    MQTTClient_destroy(&client);
 }
 
 __attribute__((always_inline)) inline c16_t c32x16cumulVectVectWithSteps(c16_t *in1,
@@ -1041,7 +1082,10 @@ int nr_srs_channel_estimation(
              &srs_estimated_channel_time[ant][p_index][0],
              (gNB->frame_parms.ofdm_symbol_size>>1)*sizeof(int32_t));
     } // for (int p_index = 0; p_index < N_ap; p_index++)
-    srs_toa_MQTT((int32_t *)srs_estimated_channel_time[ant], frame_parms->ofdm_symbol_size, 1);
+    int16_t srs_toa_ns[1] = {0};
+    nr_est_toa_ns_srs((NR_DL_FRAME_PARMS *)frame_parms, frame_parms->nb_antennas_rx, N_ap, srs_estimated_channel_freq, srs_toa_ns);
+    printf("srs_toa_ns[%d] = %d\n", ant, srs_toa_ns[ant]);
+    srs_toa_MQTT((int32_t *)srs_estimated_channel_time[ant], frame_parms->ofdm_symbol_size, ant, srs_toa_ns[ant]);
   } // for (int ant = 0; ant < frame_parms->nb_antennas_rx; ant++)
 
 
@@ -1109,103 +1153,3 @@ int nr_srs_channel_estimation(
 
   return 0;
 }
-
-
-void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int32_t gNB_id)  // : SRS MQTT TESTing ( adeel )
-{
-
-
-int peak_idx =0;
-
-
-//MQTT Part
-   MQTTClient client;
-    MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
-   MQTTClient_message pubmsg = MQTTClient_message_initializer;
-    MQTTClient_deliveryToken token;
-    int rc;
-    MQTTClient_create(&client, ADDRESS, CLIENTID,
-        MQTTCLIENT_PERSISTENCE_NONE, NULL);
-    conn_opts.keepAliveInterval = 20;
-    conn_opts.cleansession = 1;
-    if ((rc = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS)
-    {
-        printf("[srs_toa_MQTT] Failed to connect, return code %d\n", rc);
-        exit(EXIT_FAILURE);
-    }
-
-  cJSON *mqtt_payload  = cJSON_CreateObject();
-  cJSON_AddNumberToObject(mqtt_payload, "peak_index",peak_idx);
-   cJSON_AddNumberToObject(mqtt_payload, "source", (int)gNB_id);
-    cJSON *chest_json    = NULL; //cJSON_CreateArray();
-  chest_json= cJSON_AddArrayToObject(mqtt_payload, "ch_est_T");
-
-
-
-//Peak Calculation
-
-int32_t max_val = 0, max_idx = 0, abs_val = 0;
-
-  for(int k = 0; k < buf_len; k++)
-  {
-
-
-    int Re = ((c16_t*)buffer)[k].r;
-      int Im = ((c16_t*)buffer)[k].i;
-      abs_val = (Re*Re/2) + (Im*Im/2);
-//int im = srs_estimated_channel_time[ant][k]<<16
-//int re = srs_estimated_channel_time[ant][k]>>16
-
-    if(abs_val > max_val)
-    {
-      max_val = abs_val;
-      max_idx = k;
-        }
-
-
-   cJSON *chest_json_value   = cJSON_CreateObject();
-   cJSON_AddNumberToObject(chest_json_value,"ch_est",  abs_val);
-   cJSON_AddItemToArray(chest_json,  chest_json_value );
-
-
-  }
-  //*peak_val = max_val;
-
-// printf("\n####################[nr_ul_channel_estimation]#################\n"); //adeel changes
-//  printf("####################FUNCtionTiming Advance =  %d #########################\n",timing_advance); //adeel changes
-
- peak_idx =  max_idx;
-
-// Scalling
-//if (peak_idx > buf_len/2) {
- //   peak_idx= peak_idx- buf_len;
- // }
-  //printf("\n####################[nr_ul_channel_estimation]#################\n"); //adeel changes
-  //printf("####################FUNCTIOn Timing Advance after scaling =  %d ###########\n",timing_advance); //adeel changes
-
-
-     cJSON_SetIntValue(cJSON_GetObjectItem(mqtt_payload, "peak_index"), peak_idx);
-
-// PUBLISHING the Message
-    pubmsg.payload = cJSON_Print(mqtt_payload) ; //&PAYLOAD;
-    pubmsg.payloadlen = (int)strlen(pubmsg.payload); //sizeof(mqtt_payload);//strlen(PAYLOAD);
-    pubmsg.qos = QOS;
-    pubmsg.retained = 0;
-    MQTTClient_publishMessage(client, TOPIC, &pubmsg, &token);
-
-    rc = MQTTClient_waitForCompletion(client, token, TIMEOUT);
-    printf("[srs_toa_MQTT] Message with delivery token %d delivered\n", token);
-
-    MQTTClient_disconnect(client, 10);
-    MQTTClient_destroy(&client);
-
-    //MQTTClient_disconnect(client, 10000);
-    //MQTTClient_destroy(&client);
-
-
-
-
-
-
-
- }
