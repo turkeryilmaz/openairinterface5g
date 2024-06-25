@@ -28,6 +28,10 @@
 #include "executables/softmodem-common.h"
 #include "openair2/XNAP/xnap_gNB_defs.h"
 #include "openair2/XNAP/xnap_gNB_management_procedures.h"
+#include "common/utils/ds/seq_arr.h"
+#include "common/utils/alg/foreach.h"
+
+
 
 static int du_compare(const nr_rrc_du_container_t *a, const nr_rrc_du_container_t *b)
 {
@@ -163,7 +167,7 @@ void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *req, sctp_assoc_t assoc_id)
   }
   RB_INSERT(rrc_du_tree, &rrc->dus, du);
   rrc->num_dus++;
-
+  LOG_I(RRC,"Num_dus %d\n",rrc->num_dus);
   served_cells_to_activate_t cell = {
       .plmn = cell_info->plmn,
       .nr_cellid = cell_info->nr_cellid,
@@ -287,4 +291,29 @@ void dump_du_info(const gNB_RRC_INST *rrc, FILE *f)
     const f1ap_served_cell_info_t *info = &sr->cell[0].info;
     fprintf(f, ": nrCellID %ld, PCI %d\n", info->nr_cellid, info->nr_pci);
   }
+}
+
+
+nr_rrc_du_container_t *find_target_du(gNB_RRC_INST *rrc, long nci)
+{
+  LOG_I(NR_RRC,"Find Target_du \n");
+ /* nr_rrc_du_container_t e = {.assoc_id = assoc_id};
+  nr_rrc_du_container_t *du = RB_FIND(rrc_du_tree, &rrc->dus, &e);
+  if(du != NULL)
+  {
+          return du;
+  }
+  else{
+        LOG_I(NR_RRC,"Target DU is null");
+  }*/
+  nr_rrc_du_container_t *it = NULL;
+  //bool next_du = false;
+  LOG_I(RRC,"Num_dus in find target du %d\n",rrc->num_dus);
+  RB_FOREACH (it, rrc_du_tree, &rrc->dus) {
+    if (it->setup_req->cell[0].info.nr_cellid == nci) {
+      LOG_I(NR_RRC,"ASSOC ID of DU in DU tree %d \n",it->assoc_id);
+      return it;
+    }
+  }
+  return 0;
 }

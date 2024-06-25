@@ -110,6 +110,8 @@
 #include "NR_RRCReconfiguration.h"
 #include "NR_RRCReconfiguration-IEs.h"
 #include "NR_PhysCellId.h"
+#include "common/utils/alg/foreach.h"
+#include "common/utils/ds/seq_arr.h"
 
 #ifdef E2_AGENT
 #include "openair2/E2AP/RAN_FUNCTION/O-RAN/ran_func_rc_extern.h"
@@ -2181,14 +2183,16 @@ static void e1_send_bearer_updates(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, int n, f
 
 static void rrc_CU_process_ue_context_setup_response(MessageDef *msg_p, instance_t instance)
 {
+  LOG_I(RRC,"RRC CU process_ue_context_setup_response 1 \n");
   f1ap_ue_context_setup_t *resp = &F1AP_UE_CONTEXT_SETUP_RESP(msg_p);
   gNB_RRC_INST *rrc = RC.nrrrc[instance];
   rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context(rrc, resp->gNB_CU_ue_id);
   if (!ue_context_p) {
-    LOG_E(RRC, "could not find UE context for CU UE ID %u, aborting transaction\n", resp->gNB_CU_ue_id);
+    LOG_E(RRC, "ue_context_setup_response could not find UE context for CU UE ID %u, aborting transaction\n", resp->gNB_CU_ue_id);
     return;
   }
   gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
+  LOG_I(RRC,"RRC CU process_ue_context_setup_response 2 \n");
 
   NR_CellGroupConfig_t *cellGroupConfig = NULL;
   asn_dec_rval_t dec_rval = uper_decode_complete(NULL,
@@ -2210,19 +2214,23 @@ static void rrc_CU_process_ue_context_setup_response(MessageDef *msg_p, instance
     AssertFatal(resp->srbs_to_be_setup_length > 0 && resp->srbs_to_be_setup[0].srb_id == 2, "logic bug: we set up DRBs, so need to have both SRB1&SRB2\n");
     e1_send_bearer_updates(rrc, UE, resp->drbs_to_be_setup_length, resp->drbs_to_be_setup);
   }
+  LOG_I(RRC,"RRC CU process_ue_context_setup_response 3 \n");
 
   /* at this point, we don't have to do anything: the UE context setup request
    * includes the Security Command, whose response will trigger the following
    * messages (UE capability, to be specific) */
 
    if (UE->ho_context == NULL) {
+    LOG_I(RRC,"RRC CU process_ue_context_setup_response 4 \n");
     protocol_ctxt_t ctxt = {.rntiMaybeUEid = resp->gNB_CU_ue_id, .module_id = instance};
     rrc_gNB_generate_dedicatedRRCReconfiguration(&ctxt, ue_context_p);
   } else {
     // case of handover
-    DevAssert(resp->crnti != NULL);
-    UE->ho_context->data.intra_cu.new_rnti = *resp->crnti;
-    UE->ho_context->data.intra_cu.target_secondary_ue = resp->gNB_DU_ue_id;
+    LOG_I(RRC,"RRC CU process_ue_context_setup_response 5 \n");
+    //DevAssert(resp->crnti != NULL);
+    //UE->ho_context->data.intra_cu.new_rnti = *resp->crnti;
+    //UE->ho_context->data.intra_cu.target_secondary_ue = resp->gNB_DU_ue_id;
+    //UE->rnti = *resp->crnti; //crnti null?
 
     uint8_t xid = rrc_gNB_get_next_transaction_identifier(instance);
     UE->xids[xid] = RRC_DEDICATED_RECONF;
@@ -2230,8 +2238,21 @@ static void rrc_CU_process_ue_context_setup_response(MessageDef *msg_p, instance
     uint8_t buffer[RRC_BUF_SIZE] = {0};
     int size = rrc_gNB_encode_RRCReconfiguration(rrc, UE, xid, NULL, buffer, sizeof(buffer));
     DevAssert(size > 0 && size <= sizeof(buffer));
-    rrc_gNB_trigger_reconfiguration_for_handover(rrc, UE, buffer, size);
-  }
+    //rrc_gNB_trigger_reconfiguration_for_handover(rrc, UE, buffer, size);
+   
+    MessageDef *message_p = itti_alloc_new_message(TASK_XNAP, 0, XNAP_HANDOVER_REQ_ACK);
+    //message_p->ittiMsgHeader.originInstance = assoc_id;
+    xnap_handover_req_ack_t *ack = &XNAP_HANDOVER_REQ_ACK(message_p);
+    xnap_gNB_instance_t *instance_p = xnap_gNB_get_instance(0); 
+   /*ack->x2_id_target = ue_context_p->ue_context.handover_info->x2_id;
+    ack->target_cgi=m->target_cgi ;
+    ack->s_ng_node_ue_xnap_id = m->s_ng_node_ue_xnap_id;
+    ack->t_ng_node_ue_xnap_id = m->t_ng_node_ue_xnap_id;
+    */
+    ack->rrc_buffer_size = size;
+    itti_send_msg_to_task(TASK_XNAP, instance_p->instance, message_p);
+
+ }
 
 }
 
@@ -2712,7 +2733,7 @@ static void write_rrc_stats(const gNB_RRC_INST *rrc)
 }
 
 
-void nr_initiate_handover_xn(const gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue, const nr_rrc_du_container_t *target_du, const nr_handover_context_t *ho_ctxt)
+void nr_initiate_ue_setup_xn(const gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue, const nr_rrc_du_container_t *target_du, const nr_handover_context_t *ho_ctxt)
 {
   LOG_I(NR_RRC,"nr_initiate_handover_xn \n");
   if (ue->ho_context != NULL) {
@@ -2775,6 +2796,7 @@ void nr_initiate_handover_xn(const gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue, const nr
   //f1_ue_data_t ue_data = cu_get_f1_ue_data(ue->rrc_ue_id);
   xnap_served_cell_info_t *cell_info = &target_du->setup_req->cell[0].info;
   //RETURN_IF_INVALID_ASSOC_ID(ue_data);
+  LOG_I(RRC,"RRC UE ID in ue_context_setup_req %d \n",ue->rrc_ue_id);
   f1ap_ue_context_setup_t ue_context_setup_req = {
       .gNB_CU_ue_id = ue->rrc_ue_id,
       .gNB_DU_ue_id = 0, /* TODO: this should be optional! */
@@ -2794,14 +2816,36 @@ void nr_initiate_handover_xn(const gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue, const nr
 
 
 
-
-nr_rrc_du_container_t *find_target_du(gNB_RRC_INST *rrc, sctp_assoc_t source_assoc_id)
+/*nr_rrc_du_container_t *find_target_du(gNB_RRC_INST *rrc, long nci)
 {
   LOG_I(NR_RRC,"Find Target_du \n");
-  nr_rrc_du_container_t *target_du = NULL;
+  nr_rrc_du_container_t e = {.assoc_id = assoc_id};
+  nr_rrc_du_container_t *du = RB_FIND(rrc_du_tree, &rrc->dus, &e);
+  if(du != NULL)
+  {
+          return du;
+  }
+  else{
+        LOG_I(NR_RRC,"Target DU is null");
+  }
+  nr_rrc_du_container_t *it = NULL;
+  //bool next_du = false;
+  LOG_I(RRC,"Num_dus in find target du %d\n",rrc->num_dus);
+  RB_FOREACH (it, rrc_du_tree, &rrc->dus) {
+    if (it->setup_req) {
+      LOG_I(NR_RRC,"ASSOC ID of DU in DU tree %d \n",it->assoc_id);
+      return it;
+    }
+  }
+  return 0;
+*/
+ /* nr_rrc_du_container_t *target_du = NULL;
   nr_rrc_du_container_t *it = NULL;
   bool next_du = false;
   RB_FOREACH (it, rrc_du_tree, &rrc->dus) {
+  if(it == NULL){
+  LOG_I(NR_RRC, "it is null");
+  }
     if (next_du == false && source_assoc_id != it->assoc_id) {
       continue;
     } else if (source_assoc_id == it->assoc_id) {
@@ -2822,7 +2866,7 @@ nr_rrc_du_container_t *find_target_du(gNB_RRC_INST *rrc, sctp_assoc_t source_ass
     }
   }
 
- /* if (target_du == NULL){
+  if (target_du == NULL){
     RB_FOREACH (it, rrc_du_tree, &rrc->dus){
 	    target_du = it;
     }
@@ -2834,7 +2878,7 @@ nr_rrc_du_container_t *find_target_du(gNB_RRC_INST *rrc, sctp_assoc_t source_ass
 	LOG_I(NR_RRC,"Target DU is null");
   }
 }*/
-}
+//}
 
 
 
@@ -2857,7 +2901,7 @@ void rrc_gNB_process_handoverprepinfo(sctp_assoc_t assoc_id, xnap_handover_req_t
 	//}
 
 	ue_context_p = rrc_gNB_allocate_new_ue_context(RC.nrrrc[0]);
-
+        LOG_I(RRC,"RRC UE ID in target %d \n",ue_context_p->ue_context.rrc_ue_id);
 	if (ue_context_p == NULL) {
 	LOG_E(NR_RRC, "Cannot create new UE context\n");
 	return;
@@ -2865,7 +2909,17 @@ void rrc_gNB_process_handoverprepinfo(sctp_assoc_t assoc_id, xnap_handover_req_t
 
 	//ue_context_p->ue_context.rnti = rnti;
 	//RB_INSERT(rrc_ue_tree_s, &RC.rrc[mod_id]->rrc_ue_head, ue_context_p);
-        nr_rrc_du_container_t *target_du = find_target_du(rrc, assoc_id); // get_du_by_cell_id(rrc, target_cell);
+	RB_INSERT(rrc_nr_ue_tree_s, &rrc->rrc_ue_head, ue_context_p);
+        rrc_gNB_ue_context_t *ue_context_n = rrc_gNB_get_ue_context(rrc, ue_context_p->ue_context.rrc_ue_id);
+        // rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context(gnb_rrc_inst, ctxt_pP->rntiMaybeUEid);
+  if (!ue_context_n) {
+    LOG_E(RRC, "could not find UE context in target\n");
+    return -1;
+  }
+
+	long ncii = 12345678;
+        //sctp_assoc_t association_id = xnap_gNB_get_assoc_id(instance_p, ncii);
+	nr_rrc_du_container_t *target_du = find_target_du(rrc, ncii); // get_du_by_cell_id(rrc, target_cell);
 	nr_handover_context_t ho_ctxt = {
         //  .type = HANDOVER_TYPE_INTRA_CU,
         //  .data.intra_cu.source_du = source_du->assoc_id,
@@ -2873,7 +2927,7 @@ void rrc_gNB_process_handoverprepinfo(sctp_assoc_t assoc_id, xnap_handover_req_t
         //  .data.intra_cu.source_secondary_ue = ue_data.secondary_ue,
   	};
 
-	nr_initiate_handover_xn(rrc, ue_context_p, target_du, &ho_ctxt);
+	nr_initiate_ue_setup_xn(rrc, &ue_context_p->ue_context, target_du, &ho_ctxt);
         
 /*
 	MessageDef *message_p = itti_alloc_new_message(TASK_XNAP, 0, XNAP_HANDOVER_REQ_ACK);

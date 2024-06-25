@@ -130,11 +130,19 @@ int DU_handle_UE_CONTEXT_SETUP_REQUEST(instance_t instance, sctp_assoc_t assoc_i
                              F1AP_ProtocolIE_ID_id_gNB_CU_UE_F1AP_ID, true);
   f1ap_ue_context_setup_req->gNB_CU_ue_id = ieCU->value.choice.GNB_CU_UE_F1AP_ID;
   /* optional */
-  /* GNB_DU_UE_F1AP_ID */
+  /* GNB_DU_UE_F1AP_ID 
   F1AP_UEContextSetupRequestIEs_t *ieDU_UE;
   F1AP_FIND_PROTOCOLIE_BY_ID(F1AP_UEContextSetupRequestIEs_t, ieDU_UE, container,
                              F1AP_ProtocolIE_ID_id_gNB_DU_UE_F1AP_ID, true);
-  f1ap_ue_context_setup_req->gNB_DU_ue_id = ieDU_UE->value.choice.GNB_DU_UE_F1AP_ID;
+  f1ap_ue_context_setup_req->gNB_DU_ue_id = ieDU_UE->value.choice.GNB_DU_UE_F1AP_ID;*/
+
+  F1AP_UEContextSetupRequestIEs_t *ieDU_UE;
+  F1AP_FIND_PROTOCOLIE_BY_ID(F1AP_UEContextSetupRequestIEs_t, ieDU_UE, container,
+                             F1AP_ProtocolIE_ID_id_gNB_DU_UE_F1AP_ID, false);
+  f1ap_ue_context_setup_req->gNB_DU_ue_id = 0;
+  if (ieDU_UE != NULL)
+    f1ap_ue_context_setup_req->gNB_DU_ue_id = ieDU_UE->value.choice.GNB_DU_UE_F1AP_ID;
+
 
   /* SpCell_ID */
   F1AP_UEContextSetupRequestIEs_t *ieNet;
@@ -345,7 +353,7 @@ int DU_send_UE_CONTEXT_SETUP_RESPONSE(sctp_assoc_t assoc_id, f1ap_ue_context_set
   ie2->criticality                    = F1AP_Criticality_reject;
   ie2->value.present                  = F1AP_UEContextSetupResponseIEs__value_PR_GNB_DU_UE_F1AP_ID;
   ie2->value.choice.GNB_DU_UE_F1AP_ID = resp->gNB_DU_ue_id;
-
+  LOG_I(F1AP,"DU UE ID in DU_send_UE_CONTEXT_SETUP_RESPONSE  %d\n", resp->gNB_DU_ue_id);
   /* mandatory */
   /* c3. DUtoCURRCInformation */
   if(resp->du_to_cu_rrc_information){

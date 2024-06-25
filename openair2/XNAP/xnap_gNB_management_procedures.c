@@ -140,6 +140,7 @@ sctp_assoc_t xnap_gNB_get_assoc_id(xnap_gNB_instance_t *instance, long nci)
     struct xnap_gNB_data_t *entry;
     RB_FOREACH(entry, xnap_gnb_tree, &instance->xnap_gnbs) {
         if (entry->nci == nci) {
+	    LOG_I(XNAP,"ASSOC ID %d \n",entry->assoc_id);
             return entry->assoc_id;
         }
     }

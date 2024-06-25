@@ -39,5 +39,5 @@ struct nr_rrc_du_container_t *get_du_for_ue(struct gNB_RRC_INST_s *rrc, uint32_t
 struct nr_rrc_du_container_t *get_du_by_assoc_id(struct gNB_RRC_INST_s *rrc, sctp_assoc_t assoc_id);
 
 void dump_du_info(const struct gNB_RRC_INST_s *rrc, FILE *f);
-
+struct nr_rrc_du_container_t *find_target_du(struct gNB_RRC_INST_s *rrc, long nci);
 #endif /* RRC_GNB_DU_H_ */
