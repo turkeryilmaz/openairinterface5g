@@ -42,7 +42,7 @@
 
 #define ADDRESS     "tcp://localhost:1883"
 #define CLIENTID    "Gnb1"
-#define TOPIC       "channel_est_Time"
+#define TOPIC       "srs_toa_ns"
 #define QOS         1
 #define TIMEOUT     100L
 
@@ -155,8 +155,6 @@ void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int32_t gNB_id, int16_t peak
     cJSON *mqtt_payload = cJSON_CreateObject();
     cJSON_AddNumberToObject(mqtt_payload, "peak_index", peak_idx);
     cJSON_AddNumberToObject(mqtt_payload, "source", (int)gNB_id);
-    //cJSON *chest_json = NULL; // cJSON_CreateArray();
-    //chest_json = cJSON_AddArrayToObject(mqtt_payload, "ch_est_T");
 
     cJSON_SetIntValue(cJSON_GetObjectItem(mqtt_payload, "peak_index"), peak_idx);
 
