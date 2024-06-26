@@ -143,7 +143,7 @@ int32_t nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
 
 }
 
-void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int32_t gNB_id);
+void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int32_t gNB_id, int16_t peak_idx, int ant_idx);
 
 /* Generic function to find the peak of channel estimation buffer */
 int32_t nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
