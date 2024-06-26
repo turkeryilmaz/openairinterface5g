@@ -61,6 +61,7 @@ extern queue_t nr_dl_tti_req_queue;
 extern queue_t nr_tx_req_queue;
 extern queue_t nr_ul_dci_req_queue;
 extern queue_t nr_ul_tti_req_queue;
+#include "openair2/LAYER2/NR_MAC_COMMON/nr_mac.h"
 
 extern slot_rnti_mcs_s slot_rnti_mcs[NUM_NFAPI_SLOT];
 
@@ -89,6 +90,7 @@ typedef struct {
     /// PHY specific data structure that can be passed on to L2 via nr_downlink_indication_t and
     /// back to L1 via the nr_scheduled_response_t 
     void *phy_data;
+    dci_pdu_rel15_t def_dci_pdu_rel15[NR_DCI_NONE];
 } nr_downlink_indication_t;
 
 
@@ -311,7 +313,8 @@ void save_nr_measurement_info(nfapi_nr_dl_tti_request_t *dl_tti_request);
 void check_and_process_dci(nfapi_nr_dl_tti_request_t *dl_tti_request,
                            nfapi_nr_tx_data_request_t *tx_data_request,
                            nfapi_nr_ul_dci_request_t *ul_dci_request,
-                           nfapi_nr_ul_tti_request_t *ul_tti_request);
+                           nfapi_nr_ul_tti_request_t *ul_tti_request,
+                           nr_downlink_indication_t *dl_info);
 
 bool sfn_slot_matcher(void *wanted, void *candidate);
 
