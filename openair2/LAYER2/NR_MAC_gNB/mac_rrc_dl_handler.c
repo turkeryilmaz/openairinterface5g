@@ -579,6 +579,7 @@ void ue_context_setup_request(const f1ap_ue_context_setup_t *req)
   NR_UE_info_t *UE = NULL;
   if (handover) {
     UE = create_new_UE_handover(mac, req->gNB_CU_ue_id);
+    LOG_I(F1AP,"UE RNTI in  ue_context_setup_request  %d\n",UE->rnti );
     resp.gNB_DU_ue_id = UE->rnti;
     resp.crnti = &UE->rnti;
   } else {

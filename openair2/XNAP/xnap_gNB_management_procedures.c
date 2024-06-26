@@ -79,7 +79,7 @@ void createXninst(instance_t instanceP, xnap_setup_req_t *req, xnap_net_config_t
   pthread_mutex_unlock(&xn_inst_mtx);
 }
 
-void updateXninst(instance_t instanceP, xnap_setup_req_t *req, xnap_net_config_t *nc)
+void updateXninst(instance_t instanceP, xnap_setup_req_t *req, xnap_net_config_t *nc,sctp_assoc_t assoc_id)
 {
   DevAssert(instanceP == 0);
   pthread_mutex_lock(&xn_inst_mtx);
@@ -88,6 +88,8 @@ void updateXninst(instance_t instanceP, xnap_setup_req_t *req, xnap_net_config_t
     xn_inst[instanceP]->setup_req = *req;
   if (nc)
     xn_inst[instanceP]->net_config = *nc;
+  if (assoc_id)
+    xn_inst[instanceP]->assoc_id_temp = assoc_id;
   pthread_mutex_unlock(&xn_inst_mtx);
 }
 

@@ -710,7 +710,7 @@ int16_t do_RRCReconfiguration(const gNB_RRC_UE_t *UE,
       ie->radioBearerConfig->drb_ToAddModList  = DRB_configList;
       ie->radioBearerConfig->securityConfig    = security_config;
       ie->radioBearerConfig->srb3_ToRelease    = NULL;
-      ie->radioBearerConfig->drb_ToReleaseList = DRB_releaseList;
+
     }
 
     /******************** Meas Config ********************/
@@ -743,13 +743,13 @@ int16_t do_RRCReconfiguration(const gNB_RRC_UE_t *UE,
     if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
       xer_fprint(stdout, &asn_DEF_NR_DL_DCCH_Message, (void *)&dl_dcch_msg);
     }
-
+    xer_fprint(stdout, &asn_DEF_NR_DL_DCCH_Message, (void *)&dl_dcch_msg);
     enc_rval = uper_encode_to_buffer(&asn_DEF_NR_DL_DCCH_Message,
                                      NULL,
                                      (void *)&dl_dcch_msg,
                                      buffer,
                                      buffer_size);
-
+    
     AssertFatal(enc_rval.encoded >0, "ASN1 message encoding failed (%s, %lu)!\n",
                 enc_rval.failed_type->name, enc_rval.encoded);
 
@@ -765,6 +765,7 @@ int16_t do_RRCReconfiguration(const gNB_RRC_UE_t *UE,
     }
     if (ie->nonCriticalExtension)
       ie->nonCriticalExtension->dedicatedNAS_MessageList = NULL;
+
     ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_NR_DL_DCCH_Message, &dl_dcch_msg);
     LOG_D(NR_RRC,
           "RRCReconfiguration for UE %d: Encoded %zd bits (%zd bytes)\n",

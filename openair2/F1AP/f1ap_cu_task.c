@@ -161,8 +161,8 @@ void cu_register_xn(uint32_t gnb_id_num,f1ap_served_cell_info_t *cell , xnap_net
     req->setup_req.plmn_support.mnc_digit_length = cell->plmn.mnc_digit_length;
     req->net_config = nc;
     req->gNB_name = rrc->node_name;
-    void updateXninst(instance_t instanceP, xnap_setup_req_t *req, xnap_net_config_t *nc);
-    updateXninst(0, &req->setup_req,NULL);
+    void updateXninst(instance_t instanceP, xnap_setup_req_t *req, xnap_net_config_t *nc,sctp_assoc_t assoc_id);
+    updateXninst(0, &req->setup_req,NULL,0);
     itti_send_msg_to_task(TASK_XNAP, GNB_MODULE_ID_TO_INSTANCE(gnb_id), msg);
   }
 }

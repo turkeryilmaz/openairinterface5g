@@ -347,7 +347,7 @@ int xnap_gNB_handle_handover_request(instance_t instance, sctp_assoc_t assoc_id,
         int xn_id;
 
         instance_p = xnap_gNB_get_instance(instance);
-
+        updateXninst(0, NULL,NULL,assoc_id);
 	DevAssert(pdu != NULL);
         xnHandoverRequest = &pdu->choice.initiatingMessage->value.choice.HandoverRequest;
 	if(stream !=0)

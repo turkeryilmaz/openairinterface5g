@@ -262,6 +262,7 @@ void nr_rrc_transfer_protected_rrc_message(const gNB_RRC_INST *rrc,
                                            int size)
 {
   DevAssert(size > 0);
+  LOG_I(NR_RRC,"cu_get_f1_ue_data IN nr_rrc_transfer_protected_rrc_message\n");
   f1_ue_data_t ue_data = cu_get_f1_ue_data(ue_p->rrc_ue_id);
   RETURN_IF_INVALID_ASSOC_ID(ue_data);
   f1ap_dl_rrc_message_t dl_rrc = {.gNB_CU_ue_id = ue_p->rrc_ue_id, .gNB_DU_ue_id = ue_data.secondary_ue, .srb_id = srb_id};
@@ -574,6 +575,7 @@ static void rrc_gNB_generate_RRCSetup(instance_t instance,
 
   LOG_DUMPMSG(NR_RRC, DEBUG_RRC, (char *)buf, size, "[MSG] RRC Setup\n");
   freeSRBlist(SRBs);
+  LOG_I(NR_RRC,"cu_get_f1_ue_data IN rrc_gNB_generate_RRCSetup\n");
   f1_ue_data_t ue_data = cu_get_f1_ue_data(ue_p->rrc_ue_id);
   RETURN_IF_INVALID_ASSOC_ID(ue_data);
   f1ap_dl_rrc_message_t dl_rrc = {
@@ -603,7 +605,7 @@ static void rrc_gNB_generate_RRCReject(module_id_t module_id, rrc_gNB_ue_context
               size,
               "[MSG] RRCReject \n");
   LOG_I(NR_RRC, " [RAPROC] ue %04x Logical Channel DL-CCCH, Generating NR_RRCReject (bytes %d)\n", ue_p->rnti, size);
-
+  LOG_I(NR_RRC,"cu_get_f1_ue_data IN rrc_gNB_generate_RRCReject\n");
   f1_ue_data_t ue_data = cu_get_f1_ue_data(ue_p->rrc_ue_id);
   RETURN_IF_INVALID_ASSOC_ID(ue_data);
   f1ap_dl_rrc_message_t dl_rrc = {
@@ -646,9 +648,10 @@ static int rrc_gNB_encode_RRCReconfiguration(gNB_RRC_INST *rrc,
                                              uint8_t *buf,
                                              int max_len)
 {
+  LOG_I(NR_RRC,"Encode RRCReconf\n");
   NR_CellGroupConfig_t *cellGroupConfig = UE->masterCellGroup;
-  nr_rrc_du_container_t *du = get_du_for_ue(rrc, UE->rrc_ue_id);
-  DevAssert(du != NULL);
+ // nr_rrc_du_container_t *du = get_du_for_ue(rrc, UE->rrc_ue_id);
+  //DevAssert(du != NULL);
  /* f1ap_served_cell_info_t *cell_info = &du->setup_req->cell[0].info;
   NR_MeasConfig_t *measconfig = NULL;
   if (du->mtc != NULL) {
@@ -886,6 +889,7 @@ static void rrc_deliver_ue_ctxt_modif_req(void *deliver_pdu_data, ue_id_t ue_id,
 }
 void rrc_gNB_trigger_reconfiguration_for_handover(gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue, uint8_t *rrc_reconf, int rrc_reconf_len)
 {
+  LOG_I(NR_RRC,"cu_get_f1_ue_data IN rrc_gNB_trigger_reconfiguration_for_handover\n");
   f1_ue_data_t ue_data = cu_get_f1_ue_data(ue->rrc_ue_id);
 
   TransmActionInd_t transmission_action_indicator = TransmActionInd_STOP;
@@ -1285,6 +1289,7 @@ static void rrc_gNB_generate_RRCReestablishment(rrc_gNB_ue_context_t *ue_context
   /* PDCP Reestablishment over E1 */
   cuup_notify_reestablishment(rrc, ue_p);
   /* F1AP DL RRC Message Transfer */
+  LOG_I(NR_RRC,"cu_get_f1_ue_data IN rrc_gNB_generate_RRCReestablishment\n");
   f1_ue_data_t ue_data = cu_get_f1_ue_data(ue_p->rrc_ue_id);
   RETURN_IF_INVALID_ASSOC_ID(ue_data);
   uint32_t old_gNB_DU_ue_id = old_rnti;
@@ -1532,6 +1537,7 @@ static void rrc_handle_RRCReestablishmentRequest(gNB_RRC_INST *rrc,
 
   // update with new RNTI, and update secondary UE association
   UE->rnti = msg->crnti;
+  LOG_I(NR_RRC,"cu_get_f1_ue_data IN rrc_handle_RRCReestablishmentRequest \n");
   f1_ue_data_t ue_data = cu_get_f1_ue_data(UE->rrc_ue_id);
   ue_data.secondary_ue = msg->gNB_DU_ue_id;
   cu_remove_f1_ue_data(UE->rrc_ue_id);
@@ -1712,7 +1718,7 @@ static int handle_ueCapabilityInformation(const protocol_ctxt_t *const ctxt_pP,
       cu2du.uE_CapabilityRAT_ContainerList = UE->ue_cap_buffer.buf;
       cu2du.uE_CapabilityRAT_ContainerList_length = UE->ue_cap_buffer.len;
     }
-
+    LOG_I(NR_RRC,"cu_get_f1_ue_data IN handle_ueCapabilityInformation \n");
     f1_ue_data_t ue_data = cu_get_f1_ue_data(UE->rrc_ue_id);
     if (ue_data.du_assoc_id == 0) {
       LOG_E(NR_RRC, "cannot send data: invalid assoc_id 0, DU offline\n");
@@ -1891,6 +1897,7 @@ static void handle_rrcReconfigurationComplete(const protocol_ctxt_t *const ctxt_
     LOG_I(NR_RRC, "Handover triggered :)\n");
   }
   gNB_RRC_INST *rrc = RC.nrrrc[0];
+  LOG_I(NR_RRC,"cu_get_f1_ue_data IN Handover triggered :)\n");
   f1_ue_data_t ue_data = cu_get_f1_ue_data(UE->rrc_ue_id);
   RETURN_IF_INVALID_ASSOC_ID(ue_data);
   f1ap_ue_context_modif_req_t ue_context_modif_req = {
@@ -2227,10 +2234,10 @@ static void rrc_CU_process_ue_context_setup_response(MessageDef *msg_p, instance
   } else {
     // case of handover
     LOG_I(RRC,"RRC CU process_ue_context_setup_response 5 \n");
-    //DevAssert(resp->crnti != NULL);
+    DevAssert(resp->crnti != NULL);
     //UE->ho_context->data.intra_cu.new_rnti = *resp->crnti;
     //UE->ho_context->data.intra_cu.target_secondary_ue = resp->gNB_DU_ue_id;
-    //UE->rnti = *resp->crnti; //crnti null?
+    UE->rnti = *resp->crnti; //crnti null?
 
     uint8_t xid = rrc_gNB_get_next_transaction_identifier(instance);
     UE->xids[xid] = RRC_DEDICATED_RECONF;
@@ -2241,14 +2248,17 @@ static void rrc_CU_process_ue_context_setup_response(MessageDef *msg_p, instance
     //rrc_gNB_trigger_reconfiguration_for_handover(rrc, UE, buffer, size);
    
     MessageDef *message_p = itti_alloc_new_message(TASK_XNAP, 0, XNAP_HANDOVER_REQ_ACK);
+    
     //message_p->ittiMsgHeader.originInstance = assoc_id;
     xnap_handover_req_ack_t *ack = &XNAP_HANDOVER_REQ_ACK(message_p);
     xnap_gNB_instance_t *instance_p = xnap_gNB_get_instance(0); 
-   /*ack->x2_id_target = ue_context_p->ue_context.handover_info->x2_id;
+    message_p->ittiMsgHeader.originInstance = instance_p->assoc_id_temp;
+    /*ack->x2_id_target = ue_context_p->ue_context.handover_info->x2_id;
     ack->target_cgi=m->target_cgi ;
     ack->s_ng_node_ue_xnap_id = m->s_ng_node_ue_xnap_id;
     ack->t_ng_node_ue_xnap_id = m->t_ng_node_ue_xnap_id;
     */
+    memcpy(ack->rrc_buffer,buffer,size);
     ack->rrc_buffer_size = size;
     itti_send_msg_to_task(TASK_XNAP, instance_p->instance, message_p);
 
@@ -2522,7 +2532,7 @@ void rrc_gNB_process_e1_bearer_context_setup_resp(e1ap_bearer_setup_resp_t *resp
     cu2du.uE_CapabilityRAT_ContainerList = UE->ue_cap_buffer.buf;
     cu2du.uE_CapabilityRAT_ContainerList_length = UE->ue_cap_buffer.len;
   }
-
+  LOG_I(NR_RRC,"cu_get_f1_ue_data IN rrc_gNB_process_e1_bearer_context_setup_resp\n");
   f1_ue_data_t ue_data = cu_get_f1_ue_data(UE->rrc_ue_id);
   RETURN_IF_INVALID_ASSOC_ID(ue_data);
   f1ap_ue_context_modif_req_t ue_context_modif_req = {
@@ -2690,6 +2700,7 @@ static void write_rrc_stats(const gNB_RRC_INST *rrc)
   RB_FOREACH(ue_context_p, rrc_nr_ue_tree_s, &((gNB_RRC_INST *)rrc)->rrc_ue_head)
   {
     const gNB_RRC_UE_t *ue_ctxt = &ue_context_p->ue_context;
+    LOG_I(NR_RRC,"cu_get_f1_ue_data IN write_rrc_stats\n");
     f1_ue_data_t ue_data = cu_get_f1_ue_data(ue_ctxt->rrc_ue_id);
 
     fprintf(f,
@@ -2793,7 +2804,9 @@ void nr_initiate_ue_setup_xn(const gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue, const nr
 
   f1ap_srb_to_be_setup_t srbs[2] = {{.srb_id = 1, .lcid = 1}, {.srb_id = 2, .lcid = 2}};
   */
+  
   //f1_ue_data_t ue_data = cu_get_f1_ue_data(ue->rrc_ue_id);
+  //cu_add_f1_ue_data(ue->rrc_ue_id, &ue_data);
   xnap_served_cell_info_t *cell_info = &target_du->setup_req->cell[0].info;
   //RETURN_IF_INVALID_ASSOC_ID(ue_data);
   LOG_I(RRC,"RRC UE ID in ue_context_setup_req %d \n",ue->rrc_ue_id);
@@ -2891,7 +2904,7 @@ void rrc_gNB_process_handoverprepinfo(sctp_assoc_t assoc_id, xnap_handover_req_t
 	//NR_HandoverPreparationInformation_IEs_t *handover_info;
 	instance_t instance;
 	instance = 0; //for time being
-	xnap_gNB_instance_t *instance_p = xnap_gNB_get_instance(instance);
+	//xnap_gNB_instance_t *instance_p = xnap_gNB_get_instance(instance);
 	gNB_RRC_INST *rrc = RC.nrrrc[instance];
 
 	//ue_context_p = rrc_gNB_get_ue_context(RC.nrrrc[0], m->ue_id);
@@ -3487,6 +3500,7 @@ rrc_gNB_generate_SecurityModeCommand(
   }
 
   /* the callback will fill the UE context setup request and forward it */
+  LOG_I(NR_RRC,"cu_get_f1_ue_data IN rrc_gNB_generate_SecurityModeCommand\n");
   f1_ue_data_t ue_data = cu_get_f1_ue_data(ue_p->rrc_ue_id);
   RETURN_IF_INVALID_ASSOC_ID(ue_data);
   f1ap_ue_context_setup_t ue_context_setup_req = {
@@ -3566,6 +3580,7 @@ rrc_gNB_generate_RRCRelease(
 
   gNB_RRC_INST *rrc = RC.nrrrc[ctxt_pP->module_id];
   const gNB_RRC_UE_t *UE = &ue_context_pP->ue_context;
+  LOG_I(NR_RRC,"cu_get_f1_ue_data IN rrc_gNB_generate_RRCRelease\n");
   f1_ue_data_t ue_data = cu_get_f1_ue_data(UE->rrc_ue_id);
   RETURN_IF_INVALID_ASSOC_ID(ue_data);
   f1ap_ue_context_release_cmd_t ue_context_release_cmd = {

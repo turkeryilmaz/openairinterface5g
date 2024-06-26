@@ -1190,7 +1190,8 @@ int xnap_gNB_generate_xn_handover_request_ack(sctp_assoc_t assoc_id, xnap_handov
   ie->id =  XNAP_ProtocolIE_ID_id_Target2SourceNG_RANnodeTranspContainer;
   ie->criticality= XNAP_Criticality_ignore;
   ie->value.present = XNAP_HandoverRequestAcknowledge_IEs__value_PR_OCTET_STRING;
- // OCTET_STRING_fromBuf(&ie->value.choice.OCTET_STRING, (char*)rrc_buffer, rrc_reconf_containing_cell_group);
+  OCTET_STRING_fromBuf(&ie->value.choice.OCTET_STRING, (char*) xnap_handover_req_ack->rrc_buffer, xnap_handover_req_ack->rrc_buffer_size);
+//  OCTET_STRING_fromBuf(&ie->value.choice.OCTET_STRING, (char*)rrc_buffer, rrc_reconf_containing_cell_group);
 
   //ie->value.choice.OCTET_STRING.buf = (uint8_t *)calloc(xnap_handover_req_ack->rrc_buffer_size, sizeof(uint8_t));
   //ie->value.choice.OCTET_STRING.buf = (uint8_t *)calloc(1,RRC_BUF_SIZE*sizeof(uint8_t));

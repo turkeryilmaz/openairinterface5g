@@ -24,7 +24,7 @@
 
 // void xnap_gNB_prepare_internal_data(void);
 void createXninst(instance_t instanceP, xnap_setup_req_t *req, xnap_net_config_t *nc);
-void updateXninst(instance_t instanceP, xnap_setup_req_t *req, xnap_net_config_t *nc);
+void updateXninst(instance_t instanceP, xnap_setup_req_t *req, xnap_net_config_t *nc,sctp_assoc_t assoc_id);
 sctp_assoc_t xnap_gNB_get_assoc_id(xnap_gNB_instance_t *instance, long nci);
 // void xnap_dump_trees(void);
 void xnap_dump_trees(const instance_t instance);

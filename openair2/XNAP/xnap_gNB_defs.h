@@ -93,6 +93,7 @@ typedef struct xnap_gNB_instance_s {
   /* SCTP information */
   xnap_sctp_t sctp_streams;
   char *gNB_name;
+  sctp_assoc_t assoc_id_temp;
 } xnap_gNB_instance_t;
 
 #endif /* XNAP_GNB_DEFS_H_ */
