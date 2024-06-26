@@ -21,7 +21,7 @@
 
 # Author: laurent THOMAS, Lionel GAUTHIER
 
-cmake_minimum_required (VERSION 3.12)
+cmake_minimum_required (VERSION 3.16)
 project (OpenAirInterface LANGUAGES C CXX)
 
 #########################################################
@@ -180,22 +180,6 @@ add_boolean_option(SANITIZE_ADDRESS False "enable the address sanitizer (ASan)" 
 if (SANITIZE_ADDRESS)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -fno-omit-frame-pointer -fno-common")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fno-omit-frame-pointer -fno-common")
-  # There seems to be some incompatibility with pthread_create and the RT scheduler, which
-  # results in pthread_create hanging.
-  #
-  # When we switch from Ubuntu 16.04 to 18.04, we found that running with the address sanitizer,
-  # the pthread_create function calls were not working. The inital thought was that we were
-  # trying to create a thread that was not-blocking and would eventually crash the machine during
-  # the run. After more debugging, we found that we would never even start the thread. We narrowed
-  # down the first two instances of pthread_create in the gNB and NR UE to be sctp_eNB_task and
-  # one_thread, respectively. We found that adding sleeps, and various other pauses to the threads
-  # had not effect. From there, we found that if we add an abort(); prior to the thread loop, we
-  # do not execute that. This indicated to us that the problem is not likely to be a non-blocking
-  # thread, but perhaps and issue with pthread_create itself. From there we begain to research the
-  # issue on the web. See: https://github.com/google/sanitizers/issues/1125
-  #
-  # Google searching indicates this appears to be a problem since at least 2018. This could be something
-  # wrong in the pthread library, or something subtly wrong in this CMakeLists.txt. Use Ubuntu 20.04 instead.
 endif ()
 
 add_boolean_option(SANITIZE_THREAD False "enable the address sanitizer (TSan)" ON)
@@ -463,7 +447,7 @@ add_library(f1ap
             ${F1AP_DIR}/f1ap_handlers.c
             ${F1AP_DIR}/f1ap_itti_messaging.c)
 target_include_directories(f1ap PUBLIC F1AP_DIR)
-target_link_libraries(f1ap PUBLIC asn1_f1ap)
+target_link_libraries(f1ap PUBLIC asn1_f1ap L2_NR)
 target_link_libraries(f1ap PRIVATE ngap nr_rrc HASHTABLE)
 
 # LPP
@@ -650,20 +634,11 @@ add_library(HASHTABLE
 include_directories(${OPENAIR_DIR}/common/utils/hashtable)
 
 add_library(UTIL
-  ${OPENAIR_DIR}/common/utils/LOG/log.c
   ${OPENAIR_DIR}/common/utils/LOG/vcd_signal_dumper.c
-  ${OPENAIR2_DIR}/UTIL/MATH/oml.c
   ${OPENAIR2_DIR}/UTIL/OPT/probe.c
-  ${OPENAIR_DIR}/common/utils/threadPool/thread-pool.c
-  ${OPENAIR_DIR}/common/utils/utils.c
-  ${OPENAIR_DIR}/common/utils/system.c
-  ${OPENAIR_DIR}/common/utils/time_meas.c
-  ${OPENAIR_DIR}/common/utils/time_stat.c
 )
 if (ENABLE_LTTNG)
   find_package(LTTngUST 2.3.8 EXACT REQUIRED)
-  target_sources(UTIL PRIVATE common/utils/LOG/lttng-tp.c)
-  target_link_libraries(UTIL PUBLIC lttng-ust)
 else()
   message(STATUS "LTTNG support disabled")
 endif()
@@ -674,7 +649,7 @@ if (cap_FOUND)
   target_link_libraries(UTIL PRIVATE cap)
   target_compile_definitions(UTIL PRIVATE HAVE_LIB_CAP)
 endif()
-target_link_libraries(UTIL PUBLIC ${T_LIB} pthread)
+target_link_libraries(UTIL PUBLIC ${T_LIB} pthread LOG thread-pool utils)
 
 set(SECURITY_SRC
   ${OPENAIR3_DIR}/SECU/secu_defs.c
@@ -1181,9 +1156,10 @@ target_include_directories(PHY_UE PRIVATE ${blas_INCLUDE_DIRS} ${lapacke_INCLUDE
 add_library(PHY_NR_COMMON ${PHY_NR_SRC_COMMON})
 
 add_library(PHY_NR ${PHY_NR_SRC})
+target_link_libraries(PHY_NR nr_phy_common nr_common)
 
 add_library(PHY_NR_UE ${PHY_NR_UE_SRC})
-target_link_libraries(PHY_NR_UE PRIVATE asn1_nr_rrc_hdrs)
+target_link_libraries(PHY_NR_UE PRIVATE asn1_nr_rrc_hdrs nr_phy_common nr_common)
 
 add_library(PHY_RU ${PHY_SRC_RU})
 target_link_libraries(PHY_RU PRIVATE asn1_lte_rrc_hdrs)
@@ -1206,10 +1182,9 @@ set(PHY_MEX_UE
   ${OPENAIR1_DIR}/PHY/TOOLS/simde_operations.c
   ${OPENAIR1_DIR}/PHY/LTE_UE_TRANSPORT/dlsch_llr_computation_avx2.c
   ${OPENAIR1_DIR}/PHY/LTE_ESTIMATION/lte_ue_measurements.c
-  ${OPENAIR_DIR}/common/utils/LOG/log.c
   )
 add_library(PHY_MEX ${PHY_MEX_UE})
-target_link_libraries(PHY_MEX PRIVATE asn1_lte_rrc_hdrs)
+target_link_libraries(PHY_MEX PRIVATE asn1_lte_rrc_hdrs UTIL)
 
 #Layer 2 library
 #####################
@@ -1411,9 +1386,9 @@ set (MAC_NR_SRC_UE
   ${NR_UE_MAC_DIR}/nr_ue_procedures.c
   ${NR_UE_MAC_DIR}/nr_ue_procedures_sl.c
   ${NR_UE_MAC_DIR}/nr_ue_scheduler.c
+  ${NR_UE_MAC_DIR}/nr_ue_scheduler_sl.c
   ${NR_UE_MAC_DIR}/nr_ue_dci_configuration.c
   ${NR_UE_MAC_DIR}/nr_ra_procedures.c
-  ${NR_UE_MAC_DIR}/nr_ue_power_procedures.c
 )
 
 set (ENB_APP_SRC
@@ -1462,7 +1437,7 @@ endif()
 
 
 add_library(MAC_UE_NR ${MAC_NR_SRC_UE})
-target_link_libraries(MAC_UE_NR PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
+target_link_libraries(MAC_UE_NR PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs PUBLIC nr_ue_power_procedures)
 
 add_library(L2_LTE ${L2_LTE_SRC})
 target_link_libraries(L2_LTE PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
@@ -1481,7 +1456,7 @@ add_library(e1_if
 
 target_link_libraries(e1_if PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs asn1_f1ap SECURITY ${OPENSSL_LIBRARIES} e1ap GTPV1U)
 
-target_link_libraries(L2_NR PRIVATE f1ap x2ap s1ap ngap nr_rrc e1ap nr_rlc)
+target_link_libraries(L2_NR PRIVATE f1ap x2ap s1ap ngap nr_rrc e1ap nr_rlc nr_common)
 if(E2_AGENT)
   target_link_libraries(L2_NR PUBLIC e2_agent e2_agent_arg e2_ran_func_du_cucp_cuup)
   target_compile_definitions(L2_NR PRIVATE ${E2AP_VERSION} ${KPM_VERSION} E2_AGENT)
@@ -1516,7 +1491,7 @@ target_link_libraries(L2_UE PRIVATE asn1_lte_rrc_hdrs)
 
 add_library( NR_L2_UE ${NR_L2_SRC_UE} ${MAC_NR_SRC_UE} )
 target_link_libraries(NR_L2_UE PRIVATE f1ap nr_rlc)
-target_link_libraries(NR_L2_UE PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
+target_link_libraries(NR_L2_UE PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs nr_common nr_ue_power_procedures)
 
 add_library(MAC_NR_COMMON
             ${OPENAIR2_DIR}/LAYER2/NR_MAC_COMMON/nr_mac_common.c
@@ -1948,10 +1923,9 @@ set(CMAKE_MODULE_PATH "${OPENAIR_DIR}/cmake_targets/tools/MODULES" "${CMAKE_MODU
 # add executables for operation
 #################################
 add_library(minimal_lib
-  ${OPENAIR_DIR}/common/utils/LOG/log.c
   ${OPENAIR_DIR}/common/utils/minimal_stub.c
   )
-target_link_libraries(minimal_lib pthread dl ${T_LIB})
+target_link_libraries(minimal_lib PUBLIC pthread dl ${T_LIB} LOG)
 
 add_executable(nfapi_test
   ${OPENAIR_DIR}/openair2/NR_PHY_INTERFACE/nfapi_5g_test.c
@@ -2083,7 +2057,6 @@ add_executable(nr-softmodem
   ${OPENAIR2_DIR}/RRC/NAS/rb_config.c
   ${OPENAIR_DIR}/common/utils/lte/ue_power.c
   ${OPENAIR_DIR}/common/utils/lte/prach_utils.c
-  ${OPENAIR_DIR}/common/utils/nr/nr_common.c
   ${PHY_INTERFACE_DIR}/queue_t.c
   ${OPENAIR1_DIR}/PHY/TOOLS/phy_scope_interface.c
   )
@@ -2152,7 +2125,6 @@ add_executable(nr-uesoftmodem
   ${OPENAIR2_DIR}/LAYER2/NR_MAC_COMMON/nr_mac_common.c
   ${OPENAIR2_DIR}/RRC/NAS/rb_config.c
   ${OPENAIR3_DIR}/NAS/UE/nas_ue_task.c
-  ${OPENAIR_DIR}/common/utils/nr/nr_common.c
   ${OPENAIR1_DIR}/PHY/TOOLS/phy_scope_interface.c
   )
 
@@ -2207,7 +2179,6 @@ target_link_libraries(rftest PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
 
 add_executable(polartest
   ${OPENAIR1_DIR}/PHY/CODING/TESTBENCH/polartest.c
-  ${OPENAIR_DIR}/common/utils/nr/nr_common.c
   )
 target_link_libraries(polartest PRIVATE
   -Wl,--start-group UTIL SIMU PHY_COMMON PHY_NR PHY_NR_COMMON PHY_NR_UE CONFIG_LIB -Wl,--end-group
@@ -2216,7 +2187,6 @@ target_link_libraries(polartest PRIVATE
 
 add_executable(smallblocktest
   ${OPENAIR1_DIR}/PHY/CODING/TESTBENCH/smallblocktest.c
-  ${OPENAIR_DIR}/common/utils/nr/nr_common.c
 )
 
 target_link_libraries(smallblocktest PRIVATE
@@ -2242,7 +2212,6 @@ target_link_libraries(ldpctest PRIVATE
 add_executable(nr_dlschsim
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/dlschsim.c
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/nr_dummy_functions.c
-  ${OPENAIR_DIR}/common/utils/nr/nr_common.c
   )
 target_link_libraries(nr_dlschsim PRIVATE
   -Wl,--start-group UTIL SIMU PHY_COMMON PHY_NR_COMMON PHY_NR PHY_NR_UE SCHED_NR_LIB CONFIG_LIB MAC_NR_COMMON -Wl,--end-group
@@ -2253,7 +2222,6 @@ target_link_libraries(nr_dlschsim PRIVATE asn1_nr_rrc_hdrs)
 add_executable(nr_pbchsim
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/pbchsim.c
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/nr_dummy_functions.c
-  ${OPENAIR_DIR}/common/utils/nr/nr_common.c
   )
 target_link_libraries(nr_pbchsim PRIVATE
   -Wl,--start-group UTIL SIMU PHY_COMMON PHY_NR_COMMON PHY_NR PHY_NR_UE SCHED_NR_LIB CONFIG_LIB MAC_NR_COMMON -Wl,--end-group
@@ -2264,7 +2232,6 @@ target_link_libraries(nr_pbchsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 add_executable(nr_psbchsim
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/psbchsim.c
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/nr_dummy_functions.c
-  ${OPENAIR_DIR}/common/utils/nr/nr_common.c
   ${OPENAIR_DIR}/executables/softmodem-common.c
   ${OPENAIR2_DIR}/RRC/NAS/nas_config.c
   ${NR_UE_RRC_DIR}/rrc_nsa.c
@@ -2282,7 +2249,6 @@ target_link_libraries(nr_psbchsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 add_executable(nr_pucchsim
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/pucchsim.c
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/nr_dummy_functions.c
-  ${OPENAIR_DIR}/common/utils/nr/nr_common.c
   )
 target_link_libraries(nr_pucchsim PRIVATE
   -Wl,--start-group UTIL SIMU PHY_COMMON PHY_NR_COMMON PHY_NR PHY_NR_UE SCHED_NR_LIB CONFIG_LIB MAC_NR_COMMON -Wl,--end-group
@@ -2293,7 +2259,6 @@ target_link_libraries(nr_pucchsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 add_executable(nr_dlsim
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/dlsim.c
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/nr_dummy_functions.c
-  ${OPENAIR_DIR}/common/utils/nr/nr_common.c
   ${OPENAIR_DIR}/executables/softmodem-common.c
   ${OPENAIR2_DIR}/RRC/NAS/nas_config.c
   ${NR_UE_RRC_DIR}/rrc_nsa.c
@@ -2310,7 +2275,6 @@ target_link_libraries(nr_dlsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 add_executable(nr_prachsim
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/prachsim.c
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/nr_dummy_functions.c
-  ${OPENAIR_DIR}/common/utils/nr/nr_common.c
 )
 target_link_libraries(nr_prachsim PRIVATE
   -Wl,--start-group UTIL SIMU PHY_COMMON PHY_NR_COMMON PHY_NR PHY_RU PHY_NR_UE MAC_NR_COMMON SCHED_NR_LIB CONFIG_LIB -lz -Wl,--end-group
@@ -2320,7 +2284,6 @@ target_link_libraries(nr_prachsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 add_executable(nr_ulschsim
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/ulschsim.c
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/nr_dummy_functions.c
-  ${OPENAIR_DIR}/common/utils/nr/nr_common.c
   ${PHY_INTERFACE_DIR}/queue_t.c
   )
 target_link_libraries(nr_ulschsim PRIVATE
@@ -2332,7 +2295,6 @@ target_link_libraries(nr_ulschsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 add_executable(nr_ulsim
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/ulsim.c
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/nr_dummy_functions.c
-  ${OPENAIR_DIR}/common/utils/nr/nr_common.c
   ${OPENAIR_DIR}/executables/softmodem-common.c
   ${OPENAIR2_DIR}/RRC/NAS/nas_config.c
   ${NR_UE_RRC_DIR}/rrc_nsa.c
@@ -2410,7 +2372,7 @@ if (${T_TRACER})
         PHY_COMMON PHY PHY_UE PHY_NR PHY_NR_COMMON PHY_NR_UE PHY_RU PHY_MEX
         L2 L2_LTE L2_NR L2_LTE_NR L2_UE NR_L2_UE L2_UE_LTE_NR MAC_NR_COMMON MAC_UE_NR ngap
         CN_UTILS GTPV1U SCTP_CLIENT MME_APP LIB_NAS_UE NB_IoT SIMU SIMU_ETH OPENAIR0_LIB
-        ldpc_orig ldpc_optim ldpc_optim8seg ldpc_t2 ldpc_cl ldpc_cuda ldpc dfts config_internals)
+        ldpc_orig ldpc_optim ldpc_optim8seg ldpc_t2 ldpc_cl ldpc_cuda ldpc dfts config_internals nr_common)
     if (TARGET ${i})
       add_dependencies(${i} generate_T)
     endif()
@@ -2507,6 +2469,21 @@ if(ENABLE_TESTS)
   # meta-target: each test is supposed to add_dependencies(tests ${NEWTEST})
   # then, it is possible to build and execute all tests using "ninja tests && ctest"
   add_custom_target(tests)
+  find_package(GTest)
+  if (NOT GTest_FOUND)
+    message(STATUS "GTest package not found, will download googletest automatically. To prevent that install google test on your system (libgtest-dev)")
+    include(FetchContent)
+    FetchContent_Declare(
+      googletest
+      GIT_REPOSITORY https://github.com/google/googletest.git
+      GIT_TAG        58d77fa8070e8cec2dc1ed015d66b454c8d78850 # 1.12.1
+    )
+    set(BUILD_GMOCK OFF)
+    set(INSTALL_GTEST OFF)
+    FetchContent_MakeAvailable(googletest)
+    add_library(GTest::gtest ALIAS gtest)
+    add_library(GTest::gtest_main ALIAS gtest_main)
+  endif()
 endif()
 
 add_subdirectory(common)
