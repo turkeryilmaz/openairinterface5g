@@ -40,7 +40,7 @@
 #include "PHY/NR_REFSIG/nr_refsig.h"
 #include "SCHED_NR/fapi_nr_l1.h"
 #include "PHY/NR_REFSIG/ul_ref_seq_nr.h"
-
+#include "openair2/COMMON/mqtt_paramdef.h"
 
 int l1_north_init_gNB() {
 
@@ -321,7 +321,24 @@ int phy_init_nr_gNB(PHY_VARS_gNB *gNB)
                                            * sizeof(int16_t)); // [hna] 6144 is LTE and (8*((3*8*6144)+12)) is not clear
     pusch->ul_valid_re_per_slot = (int16_t *)malloc16_clear(sizeof(int16_t) * fp->symbols_per_slot);
   } // ulsch_id
-
+/*
+  paramlist_def_t MqttParamList = {CONFIG_STRING_MQTT_CONFIG,NULL,0};
+  paramdef_t MqttParams[] = MQTT_PARAMS_DESC;
+  config_getlist(&MqttParamList,MqttParams,sizeof(MqttParams)/sizeof(paramdef_t), NULL);
+  if(MqttParamList.numelt>0){
+   gNB->mqtt_cfg.MqttBrokerAddr = *(MqttParamList.paramarray[0][MQTT_BROKER_ADDR_IDX].strptr);
+   gNB->mqtt_cfg.MqttTopicName  = *(MqttParamList.paramarray[0][MQTT_TOPIC_NAME_IDX].strptr);
+   gNB->mqtt_cfg.MqttClientId   = *(MqttParamList.paramarray[0][MQTT_CLIENT_ID_IDX].strptr);
+   gNB->mqtt_cfg.MqttTrpId      = *(MqttParamList.paramarray[0][MQTT_TRP_ID_IDX].uptr);
+}
+  LOG_I(PHY, "MQTT Config\n");
+  LOG_I(PHY, "-----------------------------------------\n");
+  LOG_I(PHY, "MqttBrokerAddr %s\n", gNB->mqtt_cfg.MqttBrokerAddr);
+  LOG_I(PHY, "MqttTopicName  %s\n", gNB->mqtt_cfg.MqttTopicName);
+  LOG_I(PHY, "MqttClientId   %s\n", gNB->mqtt_cfg.MqttClientId);
+  LOG_I(PHY, "MqttTrpId   %d\n", gNB->mqtt_cfg.MqttTrpId);
+  LOG_I(PHY, "-----------------------------------------\n");
+*/
   return (0);
 }
 

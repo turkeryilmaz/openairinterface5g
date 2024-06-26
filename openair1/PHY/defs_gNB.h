@@ -47,6 +47,10 @@
 #define MAX_NUM_RU_PER_gNB 8
 #define MAX_PUCCH0_NID 8
 
+#include "MQTTClient.h"
+#include "cjson/cJSON.h"
+#define QOS         1
+
 typedef struct {
   int nb_id;
   int Nid[MAX_PUCCH0_NID];
@@ -561,7 +565,7 @@ typedef struct PHY_VARS_gNB_s {
   PHY_MEASUREMENTS_gNB measurements;
   NR_IF_Module_t       *if_inst;
   NR_UL_IND_t          UL_INFO;
-
+  mqtt_cfg_t       mqtt_cfg;
   /// NFAPI RX ULSCH information
   nfapi_nr_rx_data_pdu_t  rx_pdu_list[MAX_UL_PDUS_PER_SLOT];
   /// NFAPI RX ULSCH CRC information

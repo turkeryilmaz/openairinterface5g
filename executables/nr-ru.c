@@ -1253,7 +1253,23 @@ void *ru_thread( void *param ) {
 	//slot_duration.tv_nsec = 0.5e6;
 	slot_duration.tv_nsec = 0.5e6;
 
-  
+  int rc;
+  extern MQTTClient client;
+  #define ADDRESS     "tcp://localhost:1883"
+  #define CLIENTID    "Gnb1"
+	MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
+  if ((rc = MQTTClient_create(&client, ADDRESS, CLIENTID,
+      MQTTCLIENT_PERSISTENCE_NONE, NULL)) != MQTTCLIENT_SUCCESS)  {
+       printf("Failed to create MQTT client %s, return code %d\n", CLIENTID, rc);
+       exit(EXIT_FAILURE);
+  }
+  conn_opts.keepAliveInterval = 60;
+  conn_opts.cleansession = 1;
+  if ((rc = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS){
+      printf("Failed to create MQTT client %s, return code %d\n", CLIENTID, rc);
+      exit(EXIT_FAILURE);
+  }
+
 
   while (!oai_exit) {
     
@@ -1407,11 +1423,14 @@ void *ru_thread( void *param ) {
   }
 
   printf( "Exiting ru_thread \n");
+  
+  if ((rc = MQTTClient_disconnect(client, 10000)) != MQTTCLIENT_SUCCESS)
+      printf("Failed to disconnect MQTT client %s, return code %d\n", CLIENTID, rc);
 
-  ru_thread_status = 0;
-  return &ru_thread_status;
-}
-
+    ru_thread_status = 0;
+    return &ru_thread_status;
+  }
+  
 int start_streaming(RU_t *ru) {
   LOG_I(PHY,"Starting streaming on third-party RRU\n");
   return(ru->ifdevice.thirdparty_startstreaming(&ru->ifdevice));
