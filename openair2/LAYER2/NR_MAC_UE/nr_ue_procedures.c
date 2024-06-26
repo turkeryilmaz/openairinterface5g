@@ -3570,7 +3570,7 @@ void nr_ue_process_mac_pdu(NR_UE_MAC_INST_t *mac, nr_downlink_indication_t *dl_i
  */
 int nr_write_ce_ulsch_pdu(uint8_t *mac_ce,
                           NR_UE_MAC_INST_t *mac,
-                          uint8_t power_headroom,  // todo: NR_POWER_HEADROOM_CMD *power_headroom,
+                          NR_SINGLE_ENTRY_PHR_MAC_CE* power_headroom,  // todo: NR_POWER_HEADROOM_CMD *power_headroom,
                           uint16_t *crnti,
                           NR_BSR_SHORT *truncated_bsr,
                           NR_BSR_SHORT *short_bsr,
@@ -3580,20 +3580,19 @@ int nr_write_ce_ulsch_pdu(uint8_t *mac_ce,
   uint8_t mac_ce_size = 0;
   uint8_t *pdu = mac_ce;
   if (power_headroom) {
-
     // MAC CE fixed subheader
     ((NR_MAC_SUBHEADER_FIXED *) mac_ce)->R = 0;
     ((NR_MAC_SUBHEADER_FIXED *) mac_ce)->LCID = UL_SCH_LCID_SINGLE_ENTRY_PHR;
     mac_ce++;
 
     // PHR MAC CE (1 octet)
-    ((NR_SINGLE_ENTRY_PHR_MAC_CE *) mac_ce)->PH = power_headroom;
+    ((NR_SINGLE_ENTRY_PHR_MAC_CE *) mac_ce)->PH = power_headroom->PH;
     ((NR_SINGLE_ENTRY_PHR_MAC_CE *) mac_ce)->R1 = 0;
-    ((NR_SINGLE_ENTRY_PHR_MAC_CE *) mac_ce)->PCMAX = 0; // todo
+    ((NR_SINGLE_ENTRY_PHR_MAC_CE *) mac_ce)->PCMAX = power_headroom->PCMAX;
     ((NR_SINGLE_ENTRY_PHR_MAC_CE *) mac_ce)->R2 = 0;
 
     // update pointer and length
-    mac_ce_size = sizeof(NR_SINGLE_ENTRY_PHR_MAC_CE);
+    mac_ce_size += sizeof(NR_SINGLE_ENTRY_PHR_MAC_CE);
     mac_ce += mac_ce_size;
     mac_ce_len += mac_ce_size + sizeof(NR_MAC_SUBHEADER_FIXED);
     LOG_D(NR_MAC, "[UE] Generating ULSCH PDU : power_headroom pdu %p mac_ce %p b\n",
@@ -3612,7 +3611,7 @@ int nr_write_ce_ulsch_pdu(uint8_t *mac_ce,
     memcpy(mac_ce, crnti, sizeof(*crnti));
 
     // update pointer and length
-    mac_ce_size = sizeof(uint16_t);
+    mac_ce_size += sizeof(uint16_t);
     mac_ce += mac_ce_size;
     mac_ce_len += mac_ce_size + sizeof(NR_MAC_SUBHEADER_FIXED);
   }
