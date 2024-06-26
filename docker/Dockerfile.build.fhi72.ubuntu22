@@ -61,6 +61,7 @@ RUN git clone https://gerrit.o-ran-sc.org/r/o-du/phy.git /opt/phy && \
     cd /opt/phy/fhi_lib/lib && \
     RTE_SDK=/oai-ran/dpdk-stable-20.11.9/ XRAN_DIR=/opt/phy/fhi_lib make XRAN_LIB_SO=1 
 
+FROM ran-base as ran-build-fhi72
 ## Build and install OAI
 #run build_oai to build the target image
 RUN /bin/sh oaienv && \ 
@@ -90,4 +91,3 @@ RUN mkdir -p openair2/E2AP/flexric/build && \
           -DCMAKE_CXX_COMPILER=g++-12 .. && \
     ninja && \
     ninja install
-    
