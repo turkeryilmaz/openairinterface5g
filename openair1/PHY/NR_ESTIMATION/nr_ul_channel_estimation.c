@@ -46,7 +46,6 @@
 #define QOS         1
 #define TIMEOUT     100L
 
-#define  NR_SRS_IDFT_OVERSAMP_FACTOR 16
 //#define DEBUG_CH
 //#define DEBUG_PUSCH
 //#define SRS_DEBUG
@@ -141,87 +140,6 @@ int32_t nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
     return 0xFFFF;
   }
 
-}
-
-void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int32_t gNB_id, int16_t peak_idx, int ant_idx);
-
-/* Generic function to find the peak of channel estimation buffer */
-int32_t nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
-		          uint8_t N_arx,
-		          uint8_t N_ap,
-			        int32_t srs_estimated_channel_freq[N_arx][N_ap][frame_parms->ofdm_symbol_size],
-			        int16_t *srs_toa_ns)
-{
-
-  int32_t chF_interpol[N_ap][NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size] __attribute__((aligned(32)));
-  int32_t chT_interpol[N_ap][NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size] __attribute__((aligned(32)));
-  memset(chF_interpol,0,sizeof(chF_interpol));
-  memset(chT_interpol,0,sizeof(chT_interpol));
-
-  int32_t max_val = 0, max_idx = 0, abs_val = 0, mean_val = 0;
-
-  int16_t start_offset = (NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size)-(frame_parms->ofdm_symbol_size>>1);
-
-  for (int arx_index = 0; arx_index < N_arx; arx_index++) {
-  
-    for (int ap_index = 0; ap_index < N_ap; ap_index++) {
-    
-      // Place SRS channel estimates in FFT shifted format for oversampling
-      memcpy((int16_t *)&chF_interpol[ap_index][0], &srs_estimated_channel_freq[arx_index][ap_index][0], (frame_parms->ofdm_symbol_size>>1) * sizeof(int32_t));
-      memcpy((int16_t *)&chF_interpol[ap_index][start_offset], &srs_estimated_channel_freq[arx_index][ap_index][frame_parms->ofdm_symbol_size>>1], (frame_parms->ofdm_symbol_size>>1) * sizeof(int32_t));
-      
-      // Convert to time domain oversampled
-      freq2time(frame_parms->ofdm_symbol_size*NR_SRS_IDFT_OVERSAMP_FACTOR,
-		(int16_t*) chF_interpol[ap_index],
-		(int16_t*) chT_interpol[ap_index]);
-    }
-
-
-    for(int k = 0; k < NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size; k++) {
-      abs_val = 0;
-      for (int p_index = 0; p_index < N_ap; p_index++) 
-	abs_val += squaredMod(((c16_t*)chT_interpol[p_index])[k]);
-      mean_val += (abs_val - mean_val)/(k+1);
-      if(abs_val > max_val) {
-	  max_val = abs_val;
-	  max_idx = k;
-      }
-    }
-
-    if(max_idx > NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size >>1)
-      max_idx = max_idx - NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size;
-
-    // Check for detection threshold
-    LOG_D(PHY, "SRS ToA estimator (RX ant %d): max_val %d, mean_val %d, max_idx %d\n", arx_index, max_val, mean_val, max_idx);
-    if ((mean_val != 0) && (max_val / mean_val > 10)) {
-      srs_toa_ns[arx_index] = (max_idx*1e9)/(NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->samples_per_frame*100);
-      LOG_I(PHY, "SRS ToA estimator (RX ant %d): ToA %d ns\n", arx_index, srs_toa_ns[arx_index]);
-    } else {
-      srs_toa_ns[arx_index] = 0xFFFF;
-    }
-  }
-  
-  // Add T tracer to log these chF and chT
-  /*
-  T(T_GNB_PHY_UL_FREQ_CHANNEL_ESTIMATE_OVER_SAMPLING,
-    T_INT(0),
-    T_INT(srs_pdu->rnti),
-    T_INT(frame),
-    T_INT(0),
-    T_INT(0),
-    T_BUFFER(chF_interpol[0][0], NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size * sizeof(int32_t)));
-  
-  T(T_GNB_PHY_UL_TIME_CHANNEL_ESTIMATE_OVER_SAMPLING,
-    T_INT(0),
-    T_INT(srs_pdu->rnti),
-    T_INT(frame),
-    T_INT(0),
-    T_INT(0),
-    T_BUFFER(chT_interpol[0][0], NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size * sizeof(int32_t)));
-  */
-
-  // return toa of first antenna for backward compatibility
-  return srs_toa_ns[0];
 }
 
 void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int32_t gNB_id, int16_t peak_idx, int ant_idx) {
@@ -1077,10 +995,6 @@ int nr_srs_channel_estimation(
              &srs_estimated_channel_time[ant][p_index][0],
              (gNB->frame_parms.ofdm_symbol_size>>1)*sizeof(int32_t));
     } // for (int p_index = 0; p_index < N_ap; p_index++)
-    int16_t srs_toa_ns[1] = {0};
-    nr_est_toa_ns_srs((NR_DL_FRAME_PARMS *)frame_parms, frame_parms->nb_antennas_rx, N_ap, srs_estimated_channel_freq, srs_toa_ns);
-    printf("srs_toa_ns[%d] = %d\n", ant, srs_toa_ns[ant]);
-    srs_toa_MQTT((int32_t *)srs_estimated_channel_time[ant], frame_parms->ofdm_symbol_size, ant, srs_toa_ns[ant], ant);
   } // for (int ant = 0; ant < frame_parms->nb_antennas_rx; ant++)
 
 
