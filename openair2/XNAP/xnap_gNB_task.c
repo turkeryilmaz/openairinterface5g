@@ -111,25 +111,17 @@ static void xnap_gNB_handle_sctp_association_resp(instance_t instance, sctp_new_
 int xnap_gNB_init_sctp(instance_t instance_p, xnap_net_config_t *nc)
 {
   // Create and alloc new message
-  MessageDef *message;
-  sctp_init_t *sctp_init = NULL;
   DevAssert(nc != NULL);
-  message = itti_alloc_new_message(TASK_XNAP, 0, SCTP_INIT_MSG_MULTI_REQ);
-  sctp_init = &message->ittiMsg.sctp_init_multi;
+  size_t addr_len = strlen(nc->gnb_xn_ip_address.ipv4_address) + 1;
+  MessageDef *message = itti_alloc_new_message_sized(TASK_XNAP, 0, SCTP_INIT_MSG_MULTI_REQ, sizeof(sctp_init_t) + addr_len);
+  sctp_init_t *sctp_init = &message->ittiMsg.sctp_init_multi;
   sctp_init->port = nc->gnb_port_for_XNC;
   sctp_init->ppid = XNAP_SCTP_PPID;
-  sctp_init->ipv4 = 1;
-  sctp_init->ipv6 = 0;
-  sctp_init->nb_ipv4_addr = 1;
-#if 0
-  memcpy(&sctp_init->ipv4_address,
-         nc->gnb_xn_ip_address,
-         sizeof(*nc->gnb_xn_ip_address));
-#endif
-  sctp_init->ipv4_address[0] = inet_addr(nc->gnb_xn_ip_address.ipv4_address);
-  sctp_init->nb_ipv6_addr = 0;
-  sctp_init->ipv6_address[0] = "0:0:0:0:0:0:0:1";
-  return itti_send_msg_to_task(TASK_SCTP, instance_p, message);
+  char *addr_buf = (char *) (sctp_init + 1);
+  sctp_init->bind_address = addr_buf;
+  memcpy(addr_buf, nc->gnb_xn_ip_address.ipv4_address, addr_len);
+  return itti_send_msg_to_task (TASK_SCTP, instance_p, message);
+
 }
 
 static void xnap_gNB_send_sctp_assoc_req(instance_t instance, xnap_net_config_t *nc, int index)

@@ -300,7 +300,7 @@ void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *req, sctp_assoc_t assoc_id)
   du->mtc = mtc;
   RB_INSERT(rrc_du_tree, &rrc->dus, du);
   rrc->num_dus++;
-  LOG_I(RRC,"Num_dus %d\n",rrc->num_dus);
+  //LOG_I(RRC,"Num_dus %d\n",rrc->num_dus);
   served_cells_to_activate_t cell = {
       .plmn = cell_info->plmn,
       .nr_cellid = cell_info->nr_cellid,
@@ -557,7 +557,7 @@ nr_rrc_du_container_t *find_target_du(gNB_RRC_INST *rrc, long nci)
   }*/
   nr_rrc_du_container_t *it = NULL;
   //bool next_du = false;
-  LOG_I(RRC,"Num_dus in find target du %d\n",rrc->num_dus);
+  LOG_I(RRC,"Num_dus in find target du %ld\n",rrc->num_dus);
   RB_FOREACH (it, rrc_du_tree, &rrc->dus) {
     if (it->setup_req->cell[0].info.nr_cellid == nci) {
       LOG_I(NR_RRC,"ASSOC ID of DU in DU tree %d \n",it->assoc_id);

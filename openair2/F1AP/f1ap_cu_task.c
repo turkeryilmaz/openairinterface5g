@@ -147,7 +147,7 @@ void cu_register_xn(uint32_t gnb_id_num,f1ap_served_cell_info_t *cell , xnap_net
     req->setup_req.info.fdd.dl_freqinfo.band = cell->fdd.dl_freqinfo.band;
     req->setup_req.info.fdd.ul_freqinfo.band = cell->fdd.ul_freqinfo.band;
     }
-    req->setup_req.info.measurement_timing_information = cell->measurement_timing_information;
+    //req->setup_req.info.measurement_timing_information = cell->measurement_timing_information;- commenting-sreeshma
     gNB_RRC_INST *rrc = RC.nrrrc[0];
     req->setup_req.gNB_id = rrc->node_id;
     req->setup_req.tai_support = *cell->tac;

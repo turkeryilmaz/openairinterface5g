@@ -136,73 +136,6 @@ mui_t rrc_gNB_mui = 0;
 
 ///---------------------------------------------------------------------------------------------------------------///
 ///---------------------------------------------------------------------------------------------------------------///
-NR_DRB_ToAddModList_t *fill_DRB_configList(gNB_RRC_UE_t *ue)
-{
-  gNB_RRC_INST *rrc = RC.nrrrc[0];
-  if (ue->nb_of_pdusessions == 0)
-    return NULL;
-  int nb_drb_to_setup = rrc->configuration.drbs;
-  long drb_priority[MAX_DRBS_PER_UE] = {0};
-  uint8_t drb_id_to_setup_start = 0;
-  NR_DRB_ToAddModList_t *DRB_configList = CALLOC(sizeof(*DRB_configList), 1);
-  for (int i = 0; i < ue->nb_of_pdusessions; i++) {
-    if (ue->pduSession[i].status >= PDU_SESSION_STATUS_DONE) {
-      continue;
-    }
-    LOG_I(NR_RRC, "adding rnti %x pdusession %d, nb drb %d\n", ue->rnti, ue->pduSession[i].param.pdusession_id, nb_drb_to_setup);
-    for (long drb_id_add = 1; drb_id_add <= nb_drb_to_setup; drb_id_add++) {
-      uint8_t drb_id;
-      // Reference TS23501 Table 5.7.4-1: Standardized 5QI to QoS characteristics mapping
-      for (int qos_flow_index = 0; qos_flow_index < ue->pduSession[i].param.nb_qos; qos_flow_index++) {
-        switch (ue->pduSession[i].param.qos[qos_flow_index].fiveQI) {
-          case 1 ... 4: /* GBR */
-            drb_id = next_available_drb(ue, &ue->pduSession[i], GBR_FLOW);
-            break;
-          case 5 ... 9: /* Non-GBR */
-            if (rrc->configuration.drbs > 1) { /* Force the creation from gNB Conf file */
-              LOG_W(NR_RRC, "Adding %d DRBs, from gNB config file (not decided by 5GC\n", rrc->configuration.drbs);
-              drb_id = next_available_drb(ue, &ue->pduSession[i], GBR_FLOW);
-            } else {
-              drb_id = next_available_drb(ue, &ue->pduSession[i], NONGBR_FLOW);
-            }
-            break;
-
-          default:
-            LOG_E(NR_RRC, "not supported 5qi %lu\n", ue->pduSession[i].param.qos[qos_flow_index].fiveQI);
-            ue->pduSession[i].status = PDU_SESSION_STATUS_FAILED;
-            continue;
-        }
-        drb_priority[drb_id - 1] = ue->pduSession[i].param.qos[qos_flow_index].allocation_retention_priority.priority_level;
-        if (drb_priority[drb_id - 1] < 0 || drb_priority[drb_id - 1] > NGAP_PRIORITY_LEVEL_NO_PRIORITY) {
-          LOG_E(NR_RRC, "invalid allocation_retention_priority.priority_level %ld set to _NO_PRIORITY\n", drb_priority[drb_id - 1]);
-          drb_priority[drb_id - 1] = NGAP_PRIORITY_LEVEL_NO_PRIORITY;
-        }
-
-        if (drb_is_active(ue, drb_id)) { /* Non-GBR flow using the same DRB or a GBR flow with no available DRBs*/
-          nb_drb_to_setup--;
-        } else {
-          generateDRB(ue,
-                      drb_id,
-                      &ue->pduSession[i],
-                      rrc->configuration.enable_sdap,
-                      rrc->security.do_drb_integrity,
-                      rrc->security.do_drb_ciphering);
-          NR_DRB_ToAddMod_t *DRB_config = generateDRB_ASN1(&ue->established_drbs[drb_id - 1]);
-          if (drb_id_to_setup_start == 0)
-            drb_id_to_setup_start = DRB_config->drb_Identity;
-          asn1cSeqAdd(&DRB_configList->list, DRB_config);
-        }
-        LOG_D(RRC, "DRB Priority %ld\n", drb_priority[drb_id]); // To supress warning for now
-      }
-    }
-  }
-  if (DRB_configList->list.count == 0) {
-    free(DRB_configList);
-    return NULL;
-  }
-  return DRB_configList;
-}
-
 
 static int neigh_compare(const nr_rrc_neighcells_container_t *a, const nr_rrc_neighcells_container_t *b)
 {
@@ -2931,7 +2864,7 @@ void nr_initiate_ue_setup_xn(const gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue, const nr
   
   //f1_ue_data_t ue_data = cu_get_f1_ue_data(ue->rrc_ue_id);
   //cu_add_f1_ue_data(ue->rrc_ue_id, &ue_data);
-  xnap_served_cell_info_t *cell_info = &target_du->setup_req->cell[0].info;
+  f1ap_served_cell_info_t *cell_info = &target_du->setup_req->cell[0].info;
   //RETURN_IF_INVALID_ASSOC_ID(ue_data);
   LOG_I(RRC,"RRC UE ID in ue_context_setup_req %d \n",ue->rrc_ue_id);
   f1ap_ue_context_setup_t ue_context_setup_req = {
@@ -2951,71 +2884,6 @@ void nr_initiate_ue_setup_xn(const gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue, const nr
   rrc->mac_rrc.ue_context_setup_request(target_du->assoc_id, &ue_context_setup_req);
 }
 
-
-
-/*nr_rrc_du_container_t *find_target_du(gNB_RRC_INST *rrc, long nci)
-{
-  LOG_I(NR_RRC,"Find Target_du \n");
-  nr_rrc_du_container_t e = {.assoc_id = assoc_id};
-  nr_rrc_du_container_t *du = RB_FIND(rrc_du_tree, &rrc->dus, &e);
-  if(du != NULL)
-  {
-          return du;
-  }
-  else{
-        LOG_I(NR_RRC,"Target DU is null");
-  }
-  nr_rrc_du_container_t *it = NULL;
-  //bool next_du = false;
-  LOG_I(RRC,"Num_dus in find target du %d\n",rrc->num_dus);
-  RB_FOREACH (it, rrc_du_tree, &rrc->dus) {
-    if (it->setup_req) {
-      LOG_I(NR_RRC,"ASSOC ID of DU in DU tree %d \n",it->assoc_id);
-      return it;
-    }
-  }
-  return 0;
-*/
- /* nr_rrc_du_container_t *target_du = NULL;
-  nr_rrc_du_container_t *it = NULL;
-  bool next_du = false;
-  RB_FOREACH (it, rrc_du_tree, &rrc->dus) {
-  if(it == NULL){
-  LOG_I(NR_RRC, "it is null");
-  }
-    if (next_du == false && source_assoc_id != it->assoc_id) {
-      continue;
-    } else if (source_assoc_id == it->assoc_id) {
-      next_du = true;
-    } else {
-      target_du = it;
-      break;
-    }
-  }
-  if (target_du == NULL) {
-    RB_FOREACH (it, rrc_du_tree, &rrc->dus) {
-      if (source_assoc_id == it->assoc_id) {
-        continue;
-      } else {
-        target_du = it;
-        break;
-      }
-    }
-  }
-
-  if (target_du == NULL){
-    RB_FOREACH (it, rrc_du_tree, &rrc->dus){
-	    target_du = it;
-    }
-  if(target_du != NULL)
-  {
-	  return target_du;
-  }
-  else{
-	LOG_I(NR_RRC,"Target DU is null");
-  }
-}*/
-//}
 
 
 
@@ -3203,7 +3071,7 @@ void rrc_gNB_process_handover_req_ack(sctp_assoc_t assoc_id, xnap_handover_req_a
                             &asn_DEF_NR_CellGroupConfig,
                             (void *)&cgc,
                             (uint8_t **)reconf_ie->buf,
-                            (int *)reconf_ie->size);//m->rrc_buffer_size);
+                            (int **)reconf_ie->size);//m->rrc_buffer_size);
   //xer_fprint(stdout,&asn_DEF_NR_CellGroupConfig, (void *)&cgc);
 
 
@@ -3218,7 +3086,7 @@ void rrc_gNB_process_handover_req_ack(sctp_assoc_t assoc_id, xnap_handover_req_a
 
 
 
-  if ((dec_rval.code != RC_OK) && (dec_rval.consumed == 0)) {
+  if ((dec_rval1.code != RC_OK) && (dec_rval1.consumed == 0)) {
     AssertFatal(1==0,"NR_UL_DCCH_MESSAGE decode error\n");
     // free the memory
     SEQUENCE_free( &asn_DEF_NR_RRCReconfiguration, reconf, 1 );
@@ -3308,7 +3176,6 @@ void rrc_gNB_process_handover_req_ack(sctp_assoc_t assoc_id, xnap_handover_req_a
  // memcpy(ue_context_p->ue_context.handover_info->buf, buf, size);
  // ue_context_p->ue_context.handover_info->size = size;
 
-/*
   if (UE->masterCellGroup) {
     ASN_STRUCT_FREE(asn_DEF_NR_CellGroupConfig, UE->masterCellGroup);
     LOG_I(RRC, "UE %04x replacing existing CellGroupConfig with new one received from DU\n", UE->rnti);

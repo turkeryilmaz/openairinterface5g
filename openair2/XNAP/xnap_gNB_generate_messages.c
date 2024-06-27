@@ -1145,11 +1145,11 @@ int xnap_gNB_generate_xn_handover_request_ack(sctp_assoc_t assoc_id, xnap_handov
   XNAP_HandoverRequestAcknowledge_t   *xnhandoverreqAck;
   XNAP_HandoverRequestAcknowledge_IEs_t          *ie;
   //instance_t  instance;
-  int                                    ue_id;
-  int                                    id_source;
+  //int                                    ue_id;
+  //int                                    id_source;
   //int                                    id_target;
-  uint8_t rrc_buffer[RRC_BUF_SIZE];
-  uint8_t *rrc_buff =  calloc(1, RRC_BUF_SIZE*sizeof(uint8_t));
+  //uint8_t rrc_buffer[RRC_BUF_SIZE];
+  //uint8_t *rrc_buff =  calloc(1, RRC_BUF_SIZE*sizeof(uint8_t));
   uint8_t  *buffer;
   uint32_t  len;
   int       ret = 0;
