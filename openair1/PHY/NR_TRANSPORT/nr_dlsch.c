@@ -33,7 +33,7 @@
 #include "nr_dlsch.h"
 #include "nr_dci.h"
 #include "nr_sch_dmrs.h"
-#include "PHY/CODING/nr_ulsch_decoding_interface.h"
+#include "PHY/CODING/nrLDPC_coding_interface.h"
 #include "PHY/MODULATION/nr_modulation.h"
 #include "PHY/NR_REFSIG/dmrs_nr.h"
 #include "PHY/NR_REFSIG/ptrs_nr.h"
@@ -115,29 +115,29 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
     AssertFatal(harq->pdu!=NULL,"harq->pdu is null\n");
     int ret_memalign = posix_memalign((void **)&output[dlsch_id], 64, sizeof(unsigned char) * rel15->rbSize * NR_SYMBOLS_PER_SLOT * NR_NB_SC_PER_RB * Qm * rel15->nrOfLayers);
     if(ret_memalign){
-      if(gNB->nr_ulsch_decoding_interface_flag)
+      if(gNB->nrLDPC_coding_interface_flag)
         for(int i = 0; i < dlsch_id; i++)
           free(output[i]);
       return;
     }
     bzero(output[dlsch_id],rel15->rbSize * NR_SYMBOLS_PER_SLOT * NR_NB_SC_PER_RB * Qm * rel15->nrOfLayers);
 
-    if(gNB->nr_ulsch_decoding_interface_flag){
+    if(gNB->nrLDPC_coding_interface_flag){
       if(dlsch_id == msgTx->num_pdsch_slot-1){
         start_meas(dlsch_encoding_stats);
-        if (nr_ulsch_decoding_interface.nr_ulsch_decoding_encoder(gNB,
-                                                                  msgTx,
-                                                                  frame,
-                                                                  slot,
-                                                                  frame_parms,
-                                                                  output,
-                                                                  tinput,
-                                                                  tprep,
-                                                                  tparity,
-                                                                  toutput,
-                                                                  dlsch_rate_matching_stats,
-                                                                  dlsch_interleaving_stats,
-                                                                  dlsch_segmentation_stats) == -1) {
+        if (nrLDPC_coding_interface.nrLDPC_coding_encoder(gNB,
+                                                          msgTx,
+                                                          frame,
+                                                          slot,
+                                                          frame_parms,
+                                                          output,
+                                                          tinput,
+                                                          tprep,
+                                                          tparity,
+                                                          toutput,
+                                                          dlsch_rate_matching_stats,
+                                                          dlsch_interleaving_stats,
+                                                          dlsch_segmentation_stats) == -1) {
           return;
         }
         stop_meas(dlsch_encoding_stats);

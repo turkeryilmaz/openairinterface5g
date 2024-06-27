@@ -293,19 +293,19 @@ static int nr_dlsch_encoding_demo(PHY_VARS_gNB *gNB,
   return 0;
 }
 
-int nr_ulsch_decoding_encoder(PHY_VARS_gNB *gNB,
-                              processingData_L1tx_t *msgTx,
-                              int frame,
-                              uint8_t slot,
-                              NR_DL_FRAME_PARMS *frame_parms,
-                              unsigned char **output,
-                              time_stats_t *tinput,
-                              time_stats_t *tprep,
-                              time_stats_t *tparity,
-                              time_stats_t *toutput,
-                              time_stats_t *dlsch_rate_matching_stats,
-                              time_stats_t *dlsch_interleaving_stats,
-                              time_stats_t *dlsch_segmentation_stats)
+int nrLDPC_coding_encoder(PHY_VARS_gNB *gNB,
+                          processingData_L1tx_t *msgTx,
+                          int frame,
+                          uint8_t slot,
+                          NR_DL_FRAME_PARMS *frame_parms,
+                          unsigned char **output,
+                          time_stats_t *tinput,
+                          time_stats_t *tprep,
+                          time_stats_t *tparity,
+                          time_stats_t *toutput,
+                          time_stats_t *dlsch_rate_matching_stats,
+                          time_stats_t *dlsch_interleaving_stats,
+                          time_stats_t *dlsch_segmentation_stats)
 {
 
   int nbEncode = 0;
