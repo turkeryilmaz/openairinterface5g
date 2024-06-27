@@ -108,18 +108,19 @@ static void xnap_gNB_handle_sctp_association_resp(instance_t instance, sctp_new_
   xnap_gNB_generate_xn_setup_request(sctp_new_association_resp->assoc_id, &instance_xn->setup_req);
 }
 
-int xnap_gNB_init_sctp(instance_t instance_p, xnap_net_config_t *nc)
+int xnap_gNB_init_sctp(instance_t instance_p, xnap_net_config_t *nc, char *my_addr)
 {
 
   DevAssert(nc != NULL);
-  size_t addr_len = strlen(nc->gnb_xn_ip_address.ipv4_address) + 1;
+  size_t addr_len = strlen(my_addr) + 1;
+  LOG_I(E1AP, "**************XNAP_CUCP_SCTP_REQ(create socket) for %s len %ld\n", my_addr, addr_len);
   MessageDef *message = itti_alloc_new_message_sized(TASK_XNAP, 0, SCTP_INIT_MSG_MULTI_REQ, sizeof(sctp_init_t) + addr_len);
   sctp_init_t *sctp_init = &message->ittiMsg.sctp_init_multi;
   sctp_init->port = nc->gnb_port_for_XNC;
   sctp_init->ppid = XNAP_SCTP_PPID;
   char *addr_buf = (char *) (sctp_init + 1);
   sctp_init->bind_address = addr_buf;
-  memcpy(addr_buf, nc->gnb_xn_ip_address.ipv4_address, addr_len);
+  memcpy(addr_buf, my_addr, addr_len);
   return itti_send_msg_to_task(TASK_SCTP, instance_p, message);
 
 
@@ -257,7 +258,7 @@ void *xnap_task(void *arg)
 
       case XNAP_REGISTER_GNB_REQ: {
         xnap_net_config_t *xn_nc = &XNAP_REGISTER_GNB_REQ(received_msg).net_config;
-        xnap_gNB_init_sctp(ITTI_MSG_DESTINATION_INSTANCE(received_msg), xn_nc);
+        xnap_gNB_init_sctp(ITTI_MSG_DESTINATION_INSTANCE(received_msg), xn_nc, xn_nc->gnb_xn_ip_address.ipv4_address);
       } break;
 
       case XNAP_SETUP_FAILURE: // from rrc/xnap

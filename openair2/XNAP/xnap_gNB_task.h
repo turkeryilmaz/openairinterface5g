@@ -27,7 +27,7 @@
 #define XNAP_SCTP_PPID (61) ///< XNAP SCTP Payload Protocol Identifier (PPID)
 #include "xnap_gNB_defs.h"
 
-int xnap_gNB_init_sctp(instance_t instance_p, xnap_net_config_t *nc);
+int xnap_gNB_init_sctp(instance_t instance_p, xnap_net_config_t *nc, char *my_addr);
 
 void *xnap_task(void *arg);
 
