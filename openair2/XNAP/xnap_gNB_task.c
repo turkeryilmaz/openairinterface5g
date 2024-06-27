@@ -110,7 +110,7 @@ static void xnap_gNB_handle_sctp_association_resp(instance_t instance, sctp_new_
 
 int xnap_gNB_init_sctp(instance_t instance_p, xnap_net_config_t *nc)
 {
-  // Create and alloc new message
+
   DevAssert(nc != NULL);
   size_t addr_len = strlen(nc->gnb_xn_ip_address.ipv4_address) + 1;
   MessageDef *message = itti_alloc_new_message_sized(TASK_XNAP, 0, SCTP_INIT_MSG_MULTI_REQ, sizeof(sctp_init_t) + addr_len);
@@ -120,10 +120,10 @@ int xnap_gNB_init_sctp(instance_t instance_p, xnap_net_config_t *nc)
   char *addr_buf = (char *) (sctp_init + 1);
   sctp_init->bind_address = addr_buf;
   memcpy(addr_buf, nc->gnb_xn_ip_address.ipv4_address, addr_len);
-  return itti_send_msg_to_task (TASK_SCTP, instance_p, message);
+  return itti_send_msg_to_task(TASK_SCTP, instance_p, message);
+
 
 }
-
 static void xnap_gNB_send_sctp_assoc_req(instance_t instance, xnap_net_config_t *nc, int index)
 {
   MessageDef *message = NULL;
@@ -204,7 +204,7 @@ void xnap_gNB_handle_handover_prep(instance_t instance,
 {
   xnap_gNB_instance_t *instance_p;
   xnap_id_manager     *id_manager;
-  int                 ue_id;
+  //int                 ue_id;
   sctp_assoc_t assoc_id;
   
   instance_p = xnap_gNB_get_instance(instance);

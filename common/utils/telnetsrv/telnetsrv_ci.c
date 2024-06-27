@@ -167,11 +167,38 @@ int rrc_gNB_trigger_f1_ho(char *buf, int debug, telnet_printfunc_t prnt)
   return 0;
 }
 
+extern void nr_HO_Xn_trigger();
+
+int rrc_gNB_trigger_xn_ho(char *buf, int debug, telnet_printfunc_t prnt)
+{
+  if (!RC.nrrrc)
+    ERROR_MSG_RET("no RRC present, cannot list counts\n");
+  rrc_gNB_ue_context_t *ue = NULL;
+  if (!buf) {
+    ue = get_single_rrc_ue();
+    if (!ue)
+      ERROR_MSG_RET("no single UE in RRC present\n");
+  } else {
+    ue_id_t ue_id = strtol(buf, NULL, 10);
+    ue = rrc_gNB_get_ue_context(RC.nrrrc[0], ue_id);
+    if (!ue)
+      ERROR_MSG_RET("could not find UE with ue_id %d in RRC\n", ue_id);
+  }
+
+  gNB_RRC_UE_t *UE = &ue->ue_context;
+  nr_HO_Xn_trigger();
+  prnt("RRC Xn handover triggered for UE %u\n", UE->rrc_ue_id);
+
+  return 0;
+}
+
+
 static telnetshell_cmddef_t cicmds[] = {
     {"get_single_rnti", "", get_single_rnti},
     {"force_reestab", "[rnti(hex,opt)]", trigger_reestab},
     {"get_reestab_count", "[rnti(hex,opt)]", get_reestab_count},
     {"trigger_f1_ho", "[rrc_ue_id(int,opt)]", rrc_gNB_trigger_f1_ho},
+    {"trigger_xn_ho", "[rrc_ue_id(int,opt)]", rrc_gNB_trigger_xn_ho},
     {"", "", NULL},
 };
 

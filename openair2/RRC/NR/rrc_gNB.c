@@ -436,6 +436,15 @@ void openair_rrc_gNB_configuration(gNB_RRC_INST *rrc, gNB_RrcConfigurationReq *c
   return;
 } // END openair_rrc_gNB_configuration
 
+void nr_HO_Xn_trigger()
+{
+        MessageDef *msg = itti_alloc_new_message(TASK_RRC_GNB, 0, XNAP_HANDOVER_REQ);
+        //xnap_handover_req_t *req = &XNAP_HANDOVER_REQ(msg);
+        XNAP_HANDOVER_REQ(msg).target_cgi.cgi = 12345678;
+        itti_send_msg_to_task(TASK_XNAP, 0, msg);
+}
+
+
 static void rrc_gNB_process_AdditionRequestInformation(const module_id_t gnb_mod_idP, x2ap_ENDC_sgnb_addition_req_t *m)
 {
   struct NR_CG_ConfigInfo *cg_configinfo = NULL;
@@ -1839,7 +1848,7 @@ static void handle_rrcReconfigurationComplete(const protocol_ctxt_t *const ctxt_
 {
   AssertFatal(ue_context_p != NULL, "Processing %s() for UE %lx, ue_context_p is NULL\n", __func__, ctxt_pP->rntiMaybeUEid);
   gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
-  gNB_RRC_UE_t *ue_ctxt = &ue_context_p->ue_context;
+  //gNB_RRC_UE_t *ue_ctxt = &ue_context_p->ue_context;
 
   uint8_t xid = reconfig_complete->rrc_TransactionIdentifier;
   UE->ue_reconfiguration_counter++;
@@ -1897,17 +1906,16 @@ static void handle_rrcReconfigurationComplete(const protocol_ctxt_t *const ctxt_
     };
     rrc->mac_rrc.ue_context_release_command(UE->ho_context->data.intra_cu.source_du, &ue_context_release_cmd);
   }
-  LOG_I(RRC,"UE reconf counter %d\n",UE->ue_reconfiguration_counter); 
+  /*LOG_I(RRC,"UE reconf counter %d\n",UE->ue_reconfiguration_counter); 
   if (UE->ue_reconfiguration_counter ==1) { 
     LOG_I(RRC,"UE reconf counter is 1 entering HO_REQ %d\n",UE->ue_reconfiguration_counter);
     MessageDef *msg = itti_alloc_new_message(TASK_RRC_GNB, 0, XNAP_HANDOVER_REQ);
     xnap_handover_req_t *req = &XNAP_HANDOVER_REQ(msg);
-    /*rrc_gNB_process_HandoverPreparationInformation(
+      rrc_gNB_process_HandoverPreparationInformation(
       ue_context_p,
       XNAP_HANDOVER_REQ(msg).rrc_buffer,
-      &XNAP_HANDOVER_REQ(msg).rrc_buffer_size); */
+      &XNAP_HANDOVER_REQ(msg).rrc_buffer_size); 
 
-   ////code for force trigger=======
     req->ue_id = ue_ctxt->rrc_ue_id;
     req->target_cgi.cgi = 12345678; //ue_ctxt->measResults->measResultNeighCells->choice.measResultListNR->list.array[0]->physCellId;
     req->guami.plmn_id.mcc = ue_ctxt->ue_guami.mcc;
@@ -1917,9 +1925,9 @@ static void handle_rrcReconfigurationComplete(const protocol_ctxt_t *const ctxt_
     req->guami.amf_set_id = ue_ctxt->ue_guami.amf_set_id;
     req->guami.amf_pointer = ue_ctxt->ue_guami.amf_pointer;
     req->ue_context.security_capabilities = ue_ctxt->xnap_security_capabilities;
-    //nr_derive_key(RRC_ENC_ALG, ue_ctxt->ciphering_algorithm, ue_ctxt->kgnb,XNAP_HANDOVER_REQ(msg).ue_context.security_capabilities.encryption_algorithms);
-    //nr_derive_key(RRC_INT_ALG, ue_ctxt->integrity_algorithm, ue_ctxt->kgnb,XNAP_HANDOVER_REQ(msg).ue_context.security_capabilities.integrity_algorithms);
-    /*XNAP_HANDOVER_REQ(msg).ue_context.ngc_ue_sig_ref = ue_ctxt->amf_ue_ngap_id;
+    nr_derive_key(RRC_ENC_ALG, ue_ctxt->ciphering_algorithm, ue_ctxt->kgnb,XNAP_HANDOVER_REQ(msg).ue_context.security_capabilities.encryption_algorithms);
+    nr_derive_key(RRC_INT_ALG, ue_ctxt->integrity_algorithm, ue_ctxt->kgnb,XNAP_HANDOVER_REQ(msg).ue_context.security_capabilities.integrity_algorithms);
+    XNAP_HANDOVER_REQ(msg).ue_context.ngc_ue_sig_ref = ue_ctxt->amf_ue_ngap_id;
     XNAP_HANDOVER_REQ(msg).ue_context.as_security_ncc = ue_ctxt->kgnb_ncc;
   XNAP_HANDOVER_REQ(msg).ue_context.as_security_key_ranstar = ue_ctxt->kgnb[0];
   XNAP_HANDOVER_REQ(msg).ue_context.pdusession_tobe_setup_list.pdu[NGAP_MAX_PDUSESSION].pdusession_id = ue_ctxt->pduSession[NGAP_MAX_PDU_SESSION].param.pdusession_id;
@@ -1930,11 +1938,11 @@ static void handle_rrcReconfigurationComplete(const protocol_ctxt_t *const ctxt_
   XNAP_HANDOVER_REQ(msg).ue_context.pdusession_tobe_setup_list.pdu[NGAP_MAX_PDUSESSION].qos_list.qos[QOSFLOW_MAX_VALUE].qos_params.non_dynamic.fiveqi = ue_ctxt->pduSession[NGAP_MAX_PDU_SESSION].param.qos[QOSFLOW_MAX_VALUE].fiveQI;
   XNAP_HANDOVER_REQ(msg).ue_context.pdusession_tobe_setup_list.pdu[NGAP_MAX_PDUSESSION].qos_list.qos[QOSFLOW_MAX_VALUE].qos_params.dynamic.qos_priority_level = ue_ctxt->pduSession[NGAP_MAX_PDU_SESSION].param.qos[QOSFLOW_MAX_VALUE].qos_priority;
   XNAP_HANDOVER_REQ(msg).ue_context.pdusession_tobe_setup_list.pdu[NGAP_MAX_PDUSESSION].qos_list.num_qos = ue_ctxt->pduSession[NGAP_MAX_PDU_SESSION].param.nb_qos;
-  XNAP_HANDOVER_REQ(msg).ue_context.pdusession_tobe_setup_list.num_pdu = ue_ctxt->nb_of_pdusessions;*/
+  XNAP_HANDOVER_REQ(msg).ue_context.pdusession_tobe_setup_list.num_pdu = ue_ctxt->nb_of_pdusessions;
   
     itti_send_msg_to_task(TASK_XNAP, 0, msg);
     LOG_I(NR_RRC, "Handover triggered :)\n");
-  }
+  }*/
 }
 //-----------------------------------------------------------------------------
 int rrc_gNB_decode_dcch(const protocol_ctxt_t *const ctxt_pP,
@@ -2917,10 +2925,9 @@ void rrc_gNB_process_handoverprepinfo(sctp_assoc_t assoc_id, xnap_handover_req_t
 	RB_INSERT(rrc_nr_ue_tree_s, &rrc->rrc_ue_head, ue_context_p);
         rrc_gNB_ue_context_t *ue_context_n = rrc_gNB_get_ue_context(rrc, ue_context_p->ue_context.rrc_ue_id);
         // rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context(gnb_rrc_inst, ctxt_pP->rntiMaybeUEid);
-  if (!ue_context_n) {
-    LOG_E(RRC, "could not find UE context in target\n");
-    return -1;
-  }
+  	if (!ue_context_n) {
+    	LOG_E(RRC, "could not find UE context in target\n");
+ 	}	
 
 	long ncii = 12345678;
         //sctp_assoc_t association_id = xnap_gNB_get_assoc_id(instance_p, ncii);
@@ -3029,11 +3036,11 @@ void rrc_gNB_process_handover_req_ack(sctp_assoc_t assoc_id, xnap_handover_req_a
   }*/
 
 
-  asn_dec_rval_t dec_rval = uper_decode_complete( NULL,
+  /*asn_dec_rval_t dec_rval = uper_decode_complete( NULL,
                             &asn_DEF_NR_DL_DCCH_Message,
                             (void *)&reconf,
                             (uint8_t *)m->rrc_buffer,
-                            (int) m->rrc_buffer_size);//m->rrc_buffer_size);
+                            (int) m->rrc_buffer_size);//m->rrc_buffer_size);*/
   xer_fprint(stdout, &asn_DEF_NR_DL_DCCH_Message , (void *)&reconf); 
  
 //  NR_DL_DCCH_Message_t  *dcch = NULL;
@@ -3070,8 +3077,8 @@ void rrc_gNB_process_handover_req_ack(sctp_assoc_t assoc_id, xnap_handover_req_a
   asn_dec_rval_t dec_rval1 = uper_decode_complete( NULL,
                             &asn_DEF_NR_CellGroupConfig,
                             (void *)&cgc,
-                            (uint8_t **)reconf_ie->buf,
-                            (int **)reconf_ie->size);//m->rrc_buffer_size);
+                            (uint8_t *)reconf_ie->buf,
+                            (int)reconf_ie->size);//m->rrc_buffer_size);
   //xer_fprint(stdout,&asn_DEF_NR_CellGroupConfig, (void *)&cgc);
 
 
