@@ -2404,13 +2404,13 @@ xnap_net_config_t Read_IPconfig_Xn(void)
     LOG_E(RRC, "Add gNB IPv4 address and/or port for XNC in the CONF file!\n");
     exit(1);
   }
-  cidr = *(NETParams[GNB_IPV4_ADDR_FOR_XNC_IDX].strptr);
+  /*cidr = *(NETParams[GNB_IPV4_ADDR_FOR_XNC_IDX].strptr);
   char *save = NULL;
-  address = strtok_r(cidr, "/", &save);
+  address = strtok_r(cidr, "/", &save);*/
   nc.gnb_xn_ip_address.ipv6 = 0;
   nc.gnb_xn_ip_address.ipv4 = 1;
-  strcpy(nc.gnb_xn_ip_address.ipv4_address, address);
-
+ // strcpy(nc.gnb_xn_ip_address.ipv4_address, address);
+  strcpy(nc.gnb_xn_ip_address.ipv4_address, *(NETParams[GNB_IPV4_ADDR_FOR_XNC_IDX].strptr));
   // SCTP SETTING
   nc.sctp_streams.sctp_out_streams = SCTP_OUT_STREAMS;
   nc.sctp_streams.sctp_in_streams = SCTP_IN_STREAMS;
