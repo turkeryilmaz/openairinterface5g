@@ -848,17 +848,17 @@ add_library(ldpc_cl MODULE ${PHY_LDPC_CL_SRC} )
 target_link_libraries(ldpc_cl OpenCL)
 add_dependencies(ldpc_cl nrLDPC_decoder_kernels_CL)
 
-set(PHY_NR_ULSCH_DECODING_DEMO_SRC
-  ${OPENAIR1_DIR}/PHY/CODING/nr_ulsch_decoding_interface_demo.c
-  ${OPENAIR1_DIR}/PHY/CODING/nr_dlsch_encoding_interface_demo.c
+set(PHY_NRLDPC_CODING_DEMO_SRC
+  ${OPENAIR1_DIR}/PHY/CODING/nrLDPC_coding_interface_demo_decoder.c
+  ${OPENAIR1_DIR}/PHY/CODING/nrLDPC_coding_interface_demo_encoder.c
 )
 
 set(PHY_NR_CODINGIF
   ${OPENAIR1_DIR}/PHY/CODING/nrLDPC_load.c
 )
 
-set(PHY_NR_ULSCH_DECODINGIF
-  ${OPENAIR1_DIR}/PHY/CODING/nr_ulsch_decoding_interface_load.c
+set(PHY_NRLDPC_CODINGIF
+  ${OPENAIR1_DIR}/PHY/CODING/nrLDPC_coding_interface_load.c
 )
 
 ##############################################
@@ -881,7 +881,7 @@ add_library(coding MODULE ${PHY_TURBOSRC} )
 
 add_library(dfts MODULE ${OPENAIR1_DIR}/PHY/TOOLS/oai_dfts.c ${OPENAIR1_DIR}/PHY/TOOLS/oai_dfts_neon.c)
 
-add_library(ldpc_slot_demo MODULE ${PHY_NR_ULSCH_DECODING_DEMO_SRC})
+add_library(ldpc_slot_demo MODULE ${PHY_NRLDPC_CODING_DEMO_SRC})
 
 set(PHY_SRC_COMMON
   ${OPENAIR1_DIR}/PHY/LTE_TRANSPORT/dci_tools_common.c
@@ -1042,6 +1042,7 @@ set(PHY_SRC_UE
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_dlsch_tools.c
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_dlsch_coding.c
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_ulsch_decoding.c
+  ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_ulsch_decoding_slot.c
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_ulsch.c
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_tbs_tools.c
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_sch_dmrs.c
@@ -1071,7 +1072,7 @@ set(PHY_SRC_UE
   ${PHY_POLARSRC}
   ${PHY_SMALLBLOCKSRC}
   ${PHY_NR_CODINGIF}
-  ${PHY_NR_ULSCH_DECODINGIF}
+  ${PHY_NRLDPC_CODINGIF}
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/pucch_rx.c
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/srs_rx.c
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_uci_tools_common.c
