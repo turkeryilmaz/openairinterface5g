@@ -573,7 +573,7 @@ long rrc_get_max_nr_csrs(const int max_rbs, const long b_SRS) {
   return c_srs;
 }
 
-int get_first_ul_slot_new(const struct NR_TDD_UL_DL_ConfigCommon *tdd, bool pattern)
+int get_first_ul_slot_new(const struct NR_TDD_UL_DL_ConfigCommon *tdd, bool is_pattern2)
 {
   const NR_TDD_UL_DL_Pattern_t *p1 = &tdd->pattern1;
   const NR_TDD_UL_DL_Pattern_t *p2 = tdd->pattern2;
@@ -588,15 +588,30 @@ int get_first_ul_slot_new(const struct NR_TDD_UL_DL_ConfigCommon *tdd, bool patt
 static struct NR_SRS_Resource__resourceType__periodic *configure_periodic_srs(const NR_ServingCellConfigCommon_t *scc,
                                                                               const int uid)
 {
+  gNB_MAC_INST *nrmac = RC.nrmac[0];
+  tdd_config_t tdd_config = nrmac->tdd_config;
+  int mu = *scc->ssbSubcarrierSpacing;
+  const int n_slots_frame = slotsperframe[mu];
+  const int n_ul_slots_period = tdd_config.is_tdd ? tdd_config.num_ul_slots : n_slots_frame;
+  const int n_slots_period = tdd_config.tdd_numb_slots_period;
+  int first_ul_slot_period = 0;
+  int offset = 0;
+  if (tdd_config.is_tdd) {
+    int ULslot_pattern1 = scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSlots
+                          + (scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSlots > 0);
+    if (ULslot_pattern1 && ((uid % n_ul_slots_period) <= ULslot_pattern1)) {
+      first_ul_slot_period = get_first_ul_slot_new(scc->tdd_UL_DL_ConfigurationCommon, 0);
+      offset = first_ul_slot_period + uid % n_ul_slots_period + (uid / n_ul_slots_period) * n_slots_period;
+      AssertFatal(offset < 2560, "Cannot allocate SRS configuration for uid %d, not enough resources\n", uid);
 
-  const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
-  const int n_slots_frame = slotsperframe[*scc->ssbSubcarrierSpacing];
-  const int ul_slots_period = tdd ? tdd->nrofUplinkSlots : n_slots_frame;
-  const int n_slots_period = tdd ? n_slots_frame/get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity) : n_slots_frame;
-  const int first_full_ul_slot = n_slots_period - ul_slots_period;
+    } else if (scc->tdd_UL_DL_ConfigurationCommon->pattern2 != NULL) {
+      first_ul_slot_period = get_first_ul_slot_new(scc->tdd_UL_DL_ConfigurationCommon, 1);
+      offset = first_ul_slot_period + (uid % scc->tdd_UL_DL_ConfigurationCommon->pattern2->nrofUplinkSlots)
+               + (uid / n_ul_slots_period) * n_slots_period;
+      AssertFatal(offset < 2560, "Cannot allocate SRS configuration for uid %d, not enough resources\n", uid);
+    }
+  }
   const int ideal_period = n_slots_period * MAX_MOBILES_PER_GNB;
-  const int offset = first_full_ul_slot + (uid % ul_slots_period) + (n_slots_period * (uid / ul_slots_period));
-  AssertFatal(offset < 2560, "Cannot allocate SRS configuration for uid %d, not enough resources\n", uid);
   struct NR_SRS_Resource__resourceType__periodic *periodic_srs = calloc(1,sizeof(*periodic_srs));
   if (ideal_period < 5) {
     periodic_srs->periodicityAndOffset_p.present = NR_SRS_PeriodicityAndOffset_PR_sl4;
@@ -933,7 +948,7 @@ void nr_rrc_config_ul_tda(NR_ServingCellConfigCommon_t *scc, int min_fb_delay){
   int tdd_period = get_tdd_period(scc->tdd_UL_DL_ConfigurationCommon, tdd_config.tdd_slot_bitmap);
   tdd_config.tdd_numb_period_frame = get_nb_periods_per_frame(tdd_period);
   tdd_config.tdd_numb_slots_period = ((1 << mu) * 10) / tdd_config.tdd_numb_period_frame;
-  tdd_config.is_tdd = 1;
+  tdd_config.is_tdd = (scc->tdd_UL_DL_ConfigurationCommon != NULL);
   // UL TDA index 0 is basic slot configuration starting in symbol 0 til the last but one symbol
   struct NR_PUSCH_TimeDomainResourceAllocation *pusch_timedomainresourceallocation = CALLOC(1,sizeof(struct NR_PUSCH_TimeDomainResourceAllocation));
   pusch_timedomainresourceallocation->k2 = CALLOC(1,sizeof(long));
@@ -950,7 +965,7 @@ void nr_rrc_config_ul_tda(NR_ServingCellConfigCommon_t *scc, int min_fb_delay){
   pusch_timedomainresourceallocation1->startSymbolAndLength = get_SLIV(0, 12);
   asn1cSeqAdd(&scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList->list,pusch_timedomainresourceallocation1);
 
-  if (tdd_config.is_tdd) {
+  if (tdd_config.is_tdd == true) {
     int ul_symb;
     if (scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSymbols != 0) {
       ul_symb = scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSymbols;
@@ -1121,10 +1136,10 @@ void set_pucch_power_config(NR_PUCCH_Config_t *pucch_Config, int do_csirs) {
 
 static void set_SR_periodandoffset(NR_SchedulingRequestResourceConfig_t *schedulingRequestResourceConfig, const NR_ServingCellConfigCommon_t *scc, int scs)
 {
-  const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
+  const bool tdd = (scc->tdd_UL_DL_ConfigurationCommon != NULL);
   int sr_slot = 1; // in FDD SR in slot 1
   if(tdd)
-    sr_slot = get_first_ul_slot(tdd->nrofDownlinkSlots, tdd->nrofDownlinkSymbols, tdd->nrofUplinkSymbols);
+    sr_slot = get_first_ul_slot_new(scc->tdd_UL_DL_ConfigurationCommon, 0);
 
   schedulingRequestResourceConfig->periodicityAndOffset = calloc(1,sizeof(*schedulingRequestResourceConfig->periodicityAndOffset));
 
@@ -1577,21 +1592,11 @@ static void set_phr_config(NR_MAC_CellGroupConfig_t *mac_CellGroupConfig)
   mac_CellGroupConfig->phr_Config->choice.setup->phr_Tx_PowerFactorChange = NR_PHR_Config__phr_Tx_PowerFactorChange_dB1;
 }
 
-int get_first_ul_slot_new(const struct NR_TDD_UL_DL_ConfigCommon *tdd, bool pattern)
-{
-  if (pattern == false) {
-    return (tdd->pattern1.nrofDownlinkSlots + (tdd->pattern1.nrofDownlinkSymbols != 0 && tdd->pattern1.nrofUplinkSymbols == 0));
-  } else {
-    return (tdd->pattern1.nrofDownlinkSlots + (tdd->pattern1.nrofDownlinkSymbols != 0 || tdd->pattern1.nrofUplinkSlots != 0)
-            + tdd->pattern1.nrofUplinkSlots + tdd->pattern2->nrofDownlinkSlots
-            + (tdd->pattern2->nrofDownlinkSymbols != 0 && tdd->pattern2->nrofUplinkSlots == 0));
-  }
-}
 static void set_csi_meas_periodicity(const NR_ServingCellConfigCommon_t *scc, NR_CSI_ReportConfig_t *csirep, int uid, bool is_rsrp)
 {
   gNB_MAC_INST *nrmac = RC.nrmac[0];
 
-  const bool tdd = (scc->tdd_UL_DL_ConfigurationCommon != NULL);
+  const bool tdd = nrmac->tdd_config.is_tdd;
   const int n_slots_frame = slotsperframe[*scc->ssbSubcarrierSpacing];
   const int n_ul_slots_period = tdd ? nrmac->tdd_config.num_ul_slots : n_slots_frame;
   const int n_slots_period = tdd ? nrmac->tdd_config.tdd_numb_slots_period : n_slots_frame;
