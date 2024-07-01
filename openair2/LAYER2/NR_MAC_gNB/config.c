@@ -318,8 +318,6 @@ static int get_tdd_period(NR_TDD_UL_DL_ConfigCommon_t *tdd, nfapi_nr_config_requ
   tdd_config->num_dl_slots = 0;
   tdd_config->num_ul_slots = 0;
   NR_TDD_UL_DL_Pattern_t pattern = tdd->pattern1;
-  tdd_config->num_dl_slots = 0;
-  tdd_config->num_ul_slots = 0;
 
   if (pattern.ext1 == NULL) {
     LOG_D(NR_MAC, "Setting TDD configuration period to dl_UL_TransmissionPeriodicity %ld\n", pattern.dl_UL_TransmissionPeriodicity);
