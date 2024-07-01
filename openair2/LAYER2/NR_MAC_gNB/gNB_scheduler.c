@@ -150,6 +150,15 @@ bool is_xlsch_in_slot(uint64_t bitmap, sub_frame_t slot) {
   return (bitmap >> (slot % 64)) & 0x01;
 }
 
+bool is_ul_slot(sub_frame_t slot, tdd_bitmap_t *tdd_bmp)
+{
+  return ((tdd_bmp[slot].slot_type == TDD_NR_MIXED_SLOT) || (tdd_bmp[slot].slot_type == TDD_NR_UPLINK_SLOT));
+}
+bool is_dl_slot(sub_frame_t slot, tdd_bitmap_t *tdd_bmp)
+{
+  return ((tdd_bmp[slot].slot_type == TDD_NR_MIXED_SLOT) || (tdd_bmp[slot].slot_type == TDD_NR_DOWNLINK_SLOT));
+}
+
 /* the structure nfapi_nr_ul_tti_request_t is very big, let's copy only what is necessary */
 static void copy_ul_tti_req(nfapi_nr_ul_tti_request_t *to, nfapi_nr_ul_tti_request_t *from)
 {
