@@ -770,6 +770,7 @@ typedef struct tdd_config_t {
   int8_t tdd_numb_period_frame;
   uint8_t num_dl_slots;
   uint8_t num_ul_slots;
+  bool is_tdd;
 } tdd_config_t;
 
 /*! \brief top level eNB MAC structure */
