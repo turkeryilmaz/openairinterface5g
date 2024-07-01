@@ -325,6 +325,8 @@ int nr_write_ce_dlsch_pdu(module_id_t module_idP,
 int binomial(int n, int k);
 
 bool is_xlsch_in_slot(uint64_t bitmap, sub_frame_t slot);
+bool is_ul_slot(sub_frame_t slot, tdd_bitmap_t *tdd_bmp);
+bool is_dl_slot(sub_frame_t slot, tdd_bitmap_t *tdd_bmp);
 
 /* \brief Function to indicate a received SDU on ULSCH.
 @param Mod_id Instance ID of gNB
