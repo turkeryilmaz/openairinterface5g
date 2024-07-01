@@ -215,7 +215,7 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, frame_t frame, sub_frame_
 
   if (slot==0 && (*scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0]>=257)) {
     //FR2
-    const NR_TDD_UL_DL_Pattern_t *tdd = &scc->tdd_UL_DL_ConfigurationCommon->pattern1;
+    const bool tdd = gNB->tdd_config.is_tdd;
     AssertFatal(tdd,"Dynamic TDD not handled yet\n");
     const int nb_periods_per_frame = gNB->tdd_config.tdd_numb_period_frame;
     // re-initialization of tdd_beam_association at beginning of frame
