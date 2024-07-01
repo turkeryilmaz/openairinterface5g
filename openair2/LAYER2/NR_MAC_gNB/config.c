@@ -315,6 +315,8 @@ static int get_tdd_period(NR_TDD_UL_DL_ConfigCommon_t *tdd, nfapi_nr_config_requ
   float tdd_ms_period_ext[] = {3.0, 4.0};
   float pattern1_ms = 0.0, pattern2_ms = 0.0;
   int8_t total_slot_pattern1 = 0;
+  tdd_config->num_dl_slots = 0;
+  tdd_config->num_ul_slots = 0;
   NR_TDD_UL_DL_Pattern_t pattern = tdd->pattern1;
   tdd_config->num_dl_slots = 0;
   tdd_config->num_ul_slots = 0;
@@ -762,6 +764,7 @@ static void config_common(gNB_MAC_INST *nrmac, nr_pdsch_AntennaPorts_t pdsch_Ant
 
   // TDD Table Configuration
   if (cfg->cell_config.frame_duplex_type.value == TDD) {
+    nrmac->tdd_config.is_tdd = true;
     cfg->tdd_table.tdd_period.tl.tag = NFAPI_NR_CONFIG_TDD_PERIOD_TAG;
     cfg->num_tlv++;
     int num_tdd_patterns = get_tdd_period(scc->tdd_UL_DL_ConfigurationCommon, cfg, &nrmac->tdd_config);

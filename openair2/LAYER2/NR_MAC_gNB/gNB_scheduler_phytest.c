@@ -66,7 +66,7 @@ void nr_preprocessor_phytest(module_id_t module_id,
     return;
   }
 
-  const int tda = get_dl_tda(RC.nrmac[module_id], scc, slot);
+  const int tda = get_dl_tda(RC.nrmac[module_id], slot);
   NR_tda_info_t tda_info = get_dl_tda_info(dl_bwp,
                                            sched_ctrl->search_space->searchSpaceType->present,
                                            tda,
