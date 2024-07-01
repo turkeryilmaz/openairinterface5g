@@ -573,6 +573,18 @@ long rrc_get_max_nr_csrs(const int max_rbs, const long b_SRS) {
   return c_srs;
 }
 
+int get_first_ul_slot_new(const struct NR_TDD_UL_DL_ConfigCommon *tdd, bool pattern)
+{
+  const NR_TDD_UL_DL_Pattern_t *p1 = &tdd->pattern1;
+  const NR_TDD_UL_DL_Pattern_t *p2 = tdd->pattern2;
+
+  if (is_pattern2 == false) {
+    return (p1->nrofDownlinkSlots + (p1->nrofDownlinkSymbols != 0 && p1->nrofUplinkSymbols == 0));
+  } else {
+    return (p1->nrofDownlinkSlots + (p1->nrofDownlinkSymbols != 0 || p1->nrofUplinkSlots != 0) + p1->nrofUplinkSlots
+            + p2->nrofDownlinkSlots + (p2->nrofDownlinkSymbols != 0 && p2->nrofUplinkSlots == 0));
+  }
+}
 static struct NR_SRS_Resource__resourceType__periodic *configure_periodic_srs(const NR_ServingCellConfigCommon_t *scc,
                                                                               const int uid)
 {
