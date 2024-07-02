@@ -18,7 +18,7 @@
  * For more information about the OpenAirInterface (OAI) Software Alliance:
  *      contact@openairinterface.org
  */
-/*! \file nfapi/open-nFAPI/fapi/src/nr_fapi_p5.c
+/*! \file nfapi/open-nFAPI/fapi/src/p5/nr_fapi_p5.c
  * \brief
  * \author Ruben S. Silva
  * \date 2024
@@ -30,7 +30,6 @@
  */
 #include "nr_fapi.h"
 #include "nr_fapi_p5.h"
-#include "nr_fapi_p5_utils.h"
 #include "debug.h"
 
 bool isFAPIMessageIDValid(uint16_t id)
@@ -41,8 +40,8 @@ bool isFAPIMessageIDValid(uint16_t id)
          || id == NFAPI_NR_PHY_MSG_TYPE_TIMING_INFO;
 }
 
-int fapi_nr_p5_message_header_unpack(uint8_t **pMessageBuf,
-                                     uint32_t messageBufLen,
+int fapi_nr_message_header_unpack(uint8_t **pMessageBuf,
+                                  uint32_t messageBufLen,
                                      void *pUnpackedBuf,
                                      uint32_t unpackedBufLen,
                                      nfapi_p4_p5_codec_config_t *config)
@@ -191,7 +190,7 @@ int fapi_nr_p5_message_unpack(void *pMessageBuf,
               unpackedBufLen);
   // clean the supplied buffer for - tag value blanking
   (void)memset(pUnpackedBuf, 0, unpackedBufLen);
-  if (fapi_nr_p5_message_header_unpack(&pReadPackedMessage, NFAPI_HEADER_LENGTH, pMessageHeader, sizeof(fapi_message_header_t), 0)
+  if (fapi_nr_message_header_unpack(&pReadPackedMessage, NFAPI_HEADER_LENGTH, pMessageHeader, sizeof(fapi_message_header_t), 0)
       < 0) {
     // failed to read the header
     return -1;

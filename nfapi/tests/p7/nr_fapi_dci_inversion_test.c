@@ -29,7 +29,6 @@
  * \warning
  */
 #include "nfapi/tests/nr_fapi_test.h"
-#include "nr_fapi_p5.h"
 #include "nr_fapi.h"
 void printbits(uint64_t n, uint8_t numBytesToPrint)
 {

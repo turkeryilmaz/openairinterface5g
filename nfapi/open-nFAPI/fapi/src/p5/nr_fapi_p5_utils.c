@@ -18,7 +18,7 @@
  * For more information about the OpenAirInterface (OAI) Software Alliance:
  *      contact@openairinterface.org
  */
-/*! \file nfapi/open-nFAPI/fapi/src/nr_fapi_p5_utils.c
+/*! \file nfapi/open-nFAPI/fapi/src/p5/nr_fapi_p5_utils.c
  * \brief
  * \author Ruben S. Silva
  * \date 2024

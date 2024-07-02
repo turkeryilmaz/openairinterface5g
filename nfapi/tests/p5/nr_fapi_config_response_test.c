@@ -34,6 +34,7 @@
  * \warning
  */
 #include "nfapi/tests/nr_fapi_test.h"
+#include "nr_fapi_p5.h"
 #include "nr_fapi_p5_utils.h"
 
 void fill_config_response_tlv_list(nfapi_nr_generic_tlv_scf_t *list, uint8_t size)
@@ -106,7 +107,7 @@ void test_pack_unpack(nfapi_nr_config_response_scf_t *req)
     header_buffer[idx] = msg_buf[idx];
   }
   uint8_t *pReadPackedMessage = header_buffer;
-  int unpack_header_result = fapi_nr_p5_message_header_unpack(&pReadPackedMessage, NFAPI_HEADER_LENGTH, &header, sizeof(header), 0);
+  int unpack_header_result = fapi_nr_message_header_unpack(&pReadPackedMessage, NFAPI_HEADER_LENGTH, &header, sizeof(header), 0);
   DevAssert(unpack_header_result >= 0);
   DevAssert(header.message_id == req->header.message_id);
   DevAssert(header.message_length == req->header.message_length);
