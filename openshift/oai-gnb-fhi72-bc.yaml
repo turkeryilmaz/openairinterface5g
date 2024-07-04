@@ -28,9 +28,20 @@ spec:
     runPolicy: "Serial"
     source:
         type: "Binary"
+        secrets:
+          - secret:
+              name: etc-pki-entitlement
+            destinationDir: etc-pki-entitlement
+        configMaps:
+          - configMap:
+              name: rhsm-conf
+            destinationDir: rhsm-conf
+          - configMap:
+              name: rhsm-ca
+            destinationDir: rhsm-ca
     strategy:
         dockerStrategy:
-            dockerfilePath: "docker/Dockerfile.gNB.rhel9"
+            dockerfilePath: "docker/Dockerfile.gNB.fhi72.rhel9"
     output:
         to:
             kind: "ImageStreamTag"

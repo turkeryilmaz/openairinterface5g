@@ -30,7 +30,7 @@ FROM ran-base:latest AS gnb-base
 FROM ran-build-fhi72:latest AS gnb-build
 
 #start from scratch for target executable
-FROM registry.access.redhat.com/ubi9/ubi:latest as oai-gnb
+FROM registry.access.redhat.com/ubi9/ubi:latest as oai-gnb-fhi72
 ENV TZ=Europe/Paris
 
 # Copy the entitlements
