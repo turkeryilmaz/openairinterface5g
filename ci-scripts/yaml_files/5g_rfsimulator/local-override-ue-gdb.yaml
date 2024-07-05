@@ -1,0 +1,8 @@
+services:
+  oai-nr-ue:
+    privileged: true
+    stdin_open: true
+    tty: true
+    command: gdb -d /oai-dir/ --args /opt/oai-nr-ue/bin/nr-uesoftmodem -O /opt/oai-nr-ue/etc/nr-ue.conf -E --sa --rfsim -r 106 --numerology 1 -C 3619200000 --rfsimulator.serveraddr 192.168.71.140 --log_config.global_log_options level,nocolor,time --num-ues 2
+    volumes:
+      - ../../../:/oai-dir/
