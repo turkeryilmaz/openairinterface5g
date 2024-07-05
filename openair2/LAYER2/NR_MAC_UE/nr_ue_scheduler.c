@@ -916,17 +916,19 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
   }
 
   /* TPC_PUSCH */
-  bool stateless_pusch_power_control = mac->current_UL_BWP->pusch_Config != NULL
-                                       && mac->current_UL_BWP->pusch_Config->pusch_PowerControl != NULL
-                                       && mac->current_UL_BWP->pusch_Config->pusch_PowerControl->tpc_Accumulation != NULL;
   int delta_pusch = 0;
-  int table_38_213_7_1_1_1[2][4] = {{-1, 0, 1, 3}, {-4, -1, 1, 4}};
-  if (stateless_pusch_power_control) {
-    delta_pusch = table_38_213_7_1_1_1[1][dci->tpc];
-  } else {
-    // TODO: This is not entirely correct. In case there is a prevously scheduled PUSCH for a future slot
-    // we should apply its TPC now.
-    delta_pusch = table_38_213_7_1_1_1[0][dci->tpc];
+  if (dci) {
+    bool stateless_pusch_power_control = mac->current_UL_BWP->pusch_Config != NULL
+                                        && mac->current_UL_BWP->pusch_Config->pusch_PowerControl != NULL
+                                        && mac->current_UL_BWP->pusch_Config->pusch_PowerControl->tpc_Accumulation != NULL;
+    int table_38_213_7_1_1_1[2][4] = {{-1, 0, 1, 3}, {-4, -1, 1, 4}};
+    if (stateless_pusch_power_control) {
+      delta_pusch = table_38_213_7_1_1_1[1][dci->tpc];
+    } else {
+      // TODO: This is not entirely correct. In case there is a prevously scheduled PUSCH for a future slot
+      // we should apply its TPC now.
+      delta_pusch = table_38_213_7_1_1_1[0][dci->tpc];
+    }
   }
 
   bool is_rar_tx_retx = rnti_type == TYPE_TC_RNTI_;
@@ -1447,6 +1449,7 @@ void nr_ue_ul_scheduler(NR_UE_MAC_INST_t *mac, nr_uplink_indication_t *ul_info)
           int tx_power = ulcfg_pdu->pusch_config_pdu.tx_power;
           int P_CMAX = nr_get_Pcmax(mac->p_Max,
                                     mac->nr_band,
+                                    mac->frame_type,
                                     mac->frequency_range,
                                     ulcfg_pdu->pusch_config_pdu.qam_mod_order,
                                     false,

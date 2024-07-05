@@ -1258,11 +1258,7 @@ void *nas_nrue(void *args_p)
   itti_receive_msg(TASK_NAS_NRUE, &msg_p);
 
   if (msg_p != NULL) {
-<<<<<<< HEAD
     instance_t instance = msg_p->ittiMsgHeader.destinationInstance;
-=======
-    instance_t instance = msg_p->ittiMsgHeader.originInstance;
->>>>>>> e59586918d (Lift NAS restriction of 1 UE / process in NR UE)
 
     switch (ITTI_MSG_ID(msg_p)) {
       case INITIALIZE_MESSAGE:
@@ -1331,7 +1327,7 @@ void *nas_nrue(void *args_p)
         uint8_t *pdu_buffer = NAS_CONN_ESTABLI_CNF(msg_p).nasMsg.data;
         int pdu_length = NAS_CONN_ESTABLI_CNF(msg_p).nasMsg.length;
 
-        nr_ue_nas_t *nas = get_ue_nas_info(0);
+        nr_ue_nas_t *nas = get_ue_nas_info(instance);
 
         security_state_t security_state = nas_security_rx_process(nas, pdu_buffer, pdu_length);
         if (security_state != NAS_SECURITY_INTEGRITY_PASSED
@@ -1343,12 +1339,7 @@ void *nas_nrue(void *args_p)
         int msg_type = get_msg_type(pdu_buffer, pdu_length);
 
         if (msg_type == REGISTRATION_ACCEPT) {
-<<<<<<< HEAD
           handle_registration_accept(instance, nas, pdu_buffer, pdu_length);
-=======
-          nr_ue_nas_t *nas = get_ue_nas_info(instance);
-          handle_registration_accept(instance, nas, pdu_buffer, NAS_CONN_ESTABLI_CNF(msg_p).nasMsg.length);
->>>>>>> e59586918d (Lift NAS restriction of 1 UE / process in NR UE)
         } else if (msg_type == FGS_PDU_SESSION_ESTABLISHMENT_ACC) {
           capture_pdu_session_establishment_accept_msg(instance, pdu_buffer, pdu_length);
         }
