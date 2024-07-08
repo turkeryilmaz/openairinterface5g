@@ -114,7 +114,7 @@ int32_t nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
     } else {
       srs_toa_ns[arx_index] = 0xFFFF;
     }
-    LOG_I(PHY, "SRS ToA estimator (RX ant %d): toa %d ns\n",arx_index,srs_toa_ns[arx_index]);
+    //LOG_D(PHY, "SRS ToA estimator (RX ant %d): toa %d ns\n",arx_index,srs_toa_ns[arx_index]);
   }
 
   // Add T tracer to log these chF and chT
@@ -189,9 +189,11 @@ void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int16_t gNB_id, int16_t ant_
     MQTTClient_deliveryToken token;
     int rc;
     int16_t peak_idx=0;
-    
+    int16_t peak_val=0;
+
     cJSON *mqtt_payload = cJSON_CreateObject();
     cJSON_AddNumberToObject(mqtt_payload, "peak_index", peak_idx);
+    cJSON_AddNumberToObject(mqtt_payload, "peak_val", peak_val);
     cJSON_AddNumberToObject(mqtt_payload, "source", gNB_id);
     cJSON_AddNumberToObject(mqtt_payload, "antenna_index", ant_idx);
 
@@ -222,9 +224,11 @@ void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int16_t gNB_id, int16_t ant_
       }
 
       peak_idx =  max_idx;
+      peak_val = max_val;
       printf("ant=%d , peak=%d\n",ant_idx,peak_idx);
 
       cJSON_SetIntValue(cJSON_GetObjectItem(mqtt_payload, "peak_index"), peak_idx);
+      cJSON_SetIntValue(cJSON_GetObjectItem(mqtt_payload, "peak_val"), peak_val);
 
     // PUBLISHING the Message
     pubmsg.payload = cJSON_Print(mqtt_payload);
