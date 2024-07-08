@@ -2329,7 +2329,6 @@ uint64_t pdcp_module_init( uint64_t pdcp_optmask, int id) {
              netlink_init_mbms_tun("oaitun_enm", 1);
              DevAssert(UE_NAS_USE_TUN || ENB_NAS_USE_TUN);
              setBaseNetAddress("10.0");
-             setNetMask("255.255.255.0");
              nas_config(1, 2, 1, "oaitun_enm");
          }else
              LOG_E(PDCP, "ENB pdcp will not use tun interface\n");
