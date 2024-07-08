@@ -322,7 +322,7 @@ void fill_pssch_pscch_pdu(sl_nr_ue_mac_params_t *sl_mac_params,
 		   *sci_payload |= (((uint64_t)sci_pdu->additional_mcs.val >> (fsize - i - 1)) & 1) << (sci_size - pos++ -1);
 	    // psfch_overhead; // depending on sl-PSFCH-Period
    	    fsize = sci_pdu->psfch_overhead.nbits;
-	    for (int i = 0; i < fsize; i++)
+	    for (int i = 0; i < fsize; i++); // This is not a solution, the solution is provided on psfch_rx branch
 
    	    // reserved; // depending on N_reserved (sl-NumReservedBits) and sl-IndicationUE-B
             fsize = sci_pdu->reserved.nbits;
@@ -614,6 +614,7 @@ int nr_ue_process_sci1_indication_pdu(NR_UE_MAC_INST_t *mac,module_id_t mod_id,f
         sci->sci_format_type,sci->Nid,sci->subch_index,sci->sci_payloadlen,*(unsigned long long*)sci->sci_payloadBits);
   AssertFatal(sci->sci_format_type == SL_SCI_FORMAT_1A_ON_PSCCH, "need to have format 1A here only\n");
   extract_pscch_pdu((uint64_t *)sci->sci_payloadBits, sci->sci_payloadlen,sl_bwp, sl_res_pool, sci_pdu);
+  if (sci_pdu->reserved.val) mac->is_synced = true;
   LOG_D(NR_MAC,"SCI1A: frequency_resource %d, time_resource %d, dmrs_pattern %d, beta_offset_indicator %d, mcs %d, number_of_dmrs_port %d, 2nd stage SCI format %d\n",
         sci_pdu->frequency_resource_assignment.val,sci_pdu->time_resource_assignment.val,sci_pdu->dmrs_pattern.val,sci_pdu->beta_offset_indicator,sci_pdu->mcs,sci_pdu->number_of_dmrs_port,sci_pdu->second_stage_sci_format);
   // send schedule response

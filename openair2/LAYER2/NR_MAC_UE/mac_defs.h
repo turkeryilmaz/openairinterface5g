@@ -640,6 +640,7 @@ typedef struct {
   time_stats_t rlc_data_req;
   int src_id;
   int dest_id;
+  bool is_synced;
 } NR_UE_MAC_INST_t;
 
 /*@}*/

@@ -94,10 +94,10 @@ bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP,int slotP, nr_sci_pdu_t
      sci_pdu->mcs = mac->sl_info.list[indx]->UE_sched_ctrl.sl_max_mcs;
      sci_pdu->additional_mcs.val = 0;
      sci_pdu->psfch_overhead.val = 0;
-     sci_pdu->reserved.val = 0;
+     sci_pdu->reserved.val = mac->is_synced ? 1 : 0;
      sci_pdu->conflict_information_receiver.val = 0;
      sci_pdu->beta_offset_indicator = 0;
-
+     LOG_D(NR_MAC, "Tx Reserved val: %d\n", sci_pdu->reserved.val);
      // Fill SCI2A
      sci2_pdu->harq_pid = 0;
      sci2_pdu->ndi = (1 - sci2_pdu->ndi) & 1;
