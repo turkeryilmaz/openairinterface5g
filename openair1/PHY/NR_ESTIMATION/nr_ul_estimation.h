@@ -66,7 +66,8 @@ int nr_est_timing_advance_srs(const NR_DL_FRAME_PARMS *frame_parms,
 			      uint8_t N_ap,
                               const int32_t srs_estimated_channel_time[N_ap][frame_parms->ofdm_symbol_size]);
 
-void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int32_t gNB_id, int16_t peak_idx, int ant_idx);
+//void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int32_t gNB_id, int16_t peak_idx, int ant_idx);
+void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int16_t gNB_id, int16_t ant_idx);
 
 int32_t nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
 			  uint8_t N_arx,

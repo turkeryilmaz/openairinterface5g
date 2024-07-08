@@ -21,7 +21,7 @@
 
 
 #include <string.h>
-
+#include <math.h>
 #include "nr_ul_estimation.h"
 #include "PHY/sse_intrin.h"
 #include "PHY/NR_REFSIG/nr_refsig.h"
@@ -46,6 +46,7 @@
 */
 
 #define TOPIC       "srs_toa_ns"
+#define SRS_CH_EST
 
 //#define DEBUG_CH
 //#define DEBUG_PUSCH
@@ -56,7 +57,9 @@
 #define  NR_SRS_IDFT_OVERSAMP_FACTOR 8
 
 extern MQTTClient client;
-void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int32_t gNB_id, int16_t peak_idx, int ant_idx);
+//void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int32_t gNB_id, int16_t peak_idx, int ant_idx);
+void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int16_t gNB_id, int16_t ant_idx);
+
 
 /* Generic function to find the peak of channel estimation buffer */
 int32_t nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
@@ -111,7 +114,7 @@ int32_t nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
     } else {
       srs_toa_ns[arx_index] = 0xFFFF;
     }
-    //LOG_I(PHY, "SRS ToA estimator (RX ant %d): toa %d ns\n",arx_index,srs_toa_ns[arx_index]);
+    LOG_I(PHY, "SRS ToA estimator (RX ant %d): toa %d ns\n",arx_index,srs_toa_ns[arx_index]);
   }
 
   // Add T tracer to log these chF and chT
@@ -146,7 +149,17 @@ int32_t nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
 
 }
 
+void fftshift(int32_t *buffer, int32_t buf_len) {
+    int half = buf_len / 2;
+    for (int i = 0; i < half; i++) {
+        c16_t temp = ((c16_t*)buffer)[i];
+        ((c16_t*)buffer)[i] = ((c16_t*)buffer)[i + half];
+        ((c16_t*)buffer)[i + half] = temp;
+    }
+}
+/*
 void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int32_t gNB_id, int16_t peak_idx, int ant_idx) {
+
     // MQTT Part
     MQTTClient_message pubmsg = MQTTClient_message_initializer;
     MQTTClient_deliveryToken token;
@@ -156,6 +169,62 @@ void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int32_t gNB_id, int16_t peak
     cJSON_AddNumberToObject(mqtt_payload, "peak_index", peak_idx);
     cJSON_AddNumberToObject(mqtt_payload, "source", gNB_id);
     cJSON_AddNumberToObject(mqtt_payload, "antenna_index", ant_idx);
+
+    // PUBLISHING the Message
+    pubmsg.payload = cJSON_Print(mqtt_payload);
+    pubmsg.payloadlen = (int)strlen(pubmsg.payload);
+    pubmsg.qos = 0;
+    pubmsg.retained = 0;
+    // MQTTClient_publishMessage(client, TOPIC, &pubmsg, &token);
+    if ((rc = MQTTClient_publishMessage(client, TOPIC, &pubmsg, &token) ) != MQTTCLIENT_SUCCESS){
+      LOG_W(PHY, "Failed to publish \"SRS ToA measurements\" MQTT message, return code %d\n", rc);
+    }
+}
+*/
+
+
+void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int16_t gNB_id, int16_t ant_idx) {
+    // MQTT Part
+    MQTTClient_message pubmsg = MQTTClient_message_initializer;
+    MQTTClient_deliveryToken token;
+    int rc;
+    int16_t peak_idx=0;
+    
+    cJSON *mqtt_payload = cJSON_CreateObject();
+    cJSON_AddNumberToObject(mqtt_payload, "peak_index", peak_idx);
+    cJSON_AddNumberToObject(mqtt_payload, "source", gNB_id);
+    cJSON_AddNumberToObject(mqtt_payload, "antenna_index", ant_idx);
+
+    #ifdef SRS_CH_EST
+      cJSON *chest_json    = NULL; //cJSON_CreateArray();
+      chest_json= cJSON_AddArrayToObject(mqtt_payload, "ch_est_T");
+    #endif
+
+    fftshift(buffer, buf_len);
+
+    // peak calculation
+    int32_t max_val = 0, max_idx = 0, abs_val = 0;
+      for(int k = 0; k < buf_len; k++)  {
+          int Re = ((c16_t*)buffer)[k].r;
+          int Im = ((c16_t*)buffer)[k].i;
+          abs_val = (Re*Re/2) + (Im*Im/2);
+          if(abs_val > max_val){
+          max_val = abs_val;
+          max_idx = k;
+          }
+
+          #ifdef SRS_CH_EST
+            cJSON *chest_json_value   = cJSON_CreateObject();
+            cJSON_AddNumberToObject(chest_json_value,"ch_est",  abs_val);
+            cJSON_AddItemToArray(chest_json,  chest_json_value );
+          #endif
+
+      }
+
+      peak_idx =  max_idx;
+      printf("ant=%d , peak=%d\n",ant_idx,peak_idx);
+
+      cJSON_SetIntValue(cJSON_GetObjectItem(mqtt_payload, "peak_index"), peak_idx);
 
     // PUBLISHING the Message
     pubmsg.payload = cJSON_Print(mqtt_payload);
@@ -985,10 +1054,6 @@ int nr_srs_channel_estimation(
              &srs_estimated_channel_time[ant][p_index][0],
              (gNB->frame_parms.ofdm_symbol_size>>1)*sizeof(int32_t));
     } // for (int p_index = 0; p_index < N_ap; p_index++)
-    int32_t srs_toa_ns[1] = {0};
-    nr_est_toa_ns_srs((NR_DL_FRAME_PARMS *)frame_parms, frame_parms->nb_antennas_rx, N_ap, srs_estimated_channel_freq, srs_toa_ns);
-    printf("srs_toa_ns[%d] = %d\n", ant, srs_toa_ns[ant]);
-    srs_toa_MQTT((int32_t *)srs_estimated_channel_time[ant], frame_parms->ofdm_symbol_size, ant, srs_toa_ns[ant], ant);
   } // for (int ant = 0; ant < frame_parms->nb_antennas_rx; ant++)
 
 
