@@ -229,9 +229,14 @@ void e1_bearer_context_setup(const e1ap_bearer_setup_req_t *req)
       security_parameters.integrity_algorithm = req->integrityProtectionAlgorithm;
       memcpy(security_parameters.ciphering_key, req->encryptionKey, NR_K_KEY_SIZE);
       memcpy(security_parameters.integrity_key, req->integrityProtectionKey, NR_K_KEY_SIZE);
+      /* add a new SDAP entity for the PDU session, if necessary */
+      sdap2drb_t sdap2drb = add_sdap_entity(true, cu_up_ue_id, DRB_configList.list.array[d]);
+      nr_sdap_entity_t *sdap_entity = nr_sdap_get_entity(cu_up_ue_id, sdap2drb.pdusession_id);
+      /* add DRB (PDCP) */
       add_drb(true, // set this to notify PDCP that his not UE
               cu_up_ue_id,
               DRB_configList.list.array[d],
+              sdap_entity,
               &security_parameters);
       ASN_STRUCT_RESET(asn_DEF_NR_DRB_ToAddModList, &DRB_configList.list);
       /* Handle F1-U tunnels setup */
