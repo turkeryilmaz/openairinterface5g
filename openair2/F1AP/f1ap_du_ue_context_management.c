@@ -893,6 +893,7 @@ int DU_send_UE_CONTEXT_RELEASE_COMPLETE(sctp_assoc_t assoc_id, f1ap_ue_context_r
 
 int DU_handle_UE_CONTEXT_MODIFICATION_REQUEST(instance_t instance, sctp_assoc_t assoc_id, uint32_t stream, F1AP_F1AP_PDU_t *pdu)
 {
+  LOG_I(F1AP,"DU ue_context_modification_request\n");
   F1AP_UEContextModificationRequest_t    *container;
   int i;
   f1ap_ue_context_modif_req_t ue_context_modification = {0};
@@ -1097,13 +1098,14 @@ int DU_handle_UE_CONTEXT_MODIFICATION_REQUEST(instance_t instance, sctp_assoc_t 
       memcpy(cu2du->uE_CapabilityRAT_ContainerList, uecap->buf, uecap->size);
     }
   }
-
+  LOG_I(F1AP,"DU ue_context_modification_request\n");
   ue_context_modification_request(f1ap_ue_context_modification_req);
   return 0;
 }
 
 int DU_send_UE_CONTEXT_MODIFICATION_RESPONSE(sctp_assoc_t assoc_id, f1ap_ue_context_modif_resp_t *resp)
 {
+  
   F1AP_F1AP_PDU_t                        pdu= {0};
   F1AP_UEContextModificationResponse_t    *out;
   uint8_t  *buffer=NULL;
@@ -1419,7 +1421,7 @@ int DU_send_UE_CONTEXT_MODIFICATION_RESPONSE(sctp_assoc_t assoc_id, f1ap_ue_cont
     LOG_E(F1AP, "Failed to encode F1 UE CONTEXT MODIFICATION RESPONSE\n");
     return -1;
   }
-
+  LOG_I(F1AP, "UE CONTEXT_MODIFICATION RESPONSE \n");
   f1ap_itti_send_sctp_data_req(assoc_id, buffer, len);
   return 0;
 }

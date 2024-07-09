@@ -920,6 +920,7 @@ int CU_handle_UE_CONTEXT_RELEASE_COMPLETE(instance_t instance, sctp_assoc_t asso
 
 int CU_send_UE_CONTEXT_MODIFICATION_REQUEST(sctp_assoc_t assoc_id, f1ap_ue_context_modif_req_t *f1ap_ue_context_modification_req)
 {
+  LOG_I(F1AP,"CU_send_UE_CONTEXT_MODIFICATION_REQUEST assoc id,= %d",assoc_id);
   F1AP_F1AP_PDU_t                        pdu= {0};
   F1AP_UEContextModificationRequest_t    *out;
   uint8_t  *buffer=NULL;
@@ -1367,6 +1368,7 @@ int CU_send_UE_CONTEXT_MODIFICATION_REQUEST(sctp_assoc_t assoc_id, f1ap_ue_conte
     LOG_E(F1AP, "Failed to encode F1 UE CONTEXT_MODIFICATION REQUEST\n");
     return -1;
   }
+  LOG_I(F1AP, "F1 UE CONTEXT_MODIFICATION REQUEST f1ap_itti_send_sctp_data_req\n");
   f1ap_itti_send_sctp_data_req(assoc_id, buffer, len);
   return 0;
 }
@@ -1487,7 +1489,7 @@ int CU_handle_UE_CONTEXT_MODIFICATION_RESPONSE(instance_t instance, sctp_assoc_t
         srb_p->lcid = srbs_setup_item_p->lCID;
       }
     }
-
+    LOG_I(F1AP," CU UE_CONTEXT_MODIFICATION_RESPONSE\n");
     itti_send_msg_to_task(TASK_RRC_GNB, instance, msg_p);
     return 0;
 }

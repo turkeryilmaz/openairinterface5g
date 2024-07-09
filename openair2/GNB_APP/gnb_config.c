@@ -2410,8 +2410,10 @@ xnap_net_config_t Read_IPconfig_Xn(void)
   nc.gnb_xn_ip_address.ipv6 = 0;
   nc.gnb_xn_ip_address.ipv4 = 1;
  // strcpy(nc.gnb_xn_ip_address.ipv4_address, address);
-  strcpy(nc.gnb_xn_ip_address.ipv4_address, *(NETParams[GNB_IPV4_ADDR_FOR_XNC_IDX].strptr));
+  char *address1 = "10.33.42.22";
+  strcpy(nc.gnb_xn_ip_address.ipv4_address, address1);
   // SCTP SETTING
+  LOG_I(XNAP, "**************XNAP_CUCP_SCTP_REQ(create socket) for %s***********\n", nc.gnb_xn_ip_address.ipv4_address);
   nc.sctp_streams.sctp_out_streams = SCTP_OUT_STREAMS;
   nc.sctp_streams.sctp_in_streams = SCTP_IN_STREAMS;
   if (get_softmodem_params()->sa) {

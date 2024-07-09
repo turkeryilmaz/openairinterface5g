@@ -363,21 +363,21 @@ NR_ControlResourceSet_t *get_coreset(gNB_MAC_INST *nrmac,
   NR_ControlResourceSetId_t coreset_id = *ss->controlResourceSetId;
 
   if (ss_type == NR_SearchSpace__searchSpaceType_PR_common) { // common search space
-    NR_ControlResourceSet_t *coreset;
+    NR_ControlResourceSet_t *coreset0 = calloc(1,sizeof(NR_ControlResourceSet_t));
     if(coreset_id == 0) {
-      coreset =  nrmac->sched_ctrlCommon->coreset; // this is coreset 0
+      coreset0 =  nrmac->sched_ctrlCommon->coreset; // this is coreset 0
     } else if (bwp) {
-      coreset = ((NR_BWP_Downlink_t*)bwp)->bwp_Common->pdcch_ConfigCommon->choice.setup->commonControlResourceSet;
+      coreset0 = ((NR_BWP_Downlink_t*)bwp)->bwp_Common->pdcch_ConfigCommon->choice.setup->commonControlResourceSet;
     } else if (scc->downlinkConfigCommon->initialDownlinkBWP->pdcch_ConfigCommon->choice.setup->commonControlResourceSet) {
-      coreset = scc->downlinkConfigCommon->initialDownlinkBWP->pdcch_ConfigCommon->choice.setup->commonControlResourceSet;
+      coreset0 = scc->downlinkConfigCommon->initialDownlinkBWP->pdcch_ConfigCommon->choice.setup->commonControlResourceSet;
     } else {
-      coreset = NULL;
+      coreset0 = NULL;
     }
 
-    if (coreset) AssertFatal(coreset_id == coreset->controlResourceSetId,
+    if (coreset0) AssertFatal(coreset_id == coreset0->controlResourceSetId,
 			     "ID of common ss coreset does not correspond to id set in the "
 			     "search space\n");
-    return coreset;
+    return coreset0;
   } else {
     const int n = ((NR_BWP_DownlinkDedicated_t*)bwp)->pdcch_Config->choice.setup->controlResourceSetToAddModList->list.count;
     for (int i = 0; i < n; i++) {

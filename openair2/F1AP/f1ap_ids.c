@@ -27,7 +27,7 @@
 #include <pthread.h>
 #include "common/utils/hashtable/hashtable.h"
 #include "common/utils/assertions.h"
-
+#include "common/utils/LOG/log.h"
 
 /* we have separate versions for CU and DU, as both CU&DU might coexist in the
  * same process */
@@ -49,6 +49,7 @@ bool cu_add_f1_ue_data(uint32_t ue_id, const f1_ue_data_t *data)
   DevAssert(cu2du_ue_mapping != NULL);
   uint64_t key = ue_id;
   if (hashtable_is_key_exists(cu2du_ue_mapping, key) == HASH_TABLE_OK) {
+    LOG_I(XNAP,"hashtable_is_key_exists \n");
     pthread_mutex_unlock(&cu2du_mutex);
     return false;
   }
@@ -77,7 +78,8 @@ f1_ue_data_t cu_get_f1_ue_data(uint32_t ue_id)
   uint64_t key = ue_id;
   void *data = NULL;
   hashtable_rc_t ret = hashtable_get(cu2du_ue_mapping, key, &data);
-  AssertFatal(ret == HASH_TABLE_OK && data != NULL, "element for ue_id %d not found\n", ue_id);
+ // AssertFatal(ret == HASH_TABLE_OK && data != NULL, "element for ue_id %d not found\n", ue_id);
+  AssertFatal(ret == HASH_TABLE_OK, "element for ue_id %d not found\n", ue_id);
   f1_ue_data_t ued = *(f1_ue_data_t *)data;
   pthread_mutex_unlock(&cu2du_mutex);
   return ued;

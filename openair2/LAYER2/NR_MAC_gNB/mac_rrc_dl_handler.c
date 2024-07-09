@@ -527,6 +527,7 @@ void ue_context_setup_request(const f1ap_ue_context_setup_t *req)
 
 void ue_context_modification_request(const f1ap_ue_context_modif_req_t *req)
 {
+  LOG_I(NR_MAC,"UE Context modification request IN MAC");
   gNB_MAC_INST *mac = RC.nrmac[0];
   f1ap_ue_context_modif_resp_t resp = {
     .gNB_CU_ue_id = req->gNB_CU_ue_id,

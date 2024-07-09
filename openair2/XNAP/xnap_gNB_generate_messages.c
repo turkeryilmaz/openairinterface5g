@@ -779,8 +779,8 @@ int xnap_gNB_generate_xn_handover_request (sctp_assoc_t assoc_id, xnap_handover_
   XNAP_XnAP_PDU_t                     pdu;
   XNAP_HandoverRequest_t              *xnhandoverreq;
   XNAP_HandoverRequest_IEs_t          *ie;
-  //XNAP_PDUSessionResourcesToBeSetup_Item_t* pdu_session_resources;
-  //XNAP_QoSFlowsToBeSetup_Item_t* qos_flows;
+  XNAP_PDUSessionResourcesToBeSetup_Item_t* pdu_session_resources;
+  XNAP_QoSFlowsToBeSetup_Item_t* qos_flows;
   //XNAP_LastVisitedCell_Item_t         *lastVisitedCell_Item;
 
  // instance_t  instance;
@@ -856,15 +856,16 @@ int xnap_gNB_generate_xn_handover_request (sctp_assoc_t assoc_id, xnap_handover_
   AMF_POINTER_TO_BIT_STRING(xnap_handover_req->guami.amf_pointer, &ie->value.choice.GUAMI.amf_set_id);
   asn1cSeqAdd(&xnhandoverreq->protocolIEs.list, ie);
  */
+
   
   /*UE context*/
-  /*ie = (XNAP_HandoverRequest_IEs_t *)calloc(1, sizeof(XNAP_HandoverRequest_IEs_t));
+/*  ie = (XNAP_HandoverRequest_IEs_t *)calloc(1, sizeof(XNAP_HandoverRequest_IEs_t));
   ie->id = XNAP_ProtocolIE_ID_id_UEContextInfoHORequest;
   ie->criticality = XNAP_Criticality_reject;
   ie->value.present = XNAP_HandoverRequest_IEs__value_PR_UEContextInfoHORequest;*/
   
   /*AMF UE NGAP ID*/
-  /*asn_uint642INTEGER(&ie->value.choice.UEContextInfoHORequest.ng_c_UE_reference, xnap_handover_req->ue_context.ngc_ue_sig_ref);*/
+ // asn_uint642INTEGER(&ie->value.choice.UEContextInfoHORequest.ng_c_UE_reference, xnap_handover_req->ue_context.ngc_ue_sig_ref);
 
 
   /*CP Transport Layer Information*/
@@ -897,9 +898,9 @@ int xnap_gNB_generate_xn_handover_request (sctp_assoc_t assoc_id, xnap_handover_
   /*UEAGMAXBITRTD_TO_ASN_PRIMITIVES(xnap_handover_req->ue_context.ue_ambr.br_dl,&ie->value.choice.UEContextInfoHORequest.ue_AMBR.dl_UE_AMBR);
   UEAGMAXBITRTU_TO_ASN_PRIMITIVES(xnap_handover_req->ue_context.ue_ambr.br_ul,&ie->value.choice.UEContextInfoHORequest.ue_AMBR.ul_UE_AMBR);*/
    
-  /*
+  
   //PDU session resources to be setup list
-  {
+ /* {
   	pdu_session_resources = (XNAP_PDUSessionResourcesToBeSetup_Item_t*)calloc(1, sizeof(XNAP_PDUSessionResourcesToBeSetup_Item_t));
 	
 	for(int i=0; i<xnap_handover_req->ue_context.pdusession_tobe_setup_list.num_pdu; i++)
@@ -912,7 +913,7 @@ int xnap_gNB_generate_xn_handover_request (sctp_assoc_t assoc_id, xnap_handover_
 
 		//UP TNL Information
 		pdu_session_resources->uL_NG_U_TNLatUPF.present = XNAP_UPTransportLayerInformation_PR_gtpTunnel;
-		CHAR_IPv4_TO_BIT_STRING(xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].up_ngu_tnl_ip_upf.ipv4_address, &pdu_session_resources->uL_NG_U_TNLatUPF.choice.gtpTunnel->tnl_address);
+		//CHAR_IPv4_TO_BIT_STRING(xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].up_ngu_tnl_ip_upf.ipv4_address, &pdu_session_resources->uL_NG_U_TNLatUPF.choice.gtpTunnel->tnl_address);
 		INT32_TO_OCTET_STRING(xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].up_ngu_tnl_teid_upf, &pdu_session_resources->uL_NG_U_TNLatUPF.choice.gtpTunnel->gtp_teid);
 		
 		//PDU session type
@@ -942,9 +943,9 @@ int xnap_gNB_generate_xn_handover_request (sctp_assoc_t assoc_id, xnap_handover_
 		}
 	}
 	asn1cSeqAdd(&ie->value.choice.UEContextInfoHORequest.pduSessionResourcesToBeSetup_List.list, pdu_session_resources);
-   }
+   }*/
 
-
+/*
   //UE History information
   ie = (XNAP_HandoverRequest_IEs_t *)calloc(1, sizeof(XNAP_HandoverRequest_IEs_t));
   ie->id = XNAP_ProtocolIE_ID_id_UEHistoryInformation;
@@ -955,11 +956,11 @@ int xnap_gNB_generate_xn_handover_request (sctp_assoc_t assoc_id, xnap_handover_
 	lastVisitedCell_Item->present = XNAP_LastVisitedCell_Item_PR_nG_RAN_Cell;
 	INT32_TO_OCTET_STRING(xnap_handover_req->uehistory_info.last_visited_cgi.cgi,  &lastVisitedCell_Item->choice.nG_RAN_Cell);
 	asn1cSeqAdd(&ie->value.choice.UEHistoryInformation.list, lastVisitedCell_Item);
-  }
+  }*/
 
   asn1cSeqAdd(&xnhandoverreq->protocolIEs.list, ie);
 
-  */
+  
 
 if (xnap_gNB_encode_pdu(&pdu, &buffer, &len) < 0) {
     LOG_E(XNAP,"Failed to encode XN handover request\n");

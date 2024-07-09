@@ -57,6 +57,7 @@ static void ue_context_setup_request_f1ap(sctp_assoc_t assoc_id, const f1ap_ue_c
 {
   MessageDef *msg = itti_alloc_new_message(TASK_RRC_GNB, 0, F1AP_UE_CONTEXT_SETUP_REQ);
   msg->ittiMsgHeader.originInstance = assoc_id;
+  LOG_I(F1AP,"ASSOC ID in ue_context_setup_request_f1ap %d\n", assoc_id);
   f1ap_ue_context_setup_t *f1ap_msg = &F1AP_UE_CONTEXT_SETUP_REQ(msg);
   *f1ap_msg = *req;
   if (req->cu_to_du_rrc_information != NULL) {
@@ -109,6 +110,7 @@ static void ue_context_modification_request_f1ap(sctp_assoc_t assoc_id, const f1
 {
   MessageDef *msg = itti_alloc_new_message(TASK_RRC_GNB, 0, F1AP_UE_CONTEXT_MODIFICATION_REQ);
   msg->ittiMsgHeader.originInstance = assoc_id;
+  LOG_I(F1AP,"ASSOC ID in ue_context_modification_request_f1ap %d\n", assoc_id);
   f1ap_ue_context_modif_req_t *f1ap_msg = &F1AP_UE_CONTEXT_MODIFICATION_REQ(msg);
   *f1ap_msg = *req;
   if (req->cu_to_du_rrc_information != NULL) {
