@@ -625,15 +625,14 @@ uint64_t nr_pdcp_module_init(uint64_t _pdcp_optmask, int id)
         ((PDCP_USE_NETLINK)?"usenetlink":""));
 
   if (PDCP_USE_NETLINK) {
-    nas_getparams();
-
     if(UE_NAS_USE_TUN) {
       char *ifprefix = get_softmodem_params()->nsa ? "oaitun_nrue" : "oaitun_ue";
       int num_if = (NFAPI_MODE == NFAPI_UE_STUB_PNF || IS_SOFTMODEM_SIML1 || NFAPI_MODE == NFAPI_MODE_STANDALONE_PNF)? MAX_MOBILES_PER_ENB : 1;
       netlink_init_tun(ifprefix, num_if, id);
       //Add --nr-ip-over-lte option check for next line
       if (IS_SOFTMODEM_NOS1){
-        nas_config(1, 1, !get_softmodem_params()->nsa ? 2 : 3, ifprefix);
+        const char *ip = !get_softmodem_params()->nsa ? "10.0.1.2" : "10.0.1.3";
+        nas_config(1, ip, ifprefix);
         set_qfi_pduid(7, 10);
       }
       LOG_I(PDCP, "UE pdcp will use tun interface\n");
@@ -641,7 +640,7 @@ uint64_t nr_pdcp_module_init(uint64_t _pdcp_optmask, int id)
     } else if(ENB_NAS_USE_TUN) {
       char *ifprefix = get_softmodem_params()->nsa ? "oaitun_gnb" : "oaitun_enb";
       netlink_init_tun(ifprefix, 1, id);
-      nas_config(1, 1, 1, ifprefix);
+      nas_config(1, "10.0.1.1", ifprefix);
       LOG_I(PDCP, "ENB pdcp will use tun interface\n");
       start_pdcp_tun_enb();
     } else {

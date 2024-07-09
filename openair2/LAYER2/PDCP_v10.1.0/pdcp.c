@@ -2300,22 +2300,20 @@ uint64_t pdcp_module_init( uint64_t pdcp_optmask, int id) {
         ((PDCP_USE_NETLINK)?"usenetlink":""));
 
   if (PDCP_USE_NETLINK) {
-    nas_getparams();
-
     if(UE_NAS_USE_TUN) {
       int num_if = (NFAPI_MODE == NFAPI_UE_STUB_PNF || IS_SOFTMODEM_SIML1 || NFAPI_MODE == NFAPI_MODE_STANDALONE_PNF)? MAX_MOBILES_PER_ENB : 1;
       netlink_init_tun("oaitun_ue",num_if, id);
       if (IS_SOFTMODEM_NOS1)
-        nas_config(1, 1, 2, "oaitun_ue");
+        nas_config(1, "10.0.1.2", "oaitun_ue");
       netlink_init_mbms_tun("oaitun_uem", id + 1);
-      nas_config(1, 2, 2, "oaitun_uem");
+      nas_config(1, "10.0.2.2", "oaitun_uem");
       LOG_I(PDCP, "UE pdcp will use tun interface\n");
     } else if(ENB_NAS_USE_TUN) {
       netlink_init_tun("oaitun_enb", 1, 0);
-      nas_config(1, 1, 1, "oaitun_enb");
+      nas_config(1, "10.0.1.1", "oaitun_enb");
       if(pdcp_optmask & ENB_NAS_USE_TUN_W_MBMS_BIT){
         netlink_init_mbms_tun("oaitun_enm", 1);
-        nas_config(1, 2, 1, "oaitun_enm");
+        nas_config(1, "10.0.2.1", "oaitun_enm");
         LOG_I(PDCP, "ENB pdcp will use mbms tun interface\n");
       }
       LOG_I(PDCP, "ENB pdcp will use tun interface\n");
@@ -2323,16 +2321,15 @@ uint64_t pdcp_module_init( uint64_t pdcp_optmask, int id) {
       LOG_I(PDCP, "pdcp will use kernel modules\n");
       netlink_init();
     }
-  }else{
-         if(pdcp_optmask & ENB_NAS_USE_TUN_W_MBMS_BIT){
-             LOG_W(PDCP, "ENB pdcp will use tun interface for MBMS\n");
-             netlink_init_mbms_tun("oaitun_enm", 1);
-             DevAssert(UE_NAS_USE_TUN || ENB_NAS_USE_TUN);
-             setBaseNetAddress("10.0");
-             nas_config(1, 2, 1, "oaitun_enm");
-         }else
-             LOG_E(PDCP, "ENB pdcp will not use tun interface\n");
-   }
+  } else {
+    if (pdcp_optmask & ENB_NAS_USE_TUN_W_MBMS_BIT) {
+      LOG_W(PDCP, "ENB pdcp will use tun interface for MBMS\n");
+      netlink_init_mbms_tun("oaitun_enm", 1);
+      DevAssert(UE_NAS_USE_TUN || ENB_NAS_USE_TUN);
+      nas_config(1, "10.0.2.1", "oaitun_enm");
+    } else
+      LOG_E(PDCP, "ENB pdcp will not use tun interface\n");
+  }
 
   pthread_create(&pdcp_stats_thread_desc,NULL,pdcp_stats_thread,NULL);
 
