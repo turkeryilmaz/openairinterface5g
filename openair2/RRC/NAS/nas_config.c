@@ -42,7 +42,7 @@
 static bool setInterfaceParameter(int sock_fd, const char *ifn, const char *if_addr, int operation)
 {
   struct ifreq ifr = {0};
-  strncpy(ifr.ifr_name, ifn, sizeof(ifr.ifr_name)-1);
+  strncpy(ifr.ifr_name, ifn, sizeof(ifr.ifr_name));
 
   struct sockaddr_in addr = {.sin_family = AF_INET};
   inet_aton(if_addr, &addr.sin_addr);
@@ -62,7 +62,7 @@ typedef enum { INTERFACE_DOWN, INTERFACE_UP } if_action_t;
 static bool change_interface_state(int sock_fd, const char *ifn, if_action_t if_action)
 {
   struct ifreq ifr = {0};
-  strncpy(ifr.ifr_name, ifn, sizeof(ifr.ifr_name)-1);
+  strncpy(ifr.ifr_name, ifn, sizeof(ifr.ifr_name));
 
   if (if_action == INTERFACE_UP) {
     ifr.ifr_flags |= IFF_UP | IFF_NOARP | IFF_MULTICAST;
@@ -81,8 +81,8 @@ static bool change_interface_state(int sock_fd, const char *ifn, if_action_t if_
 // non blocking full configuration of the interface (address, and the two lest octets of the address)
 bool nas_config(int interface_id, const char *ip, const char *ifpref)
 {
-  char interfaceName[20];
-  sprintf(interfaceName, "%s%d", ifpref, interface_id);
+  char interfaceName[IFNAMSIZ];
+  snprintf(interfaceName, sizeof(interfaceName), "%s%d", ifpref, interface_id);
 
   int sock_fd = socket(AF_INET, SOCK_DGRAM, 0);
   if (sock_fd < 0) {
