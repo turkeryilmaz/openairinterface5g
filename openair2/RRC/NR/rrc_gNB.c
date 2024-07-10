@@ -436,29 +436,47 @@ void openair_rrc_gNB_configuration(gNB_RRC_INST *rrc, gNB_RrcConfigurationReq *c
   return;
 } // END openair_rrc_gNB_configuration
 
-void nr_HO_Xn_trigger()
+void nr_HO_Xn_trigger(ue_id_t ue_id)
 {
     MessageDef *msg = itti_alloc_new_message(TASK_RRC_GNB, 0, XNAP_HANDOVER_REQ);
         //xnap_handover_req_t *req = &XNAP_HANDOVER_REQ(msg);
-   /* instance_t instance = 0; //for time being
+    instance_t instance = 0; //for time being
     gNB_RRC_INST *rrc = RC.nrrrc[instance];
     rrc_gNB_ue_context_t *ue_context_p;
 
-    ue_context_p = rrc_gNB_allocate_new_ue_context(RC.nrrrc[0]);
+    ue_context_p = rrc_gNB_get_ue_context(RC.nrrrc[0], ue_id);
     RB_INSERT(rrc_nr_ue_tree_s, &rrc->rrc_ue_head, ue_context_p);
     gNB_RRC_UE_t *ue_ctxt = &ue_context_p->ue_context;
     XNAP_HANDOVER_REQ(msg).ue_context.ngc_ue_sig_ref = ue_ctxt->amf_ue_ngap_id;
     XNAP_HANDOVER_REQ(msg).ue_context.as_security_ncc = ue_ctxt->kgnb_ncc;
     XNAP_HANDOVER_REQ(msg).ue_context.as_security_key_ranstar = ue_ctxt->kgnb[0];
-    XNAP_HANDOVER_REQ(msg).ue_context.pdusession_tobe_setup_list.pdu[NGAP_MAX_PDUSESSION].pdusession_id = ue_ctxt->pduSession[NGAP_MAX_PDU_SESSION].param.pdusession_id;
+ /*   XNAP_HANDOVER_REQ(msg).ue_context.pdusession_tobe_setup_list.pdu[NGAP_MAX_PDUSESSION].pdusession_id = ue_ctxt->pduSession[NGAP_MAX_PDU_SESSION].param.pdusession_id;
     XNAP_HANDOVER_REQ(msg).ue_context.pdusession_tobe_setup_list.pdu[NGAP_MAX_PDUSESSION].snssai.sst = ue_ctxt->pduSession[NGAP_MAX_PDU_SESSION].param.nssai.sst;
     XNAP_HANDOVER_REQ(msg).ue_context.pdusession_tobe_setup_list.pdu[NGAP_MAX_PDUSESSION].pdu_session_type = ue_ctxt->pduSession[NGAP_MAX_PDU_SESSION].param.pdu_session_type;
     XNAP_HANDOVER_REQ(msg).ue_context.pdusession_tobe_setup_list.pdu[NGAP_MAX_PDUSESSION].up_ngu_tnl_teid_upf = ue_ctxt->pduSession[NGAP_MAX_PDU_SESSION].param.gtp_teid;
     XNAP_HANDOVER_REQ(msg).ue_context.pdusession_tobe_setup_list.pdu[NGAP_MAX_PDUSESSION].qos_list.qos[QOSFLOW_MAX_VALUE].qfi = ue_ctxt->pduSession[NGAP_MAX_PDU_SESSION].param.qos[QOSFLOW_MAX_VALUE].qfi;
     XNAP_HANDOVER_REQ(msg).ue_context.pdusession_tobe_setup_list.pdu[NGAP_MAX_PDUSESSION].qos_list.qos[QOSFLOW_MAX_VALUE].qos_params.non_dynamic.fiveqi = ue_ctxt->pduSession[NGAP_MAX_PDU_SESSION].param.qos[QOSFLOW_MAX_VALUE].fiveQI;
     XNAP_HANDOVER_REQ(msg).ue_context.pdusession_tobe_setup_list.pdu[NGAP_MAX_PDUSESSION].qos_list.qos[QOSFLOW_MAX_VALUE].qos_params.dynamic.qos_priority_level = ue_ctxt->pduSession[NGAP_MAX_PDU_SESSION].param.qos[QOSFLOW_MAX_VALUE].qos_priority;
-    XNAP_HANDOVER_REQ(msg).ue_context.pdusession_tobe_setup_list.pdu[NGAP_MAX_PDUSESSION].qos_list.num_qos = ue_ctxt->pduSession[NGAP_MAX_PDU_SESSION].param.nb_qos;
-    XNAP_HANDOVER_REQ(msg).ue_context.pdusession_tobe_setup_list.num_pdu = ue_ctxt->nb_of_pdusessions;*/
+    XNAP_HANDOVER_REQ(msg).ue_context.pdusession_tobe_setup_list.pdu[NGAP_MAX_PDUSESSION].qos_list.num_qos = ue_ctxt->pduSession[NGAP_MAX_PDU_SESSION].param.nb_qos;*/
+  
+
+    XNAP_HANDOVER_REQ(msg).ue_context.pdusession_tobe_setup_list.num_pdu = ue_ctxt->nb_of_pdusessions;
+    for(int i=0; i<ue_ctxt->nb_of_pdusessions;i++)
+    {
+    XNAP_HANDOVER_REQ(msg).ue_context.pdusession_tobe_setup_list.pdu[i].pdusession_id = ue_ctxt->pduSession[i].param.pdusession_id;
+    XNAP_HANDOVER_REQ(msg).ue_context.pdusession_tobe_setup_list.pdu[i].snssai.sst = ue_ctxt->pduSession[i].param.nssai.sst;
+    XNAP_HANDOVER_REQ(msg).ue_context.pdusession_tobe_setup_list.pdu[i].pdu_session_type = ue_ctxt->pduSession[i].param.pdu_session_type;
+    XNAP_HANDOVER_REQ(msg).ue_context.pdusession_tobe_setup_list.pdu[i].up_ngu_tnl_teid_upf = ue_ctxt->pduSession[i].param.gtp_teid;
+    
+    XNAP_HANDOVER_REQ(msg).ue_context.pdusession_tobe_setup_list.pdu[i].qos_list.num_qos = ue_ctxt->pduSession[i].param.nb_qos;
+
+    for(int j=0; j<ue_ctxt->pduSession[i].param.nb_qos; j++)
+    {
+	XNAP_HANDOVER_REQ(msg).ue_context.pdusession_tobe_setup_list.pdu[i].qos_list.qos[j].qfi = ue_ctxt->pduSession[i].param.qos[j].qfi;
+        XNAP_HANDOVER_REQ(msg).ue_context.pdusession_tobe_setup_list.pdu[i].qos_list.qos[j].qos_params.non_dynamic.fiveqi = ue_ctxt->pduSession[i].param.qos[j].fiveQI;
+        XNAP_HANDOVER_REQ(msg).ue_context.pdusession_tobe_setup_list.pdu[i].qos_list.qos[j].qos_params.dynamic.qos_priority_level = ue_ctxt->pduSession[i].param.qos[j].qos_priority;
+    }
+  }
     XNAP_HANDOVER_REQ(msg).target_cgi.cgi = 12345678;
     
     itti_send_msg_to_task(TASK_XNAP, 0, msg);
@@ -2962,6 +2980,10 @@ void rrc_gNB_process_handoverprepinfo(sctp_assoc_t assoc_id, xnap_handover_req_t
 
 	nr_initiate_ue_setup_xn(rrc, &ue_context_p->ue_context, target_du, &ho_ctxt);
         
+	ue_context_p->ue_context.n_initial_pdu = m->ue_context.pdusession_tobe_setup_list.num_pdu;
+        ue_context_p->ue_context.initial_pdus = calloc(ue_context_p->ue_context.n_initial_pdu, sizeof(*ue_context_p->ue_context.initial_pdus));
+        trigger_bearer_setup(rrc, &ue_context_p->ue_context , ue_context_p->ue_context.n_initial_pdu, ue_context_p->ue_context.initial_pdus, 0);
+
 /*
 	MessageDef *message_p = itti_alloc_new_message(TASK_XNAP, 0, XNAP_HANDOVER_REQ_ACK);
 	message_p->ittiMsgHeader.originInstance = assoc_id;

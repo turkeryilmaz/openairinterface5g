@@ -167,7 +167,7 @@ int rrc_gNB_trigger_f1_ho(char *buf, int debug, telnet_printfunc_t prnt)
   return 0;
 }
 
-extern void nr_HO_Xn_trigger();
+extern void nr_HO_Xn_trigger(ue_id_t ue_id);
 
 int rrc_gNB_trigger_xn_ho(char *buf, int debug, telnet_printfunc_t prnt)
 {
@@ -186,7 +186,7 @@ int rrc_gNB_trigger_xn_ho(char *buf, int debug, telnet_printfunc_t prnt)
   }
 
   gNB_RRC_UE_t *UE = &ue->ue_context;
-  nr_HO_Xn_trigger();
+  nr_HO_Xn_trigger(UE->rrc_ue_id);
   prnt("RRC Xn handover triggered for UE %u\n", UE->rrc_ue_id);
 
   return 0;
