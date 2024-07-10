@@ -185,7 +185,7 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
 
   NR_UE_ULSCH_t *ulsch_ue = &phy_data->ulsch;
   sl_nr_tx_config_pscch_pssch_pdu_t *pscch_pssch_pdu = &phy_data->nr_sl_pssch_pscch_pdu;
-  NR_UL_UE_HARQ_t *harq_process_ul_ue = &UE->ul_harq_processes[harq_pid];
+  NR_UL_UE_HARQ_t *harq_process_ul_ue = get_softmodem_params()->sl_mode ? &UE->sl_harq_processes[harq_pid] : &UE->ul_harq_processes[harq_pid];
   const nfapi_nr_ue_pusch_pdu_t *pusch_pdu = &ulsch_ue->pusch_pdu;
 
   NR_DL_FRAME_PARMS *frame_parms = pscch_pssch_pdu == NULL ? &UE->frame_parms : &UE->SL_UE_PHY_PARAMS.sl_frame_params;

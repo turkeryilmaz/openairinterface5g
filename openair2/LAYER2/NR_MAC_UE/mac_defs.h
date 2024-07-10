@@ -468,6 +468,8 @@ typedef struct SL_CSI_Report {
   //
 typedef struct {
 
+  // sidelink bytes that are currently scheduled
+  int sched_sl_bytes;
   /// Sched PSSCH: scheduling decisions, copied into HARQ and cleared every TTI
   NR_sched_pssch_t sched_pssch;
   //
@@ -493,7 +495,7 @@ typedef struct {
 
 } NR_SL_UE_sched_ctrl_t;
 
-#define MAX_SL_UE_CONNECTIONS 8
+#define MAX_SL_UE_CONNECTIONS 1
 
 #define MAX_SL_CSI_REPORTCONFIG MAX_SL_UE_CONNECTIONS 
 
@@ -503,6 +505,7 @@ typedef struct {
   /// scheduling control info
   nr_sl_csi_report_t csi_report_template[MAX_SL_CSI_REPORTCONFIG];
   NR_SL_UE_sched_ctrl_t UE_sched_ctrl;
+  NR_UE_sl_mac_stats_t mac_sl_stats;
 } NR_SL_UE_info_t;
 
 
@@ -640,6 +643,7 @@ typedef struct {
   time_stats_t rlc_data_req;
   int src_id;
   int dest_id;
+  pthread_mutex_t sl_sched_lock;
   bool is_synced;
 } NR_UE_MAC_INST_t;
 
