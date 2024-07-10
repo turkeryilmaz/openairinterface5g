@@ -3301,7 +3301,8 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
                        &mac->sci2_pdu,
 		       slsch_pdu_length_max,
                        NR_SL_SCI_FORMAT_1A, 
-                       NR_SL_SCI_FORMAT_2A);
+                       NR_SL_SCI_FORMAT_2A,
+                       slot);
 
   int buflen = tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu.tb_size;
 

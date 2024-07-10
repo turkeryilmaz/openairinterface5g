@@ -213,7 +213,8 @@ void fill_pssch_pscch_pdu(sl_nr_ue_mac_params_t *sl_mac_params,
                           nr_sci_pdu_t *sci2_pdu,
                           uint16_t slsch_pdu_length,
                           const nr_sci_format_t format1,
-                          const nr_sci_format_t format2)  {
+                          const nr_sci_format_t format2,
+                          uint16_t slot)  {
   int pos = 0, fsize;
   uint64_t *sci_payload = (uint64_t *)nr_sl_pssch_pscch_pdu->pscch_sci_payload;
   uint64_t *sci2_payload = (uint64_t *)nr_sl_pssch_pscch_pdu->sci2_payload;
@@ -321,8 +322,15 @@ void fill_pssch_pscch_pdu(sl_nr_ue_mac_params_t *sl_mac_params,
 	    for (int i = 0; i < fsize; i++)
 		   *sci_payload |= (((uint64_t)sci_pdu->additional_mcs.val >> (fsize - i - 1)) & 1) << (sci_size - pos++ -1);
 	    // psfch_overhead; // depending on sl-PSFCH-Period
-   	    fsize = sci_pdu->psfch_overhead.nbits;
-	    for (int i = 0; i < fsize; i++); // This is not a solution, the solution is provided on psfch_rx branch
+      fsize = sci_pdu->psfch_overhead.nbits;
+      NR_SL_PSFCH_Config_r16_t *sl_psfch_config = sl_res_pool->sl_PSFCH_Config_r16->choice.setup;
+      const uint8_t psfch_periods[] = {0,1,2,4};
+      long psfch_period = (sl_psfch_config->sl_PSFCH_Period_r16)
+                          ? psfch_periods[*sl_psfch_config->sl_PSFCH_Period_r16] : 0;
+      if (slot % psfch_period == 0) {
+        for (int i = 0; i < fsize; i++)
+          *sci_payload |= (((uint64_t)sci_pdu->psfch_overhead.val >> (fsize - i - 1)) & 1) << (sci_size - pos++ -1);
+      }
 
    	    // reserved; // depending on N_reserved (sl-NumReservedBits) and sl-IndicationUE-B
             fsize = sci_pdu->reserved.nbits;
@@ -588,7 +596,7 @@ void extract_pscch_pdu(uint64_t *sci1_payload, int len,
   fsize = sci_pdu->psfch_overhead.nbits;
   pos+=fsize;
   sci_pdu->psfch_overhead.val = *sci1_payload>>(sci1_size-pos)&((1<<fsize)-1); 
-  LOG_D(NR_MAC,"psfch overhead (%d,%d) in pos %d\n",sci_pdu->psfch_overhead.val,sci_pdu->psfch_overhead.nbits,pos-fsize);
+  LOG_D(NR_MAC, "psfch overhead (%d,%d) in pos %d\n", sci_pdu->psfch_overhead.val, sci_pdu->psfch_overhead.nbits, pos - fsize);
 
   // reserved; // depending on N_reserved (sl-NumReservedBits) and sl-IndicationUE-B
   fsize = sci_pdu->reserved.nbits;

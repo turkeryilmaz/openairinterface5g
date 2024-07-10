@@ -572,7 +572,8 @@ void fill_pssch_pscch_pdu(sl_nr_ue_mac_params_t *sl_mac_params,
                           nr_sci_pdu_t *sci2_pdu,
                           uint16_t slsch_pdu_length,
                           const nr_sci_format_t format1,
-                          const nr_sci_format_t format2);
+                          const nr_sci_format_t format2,
+                          uint16_t slot);
 
 void fill_psfch_pdu(sl_nr_tx_config_psfch_pdu_t *mac_psfch_pdu,
                     sl_nr_tx_config_request_t *tx_config,
