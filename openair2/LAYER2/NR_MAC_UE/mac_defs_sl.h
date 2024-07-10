@@ -28,7 +28,10 @@
 #include "NR_MAC_COMMON/nr_mac.h"
 #include "NR_UE_PHY_INTERFACE/NR_IF_Module.h"
 #include "nr_ue_sci.h"
+#include <pthread.h>
+#include "mac_defs.h"
 
+#define HARQ_ROUND_MAX 4
 #define SL_NR_MAC_NUM_RX_RESOURCE_POOLS 1
 #define SL_NR_MAC_NUM_TX_RESOURCE_POOLS 1
 #define SL_NUM_BYTES_TIMERESOURCEBITMAP 20
@@ -43,6 +46,24 @@
 
 
 #define sci_field_t dci_field_t
+
+#define NR_UE_SL_SCHED_LOCK(lock)                                        \
+  do {                                                             \
+    int rc = pthread_mutex_lock(lock);                             \
+    AssertFatal(rc == 0, "error while locking scheduler mutex\n"); \
+  } while (0)
+
+#define NR_UE_SL_SCHED_UNLOCK(lock)                                      \
+  do {                                                             \
+    int rc = pthread_mutex_unlock(lock);                           \
+    AssertFatal(rc == 0, "error while locking scheduler mutex\n"); \
+  } while (0)
+
+#define NR_UE_SL_SCHED_ENSURE_LOCKED(lock)\
+  do {\
+    int rc = pthread_mutex_trylock(lock); \
+    AssertFatal(rc == EBUSY, "this function should be called with the scheduler mutex locked\n");\
+  } while (0)
 
 typedef struct sidelink_sci_format_1a_fields {
 
@@ -160,6 +181,10 @@ typedef struct sl_nr_ue_mac_params {
   uint16_t scramb_id;
   uint8_t measurement_bitmap;
 
+  // configured grant harq parameters
+  uint8_t num_HARQ_Processes;
+  uint8_t sl_HARQ_ProcID_offset;
+
   //Configured from RRC
   uint32_t sl_MaxNumConsecutiveDTX;
   uint32_t sl_SSB_PriorityNR;
@@ -188,6 +213,7 @@ typedef struct sl_nr_ue_mac_params {
 
   uint16_t decoded_DFN;
   uint16_t decoded_slot;
+  NR_bler_options_t sl_bler;
 
 } sl_nr_ue_mac_params_t;
 

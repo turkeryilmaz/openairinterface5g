@@ -559,8 +559,10 @@ void term_nr_ue_transport(PHY_VARS_NR_UE *ue)
 {
   const int N_RB_DL = ue->frame_parms.N_RB_DL;
   const int N_RB_UL = ue->frame_parms.N_RB_UL;
+  const int N_RB_SL = ue->SL_UE_PHY_PARAMS.sl_frame_params.N_RB_SL;
   free_nr_ue_dl_harq(ue->dl_harq_processes, NR_MAX_DLSCH_HARQ_PROCESSES, N_RB_DL);
   free_nr_ue_ul_harq(ue->ul_harq_processes, NR_MAX_ULSCH_HARQ_PROCESSES, N_RB_UL, ue->frame_parms.nb_antennas_tx);
+  free_nr_ue_ul_harq(ue->sl_harq_processes, NR_MAX_SLSCH_HARQ_PROCESSES, N_RB_SL, ue->SL_UE_PHY_PARAMS.sl_frame_params.nb_antennas_tx);
 }
 
 void nr_init_dl_harq_processes(NR_DL_UE_HARQ_t harq_list[2][NR_MAX_DLSCH_HARQ_PROCESSES], int number_of_processes, int num_rb) {
@@ -643,6 +645,7 @@ void init_nr_ue_transport(PHY_VARS_NR_UE *ue) {
 
   nr_init_dl_harq_processes(ue->dl_harq_processes, NR_MAX_DLSCH_HARQ_PROCESSES, ue->frame_parms.N_RB_DL);
   nr_init_ul_harq_processes(ue->ul_harq_processes, NR_MAX_ULSCH_HARQ_PROCESSES, ue->frame_parms.N_RB_UL, ue->frame_parms.nb_antennas_tx);
+  nr_init_ul_harq_processes(ue->sl_harq_processes, NR_MAX_SLSCH_HARQ_PROCESSES, ue->SL_UE_PHY_PARAMS.sl_frame_params.N_RB_SL, ue->frame_parms.nb_antennas_tx);
 
   for(int i=0; i<5; i++)
     ue->dl_stats[i] = 0;
