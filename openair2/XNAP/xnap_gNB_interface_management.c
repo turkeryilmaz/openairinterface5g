@@ -427,7 +427,7 @@ int xnap_gNB_handle_handover_request(instance_t instance, sctp_assoc_t assoc_id,
 
 	req->ue_context.ngc_ue_sig_ref = &ie->value.choice.UEContextInfoHORequest.ng_c_UE_reference;
         
-        BIT_STRING_TO_CHAR_IPv4(&ie->value.choice.UEContextInfoHORequest.cp_TNL_info_source.choice.endpointIPAddress, req->ue_context.tnl_ip_source.ipv4_address);	
+        //BIT_STRING_TO_CHAR_IPv4(&ie->value.choice.UEContextInfoHORequest.cp_TNL_info_source.choice.endpointIPAddress, req->ue_context.tnl_ip_source.ipv4_address);	
 
 
         if(ie->value.choice.UEContextInfoHORequest.pduSessionResourcesToBeSetup_List.list.count >0)
@@ -442,12 +442,12 @@ int xnap_gNB_handle_handover_request(instance_t instance, sctp_assoc_t assoc_id,
 
              OCTET_STRING_TO_INT8(&pdu_session_resources->s_NSSAI.sst, req->ue_context.pdusession_tobe_setup_list.pdu[i].snssai.sst);
 
-             BIT_STRING_TO_CHAR_IPv4(&pdu_session_resources->uL_NG_U_TNLatUPF.choice.gtpTunnel->tnl_address, req->ue_context.pdusession_tobe_setup_list.pdu[i].up_ngu_tnl_ip_upf.ipv4_address);
-             OCTET_STRING_TO_INT32(&pdu_session_resources->uL_NG_U_TNLatUPF.choice.gtpTunnel->gtp_teid,req->ue_context.pdusession_tobe_setup_list.pdu[i].up_ngu_tnl_teid_upf);
+             //BIT_STRING_TO_CHAR_IPv4(&pdu_session_resources->uL_NG_U_TNLatUPF.choice.gtpTunnel->tnl_address, req->ue_context.pdusession_tobe_setup_list.pdu[i].up_ngu_tnl_ip_upf.ipv4_address);
+             //OCTET_STRING_TO_INT32(&pdu_session_resources->uL_NG_U_TNLatUPF.choice.gtpTunnel->gtp_teid,req->ue_context.pdusession_tobe_setup_list.pdu[i].up_ngu_tnl_teid_upf);
 
              req->ue_context.pdusession_tobe_setup_list.pdu[i].pdu_session_type = pdu_session_resources->pduSessionType;
 
-             for(int j=0; j< pdu_session_resources->qosFlowsToBeSetup_List.list.count;j++)
+             /*for(int j=0; j< pdu_session_resources->qosFlowsToBeSetup_List.list.count;j++)
              {
        		 qos_flows = &ie->value.choice.UEContextInfoHORequest.pduSessionResourcesToBeSetup_List.list.array[i]->qosFlowsToBeSetup_List.list.array[j];
 
@@ -455,7 +455,7 @@ int xnap_gNB_handle_handover_request(instance_t instance, sctp_assoc_t assoc_id,
         	 req->ue_context.pdusession_tobe_setup_list.pdu[i].qos_list.qos[j].qos_params.non_dynamic.fiveqi = qos_flows->qosFlowLevelQoSParameters.qos_characteristics.choice.non_dynamic->fiveQI;
         	 req->ue_context.pdusession_tobe_setup_list.pdu[i].qos_list.qos[j].qos_params.dynamic.qos_priority_level = qos_flows->qosFlowLevelQoSParameters.qos_characteristics.choice.dynamic->priorityLevelQoS;
 
-    }
+             }*/
   }
 }
 
