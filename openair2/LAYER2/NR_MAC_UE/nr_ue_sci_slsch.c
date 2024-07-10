@@ -323,11 +323,13 @@ void fill_pssch_pscch_pdu(sl_nr_ue_mac_params_t *sl_mac_params,
 		   *sci_payload |= (((uint64_t)sci_pdu->additional_mcs.val >> (fsize - i - 1)) & 1) << (sci_size - pos++ -1);
 	    // psfch_overhead; // depending on sl-PSFCH-Period
       fsize = sci_pdu->psfch_overhead.nbits;
-      NR_SL_PSFCH_Config_r16_t *sl_psfch_config = sl_res_pool->sl_PSFCH_Config_r16->choice.setup;
+      NR_SL_PSFCH_Config_r16_t *sl_psfch_config = sl_res_pool->sl_PSFCH_Config_r16 != NULL ? sl_res_pool->sl_PSFCH_Config_r16->choice.setup : NULL;
       const uint8_t psfch_periods[] = {0,1,2,4};
-      long psfch_period = (sl_psfch_config->sl_PSFCH_Period_r16)
+      if (sl_psfch_config != NULL)
+        AssertFatal(*sl_psfch_config->sl_PSFCH_Period_r16 < 4, "PSFCH period index MUST be less than 4\n");
+      long psfch_period = (sl_psfch_config && sl_psfch_config->sl_PSFCH_Period_r16)
                           ? psfch_periods[*sl_psfch_config->sl_PSFCH_Period_r16] : 0;
-      if (slot % psfch_period == 0) {
+      if ((psfch_period == 0) ? true : (slot % psfch_period == 0)) {
         for (int i = 0; i < fsize; i++)
           *sci_payload |= (((uint64_t)sci_pdu->psfch_overhead.val >> (fsize - i - 1)) & 1) << (sci_size - pos++ -1);
       }
