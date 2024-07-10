@@ -909,9 +909,11 @@ int xnap_gNB_generate_xn_handover_request (sctp_assoc_t assoc_id, xnap_handover_
 
 
 	  	//PDU Session id
+    LOG_E(XNAP, "vaue of pdu session id: %d", xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].pdusession_id);
 		pdu_session_resources->pduSessionId = xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].pdusession_id;
 
 		//SSNSAI
+    LOG_E(XNAP, "value of sst: %d", xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].snssai.sst);
 		INT8_TO_OCTET_STRING(xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].snssai.sst, &pdu_session_resources->s_NSSAI.sst);
 
 		//UP TNL Information
@@ -920,10 +922,11 @@ int xnap_gNB_generate_xn_handover_request (sctp_assoc_t assoc_id, xnap_handover_
 		INT32_TO_OCTET_STRING(xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].up_ngu_tnl_teid_upf, &pdu_session_resources->uL_NG_U_TNLatUPF.choice.gtpTunnel->gtp_teid);*/
 		
 		//PDU session type
+    LOG_E(XNAP, "value of pdu session type: %d", xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].pdu_session_type);
 		pdu_session_resources->pduSessionType = xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].pdu_session_type;
 		
 		//QOS flows to be setup
-		{
+		/*{
 			qos_flows = (XNAP_QoSFlowsToBeSetup_Item_t*)calloc(1, sizeof(XNAP_QoSFlowsToBeSetup_Item_t));
 			for(int j=0; j<xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].qos_list.num_qos; j++)
 			{
@@ -943,10 +946,10 @@ int xnap_gNB_generate_xn_handover_request (sctp_assoc_t assoc_id, xnap_handover_
 				qos_flows->qosFlowLevelQoSParameters.qos_characteristics.choice.dynamic->packetErrorRate.pER_Exponent = xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].qos_list.qos[j].qos_params.dynamic.packet_error_rate.per_exponent;
 		  		asn1cSeqAdd(&pdu_session_resources->qosFlowsToBeSetup_List.list, qos_flows);
 	  		}
-		}
+		}*/
 	}
 	asn1cSeqAdd(&ie->value.choice.UEContextInfoHORequest.pduSessionResourcesToBeSetup_List.list, pdu_session_resources);
-   }
+  }
 
 /*
   //UE History information
