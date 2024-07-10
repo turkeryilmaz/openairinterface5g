@@ -102,7 +102,7 @@ typedef struct xnap_tdd_info_t {
 } xnap_tdd_info_t;
 
 typedef struct xnap_snssai_s {
-  uint32_t sst;
+  uint8_t sst;
   uint32_t sd;
 } xnap_snssai_t;
 

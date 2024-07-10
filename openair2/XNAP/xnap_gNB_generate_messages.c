@@ -865,6 +865,7 @@ int xnap_gNB_generate_xn_handover_request (sctp_assoc_t assoc_id, xnap_handover_
   ie->value.present = XNAP_HandoverRequest_IEs__value_PR_UEContextInfoHORequest;
   
   /*AMF UE NGAP ID*/
+  LOG_E(XNAP, "value of ngc_ue_sig_ref:%d", xnap_handover_req->ue_context.ngc_ue_sig_ref);
   asn_uint642INTEGER(&ie->value.choice.UEContextInfoHORequest.ng_c_UE_reference, xnap_handover_req->ue_context.ngc_ue_sig_ref);
 
 
@@ -900,56 +901,50 @@ int xnap_gNB_generate_xn_handover_request (sctp_assoc_t assoc_id, xnap_handover_
    
   
   //PDU session resources to be setup list
-  {
   	//pdu_session_resources = (XNAP_PDUSessionResourcesToBeSetup_Item_t*)calloc(1, sizeof(XNAP_PDUSessionResourcesToBeSetup_Item_t));
-	
-	for(int i=0; i<xnap_handover_req->ue_context.pdusession_tobe_setup_list.num_pdu; i++)
-	{
-		pdu_session_resources = (XNAP_PDUSessionResourcesToBeSetup_Item_t*)calloc(1, sizeof(XNAP_PDUSessionResourcesToBeSetup_Item_t));
+    for(int i=0; i<xnap_handover_req->ue_context.pdusession_tobe_setup_list.num_pdu; i++)
+      {
+        pdu_session_resources = (XNAP_PDUSessionResourcesToBeSetup_Item_t*)calloc(1, sizeof(XNAP_PDUSessionResourcesToBeSetup_Item_t));
+	//PDU Session id
+        LOG_E(XNAP, "vaue of pdu session id: %d", xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].pdusession_id);
+	pdu_session_resources->pduSessionId = xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].pdusession_id;
 
-
-	  	//PDU Session id
-    LOG_E(XNAP, "vaue of pdu session id: %d", xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].pdusession_id);
-		pdu_session_resources->pduSessionId = xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].pdusession_id;
-
-		//SSNSAI
-    LOG_E(XNAP, "value of sst: %d", xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].snssai.sst);
-		INT8_TO_OCTET_STRING(xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].snssai.sst, &pdu_session_resources->s_NSSAI.sst);
-
-		//UP TNL Information
-		/*pdu_session_resources->uL_NG_U_TNLatUPF.present = XNAP_UPTransportLayerInformation_PR_gtpTunnel;
-		CHAR_IPv4_TO_BIT_STRING(xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].up_ngu_tnl_ip_upf.ipv4_address, &pdu_session_resources->uL_NG_U_TNLatUPF.choice.gtpTunnel->tnl_address);
-		INT32_TO_OCTET_STRING(xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].up_ngu_tnl_teid_upf, &pdu_session_resources->uL_NG_U_TNLatUPF.choice.gtpTunnel->gtp_teid);*/
+	//SSNSAI
+        LOG_E(XNAP, "value of sst: %d", xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].snssai.sst);
+	INT8_TO_OCTET_STRING(xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].snssai.sst, &pdu_session_resources->s_NSSAI.sst);
+        
+	//UP TNL Information
+	/*pdu_session_resources->uL_NG_U_TNLatUPF.present = XNAP_UPTransportLayerInformation_PR_gtpTunnel;
+	CHAR_IPv4_TO_BIT_STRING(xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].up_ngu_tnl_ip_upf.ipv4_address, &pdu_session_resources->uL_NG_U_TNLatUPF.choice.gtpTunnel->tnl_address);
+	INT32_TO_OCTET_STRING(xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].up_ngu_tnl_teid_upf, &pdu_session_resources->uL_NG_U_TNLatUPF.choice.gtpTunnel->gtp_teid);*/
 		
-		//PDU session type
-    LOG_E(XNAP, "value of pdu session type: %d", xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].pdu_session_type);
-		pdu_session_resources->pduSessionType = xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].pdu_session_type;
+	//PDU session type
+        LOG_E(XNAP, "value of pdu session type: %d", xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].pdu_session_type);
+        pdu_session_resources->pduSessionType = xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].pdu_session_type;
 		
-		//QOS flows to be setup
-		/*{
-			qos_flows = (XNAP_QoSFlowsToBeSetup_Item_t*)calloc(1, sizeof(XNAP_QoSFlowsToBeSetup_Item_t));
-			for(int j=0; j<xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].qos_list.num_qos; j++)
-			{
-				//QFI
-				qos_flows->qfi = xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].qos_list.qos[j].qfi ;
-
-				//QOS flow level QOS parameters
-
-				//non-dynamic
-		  		qos_flows->qosFlowLevelQoSParameters.qos_characteristics.present = XNAP_QoSCharacteristics_PR_non_dynamic;
-				qos_flows->qosFlowLevelQoSParameters.qos_characteristics.choice.non_dynamic->fiveQI = xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].qos_list.qos[j].qos_params.non_dynamic.fiveqi;
-				//dynamic
-		  		qos_flows->qosFlowLevelQoSParameters.qos_characteristics.present = XNAP_QoSCharacteristics_PR_dynamic;
-				qos_flows->qosFlowLevelQoSParameters.qos_characteristics.choice.dynamic->priorityLevelQoS = xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].qos_list.qos[j].qos_params.dynamic.qos_priority_level;
-				qos_flows->qosFlowLevelQoSParameters.qos_characteristics.choice.dynamic->packetDelayBudget = xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].qos_list.qos[j].qos_params.dynamic.packet_delay_budget;
-				qos_flows->qosFlowLevelQoSParameters.qos_characteristics.choice.dynamic->packetErrorRate.pER_Scalar = xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].qos_list.qos[j].qos_params.dynamic.packet_error_rate.per_scalar; 
-				qos_flows->qosFlowLevelQoSParameters.qos_characteristics.choice.dynamic->packetErrorRate.pER_Exponent = xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].qos_list.qos[j].qos_params.dynamic.packet_error_rate.per_exponent;
-		  		asn1cSeqAdd(&pdu_session_resources->qosFlowsToBeSetup_List.list, qos_flows);
-	  		}
-		}*/
-	}
+	//QOS flows to be setup
+	/*{
+	  qos_flows = (XNAP_QoSFlowsToBeSetup_Item_t*)calloc(1, sizeof(XNAP_QoSFlowsToBeSetup_Item_t));
+	  for(int j=0; j<xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].qos_list.num_qos; j++)
+	  {
+	    //QFI
+	    qos_flows->qfi = xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].qos_list.qos[j].qfi ;
+	    //QOS flow level QOS parameters
+	    //non-dynamic
+	    qos_flows->qosFlowLevelQoSParameters.qos_characteristics.present = XNAP_QoSCharacteristics_PR_non_dynamic;
+	    qos_flows->qosFlowLevelQoSParameters.qos_characteristics.choice.non_dynamic->fiveQI = xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].qos_list.qos[j].qos_params.non_dynamic.fiveqi;
+	    //dynamic
+	    qos_flows->qosFlowLevelQoSParameters.qos_characteristics.present = XNAP_QoSCharacteristics_PR_dynamic;
+            qos_flows->qosFlowLevelQoSParameters.qos_characteristics.choice.dynamic->priorityLevelQoS = xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].qos_list.qos[j].qos_params.dynamic.qos_priority_level;
+	    qos_flows->qosFlowLevelQoSParameters.qos_characteristics.choice.dynamic->packetDelayBudget = xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].qos_list.qos[j].qos_params.dynamic.packet_delay_budget;
+	    qos_flows->qosFlowLevelQoSParameters.qos_characteristics.choice.dynamic->packetErrorRate.pER_Scalar = xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].qos_list.qos[j].qos_params.dynamic.packet_error_rate.per_scalar; 
+	    qos_flows->qosFlowLevelQoSParameters.qos_characteristics.choice.dynamic->packetErrorRate.pER_Exponent = xnap_handover_req->ue_context.pdusession_tobe_setup_list.pdu[i].qos_list.qos[j].qos_params.dynamic.packet_error_rate.per_exponent;
+	    asn1cSeqAdd(&pdu_session_resources->qosFlowsToBeSetup_List.list, qos_flows);
+	  }
+	}*/
 	asn1cSeqAdd(&ie->value.choice.UEContextInfoHORequest.pduSessionResourcesToBeSetup_List.list, pdu_session_resources);
-  }
+      }
+     // asn1cSeqAdd(&ie->value.choice.UEContextInfoHORequest.pduSessionResourcesToBeSetup_List.list, pdu_session_resources);
 
 /*
   //UE History information
