@@ -66,7 +66,7 @@ bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP,int slotP, nr_sci_pdu_t
      uint8_t cqi_Table = 0;
      int8_t mcs = 11, ri = 0;
      uint16_t dest = mac->dest_id != -1 ? mac->dest_id : 0xabcd;
-     uint16_t indx = dest%MAX_SL_UE_CONNECTIONS;
+     uint16_t indx = dest%CURRENT_NUM_UE_CONNECTIONS;
      int8_t cqi = mac->dest_id != -1 ? mac->sl_info.list[indx]->UE_sched_ctrl.csi_report.cqi : -1;
      if (cqi != -1) {
       int mcs_tb_ind = 0;

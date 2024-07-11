@@ -171,7 +171,7 @@ void nr_ue_init_mac(module_id_t module_idP)
   mac->si_window_start = -1;
   mac->SL_MAC_PARAMS = CALLOC(1, sizeof(sl_nr_ue_mac_params_t));
   mac->SL_MAC_PARAMS->sl_bler.harq_round_max = HARQ_ROUND_MAX;
-  for (int i = 0; i < MAX_SL_UE_CONNECTIONS; i++) {
+  for (int i = 0; i < CURRENT_NUM_UE_CONNECTIONS; i++) {
     mac->sl_info.list[i] = calloc(1, sizeof(NR_SL_UE_info_t));
     mac->sl_info.list[i]->uid = 0;
     mac->sl_info.list[i]->dest_id = 0;

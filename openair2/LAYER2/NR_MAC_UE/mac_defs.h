@@ -495,9 +495,10 @@ typedef struct {
 
 } NR_SL_UE_sched_ctrl_t;
 
-#define MAX_SL_UE_CONNECTIONS 1
+#define MAX_SL_UE_CONNECTIONS 8
+#define CURRENT_NUM_UE_CONNECTIONS 1
 
-#define MAX_SL_CSI_REPORTCONFIG MAX_SL_UE_CONNECTIONS 
+#define MAX_SL_CSI_REPORTCONFIG MAX_SL_UE_CONNECTIONS
 
 typedef struct {
   uint16_t dest_id;
