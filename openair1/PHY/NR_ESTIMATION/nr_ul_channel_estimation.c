@@ -57,8 +57,8 @@
 #define  NR_SRS_IDFT_OVERSAMP_FACTOR 8
 
 extern MQTTClient client;
-//void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int32_t gNB_id, int16_t peak_idx, int ant_idx);
-void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int16_t gNB_id, int16_t ant_idx);
+void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int32_t gNB_id, int16_t peak_idx, int16_t ant_idx);
+//void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int16_t gNB_id, int16_t ant_idx);
 
 
 /* Generic function to find the peak of channel estimation buffer */
@@ -92,7 +92,7 @@ int32_t nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
 		(int16_t*) chT_interpol[ap_index]);
     }
 
-
+    max_val = 0, max_idx = 0, mean_val = 0;
     for(int k = 0; k < NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size; k++) {
       abs_val = 0;
       for (int p_index = 0; p_index < N_ap; p_index++) 
@@ -140,7 +140,7 @@ int32_t nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
     max_idx = max_idx - NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size;
 
   // Check for detection threshold
-  LOG_D(PHY, "SRS ToA estimator: max_val %d, mean_val %d, max_idx %d\n", max_val, mean_val, max_idx);
+  LOG_I(PHY, "SRS ToA estimator: max_val %d, mean_val %d, max_idx %d\n", max_val, mean_val, max_idx);
   if ((mean_val != 0) && (max_val / mean_val > 10)) {
     return (max_idx*1e9)/(NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->samples_per_frame*100);
   } else {
@@ -157,8 +157,8 @@ void fftshift(int32_t *buffer, int32_t buf_len) {
         ((c16_t*)buffer)[i + half] = temp;
     }
 }
-/*
-void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int32_t gNB_id, int16_t peak_idx, int ant_idx) {
+
+void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int32_t gNB_id, int16_t peak_idx, int16_t ant_idx) {
 
     // MQTT Part
     MQTTClient_message pubmsg = MQTTClient_message_initializer;
@@ -180,9 +180,9 @@ void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int32_t gNB_id, int16_t peak
       LOG_W(PHY, "Failed to publish \"SRS ToA measurements\" MQTT message, return code %d\n", rc);
     }
 }
-*/
 
 
+/*
 void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int16_t gNB_id, int16_t ant_idx) {
     // MQTT Part
     MQTTClient_message pubmsg = MQTTClient_message_initializer;
@@ -240,7 +240,7 @@ void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int16_t gNB_id, int16_t ant_
       LOG_W(PHY, "Failed to publish \"SRS ToA measurements\" MQTT message, return code %d\n", rc);
     }
 }
-
+*/
 __attribute__((always_inline)) inline c16_t c32x16cumulVectVectWithSteps(c16_t *in1,
                                                                          int *offset1,
                                                                          const int step1,
