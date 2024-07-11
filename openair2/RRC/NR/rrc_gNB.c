@@ -136,6 +136,9 @@ mui_t rrc_gNB_mui = 0;
 
 ///---------------------------------------------------------------------------------------------------------------///
 ///---------------------------------------------------------------------------------------------------------------///
+void nr_initiate_ue_setup_xn(const gNB_RRC_INST *, gNB_RRC_UE_t *, nr_rrc_du_container_t *,
+                                                const f1ap_drb_to_be_setup_t *, int);
+
 
 static int neigh_compare(const nr_rrc_neighcells_container_t *a, const nr_rrc_neighcells_container_t *b)
 {
@@ -2643,7 +2646,14 @@ void rrc_gNB_process_e1_bearer_context_setup_resp(e1ap_bearer_setup_resp_t *resp
 
   AssertFatal(UE->as_security_active, "logic bug: security should be active when activating DRBs\n");
 
-  if (!UE->f1_ue_context_active)
+  if(UE->ho_context->ho_req_pending == 1 ) {
+    long ncii = 12345678;
+    nr_rrc_du_container_t *target_du = find_target_du(rrc, ncii); // get_du_by_cell_id(rrc, target_cell);
+    UE->ho_context->data.intra_cu.target_du = target_du->assoc_id;
+    nr_initiate_ue_setup_xn(rrc, UE, target_du, drbs, nb_drb);
+  }
+
+  else if (!UE->f1_ue_context_active)
     rrc_gNB_generate_UeContextSetupRequest(rrc, ue_context_p, nb_drb, drbs);
   else
     rrc_gNB_generate_UeContextModificationRequest(rrc, ue_context_p, nb_drb, drbs, 0, NULL);
@@ -2829,7 +2839,8 @@ static void write_rrc_stats(const gNB_RRC_INST *rrc)
 }
 
 
-void nr_initiate_ue_setup_xn(const gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue, const nr_rrc_du_container_t *target_du, const nr_handover_context_t *ho_ctxt)
+void nr_initiate_ue_setup_xn(const gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue, nr_rrc_du_container_t *target_du,
+						const  f1ap_drb_to_be_setup_t *drbs, int nb_drb)
 {
   LOG_I(NR_RRC,"nr_initiate_handover_xn \n");
   if (ue->ho_context != NULL) {
@@ -2839,7 +2850,6 @@ void nr_initiate_ue_setup_xn(const gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue, const nr
 
   ue->ho_context = malloc(sizeof(*ue->ho_context));
   AssertFatal(ue->ho_context != NULL, "out of memory\n");
-  *ue->ho_context = *ho_ctxt;
   LOG_I(NR_RRC, "Handover triggered for UE %u towards DU %ld\n", ue->rrc_ue_id, target_du->setup_req->gNB_DU_id);
 
   // The gNB-CU sends a UE CONTEXT SETUP REQUEST message to the target gNB-DU to create a UE context and setup
@@ -2850,10 +2860,10 @@ void nr_initiate_ue_setup_xn(const gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue, const nr
       .handoverPreparationInfo = buf,
       .handoverPreparationInfo_length = size,
   };
-
-  /*f1ap_drb_to_be_setup_t drbs[32]; // maximum DRB can be 32
+/*
+  f1ap_drb_to_be_setup_t drbs[32]; // maximum DRB can be 32
   int nb_drb = 0;
-  for (int i = 0; i < 32; ++i) { // for each DRB 
+  for (int i = 0; i < numPduSession; ++i) { // for each DRB
     drb_t *rrc_drb = &ue->established_drbs[i];
     if (rrc_drb->status == DRB_INACTIVE)
       continue;
@@ -2885,11 +2895,9 @@ void nr_initiate_ue_setup_xn(const gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue, const nr
 
     // the DRB QoS parameters: we just reuse the ones from the first flow 
     drb->drb_info.drb_qos = drb->drb_info.flows_mapped_to_drb[0].qos_params;
-  }
-
+  } */
+ 
   f1ap_srb_to_be_setup_t srbs[2] = {{.srb_id = 1, .lcid = 1}, {.srb_id = 2, .lcid = 2}};
-  */
-  
   //f1_ue_data_t ue_data = cu_get_f1_ue_data(ue->rrc_ue_id);
   //cu_add_f1_ue_data(ue->rrc_ue_id, &ue_data);
   f1ap_served_cell_info_t *cell_info = &target_du->setup_req->cell[0].info;
@@ -2903,17 +2911,14 @@ void nr_initiate_ue_setup_xn(const gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue, const nr
       .plmn.mnc_digit_length = cell_info->plmn.mnc_digit_length,
       .nr_cellid = cell_info->nr_cellid,
       .servCellId = 0, // TODO: correct value?
-      /*.srbs_to_be_setup_length = 2,
+      .srbs_to_be_setup_length = 2,
       .srbs_to_be_setup = srbs,
       .drbs_to_be_setup_length = nb_drb,
-      .drbs_to_be_setup = drbs,*/
+      .drbs_to_be_setup = drbs,
       .cu_to_du_rrc_information = &cu2du,
   };
   rrc->mac_rrc.ue_context_setup_request(target_du->assoc_id, &ue_context_setup_req);
 }
-
-
-
 
 void rrc_gNB_process_handoverprepinfo(sctp_assoc_t assoc_id, xnap_handover_req_t *m)
 {
@@ -2949,18 +2954,42 @@ void rrc_gNB_process_handoverprepinfo(sctp_assoc_t assoc_id, xnap_handover_req_t
 	if (!ue_context_p) {
     	LOG_E(RRC, "could not find UE context in target\n");
  	}*/	
-
-	long ncii = 12345678;
+	// Creating Bearer between CUCP and CUUP
+	gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
+	UE->ho_context->ho_req_pending = 1;
+	if(m->ue_context.pdusession_tobe_setup_list.num_pdu > 0) {
+	  UE->nb_of_pdusessions = m->ue_context.pdusession_tobe_setup_list.num_pdu;
+          LOG_E(RRC," %d\n",UE->nb_of_pdusessions);
+	  pdusession_t session_id;
+	  for (int i = 0; i < UE->nb_of_pdusessions; ++i) {
+	    session_id = UE->pduSession->param;
+            session_id.pdusession_id = m->ue_context.pdusession_tobe_setup_list.pdu[i].pdusession_id;
+            session_id.nssai = m->ue_context.pdusession_tobe_setup_list.pdu[i].nssai;
+	    session_id.pdu_session_type = m->ue_context.pdusession_tobe_setup_list.pdu[i].pdu_session_type;
+	    session_id.UPF_teid_N3 = m->ue_context.pdusession_tobe_setup_list.pdu[i].up_ngu_tnl_teid_upf;
+	    session_id.upf_addr = m->ue_context.pdusession_tobe_setup_list.pdu[i].upf_addr;
+            session_id.nb_qos = m->ue_context.pdusession_tobe_setup_list.pdu[i].nb_qos;
+	    for(int j = 0; j < session_id.nb_qos; ++j) {
+	      session_id.qos[j].qfi = m->ue_context.pdusession_tobe_setup_list.pdu[i].qos[j].qfi;
+	      session_id.qos[j].fiveQI = m->ue_context.pdusession_tobe_setup_list.pdu[i].qos[j].fiveQI;
+	      session_id.qos[j].qos_priority = m->ue_context.pdusession_tobe_setup_list.pdu[i].qos[j].qos_priority;
+	      session_id.qos[j].fiveQI_type = m->ue_context.pdusession_tobe_setup_list.pdu[i].qos[j].fiveQI_type;
+	      session_id.qos[j].allocation_retention_priority.priority_level = m->ue_context.pdusession_tobe_setup_list.pdu[i].qos[j].allocation_retention_priority.priority_level;
+	      session_id.qos[j].allocation_retention_priority.pre_emp_capability = m->ue_context.pdusession_tobe_setup_list.pdu[i].qos[j].allocation_retention_priority.pre_emp_capability;
+	      session_id.qos[j].allocation_retention_priority.pre_emp_vulnerability = m->ue_context.pdusession_tobe_setup_list.pdu[i].qos[j].allocation_retention_priority.pre_emp_vulnerability;
+	      }
+	  }
+          trigger_bearer_setup(rrc, UE, UE->nb_of_pdusessions, &session_id, 0);
+        }
         //sctp_assoc_t association_id = xnap_gNB_get_assoc_id(instance_p, ncii);
-	nr_rrc_du_container_t *target_du = find_target_du(rrc, ncii); // get_du_by_cell_id(rrc, target_cell);
-	nr_handover_context_t ho_ctxt = {
+	//nr_rrc_du_container_t *target_du = find_target_du(rrc, ncii); // get_du_by_cell_id(rrc, target_cell);
+	//nr_handover_context_t ho_ctxt = {
         //  .type = HANDOVER_TYPE_INTRA_CU,
         //  .data.intra_cu.source_du = source_du->assoc_id,
-            .data.intra_cu.target_du = target_du->assoc_id,
+          //  .data.intra_cu.target_du = target_du->assoc_id,
         //  .data.intra_cu.source_secondary_ue = ue_data.secondary_ue,
-  	};
+	//};
 
-	nr_initiate_ue_setup_xn(rrc, &ue_context_p->ue_context, target_du, &ho_ctxt);
         
 /*
 	MessageDef *message_p = itti_alloc_new_message(TASK_XNAP, 0, XNAP_HANDOVER_REQ_ACK);

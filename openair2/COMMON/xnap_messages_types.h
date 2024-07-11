@@ -29,6 +29,7 @@
 
 #include "s1ap_messages_types.h"
 #include "f1ap_messages_types.h"
+#include "ngap_messages_types.h"
 // Defines to access message fields.
 
 #define XNAP_REGISTER_GNB_REQ(mSGpTR) (mSGpTR)->ittiMsg.xnap_register_gnb_req
@@ -218,11 +219,12 @@ typedef struct xnap_qos_tobe_setup_list_s {
 
 typedef struct xnap_pdusession_tobe_setup_item_s {
   long pdusession_id;
-  xnap_snssai_t snssai;
-  xnap_net_ip_address_t up_ngu_tnl_ip_upf;
-  teid_t up_ngu_tnl_teid_upf;
+  nssai_t nssai;
   pdu_session_type_t pdu_session_type;
-  xnap_qos_tobe_setup_list_t qos_list;
+  teid_t up_ngu_tnl_teid_upf;
+  transport_layer_addr_t upf_addr;
+  uint8_t nb_qos;
+  pdusession_level_qos_parameter_t qos[QOSFLOW_MAX_VALUE];
 } xnap_pdusession_tobe_setup_item_t;
 
 typedef struct xnap_pdusession_tobe_setup_list_s {

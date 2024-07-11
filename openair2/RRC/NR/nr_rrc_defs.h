@@ -173,6 +173,7 @@ typedef struct nr_handover_context_s {
     nr_handover_inter_cu_t inter_cu;
   } data;
   // TODO fptr for success, failure
+  uint8_t ho_req_pending;
 } nr_handover_context_t;
 
 
