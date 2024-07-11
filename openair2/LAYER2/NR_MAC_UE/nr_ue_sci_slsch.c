@@ -213,7 +213,8 @@ void fill_pssch_pscch_pdu(sl_nr_ue_mac_params_t *sl_mac_params,
                           nr_sci_pdu_t *sci2_pdu,
                           uint16_t slsch_pdu_length,
                           const nr_sci_format_t format1,
-                          const nr_sci_format_t format2)  {
+                          const nr_sci_format_t format2,
+                          uint16_t slot)  {
   int pos = 0, fsize;
   uint64_t *sci_payload = (uint64_t *)nr_sl_pssch_pscch_pdu->pscch_sci_payload;
   uint64_t *sci2_payload = (uint64_t *)nr_sl_pssch_pscch_pdu->sci2_payload;
@@ -321,8 +322,17 @@ void fill_pssch_pscch_pdu(sl_nr_ue_mac_params_t *sl_mac_params,
 	    for (int i = 0; i < fsize; i++)
 		   *sci_payload |= (((uint64_t)sci_pdu->additional_mcs.val >> (fsize - i - 1)) & 1) << (sci_size - pos++ -1);
 	    // psfch_overhead; // depending on sl-PSFCH-Period
-   	    fsize = sci_pdu->psfch_overhead.nbits;
-	    for (int i = 0; i < fsize; i++)
+      fsize = sci_pdu->psfch_overhead.nbits;
+      NR_SL_PSFCH_Config_r16_t *sl_psfch_config = sl_res_pool->sl_PSFCH_Config_r16 != NULL ? sl_res_pool->sl_PSFCH_Config_r16->choice.setup : NULL;
+      const uint8_t psfch_periods[] = {0,1,2,4};
+      if (sl_psfch_config != NULL)
+        AssertFatal(*sl_psfch_config->sl_PSFCH_Period_r16 < 4, "PSFCH period index MUST be less than 4\n");
+      long psfch_period = (sl_psfch_config && sl_psfch_config->sl_PSFCH_Period_r16)
+                          ? psfch_periods[*sl_psfch_config->sl_PSFCH_Period_r16] : 0;
+      if ((psfch_period == 0) ? true : (slot % psfch_period == 0)) {
+        for (int i = 0; i < fsize; i++)
+          *sci_payload |= (((uint64_t)sci_pdu->psfch_overhead.val >> (fsize - i - 1)) & 1) << (sci_size - pos++ -1);
+      }
 
    	    // reserved; // depending on N_reserved (sl-NumReservedBits) and sl-IndicationUE-B
             fsize = sci_pdu->reserved.nbits;
@@ -588,7 +598,7 @@ void extract_pscch_pdu(uint64_t *sci1_payload, int len,
   fsize = sci_pdu->psfch_overhead.nbits;
   pos+=fsize;
   sci_pdu->psfch_overhead.val = *sci1_payload>>(sci1_size-pos)&((1<<fsize)-1); 
-  LOG_D(NR_MAC,"psfch overhead (%d,%d) in pos %d\n",sci_pdu->psfch_overhead.val,sci_pdu->psfch_overhead.nbits,pos-fsize);
+  LOG_D(NR_MAC, "psfch overhead (%d,%d) in pos %d\n", sci_pdu->psfch_overhead.val, sci_pdu->psfch_overhead.nbits, pos - fsize);
 
   // reserved; // depending on N_reserved (sl-NumReservedBits) and sl-IndicationUE-B
   fsize = sci_pdu->reserved.nbits;
@@ -614,6 +624,7 @@ int nr_ue_process_sci1_indication_pdu(NR_UE_MAC_INST_t *mac,module_id_t mod_id,f
         sci->sci_format_type,sci->Nid,sci->subch_index,sci->sci_payloadlen,*(unsigned long long*)sci->sci_payloadBits);
   AssertFatal(sci->sci_format_type == SL_SCI_FORMAT_1A_ON_PSCCH, "need to have format 1A here only\n");
   extract_pscch_pdu((uint64_t *)sci->sci_payloadBits, sci->sci_payloadlen,sl_bwp, sl_res_pool, sci_pdu);
+  if (sci_pdu->reserved.val) mac->is_synced = true;
   LOG_D(NR_MAC,"SCI1A: frequency_resource %d, time_resource %d, dmrs_pattern %d, beta_offset_indicator %d, mcs %d, number_of_dmrs_port %d, 2nd stage SCI format %d\n",
         sci_pdu->frequency_resource_assignment.val,sci_pdu->time_resource_assignment.val,sci_pdu->dmrs_pattern.val,sci_pdu->beta_offset_indicator,sci_pdu->mcs,sci_pdu->number_of_dmrs_port,sci_pdu->second_stage_sci_format);
   // send schedule response

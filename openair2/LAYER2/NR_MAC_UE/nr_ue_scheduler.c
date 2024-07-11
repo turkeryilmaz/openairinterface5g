@@ -3301,7 +3301,8 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
                        &mac->sci2_pdu,
 		       slsch_pdu_length_max,
                        NR_SL_SCI_FORMAT_1A, 
-                       NR_SL_SCI_FORMAT_2A);
+                       NR_SL_SCI_FORMAT_2A,
+                       slot);
 
   int buflen = tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu.tb_size;
 
@@ -3614,8 +3615,8 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind) {
       nr_ue_sl_pscch_rx_scheduler(sl_ind, mac->sl_bwp, mac->sl_rx_res_pool,&rx_config, &tti_action);
   }
 
-  if ((!get_nrUE_params()->sync_ref && !is_psbch_slot && tx_allowed && sl_ind->slot_type == SIDELINK_SLOT_TYPE_TX && (slot == 2 || slot == 13 || slot == 12)) ||
-  (get_nrUE_params()->sync_ref && !is_psbch_slot && tx_allowed && sl_ind->slot_type == SIDELINK_SLOT_TYPE_TX && (slot == 3 || slot == 5 || slot == 15))) {
+  if (mac->is_synced && !is_psbch_slot && tx_allowed && sl_ind->slot_type == SIDELINK_SLOT_TYPE_TX && ((!get_nrUE_params()->sync_ref && (slot == 2 || slot == 8 || slot == 13 || slot == 12)) ||
+  (get_nrUE_params()->sync_ref && (slot == 3 || slot == 5 || slot == 15)))) {
     //Check if reserved slot or a sidelink resource configured in Rx/Tx resource pool timeresource bitmap
     bool schedule_slsch = nr_ue_sl_pssch_scheduler(mac, sl_ind, mac->sl_bwp, mac->sl_tx_res_pool, &tx_config, &tti_action);
     bool is_csi_rs_sent = false;
