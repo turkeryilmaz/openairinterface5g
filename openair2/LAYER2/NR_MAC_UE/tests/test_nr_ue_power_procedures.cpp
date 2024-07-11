@@ -361,6 +361,7 @@ TEST(pusch_power_control, pusch_power_data)
 int main(int argc, char** argv)
 {
   logInit();
+  uniqCfg = load_configmodule(argc, argv, CONFIG_ENABLECMDLINEONLY);
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }
