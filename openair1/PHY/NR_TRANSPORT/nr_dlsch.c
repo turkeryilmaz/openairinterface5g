@@ -119,19 +119,19 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
     if(gNB->nrLDPC_coding_interface_flag){
       if(dlsch_id == msgTx->num_pdsch_slot-1){
         start_meas(dlsch_encoding_stats);
-        if (nrLDPC_coding_interface.nrLDPC_coding_encoder(gNB,
-                                                          msgTx,
-                                                          frame,
-                                                          slot,
-                                                          frame_parms,
-                                                          output,
-                                                          tinput,
-                                                          tprep,
-                                                          tparity,
-                                                          toutput,
-                                                          dlsch_rate_matching_stats,
-                                                          dlsch_interleaving_stats,
-                                                          dlsch_segmentation_stats) == -1) {
+        if (nr_dlsch_encoding_slot(gNB,
+                                   msgTx,
+                                   frame,
+                                   slot,
+                                   frame_parms,
+                                   output,
+                                   tinput,
+                                   tprep,
+                                   tparity,
+                                   toutput,
+                                   dlsch_rate_matching_stats,
+                                   dlsch_interleaving_stats,
+                                   dlsch_segmentation_stats) == -1) {
           return;
         }
         stop_meas(dlsch_encoding_stats);

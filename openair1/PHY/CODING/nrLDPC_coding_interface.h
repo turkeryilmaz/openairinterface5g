@@ -116,6 +116,94 @@ typedef struct nrLDPC_slot_decoding_parameters_s{
   nrLDPC_TB_decoding_parameters_t *TBs;
 } nrLDPC_slot_decoding_parameters_t;
 
+/**
+ * \typedef nrLDPC_segment_encoding_parameters_t
+ * \struct nrLDPC_segment_encoding_parameters_s
+ * \brief encoding parameter of segments
+ * \var E input llr segment size
+ * \var llr input llr segment array
+ * \var c Pointers to code blocks after LDPC decoding (38.212 V15.4.0 section 5.2.2)
+ * flag indicating that the decoding of the segment was successful
+ * IT MUST BE FILLED BY THE IMPLEMENTATION
+ */
+typedef struct nrLDPC_segment_encoding_parameters_s{
+  int E;
+  unsigned char *output;
+  uint8_t *c;
+} nrLDPC_segment_encoding_parameters_t;
+
+/**
+ * \typedef nrLDPC_TB_encoding_parameters_t
+ * \struct nrLDPC_TB_encoding_parameters_s
+ * \brief encoding parameter of transport blocks
+ * \var rnti RNTI
+ * \var nb_rb number of resource blocks
+ * \var Qm modulation order
+ * \var mcs MCS
+ * \var nb_layers number of layers
+ * \var BG LDPC base graph id
+ * \var rv_index
+ * \var G
+ * \var tbslbrm Transport block size LBRM
+ * \var A Transport block size (This is A from 38.212 V15.4.0 section 5.1)
+ * \var Kb
+ * \var K
+ * \var Z lifting size
+ * \var F filler bits size
+ * \var C number of segments 
+ * \var segments array of segments parameters
+ */
+typedef struct nrLDPC_TB_encoding_parameters_s{
+
+  uint16_t rnti;
+  uint16_t nb_rb;
+  uint8_t Qm;
+  uint8_t mcs;
+  uint8_t nb_layers;
+
+  uint8_t BG;
+  uint8_t rv_index;
+
+  uint32_t G;
+  uint32_t tbslbrm;
+  uint32_t A;
+  uint32_t Kb;
+  uint32_t K;
+  uint32_t Z;
+  uint32_t F;
+
+  uint32_t C;
+  nrLDPC_segment_encoding_parameters_t *segments;
+} nrLDPC_TB_encoding_parameters_t;
+
+/**
+ * \typedef nrLDPC_slot_encoding_parameters_t
+ * \struct nrLDPC_slot_encoding_parameters_s
+ * \brief encoding parameter of slot
+ * \var frame frame index
+ * \var slot slot index
+ * \var nb_TBs number of transport blocks
+ * \var respEncode pointer to the queue for encoding tasks
+ * \var threadPool pointer to the thread pool
+ * \var tinput pointer to the input timer struct
+ * \var tprep pointer to the preparation timer struct
+ * \var tparity pointer to the parity timer struct
+ * \var toutput pointer to the output timer struct
+ * \var TBs array of TBs decoding parameters
+ */
+typedef struct nrLDPC_slot_encoding_parameters_s{
+  int frame;
+  int slot;
+  int nb_TBs;
+  notifiedFIFO_t *respEncode;
+  tpool_t *threadPool;
+  time_stats_t *tinput;
+  time_stats_t *tprep;
+  time_stats_t *tparity;
+  time_stats_t *toutput;
+  nrLDPC_TB_encoding_parameters_t *TBs;
+} nrLDPC_slot_encoding_parameters_t;
+
 typedef int32_t(nrLDPC_coding_init_t)(void);
 typedef int32_t(nrLDPC_coding_shutdown_t)(void);
 
@@ -125,20 +213,11 @@ typedef int32_t(nrLDPC_coding_shutdown_t)(void);
  */
 typedef int32_t(nrLDPC_coding_decoder_t)(nrLDPC_slot_decoding_parameters_t *nrLDPC_slot_decoding_parameters);
 
-typedef int32_t(nrLDPC_coding_encoder_t)
-  (PHY_VARS_gNB *gNB,
-   processingData_L1tx_t *msgTx,
-   int frame_tx,
-   uint8_t slot_tx,
-   NR_DL_FRAME_PARMS* frame_parms,
-   unsigned char ** output,
-   time_stats_t *tinput,
-   time_stats_t *tprep,
-   time_stats_t *tparity,
-   time_stats_t *toutput,
-   time_stats_t *dlsch_rate_matching_stats,
-   time_stats_t *dlsch_interleaving_stats,
-   time_stats_t *dlsch_segmentation_stats);
+/**
+ * \brief slot encoding function interface
+ * \param nrLDPC_slot_encoding_parameters pointer to the structure holding the parameters necessary for encoding
+ */
+typedef int32_t(nrLDPC_coding_encoder_t)(nrLDPC_slot_encoding_parameters_t *nrLDPC_slot_encoding_parameters);
 
 typedef struct nrLDPC_coding_interface_s {
   nrLDPC_coding_init_t *nrLDPC_coding_init;

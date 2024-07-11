@@ -34,6 +34,7 @@
 #include "PHY/CODING/coding_extern.h"
 #include "PHY/CODING/coding_defs.h"
 #include "PHY/CODING/lte_interleaver_inline.h"
+#include "PHY/CODING/nrLDPC_coding_interface.h"
 #include "PHY/CODING/nrLDPC_extern.h"
 #include "PHY/NR_TRANSPORT/nr_transport_proto.h"
 #include "PHY/NR_TRANSPORT/nr_transport_common_proto.h"
@@ -50,37 +51,38 @@
 
 extern ldpc_interface_t ldpc_interface_demo;
 
+typedef struct ldpc8blocks_args_s {
+  nrLDPC_TB_encoding_parameters_t *nrLDPC_TB_encoding_parameters;
+  encoder_implemparams_t impp;
+} ldpc8blocks_args_t;
+
 static void ldpc8blocks_demo(void *p)
 {
-  encoder_implemparams_t *impp=(encoder_implemparams_t *) p;
-  NR_DL_gNB_HARQ_t *harq = (NR_DL_gNB_HARQ_t *)impp->harq;
-  nfapi_nr_dl_tti_pdsch_pdu_rel15_t *rel15 = &harq->pdsch_pdu.pdsch_pdu_rel15;
-  uint8_t mod_order = rel15->qamModOrder[0];
-  uint16_t nb_rb = rel15->rbSize;
-  uint8_t nb_symb_sch = rel15->NrOfSymbols;
-  uint16_t length_dmrs = get_num_dmrs(rel15->dlDmrsSymbPos);
-  uint32_t A = rel15->TBSize[0]<<3;
-  uint8_t nb_re_dmrs;
+  ldpc8blocks_args_t *args = (ldpc8blocks_args_t *)p;
+  nrLDPC_TB_encoding_parameters_t *nrLDPC_TB_encoding_parameters = args->nrLDPC_TB_encoding_parameters;
+  encoder_implemparams_t *impp = &args->impp;
 
-  if (rel15->dmrsConfigType==NFAPI_NR_DMRS_TYPE1)
-    nb_re_dmrs = 6*rel15->numDmrsCdmGrpsNoData;
-  else
-    nb_re_dmrs = 4*rel15->numDmrsCdmGrpsNoData;
+  uint8_t mod_order = nrLDPC_TB_encoding_parameters->Qm;
+  uint16_t nb_rb = nrLDPC_TB_encoding_parameters->nb_rb;
+  uint32_t A = nrLDPC_TB_encoding_parameters->A;
 
-  unsigned int G = nr_get_G(nb_rb, nb_symb_sch, nb_re_dmrs, length_dmrs, harq->unav_res, mod_order, rel15->nrOfLayers);
-  LOG_D(PHY,"dlsch coding A %d  Kr %d G %d (nb_rb %d, nb_symb_sch %d, nb_re_dmrs %d, length_dmrs %d, mod_order %d)\n",
-        A,impp->K,G, nb_rb,nb_symb_sch,nb_re_dmrs,length_dmrs,(int)mod_order);
+  unsigned int G = nrLDPC_TB_encoding_parameters->G;
+  LOG_D(PHY,"dlsch coding A %d  Kr %d G %d (nb_rb %d, mod_order %d)\n",
+        A,impp->K,G, nb_rb,(int)mod_order);
   // nrLDPC_encoder output is in "d"
   // let's make this interface happy!
   uint8_t tmp[8][68 * 384]__attribute__((aligned(32)));
   uint8_t *d[impp->n_segments];
   for (int rr=impp->macro_num*8, i=0; rr < impp->n_segments && rr < (impp->macro_num+1)*8; rr++,i++ )
     d[rr] = tmp[i];
-  ldpc_interface_demo.LDPCencoder(harq->c, d, impp);
+  uint8_t *c[nrLDPC_TB_encoding_parameters->C];
+  for (int r = 0; r < nrLDPC_TB_encoding_parameters->C; r++)
+    c[r]=nrLDPC_TB_encoding_parameters->segments[r].c;
+  ldpc_interface_demo.LDPCencoder(c, d, impp);
   // Compute where to place in output buffer that is concatenation of all segments
   uint32_t r_offset=0;
   for (int i=0; i < impp->macro_num*8; i++ )
-     r_offset+=nr_get_E(G, impp->n_segments, mod_order, rel15->nrOfLayers, i);
+     r_offset+=nrLDPC_TB_encoding_parameters->segments[i].E;
   for (int rr=impp->macro_num*8; rr < impp->n_segments && rr < (impp->macro_num+1)*8; rr++ ) {
     if (impp->F>0) {
       // writing into positions d[r][k-2Zc] as in clause 5.3.2 step 2) in 38.212
@@ -90,7 +92,7 @@ static void ldpc8blocks_demo(void *p)
 #ifdef DEBUG_DLSCH_CODING
     LOG_D(PHY,"rvidx in encoding = %d\n", rel15->rvIndex[0]);
 #endif
-    uint32_t E = nr_get_E(G, impp->n_segments, mod_order, rel15->nrOfLayers, rr);
+    uint32_t E = nrLDPC_TB_encoding_parameters->segments[rr].E;
     //#ifdef DEBUG_DLSCH_CODING
     LOG_D(NR_PHY,
           "Rate Matching, Code segment %d/%d (coded bits (G) %u, E %d, Filler bits %d, Filler offset %d mod_order %d, nb_rb "
@@ -103,9 +105,9 @@ static void ldpc8blocks_demo(void *p)
           impp->K - impp->F - 2 * impp->Zc,
           mod_order,
           nb_rb,
-          rel15->nrOfLayers);
+          nrLDPC_TB_encoding_parameters->nb_layers);
 
-    uint32_t Tbslbrm = rel15->maintenance_parms_v3.tbSizeLbrmBytes;
+    uint32_t Tbslbrm = nrLDPC_TB_encoding_parameters->tbslbrm;
 
     uint8_t e[E];
     bzero (e, E);
@@ -117,18 +119,15 @@ static void ldpc8blocks_demo(void *p)
                           impp->n_segments,
                           impp->F,
                           impp->K - impp->F - 2 * impp->Zc,
-                          rel15->rvIndex[0],
+                          nrLDPC_TB_encoding_parameters->rv_index,
                           E);
     if (impp->K - impp->F - 2 * impp->Zc > E) {
       LOG_E(PHY,
-            "dlsch coding A %d  Kr %d G %d (nb_rb %d, nb_symb_sch %d, nb_re_dmrs %d, length_dmrs %d, mod_order %d)\n",
+            "dlsch coding A %d  Kr %d G %d (nb_rb %d, mod_order %d)\n",
             A,
             impp->K,
             G,
             nb_rb,
-            nb_symb_sch,
-            nb_re_dmrs,
-            length_dmrs,
             (int)mod_order);
 
       LOG_E(NR_PHY,
@@ -167,165 +166,52 @@ static void ldpc8blocks_demo(void *p)
   }
 }
 
-static int nr_dlsch_encoding_demo(PHY_VARS_gNB *gNB,
-                      int frame,
-                      uint8_t slot,
-                      NR_DL_gNB_HARQ_t *harq,
-                      NR_DL_FRAME_PARMS *frame_parms,
-                      unsigned char *output,
-                      time_stats_t *tinput,
-                      time_stats_t *tprep,
-                      time_stats_t *tparity,
-                      time_stats_t *toutput,
-                      time_stats_t *dlsch_rate_matching_stats,
-                      time_stats_t *dlsch_interleaving_stats,
-                      time_stats_t *dlsch_segmentation_stats)
+static int nrLDPC_prepare_TB_encoding(nrLDPC_slot_encoding_parameters_t *nrLDPC_slot_encoding_parameters, int dlsch_id)
 {
+  nrLDPC_TB_encoding_parameters_t *nrLDPC_TB_encoding_parameters = &nrLDPC_slot_encoding_parameters->TBs[dlsch_id];
+
   encoder_implemparams_t impp;
-  impp.output=output;
-  unsigned int crc=1;
-  nfapi_nr_dl_tti_pdsch_pdu_rel15_t *rel15 = &harq->pdsch_pdu.pdsch_pdu_rel15;
-  impp.Zc = harq->Z;
-  VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_gNB_DLSCH_ENCODING, VCD_FUNCTION_IN);
-  uint32_t A = rel15->TBSize[0]<<3;
-  unsigned char *a=harq->pdu;
-  if (rel15->rnti != SI_RNTI)
-    trace_NRpdu(DIRECTION_DOWNLINK, a, rel15->TBSize[0], WS_C_RNTI, rel15->rnti, frame, slot,0, 0);
 
-  NR_gNB_PHY_STATS_t *phy_stats = NULL;
-  if (rel15->rnti != 0xFFFF)
-    phy_stats = get_phy_stats(gNB, rel15->rnti);
-
-  if (phy_stats) {
-    phy_stats->frame = frame;
-    phy_stats->dlsch_stats.total_bytes_tx += rel15->TBSize[0];
-    phy_stats->dlsch_stats.current_RI = rel15->nrOfLayers;
-    phy_stats->dlsch_stats.current_Qm = rel15->qamModOrder[0];
+  impp.n_segments = nrLDPC_TB_encoding_parameters->C;
+  impp.tinput = nrLDPC_slot_encoding_parameters->tinput;
+  impp.tprep = nrLDPC_slot_encoding_parameters->tprep;
+  impp.tparity = nrLDPC_slot_encoding_parameters->tparity;
+  impp.toutput = nrLDPC_slot_encoding_parameters->toutput;
+  impp.Kb = nrLDPC_TB_encoding_parameters->Kb;
+  impp.Zc = nrLDPC_TB_encoding_parameters->Z;
+  NR_DL_gNB_HARQ_t harq;
+  impp.harq = &harq;
+  impp.BG = nrLDPC_TB_encoding_parameters->BG;
+  impp.output = nrLDPC_TB_encoding_parameters->segments->output;
+  impp.K = nrLDPC_TB_encoding_parameters->K;
+  impp.F = nrLDPC_TB_encoding_parameters->F;
+  impp.Qm = nrLDPC_TB_encoding_parameters->Qm;
+  impp.Tbslbrm = nrLDPC_TB_encoding_parameters->tbslbrm;
+  impp.G = nrLDPC_TB_encoding_parameters->G;
+  for (int r = 0; r < nrLDPC_TB_encoding_parameters->C; r++) {
+    impp.perCB[r].E_cb = nrLDPC_TB_encoding_parameters->segments[r].E;
   }
+  impp.rv = nrLDPC_TB_encoding_parameters->rv_index;
 
-  int max_bytes = MAX_NUM_NR_DLSCH_SEGMENTS_PER_LAYER*rel15->nrOfLayers*1056;
-  int B;
-  if (A > NR_MAX_PDSCH_TBS) {
-    // Add 24-bit crc (polynomial A) to payload
-    crc = crc24a(a,A)>>8;
-    a[A>>3] = ((uint8_t *)&crc)[2];
-    a[1+(A>>3)] = ((uint8_t *)&crc)[1];
-    a[2+(A>>3)] = ((uint8_t *)&crc)[0];
-    //printf("CRC %x (A %d)\n",crc,A);
-    //printf("a0 %d a1 %d a2 %d\n", a[A>>3], a[1+(A>>3)], a[2+(A>>3)]);
-    B = A + 24;
-    //    harq->b = a;
-    AssertFatal((A / 8) + 4 <= max_bytes,
-                "A %d is too big (A/8+4 = %d > %d)\n",
-                A,
-                (A / 8) + 4,
-                max_bytes);
-    memcpy(harq->b, a, (A / 8) + 4); // why is this +4 if the CRC is only 3 bytes?
-  } else {
-    // Add 16-bit crc (polynomial A) to payload
-    crc = crc16(a,A)>>16;
-    a[A>>3] = ((uint8_t *)&crc)[1];
-    a[1+(A>>3)] = ((uint8_t *)&crc)[0];
-    //printf("CRC %x (A %d)\n",crc,A);
-    //printf("a0 %d a1 %d \n", a[A>>3], a[1+(A>>3)]);
-    B = A + 16;
-    //    harq->b = a;
-    AssertFatal((A / 8) + 3 <= max_bytes,
-                "A %d is too big (A/8+3 = %d > %d)\n",
-                A,
-                (A / 8) + 3,
-                max_bytes);
-    memcpy(harq->b, a, (A / 8) + 3); // using 3 bytes to mimic the case of 24 bit crc
-  }
-
-  impp.BG = rel15->maintenance_parms_v3.ldpcBaseGraph;
-
-  start_meas(dlsch_segmentation_stats);
-  impp.Kb = nr_segmentation(harq->b, harq->c, B, &impp.n_segments, &impp.K, &impp.Zc, &impp.F, impp.BG);
-  stop_meas(dlsch_segmentation_stats);
-
-  if (impp.n_segments>MAX_NUM_NR_DLSCH_SEGMENTS_PER_LAYER*rel15->nrOfLayers) {
-    LOG_E(PHY, "nr_segmentation.c: too many segments %d, B %d\n", impp.n_segments, B);
-    return(-1);
-  }
-  for (int r=0; r<impp.n_segments; r++) {
-    //d_tmp[r] = &harq->d[r][0];
-    //channel_input[r] = &harq->d[r][0];
-#ifdef DEBUG_DLSCH_CODING
-    LOG_D(PHY,"Encoder: B %d F %d \n",harq->B, impp.F);
-    LOG_D(PHY,"start ldpc encoder segment %d/%d\n",r,impp.n_segments);
-    LOG_D(PHY,"input %d %d %d %d %d \n", harq->c[r][0], harq->c[r][1], harq->c[r][2],harq->c[r][3], harq->c[r][4]);
-
-    for (int cnt =0 ; cnt < 22*(*impp.Zc)/8; cnt ++) {
-      LOG_D(PHY,"%d ", harq->c[r][cnt]);
-    }
-
-    LOG_D(PHY,"\n");
-#endif
-    //ldpc_encoder_orig((unsigned char*)harq->c[r],harq->d[r],*Zc,Kb,Kr,BG,0);
-    //ldpc_encoder_optim((unsigned char*)harq->c[r],(unsigned char*)&harq->d[r][0],*Zc,Kb,Kr,BG,NULL,NULL,NULL,NULL);
-  }
-
-  impp.tprep = tprep;
-  impp.tinput = tinput;
-  impp.tparity = tparity;
-  impp.toutput = toutput;
-  impp.harq = harq;
-  notifiedFIFO_t nf;
-  initNotifiedFIFO(&nf);
   int nbJobs = 0;
   for (int j = 0; j < (impp.n_segments / 8 + ((impp.n_segments & 7) == 0 ? 0 : 1)); j++) {
-    notifiedFIFO_elt_t *req = newNotifiedFIFO_elt(sizeof(impp), j, &nf, ldpc8blocks_demo);
-    encoder_implemparams_t *perJobImpp = (encoder_implemparams_t *)NotifiedFifoData(req);
-    *perJobImpp = impp;
-    perJobImpp->macro_num = j;
-    pushTpool(&gNB->threadPool, req);
+    notifiedFIFO_elt_t *req = newNotifiedFIFO_elt(sizeof(ldpc8blocks_args_t), j, nrLDPC_slot_encoding_parameters->respEncode, ldpc8blocks_demo);
+    ldpc8blocks_args_t *perJobImpp = (ldpc8blocks_args_t *)NotifiedFifoData(req);
+    impp.macro_num = j;
+    perJobImpp->impp = impp;
+    perJobImpp->nrLDPC_TB_encoding_parameters = nrLDPC_TB_encoding_parameters;
+    pushTpool(nrLDPC_slot_encoding_parameters->threadPool, req);
     nbJobs++;
   }
-  while (nbJobs) {
-    notifiedFIFO_elt_t *req = pullTpool(&nf, &gNB->threadPool);
-    if (req == NULL)
-      break; // Tpool has been stopped
-    delNotifiedFIFO_elt(req);
-    nbJobs--;
-  }
-  VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_gNB_DLSCH_ENCODING, VCD_FUNCTION_OUT);
-  return 0;
+  return nbJobs;
 }
 
-int nrLDPC_coding_encoder(PHY_VARS_gNB *gNB,
-                          processingData_L1tx_t *msgTx,
-                          int frame,
-                          uint8_t slot,
-                          NR_DL_FRAME_PARMS *frame_parms,
-                          unsigned char **output,
-                          time_stats_t *tinput,
-                          time_stats_t *tprep,
-                          time_stats_t *tparity,
-                          time_stats_t *toutput,
-                          time_stats_t *dlsch_rate_matching_stats,
-                          time_stats_t *dlsch_interleaving_stats,
-                          time_stats_t *dlsch_segmentation_stats)
+int nrLDPC_coding_encoder(nrLDPC_slot_encoding_parameters_t *nrLDPC_slot_encoding_parameters)
 {
 
   int nbEncode = 0;
-  for (int dlsch_id = 0; dlsch_id < msgTx->num_pdsch_slot; dlsch_id++) {
-    NR_gNB_DLSCH_t *dlsch = msgTx->dlsch[dlsch_id];
-
-    NR_DL_gNB_HARQ_t *harq = &dlsch->harq_process;
-    nbEncode += nr_dlsch_encoding_demo(gNB,
-                                  frame,
-                                  slot,
-                                  harq,
-                                  frame_parms,
-                                  output[dlsch_id],
-                                  tinput,
-                                  tprep,
-                                  tparity,
-                                  toutput,
-                                  dlsch_rate_matching_stats,
-                                  dlsch_interleaving_stats,
-                                  dlsch_segmentation_stats);
+  for (int dlsch_id = 0; dlsch_id < nrLDPC_slot_encoding_parameters->nb_TBs; dlsch_id++) {
+    nbEncode += nrLDPC_prepare_TB_encoding(nrLDPC_slot_encoding_parameters, dlsch_id);
   }
 
   return nbEncode;
