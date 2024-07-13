@@ -68,7 +68,6 @@
 #include "NR_UE-CapabilityRAT-Container.h"
 
 #include "RRC/NAS/nas_config.h"
-#include "RRC/NAS/rb_config.h"
 #if ENABLE_RAL
   #include "rrc_UE_ral.h"
 #endif

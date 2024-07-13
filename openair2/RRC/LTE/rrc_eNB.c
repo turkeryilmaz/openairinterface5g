@@ -79,7 +79,6 @@
 #include "LTE_MeasResults.h"
 
 #include "RRC/NAS/nas_config.h"
-#include "RRC/NAS/rb_config.h"
 
 #include "rrc_eNB_S1AP.h"
 #include "rrc_eNB_GTPV1U.h"
