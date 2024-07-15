@@ -39,15 +39,18 @@
  *   (set flags)
  * \return true on success, false otherwise
  */
-static bool setInterfaceParameter(int sock_fd, const char *ifn, const char *if_addr, int operation)
+static bool setInterfaceParameter(int sock_fd, const char *ifn, int af, const char *if_addr, int operation)
 {
   struct ifreq ifr = {0};
   strncpy(ifr.ifr_name, ifn, sizeof(ifr.ifr_name));
 
+  DevAssert(af == AF_INET);
   struct sockaddr_in addr = {.sin_family = AF_INET};
-  inet_aton(if_addr, &addr.sin_addr);
-  //inet_pton(AF_INET6 or AF_INET)
+  //struct sockaddr_in6 addr = {.sin_family = AF_INET6};
+  inet_pton(af, if_addr, &addr.sin_addr);
+  //inet_pton(af, if_addr, &addr.sin6_addr);
   memcpy(&ifr.ifr_ifru.ifru_addr,&addr,sizeof(struct sockaddr_in));
+  //memcpy(&ifr.ifr_ifru.ifru_addr,&addr,sizeof(struct sockaddr_in6));
 
   bool success = ioctl(sock_fd,operation,&ifr) == 0;
   if (!success)
@@ -79,19 +82,19 @@ static bool change_interface_state(int sock_fd, const char *ifn, if_action_t if_
 }
 
 // non blocking full configuration of the interface (address, and the two lest octets of the address)
-bool nas_config(int interface_id, const char *ip, const char *ifpref)
+bool nas_config(int interface_id, int af, const char *ip, const char *ifpref)
 {
   char interfaceName[IFNAMSIZ];
   snprintf(interfaceName, sizeof(interfaceName), "%s%d", ifpref, interface_id);
 
-  int sock_fd = socket(AF_INET, SOCK_DGRAM, 0);
+  int sock_fd = socket(af, SOCK_DGRAM, 0);
   if (sock_fd < 0) {
     LOG_E(UTIL, "Failed creating socket for interface management: %d, %s\n", errno, strerror(errno));
     return 1;
   }
 
   change_interface_state(sock_fd, interfaceName, INTERFACE_DOWN);
-  bool success = setInterfaceParameter(sock_fd, interfaceName, ip, SIOCSIFADDR);
+  bool success = setInterfaceParameter(sock_fd, interfaceName, af, ip, SIOCSIFADDR);
 
   if (success)
     success = change_interface_state(sock_fd, interfaceName, INTERFACE_UP);

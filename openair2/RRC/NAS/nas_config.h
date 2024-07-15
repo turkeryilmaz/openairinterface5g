@@ -23,7 +23,8 @@
 #define NAS_CONFIG_H_
 
 #include <stdbool.h>
-#include <netinet/in.h>
+//#include <netinet/in.h>
+#include <arpa/inet.h> // for AF_INET and AF_INET6
 
 /*! \fn int  nas_config(char*, int, int)
  * \brief This function initializes the nasmesh interface using the basic values,
@@ -31,6 +32,7 @@
  * ones
  * \param[in] interface_id number of this interface, prepended after interface
  * name
+ * \param[in] af AF_INET or AF_INET6
  * \param[in] ip IPv4 address of this interface as a string
  * \param[in] ifprefix interface name prefix to which an interface number will
  * be appended
@@ -38,6 +40,6 @@
  * \note
  * @ingroup  _nas
  */
-bool nas_config(int interface_id, const char *ip, const char *ifprefix);
+bool nas_config(int interface_id, int af, const char *ip, const char *ifprefix);
 
 #endif /*NAS_CONFIG_H_*/
