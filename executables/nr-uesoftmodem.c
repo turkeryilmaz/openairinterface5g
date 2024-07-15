@@ -379,9 +379,11 @@ static void init_pdcp(int ue_id)
     pdcp_initmask = pdcp_initmask | UE_NAS_USE_TUN_BIT;
   }*/
 
-  if (IS_SOFTMODEM_NOKRNMOD) {
-    pdcp_initmask = pdcp_initmask | UE_NAS_USE_TUN_BIT;
-  }
+  // code previously checked for IS_SOFTMODEM_NOKRNMOD which was practically
+  // always set (we never used kernel modules). Leave the current flag enabled;
+  // further refactoring could take it out
+  pdcp_initmask = pdcp_initmask | UE_NAS_USE_TUN_BIT;
+
   if (get_softmodem_params()->nsa && rlc_module_init(0) != 0) {
     LOG_I(RLC, "Problem at RLC initiation \n");
   }
