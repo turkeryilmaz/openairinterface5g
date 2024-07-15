@@ -55,3 +55,8 @@ target_link_libraries(nrscope PUBLIC forms PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc
 set_target_properties(enbscope uescope nrscope 
                       PROPERTIES LIBRARY_OUTPUT_DIRECTORY ../../..
 )
+
+if (ENABLE_IMSCOPE)
+  add_subdirectory(imscope)
+endif()
+
