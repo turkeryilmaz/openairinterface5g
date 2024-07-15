@@ -110,7 +110,7 @@ int nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
 
     // Check for detection threshold
     
-    LOG_I(PHY, "SRS ToA before (RX ant %d): max_val %d, mean_val %d, max_idx %d\n", arx_index, max_val, mean_val, max_idx);
+    LOG_D(PHY, "SRS ToA before (RX ant %d): max_val %d, mean_val %d, max_idx %d\n", arx_index, max_val, mean_val, max_idx);
     if ((mean_val != 0) && (max_val / mean_val > 10)) {
       srs_toa_ns[arx_index] = (max_idx*1e9)/(NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->samples_per_frame*100);
     } else {
@@ -157,7 +157,6 @@ void srs_toa_MQTT(int32_t *buffer, int32_t buf_len, int32_t gNB_id, int32_t peak
     MQTTClient_message pubmsg = MQTTClient_message_initializer;
     MQTTClient_deliveryToken token;
     int rc;
-
     cJSON *mqtt_payload = cJSON_CreateObject();
     cJSON_AddNumberToObject(mqtt_payload, "peak_index", peak_idx);
     cJSON_AddNumberToObject(mqtt_payload, "source", gNB_id);

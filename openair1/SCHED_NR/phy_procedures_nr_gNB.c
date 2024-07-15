@@ -1015,7 +1015,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
         nr_est_toa_ns_srs(frame_parms, N_ant_rx, N_ap ,N_symb_SRS, srs_estimated_channel_freq, srs_toa_ns);
 
         for (int ant=0;ant<N_ant_rx;ant++){
-          printf("srs_toa_ns[%d] = %d",ant,srs_toa_ns[ant]);
+          printf("srs_toa_ns[%d] = %d\n",ant,srs_toa_ns[ant]);
 
           srs_toa_MQTT((int32_t *)srs_estimated_channel_time[ant], frame_parms->ofdm_symbol_size, ant, srs_toa_ns[ant], ant);
           //srs_toa_MQTT((int32_t *)srs_estimated_channel_time[ant][0], frame_parms->ofdm_symbol_size, ant, ant);
