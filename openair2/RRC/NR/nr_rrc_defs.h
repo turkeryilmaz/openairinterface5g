@@ -243,6 +243,7 @@ typedef enum {
   RRC_REESTABLISH_COMPLETE,
   RRC_DEFAULT_RECONF,
   RRC_DEDICATED_RECONF,
+  RRC_IAB_RECONF,
   RRC_PDUSESSION_ESTABLISH,
   RRC_PDUSESSION_MODIFY,
   RRC_PDUSESSION_RELEASE,
@@ -325,6 +326,10 @@ typedef struct gNB_RRC_UE_s {
 
   /*[IAB] params*/
   bool                               is_iab_mt;
+  /* For now, only used to check if already has bap address 
+   * Further IAB information is located at ran_context through gNB_IAB_INFO_s **iab
+  */
+  uint16_t                           bap_address;
 } gNB_RRC_UE_t;
 
 typedef struct rrc_gNB_ue_context_s {

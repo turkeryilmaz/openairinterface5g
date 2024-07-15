@@ -8,6 +8,13 @@
 #ifndef BAP_INFO_H_
 #define BAP_INFO_H_
 
+typedef struct bhch_t{
+  uint16_t bhch_id;
+  uint32_t donor_bap_address;
+  uint32_t node_bap_address[30];
+  uint32_t number_of_nodes;
+}bhch_t;
+
 typedef struct iab_donor_du_t {
   uint64_t du_id;
   uint16_t bap_address;
@@ -18,7 +25,7 @@ typedef struct iab_node_du_t {
 } iab_node_du_t;
 
 typedef struct iab_mt_t {
-  uint64_t mt_id;
+  uint64_t mt_id; // Don't know if this will useful
   uint32_t rrc_ue_id;
 } iab_mt_t;
 
@@ -26,6 +33,7 @@ typedef struct iab_node_t {
   uint16_t bap_address;
   iab_node_du_t iab_node_du;
   iab_mt_t iab_mt;
+  uint16_t donor_bap_address;
 } iab_node_t;
 
 typedef struct iab_cu_t {
@@ -36,6 +44,8 @@ typedef struct iab_cu_t {
   iab_node_t iab_node[30];
   int number_of_iab_nodes;
   int last_given_bap_address;
+  bhch_t *bhch_list;
+  int number_of_bhchs;
 } iab_cu_t;
 
 typedef struct gNB_IAB_INFO_s {

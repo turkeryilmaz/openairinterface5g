@@ -57,6 +57,11 @@
 #include "NR_RejectWaitTime.h"
 #include "NR_RRCSetup.h"
 
+//[IAB] includes
+#include "NR_RRCReconfiguration-v1610-IEs.h"
+#include "NR_SetupRelease.h"
+#include "NR_BAP-Config-r16.h"
+
 #include "NR_CellGroupConfig.h"
 #include "NR_MeasResults.h"
 #include "NR_UL-CCCH-Message.h"
@@ -721,6 +726,64 @@ void rrc_gNB_generate_dedicatedRRCReconfiguration(const protocol_ctxt_t *const c
         DCCH);
 
   nr_rrc_transfer_protected_rrc_message(rrc, ue_p, DCCH, buffer, size);
+}
+
+//-----[IAB] Specific RRCReconfig to setup BH RLC Channels and BAP config------
+void rrc_gNB_generate_IAB_RRCReconfiguration(const protocol_ctxt_t *const ctxt_pP, rrc_gNB_ue_context_t *ue_context_pP)
+//-----------------------------------------------------------------------------
+{
+  gNB_RRC_INST *rrc = RC.nrrrc[ctxt_pP->module_id];
+
+  uint8_t xid = rrc_gNB_get_next_transaction_identifier(ctxt_pP->module_id);
+  gNB_RRC_UE_t *ue_p = &ue_context_pP->ue_context;
+  ue_p->xids[xid] = RRC_IAB_RECONF;
+  
+  struct NR_RRCReconfiguration_v1610_IEs *reconf_v1610 = CALLOC(1, sizeof(*reconf_v1610));
+  reconf_v1610->bap_Config_r16->present = NR_SetupRelease_BAP_Config_r16_PR_setup;
+  reconf_v1610->bap_Config_r16->choice.setup = CALLOC(1, sizeof(reconf_v1610->bap_Config_r16->choice.setup)); 
+  NR_BAP_Config_r16_t *bap_config = reconf_v1610->bap_Config_r16->choice.setup;
+  NR_BAPADDRESS_TO_BIT_STRING(ue_p->bap_address, bap_config->bap_Address_r16);
+
+  // --- Set cellGroupConfig with bap_address and bhch info ---
+  NR_CellGroupConfig_t *cellGroupConfig = CALLOC(1, sizeof(*cellGroupConfig));
+  cellGroupConfig->cellGroupId = ue_p->masterCellGroup->cellGroupId;
+  NR_BAPADDRESS_TO_BIT_STRING(ue_p->bap_address, cellGroupConfig->cellGroupId->ext2->bap_Address_r16);
+  // TODO
+
+  // ----------------------------------------------------------
+  //uint8_t buffer[RRC_BUF_SIZE] = {0};
+  /*int size = do_RRCReconfiguration_IAB( ue_p,
+                                    buffer,
+                                    RRC_BUF_SIZE,
+                                    xid,
+                                    cellGroupConfig);
+  */
+  /*
+  int size = do_RRCReconfiguration(ue_p,
+                                   buffer,
+                                   RRC_BUF_SIZE,
+                                   xid,
+                                   SRBs,
+                                   DRBs,
+                                   ue_p->DRB_ReleaseList,
+                                   NULL,
+                                   NULL,
+                                   dedicatedNAS_MessageList,
+                                   cellGroupConfig);
+
+  LOG_I(NR_RRC, "UE %d: Generate RRCReconfiguration (bytes %d, xid %d)\n", ue_p->rrc_ue_id, size, xid);
+  LOG_D(NR_RRC,
+        "[FRAME %05d][RRC_gNB][MOD %u][][--- PDCP_DATA_REQ/%d Bytes (rrcReconfiguration to UE %x MUI %d) --->][PDCP][MOD %u][RB %u]\n",
+        ctxt_pP->frame,
+        ctxt_pP->module_id,
+        size,
+        ue_p->rnti,
+        rrc_gNB_mui,
+        ctxt_pP->module_id,
+        DCCH);
+
+  nr_rrc_transfer_protected_rrc_message(rrc, ue_p, DCCH, buffer, size);
+  */
 }
 
 //-----------------------------------------------------------------------------
@@ -1560,8 +1623,9 @@ static int handle_rrcSetupComplete(const protocol_ctxt_t *const ctxt_pP,
       iab->iab_cu.iab_node[*number_of_nodes].iab_mt.rrc_ue_id = UE->rrc_ue_id;
       iab->iab_cu.last_given_bap_address += 1;
       int new_bap_address = iab->iab_cu.last_given_bap_address;
-      iab->iab_cu.iab_node->bap_address = new_bap_address;
+      iab->iab_cu.iab_node[*number_of_nodes].bap_address = new_bap_address;
       *number_of_nodes += 1;
+
       // Call UE Context modification request.
       gNB_RRC_INST *rrc = RC.nrrrc[0];
       f1_ue_data_t ue_data = cu_get_f1_ue_data(UE->rrc_ue_id);
@@ -1585,8 +1649,27 @@ static int handle_rrcSetupComplete(const protocol_ctxt_t *const ctxt_pP,
         .bhchannels_to_be_setup = bh_rlc_channels,
         .bhchannels_to_be_setup_length = 1
       };
-      rrc->mac_rrc.ue_context_modification_request(ue_data.du_assoc_id, &ue_context_modif_req);
-      
+
+      /* Register BH RLC Channel information in the CU
+      */
+      // Get associated donor_du information
+      const nr_rrc_du_container_t *donor_du = get_du_for_ue(rrc, UE->rrc_ue_id);
+      uint64_t donor_du_id = donor_du->setup_req->gNB_DU_id;
+      uint16_t donor_bap_address;
+      for(int i=0; i<iab->iab_cu.number_of_iab_donor_dus; i++){
+        if(iab->iab_cu.iab_donor_du[i].du_id == donor_du_id){
+          donor_bap_address = iab->iab_cu.iab_donor_du[i].bap_address;
+          break;
+        }
+      }
+      // Insert bhch info in IAB information
+      iab->iab_cu.bhch_list[iab->iab_cu.number_of_bhchs].bhch_id = bhch_buf[0].bHRLCChannelID;
+      iab->iab_cu.bhch_list[iab->iab_cu.number_of_bhchs].node_bap_address = new_bap_address;
+      iab->iab_cu.bhch_list[iab->iab_cu.number_of_bhchs].donor_bap_address = donor_bap_address;
+      iab->iab_cu.number_of_bhchs += 1;
+
+      rrc->mac_rrc.ue_context_modification_request(ue_data.du_assoc_id, &ue_context_modif_req);      
+
       /* if we did not receive any UE Capabilities, let's do that now. It should
       * only happen on the first time a reconfiguration arrives. Afterwards, we
       * should have them. If the UE does not give us anything, we will re-request
@@ -1643,6 +1726,9 @@ static void handle_rrcReconfigurationComplete(const protocol_ctxt_t *const ctxt_
     case RRC_ACTION_NONE:
       LOG_E(RRC, "UE %d: Received RRC Reconfiguration Complete with xid %d while no transaction is ongoing\n", UE->rrc_ue_id, xid);
       successful_reconfig = false;
+      break;
+    case RRC_IAB_RECONF:
+      /* do nothing */
       break;
     default:
       LOG_E(RRC, "UE %d: Received unexpected transaction type %d for xid %d\n", UE->rrc_ue_id, UE->xids[xid], xid);
@@ -2065,22 +2151,24 @@ static void rrc_CU_process_ue_context_modification_response(MessageDef *msg_p, i
       LOG_I(RRC, "UE %04x replacing existing CellGroupConfig with new one received from DU\n", UE->rnti);
     }
     UE->masterCellGroup = cellGroupConfig;
-    /* [IAB] Check
-      LOG_I(RRC, "Modification process logicalChannelGroupIAB-Ext-r17: %d\n", 
-      *cellGroupConfig->ext2->bh_RLC_ChannelToAddModList_r16->list.array[0]->mac_LogicalChannelConfig_r16->ul_SpecificParameters->ext2->logicalChannelGroupIAB_Ext_r17);
-    */
+
+    /* [IAB] */
     if(UE->is_iab_mt){
-      gNB_IAB_INFO_s *iab = RC.iab[0];
-      for (int i=0; i<iab->iab_cu.number_of_iab_nodes; i++){
-        if(iab->iab_cu.iab_node[i]->iab_mt.rrc_ue_id == UE->rrc_ue_id){
-          // TODO
-          iab->iab_cu.last_given_bap_address += 1;
-          int new_bap_address = iab->iab_cu.last_given_bap_address;
-          iab->iab_cu.iab_node[i]->bap_address = new_bap_address;
+      // If BAP Address isn't set yet (Configuring new IAB-MT)
+      if(UE->bap_address == 0){
+        gNB_IAB_INFO *iab = RC.iab[0];
+        for (int i=0; i<iab->iab_cu.number_of_iab_nodes; i++){
+          if(iab->iab_cu.iab_node[i].iab_mt.rrc_ue_id == UE->rrc_ue_id){
+            UE->bap_address = iab->iab_cu.iab_node[i].bap_address;
+          }
         }
+        rrc_gNB_generate_IAB_RRCReconfiguration(&ctxt, ue_context_p);
+      } else {
+        // Future use (modifying an IAB-MT that is already configured)
       }
+    }else{
+      rrc_gNB_generate_dedicatedRRCReconfiguration(&ctxt, ue_context_p);
     }
-    rrc_gNB_generate_dedicatedRRCReconfiguration(&ctxt, ue_context_p);
   }
 }
 
