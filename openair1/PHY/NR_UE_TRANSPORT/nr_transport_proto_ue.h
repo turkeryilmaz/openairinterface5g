@@ -213,6 +213,16 @@ uint32_t nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
                            uint8_t b[b_size],
                            int G);
 
+uint32_t nr_ue_dlsch_decoding_slot(PHY_VARS_NR_UE *phy_vars_ue,
+                                   const UE_nr_rxtx_proc_t *proc,
+                                   NR_UE_DLSCH_t *dlsch,
+                                   short **dlsch_llr,
+                                   int b_size,
+                                   uint8_t b[2][b_size],
+                                   int *G,
+                                   int nb_dlsch,
+                                   int *DLSCH_ids);
+
 int nr_ulsch_encoding(PHY_VARS_NR_UE *ue,
                      NR_UE_ULSCH_t *ulsch,
                      NR_DL_FRAME_PARMS* frame_parms,
