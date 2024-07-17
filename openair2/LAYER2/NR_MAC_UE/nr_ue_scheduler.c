@@ -53,6 +53,7 @@
 #include <executables/softmodem-common.h>
 
 #include "LAYER2/NR_MAC_COMMON/nr_mac_extern.h"
+#include "nfapi/open-nFAPI/nfapi/public_inc/fapi_nr_ue_constants.h"
 #include "LAYER2/RLC/rlc.h"
 
 //#define SRS_DEBUG
@@ -102,7 +103,7 @@ fapi_nr_ul_config_request_pdu_t *lockGet_ul_config(NR_UE_MAC_INST_t *mac, frame_
   pdu->pdu_type = pdu_type;
   pdu->lock = &ul_config->mutex_ul_config;
   pdu->privateNBpdus = &ul_config->number_pdus;
-  LOG_D(NR_MAC, "Added ul pdu for %d.%d, type %d\n", frame_tx, slot_tx, pdu_type);
+  LOG_D(NR_MAC, "Added ul pdu for %d.%d, type %s\n", frame_tx, slot_tx, ultypes[pdu_type]);
   return pdu;
 }
 
@@ -3095,7 +3096,7 @@ static bool fill_mac_sdu(NR_UE_MAC_INST_t *mac,
   /* prepare the MAC sdu */
   NR_LC_SCHEDULING_INFO *sched_info = get_scheduling_info_from_lcid(mac, lcid);
   int32_t lcid_remain_buffer = sched_info->LCID_buffer_remain;
-  LOG_D(NR_MAC,
+  LOG_I(NR_MAC,
         "[UE %d] [%d.%d] lcp round = %d, remaining mac pdu length = %d, lcid buffer remaining = %d, lcid = %d \n",
         mac->ue_id,
         frame,
@@ -3276,7 +3277,7 @@ uint8_t nr_ue_get_sdu(NR_UE_MAC_INST_t *mac,
   mac_ce_p->tot_mac_ce_len = nr_ue_get_sdu_mac_ce_pre(mac, CC_id, frame, slot, gNB_index, ulsch_buffer, buflen, mac_ce_p);
   mac_ce_p->total_mac_pdu_header_len = mac_ce_p->tot_mac_ce_len;
 
-  LOG_D(NR_MAC, "[UE %d] [%d.%d] process UL transport block at with size TBS = %d bytes \n", mac->ue_id, frame, slot, buflen);
+  LOG_W(NR_MAC, "[UE %d] [%d.%d] process UL transport block at with size TBS = %d bytes \n", mac->ue_id, frame, slot, buflen);
 
   // selection of logical channels
   int avail_lcids_count = 0;
@@ -3320,7 +3321,7 @@ uint8_t nr_ue_get_sdu(NR_UE_MAC_INST_t *mac,
 
       buflen_remain = buflen - (mac_ce_p->total_mac_pdu_header_len + mac_ce_p->sdu_length_total + sh_size);
 
-      LOG_D(NR_MAC,
+      LOG_W(NR_MAC,
             "[UE %d] [%d.%d] UL-DXCH -> ULSCH, RLC with LCID 0x%02x (TBS %d bytes, sdu_length_total %d bytes, MAC header "
             "len %d bytes,"
             "buflen_remain %d bytes)\n",
@@ -3390,8 +3391,7 @@ uint8_t nr_ue_get_sdu(NR_UE_MAC_INST_t *mac,
 
   // Compute final offset for padding and fill remainder of ULSCH with 0
   if (buflen_remain > 0) {
-
-    LOG_D(NR_MAC, "Filling remainder %d bytes to the UL PDU \n", buflen_remain);
+    LOG_W(NR_MAC, "Filling remainder %d bytes to the UL PDU \n", buflen_remain);
     ((NR_MAC_SUBHEADER_FIXED *) pdu)->R = 0;
     ((NR_MAC_SUBHEADER_FIXED *) pdu)->LCID = UL_SCH_LCID_PADDING;
 
