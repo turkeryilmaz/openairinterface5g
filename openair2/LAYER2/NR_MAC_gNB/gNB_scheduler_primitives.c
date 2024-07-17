@@ -1892,7 +1892,7 @@ void fill_dci_pdu_rel15(const NR_UE_ServingCell_Info_t *servingCellInfo,
     pos += 1;
     *dci_pdu |= ((uint64_t)dci_pdu_rel15->dmrs_sequence_initialization.val & 0x1) << (dci_size - pos);
   }
-  LOG_D(NR_MAC, "DCI has %d bits and the payload is %lx\n", dci_size, *dci_pdu);
+  LOG_D(NR_MAC_DCI, "DCI format %s, rnti type %s has %d bits and the payload is %lx\n", dci_txt[dci_format], rnti_types(rnti_type), dci_size, *dci_pdu);
 }
 
 int get_spf(nfapi_nr_config_request_scf_t *cfg) {

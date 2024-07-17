@@ -446,7 +446,7 @@ typedef enum {
   NR_UL_DCI_FORMAT_0_1,
   NR_DCI_NONE
 } nr_dci_format_t;
-
+static const char *const dci_txt[] = {"1_0", "1_1", "2_0", "2_1", "2_2", "2_3", "0_0", "0_1"};
 typedef enum channel_bandwidth_e {
   bw_5MHz   = 0x1,
   bw_10MHz  = 0x2,

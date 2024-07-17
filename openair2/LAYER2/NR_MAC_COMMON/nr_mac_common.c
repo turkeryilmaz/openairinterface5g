@@ -3458,7 +3458,7 @@ uint16_t nr_dci_size(const NR_UE_DL_BWP_t *DL_BWP,
     default:
       AssertFatal(1==0, "Invalid NR DCI format %d\n", format);
   }
-  LOG_D(NR_MAC, "DCI size: %d\n", size);
+  LOG_D(NR_MAC_DCI, "computed DCI size %d, for format %s, rnti type %s\n", size, dci_txt[format], rnti_types(rnti_type));
   return size;
 }
 

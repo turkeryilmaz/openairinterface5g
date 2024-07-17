@@ -691,9 +691,11 @@ static int nr_ue_process_dci_dl_10(NR_UE_MAC_INST_t *mac,
     dlsch_pdu->BWPSize =
         mac->type0_PDCCH_CSS_config.num_rbs ? mac->type0_PDCCH_CSS_config.num_rbs : mac->sc_info.initial_dl_BWPSize;
     dlsch_pdu->BWPStart = dci_ind->cset_start;
-  } else {
+  } else if (current_DL_BWP) {
     dlsch_pdu->BWPSize = current_DL_BWP->BWPSize;
     dlsch_pdu->BWPStart = current_DL_BWP->BWPStart;
+  } else {
+    LOG_E(MAC, " try to decode DCI 10, but  mac->current_DL_BWP is null\n");
   }
 
   nr_rnti_type_t rnti_type = get_rnti_type(mac, dci_ind->rnti);
@@ -1034,6 +1036,7 @@ static int nr_ue_process_dci_dl_11(NR_UE_MAC_INST_t *mac,
 
   fapi_nr_dl_config_dlsch_pdu_rel15_t *dlsch_pdu = &dl_conf_req->dlsch_config_pdu.dlsch_config_rel15;
 
+  AssertFatal(current_DL_BWP, "");
   dlsch_pdu->BWPSize = current_DL_BWP->BWPSize;
   dlsch_pdu->BWPStart = current_DL_BWP->BWPStart;
   dlsch_pdu->SubcarrierSpacing = current_DL_BWP->scs;
@@ -1376,8 +1379,7 @@ static int8_t nr_ue_process_dci(NR_UE_MAC_INST_t *mac,
                                 fapi_nr_dci_indication_pdu_t *dci_ind,
                                 const nr_dci_format_t format)
 {
-  const char *dci_formats[] = {"1_0", "1_1", "2_0", "2_1", "2_2", "2_3", "0_0", "0_1"};
-  LOG_D(MAC, "Processing received DCI format %s\n", dci_formats[format]);
+  LOG_D(MAC, "Processing received DCI format %s\n", dci_txt[format]);
 
   switch (format) {
     case NR_UL_DCI_FORMAT_0_0:
