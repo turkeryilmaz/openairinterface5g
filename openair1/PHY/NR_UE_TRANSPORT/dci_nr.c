@@ -733,7 +733,7 @@ void nr_dci_decoding_procedure(PHY_VARS_NR_UE *ue,
       rnti_t n_rnti = rel15->rnti;
       if (crc == n_rnti) {
         LOG_D(NR_PHY_DCI,
-              "(%i.%i) Received dci indication (rnti %x,dci format %d,n_CCE %d,payloadSize %d,payload %llx)\n",
+              "(%i.%i) Received dci indication (rnti %x,dci format option (0 = dci x_0) %d,n_CCE %d,payloadSize %d,payload %llx)\n",
               proc->frame_rx,
               proc->nr_slot_rx,
               n_rnti,
