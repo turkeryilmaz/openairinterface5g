@@ -90,7 +90,7 @@ bool nas_config(int interface_id, int af, const char *ip, const char *ifpref)
   int sock_fd = socket(af, SOCK_DGRAM, 0);
   if (sock_fd < 0) {
     LOG_E(UTIL, "Failed creating socket for interface management: %d, %s\n", errno, strerror(errno));
-    return 1;
+    return false;
   }
 
   change_interface_state(sock_fd, interfaceName, INTERFACE_DOWN);
