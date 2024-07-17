@@ -329,7 +329,8 @@ int get_supported_bw_mhz(frequency_range_t frequency_range, int scs, int nb_rb)
       case 11 :
         return 100;
       default :
-        AssertFatal(false, "Invalid band index for FR1 %d\n", bw_index);
+        LOG_E(PHY, "Invalid band index for FR1 %d\n", bw_index);
+	return 40;
     }
   }
   else {
