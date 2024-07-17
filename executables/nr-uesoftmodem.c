@@ -42,6 +42,7 @@
 
 //#undef FRAME_LENGTH_COMPLEX_SAMPLES //there are two conflicting definitions, so we better make sure we don't use it at all
 #include "openair1/PHY/MODULATION/nr_modulation.h"
+#include "PHY/CODING/nrLDPC_coding_interface.h"
 #include "PHY/phy_vars_nr_ue.h"
 #include "PHY/NR_UE_TRANSPORT/nr_transport_proto_ue.h"
 #include "PHY/NR_TRANSPORT/nr_dlsch.h"
@@ -386,6 +387,7 @@ configmodule_interface_t *uniqCfg = NULL;
 
 // A global var to reduce the changes size
 ldpc_interface_t ldpc_interface = {0}, ldpc_interface_offload = {0};
+nrLDPC_coding_interface_t nrLDPC_coding_interface = {0};
 
 int main(int argc, char **argv)
 {
@@ -422,10 +424,25 @@ int main(int argc, char **argv)
 
   init_opt();
 
-  if (nrUE_params.ldpc_offload_flag)
-    load_LDPClib("_t2", &ldpc_interface_offload);
+  // if (nrUE_params.ldpc_offload_flag)
+  //   load_LDPClib("_t2", &ldpc_interface_offload);
 
-  load_LDPClib(NULL, &ldpc_interface);
+  // load_LDPClib(NULL, &ldpc_interface);
+
+  nrUE_params.nrLDPC_coding_interface_flag = 0;
+  int ret_loader = load_nrLDPC_coding_interface(NULL, &nrLDPC_coding_interface);
+  if (ret_loader >= 0) {
+    nrUE_params.nrLDPC_coding_interface_flag = 1;
+    if (nrUE_params.ldpc_offload_flag)
+      load_LDPClib("_t2", &ldpc_interface_offload);
+    else
+      load_LDPClib("", &ldpc_interface);
+  } else {
+    if (nrUE_params.ldpc_offload_flag)
+      load_LDPClib("_t2", &ldpc_interface_offload);
+    else
+      load_LDPClib(NULL, &ldpc_interface);
+  }
 
   if (ouput_vcd) {
     vcd_signal_dumper_init("/tmp/openair_dump_nrUE.vcd");

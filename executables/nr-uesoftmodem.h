@@ -82,6 +82,7 @@ typedef struct {
   int N_RB_DL;
   int ssb_start_subcarrier;
   int ldpc_offload_flag;
+  int nrLDPC_coding_interface_flag;
   unsigned int ntn_koffset;
   double ntn_ta_common;
   int agc;
