@@ -424,11 +424,6 @@ int main(int argc, char **argv)
 
   init_opt();
 
-  // if (nrUE_params.ldpc_offload_flag)
-  //   load_LDPClib("_t2", &ldpc_interface_offload);
-
-  // load_LDPClib(NULL, &ldpc_interface);
-
   nrUE_params.nrLDPC_coding_interface_flag = 0;
   int ret_loader = load_nrLDPC_coding_interface(NULL, &nrLDPC_coding_interface);
   if (ret_loader >= 0) {

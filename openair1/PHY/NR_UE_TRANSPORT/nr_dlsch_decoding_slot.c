@@ -45,9 +45,8 @@ static extended_kpi_ue kpiStructure = {0};
 uint32_t nr_ue_dlsch_decoding_slot(PHY_VARS_NR_UE *phy_vars_ue,
                                    const UE_nr_rxtx_proc_t *proc,
                                    NR_UE_DLSCH_t *dlsch,
-                                   int16_t *dlsch_llr[2],
-                                   int b_size,
-                                   uint8_t b[2][b_size],
+                                   int16_t **dlsch_llr,
+                                   uint8_t **b,
                                    int *G,
                                    int nb_dlsch,
                                    int *DLSCH_ids)
@@ -97,7 +96,6 @@ uint32_t nr_ue_dlsch_decoding_slot(PHY_VARS_NR_UE *phy_vars_ue,
     TB_decoding_params->mcs = dlsch_config->mcs;
     TB_decoding_params->nb_layers = dlsch[DLSCH_id].Nl;
     TB_decoding_params->BG = dlsch_config->ldpcBaseGraph;
-    // FIXME: naming is NOT consistent
     TB_decoding_params->A = dlsch_config->TBS;
     // ------------------------------------------------------------------
 
