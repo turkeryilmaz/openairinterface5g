@@ -200,7 +200,7 @@ uint8_t nr_ue_get_sdu(NR_UE_MAC_INST_t *mac,
                       sub_frame_t subframe,
                       uint8_t gNB_index,
                       uint8_t *ulsch_buffer,
-                      uint32_t buflen);
+                      const uint32_t buflen);
 
 void set_harq_status(NR_UE_MAC_INST_t *mac,
                      uint8_t pucch_id,
