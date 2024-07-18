@@ -175,13 +175,13 @@ void nr_conjch0_mult_ch1(int *ch0,
                          unsigned short nb_rb,
                          unsigned char output_shift0);
 
-/** \brief This is the top-level entry point for DLSCH decoding in UE.  It should be replicated on several
+/** \brief This is the top-level entry point for DLSCH decoding in UE. It should be replicated on several
     threads (on multi-core machines) corresponding to different HARQ processes. The routine first
     computes the segmentation information, followed by rate dematching and sub-block deinterleaving the of the
     received LLRs computed by dlsch_demodulation for each transport block segment. It then calls the
-    turbo-decoding algorithm for each segment and stops after either after unsuccesful decoding of at least
-    one segment or correct decoding of all segments.  Only the segment CRCs are check for the moment, the
-    overall CRC is ignored.  Finally transport block reassembly is performed.
+    LDPC decoding algorithm for each segment and stops after either unsuccesful decoding of at least
+    one segment or correct decoding of all segments.Only the segment CRCs are checked for the moment, the
+    overall CRC is ignored. Finally transport block reassembly is performed.
     @param phy_vars_ue Pointer to ue variables
     @param proc
     @param eNB_id
@@ -195,9 +195,9 @@ void nr_conjch0_mult_ch1(int *ch0,
     @param harq_pid
     @param b_size
     @param b
+    @param G
     @returns 0 on success, 1 on unsuccessful decoding
 */
-
 uint32_t nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
                            const UE_nr_rxtx_proc_t *proc,
                            int eNB_id,
@@ -213,12 +213,27 @@ uint32_t nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
                            uint8_t b[b_size],
                            int G);
 
+/** \brief This is the alternative top-level entry point for DLSCH decoding in UE.
+    It handles all the HARQ processes in only one call. The routine first
+    computes the segmentation information, followed by rate dematching and sub-block deinterleaving of the
+    received LLRs computed by dlsch_demodulation for each transport block segment. It then calls the
+    LDPC decoding algorithm for each segment and stops after either unsuccesful decoding of at least
+    one segment or correct decoding of all segments. Only the segment CRCs are checked for the moment, the
+    overall CRC is ignored. Finally transport block reassembly is performed.
+    @param phy_vars_ue Pointer to ue variables
+    @param proc
+    @param dlsch_llr Pointers to LLR values computed by dlsch_demodulation
+    @param b
+    @param G array of Gs
+    @param nb_dlsch number of active downlink shared channels
+    @param DLSCH_ids array of active downlink shared channels
+    @returns 0 on success, 1 on unsuccessful decoding
+*/
 uint32_t nr_ue_dlsch_decoding_slot(PHY_VARS_NR_UE *phy_vars_ue,
                                    const UE_nr_rxtx_proc_t *proc,
                                    NR_UE_DLSCH_t *dlsch,
                                    short **dlsch_llr,
-                                   int b_size,
-                                   uint8_t b[2][b_size],
+                                   uint8_t **b,
                                    int *G,
                                    int nb_dlsch,
                                    int *DLSCH_ids);

@@ -769,10 +769,12 @@ static bool nr_ue_dlsch_procedures_slot(PHY_VARS_NR_UE *ue,
     a_segments = (a_segments / 273) + 1;
   }
   uint32_t dlsch_bytes = a_segments * 1056;  // allocated bytes per segment
-  __attribute__((aligned(32))) uint8_t p_b[2][dlsch_bytes];
+  __attribute__((aligned(32))) uint8_t p_b_0[dlsch_bytes];
+  __attribute__((aligned(32))) uint8_t p_b_1[dlsch_bytes];
+  uint8_t *p_b[2] = {p_b_0, p_b_1};
 
   start_meas(&ue->dlsch_decoding_stats);
-  ret = nr_ue_dlsch_decoding_slot(ue, proc, dlsch, llr, dlsch_bytes, p_b, G, nb_dlsch, DLSCH_ids);
+  ret = nr_ue_dlsch_decoding_slot(ue, proc, dlsch, llr, p_b, G, nb_dlsch, DLSCH_ids);
   stop_meas(&ue->dlsch_decoding_stats);
 
   if (ret < ue->max_ldpc_iterations + 1) dec = true;
@@ -1288,7 +1290,7 @@ void pdsch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_phy_
     start_meas(&ue->dlsch_procedures_stat);
 
     if (ret_pdsch >= 0) {
-      if (&get_nrUE_params()->nrLDPC_coding_interface_flag)
+      if (get_nrUE_params()->nrLDPC_coding_interface_flag)
         nr_ue_dlsch_procedures_slot(ue, proc, dlsch, llr);
       else
         nr_ue_dlsch_procedures(ue, proc, dlsch, llr, G);
