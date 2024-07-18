@@ -36,6 +36,7 @@
 #include "NR_MAC_COMMON/nr_mac_extern.h"
 #include "LAYER2/NR_MAC_gNB/mac_proto.h"
 #include "LAYER2/RLC/rlc.h"
+#include "openair2/LAYER2/nr_rlc/nr_rlc_oai_api.h"
 
 /*TAG*/
 #include "NR_TAG-Id.h"

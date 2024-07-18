@@ -40,6 +40,7 @@
 
 #include <executables/softmodem-common.h>
 #include "openair2/LAYER2/RLC/rlc.h"
+#include "openair2/LAYER2/nr_rlc/nr_rlc_oai_api.h"
 
 static double get_ta_Common_ms(NR_NTN_Config_r17_t *ntn_Config_r17)
 {
