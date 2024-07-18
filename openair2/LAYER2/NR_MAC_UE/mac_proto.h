@@ -175,13 +175,20 @@ void nr_ue_send_sdu(NR_UE_MAC_INST_t *mac, nr_downlink_indication_t *dl_info, in
 
 void nr_ue_process_mac_pdu(NR_UE_MAC_INST_t *mac,nr_downlink_indication_t *dl_info, int pdu_id);
 
+typedef struct {
+  union {
+    NR_BSR_SHORT s;
+    NR_BSR_LONG l;
+    NR_BSR_SHORT_TRUNCATED t;
+  } bsr;
+  enum { Bnone, Blong, Bshort, Btrunc } typeBsr;
+} typeBsr_t;
+
 int nr_write_ce_ulsch_pdu(uint8_t *mac_ce,
                           NR_UE_MAC_INST_t *mac,
-                          NR_SINGLE_ENTRY_PHR_MAC_CE *power_headroom,
-                          uint16_t *crnti,
-                          NR_BSR_SHORT *truncated_bsr,
-                          NR_BSR_SHORT *short_bsr,
-                          NR_BSR_LONG  *long_bsr);
+                          NR_SINGLE_ENTRY_PHR_MAC_CE *power_headroom,,
+                          rnti_t crnti,
+                          const typeBsr_t *bsr);
 
 void ue_dci_configuration(NR_UE_MAC_INST_t *mac,
                           fapi_nr_dl_config_request_t *dl_config,
