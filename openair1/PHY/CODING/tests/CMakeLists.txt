@@ -250,3 +250,30 @@ foreach(NR_SOFTMODEM_OPTION_TO_TEST IN LISTS NR_SOFTMODEM_OPTION_TO_TEST_LIST)
   )
 endforeach()
 
+####################################################################################
+######                        nr-uesoftmodem unit test                       ######
+####################################################################################
+set(default_ldpc "-O" "${CMAKE_CURRENT_SOURCE_DIR}/nrue.uicc.1.conf")
+set(slot_demo "-O" "${CMAKE_CURRENT_SOURCE_DIR}/nrue.uicc.1.slot_demo.conf")
+set(slot_t2 "-O" "${CMAKE_CURRENT_SOURCE_DIR}/nrue.uicc.1.slot_t2.conf")
+
+set(NR_UESOFTMODEM_OPTION_TO_TEST_LIST
+  default_ldpc
+  slot_demo
+)
+
+#if (ENABLE_LDPC_T2)
+#  list(APPEND NR_UESOFTMODEM_OPTION_TO_TEST_LIST
+#    slot_t2
+#  )
+#endif()
+
+foreach(NR_UESOFTMODEM_OPTION_TO_TEST IN LISTS NR_UESOFTMODEM_OPTION_TO_TEST_LIST)
+  add_test(
+    NAME ue_coding_rfsim_${NR_UESOFTMODEM_OPTION_TO_TEST}
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/ue_coding_rfsim.sh ${${NR_UESOFTMODEM_OPTION_TO_TEST}}
+    COMMAND_EXPAND_LISTS
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+  )
+endforeach()
+
