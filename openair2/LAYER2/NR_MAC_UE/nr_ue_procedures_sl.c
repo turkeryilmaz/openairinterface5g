@@ -801,7 +801,7 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
           mac_len = sizeof(*sub_pdu_header);
           nr_sl_csi_report_t* nr_sl_csi_report = (nr_sl_csi_report_t *) (pduP + mac_len);
           LOG_D(NR_MAC, "%4d.%2d: CQI: %i RI: %i\n", frame, slot, nr_sl_csi_report->CQI, nr_sl_csi_report->RI);
-          int indx = sl_sch_subheader->SRC%MAX_SL_UE_CONNECTIONS;
+          int indx = sl_sch_subheader->SRC%CURRENT_NUM_UE_CONNECTIONS;
           mac->sl_info.list[indx]->uid = mac->src_id;
           mac->sl_info.list[indx]->dest_id = sl_sch_subheader->SRC;
           mac->sl_info.list[indx]->UE_sched_ctrl.csi_report.cqi = nr_sl_csi_report->CQI;

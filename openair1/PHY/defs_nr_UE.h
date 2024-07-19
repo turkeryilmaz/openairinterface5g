@@ -440,6 +440,7 @@ typedef struct PHY_VARS_NR_UE_s {
   uint8_t          prs_active_gNBs;
   NR_DL_UE_HARQ_t  dl_harq_processes[2][NR_MAX_DLSCH_HARQ_PROCESSES];
   NR_UL_UE_HARQ_t  ul_harq_processes[NR_MAX_ULSCH_HARQ_PROCESSES];
+  NR_UL_UE_HARQ_t  sl_harq_processes[NR_MAX_SLSCH_HARQ_PROCESSES];
   //Paging parameters
   uint32_t              IMSImod1024;
   uint32_t              PF;

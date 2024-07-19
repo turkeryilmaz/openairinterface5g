@@ -280,6 +280,7 @@
 
 #define NR_MAX_ULSCH_HARQ_PROCESSES              (NR_MAX_HARQ_PROCESSES)  /* cf 38.214 6.1 UE procedure for receiving the physical uplink shared channel */
 #define NR_MAX_DLSCH_HARQ_PROCESSES              (NR_MAX_HARQ_PROCESSES)  /* cf 38.214 5.1 UE procedure for receiving the physical downlink shared channel */
+#define NR_MAX_SLSCH_HARQ_PROCESSES              (NR_MAX_HARQ_PROCESSES)
 #endif
 
 /// Data structure for transmission.

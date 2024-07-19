@@ -162,6 +162,9 @@ void init_nr_ue_vars(PHY_VARS_NR_UE *ue,
   // initialize all signal buffers
   init_nr_ue_signal(ue, nb_connected_gNB);
 
+  if (ue->sl_mode)
+    sl_ue_phy_init(ue);
+
   // intialize transport
   init_nr_ue_transport(ue);
 
