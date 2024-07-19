@@ -3735,62 +3735,61 @@ int nr_write_ce_ulsch_pdu(uint8_t *mac_ce,
             pdu,
             mac_ce);
     } break;
-    case Blong:
+    case Blong: {
       // ch 6.1.3.1. TS 38.321
       NR_MAC_SUBHEADER_SHORT *mac_pdu_subheader_ptr = (NR_MAC_SUBHEADER_SHORT *)mac_ce;
       mac_ce += sizeof(NR_MAC_SUBHEADER_SHORT);
-
+      uint8_t *mark = mac_ce;
       // Could move to nr_get_sdu()
-      uint8_t *Buffer_size_ptr = mac_ce + 1;
       NR_BSR_LONG *ceLong = (NR_BSR_LONG *)mac_ce;
-      *ceLong = (NR_BSR_LONG){};
+      mac_ce += sizeof(NR_BSR_LONG);
       // int NR_BSR_LONG_SIZE = 1;
-      if (bsr->bsr.l.Buffer_size[0]) {
+      if (bsr->bsr.lc_bsr[0]) {
         ceLong->LcgID0 = 1;
-        *mac_ce++ = bsr->bsr.l.Buffer_size[0];
+        *mac_ce++ = bsr->bsr.lc_bsr[0];
       }
-      if (bsr->bsr.l.Buffer_size[1]) {
+      if (bsr->bsr.lc_bsr[1]) {
         ceLong->LcgID1 = 1;
-        *mac_ce++ = bsr->bsr.l.Buffer_size[1];
+        *mac_ce++ = bsr->bsr.lc_bsr[1];
       }
-      if (bsr->bsr.l.Buffer_size[2]) {
+      if (bsr->bsr.lc_bsr[2]) {
         ceLong->LcgID2 = 1;
-        *mac_ce++ = bsr->bsr.l.Buffer_size[2];
+        *mac_ce++ = bsr->bsr.lc_bsr[2];
       }
-      if (bsr->bsr.l.Buffer_size[3]) {
+      if (bsr->bsr.lc_bsr[3]) {
         ceLong->LcgID3 = 1;
-        *mac_ce++ = bsr->bsr.l.Buffer_size[3];
+        *mac_ce++ = bsr->bsr.lc_bsr[3];
       }
-      if (bsr->bsr.l.Buffer_size[4]) {
+      if (bsr->bsr.lc_bsr[4]) {
         ceLong->LcgID4 = 1;
-        *mac_ce++ = bsr->bsr.l.Buffer_size[4];
+        *mac_ce++ = bsr->bsr.lc_bsr[4];
       }
-      if (bsr->bsr.l.Buffer_size[5]) {
+      if (bsr->bsr.lc_bsr[5]) {
         ceLong->LcgID5 = 1;
-        *mac_ce++ = bsr->bsr.l.Buffer_size[5];
+        *mac_ce++ = bsr->bsr.lc_bsr[5];
       }
-      if (bsr->bsr.l.Buffer_size[6]) {
+      if (bsr->bsr.lc_bsr[6]) {
         ceLong->LcgID6 = 1;
-        *mac_ce++ = bsr->bsr.l.Buffer_size[6];
+        *mac_ce++ = bsr->bsr.lc_bsr[6];
       }
-      if (bsr->bsr.l.Buffer_size[7]) {
+      if (bsr->bsr.lc_bsr[7]) {
         ceLong->LcgID7 = 1;
-        *mac_ce++ = bsr->bsr.l.Buffer_size[7];
+        *mac_ce++ = bsr->bsr.lc_bsr[7];
       }
-      ((NR_MAC_SUBHEADER_SHORT *)mac_pdu_subheader_ptr)->L = mac_ce - Buffer_size_ptr;
+      *mac_pdu_subheader_ptr = (NR_MAC_SUBHEADER_SHORT){.LCID = UL_SCH_LCID_L_BSR, .L = mac_ce - mark};
       LOG_D(NR_MAC,
             "[UE] Generating ULSCH PDU : long_bsr size %d Lcgbit 0x%02x Buffer_size %d %d %d %d %d %d %d %d\n",
             ((NR_MAC_SUBHEADER_SHORT *)mac_pdu_subheader_ptr)->L,
             *mac_ce,
-            ceLong->Buffer_size[0],
-            ceLong->Buffer_size[1],
-            ceLong->Buffer_size[2],
-            ceLong->Buffer_size[3],
-            ceLong->Buffer_size[4],
-            ceLong->Buffer_size[5],
-            ceLong->Buffer_size[6],
-            ceLong->Buffer_size[7]);
-      break;
+            bsr->bsr.lc_bsr[0],
+            bsr->bsr.lc_bsr[1],
+            bsr->bsr.lc_bsr[2],
+            bsr->bsr.lc_bsr[3],
+            bsr->bsr.lc_bsr[4],
+            bsr->bsr.lc_bsr[5],
+            bsr->bsr.lc_bsr[6],
+            bsr->bsr.lc_bsr[7]);
+    } break;
     case Bnone:
       break;
   }
