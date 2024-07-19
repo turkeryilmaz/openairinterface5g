@@ -176,6 +176,7 @@ typedef struct {
     NR_BSR_SHORT s;
     NR_BSR_LONG l;
     NR_BSR_SHORT_TRUNCATED t;
+    uint8_t lc_bsr[8];
   } bsr;
   enum { Bnone, Blong, Bshort, Btrunc } typeBsr;
 } typeBsr_t;
@@ -193,14 +194,6 @@ void config_dci_pdu(NR_UE_MAC_INST_t *mac,
                     const NR_SearchSpace_t *ss);
 
 void ue_dci_configuration(NR_UE_MAC_INST_t *mac, fapi_nr_dl_config_request_t *dl_config, const frame_t frame, const int slot);
-
-uint8_t nr_ue_get_sdu(NR_UE_MAC_INST_t *mac,
-                      int cc_id,
-                      frame_t frameP,
-                      sub_frame_t subframe,
-                      uint8_t gNB_index,
-                      uint8_t *ulsch_buffer,
-                      const uint32_t buflen);
 
 void set_harq_status(NR_UE_MAC_INST_t *mac,
                      uint8_t pucch_id,
