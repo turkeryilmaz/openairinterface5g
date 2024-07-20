@@ -395,6 +395,9 @@ NR_RLC_BearerConfig_t *get_DRB_RLC_BearerConfig(long lcChannelId, long drbId, NR
 
 /* [IAB] BH rlc channel config */
 NR_BH_RLC_ChannelConfig_r16_t *get_BH_RLC_ChannelConfig(long lcChannelId, long bhch_id, NR_RLC_Config_PR rlc_conf, long priority){
+  printf("[ASN1] bhchid = %ld\n", bhch_id);
+  printf("[ASN1] lcChannelId = %ld\n", lcChannelId);
+
   NR_BH_RLC_ChannelConfig_r16_t *rlc_bhConfig               = calloc(1, sizeof(NR_BH_RLC_ChannelConfig_r16_t));
   // Using only the old 0 to 32 lcid
   rlc_bhConfig->bh_LogicalChannelIdentity_r16               = calloc(1, sizeof(NR_BH_LogicalChannelIdentity_r16_t));

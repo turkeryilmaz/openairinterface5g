@@ -387,6 +387,8 @@ typedef struct nr_rrc_du_container_t {
   f1ap_setup_req_t *setup_req;
   NR_MIB_t *mib;
   NR_SIB1_t *sib1;
+
+  uint16_t bap_address;
 } nr_rrc_du_container_t;
 
 typedef struct nr_rrc_cuup_container_t {

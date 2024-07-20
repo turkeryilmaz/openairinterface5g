@@ -733,6 +733,7 @@ void rrc_gNB_generate_IAB_RRCReconfiguration(const protocol_ctxt_t *const ctxt_p
 //-----------------------------------------------------------------------------
 {
   gNB_RRC_INST *rrc = RC.nrrrc[ctxt_pP->module_id];
+  gNB_IAB_INFO *iab = RC.iab[0];
 
   uint8_t xid = rrc_gNB_get_next_transaction_identifier(ctxt_pP->module_id);
   gNB_RRC_UE_t *ue_p = &ue_context_pP->ue_context;
@@ -747,8 +748,29 @@ void rrc_gNB_generate_IAB_RRCReconfiguration(const protocol_ctxt_t *const ctxt_p
   // --- Set cellGroupConfig with bap_address and bhch info ---
   NR_CellGroupConfig_t *cellGroupConfig = CALLOC(1, sizeof(*cellGroupConfig));
   cellGroupConfig->cellGroupId = ue_p->masterCellGroup->cellGroupId;
-  NR_BAPADDRESS_TO_BIT_STRING(ue_p->bap_address, cellGroupConfig->cellGroupId->ext2->bap_Address_r16);
-  // TODO
+  NR_BAPADDRESS_TO_BIT_STRING(ue_p->bap_address, cellGroupConfig->ext2->bap_Address_r16);
+  
+  const nr_rrc_du_container_t *donor_du = get_du_for_ue(rrc, ue_p->rrc_ue_id);
+  uint64_t donor_du_id = donor_du->setup_req->gNB_DU_id;
+  uint16_t donor_bap_address = 0;
+  for (int i = 0; i < iab->iab_cu.number_of_iab_donor_dus; i++){
+    if(iab->iab_cu.iab_donor_du[i].du_id == donor_du_id){
+      donor_bap_address = iab->iab_cu.iab_donor_du[i].bap_address;
+      break;
+    }
+  }
+  cellGroupConfig->ext2->bh_RLC_ChannelToAddModList_r16 = CALLOC(1, sizeof(cellGroupConfig->ext2->bh_RLC_ChannelToAddModList_r16));
+  struct NR_CellGroupConfig__ext2__bh_RLC_ChannelToAddModList_r16 *bhch_list = cellGroupConfig->ext2->bh_RLC_ChannelToAddModList_r16;
+  for (int i = 0; i < iab->iab_cu.number_of_bhchs; i++){
+    if (iab->iab_cu.bhch_list[i].donor_bap_address == donor_bap_address){
+      asn1cSequenceAdd(bhch_list->list, NR_BH_RLC_ChannelConfig_r16_t, bhch);
+      int bhch_id = iab->iab_cu.bhch_list[i].bhch_id;
+      long lcid = iab->iab_cu.bhch_list[i].lcid;
+      const NR_RLC_Config_PR rlc_conf = iab->iab_cu.bhch_list[i].rlc_mode == RLC_MODE_UM ? NR_RLC_Config_PR_um_Bi_Directional : NR_RLC_Config_PR_am;
+      long priority = iab->iab_cu.bhch_list[i].priority;
+      bhch = get_BH_RLC_ChannelConfig(lcid, bhch_id, rlc_conf, priority);
+    }
+  }
 
   // ----------------------------------------------------------
   //uint8_t buffer[RRC_BUF_SIZE] = {0};
@@ -1614,61 +1636,7 @@ static int handle_rrcSetupComplete(const protocol_ctxt_t *const ctxt_pP,
   if (setup_complete_ies->nonCriticalExtension != NULL){
     if (*setup_complete_ies->nonCriticalExtension->iab_NodeIndication_r16 == NR_RRCSetupComplete_v1610_IEs__iab_NodeIndication_r16_true){
       LOG_I(NR_RRC, "IAB Node Indication received and set to true\n");
-      UE->is_iab_mt = true; // not used
-
-      /* Adds new IAB-node (with the IAB-MT). 
-       * Node DU is added later during F1 SETUP Procedure */
-      gNB_IAB_INFO *iab = RC.iab[0];
-      int *number_of_nodes = &iab->iab_cu.number_of_iab_nodes;
-      iab->iab_cu.iab_node[*number_of_nodes].iab_mt.rrc_ue_id = UE->rrc_ue_id;
-      iab->iab_cu.last_given_bap_address += 1;
-      int new_bap_address = iab->iab_cu.last_given_bap_address;
-      iab->iab_cu.iab_node[*number_of_nodes].bap_address = new_bap_address;
-      *number_of_nodes += 1;
-
-      // Call UE Context modification request.
-      gNB_RRC_INST *rrc = RC.nrrrc[0];
-      f1_ue_data_t ue_data = cu_get_f1_ue_data(UE->rrc_ue_id);
-      RETURN_IF_INVALID_ASSOC_ID(ue_data);
-
-      f1ap_bhchannel_to_be_setup_t bhch_buf[1];
-      bhch_buf[0].bHRLCChannelID = 1;
-      bhch_buf[0].rlc_mode = NR_RLC_AM;
-      bhch_buf[0].is_trafficMappingInfo_set = false;
-
-      f1ap_bhchannel_to_be_setup_t *bh_rlc_channels = bhch_buf;           
-
-      f1ap_ue_context_modif_req_t ue_context_modif_req = {
-        .gNB_CU_ue_id = UE->rrc_ue_id,
-        .gNB_DU_ue_id = ue_data.secondary_ue,
-        .plmn.mcc = rrc->configuration.mcc[0],
-        .plmn.mnc = rrc->configuration.mnc[0],
-        .plmn.mnc_digit_length = rrc->configuration.mnc_digit_length[0],
-        .nr_cellid = rrc->nr_cellid,
-        .servCellId = 0, /* TODO: correct value? */     
-        .bhchannels_to_be_setup = bh_rlc_channels,
-        .bhchannels_to_be_setup_length = 1
-      };
-
-      /* Register BH RLC Channel information in the CU
-      */
-      // Get associated donor_du information
-      const nr_rrc_du_container_t *donor_du = get_du_for_ue(rrc, UE->rrc_ue_id);
-      uint64_t donor_du_id = donor_du->setup_req->gNB_DU_id;
-      uint16_t donor_bap_address;
-      for(int i=0; i<iab->iab_cu.number_of_iab_donor_dus; i++){
-        if(iab->iab_cu.iab_donor_du[i].du_id == donor_du_id){
-          donor_bap_address = iab->iab_cu.iab_donor_du[i].bap_address;
-          break;
-        }
-      }
-      // Insert bhch info in IAB information
-      iab->iab_cu.bhch_list[iab->iab_cu.number_of_bhchs].bhch_id = bhch_buf[0].bHRLCChannelID;
-      iab->iab_cu.bhch_list[iab->iab_cu.number_of_bhchs].node_bap_address = new_bap_address;
-      iab->iab_cu.bhch_list[iab->iab_cu.number_of_bhchs].donor_bap_address = donor_bap_address;
-      iab->iab_cu.number_of_bhchs += 1;
-
-      rrc->mac_rrc.ue_context_modification_request(ue_data.du_assoc_id, &ue_context_modif_req);      
+      UE->is_iab_mt = true;  
 
       /* if we did not receive any UE Capabilities, let's do that now. It should
       * only happen on the first time a reconfiguration arrives. Afterwards, we
@@ -1688,6 +1656,81 @@ static int handle_rrcSetupComplete(const protocol_ctxt_t *const ctxt_pP,
   rrc_gNB_process_RRCSetupComplete(ctxt_pP, ue_context_p, setup_complete->criticalExtensions.choice.rrcSetupComplete);
   LOG_I(NR_RRC, PROTOCOL_NR_RRC_CTXT_UE_FMT " UE State = NR_RRC_CONNECTED \n", PROTOCOL_NR_RRC_CTXT_UE_ARGS(ctxt_pP));
   return 0;
+}
+
+static void engage_BH_RLC_Channel_establishment_procedure(rrc_gNB_ue_context_t *ue_context_p){
+  /* Adds new IAB-node (with the IAB-MT). 
+    * Node DU is added later during F1 SETUP Procedure 
+    */
+  
+  gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
+  gNB_IAB_INFO *iab = RC.iab[0];
+  int *number_of_nodes = &iab->iab_cu.number_of_iab_nodes;
+  iab->iab_cu.iab_node[*number_of_nodes].iab_mt.rrc_ue_id = UE->rrc_ue_id;
+  iab->iab_cu.last_given_bap_address += 1;
+  int new_bap_address = iab->iab_cu.last_given_bap_address;
+  iab->iab_cu.iab_node[*number_of_nodes].bap_address = new_bap_address;
+  *number_of_nodes += 1;
+
+  // Call UE Context modification request.
+  gNB_RRC_INST *rrc = RC.nrrrc[0];
+  f1_ue_data_t ue_data = cu_get_f1_ue_data(UE->rrc_ue_id);
+  RETURN_IF_INVALID_ASSOC_ID(ue_data);
+
+  f1ap_bhchannel_to_be_setup_t bhch_buf[1];
+  bhch_buf[0].bHRLCChannelID = 1;
+  bhch_buf[0].rlc_mode = NR_RLC_AM;
+  bhch_buf[0].is_trafficMappingInfo_set = false;
+
+  f1ap_bhchannel_to_be_setup_t *bh_rlc_channels = bhch_buf;           
+
+  f1ap_ue_context_modif_req_t ue_context_modif_req = {
+    .gNB_CU_ue_id = UE->rrc_ue_id,
+    .gNB_DU_ue_id = ue_data.secondary_ue,
+    .plmn.mcc = rrc->configuration.mcc[0],
+    .plmn.mnc = rrc->configuration.mnc[0],
+    .plmn.mnc_digit_length = rrc->configuration.mnc_digit_length[0],
+    .nr_cellid = rrc->nr_cellid,
+    .servCellId = 0, /* TODO: correct value? */     
+    .bhchannels_to_be_setup = bh_rlc_channels,
+    .bhchannels_to_be_setup_length = 1
+  };
+
+  /* Register BH RLC Channel information in the CU
+  */
+  // Get associated donor_du information
+  const nr_rrc_du_container_t *donor_du = get_du_for_ue(rrc, UE->rrc_ue_id);
+  uint64_t donor_du_id = donor_du->setup_req->gNB_DU_id;
+  uint16_t donor_bap_address = 0;
+  for(int i=0; i<iab->iab_cu.number_of_iab_donor_dus; i++){
+    if(iab->iab_cu.iab_donor_du[i].du_id == donor_du_id){
+      donor_bap_address = iab->iab_cu.iab_donor_du[i].bap_address;
+      break;
+    }
+  }
+
+  uint32_t *bhch_number_of_nodes = &iab->iab_cu.bhch_list[iab->iab_cu.number_of_bhchs].number_of_nodes;
+  
+  LOG_I(NR_RRC, "Got to this point: number of bhch = %d\n", bhch_buf[0].bHRLCChannelID);
+  // Insert bhch info in IAB information
+  iab->iab_cu.bhch_list[iab->iab_cu.number_of_bhchs].bhch_id = bhch_buf[0].bHRLCChannelID;
+  LOG_I(NR_RRC, "Got to this point 1\n");
+  iab->iab_cu.bhch_list[iab->iab_cu.number_of_bhchs].rlc_mode = bhch_buf[0].rlc_mode;
+  LOG_I(NR_RRC, "Got to this point 2\n");
+  iab->iab_cu.bhch_list[iab->iab_cu.number_of_bhchs].lcid = 33 - bhch_buf[0].bHRLCChannelID;
+  LOG_I(NR_RRC, "Got to this point 3\n");
+  iab->iab_cu.bhch_list[iab->iab_cu.number_of_bhchs].priority = 13;
+  LOG_I(NR_RRC, "Got to this point 4\n");
+  iab->iab_cu.bhch_list[iab->iab_cu.number_of_bhchs].node_bap_address[*bhch_number_of_nodes] = new_bap_address;
+  LOG_I(NR_RRC, "Got to this point 5\n");
+  iab->iab_cu.bhch_list[iab->iab_cu.number_of_bhchs].donor_bap_address = donor_bap_address;
+  LOG_I(NR_RRC, "Got to this point 6\n");
+  iab->iab_cu.number_of_bhchs += 1;
+  LOG_I(NR_RRC, "Got to this point 7\n");
+  *bhch_number_of_nodes += 1;
+  LOG_I(NR_RRC, "Got to this point 8\n");
+
+  rrc->mac_rrc.ue_context_modification_request(ue_data.du_assoc_id, &ue_context_modif_req);    
 }
 
 static void handle_rrcReconfigurationComplete(const protocol_ctxt_t *const ctxt_pP,
@@ -1718,6 +1761,9 @@ static void handle_rrcReconfigurationComplete(const protocol_ctxt_t *const ctxt_
       break;
     case RRC_DEFAULT_RECONF:
       rrc_gNB_send_NGAP_INITIAL_CONTEXT_SETUP_RESP(ctxt_pP, ue_context_p);
+      if(UE->is_iab_mt){
+        engage_BH_RLC_Channel_establishment_procedure(ue_context_p);
+      }
       break;
     case RRC_REESTABLISH_COMPLETE:
     case RRC_DEDICATED_RECONF:

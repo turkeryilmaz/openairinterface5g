@@ -175,8 +175,6 @@ void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *req, sctp_assoc_t assoc_id)
     ASN_STRUCT_FREE(asn_DEF_NR_BCCH_BCH_MessageType, mib);
     du->sib1 = sib1;
   }
-  RB_INSERT(rrc_du_tree, &rrc->dus, du);
-  rrc->num_dus++;
 
   served_cells_to_activate_t cell = {
       .plmn = cell_info->plmn,
@@ -193,7 +191,9 @@ void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *req, sctp_assoc_t assoc_id)
   if (rrc->node_name != NULL){
     resp.gNB_CU_name = strdup(rrc->node_name);
   }
-  
+
+  /* [IAB]
+  */ 
   if(strstr(req->gNB_DU_name, "Donor") != NULL){
     iab->iab_cu.last_given_bap_address += 1;
     int new_bap_address = iab->iab_cu.last_given_bap_address;
@@ -203,8 +203,11 @@ void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *req, sctp_assoc_t assoc_id)
     iab_donor_du->du_id = req->gNB_DU_id;
     iab_donor_du->bap_address = new_bap_address;
     iab->iab_cu.number_of_iab_donor_dus += 1;
+    // Adding BAP Address here to make search easier
+    du->bap_address = new_bap_address;
   } else if (strstr(req->gNB_DU_name, "Node") != NULL) {
     printf("Receiving BAP Address = %d\n", req->bap_address);
+    du->bap_address = req->bap_address;
     for (int i = 0; i < iab->iab_cu.number_of_iab_nodes; i++){
       if (iab->iab_cu.iab_node[i].bap_address == req->bap_address){
         iab->iab_cu.iab_node[i].iab_node_du.du_id = req->gNB_DU_id;
@@ -212,12 +215,9 @@ void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *req, sctp_assoc_t assoc_id)
       } 
     }
   }
-  
 
-  /*if (req->bap_address != 0){
-    resp.bap_address = req->bap_address;
-    LOG_I(RRC, "Accepted DU has BAPAddress = %d\n", resp.bap_address);
-  }*/
+  RB_INSERT(rrc_du_tree, &rrc->dus, du);
+  rrc->num_dus++;
   
   rrc->mac_rrc.f1_setup_response(assoc_id, &resp);
 
