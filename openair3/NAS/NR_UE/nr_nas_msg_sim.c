@@ -209,6 +209,18 @@ static int fill_guti(FGSMobileIdentity *mi, const Guti5GSMobileIdentity_t *guti)
   return 13;
 }
 
+static int fill_fgstmsi(FGSMobileIdentity *mi, const Guti5GSMobileIdentity_t *guti)
+{
+  AssertFatal(guti != NULL, "UE has no GUTI\n");
+  mi->stmsi.amfpointer = guti->amfpointer;
+  mi->stmsi.amfsetid = guti->amfsetid;
+  mi->stmsi.tmsi = guti->tmsi;
+  mi->stmsi.digit1 = 0b1111;
+  mi->stmsi.spare = 0;
+  mi->stmsi.typeofidentity = FGS_MOBILE_IDENTITY_5GS_TMSI;
+  return 9;
+}
+
 static int fill_imeisv(FGSMobileIdentity *mi, const uicc_t *uicc)
 {
   int i = 0;
@@ -274,6 +286,9 @@ int mm_msg_encode(MM_msg *mm_msg, uint8_t *buffer, uint32_t len)
     case FGS_DEREGISTRATION_REQUEST_UE_ORIGINATING:
       encode_result =
           encode_fgs_deregistration_request_ue_originating(&mm_msg->fgs_deregistration_request_ue_originating, buffer, len);
+      break;
+    case FGS_SERVICE_REQUEST:
+      encode_result = encode_fgs_service_request(&mm_msg->service_request, buffer, len);
       break;
     default:
       LOG_TRACE(ERROR, "EMM-MSG   - Unexpected message type: 0x%x", mm_msg->header.message_type);
@@ -566,6 +581,91 @@ void generateRegistrationRequest(as_nas_info_t *initialNasMsg, nr_ue_nas_t *nas)
   /* set NAS 5GMM state */
   nas->fiveGMM_state = FGS_REGISTERED_INITIATED;
 }
+
+static void generateServiceRequest(as_nas_info_t *initialNasMsg, nr_ue_nas_t *nas)
+{
+  LOG_I(NAS, "Generate initial NAS message: Service Request\n");
+  int size = 0;
+  fgs_nas_message_t nas_msg = {0};
+  memset(&nas_msg, 0, sizeof(fgs_nas_message_t));
+  bool security_protected = false; // WIP
+  MM_msg *mm_msg;
+
+  if (security_protected) {
+    /* Set security protected 5GS NAS message header (see 9.1.1 of 3GPP TS 24.501) */
+    nas_msg.header.protocol_discriminator = FGS_MOBILITY_MANAGEMENT_MESSAGE;
+    nas_msg.header.security_header_type = INTEGRITY_PROTECTED;
+    nas_msg.header.sequence_number = nas->security.nas_count_ul & 0xff;
+    size += sizeof(fgs_nas_message_security_header_t);
+    mm_msg = &nas_msg.security_protected.plain.mm_msg;
+  } else {
+    // Set Mobility Management plain message header
+    mm_msg = &nas_msg.plain.mm_msg;
+  }
+  // Fill MM plain message header
+  mm_msg->header.ex_protocol_discriminator = FGS_MOBILITY_MANAGEMENT_MESSAGE;
+  mm_msg->header.security_header_type = PLAIN_5GS_MSG;
+  mm_msg->header.message_type = FGS_SERVICE_REQUEST;
+  size += sizeof(mm_msg_header_t);
+  // Fill Service Request
+  mm_msg->service_request.protocoldiscriminator = FGS_MOBILITY_MANAGEMENT_MESSAGE;
+  size += 1;
+  mm_msg->service_request.securityheadertype = PLAIN_5GS_MSG;
+  mm_msg->service_request.sparehalfoctet = 0;
+  size += 1;
+  mm_msg->service_request.messagetype = FGS_SERVICE_REQUEST;
+  size += 1;
+  // Service Type
+  mm_msg->service_request.serviceType = SERVICE_TYPE_DATA;
+  // NAS key set identifier
+  mm_msg->service_request.naskeysetidentifier.naskeysetidentifier = NAS_KEY_SET_IDENTIFIER_NOT_AVAILABLE;
+  mm_msg->service_request.naskeysetidentifier.tsc = NAS_KEY_SET_IDENTIFIER_NATIVE;
+  size += 1;
+  // 5G-S-TMSI
+  size += fill_fgstmsi(&mm_msg->service_request.fiveg_s_tmsi, nas->guti);
+
+  /* message encoding */
+  initialNasMsg->data = (Byte_t *)malloc(size * sizeof(Byte_t));
+  if (security_protected) {
+    // security protected encoding
+    int security_header_len = nas_protected_security_header_encode((char *)(initialNasMsg->data), &(nas_msg.header), size);
+    initialNasMsg->length =
+        security_header_len
+        + mm_msg_encode(mm_msg, (uint8_t *)(initialNasMsg->data + security_header_len), size - security_header_len);
+    /* ciphering */
+    uint8_t buf[initialNasMsg->length - 7];
+    nas_stream_cipher_t stream_cipher;
+    stream_cipher.context    = nas->security_container->ciphering_context;
+    AssertFatal(nas->security.nas_count_ul <= 0xffffff, "fatal: NAS COUNT UL too big (todo: fix that)\n");
+    stream_cipher.count      = nas->security.nas_count_ul;
+    stream_cipher.bearer     = 1;
+    stream_cipher.direction  = 0;
+    stream_cipher.message    = (unsigned char *)(initialNasMsg->data + 7);
+    /* length in bits */
+    stream_cipher.blength    = (initialNasMsg->length - 7) << 3;
+    stream_compute_encrypt(nas->security_container->ciphering_algorithm, &stream_cipher, buf);
+    memcpy(stream_cipher.message, buf, initialNasMsg->length - 7);
+    /* integrity protection */
+    uint8_t mac[4];
+    stream_cipher.context = nas->security_container->integrity_context;
+    stream_cipher.count = nas->security.nas_count_ul++;
+    stream_cipher.bearer = 1;
+    stream_cipher.direction = 0;
+    stream_cipher.message = (unsigned char *)(initialNasMsg->data + 6);
+    /* length in bits */
+    stream_cipher.blength = (initialNasMsg->length - 6) << 3;
+    stream_compute_integrity(nas->security_container->integrity_algorithm, &stream_cipher, mac);
+    printf("Integrity protected initial NAS message: mac = %x %x %x %x \n", mac[0], mac[1], mac[2], mac[3]);
+    for (int i = 0; i < 4; i++)
+      initialNasMsg->data[2 + i] = mac[i];
+  } else {
+    // plain encoding
+    initialNasMsg->length = mm_msg_encode(mm_msg, (uint8_t *)(initialNasMsg->data), size);
+    LOG_I(NAS, "PLAIN_5GS_MSG initial NAS message: Service Request with length %d \n", initialNasMsg->length);
+  }
+}
+
+
 
 void generateIdentityResponse(as_nas_info_t *initialNasMsg, uint8_t identitytype, uicc_t *uicc)
 {

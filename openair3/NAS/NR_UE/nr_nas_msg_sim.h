@@ -38,6 +38,7 @@
 #include "FGSNASSecurityModeComplete.h"
 #include "FGSDeregistrationRequestUEOriginating.h"
 #include "RegistrationComplete.h"
+#include "FGMM/fgs_service_request.h"
 #include "as_message.h"
 #include "FGSUplinkNasTransport.h"
 #include <openair3/UICC/usim_interface.h>
@@ -54,6 +55,7 @@
 #define REGISTRATION_COMPLETE                              0b01000011 /* 67 = 0x43 */
 #define FGS_DEREGISTRATION_REQUEST_UE_ORIGINATING          0b01000101
 #define FGS_DEREGISTRATION_ACCEPT                          0b01000110
+#define FGS_SERVICE_REQUEST                                0b01001100 /* 76 = 0x4c */
 #define FGS_AUTHENTICATION_REQUEST                         0b01010110 /* 86 = 0x56 */
 #define FGS_AUTHENTICATION_RESPONSE                        0b01010111 /* 87 = 0x57 */
 #define FGS_IDENTITY_REQUEST                               0b01011011 /* 91 = 0x5b */
@@ -69,6 +71,9 @@
 #define FGS_PDU_SESSION_ESTABLISHMENT_REJ                  0b11000011 /* 195= 0xc3 */
 
 #define INITIAL_REGISTRATION                               0b001
+
+/* 3GPP TS 24.501: 9.11.3.50 Service type */
+#define SERVICE_TYPE_DATA                                  0b0001
 
 #define PLAIN_5GS_NAS_MESSAGE_HEADER_LENGTH                3
 #define SECURITY_PROTECTED_5GS_NAS_MESSAGE_HEADER_LENGTH   7
@@ -157,6 +162,7 @@ typedef struct {
 typedef union {
   mm_msg_header_t                        header;
   registration_request_msg               registration_request;
+  fgs_service_request_msg                service_request;
   fgs_identiy_response_msg               fgs_identity_response;
   fgs_authentication_response_msg        fgs_auth_response;
   fgs_deregistration_request_ue_originating_msg fgs_deregistration_request_ue_originating;
