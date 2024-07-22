@@ -592,8 +592,7 @@ int main(int argc, char **argv)
                            1, // FIXME only single dmrs is implemented 
                            rel15_ul->qam_mod_order,
                            rel15_ul->nrOfLayers);
-
-     int nbDecode = nr_ulsch_decoding(gNB, UE_id, channel_output_fixed, frame_parms, rel15_ul, frame, subframe, harq_pid, G);
+     int nbDecode = nr_ulsch_decoding(gNB, NULL, UE_id, channel_output_fixed, frame_parms, rel15_ul, frame, subframe, harq_pid, G, NULL, NULL, -1);
      int nb_ok = 0;
      if (nbDecode > 0)
        while (nbDecode > 0) {

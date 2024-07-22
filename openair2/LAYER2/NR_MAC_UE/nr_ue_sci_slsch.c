@@ -837,6 +837,17 @@ int nr_ue_process_sci2_indication_pdu(NR_UE_MAC_INST_t *mac, module_id_t mod_id,
     nr_ue_sl_csi_rs_scheduler(mac, mu, mac->sl_bwp, NULL, &rx_config, NULL);
   }
 
+  LOG_D(NR_MAC, "%4d.%2d psfch_overhead %d harq_feedback %d action %d\n", frame, slot, mac->sci_pdu_rx.psfch_overhead.val, sci_pdu->harq_feedback, SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH);
+
+  if (mac->sci_pdu_rx.psfch_overhead.val) {
+    NR_SL_PSFCH_Config_r16_t *sl_psfch_config = sl_res_pool->sl_PSFCH_Config_r16->choice.setup;
+    const uint8_t psfch_periods[] = {0,1,2,4};
+    long psfch_period = (sl_psfch_config->sl_PSFCH_Period_r16)
+                          ? psfch_periods[*sl_psfch_config->sl_PSFCH_Period_r16] : 0;
+    configure_psfch_params_rx(mod_id,
+                              mac,
+                              &rx_config);
+  }
   nr_scheduled_response_t scheduled_response;
   memset(&scheduled_response,0, sizeof(nr_scheduled_response_t));
 

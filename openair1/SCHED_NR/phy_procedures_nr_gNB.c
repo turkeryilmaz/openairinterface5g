@@ -406,7 +406,7 @@ static int nr_ulsch_procedures(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, int
 
   start_meas(&gNB->ulsch_decoding_stats);
   int nbDecode =
-      nr_ulsch_decoding(gNB, NULL, ULSCH_id, gNB->pusch_vars[ULSCH_id].llr, frame_parms, pusch_pdu, frame_rx, slot_rx, harq_pid, G,NULL,NULL);
+      nr_ulsch_decoding(gNB, NULL, ULSCH_id, gNB->pusch_vars[ULSCH_id].llr, frame_parms, pusch_pdu, frame_rx, slot_rx, harq_pid, G, NULL, NULL, -1);
   stop_meas(&gNB->ulsch_decoding_stats);
   return nbDecode;
 }

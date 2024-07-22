@@ -182,8 +182,9 @@ typedef struct sl_nr_ue_mac_params {
   uint8_t measurement_bitmap;
 
   // configured grant harq parameters
-  uint8_t num_HARQ_Processes;
+  uint8_t sl_Num_HARQ_Processes;
   uint8_t sl_HARQ_ProcID_offset;
+  uint16_t sl_Periodic_RRI;
 
   //Configured from RRC
   uint32_t sl_MaxNumConsecutiveDTX;
