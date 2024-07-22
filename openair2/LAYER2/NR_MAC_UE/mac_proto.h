@@ -448,7 +448,7 @@ int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
                                        uint8_t sync_source, 
 				       int srcid);
 
-uint8_t count_PSFCH_PRBs_bits(uint8_t* buf, size_t size);
+uint8_t count_on_bits(uint8_t* buf, size_t size);
 
 void nr_rrc_mac_transmit_slss_req(module_id_t module_id,
                                   uint8_t *sl_mib_payload,
@@ -530,10 +530,11 @@ void fill_csi_rs_pdu(sl_nr_ue_mac_params_t *sl_mac,
                      uint8_t scs);
 
 void nr_ue_sl_psfch_scheduler(NR_UE_MAC_INST_t *mac,
+                              frame_t frame,
+                              uint16_t slot,
                               long psfch_period,
                               nr_sidelink_indication_t *sl_ind,
                               const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp,
-                              const NR_SL_ResourcePool_r16_t *sl_res_pool,
                               sl_nr_tx_config_request_t *tx_config,
                               uint8_t *config_type,
                               bool is_csi_rs_sent);
@@ -575,8 +576,8 @@ void fill_pssch_pscch_pdu(sl_nr_ue_mac_params_t *sl_mac_params,
                           const nr_sci_format_t format2,
                           uint16_t slot);
 
-void fill_psfch_pdu(sl_nr_tx_config_psfch_pdu_t *mac_psfch_pdu,
-                    sl_nr_tx_config_request_t *tx_config,
+void fill_psfch_pdu(SL_sched_feedback_t *mac_psfch_pdu,
+                    sl_nr_tx_rx_config_psfch_pdu_t *tx_psfch_pdu,
                     int num_psfch_symbols);
 
 #endif
