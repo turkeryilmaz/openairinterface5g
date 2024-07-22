@@ -51,7 +51,16 @@
 
 /** \brief This function initialises structures for DLSCH at UE
 */
-void nr_ue_dlsch_init(NR_UE_DLSCH_t *dlsch_list, int num_dlsch, uint8_t max_ldpc_iterations);
+void nr_ue_dlsch_init(NR_UE_DLSCH_t dlsch_list[NR_MAX_NB_LAYERS > 4 ? 2 : 1], int num_dlsch, uint8_t max_ldpc_iterations);
+
+void nr_dlsch_layer_demapping(const uint8_t Nl,
+                              const uint8_t mod_order,
+                              const int llrLayerSize,
+                              const int16_t llr_layers[NR_SYMBOLS_PER_SLOT][NR_MAX_NB_LAYERS][llrLayerSize],
+                              const NR_UE_DLSCH_t *dlsch,
+                              const int32_t re_len[NR_SYMBOLS_PER_SLOT],
+                              const int llrSize,
+                              int16_t llr[llrSize]);
 
 void nr_dlsch_deinterleaving(uint8_t symbol,
                              uint8_t start_symbol,
@@ -60,11 +69,25 @@ void nr_dlsch_deinterleaving(uint8_t symbol,
                              uint16_t *llr_deint,
                              uint16_t nb_rb_pdsch);
 
-void nr_conjch0_mult_ch1(int *ch0,
-                         int *ch1,
+void nr_conjch0_mult_ch1(const int *ch0,
+                         const int *ch1,
                          int32_t *ch0conj_ch1,
-                         unsigned short nb_rb,
-                         unsigned char output_shift0);
+                         const unsigned short nb_rb,
+                         const unsigned char output_shift0);
+
+int compute_dl_valid_re(const NR_UE_DLSCH_t *dlsch, const int32_t ptrs_re[][NR_SYMBOLS_PER_SLOT], int ret[NR_SYMBOLS_PER_SLOT]);
+
+int get_max_llr_per_symbol(const NR_UE_DLSCH_t *dlsch);
+
+int get_max_pdcch_symb(const NR_UE_PDCCH_CONFIG *phy_pdcch_config);
+
+void set_first_last_pdcch_symb(const NR_UE_PDCCH_CONFIG *phy_pdcch_config, int *first_symb, int *last_symb);
+
+int get_pdcch_mon_occasions_slot(const fapi_nr_dl_config_dci_dl_pdu_rel15_t *ss, uint8_t start_symb[NR_SYMBOLS_PER_SLOT]);
+
+int get_max_pdcch_monOcc(const NR_UE_PDCCH_CONFIG *phy_pdcch_config);
+
+void nr_pdsch_comp_out(void *parms);
 
 int get_max_pdcch_symb(const NR_UE_PDCCH_CONFIG *phy_pdcch_config);
 
@@ -184,6 +207,8 @@ int rx_sss(PHY_VARS_NR_UE *phy_vars_ue,int32_t *tot_metric,uint8_t *flip_max,uin
 #ifndef modOrder
 #define modOrder(I_MCS,I_TBS) ((I_MCS-I_TBS)*2+2) // Find modulation order from I_TBS and I_MCS
 #endif
+
+uint32_t build_csi_overlap_bitmap(const fapi_nr_dl_config_dlsch_pdu_rel15_t *dlsch_config, int symbol);
 
 int dump_ue_stats(PHY_VARS_NR_UE *phy_vars_ue,
                   const UE_nr_rxtx_proc_t *proc,
@@ -359,5 +384,76 @@ int nr_pbch_decode(PHY_VARS_NR_UE *ue,
                    int *ret_symbol_offset,
                    fapiPbch_t *result);
 /**@}*/
+void nr_extract_data_res(const NR_DL_FRAME_PARMS *frame_parms,
+                         const fapi_nr_dl_config_dlsch_pdu_rel15_t *dlsch_config,
+                         const bool isPilot,
+                         const uint32_t csiResBitMap,
+                         const c16_t rxdataF[frame_parms->ofdm_symbol_size],
+                         c16_t rxdataF_ext[dlsch_config->number_rbs * NR_NB_SC_PER_RB]);
+void nr_extract_pdsch_chest_res(const NR_DL_FRAME_PARMS *frame_parms,
+                                const fapi_nr_dl_config_dlsch_pdu_rel15_t *dlsch_config,
+                                const bool isPilot,
+                                const uint32_t csiResBitMap,
+                                const c16_t dl_ch_est[frame_parms->ofdm_symbol_size],
+                                c16_t dl_ch_est_ext[dlsch_config->number_rbs * NR_NB_SC_PER_RB]);
+
+bool get_isPilot_symbol(const int symbol, const NR_UE_DLSCH_t *dlsch);
+
+int get_nb_re_pdsch_symbol(const int symbol, const NR_UE_DLSCH_t *dlsch);
+
+int get_max_llr_per_symbol(const NR_UE_DLSCH_t *dlsch);
+
+void nr_compute_channel_correlation(const int n_layers,
+                                    const int length,
+                                    const int nb_rb,
+                                    const int nb_antennas_rx,
+                                    const int antIdx,
+                                    const int output_shift,
+                                    const c16_t dl_ch_estimates_ext[n_layers][nb_antennas_rx][nb_rb * NR_NB_SC_PER_RB],
+                                    int32_t rho[n_layers][n_layers][nb_rb * NR_NB_SC_PER_RB]);
+
+void nr_dlsch_detection_mrc(const int n_tx,
+                            const int n_rx,
+                            const int nb_rb,
+                            const int length,
+                            c16_t rxdataF_comp[n_tx][n_rx][nb_rb * NR_NB_SC_PER_RB],
+                            c16_t dl_ch_mag[n_tx][n_rx][nb_rb * NR_NB_SC_PER_RB],
+                            c16_t dl_ch_magb[n_tx][n_rx][nb_rb * NR_NB_SC_PER_RB],
+                            c16_t dl_ch_magr[n_tx][n_rx][nb_rb * NR_NB_SC_PER_RB]);
+
+int32_t get_nr_channel_level(const int len, const int extSize, const c16_t dl_ch_estimates_ext[extSize]);
+
+void nr_scale_channel(const int len, const int extSize, c16_t dl_ch_estimates_ext[extSize]);
+
+int get_nr_channel_level_median(const int avg, const int length, const int extSize, const c16_t dl_ch_estimates_ext[extSize]);
+
+int32_t get_maxh_extimates(
+    const NR_DL_FRAME_PARMS *frame_parms,
+    const NR_UE_DLSCH_t *dlsch,
+    const int symbol,
+    const c16_t dl_ch_est_ext[dlsch->Nl][frame_parms->nb_antennas_rx][dlsch->dlsch_config.number_rbs * NR_NB_SC_PER_RB]);
+
+void nr_dlsch_mmse(const int n_tx,
+                   const int n_rx,
+                   const int nb_rb,
+                   const int length,
+                   const int mod_order,
+                   const int shift,
+                   const uint32_t nvar,
+                   const c16_t dl_ch_estimates_ext[n_tx][n_rx][nb_rb * NR_NB_SC_PER_RB],
+                   c16_t rxdataF_comp[n_tx][n_rx][nb_rb * NR_NB_SC_PER_RB],
+                   c16_t dl_ch_mag[n_tx][n_rx][nb_rb * NR_NB_SC_PER_RB],
+                   c16_t dl_ch_magb[n_tx][n_rx][nb_rb * NR_NB_SC_PER_RB],
+                   c16_t dl_ch_magr[n_tx][n_rx][nb_rb * NR_NB_SC_PER_RB]);
+
+int nr_dlsch_llr(const NR_UE_DLSCH_t *dlsch,
+                 const int len,
+                 const c16_t dl_ch_mag[dlsch->dlsch_config.number_rbs * NR_NB_SC_PER_RB],
+                 const c16_t dl_ch_magb[dlsch->dlsch_config.number_rbs * NR_NB_SC_PER_RB],
+                 const c16_t dl_ch_magr[dlsch->dlsch_config.number_rbs * NR_NB_SC_PER_RB],
+                 const int nb_antennas_rx,
+                 const c16_t rxdataF_comp[dlsch->Nl][nb_antennas_rx][dlsch->dlsch_config.number_rbs * NR_NB_SC_PER_RB],
+                 const int llrSize,
+                 int16_t layer_llr[dlsch->Nl][llrSize]);
 #endif
 
