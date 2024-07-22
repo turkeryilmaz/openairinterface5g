@@ -1277,7 +1277,7 @@ void pdsch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_phy_
     start_meas_nr_ue_phy(ue, DLSCH_PROCEDURES_STATS);
 
     if (ret_pdsch >= 0) {
-      if (get_nrUE_params()->nrLDPC_coding_interface_flag)
+      if (ue->nrLDPC_coding_interface_flag)
         nr_ue_dlsch_procedures_slot(ue, proc, dlsch, llr);
       else
         nr_ue_dlsch_procedures(ue, proc, dlsch, llr, G);
