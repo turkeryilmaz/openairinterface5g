@@ -798,7 +798,7 @@ int get_NREsci2(const int sci2_alpha,
   tmp2 -= N_REsci1;
   tmp2 *= ((float)sci2_alpha/100.0);
   int min_val = min(tmp,(int)ceil(tmp2));
-  uint8_t gamma = 12 - (min_val%12);
+  uint8_t gamma = 12 - (min_val % 12);
   return min_val + gamma;
 
 }
@@ -825,6 +825,6 @@ int get_NREsci2_2(const int sci2_alpha,
   tmp2 -= N_REsci1;
   tmp2 *= ((float)sci2_alpha/100.0);
   int min_val = min(tmp,(int)ceil(tmp2));
-  uint8_t gamma = 12 - (min_val%12);
+  uint8_t gamma = 12 - (min_val % 12);
   return min_val + gamma;
 }
