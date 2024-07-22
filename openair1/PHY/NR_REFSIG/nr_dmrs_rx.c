@@ -108,13 +108,13 @@ int nr_pusch_dmrs_rx(PHY_VARS_gNB *gNB,
 }
 
 int nr_pdsch_dmrs_rx(const PHY_VARS_NR_UE *ue,
-                     unsigned int Ns,
+                     const unsigned int Ns,
                      const unsigned int *nr_gold_pdsch,
-                     c16_t *output,
-                     unsigned short p,
-                     unsigned char lp,
-                     unsigned short nb_pdsch_rb,
-                     uint8_t config_type)
+                     const unsigned short p,
+                     const unsigned char lp,
+                     const unsigned short nb_pdsch_rb,
+                     const uint8_t config_type,
+                     c16_t *output)
 {
   typedef int array_of_w[2];
   const array_of_w *wf = (config_type == NFAPI_NR_DMRS_TYPE1) ? wf1 : wf2;

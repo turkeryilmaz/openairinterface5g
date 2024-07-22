@@ -103,7 +103,7 @@ static inline simde__m128i mulByConjugate128(simde__m128i *a, simde__m128i *b, i
            simde_mm_extract_epi16(x, 7));                            \
   }
 
-__attribute__((always_inline)) static inline int64_t simde_mm_average_sse(simde__m128i *a, int length, int shift)
+__attribute__((always_inline)) static inline int64_t simde_mm_average_sse(const simde__m128i *a, int length, int shift)
 {
   // compute average level with shift (64-bit verstion)
   simde__m128i avg128 = simde_mm_setzero_si128();
@@ -125,7 +125,7 @@ __attribute__((always_inline)) static inline int64_t simde_mm_average_sse(simde_
   return simde_mm_cvtsi128_si64(total_sum);
 }
 
-__attribute__((always_inline)) static inline int64_t simde_mm_average_avx2(simde__m256i *a, int length, int shift)
+__attribute__((always_inline)) static inline int64_t simde_mm_average_avx2(const simde__m256i *a, int length, int shift)
 {
   simde__m256i avg256 = simde_mm256_setzero_si256();
   for (int i = 0; i < length >> 3; i++) {
@@ -151,13 +151,13 @@ __attribute__((always_inline)) static inline int64_t simde_mm_average_avx2(simde
   return simde_mm_cvtsi128_si64(total_sum);
 }
 
-__attribute__((always_inline)) static inline int32_t simde_mm_average(simde__m128i *a, int length, int shift, int16_t scale)
+__attribute__((always_inline)) static inline int32_t simde_mm_average(const simde__m128i *a, int length, int shift, int16_t scale)
 {
   int64_t avg = 0;
 
 #if defined(__x86_64__) || defined(__i386__)
   if (__builtin_cpu_supports("avx2")) {
-    avg += simde_mm_average_avx2((simde__m256i *)a, length, shift);
+    avg += simde_mm_average_avx2((const simde__m256i *)a, length, shift);
 
     // tail processing by SSE
     a += ((length & ~7) >> 2);

@@ -295,6 +295,7 @@ frequency_range_t get_freq_range_from_freq(uint64_t freq);
 frequency_range_t get_freq_range_from_arfcn(uint32_t arfcn);
 frequency_range_t get_freq_range_from_band(uint16_t band);
 
+#define SYMBOL_HAS_LONGER_CP(a, b) (!(a % (0x7 << b)))
 #define CEILIDIV(a,b) ((a+b-1)/b)
 #define ROUNDIDIV(a,b) (((a<<1)+b)/(b<<1))
 
