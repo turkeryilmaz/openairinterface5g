@@ -47,14 +47,6 @@
 {SL_CONFIG_STRING_SL_CSI_RS_SLOT_PERIODICITY,NULL,0,.u8ptr=&sl_csi_info->slot_periodicity,.defuintval=1,TYPE_UINT8,0}, \
 {SL_CONFIG_STRING_SL_CSI_RS_SL_CSI_ACQUISITION,NULL,0,.u8ptr=&sl_csi_info->sl_csi_acquisition,.defuintval=1,TYPE_UINT8,0}}
 
-/*Sidelink HARQ configuration parameters */
-#define SL_CONFIG_STRING_SL_CONFIGUREDGRANT_LIST               "sl_ConfiguredGrantConfig"
-#define SL_CONFIG_STRING_SL_CONFIGUREDGRANT_NROFHARQ_PROCESSES "sl_NrOfHARQ_Processes"
-#define SL_CONFIG_STRING_SL_CONFIGUREDGRANT_HARQ_PROCID_OFFSET "sl_HARQ_ProcID_offset"
-#define SL_CONFIGUREDGRANT_DESC(sl_harq_info) { \
-{SL_CONFIG_STRING_SL_CONFIGUREDGRANT_NROFHARQ_PROCESSES, NULL, 0, .u16ptr=&sl_harq_info->num_HARQ_Processes, .defuintval=0, TYPE_UINT16, 0}, \
-{SL_CONFIG_STRING_SL_CONFIGUREDGRANT_HARQ_PROCID_OFFSET, NULL, 0, .u16ptr=&sl_harq_info->sl_HARQ_ProcID_offset, .defuintval=0, TYPE_UINT16, 0}}
-
 typedef struct sl_csi_info {
   uint8_t symb_l0;
   uint8_t csi_type;
@@ -64,11 +56,6 @@ typedef struct sl_csi_info {
   uint8_t power_control_offset_ss;
   uint8_t sl_csi_acquisition;
 } sl_csi_info_t;
-
-typedef struct sl_harq_info {
-  uint16_t num_HARQ_Processes;
-  uint16_t sl_HARQ_ProcID_offset;
-} sl_harq_info_t;
 
 void sl_ue_mac_free(uint8_t module_id)
 {
@@ -685,14 +672,6 @@ void nr_sl_params_read_conf(module_id_t module_id) {
   config_getlist(&SL_CRI_RS_List, NULL, 0, aprefix);
   sprintf(aprefix, "%s.[%i].%s.[%i]", SL_CONFIG_STRING_SL_PRECONFIGURATION, 0, SL_CONFIG_STRING_SL_CSI_RS_LIST, 0);
   config_get(SL_CRI_RS_INFO, sizeof(SL_CRI_RS_INFO)/sizeof(paramdef_t), aprefix);
-
-  char aprefix1[MAX_OPTNAME_SIZE*2 + 8];
-  sl_harq_info_t *sl_harq_info = (sl_harq_info_t*)malloc(sizeof(sl_harq_info_t));
-  paramdef_t SL_HARQ_INFO[] = SL_CONFIGUREDGRANT_DESC(sl_harq_info);
-  sprintf(aprefix1, "%s.[%i].%s.[%i]", SL_CONFIG_STRING_SL_PRECONFIGURATION, 0, SL_CONFIG_STRING_SL_CONFIGUREDGRANT_LIST, 0);
-  config_get(SL_HARQ_INFO, sizeof(SL_HARQ_INFO)/sizeof(paramdef_t), aprefix1);
-  sl_mac->num_HARQ_Processes = sl_harq_info->num_HARQ_Processes;
-  sl_mac->sl_HARQ_ProcID_offset = sl_harq_info->sl_HARQ_ProcID_offset;
 
   sl_mac->csi_type = sl_csi_rs_info->csi_type;
   sl_mac->symb_l0 = sl_csi_rs_info->symb_l0;
