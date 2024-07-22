@@ -570,6 +570,7 @@ include_directories("${OPENAIR_DIR}/common/utils/ocp_itti")
 include_directories("${OPENAIR3_DIR}/NAS/COMMON")
 include_directories("${OPENAIR3_DIR}/NAS/COMMON/API/NETWORK")
 include_directories("${OPENAIR3_DIR}/NAS/COMMON/EMM/MSG")
+include_directories("${OPENAIR3_DIR}/NAS/COMMON/FGMM")
 include_directories("${OPENAIR3_DIR}/NAS/COMMON/ESM/MSG")
 include_directories("${OPENAIR3_DIR}/NAS/UE/ESM")
 include_directories("${OPENAIR3_DIR}/NAS/UE/EMM")
@@ -1557,6 +1558,10 @@ set(libnas_emm_msg_OBJS
   ${NAS_SRC}COMMON/EMM/MSG/UplinkNasTransport.c
 )
 
+set(libnas_fgs_msg_OBJS
+  ${NAS_SRC}COMMON/FGMM/fgs_service_request.c
+)
+
 set(libnas_esm_msg_OBJS
   ${NAS_SRC}COMMON/ESM/MSG/ActivateDedicatedEpsBearerContextAccept.c
   ${NAS_SRC}COMMON/ESM/MSG/ActivateDedicatedEpsBearerContextReject.c
@@ -1781,6 +1786,7 @@ add_library(LIB_NAS_SIMUE
   ${libnas_api_OBJS}
   ${libnas_ue_api_OBJS}
   ${libnas_emm_msg_OBJS}
+  ${libnas_fgs_msg_OBJS}
   ${libnas_esm_msg_OBJS}
   ${libnas_ies_OBJS}
   ${libnas_utils_OBJS}
