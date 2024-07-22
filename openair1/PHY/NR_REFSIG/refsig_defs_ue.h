@@ -42,23 +42,21 @@ int nr_pdcch_dmrs_rx(PHY_VARS_NR_UE *ue,
                      unsigned short p,
                      unsigned short nb_rb_corset);
 
-int nr_pdsch_dmrs_rx(PHY_VARS_NR_UE *ue,
-                     unsigned int Ns,
-                     unsigned int *nr_gold_pdsch,
-                     c16_t *output,
-                     unsigned short p,
-                     unsigned char lp,
-                     unsigned short nb_pdsch_rb,
-                     uint8_t config_type);
+int nr_pdsch_dmrs_rx(const PHY_VARS_NR_UE *ue,
+                     const unsigned int Ns,
+                     const unsigned int *nr_gold_pdsch,
+                     const unsigned short p,
+                     const unsigned char lp,
+                     const unsigned short nb_pdsch_rb,
+                     const uint8_t config_type,
+                     c16_t *output);
 
 void nr_gold_pbch(uint32_t nr_gold_pbch[2][64][NR_PBCH_DMRS_LENGTH_DWORD], int Nid, int Lmax);
 
 void nr_gold_pdcch(PHY_VARS_NR_UE* ue,
                    unsigned short n_idDMRS);
 
-void nr_gold_pdsch(PHY_VARS_NR_UE* ue,
-                   int nscid,
-                   uint32_t nid);
+void nr_gold_pdsch(const int nscid, const unsigned int nid, PHY_VARS_NR_UE *ue);
 
 void nr_init_pusch_dmrs(PHY_VARS_NR_UE* ue,
                         uint16_t N_n_scid,

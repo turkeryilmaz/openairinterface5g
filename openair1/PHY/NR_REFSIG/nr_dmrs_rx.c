@@ -120,14 +120,14 @@ int nr_pusch_dmrs_rx(PHY_VARS_gNB *gNB,
   return(0);
 }
 
-int nr_pdsch_dmrs_rx(PHY_VARS_NR_UE *ue,
-                     unsigned int Ns,
-                     unsigned int *nr_gold_pdsch,
-                     c16_t *output,
-                     unsigned short p,
-                     unsigned char lp,
-                     unsigned short nb_pdsch_rb,
-                     uint8_t config_type)
+int nr_pdsch_dmrs_rx(const PHY_VARS_NR_UE *ue,
+                     const unsigned int Ns,
+                     const unsigned int *nr_gold_pdsch,
+                     const unsigned short p,
+                     const unsigned char lp,
+                     const unsigned short nb_pdsch_rb,
+                     const uint8_t config_type,
+                     c16_t *output)
 {
   int8_t w;
   unsigned char idx=0;
@@ -245,7 +245,7 @@ void nr_pbch_dmrs_rx(int symbol, const unsigned int *nr_gold_pbch, c16_t *output
   \param length is number of RE in a OFDM symbol
   \param *output pointer to all ptrs RE in a OFDM symbol
 */
-void nr_gen_ref_conj_symbols(uint32_t *in, uint32_t length, c16_t *output, uint16_t offset, int mod_order)
+void nr_gen_ref_conj_symbols(const uint32_t *in, uint32_t length, c16_t *output, uint16_t offset, int mod_order)
 {
   uint8_t idx, b_idx;
   for (int i=0; i<length/mod_order; i++)
