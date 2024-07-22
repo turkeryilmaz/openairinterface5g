@@ -448,10 +448,10 @@ int main(int argc, char **argv)
 
   init_opt();
 
-  nrUE_params.nrLDPC_coding_interface_flag = 0;
+  int nrLDPC_coding_interface_flag = 0;
   int ret_loader = load_nrLDPC_coding_interface(NULL, &nrLDPC_coding_interface);
   if (ret_loader >= 0) {
-    nrUE_params.nrLDPC_coding_interface_flag = 1;
+    nrLDPC_coding_interface_flag = 1;
     if (nrUE_params.ldpc_offload_flag)
       load_LDPClib("_t2", &ldpc_interface_offload);
     else
@@ -478,6 +478,7 @@ int main(int argc, char **argv)
     for (int CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
       PHY_vars_UE_g[inst][CC_id] = malloc(sizeof(*PHY_vars_UE_g[inst][CC_id]));
       memset(PHY_vars_UE_g[inst][CC_id], 0, sizeof(*PHY_vars_UE_g[inst][CC_id]));
+      PHY_vars_UE_g[inst][CC_id]->nrLDPC_coding_interface_flag = nrLDPC_coding_interface_flag;
     }
   }
 
