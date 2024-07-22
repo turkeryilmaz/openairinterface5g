@@ -42,6 +42,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include "assertions.h"
+#include "debug.h"
 
 typedef struct {
   uint8_t num_msg;
@@ -51,6 +52,8 @@ typedef struct {
 } fapi_message_header_t;
 
 bool isFAPIMessageIDValid(uint16_t id);
+
+int check_nr_fapi_unpack_length(nfapi_nr_phy_msg_type_e msgId, uint32_t unpackedBufLen);
 
 int fapi_nr_message_header_unpack(uint8_t **pMessageBuf,
                                   uint32_t messageBufLen,
