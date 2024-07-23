@@ -3695,8 +3695,8 @@ void nr_ue_sl_psfch_scheduler(NR_UE_MAC_INST_t *mac,
   }
   NR_UE_sl_harq_t *current_harq;
   uint16_t num_subch = sl_get_num_subch(mac->sl_tx_res_pool);
-  sl_nr_tx_rx_config_psfch_pdu_t *psfch_pdu_list = CALLOC(psfch_period*num_subch, sizeof(sl_nr_tx_rx_config_psfch_pdu_t));
-  tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu.psfch_pdu_list = psfch_pdu_list;
+  tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu.psfch_pdu_list = CALLOC(psfch_period*num_subch, sizeof(sl_nr_tx_rx_config_psfch_pdu_t));
+  sl_nr_tx_rx_config_psfch_pdu_t *psfch_pdu_list = tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu.psfch_pdu_list;
   int k = 0;
   for (int i = 0; i < (psfch_period * num_subch); i++) {
     SL_sched_feedback_t  *sched_psfch = &mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch[i];
