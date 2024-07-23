@@ -47,6 +47,17 @@ static const int16_t table_16_3_1[4][6] = {
                                           {0, 2, 4},
                                           {0, 1, 2, 3, 4, 5}
                                        };
+
+typedef struct prbs_set {
+  uint16_t **start_prb;
+  uint16_t **end_prb;
+} prbs_set_t;
+
+typedef struct psfch_params {
+  uint16_t m0;
+  prbs_set_t *prbs_sets;
+} psfch_params_t;
+
 /**\brief initialize the field in nr_mac instance
    \param module_id      module id */
 void nr_ue_init_mac(module_id_t module_idP);
@@ -587,5 +598,17 @@ NR_UE_sl_harq_t** find_nr_ue_sl_harq(frame_t frame, sub_frame_t slot, NR_SL_UE_i
 uint8_t sl_num_slsch_feedbacks(NR_UE_MAC_INST_t *mac);
 
 bool is_feedback_scheduled(NR_UE_MAC_INST_t *mac, int frameP,int slotP);
+
+uint16_t sl_get_num_subch(NR_SL_ResourcePool_r16_t *rpool);
+
+void fill_psfch_params_tx(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx_ind, long psfch_period, uint16_t sched_frame, uint16_t sched_slot, uint8_t ack_nack, psfch_params_t *psfch_params);
+
+void fill_psfch_params_rx(sl_nr_rx_config_request_t *rx_config, sl_nr_tx_rx_config_psfch_pdu_t *psfch_pdu, psfch_params_t *psfch_params, NR_UE_sl_harq_t *cur_harq, NR_UE_MAC_INST_t *mac, long psfch_period, const uint16_t slot);
+
+void configure_psfch_params_rx(int module_idP, NR_UE_MAC_INST_t *mac, sl_nr_rx_config_request_t *rx_config);
+
+void reset_sched_psfch(NR_UE_MAC_INST_t *mac, int frameP,int slotP);
+
+void handle_nr_ue_sl_harq(module_id_t mod_id, frame_t frame, sub_frame_t slot, sl_nr_slsch_pdu_t *rx_slsch_pdu, uint16_t src_id);
 #endif
 /** @}*/

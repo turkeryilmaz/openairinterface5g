@@ -30,16 +30,6 @@
 static const int sequence_cyclic_shift_harq_ack_or_ack_or_only_nack[2]
 /* Sequence cyclic shift */ = {  0, 6 };
 
-typedef struct prbs_set {
-  uint16_t **start_prb;
-  uint16_t **end_prb;
-} prbs_set_t;
-
-typedef struct psfch_params {
-  uint16_t m0;
-  prbs_set_t *prbs_sets;
-} psfch_params_t;
-
 void print_prb_set_allocation(psfch_params_t *psfch_params, uint8_t psfch_period, uint8_t  num_subchannels) {
   LOG_D(NR_PHY, "PSSCH Slot mod PSFCH period |   Subchannel   |   Start PRB   |    End PRB\n");
   for (int i = 0; i < psfch_period; i++) {
@@ -688,7 +678,7 @@ void fill_psfch_params_tx(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx_ind, 
   SL_sched_feedback_t  *sched_psfch = &mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch[rx_ind->slot % (psfch_period * num_subch)];
   sched_psfch->feedback_slot = sched_slot;
   sched_psfch->feedback_frame = sched_frame;
-  LOG_D(NR_MAC, "psfch_period %ld, feedback frame:slot %d:%d, frame:slot %d:%d, harq feedback %d\n",
+  LOG_I(NR_MAC, "psfch_period %ld, feedback frame:slot %d:%d, frame:slot %d:%d, harq feedback %d\n",
         psfch_period,
         sched_psfch->feedback_frame,
         sched_psfch->feedback_slot,
@@ -757,7 +747,6 @@ void configure_psfch_params_rx(int module_idP,
 {
   const uint16_t slot = rx_config->slot;
   frame_t frame = rx_config->sfn;
-  const uint8_t time_gap[] = {2, 3};
   const uint8_t psfch_periods[] = {0,1,2,4};
   NR_SL_PSFCH_Config_r16_t *sl_psfch_config = mac->sl_rx_res_pool->sl_PSFCH_Config_r16->choice.setup;
   long psfch_period = (sl_psfch_config->sl_PSFCH_Period_r16)
@@ -772,12 +761,11 @@ void configure_psfch_params_rx(int module_idP,
     return;
   }
   NR_SL_UE_info_t **UE_SL_temp = UE_info->list, *UE;
-  while(UE=*(UE_SL_temp++)) {
+  while((UE=*(UE_SL_temp++))) {
     NR_UE_sl_harq_t **matched_harqs = find_nr_ue_sl_harq(frame, slot, UE);
     int k = 0;
     rx_config->sl_rx_config_list[0].num_psfch_pdus = 0;
     for (int i = 0; i < (psfch_period * num_subch); i++) {
-      int scs = get_softmodem_params()->numerology;
       psfch_params_t *psfch_params = calloc(1, sizeof(psfch_params_t));
       compute_params(module_idP, psfch_params);
       AssertFatal(k < UE->UE_sched_ctrl.feedback_sl_harq.len, "k MUST be smaller than feedback_sl_harq length\n");
@@ -805,11 +793,10 @@ void fill_psfch_params_rx(sl_nr_rx_config_request_t *rx_config, sl_nr_tx_rx_conf
   psfch_pdu->start_symbol_index = *sl_bwp->sl_StartSymbol_r16 + sl_num_symbols - 2;
   LOG_D(NR_PHY, "Rx sl_StartSymbol_r16 %ld, sl_num_symbols: %d, start sym index %d, mcs %d\n", *sl_bwp->sl_StartSymbol_r16, sl_num_symbols, psfch_pdu->start_symbol_index, psfch_pdu->mcs);
   psfch_pdu->hopping_id = *mac->sl_bwp->sl_BWP_PoolConfigCommon_r16->sl_TxPoolSelectedNormal_r16->list.array[0]->sl_ResourcePool_r16->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_HopID_r16;
-  uint16_t num_subch = sl_get_num_subch(mac->sl_tx_res_pool);
   uint8_t index = cur_harq->sched_pssch.slot%psfch_period;
   psfch_pdu->prb = psfch_params->prbs_sets->start_prb[index][0]; // FIXME [0] is based on assumption of number of subchannels = 1; 0 is channel id
   print_prb_set_allocation(psfch_params, psfch_period, 1);
-  LOG_D(NR_PHY, "Rx slot %d, slsch tx slot %d, tx slot mode psfch_period %ld, psfch_pdu->prb %d, start_prb %d\n", slot, cur_harq->sched_pssch.slot, index, psfch_params->prbs_sets->start_prb[index][0]);
+  LOG_D(NR_PHY, "Rx slot %d, slsch tx slot %d, tx slot mode psfch_period %d, start_prb %d\n", slot, cur_harq->sched_pssch.slot, index, psfch_params->prbs_sets->start_prb[index][0]);
   int locbw = sl_bwp->sl_BWP_r16->locationAndBandwidth;
   psfch_pdu->sl_bwp_start   = NRRIV2PRBOFFSET(locbw, MAX_BWP_SIZE);
   psfch_pdu->freq_hop_flag  = 0;
@@ -824,7 +811,7 @@ void fill_psfch_params_rx(sl_nr_rx_config_request_t *rx_config, sl_nr_tx_rx_conf
   }
   psfch_pdu->nr_of_symbols = num_psfch_symbols ? num_psfch_symbols - 2 : 0; // (num_psfch_symbols - 2) excludes PSFCH AGC and Guard
   rx_config->sl_rx_config_list[0].pdu_type = SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH_PSFCH;
-  LOG_D(NR_PHY, "%s start_symbol_index %d, sl_bwp_start %d, sequence_hop_flag %d, \
+  LOG_I(NR_PHY, "%s start_symbol_index %d, sl_bwp_start %d, sequence_hop_flag %d, \
         second_hop_prb %d, prb %d, nr_of_symbols %d, initial_cyclic_shift %d, hopping_id %d, \
         group_hop_flag %d, freq_hop_flag %d, bit_len_harq %d\n",
         __FUNCTION__,
@@ -896,9 +883,6 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
   if (psfch_period && mac->sci_pdu_rx.harq_feedback) {
     configure_psfch_params_tx(module_idP, mac, rx_ind, pdu_id);
   }
-
-  uint8_t harq_pid = rx_slsch_pdu->harq_pid;
-  uint8_t ack_nack = rx_slsch_pdu->ack_nack;
 
   if (pdu_type == SL_NR_RX_PDU_TYPE_SLSCH_PSFCH) {
     handle_nr_ue_sl_harq(module_idP, frame, slot, rx_slsch_pdu, sl_sch_subheader->SRC);

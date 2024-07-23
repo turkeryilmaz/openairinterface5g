@@ -73,7 +73,7 @@ void reset_sl_harq_list(NR_SL_UE_sched_ctrl_t *sched_ctrl) {
 
 static void abort_nr_ue_sl_harq(NR_UE_MAC_INST_t *mac, int8_t harq_pid)
 {
-  NR_SL_UE_info_t *UE_info = &mac->sl_info.list[0];
+  NR_SL_UE_info_t *UE_info = (NR_SL_UE_info_t *)&mac->sl_info.list[0];
   NR_SL_UE_sched_ctrl_t *sched_ctrl = &UE_info->UE_sched_ctrl;
   NR_UE_sl_harq_t *harq = &sched_ctrl->sl_harq_processes[harq_pid];
 
@@ -97,7 +97,7 @@ void handle_nr_ue_sl_harq(module_id_t mod_id,
 {
   NR_UE_MAC_INST_t *mac = get_mac_inst(mod_id);
   NR_UE_SL_SCHED_LOCK(&mac->sl_sched_lock);
-  NR_SL_UE_info_t **UE_SL_temp = &mac->sl_info.list, *UE;
+  NR_SL_UE_info_t **UE_SL_temp = (NR_SL_UE_info_t *)&mac->sl_info.list, *UE;
   // TODO: update for multiple UEs
   UE=*(UE_SL_temp);
   uint8_t num_ack_rcvd = rx_slsch_pdu->num_acks_rcvd;
@@ -179,7 +179,7 @@ bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP,int slotP, nr_sci_pdu_t
   bool csi_acq = !mac->SL_MAC_PARAMS->sl_CSI_Acquisition;
   bool csi_req_slot = !((slots_per_frame * frameP + slotP - sl_mac->slot_offset) % sl_mac->slot_periodicity);
   bool is_harq_feedback = is_feedback_scheduled(mac, frameP, slotP);
-  LOG_D(NR_MAC, "frame.slot %4d.%2d bytes_in_buffer? %d, harq_feedback %d, (csi_acq && csi_req_slot) %d, sl_csi_report %d\n", frameP, slotP, rlc_status->bytes_in_buffer > 0, mac->sci_pdu_rx.harq_feedback, (csi_acq && csi_req_slot), mac->sl_csi_report);
+  LOG_D(NR_MAC, "frame.slot %4d.%2d bytes_in_buffer? %d, harq_feedback %d, (csi_acq && csi_req_slot) %d, sl_csi_report %p\n", frameP, slotP, rlc_status->bytes_in_buffer > 0, mac->sci_pdu_rx.harq_feedback, (csi_acq && csi_req_slot), mac->sl_csi_report);
   if (rlc_status->bytes_in_buffer > 0 || is_harq_feedback || (csi_acq && csi_req_slot) || mac->sl_csi_report) {
      uint8_t cqi_Table = 0;
      int8_t mcs = 11, ri = 0;

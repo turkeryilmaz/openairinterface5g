@@ -3257,7 +3257,7 @@ void preprocess(NR_UE_MAC_INST_t *mac, NR_sched_pssch_t *sched_pssch, uint16_t f
   sched_pssch->sl_harq_pid = -1;
   NR_SL_UEs_t *UE_info = &mac->sl_info;
   NR_SL_UE_info_t **UE_SL_temp = UE_info->list, *UE;
-  while(UE=*(UE_SL_temp++)) {
+  while((UE=*(UE_SL_temp++))) {
     NR_SL_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
     UE->mac_sl_stats.sl.current_bytes = 0;
     UE->mac_sl_stats.sl.current_rbs = 0;
@@ -3311,7 +3311,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
   preprocess(mac, sched_pssch, frame, slot, sl_bwp);
 
   NR_SL_UE_info_t **UE_SL_temp = UE_info->list, *UE;
-  while(UE=*(UE_SL_temp++)) {
+  while((UE=*(UE_SL_temp++))) {
     NR_SL_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
     UE->mac_sl_stats.sl.current_bytes = 0;
     UE->mac_sl_stats.sl.current_rbs = 0;
@@ -3564,8 +3564,8 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
         memset(pdu, 0, buflen_remain);
       }
     }
-    return true;
   }
+  return true;
 }
 
 void nr_ue_sl_pscch_rx_scheduler(nr_sidelink_indication_t *sl_ind,
@@ -3819,7 +3819,6 @@ void nr_ue_sl_psfch_scheduler(NR_UE_MAC_INST_t *mac,
   else if (psfch_period == 2 || psfch_period == 4) {
     num_psfch_symbols = mac->SL_MAC_PARAMS->sl_RxPool[0]->sci_1a.psfch_overhead_indication.nbits ? 3 : 0;
   }
-  NR_UE_sl_harq_t *current_harq;
   uint16_t num_subch = sl_get_num_subch(mac->sl_tx_res_pool);
   sl_nr_tx_rx_config_psfch_pdu_t *psfch_pdu_list = CALLOC(psfch_period*num_subch, sizeof(sl_nr_tx_rx_config_psfch_pdu_t));
   tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu.psfch_pdu_list = psfch_pdu_list;

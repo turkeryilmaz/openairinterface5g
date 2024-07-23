@@ -204,8 +204,6 @@ static void  sl_prepare_phy_config(int module_id,
                                    NR_TDD_UL_DL_ConfigCommon_t *sl_TDD_config)
 {
 
-  NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
-
   phycfg->sl_sync_source.sync_source = sync_source;
   LOG_I(NR_MAC, "Sidelink CFG: sync source:%d\n", phycfg->sl_sync_source.sync_source);
 
