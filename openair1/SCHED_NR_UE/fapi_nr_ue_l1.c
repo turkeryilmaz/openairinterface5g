@@ -731,7 +731,6 @@ int8_t sl_handle_scheduled_response(nr_scheduled_response_t *scheduled_response)
           memcpy((void*)phy_data->psfch_pdu_list, (void*)sl_rx_config->sl_rx_config_list[0].rx_psfch_pdu_list,
                  sl_rx_config->sl_rx_config_list[0].num_psfch_pdus * sizeof(sl_nr_tx_rx_config_psfch_pdu_t));
           phy_data->num_psfch_pdus = sl_rx_config->sl_rx_config_list[0].num_psfch_pdus;
-          LOG_I(NR_PHY, "psfch_pdu_list %p %p\n", &phy_data->psfch_pdu_list[0], &phy_data->psfch_pdu_list[1]);
         }
         break;
       default:

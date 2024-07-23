@@ -47,6 +47,16 @@
 {SL_CONFIG_STRING_SL_CSI_RS_SLOT_PERIODICITY,NULL,0,.u8ptr=&sl_csi_info->slot_periodicity,.defuintval=1,TYPE_UINT8,0}, \
 {SL_CONFIG_STRING_SL_CSI_RS_SL_CSI_ACQUISITION,NULL,0,.u8ptr=&sl_csi_info->sl_csi_acquisition,.defuintval=1,TYPE_UINT8,0}}
 
+/*Sidelink HARQ configuration parameters */
+#define SL_CONFIG_STRING_SL_CONFIGUREDGRANT_LIST               "sl_ConfiguredGrantConfig"
+#define SL_CONFIG_STRING_SL_CONFIGUREDGRANT_NROFHARQ_PROCESSES "sl_NrOfHARQ_Processes"
+#define SL_CONFIG_STRING_SL_CONFIGUREDGRANT_HARQ_PROCID_OFFSET "sl_HARQ_ProcID_offset"
+#define SL_CONFIG_STRING_SL_CONFIGUREDGRANT_HARQ_PERIODIC_RRI "sl_periodic_rsc_rsr_interval"
+#define SL_CONFIGUREDGRANT_DESC(sl_harq_info) { \
+{SL_CONFIG_STRING_SL_CONFIGUREDGRANT_NROFHARQ_PROCESSES, NULL, 0, .u16ptr=&sl_harq_info->sl_Num_HARQ_Processes, .defuintval=0, TYPE_UINT16, 0}, \
+{SL_CONFIG_STRING_SL_CONFIGUREDGRANT_HARQ_PROCID_OFFSET, NULL, 0, .u16ptr=&sl_harq_info->sl_HARQ_ProcID_offset, .defuintval=0, TYPE_UINT16, 0}, \
+{SL_CONFIG_STRING_SL_CONFIGUREDGRANT_HARQ_PERIODIC_RRI, NULL, 0, .u16ptr=&sl_harq_info->sl_Periodic_RRI, .defuintval=0, TYPE_UINT16, 0}}
+
 typedef struct sl_csi_info {
   uint8_t symb_l0;
   uint8_t csi_type;
@@ -56,6 +66,12 @@ typedef struct sl_csi_info {
   uint8_t power_control_offset_ss;
   uint8_t sl_csi_acquisition;
 } sl_csi_info_t;
+
+typedef struct sl_harq_info {
+  uint16_t sl_Num_HARQ_Processes;
+  uint16_t sl_HARQ_ProcID_offset;
+  uint16_t sl_Periodic_RRI;
+} sl_harq_info_t;
 
 void sl_ue_mac_free(uint8_t module_id)
 {
@@ -465,7 +481,7 @@ int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
   const uint8_t psfch_periods[] = {0,1,2,4};
   long psfch_period = (sl_psfch_config->sl_PSFCH_Period_r16)
                       ? psfch_periods[*sl_psfch_config->sl_PSFCH_Period_r16] : 0;
-  mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch = calloc(psfch_period*num_subch, sizeof(SL_sched_feedback_t));
+  mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch = calloc(psfch_period * num_subch, sizeof(SL_sched_feedback_t));
   mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch->feedback_frame = -1;
   mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch->feedback_slot = -1;
   if (sync_source == SL_SYNC_SOURCE_GNSS ||
@@ -672,6 +688,15 @@ void nr_sl_params_read_conf(module_id_t module_id) {
   config_getlist(&SL_CRI_RS_List, NULL, 0, aprefix);
   sprintf(aprefix, "%s.[%i].%s.[%i]", SL_CONFIG_STRING_SL_PRECONFIGURATION, 0, SL_CONFIG_STRING_SL_CSI_RS_LIST, 0);
   config_get(SL_CRI_RS_INFO, sizeof(SL_CRI_RS_INFO)/sizeof(paramdef_t), aprefix);
+
+  char aprefix1[MAX_OPTNAME_SIZE*2 + 8];
+  sl_harq_info_t *sl_harq_info = (sl_harq_info_t*)malloc(sizeof(sl_harq_info_t));
+  paramdef_t SL_HARQ_INFO[] = SL_CONFIGUREDGRANT_DESC(sl_harq_info);
+  sprintf(aprefix1, "%s.[%i].%s.[%i]", SL_CONFIG_STRING_SL_PRECONFIGURATION, 0, SL_CONFIG_STRING_SL_CONFIGUREDGRANT_LIST, 0);
+  config_get(SL_HARQ_INFO, sizeof(SL_HARQ_INFO)/sizeof(paramdef_t), aprefix1);
+  sl_mac->sl_Num_HARQ_Processes = sl_harq_info->sl_Num_HARQ_Processes;
+  sl_mac->sl_HARQ_ProcID_offset = sl_harq_info->sl_HARQ_ProcID_offset;
+  sl_mac->sl_Periodic_RRI = sl_harq_info->sl_Periodic_RRI;
 
   sl_mac->csi_type = sl_csi_rs_info->csi_type;
   sl_mac->symb_l0 = sl_csi_rs_info->symb_l0;

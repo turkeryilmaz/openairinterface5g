@@ -470,6 +470,7 @@ typedef struct SL_CSI_Report {
 typedef struct SL_sched_feedback {
   int16_t feedback_slot;
   int16_t feedback_frame;
+  int16_t harq_feedback;
   uint8_t freq_hop_flag;
   uint8_t group_hop_flag;
   uint8_t sequence_hop_flag;

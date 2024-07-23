@@ -503,7 +503,9 @@ bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
                        nr_sci_pdu_t *sci2_pdu,
                        uint8_t *slsch_pdu,
                        nr_sci_format_t format2,
-                       uint16_t *slsch_pdu_length);
+                       uint16_t *slsch_pdu_length,
+                       NR_UE_sl_harq_t *cur_harq,
+                       mac_rlc_status_resp_t *rlc_status);
 
 uint8_t nr_ue_sl_psbch_scheduler(nr_sidelink_indication_t *sl_ind,
                                  sl_nr_ue_mac_params_t *sl_mac_params,
@@ -582,5 +584,8 @@ void fill_psfch_pdu(SL_sched_feedback_t *mac_psfch_pdu,
 
 NR_UE_sl_harq_t** find_nr_ue_sl_harq(frame_t frame, sub_frame_t slot, NR_SL_UE_info_t * UE);
 
+uint8_t sl_num_slsch_feedbacks(NR_UE_MAC_INST_t *mac);
+
+bool is_feedback_scheduled(NR_UE_MAC_INST_t *mac, int frameP,int slotP);
 #endif
 /** @}*/

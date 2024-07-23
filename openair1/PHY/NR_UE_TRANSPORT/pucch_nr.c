@@ -91,7 +91,7 @@ void nr_generate_pucch0(const PHY_VARS_NR_UE *ue,
   // the value of u,v (delta always 0 for PUCCH) has to be calculated according to TS 38.211 Subclause 6.3.2.2.1
   uint8_t u[2]={0,0},v[2]={0,0};
 
-  LOG_I(PHY,"pucch0: slot %d nr_symbols %d, start_symbol %d, prb_start %d, second_hop_prb %d, group_hop_flag %d, sequence_hop_flag %d, mcs %d bwp_start %d\n",
+  LOG_D(PHY,"pucch0: slot %d nr_symbols %d, start_symbol %d, prb_start %d, second_hop_prb %d, group_hop_flag %d, sequence_hop_flag %d, mcs %d bwp_start %d\n",
         nr_slot_tx, pucch_pdu->nr_of_symbols,
         pucch_pdu->start_symbol_index,
         pucch_pdu->prb_start,

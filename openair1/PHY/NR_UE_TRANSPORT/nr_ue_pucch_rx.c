@@ -338,7 +338,7 @@ int8_t nr_ue_decode_pucch0(PHY_VARS_NR_UE *ue,
     if (temp > xrtmag) {
       xrtmag_next = xrtmag;
       xrtmag = temp;
-      LOG_I(PHY,"Sequence %d xrtmag %ld xrtmag_next %ld, slot %d\n", i, xrtmag, xrtmag_next, slot);
+      LOG_D(PHY, "Sequence %d xrtmag %ld xrtmag_next %ld, slot %d\n", i, xrtmag, xrtmag_next, slot);
       maxpos = i;
       int64_t temp2 = 0,temp3 = 0;;
       for (int aa=0; aa<frame_parms->nb_antennas_rx; aa++) {
@@ -359,7 +359,7 @@ int8_t nr_ue_decode_pucch0(PHY_VARS_NR_UE *ue,
   index = maxpos;
   if (pucch_pdu->bit_len_harq==1) {
     uint8_t ack_nack = !(index&0x01);
-    LOG_W(PHY,
+    LOG_D(PHY,
           "[PSFCH RX] %d.%d HARQ %s\n",
           frame,
           slot,
