@@ -684,43 +684,43 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
       free(phy_data->psfch_pdu_list);
       phy_data->psfch_pdu_list = NULL;
     }
-      NR_gNB_PUSCH *pssch_vars = &ue->pssch_vars[0];
-      pssch_vars->ulsch_power_tot = 0;
-      pssch_vars->ulsch_noise_power_tot = 0;
-      for (int aarx = 0; aarx < fp->nb_antennas_rx; aarx++) {
-        pssch_vars->ulsch_power[aarx] /= num_dmrs;
-        pssch_vars->ulsch_power_tot += pssch_vars->ulsch_power[aarx];
-        pssch_vars->ulsch_noise_power[aarx] /= num_dmrs;
-        pssch_vars->ulsch_noise_power_tot += pssch_vars->ulsch_noise_power[aarx];
-      }
-      if (dB_fixed_x10(pssch_vars->ulsch_power_tot) < dB_fixed_x10(pssch_vars->ulsch_noise_power_tot) + ue->pssch_thres) {
+    NR_gNB_PUSCH *pssch_vars = &ue->pssch_vars[0];
+    pssch_vars->ulsch_power_tot = 0;
+    pssch_vars->ulsch_noise_power_tot = 0;
+    for (int aarx = 0; aarx < fp->nb_antennas_rx; aarx++) {
+      pssch_vars->ulsch_power[aarx] /= num_dmrs;
+      pssch_vars->ulsch_power_tot += pssch_vars->ulsch_power[aarx];
+      pssch_vars->ulsch_noise_power[aarx] /= num_dmrs;
+      pssch_vars->ulsch_noise_power_tot += pssch_vars->ulsch_noise_power[aarx];
+    }
+    if (dB_fixed_x10(pssch_vars->ulsch_power_tot) < dB_fixed_x10(pssch_vars->ulsch_noise_power_tot) + ue->pssch_thres) {
 
-        LOG_D(NR_PHY,
-              "PSSCH not detected in %d.%d (%d,%d,%d)\n",
-              frame_rx,
-              nr_slot_rx,
-              dB_fixed_x10(pssch_vars->ulsch_power_tot),
-              dB_fixed_x10(pssch_vars->ulsch_noise_power_tot),
-              ue->pssch_thres);
-        pssch_vars->ulsch_power_tot = pssch_vars->ulsch_noise_power_tot;
-        pssch_vars->DTX = 1;
-        //if (stats)
-        //  stats->ulsch_stats.DTX++;
-        // nr_fill_indication(gNB, frame_rx, slot_rx, ULSCH_id, ulsch->harq_pid, 1, 1);
-        //pssch_DTX++;
-        //  continue;
-      } else {
-        LOG_D(NR_PHY,
-              "PSSCH detected in %d.%d (%d,%d,%d)\n",
-              frame_rx,
-              nr_slot_rx,
-              dB_fixed_x10(pssch_vars->ulsch_power_tot),
-              dB_fixed_x10(pssch_vars->ulsch_noise_power_tot),
-              ue->pssch_thres);
+      LOG_D(NR_PHY,
+            "PSSCH not detected in %d.%d (%d,%d,%d)\n",
+            frame_rx,
+            nr_slot_rx,
+            dB_fixed_x10(pssch_vars->ulsch_power_tot),
+            dB_fixed_x10(pssch_vars->ulsch_noise_power_tot),
+            ue->pssch_thres);
+      pssch_vars->ulsch_power_tot = pssch_vars->ulsch_noise_power_tot;
+      pssch_vars->DTX = 1;
+      //if (stats)
+      //  stats->ulsch_stats.DTX++;
+      // nr_fill_indication(gNB, frame_rx, slot_rx, ULSCH_id, ulsch->harq_pid, 1, 1);
+      //pssch_DTX++;
+      //  continue;
+    } else {
+      LOG_D(NR_PHY,
+            "PSSCH detected in %d.%d (%d,%d,%d)\n",
+            frame_rx,
+            nr_slot_rx,
+            dB_fixed_x10(pssch_vars->ulsch_power_tot),
+            dB_fixed_x10(pssch_vars->ulsch_noise_power_tot),
+            ue->pssch_thres);
 
-        pssch_vars->DTX = 0;
-        int totalDecode = nr_slsch_procedures(ue, frame_rx, nr_slot_rx, 0, proc, phy_data, is_csi_rs_slot, ack_nack_rcvd, phy_data->num_psfch_pdus);
-      }
+      pssch_vars->DTX = 0;
+      int totalDecode = nr_slsch_procedures(ue, frame_rx, nr_slot_rx, 0, proc, phy_data, is_csi_rs_slot, ack_nack_rcvd, phy_data->num_psfch_pdus);
+    }
   }
   LOG_D(PHY,"****** end Sidelink RX-Chain for AbsSubframe %d.%d ******\n",
                                                                 frame_rx, nr_slot_rx);
