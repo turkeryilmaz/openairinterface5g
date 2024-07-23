@@ -245,6 +245,14 @@ int nr_ulsch_encoding(PHY_VARS_NR_UE *ue,
                      uint32_t tb_size,
                      unsigned int G);
 
+int nr_ue_ulsch_encoding_slot(PHY_VARS_NR_UE *ue,
+                              NR_UE_ULSCH_t *ulsch,
+                              const uint32_t frame,
+                              const uint8_t slot,
+                              int nb_harq,
+                              uint8_t *harq_pids,
+                              int *G);
+
 /*! \brief Perform PUSCH scrambling. TS 38.211 V15.4.0 subclause 6.3.1.1
   @param[in] in Pointer to input bits
   @param[in] size of input bits
@@ -274,6 +282,12 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
                             const int gNB_id,
                             nr_phy_data_tx_t *phy_data,
                             c16_t **txdataF);
+
+void nr_ue_ulsch_procedures_slot(PHY_VARS_NR_UE *UE,
+                                 const uint32_t frame,
+                                 const uint8_t slot,
+                                 nr_phy_data_tx_t *phy_data,
+                                 c16_t **txdataF);
 
 /** \brief This function does IFFT for PUSCH
 */
