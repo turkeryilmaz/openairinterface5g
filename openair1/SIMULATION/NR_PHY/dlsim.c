@@ -843,6 +843,8 @@ int main(int argc, char **argv)
 
   init_nr_ue_transport(UE);
 
+  UE->nrLDPC_coding_interface_flag = gNB->nrLDPC_coding_interface_flag;
+
   nr_l2_init_ue(1);
   UE_mac = get_mac_inst(0);
   ue_init_config_request(UE_mac, mu);
