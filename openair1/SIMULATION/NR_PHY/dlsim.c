@@ -841,6 +841,8 @@ int main(int argc, char **argv)
 
   init_nr_ue_transport(UE);
 
+  UE->nrLDPC_coding_interface_flag = gNB->nrLDPC_coding_interface_flag;
+
   nr_gold_pbch(UE->nr_gold_pbch, frame_parms->Nid_cell, frame_parms->Lmax);
 
   // compute the scramblingID_pdcch and the gold pdcch
