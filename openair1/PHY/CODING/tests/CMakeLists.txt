@@ -10,13 +10,18 @@ set(slot_xdma "-O" "${CMAKE_CURRENT_SOURCE_DIR}/slot_xdma.conf")
 set(NR_ULSIM_OPTION_TO_TEST_LIST
   default_ldpc
   slot_demo
-  slot_xdma
 )
 
 if (ENABLE_LDPC_T2)
   list(APPEND NR_ULSIM_OPTION_TO_TEST_LIST
     t2_offload_nr_ulsim
     #slot_t2
+  )
+endif()
+
+if (ENABLE_LDPC_XDMA)
+  list(APPEND NR_ULSIM_OPTION_TO_TEST_LIST
+  slot_xdma
   )
 endif()
 
@@ -152,6 +157,12 @@ set(NR_ULSCHSIM_OPTION_TO_TEST_LIST
 #  )
 #endif()
 
+if (ENABLE_LDPC_XDMA)
+  list(APPEND NR_ULSCHSIM_OPTION_TO_TEST_LIST
+  slot_xdma
+  )
+endif()
+
 set(test_nr_ulschsim_test1 "-R" "106" "-m9" "-s13" "-n100")
 set(test_nr_ulschsim_test2 "-R" "217" "-m15" "-s15" "-n100")
 set(test_nr_ulschsim_test3 "-R" "273" "-m19" "-s20" "-n100")
@@ -189,6 +200,12 @@ if (ENABLE_LDPC_T2)
   list(APPEND NR_DLSIM_OPTION_TO_TEST_LIST
     t2_offload_nr_dlsim
     #slot_t2
+  )
+endif()
+
+if (ENABLE_LDPC_XDMA)
+  list(APPEND NR_DLSIM_OPTION_TO_TEST_LIST
+  slot_xdma
   )
 endif()
 
@@ -276,6 +293,12 @@ set(NR_DLSCHSIM_OPTION_TO_TEST_LIST
 #  )
 #endif()
 
+if (ENABLE_LDPC_XDMA)
+  list(APPEND NR_DLSCHSIM_OPTION_TO_TEST_LIST
+  slot_xdma
+  )
+endif()
+
 set(test_nr_dlschsim_test1 "-R" "106" "-m9" "-s13" "-n100")
 set(test_nr_dlschsim_test2 "-R" "217" "-m15" "-s15" "-n100")
 set(test_nr_dlschsim_test3 "-R" "273" "-m19" "-s20" "-n100")
@@ -309,13 +332,18 @@ set(slot_xdma "-O" "${CMAKE_CURRENT_SOURCE_DIR}/gnb.sa.band78.106prb.rfsim.2x2.s
 set(NR_SOFTMODEM_OPTION_TO_TEST_LIST
   default_ldpc
   slot_demo
-  slot_xdma
 )
 
 if (ENABLE_LDPC_T2)
   list(APPEND NR_SOFTMODEM_OPTION_TO_TEST_LIST
     t2_offload
     #slot_t2
+  )
+endif()
+
+if (ENABLE_LDPC_XDMA)
+  list(APPEND NR_SOFTMODEM_OPTION_TO_TEST_LIST
+  slot_xdma
   )
 endif()
 
@@ -339,8 +367,13 @@ set(slot_xdma "-O" "${CMAKE_CURRENT_SOURCE_DIR}/nrue.uicc.1.slot_xdma.conf")
 set(NR_UESOFTMODEM_OPTION_TO_TEST_LIST
   default_ldpc
   slot_demo
-  slot_xdma
 )
+
+if (ENABLE_LDPC_XDMA)
+  list(APPEND NR_UESOFTMODEM_OPTION_TO_TEST_LIST
+  slot_xdma
+  )
+endif()
 
 #if (ENABLE_LDPC_T2)
 #  list(APPEND NR_UESOFTMODEM_OPTION_TO_TEST_LIST
