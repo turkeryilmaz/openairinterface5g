@@ -169,8 +169,8 @@ void nr_dlsch_deinterleaving(uint8_t symbol,
                              uint16_t *llr_deint,
                              uint16_t nb_rb_pdsch);
 
-void nr_conjch0_mult_ch1(int *ch0,
-                         int *ch1,
+void nr_conjch0_mult_ch1(const int *ch0,
+                         const int *ch1,
                          int32_t *ch0conj_ch1,
                          unsigned short nb_rb,
                          unsigned char output_shift0);

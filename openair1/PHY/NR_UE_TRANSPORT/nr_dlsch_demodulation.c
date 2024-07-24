@@ -1646,8 +1646,8 @@ uint8_t nr_matrix_inverse(int32_t size,
  *
  *
  * */
-void nr_conjch0_mult_ch1(int *ch0,
-                         int *ch1,
+void nr_conjch0_mult_ch1(const int *ch0,
+                         const int *ch1,
                          int32_t *ch0conj_ch1,
                          unsigned short nb_rb,
                          unsigned char output_shift0)
@@ -1655,10 +1655,10 @@ void nr_conjch0_mult_ch1(int *ch0,
   //This function is used to compute multiplications in H_hermitian * H matrix
   short nr_conjugate[8]__attribute__((aligned(16))) = {-1,1,-1,1,-1,1,-1,1};
   unsigned short rb;
-  simde__m128i *dl_ch0_128,*dl_ch1_128, *ch0conj_ch1_128, mmtmpD0,mmtmpD1,mmtmpD2,mmtmpD3;
+  simde__m128i *ch0conj_ch1_128, mmtmpD0,mmtmpD1,mmtmpD2,mmtmpD3;
 
-  dl_ch0_128 = (simde__m128i *)ch0;
-  dl_ch1_128 = (simde__m128i *)ch1;
+  const simde__m128i *dl_ch0_128 = (simde__m128i *)ch0;
+  const simde__m128i *dl_ch1_128 = (simde__m128i *)ch1;
 
   ch0conj_ch1_128 = (simde__m128i *)ch0conj_ch1;
 
