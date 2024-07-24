@@ -670,12 +670,32 @@ void configure_psfch_params_tx(int module_idP,
   uint8_t ack_nack = (rx_ind->rx_indication_body + pdu_id)->rx_slsch_pdu.ack_nack;
   psfch_params_t *psfch_params = calloc(1, sizeof(psfch_params_t));
   compute_params(module_idP, psfch_params);
-  fill_psfch_params_tx(mac, rx_ind, psfch_period, sched_frame, sched_slot, ack_nack, psfch_params);
+  const int nr_slots_frame = nr_slots_per_frame[scs];
+  fill_psfch_params_tx(mac, rx_ind, psfch_period, sched_frame, sched_slot, ack_nack, psfch_params, nr_slots_frame);
 }
-
-void fill_psfch_params_tx(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx_ind, long psfch_period, uint16_t sched_frame, uint16_t sched_slot, uint8_t ack_nack, psfch_params_t *psfch_params) {
+static int get_psfch_index(int frame, int slot, int n_slots_frame, const NR_TDD_UL_DL_Pattern_t *tdd, int sched_pucch_size)
+{
+  // PUCCH structures are indexed by slot in the PUCCH period determined by sched_pucch_size number of UL slots
+  // this functions return the index to the structure for slot passed to the function
+  const int first_ul_slot_period = tdd ? get_first_ul_slot(tdd->nrofDownlinkSlots, tdd->nrofDownlinkSymbols, tdd->nrofUplinkSymbols) : 0;
+  const int n_ul_slots_period = tdd ? tdd->nrofUplinkSlots + (tdd->nrofUplinkSymbols > 0 ? 1 : 0) : n_slots_frame;
+  const int nr_slots_period = tdd ? n_slots_frame / get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity) : n_slots_frame;
+  const int n_ul_slots_frame = n_slots_frame / nr_slots_period * n_ul_slots_period;
+  // (frame * n_ul_slots_frame) adds up the number of UL slots in the previous frames
+  const int frame_start      = frame * n_ul_slots_frame;
+  // ((slot / nr_slots_period) * n_ul_slots_period) adds up the number of UL slots in the previous TDD periods of this frame
+  const int ul_period_start  = (slot / nr_slots_period) * n_ul_slots_period;
+  // ((slot % nr_slots_period) - first_ul_slot_period) gives the progressive number of the slot in this TDD period
+  const int ul_period_slot   = (slot % nr_slots_period) - first_ul_slot_period;
+  // the sum gives the index of current UL slot in the frame which is normalized wrt sched_pucch_size
+  return (frame_start + ul_period_start + ul_period_slot) % sched_pucch_size;
+  //return rx_ind->slot % (psfch_period * num_subch);
+}
+void fill_psfch_params_tx(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx_ind, long psfch_period, uint16_t sched_frame, uint16_t sched_slot, uint8_t ack_nack, psfch_params_t *psfch_params, const int nr_slots_frame) {
   uint16_t num_subch = sl_get_num_subch(mac->sl_tx_res_pool);
-  SL_sched_feedback_t  *sched_psfch = &mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch[rx_ind->slot % (psfch_period * num_subch)];
+  const int psfch_index = get_psfch_index(pucch_frame, pucch_slot, nr_slots_frame, tdd, sched_ctrl->sched_pucch_size);
+  //SL_sched_feedback_t  *sched_psfch = &mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch[rx_ind->slot % (psfch_period * num_subch)];
+  SL_sched_feedback_t  *sched_psfch = &mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch[psfch_index];
   sched_psfch->feedback_slot = sched_slot;
   sched_psfch->feedback_frame = sched_frame;
   LOG_I(NR_MAC, "psfch_period %ld, feedback frame:slot %d:%d, frame:slot %d:%d, harq feedback %d\n",
@@ -841,6 +861,7 @@ uint8_t sl_num_slsch_feedbacks(NR_UE_MAC_INST_t *mac) {
 bool is_feedback_scheduled(NR_UE_MAC_INST_t *mac, int frameP,int slotP) {
   for (int i = 0; i < sl_num_slsch_feedbacks(mac); i++) {
     SL_sched_feedback_t  *sched_psfch = &mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch[i];
+    LOG_I(NR_MAC, "frame.slot %4d.%2d, harq_feedback %d\n", frameP, slotP, sched_psfch->harq_feedback);
     if (frameP == sched_psfch->feedback_frame && slotP == sched_psfch->feedback_slot && sched_psfch->harq_feedback) {
       return true;
     }
