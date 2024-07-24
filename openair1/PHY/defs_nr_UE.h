@@ -311,6 +311,19 @@ typedef struct {
   fapi_nr_dl_config_csirs_pdu_rel15_t csirs_config_pdu;
 } NR_UE_CSI_RS;
 
+typedef struct nr_csi_symbol_res_s {
+  int rsrpSum1;
+  int rsrp;
+  int rsrpDbm;
+  int sum_re1;
+  int sum_im1;
+  int sum_re2;
+  int sum_im2;
+  int power_re;
+  int power_im;
+  int count;
+} nr_csi_symbol_res_t;
+
 typedef struct {
   uint8_t csi_rs_generated_signal_bits;
   int32_t **csi_rs_generated_signal;

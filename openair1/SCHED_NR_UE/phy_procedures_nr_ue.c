@@ -57,6 +57,7 @@
 #include "nfapi/open-nFAPI/nfapi/public_inc/nfapi_nr_interface.h"
 #include "PHY/NR_REFSIG/ptrs_nr.h"
 #include "openair1/PHY/NR_REFSIG/refsig_defs_ue.h"
+#include "openair1/PHY/nr_phy_common/inc/nr_phy_common.h"
 
 //#define DEBUG_PHY_PROC
 //#define NR_PDCCH_SCHED_DEBUG
@@ -1395,29 +1396,59 @@ void pdsch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_phy_
   const uint32_t rxdataF_sz = ue->frame_parms.samples_per_slot_wCP;
   __attribute__ ((aligned(32))) c16_t rxdataF[ue->frame_parms.nb_antennas_rx][rxdataF_sz];
 
-  // do procedures for CSI-IM
-  if (phy_data->csiim_vars.active == 1) {
-    for(int symb_idx = 0; symb_idx < 4; symb_idx++) {
-      int symb = phy_data->csiim_vars.csiim_config_pdu.l_csiim[symb_idx];
-      if (!slot_fep_map[symb]) {
-        nr_slot_fep(ue, &ue->frame_parms, proc->nr_slot_rx, symb, rxdataF, link_type_dl, 0, ue->common_vars.rxdata);
-        slot_fep_map[symb] = true;
-      }
-    }
-    nr_ue_csi_im_procedures(ue, proc, rxdataF, &phy_data->csiim_vars.csiim_config_pdu);
-  }
+  // CSI procedures
+  const bool csi_im_active = phy_data->csiim_vars.active;
+  const bool csi_rs_active = phy_data->csirs_vars.active;
+  nr_csi_symbol_res_t csi_im_res;
+  nr_csi_symbol_res_t csi_rs_res;
+  csi_mapping_parms_t mapping_parms = {0};
+  fourDimArray_t *toFree = NULL;
 
-  // do procedures for CSI-RS
-  if (phy_data->csirs_vars.active == 1) {
-    for(int symb = 0; symb < NR_SYMBOLS_PER_SLOT; symb++) {
-      if(is_csi_rs_in_symbol(phy_data->csirs_vars.csirs_config_pdu, symb)) {
-        if (!slot_fep_map[symb]) {
-          nr_slot_fep(ue, &ue->frame_parms, proc->nr_slot_rx, symb, rxdataF, link_type_dl, 0, ue->common_vars.rxdata);
-          slot_fep_map[symb] = true;
-        }
-      }
+  if (csi_rs_active)
+    nr_csi_slot_init(ue, proc, &phy_data->csirs_vars.csirs_config_pdu, ue->nr_csi_info, &mapping_parms);
+  allocCast3D(csi_rs_ls_estimates, c16_t, toFree, ue->frame_parms.nb_antennas_rx, mapping_parms.ports, ue->frame_parms.ofdm_symbol_size, false);
+
+  for (int symb = 0; symb < NR_NUMBER_OF_SYMBOLS_PER_SLOT; symb++) {
+    if (!slot_fep_map[symb]) {
+      nr_slot_fep(ue, &ue->frame_parms, proc->nr_slot_rx, symb, rxdataF, link_type_dl, 0, ue->common_vars.rxdata);
+      slot_fep_map[symb] = true;
     }
-    nr_ue_csi_rs_procedures(ue, proc, rxdataF, &phy_data->csirs_vars.csirs_config_pdu);
+    __attribute__((aligned(32))) c16_t rxdataF_symb[ue->frame_parms.nb_antennas_rx][ue->frame_parms.ofdm_symbol_size];
+    for (int aarx = 0; aarx < ue->frame_parms.nb_antennas_rx; aarx++) {
+      memcpy(rxdataF_symb[aarx],
+             rxdataF[aarx] + symb * ue->frame_parms.ofdm_symbol_size,
+             sizeof(c16_t) * ue->frame_parms.ofdm_symbol_size);
+    }
+    // do procedures for CSI-IM
+    if (csi_im_active)
+      nr_csi_im_symbol_power_estimation(&ue->frame_parms, proc, &phy_data->csiim_vars.csiim_config_pdu, symb, rxdataF_symb, &csi_im_res);
+    if (csi_im_active && symb == NR_NUMBER_OF_SYMBOLS_PER_SLOT - 1) {
+      nr_ue_csi_im_procedures(&phy_data->csiim_vars.csiim_config_pdu, &csi_im_res, ue->nr_csi_info);
+      phy_data->csiim_vars.active = 0;
+    }
+
+    // do procedures for CSI-RS
+    if (csi_rs_active)
+      nr_ue_csi_rs_symbol_procedures(ue,
+                                     proc,
+                                     &mapping_parms,
+                                     symb,
+                                     &phy_data->csirs_vars.csirs_config_pdu,
+                                     rxdataF_symb,
+                                     csi_rs_ls_estimates,
+                                     &csi_rs_res);
+    if (csi_rs_active && symb == NR_NUMBER_OF_SYMBOLS_PER_SLOT - 1) {
+      nr_ue_csi_rs_procedures(
+          ue,
+          proc,
+          &phy_data->csirs_vars,
+          &mapping_parms,
+          ue->nr_csi_info,
+          &csi_rs_res,
+          csi_rs_ls_estimates);
+      free(toFree);
+      phy_data->csirs_vars.active = 0;
+    }
   }
 
   if (dlsch[0].active) {
