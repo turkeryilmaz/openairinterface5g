@@ -33,13 +33,13 @@
 #include "executables/nr-uesoftmodem.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
 
-int nr_ue_ulsch_encoding_slot(PHY_VARS_NR_UE *ue,
-                              NR_UE_ULSCH_t *ulsch,
-                              const uint32_t frame,
-                              const uint8_t slot,
-                              int nb_harq,
-                              uint8_t *harq_pids,
-                              int *G)
+int nr_ulsch_encoding_slot(PHY_VARS_NR_UE *ue,
+                           NR_UE_ULSCH_t *ulsch,
+                           const uint32_t frame,
+                           const uint8_t slot,
+                           int nb_harq,
+                           uint8_t *harq_pids,
+                           int *G)
 {
   start_meas(&ue->ulsch_encoding_stats);
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_UE_ULSCH_ENCODING, VCD_FUNCTION_IN);
@@ -121,6 +121,9 @@ int nr_ue_ulsch_encoding_slot(PHY_VARS_NR_UE *ue,
     TB_encoding_params->BG = harq_process->BG;
     if (TB_encoding_params->C > MAX_NUM_NR_DLSCH_SEGMENTS_PER_LAYER * pusch_pdu->nrOfLayers) {
       LOG_E(PHY, "nr_segmentation.c: too many segments %d, B %d\n", TB_encoding_params->C, B);
+      for (uint8_t idx_inner = 0; idx_inner < idx; idx_inner++)
+        free(TBs[idx_inner].segments);
+      free(TBs);
       return (-1);
     }
     stop_meas(&ue->ulsch_segmentation_stats);
@@ -156,8 +159,12 @@ int nr_ue_ulsch_encoding_slot(PHY_VARS_NR_UE *ue,
   int nbJobs = 0;
   nbJobs = nrLDPC_coding_interface.nrLDPC_coding_encoder(&slot_encoding_params);
 
-  if (nbJobs < 0)
+  if (nbJobs < 0 ) {
+    for (uint8_t idx = 0; idx < nb_harq; idx++)
+      free(TBs[idx].segments);
+    free(TBs);
     return -1;
+  }
   while (nbJobs) {
     notifiedFIFO_elt_t *req = pullTpool(&nf, &get_nrUE_params()->Tpool);
     if (req == NULL)

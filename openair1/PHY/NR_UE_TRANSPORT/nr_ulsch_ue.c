@@ -171,7 +171,7 @@ void nr_ue_ulsch_procedures_slot(PHY_VARS_NR_UE *UE,
 
   /////////////////////////ULSCH coding/////////////////////////
 
-  if (nr_ue_ulsch_encoding_slot(UE, &phy_data->ulsch, frame, slot, nb_harq, harq_pids, G) == -1)
+  if (nr_ulsch_encoding_slot(UE, &phy_data->ulsch, frame, slot, nb_harq, harq_pids, G) == -1)
     return;
 
   for (uint8_t idx = 0; idx < nb_harq; idx++) {
