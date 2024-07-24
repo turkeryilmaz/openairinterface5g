@@ -1011,13 +1011,14 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
         uint8_t N_ap = 1 << srs_pdu->num_ant_ports;
         uint8_t N_ant_rx = gNB->frame_parms.nb_antennas_rx;
         int32_t srs_toa_ns[N_ant_rx];
+        // call ToA estimation function
+        nr_est_toa_ns_srs(frame_parms, N_ant_rx, N_ap, N_symb_SRS, srs_estimated_channel_freq, srs_toa_ns);
 
         start_meas(&gNB->srs_timing_advance_stats);
         srs_indication->timing_advance_offset =
             srs_est >= 0 ? nr_est_timing_advance_srs(frame_parms, N_ap, srs_estimated_channel_time[0]) : 0xFFFF;
         stop_meas(&gNB->srs_timing_advance_stats);
-        srs_indication->timing_advance_offset_nsec =
-            srs_est >= 0 ? nr_est_toa_ns_srs(frame_parms, N_ant_rx, N_ap, srs_estimated_channel_freq, srs_toa_ns) : 0xFFFF;
+        srs_indication->timing_advance_offset_nsec = srs_est >= 0 ? srs_toa_ns[0] : 0xFFFF;
 
         T(T_GNB_PHY_UL_SRS_TOA_NS,
           T_INT(gNB->Mod_id),
