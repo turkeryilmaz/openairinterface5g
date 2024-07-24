@@ -40,7 +40,6 @@
 
 #include <executables/softmodem-common.h>
 #include "openair2/LAYER2/RLC/rlc.h"
-#include "openair2/LAYER2/nr_rlc/nr_rlc_oai_api.h"
 
 static double get_ta_Common_ms(NR_NTN_Config_r17_t *ntn_Config_r17)
 {
@@ -743,7 +742,7 @@ void nr_ue_get_rach(NR_UE_MAC_INST_t *mac, int CC_id, frame_t frame, uint8_t gNB
 
       } else if (!get_softmodem_params()->sa) {
         uint8_t temp_pdu[16] = {0};
-        typeBsr_t tmp = {.typeBsr = Bnone};
+        type_bsr_t tmp = {.type_bsr = b_none};
         size_sdu = nr_write_ce_ulsch_pdu(temp_pdu, mac, 0, mac->crnti, &tmp);
         ra->Msg3_size = size_sdu;
       }

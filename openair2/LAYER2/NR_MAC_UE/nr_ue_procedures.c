@@ -3676,7 +3676,7 @@ int nr_write_ce_ulsch_pdu(uint8_t *mac_ce,
                           NR_UE_MAC_INST_t *mac,
                           uint8_t power_headroom, // todo: NR_POWER_HEADROOM_CMD *power_headroom,
                           rnti_t crnti,
-                          const typeBsr_t *bsr)
+                          const type_bsr_t *bsr)
 {
   int      mac_ce_len = 0;
   uint8_t *pdu = mac_ce;
@@ -3710,8 +3710,8 @@ int nr_write_ce_ulsch_pdu(uint8_t *mac_ce,
     mac_ce += sizeof(crnti);
   }
 
-  switch (bsr->typeBsr) {
-    case Btrunc: {
+  switch (bsr->type_bsr) {
+    case b_trunc: {
       *(NR_MAC_SUBHEADER_FIXED *)mac_ce = (NR_MAC_SUBHEADER_FIXED){.R = 0, .LCID = UL_SCH_LCID_S_TRUNCATED_BSR};
       mac_ce += sizeof(NR_MAC_SUBHEADER_FIXED);
       // Short truncated BSR MAC CE (1 octet)
@@ -3722,7 +3722,7 @@ int nr_write_ce_ulsch_pdu(uint8_t *mac_ce,
             bsr->bsr.t.Buffer_size,
             bsr->bsr.t.LcgID);
     } break;
-    case Bshort: {
+    case b_short: {
       *(NR_MAC_SUBHEADER_FIXED *)mac_ce = (NR_MAC_SUBHEADER_FIXED){.R = 0, .LCID = UL_SCH_LCID_S_BSR};
       mac_ce += sizeof(NR_MAC_SUBHEADER_FIXED);
       *(NR_BSR_SHORT *)mac_ce = bsr->bsr.s;
@@ -3735,13 +3735,14 @@ int nr_write_ce_ulsch_pdu(uint8_t *mac_ce,
             pdu,
             mac_ce);
     } break;
-    case Blong: {
+    case b_long: {
       // ch 6.1.3.1. TS 38.321
       NR_MAC_SUBHEADER_SHORT *mac_pdu_subheader_ptr = (NR_MAC_SUBHEADER_SHORT *)mac_ce;
       mac_ce += sizeof(NR_MAC_SUBHEADER_SHORT);
       uint8_t *mark = mac_ce;
       // Could move to nr_get_sdu()
       NR_BSR_LONG *ceLong = (NR_BSR_LONG *)mac_ce;
+      *ceLong=(NR_BSR_LONG) {0};
       mac_ce += sizeof(NR_BSR_LONG);
       // int NR_BSR_LONG_SIZE = 1;
       if (bsr->bsr.lc_bsr[0]) {
@@ -3790,7 +3791,7 @@ int nr_write_ce_ulsch_pdu(uint8_t *mac_ce,
             bsr->bsr.lc_bsr[6],
             bsr->bsr.lc_bsr[7]);
     } break;
-    case Bnone:
+    case b_none:
       break;
   }
 
