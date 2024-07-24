@@ -128,6 +128,19 @@ typedef struct {
   uint32_t interference_plus_noise_power;
 } nr_csi_info_t;
 
+typedef struct nr_csi_phy_parms_s {
+  uint8_t N_cdm_groups;
+  uint8_t CDM_group_size;
+  uint8_t k_prime;
+  uint8_t l_prime;
+  uint8_t N_ports;
+  uint8_t j_cdm[16];
+  uint8_t k_overline[16];
+  uint8_t l_overline[16];
+  bool csi_im_meas_computed;
+  uint32_t interference_plus_noise_power;
+} nr_csi_phy_parms_t;
+
 typedef struct NR_DL_FRAME_PARMS NR_DL_FRAME_PARMS;
 
 typedef uint32_t (*get_samples_per_slot_t)(int slot, const NR_DL_FRAME_PARMS *fp);
