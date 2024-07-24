@@ -154,6 +154,9 @@ int nr_dlsch_encoding_slot(PHY_VARS_gNB *gNB,
 
     if (nrLDPC_TB_encoding_parameters.C>MAX_NUM_NR_DLSCH_SEGMENTS_PER_LAYER*rel15->nrOfLayers) {
       LOG_E(PHY, "nr_segmentation.c: too many segments %d, B %d\n", nrLDPC_TB_encoding_parameters.C, B);
+      for (int dlsch_id_inner=0; dlsch_id_inner<dlsch_id; dlsch_id_inner++) {
+        free(TBs[dlsch_id_inner].segments);
+      }
       return(-1);
     }
     nrLDPC_TB_encoding_parameters.segments = calloc(nrLDPC_TB_encoding_parameters.C, sizeof(nrLDPC_segment_encoding_parameters_t));
@@ -207,8 +210,12 @@ int nr_dlsch_encoding_slot(PHY_VARS_gNB *gNB,
 
   int nbJobs = nrLDPC_coding_interface.nrLDPC_coding_encoder(&nrLDPC_slot_encoding_parameters);
 
-  if (nbJobs < 0)
+  if (nbJobs < 0) {
+    for (int dlsch_id=0; dlsch_id<msgTx->num_pdsch_slot; dlsch_id++) {
+      free(TBs[dlsch_id].segments);
+    }
     return -1;
+  }
   while (nbJobs) {
     notifiedFIFO_elt_t *req = pullTpool(&nf, &gNB->threadPool);
     if (req == NULL)

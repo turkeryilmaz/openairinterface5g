@@ -229,14 +229,14 @@ uint32_t nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
     @param[in] DLSCH_ids array of active downlink shared channels
     @returns 0 on success, 1 on unsuccessful decoding
 */
-uint32_t nr_ue_dlsch_decoding_slot(PHY_VARS_NR_UE *phy_vars_ue,
-                                   const UE_nr_rxtx_proc_t *proc,
-                                   NR_UE_DLSCH_t *dlsch,
-                                   short **dlsch_llr,
-                                   uint8_t **b,
-                                   int *G,
-                                   int nb_dlsch,
-                                   int *DLSCH_ids);
+uint32_t nr_dlsch_decoding_slot(PHY_VARS_NR_UE *phy_vars_ue,
+                                const UE_nr_rxtx_proc_t *proc,
+                                NR_UE_DLSCH_t *dlsch,
+                                short **dlsch_llr,
+                                uint8_t **b,
+                                int *G,
+                                int nb_dlsch,
+                                int *DLSCH_ids);
 
 /** \brief This is the top-level entry point for ULSCH encoding in UE. It should be replicated on several
     threads (on multi-core machines) corresponding to different HARQ processes. The routine first

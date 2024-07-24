@@ -95,6 +95,9 @@ int nr_ulsch_decoding_slot(PHY_VARS_gNB *phy_vars_gNB,
 
     if (!harq_process) {
       LOG_E(PHY, "ulsch_decoding.c: NULL harq_process pointer\n");
+      for (uint8_t ULSCH_id_inner = 0; ULSCH_id_inner < ULSCH_id; ULSCH_id_inner++) {
+        free(TBs[ULSCH_id_inner].segments);
+      }
       return -1;
     }
   
@@ -158,6 +161,9 @@ int nr_ulsch_decoding_slot(PHY_VARS_gNB *phy_vars_gNB,
     uint16_t a_segments = MAX_NUM_NR_ULSCH_SEGMENTS_PER_LAYER * nrLDPC_TB_decoding_parameters.nb_layers; // number of segments to be allocated
     if (nrLDPC_TB_decoding_parameters.C > a_segments) {
       LOG_E(PHY, "nr_segmentation.c: too many segments %d, A %d\n", harq_process->C, nrLDPC_TB_decoding_parameters.A);
+      for (uint8_t ULSCH_id_inner = 0; ULSCH_id_inner < ULSCH_id; ULSCH_id_inner++) {
+        free(TBs[ULSCH_id_inner].segments);
+      }
       return(-1);
     }
     if (nrLDPC_TB_decoding_parameters.nb_rb != 273) {
@@ -166,6 +172,9 @@ int nr_ulsch_decoding_slot(PHY_VARS_gNB *phy_vars_gNB,
     }
     if (nrLDPC_TB_decoding_parameters.C > a_segments) {
       LOG_E(PHY,"Illegal harq_process->C %d > %d\n",harq_process->C,a_segments);
+      for (uint8_t ULSCH_id_inner = 0; ULSCH_id_inner < ULSCH_id; ULSCH_id_inner++) {
+        free(TBs[ULSCH_id_inner].segments);
+      }
       return -1;
     }
   

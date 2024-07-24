@@ -773,7 +773,7 @@ static bool nr_ue_dlsch_procedures_slot(PHY_VARS_NR_UE *ue,
   uint8_t *p_b[2] = {p_b_0, p_b_1};
 
   start_meas(&ue->dlsch_decoding_stats);
-  ret = nr_ue_dlsch_decoding_slot(ue, proc, dlsch, llr, p_b, G, nb_dlsch, DLSCH_ids);
+  ret = nr_dlsch_decoding_slot(ue, proc, dlsch, llr, p_b, G, nb_dlsch, DLSCH_ids);
   stop_meas(&ue->dlsch_decoding_stats);
 
   if (ret < ue->max_ldpc_iterations + 1) dec = true;
