@@ -49,7 +49,7 @@ void nr_generate_psfch0(const PHY_VARS_NR_UE *ue,
                         const NR_DL_FRAME_PARMS *frame_parms,
                         const int16_t amp,
                         const int nr_slot_tx,
-                        const sl_nr_tx_config_psfch_pdu_t *psfch_pdu)
+                        const sl_nr_tx_rx_config_psfch_pdu_t *psfch_pdu)
 {
 
   fapi_nr_ul_config_pucch_pdu pucch_pdu;
@@ -65,5 +65,6 @@ void nr_generate_psfch0(const PHY_VARS_NR_UE *ue,
   pucch_pdu.freq_hop_flag        = psfch_pdu->freq_hop_flag;
   pucch_pdu.group_hop_flag       = psfch_pdu->group_hop_flag;
   pucch_pdu.second_hop_prb       = psfch_pdu->second_hop_prb;
+  pucch_pdu.sequence_hop_flag    = psfch_pdu->sequence_hop_flag;
   nr_generate_pucch0(ue, txdataF, frame_parms, amp, nr_slot_tx, &pucch_pdu);
 }

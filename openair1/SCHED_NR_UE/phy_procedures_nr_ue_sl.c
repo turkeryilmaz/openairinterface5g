@@ -96,6 +96,7 @@ void nr_fill_sl_rx_indication(sl_nr_rx_indication_t *rx_ind,
         rx_slsch_pdu->harq_pid   = slsch_status->rdata->harq_pid;
         rx_slsch_pdu->ack_nack   = (slsch_status->rxok==true) ? 1 : 0;
 
+        LOG_D(NR_MAC, "%4d.%2d Received %s SLSCH\n", rx_ind->sfn, rx_ind->slot, rx_slsch_pdu->ack_nack ? "Correct" : "Incorrect");
         if (slsch_status->rxok==true) ue->SL_UE_PHY_PARAMS.pssch.rx_ok++;
         else                          ue->SL_UE_PHY_PARAMS.pssch.rx_errors[0]++;
       }
@@ -768,15 +769,19 @@ int phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
     }
     if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH ||
         phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH_CSI_RS) {
-      nr_generate_psfch0(ue,
-                        txdataF,
-                        fp,
-                        AMP,
-                        slot_tx,
-                        &phy_data->nr_sl_pssch_pscch_pdu.psfch_pdu);
+      for (int k = 0; k < phy_data->nr_sl_pssch_pscch_pdu.num_psfch_pdus; k++) {
+        nr_generate_psfch0(ue,
+                          txdataF,
+                          fp,
+                          AMP,
+                          slot_tx,
+                          &phy_data->nr_sl_pssch_pscch_pdu.psfch_pdu_list[k]);
+      }
       sl_phy_params->psfch.num_psfch_tx ++;
     }
     tx_action = 1;
+    free(phy_data->nr_sl_pssch_pscch_pdu.psfch_pdu_list);
+    phy_data->nr_sl_pssch_pscch_pdu.psfch_pdu_list = NULL;
   }
   if (tx_action) {
     LOG_D(PHY, "Sending SL data \n");

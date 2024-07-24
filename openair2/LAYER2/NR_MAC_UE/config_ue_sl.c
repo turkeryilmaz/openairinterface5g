@@ -473,6 +473,14 @@ int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
     }
   }
 
+  uint16_t num_subch = sl_get_num_subch(mac->sl_tx_res_pool);
+  NR_SL_PSFCH_Config_r16_t *sl_psfch_config = mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup;
+  const uint8_t psfch_periods[] = {0,1,2,4};
+  long psfch_period = (sl_psfch_config->sl_PSFCH_Period_r16)
+                      ? psfch_periods[*sl_psfch_config->sl_PSFCH_Period_r16] : 0;
+  mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch = calloc(psfch_period*num_subch, sizeof(SL_sched_feedback_t));
+  mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch->feedback_frame = -1;
+  mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch->feedback_slot = -1;
   if (sync_source == SL_SYNC_SOURCE_GNSS ||
       sync_source == SL_SYNC_SOURCE_LOCAL_TIMING) {
 

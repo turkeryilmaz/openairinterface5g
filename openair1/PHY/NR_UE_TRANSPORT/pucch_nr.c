@@ -59,14 +59,14 @@ void nr_generate_pucch0(const PHY_VARS_NR_UE *ue,
                         const fapi_nr_ul_config_pucch_pdu *pucch_pdu)
 {
 #ifdef DEBUG_NR_PUCCH_TX
-  printf("\t [nr_generate_pucch0] start function at slot(nr_slot_tx)=%d\n",nr_slot_tx);
+  LOG_I(NR_PHY, "\t [nr_generate_pucch0] start function at slot(nr_slot_tx)=%d\n", nr_slot_tx);
 #endif
   /*
    * Implement TS 38.211 Subclause 6.3.2.3.1 Sequence generation
    *
    */
 #ifdef DEBUG_NR_PUCCH_TX
-  printf("\t [nr_generate_pucch0] sequence generation\n");
+  LOG_I(NR_PHY, "\t [nr_generate_pucch0] sequence generation\n");
 #endif
   /*
    * Defining cyclic shift hopping TS 38.211 Subclause 6.3.2.2.2
@@ -91,11 +91,18 @@ void nr_generate_pucch0(const PHY_VARS_NR_UE *ue,
   // the value of u,v (delta always 0 for PUCCH) has to be calculated according to TS 38.211 Subclause 6.3.2.2.1
   uint8_t u[2]={0,0},v[2]={0,0};
 
-  LOG_D(PHY,"pucch0: slot %d nr_symbols %d, start_symbol %d, prb_start %d, second_hop_prb %d,  group_hop_flag %d, sequence_hop_flag %d, mcs %d\n",
-        nr_slot_tx,pucch_pdu->nr_of_symbols,pucch_pdu->start_symbol_index,pucch_pdu->prb_start,pucch_pdu->second_hop_prb,pucch_pdu->group_hop_flag,pucch_pdu->sequence_hop_flag,pucch_pdu->mcs);
+  LOG_I(PHY,"pucch0: slot %d nr_symbols %d, start_symbol %d, prb_start %d, second_hop_prb %d, group_hop_flag %d, sequence_hop_flag %d, mcs %d bwp_start %d\n",
+        nr_slot_tx, pucch_pdu->nr_of_symbols,
+        pucch_pdu->start_symbol_index,
+        pucch_pdu->prb_start,
+        pucch_pdu->second_hop_prb,
+        pucch_pdu->group_hop_flag,
+        pucch_pdu->sequence_hop_flag,
+        pucch_pdu->mcs,
+        pucch_pdu->bwp_start);
 
 #ifdef DEBUG_NR_PUCCH_TX
-  printf("\t [nr_generate_pucch0] sequence generation: variable initialization for test\n");
+  LOG_I(NR_PHY, "\t [nr_generate_pucch0] sequence generation: variable initialization for test\n");
 #endif
   // x_n contains the sequence r_u_v_alpha_delta(n)
   int16_t x_n_re[2][24],x_n_im[2][24];
@@ -104,10 +111,10 @@ void nr_generate_pucch0(const PHY_VARS_NR_UE *ue,
   pucch_GroupHopping_t pucch_GroupHopping = pucch_pdu->group_hop_flag + (pucch_pdu->sequence_hop_flag<<1);
 
   // we proceed to calculate alpha according to TS 38.211 Subclause 6.3.2.2.2
-  int prb_offset[2]={startingPRB,startingPRB};
-  nr_group_sequence_hopping(pucch_GroupHopping,pucch_pdu->hopping_id,0,nr_slot_tx,&u[0],&v[0]); // calculating u and v value
+  int prb_offset[2] = {startingPRB, startingPRB};
+  nr_group_sequence_hopping(pucch_GroupHopping, pucch_pdu->hopping_id, 0, nr_slot_tx, &u[0], &v[0]); // calculating u and v value
   if (pucch_pdu->freq_hop_flag == 1) {
-    nr_group_sequence_hopping(pucch_GroupHopping,pucch_pdu->hopping_id,1,nr_slot_tx,&u[1],&v[1]); // calculating u and v value
+    nr_group_sequence_hopping(pucch_GroupHopping, pucch_pdu->hopping_id, 1, nr_slot_tx, &u[1], &v[1]); // calculating u and v value
     prb_offset[1] = pucch_pdu->second_hop_prb + pucch_pdu->bwp_start;
   }
   for (int l=0; l<pucch_pdu->nr_of_symbols; l++) {
@@ -117,7 +124,7 @@ void nr_generate_pucch0(const PHY_VARS_NR_UE *ue,
                                     pucch_pdu->start_symbol_index,
                                     nr_slot_tx);
 #ifdef DEBUG_NR_PUCCH_TX
-    printf("\t [nr_generate_pucch0] sequence generation \tu=%d \tv=%d \talpha=%lf \t(for symbol l=%d)\n",u[l],v[l],alpha,l);
+    LOG_I(NR_PHY, "\t [nr_generate_pucch0] sequence generation \tu=%d \tv=%d \talpha=%lf \t(for symbol l=%d)\n", u[l], v[l], alpha, l);
 #endif
 
     for (int n=0; n<12; n++) {
@@ -126,8 +133,8 @@ void nr_generate_pucch0(const PHY_VARS_NR_UE *ue,
       x_n_im[l][n] = (int16_t)(((((int32_t)(round(32767*cos(alpha*n))) * table_5_2_2_2_2_Im[u[l]][n])>>15)
                                     + (((int32_t)(round(32767*sin(alpha*n))) * table_5_2_2_2_2_Re[u[l]][n])>>15))); // Im part of base sequence shifted by alpha
 #ifdef DEBUG_NR_PUCCH_TX
-      printf("\t [nr_generate_pucch0] sequence generation \tu=%d \tv=%d \talpha=%lf \tx_n(l=%d,n=%d)=(%d,%d)\n",
-             u[l],v[l],alpha,l,n,x_n_re[l][n],x_n_im[l][n]);
+    LOG_I(NR_PHY, "\t [nr_generate_pucch0] sequence generation \tu=%d \tv=%d \talpha=%lf \tx_n(l=%d,n=%d)=(%d, %d)\n",
+          u[l], v[l], alpha, l, n, x_n_re[l][n], x_n_im[l][n]);
 #endif
     }
   }
@@ -140,15 +147,15 @@ void nr_generate_pucch0(const PHY_VARS_NR_UE *ue,
   uint8_t l2;
 
   for (int l=0; l<pucch_pdu->nr_of_symbols; l++) {
-    l2=l+pucch_pdu->start_symbol_index;
+    l2 = l + pucch_pdu->start_symbol_index;
     re_offset = (12*prb_offset[l]) + frame_parms->first_carrier_offset;
-    if (re_offset>= frame_parms->ofdm_symbol_size) 
-      re_offset-=frame_parms->ofdm_symbol_size;
+    if (re_offset >= frame_parms->ofdm_symbol_size)
+      re_offset -= frame_parms->ofdm_symbol_size;
 
     //txptr = &txdataF[0][re_offset];
 #ifdef DEBUG_NR_PUCCH_TX
-    printf("\t [nr_generate_pucch0] symbol %d PRB %d (%u)\n",l,prb_offset[l],re_offset);
-#endif    
+    LOG_I(NR_PHY, "\t [nr_generate_pucch0] symbol %d PRB %d (%u)\n", l, prb_offset[l], re_offset);
+#endif
     for (int n=0; n<12; n++) {
 
       txdataF[0][(l2*frame_parms->ofdm_symbol_size) + re_offset].r = (int16_t)(((int32_t)(amp) * x_n_re[l][n])>>15);
@@ -157,14 +164,14 @@ void nr_generate_pucch0(const PHY_VARS_NR_UE *ue,
       //((int16_t *)txptr[0][re_offset])[1] = (int16_t)((int32_t)amp * x_n_im[(12*l)+n])>>15;
       //txptr[re_offset] = (x_n_re[(12*l)+n]<<16) + x_n_im[(12*l)+n];
 #ifdef DEBUG_NR_PUCCH_TX
-      printf("\t [nr_generate_pucch0] mapping to RE \t amp=%d \tofdm_symbol_size=%d \tN_RB_DL=%d \tfirst_carrier_offset=%d \ttxptr(%u)=(x_n(l=%d,n=%d)=(%d,%d))\n",
+      LOG_I(NR_PHY, "\t [nr_generate_pucch0] mapping to RE \t amp=%d \tofdm_symbol_size=%d \tN_RB_DL=%d \tfirst_carrier_offset=%d \ttxptr(%u)=(x_n(l=%d,n=%d)=(%d,%d))\n",
              amp, frame_parms->ofdm_symbol_size, frame_parms->N_RB_DL, frame_parms->first_carrier_offset, (l2 * frame_parms->ofdm_symbol_size) + re_offset,
              l2, n, txdataF[0][(l2*frame_parms->ofdm_symbol_size) + re_offset].r,
              txdataF[0][(l2*frame_parms->ofdm_symbol_size) + re_offset].i);
 #endif
       re_offset++;
-      if (re_offset>= frame_parms->ofdm_symbol_size) 
-        re_offset-=frame_parms->ofdm_symbol_size;
+      if (re_offset >= frame_parms->ofdm_symbol_size)
+        re_offset -= frame_parms->ofdm_symbol_size;
     }
   }
 }

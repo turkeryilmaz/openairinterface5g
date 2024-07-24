@@ -212,6 +212,22 @@ typedef struct sl_nr_rx_config_pssch_pdu {
   uint8_t ndi;
 } sl_nr_rx_config_pssch_pdu_t;
 
+typedef struct sl_nr_tx_rx_config_psfch_pdu {
+  //  These fields can be mapped directly to the same fields in nfapi_nr_ul_config_pucch_pdu
+  uint8_t freq_hop_flag;
+  uint8_t group_hop_flag;
+  uint8_t sequence_hop_flag;
+  uint16_t second_hop_prb;
+  uint8_t nr_of_symbols;
+  uint8_t start_symbol_index;
+  uint8_t hopping_id;
+  uint16_t prb;
+  uint16_t sl_bwp_start;
+  uint16_t initial_cyclic_shift;
+  uint8_t mcs;
+  uint8_t bit_len_harq;
+} sl_nr_tx_rx_config_psfch_pdu_t;
+
 typedef struct {
   sl_nr_rx_config_type_enum_t pdu_type; // indicates the type of RX config request
   union {
@@ -231,21 +247,6 @@ typedef struct {
   sl_nr_rx_config_request_pdu_t sl_rx_config_list[SL_NR_RX_CONFIG_LIST_NUM];
 } sl_nr_rx_config_request_t;
 
-typedef struct sl_nr_tx_config_psfch_pdu {
-  //  These fields can be mapped directly to the same fields in nfapi_nr_ul_config_pucch_pdu
-  uint8_t freq_hop_flag;
-  uint8_t group_hop_flag;
-  uint8_t sequence_hop_flag;
-  uint16_t second_hop_prb;
-  uint8_t nr_of_symbols;
-  uint8_t start_symbol_index;
-  uint8_t hopping_id;
-  uint16_t prb;
-  uint16_t sl_bwp_start;
-  uint16_t initial_cyclic_shift;
-  uint8_t mcs;
-  uint8_t bit_len_harq;
-} sl_nr_tx_config_psfch_pdu_t;
 //MAC commands PHY to transmit Data on PSCCH, PSSCH.
 typedef struct sl_nr_tx_config_pscch_pssch_pdu {
 
@@ -307,7 +308,8 @@ typedef struct sl_nr_tx_config_pscch_pssch_pdu {
   uint16_t dmrs_symbol_position;
 
   // PSFCH related parameters
-  sl_nr_tx_config_psfch_pdu_t psfch_pdu;
+  sl_nr_tx_rx_config_psfch_pdu_t *psfch_pdu_list;
+  uint16_t num_psfch_pdus;
   //....TBD.. any additional parameters
 
   // CSI-RS related parameters
