@@ -42,18 +42,18 @@ static extended_kpi_ue kpiStructure = {0};
 
 /*! \brief Prepare necessary parameters for nrLDPC_coding_interface
  */
-uint32_t nr_ue_dlsch_decoding_slot(PHY_VARS_NR_UE *phy_vars_ue,
-                                   const UE_nr_rxtx_proc_t *proc,
-                                   NR_UE_DLSCH_t *dlsch,
-                                   int16_t **dlsch_llr,
-                                   uint8_t **b,
-                                   int *G,
-                                   int nb_dlsch,
-                                   int *DLSCH_ids)
+uint32_t nr_dlsch_decoding_slot(PHY_VARS_NR_UE *phy_vars_ue,
+                                const UE_nr_rxtx_proc_t *proc,
+                                NR_UE_DLSCH_t *dlsch,
+                                int16_t **dlsch_llr,
+                                uint8_t **b,
+                                int *G,
+                                int nb_dlsch,
+                                int *DLSCH_ids)
 {
   notifiedFIFO_t nf;
   initNotifiedFIFO(&nf);
-  bool *d_to_be_cleared = NULL;
+  bool *d_to_be_cleared[nb_dlsch];
 
   nrLDPC_slot_decoding_parameters_t slot_decoding_params;
   slot_decoding_params.frame = proc->frame_rx;
@@ -84,6 +84,10 @@ uint32_t nr_ue_dlsch_decoding_slot(PHY_VARS_NR_UE *phy_vars_ue,
 
     if (!harq_process) {
       LOG_E(PHY, "dlsch_decoding_slot.c: NULL harq_process pointer\n");
+      for (uint8_t pdsch_id_inner = 0; pdsch_id_inner < pdsch_id; pdsch_id_inner++) {
+        free(TBs[pdsch_id_inner].segments);
+        free(d_to_be_cleared[pdsch_id_inner]);
+      }
       return dlsch[DLSCH_id].max_ldpc_iterations + 1;
     }
 
@@ -139,6 +143,10 @@ uint32_t nr_ue_dlsch_decoding_slot(PHY_VARS_NR_UE *phy_vars_ue,
 
       if (harq_process->C > MAX_NUM_NR_DLSCH_SEGMENTS_PER_LAYER * TB_decoding_params->nb_layers) {
         LOG_E(PHY, "nr_segmentation.c: too many segments %d, A %d\n", harq_process->C, TB_decoding_params->A);
+        for (uint8_t pdsch_id_inner = 0; pdsch_id_inner < pdsch_id; pdsch_id_inner++) {
+          free(TBs[pdsch_id_inner].segments);
+          free(d_to_be_cleared[pdsch_id_inner]);
+        }
         return dlsch[DLSCH_id].max_ldpc_iterations + 1;
       }
 
@@ -147,6 +155,12 @@ uint32_t nr_ue_dlsch_decoding_slot(PHY_VARS_NR_UE *phy_vars_ue,
       // clear HARQ buffer
       for (int i = 0; i < harq_process->C; i++)
         memset(harq_process->d[i], 0, 5 * 8448 * sizeof(int16_t));
+    } else {
+      // This is not a new packet, so retrieve previously computed quantities regarding segmentation
+      TB_decoding_params->C = harq_process->C;
+      TB_decoding_params->K = harq_process->K;
+      TB_decoding_params->Z = harq_process->Z;
+      TB_decoding_params->F = harq_process->F;
     }
 
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_DLSCH_SEGMENTATION, VCD_FUNCTION_OUT);
@@ -162,11 +176,11 @@ uint32_t nr_ue_dlsch_decoding_slot(PHY_VARS_NR_UE *phy_vars_ue,
     set_abort(&harq_process->abort_decode, false);
 
     TB_decoding_params->segments = malloc(TB_decoding_params->C * sizeof(nrLDPC_segment_decoding_parameters_t));
-    d_to_be_cleared = malloc(TB_decoding_params->C * sizeof(bool));
+    d_to_be_cleared[pdsch_id] = malloc(TB_decoding_params->C * sizeof(bool));
 
     uint32_t r_offset = 0;
     for (int r = 0; r < TB_decoding_params->C; r++) {
-      d_to_be_cleared[r] = true;
+      d_to_be_cleared[pdsch_id][r] = true;
       nrLDPC_segment_decoding_parameters_t *segment_decoding_params = &TB_decoding_params->segments[r];
       segment_decoding_params->E =
           nr_get_E(TB_decoding_params->G, TB_decoding_params->C, TB_decoding_params->Qm, TB_decoding_params->nb_layers, r);
@@ -178,7 +192,7 @@ uint32_t nr_ue_dlsch_decoding_slot(PHY_VARS_NR_UE *phy_vars_ue,
                                                          harq_process->DLround);
       segment_decoding_params->llr = dlsch_llr[DLSCH_id] + r_offset;
       segment_decoding_params->d = harq_process->d[r];
-      segment_decoding_params->d_to_be_cleared = &d_to_be_cleared[r];
+      segment_decoding_params->d_to_be_cleared = &d_to_be_cleared[pdsch_id][r];
       segment_decoding_params->c = harq_process->c[r];
       segment_decoding_params->decodeSuccess = false;
 
@@ -191,9 +205,10 @@ uint32_t nr_ue_dlsch_decoding_slot(PHY_VARS_NR_UE *phy_vars_ue,
   while (number_tasks_decode > 0) {
     notifiedFIFO_elt_t *req = pullTpool(&nf, &get_nrUE_params()->Tpool);
     if (req == NULL) {
-      for (uint8_t pdsch_id = 0; pdsch_id < nb_dlsch; pdsch_id++)
+      for (uint8_t pdsch_id = 0; pdsch_id < nb_dlsch; pdsch_id++) {
         free(TBs[pdsch_id].segments);
-      free(d_to_be_cleared);
+        free(d_to_be_cleared[pdsch_id]);
+      }
       return -1; // Tpool has been stopped
     }
     delNotifiedFIFO_elt(req);
@@ -278,9 +293,10 @@ uint32_t nr_ue_dlsch_decoding_slot(PHY_VARS_NR_UE *phy_vars_ue,
     }
   }
 
-  for (uint8_t pdsch_id = 0; pdsch_id < nb_dlsch; pdsch_id++)
+  for (uint8_t pdsch_id = 0; pdsch_id < nb_dlsch; pdsch_id++) {
     free(TBs[pdsch_id].segments);
-  free(d_to_be_cleared);
+    free(d_to_be_cleared[pdsch_id]);
+  }
 
   return dlsch[0].last_iteration_cnt;
 }
