@@ -725,7 +725,9 @@ int main(int argc, char *argv[])
   
   UE_mac->if_module = nr_ue_if_module_init(0);
 
-  initFloatingCoresTpool(threadCnt, &nrUE_params.Tpool, false, "UE-tpool");
+  if (UE->nrLDPC_coding_interface_flag) {
+    initFloatingCoresTpool(threadCnt, &nrUE_params.Tpool, false, "UE-tpool");
+  }
 
   nr_ue_phy_config_request(&UE_mac->phy_config);
 
