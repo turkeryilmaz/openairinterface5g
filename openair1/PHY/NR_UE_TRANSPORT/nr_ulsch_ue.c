@@ -115,7 +115,7 @@ void nr_ue_ulsch_procedures_slot(PHY_VARS_NR_UE *UE,
     return;
 
   uint8_t harq_pids[nb_harq];
-  int G[nb_harq];
+  unsigned int G[nb_harq];
   uint8_t idx = 0;
   for (uint8_t harq_pid = 0; harq_pid < NR_MAX_ULSCH_HARQ_PROCESSES; harq_pid++) {
     if (UE->ul_harq_processes[harq_pid].ULstatus != ACTIVE)

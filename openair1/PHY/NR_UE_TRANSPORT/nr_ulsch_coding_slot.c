@@ -39,7 +39,7 @@ int nr_ulsch_encoding_slot(PHY_VARS_NR_UE *ue,
                            const uint8_t slot,
                            int nb_harq,
                            uint8_t *harq_pids,
-                           int *G)
+                           unsigned int *G)
 {
   start_meas(&ue->ulsch_encoding_stats);
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_UE_ULSCH_ENCODING, VCD_FUNCTION_IN);

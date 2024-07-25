@@ -49,7 +49,7 @@ uint32_t nr_dlsch_decoding_slot(PHY_VARS_NR_UE *phy_vars_ue,
                                 uint8_t **b,
                                 int *G,
                                 int nb_dlsch,
-                                int *DLSCH_ids)
+                                uint8_t *DLSCH_ids)
 {
   notifiedFIFO_t nf;
   initNotifiedFIFO(&nf);
@@ -65,7 +65,7 @@ uint32_t nr_dlsch_decoding_slot(PHY_VARS_NR_UE *phy_vars_ue,
   slot_decoding_params.TBs = TBs;
 
   for (uint8_t pdsch_id = 0; pdsch_id < nb_dlsch; pdsch_id++) {
-    int DLSCH_id = DLSCH_ids[pdsch_id];
+    uint8_t DLSCH_id = DLSCH_ids[pdsch_id];
     fapi_nr_dl_config_dlsch_pdu_rel15_t *dlsch_config = &dlsch[DLSCH_id].dlsch_config;
     int harq_pid = dlsch_config->harq_process_nbr;
     NR_DL_UE_HARQ_t *harq_process = &phy_vars_ue->dl_harq_processes[DLSCH_id][harq_pid];
@@ -212,7 +212,7 @@ uint32_t nr_dlsch_decoding_slot(PHY_VARS_NR_UE *phy_vars_ue,
         free(TBs[pdsch_id].segments);
         free(d_to_be_cleared[pdsch_id]);
       }
-      return -1; // Tpool has been stopped
+      return dlsch[0].last_iteration_cnt; // Tpool has been stopped
     }
     delNotifiedFIFO_elt(req);
     number_tasks_decode--;
@@ -221,7 +221,7 @@ uint32_t nr_dlsch_decoding_slot(PHY_VARS_NR_UE *phy_vars_ue,
   // post decode
   for (uint8_t pdsch_id = 0; pdsch_id < nb_dlsch; pdsch_id++) {
     int num_seg_ok = 0;
-    int DLSCH_id = DLSCH_ids[pdsch_id];
+    uint8_t DLSCH_id = DLSCH_ids[pdsch_id];
     fapi_nr_dl_config_dlsch_pdu_rel15_t *dlsch_config = &dlsch[DLSCH_id].dlsch_config;
     int harq_pid = dlsch_config->harq_process_nbr;
     NR_DL_UE_HARQ_t *harq_process = &phy_vars_ue->dl_harq_processes[DLSCH_id][harq_pid];

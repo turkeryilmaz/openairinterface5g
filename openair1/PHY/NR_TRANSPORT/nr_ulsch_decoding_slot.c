@@ -66,7 +66,7 @@ int nr_ulsch_decoding_slot(PHY_VARS_gNB *phy_vars_gNB,
                            uint32_t frame,
                            uint8_t nr_tti_rx,
                            uint32_t *G,
-                           int *ULSCH_ids,
+                           uint8_t *ULSCH_ids,
                            int nb_pusch)
 {
 
@@ -82,7 +82,7 @@ int nr_ulsch_decoding_slot(PHY_VARS_gNB *phy_vars_gNB,
   nrLDPC_slot_decoding_parameters.TBs = TBs;
 
   for (uint8_t pusch_id = 0; pusch_id < nb_pusch; pusch_id++) {
-    int ULSCH_id = ULSCH_ids[pusch_id];
+    uint8_t ULSCH_id = ULSCH_ids[pusch_id];
     NR_gNB_ULSCH_t *ulsch = &phy_vars_gNB->ulsch[ULSCH_id];
     NR_gNB_PUSCH *pusch = &phy_vars_gNB->pusch_vars[ULSCH_id];
     NR_UL_gNB_HARQ_t *harq_process = ulsch->harq_process;
@@ -251,7 +251,7 @@ int nr_ulsch_decoding_slot(PHY_VARS_gNB *phy_vars_gNB,
 
   // post decode
   for (uint8_t pusch_id = 0; pusch_id < nb_pusch; pusch_id++) {
-    int ULSCH_id = ULSCH_ids[pusch_id];
+    uint8_t ULSCH_id = ULSCH_ids[pusch_id];
     NR_gNB_ULSCH_t *ulsch = &phy_vars_gNB->ulsch[ULSCH_id];
     NR_UL_gNB_HARQ_t *harq_process = ulsch->harq_process;
 
