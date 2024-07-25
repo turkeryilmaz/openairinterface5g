@@ -1010,18 +1010,16 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
         start_meas(&gNB->srs_timing_advance_stats);
         srs_indication->timing_advance_offset = srs_est >= 0 ? nr_est_timing_advance_srs(frame_parms, N_ap, srs_estimated_channel_time[0]) : 0xFFFF;
         stop_meas(&gNB->srs_timing_advance_stats);
-        //srs_indication->timing_advance_offset_nsec = srs_est >= 0 ? nr_est_toa_ns_srs(frame_parms, N_ant_rx, N_ap ,N_symb_SRS, srs_estimated_channel_freq, srs_toa_ns) : 0xFFFF;
-        srs_indication->timing_advance_offset_nsec = srs_est >= 0 ? (int16_t)((((int32_t)srs_indication->timing_advance_offset - 31) * ((int32_t)TC_NSEC_x32768)) >> 15) : 0xFFFF;
         
         nr_est_toa_ns_srs(frame_parms, N_ant_rx, N_ap ,N_symb_SRS, srs_estimated_channel_freq, srs_toa_ns);
 
         for (int ant=0;ant<N_ant_rx;ant++)
           printf("srs_toa_ns[%d] = %d\n",ant,srs_toa_ns[ant]);
 
+	//the value of the first antenna goes into this field. All of the antennas are also in the TLV part of the localization report below.
+        srs_indication->timing_advance_offset_nsec = srs_toa_ns[0];
 
 
-
-	  //(int16_t)((((int32_t)srs_indication->timing_advance_offset - 31) * ((int32_t)TC_NSEC_x32768)) >> 15) : 0xFFFF;
         switch (srs_pdu->srs_parameters_v4.usage) {
           case 0:
             LOG_W(NR_PHY, "SRS report was not requested by MAC\n");
@@ -1038,7 +1036,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
           case 1 << NFAPI_NR_SRS_ANTENNASWITCH:
             srs_indication->srs_usage = NFAPI_NR_SRS_ANTENNASWITCH;
             break;
-	  case 1 << NFAPI_NR_SRS_LOCALIZATION: //bit 4 is reserved in the standard
+	  case 1 << NFAPI_NR_SRS_LOCALIZATION: // standard extension (bit 4 is reserved in the standard)
             srs_indication->srs_usage = NFAPI_NR_SRS_LOCALIZATION;
             break;
           default:

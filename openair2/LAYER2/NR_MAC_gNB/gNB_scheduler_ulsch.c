@@ -1322,7 +1322,9 @@ void handle_nr_srs_measurements(const module_id_t module_id,
         bytesRead += pull16(&pReadPackedMessage, &nrmac->meas_pos_info.toa_ns[p_index], endReadPackedMessage);
       }
     }
-      
+
+    if (RC.nrmac[module_id]->do_srs_meas==1) {
+
     /* response has same type as request... */
     f1ap_measurement_resp_t resp = {
       .transaction_id = nrmac->f1ap_meas_resp_header.transaction_id,
@@ -1340,7 +1342,9 @@ void handle_nr_srs_measurements(const module_id_t module_id,
     
     //call the response handler
     nrmac->mac_rrc.positioning_measurement_response(&resp);
+    RC.nrmac[module_id]->do_srs_meas=0;
 
+    }
     //for the moment this is all we need so return
     NR_SCHED_UNLOCK(&nrmac->sched_lock);
     return;

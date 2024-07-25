@@ -697,7 +697,7 @@ void nr_schedule_srs(int module_id, frame_t frame, int slot)
 *********************************************************************/
 void nr_schedule_srs_secondary(int module_id, frame_t frame, int slot) {
 
-  if (RC.nrmac[module_id]->do_srs_meas==0)
+  if (RC.nrmac[module_id]->secondary_srs_configured==0)
     return;
   
   const int CC_id = 0;
@@ -736,6 +736,6 @@ void nr_schedule_srs_secondary(int module_id, frame_t frame, int slot) {
   if ( (frame*n_slots_frame + slot)%period == offset) {  	    
     LOG_I(NR_MAC,"Scheduling non-ue associated SRS measurement for %d.%d\n", frame, offset%n_slots_frame);
     nr_fill_nfapi_srs(module_id, CC_id, &dummy_ue_info, frame, offset%n_slots_frame, srs_resource_set, srs_resource, 1);
-    RC.nrmac[module_id]->do_srs_meas = 0;
+    //RC.nrmac[module_id]->do_srs_meas = 0;
   }
 }

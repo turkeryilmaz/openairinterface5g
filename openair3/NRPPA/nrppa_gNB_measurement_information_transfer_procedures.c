@@ -645,7 +645,7 @@ int nrppa_gNB_MeasurementResponse(instance_t instance, MessageDef *msg_p)
       int nb_pos_measurement = meas_res_list_item->posMeasurementResult.f1ap_pos_measurement_result_length;
       f1ap_pos_measurement_result_item_t *pos_meas_result_item =
           meas_res_list_item->posMeasurementResult.pos_measurement_result_item;
-      LOG_I(NRPPA, "trp ID=%d nb_pos_measurement= %d \n", item->tRP_ID, nb_pos_measurement);
+      LOG_I(NRPPA, "trp ID=%d nb_pos_measurement= %d \n", (int) item->tRP_ID, nb_pos_measurement);
       for (int jj = 0; jj < nb_pos_measurement; jj++) {
         asn1cSequenceAdd(item->measurementResult.list, NRPPA_TrpMeasurementResultItem_t, measItem);
         // IE  measuredResultsValue

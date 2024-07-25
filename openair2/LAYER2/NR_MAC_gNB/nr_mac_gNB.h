@@ -907,6 +907,7 @@ typedef struct gNB_MAC_INST_s {
   //holds the SRS config for NRPPa measurement request
   //f1ap_measurement_req_t *f1ap_meas_req;
   uint8_t do_srs_meas;//=0;
+  uint8_t secondary_srs_configured;//=0;
   f1ap_srs_resource_t srs_resource;
   f1ap_srs_resource_set_t srs_resource_set;
   f1ap_meas_resp_header_t f1ap_meas_resp_header;
