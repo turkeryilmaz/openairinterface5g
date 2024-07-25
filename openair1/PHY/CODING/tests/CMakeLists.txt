@@ -136,6 +136,44 @@ foreach(NR_ULSIM_OPTION_TO_TEST IN LISTS NR_ULSIM_OPTION_TO_TEST_LIST)
 endforeach()
 
 ####################################################################################
+######                         nr_ulschsim unit test                          ######
+####################################################################################
+
+set(NR_ULSCHSIM_OPTION_TO_TEST_LIST
+  default_ldpc
+  slot_demo
+)
+
+#if (ENABLE_LDPC_T2)
+#  list(APPEND NR_ULSCHSIM_OPTION_TO_TEST_LIST
+#    slot_t2
+#  )
+#endif()
+
+set(test_nr_ulschsim_test1 "-R" "106" "-m9" "-s13" "-n100")
+set(test_nr_ulschsim_test2 "-R" "217" "-m15" "-s15" "-n100")
+set(test_nr_ulschsim_test3 "-R" "273" "-m19" "-s20" "-n100")
+set(test_nr_ulschsim_test4 "-R" "106" "-m9" "-s13" "-n100" "-y4" "-z4" "-W4")
+
+set(NR_ULSCHSIM_TEST_CASE_OPTION_LIST
+  test_nr_ulschsim_test1
+  test_nr_ulschsim_test2
+  test_nr_ulschsim_test3
+  test_nr_ulschsim_test4
+)
+
+foreach(NR_ULSCHSIM_OPTION_TO_TEST IN LISTS NR_ULSCHSIM_OPTION_TO_TEST_LIST)
+  foreach(NR_ULSCHSIM_TEST_CASE IN LISTS NR_ULSCHSIM_TEST_CASE_OPTION_LIST)
+    add_test(
+      NAME ${NR_ULSCHSIM_TEST_CASE}_${NR_ULSCHSIM_OPTION_TO_TEST}
+      COMMAND nr_ulschsim ${${NR_ULSCHSIM_TEST_CASE}} ${${NR_ULSCHSIM_OPTION_TO_TEST}}
+      COMMAND_EXPAND_LISTS
+      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    )
+  endforeach()
+endforeach()
+
+####################################################################################
 ######                           nr_dlsim unit test                           ######
 ####################################################################################
 set(t2_offload_nr_dlsim "-c" "-O" "${CMAKE_CURRENT_SOURCE_DIR}/t2_offload.conf")
@@ -217,6 +255,42 @@ foreach(NR_DLSIM_OPTION_TO_TEST IN LISTS NR_DLSIM_OPTION_TO_TEST_LIST)
     set_property(
       TEST ${NR_DLSIM_TEST_CASE}_${NR_DLSIM_OPTION_TO_TEST}
       PROPERTY PASS_REGULAR_EXPRESSION "PDSCH test OK"
+    )
+  endforeach()
+endforeach()
+
+####################################################################################
+######                         nr_dlschsim unit test                          ######
+####################################################################################
+
+set(NR_DLSCHSIM_OPTION_TO_TEST_LIST
+  default_ldpc
+  slot_demo
+)
+
+#if (ENABLE_LDPC_T2)
+#  list(APPEND NR_DLSCHSIM_OPTION_TO_TEST_LIST
+#    slot_t2
+#  )
+#endif()
+
+set(test_nr_dlschsim_test1 "-R" "106" "-m9" "-s13" "-n100")
+set(test_nr_dlschsim_test2 "-R" "217" "-m15" "-s15" "-n100")
+set(test_nr_dlschsim_test3 "-R" "273" "-m19" "-s20" "-n100")
+
+set(NR_DLSCHSIM_TEST_CASE_OPTION_LIST
+  test_nr_dlschsim_test1
+  test_nr_dlschsim_test2
+  test_nr_dlschsim_test3
+)
+
+foreach(NR_DLSCHSIM_OPTION_TO_TEST IN LISTS NR_DLSCHSIM_OPTION_TO_TEST_LIST)
+  foreach(NR_DLSCHSIM_TEST_CASE IN LISTS NR_DLSCHSIM_TEST_CASE_OPTION_LIST)
+    add_test(
+      NAME ${NR_DLSCHSIM_TEST_CASE}_${NR_DLSCHSIM_OPTION_TO_TEST}
+      COMMAND nr_dlschsim ${${NR_DLSCHSIM_TEST_CASE}} ${${NR_DLSCHSIM_OPTION_TO_TEST}}
+      COMMAND_EXPAND_LISTS
+      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     )
   endforeach()
 endforeach()
