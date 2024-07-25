@@ -180,7 +180,10 @@ uint32_t nr_dlsch_decoding_slot(PHY_VARS_NR_UE *phy_vars_ue,
 
     uint32_t r_offset = 0;
     for (int r = 0; r < TB_decoding_params->C; r++) {
-      d_to_be_cleared[pdsch_id][r] = true;
+      if (harq_process->first_rx == 1)
+        d_to_be_cleared[pdsch_id][r] = true;
+      else
+        d_to_be_cleared[pdsch_id][r] = false;
       nrLDPC_segment_decoding_parameters_t *segment_decoding_params = &TB_decoding_params->segments[r];
       segment_decoding_params->E =
           nr_get_E(TB_decoding_params->G, TB_decoding_params->C, TB_decoding_params->Qm, TB_decoding_params->nb_layers, r);
@@ -216,8 +219,8 @@ uint32_t nr_dlsch_decoding_slot(PHY_VARS_NR_UE *phy_vars_ue,
   }
 
   // post decode
-  int num_seg_ok = 0;
   for (uint8_t pdsch_id = 0; pdsch_id < nb_dlsch; pdsch_id++) {
+    int num_seg_ok = 0;
     int DLSCH_id = DLSCH_ids[pdsch_id];
     fapi_nr_dl_config_dlsch_pdu_rel15_t *dlsch_config = &dlsch[DLSCH_id].dlsch_config;
     int harq_pid = dlsch_config->harq_process_nbr;
