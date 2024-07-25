@@ -740,9 +740,9 @@ static bool nr_ue_dlsch_procedures_slot(PHY_VARS_NR_UE *ue,
   }
 
   int G[2];
-  int DLSCH_ids[nb_dlsch];
+  uint8_t DLSCH_ids[nb_dlsch];
   int pdsch_id = 0;
-  for (int DLSCH_id = 0; DLSCH_id < 2; DLSCH_id++) {
+  for (uint8_t DLSCH_id = 0; DLSCH_id < 2; DLSCH_id++) {
     NR_DL_UE_HARQ_t *dl_harq = &ue->dl_harq_processes[DLSCH_id][harq_pid];
     if (dl_harq->status != ACTIVE) continue;
 

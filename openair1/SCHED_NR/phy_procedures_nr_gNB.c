@@ -388,7 +388,7 @@ static int nr_ulsch_procedures_slot(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx
   NR_DL_FRAME_PARMS *frame_parms = &gNB->frame_parms;
 
   int nb_pusch = 0;
-  for (int ULSCH_id = 0; ULSCH_id < gNB->max_nb_pusch; ULSCH_id++) {
+  for (uint8_t ULSCH_id = 0; ULSCH_id < gNB->max_nb_pusch; ULSCH_id++) {
     NR_gNB_ULSCH_t *ulsch = &gNB->ulsch[ULSCH_id];
     if ((ulsch->active == true) && (ulsch->frame == frame_rx) && (ulsch->slot == slot_rx) && (ulsch->handled == 0)) {
       nb_pusch++;
@@ -399,10 +399,10 @@ static int nr_ulsch_procedures_slot(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx
     return 0;
   }
 
-  int *ULSCH_ids = calloc(nb_pusch,sizeof(int));
+  uint8_t *ULSCH_ids = calloc(nb_pusch,sizeof(uint8_t));
   uint32_t *G = calloc(nb_pusch,sizeof(uint32_t));
   int pusch_id = 0;
-  for (int ULSCH_id = 0; ULSCH_id < gNB->max_nb_pusch; ULSCH_id++) {
+  for (uint8_t ULSCH_id = 0; ULSCH_id < gNB->max_nb_pusch; ULSCH_id++) {
 
     ULSCH_ids[pusch_id] = ULSCH_id;
     NR_gNB_ULSCH_t *ulsch = &gNB->ulsch[ULSCH_id];
@@ -458,7 +458,7 @@ static int nr_ulsch_procedures_slot(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx
 
   // CRC check per uplink shared channel
   for (pusch_id = 0; pusch_id < nb_pusch; pusch_id++) {
-    int ULSCH_id = ULSCH_ids[pusch_id];
+    uint8_t ULSCH_id = ULSCH_ids[pusch_id];
     NR_gNB_ULSCH_t *ulsch = &gNB->ulsch[ULSCH_id];
     NR_gNB_PUSCH *pusch = &gNB->pusch_vars[ULSCH_id];
     NR_UL_gNB_HARQ_t *ulsch_harq = ulsch->harq_process;

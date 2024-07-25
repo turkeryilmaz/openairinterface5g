@@ -236,7 +236,7 @@ uint32_t nr_dlsch_decoding_slot(PHY_VARS_NR_UE *phy_vars_ue,
                                 uint8_t **b,
                                 int *G,
                                 int nb_dlsch,
-                                int *DLSCH_ids);
+                                uint8_t *DLSCH_ids);
 
 /** \brief This is the top-level entry point for ULSCH encoding in UE. It should be replicated on several
     threads (on multi-core machines) corresponding to different HARQ processes. The routine first
@@ -277,7 +277,7 @@ int nr_ulsch_encoding_slot(PHY_VARS_NR_UE *ue,
                            const uint8_t slot,
                            int nb_harq,
                            uint8_t *harq_pids,
-                           int *G);
+                           unsigned int *G);
 
 /*! \brief Perform PUSCH scrambling. TS 38.211 V15.4.0 subclause 6.3.1.1
   @param[in] in Pointer to input bits
