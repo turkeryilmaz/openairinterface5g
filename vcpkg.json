@@ -1,0 +1,8 @@
+{
+  "dependencies": [
+    "yaml-cpp", "gtest", "libconfig"
+  ],
+  "overrides": [
+    { "name": "gtest", "version": "1.12.1" }
+  ]
+}

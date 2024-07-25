@@ -23,6 +23,7 @@
 
 cmake_minimum_required (VERSION 3.16)
 project (OpenAirInterface LANGUAGES C CXX)
+find_package(yaml-cpp CONFIG REQUIRED)
 
 #########################################################
 # Base directories, compatible with legacy OAI building #
@@ -473,7 +474,10 @@ target_link_libraries(CONFIG_LIB PRIVATE config_internals dl UTIL)
 
 # CONFIG_LIB is a wrapper around a particular config implementation, default is
 # libconfig in params_libconfig below
-pkg_check_modules(libconfig REQUIRED libconfig)
+find_package(libconfig CONFIG) # attempt to find using vcpkg toolchain
+if (NOT libconfig_FOUND)
+  pkg_check_modules(libconfig REQUIRED libconfig)
+endif()
 add_library(params_libconfig MODULE ${CONFIG_ROOTDIR}/libconfig/config_libconfig.c)
 target_include_directories(params_libconfig PRIVATE ${libconfig_INCLUDE_DIRS})
 target_link_libraries(params_libconfig PRIVATE config_internals ${libconfig_LIBRARIES})
@@ -2457,7 +2461,10 @@ if(ENABLE_TESTS)
   # meta-target: each test is supposed to add_dependencies(tests ${NEWTEST})
   # then, it is possible to build and execute all tests using "ninja tests && ctest"
   add_custom_target(tests)
-  find_package(GTest)
+  find_package(GTest CONFIG)
+  if (NOT GTest_FOUND)
+    find_package(GTest)
+  endif()
   if (NOT GTest_FOUND)
     message(STATUS "GTest package not found, will download googletest automatically. To prevent that install google test on your system (libgtest-dev)")
     include(FetchContent)
