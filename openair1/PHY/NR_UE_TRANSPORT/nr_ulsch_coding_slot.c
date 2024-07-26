@@ -57,8 +57,10 @@ int nr_ulsch_encoding_slot(PHY_VARS_NR_UE *ue,
   slot_encoding_params.tprep = NULL;
   slot_encoding_params.tparity = NULL;
   slot_encoding_params.toutput = NULL;
-  nrLDPC_TB_encoding_parameters_t *TBs = malloc(nb_harq * sizeof(nrLDPC_TB_encoding_parameters_t));
+  nrLDPC_TB_encoding_parameters_t TBs[nb_harq];
   slot_encoding_params.TBs = TBs;
+
+  int max_num_segments = 0;
 
   for (uint8_t idx = 0; idx < nb_harq; idx++) {
     uint8_t harq_pid = harq_pids[idx];
@@ -121,13 +123,11 @@ int nr_ulsch_encoding_slot(PHY_VARS_NR_UE *ue,
     TB_encoding_params->BG = harq_process->BG;
     if (TB_encoding_params->C > MAX_NUM_NR_DLSCH_SEGMENTS_PER_LAYER * pusch_pdu->nrOfLayers) {
       LOG_E(PHY, "nr_segmentation.c: too many segments %d, B %d\n", TB_encoding_params->C, B);
-      for (uint8_t idx_inner = 0; idx_inner < idx; idx_inner++)
-        free(TBs[idx_inner].segments);
-      free(TBs);
       return (-1);
     }
     stop_meas(&ue->ulsch_segmentation_stats);
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_SEGMENTATION, VCD_FUNCTION_OUT);
+    max_num_segments = max(max_num_segments, TB_encoding_params->C);
 
     TB_encoding_params->rnti = pusch_pdu->rnti;
     TB_encoding_params->nb_rb = nb_rb;
@@ -138,8 +138,15 @@ int nr_ulsch_encoding_slot(PHY_VARS_NR_UE *ue,
     TB_encoding_params->G = G[idx];
     TB_encoding_params->tbslbrm = pusch_pdu->tbslbrm;
     TB_encoding_params->A = A;
+  } // idx (harq_pid)
 
-    TB_encoding_params->segments = malloc(TB_encoding_params->C * sizeof(nrLDPC_segment_encoding_parameters_t));
+  nrLDPC_segment_encoding_parameters_t segments[nb_harq][max_num_segments];
+
+  for (uint8_t idx = 0; idx < nb_harq; idx++) {
+    uint8_t harq_pid = harq_pids[idx];
+    nrLDPC_TB_encoding_parameters_t *TB_encoding_params = &TBs[idx];
+    NR_UL_UE_HARQ_t *harq_process = &ue->ul_harq_processes[harq_pid];
+    TB_encoding_params->segments = segments[idx];
 
     int r_offset = 0;
     for (int r = 0; r < TB_encoding_params->C; r++) {
@@ -159,12 +166,8 @@ int nr_ulsch_encoding_slot(PHY_VARS_NR_UE *ue,
   int nbJobs = 0;
   nbJobs = nrLDPC_coding_interface.nrLDPC_coding_encoder(&slot_encoding_params);
 
-  if (nbJobs < 0 ) {
-    for (uint8_t idx = 0; idx < nb_harq; idx++)
-      free(TBs[idx].segments);
-    free(TBs);
+  if (nbJobs < 0)
     return -1;
-  }
   while (nbJobs) {
     notifiedFIFO_elt_t *req = pullTpool(&nf, &get_nrUE_params()->Tpool);
     if (req == NULL)
@@ -174,10 +177,6 @@ int nr_ulsch_encoding_slot(PHY_VARS_NR_UE *ue,
   }
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_LDPC_ENCODER_OPTIM, VCD_FUNCTION_OUT);
-
-  for (uint8_t idx = 0; idx < nb_harq; idx++)
-    free(TBs[idx].segments);
-  free(TBs);
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_UE_ULSCH_ENCODING, VCD_FUNCTION_OUT);
   stop_meas(&ue->ulsch_encoding_stats);
