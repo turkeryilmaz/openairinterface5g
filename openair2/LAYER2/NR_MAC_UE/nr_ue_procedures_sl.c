@@ -649,9 +649,9 @@ static void compute_params(int module_idP, psfch_params_t* psfch_params) {
 }
 
 void configure_psfch_params_tx(int module_idP,
-                            NR_UE_MAC_INST_t *mac,
-                            sl_nr_rx_indication_t *rx_ind,
-                            int pdu_id)
+                               NR_UE_MAC_INST_t *mac,
+                               sl_nr_rx_indication_t *rx_ind,
+                               int pdu_id)
 {
   // TODO: May need to update in case of multiple UEs
   const uint8_t psfch_periods[] = {0,1,2,4};
@@ -783,10 +783,6 @@ int get_feedback_frame_slot(NR_TDD_UL_DL_Pattern_t *tdd, uint8_t *pssch_to_harq_
   if (*psfch_slot % psfch_period > 0)
     return -1;
 
-  // TODO: Need to update the following condition to generalize it
-  if (psfch_period == 2 && f == 0)
-    return -1;
-
   *psfch_frame = (frame + ((slot + pssch_to_harq_feedback[f]) / nr_slots_frame)) & 1023;
   return 0;
 }
@@ -803,18 +799,28 @@ int nr_ue_sl_acknack_scheduling(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx
   uint16_t num_subch = sl_get_num_subch(mac->sl_tx_res_pool);
   sl_nr_ue_mac_params_t *sl_mac =  &mac->SL_MAC_PARAMS;
   NR_TDD_UL_DL_Pattern_t *tdd = &sl_mac->sl_TDD_config->pattern1;
+  const int n_ul_slots_period = tdd ? tdd->nrofUplinkSlots + (tdd->nrofUplinkSymbols > 0 ? 1 : 0) : nr_slots_frame;
 
   NR_SL_UE_sched_ctrl_t  *sched_ctrl = &mac->sl_info.list[0]->UE_sched_ctrl;
-  int sched_psfch_max_size = (psfch_period * num_subch);
+  int psfch_max_size = (psfch_period * num_subch);
   uint8_t pssch_to_harq_feedback[8];
   int fb_size = get_pssch_to_harq_feedback(pssch_to_harq_feedback, psfch_min_time_gap);
+  int pre_index = ((rx_ind->slot + n_ul_slots_period - 1) % n_ul_slots_period) * num_subch;
+  SL_sched_feedback_t  *pre_psfch = &sched_ctrl->sched_psfch[pre_index];
+  uint8_t cnt = pre_psfch->dai_c;
 
   for (int f = 0; f < fb_size; f++) {
-    int  continue_flag = get_feedback_frame_slot(tdd, pssch_to_harq_feedback, psfch_min_time_gap, f, nr_slots_frame, frame, slot, psfch_period, &psfch_frame, &psfch_slot);
+    int  continue_flag = get_feedback_frame_slot(tdd, pssch_to_harq_feedback,
+                                                 psfch_min_time_gap, f,
+                                                 nr_slots_frame, frame,
+                                                 slot, psfch_period,
+                                                 &psfch_frame, &psfch_slot);
     if (continue_flag == -1)
-        continue;
+      continue;
+    if (cnt == psfch_max_size && psfch_frame == pre_psfch->feedback_frame && psfch_slot == pre_psfch->feedback_slot)
+      continue;
     // we store PUCCH resources according to slot, TDD configuration and size of the vector containing PUCCH structures
-    //const int psfch_index = get_psfch_index(psfch_frame, psfch_slot, nr_slots_frame, tdd, sched_psfch_max_size);
+    //const int psfch_index = get_psfch_index(psfch_frame, psfch_slot, nr_slots_frame, tdd, psfch_max_size);
 {
     // Rx slot 6
     // Tx slot 10
@@ -840,7 +846,7 @@ int nr_ue_sl_acknack_scheduling(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx
     // f:       0, 1, 2
     // i:   {1,5}, => 1
   }
-    int psfch_index = rx_ind->slot % (psfch_period * num_subch);
+    int psfch_index = (rx_ind->slot % n_ul_slots_period) * num_subch;
     SL_sched_feedback_t  *curr_psfch = &sched_ctrl->sched_psfch[psfch_index];
     if (curr_psfch->active &&
         curr_psfch->feedback_frame == psfch_frame &&
@@ -877,11 +883,11 @@ int nr_ue_sl_acknack_scheduling(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx
       curr_psfch->feedback_frame = psfch_frame;
       curr_psfch->feedback_slot = psfch_slot;
       // curr_psfch->timing_indicator = f; // index in the list of timing indicators
-      // curr_psfch->dai_c++;
+      curr_psfch->dai_c = cnt + 1;
       // curr_psfch->resource_indicator = 0; // each UE has dedicated PUCCH resources
       // curr_psfch->r_psfch=r_pucch;
-      LOG_I(NR_MAC, "D2I psfch_acknack SL %4d.%2d, SL_ACK %4d.%2d Bits already in current PSFCH: psfch_index %d, f %d\n",
-            rx_ind->sfn, rx_ind->slot, psfch_frame, psfch_slot, psfch_index, f);
+      LOG_I(NR_MAC, "D2I psfch_acknack SL %4d.%2d, SL_ACK %4d.%2d Bits already in current PSFCH: psfch_index %d, f %d dai_c %u\n",
+            rx_ind->sfn, rx_ind->slot, psfch_frame, psfch_slot, psfch_index, f, curr_psfch->dai_c);
 
       // blocking resources for current PUCCH in VRB map
       //set_pucch0_vrb_occupation(curr_psfch, vrb_map_UL, bwp_start);
