@@ -39,7 +39,8 @@ typedef enum sl_sci_format_type_enum {
 typedef enum sl_rx_pdu_type_enum {
   SL_NR_RX_PDU_TYPE_NONE,
   SL_NR_RX_PDU_TYPE_SSB,
-  SL_NR_RX_PDU_TYPE_SLSCH
+  SL_NR_RX_PDU_TYPE_SLSCH,
+  SL_NR_RX_PDU_TYPE_SLSCH_PSFCH,
 } sl_rx_pdu_type_enum_t;
 
 //Type of SL-RX CONFIG requests from MAC to PHY
@@ -48,6 +49,7 @@ typedef enum sl_nr_rx_config_type_enum {
   SL_NR_CONFIG_TYPE_RX_PSCCH,
   SL_NR_CONFIG_TYPE_RX_PSSCH_SCI,
   SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH,
+  SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH_PSFCH,
   SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH_CSI_RS,
   SL_NR_CONFIG_TYPE_RX_MAXIMUM
 } sl_nr_rx_config_type_enum_t;
@@ -236,6 +238,8 @@ typedef struct {
     sl_nr_rx_config_pssch_pdu_t rx_pssch_config_pdu;
   };
   sl_nr_tti_csi_rs_pdu_t rx_csi_rs_config_pdu;
+  sl_nr_tx_rx_config_psfch_pdu_t *rx_psfch_pdu_list;
+  uint16_t num_psfch_pdus;
 } sl_nr_rx_config_request_pdu_t;
 
 // MAC commands PHY to perform an action on RX RESOURCE POOL or RX PSBCH using this RX CONFIG

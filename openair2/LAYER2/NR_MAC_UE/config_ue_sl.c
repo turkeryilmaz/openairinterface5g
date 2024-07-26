@@ -691,7 +691,7 @@ void nr_sl_params_read_conf(module_id_t module_id) {
   paramdef_t SL_HARQ_INFO[] = SL_CONFIGUREDGRANT_DESC(sl_harq_info);
   sprintf(aprefix1, "%s.[%i].%s.[%i]", SL_CONFIG_STRING_SL_PRECONFIGURATION, 0, SL_CONFIG_STRING_SL_CONFIGUREDGRANT_LIST, 0);
   config_get(SL_HARQ_INFO, sizeof(SL_HARQ_INFO)/sizeof(paramdef_t), aprefix1);
-  sl_mac->num_HARQ_Processes = sl_harq_info->num_HARQ_Processes;
+  sl_mac->sl_Num_HARQ_Processes = sl_harq_info->num_HARQ_Processes;
   sl_mac->sl_HARQ_ProcID_offset = sl_harq_info->sl_HARQ_ProcID_offset;
 
   sl_mac->csi_type = sl_csi_rs_info->csi_type;

@@ -5522,7 +5522,6 @@ void remove_nr_list(NR_list_t *listP, int id)
  */
 void add_tail_nr_list(NR_list_t *listP, int id)
 {
-  LOG_I(NR_MAC, "Adding harq_id %d\n", id);
   int *last = listP->tail < 0 ? &listP->head : &listP->next[listP->tail];
   *last = id;
   listP->next[id] = -1;
@@ -5548,7 +5547,6 @@ void remove_front_nr_list(NR_list_t *listP)
 {
   AssertFatal(listP->head >= 0, "Nothing to remove\n");
   const int ohead = listP->head;
-  LOG_I(NR_MAC, "ohead %d %p\n", ohead, listP->next[ohead]);
   listP->head = listP->next[ohead];
   listP->next[ohead] = -1;
   if (listP->head < 0)
