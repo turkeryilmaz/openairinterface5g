@@ -653,30 +653,47 @@ void configure_psfch_params_tx(int module_idP,
                             sl_nr_rx_indication_t *rx_ind,
                             int pdu_id)
 {
-  const uint8_t time_gap[] = {2, 3};
+  // TODO: May need to update in case of multiple UEs
   const uint8_t psfch_periods[] = {0,1,2,4};
   NR_SL_PSFCH_Config_r16_t *sl_psfch_config = mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup;
   long psfch_period = (sl_psfch_config->sl_PSFCH_Period_r16)
                         ? psfch_periods[*sl_psfch_config->sl_PSFCH_Period_r16] : 0;
-  uint8_t psfch_min_time_gap = time_gap[*sl_psfch_config->sl_MinTimeGapPSFCH_r16];
-  int delta_slots = (rx_ind->slot + psfch_min_time_gap) % psfch_period ? psfch_period - (rx_ind->slot + psfch_min_time_gap) % psfch_period : psfch_period;
-  uint16_t sched_slot = (rx_ind->slot + DURATION_RX_TO_TX) + psfch_min_time_gap + delta_slots;
-  uint16_t sched_frame = rx_ind->sfn;
+  //int delta_slots = (rx_ind->slot + psfch_min_time_gap) % psfch_period ? psfch_period - (rx_ind->slot + psfch_min_time_gap) % psfch_period : psfch_period;
   int scs = get_softmodem_params()->numerology;
-  if (sched_slot >= nr_slots_per_frame[scs]) {
-    sched_slot %= nr_slots_per_frame[scs];
-    sched_frame = (sched_frame + 1) % 1024;
-  }
+  uint16_t tx_slot = (rx_ind->slot + DURATION_RX_TO_TX) % nr_slots_per_frame[scs];
+  uint16_t tx_frame = (rx_ind->sfn + (rx_ind->slot + DURATION_RX_TO_TX) / nr_slots_per_frame[scs]) % 1024;
+  // uint16_t sched_slot = tx_slot + psfch_min_time_gap + delta_slots;
+  // uint16_t sched_frame = rx_ind->sfn;
+  // if (sched_slot >= nr_slots_per_frame[scs]) {
+  //   sched_slot %= nr_slots_per_frame[scs];
+  //   sched_frame = (sched_frame + 1) % 1024;
+  // }
   uint8_t ack_nack = (rx_ind->rx_indication_body + pdu_id)->rx_slsch_pdu.ack_nack;
   psfch_params_t *psfch_params = calloc(1, sizeof(psfch_params_t));
   compute_params(module_idP, psfch_params);
   const int nr_slots_frame = nr_slots_per_frame[scs];
-  fill_psfch_params_tx(mac, rx_ind, psfch_period, sched_frame, sched_slot, ack_nack, psfch_params, nr_slots_frame);
+  int psfch_index = nr_ue_sl_acknack_scheduling(mac, rx_ind, psfch_period, tx_frame, tx_slot, nr_slots_frame);
+  fill_psfch_params_tx(mac, rx_ind, psfch_period, tx_frame, tx_slot, ack_nack, psfch_params, nr_slots_frame, psfch_index);
+  free(psfch_params);
+  psfch_params = NULL;
 }
-static int get_psfch_index(int frame, int slot, int n_slots_frame, const NR_TDD_UL_DL_Pattern_t *tdd, int sched_pucch_size)
+static int get_psfch_index(int frame, int slot, int n_slots_frame, const NR_TDD_UL_DL_Pattern_t *tdd, int sched_psfch_max_size)
 {
-  // PUCCH structures are indexed by slot in the PUCCH period determined by sched_pucch_size number of UL slots
+  // PUCCH structures are indexed by slot in the PUCCH period determined by sched_psfch_max_size number of UL slots
   // this functions return the index to the structure for slot passed to the function
+#if 0
+  6 const int first_ul_slot_period = tdd ? get_first_ul_slot(tdd->nrofDownlinkSlots, tdd->nrofDownlinkSymbols, tdd->nrofUplinkSymbols) : 0;
+  4 const int n_ul_slots_period = tdd ? tdd->nrofUplinkSlots + (tdd->nrofUplinkSymbols > 0 ? 1 : 0) : n_slots_frame;
+  10 const int nr_slots_period = tdd ? n_slots_frame / get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity) : n_slots_frame;
+  8 const int n_ul_slots_frame = n_slots_frame / nr_slots_period * n_ul_slots_period;
+  // (frame * n_ul_slots_frame) adds up the number of UL slots in the previous frames
+  8F const int frame_start      = frame * n_ul_slots_frame;
+  // ((slot / nr_slots_period) * n_ul_slots_period) adds up the number of UL slots in the previous TDD periods of this frame
+  0, 4 const int ul_period_start  = (slot / nr_slots_period) * n_ul_slots_period;
+  // ((slot % nr_slots_period) - first_ul_slot_period) gives the progressive number of the slot in this TDD period
+  0,1,2,3 const int ul_period_slot   = (slot % nr_slots_period) - first_ul_slot_period;
+  4,5,6,7
+#endif
   const int first_ul_slot_period = tdd ? get_first_ul_slot(tdd->nrofDownlinkSlots, tdd->nrofDownlinkSymbols, tdd->nrofUplinkSymbols) : 0;
   const int n_ul_slots_period = tdd ? tdd->nrofUplinkSlots + (tdd->nrofUplinkSymbols > 0 ? 1 : 0) : n_slots_frame;
   const int nr_slots_period = tdd ? n_slots_frame / get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity) : n_slots_frame;
@@ -687,17 +704,206 @@ static int get_psfch_index(int frame, int slot, int n_slots_frame, const NR_TDD_
   const int ul_period_start  = (slot / nr_slots_period) * n_ul_slots_period;
   // ((slot % nr_slots_period) - first_ul_slot_period) gives the progressive number of the slot in this TDD period
   const int ul_period_slot   = (slot % nr_slots_period) - first_ul_slot_period;
-  // the sum gives the index of current UL slot in the frame which is normalized wrt sched_pucch_size
-  return (frame_start + ul_period_start + ul_period_slot) % sched_pucch_size;
+  // the sum gives the index of current UL slot in the frame which is normalized wrt sched_psfch_max_size
+  return (frame_start + ul_period_start + ul_period_slot) % sched_psfch_max_size;
+
   //return rx_ind->slot % (psfch_period * num_subch);
 }
-void fill_psfch_params_tx(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx_ind, long psfch_period, uint16_t sched_frame, uint16_t sched_slot, uint8_t ack_nack, psfch_params_t *psfch_params, const int nr_slots_frame) {
+
+int get_pssch_to_harq_feedback(uint8_t *pssch_to_harq_feedback, uint8_t psfch_min_time_gap) {
+  /* already mutex protected: held in nr_acknack_scheduling() */
+  for (int i = 0; i < 4; i++) {
+    pssch_to_harq_feedback[i] = psfch_min_time_gap + i + 1;
+  }
+  return 4;
+}
+
+// static void set_pucch_allocation(const NR_UE_UL_BWP_t *ul_bwp, const int r_pucch, const int bwp_size, NR_sched_pucch_t *pucch)
+// {
+//   if(r_pucch<0){
+//     const NR_PUCCH_Resource_t *resource = ul_bwp->pucch_Config->resourceToAddModList->list.array[0];
+//     DevAssert(resource->format.present == NR_PUCCH_Resource__format_PR_format0);
+//     pucch->second_hop_prb = resource->secondHopPRB!= NULL ?  *resource->secondHopPRB : 0;
+//     pucch->nr_of_symb = resource->format.choice.format0->nrofSymbols;
+//     pucch->start_symb = resource->format.choice.format0->startingSymbolIndex;
+//     pucch->prb_start = resource->startingPRB;
+//   }
+//   else{
+//     int rsetindex = *ul_bwp->pucch_ConfigCommon->pucch_ResourceCommon;
+//     set_r_pucch_parms(rsetindex,
+//                       r_pucch,
+//                       bwp_size,
+//                       &pucch->prb_start,
+//                       &pucch->second_hop_prb,
+//                       &pucch->nr_of_symb,
+//                       &pucch->start_symb);
+//   }
+// }
+
+// void set_r_pucch_parms(int rsetindex,
+//                        int r_pucch,
+//                        int bwp_size,
+//                        int *prb_start,
+//                        int *second_hop_prb,
+//                        int *nr_of_symbols,
+//                        int *start_symbol_index) {
+
+//   // procedure described in 38.213 section 9.2.1
+
+//   int prboffset = r_pucch/default_pucch_csset[rsetindex];
+//   int prboffsetm8 = (r_pucch-8)/default_pucch_csset[rsetindex];
+
+//   *prb_start = (r_pucch>>3)==0 ?
+//               default_pucch_prboffset[rsetindex] + prboffset:
+//               bwp_size-1-default_pucch_prboffset[rsetindex]-prboffsetm8;
+
+//   *second_hop_prb = (r_pucch>>3)==0?
+//                    bwp_size-1-default_pucch_prboffset[rsetindex]-prboffset:
+//                    default_pucch_prboffset[rsetindex] + prboffsetm8;
+
+//   *nr_of_symbols = default_pucch_numbsymb[rsetindex];
+//   *start_symbol_index = default_pucch_firstsymb[rsetindex];
+// }
+
+int get_feedback_frame_slot(NR_TDD_UL_DL_Pattern_t *tdd, uint8_t *pssch_to_harq_feedback, uint8_t psfch_min_time_gap, uint8_t f,
+                            const int nr_slots_frame, uint16_t frame, uint16_t slot, long psfch_period, int *psfch_frame, int *psfch_slot) {
+  const int first_ul_slot_period = tdd ? get_first_ul_slot(tdd->nrofDownlinkSlots, tdd->nrofDownlinkSymbols, tdd->nrofUplinkSymbols) : 0;
+  const int nr_slots_period = tdd ? nr_slots_frame / get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity) : nr_slots_frame;
+  // can't schedule ACKNACK before minimum feedback time
+  if(pssch_to_harq_feedback[f] < psfch_min_time_gap)
+    return -1;
+  // slot = 10
+  // 14, 15, 16, 17
+  // 4, 5, 6, 7 < 6
+  *psfch_slot = (slot + pssch_to_harq_feedback[f]) % nr_slots_frame;
+  // check if the slot is UL
+  if(*psfch_slot % nr_slots_period < first_ul_slot_period)
+    return -1;
+
+  if (*psfch_slot % psfch_period > 0)
+    return -1;
+
+  // TODO: Need to update the following condition to generalize it
+  if (psfch_period == 2 && f == 0)
+    return -1;
+
+  *psfch_frame = (frame + ((slot + pssch_to_harq_feedback[f]) / nr_slots_frame)) & 1023;
+  return 0;
+}
+
+int nr_ue_sl_acknack_scheduling(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx_ind,
+                                long psfch_period, uint16_t frame, uint16_t slot, const int nr_slots_frame) {
+  int psfch_frame, psfch_slot;
+  const uint8_t time_gap[] = {2, 3};
+
+  NR_SL_PSFCH_Config_r16_t *sl_psfch_config = mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup;
+  uint8_t psfch_min_time_gap = time_gap[*sl_psfch_config->sl_MinTimeGapPSFCH_r16];
+  NR_SL_BWP_Generic_r16_t *sl_bwp = mac->sl_bwp->sl_BWP_Generic_r16;
+
   uint16_t num_subch = sl_get_num_subch(mac->sl_tx_res_pool);
-  const int psfch_index = get_psfch_index(pucch_frame, pucch_slot, nr_slots_frame, tdd, sched_ctrl->sched_pucch_size);
+  sl_nr_ue_mac_params_t *sl_mac =  &mac->SL_MAC_PARAMS;
+  NR_TDD_UL_DL_Pattern_t *tdd = &sl_mac->sl_TDD_config->pattern1;
+
+  NR_SL_UE_sched_ctrl_t  *sched_ctrl = &mac->sl_info.list[0]->UE_sched_ctrl;
+  int sched_psfch_max_size = (psfch_period * num_subch);
+  uint8_t pssch_to_harq_feedback[8];
+  int fb_size = get_pssch_to_harq_feedback(pssch_to_harq_feedback, psfch_min_time_gap);
+
+  for (int f = 0; f < fb_size; f++) {
+    int  continue_flag = get_feedback_frame_slot(tdd, pssch_to_harq_feedback, psfch_min_time_gap, f, nr_slots_frame, frame, slot, psfch_period, &psfch_frame, &psfch_slot);
+    if (continue_flag == -1)
+        continue;
+    // we store PUCCH resources according to slot, TDD configuration and size of the vector containing PUCCH structures
+    //const int psfch_index = get_psfch_index(psfch_frame, psfch_slot, nr_slots_frame, tdd, sched_psfch_max_size);
+{
+    // Rx slot 6
+    // Tx slot 10
+    // fb slot 16
+    // f:      2, 3
+    // i:   {0,4}, => 0
+    //
+    // Rx slot 7
+    // Tx slot 11
+    // fb slot 16
+    // f:      1, 2, 3
+    // i:   {0,4}, => 0
+    //
+    // Rx slot 8
+    // Tx slot 12
+    // fb slot 16
+    // f:       0, 1, 2, 3
+    // i:   {0,4}, => 0
+    //
+    // Rx slot 9
+    // Tx slot 13
+    // fb slot 17
+    // f:       0, 1, 2
+    // i:   {1,5}, => 1
+  }
+    int psfch_index = rx_ind->slot % (psfch_period * num_subch);
+    SL_sched_feedback_t  *curr_psfch = &sched_ctrl->sched_psfch[psfch_index];
+    if (curr_psfch->active &&
+        curr_psfch->feedback_frame == psfch_frame &&
+        curr_psfch->feedback_slot == psfch_slot) { // if there is already a PUCCH in given frame and slot
+      LOG_I(NR_MAC, "D2I psfch_acknack SL %4d.%2d, SL_ACK %4d.%2d Bits already in current PSFCH: psfch_index %d, f %d\n",
+            rx_ind->sfn, rx_ind->slot, psfch_frame, psfch_slot, psfch_index, f);
+
+      // otherwise we can schedule in this active PUCCH
+      // no need to check VRB occupation because already done when PUCCH has been activated
+      // curr_psfch->timing_indicator = f;
+      // curr_psfch->dai_c++;
+      return psfch_index; // index of current PSFCH structure
+    }
+    else if (curr_psfch->active) {
+      AssertFatal(1==0, "This shouldn't happen! curr_pucch frame.slot %d.%d not matching with computed frame.slot %d.%d\n",
+                  curr_psfch->feedback_frame, curr_psfch->feedback_slot, psfch_frame, psfch_slot);
+    }
+    else { // unoccupied occasion
+      // checking if in ul_slot the resources potentially to be assigned to this PUCCH are available
+      // set_pucch_allocation(sl_bwp, r_pucch, bwp_size, curr_pucch);
+      // const int index = ul_buffer_index(pucch_frame, pucch_slot, ul_bwp->scs, mac->vrb_map_UL_size);
+      // uint16_t *vrb_map_UL = &mac->common_channels[CC_id].vrb_map_UL[index * MAX_BWP_SIZE];
+      // bool ret = test_pucch0_vrb_occupation(curr_pucch,
+      //                                       vrb_map_UL,
+      //                                       bwp_start,
+      //                                       bwp_size);
+      // if(!ret) {
+      //   LOG_D(NR_MAC, "DL %4d.%2d, UL_ACK %4d.%2d PRB resources for this occasion are already occupied, move to the following occasion\n",
+      //         frame, slot, pucch_frame, pucch_slot);
+      //   continue;
+      // }
+      // allocating a new PUCCH structure for this occasion
+      //curr_psfch->active = true;
+      curr_psfch->feedback_frame = psfch_frame;
+      curr_psfch->feedback_slot = psfch_slot;
+      // curr_psfch->timing_indicator = f; // index in the list of timing indicators
+      // curr_psfch->dai_c++;
+      // curr_psfch->resource_indicator = 0; // each UE has dedicated PUCCH resources
+      // curr_psfch->r_psfch=r_pucch;
+      LOG_I(NR_MAC, "D2I psfch_acknack SL %4d.%2d, SL_ACK %4d.%2d Bits already in current PSFCH: psfch_index %d, f %d\n",
+            rx_ind->sfn, rx_ind->slot, psfch_frame, psfch_slot, psfch_index, f);
+
+      // blocking resources for current PUCCH in VRB map
+      //set_pucch0_vrb_occupation(curr_psfch, vrb_map_UL, bwp_start);
+
+      return psfch_index; // index of current PUCCH structure
+    }
+  }
+  LOG_I(NR_MAC, "D2I SL %4d.%2d, Couldn't find scheduling occasion for this HARQ process\n", rx_ind->sfn, rx_ind->slot);
+  return -1;
+}
+
+void fill_psfch_params_tx(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx_ind,
+                          long psfch_period, uint16_t frame, uint16_t slot,
+                          uint8_t ack_nack, psfch_params_t *psfch_params,
+                          const int nr_slots_frame, int psfch_index) {
+
+  NR_SL_BWP_Generic_r16_t *sl_bwp = mac->sl_bwp->sl_BWP_Generic_r16;
+  uint16_t num_subch = sl_get_num_subch(mac->sl_tx_res_pool);
+  int sched_psfch_max_size = psfch_period * num_subch;
+
   //SL_sched_feedback_t  *sched_psfch = &mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch[rx_ind->slot % (psfch_period * num_subch)];
   SL_sched_feedback_t  *sched_psfch = &mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch[psfch_index];
-  sched_psfch->feedback_slot = sched_slot;
-  sched_psfch->feedback_frame = sched_frame;
   LOG_I(NR_MAC, "psfch_period %ld, feedback frame:slot %d:%d, frame:slot %d:%d, harq feedback %d\n",
         psfch_period,
         sched_psfch->feedback_frame,
@@ -716,13 +922,12 @@ void fill_psfch_params_tx(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx_ind, 
     sched_psfch->mcs = sequence_cyclic_shift_harq_ack_or_ack_or_only_nack[0];
   }
   const uint8_t values[] = {7, 8, 9, 10, 11, 12, 13, 14};
-  NR_SL_BWP_Generic_r16_t *sl_bwp = mac->sl_bwp->sl_BWP_Generic_r16;
   uint8_t sl_num_symbols = *sl_bwp->sl_LengthSymbols_r16 ? values[*sl_bwp->sl_LengthSymbols_r16] : 0;
   // start_symbol_index has been used as lprime check 38.213 16.3
   sched_psfch->start_symbol_index = *sl_bwp->sl_StartSymbol_r16 + sl_num_symbols - 2;
   LOG_D(NR_PHY, "sl_StartSymbol_r16 %ld, sl_num_symbols: %d, start sym index %d, mcs %d\n", *sl_bwp->sl_StartSymbol_r16, sl_num_symbols, sched_psfch->start_symbol_index, sched_psfch->mcs);
   sched_psfch->hopping_id = *mac->sl_bwp->sl_BWP_PoolConfigCommon_r16->sl_TxPoolSelectedNormal_r16->list.array[0]->sl_ResourcePool_r16->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_HopID_r16;
-  sched_psfch->prb = psfch_params->prbs_sets->start_prb[rx_ind->slot%(psfch_period*num_subch)][0]; // FIXME [0] is based on assumption of number of subchannels = 1; 0 is channel id
+  sched_psfch->prb = psfch_params->prbs_sets->start_prb[rx_ind->slot % sched_psfch_max_size][0]; // FIXME [0] is based on assumption of number of subchannels = 1; 0 is channel id
   print_prb_set_allocation(psfch_params, psfch_period, 1);
   LOG_D(NR_PHY, "slot %d, slot mode psfch_period %ld, sched_psfch->prb %d, start_prb %d\n", rx_ind->slot, rx_ind->slot%psfch_period, sched_psfch->prb, psfch_params->prbs_sets->start_prb[rx_ind->slot%psfch_period][0]);
   int locbw = sl_bwp->sl_BWP_r16->locationAndBandwidth;
@@ -734,8 +939,6 @@ void fill_psfch_params_tx(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx_ind, 
   sched_psfch->bit_len_harq = 1;
   sched_psfch->harq_feedback = mac->sci_pdu_rx.harq_feedback;
   LOG_D(NR_MAC, "Filled psfch pdu\n");
-  free(psfch_params);
-  psfch_params = NULL;
 }
 
 NR_UE_sl_harq_t** find_nr_ue_sl_harq(frame_t frame, sub_frame_t slot, NR_SL_UE_info_t * UE)

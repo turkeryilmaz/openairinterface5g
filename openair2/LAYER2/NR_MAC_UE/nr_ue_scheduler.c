@@ -3285,8 +3285,9 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
   }
   if (sl_ind->slot_type != SIDELINK_SLOT_TYPE_TX) return false;
 
-  if (slot > 17 && get_nrUE_params()->sync_ref) return false;
+  if (slot > 9 && get_nrUE_params()->sync_ref) return false;
 
+  if (slot < 10 && !get_nrUE_params()->sync_ref) return false;
 /*
   if ((frame&127) > 0) return false;
 
@@ -3355,16 +3356,34 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
       Transmitter of SLSCH stores the feedback frame and slot in harq process to use those in retreiving the feedback.
       */
       uint8_t psfch_min_time_gap = time_gap[*sl_psfch_config->sl_MinTimeGapPSFCH_r16];
-      int delta_slots = (slot + psfch_min_time_gap) % psfch_period ? psfch_period - (slot + psfch_min_time_gap) % psfch_period : psfch_period;
-      uint16_t feed_slot = (slot + DURATION_RX_TO_TX) + psfch_min_time_gap + delta_slots;
-      uint16_t feed_frame = frame;
+
+      // int delta_slots = (slot + psfch_min_time_gap) % psfch_period ? psfch_period - (slot + psfch_min_time_gap) % psfch_period : psfch_period;
+      // uint16_t feedback_slot = (slot + DURATION_RX_TO_TX) + psfch_min_time_gap + delta_slots;
+      // uint16_t feedback_frame = frame;
+      // int scs = get_softmodem_params()->numerology;
+      // if (feedback_slot >= nr_slots_per_frame[scs]) {
+      //   feedback_slot %= nr_slots_per_frame[scs];
+      //   feedback_frame = (feedback_frame + 1) % 1024;
+      // }
+      sl_nr_ue_mac_params_t *sl_mac =  &mac->SL_MAC_PARAMS;
+      NR_TDD_UL_DL_Pattern_t *tdd = &sl_mac->sl_TDD_config->pattern1;
+
+      uint8_t pssch_to_harq_feedback[8];
+      int feedback_frame, feedback_slot;
       int scs = get_softmodem_params()->numerology;
-      if (feed_slot >= nr_slots_per_frame[scs]) {
-        feed_slot %= nr_slots_per_frame[scs];
-        feed_frame = (feed_frame + 1) % 1024;
+      const int nr_slots_frame = nr_slots_per_frame[scs];
+      int fb_size = get_pssch_to_harq_feedback(pssch_to_harq_feedback, psfch_min_time_gap);
+
+      for (int f = 0; f < fb_size; f++) {
+        int continue_flag = get_feedback_frame_slot(tdd, pssch_to_harq_feedback, psfch_min_time_gap, f, nr_slots_frame, frame, slot, psfch_period, &feedback_frame, &feedback_slot);
+        if (continue_flag == -1)
+          continue;
+        else
+          break;
       }
-      cur_harq->feedback_slot = feed_slot;
-      cur_harq->feedback_frame = feed_frame;
+
+      cur_harq->feedback_slot = feedback_slot;
+      cur_harq->feedback_frame = feedback_frame;
       cur_harq->is_waiting = true;
       cur_harq->sl_harq_pid = harq_id;
     }
@@ -3753,14 +3772,17 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind) {
   }
   if (sl_ind->slot_type==SIDELINK_SLOT_TYPE_TX || sl_ind->phy_data==NULL) rx_allowed=false;
   static uint16_t prev_slot = 0;
-  if (((get_nrUE_params()->sync_ref && (sl_ind->slot_rx == 2 || sl_ind->slot_rx == 8 || sl_ind->slot_rx == 12 || sl_ind->slot_rx == 13 || sl_ind->slot_rx == 16)) ||
-     (!get_nrUE_params()->sync_ref && (sl_ind->slot_rx == 3 || sl_ind->slot_rx == 0 || sl_ind->slot_rx == 5))) && (prev_slot != slot) && rx_allowed && !is_psbch_slot) {
+  if (((get_nrUE_params()->sync_ref && (sl_ind->slot_rx == 16 || sl_ind->slot_rx == 17
+     || sl_ind->slot_rx == 18 || sl_ind->slot_rx == 18 || sl_ind->slot_rx == 19)) ||
+     (!get_nrUE_params()->sync_ref && (sl_ind->slot_rx == 6 || sl_ind->slot_rx == 7 || sl_ind->slot_rx == 8 || sl_ind->slot_rx == 9)))
+      && (prev_slot != slot) && rx_allowed && !is_psbch_slot) {
       nr_ue_sl_pscch_rx_scheduler(sl_ind, mac->sl_bwp, mac->sl_rx_res_pool, &rx_config, &tti_action);
       prev_slot = slot;
   }
 
-  if (mac->is_synced && !is_psbch_slot && tx_allowed && sl_ind->slot_type == SIDELINK_SLOT_TYPE_TX && ((!get_nrUE_params()->sync_ref && (slot == 2 || slot == 8 || slot == 12 || slot == 13 || slot == 16)) ||
-  (get_nrUE_params()->sync_ref && (slot == 3 || slot == 0 || slot == 5)))) {
+  if (mac->is_synced && !is_psbch_slot && tx_allowed && sl_ind->slot_type == SIDELINK_SLOT_TYPE_TX &&
+      ((!get_nrUE_params()->sync_ref && (slot == 16 || slot == 17 || slot == 18 || slot == 18 || slot == 19)) ||
+      (get_nrUE_params()->sync_ref && (slot == 6 || slot == 7 || slot == 8 || slot == 9)))) {
     //Check if reserved slot or a sidelink resource configured in Rx/Tx resource pool timeresource bitmap
     bool schedule_slsch = nr_ue_sl_pssch_scheduler(mac, sl_ind, mac->sl_bwp, mac->sl_tx_res_pool, &tx_config, &tti_action);
     bool is_csi_rs_sent = false;
