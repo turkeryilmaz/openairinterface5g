@@ -56,7 +56,7 @@
 
 //#define DEBUG_NR_PUCCH_RX 1
 
-int get_pucch0_cs_lut_index(PHY_VARS_NR_UE *ue,nfapi_nr_pucch_pdu_t* pucch_pdu) {
+int get_pucch0_cs_lut_index(PHY_VARS_NR_UE *ue, nfapi_nr_pucch_pdu_t* pucch_pdu) {
 
   int i = 0;
 
@@ -79,40 +79,10 @@ int get_pucch0_cs_lut_index(PHY_VARS_NR_UE *ue,nfapi_nr_pucch_pdu_t* pucch_pdu) 
   ue->pucch0_lut.Nid[ue->pucch0_lut.nb_id] = pucch_pdu->hopping_id;
   for (int slot=0; slot<10<<pucch_pdu->subcarrier_spacing; slot++)
     for (int symbol=0; symbol<14; symbol++)
-      ue->pucch0_lut.lut[ue->pucch0_lut.nb_id][slot][symbol] = (int)floor(nr_cyclic_shift_hopping(pucch_pdu->hopping_id,0,0,symbol,0,slot)/0.5235987756);
+      ue->pucch0_lut.lut[ue->pucch0_lut.nb_id][slot][symbol] = (int)floor(nr_cyclic_shift_hopping(pucch_pdu->hopping_id, 0, 0, symbol, 0, slot)/0.5235987756);
   ue->pucch0_lut.nb_id++;
   return(ue->pucch0_lut.nb_id-1);
 }
-
-static const int16_t idft12_re[12][12] = {
-  {23170,23170,23170,23170,23170,23170,23170,23170,23170,23170,23170,23170},
-  {23170,20066,11585,0,-11585,-20066,-23170,-20066,-11585,0,11585,20066},
-  {23170,11585,-11585,-23170,-11585,11585,23170,11585,-11585,-23170,-11585,11585},
-  {23170,0,-23170,0,23170,0,-23170,0,23170,0,-23170,0},
-  {23170,-11585,-11585,23170,-11585,-11585,23170,-11585,-11585,23170,-11585,-11585},
-  {23170,-20066,11585,0,-11585,20066,-23170,20066,-11585,0,11585,-20066},
-  {23170,-23170,23170,-23170,23170,-23170,23170,-23170,23170,-23170,23170,-23170},
-  {23170,-20066,11585,0,-11585,20066,-23170,20066,-11585,0,11585,-20066},
-  {23170,-11585,-11585,23170,-11585,-11585,23170,-11585,-11585,23170,-11585,-11585},
-  {23170,0,-23170,0,23170,0,-23170,0,23170,0,-23170,0},
-  {23170,11585,-11585,-23170,-11585,11585,23170,11585,-11585,-23170,-11585,11585},
-  {23170,20066,11585,0,-11585,-20066,-23170,-20066,-11585,0,11585,20066}
-};
-
-static const int16_t idft12_im[12][12] = {
-  {0,0,0,0,0,0,0,0,0,0,0,0},
-  {0,11585,20066,23170,20066,11585,0,-11585,-20066,-23170,-20066,-11585},
-  {0,20066,20066,0,-20066,-20066,0,20066,20066,0,-20066,-20066},
-  {0,23170,0,-23170,0,23170,0,-23170,0,23170,0,-23170},
-  {0,20066,-20066,0,20066,-20066,0,20066,-20066,0,20066,-20066},
-  {0,11585,-20066,23170,-20066,11585,0,-11585,20066,-23170,20066,-11585},
-  {0,0,0,0,0,0,0,0,0,0,0,0},
-  {0,-11585,20066,-23170,20066,-11585,0,11585,-20066,23170,-20066,11585},
-  {0,-20066,20066,0,-20066,20066,0,-20066,20066,0,-20066,20066},
-  {0,-23170,0,23170,0,-23170,0,23170,0,-23170,0,23170},
-  {0,-20066,-20066,0,20066,20066,0,-20066,-20066,0,20066,20066},
-  {0,-11585,-20066,-23170,-20066,-11585,0,11585,20066,23170,20066,11585}
-};
 
 int8_t nr_ue_decode_psfch0(PHY_VARS_NR_UE *ue,
                           int frame,
@@ -135,11 +105,11 @@ int8_t nr_ue_decode_psfch0(PHY_VARS_NR_UE *ue,
   pucch_pdu.bit_len_harq = psfch_pdu->bit_len_harq;
   pucch_pdu.sr_flag = 0;
   ack_nack_rcvd = nr_ue_decode_pucch0(ue,
-                                 frame,
-                                 slot,
-                                 rxdataF,
-                                 NULL,
-                                 &pucch_pdu);
+                                      frame,
+                                      slot,
+                                      rxdataF,
+                                      NULL,
+                                      &pucch_pdu);
   return ack_nack_rcvd;
 }
 
@@ -173,6 +143,8 @@ int8_t nr_ue_decode_pucch0(PHY_VARS_NR_UE *ue,
     mcs = table2_mcs;
     nr_sequences = 8>>(1-pucch_pdu->sr_flag);
   }
+  AssertFatal(nr_sequences <= 4, "nr_sequences must be less than 4\n");
+
   LOG_D(PHY, "%s pucch0: nr_symbols %d, start_symbol %d, prb_start %d, second_hop_prb %d, group_hop_flag %d, sequence_hop_flag %d, O_ACK %d, O_SR %d, mcs %d initial_cyclic_shift %d\n",
         __FUNCTION__,
         pucch_pdu->nr_of_symbols,
@@ -253,15 +225,17 @@ int8_t nr_ue_decode_pucch0(PHY_VARS_NR_UE *ue,
   for (int l=0; l<pucch_pdu->nr_of_symbols; l++) {
     uint8_t l2 = l + pucch_pdu->start_symbol_index;
 
-    re_offset[l] = (12*prb_offset[l]) + frame_parms->first_carrier_offset;
+    re_offset[l] = (12 * prb_offset[l]) + frame_parms->first_carrier_offset;
     if (re_offset[l] >= frame_parms->ofdm_symbol_size)
       re_offset[l] -= frame_parms->ofdm_symbol_size;
 
     for (int aa = 0; aa < frame_parms->nb_antennas_rx; aa++) {
-      LOG_D(NR_PHY, "soffset %i, soffset + l2*frame_parms->ofdm_symbol_size %i %i re_offset[%d] %i\n", soffset, soffset + l2*frame_parms->ofdm_symbol_size, (soffset + l2*frame_parms->ofdm_symbol_size + nb_re_pucch), l, re_offset[l]);
+      LOG_D(NR_PHY, "soffset %i, soffset + l2*frame_parms->ofdm_symbol_size %i %i re_offset[%d] %i\n",
+           soffset, soffset + l2*frame_parms->ofdm_symbol_size,
+           (soffset + l2*frame_parms->ofdm_symbol_size + nb_re_pucch), l, re_offset[l]);
       for (int z = soffset + l2*frame_parms->ofdm_symbol_size + re_offset[l]; z < (soffset + l2*frame_parms->ofdm_symbol_size + re_offset[l] + nb_re_pucch); z++)
         LOG_D(NR_PHY, "%4d.%2d z %d rxdataF (%d,%d)\n", frame, slot, z, rxdataF[aa][z].r, rxdataF[aa][z].i);
-      tmp_rp = (int32_t *)&rxdataF[aa][soffset + l2*frame_parms->ofdm_symbol_size];
+      tmp_rp = (int32_t *)&rxdataF[aa][soffset + l2 * frame_parms->ofdm_symbol_size];
       if(re_offset[l] + nb_re_pucch > frame_parms->ofdm_symbol_size) {
         int neg_length = frame_parms->ofdm_symbol_size - re_offset[l];
         int pos_length = nb_re_pucch - neg_length;
@@ -288,7 +262,7 @@ int8_t nr_ue_decode_pucch0(PHY_VARS_NR_UE *ue,
   int seq_index = 0;
   int64_t temp;
 
-  for(i=0; i<nr_sequences; i++){
+  for(i=0; i<nr_sequences; i++) {
     c64_t corr[frame_parms->nb_antennas_rx][2];
     for (int aa=0; aa<frame_parms->nb_antennas_rx; aa++) {
       for (int l=0; l<pucch_pdu->nr_of_symbols; l++) {
@@ -296,7 +270,8 @@ int8_t nr_ue_decode_pucch0(PHY_VARS_NR_UE *ue,
                      mcs[i]+
                      ue->pucch0_lut.lut[cs_ind][slot][l+pucch_pdu->start_symbol_index])%12;
 #ifdef DEBUG_NR_PUCCH_RX
-        LOG_I(NR_PHY, "PUCCH symbol %d seq %d, seq_index %d, mcs %d , slot %d, cs_ind %d\n", l, i, seq_index, mcs[i], slot, cs_ind);
+        LOG_I(NR_PHY, "PUCCH symbol %d seq %d, seq_index %d, mcs %d , slot %d, cs_ind %d\n",
+              l, i, seq_index, mcs[i], slot, cs_ind);
 #endif
         corr[aa][l] = (c64_t){0};
         for (n = 0; n < 12; n++) {
@@ -338,7 +313,7 @@ int8_t nr_ue_decode_pucch0(PHY_VARS_NR_UE *ue,
     if (temp > xrtmag) {
       xrtmag_next = xrtmag;
       xrtmag = temp;
-      LOG_D(PHY, "Sequence %d xrtmag %ld xrtmag_next %ld, slot %d\n", i, xrtmag, xrtmag_next, slot);
+      LOG_D(PHY,"Sequence %d xrtmag %ld xrtmag_next %ld, slot %d\n", i, xrtmag, xrtmag_next, slot);
       maxpos = i;
       int64_t temp2 = 0,temp3 = 0;;
       for (int aa=0; aa<frame_parms->nb_antennas_rx; aa++) {
@@ -357,7 +332,7 @@ int8_t nr_ue_decode_pucch0(PHY_VARS_NR_UE *ue,
   LOG_D(NR_PHY, "PUCCH 0 : maxpos %d\n", maxpos);
 #endif
   index = maxpos;
-  if (pucch_pdu->bit_len_harq==1) {
+  if (pucch_pdu->bit_len_harq == 1) {
     uint8_t ack_nack = !(index&0x01);
     LOG_D(PHY,
           "[PSFCH RX] %d.%d HARQ %s\n",
