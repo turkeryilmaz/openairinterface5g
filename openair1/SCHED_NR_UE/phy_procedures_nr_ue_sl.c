@@ -425,6 +425,7 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
   NR_DL_FRAME_PARMS *fp = &sl_phy_params->sl_frame_params;
   bool is_csi_rs_slot = false;
   int8_t *ack_nack_rcvd = NULL;
+
   //VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_UE_RX_SL, VCD_FUNCTION_IN);
   start_meas(&sl_phy_params->phy_proc_sl_rx);
 

@@ -1499,6 +1499,7 @@ void sl_nr_process_rx_ind(uint16_t mod_id,
       break;
     case SL_NR_RX_PDU_TYPE_SLSCH:
     case SL_NR_RX_PDU_TYPE_SLSCH_PSFCH:
+
         LOG_D(NR_MAC, "%s[UE%d]SL-MAC Received SLSCH: rx_slsch_pdu:%p, rx_slsch_len %d, ack_nack %d, harq_pid %d\n",KGRN,
                          mod_id,rx_ind->rx_indication_body[num_pdus - 1].rx_slsch_pdu.pdu,
                          rx_ind->rx_indication_body[num_pdus - 1].rx_slsch_pdu.pdu_length,
