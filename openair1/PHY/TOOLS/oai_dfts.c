@@ -7948,9 +7948,23 @@ void idft(uint8_t sizeidx, int16_t *input,int16_t *output,unsigned char scale_fl
 #ifdef MR_MAIN
 #include <string.h>
 #include <stdio.h>
+#include "../../../common/config/config_paramdesc.h"
 
-#define LOG_M write_output
-int write_output(const char *fname,const char *vname,void *data,int length,int dec,char format)
+struct configmodule_interface_s *uniqCfg = NULL;
+extern int bitrev4096[4096],bitrev2048[2048],bitrev1024[1024],bitrev512[512],bitrev256[256],bitrev128[128];
+void init_bitrev();
+void radix2(cd_t *x, int N);
+void normalize(cd_t *x,cd_t *y,int *bitrev, int N);
+
+void exit_function(const char *file, const char *function, const int line, const char *s, const int assert) {
+exit(-1);
+}
+int config_get(paramdef_t *params,int numparams, char *prefix) {
+return(0);
+}
+
+//#define LOG_M write_output
+int write_file_matlab(const char *fname,const char *vname,void *data,int length,int dec,unsigned int format,int dummy)
 {
 
   FILE *fp=NULL;
@@ -8104,7 +8118,28 @@ int write_output(const char *fname,const char *vname,void *data,int length,int d
 
   return 0;
 }
+double compute_error(int16_t *x, int16_t *y, int N, int *bitrev, int idft) {
 
+  int i;
+  cd_t xcd[N],ycd[N];
+
+  double error=0;
+
+  for (i=0;i<N;i++) {
+    xcd[i].r = (double)(((int16_t *)x)[i<<1]); 
+    xcd[i].i = (double)(((int16_t *)x)[1+(i<<1)]);
+    if (idft==1) xcd[i].i=-xcd[i].i; 
+  }
+  
+  double input_lev=0;
+  for (i=0;i<N;i++) input_lev += pow(xcd[i].r,2.0) + pow(xcd[i].i,2.0);
+  input_lev/=N;
+  radix2(xcd,N);
+  normalize(xcd,ycd,bitrev,N);
+  if (idft==0) for (i=0;i<N;i++) error += pow((ycd[i].r - (double)((int16_t*)y)[i<<1]),2.0) + pow(ycd[i].i-(double)((int16_t*)y)[1+(i<<1)],2.0);
+  else         for (i=0;i<N;i++) error += pow((ycd[i].r - (double)((int16_t*)y)[i<<1]),2.0) + pow(ycd[i].i+(double)((int16_t*)y)[1+(i<<1)],2.0);
+  return(input_lev/(error/N));
+}
 
 int main(int argc, char**argv)
 {
@@ -8115,7 +8150,11 @@ int main(int argc, char**argv)
   int i;
   simd_q15_t *x128=(simd_q15_t*)x,*y128=(simd_q15_t*)y;
 
+  double sqnr;
+
   dfts_autoinit();
+
+  init_bitrev();
 
   set_taus_seed(0);
   opp_enabled = 1;
@@ -8301,18 +8340,6 @@ int main(int argc, char**argv)
      ((int16_t*)x)[6+(i<<1)] = 0;
      ((int16_t*)x)[7+(i<<1)] = -1024;
      }
-  /*
-  for (i=0; i<2048; i+=2) {
-     ((int16_t*)x)[i<<1] = 1024;
-     ((int16_t*)x)[1+(i<<1)] = 0;
-     ((int16_t*)x)[2+(i<<1)] = -1024;
-     ((int16_t*)x)[3+(i<<1)] = 0;
-     }
-       
-  for (i=0;i<2048*2;i++) {
-    ((int16_t*)x)[i] = i/2;//(int16_t)((taus()&0xffff))>>5;
-  }
-     */
   memset((void*)&x[0],0,64*sizeof(int32_t));
   for (i=2;i<36;i++) {
     if ((taus() & 1)==0)
@@ -8471,6 +8498,10 @@ int main(int argc, char**argv)
   printf("\n\n512-point(%f cycles)\n",(double)ts.diff/(double)ts.trials);
   LOG_M("y512.m","y512",y,512,1,1);
   LOG_M("x512.m","x512",x,512,1,1);
+  sqnr = compute_error((int16_t*)x,(int16_t*)y,512,bitrev512,1);
+
+  printf("512 point SQNR (QPSK) : %f\n",10*log10(sqnr));
+  memset((void*)x,0,1024*sizeof(int32_t));
   /*
   printf("X: ");
   for (i=0;i<64;i++)
@@ -8507,6 +8538,9 @@ int main(int argc, char**argv)
   LOG_M("y1024.m","y1024",y,1024,1,1);
   LOG_M("x1024.m","x1024",x,1024,1,1);
 
+  sqnr = compute_error((int16_t*)x,(int16_t*)y,1024,bitrev1024,1);
+
+  printf("1024 point SQNR (QPSK) : %f\n",10*log10(sqnr));
 
   memset((void*)x,0,1536*sizeof(int32_t));
   for (i=2;i<1202;i++) {
@@ -8530,8 +8564,8 @@ int main(int argc, char**argv)
   }
 
   printf("\n\n1536-point(%f cycles)\n",(double)ts.diff/(double)ts.trials);
-  write_output("y1536.m","y1536",y,1536,1,1);
-  write_output("x1536.m","x1536",x,1536,1,1);
+  LOG_M("y1536.m","y1536",y,1536,1,1);
+  LOG_M("x1536.m","x1536",x,1536,1,1);
 
 
   memset((void*)x,0,2048*sizeof(int32_t));
@@ -8551,7 +8585,7 @@ int main(int argc, char**argv)
 
   for (i=0; i<10000; i++) {
     start_meas(&ts);
-    dft2048((int16_t *)x,(int16_t *)y,1);
+    idft2048((int16_t *)x,(int16_t *)y,1);
     stop_meas(&ts);
   }
 
@@ -8559,6 +8593,9 @@ int main(int argc, char**argv)
   LOG_M("y2048.m","y2048",y,2048,1,1);
   LOG_M("x2048.m","x2048",x,2048,1,1);
 
+  sqnr = compute_error((int16_t*)x,(int16_t*)y,2048,bitrev2048,1);
+
+  printf("2048 point SQNR (QPSK) : %f\n",10*log10(sqnr));
 // NR 80Mhz, 217 PRB, 3/4 sampling
   memset((void*)x, 0, 3072*sizeof(int32_t));
   for (i=2;i<2506;i++) {
@@ -8583,8 +8620,8 @@ int main(int argc, char**argv)
   }
 
   printf("\n\n3072-point(%f cycles)\n",(double)ts.diff/(double)ts.trials);
-  write_output("y3072.m","y3072",y,3072,1,1);
-  write_output("x3072.m","x3072",x,3072,1,1);
+  LOG_M("y3072.m","y3072",y,3072,1,1);
+  LOG_M("x3072.m","x3072",x,3072,1,1);
 
 
   memset((void*)x,0,4096*sizeof(int32_t));
@@ -8612,6 +8649,9 @@ int main(int argc, char**argv)
   LOG_M("y4096.m","y4096",y,4096,1,1);
   LOG_M("x4096.m","x4096",x,4096,1,1);
 
+  sqnr = compute_error((int16_t*)x,(int16_t*)y,4096,bitrev4096,1);
+
+  printf("4096 point SQNR (QPSK) : %f\n",10*log10(sqnr));
   dft4096((int16_t *)y,(int16_t *)x2,1);
   LOG_M("x4096_2.m","x4096_2",x2,4096,1,1);
 
@@ -8639,8 +8679,8 @@ int main(int argc, char**argv)
   }
 
   printf("\n\n6144-point(%f cycles)\n",(double)ts.diff/(double)ts.trials);
-  write_output("y6144.m","y6144",y,6144,1,1);
-  write_output("x6144.m","x6144",x,6144,1,1);
+  LOG_M("y6144.m","y6144",y,6144,1,1);
+  LOG_M("x6144.m","x6144",x,6144,1,1);
 
   memset((void*)x,0,8192*sizeof(int32_t));
   for (i=2;i<4802;i++) {
@@ -8888,6 +8928,84 @@ int main(int argc, char**argv)
   LOG_M("y49152.m","y49152",y,49152,1,1);
   LOG_M("x49152.m","x49152",x,49152,1,1);
 
+  memset((void*)x,0,256*sizeof(int32_t));
+  for (i=0;i<256;i++) {
+    ((int16_t*)x)[i<<1] = (int16_t)(364 * cos(2*M_PI*3*i/256));
+    ((int16_t*)x)[1+(i<<1)] = (int16_t)(364 * sin(2*M_PI*3*i/256));
+  } 
+  dft256((int16_t*)x,(int16_t*)y,1);
+  LOG_M("x256_exp.m","x256_exp",x,256,1,1); 
+  LOG_M("y256_exp.m","y256_exp",y,256,1,1); 
+  sqnr = compute_error((int16_t*)x,(int16_t*)y,256,bitrev256,0);
+
+  printf("256 point SQNR (cplx sinusoid) : %f\n",10*log10(sqnr));
+
+
+  memset((void*)x,0,512*sizeof(int32_t));
+  for (i=0;i<512;i++) {
+    ((int16_t*)x)[i<<1] = (int16_t)(364 * cos(2*M_PI*3*i/512));
+    ((int16_t*)x)[1+(i<<1)] = (int16_t)(364 * sin(2*M_PI*3*i/512));
+  } 
+  dft512((int16_t*)x,(int16_t*)y,1);
+  LOG_M("x512_exp.m","x512_exp",x,512,1,1); 
+  LOG_M("y512_exp.m","y512_exp",y,512,1,1); 
+
+  sqnr = compute_error((int16_t*)x,(int16_t*)y,512,bitrev512,0);
+
+  printf("512 point SQNR (cplx sinusoid) : %f\n",10*log10(sqnr));
+  memset((void*)x,0,1024*sizeof(int32_t));
+  for (i=0;i<1024;i++) {
+    ((int16_t*)x)[i<<1] = (int16_t)(364 * cos(2*M_PI*3*i/1024));
+    ((int16_t*)x)[1+(i<<1)] = (int16_t)(364 * sin(2*M_PI*3*i/1024));
+  } 
+  dft1024((int16_t*)x,(int16_t*)y,1);
+  LOG_M("x1024_exp.m","x1024_exp",x,1024,1,1); 
+  LOG_M("y1024_exp.m","y1024_exp",y,1024,1,1); 
+
+  sqnr = compute_error((int16_t*)x,(int16_t*)y,1024,bitrev1024,0);
+
+  printf("1024 point SQNR (cplx sinusoid) : %f\n",10*log10(sqnr));
+  memset((void*)x,0,1536*sizeof(int32_t));
+  for (i=0;i<1536;i++) {
+    ((int16_t*)x)[i<<1] = (int16_t)(364 * cos(2*M_PI*3*i/1536));
+    ((int16_t*)x)[1+(i<<1)] = (int16_t)(364 * sin(2*M_PI*3*i/1536));
+  } 
+  dft1536((int16_t*)x,(int16_t*)y,1);
+  LOG_M("x1536_exp.m","x1536_exp",x,1536,1,1); 
+  LOG_M("y1536_exp.m","y1536_exp",y,1536,1,1);
+ 
+  memset((void*)x,0,2048*sizeof(int32_t));
+  for (i=0;i<2048;i++) {
+    ((int16_t*)x)[i<<1] = (int16_t)(364 * cos(2*M_PI*3*i/2048));
+    ((int16_t*)x)[1+(i<<1)] = (int16_t)(364 * sin(2*M_PI*3*i/2048));
+  } 
+  dft2048((int16_t*)x,(int16_t*)y,1);
+  LOG_M("x2048_exp.m","x2048_exp",x,2048,1,1); 
+  LOG_M("y2048_exp.m","y2048_exp",y,2048,1,1); 
+
+  sqnr = compute_error((int16_t*)x,(int16_t*)y,2048,bitrev2048,0);
+
+  printf("2048 point SQNR (cplx sinusoid) : %f\n",10*log10(sqnr));
+  memset((void*)x,0,3072*sizeof(int32_t));
+  for (i=0;i<3072;i++) {
+    ((int16_t*)x)[i<<1] = (int16_t)(364 * cos(2*M_PI*331*i/3072));
+    ((int16_t*)x)[1+(i<<1)] = (int16_t)(364 * sin(2*M_PI*331*i/3072));
+  } 
+  dft3072((int16_t*)x,(int16_t*)y,1);
+  LOG_M("x3072_exp.m","x3072_exp",x,3072,1,1); 
+  LOG_M("y3072_exp.m","y3072_exp",y,3072,1,1); 
+
+  memset((void*)x,0,4096*sizeof(int32_t));
+  for (i=0;i<4096;i++) {
+    ((int16_t*)x)[i<<1] = (int16_t)(100 * cos(2*M_PI*331*i/4096));
+    ((int16_t*)x)[1+(i<<1)] = (int16_t)(100 * sin(2*M_PI*331*i/4096));
+  } 
+  dft4096((int16_t*)x,(int16_t*)y,1);
+  LOG_M("x4096_exp.m","x4096_exp",x,4096,1,1); 
+  LOG_M("y4096_exp.m","y4096_exp",y,4096,1,1); 
+
+  sqnr = compute_error((int16_t*)x,(int16_t*)y,4096,bitrev4096,0);
+  printf("4096 point SQNR (cplx sinusoid) : %f\n",10*log10(sqnr));
   return(0);
 }
 
