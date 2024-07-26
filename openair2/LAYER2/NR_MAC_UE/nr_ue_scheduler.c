@@ -70,7 +70,7 @@ void fill_ul_config(fapi_nr_ul_config_request_t *ul_config, frame_t frame_tx, in
       !get_softmodem_params()->emulate_l1) {
     LOG_D(MAC, "%d.%d %d.%d f clear ul_config %p t %d pdu %d\n", frame_tx, slot_tx, ul_config->sfn, ul_config->slot, ul_config, pdu_type, ul_config->number_pdus);
     ul_config->number_pdus = 0;
-    memset(ul_config->ul_config_list, 0, sizeof(ul_config->ul_config_list)); 
+    memset(ul_config->ul_config_list, 0, sizeof(ul_config->ul_config_list));
   }
   ul_config->ul_config_list[ul_config->number_pdus].pdu_type = pdu_type;
   //ul_config->slot = slot_tx;
@@ -1403,7 +1403,7 @@ int nr_get_sf_retxBSRTimer(uint8_t sf_offset) {
 // PUSCH scheduler:
 // - Calculate the slot in which ULSCH should be scheduled. This is current slot + K2,
 // - where K2 is the offset between the slot in which UL DCI is received and the slot
-// - in which ULSCH should be scheduled. K2 is configured in RRC configuration.  
+// - in which ULSCH should be scheduled. K2 is configured in RRC configuration.
 // PUSCH Msg3 scheduler:
 // - scheduled by RAR UL grant according to 8.3 of TS 38.213
 // Note: Msg3 tx in the uplink symbols of mixed slot
@@ -3357,29 +3357,25 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
       */
       uint8_t psfch_min_time_gap = time_gap[*sl_psfch_config->sl_MinTimeGapPSFCH_r16];
 
-      // int delta_slots = (slot + psfch_min_time_gap) % psfch_period ? psfch_period - (slot + psfch_min_time_gap) % psfch_period : psfch_period;
-      // uint16_t feedback_slot = (slot + DURATION_RX_TO_TX) + psfch_min_time_gap + delta_slots;
-      // uint16_t feedback_frame = frame;
-      // int scs = get_softmodem_params()->numerology;
-      // if (feedback_slot >= nr_slots_per_frame[scs]) {
-      //   feedback_slot %= nr_slots_per_frame[scs];
-      //   feedback_frame = (feedback_frame + 1) % 1024;
-      // }
+      int scs = get_softmodem_params()->numerology;
+      const int nr_slots_frame = nr_slots_per_frame[scs];
       sl_nr_ue_mac_params_t *sl_mac =  &mac->SL_MAC_PARAMS;
       NR_TDD_UL_DL_Pattern_t *tdd = &sl_mac->sl_TDD_config->pattern1;
 
       uint8_t pssch_to_harq_feedback[8];
       int feedback_frame, feedback_slot;
-      int scs = get_softmodem_params()->numerology;
-      const int nr_slots_frame = nr_slots_per_frame[scs];
+      uint16_t num_subch = sl_get_num_subch(mac->sl_tx_res_pool);
+      int psfch_max_size = (psfch_period * num_subch);
       int fb_size = get_pssch_to_harq_feedback(pssch_to_harq_feedback, psfch_min_time_gap);
 
       for (int f = 0; f < fb_size; f++) {
-        int continue_flag = get_feedback_frame_slot(tdd, pssch_to_harq_feedback, psfch_min_time_gap, f, nr_slots_frame, frame, slot, psfch_period, &feedback_frame, &feedback_slot);
+        int continue_flag = get_feedback_frame_slot(tdd, pssch_to_harq_feedback[f], psfch_min_time_gap, nr_slots_frame, frame, slot, psfch_period, &feedback_frame, &feedback_slot);
         if (continue_flag == -1)
           continue;
-        else
-          break;
+        uint8_t k = find_nr_ue_sl_harq(feedback_frame, feedback_slot, sched_ctrl, NULL);
+        if (k == psfch_max_size)
+          continue;
+        break;
       }
 
       cur_harq->feedback_slot = feedback_slot;
@@ -3841,11 +3837,18 @@ void nr_ue_sl_psfch_scheduler(NR_UE_MAC_INST_t *mac,
   else if (psfch_period == 2 || psfch_period == 4) {
     num_psfch_symbols = mac->SL_MAC_PARAMS->sl_RxPool[0]->sci_1a.psfch_overhead_indication.nbits ? 3 : 0;
   }
+
+  int scs = get_softmodem_params()->numerology;
+  const int nr_slots_frame = nr_slots_per_frame[scs];
+  sl_nr_ue_mac_params_t *sl_mac =  &mac->SL_MAC_PARAMS;
+  NR_TDD_UL_DL_Pattern_t *tdd = &sl_mac->sl_TDD_config->pattern1;
+  const int n_ul_slots_period = tdd ? tdd->nrofUplinkSlots + (tdd->nrofUplinkSymbols > 0 ? 1 : 0) : nr_slots_frame;
+
   uint16_t num_subch = sl_get_num_subch(mac->sl_tx_res_pool);
   sl_nr_tx_rx_config_psfch_pdu_t *psfch_pdu_list = CALLOC(psfch_period*num_subch, sizeof(sl_nr_tx_rx_config_psfch_pdu_t));
   tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu.psfch_pdu_list = psfch_pdu_list;
   int k = 0;
-  for (int i = 0; i < (psfch_period * num_subch); i++) {
+  for (int i = 0; i < (n_ul_slots_period * num_subch); i++) {
     SL_sched_feedback_t  *sched_psfch = &mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch[i];
     LOG_D(NR_MAC,"frame.slot: feedback %4d.%2d, current (%4d.%2d)\n",
           sched_psfch->feedback_frame, sched_psfch->feedback_slot, frame, slot);
@@ -3861,6 +3864,7 @@ void nr_ue_sl_psfch_scheduler(NR_UE_MAC_INST_t *mac,
             frame, slot, sl_ind->slot_type);
       sched_psfch->feedback_slot = -1;
       sched_psfch->feedback_frame = -1;
+      sched_psfch->dai_c = 0;
       k++;
     }
   }

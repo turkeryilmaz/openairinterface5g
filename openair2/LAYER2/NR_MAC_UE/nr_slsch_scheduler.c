@@ -21,11 +21,11 @@
 
 /* \file        nr_slsch_scheduler.c
  * \brief       Routines for UE SLSCH scheduling
- * \author      R. Knopp 
+ * \author      R. Knopp
  * \date        Aug. 2023
  * \version     0.1
- * \company     EURECOM 
- * \email       raymond.knopp@eurecom.fr 
+ * \company     EURECOM
+ * \email       raymond.knopp@eurecom.fr
  */
 
 #include <stdio.h>
@@ -101,7 +101,10 @@ void handle_nr_ue_sl_harq(module_id_t mod_id,
   // TODO: update for multiple UEs
   UE=*(UE_SL_temp);
   uint8_t num_ack_rcvd = rx_slsch_pdu->num_acks_rcvd;
-  NR_UE_sl_harq_t **matched_harqs = find_nr_ue_sl_harq(frame, slot, UE);
+
+  NR_SL_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
+  NR_UE_sl_harq_t **matched_harqs = (NR_UE_sl_harq_t **) calloc(sched_ctrl->feedback_sl_harq.len, sizeof(NR_UE_sl_harq_t *));
+  int k = find_nr_ue_sl_harq(frame, slot, sched_ctrl, matched_harqs);
 
   for (int i = 0; i < num_ack_rcvd; i++) {
     uint8_t ack_nack = rx_slsch_pdu->ack_nack_rcvd[i];
@@ -215,9 +218,15 @@ bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP,int slotP, nr_sci_pdu_t
      /*Following code will check whether SLSCH was received before and
       its feedback has scheduled for current slot
     */
+     int scs = get_softmodem_params()->numerology;
+     const int nr_slots_frame = nr_slots_per_frame[scs];
+     sl_nr_ue_mac_params_t *sl_mac =  &mac->SL_MAC_PARAMS;
+     NR_TDD_UL_DL_Pattern_t *tdd = &sl_mac->sl_TDD_config->pattern1;
+     const int n_ul_slots_period = tdd ? tdd->nrofUplinkSlots + (tdd->nrofUplinkSymbols > 0 ? 1 : 0) : nr_slots_frame;
+
      uint16_t num_subch = sl_get_num_subch(mac->sl_tx_res_pool);
      bool is_feedback_slot = false;
-     for (int i = 0; i < (psfch_period * num_subch); i++) {
+     for (int i = 0; i < (n_ul_slots_period * num_subch); i++) {
         SL_sched_feedback_t  *sched_psfch = &mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch[i];
         if (slotP == sched_psfch->feedback_slot) {
             is_feedback_slot = true;
