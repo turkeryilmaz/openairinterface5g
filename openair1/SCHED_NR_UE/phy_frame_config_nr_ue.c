@@ -158,7 +158,7 @@ int sl_nr_ue_slot_select(sl_nr_phy_config_request_t *cfg,
                                               cfg->sl_bwp_config.sl_num_symbols,
                                               ul_sym);
   }
-  if (nr_slot == 0) LOG_I(NR_PHY, "slot_type %d == 2 (NR_SIDELINK_SLOT)\n", slot_type);
+
   return slot_type;
 
 }

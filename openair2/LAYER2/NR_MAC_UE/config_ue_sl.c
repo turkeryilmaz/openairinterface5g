@@ -474,19 +474,6 @@ int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
     }
   }
 
-  int scs = get_softmodem_params()->numerology;
-  const int nr_slots_frame = nr_slots_per_frame[scs];
-  NR_TDD_UL_DL_Pattern_t *tdd = &sl_mac->sl_TDD_config->pattern1;
-  const int n_ul_slots_period = tdd ? tdd->nrofUplinkSlots + (tdd->nrofUplinkSymbols > 0 ? 1 : 0) : nr_slots_frame;
-  uint16_t num_subch = sl_get_num_subch(mac->sl_tx_res_pool);
-  // NR_SL_PSFCH_Config_r16_t *sl_psfch_config = mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup;
-  // const uint8_t psfch_periods[] = {0,1,2,4};
-  // long psfch_period = (sl_psfch_config->sl_PSFCH_Period_r16)
-  //                     ? psfch_periods[*sl_psfch_config->sl_PSFCH_Period_r16] : 0;
-
-  mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch = calloc(n_ul_slots_period * num_subch, sizeof(SL_sched_feedback_t));
-  mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch->feedback_frame = -1;
-  mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch->feedback_slot = -1;
   if (sync_source == SL_SYNC_SOURCE_GNSS ||
       sync_source == SL_SYNC_SOURCE_LOCAL_TIMING) {
 
@@ -510,7 +497,16 @@ int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
       ASN_STRUCT_FREE(asn_DEF_NR_TDD_UL_DL_ConfigCommon, sl_mac->sl_TDD_config);
     sl_mac->sl_TDD_config = NULL;
   }
-
+  if (get_nrUE_params()->sync_ref) {
+    int scs = get_softmodem_params()->numerology;
+    const int nr_slots_frame = nr_slots_per_frame[scs];
+    NR_TDD_UL_DL_Pattern_t *tdd = &sl_mac->sl_TDD_config->pattern1;
+    const int n_ul_slots_period = tdd ? tdd->nrofUplinkSlots + (tdd->nrofUplinkSymbols > 0 ? 1 : 0) : nr_slots_frame;
+    uint16_t num_subch = sl_get_num_subch(mac->sl_tx_res_pool);
+    mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch = calloc(n_ul_slots_period * num_subch, sizeof(SL_sched_feedback_t));
+    mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch->feedback_frame = -1;
+    mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch->feedback_slot = -1;
+  }
   // Configuring CSI-RS parameters locally at MAC.
   nr_sl_params_read_conf(module_id);
 
@@ -631,10 +627,10 @@ void nr_rrc_mac_config_req_sl_mib(module_id_t module_id,
                                                     sl_mac->rx_sl_bch.ssb_time_alloc.sl_NumSSB_WithinPeriod,
                                                     sl_mac->rx_sl_bch.ssb_time_alloc.sl_TimeOffsetSSB,
                                                     sl_mac->rx_sl_bch.ssb_time_alloc.sl_TimeInterval);
-
+    LOG_I(NR_MAC, "sl_TDD_config %p\n", sl_mac->sl_TDD_config);
     if (sl_mac->sl_TDD_config == NULL)
       sl_mac->sl_TDD_config = CALLOC(sizeof(NR_TDD_UL_DL_ConfigCommon_t), 1);
-
+    LOG_I(NR_MAC, "sl_TDD_config %p\n", sl_mac->sl_TDD_config);
     sl_nr_phy_config_request_t *cfg = &sl_mac->sl_phy_config.sl_config_req;
     int ret = 1;
     ret = sl_decode_sl_TDD_Config(sl_mac->sl_TDD_config,
@@ -667,6 +663,17 @@ void nr_rrc_mac_config_req_sl_mib(module_id_t module_id,
                                         sl_mac->sl_TDD_config->pattern1.nrofUplinkSymbols);
     if (return_tdd !=0)
       LOG_E(PHY,"TDD configuration can not be done\n");
+
+    AssertFatal(get_nrUE_params()->sync_ref == 0, "EEEEEEE Expecting Nearby UE\n");
+    int scs = get_softmodem_params()->numerology;
+    const int nr_slots_frame = nr_slots_per_frame[scs];
+    NR_TDD_UL_DL_Pattern_t *tdd = &sl_mac->sl_TDD_config->pattern1;
+    LOG_I(NR_MAC, "tdd %p\n", tdd);
+    const int n_ul_slots_period = tdd ? tdd->nrofUplinkSlots + (tdd->nrofUplinkSymbols > 0 ? 1 : 0) : nr_slots_frame;
+    uint16_t num_subch = sl_get_num_subch(mac->sl_tx_res_pool);
+    mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch = calloc(n_ul_slots_period * num_subch, sizeof(SL_sched_feedback_t));
+    mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch->feedback_frame = -1;
+    mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch->feedback_slot = -1;
 
     LOG_I(MAC, "SIDELINK CONFIGs: tdd config period:%d, mu:%ld, DLslots:%ld,ULslots:%ld Mixedslotsym DL:UL %ld:%ld\n",
                             sl_config->tdd_table.tdd_period, sl_mac->sl_TDD_config->referenceSubcarrierSpacing,

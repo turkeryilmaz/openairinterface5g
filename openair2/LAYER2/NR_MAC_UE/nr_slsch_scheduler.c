@@ -220,7 +220,7 @@ bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP,int slotP, nr_sci_pdu_t
     */
      int scs = get_softmodem_params()->numerology;
      const int nr_slots_frame = nr_slots_per_frame[scs];
-     sl_nr_ue_mac_params_t *sl_mac =  &mac->SL_MAC_PARAMS;
+     sl_nr_ue_mac_params_t *sl_mac =  mac->SL_MAC_PARAMS;
      NR_TDD_UL_DL_Pattern_t *tdd = &sl_mac->sl_TDD_config->pattern1;
      const int n_ul_slots_period = tdd ? tdd->nrofUplinkSlots + (tdd->nrofUplinkSymbols > 0 ? 1 : 0) : nr_slots_frame;
 

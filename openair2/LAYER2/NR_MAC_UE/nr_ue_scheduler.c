@@ -3359,9 +3359,10 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
 
       int scs = get_softmodem_params()->numerology;
       const int nr_slots_frame = nr_slots_per_frame[scs];
-      sl_nr_ue_mac_params_t *sl_mac =  &mac->SL_MAC_PARAMS;
+      sl_nr_ue_mac_params_t *sl_mac =  mac->SL_MAC_PARAMS;
       NR_TDD_UL_DL_Pattern_t *tdd = &sl_mac->sl_TDD_config->pattern1;
 
+      LOG_I(NR_MAC, "sl_mac %p tdd_config %p tdd %p\n", sl_mac, sl_mac->sl_TDD_config, tdd);
       uint8_t pssch_to_harq_feedback[8];
       int feedback_frame, feedback_slot;
       uint16_t num_subch = sl_get_num_subch(mac->sl_tx_res_pool);
@@ -3840,7 +3841,7 @@ void nr_ue_sl_psfch_scheduler(NR_UE_MAC_INST_t *mac,
 
   int scs = get_softmodem_params()->numerology;
   const int nr_slots_frame = nr_slots_per_frame[scs];
-  sl_nr_ue_mac_params_t *sl_mac =  &mac->SL_MAC_PARAMS;
+  sl_nr_ue_mac_params_t *sl_mac =  mac->SL_MAC_PARAMS;
   NR_TDD_UL_DL_Pattern_t *tdd = &sl_mac->sl_TDD_config->pattern1;
   const int n_ul_slots_period = tdd ? tdd->nrofUplinkSlots + (tdd->nrofUplinkSymbols > 0 ? 1 : 0) : nr_slots_frame;
 
