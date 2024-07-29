@@ -528,20 +528,20 @@ void init_fft(uint16_t size,
   SZ_DEF(98304)
 
 #ifdef OAIDFTS_MAIN
-typedef  void(*adftfunc_t)(int16_t *sigF,int16_t *sig,unsigned char scale_flag);
-typedef  void(*aidftfunc_t)(int16_t *sigF,int16_t *sig,unsigned char scale_flag);
+typedef  void(*adftfunc_t)(int16_t *sigF,int16_t *sig,unsigned int *scale_flag);
+typedef  void(*aidftfunc_t)(int16_t *sigF,int16_t *sig,unsigned int *scale_flag);
 
-#define SZ_FUNC(Sz) void dft ## Sz(int16_t *x,int16_t *y,uint8_t scale_flag);
+#define SZ_FUNC(Sz) void dft ## Sz(int16_t *x,int16_t *y,uint32_t *scale_flag);
 
 FOREACH_DFTSZ(SZ_FUNC)
 
-#define SZ_iFUNC(Sz) void idft ## Sz(int16_t *x,int16_t *y,uint8_t scale_flag);
+#define SZ_iFUNC(Sz) void idft ## Sz(int16_t *x,int16_t *y,uint32_t *scale_flag);
 
 FOREACH_IDFTSZ(SZ_iFUNC)
 
 #else
-typedef  void(*dftfunc_t)(uint8_t sizeidx,int16_t *sigF,int16_t *sig,unsigned char scale_flag);
-typedef  void(*idftfunc_t)(uint8_t sizeidx,int16_t *sigF,int16_t *sig,unsigned char scale_flag);
+typedef  void(*dftfunc_t)(uint8_t sizeidx,int16_t *sigF,int16_t *sig,uint32_t *scale_flag);
+typedef  void(*idftfunc_t)(uint8_t sizeidx,int16_t *sigF,int16_t *sig,uint32_t *scale_flag);
 #  ifdef OAIDFTS_LOADER
 dftfunc_t dft;
 idftfunc_t idft;
