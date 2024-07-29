@@ -19,8 +19,8 @@
  *      contact@openairinterface.org
  */
 
-/*! \file PHY/LTE_TRANSPORT/dlsch_coding.c
-* \brief Top-level routines for implementing LDPC-coded (DLSCH) transport channels from 38-212, 15.2
+/*! \file PHY/CODING/nrLDPC_coding_interface_demo_encoder.c
+* \brief Top-level routines for implementing LDPC encoding of transport channels
 * \author H.Wang
 * \date 2018
 * \version 0.1
@@ -46,8 +46,8 @@
 #include <syscall.h>
 #include <openair2/UTIL/OPT/opt.h>
 
-//#define DEBUG_DLSCH_CODING
-//#define DEBUG_DLSCH_FREE 1
+//#define DEBUG_LDPC_ENCODING
+//#define DEBUG_LDPC_ENCODING_FREE 1
 
 extern ldpc_interface_t ldpc_interface_demo;
 
@@ -89,11 +89,10 @@ static void ldpc8blocks_demo(void *p)
       memset(&d[rr][impp->K - impp->F - 2 * impp->Zc], NR_NULL, impp->F);
     }
 
-#ifdef DEBUG_DLSCH_CODING
+#ifdef DEBUG_LDPC_ENCODING
     LOG_D(PHY,"rvidx in encoding = %d\n", rel15->rvIndex[0]);
 #endif
     uint32_t E = nrLDPC_TB_encoding_parameters->segments[rr].E;
-    //#ifdef DEBUG_DLSCH_CODING
     LOG_D(NR_PHY,
           "Rate Matching, Code segment %d/%d (coded bits (G) %u, E %d, Filler bits %d, Filler offset %d mod_order %d, nb_rb "
           "%d,nrOfLayer %d)...\n",
@@ -143,7 +142,7 @@ static void ldpc8blocks_demo(void *p)
             mod_order,
             nb_rb);
     }
-#ifdef DEBUG_DLSCH_CODING
+#ifdef DEBUG_LDPC_ENCODING
 
     for (int i =0; i<16; i++)
       printf("output ratematching e[%d]= %d r_offset %u\n", i,e[i], r_offset);
@@ -153,7 +152,7 @@ static void ldpc8blocks_demo(void *p)
                          mod_order,
                          e,
                          impp->output+r_offset);
-#ifdef DEBUG_DLSCH_CODING
+#ifdef DEBUG_LDPC_ENCODING
 
     for (int i =0; i<16; i++)
       printf("output interleaving f[%d]= %d r_offset %u\n", i,impp->output[i+r_offset], r_offset);

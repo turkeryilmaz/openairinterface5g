@@ -19,8 +19,8 @@
  *      contact@openairinterface.org
  */
 
-/*! \file PHY/NR_TRANSPORT/nr_ulsch_decoding.c
-* \brief Top-level routines for decoding  LDPC (ULSCH) transport channels from 38.212, V15.4.0 2018-12
+/*! \file PHY/CODING/nrLDPC_coding_interface_demo_decoder.c
+* \brief Top-level routines for decoding  LDPC transport channels
 * \author Ahmed Hussein
 * \date 2019
 * \version 0.1
@@ -48,18 +48,15 @@
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "common/utils/LOG/log.h"
 #include <syscall.h>
-//#define DEBUG_ULSCH_DECODING
 //#define gNB_DEBUG_TRACE
 
-#define OAI_UL_LDPC_MAX_NUM_LLR 27000//26112 // NR_LDPC_NCOL_BG1*NR_LDPC_ZMAX = 68*384
+#define OAI_LDPC_DECODER_MAX_NUM_LLR 27000 //26112 // NR_LDPC_NCOL_BG1*NR_LDPC_ZMAX = 68*384
 //#define DEBUG_CRC
 #ifdef DEBUG_CRC
 #define PRINT_CRC_CHECK(a) a
 #else
 #define PRINT_CRC_CHECK(a)
 #endif
-
-//extern double cpuf;
 
 #include "nfapi/open-nFAPI/nfapi/public_inc/nfapi_interface.h"
 #include "nfapi/open-nFAPI/nfapi/public_inc/nfapi_nr_interface.h"
@@ -121,7 +118,7 @@ typedef struct nrLDPC_decoding_parameters_s{
 // Global var to limit the rework of the dirty legacy code
 ldpc_interface_t ldpc_interface_demo;
 
-static void nr_processULSegment_demo(void *arg)
+static void nr_process_decode_segment(void *arg)
 {
   nrLDPC_decoding_parameters_t *rdata = (nrLDPC_decoding_parameters_t *)arg;
   t_nrLDPC_dec_params *p_decoderParms = &rdata->decoderParms;
@@ -134,7 +131,7 @@ static void nr_processULSegment_demo(void *arg)
   const int rv_index = rdata->rv_index;
   const uint8_t kc = rdata->Kc;
   short *ulsch_llr = rdata->llr;
-  int8_t llrProcBuf[OAI_UL_LDPC_MAX_NUM_LLR] __attribute__((aligned(32)));
+  int8_t llrProcBuf[OAI_LDPC_DECODER_MAX_NUM_LLR] __attribute__((aligned(32)));
 
   t_nrLDPC_time_stats procTime = {0};
   t_nrLDPC_time_stats *p_procTime = &procTime;
@@ -232,7 +229,7 @@ int nrLDPC_prepare_TB_decoding(nrLDPC_slot_decoding_parameters_t *nrLDPC_slot_de
 
   for (int r = 0; r < nrLDPC_TB_decoding_parameters->C; r++) {
     union ldpcReqUnion id = {.s = {nrLDPC_TB_decoding_parameters->rnti, nrLDPC_slot_decoding_parameters->frame, nrLDPC_slot_decoding_parameters->slot, 0, 0}};
-    notifiedFIFO_elt_t *req = newNotifiedFIFO_elt(sizeof(nrLDPC_decoding_parameters_t), id.p, nrLDPC_slot_decoding_parameters->respDecode, &nr_processULSegment_demo);
+    notifiedFIFO_elt_t *req = newNotifiedFIFO_elt(sizeof(nrLDPC_decoding_parameters_t), id.p, nrLDPC_slot_decoding_parameters->respDecode, &nr_process_decode_segment);
     nrLDPC_decoding_parameters_t *rdata = (nrLDPC_decoding_parameters_t *)NotifiedFifoData(req);
     decParams.R = nrLDPC_TB_decoding_parameters->segments[r].R;
     decParams.setCombIn = !nrLDPC_TB_decoding_parameters->segments[r].d_to_be_cleared;
