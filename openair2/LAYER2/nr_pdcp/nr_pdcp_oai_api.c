@@ -66,6 +66,7 @@
 #include "pdcp_messages_types.h"
 #include "openair2/LAYER2/nr_rlc/nr_rlc_oai_api.h"
 #include "utils.h"
+#include "common/utils/LATSEQ/latseq.h"
 
 #define TODO do { \
     printf("%s:%d:%s: todo\n", __FILE__, __LINE__, __FUNCTION__); \
