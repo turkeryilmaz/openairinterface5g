@@ -46,6 +46,7 @@
 #include "NR_SL-SSB-TimeAllocation-r16.h"
 #include "nr-uesoftmodem.h"
 #include "nr_unitary_defs.h"
+#include "PHY/MODULATION/modulation_UE.h"
 
 void e1_bearer_context_setup(const e1ap_bearer_setup_req_t *req)
 {
@@ -620,8 +621,8 @@ int main(int argc, char **argv)
               0.0); // IQ phase imbalance (rad)
       }
 
-      for (int i = 0; i < frame_length_complex_samples; i++) {
-        for (int aa = 0; aa < frame_parms->nb_antennas_rx; aa++) {
+      for (int aa = 0; aa < frame_parms->nb_antennas_rx; aa++) {
+        for (int i = 0; i < frame_length_complex_samples; i++) {
           UE_RX->common_vars.rxdata[aa][i].r = (short)(r_re[aa][i] + sqrt(sigma2 / 2) * gaussdouble(0.0, 1.0));
           UE_RX->common_vars.rxdata[aa][i].i = (short)(r_im[aa][i] + sqrt(sigma2 / 2) * gaussdouble(0.0, 1.0));
         }
@@ -642,8 +643,20 @@ int main(int argc, char **argv)
                       UE_RX->SL_UE_PHY_PARAMS.sync_params.N_sl_id);
           sl_uerx->psbch.rx_ok = 1;
         }
-      } else
-        psbch_pscch_processing(UE_RX, &proc, &phy_data_rx);
+      } else {
+        nr_ue_phy_slot_data_t data = {0};
+        sl_slot_init(&proc, UE_RX, &data);
+        for (int symbol = 0; symbol < NR_SYMBOLS_PER_SLOT; symbol++) {
+          const int symbSize = ALNARS_32_8(frame_parms->ofdm_symbol_size + frame_parms->nb_prefix_samples0);
+          __attribute__((aligned(32))) c16_t rxdata[frame_parms->nb_antennas_rx][symbSize];
+          __attribute__((aligned(32))) c16_t rxdataF[frame_parms->nb_antennas_rx][ALNARS_32_8(frame_parms->ofdm_symbol_size)];
+          slot_fep_unitary_helper(&proc, frame_parms, symbol, UE_RX->common_vars.rxdata, rxdata, rxdataF);
+          psbch_pscch_processing(UE_RX, &proc, &phy_data_rx, &data, symbol, rxdataF);
+        }
+        free_and_zero(data.psbch_ch_estimates);
+        free_and_zero(data.psbch_e_rx);
+        free_and_zero(data.psbch_unClipped);
+      }
 
     } // noise trials
 

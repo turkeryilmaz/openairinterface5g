@@ -43,6 +43,7 @@
 #include "CODING/nrPolar_tools/nr_polar_pbch_defs.h"
 #include "PHY/defs_nr_sl_UE.h"
 #include "openair1/PHY/nr_phy_common/inc/nr_ue_phy_meas.h"
+#include "openair1/PHY/nr_phy_common/inc/nr_phy_common.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -601,6 +602,46 @@ typedef struct nr_phy_data_s {
   NR_UE_CSI_RS csirs_vars;
   NR_UE_CSI_IM csiim_vars;
 } nr_phy_data_t;
+
+typedef struct {
+  /* PDCCH */
+  int numMonitoringOcc;
+  int numSymbPdcch;
+  int pdcchLlrSize;
+  int startSymbPdcch;
+  int stopSymbPdcch;
+  c16_t *pdcchLlr;
+
+  /* PBCH */
+  int ssbIndex;
+  int pbchSymbCnt;
+  c16_t *pbch_ch_est_time;
+  int16_t *pbch_e_rx;
+
+  /* PDSCH */
+  c16_t *pdsch_ch_estimates;
+  c16_t *rxdataF_ext;
+
+  /* CSI */
+  c16_t *csi_rs_ls_estimates;
+  csi_mapping_parms_t mapping_parms;
+  nr_csi_symbol_res_t csi_rs_res;
+  nr_csi_symbol_res_t csi_im_res;
+
+  /* PSBCH */
+  int e_rx_offset;
+  c16_t *psbch_ch_estimates;
+  int16_t *psbch_e_rx;
+  int16_t *psbch_unClipped;
+} nr_ue_phy_slot_data_t;
+
+typedef struct {
+  PHY_VARS_NR_UE *ue;
+  UE_nr_rxtx_proc_t proc;
+  nr_phy_data_t phy_data;
+  c16_t *pdsch_rxdataF_ext;
+  c16_t *pdsch_ch_est;
+} pdsch_thread_data_t;
 
 enum stream_status_e { STREAM_STATUS_UNSYNC, STREAM_STATUS_SYNCING, STREAM_STATUS_SYNCED};
 /* this structure is used to pass both UE phy vars and

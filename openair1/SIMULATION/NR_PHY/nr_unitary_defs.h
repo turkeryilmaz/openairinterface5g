@@ -35,6 +35,7 @@
 
 #include "NR_ServingCellConfigCommon.h"
 #include "NR_ServingCellConfig.h"
+#include "openair1/PHY/MODULATION/modulation_UE.h"
 
 // Define signal handler to attempt graceful termination
 extern bool stop;
@@ -77,6 +78,26 @@ int oai_nfapi_rach_ind(nfapi_rach_indication_t *rach_ind)
 int oai_nfapi_ul_config_req(nfapi_ul_config_request_t *ul_config_req)
 {
   return (0);
+}
+
+void slot_fep_unitary_helper(const UE_nr_rxtx_proc_t *proc,
+                             const NR_DL_FRAME_PARMS *fp,
+                             int symbol,
+                             c16_t **common_vars_rxdata,
+                             c16_t rxdata[fp->nb_antennas_rx][ALNARS_32_8(fp->ofdm_symbol_size + fp->nb_prefix_samples0)],
+                             c16_t rxdataF[fp->nb_antennas_rx][ALNARS_32_8(fp->ofdm_symbol_size)])
+{
+  const int abs_symbol = proc->nr_slot_rx * fp->symbols_per_slot + symbol;
+  int offsetSamples = fp->get_samples_slot_timestamp(proc->nr_slot_rx, fp, 0);
+  for (int s = proc->nr_slot_rx * fp->symbols_per_slot; s <= abs_symbol; s++) {
+    const int prefixSamples = (s % (0x7 << fp->numerology_index)) ? fp->nb_prefix_samples : fp->nb_prefix_samples0;
+    offsetSamples += prefixSamples;
+  }
+  offsetSamples += symbol * fp->ofdm_symbol_size;
+  for (int aa = 0; aa < fp->nb_antennas_rx; aa++) {
+    memcpy(rxdata[aa], &common_vars_rxdata[aa][offsetSamples], sizeof(c16_t) * fp->ofdm_symbol_size);
+  }
+  nr_symbol_fep(fp, proc->nr_slot_rx, symbol, link_type_dl, rxdata, rxdataF);
 }
 
 void fill_scc_sim(NR_ServingCellConfigCommon_t *scc, uint64_t *ssb_bitmap, int N_RB_DL, int N_RB_UL, int mu_dl, int mu_ul);

@@ -193,7 +193,7 @@ static void nr_csi_rs_channel_estimation(const PHY_VARS_NR_UE *ue,
                                          const nr_csi_info_t *nr_csi_info,
                                          const c16_t **csi_rs_generated_signal,
                                          const csi_mapping_parms_t *csi_mapping,
-                                         const c16_t rxdataF[][ue->frame_parms.ofdm_symbol_size],
+                                         const c16_t rxdataF[][ALNARS_32_8(ue->frame_parms.ofdm_symbol_size)],
                                          const int symbol,
                                          c16_t csi_rs_ls_estimated_channel[][csi_mapping->ports][ue->frame_parms.ofdm_symbol_size],
                                          nr_csi_symbol_res_t *res)
@@ -285,7 +285,7 @@ void nr_ue_csi_rs_symbol_procedures(
     const csi_mapping_parms_t *mapping_parms,
     const int symbol,
     const fapi_nr_dl_config_csirs_pdu_rel15_t *csirs_config_pdu,
-    const c16_t rxdataF[ue->frame_parms.nb_antennas_rx][ue->frame_parms.ofdm_symbol_size],
+    const c16_t rxdataF[ue->frame_parms.nb_antennas_rx][ALNARS_32_8(ue->frame_parms.ofdm_symbol_size)],
     c16_t csi_rs_ls_estimates[ue->frame_parms.nb_antennas_rx][mapping_parms->ports][ue->frame_parms.ofdm_symbol_size],
     nr_csi_symbol_res_t *csi_symb_res)
 {
@@ -677,7 +677,7 @@ void nr_csi_im_symbol_power_estimation(const NR_DL_FRAME_PARMS *frame_parms,
                                        const UE_nr_rxtx_proc_t *proc,
                                        const fapi_nr_dl_config_csiim_pdu_rel15_t *csiim_config_pdu,
                                        const int symbol,
-                                       const c16_t rxdataF[frame_parms->nb_antennas_rx][frame_parms->ofdm_symbol_size],
+                                       const c16_t rxdataF[frame_parms->nb_antennas_rx][ALNARS_32_8(frame_parms->ofdm_symbol_size)],
                                        nr_csi_symbol_res_t *csi_im_res)
 {
   const uint16_t end_rb = csiim_config_pdu->start_rb + csiim_config_pdu->nr_of_rbs > csiim_config_pdu->bwp_size ?
