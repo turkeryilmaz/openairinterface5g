@@ -1,8 +1,8 @@
-# LDPC coder/decoder implementation
-The LDPC coder and decoder are implemented in a shared library, dynamically loaded at run-time using the [oai shared library loader](file://../../../../common/utils/DOC/loader.md).
-Two types of library are available with two different interfaces. There are libraries implementing the coder and decoder of code segments and libraries implementing the decoder of slots.
+# LDPC coding implementation
+The LDPC encoder and decoder are implemented in a shared library, dynamically loaded at run-time using the [oai shared library loader](file://../../../../common/utils/DOC/loader.md).
+Two types of library are available with two different interfaces. There are libraries implementing the encoder and decoder of code segments and libraries implementing the encoder and decoder of slots.
 
-## LDPC segment coder/decoder
+## LDPC segment coding
 The interface of the library is defined in [nrLDPC_defs.h](file://../nrLDPC_defs.h).
 The code loading the LDPC library is in [nrLDPC_load.c](file://../nrLDPC_load.c), in function `load_nrLDPClib`, which must be called at init time.
 
@@ -123,7 +123,7 @@ At runtime, to successfully use hardware acceleration via OpenCL, you need to in
 ------------------------------------------------------------
 ```
 
-A mechanism to select ldpc implementation is also available in the `ldpctest` phy simulator via the `-v`option, which can be used to specify the version of the ldpc shared library to be used.
+A mechanism to select ldpc implementation is also available in the `ldpctest` phy simulator via the `-v` option, which can be used to specify the version of the ldpc shared library to be used.
 
 #### Examples of ldpc shared lib selection when running ldpctest:
 
@@ -201,7 +201,7 @@ Libraries implementing the LDPC algorithms must be named `libldpc<_version>.so`,
 
 `libldpc_cl.so`is under development.
 
-## LDPC slot decoder
+## LDPC slot coding
 The interface of the library is defined in [nrLDPC_coding_interface.h](file://../nrLDPC_coding_interface.h).
 The code loading the LDPC library is in [nrLDPC_coding_interface_load.c](file://../nrLDPC_coding_interface_load.c), in function `load_nrLDPC_coding_interface`, which must be called at init time.
 
@@ -234,13 +234,14 @@ loading `libldpc_slot_t2.so` instead of `libldpc.so`:
 This command creates the `libldpc_slot_t2.so` shared library.
 
 ```
-Building C object CMakeFiles/ldpc_slot_t2.dir/openair1/PHY/CODING/nrLDPC_decoder/nr_ulsch_decoding_t2.c.o
+Building C object CMakeFiles/ldpc_slot_t2.dir/openair1/PHY/CODING/nrLDPC_decoder/nrLDPC_coding_t2.c.o
 Linking C shared module libldpc_slot_t2.so
 ```
 
-At runtime, to successfully use the T2 board, you need to install vendor specific drivers and tools.
+At runtime, to successfully use the T2 board, you need to install vendor specific drivers and tools.\
+Please refer to the dedicated documentation at [LDPC_T2_OFFLOAD_SETUP.md](file://../../../../doc/LDPC_T2_OFFLOAD_SETUP.md).
 
-`./nr-softmodem -O  libconfig:gnb.band78.sa.fr1.106PRB.usrpb210.conf:dbgl5 --rfsim --rfsimulator.serveraddr server  --sa --log_config.gtpu_log_level info  --loader.ldpc.shlibversion _slot_t2 --nr_ulsch_decoding.dpdk_dev 41:00.0 --nr_ulsch_decoding.dpdk_core_list 14-15`
+`./nr-softmodem -O  libconfig:gnb.band78.sa.fr1.106PRB.usrpb210.conf:dbgl5 --rfsim --rfsimulator.serveraddr server  --sa --log_config.gtpu_log_level info  --loader.ldpc.shlibversion _slot_t2 --nrLDPC_coding_t2.dpdk_dev 01:00.0 --nrLDPC_coding_t2.dpdk_core_list 0-1`
 
 ``` 
 
@@ -256,13 +257,16 @@ shlib_path libldpc_slot_t2.so
 
 #### Examples of ldpc shared lib selection when running ldpctest:
 
-Slot decoding libraries cannot be used within ldpctest.
+Slot decoding libraries cannot be used yet within ldpctest.
+But they can be used within nr_ulsim, nr_dlsim, nr_ulschsim and nr_dlschsim.
 
 ### LDPC libraries
-Libraries implementing the slotwise LDPC decoding must be named `libldpc<_version>.so`, in addition of the code segment decoding interface that is necessary for encoding, they must implement three functions: `nrLDPC_coding_init`, `nrLDPC_coding_shutdown` and `nrLDPC_coding_decoder`. The prototypes for these functions is defined in [nrLDPC_coding_interface.h](file://../nrLDPC_coding_interface.h).
+Libraries implementing the slotwise LDPC decoding must be named `libldpc<_version>.so`. They must implement four functions: `nrLDPC_coding_init`, `nrLDPC_coding_shutdown`, `nrLDPC_coding_decoder` and `nrLDPC_coding_encoder`. The prototypes for these functions is defined in [nrLDPC_coding_interface.h](file://../nrLDPC_coding_interface.h).
 
-`libldpc_slot_demo.so`has been tested with the `nr_ulsim` and `nr-softmodem` executables.
+`libldpc_slot_demo.so` is completed.
 
-`libnr_slot_t2.so`is under development.
+`libldpc_slot_t2.so` is not implemented on this branch.
+
+`libldpc_xdma.so` is not implemented on this branch.
 
 [oai Wikis home](https://gitlab.eurecom.fr/oai/openairinterface5g/wikis/home)
