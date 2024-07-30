@@ -30,16 +30,6 @@
 static const int sequence_cyclic_shift_harq_ack_or_ack_or_only_nack[2]
 /* Sequence cyclic shift */ = {  0, 6 };
 
-typedef struct prbs_set {
-  uint16_t **start_prb;
-  uint16_t **end_prb;
-} prbs_set_t;
-
-typedef struct psfch_params {
-  uint16_t m0;
-  prbs_set_t *prbs_sets;
-} psfch_params_t;
-
 void print_prb_set_allocation(psfch_params_t *psfch_params, uint8_t psfch_period, uint8_t  num_subchannels) {
   LOG_D(NR_PHY, "PSSCH Slot mod PSFCH period |   Subchannel   |   Start PRB   |    End PRB\n");
   for (int i = 0; i < psfch_period; i++) {
@@ -677,23 +667,24 @@ void configure_psfch_params_tx(int module_idP,
     sched_slot %= nr_slots_per_frame[scs];
     sched_frame = (sched_frame + 1) % 1024;
   }
+  uint8_t ack_nack = (rx_ind->rx_indication_body + pdu_id)->rx_slsch_pdu.ack_nack;
+  psfch_params_t *psfch_params = calloc(1, sizeof(psfch_params_t));
+  compute_params(module_idP, psfch_params);
+  fill_psfch_params_tx(mac, rx_ind, psfch_period, sched_frame, sched_slot, ack_nack, psfch_params);
+}
+
+void fill_psfch_params_tx(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx_ind, long psfch_period, uint16_t sched_frame, uint16_t sched_slot, uint8_t ack_nack, psfch_params_t *psfch_params) {
   uint16_t num_subch = sl_get_num_subch(mac->sl_tx_res_pool);
-  SL_sched_feedback_t  *sched_psfch = &mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch[rx_ind->slot % (psfch_period*num_subch)];
+  SL_sched_feedback_t  *sched_psfch = &mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch[rx_ind->slot % (psfch_period * num_subch)];
   sched_psfch->feedback_slot = sched_slot;
   sched_psfch->feedback_frame = sched_frame;
-  LOG_D(NR_MAC, "psfch_period %ld, delta_slots %d, feedback frame:slot %d:%d, frame:slot %d:%d, time_gap %d, harq feedback %d\n",
+  LOG_D(NR_MAC, "psfch_period %ld, feedback frame:slot %d:%d, frame:slot %d:%d, harq feedback %d\n",
         psfch_period,
-        delta_slots,
         sched_psfch->feedback_frame,
         sched_psfch->feedback_slot,
         rx_ind->sfn,
         rx_ind->slot,
-        psfch_min_time_gap,
         mac->sci_pdu_rx.harq_feedback);
-
-  uint8_t ack_nack = (rx_ind->rx_indication_body + pdu_id)->rx_slsch_pdu.ack_nack;
-  psfch_params_t *psfch_params = calloc(1, sizeof(psfch_params_t));
-  compute_params(module_idP, psfch_params);
   sched_psfch->initial_cyclic_shift = psfch_params->m0;
   if (mac->sci1_pdu.second_stage_sci_format == 2 ||
       mac->sci_pdu_rx.cast_type == 1 ||
@@ -705,7 +696,6 @@ void configure_psfch_params_tx(int module_idP,
             (mac->sci1_pdu.second_stage_sci_format == 1 && mac->sci_pdu_rx.cast_type == 3)) {
     sched_psfch->mcs = sequence_cyclic_shift_harq_ack_or_ack_or_only_nack[0];
   }
-
   const uint8_t values[] = {7, 8, 9, 10, 11, 12, 13, 14};
   NR_SL_BWP_Generic_r16_t *sl_bwp = mac->sl_bwp->sl_BWP_Generic_r16;
   uint8_t sl_num_symbols = *sl_bwp->sl_LengthSymbols_r16 ? values[*sl_bwp->sl_LengthSymbols_r16] : 0;
@@ -726,6 +716,7 @@ void configure_psfch_params_tx(int module_idP,
   sched_psfch->second_hop_prb = 0;
   sched_psfch->sequence_hop_flag = 0;
   sched_psfch->bit_len_harq = 1;
+  sched_psfch->harq_feedback = mac->sci_pdu_rx.harq_feedback;
   LOG_D(NR_MAC, "Filled psfch pdu\n");
   free(psfch_params);
   psfch_params = NULL;
@@ -788,7 +779,7 @@ void configure_psfch_params_rx(int module_idP,
       NR_UE_sl_harq_t *cur_harq = matched_harqs[k];
       if (cur_harq && cur_harq->feedback_frame == frame && cur_harq->feedback_slot == slot) {
         sl_nr_tx_rx_config_psfch_pdu_t *psfch_pdu = &rx_config->sl_rx_config_list[0].rx_psfch_pdu_list[k];
-        fill_psfch_pdu_rx(rx_config, psfch_pdu, psfch_params, cur_harq, mac, psfch_period, slot);
+        fill_psfch_params_rx(rx_config, psfch_pdu, psfch_params, cur_harq, mac, psfch_period, slot);
         k++;
       }
     }
@@ -797,7 +788,7 @@ void configure_psfch_params_rx(int module_idP,
   }
 }
 
-void fill_psfch_pdu_rx(sl_nr_rx_config_request_t *rx_config, sl_nr_tx_rx_config_psfch_pdu_t *psfch_pdu, psfch_params_t *psfch_params, NR_UE_sl_harq_t *cur_harq, NR_UE_MAC_INST_t *mac, long psfch_period, const uint16_t slot) {
+void fill_psfch_params_rx(sl_nr_rx_config_request_t *rx_config, sl_nr_tx_rx_config_psfch_pdu_t *psfch_pdu, psfch_params_t *psfch_params, NR_UE_sl_harq_t *cur_harq, NR_UE_MAC_INST_t *mac, long psfch_period, const uint16_t slot) {
   rx_config->sl_rx_config_list[0].num_psfch_pdus++;
   psfch_pdu->initial_cyclic_shift = psfch_params->m0;
   LOG_D(NR_MAC, "psfch_pdu->initial_cyclic_shift %i\n", psfch_pdu->initial_cyclic_shift);
@@ -808,11 +799,10 @@ void fill_psfch_pdu_rx(sl_nr_rx_config_request_t *rx_config, sl_nr_tx_rx_config_
   psfch_pdu->start_symbol_index = *sl_bwp->sl_StartSymbol_r16 + sl_num_symbols - 2;
   LOG_D(NR_PHY, "Rx sl_StartSymbol_r16 %ld, sl_num_symbols: %d, start sym index %d, mcs %d\n", *sl_bwp->sl_StartSymbol_r16, sl_num_symbols, psfch_pdu->start_symbol_index, psfch_pdu->mcs);
   psfch_pdu->hopping_id = *mac->sl_bwp->sl_BWP_PoolConfigCommon_r16->sl_TxPoolSelectedNormal_r16->list.array[0]->sl_ResourcePool_r16->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_HopID_r16;
-  uint16_t num_subch = sl_get_num_subch(mac->sl_tx_res_pool);
   uint8_t index = cur_harq->sched_pssch.slot%psfch_period;
   psfch_pdu->prb = psfch_params->prbs_sets->start_prb[index][0]; // FIXME [0] is based on assumption of number of subchannels = 1; 0 is channel id
   print_prb_set_allocation(psfch_params, psfch_period, 1);
-  LOG_D(NR_PHY, "Rx slot %d, slsch tx slot %d, tx slot mode psfch_period %ld, psfch_pdu->prb %d, start_prb %d\n", slot, cur_harq->sched_pssch.slot, index, psfch_params->prbs_sets->start_prb[index][0]);
+  LOG_D(NR_PHY, "Rx slot %d, slsch tx slot %d, tx slot mode psfch_period %d, start_prb %d\n", slot, cur_harq->sched_pssch.slot, index, psfch_params->prbs_sets->start_prb[index][0]);
   int locbw = sl_bwp->sl_BWP_r16->locationAndBandwidth;
   psfch_pdu->sl_bwp_start   = NRRIV2PRBOFFSET(locbw, MAX_BWP_SIZE);
   psfch_pdu->freq_hop_flag  = 0;
@@ -834,6 +824,38 @@ void configure_csi_report_params(NR_UE_MAC_INST_t* mac) {
   mac->sl_csi_report->CQI = mac->csirs_measurements.cqi;
   mac->sl_csi_report->RI = mac->csirs_measurements.rank_indicator;
   mac->sl_csi_report->R = 0;
+}
+
+uint8_t sl_num_slsch_feedbacks(NR_UE_MAC_INST_t *mac) {
+  uint8_t psfch_period = 0;
+  const uint8_t psfch_periods[] = {0,1,2,4};
+  psfch_period = (mac->sl_tx_res_pool->sl_PSFCH_Config_r16 &&
+                  mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16)
+                  ? psfch_periods[*mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16] : 0;
+  uint16_t num_subch = sl_get_num_subch(mac->sl_tx_res_pool);
+  return psfch_period * num_subch;
+}
+
+bool is_feedback_scheduled(NR_UE_MAC_INST_t *mac, int frameP,int slotP) {
+  for (int i = 0; i < sl_num_slsch_feedbacks(mac); i++) {
+    SL_sched_feedback_t  *sched_psfch = &mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch[i];
+    if (frameP == sched_psfch->feedback_frame && slotP == sched_psfch->feedback_slot && sched_psfch->harq_feedback) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void reset_sched_psfch(NR_UE_MAC_INST_t *mac, int frameP,int slotP) {
+
+  for (int i = 0; i < sl_num_slsch_feedbacks(mac); i++) {
+    SL_sched_feedback_t  *sched_psfch = &mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch[i];
+    if (frameP == sched_psfch->feedback_frame && slotP == sched_psfch->feedback_slot) {
+      sched_psfch->feedback_frame = -1;
+      sched_psfch->feedback_slot = -1;
+      sched_psfch->harq_feedback = 0;
+    }
+  }
 }
 
 void nr_ue_process_mac_sl_pdu(int module_idP,
@@ -860,8 +882,10 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
     configure_psfch_params_tx(module_idP, mac, rx_ind, pdu_id);
   }
 
-  uint8_t harq_pid = rx_slsch_pdu->harq_pid;
-  uint8_t ack_nack = rx_slsch_pdu->ack_nack;
+  if (pdu_type == SL_NR_RX_PDU_TYPE_SLSCH_PSFCH) {
+    handle_nr_ue_sl_harq(module_idP, frame, slot, rx_slsch_pdu, sl_sch_subheader->SRC);
+    return;
+  }
 
   if (rx_slsch_pdu->ack_nack == 0)
     return;

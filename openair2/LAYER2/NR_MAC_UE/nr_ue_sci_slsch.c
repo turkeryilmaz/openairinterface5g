@@ -810,7 +810,7 @@ int nr_ue_process_sci2_indication_pdu(NR_UE_MAC_INST_t *mac, module_id_t mod_id,
   nr_sci_pdu_t *sci_pdu = &mac->sci_pdu_rx;  //&mac->def_sci_pdu[slot][sci->sci_format_type];
   sl_nr_ue_mac_params_t *sl_mac_params = mac->SL_MAC_PARAMS;
   const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp = mac->sl_bwp;
-  const NR_SL_ResourcePool_r16_t *sl_res_pool = mac->sl_rx_res_pool; 
+  const NR_SL_ResourcePool_r16_t *sl_res_pool = mac->sl_rx_res_pool;
   LOG_D(NR_MAC,"Received sci indication (sci format %d, Nid %x, subChannelIndex %d, payloadSize %d,payload %llx)\n",
         sci->sci_format_type,sci->Nid,sci->subch_index,sci->sci_payloadlen,*(unsigned long long*)sci->sci_payloadBits);
   AssertFatal(sci->sci_format_type == SL_SCI_FORMAT_2_ON_PSSCH, "need to have format 2 here only\n");
@@ -828,8 +828,6 @@ int nr_ue_process_sci2_indication_pdu(NR_UE_MAC_INST_t *mac, module_id_t mod_id,
                             sl_res_pool,
                             sl_mac_params);
   rx_config.sl_rx_config_list[0].pdu_type =  SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH;
-  sl_nr_phy_config_request_t *sl_cfg = &mac->SL_MAC_PARAMS->sl_phy_config.sl_config_req;
-  uint8_t mu = sl_cfg->sl_bwp_config.sl_scs;
   if ((!mac->SL_MAC_PARAMS->sl_CSI_Acquisition) &&
      sci_pdu->csi_req) {
     sl_nr_phy_config_request_t *sl_cfg = &sl_mac_params->sl_phy_config.sl_config_req;
