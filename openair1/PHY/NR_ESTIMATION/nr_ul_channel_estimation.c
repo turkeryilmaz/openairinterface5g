@@ -75,13 +75,14 @@ int nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
   int32_t chT_interpol_mag_squ_avg[NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size] __attribute__((aligned(32)));
   memset(chF_interpol,0,sizeof(chF_interpol));
   memset(chT_interpol,0,sizeof(chT_interpol));
-  memset(chT_interpol_mag_squ_avg,0,sizeof(chT_interpol_mag_squ_avg));
 
   int32_t max_val = 0, max_idx = 0, abs_val = 0, mean_val = 0;
 
   int16_t start_offset = NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size - (frame_parms->ofdm_symbol_size>>1);
 
   for (int arx_index = 0; arx_index < N_arx; arx_index++) {
+
+    memset(chT_interpol_mag_squ_avg,0,sizeof(chT_interpol_mag_squ_avg));
 
     for (int symb = 0; symb < N_symb_srs; symb++){
 
@@ -97,8 +98,6 @@ int nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
         (int16_t*) chT_interpol[ap_index]);
        
         for(int k = 0; k < NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size; k++) {
-
-         int temp = 0; int temp2 = 0; int temp3 = 0;
          
          chT_interpol_mag_squ_avg[k] += squaredMod(((c16_t*)chT_interpol[ap_index])[k]);
 
@@ -109,12 +108,8 @@ int nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
 
     // average over SRS symbols
     for(int k = 0; k < NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size; k++) {
-       if(k<5){
-         //LOG_I(PHY, "3.Array AFTER Loop (RX ant %d):sample %d, value %d\n", arx_index, k, chT_interpol_mag_squ_avg[k]);
-       }
-
       chT_interpol_mag_squ_avg[k] /= N_symb_srs;
-   }
+    }
 
     max_val = 0, max_idx = 0, mean_val = 0;
     for(int k = 0; k < NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size; k++) {
