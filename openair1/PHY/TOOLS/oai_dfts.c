@@ -1820,23 +1820,43 @@ void dft128(int16_t *x,int16_t *y,unsigned int *scale)
 
   if (scale && *scale>0) {
 
-    y256[0] = mulhi_int16_simd256(y256[0],ONE_OVER_SQRT2_Q15_256);
-    y256[1] = mulhi_int16_simd256(y256[1],ONE_OVER_SQRT2_Q15_256);
-    y256[2] = mulhi_int16_simd256(y256[2],ONE_OVER_SQRT2_Q15_256);
-    y256[3] = mulhi_int16_simd256(y256[3],ONE_OVER_SQRT2_Q15_256);
-    y256[4] = mulhi_int16_simd256(y256[4],ONE_OVER_SQRT2_Q15_256);
-    y256[5] = mulhi_int16_simd256(y256[5],ONE_OVER_SQRT2_Q15_256);
-    y256[6] = mulhi_int16_simd256(y256[6],ONE_OVER_SQRT2_Q15_256);
-    y256[7] = mulhi_int16_simd256(y256[7],ONE_OVER_SQRT2_Q15_256);
-    y256[8] = mulhi_int16_simd256(y256[8],ONE_OVER_SQRT2_Q15_256);
-    y256[9] = mulhi_int16_simd256(y256[9],ONE_OVER_SQRT2_Q15_256);
-    y256[10] = mulhi_int16_simd256(y256[10],ONE_OVER_SQRT2_Q15_256);
-    y256[11] = mulhi_int16_simd256(y256[11],ONE_OVER_SQRT2_Q15_256);
-    y256[12] = mulhi_int16_simd256(y256[12],ONE_OVER_SQRT2_Q15_256);
-    y256[13] = mulhi_int16_simd256(y256[13],ONE_OVER_SQRT2_Q15_256);
-    y256[14] = mulhi_int16_simd256(y256[14],ONE_OVER_SQRT2_Q15_256);
-    y256[15] = mulhi_int16_simd256(y256[15],ONE_OVER_SQRT2_Q15_256);
-
+    if (*scale>1) {
+      uint32_t scale2=*scale-1;
+      y256[0]  = mulhi_int16_simd256(shiftright_int16_simd256(y256[0],scale2),ONE_OVER_SQRT2_Q15_256);
+      y256[1]  = mulhi_int16_simd256(shiftright_int16_simd256(y256[1],scale2),ONE_OVER_SQRT2_Q15_256);
+      y256[2]  = mulhi_int16_simd256(shiftright_int16_simd256(y256[2],scale2),ONE_OVER_SQRT2_Q15_256);
+      y256[3]  = mulhi_int16_simd256(shiftright_int16_simd256(y256[3],scale2),ONE_OVER_SQRT2_Q15_256);
+      y256[4]  = mulhi_int16_simd256(shiftright_int16_simd256(y256[4],scale2),ONE_OVER_SQRT2_Q15_256);
+      y256[5]  = mulhi_int16_simd256(shiftright_int16_simd256(y256[5],scale2),ONE_OVER_SQRT2_Q15_256);
+      y256[6]  = mulhi_int16_simd256(shiftright_int16_simd256(y256[6],scale2),ONE_OVER_SQRT2_Q15_256);
+      y256[7]  = mulhi_int16_simd256(shiftright_int16_simd256(y256[7],scale2),ONE_OVER_SQRT2_Q15_256);
+      y256[8]  = mulhi_int16_simd256(shiftright_int16_simd256(y256[8],scale2),ONE_OVER_SQRT2_Q15_256);
+      y256[9]  = mulhi_int16_simd256(shiftright_int16_simd256(y256[9],scale2),ONE_OVER_SQRT2_Q15_256);
+      y256[10]  = mulhi_int16_simd256(shiftright_int16_simd256(y256[10],scale2),ONE_OVER_SQRT2_Q15_256);
+      y256[11]  = mulhi_int16_simd256(shiftright_int16_simd256(y256[11],scale2),ONE_OVER_SQRT2_Q15_256);
+      y256[12]  = mulhi_int16_simd256(shiftright_int16_simd256(y256[12],scale2),ONE_OVER_SQRT2_Q15_256);
+      y256[13]  = mulhi_int16_simd256(shiftright_int16_simd256(y256[13],scale2),ONE_OVER_SQRT2_Q15_256);
+      y256[14]  = mulhi_int16_simd256(shiftright_int16_simd256(y256[14],scale2),ONE_OVER_SQRT2_Q15_256);
+      y256[15]  = mulhi_int16_simd256(shiftright_int16_simd256(y256[15],scale2),ONE_OVER_SQRT2_Q15_256);
+    } 
+    else {
+      y256[0] = mulhi_int16_simd256(y256[0],ONE_OVER_SQRT2_Q15_256);
+      y256[1] = mulhi_int16_simd256(y256[1],ONE_OVER_SQRT2_Q15_256);
+      y256[2] = mulhi_int16_simd256(y256[2],ONE_OVER_SQRT2_Q15_256);
+      y256[3] = mulhi_int16_simd256(y256[3],ONE_OVER_SQRT2_Q15_256);
+      y256[4] = mulhi_int16_simd256(y256[4],ONE_OVER_SQRT2_Q15_256);
+      y256[5] = mulhi_int16_simd256(y256[5],ONE_OVER_SQRT2_Q15_256);
+      y256[6] = mulhi_int16_simd256(y256[6],ONE_OVER_SQRT2_Q15_256);
+      y256[7] = mulhi_int16_simd256(y256[7],ONE_OVER_SQRT2_Q15_256);
+      y256[8] = mulhi_int16_simd256(y256[8],ONE_OVER_SQRT2_Q15_256);
+      y256[9] = mulhi_int16_simd256(y256[9],ONE_OVER_SQRT2_Q15_256);
+      y256[10] = mulhi_int16_simd256(y256[10],ONE_OVER_SQRT2_Q15_256);
+      y256[11] = mulhi_int16_simd256(y256[11],ONE_OVER_SQRT2_Q15_256);
+      y256[12] = mulhi_int16_simd256(y256[12],ONE_OVER_SQRT2_Q15_256);
+      y256[13] = mulhi_int16_simd256(y256[13],ONE_OVER_SQRT2_Q15_256);
+      y256[14] = mulhi_int16_simd256(y256[14],ONE_OVER_SQRT2_Q15_256);
+      y256[15] = mulhi_int16_simd256(y256[15],ONE_OVER_SQRT2_Q15_256);
+    }
   }
 #ifndef MR_MAIN
   if (LOG_DUMPFLAG(DEBUG_DFT)) {  
@@ -1883,23 +1903,43 @@ void idft128(int16_t *x,int16_t *y,unsigned int *scale)
 
   if (scale && *scale>0) {
 
-    y256[0] = mulhi_int16_simd256(y256[0],ONE_OVER_SQRT2_Q15_256);
-    y256[1] = mulhi_int16_simd256(y256[1],ONE_OVER_SQRT2_Q15_256);
-    y256[2] = mulhi_int16_simd256(y256[2],ONE_OVER_SQRT2_Q15_256);
-    y256[3] = mulhi_int16_simd256(y256[3],ONE_OVER_SQRT2_Q15_256);
-    y256[4] = mulhi_int16_simd256(y256[4],ONE_OVER_SQRT2_Q15_256);
-    y256[5] = mulhi_int16_simd256(y256[5],ONE_OVER_SQRT2_Q15_256);
-    y256[6] = mulhi_int16_simd256(y256[6],ONE_OVER_SQRT2_Q15_256);
-    y256[7] = mulhi_int16_simd256(y256[7],ONE_OVER_SQRT2_Q15_256);
-    y256[8] = mulhi_int16_simd256(y256[8],ONE_OVER_SQRT2_Q15_256);
-    y256[9] = mulhi_int16_simd256(y256[9],ONE_OVER_SQRT2_Q15_256);
-    y256[10] = mulhi_int16_simd256(y256[10],ONE_OVER_SQRT2_Q15_256);
-    y256[11] = mulhi_int16_simd256(y256[11],ONE_OVER_SQRT2_Q15_256);
-    y256[12] = mulhi_int16_simd256(y256[12],ONE_OVER_SQRT2_Q15_256);
-    y256[13] = mulhi_int16_simd256(y256[13],ONE_OVER_SQRT2_Q15_256);
-    y256[14] = mulhi_int16_simd256(y256[14],ONE_OVER_SQRT2_Q15_256);
-    y256[15] = mulhi_int16_simd256(y256[15],ONE_OVER_SQRT2_Q15_256);
-
+    if (*scale>1) {
+      uint32_t scale2=*scale-1;
+      y256[0]  = mulhi_int16_simd256(shiftright_int16_simd256(y256[0],scale2),ONE_OVER_SQRT2_Q15_256);
+      y256[1]  = mulhi_int16_simd256(shiftright_int16_simd256(y256[1],scale2),ONE_OVER_SQRT2_Q15_256);
+      y256[2]  = mulhi_int16_simd256(shiftright_int16_simd256(y256[2],scale2),ONE_OVER_SQRT2_Q15_256);
+      y256[3]  = mulhi_int16_simd256(shiftright_int16_simd256(y256[3],scale2),ONE_OVER_SQRT2_Q15_256);
+      y256[4]  = mulhi_int16_simd256(shiftright_int16_simd256(y256[4],scale2),ONE_OVER_SQRT2_Q15_256);
+      y256[5]  = mulhi_int16_simd256(shiftright_int16_simd256(y256[5],scale2),ONE_OVER_SQRT2_Q15_256);
+      y256[6]  = mulhi_int16_simd256(shiftright_int16_simd256(y256[6],scale2),ONE_OVER_SQRT2_Q15_256);
+      y256[7]  = mulhi_int16_simd256(shiftright_int16_simd256(y256[7],scale2),ONE_OVER_SQRT2_Q15_256);
+      y256[8]  = mulhi_int16_simd256(shiftright_int16_simd256(y256[8],scale2),ONE_OVER_SQRT2_Q15_256);
+      y256[9]  = mulhi_int16_simd256(shiftright_int16_simd256(y256[9],scale2),ONE_OVER_SQRT2_Q15_256);
+      y256[10]  = mulhi_int16_simd256(shiftright_int16_simd256(y256[10],scale2),ONE_OVER_SQRT2_Q15_256);
+      y256[11]  = mulhi_int16_simd256(shiftright_int16_simd256(y256[11],scale2),ONE_OVER_SQRT2_Q15_256);
+      y256[12]  = mulhi_int16_simd256(shiftright_int16_simd256(y256[12],scale2),ONE_OVER_SQRT2_Q15_256);
+      y256[13]  = mulhi_int16_simd256(shiftright_int16_simd256(y256[13],scale2),ONE_OVER_SQRT2_Q15_256);
+      y256[14]  = mulhi_int16_simd256(shiftright_int16_simd256(y256[14],scale2),ONE_OVER_SQRT2_Q15_256);
+      y256[15]  = mulhi_int16_simd256(shiftright_int16_simd256(y256[15],scale2),ONE_OVER_SQRT2_Q15_256);
+    } 
+    else {
+      y256[0] = mulhi_int16_simd256(y256[0],ONE_OVER_SQRT2_Q15_256);
+      y256[1] = mulhi_int16_simd256(y256[1],ONE_OVER_SQRT2_Q15_256);
+      y256[2] = mulhi_int16_simd256(y256[2],ONE_OVER_SQRT2_Q15_256);
+      y256[3] = mulhi_int16_simd256(y256[3],ONE_OVER_SQRT2_Q15_256);
+      y256[4] = mulhi_int16_simd256(y256[4],ONE_OVER_SQRT2_Q15_256);
+      y256[5] = mulhi_int16_simd256(y256[5],ONE_OVER_SQRT2_Q15_256);
+      y256[6] = mulhi_int16_simd256(y256[6],ONE_OVER_SQRT2_Q15_256);
+      y256[7] = mulhi_int16_simd256(y256[7],ONE_OVER_SQRT2_Q15_256);
+      y256[8] = mulhi_int16_simd256(y256[8],ONE_OVER_SQRT2_Q15_256);
+      y256[9] = mulhi_int16_simd256(y256[9],ONE_OVER_SQRT2_Q15_256);
+      y256[10] = mulhi_int16_simd256(y256[10],ONE_OVER_SQRT2_Q15_256);
+      y256[11] = mulhi_int16_simd256(y256[11],ONE_OVER_SQRT2_Q15_256);
+      y256[12] = mulhi_int16_simd256(y256[12],ONE_OVER_SQRT2_Q15_256);
+      y256[13] = mulhi_int16_simd256(y256[13],ONE_OVER_SQRT2_Q15_256);
+      y256[14] = mulhi_int16_simd256(y256[14],ONE_OVER_SQRT2_Q15_256);
+      y256[15] = mulhi_int16_simd256(y256[15],ONE_OVER_SQRT2_Q15_256);
+    }
   }
 
 }
@@ -2162,25 +2202,49 @@ void dft512(int16_t *x,int16_t *y,unsigned int *scale)
   }
 
   if (scale && *scale>0) {
-
-    for (i=0;i<4;i++) {
-      y256[0] = mulhi_int16_simd256(y256[0],ONE_OVER_SQRT2_Q15_256);
-      y256[1] = mulhi_int16_simd256(y256[1],ONE_OVER_SQRT2_Q15_256);
-      y256[2] = mulhi_int16_simd256(y256[2],ONE_OVER_SQRT2_Q15_256);
-      y256[3] = mulhi_int16_simd256(y256[3],ONE_OVER_SQRT2_Q15_256);
-      y256[4] = mulhi_int16_simd256(y256[4],ONE_OVER_SQRT2_Q15_256);
-      y256[5] = mulhi_int16_simd256(y256[5],ONE_OVER_SQRT2_Q15_256);
-      y256[6] = mulhi_int16_simd256(y256[6],ONE_OVER_SQRT2_Q15_256);
-      y256[7] = mulhi_int16_simd256(y256[7],ONE_OVER_SQRT2_Q15_256);
-      y256[8] = mulhi_int16_simd256(y256[8],ONE_OVER_SQRT2_Q15_256);
-      y256[9] = mulhi_int16_simd256(y256[9],ONE_OVER_SQRT2_Q15_256);
-      y256[10] = mulhi_int16_simd256(y256[10],ONE_OVER_SQRT2_Q15_256);
-      y256[11] = mulhi_int16_simd256(y256[11],ONE_OVER_SQRT2_Q15_256);
-      y256[12] = mulhi_int16_simd256(y256[12],ONE_OVER_SQRT2_Q15_256);
-      y256[13] = mulhi_int16_simd256(y256[13],ONE_OVER_SQRT2_Q15_256);
-      y256[14] = mulhi_int16_simd256(y256[14],ONE_OVER_SQRT2_Q15_256);
-      y256[15] = mulhi_int16_simd256(y256[15],ONE_OVER_SQRT2_Q15_256);
-      y256+=16;
+    y256p = y256;
+    if (*scale>1) {
+      uint32_t scale2=*scale-1;
+      for (i=0; i<4; i++) {
+        y256p[0]  = mulhi_int16_simd256(shiftright_int16_simd256(y256p[0],scale2),ONE_OVER_SQRT2_Q15_256);
+        y256p[1]  = mulhi_int16_simd256(shiftright_int16_simd256(y256p[1],scale2),ONE_OVER_SQRT2_Q15_256);
+        y256p[2]  = mulhi_int16_simd256(shiftright_int16_simd256(y256p[2],scale2),ONE_OVER_SQRT2_Q15_256);
+        y256p[3]  = mulhi_int16_simd256(shiftright_int16_simd256(y256p[3],scale2),ONE_OVER_SQRT2_Q15_256);
+        y256p[4]  = mulhi_int16_simd256(shiftright_int16_simd256(y256p[4],scale2),ONE_OVER_SQRT2_Q15_256);
+        y256p[5]  = mulhi_int16_simd256(shiftright_int16_simd256(y256p[5],scale2),ONE_OVER_SQRT2_Q15_256);
+        y256p[6]  = mulhi_int16_simd256(shiftright_int16_simd256(y256p[6],scale2),ONE_OVER_SQRT2_Q15_256);
+        y256p[7]  = mulhi_int16_simd256(shiftright_int16_simd256(y256p[7],scale2),ONE_OVER_SQRT2_Q15_256);
+        y256p[8]  = mulhi_int16_simd256(shiftright_int16_simd256(y256p[8],scale2),ONE_OVER_SQRT2_Q15_256);
+        y256p[9]  = mulhi_int16_simd256(shiftright_int16_simd256(y256p[9],scale2),ONE_OVER_SQRT2_Q15_256);
+        y256p[10]  = mulhi_int16_simd256(shiftright_int16_simd256(y256p[10],scale2),ONE_OVER_SQRT2_Q15_256);
+        y256p[11]  = mulhi_int16_simd256(shiftright_int16_simd256(y256p[11],scale2),ONE_OVER_SQRT2_Q15_256);
+        y256p[12]  = mulhi_int16_simd256(shiftright_int16_simd256(y256p[12],scale2),ONE_OVER_SQRT2_Q15_256);
+        y256p[13]  = mulhi_int16_simd256(shiftright_int16_simd256(y256p[13],scale2),ONE_OVER_SQRT2_Q15_256);
+        y256p[14]  = mulhi_int16_simd256(shiftright_int16_simd256(y256p[14],scale2),ONE_OVER_SQRT2_Q15_256);
+        y256p[15]  = mulhi_int16_simd256(shiftright_int16_simd256(y256p[15],scale2),ONE_OVER_SQRT2_Q15_256);
+        y256p+=16;
+      }
+    }
+    else {
+      for (i=0;i<4;i++) {
+        y256p[0] = mulhi_int16_simd256(y256p[0],ONE_OVER_SQRT2_Q15_256);
+        y256p[1] = mulhi_int16_simd256(y256p[1],ONE_OVER_SQRT2_Q15_256);
+        y256p[2] = mulhi_int16_simd256(y256p[2],ONE_OVER_SQRT2_Q15_256);
+        y256p[3] = mulhi_int16_simd256(y256p[3],ONE_OVER_SQRT2_Q15_256);
+        y256p[4] = mulhi_int16_simd256(y256p[4],ONE_OVER_SQRT2_Q15_256);
+        y256p[5] = mulhi_int16_simd256(y256p[5],ONE_OVER_SQRT2_Q15_256);
+        y256p[6] = mulhi_int16_simd256(y256p[6],ONE_OVER_SQRT2_Q15_256);
+        y256p[7] = mulhi_int16_simd256(y256p[7],ONE_OVER_SQRT2_Q15_256);
+        y256p[8] = mulhi_int16_simd256(y256p[8],ONE_OVER_SQRT2_Q15_256);
+        y256p[9] = mulhi_int16_simd256(y256p[9],ONE_OVER_SQRT2_Q15_256);
+        y256p[10] = mulhi_int16_simd256(y256p[10],ONE_OVER_SQRT2_Q15_256);
+        y256p[11] = mulhi_int16_simd256(y256p[11],ONE_OVER_SQRT2_Q15_256);
+        y256p[12] = mulhi_int16_simd256(y256p[12],ONE_OVER_SQRT2_Q15_256);
+        y256p[13] = mulhi_int16_simd256(y256p[13],ONE_OVER_SQRT2_Q15_256);
+        y256p[14] = mulhi_int16_simd256(y256p[14],ONE_OVER_SQRT2_Q15_256);
+        y256p[15] = mulhi_int16_simd256(y256p[15],ONE_OVER_SQRT2_Q15_256);
+        y256p+=16;
+      }
     }
   }
 
@@ -2246,27 +2310,51 @@ void idft512(int16_t *x,int16_t *y,unsigned int *scale)
   }
 
   if (scale && *scale>0) {
-    for (i=0;i<4;i++) {
-      y256[0] = mulhi_int16_simd256(y256[0],ONE_OVER_SQRT2_Q15_256);
-      y256[1] = mulhi_int16_simd256(y256[1],ONE_OVER_SQRT2_Q15_256);
-      y256[2] = mulhi_int16_simd256(y256[2],ONE_OVER_SQRT2_Q15_256);
-      y256[3] = mulhi_int16_simd256(y256[3],ONE_OVER_SQRT2_Q15_256);
-      y256[4] = mulhi_int16_simd256(y256[4],ONE_OVER_SQRT2_Q15_256);
-      y256[5] = mulhi_int16_simd256(y256[5],ONE_OVER_SQRT2_Q15_256);
-      y256[6] = mulhi_int16_simd256(y256[6],ONE_OVER_SQRT2_Q15_256);
-      y256[7] = mulhi_int16_simd256(y256[7],ONE_OVER_SQRT2_Q15_256);
-      y256[8] = mulhi_int16_simd256(y256[8],ONE_OVER_SQRT2_Q15_256);
-      y256[9] = mulhi_int16_simd256(y256[9],ONE_OVER_SQRT2_Q15_256);
-      y256[10] = mulhi_int16_simd256(y256[10],ONE_OVER_SQRT2_Q15_256);
-      y256[11] = mulhi_int16_simd256(y256[11],ONE_OVER_SQRT2_Q15_256);
-      y256[12] = mulhi_int16_simd256(y256[12],ONE_OVER_SQRT2_Q15_256);
-      y256[13] = mulhi_int16_simd256(y256[13],ONE_OVER_SQRT2_Q15_256);
-      y256[14] = mulhi_int16_simd256(y256[14],ONE_OVER_SQRT2_Q15_256);
-      y256[15] = mulhi_int16_simd256(y256[15],ONE_OVER_SQRT2_Q15_256);
-      y256+=16;
+    y256p = y256;
+    if (*scale>1) {
+      uint32_t scale2=*scale-1;
+      for (i=0; i<4; i++) {
+        y256p[0]  = mulhi_int16_simd256(shiftright_int16_simd256(y256p[0],scale2),ONE_OVER_SQRT2_Q15_256);
+        y256p[1]  = mulhi_int16_simd256(shiftright_int16_simd256(y256p[1],scale2),ONE_OVER_SQRT2_Q15_256);
+        y256p[2]  = mulhi_int16_simd256(shiftright_int16_simd256(y256p[2],scale2),ONE_OVER_SQRT2_Q15_256);
+        y256p[3]  = mulhi_int16_simd256(shiftright_int16_simd256(y256p[3],scale2),ONE_OVER_SQRT2_Q15_256);
+        y256p[4]  = mulhi_int16_simd256(shiftright_int16_simd256(y256p[4],scale2),ONE_OVER_SQRT2_Q15_256);
+        y256p[5]  = mulhi_int16_simd256(shiftright_int16_simd256(y256p[5],scale2),ONE_OVER_SQRT2_Q15_256);
+        y256p[6]  = mulhi_int16_simd256(shiftright_int16_simd256(y256p[6],scale2),ONE_OVER_SQRT2_Q15_256);
+        y256p[7]  = mulhi_int16_simd256(shiftright_int16_simd256(y256p[7],scale2),ONE_OVER_SQRT2_Q15_256);
+        y256p[8]  = mulhi_int16_simd256(shiftright_int16_simd256(y256p[8],scale2),ONE_OVER_SQRT2_Q15_256);
+        y256p[9]  = mulhi_int16_simd256(shiftright_int16_simd256(y256p[9],scale2),ONE_OVER_SQRT2_Q15_256);
+        y256p[10]  = mulhi_int16_simd256(shiftright_int16_simd256(y256p[10],scale2),ONE_OVER_SQRT2_Q15_256);
+        y256p[11]  = mulhi_int16_simd256(shiftright_int16_simd256(y256p[11],scale2),ONE_OVER_SQRT2_Q15_256);
+        y256p[12]  = mulhi_int16_simd256(shiftright_int16_simd256(y256p[12],scale2),ONE_OVER_SQRT2_Q15_256);
+        y256p[13]  = mulhi_int16_simd256(shiftright_int16_simd256(y256p[13],scale2),ONE_OVER_SQRT2_Q15_256);
+        y256p[14]  = mulhi_int16_simd256(shiftright_int16_simd256(y256p[14],scale2),ONE_OVER_SQRT2_Q15_256);
+        y256p[15]  = mulhi_int16_simd256(shiftright_int16_simd256(y256p[15],scale2),ONE_OVER_SQRT2_Q15_256);
+        y256p+=16;
+      }
+    }
+    else {
+      for (i=0; i<4; i++) {
+        y256p[0]  = mulhi_int16_simd256(y256p[0],ONE_OVER_SQRT2_Q15_256);
+        y256p[1]  = mulhi_int16_simd256(y256p[1],ONE_OVER_SQRT2_Q15_256);
+        y256p[2]  = mulhi_int16_simd256(y256p[2],ONE_OVER_SQRT2_Q15_256);
+        y256p[3]  = mulhi_int16_simd256(y256p[3],ONE_OVER_SQRT2_Q15_256);
+        y256p[4]  = mulhi_int16_simd256(y256p[4],ONE_OVER_SQRT2_Q15_256);
+        y256p[5]  = mulhi_int16_simd256(y256p[5],ONE_OVER_SQRT2_Q15_256);
+        y256p[6]  = mulhi_int16_simd256(y256p[6],ONE_OVER_SQRT2_Q15_256);
+        y256p[7]  = mulhi_int16_simd256(y256p[7],ONE_OVER_SQRT2_Q15_256);
+        y256p[8]  = mulhi_int16_simd256(y256p[8],ONE_OVER_SQRT2_Q15_256);
+        y256p[9]  = mulhi_int16_simd256(y256p[9],ONE_OVER_SQRT2_Q15_256);
+        y256p[10] = mulhi_int16_simd256(y256p[10],ONE_OVER_SQRT2_Q15_256);
+        y256p[11] = mulhi_int16_simd256(y256p[11],ONE_OVER_SQRT2_Q15_256);
+        y256p[12] = mulhi_int16_simd256(y256p[12],ONE_OVER_SQRT2_Q15_256);
+        y256p[13] = mulhi_int16_simd256(y256p[13],ONE_OVER_SQRT2_Q15_256);
+        y256p[14] = mulhi_int16_simd256(y256p[14],ONE_OVER_SQRT2_Q15_256);
+        y256p[15] = mulhi_int16_simd256(y256p[15],ONE_OVER_SQRT2_Q15_256);
+        y256p+=16;
+      }
     }
   }
-
 }
 
 int16_t tw1024[1536] __attribute__((aligned(32)));
@@ -8548,13 +8636,16 @@ int main(int argc, char**argv)
   }
   reset_meas(&ts);
 
-  uint32_t scale128[2] = {1,3};
+  uint32_t scale128_tx[2] = {4,0};
   for (i=0; i<10000; i++) {
     start_meas(&ts);
-    idft128((int16_t *)x,(int16_t *)y,scale128);
+    idft128((int16_t *)x,(int16_t *)y,scale128_tx);
     stop_meas(&ts);
   }
 
+  sqnr = compute_error((int16_t*)x,(int16_t*)y,128,bitrev128,1);
+
+  printf("128 point IDFT SQNR (QPSK) : %f dB\n",10*log10(sqnr));
   printf("\n\n128-point(%f cycles)\n",(double)ts.diff/(double)ts.trials);
   LOG_M("y128.m","y128",y,128,1,1);
   LOG_M("x128.m","x128",x,128,1,1);
@@ -8590,11 +8681,11 @@ int main(int argc, char**argv)
       ((int16_t*)x)[i] = -364;
   }
   reset_meas(&ts);
-  uint32_t scale256[3]={1,3};
+  uint32_t scale256_tx[3]={4,0};
 
   for (i=0; i<10000; i++) {
     start_meas(&ts);
-    idft256((int16_t *)x,(int16_t *)y,scale256);
+    idft256((int16_t *)x,(int16_t *)y,scale256_tx);
     stop_meas(&ts);
   }
 
@@ -8602,6 +8693,9 @@ int main(int argc, char**argv)
   LOG_M("y256.m","y256",y,256,1,1);
   LOG_M("x256.m","x256",x,256,1,1);
 
+  sqnr = compute_error((int16_t*)x,(int16_t*)y,256,bitrev256,1);
+
+  printf("256 point IDFT SQNR (QPSK) : %f dB\n",10*log10(sqnr));
   memset((void*)&x[0],0,512*sizeof(int32_t));
   for (i=2;i<302;i++) {
     if ((taus() & 1)==0)
@@ -8617,11 +8711,11 @@ int main(int argc, char**argv)
   }
 
   reset_meas(&ts);
-  uint32_t scale512[4]={1,1,3};
+  uint32_t scale512_tx[4]={4,1,0};
 
   for (i=0; i<10000; i++) {
     start_meas(&ts);
-    idft512((int16_t *)x,(int16_t *)y,scale512);
+    idft512((int16_t *)x,(int16_t *)y,scale512_tx);
     stop_meas(&ts);
   }
 
@@ -8630,7 +8724,7 @@ int main(int argc, char**argv)
   LOG_M("x512.m","x512",x,512,1,1);
   sqnr = compute_error((int16_t*)x,(int16_t*)y,512,bitrev512,1);
 
-  printf("512 point SQNR (QPSK) : %f\n",10*log10(sqnr));
+  printf("512 point IDFT SQNR (QPSK) : %f dB\n",10*log10(sqnr));
   memset((void*)x,0,1024*sizeof(int32_t));
   /*
   printf("X: ");
@@ -8658,10 +8752,10 @@ int main(int argc, char**argv)
   }
   reset_meas(&ts);
 
-  uint32_t scale1024[4]={1,1,3};
+  uint32_t scale1024_tx[4]={4,1,0};
   for (i=0; i<10000; i++) {
     start_meas(&ts);
-    idft1024((int16_t *)x,(int16_t *)y,scale1024);
+    idft1024((int16_t *)x,(int16_t *)y,scale1024_tx);
     stop_meas(&ts);
   }
 
@@ -8671,7 +8765,7 @@ int main(int argc, char**argv)
 
   sqnr = compute_error((int16_t*)x,(int16_t*)y,1024,bitrev1024,1);
 
-  printf("1024 point SQNR (QPSK) : %f\n",10*log10(sqnr));
+  printf("1024 point IDFT SQNR (QPSK) : %f dB\n",10*log10(sqnr));
 
   memset((void*)x,0,1536*sizeof(int32_t));
   for (i=2;i<1202;i++) {
@@ -8728,7 +8822,7 @@ int main(int argc, char**argv)
 
   sqnr = compute_error((int16_t*)x,(int16_t*)y,2048,bitrev2048,1);
 
-  printf("2048 point SQNR (QPSK) : %f\n",10*log10(sqnr));
+  printf("2048 point IDFT SQNR (QPSK) : %f dB\n",10*log10(sqnr));
 // NR 80Mhz, 217 PRB, 3/4 sampling
   memset((void*)x, 0, 3072*sizeof(int32_t));
   for (i=2;i<2506;i++) {
@@ -8786,7 +8880,7 @@ int main(int argc, char**argv)
 
   sqnr = compute_error((int16_t*)x,(int16_t*)y,4096,bitrev4096,1);
 
-  printf("4096 point SQNR (QPSK) : %f\n",10*log10(sqnr));
+  printf("4096 point IDFT SQNR (QPSK) : %f dB\n",10*log10(sqnr));
 
 // NR 160Mhz, 434 PRB, 3/4 sampling
   memset((void*)x, 0, 6144*sizeof(int32_t));
@@ -8995,17 +9089,31 @@ int main(int argc, char**argv)
   LOG_M("y49152.m","y49152",y,49152,1,1);
   LOG_M("x49152.m","x49152",x,49152,1,1);
 
+  memset((void*)x,0,128*sizeof(int32_t));
+  for (i=0;i<128;i++) {
+    ((int16_t*)x)[i<<1] = (int16_t)(364 * cos(2*M_PI*3*i/128));
+    ((int16_t*)x)[1+(i<<1)] = (int16_t)(364 * sin(2*M_PI*3*i/128));
+  } 
+  uint32_t scale128_rx[3]={2,2};
+  dft128((int16_t*)x,(int16_t*)y,scale128_rx);
+  LOG_M("x128_exp.m","x128_exp",x,128,1,1); 
+  LOG_M("y128_exp.m","y128_exp",y,128,1,1); 
+  sqnr = compute_error((int16_t*)x,(int16_t*)y,128,bitrev128,0);
+
+  printf("128 point DFT SQNR (cplx sinusoid) : %f dB\n",10*log10(sqnr));
+
   memset((void*)x,0,256*sizeof(int32_t));
   for (i=0;i<256;i++) {
     ((int16_t*)x)[i<<1] = (int16_t)(364 * cos(2*M_PI*3*i/256));
     ((int16_t*)x)[1+(i<<1)] = (int16_t)(364 * sin(2*M_PI*3*i/256));
   } 
-  dft256((int16_t*)x,(int16_t*)y,scale256);
+  uint32_t scale256_rx[3]={2,2};
+  dft256((int16_t*)x,(int16_t*)y,scale256_rx);
   LOG_M("x256_exp.m","x256_exp",x,256,1,1); 
   LOG_M("y256_exp.m","y256_exp",y,256,1,1); 
   sqnr = compute_error((int16_t*)x,(int16_t*)y,256,bitrev256,0);
 
-  printf("256 point SQNR (cplx sinusoid) : %f\n",10*log10(sqnr));
+  printf("256 point DFT SQNR (cplx sinusoid) : %f dB\n",10*log10(sqnr));
 
 
   memset((void*)x,0,512*sizeof(int32_t));
@@ -9013,25 +9121,27 @@ int main(int argc, char**argv)
     ((int16_t*)x)[i<<1] = (int16_t)(364 * cos(2*M_PI*3*i/512));
     ((int16_t*)x)[1+(i<<1)] = (int16_t)(364 * sin(2*M_PI*3*i/512));
   } 
-  dft512((int16_t*)x,(int16_t*)y,scale512);
+  uint32_t scale512_rx[3]={1,2,2};
+  dft512((int16_t*)x,(int16_t*)y,scale512_rx);
   LOG_M("x512_exp.m","x512_exp",x,512,1,1); 
   LOG_M("y512_exp.m","y512_exp",y,512,1,1); 
 
   sqnr = compute_error((int16_t*)x,(int16_t*)y,512,bitrev512,0);
 
-  printf("512 point SQNR (cplx sinusoid) : %f\n",10*log10(sqnr));
+  printf("512 point DFT SQNR (cplx sinusoid) : %f dB\n",10*log10(sqnr));
   memset((void*)x,0,1024*sizeof(int32_t));
+  uint32_t scale1024_rx[3]={1,2,2};
   for (i=0;i<1024;i++) {
     ((int16_t*)x)[i<<1] = (int16_t)(364 * cos(2*M_PI*3*i/1024));
     ((int16_t*)x)[1+(i<<1)] = (int16_t)(364 * sin(2*M_PI*3*i/1024));
   } 
-  dft1024((int16_t*)x,(int16_t*)y,scale1024);
+  dft1024((int16_t*)x,(int16_t*)y,scale1024_rx);
   LOG_M("x1024_exp.m","x1024_exp",x,1024,1,1); 
   LOG_M("y1024_exp.m","y1024_exp",y,1024,1,1); 
 
   sqnr = compute_error((int16_t*)x,(int16_t*)y,1024,bitrev1024,0);
 
-  printf("1024 point SQNR (cplx sinusoid) : %f\n",10*log10(sqnr));
+  printf("1024 point DFT SQNR (cplx sinusoid) : %f dB\n",10*log10(sqnr));
   memset((void*)x,0,1536*sizeof(int32_t));
   for (i=0;i<1536;i++) {
     ((int16_t*)x)[i<<1] = (int16_t)(364 * cos(2*M_PI*3*i/1536));
@@ -9053,7 +9163,7 @@ int main(int argc, char**argv)
 
   sqnr = compute_error((int16_t*)x,(int16_t*)y,2048,bitrev2048,0);
 
-  printf("2048 point SQNR (cplx sinusoid) : %f\n",10*log10(sqnr));
+  printf("2048 point DFT SQNR (cplx sinusoid) : %f dB\n",10*log10(sqnr));
   memset((void*)x,0,3072*sizeof(int32_t));
   for (i=0;i<3072;i++) {
     ((int16_t*)x)[i<<1] = (int16_t)(200 * cos(2*M_PI*3*i/3072));
@@ -9074,7 +9184,7 @@ int main(int argc, char**argv)
   LOG_M("y4096_exp.m","y4096_exp",y,4096,1,1); 
 
   sqnr = compute_error((int16_t*)x,(int16_t*)y,4096,bitrev4096,0);
-  printf("4096 point SQNR (cplx sinusoid) : %f\n",10*log10(sqnr));
+  printf("4096 point DFT SQNR (cplx sinusoid) : %f dB\n",10*log10(sqnr));
   return(0);
 }
 
