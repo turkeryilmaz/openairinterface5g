@@ -681,6 +681,7 @@ void dl_rrc_message_transfer(const f1ap_dl_rrc_message_t *dl_rrc)
     /* 38.331 5.3.7.2 says that the UE releases the spCellConfig, so we drop it
      * from the current configuration. Also, expect the reconfiguration from
      * the CU, so save the old UE's CellGroup for the new UE */
+    ASN_STRUCT_FREE(asn_DEF_NR_SpCellConfig, UE->CellGroup->spCellConfig);
     UE->CellGroup->spCellConfig = NULL;
     NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
     NR_ServingCellConfigCommon_t *scc = mac->common_channels[0].ServingCellConfigCommon;
