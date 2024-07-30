@@ -945,9 +945,10 @@ static void rrc_gNB_process_RRCReestablishmentComplete(const protocol_ctxt_t *co
    * handle reestablishments on the same cell, and therefore, the
    * cellGroupConfig won't change (and we don't request the DU to send it).
    * Therefore, reuse the same cellGroupConfig, but add information to request
-   * reestablishment of RLC. */
+   * reestablishment of RLC.
+   * Avoid SRB1, which is already re-established. */
   struct NR_CellGroupConfig__rlc_BearerToAddModList *addmod_list = ue_p->masterCellGroup->rlc_BearerToAddModList;
-  for (int i = 0; i < addmod_list->list.count; i++) {
+  for (int i = 1; i < addmod_list->list.count; i++) {
     free(addmod_list->list.array[i]->reestablishRLC); // free, in case it's already there
     asn1cCallocOne(addmod_list->list.array[i]->reestablishRLC, NR_RLC_BearerConfig__reestablishRLC_true);
   }
