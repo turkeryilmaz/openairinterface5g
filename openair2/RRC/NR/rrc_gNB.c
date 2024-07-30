@@ -935,36 +935,21 @@ static void rrc_gNB_process_RRCReestablishmentComplete(const protocol_ctxt_t *co
   gNB_RRC_UE_t *ue_p = &ue_context_pP->ue_context;
   LOG_I(NR_RRC, "UE %d Processing NR_RRCReestablishmentComplete from UE\n", ue_p->rrc_ue_id);
 
-  int i = 0;
-
   ue_p->xids[xid] = RRC_ACTION_NONE;
   ue_p->StatusRrc = NR_RRC_CONNECTED;
 
   ue_p->Srb[1].Active = 1;
 
-  gNB_RRC_INST *rrc = RC.nrrrc[ctxt_pP->module_id];
-  NR_CellGroupConfig_t *cellGroupConfig = calloc(1, sizeof(NR_CellGroupConfig_t));
-
-  cellGroupConfig->spCellConfig = ue_p->masterCellGroup->spCellConfig;
-  cellGroupConfig->mac_CellGroupConfig = ue_p->masterCellGroup->mac_CellGroupConfig;
-  cellGroupConfig->physicalCellGroupConfig = ue_p->masterCellGroup->physicalCellGroupConfig;
-  cellGroupConfig->rlc_BearerToReleaseList = NULL;
-  cellGroupConfig->rlc_BearerToAddModList = calloc(1, sizeof(*cellGroupConfig->rlc_BearerToAddModList));
-
-  /*
-   * Get SRB2, DRB configuration from the existing UE context,
-   * also start from SRB2 (i=1) and not from SRB1 (i=0).
-   */
-  for (i = 1; i < ue_p->masterCellGroup->rlc_BearerToAddModList->list.count; ++i)
-    asn1cSeqAdd(&cellGroupConfig->rlc_BearerToAddModList->list, ue_p->masterCellGroup->rlc_BearerToAddModList->list.array[i]);
-
-  /*
-   * At this stage, PDCP entity are re-established and reestablishRLC is flagged
-   * with RRCReconfiguration to complete RLC re-establishment of remaining bearers
-   */
-  for (i = 0; i < cellGroupConfig->rlc_BearerToAddModList->list.count; i++) {
-    asn1cCallocOne(cellGroupConfig->rlc_BearerToAddModList->list.array[i]->reestablishRLC,
-                   NR_RLC_BearerConfig__reestablishRLC_true);
+  /* actually, it is "forbidden" to modify the cellGroupConfig at the CU, as
+   * the DU is the "owner" of the cellGroupConfig. However, currently, we only
+   * handle reestablishments on the same cell, and therefore, the
+   * cellGroupConfig won't change (and we don't request the DU to send it).
+   * Therefore, reuse the same cellGroupConfig, but add information to request
+   * reestablishment of RLC. */
+  struct NR_CellGroupConfig__rlc_BearerToAddModList *addmod_list = ue_p->masterCellGroup->rlc_BearerToAddModList;
+  for (int i = 0; i < addmod_list->list.count; i++) {
+    free(addmod_list->list.array[i]->reestablishRLC); // free, in case it's already there
+    asn1cCallocOne(addmod_list->list.array[i]->reestablishRLC, NR_RLC_BearerConfig__reestablishRLC_true);
   }
 
   /* Re-establish SRB2 according to clause 5.3.5.6.3 of 3GPP TS 38.331
@@ -981,6 +966,7 @@ static void rrc_gNB_process_RRCReestablishmentComplete(const protocol_ctxt_t *co
     nr_pdcp_reestablishment(ue_p->rrc_ue_id, srb_id, true, &security_parameters);
   }
   /* PDCP Reestablishment of DRBs according to 5.3.5.6.5 of 3GPP TS 38.331 (over E1) */
+  gNB_RRC_INST *rrc = RC.nrrrc[ctxt_pP->module_id];
   cuup_notify_reestablishment(rrc, ue_p);
 
   /* Create srb-ToAddModList */
@@ -1001,7 +987,7 @@ static void rrc_gNB_process_RRCReestablishmentComplete(const protocol_ctxt_t *co
                                    NULL,
                                    NULL, // MeasObj_list,
                                    NULL,
-                                   cellGroupConfig);
+                                   ue_p->masterCellGroup);
   freeSRBlist(SRBs);
   freeDRBlist(DRBs);
   LOG_DUMPMSG(NR_RRC, DEBUG_RRC, (char *)buffer, size, "[MSG] RRC Reconfiguration\n");
