@@ -1223,7 +1223,47 @@ void nr_ue_prach_procedures(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc)
           prach_pdu->ra_PreambleIndex,
           ue->tx_power_dBm[nr_slot_tx]);
 
-    ue->prach_vars[gNB_id]->amp = AMP;
+
+    int16_t amp = AMP;
+    int prach_sequence_length = ue->nrUE_config.prach_config.prach_sequence_length;
+    int num_prach_sc = (prach_sequence_length == 0) ? 839 : 139;
+    if (ue->rfdevice.set_tx_power_reference_func) {
+      const int16_t fullscale = INT16_MAX;
+      int reference_tx_power = ue->rfdevice.get_tx_power_reference_func(&ue->rfdevice);
+      int requested_tx_power_per_subcarrier = prach_pdu->prach_tx_power - 10 * log10(num_prach_sc);
+      const int target_amp_backoff = 30;
+      if (reference_tx_power < requested_tx_power_per_subcarrier) {
+        // In case current tx_power setting is too small, clip AMP to FULLSCALE
+        amp = fullscale;
+        // Try to increase the reference TX power for next time
+        openair0_config_t config;
+        config.tx_power_reference = requested_tx_power_per_subcarrier + target_amp_backoff;
+        ue->rfdevice.set_tx_power_reference_func(&ue->rfdevice, &config);
+      } else {
+        int16_t amp_backoff_db = reference_tx_power - requested_tx_power_per_subcarrier;
+        amp = (int16_t)(fullscale / pow(10.0, amp_backoff_db / 20.0));
+
+        if (amp_backoff_db < target_amp_backoff) {
+          // Close to maximum digital sample gain, increase hardware gain
+          openair0_config_t config;
+          config.tx_power_reference = reference_tx_power + amp_backoff_db;
+          ue->rfdevice.set_tx_power_reference_func(&ue->rfdevice, &config);
+        } else if (amp < AMP) {
+          // Close to minimum digital sample gain, decrease hardware gain
+          openair0_config_t config;
+          config.tx_power_reference = requested_tx_power_per_subcarrier + target_amp_backoff;
+          ue->rfdevice.set_tx_power_reference_func(&ue->rfdevice, &config);
+        }
+      }
+      LOG_I(PHY,
+            "PRACH TX Power: requested power: %d, requested_tx_power_per_subcarrier = %d, tx_power_reference = %d amp = %d\n",
+            prach_pdu->prach_tx_power,
+            requested_tx_power_per_subcarrier,
+            reference_tx_power,
+            amp);
+    }
+
+    ue->prach_vars[gNB_id]->amp = amp;
 
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_UE_GENERATE_PRACH, VCD_FUNCTION_IN);
 

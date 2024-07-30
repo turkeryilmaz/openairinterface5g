@@ -846,7 +846,7 @@ void tx_rf(RU_t *ru,int frame,int slot, uint64_t timestamp) {
   // AssertFatal(txs == 0,"trx write function error %d\n", txs);
 }
 
-static void fill_rf_config(RU_t *ru, char *rf_config_file)
+static void fill_rf_config(RU_t *ru, char *rf_config_file, int16_t TX_AMP)
 {
   int i;
   NR_DL_FRAME_PARMS *fp   = ru->nr_frame_parms;
@@ -879,6 +879,16 @@ static void fill_rf_config(RU_t *ru, char *rf_config_file)
   cfg->rx_num_channels=ru->nb_rx;
   LOG_I(PHY,"Setting RF config for N_RB %d, NB_RX %d, NB_TX %d\n",cfg->num_rb_dl,cfg->rx_num_channels,cfg->tx_num_channels);
   LOG_I(PHY,"tune_offset %.0f Hz, sample_rate %.0f Hz\n",cfg->tune_offset,cfg->sample_rate);
+
+  const float RMS_TX_AMP = 0.707 * TX_AMP * TX_AMP;
+  double power_at_0dBFS = config->ssb_config.ss_pbch_power.value + 10 * log10(RMS_FULLSCALE / RMS_TX_AMP);
+  LOG_I(PHY, "power per RE %d\n", config->ssb_config.ss_pbch_power.value);
+  for (int ru_id=0; ru_id<RC.nb_RU; ru_id++) {
+    if (RC.ru[ru_id]){
+      cfg->rx_power_reference = -90;
+      cfg->tx_power_reference = power_at_0dBFS;
+    }
+  }
 
   for (i=0; i<ru->nb_tx; i++) {
     if (ru->if_frequency == 0) {
@@ -1157,7 +1167,7 @@ void *ru_thread( void *param ) {
   nr_init_frame_parms(&ru->config, fp);
   nr_dump_frame_parms(fp);
   nr_phy_init_RU(ru);
-  fill_rf_config(ru, ru->rf_config_file);
+  fill_rf_config(ru, ru->rf_config_file, gNB->TX_AMP);
   fill_split7_2_config(&ru->openair0_cfg.split7, &ru->config, fp->slots_per_frame, fp->ofdm_symbol_size);
 
   if(!emulate_rf) {
@@ -1629,7 +1639,7 @@ void configure_rru(void *ruu, void *arg)
         ru->nr_frame_parms->prach_config_common.prach_ConfigInfo.prach_ConfigIndex = config->prach_ConfigIndex[0]; */
   }
 
-  fill_rf_config(ru,ru->rf_config_file);
+  fill_rf_config(ru, ru->rf_config_file, 512); // TODO: Deliver TX AMP here
   nr_init_frame_parms(&ru->config, ru->nr_frame_parms);
   nr_phy_init_RU(ru);
 }

@@ -240,6 +240,8 @@ int get_pusch_tx_power_ue(
   bool is_rar_tx_retx,
   bool transform_precoding);
 
+int nr_get_Po_NOMINAL_PUSCH(NR_UE_MAC_INST_t *mac, NR_PRACH_RESOURCES_t *prach_resources, uint8_t CC_id);
+
 int nr_ue_configure_pucch(NR_UE_MAC_INST_t *mac,
                            int slot,
                            frame_t frame,

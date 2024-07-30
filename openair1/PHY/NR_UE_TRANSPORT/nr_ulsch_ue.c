@@ -618,7 +618,44 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
   const int sz = available_bits / mod_order / Nl;
   c16_t ulsch_mod[Nl][sz];
 
-  nr_ue_layer_mapping(d_mod, Nl, sz, ulsch_mod);
+  int16_t amp = AMP;
+  if (UE->rfdevice.set_tx_power_reference_func) {
+    const int16_t fullscale = INT16_MAX;
+    int tx_power_reference = UE->rfdevice.get_tx_power_reference_func(&UE->rfdevice);
+    int tx_power_requested_per_subcarrier = pusch_pdu->tx_power - 10 * log10(nb_rb * NR_NB_SC_PER_RB);
+    const int target_amp_backoff = 30;
+    if (tx_power_reference < tx_power_requested_per_subcarrier) {
+      // In case current tx_power setting is too small, clip AMP to FULLSCALE
+      amp = fullscale;
+      // Try to increase the reference TX power for next time
+      openair0_config_t config;
+      config.tx_power_reference = tx_power_requested_per_subcarrier + target_amp_backoff;
+      UE->rfdevice.set_tx_power_reference_func(&UE->rfdevice, &config);
+    } else {
+      int16_t amp_backoff_db = tx_power_reference - tx_power_requested_per_subcarrier;
+      amp = (int16_t)(fullscale / pow(10.0, amp_backoff_db / 20.0));
+
+      if (amp_backoff_db < target_amp_backoff) {
+        // Close to maximum digital sample gain, increase hardware gain
+        openair0_config_t config;
+        config.tx_power_reference = tx_power_reference + amp_backoff_db;
+        UE->rfdevice.set_tx_power_reference_func(&UE->rfdevice, &config);
+      } else if (amp < AMP) {
+        // Close to minimum digital sample gain, decrease hardware gain
+        openair0_config_t config;
+        config.tx_power_reference = tx_power_requested_per_subcarrier + target_amp_backoff;
+        UE->rfdevice.set_tx_power_reference_func(&UE->rfdevice, &config);
+      }
+    }
+    LOG_I(PHY,
+          "PUSCH TX Power: requested power: %d, requested_tx_power_per_subcarrier = %d, tx_power_reference = %d amp = %d\n",
+          pusch_pdu->tx_power,
+          tx_power_requested_per_subcarrier,
+          tx_power_reference,
+          amp);
+  }
+
+  nr_ue_layer_mapping(d_mod, Nl, sz, amp, ulsch_mod);
 
   ///////////
   ////////////////////////////////////////////////////////////////////////

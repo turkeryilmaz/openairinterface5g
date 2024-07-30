@@ -595,7 +595,7 @@ PRACH_RESOURCES_t *ue_get_rach(module_id_t module_idP, int CC_id,
 
         if (UE_mac_inst[module_idP].
             RA_PREAMBLE_TRANSMISSION_COUNTER == preambleTransMax) {
-          LOG_D(MAC,
+          LOG_I(MAC,
                 "[UE %d] Frame %d: Maximum number of RACH attempts (%d)\n",
                 module_idP, frameP, preambleTransMax);
           // send message to RRC

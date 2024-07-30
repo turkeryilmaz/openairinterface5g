@@ -107,13 +107,13 @@ void nr_common_signal_procedures(PHY_VARS_gNB *gNB, int frame,int slot, nfapi_nr
         fp->ssb_start_subcarrier);
 
   LOG_D(PHY,"SS TX: frame %d, slot %d, start_symbol %d\n",frame,slot, ssb_start_symbol);
-  nr_generate_pss(&txdataF[0][txdataF_offset], gNB->TX_AMP, ssb_start_symbol, cfg, fp);
-  nr_generate_sss(&txdataF[0][txdataF_offset], gNB->TX_AMP, ssb_start_symbol, cfg, fp);
+  nr_generate_pss(&txdataF[0][txdataF_offset], gNB->TX_AMP * AMP_QPSK_FACTOR, ssb_start_symbol, cfg, fp);
+  nr_generate_sss(&txdataF[0][txdataF_offset], gNB->TX_AMP * AMP_QPSK_FACTOR, ssb_start_symbol, cfg, fp);
 
   int hf = fp->Lmax == 4 ? n_hf : 0;
   nr_generate_pbch_dmrs(nr_gold_pbch(fp->Lmax, gNB->gNB_config.cell_config.phy_cell_id.value, hf, ssb_index & 7),
                         &txdataF[0][txdataF_offset],
-                        gNB->TX_AMP,
+                        gNB->TX_AMP * AMP_QPSK_FACTOR,
                         ssb_start_symbol,
                         cfg,
                         fp);
@@ -131,7 +131,7 @@ void nr_common_signal_procedures(PHY_VARS_gNB *gNB, int frame,int slot, nfapi_nr
   // Beam_id is currently used only for FR2
   if (fp->freq_range == FR2){
     LOG_D(PHY,"slot %d, ssb_index %d, beam %d\n",slot,ssb_index,cfg->ssb_table.ssb_beam_id_list[ssb_index].beam_id.value);
-    for (int j=0;j<fp->symbols_per_slot;j++) 
+    for (int j=0;j<fp->symbols_per_slot;j++)
       gNB->common_vars.beam_id[0][slot*fp->symbols_per_slot+j] = cfg->ssb_table.ssb_beam_id_list[ssb_index].beam_id.value;
   }
 
@@ -192,7 +192,7 @@ void phy_procedures_gNB_TX(processingData_L1tx_t *msgTx,
       msgTx->ssb[i].active = false;
     }
   }
-  
+
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_gNB_COMMON_TX,0);
 
   int num_pdcch_pdus = msgTx->num_ul_pdcch + msgTx->num_dl_pdcch;
@@ -200,14 +200,14 @@ void phy_procedures_gNB_TX(processingData_L1tx_t *msgTx,
   if (num_pdcch_pdus > 0) {
     LOG_D(PHY, "[gNB %d] Frame %d slot %d Calling nr_generate_dci_top (number of UL/DL PDCCH PDUs %d/%d)\n",
 	  gNB->Mod_id, frame, slot, msgTx->num_ul_pdcch, msgTx->num_dl_pdcch);
-  
+
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_gNB_PDCCH_TX,1);
 
-    nr_generate_dci_top(msgTx, slot, (int32_t *)&gNB->common_vars.txdataF[0][txdataF_offset], gNB->TX_AMP, fp);
+    nr_generate_dci_top(msgTx, slot, (int32_t *)&gNB->common_vars.txdataF[0][txdataF_offset], gNB->TX_AMP * AMP_QPSK_FACTOR, fp);
 
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_gNB_PDCCH_TX,0);
   }
- 
+
   if (msgTx->num_pdsch_slot > 0) {
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_GENERATE_DLSCH,1);
     LOG_D(PHY, "PDSCH generation started (%d) in frame %d.%d\n", msgTx->num_pdsch_slot,frame,slot);
@@ -222,7 +222,7 @@ void phy_procedures_gNB_TX(processingData_L1tx_t *msgTx,
       nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *csi_params = &csirs->csirs_pdu.csi_rs_pdu_rel15;
       nr_generate_csi_rs(&gNB->frame_parms,
                          (int32_t **)gNB->common_vars.txdataF,
-                         gNB->TX_AMP,
+                         gNB->TX_AMP * AMP_QPSK_FACTOR,
                          gNB->nr_csi_info,
                          csi_params,
                          slot,
@@ -412,7 +412,7 @@ static int nr_ulsch_procedures(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, int
 	number_dmrs_symbols, // number of dmrs symbols irrespective of single or double symbol dmrs
 	pusch_pdu->qam_mod_order,
 	pusch_pdu->nrOfLayers);
-  
+
   //----------------------------------------------------------
   //--------------------- ULSCH decoding ---------------------
   //----------------------------------------------------------
@@ -810,7 +810,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
     AssertFatal(ulsch_harq != NULL, "harq_pid %d is not allocated\n", ulsch->harq_pid);
     if ((ulsch->active == true) && (ulsch->frame == frame_rx) && (ulsch->slot == slot_rx) && (ulsch->handled == 0)) {
       LOG_D(PHY, "PUSCH ID %d with RNTI %x detection started in frame %d slot %d\n", ULSCH_id, ulsch->rnti, frame_rx, slot_rx);
-  
+
       int num_dmrs = 0;
       for (int s = 0; s < NR_NUMBER_OF_SYMBOLS_PER_SLOT; s++)
         num_dmrs += (ulsch_harq->ulsch_pdu.ul_dmrs_symb_pos >> s) & 1;
@@ -902,7 +902,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
       VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_ULSCH_PROCEDURES_RX, 1);
       int const tasks_added = nr_ulsch_procedures(gNB, frame_rx, slot_rx, ULSCH_id, ulsch->harq_pid);
       if (tasks_added > 0)
-        totalDecode += tasks_added; 
+        totalDecode += tasks_added;
 
       VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_ULSCH_PROCEDURES_RX, 0);
     }

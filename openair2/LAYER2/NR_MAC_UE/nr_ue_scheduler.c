@@ -944,7 +944,6 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
       delta_pusch = table_38_213_7_1_1_1[0][dci->tpc];
     }
   }
-  delta_pusch = 0; // set to 0 as a workaround for PHY not applying PUSCH tx power
 
   bool is_rar_tx_retx = rnti_type == TYPE_TC_RNTI_;
 
@@ -2795,6 +2794,11 @@ static void nr_ue_prach_scheduler(NR_UE_MAC_INST_t *mac, frame_t frameP, sub_fra
       } // if format1
 
       nr_get_prach_resources(mac, 0, 0, &ra->prach_resources, ra->rach_ConfigDedicated);
+
+      if (ra->prach_resources.RA_PREAMBLE_TRANSMISSION_COUNTER > 1)
+        ra->prach_resources.RA_PREAMBLE_POWER_RAMPING_COUNTER++;
+      ra->prach_resources.ra_PREAMBLE_RECEIVED_TARGET_POWER = nr_get_Po_NOMINAL_PUSCH(mac, &ra->prach_resources, 0);
+
       pdu->prach_config_pdu.ra_PreambleIndex = ra->ra_PreambleIndex;
       pdu->prach_config_pdu.prach_tx_power = get_prach_tx_power(mac);
       mac->ra.ra_rnti = nr_get_ra_rnti(pdu->prach_config_pdu.prach_start_symbol,

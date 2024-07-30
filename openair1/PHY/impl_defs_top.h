@@ -259,6 +259,10 @@
 #define AMP_OVER_SQRT2 ((AMP*ONE_OVER_SQRT2_Q15)>>15)
 #define AMP_OVER_2 (AMP>>1)
 
+// QPSK modulation causes 1.5dB power loss compared to full scale sin. Multiply AMP by
+// AMP_QPSK_FACTOR to achive target power when using QPSK modulation
+#define AMP_QPSK_FACTOR (1.188502)
+
 /// Threshold for PUCCH Format 1 detection
 #define PUCCH1_THRES 0
 /// Threshold for PUCCH Format 1a/1b detection
@@ -317,6 +321,9 @@ typedef struct {
 #include "common/openairinterface5g_limits.h"
 #include "assertions.h"
 
-#endif //__PHY_IMPLEMENTATION_DEFS_H__ 
-/**@} 
+#define FULLSCALE INT16_MAX
+#define RMS_FULLSCALE (0.707 * FULLSCALE * FULLSCALE)
+
+#endif //__PHY_IMPLEMENTATION_DEFS_H__
+/**@}
 */

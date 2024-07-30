@@ -252,6 +252,10 @@ typedef struct openair0_config {
   //! \brief Gain offset (for calibration) in dB
   //! index: [0..rx_num_channels]
   double rx_gain_offset[8];
+  //! \brief Setting of reference RX power value. Setting value to X means if a single carrier full scale sine wave is received the power ix X dBm
+  double rx_power_reference;
+  //! \brief Setting of reference TX power value. Setting value to X means a fullscale single carrier sine wave will be transmitted at X dBm
+  double tx_power_reference;
   //! gain for TX in dB
   double tx_gain[8];
   //! RX bandwidth in Hz
@@ -379,7 +383,7 @@ typedef struct {
 } openair0_thread_t;
 
 typedef struct fhstate_s {
-  openair0_timestamp TS[8]; 
+  openair0_timestamp TS[8];
   openair0_timestamp TS0;
   openair0_timestamp olddeltaTS[8];
   openair0_timestamp oldTS[8];
@@ -467,7 +471,7 @@ struct openair0_device_t {
   int (*trx_start_func)(openair0_device *device);
 
  /*! \brief Called to configure the device
-      @param device pointer to the device structure specific to the RF hardware target  
+      @param device pointer to the device structure specific to the RF hardware target
   */
 
 
@@ -492,7 +496,7 @@ struct openair0_device_t {
       @param timestamp The timestamp at whicch the first sample MUST be sent
       @param buff Buffer which holds the samples (2 dimensional)
       @param nsamps number of samples to be sent
-      @param number of antennas 
+      @param number of antennas
       @param flags flags must be set to true if timestamp parameter needs to be applied
   */
   int (*trx_write_func)(openair0_device *device, openair0_timestamp timestamp, void **buff, int nsamps,int antenna_id, int flags);
@@ -570,6 +574,30 @@ struct openair0_device_t {
    */
   int (*trx_set_gains_func)(openair0_device *device, openair0_config_t *openair0_cfg);
 
+  /*! \brief Set rx_power_reference
+   * \param device the hardware to use
+   * \param openair0_cfg RF frontend parameters set by application
+   * \returns 0 in success
+   */
+  int (*set_rx_power_reference_func)(openair0_device *device, openair0_config_t *openair0_cfg);
+
+    /*! \brief Get rx_power_reference
+   * \param device the hardware to use
+   */
+  int (*get_rx_power_reference_func)(openair0_device *device);
+
+  /*! \brief Set tx_power_reference
+   * \param device the hardware to use
+   * \param openair0_cfg RF frontend parameters set by application
+   * \returns 0 in success
+   */
+  int (*set_tx_power_reference_func)(openair0_device *device, openair0_config_t *openair0_cfg);
+
+  /*! \brief Get tx_power_reference
+   * \param device the hardware to use
+   */
+  int (*get_tx_power_reference_func)(openair0_device *device);
+
   /*! \brief RRU Configuration callback
    * \param idx RU index
    * \param arg pointer to capabilities or configuration
@@ -628,6 +656,7 @@ typedef struct {
   uint64_t timestamp;      // Timestamp value of first sample
   uint32_t option_value;   // Option value
   uint32_t option_flag;    // Option flag
+  int16_t tx_power_reference;
 } samplesBlockHeader_t;
 
 #ifdef __cplusplus
@@ -690,4 +719,3 @@ void openair0_write_reorder_clear_context(openair0_device *device);
 #endif
 
 #endif // COMMON_LIB_H
-

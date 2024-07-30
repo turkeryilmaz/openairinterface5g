@@ -364,7 +364,7 @@ void nr_generate_pbch(PHY_VARS_gNB *gNB,
   int k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier;
   int l = ssb_start_symbol + 1;
   int m = 0;
-  int16_t amp = gNB->TX_AMP;
+  int16_t amp = gNB->TX_AMP * AMP_QPSK_FACTOR;
 
   for (int ssb_sc_idx = 0; ssb_sc_idx < 240; ssb_sc_idx++) {
     if ((ssb_sc_idx&3) == nushift) {  //skip DMRS

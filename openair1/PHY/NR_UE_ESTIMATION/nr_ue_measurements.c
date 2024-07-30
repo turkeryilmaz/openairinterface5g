@@ -171,7 +171,7 @@ void nr_ue_measurements(PHY_VARS_NR_UE *ue,
 }
 
 // This function calculates:
-// - SS reference signal received digital power in dB/RE
+// - SS reference signal received digital power
 int nr_ue_calculate_ssb_rsrp(const NR_DL_FRAME_PARMS *fp,
                              const UE_nr_rxtx_proc_t *proc,
                              const c16_t rxdataF[][fp->samples_per_slot_wCP],
@@ -209,9 +209,7 @@ int nr_ue_calculate_ssb_rsrp(const NR_DL_FRAME_PARMS *fp,
 
   LOG_D(PHY, "In %s: RSRP/nb_re: %d nb_re :%d\n", __FUNCTION__, rsrp, nb_re);
 
-  int rsrp_db_per_re = 10 * log10(rsrp);
-
-  return rsrp_db_per_re;
+  return rsrp;
 }
 
 // This function implements:
@@ -234,20 +232,35 @@ void nr_ue_ssb_rsrp_measurements(PHY_VARS_NR_UE *ue,
   if (fp->half_frame_bit)
     symbol_offset += (fp->slots_per_frame >> 1) * fp->symbols_per_slot;
 
-  int rsrp_db_per_re = nr_ue_calculate_ssb_rsrp(fp, proc, rxdataF, symbol_offset, fp->ssb_start_subcarrier);
+  int rsrp = nr_ue_calculate_ssb_rsrp(fp, proc, rxdataF, symbol_offset, fp->ssb_start_subcarrier);
 
   openair0_config_t *cfg0 = &openair0_cfg[0];
 
-  ue->measurements.ssb_rsrp_dBm[ssb_index] = rsrp_db_per_re + 30 - SQ15_SQUARED_NORM_FACTOR_DB
-                                             - ((int)cfg0->rx_gain[0] - (int)cfg0->rx_gain_offset[0])
-                                             - dB_fixed(fp->ofdm_symbol_size);
+  if (ue->rfdevice.get_rx_power_reference_func) {
+    // Has rx_power reference capability
+    const int16_t fullscale = INT16_MAX;
+    const float rms_fullscale = 0.707 * fullscale * fullscale;
+    int rx_power_reference = ue->rfdevice.get_rx_power_reference_func(&ue->rfdevice);
+    ue->measurements.ssb_rsrp_dBm[ssb_index] = rx_power_reference + 10 * log10(rsrp / rms_fullscale);
+    float average_sample_value = sqrt(rsrp / 2);
+    LOG_I(PHY,
+          "SSB RSRP = %f, rx_power_reference = %d rms=%d average_sample_value = %f\n",
+          rx_power_reference + 10 * log10(rsrp / rms_fullscale),
+          rx_power_reference,
+          rsrp,
+          average_sample_value);
+  } else {
+    ue->measurements.ssb_rsrp_dBm[ssb_index] = 10 * log10(rsrp) + 30 - SQ15_SQUARED_NORM_FACTOR_DB
+                                              - ((int)cfg0->rx_gain[0] - (int)cfg0->rx_gain_offset[0])
+                                              - dB_fixed(fp->ofdm_symbol_size);
+  }
 
   LOG_D(PHY,
         "[UE %d] ssb %d SS-RSRP: %d dBm/RE (%d dB/RE)\n",
         ue->Mod_id,
         ssb_index,
         ue->measurements.ssb_rsrp_dBm[ssb_index],
-        rsrp_db_per_re);
+        (int)(10 * log10(rsrp)));
 }
 
 // This function computes the received noise power
