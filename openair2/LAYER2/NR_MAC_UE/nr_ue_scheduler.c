@@ -3264,6 +3264,7 @@ void preprocess(NR_UE_MAC_INST_t *mac, NR_sched_pssch_t *sched_pssch, uint16_t f
     NR_sched_pssch_t *sched_pssch = &sched_ctrl->sched_pssch;
     sched_pssch->sl_harq_pid = sched_ctrl->retrans_sl_harq.head;
   }
+  LOG_D(NR_MAC, "Tx_slot %4u.%2u sl_harq_pid %d\n", frame, slot, sched_pssch->sl_harq_pid);
 }
 bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
 		              nr_sidelink_indication_t *sl_ind,
@@ -3351,6 +3352,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
       cur_harq = &sched_ctrl->sl_harq_processes[harq_id];
       DevAssert(!cur_harq->is_waiting);
       add_tail_nr_list(&sched_ctrl->feedback_sl_harq, harq_id);
+      LOG_I(NR_MAC, "Tx_slot %4d.%2d harq_id %d cur_harq %p\n", frame, slot, harq_id, cur_harq);
       /*
       SLSCH tx computes feedback frame and slot, which will be used by transmitter of PSFCH after receiving this SLSCH.
       Transmitter of SLSCH stores the feedback frame and slot in harq process to use those in retreiving the feedback.
@@ -3362,18 +3364,23 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
       sl_nr_ue_mac_params_t *sl_mac =  mac->SL_MAC_PARAMS;
       NR_TDD_UL_DL_Pattern_t *tdd = &sl_mac->sl_TDD_config->pattern1;
 
-      LOG_I(NR_MAC, "sl_mac %p tdd_config %p tdd %p\n", sl_mac, sl_mac->sl_TDD_config, tdd);
       uint8_t pssch_to_harq_feedback[8];
       int feedback_frame, feedback_slot;
       uint16_t num_subch = sl_get_num_subch(mac->sl_tx_res_pool);
       int psfch_max_size = (psfch_period * num_subch);
       int fb_size = get_pssch_to_harq_feedback(pssch_to_harq_feedback, psfch_min_time_gap);
-
+      LOG_D(NR_MAC, "Tx_slot %4d.%2d fb_size %d\n", frame, slot, fb_size);
+      int rcv_tx_slot = (slot + DURATION_RX_TO_TX) % nr_slots_frame;
+      int rcv_tx_frame = (frame + ((slot + DURATION_RX_TO_TX) / nr_slots_frame)) % 1024;
       for (int f = 0; f < fb_size; f++) {
-        int continue_flag = get_feedback_frame_slot(tdd, pssch_to_harq_feedback[f], psfch_min_time_gap, nr_slots_frame, frame, slot, psfch_period, &feedback_frame, &feedback_slot);
+        int continue_flag = get_feedback_frame_slot(tdd, pssch_to_harq_feedback[f], psfch_min_time_gap, nr_slots_frame,
+                                                    rcv_tx_frame, rcv_tx_slot, psfch_period, &feedback_frame, &feedback_slot);
+        LOG_D(NR_MAC, "Tx_slot %4d.%2d flag %d, f %d, offset %d, psfch_slot %d\n",
+              frame, slot, continue_flag, f, pssch_to_harq_feedback[f], feedback_slot);
         if (continue_flag == -1)
           continue;
         uint8_t k = find_nr_ue_sl_harq(feedback_frame, feedback_slot, sched_ctrl, NULL);
+        LOG_I(NR_MAC, "Tx_slot %4d.%2d find_nr_ue_sl_harq k %d feedback %4d.%2d\n", frame, slot, k, feedback_frame, feedback_slot);
         if (k == psfch_max_size)
           continue;
         break;
@@ -3385,7 +3392,9 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
       cur_harq->sl_harq_pid = harq_id;
     }
 
-    bool schedule_slsch = nr_schedule_slsch(mac, frame, slot, &mac->sci1_pdu, &mac->sci2_pdu, tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu.slsch_payload, NR_SL_SCI_FORMAT_2A, &slsch_pdu_length_max, cur_harq, &rlc_status);
+    bool schedule_slsch = nr_schedule_slsch(mac, frame, slot, &mac->sci1_pdu, &mac->sci2_pdu,
+                                            tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu.slsch_payload,
+                                            NR_SL_SCI_FORMAT_2A, &slsch_pdu_length_max, cur_harq, &rlc_status);
 
     if (!schedule_slsch) return false;
 

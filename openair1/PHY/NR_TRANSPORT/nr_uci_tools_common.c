@@ -161,7 +161,7 @@ double nr_cyclic_shift_hopping(uint32_t n_id,
 
     tmpShift = (minShift&((1<<5)-1)); //minShift%32;
     minShift ++;
-    n_cs = n_cs+((1<<m)*((uint8_t)((s>>tmpShift)&1)));
+    n_cs = n_cs+((1<<m)*((uint8_t)((s>>(tmpShift + m))&1)));
     // calculating n_cs (Not sure we have to use nr_slot_tx FIXME!!!)
     // n_cs = n_cs+((1<<m)*((uint8_t)((s>>((14*8*nr_slot_tx) + 8*(lnormal+lprime) + m))&1)));
   }

@@ -56,7 +56,7 @@
 
 //#define DEBUG_NR_PUCCH_RX 1
 
-int get_pucch0_cs_lut_index(PHY_VARS_NR_UE *ue,nfapi_nr_pucch_pdu_t* pucch_pdu) {
+int get_pucch0_cs_lut_index(PHY_VARS_NR_UE *ue, nfapi_nr_pucch_pdu_t* pucch_pdu) {
 
   int i = 0;
 
@@ -79,7 +79,7 @@ int get_pucch0_cs_lut_index(PHY_VARS_NR_UE *ue,nfapi_nr_pucch_pdu_t* pucch_pdu) 
   ue->pucch0_lut.Nid[ue->pucch0_lut.nb_id] = pucch_pdu->hopping_id;
   for (int slot=0; slot<10<<pucch_pdu->subcarrier_spacing; slot++)
     for (int symbol=0; symbol<14; symbol++)
-      ue->pucch0_lut.lut[ue->pucch0_lut.nb_id][slot][symbol] = (int)floor(nr_cyclic_shift_hopping(pucch_pdu->hopping_id,0,0,symbol,0,slot)/0.5235987756);
+      ue->pucch0_lut.lut[ue->pucch0_lut.nb_id][slot][symbol] = (int)floor(nr_cyclic_shift_hopping(pucch_pdu->hopping_id, 0, 0, 0, symbol, slot) / 0.5235987756);
   ue->pucch0_lut.nb_id++;
   return(ue->pucch0_lut.nb_id-1);
 }
@@ -134,6 +134,7 @@ int8_t nr_ue_decode_psfch0(PHY_VARS_NR_UE *ue,
   pucch_pdu.initial_cyclic_shift = psfch_pdu->initial_cyclic_shift;
   pucch_pdu.bit_len_harq = psfch_pdu->bit_len_harq;
   pucch_pdu.sr_flag = 0;
+  pucch_pdu.subcarrier_spacing = 1;
   ack_nack_rcvd = nr_ue_decode_pucch0(ue,
                                  frame,
                                  slot,
@@ -154,7 +155,7 @@ int8_t nr_ue_decode_pucch0(PHY_VARS_NR_UE *ue,
   sl_nr_rx_indication_t sl_rx_indication;
   nr_sidelink_indication_t sl_indication;
 
-  int soffset = (slot & 3) * frame_parms->symbols_per_slot * frame_parms->ofdm_symbol_size;
+  int soffset = 0;
   AssertFatal(pucch_pdu->bit_len_harq > 0 || pucch_pdu->sr_flag > 0,
               "Either bit_len_harq (%d) or sr_flag (%d) must be > 0\n",
               pucch_pdu->bit_len_harq, pucch_pdu->sr_flag);
@@ -173,7 +174,8 @@ int8_t nr_ue_decode_pucch0(PHY_VARS_NR_UE *ue,
     mcs = table2_mcs;
     nr_sequences = 8>>(1-pucch_pdu->sr_flag);
   }
-  LOG_D(PHY, "%s pucch0: nr_symbols %d, start_symbol %d, prb_start %d, second_hop_prb %d, group_hop_flag %d, sequence_hop_flag %d, O_ACK %d, O_SR %d, mcs %d initial_cyclic_shift %d\n",
+  LOG_I(PHY, "Rx_slot %s pucch0: nr_symbols %d, start_symbol %d, prb_start %d, second_hop_prb %d,\
+        group_hop_flag %d, sequence_hop_flag %d, O_ACK %d, O_SR %d, mcs %d initial_cyclic_shift %d scs %u\n",
         __FUNCTION__,
         pucch_pdu->nr_of_symbols,
         pucch_pdu->start_symbol_index,
@@ -184,7 +186,8 @@ int8_t nr_ue_decode_pucch0(PHY_VARS_NR_UE *ue,
         pucch_pdu->bit_len_harq,
         pucch_pdu->sr_flag,
         mcs[0],
-        pucch_pdu->initial_cyclic_shift);
+        pucch_pdu->initial_cyclic_shift,
+        pucch_pdu->subcarrier_spacing);
 
   int cs_ind = get_pucch0_cs_lut_index(ue, pucch_pdu);
   /*
@@ -258,9 +261,9 @@ int8_t nr_ue_decode_pucch0(PHY_VARS_NR_UE *ue,
       re_offset[l] -= frame_parms->ofdm_symbol_size;
 
     for (int aa = 0; aa < frame_parms->nb_antennas_rx; aa++) {
-      LOG_D(NR_PHY, "soffset %i, soffset + l2*frame_parms->ofdm_symbol_size %i %i re_offset[%d] %i\n", soffset, soffset + l2*frame_parms->ofdm_symbol_size, (soffset + l2*frame_parms->ofdm_symbol_size + nb_re_pucch), l, re_offset[l]);
+      LOG_D(NR_PHY, "Rx_slot soffset %i, soffset + l2*frame_parms->ofdm_symbol_size %i %i re_offset[%d] %i\n", soffset, soffset + l2*frame_parms->ofdm_symbol_size, (soffset + l2*frame_parms->ofdm_symbol_size + nb_re_pucch), l, re_offset[l]);
       for (int z = soffset + l2*frame_parms->ofdm_symbol_size + re_offset[l]; z < (soffset + l2*frame_parms->ofdm_symbol_size + re_offset[l] + nb_re_pucch); z++)
-        LOG_D(NR_PHY, "%4d.%2d z %d rxdataF (%d,%d)\n", frame, slot, z, rxdataF[aa][z].r, rxdataF[aa][z].i);
+        LOG_D(NR_PHY, "Rx_slot %4d.%2d z %d rxdataF (%d,%d)\n", frame, slot, z, rxdataF[aa][z].r, rxdataF[aa][z].i);
       tmp_rp = (int32_t *)&rxdataF[aa][soffset + l2*frame_parms->ofdm_symbol_size];
       if(re_offset[l] + nb_re_pucch > frame_parms->ofdm_symbol_size) {
         int neg_length = frame_parms->ofdm_symbol_size - re_offset[l];
@@ -276,9 +279,10 @@ int8_t nr_ue_decode_pucch0(PHY_VARS_NR_UE *ue,
       for (n=0; n<nb_re_pucch; n++) {
         xr[aa][l][n].r = (int32_t)x_re[l][n] * r[n].r + (int32_t)x_im[l][n] * r[n].i;
         xr[aa][l][n].i = (int32_t)x_re[l][n] * r[n].i - (int32_t)x_im[l][n] * r[n].r;
-#ifdef DEBUG_NR_PUCCH_RX
-        LOG_I(NR_PHY, "x (%d,%d), r%d.%d (%d,%d), xr (%lld,%lld)\n",
-               x_re[l][n], x_im[l][n], l2, re_offset[l], r[n].r, r[n].i, xr[aa][l][n].r, xr[aa][l][n].i);
+#if 0
+        LOG_I(NR_PHY, "Rx_slot %4d.%2d x (%d,%d), r%d.%d (%d,%d), xr (%lld,%lld)\n",
+              frame, slot,
+              x_re[l][n], x_im[l][n], l2, re_offset[l], r[n].r, r[n].i, xr[aa][l][n].r, xr[aa][l][n].i);
 #endif
 
       }
@@ -295,19 +299,21 @@ int8_t nr_ue_decode_pucch0(PHY_VARS_NR_UE *ue,
         seq_index = (pucch_pdu->initial_cyclic_shift+
                      mcs[i]+
                      ue->pucch0_lut.lut[cs_ind][slot][l+pucch_pdu->start_symbol_index])%12;
-#ifdef DEBUG_NR_PUCCH_RX
-        LOG_I(NR_PHY, "PUCCH symbol %d seq %d, seq_index %d, mcs %d , slot %d, cs_ind %d\n", l, i, seq_index, mcs[i], slot, cs_ind);
+#if 1
+        LOG_I(NR_PHY, "Rx_slot PUCCH symbol %d seq %d, seq_index %d, mcs %d , slot %d, cs_ind %d lut %d\n",
+              l, i, seq_index, mcs[i], slot, cs_ind,
+              ue->pucch0_lut.lut[cs_ind][slot][l+pucch_pdu->start_symbol_index]);
 #endif
         corr[aa][l] = (c64_t){0};
         for (n = 0; n < 12; n++) {
           corr[aa][l].r += xr[aa][l][n].r * idft12_re[seq_index][n] + xr[aa][l][n].i * idft12_im[seq_index][n];
           corr[aa][l].i += xr[aa][l][n].r * idft12_im[seq_index][n] - xr[aa][l][n].i * idft12_re[seq_index][n];
         }
-        corr[aa][l].r >>= 31;
-        corr[aa][l].i >>= 31;
+        corr[aa][l].r >>= 11;
+        corr[aa][l].i >>= 11;
       }
     }
-    LOG_D(PHY,"PUCCH IDFT[%d/%d] = (%ld,%ld)=>%f\n",
+    LOG_D(PHY,"Rx_slot PUCCH IDFT[%d/%d] = (%ld,%ld)=>%f\n",
           mcs[i], seq_index, corr[0][0].r, corr[0][0].i,
           10*log10((double)squaredMod(corr[0][0])));
     if (pucch_pdu->nr_of_symbols == 2)
@@ -335,6 +341,8 @@ int8_t nr_ue_decode_pucch0(PHY_VARS_NR_UE *ue,
         temp += squaredMod(corr[aa][0]) + squaredMod(corr[aa][1]);
     }
     else AssertFatal(1==0,"shouldn't happen\n");
+    LOG_D(PHY, "Rx_slot Sequence %d temp %ld vs. xrtmag %ld xrtmag_next %ld, slot %d rx atnennas %u\n",
+          i, temp, xrtmag, xrtmag_next, slot, frame_parms->nb_antennas_rx);
     if (temp > xrtmag) {
       xrtmag_next = xrtmag;
       xrtmag = temp;
@@ -359,8 +367,8 @@ int8_t nr_ue_decode_pucch0(PHY_VARS_NR_UE *ue,
   index = maxpos;
   if (pucch_pdu->bit_len_harq==1) {
     uint8_t ack_nack = !(index&0x01);
-    LOG_D(PHY,
-          "[PSFCH RX] %d.%d HARQ %s\n",
+    LOG_I(PHY,
+          "[PSFCH RX] Rx_slot %4u.%2u HARQ %s\n",
           frame,
           slot,
           ack_nack == 0 ? "ACK" : "NACK");
