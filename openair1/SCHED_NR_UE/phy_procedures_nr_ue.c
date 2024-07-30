@@ -308,7 +308,7 @@ void nr_ue_measurement_procedures(uint16_t l,
                                   const UE_nr_rxtx_proc_t *proc,
                                   NR_UE_DLSCH_t *dlsch,
                                   uint32_t pdsch_est_size,
-                                  int32_t dl_ch_estimates[][pdsch_est_size])
+                                  c16_t dl_ch_estimates[][pdsch_est_size])
 {
   NR_DL_FRAME_PARMS *frame_parms=&ue->frame_parms;
   int nr_slot_rx = proc->nr_slot_rx;
@@ -362,7 +362,7 @@ void nr_ue_measurement_procedures(uint16_t l,
 static int nr_ue_pbch_procedures(PHY_VARS_NR_UE *ue,
                                  const UE_nr_rxtx_proc_t *proc,
                                  int estimateSz,
-                                 struct complex16 dl_ch_estimates[][estimateSz],
+                                 c16_t dl_ch_estimates[][estimateSz],
                                  c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP])
 {
   int ret = 0;
@@ -495,8 +495,8 @@ static int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
           dlsch0->Nl);
 
     const uint32_t pdsch_est_size = ((ue->frame_parms.symbols_per_slot * ue->frame_parms.ofdm_symbol_size + 15) / 16) * 16;
-    __attribute__((aligned(32))) int32_t pdsch_dl_ch_estimates[ue->frame_parms.nb_antennas_rx * dlsch0->Nl][pdsch_est_size];
-    memset(pdsch_dl_ch_estimates, 0, sizeof(int32_t) * ue->frame_parms.nb_antennas_rx * dlsch0->Nl * pdsch_est_size);
+    __attribute__((aligned(32))) c16_t pdsch_dl_ch_estimates[ue->frame_parms.nb_antennas_rx * dlsch0->Nl][pdsch_est_size];
+    memset(pdsch_dl_ch_estimates, 0, sizeof(pdsch_dl_ch_estimates));
 
     c16_t ptrs_phase_per_slot[ue->frame_parms.nb_antennas_rx][NR_SYMBOLS_PER_SLOT];
     memset(ptrs_phase_per_slot, 0, sizeof(ptrs_phase_per_slot));
@@ -505,7 +505,8 @@ static int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
     memset(ptrs_re_per_slot, 0, sizeof(ptrs_re_per_slot));
 
     const uint32_t rx_size_symbol = dlsch[0].dlsch_config.number_rbs * NR_NB_SC_PER_RB;
-    __attribute__((aligned(32))) int32_t rxdataF_comp[dlsch[0].Nl][ue->frame_parms.nb_antennas_rx][rx_size_symbol * NR_SYMBOLS_PER_SLOT];
+    __attribute__((
+        aligned(32))) c16_t rxdataF_comp[dlsch[0].Nl][ue->frame_parms.nb_antennas_rx][rx_size_symbol * NR_SYMBOLS_PER_SLOT];
     memset(rxdataF_comp, 0, sizeof(rxdataF_comp));
 
     uint32_t nvar = 0;
@@ -916,7 +917,6 @@ int pbch_pdcch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_
             start_meas(&ue->dlsch_channel_estimation_stats);
             nr_pbch_channel_estimation(&ue->frame_parms,
                                        NULL,
-                                       ue->nr_gold_pbch,
                                        estimateSz,
                                        dl_ch_estimates,
                                        dl_ch_estimates_time,
@@ -1037,7 +1037,7 @@ int pbch_pdcch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_
     }
     dci_cnt = dci_cnt + nr_ue_pdcch_procedures(ue, proc, pdcch_est_size, pdcch_dl_ch_estimates, phy_data, n_ss, rxdataF);
   }
-  LOG_D(PHY,"[UE %d] Frame %d, nr_slot_rx %d: found %d DCIs\n", ue->Mod_id, frame_rx, nr_slot_rx, dci_cnt);
+  LOG_D(PHY, "[UE %d] Frame %d, nr_slot_rx %d: found %d DCIs\n", ue->Mod_id, frame_rx, nr_slot_rx, dci_cnt);
   phy_pdcch_config->nb_search_space = 0;
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_UE_SLOT_FEP_PDCCH, VCD_FUNCTION_OUT);
   return sampleShift;

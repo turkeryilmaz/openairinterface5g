@@ -167,7 +167,7 @@ endif()
 # clang: suppress complaints about unused command line argument (-rdynamic only
 # used during linking)
 if(CMAKE_C_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-  set(commonOpts "${commonOpts} -Wno-unused-command-line-argument")
+  set(commonOpts "${commonOpts} -Wno-unused-command-line-argument -Wno-vla-cxx-extension")
 endif()
 
 set(CMAKE_C_FLAGS
@@ -1017,6 +1017,7 @@ set(PHY_SRC_UE
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_csi_rs.c
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_scrambling.c
   ${OPENAIR1_DIR}/PHY/NR_REFSIG/scrambling_luts.c
+  ${OPENAIR1_DIR}/PHY/NR_REFSIG/refsig.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/srs_modulation_nr.c
   )
 
@@ -1042,7 +1043,6 @@ set(PHY_SRC_UE
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_ulsch_demodulation.c
   ${OPENAIR1_DIR}/PHY/NR_REFSIG/ul_ref_seq_nr.c
   ${OPENAIR1_DIR}/PHY/NR_REFSIG/nr_dmrs_rx.c
-  ${OPENAIR1_DIR}/PHY/NR_REFSIG/nr_gold.c
   ${OPENAIR1_DIR}/PHY/NR_REFSIG/nr_gen_mod_table.c
   ${OPENAIR1_DIR}/PHY/NR_REFSIG/dmrs_nr.c
   ${OPENAIR1_DIR}/PHY/NR_REFSIG/ptrs_nr.c
