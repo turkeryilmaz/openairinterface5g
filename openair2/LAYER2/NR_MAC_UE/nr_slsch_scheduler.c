@@ -169,7 +169,10 @@ void handle_nr_ue_sl_harq(module_id_t mod_id,
   matched_harqs = NULL;
 }
 
-bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP,int slotP, nr_sci_pdu_t *sci_pdu,nr_sci_pdu_t *sci2_pdu,uint8_t *slsch_pdu,nr_sci_format_t format2, uint16_t *slsch_pdu_length_max, NR_UE_sl_harq_t *cur_harq, mac_rlc_status_resp_t *rlc_status) {
+bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP,int slotP, nr_sci_pdu_t *sci_pdu,
+                       nr_sci_pdu_t *sci2_pdu,uint8_t *slsch_pdu,nr_sci_format_t format2,
+                       uint16_t *slsch_pdu_length_max, NR_UE_sl_harq_t *cur_harq,
+                       mac_rlc_status_resp_t *rlc_status) {
 
   sl_nr_ue_mac_params_t *sl_mac = mac->SL_MAC_PARAMS;
   uint8_t mu = sl_mac->sl_phy_config.sl_config_req.sl_bwp_config.sl_scs;
@@ -184,7 +187,8 @@ bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP,int slotP, nr_sci_pdu_t
   bool csi_acq = !mac->SL_MAC_PARAMS->sl_CSI_Acquisition;
   bool csi_req_slot = !((slots_per_frame * frameP + slotP - sl_mac->slot_offset) % sl_mac->slot_periodicity);
   bool is_harq_feedback = is_feedback_scheduled(mac, frameP, slotP);
-  LOG_D(NR_MAC, "frame.slot %4d.%2d bytes_in_buffer? %d, harq_feedback %d, (csi_acq && csi_req_slot) %d, sl_csi_report %p\n", frameP, slotP, rlc_status->bytes_in_buffer > 0, mac->sci_pdu_rx.harq_feedback, (csi_acq && csi_req_slot), mac->sl_csi_report);
+  LOG_D(NR_MAC, "frame.slot %4d.%2d bytes_in_buffer? %d, harq_feedback %d, (csi_acq && csi_req_slot) %d, sl_csi_report %p\n",
+        frameP, slotP, rlc_status->bytes_in_buffer > 0, mac->sci_pdu_rx.harq_feedback, (csi_acq && csi_req_slot), mac->sl_csi_report);
   if (rlc_status->bytes_in_buffer > 0 || is_harq_feedback || (csi_acq && csi_req_slot) || mac->sl_csi_report) {
      uint8_t cqi_Table = 0;
      int8_t mcs = 11, ri = 0;

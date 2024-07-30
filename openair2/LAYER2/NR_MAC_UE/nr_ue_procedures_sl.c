@@ -1064,13 +1064,13 @@ void configure_csi_report_params(NR_UE_MAC_INST_t* mac) {
 }
 
 uint8_t sl_num_slsch_feedbacks(NR_UE_MAC_INST_t *mac) {
-  uint8_t psfch_period = 0;
-  const uint8_t psfch_periods[] = {0,1,2,4};
-  psfch_period = (mac->sl_tx_res_pool->sl_PSFCH_Config_r16 &&
-                  mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16)
-                  ? psfch_periods[*mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16] : 0;
+  sl_nr_ue_mac_params_t *sl_mac =  mac->SL_MAC_PARAMS;
+  NR_TDD_UL_DL_Pattern_t *tdd = &sl_mac->sl_TDD_config->pattern1;
+  int scs = get_softmodem_params()->numerology;
+  const int nr_slots_frame = nr_slots_per_frame[scs];
+  const int n_ul_slots_period = tdd ? tdd->nrofUplinkSlots + (tdd->nrofUplinkSymbols > 0 ? 1 : 0) : nr_slots_frame;
   uint16_t num_subch = sl_get_num_subch(mac->sl_tx_res_pool);
-  return psfch_period * num_subch;
+  return n_ul_slots_period * num_subch;
 }
 
 bool is_feedback_scheduled(NR_UE_MAC_INST_t *mac, int frameP,int slotP) {
