@@ -26,8 +26,9 @@ services:
       - /usr/src:/usr/src
       - ~/share:/opt/nvidia/cuBB/share
       - /var/log/aerial:/var/log/aerial
-      - ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb-vnf.sa.cbrs.aerial.conf:/opt/oai-gnb/etc/gnb.conf
-        #- ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb-vnf.sa.band78.273prb.aerial.conf:/opt/oai-gnb/etc/gnb.conf
+      # Use this for CBRS radios
+      #- ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb-vnf.sa.cbrs.aerial.conf:/opt/oai-gnb/etc/gnb.conf
+      - ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb-vnf.sa.band78.273prb.aerial.conf:/opt/oai-gnb/etc/gnb.conf
     container_name: c_oai-gnb-aerial
     command: bash -c "chrt -r 1 taskset -c 11-16 chrt -f 95 /opt/oai-gnb/bin/nr-softmodem -O /opt/oai-gnb/etc/gnb.conf | tee /var/log/aerial/oai.log"
       #cpuset: 11-18
@@ -56,7 +57,7 @@ services:
       networks:
           public_net:
               ipv4_address: 192.168.70.131
-              
+
   ims:
       container_name: "asterisk-ims"
       image: ims:latest
@@ -205,9 +206,6 @@ services:
           public_net:
               ipv4_address: 192.168.70.135
 networks:
-    # public_net:
-    #     external:
-    #         name: demo-oai-public-net
     public_net:
         driver: bridge
         name: demo-oai-public-net
