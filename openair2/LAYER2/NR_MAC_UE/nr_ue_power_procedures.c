@@ -458,7 +458,8 @@ int get_pusch_tx_power_ue(NR_UE_MAC_INST_t *mac,
                           uint32_t sum_bits_in_codeblocks,
                           int delta_pusch,
                           bool is_rar_tx_retx,
-                          bool transform_precoding)
+                          bool transform_precoding,
+                          int P_CMAX)
 {
   LOG_D(NR_MAC,
         "PUSCH tx power determination num_rb=%d start_prb=%d nb_symb_sch=%u nb_dmrs_prb=%u nb_ptrs_prb=%u Qm=%u R= %u "
@@ -527,18 +528,6 @@ int get_pusch_tx_power_ue(NR_UE_MAC_INST_t *mac,
   int mu = current_UL_BWP->scs;
 
   int M_pusch_component = 10 * log10((pow(2, mu)) * num_rb);
-  int P_CMAX = nr_get_Pcmax(mac->p_Max,
-                            mac->nr_band,
-                            mac->frame_type,
-                            mac->frequency_range,
-                            mac->current_UL_BWP->channel_bandwidth,
-                            qm,
-                            false,
-                            mac->current_UL_BWP->scs,
-                            mac->current_UL_BWP->BWPSize,
-                            transform_precoding,
-                            num_rb,
-                            start_prb);
 
   int P_O_PUSCH = P_O_NOMINAL_PUSCH + P_O_UE_PUSCH;
 
