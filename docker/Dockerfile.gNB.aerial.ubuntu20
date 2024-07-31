@@ -25,7 +25,7 @@
 #
 #---------------------------------------------------------------------
 
-FROM ran-base:latest as ran-build
+FROM ran-base:latest AS ran-build
 
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get upgrade --yes && \
@@ -47,8 +47,6 @@ COPY . .
 RUN /bin/sh oaienv && \
     tar -xvzf nvipc_src.*.tar.gz && \
     cd nvipc_src.* && \
-    git init && \
-    git apply ../cmake_targets/tools/install_libraries_to_system.patch --verbose && \
     rm -rf build && mkdir build && cd build && \
     cmake .. -DNVIPC_DPDK_ENABLE=OFF -DNVIPC_DOCA_ENABLE=OFF -DNVIPC_CUDA_ENABLE=OFF -DENABLE_SLT_RSP=ON && \
     make -j && make install
@@ -60,7 +58,7 @@ RUN /bin/sh oaienv && \
 
 
 #start from scratch for target executable
-FROM ubuntu:focal as oai-gnb-aerial
+FROM ubuntu:focal AS oai-gnb-aerial
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Europe
 
@@ -99,5 +97,5 @@ COPY --from=ran-build \
 
 WORKDIR /opt/oai-gnb
 COPY --from=ran-build /tini /tini
-ENTRYPOINT ["/tini", "-v", "--", "/opt/oai-gnb/bin/entrypoint.sh"]
-CMD ["/opt/oai-gnb/bin/nr-softmodem", "-O", "/opt/oai-gnb/etc/gnb.conf"]
+ENTRYPOINT ["/opt/oai-gnb/bin/entrypoint.sh"]
+CMD ["bash","-c","/opt/oai-gnb/bin/nr-softmodem -O /opt/oai-gnb/etc/gnb.conf | tee /var/log/aerial/oai.log"]

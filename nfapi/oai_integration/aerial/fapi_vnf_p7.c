@@ -1074,7 +1074,7 @@ static int32_t aerial_pack_tx_data_request(void *pMessageBuf,
     for (; k < total_number_of_tlvs; ++k) {
       if (value->TLVs[k].length > 0) {
         if (value->TLVs[k].length % 4 != 0) {
-          if (!pusharray32(value->TLVs[k].value.direct, 16384, ((value->TLVs[k].length + 3) / 4) - 1, ppWriteData, data_end)) {
+          if (!pusharray32(value->TLVs[k].value.direct, dataBufLen, ((value->TLVs[k].length + 3) / 4) - 1, ppWriteData, data_end)) {
             return 0;
           }
           int bytesToAdd = 4 - (4 - (value->TLVs[k].length % 4)) % 4;
@@ -1088,7 +1088,7 @@ static int32_t aerial_pack_tx_data_request(void *pMessageBuf,
           }
         } else {
           // no padding needed
-          if (!pusharray32(value->TLVs[k].value.direct, 16384, ((value->TLVs[k].length + 3) / 4), ppWriteData, data_end)) {
+          if (!pusharray32(value->TLVs[k].value.direct, dataBufLen, ((value->TLVs[k].length + 3) / 4), ppWriteData, data_end)) {
             return 0;
           }
         }
@@ -1109,7 +1109,7 @@ static int32_t aerial_pack_tx_data_request(void *pMessageBuf,
   uintptr_t msgEnd = (uintptr_t)pPacketBodyField;
   uint32_t packedMsgLen = msgEnd - msgHead;
   uint16_t packedMsgLen16;
-  if (packedMsgLen > 0xFFFF || packedMsgLen > packedBufLen) {
+  if (packedMsgLen > 0xFFFFFFFF || packedMsgLen > packedBufLen+dataBufLen) {
     NFAPI_TRACE(NFAPI_TRACE_ERROR, "Packed message length error %d, buffer supplied %d\n", packedMsgLen, packedBufLen);
     return 0;
   } else {
@@ -1117,7 +1117,7 @@ static int32_t aerial_pack_tx_data_request(void *pMessageBuf,
   }
 
   // Update the message length in the header
-  pMessageHeader->message_length = packedMsgLen16;
+  pMessageHeader->message_length = packedMsgLen;
 
   // Update the message length in the header
   if (!push32(packedMsgLen, &pPackedLengthField, pPackMessageEnd))
@@ -1291,21 +1291,27 @@ int fapi_nr_pack_and_send_p7_message(vnf_p7_t *vnf_p7, nfapi_p7_message_header_t
   // Check if TX_DATA request, if true, need to pack to data_buf
   if (header->message_id
       == NFAPI_NR_PHY_MSG_TYPE_TX_DATA_REQUEST) {
-    uint8_t FAPI_data_buffer[1024 * 64];
+    //uint8_t FAPI_data_buffer[1024 * 64];
+    size_t buffer_size = 0xFFFFFE ;
+    uint8_t *FAPI_data_buffer = (uint8_t *)malloc(buffer_size);
     uint32_t data_len = 0;
     int32_t len_FAPI = aerial_pack_tx_data_request(header,
                                                FAPI_buffer,
                                                FAPI_data_buffer,
                                                sizeof(FAPI_buffer),
-                                               sizeof(FAPI_data_buffer),
+                                                   buffer_size,
                                                &vnf_p7->_public.codec_config,
                                                &data_len);
     if (len_FAPI <=0) {
       LOG_E(NFAPI_VNF,"Problem packing TX_DATA_request\n");
+      free(FAPI_data_buffer);
       return len_FAPI;
     }
-    else
-      return aerial_send_P7_msg_with_data(FAPI_buffer, len_FAPI, FAPI_data_buffer, data_len, header);
+    else{
+      int retval = aerial_send_P7_msg_with_data(FAPI_buffer, len_FAPI, FAPI_data_buffer, data_len, header);
+      free(FAPI_data_buffer);
+      return retval;
+    }
   } else {
     // Create and send FAPI P7 message
     int len_FAPI = fapi_nr_p7_message_pack(header, FAPI_buffer, sizeof(FAPI_buffer), &vnf_p7->_public.codec_config);

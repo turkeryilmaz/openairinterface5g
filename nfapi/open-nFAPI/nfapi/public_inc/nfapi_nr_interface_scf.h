@@ -29,7 +29,7 @@ typedef struct {
   /// Value: 0 -> 1, 0: Payload is carried directly in the value field, 1: Pointer to payload is in the value field 
   uint16_t tag; 
   /// Length of the actual payload in bytes, without the padding bytes Value: 0 → 65535
-  uint16_t length;
+  uint32_t length;
   union { 
     uint32_t *ptr;
     uint32_t direct[38016];
