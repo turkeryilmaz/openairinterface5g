@@ -111,7 +111,7 @@ void handle_nr_ue_sl_harq(module_id_t mod_id,
     uint8_t rx_harq_id = matched_harqs[i]->sl_harq_pid;
     NR_SL_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
     int8_t harq_pid = sched_ctrl->feedback_sl_harq.head;
-    LOG_I(NR_MAC, "Comparing %4u.%2u rx_harq_id vs feedback harq_pid = %d %d\n", frame, slot, rx_harq_id, harq_pid);
+    LOG_D(NR_MAC, "Comparing %4u.%2u rx_harq_id vs feedback harq_pid = %d %d\n", frame, slot, rx_harq_id, harq_pid);
     while (rx_harq_id != harq_pid || harq_pid < 0) {
       LOG_W(NR_MAC,
             "Unexpected SLSCH HARQ PID %d (have %d) for src id %4d\n",

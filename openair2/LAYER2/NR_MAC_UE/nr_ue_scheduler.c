@@ -3352,7 +3352,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
       cur_harq = &sched_ctrl->sl_harq_processes[harq_id];
       DevAssert(!cur_harq->is_waiting);
       add_tail_nr_list(&sched_ctrl->feedback_sl_harq, harq_id);
-      LOG_I(NR_MAC, "Tx_slot %4d.%2d harq_id %d cur_harq %p\n", frame, slot, harq_id, cur_harq);
+      LOG_D(NR_MAC, "Tx_slot %4d.%2d harq_id %d cur_harq %p\n", frame, slot, harq_id, cur_harq);
       /*
       SLSCH tx computes feedback frame and slot, which will be used by transmitter of PSFCH after receiving this SLSCH.
       Transmitter of SLSCH stores the feedback frame and slot in harq process to use those in retreiving the feedback.
@@ -3382,7 +3382,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
         uint8_t k = find_nr_ue_sl_harq(feedback_frame, feedback_slot, sched_ctrl, NULL);
         if (k == psfch_max_size)
           continue;
-        LOG_I(NR_MAC, "Tx_slot %4d.%2d find_nr_ue_sl_harq k %d expected feedback %4d.%2d\n", frame, slot, k, feedback_frame, feedback_slot);
+        LOG_D(NR_MAC, "Tx_slot %4d.%2d find_nr_ue_sl_harq k %d expected feedback %4d.%2d\n", frame, slot, k, feedback_frame, feedback_slot);
         break;
       }
 
@@ -3684,7 +3684,7 @@ uint8_t nr_ue_sl_psbch_scheduler(nr_sidelink_indication_t *sl_ind,
       tx_config->tx_config_list[0].tx_psbch_config_pdu.psbch_tx_power = 0;//TBD...
       memcpy(tx_config->tx_config_list[0].tx_psbch_config_pdu.psbch_payload, sl_mac_params->tx_sl_bch.sl_mib, 4);
 
-      if ((frame&127) ==0 ) LOG_I(NR_MAC, "[SyncRefUE%d] TTI-%d:%d TX PSBCH REQ- tx_slss_id:%d, sl-mib:%x, numSSB:%d, next SSB slot:%d\n",
+      if ((frame&127) ==0 ) LOG_D(NR_MAC, "[SyncRefUE%d] TTI-%d:%d TX PSBCH REQ- tx_slss_id:%d, sl-mib:%x, numSSB:%d, next SSB slot:%d\n",
                                                             sl_ind->module_id,frame, slot,
                                                             sl_mac_params->tx_sl_bch.slss_id,
                                                             (*(uint32_t *)tx_config->tx_config_list[0].tx_psbch_config_pdu.psbch_payload),

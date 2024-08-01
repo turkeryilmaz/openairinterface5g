@@ -367,7 +367,7 @@ int8_t nr_ue_decode_pucch0(PHY_VARS_NR_UE *ue,
   index = maxpos;
   if (pucch_pdu->bit_len_harq==1) {
     uint8_t ack_nack = !(index&0x01);
-    LOG_I(PHY,
+    LOG_D(PHY,
           "[PSFCH RX] Rx_slot %4u.%2u HARQ %s\n",
           frame,
           slot,
