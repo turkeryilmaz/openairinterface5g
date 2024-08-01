@@ -827,10 +827,14 @@ int nr_ue_sl_acknack_scheduling(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx
   int pre_slot = (rx_ind->slot + nr_slots_frame - 1) % nr_slots_frame;
   int pre_sfn = (rx_ind->sfn + (rx_ind->slot + nr_slots_frame - 1) / nr_slots_frame) % 1023;
   const int pre_index = get_psfch_index(pre_sfn, pre_slot, nr_slots_frame, tdd, n_ul_buf_max_size);
-  SL_sched_feedback_t  *pre_psfch = &sched_ctrl->sched_psfch[pre_index];
-  uint8_t cnt = pre_psfch->dai_c;
-  LOG_I(NR_MAC, "Comparing %4d.%2d cnt %d pre_psfch %p pre_index %d\n", rx_ind->sfn, rx_ind->slot, cnt, pre_psfch, pre_index);
-
+  uint8_t cnt = 0;
+  SL_sched_feedback_t  *pre_psfch = NULL;
+  if (pre_index >= 0) {
+    pre_psfch = &sched_ctrl->sched_psfch[pre_index];
+    cnt = pre_psfch->dai_c;
+  }
+  LOG_D(NR_MAC, "Comparing %4d.%2d pre_psfch %p pre_index %d cnt %d\n",
+        rx_ind->sfn, rx_ind->slot, pre_psfch, pre_index, cnt);
   // we store PUCCH resources according to slot, TDD configuration and size of the vector containing PUCCH structures
   const int psfch_index = get_psfch_index(rx_ind->sfn, rx_ind->slot, nr_slots_frame, tdd, n_ul_buf_max_size);
   for (int f = 0; f < fb_size; f++) {
