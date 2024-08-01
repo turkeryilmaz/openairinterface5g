@@ -96,9 +96,9 @@ int nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
         freq2time(frame_parms->ofdm_symbol_size*NR_SRS_IDFT_OVERSAMP_FACTOR,
         (int16_t*) chF_interpol[ap_index],
         (int16_t*) chT_interpol[ap_index]);
-       
+
         for(int k = 0; k < NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size; k++) {
-         
+
          chT_interpol_mag_squ_avg[k] += squaredMod(((c16_t*)chT_interpol[ap_index])[k]);
 
         } // Loop over samples
@@ -992,12 +992,12 @@ int nr_srs_channel_estimation(
           }
 
         } // for (int k = 0; k < M_sc_b_SRS; k++)
-
-
-        memcpy(&srs_estimated_channel_freq[ant][p_index][(frame_parms->ofdm_symbol_size)*srs_symb],
-              &srs_est[mem_offset],
-              (frame_parms->ofdm_symbol_size)*sizeof(int32_t));
       } // for (int srs_symb = 0; srs_symb<(1<<srs_pdu->num_symbols); srs_symb++)
+
+       memcpy(&srs_estimated_channel_freq[ant][p_index][0],
+              &srs_est[mem_offset],
+              ((1<<srs_pdu->num_symbols)*frame_parms->ofdm_symbol_size)*sizeof(int32_t));
+
       // Compute noise
       uint16_t subcarrier = subcarrier_offset + nr_srs_info->k_0_p[p_index][0];
       if (subcarrier>frame_parms->ofdm_symbol_size) {
@@ -1076,11 +1076,11 @@ int nr_srs_channel_estimation(
 
       // Compute signal power
       uint32_t signal_power = calc_power(ch_real, arr_len) + calc_power(ch_imag, arr_len);
-      
+
 #ifdef SRS_DEBUG
       LOG_I(NR_PHY,"signal_power(p_index %d, ant %d) = %d dB\n", p_index, ant, dB_fixed(signal_power));
 #endif
-      
+
       if (signal_power == 0) {
 	LOG_W(NR_PHY, "Received SRS signal power is 0\n");
 	return -1;
@@ -1135,6 +1135,5 @@ int nr_srs_channel_estimation(
 #ifdef SRS_DEBUG
   LOG_I(NR_PHY,"noise_power = %u, SNR = %i dB\n", noise_power, *snr);
 #endif
-
   return 0;
 }

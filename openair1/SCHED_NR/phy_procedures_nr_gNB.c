@@ -983,7 +983,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
           T_INT(frame_rx),
           T_INT(slot_rx),
           T_INT(ant_rx),
-          T_BUFFER(srs_estimated_channel_freq[ant_rx][0], frame_parms->ofdm_symbol_size * sizeof(int32_t)));
+          T_BUFFER(srs_estimated_channel_freq[ant_rx][0], (N_symb_SRS * frame_parms->ofdm_symbol_size) * sizeof(int32_t)));
 
         T(T_GNB_PHY_UL_TIME_CHANNEL_ESTIMATE,
           T_INT(gNB->Mod_id),
