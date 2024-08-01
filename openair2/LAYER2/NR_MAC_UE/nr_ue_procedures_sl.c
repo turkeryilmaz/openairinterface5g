@@ -843,7 +843,7 @@ int nr_ue_sl_acknack_scheduling(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx
     if (continue_flag == -1) {
       continue;
     }
-    LOG_I(NR_MAC, "flag %d, f %d, offset %d, psfch_slot %d\n", continue_flag, f, pssch_to_harq_feedback[f], psfch_slot);
+    LOG_D(NR_MAC, "flag %d, f %d, offset %d, psfch_slot %d\n", continue_flag, f, pssch_to_harq_feedback[f], psfch_slot);
     if (cnt == psfch_max_size && psfch_frame == pre_psfch->feedback_frame && psfch_slot == pre_psfch->feedback_slot) {
       // pre_index = (pre_index + 1) % (n_ul_slots_period * num_subch);
       // pre_psfch = &sched_ctrl->sched_psfch[pre_index];
@@ -881,7 +881,7 @@ int nr_ue_sl_acknack_scheduling(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx
     if (curr_psfch->active &&
         curr_psfch->feedback_frame == psfch_frame &&
         curr_psfch->feedback_slot == psfch_slot) { // if there is already a PUCCH in given frame and slot
-      LOG_I(NR_MAC, "Tx_slot D2I psfch_acknack SL %4d.%2d, SL_ACK %4d.%2d Bits already in current PSFCH: psfch_index %d, f %d\n",
+      LOG_D(NR_MAC, "Tx_slot D2I psfch_acknack SL %4d.%2d, SL_ACK %4d.%2d Bits already in current PSFCH: psfch_index %d, f %d\n",
             rx_ind->sfn, rx_ind->slot, psfch_frame, psfch_slot, psfch_index, f);
 
       // otherwise we can schedule in this active PUCCH
@@ -916,7 +916,7 @@ int nr_ue_sl_acknack_scheduling(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx
       curr_psfch->dai_c = cnt + 1;
       // curr_psfch->resource_indicator = 0; // each UE has dedicated PUCCH resources
       // curr_psfch->r_psfch=r_pucch;
-      LOG_I(NR_MAC, "Tx_slot D2I psfch_acknack SL %4d.%2d, SL_ACK %4d.%2d in current PSFCH: psfch_index %d, f %d dai_c %u curr_psfch %p\n",
+      LOG_D(NR_MAC, "Tx_slot D2I psfch_acknack SL %4d.%2d, SL_ACK %4d.%2d in current PSFCH: psfch_index %d, f %d dai_c %u curr_psfch %p\n",
             rx_ind->sfn, rx_ind->slot, psfch_frame, psfch_slot, psfch_index, f, curr_psfch->dai_c, curr_psfch);
 
       // blocking resources for current PUCCH in VRB map
@@ -987,7 +987,7 @@ int find_nr_ue_sl_harq(frame_t frame, sub_frame_t slot, NR_SL_UE_sched_ctrl_t * 
     if (harq->feedback_frame == frame && harq->feedback_slot == slot) {
       if (matched_harqs) {
         matched_harqs[k] = harq;
-        LOG_I(NR_MAC, "%s matched_harqs[%d] %4d.%2d %d slot %d\n",
+        LOG_D(NR_MAC, "%s matched_harqs[%d] %4d.%2d %d slot %d\n",
               __FUNCTION__,
               k,
               matched_harqs[k]->feedback_frame,

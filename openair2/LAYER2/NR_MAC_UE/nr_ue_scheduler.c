@@ -3396,7 +3396,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
                                             tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu.slsch_payload,
                                             NR_SL_SCI_FORMAT_2A, &slsch_pdu_length_max, cur_harq, &rlc_status);
 
-    LOG_I(NR_MAC, "Tx_slot_1 %4d.%2d: schedule_slsch %d\n", frame, slot, schedule_slsch);
+    LOG_D(NR_MAC, "Tx_slot_1 %4d.%2d: schedule_slsch %d\n", frame, slot, schedule_slsch);
     if (!schedule_slsch) return false;
 
     const uint8_t sh_size = sizeof(NR_MAC_SUBHEADER_LONG);
@@ -3792,7 +3792,7 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind) {
       (get_nrUE_params()->sync_ref && (slot == 6 || slot == 7 || slot == 8 || slot == 9)))) {
     //Check if reserved slot or a sidelink resource configured in Rx/Tx resource pool timeresource bitmap
     bool schedule_slsch = nr_ue_sl_pssch_scheduler(mac, sl_ind, mac->sl_bwp, mac->sl_tx_res_pool, &tx_config, &tti_action);
-    LOG_I(NR_MAC, "Tx_slot %4d.%2d: schedule_slsch %d\n", frame, slot, schedule_slsch);
+    LOG_D(NR_MAC, "Tx_slot %4d.%2d: schedule_slsch %d\n", frame, slot, schedule_slsch);
     bool is_csi_rs_sent = false;
     if (((slots_per_frame * sl_ind->frame_tx + sl_ind->slot_tx - sl_mac->slot_offset) % sl_mac->slot_periodicity) == 0 &&
           schedule_slsch && mac->sci2_pdu.csi_req) {
@@ -3873,7 +3873,7 @@ void nr_ue_sl_psfch_scheduler(NR_UE_MAC_INST_t *mac,
       *config_type = is_csi_rs_sent ? SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH_CSI_RS : SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH;
       tx_config->number_pdus = 1;
       tx_config->tx_config_list[0].pdu_type = *config_type;
-      LOG_I(NR_MAC,"SL-PSFCH SCHEDULER: frame.slot (%d.%d), slot_type:%d\n",
+      LOG_D(NR_MAC,"SL-PSFCH SCHEDULER: frame.slot (%d.%d), slot_type:%d\n",
             frame, slot, sl_ind->slot_type);
       sched_psfch->feedback_slot = -1;
       sched_psfch->feedback_frame = -1;
