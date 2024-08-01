@@ -576,7 +576,6 @@ static int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
     uint32_t llr_offset[NR_SYMBOLS_PER_SLOT] = {0};
 
     int32_t log2_maxh = 0;
-    start_meas(&ue->rx_pdsch_stats);
     for (int m = dlschCfg->start_symbol; m < (dlschCfg->number_symbols + dlschCfg->start_symbol); m++) {
       bool first_symbol_flag = false;
       if (m == first_symbol_with_data)
@@ -620,7 +619,6 @@ static int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
               m,
               ue->dlsch_llr_stats_parallelization[slot].p_time / (cpuf * 1000.0));
     } // CRNTI active
-    stop_meas(&ue->rx_pdsch_stats);
   }
   return 0;
 }
@@ -1085,6 +1083,7 @@ void pdsch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_phy_
   }
 
   if (dlsch[0].active) {
+    start_meas(&ue->rx_pdsch_stats);
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_UE_SLOT_FEP_PDSCH, VCD_FUNCTION_IN);
     fapi_nr_dl_config_dlsch_pdu_rel15_t *dlsch_config = &dlsch[0].dlsch_config;
     uint16_t nb_symb_sch = dlsch_config->number_symbols;
@@ -1171,6 +1170,7 @@ void pdsch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_phy_
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PDSCH_PROC, VCD_FUNCTION_OUT);
     for (int i=0; i<nb_codewords; i++)
       free(llr[i]);
+    stop_meas(&ue->rx_pdsch_stats);
   }
 
   start_meas(&meas);
