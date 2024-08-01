@@ -174,7 +174,7 @@ int8_t nr_ue_decode_pucch0(PHY_VARS_NR_UE *ue,
     mcs = table2_mcs;
     nr_sequences = 8>>(1-pucch_pdu->sr_flag);
   }
-  LOG_I(PHY, "Rx_slot %s pucch0: nr_symbols %d, start_symbol %d, prb_start %d, second_hop_prb %d,\
+  LOG_D(PHY, "Rx_slot %s pucch0: nr_symbols %d, start_symbol %d, prb_start %d, second_hop_prb %d,\
         group_hop_flag %d, sequence_hop_flag %d, O_ACK %d, O_SR %d, mcs %d initial_cyclic_shift %d scs %u\n",
         __FUNCTION__,
         pucch_pdu->nr_of_symbols,
@@ -299,7 +299,7 @@ int8_t nr_ue_decode_pucch0(PHY_VARS_NR_UE *ue,
         seq_index = (pucch_pdu->initial_cyclic_shift+
                      mcs[i]+
                      ue->pucch0_lut.lut[cs_ind][slot][l+pucch_pdu->start_symbol_index])%12;
-#if 1
+#if 0
         LOG_I(NR_PHY, "Rx_slot PUCCH symbol %d seq %d, seq_index %d, mcs %d , slot %d, cs_ind %d lut %d\n",
               l, i, seq_index, mcs[i], slot, cs_ind,
               ue->pucch0_lut.lut[cs_ind][slot][l+pucch_pdu->start_symbol_index]);

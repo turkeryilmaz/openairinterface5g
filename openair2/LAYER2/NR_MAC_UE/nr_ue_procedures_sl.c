@@ -664,7 +664,7 @@ void configure_psfch_params_tx(int module_idP,
   uint16_t tx_frame = (rx_ind->sfn + (rx_ind->slot + DURATION_RX_TO_TX) / nr_slots_per_frame[scs]) % 1024;
 
   uint8_t ack_nack = (rx_ind->rx_indication_body + pdu_id)->rx_slsch_pdu.ack_nack; // (tx_frame + tx_slot)%2;
-  LOG_I(NR_MAC, "tx_frame %4u.%2u, ack_nack %d\n", tx_frame, tx_slot, ack_nack);
+  LOG_D(NR_MAC, "tx_frame %4u.%2u, ack_nack %d\n", tx_frame, tx_slot, ack_nack);
   psfch_params_t *psfch_params = calloc(1, sizeof(psfch_params_t));
   compute_params(module_idP, psfch_params);
   const int nr_slots_frame = nr_slots_per_frame[scs];
