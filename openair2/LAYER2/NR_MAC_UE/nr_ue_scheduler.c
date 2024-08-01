@@ -3333,7 +3333,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
         /* PP has not selected a specific HARQ Process, get a new one */
         harq_id = sched_ctrl->available_sl_harq.head;
         if (harq_id < 0) {
-          LOG_W(NR_MAC, "%4d.%2d harq_id %d\n", frame, slot, harq_id);
+          LOG_D(NR_MAC, "%4d.%2d harq_id %d\n", frame, slot, harq_id);
           return false;
         }
         // AssertFatal(harq_id >= 0,

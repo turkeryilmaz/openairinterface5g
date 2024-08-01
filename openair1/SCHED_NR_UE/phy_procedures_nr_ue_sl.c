@@ -772,7 +772,7 @@ int phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
            phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH ||
            phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH_CSI_RS) {
     if (phy_data->sl_tx_action >= SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH && phy_data->sl_tx_action <= SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH_CSI_RS)
-      LOG_I(NR_PHY, "Generating %s (%d.%d)\n", sl_tx_actions[phy_data->sl_tx_action - SL_NR_CONFIG_TYPE_TX_PSBCH], frame_tx, slot_tx);
+      LOG_D(NR_PHY, "Generating %s (%d.%d)\n", sl_tx_actions[phy_data->sl_tx_action - SL_NR_CONFIG_TYPE_TX_PSBCH], frame_tx, slot_tx);
     phy_data->pscch_Nid = nr_generate_sci1(ue, txdataF[0], fp, AMP, slot_tx, &phy_data->nr_sl_pssch_pscch_pdu) &0xFFFF;
     nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *csi_params = (nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *)&phy_data->nr_sl_pssch_pscch_pdu.nr_sl_csi_rs_pdu;
     csi_params->scramb_id = phy_data->pscch_Nid % (1 << 10);
@@ -811,10 +811,10 @@ int phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
                           &phy_data->nr_sl_pssch_pscch_pdu.psfch_pdu_list[k]);
       }
       sl_phy_params->psfch.num_psfch_tx ++;
+      free(phy_data->nr_sl_pssch_pscch_pdu.psfch_pdu_list);
+      phy_data->nr_sl_pssch_pscch_pdu.psfch_pdu_list = NULL;
     }
     tx_action = 1;
-    free(phy_data->nr_sl_pssch_pscch_pdu.psfch_pdu_list);
-    phy_data->nr_sl_pssch_pscch_pdu.psfch_pdu_list = NULL;
   }
   if (tx_action) {
     LOG_D(PHY, "Sending SL data \n");

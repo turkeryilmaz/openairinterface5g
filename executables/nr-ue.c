@@ -685,9 +685,7 @@ void processSlotTX(void *arg) {
     }
   }
 
-  LOG_I(PHY, "Before RU_write\n");
   RU_write(rxtxD, sl_tx_action);
-  LOG_I(PHY, "After RU_write\n");
 }
 
 nr_phy_data_t UE_dl_preprocessing(PHY_VARS_NR_UE *UE, UE_nr_rxtx_proc_t *proc)
