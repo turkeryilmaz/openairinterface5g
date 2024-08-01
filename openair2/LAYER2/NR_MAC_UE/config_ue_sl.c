@@ -137,7 +137,7 @@ static int sl_set_tdd_config_nr_ue(sl_nr_phy_config_request_t *cfg,
   }
   int nrofDownlinkSlots = *pnrofDownlinkSlots, nrofDownlinkSymbols = *pnrofDownlinkSymbols;
 
-  LOG_I(NR_MAC,"Set Phy Sidelink TDD Config: scs:%d,dl:%d-%d, ul:%d-%d, nb_periods_per_frame:%d, nb_slots_per_period:%d\n",
+  LOG_D(NR_MAC,"Set Phy Sidelink TDD Config: scs:%d,dl:%d-%d, ul:%d-%d, nb_periods_per_frame:%d, nb_slots_per_period:%d\n",
                               mu, nrofDownlinkSlots, nrofDownlinkSymbols, nrofUplinkSlots, nrofUplinkSymbols, nb_periods_per_frame, nb_slots_per_period);
 
   if ( (nrofDownlinkSymbols + nrofUplinkSymbols) == 0 )
