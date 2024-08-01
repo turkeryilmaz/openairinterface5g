@@ -187,9 +187,9 @@ bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP,int slotP, nr_sci_pdu_t
   bool csi_acq = !mac->SL_MAC_PARAMS->sl_CSI_Acquisition;
   bool csi_req_slot = !((slots_per_frame * frameP + slotP - sl_mac->slot_offset) % sl_mac->slot_periodicity);
   bool is_harq_feedback = is_feedback_scheduled(mac, frameP, slotP);
-  LOG_D(NR_MAC, "frame.slot %4d.%2d bytes_in_buffer? %d, harq_feedback %d, (csi_acq && csi_req_slot) %d, sl_csi_report %p\n",
-        frameP, slotP, rlc_status->bytes_in_buffer > 0, mac->sci_pdu_rx.harq_feedback, (csi_acq && csi_req_slot), mac->sl_csi_report);
-  if (rlc_status->bytes_in_buffer > 0 || is_harq_feedback || (csi_acq && csi_req_slot) || mac->sl_csi_report) {
+  LOG_I(NR_MAC, "Tx_slot frame.slot %4d.%2d bytes_in_buffer? %d, harq_feedback %d, (csi_acq && csi_req_slot) %d, sl_csi_report %p\n",
+        frameP, slotP, rlc_status->bytes_in_buffer >= 0, is_harq_feedback, (csi_acq && csi_req_slot), mac->sl_csi_report);
+  if (rlc_status->bytes_in_buffer >= 0 || is_harq_feedback || (csi_acq && csi_req_slot) || mac->sl_csi_report) {
      uint8_t cqi_Table = 0;
      int8_t mcs = 11, ri = 0;
      uint16_t dest = mac->dest_id != -1 ? mac->dest_id : 0xabcd;
@@ -232,9 +232,11 @@ bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP,int slotP, nr_sci_pdu_t
 
      uint16_t num_subch = sl_get_num_subch(mac->sl_tx_res_pool);
      bool is_feedback_slot = false;
+     LOG_I(NR_MAC, "Tx_slot %4d.%2d loop size %d\n", frameP, slotP, (n_ul_slots_period * num_subch));
      for (int i = 0; i < (n_ul_slots_period * num_subch); i++) {
         SL_sched_feedback_t  *sched_psfch = &mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch[i];
         if (slotP == sched_psfch->feedback_slot) {
+            LOG_I(NR_MAC, "Tx_slot %4d.%2d i = %d sched_psfch %p feedback slot %d\n", frameP, slotP, i, sched_psfch, sched_psfch->feedback_slot);
             is_feedback_slot = true;
             break;
         }
@@ -245,9 +247,11 @@ bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP,int slotP, nr_sci_pdu_t
            LOG_D(NR_MAC, "%4d.%2d Setting psfch_overhead\n", frameP, slotP);
          } else
              sci_pdu->psfch_overhead.val = 0;
-     }
+     } else if ((slotP % psfch_period != 0) && (psfch_period == 2 || psfch_period == 4))
+        sci_pdu->psfch_overhead.val = 0;
 
-     LOG_D(NR_MAC, "%4d.%2d TX psfch_overhead %d\n", frameP, slotP, sci_pdu->psfch_overhead.val);
+
+     LOG_I(NR_MAC, "Tx_slot %4d.%2d TX psfch_overhead %d\n", frameP, slotP, sci_pdu->psfch_overhead.val);
      sci_pdu->reserved.val = mac->is_synced ? 1 : 0;
      sci_pdu->conflict_information_receiver.val = 0;
      sci_pdu->beta_offset_indicator = 0;
@@ -259,7 +263,7 @@ bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP,int slotP, nr_sci_pdu_t
      sci2_pdu->dest_id = dest;
     //  int32_t tmp = rlc_status->bytes_in_buffer;
     //  bool feedback_size = tmp > 0 && slotP == 0 ?
-     sci2_pdu->harq_feedback = rlc_status->bytes_in_buffer > 0 ? 1 : 0;
+     sci2_pdu->harq_feedback = 1;//rlc_status->bytes_in_buffer > 0 ? 1 : 0;
      LOG_D(NR_MAC, "%4d.%2d Comparing Setting harq_feedback %d bytes_in_buffer %d sl_harq_pid %d\n", frameP, slotP, sci2_pdu->harq_feedback, rlc_status->bytes_in_buffer, cur_harq ? cur_harq->sl_harq_pid : 0);
      sci2_pdu->cast_type = 1;
      if (format2 == NR_SL_SCI_FORMAT_2C || format2 == NR_SL_SCI_FORMAT_2A) {
@@ -285,6 +289,8 @@ bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP,int slotP, nr_sci_pdu_t
      *slsch_pdu_length_max = rlc_status->bytes_in_buffer;
      return true;
    }
-   return false;
+  else
+    LOG_I(NR_MAC, "Tx_slot_2 %4d.%2d: schedule_slsch 0\n", frameP, slotP);
+  return false;
 }
 

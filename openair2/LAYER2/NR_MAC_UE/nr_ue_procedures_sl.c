@@ -762,12 +762,11 @@ int get_pssch_to_harq_feedback(uint8_t *pssch_to_harq_feedback, uint8_t psfch_mi
 //   *start_symbol_index = default_pucch_firstsymb[rsetindex];
 // }
 
-int get_feedback_frame_slot(NR_TDD_UL_DL_Pattern_t *tdd, uint8_t feedback_offset,
-                            uint8_t psfch_min_time_gap,
-                            const int nr_slots_frame,
-                            uint16_t frame, uint16_t slot,
-                            long psfch_period,
-                            int *psfch_frame, int *psfch_slot) {
+int get_feedback_frame_slot(NR_UE_MAC_INST_t *mac, NR_TDD_UL_DL_Pattern_t *tdd,
+                            uint8_t feedback_offset, uint8_t psfch_min_time_gap,
+                            const int nr_slots_frame, uint16_t frame, uint16_t slot,
+                            long psfch_period, int *psfch_frame, int *psfch_slot) {
+  sl_nr_ue_mac_params_t *sl_mac = mac->SL_MAC_PARAMS;
   AssertFatal(tdd != NULL, "Expecting valid tdd configurations");
   const int first_ul_slot_period = tdd ? get_first_ul_slot(tdd->nrofDownlinkSlots, tdd->nrofDownlinkSymbols, tdd->nrofUplinkSymbols) : 0;
   const int nr_slots_period = tdd ? nr_slots_frame / get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity) : nr_slots_frame;
@@ -786,11 +785,27 @@ int get_feedback_frame_slot(NR_TDD_UL_DL_Pattern_t *tdd, uint8_t feedback_offset
     return -1;
 
   *psfch_frame = (frame + ((slot + feedback_offset) / nr_slots_frame)) & 1023;
+
+#if 0
+  sl_nr_phy_config_request_t *sl_cfg = &sl_mac->sl_phy_config.sl_config_req;
+  uint16_t scs = sl_cfg->sl_bwp_config.sl_scs;
+  uint16_t slots_per_frame = nr_slots_per_frame[scs];
+  int is_psbch_tx_slot = sl_determine_if_SSB_slot(*psfch_frame, *psfch_slot, slots_per_frame,
+                                                  &sl_mac->rx_sl_bch,
+                                                  SIDELINK_SLOT_TYPE_TX);
+  int is_psbch_rx_slot = sl_determine_if_SSB_slot(*psfch_frame, *psfch_slot, slots_per_frame,
+                                                  &sl_mac->rx_sl_bch,
+                                                  SIDELINK_SLOT_TYPE_RX);
+  if (is_psbch_tx_slot || is_psbch_rx_slot)
+    return -1;
+#endif
+
   return 0;
 }
 
 int nr_ue_sl_acknack_scheduling(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx_ind,
                                 long psfch_period, uint16_t frame, uint16_t slot, const int nr_slots_frame) {
+  // TODO: needs to be updated for multi-subchannels
   int psfch_frame, psfch_slot;
   const uint8_t time_gap[] = {2, 3};
 
@@ -804,15 +819,22 @@ int nr_ue_sl_acknack_scheduling(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx
   const int n_ul_slots_period = tdd ? tdd->nrofUplinkSlots + (tdd->nrofUplinkSymbols > 0 ? 1 : 0) : nr_slots_frame;
 
   NR_SL_UE_sched_ctrl_t  *sched_ctrl = &mac->sl_info.list[0]->UE_sched_ctrl;
-  int psfch_max_size = (psfch_period * num_subch);
+  int psfch_max_size = psfch_period * num_subch;
+  int n_ul_buf_max_size = n_ul_slots_period * num_subch;
   uint8_t pssch_to_harq_feedback[8];
   int fb_size = get_pssch_to_harq_feedback(pssch_to_harq_feedback, psfch_min_time_gap);
-  int pre_index = ((rx_ind->slot + n_ul_slots_period - 1) % n_ul_slots_period) * num_subch;
+  //int pre_index = ((rx_ind->slot + n_ul_slots_period) * num_subch - 1) % (n_ul_slots_period * num_subch);
+  int pre_slot = (rx_ind->slot + nr_slots_frame - 1) % nr_slots_frame;
+  int pre_sfn = (rx_ind->sfn + (rx_ind->slot + nr_slots_frame - 1) / nr_slots_frame) % 1023;
+  const int pre_index = get_psfch_index(pre_sfn, pre_slot, nr_slots_frame, tdd, n_ul_buf_max_size);
   SL_sched_feedback_t  *pre_psfch = &sched_ctrl->sched_psfch[pre_index];
   uint8_t cnt = pre_psfch->dai_c;
+  LOG_I(NR_MAC, "Comparing %4d.%2d cnt %d pre_psfch %p pre_index %d\n", rx_ind->sfn, rx_ind->slot, cnt, pre_psfch, pre_index);
 
+  // we store PUCCH resources according to slot, TDD configuration and size of the vector containing PUCCH structures
+  const int psfch_index = get_psfch_index(rx_ind->sfn, rx_ind->slot, nr_slots_frame, tdd, n_ul_buf_max_size);
   for (int f = 0; f < fb_size; f++) {
-    int  continue_flag = get_feedback_frame_slot(tdd, pssch_to_harq_feedback[f],
+    int  continue_flag = get_feedback_frame_slot(mac, tdd, pssch_to_harq_feedback[f],
                                                  psfch_min_time_gap,
                                                  nr_slots_frame, frame, slot,
                                                  psfch_period,
@@ -821,11 +843,14 @@ int nr_ue_sl_acknack_scheduling(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx
     if (continue_flag == -1) {
       continue;
     }
-    LOG_D(NR_MAC, "flag %d, f %d, offset %d, psfch_slot %d\n", continue_flag, f, pssch_to_harq_feedback[f], psfch_slot);
-    if (cnt == psfch_max_size && psfch_frame == pre_psfch->feedback_frame && psfch_slot == pre_psfch->feedback_slot)
+    LOG_I(NR_MAC, "flag %d, f %d, offset %d, psfch_slot %d\n", continue_flag, f, pssch_to_harq_feedback[f], psfch_slot);
+    if (cnt == psfch_max_size && psfch_frame == pre_psfch->feedback_frame && psfch_slot == pre_psfch->feedback_slot) {
+      // pre_index = (pre_index + 1) % (n_ul_slots_period * num_subch);
+      // pre_psfch = &sched_ctrl->sched_psfch[pre_index];
+      // cnt = pre_psfch->dai_c;
+      cnt = 0;
       continue;
-    // we store PUCCH resources according to slot, TDD configuration and size of the vector containing PUCCH structures
-    const int psfch_index = get_psfch_index(psfch_frame, psfch_slot, nr_slots_frame, tdd, psfch_max_size);
+    }
 {
     // Rx slot 6
     // Tx slot 10
@@ -856,7 +881,7 @@ int nr_ue_sl_acknack_scheduling(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx
     if (curr_psfch->active &&
         curr_psfch->feedback_frame == psfch_frame &&
         curr_psfch->feedback_slot == psfch_slot) { // if there is already a PUCCH in given frame and slot
-      LOG_D(NR_MAC, "D2I psfch_acknack SL %4d.%2d, SL_ACK %4d.%2d Bits already in current PSFCH: psfch_index %d, f %d\n",
+      LOG_I(NR_MAC, "Tx_slot D2I psfch_acknack SL %4d.%2d, SL_ACK %4d.%2d Bits already in current PSFCH: psfch_index %d, f %d\n",
             rx_ind->sfn, rx_ind->slot, psfch_frame, psfch_slot, psfch_index, f);
 
       // otherwise we can schedule in this active PUCCH
@@ -891,8 +916,8 @@ int nr_ue_sl_acknack_scheduling(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx
       curr_psfch->dai_c = cnt + 1;
       // curr_psfch->resource_indicator = 0; // each UE has dedicated PUCCH resources
       // curr_psfch->r_psfch=r_pucch;
-      LOG_D(NR_MAC, "D2I psfch_acknack SL %4d.%2d, SL_ACK %4d.%2d in current PSFCH: psfch_index %d, f %d dai_c %u\n",
-            rx_ind->sfn, rx_ind->slot, psfch_frame, psfch_slot, psfch_index, f, curr_psfch->dai_c);
+      LOG_I(NR_MAC, "Tx_slot D2I psfch_acknack SL %4d.%2d, SL_ACK %4d.%2d in current PSFCH: psfch_index %d, f %d dai_c %u curr_psfch %p\n",
+            rx_ind->sfn, rx_ind->slot, psfch_frame, psfch_slot, psfch_index, f, curr_psfch->dai_c, curr_psfch);
 
       // blocking resources for current PUCCH in VRB map
       //set_pucch0_vrb_occupation(curr_psfch, vrb_map_UL, bwp_start);
@@ -954,15 +979,16 @@ void fill_psfch_params_tx(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx_ind,
 
 int find_nr_ue_sl_harq(frame_t frame, sub_frame_t slot, NR_SL_UE_sched_ctrl_t * sched_ctrl, NR_UE_sl_harq_t **matched_harqs)
 {
-  int *cur = &sched_ctrl->feedback_sl_harq.head;
+  int cur = sched_ctrl->feedback_sl_harq.head;
   int k = 0;
-  while (*cur != -1) {
-    NR_UE_sl_harq_t *harq = &sched_ctrl->sl_harq_processes[*cur];
-    LOG_I(NR_MAC, "%s %4d.%2d feedback %4d.%2d\n", __FUNCTION__, frame, slot, harq->feedback_frame, harq->feedback_slot);
+  while (cur != -1) {
+    NR_UE_sl_harq_t *harq = &sched_ctrl->sl_harq_processes[cur];
+    LOG_D(NR_MAC, "%s %4d.%2d feedback %4d.%2d\n", __FUNCTION__, frame, slot, harq->feedback_frame, harq->feedback_slot);
     if (harq->feedback_frame == frame && harq->feedback_slot == slot) {
       if (matched_harqs) {
         matched_harqs[k] = harq;
-        LOG_I(NR_MAC, "matched_harqs[%d] %4d.%2d %d slot %d\n",
+        LOG_I(NR_MAC, "%s matched_harqs[%d] %4d.%2d %d slot %d\n",
+              __FUNCTION__,
               k,
               matched_harqs[k]->feedback_frame,
               matched_harqs[k]->feedback_slot,
@@ -971,7 +997,7 @@ int find_nr_ue_sl_harq(frame_t frame, sub_frame_t slot, NR_SL_UE_sched_ctrl_t * 
       }
       k++;
     }
-    cur = &sched_ctrl->feedback_sl_harq.next[*cur];
+    cur = sched_ctrl->feedback_sl_harq.next[cur];
   }
   return k;
 }
