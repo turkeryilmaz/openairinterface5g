@@ -8095,9 +8095,8 @@ int nfapi_p7_message_header_unpack(void *pMessageBuf, uint32_t messageBufLen, vo
 
   // process the header
   if(!(pull16(&pReadPackedMessage, &pMessageHeader->phy_id, end) &&
-       pull16(&pReadPackedMessage, &pMessageHeader->message_id, end) &&
-       pull16(&pReadPackedMessage, &pMessageHeader->message_length, end) &&
-       pull16(&pReadPackedMessage, &pMessageHeader->m_segment_sequence, end) &&
+       pull16(&pReadPackedMessage, &pMessageHeader->message_id, end) && pull16(&pReadPackedMessage, (uint16_t *)&pMessageHeader->message_length, end)
+        && pull16(&pReadPackedMessage, &pMessageHeader->m_segment_sequence, end) &&
        pull32(&pReadPackedMessage, &pMessageHeader->checksum, end) &&
        pull32(&pReadPackedMessage, &pMessageHeader->transmit_timestamp, end)))
     return -1;
@@ -8136,9 +8135,8 @@ int nfapi_p7_message_unpack(void *pMessageBuf, uint32_t messageBufLen, void *pUn
 
   // process the header
   if(!(pull16(&pReadPackedMessage, &pMessageHeader->phy_id, end) &&
-       pull16(&pReadPackedMessage, &pMessageHeader->message_id, end) &&
-       pull16(&pReadPackedMessage, &pMessageHeader->message_length, end) &&
-       pull16(&pReadPackedMessage, &pMessageHeader->m_segment_sequence, end) &&
+       pull16(&pReadPackedMessage, &pMessageHeader->message_id, end) && pull16(&pReadPackedMessage, (uint16_t *)&pMessageHeader->message_length, end)
+        && pull16(&pReadPackedMessage, &pMessageHeader->m_segment_sequence, end) &&
        pull32(&pReadPackedMessage, &pMessageHeader->checksum, end) &&
        pull32(&pReadPackedMessage, &pMessageHeader->transmit_timestamp, end))) {
     NFAPI_TRACE(NFAPI_TRACE_ERROR, "P7 unpack header failed\n");
@@ -8366,9 +8364,8 @@ int nfapi_nr_p7_message_unpack(void *pMessageBuf, uint32_t messageBufLen, void *
 
 	// process the header
 	if(!(pull16(&pReadPackedMessage, &pMessageHeader->phy_id, end) &&
-		 pull16(&pReadPackedMessage, &pMessageHeader->message_id, end) &&
-		 pull16(&pReadPackedMessage, &pMessageHeader->message_length, end) &&
-		 pull16(&pReadPackedMessage, &pMessageHeader->m_segment_sequence, end) &&
+		 pull16(&pReadPackedMessage, &pMessageHeader->message_id, end) && pull16(&pReadPackedMessage, (uint16_t *)&pMessageHeader->message_length, end)
+        && pull16(&pReadPackedMessage, &pMessageHeader->m_segment_sequence, end) &&
 		 pull32(&pReadPackedMessage, &pMessageHeader->checksum, end) &&
 		 pull32(&pReadPackedMessage, &pMessageHeader->transmit_timestamp, end)))
 	{

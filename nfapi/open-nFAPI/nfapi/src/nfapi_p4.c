@@ -1634,9 +1634,8 @@ int nfapi_p4_message_header_unpack(void *pMessageBuf, uint32_t messageBufLen, vo
 
   // process the headei
   if (pull16(&pReadPackedMessage, &pMessageHeader->phy_id, end) &&
-      pull16(&pReadPackedMessage, &pMessageHeader->message_id, end) &&
-      pull16(&pReadPackedMessage, &pMessageHeader->message_length, end) &&
-      pull16(&pReadPackedMessage, &pMessageHeader->spare, end))
+      pull16(&pReadPackedMessage, &pMessageHeader->message_id, end) && pull16(&pReadPackedMessage, (uint16_t *)&pMessageHeader->message_length, end)
+      && pull16(&pReadPackedMessage, &pMessageHeader->spare, end))
     return -1;
 
   return 0;
@@ -1664,9 +1663,8 @@ int nfapi_p4_message_unpack(void *pMessageBuf, uint32_t messageBufLen, void *pUn
 
   // process the header
   if(!(pull16(&pReadPackedMessage, &pMessageHeader->phy_id, end) &&
-       pull16(&pReadPackedMessage, &pMessageHeader->message_id, end) &&
-       pull16(&pReadPackedMessage, &pMessageHeader->message_length, end) &&
-       pull16(&pReadPackedMessage, &pMessageHeader->spare, end)))
+       pull16(&pReadPackedMessage, &pMessageHeader->message_id, end) && pull16(&pReadPackedMessage, (uint16_t *)&pMessageHeader->message_length, end)
+        && pull16(&pReadPackedMessage, &pMessageHeader->spare, end)))
     return -1;
 
   // look for the specific message

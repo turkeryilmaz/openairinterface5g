@@ -2317,9 +2317,8 @@ int nfapi_p5_message_header_unpack(void *pMessageBuf, uint32_t messageBufLen, vo
 
   // process the header
   return ( pull16(&pReadPackedMessage, &pMessageHeader->phy_id, end) &&
-           pull16(&pReadPackedMessage, &pMessageHeader->message_id, end) &&
-           pull16(&pReadPackedMessage, &pMessageHeader->message_length, end) &&
-           pull16(&pReadPackedMessage, &pMessageHeader->spare, end) );
+           pull16(&pReadPackedMessage, &pMessageHeader->message_id, end) && pull16(&pReadPackedMessage, (uint16_t *)&pMessageHeader->message_length, end)
+          && pull16(&pReadPackedMessage, &pMessageHeader->spare, end) );
 }
 
 int nfapi_nr_p5_message_unpack(void *pMessageBuf,
@@ -2357,7 +2356,7 @@ int nfapi_nr_p5_message_unpack(void *pMessageBuf,
 
   // process the header
   if (!(pull16(&pReadPackedMessage, &pMessageHeader->phy_id, end) && pull16(&pReadPackedMessage, &pMessageHeader->message_id, end)
-        && pull16(&pReadPackedMessage, &pMessageHeader->message_length, end)
+        && pull16(&pReadPackedMessage, (uint16_t *)&pMessageHeader->message_length, end)
         && pull16(&pReadPackedMessage, &pMessageHeader->spare, end))) {
     // failed to read the header
     return -1;
@@ -2499,7 +2498,7 @@ int nfapi_p5_message_unpack(void *pMessageBuf,
 
   // process the header
   if (!(pull16(&pReadPackedMessage, &pMessageHeader->phy_id, end) && pull16(&pReadPackedMessage, &pMessageHeader->message_id, end)
-        && pull16(&pReadPackedMessage, &pMessageHeader->message_length, end)
+        && pull16(&pReadPackedMessage, (uint16_t *)&pMessageHeader->message_length, end)
         && pull16(&pReadPackedMessage, &pMessageHeader->spare, end))) {
     // failed to read the header
     return -1;
