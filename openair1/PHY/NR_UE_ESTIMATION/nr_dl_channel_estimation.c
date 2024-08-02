@@ -382,11 +382,7 @@ int nr_prs_channel_estimation(uint8_t gNB_id,
   for (int rxAnt = 0; rxAnt < frame_params->nb_antennas_rx; rxAnt++) {
     c16_t *ch_tmp = ch_tmp_buf;
     // scale by averaging factor 1/NumPrsSymbols
-    multadd_complex_vector_real_scalar(ch_tmp,
-                                       scale_factor,
-                                       ch_tmp,
-                                       1,
-                                       frame_params->ofdm_symbol_size);
+    multadd_complex_vector_real_scalar((int16_t *)ch_tmp, scale_factor, (int16_t *)ch_tmp, 1, frame_params->ofdm_symbol_size);
 
 #ifdef DEBUG_PRS_PRINTS
     for (int rb = 0; rb < prs_cfg->NumRB; rb++) {

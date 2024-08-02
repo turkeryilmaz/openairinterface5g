@@ -187,7 +187,7 @@ typedef struct {
 
 int nr_write_ce_ulsch_pdu(uint8_t *mac_ce,
                           NR_UE_MAC_INST_t *mac,
-                          NR_SINGLE_ENTRY_PHR_MAC_CE *power_headroom,,
+                          NR_SINGLE_ENTRY_PHR_MAC_CE *power_headroom,
                           rnti_t crnti,
                           const type_bsr_t *bsr);
 
