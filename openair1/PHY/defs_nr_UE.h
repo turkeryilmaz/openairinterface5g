@@ -600,6 +600,12 @@ typedef struct PHY_VARS_NR_UE_s {
   // Sidelink parameters
   sl_nr_sidelink_mode_t sl_mode;
   sl_nr_ue_phy_params_t SL_UE_PHY_PARAMS;
+
+  // rxdata sample capture
+  bool doCapture;
+  c16_t *rxdataCapture;
+  uint64_t capSampleSize;
+  uint64_t captureOffset;
 } PHY_VARS_NR_UE;
 
 typedef struct {

@@ -772,7 +772,27 @@ static openair0_timestamp read_slot(const NR_DL_FRAME_PARMS *fp,
   return retTimeStamp;
 }
 
-openair0_timestamp read_symbol(const int absSymbol,
+static void capture_rxdata(PHY_VARS_NR_UE *UE, c16_t *in, int numSamp)
+{
+  if (!UE->doCapture)
+    return;
+
+  if (UE->captureOffset >= UE->capSampleSize) {
+    FILE *file;
+    file = fopen("/tmp/ue_rx_capture.bin", "wb");
+    fwrite(UE->rxdataCapture, sizeof(int16_t), UE->captureOffset * 2, file);
+    fclose(file);
+    free(UE->rxdataCapture);
+    exit(0);
+  }
+
+  const int copySz = sizeof(c16_t) * numSamp;
+  memcpy(UE->rxdataCapture + UE->captureOffset, in, copySz);
+  UE->captureOffset += numSamp;
+}
+
+openair0_timestamp read_symbol(PHY_VARS_NR_UE *UE,
+                               const int absSymbol,
                                const NR_DL_FRAME_PARMS *fp,
                                openair0_device *rfDevice,
                                const int sampleShift,
@@ -791,6 +811,7 @@ openair0_timestamp read_symbol(const int absSymbol,
   /* return timestamp of first sample */
   openair0_timestamp retTimeStamp = 0;
   AssertFatal(trash_samples == rfDevice->trx_read_func(rfDevice, &retTimeStamp, rxp, trash_samples, fp->nb_antennas_rx), "");
+  capture_rxdata(UE, rxp[0], trash_samples);
 
   /* get OFDM symbol including 1/8th of the CP to avoid ISI */
   const int readBlockSize = prefix_samples - trash_samples + fp->ofdm_symbol_size - sampleShift;
@@ -799,6 +820,7 @@ openair0_timestamp read_symbol(const int absSymbol,
   }
   openair0_timestamp trashTimeStamp;
   AssertFatal(readBlockSize == rfDevice->trx_read_func(rfDevice, &trashTimeStamp, rxp, readBlockSize, fp->nb_antennas_rx), "");
+  capture_rxdata(UE, rxp[0], readBlockSize);
   return retTimeStamp;
 }
 
@@ -833,6 +855,7 @@ static void slot_process(PHY_VARS_NR_UE *UE,
     const openair0_timestamp readTS = read_slot(fp, &UE->rfdevice, iq_shift_to_apply, slotSize, rxdata);
     /* process tx and send to radio */
     launch_tx_process(UE, proc, iq_shift_to_apply, readTS, txFifo, tx_wait_for_dlsch, stream_status);
+    capture_rxdata(UE, rxdata[0], slotSize);
   } else { /* current slot is DL or Mixed slot */
     nr_downlink_indication_t dl_indication = {0};
     nr_phy_data_t phy_data = {0};
@@ -851,7 +874,7 @@ static void slot_process(PHY_VARS_NR_UE *UE,
       {
         /* Read time domain samples from radio */
         __attribute__((aligned(32))) c16_t rxdata[fp->nb_antennas_rx][ALNARS_32_8(fp->ofdm_symbol_size + fp->nb_prefix_samples0)];
-        const openair0_timestamp readTS = read_symbol(absSymbol, fp, &UE->rfdevice, iq_shift_to_apply, rxdata);
+        const openair0_timestamp readTS = read_symbol(UE, absSymbol, fp, &UE->rfdevice, iq_shift_to_apply, rxdata);
         /* save the timestamp of first sample in the slot */
         if (symbol == 0)
           firstSymbTs = readTS;
@@ -953,10 +976,26 @@ static void slot_process(PHY_VARS_NR_UE *UE,
   }
 }
 
+static void allocate_mem_for_capture(PHY_VARS_NR_UE *UE)
+{
+  if (!UE->doCapture)
+    return;
+
+  const int time_for_cap_s = 2;
+  const int buff_num_samples = time_for_cap_s * 100 * UE->frame_parms.samples_per_frame; 
+  const int buff_size = sizeof(c16_t) * buff_num_samples;
+  UE->rxdataCapture = malloc(buff_size);
+  memset(UE->rxdataCapture, 0, buff_size);
+  UE->capSampleSize = buff_num_samples;
+  UE->captureOffset = 0;
+}
+
 void *UE_thread(void *arg)
 {
   //this thread should be over the processing thread to keep in real time
   PHY_VARS_NR_UE *UE = (PHY_VARS_NR_UE *) arg;
+  UE->doCapture = false;
+  allocate_mem_for_capture(UE);
   //  int tx_enabled = 0;
   enum stream_status_e stream_status = STREAM_STATUS_UNSYNC;
   fapi_nr_config_request_t *cfg = &UE->nrUE_config;
