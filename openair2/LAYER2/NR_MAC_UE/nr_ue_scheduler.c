@@ -757,7 +757,9 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
     int mappingtype = tda_info->mapping_type;
 
     NR_DMRS_UplinkConfig_t *NR_DMRS_ulconfig = NULL;
-    if(pusch_Config) {
+    if(pusch_Config
+       && pusch_Config->dmrs_UplinkForPUSCH_MappingTypeA
+       && pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB) {
       NR_DMRS_ulconfig = (mappingtype == NR_PUSCH_TimeDomainResourceAllocation__mappingType_typeA)
                              ? pusch_Config->dmrs_UplinkForPUSCH_MappingTypeA->choice.setup
                              : pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup;
