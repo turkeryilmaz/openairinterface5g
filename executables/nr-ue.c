@@ -100,8 +100,9 @@ static size_t dump_L1_UE_meas_stats(PHY_VARS_NR_UE *ue, char *output, size_t max
 {
   const char *begin = output;
   const char *end = output + max_len;
+  output += print_meas_head(NULL, NULL, output, end - output);
   output += print_meas_log(&ue->phy_proc_tx, "L1 TX processing", NULL, NULL, output, end - output);
-  output += print_meas_log(&ue->ulsch_encoding_stats, "ULSCH encoding", NULL, NULL, output, end - output);
+  output += print_meas_log(&ue->ulsch_encoding_stats, "  -> ULSCH encoding", NULL, NULL, output, end - output);
   output += print_meas_log(&ue->phy_proc_rx, "L1 RX processing", NULL, NULL, output, end - output);
   output += print_meas_log(&ue->ue_ul_indication_stats, "UL Indication", NULL, NULL, output, end - output);
   output += print_meas_log(&ue->rx_pdsch_stats, "PDSCH receiver", NULL, NULL, output, end - output);

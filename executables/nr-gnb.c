@@ -285,6 +285,7 @@ static void rx_func(processingData_L1_t *info)
 static size_t dump_L1_meas_stats(PHY_VARS_gNB *gNB, RU_t *ru, char *output, size_t outputlen) {
   const char *begin = output;
   const char *end = output + outputlen;
+  output += print_meas_head(NULL, NULL, output, end - output);
   output += print_meas_log(&gNB->phy_proc_tx, "L1 Tx processing", NULL, NULL, output, end - output);
   output += print_meas_log(&gNB->dlsch_encoding_stats, "DLSCH encoding", NULL, NULL, output, end - output);
   output += print_meas_log(&gNB->dlsch_scrambling_stats, "DLSCH scrambling", NULL, NULL, output, end-output);
