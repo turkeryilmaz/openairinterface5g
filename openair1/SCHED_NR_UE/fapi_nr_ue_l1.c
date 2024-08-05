@@ -783,7 +783,7 @@ int8_t sl_handle_scheduled_response(nr_scheduled_response_t *scheduled_response)
                 phy_data_tx->nr_sl_pssch_pscch_pdu.mcs,
                 phy_data_tx->nr_sl_pssch_pscch_pdu.tbslbrm);
           if (phy_data_tx->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_CSI_RS || phy_data_tx->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH_CSI_RS) {
-            phy_data_tx->nr_sl_pssch_pscch_pdu.nr_sl_csi_rs_pdu = tx_config_pdu->nr_sl_csi_rs_pdu; // TO DO: retest CSI-RS
+            phy_data_tx->nr_sl_pssch_pscch_pdu.nr_sl_csi_rs_pdu = tx_config_pdu->nr_sl_csi_rs_pdu;
           }
         }
         break;

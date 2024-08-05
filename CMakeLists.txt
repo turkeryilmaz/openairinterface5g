@@ -1069,7 +1069,6 @@ set(PHY_SRC_UE
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_psfch_tx.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_pscch_tx.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_ue_pucch_rx.c
-  ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/pucch_rx.c
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_dci.c
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_dci_tools.c
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_ulsch_decoding.c

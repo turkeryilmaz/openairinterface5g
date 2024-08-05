@@ -3304,7 +3304,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
   AssertFatal(UE_info->list[1] == NULL,
               "cannot handle more than one UE\n");
   if (UE_info->list == NULL) {
-    LOG_I(NR_MAC, "UE list is empty\n");
+    LOG_D(NR_MAC, "UE list is empty\n");
     return false;
   }
   mac_rlc_status_resp_t rlc_status = mac_rlc_status_ind(0, mac->src_id, 0, frame, slot, ENB_FLAG_NO, MBMS_FLAG_NO, 4, 0, 0);
@@ -3857,8 +3857,8 @@ void nr_ue_sl_psfch_scheduler(NR_UE_MAC_INST_t *mac,
   const int n_ul_slots_period = tdd ? tdd->nrofUplinkSlots + (tdd->nrofUplinkSymbols > 0 ? 1 : 0) : nr_slots_frame;
 
   uint16_t num_subch = sl_get_num_subch(mac->sl_tx_res_pool);
-  sl_nr_tx_rx_config_psfch_pdu_t *psfch_pdu_list = CALLOC(psfch_period*num_subch, sizeof(sl_nr_tx_rx_config_psfch_pdu_t));
-  tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu.psfch_pdu_list = psfch_pdu_list;
+  tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu.psfch_pdu_list = CALLOC(psfch_period*num_subch, sizeof(sl_nr_tx_rx_config_psfch_pdu_t));
+  sl_nr_tx_rx_config_psfch_pdu_t *psfch_pdu_list = tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu.psfch_pdu_list;
   int k = 0;
   for (int i = 0; i < (n_ul_slots_period * num_subch); i++) {
     SL_sched_feedback_t  *sched_psfch = &mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch[i];

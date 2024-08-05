@@ -234,13 +234,13 @@ int NRRIV2BW(int locationAndBandwidth,int N_RB) {
 }
 
 /* This function converts the FRIV to a start sub-channel and length in subchannels */
-/* for sl_MaxNumPerReserve = 2, the sequence from 38.214 for Lsc = 1,2,3, ... 
- * goes like startsc + (0,N_subch,N_subch +(N_subch-1), N_subch + (N_subch-1) + (N_subch-2), ...) 
- * 
+/* for sl_MaxNumPerReserve = 2, the sequence from 38.214 for Lsc = 1,2,3, ...
+ * goes like startsc + (0,N_subch,N_subch +(N_subch-1), N_subch + (N_subch-1) + (N_subch-2), ...)
+ *
  * This is only done for sl_MaxNumPerReserve = 2
  * */
 void convNRFRIV(int FRIV,
-                int N_subch, 
+                int N_subch,
                 long sl_MaxNumPerReserve,
                 uint16_t *Lsc,
                 uint16_t *startsc,
@@ -268,7 +268,7 @@ void convNRFRIV(int FRIV,
     if (startsc2) *startsc2 = tmp1 / (N_subch - *Lsc + 1);
     if (startsc) *startsc = tmp1 % (N_subch - *Lsc + 1);
   }
-}  
+}
 int NRRIV2PRBOFFSET(int locationAndBandwidth,int N_RB) {
   int tmp = locationAndBandwidth/N_RB;
   int tmp2 = locationAndBandwidth%N_RB;
@@ -461,7 +461,7 @@ int get_subband_size(int NPRB,int size) {
   if (NPRB<144) return (size==0 ? 8 : 16);
   if (NPRB<275) return (size==0 ? 16 : 32);
   AssertFatal(1==0,"Shouldn't get here, NPRB %d\n",NPRB);
- 
+
 }
 
 void get_samplerate_and_bw(int mu,
@@ -782,7 +782,7 @@ int get_NREsci2(const int sci2_alpha,
                 const int pscch_numrbs,
                 const int l_subch,
                 const int subchannel_size,
-                const int mcs,                
+                const int mcs,
                 const int mcs_tb_ind) {
 
   float Osci2 = (float)sci2_payload_len;
@@ -798,8 +798,8 @@ int get_NREsci2(const int sci2_alpha,
   tmp2 -= N_REsci1;
   tmp2 *= ((float)sci2_alpha/100.0);
   int min_val = min(tmp,(int)ceil(tmp2));
-  uint8_t gamma = 12 - (min_val%12);
-  return min_val + gamma;
+  uint8_t gamma = 12 - (min_val % 12);
+  return min_val + (gamma % 12);
 
 }
 int get_NREsci2_2(const int sci2_alpha,
@@ -825,6 +825,6 @@ int get_NREsci2_2(const int sci2_alpha,
   tmp2 -= N_REsci1;
   tmp2 *= ((float)sci2_alpha/100.0);
   int min_val = min(tmp,(int)ceil(tmp2));
-  uint8_t gamma = 12 - (min_val%12);
-  return min_val + gamma;
+  uint8_t gamma = 12 - (min_val % 12);
+  return min_val + (gamma % 12);
 }
