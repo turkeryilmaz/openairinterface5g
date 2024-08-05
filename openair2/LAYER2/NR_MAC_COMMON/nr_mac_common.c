@@ -5047,91 +5047,93 @@ void compute_csi_bitlen(const NR_CSI_MeasConfig_t *csi_MeasConfig, nr_csi_report
   struct NR_CSI_ResourceConfig *csi_resourceconfig;
 
   // for each CSI measurement report configuration (list of CSI-ReportConfig)
-  LOG_D(NR_MAC,"Searching %d csi_reports\n",csi_MeasConfig->csi_ReportConfigToAddModList->list.count);
-  for (csi_report_id = 0; csi_report_id < csi_MeasConfig->csi_ReportConfigToAddModList->list.count; csi_report_id++) {
-    struct NR_CSI_ReportConfig *csi_reportconfig = csi_MeasConfig->csi_ReportConfigToAddModList->list.array[csi_report_id];
-    // MAC structure for CSI measurement reports (per UE and per report)
-    nr_csi_report_t *csi_report = &csi_report_template[csi_report_id];
-    // csi-ResourceConfigId of a CSI-ResourceConfig included in the configuration
-    // (either CSI-RS or SSB)
-    csi_ResourceConfigId = csi_reportconfig->resourcesForChannelMeasurement;
-    // looking for CSI-ResourceConfig
-    int found_resource = 0;
-    int csi_resourceidx = 0;
-    while (found_resource == 0 && csi_resourceidx < csi_MeasConfig->csi_ResourceConfigToAddModList->list.count) {
-      csi_resourceconfig = csi_MeasConfig->csi_ResourceConfigToAddModList->list.array[csi_resourceidx];
-      if (csi_resourceconfig->csi_ResourceConfigId == csi_ResourceConfigId)
-        found_resource = 1;
-      csi_resourceidx++;
-    }
-    AssertFatal(found_resource==1,"Not able to found any CSI-ResourceConfig with csi-ResourceConfigId %ld\n",
-                csi_ResourceConfigId);
-
-    long resourceType = csi_resourceconfig->resourceType;
-
-    reportQuantity_type = csi_reportconfig->reportQuantity.present;
-    csi_report->reportQuantity_type = reportQuantity_type;
-    csi_report->reportConfigId = csi_reportconfig->reportConfigId;
-
-    // setting the CSI or SSB index list
-    if (NR_CSI_ReportConfig__reportQuantity_PR_ssb_Index_RSRP == csi_report->reportQuantity_type) {
-      for (int csi_idx = 0; csi_idx < csi_MeasConfig->csi_SSB_ResourceSetToAddModList->list.count; csi_idx++) {
-        if (csi_MeasConfig->csi_SSB_ResourceSetToAddModList->list.array[csi_idx]->csi_SSB_ResourceSetId ==
-            *(csi_resourceconfig->csi_RS_ResourceSetList.choice.nzp_CSI_RS_SSB->csi_SSB_ResourceSetList->list.array[0])){
-          //We can configure only one SSB resource set from spec 38.331 IE CSI-ResourceConfig
-          nb_resources = csi_MeasConfig->csi_SSB_ResourceSetToAddModList->list.array[csi_idx]->csi_SSB_ResourceList.list.count;
-          csi_report->SSB_Index_list = csi_MeasConfig->csi_SSB_ResourceSetToAddModList->list.array[csi_idx]->csi_SSB_ResourceList.list.array;
-          csi_report->CSI_Index_list = NULL;
-          break;
-        }
+  if (csi_MeasConfig->csi_ReportConfigToAddModList) {
+    LOG_D(NR_MAC,"Searching %d csi_reports\n",csi_MeasConfig->csi_ReportConfigToAddModList->list.count);
+    for (csi_report_id = 0; csi_report_id < csi_MeasConfig->csi_ReportConfigToAddModList->list.count; csi_report_id++) {
+      struct NR_CSI_ReportConfig *csi_reportconfig = csi_MeasConfig->csi_ReportConfigToAddModList->list.array[csi_report_id];
+      // MAC structure for CSI measurement reports (per UE and per report)
+      nr_csi_report_t *csi_report = &csi_report_template[csi_report_id];
+      // csi-ResourceConfigId of a CSI-ResourceConfig included in the configuration
+      // (either CSI-RS or SSB)
+      csi_ResourceConfigId = csi_reportconfig->resourcesForChannelMeasurement;
+      // looking for CSI-ResourceConfig
+      int found_resource = 0;
+      int csi_resourceidx = 0;
+      while (found_resource == 0 && csi_resourceidx < csi_MeasConfig->csi_ResourceConfigToAddModList->list.count) {
+        csi_resourceconfig = csi_MeasConfig->csi_ResourceConfigToAddModList->list.array[csi_resourceidx];
+        if (csi_resourceconfig->csi_ResourceConfigId == csi_ResourceConfigId)
+          found_resource = 1;
+        csi_resourceidx++;
       }
-    }
-    else {
-      if (resourceType == NR_CSI_ResourceConfig__resourceType_periodic) {
-        AssertFatal(csi_MeasConfig->nzp_CSI_RS_ResourceSetToAddModList != NULL,
-                    "Wrong settings! Report quantity requires CSI-RS but csi_MeasConfig->nzp_CSI_RS_ResourceSetToAddModList is NULL\n");
-        for (int csi_idx = 0; csi_idx < csi_MeasConfig->nzp_CSI_RS_ResourceSetToAddModList->list.count; csi_idx++) {
-          if (csi_MeasConfig->nzp_CSI_RS_ResourceSetToAddModList->list.array[csi_idx]->nzp_CSI_ResourceSetId ==
-              *(csi_resourceconfig->csi_RS_ResourceSetList.choice.nzp_CSI_RS_SSB->nzp_CSI_RS_ResourceSetList->list.array[0])) {
-            //For periodic and semi-persistent CSI Resource Settings, the number of CSI-RS Resource Sets configured is limited to S=1 for spec 38.212
-            nb_resources = csi_MeasConfig->nzp_CSI_RS_ResourceSetToAddModList->list.array[csi_idx]->nzp_CSI_RS_Resources.list.count;
-            csi_report->CSI_Index_list = csi_MeasConfig->nzp_CSI_RS_ResourceSetToAddModList->list.array[csi_idx]->nzp_CSI_RS_Resources.list.array;
-            csi_report->SSB_Index_list = NULL;
+      AssertFatal(found_resource==1,"Not able to found any CSI-ResourceConfig with csi-ResourceConfigId %ld\n",
+                  csi_ResourceConfigId);
+
+      long resourceType = csi_resourceconfig->resourceType;
+
+      reportQuantity_type = csi_reportconfig->reportQuantity.present;
+      csi_report->reportQuantity_type = reportQuantity_type;
+      csi_report->reportConfigId = csi_reportconfig->reportConfigId;
+
+      // setting the CSI or SSB index list
+      if (NR_CSI_ReportConfig__reportQuantity_PR_ssb_Index_RSRP == csi_report->reportQuantity_type) {
+        for (int csi_idx = 0; csi_idx < csi_MeasConfig->csi_SSB_ResourceSetToAddModList->list.count; csi_idx++) {
+          if (csi_MeasConfig->csi_SSB_ResourceSetToAddModList->list.array[csi_idx]->csi_SSB_ResourceSetId ==
+              *(csi_resourceconfig->csi_RS_ResourceSetList.choice.nzp_CSI_RS_SSB->csi_SSB_ResourceSetList->list.array[0])){
+            //We can configure only one SSB resource set from spec 38.331 IE CSI-ResourceConfig
+            nb_resources = csi_MeasConfig->csi_SSB_ResourceSetToAddModList->list.array[csi_idx]->csi_SSB_ResourceList.list.count;
+            csi_report->SSB_Index_list = csi_MeasConfig->csi_SSB_ResourceSetToAddModList->list.array[csi_idx]->csi_SSB_ResourceList.list.array;
+            csi_report->CSI_Index_list = NULL;
             break;
           }
         }
       }
-      else AssertFatal(1==0,"Only periodic resource configuration currently supported\n");
-    }
-    LOG_D(NR_MAC,"nb_resources %d\n",nb_resources);
-    // computation of bit length depending on the report type
-    switch(reportQuantity_type){
-      case (NR_CSI_ReportConfig__reportQuantity_PR_ssb_Index_RSRP):
-        compute_rsrp_bitlen(csi_reportconfig, nb_resources, csi_report);
-        break;
-      case (NR_CSI_ReportConfig__reportQuantity_PR_cri_RSRP):
-        compute_rsrp_bitlen(csi_reportconfig, nb_resources, csi_report);
-        break;
-      case (NR_CSI_ReportConfig__reportQuantity_PR_cri_RI_CQI):
-        csi_report->csi_meas_bitlen.cri_bitlen=ceil(log2(nb_resources));
-        csi_report->csi_meas_bitlen.ri_restriction = compute_ri_bitlen(csi_reportconfig, csi_report);
-        compute_cqi_bitlen(csi_reportconfig, csi_report->csi_meas_bitlen.ri_restriction, csi_report);
-        break;
-      case (NR_CSI_ReportConfig__reportQuantity_PR_cri_RI_PMI_CQI):
-        csi_report->csi_meas_bitlen.cri_bitlen=ceil(log2(nb_resources));
-        csi_report->csi_meas_bitlen.ri_restriction = compute_ri_bitlen(csi_reportconfig, csi_report);
-        compute_cqi_bitlen(csi_reportconfig, csi_report->csi_meas_bitlen.ri_restriction, csi_report);
-        compute_pmi_bitlen(csi_reportconfig, csi_report->csi_meas_bitlen.ri_restriction, csi_report);
-        break;
-      case (NR_CSI_ReportConfig__reportQuantity_PR_cri_RI_LI_PMI_CQI):
-        csi_report->csi_meas_bitlen.cri_bitlen=ceil(log2(nb_resources));
-        csi_report->csi_meas_bitlen.ri_restriction = compute_ri_bitlen(csi_reportconfig, csi_report);
-        compute_li_bitlen(csi_reportconfig, csi_report->csi_meas_bitlen.ri_restriction, csi_report);
-        compute_cqi_bitlen(csi_reportconfig, csi_report->csi_meas_bitlen.ri_restriction, csi_report);
-        compute_pmi_bitlen(csi_reportconfig, csi_report->csi_meas_bitlen.ri_restriction, csi_report);
-        break;
-      default:
-        AssertFatal(1==0,"Not yet supported CSI report quantity type");
+      else {
+        if (resourceType == NR_CSI_ResourceConfig__resourceType_periodic) {
+          AssertFatal(csi_MeasConfig->nzp_CSI_RS_ResourceSetToAddModList != NULL,
+                      "Wrong settings! Report quantity requires CSI-RS but csi_MeasConfig->nzp_CSI_RS_ResourceSetToAddModList is NULL\n");
+          for (int csi_idx = 0; csi_idx < csi_MeasConfig->nzp_CSI_RS_ResourceSetToAddModList->list.count; csi_idx++) {
+            if (csi_MeasConfig->nzp_CSI_RS_ResourceSetToAddModList->list.array[csi_idx]->nzp_CSI_ResourceSetId ==
+                *(csi_resourceconfig->csi_RS_ResourceSetList.choice.nzp_CSI_RS_SSB->nzp_CSI_RS_ResourceSetList->list.array[0])) {
+              //For periodic and semi-persistent CSI Resource Settings, the number of CSI-RS Resource Sets configured is limited to S=1 for spec 38.212
+              nb_resources = csi_MeasConfig->nzp_CSI_RS_ResourceSetToAddModList->list.array[csi_idx]->nzp_CSI_RS_Resources.list.count;
+              csi_report->CSI_Index_list = csi_MeasConfig->nzp_CSI_RS_ResourceSetToAddModList->list.array[csi_idx]->nzp_CSI_RS_Resources.list.array;
+              csi_report->SSB_Index_list = NULL;
+              break;
+            }
+          }
+        }
+        else AssertFatal(1==0,"Only periodic resource configuration currently supported\n");
+      }
+      LOG_D(NR_MAC,"nb_resources %d\n",nb_resources);
+      // computation of bit length depending on the report type
+      switch(reportQuantity_type){
+        case (NR_CSI_ReportConfig__reportQuantity_PR_ssb_Index_RSRP):
+          compute_rsrp_bitlen(csi_reportconfig, nb_resources, csi_report);
+          break;
+        case (NR_CSI_ReportConfig__reportQuantity_PR_cri_RSRP):
+          compute_rsrp_bitlen(csi_reportconfig, nb_resources, csi_report);
+          break;
+        case (NR_CSI_ReportConfig__reportQuantity_PR_cri_RI_CQI):
+          csi_report->csi_meas_bitlen.cri_bitlen=ceil(log2(nb_resources));
+          csi_report->csi_meas_bitlen.ri_restriction = compute_ri_bitlen(csi_reportconfig, csi_report);
+          compute_cqi_bitlen(csi_reportconfig, csi_report->csi_meas_bitlen.ri_restriction, csi_report);
+          break;
+        case (NR_CSI_ReportConfig__reportQuantity_PR_cri_RI_PMI_CQI):
+          csi_report->csi_meas_bitlen.cri_bitlen=ceil(log2(nb_resources));
+          csi_report->csi_meas_bitlen.ri_restriction = compute_ri_bitlen(csi_reportconfig, csi_report);
+          compute_cqi_bitlen(csi_reportconfig, csi_report->csi_meas_bitlen.ri_restriction, csi_report);
+          compute_pmi_bitlen(csi_reportconfig, csi_report->csi_meas_bitlen.ri_restriction, csi_report);
+          break;
+        case (NR_CSI_ReportConfig__reportQuantity_PR_cri_RI_LI_PMI_CQI):
+          csi_report->csi_meas_bitlen.cri_bitlen=ceil(log2(nb_resources));
+          csi_report->csi_meas_bitlen.ri_restriction = compute_ri_bitlen(csi_reportconfig, csi_report);
+          compute_li_bitlen(csi_reportconfig, csi_report->csi_meas_bitlen.ri_restriction, csi_report);
+          compute_cqi_bitlen(csi_reportconfig, csi_report->csi_meas_bitlen.ri_restriction, csi_report);
+          compute_pmi_bitlen(csi_reportconfig, csi_report->csi_meas_bitlen.ri_restriction, csi_report);
+          break;
+        default:
+          AssertFatal(1==0,"Not yet supported CSI report quantity type");
+      }
     }
   }
 }

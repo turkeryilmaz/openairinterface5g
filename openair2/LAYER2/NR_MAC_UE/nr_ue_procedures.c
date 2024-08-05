@@ -2604,7 +2604,7 @@ int nr_get_csi_measurements(NR_UE_MAC_INST_t *mac, frame_t frame, int slot, PUCC
   NR_PUCCH_Config_t *pucch_Config = current_UL_BWP ? current_UL_BWP->pucch_Config : NULL;
   int num_csi = 0;
 
-  if (mac->sc_info.csi_MeasConfig) {
+  if (mac->sc_info.csi_MeasConfig && mac->sc_info.csi_MeasConfig->csi_ReportConfigToAddModList) {
     NR_CSI_MeasConfig_t *csi_measconfig = mac->sc_info.csi_MeasConfig;
 
     int csi_priority = INT_MAX;
