@@ -804,7 +804,8 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
       if (pusch_config_pdu->scid == 0 && NR_DMRS_ulconfig && NR_DMRS_ulconfig->transformPrecodingDisabled &&
           NR_DMRS_ulconfig->transformPrecodingDisabled->scramblingID0)
         pusch_config_pdu->ul_dmrs_scrambling_id = *NR_DMRS_ulconfig->transformPrecodingDisabled->scramblingID0;
-      if (pusch_config_pdu->scid == 1 && NR_DMRS_ulconfig &&
+      
+      if (pusch_config_pdu->scid == 1 && NR_DMRS_ulconfig &&  NR_DMRS_ulconfig->transformPrecodingDisabled &&
           NR_DMRS_ulconfig->transformPrecodingDisabled->scramblingID1)
         pusch_config_pdu->ul_dmrs_scrambling_id = *NR_DMRS_ulconfig->transformPrecodingDisabled->scramblingID1;
     }
