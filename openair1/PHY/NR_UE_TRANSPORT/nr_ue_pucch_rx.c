@@ -236,7 +236,7 @@ int8_t nr_ue_decode_pucch0(PHY_VARS_NR_UE *ue,
            soffset, soffset + l2*frame_parms->ofdm_symbol_size,
            (soffset + l2*frame_parms->ofdm_symbol_size + nb_re_pucch), l, re_offset[l]);
       for (int z = soffset + l2*frame_parms->ofdm_symbol_size + re_offset[l]; z < (soffset + l2*frame_parms->ofdm_symbol_size + re_offset[l] + nb_re_pucch); z++)
-        LOG_D(NR_PHY, "%4d.%2d z %d rxdataF (%d,%d)\n", frame, slot, z, rxdataF[aa][z].r, rxdataF[aa][z].i);
+        LOG_I(NR_PHY, "Rx_slot %4d.%2d z %d rxdataF (%d,%d)\n", frame, slot, z, rxdataF[aa][z].r, rxdataF[aa][z].i);
       tmp_rp = (int32_t *)&rxdataF[aa][soffset + l2 * frame_parms->ofdm_symbol_size];
       if(re_offset[l] + nb_re_pucch > frame_parms->ofdm_symbol_size) {
         int neg_length = frame_parms->ofdm_symbol_size - re_offset[l];
