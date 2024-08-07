@@ -363,4 +363,5 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind, NR_UE_MAC_INST_t
 
 NR_SearchSpace_t *get_common_search_space(const NR_UE_MAC_INST_t *mac, const NR_SearchSpaceId_t ss_id);
 
+void set_default_phr(NR_UE_MAC_INST_t *mac, int slots_per_subframe);
 #endif
