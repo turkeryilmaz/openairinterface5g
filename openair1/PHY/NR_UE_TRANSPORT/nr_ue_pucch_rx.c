@@ -235,8 +235,15 @@ int8_t nr_ue_decode_pucch0(PHY_VARS_NR_UE *ue,
       LOG_D(NR_PHY, "soffset %i, soffset + l2*frame_parms->ofdm_symbol_size %i %i re_offset[%d] %i\n",
            soffset, soffset + l2*frame_parms->ofdm_symbol_size,
            (soffset + l2*frame_parms->ofdm_symbol_size + nb_re_pucch), l, re_offset[l]);
-      for (int z = soffset + l2*frame_parms->ofdm_symbol_size + re_offset[l]; z < (soffset + l2*frame_parms->ofdm_symbol_size + re_offset[l] + nb_re_pucch); z++)
-        LOG_I(NR_PHY, "Rx_slot %4d.%2d z %d rxdataF (%d,%d)\n", frame, slot, z, rxdataF[aa][z].r, rxdataF[aa][z].i);
+      for (int z = soffset + l2*frame_parms->ofdm_symbol_size + re_offset[l]; z < (soffset + l2*frame_parms->ofdm_symbol_size + re_offset[l] + nb_re_pucch); z++) {
+        LOG_D(NR_PHY, "Rx_slot %4d.%2d z %d rxdataF (%d,%d)\n", frame, slot, z, rxdataF[aa][z].r, rxdataF[aa][z].i);
+        // float a = abs(rxdataF[aa][z].r);
+        // float b = abs(rxdataF[aa][z].i);
+        // if (abs (a - b) > 600) {
+        //   rxdataF[aa][z].r = 0;
+        //   rxdataF[aa][z].i = 0;
+        // }
+      }
       tmp_rp = (int32_t *)&rxdataF[aa][soffset + l2 * frame_parms->ofdm_symbol_size];
       if(re_offset[l] + nb_re_pucch > frame_parms->ofdm_symbol_size) {
         int neg_length = frame_parms->ofdm_symbol_size - re_offset[l];
@@ -339,7 +346,7 @@ int8_t nr_ue_decode_pucch0(PHY_VARS_NR_UE *ue,
   index = maxpos;
   if (pucch_pdu->bit_len_harq == 1) {
     uint8_t ack_nack = !(index&0x01);
-    LOG_D(PHY,
+    LOG_I(PHY,
           "[PSFCH RX] Rx_slot %4u.%2u HARQ %s\n",
           frame,
           slot,

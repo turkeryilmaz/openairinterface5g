@@ -280,7 +280,7 @@ void nr_postDecode_slsch(PHY_VARS_NR_UE *UE, notifiedFIFO_elt_t *req,UE_nr_rxtx_
             rdata->decodeIterations);
       slsch->active = false;
       slsch_harq->round = 0;
-      LOG_D(NR_PHY, "SLSCH received ok \n");
+      LOG_I(NR_PHY, "SLSCH received ok %4d.%2d\n", proc->frame_rx, proc->nr_slot_rx);
       slsch_status.rdata = rdata;
       slsch_status.rxok = true;
       //dumpsig=1;
@@ -300,7 +300,7 @@ void nr_postDecode_slsch(PHY_VARS_NR_UE *UE, notifiedFIFO_elt_t *req,UE_nr_rxtx_
             slsch_harq->TBS,
             r);
       slsch->handled = 1;
-      LOG_I(NR_PHY, "SLSCH %d in error\n",rdata->ulsch_id);
+      LOG_I(NR_PHY, "SLSCH %d in error %4d.%2d\n",rdata->ulsch_id, proc->frame_rx, proc->nr_slot_rx);
       slsch_status.rdata = rdata;
       slsch_status.rxok = false;
       //      dumpsig=1;
@@ -773,7 +773,7 @@ int phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
            phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH ||
            phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH_CSI_RS) {
     if (phy_data->sl_tx_action >= SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH && phy_data->sl_tx_action <= SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH_CSI_RS)
-      LOG_D(NR_PHY, "Generating %s (%d.%d)\n", sl_tx_actions[phy_data->sl_tx_action - SL_NR_CONFIG_TYPE_TX_PSBCH], frame_tx, slot_tx);
+      LOG_I(NR_PHY, "Generating %s (%d.%d)\n", sl_tx_actions[phy_data->sl_tx_action - SL_NR_CONFIG_TYPE_TX_PSBCH], frame_tx, slot_tx);
     phy_data->pscch_Nid = nr_generate_sci1(ue, txdataF[0], fp, AMP, slot_tx, &phy_data->nr_sl_pssch_pscch_pdu) &0xFFFF;
     nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *csi_params = (nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *)&phy_data->nr_sl_pssch_pscch_pdu.nr_sl_csi_rs_pdu;
     csi_params->scramb_id = phy_data->pscch_Nid % (1 << 10);
