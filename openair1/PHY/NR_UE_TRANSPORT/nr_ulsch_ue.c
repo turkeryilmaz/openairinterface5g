@@ -564,28 +564,12 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
 static void slot_ofdm_mod(const c16_t *in, const int slot, const NR_DL_FRAME_PARMS *fp, c16_t *out, PHY_VARS_NR_UE *UE)
 {
   uint outOffset = 0;
-  notifiedFIFO_t outFifo;
-  initNotifiedFIFO(&outFifo);
   for (int s = 0; s < NR_SYMBOLS_PER_SLOT; s++) {
     const uint absSymb = NR_SYMBOLS_PER_SLOT * slot + s;
     const uint prefixSize = (absSymb % (7 << fp->numerology_index)) ? fp->nb_prefix_samples : fp->nb_prefix_samples0;
     const uint fftSize = fp->ofdm_symbol_size;
-    notifiedFIFO_elt_t *e = newNotifiedFIFO_elt(sizeof(nr_ofdm_mod_data_t), s, &outFifo, nr_PHY_ofdm_mod);
-    nr_ofdm_mod_data_t *d = (nr_ofdm_mod_data_t *)NotifiedFifoData(e);
-    d->in = (c16_t *)in + fftSize * s;
-    d->out = out + outOffset;
-    d->fftSize = fftSize;
-    d->prefixSize = prefixSize;
-    pushTpool(&get_nrUE_params()->Tpool, e);
+    nr_PHY_ofdm_mod(fftSize, prefixSize, in + fftSize * s, out + outOffset);
     outOffset += prefixSize + fftSize;
-  }
-  uint nbModSym = NR_SYMBOLS_PER_SLOT;
-  while (nbModSym) {
-    notifiedFIFO_elt_t *req = pullTpool(&outFifo, &get_nrUE_params()->Tpool);
-    if (req == NULL)
-      break; // Tpool has been stopped
-    delNotifiedFIFO_elt(req);
-    nbModSym--;
   }
 }
 

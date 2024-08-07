@@ -59,7 +59,7 @@ typedef struct {
   c16_t *out;
 } nr_ofdm_mod_data_t;
 
-void nr_PHY_ofdm_mod(void *args);
+void nr_PHY_ofdm_mod(const uint fftSize, const uint prefixSize, const c16_t *in, c16_t *out);
 
 /** @}*/
 #endif

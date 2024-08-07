@@ -122,13 +122,8 @@ void nr_normal_prefix_mod(c16_t *txdataF, c16_t *txdata, uint8_t nsymb, const NR
 
 }
 
-void nr_PHY_ofdm_mod(void *args)
+void nr_PHY_ofdm_mod(const uint fftSize, const uint prefixSize, const c16_t *in, c16_t *out)
 {
-  nr_ofdm_mod_data_t *data = (nr_ofdm_mod_data_t *)args;
-  const uint fftSize = data->fftSize;
-  const uint prefixSize = data->prefixSize;
-  const c16_t *in = data->in;
-  c16_t *out = data->out;
   const idft_size_idx_t idftSize = get_idft(fftSize);
 
   /* 3/4 sampling CP is not 32 byte aligned */
