@@ -179,17 +179,17 @@ typedef struct {
   union {
     NR_BSR_SHORT s;
     NR_BSR_LONG l;
-    NR_BSR_SHORT_TRUNCATED t;
     uint8_t lc_bsr[8];
   } bsr;
-  enum { b_none, b_long, b_short, b_trunc } type_bsr;
+  enum { b_none, b_long, b_short, b_short_trunc, b_long_trunc } type_bsr;
 } type_bsr_t;
 
 int nr_write_ce_ulsch_pdu(uint8_t *mac_ce,
                           NR_UE_MAC_INST_t *mac,
                           NR_SINGLE_ENTRY_PHR_MAC_CE *power_headroom,
                           rnti_t crnti,
-                          const type_bsr_t *bsr);
+                          const type_bsr_t *bsr,
+                          uint8_t *mac_ce_end);
 
 void ue_dci_configuration(NR_UE_MAC_INST_t *mac,
                           fapi_nr_dl_config_request_t *dl_config,

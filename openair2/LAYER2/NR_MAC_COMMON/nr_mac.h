@@ -138,8 +138,6 @@ typedef struct {
   uint8_t LcgID: 3;        // octet 1 MSB
 } __attribute__ ((__packed__)) NR_BSR_SHORT;
 
-typedef NR_BSR_SHORT NR_BSR_SHORT_TRUNCATED;
-
 // Long BSR for all logical channel group ID
 typedef struct {
   uint8_t LcgID0: 1;        // octet 1 [0]
@@ -151,8 +149,6 @@ typedef struct {
   uint8_t LcgID6: 1;        // octet 1 [6]
   uint8_t LcgID7: 1; // octet 1 [7]
 } __attribute__ ((__packed__)) NR_BSR_LONG;
-
-typedef NR_BSR_LONG NR_BSR_LONG_TRUNCATED;
 
 // 38.321 ch. 6.1.3.4
 typedef struct {

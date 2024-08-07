@@ -70,8 +70,7 @@
 
 #define NR_BSR_TRIGGER_NONE      (0) /* No BSR Trigger */
 #define NR_BSR_TRIGGER_REGULAR   (1) /* For Regular and ReTxBSR Expiry Triggers */
-#define NR_BSR_TRIGGER_PERIODIC  (2) /* For BSR Periodic Timer Expiry Trigger */
-#define NR_BSR_TRIGGER_PADDING   (4) /* For Padding BSR Trigger */
+#define NR_BSR_TRIGGER_PERIODIC (2) /* For BSR Periodic Timer Expiry Trigger */
 
 #define NR_INVALID_LCGID (NR_MAX_NUM_LCGID)
 
@@ -200,8 +199,6 @@ typedef enum {
 typedef struct {
   // after multiplexing buffer remain for each lcid
   int32_t LCID_buffer_remain;
-  // buffer status for each lcid
-  bool LCID_buffer_with_data;
   // logical channel group id of this LCID
   long LCGID;
   // Bj bucket usage per lcid
