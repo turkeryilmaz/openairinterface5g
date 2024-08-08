@@ -86,6 +86,420 @@ void nr_pusch_codeword_scrambling(uint8_t *in, uint32_t size, uint32_t Nid, uint
     nr_codeword_scrambling(in, size, 0, Nid, n_RNTI, out);
 }
 
+static void (*map_dmrs_ptr)(const unsigned int, const c16_t *, c16_t *);
+static void (*map_data_dmrs_ptr)(const c16_t *, c16_t *);
+
+/*
+DMRS mapping in a RB for Type 1.
+*/
+static void map_dmrs_type1_cdm1_rb(const unsigned int delta, const c16_t *dmrs, c16_t *out)
+{
+  *(out + delta) = *dmrs++;
+  *(out + delta + 2) = *dmrs++;
+  *(out + delta + 4) = *dmrs++;
+  *(out + delta + 6) = *dmrs++;
+  *(out + delta + 8) = *dmrs++;
+  *(out + delta + 10) = *dmrs++;
+}
+
+/*
+Data in DMRS symbol for Type 1, NumCDMGroupNoData = 1 and delta 0 (antenna port 0 and 1).
+There is no data in DMRS symbol for other scenarios in type 1.
+*/
+static void map_data_dmrs_type1_cdm1_rb(const c16_t *data, c16_t *out)
+{
+  *(out + 1) = *data++;
+  *(out + 3) = *data++;
+  *(out + 5) = *data++;
+  *(out + 7) = *data++;
+  *(out + 9) = *data++;
+  *(out + 11) = *data++;
+}
+
+#define NR_DMRS_TYPE2_CDM_GRP_SIZE 2
+#define NR_DMRS_TYPE2_NUM_CDM_GRP 3
+
+/*
+Map DMRS for type 2
+*/
+
+static void map_dmrs_type2_rb(const unsigned int delta, const c16_t *dmrs, c16_t *out)
+{
+  memcpy(out + delta, dmrs, sizeof(c16_t) * NR_DMRS_TYPE2_CDM_GRP_SIZE);
+  out += (NR_DMRS_TYPE2_CDM_GRP_SIZE * NR_DMRS_TYPE2_NUM_CDM_GRP);
+  dmrs += NR_DMRS_TYPE2_CDM_GRP_SIZE;
+  memcpy(out + delta, dmrs, sizeof(c16_t) * NR_DMRS_TYPE2_CDM_GRP_SIZE);
+}
+
+/*
+Map data if type 2, delta 0 NumCDMGrpNoData 1.
+*/
+static void map_data_dmrs_type2_rb_f1(const c16_t *data, c16_t *out)
+{
+  memcpy(out + NR_DMRS_TYPE2_CDM_GRP_SIZE, data, sizeof(c16_t) * NR_DMRS_TYPE2_CDM_GRP_SIZE * 2);
+  out += NR_DMRS_TYPE2_CDM_GRP_SIZE * 4;
+  data += NR_DMRS_TYPE2_CDM_GRP_SIZE * 2;
+  memcpy(out, data, sizeof(c16_t) * NR_DMRS_TYPE2_CDM_GRP_SIZE * 2);
+}
+
+/*
+Map data if type 2, delta (0, 2) NumCDMGrpNoData 2, or delta 2 NumCDMGrpNoData 1.
+*/
+static void map_data_dmrs_type2_rb_f2(const c16_t *data, c16_t *out)
+{
+  memcpy(out + NR_DMRS_TYPE2_CDM_GRP_SIZE * 2, data, sizeof(c16_t) * NR_DMRS_TYPE2_CDM_GRP_SIZE);
+  out += NR_DMRS_TYPE2_CDM_GRP_SIZE * 5;
+  data += NR_DMRS_TYPE2_CDM_GRP_SIZE;
+  memcpy(out, data, sizeof(c16_t) * NR_DMRS_TYPE2_CDM_GRP_SIZE);
+}
+
+/*
+Map data if type 2, delta 4 NumCDMGrpNoData 1.
+*/
+static void map_data_dmrs_type2_rb_f3(const c16_t *data, c16_t *out)
+{
+  memcpy(out + NR_DMRS_TYPE2_CDM_GRP_SIZE, data, sizeof(c16_t) * NR_DMRS_TYPE2_CDM_GRP_SIZE);
+  out += NR_DMRS_TYPE2_CDM_GRP_SIZE * 4;
+  data += NR_DMRS_TYPE2_CDM_GRP_SIZE;
+  memcpy(out, data, sizeof(c16_t) * NR_DMRS_TYPE2_CDM_GRP_SIZE);
+}
+
+/*
+Map data and PTRS in RB
+*/
+static void map_data_ptrs(const unsigned int ptrsIdx, const c16_t *data, const c16_t *ptrs, c16_t *out)
+{
+  memcpy(out, data, sizeof(c16_t) * ptrsIdx);
+  data += ptrsIdx;
+  *(out + ptrsIdx) = *ptrs;
+  memcpy(out + ptrsIdx + 1, data, sizeof(c16_t) * NR_NB_SC_PER_RB - ptrsIdx - 1);
+}
+
+/*
+Map data only in RB
+*/
+static void map_data_rb(const c16_t *data, c16_t *out)
+{
+  memcpy(out, data, sizeof(c16_t) * NR_NB_SC_PER_RB);
+}
+
+static void map_over_dc(const unsigned int right_dc,
+                        const unsigned int fft_size,
+                        const unsigned int dmrs_per_rb,
+                        const unsigned int data_per_rb,
+                        const unsigned int delta,
+                        const unsigned int ptrsIdx,
+                        unsigned int *rb,
+                        const c16_t **ptrs,
+                        const c16_t **dmrs,
+                        const c16_t **data,
+                        c16_t **out)
+{
+  if (right_dc) {
+    c16_t *out_tmp = *out;
+    c16_t tmp_out_buf[NR_NB_SC_PER_RB];
+    const unsigned int left_dc = NR_NB_SC_PER_RB - right_dc;
+    /* copy out to temp buffer */
+    memcpy(tmp_out_buf, out_tmp, sizeof(c16_t) * left_dc);
+    out_tmp -= (fft_size - left_dc);
+    memcpy(tmp_out_buf + left_dc, out_tmp, sizeof(c16_t) * right_dc);
+
+    /* map on to temp buffer */
+    if (dmrs && data) {
+      map_data_dmrs_ptr(*data, tmp_out_buf);
+      *data += data_per_rb;
+    } else if (dmrs) {
+      map_dmrs_ptr(delta, *dmrs, tmp_out_buf);
+      *dmrs += dmrs_per_rb;
+    } else if (ptrs) {
+      map_data_ptrs(ptrsIdx, *data, *ptrs, tmp_out_buf);
+      *data += (NR_NB_SC_PER_RB - 1);
+      *ptrs += 1;
+    } else if (data) {
+      map_data_rb(*data, tmp_out_buf);
+      *data += NR_NB_SC_PER_RB;
+    } else {
+      DevAssert(false);
+    }
+
+    /* copy back to out buffer */
+    out_tmp = *out;
+    memcpy(out_tmp, tmp_out_buf, sizeof(c16_t) * left_dc);
+    out_tmp -= (fft_size - left_dc);
+    memcpy(out_tmp, tmp_out_buf + left_dc, sizeof(c16_t) * right_dc);
+    out_tmp += right_dc;
+    *out = out_tmp;
+    *rb += 1;
+  } else {
+    *out = (*out) - fft_size;
+  }
+}
+
+/*
+Map all REs in one OFDM symbol
+*/
+static void map_current_symbol(const rnti_t rnti,
+                               const unsigned int K_ptrs,
+                               const unsigned int k_RE_ref,
+                               const unsigned int nb_rb,
+                               const unsigned int dmrs_port,
+                               const unsigned int l_prime,
+                               const unsigned int bwp_start,
+                               const unsigned int start_rb,
+                               const unsigned int first_sc_offset,
+                               const pusch_dmrs_type_t dmrs_type,
+                               const unsigned int fft_size,
+                               const bool dmrs_symbol,
+                               const bool ptrs_symbol,
+                               const unsigned int n_dmrs,
+                               const c16_t *dmrs_seq,
+                               const c16_t *ptrs_seq,
+                               const unsigned int delta,
+                               const c16_t **data,
+                               c16_t *out)
+{
+  const unsigned int abs_start_rb = bwp_start + start_rb;
+  const unsigned int start_sc = (first_sc_offset + abs_start_rb * NR_NB_SC_PER_RB) % fft_size;
+  const bool cross_dc = start_sc + nb_rb * NR_NB_SC_PER_RB > fft_size;
+  const unsigned int rb_over_dc = cross_dc ? (fft_size - start_sc) % NR_NB_SC_PER_RB : 0;
+  const unsigned int stop_rb = cross_dc ? (fft_size - start_sc) / NR_NB_SC_PER_RB : nb_rb;
+  const c16_t *data_tmp = *data;
+  if (dmrs_symbol) {
+    const unsigned int dmrs_per_rb = (dmrs_type == pusch_dmrs_type1) ? 6 : 4;
+    const unsigned int data_per_rb = NR_NB_SC_PER_RB - dmrs_per_rb;
+
+    const c16_t *p_mod_dmrs = dmrs_seq + abs_start_rb * dmrs_per_rb;
+    c16_t *out_tmp = out + start_sc;
+    unsigned int rb = 0;
+    /* map below/above DC */
+    for (; rb < stop_rb; rb++) {
+      map_dmrs_ptr(delta, p_mod_dmrs, out_tmp);
+      p_mod_dmrs += dmrs_per_rb;
+      out_tmp += NR_NB_SC_PER_RB;
+    }
+    /* map RB at DC */
+    map_over_dc(rb_over_dc, fft_size, dmrs_per_rb, data_per_rb, delta, 0, &rb, NULL, &p_mod_dmrs, NULL, &out_tmp);
+    /* map above DC */
+    for (; rb < nb_rb; rb++) {
+      map_dmrs_ptr(delta, p_mod_dmrs, out_tmp);
+      p_mod_dmrs += dmrs_per_rb;
+      out_tmp += NR_NB_SC_PER_RB;
+    }
+
+    if (map_data_dmrs_ptr) {
+      c16_t *out_tmp = out + start_sc;
+      unsigned int rb = 0;
+      for (; rb < stop_rb; rb++) {
+        map_data_dmrs_ptr(data_tmp, out_tmp);
+        data_tmp += data_per_rb;
+        out_tmp += NR_NB_SC_PER_RB;
+      }
+      map_over_dc(rb_over_dc, fft_size, dmrs_per_rb, data_per_rb, delta, 0, &rb, NULL, &p_mod_dmrs, &data_tmp, &out_tmp);
+      for (; rb < nb_rb; rb++) {
+        map_data_dmrs_ptr(data_tmp, out_tmp);
+        data_tmp += data_per_rb;
+        out_tmp += NR_NB_SC_PER_RB;
+      }
+    }
+  } else if (ptrs_symbol) {
+    const unsigned int first_ptrs_re = get_first_ptrs_re(rnti, K_ptrs, nb_rb, k_RE_ref) + start_sc;
+    const unsigned int ptrs_idx_re = (start_sc - first_ptrs_re) % NR_NB_SC_PER_RB;
+    unsigned int ptrs_idx_rb = (start_sc - first_ptrs_re) / NR_NB_SC_PER_RB;
+    unsigned int rb = 0;
+    c16_t *out_tmp = out + start_sc;
+    for (; rb < ptrs_idx_rb; rb++) {
+      map_data_rb(data_tmp, out);
+      data_tmp += NR_NB_SC_PER_RB;
+      out_tmp += NR_NB_SC_PER_RB;
+    }
+    const c16_t *p_mod_ptrs = ptrs_seq;
+    ptrs_idx_rb = 0;
+    for (; rb < stop_rb; rb++) {
+      if (ptrs_idx_rb % K_ptrs) {
+        map_data_rb(data_tmp, out_tmp);
+        data_tmp += NR_NB_SC_PER_RB;
+        out_tmp += NR_NB_SC_PER_RB;
+      } else {
+        map_data_ptrs(ptrs_idx_re, data_tmp, p_mod_ptrs, out_tmp);
+        p_mod_ptrs++;
+        data_tmp += (NR_NB_SC_PER_RB - 1);
+        out_tmp += NR_NB_SC_PER_RB;
+      }
+      ptrs_idx_rb++;
+    }
+    if (ptrs_idx_rb % K_ptrs) {
+      map_over_dc(rb_over_dc, fft_size, 0, 0, delta, 0, &rb, NULL, NULL, &data_tmp, &out_tmp);
+    } else {
+      map_over_dc(rb_over_dc, fft_size, 0, 0, delta, ptrs_idx_re, &rb, &p_mod_ptrs, NULL, &data_tmp, &out_tmp);
+    }
+    for (; rb < nb_rb; rb++) {
+      if (ptrs_idx_rb % K_ptrs) {
+        map_data_rb(data_tmp, out_tmp);
+        data_tmp += NR_NB_SC_PER_RB;
+        out_tmp += NR_NB_SC_PER_RB;
+      } else {
+        map_data_ptrs(ptrs_idx_re, data_tmp, p_mod_ptrs, out_tmp);
+        p_mod_ptrs++;
+        data_tmp += (NR_NB_SC_PER_RB - 1);
+        out_tmp += NR_NB_SC_PER_RB;
+      }
+      ptrs_idx_rb++;
+    }
+  } else {
+    unsigned int rb = 0;
+    c16_t *out_tmp = out + start_sc;
+    for (; rb < stop_rb; rb++) {
+      map_data_rb(data_tmp, out_tmp);
+      data_tmp += NR_NB_SC_PER_RB;
+      out_tmp += NR_NB_SC_PER_RB;
+    }
+    map_over_dc(rb_over_dc, fft_size, 0, 0, delta, 0, &rb, NULL, NULL, &data_tmp, &out_tmp);
+    for (; rb < nb_rb; rb++) {
+      map_data_rb(data_tmp, out_tmp);
+      data_tmp += NR_NB_SC_PER_RB;
+      out_tmp += NR_NB_SC_PER_RB;
+    }
+  }
+  *data = data_tmp;
+}
+
+#define NR_MAX_PORTS_DMRS_CFG_1 8
+#define NR_MAX_PORTS_DMRS_CFG_2 12
+
+/*
+TS 38.211 table 6.4.1.1.3-1 and 2
+*/
+static void dmrs_amp_mult(const uint32_t dmrs_port,
+                          const unsigned int l_prime,
+                          const c16_t *mod_dmrs,
+                          c16_t *mod_dmrs_out,
+                          const uint32_t n_dmrs,
+                          const pusch_dmrs_type_t dmrs_type)
+{
+  const unsigned int hi_half = (dmrs_type == pusch_dmrs_type1) ? NR_MAX_PORTS_DMRS_CFG_1 / 2 : NR_MAX_PORTS_DMRS_CFG_2 / 2;
+  c16_t alpha_dmrs[4] __attribute((aligned(16)));
+  if ((dmrs_port >= hi_half) && (l_prime == 1)) {
+    if (dmrs_port & 1) {
+      alpha_dmrs[0] = (c16_t){.r = -AMP, .i = -AMP};
+      alpha_dmrs[1] = (c16_t){.r = AMP, .i = AMP};
+      alpha_dmrs[2] = (c16_t){.r = -AMP, .i = -AMP};
+      alpha_dmrs[3] = (c16_t){.r = AMP, .i = AMP};
+    } else {
+      alpha_dmrs[0] = (c16_t){.r = -AMP, .i = -AMP};
+      alpha_dmrs[1] = (c16_t){.r = -AMP, .i = -AMP};
+      alpha_dmrs[2] = (c16_t){.r = -AMP, .i = -AMP};
+      alpha_dmrs[3] = (c16_t){.r = -AMP, .i = -AMP};
+    }
+  } else {
+    if (dmrs_port & 1) {
+      alpha_dmrs[0] = (c16_t){.r = AMP, .i = AMP};
+      alpha_dmrs[1] = (c16_t){.r = -AMP, .i = -AMP};
+      alpha_dmrs[2] = (c16_t){.r = AMP, .i = AMP};
+      alpha_dmrs[3] = (c16_t){.r = -AMP, .i = -AMP};
+    } else {
+      alpha_dmrs[0] = (c16_t){.r = AMP, .i = AMP};
+      alpha_dmrs[1] = (c16_t){.r = AMP, .i = AMP};
+      alpha_dmrs[2] = (c16_t){.r = AMP, .i = AMP};
+      alpha_dmrs[3] = (c16_t){.r = AMP, .i = AMP};
+    }
+  }
+  mult_real_vector_single_vector(mod_dmrs, alpha_dmrs, mod_dmrs_out, n_dmrs);
+}
+
+static void map_symbols(const rnti_t rnti,
+                        const unsigned int K_ptrs,
+                        const unsigned int k_RE_ref,
+                        const unsigned int first_sc_offset,
+                        const unsigned int fft_size,
+                        const unsigned int num_rb_max,
+                        const unsigned int symbols_per_slot,
+                        const unsigned int slot,
+                        const unsigned int dmrs_scrambling_id,
+                        const unsigned int scid,
+                        const unsigned int dmrs_port,
+                        const unsigned int l_prime,
+                        const unsigned int dmrs_symb_pos,
+                        const unsigned int ptrs_symb_pos,
+                        const unsigned int pdu_bit_map,
+                        const transformPrecoder_t transform_precoding,
+                        const unsigned int bwp_start,
+                        const unsigned int start_rb,
+                        const unsigned int nb_rb,
+                        const unsigned int start_symbol,
+                        const unsigned int num_symbols,
+                        const pusch_dmrs_type_t dmrs_type,
+                        const unsigned int delta,
+                        const unsigned int num_cdm_no_data,
+                        const c16_t *dmrs_seq,
+                        const c16_t *data,
+                        c16_t *out)
+{
+  // asign the function pointers
+  if (dmrs_type == pusch_dmrs_type1) {
+    map_dmrs_ptr = map_dmrs_type1_cdm1_rb;
+    map_data_dmrs_ptr = (delta == 0 && num_cdm_no_data == 1) ? map_data_dmrs_type1_cdm1_rb : NULL;
+  } else {
+    map_dmrs_ptr = map_dmrs_type2_rb;
+    if (delta == 0 && num_cdm_no_data == 1) {
+      map_data_dmrs_ptr = map_data_dmrs_type2_rb_f1;
+    } else if ((delta == 0 && num_cdm_no_data == 2) || (delta == 2 && num_cdm_no_data == 2)
+               || (delta == 2 && num_cdm_no_data == 1)) {
+      map_data_dmrs_ptr = map_data_dmrs_type2_rb_f2;
+    } else if (delta == 4 && num_cdm_no_data == 1) {
+      map_data_dmrs_ptr = map_data_dmrs_type2_rb_f3;
+    } else {
+      map_data_dmrs_ptr = NULL;
+    }
+  }
+  // for all symbols
+  const unsigned int n_dmrs = (bwp_start + start_rb + nb_rb) * ((dmrs_type == pusch_dmrs_type1) ? 6 : 4);
+  const c16_t *cur_data = data;
+  for (int l = start_symbol; l < start_symbol + num_symbols; l++) {
+    const bool dmrs_symbol = is_dmrs_symbol(l, dmrs_symb_pos);
+    const bool ptrs_symbol = is_ptrs_symbol(l, ptrs_symb_pos);
+    c16_t mod_dmrs_amp[n_dmrs] __attribute((aligned(16)));
+    c16_t mod_ptrs_amp[nb_rb] __attribute((aligned(16)));
+    const uint32_t *gold = NULL;
+    if (dmrs_symbol || ptrs_symbol) {
+      gold = nr_gold_pusch(num_rb_max, symbols_per_slot, dmrs_scrambling_id, scid, slot, l);
+    }
+    if (dmrs_symbol) {
+      c16_t mod_dmrs[n_dmrs] __attribute((aligned(16)));
+      if (transform_precoding == transformPrecoder_disabled) {
+        nr_modulation(gold, n_dmrs * 2, DMRS_MOD_ORDER, (int16_t *)mod_dmrs);
+        dmrs_amp_mult(dmrs_port, l_prime, mod_dmrs, mod_dmrs_amp, n_dmrs, dmrs_type);
+      } else {
+        dmrs_amp_mult(dmrs_port, l_prime, dmrs_seq, mod_dmrs_amp, n_dmrs, dmrs_type);
+      }
+    } else if ((pdu_bit_map & PUSCH_PDU_BITMAP_PUSCH_PTRS) && ptrs_symbol) {
+      AssertFatal(transform_precoding == transformPrecoder_disabled, "PTRS NOT SUPPORTED IF TRANSFORM PRECODING IS ENABLED\n");
+      c16_t mod_ptrs[nb_rb] __attribute((aligned(16)));
+      nr_modulation(gold, nb_rb, DMRS_MOD_ORDER, (int16_t *)mod_ptrs);
+      const unsigned int beta_ptrs = 1; // temp value until power control is implemented
+      multadd_complex_vector_real_scalar((int16_t *)mod_ptrs, beta_ptrs * AMP, (int16_t *)mod_ptrs_amp, 1, nb_rb);
+    }
+    map_current_symbol(rnti,
+                       K_ptrs,
+                       k_RE_ref,
+                       nb_rb,
+                       dmrs_port,
+                       l_prime,
+                       bwp_start,
+                       start_rb,
+                       first_sc_offset,
+                       dmrs_type,
+                       fft_size,
+                       dmrs_symbol,
+                       ptrs_symbol,
+                       n_dmrs,
+                       mod_dmrs_amp,
+                       mod_ptrs_amp,
+                       delta,
+                       &cur_data, // increments every symbol
+                       out + l * fft_size);
+  }
+}
+
 void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
                             const unsigned char harq_pid,
                             const uint32_t frame,
@@ -96,11 +510,8 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
 {
   LOG_D(PHY,"nr_ue_ulsch_procedures hard_id %d %d.%d\n",harq_pid,frame,slot);
 
-  int Wf[2], Wt[2];
-  int l_prime[2], delta;
+  int l_prime[2];
   uint8_t nb_dmrs_re_per_rb;
-  int i;
-  int sample_offsetF, N_RE_prime;
 
   NR_DL_FRAME_PARMS *frame_parms = &UE->frame_parms;
 
@@ -144,17 +555,18 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
   LOG_D(PHY,"ulsch TX %x : start_rb %d nb_rb %d mod_order %d Nl %d Tpmi %d bwp_start %d start_sc %d start_symbol %d num_symbols %d cdmgrpsnodata %d num_dmrs %d dmrs_re_per_rb %d\n",
         rnti,start_rb,nb_rb,mod_order,Nl,pusch_pdu->Tpmi,pusch_pdu->bwp_start,start_sc,start_symbol,number_of_symbols,cdm_grps_no_data,number_dmrs_symbols,nb_dmrs_re_per_rb);
   // TbD num_of_mod_symbols is set but never used
-  N_RE_prime = NR_NB_SC_PER_RB*number_of_symbols - nb_dmrs_re_per_rb*number_dmrs_symbols - N_PRB_oh;
+  const uint32_t N_RE_prime = NR_NB_SC_PER_RB * number_of_symbols - nb_dmrs_re_per_rb * number_dmrs_symbols - N_PRB_oh;
   harq_process_ul_ue->num_of_mod_symbols = N_RE_prime*nb_rb;
 
   /////////////////////////PTRS parameters' initialization/////////////////////////
   ///////////
 
-  uint8_t L_ptrs, K_ptrs = 0;
+  unsigned int K_ptrs = 0, k_RE_ref = 0;
   uint32_t unav_res = 0;
   if (pusch_pdu->pdu_bit_map & PUSCH_PDU_BITMAP_PUSCH_PTRS) {
     K_ptrs = pusch_pdu->pusch_ptrs.ptrs_freq_density;
-    L_ptrs = 1 << pusch_pdu->pusch_ptrs.ptrs_time_density;
+    k_RE_ref = pusch_pdu->pusch_ptrs.ptrs_ports_list[0].ptrs_re_offset;
+    uint8_t L_ptrs = 1 << pusch_pdu->pusch_ptrs.ptrs_time_density;
 
     ulsch_ue->ptrs_symbols = 0;
 
@@ -313,161 +725,48 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
   /////////////////////////ULSCH RE mapping/////////////////////////
   ///////////
 
-  const int encoded_length = frame_parms->N_RB_UL * 14 * NR_NB_SC_PER_RB * mod_order * Nl;
+  const int encoded_length = frame_parms->ofdm_symbol_size * frame_parms->symbols_per_slot;
   c16_t tx_precoding[Nl][encoded_length];
   memset(tx_precoding, 0, sizeof(tx_precoding));
 
-  for (int nl=0; nl < Nl; nl++) {
-    uint8_t k_prime = 0;
-    uint16_t m = 0;
-    
+  for (int nl = 0; nl < Nl; nl++) {
 #ifdef DEBUG_PUSCH_MAPPING
     printf("NR_ULSCH_UE: Value of CELL ID %d /t, u %d \n", frame_parms->Nid_cell, u);
 #endif
 
-    int dmrs_port = get_dmrs_port(nl,pusch_pdu->dmrs_ports);
-    // DMRS params for this dmrs port
-    get_Wt(Wt, dmrs_port, dmrs_type);
-    get_Wf(Wf, dmrs_port, dmrs_type);
-    delta = get_delta(dmrs_port, dmrs_type);
+    const uint8_t dmrs_port = get_dmrs_port(nl, pusch_pdu->dmrs_ports);
+    const uint8_t delta = get_delta(dmrs_port, dmrs_type);
 
-    for (int l=start_symbol; l<start_symbol+number_of_symbols; l++) {
+    c16_t *data = (pusch_pdu->transform_precoding == transformPrecoder_enabled) ? y : tx_layers[nl];
 
-      uint16_t k = start_sc;
-      uint16_t n = 0;
-      uint8_t is_dmrs_sym = 0;
-      uint8_t is_ptrs_sym = 0;
-      uint16_t dmrs_idx = 0, ptrs_idx = 0;
+    map_symbols(rnti,
+                K_ptrs,
+                k_RE_ref,
+                frame_parms->first_carrier_offset,
+                frame_parms->ofdm_symbol_size,
+                frame_parms->N_RB_UL,
+                frame_parms->symbols_per_slot,
+                slot,
+                pusch_pdu->ul_dmrs_scrambling_id,
+                pusch_pdu->scid,
+                dmrs_port,
+                l_prime[0],
+                ul_dmrs_symb_pos,
+                ulsch_ue->ptrs_symbols,
+                pusch_pdu->pdu_bit_map,
+                pusch_pdu->transform_precoding,
+                pusch_pdu->bwp_start,
+                start_rb,
+                nb_rb,
+                start_symbol,
+                number_of_symbols,
+                dmrs_type,
+                delta,
+                cdm_grps_no_data,
+                dmrs_seq,
+                data,
+                tx_precoding[nl]);
 
-      uint16_t n_dmrs = (pusch_pdu->bwp_start + start_rb + nb_rb) * ((dmrs_type == pusch_dmrs_type1) ? 6 : 4);
-      c16_t mod_dmrs[n_dmrs] __attribute((aligned(16)));
-      c16_t mod_dmrs_amp[n_dmrs] __attribute((aligned(16)));
-
-      c16_t mod_ptrs[nb_rb] __attribute((aligned(16))); // assume maximum number of PTRS per pusch allocation
-      c16_t mod_ptrs_amp[nb_rb] __attribute((aligned(16))); // assume maximum number of PTRS per pusch allocation
-
-      if ((ul_dmrs_symb_pos >> l) & 0x01) {
-        is_dmrs_sym = 1;
-
-        if (pusch_pdu->transform_precoding == transformPrecoder_disabled){
-        
-          if (dmrs_type == pusch_dmrs_type1)
-            dmrs_idx = (pusch_pdu->bwp_start + start_rb)*6;
-          else
-            dmrs_idx = (pusch_pdu->bwp_start + start_rb)*4;
-
-          // TODO: performance improvement, we can skip the modulation of DMRS symbols outside the bandwidth part
-          // Perform this on gold sequence, not required when SC FDMA operation is done,
-          LOG_D(PHY,"DMRS in symbol %d\n",l);
-          const uint32_t *gold = nr_gold_pusch(frame_parms->N_RB_UL,
-                                               frame_parms->symbols_per_slot,
-                                               pusch_pdu->ul_dmrs_scrambling_id,
-                                               pusch_pdu->scid,
-                                               slot,
-                                               l);
-          nr_modulation(gold,
-                        n_dmrs * 2,
-                        DMRS_MOD_ORDER,
-                        (int16_t *)mod_dmrs); // currently only codeword 0 is modulated. Qm = 2 as DMRS is QPSK modulated
-          
-          const int tmp = Wt[l_prime[0]] * Wf[k_prime] * AMP;
-          //todo: mult only needed
-          multadd_complex_vector_real_scalar((int16_t*)mod_dmrs,tmp,(int16_t*)mod_dmrs_amp,1,n_dmrs*2);
-        } else {
-          dmrs_idx = 0;
-        }
-      } else if (pusch_pdu->pdu_bit_map & PUSCH_PDU_BITMAP_PUSCH_PTRS) {
-
-        AssertFatal(pusch_pdu->transform_precoding == transformPrecoder_disabled, "PTRS NOT SUPPORTED IF TRANSFORM PRECODING IS ENABLED\n");
-
-        if(is_ptrs_symbol(l, ulsch_ue->ptrs_symbols)) {
-          is_ptrs_sym = 1;
-          const uint32_t *gold = nr_gold_pusch(frame_parms->N_RB_UL,
-                                               frame_parms->symbols_per_slot,
-                                               pusch_pdu->ul_dmrs_scrambling_id,
-                                               pusch_pdu->scid,
-                                               slot,
-                                               l);
-          nr_modulation(gold, nb_rb, DMRS_MOD_ORDER, (int16_t *)mod_ptrs);
-          const uint16_t beta_ptrs = 1; // temp value until power control is implemented
-          multadd_complex_vector_real_scalar((int16_t*)mod_ptrs,beta_ptrs*AMP,(int16_t*)mod_ptrs_amp,1,nb_rb);
-        }
-      }
-
-      for (i=0; i< nb_rb*NR_NB_SC_PER_RB; i++) {
-        uint8_t is_dmrs = 0;
-        uint8_t is_ptrs = 0;
-
-        sample_offsetF = l*frame_parms->ofdm_symbol_size + k;
-
-        if (is_dmrs_sym) {
-          if (k == ((start_sc+get_dmrs_freq_idx_ul(n, k_prime, delta, dmrs_type))%frame_parms->ofdm_symbol_size))
-            is_dmrs = 1;
-        } else if (is_ptrs_sym) {
-          is_ptrs = is_ptrs_subcarrier(k,
-                                       rnti,
-                                       K_ptrs,
-                                       nb_rb,
-                                       pusch_pdu->pusch_ptrs.ptrs_ports_list[0].ptrs_re_offset,
-                                       start_sc,
-                                       frame_parms->ofdm_symbol_size);
-        }
-
-        if (is_dmrs == 1) {
-          // if transform precoding is enabled
-          const int tmp = Wt[l_prime[0]] * Wf[k_prime] * AMP;
-          if (pusch_pdu->transform_precoding == transformPrecoder_enabled)
-            tx_precoding[nl][sample_offsetF] = c16mulRealShift(dmrs_seq[dmrs_idx], tmp, 15);
-          else
-            tx_precoding[nl][sample_offsetF] = mod_dmrs_amp[dmrs_idx];
-
-#ifdef DEBUG_PUSCH_MAPPING
-          printf("DMRS: Layer: %d\t, dmrs_idx %d\t l %d \t k %d \t k_prime %d \t n %d \t dmrs: %d %d\n",
-                 nl,
-                 dmrs_idx,
-                 l,
-                 k,
-                 k_prime,
-                 n,
-                 tx_precoding[nl][sample_offsetF].r,
-                 tx_precoding[nl][sample_offsetF].i);
-#endif
-
-          dmrs_idx++;
-          k_prime++;
-          k_prime &= 1;
-          n += (k_prime) ? 0 : 1;
-
-        } else if (is_ptrs == 1) {
-          tx_precoding[nl][sample_offsetF] = mod_ptrs_amp[ptrs_idx];
-          ptrs_idx++;
-        } else if (!is_dmrs_sym
-                   || allowed_xlsch_re_in_dmrs_symbol(k, start_sc, frame_parms->ofdm_symbol_size, cdm_grps_no_data, dmrs_type)) {
-          if (pusch_pdu->transform_precoding == transformPrecoder_disabled)
-            tx_precoding[nl][sample_offsetF] = tx_layers[nl][m];
-          else
-            tx_precoding[nl][sample_offsetF] = y[m];
-
-#ifdef DEBUG_PUSCH_MAPPING
-          printf("DATA: layer %d\t m %d\t l %d \t k %d \t tx_precoding: %d %d\n",
-                 nl,
-                 m,
-                 l,
-                 k,
-                 tx_precoding[nl][sample_offsetF].r,
-                 tx_precoding[nl][sample_offsetF].i);
-#endif
-
-          m++;
-
-        } else {
-          tx_precoding[nl][sample_offsetF] = (c16_t){0};
-        }
-
-        if (++k >= frame_parms->ofdm_symbol_size)
-          k -= frame_parms->ofdm_symbol_size;
-      } // for (i=0; i< nb_rb*NR_NB_SC_PER_RB; i++)
-    } // for (l=start_symbol; l<start_symbol+number_of_symbols; l++)
   } // for (nl=0; nl < Nl; nl++)
 
   /////////////////////////ULSCH precoding/////////////////////////
