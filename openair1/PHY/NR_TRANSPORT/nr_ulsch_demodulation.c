@@ -2386,7 +2386,7 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
         } // (not ML || nrOfLayers==1 ) AND pssch and sci2 REs to handle
 	if (pssch_pdu) LOG_D(NR_PHY, "symbol %d: PSSCH REs %d (sci1 %d,sci2 %d)\n", symbol, pusch_vars->ul_valid_re_per_slot[symbol], sci1_offset, sci2_cnt_thissymb);
         for (aatx=0; aatx < nrOfLayers; aatx++) {
-          if (sci1_offset > 0 || sci2_cnt_thissymb > 0) {
+          if ((sci1_offset > 0 || sci2_cnt_thissymb > 0) && (qam_mod_order > 2)) {
             memset(temp_symbol, 0, (sci1_offset + sci2_cnt_thissymb) * sizeof(int32_t));
             memcpy(temp_symbol + sci1_offset + sci2_cnt_thissymb,
                   &pusch_vars->rxdataF_comp[aatx * frame_parms->nb_antennas_rx][symbol * (off + rb_size * NR_NB_SC_PER_RB) + sci1_offset+sci2_cnt_thissymb],
