@@ -236,7 +236,7 @@ int8_t nr_ue_decode_pucch0(PHY_VARS_NR_UE *ue,
            soffset, soffset + l2*frame_parms->ofdm_symbol_size,
            (soffset + l2*frame_parms->ofdm_symbol_size + nb_re_pucch), l, re_offset[l]);
       for (int z = soffset + l2*frame_parms->ofdm_symbol_size + re_offset[l]; z < (soffset + l2*frame_parms->ofdm_symbol_size + re_offset[l] + nb_re_pucch); z++) {
-        LOG_D(NR_PHY, "Rx_slot %4d.%2d z %d rxdataF (%d,%d)\n", frame, slot, z, rxdataF[aa][z].r, rxdataF[aa][z].i);
+        LOG_I(NR_PHY, "Rx_slot %4d.%2d z %d rxdataF (%d,%d)\n", frame, slot, z, rxdataF[aa][z].r, rxdataF[aa][z].i);
         // float a = abs(rxdataF[aa][z].r);
         // float b = abs(rxdataF[aa][z].i);
         // if (abs (a - b) > 600) {
@@ -288,8 +288,8 @@ int8_t nr_ue_decode_pucch0(PHY_VARS_NR_UE *ue,
           corr[aa][l].r += xr[aa][l][n].r * idft12_re[seq_index][n] + xr[aa][l][n].i * idft12_im[seq_index][n];
           corr[aa][l].i += xr[aa][l][n].r * idft12_im[seq_index][n] - xr[aa][l][n].i * idft12_re[seq_index][n];
         }
-        corr[aa][l].r >>= 11;
-        corr[aa][l].i >>= 11;
+        corr[aa][l].r >>= 31;
+        corr[aa][l].i >>= 31;
       }
     }
     LOG_D(PHY,"Rx_slot PUCCH IDFT[%d/%d] = (%ld,%ld)=>%f\n",
