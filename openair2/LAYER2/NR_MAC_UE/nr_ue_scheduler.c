@@ -77,7 +77,6 @@ static uint8_t nr_ue_get_sdu(NR_UE_MAC_INST_t *mac,
                              uint8_t gNB_index,
                              uint8_t *ulsch_buffer,
                              const uint32_t buflen,
-                             uint32_t *BSR_bytes,
                              int tx_power,
                              int P_MAX);
 
@@ -1388,6 +1387,28 @@ static void nr_update_sr(NR_UE_MAC_INST_t *mac, bool BSRsent)
   }
 }
 
+static void nr_update_rlc_buffers_status(NR_UE_MAC_INST_t *mac, frame_t frameP, slot_t slotP, uint8_t gNB_index)
+{
+  for (int i = 0; i < mac->lc_ordered_list.count; i++) {
+    nr_lcordered_info_t *lc_info = mac->lc_ordered_list.array[i];
+    int lcid = lc_info->lcid;
+    NR_LC_SCHEDULING_INFO *lc_sched_info = get_scheduling_info_from_lcid(mac, lcid);
+    mac_rlc_status_resp_t rlc_status =
+        mac_rlc_status_ind(mac->ue_id, mac->ue_id, gNB_index, frameP, slotP, ENB_FLAG_NO, MBMS_FLAG_NO, lcid, 0, 0);
+
+    if (rlc_status.bytes_in_buffer > 0) {
+      LOG_D(NR_MAC,
+            "[UE %d] LCID %d has %d bytes to transmit at sfn %d.%d\n",
+            mac->ue_id,
+            lcid,
+            rlc_status.bytes_in_buffer,
+            frameP,
+            slotP);
+      lc_sched_info->LCID_buffer_remain = rlc_status.bytes_in_buffer;
+    }
+  }
+}
+
 /*TS 38.321
 A BSR shall be triggered if any of the following events occur:
 - UL data, for a logical channel which belongs to an LCG, becomes available to the MAC entity; and either
@@ -1410,7 +1431,7 @@ which case the BSR is referred below to as 'Regular BSR';
 
 */
 
-static void nr_update_bsr(NR_UE_MAC_INST_t *mac, frame_t frameP, slot_t slotP, uint8_t gNB_index, uint32_t *BSR_bytes)
+static void nr_update_bsr(NR_UE_MAC_INST_t *mac, uint32_t *BSR_bytes)
 {
   bool bsr_regular_triggered = mac->scheduling_info.BSR_reporting_active & NR_BSR_TRIGGER_REGULAR;
   for (int i = 0; i < mac->lc_ordered_list.count; i++) {
@@ -1418,40 +1439,14 @@ static void nr_update_bsr(NR_UE_MAC_INST_t *mac, frame_t frameP, slot_t slotP, u
     int lcid = lc_info->lcid;
     NR_LC_SCHEDULING_INFO *lc_sched_info = get_scheduling_info_from_lcid(mac, lcid);
     int lcgid = lc_sched_info->LCGID;
-
     // check if UL data for a logical channel which belongs to a LCG becomes available for transmission
     if (lcgid != NR_INVALID_LCGID) {
-      mac_rlc_status_resp_t rlc_status = mac_rlc_status_ind(mac->ue_id,
-                                                            mac->ue_id,
-                                                            gNB_index,
-                                                            frameP,
-                                                            slotP,
-                                                            ENB_FLAG_NO,
-                                                            MBMS_FLAG_NO,
-                                                            lcid,
-                                                            0,
-                                                            0);
-
-      lc_sched_info->LCID_buffer_remain = rlc_status.bytes_in_buffer;
-
-      if (rlc_status.bytes_in_buffer > 0) {
-        LOG_D(NR_MAC,
-              "[UE %d] LCID %d LCGID %d has %d bytes to transmit at sfn %d.%d\n",
-              mac->ue_id,
-              lcid,
-              lcgid,
-              rlc_status.bytes_in_buffer,
-              frameP,
-              slotP);
-
-        //Update BSR_bytes
-        BSR_bytes[lcgid] += rlc_status.bytes_in_buffer;
-
-        if (!bsr_regular_triggered) {
-          bsr_regular_triggered = true;
-          trigger_regular_bsr(mac, lcid, lc_info->sr_DelayTimerApplied);
-          LOG_D(NR_MAC, "[UE %d] MAC BSR Triggered\n", mac->ue_id);
-        }
+      // Update BSR_bytes
+      BSR_bytes[lcgid] += lc_sched_info->LCID_buffer_remain;
+      if (!bsr_regular_triggered) {
+        bsr_regular_triggered = true;
+        trigger_regular_bsr(mac, lcid, lc_info->sr_DelayTimerApplied);
+        LOG_D(NR_MAC, "[UE %d] MAC BSR Triggered\n", mac->ue_id);
       }
     }
   }
@@ -1471,8 +1466,10 @@ void nr_ue_ul_scheduler(NR_UE_MAC_INST_t *mac, nr_uplink_indication_t *ul_info)
   }
 
   // Periodic SRS scheduling
-  if(mac->state == UE_CONNECTED)
+  if (mac->state == UE_CONNECTED) {
     nr_ue_periodic_srs_scheduling(mac, frame_tx, slot_tx);
+    nr_update_rlc_buffers_status(mac, frame_tx, slot_tx, gNB_index);
+  }
 
   // Schedule ULSCH only if the current frame and slot match those in ul_config_req
   // AND if a UL grant (UL DCI or Msg3) has been received (as indicated by num_pdus)
@@ -1526,12 +1523,7 @@ void nr_ue_ul_scheduler(NR_UE_MAC_INST_t *mac, nr_uplink_indication_t *ul_info)
                                     ulcfg_pdu->pusch_config_pdu.rb_size,
                                     ulcfg_pdu->pusch_config_pdu.rb_start);
 
-          // Call BSR procedure as described in Section 5.4.5 in 38.321
-          // Check whether BSR is triggered before scheduling ULSCH
-          uint32_t BSR_bytes[NR_MAX_NUM_LCGID] = {0};
-          if (mac->state == UE_CONNECTED)
-            nr_update_bsr(mac, frame_tx, slot_tx, gNB_index, BSR_bytes);
-          nr_ue_get_sdu(mac, cc_id, frame_tx, slot_tx, gNB_index, ulsch_input_buffer, TBS_bytes, BSR_bytes, tx_power, P_CMAX);
+          nr_ue_get_sdu(mac, cc_id, frame_tx, slot_tx, gNB_index, ulsch_input_buffer, TBS_bytes, tx_power, P_CMAX);
           ulcfg_pdu->pusch_config_pdu.tx_request_body.fapiTxPdu = ulsch_input_buffer;
           ulcfg_pdu->pusch_config_pdu.tx_request_body.pdu_length = TBS_bytes;
           number_of_pdus++;
@@ -3319,7 +3311,6 @@ static uint8_t nr_ue_get_sdu(NR_UE_MAC_INST_t *mac,
                              uint8_t gNB_index,
                              uint8_t *ulsch_buffer,
                              const uint32_t buflen,
-                             uint32_t *BSR_bytes,
                              int tx_power,
                              int P_CMAX)
 {
@@ -3329,6 +3320,11 @@ static uint8_t nr_ue_get_sdu(NR_UE_MAC_INST_t *mac,
   // bj and prioritized bit rate but just consider priority
   uint32_t buflen_ep = 0; // this variable holds the length in bytes in mac pdu when multiple equal priority channels are present
   // because as per standard(TS38.321), all equal priority channels should be served equally
+
+  // Call BSR procedure as described in Section 5.4.5 in 38.321
+  // Check whether BSR is triggered before scheduling ULSCH
+  uint32_t BSR_bytes[NR_MAX_NUM_LCGID] = {0};
+  nr_update_bsr(mac, BSR_bytes);
 
   nr_ue_get_sdu_mac_ce_pre(mac, CC_id, frame, slot, gNB_index, ulsch_buffer, buflen, BSR_bytes, &mac_ce_info, tx_power, P_CMAX);
 
