@@ -888,13 +888,13 @@ int nr_srs_channel_estimation(
 
       // Estimate the SRS channel over all OFDM symbols
       for (int srs_symb = 0; srs_symb<(1<<srs_pdu->num_symbols); srs_symb++) {
-
+        uint16_t srs_symbol_offset =srs_symb*frame_parms->ofdm_symbol_size;
         uint16_t subcarrier = subcarrier_offset + nr_srs_info->k_0_p[p_index][srs_symb];
         if (subcarrier>frame_parms->ofdm_symbol_size) {
           subcarrier -= frame_parms->ofdm_symbol_size;
         }
 
-        int16_t *srs_estimated_channel16 = (int16_t *)&srs_est[subcarrier + mem_offset];
+        int16_t *srs_estimated_channel16 = (int16_t *)&srs_est[subcarrier + srs_symbol_offset + mem_offset];
         
         for (int k = 0; k < M_sc_b_SRS; k++) {
 
@@ -905,11 +905,11 @@ int nr_srs_channel_estimation(
             uint16_t subcarrier_cdm = subcarrier;
 
             for (int cdm_idx = 0; cdm_idx < fd_cdm; cdm_idx++) {
-              int16_t generated_real = srs_generated_signal[p_index][subcarrier_cdm].r;
-              int16_t generated_imag = srs_generated_signal[p_index][subcarrier_cdm].i;
+              int16_t generated_real = srs_generated_signal[p_index][subcarrier_cdm + srs_symbol_offset].r;
+              int16_t generated_imag = srs_generated_signal[p_index][subcarrier_cdm + srs_symbol_offset].i;
 
-              int16_t received_real = ((c16_t*)srs_received_signal[ant])[subcarrier_cdm].r;
-              int16_t received_imag = ((c16_t*)srs_received_signal[ant])[subcarrier_cdm].i;
+              int16_t received_real = ((c16_t*)srs_received_signal[ant])[subcarrier_cdm + srs_symbol_offset].r;
+              int16_t received_imag = ((c16_t*)srs_received_signal[ant])[subcarrier_cdm + srs_symbol_offset].i;
 
               // We know that nr_srs_info->srs_generated_signal_bits bits are enough to represent the generated_real and generated_imag.
               // So we only need a nr_srs_info->srs_generated_signal_bits shift to ensure that the result fits into 16 bits.
@@ -924,8 +924,8 @@ int nr_srs_channel_estimation(
             }
           }
 
-          srs_ls_estimated_channel[subcarrier].r = ls_estimated[0];
-          srs_ls_estimated_channel[subcarrier].i = ls_estimated[1];
+          srs_ls_estimated_channel[subcarrier + srs_symbol_offset].r = ls_estimated[0];
+          srs_ls_estimated_channel[subcarrier + srs_symbol_offset].i = ls_estimated[1];
 
   #ifdef SRS_DEBUG
           int subcarrier_log = subcarrier-subcarrier_offset;
@@ -952,7 +952,7 @@ int nr_srs_channel_estimation(
               multadd_real_vector_complex_scalar(filt8_start, ls_estimated, srs_estimated_channel16, 8);
             } else if(subcarrier < K_TC) { // Start of OFDM symbol case
               // filt8_start is {12288,8192,4096,0,0,0,0,0}
-              srs_estimated_channel16 = (int16_t *)&srs_est[subcarrier];
+              srs_estimated_channel16 = (int16_t *)&srs_est[subcarrier + srs_symbol_offset];
               const short *filter = mem_offset == 0 ? filt8_start : filt8_start_shift2;
               multadd_real_vector_complex_scalar(filter, ls_estimated, srs_estimated_channel16, 8);
             } else if((subcarrier+K_TC)>=frame_parms->ofdm_symbol_size || k == (M_sc_b_SRS-1)) { // End of OFDM symbol or last subcarrier cases
@@ -965,14 +965,14 @@ int nr_srs_channel_estimation(
             } else if(k%2 == 0) { // 2nd middle case
               // filt8_middle4 is {0,0,4096,8192,8192,8192,4096,0}
               multadd_real_vector_complex_scalar(filt8_middle4, ls_estimated, srs_estimated_channel16, 8);
-              srs_estimated_channel16 = (int16_t *)&srs_est[sc_offset];
+              srs_estimated_channel16 = (int16_t *)&srs_est[sc_offset + srs_symbol_offset];
             }
           } else {
             if(k == 0) { // First subcarrier case
               // filt16_start is {12288,8192,8192,8192,4096,0,0,0,0,0,0,0,0,0,0,0}
               multadd_real_vector_complex_scalar(filt16_start, ls_estimated, srs_estimated_channel16, 16);
             } else if(subcarrier < K_TC) { // Start of OFDM symbol case
-              srs_estimated_channel16 = (int16_t *)&srs_est[sc_offset];
+              srs_estimated_channel16 = (int16_t *)&srs_est[sc_offset + srs_symbol_offset];
               // filt16_start is {12288,8192,8192,8192,4096,0,0,0,0,0,0,0,0,0,0,0}
               multadd_real_vector_complex_scalar(filt16_start, ls_estimated, srs_estimated_channel16, 16);
             } else if((subcarrier+K_TC)>=frame_parms->ofdm_symbol_size || k == (M_sc_b_SRS-1)) { // End of OFDM symbol or last subcarrier cases
@@ -981,7 +981,7 @@ int nr_srs_channel_estimation(
             } else { // Middle case
               // filt16_middle4 is {4096,8192,8192,8192,8192,8192,8192,8192,4096,0,0,0,0,0,0,0}
               multadd_real_vector_complex_scalar(filt16_middle4, ls_estimated, srs_estimated_channel16, 16);
-              srs_estimated_channel16 = (int16_t *)&srs_est[sc_offset];
+              srs_estimated_channel16 = (int16_t *)&srs_est[sc_offset + srs_symbol_offset];
             }
           }
 
