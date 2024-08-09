@@ -370,12 +370,14 @@ typedef struct {
   uint32_t R;
   uint32_t TBS;
   int last_ndi;
+  int round;
 } NR_UE_HARQ_STATUS_t;
 
 typedef struct {
   uint32_t R;
   uint32_t TBS;
   int last_ndi;
+  int round;
 } NR_UL_HARQ_INFO_t;
 
 typedef struct {
@@ -495,6 +497,34 @@ typedef enum {
   ON_PUSCH
 } CSI_mapping_t;
 
+typedef struct {
+  uint64_t lc_bytes[64];
+  uint64_t rounds[8];
+  uint64_t errors;
+  uint64_t total_bytes;
+  uint32_t current_bytes;
+  uint64_t total_sdu_bytes;
+  uint32_t total_rbs;
+  uint32_t total_rbs_retx;
+  uint32_t num_mac_sdu;
+  uint32_t current_rbs;
+  uint32_t bad_dci;
+} ue_mac_dir_stats_t;
+
+typedef struct {
+  ue_mac_dir_stats_t dl;
+  ue_mac_dir_stats_t ul;
+  uint32_t ulsch_DTX;
+  uint64_t ulsch_total_bytes_scheduled;
+  uint32_t pucch0_DTX;
+  int cumul_rsrp;
+  uint8_t num_rsrp_meas;
+  char srs_stats[50]; // Statistics may differ depending on SRS usage
+  int pusch_snrx10;
+  int deltaMCS;
+  int NPRB;
+} ue_mac_stats_t;
+
 /*!\brief Top level UE MAC structure */
 typedef struct NR_UE_MAC_INST_s {
   module_id_t ue_id;
@@ -594,6 +624,7 @@ typedef struct NR_UE_MAC_INST_s {
   bool pucch_power_control_initialized;
   int f_b_f_c;
   bool pusch_power_control_initialized;
+  ue_mac_stats_t stats;
 } NR_UE_MAC_INST_t;
 
 /*@}*/

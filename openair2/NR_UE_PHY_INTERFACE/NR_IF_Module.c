@@ -68,6 +68,35 @@ queue_t nr_ul_tti_req_queue;
 pthread_mutex_t mac_IF_mutex;
 static void save_pdsch_pdu_for_crnti(nfapi_nr_dl_tti_request_t *dl_tti_request);
 
+void print_ue_mac_stats(const module_id_t mod, const int frame_rx, const int slot_rx)
+{
+  int ret = pthread_mutex_lock(&mac_IF_mutex);
+  AssertFatal(!ret, "mutex failed %d\n", ret);
+  NR_UE_MAC_INST_t *mac = get_mac_inst(mod);
+  char txt[1024];
+  char *end = txt + sizeof(txt);
+  char *cur = txt;
+  cur += snprintf(cur, end - cur, "UE %d stats sfn: %d.%d\n", mod, frame_rx, slot_rx);
+  cur += snprintf(cur,
+                  end - cur,
+                  "Dl harq: %lu/%lu/%lu/%lu bad dci: %d\n",
+                  mac->stats.dl.rounds[0],
+                  mac->stats.dl.rounds[1],
+                  mac->stats.dl.rounds[2],
+                  mac->stats.dl.rounds[3],
+                  mac->stats.dl.bad_dci);
+  cur += snprintf(cur,
+                  end - cur,
+                  "Ul harq: %lu/%lu/%lu/%lu bad dci: %d\n",
+                  mac->stats.ul.rounds[0],
+                  mac->stats.ul.rounds[1],
+                  mac->stats.ul.rounds[2],
+                  mac->stats.ul.rounds[3],
+                  mac->stats.ul.bad_dci);
+  LOG_A(NR_MAC, txt);
+  pthread_mutex_unlock(&mac_IF_mutex);
+}
+
 void nrue_init_standalone_socket(int tx_port, int rx_port)
 {
   {
@@ -1280,6 +1309,7 @@ int nr_ue_dl_indication(nr_downlink_indication_t *dl_info)
   else
     // DL indication to process either DCI either other DL channels
     ret2 = nr_ue_dl_processing(dl_info);
+
   pthread_mutex_unlock(&mac_IF_mutex);
   return ret2;
 }

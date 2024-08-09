@@ -600,7 +600,6 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
   NR_PUSCH_Config_t *pusch_Config = current_UL_BWP->pusch_Config;
 
   if (rar_grant) {
-
     // Note: for Msg3 or MsgA PUSCH transmission the N_PRB_oh is always set to 0
     int ibwp_start = sc_info->initial_ul_BWPStart;
     int ibwp_size = sc_info->initial_ul_BWPSize;
@@ -635,6 +634,7 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
                                                        0,
                                                        f_alloc) < 0) {
       LOG_E(NR_MAC, "can't nr_ue_process_dci_freq_dom_resource_assignment()\n");
+      mac->stats.ul.bad_dci++;
       return -1;
     }
 
@@ -644,7 +644,6 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
     // Time domain allocation
     pusch_config_pdu->start_symbol_index = tda_info->startSymbolIndex;
     pusch_config_pdu->nr_of_symbols = tda_info->nrOfSymbols;
-
     l_prime_mask = get_l_prime(tda_info->nrOfSymbols,
                                tda_info->mapping_type,
                                add_pos,
@@ -748,11 +747,13 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
       ul_ports_config(mac, &dmrslength, pusch_config_pdu, dci, dci_format);
     } else {
       LOG_E(NR_MAC, "UL grant from DCI format %d is not handled...\n", dci_format);
+      mac->stats.ul.bad_dci++;
       return -1;
     }
 
     if (pusch_config_pdu->nrOfLayers < 1) {
       LOG_E(NR_MAC, "Invalid UL number of layers %d from DCI\n", pusch_config_pdu->nrOfLayers);
+      mac->stats.ul.bad_dci++;
       return -1;
     }
 
@@ -824,6 +825,7 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
                                                        0,
                                                        dci->frequency_domain_assignment) < 0) {
       LOG_E(NR_MAC, "can't nr_ue_process_dci_freq_dom_resource_assignment()\n");
+      mac->stats.ul.bad_dci++;
       return -1;
     }
 
@@ -842,18 +844,20 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
     pusch_config_pdu->mcs_table = get_pusch_mcs_table(mcs_table_config, tp_enabled, dci_format, rnti_type, ss_type, false);
 
     /* NDI */
-    NR_UL_HARQ_INFO_t *harq = &mac->ul_harq_info[dci->harq_pid];
+    const int pid = dci->harq_pid;
+    NR_UL_HARQ_INFO_t *harq = &mac->ul_harq_info[pid];
     pusch_config_pdu->pusch_data.new_data_indicator = false;
     if (dci->ndi != harq->last_ndi) {
       pusch_config_pdu->pusch_data.new_data_indicator = true;
       // if new data reset harq structure
       memset(harq, 0, sizeof(*harq));
-    }
+    } else
+      harq->round++;
     harq->last_ndi = dci->ndi;
     /* RV */
     pusch_config_pdu->pusch_data.rv_index = dci->rv;
     /* HARQ_PROCESS_NUMBER */
-    pusch_config_pdu->pusch_data.harq_process_id = dci->harq_pid;
+    pusch_config_pdu->pusch_data.harq_process_id = pid;
 
     if (NR_DMRS_ulconfig != NULL)
       add_pos = (NR_DMRS_ulconfig->dmrs_AdditionalPosition == NULL) ? 2 : *NR_DMRS_ulconfig->dmrs_AdditionalPosition;
@@ -926,6 +930,7 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
   pusch_config_pdu->qam_mod_order = nr_get_Qm_ul(pusch_config_pdu->mcs_index, pusch_config_pdu->mcs_table);
   if (pusch_config_pdu->qam_mod_order == 0) {
     LOG_W(NR_MAC, "Invalid Mod order, likely due to unexpected UL DCI. Ignoring DCI! \n");
+    mac->stats.ul.bad_dci++;
     return -1;
   }
 
@@ -941,7 +946,7 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
 
   // Compute TBS
   uint16_t R = nr_get_code_rate_ul(pusch_config_pdu->mcs_index, pusch_config_pdu->mcs_table);
-  int pid = pusch_config_pdu->pusch_data.harq_process_id;
+  const int pid = pusch_config_pdu->pusch_data.harq_process_id;
   if (R > 0) {
     pusch_config_pdu->target_code_rate = R;
     pusch_config_pdu->pusch_data.tb_size = nr_compute_tbs(pusch_config_pdu->qam_mod_order,
@@ -1000,6 +1005,7 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
 
   if (pusch_config_pdu->pusch_data.tb_size == 0) {
     LOG_E(MAC, "Invalid TBS = 0. Probably caused by missed detection of DCI\n");
+    mac->stats.ul.bad_dci++;
     return -1;
   }
 
@@ -1012,7 +1018,7 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
       nr_timer_start(&mac->scheduling_info.phr_info.periodicPHR_Timer);
     }
   }
-
+  mac->stats.ul.rounds[mac->ul_harq_info[pid].round]++;
   return 0;
 }
 

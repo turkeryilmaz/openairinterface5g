@@ -601,8 +601,10 @@ static int UE_dl_preprocessing(PHY_VARS_NR_UE *UE, const UE_nr_rxtx_proc_t *proc
   if (UE->sl_mode == 2)
     fp = &UE->SL_UE_PHY_PARAMS.sl_frame_params;
 
-  if (IS_SOFTMODEM_NOS1 || get_softmodem_params()->sa) {
+  if (proc->nr_slot_rx == 0 && proc->frame_rx % 128 == 0)
+    print_ue_mac_stats(UE->Mod_id, proc->frame_rx, proc->nr_slot_rx);
 
+  if (IS_SOFTMODEM_NOS1 || get_softmodem_params()->sa) {
     // Start synchronization with a target gNB
     if (UE->synch_request.received_synch_request == 1) {
       UE->is_synchronized = 0;
