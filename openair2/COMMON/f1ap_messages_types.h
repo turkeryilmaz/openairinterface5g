@@ -1276,7 +1276,7 @@ typedef struct f1ap_dl_prs_resource_coordinates_s { // IE 9.3.1.185 TS 38.473 V1
 
 typedef struct f1ap_geographical_coordinates_s { // IE 9.3.1.184 TS 38.473 V16.3.1
   f1ap_trp_position_definition_type_t tRPPositionDefinitionType;
-  f1ap_dl_prs_resource_coordinates_t dLPRSResourceCoordinates; // OPTIONAL
+  //f1ap_dl_prs_resource_coordinates_t dLPRSResourceCoordinates; // OPTIONAL
 } f1ap_geographical_coordinates_t;
 
 typedef union f1ap_trp_information_type_response_item_c {

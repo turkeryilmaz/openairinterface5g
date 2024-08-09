@@ -2566,10 +2566,15 @@ static void rrc_CU_process_trp_information_response(MessageDef *msg_p, instance_
 
       // First Type Item nG_RAN_CGI
       rspItem->present=f1ap_trp_information_type_response_item_pr_nG_RAN_CGI;
-      MACRO_GNB_ID_TO_CELL_IDENTITY(rrc->nr_cellid, 0, &rspItem->choice.nG_RAN_CGI.nRCellIdentity);
+      rspItem->choice.nG_RAN_CGI.nRCellIdentity.buf=calloc(5, sizeof(uint8_t));
+      DevAssert(rspItem->choice.nG_RAN_CGI.nRCellIdentity.buf);
+      //MACRO_GNB_ID_TO_CELL_IDENTITY(rrc->nr_cellid, 0, &rspItem->choice.nG_RAN_CGI.nRCellIdentity);
+      MACRO_GNB_ID_TO_CELL_IDENTITY(rrc->node_id,rrc->nr_cellid, &rspItem->choice.nG_RAN_CGI.nRCellIdentity);
       //pLMN_Identity; // typedef OCTET_STRING_t	 F1AP_PLMN_Identity_t;
       // TODO Adeel the following function causes "double free or corruption (out)" error if we use 
       // malloc(nb_tRPInfoTypes*sizeof(f1ap_trp_information_type_response_item_t)) for nb_tRPInfoTypes>1 this need to reslove this error
+      rspItem->choice.nG_RAN_CGI.pLMN_Identity.buf=calloc(3, sizeof(uint8_t));
+      DevAssert(rspItem->choice.nG_RAN_CGI.pLMN_Identity.buf);
       MCC_MNC_TO_TBCD(rrc->configuration.mcc[0], rrc->configuration.mnc[0],
               rrc->configuration.mnc_digit_length[0], &rspItem->choice.nG_RAN_CGI.pLMN_Identity);
 

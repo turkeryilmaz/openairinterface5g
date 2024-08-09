@@ -134,19 +134,17 @@ int nrppa_gNB_TRPInformationResponse(instance_t instance, MessageDef *msg_p)
           break;
         case f1ap_trp_information_type_response_item_pr_nG_RAN_CGI:
           trpinfo_item->present= NRPPA_TRPInformationItem_PR_nG_RAN_CGI;
-          // nR_CellID
           asn1cCalloc(trpinfo_item->choice.nG_RAN_CGI, nG_RAN_CGI);
+          // nR_CellID
           nG_RAN_CGI->nG_RANcell.present = NRPPA_NG_RANCell_PR_nR_CellID;
           nG_RAN_CGI->nG_RANcell.choice.nR_CellID.bits_unused=resItem->choice.nG_RAN_CGI.nRCellIdentity.bits_unused;
-          //nG_RAN_CGI->nG_RANcell.choice.nR_CellID.buf=resItem->choice.nG_RAN_CGI.nRCellIdentity.buf;
-          nG_RAN_CGI->nG_RANcell.choice.nR_CellID.buf=malloc(resItem->choice.nG_RAN_CGI.nRCellIdentity.size);
-          memcpy(nG_RAN_CGI->nG_RANcell.choice.nR_CellID.buf,resItem->choice.nG_RAN_CGI.nRCellIdentity.buf,resItem->choice.nG_RAN_CGI.nRCellIdentity.size);
           nG_RAN_CGI->nG_RANcell.choice.nR_CellID.size=resItem->choice.nG_RAN_CGI.nRCellIdentity.size;
+          nG_RAN_CGI->nG_RANcell.choice.nR_CellID.buf=calloc(resItem->choice.nG_RAN_CGI.nRCellIdentity.size, sizeof(uint8_t));
+          memcpy(nG_RAN_CGI->nG_RANcell.choice.nR_CellID.buf,resItem->choice.nG_RAN_CGI.nRCellIdentity.buf,resItem->choice.nG_RAN_CGI.nRCellIdentity.size);
           // pLMN_Identity
-          //nG_RAN_CGI->pLMN_Identity.buf = resItem->choice.nG_RAN_CGI.pLMN_Identity.buf;
-          nG_RAN_CGI->pLMN_Identity.buf = malloc(resItem->choice.nG_RAN_CGI.pLMN_Identity.size);
+          nG_RAN_CGI->pLMN_Identity.size = resItem->choice.nG_RAN_CGI.pLMN_Identity.size;
+          nG_RAN_CGI->pLMN_Identity.buf = calloc(resItem->choice.nG_RAN_CGI.pLMN_Identity.size, sizeof(uint8_t));
           memcpy(nG_RAN_CGI->pLMN_Identity.buf,resItem->choice.nG_RAN_CGI.pLMN_Identity.buf,resItem->choice.nG_RAN_CGI.pLMN_Identity.size);
-          nG_RAN_CGI->pLMN_Identity.size = resItem->choice.nG_RAN_CGI.pLMN_Identity.size;          
           break;
         case f1ap_trp_information_type_response_item_pr_geographicalCoordinates:
           trpinfo_item->present= NRPPA_TRPInformationItem_PR_geographicalCoordinates;

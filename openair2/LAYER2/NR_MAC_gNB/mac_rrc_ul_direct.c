@@ -315,8 +315,8 @@ static void positioning_information_response(const f1ap_positioning_information_
             resp->nrppa_msg_info.ue_rnti); ////uid_t uid = &UE->uid;
       NR_UE_UL_BWP_t *current_BWP = &UE->current_UL_BWP;
       NR_SRS_Config_t *srs_config = current_BWP->srs_Config;
-      printf("adeel TEST mac_rrc_ul_direct \n \n SRS configuration as per MAC \n");
-      xer_fprint(stdout, &asn_DEF_NR_SRS_Config, srs_config);
+      //printf("adeel TEST mac_rrc_ul_direct \n \n SRS configuration as per MAC \n");
+      //xer_fprint(stdout, &asn_DEF_NR_SRS_Config, srs_config);
 
       // IE 9.2.28 SRS Configuration Preparing SRS Configuration IE of PositioningInformationResponse
       int maxnoSRScarrier = 1; // gNB->max_nb_srs max value is 32; // TODO find the acutal number for carrier and add here
