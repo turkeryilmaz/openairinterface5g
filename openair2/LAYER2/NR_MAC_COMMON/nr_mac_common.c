@@ -4523,7 +4523,7 @@ uint16_t compute_pucch_prb_size(uint8_t format,
 
   float r = get_max_code_rate(maxCodeRate);
 
-  AssertFatal(O_tot <= (nr_prbs * n_re_ctrl * n_symb * Qm * r),
+  AssertFatal(O_tot <= ceil(nr_prbs * n_re_ctrl * n_symb * Qm * r),
               "MaxCodeRate %.2f can't support %d UCI bits and %d CRC bits,n_re_ctrl %d,n_symb %d,Qm %d, PRBs %d",
               r,
               O_uci,
