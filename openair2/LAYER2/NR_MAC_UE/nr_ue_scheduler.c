@@ -1320,15 +1320,16 @@ void schedule_RA_after_SR_failure(NR_UE_MAC_INST_t *mac)
   // TODO we don't have semi-persistent CSI reporting
 }
 
-static void nr_update_sr(NR_UE_MAC_INST_t *mac)
+static void nr_update_sr(NR_UE_MAC_INST_t *mac, bool BSRsent)
 {
   NR_UE_SCHEDULING_INFO *sched_info = &mac->scheduling_info;
 
   // if no pending data available for transmission
   // All pending SR(s) shall be cancelled and each respective sr-ProhibitTimer shall be stopped
   bool data_avail = false;
-  for (int i = 0; i < NR_MAX_NUM_LCID; i++) {
-    if (sched_info->lc_sched_info[i].LCID_buffer_remain > 0) {
+  int idx = 0;
+  for (idx = 0; idx < NR_MAX_NUM_LCID; idx++) {
+    if (sched_info->lc_sched_info[idx].LCID_buffer_remain > 0) {
       data_avail = true;
       break;
     }
@@ -1343,14 +1344,14 @@ static void nr_update_sr(NR_UE_MAC_INST_t *mac)
         nr_timer_stop(&sr->prohibitTimer);
       }
     }
+    return;
   }
 
   // if a Regular BSR has been triggered and logicalChannelSR-DelayTimer is not running
-  if (((sched_info->BSR_reporting_active & NR_BSR_TRIGGER_REGULAR) == 0)
-      || is_nr_timer_active(sched_info->sr_DelayTimer))
+  if (BSRsent || is_nr_timer_active(sched_info->sr_DelayTimer))
     return;
 
-  nr_lcordered_info_t *lc_info = get_lc_info_from_lcid(mac, sched_info->regularBSR_trigger_lcid);
+  nr_lcordered_info_t *lc_info = get_lc_info_from_lcid(mac, idx + 1 /* see lcid_buffer_index() */);
   AssertFatal(lc_info, "Couldn't find logical channel with LCID %ld\n", sched_info->regularBSR_trigger_lcid);
 
   // if there is no UL-SCH resource available for a new transmission (ie we are at this point)
@@ -1558,7 +1559,10 @@ void nr_ue_ul_scheduler(NR_UE_MAC_INST_t *mac, nr_uplink_indication_t *ul_info)
   }
 
   if(mac->state == UE_CONNECTED)
-    nr_update_sr(mac);
+    nr_update_sr(mac, mac->scheduling_info.BSR_reporting_active);
+  // Global variables implicit logic
+  // far away, BSR_reporting_active is set
+  mac->scheduling_info.BSR_reporting_active = NR_BSR_TRIGGER_NONE;
 
   // update Bj for all active lcids before LCP procedure
   if (mac->current_UL_BWP) {
@@ -3078,10 +3082,7 @@ static void nr_ue_get_sdu_mac_ce_post(NR_UE_MAC_INST_t *mac,
         nr_timer_stop(&sr->prohibitTimer);
       }
     }
-
-    // Reset BSR Trigger flags
-    sched_info->BSR_reporting_active = NR_BSR_TRIGGER_NONE;
-    sched_info->regularBSR_trigger_lcid = 0;
+  }
 
     int size = nr_write_ce_ulsch_pdu(mac_ce_p->cur_ptr,
                                      mac,

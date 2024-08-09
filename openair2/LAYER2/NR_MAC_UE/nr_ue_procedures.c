@@ -2544,7 +2544,8 @@ int8_t nr_ue_get_SR(NR_UE_MAC_INST_t *mac, frame_t frame, slot_t slot, NR_Schedu
     return 0;
   }
 
-  LOG_D(NR_MAC, "[UE %d] Frame %d slot %d SR %s for ID %ld\n",
+  LOG_D(NR_MAC,
+        "[UE %d] Frame %d slot %d SR %s for ID %ld\n",
         mac->ue_id,
         frame,
         slot,
