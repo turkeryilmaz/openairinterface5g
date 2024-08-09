@@ -78,7 +78,7 @@ static uint8_t nr_ue_get_sdu(NR_UE_MAC_INST_t *mac,
                              uint8_t *ulsch_buffer,
                              const uint32_t buflen,
                              int tx_power,
-                             int P_MAX);
+                             int P_MAX, bool* BSRsent);
 
 void clear_ul_config_request(NR_UE_MAC_INST_t *mac, int scs)
 {
@@ -1371,7 +1371,7 @@ static void nr_update_sr(NR_UE_MAC_INST_t *mac, bool BSRsent)
       NR_PUCCH_Config_t *pucch_Config = current_UL_BWP ? current_UL_BWP->pucch_Config : NULL;
       if (check_pucchres_for_pending_SR(pucch_Config, lc_info->sr_id)) {
         // trigger SR
-        LOG_D(NR_MAC, "Triggering SR for ID %d\n", lc_info->sr_id);
+        LOG_W(NR_MAC, "Triggering SR for ID %d\n", lc_info->sr_id);
         sr->pending = true;
         sr->counter = 0;
       }
@@ -1465,7 +1465,7 @@ void nr_ue_ul_scheduler(NR_UE_MAC_INST_t *mac, nr_uplink_indication_t *ul_info)
     nr_ue_prach_scheduler(mac, frame_tx, slot_tx);
   }
 
-  // Periodic SRS scheduling
+  bool BSRsent=false;
   if (mac->state == UE_CONNECTED) {
     nr_ue_periodic_srs_scheduling(mac, frame_tx, slot_tx);
     nr_update_rlc_buffers_status(mac, frame_tx, slot_tx, gNB_index);
@@ -1523,7 +1523,7 @@ void nr_ue_ul_scheduler(NR_UE_MAC_INST_t *mac, nr_uplink_indication_t *ul_info)
                                     ulcfg_pdu->pusch_config_pdu.rb_size,
                                     ulcfg_pdu->pusch_config_pdu.rb_start);
 
-          nr_ue_get_sdu(mac, cc_id, frame_tx, slot_tx, gNB_index, ulsch_input_buffer, TBS_bytes, tx_power, P_CMAX);
+          nr_ue_get_sdu(mac, cc_id, frame_tx, slot_tx, gNB_index, ulsch_input_buffer, TBS_bytes, tx_power, P_CMAX, &BSRsent);
           ulcfg_pdu->pusch_config_pdu.tx_request_body.fapiTxPdu = ulsch_input_buffer;
           ulcfg_pdu->pusch_config_pdu.tx_request_body.pdu_length = TBS_bytes;
           number_of_pdus++;
@@ -1559,7 +1559,7 @@ void nr_ue_ul_scheduler(NR_UE_MAC_INST_t *mac, nr_uplink_indication_t *ul_info)
   }
 
   if(mac->state == UE_CONNECTED)
-    nr_update_sr(mac, mac->scheduling_info.BSR_reporting_active);
+    nr_update_sr(mac, BSRsent);
   // Global variables implicit logic
   // far away, BSR_reporting_active is set
   mac->scheduling_info.BSR_reporting_active = NR_BSR_TRIGGER_NONE;
@@ -2942,7 +2942,8 @@ static void nr_ue_get_sdu_mac_ce_post(NR_UE_MAC_INST_t *mac,
                                       frame_t frame,
                                       slot_t slot,
                                       NR_UE_MAC_CE_INFO *mac_ce_p,
-                                      uint32_t *BSR_bytes)
+                                      uint32_t *BSR_bytes,
+				      bool *BSRsent)
 {
   // Compute BSR Values and update Nb LCGID with data after multiplexing
   int num_lcg_id_with_data = 0;
@@ -3040,6 +3041,7 @@ static void nr_ue_get_sdu_mac_ce_post(NR_UE_MAC_INST_t *mac,
           mac->ue_id,
           mac_ce_p->pdu_end - mac_ce_p->cur_ptr,
           sched_info->regularBSR_trigger_lcid);
+    *BSRsent=true;
     // Reset ReTx BSR Timer
     nr_timer_start(&sched_info->retxBSR_Timer);
     // Reset Periodic Timer except when BSR is truncated
@@ -3070,7 +3072,7 @@ static void nr_ue_get_sdu_mac_ce_post(NR_UE_MAC_INST_t *mac,
   LOG_D(NR_MAC, "Added %d bytes of BSR\n", size);
   mac_ce_p->cur_ptr += size;
   }
-}
+
 
 uint32_t get_count_lcids_same_priority(uint8_t start, uint8_t total_active_lcids, nr_lcordered_info_t *lcid_ordered_array)
 {
@@ -3312,7 +3314,8 @@ static uint8_t nr_ue_get_sdu(NR_UE_MAC_INST_t *mac,
                              uint8_t *ulsch_buffer,
                              const uint32_t buflen,
                              int tx_power,
-                             int P_CMAX)
+                             int P_CMAX,
+			     bool *BSRsent)
 {
   NR_UE_MAC_CE_INFO mac_ce_info;
 
@@ -3412,7 +3415,7 @@ static uint8_t nr_ue_get_sdu(NR_UE_MAC_INST_t *mac,
   } while (mac_ce_info.end_for_tailer - mac_ce_info.cur_ptr > sizeof(NR_MAC_SUBHEADER_LONG)
            && get_dataavailability_buffers(avail_lcids_count, lcids_bj_pos, mac_ce_info.lcids_data_status));
 
-  nr_ue_get_sdu_mac_ce_post(mac, frame, slot, &mac_ce_info, BSR_bytes);
+  nr_ue_get_sdu_mac_ce_post(mac, frame, slot, &mac_ce_info, BSR_bytes, BSRsent);
 
   // Compute final offset for padding and fill remainder of ULSCH with 0
   int remain = mac_ce_info.pdu_end - mac_ce_info.cur_ptr;
