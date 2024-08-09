@@ -866,7 +866,7 @@ void nr_ue_csi_rs_procedures(PHY_VARS_NR_UE *ue,
 #endif
 
   if(csirs_config_pdu->measurement_bitmap == 0) {
-    LOG_E(NR_PHY, "Handling of CSI-RS for tracking not handled yet at PHY\n");
+    LOG_D(NR_PHY, "Handling of CSI-RS for tracking not handled yet at PHY\n");
     return;
   }
 
