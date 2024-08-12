@@ -76,6 +76,12 @@ void print_ue_mac_stats(const module_id_t mod, const int frame_rx, const int slo
   char txt[1024];
   char *end = txt + sizeof(txt);
   char *cur = txt;
+  float nbul = mac->stats.ul.rounds[0] + mac->stats.ul.rounds[1] + mac->stats.ul.rounds[2] + mac->stats.ul.rounds[3];
+  if (nbul < 1)
+    nbul = 1;
+  float nbdl = mac->stats.dl.rounds[0] + mac->stats.dl.rounds[1] + mac->stats.dl.rounds[2] + mac->stats.dl.rounds[3];
+  if (nbdl < 1)
+    nbdl = 1;
   cur += snprintf(cur, end - cur, "UE %d stats sfn: %d.%d\n", mod, frame_rx, slot_rx);
   cur += snprintf(cur,
                   end - cur,
@@ -87,12 +93,17 @@ void print_ue_mac_stats(const module_id_t mod, const int frame_rx, const int slo
                   mac->stats.dl.bad_dci);
   cur += snprintf(cur,
                   end - cur,
-                  "Ul harq: %lu/%lu/%lu/%lu bad dci: %d\n",
+                  "Ul harq: %lu/%lu/%lu/%lu bad dci: %d, averages per sdu (code rate %.01f, QAM bit/symbol %.01f, nb RBs %.01f, nb "
+                  "symbols %.01f)\n",
                   mac->stats.ul.rounds[0],
                   mac->stats.ul.rounds[1],
                   mac->stats.ul.rounds[2],
                   mac->stats.ul.rounds[3],
-                  mac->stats.ul.bad_dci);
+                  mac->stats.ul.bad_dci,
+                  mac->stats.ul.target_code_rate / (nbul * 1024 * 10), // See const Table_51311 definition
+                  mac->stats.ul.qam_mod_order / nbul,
+                  mac->stats.ul.rb_size / nbul,
+                  mac->stats.ul.nr_of_symbols / nbul);
   LOG_A(NR_MAC, txt);
   pthread_mutex_unlock(&mac_IF_mutex);
 }

@@ -504,11 +504,14 @@ typedef struct {
   uint64_t total_bytes;
   uint32_t current_bytes;
   uint64_t total_sdu_bytes;
-  uint32_t total_rbs;
   uint32_t total_rbs_retx;
   uint32_t num_mac_sdu;
   uint32_t current_rbs;
   uint32_t bad_dci;
+  uint32_t target_code_rate;
+  uint32_t qam_mod_order;
+  uint32_t rb_size;
+  uint32_t nr_of_symbols;
 } ue_mac_dir_stats_t;
 
 typedef struct {

@@ -571,362 +571,9 @@ void ul_ports_config(NR_UE_MAC_INST_t *mac, int *n_front_load_symb, nfapi_nr_ue_
 // - 6.1.4.2 of TS 38.214
 // - 6.4.1.1.1 of TS 38.211
 // - 6.3.1.7 of 38.211
-int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
-                        NR_tda_info_t *tda_info,
-                        nfapi_nr_ue_pusch_pdu_t *pusch_config_pdu,
-                        dci_pdu_rel15_t *dci,
-                        csi_payload_t *csi_report,
-                        RAR_grant_t *rar_grant,
-                        uint16_t rnti,
-                        int ss_type,
-                        const nr_dci_format_t dci_format)
+
+static int pusch_common(NR_UE_MAC_INST_t *mac, nfapi_nr_ue_pusch_pdu_t *pusch_config_pdu, uint16_t rnti, int delta_pusch)
 {
-  uint16_t l_prime_mask = 0;
-  int N_PRB_oh  = 0;
-
-  int rnti_type = get_rnti_type(mac, rnti);
-  NR_UE_UL_BWP_t *current_UL_BWP = mac->current_UL_BWP;
-  NR_UE_ServingCell_Info_t *sc_info = &mac->sc_info;
-
-  // Common configuration
-  pusch_config_pdu->dmrs_config_type = pusch_dmrs_type1;
-  pusch_config_pdu->pdu_bit_map = PUSCH_PDU_BITMAP_PUSCH_DATA;
-  pusch_config_pdu->nrOfLayers = 1;
-  pusch_config_pdu->Tpmi = 0;
-  pusch_config_pdu->rnti = rnti;
-
-  pusch_dmrs_AdditionalPosition_t add_pos = pusch_dmrs_pos2;
-  int dmrslength = 1;
-  NR_PUSCH_Config_t *pusch_Config = current_UL_BWP->pusch_Config;
-
-  if (rar_grant) {
-    // Note: for Msg3 or MsgA PUSCH transmission the N_PRB_oh is always set to 0
-    int ibwp_start = sc_info->initial_ul_BWPStart;
-    int ibwp_size = sc_info->initial_ul_BWPSize;
-    int abwp_start = current_UL_BWP->BWPStart;
-    int abwp_size = current_UL_BWP->BWPSize;
-    int scs = current_UL_BWP->scs;
-
-    // BWP start selection according to 8.3 of TS 38.213
-    if ((ibwp_start < abwp_start) || (ibwp_size > abwp_size)) {
-      pusch_config_pdu->bwp_start = abwp_start;
-      pusch_config_pdu->bwp_size = abwp_size;
-    } else {
-      pusch_config_pdu->bwp_start = ibwp_start;
-      pusch_config_pdu->bwp_size = ibwp_size;
-    }
-
-    //// Resource assignment from RAR
-    // Frequency domain allocation according to 8.3 of TS 38.213
-    int mask;
-    if (ibwp_size < 180)
-      mask = (1 << ((int) ceil(log2((ibwp_size*(ibwp_size+1))>>1)))) - 1;
-    else
-      mask = (1 << (28 - (int)(ceil(log2((ibwp_size*(ibwp_size+1))>>1))))) - 1;
-
-    dci_field_t f_alloc;
-    f_alloc.val = rar_grant->Msg3_f_alloc & mask;
-    if (nr_ue_process_dci_freq_dom_resource_assignment(pusch_config_pdu,
-                                                       NULL,
-                                                       NULL,
-                                                       ibwp_size,
-                                                       0,
-                                                       0,
-                                                       f_alloc) < 0) {
-      LOG_E(NR_MAC, "can't nr_ue_process_dci_freq_dom_resource_assignment()\n");
-      mac->stats.ul.bad_dci++;
-      return -1;
-    }
-
-    // virtual resource block to physical resource mapping for Msg3 PUSCH (6.3.1.7 in 38.211)
-    //pusch_config_pdu->rb_start += ibwp_start - abwp_start;
-
-    // Time domain allocation
-    pusch_config_pdu->start_symbol_index = tda_info->startSymbolIndex;
-    pusch_config_pdu->nr_of_symbols = tda_info->nrOfSymbols;
-    l_prime_mask = get_l_prime(tda_info->nrOfSymbols,
-                               tda_info->mapping_type,
-                               add_pos,
-                               dmrslength,
-                               tda_info->startSymbolIndex,
-                               mac->dmrs_TypeA_Position);
-    LOG_D(NR_MAC, "MSG3 start_sym:%d NR Symb:%d mappingtype:%d, DMRS_MASK:%x\n", pusch_config_pdu->start_symbol_index, pusch_config_pdu->nr_of_symbols, tda_info->mapping_type, l_prime_mask);
-
-#ifdef DEBUG_MSG3
-    LOG_D(NR_MAC, "In %s BWP assignment (BWP (start %d, size %d) \n", __FUNCTION__, pusch_config_pdu->bwp_start, pusch_config_pdu->bwp_size);
-#endif
-
-    // MCS
-    pusch_config_pdu->mcs_index = rar_grant->mcs;
-    // Frequency hopping
-    pusch_config_pdu->frequency_hopping = rar_grant->freq_hopping;
-
-    // DM-RS configuration according to 6.2.2 UE DM-RS transmission procedure in 38.214
-    pusch_config_pdu->num_dmrs_cdm_grps_no_data = 2;
-    pusch_config_pdu->dmrs_ports = 1;
-
-    // DMRS sequence initialization [TS 38.211, sec 6.4.1.1.1].
-    // Should match what is sent in DCI 0_1, otherwise set to 0.
-    pusch_config_pdu->scid = 0;
-
-    // Transform precoding according to 6.1.3 UE procedure for applying transform precoding on PUSCH in 38.214
-    pusch_config_pdu->transform_precoding = get_transformPrecoding(current_UL_BWP, NR_UL_DCI_FORMAT_0_0, 0); // as if it was DCI 0_0
-
-    // Resource allocation in frequency domain according to 6.1.2.2 in TS 38.214
-    pusch_config_pdu->resource_alloc = 1;
-
-    //// Completing PUSCH PDU
-    pusch_config_pdu->mcs_table = 0;
-    pusch_config_pdu->cyclic_prefix = 0;
-    pusch_config_pdu->data_scrambling_id = mac->physCellId;
-    pusch_config_pdu->ul_dmrs_scrambling_id = mac->physCellId;
-    pusch_config_pdu->subcarrier_spacing = scs;
-    pusch_config_pdu->vrb_to_prb_mapping = 0;
-    pusch_config_pdu->uplink_frequency_shift_7p5khz = 0;
-    //Optional Data only included if indicated in pduBitmap
-    pusch_config_pdu->pusch_data.rv_index = 0;  // 8.3 in 38.213
-    pusch_config_pdu->pusch_data.harq_process_id = 0;
-    pusch_config_pdu->pusch_data.new_data_indicator = true; // new data
-    pusch_config_pdu->pusch_data.num_cb = 0;
-    pusch_config_pdu->tbslbrm = 0;
-
-  } else if (dci) {
-    pusch_config_pdu->ulsch_indicator = dci->ulsch_indicator;
-    if (dci->csi_request.nbits > 0 && dci->csi_request.val > 0) {
-      AssertFatal(csi_report, "CSI report needs to be present in case of CSI request\n");
-      pusch_config_pdu->pusch_uci.csi_part1_bit_length = csi_report->p1_bits;
-      pusch_config_pdu->pusch_uci.csi_part1_payload = csi_report->part1_payload;
-      pusch_config_pdu->pusch_uci.csi_part2_bit_length = csi_report->p2_bits;
-      pusch_config_pdu->pusch_uci.csi_part2_payload = csi_report->part2_payload;
-      AssertFatal(pusch_Config && pusch_Config->uci_OnPUSCH, "UCI on PUSCH need to be configured\n");
-      NR_UCI_OnPUSCH_t *onPusch = pusch_Config->uci_OnPUSCH->choice.setup;
-      AssertFatal(onPusch &&
-                  onPusch->betaOffsets &&
-                  onPusch->betaOffsets->present == NR_UCI_OnPUSCH__betaOffsets_PR_semiStatic,
-                  "Only semistatic beta offset is supported\n");
-      NR_BetaOffsets_t *beta_offsets = onPusch->betaOffsets->choice.semiStatic;
-
-      pusch_config_pdu->pusch_uci.beta_offset_csi1 = pusch_config_pdu->pusch_uci.csi_part1_bit_length < 12 ?
-                                                     *beta_offsets->betaOffsetCSI_Part1_Index1 :
-                                                     *beta_offsets->betaOffsetCSI_Part1_Index2;
-      pusch_config_pdu->pusch_uci.beta_offset_csi2 = pusch_config_pdu->pusch_uci.csi_part2_bit_length < 12 ?
-                                                     *beta_offsets->betaOffsetCSI_Part2_Index1 :
-                                                     *beta_offsets->betaOffsetCSI_Part2_Index2;
-      pusch_config_pdu->pusch_uci.alpha_scaling = onPusch->scaling;
-    }
-    else {
-      pusch_config_pdu->pusch_uci.csi_part1_bit_length = 0;
-      pusch_config_pdu->pusch_uci.csi_part2_bit_length = 0;
-    }
-
-    pusch_config_pdu->pusch_uci.harq_ack_bit_length = 0;
-
-    if (dci_format == NR_UL_DCI_FORMAT_0_0 && ss_type == NR_SearchSpace__searchSpaceType_PR_common) {
-      pusch_config_pdu->bwp_start = sc_info->initial_ul_BWPStart;
-      pusch_config_pdu->bwp_size = sc_info->initial_ul_BWPSize;
-    } else {
-      pusch_config_pdu->bwp_start = current_UL_BWP->BWPStart;
-      pusch_config_pdu->bwp_size = current_UL_BWP->BWPSize;
-    }
-
-    pusch_config_pdu->start_symbol_index = tda_info->startSymbolIndex;
-    pusch_config_pdu->nr_of_symbols = tda_info->nrOfSymbols;
-
-    /* Transform precoding */
-    pusch_config_pdu->transform_precoding = get_transformPrecoding(current_UL_BWP, dci_format, 0);
-    bool tp_enabled = pusch_config_pdu->transform_precoding == NR_PUSCH_Config__transformPrecoder_enabled;
-
-    /*DCI format-related configuration*/
-    if (dci_format == NR_UL_DCI_FORMAT_0_0) {
-      if (!tp_enabled && pusch_config_pdu->nr_of_symbols < 3)
-        pusch_config_pdu->num_dmrs_cdm_grps_no_data = 1;
-      else
-        pusch_config_pdu->num_dmrs_cdm_grps_no_data = 2;
-    } else if (dci_format == NR_UL_DCI_FORMAT_0_1) {
-      ul_layers_config(mac, pusch_config_pdu, dci, dci_format);
-      ul_ports_config(mac, &dmrslength, pusch_config_pdu, dci, dci_format);
-    } else {
-      LOG_E(NR_MAC, "UL grant from DCI format %d is not handled...\n", dci_format);
-      mac->stats.ul.bad_dci++;
-      return -1;
-    }
-
-    if (pusch_config_pdu->nrOfLayers < 1) {
-      LOG_E(NR_MAC, "Invalid UL number of layers %d from DCI\n", pusch_config_pdu->nrOfLayers);
-      mac->stats.ul.bad_dci++;
-      return -1;
-    }
-
-    int mappingtype = tda_info->mapping_type;
-
-    NR_DMRS_UplinkConfig_t *NR_DMRS_ulconfig = NULL;
-    if(pusch_Config) {
-      NR_DMRS_ulconfig = (mappingtype == NR_PUSCH_TimeDomainResourceAllocation__mappingType_typeA)
-                             ? pusch_Config->dmrs_UplinkForPUSCH_MappingTypeA->choice.setup
-                             : pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup;
-    }
-
-    pusch_config_pdu->scid = 0;
-    pusch_config_pdu->data_scrambling_id = mac->physCellId;
-    if (pusch_Config
-        && pusch_Config->dataScramblingIdentityPUSCH
-        && rnti_type == TYPE_C_RNTI_
-        && !(dci_format == NR_UL_DCI_FORMAT_0_0 && ss_type == NR_SearchSpace__searchSpaceType_PR_common))
-      pusch_config_pdu->data_scrambling_id = *pusch_Config->dataScramblingIdentityPUSCH;
-
-    pusch_config_pdu->ul_dmrs_scrambling_id = mac->physCellId;
-    if (dci_format == NR_UL_DCI_FORMAT_0_1)
-      pusch_config_pdu->scid = dci->dmrs_sequence_initialization.val;
-
-    /* TRANSFORM PRECODING ------------------------------------------------------------------------------------------*/
-    if (tp_enabled) {
-
-      uint32_t n_RS_Id = 0;
-      if (NR_DMRS_ulconfig->transformPrecodingEnabled &&
-          NR_DMRS_ulconfig->transformPrecodingEnabled->nPUSCH_Identity != NULL)
-        n_RS_Id = *NR_DMRS_ulconfig->transformPrecodingEnabled->nPUSCH_Identity;
-      else
-        n_RS_Id = mac->physCellId;
-
-      // U as specified in section 6.4.1.1.1.2 in 38.211, if sequence hopping and group hopping are disabled
-      pusch_config_pdu->dfts_ofdm.low_papr_group_number = n_RS_Id % 30;
-
-      // V as specified in section 6.4.1.1.1.2 in 38.211 V = 0 if sequence hopping and group hopping are disabled
-      if (!NR_DMRS_ulconfig || !NR_DMRS_ulconfig->transformPrecodingEnabled ||
-          (!NR_DMRS_ulconfig->transformPrecodingEnabled->sequenceGroupHopping && !NR_DMRS_ulconfig->transformPrecodingEnabled->sequenceHopping))
-        pusch_config_pdu->dfts_ofdm.low_papr_sequence_number = 0;
-      else
-        AssertFatal(1==0,"SequenceGroupHopping or sequenceHopping are NOT Supported\n");
-
-      LOG_D(NR_MAC,
-            "TRANSFORM PRECODING IS ENABLED. CDM groups: %d, U: %d \n",
-            pusch_config_pdu->num_dmrs_cdm_grps_no_data,
-            pusch_config_pdu->dfts_ofdm.low_papr_group_number);
-    }
-    else {
-      if (pusch_config_pdu->scid == 0 && NR_DMRS_ulconfig && NR_DMRS_ulconfig->transformPrecodingDisabled &&
-          NR_DMRS_ulconfig->transformPrecodingDisabled->scramblingID0)
-        pusch_config_pdu->ul_dmrs_scrambling_id = *NR_DMRS_ulconfig->transformPrecodingDisabled->scramblingID0;
-      
-      if (pusch_config_pdu->scid == 1 && NR_DMRS_ulconfig &&  NR_DMRS_ulconfig->transformPrecodingDisabled &&
-          NR_DMRS_ulconfig->transformPrecodingDisabled->scramblingID1)
-        pusch_config_pdu->ul_dmrs_scrambling_id = *NR_DMRS_ulconfig->transformPrecodingDisabled->scramblingID1;
-    }
-
-    /* TRANSFORM PRECODING --------------------------------------------------------------------------------------------------------*/
-
-    /* IDENTIFIER_DCI_FORMATS */
-    /* FREQ_DOM_RESOURCE_ASSIGNMENT_UL */
-    if (nr_ue_process_dci_freq_dom_resource_assignment(pusch_config_pdu,
-                                                       NULL,
-                                                       NULL,
-                                                       pusch_config_pdu->bwp_size,
-                                                       0,
-                                                       0,
-                                                       dci->frequency_domain_assignment) < 0) {
-      LOG_E(NR_MAC, "can't nr_ue_process_dci_freq_dom_resource_assignment()\n");
-      mac->stats.ul.bad_dci++;
-      return -1;
-    }
-
-    /* FREQ_HOPPING_FLAG */
-    if (pusch_Config
-        && pusch_Config->frequencyHopping
-        && (pusch_Config->resourceAllocation != NR_PUSCH_Config__resourceAllocation_resourceAllocationType0)) {
-      pusch_config_pdu->frequency_hopping = dci->frequency_hopping_flag.val;
-    }
-
-    /* MCS */
-    pusch_config_pdu->mcs_index = dci->mcs;
-
-    /* MCS TABLE */
-    long *mcs_table_config = pusch_Config ? (tp_enabled ? pusch_Config->mcs_TableTransformPrecoder : pusch_Config->mcs_Table) : NULL;
-    pusch_config_pdu->mcs_table = get_pusch_mcs_table(mcs_table_config, tp_enabled, dci_format, rnti_type, ss_type, false);
-
-    /* NDI */
-    const int pid = dci->harq_pid;
-    NR_UL_HARQ_INFO_t *harq = &mac->ul_harq_info[pid];
-    pusch_config_pdu->pusch_data.new_data_indicator = false;
-    if (dci->ndi != harq->last_ndi) {
-      pusch_config_pdu->pusch_data.new_data_indicator = true;
-      // if new data reset harq structure
-      memset(harq, 0, sizeof(*harq));
-    } else
-      harq->round++;
-    harq->last_ndi = dci->ndi;
-    /* RV */
-    pusch_config_pdu->pusch_data.rv_index = dci->rv;
-    /* HARQ_PROCESS_NUMBER */
-    pusch_config_pdu->pusch_data.harq_process_id = pid;
-
-    if (NR_DMRS_ulconfig != NULL)
-      add_pos = (NR_DMRS_ulconfig->dmrs_AdditionalPosition == NULL) ? 2 : *NR_DMRS_ulconfig->dmrs_AdditionalPosition;
-
-    /* DMRS */
-    l_prime_mask = get_l_prime(pusch_config_pdu->nr_of_symbols,
-                               mappingtype, add_pos, dmrslength,
-                               pusch_config_pdu->start_symbol_index,
-                               mac->dmrs_TypeA_Position);
-
-    if (sc_info->xOverhead_PUSCH)
-      N_PRB_oh = 6 * (1 + *sc_info->xOverhead_PUSCH);
-    else
-      N_PRB_oh = 0;
-
-    if (sc_info->rateMatching_PUSCH) {
-      long maxMIMO_Layers = 0;
-      if (sc_info->maxMIMO_Layers_PUSCH)
-        maxMIMO_Layers = *sc_info->maxMIMO_Layers_PUSCH;
-      else if (pusch_Config && pusch_Config->maxRank)
-        maxMIMO_Layers = *pusch_Config->maxRank;
-      else {
-        if (pusch_Config && pusch_Config->txConfig) {
-          if (*pusch_Config->txConfig == NR_PUSCH_Config__txConfig_codebook)
-            maxMIMO_Layers = mac->uecap_maxMIMO_PUSCH_layers_cb;
-          else
-            maxMIMO_Layers = mac->uecap_maxMIMO_PUSCH_layers_nocb;
-        } else
-          maxMIMO_Layers = 1; // single antenna port
-      }
-      AssertFatal (maxMIMO_Layers > 0, "Invalid number of max MIMO layers for PUSCH\n");
-      pusch_config_pdu->tbslbrm = nr_compute_tbslbrm(pusch_config_pdu->mcs_table, sc_info->ul_bw_tbslbrm, maxMIMO_Layers);
-    } else
-      pusch_config_pdu->tbslbrm = 0;
-
-    /* PTRS */
-    if (pusch_Config && pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB &&
-        pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup->phaseTrackingRS) {
-      if (!tp_enabled) {
-        nfapi_nr_ue_ptrs_ports_t ptrs_ports_list;
-        pusch_config_pdu->pusch_ptrs.ptrs_ports_list = &ptrs_ports_list;
-        bool valid_ptrs_setup = set_ul_ptrs_values(pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup->phaseTrackingRS->choice.setup,
-                                                   pusch_config_pdu->rb_size,
-                                                   pusch_config_pdu->mcs_index,
-                                                   pusch_config_pdu->mcs_table,
-                                                   &pusch_config_pdu->pusch_ptrs.ptrs_freq_density,
-                                                   &pusch_config_pdu->pusch_ptrs.ptrs_time_density,
-                                                   &pusch_config_pdu->pusch_ptrs.ptrs_ports_list->ptrs_re_offset,
-                                                   &pusch_config_pdu->pusch_ptrs.num_ptrs_ports,
-                                                   &pusch_config_pdu->pusch_ptrs.ul_ptrs_power,
-                                                   pusch_config_pdu->nr_of_symbols);
-        if(valid_ptrs_setup == true) {
-          pusch_config_pdu->pdu_bit_map |= PUSCH_PDU_BITMAP_PUSCH_PTRS;
-        }
-        LOG_D(NR_MAC, "UL PTRS values: PTRS time den: %d, PTRS freq den: %d\n",
-              pusch_config_pdu->pusch_ptrs.ptrs_time_density, pusch_config_pdu->pusch_ptrs.ptrs_freq_density);
-      }
-    }
-  }
-
-  LOG_D(NR_MAC,
-        "Received UL grant (rb_start %d, rb_size %d, start_symbol_index %d, nr_of_symbols %d) for RNTI type %s \n",
-        pusch_config_pdu->rb_start,
-        pusch_config_pdu->rb_size,
-        pusch_config_pdu->start_symbol_index,
-        pusch_config_pdu->nr_of_symbols,
-        rnti_types(rnti_type));
-
-  pusch_config_pdu->ul_dmrs_symb_pos = l_prime_mask;
   pusch_config_pdu->qam_mod_order = nr_get_Qm_ul(pusch_config_pdu->mcs_index, pusch_config_pdu->mcs_table);
   if (pusch_config_pdu->qam_mod_order == 0) {
     LOG_W(NR_MAC, "Invalid Mod order, likely due to unexpected UL DCI. Ignoring DCI! \n");
@@ -938,15 +585,19 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
   int number_of_symbols = pusch_config_pdu->nr_of_symbols;
   int number_dmrs_symbols = 0;
   for (int i = start_symbol; i < start_symbol + number_of_symbols; i++) {
-    if((pusch_config_pdu->ul_dmrs_symb_pos >> i) & 0x01)
+    if ((pusch_config_pdu->ul_dmrs_symb_pos >> i) & 0x01)
       number_dmrs_symbols += 1;
   }
 
-  int nb_dmrs_re_per_rb = ((pusch_config_pdu->dmrs_config_type == pusch_dmrs_type1) ? 6 : 4) * pusch_config_pdu->num_dmrs_cdm_grps_no_data;
+  int nb_dmrs_re_per_rb =
+      ((pusch_config_pdu->dmrs_config_type == pusch_dmrs_type1) ? 6 : 4) * pusch_config_pdu->num_dmrs_cdm_grps_no_data;
 
   // Compute TBS
   uint16_t R = nr_get_code_rate_ul(pusch_config_pdu->mcs_index, pusch_config_pdu->mcs_table);
   const int pid = pusch_config_pdu->pusch_data.harq_process_id;
+  NR_UE_ServingCell_Info_t *sc_info = &mac->sc_info;
+  uint N_PRB_oh = sc_info->xOverhead_PUSCH ? 6 * (1 + *sc_info->xOverhead_PUSCH) : 0;
+
   if (R > 0) {
     pusch_config_pdu->target_code_rate = R;
     pusch_config_pdu->pusch_data.tb_size = nr_compute_tbs(pusch_config_pdu->qam_mod_order,
@@ -956,39 +607,23 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
                                                           nb_dmrs_re_per_rb * number_dmrs_symbols,
                                                           N_PRB_oh,
                                                           0, // TBR to verify tb scaling
-                                                          pusch_config_pdu->nrOfLayers) >> 3;
+                                                          pusch_config_pdu->nrOfLayers)
+                                           >> 3;
     mac->ul_harq_info[pid].TBS = pusch_config_pdu->pusch_data.tb_size;
     mac->ul_harq_info[pid].R = R;
-  }
-  else {
+  } else {
     pusch_config_pdu->target_code_rate = mac->ul_harq_info[pid].R;
     pusch_config_pdu->pusch_data.tb_size = mac->ul_harq_info[pid].TBS;
   }
 
-  /* TPC_PUSCH */
-  int delta_pusch = 0;
-  if (dci) {
-    bool stateless_pusch_power_control = mac->current_UL_BWP->pusch_Config != NULL
-                                        && mac->current_UL_BWP->pusch_Config->pusch_PowerControl != NULL
-                                        && mac->current_UL_BWP->pusch_Config->pusch_PowerControl->tpc_Accumulation != NULL;
-    int table_38_213_7_1_1_1[2][4] = {{-1, 0, 1, 3}, {-4, -1, 1, 4}};
-    if (stateless_pusch_power_control) {
-      delta_pusch = table_38_213_7_1_1_1[1][dci->tpc];
-    } else {
-      // TODO: This is not entirely correct. In case there is a prevously scheduled PUSCH for a future slot
-      // we should apply its TPC now.
-      delta_pusch = table_38_213_7_1_1_1[0][dci->tpc];
-    }
-  }
-
-  bool is_rar_tx_retx = rnti_type == TYPE_TC_RNTI_;
+  bool is_rar_tx_retx = get_rnti_type(mac, rnti) == TYPE_TC_RNTI_;
 
   pusch_config_pdu->tx_power = get_pusch_tx_power_ue(mac,
                                                      pusch_config_pdu->rb_size,
                                                      pusch_config_pdu->rb_start,
                                                      pusch_config_pdu->nr_of_symbols,
                                                      nb_dmrs_re_per_rb * number_dmrs_symbols,
-                                                     0, //TODO: count PTRS per RB
+                                                     0, // TODO: count PTRS per RB
                                                      pusch_config_pdu->qam_mod_order,
                                                      pusch_config_pdu->target_code_rate,
                                                      pusch_config_pdu->pusch_uci.beta_offset_csi1,
@@ -999,8 +634,8 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
 
   pusch_config_pdu->ldpcBaseGraph = get_BG(pusch_config_pdu->pusch_data.tb_size << 3, pusch_config_pdu->target_code_rate);
 
-  //The MAC entity shall restart retxBSR-Timer upon reception of a grant for transmission of new data on any UL-SCH
-  if (pusch_config_pdu->pusch_data.new_data_indicator && dci && dci->ulsch_indicator)
+  // The MAC entity shall restart retxBSR-Timer upon reception of a grant for transmission of new data on any UL-SCH
+  if (pusch_config_pdu->pusch_data.new_data_indicator)
     nr_timer_start(&mac->scheduling_info.retxBSR_Timer);
 
   if (pusch_config_pdu->pusch_data.tb_size == 0) {
@@ -1019,7 +654,358 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
     }
   }
   mac->stats.ul.rounds[mac->ul_harq_info[pid].round]++;
+  mac->stats.ul.target_code_rate += pusch_config_pdu->target_code_rate;
+  mac->stats.ul.qam_mod_order += pusch_config_pdu->qam_mod_order;
+  mac->stats.ul.rb_size += pusch_config_pdu->rb_size;
+  mac->stats.ul.nr_of_symbols += pusch_config_pdu->nr_of_symbols;
+
   return 0;
+}
+
+int nr_config_pusch_rar(NR_UE_MAC_INST_t *mac,
+                        NR_tda_info_t *tda_info,
+                        nfapi_nr_ue_pusch_pdu_t *pusch_config_pdu,
+                        RAR_grant_t *rar_grant,
+                        uint16_t rnti)
+{
+  NR_UE_UL_BWP_t *current_UL_BWP = mac->current_UL_BWP;
+  NR_UE_ServingCell_Info_t *sc_info = &mac->sc_info;
+  // Note: for Msg3 or MsgA PUSCH transmission the N_PRB_oh is always set to 0
+  int ibwp_start = sc_info->initial_ul_BWPStart;
+  int ibwp_size = sc_info->initial_ul_BWPSize;
+  int abwp_start = current_UL_BWP->BWPStart;
+  int abwp_size = current_UL_BWP->BWPSize;
+  int scs = current_UL_BWP->scs;
+
+  // Common configuration
+  *pusch_config_pdu = (nfapi_nr_ue_pusch_pdu_t){
+      .dmrs_config_type = pusch_dmrs_type1,
+      .pdu_bit_map = PUSCH_PDU_BITMAP_PUSCH_DATA,
+      .nrOfLayers = 1,
+      .Tpmi = 0,
+      .rnti = rnti,
+      .mcs_index = rar_grant->mcs,
+      .frequency_hopping = rar_grant->freq_hopping,
+      // DM-RS configuration according to 6.2.2 UE DM-RS transmission procedure in 38.214
+      .num_dmrs_cdm_grps_no_data = 2,
+      .dmrs_ports = 1,
+      // DMRS sequence initialization [TS 38.211, sec 6.4.1.1.1].
+      // Should match what is sent in DCI 0_1, otherwise set to 0.
+      .scid = 0,
+      // Transform precoding according to 6.1.3 UE procedure for applying transform precoding on PUSCH in 38.214
+      .transform_precoding = get_transformPrecoding(current_UL_BWP, NR_UL_DCI_FORMAT_0_0, 0), // as if it was DCI 0_0
+      // Resource allocation in frequency domain according to 6.1.2.2 in TS 38.214
+      .resource_alloc = 1,
+      .data_scrambling_id = mac->physCellId,
+      .ul_dmrs_scrambling_id = mac->physCellId,
+      .subcarrier_spacing = scs};
+
+  pusch_dmrs_AdditionalPosition_t add_pos = pusch_dmrs_pos2;
+  int dmrslength = 1;
+
+  // BWP start selection according to 8.3 of TS 38.213
+  if ((ibwp_start < abwp_start) || (ibwp_size > abwp_size)) {
+    pusch_config_pdu->bwp_start = abwp_start;
+    pusch_config_pdu->bwp_size = abwp_size;
+  } else {
+    pusch_config_pdu->bwp_start = ibwp_start;
+    pusch_config_pdu->bwp_size = ibwp_size;
+  }
+
+  //// Resource assignment from RAR
+  // Frequency domain allocation according to 8.3 of TS 38.213
+  int mask;
+  if (ibwp_size < 180)
+    mask = (1 << ((int)ceil(log2((ibwp_size * (ibwp_size + 1)) >> 1)))) - 1;
+  else
+    mask = (1 << (28 - (int)(ceil(log2((ibwp_size * (ibwp_size + 1)) >> 1))))) - 1;
+
+  dci_field_t f_alloc;
+  f_alloc.val = rar_grant->Msg3_f_alloc & mask;
+  if (nr_ue_process_dci_freq_dom_resource_assignment(pusch_config_pdu, NULL, NULL, ibwp_size, 0, 0, f_alloc) < 0) {
+    LOG_E(NR_MAC, "can't nr_ue_process_dci_freq_dom_resource_assignment()\n");
+    mac->stats.ul.bad_dci++;
+    return -1;
+  }
+
+  // virtual resource block to physical resource mapping for Msg3 PUSCH (6.3.1.7 in 38.211)
+  // pusch_config_pdu->rb_start += ibwp_start - abwp_start;
+
+  // Time domain allocation
+  pusch_config_pdu->start_symbol_index = tda_info->startSymbolIndex;
+  pusch_config_pdu->nr_of_symbols = tda_info->nrOfSymbols;
+  uint l_prime_mask = get_l_prime(tda_info->nrOfSymbols,
+                                  tda_info->mapping_type,
+                                  add_pos,
+                                  dmrslength,
+                                  tda_info->startSymbolIndex,
+                                  mac->dmrs_TypeA_Position);
+  pusch_config_pdu->ul_dmrs_symb_pos = l_prime_mask;
+  LOG_D(NR_MAC,
+        "MSG3 start_sym:%d NR Symb:%d mappingtype:%d, DMRS_MASK:%x\n",
+        pusch_config_pdu->start_symbol_index,
+        pusch_config_pdu->nr_of_symbols,
+        tda_info->mapping_type,
+        l_prime_mask);
+
+#ifdef DEBUG_MSG3
+  LOG_D(NR_MAC, "MSG3 BWP assignment (BWP (start %d, size %d) \n", pusch_config_pdu->bwp_start, pusch_config_pdu->bwp_size);
+#endif
+  // Optional Data only included if indicated in pduBitmap
+  pusch_config_pdu->pusch_data.rv_index = 0; // 8.3 in 38.213
+  pusch_config_pdu->pusch_data.new_data_indicator = true; // new data
+  return pusch_common(mac, pusch_config_pdu, rnti, 0);
+}
+
+int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
+                        NR_tda_info_t *tda_info,
+                        nfapi_nr_ue_pusch_pdu_t *pusch_config_pdu,
+                        dci_pdu_rel15_t *dci,
+                        csi_payload_t *csi_report,
+                        uint16_t rnti,
+                        int ss_type,
+                        const nr_dci_format_t dci_format)
+{
+  int rnti_type = get_rnti_type(mac, rnti);
+
+  NR_UE_UL_BWP_t *current_UL_BWP = mac->current_UL_BWP;
+  NR_UE_ServingCell_Info_t *sc_info = &mac->sc_info;
+
+  // Common configuration
+  *pusch_config_pdu = (nfapi_nr_ue_pusch_pdu_t){.dmrs_config_type = pusch_dmrs_type1,
+                                                .pdu_bit_map = PUSCH_PDU_BITMAP_PUSCH_DATA,
+                                                .nrOfLayers = 1,
+                                                .Tpmi = 0,
+                                                .rnti = rnti};
+
+  pusch_dmrs_AdditionalPosition_t add_pos = pusch_dmrs_pos2;
+  int dmrslength = 1;
+  NR_PUSCH_Config_t *pusch_Config = current_UL_BWP->pusch_Config;
+  pusch_config_pdu->ulsch_indicator = dci->ulsch_indicator;
+  nfapi_nr_ue_pusch_uci_t *uci = &pusch_config_pdu->pusch_uci;
+  if (dci->csi_request.nbits > 0 && dci->csi_request.val > 0) {
+    AssertFatal(csi_report, "CSI report needs to be present in case of CSI request\n");
+    *uci = (nfapi_nr_ue_pusch_uci_t){.csi_part1_bit_length = csi_report->p1_bits,
+                                     .csi_part1_payload = csi_report->part1_payload,
+                                     .csi_part2_bit_length = csi_report->p2_bits,
+                                     .csi_part2_payload = csi_report->part2_payload};
+    AssertFatal(pusch_Config && pusch_Config->uci_OnPUSCH, "UCI on PUSCH need to be configured\n");
+    NR_UCI_OnPUSCH_t *onPusch = pusch_Config->uci_OnPUSCH->choice.setup;
+    AssertFatal(onPusch && onPusch->betaOffsets && onPusch->betaOffsets->present == NR_UCI_OnPUSCH__betaOffsets_PR_semiStatic,
+                "Only semistatic beta offset is supported\n");
+    NR_BetaOffsets_t *beta_offsets = onPusch->betaOffsets->choice.semiStatic;
+
+    uci->beta_offset_csi1 =
+        uci->csi_part1_bit_length < 12 ? *beta_offsets->betaOffsetCSI_Part1_Index1 : *beta_offsets->betaOffsetCSI_Part1_Index2;
+    uci->beta_offset_csi2 =
+        uci->csi_part2_bit_length < 12 ? *beta_offsets->betaOffsetCSI_Part2_Index1 : *beta_offsets->betaOffsetCSI_Part2_Index2;
+    uci->alpha_scaling = onPusch->scaling;
+  } else
+    *uci = (nfapi_nr_ue_pusch_uci_t){0};
+
+  if (dci_format == NR_UL_DCI_FORMAT_0_0 && ss_type == NR_SearchSpace__searchSpaceType_PR_common) {
+    pusch_config_pdu->bwp_start = sc_info->initial_ul_BWPStart;
+    pusch_config_pdu->bwp_size = sc_info->initial_ul_BWPSize;
+  } else {
+    pusch_config_pdu->bwp_start = current_UL_BWP->BWPStart;
+    pusch_config_pdu->bwp_size = current_UL_BWP->BWPSize;
+  }
+
+  pusch_config_pdu->start_symbol_index = tda_info->startSymbolIndex;
+  pusch_config_pdu->nr_of_symbols = tda_info->nrOfSymbols;
+
+  /* Transform precoding */
+  pusch_config_pdu->transform_precoding = get_transformPrecoding(current_UL_BWP, dci_format, 0);
+  bool tp_enabled = pusch_config_pdu->transform_precoding == NR_PUSCH_Config__transformPrecoder_enabled;
+
+  /*DCI format-related configuration*/
+  if (dci_format == NR_UL_DCI_FORMAT_0_0) {
+    if (!tp_enabled && pusch_config_pdu->nr_of_symbols < 3)
+      pusch_config_pdu->num_dmrs_cdm_grps_no_data = 1;
+    else
+      pusch_config_pdu->num_dmrs_cdm_grps_no_data = 2;
+  } else if (dci_format == NR_UL_DCI_FORMAT_0_1) {
+    ul_layers_config(mac, pusch_config_pdu, dci, dci_format);
+    ul_ports_config(mac, &dmrslength, pusch_config_pdu, dci, dci_format);
+  } else {
+    LOG_E(NR_MAC, "UL grant from DCI format %d is not handled...\n", dci_format);
+    mac->stats.ul.bad_dci++;
+    return -1;
+  }
+
+  if (pusch_config_pdu->nrOfLayers < 1) {
+    LOG_E(NR_MAC, "Invalid UL number of layers %d from DCI\n", pusch_config_pdu->nrOfLayers);
+    mac->stats.ul.bad_dci++;
+    return -1;
+  }
+
+  int mappingtype = tda_info->mapping_type;
+
+  NR_DMRS_UplinkConfig_t *NR_DMRS_ulconfig = NULL;
+  if (pusch_Config) {
+    NR_DMRS_ulconfig = (mappingtype == NR_PUSCH_TimeDomainResourceAllocation__mappingType_typeA)
+                           ? pusch_Config->dmrs_UplinkForPUSCH_MappingTypeA->choice.setup
+                           : pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup;
+  }
+
+  pusch_config_pdu->data_scrambling_id = mac->physCellId;
+  if (pusch_Config && pusch_Config->dataScramblingIdentityPUSCH && rnti_type == TYPE_C_RNTI_
+      && !(dci_format == NR_UL_DCI_FORMAT_0_0 && ss_type == NR_SearchSpace__searchSpaceType_PR_common))
+    pusch_config_pdu->data_scrambling_id = *pusch_Config->dataScramblingIdentityPUSCH;
+
+  pusch_config_pdu->ul_dmrs_scrambling_id = mac->physCellId;
+  if (dci_format == NR_UL_DCI_FORMAT_0_1)
+    pusch_config_pdu->scid = dci->dmrs_sequence_initialization.val;
+
+  /* TRANSFORM PRECODING ------------------------------------------------------------------------------------------*/
+  if (tp_enabled) {
+    uint32_t n_RS_Id = 0;
+    if (NR_DMRS_ulconfig->transformPrecodingEnabled && NR_DMRS_ulconfig->transformPrecodingEnabled->nPUSCH_Identity != NULL)
+      n_RS_Id = *NR_DMRS_ulconfig->transformPrecodingEnabled->nPUSCH_Identity;
+    else
+      n_RS_Id = mac->physCellId;
+
+    // U as specified in section 6.4.1.1.1.2 in 38.211, if sequence hopping and group hopping are disabled
+    pusch_config_pdu->dfts_ofdm.low_papr_group_number = n_RS_Id % 30;
+
+    // V as specified in section 6.4.1.1.1.2 in 38.211 V = 0 if sequence hopping and group hopping are disabled
+    if (!NR_DMRS_ulconfig || !NR_DMRS_ulconfig->transformPrecodingEnabled
+        || (!NR_DMRS_ulconfig->transformPrecodingEnabled->sequenceGroupHopping
+            && !NR_DMRS_ulconfig->transformPrecodingEnabled->sequenceHopping))
+      pusch_config_pdu->dfts_ofdm.low_papr_sequence_number = 0;
+    else
+      AssertFatal(1 == 0, "SequenceGroupHopping or sequenceHopping are NOT Supported\n");
+
+    LOG_D(NR_MAC,
+          "TRANSFORM PRECODING IS ENABLED. CDM groups: %d, U: %d \n",
+          pusch_config_pdu->num_dmrs_cdm_grps_no_data,
+          pusch_config_pdu->dfts_ofdm.low_papr_group_number);
+  } else {
+    if (pusch_config_pdu->scid == 0 && NR_DMRS_ulconfig && NR_DMRS_ulconfig->transformPrecodingDisabled
+        && NR_DMRS_ulconfig->transformPrecodingDisabled->scramblingID0)
+      pusch_config_pdu->ul_dmrs_scrambling_id = *NR_DMRS_ulconfig->transformPrecodingDisabled->scramblingID0;
+
+    if (pusch_config_pdu->scid == 1 && NR_DMRS_ulconfig && NR_DMRS_ulconfig->transformPrecodingDisabled
+        && NR_DMRS_ulconfig->transformPrecodingDisabled->scramblingID1)
+      pusch_config_pdu->ul_dmrs_scrambling_id = *NR_DMRS_ulconfig->transformPrecodingDisabled->scramblingID1;
+  }
+
+  /* TRANSFORM PRECODING --------------------------------------------------------------------------------------------------------*/
+
+  /* IDENTIFIER_DCI_FORMATS */
+  /* FREQ_DOM_RESOURCE_ASSIGNMENT_UL */
+  if (nr_ue_process_dci_freq_dom_resource_assignment(pusch_config_pdu,
+                                                     NULL,
+                                                     NULL,
+                                                     pusch_config_pdu->bwp_size,
+                                                     0,
+                                                     0,
+                                                     dci->frequency_domain_assignment)
+      < 0) {
+    LOG_E(NR_MAC, "can't nr_ue_process_dci_freq_dom_resource_assignment()\n");
+    mac->stats.ul.bad_dci++;
+    return -1;
+  }
+
+  /* FREQ_HOPPING_FLAG */
+  if (pusch_Config && pusch_Config->frequencyHopping
+      && (pusch_Config->resourceAllocation != NR_PUSCH_Config__resourceAllocation_resourceAllocationType0)) {
+    pusch_config_pdu->frequency_hopping = dci->frequency_hopping_flag.val;
+  }
+
+  /* MCS */
+  pusch_config_pdu->mcs_index = dci->mcs;
+  long *mcs_table_config = pusch_Config ? (tp_enabled ? pusch_Config->mcs_TableTransformPrecoder : pusch_Config->mcs_Table) : NULL;
+  pusch_config_pdu->mcs_table = get_pusch_mcs_table(mcs_table_config, tp_enabled, dci_format, rnti_type, ss_type, false);
+
+  /* NDI */
+  const int pid = dci->harq_pid;
+  NR_UL_HARQ_INFO_t *harq = &mac->ul_harq_info[pid];
+  pusch_config_pdu->pusch_data.new_data_indicator = false;
+  if (dci->ndi != harq->last_ndi) {
+    pusch_config_pdu->pusch_data.new_data_indicator = true;
+    // if new data reset harq structure
+    memset(harq, 0, sizeof(*harq));
+  } else
+    harq->round++;
+  harq->last_ndi = dci->ndi;
+  /* RV */
+  pusch_config_pdu->pusch_data.rv_index = dci->rv;
+  /* HARQ_PROCESS_NUMBER */
+  pusch_config_pdu->pusch_data.harq_process_id = pid;
+
+  if (NR_DMRS_ulconfig != NULL)
+    add_pos = (NR_DMRS_ulconfig->dmrs_AdditionalPosition == NULL) ? 2 : *NR_DMRS_ulconfig->dmrs_AdditionalPosition;
+
+  /* DMRS */
+  uint l_prime_mask = get_l_prime(pusch_config_pdu->nr_of_symbols,
+                                  mappingtype,
+                                  add_pos,
+                                  dmrslength,
+                                  pusch_config_pdu->start_symbol_index,
+                                  mac->dmrs_TypeA_Position);
+  pusch_config_pdu->ul_dmrs_symb_pos = l_prime_mask;
+
+  if (sc_info->rateMatching_PUSCH) {
+    long maxMIMO_Layers = 0;
+    if (sc_info->maxMIMO_Layers_PUSCH)
+      maxMIMO_Layers = *sc_info->maxMIMO_Layers_PUSCH;
+    else if (pusch_Config && pusch_Config->maxRank)
+      maxMIMO_Layers = *pusch_Config->maxRank;
+    else {
+      if (pusch_Config && pusch_Config->txConfig) {
+        if (*pusch_Config->txConfig == NR_PUSCH_Config__txConfig_codebook)
+          maxMIMO_Layers = mac->uecap_maxMIMO_PUSCH_layers_cb;
+        else
+          maxMIMO_Layers = mac->uecap_maxMIMO_PUSCH_layers_nocb;
+      } else
+        maxMIMO_Layers = 1; // single antenna port
+    }
+    AssertFatal(maxMIMO_Layers > 0, "Invalid number of max MIMO layers for PUSCH\n");
+    pusch_config_pdu->tbslbrm = nr_compute_tbslbrm(pusch_config_pdu->mcs_table, sc_info->ul_bw_tbslbrm, maxMIMO_Layers);
+  } else
+    pusch_config_pdu->tbslbrm = 0;
+
+  /* PTRS */
+  if (pusch_Config && pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB
+      && pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup->phaseTrackingRS) {
+    if (!tp_enabled) {
+      nfapi_nr_ue_ptrs_ports_t ptrs_ports_list;
+      pusch_config_pdu->pusch_ptrs.ptrs_ports_list = &ptrs_ports_list;
+      bool valid_ptrs_setup =
+          set_ul_ptrs_values(pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup->phaseTrackingRS->choice.setup,
+                             pusch_config_pdu->rb_size,
+                             pusch_config_pdu->mcs_index,
+                             pusch_config_pdu->mcs_table,
+                             &pusch_config_pdu->pusch_ptrs.ptrs_freq_density,
+                             &pusch_config_pdu->pusch_ptrs.ptrs_time_density,
+                             &pusch_config_pdu->pusch_ptrs.ptrs_ports_list->ptrs_re_offset,
+                             &pusch_config_pdu->pusch_ptrs.num_ptrs_ports,
+                             &pusch_config_pdu->pusch_ptrs.ul_ptrs_power,
+                             pusch_config_pdu->nr_of_symbols);
+      if (valid_ptrs_setup == true) {
+        pusch_config_pdu->pdu_bit_map |= PUSCH_PDU_BITMAP_PUSCH_PTRS;
+      }
+      LOG_D(NR_MAC,
+            "UL PTRS values: PTRS time den: %d, PTRS freq den: %d\n",
+            pusch_config_pdu->pusch_ptrs.ptrs_time_density,
+            pusch_config_pdu->pusch_ptrs.ptrs_freq_density);
+    }
+  }
+  /* TPC_PUSCH */
+  bool stateless_pusch_power_control = mac->current_UL_BWP->pusch_Config != NULL
+                                       && mac->current_UL_BWP->pusch_Config->pusch_PowerControl != NULL
+                                       && mac->current_UL_BWP->pusch_Config->pusch_PowerControl->tpc_Accumulation != NULL;
+  const int table_38_213_7_1_1_1[2][4] = {{-1, 0, 1, 3}, {-4, -1, 1, 4}};
+  int delta_pusch;
+  if (stateless_pusch_power_control) {
+    delta_pusch = table_38_213_7_1_1_1[1][dci->tpc];
+  } else {
+    // TODO: This is not entirely correct. In case there is a prevously scheduled PUSCH for a future slot
+    // we should apply its TPC now.
+    delta_pusch = table_38_213_7_1_1_1[0][dci->tpc];
+  }
+  return pusch_common(mac, pusch_config_pdu, rnti, delta_pusch);
 }
 
 csi_payload_t nr_ue_aperiodic_csi_reporting(NR_UE_MAC_INST_t *mac, dci_field_t csi_request, int tda, long *k2)
@@ -1377,7 +1363,7 @@ static void nr_update_sr(NR_UE_MAC_INST_t *mac, bool BSRsent)
       NR_PUCCH_Config_t *pucch_Config = current_UL_BWP ? current_UL_BWP->pucch_Config : NULL;
       if (check_pucchres_for_pending_SR(pucch_Config, lc_info->sr_id)) {
         // trigger SR
-        LOG_W(NR_MAC, "Triggering SR for ID %d\n", lc_info->sr_id);
+        LOG_D(NR_MAC, "Triggering SR for ID %d\n", lc_info->sr_id);
         sr->pending = true;
         sr->counter = 0;
       }
@@ -1416,24 +1402,24 @@ static void nr_update_rlc_buffers_status(NR_UE_MAC_INST_t *mac, frame_t frameP, 
 }
 
 /*TS 38.321
-A BSR shall be triggered if any of the following events occur:
-- UL data, for a logical channel which belongs to an LCG, becomes available to the MAC entity; and either
-   => here we don't implement exactly the same, there is no direct relation with new data came in the UE since last BSR
+  A BSR shall be triggered if any of the following events occur:
+  - UL data, for a logical channel which belongs to an LCG, becomes available to the MAC entity; and either
+  => here we don't implement exactly the same, there is no direct relation with new data came in the UE since last BSR
 
-- this UL data belongs to a logical channel with higher priority than the priority of any logical channel
+  - this UL data belongs to a logical channel with higher priority than the priority of any logical channel
   containing available UL data which belong to any LCG; or
   => same, we don't know the last BSR content
 
-- none of the logical channels which belong to an LCG contains any available UL data.
+  - none of the logical channels which belong to an LCG contains any available UL data.
   in which case the BSR is referred below to as 'Regular BSR';
 
-- UL resources are allocated and number of padding bits is equal to or larger than the size of the Buffer Status
-Report MAC CE plus its subheader, in which case the BSR is referred below to as 'Padding BSR';
+  - UL resources are allocated and number of padding bits is equal to or larger than the size of the Buffer Status
+  Report MAC CE plus its subheader, in which case the BSR is referred below to as 'Padding BSR';
 
-- retxBSR-Timer expires, and at least one of the logical channels which belong to an LCG contains UL data, in
-which case the BSR is referred below to as 'Regular BSR';
+  - retxBSR-Timer expires, and at least one of the logical channels which belong to an LCG contains UL data, in
+  which case the BSR is referred below to as 'Regular BSR';
 
-- periodicBSR-Timer expires, in which case the BSR is referred below to as 'Periodic BSR'.
+  - periodicBSR-Timer expires, in which case the BSR is referred below to as 'Periodic BSR'.
 
 */
 
@@ -2052,9 +2038,9 @@ static void map_ssb_to_ro(NR_UE_MAC_INST_t *mac)
                         tx_ssb->nb_mapped_ro);
                   // If all the required SSBs are mapped to this RO, exit the loop of SSBs
                   if (ro_p->nb_mapped_ssb == ssb_rach_ratio) {
-                      idx++;
-                      break;
-                    }
+                    idx++;
+                    break;
+                  }
                 }
                 done = MAX_NB_SSB == idx;
               }
@@ -2272,27 +2258,27 @@ static bool schedule_uci_on_pusch(NR_UE_MAC_INST_t *mac, frame_t frame_tx, int s
       int nr_of_symbols = 0;
       int start_symbol_index = 0;
       switch(pucchres->format.present) {
-        case NR_PUCCH_Resource__format_PR_format0 :
+        case NR_PUCCH_Resource__format_PR_format0:
           nr_of_symbols = pucchres->format.choice.format0->nrofSymbols;
           start_symbol_index = pucchres->format.choice.format0->startingSymbolIndex;
           break;
-        case NR_PUCCH_Resource__format_PR_format1 :
+        case NR_PUCCH_Resource__format_PR_format1:
           nr_of_symbols = pucchres->format.choice.format1->nrofSymbols;
           start_symbol_index = pucchres->format.choice.format1->startingSymbolIndex;
           break;
-        case NR_PUCCH_Resource__format_PR_format2 :
+        case NR_PUCCH_Resource__format_PR_format2:
           nr_of_symbols = pucchres->format.choice.format2->nrofSymbols;
           start_symbol_index = pucchres->format.choice.format2->startingSymbolIndex;
           break;
-        case NR_PUCCH_Resource__format_PR_format3 :
+        case NR_PUCCH_Resource__format_PR_format3:
           nr_of_symbols = pucchres->format.choice.format3->nrofSymbols;
           start_symbol_index = pucchres->format.choice.format3->startingSymbolIndex;
           break;
-        case NR_PUCCH_Resource__format_PR_format4 :
+        case NR_PUCCH_Resource__format_PR_format4:
           nr_of_symbols = pucchres->format.choice.format4->nrofSymbols;
           start_symbol_index = pucchres->format.choice.format4->startingSymbolIndex;
           break;
-        default :
+        default:
           AssertFatal(false, "Undefined PUCCH format \n");
       }
       int final_symbol = nr_of_symbols + start_symbol_index;
@@ -2334,10 +2320,9 @@ static bool schedule_uci_on_pusch(NR_UE_MAC_INST_t *mac, frame_t frame_tx, int s
                 onPusch->betaOffsets->present == NR_UCI_OnPUSCH__betaOffsets_PR_semiStatic,
                 "Only semistatic beta offset is supported\n");
     NR_BetaOffsets_t *beta_offsets = onPusch->betaOffsets->choice.semiStatic;
-    pusch_pdu->pusch_uci.beta_offset_harq_ack = pucch->n_harq > 2 ?
-                                                       (pucch->n_harq < 12 ? *beta_offsets->betaOffsetACK_Index2 :
-                                                       *beta_offsets->betaOffsetACK_Index3) :
-                                                       *beta_offsets->betaOffsetACK_Index1;
+    pusch_pdu->pusch_uci.beta_offset_harq_ack =
+        pucch->n_harq > 2 ? (pucch->n_harq < 12 ? *beta_offsets->betaOffsetACK_Index2 : *beta_offsets->betaOffsetACK_Index3)
+                          : *beta_offsets->betaOffsetACK_Index1;
     pusch_pdu->pusch_uci.alpha_scaling = onPusch->scaling;
     mux_done = true;
   }
@@ -3430,7 +3415,7 @@ static uint8_t nr_ue_get_sdu(NR_UE_MAC_INST_t *mac,
     LOG_D(NR_MAC, "Filling remainder %d bytes to the UL PDU \n", remain);
     *(NR_MAC_SUBHEADER_FIXED *)mac_ce_info.cur_ptr = (NR_MAC_SUBHEADER_FIXED){.R = 0, .LCID = UL_SCH_LCID_PADDING};
     mac_ce_info.cur_ptr++;
-      memset(mac_ce_info.cur_ptr, 0, mac_ce_info.pdu_end - mac_ce_info.cur_ptr);
+    memset(mac_ce_info.cur_ptr, 0, mac_ce_info.pdu_end - mac_ce_info.cur_ptr);
   }
 #ifdef ENABLE_MAC_PAYLOAD_DEBUG
   LOG_I(NR_MAC, "MAC PDU %d bytes \n", mac_ce_p->cur_ptr - ulsch_buffer);

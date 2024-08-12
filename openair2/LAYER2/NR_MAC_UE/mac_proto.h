@@ -402,10 +402,14 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
                         nfapi_nr_ue_pusch_pdu_t *pusch_config_pdu,
                         dci_pdu_rel15_t *dci,
                         csi_payload_t *csi_report,
-                        RAR_grant_t *rar_grant,
                         uint16_t rnti,
                         int ss_type,
                         const nr_dci_format_t dci_format);
+int nr_config_pusch_rar(NR_UE_MAC_INST_t *mac,
+                        NR_tda_info_t *tda_info,
+                        nfapi_nr_ue_pusch_pdu_t *pusch_config_pdu,
+                        RAR_grant_t *rar_grant,
+                        uint16_t rnti);
 
 int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
                                        NR_SL_PreconfigurationNR_r16_t *sl_preconfiguration,

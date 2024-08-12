@@ -510,15 +510,8 @@ static int nr_ue_process_dci_ul_00(NR_UE_MAC_INST_t *mac,
   if (!pdu)
     return -1;
 
-  int ret = nr_config_pusch_pdu(mac,
-                                &tda_info,
-                                &pdu->pusch_config_pdu,
-                                dci,
-                                NULL,
-                                NULL,
-                                dci_ind->rnti,
-                                dci_ind->ss_type,
-                                NR_UL_DCI_FORMAT_0_0);
+  int ret =
+      nr_config_pusch_pdu(mac, &tda_info, &pdu->pusch_config_pdu, dci, NULL, dci_ind->rnti, dci_ind->ss_type, NR_UL_DCI_FORMAT_0_0);
   if (ret != 0)
     remove_ul_config_last_item(pdu);
   release_ul_config(pdu, false);
@@ -612,7 +605,6 @@ static int nr_ue_process_dci_ul_01(NR_UE_MAC_INST_t *mac,
                                 &pdu->pusch_config_pdu,
                                 dci,
                                 &csi_report,
-                                NULL,
                                 dci_ind->rnti,
                                 dci_ind->ss_type,
                                 NR_UL_DCI_FORMAT_0_1);
@@ -4046,15 +4038,7 @@ static void nr_ue_process_rar(NR_UE_MAC_INST_t *mac, nr_downlink_indication_t *d
       if (!pdu)
         return;
       // Config Msg3 PDU
-      int ret = nr_config_pusch_pdu(mac,
-                                    &tda_info,
-                                    &pdu->pusch_config_pdu,
-                                    NULL,
-                                    NULL,
-                                    &rar_grant,
-                                    rnti,
-                                    NR_SearchSpace__searchSpaceType_PR_common,
-                                    NR_DCI_NONE);
+      int ret = nr_config_pusch_rar(mac, &tda_info, &pdu->pusch_config_pdu, &rar_grant, rnti);
       if (ret != 0)
         remove_ul_config_last_item(pdu);
       release_ul_config(pdu, false);
