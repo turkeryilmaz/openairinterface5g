@@ -1317,15 +1317,14 @@ static void nr_update_sr(NR_UE_MAC_INST_t *mac, bool BSRsent)
 
   // if no pending data available for transmission
   // All pending SR(s) shall be cancelled and each respective sr-ProhibitTimer shall be stopped
-  bool data_avail = false;
+
   int idx = 0;
   for (idx = 0; idx < NR_MAX_NUM_LCID; idx++) {
-    if (sched_info->lc_sched_info[idx].LCID_buffer_remain > 0) {
-      data_avail = true;
+    if (sched_info->lc_sched_info[idx].LCID_buffer_remain) 
       break;
-    }
   }
-  if (!data_avail) {
+
+  if (idx==NR_MAX_NUM_LCID) { //all queues are empty
     for (int i = 0; i < NR_MAX_SR_ID; i++) {
       nr_sr_info_t *sr = &sched_info->sr_info[i];
       if (sr->active_SR_ID) {

@@ -2539,7 +2539,7 @@ bool trigger_periodic_scheduling_request(NR_UE_MAC_INST_t *mac, PUCCH_sched_t *p
       AssertFatal(sr_count < 2, "Cannot handle more than 1 SR per slot yet\n");
     }
   }
-  return sr_count > 0 ? true : false;
+  return sr_count > 0 ;
 }
 
 int8_t nr_ue_get_SR(NR_UE_MAC_INST_t *mac, frame_t frame, slot_t slot, NR_SchedulingRequestId_t sr_id)
@@ -2553,13 +2553,14 @@ int8_t nr_ue_get_SR(NR_UE_MAC_INST_t *mac, frame_t frame, slot_t slot, NR_Schedu
   }
 
   LOG_D(NR_MAC,
-        "[UE %d] Frame %d slot %d SR %s for ID %ld\n",
+        "[UE %d] Frame %d slot %d SR %s for ID %ld, timer %d\n",
         mac->ue_id,
         frame,
         slot,
         sr_info->pending ? "pending" : "not pending",
-        sr_id); // todo
-
+        sr_id,// todo
+	is_nr_timer_active(sr_info->prohibitTimer)); 
+  
   // TODO check if the PUCCH resource for the SR transmission occasion does not overlap with a UL-SCH resource
   if (!sr_info->pending || is_nr_timer_active(sr_info->prohibitTimer))
     return 0;
