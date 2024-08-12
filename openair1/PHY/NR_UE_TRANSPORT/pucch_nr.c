@@ -164,15 +164,11 @@ void nr_generate_pucch0(const PHY_VARS_NR_UE *ue,
       //((int16_t *)txptr[0][re_offset])[0] = (int16_t)((int32_t)amp * x_n_re[(12*l)+n])>>15;
       //((int16_t *)txptr[0][re_offset])[1] = (int16_t)((int32_t)amp * x_n_im[(12*l)+n])>>15;
       //txptr[re_offset] = (x_n_re[(12*l)+n]<<16) + x_n_im[(12*l)+n];
-#if 0
-      // LOG_I(NR_PHY, "\t [nr_generate_pucch0] mapping to RE \t amp=%d \tofdm_symbol_size=%d \tN_RB_DL=%d \tfirst_carrier_offset=%d \ttxptr(%u)=(x_n(l=%d,n=%d)=(%d,%d))\n",
-      //        amp, frame_parms->ofdm_symbol_size, frame_parms->N_RB_DL, frame_parms->first_carrier_offset, (l2 * frame_parms->ofdm_symbol_size) + re_offset,
-      //        l2, n, txdataF[0][(l2*frame_parms->ofdm_symbol_size) + re_offset].r,
-      //        txdataF[0][(l2*frame_parms->ofdm_symbol_size) + re_offset].i);
-      LOG_I(NR_PHY, "\t [nr_generate_pucch0] \ttxptr(%u)=(x_n(l=%d,n=%d)=(%d,%d))\n",
-           (l2 * frame_parms->ofdm_symbol_size) + re_offset,
-           l2, n, txdataF[0][(l2*frame_parms->ofdm_symbol_size) + re_offset].r,
-           txdataF[0][(l2*frame_parms->ofdm_symbol_size) + re_offset].i);
+#ifdef DEBUG_NR_PUCCH_TX
+      LOG_I(NR_PHY, "\t [nr_generate_pucch0] mapping to RE \t amp=%d \tofdm_symbol_size=%d \tN_RB_DL=%d \tfirst_carrier_offset=%d \ttxptr(%u)=(x_n(l=%d,n=%d)=(%d,%d))\n",
+             amp, frame_parms->ofdm_symbol_size, frame_parms->N_RB_DL, frame_parms->first_carrier_offset, (l2 * frame_parms->ofdm_symbol_size) + re_offset,
+             l2, n, txdataF[0][(l2*frame_parms->ofdm_symbol_size) + re_offset].r,
+             txdataF[0][(l2*frame_parms->ofdm_symbol_size) + re_offset].i);
 #endif
       re_offset++;
       if (re_offset >= frame_parms->ofdm_symbol_size)

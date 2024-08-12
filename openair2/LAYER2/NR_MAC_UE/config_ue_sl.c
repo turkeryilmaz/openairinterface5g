@@ -628,10 +628,10 @@ void nr_rrc_mac_config_req_sl_mib(module_id_t module_id,
                                                     sl_mac->rx_sl_bch.ssb_time_alloc.sl_NumSSB_WithinPeriod,
                                                     sl_mac->rx_sl_bch.ssb_time_alloc.sl_TimeOffsetSSB,
                                                     sl_mac->rx_sl_bch.ssb_time_alloc.sl_TimeInterval);
-    LOG_I(NR_MAC, "sl_TDD_config %p\n", sl_mac->sl_TDD_config);
+
     if (sl_mac->sl_TDD_config == NULL)
       sl_mac->sl_TDD_config = CALLOC(sizeof(NR_TDD_UL_DL_ConfigCommon_t), 1);
-    LOG_I(NR_MAC, "sl_TDD_config %p\n", sl_mac->sl_TDD_config);
+
     sl_nr_phy_config_request_t *cfg = &sl_mac->sl_phy_config.sl_config_req;
     int ret = 1;
     ret = sl_decode_sl_TDD_Config(sl_mac->sl_TDD_config,
@@ -665,7 +665,7 @@ void nr_rrc_mac_config_req_sl_mib(module_id_t module_id,
     if (return_tdd !=0)
       LOG_E(PHY,"TDD configuration can not be done\n");
 
-    AssertFatal(get_nrUE_params()->sync_ref == 0, "EEEEEEE Expecting Nearby UE\n");
+    AssertFatal(get_nrUE_params()->sync_ref == 0, "Expecting Nearby UE\n");
     int scs = get_softmodem_params()->numerology;
     const int nr_slots_frame = nr_slots_per_frame[scs];
     NR_TDD_UL_DL_Pattern_t *tdd = &sl_mac->sl_TDD_config->pattern1;

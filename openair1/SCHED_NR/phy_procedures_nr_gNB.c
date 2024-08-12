@@ -99,15 +99,15 @@ void nr_common_signal_procedures (PHY_VARS_gNB *gNB,int frame,int slot,nfapi_nr_
                           cfg,
                           fp);
 
-// #if T_TRACER
-//   if (T_ACTIVE(T_GNB_PHY_MIB)) {
-//     unsigned char bch[3];
-//     bch[0] = ssb_pdu.ssb_pdu_rel15.bchPayload & 0xff;
-//     bch[1] = (ssb_pdu.ssb_pdu_rel15.bchPayload >> 8) & 0xff;
-//     bch[2] = (ssb_pdu.ssb_pdu_rel15.bchPayload >> 16) & 0xff;
-//     T(T_GNB_PHY_MIB, T_INT(0) /* module ID */, T_INT(frame), T_INT(slot), T_BUFFER(bch, 3));
-//   }
-// #endif
+#if T_TRACER
+  if (T_ACTIVE(T_GNB_PHY_MIB)) {
+    unsigned char bch[3];
+    bch[0] = ssb_pdu.ssb_pdu_rel15.bchPayload & 0xff;
+    bch[1] = (ssb_pdu.ssb_pdu_rel15.bchPayload >> 8) & 0xff;
+    bch[2] = (ssb_pdu.ssb_pdu_rel15.bchPayload >> 16) & 0xff;
+    T(T_GNB_PHY_MIB, T_INT(0) /* module ID */, T_INT(frame), T_INT(slot), T_BUFFER(bch, 3));
+  }
+#endif
 
   // Beam_id is currently used only for FR2
   if (fp->freq_range==nr_FR2){
@@ -232,9 +232,9 @@ void phy_procedures_gNB_TX(processingData_L1tx_t *msgTx,
                          0,
                          fp->Ncp == EXTENDED ? 12 : 14);
 
-    // T(T_GNB_PHY_DL_OUTPUT_SIGNAL, T_INT(0),
-    //   T_INT(frame), T_INT(slot),
-    //   T_INT(aa), T_BUFFER(&gNB->common_vars.txdataF[aa][txdataF_offset], fp->samples_per_slot_wCP*sizeof(int32_t)));
+    T(T_GNB_PHY_DL_OUTPUT_SIGNAL, T_INT(0),
+      T_INT(frame), T_INT(slot),
+      T_INT(aa), T_BUFFER(&gNB->common_vars.txdataF[aa][txdataF_offset], fp->samples_per_slot_wCP*sizeof(int32_t)));
   }
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_gNB_TX + gNB->CC_id, 0);
@@ -1003,21 +1003,21 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
           srs_est = -1;
         }
 
-        // T(T_GNB_PHY_UL_FREQ_CHANNEL_ESTIMATE,
-        //   T_INT(0),
-        //   T_INT(srs_pdu->rnti),
-        //   T_INT(frame_rx),
-        //   T_INT(0),
-        //   T_INT(0),
-        //   T_BUFFER(srs_estimated_channel_freq[0][0], frame_parms->ofdm_symbol_size * sizeof(int32_t)));
+        T(T_GNB_PHY_UL_FREQ_CHANNEL_ESTIMATE,
+          T_INT(0),
+          T_INT(srs_pdu->rnti),
+          T_INT(frame_rx),
+          T_INT(0),
+          T_INT(0),
+          T_BUFFER(srs_estimated_channel_freq[0][0], frame_parms->ofdm_symbol_size * sizeof(int32_t)));
 
-        // T(T_GNB_PHY_UL_TIME_CHANNEL_ESTIMATE,
-        //   T_INT(0),
-        //   T_INT(srs_pdu->rnti),
-        //   T_INT(frame_rx),
-        //   T_INT(0),
-        //   T_INT(0),
-        //   T_BUFFER(srs_estimated_channel_time_shifted[0][0], frame_parms->ofdm_symbol_size * sizeof(int32_t)));
+        T(T_GNB_PHY_UL_TIME_CHANNEL_ESTIMATE,
+          T_INT(0),
+          T_INT(srs_pdu->rnti),
+          T_INT(frame_rx),
+          T_INT(0),
+          T_INT(0),
+          T_BUFFER(srs_estimated_channel_time_shifted[0][0], frame_parms->ofdm_symbol_size * sizeof(int32_t)));
 
         gNB->UL_INFO.srs_ind.pdu_list = &gNB->srs_pdu_list[0];
         gNB->UL_INFO.srs_ind.sfn = frame_rx;
@@ -1174,9 +1174,9 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
 
   stop_meas(&gNB->phy_proc_rx);
 
-  // if (pucch_decode_done || pusch_decode_done) {
-  //   T(T_GNB_PHY_PUCCH_PUSCH_IQ, T_INT(frame_rx), T_INT(slot_rx), T_BUFFER(&gNB->common_vars.rxdataF[0][0], gNB->frame_parms.symbols_per_slot * gNB->frame_parms.ofdm_symbol_size * 4));
-  // }
+  if (pucch_decode_done || pusch_decode_done) {
+    T(T_GNB_PHY_PUCCH_PUSCH_IQ, T_INT(frame_rx), T_INT(slot_rx), T_BUFFER(&gNB->common_vars.rxdataF[0][0], gNB->frame_parms.symbols_per_slot * gNB->frame_parms.ofdm_symbol_size * 4));
+  }
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_gNB_UESPEC_RX,0);
   return pusch_DTX;

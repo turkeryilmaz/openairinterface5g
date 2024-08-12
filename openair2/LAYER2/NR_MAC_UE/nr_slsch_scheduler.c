@@ -111,7 +111,7 @@ void handle_nr_ue_sl_harq(module_id_t mod_id,
     uint8_t rx_harq_id = matched_harqs[i]->sl_harq_pid;
     NR_SL_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
     int8_t harq_pid = sched_ctrl->feedback_sl_harq.head;
-    LOG_I(NR_MAC, "Comparing %4u.%2u rx_harq_id vs feedback harq_pid = %d %d\n", frame, slot, rx_harq_id, harq_pid);
+    LOG_D(NR_MAC, "Comparing %4u.%2u rx_harq_id vs feedback harq_pid = %d %d\n", frame, slot, rx_harq_id, harq_pid);
     while (rx_harq_id != harq_pid || harq_pid < 0) {
       LOG_W(NR_MAC,
             "Unexpected SLSCH HARQ PID %d (have %d) for src id %4d\n",
@@ -156,7 +156,7 @@ void handle_nr_ue_sl_harq(module_id_t mod_id,
     } else {
       harq->round++;
       LOG_W(NR_MAC,
-            "Tx_slot %4u.%2u Slharq id %d crc failed for src id %4d\n",
+            "%4u.%2u Slharq id %d crc failed for src id %4d\n",
             frame,
             slot,
             harq_pid,
@@ -169,8 +169,8 @@ void handle_nr_ue_sl_harq(module_id_t mod_id,
   matched_harqs = NULL;
 }
 
-bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP,int slotP, nr_sci_pdu_t *sci_pdu,
-                       nr_sci_pdu_t *sci2_pdu,uint8_t *slsch_pdu,nr_sci_format_t format2,
+bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_t *sci_pdu,
+                       nr_sci_pdu_t *sci2_pdu, uint8_t *slsch_pdu, nr_sci_format_t format2,
                        uint16_t *slsch_pdu_length_max, NR_UE_sl_harq_t *cur_harq,
                        mac_rlc_status_resp_t *rlc_status) {
 
@@ -187,7 +187,7 @@ bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP,int slotP, nr_sci_pdu_t
   bool csi_acq = !mac->SL_MAC_PARAMS->sl_CSI_Acquisition;
   bool csi_req_slot = !((slots_per_frame * frameP + slotP - sl_mac->slot_offset) % sl_mac->slot_periodicity);
   bool is_harq_feedback = is_feedback_scheduled(mac, frameP, slotP);
-  LOG_D(NR_MAC, "Tx_slot frame.slot %4d.%2d bytes_in_buffer? %d, harq_feedback %d, (csi_acq && csi_req_slot) %d, sl_csi_report %p\n",
+  LOG_D(NR_MAC, "frame.slot %4d.%2d bytes_in_buffer? %d, harq_feedback %d, (csi_acq && csi_req_slot) %d, sl_csi_report %p\n",
         frameP, slotP, rlc_status->bytes_in_buffer >= 0, is_harq_feedback, (csi_acq && csi_req_slot), mac->sl_csi_report);
   if (rlc_status->bytes_in_buffer >= 0 || is_harq_feedback || (csi_acq && csi_req_slot) || mac->sl_csi_report) {
      uint8_t cqi_Table = 0;
@@ -232,11 +232,10 @@ bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP,int slotP, nr_sci_pdu_t
 
      uint16_t num_subch = sl_get_num_subch(mac->sl_tx_res_pool);
      bool is_feedback_slot = false;
-     LOG_D(NR_MAC, "Tx_slot %4d.%2d loop size %d\n", frameP, slotP, (n_ul_slots_period * num_subch));
      for (int i = 0; i < (n_ul_slots_period * num_subch); i++) {
         SL_sched_feedback_t  *sched_psfch = &mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch[i];
         if (slotP == sched_psfch->feedback_slot) {
-            LOG_D(NR_MAC, "Tx_slot %4d.%2d i = %d sched_psfch %p feedback slot %d\n", frameP, slotP, i, sched_psfch, sched_psfch->feedback_slot);
+            LOG_D(NR_MAC, "%4d.%2d i = %d sched_psfch %p feedback slot %d\n", frameP, slotP, i, sched_psfch, sched_psfch->feedback_slot);
             is_feedback_slot = true;
             break;
         }
@@ -251,19 +250,15 @@ bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP,int slotP, nr_sci_pdu_t
         sci_pdu->psfch_overhead.val = 0;
 
 
-     LOG_D(NR_MAC, "Tx_slot %4d.%2d TX psfch_overhead %d\n", frameP, slotP, sci_pdu->psfch_overhead.val);
      sci_pdu->reserved.val = mac->is_synced ? 1 : 0;
      sci_pdu->conflict_information_receiver.val = 0;
      sci_pdu->beta_offset_indicator = 0;
-     LOG_D(NR_MAC, "Tx Reserved val: %d\n", sci_pdu->reserved.val);
      sci2_pdu->harq_pid = cur_harq ? cur_harq->sl_harq_pid : 0;
      sci2_pdu->ndi = (1 - sci2_pdu->ndi) & 1;
      sci2_pdu->rv_index = 0;//nr_rv_round_map[cur_harq->round%4];
      sci2_pdu->source_id = mac->src_id;
      sci2_pdu->dest_id = dest;
-    //  int32_t tmp = rlc_status->bytes_in_buffer;
-    //  bool feedback_size = tmp > 0 && slotP == 0 ?
-     sci2_pdu->harq_feedback = 1;//rlc_status->bytes_in_buffer > 0 ? 1 : 0;
+     sci2_pdu->harq_feedback = 1; //rlc_status->bytes_in_buffer > 0 ? 1 : 0;
      LOG_D(NR_MAC, "%4d.%2d Comparing Setting harq_feedback %d bytes_in_buffer %d sl_harq_pid %d\n", frameP, slotP, sci2_pdu->harq_feedback, rlc_status->bytes_in_buffer, cur_harq ? cur_harq->sl_harq_pid : 0);
      sci2_pdu->cast_type = 1;
      if (format2 == NR_SL_SCI_FORMAT_2C || format2 == NR_SL_SCI_FORMAT_2A) {

@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
   /* to disable the checks done by this program, uncomment the following
    * line, ie. remove the leading '//'
    */
-  return 0;
+  //return 0;
 
   if (argc != 3) err("usage: %s <T_messages.txt> <vcd_signal_dumper.h>", argv[0]);
   char *T_msg_txt = argv[1];

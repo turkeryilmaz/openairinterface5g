@@ -3247,7 +3247,12 @@ uint8_t sl_determine_if_SSB_slot(uint16_t frame, uint16_t slot, uint16_t slots_p
                                              frame, slot, sl_bch->ssb_slot,sl_bch->num_ssb);
   return 0;
 }
-void preprocess(NR_UE_MAC_INST_t *mac, NR_sched_pssch_t *sched_pssch, uint16_t frame, uint16_t slot, const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp) {
+
+void preprocess(NR_UE_MAC_INST_t *mac,
+                NR_sched_pssch_t *sched_pssch,
+                uint16_t frame,
+                uint16_t slot,
+                const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp) {
   int locbw = sl_bwp->sl_BWP_Generic_r16->sl_BWP_r16->locationAndBandwidth;
   sched_pssch->mu = mac->SL_MAC_PARAMS->sl_phy_config.sl_config_req.sl_bwp_config.sl_scs;
   sched_pssch->rbSize = NRRIV2BW(locbw, MAX_BWP_SIZE);
@@ -3264,10 +3269,10 @@ void preprocess(NR_UE_MAC_INST_t *mac, NR_sched_pssch_t *sched_pssch, uint16_t f
     NR_sched_pssch_t *sched_pssch = &sched_ctrl->sched_pssch;
     sched_pssch->sl_harq_pid = sched_ctrl->retrans_sl_harq.head;
   }
-  LOG_D(NR_MAC, "Tx_slot %4u.%2u sl_harq_pid %d\n", frame, slot, sched_pssch->sl_harq_pid);
 }
+
 bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
-		              nr_sidelink_indication_t *sl_ind,
+                              nr_sidelink_indication_t *sl_ind,
                               const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp,
                               const NR_SL_ResourcePool_r16_t *sl_res_pool,
                               sl_nr_tx_config_request_t *tx_config,
@@ -3352,7 +3357,6 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
       cur_harq = &sched_ctrl->sl_harq_processes[harq_id];
       DevAssert(!cur_harq->is_waiting);
       add_tail_nr_list(&sched_ctrl->feedback_sl_harq, harq_id);
-      LOG_D(NR_MAC, "Tx_slot %4d.%2d harq_id %d cur_harq %p\n", frame, slot, harq_id, cur_harq);
       /*
       SLSCH tx computes feedback frame and slot, which will be used by transmitter of PSFCH after receiving this SLSCH.
       Transmitter of SLSCH stores the feedback frame and slot in harq process to use those in retreiving the feedback.
@@ -3368,7 +3372,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
       int feedback_frame, feedback_slot;
       uint16_t num_subch = sl_get_num_subch(mac->sl_tx_res_pool);
       int psfch_max_size = (psfch_period * num_subch);
-      int fb_size = get_pssch_to_harq_feedback(pssch_to_harq_feedback, psfch_min_time_gap);
+      int fb_size = get_pssch_to_harq_feedback(pssch_to_harq_feedback, psfch_min_time_gap, tdd, nr_slots_frame);
       LOG_D(NR_MAC, "Tx_slot %4d.%2d fb_size %d\n", frame, slot, fb_size);
       int rcv_tx_slot = (slot + DURATION_RX_TO_TX) % nr_slots_frame;
       int rcv_tx_frame = (frame + ((slot + DURATION_RX_TO_TX) / nr_slots_frame)) % 1024;
@@ -3382,7 +3386,6 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
         uint8_t k = find_nr_ue_sl_harq(feedback_frame, feedback_slot, sched_ctrl, NULL);
         if (k == psfch_max_size)
           continue;
-        LOG_D(NR_MAC, "Tx_slot %4d.%2d find_nr_ue_sl_harq k %d expected feedback %4d.%2d\n", frame, slot, k, feedback_frame, feedback_slot);
         break;
       }
 
@@ -3396,7 +3399,6 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
                                             tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu.slsch_payload,
                                             NR_SL_SCI_FORMAT_2A, &slsch_pdu_length_max, cur_harq, &rlc_status);
 
-    LOG_D(NR_MAC, "Tx_slot_1 %4d.%2d: schedule_slsch %d\n", frame, slot, schedule_slsch);
     if (!schedule_slsch) return false;
 
     const uint8_t sh_size = sizeof(NR_MAC_SUBHEADER_LONG);
@@ -3684,7 +3686,7 @@ uint8_t nr_ue_sl_psbch_scheduler(nr_sidelink_indication_t *sl_ind,
       tx_config->tx_config_list[0].tx_psbch_config_pdu.psbch_tx_power = 0;//TBD...
       memcpy(tx_config->tx_config_list[0].tx_psbch_config_pdu.psbch_payload, sl_mac_params->tx_sl_bch.sl_mib, 4);
 
-      if ((frame&127) ==0 ) LOG_D(NR_MAC, "[SyncRefUE%d] TTI-%d:%d TX PSBCH REQ- tx_slss_id:%d, sl-mib:%x, numSSB:%d, next SSB slot:%d\n",
+      if ((frame&127) == 0 ) LOG_D(NR_MAC, "[SyncRefUE%d] TTI-%d:%d TX PSBCH REQ- tx_slss_id:%d, sl-mib:%x, numSSB:%d, next SSB slot:%d\n",
                                                             sl_ind->module_id,frame, slot,
                                                             sl_mac_params->tx_sl_bch.slss_id,
                                                             (*(uint32_t *)tx_config->tx_config_list[0].tx_psbch_config_pdu.psbch_payload),
@@ -3780,8 +3782,9 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind) {
   if (sl_ind->slot_type==SIDELINK_SLOT_TYPE_TX || sl_ind->phy_data==NULL) rx_allowed=false;
   static uint16_t prev_slot = 0;
   if (((get_nrUE_params()->sync_ref && (sl_ind->slot_rx == 16 || sl_ind->slot_rx == 17
-     || sl_ind->slot_rx == 18 || sl_ind->slot_rx == 18 || sl_ind->slot_rx == 19)) ||
-     (!get_nrUE_params()->sync_ref && (sl_ind->slot_rx == 6 || sl_ind->slot_rx == 7 || sl_ind->slot_rx == 8 || sl_ind->slot_rx == 9)))
+     || sl_ind->slot_rx == 18 || sl_ind->slot_rx == 19)) ||
+     (!get_nrUE_params()->sync_ref && (sl_ind->slot_rx == 6 || sl_ind->slot_rx == 7 ||
+      sl_ind->slot_rx == 8 || sl_ind->slot_rx == 9)))
       && (prev_slot != slot) && rx_allowed && !is_psbch_slot) {
       nr_ue_sl_pscch_rx_scheduler(sl_ind, mac->sl_bwp, mac->sl_rx_res_pool, &rx_config, &tti_action);
       prev_slot = slot;

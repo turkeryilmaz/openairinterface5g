@@ -769,7 +769,6 @@ int8_t sl_handle_scheduled_response(nr_scheduled_response_t *scheduled_response)
           sl_nr_tx_config_pscch_pssch_pdu_t *tx_config_pdu = &sl_tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu;
           phy_data_tx->sl_tx_action = sl_tx_config->tx_config_list[0].pdu_type;
           phy_data_tx->nr_sl_pssch_pscch_pdu = *tx_config_pdu;
-          
           LOG_D(PHY, "Recvd CONFIG_TYPE_%s in (%d.%d) PSCCH startRB %hhu, PSCCH numRB %hhu\n",
                 sl_tx_action[phy_data_tx->sl_tx_action - SL_NR_CONFIG_TYPE_TX_PSBCH],
                 frame, slot,

@@ -20,6 +20,7 @@
  */
 
 #include <math.h>
+#include <cblas.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -526,13 +527,15 @@ double get_normalization_ch_factor(channel_desc_t *desc)
       bzero(acorr, desc->nb_tx * desc->nb_rx * sizeof(struct complexd));
       for (int aatx = 0; aatx < desc->nb_tx; aatx++) {
         for (int aarx = 0; aarx < desc->nb_rx; aarx++) {
-          for (int inside = 0; inside < desc->nb_tx * desc->nb_rx; inside++) {
-            const cd_t tmp = cdMul(anew[aarx + aatx * desc->nb_rx], desc->R_sqrt[aarx + aatx * desc->nb_rx][inside]);
-            csum(acorr[inside], tmp, acorr[inside]);
-          }
+          cblas_zaxpy(desc->nb_tx * desc->nb_rx,
+                      (void *)&anew[aarx + (aatx * desc->nb_rx)],
+                      (void *)desc->R_sqrt[aarx + (aatx * desc->nb_rx)],
+                      1,
+                      (void *)acorr,
+                      1);
         } // for (int aarx = 0; aarx < desc->nb_rx; aarx++)
       } // for (int aatx = 0; aatx < desc->nb_tx; aatx++)
-      memcpy(a[l], acorr, desc->nb_tx * desc->nb_rx * sizeof(*acorr));
+      cblas_zcopy(desc->nb_tx * desc->nb_rx, (void *)acorr, 1, (void *)a[l], 1);
     } // for (int l = 0; l < (int)desc->nb_taps; l++)
 
     for (int aarx = 0; aarx < desc->nb_rx; aarx++) {
@@ -1756,7 +1759,7 @@ int random_channel(channel_desc_t *desc, uint8_t abstraction_flag) {
         acorr[aarx+(aatx*desc->nb_rx)].i = desc->ch[aarx+(aatx*desc->nb_rx)][0].i;
       }
     }
-    memcpy(desc->a[0], acorr, desc->nb_tx * desc->nb_rx * sizeof(*acorr));
+    cblas_zcopy(desc->nb_tx*desc->nb_rx, (void *) acorr, 1, (void *) desc->a[0], 1);
     stop_meas(&desc->random_channel);
     desc->first_run = 0;
     return 0;
@@ -1807,17 +1810,16 @@ int random_channel(channel_desc_t *desc, uint8_t abstraction_flag) {
     if (desc->modelid >= TDL_A && desc->modelid <= TDL_E) {
       for (aatx = 0; aatx < desc->nb_tx; aatx++) {
         for (aarx=0; aarx<desc->nb_rx; aarx++) {
-          for (int inside = 0; inside < desc->nb_tx * desc->nb_rx; inside++) {
-            const cd_t tmp = cdMul(anew[aarx + aatx * desc->nb_rx], desc->R_sqrt[aarx + aatx * desc->nb_rx][inside]);
-            csum(acorr[inside], tmp, acorr[inside]);
-          }
+          cblas_zaxpy(desc->nb_tx*desc->nb_rx,
+                      (void *) &anew[aarx+(aatx*desc->nb_rx)],
+                      (void *) desc->R_sqrt[aarx+(aatx*desc->nb_rx)],
+                      1,
+                      (void *) acorr,
+                      1);
         }
       }
     } else {
-      for (int inside = 0; inside < desc->nb_tx * desc->nb_rx; inside++) {
-        const cd_t tmp = cdMul(desc->R_sqrt[i / 3][0], anew[inside]);
-        csum(acorr[inside], tmp, acorr[inside]);
-      }
+      cblas_zaxpy(desc->nb_tx*desc->nb_rx, (void *) desc->R_sqrt[i/3], (void *) anew, 1, (void *) acorr, 1);
     }
 
     /*
@@ -1842,7 +1844,7 @@ int random_channel(channel_desc_t *desc, uint8_t abstraction_flag) {
     */
 
     if (desc->first_run==1) {
-      memcpy(desc->a[i], acorr, desc->nb_tx * desc->nb_rx * sizeof(*acorr));
+      cblas_zcopy(desc->nb_tx*desc->nb_rx, (void *) acorr, 1, (void *) desc->a[i], 1);
     } else {
       // a = alpha*acorr+beta*a
       // a = beta*a
@@ -1851,11 +1853,8 @@ int random_channel(channel_desc_t *desc, uint8_t abstraction_flag) {
       alpha.i = 0;
       beta.r = sqrt(desc->forgetting_factor);
       beta.i = 0;
-      for (int inside = 0; inside < desc->nb_tx * desc->nb_rx; inside++) {
-        desc->a[i][inside] = cdMul(beta, desc->a[i][inside]);
-        const cd_t tmp = cdMul(alpha, acorr[inside]);
-        csum(desc->a[i][inside], tmp, desc->a[i][inside]);
-      }
+      cblas_zscal(desc->nb_tx*desc->nb_rx, (void *) &beta, (void *) desc->a[i], 1);
+      cblas_zaxpy(desc->nb_tx*desc->nb_rx, (void *) &alpha, (void *) acorr, 1, (void *) desc->a[i], 1);
       //  desc->a[i][aarx+(aatx*desc->nb_rx)].x = (sqrt(desc->forgetting_factor)*desc->a[i][aarx+(aatx*desc->nb_rx)].x) + sqrt(1-desc->forgetting_factor)*anew.x;
       //  desc->a[i][aarx+(aatx*desc->nb_rx)].y = (sqrt(desc->forgetting_factor)*desc->a[i][aarx+(aatx*desc->nb_rx)].y) + sqrt(1-desc->forgetting_factor)*anew.y;
     }
