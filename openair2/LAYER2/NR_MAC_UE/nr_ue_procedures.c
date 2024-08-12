@@ -177,7 +177,7 @@ void nr_ue_init_mac(module_id_t module_idP)
     mac->sl_info.list[i]->dest_id = 0;
     mac->sl_info.list[i]->UE_sched_ctrl.csi_report.ri = 0;
     mac->sl_info.list[i]->UE_sched_ctrl.csi_report.cqi = -1;
-    mac->sl_info.list[i]->UE_sched_ctrl.sl_max_mcs = 9;
+    mac->sl_info.list[i]->UE_sched_ctrl.sl_max_mcs = 1;
     NR_SL_UE_sched_ctrl_t *UE_sched_ctrl = &mac->sl_info.list[i]->UE_sched_ctrl;
     create_nr_list(&UE_sched_ctrl->available_sl_harq, 16);
     for (int harq = 0; harq < 16; harq++)
