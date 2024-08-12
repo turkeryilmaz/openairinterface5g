@@ -40,7 +40,8 @@
 #include "PHY/NR_REFSIG/nr_refsig.h"
 #include "SCHED_NR/fapi_nr_l1.h"
 #include "PHY/NR_REFSIG/ul_ref_seq_nr.h"
-
+#include "GNB_APP/MACRLC_nr_paramdef.h"
+#include "GNB_APP/gnb_paramdef.h"
 
 int l1_north_init_gNB() {
 
@@ -101,10 +102,25 @@ void reset_active_stats(PHY_VARS_gNB *gNB, int frame)
   }
 }
 
+static void get_beam_config(NR_gNB_COMMON *common_vars)
+{
+  paramdef_t  MacRLC_Params[] = MACRLCPARAMS_DESC;
+  paramlist_def_t MacRLC_ParamList = {CONFIG_STRING_MACRLC_LIST, NULL, 0};
+  config_getlist(config_get_if(), &MacRLC_ParamList, MacRLC_Params, sizeofArray(MacRLC_Params), NULL);
+  AssertFatal(MacRLC_ParamList.numelt < 2, "Not expecting more than 1 MAC RLC configuration\n");
+  if (MacRLC_ParamList.numelt == 0) {
+    common_vars->analog_bf = false;
+    common_vars->num_beams_period = 1;
+  } else {
+    common_vars->num_beams_period = *MacRLC_ParamList.paramarray[0][MACRLC_ANALOG_BEAMS_PERIOD_IDX].u8ptr;
+    common_vars->analog_bf = *MacRLC_ParamList.paramarray[0][MACRLC_ANALOG_BEAMFORMING_IDX].u8ptr;
+  }
+}
+
 // A global var to reduce the changes size
 ldpc_interface_t ldpc_interface = {0}, ldpc_interface_offload = {0};
 
-int phy_init_nr_gNB(PHY_VARS_gNB *gNB)
+void phy_init_nr_gNB(PHY_VARS_gNB *gNB)
 {
   // shortcuts
   NR_DL_FRAME_PARMS *const fp       = &gNB->frame_parms;
@@ -112,16 +128,18 @@ int phy_init_nr_gNB(PHY_VARS_gNB *gNB)
   NR_gNB_COMMON *const common_vars  = &gNB->common_vars;
   NR_gNB_PRACH *const prach_vars   = &gNB->prach_vars;
 
-  int i;
-  int Ptx=cfg->carrier_config.num_tx_ant.value;
-  int Prx=cfg->carrier_config.num_rx_ant.value;
+  get_beam_config(common_vars);
+
+  int Ptx = cfg->carrier_config.num_tx_ant.value;
+  int Prx = cfg->carrier_config.num_rx_ant.value;
   int max_ul_mimo_layers = 4;
 
-  AssertFatal(Ptx>0 && Ptx<9,"Ptx %d is not supported\n",Ptx);
-  AssertFatal(Prx>0 && Prx<9,"Prx %d is not supported\n",Prx);
+  AssertFatal(Ptx > 0 && Ptx < 9,"Ptx %d is not supported\n", Ptx);
+  AssertFatal(Prx > 0 && Prx < 9,"Prx %d is not supported\n", Prx);
   LOG_I(PHY,"[gNB %d] %s() About to wait for gNB to be configured\n", gNB->Mod_id, __FUNCTION__);
 
-  while(gNB->configured == 0) usleep(10000);
+  while(gNB->configured == 0)
+    usleep(10000);
 
   load_dftslib();
 
@@ -172,19 +190,21 @@ int phy_init_nr_gNB(PHY_VARS_gNB *gNB)
     }
   }
 
-  common_vars->txdataF = (c16_t **)malloc16(Ptx*sizeof(c16_t*));
-  common_vars->rxdataF = (c16_t **)malloc16(Prx*sizeof(c16_t*));
-  /* Do NOT allocate per-antenna txdataF/rxdataF: the gNB gets a pointer to the
+  /* Do NOT allocate per-antenna rxdataF: the gNB gets a pointer to the
    * RU to copy/recover freq-domain memory from there */
-  common_vars->beam_id = (uint8_t **)malloc16(Ptx*sizeof(uint8_t*));
+  common_vars->rxdataF = (c16_t **)malloc16(Prx * sizeof(c16_t*));
 
-  for (i=0;i<Ptx;i++){
-    common_vars->txdataF[i] = (c16_t*)malloc16_clear(fp->samples_per_frame_wCP*sizeof(c16_t)); // [hna] samples_per_frame without CP
-    LOG_D(PHY,"[INIT] common_vars->txdataF[%d] = %p (%lu bytes)\n",
-          i,common_vars->txdataF[i],
-          fp->samples_per_frame_wCP*sizeof(c16_t));
-    common_vars->beam_id[i] = (uint8_t*)malloc16_clear(fp->symbols_per_slot*fp->slots_per_frame*sizeof(uint8_t));
-    memset(common_vars->beam_id[i],255,fp->symbols_per_slot*fp->slots_per_frame);
+  common_vars->num_beams = cfg->dbt_config.num_dig_beams;
+  if (common_vars->num_beams > 0) {
+    common_vars->beam_id = (int **)malloc16(common_vars->num_beams_period * sizeof(int*));
+    for (int i = 0; i < common_vars->num_beams_period; i++)
+      common_vars->beam_id[i] = (int*)malloc16_clear(fp->symbols_per_slot * fp->slots_per_frame * sizeof(int));
+  }
+  common_vars->txdataF = (c16_t ***)malloc16(common_vars->num_beams_period * sizeof(c16_t**));
+  for (int i = 0; i < common_vars->num_beams_period; i++) {
+    common_vars->txdataF[i] = (c16_t**)malloc16_clear(Ptx * sizeof(c16_t*));
+    for (int j = 0; j < Ptx; j++)
+      common_vars->txdataF[i][j] = (c16_t*)malloc16_clear(fp->samples_per_frame_wCP * sizeof(c16_t));
   }
   common_vars->debugBuff = (int32_t*)malloc16_clear(fp->samples_per_frame*sizeof(int32_t)*100);	
   common_vars->debugBuff_sample_offset = 0; 
@@ -209,14 +229,14 @@ int phy_init_nr_gNB(PHY_VARS_gNB *gNB)
     pusch->ul_ch_estimates_time = (int32_t **)malloc16(n_buf * sizeof(int32_t *));
     pusch->rxdataF_comp = (int32_t **)malloc16(n_buf * sizeof(int32_t *));
     pusch->llr_layers = (int16_t **)malloc16(max_ul_mimo_layers * sizeof(int32_t *));
-    for (i = 0; i < n_buf; i++) {
+    for (int i = 0; i < n_buf; i++) {
       pusch->ul_ch_estimates[i] = (int32_t *)malloc16_clear(sizeof(int32_t) * fp->ofdm_symbol_size * fp->symbols_per_slot);
       pusch->ul_ch_estimates_time[i] = (int32_t *)malloc16_clear(sizeof(int32_t) * fp->ofdm_symbol_size);
       pusch->ptrs_phase_per_slot[i] = (int32_t *)malloc16_clear(sizeof(int32_t) * fp->symbols_per_slot); // symbols per slot
       pusch->rxdataF_comp[i] = (int32_t *)malloc16_clear(sizeof(int32_t) * nb_re_pusch2 * fp->symbols_per_slot);
     }
 
-    for (i=0; i< max_ul_mimo_layers; i++) {
+    for (int i = 0; i < max_ul_mimo_layers; i++) {
       pusch->llr_layers[i] = (int16_t *)malloc16_clear((8 * ((3 * 8 * 6144) + 12))
                                                        * sizeof(int16_t)); // [hna] 6144 is LTE and (8*((3*8*6144)+12)) is not clear
     }
@@ -224,8 +244,6 @@ int phy_init_nr_gNB(PHY_VARS_gNB *gNB)
                                            * sizeof(int16_t)); // [hna] 6144 is LTE and (8*((3*8*6144)+12)) is not clear
     pusch->ul_valid_re_per_slot = (int16_t *)malloc16_clear(sizeof(int16_t) * fp->symbols_per_slot);
   } // ulsch_id
-
-  return (0);
 }
 
 void phy_free_nr_gNB(PHY_VARS_gNB *gNB)
@@ -258,9 +276,13 @@ void phy_free_nr_gNB(PHY_VARS_gNB *gNB)
   reset_nr_transport(gNB);
 
   NR_gNB_COMMON * common_vars = &gNB->common_vars;
-  for (int i = 0; i < Ptx; i++) {
-    free_and_zero(common_vars->txdataF[i]);
-    free_and_zero(common_vars->beam_id[i]);
+  for (int j = 0; j < common_vars->num_beams_period; j++) {
+    if (common_vars->beam_id)
+      free_and_zero(common_vars->beam_id[j]);
+    for (int i = 0; i < Ptx; i++) {
+      free_and_zero(common_vars->txdataF[j][i]);
+    }
+    free_and_zero(common_vars->txdataF[j]);
   }
 
   /* Do NOT free per-antenna txdataF/rxdataF: the gNB gets a pointer to the
