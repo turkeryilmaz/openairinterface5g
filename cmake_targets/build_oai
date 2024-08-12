@@ -292,6 +292,9 @@ function main() {
                     HW="OAI_AERIAL"
                     CMAKE_CMD="$CMAKE_CMD -DOAI_AERIAL=ON"
                     ;;
+                "PANTHER")
+                    HW="OAI_AW2S_CPRI"
+                    ;;
                 "None")
                     ;;
                 *)
@@ -313,6 +316,7 @@ function main() {
                 TARGET_LIST="$TARGET_LIST $2"
                 CMAKE_CMD="$CMAKE_CMD -DOAI_FHI72=ON"
                 ;;
+
               "None")
                 ;;
               *)
