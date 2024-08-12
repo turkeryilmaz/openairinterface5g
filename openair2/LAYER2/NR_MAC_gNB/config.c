@@ -378,7 +378,8 @@ static int set_tdd_config_nr_new(nfapi_nr_config_request_scf_t *cfg, int mu, tdd
 {
   int slot_number = 0;
   tdd_config->tdd_numb_slots_frame = nr_slots_per_frame[mu];
-  int nb_slots_to_set = tdd_config->tdd_numb_slots_frame;
+  int nb_slots_to_set = TDD_CONFIG_NB_FRAMES*tdd_config->tdd_numb_slots_frame;
+
   tdd_config->tdd_numb_period_frame = get_nb_periods_per_frame(cfg->tdd_table.tdd_period.value);
   int slot_index = 0;
   tdd_config->tdd_numb_slots_period = ((1 << mu) * NR_NUMBER_OF_SUBFRAMES_PER_FRAME) / tdd_config->tdd_numb_period_frame;
