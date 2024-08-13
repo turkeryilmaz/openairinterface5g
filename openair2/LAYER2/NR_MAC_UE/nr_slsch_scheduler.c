@@ -249,7 +249,6 @@ bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
      } else if ((slotP % psfch_period != 0) && (psfch_period == 2 || psfch_period == 4))
         sci_pdu->psfch_overhead.val = 0;
 
-
      sci_pdu->reserved.val = mac->is_synced ? 1 : 0;
      sci_pdu->conflict_information_receiver.val = 0;
      sci_pdu->beta_offset_indicator = 0;
@@ -285,7 +284,7 @@ bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
      return true;
    }
   else
-    LOG_D(NR_MAC, "Tx_slot_2 %4d.%2d: schedule_slsch 0\n", frameP, slotP);
+    LOG_D(NR_MAC, "%4d.%2d: schedule_slsch 0\n", frameP, slotP);
   return false;
 }
 
