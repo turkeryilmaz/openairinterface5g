@@ -188,8 +188,8 @@ bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
   bool csi_req_slot = !((slots_per_frame * frameP + slotP - sl_mac->slot_offset) % sl_mac->slot_periodicity);
   bool is_harq_feedback = is_feedback_scheduled(mac, frameP, slotP);
   LOG_D(NR_MAC, "frame.slot %4d.%2d bytes_in_buffer? %d, harq_feedback %d, (csi_acq && csi_req_slot) %d, sl_csi_report %p\n",
-        frameP, slotP, rlc_status->bytes_in_buffer >= 0, is_harq_feedback, (csi_acq && csi_req_slot), mac->sl_csi_report);
-  if (rlc_status->bytes_in_buffer >= 0 || is_harq_feedback || (csi_acq && csi_req_slot) || mac->sl_csi_report) {
+        frameP, slotP, rlc_status->bytes_in_buffer > 0, is_harq_feedback, (csi_acq && csi_req_slot), mac->sl_csi_report);
+  if (rlc_status->bytes_in_buffer > 0 || is_harq_feedback || (csi_acq && csi_req_slot) || mac->sl_csi_report) {
      uint8_t cqi_Table = 0;
      int8_t mcs = 11, ri = 0;
      uint16_t dest = mac->dest_id != -1 ? mac->dest_id : 0xabcd;
