@@ -2383,7 +2383,7 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
 	       LOG_D(NR_PHY,"Returning from SCI2 SL indication\n");
                //
 	  }
-        } // (not ML || nrOfLayers==1 ) AND pssch and sci2 REs to handle
+        } // (not ML || nrOfLayers==1 ) AND pssch and sci2 REs to handle	
 	if (pssch_pdu) LOG_D(NR_PHY, "symbol %d: PSSCH REs %d (sci1 %d,sci2 %d)\n", symbol, pusch_vars->ul_valid_re_per_slot[symbol], sci1_offset, sci2_cnt_thissymb);
         for (aatx=0; aatx < nrOfLayers; aatx++) {
           if ((sci1_offset > 0 || sci2_cnt_thissymb > 0) && (qam_mod_order > 2)) {
