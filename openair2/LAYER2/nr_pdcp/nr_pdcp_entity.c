@@ -121,7 +121,6 @@ static void nr_pdcp_entity_recv_pdu(nr_pdcp_entity_t *entity,
   } else {
     rcvd_hfn = rx_deliv_hfn;
   }
-
   rcvd_count = (rcvd_hfn << entity->sn_size) | rcvd_sn;
 
   nr_pdcp_integrity_data_t msg_integrity = { 0 };
@@ -176,6 +175,7 @@ static void nr_pdcp_entity_recv_pdu(nr_pdcp_entity_t *entity,
 
   /* TODO(?): out of order delivery */
 
+restart:
   if (rcvd_count == entity->rx_deliv) {
     /* deliver all SDUs starting from rx_deliv up to discontinuity or end of list */
     uint32_t count = entity->rx_deliv;
@@ -201,6 +201,16 @@ static void nr_pdcp_entity_recv_pdu(nr_pdcp_entity_t *entity,
           entity->rx_deliv,
           rcvd_sn);
   }
+
+ //added vijitha
+  if (entity->rx_deliv == 0){
+	printf("going into this function entity->rx_deliv == 0\n");
+        entity->rx_deliv=8;
+	goto restart;
+  }else{
+  	LOG_D(PDCP,"entity->rx_deliv not zero\n");
+  }
+
 
   if (entity->t_reordering_start != 0 && entity->rx_deliv >= entity->rx_reord) {
     /* stop and reset t-Reordering */

@@ -253,12 +253,15 @@ typedef struct xnap_uehistory_info_s {
 
 typedef struct xnap_ue_context_info_s {
   uint64_t ngc_ue_sig_ref;// 0-2^40-1
-  xnap_net_ip_address_t tnl_ip_source;
+  //xnap_net_ip_address_t tnl_ip_source;
+  in_addr_t tnl_ip_source;
+  //transport_layer_addr_t tnl_ip_source;
   uint32_t tnl_port_source;
   xnap_security_capabilities_t security_capabilities;
   //uint8_t kRRCenc[16];
   //uint8_t kRRCint[16];
-  uint32_t as_security_key_ranstar;//bitstring 256, why array?
+  //uint32_t as_security_key_ranstar;//bitstring 256, why array?
+  uint8_t as_security_key_ranstar[32]; 
   long as_security_ncc;
   xnap_ambr_t ue_ambr;
   uint8_t rrc_buffer[8192 /* arbitrary, big enough */];
@@ -278,6 +281,7 @@ typedef struct xnap_handover_req_s {
   xnap_ngran_cgi_t target_cgi;
   xnap_guami_t guami;
   xnap_ue_context_info_t ue_context;
+  xnap_uehistory_info_t uehistory_info;
 } xnap_handover_req_t;
 
 typedef struct xnap_handover_req_ack_s {

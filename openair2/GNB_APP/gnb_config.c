@@ -2362,8 +2362,8 @@ int gNB_app_handle_f1ap_gnb_cu_configuration_update(f1ap_gnb_cu_configuration_up
 
 xnap_net_config_t Read_IPconfig_Xn(void)
 {
-  char *cidr = NULL;
-  char *address = NULL;
+  //char *cidr = NULL;
+  //char *address = NULL;
   char *gnb_ipv4_address_for_NGU = NULL;
   uint32_t gnb_port_for_NGU = 0;
   char *gnb_ipv4_address_for_S1U = NULL;

@@ -401,8 +401,8 @@ int xnap_gNB_handle_handover_request(instance_t instance, sctp_assoc_t assoc_id,
         //xnap_id_set_state(&instance_p->id_manager, xn_id, XNID_STATE_TARGET);
 
   	req->t_ng_node_ue_xnap_id = xn_id;
-
-        /*// Target Cell Global ID
+/*
+        // Target Cell Global ID
         XNAP_FIND_PROTOCOLIE_BY_ID(XNAP_HandoverRequest_IEs_t, ie, xnHandoverRequest, XNAP_ProtocolIE_ID_id_TargetCellCGI,true);
 	if (ie == NULL) {
         LOG_E(XNAP, "XNAP_ProtocolIE_ID_id_TargetCellCGI, is NULL pointer \n");
@@ -415,47 +415,85 @@ int xnap_gNB_handle_handover_request(instance_t instance, sctp_assoc_t assoc_id,
                    req->target_cgi.plmn_id.mnc_digit_length);
 
       	BIT_STRING_TO_NR_CELL_IDENTITY( &ie->value.choice.Target_CGI.choice.nr->nr_CI , req->target_cgi.cgi);
+	LOG_D(XNAP, "XNAP_ProtocolIE_ID_id_TargetCellCGI, not a null pointer \n");
+        }
 
-        }*/
+        //GUAMI
+	XNAP_FIND_PROTOCOLIE_BY_ID(XNAP_HandoverRequest_IEs_t, ie, xnHandoverRequest,XNAP_ProtocolIE_ID_id_GUAMI,true);
+        if (ie == NULL) {
+        LOG_E(XNAP, "XNAP_ProtocolIE_ID_id_GUAMI is NULL pointer \n");
+        return -1;
+        }else{
+	LOG_D(XNAP, "XNAP_ProtocolIE_ID_id_GUAMI not a null pointer \n");
+        }
+*/
 
+	//UE context
 
 	XNAP_FIND_PROTOCOLIE_BY_ID(XNAP_HandoverRequest_IEs_t, ie, xnHandoverRequest, XNAP_ProtocolIE_ID_id_UEContextInfoHORequest, true);
 	if (ie == NULL) {
    	LOG_E(XNAP, "XNAP_ProtocolIE_ID_id_UEContextInfoHORequest, is NULL pointer \n");
     	return -1;
   	}
+ 	
+	//AMF UE NGAP ID
+        //asn_INTEGER2uint64(req->ue_context.ngc_ue_sig_ref, ie->value.choice.UEContextInfoHORequest.ng_c_UE_reference);
+ 	asn_INTEGER2uint64(&ie->value.choice.UEContextInfoHORequest.ng_c_UE_reference, &req->ue_context.ngc_ue_sig_ref);
+	//BIT_STRING_TO_CHAR_IPv4(&ie->value.choice.UEContextInfoHORequest.cp_TNL_info_source.choice.endpointIPAddress, req->ue_context.tnl_ip_source.ipv4_address);	
+	
+	//CP Transport Layer Information
+        BIT_STRING_TO_TRANSPORT_LAYER_ADDRESS_IPv4(&ie->value.choice.UEContextInfoHORequest.cp_TNL_info_source.choice.endpointIPAddress,req->ue_context.tnl_ip_source);
+	
+	//AS iSecurity
+	if ((ie->value.choice.UEContextInfoHORequest.securityInformation.key_NG_RAN_Star.buf) &&
+            (ie->value.choice.UEContextInfoHORequest.securityInformation.key_NG_RAN_Star.size == 32)) {
+        memcpy(&req->ue_context.as_security_key_ranstar, ie->value.choice.UEContextInfoHORequest.securityInformation.key_NG_RAN_Star.buf, 32);
+   	 } else {
+     	 LOG_E(XNAP,"Size of key star does not match the expected value\n");
+    	}
 
-	req->ue_context.ngc_ue_sig_ref = &ie->value.choice.UEContextInfoHORequest.ng_c_UE_reference;
-        
-        //BIT_STRING_TO_CHAR_IPv4(&ie->value.choice.UEContextInfoHORequest.cp_TNL_info_source.choice.endpointIPAddress, req->ue_context.tnl_ip_source.ipv4_address);	
-
+	if(req->ue_context.as_security_ncc >=0){
+	req->ue_context.as_security_ncc = ie->value.choice.UEContextInfoHORequest.securityInformation.ncc;
+	}
+	else{
+	req->ue_context.as_security_ncc = 1;
+	}
+	
 
         if(ie->value.choice.UEContextInfoHORequest.pduSessionResourcesToBeSetup_List.list.count >0)
 	{
-  	   req->ue_context.pdusession_tobe_setup_list.num_pdu = &ie->value.choice.UEContextInfoHORequest.pduSessionResourcesToBeSetup_List.list.count;
-           for (int i=0; i<ie->value.choice.UEContextInfoHORequest.pduSessionResourcesToBeSetup_List.list.count;i++)
+  	   req->ue_context.pdusession_tobe_setup_list.num_pdu = ie->value.choice.UEContextInfoHORequest.pduSessionResourcesToBeSetup_List.list.count;
+	   for (int i=0; i<ie->value.choice.UEContextInfoHORequest.pduSessionResourcesToBeSetup_List.list.count;i++)
           {
-	     pdu_session_resources = &ie->value.choice.UEContextInfoHORequest.pduSessionResourcesToBeSetup_List.list.array[i];
+	     pdu_session_resources = ie->value.choice.UEContextInfoHORequest.pduSessionResourcesToBeSetup_List.list.array[i];
 	     //pdu_session_resources = &ie->value.choice.UEContextInfoHORequest.pduSessionResourcesToBeSetup_List;
+ 
+	     //PDU Session id
 
              req->ue_context.pdusession_tobe_setup_list.pdu[i].pdusession_id = pdu_session_resources->pduSessionId;
 
+	     //SSNSAI	     
              OCTET_STRING_TO_INT8(&pdu_session_resources->s_NSSAI.sst, req->ue_context.pdusession_tobe_setup_list.pdu[i].snssai.sst);
 
              //BIT_STRING_TO_CHAR_IPv4(&pdu_session_resources->uL_NG_U_TNLatUPF.choice.gtpTunnel->tnl_address, req->ue_context.pdusession_tobe_setup_list.pdu[i].up_ngu_tnl_ip_upf.ipv4_address);
              //OCTET_STRING_TO_INT32(&pdu_session_resources->uL_NG_U_TNLatUPF.choice.gtpTunnel->gtp_teid,req->ue_context.pdusession_tobe_setup_list.pdu[i].up_ngu_tnl_teid_upf);
-
+	    
+	     //UP TNL Information
+	     BIT_STRING_TO_TRANSPORT_LAYER_ADDRESS_IPv4(&pdu_session_resources->uL_NG_U_TNLatUPF.choice.gtpTunnel->tnl_address, req->ue_context.tnl_ip_source);
+	     OCTET_STRING_TO_INT32(&pdu_session_resources->uL_NG_U_TNLatUPF.choice.gtpTunnel->gtp_teid, req->ue_context.pdusession_tobe_setup_list.pdu[i].up_ngu_tnl_teid_upf);
+              
+             //PDU session type
              req->ue_context.pdusession_tobe_setup_list.pdu[i].pdu_session_type = pdu_session_resources->pduSessionType;
-
-             /*for(int j=0; j< pdu_session_resources->qosFlowsToBeSetup_List.list.count;j++)
+             for(int j=0; j< pdu_session_resources->qosFlowsToBeSetup_List.list.count;j++)
              {
-       		 qos_flows = &ie->value.choice.UEContextInfoHORequest.pduSessionResourcesToBeSetup_List.list.array[i]->qosFlowsToBeSetup_List.list.array[j];
+       		 qos_flows = ie->value.choice.UEContextInfoHORequest.pduSessionResourcesToBeSetup_List.list.array[i]->qosFlowsToBeSetup_List.list.array[j];
 
                  req->ue_context.pdusession_tobe_setup_list.pdu[i].qos_list.qos[j].qfi = qos_flows->qfi;
-        	 req->ue_context.pdusession_tobe_setup_list.pdu[i].qos_list.qos[j].qos_params.non_dynamic.fiveqi = qos_flows->qosFlowLevelQoSParameters.qos_characteristics.choice.non_dynamic->fiveQI;
-        	 req->ue_context.pdusession_tobe_setup_list.pdu[i].qos_list.qos[j].qos_params.dynamic.qos_priority_level = qos_flows->qosFlowLevelQoSParameters.qos_characteristics.choice.dynamic->priorityLevelQoS;
+		 
+		 req->ue_context.pdusession_tobe_setup_list.pdu[i].qos_list.qos[j].qos_params.non_dynamic.fiveqi = 9; //qos_flows->qosFlowLevelQoSParameters.qos_characteristics.choice.non_dynamic->fiveQI;
+		 req->ue_context.pdusession_tobe_setup_list.pdu[i].qos_list.qos[j].qos_params.dynamic.qos_priority_level = qos_flows->qosFlowLevelQoSParameters.qos_characteristics.choice.dynamic->priorityLevelQoS;
 
-             }*/
+             }
   }
 }
 
@@ -463,7 +501,7 @@ int xnap_gNB_handle_handover_request(instance_t instance, sctp_assoc_t assoc_id,
 
          // *c = &ie->value.choice.UEContextInfoHORequest.rrc_Context;
 
-	  //if (c->size > 8192 /* TODO: this is the size of rrc_buffer in struct x2ap_handover_req_s */){ 
+	  //if (c->size > 8192  TODO: this is the size of rrc_buffer in struct x2ap_handover_req_s){ 
 	//	printf("%s:%d: fatal: buffer too big\n", __FILE__, __LINE__); abort();  }
 	
 

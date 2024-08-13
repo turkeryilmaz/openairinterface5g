@@ -23,6 +23,10 @@
 
 #include "mac_rrc_dl.h"
 #include "nr_rrc_defs.h"
+#include "f1ap_ids.h"
+#include "openair2/RRC/NR/rrc_gNB_UE_context.h"
+
+
 
 static void f1_setup_response_f1ap(sctp_assoc_t assoc_id, const f1ap_setup_resp_t *resp)
 {
@@ -60,6 +64,16 @@ static void ue_context_setup_request_f1ap(sctp_assoc_t assoc_id, const f1ap_ue_c
   LOG_I(F1AP,"ASSOC ID in ue_context_setup_request_f1ap %d\n", assoc_id);
   f1ap_ue_context_setup_t *f1ap_msg = &F1AP_UE_CONTEXT_SETUP_REQ(msg);
   *f1ap_msg = *req;
+ 
+  /*gNB_RRC_INST *rrc = RC.nrrrc[0];
+  rrc_gNB_ue_context_t *ue_context_p;
+  ue_context_p = rrc_gNB_get_ue_context(rrc, ue_context_p->ue_context.rrc_ue_id);
+  gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
+  f1_ue_data_t ue_data = cu_get_f1_ue_data(UE->rrc_ue_id);
+  cu_add_f1_ue_data(UE->rrc_ue_id, &ue_data);
+ */
+ LOG_I(F1AP,"ASSOC ID in ue_context_setup_request_f1ap after %d\n", assoc_id);
+
   if (req->cu_to_du_rrc_information != NULL) {
     f1ap_msg->cu_to_du_rrc_information = calloc(1, sizeof(*f1ap_msg->cu_to_du_rrc_information));
     AssertFatal(f1ap_msg->cu_to_du_rrc_information != NULL, "out of memory\n");
@@ -103,6 +117,7 @@ static void ue_context_setup_request_f1ap(sctp_assoc_t assoc_id, const f1ap_ue_c
     f1ap_msg->rrc_container_length = req->rrc_container_length;
     memcpy(f1ap_msg->rrc_container, req->rrc_container, req->rrc_container_length);
   }
+  LOG_I(F1AP," in ue_context_setup_request_f1ap 1 \n");
   itti_send_msg_to_task(TASK_CU_F1, 0, msg);
 }
 

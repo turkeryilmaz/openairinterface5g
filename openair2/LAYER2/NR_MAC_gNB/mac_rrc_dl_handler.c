@@ -439,8 +439,9 @@ void ue_context_setup_request(const f1ap_ue_context_setup_t *req)
 
   /* this is a hack, it should be decided depending on if req->gNB_DU_ue_id is
    * present or not (because in F1, it's optional, but not in our structures) */
-  bool handover = false;
-
+     //bool handover = false;
+     bool handover = true;
+   
   NR_UE_NR_Capability_t *ue_cap = NULL;
   if (req->cu_to_du_rrc_information != NULL) {
     const cu_to_du_rrc_information_t *cu2du = req->cu_to_du_rrc_information;

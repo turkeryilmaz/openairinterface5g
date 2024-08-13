@@ -84,6 +84,14 @@ bool ue_associated_to_cuup(const gNB_RRC_INST *rrc, const gNB_RRC_UE_t *ue)
 sctp_assoc_t get_existing_cuup_for_ue(const gNB_RRC_INST *rrc, const gNB_RRC_UE_t *ue)
 {
   f1_ue_data_t ue_data = cu_get_f1_ue_data(ue->rrc_ue_id);
+
+  gNB_RRC_INST *rrc1 =  RC.nrrrc[0];
+  nr_rrc_cuup_container_t *c = NULL;
+  RB_FOREACH(c, rrc_cuup_tree, &rrc1->cuups) {
+  ue_data.e1_assoc_id = c->assoc_id;
+  cu_add_f1_ue_data(ue->rrc_ue_id, &ue_data);
+  }
+
   AssertFatal(ue_data.e1_assoc_id != 0, "UE %d should be associated to CU-UP, but is not\n", ue->rrc_ue_id);
   LOG_D(RRC, "UE %d using CU-UP assoc_id %d\n", ue->rrc_ue_id, ue_data.e1_assoc_id);
   return ue_data.e1_assoc_id;
@@ -93,6 +101,13 @@ sctp_assoc_t get_new_cuup_for_ue(const gNB_RRC_INST *rrc, const gNB_RRC_UE_t *ue
 {
   /* check if there is already a UE associated */
   f1_ue_data_t ue_data = cu_get_f1_ue_data(ue->rrc_ue_id);
+  gNB_RRC_INST *rrc1 =  RC.nrrrc[0]; 
+  nr_rrc_cuup_container_t *c = NULL;
+  RB_FOREACH(c, rrc_cuup_tree, &rrc1->cuups) {
+  ue_data.e1_assoc_id = c->assoc_id;
+  cu_add_f1_ue_data(ue->rrc_ue_id, &ue_data);
+  }
+
   if (ue_data.e1_assoc_id != 0) {
     LOG_I(RRC, "UE %d using CU-UP assoc_id %d\n", ue->rrc_ue_id, ue_data.e1_assoc_id);
     return ue_data.e1_assoc_id;

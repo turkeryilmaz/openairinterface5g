@@ -376,6 +376,8 @@ void trigger_bearer_setup(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, int n, pdusession
     session->nas_pdu = sessions[i].nas_pdu;
     session->pdusessionTransfer = sessions[i].pdusessionTransfer;
     session->nssai = sessions[i].nssai;
+    session->gtp_teid = sessions[i].gtp_teid; //added
+    memcpy(session->upf_addr.buffer, sessions[i].upf_addr.buffer,sizeof(uint8_t) * 4); //added
     decodePDUSessionResourceSetup(session);
     bearer_req.gNB_cu_cp_ue_id = UE->rrc_ue_id;
     bearer_req.cipheringAlgorithm = UE->ciphering_algorithm;
@@ -389,13 +391,13 @@ void trigger_bearer_setup(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, int n, pdusession
     pdu->nssai = sessions[i].nssai;
     if (cuup_nssai.sst == 0)
       cuup_nssai = pdu->nssai; /* for CU-UP selection below */
-
+    cuup_nssai = pdu->nssai; //added
     pdu->integrityProtectionIndication = rrc->security.do_drb_integrity ? E1AP_IntegrityProtectionIndication_required : E1AP_IntegrityProtectionIndication_not_needed;
 
     pdu->confidentialityProtectionIndication = rrc->security.do_drb_ciphering ? E1AP_ConfidentialityProtectionIndication_required : E1AP_ConfidentialityProtectionIndication_not_needed;
     pdu->teId = session->gtp_teid;
-    memcpy(&pdu->tlAddress, session->upf_addr.buffer, 4); // Fixme: dirty IPv4 target
-
+    //memcpy(&pdu->tlAddress, session->upf_addr.buffer, 4); // Fixme: dirty IPv4 target
+    memcpy(&pdu->tlAddress, session->upf_addr.buffer, sizeof(uint8_t) * 4);
     /* we assume for the moment one DRB per PDU session. Activate the bearer,
      * and configure in RRC. */
     int drb_id = get_next_available_drb_id(UE);
@@ -427,6 +429,7 @@ void trigger_bearer_setup(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, int n, pdusession
       }
 
       drb->numQosFlow2Setup = session->nb_qos;
+      LOG_I(NR_RRC, "NUM OF QOS IN TRIGGER %d\n", drb->numQosFlow2Setup);
       for (int k=0; k < drb->numQosFlow2Setup; k++) {
         qos_flow_to_setup_t *qos_flow = drb->qosFlows + k;
         pdusession_level_qos_parameter_t *qos_session = session->qos + k;
