@@ -70,7 +70,7 @@ void fill_ul_config(fapi_nr_ul_config_request_t *ul_config, frame_t frame_tx, in
       !get_softmodem_params()->emulate_l1) {
     LOG_D(MAC, "%d.%d %d.%d f clear ul_config %p t %d pdu %d\n", frame_tx, slot_tx, ul_config->sfn, ul_config->slot, ul_config, pdu_type, ul_config->number_pdus);
     ul_config->number_pdus = 0;
-    memset(ul_config->ul_config_list, 0, sizeof(ul_config->ul_config_list));
+    memset(ul_config->ul_config_list, 0, sizeof(ul_config->ul_config_list)); 
   }
   ul_config->ul_config_list[ul_config->number_pdus].pdu_type = pdu_type;
   //ul_config->slot = slot_tx;
@@ -1403,7 +1403,7 @@ int nr_get_sf_retxBSRTimer(uint8_t sf_offset) {
 // PUSCH scheduler:
 // - Calculate the slot in which ULSCH should be scheduled. This is current slot + K2,
 // - where K2 is the offset between the slot in which UL DCI is received and the slot
-// - in which ULSCH should be scheduled. K2 is configured in RRC configuration.
+// - in which ULSCH should be scheduled. K2 is configured in RRC configuration.  
 // PUSCH Msg3 scheduler:
 // - scheduled by RAR UL grant according to 8.3 of TS 38.213
 // Note: Msg3 tx in the uplink symbols of mixed slot
@@ -3332,7 +3332,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
     NR_SL_PSFCH_Config_r16_t *sl_psfch_config = mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup;
     long psfch_period = (sl_psfch_config->sl_PSFCH_Period_r16)
                          ? psfch_periods[*sl_psfch_config->sl_PSFCH_Period_r16] : 0;
-    if (rlc_status.bytes_in_buffer >= 0) {
+    if (rlc_status.bytes_in_buffer > 0) {
       int8_t harq_id = sched_pssch->sl_harq_pid;
       if (harq_id < 0) {
         /* PP has not selected a specific HARQ Process, get a new one */
@@ -3426,7 +3426,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
     sched_pssch->nrOfLayers = pscch_pssch_pdu->num_layers;
     sched_pssch->mcs = pscch_pssch_pdu->mcs;
     sched_pssch->Qm = pscch_pssch_pdu->mod_order;
-    if (rlc_status.bytes_in_buffer >= 0) {
+    if (rlc_status.bytes_in_buffer > 0) {
       LOG_D(NR_MAC,
             "PSSCH: %4d.%2d SL sched %4d.%2d start %2d RBS %3d MCS %2d nrOfLayers %2d TBS %4d HARQ PID %2d round %d NDI %d sched %6d\n",
             frame,

@@ -322,6 +322,7 @@ uint8_t sl_decode_sl_TDD_Config(NR_TDD_UL_DL_ConfigCommon_t *TDD_UL_DL_Config,
 
     //a5,a6..a11 bits from the 7th to 1st LSB of num SL slots
     num_SL_slots = ((bits_0_to_7 & 0x07) << 4 ) | ((bits_8_to_11 & 0xF0) >> 4);
+
     TDD_UL_DL_Config->pattern1.nrofUplinkSlots = num_SL_slots;
     TDD_UL_DL_Config->pattern1.nrofUplinkSymbols = mixed_slot_numsym;
 

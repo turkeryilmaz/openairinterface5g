@@ -322,7 +322,7 @@ void nr_ulsch_extract_rbs(int rxFSz,
                           uint32_t dmrs_config_type,
                           NR_DL_FRAME_PARMS *frame_parms,
                           nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *csi_params) {
-
+ 
   unsigned short start_re, re, nb_re_pusch;
   unsigned char aarx, aatx;
   uint32_t rxF_ext_index = 0;
@@ -349,7 +349,7 @@ void nr_ulsch_extract_rbs(int rxFSz,
     rxF_ext = (int16_t *)&pusch_vars->rxdataF_ext[aarx][symbol * nb_re_pusch2]; // [hna] rxdataF_ext isn't contiguous in order to solve an alignment problem ib llr computation in case of mod_order = 4, 6
     AssertFatal(soffset + (symbol * frame_parms->ofdm_symbol_size) + start_re < rxFSz, "rxF offset is greater than the buffer size\n");
     AssertFatal(symbol * nb_re_pusch2 + nb_re_pusch < nb_re_pusch2 * frame_parms->symbols_per_slot, "Copied PUSCH data is more than rxF_ext size\n");
-    LOG_D(NR_PHY,"symbol %d : rxF energy %d\n",symbol,dB_fixed(signal_energy_nodc((int32_t*)rxF,frame_parms->ofdm_symbol_size)));
+    LOG_D(NR_PHY,"symbol %d : rxF energy %d\n",symbol,dB_fixed(signal_energy_nodc((int32_t*)rxF,frame_parms->ofdm_symbol_size))); 
     if (is_dmrs_symbol == 0) {
       if (is_csirs_symbol == 0) {
         if (start_re + nb_re_pusch <= frame_parms->ofdm_symbol_size) {
@@ -446,7 +446,7 @@ void nr_ulsch_extract_rbs(int rxFSz,
             printf("dmrs symb %d: rxF_ext[%u] = (%d,%d), ul_ch0_ext[%u] = (%d,%d)\n",
                  is_dmrs_symbol,rxF_ext_index>>1, rxF_ext[rxF_ext_index],rxF_ext[rxF_ext_index+1],
                  ul_ch0_ext_index,  ((int16_t*)&ul_ch0_ext[ul_ch0_ext_index])[0],  ((int16_t*)&ul_ch0_ext[ul_ch0_ext_index])[1]);
-            #endif
+            #endif          
           }
           ul_ch0_index++;
         }
@@ -522,7 +522,7 @@ void nr_ulsch_channel_level(int **ul_ch_estimates_ext,
 
   int16_t x = factor2(len);
   int16_t y = (len)>>x;
-
+  
   uint32_t nb_rb_0 = len/12 + ((len%12)?1:0);
 
   int off = ((nb_rb&1) == 1)? 4:0;
@@ -1207,7 +1207,7 @@ void nr_ulsch_detection_mrc(NR_DL_FRAME_PARMS *frame_parms,
     ul_ch_mag128_1      = (int16x8_t *)&ul_ch_mag[1][symbol*frame_parms->N_RB_DL*12];
     ul_ch_mag128_0b     = (int16x8_t *)&ul_ch_magb[0][symbol*frame_parms->N_RB_DL*12];
     ul_ch_mag128_1b     = (int16x8_t *)&ul_ch_magb[1][symbol*frame_parms->N_RB_DL*12];
-
+      
     // MRC on each re of rb, both on MF output and magnitude (for 16QAM/64QAM llr computation)
     for (i=0; i<nb_rb*3; i++) {
       rxdataF_comp128_0[i] = vhaddq_s16(rxdataF_comp128_0[i],rxdataF_comp128_1[i]);
@@ -1987,7 +1987,7 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
   uint32_t num_dmrs_cdm_grps_no_data = pssch_pdu ? 1                                                     : rel15_ul->num_dmrs_cdm_grps_no_data;
   uint32_t ul_dmrs_symb_pos          = pssch_pdu ? pssch_pdu->dmrs_symbol_position                       : rel15_ul->ul_dmrs_symb_pos;
   uint32_t dmrs_ports                = pssch_pdu ? pssch_pdu->num_layers                                 : rel15_ul->dmrs_ports;
-  int sci1_re_per_symb = pssch_pdu ? (pssch_pdu->pscch_numrbs*NR_NB_SC_PER_RB) : 0;
+  int sci1_re_per_symb = pssch_pdu ? (pssch_pdu->pscch_numrbs*NR_NB_SC_PER_RB) : 0; 
   int sci2_re = pssch_pdu ? get_NREsci2_2(pssch_pdu->sci2_alpha_times_100,
                                           pssch_pdu->sci2_len,
                                           pssch_pdu->sci2_beta_offset,
@@ -2026,7 +2026,7 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
   for(uint8_t symbol = start_symbol_index; symbol < (start_symbol_index + nr_of_symbols); symbol++) {
     uint8_t dmrs_symbol_flag = (ul_dmrs_symb_pos >> symbol) & 0x01;
     LOG_D(PHY, "symbol %d, dmrs_symbol_flag :%d\n", symbol, dmrs_symbol_flag);
-
+    
     if (dmrs_symbol_flag == 1) {
       if (pusch_vars->dmrs_symbol == INVALID_VALUE)
         pusch_vars->dmrs_symbol = symbol;
@@ -2048,7 +2048,7 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
         nvar += nvar_tmp;
       }
 
-      PHY_MEASUREMENTS_gNB *meas = gNB ? &gNB->measurements : ue->sl_measurements;
+      PHY_MEASUREMENTS_gNB *meas = gNB ? &gNB->measurements : ue->sl_measurements; 
       nr_gnb_measurements(meas, frame_parms,ulsch, pusch_vars, symbol, nrOfLayers);
       allocCast2D(n0_subband_power,
                   unsigned int,
@@ -2179,7 +2179,7 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
       else {
         nb_re_pusch = rb_size *(12 - (num_dmrs_cdm_grps_no_data*4));
       }
-    }
+    } 
     else {
       nb_re_pusch = rb_size * NR_NB_SC_PER_RB;
     }
@@ -2302,7 +2302,7 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
         nr_pusch_ptrs_processing(gNB,ue,
                                  frame_parms,
                                  rel15_ul,
-				 pssch_pdu,
+				 pssch_pdu, 
                                  ulsch_id,
                                  slot,
                                  symbol,
@@ -2318,11 +2318,11 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
       /*-----------------------------------------------------------------------------------------------------*/
       if (gNB) start_meas(&gNB->ulsch_llr_stats);
       int sci1_offset=0;
-      if (symbol <= pssch_pdu->pscch_numsym) {
+      if (symbol <= pssch_pdu->pscch_numsym) { 
         pusch_vars->ul_valid_re_per_slot[symbol] -= sci1_re_per_symb;
         sci1_offset=sci1_re_per_symb;
       }
-      if (ml_rx == false || nrOfLayers == 1) {
+      if (ml_rx == false || nrOfLayers == 1) {       
         if (pssch_pdu && sci2_left>0){
 	  LOG_D(NR_PHY, "valid_re_per_slot[%d] %d\n", symbol, pusch_vars->ul_valid_re_per_slot[symbol]);
 	  int available_sci2_res_in_symb = pusch_vars->ul_valid_re_per_slot[symbol];
@@ -2352,19 +2352,19 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
 	  //     for (int i=0;i<sci2_re;i++) LOG_I(NR_PHY,"sci2_llrs [%d] %d,%d\n",i,unscrambled_sci2_llrs[i<<1],unscrambled_sci2_llrs[1+(i<<1)]);
 
 	       uint64_t sci_estimation[2]={0};
-	       uint16_t dummy;
+	       uint16_t dummy; 
                uint16_t crc=polar_decoder_int16(unscrambled_sci2_llrs,
 			                        sci_estimation,
 						&dummy,
 						1,
-						NR_POLAR_SCI2_MESSAGE_TYPE,
+						NR_POLAR_SCI2_MESSAGE_TYPE, 
 						pssch_pdu->sci2_len,
 						sci2_re);
 	       // send SCI indication with SCI2 payload and get SLSCH information if CRC is OK
 	       LOG_D(NR_PHY,"SCI indication (crc %x)\n",crc);
-	       if (crc==0) ue->SL_UE_PHY_PARAMS.pssch.rx_sci2_ok++;
-	       else        ue->SL_UE_PHY_PARAMS.pssch.rx_sci2_errors++;
-	       sl_nr_sci_indication_t sci_ind={0};
+	       if (crc==0) ue->SL_UE_PHY_PARAMS.pssch.rx_sci2_ok++;   
+	       else        ue->SL_UE_PHY_PARAMS.pssch.rx_sci2_errors++;   
+	       sl_nr_sci_indication_t sci_ind={0}; 
                sci_ind.sfn = frame;
                sci_ind.slot = slot;
                sci_ind.sensing_result = 0;
@@ -2374,7 +2374,7 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
                sci_ind.sci_pdu[sci_ind.number_of_SCIs].pscch_rsrp = 0; // need to get from inner rx
                sci_ind.sci_pdu[sci_ind.number_of_SCIs].sci_payloadlen = pssch_pdu->sci2_len;
                sci_ind.sci_pdu[sci_ind.number_of_SCIs].Nid = dummy&65535;
-
+ 
                memcpy(sci_ind.sci_pdu[sci_ind.number_of_SCIs].sci_payloadBits,&sci_estimation,8);
                sci_ind.number_of_SCIs++;
 	       nr_sidelink_indication_t sl_indication;
@@ -2416,7 +2416,7 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
           }
         }
       } else { // this is MIMO case with ML
-	if (pssch_pdu) AssertFatal(1==0,"We need to handle the MIMO case for SCI2\n");
+	if (pssch_pdu) AssertFatal(1==0,"We need to handle the MIMO case for SCI2\n");      
         nr_ulsch_compute_ML_llr(pusch_vars->rxdataF_comp,
                                 pusch_vars->ul_ch_mag0,
                                 pusch_vars->rho,

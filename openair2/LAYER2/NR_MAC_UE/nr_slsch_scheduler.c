@@ -21,11 +21,11 @@
 
 /* \file        nr_slsch_scheduler.c
  * \brief       Routines for UE SLSCH scheduling
- * \author      R. Knopp
+ * \author      R. Knopp 
  * \date        Aug. 2023
  * \version     0.1
- * \company     EURECOM
- * \email       raymond.knopp@eurecom.fr
+ * \company     EURECOM 
+ * \email       raymond.knopp@eurecom.fr 
  */
 
 #include <stdio.h>
@@ -258,7 +258,7 @@ bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
      sci2_pdu->rv_index = 0;//nr_rv_round_map[cur_harq->round%4];
      sci2_pdu->source_id = mac->src_id;
      sci2_pdu->dest_id = dest;
-     sci2_pdu->harq_feedback = 1; //rlc_status->bytes_in_buffer > 0 ? 1 : 0;
+     sci2_pdu->harq_feedback = rlc_status->bytes_in_buffer > 0 ? 1 : 0;
      LOG_D(NR_MAC, "%4d.%2d Comparing Setting harq_feedback %d bytes_in_buffer %d sl_harq_pid %d\n", frameP, slotP, sci2_pdu->harq_feedback, rlc_status->bytes_in_buffer, cur_harq ? cur_harq->sl_harq_pid : 0);
      sci2_pdu->cast_type = 1;
      if (format2 == NR_SL_SCI_FORMAT_2C || format2 == NR_SL_SCI_FORMAT_2A) {

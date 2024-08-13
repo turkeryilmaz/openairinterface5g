@@ -38,10 +38,10 @@
 #include "common/utils/colors.h"
 
 void nr_fill_indication(PHY_VARS_gNB *gNB, int frame, int slot_rx, int ULSCH_id, uint8_t harq_pid, uint8_t crc_flag, int dtx_flag) {
-  AssertFatal(1==0,"Should never get here\n");
+  AssertFatal(1==0,"Should never get here\n"); 
 }
 NR_gNB_PHY_STATS_t *get_phy_stats(PHY_VARS_gNB *gNB, uint16_t rnti) {
-  return(NULL);
+  return(NULL); 
 }
 void nr_fill_sl_indication(nr_sidelink_indication_t *sl_ind,
                            sl_nr_rx_indication_t *rx_ind,
@@ -65,7 +65,7 @@ void nr_fill_sl_indication(nr_sidelink_indication_t *sl_ind,
   if (rx_ind) {
     sl_ind->rx_ind = rx_ind; //  hang on rx_ind instance
     sl_ind->sci_ind = NULL;
-  }
+  } 
   if (sci_ind) {
     sl_ind->rx_ind = NULL;
     sl_ind->sci_ind = sci_ind;
@@ -225,7 +225,7 @@ int nr_slsch_procedures(PHY_VARS_NR_UE *ue, int frame_rx, int slot_rx, int SLSCH
   pusch_pdu.target_code_rate=slsch_pdu->target_coderate;
   float Coderate = (float) (slsch_pdu->target_coderate) / 10240.0f;
   pusch_pdu.pusch_data.rv_index=slsch_pdu->rv_index;
-
+  
   if ((A <=292) || ((A<=3824) && (Coderate <= 0.6667)) || Coderate <= 0.25){
     pusch_pdu.maintenance_parms_v3.ldpcBaseGraph=2;
   }
@@ -263,8 +263,8 @@ void nr_postDecode_slsch(PHY_VARS_NR_UE *UE, notifiedFIFO_elt_t *req,UE_nr_rxtx_
   //int dumpsig=0;
   // if all segments are done
   if (rdata->nbSegments == slsch_harq->processedSegments) {
-    sl_nr_rx_indication_t sl_rx_indication;
-    nr_sidelink_indication_t sl_indication;
+    sl_nr_rx_indication_t sl_rx_indication;	  
+    nr_sidelink_indication_t sl_indication;	  
     slsch_status_t slsch_status;
     if (!check_abort(&slsch_harq->abort_decode) && !UE->pssch_vars[rdata->ulsch_id].DTX) {
       LOG_D(NR_PHY,
@@ -574,7 +574,7 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
     rel15->L[0] = phy_data->nr_sl_pscch_pdu.pscch_numrbs * phy_data->nr_sl_pscch_pdu.pscch_numsym;
     // This provides the offset of the candidate of PSCCH in RBs instead of CCEs
     rel15->CCE[0] = 0;
-
+ 
     // Hold the channel estimates in frequency domain.
     int32_t pscch_est_size = ((((fp->symbols_per_slot*(fp->ofdm_symbol_size+LTE_CE_FILTER_LENGTH))+15)/16)*16);
      __attribute__ ((aligned(16))) int32_t pscch_dl_ch_estimates[4*fp->nb_antennas_rx][pscch_est_size];
@@ -598,7 +598,7 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
                                   rxdataF);
     }
 
-    nr_ue_pdcch_procedures(ue, proc, 1, pscch_est_size, pscch_dl_ch_estimates, phy_data, 0, rxdataF);
+    nr_ue_pdcch_procedures(ue, proc, 1, pscch_est_size, pscch_dl_ch_estimates, phy_data, 0, rxdataF); 
     LOG_D(NR_PHY,"returned from nr_ue_pdcch_procedures\n");
   }
 
@@ -635,7 +635,7 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
                                 phy_data->nr_sl_pssch_sci_pdu.subchannel_size,
                                 phy_data->nr_sl_pssch_sci_pdu.targetCodeRate,
                                 0);
-    LOG_D(NR_PHY,"Starting slot FEP for SLSCH (symbol %d to %d) pscch_numsym %d pssch_numsym %d\n",1+phy_data->nr_sl_pssch_sci_pdu.pscch_numsym,phy_data->nr_sl_pssch_sci_pdu.pssch_numsym,phy_data->nr_sl_pssch_sci_pdu.pscch_numsym,phy_data->nr_sl_pssch_sci_pdu.pssch_numsym);
+    LOG_D(NR_PHY,"Starting slot FEP for SLSCH (symbol %d to %d) pscch_numsym %d pssch_numsym %d\n",1+phy_data->nr_sl_pssch_sci_pdu.pscch_numsym,phy_data->nr_sl_pssch_sci_pdu.pssch_numsym,phy_data->nr_sl_pssch_sci_pdu.pscch_numsym,phy_data->nr_sl_pssch_sci_pdu.pssch_numsym); 
     for (int sym=1+phy_data->nr_sl_pssch_sci_pdu.pscch_numsym; sym<=phy_data->nr_sl_pssch_sci_pdu.pssch_numsym;sym++) {
       nr_slot_fep(ue,
                   fp,
