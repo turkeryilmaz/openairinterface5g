@@ -3686,7 +3686,7 @@ uint8_t nr_ue_sl_psbch_scheduler(nr_sidelink_indication_t *sl_ind,
       tx_config->tx_config_list[0].tx_psbch_config_pdu.psbch_tx_power = 0;//TBD...
       memcpy(tx_config->tx_config_list[0].tx_psbch_config_pdu.psbch_payload, sl_mac_params->tx_sl_bch.sl_mib, 4);
 
-      if ((frame&127) == 0 ) LOG_D(NR_MAC, "[SyncRefUE%d] TTI-%d:%d TX PSBCH REQ- tx_slss_id:%d, sl-mib:%x, numSSB:%d, next SSB slot:%d\n",
+      if ((frame & 127) == 0) LOG_D(NR_MAC, "[SyncRefUE%d] TTI-%d:%d TX PSBCH REQ- tx_slss_id:%d, sl-mib:%x, numSSB:%d, next SSB slot:%d\n",
                                                             sl_ind->module_id,frame, slot,
                                                             sl_mac_params->tx_sl_bch.slss_id,
                                                             (*(uint32_t *)tx_config->tx_config_list[0].tx_psbch_config_pdu.psbch_payload),

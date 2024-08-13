@@ -693,12 +693,12 @@ static int get_psfch_index(int frame, int slot, int n_slots_frame, const NR_TDD_
 
 }
 
-int get_pssch_to_harq_feedback(uint8_t *pssch_to_harq_feedback, uint8_t psfch_min_time_gap) {
-  /* already mutex protected: held in nr_acknack_scheduling() */
-  for (int i = 0; i < 4; i++) {
+int get_pssch_to_harq_feedback(uint8_t *pssch_to_harq_feedback, uint8_t psfch_min_time_gap, NR_TDD_UL_DL_Pattern_t *tdd, const int nr_slots_frame) {
+  int n_ul_slots_period = tdd ? tdd->nrofUplinkSlots + (tdd->nrofUplinkSymbols > 0 ? 1 : 0) : nr_slots_frame;
+  for (int i = 0; i < n_ul_slots_period; i++) {
     pssch_to_harq_feedback[i] = psfch_min_time_gap + i + 1;
   }
-  return 4;
+  return n_ul_slots_period;
 }
 
 int get_feedback_frame_slot(NR_UE_MAC_INST_t *mac, NR_TDD_UL_DL_Pattern_t *tdd,
@@ -745,7 +745,7 @@ int nr_ue_sl_acknack_scheduling(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx
   int psfch_max_size = psfch_period * num_subch;
   int n_ul_buf_max_size = n_ul_slots_period * num_subch;
   uint8_t pssch_to_harq_feedback[8];
-  int fb_size = get_pssch_to_harq_feedback(pssch_to_harq_feedback, psfch_min_time_gap);
+  int fb_size = get_pssch_to_harq_feedback(pssch_to_harq_feedback, psfch_min_time_gap, tdd, nr_slots_frame);
   int pre_slot = (rx_ind->slot + nr_slots_frame - 1) % nr_slots_frame;
   int pre_sfn = (rx_ind->sfn + (rx_ind->slot + nr_slots_frame - 1) / nr_slots_frame) % 1023;
   const int pre_index = get_psfch_index(pre_sfn, pre_slot, nr_slots_frame, tdd, n_ul_buf_max_size);
@@ -772,10 +772,9 @@ int nr_ue_sl_acknack_scheduling(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx
     LOG_D(NR_MAC, "flag %d, f %d, offset %d, psfch_slot %d\n", continue_flag, f, pssch_to_harq_feedback[f], psfch_slot);
     if (cnt == psfch_max_size && psfch_frame == pre_psfch->feedback_frame && psfch_slot == pre_psfch->feedback_slot) {
       cnt = 0;
-      continue;
     }
-    SL_sched_feedback_t  *curr_psfch = &sched_ctrl->sched_psfch[psfch_index];
-    if (true) {
+    else {
+      SL_sched_feedback_t  *curr_psfch = &sched_ctrl->sched_psfch[psfch_index];
       curr_psfch->feedback_frame = psfch_frame;
       curr_psfch->feedback_slot = psfch_slot;
       curr_psfch->dai_c = cnt + 1;
