@@ -438,23 +438,23 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
   if ((frame_rx&127) == 0  && nr_slot_rx==19) {
       LOG_I(NR_PHY,"============================================\n");
 
-      LOG_I(NR_PHY,"%s[UE%d] %d:%d PSBCH Stats: TX %d, RX ok %d, RX not ok %d\n",KGRN,
+      LOG_I(NR_PHY,"%s[UE%d] %d:%d PSBCH Stats: TX %u, RX ok %u, RX not ok %u\n",KGRN,
                                                       ue->Mod_id, frame_rx, nr_slot_rx,
                                                       sl_phy_params->psbch.num_psbch_tx,
                                                       sl_phy_params->psbch.rx_ok,
                                                       sl_phy_params->psbch.rx_errors);
 
-      LOG_I(NR_PHY,"%s[UE%d] %d:%d PSCCH Stats: TX %d, RX ok %d\n",KGRN,
+      LOG_I(NR_PHY,"%s[UE%d] %d:%d PSCCH Stats: TX %u, RX ok %u\n",KGRN,
                                                       ue->Mod_id, frame_rx, nr_slot_rx,
                                                       sl_phy_params->pscch.num_pscch_tx,
                                                       sl_phy_params->pscch.rx_ok);
 
-      LOG_I(NR_PHY,"%s[UE%d] %d:%d PSSCH/SCI2 Stats: TX %d, RX ok %d, RX not ok %d\n",KGRN,
+      LOG_I(NR_PHY,"%s[UE%d] %d:%d PSSCH/SCI2 Stats: TX %u, RX ok %u, RX not ok %u\n",KGRN,
                                                       ue->Mod_id, frame_rx, nr_slot_rx,
                                                       sl_phy_params->pssch.num_pssch_sci2_tx,
                                                       sl_phy_params->pssch.rx_sci2_ok,
                                                       sl_phy_params->pssch.rx_sci2_errors);
-      LOG_I(NR_PHY,"%s[UE%d] %d:%d PSSCH Stats: TX %d, RX ok %d, RX not ok (%d/%d/%d/%d)\n",KGRN,
+      LOG_I(NR_PHY,"%s[UE%d] %d:%d PSSCH Stats: TX %u, RX ok %u, RX not ok (%u/%u/%u/%u)\n",KGRN,
                                                       ue->Mod_id, frame_rx, nr_slot_rx,
                                                       sl_phy_params->pssch.num_pssch_tx,
                                                       sl_phy_params->pssch.rx_ok,
@@ -462,7 +462,7 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
                                                       sl_phy_params->pssch.rx_errors[1],
                                                       sl_phy_params->pssch.rx_errors[2],
                                                       sl_phy_params->pssch.rx_errors[3]);
-      LOG_I(NR_PHY, "%s[UE%d] %d:%d PSFCH Stats: TX %d\n", KGRN,
+      LOG_I(NR_PHY, "%s[UE%d] %d:%d PSFCH Stats: TX %u\n", KGRN,
                                                       ue->Mod_id, frame_rx, nr_slot_rx,
                                                       sl_phy_params->psfch.num_psfch_tx
                                                       );
