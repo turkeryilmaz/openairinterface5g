@@ -75,6 +75,8 @@
 #define PAYLOAD_CONTAINER_LENGTH_MIN                       3
 #define PAYLOAD_CONTAINER_LENGTH_MAX                       65537
 
+#define MAC_INTEGRITY_SIZE 4
+
 /* List of allowed NSSAI from NAS messaging. */
 typedef struct {
   int sst;
