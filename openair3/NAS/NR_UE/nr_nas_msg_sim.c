@@ -1318,6 +1318,18 @@ void *nas_nrue(void *args_p)
         break;
       }
 
+      case NR_NAS_CONN_ESTABLISH_IND: {
+        nr_ue_nas_t *nas = get_ue_nas_info(instance);
+        nas->fiveGMM_mode = FGS_CONNECTED;
+        LOG_I(NAS,
+              "[UE %ld] Received %s: UEid %u, asCause %u\n",
+              instance,
+              ITTI_MSG_NAME(msg_p),
+              NR_NAS_CONN_ESTABLISH_IND(msg_p).UEid,
+              NR_NAS_CONN_ESTABLISH_IND(msg_p).asCause);
+        break;
+      }
+
       case NAS_CONN_ESTABLI_CNF: {
         LOG_I(NAS,
               "[UE %ld] Received %s: errCode %u, length %u\n",
