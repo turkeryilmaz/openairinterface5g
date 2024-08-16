@@ -401,6 +401,7 @@ int nr_ue_pdcch_procedures(PHY_VARS_NR_UE *ue,
                            c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP],
                            nr_downlink_indication_t *dl_indication)
 {
+  uint64_t a = rdtsc_oai();
   int frame_rx = proc->frame_rx;
   int nr_slot_rx = proc->nr_slot_rx;
   nr_phy_data_t *phy_data = (nr_phy_data_t *)dl_indication->phy_data;
@@ -439,6 +440,9 @@ int nr_ue_pdcch_procedures(PHY_VARS_NR_UE *ue,
   stop_meas(&ue->dlsch_rx_pdcch_stats);
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_UE_PDCCH_PROCEDURES, VCD_FUNCTION_OUT);
+  uint64_t b = rdtsc_oai();
+  if (b - a > 3000 * 100)
+    printf("total pdcch %lld\n", (b - a) / 3000);
   return (dci_ind.number_of_dcis);
 }
 
@@ -861,6 +865,7 @@ static bool nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue,
 
 int pbch_pdcch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_downlink_indication_t *dl_indication)
 {
+  int64_t a = rdtsc_oai();
   int frame_rx = proc->frame_rx;
   int nr_slot_rx = proc->nr_slot_rx;
   int gNB_id = proc->gNB_id;
@@ -1011,6 +1016,7 @@ int pbch_pdcch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_
   LOG_D(PHY, "[UE %d] Frame %d, nr_slot_rx %d: found %d DCIs\n", ue->Mod_id, frame_rx, nr_slot_rx, dci_cnt);
   phy_pdcch_config->nb_search_space = 0;
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_UE_SLOT_FEP_PDCCH, VCD_FUNCTION_OUT);
+  printf("total pbch_pdcch_processing %lld\n", (rdtsc_oai() - a) / 3000);
   return sampleShift;
 }
 

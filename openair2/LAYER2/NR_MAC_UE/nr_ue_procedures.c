@@ -2564,7 +2564,7 @@ int8_t nr_ue_get_SR(NR_UE_MAC_INST_t *mac, frame_t frame, slot_t slot, NR_Schedu
   // TODO check if the PUCCH resource for the SR transmission occasion does not overlap with a UL-SCH resource
   if (!sr_info->pending || is_nr_timer_active(sr_info->prohibitTimer))
     return 0;
-
+  return 1;
   if (sr_info->counter < sr_info->maxTransmissions) {
     sr_info->counter++;
     // start the sr-prohibittimer

@@ -596,6 +596,7 @@ void processSlotTX(void *arg)
 
 static int UE_dl_preprocessing(PHY_VARS_NR_UE *UE, const UE_nr_rxtx_proc_t *proc, int *tx_wait_for_dlsch, nr_phy_data_t *phy_data)
 {
+  int64_t a = rdtsc_oai();
   int sampleShift = 0;
   NR_DL_FRAME_PARMS *fp = &UE->frame_parms;
   if (UE->sl_mode == 2)
@@ -664,6 +665,9 @@ static int UE_dl_preprocessing(PHY_VARS_NR_UE *UE, const UE_nr_rxtx_proc_t *proc
     }
   } else
     ue_ta_procedures(UE, proc->nr_slot_tx, proc->frame_tx);
+  uint64_t b = rdtsc_oai();
+  if (b - a > 3000 * 100)
+    printf("total preprocessing %ld\n", (b - a) / 3000);
 
   return sampleShift;
 }
