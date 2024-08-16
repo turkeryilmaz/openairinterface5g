@@ -441,8 +441,20 @@ void nr_generate_psfch0(const PHY_VARS_NR_UE *ue,
                         const NR_DL_FRAME_PARMS *frame_parms,
                         const int16_t amp,
                         const int nr_slot_tx,
-                        const sl_nr_tx_config_psfch_pdu_t *psfch_pdu);
+                        const sl_nr_tx_rx_config_psfch_pdu_t *psfch_pdu);
 
+int8_t nr_ue_decode_pucch0(PHY_VARS_NR_UE *ue,
+                         int frame,
+                         int slot,
+                         c16_t rxdataF[][ue->SL_UE_PHY_PARAMS.sl_frame_params.samples_per_slot_wCP],
+                         nfapi_nr_uci_pucch_pdu_format_0_1_t *uci_pdu,
+                         nfapi_nr_pucch_pdu_t *pucch_pdu);
+
+int8_t nr_ue_decode_psfch0(PHY_VARS_NR_UE *ue,
+                         int frame,
+                         int slot,
+                         c16_t rxdataF[][ue->SL_UE_PHY_PARAMS.sl_frame_params.samples_per_slot_wCP],
+                         const sl_nr_tx_rx_config_psfch_pdu_t *psfch_pdu);
 /**@}*/
 #endif
 

@@ -1429,6 +1429,7 @@ static void handle_sl_bch(module_id_t module_id,uint8_t *const sl_mib,
   frame_1 = ((frame_1 & 0x06) >> 1) << 8;
   uint16_t frame = frame_1 | frame_0;
   uint8_t slot =  ((sl_mib[2] & 0x01) << 6) | ((sl_mib[3] & 0xFC) >> 2);
+  mac->is_synced = true;
 
   LOG_D(NR_MAC, "%s[UE%d]In %d:%d Received SL-MIB:%x .Contents- SL-TDD config:%x, Incov:%d, FN:%d, Slot:%d\n",KRED,
                                       module_id, frame_rx, slot_rx,*((uint32_t *)sl_mib),
@@ -1497,6 +1498,7 @@ void sl_nr_process_rx_ind(uint16_t mod_id,
 
       break;
     case SL_NR_RX_PDU_TYPE_SLSCH:
+    case SL_NR_RX_PDU_TYPE_SLSCH_PSFCH:
 
         LOG_D(NR_MAC, "%s[UE%d]SL-MAC Received SLSCH: rx_slsch_pdu:%p, rx_slsch_len %d, ack_nack %d, harq_pid %d\n",KGRN,
                          mod_id,rx_ind->rx_indication_body[num_pdus - 1].rx_slsch_pdu.pdu,

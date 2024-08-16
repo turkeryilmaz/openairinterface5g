@@ -459,11 +459,40 @@ typedef struct {
   /// sched_pusch keeps information on MCS etc used for the initial transmission
   NR_sched_pssch_t sched_pssch;
 } NR_UE_sl_harq_t;
+
+typedef struct SL_CSI_Report {
+  uint8_t ri;
+  int8_t cqi;
+  uint8_t cqi_table;
+} SL_CSI_Report_t;
   //
+
+typedef struct SL_sched_feedback {
+  int16_t feedback_slot;
+  int16_t feedback_frame;
+  int16_t harq_feedback;
+  uint8_t freq_hop_flag;
+  uint8_t group_hop_flag;
+  uint8_t sequence_hop_flag;
+  uint16_t second_hop_prb;
+  uint8_t nr_of_symbols;
+  uint8_t start_symbol_index;
+  uint8_t hopping_id;
+  uint16_t prb;
+  uint16_t sl_bwp_start;
+  uint16_t initial_cyclic_shift;
+  uint8_t mcs;
+  uint8_t bit_len_harq;
+} SL_sched_feedback_t;
 typedef struct {
 
+  // sidelink bytes that are currently scheduled
+  int sched_sl_bytes;
   /// Sched PSSCH: scheduling decisions, copied into HARQ and cleared every TTI
   NR_sched_pssch_t sched_pssch;
+
+  // Used on PSFCH transmitter
+  SL_sched_feedback_t *sched_psfch;
   //
   NR_bler_stats_t sl_bler_stats;
   /// per-LC status data
@@ -479,11 +508,18 @@ typedef struct {
   /// UL HARQ processes that await retransmission
   NR_list_t retrans_sl_harq;
   //  NR_SLSCH 
+  // To hold the CSI report values received from different users
+  SL_CSI_Report_t csi_report;
+
+  /// UE-estimated maximum MCS (from CSI-RS)
+  uint8_t sl_max_mcs;
+
 } NR_SL_UE_sched_ctrl_t;
 
 #define MAX_SL_UE_CONNECTIONS 8
+#define CURRENT_NUM_UE_CONNECTIONS 1
 
-#define MAX_SL_CSI_REPORTCONFIG MAX_SL_UE_CONNECTIONS 
+#define MAX_SL_CSI_REPORTCONFIG MAX_SL_UE_CONNECTIONS
 
 typedef struct {
   uint16_t dest_id;
@@ -491,6 +527,7 @@ typedef struct {
   /// scheduling control info
   nr_sl_csi_report_t csi_report_template[MAX_SL_CSI_REPORTCONFIG];
   NR_SL_UE_sched_ctrl_t UE_sched_ctrl;
+  NR_UE_sl_mac_stats_t mac_sl_stats;
 } NR_SL_UE_info_t;
 
 
@@ -604,7 +641,6 @@ typedef struct {
   NR_SSB_meas_t ssb_measurements;
 
   dci_pdu_rel15_t def_dci_pdu_rel15[NR_MAX_SLOTS_PER_FRAME][8];
-  sl_nr_tx_config_psfch_pdu_t *sl_tx_config_psfch_pdu[NR_MAX_HARQ_PROCESSES];
 
   // Defined for abstracted mode
   nr_downlink_indication_t dl_info;
@@ -627,6 +663,9 @@ typedef struct {
   uint8_t slsch_payload[16384];
   time_stats_t rlc_data_req;
   int src_id;
+  int dest_id;
+  pthread_mutex_t sl_sched_lock;
+  bool is_synced;
 } NR_UE_MAC_INST_t;
 
 /*@}*/

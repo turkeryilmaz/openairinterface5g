@@ -29,7 +29,7 @@
 #include <softmodem-common.h>
 #include "NR_MAC_gNB/nr_mac_gNB.h"
 #include "NR_MAC_COMMON/nr_mac_extern.h"
-#include "NR_MAC_gNB/mac_proto.h"
+#include "NR_MAC_COMMON/nr_mac_common.h"
 #include "common/ran_context.h"
 #include "common/utils/nr/nr_common.h"
 #include "nfapi/oai_integration/vendor_ext.h"

@@ -36,7 +36,7 @@
 #include "NR_MAC_gNB/nr_mac_gNB.h"
 #include "NR_MAC_COMMON/nr_mac_extern.h"
 
-#include "NR_MAC_gNB/mac_proto.h"
+#include "openair2/LAYER2/NR_MAC_COMMON/nr_mac_common.h"
 #include "common/utils/LOG/log.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "common/utils/nr/nr_common.h"
@@ -61,61 +61,6 @@
 //#define DEBUG_DCI
 
 extern RAN_CONTEXT_t RC;
-
-// CQI TABLES (10 times the value in 214 to adequately compare with R)
-// Table 1 (38.214 5.2.2.1-2)
-static const uint16_t cqi_table1[16][2] = {{0, 0},
-                                           {2, 780},
-                                           {2, 1200},
-                                           {2, 1930},
-                                           {2, 3080},
-                                           {2, 4490},
-                                           {2, 6020},
-                                           {4, 3780},
-                                           {4, 4900},
-                                           {4, 6160},
-                                           {6, 4660},
-                                           {6, 5670},
-                                           {6, 6660},
-                                           {6, 7720},
-                                           {6, 8730},
-                                           {6, 9480}};
-
-// Table 2 (38.214 5.2.2.1-3)
-static const uint16_t cqi_table2[16][2] = {{0, 0},
-                                           {2, 780},
-                                           {2, 1930},
-                                           {2, 4490},
-                                           {4, 3780},
-                                           {4, 4900},
-                                           {4, 6160},
-                                           {6, 4660},
-                                           {6, 5670},
-                                           {6, 6660},
-                                           {6, 7720},
-                                           {6, 8730},
-                                           {8, 7110},
-                                           {8, 7970},
-                                           {8, 8850},
-                                           {8, 9480}};
-
-// Table 2 (38.214 5.2.2.1-4)
-static const uint16_t cqi_table3[16][2] = {{0, 0},
-                                           {2, 300},
-                                           {2, 500},
-                                           {2, 780},
-                                           {2, 1200},
-                                           {2, 1930},
-                                           {2, 3080},
-                                           {2, 4490},
-                                           {2, 6020},
-                                           {4, 3780},
-                                           {4, 4900},
-                                           {4, 6160},
-                                           {6, 4660},
-                                           {6, 5670},
-                                           {6, 6660},
-                                           {6, 7720}};
 
 uint8_t get_dl_nrOfLayers(const NR_UE_sched_ctrl_t *sched_ctrl,
                           const nr_dci_format_t dci_format) {
@@ -154,47 +99,6 @@ uint16_t get_pm_index(const NR_UE_info_t *UE,
     return x2;
   else
     AssertFatal(1==0,"More than 2 antenna ports not yet supported\n");
-}
-
-uint8_t get_mcs_from_cqi(int mcs_table, int cqi_table, int cqi_idx)
-{
-  if (cqi_idx <= 0) {
-    LOG_E(NR_MAC, "invalid cqi_idx %d, default to MCS 9\n", cqi_idx);
-    return 9;
-  }
-
-  if (mcs_table != cqi_table) {
-    LOG_E(NR_MAC, "indices of CQI (%d) and MCS (%d) tables don't correspond yet\n", cqi_table, mcs_table);
-    return 9;
-  }
-
-  uint16_t target_coderate, target_qm;
-  switch (cqi_table) {
-    case 0:
-      target_qm = cqi_table1[cqi_idx][0];
-      target_coderate = cqi_table1[cqi_idx][1];
-      break;
-    case 1:
-      target_qm = cqi_table2[cqi_idx][0];
-      target_coderate = cqi_table2[cqi_idx][1];
-      break;
-    case 2:
-      target_qm = cqi_table3[cqi_idx][0];
-      target_coderate = cqi_table3[cqi_idx][1];
-      break;
-    default:
-      AssertFatal(1==0,"Invalid cqi table index %d\n",cqi_table);
-  }
-  const int max_mcs = mcs_table == 1 ? 27 : 28;
-  for (int i = 0; i <= max_mcs; i++) {
-    const int R = nr_get_code_rate_dl(i, mcs_table);
-    const int Qm = nr_get_Qm_dl(i, mcs_table);
-    if (Qm == target_qm && target_coderate <= R)
-      return i;
-  }
-
-  LOG_E(NR_MAC, "could not find maximum MCS from cqi_idx %d, default to 9\n", cqi_idx);
-  return 9;
 }
 
 NR_pdsch_dmrs_t get_dl_dmrs_params(const NR_ServingCellConfigCommon_t *scc,
@@ -1803,132 +1707,6 @@ void dump_nr_list(NR_UE_info_t **list)
   UE_iterator(list, UE) {
     LOG_T(NR_MAC, "NR list UEs rntis %04x\n", (*list)->rnti);
   }
-}
-
-/*
- * Create a new NR_list
- */
-void create_nr_list(NR_list_t *list, int len)
-{
-  list->head = -1;
-  list->next = malloc(len * sizeof(*list->next));
-  AssertFatal(list->next, "cannot malloc() memory for NR_list_t->next\n");
-  for (int i = 0; i < len; ++i)
-    list->next[i] = -1;
-  list->tail = -1;
-  list->len = len;
-}
-
-/*
- * Resize an NR_list
- */
-void resize_nr_list(NR_list_t *list, int new_len)
-{
-  if (new_len == list->len)
-    return;
-  if (new_len > list->len) {
-    /* list->head remains */
-    const int old_len = list->len;
-    int* n = realloc(list->next, new_len * sizeof(*list->next));
-    AssertFatal(n, "cannot realloc() memory for NR_list_t->next\n");
-    list->next = n;
-    for (int i = old_len; i < new_len; ++i)
-      list->next[i] = -1;
-    /* list->tail remains */
-    list->len = new_len;
-  } else { /* new_len < len */
-    AssertFatal(list->head < new_len, "shortened list head out of index %d (new len %d)\n", list->head, new_len);
-    AssertFatal(list->tail < new_len, "shortened list tail out of index %d (new len %d)\n", list->head, new_len);
-    for (int i = 0; i < list->len; ++i)
-      AssertFatal(list->next[i] < new_len, "shortened list entry out of index %d (new len %d)\n", list->next[i], new_len);
-    /* list->head remains */
-    int *n = realloc(list->next, new_len * sizeof(*list->next));
-    AssertFatal(n, "cannot realloc() memory for NR_list_t->next\n");
-    list->next = n;
-    /* list->tail remains */
-    list->len = new_len;
-  }
-}
-
-/*
- * Destroy an NR_list
- */
-void destroy_nr_list(NR_list_t *list)
-{
-  free(list->next);
-}
-
-/*
- * Add an ID to an NR_list at the end, traversing the whole list. Note:
- * add_tail_nr_list() is a faster alternative, but this implementation ensures
- * we do not add an existing ID.
- */
-void add_nr_list(NR_list_t *listP, int id)
-{
-  int *cur = &listP->head;
-  while (*cur >= 0) {
-    AssertFatal(*cur != id, "id %d already in NR_UE_list!\n", id);
-    cur = &listP->next[*cur];
-  }
-  *cur = id;
-  if (listP->next[id] < 0)
-    listP->tail = id;
-}
-
-/*
- * Remove an ID from an NR_list
- */
-void remove_nr_list(NR_list_t *listP, int id)
-{
-  int *cur = &listP->head;
-  int *prev = &listP->head;
-  while (*cur != -1 && *cur != id) {
-    prev = cur;
-    cur = &listP->next[*cur];
-  }
-  AssertFatal(*cur != -1, "ID %d not found in UE_list\n", id);
-  int *next = &listP->next[*cur];
-  *cur = listP->next[*cur];
-  *next = -1;
-  listP->tail = *prev >= 0 && listP->next[*prev] >= 0 ? listP->tail : *prev;
-}
-
-/*
- * Add an ID to the tail of the NR_list in O(1). Note that there is
- * corresponding remove_tail_nr_list(), as we cannot set the tail backwards and
- * therefore need to go through the whole list (use remove_nr_list())
- */
-void add_tail_nr_list(NR_list_t *listP, int id)
-{
-  int *last = listP->tail < 0 ? &listP->head : &listP->next[listP->tail];
-  *last = id;
-  listP->next[id] = -1;
-  listP->tail = id;
-}
-
-/*
- * Add an ID to the front of the NR_list in O(1)
- */
-void add_front_nr_list(NR_list_t *listP, int id)
-{
-  const int ohead = listP->head;
-  listP->head = id;
-  listP->next[id] = ohead;
-  if (listP->tail < 0)
-    listP->tail = id;
-}
-
-/*
- * Remove an ID from the front of the NR_list in O(1)
- */
-void remove_front_nr_list(NR_list_t *listP)
-{
-  AssertFatal(listP->head >= 0, "Nothing to remove\n");
-  const int ohead = listP->head;
-  listP->head = listP->next[ohead];
-  listP->next[ohead] = -1;
-  if (listP->head < 0)
-    listP->tail = -1;
 }
 
 NR_UE_info_t *find_nr_UE(NR_UEs_t *UEs, rnti_t rntiP)

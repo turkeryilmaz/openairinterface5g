@@ -38,6 +38,7 @@
 #include "PHY/CODING/nrLDPC_extern.h"
 #include "PHY/NR_UE_TRANSPORT/nr_transport_ue.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
+#include "executables/nr-uesoftmodem.h"
 
 //#define DEBUG_ULSCH_CODING
 
@@ -54,7 +55,7 @@ int nr_ulsch_encoding(PHY_VARS_NR_UE *ue,
 ///////////
 
   unsigned int crc = 1;
-  NR_UL_UE_HARQ_t *harq_process = &ue->ul_harq_processes[harq_pid];
+  NR_UL_UE_HARQ_t *harq_process = get_softmodem_params()->sl_mode ? &ue->sl_harq_processes[harq_pid] : &ue->ul_harq_processes[harq_pid];
   uint16_t nb_rb = pscch_pssch_pdu == NULL ? ulsch->pusch_pdu.rb_size : pscch_pssch_pdu->l_subch * pscch_pssch_pdu->subchannel_size;
   uint32_t A = (pscch_pssch_pdu == NULL ? ulsch->pusch_pdu.pusch_data.tb_size : pscch_pssch_pdu->tb_size)<<3;
   uint32_t *pz = &harq_process->Z;

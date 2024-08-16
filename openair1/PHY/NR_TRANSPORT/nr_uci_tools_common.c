@@ -145,7 +145,8 @@ double nr_cyclic_shift_hopping(uint32_t n_id,
 
   uint32_t x1,s = lte_gold_generic(&x1, &c_init, 1); // TS 38.211 Subclause 5.2.1
   uint8_t n_cs=0;
-  int l = get_softmodem_params()->sl_mode ? 0 : 32;
+  int l = 32;
+  lnormal = get_softmodem_params()->sl_mode ? 0 : lnormal;
   int minShift = (14*8*nr_slot_tx) + 8*(lnormal+lprime);
   int tmpShift =0;
 #ifdef DEBUG_NR_PUCCH_TX

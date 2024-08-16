@@ -259,7 +259,7 @@ static void nr_processULSegment(void *arg)
 
 
 int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
-		      struct PHY_VARS_NR_UE_s *UE,
+                      struct PHY_VARS_NR_UE_s *UE,
                       uint8_t ULSCH_id,
                       short *ulsch_llr,
                       NR_DL_FRAME_PARMS *frame_parms,
@@ -268,8 +268,10 @@ int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
                       uint8_t nr_tti_rx,
                       uint8_t harq_pid,
                       uint32_t G,
-		      UE_nr_rxtx_proc_t *proc,
-		      nr_phy_data_t *phy_data)
+                      UE_nr_rxtx_proc_t *proc,
+                      nr_phy_data_t *phy_data,
+                      int8_t *ack_nack_rcvd,
+                      uint8_t num_acks)
   {
     AssertFatal((phy_vars_gNB && !UE) || (!phy_vars_gNB && UE),"Only one of gNB or UE must be non-null`");	  
     if (!ulsch_llr) {
@@ -542,7 +544,7 @@ int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
          notifiedFIFO_elt_t *req=pullTpool(&nf,  &get_nrUE_params()->Tpool);
          if (req == NULL)
            break; // Tpool has been stopped
-         nr_postDecode_slsch(UE, req,proc,phy_data);
+         nr_postDecode_slsch(UE, req, proc, phy_data, ack_nack_rcvd, num_acks);
          delNotifiedFIFO_elt(req);
          nbDecode--;
       }

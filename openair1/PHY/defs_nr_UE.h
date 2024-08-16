@@ -113,6 +113,14 @@
 #include "radio/COMMON/common_lib.h"
 #include "NR_IF_Module.h"
 
+#define MAX_PUCCH0_NID 8
+
+typedef struct {
+  int nb_id;
+  int Nid[MAX_PUCCH0_NID];
+  int lut[MAX_PUCCH0_NID][160][14];
+} NR_UE_PUCCH0_LUT_t;
+
 /// Context data structure for gNB subframe processing
 typedef struct {
   /// Component Carrier index
@@ -440,6 +448,7 @@ typedef struct PHY_VARS_NR_UE_s {
   uint8_t          prs_active_gNBs;
   NR_DL_UE_HARQ_t  dl_harq_processes[2][NR_MAX_DLSCH_HARQ_PROCESSES];
   NR_UL_UE_HARQ_t  ul_harq_processes[NR_MAX_ULSCH_HARQ_PROCESSES];
+  NR_UL_UE_HARQ_t  sl_harq_processes[NR_MAX_SLSCH_HARQ_PROCESSES];
   //Paging parameters
   uint32_t              IMSImod1024;
   uint32_t              PF;
@@ -670,6 +679,8 @@ typedef struct PHY_VARS_NR_UE_s {
   uint32_t ***nr_gold_pscch;
   /// PSSCH signal detection threshold
   int pssch_thres;
+  // PUCCH0 Look-up table for cyclic-shifts
+  NR_UE_PUCCH0_LUT_t pucch0_lut;
 } PHY_VARS_NR_UE;
 
 typedef struct {
@@ -710,6 +721,8 @@ typedef struct nr_phy_data_s {
   sl_nr_rx_config_pssch_sci_pdu_t nr_sl_pssch_sci_pdu;
   sl_nr_rx_config_pssch_pdu_t nr_sl_pssch_pdu;
   sl_nr_tti_csi_rs_pdu_t nr_sl_csi_rs_pdu;
+  sl_nr_tx_rx_config_psfch_pdu_t *psfch_pdu_list;
+  uint8_t num_psfch_pdus;
 } nr_phy_data_t;
 /* this structure is used to pass both UE phy vars and
  * proc to the function UE_thread_rxn_txnp4

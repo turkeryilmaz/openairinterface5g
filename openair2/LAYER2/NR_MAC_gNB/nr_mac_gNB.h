@@ -634,13 +634,6 @@ typedef struct NR_mac_stats {
   char srs_stats[50]; // Statistics may differ depending on SRS usage
 } NR_mac_stats_t;
 
-typedef struct NR_bler_options {
-  double upper;
-  double lower;
-  uint8_t max_mcs;
-  uint8_t harq_round_max;
-} NR_bler_options_t;
-
 typedef struct nr_mac_rrc_ul_if_s {
   ue_context_setup_response_func_t ue_context_setup_response;
   ue_context_modification_response_func_t ue_context_modification_response;

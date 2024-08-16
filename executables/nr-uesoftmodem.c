@@ -546,7 +546,6 @@ int main( int argc, char **argv ) {
       }
 
       UE[CC_id]->sl_mode = get_softmodem_params()->sl_mode;
-      init_nr_ue_vars(UE[CC_id], 0, abstraction_flag);
 
       if (UE[CC_id]->sl_mode) {
         AssertFatal(UE[CC_id]->sl_mode == 2, "Only Sidelink mode 2 supported. Mode 1 not yet supported\n");
@@ -557,8 +556,8 @@ int main( int argc, char **argv ) {
         nr_init_frame_parms_ue_sl(&sl_phy->sl_frame_params,&sl_phy->sl_config,
                                   get_nrUE_params()->threequarter_fs,
                                   get_nrUE_params()->ofdm_offset_divisor);
-        sl_ue_phy_init(UE[CC_id]);
       }
+      init_nr_ue_vars(UE[CC_id], 0, abstraction_flag);
     }
 
     bool is_sl = (get_softmodem_params()->sl_mode) ? 1 : 0;
