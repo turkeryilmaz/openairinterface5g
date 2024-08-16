@@ -442,7 +442,7 @@ int nr_ue_pdcch_procedures(PHY_VARS_NR_UE *ue,
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_UE_PDCCH_PROCEDURES, VCD_FUNCTION_OUT);
   uint64_t b = rdtsc_oai();
   if (b - a > 3000 * 100)
-    printf("total pdcch %lld\n", (b - a) / 3000);
+    printf("total pdcch %ld\n", (b - a) / 3000);
   return (dci_ind.number_of_dcis);
 }
 
@@ -1016,9 +1016,9 @@ int pbch_pdcch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_
   LOG_D(PHY, "[UE %d] Frame %d, nr_slot_rx %d: found %d DCIs\n", ue->Mod_id, frame_rx, nr_slot_rx, dci_cnt);
   phy_pdcch_config->nb_search_space = 0;
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_UE_SLOT_FEP_PDCCH, VCD_FUNCTION_OUT);
-  uint64_t ddddd=rdtsc_oai();
-  if (b-a>3000*10)
-    printf("total pbch_pdcch_processing %lld\n", (b - a) / 3000);
+  uint64_t b=rdtsc_oai();
+  if (b-a>3000*100)
+    printf("total pbch_pdcch_processing %ld\n", (b - a) / 3000);
   return sampleShift;
 }
 
