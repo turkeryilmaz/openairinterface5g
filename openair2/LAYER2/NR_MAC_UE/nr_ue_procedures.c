@@ -38,7 +38,7 @@
 #include "executables/nr-softmodem.h"
 
 /* RRC*/
-#include "RRC/NR_UE/rrc_proto.h"
+#include "RRC/NR_UE/L2_interface_ue.h"
 
 /* MAC */
 #include "NR_MAC_COMMON/nr_mac.h"
@@ -50,7 +50,6 @@
 
 /* PHY */
 #include "executables/softmodem-common.h"
-#include "openair1/PHY/defs_nr_UE.h"
 
 /* utils */
 #include "assertions.h"
@@ -62,10 +61,6 @@
 // #define ENABLE_MAC_PAYLOAD_DEBUG 1
 // #define DEBUG_RAR
 extern uint32_t N_RB_DL;
-
-/* TS 38.213 9.2.5.2 UE procedure for multiplexing HARQ-ACK/SR and CSI in a PUCCH */
-/* this is a counter of number of pucch format 4 per subframe */
-static int nb_pucch_format_4_in_subframes[LTE_NUMBER_OF_SUBFRAMES_PER_FRAME] = { 0 } ;
 
 /* TS 36.213 Table 9.2.3-3: Mapping of values for one HARQ-ACK bit to sequences */
 static const int sequence_cyclic_shift_1_harq_ack_bit[2]
@@ -123,25 +118,6 @@ int get_pucch0_mcs(const int O_ACK, const int O_SR, const int ack_payload, const
   return mcs;
 }
 
-/* TS 38.211 Table 6.4.1.3.3.2-1: DM-RS positions for PUCCH format 3 and 4 */
-static const int nb_symbols_excluding_dmrs[11][2][2]
-= {
-/*                     No additional DMRS            Additional DMRS   */
-/* PUCCH length      No hopping   hopping         No hopping   hopping */
-/* index                  0          1                 0          1    */
-/*    4     */    {{      3    ,     2   }   ,  {      3     ,    2    }},
-/*    5     */    {{      3    ,     3   }   ,  {      3     ,    3    }},
-/*    6     */    {{      4    ,     4   }   ,  {      4     ,    4    }},
-/*    7     */    {{      5    ,     5   }   ,  {      5     ,    5    }},
-/*    8     */    {{      6    ,     6   }   ,  {      6     ,    6    }},
-/*    9     */    {{      7    ,     7   }   ,  {      7     ,    7    }},
-/*   10     */    {{      8    ,     8   }   ,  {      6     ,    6    }},
-/*   11     */    {{      9    ,     9   }   ,  {      7     ,    7    }},
-/*   12     */    {{     10    ,    10   }   ,  {      8     ,    8    }},
-/*   13     */    {{     11    ,    11   }   ,  {      9     ,    9    }},
-/*   14     */    {{     12    ,    12   }   ,  {     10     ,   10    }},
-};
-
 /* TS 36.213 Table 9.2.1-1: PUCCH resource sets before dedicated PUCCH resource configuration */
 const initial_pucch_resource_t initial_pucch_resource[16] = {
 /*              format           first symbol     Number of symbols        PRB offset    nb index for       set of initial CS */
@@ -170,6 +146,13 @@ static nr_dci_format_t nr_extract_dci_info(NR_UE_MAC_INST_t *mac,
                                            const int ss_type,
                                            const uint8_t *dci_pdu,
                                            const int slot);
+
+static int get_NTN_UE_Koffset(NR_NTN_Config_r17_t *ntn_Config_r17, int scs)
+{
+  if (ntn_Config_r17 && ntn_Config_r17->cellSpecificKoffset_r17)
+    return *ntn_Config_r17->cellSpecificKoffset_r17 << scs;
+  return 0;
+}
 
 int get_rnti_type(const NR_UE_MAC_INST_t *mac, const uint16_t rnti)
 {
@@ -253,6 +236,57 @@ void nr_ue_decode_mib(NR_UE_MAC_INST_t *mac, int cc_id)
     mac->state = UE_SYNC;
 }
 
+static void configure_ratematching_csi(fapi_nr_dl_config_dlsch_pdu_rel15_t *dlsch_pdu,
+                                       fapi_nr_dl_config_request_t *dl_config,
+                                       int rnti_type,
+                                       int frame,
+                                       int slot,
+                                       int mu,
+                                       NR_PDSCH_Config_t *pdsch_config)
+{
+  // only for C-RNTI, MCS-C-RNTI, CS-RNTI (and only C-RNTI is supported for now)
+  if (rnti_type != TYPE_C_RNTI_)
+    return;
+
+  if (pdsch_config && pdsch_config->zp_CSI_RS_ResourceToAddModList) {
+    for (int i = 0; i < pdsch_config->zp_CSI_RS_ResourceToAddModList->list.count; i++) {
+      NR_ZP_CSI_RS_Resource_t *zp_res = pdsch_config->zp_CSI_RS_ResourceToAddModList->list.array[i];
+      NR_ZP_CSI_RS_ResourceId_t id = zp_res->zp_CSI_RS_ResourceId;
+      NR_SetupRelease_ZP_CSI_RS_ResourceSet_t *zp_set = pdsch_config->p_ZP_CSI_RS_ResourceSet;
+      AssertFatal(zp_set && zp_set->choice.setup, "Only periodic ZP resource set is implemented\n");
+      bool found = false;
+      for (int j = 0; j < zp_set->choice.setup->zp_CSI_RS_ResourceIdList.list.count; j++) {
+        if (*zp_set->choice.setup->zp_CSI_RS_ResourceIdList.list.array[j] == id) {
+          found = true;
+          break;
+        }
+      }
+      AssertFatal(found, "Couldn't find periodic ZP resouce in set\n");
+      AssertFatal(zp_res->periodicityAndOffset, "periodicityAndOffset cannot be null for periodic ZP resource\n");
+      int period, offset;
+      csi_period_offset(NULL, zp_res->periodicityAndOffset, &period, &offset);
+      if((frame * nr_slots_per_frame[mu] + slot - offset) % period != 0)
+        continue;
+      AssertFatal(dlsch_pdu->numCsiRsForRateMatching < NFAPI_MAX_NUM_CSI_RATEMATCH, "csiRsForRateMatching out of bounds\n");
+      fapi_nr_dl_config_csirs_pdu_rel15_t *csi_pdu = &dlsch_pdu->csiRsForRateMatching[dlsch_pdu->numCsiRsForRateMatching];
+      csi_pdu->csi_type = 2; // ZP-CSI
+      csi_pdu->subcarrier_spacing = mu;
+      configure_csi_resource_mapping(csi_pdu, &zp_res->resourceMapping, dlsch_pdu->BWPSize, dlsch_pdu->BWPStart);
+      dlsch_pdu->numCsiRsForRateMatching++;
+    }
+  }
+
+  for (int i = 0; i < dl_config->number_pdus; i++) {
+    // This assumes that CSI-RS are scheduled before this moment which is true in current implementation
+    fapi_nr_dl_config_request_pdu_t *csi_req = &dl_config->dl_config_list[i];
+    if (csi_req->pdu_type == FAPI_NR_DL_CONFIG_TYPE_CSI_RS) {
+      AssertFatal(dlsch_pdu->numCsiRsForRateMatching < NFAPI_MAX_NUM_CSI_RATEMATCH, "csiRsForRateMatching out of bounds\n");
+      dlsch_pdu->csiRsForRateMatching[dlsch_pdu->numCsiRsForRateMatching] = csi_req->csirs_config_pdu.csirs_config_rel15;
+      dlsch_pdu->numCsiRsForRateMatching++;
+    }
+  }
+}
+
 int8_t nr_ue_decode_BCCH_DL_SCH(NR_UE_MAC_INST_t *mac,
                                 int cc_id,
                                 unsigned int gNB_index,
@@ -275,6 +309,46 @@ int8_t nr_ue_decode_BCCH_DL_SCH(NR_UE_MAC_INST_t *mac,
  * This code contains all the functions needed to process all dci fields.
  * These tables and functions are going to be called by function nr_ue_process_dci
  */
+
+static inline int writeBit(uint8_t *bitmap, int offset, int value, int size)
+{
+  for (int i = offset; i < offset + size; i++)
+    bitmap[i / 8] |= value << (i % 8);
+  return size;
+}
+
+// 38.214 Section 5.1.3.1
+static uint8_t get_dlsch_mcs_table(nr_dci_format_t format,
+                                   nr_rnti_type_t rnti_type,
+                                   int ss_type,
+                                   long *mcs_Table,
+                                   long *sps_mcs_Table,
+                                   bool sps_transmission,
+                                   long *mcs_C_RNTI)
+{
+  // TODO procedures for SPS-Config (semi-persistent scheduling) not implemented
+  if (mcs_Table && *mcs_Table == NR_PDSCH_Config__mcs_Table_qam256 && format == NR_DL_DCI_FORMAT_1_1 && rnti_type == TYPE_C_RNTI_)
+    return 1; // Table 5.1.3.1-2: MCS index table 2 for PDSCH
+  else if (!mcs_C_RNTI
+           && mcs_Table
+           && *mcs_Table == NR_PDSCH_Config__mcs_Table_qam64LowSE
+           && ss_type == NR_SearchSpace__searchSpaceType_PR_ue_Specific
+           && rnti_type == TYPE_C_RNTI_)
+    return 2; // Table 5.1.3.1-3: MCS index table 3 for PDSCH
+  else if (mcs_C_RNTI && rnti_type == TYPE_MCS_C_RNTI_)
+    return 2; // Table 5.1.3.1-3: MCS index table 3 for PDSCH
+  else if (!sps_mcs_Table && mcs_Table && *mcs_Table == NR_PDSCH_Config__mcs_Table_qam256) {
+    if ((format == NR_DL_DCI_FORMAT_1_1 && rnti_type == TYPE_CS_RNTI_) || sps_transmission)
+      return 1; // Table 5.1.3.1-2: MCS index table 2 for PDSCH
+  }
+  else if (sps_mcs_Table) {
+    if (rnti_type == TYPE_CS_RNTI_ || sps_transmission)
+      return 2; // Table 5.1.3.1-3: MCS index table 3 for PDSCH
+  }
+  // otherwise
+  return 0; // Table 5.1.3.1-1: MCS index table 1 for PDSCH
+}
+
 int8_t nr_ue_process_dci_freq_dom_resource_assignment(nfapi_nr_ue_pusch_pdu_t *pusch_config_pdu,
                                                       fapi_nr_dl_config_dlsch_pdu_rel15_t *dlsch_config_pdu,
                                                       NR_PDSCH_Config_t *pdsch_Config,
@@ -293,24 +367,45 @@ int8_t nr_ue_process_dci_freq_dom_resource_assignment(nfapi_nr_ue_pusch_pdu_t *p
         pdsch_Config->resourceAllocation == NR_PDSCH_Config__resourceAllocation_resourceAllocationType0) {
       // TS 38.214 subclause 5.1.2.2.1 Downlink resource allocation type 0
       dlsch_config_pdu->resource_alloc = 0;
+      uint8_t *rb_bitmap = dlsch_config_pdu->rb_bitmap;
+      memset(rb_bitmap, 0, sizeof(dlsch_config_pdu->rb_bitmap));
       int P = getRBGSize(n_RB_DLBWP, pdsch_Config->rbg_Size);
-      int n_RBG = frequency_domain_assignment.nbits;
-      int index = 0;
-      for (int i = 0; i < n_RBG; i++) {
+      int currentBit = 0;
+
+      // write first bit sepcial case
+      const int n_RBG = frequency_domain_assignment.nbits;
+      int first_bit_rbg = (frequency_domain_assignment.val >> (n_RBG - 1)) & 0x01;
+      currentBit += writeBit(rb_bitmap, currentBit, first_bit_rbg, P - (start_DLBWP % P));
+
+      // write all bits until last bit special case
+      for (int i = 1; i < n_RBG - 1; i++) {
         // The order of RBG bitmap is such that RBG 0 to RBG n_RBG − 1 are mapped from MSB to LSB
         int bit_rbg = (frequency_domain_assignment.val >> (n_RBG - 1 - i)) & 0x01;
-        int size_RBG;
-        if (i == n_RBG - 1)
-          size_RBG = (start_DLBWP + n_RB_DLBWP) % P > 0 ?
-                     (start_DLBWP + n_RB_DLBWP) % P :
-                     P;
-        else if (i == 0)
-          size_RBG = P - (start_DLBWP % P);
-        else
-          size_RBG = P;
-        for (int j = index; j < size_RBG; j++)
-          dlsch_config_pdu->rb_bitmap[j / 8] |= bit_rbg << (j % 8);
-        index += size_RBG;
+        currentBit += writeBit(rb_bitmap, currentBit, bit_rbg, P);
+      }
+
+      // write last bit
+      int last_bit_rbg = frequency_domain_assignment.val & 0x01;
+      const int tmp=(start_DLBWP + n_RB_DLBWP) % P;
+      int last_RBG = tmp ? tmp : P;
+      writeBit(rb_bitmap, currentBit, last_bit_rbg, last_RBG);
+
+      dlsch_config_pdu->number_rbs = count_bits(dlsch_config_pdu->rb_bitmap, sizeofArray(dlsch_config_pdu->rb_bitmap));
+      // Temporary code to process type0 as type1 when the RB allocation is contiguous
+      int state = 0;
+      for (int i = 0; i < sizeof(dlsch_config_pdu->rb_bitmap) * 8; i++) {
+        int allocated = dlsch_config_pdu->rb_bitmap[i / 8] & (1 << (i % 8));
+        if (allocated) {
+          if (state == 0) {
+            dlsch_config_pdu->start_rb = i;
+            state = 1;
+          } else
+            AssertFatal(state == 1, "non-contiguous RB allocation in RB allocation type 0 not implemented");
+        } else {
+          if (state == 1) {
+            state = 2;
+          }
+        }
       }
     }
     else if (pdsch_Config &&
@@ -397,12 +492,14 @@ static int nr_ue_process_dci_ul_00(NR_UE_MAC_INST_t *mac,
                                            dci_ind->ss_type,
                                            get_rnti_type(mac, dci_ind->rnti),
                                            dci->time_domain_assignment.val);
-  frame_t frame_tx;
-  int slot_tx;
-  if (tda_info.nrOfSymbols == 0)
+
+  if (!tda_info.valid_tda || tda_info.nrOfSymbols == 0)
     return -1;
 
-  if (-1 == nr_ue_pusch_scheduler(mac, 0, frame, slot, &frame_tx, &slot_tx, tda_info.k2)) {
+  frame_t frame_tx;
+  int slot_tx;
+  const int ntn_ue_koffset = get_NTN_UE_Koffset(mac->sc_info.ntn_Config_r17, mac->current_UL_BWP->scs);
+  if (-1 == nr_ue_pusch_scheduler(mac, 0, frame, slot, &frame_tx, &slot_tx, tda_info.k2 + ntn_ue_koffset)) {
     LOG_E(MAC, "Cannot schedule PUSCH\n");
     return -1;
   }
@@ -411,7 +508,15 @@ static int nr_ue_process_dci_ul_00(NR_UE_MAC_INST_t *mac,
   if (!pdu)
     return -1;
 
-  int ret = nr_config_pusch_pdu(mac, &tda_info, &pdu->pusch_config_pdu, dci, NULL, dci_ind->rnti, dci_ind->ss_type, NR_UL_DCI_FORMAT_0_0);
+  int ret = nr_config_pusch_pdu(mac,
+                                &tda_info,
+                                &pdu->pusch_config_pdu,
+                                dci,
+                                NULL,
+                                NULL,
+                                dci_ind->rnti,
+                                dci_ind->ss_type,
+                                NR_UL_DCI_FORMAT_0_0);
   if (ret != 0)
     remove_ul_config_last_item(pdu);
   release_ul_config(pdu, false);
@@ -457,6 +562,12 @@ static int nr_ue_process_dci_ul_01(NR_UE_MAC_INST_t *mac,
   // - SECOND_DAI
   // - SRS_RESOURCE_IND
 
+  /* CSI_REQUEST */
+  long csi_K2 = -1;
+  csi_payload_t csi_report = {0};
+  if (dci->csi_request.nbits > 0 && dci->csi_request.val > 0)
+    csi_report = nr_ue_aperiodic_csi_reporting(mac, dci->csi_request, dci->time_domain_assignment.val, &csi_K2);
+
   /* SRS_REQUEST */
   AssertFatal(dci->srs_request.nbits == 2, "If SUL is supported in the cell, there is an additional bit in SRS request field\n");
   if (dci->srs_request.val > 0)
@@ -472,10 +583,21 @@ static int nr_ue_process_dci_ul_01(NR_UE_MAC_INST_t *mac,
                                            dci_ind->ss_type,
                                            get_rnti_type(mac, dci_ind->rnti),
                                            dci->time_domain_assignment.val);
-  if (tda_info.nrOfSymbols == 0)
+
+  if (!tda_info.valid_tda || tda_info.nrOfSymbols == 0)
     return -1;
 
-  if (-1 == nr_ue_pusch_scheduler(mac, 0, frame, slot, &frame_tx, &slot_tx, tda_info.k2)) {
+  if (dci->ulsch_indicator == 0) {
+    // in case of CSI on PUSCH and no ULSCH we need to use reportSlotOffset in trigger state
+    if (csi_K2 <= 0) {
+      LOG_E(MAC, "Invalid CSI K2 value %ld\n", csi_K2);
+      return -1;
+    }
+    tda_info.k2 = csi_K2;
+  }
+
+  const int ntn_ue_koffset = get_NTN_UE_Koffset(mac->sc_info.ntn_Config_r17, mac->current_UL_BWP->scs);
+  if (-1 == nr_ue_pusch_scheduler(mac, 0, frame, slot, &frame_tx, &slot_tx, tda_info.k2 + ntn_ue_koffset)) {
     LOG_E(MAC, "Cannot schedule PUSCH\n");
     return -1;
   }
@@ -483,7 +605,15 @@ static int nr_ue_process_dci_ul_01(NR_UE_MAC_INST_t *mac,
   fapi_nr_ul_config_request_pdu_t *pdu = lockGet_ul_config(mac, frame_tx, slot_tx, FAPI_NR_UL_CONFIG_TYPE_PUSCH);
   if (!pdu)
     return -1;
-  int ret = nr_config_pusch_pdu(mac, &tda_info, &pdu->pusch_config_pdu, dci, NULL, dci_ind->rnti, dci_ind->ss_type, NR_UL_DCI_FORMAT_0_1);
+  int ret = nr_config_pusch_pdu(mac,
+                                &tda_info,
+                                &pdu->pusch_config_pdu,
+                                dci,
+                                &csi_report,
+                                NULL,
+                                dci_ind->rnti,
+                                dci_ind->ss_type,
+                                NR_UL_DCI_FORMAT_0_1);
   if (ret != 0)
     remove_ul_config_last_item(pdu);
   release_ul_config(pdu, false);
@@ -564,8 +694,11 @@ static int nr_ue_process_dci_dl_10(NR_UE_MAC_INST_t *mac,
     dlsch_pdu->BWPSize = current_DL_BWP->BWPSize;
     dlsch_pdu->BWPStart = current_DL_BWP->BWPStart;
   }
+
+  nr_rnti_type_t rnti_type = get_rnti_type(mac, dci_ind->rnti);
+
   int mux_pattern = 1;
-  if (dci_ind->rnti == SI_RNTI) {
+  if (rnti_type == TYPE_SI_RNTI_) {
     NR_Type0_PDCCH_CSS_config_t type0_PDCCH_CSS_config = mac->type0_PDCCH_CSS_config;
     mux_pattern = type0_PDCCH_CSS_config.type0_pdcch_ss_mux_pattern;
     dl_conf_req->pdu_type = FAPI_NR_DL_CONFIG_TYPE_SI_DLSCH;
@@ -575,12 +708,16 @@ static int nr_ue_process_dci_dl_10(NR_UE_MAC_INST_t *mac,
       dlsch_pdu->SubcarrierSpacing = mac->mib->subCarrierSpacingCommon + 2;
   } else {
     dlsch_pdu->SubcarrierSpacing = current_DL_BWP->scs;
-    if (mac->ra.RA_window_cnt >= 0 && dci_ind->rnti == mac->ra.ra_rnti) {
+    if (mac->ra.RA_window_cnt >= 0 && rnti_type == TYPE_RA_RNTI_) {
       dl_conf_req->pdu_type = FAPI_NR_DL_CONFIG_TYPE_RA_DLSCH;
     } else {
       dl_conf_req->pdu_type = FAPI_NR_DL_CONFIG_TYPE_DLSCH;
     }
   }
+
+  dlsch_pdu->numCsiRsForRateMatching = 0;
+  configure_ratematching_csi(dlsch_pdu, dl_config, rnti_type, frame, slot, dlsch_pdu->SubcarrierSpacing, pdsch_config);
+
 
   /* IDENTIFIER_DCI_FORMATS */
   /* FREQ_DOM_RESOURCE_ASSIGNMENT_DL */
@@ -603,14 +740,17 @@ static int nr_ue_process_dci_dl_10(NR_UE_MAC_INST_t *mac,
   int dmrs_typeA_pos = mac->dmrs_TypeA_Position;
   const int coreset_type = dci_ind->coreset_type == NFAPI_NR_CSET_CONFIG_PDCCH_CONFIG; // 0 for coreset0, 1 otherwise;
 
+
   NR_tda_info_t tda_info = get_dl_tda_info(current_DL_BWP,
                                            dci_ind->ss_type,
                                            dci->time_domain_assignment.val,
                                            dmrs_typeA_pos,
                                            mux_pattern,
-                                           get_rnti_type(mac, dci_ind->rnti),
+                                           rnti_type,
                                            coreset_type,
                                            mac->get_sib1);
+  if (!tda_info.valid_tda)
+    return -1;
 
   dlsch_pdu->number_symbols = tda_info.nrOfSymbols;
   dlsch_pdu->start_symbol = tda_info.startSymbolIndex;
@@ -626,7 +766,7 @@ static int nr_ue_process_dci_dl_10(NR_UE_MAC_INST_t *mac,
   else
     dlsch_pdu->dlDmrsScramblingId = mac->physCellId;
 
-  if (get_rnti_type(mac, dci_ind->rnti) == TYPE_C_RNTI_
+  if (rnti_type == TYPE_C_RNTI_
       && dci_ind->ss_type != NR_SearchSpace__searchSpaceType_PR_common
       && pdsch_config->dataScramblingIdentityPDSCH)
     dlsch_pdu->dlDataScramblingId = *pdsch_config->dataScramblingIdentityPDSCH;
@@ -654,11 +794,17 @@ static int nr_ue_process_dci_dl_10(NR_UE_MAC_INST_t *mac,
   dlsch_pdu->vrb_to_prb_mapping =
       (dci->vrb_to_prb_mapping.val == 0) ? vrb_to_prb_mapping_non_interleaved : vrb_to_prb_mapping_interleaved;
   /* MCS TABLE INDEX */
-  dlsch_pdu->mcs_table = (pdsch_config) ? ((pdsch_config->mcs_Table) ? (*pdsch_config->mcs_Table + 1) : 0) : 0;
+  dlsch_pdu->mcs_table = get_dlsch_mcs_table(NR_DL_DCI_FORMAT_1_0,
+                                             rnti_type,
+                                             dci_ind->ss_type,
+                                             pdsch_config ? pdsch_config->mcs_Table : NULL,
+                                             NULL, // SPS not implemented,
+                                             false, // as above
+                                             NULL); // MCS-C-RNTI not implemented
   /* MCS */
   dlsch_pdu->mcs = dci->mcs;
 
-  NR_UE_HARQ_STATUS_t *current_harq = &mac->dl_harq_info[dci->harq_pid];
+  NR_UE_HARQ_STATUS_t *current_harq = &mac->dl_harq_info[dci->harq_pid.val];
   /* NDI (only if CRC scrambled by C-RNTI or CS-RNTI or new-RNTI or TC-RNTI)*/
   if (dl_conf_req->pdu_type == FAPI_NR_DL_CONFIG_TYPE_SI_DLSCH ||
       dl_conf_req->pdu_type == FAPI_NR_DL_CONFIG_TYPE_RA_DLSCH ||
@@ -726,7 +872,7 @@ static int nr_ue_process_dci_dl_10(NR_UE_MAC_INST_t *mac,
   /* RV (only if CRC scrambled by C-RNTI or CS-RNTI or new-RNTI or TC-RNTI)*/
   dlsch_pdu->rv = dci->rv;
   /* HARQ_PROCESS_NUMBER (only if CRC scrambled by C-RNTI or CS-RNTI or new-RNTI or TC-RNTI)*/
-  dlsch_pdu->harq_process_nbr = dci->harq_pid;
+  dlsch_pdu->harq_process_nbr = dci->harq_pid.val;
   /* TB_SCALING (only if CRC scrambled by P-RNTI or RA-RNTI) */
   // according to TS 38.214 Table 5.1.3.2-3
   if (dci->tb_scaling > 3) {
@@ -741,8 +887,7 @@ static int nr_ue_process_dci_dl_10(NR_UE_MAC_INST_t *mac,
     LOG_E(MAC, "invalid tpc %d\n", dci->tpc);
     return -1;
   }
-  const int tcp[] = {-1, 0, 1, 3};
-  dlsch_pdu->accumulated_delta_PUCCH = tcp[dci->tpc];
+
   // Sanity check for pucch_resource_indicator value received to check for false DCI.
   bool valid = false;
   NR_PUCCH_Config_t *pucch_Config = mac->current_UL_BWP ? mac->current_UL_BWP->pucch_Config : NULL;
@@ -766,23 +911,29 @@ static int nr_ue_process_dci_dl_10(NR_UE_MAC_INST_t *mac,
     return -1;
   }
 
-  if (dci_ind->rnti != mac->ra.ra_rnti && dci_ind->rnti != SI_RNTI)
-    AssertFatal(1 + dci->pdsch_to_harq_feedback_timing_indicator.val > DURATION_RX_TO_TX,
-                "PDSCH to HARQ feedback time (%d) needs to be higher than DURATION_RX_TO_TX (%d).\n",
-                1 + dci->pdsch_to_harq_feedback_timing_indicator.val,
-                DURATION_RX_TO_TX);
+  /* PDSCH_TO_HARQ_FEEDBACK_TIME_IND */
+  // according to TS 38.213 9.2.3
+  const int ntn_ue_koffset = get_NTN_UE_Koffset(mac->sc_info.ntn_Config_r17, dlsch_pdu->SubcarrierSpacing);
+  const uint16_t feedback_ti = 1 + dci->pdsch_to_harq_feedback_timing_indicator.val + ntn_ue_koffset;
 
-  // set the harq status at MAC for feedback
-  set_harq_status(mac,
-                  dci->pucch_resource_indicator,
-                  dci->harq_pid,
-                  dlsch_pdu->accumulated_delta_PUCCH,
-                  1 + dci->pdsch_to_harq_feedback_timing_indicator.val,
-                  dci->dai[0].val,
-                  dci_ind->n_CCE,
-                  dci_ind->N_CCE,
-                  frame,
-                  slot);
+  if (rnti_type != TYPE_RA_RNTI_ && rnti_type != TYPE_SI_RNTI_) {
+    AssertFatal(feedback_ti > DURATION_RX_TO_TX,
+                "PDSCH to HARQ feedback time (%d) needs to be higher than DURATION_RX_TO_TX (%d).\n",
+                feedback_ti,
+                DURATION_RX_TO_TX);
+    // set the harq status at MAC for feedback
+    const int tpc[] = {-1, 0, 1, 3};
+    set_harq_status(mac,
+                    dci->pucch_resource_indicator,
+                    dci->harq_pid.val,
+                    tpc[dci->tpc],
+                    feedback_ti,
+                    dci->dai[0].val,
+                    dci_ind->n_CCE,
+                    dci_ind->N_CCE,
+                    frame,
+                    slot);
+  }
 
   LOG_D(MAC,
         "(nr_ue_procedures.c) rnti = %x dl_config->number_pdus = %d\n",
@@ -808,11 +959,11 @@ static int nr_ue_process_dci_dl_10(NR_UE_MAC_INST_t *mac,
         dlsch_pdu->harq_process_nbr,
         dci->dai[0].val,
         dlsch_pdu->scaling_factor_S,
-        dlsch_pdu->accumulated_delta_PUCCH,
+        dci->tpc,
         dci->pucch_resource_indicator,
-        1 + dci->pdsch_to_harq_feedback_timing_indicator.val);
+        feedback_ti);
 
-  dlsch_pdu->k1_feedback = 1 + dci->pdsch_to_harq_feedback_timing_indicator.val;
+  dlsch_pdu->k1_feedback = feedback_ti;
 
   LOG_D(MAC, "(nr_ue_procedures.c) pdu_type=%d\n\n", dl_conf_req->pdu_type);
 
@@ -886,6 +1037,10 @@ static int nr_ue_process_dci_dl_11(NR_UE_MAC_INST_t *mac,
   dlsch_pdu->BWPStart = current_DL_BWP->BWPStart;
   dlsch_pdu->SubcarrierSpacing = current_DL_BWP->scs;
 
+  nr_rnti_type_t rnti_type = get_rnti_type(mac, dci_ind->rnti);
+  dlsch_pdu->numCsiRsForRateMatching = 0;
+  configure_ratematching_csi(dlsch_pdu, dl_config, rnti_type, frame, slot, current_DL_BWP->scs, pdsch_Config);
+
   /* IDENTIFIER_DCI_FORMATS */
   /* CARRIER_IND */
   /* BANDWIDTH_PART_IND */
@@ -907,14 +1062,17 @@ static int nr_ue_process_dci_dl_11(NR_UE_MAC_INST_t *mac,
   int dmrs_typeA_pos = mac->dmrs_TypeA_Position;
   int mux_pattern = 1;
   const int coreset_type = dci_ind->coreset_type == NFAPI_NR_CSET_CONFIG_PDCCH_CONFIG; // 0 for coreset0, 1 otherwise;
+
   NR_tda_info_t tda_info = get_dl_tda_info(current_DL_BWP,
                                            dci_ind->ss_type,
                                            dci->time_domain_assignment.val,
                                            dmrs_typeA_pos,
                                            mux_pattern,
-                                           get_rnti_type(mac, dci_ind->rnti),
+                                           rnti_type,
                                            coreset_type,
                                            false);
+  if (!tda_info.valid_tda)
+    return -1;
 
   dlsch_pdu->number_symbols = tda_info.nrOfSymbols;
   dlsch_pdu->start_symbol = tda_info.startSymbolIndex;
@@ -966,7 +1124,7 @@ static int nr_ue_process_dci_dl_11(NR_UE_MAC_INST_t *mac,
   /* MCS (for transport block 1)*/
   dlsch_pdu->mcs = dci->mcs;
   /* NDI (for transport block 1)*/
-  NR_UE_HARQ_STATUS_t *current_harq = &mac->dl_harq_info[dci->harq_pid];
+  NR_UE_HARQ_STATUS_t *current_harq = &mac->dl_harq_info[dci->harq_pid.val];
   if (dci->ndi != current_harq->last_ndi) {
     // new data
     dlsch_pdu->new_data_indicator = true;
@@ -986,15 +1144,13 @@ static int nr_ue_process_dci_dl_11(NR_UE_MAC_INST_t *mac,
   /* RV (for transport block 2)*/
   dlsch_pdu->tb2_rv = dci->rv2.val;
   /* HARQ_PROCESS_NUMBER */
-  dlsch_pdu->harq_process_nbr = dci->harq_pid;
+  dlsch_pdu->harq_process_nbr = dci->harq_pid.val;
   /* TPC_PUCCH */
   // according to TS 38.213 Table 7.2.1-1
   if (dci->tpc > 3) {
     LOG_E(MAC, "invalid tpc %d\n", dci->tpc);
     return -1;
   }
-  const int tcp[] = {-1, 0, 1, 3};
-  dlsch_pdu->accumulated_delta_PUCCH = tcp[dci->tpc];
 
   // Sanity check for pucch_resource_indicator value received to check for false DCI.
   bool valid = false;
@@ -1096,7 +1252,8 @@ static int nr_ue_process_dci_dl_11(NR_UE_MAC_INST_t *mac,
 
   /* PDSCH_TO_HARQ_FEEDBACK_TIME_IND */
   // according to TS 38.213 Table 9.2.3-1
-  uint8_t feedback_ti = pucch_Config->dl_DataToUL_ACK->list.array[dci->pdsch_to_harq_feedback_timing_indicator.val][0];
+  const int ntn_ue_koffset = get_NTN_UE_Koffset(mac->sc_info.ntn_Config_r17, dlsch_pdu->SubcarrierSpacing);
+  const uint16_t feedback_ti = pucch_Config->dl_DataToUL_ACK->list.array[dci->pdsch_to_harq_feedback_timing_indicator.val][0] + ntn_ue_koffset;
 
   AssertFatal(feedback_ti > DURATION_RX_TO_TX,
               "PDSCH to HARQ feedback time (%d) needs to be higher than DURATION_RX_TO_TX (%d). Min feedback time set in config "
@@ -1105,10 +1262,11 @@ static int nr_ue_process_dci_dl_11(NR_UE_MAC_INST_t *mac,
               DURATION_RX_TO_TX);
 
   // set the harq status at MAC for feedback
+  const int tpc[] = {-1, 0, 1, 3};
   set_harq_status(mac,
                   dci->pucch_resource_indicator,
-                  dci->harq_pid,
-                  dlsch_pdu->accumulated_delta_PUCCH,
+                  dci->harq_pid.val,
+                  tpc[dci->tpc],
                   feedback_ti,
                   dci->dai[0].val,
                   dci_ind->n_CCE,
@@ -1118,8 +1276,13 @@ static int nr_ue_process_dci_dl_11(NR_UE_MAC_INST_t *mac,
   // send the ack/nack slot number to phy to indicate tx thread to wait for DLSCH decoding
   dlsch_pdu->k1_feedback = feedback_ti;
 
-  /* TODO same calculation for MCS table as done in UL */
-  dlsch_pdu->mcs_table = (pdsch_Config->mcs_Table) ? (*pdsch_Config->mcs_Table + 1) : 0;
+  dlsch_pdu->mcs_table = get_dlsch_mcs_table(NR_DL_DCI_FORMAT_1_1,
+                                             rnti_type,
+                                             dci_ind->ss_type,
+                                             pdsch_Config ? pdsch_Config->mcs_Table : NULL,
+                                             NULL, // SPS not implemented,
+                                             false, // as above
+                                             NULL); // MCS-C-RNTI not implemented
   dlsch_pdu->qamModOrder = nr_get_Qm_dl(dlsch_pdu->mcs, dlsch_pdu->mcs_table);
   if (dlsch_pdu->qamModOrder == 0) {
     LOG_W(MAC, "Invalid code rate or Mod order, likely due to unexpected DL DCI.\n");
@@ -1287,7 +1450,7 @@ void set_harq_status(NR_UE_MAC_INST_t *mac,
                      uint8_t pucch_id,
                      uint8_t harq_id,
                      int8_t delta_pucch,
-                     uint8_t data_toul_fb,
+                     uint16_t data_toul_fb,
                      uint8_t dai,
                      int n_CCE,
                      int N_CCE,
@@ -1308,7 +1471,7 @@ void set_harq_status(NR_UE_MAC_INST_t *mac,
   current_harq->ul_frame = frame;
   current_harq->ul_slot = slot + data_toul_fb;
   if (current_harq->ul_slot >= slots_per_frame) {
-    current_harq->ul_frame = (frame + 1) % 1024;
+    current_harq->ul_frame = (frame + current_harq->ul_slot / slots_per_frame) % MAX_FRAME_NUMBER;
     current_harq->ul_slot %= slots_per_frame;
   }
   // counter DAI in DCI ranges from 0 to 3
@@ -1316,7 +1479,8 @@ void set_harq_status(NR_UE_MAC_INST_t *mac,
   // we need to keep track of how many DAI we received in a slot (dai_cumul) despite the modulo operation
   int highest_dai = -1;
   int temp_dai = dai;
-  for (int i = 0; i < NR_MAX_HARQ_PROCESSES; i++) {
+  const int num_dl_harq = get_nrofHARQ_ProcessesForPDSCH(&mac->sc_info);
+  for (int i = 0; i < num_dl_harq; i++) {
     // looking for other active HARQ processes with feedback in the same frame/slot
     if (i == harq_id)
       continue;
@@ -1334,7 +1498,7 @@ void set_harq_status(NR_UE_MAC_INST_t *mac,
   // if temp_dai is less or equal than cumulative highest dai for given slot
   // it's an indication dai was reset due to modulo 4 operation
   if (temp_dai <= highest_dai) {
-    int mod4_count = (highest_dai / 4) + 1; // to take into account how many times dai wrapped up (modulo 4)
+    int mod4_count = (highest_dai + 1) / 4; // to take into account how many times dai wrapped up (modulo 4)
     current_harq->dai_cumul += (mod4_count * 4);
   }
   LOG_D(NR_MAC,
@@ -1350,6 +1514,7 @@ void set_harq_status(NR_UE_MAC_INST_t *mac,
 
 int nr_ue_configure_pucch(NR_UE_MAC_INST_t *mac,
                            int slot,
+                           frame_t frame,
                            uint16_t rnti,
                            PUCCH_sched_t *pucch,
                            fapi_nr_ul_config_pucch_pdu *pucch_pdu)
@@ -1362,8 +1527,6 @@ int nr_ue_configure_pucch(NR_UE_MAC_INST_t *mac,
   const int scs = current_UL_BWP->scs;
 
   int subframe_number = slot / (nr_slots_per_frame[scs]/10);
-  nb_pucch_format_4_in_subframes[subframe_number] = 0;
-
   pucch_pdu->rnti = rnti;
 
   LOG_D(NR_MAC, "initial_pucch_id %d, pucch_resource %p\n", pucch->initial_pucch_id, pucch->pucch_resource);
@@ -1548,17 +1711,20 @@ int nr_ue_configure_pucch(NR_UE_MAC_INST_t *mac,
         return -1;
     }
 
+    int sum_delta_pucch = get_sum_delta_pucch(mac, slot, frame);
+
     pucch_pdu->pucch_tx_power = get_pucch_tx_power_ue(mac,
                                                       scs,
                                                       pucch_Config,
-                                                      pucch->delta_pucch,
+                                                      sum_delta_pucch,
                                                       pucch_pdu->format_type,
                                                       pucch_pdu->prb_size,
                                                       pucch_pdu->freq_hop_flag,
                                                       pucch_pdu->add_dmrs_flag,
                                                       pucch_pdu->nr_of_symbols,
                                                       subframe_number,
-                                                      n_uci);
+                                                      n_uci,
+                                                      pucch_pdu->prb_start);
   } else {
     LOG_E(NR_MAC, "problem with pucch configuration\n");
     return -1;
@@ -1592,124 +1758,6 @@ int nr_ue_configure_pucch(NR_UE_MAC_INST_t *mac,
       return -1;
   }
   return 0;
-}
-
-int16_t get_pucch_tx_power_ue(NR_UE_MAC_INST_t *mac,
-                              int scs,
-                              NR_PUCCH_Config_t *pucch_Config,
-                              int delta_pucch,
-                              uint8_t format_type,
-                              uint16_t nb_of_prbs,
-                              uint8_t freq_hop_flag,
-                              uint8_t add_dmrs_flag,
-                              uint8_t N_symb_PUCCH,
-                              int subframe_number,
-                              int O_uci)
-{
-  NR_UE_UL_BWP_t *current_UL_BWP = mac->current_UL_BWP;
-  int PUCCH_POWER_DEFAULT = 0;
-  int16_t P_O_NOMINAL_PUCCH = *current_UL_BWP->pucch_ConfigCommon->p0_nominal;
-
-  struct NR_PUCCH_PowerControl *power_config = pucch_Config->pucch_PowerControl;
-
-  if (!power_config)
-    return (PUCCH_POWER_DEFAULT);
-
-  int16_t P_O_UE_PUCCH;
-  int16_t G_b_f_c = 0;
-
-  if (pucch_Config->spatialRelationInfoToAddModList != NULL) {  /* FFS TODO NR */
-    LOG_D(MAC,"PUCCH Spatial relation infos are not yet implemented\n");
-    return (PUCCH_POWER_DEFAULT);
-  }
-
-  if (power_config->p0_Set != NULL) {
-    P_O_UE_PUCCH = power_config->p0_Set->list.array[0]->p0_PUCCH_Value; /* get from index 0 if no spatial relation set */
-    G_b_f_c = 0;
-  }
-  else {
-    G_b_f_c = delta_pucch;
-    LOG_E(MAC,"PUCCH Transmit power control command not yet implemented for NR\n");
-    return (PUCCH_POWER_DEFAULT);
-  }
-
-  int P_O_PUCCH = P_O_NOMINAL_PUCCH + P_O_UE_PUCCH;
-
-  int16_t delta_F_PUCCH;
-  int DELTA_TF;
-  uint16_t N_ref_PUCCH;
-  int N_sc_ctrl_RB = 0;
-
-  /* computing of pucch transmission power adjustment */
-  switch (format_type) {
-    case 0:
-      N_ref_PUCCH = 2;
-      DELTA_TF = 10 * log10(N_ref_PUCCH/N_symb_PUCCH);
-      delta_F_PUCCH =  *power_config->deltaF_PUCCH_f0;
-      break;
-    case 1:
-      N_ref_PUCCH = 14;
-      DELTA_TF = 10 * log10(N_ref_PUCCH/N_symb_PUCCH);
-      delta_F_PUCCH =  *power_config->deltaF_PUCCH_f1;
-      break;
-    case 2:
-      N_sc_ctrl_RB = 10;
-      DELTA_TF = get_deltatf(nb_of_prbs, N_symb_PUCCH, freq_hop_flag, add_dmrs_flag, N_sc_ctrl_RB, O_uci);
-      delta_F_PUCCH =  *power_config->deltaF_PUCCH_f2;
-      break;
-    case 3:
-      N_sc_ctrl_RB = 14;
-      DELTA_TF = get_deltatf(nb_of_prbs, N_symb_PUCCH, freq_hop_flag, add_dmrs_flag, N_sc_ctrl_RB, O_uci);
-      delta_F_PUCCH =  *power_config->deltaF_PUCCH_f3;
-      break;
-    case 4:
-      N_sc_ctrl_RB = 14/(nb_pucch_format_4_in_subframes[subframe_number]);
-      DELTA_TF = get_deltatf(nb_of_prbs, N_symb_PUCCH, freq_hop_flag, add_dmrs_flag, N_sc_ctrl_RB, O_uci);
-      delta_F_PUCCH =  *power_config->deltaF_PUCCH_f4;
-      break;
-    default:
-    {
-      LOG_E(MAC,"PUCCH unknown pucch format %d\n", format_type);
-      return (0);
-    }
-  }
-
-  if (power_config->twoPUCCH_PC_AdjustmentStates && *power_config->twoPUCCH_PC_AdjustmentStates > 1) {
-    LOG_E(MAC,"PUCCH power control adjustment states with 2 states not yet implemented\n");
-    return (PUCCH_POWER_DEFAULT);
-  }
-
-  int16_t pathloss = compute_nr_SSB_PL(mac, mac->ssb_measurements.ssb_rsrp_dBm);
-  int M_pucch_component = (10 * log10((double)(pow(2,scs) * nb_of_prbs)));
-
-  int16_t pucch_power = P_O_PUCCH + M_pucch_component + pathloss + delta_F_PUCCH + DELTA_TF + G_b_f_c;
-
-  LOG_D(MAC, "PUCCH ( Tx power : %d dBm ) ( 10Log(...) : %d ) ( from Path Loss : %d ) ( delta_F_PUCCH : %d ) ( DELTA_TF : %d ) ( G_b_f_c : %d ) \n",
-        pucch_power, M_pucch_component, pathloss, delta_F_PUCCH, DELTA_TF, G_b_f_c);
-
-  return (pucch_power);
-}
-
-int get_deltatf(uint16_t nb_of_prbs,
-                uint8_t N_symb_PUCCH,
-                uint8_t freq_hop_flag,
-                uint8_t add_dmrs_flag,
-                int N_sc_ctrl_RB,
-                int O_UCI)
-{
-  int DELTA_TF;
-  int O_CRC = compute_pucch_crc_size(O_UCI);
-  int N_symb = N_symb_PUCCH < 4 ? N_symb_PUCCH : nb_symbols_excluding_dmrs[N_symb_PUCCH - 4][add_dmrs_flag][freq_hop_flag];
-  float N_RE = nb_of_prbs * N_sc_ctrl_RB * N_symb;
-  float K1 = 6;
-  if (O_UCI + O_CRC < 12)
-    DELTA_TF = 10 * log10((double)(((K1 * (O_UCI)) / N_RE)));
-  else {
-    float K2 = 2.4;
-    float BPRE = (O_UCI + O_CRC) / N_RE;
-    DELTA_TF = 10 * log10((double)(pow(2,(K2*BPRE)) - 1));
-  }
-  return DELTA_TF;
 }
 
 static int find_pucch_resource_set(NR_PUCCH_Config_t *pucch_Config, int size)
@@ -1830,10 +1878,17 @@ void order_resources(PUCCH_sched_t *pucch, int num_res)
   }
 }
 
-bool check_overlapping_resources(int curr_start, int curr_length, int next_start, int next_length)
+bool check_overlapping_resources(PUCCH_sched_t *pucch, int j, int o)
 {
   // assuming overlapping means if two resources overlaps in time,
   // ie share a symbol in the slot regardless of PRB
+  NR_PUCCH_Resource_t *pucch_resource = pucch[j - o].pucch_resource;
+  int curr_start, curr_length;
+  get_pucch_start_symbol_length(pucch_resource, &curr_start, &curr_length);
+  pucch_resource = pucch[j + 1].pucch_resource;
+  int next_start, next_length;
+  get_pucch_start_symbol_length(pucch_resource, &next_start, &next_length);
+
   if (curr_start == next_start)
     return true;
   if (curr_start + curr_length - 1 < next_start)
@@ -2179,18 +2234,9 @@ void multiplex_pucch_resource(NR_UE_MAC_INST_t *mac, PUCCH_sched_t *pucch, int n
   int j = 0;
   int o = 0;
   while (j <= num_res - 1) {
-    if (j < num_res - 1) {
-      NR_PUCCH_Resource_t *pucch_resource = pucch[j - o].pucch_resource;
-      int curr_start, curr_length;
-      get_pucch_start_symbol_length(pucch_resource, &curr_start, &curr_length);
-      pucch_resource = pucch[j + 1].pucch_resource;
-      int next_start, next_length;
-      get_pucch_start_symbol_length(pucch_resource, &next_start, &next_length);
-      bool overlap = check_overlapping_resources(curr_start, curr_length, next_start, next_length);
-      if (overlap) {
-        o++;
-        j++;
-      }
+    if ((j < num_res - 1) && check_overlapping_resources(pucch, j, o)) {
+      o++;
+      j++;
     } else {
       if (o > 0) {
         merge_resources(&pucch[j - o], o + 1, pucch_Config);
@@ -2271,12 +2317,13 @@ bool get_downlink_ack(NR_UE_MAC_INST_t *mac, frame_t frame, int slot, PUCCH_sche
     number_of_code_word = 2;
   }
 
+  const int num_dl_harq = get_nrofHARQ_ProcessesForPDSCH(&mac->sc_info);
   int res_ind = -1;
 
   /* look for dl acknowledgment which should be done on current uplink slot */
   for (int code_word = 0; code_word < number_of_code_word; code_word++) {
 
-    for (int dl_harq_pid = 0; dl_harq_pid < NR_MAX_HARQ_PROCESSES; dl_harq_pid++) {
+    for (int dl_harq_pid = 0; dl_harq_pid < num_dl_harq; dl_harq_pid++) {
 
       NR_UE_HARQ_STATUS_t *current_harq = &mac->dl_harq_info[dl_harq_pid];
 
@@ -2295,7 +2342,17 @@ bool get_downlink_ack(NR_UE_MAC_INST_t *mac, frame_t frame, int slot, PUCCH_sche
                   "Value of pucch_resource_indicator %d not matching with what set before %d (Possibly due to a false DCI) \n",
                   current_harq->pucch_resource_indicator,
                   res_ind);
-          else{
+          else {
+            if (!current_harq->ack_received)
+              LOG_E(NR_MAC, "DLSCH ACK/NACK reporting initiated for harq pid %d before DLSCH decoding completed\n", dl_harq_pid);
+
+            if (get_FeedbackDisabled(mac->sc_info.downlinkHARQ_FeedbackDisabled_r17, dl_harq_pid)) {
+              LOG_D(NR_MAC, "skipping DLSCH ACK/NACK reporting for harq pid %d\n", dl_harq_pid);
+              current_harq->active = false;
+              current_harq->ack_received = false;
+              continue;
+            }
+
             if (current_harq->dai_cumul == 0) {
               LOG_E(NR_MAC,"PUCCH Downlink DAI is invalid\n");
               return false;
@@ -2310,7 +2367,6 @@ bool get_downlink_ack(NR_UE_MAC_INST_t *mac, frame_t frame, int slot, PUCCH_sche
               current_harq->active = false;
               current_harq->ack_received = false;
             } else {
-              LOG_E(NR_MAC, "DLSCH ACK/NACK reporting initiated for harq pid %d before DLSCH decoding completed\n", dl_harq_pid);
               ack_data[code_word][dai_index] = 0;
             }
             dai[code_word][dai_index] = (dai_index % 4) + 1; // value between 1 and 4
@@ -2322,7 +2378,6 @@ bool get_downlink_ack(NR_UE_MAC_INST_t *mac, frame_t frame, int slot, PUCCH_sche
             res_ind = temp_ind;
             pucch->n_CCE = current_harq->n_CCE;
             pucch->N_CCE = current_harq->N_CCE;
-            pucch->delta_pucch = current_harq->delta_pucch;
             LOG_D(NR_MAC,"%4d.%2d Sent %d ack on harq pid %d\n", frame, slot, current_harq->ack, dl_harq_pid);
           }
         }
@@ -2420,8 +2475,7 @@ bool get_downlink_ack(NR_UE_MAC_INST_t *mac, frame_t frame, int slot, PUCCH_sche
     pucch->pucch_resource = acknack_resource;
     LOG_D(MAC, "frame %d slot %d pucch acknack payload %d\n", frame, slot, o_ACK);
   }
-  reverse_n_bits(&o_ACK, number_harq_feedback);
-  pucch->ack_payload = o_ACK;
+  pucch->ack_payload = reverse_bits(o_ACK, number_harq_feedback);
   pucch->n_harq = number_harq_feedback;
 
   return (number_harq_feedback > 0);
@@ -2434,7 +2488,7 @@ bool trigger_periodic_scheduling_request(NR_UE_MAC_INST_t *mac, PUCCH_sched_t *p
 
   if(!pucch_Config ||
      !pucch_Config->schedulingRequestResourceToAddModList ||
-     pucch_Config->schedulingRequestResourceToAddModList->list.count==0)
+     pucch_Config->schedulingRequestResourceToAddModList->list.count == 0)
     return false; // SR not configured
 
   int sr_count = 0;
@@ -2458,7 +2512,12 @@ bool trigger_periodic_scheduling_request(NR_UE_MAC_INST_t *mac, PUCCH_sched_t *p
       pucch->pucch_resource = sr_pucch;
       pucch->n_sr = 1;
       /* sr_payload = 1 means that this is a positive SR, sr_payload = 0 means that it is a negative SR */
-      pucch->sr_payload = nr_ue_get_SR(mac, frame, slot, sr_Config->schedulingRequestID);
+      int ret = nr_ue_get_SR(mac, frame, slot, sr_Config->schedulingRequestID);
+      if (ret < 0) {
+        memset(pucch, 0, sizeof(*pucch));
+        return false;
+      }
+      pucch->sr_payload = ret;
       sr_count++;
       AssertFatal(sr_count < 2, "Cannot handle more than 1 SR per slot yet\n");
     }
@@ -2500,18 +2559,18 @@ int8_t nr_ue_get_SR(NR_UE_MAC_INST_t *mac, frame_t frame, slot_t slot, NR_Schedu
     return 1;
   }
 
-  // TODO
-  // notify RRC to release PUCCH for all Serving Cells;
-  // notify RRC to release SRS for all Serving Cells;
-  // clear any configured downlink assignments and uplink grants;
-  // clear any PUSCH resources for semi-persistent CSI reporting;
+  LOG_W(NR_MAC,
+        "[UE %d] SR not served! SR counter %d reached sr_MaxTransmissions %d\n",
+        mac->ue_id,
+        sr_info->counter,
+        sr_info->maxTransmissions);
+
   // initiate a Random Access procedure (see clause 5.1) on the SpCell and cancel all pending SRs.
-  LOG_E(NR_MAC, "[UE %d] SR not served. Triggering of new RA procedure not implemented yet.\n", mac->ue_id);
   sr_info->pending = false;
   sr_info->counter = 0;
   nr_timer_stop(&sr_info->prohibitTimer);
-
-  return 0;
+  schedule_RA_after_SR_failure(mac);
+  return -1;
 }
 
 // section 5.2.5 of 38.214
@@ -2540,14 +2599,12 @@ int nr_get_csi_measurements(NR_UE_MAC_INST_t *mac, frame_t frame, int slot, PUCC
     NR_CSI_MeasConfig_t *csi_measconfig = mac->sc_info.csi_MeasConfig;
 
     int csi_priority = INT_MAX;
-    for (int csi_report_id = 0; csi_report_id < csi_measconfig->csi_ReportConfigToAddModList->list.count; csi_report_id++){
+    for (int csi_report_id = 0; csi_report_id < csi_measconfig->csi_ReportConfigToAddModList->list.count; csi_report_id++) {
       NR_CSI_ReportConfig_t *csirep = csi_measconfig->csi_ReportConfigToAddModList->list.array[csi_report_id];
 
-      if(csirep->reportConfigType.present == NR_CSI_ReportConfig__reportConfigType_PR_periodic){
-
+      if(csirep->reportConfigType.present == NR_CSI_ReportConfig__reportConfigType_PR_periodic) {
         int period, offset;
         csi_period_offset(csirep, NULL, &period, &offset);
-
         const int n_slots_frame = nr_slots_per_frame[current_UL_BWP->scs];
         if (((n_slots_frame*frame + slot - offset)%period) == 0 && pucch_Config) {
           int csi_res_id = -1;
@@ -2575,47 +2632,50 @@ int nr_get_csi_measurements(NR_UE_MAC_INST_t *mac, frame_t frame, int slot, PUCC
               // we discard previous report
               csi_priority = temp_priority;
               num_csi = 1;
-              pucch->n_csi = nr_get_csi_payload(mac, pucch, csi_report_id, csi_measconfig);
+              csi_payload_t csi = nr_get_csi_payload(mac, csi_report_id, WIDEBAND_ON_PUCCH, csi_measconfig);
+              pucch->n_csi = csi.p1_bits;
+              pucch->csi_part1_payload = csi.part1_payload;
               pucch->pucch_resource = csi_pucch;
             } else
               continue;
           } else {
             num_csi = 1;
             csi_priority = temp_priority;
-            pucch->n_csi = nr_get_csi_payload(mac, pucch, csi_report_id, csi_measconfig);
+            csi_payload_t csi = nr_get_csi_payload(mac, csi_report_id, WIDEBAND_ON_PUCCH, csi_measconfig);
+            pucch->n_csi = csi.p1_bits;
+            pucch->csi_part1_payload = csi.part1_payload;
             pucch->pucch_resource = csi_pucch;
           }
         }
       }
       else
-        AssertFatal(1==0,"Only periodic CSI reporting is currently implemented\n");
+        AssertFatal(csirep->reportConfigType.present == NR_CSI_ReportConfig__reportConfigType_PR_aperiodic,
+                    "Not supported CSI report type\n");
     }
   }
   return num_csi;
 }
 
-uint8_t nr_get_csi_payload(NR_UE_MAC_INST_t *mac,
-                           PUCCH_sched_t *pucch,
-                           int csi_report_id,
-                           NR_CSI_MeasConfig_t *csi_MeasConfig) {
-
-  int n_csi_bits = 0;
-
-  AssertFatal(csi_MeasConfig->csi_ReportConfigToAddModList->list.count>0,"No CSI Report configuration available\n");
-
+csi_payload_t nr_get_csi_payload(NR_UE_MAC_INST_t *mac,
+                                 int csi_report_id,
+                                 CSI_mapping_t mapping_type,
+                                 NR_CSI_MeasConfig_t *csi_MeasConfig)
+{
+  AssertFatal(csi_MeasConfig->csi_ReportConfigToAddModList->list.count > 0,"No CSI Report configuration available\n");
+  csi_payload_t csi = {0};
   struct NR_CSI_ReportConfig *csi_reportconfig = csi_MeasConfig->csi_ReportConfigToAddModList->list.array[csi_report_id];
   NR_CSI_ResourceConfigId_t csi_ResourceConfigId = csi_reportconfig->resourcesForChannelMeasurement;
   switch(csi_reportconfig->reportQuantity.present) {
     case NR_CSI_ReportConfig__reportQuantity_PR_none:
       break;
     case NR_CSI_ReportConfig__reportQuantity_PR_ssb_Index_RSRP:
-      n_csi_bits = get_ssb_rsrp_payload(mac,pucch,csi_reportconfig,csi_ResourceConfigId,csi_MeasConfig);
+      csi = get_ssb_rsrp_payload(mac, csi_reportconfig, csi_ResourceConfigId, csi_MeasConfig);
       break;
     case NR_CSI_ReportConfig__reportQuantity_PR_cri_RI_PMI_CQI:
-      n_csi_bits = get_csirs_RI_PMI_CQI_payload(mac,pucch,csi_reportconfig,csi_ResourceConfigId,csi_MeasConfig);
+      csi = get_csirs_RI_PMI_CQI_payload(mac, csi_reportconfig, csi_ResourceConfigId, csi_MeasConfig, mapping_type);
       break;
     case NR_CSI_ReportConfig__reportQuantity_PR_cri_RSRP:
-      n_csi_bits = get_csirs_RSRP_payload(mac,pucch,csi_reportconfig,csi_ResourceConfigId,csi_MeasConfig);
+      csi = get_csirs_RSRP_payload(mac, csi_reportconfig, csi_ResourceConfigId, csi_MeasConfig);
       break;
     case NR_CSI_ReportConfig__reportQuantity_PR_cri_RI_i1:
     case NR_CSI_ReportConfig__reportQuantity_PR_cri_RI_i1_CQI:
@@ -2626,16 +2686,15 @@ uint8_t nr_get_csi_payload(NR_UE_MAC_INST_t *mac,
     default:
       AssertFatal(1==0,"Invalid CSI report quantity type %d\n",csi_reportconfig->reportQuantity.present);
   }
-  return (n_csi_bits);
+  return csi;
 }
 
 
-uint8_t get_ssb_rsrp_payload(NR_UE_MAC_INST_t *mac,
-                             PUCCH_sched_t *pucch,
-                             struct NR_CSI_ReportConfig *csi_reportconfig,
-                             NR_CSI_ResourceConfigId_t csi_ResourceConfigId,
-                             NR_CSI_MeasConfig_t *csi_MeasConfig) {
-
+csi_payload_t get_ssb_rsrp_payload(NR_UE_MAC_INST_t *mac,
+                                   struct NR_CSI_ReportConfig *csi_reportconfig,
+                                   NR_CSI_ResourceConfigId_t csi_ResourceConfigId,
+                                   NR_CSI_MeasConfig_t *csi_MeasConfig)
+{
   int nb_ssb = 0;  // nb of ssb in the resource
   int nb_meas = 0; // nb of ssb to report measurements on
   int bits = 0;
@@ -2685,43 +2744,43 @@ uint8_t get_ssb_rsrp_payload(NR_UE_MAC_INST_t *mac,
 
       if (ssbri_bits > 0) {
         ssbi = ssb_rsrp[0][0];
-        reverse_n_bits(&ssbi, ssbri_bits);
-        temp_payload = ssbi;
+        temp_payload = reverse_bits(ssbi, ssbri_bits);
         bits += ssbri_bits;
       }
 
       uint8_t rsrp_idx = get_rsrp_index(ssb_rsrp[1][0]);
-      reverse_n_bits(&rsrp_idx, 7);
-      temp_payload |= (rsrp_idx<<bits);
+      temp_payload |= (reverse_bits(rsrp_idx, 7) << bits);
       bits += 7; // 7 bits for highest RSRP
 
       // from the second SSB, differential report
       for (int i=1; i<nb_meas; i++){
         ssbi = ssb_rsrp[0][i];
-        reverse_n_bits(&ssbi, ssbri_bits);
-        temp_payload = ssbi;
+        temp_payload = reverse_bits(ssbi, ssbri_bits);
         bits += ssbri_bits;
 
         rsrp_idx = get_rsrp_diff_index(ssb_rsrp[1][0],ssb_rsrp[1][i]);
-        reverse_n_bits(&rsrp_idx, 4);
-        temp_payload |= (rsrp_idx<<bits);
+        temp_payload |= (reverse_bits(rsrp_idx, 4) << bits);
         bits += 4; // 7 bits for highest RSRP
       }
       break; // resorce found
     }
   }
-  pucch->csi_part1_payload = temp_payload;
-  return bits;
+  AssertFatal(bits <= 32, "Not supporting CSI report with more than 32 bits\n");
+  csi_payload_t csi = {.part1_payload = temp_payload, .p1_bits = bits, csi.p2_bits = 0};
+  return csi;
 }
 
-uint8_t get_csirs_RI_PMI_CQI_payload(NR_UE_MAC_INST_t *mac,
-                                     PUCCH_sched_t *pucch,
-                                     struct NR_CSI_ReportConfig *csi_reportconfig,
-                                     NR_CSI_ResourceConfigId_t csi_ResourceConfigId,
-                                     NR_CSI_MeasConfig_t *csi_MeasConfig) {
-
-  int n_bits = 0;
-  uint32_t temp_payload = 0;
+csi_payload_t get_csirs_RI_PMI_CQI_payload(NR_UE_MAC_INST_t *mac,
+                                           struct NR_CSI_ReportConfig *csi_reportconfig,
+                                           NR_CSI_ResourceConfigId_t csi_ResourceConfigId,
+                                           NR_CSI_MeasConfig_t *csi_MeasConfig,
+                                           CSI_mapping_t mapping_type)
+{
+  int p1_bits = 0;
+  int p2_bits = 0;
+  uint64_t temp_payload_1 = 0;
+  uint64_t temp_payload_2 = 0;
+  AssertFatal(mapping_type != SUBBAND_ON_PUCCH, "CSI mapping for subband PMI and CQI not implemented\n");
 
   for (int csi_resourceidx = 0; csi_resourceidx < csi_MeasConfig->csi_ResourceConfigToAddModList->list.count; csi_resourceidx++) {
 
@@ -2732,16 +2791,19 @@ uint8_t get_csirs_RI_PMI_CQI_payload(NR_UE_MAC_INST_t *mac,
         if (csi_MeasConfig->nzp_CSI_RS_ResourceSetToAddModList->list.array[csi_idx]->nzp_CSI_ResourceSetId ==
             *(csi_resourceconfig->csi_RS_ResourceSetList.choice.nzp_CSI_RS_SSB->nzp_CSI_RS_ResourceSetList->list.array[0])) {
 
-          nr_csi_report_t *csi_report = &mac->csi_report_template[csi_idx];
-          compute_csi_bitlen(csi_MeasConfig, mac->csi_report_template);
-          n_bits = nr_get_csi_bitlen(mac->csi_report_template, csi_idx);
-
+          nr_csi_report_t *csi_report = NULL;
+          for (int i = 0; i < MAX_CSI_REPORTCONFIG; i++) {
+            if (mac->csi_report_template[i].reportConfigId == csi_reportconfig->reportConfigId) {
+              csi_report = &mac->csi_report_template[i];
+              break;
+            }
+          }
+          AssertFatal(csi_report, "Couldn't find CSI report with ID %ld\n", csi_reportconfig->reportConfigId);
           int cri_bitlen = csi_report->csi_meas_bitlen.cri_bitlen;
           int ri_bitlen = csi_report->csi_meas_bitlen.ri_bitlen;
           int pmi_x1_bitlen = csi_report->csi_meas_bitlen.pmi_x1_bitlen[mac->csirs_measurements.rank_indicator];
           int pmi_x2_bitlen = csi_report->csi_meas_bitlen.pmi_x2_bitlen[mac->csirs_measurements.rank_indicator];
           int cqi_bitlen = csi_report->csi_meas_bitlen.cqi_bitlen[mac->csirs_measurements.rank_indicator];
-          int padding_bitlen = n_bits - (cri_bitlen + ri_bitlen + pmi_x1_bitlen + pmi_x2_bitlen + cqi_bitlen);
 
           if (get_softmodem_params()->emulate_l1) {
             static const uint8_t mcs_to_cqi[] = {0, 1, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9,
@@ -2754,42 +2816,55 @@ uint8_t get_csirs_RI_PMI_CQI_payload(NR_UE_MAC_INST_t *mac,
             mac->csirs_measurements.cqi = mcs_to_cqi[mcs];
           }
 
+          int padding_bitlen = 0;
           // TODO: Improvements will be needed to cri_bitlen>0 and pmi_x1_bitlen>0
-          temp_payload = (mac->csirs_measurements.rank_indicator<<(cri_bitlen+cqi_bitlen+pmi_x2_bitlen+padding_bitlen+pmi_x1_bitlen)) |
-                         (mac->csirs_measurements.i1<<(cri_bitlen+cqi_bitlen+pmi_x2_bitlen)) |
-                         (mac->csirs_measurements.i2<<(cri_bitlen+cqi_bitlen)) |
-                         (mac->csirs_measurements.cqi<<cri_bitlen) |
-                         0;
+          if (mapping_type == ON_PUSCH) {
+            p1_bits = cri_bitlen + ri_bitlen + cqi_bitlen;
+            p2_bits = pmi_x1_bitlen + pmi_x2_bitlen;
+            temp_payload_1 = (0/*mac->csi_measurements.cri*/ << (cqi_bitlen + ri_bitlen)) |
+                             (mac->csirs_measurements.rank_indicator << cqi_bitlen) |
+                             (mac->csirs_measurements.cqi);
+            temp_payload_2 = (mac->csirs_measurements.i1 << pmi_x2_bitlen) |
+                             mac->csirs_measurements.i2;
+          }
+          else {
+            p1_bits = nr_get_csi_bitlen(csi_report);
+            padding_bitlen = p1_bits - (cri_bitlen + ri_bitlen + pmi_x1_bitlen + pmi_x2_bitlen + cqi_bitlen);
+            temp_payload_1 = (0/*mac->csi_measurements.cri*/ << (cqi_bitlen + pmi_x2_bitlen + pmi_x1_bitlen + padding_bitlen + ri_bitlen)) |
+                             (mac->csirs_measurements.rank_indicator << (cqi_bitlen + pmi_x2_bitlen + pmi_x1_bitlen + padding_bitlen)) |
+                             (mac->csirs_measurements.i1 << (cqi_bitlen + pmi_x2_bitlen)) |
+                             (mac->csirs_measurements.i2 << (cqi_bitlen)) |
+                             (mac->csirs_measurements.cqi);
+          }
 
-          reverse_n_bits((uint8_t *)&temp_payload, n_bits);
-
+          temp_payload_1 = reverse_bits(temp_payload_1, p1_bits);
+          temp_payload_2 = reverse_bits(temp_payload_2, p2_bits);
           LOG_D(NR_MAC, "cri_bitlen = %d\n", cri_bitlen);
           LOG_D(NR_MAC, "ri_bitlen = %d\n", ri_bitlen);
           LOG_D(NR_MAC, "pmi_x1_bitlen = %d\n", pmi_x1_bitlen);
           LOG_D(NR_MAC, "pmi_x2_bitlen = %d\n", pmi_x2_bitlen);
           LOG_D(NR_MAC, "cqi_bitlen = %d\n", cqi_bitlen);
-          LOG_D(NR_MAC, "csi_part1_payload = 0x%x\n", temp_payload);
-
-          LOG_D(NR_MAC, "n_bits = %d\n", n_bits);
-          LOG_D(NR_MAC, "csi_part1_payload = 0x%x\n", temp_payload);
-
+          LOG_D(NR_MAC, "csi_part1_payload = 0x%lx\n", temp_payload_1);
+          LOG_D(NR_MAC, "csi_part2_payload = 0x%lx\n", temp_payload_2);
+          LOG_D(NR_MAC, "part1_bits = %d\n", p1_bits);
+          LOG_D(NR_MAC, "part2_bits = %d\n", p2_bits);
           break;
         }
       }
     }
   }
-  pucch->csi_part1_payload = temp_payload;
-  return n_bits;
+  AssertFatal(p1_bits <= 32 && p2_bits <= 32, "Not supporting CSI report with more than 32 bits\n");
+  csi_payload_t csi = {.part1_payload = temp_payload_1, .part2_payload = temp_payload_2, .p1_bits = p1_bits, csi.p2_bits = p2_bits};
+  return csi;
 }
 
-uint8_t get_csirs_RSRP_payload(NR_UE_MAC_INST_t *mac,
-                               PUCCH_sched_t *pucch,
-                               struct NR_CSI_ReportConfig *csi_reportconfig,
-                               NR_CSI_ResourceConfigId_t csi_ResourceConfigId,
-                               NR_CSI_MeasConfig_t *csi_MeasConfig) {
-
+csi_payload_t get_csirs_RSRP_payload(NR_UE_MAC_INST_t *mac,
+                                     struct NR_CSI_ReportConfig *csi_reportconfig,
+                                     NR_CSI_ResourceConfigId_t csi_ResourceConfigId,
+                                     const NR_CSI_MeasConfig_t *csi_MeasConfig)
+{
   int n_bits = 0;
-  uint32_t temp_payload = 0;
+  uint64_t temp_payload = 0;
 
   for (int csi_resourceidx = 0; csi_resourceidx < csi_MeasConfig->csi_ResourceConfigToAddModList->list.count; csi_resourceidx++) {
 
@@ -2800,10 +2875,15 @@ uint8_t get_csirs_RSRP_payload(NR_UE_MAC_INST_t *mac,
         if (csi_MeasConfig->nzp_CSI_RS_ResourceSetToAddModList->list.array[csi_idx]->nzp_CSI_ResourceSetId ==
             *(csi_resourceconfig->csi_RS_ResourceSetList.choice.nzp_CSI_RS_SSB->nzp_CSI_RS_ResourceSetList->list.array[0])) {
 
-          nr_csi_report_t *csi_report = &mac->csi_report_template[csi_idx];
-          compute_csi_bitlen(csi_MeasConfig, mac->csi_report_template);
-          n_bits = nr_get_csi_bitlen(mac->csi_report_template, csi_idx);
-
+          nr_csi_report_t *csi_report = NULL;
+          for (int i = 0; i < MAX_CSI_REPORTCONFIG; i++) {
+            if (mac->csi_report_template[i].reportConfigId == csi_reportconfig->reportConfigId) {
+              csi_report = &mac->csi_report_template[i];
+              break;
+            }
+          }
+          AssertFatal(csi_report, "Couldn't find CSI report with ID %ld\n", csi_reportconfig->reportConfigId);
+          n_bits = nr_get_csi_bitlen(csi_report);
           int cri_ssbri_bitlen = csi_report->CSI_report_bitlen.cri_ssbri_bitlen;
           int rsrp_bitlen = csi_report->CSI_report_bitlen.rsrp_bitlen;
           int diff_rsrp_bitlen = csi_report->CSI_report_bitlen.diff_rsrp_bitlen;
@@ -2823,23 +2903,23 @@ uint8_t get_csirs_RSRP_payload(NR_UE_MAC_INST_t *mac,
             temp_payload = mac->csirs_measurements.rsrp_dBm + 157;
           }
 
-          reverse_n_bits((uint8_t *)&temp_payload, n_bits);
+          temp_payload = reverse_bits(temp_payload, n_bits);
 
           LOG_D(NR_MAC, "cri_ssbri_bitlen = %d\n", cri_ssbri_bitlen);
           LOG_D(NR_MAC, "rsrp_bitlen = %d\n", rsrp_bitlen);
           LOG_D(NR_MAC, "diff_rsrp_bitlen = %d\n", diff_rsrp_bitlen);
 
           LOG_D(NR_MAC, "n_bits = %d\n", n_bits);
-          LOG_D(NR_MAC, "csi_part1_payload = 0x%x\n", temp_payload);
+          LOG_D(NR_MAC, "csi_part1_payload = 0x%lx\n", temp_payload);
 
           break;
         }
       }
     }
   }
-
-  pucch->csi_part1_payload = temp_payload;
-  return n_bits;
+  AssertFatal(n_bits <= 32, "Not supporting CSI report with more than 32 bits\n");
+  csi_payload_t csi = {.part1_payload = temp_payload, .p1_bits = n_bits, csi.p2_bits = 0};
+  return csi;
 }
 
 // returns index from RSRP
@@ -2878,19 +2958,22 @@ void nr_ue_send_sdu(NR_UE_MAC_INST_t *mac, nr_downlink_indication_t *dl_info, in
 
   // Processing MAC PDU
   // it parses MAC CEs subheaders, MAC CEs, SDU subheaderds and SDUs
-  switch (dl_info->rx_ind->rx_indication_body[pdu_id].pdu_type){
-    case FAPI_NR_RX_PDU_TYPE_DLSCH:
-    nr_ue_process_mac_pdu(mac, dl_info, pdu_id);
-    break;
-    case FAPI_NR_RX_PDU_TYPE_RAR:
+  switch (dl_info->rx_ind->rx_indication_body[pdu_id].pdu_type) {
+    case FAPI_NR_RX_PDU_TYPE_DLSCH :
+      // start or restart dataInactivityTimer if any MAC entity receives a MAC SDU for DTCH logical channel,
+      // DCCH logical channel, or CCCH logical channel
+      if (mac->data_inactivity_timer)
+        nr_timer_start(mac->data_inactivity_timer);
+      nr_ue_process_mac_pdu(mac, dl_info, pdu_id);
+      break;
+    case FAPI_NR_RX_PDU_TYPE_RAR :
       nr_ue_process_rar(mac, dl_info, pdu_id);
-    break;
+      break;
     default:
-    break;
+      AssertFatal(false, "Invalid PDU type\n");
   }
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_UE_SEND_SDU, VCD_FUNCTION_OUT);
-
 }
 
 // #define EXTRACT_DCI_ITEM(val,size) val= readBits(dci_pdu, &pos, size);
@@ -2976,8 +3059,8 @@ static void extract_10_c_rnti(dci_pdu_rel15_t *dci_pdu_rel15, const uint8_t *dci
     EXTRACT_DCI_ITEM(dci_pdu_rel15->ndi, 1);
     // Redundancy version  2bit
     EXTRACT_DCI_ITEM(dci_pdu_rel15->rv, 2);
-    // HARQ process number  4bit
-    EXTRACT_DCI_ITEM(dci_pdu_rel15->harq_pid, 4);
+    // HARQ process number  4/5 bit
+    EXTRACT_DCI_ITEM(dci_pdu_rel15->harq_pid.val, dci_pdu_rel15->harq_pid.nbits);
     // Downlink assignment index  2bit
     EXTRACT_DCI_ITEM(dci_pdu_rel15->dai[0].val, 2);
     // TPC command for scheduled PUCCH  2bit
@@ -3006,7 +3089,7 @@ static void extract_00_c_rnti(dci_pdu_rel15_t *dci_pdu_rel15, const uint8_t *dci
   // Redundancy version  2bit
   EXTRACT_DCI_ITEM(dci_pdu_rel15->rv, 2);
   // HARQ process number  4bit
-  EXTRACT_DCI_ITEM(dci_pdu_rel15->harq_pid, 4);
+  EXTRACT_DCI_ITEM(dci_pdu_rel15->harq_pid.val, 4);
   // TPC command for scheduled PUSCH  E2 bits
   EXTRACT_DCI_ITEM(dci_pdu_rel15->tpc, 2);
   // UL/SUL indicator  E1 bit
@@ -3033,7 +3116,7 @@ static void extract_10_tc_rnti(dci_pdu_rel15_t *dci_pdu_rel15, const uint8_t *dc
   // Redundancy version - 2 bits
   EXTRACT_DCI_ITEM(dci_pdu_rel15->rv, 2);
   // HARQ process number - 4 bits
-  EXTRACT_DCI_ITEM(dci_pdu_rel15->harq_pid, 4);
+  EXTRACT_DCI_ITEM(dci_pdu_rel15->harq_pid.val, 4);
   // Downlink assignment index - 2 bits
   EXTRACT_DCI_ITEM(dci_pdu_rel15->dai[0].val, 2);
   // TPC command for scheduled PUCCH - 2 bits
@@ -3046,7 +3129,7 @@ static void extract_10_tc_rnti(dci_pdu_rel15_t *dci_pdu_rel15, const uint8_t *dc
 
 static void extract_00_tc_rnti(dci_pdu_rel15_t *dci_pdu_rel15, const uint8_t *dci_pdu, int pos)
 {
-  LOG_D(NR_MAC_DCI, "Received dci 1_0 TC rnti\n");
+  LOG_D(NR_MAC_DCI, "Received dci 0_0 TC rnti\n");
 
   // Frequency domain assignment
   EXTRACT_DCI_ITEM(dci_pdu_rel15->frequency_domain_assignment.val, dci_pdu_rel15->frequency_domain_assignment.nbits);
@@ -3061,7 +3144,7 @@ static void extract_00_tc_rnti(dci_pdu_rel15_t *dci_pdu_rel15, const uint8_t *dc
   // Redundancy version  2bit
   EXTRACT_DCI_ITEM(dci_pdu_rel15->rv, 2);
   // HARQ process number  4bit
-  EXTRACT_DCI_ITEM(dci_pdu_rel15->harq_pid, 4);
+  EXTRACT_DCI_ITEM(dci_pdu_rel15->harq_pid.val, 4);
   // TPC command for scheduled PUSCH  E2 bits
   EXTRACT_DCI_ITEM(dci_pdu_rel15->tpc, 2);
 }
@@ -3100,8 +3183,8 @@ static void extract_11_c_rnti(dci_pdu_rel15_t *dci_pdu_rel15, const uint8_t *dci
   EXTRACT_DCI_ITEM(dci_pdu_rel15->ndi2.val, dci_pdu_rel15->ndi2.nbits);
   // Redundancy version  2bit
   EXTRACT_DCI_ITEM(dci_pdu_rel15->rv2.val, dci_pdu_rel15->rv2.nbits);
-  // HARQ process number  4bit
-  EXTRACT_DCI_ITEM(dci_pdu_rel15->harq_pid, 4);
+  // HARQ process number  4/5 bit
+  EXTRACT_DCI_ITEM(dci_pdu_rel15->harq_pid.val, dci_pdu_rel15->harq_pid.nbits);
   // Downlink assignment index
   EXTRACT_DCI_ITEM(dci_pdu_rel15->dai[0].val, dci_pdu_rel15->dai[0].nbits);
   // TPC command for scheduled PUCCH  2bit
@@ -3149,8 +3232,8 @@ static void extract_01_c_rnti(dci_pdu_rel15_t *dci_pdu_rel15, const uint8_t *dci
   EXTRACT_DCI_ITEM(dci_pdu_rel15->ndi, 1);
   // Redundancy version  2bit
   EXTRACT_DCI_ITEM(dci_pdu_rel15->rv, 2);
-  // HARQ process number  4bit
-  EXTRACT_DCI_ITEM(dci_pdu_rel15->harq_pid, 4);
+  // HARQ process number  4/5 bit
+  EXTRACT_DCI_ITEM(dci_pdu_rel15->harq_pid.val, dci_pdu_rel15->harq_pid.nbits);
   // 1st Downlink assignment index
   EXTRACT_DCI_ITEM(dci_pdu_rel15->dai[0].val, dci_pdu_rel15->dai[0].nbits);
   // 2nd Downlink assignment index
@@ -3489,9 +3572,13 @@ void nr_ue_process_mac_pdu(NR_UE_MAC_INST_t *mac, nr_downlink_indication_t *dl_i
         NR_UL_TIME_ALIGNMENT_t *ul_time_alignment = &mac->ul_time_alignment;
         ul_time_alignment->tag_id = tag;
         ul_time_alignment->ta_command = ta;
-        ul_time_alignment->frame = frameP;
-        ul_time_alignment->slot = slot;
         ul_time_alignment->ta_apply = adjustment_ta;
+
+        const int ntn_ue_koffset = get_NTN_UE_Koffset(mac->sc_info.ntn_Config_r17, mac->current_UL_BWP->scs);
+        const int n_slots_frame = nr_slots_per_frame[mac->current_UL_BWP->scs];
+        ul_time_alignment->frame = (frameP + (slot + ntn_ue_koffset) / n_slots_frame) % MAX_FRAME_NUMBER;
+        ul_time_alignment->slot = (slot + ntn_ue_koffset) % n_slots_frame;
+
         /*
         #ifdef DEBUG_HEADER_PARSING
         LOG_D(MAC, "[UE] CE %d : UE Timing Advance : %d\n", i, pduP[1]);
@@ -3511,7 +3598,7 @@ void nr_ue_process_mac_pdu(NR_UE_MAC_INST_t *mac, nr_downlink_indication_t *dl_i
         mac_len = 6;
 
         if (ra->ra_state == nrRA_WAIT_CONTENTION_RESOLUTION) {
-          LOG_I(MAC, "[UE %d][RAPROC] Frame %d : received contention resolution identity: 0x%02x%02x%02x%02x%02x%02x Terminating RA procedure\n",
+          LOG_I(MAC, "[UE %d]Frame %d Contention resolution identity: 0x%02x%02x%02x%02x%02x%02x Terminating RA procedure\n",
                 mac->ue_id,
                 frameP,
                 pduP[1],
@@ -3523,21 +3610,21 @@ void nr_ue_process_mac_pdu(NR_UE_MAC_INST_t *mac, nr_downlink_indication_t *dl_i
 
           bool ra_success = true;
 	  if (!IS_SOFTMODEM_IQPLAYER) { // Control is bypassed when replaying IQs (BMC)
-	    for(int i = 0; i<mac_len; i++) {
-	      if(ra->cont_res_id[i] != pduP[i+1]) {
+	    for(int i = 0; i < mac_len; i++) {
+	      if(ra->cont_res_id[i] != pduP[i + 1]) {
 		ra_success = false;
 		break;
 	      }
 	    }
 	  }
 
-          if ( (ra->RA_active == 1) && ra_success) {
+          if (ra->RA_active && ra_success) {
             nr_ra_succeeded(mac, gNB_index, frameP, slot);
-          } else if (!ra_success){
+          } else if (!ra_success) {
             // TODO: Handle failure of RA procedure @ MAC layer
             //  nr_ra_failed(module_idP, CC_id, prach_resources, frameP, slot); // prach_resources is a PHY structure
             ra->ra_state = nrRA_UE_IDLE;
-            ra->RA_active = 0;
+            ra->RA_active = false;
           }
         }
         break;
@@ -3585,30 +3672,28 @@ void nr_ue_process_mac_pdu(NR_UE_MAC_INST_t *mac, nr_downlink_indication_t *dl_i
  */
 int nr_write_ce_ulsch_pdu(uint8_t *mac_ce,
                           NR_UE_MAC_INST_t *mac,
-                          uint8_t power_headroom,  // todo: NR_POWER_HEADROOM_CMD *power_headroom,
+                          NR_SINGLE_ENTRY_PHR_MAC_CE *power_headroom,
                           uint16_t *crnti,
                           NR_BSR_SHORT *truncated_bsr,
                           NR_BSR_SHORT *short_bsr,
                           NR_BSR_LONG  *long_bsr)
 {
   int      mac_ce_len = 0;
-  uint8_t mac_ce_size = 0;
   uint8_t *pdu = mac_ce;
   if (power_headroom) {
-
     // MAC CE fixed subheader
     ((NR_MAC_SUBHEADER_FIXED *) mac_ce)->R = 0;
     ((NR_MAC_SUBHEADER_FIXED *) mac_ce)->LCID = UL_SCH_LCID_SINGLE_ENTRY_PHR;
     mac_ce++;
 
     // PHR MAC CE (1 octet)
-    ((NR_SINGLE_ENTRY_PHR_MAC_CE *) mac_ce)->PH = power_headroom;
+    ((NR_SINGLE_ENTRY_PHR_MAC_CE *) mac_ce)->PH = power_headroom->PH;
     ((NR_SINGLE_ENTRY_PHR_MAC_CE *) mac_ce)->R1 = 0;
-    ((NR_SINGLE_ENTRY_PHR_MAC_CE *) mac_ce)->PCMAX = 0; // todo
+    ((NR_SINGLE_ENTRY_PHR_MAC_CE *) mac_ce)->PCMAX = power_headroom->PCMAX;
     ((NR_SINGLE_ENTRY_PHR_MAC_CE *) mac_ce)->R2 = 0;
 
     // update pointer and length
-    mac_ce_size = sizeof(NR_SINGLE_ENTRY_PHR_MAC_CE);
+    int mac_ce_size = sizeof(NR_SINGLE_ENTRY_PHR_MAC_CE);
     mac_ce += mac_ce_size;
     mac_ce_len += mac_ce_size + sizeof(NR_MAC_SUBHEADER_FIXED);
     LOG_D(NR_MAC, "[UE] Generating ULSCH PDU : power_headroom pdu %p mac_ce %p b\n",
@@ -3627,7 +3712,7 @@ int nr_write_ce_ulsch_pdu(uint8_t *mac_ce,
     memcpy(mac_ce, crnti, sizeof(*crnti));
 
     // update pointer and length
-    mac_ce_size = sizeof(uint16_t);
+    int mac_ce_size = sizeof(uint16_t);
     mac_ce += mac_ce_size;
     mac_ce_len += mac_ce_size + sizeof(NR_MAC_SUBHEADER_FIXED);
   }
@@ -3644,7 +3729,7 @@ int nr_write_ce_ulsch_pdu(uint8_t *mac_ce,
     ((NR_BSR_SHORT_TRUNCATED *) mac_ce)-> LcgID = truncated_bsr->LcgID;;
 
     // update pointer and length
-    mac_ce_size = sizeof(NR_BSR_SHORT_TRUNCATED);
+    int mac_ce_size = sizeof(NR_BSR_SHORT_TRUNCATED);
     mac_ce += mac_ce_size;
     mac_ce_len += mac_ce_size + sizeof(NR_MAC_SUBHEADER_FIXED);
     LOG_D(NR_MAC, "[UE] Generating ULSCH PDU : truncated_bsr Buffer_size %d LcgID %d pdu %p mac_ce %p\n",
@@ -3662,7 +3747,7 @@ int nr_write_ce_ulsch_pdu(uint8_t *mac_ce,
     ((NR_BSR_SHORT *) mac_ce)->LcgID = short_bsr->LcgID;
 
     // update pointer and length
-    mac_ce_size = sizeof(NR_BSR_SHORT);
+    int mac_ce_size = sizeof(NR_BSR_SHORT);
     mac_ce += mac_ce_size;
     mac_ce_len += mac_ce_size + sizeof(NR_MAC_SUBHEADER_FIXED);
     LOG_D(NR_MAC, "[UE] Generating ULSCH PDU : short_bsr Buffer_size %d LcgID %d pdu %p mac_ce %p\n",
@@ -3729,7 +3814,7 @@ int nr_write_ce_ulsch_pdu(uint8_t *mac_ce,
       ((NR_BSR_LONG *) mac_ce)->LcgID7 = 1;
       *Buffer_size_ptr++ = long_bsr->Buffer_size7;
     }
-    ((NR_MAC_SUBHEADER_SHORT *) mac_pdu_subheader_ptr)->L = mac_ce_size = (uint8_t*) Buffer_size_ptr - (uint8_t*) mac_ce;
+    int mac_ce_size = ((NR_MAC_SUBHEADER_SHORT *) mac_pdu_subheader_ptr)->L = (uint8_t*) Buffer_size_ptr - (uint8_t*) mac_ce;
     LOG_D(NR_MAC, "[UE] Generating ULSCH PDU : long_bsr size %d Lcgbit 0x%02x Buffer_size %d %d %d %d %d %d %d %d\n", mac_ce_size, *((uint8_t*) mac_ce),
           ((NR_BSR_LONG *) mac_ce)->Buffer_size0, ((NR_BSR_LONG *) mac_ce)->Buffer_size1, ((NR_BSR_LONG *) mac_ce)->Buffer_size2, ((NR_BSR_LONG *) mac_ce)->Buffer_size3,
           ((NR_BSR_LONG *) mac_ce)->Buffer_size4, ((NR_BSR_LONG *) mac_ce)->Buffer_size5, ((NR_BSR_LONG *) mac_ce)->Buffer_size6, ((NR_BSR_LONG *) mac_ce)->Buffer_size7);
@@ -3964,13 +4049,16 @@ static void nr_ue_process_rar(NR_UE_MAC_INST_t *mac, nr_downlink_indication_t *d
                                              pdcch_config->ra_SS->searchSpaceType->present,
                                              TYPE_RA_RNTI_,
                                              rar_grant.Msg3_t_alloc);
-    if (tda_info.nrOfSymbols == 0) {
+    if (!tda_info.valid_tda || tda_info.nrOfSymbols == 0) {
       LOG_E(MAC, "Cannot schedule Msg3. Something wrong in TDA information\n");
       return;
     }
-    ret = nr_ue_pusch_scheduler(mac, is_Msg3, frame, slot, &frame_tx, &slot_tx, tda_info.k2);
-    ul_time_alignment->frame = frame_tx;
-    ul_time_alignment->slot = slot_tx;
+    const int ntn_ue_koffset = get_NTN_UE_Koffset(mac->sc_info.ntn_Config_r17, mac->current_UL_BWP->scs);
+    ret = nr_ue_pusch_scheduler(mac, is_Msg3, frame, slot, &frame_tx, &slot_tx, tda_info.k2 + ntn_ue_koffset);
+
+    const int n_slots_frame = nr_slots_per_frame[current_UL_BWP->scs];
+    ul_time_alignment->frame = (frame_tx + (slot_tx + ntn_ue_koffset) / n_slots_frame) % MAX_FRAME_NUMBER;
+    ul_time_alignment->slot = (slot_tx + ntn_ue_koffset) % n_slots_frame;
 
     if (ret != -1) {
       uint16_t rnti = mac->crnti;
@@ -3978,7 +4066,8 @@ static void nr_ue_process_rar(NR_UE_MAC_INST_t *mac, nr_downlink_indication_t *d
       if (!ra->cfra) {
         ra->t_crnti = rar->TCRNTI_2 + (rar->TCRNTI_1 << 8);
         rnti = ra->t_crnti;
-        nr_mac_rrc_msg3_ind(mac->ue_id, rnti, dl_info->gNB_index);
+        if (!ra->msg3_C_RNTI)
+          nr_mac_rrc_msg3_ind(mac->ue_id, rnti, dl_info->gNB_index);
       }
       fapi_nr_ul_config_request_pdu_t *pdu = lockGet_ul_config(mac, frame_tx, slot_tx, FAPI_NR_UL_CONFIG_TYPE_PUSCH);
       if (!pdu)
@@ -3987,6 +4076,7 @@ static void nr_ue_process_rar(NR_UE_MAC_INST_t *mac, nr_downlink_indication_t *d
       int ret = nr_config_pusch_pdu(mac,
                                     &tda_info,
                                     &pdu->pusch_config_pdu,
+                                    NULL,
                                     NULL,
                                     &rar_grant,
                                     rnti,
@@ -4003,26 +4093,3 @@ static void nr_ue_process_rar(NR_UE_MAC_INST_t *mac, nr_downlink_indication_t *d
   return;
 }
 
-// Returns the pathloss in dB for the active UL BWP on the selected carrier based on the DL RS associated with the PRACH transmission
-// computation according to clause 7.4 (Physical random access channel) of 3GPP TS 38.213 version 16.3.0 Release 16
-// Assumptions:
-// - PRACH transmission from a UE is not in response to a detection of a PDCCH order by the UE
-// Measurement units:
-// - referenceSignalPower:   dBm/RE (average EPRE of the resources elements that carry secondary synchronization signals in dBm)
-int16_t compute_nr_SSB_PL(NR_UE_MAC_INST_t *mac, short ssb_rsrp_dBm)
-{
-  fapi_nr_config_request_t *cfg = &mac->phy_config.config_req;
-  int referenceSignalPower = cfg->ssb_config.ss_pbch_power;
-  //TODO improve PL measurements. Probably not correct as it is.
-
-  int16_t pathloss = (int16_t)(referenceSignalPower - ssb_rsrp_dBm);
-
-  LOG_D(NR_MAC, "pathloss %d dB, referenceSignalPower %d dBm/RE (%f mW), RSRP %d dBm (%f mW)\n",
-        pathloss,
-        referenceSignalPower,
-        pow(10, referenceSignalPower/10),
-        ssb_rsrp_dBm,
-        pow(10, ssb_rsrp_dBm/10));
-
-  return pathloss;
-}

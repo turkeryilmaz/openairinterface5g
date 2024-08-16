@@ -31,11 +31,10 @@
  */
 #ifdef ENABLE_AERIAL
 #include "fapi_vnf_p7.h"
-#include "nfapi/open-nFAPI/nfapi/src/nfapi_p7.c"
+#include "nr_nfapi_p7.h"
 
 extern RAN_CONTEXT_t RC;
 extern UL_RCC_IND_t UL_RCC_INFO;
-extern int single_thread_flag;
 extern uint16_t sf_ahead;
 
 int aerial_wake_gNB_rxtx(PHY_VARS_gNB *gNB, uint16_t sfn, uint16_t slot)
@@ -358,7 +357,8 @@ int aerial_phy_nr_rx_data_indication(nfapi_nr_rx_data_indication_t *ind)
       rx_ind->pdu_list[j].ul_cqi = ind->pdu_list[j].ul_cqi;
       rx_ind->pdu_list[j].timing_advance = ind->pdu_list[j].timing_advance;
       rx_ind->pdu_list[j].rssi = ind->pdu_list[j].rssi;
-      rx_ind->pdu_list[j].pdu = ind->pdu_list[j].pdu;
+      rx_ind->pdu_list[j].pdu = calloc(rx_ind->pdu_list[j].pdu_length, sizeof(uint8_t));
+      memcpy(rx_ind->pdu_list[j].pdu,ind->pdu_list[j].pdu,ind->pdu_list[j].pdu_length);
       LOG_D(NR_MAC,
             "(%d.%d) Handle %d for index %d, RNTI, %04x, HARQID %d\n",
             ind->sfn,
@@ -472,19 +472,22 @@ int aerial_phy_nr_uci_indication(nfapi_nr_uci_indication_t *ind)
             uci_ind_pdu->sr.sr_payload = CALLOC(1, sizeof(*uci_ind_pdu->sr.sr_payload));
             AssertFatal(uci_ind_pdu->sr.sr_payload != NULL,
                         "Memory not allocated for uci_ind_pdu->sr.sr_payload in phy_nr_uci_indication.");
-            *uci_ind_pdu->sr.sr_payload = *ind_pdu->sr.sr_payload;
+            //SCF222.10.02 sr_bit_len values from 1 to 8, payload always just one byte
+            uci_ind_pdu->sr.sr_payload[0] = ind_pdu->sr.sr_payload[0];
           }
           if (ind_pdu->csi_part1.csi_part1_payload) {
-            uci_ind_pdu->csi_part1.csi_part1_payload = CALLOC(1, sizeof(*uci_ind_pdu->csi_part1.csi_part1_payload));
+            uint8_t byte_len = (ind_pdu->csi_part1.csi_part1_bit_len / 8) + 1;
+            uci_ind_pdu->csi_part1.csi_part1_payload = calloc(byte_len, sizeof(uint8_t));
             AssertFatal(uci_ind_pdu->csi_part1.csi_part1_payload != NULL,
                         "Memory not allocated for uci_ind_pdu->csi_part1.csi_part1_payload in phy_nr_uci_indication.");
-            *uci_ind_pdu->csi_part1.csi_part1_payload = *ind_pdu->csi_part1.csi_part1_payload;
+            memcpy(uci_ind_pdu->csi_part1.csi_part1_payload,ind_pdu->csi_part1.csi_part1_payload,byte_len);
           }
           if (ind_pdu->csi_part2.csi_part2_payload) {
-            uci_ind_pdu->csi_part2.csi_part2_payload = CALLOC(1, sizeof(*uci_ind_pdu->csi_part2.csi_part2_payload));
+            uint8_t byte_len = (ind_pdu->csi_part2.csi_part2_bit_len / 8) + 1;
+            uci_ind_pdu->csi_part2.csi_part2_payload = calloc(byte_len, sizeof(uint8_t));
             AssertFatal(uci_ind_pdu->csi_part2.csi_part2_payload != NULL,
                         "Memory not allocated for uci_ind_pdu->csi_part2.csi_part2_payload in phy_nr_uci_indication.");
-            *uci_ind_pdu->csi_part2.csi_part2_payload = *ind_pdu->csi_part2.csi_part2_payload;
+            memcpy(uci_ind_pdu->csi_part2.csi_part2_payload,ind_pdu->csi_part2.csi_part2_payload,byte_len);
           }
           break;
         }
@@ -920,8 +923,7 @@ static uint8_t aerial_unpack_nr_rx_data_indication_body(nfapi_nr_rx_data_pdu_t *
   }
 
   // Allocate space for the pdu to be unpacked later
-  uint32_t length = value->pdu_length;
-  value->pdu = nfapi_p7_allocate(sizeof(*value->pdu) * length, config);
+  value->pdu = nfapi_p7_allocate(sizeof(*value->pdu) * value->pdu_length, config);
 
   return 1;
 }
@@ -1071,7 +1073,11 @@ static int32_t aerial_pack_tx_data_request(void *pMessageBuf,
     for (; k < total_number_of_tlvs; ++k) {
       if (value->TLVs[k].length > 0) {
         if (value->TLVs[k].length % 4 != 0) {
-          if (!pusharray32(value->TLVs[k].value.direct, 16384, ((value->TLVs[k].length + 3) / 4) - 1, ppWriteData, data_end)) {
+          if (!pusharray32(value->TLVs[k].value.direct,
+                           (dataBufLen + 3) / 4,
+                           ((value->TLVs[k].length + 3) / 4) - 1,
+                           ppWriteData,
+                           data_end)) {
             return 0;
           }
           int bytesToAdd = 4 - (4 - (value->TLVs[k].length % 4)) % 4;
@@ -1085,7 +1091,11 @@ static int32_t aerial_pack_tx_data_request(void *pMessageBuf,
           }
         } else {
           // no padding needed
-          if (!pusharray32(value->TLVs[k].value.direct, 16384, ((value->TLVs[k].length + 3) / 4), ppWriteData, data_end)) {
+          if (!pusharray32(value->TLVs[k].value.direct,
+                           (dataBufLen + 3) / 4,
+                           ((value->TLVs[k].length + 3) / 4),
+                           ppWriteData,
+                           data_end)) {
             return 0;
           }
         }
@@ -1106,7 +1116,7 @@ static int32_t aerial_pack_tx_data_request(void *pMessageBuf,
   uintptr_t msgEnd = (uintptr_t)pPacketBodyField;
   uint32_t packedMsgLen = msgEnd - msgHead;
   uint16_t packedMsgLen16;
-  if (packedMsgLen > 0xFFFF || packedMsgLen > packedBufLen) {
+  if (packedMsgLen > packedBufLen + dataBufLen) {
     NFAPI_TRACE(NFAPI_TRACE_ERROR, "Packed message length error %d, buffer supplied %d\n", packedMsgLen, packedBufLen);
     return 0;
   } else {
@@ -1119,17 +1129,6 @@ static int32_t aerial_pack_tx_data_request(void *pMessageBuf,
   // Update the message length in the header
   if (!push32(packedMsgLen, &pPackedLengthField, pPackMessageEnd))
     return 0;
-
-  if (1) {
-    // quick test
-    if (pMessageHeader->message_length != packedMsgLen) {
-      NFAPI_TRACE(NFAPI_TRACE_ERROR,
-                  "nfapi packedMsgLen(%d) != message_length(%d) id %d\n",
-                  packedMsgLen,
-                  pMessageHeader->message_length,
-                  pMessageHeader->message_id);
-    }
-  }
 
   return (packedMsgLen16);
 }
@@ -1286,23 +1285,29 @@ int fapi_nr_pack_and_send_p7_message(vnf_p7_t *vnf_p7, nfapi_p7_message_header_t
 {
   uint8_t FAPI_buffer[1024 * 64];
   // Check if TX_DATA request, if true, need to pack to data_buf
-  if (header->message_id
-      == NFAPI_NR_PHY_MSG_TYPE_TX_DATA_REQUEST) {
-    uint8_t FAPI_data_buffer[1024 * 64];
+  if (header->message_id == NFAPI_NR_PHY_MSG_TYPE_TX_DATA_REQUEST) {
+    nfapi_nr_tx_data_request_t *pNfapiMsg = (nfapi_nr_tx_data_request_t *)header;
+    uint64_t size = 0;
+    for (int i = 0; i < pNfapiMsg->Number_of_PDUs; ++i) {
+      size += pNfapiMsg->pdu_list[i].PDU_length;
+    }
+    AssertFatal(size <= 1024 * 1024 * 2, "Message data larger than available buffer, tried to pack %"PRId64 ,size);
+    uint8_t FAPI_data_buffer[1024 * 1024 * 2]; // 2MB
     uint32_t data_len = 0;
     int32_t len_FAPI = aerial_pack_tx_data_request(header,
-                                               FAPI_buffer,
-                                               FAPI_data_buffer,
-                                               sizeof(FAPI_buffer),
-                                               sizeof(FAPI_data_buffer),
-                                               &vnf_p7->_public.codec_config,
-                                               &data_len);
-    if (len_FAPI <=0) {
-      LOG_E(NFAPI_VNF,"Problem packing TX_DATA_request\n");
+                                                   FAPI_buffer,
+                                                   FAPI_data_buffer,
+                                                   sizeof(FAPI_buffer),
+                                                   sizeof(FAPI_data_buffer),
+                                                   &vnf_p7->_public.codec_config,
+                                                   &data_len);
+    if (len_FAPI <= 0) {
+      LOG_E(NFAPI_VNF, "Problem packing TX_DATA_request\n");
       return len_FAPI;
+    } else {
+      int retval = aerial_send_P7_msg_with_data(FAPI_buffer, len_FAPI, FAPI_data_buffer, data_len, header);
+      return retval;
     }
-    else
-      return aerial_send_P7_msg_with_data(FAPI_buffer, len_FAPI, FAPI_data_buffer, data_len, header);
   } else {
     // Create and send FAPI P7 message
     int len_FAPI = fapi_nr_p7_message_pack(header, FAPI_buffer, sizeof(FAPI_buffer), &vnf_p7->_public.codec_config);

@@ -202,8 +202,8 @@ With the nvIPC sources in the project directory, the docker image can be built.
 In order to build the final image, there is an intermediary image to be built (ran-base)
 ```bash
 ~$ cd ~/openairinterface5g/
-~/openairinterface5g$ docker build . -f docker/Dockerfile.base.ubuntu20 --tag ran-base:latest
-~/openairinterface5g$ docker build . -f docker/Dockerfile.gNB.aerial.ubuntu20 --tag oai-gnb-aerial:latest
+~/openairinterface5g$ docker build . -f docker/Dockerfile.base.ubuntu22 --tag ran-base:latest
+~/openairinterface5g$ docker build . -f docker/Dockerfile.gNB.aerial.ubuntu22 --tag oai-gnb-aerial:latest
 ```
 
 
@@ -254,6 +254,16 @@ The gNB logs can be followed with:
 ```bash
 docker logs -f oai-gnb-aerial
 ```
+#### Running with multiple L2s
+One L1 instance can support multiple L2 instances. See also the [aerial documentation](https://developer.nvidia.com/docs/gputelecom/aerial-sdk/text/cubb_quickstart/running_cubb-end-to-end.html#run-multiple-l2-instances-with-single-l1-instance) for more details.
+
+In OAI the share memory prefix must be configured in the configuration file.
+
+```bash
+        tr_s_preference = "aerial";
+	tr_s_shm_prefix = "nvipc";
+```
+
 
 ### Stopping the setup
 

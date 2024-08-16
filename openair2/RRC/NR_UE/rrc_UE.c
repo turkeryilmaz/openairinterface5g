@@ -47,6 +47,7 @@
 
 #include "rrc_defs.h"
 #include "rrc_proto.h"
+#include "L2_interface_ue.h"
 #include "LAYER2/NR_MAC_UE/mac_proto.h"
 
 #include "intertask_interface.h"
@@ -65,8 +66,6 @@
   #include "RRC/NR/MESSAGES/asn1_msg.h"
 #endif
 
-#include "RRC/NAS/nas_config.h"
-#include "RRC/NAS/rb_config.h"
 #include "SIMULATION/TOOLS/sim.h" // for taus
 
 #include "nr_nas_msg_sim.h"
@@ -225,7 +224,7 @@ static void nr_rrc_ue_process_rrcReconfiguration(NR_UE_RRC_INST_t *rrc,
         nr_rrc_cellgroup_configuration(rrc, cellGroupConfig);
 
         AssertFatal(!get_softmodem_params()->sa, "secondaryCellGroup only used in NSA for now\n");
-        nr_rrc_mac_config_req_cg(0, 0, cellGroupConfig, rrc->UECap.UE_NR_Capability);
+        nr_rrc_mac_config_req_cg(rrc->ue_id, 0, cellGroupConfig, rrc->UECap.UE_NR_Capability);
         asn1cFreeStruc(asn_DEF_NR_CellGroupConfig, cellGroupConfig);
       }
       if (ie->measConfig != NULL) {
@@ -297,7 +296,19 @@ void process_nsa_message(NR_UE_RRC_INST_t *rrc, nsa_message_t nsa_message_type, 
   }
 }
 
-NR_UE_RRC_INST_t* nr_rrc_init_ue(char* uecap_file, int nb_inst)
+/**
+ * @brief Verify UE capabilities parameters against CL-fed params
+ *        (e.g. number of physical TX antennas)
+ */
+static bool verify_ue_cap(NR_UE_NR_Capability_t *UE_NR_Capability, int nb_antennas_tx)
+{
+  NR_FeatureSetUplink_t *ul_feature_setup = UE_NR_Capability->featureSets->featureSetsUplink->list.array[0];
+  int srs_ant_ports = 1 << ul_feature_setup->supportedSRS_Resources->maxNumberSRS_Ports_PerResource;
+  AssertFatal(srs_ant_ports <= nb_antennas_tx, "SRS antenna ports (%d) > nb_antennas_tx (%d)\n", srs_ant_ports, nb_antennas_tx);
+  return true;
+}
+
+NR_UE_RRC_INST_t* nr_rrc_init_ue(char* uecap_file, int nb_inst, int num_ant_tx)
 {
   NR_UE_rrc_inst = (NR_UE_RRC_INST_t *)calloc(nb_inst, sizeof(NR_UE_RRC_INST_t));
   AssertFatal(NR_UE_rrc_inst, "Couldn't allocate %d instances of RRC module\n", nb_inst);
@@ -328,6 +339,8 @@ NR_UE_RRC_INST_t* nr_rrc_init_ue(char* uecap_file, int nb_inst)
         assert(dec_rval.code == RC_OK);
       }
       fclose(f);
+      /* Verify consistency of num PHY antennas vs UE Capabilities */
+      verify_ue_cap(rrc->UECap.UE_NR_Capability, num_ant_tx);
     }
 
     memset(&rrc->timers_and_constants, 0, sizeof(rrc->timers_and_constants));
@@ -631,14 +644,14 @@ static void nr_rrc_handle_msg3_indication(NR_UE_RRC_INST_t *rrc, rnti_t rnti)
       nr_timer_start(&tac->T301);
       int srb_id = 1;
       // re-establish PDCP for SRB1
-      nr_pdcp_reestablishment(rrc->ue_id, srb_id, true);
+      // (and suspend integrity protection and ciphering for SRB1)
+      nr_pdcp_entity_security_keys_and_algos_t null_security_parameters = {0};
+      nr_pdcp_reestablishment(rrc->ue_id, srb_id, true, &null_security_parameters);
       // re-establish RLC for SRB1
       int lc_id = nr_rlc_get_lcid_from_rb(rrc->ue_id, true, 1);
       nr_rlc_reestablish_entity(rrc->ue_id, lc_id);
       // apply the specified configuration defined in 9.2.1 for SRB1
       nr_rlc_reconfigure_entity(rrc->ue_id, lc_id, NULL);
-      // suspend integrity protection and ciphering for SRB1
-      nr_pdcp_config_set_security(rrc->ue_id, srb_id, 0, NULL, NULL, NULL);
       // resume SRB1
       rrc->Srb[srb_id] = RB_ESTABLISHED;
       break;
@@ -762,13 +775,13 @@ static int8_t nr_rrc_ue_decode_NR_BCCH_DL_SCH_Message(NR_UE_RRC_INST_t *rrc,
         LOG_I(NR_RRC, "[UE %ld] Decoding SI\n", rrc->ue_id);
         NR_SystemInformation_t *si = bcch_message->message.choice.c1->choice.systemInformation;
         nr_decode_SI(SI_info, si);
-        SEQUENCE_free(&asn_DEF_NR_BCCH_DL_SCH_Message, (void *)bcch_message, 1);
         break;
       case NR_BCCH_DL_SCH_MessageType__c1_PR_NOTHING:
       default:
         break;
     }
   }
+  SEQUENCE_free(&asn_DEF_NR_BCCH_DL_SCH_Message, bcch_message, ASFM_FREE_EVERYTHING);
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME( VCD_SIGNAL_DUMPER_FUNCTIONS_UE_DECODE_BCCH, VCD_FUNCTION_OUT );
   return 0;
 }
@@ -891,7 +904,6 @@ static void nr_rrc_ue_process_masterCellGroup(NR_UE_RRC_INST_t *rrc,
 static void rrc_ue_generate_RRCSetupComplete(const NR_UE_RRC_INST_t *rrc, const uint8_t Transaction_id)
 {
   uint8_t buffer[100];
-  uint8_t size;
   const char *nas_msg;
   int   nas_msg_length;
 
@@ -906,7 +918,7 @@ static void rrc_ue_generate_RRCSetupComplete(const NR_UE_RRC_INST_t *rrc, const 
     nas_msg_length = sizeof(nr_nas_attach_req_imsi_dummy_NSA_case);
   }
 
-  size = do_RRCSetupComplete(buffer, sizeof(buffer), Transaction_id, rrc->selected_plmn_identity, nas_msg_length, nas_msg);
+  int size = do_RRCSetupComplete(buffer, sizeof(buffer), Transaction_id, rrc->selected_plmn_identity, nas_msg_length, nas_msg);
   LOG_I(NR_RRC, "[UE %ld][RAPROC] Logical Channel UL-DCCH (SRB1), Generating RRCSetupComplete (bytes%d)\n", rrc->ue_id, size);
   int srb_id = 1; // RRC setup complete on SRB1
   LOG_D(NR_RRC, "[RRC_UE %ld] PDCP_DATA_REQ/%d Bytes RRCSetupComplete ---> %d\n", rrc->ue_id, size, srb_id);
@@ -1048,21 +1060,19 @@ static void nr_rrc_ue_process_securityModeCommand(NR_UE_RRC_INST_t *ue_rrc,
     ue_rrc->integrityProtAlgorithm = *securityConfigSMC->securityAlgorithmConfig.integrityProtAlgorithm;
   }
 
-  uint8_t kRRCenc[NR_K_KEY_SIZE] = {0};
-  uint8_t  kUPenc[NR_K_KEY_SIZE] = {0};
-  uint8_t kRRCint[NR_K_KEY_SIZE] = {0};
-  nr_derive_key(UP_ENC_ALG, ue_rrc->cipheringAlgorithm, ue_rrc->kgnb, kUPenc);
-  nr_derive_key(RRC_ENC_ALG, ue_rrc->cipheringAlgorithm, ue_rrc->kgnb, kRRCenc);
-  nr_derive_key(RRC_INT_ALG, ue_rrc->integrityProtAlgorithm, ue_rrc->kgnb, kRRCint);
+  nr_pdcp_entity_security_keys_and_algos_t security_parameters;
+  nr_derive_key(RRC_ENC_ALG, ue_rrc->cipheringAlgorithm, ue_rrc->kgnb, security_parameters.ciphering_key);
+  nr_derive_key(RRC_INT_ALG, ue_rrc->integrityProtAlgorithm, ue_rrc->kgnb, security_parameters.integrity_key);
 
-  log_dump(NR_RRC, ue_rrc->kgnb, 32, LOG_DUMP_CHAR, "deriving kRRCenc, kRRCint and kUPenc from KgNB=");
+  log_dump(NR_RRC, ue_rrc->kgnb, 32, LOG_DUMP_CHAR, "deriving kRRCenc, kRRCint from KgNB=");
 
   /* for SecurityModeComplete, ciphering is not activated yet, only integrity */
-  uint8_t security_mode = ue_rrc->integrityProtAlgorithm << 4;
+  security_parameters.ciphering_algorithm = 0;
+  security_parameters.integrity_algorithm = ue_rrc->integrityProtAlgorithm;
   // configure lower layers to apply SRB integrity protection and ciphering
   for (int i = 1; i < NR_NUM_SRB; i++) {
     if (ue_rrc->Srb[i] == RB_ESTABLISHED)
-      nr_pdcp_config_set_security(ue_rrc->ue_id, i, security_mode, kRRCenc, kRRCint, kUPenc);
+      nr_pdcp_config_set_security(ue_rrc->ue_id, i, true, &security_parameters);
   }
 
   NR_UL_DCCH_Message_t ul_dcch_msg = {0};
@@ -1095,10 +1105,10 @@ static void nr_rrc_ue_process_securityModeCommand(NR_UE_RRC_INST_t *ue_rrc,
     ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_NR_UL_DCCH_Message, &ul_dcch_msg);
 
     /* disable both ciphering and integrity */
-    security_mode = 0;
+    nr_pdcp_entity_security_keys_and_algos_t null_security_parameters = {0};
     for (int i = 1; i < NR_NUM_SRB; i++) {
       if (ue_rrc->Srb[i] == RB_ESTABLISHED)
-        nr_pdcp_config_set_security(ue_rrc->ue_id, i, security_mode, NULL, NULL, NULL);
+        nr_pdcp_config_set_security(ue_rrc->ue_id, i, true, &null_security_parameters);
     }
 
     srb_id = 1; // SecurityModeFailure in SRB1
@@ -1140,12 +1150,11 @@ static void nr_rrc_ue_process_securityModeCommand(NR_UE_RRC_INST_t *ue_rrc,
   nr_pdcp_data_req_srb(ue_rrc->ue_id, srb_id, 0, (enc_rval.encoded + 7) / 8, buffer, deliver_pdu_srb_rlc, NULL);
 
   /* after encoding SecurityModeComplete we activate both ciphering and integrity */
-  security_mode = ue_rrc->cipheringAlgorithm | (ue_rrc->integrityProtAlgorithm << 4);
+  security_parameters.ciphering_algorithm = ue_rrc->cipheringAlgorithm;
   // configure lower layers to apply SRB integrity protection and ciphering
   for (int i = 1; i < NR_NUM_SRB; i++) {
     if (ue_rrc->Srb[i] == RB_ESTABLISHED)
-      /* pass NULL to keep current keys */
-      nr_pdcp_config_set_security(ue_rrc->ue_id, i, security_mode, NULL, NULL, NULL);
+      nr_pdcp_config_set_security(ue_rrc->ue_id, i, true, &security_parameters);
   }
 }
 
@@ -1417,10 +1426,8 @@ static void nr_rrc_ue_process_RadioBearerConfig(NR_UE_RRC_INST_t *ue_rrc,
     ue_rrc->Srb[3] = RB_NOT_PRESENT;
   }
 
-  uint8_t kRRCenc[NR_K_KEY_SIZE] = {0};
-  uint8_t kRRCint[NR_K_KEY_SIZE] = {0};
-  uint8_t kUPenc[NR_K_KEY_SIZE] = {0};
-  uint8_t kUPint[NR_K_KEY_SIZE] = {0};
+  nr_pdcp_entity_security_keys_and_algos_t security_rrc_parameters = {0};
+  nr_pdcp_entity_security_keys_and_algos_t security_up_parameters = {0};
 
   if (ue_rrc->as_security_activated) {
     if (radioBearerConfig->securityConfig != NULL) {
@@ -1436,10 +1443,14 @@ static void nr_rrc_ue_process_RadioBearerConfig(NR_UE_RRC_INST_t *ue_rrc,
         ue_rrc->integrityProtAlgorithm = *radioBearerConfig->securityConfig->securityAlgorithmConfig->integrityProtAlgorithm;
       }
     }
-    nr_derive_key(RRC_ENC_ALG, ue_rrc->cipheringAlgorithm, ue_rrc->kgnb, kRRCenc);
-    nr_derive_key(RRC_INT_ALG, ue_rrc->integrityProtAlgorithm, ue_rrc->kgnb, kRRCint);
-    nr_derive_key(UP_ENC_ALG, ue_rrc->cipheringAlgorithm, ue_rrc->kgnb, kUPenc);
-    nr_derive_key(UP_INT_ALG, ue_rrc->integrityProtAlgorithm, ue_rrc->kgnb, kUPint);
+    security_rrc_parameters.ciphering_algorithm = ue_rrc->cipheringAlgorithm;
+    security_rrc_parameters.integrity_algorithm = ue_rrc->integrityProtAlgorithm;
+    nr_derive_key(RRC_ENC_ALG, ue_rrc->cipheringAlgorithm, ue_rrc->kgnb, security_rrc_parameters.ciphering_key);
+    nr_derive_key(RRC_INT_ALG, ue_rrc->integrityProtAlgorithm, ue_rrc->kgnb, security_rrc_parameters.integrity_key);
+    security_up_parameters.ciphering_algorithm = ue_rrc->cipheringAlgorithm;
+    security_up_parameters.integrity_algorithm = ue_rrc->integrityProtAlgorithm;
+    nr_derive_key(UP_ENC_ALG, ue_rrc->cipheringAlgorithm, ue_rrc->kgnb, security_up_parameters.ciphering_key);
+    nr_derive_key(UP_INT_ALG, ue_rrc->integrityProtAlgorithm, ue_rrc->kgnb, security_up_parameters.integrity_key);
   }
 
   if (radioBearerConfig->srb_ToAddModList != NULL) {
@@ -1450,18 +1461,16 @@ static void nr_rrc_ue_process_RadioBearerConfig(NR_UE_RRC_INST_t *ue_rrc,
         add_srb(false,
                 ue_rrc->ue_id,
                 radioBearerConfig->srb_ToAddModList->list.array[cnt],
-                ue_rrc->cipheringAlgorithm,
-                ue_rrc->integrityProtAlgorithm,
-                kRRCenc,
-                kRRCint);
+                &security_rrc_parameters);
       }
       else {
         AssertFatal(srb->discardOnPDCP == NULL, "discardOnPDCP not yet implemented\n");
         if (srb->reestablishPDCP) {
           ue_rrc->Srb[srb->srb_Identity] = RB_ESTABLISHED;
-          nr_pdcp_reestablishment(ue_rrc->ue_id, srb->srb_Identity, true);
-          // TODO configure the PDCP entity to apply the integrity protection algorithm
-          // TODO configure the PDCP entity to apply the ciphering algorithm
+          nr_pdcp_reestablishment(ue_rrc->ue_id,
+                                  srb->srb_Identity,
+                                  true,
+                                  &security_rrc_parameters);
         }
         if (srb->pdcp_Config && srb->pdcp_Config->t_Reordering)
           nr_pdcp_reconfigure_srb(ue_rrc->ue_id, srb->srb_Identity, *srb->pdcp_Config->t_Reordering);
@@ -1490,9 +1499,20 @@ static void nr_rrc_ue_process_RadioBearerConfig(NR_UE_RRC_INST_t *ue_rrc,
       if (get_DRB_status(ue_rrc, DRB_id) != RB_NOT_PRESENT) {
         if (drb->reestablishPDCP) {
           set_DRB_status(ue_rrc, DRB_id, RB_ESTABLISHED);
-          nr_pdcp_reestablishment(ue_rrc->ue_id, DRB_id, false);
-          // TODO configure the PDCP entity to apply the integrity protection algorithm
-          // TODO configure the PDCP entity to apply the ciphering algorithm
+          /* get integrity and cipehring settings from radioBearerConfig */
+          bool has_integrity = drb->pdcp_Config != NULL
+                               && drb->pdcp_Config->drb != NULL
+                               && drb->pdcp_Config->drb->integrityProtection != NULL;
+          bool has_ciphering = !(drb->pdcp_Config != NULL
+                                 && drb->pdcp_Config->ext1 != NULL
+                                 && drb->pdcp_Config->ext1->cipheringDisabled != NULL);
+          security_up_parameters.ciphering_algorithm = has_ciphering ? ue_rrc->cipheringAlgorithm : 0;
+          security_up_parameters.integrity_algorithm = has_integrity ? ue_rrc->integrityProtAlgorithm : 0;
+          /* re-establish */
+          nr_pdcp_reestablishment(ue_rrc->ue_id,
+                                  DRB_id,
+                                  false,
+                                  &security_up_parameters);
         }
         AssertFatal(drb->recoverPDCP == NULL, "recoverPDCP not yet implemented\n");
         /* sdap-Config is included (SA mode) */
@@ -1508,10 +1528,7 @@ static void nr_rrc_ue_process_RadioBearerConfig(NR_UE_RRC_INST_t *ue_rrc,
         add_drb(false,
                 ue_rrc->ue_id,
                 radioBearerConfig->drb_ToAddModList->list.array[cnt],
-                ue_rrc->cipheringAlgorithm,
-                ue_rrc->integrityProtAlgorithm,
-                kUPenc,
-                kUPint);
+                &security_up_parameters);
       }
     }
   } // drb_ToAddModList //
@@ -1522,8 +1539,8 @@ static void nr_rrc_ue_process_RadioBearerConfig(NR_UE_RRC_INST_t *ue_rrc,
 
 static void nr_rrc_ue_generate_RRCReconfigurationComplete(NR_UE_RRC_INST_t *rrc, const int srb_id, const uint8_t Transaction_id)
 {
-  uint8_t buffer[32], size;
-  size = do_NR_RRCReconfigurationComplete(buffer, sizeof(buffer), Transaction_id);
+  uint8_t buffer[32];
+  int size = do_NR_RRCReconfigurationComplete(buffer, sizeof(buffer), Transaction_id);
   LOG_I(NR_RRC, " Logical Channel UL-DCCH (SRB1), Generating RRCReconfigurationComplete (bytes %d)\n", size);
   AssertFatal(srb_id == 1 || srb_id == 3, "Invalid SRB ID %d\n", srb_id);
   LOG_D(RLC,
@@ -1551,17 +1568,13 @@ static void nr_rrc_ue_process_rrcReestablishment(NR_UE_RRC_INST_t *rrc,
   // update the K gNB key based on the current K gNB key or the NH, using the stored nextHopChainingCount value
   nr_derive_key_ng_ran_star(rrc->phyCellID, rrc->arfcn_ssb, rrc->kgnb, rrc->kgnb);
 
-  // derive the K RRCenc and K UPenc keys associated with the previously configured cipheringAlgorithm
-  // derive the K RRCint and K UPint keys associated with the previously configured integrityProtAlgorithm
-  uint8_t kRRCenc[16] = {0};
-  uint8_t kRRCint[16] = {0};
-  uint8_t kUPenc[16] = {0};
-  uint8_t kUPint[16] = {0};
-
-  nr_derive_key(UP_ENC_ALG, rrc->cipheringAlgorithm, rrc->kgnb, kUPenc);
-  nr_derive_key(UP_INT_ALG, rrc->integrityProtAlgorithm, rrc->kgnb, kUPint);
-  nr_derive_key(RRC_ENC_ALG, rrc->cipheringAlgorithm, rrc->kgnb, kRRCenc);
-  nr_derive_key(RRC_INT_ALG, rrc->integrityProtAlgorithm, rrc->kgnb, kRRCint);
+  // derive the K RRCenc key associated with the previously configured cipheringAlgorithm
+  // derive the K RRCint key associated with the previously configured integrityProtAlgorithm
+  nr_pdcp_entity_security_keys_and_algos_t security_parameters;
+  security_parameters.ciphering_algorithm = rrc->cipheringAlgorithm;
+  security_parameters.integrity_algorithm = rrc->integrityProtAlgorithm;
+  nr_derive_key(RRC_ENC_ALG, rrc->cipheringAlgorithm, rrc->kgnb, security_parameters.ciphering_key);
+  nr_derive_key(RRC_INT_ALG, rrc->integrityProtAlgorithm, rrc->kgnb, security_parameters.integrity_key);
 
   // TODO request lower layers to verify the integrity protection of the RRCReestablishment message
   // TODO if the integrity protection check of the RRCReestablishment message fails -> go to IDLE
@@ -1569,9 +1582,7 @@ static void nr_rrc_ue_process_rrcReestablishment(NR_UE_RRC_INST_t *rrc,
   // configure lower layers to resume integrity protection for SRB1
   // configure lower layers to resume ciphering for SRB1
   int srb_id = 1;
-  int security_mode = (rrc->integrityProtAlgorithm << 4)
-                      | rrc->cipheringAlgorithm;
-  nr_pdcp_config_set_security(rrc->ue_id, srb_id, security_mode, kRRCenc, kRRCint, kUPenc);
+  nr_pdcp_config_set_security(rrc->ue_id, srb_id, true, &security_parameters);
 
   // release the measurement gap configuration indicated by the measGapConfig, if configured
   rrcPerNB_t *rrcNB = rrc->perNB + gNB_index;
@@ -1623,15 +1634,14 @@ static int nr_rrc_ue_decode_dcch(NR_UE_RRC_INST_t *rrc,
         } break;
 
         case NR_DL_DCCH_MessageType__c1_PR_rrcResume:
-          LOG_I(NR_RRC, "Received rrcResume on DL-DCCH-Message\n");
+          LOG_E(NR_RRC, "Received rrcResume on DL-DCCH-Message -> Not handled\n");
           break;
         case NR_DL_DCCH_MessageType__c1_PR_rrcRelease:
           LOG_I(NR_RRC, "[UE %ld] Received RRC Release (gNB %d)\n", rrc->ue_id, gNB_indexP);
-          // TODO properly implement procedures in 5.3.8.3 of 38.331
-          NR_Release_Cause_t cause = OTHER;
-          if (rrc->detach_after_release)
-            rrc->nrRrcState = RRC_STATE_DETACH_NR;
-          nr_rrc_going_to_IDLE(rrc, cause, dl_dcch_msg->message.choice.c1->choice.rrcRelease);
+          // delay the actions 60 ms from the moment the RRCRelease message was received
+          UPDATE_IE(rrc->RRCRelease, dl_dcch_msg->message.choice.c1->choice.rrcRelease, NR_RRCRelease_t);
+          nr_timer_setup(&rrc->release_timer, 60, 10); // 10ms step
+          nr_timer_start(&rrc->release_timer);
           break;
 
         case NR_DL_DCCH_MessageType__c1_PR_ueCapabilityEnquiry:
@@ -1683,7 +1693,7 @@ static int nr_rrc_ue_decode_dcch(NR_UE_RRC_INST_t *rrc,
       break;
   }
   //  release memory allocation
-  SEQUENCE_free(&asn_DEF_NR_DL_DCCH_Message, (void *)dl_dcch_msg, 1);
+  SEQUENCE_free(&asn_DEF_NR_DL_DCCH_Message, dl_dcch_msg, ASFM_FREE_EVERYTHING);
   return 0;
 }
 
@@ -1739,6 +1749,12 @@ void *rrc_nrue(void *notUsed)
     nr_rrc_SI_timers(SInfo);
     break;
 
+  case NR_RRC_MAC_INAC_IND:
+    LOG_D(NR_RRC, "Received data inactivity indication from lower layers\n");
+    NR_Release_Cause_t release_cause = RRC_CONNECTION_FAILURE;
+    nr_rrc_going_to_IDLE(rrc, release_cause, NULL);
+    break;
+
   case NR_RRC_MAC_MSG3_IND:
     nr_rrc_handle_msg3_indication(rrc, NR_RRC_MAC_MSG3_IND(msg_p).rnti);
     break;
@@ -1782,6 +1798,9 @@ void *rrc_nrue(void *notUsed)
 			  NR_RRC_DCCH_DATA_IND(msg_p).sdu_size,
 			  NR_RRC_DCCH_DATA_IND(msg_p).gNB_index,
 			  &NR_RRC_DCCH_DATA_IND(msg_p).msg_integrity);
+    /* this is allocated by itti_malloc in PDCP task (deliver_sdu_srb)
+       then passed to the RRC task and freed after use */
+    free(NR_RRC_DCCH_DATA_IND(msg_p).sdu_p);
     break;
 
   case NAS_KENB_REFRESH_REQ:
@@ -1800,7 +1819,7 @@ void *rrc_nrue(void *notUsed)
 
   case NAS_UPLINK_DATA_REQ: {
     uint32_t length;
-    uint8_t *buffer;
+    uint8_t *buffer = NULL;
     NasUlDataReq *req = &NAS_UPLINK_DATA_REQ(msg_p);
     /* Create message for PDCP (ULInformationTransfer_t) */
     length = do_NR_ULInformationTransfer(&buffer, req->nasMsg.length, req->nasMsg.data);
@@ -1809,6 +1828,7 @@ void *rrc_nrue(void *notUsed)
     // error: the remote gNB is hardcoded here
     rb_id_t srb_id = rrc->Srb[2] == RB_ESTABLISHED ? 2 : 1;
     nr_pdcp_data_req_srb(rrc->ue_id, srb_id, 0, length, buffer, deliver_pdu_srb_rlc, NULL);
+    free(buffer);
     break;
   }
 
@@ -1851,8 +1871,6 @@ static void nr_rrc_ue_process_ueCapabilityEnquiry(NR_UE_RRC_INST_t *rrc, NR_UECa
   c1->present = NR_UL_DCCH_MessageType__c1_PR_ueCapabilityInformation;
   asn1cCalloc(c1->choice.ueCapabilityInformation, info);
   info->rrc_TransactionIdentifier = UECapabilityEnquiry->rrc_TransactionIdentifier;
-  NR_UE_CapabilityRAT_Container_t ue_CapabilityRAT_Container = {.rat_Type = NR_RAT_Type_nr};
-
   if (!rrc->UECap.UE_NR_Capability) {
     rrc->UECap.UE_NR_Capability = CALLOC(1, sizeof(NR_UE_NR_Capability_t));
     asn1cSequenceAdd(rrc->UECap.UE_NR_Capability->rf_Parameters.supportedBandListNR.list, NR_BandNR_t, nr_bandnr);
@@ -1869,9 +1887,10 @@ static void nr_rrc_ue_process_ueCapabilityEnquiry(NR_UE_RRC_INST_t *rrc, NR_UECa
                enc_rval.failed_type->name, enc_rval.encoded);
   rrc->UECap.sdu_size = (enc_rval.encoded + 7) / 8;
   LOG_I(PHY, "[RRC]UE NR Capability encoded, %d bytes (%zd bits)\n", rrc->UECap.sdu_size, enc_rval.encoded + 7);
-
-  OCTET_STRING_fromBuf(&ue_CapabilityRAT_Container.ue_CapabilityRAT_Container, (const char *)rrc->UECap.sdu, rrc->UECap.sdu_size);
-
+  /* RAT Container */
+  NR_UE_CapabilityRAT_Container_t *ue_CapabilityRAT_Container = CALLOC(1, sizeof(NR_UE_CapabilityRAT_Container_t));
+  ue_CapabilityRAT_Container->rat_Type = NR_RAT_Type_nr;
+  OCTET_STRING_fromBuf(&ue_CapabilityRAT_Container->ue_CapabilityRAT_Container, (const char *)rrc->UECap.sdu, rrc->UECap.sdu_size);
   NR_UECapabilityEnquiry_IEs_t *ueCapabilityEnquiry_ie = UECapabilityEnquiry->criticalExtensions.choice.ueCapabilityEnquiry;
   if (get_softmodem_params()->nsa == 1) {
     OCTET_STRING_t *requestedFreqBandsNR = ueCapabilityEnquiry_ie->ue_CapabilityEnquiryExt;
@@ -1891,7 +1910,7 @@ static void nr_rrc_ue_process_ueCapabilityEnquiry(NR_UE_RRC_INST_t *rrc, NR_UECa
 
   for (int i = 0; i < ueCapabilityEnquiry_ie->ue_CapabilityRAT_RequestList.list.count; i++) {
     if (ueCapabilityEnquiry_ie->ue_CapabilityRAT_RequestList.list.array[i]->rat_Type == NR_RAT_Type_nr) {
-      asn1cSeqAdd(&UEcapList->list, &ue_CapabilityRAT_Container);
+      asn1cSeqAdd(&UEcapList->list, ue_CapabilityRAT_Container);
       uint8_t buffer[500];
       asn_enc_rval_t enc_rval = uper_encode_to_buffer(&asn_DEF_NR_UL_DCCH_Message, NULL, (void *)&ul_dcch_msg, buffer, 500);
       AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %jd)!\n",
@@ -1905,6 +1924,9 @@ static void nr_rrc_ue_process_ueCapabilityEnquiry(NR_UE_RRC_INST_t *rrc, NR_UECa
       nr_pdcp_data_req_srb(rrc->ue_id, srb_id, 0, (enc_rval.encoded + 7) / 8, buffer, deliver_pdu_srb_rlc, NULL);
     }
   }
+  /* Free struct members after it's done
+     including locally allocated ue_CapabilityRAT_Container */
+  ASN_STRUCT_RESET(asn_DEF_NR_UL_DCCH_Message, &ul_dcch_msg);
 }
 
 void nr_rrc_initiate_rrcReestablishment(NR_UE_RRC_INST_t *rrc,
@@ -1930,13 +1952,11 @@ void nr_rrc_initiate_rrcReestablishment(NR_UE_RRC_INST_t *rrc,
   for (int i = 1; i < 4; i++) {
     if (rrc->Srb[i] == RB_ESTABLISHED) {
       rrc->Srb[i] = RB_SUSPENDED;
-      nr_pdcp_suspend_srb(rrc->ue_id, i);
     }
   }
   for (int i = 1; i <= MAX_DRBS_PER_UE; i++) {
     if (get_DRB_status(rrc, i) == RB_ESTABLISHED) {
       set_DRB_status(rrc, i, RB_SUSPENDED);
-      nr_pdcp_suspend_drb(rrc->ue_id, i);
     }
   }
   // release the MCG SCell(s), if configured
@@ -2134,6 +2154,46 @@ static void process_lte_nsa_msg(NR_UE_RRC_INST_t *rrc, nsa_msg_t *msg, int msg_l
     default:
       LOG_E(NR_RRC, "No NSA Message Found\n");
   }
+}
+
+void handle_RRCRelease(NR_UE_RRC_INST_t *rrc)
+{
+  NR_UE_Timers_Constants_t *tac = &rrc->timers_and_constants;
+  // stop timer T380, if running
+  nr_timer_stop(&tac->T380);
+  // stop timer T320, if running
+  nr_timer_stop(&tac->T320);
+  if (rrc->detach_after_release)
+    rrc->nrRrcState = RRC_STATE_DETACH_NR;
+  const struct NR_RRCRelease_IEs *rrcReleaseIEs = rrc->RRCRelease ? rrc->RRCRelease->criticalExtensions.choice.rrcRelease : NULL;
+  if (!rrc->as_security_activated) {
+    // ignore any field included in RRCRelease message except waitTime
+    // perform the actions upon going to RRC_IDLE as specified in 5.3.11 with the release cause 'other'
+    // upon which the procedure ends
+    NR_Release_Cause_t cause = OTHER;
+    nr_rrc_going_to_IDLE(rrc, cause, rrc->RRCRelease);
+    asn1cFreeStruc(asn_DEF_NR_RRCRelease, rrc->RRCRelease);
+    return;
+  }
+  bool suspend = false;
+  if (rrcReleaseIEs) {
+    if (rrcReleaseIEs->redirectedCarrierInfo)
+      LOG_E(NR_RRC, "redirectedCarrierInfo in RRCRelease not handled\n");
+    if (rrcReleaseIEs->cellReselectionPriorities)
+      LOG_E(NR_RRC, "cellReselectionPriorities in RRCRelease not handled\n");
+    if (rrcReleaseIEs->deprioritisationReq)
+      LOG_E(NR_RRC, "deprioritisationReq in RRCRelease not handled\n");
+    if (rrcReleaseIEs->suspendConfig) {
+      suspend = true;
+      // procedures to go in INACTIVE state
+      AssertFatal(false, "Inactive State not supported\n");
+    }
+  }
+  if (!suspend) {
+    NR_Release_Cause_t cause = OTHER;
+    nr_rrc_going_to_IDLE(rrc, cause, rrc->RRCRelease);
+  }
+  asn1cFreeStruc(asn_DEF_NR_RRCRelease, rrc->RRCRelease);
 }
 
 void nr_rrc_going_to_IDLE(NR_UE_RRC_INST_t *rrc,

@@ -96,45 +96,44 @@ def Iperf_ComputeTime(args):
 	return int(result.group('iperf_time'))
 
 def Iperf_analyzeV3TCPJson(filename, iperf_tcp_rate_target):
-	if (not os.path.isfile(filename)):
-		return (False, 'Iperf3 TCP: Log file not present')
-	if (os.path.getsize(filename)==0):
-		return (False, 'Iperf3 TCP: Log file is empty')
-
-	with open(filename) as file:
-		filename = json.load(file)
-		try:
-			sender_bitrate   = round(filename['end']['streams'][0]['sender']['bits_per_second']/1000000,2)
-			receiver_bitrate = round(filename['end']['streams'][0]['receiver']['bits_per_second']/1000000,2)
-		except Exception as e:
-			return (False, 'Could not compute Iperf3 bitrate!')
-
+	try:
+		with open(filename) as f:
+			 results = json.load(f)
+		sender_bitrate   = round(results['end']['streams'][0]['sender']['bits_per_second'] / 1000000, 2)
+		receiver_bitrate = round(results['end']['streams'][0]['receiver']['bits_per_second'] / 1000000, 2)
+	except json.JSONDecodeError as e:
+		return (False, f'Could not decode JSON log file {filename}: {e}')
+	except KeyError as e:
+		e_msg = results.get('error', f'error report not found in {filename}')
+		return (False, f'While parsing Iperf3 results: missing key {e}, {e_msg}')
+	except Exception as e:
+		return (False, f'While parsing Iperf3 results: exception: {e}')
 	snd_msg = f'Sender Bitrate   : {sender_bitrate} Mbps'
 	rcv_msg = f'Receiver Bitrate : {receiver_bitrate} Mbps'
 	success = True
-	if (iperf_tcp_rate_target is not None):
-		if (int(receiver_bitrate) < int(iperf_tcp_rate_target)):
-			rcv_msg += f" (too low! < {iperf_tcp_rate_target} Mbps)"
-			success = False
+	if iperf_tcp_rate_target is not None:
+		success = float(receiver_bitrate) >= float(iperf_tcp_rate_target)
+		if success:
+			rcv_msg += f" (target: {iperf_tcp_rate_target})"
 		else:
-			rcv_msg += f" (target : {iperf_tcp_rate_target} Mbps)"
+			rcv_msg += f" (too low! < {iperf_tcp_rate_target})"
 	return(success, f'{snd_msg}\n{rcv_msg}')
 
 def Iperf_analyzeV3BIDIRJson(filename):
-	if (not os.path.isfile(filename)):
-		return (False, 'Iperf3 Bidir TCP: Log file not present')
-	if (os.path.getsize(filename)==0):
-		return (False, 'Iperf3 Bidir TCP: Log file is empty')
-
-	with open(filename) as file:
-		filename = json.load(file)
-		try:
-			sender_bitrate_dl   = round(filename['end']['streams'][0]['sender']['bits_per_second']/1000000,2)
-			receiver_bitrate_dl = round(filename['end']['streams'][0]['receiver']['bits_per_second']/1000000,2)
-			sender_bitrate_ul   = round(filename['end']['streams'][1]['sender']['bits_per_second']/1000000,2)
-			receiver_bitrate_ul = round(filename['end']['streams'][1]['receiver']['bits_per_second']/1000000,2)
-		except Exception as e:
-			return (False, 'Could not compute BIDIR bitrate!')
+	try:
+		with open(filename) as f:
+			results = json.load(f)
+		sender_bitrate_ul   = round(results['end']['streams'][0]['sender']['bits_per_second'] / 1000000, 2)
+		receiver_bitrate_ul = round(results['end']['streams'][0]['receiver']['bits_per_second'] / 1000000, 2)
+		sender_bitrate_dl   = round(results['end']['streams'][1]['sender']['bits_per_second'] / 1000000, 2)
+		receiver_bitrate_dl = round(results['end']['streams'][1]['receiver']['bits_per_second'] / 1000000, 2)
+	except json.JSONDecodeError as e:
+		return (False, f'Could not decode JSON log file: {e}')
+	except KeyError as e:
+		e_msg = results.get('error', f'error report not found in {filename}')
+		return (False, f'While parsing Iperf3 results: missing key {e}, {e_msg}')
+	except Exception as e:
+		return (False, f'While parsing Iperf3 results: exception: {e}')
 
 	msg = f'Sender Bitrate DL   : {sender_bitrate_dl} Mbps\n'
 	msg += f'Receiver Bitrate DL : {receiver_bitrate_dl} Mbps\n'
@@ -202,8 +201,6 @@ def Iperf_analyzeV2UDP(server_filename, iperf_bitrate_threshold, iperf_packetlos
 		with open(server_filename, 'r') as server_file:
 			for line in server_file.readlines():
 				result = re.search(statusTemplate, str(line))
-				if result is not None:
-					break
 		if result is None:
 			return (False, 'Could not parse server report!')
 		bitrate = float(result.group('bitrate'))
@@ -790,10 +787,8 @@ class OaiCiTest():
 		udpIperf = re.search('-u', iperf_opt) is not None
 		bidirIperf = re.search('--bidir', iperf_opt) is not None
 		client_filename = f'iperf_client_{self.testCase_id}_{ue.getName()}.log'
-		server_filename = f'iperf_server_{self.testCase_id}_{ue.getName()}.log'
 		ymlPath = CONTAINERS.yamlPath[0].split('/')
 		logPath = f'../cmake_targets/log/{ymlPath[1]}'
-
 		if udpIperf:
 			target_bitrate, iperf_opt = Iperf_ComputeModifiedBW(idx, ue_num, self.iperf_profile, self.iperf_args)
 			# note: for UDP testing we don't want to use json report - reports 0 Mbps received bitrate
@@ -805,35 +800,29 @@ class OaiCiTest():
 		# hack: the ADB UEs don't have iperf in $PATH, so we need to hardcode for the moment
 		iperf_ue = '/data/local/tmp/iperf3' if re.search('adb', ue.getName()) else 'iperf3'
 		ue_header = f'UE {ue.getName()} ({ueIP})'
-
-		if svr.getName() == "rfsim4g_enb_fembms":
-			with cls_cmd.getConnection(ue.getHost()) as cmd_ue, cls_cmd.getConnection(EPC.IPAddress) as cmd_svr:
-				port = 5002 + idx
-				cmd_ue.run(f'{ue.getCmdPrefix()} iperf -B {ueIP} -s -u -i1 >> {server_filename} &', timeout=iperf_time*1.5)
-				cmd_svr.run(f'{svr.getCmdPrefix()} iperf -c {ueIP} -B {svrIP} {iperf_opt} -i1 2>&1 | tee {client_filename}', timeout=iperf_time*1.5)
-				cmd_ue.run(f'cp {client_filename} {logPath}/{client_filename}')
-				cmd_ue.run(f'cp {server_filename} {logPath}/{server_filename}')
-				status, msg = Iperf_analyzeV2UDP(server_filename, self.iperf_bitrate_threshold, self.iperf_packetloss_threshold, target_bitrate)
+		# create log directory on executor node
+		with cls_cmd.getConnection('localhost') as local:
+			local.run(f'mkdir -p {logPath}')
+		with cls_cmd.getConnection(ue.getHost()) as cmd_ue, cls_cmd.getConnection(EPC.IPAddress) as cmd_svr:
+			port = 5002 + idx
+			# note: some core setups start an iperf3 server automatically, indicated in ci_infra by runIperf3Server: False`
+			t = iperf_time * 2.5
+			cmd_ue.run(f'rm /tmp/{client_filename}', reportNonZero=False)
+			if runIperf3Server:
+				cmd_svr.run(f'{svr.getCmdPrefix()} nohup timeout -vk3 {t} iperf3 -s -B {svrIP} -p {port} -1 {jsonReport} &', timeout=t)
+			cmd_ue.run(f'{ue.getCmdPrefix()} timeout -vk3 {t} {iperf_ue} -B {ueIP} -c {svrIP} -p {port} {iperf_opt} {jsonReport} {serverReport} -O 5 >> /tmp/{client_filename}', timeout=t)
+			localPath = f'{os.getcwd()}'
+			# note: copy iperf3 log to the directory for log collection, used by pipelines running on executor machine
+			cmd_ue.copyin(f'/tmp/{client_filename}', f'{localPath}/{logPath}/{client_filename}')
+			# note: copy iperf3 log to the current directory for log analysis and log collection
+			cmd_ue.copyin(f'/tmp/{client_filename}', f'{localPath}/{client_filename}')
+			cmd_ue.run(f'rm /tmp/{client_filename}', reportNonZero=False)
+		if udpIperf:
+			status, msg = Iperf_analyzeV3UDP(client_filename, self.iperf_bitrate_threshold, self.iperf_packetloss_threshold, target_bitrate)
+		elif bidirIperf:
+			status, msg = Iperf_analyzeV3BIDIRJson(client_filename)
 		else:
-			with cls_cmd.getConnection(ue.getHost()) as cmd_ue, cls_cmd.getConnection(EPC.IPAddress) as cmd_svr:
-				port = 5002 + idx
-				# note: some core setups start an iperf3 server automatically, indicated in ci_infra by runIperf3Server: False`
-				if runIperf3Server:
-					cmd_svr.run(f'{svr.getCmdPrefix()} nohup iperf3 -s -B {svrIP} -p {port} -1 {jsonReport} &', timeout=iperf_time*1.5)
-				cmd_ue.run(f'rm /tmp/{client_filename}', reportNonZero=False)
-				cmd_ue.run(f'{ue.getCmdPrefix()} {iperf_ue} -B {ueIP} -c {svrIP} -p {port} {iperf_opt} {jsonReport} {serverReport} -O 5 >> /tmp/{client_filename}', timeout=iperf_time*1.5)
-				if svr.getHost() == 'localhost':
-					cmd_ue.run(f'mkdir -p {logPath}')
-					cmd_ue.run(f'cp /tmp/{client_filename} {logPath}/{client_filename}')
-					cmd_ue.run(f'cp /tmp/{client_filename} {client_filename}')
-				else:
-					cmd_ue.copyin(f'/tmp/{client_filename}', client_filename)
-			if udpIperf:
-				status, msg = Iperf_analyzeV3UDP(client_filename, self.iperf_bitrate_threshold, self.iperf_packetloss_threshold, target_bitrate)
-			elif bidirIperf:
-				status, msg = Iperf_analyzeV3BIDIRJson(client_filename)
-			else:
-				status, msg = Iperf_analyzeV3TCPJson(client_filename, self.iperf_tcp_rate_target)
+			status, msg = Iperf_analyzeV3TCPJson(client_filename, self.iperf_tcp_rate_target)
 
 		logging.info(f'\u001B[1;37;45m iperf result for {ue_header}\u001B[0m')
 		for l in msg.split('\n'):
@@ -869,6 +858,46 @@ class OaiCiTest():
 			HTML.CreateHtmlTestRowQueue(self.iperf_args, 'OK', messages)
 		else:
 			HTML.CreateHtmlTestRowQueue(self.iperf_args, 'KO', messages)
+			self.AutoTerminateUEandeNB(HTML,RAN,EPC,CONTAINERS)
+
+	def Iperf2_Unidir(self,HTML,RAN,EPC,CONTAINERS):
+		if self.ue_ids == [] or self.svr_id == None or len(self.ue_ids) != 1:
+			raise Exception("no module names in self.ue_ids or/and self.svr_id provided, multi UE scenario not supported")
+		ue = cls_module.Module_UE(self.ue_ids[0].strip())
+		svr = cls_module.Module_UE(self.svr_id)
+		ueIP = ue.getIP()
+		if not ueIP:
+			return (False, f"UE {ue.getName()} has no IP address")
+		svrIP = svr.getIP()
+		if not svrIP:
+			return (False, f"Iperf server {ue.getName()} has no IP address")
+		server_filename = f'iperf_server_{self.testCase_id}_{ue.getName()}.log'
+		ymlPath = CONTAINERS.yamlPath[0].split('/')
+		logPath = f'../cmake_targets/log/{ymlPath[-1]}'
+		iperf_time = Iperf_ComputeTime(self.iperf_args)
+		target_bitrate, iperf_opt = Iperf_ComputeModifiedBW(0, 1, self.iperf_profile, self.iperf_args)
+		t = iperf_time*2.5
+		with cls_cmd.getConnection('localhost') as local:
+			local.run(f'mkdir -p {logPath}')
+		with cls_cmd.getConnection(ue.getHost()) as cmd_ue, cls_cmd.getConnection(EPC.IPAddress) as cmd_svr:
+			cmd_ue.run(f'rm /tmp/{server_filename}', reportNonZero=False)
+			cmd_ue.run(f'{ue.getCmdPrefix()} timeout -vk3 {t} iperf -B {ueIP} -s -u -i1 >> /tmp/{server_filename} &', timeout=t)
+			cmd_svr.run(f'{svr.getCmdPrefix()} timeout -vk3 {t} iperf -c {ueIP} -B {svrIP} {iperf_opt} -i1', timeout=t)
+			localPath = f'{os.getcwd()}'
+			# note: copy iperf2 log to the directory for log collection
+			cmd_ue.copyin(f'/tmp/{server_filename}', f'{localPath}/{logPath}/{server_filename}')
+			# note: copy iperf2 log to the current directory for log analysis and log collection
+			cmd_ue.copyin(f'/tmp/{server_filename}', f'{localPath}/{server_filename}')
+			cmd_ue.run(f'rm /tmp/{server_filename}', reportNonZero=False)
+		success, msg = Iperf_analyzeV2UDP(server_filename, self.iperf_bitrate_threshold, self.iperf_packetloss_threshold, target_bitrate)
+		ue_header = f'UE {ue.getName()} ({ueIP})'
+		logging.info(f'\u001B[1;37;45m iperf result for {ue_header}\u001B[0m')
+		for l in msg.split('\n'):
+			logging.info(f'\u001B[1;35m	{l} \u001B[0m')
+		if success:
+			HTML.CreateHtmlTestRowQueue(self.iperf_args, 'OK', [f'{ue_header}\n{msg}'])
+		else:
+			HTML.CreateHtmlTestRowQueue(self.iperf_args, 'KO', [f'{ue_header}\n{msg}'])
 			self.AutoTerminateUEandeNB(HTML,RAN,EPC,CONTAINERS)
 
 	def AnalyzeLogFile_UE(self, UElogFile,HTML,RAN):

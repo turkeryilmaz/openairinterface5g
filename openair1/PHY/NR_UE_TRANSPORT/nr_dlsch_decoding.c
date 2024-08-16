@@ -85,9 +85,9 @@ static bool nr_ue_postDecode(PHY_VARS_NR_UE *phy_vars_ue,
   NR_UE_DLSCH_t *dlsch = (NR_UE_DLSCH_t *) rdata->dlsch;
   int r = rdata->segment_r;
 
-  merge_meas(&phy_vars_ue->dlsch_deinterleaving_stats, &rdata->ts_deinterleave);
-  merge_meas(&phy_vars_ue->dlsch_rate_unmatching_stats, &rdata->ts_rate_unmatch);
-  merge_meas(&phy_vars_ue->dlsch_ldpc_decoding_stats, &rdata->ts_ldpc_decode);
+  merge_meas(&phy_vars_ue->phy_cpu_stats.cpu_time_stats[DLSCH_DEINTERLEAVING_STATS], &rdata->ts_deinterleave);
+  merge_meas(&phy_vars_ue->phy_cpu_stats.cpu_time_stats[DLSCH_RATE_UNMATCHING_STATS], &rdata->ts_rate_unmatch);
+  merge_meas(&phy_vars_ue->phy_cpu_stats.cpu_time_stats[DLSCH_LDPC_DECODING_STATS], &rdata->ts_ldpc_decode);
 
   bool decodeSuccess = (rdata->decodeIterations < (1+dlsch->max_ldpc_iterations));
 
@@ -121,7 +121,22 @@ static bool nr_ue_postDecode(PHY_VARS_NR_UE *phy_vars_ue,
           LOG_D(PHY, "DLSCH received nok \n");
           return true; //stop
         }
+	const int sz=A / 8;
+        if (b[sz] == 0 && b[sz + 1] == 0) { // We search only a reccuring OAI error that propagates all 0 packets with a 0 CRC, so we
+                                          // do the check only if the 2 first bytes of the CRC are 0 (it can be CRC16 or CRC24)
+          int i = 0;
+          while (b[i] == 0 && i < sz)
+            i++;
+          if (i == sz) {
+            LOG_E(PHY,
+                  "received all 0 pdu, consider it false reception, even if the TS 38.212 7.2.1 says only we should attach the "
+                  "corresponding CRC, and nothing prevents to have a all 0 packet\n");
+            dlsch->last_iteration_cnt = dlsch->max_ldpc_iterations + 1;
+            return true; // stop
+          }
+        }
       }
+	
       //LOG_D(PHY,"[UE %d] DLSCH: Setting ACK for nr_slot_rx %d TBS %d mcs %d nb_rb %d harq_process->round %d\n",
       //      phy_vars_ue->Mod_id,nr_slot_rx,harq_process->TBS,harq_process->mcs,harq_process->nb_rb, harq_process->round);
       harq_process->status = SCH_IDLE;
@@ -368,7 +383,7 @@ uint32_t nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
                     &harq_process->F,
                     decParams.BG);
 
-    if (harq_process->C>MAX_NUM_NR_DLSCH_SEGMENTS_PER_LAYER*dlsch->Nl) {
+    if (harq_process->C > MAX_NUM_NR_DLSCH_SEGMENTS_PER_LAYER * dlsch->Nl) {
       LOG_E(PHY, "nr_segmentation.c: too many segments %d, A %d\n", harq_process->C, A);
       return(-1);
     }
@@ -385,7 +400,7 @@ uint32_t nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
   decParams.numMaxIter = dlsch->max_ldpc_iterations;
   decParams.outMode = 0;
   r_offset = 0;
-  uint16_t a_segments = MAX_NUM_NR_DLSCH_SEGMENTS_PER_LAYER*dlsch->Nl;  //number of segments to be allocated
+  uint16_t a_segments = MAX_NUM_NR_DLSCH_SEGMENTS_PER_LAYER * dlsch->Nl;  //number of segments to be allocated
 
   if (nb_rb != 273) {
     a_segments = a_segments*nb_rb;
@@ -403,8 +418,6 @@ uint32_t nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
   Kr = harq_process->K;
   Kr_bytes = Kr>>3;
   offset = 0;
-  notifiedFIFO_t nf;
-  initNotifiedFIFO(&nf);
   set_abort(&harq_process->abort_decode, false);
 
   ldpcDecode_ue_t arr[harq_process->C]; 

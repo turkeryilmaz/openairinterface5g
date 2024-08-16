@@ -344,7 +344,9 @@ static inline int abortTpool(tpool_t *t) {
   thread = t->allthreads;
   while (thread != NULL) {
     pthread_cancel(thread->threadID);
-    thread = thread->next;
+    struct one_thread *next = thread->next;
+    free(thread);
+    thread = next;
   }
 
   if(t->allthreads != NULL)

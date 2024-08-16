@@ -20,7 +20,7 @@
  */
 
 /*! \file gNB_scheduler_bch.c
- * \brief procedures related to eNB for the BCH transport channel
+ * \brief procedures related to gNB for the BCH transport channel
  * \author  Navid Nikaein and Raymond Knopp, WEI-TAI CHEN
  * \date 2010 - 2014, 2018
  * \email: navid.nikaein@eurecom.fr, kroempa@gmail.com
@@ -38,11 +38,8 @@
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "UTIL/OPT/opt.h"
 #include "common/utils/nr/nr_common.h"
-#include "openair1/PHY/defs_nr_common.h"
-
 
 #define ENABLE_MAC_PAYLOAD_DEBUG
-#define DEBUG_eNB_SCHEDULER 1
 
 #include "common/ran_context.h"
 
@@ -66,6 +63,7 @@ static void schedule_ssb(frame_t frame,
   dl_config_pdu->PDUSize      =2 + sizeof(nfapi_nr_dl_tti_ssb_pdu_rel15_t);
 
   AssertFatal(scc->physCellId!=NULL,"ServingCellConfigCommon->physCellId is null\n");
+  AssertFatal(*scc->physCellId < 1008 && *scc->physCellId >=0, "5G physicall cell id out of range: %ld\n", *scc->physCellId); 
   dl_config_pdu->ssb_pdu.ssb_pdu_rel15.PhysCellId          = *scc->physCellId;
   dl_config_pdu->ssb_pdu.ssb_pdu_rel15.BetaPss             = 0;
   dl_config_pdu->ssb_pdu.ssb_pdu_rel15.SsbBlockIndex       = i_ssb;
@@ -100,7 +98,7 @@ static void fill_ssb_vrb_map(NR_COMMON_channels_t *cc, int rbStart, int ssb_subc
   uint16_t *vrb_map = cc[CC_id].vrb_map;
   const int extra_prb = ssb_subcarrier_offset > 0;
   for (int rb = 0; rb < 20 + extra_prb; rb++)
-    vrb_map[rbStart + rb] = SL_to_bitmap(symStart % NR_SYMBOLS_PER_SLOT, 4);
+    vrb_map[rbStart + rb] = SL_to_bitmap(symStart % NR_NUMBER_OF_SYMBOLS_PER_SLOT, 4);
 }
 
 static int encode_mib(NR_BCCH_BCH_Message_t *mib, frame_t frame, uint8_t *buffer, int buf_size)
@@ -500,7 +498,7 @@ static void nr_fill_nfapi_dl_sib1_pdu(int Mod_idP,
   dci_payload.time_domain_assignment.val = gNB_mac->sched_ctrlCommon->sched_pdsch.time_domain_allocation;
   dci_payload.mcs = pdsch->mcs;
   dci_payload.rv = pdsch_pdu_rel15->rvIndex[0];
-  dci_payload.harq_pid = 0;
+  dci_payload.harq_pid.val = 0;
   dci_payload.ndi = 0;
   dci_payload.dai[0].val = 0;
   dci_payload.tpc = 0; // table 7.2.1-1 in 38.213

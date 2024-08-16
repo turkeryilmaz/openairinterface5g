@@ -34,17 +34,6 @@
 #include <sys/sysinfo.h>
 #include <task_manager/threadPool/thread-pool.h>
 
-void displayList(notifiedFIFO_t *nf) {
-  int n=0;
-  notifiedFIFO_elt_t *ptr=nf->outF;
-
-  while(ptr) {
-    printf("element: %d, key: %lu\n",++n,ptr->key);
-    ptr=ptr->next;
-  }
-
-  printf("End of list: %d elements\n",n);
-}
 
 static inline  notifiedFIFO_elt_t *pullNotifiedFifoRemember( notifiedFIFO_t *nf, struct one_thread *thr) {
   mutexlock(nf->lockF);
@@ -145,7 +134,6 @@ void initNamedTpool(char *params,tpool_t *pool, bool performanceMeas, char *name
         ptr=pool->allthreads;
         pool->allthreads=(struct one_thread *)malloc(sizeof(struct one_thread));
         pool->allthreads->next=ptr;
-        printf("create a thread for core %d\n", atoi(curptr));
         pool->allthreads->coreID=atoi(curptr);
         pool->allthreads->id=pool->nbThreads;
         pool->allthreads->pool=pool;

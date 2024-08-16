@@ -24,6 +24,18 @@
 #include "mac_rrc_dl.h"
 #include "nr_rrc_defs.h"
 
+static void f1_reset_cu_initiated_f1ap(sctp_assoc_t assoc_id, const f1ap_reset_t *reset)
+{
+  (void)reset;
+  AssertFatal(false, "%s() not implemented yet\n", __func__);
+}
+
+static void f1_reset_acknowledge_du_initiated_f1ap(sctp_assoc_t assoc_id, const f1ap_reset_ack_t *ack)
+{
+  (void)ack;
+  AssertFatal(false, "%s() not implemented yet\n", __func__);
+}
+
 static void f1_setup_response_f1ap(sctp_assoc_t assoc_id, const f1ap_setup_resp_t *resp)
 {
   MessageDef *msg = itti_alloc_new_message(TASK_RRC_GNB, 0, F1AP_SETUP_RESP);
@@ -41,6 +53,15 @@ static void f1_setup_failure_f1ap(sctp_assoc_t assoc_id, const f1ap_setup_failur
   msg->ittiMsgHeader.originInstance = assoc_id;
   f1ap_setup_failure_t *f1ap_msg = &F1AP_SETUP_FAILURE(msg);
   *f1ap_msg = *fail;
+  itti_send_msg_to_task(TASK_CU_F1, 0, msg);
+}
+
+static void gnb_du_configuration_update_ack_f1ap(sctp_assoc_t assoc_id, const f1ap_gnb_du_configuration_update_acknowledge_t *ack)
+{
+  MessageDef *msg = itti_alloc_new_message(TASK_RRC_GNB, 0, F1AP_GNB_DU_CONFIGURATION_UPDATE_ACKNOWLEDGE);
+  msg->ittiMsgHeader.originInstance = assoc_id;
+  f1ap_gnb_du_configuration_update_acknowledge_t *f1ap_msg = &F1AP_GNB_DU_CONFIGURATION_UPDATE_ACKNOWLEDGE(msg);
+  *f1ap_msg = *ack;
   itti_send_msg_to_task(TASK_CU_F1, 0, msg);
 }
 
@@ -206,8 +227,11 @@ static void dl_rrc_message_transfer_f1ap(sctp_assoc_t assoc_id, const f1ap_dl_rr
 
 void mac_rrc_dl_f1ap_init(nr_mac_rrc_dl_if_t *mac_rrc)
 {
+  mac_rrc->f1_reset = f1_reset_cu_initiated_f1ap;
+  mac_rrc->f1_reset_acknowledge = f1_reset_acknowledge_du_initiated_f1ap;
   mac_rrc->f1_setup_response = f1_setup_response_f1ap;
   mac_rrc->f1_setup_failure = f1_setup_failure_f1ap;
+  mac_rrc->gnb_du_configuration_update_acknowledge = gnb_du_configuration_update_ack_f1ap;
   mac_rrc->ue_context_setup_request = ue_context_setup_request_f1ap;
   mac_rrc->ue_context_modification_request = ue_context_modification_request_f1ap;
   mac_rrc->ue_context_modification_confirm = ue_context_modification_confirm_f1ap;

@@ -42,7 +42,7 @@ extern const char nr_W_4l_4p[5][4][4];
   @param[out] out, complex valued modulated symbols
 */
 
-void nr_modulation(uint32_t *in,
+void nr_modulation(const uint32_t *in,
                    uint32_t length,
                    uint16_t mod_order,
                    int16_t *out);
@@ -113,6 +113,8 @@ void apply_nr_rotation_TX(const NR_DL_FRAME_PARMS *fp,
                           int nb_rb,
                           int first_symbol,
                           int nsymb);
+
+void perform_symbol_rotation(NR_DL_FRAME_PARMS *fp, double f0, c16_t *symbol_rotation);
 
 void init_symbol_rotation(NR_DL_FRAME_PARMS *fp);
 

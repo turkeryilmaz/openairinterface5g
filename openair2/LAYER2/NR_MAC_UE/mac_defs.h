@@ -172,6 +172,12 @@
   UE_STATE(UE_CONNECTED) \
   UE_STATE(UE_DETACHING)
 
+typedef enum {
+  phr_cause_prohibit_timer = 0,
+  phr_cause_periodic_timer,
+  phr_cause_phr_config,
+} NR_UE_PHR_Reporting_cause_t;
+
 /*!\brief UE layer 2 status */
 typedef enum {
 #define UE_STATE(state) state,
@@ -222,6 +228,24 @@ typedef struct {
   uint32_t maxTransmissions;
 } nr_sr_info_t;
 
+typedef struct {
+  bool is_configured;
+  ///timer before triggering a periodic PHR
+  NR_timer_t periodicPHR_Timer;
+  ///timer before triggering a prohibit PHR
+  NR_timer_t prohibitPHR_Timer;
+  ///DL Pathloss change value
+  uint16_t PathlossLastValue;
+  ///number of subframe before triggering a periodic PHR
+  int16_t periodicPHR_SF;
+  ///number of subframe before triggering a prohibit PHR
+  int16_t prohibitPHR_SF;
+  ///DL Pathloss Change in db
+  uint16_t PathlossChange_db;
+  int phr_reporting;
+  bool was_mac_reset;
+} nr_phr_info_t;
+
 // LTE structure, might need to be adapted for NR
 typedef struct {
   // lcs scheduling info
@@ -240,18 +264,8 @@ typedef struct {
   NR_timer_t retxBSR_Timer;
   /// periodicBSR-Timer
   NR_timer_t periodicBSR_Timer;
-  ///timer before triggering a periodic PHR
-  uint16_t periodicPHR_Timer;
-  ///timer before triggering a prohibit PHR
-  uint16_t prohibitPHR_Timer;
-  ///DL Pathloss change value
-  uint16_t PathlossChange;
-  ///number of subframe before triggering a periodic PHR
-  int16_t periodicPHR_SF;
-  ///number of subframe before triggering a prohibit PHR
-  int16_t prohibitPHR_SF;
-  ///DL Pathloss Change in db
-  uint16_t PathlossChange_db;
+
+  nr_phr_info_t phr_info;
 } NR_UE_SCHEDULING_INFO;
 
 typedef enum {
@@ -308,7 +322,7 @@ typedef struct {
   /// number of attempt for rach
   uint8_t RA_attempt_number;
   /// Random-access procedure flag
-  uint8_t RA_active;
+  bool RA_active;
   /// Random-access preamble index
   int ra_PreambleIndex;
   // When multiple SSBs per RO is configured, this indicates which one is selected in this RO -> this is used to properly compute the PRACH preamble
@@ -340,6 +354,8 @@ typedef struct {
   uint8_t Msg3_size;
   /// Msg3 buffer
   uint8_t *Msg3_buffer;
+
+  bool msg3_C_RNTI;
 
   /// Random-access Contention Resolution Timer
   NR_timer_t contention_resolution_timer;
@@ -392,7 +408,6 @@ typedef struct {
   int n_harq;
   int n_CCE;
   int N_CCE;
-  int delta_pucch;
   int initial_pucch_id;
 } PUCCH_sched_t;
 
@@ -480,6 +495,19 @@ typedef struct {
   A_SEQUENCE_OF(NR_SearchSpace_t) list_SS;
 } NR_BWP_PDCCH_t;
 
+typedef struct csi_payload {
+  uint32_t part1_payload;
+  uint32_t part2_payload;
+  int p1_bits;
+  int p2_bits;
+} csi_payload_t;
+
+typedef enum {
+  WIDEBAND_ON_PUCCH,
+  SUBBAND_ON_PUCCH,
+  ON_PUSCH
+} CSI_mapping_t;
+
 /*!\brief Top level UE MAC structure */
 typedef struct NR_UE_MAC_INST_s {
   module_id_t ue_id;
@@ -543,11 +571,8 @@ typedef struct NR_UE_MAC_INST_s {
 
   // order lc info
   A_SEQUENCE_OF(nr_lcordered_info_t) lc_ordered_list;
-
   NR_UE_SCHEDULING_INFO scheduling_info;
-
-  /// PHR
-  uint8_t PHR_reporting_active;
+  NR_timer_t *data_inactivity_timer;
 
   int dmrs_TypeA_Position;
   int p_Max;
@@ -576,7 +601,11 @@ typedef struct NR_UE_MAC_INST_s {
 
   //SIDELINK MAC PARAMETERS
   sl_nr_ue_mac_params_t *SL_MAC_PARAMS;
-
+  // PUCCH closed loop power control state
+  int G_b_f_c;
+  bool pucch_power_control_initialized;
+  int f_b_f_c;
+  bool pusch_power_control_initialized;
 } NR_UE_MAC_INST_t;
 
 /*@}*/

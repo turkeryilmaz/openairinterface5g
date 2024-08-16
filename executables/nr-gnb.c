@@ -45,7 +45,6 @@
 #include "PHY/INIT/nr_phy_init.h"
 
 #include "PHY/defs_gNB.h"
-#include "SCHED/sched_eNB.h"
 #include "SCHED_NR/sched_nr.h"
 #include "SCHED_NR/fapi_nr_l1.h"
 #include "PHY/NR_TRANSPORT/nr_transport_proto.h"
@@ -72,14 +71,10 @@
 #include "common/utils/LOG/log.h"
 #include "UTIL/OTG/otg_tx.h"
 #include "UTIL/OTG/otg_externs.h"
-#include "UTIL/MATH/oml.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "UTIL/OPT/opt.h"
-#include "enb_config.h"
 #include "gnb_paramdef.h"
 
-#include "s1ap_eNB.h"
-#include "SIMULATION/ETH_TRANSPORT/proto.h"
 #include <executables/softmodem-common.h>
 
 #include "T.h"
@@ -105,19 +100,18 @@ time_stats_t softmodem_stats_rx_sf; // total rx time
 //#define TICK_TO_US(ts) (ts.diff)
 #define TICK_TO_US(ts) (ts.trials==0?0:ts.diff/ts.trials)
 #define L1STATSSTRLEN 16384
+static void rx_func(processingData_L1_t *param);
 
-static void tx_func(void *param)
+static void tx_func(processingData_L1tx_t *info)
 {
-  processingData_L1tx_t *info = (processingData_L1tx_t *) param;
-
   int frame_tx = info->frame;
   int slot_tx = info->slot;
   int frame_rx = info->frame_rx;
   int slot_rx = info->slot_rx;
-  int absslot_tx = info->timestamp_tx / info->gNB->frame_parms.get_samples_per_slot(slot_tx, &info->gNB->frame_parms);
-  int absslot_rx = absslot_tx - info->gNB->RU_list[0]->sl_ahead;
+  int64_t absslot_tx = info->timestamp_tx / info->gNB->frame_parms.get_samples_per_slot(slot_tx, &info->gNB->frame_parms);
+  int64_t absslot_rx = absslot_tx - info->gNB->RU_list[0]->sl_ahead;
   if (absslot_rx < 0) {
-    LOG_W(NR_PHY, "Slot ahead %d is larger than absslot_tx %d. Cannot start TX yet.\n", info->gNB->RU_list[0]->sl_ahead, absslot_tx);
+    LOG_W(NR_PHY, "Slot ahead %d is larger than absslot_tx %ld. Cannot start TX yet.\n", info->gNB->RU_list[0]->sl_ahead, absslot_tx);
     return;
   }
   LOG_D(NR_PHY, "%d.%d running tx_func\n", frame_tx, slot_tx);
@@ -175,7 +169,6 @@ static void tx_func(void *param)
   deref_sched_response(info->sched_response_id);
 }
 
-
 void *L1_rx_thread(void *arg) 
 {
   PHY_VARS_gNB *gNB = (PHY_VARS_gNB*)arg;
@@ -205,9 +198,8 @@ void *L1_tx_thread(void *arg) {
   return NULL;
 }
 
-void rx_func(void *param)
+static void rx_func(processingData_L1_t *info)
 {
-  processingData_L1_t *info = (processingData_L1_t *) param;
   PHY_VARS_gNB *gNB = info->gNB;
   int frame_rx = info->frame_rx;
   int slot_rx = info->slot_rx;
@@ -217,8 +209,8 @@ void rx_func(void *param)
   for (; i < gNB->frame_parms.slots_per_subframe / 2; i++)
     cumul_samples += gNB->frame_parms.get_samples_per_slot(i, &gNB->frame_parms);
   int samples = cumul_samples / i;
-  int absslot_tx = info->timestamp_tx / samples;
-  int absslot_rx = absslot_tx - gNB->RU_list[0]->sl_ahead;
+  int64_t absslot_tx = info->timestamp_tx / samples;
+  int64_t absslot_rx = absslot_tx - gNB->RU_list[0]->sl_ahead;
   int rt_prof_idx = absslot_rx % RT_PROF_DEPTH;
   clock_gettime(CLOCK_MONOTONIC,&info->gNB->rt_L1_profiling.start_L1_RX[rt_prof_idx]);
   start_meas(&softmodem_stats_rxtx_sf);
@@ -272,6 +264,7 @@ void rx_func(void *param)
     gNB->if_inst->NR_UL_indication(&gNB->UL_INFO);
     stop_meas(&gNB->ul_indication_stats);
 
+#ifndef OAI_FHI72
     notifiedFIFO_elt_t *res = newNotifiedFIFO_elt(sizeof(processingData_L1_t), 0, &gNB->L1_rx_out, NULL);
     processingData_L1_t *syncMsg = NotifiedFifoData(res);
     syncMsg->gNB = gNB;
@@ -280,6 +273,7 @@ void rx_func(void *param)
     res->key = slot_rx;
     LOG_D(NR_PHY, "Signaling completion for %d.%d (mod_slot %d) on L1_rx_out\n", frame_rx, slot_rx, slot_rx % RU_RX_SLOT_DEPTH);
     pushNotifiedFIFO(&gNB->L1_rx_out, res);
+#endif
   }
 
   stop_meas(&softmodem_stats_rxtx_sf);
@@ -392,7 +386,7 @@ void init_gNB_Tpool(int inst) {
   // create the TX thread responsible for TX processing start event (L1_tx_out msg queue), then launch tx_func()
   threadCreate(&gNB->L1_tx_thread, L1_tx_thread, (void *)gNB, "L1_tx_thread", gNB->L1_tx_thread_core, OAI_PRIORITY_RT_MAX);
 
-  notifiedFIFO_elt_t *msgL1Tx = newNotifiedFIFO_elt(sizeof(processingData_L1tx_t), 0, &gNB->L1_tx_out, tx_func);
+  notifiedFIFO_elt_t *msgL1Tx = newNotifiedFIFO_elt(sizeof(processingData_L1tx_t), 0, &gNB->L1_tx_out, NULL);
   processingData_L1tx_t *msgDataTx = (processingData_L1tx_t *)NotifiedFifoData(msgL1Tx);
   memset(msgDataTx, 0, sizeof(processingData_L1tx_t));
   init_DLSCH_struct(gNB, msgDataTx);
@@ -496,7 +490,7 @@ void init_eNB_afterRU(void) {
 
 }
 
-void init_gNB(int single_thread_flag,int wait_for_sync) {
+void init_gNB(int wait_for_sync) {
 
   int inst;
   PHY_VARS_gNB *gNB;
@@ -514,12 +508,11 @@ void init_gNB(int single_thread_flag,int wait_for_sync) {
     }
     gNB                     = RC.gNB[inst];
     gNB->abstraction_flag   = 0;
-    gNB->single_thread_flag = single_thread_flag;
     /*nr_polar_init(&gNB->nrPolar_params,
       NR_POLAR_PBCH_MESSAGE_TYPE,
       NR_POLAR_PBCH_PAYLOAD_BITS,
       NR_POLAR_PBCH_AGGREGATION_LEVEL);*/
-    LOG_I(PHY,"Initializing gNB %d single_thread_flag:%d\n",inst,gNB->single_thread_flag);
+    LOG_I(PHY,"Initializing gNB %d\n",inst);
     LOG_I(PHY,"Initializing gNB %d\n",inst);
 
     LOG_I(PHY,"Registering with MAC interface module (before %p)\n",gNB->if_inst);
