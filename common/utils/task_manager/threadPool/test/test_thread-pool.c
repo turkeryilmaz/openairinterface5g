@@ -116,6 +116,7 @@ int main()
       notifiedFIFO_elt_t *work = newNotifiedFIFO_elt(sizeof(struct testData), i, &worker_back, processing);
       struct testData *x = (struct testData *)NotifiedFifoData(work);
       x->id = i;
+      work->processingArg = NotifiedFifoData(work);
       pushTpool(&pool, work);
     }
     int sleepmax = 0;
