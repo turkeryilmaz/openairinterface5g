@@ -51,6 +51,34 @@ typedef enum {
   pusch_len2 = 2
 } pusch_maxLength_t;
 
+typedef struct NR_UE_sl_mac_dir_stats {
+  uint64_t lc_bytes[64];
+  uint64_t rounds[8];
+  uint64_t errors;
+  uint64_t total_bytes;
+  uint32_t current_bytes;
+  uint64_t total_sdu_bytes;
+  uint32_t total_rbs;
+  uint32_t total_rbs_retx;
+  uint32_t num_mac_sdu;
+  uint32_t current_rbs;
+} NR_UE_sl_mac_dir_stats_t;
+
+typedef struct NR_UE_sl_mac_stats {
+  NR_UE_sl_mac_dir_stats_t sl;
+  uint32_t slsch_DTX;
+  uint64_t slsch_total_bytes_scheduled;
+  int cumul_rsrp;
+  uint8_t num_rsrp_meas;
+} NR_UE_sl_mac_stats_t;
+
+typedef struct NR_bler_options {
+  double upper;
+  double lower;
+  uint8_t max_mcs;
+  uint8_t harq_round_max;
+} NR_bler_options_t;
+
 uint32_t get_Y(const NR_SearchSpace_t *ss, int slot, rnti_t rnti);
 
 uint8_t get_BG(uint32_t A, uint16_t R);
@@ -162,6 +190,8 @@ uint8_t compute_nr_root_seq(NR_RACH_ConfigCommon_t *rach_config,
 
 int ul_ant_bits(NR_DMRS_UplinkConfig_t *NR_DMRS_UplinkConfig, long transformPrecoder);
 
+uint8_t get_mcs_from_cqi(int mcs_table, int cqi_table, int cqi_idx);
+
 uint8_t get_pdsch_mcs_table(long *mcs_Table, int dci_format, int rnti_type, int ss_type);
 
 int get_format0(uint8_t index, uint8_t unpaired,frequency_range_t);
@@ -189,7 +219,6 @@ uint32_t nr_compute_tbs_sl(uint16_t Qm,
                            uint16_t R,
                            uint16_t nb_re,
                            uint8_t Nl);
-
 
 /** \brief Computes Q based on I_MCS PDSCH and table_idx for downlink. Implements MCS Tables from 38.214. */
 uint8_t nr_get_Qm_dl(uint8_t Imcs, uint8_t table_idx);
@@ -309,5 +338,15 @@ void compute_cqi_bitlen(struct NR_CSI_ReportConfig *csi_reportconfig,
 void compute_csi_bitlen(NR_CSI_MeasConfig_t *csi_MeasConfig, nr_csi_report_t *csi_report_template);
 
 uint16_t nr_get_csi_bitlen(nr_csi_report_t *csi_report_template, uint8_t csi_report_id);
+
+/* Functions to manage an NR_list_t */
+void create_nr_list(NR_list_t *listP, int len);
+void resize_nr_list(NR_list_t *list, int new_len);
+void destroy_nr_list(NR_list_t *list);
+void add_nr_list(NR_list_t *listP, int id);
+void remove_nr_list(NR_list_t *listP, int id);
+void add_tail_nr_list(NR_list_t *listP, int id);
+void add_front_nr_list(NR_list_t *listP, int id);
+void remove_front_nr_list(NR_list_t *listP);
 
 #endif

@@ -386,8 +386,6 @@ uint16_t get_pm_index(const NR_UE_info_t *UE,
                       int layers,
                       int xp_pdsch_antenna_ports);
 
-uint8_t get_mcs_from_cqi(int mcs_table, int cqi_table, int cqi_idx);
-
 uint8_t get_dl_nrOfLayers(const NR_UE_sched_ctrl_t *sched_ctrl, const nr_dci_format_t dci_format);
 
 void set_sched_pucch_list(NR_UE_sched_ctrl_t *sched_ctrl,

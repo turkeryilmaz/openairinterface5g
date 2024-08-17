@@ -39,7 +39,8 @@ typedef enum sl_sci_format_type_enum {
 typedef enum sl_rx_pdu_type_enum {
   SL_NR_RX_PDU_TYPE_NONE,
   SL_NR_RX_PDU_TYPE_SSB,
-  SL_NR_RX_PDU_TYPE_SLSCH
+  SL_NR_RX_PDU_TYPE_SLSCH,
+  SL_NR_RX_PDU_TYPE_SLSCH_PSFCH,
 } sl_rx_pdu_type_enum_t;
 
 //Type of SL-RX CONFIG requests from MAC to PHY
@@ -48,6 +49,7 @@ typedef enum sl_nr_rx_config_type_enum {
   SL_NR_CONFIG_TYPE_RX_PSCCH,
   SL_NR_CONFIG_TYPE_RX_PSSCH_SCI,
   SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH,
+  SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH_PSFCH,
   SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH_CSI_RS,
   SL_NR_CONFIG_TYPE_RX_MAXIMUM
 } sl_nr_rx_config_type_enum_t;
@@ -212,26 +214,7 @@ typedef struct sl_nr_rx_config_pssch_pdu {
   uint8_t ndi;
 } sl_nr_rx_config_pssch_pdu_t;
 
-typedef struct {
-  sl_nr_rx_config_type_enum_t pdu_type; // indicates the type of RX config request
-  union {
-    sl_nr_rx_config_pscch_pdu_t rx_pscch_config_pdu;
-    sl_nr_rx_config_pssch_sci_pdu_t rx_sci2_config_pdu;
-    sl_nr_rx_config_pssch_pdu_t rx_pssch_config_pdu;
-  };
-  sl_nr_tti_csi_rs_pdu_t rx_csi_rs_config_pdu;
-} sl_nr_rx_config_request_pdu_t;
-
-// MAC commands PHY to perform an action on RX RESOURCE POOL or RX PSBCH using this RX CONFIG
-// at this TTI as indicated in sfn, slot
-typedef struct {
-  uint16_t sfn;
-  uint16_t slot;
-  uint8_t number_pdus;
-  sl_nr_rx_config_request_pdu_t sl_rx_config_list[SL_NR_RX_CONFIG_LIST_NUM];
-} sl_nr_rx_config_request_t;
-
-typedef struct sl_nr_tx_config_psfch_pdu {
+typedef struct sl_nr_tx_rx_config_psfch_pdu {
   //  These fields can be mapped directly to the same fields in nfapi_nr_ul_config_pucch_pdu
   uint8_t freq_hop_flag;
   uint8_t group_hop_flag;
@@ -245,7 +228,29 @@ typedef struct sl_nr_tx_config_psfch_pdu {
   uint16_t initial_cyclic_shift;
   uint8_t mcs;
   uint8_t bit_len_harq;
-} sl_nr_tx_config_psfch_pdu_t;
+} sl_nr_tx_rx_config_psfch_pdu_t;
+
+typedef struct {
+  sl_nr_rx_config_type_enum_t pdu_type; // indicates the type of RX config request
+  union {
+    sl_nr_rx_config_pscch_pdu_t rx_pscch_config_pdu;
+    sl_nr_rx_config_pssch_sci_pdu_t rx_sci2_config_pdu;
+    sl_nr_rx_config_pssch_pdu_t rx_pssch_config_pdu;
+  };
+  sl_nr_tti_csi_rs_pdu_t rx_csi_rs_config_pdu;
+  sl_nr_tx_rx_config_psfch_pdu_t *rx_psfch_pdu_list;
+  uint16_t num_psfch_pdus;
+} sl_nr_rx_config_request_pdu_t;
+
+// MAC commands PHY to perform an action on RX RESOURCE POOL or RX PSBCH using this RX CONFIG
+// at this TTI as indicated in sfn, slot
+typedef struct {
+  uint16_t sfn;
+  uint16_t slot;
+  uint8_t number_pdus;
+  sl_nr_rx_config_request_pdu_t sl_rx_config_list[SL_NR_RX_CONFIG_LIST_NUM];
+} sl_nr_rx_config_request_t;
+
 //MAC commands PHY to transmit Data on PSCCH, PSSCH.
 typedef struct sl_nr_tx_config_pscch_pssch_pdu {
 
@@ -307,7 +312,8 @@ typedef struct sl_nr_tx_config_pscch_pssch_pdu {
   uint16_t dmrs_symbol_position;
 
   // PSFCH related parameters
-  sl_nr_tx_config_psfch_pdu_t psfch_pdu;
+  sl_nr_tx_rx_config_psfch_pdu_t *psfch_pdu_list;
+  uint16_t num_psfch_pdus;
   //....TBD.. any additional parameters
 
   // CSI-RS related parameters

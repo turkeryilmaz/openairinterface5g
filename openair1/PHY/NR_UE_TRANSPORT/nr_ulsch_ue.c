@@ -185,7 +185,7 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
 
   NR_UE_ULSCH_t *ulsch_ue = &phy_data->ulsch;
   sl_nr_tx_config_pscch_pssch_pdu_t *pscch_pssch_pdu = &phy_data->nr_sl_pssch_pscch_pdu;
-  NR_UL_UE_HARQ_t *harq_process_ul_ue = &UE->ul_harq_processes[harq_pid];
+  NR_UL_UE_HARQ_t *harq_process_ul_ue = get_softmodem_params()->sl_mode ? &UE->sl_harq_processes[harq_pid] : &UE->ul_harq_processes[harq_pid];
   const nfapi_nr_ue_pusch_pdu_t *pusch_pdu = &ulsch_ue->pusch_pdu;
 
   NR_DL_FRAME_PARMS *frame_parms = pscch_pssch_pdu == NULL ? &UE->frame_parms : &UE->SL_UE_PHY_PARAMS.sl_frame_params;
@@ -231,7 +231,6 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
 
   /////////////////////////ULSCH coding/////////////////////////
   ///////////
-
   int sci2_re = pscch_pssch_pdu ? get_NREsci2(pscch_pssch_pdu->sci2_alpha_times_100,
                                               pscch_pssch_pdu->sci2_payload_len,
                                               pscch_pssch_pdu->sci2_beta_offset,
@@ -240,17 +239,18 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
                                               pscch_pssch_pdu->pscch_numrbs,
                                               pscch_pssch_pdu->l_subch,
                                               pscch_pssch_pdu->subchannel_size,
-                                              pscch_pssch_pdu->mcs,
+                                              get_softmodem_params()->sl_mode ? 1 : pscch_pssch_pdu->mcs,
                                               pscch_pssch_pdu->mcs_table): 0 ;
   //if (pscch_pssch_pdu) LOG_I(NR_PHY,"dmrs_symbol_position %x, pscch_numsym %d\n",pscch_pssch_pdu->dmrs_symbol_position,pscch_pssch_pdu->pscch_numsym);
   AssertFatal(pscch_pssch_pdu->pscch_numsym==2 || pscch_pssch_pdu->pscch_numsym==3,"illegal pscch_numsym %d\n",pscch_pssch_pdu->pscch_numsym);
   int sci1_dmrs_overlap = pscch_pssch_pdu ? pscch_pssch_pdu->dmrs_symbol_position & dmrs_pscch_mask[pscch_pssch_pdu->pscch_numsym-2] : 0;
+  uint16_t csi_rs_re = is_csi_rs_slot ? csi_params->nr_of_rbs/csi_params->freq_density : 0;
+  uint16_t sci1_re = pscch_pssch_pdu->pscch_numsym * pscch_pssch_pdu->pscch_numrbs * NR_NB_SC_PER_RB;
   unsigned int G = (pscch_pssch_pdu==NULL) ? nr_get_G(nb_rb, number_of_symbols,
                                                       nb_dmrs_re_per_rb, number_dmrs_symbols, mod_order, Nl):
-                                             nr_get_G_SL(nb_rb, number_of_symbols,6,number_dmrs_symbols,sci1_dmrs_overlap,pscch_pssch_pdu->pscch_numsym,pscch_pssch_pdu->pscch_numrbs,sci2_re,mod_order,Nl);
+                                             nr_get_G_SL(nb_rb, number_of_symbols, 6, number_dmrs_symbols, sci1_dmrs_overlap, sci1_re,
+                                             pscch_pssch_pdu->pscch_numrbs, sci2_re, csi_rs_re, mod_order, Nl);
 
-  G -= (is_csi_rs_slot ? csi_params->nr_of_rbs/csi_params->freq_density*mod_order*Nl : 0);
-  LOG_D(NR_PHY, "%d.%d, is_csi_rs_slot %d, G %i, number_of_symbols %i, mod_order %i, freq_density %i, nr_of_rbs %i\n", frame, slot, is_csi_rs_slot, G, number_of_symbols, mod_order, csi_params->freq_density, csi_params->nr_of_rbs);
   // Following code checks, after PSCCH symbols and DMRS symbols, whether PSSCH symbols are used by SCI2 or not,
   // If true, then CSI-RS MUST not be sent in those PSSCH symbols containing SCI2.
   if (csi_params->symb_l0 != 0) {
@@ -394,7 +394,6 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
   int16_t **tx_layers = (int16_t **)malloc16_clear(Nl*sizeof(int16_t *));
   for (int nl=0; nl<Nl; nl++)
     tx_layers[nl] = (int16_t *)malloc16_clear((((available_bits<<1)/mod_order)+(sci2_re<<1))*sizeof(int32_t));
-
   nr_ue_layer_mapping((int16_t *)d_mod,
                       Nl,
                       (available_bits/mod_order)+sci2_re,

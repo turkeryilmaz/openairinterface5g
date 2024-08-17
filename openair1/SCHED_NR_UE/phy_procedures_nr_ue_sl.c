@@ -88,7 +88,8 @@ void nr_fill_sl_rx_indication(sl_nr_rx_indication_t *rx_ind,
   sl_nr_ue_phy_params_t *sl_phy_params = &ue->SL_UE_PHY_PARAMS;
 
   switch (pdu_type){
-    case SL_NR_RX_PDU_TYPE_SLSCH: {
+    case SL_NR_RX_PDU_TYPE_SLSCH:
+    case SL_NR_RX_PDU_TYPE_SLSCH_PSFCH: {
         sl_nr_slsch_pdu_t *rx_slsch_pdu = &rx_ind->rx_indication_body[n_pdus - 1].rx_slsch_pdu;
         slsch_status_t *slsch_status = (slsch_status_t *)typeSpecific;
         rx_slsch_pdu->pdu        = slsch_status->rdata->ulsch_harq->b;
@@ -96,6 +97,7 @@ void nr_fill_sl_rx_indication(sl_nr_rx_indication_t *rx_ind,
         rx_slsch_pdu->harq_pid   = slsch_status->rdata->harq_pid;
         rx_slsch_pdu->ack_nack   = (slsch_status->rxok==true) ? 1 : 0;
 
+        LOG_D(NR_MAC, "%4d.%2d Received %s SLSCH\n", rx_ind->sfn, rx_ind->slot, rx_slsch_pdu->ack_nack ? "Correct" : "Incorrect");
         if (slsch_status->rxok==true) ue->SL_UE_PHY_PARAMS.pssch.rx_ok++;
         else                          ue->SL_UE_PHY_PARAMS.pssch.rx_errors[0]++;
       }
@@ -126,7 +128,7 @@ void nr_fill_sl_rx_indication(sl_nr_rx_indication_t *rx_ind,
 }
 
 extern int dmrs_pscch_mask[2];
-int nr_slsch_procedures(PHY_VARS_NR_UE *ue, int frame_rx, int slot_rx, int SLSCH_id, UE_nr_rxtx_proc_t *proc, nr_phy_data_t *phy_data, bool is_csi_rs_slot) {
+int nr_slsch_procedures(PHY_VARS_NR_UE *ue, int frame_rx, int slot_rx, int SLSCH_id, UE_nr_rxtx_proc_t *proc, nr_phy_data_t *phy_data, bool is_csi_rs_slot, int8_t *ack_nack_rcvd, int num_acks) {
 
 
   sl_nr_ue_phy_params_t *sl_phy_params = &ue->SL_UE_PHY_PARAMS;
@@ -162,19 +164,21 @@ int nr_slsch_procedures(PHY_VARS_NR_UE *ue, int frame_rx, int slot_rx, int SLSCH
                               pssch_pdu->pscch_numrbs,
                               pssch_pdu->l_subch,
                               pssch_pdu->subchannel_size,
-			      pssch_pdu->targetCodeRate);
+                              pssch_pdu->targetCodeRate,
+                              0);
+  uint16_t csi_rs_re = is_csi_rs_slot ? nr_of_rbs/freq_density : 0;
+  uint16_t sci1_re = pssch_pdu->pscch_numsym * pssch_pdu->pscch_numrbs * NR_NB_SC_PER_RB;
   uint32_t G = nr_get_G_SL(rb_size,
                            number_symbols,
                            nb_re_dmrs,
                            number_dmrs_symbols, // number of dmrs symbols irrespective of single or double symbol dmrs
                            sci1_dmrs_overlap,
-			   pssch_pdu->pscch_numsym,
-			   pssch_pdu->pscch_numrbs,
-			   sci2_re,
+                           sci1_re,
+                           pssch_pdu->pscch_numrbs,
+                           sci2_re,
+                           csi_rs_re,
                            pssch_pdu->mod_order,
                            pssch_pdu->num_layers);
-
-  G -= is_csi_rs_slot ? nr_of_rbs/freq_density*pssch_pdu->mod_order*pssch_pdu->num_layers : 0;
 
   AssertFatal(G>0,"G is 0 : rb_size %u, number_symbols %d, nb_re_dmrs %d, number_dmrs_symbols %d, qam_mod_order %u, nrOfLayer %u\n",
 	      rb_size,
@@ -184,13 +188,13 @@ int nr_slsch_procedures(PHY_VARS_NR_UE *ue, int frame_rx, int slot_rx, int SLSCH
 	      pssch_pdu->mod_order,
 	      pssch_pdu->num_layers);
   LOG_D(NR_PHY,"rb_size %d, number_symbols %d, nb_re_dmrs %d, dmrs symbol positions %d, number_dmrs_symbols %d, qam_mod_order %d, nrOfLayer %d\n",
-	rb_size,
-	number_symbols,
-	nb_re_dmrs,
+        rb_size,
+        number_symbols,
+        nb_re_dmrs,
         pssch_pdu->dmrs_symbol_position,
-	number_dmrs_symbols, // number of dmrs symbols irrespective of single or double symbol dmrs
-	pssch_pdu->mod_order,
-	pssch_pdu->num_layers);
+        number_dmrs_symbols, // number of dmrs symbols irrespective of single or double symbol dmrs
+        pssch_pdu->mod_order,
+        pssch_pdu->num_layers);
 
   nr_ulsch_layer_demapping(ue->pssch_vars[SLSCH_id].llr,
                            pssch_pdu->num_layers,
@@ -231,11 +235,11 @@ int nr_slsch_procedures(PHY_VARS_NR_UE *ue, int frame_rx, int slot_rx, int SLSCH
   pusch_pdu.maintenance_parms_v3.tbSizeLbrmBytes=slsch_pdu->tbslbrm>>3;
 
   int nbDecode =
-      nr_ulsch_decoding(NULL, ue, SLSCH_id, ue->pssch_vars[SLSCH_id].llr, fp, &pusch_pdu, frame_rx, slot_rx, harq_pid, G,proc,phy_data);
+      nr_ulsch_decoding(NULL, ue, SLSCH_id, ue->pssch_vars[SLSCH_id].llr, fp, &pusch_pdu, frame_rx, slot_rx, harq_pid, G, proc, phy_data, ack_nack_rcvd, num_acks);
   return nbDecode;
 }
 
-void nr_postDecode_slsch(PHY_VARS_NR_UE *UE, notifiedFIFO_elt_t *req,UE_nr_rxtx_proc_t *proc,nr_phy_data_t *phy_data)
+void nr_postDecode_slsch(PHY_VARS_NR_UE *UE, notifiedFIFO_elt_t *req,UE_nr_rxtx_proc_t *proc,nr_phy_data_t *phy_data, int8_t *ack_nack_rcvd, uint8_t num_acks)
 {
   ldpcDecode_t *rdata = (ldpcDecode_t*) NotifiedFifoData(req);
   NR_UL_gNB_HARQ_t *slsch_harq = rdata->ulsch_harq;
@@ -304,7 +308,12 @@ void nr_postDecode_slsch(PHY_VARS_NR_UE *UE, notifiedFIFO_elt_t *req,UE_nr_rxtx_
     slsch->last_iteration_cnt = rdata->decodeIterations;
     sl_rx_indication.sfn = proc->frame_rx;
     sl_rx_indication.slot = proc->nr_slot_rx;
-    nr_fill_sl_rx_indication(&sl_rx_indication,SL_NR_RX_PDU_TYPE_SLSCH,UE,1,proc,(void*)&slsch_status,0);
+    sl_rx_indication.rx_indication_body[0].rx_slsch_pdu.ack_nack_rcvd = calloc(num_acks, sizeof(uint8_t));
+    memcpy((void*)sl_rx_indication.rx_indication_body[0].rx_slsch_pdu.ack_nack_rcvd, (void*)ack_nack_rcvd,
+          num_acks * sizeof(uint8_t));
+    sl_rx_indication.rx_indication_body[0].rx_slsch_pdu.num_acks_rcvd = num_acks;
+    uint8_t pdu_type = phy_data->sl_rx_action == SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH_PSFCH ? SL_NR_RX_PDU_TYPE_SLSCH_PSFCH : SL_NR_RX_PDU_TYPE_SLSCH;
+    nr_fill_sl_rx_indication(&sl_rx_indication, pdu_type, UE, 1, proc, (void*)&slsch_status, 0);
     nr_fill_sl_indication(&sl_indication,&sl_rx_indication,NULL,proc,UE,phy_data);
     if (UE->if_inst && UE->if_inst->sl_indication)
       UE->if_inst->sl_indication(&sl_indication);
@@ -415,6 +424,7 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
   sl_nr_ue_phy_params_t *sl_phy_params = &ue->SL_UE_PHY_PARAMS;
   NR_DL_FRAME_PARMS *fp = &sl_phy_params->sl_frame_params;
   bool is_csi_rs_slot = false;
+  int8_t *ack_nack_rcvd = NULL;
 
   //VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_UE_RX_SL, VCD_FUNCTION_IN);
   start_meas(&sl_phy_params->phy_proc_sl_rx);
@@ -623,7 +633,8 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
                                 phy_data->nr_sl_pssch_sci_pdu.pscch_numrbs,
                                 phy_data->nr_sl_pssch_sci_pdu.l_subch,
                                 phy_data->nr_sl_pssch_sci_pdu.subchannel_size,
-                                phy_data->nr_sl_pssch_sci_pdu.targetCodeRate);
+                                phy_data->nr_sl_pssch_sci_pdu.targetCodeRate,
+                                0);
     LOG_D(NR_PHY,"Starting slot FEP for SLSCH (symbol %d to %d) pscch_numsym %d pssch_numsym %d\n",1+phy_data->nr_sl_pssch_sci_pdu.pscch_numsym,phy_data->nr_sl_pssch_sci_pdu.pssch_numsym,phy_data->nr_sl_pssch_sci_pdu.pscch_numsym,phy_data->nr_sl_pssch_sci_pdu.pssch_numsym); 
     for (int sym=1+phy_data->nr_sl_pssch_sci_pdu.pscch_numsym; sym<=phy_data->nr_sl_pssch_sci_pdu.pssch_numsym;sym++) {
       nr_slot_fep(ue,
@@ -646,45 +657,72 @@ void psbch_pscch_pssch_processing(PHY_VARS_NR_UE *ue,
                 nr_slot_rx,
                 0,
                 &is_csi_rs_slot);
-      NR_gNB_PUSCH *pssch_vars = &ue->pssch_vars[0];
-      pssch_vars->ulsch_power_tot = 0;
-      pssch_vars->ulsch_noise_power_tot = 0;
-      for (int aarx = 0; aarx < fp->nb_antennas_rx; aarx++) {
-        pssch_vars->ulsch_power[aarx] /= num_dmrs;
-        pssch_vars->ulsch_power_tot += pssch_vars->ulsch_power[aarx];
-        pssch_vars->ulsch_noise_power[aarx] /= num_dmrs;
-        pssch_vars->ulsch_noise_power_tot += pssch_vars->ulsch_noise_power[aarx];
+    if (phy_data->sl_rx_action == SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH_PSFCH) {
+      ack_nack_rcvd = calloc(phy_data->num_psfch_pdus, sizeof(ack_nack_rcvd));
+      LOG_D(NR_PHY, "num_psfch_pdus: %d\n", phy_data->num_psfch_pdus);
+      for (int k = 0; k < phy_data->num_psfch_pdus; k++) {
+        sl_nr_tx_rx_config_psfch_pdu_t *psfch_pdu = &phy_data->psfch_pdu_list[k];
+        LOG_D(NR_PHY, "%s start_symbol_index %d, sl_bwp_start %d, sequence_hop_flag %d, \
+            second_hop_prb %d, prb %d, nr_of_symbols %d, initial_cyclic_shift %d, hopping_id %d, \
+            group_hop_flag %d, freq_hop_flag %d, bit_len_harq %d\n",
+            __FUNCTION__,
+            psfch_pdu->start_symbol_index, psfch_pdu->sl_bwp_start,
+            psfch_pdu->sequence_hop_flag, psfch_pdu->second_hop_prb, psfch_pdu->prb,
+            psfch_pdu->nr_of_symbols, psfch_pdu->initial_cyclic_shift, psfch_pdu->hopping_id,
+            psfch_pdu->group_hop_flag, psfch_pdu->freq_hop_flag, psfch_pdu->bit_len_harq);
+        nr_slot_fep(ue,
+                    fp,
+                    proc,
+                    psfch_pdu->start_symbol_index,
+                    rxdataF,
+                    link_type_sl);
+        ack_nack_rcvd[k] = nr_ue_decode_psfch0(ue,
+                                            frame_rx,
+                                            nr_slot_rx,
+                                            rxdataF,
+                                            psfch_pdu);
       }
-      if (dB_fixed_x10(pssch_vars->ulsch_power_tot) < dB_fixed_x10(pssch_vars->ulsch_noise_power_tot) + ue->pssch_thres) {
+      free(phy_data->psfch_pdu_list);
+      phy_data->psfch_pdu_list = NULL;
+    }
+    NR_gNB_PUSCH *pssch_vars = &ue->pssch_vars[0];
+    pssch_vars->ulsch_power_tot = 0;
+    pssch_vars->ulsch_noise_power_tot = 0;
+    for (int aarx = 0; aarx < fp->nb_antennas_rx; aarx++) {
+      pssch_vars->ulsch_power[aarx] /= num_dmrs;
+      pssch_vars->ulsch_power_tot += pssch_vars->ulsch_power[aarx];
+      pssch_vars->ulsch_noise_power[aarx] /= num_dmrs;
+      pssch_vars->ulsch_noise_power_tot += pssch_vars->ulsch_noise_power[aarx];
+    }
+    if (dB_fixed_x10(pssch_vars->ulsch_power_tot) < dB_fixed_x10(pssch_vars->ulsch_noise_power_tot) + ue->pssch_thres) {
 
-        LOG_D(NR_PHY,
-              "PSSCH not detected in %d.%d (%d,%d,%d)\n",
-              frame_rx,
-              nr_slot_rx,
-              dB_fixed_x10(pssch_vars->ulsch_power_tot),
-              dB_fixed_x10(pssch_vars->ulsch_noise_power_tot),
-              ue->pssch_thres);
-        pssch_vars->ulsch_power_tot = pssch_vars->ulsch_noise_power_tot;
-        pssch_vars->DTX = 1;
-        //if (stats)
-        //  stats->ulsch_stats.DTX++;
-        // nr_fill_indication(gNB, frame_rx, slot_rx, ULSCH_id, ulsch->harq_pid, 1, 1);
-        //pssch_DTX++;
-        //  continue;
-      } else {
-        LOG_D(NR_PHY,
-              "PSSCH detected in %d.%d (%d,%d,%d)\n",
-              frame_rx,
-              nr_slot_rx,
-              dB_fixed_x10(pssch_vars->ulsch_power_tot),
-              dB_fixed_x10(pssch_vars->ulsch_noise_power_tot),
-              ue->pssch_thres);
+      LOG_D(NR_PHY,
+            "PSSCH not detected in %d.%d (%d,%d,%d)\n",
+            frame_rx,
+            nr_slot_rx,
+            dB_fixed_x10(pssch_vars->ulsch_power_tot),
+            dB_fixed_x10(pssch_vars->ulsch_noise_power_tot),
+            ue->pssch_thres);
+      pssch_vars->ulsch_power_tot = pssch_vars->ulsch_noise_power_tot;
+      pssch_vars->DTX = 1;
+      //if (stats)
+      //  stats->ulsch_stats.DTX++;
+      // nr_fill_indication(gNB, frame_rx, slot_rx, ULSCH_id, ulsch->harq_pid, 1, 1);
+      //pssch_DTX++;
+      //  continue;
+    } else {
+      LOG_D(NR_PHY,
+            "PSSCH detected in %d.%d (%d,%d,%d)\n",
+            frame_rx,
+            nr_slot_rx,
+            dB_fixed_x10(pssch_vars->ulsch_power_tot),
+            dB_fixed_x10(pssch_vars->ulsch_noise_power_tot),
+            ue->pssch_thres);
 
-        pssch_vars->DTX = 0;
-        int totalDecode = nr_slsch_procedures(ue, frame_rx, nr_slot_rx, 0, proc, phy_data, is_csi_rs_slot);
-      }
+      pssch_vars->DTX = 0;
+      int totalDecode = nr_slsch_procedures(ue, frame_rx, nr_slot_rx, 0, proc, phy_data, is_csi_rs_slot, ack_nack_rcvd, phy_data->num_psfch_pdus);
+    }
   }
-
   LOG_D(PHY,"****** end Sidelink RX-Chain for AbsSubframe %d.%d ******\n",
                                                                 frame_rx, nr_slot_rx);
 
@@ -765,15 +803,19 @@ int phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
     }
     if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH ||
         phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH_CSI_RS) {
-      nr_generate_psfch0(ue,
-                        txdataF,
-                        fp,
-                        AMP,
-                        slot_tx,
-                        &phy_data->nr_sl_pssch_pscch_pdu.psfch_pdu);
+      for (int k = 0; k < phy_data->nr_sl_pssch_pscch_pdu.num_psfch_pdus; k++) {
+        nr_generate_psfch0(ue,
+                          txdataF,
+                          fp,
+                          AMP,
+                          slot_tx,
+                          &phy_data->nr_sl_pssch_pscch_pdu.psfch_pdu_list[k]);
+      }
       sl_phy_params->psfch.num_psfch_tx ++;
     }
     tx_action = 1;
+    free(phy_data->nr_sl_pssch_pscch_pdu.psfch_pdu_list);
+    phy_data->nr_sl_pssch_pscch_pdu.psfch_pdu_list = NULL;
   }
   if (tx_action) {
     LOG_D(PHY, "Sending SL data \n");

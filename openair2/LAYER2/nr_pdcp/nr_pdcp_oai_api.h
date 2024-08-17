@@ -108,4 +108,6 @@ nr_pdcp_ue_manager_t *nr_pdcp_sdap_get_ue_manager();
 
 const bool nr_pdcp_get_statistics(ue_id_t ue_id, int srb_flag, int rb_id, nr_pdcp_statistics_t *out);
 
+void add_drb_sl(ue_id_t srcid, NR_SL_RadioBearerConfig_r16_t *s, int ciphering_algorithm, int integrity_algorithm, unsigned char *ciphering_key, unsigned char *integrity_key);
+
 #endif /* NR_PDCP_OAI_API_H */
