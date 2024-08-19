@@ -2004,8 +2004,8 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
   int sci2_left = sci2_re;
 
   int avg[frame_parms->nb_antennas_rx*nrOfLayers];
-  int16_t *temp_llr = (int16_t *)malloc16_clear((8 * ((3 * 8 * 6144) + 12)) * sizeof(int16_t));
-  int32_t *temp_symbol = (int32_t *) malloc16_clear(rb_size * NR_NB_SC_PER_RB * sizeof(int32_t));
+  uint16_t *temp_llr = (int16_t *)malloc16_clear((8 * ((3 * 8 * 6144) + 12)) * sizeof(int16_t));
+  int32_t *temp_symbol = (int32_t *) malloc(rb_size * 12 * sizeof(int32_t));
   NR_gNB_PUSCH *pusch_vars = gNB ? &gNB->pusch_vars[ulsch_id] : &ue->pssch_vars[ulsch_id];
   pusch_vars->dmrs_symbol = INVALID_VALUE;
   pusch_vars->cl_done = 0;
@@ -2386,7 +2386,7 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
         } // (not ML || nrOfLayers==1 ) AND pssch and sci2 REs to handle	
 	if (pssch_pdu) LOG_D(NR_PHY, "symbol %d: PSSCH REs %d (sci1 %d,sci2 %d)\n", symbol, pusch_vars->ul_valid_re_per_slot[symbol], sci1_offset, sci2_cnt_thissymb);
         for (aatx=0; aatx < nrOfLayers; aatx++) {
-          if ((sci1_offset > 0 || sci2_cnt_thissymb > 0) && (qam_mod_order > 2)) {
+          if (sci1_offset > 0 || sci2_cnt_thissymb > 0) {
             memset(temp_symbol, 0, (sci1_offset + sci2_cnt_thissymb) * sizeof(int32_t));
             memcpy(temp_symbol + sci1_offset + sci2_cnt_thissymb,
                   &pusch_vars->rxdataF_comp[aatx * frame_parms->nb_antennas_rx][symbol * (off + rb_size * NR_NB_SC_PER_RB) + sci1_offset+sci2_cnt_thissymb],
@@ -2400,9 +2400,8 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
                                  rb_size * NR_NB_SC_PER_RB,
                                  symbol,
                                  qam_mod_order);
-            memcpy(&pusch_vars->llr_layers[aatx][rxdataF_ext_offset * qam_mod_order],
-                   temp_llr + (sci1_offset + sci2_cnt_thissymb) * sizeof(int32_t),
-                   (rb_size * NR_NB_SC_PER_RB - (sci1_offset + sci2_cnt_thissymb)) * sizeof(int32_t));
+             memcpy(&pusch_vars->llr_layers[aatx][rxdataF_ext_offset * qam_mod_order], temp_llr + (sci1_offset + sci2_cnt_thissymb) * 4,
+                   (rb_size * NR_NB_SC_PER_RB - sci1_offset+sci2_cnt_thissymb) * sizeof(int32_t));
           } else {
             nr_ulsch_compute_llr(&pusch_vars->rxdataF_comp[aatx * frame_parms->nb_antennas_rx][symbol * (off + rb_size * NR_NB_SC_PER_RB) + sci1_offset + sci2_cnt_thissymb],
                                 pusch_vars->ul_ch_mag0[aatx * frame_parms->nb_antennas_rx],

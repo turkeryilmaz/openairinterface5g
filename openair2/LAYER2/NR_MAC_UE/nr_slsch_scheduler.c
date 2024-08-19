@@ -104,14 +104,14 @@ void handle_nr_ue_sl_harq(module_id_t mod_id,
 
   NR_SL_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
   NR_UE_sl_harq_t **matched_harqs = (NR_UE_sl_harq_t **) calloc(sched_ctrl->feedback_sl_harq.len, sizeof(NR_UE_sl_harq_t *));
-  int k = find_nr_ue_sl_harq(frame, slot, sched_ctrl, matched_harqs);
+  int k = find_current_slot_harqs(frame, slot, sched_ctrl, matched_harqs);
 
   for (int i = 0; i < num_ack_rcvd; i++) {
     uint8_t ack_nack = rx_slsch_pdu->ack_nack_rcvd[i];
     uint8_t rx_harq_id = matched_harqs[i]->sl_harq_pid;
     NR_SL_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
     int8_t harq_pid = sched_ctrl->feedback_sl_harq.head;
-    LOG_I(NR_MAC, "Comparing %4u.%2u rx_harq_id vs feedback harq_pid = %d %d\n", frame, slot, rx_harq_id, harq_pid);
+    LOG_D(NR_MAC, "Comparing %4u.%2u rx_harq_id vs feedback harq_pid = %d %d\n", frame, slot, rx_harq_id, harq_pid);
     while (rx_harq_id != harq_pid || harq_pid < 0) {
       LOG_W(NR_MAC,
             "Unexpected SLSCH HARQ PID %d (have %d) for src id %4d\n",
@@ -155,7 +155,7 @@ void handle_nr_ue_sl_harq(module_id_t mod_id,
             harq_pid);
     } else {
       harq->round++;
-      LOG_W(NR_MAC,
+      LOG_D(NR_MAC,
             "%4u.%2u Slharq id %d crc failed for src id %4d\n",
             frame,
             slot,
@@ -249,7 +249,6 @@ bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
      } else if ((slotP % psfch_period != 0) && (psfch_period == 2 || psfch_period == 4))
         sci_pdu->psfch_overhead.val = 0;
 
-
      sci_pdu->reserved.val = mac->is_synced ? 1 : 0;
      sci_pdu->conflict_information_receiver.val = 0;
      sci_pdu->beta_offset_indicator = 0;
@@ -285,7 +284,7 @@ bool nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
      return true;
    }
   else
-    LOG_D(NR_MAC, "Tx_slot_2 %4d.%2d: schedule_slsch 0\n", frameP, slotP);
+    LOG_D(NR_MAC, "%4d.%2d: schedule_slsch 0\n", frameP, slotP);
   return false;
 }
 

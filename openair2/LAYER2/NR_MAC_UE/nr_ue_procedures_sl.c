@@ -841,7 +841,7 @@ void fill_psfch_params_tx(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx_ind,
   LOG_D(NR_MAC, "Filled psfch pdu\n");
 }
 
-int find_nr_ue_sl_harq(frame_t frame, sub_frame_t slot, NR_SL_UE_sched_ctrl_t * sched_ctrl, NR_UE_sl_harq_t **matched_harqs)
+int find_current_slot_harqs(frame_t frame, sub_frame_t slot, NR_SL_UE_sched_ctrl_t * sched_ctrl, NR_UE_sl_harq_t **matched_harqs)
 {
   int cur = sched_ctrl->feedback_sl_harq.head;
   int k = 0;
@@ -893,7 +893,7 @@ void configure_psfch_params_rx(int module_idP,
   while((UE=*(UE_SL_temp++))) {
     NR_SL_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
     NR_UE_sl_harq_t **matched_harqs = (NR_UE_sl_harq_t **) calloc(sched_ctrl->feedback_sl_harq.len, sizeof(NR_UE_sl_harq_t *));
-    int matched_sz = find_nr_ue_sl_harq(frame, slot, sched_ctrl, matched_harqs);
+    int matched_sz = find_current_slot_harqs(frame, slot, sched_ctrl, matched_harqs);
     LOG_D(NR_MAC, "%s matched_sz %d\n", __FUNCTION__, matched_sz);
     rx_config->sl_rx_config_list[0].num_psfch_pdus = 0;
     for (int i = 0; i < matched_sz; i++) {

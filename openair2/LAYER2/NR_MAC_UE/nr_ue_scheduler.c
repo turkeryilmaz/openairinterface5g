@@ -3383,7 +3383,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
               frame, slot, continue_flag, f, pssch_to_harq_feedback[f], feedback_slot);
         if (continue_flag == -1)
           continue;
-        uint8_t k = find_nr_ue_sl_harq(feedback_frame, feedback_slot, sched_ctrl, NULL);
+        uint8_t k = find_current_slot_harqs(feedback_frame, feedback_slot, sched_ctrl, NULL);
         if (k == psfch_max_size)
           continue;
         break;
@@ -3882,8 +3882,6 @@ void nr_ue_sl_psfch_scheduler(NR_UE_MAC_INST_t *mac,
       sched_psfch->feedback_frame = -1;
       sched_psfch->dai_c = 0;
       k++;
-    } else if (sched_psfch->feedback_slot < slot && sched_psfch->feedback_frame == frame) {
-
     }
   }
   tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu.num_psfch_pdus = k;

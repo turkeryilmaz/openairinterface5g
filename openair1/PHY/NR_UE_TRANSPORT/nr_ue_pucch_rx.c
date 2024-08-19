@@ -79,7 +79,7 @@ int get_pucch0_cs_lut_index(PHY_VARS_NR_UE *ue, nfapi_nr_pucch_pdu_t* pucch_pdu)
   ue->pucch0_lut.Nid[ue->pucch0_lut.nb_id] = pucch_pdu->hopping_id;
   for (int slot=0; slot<10<<pucch_pdu->subcarrier_spacing; slot++)
     for (int symbol=0; symbol<14; symbol++)
-      ue->pucch0_lut.lut[ue->pucch0_lut.nb_id][slot][symbol] = (int)floor(nr_cyclic_shift_hopping(pucch_pdu->hopping_id, 0, 0, 0, symbol, slot) / 0.5235987756);
+      ue->pucch0_lut.lut[ue->pucch0_lut.nb_id][slot][symbol] = (int)floor(nr_cyclic_shift_hopping(pucch_pdu->hopping_id, 0, 0, symbol, 0, slot)/0.5235987756);
   ue->pucch0_lut.nb_id++;
   return(ue->pucch0_lut.nb_id-1);
 }
@@ -104,7 +104,6 @@ int8_t nr_ue_decode_psfch0(PHY_VARS_NR_UE *ue,
   pucch_pdu.initial_cyclic_shift = psfch_pdu->initial_cyclic_shift;
   pucch_pdu.bit_len_harq = psfch_pdu->bit_len_harq;
   pucch_pdu.sr_flag = 0;
-  pucch_pdu.subcarrier_spacing = 1;
   ack_nack_rcvd = nr_ue_decode_pucch0(ue,
                                       frame,
                                       slot,
@@ -125,7 +124,7 @@ int8_t nr_ue_decode_pucch0(PHY_VARS_NR_UE *ue,
   sl_nr_rx_indication_t sl_rx_indication;
   nr_sidelink_indication_t sl_indication;
 
-  int soffset = 0;
+  int soffset = (slot & 3) * frame_parms->symbols_per_slot * frame_parms->ofdm_symbol_size;
   AssertFatal(pucch_pdu->bit_len_harq > 0 || pucch_pdu->sr_flag > 0,
               "Either bit_len_harq (%d) or sr_flag (%d) must be > 0\n",
               pucch_pdu->bit_len_harq, pucch_pdu->sr_flag);
@@ -157,8 +156,7 @@ int8_t nr_ue_decode_pucch0(PHY_VARS_NR_UE *ue,
         pucch_pdu->bit_len_harq,
         pucch_pdu->sr_flag,
         mcs[0],
-        pucch_pdu->initial_cyclic_shift,
-        pucch_pdu->subcarrier_spacing);
+        pucch_pdu->initial_cyclic_shift);
 
   int cs_ind = get_pucch0_cs_lut_index(ue, pucch_pdu);
   /*
@@ -312,8 +310,6 @@ int8_t nr_ue_decode_pucch0(PHY_VARS_NR_UE *ue,
         temp += squaredMod(corr[aa][0]) + squaredMod(corr[aa][1]);
     }
     else AssertFatal(1==0,"shouldn't happen\n");
-    LOG_D(PHY, "Sequence %d temp %ld vs. xrtmag %ld xrtmag_next %ld, slot %d rx atnennas %u\n",
-          i, temp, xrtmag, xrtmag_next, slot, frame_parms->nb_antennas_rx);
     if (temp > xrtmag) {
       xrtmag_next = xrtmag;
       xrtmag = temp;
@@ -338,7 +334,8 @@ int8_t nr_ue_decode_pucch0(PHY_VARS_NR_UE *ue,
   index = maxpos;
   if (pucch_pdu->bit_len_harq == 1) {
     uint8_t ack_nack = !(index&0x01);
-    LOG_I(PHY, "[PSFCH RX] %d.%d HARQ %s\n",
+    LOG_D(PHY,
+          "[PSFCH RX] %d.%d HARQ %s\n",
           frame,
           slot,
           ack_nack == 0 ? "ACK" : "NACK");
