@@ -812,10 +812,10 @@ int phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
                           &phy_data->nr_sl_pssch_pscch_pdu.psfch_pdu_list[k]);
       }
       sl_phy_params->psfch.num_psfch_tx ++;
+      free(phy_data->nr_sl_pssch_pscch_pdu.psfch_pdu_list);
+      phy_data->nr_sl_pssch_pscch_pdu.psfch_pdu_list = NULL;
     }
     tx_action = 1;
-    free(phy_data->nr_sl_pssch_pscch_pdu.psfch_pdu_list);
-    phy_data->nr_sl_pssch_pscch_pdu.psfch_pdu_list = NULL;
   }
   if (tx_action) {
     LOG_D(PHY, "Sending SL data \n");
