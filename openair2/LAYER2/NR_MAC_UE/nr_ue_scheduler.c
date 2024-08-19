@@ -3871,7 +3871,7 @@ void nr_ue_sl_psfch_scheduler(NR_UE_MAC_INST_t *mac,
       sl_ind->slot_tx = sched_psfch->feedback_slot;
       sl_ind->frame_tx = sched_psfch->feedback_frame;
       sl_ind->slot_type = SIDELINK_SLOT_TYPE_TX;
-      AssertFatal(k < psfch_period*num_subch, "Number of PSFCH pdus cannot exceed %d\n", psfch_period * num_subch);
+      AssertFatal(k < psfch_period*num_subch, "Number of PSFCH pdus cannot exceed %ld\n", psfch_period * num_subch);
       fill_psfch_pdu(sched_psfch, &psfch_pdu_list[k], num_psfch_symbols);
       *config_type = is_csi_rs_sent ? SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH_CSI_RS : SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH;
       tx_config->number_pdus = 1;
