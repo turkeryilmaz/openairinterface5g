@@ -841,7 +841,7 @@ void fill_psfch_params_tx(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx_ind,
   LOG_D(NR_MAC, "Filled psfch pdu\n");
 }
 
-int find_current_slot_harqsarqs(frame_t frame, sub_frame_t slot, NR_SL_UE_sched_ctrl_t * sched_ctrl, NR_UE_sl_harq_t **matched_harqs)
+int find_current_slot_harqs(frame_t frame, sub_frame_t slot, NR_SL_UE_sched_ctrl_t * sched_ctrl, NR_UE_sl_harq_t **matched_harqs)
 {
   int cur = sched_ctrl->feedback_sl_harq.head;
   int k = 0;
