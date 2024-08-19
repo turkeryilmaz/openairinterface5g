@@ -118,7 +118,7 @@ void sl_ue_mac_free(uint8_t module_id)
 //Prepares the TDD config to be passed to PHY
 static int sl_set_tdd_config_nr_ue(sl_nr_phy_config_request_t *cfg,
                                   int mu,
-                                  int *pnrofDownlinkSlots, int *pnrofDownlinkSymbols,
+                                  int *pNumDownlinkSlots, int *pNumDownlinkSymbols,
                                   int nrofUplinkSlots,   int nrofUplinkSymbols)
 {
 
@@ -130,12 +130,12 @@ static int sl_set_tdd_config_nr_ue(sl_nr_phy_config_request_t *cfg,
   int nb_slots_per_period = ((1<<mu) * NR_NUMBER_OF_SUBFRAMES_PER_FRAME)/nb_periods_per_frame;
   cfg->tdd_table.tdd_period_in_slots = nb_slots_per_period;
 
-  if ((*pnrofDownlinkSlots == 0) && (*pnrofDownlinkSymbols == 0)) {
-    *pnrofDownlinkSymbols = (nrofUplinkSymbols) ? 14 - nrofUplinkSymbols : 0;
-    *pnrofDownlinkSlots = nb_slots_per_period - nrofUplinkSlots;
-    if (*pnrofDownlinkSymbols) *pnrofDownlinkSlots -= 1;
+  if ((*pNumDownlinkSlots == 0) && (*pNumDownlinkSymbols == 0)) {
+    *pNumDownlinkSymbols = (nrofUplinkSymbols) ? 14 - nrofUplinkSymbols : 0;
+    *pNumDownlinkSlots = nb_slots_per_period - nrofUplinkSlots;
+    if (*pNumDownlinkSymbols) *pNumDownlinkSlots -= 1;
   }
-  int nrofDownlinkSlots = *pnrofDownlinkSlots, nrofDownlinkSymbols = *pnrofDownlinkSymbols;
+  int nrofDownlinkSlots = *pNumDownlinkSlots, nrofDownlinkSymbols = *pNumDownlinkSymbols;
 
   LOG_D(NR_MAC,"Set Phy Sidelink TDD Config: scs:%d,dl:%d-%d, ul:%d-%d, nb_periods_per_frame:%d, nb_slots_per_period:%d\n",
                               mu, nrofDownlinkSlots, nrofDownlinkSymbols, nrofUplinkSlots, nrofUplinkSymbols, nb_periods_per_frame, nb_slots_per_period);
