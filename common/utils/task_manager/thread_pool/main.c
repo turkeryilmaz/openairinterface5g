@@ -19,7 +19,6 @@
  *      contact@openairinterface.org
  */
 
-#include <assert.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -63,7 +62,7 @@ typedef struct{
 static inline
 int64_t naive_fibonnacci(int64_t a)
 {
-  assert(a < 1000);
+  DevAssert(a < 1000);
   if(a < 2)
     return a;
 
@@ -89,7 +88,7 @@ void do_work(void* arg)
 
   //char buffer[100] = {0};
   //int ret = snprintf(buffer, 100, "ID %lu Fib elapsed %ld start-stop %ld - %ld \n", pthread_self(),  stop - now, now, stop);
-  //assert(ret > 0 && ret < 100);
+  //DevAssert(ret > 0 && ret < 100);
 
 //  write_marker_ft_mir(marker_fd, buffer);
   // puts(buffer);
@@ -105,9 +104,9 @@ int main()
   init_ws_task_manager(&man, arr_core_id, NUM_THREADS);
 
   pair_t* arr = calloc(NUM_JOBS, sizeof(pair_t));
-  assert(arr != NULL);
+  DevAssert(arr != NULL);
   task_ans_t* ans = calloc(NUM_JOBS, sizeof(task_ans_t));
-  assert(ans != NULL);
+  DevAssert(ans != NULL);
 
   int64_t now = time_now_us();
 

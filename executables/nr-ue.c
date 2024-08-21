@@ -1006,7 +1006,7 @@ void *UE_thread(void *arg)
     // RX slot processing. We launch and forget.
     // Memory ownership is transferred to the function UE_dl_processing
     nr_rxtx_thread_data_t *curMsgRx = calloc(1, sizeof(nr_rxtx_thread_data_t));
-    assert(curMsgRx != NULL && "Memory exhausted");
+    AssertFatal(curMsgRx != NULL, "Memory exhausted");
     *curMsgRx = (nr_rxtx_thread_data_t){.proc = curMsg.proc, .UE = UE};
     int ret = UE_dl_preprocessing(UE, &curMsgRx->proc, tx_wait_for_dlsch, &curMsgRx->phy_data);
     if (ret)

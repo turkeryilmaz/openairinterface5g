@@ -546,7 +546,7 @@ int main ( int argc, char **argv )
       L1proc->respDecode=(notifiedFIFO_t*) malloc(sizeof(notifiedFIFO_t));
       if ( strlen(get_softmodem_params()->threadPoolConfig) > 0 ){
         L1proc->man = calloc(1, sizeof(task_manager_t));
-        assert(L1proc->man != NULL && "Memory exhausted");
+        AssertFatal(L1proc->man != NULL, "Memory exhausted");
 
         int core_id[128] = {0};
         span_core_id_t out = {.cap = 128, .core_id = core_id};
@@ -554,7 +554,7 @@ int main ( int argc, char **argv )
         init_task_manager(L1proc->man, out.core_id, out.sz);
       }else {
         L1proc->man = calloc(1, sizeof(task_manager_t));
-        assert(L1proc->man != NULL && "Memory exhausted");
+        AssertFatal(L1proc->man != NULL, "Memory exhausted");
         int lst_core_id = -1;
         init_task_manager(L1proc->man, &lst_core_id, 1);
       }

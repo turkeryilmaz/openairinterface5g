@@ -24,7 +24,8 @@
 
 #include "task_manager.h"
 
-#include <assert.h>
+#include "assertions.h"
+
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -51,7 +52,7 @@ void pin_thread_to_core(int core_num)
   CPU_ZERO(&set);
   CPU_SET(core_num, &set);
   int ret = sched_setaffinity(gettid(), sizeof(set), &set);
-  assert(ret != -1);
+  DevAssert(ret != -1);
   printf("Pining into core %d id %ld \n", core_num, pthread_self());
 }
 
@@ -79,7 +80,7 @@ typedef void (*seq_free_func)(task_t*);
 static
 size_t size_seq_ring_task(seq_ring_task_t* r)
 {
-  assert(r != NULL);
+  DevAssert(r != NULL);
 
   return r->head - r->tail;
 }
@@ -99,12 +100,12 @@ bool full(seq_ring_task_t* r)
 static
 void enlarge_buffer(seq_ring_task_t* r)
 {
-  assert(r != NULL);
-  assert(full(r));
+  DevAssert(r != NULL);
+  DevAssert(full(r));
 
   const uint32_t factor = 2;
   task_t* tmp_buffer = calloc(r->cap * factor, sizeof(task_t) );
-  assert(tmp_buffer != NULL);
+  DevAssert(tmp_buffer != NULL);
 
   const uint32_t head_pos = mask(r->cap, r->head);
   const uint32_t tail_pos = mask(r->cap, r->tail);
@@ -125,9 +126,9 @@ void enlarge_buffer(seq_ring_task_t* r)
 static
 void init_seq_ring_task(seq_ring_task_t* r)
 {
-  assert(r != NULL);
+  DevAssert(r != NULL);
   task_t* tmp_buffer = calloc(DEFAULT_ELM, sizeof(task_t));
-  assert(tmp_buffer != NULL);
+  DevAssert(tmp_buffer != NULL);
   seq_ring_task_t tmp = {.array = tmp_buffer, .head = 0, .tail = 0, .cap = DEFAULT_ELM};
   memcpy(r, &tmp, sizeof(seq_ring_task_t));
   r->sz = 0;
@@ -136,15 +137,15 @@ void init_seq_ring_task(seq_ring_task_t* r)
 static
 void free_seq_ring_task(seq_ring_task_t* r, seq_free_func fp)
 {
-  assert(r != NULL);
-  assert(fp == NULL);
+  DevAssert(r != NULL);
+  DevAssert(fp == NULL);
   free(r->array);
 }
 
 static
 void push_back_seq_ring_task(seq_ring_task_t* r, task_t t)
 {
-  assert(r != NULL);
+  DevAssert(r != NULL);
 
   if(full(r))
     enlarge_buffer(r);
@@ -158,8 +159,8 @@ void push_back_seq_ring_task(seq_ring_task_t* r, task_t t)
 static
 task_t pop_seq_ring_task(seq_ring_task_t* r )
 {
-  assert(r != NULL);
-  assert(size_seq_ring_task(r) > 0);
+  DevAssert(r != NULL);
+  DevAssert(size_seq_ring_task(r) > 0);
 
   const uint32_t pos = mask(r->cap, r->tail);
   task_t t = r->array[pos];
@@ -203,8 +204,8 @@ typedef struct{
 static
 void init_not_q(not_q_t* q, size_t idx, size_t t_id)
 {
-  assert(q != NULL);
-  assert(t_id != 0 && "Invalid thread id");
+  DevAssert(q != NULL);
+  AssertFatal(t_id != 0, "Invalid thread id");
 
   q->idx = idx;
 
@@ -214,14 +215,14 @@ void init_not_q(not_q_t* q, size_t idx, size_t t_id)
   pthread_mutexattr_t attr = {0};
 #ifdef _DEBUG
   int const rc_mtx = pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK);
-  assert(rc_mtx == 0);
+  DevAssert(rc_mtx == 0);
 #endif
   int rc = pthread_mutex_init(&q->mtx, &attr);
-  assert(rc == 0 && "Error while creating the mtx");
+  AssertFatal(rc == 0, "Error while creating the mtx");
 
   pthread_condattr_t* c_attr = NULL;
   rc = pthread_cond_init(&q->cv, c_attr);
-  assert(rc == 0);
+  DevAssert(rc == 0);
 
   q->t_id = t_id;
 }
@@ -229,25 +230,25 @@ void init_not_q(not_q_t* q, size_t idx, size_t t_id)
 static
 void free_not_q(not_q_t* q, void (*clean)(task_t*) )
 {
-  assert(q != NULL);
-  assert(q->done == 1);
+  DevAssert(q != NULL);
+  DevAssert(q->done == 1);
 
   free_seq_ring_task(&q->r, clean);
 
   int rc = pthread_mutex_destroy(&q->mtx);
-  assert(rc == 0);
+  DevAssert(rc == 0);
 
   rc = pthread_cond_destroy(&q->cv);
-  assert(rc == 0);
+  DevAssert(rc == 0);
 }
 
 static
 bool try_push_not_q(not_q_t* q, task_t t)
 {
-  assert(q != NULL);
-  assert(q->done == 0 || q->done ==1);
-  assert(t.func != NULL);
-  assert(t.args != NULL);
+  DevAssert(q != NULL);
+  DevAssert(q->done == 0 || q->done ==1);
+  DevAssert(t.func != NULL);
+  DevAssert(t.args != NULL);
 
   if(q->t_id == pthread_self() ){
     printf("[TASK_MAN]: Cycle detected. Thread from tpool calling itself. Reentrancy should be forbidden. Most probably a bug \n");
@@ -259,10 +260,10 @@ bool try_push_not_q(not_q_t* q, task_t t)
   push_back_seq_ring_task(&q->r, t);
 
   const size_t sz = size_seq_ring_task(&q->r);
-  assert(sz > 0);
+  DevAssert(sz > 0);
 
   int const rc = pthread_mutex_unlock(&q->mtx);
-  assert(rc == 0);
+  DevAssert(rc == 0);
 
   pthread_cond_signal(&q->cv);
 
@@ -272,16 +273,16 @@ bool try_push_not_q(not_q_t* q, task_t t)
 static
 void push_not_q(not_q_t* q, task_t t)
 {
-  assert(q != NULL);
-  assert(q->done == 0 || q->done ==1);
-  assert(t.func != NULL);
+  DevAssert(q != NULL);
+  DevAssert(q->done == 0 || q->done ==1);
+  DevAssert(t.func != NULL);
 
   int const rc = pthread_mutex_lock(&q->mtx);
-  assert(rc == 0);
+  DevAssert(rc == 0);
 
   push_back_seq_ring_task(&q->r, t);
 
-  assert(size_seq_ring_task(&q->r) > 0);
+  DevAssert(size_seq_ring_task(&q->r) > 0);
 
   pthread_mutex_unlock(&q->mtx);
 
@@ -291,31 +292,31 @@ void push_not_q(not_q_t* q, task_t t)
 static
 ret_try_t try_pop_not_q(not_q_t* q)
 {
-  assert(q != NULL);
+  DevAssert(q != NULL);
 
   ret_try_t ret = {.success = false};
 
   int rc = pthread_mutex_trylock(&q->mtx);
-  assert(rc == 0 || rc == EBUSY);
+  DevAssert(rc == 0 || rc == EBUSY);
 
   if(rc == EBUSY)
     return ret;
 
-  assert(q->done == 0 || q->done ==1);
+  DevAssert(q->done == 0 || q->done ==1);
 
   size_t sz = size_seq_ring_task(&q->r);
   if(sz == 0){
     rc = pthread_mutex_unlock(&q->mtx);
-    assert(rc == 0);
+    DevAssert(rc == 0);
 
     return ret;
   }
 
-  assert(sz > 0);
+  DevAssert(sz > 0);
   ret.t = pop_seq_ring_task(&q->r);
 
   rc = pthread_mutex_unlock(&q->mtx);
-  assert(rc == 0);
+  DevAssert(rc == 0);
   ret.success = true;
 
   return ret;
@@ -326,13 +327,13 @@ ret_try_t try_pop_not_q(not_q_t* q)
 static
 bool pop_not_q(not_q_t* q, ret_try_t* out)
 {
-  assert(q != NULL);
-  assert(out != NULL);
-  assert(q->done == 0 || q->done ==1);
+  DevAssert(q != NULL);
+  DevAssert(out != NULL);
+  DevAssert(q->done == 0 || q->done ==1);
 
   int rc = pthread_mutex_lock(&q->mtx);
-  assert(rc == 0);
-  assert(q->done == 0 || q->done ==1);
+  DevAssert(rc == 0);
+  DevAssert(q->done == 0 || q->done ==1);
 
   // Polling can be tunned using different combination
   // of cnt values. it can also be done using pthread_cond_timedwait
@@ -341,14 +342,14 @@ bool pop_not_q(not_q_t* q, ret_try_t* out)
   while(size_seq_ring_task(&q->r) == 0 && q->done == 0){
 
     rc = pthread_mutex_unlock(&q->mtx);
-    assert(rc == 0);
+    DevAssert(rc == 0);
 
     cnt++;
     if(cnt % 64)
       nanosleep(&ns, NULL);
 
     int rc = pthread_mutex_lock(&q->mtx);
-    assert(rc == 0);
+    DevAssert(rc == 0);
 
     if(cnt == 4*1024){
       cnt = 0;
@@ -357,17 +358,17 @@ bool pop_not_q(not_q_t* q, ret_try_t* out)
     cnt++;
   }
 
-  assert(q->done == 0 || q->done ==1);
+  DevAssert(q->done == 0 || q->done ==1);
   if(q->done == 1){
     int rc = pthread_mutex_unlock(&q->mtx);
-    assert(rc == 0);
+    DevAssert(rc == 0);
     return false;
   }
 
   out->t = pop_seq_ring_task(&q->r);
 
   rc = pthread_mutex_unlock(&q->mtx);
-  assert(rc == 0);
+  DevAssert(rc == 0);
 
   return true;
 }
@@ -377,29 +378,29 @@ bool pop_not_q(not_q_t* q, ret_try_t* out)
 static
 bool pop_not_q(not_q_t* q, ret_try_t* out)
 {
-  assert(q != NULL);
-  assert(out != NULL);
-  assert(q->done == 0 || q->done ==1);
+  DevAssert(q != NULL);
+  DevAssert(out != NULL);
+  DevAssert(q->done == 0 || q->done ==1);
 
   int rc = pthread_mutex_lock(&q->mtx);
-  assert(rc == 0);
-  assert(q->done == 0 || q->done ==1);
+  DevAssert(rc == 0);
+  DevAssert(q->done == 0 || q->done ==1);
 
   while(size_seq_ring_task(&q->r) == 0 && q->done == 0){
     pthread_cond_wait(&q->cv , &q->mtx);
   }
 
-  assert(q->done == 0 || q->done ==1);
+  DevAssert(q->done == 0 || q->done ==1);
   if(q->done == 1){
     int rc = pthread_mutex_unlock(&q->mtx);
-    assert(rc == 0);
+    DevAssert(rc == 0);
     return false;
   }
 
   out->t = pop_seq_ring_task(&q->r);
 
   rc = pthread_mutex_unlock(&q->mtx);
-  assert(rc == 0);
+  DevAssert(rc == 0);
 
   return true;
 }
@@ -408,20 +409,20 @@ bool pop_not_q(not_q_t* q, ret_try_t* out)
 static
 void done_not_q(not_q_t* q)
 {
-  assert(q != NULL);
+  DevAssert(q != NULL);
 
   int rc = pthread_mutex_lock(&q->mtx);
-  assert(rc == 0);
+  DevAssert(rc == 0);
 
   q->done = 1;
 
   rc = pthread_cond_signal(&q->cv);
-  assert(rc == 0);
+  DevAssert(rc == 0);
 
   //long r = syscall(SYS_futex, q->futex, FUTEX_WAKE_PRIVATE, INT_MAX, NULL, NULL, 0);
-  //assert(r != -1);
+  //DevAssert(r != -1);
   rc = pthread_mutex_unlock(&q->mtx);
-  assert(rc == 0);
+  DevAssert(rc == 0);
 
 //  q->futex++;
 }
@@ -449,7 +450,7 @@ typedef struct{
 static
 void* worker_thread(void* arg)
 {
-  assert(arg != NULL);
+  DevAssert(arg != NULL);
 
   task_thread_args_t* args = (task_thread_args_t*)arg;
   int const idx = args->idx;
@@ -464,8 +465,8 @@ void* worker_thread(void* arg)
   init_not_q(&q_arr[idx], idx, pthread_self() );
 
   int const logical_cores = get_nprocs_conf();
-  assert(logical_cores > 0);
-  assert(args->core_id > -2 && args->core_id < logical_cores);
+  DevAssert(logical_cores > 0);
+  DevAssert(args->core_id > -2 && args->core_id < logical_cores);
   if(args->core_id != -1)
     pin_thread_to_core(args->core_id);
 
@@ -505,25 +506,25 @@ void* worker_thread(void* arg)
 
 void init_ws_task_manager(ws_task_manager_t* man, int* core_id, size_t num_threads)
 {
-  assert(man != NULL);
-  assert(num_threads > 0 && num_threads < 33 && "Do you have zero or more than 32 processors??");
+  DevAssert(man != NULL);
+  AssertFatal(num_threads > 0 && num_threads < 33, "Do you have zero or more than 32 processors??");
 
   man->q_arr = calloc(num_threads, sizeof(not_q_t));
-  assert(man->q_arr != NULL && "Memory exhausted");
+  AssertFatal(man->q_arr != NULL, "Memory exhausted");
 
   man->t_arr = calloc(num_threads, sizeof(pthread_t));
-  assert(man->t_arr != NULL && "Memory exhausted" );
+  AssertFatal(man->t_arr != NULL, "Memory exhausted");
   man->len_thr = num_threads;
 
   man->index = 0;
 
   const pthread_barrierattr_t * barrier_attr = NULL;
   int rc = pthread_barrier_init(&man->barrier, barrier_attr, num_threads + 1);
-  assert(rc == 0);
+  DevAssert(rc == 0);
 
   for(size_t i = 0; i < num_threads; ++i){
     task_thread_args_t* args = malloc(sizeof(task_thread_args_t) );
-    assert(args != NULL && "Memory exhausted");
+    AssertFatal(args != NULL, "Memory exhausted");
     args->idx = i;
     args->man = man;
     args->core_id = core_id[i];
@@ -531,11 +532,11 @@ void init_ws_task_manager(ws_task_manager_t* man, int* core_id, size_t num_threa
     pthread_attr_t attr = {0};
 
     int ret = pthread_attr_init(&attr);
-    assert(ret == 0);
+    DevAssert(ret == 0);
     ret = pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
-    assert(ret == 0);
+    DevAssert(ret == 0);
     ret = pthread_attr_setschedpolicy(&attr, SCHED_RR);
-    assert(ret == 0);
+    DevAssert(ret == 0);
     struct sched_param sparam = {0};
     sparam.sched_priority = 97;
     ret = pthread_attr_setschedparam(&attr, &sparam);
@@ -545,7 +546,7 @@ void init_ws_task_manager(ws_task_manager_t* man, int* core_id, size_t num_threa
       printf("[TASK_MAN]: %s \n", strerror(rc));
       printf("[TASK_MAN]: Could not create the pthread with attributtes, trying without attributes\n" );
       rc = pthread_create(&man->t_arr[i], NULL, worker_thread, args);
-      assert(rc == 0 && "Error creating a thread");
+      AssertFatal(rc == 0, "Error creating a thread");
     }
   }
 
@@ -563,7 +564,7 @@ void free_ws_task_manager(ws_task_manager_t* man, void (*clean)(task_t*))
 
   for(uint32_t i = 0; i < man->len_thr; ++i){
     int rc = pthread_join(man->t_arr[i], NULL);
-    assert(rc == 0);
+    DevAssert(rc == 0);
   }
 
   for(uint32_t i = 0; i < man->len_thr; ++i){
@@ -571,7 +572,7 @@ void free_ws_task_manager(ws_task_manager_t* man, void (*clean)(task_t*))
   }
 
   int rc = pthread_barrier_destroy(&man->barrier);
-  assert(rc == 0);
+  DevAssert(rc == 0);
 
   free(man->q_arr);
 
@@ -580,15 +581,15 @@ void free_ws_task_manager(ws_task_manager_t* man, void (*clean)(task_t*))
 
 void async_ws_task_manager(ws_task_manager_t* man, task_t t)
 {
-  assert(man != NULL);
-  assert(man->len_thr > 0);
-  assert(t.func != NULL);
+  DevAssert(man != NULL);
+  DevAssert(man->len_thr > 0);
+  DevAssert(t.func != NULL);
 
   size_t const index = man->index++;
   size_t const len_thr = man->len_thr;
 
   not_q_t* q_arr = (not_q_t*)man->q_arr;
-  //assert(pthread_self() != q_arr[index%len_thr].t_id);
+  //DevAssert(pthread_self() != q_arr[index%len_thr].t_id);
 
   for(size_t i = 0; i < len_thr ; ++i){
     if(try_push_not_q(&q_arr[(i+index) % len_thr], t)){

@@ -799,7 +799,7 @@ int main(int argc, char **argv) {
 
   int lst_core_id = -1;
   proc_rxtx->man = calloc(1, sizeof(task_manager_t));
-  assert(proc_rxtx->man != NULL && "Memory exhausted");
+  AssertFatal(proc_rxtx->man != NULL, "Memory exhausted");
   init_task_manager(proc_rxtx->man, &lst_core_id, 1);
 
   proc_rxtx->respDecode=(notifiedFIFO_t*) malloc(sizeof(notifiedFIFO_t));

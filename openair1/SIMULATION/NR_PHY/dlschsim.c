@@ -387,7 +387,7 @@ int main(int argc, char **argv)
   init_task_manager(&gNB->man, out.core_id, out.sz);
 
   int lst_core_id[8] = {-1,-1,-1,-1,-1,-1,-1,-1 };
-  assert(dlsch_threads < 8);
+  DevAssert(dlsch_threads < 8);
   init_task_manager(&nrUE_params.man, lst_core_id, max(dlsch_threads, 1));
 
   frame_parms = &gNB->frame_parms; //to be initialized I suppose (maybe not necessary for PBCH)

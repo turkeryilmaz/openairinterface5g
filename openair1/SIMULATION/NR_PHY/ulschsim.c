@@ -604,7 +604,7 @@ int main(int argc, char **argv)
      task_ans_t ans[16] = {0};
      thread_info_tm_t t_info = {.buf = (uint8_t*)arr, .cap = 16, .len = 0, .ans = ans };
      int nbDecode = nr_ulsch_decoding(gNB, UE_id, channel_output_fixed, frame_parms, rel15_ul, frame, subframe, harq_pid, G, &t_info);
-     assert(nbDecode > 0);
+     DevAssert(nbDecode > 0);
 
      int nb_ok = 0;
      join_task_ans(t_info.ans, t_info.len);

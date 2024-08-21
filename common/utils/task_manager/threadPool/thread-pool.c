@@ -23,7 +23,6 @@
 
 
 #define _GNU_SOURCE
-#include <assert.h>
 #include <sched.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -172,18 +171,18 @@ void initFloatingCoresTpool(int nbThreads,tpool_t *pool, bool performanceMeas, c
 
 void init_sq_task_manager(tpool_t *pool, int* lst, size_t num_threads)
 {
-  assert(pool != NULL);
-  assert(lst != NULL);
-  assert(num_threads > 0);
+  DevAssert(pool != NULL);
+  DevAssert(lst != NULL);
+  DevAssert(num_threads > 0);
 
   char str[1024] = {0};
   int it = 0;
   for(int i = 0; i < num_threads - 1; ++i){
     it += sprintf(&str[it], "%d,", lst[i]);
-    assert(it < 1024);
+    DevAssert(it < 1024);
   }
   it += sprintf(&str[it], "%d", lst[num_threads - 1]);
-  assert(it < 1024);
+  DevAssert(it < 1024);
 
   bool performanceMeas = false;
   // Single Queue thread pool
@@ -193,7 +192,7 @@ void init_sq_task_manager(tpool_t *pool, int* lst, size_t num_threads)
 
 void async_sq_task_manager(tpool_t* pool, task_t t)
 {
-  assert(pool != NULL);
+  DevAssert(pool != NULL);
 
   int size = sizeof(void*);
   uint64_t const key = 1021;
@@ -209,7 +208,7 @@ void async_sq_task_manager(tpool_t* pool, task_t t)
 
 void free_sq_task_manager(tpool_t* pool, void (*clean)(task_t*))
 {
-  assert(pool != NULL);
+  DevAssert(pool != NULL);
   abortTpool(pool);
 }
 

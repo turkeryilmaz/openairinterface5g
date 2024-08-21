@@ -922,7 +922,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
     }
   }
 
-  assert(totalDecode == t_info.len);
+  DevAssert(totalDecode == t_info.len);
 
   join_task_ans(t_info.ans, t_info.len);
   for(int i = 0; i < t_info.len; ++i){

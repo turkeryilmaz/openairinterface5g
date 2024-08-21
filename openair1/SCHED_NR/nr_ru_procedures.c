@@ -336,7 +336,7 @@ void nr_feptx_tp(RU_t *ru, int frame_tx, int slot) {
   start_meas(&ru->ofdm_total_stats);
 
   size_t const sz = ru->nb_tx + (ru->half_slot_parallelization>0)*ru->nb_tx;
-  assert(sz < 64 && "Please, increase the buffer size");
+  AssertFatal(sz < 64, "Please, increase the buffer size");
   feptx_cmd_t arr[64] = {0};
   task_ans_t ans[64] = {0};
 
@@ -414,7 +414,7 @@ void nr_fep_tp(RU_t *ru, int slot) {
   start_meas(&ru->ofdm_demod_stats);
 
   size_t const sz = ru->nb_rx + (ru->half_slot_parallelization>0)*ru->nb_rx;
-  assert(sz < 64 && "Please, increase buffer size");
+  AssertFatal(sz < 64, "Please, increase buffer size");
   feprx_cmd_t arr[64] = {0};
   task_ans_t ans[64] = {0};
 

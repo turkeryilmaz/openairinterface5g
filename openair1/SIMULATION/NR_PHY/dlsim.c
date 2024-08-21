@@ -865,7 +865,7 @@ int main(int argc, char **argv)
   unsigned int errors_bit = 0;
 
   int lst_core_id[8] = {-1,-1,-1,-1,-1,-1,-1,-1};
-  assert(dlsch_threads < 9);
+  DevAssert(dlsch_threads < 9);
   init_task_manager(&nrUE_params.man, lst_core_id, max(1, dlsch_threads));
 
   test_input_bit       = (unsigned char *) malloc16(sizeof(unsigned char) * 16 * 68 * 384);

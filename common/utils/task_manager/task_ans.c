@@ -20,7 +20,7 @@
  */
 
 #include "task_ans.h"
-#include <assert.h>
+#include "assertions.h"
 #include <limits.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -37,18 +37,18 @@
 
 void completed_task_ans(task_ans_t* task)
 {
-  assert(task != NULL);
+  DevAssert(task != NULL);
 
-  int const task_not_completed = 0;
-  assert(atomic_load_explicit(&task->status, memory_order_acquire) == task_not_completed && "Task already finished?");
+  if (atomic_load_explicit(&task->status, memory_order_acquire) != 0)
+    AssertFatal(0, "Task already finished?");
 
   atomic_store_explicit(&task->status, 1, memory_order_release);
 }
 
 void join_task_ans(task_ans_t* arr, size_t len)
 {
-  assert(len < INT_MAX);
-  assert(arr != NULL);
+  DevAssert(len < INT_MAX);
+  DevAssert(arr != NULL);
 
   // Spin lock inspired by:
   // The Art of Writing Efficient Programs:

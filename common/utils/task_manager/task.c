@@ -20,7 +20,7 @@
  */
 
 #include "task.h"
-#include <assert.h>
+#include "assertions.h"
 #include <ctype.h>
 #include <limits.h>
 #include <stddef.h>
@@ -34,10 +34,10 @@
 // Compatibility with previous TPool
 void parse_num_threads(char const* params, span_core_id_t* out)
 {
-  assert(params != NULL);
+  DevAssert(params != NULL);
 
   int const logical_cores = get_nprocs_conf();
-  assert(logical_cores > 0);
+  DevAssert(logical_cores > 0);
 
   char *saveptr = NULL;
   char* params_cpy = strdup(params);
@@ -56,9 +56,9 @@ void parse_num_threads(char const* params, span_core_id_t* out)
       }
 
       default: {
-        assert(out->sz != out->cap && "Capacity limit passed!. Please augment the span size");
+        AssertFatal(out->sz != out->cap, "Capacity limit passed!. Please augment the span size");
         int const core_id = atoi(curptr);
-        assert((core_id == -1 || core_id < logical_cores) && "Invalid core ID passed");
+        AssertFatal(core_id == -1 || core_id < logical_cores, "Invalid core ID passed");
         out->core_id[out->sz++] = core_id;
       }
     }
