@@ -20,7 +20,7 @@
  */
 
 #ifndef TASK_MANAGER_WORKING_STEALING_H
-#define TASK_MANAGER_WORKING_STEALING_H 
+#define TASK_MANAGER_WORKING_STEALING_H
 
 #include "../task.h"
 #include "../task_ans.h"
@@ -40,7 +40,7 @@ typedef struct{
 
   pthread_t* t_arr;
   size_t len_thr;
-  
+
   _Atomic(uint64_t) index;
 
   void* q_arr;
@@ -58,4 +58,3 @@ void free_ws_task_manager(ws_task_manager_t* man, void (*clean)(task_t* args) );
 void async_ws_task_manager(ws_task_manager_t* man, task_t t);
 
 #endif
-

@@ -430,7 +430,7 @@ static void UE_synch(void *arg) {
       LOG_E(PHY, "synch Failed: \n");
   }
 
-   if (syncD->elt->reponseFifo) 
+   if (syncD->elt->reponseFifo)
        pushNotifiedFIFO(syncD->elt->reponseFifo, syncD->elt);
    else
      delNotifiedFIFO_elt(syncD->elt);
@@ -601,7 +601,7 @@ void processSlotTX(void *arg)
   pushNotifiedFIFO(UE->tx_resume_ind_fifo + newslot, newElt);
   RU_write(rxtxD, sl_tx_action);
 
-  if (rxtxD->elt->reponseFifo) 
+  if (rxtxD->elt->reponseFifo)
      pushNotifiedFIFO(rxtxD->elt->reponseFifo, rxtxD->elt);
   else
     delNotifiedFIFO_elt(rxtxD->elt);

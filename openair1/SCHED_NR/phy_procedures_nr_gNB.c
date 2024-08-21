@@ -337,8 +337,8 @@ static void nr_postDecode(PHY_VARS_gNB *gNB, ldpcDecode_t *rdata)
       //      dumpsig=1;
     }
     ulsch->last_iteration_cnt = rdata->decodeIterations;
-    
-    /* 
+
+    /*
         if (ulsch_harq->ulsch_pdu.mcs_index == 0 && dumpsig==1) {
           int off = ((ulsch_harq->ulsch_pdu.rb_size&1) == 1)? 4:0;
 
@@ -375,8 +375,7 @@ static void nr_postDecode(PHY_VARS_gNB *gNB, ldpcDecode_t *rdata)
 
         }
     */
-   
-    
+
     ulsch->last_iteration_cnt = rdata->decodeIterations;
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_gNB_ULSCH_DECODING,0);
   }
@@ -814,7 +813,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
     }
   }
 
-  ldpcDecode_t arr[64]; 
+  ldpcDecode_t arr[64];
   task_ans_t ans[64] = {0};
   thread_info_tm_t t_info = {.buf = (uint8_t*)arr, .len = 0, .cap = 64, .ans = ans};
 
@@ -922,13 +921,13 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
       VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_ULSCH_PROCEDURES_RX, 0);
     }
   }
-  
+
   assert(totalDecode == t_info.len);
 
   join_task_ans(t_info.ans, t_info.len);
   for(int i = 0; i < t_info.len; ++i){
-     nr_postDecode(gNB, &arr[i]); 
-  } 
+     nr_postDecode(gNB, &arr[i]);
+  }
   /* Do ULSCH decoding time measurement only when number of PUSCH is limited to 1
    * (valid for unitary physical simulators). ULSCH processing loop is then executed
    * only once, which ensures exactly one start and stop of the ULSCH decoding time

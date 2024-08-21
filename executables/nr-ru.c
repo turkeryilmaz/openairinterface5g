@@ -1858,7 +1858,7 @@ void init_NR_RU(configmodule_interface_t *cfg, char *rf_config_file)
       int core_id[128] = {0};
       span_core_id_t out = {.cap = 128, .core_id = core_id};
       parse_num_threads(pool, &out);
-      init_task_manager(&ru->man, out.core_id, out.sz); 
+      init_task_manager(&ru->man, out.core_id, out.sz);
 
       // FEP RX result FIFO
       ru->respfeprx = (notifiedFIFO_t*) malloc(sizeof(notifiedFIFO_t));

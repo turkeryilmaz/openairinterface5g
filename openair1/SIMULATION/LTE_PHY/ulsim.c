@@ -796,7 +796,7 @@ int main(int argc, char **argv) {
   proc_rxtx_ue->frame_rx = (subframe<4)?(proc_rxtx->frame_tx-1):(proc_rxtx->frame_tx);
   proc_rxtx_ue->subframe_tx = proc_rxtx->subframe_rx;
   proc_rxtx_ue->subframe_rx = (proc_rxtx->subframe_tx+6)%10;
- 
+
   int lst_core_id = -1;
   proc_rxtx->man = calloc(1, sizeof(task_manager_t));
   assert(proc_rxtx->man != NULL && "Memory exhausted");

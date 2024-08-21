@@ -705,7 +705,7 @@ typedef struct PHY_VARS_gNB_s {
   // Second tp needed to avoid a cycle at rx_func tx_func
   // T0 -> waiting L1_tx_free -> fills L1_tx_filled (rx_func)
   // T1 -> waiting join_task_ans -> fills L1_tx_out (tx_func)
-  // The task that let's join_task_ans continue is in the T1's queue 
+  // The task that let's join_task_ans continue is in the T1's queue
   // i.e., cycle/deadlock as waiting to a task that the same
   // thread should work on
   // T3 -> waiting L1_tx_out -> fills L1_tx_free

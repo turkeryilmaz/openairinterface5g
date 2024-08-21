@@ -28,12 +28,12 @@
 #include "C-Thread-Pool/thpool.h"
 
 
-// Uncomment one task_manager_t to compile the 
+// Uncomment one task_manager_t to compile the
 // desired thread pool
 
 // Work stealing thread pool
 #define task_manager_t ws_task_manager_t
-// Previous single queue OAI thread pool 
+// Previous single queue OAI thread pool
 // #define task_manager_t tpool_t
 // Most rated C thread pool in github
 //#define task_manager_t threadpool
@@ -59,4 +59,3 @@
                                     default: async_ws_task_manager) (T, TASK)
 
 #endif
-

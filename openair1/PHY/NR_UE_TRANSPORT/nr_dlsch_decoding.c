@@ -74,7 +74,7 @@ void nr_dlsch_unscrambling(int16_t *llr, uint32_t size, uint8_t q, uint32_t Nid,
 
 
 static bool nr_ue_postDecode(PHY_VARS_NR_UE *phy_vars_ue,
-                             ldpcDecode_ue_t *rdata,                         
+                             ldpcDecode_ue_t *rdata,
                              bool last,
                              int b_size,
                              uint8_t b[b_size],
@@ -112,7 +112,7 @@ static bool nr_ue_postDecode(PHY_VARS_NR_UE *phy_vars_ue,
       if (harq_process->C > 1) {
         int A = dlsch->dlsch_config.TBS;
         /* check global CRC */
-	// we have regrouped the transport block, so it is "1" segment
+        // we have regrouped the transport block, so it is "1" segment
         if (!check_crc(b, lenWithCrc(1, A), crcType(1, A))) {
           harq_process->ack = 0;
           dlsch->last_iteration_cnt = dlsch->max_ldpc_iterations + 1;
@@ -121,7 +121,7 @@ static bool nr_ue_postDecode(PHY_VARS_NR_UE *phy_vars_ue,
           LOG_D(PHY, "DLSCH received nok \n");
           return true; //stop
         }
-	const int sz=A / 8;
+        const int sz=A / 8;
         if (b[sz] == 0 && b[sz + 1] == 0) { // We search only a reccuring OAI error that propagates all 0 packets with a 0 CRC, so we
                                           // do the check only if the 2 first bytes of the CRC are 0 (it can be CRC16 or CRC24)
           int i = 0;
@@ -136,7 +136,7 @@ static bool nr_ue_postDecode(PHY_VARS_NR_UE *phy_vars_ue,
           }
         }
       }
-	
+
       //LOG_D(PHY,"[UE %d] DLSCH: Setting ACK for nr_slot_rx %d TBS %d mcs %d nb_rb %d harq_process->round %d\n",
       //      phy_vars_ue->Mod_id,nr_slot_rx,harq_process->TBS,harq_process->mcs,harq_process->nb_rb, harq_process->round);
       harq_process->status = SCH_IDLE;
@@ -237,7 +237,7 @@ static void nr_processDLSegment(void *arg)
     stop_meas(&rdata->ts_rate_unmatch);
     LOG_E(PHY,"dlsch_decoding.c: Problem in rate_matching\n");
 
-    // Task completed in parallel 
+    // Task completed in parallel
     completed_task_ans(rdata->ans);
     return;
   }
@@ -281,7 +281,7 @@ static void nr_processDLSegment(void *arg)
     stop_meas(&rdata->ts_ldpc_decode);
   }
 
-    // Task completed in parallel 
+    // Task completed in parallel
     completed_task_ans(rdata->ans);
 }
 
@@ -420,7 +420,7 @@ uint32_t nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
   offset = 0;
   set_abort(&harq_process->abort_decode, false);
 
-  ldpcDecode_ue_t arr[harq_process->C]; 
+  ldpcDecode_ue_t arr[harq_process->C];
   task_ans_t ans[harq_process->C];
   memset(ans, 0, harq_process->C*sizeof(task_ans_t));
 
@@ -464,7 +464,7 @@ uint32_t nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
   int num_seg_ok = 0;
   int nbDecode = harq_process->C;
   if(nbDecode > 0){
-    join_task_ans(ans, nbDecode); 
+    join_task_ans(ans, nbDecode);
     for(size_t i = 0; i < nbDecode ; ++i){
       nr_ue_postDecode(phy_vars_ue, &arr[i], i == nbDecode - 1, b_size, b, &num_seg_ok, proc);
     }

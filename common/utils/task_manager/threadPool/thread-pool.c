@@ -308,7 +308,7 @@ int main() {
   printf("In µs, Total time per group of %d job:%lld, work time per job %d, overhead per job %lld\n",
 	 nb_jobs, dur/1000, cumulProcessTime/1000, (dur-cumulProcessTime)/(1000*nb_jobs));
 
-	/*	
+	/*
   for (int i=0; i <1000 ; i++) {
     notifiedFIFO_elt_t *work=newNotifiedFIFO_elt(sizeof(struct testData), i, &worker_back, processing);
     struct testData *x=(struct testData *)NotifiedFifoData(work);

@@ -24,7 +24,7 @@
 
 #include "task_manager.h"
 
-#include <assert.h> 
+#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -42,7 +42,7 @@
 
 #include <ctype.h> // toupper
 
-//#define POLL_AND_SLEEP 
+//#define POLL_AND_SLEEP
 
 static
 void pin_thread_to_core(int core_num)
@@ -51,7 +51,7 @@ void pin_thread_to_core(int core_num)
   CPU_ZERO(&set);
   CPU_SET(core_num, &set);
   int ret = sched_setaffinity(gettid(), sizeof(set), &set);
-  assert(ret != -1); 
+  assert(ret != -1);
   printf("Pining into core %d id %ld \n", core_num, pthread_self());
 }
 
@@ -74,7 +74,7 @@ typedef struct seq_ring_buf_s
   _Atomic uint64_t sz;
 } seq_ring_task_t;
 
-typedef void (*seq_free_func)(task_t*); 
+typedef void (*seq_free_func)(task_t*);
 
 static
 size_t size_seq_ring_task(seq_ring_task_t* r)
@@ -90,7 +90,7 @@ uint32_t mask(uint32_t cap, uint32_t val)
   return val & (cap-1);
 }
 
-static 
+static
 bool full(seq_ring_task_t* r)
 {
   return size_seq_ring_task(r) == r->cap -1;
@@ -126,7 +126,7 @@ static
 void init_seq_ring_task(seq_ring_task_t* r)
 {
   assert(r != NULL);
-  task_t* tmp_buffer = calloc(DEFAULT_ELM, sizeof(task_t)); 
+  task_t* tmp_buffer = calloc(DEFAULT_ELM, sizeof(task_t));
   assert(tmp_buffer != NULL);
   seq_ring_task_t tmp = {.array = tmp_buffer, .head = 0, .tail = 0, .cap = DEFAULT_ELM};
   memcpy(r, &tmp, sizeof(seq_ring_task_t));
@@ -148,7 +148,7 @@ void push_back_seq_ring_task(seq_ring_task_t* r, task_t t)
 
   if(full(r))
     enlarge_buffer(r);
-  
+
   const uint32_t pos = mask(r->cap, r->head);
   r->array[pos] = t;
   r->head += 1;
@@ -163,12 +163,12 @@ task_t pop_seq_ring_task(seq_ring_task_t* r )
 
   const uint32_t pos = mask(r->cap, r->tail);
   task_t t = r->array[pos];
-  r->tail += 1; 
+  r->tail += 1;
   r->sz -= 1;
   return t;
 }
 
-#undef DEFAULT_ELM 
+#undef DEFAULT_ELM
 
 //////////////////////////////
 //////////////////////////////
@@ -219,7 +219,7 @@ void init_not_q(not_q_t* q, size_t idx, size_t t_id)
   int rc = pthread_mutex_init(&q->mtx, &attr);
   assert(rc == 0 && "Error while creating the mtx");
 
-  pthread_condattr_t* c_attr = NULL; 
+  pthread_condattr_t* c_attr = NULL;
   rc = pthread_cond_init(&q->cv, c_attr);
   assert(rc == 0);
 
@@ -275,7 +275,7 @@ void push_not_q(not_q_t* q, task_t t)
   assert(q != NULL);
   assert(q->done == 0 || q->done ==1);
   assert(t.func != NULL);
-  
+
   int const rc = pthread_mutex_lock(&q->mtx);
   assert(rc == 0);
 
@@ -293,7 +293,7 @@ ret_try_t try_pop_not_q(not_q_t* q)
 {
   assert(q != NULL);
 
-  ret_try_t ret = {.success = false}; 
+  ret_try_t ret = {.success = false};
 
   int rc = pthread_mutex_trylock(&q->mtx);
   assert(rc == 0 || rc == EBUSY);
@@ -303,7 +303,7 @@ ret_try_t try_pop_not_q(not_q_t* q)
 
   assert(q->done == 0 || q->done ==1);
 
-  size_t sz = size_seq_ring_task(&q->r); 
+  size_t sz = size_seq_ring_task(&q->r);
   if(sz == 0){
     rc = pthread_mutex_unlock(&q->mtx);
     assert(rc == 0);
@@ -316,12 +316,12 @@ ret_try_t try_pop_not_q(not_q_t* q)
 
   rc = pthread_mutex_unlock(&q->mtx);
   assert(rc == 0);
-  ret.success = true; 
+  ret.success = true;
 
   return ret;
 }
 
-#ifdef POLL_AND_SLEEP 
+#ifdef POLL_AND_SLEEP
 
 static
 bool pop_not_q(not_q_t* q, ret_try_t* out)
@@ -345,7 +345,7 @@ bool pop_not_q(not_q_t* q, ret_try_t* out)
 
     cnt++;
     if(cnt % 64)
-    	nanosleep(&ns, NULL);
+      nanosleep(&ns, NULL);
 
     int rc = pthread_mutex_lock(&q->mtx);
     assert(rc == 0);
@@ -412,7 +412,7 @@ void done_not_q(not_q_t* q)
 
   int rc = pthread_mutex_lock(&q->mtx);
   assert(rc == 0);
-  
+
   q->done = 1;
 
   rc = pthread_cond_signal(&q->cv);
@@ -436,7 +436,7 @@ void done_not_q(not_q_t* q)
 typedef struct{
   ws_task_manager_t* man;
   int idx;
-  int core_id; 
+  int core_id;
 } task_thread_args_t;
 
 // Just for debugging purposes, it is very slow!!!!
@@ -451,17 +451,17 @@ void* worker_thread(void* arg)
 {
   assert(arg != NULL);
 
-  task_thread_args_t* args = (task_thread_args_t*)arg; 
+  task_thread_args_t* args = (task_thread_args_t*)arg;
   int const idx = args->idx;
 
   ws_task_manager_t* man = args->man;
 
   uint32_t const len = man->len_thr;
-  uint32_t const num_it = 2*(man->len_thr + idx); 
+  uint32_t const num_it = 2*(man->len_thr + idx);
 
   not_q_t* q_arr = (not_q_t*)man->q_arr;
 
-  init_not_q(&q_arr[idx], idx, pthread_self() );   
+  init_not_q(&q_arr[idx], idx, pthread_self() );
 
   int const logical_cores = get_nprocs_conf();
   assert(logical_cores > 0);
@@ -474,7 +474,7 @@ void* worker_thread(void* arg)
 
   size_t acc_num_task = 0;
   for(;;){
-    ret_try_t ret = {.success = false}; 
+    ret_try_t ret = {.success = false};
 
     for(uint32_t i = idx; i < num_it; ++i){
       ret = try_pop_not_q(&q_arr[i%len]);
@@ -488,14 +488,14 @@ void* worker_thread(void* arg)
       if(pop_not_q(&q_arr[idx], &ret) == false)
         break;
     }
-    
+
     //int64_t now = time_now_us();
     //printf("Calling func \n");
-    ret.t.func(ret.t.args); 
+    ret.t.func(ret.t.args);
     //printf("Returning from func \n");
-    //int64_t stop = time_now_us(); 
+    //int64_t stop = time_now_us();
 
-    acc_num_task += 1; 
+    acc_num_task += 1;
     //cnt_out++;
   }
 
@@ -507,7 +507,7 @@ void init_ws_task_manager(ws_task_manager_t* man, int* core_id, size_t num_threa
 {
   assert(man != NULL);
   assert(num_threads > 0 && num_threads < 33 && "Do you have zero or more than 32 processors??");
-  
+
   man->q_arr = calloc(num_threads, sizeof(not_q_t));
   assert(man->q_arr != NULL && "Memory exhausted");
 
@@ -522,7 +522,7 @@ void init_ws_task_manager(ws_task_manager_t* man, int* core_id, size_t num_threa
   assert(rc == 0);
 
   for(size_t i = 0; i < num_threads; ++i){
-    task_thread_args_t* args = malloc(sizeof(task_thread_args_t) ); 
+    task_thread_args_t* args = malloc(sizeof(task_thread_args_t) );
     assert(args != NULL && "Memory exhausted");
     args->idx = i;
     args->man = man;
@@ -562,12 +562,12 @@ void free_ws_task_manager(ws_task_manager_t* man, void (*clean)(task_t*))
   }
 
   for(uint32_t i = 0; i < man->len_thr; ++i){
-    int rc = pthread_join(man->t_arr[i], NULL); 
+    int rc = pthread_join(man->t_arr[i], NULL);
     assert(rc == 0);
   }
 
   for(uint32_t i = 0; i < man->len_thr; ++i){
-    free_not_q(&q_arr[i], clean); 
+    free_not_q(&q_arr[i], clean);
   }
 
   int rc = pthread_barrier_destroy(&man->barrier);
@@ -613,4 +613,3 @@ void async_ws_task_manager(ws_task_manager_t* man, task_t t)
   //cnt_in++;
   //printf("t_id %ld Tasks in %d %ld num_takss %ld idx %ld \n", pthread_self(), cnt_in, time_now_us(), man->num_task , index % len_thr );
 }
-

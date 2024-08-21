@@ -260,7 +260,7 @@ static void ldpc8blocks(void *p)
   }
 
   // Task running in // completed
-  completed_task_ans(impp->ans); 
+  completed_task_ans(impp->ans);
 }
 
 int nr_dlsch_encoding(PHY_VARS_gNB *gNB,
@@ -411,9 +411,9 @@ int nr_dlsch_encoding(PHY_VARS_gNB *gNB,
       perJobImpp->ans = &ans[j];
 
       task_t t = {.func = ldpc8blocks, .args = perJobImpp};
-      async_task_manager(&gNB->man, t); 
+      async_task_manager(&gNB->man, t);
     }
-    
+
     join_task_ans(ans, n_seg);
   }
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_gNB_DLSCH_ENCODING, VCD_FUNCTION_OUT);

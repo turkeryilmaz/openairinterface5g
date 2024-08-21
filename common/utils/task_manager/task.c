@@ -42,7 +42,7 @@ void parse_num_threads(char const* params, span_core_id_t* out)
   char *saveptr = NULL;
   char* params_cpy = strdup(params);
   char* curptr = strtok_r(params_cpy, ",", &saveptr);
-  
+
   while (curptr != NULL) {
     int const c = toupper(curptr[0]);
 

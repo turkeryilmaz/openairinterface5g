@@ -50,14 +50,12 @@ echo nop > $DIR/current_tracer
 echo 1 > $DIR/tracing_on
 
 # Run a 10 secs user loop on target
-taskset -c 3-7 ./a.out 
+taskset -c 3-7 ./a.out
 #sleep 20
 #killall a.out
 
 # Checkout the trace in trace.* file
-cat /sys/kernel/debug/tracing/per_cpu/cpu4/trace > trace.4 
-cat /sys/kernel/debug/tracing/per_cpu/cpu5/trace > trace.5 
-cat /sys/kernel/debug/tracing/per_cpu/cpu6/trace > trace.6 
-cat /sys/kernel/debug/tracing/per_cpu/cpu7/trace > trace.7 
-
-
+cat /sys/kernel/debug/tracing/per_cpu/cpu4/trace > trace.4
+cat /sys/kernel/debug/tracing/per_cpu/cpu5/trace > trace.5
+cat /sys/kernel/debug/tracing/per_cpu/cpu6/trace > trace.6
+cat /sys/kernel/debug/tracing/per_cpu/cpu7/trace > trace.7

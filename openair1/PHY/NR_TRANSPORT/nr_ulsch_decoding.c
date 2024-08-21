@@ -188,7 +188,7 @@ static void nr_processULSegment(void *arg)
     set_abort(&ulsch_harq->abort_decode, true);
 
     // Task completed
-    completed_task_ans(rdata->ans); 
+    completed_task_ans(rdata->ans);
     return;
   }
 
@@ -231,7 +231,7 @@ static void nr_processULSegment(void *arg)
     memcpy(ulsch_harq->c[r],llrProcBuf,  Kr>>3);
 
   // Task completed
-  completed_task_ans(rdata->ans); 
+  completed_task_ans(rdata->ans);
 }
 
 int decode_offload(PHY_VARS_gNB *phy_vars_gNB,
@@ -332,7 +332,7 @@ int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
                         uint32_t frame,
                         uint8_t nr_tti_rx,
                         uint8_t harq_pid,
-                        uint32_t G, 
+                        uint32_t G,
                         thread_info_tm_t* t_info
                         )
   {
@@ -445,7 +445,7 @@ int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
   for (int r = 0; r < harq_process->C; r++) {
     int E = nr_get_E(G, harq_process->C, Qm, n_layers, r);
 
-    ldpcDecode_t* rdata = &((ldpcDecode_t*)t_info->buf)[t_info->len]; 
+    ldpcDecode_t* rdata = &((ldpcDecode_t*)t_info->buf)[t_info->len];
     assert(t_info->len < t_info->cap);
     rdata->ans = &t_info->ans[t_info->len];
     t_info->len += 1;

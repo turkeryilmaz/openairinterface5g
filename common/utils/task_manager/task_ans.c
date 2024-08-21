@@ -50,9 +50,9 @@ void join_task_ans(task_ans_t* arr, size_t len)
   assert(len < INT_MAX);
   assert(arr != NULL);
 
-  // Spin lock inspired by: 
-  // The Art of Writing Efficient Programs: 
-  // An advanced programmer's guide to efficient hardware utilization 
+  // Spin lock inspired by:
+  // The Art of Writing Efficient Programs:
+  // An advanced programmer's guide to efficient hardware utilization
   // and compiler optimizations using C++ examples
   // P.S. Should work better than sched_yield() or pause_or_yield()
   const struct timespec ns = {0,1};
@@ -61,7 +61,7 @@ void join_task_ans(task_ans_t* arr, size_t len)
   for(; j != -1 ; i++){
     for(; j != -1; --j){
       int const task_completed = 1;
-      if(atomic_load_explicit(&arr[j].status, memory_order_acquire) != task_completed) 
+      if(atomic_load_explicit(&arr[j].status, memory_order_acquire) != task_completed)
         break;
     }
     if(i % 8 == 0){
@@ -71,4 +71,3 @@ void join_task_ans(task_ans_t* arr, size_t len)
 }
 
 #undef pause_or_yield
-

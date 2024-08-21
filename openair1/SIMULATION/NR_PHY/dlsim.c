@@ -897,7 +897,7 @@ int main(int argc, char **argv)
 
   int core_id[128] = {0};
   span_core_id_t out = {.cap = 128, .core_id = core_id};
-  parse_num_threads(gNBthreads, &out); 
+  parse_num_threads(gNBthreads, &out);
   init_task_manager(&gNB->man, out.core_id, out.sz);
 
   initNotifiedFIFO(&gNB->L1_tx_free);

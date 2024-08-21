@@ -66,7 +66,7 @@ int64_t naive_fibonnacci(int64_t a)
   assert(a < 1000);
   if(a < 2)
     return a;
-  
+
   return naive_fibonnacci(a-1) + naive_fibonnacci(a-2);
 }
 
@@ -80,7 +80,7 @@ void do_work(void* arg)
   pair_t* a = (pair_t*)arg;
 
   naive_fibonnacci(23 + a->a);
- 
+
   //usleep(rand()%1024);
   completed_task_ans(a->ans);
 
@@ -98,7 +98,7 @@ void do_work(void* arg)
 int main()
 {
   ws_task_manager_t man = {0};
-  int arr_core_id[NUM_THREADS] = {0}; 
+  int arr_core_id[NUM_THREADS] = {0};
   for(int i = 0; i < NUM_THREADS; ++i){
      arr_core_id[i] = -1;
   }
@@ -112,7 +112,7 @@ int main()
   int64_t now = time_now_us();
 
   for(int i = 0; i < NUM_JOBS; ++i){
-      pair_t* pa = &arr[i]; 
+      pair_t* pa = &arr[i];
       pa->a = 0; //i%10;
       pa->time = 0;
       pa->ans = &ans[i];
@@ -134,6 +134,3 @@ int main()
   free(ans);
   return EXIT_SUCCESS;
 }
-
-
-

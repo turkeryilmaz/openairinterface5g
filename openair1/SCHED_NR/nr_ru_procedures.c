@@ -76,7 +76,7 @@ void nr_feptx0(RU_t *ru,int tti_tx,int first_symbol, int num_symbols, int aa) {
   slot_offset += fp->ofdm_symbol_size*first_symbol;
 
   LOG_D(PHY,"SFN/SF:RU:TX:%d/%d aa %d Generating slot %d (first_symbol %d num_symbols %d) slot_offset %d, slot_offsetF %d\n",ru->proc.frame_tx, ru->proc.tti_tx,aa,slot,first_symbol,num_symbols,slot_offset,slot_offsetF);
-  
+
   if (fp->Ncp == 1) {
     PHY_ofdm_mod(&ru->common.txdataF_BF[aa][slot_offsetF],
                  (int*)&ru->common.txdata[aa][slot_offset],
@@ -86,7 +86,7 @@ void nr_feptx0(RU_t *ru,int tti_tx,int first_symbol, int num_symbols, int aa) {
                  CYCLIC_PREFIX);
   } else {
     if (fp->numerology_index != 0) {
-      
+
       if (!(slot%(fp->slots_per_subframe/2))&&(first_symbol==0)) { // case where first symbol in slot has longer prefix
         PHY_ofdm_mod(&ru->common.txdataF_BF[aa][slot_offsetF],
                      (int*)&ru->common.txdata[aa][slot_offset],
@@ -138,13 +138,13 @@ void nr_feptx0(RU_t *ru,int tti_tx,int first_symbol, int num_symbols, int aa) {
   }
 
   if (aa==0 && first_symbol==0) stop_meas(&ru->ofdm_mod_stats);
-        
+
   //VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_RU_FEPTX_OFDM+(first_symbol!=0?1:0), 0);
 }
 
 // RU FEP TX OFDM modulation, single-thread
 void nr_feptx_ofdm(RU_t *ru,int frame_tx,int tti_tx) {
-     
+
   nfapi_nr_config_request_scf_t *cfg = &ru->gNB_list[0]->gNB_config;
   NR_DL_FRAME_PARMS *fp=ru->nr_frame_parms;
   int cyclic_prefix_type = NFAPI_CP_NORMAL;
@@ -233,7 +233,7 @@ void nr_fep_full(RU_t *ru, int slot) {
   int l, aa;
   NR_DL_FRAME_PARMS *fp = ru->nr_frame_parms;
 
-  // if ((fp->frame_type == TDD) && 
+  // if ((fp->frame_type == TDD) &&
      // (subframe_select(fp,proc->tti_rx) != NR_UPLINK_SLOT)) return;
 
   LOG_D(PHY,"In fep_full for slot = %d\n", proc->tti_rx);
@@ -258,11 +258,11 @@ void nr_fep_full(RU_t *ru, int slot) {
 
   if (ru->idx == 0) VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME( VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_RU_FEPRX, 0 );
   stop_meas(&ru->ofdm_demod_stats);
-  
-  
+
+
 }
 
-// core routine for FEP TX, called from threads in RU TX thread-pool 
+// core routine for FEP TX, called from threads in RU TX thread-pool
 void nr_feptx(void *arg) {
 
   feptx_cmd_t *feptx = (feptx_cmd_t *)arg;
@@ -273,13 +273,13 @@ void nr_feptx(void *arg) {
   int  startSymbol = feptx->startSymbol;
   NR_DL_FRAME_PARMS  *fp    = ru->nr_frame_parms;
   int  numSymbols  = feptx->numSymbols;
-  int  numSamples  = feptx->numSymbols*fp->ofdm_symbol_size; 
+  int  numSamples  = feptx->numSymbols*fp->ofdm_symbol_size;
   int txdataF_offset = (slot*fp->samples_per_slot_wCP) + startSymbol*fp->ofdm_symbol_size;
   int txdataF_BF_offset = startSymbol*fp->ofdm_symbol_size;
 
       ////////////precoding////////////
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_RU_FEPTX_PREC+feptx->aid , 1);
-      
+
   if (aa==0) start_meas(&ru->precoding_stats);
 
   if (ru->do_precoding == 1) {
@@ -337,13 +337,13 @@ void nr_feptx_tp(RU_t *ru, int frame_tx, int slot) {
 
   size_t const sz = ru->nb_tx + (ru->half_slot_parallelization>0)*ru->nb_tx;
   assert(sz < 64 && "Please, increase the buffer size");
-  feptx_cmd_t arr[64] = {0}; 
+  feptx_cmd_t arr[64] = {0};
   task_ans_t ans[64] = {0};
 
   int nbfeptx = 0;
   for (int aid = 0; aid < ru->nb_tx; aid++) {
     feptx_cmd_t *feptx_cmd = &arr[nbfeptx];
-    feptx_cmd->ans = &ans[nbfeptx]; 
+    feptx_cmd->ans = &ans[nbfeptx];
 
        feptx_cmd->aid          = aid;
        feptx_cmd->ru           = ru;
@@ -356,7 +356,7 @@ void nr_feptx_tp(RU_t *ru, int frame_tx, int slot) {
        nbfeptx++;
        if (ru->half_slot_parallelization>0) {
          feptx_cmd_t *feptx_cmd = &arr[nbfeptx];
-         feptx_cmd->ans = &ans[nbfeptx]; 
+         feptx_cmd->ans = &ans[nbfeptx];
 
          feptx_cmd->aid          = aid;
          feptx_cmd->ru           = ru;
@@ -387,13 +387,13 @@ void nr_fep(void* arg) {
   int startSymbol  = feprx_cmd->startSymbol;
   int endSymbol    = feprx_cmd->endSymbol;
   NR_DL_FRAME_PARMS *fp = ru->nr_frame_parms;
-  
+
   LOG_D(PHY,"In nr_fep for aid %d, slot = %d, startSymbol %d, endSymbol %d\n", aid, tti_rx,startSymbol,endSymbol);
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_RU_FEPRX+aid, 1);
 
   int offset = (tti_rx % RU_RX_SLOT_DEPTH) * fp->symbols_per_slot * fp->ofdm_symbol_size;
-  for (int l = startSymbol; l <= endSymbol; l++) 
+  for (int l = startSymbol; l <= endSymbol; l++)
       nr_slot_fep_ul(fp,
                      ru->common.rxdata[aid],
                      &ru->common.rxdataF[aid][offset],
@@ -412,10 +412,10 @@ void nr_fep_tp(RU_t *ru, int slot) {
   int nbfeprx=0;
   if (ru->idx == 0) VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME( VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_RU_FEPRX, 1 );
   start_meas(&ru->ofdm_demod_stats);
- 
+
   size_t const sz = ru->nb_rx + (ru->half_slot_parallelization>0)*ru->nb_rx;
   assert(sz < 64 && "Please, increase buffer size");
-  feprx_cmd_t arr[64] = {0}; 
+  feprx_cmd_t arr[64] = {0};
   task_ans_t ans[64] = {0};
 
   for (int aid=0;aid<ru->nb_rx;aid++) {
@@ -453,4 +453,3 @@ void nr_fep_tp(RU_t *ru, int slot) {
   stop_meas(&ru->ofdm_demod_stats);
   if (ru->idx == 0) VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME( VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_RU_FEPRX, 0 );
 }
-

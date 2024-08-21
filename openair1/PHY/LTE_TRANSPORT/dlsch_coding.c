@@ -482,7 +482,7 @@ int dlsch_encoding_fembms_pmch(PHY_VARS_eNB *eNB,
       r_offset += Nl*Qm * ((GpmodC==0?0:1) + (Gp/C));
   }
 
-  join_task_ans(ans, hadlsch->C); 
+  join_task_ans(ans, hadlsch->C);
 
   return(0);
 }

@@ -169,7 +169,7 @@ static void tx_func(processingData_L1tx_t *info)
   deref_sched_response(info->sched_response_id);
 }
 
-void *L1_rx_thread(void *arg) 
+void *L1_rx_thread(void *arg)
 {
   PHY_VARS_gNB *gNB = (PHY_VARS_gNB*)arg;
 
@@ -356,12 +356,11 @@ void *nrL1_stats_thread(void *param) {
 }
 
 void init_gNB_Tpool(int inst) {
-
   PHY_VARS_gNB *gNB;
   gNB = RC.gNB[inst];
 
   // ULSCH decoding threadpool
-  int core_id[128] = {0}; 
+  int core_id[128] = {0};
   span_core_id_t out = {.cap = 128, .core_id = core_id, .sz = 0};
   parse_num_threads(get_softmodem_params()->threadPoolConfig, &out);
   init_task_manager(&gNB->man, out.core_id, out.sz);
@@ -375,7 +374,7 @@ void init_gNB_Tpool(int inst) {
 
   // L1 RX result FIFO
   initNotifiedFIFO(&gNB->resp_L1);
-  // L1 TX result FIFO 
+  // L1 TX result FIFO
   initNotifiedFIFO(&gNB->L1_tx_free);
   initNotifiedFIFO(&gNB->L1_tx_filled);
   initNotifiedFIFO(&gNB->L1_tx_out);
@@ -402,7 +401,7 @@ void init_gNB_Tpool(int inst) {
 
 void term_gNB_Tpool(int inst) {
   PHY_VARS_gNB *gNB = RC.gNB[inst];
- 
+
   abortNotifiedFIFO(&gNB->respDecode);
   abortNotifiedFIFO(&gNB->resp_L1);
   abortNotifiedFIFO(&gNB->L1_tx_free);
@@ -412,7 +411,6 @@ void term_gNB_Tpool(int inst) {
 
   void (*clean)(task_t*) = NULL;
   free_task_manager(&gNB->man , clean);
-  
 
   gNB_L1_proc_t *proc = &gNB->proc;
   if (!get_softmodem_params()->emulate_l1)
@@ -472,7 +470,7 @@ void init_eNB_afterRU(void) {
       AssertFatal(gNB->RU_list[ru_id]->prach_rxsigF!=NULL,
 		  "RU %d : prach_rxsigF is NULL\n",
 		  gNB->RU_list[ru_id]->idx);
-      
+
       for (i=0; i<gNB->RU_list[ru_id]->nb_rx; aa++,i++) {
         LOG_I(PHY,"Attaching RU %d antenna %d to gNB antenna %d\n",gNB->RU_list[ru_id]->idx,i,aa);
         gNB->prach_vars.rxsigF[aa]    =  gNB->RU_list[ru_id]->prach_rxsigF[0][i];
@@ -535,7 +533,7 @@ void init_gNB(int wait_for_sync) {
     gNB->chest_freq = get_softmodem_params()->chest_freq;
 
   }
-  
+
 
   LOG_I(PHY,"[nr-gnb.c] gNB structure allocated\n");
 }
