@@ -386,10 +386,10 @@ static int init_op_data_objs_dec(struct rte_bbdev_op_data *bufs,
                                  uint16_t min_alignment)
 {
   bool large_input = false;
-  uint16_t i = 0;
+  uint16_t j = 0;
   for (uint16_t h = 0; h < nrLDPC_slot_decoding_parameters->nb_TBs; ++h) {
-    for (uint16_t j = 0; j < nrLDPC_slot_decoding_parameters->TBs[h].C; ++j) {
-      uint32_t data_len = nrLDPC_slot_decoding_parameters->TBs[h].segments[j].E;
+    for (uint16_t i = 0; i < nrLDPC_slot_decoding_parameters->TBs[h].C; ++i) {
+      uint32_t data_len = nrLDPC_slot_decoding_parameters->TBs[h].segments[i].E;
       char *data;
       struct rte_mbuf *m_head = rte_pktmbuf_alloc(mbuf_pool);
       AssertFatal(m_head != NULL,
@@ -402,16 +402,16 @@ static int init_op_data_objs_dec(struct rte_bbdev_op_data *bufs,
         printf("Warning: Larger input size than DPDK mbuf %u\n", data_len);
         large_input = true;
       }
-      bufs[i].data = m_head;
-      bufs[i].offset = 0;
-      bufs[i].length = 0;
+      bufs[j].data = m_head;
+      bufs[j].offset = 0;
+      bufs[j].length = 0;
   
       if ((op_type == DATA_INPUT) || (op_type == DATA_HARQ_INPUT)) {
         if ((op_type == DATA_INPUT) && large_input) {
           /* Allocate a fake overused mbuf */
           data = rte_malloc(NULL, data_len, 0);
           AssertFatal(data != NULL, "rte malloc failed with %u bytes", data_len);
-          memcpy(data, &input[i * LDPC_MAX_CB_SIZE], data_len);
+          memcpy(data, &input[j * LDPC_MAX_CB_SIZE], data_len);
           m_head->buf_addr = data;
           m_head->buf_iova = rte_malloc_virt2iova(data);
           m_head->data_off = 0;
@@ -424,11 +424,11 @@ static int init_op_data_objs_dec(struct rte_bbdev_op_data *bufs,
                       "Data addr in mbuf (%p) is not aligned to device min alignment (%u)",
                       data,
                       min_alignment);
-          rte_memcpy(data, &input[i * LDPC_MAX_CB_SIZE], data_len);
+          rte_memcpy(data, &input[j * LDPC_MAX_CB_SIZE], data_len);
         }
-        bufs[i].length += data_len;
+        bufs[j].length += data_len;
       }
-      ++i;
+      ++j;
     }
   }
   return 0;
@@ -443,9 +443,9 @@ static int init_op_data_objs_enc(struct rte_bbdev_op_data *bufs,
                                  uint16_t min_alignment)
 {
   bool large_input = false;
-  uint16_t i = 0;
+  uint16_t j = 0;
   for (uint16_t h = 0; h < nrLDPC_slot_encoding_parameters->nb_TBs; ++h) {
-    for (int j = 0; j < nrLDPC_slot_encoding_parameters->TBs[h].C; ++j) {
+    for (int i = 0; i < nrLDPC_slot_encoding_parameters->TBs[h].C; ++i) {
       uint32_t data_len = (nrLDPC_slot_encoding_parameters->TBs[h].K - nrLDPC_slot_encoding_parameters->TBs[h].F + 7) / 8;
       char *data;
       struct rte_mbuf *m_head = rte_pktmbuf_alloc(mbuf_pool);
@@ -459,16 +459,16 @@ static int init_op_data_objs_enc(struct rte_bbdev_op_data *bufs,
         printf("Warning: Larger input size than DPDK mbuf %u\n", data_len);
         large_input = true;
       }
-      bufs[i].data = m_head;
-      bufs[i].offset = 0;
-      bufs[i].length = 0;
+      bufs[j].data = m_head;
+      bufs[j].offset = 0;
+      bufs[j].length = 0;
   
       if ((op_type == DATA_INPUT) || (op_type == DATA_HARQ_INPUT)) {
         if ((op_type == DATA_INPUT) && large_input) {
           /* Allocate a fake overused mbuf */
           data = rte_malloc(NULL, data_len, 0);
           AssertFatal(data != NULL, "rte malloc failed with %u bytes", data_len);
-          memcpy(data, nrLDPC_slot_encoding_parameters->TBs[h].segments[j].c, data_len);
+          memcpy(data, nrLDPC_slot_encoding_parameters->TBs[h].segments[i].c, data_len);
           m_head->buf_addr = data;
           m_head->buf_iova = rte_malloc_virt2iova(data);
           m_head->data_off = 0;
@@ -481,11 +481,11 @@ static int init_op_data_objs_enc(struct rte_bbdev_op_data *bufs,
                       "Data addr in mbuf (%p) is not aligned to device min alignment (%u)",
                       data,
                       min_alignment);
-          rte_memcpy(data, nrLDPC_slot_encoding_parameters->TBs[h].segments[j].c, data_len);
+          rte_memcpy(data, nrLDPC_slot_encoding_parameters->TBs[h].segments[i].c, data_len);
         }
-        bufs[i].length += data_len;
+        bufs[j].length += data_len;
       }
-      ++i;
+      ++j;
     }
   }
   return 0;
@@ -626,18 +626,18 @@ retrieve_ldpc_dec_op(struct rte_bbdev_dec_op **ops,
   struct rte_mbuf *m;
   char *data;
   unsigned int h;
-  unsigned int j;
-  unsigned int i = 0;
+  unsigned int i;
+  unsigned int j = 0;
   for (h = 0; h < nrLDPC_slot_decoding_parameters->nb_TBs; ++h){
-    for (j = 0; j < nrLDPC_slot_decoding_parameters->TBs[h].C; ++j) {
-      hard_output = &ops[i]->ldpc_dec.hard_output;
+    for (i = 0; i < nrLDPC_slot_decoding_parameters->TBs[h].C; ++i) {
+      hard_output = &ops[j]->ldpc_dec.hard_output;
       m = hard_output->data;
       data_len = rte_pktmbuf_data_len(m) - hard_output->offset;
       data = m->buf_addr;
-      memcpy(nrLDPC_slot_decoding_parameters->TBs[h].segments[j].c, data + m->data_off, data_len);
-      rte_pktmbuf_free(ops[i]->ldpc_dec.hard_output.data);
-      rte_pktmbuf_free(ops[i]->ldpc_dec.input.data);
-      ++i;
+      memcpy(nrLDPC_slot_decoding_parameters->TBs[h].segments[i].c, data + m->data_off, data_len);
+      rte_pktmbuf_free(ops[j]->ldpc_dec.hard_output.data);
+      rte_pktmbuf_free(ops[j]->ldpc_dec.input.data);
+      ++j;
     }
   }
   return 0;
@@ -653,22 +653,22 @@ retrieve_ldpc_enc_op(struct rte_bbdev_enc_op **ops,
   uint8_t *out;
   int offset = 0;
   unsigned int h;
-  unsigned int j;
-  unsigned int i = 0;
+  unsigned int i;
+  unsigned int j = 0;
   for (h = 0; h < nrLDPC_slot_encoding_parameters->nb_TBs; ++h){
-    for (j = 0; j < nrLDPC_slot_encoding_parameters->TBs[h].C; ++j) {
-      output = &ops[i]->ldpc_enc.output;
+    for (i = 0; i < nrLDPC_slot_encoding_parameters->TBs[h].C; ++i) {
+      output = &ops[j]->ldpc_enc.output;
       m = output->data;
       uint16_t data_len = rte_pktmbuf_data_len(m) - output->offset;
-      out = nrLDPC_slot_encoding_parameters->TBs[h].segments[j].output;
+      out = nrLDPC_slot_encoding_parameters->TBs[h].segments[i].output;
       data = m->buf_addr;
       for (int byte = 0; byte < data_len; byte++)
         for (int bit = 0; bit < 8; bit++)
           out[byte * 8 + bit] = (data[m->data_off + byte] >> (7 - bit)) & 1;
-      offset += nrLDPC_slot_encoding_parameters->TBs[h].segments[j].E;
-      rte_pktmbuf_free(ops[i]->ldpc_enc.output.data);
-      rte_pktmbuf_free(ops[i]->ldpc_enc.input.data);
-      ++i;
+      offset += nrLDPC_slot_encoding_parameters->TBs[h].segments[i].E;
+      rte_pktmbuf_free(ops[j]->ldpc_enc.output.data);
+      rte_pktmbuf_free(ops[j]->ldpc_enc.input.data);
+      ++j;
     }
   }
   return 0;
@@ -714,7 +714,7 @@ pmd_lcore_ldpc_dec(void *arg)
   ops_enq = (struct rte_bbdev_dec_op **)rte_calloc("struct rte_bbdev_dec_op **ops_enq", num_segments, sizeof(struct rte_bbdev_dec_op *), RTE_CACHE_LINE_SIZE);
   ops_deq = (struct rte_bbdev_dec_op **)rte_calloc("struct rte_bbdev_dec_op **ops_dec", num_segments, sizeof(struct rte_bbdev_dec_op *), RTE_CACHE_LINE_SIZE);
   struct data_buffers *bufs = NULL;
-  uint16_t h, i;
+  uint16_t h, i, j;
   int ret;
   struct rte_bbdev_info info;
   uint16_t num_to_enq;
@@ -746,17 +746,35 @@ pmd_lcore_ldpc_dec(void *arg)
     DevAssert(time_out <= TIME_OUT_POLL);
   }
   if (deq == enq) {
+    ret = retrieve_ldpc_dec_op(ops_deq, tp->op_params->vector_mask, nrLDPC_slot_decoding_parameters);
+    AssertFatal(ret == 0, "LDPC offload decoder failed!");
     tp->iter_count = 0;
     /* get the max of iter_count for all dequeued ops */
+    j = 0;
     for (h = 0; h < nrLDPC_slot_decoding_parameters->nb_TBs; ++h){
       for (i = 0; i < nrLDPC_slot_decoding_parameters->TBs[h].C; ++i) {
         bool *status = &nrLDPC_slot_decoding_parameters->TBs[h].segments[i].decodeSuccess;
-        tp->iter_count = RTE_MAX(ops_enq[i]->ldpc_dec.iter_count, tp->iter_count);
-        *status = (ops_enq[i]->status == 0);
+        tp->iter_count = RTE_MAX(ops_enq[j]->ldpc_dec.iter_count, tp->iter_count);
+
+        // Check if CRC is available otherwise rely on ops_enq[j]->status to detect decoding success
+        // CRC is NOT available if the CRC type is 24_B which is when C is greater than 1
+
+        if (nrLDPC_slot_decoding_parameters->TBs[h].C > 1) {
+
+          *status = (ops_enq[j]->status == 0);
+
+        } else {
+
+          uint8_t *decoded_bytes = nrLDPC_slot_decoding_parameters->TBs[h].segments[i].c;
+          uint8_t crc_type = crcType(nrLDPC_slot_decoding_parameters->TBs[h].C, nrLDPC_slot_decoding_parameters->TBs[h].A);
+          uint32_t len_with_crc = lenWithCrc(nrLDPC_slot_decoding_parameters->TBs[h].C, nrLDPC_slot_decoding_parameters->TBs[h].A);
+          *status = check_crc(decoded_bytes, len_with_crc, crc_type);
+
+        }
+      
+        ++j;
       }
     }
-    ret = retrieve_ldpc_dec_op(ops_deq, tp->op_params->vector_mask, nrLDPC_slot_decoding_parameters);
-    AssertFatal(ret == 0, "LDPC offload decoder failed!");
   }
 
   rte_bbdev_dec_op_free_bulk(ops_enq, num_segments);
