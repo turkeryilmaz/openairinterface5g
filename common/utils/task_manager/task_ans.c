@@ -27,12 +27,12 @@
 #include <stdlib.h>
 #include <time.h>
 
-#if defined (__i386__) || defined(__x86_64__)
+#if defined(__i386__) || defined(__x86_64__)
   #define pause_or_yield  __builtin_ia32_pause
-#elif __aarch64__
+#elif defined(__aarch64__)
   #define pause_or_yield() asm volatile("yield" ::: "memory")
 #else
-    static_assert(0!=0, "Unknown CPU architecture");
+#error Unknown CPU architecture
 #endif
 
 void completed_task_ans(task_ans_t* task)

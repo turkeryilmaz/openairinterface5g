@@ -38,16 +38,16 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 
-#if defined (__i386__) || defined(__x86_64__)
+#if defined(__i386__) || defined(__x86_64__)
   #define LEVEL1_DCACHE_LINESIZE 64
-#elif __aarch64__
+#elif defined(__aarch64__)
   // This is not always true for ARM
   // in linux, you can obtain the size at runtime using sysconf (_SC_LEVEL1_DCACHE_LINESIZE)
   // or from the bash with the command $ getconf LEVEL1_DCACHE_LINESIZE
   // in c++ using std::hardware_destructive_interference_size
   #define LEVEL1_DCACHE_LINESIZE 64
 #else
-    static_assert(0!=0, "Unknown CPU architecture");
+#error Unknown CPU architecture
 #endif
 
 typedef struct{
