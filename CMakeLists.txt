@@ -637,7 +637,6 @@ add_library(UTIL
   ${OPENAIR_DIR}/common/utils/task_manager/task_ans.c
   ${OPENAIR_DIR}/common/utils/task_manager/thread_pool/task_manager.c
   ${OPENAIR_DIR}/common/utils/task_manager/threadPool/thread-pool.c
-  ${OPENAIR_DIR}/common/utils/task_manager/C-Thread-Pool/thpool.c
   ${OPENAIR_DIR}/common/utils/utils.c
   ${OPENAIR_DIR}/common/utils/system.c
   ${OPENAIR_DIR}/common/utils/time_meas.c

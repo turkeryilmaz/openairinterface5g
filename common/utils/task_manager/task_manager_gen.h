@@ -25,17 +25,14 @@
 #include "task.h"
 #include "thread_pool/task_manager.h"
 #include "threadPool/thread-pool.h"
-#include "C-Thread-Pool/thpool.h"
 
 #define THREAD_POOL_WORK_STEALING 1
 #define THREAD_POOL_SINGLE_QUEUE  2
-#define THREAD_POOL_GITHUB        3
 
 #ifndef THREAD_POOL_IMPLEMENTATION
 /* uncomment the version to use if none is defined (in make/cmake) */
 #define THREAD_POOL_IMPLEMENTATION THREAD_POOL_WORK_STEALING
 //#define THREAD_POOL_IMPLEMENTATION THREAD_POOL_SINGLE_QUEUE
-//#define THREAD_POOL_IMPLEMENTATION THREAD_POOL_GITHUB
 #endif
 
 #if THREAD_POOL_IMPLEMENTATION == THREAD_POOL_WORK_STEALING
@@ -53,14 +50,6 @@
 #define init_task_manager  init_sq_task_manager
 #define free_task_manager  free_sq_task_manager
 #define async_task_manager async_sq_task_manager
-
-#elif THREAD_POOL_IMPLEMENTATION == THREAD_POOL_GITHUB
-
-/* Most rated C thread pool in github */
-#define task_manager_t threadpool
-#define init_task_manager  init_c_tp
-#define free_task_manager  free_c_tp
-#define async_task_manager async_tp_task_manager
 
 #else
 #error unknown threadpool implmentation
