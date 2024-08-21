@@ -706,7 +706,7 @@ int get_feedback_frame_slot(NR_UE_MAC_INST_t *mac, NR_TDD_UL_DL_Pattern_t *tdd,
                             uint8_t feedback_offset, uint8_t psfch_min_time_gap,
                             const int nr_slots_frame, uint16_t frame, uint16_t slot,
                             long psfch_period, int *psfch_frame, int *psfch_slot) {
-  sl_nr_ue_mac_params_t *sl_mac = mac->SL_MAC_PARAMS;
+
   AssertFatal(tdd != NULL, "Expecting valid tdd configurations");
   const int first_ul_slot_period = tdd ? get_first_ul_slot(tdd->nrofDownlinkSlots, tdd->nrofDownlinkSymbols, tdd->nrofUplinkSymbols) : 0;
   const int nr_slots_period = tdd ? nr_slots_frame / get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity) : nr_slots_frame;
@@ -735,7 +735,6 @@ int nr_ue_sl_acknack_scheduling(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx
 
   NR_SL_PSFCH_Config_r16_t *sl_psfch_config = mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup;
   uint8_t psfch_min_time_gap = time_gap[*sl_psfch_config->sl_MinTimeGapPSFCH_r16];
-  NR_SL_BWP_Generic_r16_t *sl_bwp = mac->sl_bwp->sl_BWP_Generic_r16;
 
   uint16_t num_subch = sl_get_num_subch(mac->sl_tx_res_pool);
   sl_nr_ue_mac_params_t *sl_mac =  mac->SL_MAC_PARAMS;
@@ -796,7 +795,6 @@ void fill_psfch_params_tx(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx_ind,
                           const int nr_slots_frame, int psfch_index) {
 
   NR_SL_BWP_Generic_r16_t *sl_bwp = mac->sl_bwp->sl_BWP_Generic_r16;
-  uint16_t num_subch = sl_get_num_subch(mac->sl_tx_res_pool);
 
   SL_sched_feedback_t  *sched_psfch = &mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch[psfch_index];
   LOG_D(NR_MAC, "psfch_period %ld, feedback frame:slot %d:%d, frame:slot %d:%d, harq feedback %d psfch_index %d\n",
@@ -872,7 +870,6 @@ void configure_psfch_params_rx(int module_idP,
 {
   const uint16_t slot = rx_config->slot;
   frame_t frame = rx_config->sfn;
-  const uint8_t time_gap[] = {2, 3};
   const uint8_t psfch_periods[] = {0,1,2,4};
   NR_SL_PSFCH_Config_r16_t *sl_psfch_config = mac->sl_rx_res_pool->sl_PSFCH_Config_r16->choice.setup;
   long psfch_period = (sl_psfch_config->sl_PSFCH_Period_r16)
@@ -898,7 +895,7 @@ void configure_psfch_params_rx(int module_idP,
     rx_config->sl_rx_config_list[0].num_psfch_pdus = 0;
     for (int i = 0; i < matched_sz; i++) {
       AssertFatal(i < UE->UE_sched_ctrl.feedback_sl_harq.len, "k MUST be smaller than feedback_sl_harq length\n");
-      AssertFatal(i < (psfch_period * num_subch), "k MUST be smaller than %d\n", (psfch_period * num_subch));
+      AssertFatal(i < (psfch_period * num_subch), "k MUST be smaller than %ld\n", (psfch_period * num_subch));
       NR_UE_sl_harq_t *cur_harq = matched_harqs[i];
       sl_nr_tx_rx_config_psfch_pdu_t *psfch_pdu = &rx_config->sl_rx_config_list[0].rx_psfch_pdu_list[i];
       fill_psfch_params_rx(rx_config, psfch_pdu, psfch_params, cur_harq, mac, psfch_period, slot);

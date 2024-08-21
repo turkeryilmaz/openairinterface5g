@@ -613,5 +613,16 @@ void handle_nr_ue_sl_harq(module_id_t mod_id, frame_t frame, sub_frame_t slot, s
 
 int nr_ue_sl_acknack_scheduling(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx_ind,
                                 long psfch_period, uint16_t frame, uint16_t slot, const int nr_slots_frame);
+
+int get_feedback_frame_slot(NR_UE_MAC_INST_t *mac, NR_TDD_UL_DL_Pattern_t *tdd,
+                            uint8_t feedback_offset, uint8_t psfch_min_time_gap,
+                            const int nr_slots_frame, uint16_t frame, uint16_t slot,
+                            long psfch_period, int *psfch_frame, int *psfch_slot);
+
+int get_pssch_to_harq_feedback(uint8_t *pssch_to_harq_feedback,
+                               uint8_t psfch_min_time_gap,
+                               NR_TDD_UL_DL_Pattern_t *tdd,
+                               const int nr_slots_frame);
+
 #endif
 /** @}*/
