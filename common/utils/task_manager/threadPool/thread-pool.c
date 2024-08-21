@@ -305,7 +305,7 @@ int main() {
   }
   clock_gettime(CLOCK_MONOTONIC, &end);
   long long dur=(end.tv_sec-st.tv_sec)*1000*1000+(end.tv_nsec-st.tv_nsec)/1000;
-  printf("In µs, Total time per group of %d job:%lld, work time per job %d, overhead per job %lld\n",
+  printf("In microseconds, Total time per group of %d job:%lld, work time per job %d, overhead per job %lld\n",
 	 nb_jobs, dur/1000, cumulProcessTime/1000, (dur-cumulProcessTime)/(1000*nb_jobs));
 
 	/*
