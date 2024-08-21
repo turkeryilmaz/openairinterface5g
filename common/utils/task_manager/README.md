@@ -21,11 +21,6 @@ task\_manager\_gen header file.
     task that consists of a function pointer where the task will run and a
     void* arg to the function. Similar syntax to c++ std::async.
 
-The underlying thread pool of the task manager can be selected at compile
-time uncommenting the desired thread pool in file task\_man\_gen.h
-It is not expected to be utilized by basic users, and thus, more
-sophisticated methods for selection are not provided.
-
 Joining tasks
 -----------
 
