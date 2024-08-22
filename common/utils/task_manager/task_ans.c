@@ -27,14 +27,6 @@
 #include <stdlib.h>
 #include <time.h>
 
-#if defined(__i386__) || defined(__x86_64__)
-  #define pause_or_yield  __builtin_ia32_pause
-#elif defined(__aarch64__)
-  #define pause_or_yield() asm volatile("yield" ::: "memory")
-#else
-#error Unknown CPU architecture
-#endif
-
 void completed_task_ans(task_ans_t* task)
 {
   DevAssert(task != NULL);
@@ -54,7 +46,6 @@ void join_task_ans(task_ans_t* arr, size_t len)
   // The Art of Writing Efficient Programs:
   // An advanced programmer's guide to efficient hardware utilization
   // and compiler optimizations using C++ examples
-  // P.S. Should work better than sched_yield() or pause_or_yield()
   const struct timespec ns = {0,1};
   uint64_t i = 0;
   int j = len -1;
@@ -69,5 +60,3 @@ void join_task_ans(task_ans_t* arr, size_t len)
     }
   }
 }
-
-#undef pause_or_yield
