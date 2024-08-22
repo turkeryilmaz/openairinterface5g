@@ -338,7 +338,7 @@ nr_initial_sync_t nr_initial_sync(UE_nr_rxtx_proc_t *proc,
           ssbInfo->gscnInfo.ssbFirstSC,
           ssbInfo->gscnInfo.ssRef);
     ssbInfo->ans = &ans[s];
-    task_t t = {.func =  nr_scan_ssb, .args = ssbInfo};
+    task_t t = {.func = nr_scan_ssb, .args = ssbInfo};
     async_task_manager(&get_nrUE_params()->man, t);
   }
 

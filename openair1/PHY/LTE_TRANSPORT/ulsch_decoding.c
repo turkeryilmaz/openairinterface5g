@@ -240,10 +240,10 @@ void processULSegment(void * arg) {
                                    1,
                                    r,
                                    &E)==-1) {
-     // Task completed in parallel
-     completed_task_ans(rdata->ans);
-     LOG_E(PHY,"ulsch_decoding.c: Problem in rate matching\n");
-     return;
+    // Task completed in parallel
+    completed_task_ans(rdata->ans);
+    LOG_E(PHY, "ulsch_decoding.c: Problem in rate matching\n");
+    return;
    }
    stop_meas(&eNB->ulsch_rate_unmatching_stats);
    int max_Ncb = 3*ulsch_harq->RTC[r]*32 ;
@@ -288,7 +288,6 @@ void processULSegment(void * arg) {
                                             &eNB->ulsch_tc_intl2_stats,
                                             &ulsch_harq->abort_decode);
 
-
   // Task completed in parallel
   completed_task_ans(rdata->ans);
 }
@@ -302,7 +301,12 @@ void processULSegment(void * arg) {
   @returns 0 on success
 */
 
-static int ulsch_decoding_data(PHY_VARS_eNB *eNB, L1_rxtx_proc_t *proc, int UE_id, int harq_pid, int llr8_flag, thread_info_tm_t* t_info)
+static int ulsch_decoding_data(PHY_VARS_eNB *eNB,
+                               L1_rxtx_proc_t *proc,
+                               int UE_id,
+                               int harq_pid,
+                               int llr8_flag,
+                               thread_info_tm_t *t_info)
 {
   unsigned int r_offset=0;
   int offset = 0;
@@ -338,7 +342,7 @@ static int ulsch_decoding_data(PHY_VARS_eNB *eNB, L1_rxtx_proc_t *proc, int UE_i
     else
       E = ulsch_harq->Qm * ((GpmodC==0?0:1) + (Gp/ulsch_harq->C));
 
-    turboDecode_t* rdata = &((turboDecode_t*)t_info->buf)[t_info->len];
+    turboDecode_t *rdata = &((turboDecode_t *)t_info->buf)[t_info->len];
     DevAssert(t_info->len < t_info->cap);
     rdata->ans = &t_info->ans[t_info->len];
     t_info->len += 1;
@@ -399,14 +403,13 @@ static inline unsigned int lte_gold_unscram(unsigned int *x1, unsigned int *x2, 
   //  printf("n=%d : c %x\n",n,x1^x2);
 }
 
-unsigned int  ulsch_decoding(PHY_VARS_eNB *eNB,
-                             L1_rxtx_proc_t *proc,
-                             uint8_t UE_id,
-                             uint8_t control_only_flag,
-                             uint8_t Nbundled,
-                             uint8_t llr8_flag,
-                             thread_info_tm_t* t_info
-			     )
+unsigned int ulsch_decoding(PHY_VARS_eNB *eNB,
+                            L1_rxtx_proc_t *proc,
+                            uint8_t UE_id,
+                            uint8_t control_only_flag,
+                            uint8_t Nbundled,
+                            uint8_t llr8_flag,
+                            thread_info_tm_t *t_info)
 {
   int16_t *ulsch_llr = eNB->pusch_vars[UE_id]->llr;
   LTE_DL_FRAME_PARMS *frame_parms = &eNB->frame_parms;

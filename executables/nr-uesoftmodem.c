@@ -411,7 +411,7 @@ int main(int argc, char **argv)
 #endif
 
   int core_id[128] = {0};
-  span_core_id_t out = {.cap = 128, .core_id = core_id };
+  span_core_id_t out = {.cap = 128, .core_id = core_id};
   parse_num_threads(get_softmodem_params()->threadPoolConfig, &out);
   init_task_manager(&nrUE_params.man, out.core_id, out.sz);
   //randominit (0);

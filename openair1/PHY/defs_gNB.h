@@ -699,7 +699,7 @@ typedef struct PHY_VARS_gNB_s {
   struct processingData_L1tx *msgDataTx;
   void *scopeData;
   /// structure for analyzing high-level RT measurements
-  rt_L1_profiling_t rt_L1_profiling; 
+  rt_L1_profiling_t rt_L1_profiling;
 
   task_manager_t man;
   // Second tp needed to avoid a cycle at rx_func tx_func
@@ -744,7 +744,7 @@ typedef struct LDPCDecode_s {
   int offset;
   int decodeIterations;
   uint32_t tbslbrm;
-  task_ans_t* ans;
+  task_ans_t *ans;
 } ldpcDecode_t;
 
 struct ldpcReqId {

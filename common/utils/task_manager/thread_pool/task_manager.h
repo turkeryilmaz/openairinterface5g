@@ -29,15 +29,14 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-typedef struct{
+typedef struct {
   uint8_t* buf;
   size_t len;
   size_t cap; // capacity
   task_ans_t* ans;
 } thread_info_tm_t;
 
-typedef struct{
-
+typedef struct {
   pthread_t* t_arr;
   size_t len_thr;
 
@@ -53,7 +52,7 @@ typedef struct{
 
 void init_ws_task_manager(ws_task_manager_t* man, int* core_id, size_t num_threads);
 
-void free_ws_task_manager(ws_task_manager_t* man, void (*clean)(task_t* args) );
+void free_ws_task_manager(ws_task_manager_t* man, void (*clean)(task_t* args));
 
 void async_ws_task_manager(ws_task_manager_t* man, task_t t);
 

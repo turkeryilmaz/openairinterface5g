@@ -565,8 +565,8 @@ int main(int argc, char *argv[])
 
   const int max_cid = 32;
   int lst_core_id[max_cid];
-  for(int i = 0; i < max_cid; ++i){
-     lst_core_id[i] = -1;
+  for (int i = 0; i < max_cid; ++i) {
+    lst_core_id[i] = -1;
   }
   DevAssert(threadCnt < max_cid);
   init_task_manager(&gNB->man, lst_core_id, max(threadCnt, 1));

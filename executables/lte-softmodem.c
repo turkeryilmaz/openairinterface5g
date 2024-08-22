@@ -542,9 +542,9 @@ int main ( int argc, char **argv )
   for (int x=0; x < RC.nb_L1_inst; x++)
     for (int CC_id=0; CC_id<RC.nb_L1_CC[x]; CC_id++) {
       L1_rxtx_proc_t *L1proc= &RC.eNB[x][CC_id]->proc.L1_proc;
-      L1_rxtx_proc_t *L1proctx= &RC.eNB[x][CC_id]->proc.L1_proc_tx;
+      L1_rxtx_proc_t *L1proctx = &RC.eNB[x][CC_id]->proc.L1_proc_tx;
       L1proc->respDecode=(notifiedFIFO_t*) malloc(sizeof(notifiedFIFO_t));
-      if ( strlen(get_softmodem_params()->threadPoolConfig) > 0 ){
+      if (strlen(get_softmodem_params()->threadPoolConfig) > 0) {
         L1proc->man = calloc(1, sizeof(task_manager_t));
         AssertFatal(L1proc->man != NULL, "Memory exhausted");
 
@@ -552,7 +552,7 @@ int main ( int argc, char **argv )
         span_core_id_t out = {.cap = 128, .core_id = core_id};
         parse_num_threads(get_softmodem_params()->threadPoolConfig, &out);
         init_task_manager(L1proc->man, out.core_id, out.sz);
-      }else {
+      } else {
         L1proc->man = calloc(1, sizeof(task_manager_t));
         AssertFatal(L1proc->man != NULL, "Memory exhausted");
         int lst_core_id = -1;

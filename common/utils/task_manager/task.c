@@ -39,7 +39,7 @@ void parse_num_threads(char const* params, span_core_id_t* out)
   int const logical_cores = get_nprocs_conf();
   DevAssert(logical_cores > 0);
 
-  char *saveptr = NULL;
+  char* saveptr = NULL;
   char* params_cpy = strdup(params);
   char* curptr = strtok_r(params_cpy, ",", &saveptr);
 
@@ -67,4 +67,3 @@ void parse_num_threads(char const* params, span_core_id_t* out)
 
   free(params_cpy);
 }
-

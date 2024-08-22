@@ -105,7 +105,7 @@ int main()
   notifiedFIFO_t worker_back;
   initNotifiedFIFO(&worker_back);
 
-  //sleep(1);
+  // sleep(1);
   int cumulProcessTime = 0;
   struct timespec st, end;
   clock_gettime(CLOCK_MONOTONIC, &st);

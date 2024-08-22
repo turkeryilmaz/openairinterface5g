@@ -92,9 +92,8 @@ void deref_sched_response(int _)
   exit(1);
 }
 
-int nr_postDecode_sim(PHY_VARS_gNB *gNB, ldpcDecode_t *rdata , int *nb_ok)
+int nr_postDecode_sim(PHY_VARS_gNB *gNB, ldpcDecode_t *rdata, int *nb_ok)
 {
-
   NR_UL_gNB_HARQ_t *ulsch_harq = rdata->ulsch_harq;
   int r = rdata->segment_r;
 
@@ -108,7 +107,7 @@ int nr_postDecode_sim(PHY_VARS_gNB *gNB, ldpcDecode_t *rdata , int *nb_ok)
   }
 
   // if all segments are done
-  if (rdata->nbSegments == ulsch_harq->processedSegments){
+  if (rdata->nbSegments == ulsch_harq->processedSegments) {
     return *nb_ok == rdata->nbSegments;
   }
 
@@ -600,20 +599,21 @@ int main(int argc, char **argv)
       exit(-1);
 #endif
 
-     ldpcDecode_t arr[16] = {0};
-     task_ans_t ans[16] = {0};
-     thread_info_tm_t t_info = {.buf = (uint8_t*)arr, .cap = 16, .len = 0, .ans = ans };
-     int nbDecode = nr_ulsch_decoding(gNB, UE_id, channel_output_fixed, frame_parms, rel15_ul, frame, subframe, harq_pid, G, &t_info);
-     DevAssert(nbDecode > 0);
+      ldpcDecode_t arr[16] = {0};
+      task_ans_t ans[16] = {0};
+      thread_info_tm_t t_info = {.buf = (uint8_t *)arr, .cap = 16, .len = 0, .ans = ans};
+      int nbDecode =
+          nr_ulsch_decoding(gNB, UE_id, channel_output_fixed, frame_parms, rel15_ul, frame, subframe, harq_pid, G, &t_info);
+      DevAssert(nbDecode > 0);
 
-     int nb_ok = 0;
-     join_task_ans(t_info.ans, t_info.len);
-     for(size_t i = 0; i < nbDecode; ++i){
-       ret = nr_postDecode_sim(gNB, &arr[i], &nb_ok);
-     }
-     nbDecode = 0;
-     if (ret)
-       n_errors++;
+      int nb_ok = 0;
+      join_task_ans(t_info.ans, t_info.len);
+      for (size_t i = 0; i < nbDecode; ++i) {
+        ret = nr_postDecode_sim(gNB, &arr[i], &nb_ok);
+      }
+      nbDecode = 0;
+      if (ret)
+        n_errors++;
     }
 
     printf("*****************************************\n");
@@ -638,7 +638,7 @@ int main(int argc, char **argv)
     free(gNB->gNB_config.tdd_table.max_tdd_periodicity_list[i].max_num_of_symbol_per_slot_list);
   free(gNB->gNB_config.tdd_table.max_tdd_periodicity_list);
 
-  void (*clean)(task_t* args) = NULL;
+  void (*clean)(task_t *args) = NULL;
   free_task_manager(&gNB->man, clean);
 
   term_nr_ue_signal(UE, 1);

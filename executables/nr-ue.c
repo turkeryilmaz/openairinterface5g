@@ -430,10 +430,10 @@ static void UE_synch(void *arg) {
       LOG_E(PHY, "synch Failed: \n");
   }
 
-   if (syncD->elt->reponseFifo)
-       pushNotifiedFIFO(syncD->elt->reponseFifo, syncD->elt);
-   else
-     delNotifiedFIFO_elt(syncD->elt);
+  if (syncD->elt->reponseFifo)
+    pushNotifiedFIFO(syncD->elt->reponseFifo, syncD->elt);
+  else
+    delNotifiedFIFO_elt(syncD->elt);
 }
 
 static void RU_write(nr_rxtx_thread_data_t *rxtxD, bool sl_tx_action)
@@ -602,7 +602,7 @@ void processSlotTX(void *arg)
   RU_write(rxtxD, sl_tx_action);
 
   if (rxtxD->elt->reponseFifo)
-     pushNotifiedFIFO(rxtxD->elt->reponseFifo, rxtxD->elt);
+    pushNotifiedFIFO(rxtxD->elt->reponseFifo, rxtxD->elt);
   else
     delNotifiedFIFO_elt(rxtxD->elt);
 }
@@ -1030,7 +1030,7 @@ void *UE_thread(void *arg)
     stream_status = STREAM_STATUS_SYNCED;
     tx_wait_for_dlsch[curMsgTx->proc.nr_slot_tx] = 0;
     curMsgTx->elt = newTx;
-    t = (task_t){.func = processSlotTX, .args= curMsgTx};
+    t = (task_t){.func = processSlotTX, .args = curMsgTx};
     async_task_manager(&(get_nrUE_params()->man), t);
   }
 

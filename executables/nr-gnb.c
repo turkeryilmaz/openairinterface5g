@@ -409,8 +409,8 @@ void term_gNB_Tpool(int inst) {
   abortNotifiedFIFO(&gNB->L1_tx_out);
   abortNotifiedFIFO(&gNB->L1_rx_out);
 
-  void (*clean)(task_t*) = NULL;
-  free_task_manager(&gNB->man , clean);
+  void (*clean)(task_t *) = NULL;
+  free_task_manager(&gNB->man, clean);
 
   gNB_L1_proc_t *proc = &gNB->proc;
   if (!get_softmodem_params()->emulate_l1)
@@ -533,7 +533,6 @@ void init_gNB(int wait_for_sync) {
     gNB->chest_freq = get_softmodem_params()->chest_freq;
 
   }
-
 
   LOG_I(PHY,"[nr-gnb.c] gNB structure allocated\n");
 }

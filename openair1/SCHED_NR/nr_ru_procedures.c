@@ -40,7 +40,6 @@
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "common/utils/task_manager/task_manager_gen.h"
 
-
 #include "T.h"
 
 #include "assertions.h"
@@ -86,7 +85,6 @@ void nr_feptx0(RU_t *ru,int tti_tx,int first_symbol, int num_symbols, int aa) {
                  CYCLIC_PREFIX);
   } else {
     if (fp->numerology_index != 0) {
-
       if (!(slot%(fp->slots_per_subframe/2))&&(first_symbol==0)) { // case where first symbol in slot has longer prefix
         PHY_ofdm_mod(&ru->common.txdataF_BF[aa][slot_offsetF],
                      (int*)&ru->common.txdata[aa][slot_offset],
@@ -144,7 +142,6 @@ void nr_feptx0(RU_t *ru,int tti_tx,int first_symbol, int num_symbols, int aa) {
 
 // RU FEP TX OFDM modulation, single-thread
 void nr_feptx_ofdm(RU_t *ru,int frame_tx,int tti_tx) {
-
   nfapi_nr_config_request_scf_t *cfg = &ru->gNB_list[0]->gNB_config;
   NR_DL_FRAME_PARMS *fp=ru->nr_frame_parms;
   int cyclic_prefix_type = NFAPI_CP_NORMAL;
@@ -234,7 +231,7 @@ void nr_fep_full(RU_t *ru, int slot) {
   NR_DL_FRAME_PARMS *fp = ru->nr_frame_parms;
 
   // if ((fp->frame_type == TDD) &&
-     // (subframe_select(fp,proc->tti_rx) != NR_UPLINK_SLOT)) return;
+  // (subframe_select(fp,proc->tti_rx) != NR_UPLINK_SLOT)) return;
 
   LOG_D(PHY,"In fep_full for slot = %d\n", proc->tti_rx);
 
@@ -258,8 +255,6 @@ void nr_fep_full(RU_t *ru, int slot) {
 
   if (ru->idx == 0) VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME( VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_RU_FEPRX, 0 );
   stop_meas(&ru->ofdm_demod_stats);
-
-
 }
 
 // core routine for FEP TX, called from threads in RU TX thread-pool
@@ -273,7 +268,7 @@ void nr_feptx(void *arg) {
   int  startSymbol = feptx->startSymbol;
   NR_DL_FRAME_PARMS  *fp    = ru->nr_frame_parms;
   int  numSymbols  = feptx->numSymbols;
-  int  numSamples  = feptx->numSymbols*fp->ofdm_symbol_size;
+  int numSamples = feptx->numSymbols * fp->ofdm_symbol_size;
   int txdataF_offset = (slot*fp->samples_per_slot_wCP) + startSymbol*fp->ofdm_symbol_size;
   int txdataF_BF_offset = startSymbol*fp->ofdm_symbol_size;
 
@@ -328,14 +323,14 @@ void nr_feptx(void *arg) {
 
 // RU FEP TX using thread-pool
 void nr_feptx_tp(RU_t *ru, int frame_tx, int slot) {
-
   nfapi_nr_config_request_scf_t *cfg = &ru->gNB_list[0]->gNB_config;
-  if (nr_slot_select(cfg,frame_tx,slot) == NR_UPLINK_SLOT) return;
+  if (nr_slot_select(cfg, frame_tx, slot) == NR_UPLINK_SLOT)
+     return;
 
   if (ru->idx == 0) VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME( VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_RU_FEPTX_OFDM, 1 );
   start_meas(&ru->ofdm_total_stats);
 
-  size_t const sz = ru->nb_tx + (ru->half_slot_parallelization>0)*ru->nb_tx;
+  size_t const sz = ru->nb_tx + (ru->half_slot_parallelization > 0) * ru->nb_tx;
   AssertFatal(sz < 64, "Please, increase the buffer size");
   feptx_cmd_t arr[64] = {0};
   task_ans_t ans[64] = {0};
@@ -345,29 +340,30 @@ void nr_feptx_tp(RU_t *ru, int frame_tx, int slot) {
     feptx_cmd_t *feptx_cmd = &arr[nbfeptx];
     feptx_cmd->ans = &ans[nbfeptx];
 
-       feptx_cmd->aid          = aid;
-       feptx_cmd->ru           = ru;
-       feptx_cmd->slot         = slot;
-       feptx_cmd->startSymbol  = 0;
-       feptx_cmd->numSymbols   = (ru->half_slot_parallelization>0)?ru->nr_frame_parms->symbols_per_slot>>1:ru->nr_frame_parms->symbols_per_slot;
+    feptx_cmd->aid = aid;
+    feptx_cmd->ru = ru;
+    feptx_cmd->slot = slot;
+    feptx_cmd->startSymbol = 0;
+    feptx_cmd->numSymbols =
+        (ru->half_slot_parallelization > 0) ? ru->nr_frame_parms->symbols_per_slot >> 1 : ru->nr_frame_parms->symbols_per_slot;
 
-       task_t t = {.func = nr_feptx, .args = feptx_cmd};
-       async_task_manager(&ru->man, t);
-       nbfeptx++;
-       if (ru->half_slot_parallelization>0) {
-         feptx_cmd_t *feptx_cmd = &arr[nbfeptx];
-         feptx_cmd->ans = &ans[nbfeptx];
+    task_t t = {.func = nr_feptx, .args = feptx_cmd};
+    async_task_manager(&ru->man, t);
+    nbfeptx++;
+    if (ru->half_slot_parallelization > 0) {
+      feptx_cmd_t *feptx_cmd = &arr[nbfeptx];
+      feptx_cmd->ans = &ans[nbfeptx];
 
-         feptx_cmd->aid          = aid;
-         feptx_cmd->ru           = ru;
-         feptx_cmd->slot         = slot;
-         feptx_cmd->startSymbol  = ru->nr_frame_parms->symbols_per_slot>>1;
-         feptx_cmd->numSymbols   = ru->nr_frame_parms->symbols_per_slot>>1;
+      feptx_cmd->aid = aid;
+      feptx_cmd->ru = ru;
+      feptx_cmd->slot = slot;
+      feptx_cmd->startSymbol = ru->nr_frame_parms->symbols_per_slot >> 1;
+      feptx_cmd->numSymbols = ru->nr_frame_parms->symbols_per_slot >> 1;
 
-         task_t t = {.func = nr_feptx, .args = feptx_cmd};
-         async_task_manager(&ru->man, t);
-         nbfeptx++;
-       }
+      task_t t = {.func = nr_feptx, .args = feptx_cmd};
+      async_task_manager(&ru->man, t);
+      nbfeptx++;
+    }
   }
 
   join_task_ans(ans, nbfeptx);
@@ -394,12 +390,7 @@ void nr_fep(void* arg) {
 
   int offset = (tti_rx % RU_RX_SLOT_DEPTH) * fp->symbols_per_slot * fp->ofdm_symbol_size;
   for (int l = startSymbol; l <= endSymbol; l++)
-      nr_slot_fep_ul(fp,
-                     ru->common.rxdata[aid],
-                     &ru->common.rxdataF[aid][offset],
-                     l,
-                     tti_rx,
-                     ru->N_TA_offset);
+     nr_slot_fep_ul(fp, ru->common.rxdata[aid], &ru->common.rxdataF[aid][offset], l, tti_rx, ru->N_TA_offset);
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_RU_FEPRX+aid, 0);
 
   // Task completed in //
@@ -413,39 +404,40 @@ void nr_fep_tp(RU_t *ru, int slot) {
   if (ru->idx == 0) VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME( VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_RU_FEPRX, 1 );
   start_meas(&ru->ofdm_demod_stats);
 
-  size_t const sz = ru->nb_rx + (ru->half_slot_parallelization>0)*ru->nb_rx;
+  size_t const sz = ru->nb_rx + (ru->half_slot_parallelization > 0) * ru->nb_rx;
   AssertFatal(sz < 64, "Please, increase buffer size");
   feprx_cmd_t arr[64] = {0};
   task_ans_t ans[64] = {0};
 
   for (int aid=0;aid<ru->nb_rx;aid++) {
-       feprx_cmd_t* feprx_cmd= &arr[nbfeprx];
-       feprx_cmd->ans = &ans[nbfeprx];
+    feprx_cmd_t *feprx_cmd = &arr[nbfeprx];
+    feprx_cmd->ans = &ans[nbfeprx];
 
-       feprx_cmd->aid          = aid;
-       feprx_cmd->ru           = ru;
-       feprx_cmd->slot         = ru->proc.tti_rx;
-       feprx_cmd->startSymbol  = 0;
-       feprx_cmd->endSymbol    = (ru->half_slot_parallelization > 0)?(ru->nr_frame_parms->symbols_per_slot>>1)-1:(ru->nr_frame_parms->symbols_per_slot-1);
+    feprx_cmd->aid = aid;
+    feprx_cmd->ru = ru;
+    feprx_cmd->slot = ru->proc.tti_rx;
+    feprx_cmd->startSymbol = 0;
+    feprx_cmd->endSymbol = (ru->half_slot_parallelization > 0) ? (ru->nr_frame_parms->symbols_per_slot >> 1) - 1
+                                                               : (ru->nr_frame_parms->symbols_per_slot - 1);
 
-       task_t t = {.func = nr_fep, .args = feprx_cmd};
-       async_task_manager(&ru->man, t);
-       nbfeprx++;
-       if (ru->half_slot_parallelization>0) {
-       feprx_cmd_t* feprx_cmd= &arr[nbfeprx];
-       feprx_cmd->ans = &ans[nbfeprx];
+    task_t t = {.func = nr_fep, .args = feprx_cmd};
+    async_task_manager(&ru->man, t);
+    nbfeprx++;
+    if (ru->half_slot_parallelization > 0) {
+      feprx_cmd_t *feprx_cmd = &arr[nbfeprx];
+      feprx_cmd->ans = &ans[nbfeprx];
 
-       feprx_cmd->aid          = aid;
-       feprx_cmd->ru           = ru;
-       feprx_cmd->slot         = ru->proc.tti_rx;
-	     feprx_cmd->startSymbol  = ru->nr_frame_parms->symbols_per_slot>>1;
-       feprx_cmd->endSymbol    = ru->nr_frame_parms->symbols_per_slot-1;
+      feprx_cmd->aid = aid;
+      feprx_cmd->ru = ru;
+      feprx_cmd->slot = ru->proc.tti_rx;
+      feprx_cmd->startSymbol = ru->nr_frame_parms->symbols_per_slot >> 1;
+      feprx_cmd->endSymbol = ru->nr_frame_parms->symbols_per_slot - 1;
 
-       task_t t = {.func = nr_fep, .args = feprx_cmd};
-       async_task_manager(&ru->man, t);
+      task_t t = {.func = nr_fep, .args = feprx_cmd};
+      async_task_manager(&ru->man, t);
 
-       nbfeprx++;
-       }
+      nbfeprx++;
+    }
   }
 
   join_task_ans(ans, nbfeprx);

@@ -522,14 +522,13 @@ void rx_ulsch(PHY_VARS_eNB *eNB,
   @param llr8_flag If 1, indicate that the 8-bit turbo decoder should be used
   @returns 0 on success
 */
-unsigned int  ulsch_decoding(PHY_VARS_eNB *phy_vars_eNB,
-                             L1_rxtx_proc_t *proc,
-                             uint8_t UE_id,
-                             uint8_t control_only_flag,
-                             uint8_t Nbundled,
-                             uint8_t llr8_flag,
-                             thread_info_tm_t* t_info
-			     );
+unsigned int ulsch_decoding(PHY_VARS_eNB *phy_vars_eNB,
+                            L1_rxtx_proc_t *proc,
+                            uint8_t UE_id,
+                            uint8_t control_only_flag,
+                            uint8_t Nbundled,
+                            uint8_t llr8_flag,
+                            thread_info_tm_t *t_info);
 
 void generate_phich_top(PHY_VARS_eNB *phy_vars_eNB,
                         L1_rxtx_proc_t *proc,

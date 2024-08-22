@@ -46,7 +46,6 @@
 #include "nfapi/open-nFAPI/nfapi/public_inc/nfapi_nr_interface.h"
 #include "common/utils/task_manager/task_manager_gen.h"
 
-
 //#define ENABLE_PHY_PAYLOAD_DEBUG 1
 
 #define OAI_UL_LDPC_MAX_NUM_LLR 27000//26112 // NR_LDPC_NCOL_BG1*NR_LDPC_ZMAX = 68*384
@@ -71,15 +70,13 @@ void nr_dlsch_unscrambling(int16_t *llr, uint32_t size, uint8_t q, uint32_t Nid,
   nr_codeword_unscrambling(llr, size, q, Nid, n_RNTI);
 }
 
-
-
 static bool nr_ue_postDecode(PHY_VARS_NR_UE *phy_vars_ue,
                              ldpcDecode_ue_t *rdata,
                              bool last,
                              int b_size,
                              uint8_t b[b_size],
                              int *num_seg_ok,
-                             UE_nr_rxtx_proc_t const* proc)
+                             UE_nr_rxtx_proc_t const *proc)
 {
   NR_DL_UE_HARQ_t *harq_process = rdata->harq_process;
   NR_UE_DLSCH_t *dlsch = (NR_UE_DLSCH_t *) rdata->dlsch;
@@ -121,7 +118,7 @@ static bool nr_ue_postDecode(PHY_VARS_NR_UE *phy_vars_ue,
           LOG_D(PHY, "DLSCH received nok \n");
           return true; //stop
         }
-        const int sz=A / 8;
+        const int sz = A / 8;
         if (b[sz] == 0 && b[sz + 1] == 0) { // We search only a reccuring OAI error that propagates all 0 packets with a 0 CRC, so we
                                           // do the check only if the 2 first bytes of the CRC are 0 (it can be CRC16 or CRC24)
           int i = 0;
@@ -281,8 +278,8 @@ static void nr_processDLSegment(void *arg)
     stop_meas(&rdata->ts_ldpc_decode);
   }
 
-    // Task completed in parallel
-    completed_task_ans(rdata->ans);
+  // Task completed in parallel
+  completed_task_ans(rdata->ans);
 }
 
 uint32_t nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
@@ -422,13 +419,13 @@ uint32_t nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
 
   ldpcDecode_ue_t arr[harq_process->C];
   task_ans_t ans[harq_process->C];
-  memset(ans, 0, harq_process->C*sizeof(task_ans_t));
+  memset(ans, 0, harq_process->C * sizeof(task_ans_t));
 
   for (r=0; r<harq_process->C; r++) {
     //printf("start rx segment %d\n",r);
     uint32_t E = nr_get_E(G, harq_process->C, dlsch->dlsch_config.qamModOrder, dlsch->Nl, r);
     decParams.R = nr_get_R_ldpc_decoder(dlsch->dlsch_config.rv, E, decParams.BG, decParams.Z, &harq_process->llrLen, harq_process->DLround);
-    ldpcDecode_ue_t* rdata = &arr[r];
+    ldpcDecode_ue_t *rdata = &arr[r];
     rdata->ans = &ans[r];
 
     rdata->phy_vars_ue = phy_vars_ue;
@@ -454,7 +451,7 @@ uint32_t nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
     reset_meas(&rdata->ts_rate_unmatch);
     reset_meas(&rdata->ts_ldpc_decode);
 
-    task_t t = {.args = rdata, .func = nr_processDLSegment };
+    task_t t = {.args = rdata, .func = nr_processDLSegment};
     async_task_manager(&get_nrUE_params()->man, t);
     LOG_D(PHY, "Added a block to decode, in pipe: %d\n", r);
     r_offset += E;
@@ -463,9 +460,9 @@ uint32_t nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
   }
   int num_seg_ok = 0;
   int nbDecode = harq_process->C;
-  if(nbDecode > 0){
+  if (nbDecode > 0) {
     join_task_ans(ans, nbDecode);
-    for(size_t i = 0; i < nbDecode ; ++i){
+    for (size_t i = 0; i < nbDecode; ++i) {
       nr_ue_postDecode(phy_vars_ue, &arr[i], i == nbDecode - 1, b_size, b, &num_seg_ok, proc);
     }
   }

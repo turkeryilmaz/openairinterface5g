@@ -458,7 +458,7 @@ void phy_procedures_eNB_TX(PHY_VARS_eNB *eNB,
 
   // clear the transmit data array for the current subframe
   for (int aa = 0; aa < fp->nb_antenna_ports_eNB; aa++) {
-    if (eNB->use_DTX==0)
+    if (eNB->use_DTX == 0)
       memcpy(&eNB->common_vars.txdataF[aa][subframe * fp->ofdm_symbol_size * (fp->symbols_per_tti)],
 	     &eNB->subframe_mask[aa][subframe*fp->ofdm_symbol_size*fp->symbols_per_tti],
 	     fp->ofdm_symbol_size * (fp->symbols_per_tti) * sizeof (int32_t));
@@ -1233,7 +1233,8 @@ uci_procedures(PHY_VARS_eNB *eNB,
   } // end loop for (int i = 0; i < NUMBER_OF_UCI_MAX; i++) {
 }
 
-void postDecode(L1_rxtx_proc_t *proc, turboDecode_t* rdata){
+void postDecode(L1_rxtx_proc_t *proc, turboDecode_t *rdata)
+{
   LTE_eNB_ULSCH_t *ulsch = rdata->eNB->ulsch[rdata->UEid];
   LTE_UL_eNB_HARQ_t *ulsch_harq = rdata->ulsch_harq;
   PHY_VARS_eNB *eNB=rdata->eNB;
@@ -1330,7 +1331,7 @@ void pusch_procedures(PHY_VARS_eNB *eNB,L1_rxtx_proc_t *proc) {
 
   turboDecode_t arr[64] = {0};
   task_ans_t ans[64] = {0};
-  thread_info_tm_t t_info = { .ans = ans, .cap = 64, .len = 0, .buf = (uint8_t*)arr };
+  thread_info_tm_t t_info = {.ans = ans, .cap = 64, .len = 0, .buf = (uint8_t *)arr};
 
   for (i = 0; i < NUMBER_OF_ULSCH_MAX; i++) {
     ulsch = eNB->ulsch[i];
@@ -1389,9 +1390,8 @@ void pusch_procedures(PHY_VARS_eNB *eNB,L1_rxtx_proc_t *proc) {
                      i,
                      0, // control_only_flag
                      ulsch_harq->V_UL_DAI,
-                     ulsch_harq->nb_rb > 20 ? 1 : 0
-		     ,&t_info
-		     );
+                     ulsch_harq->nb_rb > 20 ? 1 : 0,
+                     &t_info);
     }
     else if ((ulsch) &&
              (ulsch->rnti>0) &&
@@ -1410,10 +1410,10 @@ void pusch_procedures(PHY_VARS_eNB *eNB,L1_rxtx_proc_t *proc) {
   const bool decode = proc->nbDecode;
   DevAssert(t_info.len == proc->nbDecode);
   if (proc->nbDecode > 0) {
-     join_task_ans(t_info.ans, t_info.len);
-     for(size_t i = 0; i < t_info.len; ++i){
-       postDecode(proc, &arr[i]);
-     }
+    join_task_ans(t_info.ans, t_info.len);
+    for (size_t i = 0; i < t_info.len; ++i) {
+      postDecode(proc, &arr[i]);
+    }
   }
   if (decode)
     stop_meas(&eNB->ulsch_decoding_stats);
@@ -1454,11 +1454,11 @@ void fill_rx_indication(PHY_VARS_eNB *eNB,
 
   // estimate timing advance for MAC
   sync_pos                               = lte_est_timing_advance_pusch(&eNB->frame_parms, eNB->pusch_vars[ULSCH_id]->drs_ch_estimates_time);
-  timing_advance_update                  = sync_pos;
+  timing_advance_update = sync_pos;
 
-  for (int i=0;i<NUMBER_OF_SCH_STATS_MAX;i++)
-      if (eNB->ulsch_stats[i].rnti == eNB->ulsch[ULSCH_id]->rnti)
-         eNB->ulsch_stats[i].timing_offset = sync_pos;
+  for (int i = 0; i < NUMBER_OF_SCH_STATS_MAX; i++)
+    if (eNB->ulsch_stats[i].rnti == eNB->ulsch[ULSCH_id]->rnti)
+      eNB->ulsch_stats[i].timing_offset = sync_pos;
   //  if (timing_advance_update > 10) { dump_ulsch(eNB,frame,subframe,ULSCH_id); exit(-1);}
   //  if (timing_advance_update < -10) { dump_ulsch(eNB,frame,subframe,ULSCH_id); exit(-1);}
   switch (eNB->frame_parms.N_RB_DL) {
@@ -1500,13 +1500,12 @@ void fill_rx_indication(PHY_VARS_eNB *eNB,
 
   pdu->rx_indication_rel8.timing_advance = timing_advance_update;
   // estimate UL_CQI for MAC
-  int total_power=0, avg_noise_power=0;
+  int total_power = 0, avg_noise_power = 0;
   for (int i=0;i<eNB->frame_parms.nb_antennas_rx;i++) {
      total_power+=(eNB->pusch_vars[ULSCH_id]->ulsch_power[i]);
      avg_noise_power+=(eNB->pusch_vars[ULSCH_id]->ulsch_noise_power[i])/eNB->frame_parms.nb_antennas_rx;
   }
-  int SNRtimes10 = dB_fixed_x10(total_power) -
-                   dB_fixed_x10(avg_noise_power);
+  int SNRtimes10 = dB_fixed_x10(total_power) - dB_fixed_x10(avg_noise_power);
 
   if (SNRtimes10 < -640)
     pdu->rx_indication_rel8.ul_cqi = 0;

@@ -1264,7 +1264,7 @@ int main(int argc, char **argv) {
   }
 
   L1_rxtx_proc_t *proc_eNB = &eNB->proc.L1_proc;
-  proc_eNB->respDecode=(notifiedFIFO_t*) malloc(sizeof(notifiedFIFO_t));
+  proc_eNB->respDecode = (notifiedFIFO_t *)malloc(sizeof(notifiedFIFO_t));
   initNotifiedFIFO(proc_eNB->respDecode);
 
   int lst_core_id = -1;

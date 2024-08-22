@@ -46,16 +46,16 @@ void join_task_ans(task_ans_t* arr, size_t len)
   // The Art of Writing Efficient Programs:
   // An advanced programmer's guide to efficient hardware utilization
   // and compiler optimizations using C++ examples
-  const struct timespec ns = {0,1};
+  const struct timespec ns = {0, 1};
   uint64_t i = 0;
-  int j = len -1;
-  for(; j != -1 ; i++){
-    for(; j != -1; --j){
+  int j = len - 1;
+  for (; j != -1; i++) {
+    for (; j != -1; --j) {
       int const task_completed = 1;
-      if(atomic_load_explicit(&arr[j].status, memory_order_acquire) != task_completed)
+      if (atomic_load_explicit(&arr[j].status, memory_order_acquire) != task_completed)
         break;
     }
-    if(i % 8 == 0){
+    if (i % 8 == 0) {
       nanosleep(&ns, NULL);
     }
   }

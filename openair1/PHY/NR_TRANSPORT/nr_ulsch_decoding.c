@@ -325,21 +325,20 @@ int decode_offload(PHY_VARS_gNB *phy_vars_gNB,
 }
 
 int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
-                        uint8_t ULSCH_id,
-                        short *ulsch_llr,
-                        NR_DL_FRAME_PARMS *frame_parms,
-                        nfapi_nr_pusch_pdu_t *pusch_pdu,
-                        uint32_t frame,
-                        uint8_t nr_tti_rx,
-                        uint8_t harq_pid,
-                        uint32_t G,
-                        thread_info_tm_t* t_info
-                        )
-  {
-    if (!ulsch_llr) {
-      LOG_E(PHY, "ulsch_decoding.c: NULL ulsch_llr pointer\n");
-      return -1;
-    }
+                      uint8_t ULSCH_id,
+                      short *ulsch_llr,
+                      NR_DL_FRAME_PARMS *frame_parms,
+                      nfapi_nr_pusch_pdu_t *pusch_pdu,
+                      uint32_t frame,
+                      uint8_t nr_tti_rx,
+                      uint8_t harq_pid,
+                      uint32_t G,
+                      thread_info_tm_t *t_info)
+{
+  if (!ulsch_llr) {
+    LOG_E(PHY, "ulsch_decoding.c: NULL ulsch_llr pointer\n");
+    return -1;
+  }
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_gNB_ULSCH_DECODING, 1);
 
@@ -445,7 +444,7 @@ int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
   for (int r = 0; r < harq_process->C; r++) {
     int E = nr_get_E(G, harq_process->C, Qm, n_layers, r);
 
-    ldpcDecode_t* rdata = &((ldpcDecode_t*)t_info->buf)[t_info->len];
+    ldpcDecode_t *rdata = &((ldpcDecode_t *)t_info->buf)[t_info->len];
     DevAssert(t_info->len < t_info->cap);
     rdata->ans = &t_info->ans[t_info->len];
     t_info->len += 1;

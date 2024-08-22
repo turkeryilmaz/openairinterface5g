@@ -864,11 +864,11 @@ int main(int argc, char **argv)
   unsigned char *test_input_bit;
   unsigned int errors_bit = 0;
 
-  int lst_core_id[8] = {-1,-1,-1,-1,-1,-1,-1,-1};
+  int lst_core_id[8] = {-1, -1, -1, -1, -1, -1, -1, -1};
   DevAssert(dlsch_threads < 9);
   init_task_manager(&nrUE_params.man, lst_core_id, max(1, dlsch_threads));
 
-  test_input_bit       = (unsigned char *) malloc16(sizeof(unsigned char) * 16 * 68 * 384);
+  test_input_bit = (unsigned char *)malloc16(sizeof(unsigned char) * 16 * 68 * 384);
   estimated_output_bit = (unsigned char *) malloc16(sizeof(unsigned char) * 16 * 68 * 384);
   
   // generate signal
@@ -1282,7 +1282,7 @@ int main(int argc, char **argv)
     free(r_im[i]);
   }
 
-  void (*clean)(task_t*) = NULL;
+  void (*clean)(task_t *) = NULL;
   free_task_manager(&nrUE_params.man, clean);
   free_task_manager(&gNB->man, clean);
 

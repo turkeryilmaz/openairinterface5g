@@ -351,7 +351,7 @@ int dlsch_encoding(PHY_VARS_eNB *eNB,
   memset(ans, 0, hadlsch->C * sizeof(task_ans_t));
 
   for (int r = 0, r_offset = 0; r < hadlsch->C; r++) {
-    turboEncode_t* rdata = &arr[r];
+    turboEncode_t *rdata = &arr[r];
     rdata->ans = &ans[r];
 
     rdata->input=hadlsch->c[r];
@@ -452,7 +452,7 @@ int dlsch_encoding_fembms_pmch(PHY_VARS_eNB *eNB,
   memset(ans, 0, hadlsch->C * sizeof(task_ans_t));
 
   for (int r = 0, r_offset = 0; r < hadlsch->C; r++) {
-    turboEncode_t* rdata = &arr[r];
+    turboEncode_t *rdata = &arr[r];
     rdata->ans = &ans[r];
 
     rdata->input=hadlsch->c[r];

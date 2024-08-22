@@ -386,12 +386,12 @@ int main(int argc, char **argv)
   parse_num_threads(gNBthreads, &out);
   init_task_manager(&gNB->man, out.core_id, out.sz);
 
-  int lst_core_id[8] = {-1,-1,-1,-1,-1,-1,-1,-1 };
+  int lst_core_id[8] = {-1, -1, -1, -1, -1, -1, -1, -1};
   DevAssert(dlsch_threads < 8);
   init_task_manager(&nrUE_params.man, lst_core_id, max(dlsch_threads, 1));
 
-  frame_parms = &gNB->frame_parms; //to be initialized I suppose (maybe not necessary for PBCH)
-	frame_parms->nb_antennas_tx = n_tx;
+  frame_parms = &gNB->frame_parms; // to be initialized I suppose (maybe not necessary for PBCH)
+  frame_parms->nb_antennas_tx = n_tx;
 	frame_parms->nb_antennas_rx = n_rx;
 	frame_parms->N_RB_DL = N_RB_DL;
 	frame_parms->Ncp = extended_prefix_flag ? EXTENDED : NORMAL;
@@ -669,7 +669,7 @@ int main(int argc, char **argv)
     free(gNB->gNB_config.tdd_table.max_tdd_periodicity_list[i].max_num_of_symbol_per_slot_list);
   free(gNB->gNB_config.tdd_table.max_tdd_periodicity_list);
 
-  void (*clean)(task_t*) = NULL;
+  void (*clean)(task_t *) = NULL;
   free_task_manager(&nrUE_params.man, clean);
   free_task_manager(&gNB->man, clean);
 

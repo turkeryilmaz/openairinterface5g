@@ -175,8 +175,8 @@ typedef struct {
  struct RU_t_s *ru;
  int startSymbol;
  int endSymbol;
- int slot; 
- task_ans_t* ans;
+ int slot;
+ task_ans_t *ans;
 } feprx_cmd_t;
 
 typedef struct {
@@ -185,7 +185,7 @@ typedef struct {
  int slot; 
  int startSymbol;
  int numSymbols;
- task_ans_t* ans;
+ task_ans_t *ans;
 } feptx_cmd_t;
 
 typedef struct {

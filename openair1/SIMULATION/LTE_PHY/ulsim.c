@@ -802,7 +802,7 @@ int main(int argc, char **argv) {
   AssertFatal(proc_rxtx->man != NULL, "Memory exhausted");
   init_task_manager(proc_rxtx->man, &lst_core_id, 1);
 
-  proc_rxtx->respDecode=(notifiedFIFO_t*) malloc(sizeof(notifiedFIFO_t));
+  proc_rxtx->respDecode = (notifiedFIFO_t *)malloc(sizeof(notifiedFIFO_t));
   initNotifiedFIFO(proc_rxtx->respDecode);
 
   printf("Init UL hopping UE\n");

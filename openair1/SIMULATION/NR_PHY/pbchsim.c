@@ -898,7 +898,7 @@ int main(int argc, char **argv)
     free(txdata[i]);
   }
 
-  void (*clean)(task_t*) = NULL;
+  void (*clean)(task_t *) = NULL;
   free_task_manager(&nrUE_params.man, clean);
 
   free(s_re);

@@ -1396,7 +1396,7 @@ typedef struct puschSymbolProc_s {
   int16_t **llr_layers;
   int16_t *scramblingSequence;
   uint32_t nvar;
-  task_ans_t* ans;
+  task_ans_t *ans;
 } puschSymbolProc_t;
 
 static void nr_pusch_symbol_processing(void *arg)
@@ -1653,11 +1653,11 @@ int nr_rx_pusch_tp(PHY_VARS_gNB *gNB,
   start_meas(&gNB->rx_pusch_symbol_processing_stats);
   int numSymbols = gNB->num_pusch_symbols_per_thread;
 
-  int const loop_iter = rel15_ul->nr_of_symbols/numSymbols;
+  int const loop_iter = rel15_ul->nr_of_symbols / numSymbols;
   puschSymbolProc_t arr[loop_iter];
   task_ans_t arr_ans[loop_iter];
 
-  memset(arr_ans, 0, loop_iter*sizeof(task_ans_t));
+  memset(arr_ans, 0, loop_iter * sizeof(task_ans_t));
   int sz_arr = 0;
 
   for(uint8_t symbol = rel15_ul->start_symbol_index; symbol < end_symbol; symbol += numSymbols) {
@@ -1698,7 +1698,7 @@ int nr_rx_pusch_tp(PHY_VARS_gNB *gNB,
     }
   } // symbol loop
 
-  if(nbSymb > 0){
+  if (nbSymb > 0) {
     join_task_ans(arr_ans, sz_arr);
   }
   stop_meas(&gNB->rx_pusch_symbol_processing_stats);

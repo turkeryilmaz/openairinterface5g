@@ -138,8 +138,9 @@ NR_gNB_DLSCH_t new_gNB_dlsch(NR_DL_FRAME_PARMS *frame_parms, uint16_t N_RB)
   return(dlsch);
 }
 
-void clean_gNB_dlsch(NR_gNB_DLSCH_t *dlsch) {
-  AssertFatal(dlsch!=NULL,"dlsch is null\n");
+void clean_gNB_dlsch(NR_gNB_DLSCH_t *dlsch)
+{
+  AssertFatal(dlsch != NULL, "dlsch is null\n");
   dlsch->active = 0;
 }
 
@@ -398,14 +399,14 @@ int nr_dlsch_encoding(PHY_VARS_gNB *gNB,
     }
     ldpc_interface_offload.LDPCencoder(harq->c, &impp.output, &impp);
   } else {
-    size_t const n_seg = (impp.n_segments/8+((impp.n_segments&7)==0 ? 0 : 1));
+    size_t const n_seg = (impp.n_segments / 8 + ((impp.n_segments & 7) == 0 ? 0 : 1));
 
     encoder_implemparams_t arr[n_seg];
     task_ans_t ans[n_seg];
     memset(ans, 0, n_seg * sizeof(task_ans_t));
 
     for (int j = 0; j < n_seg; j++) {
-      encoder_implemparams_t* perJobImpp = &arr[j];
+      encoder_implemparams_t *perJobImpp = &arr[j];
       *perJobImpp = impp;
       perJobImpp->macro_num = j;
       perJobImpp->ans = &ans[j];

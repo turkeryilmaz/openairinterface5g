@@ -580,7 +580,7 @@ typedef struct {
   int pssCorrPeakPower;
   int pssCorrAvgPower;
   int adjust_rxgain;
-  task_ans_t* ans;
+  task_ans_t *ans;
 } nr_ue_ssb_scan_t;
 
 typedef struct nr_phy_data_tx_s {
@@ -614,7 +614,7 @@ typedef struct nr_rxtx_thread_data_s {
   int tx_wait_for_dlsch;
   int rx_offset;
   enum stream_status_e stream_status;
-  notifiedFIFO_elt_t * elt;
+  notifiedFIFO_elt_t *elt;
 } nr_rxtx_thread_data_t;
 
 typedef struct LDPCDecode_ue_s {
@@ -641,7 +641,7 @@ typedef struct LDPCDecode_ue_s {
   time_stats_t ts_rate_unmatch;
   time_stats_t ts_ldpc_decode;
   UE_nr_rxtx_proc_t proc;
-  task_ans_t* ans;
+  task_ans_t *ans;
 } ldpcDecode_ue_t;
 
 static inline void start_meas_nr_ue_phy(PHY_VARS_NR_UE *ue, int meas_index) {
