@@ -456,6 +456,10 @@ typedef struct {
   uint16_t feedback_frame;
   int8_t sl_harq_pid;
 
+  // Transport block to be sent using this HARQ process, its size is in sched_pssch
+  uint32_t transportBlock[38016]; // valid up to 4 layers
+  uint32_t tb_size;
+
   /// sched_pusch keeps information on MCS etc used for the initial transmission
   NR_sched_pssch_t sched_pssch;
 } NR_UE_sl_harq_t;
@@ -495,11 +499,14 @@ typedef struct {
 
   // Used on PSFCH transmitter
   SL_sched_feedback_t *sched_psfch;
-  //
-  NR_bler_stats_t sl_bler_stats;
+
+  /// total amount of data awaiting for this UE
+  uint32_t num_total_bytes;
+  uint16_t sl_pdus_total;
   /// per-LC status data
   mac_rlc_status_resp_t rlc_status[NR_MAX_NUM_LCID];
   //
+  NR_bler_stats_t sl_bler_stats;
 
   /// information about every UL HARQ process
   NR_UE_sl_harq_t sl_harq_processes[NR_MAX_HARQ_PROCESSES];
