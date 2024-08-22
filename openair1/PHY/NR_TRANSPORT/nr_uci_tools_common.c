@@ -144,31 +144,31 @@ double nr_cyclic_shift_hopping(uint32_t n_id,
   uint32_t c_init = n_id; // we initialize c_init again to calculate n_cs
 
   uint32_t x1,s = lte_gold_generic(&x1, &c_init, 1); // TS 38.211 Subclause 5.2.1
-  uint8_t n_cs=0;
+  uint8_t n_cs = 0;
   int l = 32;
   lnormal = get_softmodem_params()->sl_mode ? 0 : lnormal;
-  int minShift = (14*8*nr_slot_tx) + 8*(lnormal+lprime);
-  int tmpShift =0;
+  int minShift = (14 * 8 * nr_slot_tx) + 8 * (lnormal + lprime);
+  int tmpShift = 0;
 #ifdef DEBUG_NR_PUCCH_TX
   printf("\t\t [nr_cyclic_shift_hopping] calculating alpha (cyclic shift) using c_init=%u -> \n",c_init);
 #endif
 
-  for (int m=0; m<8; m++) {
+  for (int m = 0; m < 8; m++) {
     while(minShift >= l) {
       s = lte_gold_generic(&x1, &c_init, 0);
-      l = l+32;
+      l = l + 32;
     }
 
-    tmpShift = (minShift&((1<<5)-1)); //minShift%32;
+    tmpShift = (minShift & ((1 << 5) - 1)); //minShift%32;
     minShift ++;
-    n_cs = n_cs+((1<<m)*((uint8_t)((s>>tmpShift)&1)));
+    n_cs = n_cs + ((1 << m) * ((uint8_t)((s >> (tmpShift + m)) & 1)));
     // calculating n_cs (Not sure we have to use nr_slot_tx FIXME!!!)
     // n_cs = n_cs+((1<<m)*((uint8_t)((s>>((14*8*nr_slot_tx) + 8*(lnormal+lprime) + m))&1)));
   }
 
-  alpha = (alpha * (double)((m0+mcs+n_cs)%12));
+  alpha = (alpha * (double)((m0 + mcs + n_cs) % 12));
 #ifdef DEBUG_NR_PUCCH_TX
-  printf("n_cs=%d -> %lf\n",n_cs,alpha);
+  printf("n_cs = %d -> %lf\n", n_cs, alpha);
 #endif
   return(alpha);
 }

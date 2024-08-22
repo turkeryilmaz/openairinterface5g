@@ -593,7 +593,7 @@ void fill_psfch_pdu(SL_sched_feedback_t *mac_psfch_pdu,
                     sl_nr_tx_rx_config_psfch_pdu_t *tx_psfch_pdu,
                     int num_psfch_symbols);
 
-NR_UE_sl_harq_t** find_nr_ue_sl_harq(frame_t frame, sub_frame_t slot, NR_SL_UE_info_t * UE);
+int find_current_slot_harqs(frame_t frame, sub_frame_t slot, NR_SL_UE_sched_ctrl_t * sched_ctrl, NR_UE_sl_harq_t **matched_harqs);
 
 uint8_t sl_num_slsch_feedbacks(NR_UE_MAC_INST_t *mac);
 
@@ -601,7 +601,7 @@ bool is_feedback_scheduled(NR_UE_MAC_INST_t *mac, int frameP,int slotP);
 
 uint16_t sl_get_num_subch(NR_SL_ResourcePool_r16_t *rpool);
 
-void fill_psfch_params_tx(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx_ind, long psfch_period, uint16_t sched_frame, uint16_t sched_slot, uint8_t ack_nack, psfch_params_t *psfch_params);
+void fill_psfch_params_tx(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx_ind, long psfch_period, uint16_t sched_frame, uint16_t sched_slot, uint8_t ack_nack, psfch_params_t *psfch_params, const int nr_slots_frame, int psfch_index);
 
 void fill_psfch_params_rx(sl_nr_rx_config_request_t *rx_config, sl_nr_tx_rx_config_psfch_pdu_t *psfch_pdu, psfch_params_t *psfch_params, NR_UE_sl_harq_t *cur_harq, NR_UE_MAC_INST_t *mac, long psfch_period, const uint16_t slot);
 
@@ -610,5 +610,19 @@ void configure_psfch_params_rx(int module_idP, NR_UE_MAC_INST_t *mac, sl_nr_rx_c
 void reset_sched_psfch(NR_UE_MAC_INST_t *mac, int frameP,int slotP);
 
 void handle_nr_ue_sl_harq(module_id_t mod_id, frame_t frame, sub_frame_t slot, sl_nr_slsch_pdu_t *rx_slsch_pdu, uint16_t src_id);
+
+int nr_ue_sl_acknack_scheduling(NR_UE_MAC_INST_t *mac, sl_nr_rx_indication_t *rx_ind,
+                                long psfch_period, uint16_t frame, uint16_t slot, const int nr_slots_frame);
+
+int get_feedback_frame_slot(NR_UE_MAC_INST_t *mac, NR_TDD_UL_DL_Pattern_t *tdd,
+                            uint8_t feedback_offset, uint8_t psfch_min_time_gap,
+                            const int nr_slots_frame, uint16_t frame, uint16_t slot,
+                            long psfch_period, int *psfch_frame, int *psfch_slot);
+
+int get_pssch_to_harq_feedback(uint8_t *pssch_to_harq_feedback,
+                               uint8_t psfch_min_time_gap,
+                               NR_TDD_UL_DL_Pattern_t *tdd,
+                               const int nr_slots_frame);
+
 #endif
 /** @}*/

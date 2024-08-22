@@ -118,7 +118,7 @@ void sl_ue_mac_free(uint8_t module_id)
 //Prepares the TDD config to be passed to PHY
 static int sl_set_tdd_config_nr_ue(sl_nr_phy_config_request_t *cfg,
                                   int mu,
-                                  int nrofDownlinkSlots, int nrofDownlinkSymbols,
+                                  int *pNumDownlinkSlots, int *pNumDownlinkSymbols,
                                   int nrofUplinkSlots,   int nrofUplinkSymbols)
 {
 
@@ -130,13 +130,14 @@ static int sl_set_tdd_config_nr_ue(sl_nr_phy_config_request_t *cfg,
   int nb_slots_per_period = ((1<<mu) * NR_NUMBER_OF_SUBFRAMES_PER_FRAME)/nb_periods_per_frame;
   cfg->tdd_table.tdd_period_in_slots = nb_slots_per_period;
 
-  if ((nrofDownlinkSlots == 0) && (nrofDownlinkSymbols == 0)) {
-    nrofDownlinkSymbols = (nrofUplinkSymbols) ? 14 - nrofUplinkSymbols : 0;
-    nrofDownlinkSlots = nb_slots_per_period - nrofUplinkSlots;
-    if (nrofDownlinkSymbols) nrofDownlinkSlots -= 1;
+  if ((*pNumDownlinkSlots == 0) && (*pNumDownlinkSymbols == 0)) {
+    *pNumDownlinkSymbols = (nrofUplinkSymbols) ? 14 - nrofUplinkSymbols : 0;
+    *pNumDownlinkSlots = nb_slots_per_period - nrofUplinkSlots;
+    if (*pNumDownlinkSymbols) *pNumDownlinkSlots -= 1;
   }
+  int nrofDownlinkSlots = *pNumDownlinkSlots, nrofDownlinkSymbols = *pNumDownlinkSymbols;
 
-  LOG_I(NR_MAC,"Set Phy Sidelink TDD Config: scs:%d,dl:%d-%d, ul:%d-%d, nb_periods_per_frame:%d, nb_slots_per_period:%d\n",
+  LOG_D(NR_MAC,"Set Phy Sidelink TDD Config: scs:%d,dl:%d-%d, ul:%d-%d, nb_periods_per_frame:%d, nb_slots_per_period:%d\n",
                               mu, nrofDownlinkSlots, nrofDownlinkSymbols, nrofUplinkSlots, nrofUplinkSymbols, nb_periods_per_frame, nb_slots_per_period);
 
   if ( (nrofDownlinkSymbols + nrofUplinkSymbols) == 0 )
@@ -323,8 +324,8 @@ static void  sl_prepare_phy_config(int module_id,
 
     int return_tdd = sl_set_tdd_config_nr_ue(phycfg,
                                              sl_TDD_config->referenceSubcarrierSpacing,
-                                             sl_TDD_config->pattern1.nrofDownlinkSlots,
-                                             sl_TDD_config->pattern1.nrofDownlinkSymbols,
+                                             &sl_TDD_config->pattern1.nrofDownlinkSlots,
+                                             &sl_TDD_config->pattern1.nrofDownlinkSymbols,
                                              sl_TDD_config->pattern1.nrofUplinkSlots,
                                              sl_TDD_config->pattern1.nrofUplinkSymbols);
 
@@ -474,14 +475,6 @@ int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
     }
   }
 
-  uint16_t num_subch = sl_get_num_subch(mac->sl_tx_res_pool);
-  NR_SL_PSFCH_Config_r16_t *sl_psfch_config = mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup;
-  const uint8_t psfch_periods[] = {0,1,2,4};
-  long psfch_period = (sl_psfch_config->sl_PSFCH_Period_r16)
-                      ? psfch_periods[*sl_psfch_config->sl_PSFCH_Period_r16] : 0;
-  mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch = calloc(psfch_period * num_subch, sizeof(SL_sched_feedback_t));
-  mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch->feedback_frame = -1;
-  mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch->feedback_slot = -1;
   if (sync_source == SL_SYNC_SOURCE_GNSS ||
       sync_source == SL_SYNC_SOURCE_LOCAL_TIMING) {
 
@@ -505,7 +498,16 @@ int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
       ASN_STRUCT_FREE(asn_DEF_NR_TDD_UL_DL_ConfigCommon, sl_mac->sl_TDD_config);
     sl_mac->sl_TDD_config = NULL;
   }
-
+  if (get_nrUE_params()->sync_ref) {
+    int scs = get_softmodem_params()->numerology;
+    const int nr_slots_frame = nr_slots_per_frame[scs];
+    NR_TDD_UL_DL_Pattern_t *tdd = &sl_mac->sl_TDD_config->pattern1;
+    const int n_ul_slots_period = tdd ? tdd->nrofUplinkSlots + (tdd->nrofUplinkSymbols > 0 ? 1 : 0) : nr_slots_frame;
+    uint16_t num_subch = sl_get_num_subch(mac->sl_tx_res_pool);
+    mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch = calloc(n_ul_slots_period * num_subch, sizeof(SL_sched_feedback_t));
+    mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch->feedback_frame = -1;
+    mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch->feedback_slot = -1;
+  }
   // Configuring CSI-RS parameters locally at MAC.
   nr_sl_params_read_conf(module_id);
 
@@ -656,12 +658,23 @@ void nr_rrc_mac_config_req_sl_mib(module_id_t module_id,
     uint8_t return_tdd = 0;
     return_tdd = sl_set_tdd_config_nr_ue(cfg,
                                         cfg->sl_bwp_config.sl_scs,
-                                        sl_mac->sl_TDD_config->pattern1.nrofDownlinkSlots,
-                                        sl_mac->sl_TDD_config->pattern1.nrofDownlinkSymbols,
+                                        &sl_mac->sl_TDD_config->pattern1.nrofDownlinkSlots,
+                                        &sl_mac->sl_TDD_config->pattern1.nrofDownlinkSymbols,
                                         sl_mac->sl_TDD_config->pattern1.nrofUplinkSlots,
                                         sl_mac->sl_TDD_config->pattern1.nrofUplinkSymbols);
     if (return_tdd !=0)
       LOG_E(PHY,"TDD configuration can not be done\n");
+
+    AssertFatal(get_nrUE_params()->sync_ref == 0, "Expecting Nearby UE\n");
+    int scs = get_softmodem_params()->numerology;
+    const int nr_slots_frame = nr_slots_per_frame[scs];
+    NR_TDD_UL_DL_Pattern_t *tdd = &sl_mac->sl_TDD_config->pattern1;
+
+    const int n_ul_slots_period = tdd ? tdd->nrofUplinkSlots + (tdd->nrofUplinkSymbols > 0 ? 1 : 0) : nr_slots_frame;
+    uint16_t num_subch = sl_get_num_subch(mac->sl_tx_res_pool);
+    mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch = calloc(n_ul_slots_period * num_subch, sizeof(SL_sched_feedback_t));
+    mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch->feedback_frame = -1;
+    mac->sl_info.list[0]->UE_sched_ctrl.sched_psfch->feedback_slot = -1;
 
     LOG_I(MAC, "SIDELINK CONFIGs: tdd config period:%d, mu:%ld, DLslots:%ld,ULslots:%ld Mixedslotsym DL:UL %ld:%ld\n",
                             sl_config->tdd_table.tdd_period, sl_mac->sl_TDD_config->referenceSubcarrierSpacing,
