@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
   uint64_t deb = rdtsc_oai();
   usleep(100000);
   cpuCyclesMicroSec = (rdtsc_oai() - deb) / 100000;
-  printf("Cycles per µs: %lu\n", cpuCyclesMicroSec);
+  printf("Cycles per microsecond: %lu\n", cpuCyclesMicroSec);
   printf("Key" SEP "delay to process" SEP "processing time" SEP "delay to be read answer\n");
   notifiedFIFO_elt_t doneRequest;
 
