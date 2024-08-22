@@ -61,8 +61,6 @@
 #include "nfapi/open-nFAPI/nfapi/public_inc/nfapi_interface.h"
 #include "nfapi/open-nFAPI/nfapi/public_inc/nfapi_nr_interface.h"
 
-#define DEMO_LDPCLIB_SUFFIX ""
-
 /**
  * \typedef nrLDPC_decoding_parameters_t
  * \struct nrLDPC_decoding_parameters_s
@@ -258,7 +256,12 @@ int nrLDPC_prepare_TB_decoding(nrLDPC_slot_decoding_parameters_t *nrLDPC_slot_de
 
 int32_t nrLDPC_coding_init(void){
 
-  load_LDPClib(DEMO_LDPCLIB_SUFFIX, &ldpc_interface_demo);
+  char *segment_shlibversion = NULL;
+  paramdef_t LoaderParams[] = {
+    {"segment_shlibversion", NULL, 0, .strptr = &segment_shlibversion, .defstrval = "", TYPE_STRING, 0, NULL}
+  };
+  config_get(config_get_if(), LoaderParams, sizeofArray(LoaderParams), "nrLDPC_slot_demo");
+  load_LDPClib(segment_shlibversion, &ldpc_interface_demo);
 
   return 0;
 
