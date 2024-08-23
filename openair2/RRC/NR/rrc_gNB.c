@@ -2558,7 +2558,7 @@ static void rrc_CU_process_trp_information_response(MessageDef *msg_p, instance_
       int nb_tRPInfoTypes = 2;//rrc->configuration.num_plmn; // TODO it is hard coded 
       f1ap_trp_information_type_response_list_t *rspList =&trp_info_item->tRPInformation.tRPInformationTypeResponseList;
       rspList->trp_information_type_response_list_length= nb_tRPInfoTypes;
-      rspList->trp_information_type_response_item=malloc(1*sizeof(f1ap_trp_information_type_response_item_t));
+      rspList->trp_information_type_response_item=malloc(nb_tRPInfoTypes*sizeof(f1ap_trp_information_type_response_item_t));
       //rspList->trp_information_type_response_item=malloc(nb_tRPInfoTypes*sizeof(f1ap_trp_information_type_response_item_t));
       DevAssert(rspList->trp_information_type_response_item);
       f1ap_trp_information_type_response_item_t *rspItem= rspList->trp_information_type_response_item;

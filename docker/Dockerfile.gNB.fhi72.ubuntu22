@@ -27,7 +27,7 @@
 
 FROM ran-base:latest as gnb-base
 
-FROM ran-build-fhi72:latest AS gnb-build
+FROM ran-build:latest AS gnb-build
 
 
 #start from scratch for target executable
