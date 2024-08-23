@@ -596,12 +596,12 @@ void processSlotTX(void *arg)
 
 static int UE_dl_preprocessing(PHY_VARS_NR_UE *UE, const UE_nr_rxtx_proc_t *proc, int *tx_wait_for_dlsch, nr_phy_data_t *phy_data)
 {
-  int64_t a = rdtsc_oai();
+  int64_t a1 = rdtsc_oai();
   int sampleShift = 0;
   NR_DL_FRAME_PARMS *fp = &UE->frame_parms;
   if (UE->sl_mode == 2)
     fp = &UE->SL_UE_PHY_PARAMS.sl_frame_params;
-
+  
   if (proc->nr_slot_rx == 0 && proc->frame_rx % 128 == 0)
     print_ue_mac_stats(UE->Mod_id, proc->frame_rx, proc->nr_slot_rx);
 
@@ -623,6 +623,7 @@ static int UE_dl_preprocessing(PHY_VARS_NR_UE *UE, const UE_nr_rxtx_proc_t *proc
       nr_pdcp_tick(proc->frame_rx, proc->nr_slot_rx / fp->slots_per_subframe);
     }
   }
+  int64_t a2 = rdtsc_oai();
 
   if (proc->rx_slot_type == NR_DOWNLINK_SLOT || proc->rx_slot_type == NR_MIXED_SLOT) {
     nr_downlink_indication_t dl_indication = {0};
@@ -646,6 +647,8 @@ static int UE_dl_preprocessing(PHY_VARS_NR_UE *UE, const UE_nr_rxtx_proc_t *proc
     }
   }
 
+  int64_t a3 = rdtsc_oai();
+
   if (UE->sl_mode == 2) {
     if (proc->rx_slot_type == NR_SIDELINK_SLOT) {
       phy_data->sl_rx_action = 0;
@@ -665,10 +668,11 @@ static int UE_dl_preprocessing(PHY_VARS_NR_UE *UE, const UE_nr_rxtx_proc_t *proc
     }
   } else
     ue_ta_procedures(UE, proc->nr_slot_tx, proc->frame_tx);
-  uint64_t b = rdtsc_oai();
-  if (b - a > 3000 * 100)
-    printf("total preprocessing %ld\n", (b - a) / 3000);
+  
+  int64_t a4 = rdtsc_oai();
 
+  if (a4 - a1 > 3000 * 200)
+    printf("total preprocessing %ld %ld %ld\n", a4-a3, a3-a2,a2-a1);
   return sampleShift;
 }
 
