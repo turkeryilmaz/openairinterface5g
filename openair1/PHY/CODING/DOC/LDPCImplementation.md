@@ -258,6 +258,33 @@ shlib_path libldpc_slot_t2.so
 ........................
 ```
 
+loading `libldpc_xdma.so` instead of `libldpc.so`:
+
+`make ldpc_xdma` or `ninja ldpc_xdma`
+
+This command creates the `libldpc_xdma.so` shared library.
+
+```
+ninja ldpc_xdma
+[2/2] Linking C shared module libldpc_xdma.so
+```
+
+At runtime, to successfully use the xdma, you need to install vendor specific drivers and tools.\
+Please refer to the dedicated documentation at [LDPC_XDMA_OFFLOAD_SETUP.md](file://../../../../doc/LDPC_XDMA_OFFLOAD_SETUP.md).
+
+`./nr-softmodem -O libconfig:gnb.band78.sa.fr1.106PRB.usrpb210.conf:dbgl5 --rfsim --rfsimulator.serveraddr server --sa --log_config.gtpu_log_level info --loader.ldpc.shlibversion _xdma --nrLDPC_coding_xdma.num_threads_prepare 2`
+
+``` 
+.......................
+[CONFIG] loader.ldpc.shlibversion set to default value ""
+[LIBCONFIG] loader.ldpc: 2/2 parameters successfully set, (1 to default value)
+[CONFIG] shlibversion set to  _xdma from command line
+[CONFIG] loader.ldpc 1 options set from command line
+shlib_path libldpc_xdma.so
+[LOADER] library libldpc_xdma.so successfully loaded
+........................
+``` 
+
 #### Examples of ldpc shared lib selection when running ldpctest:
 
 Slot decoding libraries cannot be used yet within ldpctest.
@@ -270,6 +297,6 @@ Libraries implementing the slotwise LDPC decoding must be named `libldpc<_versio
 
 `libldpc_slot_t2.so` is not implemented on this branch.
 
-`libldpc_xdma.so` is not implemented on this branch.
+`libldpc_xdma.so` is completed.
 
 [oai Wikis home](https://gitlab.eurecom.fr/oai/openairinterface5g/wikis/home)
