@@ -71,7 +71,7 @@ static void fill_uci_2_3_4(nfapi_nr_uci_pucch_pdu_format_2_3_4_t *pdu_2_3_4,
                                                   sizeof(pdu_2_3_4->csi_part1.csi_part1_payload));
   for (int k = 0; k < csi_part1_byte_len; k++)
   {
-    pdu_2_3_4->csi_part1.csi_part1_payload[k] = (pucch_pdu->payload >> (k * 8)) & 0xff;
+    pdu_2_3_4->csi_part1.csi_part1_payload[k] = (pucch_pdu->Ppayload >> (k * 8)) & 0xff;
   }
   pdu_2_3_4->csi_part1.csi_part1_crc = 0;
 }
@@ -223,8 +223,8 @@ int8_t nr_ue_scheduled_response_stub(nr_scheduled_response_t *scheduled_response
           uci_ind->num_ucis = 1;
           uci_ind->uci_list = CALLOC(uci_ind->num_ucis, sizeof(*uci_ind->uci_list));
           for (int j = 0; j < uci_ind->num_ucis; j++) {
-            LOG_D(NR_MAC, "pucch_config_pdu.n_bit = %d\n", it->pucch_config_pdu.n_bit);
-            if (it->pucch_config_pdu.n_bit > 3 && mac->nr_ue_emul_l1.num_csi_reports > 0) {
+            LOG_D(NR_MAC, "pucch_config_pdu.n_bit = %d\n", it->pucch_config_pdu.Pn_bit);
+            if (it->pucch_config_pdu.Pn_bit > 3 && mac->nr_ue_emul_l1.num_csi_reports > 0) {
               uci_ind->uci_list[j].pdu_type = NFAPI_NR_UCI_FORMAT_2_3_4_PDU_TYPE;
               uci_ind->uci_list[j].pdu_size = sizeof(nfapi_nr_uci_pucch_pdu_format_2_3_4_t);
               nfapi_nr_uci_pucch_pdu_format_2_3_4_t *pdu_2_3_4 = &uci_ind->uci_list[j].pucch_pdu_format_2_3_4;

@@ -164,7 +164,7 @@ void nr_generate_pucch1(const PHY_VARS_NR_UE *ue,
                         const fapi_nr_ul_config_pucch_pdu *pucch_pdu)
 {
   uint16_t m0 = pucch_pdu->initial_cyclic_shift;
-  uint64_t payload = pucch_pdu->payload;
+  uint64_t payload = pucch_pdu->Ppayload;
   uint8_t startingSymbolIndex = pucch_pdu->start_symbol_index;
   uint8_t nrofSymbols = pucch_pdu->nr_of_symbols;
   uint16_t startingPRB = pucch_pdu->prb_start + pucch_pdu->bwp_start;
@@ -172,7 +172,7 @@ void nr_generate_pucch1(const PHY_VARS_NR_UE *ue,
 
 #ifdef DEBUG_NR_PUCCH_TX
   printf("\t [nr_generate_pucch1] start function at slot(nr_slot_tx)=%d payload=%lu m0=%d nrofSymbols=%d startingSymbolIndex=%d startingPRB=%d second_hop_prb=%d timeDomainOCC=%d nr_bit=%d\n",
-         nr_slot_tx,payload,m0,nrofSymbols,startingSymbolIndex,startingPRB,pucch_pdu->second_hop_prb,timeDomainOCC,pucch_pdu->n_bit);
+         nr_slot_tx,payload,m0,nrofSymbols,startingSymbolIndex,startingPRB,pucch_pdu->second_hop_prb,timeDomainOCC,pucch_pdu->Pn_bit);
 #endif
   /*
    * Implement TS 38.211 Subclause 6.3.2.4.1 Sequence modulation
@@ -183,11 +183,11 @@ void nr_generate_pucch1(const PHY_VARS_NR_UE *ue,
   const int32_t amp = amp16;
   const int16_t baseVal = (amp * ONE_OVER_SQRT2) >> 15;
   const c16_t qpskSymbols[4] = {{baseVal, baseVal}, {baseVal, -baseVal}, {-baseVal, baseVal}, {-baseVal, -baseVal}};
-  if (pucch_pdu->n_bit == 1) { // using BPSK if M_bit=1 according to TC 38.211 Subclause 5.1.2
+  if (pucch_pdu->Pn_bit == 1) { // using BPSK if M_bit=1 according to TC 38.211 Subclause 5.1.2
     d = (payload & 1) == 0 ? qpskSymbols[0] : qpskSymbols[3];
   }
 
-  if (pucch_pdu->n_bit == 2) { // using QPSK if M_bit=2 according to TC 38.211 Subclause 5.1.2
+  if (pucch_pdu->Pn_bit == 2) { // using QPSK if M_bit=2 according to TC 38.211 Subclause 5.1.2
     int tmp = ((payload & 1) << 1) + ((payload >> 1) & 1);
     d = qpskSymbols[tmp];
   }
@@ -629,14 +629,14 @@ void nr_generate_pucch2(const PHY_VARS_NR_UE *ue,
                         const fapi_nr_ul_config_pucch_pdu *pucch_pdu)
 {
 #ifdef DEBUG_NR_PUCCH_TX
-  printf("\t [nr_generate_pucch2] start function at slot(nr_slot_tx)=%d  with payload=%lu and nr_bit=%d\n",nr_slot_tx, pucch_pdu->payload, pucch_pdu->n_bit);
+  printf("\t [nr_generate_pucch2] start function at slot(nr_slot_tx)=%d  with payload=%lu and nr_bit=%d\n",nr_slot_tx, pucch_pdu->payload, pucch_pdu->Pn_bit);
 #endif
   // b is the block of bits transmitted on the physical channel after payload coding
   uint64_t b[16] = {0}; // limit to 1024-bit encoded length
   // M_bit is the number of bits of block b (payload after encoding)
   uint16_t M_bit = 0;
-  nr_uci_encoding(pucch_pdu->payload,
-                  pucch_pdu->n_bit,
+  nr_uci_encoding(pucch_pdu->Ppayload,
+                  pucch_pdu->Pn_bit,
                   2,0,
                   pucch_pdu->nr_of_symbols,
                   pucch_pdu->prb_size,
@@ -852,8 +852,8 @@ void nr_generate_pucch3_4(const PHY_VARS_NR_UE *ue,
   uint16_t startingPRB = pucch_pdu->prb_start + pucch_pdu->bwp_start;
   uint8_t add_dmrs = pucch_pdu->add_dmrs_flag;
 
-  nr_uci_encoding(pucch_pdu->payload,
-                  pucch_pdu->n_bit,
+  nr_uci_encoding(pucch_pdu->Ppayload,
+                  pucch_pdu->Pn_bit,
                   pucch_pdu->format_type,
                   is_pi_over_2_bpsk_enabled,
                   nrofSymbols,

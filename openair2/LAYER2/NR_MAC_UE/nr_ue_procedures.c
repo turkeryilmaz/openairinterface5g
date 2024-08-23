@@ -101,6 +101,7 @@ static void nr_ue_process_rar(NR_UE_MAC_INST_t *mac, nr_downlink_indication_t *d
 int get_pucch0_mcs(const int O_ACK, const int O_SR, const int ack_payload, const int sr_payload)
 {
   int mcs = 0;
+  LOG_E(PHY,"O_SR %d, sr bit %d O_ACK %d ack %d\n", O_SR, sr_payload, O_ACK, ack_payload); 
   if (O_SR == 0 || sr_payload == 0) { /* only ack is transmitted TS 36.213 9.2.3 UE procedure for reporting HARQ-ACK */
     if (O_ACK == 1)
       mcs = sequence_cyclic_shift_1_harq_ack_bit[ack_payload & 0x1]; /* only harq of 1 bit */
@@ -1585,8 +1586,8 @@ int nr_ue_configure_pucch(NR_UE_MAC_INST_t *mac,
     pucch_pdu->time_domain_occ_idx = 0;
     // Only HARQ transmitted in default PUCCH
     pucch_pdu->mcs = get_pucch0_mcs(pucch->n_harq, 0, pucch->ack_payload, 0);
-    pucch_pdu->payload = pucch->ack_payload;
-    pucch_pdu->n_bit = 1;
+    pucch_pdu->Ppayload = pucch->ack_payload;
+    pucch_pdu->Pn_bit = 1;
   }
   else if (pucch->pucch_resource != NULL) {
 
@@ -1647,19 +1648,19 @@ int nr_ue_configure_pucch(NR_UE_MAC_INST_t *mac,
         if (pucch->n_harq > 0) {
           // only HARQ bits are transmitted, resource selection depends on SR
           // resource selection handled in function multiplex_pucch_resource
-          pucch_pdu->n_bit = pucch->n_harq;
-          pucch_pdu->payload = pucch->ack_payload;
+          pucch_pdu->Pn_bit = pucch->n_harq;
+          pucch_pdu->Ppayload = pucch->ack_payload;
         }
         else {
           // For a positive SR transmission using PUCCH format 1,
           // the UE transmits the PUCCH as described in 38.211 by setting b(0) = 0
-          pucch_pdu->n_bit = pucch->n_sr;
-          pucch_pdu->payload = 0;
+          pucch_pdu->Pn_bit = pucch->n_sr;
+          pucch_pdu->Ppayload = 0;
         }
         break;
       case NR_PUCCH_Resource__format_PR_format2 :
         pucch_pdu->format_type = 2;
-        pucch_pdu->n_bit = n_uci;
+        pucch_pdu->Pn_bit = n_uci;
         pucch_pdu->nr_of_symbols = pucchres->format.choice.format2->nrofSymbols;
         pucch_pdu->start_symbol_index = pucchres->format.choice.format2->startingSymbolIndex;
         pucch_pdu->data_scrambling_id = pusch_id != NULL ? *pusch_id : mac->physCellId;
@@ -1671,11 +1672,13 @@ int nr_ue_configure_pucch(NR_UE_MAC_INST_t *mac,
                                                      2,
                                                      pucchres->format.choice.format2->nrofSymbols,
                                                      8);
-        pucch_pdu->payload = (pucch->csi_part1_payload << (pucch->n_harq + pucch->n_sr)) | (pucch->sr_payload << pucch->n_harq) | pucch->ack_payload;
+        pucch_pdu->Ppayload = (pucch->csi_part1_payload << (pucch->n_harq + pucch->n_sr)) | (pucch->sr_payload << pucch->n_harq) | pucch->ack_payload;
+	LOG_E(PHY,"pucch format 2: n_sr %d, sr_payload %d n harq %d hard %d\n" ,
+	      pucch->n_sr, pucch->sr_payload, pucch->n_harq, pucch->ack_payload);
         break;
       case NR_PUCCH_Resource__format_PR_format3 :
         pucch_pdu->format_type = 3;
-        pucch_pdu->n_bit = n_uci;
+        pucch_pdu->Pn_bit = n_uci;
         pucch_pdu->nr_of_symbols = pucchres->format.choice.format3->nrofSymbols;
         pucch_pdu->start_symbol_index = pucchres->format.choice.format3->startingSymbolIndex;
         pucch_pdu->data_scrambling_id = pusch_id != NULL ? *pusch_id : mac->physCellId;
@@ -1704,7 +1707,7 @@ int nr_ue_configure_pucch(NR_UE_MAC_INST_t *mac,
                                                      2 - pucch_pdu->pi_2bpsk,
                                                      pucchres->format.choice.format3->nrofSymbols - f3_dmrs_symbols,
                                                      12);
-        pucch_pdu->payload = (pucch->csi_part1_payload << (pucch->n_harq + pucch->n_sr)) | (pucch->sr_payload << pucch->n_harq) | pucch->ack_payload;
+        pucch_pdu->Ppayload = (pucch->csi_part1_payload << (pucch->n_harq + pucch->n_sr)) | (pucch->sr_payload << pucch->n_harq) | pucch->ack_payload;
         break;
       case NR_PUCCH_Resource__format_PR_format4 :
         pucch_pdu->format_type = 4;
@@ -1722,7 +1725,7 @@ int nr_ue_configure_pucch(NR_UE_MAC_INST_t *mac,
           pucch_pdu->pi_2bpsk = pucchfmt->pi2BPSK!= NULL ?  1 : 0;
           pucch_pdu->add_dmrs_flag = pucchfmt->additionalDMRS!= NULL ?  1 : 0;
         }
-        pucch_pdu->payload = (pucch->csi_part1_payload << (pucch->n_harq + pucch->n_sr)) | (pucch->sr_payload << pucch->n_harq) | pucch->ack_payload;
+        pucch_pdu->Ppayload = (pucch->csi_part1_payload << (pucch->n_harq + pucch->n_sr)) | (pucch->sr_payload << pucch->n_harq) | pucch->ack_payload;
         break;
       default :
         LOG_E(NR_MAC, "Undefined PUCCH format \n");
