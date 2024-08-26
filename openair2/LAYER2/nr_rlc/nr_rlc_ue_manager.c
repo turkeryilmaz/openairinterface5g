@@ -75,17 +75,20 @@ void nr_rlc_manager_unlock(nr_rlc_ue_manager_t *_m)
 }
 
 /* must be called with lock acquired */
-nr_rlc_ue_t *nr_rlc_manager_get_ue(nr_rlc_ue_manager_t *_m, int rnti)
+nr_rlc_ue_t *nr_rlc_manager_get_ue(nr_rlc_ue_manager_t *_m, int ue_id)
 {
   /* TODO: optimze */
   nr_rlc_ue_manager_internal_t *m = _m;
   int i;
+  LOG_I(RLC, "%s:%d:%s: %x\n", __FILE__, __LINE__, __FUNCTION__, m->ue_count);
+  for (i = 0; i < m->ue_count; i++){
+    if (m->ue_list[i]->ue_id == ue_id){
+        LOG_D(RLC, "%s:%d:%s: found UE with ue_id 0x %x  m->ue_list[i] %lx\n", __FILE__, __LINE__, __FUNCTION__, ue_id, m->ue_list[i]);
+        return m->ue_list[i];
+    }
+  }
 
-  for (i = 0; i < m->ue_count; i++)
-    if (m->ue_list[i]->rnti == rnti)
-      return m->ue_list[i];
-
-  LOG_D(RLC, "%s:%d:%s: new UE with RNTI 0x%x\n", __FILE__, __LINE__, __FUNCTION__, rnti);
+  LOG_D(RLC, "New UE with ID %d\n", ue_id);
 
   m->ue_count++;
   m->ue_list = realloc(m->ue_list, sizeof(nr_rlc_ue_t *) * m->ue_count);
@@ -99,13 +102,13 @@ nr_rlc_ue_t *nr_rlc_manager_get_ue(nr_rlc_ue_manager_t *_m, int rnti)
     exit(1);
   }
 
-  m->ue_list[m->ue_count-1]->rnti = rnti;
+  m->ue_list[m->ue_count-1]->ue_id = ue_id;
 
   return m->ue_list[m->ue_count-1];
 }
 
 /* must be called with lock acquired */
-void nr_rlc_manager_remove_ue(nr_rlc_ue_manager_t *_m, int rnti)
+void nr_rlc_manager_remove_ue(nr_rlc_ue_manager_t *_m, int ue_id)
 {
   nr_rlc_ue_manager_internal_t *m = _m;
   nr_rlc_ue_t *ue;
@@ -113,13 +116,11 @@ void nr_rlc_manager_remove_ue(nr_rlc_ue_manager_t *_m, int rnti)
   int j;
 
   for (i = 0; i < m->ue_count; i++)
-    if (m->ue_list[i]->rnti == rnti)
+    if (m->ue_list[i]->ue_id == ue_id)
       break;
 
   if (i == m->ue_count) {
-    LOG_W(RLC, "%s:%d:%s: warning: ue %x not found\n",
-          __FILE__, __LINE__, __FUNCTION__,
-          rnti);
+    LOG_W(RLC, "Warning: ue %d not found\n", ue_id);
     return;
   }
 

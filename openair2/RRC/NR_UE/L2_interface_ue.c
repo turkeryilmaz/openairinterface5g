@@ -33,7 +33,6 @@
 #include "rrc_defs.h"
 #include "rrc_proto.h"
 #include "assertions.h"
-#include "MAC/mac.h"
 #include "LAYER2/NR_MAC_COMMON/nr_mac.h"
 #include "openair2/LAYER2/NR_MAC_UE/mac_proto.h"
 
@@ -55,6 +54,8 @@ int8_t nr_mac_rrc_data_ind_ue(const module_id_t module_id,
                               const frame_t frame,
                               const int slot,
                               const rnti_t rnti,
+                              const uint32_t cellid,
+                              const long arfcn,
                               const channel_t channel,
                               const uint8_t* pduP,
                               const sdu_size_t pdu_len)
@@ -85,15 +86,38 @@ int8_t nr_mac_rrc_data_ind_ue(const module_id_t module_id,
         NR_RRC_MAC_BCCH_DATA_IND (message_p).slot = slot;
         NR_RRC_MAC_BCCH_DATA_IND (message_p).sdu_size = sdu_size;
         NR_RRC_MAC_BCCH_DATA_IND (message_p).gnb_index = gNB_index;
+        NR_RRC_MAC_BCCH_DATA_IND (message_p).phycellid = cellid;
+        NR_RRC_MAC_BCCH_DATA_IND (message_p).ssb_arfcn = arfcn;
         NR_RRC_MAC_BCCH_DATA_IND (message_p).is_bch = (channel == NR_BCCH_BCH);
         itti_send_msg_to_task(TASK_RRC_NRUE, GNB_MODULE_ID_TO_INSTANCE(module_id), message_p);
       }
       break;
+      
+    case NR_SBCCH_SL_BCH:
+      if (pdu_len > 0) {
+        LOG_T(NR_RRC, "[UE %d] Received SL-MIB for NR_SBCCH_SL_BCH.\n", module_id);
 
-    case CCCH:
-      AssertFatal(false, "use RLC instead\n");
+        MessageDef *message_p;
+        int msg_sdu_size = BCCH_SDU_SIZE;
+
+        if (pdu_len > msg_sdu_size) {
+          LOG_E(NR_RRC, "SDU larger than NR_SBCCH_SL_BCH SDU buffer size (%d, %d)", sdu_size, msg_sdu_size);
+          sdu_size = msg_sdu_size;
+        } else {
+          sdu_size = pdu_len;
+        }
+
+        message_p = itti_alloc_new_message(TASK_MAC_UE, 0, NR_RRC_MAC_SBCCH_DATA_IND);
+        memset(NR_RRC_MAC_SBCCH_DATA_IND (message_p).sdu, 0, BCCH_SDU_SIZE);
+        memcpy(NR_RRC_MAC_SBCCH_DATA_IND (message_p).sdu, pduP, sdu_size);
+        NR_RRC_MAC_SBCCH_DATA_IND (message_p).frame = frame; //frameP
+        NR_RRC_MAC_SBCCH_DATA_IND (message_p).slot = slot;
+        NR_RRC_MAC_SBCCH_DATA_IND (message_p).sdu_size = sdu_size;
+        NR_RRC_MAC_SBCCH_DATA_IND (message_p).gnb_index = gNB_index;
+        NR_RRC_MAC_SBCCH_DATA_IND (message_p).rx_slss_id = rnti;//rx_slss_id is rnti
+        itti_send_msg_to_task(TASK_RRC_NRUE, GNB_MODULE_ID_TO_INSTANCE(module_id), message_p);
+      }
       break;
-
     case PCCH:
         LOG_T(NR_RRC, "[UE %d] Received SDU for PCCH from gNB %d, pdu_len=%d\n", module_id, gNB_index, pdu_len);
         AssertFatal(nr_rrc_ue_decode_NR_PCCH_Message(module_id, gNB_index, (uint8_t*)pduP, pdu_len) == 0, "UE decode PCCH error!\n");
@@ -106,11 +130,22 @@ int8_t nr_mac_rrc_data_ind_ue(const module_id_t module_id,
   return(0);
 }
 
-void nr_mac_rrc_msg3_ind(const module_id_t mod_id, int rnti)
+void nr_mac_rrc_msg3_ind(const module_id_t mod_id, const int rnti, int gnb_id)
 {
   MessageDef *message_p = itti_alloc_new_message(TASK_MAC_UE, 0, NR_RRC_MAC_MSG3_IND);
   NR_RRC_MAC_MSG3_IND (message_p).rnti = rnti;
+  NR_RRC_MAC_MSG3_IND (message_p).gnb_id = gnb_id;
   itti_send_msg_to_task(TASK_RRC_NRUE, GNB_MODULE_ID_TO_INSTANCE(mod_id), message_p);
+}
+
+void nr_ue_rrc_timer_trigger(int instance, int frame, int gnb_id)
+{
+  MessageDef *message_p;
+  message_p = itti_alloc_new_message(TASK_RRC_NRUE, 0, NRRRC_FRAME_PROCESS);
+  NRRRC_FRAME_PROCESS(message_p).frame = frame;
+  NRRRC_FRAME_PROCESS(message_p).gnb_id = gnb_id;
+  LOG_D(NR_RRC, "RRC timer trigger: frame %d\n", frame);
+  itti_send_msg_to_task(TASK_RRC_NRUE, instance, message_p);
 }
 
 void nr_mac_rrc_ra_ind(const module_id_t mod_id, int frame, bool success)

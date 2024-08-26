@@ -48,7 +48,7 @@ This header file must be included */
 #endif
 #ifndef project_include
   #define project_include
-  #include "common/utils/LOG/log_if.h"
+  #include "common/utils/LOG/log.h"
   #include "PHY/defs_RU.h"
 #endif
 
@@ -133,27 +133,27 @@ void terminate_opt(void);
 static inline int map_nr_rnti_type(nr_rnti_type_t r_type)
 {
 	switch(r_type) {
-		case NR_RNTI_C:
+		case TYPE_C_RNTI_:
 			return WS_C_RNTI;
-		case NR_RNTI_RA:
+		case TYPE_RA_RNTI_:
 			return WS_RA_RNTI;
-		case NR_RNTI_P:
+		case TYPE_P_RNTI_:
 			return WS_P_RNTI;
-		case NR_RNTI_CS:
+		case TYPE_CS_RNTI_:
 			return WS_CS_RNTI;
-		case NR_RNTI_SI:
+		case TYPE_SI_RNTI_:
 			return WS_SI_RNTI;
-		case NR_RNTI_new:
+		/*case NR_RNTI_new:
 			return WS_NO_RNTI;
-
-		case NR_RNTI_TC:
-		case NR_RNTI_SP_CSI:
-		case NR_RNTI_SFI:
-		case NR_RNTI_INT:
-		case NR_RNTI_TPC_PUSCH:
-		case NR_RNTI_TPC_PUCCH:
-		case NR_RNTI_TPC_SRS:
-		case NR_RNTI_MCS_C:
+    */
+		case TYPE_TC_RNTI_:
+		case TYPE_SP_CSI_RNTI_:
+		case TYPE_SFI_RNTI_:
+		case TYPE_INT_RNTI_:
+		case TYPE_TPC_PUSCH_RNTI_:
+		case TYPE_TPC_PUCCH_RNTI_:
+		case TYPE_TPC_SRS_RNTI_:
+		case TYPE_MCS_C_RNTI_:
     default:
 			return WS_NO_RNTI;
 	}

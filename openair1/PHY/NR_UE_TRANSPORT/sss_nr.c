@@ -258,7 +258,7 @@ static int pss_ch_est_nr(PHY_VARS_NR_UE *ue,
 
 static int do_pss_sss_extract_nr(
     PHY_VARS_NR_UE *ue,
-    UE_nr_rxtx_proc_t *proc,
+    const UE_nr_rxtx_proc_t *proc,
     c16_t pss_ext[NB_ANTENNAS_RX][LENGTH_PSS_NR],
     c16_t sss_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR],
     uint8_t doPss,
@@ -267,6 +267,7 @@ static int do_pss_sss_extract_nr(
     c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP]) // add flag to indicate extracting only PSS, only SSS, or both
 {
   NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
+  AssertFatal(frame_parms->nb_antennas_rx > 0, "UB as sss_ext is not set to any value\n");
 
   for (int aarx = 0; aarx < frame_parms->nb_antennas_rx; aarx++) {
     int pss_symbol = 0;
@@ -340,7 +341,7 @@ static int do_pss_sss_extract_nr(
 *********************************************************************/
 
 static int pss_sss_extract_nr(PHY_VARS_NR_UE *phy_vars_ue,
-                              UE_nr_rxtx_proc_t *proc,
+                              const UE_nr_rxtx_proc_t *proc,
                               c16_t pss_ext[NB_ANTENNAS_RX][LENGTH_PSS_NR],
                               c16_t sss_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR],
                               uint8_t subframe,
@@ -362,15 +363,15 @@ static int pss_sss_extract_nr(PHY_VARS_NR_UE *phy_vars_ue,
  *
  *********************************************************************/
 bool rx_sss_nr(PHY_VARS_NR_UE *ue,
-               UE_nr_rxtx_proc_t *proc,
+               const UE_nr_rxtx_proc_t *proc,
                int32_t *tot_metric,
                uint8_t *phase_max,
                int *freq_offset_sss,
                c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP])
 {
   uint8_t i;
-  c16_t pss_ext[NB_ANTENNAS_RX][LENGTH_PSS_NR];
-  c16_t sss_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR];
+  c16_t pss_ext[NB_ANTENNAS_RX][LENGTH_PSS_NR] = {0};
+  c16_t sss_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR] = {0};
   uint8_t Nid2 = GET_NID2(ue->common_vars.nid2);
   uint16_t Nid1;
   uint8_t phase;
@@ -502,15 +503,15 @@ bool rx_sss_nr(PHY_VARS_NR_UE *ue,
     Nid1 = GET_NID1(frame_parms->Nid_cell);
     LOG_D(PHY,"Nid2 %d Nid1 %d tot_metric %d, phase_max %d \n", Nid2, Nid1, *tot_metric, *phase_max);
   }
-  //#endif
-
-  if (Nid1==N_ID_1_NUMBER)
-    return false;
-
+  // #endif
   int re = 0;
   int im = 0;
   if (Nid1 == N_ID_1_NUMBER) {
-    LOG_I(PHY,"Failed to detect SSS after PSS\n");
+    LOG_W(PHY,
+          "Failed to detect SSS after PSS, metric of SSS %d, threshold to consider SSS valid %d, detected PCI: %d\n",
+          *tot_metric,
+          SSS_METRIC_FLOOR_NR,
+          frame_parms->Nid_cell);
     return false;
   }
   d = (int16_t *)&d_sss[Nid2][Nid1];
@@ -523,7 +524,8 @@ bool rx_sss_nr(PHY_VARS_NR_UE *ue,
 
   double ffo_pss = ((double)ue->common_vars.freq_offset)/frame_parms->subcarrier_spacing;
   LOG_W(NR_PHY,
-        "ffo_pss %f (%i Hz), ffo_sss %f (%i Hz),  ffo_pss+ffo_sss %f (%i Hz), nid1: %d, nid2: %d\n",
+        "SSS detected, PCI: %d, ffo_pss %f (%i Hz), ffo_sss %f (%i Hz),  ffo_pss+ffo_sss %f (%i Hz), nid1: %d, nid2: %d\n",
+        frame_parms->Nid_cell,
         ffo_pss,
         (int)(ffo_pss * frame_parms->subcarrier_spacing),
         ffo_sss,

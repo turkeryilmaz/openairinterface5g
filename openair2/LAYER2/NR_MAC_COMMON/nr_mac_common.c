@@ -466,7 +466,11 @@ const uint8_t table_6_1_2_1_1_3[16][4] = {
     {0, 3, 0, 10} // row index 16
 };
 
-NR_tda_info_t get_ul_tda_info(const NR_UE_UL_BWP_t *ul_bwp, int controlResourceSetId, int ss_type, nr_rnti_type_t rnti_type, int tda_index)
+NR_tda_info_t get_ul_tda_info(const NR_UE_UL_BWP_t *ul_bwp,
+                              int controlResourceSetId,
+                              int ss_type,
+                              nr_rnti_type_t rnti_type,
+                              int tda_index)
 {
   NR_tda_info_t tda_info = {0};
   NR_PUSCH_TimeDomainResourceAllocationList_t *tdalist = get_ul_tdalist(ul_bwp, controlResourceSetId, ss_type, rnti_type);
@@ -609,8 +613,14 @@ NR_tda_info_t set_tda_info_from_list(NR_PDSCH_TimeDomainResourceAllocationList_t
   return tda_info;
 }
 
-NR_tda_info_t get_dl_tda_info(const NR_UE_DL_BWP_t *dl_BWP, int ss_type, int tda_index, int dmrs_typeA_pos,
-                              int mux_pattern, nr_rnti_type_t rnti_type, int coresetid, bool sib1)
+NR_tda_info_t get_dl_tda_info(const NR_UE_DL_BWP_t *dl_BWP,
+                              int ss_type,
+                              int tda_index,
+                              int dmrs_typeA_pos,
+                              int mux_pattern,
+                              nr_rnti_type_t rnti_type,
+                              int coresetid,
+                              bool sib1)
 {
   NR_tda_info_t tda_info;
   bool normal_CP = true;
@@ -619,7 +629,7 @@ NR_tda_info_t get_dl_tda_info(const NR_UE_DL_BWP_t *dl_BWP, int ss_type, int tda
   // implements Table 5.1.2.1.1-1 of 38.214
   NR_PDSCH_TimeDomainResourceAllocationList_t *tdalist = get_dl_tdalist(dl_BWP, coresetid, ss_type, rnti_type);
   switch (rnti_type) {
-    case NR_RNTI_SI:
+    case TYPE_SI_RNTI_:
       if(sib1) {
         default_table_type_t table_type = get_default_table_type(mux_pattern);
         tda_info = get_info_from_tda_tables(table_type, tda_index, dmrs_typeA_pos, normal_CP);
@@ -633,7 +643,7 @@ NR_tda_info_t get_dl_tda_info(const NR_UE_DL_BWP_t *dl_BWP, int ss_type, int tda
         }
       }
       break;
-    case NR_RNTI_P:
+    case TYPE_P_RNTI_:
       if(tdalist)
         tda_info = set_tda_info_from_list(tdalist, tda_index);
       else {
@@ -641,11 +651,11 @@ NR_tda_info_t get_dl_tda_info(const NR_UE_DL_BWP_t *dl_BWP, int ss_type, int tda
         tda_info = get_info_from_tda_tables(table_type, tda_index, dmrs_typeA_pos, normal_CP);
       }
       break;
-    case NR_RNTI_C:
-    case NR_RNTI_CS:
-    case NR_RNTI_MCS_C:
-    case NR_RNTI_RA:
-    case NR_RNTI_TC:
+    case TYPE_C_RNTI_:
+    case TYPE_CS_RNTI_:
+    case TYPE_MCS_C_RNTI_:
+    case TYPE_RA_RNTI_:
+    case TYPE_TC_RNTI_:
       if(tdalist)
         tda_info = set_tda_info_from_list(tdalist, tda_index);
       else
@@ -2072,6 +2082,7 @@ uint8_t compute_nr_root_seq(NR_RACH_ConfigCommon_t *rach_config,
     if (NCS == 0) return nb_preambles;
     else {
       r = L_ra/NCS;
+      AssertFatal(r > 0, "bad r: L_ra %d, NCS %d\n", L_ra, NCS);
       found_sequences = (nb_preambles/r) + (nb_preambles%r!=0); //ceil(nb_preambles/r)
       LOG_D(MAC, "Computing NR root sequences: found %u sequences\n", found_sequences);
       return (found_sequences);
@@ -2241,118 +2252,6 @@ static const uint16_t table_7_3_1_1_2_32[3][15] = {
     {0, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
     {0, 1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 };
-
-void get_delta_arfcn(int i, uint32_t nrarfcn, uint64_t N_OFFs)
-{
-  uint32_t delta_arfcn = nrarfcn - N_OFFs;
-
-  if(delta_arfcn % (nr_bandtable[i].step_size) != 0)
-    LOG_E(NR_MAC, "nrarfcn %u is not on the channel raster for step size %lu\n", nrarfcn, nr_bandtable[i].step_size);
-}
-
-uint32_t to_nrarfcn(int nr_bandP,
-                    uint64_t dl_CarrierFreq,
-                    uint8_t scs_index,
-                    uint32_t bw)
-{
-  uint64_t dl_CarrierFreq_by_1k = dl_CarrierFreq / 1000;
-  int bw_kHz = bw / 1000;
-  uint32_t nrarfcn;
-  int i = get_nr_table_idx(nr_bandP, scs_index);
-
-  LOG_I(NR_MAC,"Searching for nr band %d DL Carrier frequency %llu bw %u\n",nr_bandP,(long long unsigned int)dl_CarrierFreq,bw);
-
-  AssertFatal(dl_CarrierFreq_by_1k >= nr_bandtable[i].dl_min,
-        "Band %d, bw %u : DL carrier frequency %llu kHz < %llu\n",
-	      nr_bandP, bw, (long long unsigned int)dl_CarrierFreq_by_1k,
-	      (long long unsigned int)nr_bandtable[i].dl_min);
-  AssertFatal(dl_CarrierFreq_by_1k <= (nr_bandtable[i].dl_max - bw_kHz/2),
-        "Band %d, dl_CarrierFreq %llu bw %u: DL carrier frequency %llu kHz > %llu\n",
-	      nr_bandP, (long long unsigned int)dl_CarrierFreq,bw, (long long unsigned int)dl_CarrierFreq_by_1k,
-	      (long long unsigned int)(nr_bandtable[i].dl_max - bw_kHz/2));
- 
-  int deltaFglobal = 60;
-  uint32_t N_REF_Offs = 2016667;
-  uint64_t F_REF_Offs_khz = 24250080;
-
-  if (dl_CarrierFreq < 24.25e9) {
-    deltaFglobal = 15;
-    N_REF_Offs = 600000;
-    F_REF_Offs_khz = 3000000;
-  }
-  if (dl_CarrierFreq < 3e9) {
-    deltaFglobal = 5;
-    N_REF_Offs = 0;
-    F_REF_Offs_khz = 0;
-  }   
-
-  // This is equation before Table 5.4.2.1-1 in 38101-1-f30
-  // F_REF=F_REF_Offs + deltaF_Global(N_REF-NREF_REF_Offs)
-  nrarfcn =  (((dl_CarrierFreq_by_1k - F_REF_Offs_khz)/deltaFglobal)+N_REF_Offs);
-  //get_delta_arfcn(i, nrarfcn, nr_bandtable[i].N_OFFs_DL);
-
-  return nrarfcn;
-}
-
-// This function computes the RF reference frequency from the NR-ARFCN according to 5.4.2.1 of 3GPP TS 38.104
-// this function applies to both DL and UL
-uint64_t from_nrarfcn(int nr_bandP,
-                      uint8_t scs_index,
-                      uint32_t nrarfcn)
-{
-  int deltaFglobal = 5;
-  uint32_t N_REF_Offs = 0;
-  uint64_t F_REF_Offs_khz = 0;
-  uint64_t N_OFFs, frequency, freq_min;
-  int i = get_nr_table_idx(nr_bandP, scs_index);
-
-  if (nrarfcn > 599999 && nrarfcn < 2016667) {
-    deltaFglobal = 15;
-    N_REF_Offs = 600000;
-    F_REF_Offs_khz = 3000000;
-  }
-  if (nrarfcn > 2016666 && nrarfcn < 3279166) {
-    deltaFglobal = 60; 
-    N_REF_Offs = 2016667;
-    F_REF_Offs_khz = 24250080;
-  }
-
-  int32_t delta_duplex = get_delta_duplex(nr_bandP, scs_index);
-
-  if (delta_duplex <= 0){ // DL band >= UL band
-    if (nrarfcn >= nr_bandtable[i].N_OFFs_DL){ // is TDD of FDD DL
-      N_OFFs = nr_bandtable[i].N_OFFs_DL;
-      freq_min = nr_bandtable[i].dl_min;
-    } else {// is FDD UL
-      N_OFFs = nr_bandtable[i].N_OFFs_DL + delta_duplex/deltaFglobal;
-      freq_min = nr_bandtable[i].ul_min;
-    }
-  } else { // UL band > DL band
-    if (nrarfcn >= nr_bandtable[i].N_OFFs_DL + delta_duplex/deltaFglobal){ // is FDD UL
-      N_OFFs = nr_bandtable[i].N_OFFs_DL + delta_duplex/deltaFglobal;
-      freq_min = nr_bandtable[i].ul_min;
-    } else { // is FDD DL
-      N_OFFs = nr_bandtable[i].N_OFFs_DL;
-      freq_min = nr_bandtable[i].dl_min;
-    }
-  }
-
-  LOG_D(NR_MAC, "Frequency from NR-ARFCN for N_OFFs %lu, duplex spacing %d KHz, deltaFglobal %d KHz\n", N_OFFs, delta_duplex, deltaFglobal);
-
-  AssertFatal(nrarfcn >= N_OFFs,"nrarfcn %u < N_OFFs[%d] %llu\n", nrarfcn, nr_bandtable[i].band, (long long unsigned int)N_OFFs);
-  get_delta_arfcn(i, nrarfcn, N_OFFs);
-
-  frequency = 1000 * (F_REF_Offs_khz + (nrarfcn - N_REF_Offs) * deltaFglobal);
-
-  LOG_D(NR_MAC, "Computing frequency (nrarfcn %llu => %llu KHz (freq_min %llu KHz, NR band %d N_OFFs %llu))\n",
-        (unsigned long long)nrarfcn,
-        (unsigned long long)frequency/1000,
-        (unsigned long long)freq_min,
-        nr_bandP,
-        (unsigned long long)N_OFFs);
-
-  return frequency;
-}
 
 void nr_get_tbs_dl(nfapi_nr_dl_tti_pdsch_pdu *pdsch_pdu,
 		   int x_overhead,
@@ -2601,20 +2500,23 @@ uint32_t nr_get_code_rate_ul(uint8_t Imcs, uint8_t table_idx) {
 }
 
 // Table 5.1.2.2.1-1 38.214
-uint8_t getRBGSize(uint16_t bwp_size, long rbg_size_config) {
-  
-  AssertFatal(bwp_size < 276,"Invalid BWP Size > 275\n");
-  
-  if (bwp_size < 37)  return (rbg_size_config ? 4 : 2);
-  if (bwp_size < 73)  return (rbg_size_config ? 8 : 4);
-  if (bwp_size < 145) return (rbg_size_config ? 16 : 8);
-  else return 16;
+uint8_t getRBGSize(uint16_t bwp_size, long rbg_size_config)
+{
+  AssertFatal(bwp_size < 276, "Invalid BWP Size %d\n", bwp_size);
+  if (bwp_size < 37)
+    return (rbg_size_config ? 4 : 2);
+  if (bwp_size < 73)
+    return (rbg_size_config ? 8 : 4);
+  if (bwp_size < 145)
+    return (rbg_size_config ? 16 : 8);
+  else
+    return 16;
 }
 
-uint8_t getNRBG(uint16_t bwp_size, uint16_t bwp_start, long rbg_size_config) {
-
-  uint8_t rbg_size = getRBGSize(bwp_size,rbg_size_config);
-  return (uint8_t)ceil((float)(bwp_size+(bwp_start % rbg_size))/(float)rbg_size);
+uint8_t getNRBG(uint16_t bwp_size, uint16_t bwp_start, long rbg_size_config)
+{
+  uint8_t rbg_size = getRBGSize(bwp_size, rbg_size_config);
+  return (uint8_t)ceil((float)(bwp_size + (bwp_start % rbg_size)) / (float)rbg_size);
 }
 
 uint8_t getAntPortBitWidth(NR_SetupRelease_DMRS_DownlinkConfig_t *typeA, NR_SetupRelease_DMRS_DownlinkConfig_t *typeB) {
@@ -3232,21 +3134,29 @@ uint8_t compute_precoding_information(NR_PUSCH_Config_t *pusch_Config,
   return nbits;
 }
 
-NR_PDSCH_TimeDomainResourceAllocationList_t *get_dl_tdalist(const NR_UE_DL_BWP_t *DL_BWP, int controlResourceSetId, int ss_type, nr_rnti_type_t rnti_type)
+NR_PDSCH_TimeDomainResourceAllocationList_t *get_dl_tdalist(const NR_UE_DL_BWP_t *DL_BWP,
+                                                            int controlResourceSetId,
+                                                            int ss_type,
+                                                            nr_rnti_type_t rnti_type)
 {
   if (!DL_BWP)
     return NULL;
   // see table 5.1.2.1.1-1 in 38.214
-  if ((rnti_type == NR_RNTI_CS || rnti_type == NR_RNTI_C || rnti_type == NR_RNTI_MCS_C) && !(ss_type == NR_SearchSpace__searchSpaceType_PR_common && controlResourceSetId == 0)
+  if ((rnti_type == TYPE_CS_RNTI_ || rnti_type == TYPE_C_RNTI_ || rnti_type == TYPE_MCS_C_RNTI_)
+      && !(ss_type == NR_SearchSpace__searchSpaceType_PR_common && controlResourceSetId == 0)
       && (DL_BWP->pdsch_Config && DL_BWP->pdsch_Config->pdsch_TimeDomainAllocationList))
     return DL_BWP->pdsch_Config->pdsch_TimeDomainAllocationList->choice.setup;
   else
     return DL_BWP->tdaList_Common;
 }
 
-NR_PUSCH_TimeDomainResourceAllocationList_t *get_ul_tdalist(const NR_UE_UL_BWP_t *UL_BWP, int controlResourceSetId, int ss_type, nr_rnti_type_t rnti_type)
+NR_PUSCH_TimeDomainResourceAllocationList_t *get_ul_tdalist(const NR_UE_UL_BWP_t *UL_BWP,
+                                                            int controlResourceSetId,
+                                                            int ss_type,
+                                                            nr_rnti_type_t rnti_type)
 {
-  if ((rnti_type == NR_RNTI_CS || rnti_type == NR_RNTI_C || rnti_type == NR_RNTI_MCS_C) && !(ss_type == NR_SearchSpace__searchSpaceType_PR_common && controlResourceSetId == 0)
+  if ((rnti_type == TYPE_CS_RNTI_ || rnti_type == TYPE_C_RNTI_ || rnti_type == TYPE_MCS_C_RNTI_)
+      && !(ss_type == NR_SearchSpace__searchSpaceType_PR_common && controlResourceSetId == 0)
       && (UL_BWP->pusch_Config && UL_BWP->pusch_Config->pusch_TimeDomainAllocationList))
     return UL_BWP->pusch_Config->pusch_TimeDomainAllocationList->choice.setup;
   else
@@ -3327,6 +3237,10 @@ uint16_t nr_dci_size(const NR_UE_DL_BWP_t *DL_BWP,
       break;
 
     case NR_UL_DCI_FORMAT_0_1:
+      if (!UL_BWP) {
+        LOG_E(NR_MAC, "Error! Not possible to configure DCI format 01 without UL BWP.\n");
+        return 0;
+      }
       /// fixed: Format identifier 1, MCS 5, NDI 1, RV 2, HARQ PID 4, PUSCH TPC 2, ULSCH indicator 1 --16
       size += 16;
       // Carrier indicator
@@ -3480,6 +3394,10 @@ uint16_t nr_dci_size(const NR_UE_DL_BWP_t *DL_BWP,
 
     case NR_DL_DCI_FORMAT_1_1:
       LOG_D(NR_MAC, "DCI_FORMAT 1_1 : pdsch_Config %p, pucch_Config %p\n", pdsch_Config, pucch_Config);
+      if (!DL_BWP) {
+        LOG_E(NR_MAC, "Error! Not possible to configure DCI format 11 without DL BWP.\n");
+        return 0;
+      }
       // General note: 0 bits condition is ignored as default nbits is 0.
       // Format identifier
       size = 1;
@@ -3802,17 +3720,12 @@ uint8_t get_pdsch_mcs_table(long *mcs_Table, int dci_format, int rnti_type, int 
 
   // Set downlink MCS table (Semi-persistent scheduling ignored for now)
   uint8_t mcsTableIdx = 0; // default value
-  if (mcs_Table &&
-      *mcs_Table == NR_PDSCH_Config__mcs_Table_qam256 &&
-      dci_format == NR_DL_DCI_FORMAT_1_1 &&
-      rnti_type == NR_RNTI_C)
+  if (mcs_Table && *mcs_Table == NR_PDSCH_Config__mcs_Table_qam256 && dci_format == NR_DL_DCI_FORMAT_1_1 && rnti_type == TYPE_C_RNTI_)
     mcsTableIdx = 1;
-  else if (rnti_type != NR_RNTI_MCS_C &&
-           mcs_Table &&
-           *mcs_Table == NR_PDSCH_Config__mcs_Table_qam64LowSE &&
-           ss_type == NR_SearchSpace__searchSpaceType_PR_ue_Specific)
+  else if (rnti_type != TYPE_MCS_C_RNTI_ && mcs_Table && *mcs_Table == NR_PDSCH_Config__mcs_Table_qam64LowSE
+           && ss_type == NR_SearchSpace__searchSpaceType_PR_ue_Specific)
     mcsTableIdx = 2;
-  else if (rnti_type == NR_RNTI_MCS_C)
+  else if (rnti_type == TYPE_MCS_C_RNTI_)
     mcsTableIdx = 2;
 
   LOG_D(NR_MAC,"DL MCS Table Index: %d\n", mcsTableIdx);
@@ -3830,23 +3743,20 @@ uint8_t get_pusch_mcs_table(long *mcs_Table,
 
   // implementing 6.1.4.1 in 38.214
   if (mcs_Table != NULL) {
-    if (config_grant || (rnti_type == NR_RNTI_CS)) {
+    if (config_grant || (rnti_type == TYPE_CS_RNTI_)) {
       if (*mcs_Table == NR_PUSCH_Config__mcs_Table_qam256)
         return 1;
       else
         return (2 + (is_tp << 1));
-    }
-    else {
-      if ((*mcs_Table == NR_PUSCH_Config__mcs_Table_qam256) &&
-          (dci_format == NR_UL_DCI_FORMAT_0_1) &&
-          ((rnti_type == NR_RNTI_C ) || (rnti_type == NR_RNTI_SP_CSI)))
+    } else {
+      if ((*mcs_Table == NR_PUSCH_Config__mcs_Table_qam256) && (dci_format == NR_UL_DCI_FORMAT_0_1)
+          && ((rnti_type == TYPE_C_RNTI_) || (rnti_type == TYPE_SP_CSI_RNTI_)))
         return 1;
       // TODO take into account UE configuration
-      if ((*mcs_Table == NR_PUSCH_Config__mcs_Table_qam64LowSE) &&
-          (target_ss == NR_SearchSpace__searchSpaceType_PR_ue_Specific) &&
-          ((rnti_type == NR_RNTI_C ) || (rnti_type == NR_RNTI_SP_CSI)))
+      if ((*mcs_Table == NR_PUSCH_Config__mcs_Table_qam64LowSE) && (target_ss == NR_SearchSpace__searchSpaceType_PR_ue_Specific)
+          && ((rnti_type == TYPE_C_RNTI_) || (rnti_type == TYPE_SP_CSI_RNTI_)))
         return (2 + (is_tp << 1));
-      if (rnti_type == NR_RNTI_MCS_C)
+      if (rnti_type == TYPE_MCS_C_RNTI_)
         return (2 + (is_tp << 1));
     }
   }
@@ -4082,8 +3992,8 @@ void csi_period_offset(NR_CSI_ReportConfig_t *csirep,
   }
 }
 
-uint8_t get_BG(uint32_t A, uint16_t R) {
-
+uint8_t get_BG(uint32_t A, uint16_t R)
+{
   float code_rate = (float) R / 10240.0f;
   if ((A <= 292) || ((A <= NR_MAX_PDSCH_TBS) && (code_rate <= 0.6667)) || code_rate <= 0.25)
     return 2;
@@ -4284,33 +4194,6 @@ void get_type0_PDCCH_CSS_config_parameters(NR_Type0_PDCCH_CSS_config_t *type0_PD
   AssertFatal(type0_PDCCH_CSS_config->num_symbols != -1, "Type0 PDCCH coreset num_symbols undefined");
   AssertFatal(type0_PDCCH_CSS_config->rb_offset != -1, "Type0 PDCCH coreset rb_offset undefined");
 
-
-  //uint32_t cell_id = 0;   //  obtain from L1 later
-
-  //mac->type0_pdcch_dci_config.coreset.rb_start = rb_offset;
-  //mac->type0_pdcch_dci_config.coreset.rb_end = rb_offset + num_rbs - 1;
-
-//  uint64_t mask = 0x0;
-//  uint8_t i;
-//  for(i=0; i<(type0_PDCCH_CSS_config->num_rbs/6); ++i){   //  38.331 Each bit corresponds a group of 6 RBs
-//    mask = mask >> 1;
-//    mask = mask | 0x100000000000;
-//  }
-
-  //LOG_I(MAC,">>>>>>>>mask %x num_rbs %d rb_offset %d\n", mask, num_rbs, rb_offset);
-
-//    mac->type0_pdcch_dci_config.coreset.frequency_domain_resource = mask;
-//    mac->type0_pdcch_dci_config.coreset.rb_offset = rb_offset;  //  additional parameter other than coreset
-//
-//    //mac->type0_pdcch_dci_config.type0_pdcch_coreset.duration = num_symbols;
-//    mac->type0_pdcch_dci_config.coreset.cce_reg_mapping_type = CCE_REG_MAPPING_TYPE_INTERLEAVED;
-//    mac->type0_pdcch_dci_config.coreset.cce_reg_interleaved_reg_bundle_size = 6;   //  L 38.211 7.3.2.2
-//    mac->type0_pdcch_dci_config.coreset.cce_reg_interleaved_interleaver_size = 2;  //  R 38.211 7.3.2.2
-//    mac->type0_pdcch_dci_config.coreset.cce_reg_interleaved_shift_index = cell_id;
-//    mac->type0_pdcch_dci_config.coreset.precoder_granularity = PRECODER_GRANULARITY_SAME_AS_REG_BUNDLE;
-//    mac->type0_pdcch_dci_config.coreset.pdcch_dmrs_scrambling_id = cell_id;
-
-
   // type0-pdcch search space
   float big_o = 0.0f;
   float big_m = 0.0f;
@@ -4463,22 +4346,27 @@ void get_type0_PDCCH_CSS_config_parameters(NR_Type0_PDCCH_CSS_config_t *type0_PD
 
   type0_PDCCH_CSS_config->n_0 = ((uint32_t)(big_o*(1<<scs_pdcch)) + (uint32_t)(type0_PDCCH_CSS_config->ssb_index*big_m))%num_slot_per_frame;
   type0_PDCCH_CSS_config->cset_start_rb = ssb_offset_point_a - type0_PDCCH_CSS_config->rb_offset;
+  // AssertFatal(type0_PDCCH_CSS_config->cset_start_rb >= 0, "Invalid CSET0 start PRB %d SSB offset point A %d RB offset %d\n",
+              // type0_PDCCH_CSS_config->cset_start_rb, ssb_offset_point_a, type0_PDCCH_CSS_config->rb_offset);
+  //TODO W2405 rebase: this assert catch an issue exiting there. to fix root issue
+  if(type0_PDCCH_CSS_config->cset_start_rb < 0){
+    LOG_W(NR_MAC, "Invalid CSET0 start PRB %d SSB offset point A %d RB offset %d\n",
+              type0_PDCCH_CSS_config->cset_start_rb, ssb_offset_point_a, type0_PDCCH_CSS_config->rb_offset);
+  }
 }
 
-void fill_coresetZero(NR_ControlResourceSet_t *coreset0, NR_Type0_PDCCH_CSS_config_t *type0_PDCCH_CSS_config) {
-
-  int32_t duration;
-
+void fill_coresetZero(NR_ControlResourceSet_t *coreset0, NR_Type0_PDCCH_CSS_config_t *type0_PDCCH_CSS_config)
+{
   if (coreset0 == NULL)
     coreset0 = calloc(1,sizeof(*coreset0));
 
-  coreset0->controlResourceSetId = 0;
-
   AssertFatal(type0_PDCCH_CSS_config!=NULL,"No type0 CSS configuration\n");
 
-  duration = type0_PDCCH_CSS_config->num_symbols;
+  coreset0->controlResourceSetId = 0;
+  int duration = type0_PDCCH_CSS_config->num_symbols;
 
-  if(coreset0->frequencyDomainResources.buf == NULL) coreset0->frequencyDomainResources.buf = calloc(1,6);
+  if(coreset0->frequencyDomainResources.buf == NULL)
+    coreset0->frequencyDomainResources.buf = calloc(1,6);
 
   switch(type0_PDCCH_CSS_config->num_rbs){
     case 24:
@@ -4504,8 +4392,9 @@ void fill_coresetZero(NR_ControlResourceSet_t *coreset0, NR_Type0_PDCCH_CSS_conf
   coreset0->frequencyDomainResources.bits_unused = 3;
 
   coreset0->duration = duration;
-  coreset0->cce_REG_MappingType.present=NR_ControlResourceSet__cce_REG_MappingType_PR_interleaved;
-  coreset0->cce_REG_MappingType.choice.interleaved=calloc(1,sizeof(*coreset0->cce_REG_MappingType.choice.interleaved));
+  coreset0->cce_REG_MappingType.present = NR_ControlResourceSet__cce_REG_MappingType_PR_interleaved;
+  if (!coreset0->cce_REG_MappingType.choice.interleaved)
+    coreset0->cce_REG_MappingType.choice.interleaved = calloc(1,sizeof(*coreset0->cce_REG_MappingType.choice.interleaved));
   coreset0->cce_REG_MappingType.choice.interleaved->reg_BundleSize = NR_ControlResourceSet__cce_REG_MappingType__interleaved__reg_BundleSize_n6;
   coreset0->cce_REG_MappingType.choice.interleaved->interleaverSize = NR_ControlResourceSet__cce_REG_MappingType__interleaved__interleaverSize_n2;
   coreset0->cce_REG_MappingType.choice.interleaved->shiftIndex = NULL; // -> use cell_id
@@ -4515,23 +4404,28 @@ void fill_coresetZero(NR_ControlResourceSet_t *coreset0, NR_Type0_PDCCH_CSS_conf
   coreset0->tci_StatesPDCCH_ToReleaseList = NULL;
   coreset0->tci_PresentInDCI = NULL;
   coreset0->pdcch_DMRS_ScramblingID = NULL;
-
 }
 
 void fill_searchSpaceZero(NR_SearchSpace_t *ss0,
                           int slots_per_frame,
                           NR_Type0_PDCCH_CSS_config_t *type0_PDCCH_CSS_config)
 {
-
-  if(ss0 == NULL) ss0=calloc(1,sizeof(*ss0));
-  if(ss0->controlResourceSetId == NULL) ss0->controlResourceSetId=calloc(1,sizeof(*ss0->controlResourceSetId));
-  if(ss0->monitoringSymbolsWithinSlot == NULL) ss0->monitoringSymbolsWithinSlot = calloc(1,sizeof(*ss0->monitoringSymbolsWithinSlot));
-  if(ss0->monitoringSymbolsWithinSlot->buf == NULL) ss0->monitoringSymbolsWithinSlot->buf = calloc(1,2);
-  if(ss0->nrofCandidates == NULL) ss0->nrofCandidates = calloc(1,sizeof(*ss0->nrofCandidates));
-  if(ss0->searchSpaceType == NULL) ss0->searchSpaceType = calloc(1,sizeof(*ss0->searchSpaceType));
-  if(ss0->searchSpaceType->choice.common == NULL) ss0->searchSpaceType->choice.common=calloc(1,sizeof(*ss0->searchSpaceType->choice.common));
+  if(ss0 == NULL)
+    ss0 = calloc(1, sizeof(*ss0));
+  if(ss0->controlResourceSetId == NULL)
+    ss0->controlResourceSetId = calloc(1, sizeof(*ss0->controlResourceSetId));
+  if(ss0->monitoringSymbolsWithinSlot == NULL)
+    ss0->monitoringSymbolsWithinSlot = calloc(1, sizeof(*ss0->monitoringSymbolsWithinSlot));
+  if(ss0->monitoringSymbolsWithinSlot->buf == NULL)
+    ss0->monitoringSymbolsWithinSlot->buf = calloc(1, 2);
+  if(ss0->nrofCandidates == NULL)
+    ss0->nrofCandidates = calloc(1, sizeof(*ss0->nrofCandidates));
+  if(ss0->searchSpaceType == NULL)
+    ss0->searchSpaceType = calloc(1, sizeof(*ss0->searchSpaceType));
+  if(ss0->searchSpaceType->choice.common == NULL)
+    ss0->searchSpaceType->choice.common = calloc(1, sizeof(*ss0->searchSpaceType->choice.common));
   if(ss0->searchSpaceType->choice.common->dci_Format0_0_AndFormat1_0 == NULL)
-    ss0->searchSpaceType->choice.common->dci_Format0_0_AndFormat1_0 = calloc(1,sizeof(*ss0->searchSpaceType->choice.common->dci_Format0_0_AndFormat1_0));
+    ss0->searchSpaceType->choice.common->dci_Format0_0_AndFormat1_0 = calloc(1, sizeof(*ss0->searchSpaceType->choice.common->dci_Format0_0_AndFormat1_0));
 
   AssertFatal(type0_PDCCH_CSS_config!=NULL,"No type0 CSS configuration\n");
 
@@ -4542,13 +4436,15 @@ void fill_searchSpaceZero(NR_SearchSpace_t *ss0,
 
   ss0->searchSpaceId = 0;
   *ss0->controlResourceSetId = 0;
-  ss0->monitoringSlotPeriodicityAndOffset = calloc(1,sizeof(*ss0->monitoringSlotPeriodicityAndOffset));
+  if(ss0->monitoringSlotPeriodicityAndOffset == NULL)
+    ss0->monitoringSlotPeriodicityAndOffset = calloc(1, sizeof(*ss0->monitoringSlotPeriodicityAndOffset));
   set_monitoring_periodicity_offset(ss0,periodicity,offset);
   const uint32_t duration = type0_PDCCH_CSS_config->search_space_duration;
   if (duration==1)
     ss0->duration = NULL;
   else{
-    ss0->duration = calloc(1,sizeof(*ss0->duration));
+    if (!ss0->duration)
+      ss0->duration = calloc(1, sizeof(*ss0->duration));
     *ss0->duration = duration;
   }
 
@@ -4857,29 +4753,30 @@ void compute_rsrp_bitlen(struct NR_CSI_ReportConfig *csi_reportconfig,
 }
 
 uint8_t compute_ri_bitlen(struct NR_CSI_ReportConfig *csi_reportconfig,
-                          nr_csi_report_t *csi_report) {
+                          nr_csi_report_t *csi_report)
+{
 
   struct NR_CodebookConfig *codebookConfig = csi_reportconfig->codebookConfig;
   uint8_t nb_allowed_ri, ri_bitlen;
   uint8_t ri_restriction = 0;
 
   if (codebookConfig == NULL) {
-    csi_report->csi_meas_bitlen.ri_bitlen=0;
+    csi_report->csi_meas_bitlen.ri_bitlen = 0;
     return ri_restriction;
   }
 
   // codebook type1 single panel
-  if (NR_CodebookConfig__codebookType__type1__subType_PR_typeI_SinglePanel==codebookConfig->codebookType.choice.type1->subType.present){
+  if (NR_CodebookConfig__codebookType__type1__subType_PR_typeI_SinglePanel == codebookConfig->codebookType.choice.type1->subType.present) {
     struct NR_CodebookConfig__codebookType__type1__subType__typeI_SinglePanel *type1single = codebookConfig->codebookType.choice.type1->subType.choice.typeI_SinglePanel;
-    if (type1single->nrOfAntennaPorts.present == NR_CodebookConfig__codebookType__type1__subType__typeI_SinglePanel__nrOfAntennaPorts_PR_two){
+    if (type1single->nrOfAntennaPorts.present == NR_CodebookConfig__codebookType__type1__subType__typeI_SinglePanel__nrOfAntennaPorts_PR_two) {
 
       ri_restriction = csi_reportconfig->codebookConfig->codebookType.choice.type1->subType.choice.typeI_SinglePanel->typeI_SinglePanel_ri_Restriction.buf[0];
 
       nb_allowed_ri = number_of_bits_set(ri_restriction);
       ri_bitlen = ceil(log2(nb_allowed_ri));
 
-      ri_bitlen = ri_bitlen<1?ri_bitlen:1; //from the spec 38.212 and table  6.3.1.1.2-3: RI, LI, CQI, and CRI of codebookType=typeI-SinglePanel
-      csi_report->csi_meas_bitlen.ri_bitlen=ri_bitlen;
+      ri_bitlen = ri_bitlen < 1 ? ri_bitlen : 1; //from the spec 38.212 and table  6.3.1.1.2-3: RI, LI, CQI, and CRI of codebookType=typeI-SinglePanel
+      csi_report->csi_meas_bitlen.ri_bitlen = ri_bitlen;
     }
     if (type1single->nrOfAntennaPorts.present == NR_CodebookConfig__codebookType__type1__subType__typeI_SinglePanel__nrOfAntennaPorts_PR_moreThanTwo){
       if (type1single->nrOfAntennaPorts.choice.moreThanTwo->n1_n2.present ==
@@ -4891,8 +4788,8 @@ uint8_t compute_ri_bitlen(struct NR_CSI_ReportConfig *csi_reportconfig,
         nb_allowed_ri = number_of_bits_set(ri_restriction);
         ri_bitlen = ceil(log2(nb_allowed_ri));
 
-        ri_bitlen = ri_bitlen<2?ri_bitlen:2; //from the spec 38.212 and table  6.3.1.1.2-3: RI, LI, CQI, and CRI of codebookType=typeI-SinglePanel
-        csi_report->csi_meas_bitlen.ri_bitlen=ri_bitlen;
+        ri_bitlen = ri_bitlen < 2 ? ri_bitlen : 2; //from the spec 38.212 and table  6.3.1.1.2-3: RI, LI, CQI, and CRI of codebookType=typeI-SinglePanel
+        csi_report->csi_meas_bitlen.ri_bitlen = ri_bitlen;
       }
       else {
         // more than 4 ports
@@ -4902,7 +4799,7 @@ uint8_t compute_ri_bitlen(struct NR_CSI_ReportConfig *csi_reportconfig,
         nb_allowed_ri = number_of_bits_set(ri_restriction);
         ri_bitlen = ceil(log2(nb_allowed_ri));
 
-        csi_report->csi_meas_bitlen.ri_bitlen=ri_bitlen;
+        csi_report->csi_meas_bitlen.ri_bitlen = ri_bitlen;
       }
     }
     return ri_restriction;
@@ -5018,145 +4915,171 @@ void get_n1n2_o1o2_singlepanel(int *n1, int *n2, int *o1, int *o2,
   }
 }
 
-void get_x1x2_bitlen_singlepanel(int n1, int n2, int o1, int o2,
-                                 int *x1, int *x2, int rank, int codebook_mode) {
-
+static void set_bitlen_size_singlepanel(CSI_Meas_bitlen_t *csi_bitlen, int n1, int n2, int o1, int o2, int rank, int codebook_mode)
+{
+  int i = rank - 1;
   // Table 6.3.1.1.2-1 in 38.212
   switch(rank){
     case 1:
-      if(n2>1) {
+      if(n2 > 1) {
         if (codebook_mode == 1) {
-          *x1 = ceil(log2(n1*o1)) + ceil(log2(n2*o2));
-          *x2 = 2;
+          csi_bitlen->pmi_i11_bitlen[i] = ceil(log2(n1 * o1));
+          csi_bitlen->pmi_i12_bitlen[i] = ceil(log2(n2 * o2));
+          csi_bitlen->pmi_x2_bitlen[i] = 2;
         }
         else {
-          *x1 = ceil(log2(n1*o1/2)) + ceil(log2(n2*o2/2));
-          *x2 = 4;
+          csi_bitlen->pmi_i11_bitlen[i] = ceil(log2(n1 * o1 / 2));
+          csi_bitlen->pmi_i12_bitlen[i] = ceil(log2(n2 * o2 / 2));
+          csi_bitlen->pmi_x2_bitlen[i] = 4;
         }
       }
       else{
         if (codebook_mode == 1) {
-          *x1 = ceil(log2(n1*o1)) + ceil(log2(n2*o2));
-          *x2 = 2;
+          csi_bitlen->pmi_i11_bitlen[i] = ceil(log2(n1 * o1));
+          csi_bitlen->pmi_i12_bitlen[i] = ceil(log2(n2 * o2));
+          csi_bitlen->pmi_x2_bitlen[i] = 2;
         }
         else {
-          *x1 = ceil(log2(n1*o1/2));
-          *x2 = 4;
+          csi_bitlen->pmi_i11_bitlen[i] = ceil(log2(n1 * o1 / 2));
+          csi_bitlen->pmi_i12_bitlen[i] = 0;
+          csi_bitlen->pmi_x2_bitlen[i] = 4;
         }
       }
+      csi_bitlen->pmi_i13_bitlen[i] = 0;
       break;
     case 2:
-      if(n1*n2 == 2) {
+      if(n1 * n2 == 2) {
         if (codebook_mode == 1) {
-          *x1 = ceil(log2(n1*o1)) + ceil(log2(n2*o2));
-          *x2 = 1;
+          csi_bitlen->pmi_i11_bitlen[i] = ceil(log2(n1 * o1));
+          csi_bitlen->pmi_i12_bitlen[i] = ceil(log2(n2 * o2));
+          csi_bitlen->pmi_x2_bitlen[i] = 1;
         }
         else {
-          *x1 = ceil(log2(n1*o1/2));
-          *x2 = 3;
+          csi_bitlen->pmi_i11_bitlen[i] = ceil(log2(n1 * o1 / 2));
+          csi_bitlen->pmi_i12_bitlen[i] = 0;
+          csi_bitlen->pmi_x2_bitlen[i] = 3;
         }
-        *x1 += 1;
+        csi_bitlen->pmi_i13_bitlen[i] = 1;
       }
       else {
-        if(n2>1) {
+        if(n2 > 1) {
           if (codebook_mode == 1) {
-            *x1 = ceil(log2(n1*o1)) + ceil(log2(n2*o2));
-            *x2 = 3;
+            csi_bitlen->pmi_i11_bitlen[i] = ceil(log2(n1 * o1));
+            csi_bitlen->pmi_i12_bitlen[i] = ceil(log2(n2 * o2));
+            csi_bitlen->pmi_x2_bitlen[i] = 1;
           }
           else {
-            *x1 = ceil(log2(n1*o1/2)) + ceil(log2(n2*o2/2));
-            *x2 = 3;
+            csi_bitlen->pmi_i11_bitlen[i] = ceil(log2(n1 * o1 / 2));
+            csi_bitlen->pmi_i12_bitlen[i] = ceil(log2(n2 * o2 / 2));
+            csi_bitlen->pmi_x2_bitlen[i] = 3;
           }
         }
         else{
           if (codebook_mode == 1) {
-            *x1 = ceil(log2(n1*o1)) + ceil(log2(n2*o2));
-            *x2 = 1;
+            csi_bitlen->pmi_i11_bitlen[i] = ceil(log2(n1 * o1));
+            csi_bitlen->pmi_i12_bitlen[i] = ceil(log2(n2 * o2));
+            csi_bitlen->pmi_x2_bitlen[i] = 1;
           }
           else {
-            *x1 = ceil(log2(n1*o1/2));
-            *x2 = 3;
+            csi_bitlen->pmi_i11_bitlen[i] = ceil(log2(n1 * o1 / 2));
+            csi_bitlen->pmi_i12_bitlen[i] = 0;
+            csi_bitlen->pmi_x2_bitlen[i] = 3;
           }
         }
-        *x1 += 2;
+        csi_bitlen->pmi_i13_bitlen[i] = 2;
       }
       break;
     case 3:
     case 4:
       if(n1*n2 == 2) {
-        *x1 = ceil(log2(n1*o1)) + ceil(log2(n2*o2));
-        *x2 = 1;
+        csi_bitlen->pmi_i11_bitlen[i] = ceil(log2(n1 * o1));
+        csi_bitlen->pmi_i12_bitlen[i] = ceil(log2(n2 * o2));
+        csi_bitlen->pmi_i13_bitlen[i] = 0;
+        csi_bitlen->pmi_x2_bitlen[i] = 1;
       }
       else {
         if(n1*n2 >= 8) {
-          *x1 = ceil(log2(n1*o1/2)) + ceil(log2(n2*o2)) + 2;
-          *x2 = 1;
+          csi_bitlen->pmi_i11_bitlen[i] = ceil(log2(n1 * o1 / 2));
+          csi_bitlen->pmi_i12_bitlen[i] = ceil(log2(n2 * o2));
+          csi_bitlen->pmi_i13_bitlen[i] = 2;
+          csi_bitlen->pmi_x2_bitlen[i] = 1;
         }
         else {
-          *x1 = ceil(log2(n1*o1)) + ceil(log2(n2*o2)) + 2;
-          *x2 = 1;
+          csi_bitlen->pmi_i11_bitlen[i] = ceil(log2(n1 * o1));
+          csi_bitlen->pmi_i12_bitlen[i] = ceil(log2(n2 * o2));
+          csi_bitlen->pmi_i13_bitlen[i] = 2;
+          csi_bitlen->pmi_x2_bitlen[i] = 1;
         }
       }
       break;
     case 5:
     case 6:
-      *x1 = ceil(log2(n1*o1)) + ceil(log2(n2*o2));
-      *x2 = 1;
+      csi_bitlen->pmi_i11_bitlen[i] = ceil(log2(n1 * o1));
+      csi_bitlen->pmi_i12_bitlen[i] = ceil(log2(n2 * o2));
+      csi_bitlen->pmi_i13_bitlen[i] = 0;
+      csi_bitlen->pmi_x2_bitlen[i] = 1;
       break;
     case 7:
     case 8:
       if(n1 == 4 && n2 == 1) {
-        *x1 = ceil(log2(n1*o1/2)) + ceil(log2(n2*o2));
-        *x2 = 1;
+        csi_bitlen->pmi_i11_bitlen[i] = ceil(log2(n1 * o1));
+        csi_bitlen->pmi_i12_bitlen[i] = ceil(log2(n2 * o2 / 2));
+        csi_bitlen->pmi_i13_bitlen[i] = 0;
+        csi_bitlen->pmi_x2_bitlen[i] = 1;
       }
       else {
         if(n1 > 2 && n2 == 2) {
-          *x1 = ceil(log2(n1*o1)) + ceil(log2(n2*o2/2));
-          *x2 = 1;
+          csi_bitlen->pmi_i11_bitlen[i] = ceil(log2(n1 * o1));
+          csi_bitlen->pmi_i12_bitlen[i] = ceil(log2(n2 * o2 / 2));
+          csi_bitlen->pmi_i13_bitlen[i] = 0;
+          csi_bitlen->pmi_x2_bitlen[i] = 1;
         }
         else {
-          *x1 = ceil(log2(n1*o1)) + ceil(log2(n2*o2));
-          *x2 = 1;
+          csi_bitlen->pmi_i11_bitlen[i] = ceil(log2(n1 * o1));
+          csi_bitlen->pmi_i12_bitlen[i] = ceil(log2(n2 * o2));
+          csi_bitlen->pmi_i13_bitlen[i] = 0;
+          csi_bitlen->pmi_x2_bitlen[i] = 1;
         }
       }
       break;
     default:
       AssertFatal(1==0,"Invalid rank in x1 x2 bit length computation\n");
   }
+  csi_bitlen->pmi_x1_bitlen[i] = csi_bitlen->pmi_i11_bitlen[i] + csi_bitlen->pmi_i12_bitlen[i] + csi_bitlen->pmi_i13_bitlen[i];
 }
 
 
 void compute_pmi_bitlen(struct NR_CSI_ReportConfig *csi_reportconfig,
                         uint8_t ri_restriction,
-                        nr_csi_report_t *csi_report) {
-
-  struct NR_CodebookConfig *codebookConfig = csi_reportconfig->codebookConfig;
-  for(int i=0; i<8; i++) {
-    csi_report->csi_meas_bitlen.pmi_x1_bitlen[i]=0;
-    csi_report->csi_meas_bitlen.pmi_x2_bitlen[i]=0;
-    if (codebookConfig == NULL || ((ri_restriction>>i)&0x01) == 0)
+                        nr_csi_report_t *csi_report)
+{
+  NR_CodebookConfig_t *codebookConfig = csi_reportconfig->codebookConfig;
+  for(int i = 0; i < 8; i++) {
+    csi_report->csi_meas_bitlen.pmi_x1_bitlen[i] = 0;
+    csi_report->csi_meas_bitlen.pmi_x2_bitlen[i] = 0;
+    if (codebookConfig == NULL || ((ri_restriction >> i) & 0x01) == 0)
       return;
     else {
       if(codebookConfig->codebookType.present == NR_CodebookConfig__codebookType_PR_type1) {
-        if(codebookConfig->codebookType.choice.type1->subType.present == NR_CodebookConfig__codebookType__type1__subType_PR_typeI_SinglePanel) {
-          if(codebookConfig->codebookType.choice.type1->subType.choice.typeI_SinglePanel->nrOfAntennaPorts.present ==
+        struct NR_CodebookConfig__codebookType__type1 *type1 = codebookConfig->codebookType.choice.type1;
+        if(type1->subType.present == NR_CodebookConfig__codebookType__type1__subType_PR_typeI_SinglePanel) {
+          struct NR_CodebookConfig__codebookType__type1__subType__typeI_SinglePanel *sp = type1->subType.choice.typeI_SinglePanel;
+          if(sp->nrOfAntennaPorts.present ==
              NR_CodebookConfig__codebookType__type1__subType__typeI_SinglePanel__nrOfAntennaPorts_PR_two) {
             csi_report->N1 = 1;
             csi_report->N2 = 1;
-            if (i==0)
-              csi_report->csi_meas_bitlen.pmi_x2_bitlen[i]=2;
-            if (i==1)
-              csi_report->csi_meas_bitlen.pmi_x2_bitlen[i]=1;
+            if (i == 0)
+              csi_report->csi_meas_bitlen.pmi_x2_bitlen[i] = 2;
+            if (i == 1)
+              csi_report->csi_meas_bitlen.pmi_x2_bitlen[i] = 1;
           }
           else {  // more than two
-            int n1,n2,o1,o2,x1,x2;
-            get_n1n2_o1o2_singlepanel(&n1,&n2,&o1,&o2,codebookConfig->codebookType.choice.type1->subType.choice.typeI_SinglePanel->nrOfAntennaPorts.choice.moreThanTwo);
-            get_x1x2_bitlen_singlepanel(n1,n2,o1,o2,&x1,&x2,i+1,codebookConfig->codebookType.choice.type1->codebookMode);
+            int n1, n2, o1, o2;
+            get_n1n2_o1o2_singlepanel(&n1, &n2, &o1, &o2, sp->nrOfAntennaPorts.choice.moreThanTwo);
+            set_bitlen_size_singlepanel(&csi_report->csi_meas_bitlen, n1, n2, o1, o2, i + 1, type1->codebookMode);
             csi_report->N1 = n1;
             csi_report->N2 = n2;
-            csi_report->codebook_mode = codebookConfig->codebookType.choice.type1->codebookMode;
-            csi_report->csi_meas_bitlen.pmi_x1_bitlen[i]=x1;
-            csi_report->csi_meas_bitlen.pmi_x2_bitlen[i]=x2;
+            csi_report->codebook_mode = type1->codebookMode;
           }
         }
         else
@@ -5241,7 +5164,7 @@ void compute_csi_bitlen(NR_CSI_MeasConfig_t *csi_MeasConfig, nr_csi_report_t *cs
         if (csi_MeasConfig->csi_SSB_ResourceSetToAddModList->list.array[csi_idx]->csi_SSB_ResourceSetId ==
             *(csi_resourceconfig->csi_RS_ResourceSetList.choice.nzp_CSI_RS_SSB->csi_SSB_ResourceSetList->list.array[0])){
           //We can configure only one SSB resource set from spec 38.331 IE CSI-ResourceConfig
-          nb_resources=  csi_MeasConfig->csi_SSB_ResourceSetToAddModList->list.array[csi_idx]->csi_SSB_ResourceList.list.count;
+          nb_resources = csi_MeasConfig->csi_SSB_ResourceSetToAddModList->list.array[csi_idx]->csi_SSB_ResourceList.list.count;
           csi_report->SSB_Index_list = csi_MeasConfig->csi_SSB_ResourceSetToAddModList->list.array[csi_idx]->csi_SSB_ResourceList.list.array;
           csi_report->CSI_Index_list = NULL;
           break;
@@ -5314,14 +5237,14 @@ uint16_t nr_get_csi_bitlen(nr_csi_report_t *csi_report_template, uint8_t csi_rep
   } else {
     csi_meas_bitlen = &(csi_report_template[csi_report_id].csi_meas_bitlen); //This might need to be moodif for Aperiodic CSI-RS measurements
     uint16_t temp_bitlen;
-    for (int i=0; i<8; i++) {
+    for (int i = 0; i < 8; i++) {
       temp_bitlen = (csi_meas_bitlen->cri_bitlen+
                      csi_meas_bitlen->ri_bitlen+
                      csi_meas_bitlen->li_bitlen[i]+
                      csi_meas_bitlen->cqi_bitlen[i]+
                      csi_meas_bitlen->pmi_x1_bitlen[i]+
                      csi_meas_bitlen->pmi_x2_bitlen[i]);
-      if(temp_bitlen>max_bitlen)
+      if(temp_bitlen > max_bitlen)
         max_bitlen = temp_bitlen;
     }
     csi_bitlen += max_bitlen;
@@ -5336,4 +5259,20 @@ uint16_t compute_PDU_length(uint32_t num_TLV, uint16_t total_length)
   // For each TLV, add 2 bytes tag + 2 bytes length + value size without padding
   pdu_length += (num_TLV * 4) + total_length;
   return pdu_length;
+}
+
+// RA-RNTI computation (associated to PRACH occasion in which the RA Preamble is transmitted)
+// - this does not apply to contention-free RA Preamble for beam failure recovery request
+// - getting star_symb, SFN_nbr from table 6.3.3.2-3 (TDD and FR1 scenario)
+// - s_id is starting symbol of the PRACH occasion [0...14]
+// - t_id is the first slot of the PRACH occasion in a system frame [0...80]
+// - f_id: index of the PRACH occasion in the frequency domain
+// - ul_carrier_id: UL carrier used for RA preamble transmission, hardcoded for NUL carrier
+rnti_t nr_get_ra_rnti(uint8_t s_id, uint8_t t_id, uint8_t f_id, uint8_t ul_carrier_id)
+{
+  // 3GPP TS 38.321 Section 5.1.3
+  rnti_t ra_rnti = 1 + s_id + 14 * t_id + 1120 * f_id + 8960 * ul_carrier_id;
+  LOG_D(MAC, "f_id %d t_id %d s_id %d ul_carrier_id %d Computed RA_RNTI is 0x%04X\n", f_id, t_id, s_id, ul_carrier_id, ra_rnti);
+
+  return ra_rnti;
 }

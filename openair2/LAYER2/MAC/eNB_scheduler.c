@@ -874,6 +874,13 @@ eNB_dlsch_ulsch_scheduler(module_id_t module_idP,
             UE_scheduling_control->cqi_req_timer);
       check_ul_failure(module_idP, CC_id, UE_id, frameP, subframeP);
 
+      /*Time Alignment timer tracking, if it has valid config from RRC */
+      if(UE_scheduling_control->ta_timer)
+      {
+         UE_scheduling_control->last_ta_cmd_time++;
+      }
+      LOG_D(MAC, "Time Alignment Timer time: %d\n", UE_scheduling_control->last_ta_cmd_time);
+
       if (UE_scheduling_control->ue_reestablishment_reject_timer > 0) {
         UE_scheduling_control->ue_reestablishment_reject_timer++;
 

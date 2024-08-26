@@ -47,7 +47,6 @@ char *parallel_config=NULL;
 char *worker_config=NULL;
 int usrp_tx_thread = 0;
 char *nfapi_str=NULL;
-int ldpc_offload_flag=0;
 uint8_t nfapi_mode=0;
 
 static mapping softmodem_funcs[] = MAPPING_SOFTMODEM_FUNCTIONS;
@@ -107,6 +106,7 @@ void get_common_options(configmodule_interface_t *cfg, uint32_t execmask)
   paramdef_t cmdline_params[] = CMDLINE_PARAMS_DESC;
   checkedparam_t cmdline_CheckParams[] = CMDLINE_PARAMS_CHECK_DESC;
   int numparams = sizeofArray(cmdline_params);
+  AssertFatal(numparams == sizeofArray(cmdline_CheckParams), "Error in arrays size (%d!=%lu)\n", numparams, sizeofArray(cmdline_CheckParams));
   config_set_checkfunctions(cmdline_params, cmdline_CheckParams, numparams);
   config_get(cfg, cmdline_params, numparams, NULL);
   nfapi_index = config_paramidx_fromname(cmdline_params, numparams, "nfapi");
@@ -116,6 +116,8 @@ void get_common_options(configmodule_interface_t *cfg, uint32_t execmask)
   paramdef_t cmdline_logparams[] =CMDLINE_LOGPARAMS_DESC ;
   checkedparam_t cmdline_log_CheckParams[] = CMDLINE_LOGPARAMS_CHECK_DESC;
   int numlogparams = sizeofArray(cmdline_logparams);
+  AssertFatal(numlogparams == sizeofArray(cmdline_log_CheckParams), "Error in arrays size (%d!=%lu)\n", numlogparams, sizeofArray(cmdline_log_CheckParams));
+
   config_set_checkfunctions(cmdline_logparams, cmdline_log_CheckParams, numlogparams);
   config_get(cfg, cmdline_logparams, numlogparams, NULL);
 
@@ -136,10 +138,8 @@ void get_common_options(configmodule_interface_t *cfg, uint32_t execmask)
   }
 
   if (logmem_filename != NULL && strlen(logmem_filename) > 0) {
-    log_mem_filename = &logmem_filename[0];
-    log_mem_flag = 1;
-    printf("Enabling OPT for log save at memory %s\n",log_mem_filename);
-    logInit_log_mem();
+    printf("Enabling OPT for log save at memory %s\n",logmem_filename);
+    logInit_log_mem(logmem_filename);
   }
 
   if (noS1) {

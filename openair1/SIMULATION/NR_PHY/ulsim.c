@@ -136,7 +136,7 @@ nrUE_params_t *get_nrUE_params(void) {
 uint16_t n_rnti = 0x1234;
 openair0_config_t openair0_cfg[MAX_CARDS];
 
-channel_desc_t *UE2gNB[NUMBER_OF_UE_MAX][NUMBER_OF_gNB_MAX];
+channel_desc_t *UE2gNB[MAX_MOBILES_PER_GNB][NUMBER_OF_gNB_MAX];
 int NB_UE_INST = 1;
 
 configmodule_interface_t *uniqCfg = NULL;
@@ -552,6 +552,8 @@ int main(int argc, char *argv[])
   gNB = RC.gNB[0];
   gNB->ofdm_offset_divisor = UINT_MAX;
   gNB->num_pusch_symbols_per_thread = 1;
+  gNB->RU_list[0] = calloc(1, sizeof(**gNB->RU_list));
+  gNB->RU_list[0]->rfdevice.openair0_cfg = openair0_cfg;
 
   initFloatingCoresTpool(threadCnt, &gNB->threadPool, false, "gNB-tpool");
   initNotifiedFIFO(&gNB->respDecode);
@@ -563,6 +565,7 @@ int main(int argc, char *argv[])
   notifiedFIFO_elt_t *msgL1Tx = newNotifiedFIFO_elt(sizeof(processingData_L1tx_t), 0, &gNB->L1_tx_free, NULL);
   processingData_L1tx_t *msgDataTx = (processingData_L1tx_t *)NotifiedFifoData(msgL1Tx);
   msgDataTx->slot = -1;
+  gNB->msgDataTx = msgDataTx;
   //gNB_config = &gNB->gNB_config;
 
   //memset((void *)&gNB->UL_INFO,0,sizeof(gNB->UL_INFO));
@@ -690,8 +693,7 @@ int main(int argc, char *argv[])
   }
 
   //Configure UE
-  nr_l2_init_ue();
-
+  nr_l2_init_ue(1);
   NR_UE_MAC_INST_t* UE_mac = get_mac_inst(0);
 
   ue_init_config_request(UE_mac, mu);
@@ -719,9 +721,7 @@ int main(int argc, char *argv[])
 
   uint32_t errors_decoding = 0;
 
-  nr_scheduled_response_t scheduled_response={0};
-  fapi_nr_ul_config_request_t ul_config={0};
-  fapi_nr_tx_request_t tx_req={0};
+  fapi_nr_ul_config_request_t ul_config = {0};
 
   uint8_t ptrs_mcs1 = 2;
   uint8_t ptrs_mcs2 = 4;
@@ -776,7 +776,7 @@ int main(int argc, char *argv[])
 
     AssertFatal(enable_ptrs == 0, "PTRS NOT SUPPORTED IF TRANSFORM PRECODING IS ENABLED\n");
 
-    int8_t index = get_index_for_dmrs_lowpapr_seq((NR_NB_SC_PER_RB/2) * nb_rb);
+    int index = get_index_for_dmrs_lowpapr_seq((NR_NB_SC_PER_RB / 2) * nb_rb);
     AssertFatal(index >= 0, "Num RBs not configured according to 3GPP 38.211 section 6.3.1.4. For PUSCH with transform precoding, num RBs cannot be multiple of any other primenumber other than 2,3,5\n");
 
     dmrs_config_type = pusch_dmrs_type1;
@@ -924,7 +924,6 @@ int main(int argc, char *argv[])
     reset_meas(&gNB->rx_pusch_stats);
     reset_meas(&gNB->rx_pusch_init_stats);
     reset_meas(&gNB->rx_pusch_symbol_processing_stats);
-    reset_meas(&gNB->ulsch_decoding_stats);
     reset_meas(&gNB->ulsch_channel_estimation_stats);
     reset_meas(&UE->ulsch_ldpc_encoding_stats);
     reset_meas(&UE->ulsch_rate_matching_stats);
@@ -1074,24 +1073,7 @@ int main(int argc, char *argv[])
         nr_schedule_response(Sched_INFO);
 
         // --------- setting parameters for UE --------
-
-        scheduled_response.module_id = 0;
-        scheduled_response.CC_id = 0;
-        scheduled_response.frame = frame;
-        scheduled_response.slot = slot;
-        scheduled_response.dl_config = NULL;
-        scheduled_response.ul_config = &ul_config;
-        scheduled_response.tx_request = &tx_req;
-        scheduled_response.phy_data = (void *)&phy_data;
-
-        // Config UL TX PDU
-        tx_req.slot = slot;
-        tx_req.sfn = frame;
-        tx_req.number_of_pdus = 1; //do_SRS == 1 ? 2 : 1;
-
-        tx_req.tx_request_body[0].pdu_length = TBS / 8;
-        tx_req.tx_request_body[0].pdu_index = 0;
-        tx_req.tx_request_body[0].pdu = &ulsch_input_buffer[0];
+        nr_scheduled_response_t scheduled_response = {.ul_config = &ul_config, .phy_data = (void *)&phy_data};
 
         ul_config.slot = slot;
         ul_config.number_pdus = do_SRS == 1 ? 2 : 1;
@@ -1099,6 +1081,9 @@ int main(int argc, char *argv[])
         fapi_nr_ul_config_request_pdu_t *ul_config0 = &ul_config.ul_config_list[0];
         ul_config0->pdu_type = FAPI_NR_UL_CONFIG_TYPE_PUSCH;
         nfapi_nr_ue_pusch_pdu_t *pusch_config_pdu = &ul_config0->pusch_config_pdu;
+        // Config UL TX PDU
+        pusch_config_pdu->tx_request_body.pdu = ulsch_input_buffer;
+        pusch_config_pdu->tx_request_body.pdu_length = TBS / 8;
         pusch_config_pdu->rnti = n_rnti;
         pusch_config_pdu->pdu_bit_map = pdu_bit_map;
         pusch_config_pdu->qam_mod_order = mod_order;
@@ -1116,6 +1101,7 @@ int main(int argc, char *argv[])
         pusch_config_pdu->absolute_delta_PUSCH = 0;
         pusch_config_pdu->target_code_rate = code_rate;
         pusch_config_pdu->tbslbrm = tbslbrm;
+        pusch_config_pdu->ldpcBaseGraph = get_BG(TBS, code_rate);
         pusch_config_pdu->pusch_data.tb_size = TBS / 8;
         pusch_config_pdu->pusch_data.new_data_indicator = round == 0 ? true : false;
         pusch_config_pdu->pusch_data.rv_index = rv_index;
@@ -1562,7 +1548,6 @@ int main(int argc, char *argv[])
       printStatIndent2(&gNB->ulsch_channel_estimation_stats, "ULSCH channel estimation time");
       printStatIndent2(&gNB->rx_pusch_init_stats, "RX PUSCH Initialization time");
       printStatIndent2(&gNB->rx_pusch_symbol_processing_stats, "RX PUSCH Symbol Processing time");
-      printStatIndent(&gNB->ulsch_decoding_stats,"ULSCH total decoding time");
 
       printf("\nUE TX\n");
       printStatIndent(&UE->ulsch_encoding_stats,"ULSCH total encoding time");

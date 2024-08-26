@@ -40,9 +40,8 @@
 #include "nr_rrc_common.h"
 #include "ds/byte_array.h"
 
-#include "common/ngran_types.h"
 #include "common/platform_constants.h"
-#include "COMMON/platform_types.h"
+#include "common/platform_types.h"
 #include "mac_rrc_dl.h"
 #include "cucp_cuup_if.h"
 
@@ -189,6 +188,16 @@ typedef struct pdu_session_param_s {
   uint8_t cause_value;
 } rrc_pdu_session_param_t;
 
+/**
+ * @brief F1-U tunnel configuration
+*/
+typedef struct f1u_tunnel_s {
+  /* Downlink F1-U Tunnel Endpoint Identifier (CU-UP/DU) */
+  uint32_t cuup_teid_f1u;
+  /* DL F1-U Transport Layer */
+  transport_layer_addr_t cuup_addr_f1u;
+} f1u_tunnel_t;
+
 typedef struct drb_s {
   int status;
   int defaultDRBid;
@@ -221,9 +230,12 @@ typedef struct drb_s {
       int cipheringDisabled;
     } ext1;
   } pdcp_config;
+  // F1-U
+  f1u_tunnel_t f1u_tunnel_config;
 } drb_t;
 
 typedef enum {
+  RRC_ACTION_NONE, /* no transaction ongoing */
   RRC_SETUP,
   RRC_SETUP_FOR_REESTABLISHMENT,
   RRC_REESTABLISH,
@@ -232,19 +244,23 @@ typedef enum {
   RRC_DEDICATED_RECONF,
   RRC_PDUSESSION_ESTABLISH,
   RRC_PDUSESSION_MODIFY,
-  RRC_PDUSESSION_RELEASE
+  RRC_PDUSESSION_RELEASE,
+  RRC_UECAPABILITY_ENQUIRY,
 } rrc_action_t;
 
 typedef struct gNB_RRC_UE_s {
+  time_t last_seen; // last time this UE has been accessed
+
   uint8_t primaryCC_id;
   drb_t                              established_drbs[MAX_DRBS_PER_UE];
-  uint8_t                            DRB_active[MAX_DRBS_PER_UE];
   NR_DRB_ToReleaseList_t            *DRB_ReleaseList;
 
-  NR_SRB_INFO_TABLE_ENTRY Srb[maxSRBs]; // 3gpp max is 3 SRBs, number 1..3, we waste the entry 0 for code simplicity
+  NR_SRB_INFO_TABLE_ENTRY Srb[NR_NUM_SRB];
   NR_MeasConfig_t                   *measConfig;
   NR_HANDOVER_INFO                  *handover_info;
   NR_MeasResults_t                  *measResults;
+
+  bool as_security_active;
 
   byte_array_t ue_cap_buffer;
   NR_UE_NR_Capability_t*             UE_Capability_nr;
@@ -276,11 +292,7 @@ typedef struct gNB_RRC_UE_s {
   /* Information from UE RRC Setup Request */
   NR_UE_S_TMSI                       Initialue_identity_5g_s_TMSI;
   uint64_t                           ng_5G_S_TMSI_Part1;
-  uint16_t                           ng_5G_S_TMSI_Part2;
   NR_EstablishmentCause_t            establishment_cause;
-
-  /* Information from UE RRCReestablishmentRequest */
-  NR_ReestablishmentCause_t          reestablishment_cause;
 
   uint32_t                           rrc_ue_id;
   uint64_t amf_ue_ngap_id;
@@ -306,18 +318,14 @@ typedef struct gNB_RRC_UE_s {
   uint8_t e_rab_release_command_flag;
   uint32_t ue_rrc_inactivity_timer;
   uint32_t                           ue_reestablishment_counter;
-  uint32_t                           ue_reconfiguration_after_reestablishment_counter;
-  NR_CellGroupId_t                                      cellGroupId;
+  uint32_t                           ue_reconfiguration_counter;
   struct NR_SpCellConfig                                *spCellConfig;
-  struct NR_CellGroupConfig__sCellToAddModList          *sCellconfig;
-  struct NR_CellGroupConfig__sCellToReleaseList         *sCellconfigRelease;
-  struct NR_CellGroupConfig__rlc_BearerToAddModList     *rlc_BearerBonfig;
-  struct NR_CellGroupConfig__rlc_BearerToReleaseList    *rlc_BearerRelease;
-  struct NR_MAC_CellGroupConfig                         *mac_CellGroupConfig;
-  struct NR_PhysicalCellGroupConfig                     *physicalCellGroupConfig;
 
   /* Nas Pdu */
   ngap_pdu_t nas_pdu;
+
+  /* hack, see rrc_gNB_process_NGAP_PDUSESSION_SETUP_REQ() for more info */
+  int max_delays_pdu_session;
 
 } gNB_RRC_UE_t;
 

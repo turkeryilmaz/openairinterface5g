@@ -58,7 +58,7 @@ import cls_oaicitest
 # Helper functions used here and in other classes
 # (e.g., cls_cluster.py)
 #-----------------------------------------------------------
-IMAGES = ['oai-enb', 'oai-lte-ru', 'oai-lte-ue', 'oai-gnb', 'oai-nr-cuup', 'oai-gnb-aw2s', 'oai-nr-ue', 'oai-gnb-asan', 'oai-nr-ue-asan', 'oai-nr-cuup-asan']
+IMAGES = ['oai-enb', 'oai-lte-ru', 'oai-lte-ue', 'oai-gnb', 'oai-nr-cuup', 'oai-gnb-aw2s', 'oai-nr-ue', 'oai-gnb-asan', 'oai-nr-ue-asan', 'oai-nr-cuup-asan', 'oai-gnb-aerial']
 
 def CreateWorkspace(sshSession, sourcePath, ranRepository, ranCommitID, ranTargetBranch, ranAllowMerge):
 	if ranCommitID == '':
@@ -169,97 +169,6 @@ def AnalyzeBuildLogs(buildRoot, images, globalStatus):
 		collectInfo[image] = files
 	return collectInfo
 
-def AnalyzeIperf(cliOptions, clientReport, serverReport):
-	req_bw = 1.0 # default iperf throughput, in Mbps
-	result = re.search('-b *(?P<iperf_bandwidth>[0-9\.]+)(?P<magnitude>[kKMG])', cliOptions)
-	if result is not None:
-		req_bw = float(result.group('iperf_bandwidth'))
-		magn = result.group('magnitude')
-		if magn == "k" or magn == "K":
-			req_bw /= 1000
-		elif magn == "G":
-			req_bw *= 1000
-	req_dur = 10 # default iperf send duration
-	result = re.search('-t *(?P<duration>[0-9]+)', cliOptions)
-	if result is not None:
-		req_dur = int(result.group('duration'))
-
-	reportLine = None
-	# find server report in client status
-	clientReportLines = clientReport.split('\n')
-	for l in range(len(clientReportLines)):
-		res = re.search('read failed: Connection refused', clientReportLines[l])
-		if res is not None:
-			message = 'iperf connection refused by server!'
-			logging.error(f'\u001B[1;37;41mIperf Test FAIL: {message}\u001B[0m')
-			return (False, message)
-		res = re.search('Server Report:', clientReportLines[l])
-		if res is not None and l + 1 < len(clientReportLines):
-			reportLine = clientReportLines[l+1]
-			logging.debug(f'found server report: "{reportLine}"')
-
-	statusTemplate = '(?:|\[ *\d+\].*) +0\.0-\s*(?P<duration>[0-9\.]+) +sec +[0-9\.]+ [kKMG]Bytes +(?P<bitrate>[0-9\.]+) (?P<magnitude>[kKMG])bits\/sec +(?P<jitter>[0-9\.]+) ms +(\d+\/ *\d+) +(\((?P<packetloss>[0-9\.]+)%\))'
-	# if we do not find a server report in the client logs, check the server logs
-	# and use the last line which is typically close/identical to server report
-	if reportLine is None:
-		for l in serverReport.split('\n'):
-			res = re.search(statusTemplate, l)
-			if res is not None:
-				reportLine = l
-		if reportLine is None:
-			logging.warning('no report in server status found!')
-			return (False, 'could not parse iperf logs')
-		logging.debug(f'found client status: {reportLine}')
-
-	result = re.search(statusTemplate, reportLine)
-	if result is None:
-		logging.error('could not analyze report from statusTemplate')
-		return (False, 'could not parse iperf logs')
-
-	duration = float(result.group('duration'))
-	bitrate = float(result.group('bitrate'))
-	magn = result.group('magnitude')
-	if magn == "k" or magn == "K":
-		bitrate /= 1000
-	elif magn == "G": # we assume bitrate in Mbps, therefore it must be G now
-		bitrate *= 1000
-	jitter = float(result.group('jitter'))
-	packetloss = float(result.group('packetloss'))
-
-	logging.debug('\u001B[1;37;44m iperf result \u001B[0m')
-	msg = f'Req Bitrate: {req_bw}'
-	logging.debug(f'\u001B[1;34m{msg}\u001B[0m')
-
-	br_loss = bitrate/req_bw
-	bmsg = f'Bitrate    : {bitrate} (perf {br_loss})'
-	logging.debug(f'\u001B[1;34m{bmsg}\u001B[0m')
-	msg += '\n' + bmsg
-	if br_loss < 0.9:
-		msg += '\nBitrate performance too low (<90%)'
-		logging.debug(f'\u001B[1;37;41mBitrate performance too low (<90%)\u001B[0m')
-		return (False, msg)
-
-	plmsg = f'Packet Loss: {packetloss}%'
-	logging.debug(f'\u001B[1;34m{plmsg}\u001B[0m')
-	msg += '\n' + plmsg
-	if packetloss > 5.0:
-		msg += '\nPacket Loss too high!'
-		logging.debug(f'\u001B[1;37;41mPacket Loss too high \u001B[0m')
-		return (False, msg)
-
-	dmsg = f'Duration   : {duration} (req {req_dur})'
-	logging.debug(f'\u001B[1;34m{dmsg}\u001B[0m')
-	msg += '\n' + dmsg
-	if duration < float(req_dur):
-		msg += '\nDuration of iperf too short!'
-		logging.debug(f'\u001B[1;37;41mDuration of iperf too short\u001B[0m')
-		return (False, msg)
-
-	jmsg = f'Jitter     : {jitter}'
-	logging.debug(f'\u001B[1;34m{jmsg}\u001B[0m')
-	msg += '\n' + jmsg
-	return (True, msg)
-
 #-----------------------------------------------------------
 # Class Declaration
 #-----------------------------------------------------------
@@ -357,11 +266,11 @@ class Containerize():
 		if self.host == 'Ubuntu':
 			self.cli = 'docker'
 			self.dockerfileprefix = '.ubuntu20'
-			self.cliBuildOptions = '--no-cache'
+			self.cliBuildOptions = ''
 		elif self.host == 'Red Hat':
 			self.cli = 'sudo podman'
 			self.dockerfileprefix = '.rhel9'
-			self.cliBuildOptions = '--no-cache --disable-compression'
+			self.cliBuildOptions = '--disable-compression'
 
 		# we always build the ran-build image with all targets
 		# Creating a tupple with the imageName, the DockerFile prefix pattern, targetName and sanitized option
@@ -383,6 +292,7 @@ class Containerize():
 				imageNames.append(('oai-physim', 'phySim', 'oai-physim', ''))
 			if self.host == 'Ubuntu':
 				imageNames.append(('oai-lte-ru', 'lteRU', 'oai-lte-ru', ''))
+				imageNames.append(('oai-gnb-aerial', 'gNB.aerial', 'oai-gnb-aerial', ''))
 				# Building again the 5G images with Address Sanitizer
 				imageNames.append(('ran-build', 'build', 'ran-build-asan', '--build-arg "BUILD_OPTION=--sanitize"'))
 				imageNames.append(('oai-gnb', 'gNB', 'oai-gnb-asan', '--build-arg "BUILD_OPTION=--sanitize"'))
@@ -419,19 +329,23 @@ class Containerize():
 				if result is not None:
 					forceBaseImageBuild = True
 					baseTag = 'ci-temp'
+			# if the branch name contains integration_20xx_wyy, let rebuild ran-base
+			result = re.search('integration_20([0-9]{2})_w([0-9]{2})', self.ranBranch)
+			if not forceBaseImageBuild and result is not None:
+				forceBaseImageBuild = True
+				baseTag = 'ci-temp'
 		else:
 			forceBaseImageBuild = True
 
 		# Let's remove any previous run artifacts if still there
 		cmd.run(f"{self.cli} image prune --force")
-		if forceBaseImageBuild:
-			cmd.run(f"{self.cli} image rm {baseImage}:{baseTag}")
 		for image,pattern,name,option in imageNames:
 			cmd.run(f"{self.cli} image rm {name}:{imageTag}")
 
 		# Build the base image only on Push Events (not on Merge Requests)
 		# On when the base image docker file is being modified.
 		if forceBaseImageBuild:
+			cmd.run(f"{self.cli} image rm {baseImage}:{baseTag}")
 			cmd.run(f"{self.cli} build {self.cliBuildOptions} --target {baseImage} --tag {baseImage}:{baseTag} --file docker/Dockerfile.base{self.dockerfileprefix} . &> cmake_targets/log/ran-base.log", timeout=1600)
 		# First verify if the base image was properly created.
 		ret = cmd.run(f"{self.cli} image inspect --format=\'Size = {{{{.Size}}}} bytes\' {baseImage}:{baseTag}")
@@ -445,7 +359,7 @@ class Containerize():
 			logging.error('\u001B[1m Building OAI Images Failed\u001B[0m')
 			HTML.CreateHtmlTestRow(self.imageKind, 'KO', CONST.ALL_PROCESSES_OK)
 			HTML.CreateHtmlTabFooter(False)
-			sys.exit(1)
+			return False
 		else:
 			result = re.search('Size *= *(?P<size>[0-9\-]+) *bytes', cmd.getBefore())
 			if result is not None:
@@ -476,7 +390,11 @@ class Containerize():
 				cmd.run(f'sed -i -e "s#ran-build:latest#ran-build-asan:{imageTag}#" docker/Dockerfile.{pattern}{self.dockerfileprefix}')
 			elif image != 'ran-build':
 				cmd.run(f'sed -i -e "s#ran-build:latest#ran-build:{imageTag}#" docker/Dockerfile.{pattern}{self.dockerfileprefix}')
+			if image == 'oai-gnb-aerial':
+				cmd.run('cp -f /opt/nvidia-ipc/nvipc_src.2023.11.28.tar.gz .')
 			ret = cmd.run(f'{self.cli} build {self.cliBuildOptions} --target {image} --tag {name}:{imageTag} --file docker/Dockerfile.{pattern}{self.dockerfileprefix} {option} . > cmake_targets/log/{name}.log 2>&1', timeout=1200)
+			if image == 'oai-gnb-aerial':
+				cmd.run('rm -f nvipc_src.2023.11.28.tar.gz')
 			if image == 'ran-build' and ret.returncode == 0:
 				cmd.run(f"docker run --name test-log -d {name}:{imageTag} /bin/true")
 				cmd.run(f"docker cp test-log:/oai-ran/cmake_targets/log/ cmake_targets/log/{name}/")
@@ -506,10 +424,15 @@ class Containerize():
 			cmd.run(f"{self.cli} image prune --force")
 
 		# Remove all intermediate build images and clean up
-		if self.ranAllowMerge and forceBaseImageBuild:
-			cmd.run(f"{self.cli} image rm {baseImage}:{baseTag}")
 		cmd.run(f"{self.cli} image rm ran-build:{imageTag} ran-build-asan:{imageTag}")
 		cmd.run(f"{self.cli} volume prune --force")
+
+		# Remove some cached artifacts to prevent out of diskspace problem
+		logging.debug(cmd.run("df -h").stdout)
+		logging.debug(cmd.run("docker system df").stdout)
+		cmd.run(f"{self.cli} buildx prune --filter until=1h --force")
+		logging.debug(cmd.run("df -h").stdout)
+		logging.debug(cmd.run("docker system df").stdout)
 
 		# create a zip with all logs
 		build_log_name = f'build_log_{self.testCase_id}'
@@ -523,12 +446,13 @@ class Containerize():
 			logging.info('\u001B[1m Building OAI Image(s) Pass\u001B[0m')
 			HTML.CreateHtmlTestRow(self.imageKind, 'OK', CONST.ALL_PROCESSES_OK)
 			HTML.CreateHtmlNextTabHeaderTestRow(collectInfo, allImagesSize)
+			return True
 		else:
 			logging.error('\u001B[1m Building OAI Images Failed\u001B[0m')
 			HTML.CreateHtmlTestRow(self.imageKind, 'KO', CONST.ALL_PROCESSES_OK)
 			HTML.CreateHtmlNextTabHeaderTestRow(collectInfo, allImagesSize)
 			HTML.CreateHtmlTabFooter(False)
-			sys.exit(1)
+			return False
 
 	def BuildProxy(self, HTML):
 		if self.ranRepository == '' or self.ranBranch == '' or self.ranCommitID == '':
@@ -569,7 +493,7 @@ class Containerize():
 			sys.exit(1)
 
 		self.cli = 'docker'
-		self.cliBuildOptions = '--no-cache'
+		self.cliBuildOptions = ''
 
 		# Workaround for some servers, we need to erase completely the workspace
 		if self.forcedWorkspaceCleanup:
@@ -611,7 +535,7 @@ class Containerize():
 				mySSH.close()
 				HTML.CreateHtmlTestRow('commit ' + tag, 'KO', CONST.ALL_PROCESSES_OK)
 				HTML.CreateHtmlTabFooter(False)
-				sys.exit(1)
+				return False
 		else:
 			logging.debug('L2sim proxy image for tag ' + tag + ' already exists, skipping build')
 
@@ -656,22 +580,107 @@ class Containerize():
 		collectInfo['proxy'] = files
 		mySSH.command('docker image inspect --format=\'Size = {{.Size}} bytes\' proxy:' + tag, '\$', 5)
 		result = re.search('Size *= *(?P<size>[0-9\-]+) *bytes', mySSH.getBefore())
+		# Cleaning any created tmp volume
+		mySSH.command(self.cli + ' volume prune --force || true','\$', 15)
+		mySSH.close()
+
 		allImagesSize = {}
 		if result is not None:
 			imageSize = float(result.group('size')) / 1000000
 			logging.debug('\u001B[1m   proxy size is ' + ('%.0f' % imageSize) + ' Mbytes\u001B[0m')
 			allImagesSize['proxy'] = str(round(imageSize,1)) + ' Mbytes'
+			logging.info('\u001B[1m Building L2sim Proxy Image Pass\u001B[0m')
+			HTML.CreateHtmlTestRow('commit ' + tag, 'OK', CONST.ALL_PROCESSES_OK)
+			HTML.CreateHtmlNextTabHeaderTestRow(collectInfo, allImagesSize)
+			return True
 		else:
-			logging.debug('proxy size is unknown')
+			logging.error('proxy size is unknown')
 			allImagesSize['proxy'] = 'unknown'
+			logging.error('\u001B[1m Build of L2sim proxy failed\u001B[0m')
+			HTML.CreateHtmlTestRow('commit ' + tag, 'KO', CONST.ALL_PROCESSES_OK)
+			HTML.CreateHtmlTabFooter(False)
+			return False
 
-		# Cleaning any created tmp volume
-		mySSH.command(self.cli + ' volume prune --force || true','\$', 15)
-		mySSH.close()
+	def BuildRunTests(self, HTML):
+		if self.ranRepository == '' or self.ranBranch == '' or self.ranCommitID == '':
+			HELP.GenericHelp(CONST.Version)
+			sys.exit('Insufficient Parameter')
+		if self.eNB_serverId[self.eNB_instance] == '0':
+			lIpAddr = self.eNBIPAddress
+			lUserName = self.eNBUserName
+			lPassWord = self.eNBPassword
+			lSourcePath = self.eNBSourceCodePath
+		elif self.eNB_serverId[self.eNB_instance] == '1':
+			lIpAddr = self.eNB1IPAddress
+			lUserName = self.eNB1UserName
+			lPassWord = self.eNB1Password
+			lSourcePath = self.eNB1SourceCodePath
+		elif self.eNB_serverId[self.eNB_instance] == '2':
+			lIpAddr = self.eNB2IPAddress
+			lUserName = self.eNB2UserName
+			lPassWord = self.eNB2Password
+			lSourcePath = self.eNB2SourceCodePath
+		if lIpAddr == '' or lUserName == '' or lPassWord == '' or lSourcePath == '':
+			HELP.GenericHelp(CONST.Version)
+			sys.exit('Insufficient Parameter')
+		logging.debug('Building on server: ' + lIpAddr)
+		cmd = cls_cmd.RemoteCmd(lIpAddr)
+		cmd.cd(lSourcePath)
 
-		logging.info('\u001B[1m Building L2sim Proxy Image Pass\u001B[0m')
-		HTML.CreateHtmlTestRow('commit ' + tag, 'OK', CONST.ALL_PROCESSES_OK)
-		HTML.CreateHtmlNextTabHeaderTestRow(collectInfo, allImagesSize)
+		ret = cmd.run('hostnamectl')
+		result = re.search('Ubuntu', ret.stdout)
+		host = result.group(0)
+		if host != 'Ubuntu':
+			cmd.close()
+			raise Exception("Can build unit tests only on Ubuntu server")
+		logging.debug('running on Ubuntu as expected')
+
+		if self.forcedWorkspaceCleanup:
+			cmd.run(f'sudo -S rm -Rf {lSourcePath}')
+		self.testCase_id = HTML.testCase_id
+	
+		# check that ran-base image exists as we expect it
+		baseImage = 'ran-base'
+		baseTag = 'develop'
+		if self.ranAllowMerge:
+			if self.ranTargetBranch == 'develop':
+				cmd.run(f'git diff HEAD..origin/develop -- cmake_targets/build_oai cmake_targets/tools/build_helper docker/Dockerfile.base{self.dockerfileprefix} | grep --colour=never -i INDEX')
+				result = re.search('index', cmd.getBefore())
+				if result is not None:
+					baseTag = 'develop'
+		ret = cmd.run(f"docker image inspect --format=\'Size = {{{{.Size}}}} bytes\' {baseImage}:{baseTag}")
+		if ret.returncode != 0:
+			logging.error(f'No {baseImage} image present, cannot build tests')
+			HTML.CreateHtmlTestRow(self.imageKind, 'KO', CONST.ALL_PROCESSES_OK)
+			HTML.CreateHtmlTabFooter(False)
+			return False
+
+		# build ran-unittests image
+		dockerfile = "ci-scripts/docker/Dockerfile.unittest.ubuntu20"
+		ret = cmd.run(f'docker build --progress=plain --tag ran-unittests:{baseTag} --file {dockerfile} . &> {lSourcePath}/cmake_targets/log/unittest-build.log')
+		if ret.returncode != 0:
+			logging.error(f'Cannot build unit tests')
+			HTML.CreateHtmlTestRow("Unit test build failed", 'KO', [dockerfile])
+			HTML.CreateHtmlTabFooter(False)
+			return False
+
+		HTML.CreateHtmlTestRowQueue("Build unit tests", 'OK', [dockerfile])
+
+		# it worked, build and execute tests, and close connection
+		ret = cmd.run(f'docker run -a STDOUT --rm ran-unittests:develop ctest --output-on-failure --no-label-summary -j$(nproc)')
+		cmd.run(f'docker rmi ran-unittests:develop')
+		build_log_name = f'build_log_{self.testCase_id}'
+		CopyLogsToExecutor(cmd, lSourcePath, build_log_name)
+		cmd.close()
+
+		if ret.returncode == 0:
+			HTML.CreateHtmlTestRowQueue('Unit tests succeeded', 'OK', [ret.stdout])
+			HTML.CreateHtmlTabFooter(True)
+			return True
+		else:
+			HTML.CreateHtmlTestRowQueue('Unit tests failed (see also doc/UnitTests.md)', 'KO', [ret.stdout])
+			HTML.CreateHtmlTabFooter(False)
+			return False
 
 	def Push_Image_to_Local_Registry(self, HTML):
 		if self.registrySvrId == '0':
@@ -864,12 +873,12 @@ class Containerize():
 		if svcName == '':
 			logging.warning('no service name given: starting all services in ci-docker-compose.yml!')
 
-		mySSH.command(f'docker-compose --file ci-docker-compose.yml up -d -- {svcName}', '\$', 30)
+		mySSH.command(f'docker compose --file ci-docker-compose.yml up -d -- {svcName}', '\$', 30)
 
 		# Checking Status
 		grep = ''
-		if svcName != '': grep = f' | grep -A3 {svcName}'
-		mySSH.command(f'docker-compose --file ci-docker-compose.yml config {grep}', '\$', 5)
+		if svcName != '': grep = f' | grep -A3 --color=never {svcName}'
+		mySSH.command(f'docker compose --file ci-docker-compose.yml config {grep}', '\$', 5)
 		result = re.search('container_name: (?P<container_name>[a-zA-Z0-9\-\_]+)', mySSH.getBefore())
 		unhealthyNb = 0
 		healthyNb = 0
@@ -917,8 +926,8 @@ class Containerize():
 		if healthyNb == 1:
 			cnt = 0
 			while (cnt < 20):
-				mySSH.command('docker logs ' + containerName + ' | egrep --text --color=never -i "wait|sync|Starting"', '\$', 30)
-				result = re.search('got sync|Starting E1AP at CU UP|Starting F1AP at CU|Got sync|Waiting for RUs to be configured', mySSH.getBefore())
+				mySSH.command('docker logs ' + containerName + ' | egrep --text --color=never -i "wait|sync|Starting|ready"', '\$', 30)
+				result = re.search('got sync|Starting E1AP at CU UP|Starting F1AP at CU|Got sync|Waiting for RUs to be configured|cuPHYController initialized|Received CONFIG.response, gNB is ready', mySSH.getBefore())
 				if result is None:
 					time.sleep(6)
 					cnt += 1
@@ -926,7 +935,6 @@ class Containerize():
 					cnt = 100
 					status = True
 					logging.info('\u001B[1m Deploying OAI object Pass\u001B[0m')
-					time.sleep(10)
 		else:
 			# containers are unhealthy, so we won't start. However, logs are stored at the end
 			# in UndeployObject so we here store the logs of the unhealthy container to report it
@@ -971,78 +979,80 @@ class Containerize():
 		if lIpAddr == '' or lUserName == '' or lPassWord == '' or lSourcePath == '':
 			HELP.GenericHelp(CONST.Version)
 			sys.exit('Insufficient Parameter')
-		logging.debug('\u001B[1m Undeploying OAI Object from server: ' + lIpAddr + '\u001B[0m')
-		mySSH = SSH.SSHConnection()
-		mySSH.open(lIpAddr, lUserName, lPassWord)
-
-		mySSH.command('cd ' + lSourcePath + '/' + self.yamlPath[self.eNB_instance], '\$', 5)
-
+		logging.debug(f'\u001B[1m Undeploying OAI Object from server: {lIpAddr}\u001B[0m')
+		mySSH = cls_cmd.getConnection(lIpAddr)
+		yamlDir = f'{lSourcePath}/{self.yamlPath[self.eNB_instance]}'
+		mySSH.run(f'cd {yamlDir}')
 		svcName = self.services[self.eNB_instance]
 		forceDown = False
 		if svcName != '':
 			logging.warning(f'service name given, but will stop all services in ci-docker-compose.yml!')
 			svcName = ''
 
-		mySSH.command(f'docker-compose -f ci-docker-compose.yml config --services', '\$', 5)
+		ret = mySSH.run(f'docker compose -f {yamlDir}/ci-docker-compose.yml config --services')
+		if ret.returncode != 0:
+			HTML.CreateHtmlTestRow(RAN.runtime_stats, 'KO', "cannot enumerate running services")
+			self.exitStatus = 1
+			return
 		# first line has command, last line has next command prompt
-		allServices = mySSH.getBefore().split('\r\n')[1:-1]
+		allServices = ret.stdout.splitlines()
 		services = []
 		for s in allServices:
-			mySSH.command(f'docker-compose -f ci-docker-compose.yml ps --all -- {s}', '\$', 5, silent=False)
-			running = mySSH.getBefore().split('\r\n')[2:-1]
+			# outputs the hash if the container is running
+			ret = mySSH.run(f'docker compose -f {yamlDir}/ci-docker-compose.yml ps --all --quiet -- {s}')
+			running = ret.stdout.splitlines()
 			logging.debug(f'running services: {running}')
-			if len(running) > 0: # something is running for that service
+			if ret.stdout != "" and ret.returncode == 0: # something is running for that service
 				services.append(s)
 		logging.info(f'stopping services {services}')
 
-		mySSH.command(f'docker-compose -f ci-docker-compose.yml stop -t3', '\$', 30)
-		time.sleep(5)  # give some time to running containers to stop
+		mySSH.run(f'docker compose -f {yamlDir}/ci-docker-compose.yml stop -t3')
+		copyin_res = True
 		for svcName in services:
 			# head -n -1 suppresses the final "X exited with status code Y"
 			filename = f'{svcName}-{HTML.testCase_id}.log'
-			mySSH.command(f'docker-compose -f ci-docker-compose.yml logs --no-log-prefix -- {svcName} &> {lSourcePath}/cmake_targets/log/{filename}', '\$', 120)
+			mySSH.run(f'docker compose -f {yamlDir}/ci-docker-compose.yml logs --no-log-prefix -- {svcName} &> {lSourcePath}/cmake_targets/log/{filename}')
+			copyin_res = mySSH.copyin(f'{lSourcePath}/cmake_targets/log/{filename}', f'{filename}') and copyin_res
 
-		mySSH.command('docker-compose -f ci-docker-compose.yml down -v', '\$', 5)
-		mySSH.close()
+		mySSH.run(f'docker compose -f {yamlDir}/ci-docker-compose.yml down -v')
 
 		# Analyzing log file!
-		files = ','.join([f'{s}-{HTML.testCase_id}' for s in services])
-		if len(services) > 1:
-			files = '{' + files + '}'
-		copyin_res = 0
-		if len(services) > 0:
-			copyin_res = mySSH.copyin(lIpAddr, lUserName, lPassWord, f'{lSourcePath}/cmake_targets/log/{files}.log', '.')
-		if copyin_res == -1:
-			HTML.htmleNBFailureMsg='Could not copy logfile to analyze it!'
+		if not copyin_res:
+			HTML.htmleNBFailureMsg='Could not copy logfile(s) to analyze it!'
 			HTML.CreateHtmlTestRow('N/A', 'KO', CONST.ENB_PROCESS_NOLOGFILE_TO_ANALYZE)
 			self.exitStatus = 1
 		# use function for UE log analysis, when oai-nr-ue container is used
 		elif 'oai-nr-ue' in services or 'lte_ue0' in services:
 			self.exitStatus == 0
-			logging.debug('\u001B[1m Analyzing UE logfile ' + filename + ' \u001B[0m')
+			logging.debug(f'Analyzing UE logfile {filename}')
 			logStatus = cls_oaicitest.OaiCiTest().AnalyzeLogFile_UE(f'{filename}', HTML, RAN)
 			if (logStatus < 0):
-				fullStatus = False
 				HTML.CreateHtmlTestRow('UE log Analysis', 'KO', logStatus)
+				self.exitStatus = 1
 			else:
 				HTML.CreateHtmlTestRow('UE log Analysis', 'OK', CONST.ALL_PROCESSES_OK)
 		else:
 			for svcName in services:
-				filename = f'{svcName}-{HTML.testCase_id}.log'
-				logging.debug(f'\u001B[1m Analyzing logfile {filename}\u001B[0m')
-				logStatus = RAN.AnalyzeLogFile_eNB(filename, HTML, self.ran_checkers)
-				if (logStatus < 0):
-					HTML.CreateHtmlTestRow(RAN.runtime_stats, 'KO', logStatus)
-					self.exitStatus = 1
+				if svcName == 'nv-cubb':
+					msg = 'Undeploy PNF/Nvidia CUBB'
+					HTML.CreateHtmlTestRow(msg, 'OK', CONST.ALL_PROCESSES_OK)
 				else:
-					HTML.CreateHtmlTestRow(RAN.runtime_stats, 'OK', CONST.ALL_PROCESSES_OK)
+					filename = f'{svcName}-{HTML.testCase_id}.log'
+					logging.debug(f'\u001B[1m Analyzing logfile {filename}\u001B[0m')
+					logStatus = RAN.AnalyzeLogFile_eNB(filename, HTML, self.ran_checkers)
+					if (logStatus < 0):
+						HTML.CreateHtmlTestRow(RAN.runtime_stats, 'KO', logStatus)
+						self.exitStatus = 1
+					else:
+						HTML.CreateHtmlTestRow(RAN.runtime_stats, 'OK', CONST.ALL_PROCESSES_OK)
 			# all the xNB run logs shall be on the server 0 for logCollecting
 			if self.eNB_serverId[self.eNB_instance] != '0':
-				mySSH.copyout(self.eNBIPAddress, self.eNBUserName, self.eNBPassword, f'./{files}.log', f'{self.eNBSourceCodePath}/cmake_targets/')
+				mySSH.copyout(f'./*.log', f'{lSourcePath}/cmake_targets/', recursive=True)
 		if self.exitStatus == 0:
 			logging.info('\u001B[1m Undeploying OAI Object Pass\u001B[0m')
 		else:
 			logging.error('\u001B[1m Undeploying OAI Object Failed\u001B[0m')
+		mySSH.close()
 
 	def DeployGenObject(self, HTML, RAN, UE):
 		self.exitStatus = 0
@@ -1293,6 +1303,7 @@ class Containerize():
 					logStatus = UE.AnalyzeLogFile_UE(f'{logPath}/{filename}', HTML, RAN)
 					if (logStatus < 0):
 						fullStatus = False
+						self.exitStatus = 1
 						HTML.CreateHtmlTestRow('UE log Analysis', 'KO', logStatus)
 					else:
 						HTML.CreateHtmlTestRow('UE log Analysis', 'OK', CONST.ALL_PROCESSES_OK)
@@ -1363,76 +1374,6 @@ class Containerize():
 		myCmd.close()
 
 		HTML.CreateHtmlTestRowQueue(self.pingOptions, 'OK', [message])
-
-	def PingExit(self, HTML, RAN, UE, status, message):
-		if status:
-			HTML.CreateHtmlTestRowQueue(self.pingOptions, 'OK', [message])
-		else:
-			logging.error('\u001B[1;37;41m ping test FAIL -- ' + message + ' \u001B[0m')
-			HTML.CreateHtmlTestRowQueue(self.pingOptions, 'KO', [message])
-			# Automatic undeployment
-			logging.warning('----------------------------------------')
-			logging.warning('\u001B[1m Starting Automatic undeployment \u001B[0m')
-			logging.warning('----------------------------------------')
-			HTML.testCase_id = 'AUTO-UNDEPLOY'
-			HTML.desc = 'Automatic Un-Deployment'
-			self.UndeployGenObject(HTML, RAN, UE)
-			self.exitStatus = 1
-
-	def IperfFromContainer(self, HTML, RAN, UE):
-		myCmd = cls_cmd.LocalCmd()
-		self.exitStatus = 0
-
-		ymlPath = self.yamlPath[0].split('/')
-		logPath = '../cmake_targets/log/' + ymlPath[1]
-		cmd = f'mkdir -p {logPath}'
-		myCmd.run(cmd, silent=True)
-
-		# Start the server process
-		cmd = f'docker exec -d {self.svrContName} /bin/bash -c "nohup iperf {self.svrOptions} > /tmp/iperf_server.log 2>&1"'
-		myCmd.run(cmd)
-		time.sleep(3)
-
-		# Start the client process
-		cmd = f'docker exec {self.cliContName} /bin/bash -c "iperf {self.cliOptions}" 2>&1 | tee {logPath}/iperf_client_{HTML.testCase_id}.log'
-		clientStatus = myCmd.run(cmd, timeout=100)
-
-		# Stop the server process
-		cmd = f'docker exec {self.svrContName} /bin/bash -c "pkill iperf"'
-		myCmd.run(cmd)
-		time.sleep(3)
-		serverStatusFilename = f'{logPath}/iperf_server_{HTML.testCase_id}.log'
-		cmd = f'docker cp {self.svrContName}:/tmp/iperf_server.log {serverStatusFilename}'
-		myCmd.run(cmd, timeout=60)
-		myCmd.close()
-
-		# clientStatus was retrieved above. The serverStatus was
-		# written in the background, then copied to the local machine
-		with open(serverStatusFilename, 'r') as f:
-			serverStatus = f.read()
-		(iperfStatus, msg) = AnalyzeIperf(self.cliOptions, clientStatus.stdout, serverStatus)
-		if iperfStatus:
-			logging.info('\u001B[1m Iperf Test PASS\u001B[0m')
-		else:
-			logging.error('\u001B[1;37;41m Iperf Test FAIL\u001B[0m')
-		self.IperfExit(HTML, RAN, UE, iperfStatus, msg)
-
-	def IperfExit(self, HTML, RAN, UE, status, message):
-		html_cell = f'UE\n{message}'
-		if status:
-			HTML.CreateHtmlTestRowQueue(self.cliOptions, 'OK', [html_cell])
-		else:
-			logging.error('\u001B[1m Iperf Test FAIL -- ' + message + ' \u001B[0m')
-			HTML.CreateHtmlTestRowQueue(self.cliOptions, 'KO', [html_cell])
-			# Automatic undeployment
-			logging.warning('----------------------------------------')
-			logging.warning('\u001B[1m Starting Automatic undeployment \u001B[0m')
-			logging.warning('----------------------------------------')
-			HTML.testCase_id = 'AUTO-UNDEPLOY'
-			HTML.desc = 'Automatic Un-Deployment'
-			self.UndeployGenObject(HTML, RAN, UE)
-			self.exitStatus = 1
-
 
 	def CheckAndAddRoute(self, svrName, ipAddr, userName, password):
 		logging.debug('Checking IP routing on ' + svrName)

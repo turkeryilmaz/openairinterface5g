@@ -30,7 +30,7 @@
 
 PHY_VARS_UE ***PHY_vars_UE_g;
 UL_RCC_IND_t UL_RCC_INFO[MAX_NUM_CCs];
-NR_UL_IND_t UL_INFO;
+
 
 unsigned char NB_RU=0;
 int number_of_cards;

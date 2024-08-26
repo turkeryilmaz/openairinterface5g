@@ -68,13 +68,7 @@ void nr_layer_mapping(int nbCodes,
   @param[in] n_symbs, number of modulated symbols
   @param[out] tx_layers, modulated symbols for each layer
 */
-
-void nr_ue_layer_mapping(int16_t *mod_symbs,
-                         uint8_t n_layers,
-                         uint32_t n_symbs,
-                         int16_t **tx_layers);
-
-
+void nr_ue_layer_mapping(const c16_t *mod_symbs, const int n_layers, const int n_symbs, int sz, c16_t tx_layers[][sz]);
 /*!
 \brief This function implements the OFDM front end processor on reception (FEP)
 \param frame_parms Pointer to frame parameters
@@ -98,7 +92,7 @@ int nr_slot_fep_ul(NR_DL_FRAME_PARMS *frame_parms,
 \param d Pointer to input in time domain
 \param Msc_PUSCH number of allocated data subcarriers
 */
-void nr_dft(int32_t *z,int32_t *d, uint32_t Msc_PUSCH);
+void nr_dft(c16_t *z, c16_t *d, uint32_t Msc_PUSCH);
 
 int nr_beam_precoding(c16_t **txdataF,
 	              c16_t **txdataF_BF,
@@ -137,12 +131,14 @@ void apply_nr_rotation_RX(NR_DL_FRAME_PARMS *frame_parms,
   @param[in] prec_matrix, Pointer to precoding matrix
   @param[in] n_layers, number of DLSCH layers
 */
-int nr_layer_precoder(int16_t **datatx_F_precoding, const char *prec_matrix, uint8_t n_layers, int32_t re_offset);
+c16_t nr_layer_precoder(int sz, c16_t datatx_F_precoding[][sz], const char *prec_matrix, uint8_t n_layers, int32_t re_offset);
+
 c16_t nr_layer_precoder_cm(int n_layers,
                            int n_symbols,
                            int symSz,
                            c16_t datatx_F_precoding[n_layers][n_symbols][symSz],
-                           c16_t *prec_matrix,
+                           int ap,
+                           nfapi_nr_pm_pdu_t *pmi_pdu,
                            int symbol,
                            int offset);
 
@@ -156,7 +152,8 @@ void nr_layer_precoder_simd(const int n_layers,
                            const int n_symbols,
                            const int symSz,
                            const c16_t txdataF_res_mapped[n_layers][n_symbols][symSz],
-                           const c16_t prec_matrix[n_layers],
+                           const int ant,
+                           const nfapi_nr_pm_pdu_t *pmi_pdu,
                            const int symbol,
                            const int sc_offset,
                            const int re_cnt,

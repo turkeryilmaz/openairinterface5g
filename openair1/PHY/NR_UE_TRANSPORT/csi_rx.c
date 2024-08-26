@@ -409,6 +409,7 @@ int nr_csi_rs_channel_estimation(const PHY_VARS_NR_UE *ue,
     }
 
     /// Power noise estimation
+    AssertFatal(csirs_config_pdu->nr_of_rbs > 0, " nr_of_rbs needs to be greater than 0\n");
     uint16_t noise_real[frame_parms->nb_antennas_rx][N_ports][csirs_config_pdu->nr_of_rbs];
     uint16_t noise_imag[frame_parms->nb_antennas_rx][N_ports][csirs_config_pdu->nr_of_rbs];
     for (int rb = csirs_config_pdu->start_rb; rb < (csirs_config_pdu->start_rb+csirs_config_pdu->nr_of_rbs); rb++) {
@@ -807,8 +808,10 @@ int nr_csi_im_power_estimation(const PHY_VARS_NR_UE *ue,
   return 0;
 }
 
-int nr_ue_csi_im_procedures(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP]) {
-
+int nr_ue_csi_im_procedures(PHY_VARS_NR_UE *ue,
+                            const UE_nr_rxtx_proc_t *proc,
+                            c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP])
+{
   int gNB_id = proc->gNB_id;
   if(!ue->csiim_vars[gNB_id]->active) {
     return -1;
@@ -852,7 +855,9 @@ static nfapi_nr_dl_tti_csi_rs_pdu_rel15_t convert_csirs_pdu(const fapi_nr_dl_con
   return dl_tti_csi_rs_pdu;
 }
 
-void nr_ue_csi_rs_procedures(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP])
+void nr_ue_csi_rs_procedures(PHY_VARS_NR_UE *ue,
+                             const UE_nr_rxtx_proc_t *proc,
+                             c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP])
 {
 
   int gNB_id = proc->gNB_id;

@@ -21,7 +21,7 @@
 
 #ifndef _NR_RLC_UE_MANAGER_H_
 #define _NR_RLC_UE_MANAGER_H_
-#include "openair2/COMMON/platform_types.h"
+#include "common/platform_types.h"
 #include "nr_rlc_entity.h"
 #include "common/platform_constants.h"
 
@@ -38,8 +38,7 @@ typedef struct nr_rlc_rb_t {
 } nr_rlc_rb_t;
 
 typedef struct nr_rlc_ue_t {
-  int rnti;
-  ue_id_t ue_id;
+  int ue_id;
   nr_rlc_entity_t *srb0;
   nr_rlc_entity_t *srb[3];
   nr_rlc_entity_t *drb[MAX_DRBS_PER_UE];
@@ -57,8 +56,8 @@ int nr_rlc_manager_get_enb_flag(nr_rlc_ue_manager_t *m);
 void nr_rlc_manager_lock(nr_rlc_ue_manager_t *m);
 void nr_rlc_manager_unlock(nr_rlc_ue_manager_t *m);
 
-nr_rlc_ue_t *nr_rlc_manager_get_ue(nr_rlc_ue_manager_t *m, int rnti);
-void nr_rlc_manager_remove_ue(nr_rlc_ue_manager_t *m, int rnti);
+nr_rlc_ue_t *nr_rlc_manager_get_ue(nr_rlc_ue_manager_t *m, int ue_id);
+void nr_rlc_manager_remove_ue(nr_rlc_ue_manager_t *m, int ue_id);
 
 /***********************************************************************/
 /* ue functions                                                        */

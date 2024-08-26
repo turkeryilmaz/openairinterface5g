@@ -181,7 +181,7 @@ rx_sdu(const module_id_t enb_mod_idP,
        * lte_est_timing_advance_pusch, maybe it's not necessary?
        * maybe it's even not correct at all?
        */
-      UE_scheduling_control->ta_update_f = ((double)UE_scheduling_control->ta_update_f * 3 + (double)timing_advance) / 4;
+      UE_scheduling_control->ta_update_f = 31.0 + (((double)UE_scheduling_control->ta_update_f - 31.0) * 3 + (double)timing_advance) / 4;
       UE_scheduling_control->ta_update = (int)UE_scheduling_control->ta_update_f;
       int tmp_snr = (5 * ul_cqi - 640) / 10;
       UE_scheduling_control->pusch_snr[CC_idP] = tmp_snr;
@@ -539,7 +539,7 @@ rx_sdu(const module_id_t enb_mod_idP,
 
               /* Received a new rnti */
               if (ret == 0) {
-                ra->state = MSGCRNTI;
+                ra->eRA_state = MSGCRNTI;
                 LOG_I(MAC, "[eNB %d] Frame %d, Subframe %d CC_id %d : (rnti %x UE_id %d) Received rnti(Msg4)\n",
                       enb_mod_idP,
                       frameP,
@@ -746,13 +746,14 @@ rx_sdu(const module_id_t enb_mod_idP,
 
         if (RA_id != -1) {
           RA_t *ra = &(mac->common_channels[CC_idP].ra[RA_id]);
-          LOG_D(MAC, "[mac %d][RAPROC] CC_id %d Checking proc %d : rnti (%x, %x), state %d\n",
+          LOG_D(MAC,
+                "[mac %d][RAPROC] CC_id %d Checking proc %d : rnti (%x, %x), state %s\n",
                 enb_mod_idP,
                 CC_idP,
                 RA_id,
                 ra->rnti,
                 current_rnti,
-                ra->state);
+                era_text[ra->eRA_state]);
 
           if (UE_id < 0) {
             memcpy(&(ra->cont_res_id[0]), payload_ptr, 6);
@@ -805,7 +806,7 @@ rx_sdu(const module_id_t enb_mod_idP,
           }
 
           // prepare transmission of Msg4
-          ra->state = MSG4;
+          ra->eRA_state = MSG4;
 
           if(mac->common_channels[CC_idP].tdd_Config != NULL) {
             switch(mac->common_channels[CC_idP].tdd_Config->subframeAssignment) {

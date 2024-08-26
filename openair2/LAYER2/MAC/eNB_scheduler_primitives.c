@@ -2011,12 +2011,9 @@ find_RA_id(module_id_t mod_idP,
   RA_t *ra = (RA_t *) &RC.mac[mod_idP]->common_channels[CC_idP].ra[0];
 
   for (RA_id = 0; RA_id < NB_RA_PROC_MAX; RA_id++) {
-    LOG_D(MAC, "Checking RA_id %d for %x : state %d\n",
-          RA_id,
-          rntiP,
-          ra[RA_id].state);
+    LOG_D(MAC, "Checking RA_id %d for %x : state %s\n", RA_id, rntiP, era_text[ra[RA_id].eRA_state]);
 
-    if (ra[RA_id].state != IDLE && ra[RA_id].rnti == rntiP)
+    if (ra[RA_id].eRA_state != IDLE && ra[RA_id].rnti == rntiP)
       return RA_id;
   }
 
@@ -2178,6 +2175,7 @@ add_new_ue(module_id_t mod_idP,
   eNB_MAC_INST *eNB     = RC.mac[mod_idP];
   int UE_id;
   int i, j;
+  uint16_t ta_timer = 0;
   UE_info_t *UE_info = &RC.mac[mod_idP]->UE_info;
   LOG_D(MAC, "[eNB %d, CC_id %d] Adding UE with rnti %x (prev. num_UEs %d)\n",
         mod_idP,
@@ -2211,6 +2209,11 @@ add_new_ue(module_id_t mod_idP,
     if (IS_SOFTMODEM_IQPLAYER)// not specific to record/playback ?
       UE_info->UE_template[cc_idP][UE_id].pre_assigned_mcs_ul = 0;
     UE_info->UE_template[cc_idP][UE_id].rach_resource_type = rach_resource_type;
+    /*If HO case, retain the Time alignment timer value */ 
+    if(mac_eNB_get_rrc_status(mod_idP, rntiP) == RRC_HO_EXECUTION)
+    {
+        ta_timer = UE_info->UE_sched_ctrl[UE_id].ta_timer;
+    }
     memset((void *) &UE_info->UE_sched_ctrl[UE_id],
            0,
            sizeof(UE_sched_ctrl_t));
@@ -2218,6 +2221,13 @@ add_new_ue(module_id_t mod_idP,
            0,
            sizeof(eNB_UE_STATS));
     UE_info->UE_sched_ctrl[UE_id].ue_reestablishment_reject_timer = 0;
+    /*If HO case, set TA timer value as retained above & set TA scheduling true*/
+    if(mac_eNB_get_rrc_status(mod_idP, rntiP) == RRC_HO_EXECUTION)
+    {
+       UE_info->UE_sched_ctrl[UE_id].ta_sched_enabled = true;
+       UE_info->UE_sched_ctrl[UE_id].ta_timer = ta_timer;
+       LOG_D(MAC, "After HO for UE_id: %d, Time Alignment Timer: %d\n", UE_id, ta_timer);
+    }
     UE_info->UE_sched_ctrl[UE_id].ta_update_f = 31.0;
     UE_info->UE_sched_ctrl[UE_id].ta_update = 31;
     UE_info->UE_sched_ctrl[UE_id].pusch_snr[cc_idP] = 0;
@@ -3980,7 +3990,7 @@ extract_harq(module_id_t mod_idP,
 
               if (sched_ctl->round[CC_idP][harq_pid] == 8) {
                 for (uint8_t ra_i = 0; ra_i < NB_RA_PROC_MAX; ra_i++) {
-                  if (ra[ra_i].rnti == rnti && ra[ra_i].state == WAITMSG4ACK) {
+                  if (ra[ra_i].rnti == rnti && ra[ra_i].eRA_state == WAITMSG4ACK) {
                     //Msg NACK num to MAC ,remove UE
                     // add UE info to freeList
                     LOG_I(RRC, "put UE %x into freeList\n",
@@ -3995,7 +4005,7 @@ extract_harq(module_id_t mod_idP,
           }
 
           for (uint8_t ra_i = 0; ra_i < NB_RA_PROC_MAX; ra_i++) {
-            if (ra[ra_i].rnti == rnti && ra[ra_i].state == MSGCRNTI_ACK && ra[ra_i].crnti_harq_pid == harq_pid) {
+            if (ra[ra_i].rnti == rnti && ra[ra_i].eRA_state == MSGCRNTI_ACK && ra[ra_i].crnti_harq_pid == harq_pid) {
               LOG_D(MAC,"CRNTI Reconfiguration: ACK %d rnti %x round %d frame %d subframe %d \n",
                     harq_indication_tdd->harq_data[0].bundling.value_0,
                     rnti,
@@ -4087,7 +4097,7 @@ extract_harq(module_id_t mod_idP,
           RA_t *ra = &eNB->common_channels[CC_idP].ra[0];
 
           for (uint8_t ra_i = 0; ra_i < NB_RA_PROC_MAX; ra_i++) {
-            if (ra[ra_i].rnti == rnti && ra[ra_i].state == MSGCRNTI_ACK && ra[ra_i].crnti_harq_pid == harq_pid) {
+            if (ra[ra_i].rnti == rnti && ra[ra_i].eRA_state == MSGCRNTI_ACK && ra[ra_i].crnti_harq_pid == harq_pid) {
               LOG_D(MAC,"CRNTI Reconfiguration: ACK %d rnti %x round %d frame %d subframe %d \n",
                     pdu[0],
                     rnti,
@@ -4132,7 +4142,7 @@ extract_harq(module_id_t mod_idP,
 
             if (sched_ctl->round[CC_idP][harq_pid] == 8) {
               for (uint8_t ra_i = 0; ra_i < NB_RA_PROC_MAX; ra_i++) {
-                if((ra[ra_i].rnti == rnti) && (ra[ra_i].state == WAITMSG4ACK)) {
+                if ((ra[ra_i].rnti == rnti) && (ra[ra_i].eRA_state == WAITMSG4ACK)) {
                   // Msg NACK num to MAC ,remove UE
                   // add UE info to freeList
                   LOG_I(RRC, "put UE %x into freeList\n",
@@ -4549,7 +4559,8 @@ extract_pucch_csi(module_id_t mod_idP,
   AssertFatal(cqi_ReportPeriodic->present != LTE_CQI_ReportPeriodic_PR_NOTHING, "cqi_ReportPeriodic->present == LTE_CQI_ReportPeriodic_PR_NOTHING!\n");
   AssertFatal(cqi_ReportPeriodic->choice.setup.cqi_FormatIndicatorPeriodic.present != LTE_CQI_ReportPeriodic__setup__cqi_FormatIndicatorPeriodic_PR_NOTHING,
               "cqi_ReportPeriodic->cqi_FormatIndicatorPeriodic.choice.setup.present == LTE_CQI_ReportPeriodic__setup__cqi_FormatIndicatorPeriodic_PR_NOTHING!\n");
-  uint16_t Npd, N_OFFSET_CQI;
+  uint16_t Npd = 0;
+  uint16_t N_OFFSET_CQI = 0;
   int H, K, bandwidth_part, L, Lmask;
   int ri = sched_ctl->periodic_ri_received[CC_idP];
   get_csi_params(cc,

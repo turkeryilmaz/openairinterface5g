@@ -59,14 +59,9 @@
 // Definitions for MAC control and data
 #define NR_BCCH_DL_SCH 3 // SI
 #define NR_BCCH_BCH 5    // MIB
-#define CCCH_PAYLOAD_SIZE_MAX 512 
+#define NR_CCCH_PAYLOAD_SIZE_MAX 512
 #define RAR_PAYLOAD_SIZE_MAX  128
 #define MAX_CSI_REPORTCONFIG  48
-
-#define NR_BSR_TRIGGER_NONE      (0) /* No BSR Trigger */
-#define NR_BSR_TRIGGER_REGULAR   (1) /* For Regular and ReTxBSR Expiry Triggers */
-#define NR_BSR_TRIGGER_PERIODIC  (2) /* For BSR Periodic Timer Expiry Trigger */
-#define NR_BSR_TRIGGER_PADDING   (4) /* For Padding BSR Trigger */
 
 //  For both DL/UL-SCH
 //  Except:
@@ -432,7 +427,7 @@ typedef struct prach_occasion_info {
 // PRACH occasion slot details
 // A PRACH occasion slot is a series of PRACH occasions in time (symbols) and frequency
 typedef struct prach_occasion_slot {
-  prach_occasion_info_t prach_occasion[MAX_TDM][MAX_FDM]; // Starting symbol of each PRACH occasions in a slot
+  prach_occasion_info_t *prach_occasion; // Starting symbol of each PRACH occasions in a slot
   uint8_t nb_of_prach_occasion_in_time;
   uint8_t nb_of_prach_occasion_in_freq;
 } prach_occasion_slot_t;
@@ -452,23 +447,6 @@ typedef enum {
   NR_UL_DCI_FORMAT_0_1,
   NR_DCI_NONE
 } nr_dci_format_t;
-
-typedef enum {
-  NR_RNTI_new = 0,
-  NR_RNTI_C,
-  NR_RNTI_RA,
-  NR_RNTI_P,
-  NR_RNTI_CS,
-  NR_RNTI_TC,
-  NR_RNTI_SP_CSI,
-  NR_RNTI_SI,
-  NR_RNTI_SFI,
-  NR_RNTI_INT,
-  NR_RNTI_TPC_PUSCH,
-  NR_RNTI_TPC_PUCCH,
-  NR_RNTI_TPC_SRS,
-  NR_RNTI_MCS_C,
-} nr_rnti_type_t;
 
 typedef enum channel_bandwidth_e {
   bw_5MHz   = 0x1,
@@ -499,7 +477,7 @@ typedef struct Type0_PDCCH_CSS_config_s {
   uint32_t search_space_frame_period;  // in slots
   uint32_t ssb_length;
   uint32_t ssb_index;
-  uint32_t cset_start_rb;
+  int32_t cset_start_rb;
   NR_SubcarrierSpacing_t scs_pdcch;
   bool active;
 } NR_Type0_PDCCH_CSS_config_t;
@@ -518,6 +496,9 @@ typedef struct{
   uint8_t li_bitlen[8];
   uint8_t pmi_x1_bitlen[8];
   uint8_t pmi_x2_bitlen[8];
+  uint8_t pmi_i11_bitlen[8];
+  uint8_t pmi_i12_bitlen[8];
+  uint8_t pmi_i13_bitlen[8];
   uint8_t cqi_bitlen[8];
 } CSI_Meas_bitlen_t;
 

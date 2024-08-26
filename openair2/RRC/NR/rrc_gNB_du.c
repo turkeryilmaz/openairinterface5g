@@ -20,6 +20,7 @@
  */
 
 #include "rrc_gNB_du.h"
+#include "rrc_gNB_NGAP.h"
 #include "common/ran_context.h"
 #include "nr_rrc_defs.h"
 #include "rrc_gNB_UE_context.h"
@@ -113,41 +114,36 @@ void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *req, sctp_assoc_t assoc_id)
 
   // if there is no system info or no SIB1 and we run in SA mode, we cannot handle it
   const f1ap_gnb_du_system_info_t *sys_info = req->cell[0].sys_info;
-  if (sys_info == NULL || sys_info->mib == NULL || (sys_info->sib1 == NULL && get_softmodem_params()->sa)) {
-    LOG_E(NR_RRC, "no system information provided by DU, rejecting\n");
-    f1ap_setup_failure_t fail = {.cause = F1AP_CauseProtocol_semantic_error};
-    rrc->mac_rrc.f1_setup_failure(assoc_id, &fail);
-    return;
-  }
-
-  /* do we need the MIB? for the moment, just check it is valid, then drop it */
   NR_BCCH_BCH_Message_t *mib = NULL;
-  asn_dec_rval_t dec_rval =
-      uper_decode_complete(NULL, &asn_DEF_NR_BCCH_BCH_Message, (void **)&mib, sys_info->mib, sys_info->mib_length);
-  if (dec_rval.code != RC_OK || mib->message.present != NR_BCCH_BCH_MessageType_PR_mib
-      || mib->message.choice.messageClassExtension == NULL) {
-    LOG_E(RRC, "Failed to decode NR_BCCH_BCH_MESSAGE (%zu bits) of DU, rejecting DU\n", dec_rval.consumed);
-    f1ap_setup_failure_t fail = {.cause = F1AP_CauseProtocol_semantic_error};
-    rrc->mac_rrc.f1_setup_failure(assoc_id, &fail);
-    ASN_STRUCT_FREE(asn_DEF_NR_BCCH_BCH_Message, mib);
-    return;
-  }
-
   NR_SIB1_t *sib1 = NULL;
-  if (sys_info->sib1) {
-    dec_rval = uper_decode_complete(NULL, &asn_DEF_NR_SIB1, (void **)&sib1, sys_info->sib1, sys_info->sib1_length);
-    if (dec_rval.code != RC_OK) {
-      LOG_E(RRC, "Failed to decode NR_SIB1 (%zu bits) of DU, rejecting DU\n", dec_rval.consumed);
+
+  if (sys_info != NULL && sys_info->mib != NULL && !(sys_info->sib1 == NULL && get_softmodem_params()->sa)) {
+    asn_dec_rval_t dec_rval =
+        uper_decode_complete(NULL, &asn_DEF_NR_BCCH_BCH_Message, (void **)&mib, sys_info->mib, sys_info->mib_length);
+    if (dec_rval.code != RC_OK || mib->message.present != NR_BCCH_BCH_MessageType_PR_mib
+        || mib->message.choice.messageClassExtension == NULL) {
+      LOG_E(RRC, "Failed to decode NR_BCCH_BCH_MESSAGE (%zu bits) of DU, rejecting DU\n", dec_rval.consumed);
       f1ap_setup_failure_t fail = {.cause = F1AP_CauseProtocol_semantic_error};
       rrc->mac_rrc.f1_setup_failure(assoc_id, &fail);
-      ASN_STRUCT_FREE(asn_DEF_NR_SIB1, sib1);
+      ASN_STRUCT_FREE(asn_DEF_NR_BCCH_BCH_Message, mib);
       return;
     }
-    if (LOG_DEBUGFLAG(DEBUG_ASN1))
-      xer_fprint(stdout, &asn_DEF_NR_SIB1, sib1);
-  }
 
+    if (sys_info->sib1) {
+      dec_rval = uper_decode_complete(NULL, &asn_DEF_NR_SIB1, (void **)&sib1, sys_info->sib1, sys_info->sib1_length);
+      if (dec_rval.code != RC_OK) {
+        LOG_E(RRC, "Failed to decode NR_SIB1 (%zu bits) of DU, rejecting DU\n", dec_rval.consumed);
+        f1ap_setup_failure_t fail = {.cause = F1AP_CauseProtocol_semantic_error};
+        rrc->mac_rrc.f1_setup_failure(assoc_id, &fail);
+        ASN_STRUCT_FREE(asn_DEF_NR_SIB1, sib1);
+        return;
+      }
+      if (LOG_DEBUGFLAG(DEBUG_ASN1))
+        xer_fprint(stdout, &asn_DEF_NR_SIB1, sib1);
+    }
+  }
   LOG_I(RRC, "Accepting DU %ld (%s), sending F1 Setup Response\n", req->gNB_DU_id, req->gNB_DU_name);
+  LOG_I(RRC, "DU uses RRC version %u.%u.%u\n", req->rrc_ver[0], req->rrc_ver[1], req->rrc_ver[2]);
 
   // we accept the DU
   nr_rrc_du_container_t *du = calloc(1, sizeof(*du));
@@ -157,13 +153,15 @@ void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *req, sctp_assoc_t assoc_id)
   /* ITTI will free the setup request message via free(). So the memory
    * "inside" of the message will remain, but the "outside" container no, so
    * allocate memory and copy it in */
-  du->setup_req = malloc(sizeof(*du->setup_req));
+  du->setup_req = calloc(1,sizeof(*du->setup_req));
   AssertFatal(du->setup_req != NULL, "out of memory\n");
   *du->setup_req = *req;
-  du->mib = mib->message.choice.mib;
-  mib->message.choice.mib = NULL;
-  ASN_STRUCT_FREE(asn_DEF_NR_BCCH_BCH_MessageType, mib);
-  du->sib1 = sib1;
+  if (mib != NULL && sib1 != NULL) {
+    du->mib = mib->message.choice.mib;
+    mib->message.choice.mib = NULL;
+    ASN_STRUCT_FREE(asn_DEF_NR_BCCH_BCH_MessageType, mib);
+    du->sib1 = sib1;
+  }
   RB_INSERT(rrc_du_tree, &rrc->dus, du);
   rrc->num_dus++;
 
@@ -172,8 +170,13 @@ void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *req, sctp_assoc_t assoc_id)
       .nr_cellid = cell_info->nr_cellid,
       .nrpci = cell_info->nr_pci,
       .num_SI = 0,
-  };
-  f1ap_setup_resp_t resp = {.num_cells_to_activate = 1, .cells_to_activate[0] = cell};
+  };  
+
+  f1ap_setup_resp_t resp = {.transaction_id = req->transaction_id,
+                            .num_cells_to_activate = 1,
+                            .cells_to_activate[0] = cell};
+  int num = read_version(TO_STRING(NR_RRC_VERSION), &resp.rrc_ver[0], &resp.rrc_ver[1], &resp.rrc_ver[2]);
+  AssertFatal(num == 3, "could not read RRC version string %s\n", TO_STRING(NR_RRC_VERSION));
   if (rrc->node_name != NULL)
     resp.gNB_CU_name = strdup(rrc->node_name);
   rrc->mac_rrc.f1_setup_response(assoc_id, &resp);
@@ -210,10 +213,14 @@ static int invalidate_du_connections(gNB_RRC_INST *rrc, sctp_assoc_t assoc_id)
     f1_ue_data_t ue_data = cu_get_f1_ue_data(ue_id);
     if (ue_data.du_assoc_id == assoc_id) {
       /* this UE belongs to the DU that disconnected, set du_assoc_id to 0,
-       * meaning DU is offline */
+       * meaning DU is offline, then trigger release request */
       cu_remove_f1_ue_data(ue_id);
-      f1_ue_data_t new = {.secondary_ue = ue_data.secondary_ue, .du_assoc_id = 0 };
-      cu_add_f1_ue_data(ue_id, &new);
+      ue_data.du_assoc_id = 0;
+      cu_add_f1_ue_data(ue_id, &ue_data);
+      rrc_gNB_send_NGAP_UE_CONTEXT_RELEASE_REQ(0,
+                                               ue_context_p,
+                                               NGAP_CAUSE_RADIO_NETWORK,
+                                               NGAP_CAUSE_RADIO_NETWORK_RADIO_CONNECTION_WITH_UE_LOST);
       count++;
     }
   }

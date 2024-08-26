@@ -81,6 +81,7 @@
 // message type for 5GS session management
 #define FGS_PDU_SESSION_ESTABLISHMENT_REQ                  0b11000001 /* 193= 0xc1 */
 #define FGS_PDU_SESSION_ESTABLISHMENT_ACC                  0b11000010 /* 194= 0xc2 */
+#define FGS_PDU_SESSION_ESTABLISHMENT_REJ                  0b11000011 /* 195= 0xc3 */
 
 #define INITIAL_REGISTRATION                               0b001
 #define MOBILITY_REGISTRATION_UPDATING                     0b010
@@ -133,6 +134,7 @@ typedef struct {
   uicc_t *uicc;
   ue_sa_security_key_t security;
   Guti5GSMobileIdentity_t *guti;
+  bool termination_procedure;
 } nr_ue_nas_t;
 
 typedef enum fgs_protocol_discriminator_e {

@@ -85,11 +85,9 @@ static const int tables_5_3_2[5][12] = {
     {32, 66, 132, 264, -1, -1, -1, -1, -1, -1, -1, -1} // 120FR2
 };
 
-int get_supported_band_index(int scs, int band, int n_rbs)
+int get_supported_band_index(int scs, frequency_range_t freq_range, int n_rbs)
 {
-  int scs_index = scs;
-  if (band > 256)
-    scs_index++;
+  int scs_index = scs + freq_range;
   for (int i = 0; i < 12; i++) {
     if(n_rbs == tables_5_3_2[scs_index][i])
       return i;
@@ -224,7 +222,7 @@ bool compare_relative_ul_channel_bw(int nr_band, int scs, int nb_ul, frame_type_
   // 38.101-1 section 6.2.2
   // Relative channel bandwidth <= 4% for TDD bands and <= 3% for FDD bands
   int index = get_nr_table_idx(nr_band, scs);
-  int bw_index = get_supported_band_index(scs, nr_band, nb_ul);
+  int bw_index = get_supported_band_index(scs, nr_band > 256 ? FR2 : FR1, nb_ul);
   int band_size_khz = get_supported_bw_mhz(nr_band > 256 ? FR2 : FR1, bw_index) * 1000;
   float limit = frame_type == TDD ? 0.04 : 0.03;
   float rel_bw = (float) (2 * band_size_khz) / (float) (nr_bandtable[index].ul_max + nr_bandtable[index].ul_min);
@@ -376,6 +374,115 @@ int get_nb_periods_per_frame(uint8_t tdd_period)
   return nb_periods_per_frame;
 }
 
+void get_delta_arfcn(int i, uint32_t nrarfcn, uint64_t N_OFFs)
+{
+  uint32_t delta_arfcn = nrarfcn - N_OFFs;
+
+  if(delta_arfcn % (nr_bandtable[i].step_size) != 0)
+    LOG_E(NR_MAC, "nrarfcn %u is not on the channel raster for step size %lu\n", nrarfcn, nr_bandtable[i].step_size);
+}
+
+uint32_t to_nrarfcn(int nr_bandP, uint64_t dl_CarrierFreq, uint8_t scs_index, uint32_t bw)
+{
+  uint64_t dl_CarrierFreq_by_1k = dl_CarrierFreq / 1000;
+  int bw_kHz = bw / 1000;
+  uint32_t nrarfcn;
+  int i = get_nr_table_idx(nr_bandP, scs_index);
+
+  LOG_D(NR_MAC, "Searching for nr band %d DL Carrier frequency %llu bw %u\n", nr_bandP, (long long unsigned int)dl_CarrierFreq, bw);
+
+  AssertFatal(dl_CarrierFreq_by_1k >= nr_bandtable[i].dl_min,
+              "Band %d, bw %u : DL carrier frequency %llu kHz < %llu\n",
+	      nr_bandP, bw, (long long unsigned int)dl_CarrierFreq_by_1k,
+	      (long long unsigned int)nr_bandtable[i].dl_min);
+  AssertFatal(dl_CarrierFreq_by_1k <= (nr_bandtable[i].dl_max - bw_kHz/2),
+              "Band %d, dl_CarrierFreq %llu bw %u: DL carrier frequency %llu kHz > %llu\n",
+	      nr_bandP, (long long unsigned int)dl_CarrierFreq,bw, (long long unsigned int)dl_CarrierFreq_by_1k,
+	      (long long unsigned int)(nr_bandtable[i].dl_max - bw_kHz/2));
+
+  int deltaFglobal = 60;
+  uint32_t N_REF_Offs = 2016667;
+  uint64_t F_REF_Offs_khz = 24250080;
+
+  if (dl_CarrierFreq < 24.25e9) {
+    deltaFglobal = 15;
+    N_REF_Offs = 600000;
+    F_REF_Offs_khz = 3000000;
+  }
+  if (dl_CarrierFreq < 3e9) {
+    deltaFglobal = 5;
+    N_REF_Offs = 0;
+    F_REF_Offs_khz = 0;
+  }
+
+  // This is equation before Table 5.4.2.1-1 in 38101-1-f30
+  // F_REF=F_REF_Offs + deltaF_Global(N_REF-NREF_REF_Offs)
+  nrarfcn =  (((dl_CarrierFreq_by_1k - F_REF_Offs_khz) / deltaFglobal) + N_REF_Offs);
+  //get_delta_arfcn(i, nrarfcn, nr_bandtable[i].N_OFFs_DL);
+
+  return nrarfcn;
+}
+
+// This function computes the RF reference frequency from the NR-ARFCN according to 5.4.2.1 of 3GPP TS 38.104
+// this function applies to both DL and UL
+uint64_t from_nrarfcn(int nr_bandP, uint8_t scs_index, uint32_t nrarfcn)
+{
+  int deltaFglobal = 5;
+  uint32_t N_REF_Offs = 0;
+  uint64_t F_REF_Offs_khz = 0;
+  uint64_t N_OFFs, frequency, freq_min;
+  int i = get_nr_table_idx(nr_bandP, scs_index);
+
+  if (nrarfcn > 599999 && nrarfcn < 2016667) {
+    deltaFglobal = 15;
+    N_REF_Offs = 600000;
+    F_REF_Offs_khz = 3000000;
+  }
+  if (nrarfcn > 2016666 && nrarfcn < 3279166) {
+    deltaFglobal = 60;
+    N_REF_Offs = 2016667;
+    F_REF_Offs_khz = 24250080;
+  }
+
+  int32_t delta_duplex = get_delta_duplex(nr_bandP, scs_index);
+
+  if (delta_duplex <= 0){ // DL band >= UL band
+    if (nrarfcn >= nr_bandtable[i].N_OFFs_DL){ // is TDD of FDD DL
+      N_OFFs = nr_bandtable[i].N_OFFs_DL;
+      freq_min = nr_bandtable[i].dl_min;
+    } else {// is FDD UL
+      N_OFFs = nr_bandtable[i].N_OFFs_DL + delta_duplex/deltaFglobal;
+      freq_min = nr_bandtable[i].ul_min;
+    }
+  } else { // UL band > DL band
+    if (nrarfcn >= nr_bandtable[i].N_OFFs_DL + delta_duplex / deltaFglobal){ // is FDD UL
+      N_OFFs = nr_bandtable[i].N_OFFs_DL + delta_duplex / deltaFglobal;
+      freq_min = nr_bandtable[i].ul_min;
+    } else { // is FDD DL
+      N_OFFs = nr_bandtable[i].N_OFFs_DL;
+      freq_min = nr_bandtable[i].dl_min;
+    }
+  }
+
+  LOG_D(NR_MAC, "Frequency from NR-ARFCN for N_OFFs %lu, duplex spacing %d KHz, deltaFglobal %d KHz\n",
+        N_OFFs,
+        delta_duplex,
+        deltaFglobal);
+
+  AssertFatal(nrarfcn >= N_OFFs,"nrarfcn %u < N_OFFs[%d] %llu\n", nrarfcn, nr_bandtable[i].band, (long long unsigned int)N_OFFs);
+  get_delta_arfcn(i, nrarfcn, N_OFFs);
+
+  frequency = 1000 * (F_REF_Offs_khz + (nrarfcn - N_REF_Offs) * deltaFglobal);
+
+  LOG_D(NR_MAC, "Computing frequency (nrarfcn %llu => %llu KHz (freq_min %llu KHz, NR band %d N_OFFs %llu))\n",
+        (unsigned long long)nrarfcn,
+        (unsigned long long)frequency/1000,
+        (unsigned long long)freq_min,
+        nr_bandP,
+        (unsigned long long)N_OFFs);
+
+  return frequency;
+}
 
 int get_first_ul_slot(int nrofDownlinkSlots, int nrofDownlinkSymbols, int nrofUplinkSymbols)
 {
@@ -429,29 +536,36 @@ int32_t get_delta_duplex(int nr_bandP, uint8_t scs_index)
 }
 
 // Returns the corresponding row index of the NR table
-int get_nr_table_idx(int nr_bandP, uint8_t scs_index) {
+int get_nr_table_idx(int nr_bandP, uint8_t scs_index)
+{
   int scs_khz = 15 << scs_index;
-  int supplementary_bands[] = {29,75,76,80,81,82,83,84,86,89,95};
-  for(int j = 0; j < sizeofArray(supplementary_bands); j++){
-    if (nr_bandP == supplementary_bands[j])
-      AssertFatal(0 == 1, "Band %d is a supplementary band (%d). This is not supported yet.\n", nr_bandP, supplementary_bands[j]);
+  int supplementary_bands[] = {29, 75, 76, 80, 81, 82, 83, 84, 86, 89, 95};
+  for(int j = 0; j < sizeofArray(supplementary_bands); j++) {
+    AssertFatal(nr_bandP != supplementary_bands[j],
+                "Band %d is a supplementary band (%d). This is not supported yet.\n",
+                nr_bandP,
+                supplementary_bands[j]);
   }
-
   int i;
   for (i = 0; i < sizeofArray(nr_bandtable); i++) {
-    if ( nr_bandtable[i].band == nr_bandP && nr_bandtable[i].deltaf_raster == scs_khz )
+    if (nr_bandtable[i].band == nr_bandP && nr_bandtable[i].deltaf_raster == scs_khz)
       break;
   }
 
   if (i == sizeofArray(nr_bandtable)) {
-    LOG_I(PHY, "not found same deltaf_raster == scs_khz, use only band and last deltaf_raster \n");
-    for(i=sizeofArray(nr_bandtable)-1; i >=0; i--)
-       if ( nr_bandtable[i].band == nr_bandP )
+    LOG_D(PHY, "Not found same deltaf_raster == scs_khz, use only band and last deltaf_raster \n");
+    for(i = sizeofArray(nr_bandtable) - 1; i >= 0; i--)
+       if (nr_bandtable[i].band == nr_bandP)
          break;
   }
 
-  AssertFatal(i >= 0 && i < sizeofArray(nr_bandtable), "band is not existing: %d\n",nr_bandP);
-  LOG_D(PHY, "NR band table index %d (Band %d, dl_min %lu, ul_min %lu)\n", i, nr_bandtable[i].band, nr_bandtable[i].dl_min,nr_bandtable[i].ul_min);
+  AssertFatal(i >= 0 && i < sizeofArray(nr_bandtable), "band is not existing: %d\n", nr_bandP);
+  LOG_D(PHY,
+        "NR band table index %d (Band %d, dl_min %lu, ul_min %lu)\n",
+         i,
+         nr_bandtable[i].band,
+         nr_bandtable[i].dl_min,
+         nr_bandtable[i].ul_min);
 
   return i;
 }
@@ -720,18 +834,6 @@ void get_samplerate_and_bw(int mu,
   }
 }
 
-void get_K1_K2(int N1, int N2, int *K1, int *K2)
-{
-  // num of allowed k1 and k2 according to 5.2.2.2.1-3 and -4 in 38.214
-  if(N2 == N1 || N1 == 2)
-    *K1 = 2;
-  else if (N2 == 1)
-    *K1 = 5;
-  else
-    *K1 = 3;
-  *K2 = N2 > 1 ? 2 : 1;
-}
-
 // from start symbol index and nb or symbols to symbol occupation bitmap in a slot
 uint16_t SL_to_bitmap(int startSymbolIndex, int nrOfSymbols) {
  return ((1<<nrOfSymbols)-1)<<startSymbolIndex;
@@ -755,11 +857,25 @@ void SLIV2SL(int SLIV,int *S,int *L) {
   }
 }
 
-int get_ssb_subcarrier_offset(uint32_t absoluteFrequencySSB, uint32_t absoluteFrequencyPointA)
+int get_ssb_subcarrier_offset(uint32_t absoluteFrequencySSB, uint32_t absoluteFrequencyPointA, int scs)
 {
-  uint32_t absolute_diff = (absoluteFrequencySSB - absoluteFrequencyPointA);
-  const int scaling_5khz = absoluteFrequencyPointA < 600000 ? 3 : 1;
-  return ((absolute_diff / scaling_5khz) % 24);
+  // for FR1 k_SSB expressed in terms of 15kHz SCS
+  // for FR2 k_SSB expressed in terms of the subcarrier spacing provided by the higher-layer parameter subCarrierSpacingCommon
+  // absoluteFrequencySSB and absoluteFrequencyPointA are ARFCN
+  // NR-ARFCN delta frequency is 5kHz if f < 3 GHz, 15kHz for other FR1 freq and 60kHz for FR2
+  const uint32_t absolute_diff = absoluteFrequencySSB - absoluteFrequencyPointA;
+  int scaling = 1;
+  if (absoluteFrequencyPointA < 600000) // correspond to 3GHz
+    scaling = 3;
+  if (scs > 2) // FR2
+    scaling <<= (scs - 2);
+  int sco_limit = scs == 1 ? 24 : 12;
+  int subcarrier_offset = (absolute_diff / scaling) % sco_limit;
+  // 30kHz is the only case where k_SSB is expressed in terms of a different SCS (15kHz)
+  // the assertion is to avoid having an offset of half a subcarrier
+  if (scs == 1)
+    AssertFatal(subcarrier_offset % 2 == 0, "ssb offset %d invalid for scs %d\n", subcarrier_offset, scs);
+  return subcarrier_offset;
 }
 
 uint32_t get_ssb_offset_to_pointA(uint32_t absoluteFrequencySSB,
@@ -767,16 +883,16 @@ uint32_t get_ssb_offset_to_pointA(uint32_t absoluteFrequencySSB,
                                   int ssbSubcarrierSpacing,
                                   int frequency_range)
 {
+  // offset to pointA is expressed in terms of 15kHz SCS for FR1 and 60kHz for FR2
+  // only difference wrt NR-ARFCN is delta frequency 5kHz if f < 3 GHz for ARFCN
   uint32_t absolute_diff = (absoluteFrequencySSB - absoluteFrequencyPointA);
   const int scaling_5khz = absoluteFrequencyPointA < 600000 ? 3 : 1;
-  int sco = get_ssb_subcarrier_offset(absoluteFrequencySSB, absoluteFrequencyPointA);
-  const int scs_scaling = frequency_range == FR2 ? 1 << (ssbSubcarrierSpacing - 2) : 1 << ssbSubcarrierSpacing;
-  const int scaled_abs_diff = absolute_diff / scaling_5khz;
-  const int ssb_offset_point_a =
-      (scaled_abs_diff - sco) / 12
-      - 10 * scs_scaling; // absoluteFrequencySSB is the central frequency of SSB which is made by 20RBs in total
-  AssertFatal(ssb_offset_point_a % scs_scaling == 0, "PRB offset %d can create frequency offset\n", ssb_offset_point_a);
-  AssertFatal(sco % scs_scaling == 0, "ssb offset %d can create frequency offset\n", sco);
+  const int scaling = frequency_range == FR2 ? 1 << (ssbSubcarrierSpacing - 2) : 1 << ssbSubcarrierSpacing;
+  const int scaled_abs_diff = absolute_diff / (scaling_5khz * scaling);
+  // absoluteFrequencySSB is the central frequency of SSB which is made by 20RBs in total
+  const int ssb_offset_point_a = ((scaled_abs_diff / 12) - 10) * scaling;
+  // Offset to point A needs to be divisible by scaling
+  AssertFatal(ssb_offset_point_a % scaling == 0, "PRB offset %d not valid for scs %d\n", ssb_offset_point_a, ssbSubcarrierSpacing);
   return ssb_offset_point_a;
 }
 
@@ -864,4 +980,54 @@ void nr_est_delay(int ofdm_symbol_size, const c16_t *ls_est, c16_t *ch_estimates
   delay->delay_max_pos = max_pos;
   delay->delay_max_val = max_val;
   delay->est_delay = max_pos - sync_pos;
+}
+
+void nr_timer_start(NR_timer_t *timer)
+{
+  timer->active = true;
+  timer->counter = 0;
+}
+
+void nr_timer_stop(NR_timer_t *timer)
+{
+  timer->active = false;
+  timer->counter = 0;
+}
+
+bool is_nr_timer_active(NR_timer_t timer)
+{
+  return timer.active;
+}
+
+bool nr_timer_tick(NR_timer_t *timer)
+{
+  bool expired = false;
+  if (timer->active) {
+    timer->counter += timer->step;
+    if (timer->target == UINT_MAX) // infinite target, never expires
+      return false;
+    expired = nr_timer_expired(*timer);
+    if (expired)
+      timer->active = false;
+  }
+  return expired;
+}
+
+bool nr_timer_expired(NR_timer_t timer)
+{
+  if (timer.target == UINT_MAX) // infinite target, never expires
+    return false;
+  return (timer.counter >= timer.target);
+}
+
+uint32_t nr_timer_elapsed_time(NR_timer_t timer)
+{
+  return timer.counter;
+}
+
+void nr_timer_setup(NR_timer_t *timer, const uint32_t target, const uint32_t step)
+{
+  timer->target = target;
+  timer->step = step;
+  nr_timer_stop(timer);
 }

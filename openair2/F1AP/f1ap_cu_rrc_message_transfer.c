@@ -239,14 +239,20 @@ int CU_handle_UL_RRC_MESSAGE_TRANSFER(instance_t instance, sctp_assoc_t assoc_id
   F1AP_FIND_PROTOCOLIE_BY_ID(F1AP_ULRRCMessageTransferIEs_t, ie, container,
                              F1AP_ProtocolIE_ID_id_gNB_DU_UE_F1AP_ID, true);
   du_ue_f1ap_id = ie->value.choice.GNB_DU_UE_F1AP_ID;
+
+  if (!cu_exists_f1_ue_data(cu_ue_f1ap_id)) {
+    LOG_E(F1AP, "unknown CU UE ID %ld\n", cu_ue_f1ap_id);
+    return 1;
+  }
+
   /* the RLC-PDCP does not transport the DU UE ID (yet), so we drop it here.
    * For the moment, let's hope this won't become relevant; to sleep in peace,
    * let's put an assert to check that it is the expected DU UE ID. */
   f1_ue_data_t ue_data = cu_get_f1_ue_data(cu_ue_f1ap_id);
-  AssertFatal(ue_data.secondary_ue == du_ue_f1ap_id,
-              "unexpected DU UE ID %d received, expected it to be %ld\n",
-              ue_data.secondary_ue,
-              du_ue_f1ap_id);
+  if (ue_data.secondary_ue != du_ue_f1ap_id) {
+    LOG_E(F1AP, "unexpected DU UE ID %d received, expected it to be %ld\n", ue_data.secondary_ue, du_ue_f1ap_id);
+    return 1;
+  }
 
   /* mandatory */
   /* SRBID */
@@ -270,8 +276,8 @@ int CU_handle_UL_RRC_MESSAGE_TRANSFER(instance_t instance, sctp_assoc_t assoc_id
   ctxt.rntiMaybeUEid = cu_ue_f1ap_id;
   ctxt.enb_flag = 1;
   ctxt.eNB_index = 0;
-  mem_block_t *mb = get_free_mem_block(ie->value.choice.RRCContainer.size,__func__);
-  memcpy((void *)mb->data,(void *)ie->value.choice.RRCContainer.buf,ie->value.choice.RRCContainer.size);
+  uint8_t *mb = malloc16(ie->value.choice.RRCContainer.size);
+  memcpy(mb, ie->value.choice.RRCContainer.buf, ie->value.choice.RRCContainer.size);
   LOG_D(F1AP, "Calling pdcp_data_ind for UE RNTI %lx srb_id %lu with size %ld (DCCH) \n", ctxt.rntiMaybeUEid, srb_id, ie->value.choice.RRCContainer.size);
   //for (int i = 0; i < ie->value.choice.RRCContainer.size; i++)
   //  printf("%02x ", mb->data[i]);

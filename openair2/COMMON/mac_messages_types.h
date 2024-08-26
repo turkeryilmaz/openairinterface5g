@@ -41,6 +41,7 @@
 #define RRC_MAC_BCCH_DATA_REQ(mSGpTR)           (mSGpTR)->ittiMsg.rrc_mac_bcch_data_req
 #define RRC_MAC_BCCH_DATA_IND(mSGpTR)           (mSGpTR)->ittiMsg.rrc_mac_bcch_data_ind
 #define NR_RRC_MAC_BCCH_DATA_IND(mSGpTR)        (mSGpTR)->ittiMsg.nr_rrc_mac_bcch_data_ind
+#define NR_RRC_MAC_SBCCH_DATA_IND(mSGpTR)       (mSGpTR)->ittiMsg.nr_rrc_mac_sbcch_data_ind
 
 #define RRC_MAC_BCCH_MBMS_DATA_REQ(mSGpTR)      (mSGpTR)->ittiMsg.rrc_mac_bcch_mbms_data_req
 #define RRC_MAC_BCCH_MBMS_DATA_IND(mSGpTR)      (mSGpTR)->ittiMsg.rrc_mac_bcch_mbms_data_ind
@@ -75,7 +76,8 @@ typedef struct NRRrcMacRaInd_s {
 } NRRrcMacRaInd;
 
 typedef struct NRRrcMacMsg3Ind_s {
-  uint16_t  rnti;
+  uint16_t rnti;
+  int gnb_id;
 } NRRrcMacMsg3Ind;
 
 typedef struct RrcMacInSyncInd_s {
@@ -117,7 +119,20 @@ typedef struct NRRrcMacBcchDataInd_s {
   bool      is_bch;
   uint8_t   rsrq;
   uint8_t   rsrp;
+  uint32_t  phycellid;
+  long      ssb_arfcn;
 } NRRrcMacBcchDataInd;
+
+typedef struct NRRrcMacSBcchDataInd_s {
+  uint32_t  frame;
+  uint8_t   slot;
+  uint32_t  sdu_size;
+  uint8_t   sdu[BCCH_SDU_SIZE];
+  uint8_t   gnb_index;
+  uint16_t  rx_slss_id;
+  uint8_t   rsrq;
+  uint8_t   rsrp;
+} NRRrcMacSBcchDataInd;
 
 typedef struct RrcMacBcchMbmsDataReq_s {
   uint32_t  frame;
@@ -159,7 +174,6 @@ typedef struct RrcMacCcchDataInd_s {
 } RrcMacCcchDataInd;
 
 typedef struct NRRrcMacCcchDataInd_s {
-  uint16_t  rnti;
   uint32_t  sdu_size;
   uint8_t   sdu[CCCH_SDU_SIZE];
 } NRRrcMacCcchDataInd;

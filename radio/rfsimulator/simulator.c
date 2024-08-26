@@ -206,17 +206,6 @@ static int allocCirBuf(rfsimulator_state_t *bridge, int sock)
 
   if ( bridge->channelmod > 0) {
     // create channel simulation model for this mode reception
-    // snr_dB is pure global, coming from configuration paramter "-s"
-    // Fixme: referenceSignalPower should come from the right place
-    // but the datamodel is inconsistant
-    // legacy: RC.ru[ru_id]->frame_parms.pdsch_config_common.referenceSignalPower
-    // (must not come from ru[]->frame_parms as it doesn't belong to ru !!!)
-    // Legacy sets it as:
-    // ptr->channel_model->path_loss_dB = -132.24 + snr_dB - RC.ru[0]->frame_parms->pdsch_config_common.referenceSignalPower;
-    // we use directly the paramter passed on the command line ("-s")
-    // the value channel_model->path_loss_dB seems only a storage place (new_channel_desc_scm() only copy the passed value)
-    // Legacy changes directlty the variable channel_model->path_loss_dB place to place
-    // while calling new_channel_desc_scm() with path losses = 0
     static bool init_done=false;
 
     if (!init_done) {
@@ -314,7 +303,7 @@ static void fullwrite(int fd, void *_buf, ssize_t count, rfsimulator_state_t *t)
         continue;
 
       if (errno == EAGAIN) {
-        LOG_E(HW, "write() failed, errno(%d)\n", errno);
+        LOG_D(HW, "write() failed, errno(%d)\n", errno);
         usleep(250);
         continue;
       } else
@@ -735,10 +724,10 @@ static int rfsimulator_write_internal(rfsimulator_state_t *t, openair0_timestamp
   }
 
   if ( t->lastWroteTS != 0 && fabs((double)t->lastWroteTS-timestamp) > (double)CirSize)
-    LOG_E(HW, "Discontinuous TX gap too large Tx:%lu, %lu\n", t->lastWroteTS, timestamp);
+    LOG_W(HW, "Discontinuous TX gap too large Tx:%lu, %lu\n", t->lastWroteTS, timestamp);
 
   if (t->lastWroteTS > timestamp+nsamps)
-    LOG_E(HW, "Not supported to send Tx out of order (same in USRP) %lu, %lu\n", t->lastWroteTS, timestamp);
+    LOG_W(HW, "Not supported to send Tx out of order %lu, %lu\n", t->lastWroteTS, timestamp);
 
   t->lastWroteTS=timestamp+nsamps;
 
@@ -755,6 +744,7 @@ static int rfsimulator_write_internal(rfsimulator_state_t *t, openair0_timestamp
 }
 
 static int rfsimulator_write(openair0_device *device, openair0_timestamp timestamp, void **samplesVoid, int nsamps, int nbAnt, int flags) {
+  timestamp -= device->openair0_cfg->command_line_sample_advance;
   return rfsimulator_write_internal(device->priv, timestamp, samplesVoid, nsamps, nbAnt, flags, false); // false = with lock
   // return rfsimulator_write_internal(device->priv, timestamp, samplesVoid, nsamps, nbAnt, flags, true);
 }
@@ -872,14 +862,14 @@ static bool flushInput(rfsimulator_state_t *t, int timeout, int nsamps_for_initi
         } else if (b->lastReceivedTS == b->th.timestamp) {
           // normal case
         } else {
-          LOG_E(HW, "Received data in past: current is %lu, new reception: %lu!\n", b->lastReceivedTS, b->th.timestamp);
+          LOG_W(HW, "Received data in past: current is %lu, new reception: %lu!\n", b->lastReceivedTS, b->th.timestamp);
           b->trashingPacket=true;
         }
 
         pthread_mutex_lock(&Sockmutex);
 
         if (t->lastWroteTS != 0 && (fabs((double)t->lastWroteTS-b->lastReceivedTS) > (double)CirSize))
-          LOG_E(HW, "UEsock(%d) Tx/Rx shift too large Tx:%lu, Rx:%lu\n", fd, t->lastWroteTS, b->lastReceivedTS);
+          LOG_W(HW, "UEsock(%d) Tx/Rx shift too large Tx:%lu, Rx:%lu\n", fd, t->lastWroteTS, b->lastReceivedTS);
 
         pthread_mutex_unlock(&Sockmutex);
         b->transferPtr=(char *)&b->circularBuf[(b->lastReceivedTS*b->th.nbAnt)%CirSize];
@@ -1048,7 +1038,7 @@ static void rfsimulator_end(openair0_device *device) {
   for (int i = 0; i < MAX_FD_RFSIMU; i++) {
     buffer_t *b = &s->buf[i];
     if (b->conn_sock >= 0 )
-      close(b->conn_sock);
+      removeCirBuf(s, b->conn_sock);
   }
   close(s->epollfd);
 }

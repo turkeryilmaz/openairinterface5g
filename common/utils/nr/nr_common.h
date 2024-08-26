@@ -44,6 +44,39 @@
 #define NR_NB_SC_PER_RB 12
 #define NR_MAX_NUM_LCID 32
 #define NR_MAX_NUM_QFI 64
+#define RNTI_NAMES /* see 38.321  Table 7.1-2  RNTI usage */      \
+  R(TYPE_C_RNTI_) /* Cell RNTI */                                  \
+  R(TYPE_CS_RNTI_) /* Configured Scheduling RNTI */                \
+  R(TYPE_TC_RNTI_) /* Temporary C-RNTI */                          \
+  R(TYPE_P_RNTI_) /* Paging RNTI */                                \
+  R(TYPE_SI_RNTI_) /* System information RNTI */                   \
+  R(TYPE_RA_RNTI_) /* Random Access RNTI */                        \
+  R(TYPE_SP_CSI_RNTI_) /* Semipersistent CSI reporting on PUSCH */ \
+  R(TYPE_SFI_RNTI_) /* Slot Format Indication on the given cell */ \
+  R(TYPE_INT_RNTI_) /* Indication pre-emption in DL */            \
+  R(TYPE_TPC_PUSCH_RNTI_) /* PUSCH power control */               \
+  R(TYPE_TPC_PUCCH_RNTI_) /* PUCCH power control */               \
+  R(TYPE_TPC_SRS_RNTI_)                                           \
+  R(TYPE_MCS_C_RNTI_)
+
+#define R(k) k ,
+typedef enum { RNTI_NAMES } nr_rnti_type_t;
+#undef R
+
+#define R(k) \
+  case k:       \
+    return #k;
+static inline const char *rnti_types(nr_rnti_type_t rr)
+{
+  switch (rr) {
+    RNTI_NAMES
+    default:
+      return "Not existing RNTI type";
+  }
+}
+#undef R
+
+#define NR_MAX_NB_LAYERS 4 // 8
 
 typedef enum {
   nr_FR1 = 0,
@@ -83,6 +116,56 @@ typedef struct {
   int delay_max_val;
 } delay_t;
 
+typedef struct {
+  bool active;
+  uint32_t counter;
+  uint32_t target;
+  uint32_t step;
+} NR_timer_t;
+
+/**
+ * @brief To start a timer
+ * @param timer Timer to be started
+ */
+void nr_timer_start(NR_timer_t *timer);
+/**
+ * @brief To stop a timer
+ * @param timer Timer to stopped
+ */
+void nr_timer_stop(NR_timer_t *timer);
+/**
+ * @brief If active, it increases timer counter by an amout of units equal to step. It stops timer if expired
+ * @param timer Timer to be handled
+ * @return Indication if the timer is expired or not
+ */
+bool nr_timer_tick(NR_timer_t *timer);
+/**
+ * @brief To setup a timer
+ * @param timer Timer to setup
+ * @param target Target value for timer (when reached, timer is considered expired)
+ * @param step Amount of units to add to timer counter every tick
+ */
+void nr_timer_setup(NR_timer_t *timer, const uint32_t target, const uint32_t step);
+/**
+ * @brief To check if a timer is expired
+ * @param timer Timer to be checked
+ * @return Indication if the timer is expired or not
+ */
+bool nr_timer_expired(NR_timer_t timer);
+/**
+ * @brief To check if a timer is active
+ * @param timer Timer to be checked
+ * @return Indication if the timer is active or not
+ */
+bool is_nr_timer_active(NR_timer_t timer);
+/**
+ * @brief To return how much time has passed since start of timer
+ * @param timer Timer to be checked
+ * @return Time passed since start of timer
+ */
+uint32_t nr_timer_elapsed_time(NR_timer_t timer);
+
+
 extern const nr_bandentry_t nr_bandtable[];
 
 static inline int get_num_dmrs(uint16_t dmrs_mask ) {
@@ -92,7 +175,8 @@ static inline int get_num_dmrs(uint16_t dmrs_mask ) {
 }
 
 uint64_t reverse_bits(uint64_t in, int n_bits);
-
+uint64_t from_nrarfcn(int nr_bandP, uint8_t scs_index, uint32_t dl_nrarfcn);
+uint32_t to_nrarfcn(int nr_bandP, uint64_t dl_CarrierFreq, uint8_t scs_index, uint32_t bw);
 int get_first_ul_slot(int nrofDownlinkSlots, int nrofDownlinkSymbols, int nrofUplinkSymbols);
 int cce_to_reg_interleaving(const int R, int k, int n_shift, const int C, int L, const int N_regs);
 int get_SLIV(uint8_t S, uint8_t L);
@@ -110,11 +194,10 @@ void SLIV2SL(int SLIV,int *S,int *L);
 int get_dmrs_port(int nl, uint16_t dmrs_ports);
 uint16_t SL_to_bitmap(int startSymbolIndex, int nrOfSymbols);
 int get_nb_periods_per_frame(uint8_t tdd_period);
-int get_supported_band_index(int scs, int band, int n_rbs);
 long rrc_get_max_nr_csrs(const int max_rbs, long b_SRS);
-void get_K1_K2(int N1, int N2, int *K1, int *K2);
 bool compare_relative_ul_channel_bw(int nr_band, int scs, int nb_ul, frame_type_t frame_type);
 int get_supported_bw_mhz(frequency_range_t frequency_range, int bw_index);
+int get_supported_band_index(int scs, frequency_range_t freq_range, int n_rbs);
 void get_samplerate_and_bw(int mu,
                            int n_rb,
                            int8_t threequarter_fs,
@@ -126,7 +209,7 @@ uint32_t get_ssb_offset_to_pointA(uint32_t absoluteFrequencySSB,
                                   uint32_t absoluteFrequencyPointA,
                                   int ssbSubcarrierSpacing,
                                   int frequency_range);
-int get_ssb_subcarrier_offset(uint32_t absoluteFrequencySSB, uint32_t absoluteFrequencyPointA);
+int get_ssb_subcarrier_offset(uint32_t absoluteFrequencySSB, uint32_t absoluteFrequencyPointA, int scs);
 int get_delay_idx(int delay, int max_delay_comp);
 
 void freq2time(uint16_t ofdm_symbol_size,
@@ -137,10 +220,6 @@ void nr_est_delay(int ofdm_symbol_size, const c16_t *ls_est, c16_t *ch_estimates
 
 #define CEILIDIV(a,b) ((a+b-1)/b)
 #define ROUNDIDIV(a,b) (((a<<1)+b)/(b<<1))
-
-#define cmax(a,b)  ((a>b) ? (a) : (b))
-#define cmax3(a,b,c) ((cmax(a,b)>c) ? (cmax(a,b)) : (c))
-#define cmin(a,b)  ((a<b) ? (a) : (b))
 
 #ifdef __cplusplus
 #ifdef min

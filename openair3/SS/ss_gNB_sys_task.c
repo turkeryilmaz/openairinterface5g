@@ -53,6 +53,8 @@
 extern RAN_CONTEXT_t RC;
 extern SSConfigContext_t SS_context;
 
+extern pthread_mutex_t acp_msg_mutex;
+
 extern pthread_cond_t cell_config_5G_done_cond;
 extern pthread_mutex_t cell_config_5G_done_mutex;
 
@@ -606,6 +608,7 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
         if (false == ss_task_sys_nr_handle_cellConfig5G(&req->Request.v.Cell, SS_context.SSCell_list[nr_cell_index].State) )
         {
           LOG_A(GNB_APP, "[SYS-GNB] Error handling Cell Config 5G for NR_SystemRequest_Type_Cell \n");
+          pthread_mutex_unlock(&acp_msg_mutex);
           return;
         }
         cell_config_5G_done_indication();
@@ -712,6 +715,7 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
               if (false == ss_task_sys_nr_handle_cellConfigRadioBearer(req) )
               {
                 LOG_A(GNB_APP, "[SYS-GNB] Error handling Cell Config 5G for NR_SystemRequest_Type_Cell \n");
+                pthread_mutex_unlock(&acp_msg_mutex);
                 return;
               }
             }
@@ -723,6 +727,7 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
               if (false == ss_task_sys_nr_handle_cellConfigAttenuation(req) )
               {
                 LOG_A(GNB_APP, "[SYS-GNB] Error handling Cell Config 5G for NR_SystemRequest_Type_Cell \n");
+                pthread_mutex_unlock(&acp_msg_mutex);
                 return;
               }
             }
@@ -779,6 +784,7 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
   }
   LOG_A(GNB_APP, "[SYS-GNB] SS_STATE %d New SS_STATE %d received SystemRequest_Type %d\n",
       enterState, SS_context.SSCell_list[nr_cell_index].State, req->Request.d);
+  pthread_mutex_unlock(&acp_msg_mutex);
 }
 
 
@@ -1281,7 +1287,8 @@ bool ss_task_sys_nr_handle_cellConfig5G(struct NR_CellConfigRequest_Type *p_req,
     /* Populating frequency band list */
     if( p_req->v.AddOrReconfigure.PhysicalLayer.d == true &&
         p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.d == true &&
-        p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.d == true && 0){
+        p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.d == true &&
+        p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.d == NR_ASN1_FrequencyInfoDL_Type_R15){
         for (int i = 0; i < p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.v.R15.frequencyBandList.d; i++)
         {
           //LOG_I(GNB_APP,"mark: fxn:%s %d \n", __FUNCTION__,__LINE__);
@@ -1925,8 +1932,8 @@ bool ss_task_sys_nr_handle_pdcpCount(struct NR_SYSTEM_CTRL_REQ *req)
   {
       struct NR_PDCP_CountCnf_Type PdcpCount = {};
       PdcpCount.d = NR_PDCP_CountCnf_Type_Get;
-
-      nr_pdcp_ue_t *ue = nr_pdcp_manager_get_ue_ex(nr_pdcp_ue_manager, rnti);
+      ue_id_t UEid = rnti;
+      nr_pdcp_ue_t *ue = nr_pdcp_manager_get_ue_ex(nr_pdcp_ue_manager, UEid);
 
       if (ue == NULL)
       {

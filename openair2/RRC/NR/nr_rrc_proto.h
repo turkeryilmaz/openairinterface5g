@@ -44,7 +44,8 @@
 #include "NR_SecurityConfig.h"
 #include "NR_CellGroupConfig.h"
 
-#define NR_MAX_SUPPORTED_DL_LAYERS 2
+#define NR_MAX_SUPPORTED_DL_LAYERS 4
+void rrc_init_nr_srb_param(NR_LCHAN_DESC *chan);
 
 void rrc_gNB_process_SgNBAdditionRequest( 
      const protocol_ctxt_t  *const ctxt_pP,
@@ -63,6 +64,7 @@ void rrc_parse_ue_capabilities(gNB_RRC_INST *rrc,NR_UE_CapabilityRAT_ContainerLi
 void rrc_add_nsa_user(gNB_RRC_INST *rrc, rrc_gNB_ue_context_t *ue_context_p, x2ap_ENDC_sgnb_addition_req_t *m);
 
 void rrc_remove_nsa_user(gNB_RRC_INST *rrc, int rnti);
+void rrc_remove_ue(gNB_RRC_INST *rrc, rrc_gNB_ue_context_t *ue_context_p);
 
 void fill_default_reconfig(NR_ServingCellConfigCommon_t *servingcellconfigcommon,
                            NR_ServingCellConfig_t *servingcellconfigdedicated,
@@ -81,7 +83,9 @@ int parse_CG_ConfigInfo(gNB_RRC_INST *rrc, NR_CG_ConfigInfo_t *CG_ConfigInfo, x2
 void
 rrc_gNB_generate_SecurityModeCommand(
   const protocol_ctxt_t *const ctxt_pP,
-  rrc_gNB_ue_context_t          *const ue_context_pP
+  rrc_gNB_ue_context_t          *const ue_context_pP,
+  int n_drbs,
+  const f1ap_drb_to_be_setup_t *drbs
 );
 
 unsigned int rrc_gNB_get_next_transaction_identifier(module_id_t gnb_mod_idP);
@@ -130,9 +134,13 @@ rrc_gNB_generate_dedicatedRRCReconfiguration_release(
 
 void rrc_gNB_generate_dedicatedRRCReconfiguration(const protocol_ctxt_t *const ctxt_pP, rrc_gNB_ue_context_t *ue_context_pP);
 
+bool ue_associated_to_cuup(const gNB_RRC_INST *rrc, const gNB_RRC_UE_t *ue);
 sctp_assoc_t get_existing_cuup_for_ue(const gNB_RRC_INST *rrc, const gNB_RRC_UE_t *ue);
 sctp_assoc_t get_new_cuup_for_ue(const gNB_RRC_INST *rrc, const gNB_RRC_UE_t *ue, int sst, int sd);
 int rrc_gNB_process_e1_setup_req(sctp_assoc_t assoc_id, e1ap_setup_req_t *req);
+
+/* Process indication of E1 connection loss on CU-CP */
+void rrc_gNB_process_e1_lost_connection(gNB_RRC_INST *rrc, e1ap_lost_connection_t *lc, sctp_assoc_t assoc_id);
 
 void bearer_context_setup_direct(e1ap_bearer_setup_req_t *req,
                                  instance_t instance);
@@ -148,7 +156,12 @@ void ue_cxt_mod_direct(MessageDef *msg,
 
 void prepare_and_send_ue_context_modification_f1(rrc_gNB_ue_context_t *ue_context_p,
                                                  e1ap_bearer_setup_resp_t *e1ap_resp);
-void nr_pdcp_add_srbs(eNB_flag_t enb_flag, ue_id_t rntiMaybeUEid, NR_SRB_ToAddModList_t *const srb2add_list, const uint8_t security_modeP, uint8_t *const kRRCenc, uint8_t *const kUPint);
+void nr_pdcp_add_srbs(eNB_flag_t enb_flag,
+                      ue_id_t UEid,
+                      NR_SRB_ToAddModList_t *const srb2add_list,
+                      const uint8_t security_modeP,
+                      uint8_t *const kRRCenc,
+                      uint8_t *const kUPint);
 
 void nr_pdcp_add_drbs(eNB_flag_t enb_flag,
                       ue_id_t rntiMaybeUEid,

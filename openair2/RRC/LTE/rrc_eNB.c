@@ -55,7 +55,7 @@
 #include "LTE_HandoverCommand.h"
 #include "rlc.h"
 #include "rrc_eNB_UE_context.h"
-#include "platform_types.h"
+#include "common/platform_types.h"
 #include "LTE_SL-CommConfig-r12.h"
 #include "LTE_PeriodicBSR-Timer-r12.h"
 #include "LTE_RetxBSR-Timer-r12.h"
@@ -3173,6 +3173,14 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
     {
       LTE_RRCConnectionReconfiguration_r8_IEs_t *ce = NULL;
       ce = &dl_dcch_msg->message.choice.c1.choice.rrcConnectionReconfiguration.criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8;
+      if(ce->radioResourceConfigDedicated->mac_MainConfig != NULL)
+      {
+         int16_t UE_id = find_UE_id(ctxt_pP->module_id, ue_context_pP->ue_id_rnti);
+         int16_t tat[8] = {500, 750, 1280, 1920, 2560, 5120, 10240, 0};    //translate enum to actual values
+         /*Assign time alignment timer value in UE context*/
+         RC.mac[ctxt_pP->module_id]->UE_info.UE_sched_ctrl[UE_id].ta_timer = tat[ce->radioResourceConfigDedicated->mac_MainConfig->choice.explicitValue.timeAlignmentTimerDedicated];
+         LOG_D(RRC, "Received rrcConnectionReconfiguration with Time Alignment Timer %d UE_ID %d, rnti %d\n", RC.mac[ctxt_pP->module_id]->UE_info.UE_sched_ctrl[UE_id].ta_timer, UE_id, ue_context_pP->ue_id_rnti);
+      }
       if (ce->radioResourceConfigDedicated->drb_ToAddModList != NULL)
       {
         num_drb = ce->radioResourceConfigDedicated->drb_ToAddModList->list.count;
@@ -4576,10 +4584,16 @@ void rrc_eNB_process_handoverPreparationInformation(int mod_id, x2ap_handover_re
   ue_context_target_p->ue_context.handover_info = CALLOC(1, sizeof(*(ue_context_target_p->ue_context.handover_info)));
   //ue_context_target_p->ue_context.StatusRrc = RRC_HO_EXECUTION;
   //ue_context_target_p->ue_context.handover_info->state = HO_ACK;
+
+  /* As HO case, need to enable TA scheduling here.
+   * Set TA timer value to new ue context from old ue context*/
+  RC.mac[mod_id]->UE_info.UE_sched_ctrl[find_UE_id(mod_id, m->rnti)].ta_sched_enabled = true;
+  RC.mac[mod_id]->UE_info.UE_sched_ctrl[ue_context_target_p->local_uid].ta_timer = RC.mac[mod_id]->UE_info.UE_sched_ctrl[find_UE_id(mod_id, m->rnti)].ta_timer;
   /*Set rach mode in new ue context & reset in old ue context*/
   (mac_eNB_get_rach_mode(mod_id,m->rnti)) ? (mac_eNB_set_rach_mode(mod_id, rnti, true)) : (mac_eNB_set_rach_mode(mod_id, rnti, false));
   mac_eNB_set_rach_mode(mod_id, m->rnti, false);
   LOG_D(RRC, "eNB %d: Created new UE context uid %u, isRachModeCFRA: %d\n", mod_id, ue_context_target_p->local_uid, mac_eNB_get_rach_mode(mod_id,rnti));
+
   ue_context_target_p->ue_context.handover_info->x2_id = m->x2_id;
   ue_context_target_p->ue_context.handover_info->ss_source_ue_rnti = m->rnti;
   ue_context_target_p->ue_context.handover_info->assoc_id = m->target_assoc_id;

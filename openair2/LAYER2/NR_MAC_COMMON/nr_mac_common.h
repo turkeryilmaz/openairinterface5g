@@ -55,10 +55,6 @@ uint32_t get_Y(const NR_SearchSpace_t *ss, int slot, rnti_t rnti);
 
 uint8_t get_BG(uint32_t A, uint16_t R);
 
-uint64_t from_nrarfcn(int nr_bandP, uint8_t scs_index, uint32_t dl_nrarfcn);
-
-uint32_t to_nrarfcn(int nr_bandP, uint64_t dl_CarrierFreq, uint8_t scs_index, uint32_t bw);
-
 int16_t fill_dmrs_mask(const NR_PDSCH_Config_t *pdsch_Config,
                        int dci_format,
                        int dmrs_TypeA_Position,
@@ -84,14 +80,32 @@ uint8_t compute_precoding_information(NR_PUSCH_Config_t *pusch_Config,
                                       const uint8_t *nrOfLayers,
                                       uint32_t *val);
 
-NR_PDSCH_TimeDomainResourceAllocationList_t *get_dl_tdalist(const NR_UE_DL_BWP_t *DL_BWP, int controlResourceSetId, int ss_type, nr_rnti_type_t rnti_type);
+NR_PDSCH_TimeDomainResourceAllocationList_t *get_dl_tdalist(const NR_UE_DL_BWP_t *DL_BWP,
+                                                            int controlResourceSetId,
+                                                            int ss_type,
+                                                            nr_rnti_type_t rnti_type);
 
-NR_PUSCH_TimeDomainResourceAllocationList_t *get_ul_tdalist(const NR_UE_UL_BWP_t *UL_BWP, int controlResourceSetId, int ss_type, nr_rnti_type_t rnti_type);
+NR_PUSCH_TimeDomainResourceAllocationList_t *get_ul_tdalist(const NR_UE_UL_BWP_t *UL_BWP,
+                                                            int controlResourceSetId,
+                                                            int ss_type,
+                                                            nr_rnti_type_t rnti_type);
 
-NR_tda_info_t get_ul_tda_info(const NR_UE_UL_BWP_t *ul_bwp, int controlResourceSetId, int ss_type, nr_rnti_type_t rnti_type, int tda_index);
+NR_tda_info_t get_ul_tda_info(const NR_UE_UL_BWP_t *ul_bwp,
+                              int controlResourceSetId,
+                              int ss_type,
+                              nr_rnti_type_t rnti_type,
+                              int tda_index);
 
-NR_tda_info_t get_dl_tda_info(const NR_UE_DL_BWP_t *dl_BWP, int ss_type, int tda_index, int dmrs_typeA_pos,
-                              int mux_pattern, nr_rnti_type_t rnti_type, int coresetid, bool sib1);
+NR_tda_info_t get_dl_tda_info(const NR_UE_DL_BWP_t *dl_BWP,
+                              int ss_type,
+                              int tda_index,
+                              int dmrs_typeA_pos,
+                              int mux_pattern,
+                              nr_rnti_type_t rnti_type,
+                              int coresetid,
+                              bool sib1);
+
+uint8_t getRBGSize(uint16_t bwp_size, long rbg_size_config);
 
 uint16_t nr_dci_size(const NR_UE_DL_BWP_t *DL_BWP,
                      const NR_UE_UL_BWP_t *UL_BWP,
@@ -303,5 +317,7 @@ void compute_csi_bitlen(NR_CSI_MeasConfig_t *csi_MeasConfig, nr_csi_report_t *cs
 uint16_t nr_get_csi_bitlen(nr_csi_report_t *csi_report_template, uint8_t csi_report_id);
 
 uint16_t compute_PDU_length(uint32_t num_TLV, uint16_t total_length);
+
+rnti_t nr_get_ra_rnti(uint8_t s_id, uint8_t t_id, uint8_t f_id, uint8_t ul_carrier_id);
 
 #endif

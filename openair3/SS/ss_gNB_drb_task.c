@@ -152,15 +152,25 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind,int cell_index)
 
     case DRB_RlcPdu:
     {
+        static int pdu_num = 0;
+        static struct NR_RLC_PDU_Type * rlcPduList = NULL;
         LOG_A(GNB_APP, "[SS_DRB] RLC PDU received in NR_DRB_COMMON_IND\n");
-        // Populating the PDU
-        ind.U_Plane.SlotData.NoOfTTIs = 1;
-        ind.U_Plane.SlotData.PduSduList.d = NR_L2DataList_Type_RlcPdu;
-        ind.U_Plane.SlotData.PduSduList.v.RlcPdu.d = 1;
-        ind.U_Plane.SlotData.PduSduList.v.RlcPdu.v = CALLOC(1, (ind.U_Plane.SlotData.PduSduList.v.RlcPdu.d) * (sizeof(struct NR_RLC_PDU_Type)));
-        DevAssert(ind.U_Plane.SlotData.PduSduList.v.RlcPdu.v != NULL);
-        for (int i = 0; i < ind.U_Plane.SlotData.PduSduList.v.RlcPdu.d; i++) {
-            struct NR_RLC_PDU_Type* rlcPdu = &ind.U_Plane.SlotData.PduSduList.v.RlcPdu.v[i];
+        if(pdu_ind->sdu_size==0 && pdu_num && rlcPduList){
+            /* End of the PDU list of this slot, ready to indicate to TTCN */
+            ind.U_Plane.SlotData.NoOfTTIs = 1;
+            ind.U_Plane.SlotData.PduSduList.d = NR_L2DataList_Type_RlcPdu;
+            ind.U_Plane.SlotData.PduSduList.v.RlcPdu.d = pdu_num;
+            ind.U_Plane.SlotData.PduSduList.v.RlcPdu.v = rlcPduList;
+            pdu_num = 0;
+            rlcPduList = NULL;
+        }
+        else
+        {
+            pdu_num ++;
+            rlcPduList = REALLOC(rlcPduList,pdu_num * sizeof(struct NR_RLC_PDU_Type));
+            DevAssert(rlcPduList!=NULL);
+            struct NR_RLC_PDU_Type* rlcPdu = &rlcPduList[pdu_num-1];
+            memset(rlcPdu,0,sizeof(struct NR_RLC_PDU_Type));
             long *sn_FieldLength = NULL;
             NR_RLC_BearerConfig_t *rlcBearer = RC.NR_RB_Config[cell_index][pdu_ind->drb_id+2].RlcBearer;
             if (rlcBearer && rlcBearer->rlc_Config && (rlcBearer->rlc_Config->present == NR_RLC_Config_PR_um_Bi_Directional))
@@ -344,6 +354,7 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind,int cell_index)
             {
                 LOG_E(GNB_APP, "[SS_DRB] only UMD/AMD/Status RLC PDU are handled in NR_DRB_COMMON_IND\n");
             }
+            return;
         }
     }
     break;
@@ -368,6 +379,34 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind,int cell_index)
     }
     break;
 
+    case DRB_SdapPdu:
+    {
+        LOG_A(GNB_APP, "[SS_DRB] SDAP PDU received in NR_DRB_COMMON_IND\n");
+        // Populating the SDU
+        ind.U_Plane.SlotData.NoOfTTIs = 1;
+        ind.U_Plane.SlotData.PduSduList.d = NR_L2DataList_Type_SdapPdu;
+        ind.U_Plane.SlotData.PduSduList.v.SdapPdu.d = 1;
+        ind.U_Plane.SlotData.PduSduList.v.SdapPdu.v = CALLOC(1, (ind.U_Plane.SlotData.PduSduList.v.SdapPdu.d) * sizeof(struct SDAP_PDU_Type));
+        DevAssert(ind.U_Plane.SlotData.PduSduList.v.SdapPdu.v != NULL);
+
+        for (int i = 0; i < ind.U_Plane.SlotData.PduSduList.v.SdapPdu.d; i++) {
+            struct SDAP_PDU_Type *sdapPdu = &ind.U_Plane.SlotData.PduSduList.v.SdapPdu.v[i];
+            sdapPdu->d = SDAP_PDU_Type_UL;
+	    sdapPdu->v.UL.Header.d = true;
+	    struct SDAP_UL_PduHeader_Type *header = &sdapPdu->v.UL.Header.v;
+            int pdu_header_size = 1;
+            bits_copy_to_array(header->DC, 0, pdu_ind->sdu, 1);
+            bits_copy_to_array(header->R, 1, pdu_ind->sdu, 1);
+            bits_copy_to_array(header->QFI, 2, pdu_ind->sdu, 6);
+	    sdapPdu->v.UL.Data.d = true; 
+            SDAP_SDU_Type *data = &sdapPdu->v.UL.Data.v;
+	    data->d = pdu_ind->sdu_size - pdu_header_size; 
+            data->v = CALLOC(1, data->d);
+            DevAssert(data->v != NULL);
+            memcpy(data->v, pdu_ind->sdu+pdu_header_size, data->d);
+        }
+    }
+    break;
     default:
         LOG_E(GNB_APP, "[SS_DRB] requested NR_L2DataList_Type %d that is not yet implemented\n", _drb_data_type);
     }
@@ -393,6 +432,7 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind,int cell_index)
         LOG_A(GNB_APP, "[SS_DRB] NR_DRB_COMMON_IND acpSendMsg Success\n");
     }
 
+    /* TODO: memory free is not handled correctly.  All structure shall be allocated through serMalloc instead of calloc,realloc ... */
     /* acpNrDrbProcessToSSFree0SrvClt(&ind); */
 }
 
@@ -628,6 +668,49 @@ static void ss_task_handle_drb_pdu_req(struct NR_DRB_COMMON_REQ *req, int cell_i
                     SS_DRB_PDU_REQ(message_p).pdu_sessionId = req->Common.RoutingInfo.v.QosFlow.PDU_SessionId;
                     SS_DRB_PDU_REQ(message_p).qfi = req->Common.RoutingInfo.v.QosFlow.QFI;
                 }
+                if (!nr_vt_timer_push_msg(&req->Common.TimingInfo, req->U_Plane.SlotDataList.v[i].SlotOffset, task_id, instance_g, message_p))
+                {
+                    int send_res = itti_send_msg_to_task(task_id, instance_g, message_p);
+                    if (send_res < 0)
+                    {
+                        LOG_E(GNB_APP, "[SS_DRB] Error in itti_send_msg_to_task\n");
+                    }
+                    LOG_A(GNB_APP, "[SS_DRB] Send res: %d\n", send_res);
+                }
+            }
+        }
+        else if (req->U_Plane.SlotDataList.v[i].PduSduList.d == NR_L2DataList_Type_SdapPdu)
+        {
+            LOG_A(GNB_APP, "[SS_DRB] Sdap PDU Received in NR_DRB_COMMON_REQ\n");
+            _drb_data_type = DRB_SdapPdu;
+            RC.nr_drb_data_type = DRB_SdapPdu;
+            int pdu_header_size = 1;
+
+            for (int j = 0; j < req->U_Plane.SlotDataList.v[i].PduSduList.v.SdapPdu.d; j++)
+            {
+		struct SDAP_PDU_Type *sdapPdu = &req->U_Plane.SlotDataList.v[i].PduSduList.v.SdapPdu.v[j];
+                struct SDAP_DL_PduHeader_Type *header = &sdapPdu->v.DL.Header.v;
+                SDAP_SDU_Type *data = &sdapPdu->v.DL.Data;
+                message_p = itti_alloc_new_message(task_id, 0, SS_DRB_PDU_REQ);
+                assert(message_p);
+                memset(SS_DRB_PDU_REQ(message_p).sdu, 0, SDU_SIZE);
+                SS_DRB_PDU_REQ(message_p).sdu_size = pdu_header_size+data->d;
+                bits_copy_from_array(SS_DRB_PDU_REQ(message_p).sdu, 0, header->RDI, 1);
+                bits_copy_from_array(SS_DRB_PDU_REQ(message_p).sdu, 1, header->RQI, 1);
+                bits_copy_from_array(SS_DRB_PDU_REQ(message_p).sdu, 2, header->QFI, 6);
+                memcpy(SS_DRB_PDU_REQ(message_p).sdu+pdu_header_size, data->v, data->d);
+                LOG_A(GNB_APP, "[SS_DRB] Length of SDAP SDU received in NR_DRB_COMMON_REQ: %lu\n", data->d);
+
+                SS_DRB_PDU_REQ(message_p).drb_id = 0xFF; /* This parameter is actually used in SDAP entity if it is configured in transparent mode*/
+                SS_DRB_PDU_REQ(message_p).rnti = SS_context.SSCell_list[cell_index].ss_rnti_g;
+                SS_DRB_PDU_REQ(message_p).data_type = (uint8_t)DRB_SdapPdu;
+                if(req->Common.RoutingInfo.d == NR_RoutingInfo_Type_QosFlow){
+                    SS_DRB_PDU_REQ(message_p).pdu_sessionId = req->Common.RoutingInfo.v.QosFlow.PDU_SessionId;
+                    SS_DRB_PDU_REQ(message_p).qfi = req->Common.RoutingInfo.v.QosFlow.QFI;
+                }
+                if(req->Common.RoutingInfo.d == NR_RoutingInfo_Type_RadioBearerId){
+	            SS_DRB_PDU_REQ(message_p).drb_id = req->Common.RoutingInfo.v.RadioBearerId.v.Drb; 
+		}
 
                 if (!nr_vt_timer_push_msg(&req->Common.TimingInfo, req->U_Plane.SlotDataList.v[i].SlotOffset, task_id, instance_g, message_p))
                 {

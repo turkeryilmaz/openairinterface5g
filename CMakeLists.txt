@@ -314,8 +314,8 @@ set(E2AP_VERSION "E2AP_V2" CACHE STRING "E2AP version")
 set_property(CACHE E2AP_VERSION PROPERTY STRINGS "E2AP_V1" "E2AP_V2" "E2AP_V3")
 message(STATUS "Selected E2AP_VERSION: ${E2AP_VERSION}")
 
-set(KPM_VERSION "KPM_V2" CACHE STRING "The KPM SM version to use")
-set_property(CACHE KPM_VERSION PROPERTY STRINGS "KPM_V2" "KPM_V3")
+set(KPM_VERSION "KPM_V2_03" CACHE STRING "The KPM SM version to use")
+set_property(CACHE KPM_VERSION PROPERTY STRINGS "KPM_V2_03" "KPM_V3_00")
 message(STATUS "Selected KPM Version: ${KPM_VERSION}")
 
 
@@ -514,10 +514,10 @@ target_link_libraries(shlib_loader PRIVATE CONFIG_LIB)
 add_boolean_option(ENABLE_LDPC_T2 OFF "Build support for LDPC Offload to T2 library" OFF)
 set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/usr/local/lib/x86_64-linux-gnu/pkgconfig")
 if (ENABLE_LDPC_T2)
-  pkg_check_modules(LIBDPDK_T2 REQUIRED libdpdk=20.11.7)
-  find_library(PMD_T2 NAMES rte_baseband_accl_ldpc HINTS "/opt/dpdk-t2/lib/x86_64-linux-gnu/")
+  pkg_check_modules(LIBDPDK_T2 REQUIRED libdpdk=20.11.9)
+  find_library(PMD_T2 NAMES rte_baseband_accl_ldpc HINTS ${LIBDPDK_T2_LIBRARY_DIRS})
   if (NOT PMD_T2)
-    message(FATAL_ERROR "could not find PMD T2")
+    message(FATAL_ERROR "could not find poll-mode driver for AccelerComm T2 LDPC Offload (rte_baseband_accl_ldpc.so)")
   endif()
   message(STATUS "T2 build: use ${PMD_T2}")
   add_library(ldpc_t2 MODULE ${OPENAIR1_DIR}/PHY/CODING/nrLDPC_decoder/nrLDPC_decoder_offload.c)
@@ -743,7 +743,6 @@ set(SCHED_SRC_NR_UE
 )
 add_library(SCHED_NR_UE_LIB ${SCHED_SRC_NR_UE})
 target_link_libraries(SCHED_NR_UE_LIB PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
-
 
 # nFAPI
 #################################
@@ -1426,9 +1425,11 @@ set (MAC_NR_SRC_UE
   ${NR_UE_PHY_INTERFACE_DIR}/NR_IF_Module.c
   ${NR_UE_PHY_INTERFACE_DIR}/NR_Packet_Drop.c
   ${NR_UE_MAC_DIR}/config_ue.c
+  ${NR_UE_MAC_DIR}/config_ue_sl.c
   ${NR_UE_MAC_DIR}/mac_vars.c
   ${NR_UE_MAC_DIR}/main_ue_nr.c
   ${NR_UE_MAC_DIR}/nr_ue_procedures.c
+  ${NR_UE_MAC_DIR}/nr_ue_procedures_sl.c
   ${NR_UE_MAC_DIR}/nr_ue_scheduler.c
   ${NR_UE_MAC_DIR}/nr_ue_dci_configuration.c
   ${NR_UE_MAC_DIR}/nr_ra_procedures.c
@@ -1477,9 +1478,8 @@ target_link_libraries(L2 PRIVATE x2ap s1ap lte_rrc m2ap)
 target_link_libraries(L2 PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
 
 if(E2_AGENT)
-  target_link_libraries(L2 PUBLIC e2_agent e2_ran_func)
-  target_compile_definitions(L2 PRIVATE E2_AGENT)
-  target_compile_definitions(L2 PRIVATE ${E2AP_VERSION} ${KPM_VERSION})
+  target_link_libraries(L2 PUBLIC e2_agent e2_agent_arg e2_ran_func_du_cucp_cuup)
+  target_compile_definitions(L2 PRIVATE ${E2AP_VERSION} ${KPM_VERSION} E2_AGENT)
 endif()
 
 
@@ -1504,9 +1504,8 @@ target_link_libraries(e1_if PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs asn1_f1ap
 
 target_link_libraries(L2_NR PRIVATE f1ap x2ap s1ap ngap nr_rrc e1ap)
 if(E2_AGENT)
-  target_link_libraries(L2_NR PUBLIC e2_agent e2_ran_func)
-  target_compile_definitions(L2_NR PRIVATE ${E2AP_VERSION} ${KPM_VERSION})
-  target_compile_definitions(L2_NR PRIVATE E2_AGENT)
+  target_link_libraries(L2_NR PUBLIC e2_agent e2_agent_arg e2_ran_func_du_cucp_cuup)
+  target_compile_definitions(L2_NR PRIVATE ${E2AP_VERSION} ${KPM_VERSION} E2_AGENT)
 endif()
 
 add_library(L2_LTE_NR
@@ -1768,7 +1767,7 @@ set(libnas_ies_OBJS
 
 set (libnas_utils_OBJS
   ${NAS_SRC}COMMON/UTIL/device.c
-  ${NAS_SRC}COMMON/UTIL/memory.c
+  common/utils/mem/memory.c
   ${NAS_SRC}COMMON/UTIL/nas_timer.c
   ${NAS_SRC}COMMON/UTIL/socket.c
   ${NAS_SRC}COMMON/UTIL/stty.c
@@ -2077,8 +2076,7 @@ target_link_libraries(lte-softmodem PRIVATE lttng-ust)
 target_link_libraries(lte-softmodem PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
 if(E2_AGENT)
-  target_compile_definitions(lte-softmodem PRIVATE E2_AGENT)
-  target_compile_definitions(lte-softmodem PRIVATE ${E2AP_VERSION} ${KPM_VERSION})
+  target_compile_definitions(lte-softmodem PRIVATE ${E2AP_VERSION} ${KPM_VERSION} E2_AGENT)
 endif()
 
 add_executable(oairu
@@ -2150,7 +2148,6 @@ add_executable(nr-softmodem
   ${rrc_h}
   ${nr_rrc_h}
   ${s1ap_h}
-#  ${OPENAIR_BIN_DIR}/messages_xml.h
   ${OPENAIR_DIR}/executables/nr-gnb.c
   ${OPENAIR_DIR}/executables/nr-ru.c
   ${OPENAIR_DIR}/executables/nr-softmodem.c
@@ -2166,6 +2163,8 @@ add_executable(nr-softmodem
   ${OPENAIR1_DIR}/PHY/TOOLS/phy_scope_interface.c
   )
 
+include(${OPENAIR_DIR}/nfapi/CMakeLists.txt)
+
 target_link_libraries(nr-softmodem PRIVATE
   -Wl,--start-group
   UTIL HASHTABLE SCTP_CLIENT SS_SERVER SCHED_LIB SCHED_RU_LIB SCHED_NR_LIB PHY_NR PHY PHY_COMMON PHY_NR_COMMON PHY_RU GTPV1U SECURITY
@@ -2180,7 +2179,7 @@ target_link_libraries(nr-softmodem PRIVATE ${T_LIB})
 target_link_libraries(nr-softmodem PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 target_link_libraries(nr-softmodem PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 if(E2_AGENT)
-  target_compile_definitions(nr-softmodem PRIVATE ${E2AP_VERSION} ${KPM_VERSION})
+  target_compile_definitions(nr-softmodem PRIVATE ${E2AP_VERSION} ${KPM_VERSION} E2_AGENT)
 endif()
 
 
@@ -2193,10 +2192,6 @@ endif()
 # force the generation of ASN.1 so that we don't need to wait during the build
 target_link_libraries(nr-softmodem PRIVATE
   asn1_lte_rrc asn1_nr_rrc asn1_s1ap asn1_ngap asn1_m2ap asn1_m3ap asn1_x2ap asn1_f1ap asn1_lpp)
-if(E2_AGENT)
-  target_compile_definitions(nr-softmodem PRIVATE E2_AGENT)
-endif()
-
 
 add_executable(nr-cuup
   executables/nr-cuup.c
@@ -2213,6 +2208,10 @@ target_link_libraries(nr-cuup PRIVATE
                       GTPV1U e1ap f1ap SIMU_ETH
                       z sctp dl pthread shlib_loader ${T_LIB})
 target_link_libraries(nr-cuup PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
+if(E2_AGENT)
+  target_link_libraries(nr-cuup PRIVATE e2_agent e2_agent_arg e2_ran_func_cuup)
+  target_compile_definitions(nr-cuup PRIVATE ${E2AP_VERSION} ${KPM_VERSION} E2_AGENT)
+endif()
                      
 # nr-uesoftmodem is  UE implementation
 #######################################
@@ -2220,7 +2219,6 @@ target_link_libraries(nr-cuup PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
 add_executable(nr-uesoftmodem
   ${rrc_h}
   ${s1ap_h}
-#  ${OPENAIR_BIN_DIR}/messages_xml.h
   ${OPENAIR_DIR}/executables/nr-uesoftmodem.c
   ${OPENAIR_DIR}/executables/nr-ue.c
   ${OPENAIR_DIR}/executables/softmodem-common.c
@@ -2539,9 +2537,6 @@ make_driver(nasmesh  ${OPENAIR2_DIR}/NETWORK_DRIVER/MESH ${nasmesh_src})
 # user space tool for configuring MESH IP driver
 ################
 add_executable(rb_tool
-  ${OPENAIR2_DIR}/NETWORK_DRIVER/MESH/constant.h
-  ${OPENAIR2_DIR}/NETWORK_DRIVER/MESH/ioctl.h
-  ${OPENAIR2_DIR}/NETWORK_DRIVER/MESH/rrc_nas_primitives.h
   ${OPENAIR2_DIR}/NETWORK_DRIVER/MESH/RB_TOOL/rb_tool.c
 )
 target_include_directories(rb_tool PRIVATE ${OPENAIR2_DIR}/NETWORK_DRIVER/MESH/)
