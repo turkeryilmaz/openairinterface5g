@@ -764,9 +764,7 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
     } // symbol loop
   }// port loop
 
-  NR_UL_UE_HARQ_t *harq_process_ulsch=NULL;
-  harq_process_ulsch = &UE->ul_harq_processes[harq_pid];
-  harq_process_ulsch->status = SCH_IDLE;
+  harq_process_ul_ue->status = SCH_IDLE;
 
   for (int nl = 0; nl < Nl; nl++) {
     free_and_zero(tx_layers[nl]);

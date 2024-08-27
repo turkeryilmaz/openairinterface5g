@@ -3426,38 +3426,36 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
 
     NR_UE_sl_harq_t *cur_harq = NULL;
 
-    /* retransmission or bytes to send */
-    if ((harq_id >= 0) || (sched_ctrl->num_total_bytes > 0)) {
-      if (harq_id < 0) {
-        /* PP has not selected a specific HARQ Process, get a new one */
-        harq_id = sched_ctrl->available_sl_harq.head;
-        AssertFatal(harq_id >= 0,
-                    "no free HARQ process available\n");
-        remove_front_nr_list(&sched_ctrl->available_sl_harq);
-        sched_pssch->sl_harq_pid = harq_id;
-      } else {
-        /* PP selected a specific HARQ process. Check whether it will be a new
-        * transmission or a retransmission, and remove from the corresponding
-        * list */
-        if (sched_ctrl->sl_harq_processes[harq_id].round == 0)
-          remove_nr_list(&sched_ctrl->available_sl_harq, harq_id);
-        else
-          remove_nr_list(&sched_ctrl->retrans_sl_harq, harq_id);
-      }
-      cur_harq = &sched_ctrl->sl_harq_processes[harq_id];
-      DevAssert(!cur_harq->is_waiting);
-      add_tail_nr_list(&sched_ctrl->feedback_sl_harq, harq_id);
+    if (harq_id < 0) {
+      /* PP has not selected a specific HARQ Process, get a new one */
+      harq_id = sched_ctrl->available_sl_harq.head;
+      AssertFatal(harq_id >= 0,
+                  "no free HARQ process available\n");
+      remove_front_nr_list(&sched_ctrl->available_sl_harq);
+      sched_pssch->sl_harq_pid = harq_id;
+    } else {
+      /* PP selected a specific HARQ process. Check whether it will be a new
+      * transmission or a retransmission, and remove from the corresponding
+      * list */
+      if (sched_ctrl->sl_harq_processes[harq_id].round == 0)
+        remove_nr_list(&sched_ctrl->available_sl_harq, harq_id);
+      else
+        remove_nr_list(&sched_ctrl->retrans_sl_harq, harq_id);
+    }
+    cur_harq = &sched_ctrl->sl_harq_processes[harq_id];
+    DevAssert(!cur_harq->is_waiting);
 
+    /* retransmission or bytes to send */
+    if ((cur_harq->round != 0) || (sched_ctrl->num_total_bytes > 0)) {
       cur_harq->feedback_slot = sched_pssch->slot;
       cur_harq->feedback_frame = sched_pssch->frame;
+      add_tail_nr_list(&sched_ctrl->feedback_sl_harq, harq_id);
       cur_harq->is_waiting = true;
-      cur_harq->sl_harq_pid = harq_id;
     }
+    cur_harq->sl_harq_pid = harq_id;
 
     nr_schedule_slsch(mac, frame, slot, &mac->sci1_pdu, &mac->sci2_pdu,
                       NR_SL_SCI_FORMAT_2A, &slsch_pdu_length_max, cur_harq, &sched_ctrl->rlc_status[lcid]);
-
-    const uint8_t sh_size = sizeof(NR_MAC_SUBHEADER_LONG);
 
     *config_type = SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH;
     tx_config->number_pdus = 1;
@@ -3494,17 +3492,9 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
           sched_pssch->nrOfLayers,
           sched_pssch->tb_size,
           sched_pssch->sl_harq_pid,
-          cur_harq ? cur_harq->round : 0,
-          cur_harq ? cur_harq->ndi : 0,
+          cur_harq->round,
+          cur_harq->ndi,
           sched_ctrl->sched_sl_bytes);
-
-    if (!cur_harq) {
-      // mark UE as scheduled
-      sched_pssch->rbSize = 0;
-      LOG_D(NR_MAC, "[UE%d] TTI-%4d.%2d Only Feedback SLSCH transmission\n",
-            sl_ind->module_id, frame, slot);
-      continue;
-    }
 
     /* Statistics */
     AssertFatal(cur_harq->round < sl_mac_params->sl_bler.harq_round_max, "Indexing ulsch_rounds[%d] is out of bounds for max harq round %d\n", cur_harq->round, sl_mac_params->sl_bler.harq_round_max);
@@ -3538,20 +3528,19 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
       uint8_t *pdu = (uint8_t *) cur_harq->transportBlock;
       int buflen_remain = buflen;
 
+      NR_SLSCH_MAC_SUBHEADER_FIXED *sl_sch_subheader = (NR_SLSCH_MAC_SUBHEADER_FIXED *) pdu;
+      sl_sch_subheader->V = 0;
+      sl_sch_subheader->R = 0;
+      sl_sch_subheader->SRC = mac->sci2_pdu.source_id;
+      sl_sch_subheader->DST = mac->sci2_pdu.dest_id;
+      pdu += sizeof(NR_SLSCH_MAC_SUBHEADER_FIXED);
+      LOG_D(NR_PHY, "%4d.%2d Tx V %d, R %d, SRC %d, DST %d\n", frame, slot, sl_sch_subheader->V, sl_sch_subheader->R, sl_sch_subheader->SRC, sl_sch_subheader->DST);
+      buflen_remain -= sizeof(NR_SLSCH_MAC_SUBHEADER_FIXED);
+      LOG_D(NR_PHY, "buflen_remain after adding SL_SCH_MAC_SUBHEADER_FIXED %d\n", buflen_remain);
+      const uint8_t sh_size = sizeof(NR_MAC_SUBHEADER_LONG);
+
       if (sched_ctrl->num_total_bytes > 0) {
-
         if (sched_ctrl->rlc_status[lcid].bytes_in_buffer > 0) {
-
-          NR_SLSCH_MAC_SUBHEADER_FIXED *sl_sch_subheader = (NR_SLSCH_MAC_SUBHEADER_FIXED *) pdu;
-          sl_sch_subheader->V = 0;
-          sl_sch_subheader->R = 0;
-          sl_sch_subheader->SRC = mac->sci2_pdu.source_id;
-          sl_sch_subheader->DST = mac->sci2_pdu.dest_id;
-          pdu += sizeof(NR_SLSCH_MAC_SUBHEADER_FIXED);
-          LOG_D(NR_PHY, "%4d.%2d Tx V %d, R %d, SRC %d, DST %d\n", frame, slot, sl_sch_subheader->V, sl_sch_subheader->R, sl_sch_subheader->SRC, sl_sch_subheader->DST);
-          buflen_remain -= sizeof(NR_SLSCH_MAC_SUBHEADER_FIXED);
-          LOG_D(NR_PHY, "buflen_remain after adding SL_SCH_MAC_SUBHEADER_FIXED %d\n", buflen_remain);
-
           int num_sdus=0;
           while (buflen_remain > sh_size + 1) {
 
@@ -3559,6 +3548,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
             NR_MAC_SUBHEADER_LONG *header = (NR_MAC_SUBHEADER_LONG *) pdu;
             pdu += sh_size;
             buflen_remain -= sh_size;
+            const rlc_buffer_occupancy_t ndata = min(sched_ctrl->rlc_status[lcid].bytes_in_buffer, buflen_remain);
 
             start_meas(&mac->rlc_data_req);
 
@@ -3569,7 +3559,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
                                           ENB_FLAG_NO,
                                           MBMS_FLAG_NO,
                                           lcid,
-                                          buflen_remain,
+                                          ndata,
                                           (char *)pdu,
                                           0,
                                           0);
@@ -3625,23 +3615,23 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
             pdu += mac_ce_p->tot_mac_ce_len;
             LOG_D(NR_PHY, "buflen_remain %d, sdu_length_total %d, total_mac_pdu_header_len %d, adding tot_mac_ce_len %d, \n", buflen_remain, mac_ce_p->sdu_length_total, mac_ce_p->total_mac_pdu_header_len, mac_ce_p->tot_mac_ce_len);
           }
+        }
+      }
 
-          if (buflen_remain > 0) {
-            if (mac->sl_csi_report != NULL) {
-              ((NR_MAC_SUBHEADER_FIXED *) pdu)->R = 0;
-              ((NR_MAC_SUBHEADER_FIXED *) pdu)->LCID = SL_SCH_LCID_SL_CSI_REPORT;
-              pdu++;
-              buflen_remain--;
-              ((nr_sl_csi_report_t *) pdu)->RI = mac->sl_csi_report->RI;
-              ((nr_sl_csi_report_t *) pdu)->CQI = mac->sl_csi_report->CQI;
-              ((nr_sl_csi_report_t *) pdu)->R = mac->sl_csi_report->R;
-              LOG_D(NR_MAC, "%4d.%2d Sending sl_csi_report with CQI %i, RI %i\n", frame, slot, ((nr_sl_csi_report_t *) pdu)->CQI, ((nr_sl_csi_report_t *) pdu)->RI);
-              pdu++;
-              buflen_remain--;
-              free(mac->sl_csi_report);
-              mac->sl_csi_report = NULL;
-            }
-          }
+      if (buflen_remain > 0) {
+        if (mac->sl_csi_report != NULL) {
+          ((NR_MAC_SUBHEADER_FIXED *) pdu)->R = 0;
+          ((NR_MAC_SUBHEADER_FIXED *) pdu)->LCID = SL_SCH_LCID_SL_CSI_REPORT;
+          pdu++;
+          buflen_remain--;
+          ((nr_sl_csi_report_t *) pdu)->RI = mac->sl_csi_report->RI;
+          ((nr_sl_csi_report_t *) pdu)->CQI = mac->sl_csi_report->CQI;
+          ((nr_sl_csi_report_t *) pdu)->R = mac->sl_csi_report->R;
+          LOG_D(NR_MAC, "%4d.%2d Sending sl_csi_report with CQI %i, RI %i\n", frame, slot, ((nr_sl_csi_report_t *) pdu)->CQI, ((nr_sl_csi_report_t *) pdu)->RI);
+          pdu++;
+          buflen_remain--;
+          free(mac->sl_csi_report);
+          mac->sl_csi_report = NULL;
         }
       }
 
@@ -3825,6 +3815,8 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind) {
   uint8_t mu = sl_cfg->sl_bwp_config.sl_scs;
   uint8_t slots_per_frame = nr_slots_per_frame[mu];
 
+  NR_UE_SL_SCHED_LOCK(&mac->sl_sched_lock);
+
   //Adjust indices as new timing is acquired
   if (sl_mac->adjust_timing) {
     sl_adjust_indices_based_on_timing(sl_ind->frame_rx, sl_ind->slot_rx,
@@ -3916,7 +3908,7 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind) {
     if ((mac->if_module != NULL) && (mac->if_module->scheduled_response != NULL))
       mac->if_module->scheduled_response(&scheduled_response);
   }
-
+  NR_UE_SL_SCHED_UNLOCK(&mac->sl_sched_lock);
 }
 
 void nr_ue_sl_psfch_scheduler(NR_UE_MAC_INST_t *mac,

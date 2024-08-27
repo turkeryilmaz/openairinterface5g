@@ -784,6 +784,9 @@ int8_t sl_handle_scheduled_response(nr_scheduled_response_t *scheduled_response)
           if (phy_data_tx->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_CSI_RS || phy_data_tx->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH_CSI_RS) {
             phy_data_tx->nr_sl_pssch_pscch_pdu.nr_sl_csi_rs_pdu = tx_config_pdu->nr_sl_csi_rs_pdu;
           }
+          uint8_t current_harq_pid = tx_config_pdu->harq_pid;
+          NR_UL_UE_HARQ_t *harq_process = &PHY_vars_UE_g[module_id][cc_id]->sl_harq_processes[current_harq_pid];
+          harq_process->status = ACTIVE;
         }
         break;
       default:

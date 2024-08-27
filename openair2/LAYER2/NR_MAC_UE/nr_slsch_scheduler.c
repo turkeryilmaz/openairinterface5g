@@ -155,6 +155,7 @@ void handle_nr_ue_sl_harq(module_id_t mod_id,
       abort_nr_ue_sl_harq(mac, harq_pid);
     } else {
       harq->round++;
+      harq->ndi ^= 1;
       LOG_D(NR_MAC,
             "%4u.%2u Slharq id %d crc failed for src id %4d\n",
             frame,
@@ -163,10 +164,10 @@ void handle_nr_ue_sl_harq(module_id_t mod_id,
             src_id);
       add_tail_nr_list(&sched_ctrl->retrans_sl_harq, harq_pid);
     }
-    NR_UE_SL_SCHED_UNLOCK(&mac->sl_sched_lock);
   }
   free(matched_harqs);
   matched_harqs = NULL;
+  NR_UE_SL_SCHED_UNLOCK(&mac->sl_sched_lock);
 }
 
 void nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_t *sci_pdu,
@@ -248,12 +249,12 @@ void nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
   sci_pdu->reserved.val = mac->is_synced ? 1 : 0;
   sci_pdu->conflict_information_receiver.val = 0;
   sci_pdu->beta_offset_indicator = 0;
-  sci2_pdu->harq_pid = cur_harq ? cur_harq->sl_harq_pid : 0;
-  sci2_pdu->ndi = (1 - sci2_pdu->ndi) & 1;
-  sci2_pdu->rv_index = cur_harq ? nr_rv_round_map[cur_harq->round % 4] : 0;
+  sci2_pdu->harq_pid = cur_harq->sl_harq_pid;
+  sci2_pdu->ndi = (1 - cur_harq->ndi) & 1;
+  sci2_pdu->rv_index = nr_rv_round_map[cur_harq->round % 4];
   sci2_pdu->source_id = mac->src_id;
   sci2_pdu->dest_id = dest;
-  sci2_pdu->harq_feedback = cur_harq ? cur_harq->is_waiting : 0;
+  sci2_pdu->harq_feedback = cur_harq->is_waiting;
   LOG_D(NR_MAC, "%4d.%2d Comparing Setting harq_feedback %d bytes_in_buffer %d sl_harq_pid %d\n", frameP, slotP, sci2_pdu->harq_feedback, rlc_status->bytes_in_buffer, cur_harq ? cur_harq->sl_harq_pid : 0);
   sci2_pdu->cast_type = 1;
   if (format2 == NR_SL_SCI_FORMAT_2C || format2 == NR_SL_SCI_FORMAT_2A) {
