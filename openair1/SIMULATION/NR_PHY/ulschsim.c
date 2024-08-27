@@ -538,7 +538,8 @@ int main(int argc, char **argv)
 
   if (input_fd == NULL) {
     if (UE->nrLDPC_coding_interface_flag) {
-      nr_ulsch_encoding_slot(UE, ulsch_ue, 0, 0, 1, &harq_pid, &G);
+      uint8_t ULSCH_ids[] = {0};
+      nr_ulsch_encoding_slot(UE, ulsch_ue, 0, 0, &G, 1, ULSCH_ids);
     } else {
       nr_ulsch_encoding(UE, ulsch_ue, frame_parms, harq_pid, TBS>>3, G);
     }

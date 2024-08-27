@@ -37,9 +37,9 @@ int nr_ulsch_encoding_slot(PHY_VARS_NR_UE *ue,
                            NR_UE_ULSCH_t *ulsch,
                            const uint32_t frame,
                            const uint8_t slot,
-                           int nb_harq,
-                           uint8_t *harq_pids,
-                           unsigned int *G)
+                           unsigned int *G,
+                           int nb_ulsch,
+                           uint8_t *ULSCH_ids)
 {
   start_meas_nr_ue_phy(ue, ULSCH_ENCODING_STATS);
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_UE_ULSCH_ENCODING, VCD_FUNCTION_IN);
@@ -50,21 +50,22 @@ int nr_ulsch_encoding_slot(PHY_VARS_NR_UE *ue,
   nrLDPC_slot_encoding_parameters_t slot_encoding_params;
   slot_encoding_params.frame = frame;
   slot_encoding_params.slot = slot;
-  slot_encoding_params.nb_TBs = nb_harq;
+  slot_encoding_params.nb_TBs = nb_ulsch;
   slot_encoding_params.respEncode = &nf;
   slot_encoding_params.threadPool = &get_nrUE_params()->Tpool;
   slot_encoding_params.tinput = NULL;
   slot_encoding_params.tprep = NULL;
   slot_encoding_params.tparity = NULL;
   slot_encoding_params.toutput = NULL;
-  nrLDPC_TB_encoding_parameters_t TBs[nb_harq];
+  nrLDPC_TB_encoding_parameters_t TBs[nb_ulsch];
   slot_encoding_params.TBs = TBs;
 
   int max_num_segments = 0;
 
-  for (uint8_t idx = 0; idx < nb_harq; idx++) {
-    uint8_t harq_pid = harq_pids[idx];
-    nrLDPC_TB_encoding_parameters_t *TB_encoding_params = &TBs[idx];
+  for (uint8_t pusch_id = 0; pusch_id < nb_ulsch; pusch_id++) {
+    uint8_t ULSCH_id = ULSCH_ids[pusch_id];
+    uint8_t harq_pid = ulsch[ULSCH_id].pusch_pdu.pusch_data.harq_process_id;
+    nrLDPC_TB_encoding_parameters_t *TB_encoding_params = &TBs[pusch_id];
 
     /////////////////////////parameters and variables initialization/////////////////////////
 
@@ -78,7 +79,7 @@ int nr_ulsch_encoding_slot(PHY_VARS_NR_UE *ue,
     float Coderate = (float)pusch_pdu->target_code_rate / 10240.0f;
 
     LOG_D(NR_PHY, "ulsch coding nb_rb %d, Nl = %d\n", nb_rb, pusch_pdu->nrOfLayers);
-    LOG_D(NR_PHY, "ulsch coding A %d G %d mod_order %d Coderate %f\n", A, G[idx], Qm, Coderate);
+    LOG_D(NR_PHY, "ulsch coding A %d G %d mod_order %d Coderate %f\n", A, G[pusch_id], Qm, Coderate);
     LOG_D(NR_PHY, "harq_pid %d, pusch_data.new_data_indicator %d\n", harq_pid, pusch_pdu->pusch_data.new_data_indicator);
 
     ///////////////////////// a---->| add CRC |---->b /////////////////////////
@@ -135,18 +136,19 @@ int nr_ulsch_encoding_slot(PHY_VARS_NR_UE *ue,
     TB_encoding_params->mcs = pusch_pdu->mcs_index;
     TB_encoding_params->nb_layers = pusch_pdu->nrOfLayers;
     TB_encoding_params->rv_index = pusch_pdu->pusch_data.rv_index;
-    TB_encoding_params->G = G[idx];
+    TB_encoding_params->G = G[pusch_id];
     TB_encoding_params->tbslbrm = pusch_pdu->tbslbrm;
     TB_encoding_params->A = A;
-  } // idx (harq_pid)
+  } // pusch_id
 
-  nrLDPC_segment_encoding_parameters_t segments[nb_harq][max_num_segments];
+  nrLDPC_segment_encoding_parameters_t segments[nb_ulsch][max_num_segments];
 
-  for (uint8_t idx = 0; idx < nb_harq; idx++) {
-    uint8_t harq_pid = harq_pids[idx];
-    nrLDPC_TB_encoding_parameters_t *TB_encoding_params = &TBs[idx];
+  for (uint8_t pusch_id = 0; pusch_id < nb_ulsch; pusch_id++) {
+    uint8_t ULSCH_id = ULSCH_ids[pusch_id];
+    uint8_t harq_pid = ulsch[ULSCH_id].pusch_pdu.pusch_data.harq_process_id;
+    nrLDPC_TB_encoding_parameters_t *TB_encoding_params = &TBs[pusch_id];
     NR_UL_UE_HARQ_t *harq_process = &ue->ul_harq_processes[harq_pid];
-    TB_encoding_params->segments = segments[idx];
+    TB_encoding_params->segments = segments[pusch_id];
 
     int r_offset = 0;
     for (int r = 0; r < TB_encoding_params->C; r++) {
@@ -157,7 +159,7 @@ int nr_ulsch_encoding_slot(PHY_VARS_NR_UE *ue,
       segment_encoding_params->output = harq_process->f + r_offset;
       r_offset += segment_encoding_params->E;
     } // TB_encoding_params->C
-  } // idx (harq_pid)
+  } // pusch_id
 
   ///////////////////////// | LDCP coding | ////////////////////////////////////
 

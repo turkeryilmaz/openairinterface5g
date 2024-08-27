@@ -266,18 +266,18 @@ int nr_ulsch_encoding(PHY_VARS_NR_UE *ue,
     @param[in] ulsch Pointer to ULSCH descriptor
     @param[in] frame frame index
     @param[in] slot slot index
-    @param[in] nb_harq number of HARQ processes
-    @param[in] harq_pids array of HARQ process ids
     @param[in] G array of Gs
+    @param[in] nb_ulsch number of uplink shared channels
+    @param[in] ULSCH_ids array of uplink shared channel ids
     @returns 0 on success, -1 on unsuccessful decoding
 */
 int nr_ulsch_encoding_slot(PHY_VARS_NR_UE *ue,
                            NR_UE_ULSCH_t *ulsch,
                            const uint32_t frame,
                            const uint8_t slot,
-                           int nb_harq,
-                           uint8_t *harq_pids,
-                           unsigned int *G);
+                           unsigned int *G,
+                           int nb_ulsch,
+                           uint8_t *ULSCH_ids);
 
 /*! \brief Perform PUSCH scrambling. TS 38.211 V15.4.0 subclause 6.3.1.1
   @param[in] in Pointer to input bits
