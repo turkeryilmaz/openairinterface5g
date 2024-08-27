@@ -119,6 +119,10 @@ void config_dci_pdu(NR_UE_MAC_INST_t *mac,
   NR_BWP_PDCCH_t *pdcch_config = &mac->config_BWP_PDCCH[dl_bwp_id];
 
   fapi_nr_dl_config_dci_dl_pdu_rel15_t *rel15 = &dl_config->dl_config_list[dl_config->number_pdus].dci_config_pdu.dci_config_rel15;
+  uint32_t transaction_id = get_transaction_id(mac->fapi_transaction_data);
+  dci_pdu_rel15_t *def_dci_pdu_rel15_array =
+      get_transaction_data(mac->fapi_transaction_data, transaction_id)->dci_decoding_data.def_dci_pdu_rel15;
+  dl_config->dl_config_list[dl_config->number_pdus].transaction_id = transaction_id;
 
   const int coreset_id = *ss->controlResourceSetId;
   NR_ControlResourceSet_t *coreset;
@@ -181,7 +185,7 @@ void config_dci_pdu(NR_UE_MAC_INST_t *mac,
 
   NR_UE_ServingCell_Info_t *sc_info = &mac->sc_info;
   // loop over DCI options and configure resource allocation
-  // need to configure mac->def_dci_pdu_rel15 for all possible format options
+  // need to configure def_dci_pdu_rel15 for all possible format options
   for (int i = 0; i < temp_num_dci_options; i++) {
     rel15->ss_type_options[i] = ss->searchSpaceType->present;
     if (dci_format[i] == NR_DL_DCI_FORMAT_1_0 || dci_format[i] == NR_UL_DCI_FORMAT_0_0)
@@ -224,7 +228,7 @@ void config_dci_pdu(NR_UE_MAC_INST_t *mac,
                                     current_UL_BWP,
                                     sc_info,
                                     mac->pdsch_HARQ_ACK_Codebook,
-                                    &mac->def_dci_pdu_rel15[dl_config->slot][dci_format[i]],
+                                    &def_dci_pdu_rel15_array[dci_format[i]],
                                     dci_format[i],
                                     rnti_type,
                                     coreset,

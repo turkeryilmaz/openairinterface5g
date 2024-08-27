@@ -1063,7 +1063,8 @@ static nr_dci_format_t handle_dci(NR_UE_MAC_INST_t *mac,
                                   unsigned int gNB_index,
                                   frame_t frame,
                                   int slot,
-                                  fapi_nr_dci_indication_pdu_t *dci)
+                                  fapi_nr_dci_indication_pdu_t *dci,
+                                  uint32_t transaction_id)
 {
   // if notification of a reception of a PDCCH transmission of the SpCell is received from lower layers
   // if the C-RNTI MAC CE was included in Msg3
@@ -1071,7 +1072,7 @@ static nr_dci_format_t handle_dci(NR_UE_MAC_INST_t *mac,
   if (mac->ra.msg3_C_RNTI && mac->ra.ra_state == nrRA_WAIT_CONTENTION_RESOLUTION)
     nr_ra_succeeded(mac, gNB_index, frame, slot);
 
-  return nr_ue_process_dci_indication_pdu(mac, frame, slot, dci);
+  return nr_ue_process_dci_indication_pdu(mac, frame, slot, dci, transaction_id);
 }
 
 static void handle_ssb_meas(NR_UE_MAC_INST_t *mac, uint8_t ssb_index, int16_t rsrp_dbm)
@@ -1170,15 +1171,17 @@ static uint32_t nr_ue_dl_processing(nr_downlink_indication_t *dl_info)
                                               dl_info->gNB_index,
                                               dl_info->frame,
                                               dl_info->slot,
-                                              dl_info->dci_ind->dci_list + i);
+                                              dl_info->dci_ind->dci_list + i,
+                                              dl_info->dci_ind->transaction_id);
 
       /* The check below filters out UL_DCIs which are being processed as DL_DCIs. */
       if (dci_format != NR_DL_DCI_FORMAT_1_0 && dci_format != NR_DL_DCI_FORMAT_1_1) {
         LOG_D(NR_MAC, "We are filtering a UL_DCI to prevent it from being treated like a DL_DCI\n");
         continue;
       }
-      dci_pdu_rel15_t *def_dci_pdu_rel15 = &mac->def_dci_pdu_rel15[dl_info->slot][dci_format];
-      g_harq_pid = def_dci_pdu_rel15->harq_pid.val;
+      dci_pdu_rel15_t *def_dci_pdu_rel15_array =
+          get_transaction_data(mac->fapi_transaction_data, dl_info->dci_ind->transaction_id)->dci_decoding_data.def_dci_pdu_rel15;
+      g_harq_pid = def_dci_pdu_rel15_array[dci_format].harq_pid.val;
       LOG_T(NR_MAC, "Setting harq_pid = %d and dci_index = %d (based on format)\n", g_harq_pid, dci_format);
 
       ret_mask |= (1 << FAPI_NR_DCI_IND);
@@ -1190,7 +1193,6 @@ static uint32_t nr_ue_dl_processing(nr_downlink_indication_t *dl_info)
                                                     .CC_id = dl_info->cc_id,
                                                     .phy_data = dl_info->phy_data};
       nr_ue_if_module_inst[dl_info->module_id]->scheduled_response(&scheduled_response);
-      memset(def_dci_pdu_rel15, 0, sizeof(*def_dci_pdu_rel15));
     }
     dl_info->dci_ind = NULL;
   }

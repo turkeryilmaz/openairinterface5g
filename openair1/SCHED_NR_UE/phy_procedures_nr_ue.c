@@ -449,6 +449,7 @@ int nr_ue_pdcch_procedures(PHY_VARS_NR_UE *ue,
 
   fapi_nr_dci_indication_t dci_ind;
   nr_dci_decoding_procedure(ue, proc, pdcch_e_rx, &dci_ind, rel15);
+  dci_ind.transaction_id = phy_pdcch_config->transaction_id[n_ss];
 
   for (int i = 0; i < dci_ind.number_of_dcis; i++) {
     LOG_D(PHY,

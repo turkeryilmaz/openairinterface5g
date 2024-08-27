@@ -416,6 +416,7 @@ static void nr_ue_scheduled_response_dl(NR_UE_MAC_INST_t *mac,
         AssertFatal(phy_data->phy_pdcch_config.nb_search_space < FAPI_NR_MAX_SS, "Fix array size not large enough\n");
         const int nextFree = phy_data->phy_pdcch_config.nb_search_space;
         phy_data->phy_pdcch_config.pdcch_config[nextFree] = pdu->dci_config_pdu.dci_config_rel15;
+        phy_data->phy_pdcch_config.transaction_id[nextFree] = pdu->transaction_id;
         phy_data->phy_pdcch_config.nb_search_space++;
         LOG_D(PHY, "Number of DCI SearchSpaces %d\n", phy_data->phy_pdcch_config.nb_search_space);
         break;

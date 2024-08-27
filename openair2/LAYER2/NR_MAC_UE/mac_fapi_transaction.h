@@ -24,6 +24,7 @@
 
 #include <stdint.h>
 #include <assertions.h>
+#include "LAYER2/NR_MAC_COMMON/nr_mac.h"
 
 struct fapi_transactions_t;
 
@@ -31,6 +32,9 @@ typedef union {
   struct {
     int16_t P_CMAX;
   } ulsch_alloc_data;
+  struct {
+    dci_pdu_rel15_t def_dci_pdu_rel15[8];
+  } dci_decoding_data;
 } fapi_transaction_data_t;
 
 fapi_transaction_data_t *get_transaction_data(struct fapi_transactions_t *transactions, uint32_t transaction_id);

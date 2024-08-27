@@ -274,6 +274,7 @@ typedef enum {
 typedef struct {
   int nb_search_space;
   fapi_nr_dl_config_dci_dl_pdu_rel15_t pdcch_config[FAPI_NR_MAX_SS];
+  uint32_t transaction_id[FAPI_NR_MAX_SS];
 } NR_UE_PDCCH_CONFIG;
 
 #define NR_PSBCH_MAX_NB_CARRIERS 132
