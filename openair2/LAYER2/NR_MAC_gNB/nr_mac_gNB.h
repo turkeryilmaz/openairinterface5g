@@ -104,6 +104,7 @@
 #define MAX_NUM_OF_SSB 64
 #define MAX_NUM_NR_PRACH_PREAMBLES 64
 #define MIN_NUM_PRBS_TO_SCHEDULE  5
+#define MAX_NUM_BEAM_PERIODS 4
 
 extern const uint8_t nr_rv_round_map[4];
 
@@ -124,8 +125,15 @@ typedef enum {
   nrRA_Msg4 = 4,
   nrRA_WAIT_Msg4_ACK = 5,
 } RA_gNB_state_t;
+
 static const char *const nrra_text[] =
     {"IDLE", "Msg2", "WAIT_Msg3", "Msg3_retransmission", "Msg3_dcch_dtch", "Msg4", "WAIT_Msg4_ACK"};
+
+typedef struct {
+  int idx;
+  bool new_beam;
+} NR_beam_alloc_t;
+
 typedef struct nr_pdsch_AntennaPorts_t {
   int N1;
   int N2;
@@ -156,14 +164,17 @@ typedef struct nr_mac_config_t {
   bool force_UL256qam_off;
   bool use_deltaMCS;
   int maxMIMO_layers;
+  bool disable_harq;
   //int pusch_TargetSNRx10;
   //int pucch_TargetSNRx10;
   nr_mac_timers_t timer_config;
+  int num_dlharq;
+  int num_ulharq;
 } nr_mac_config_t;
 
 typedef struct NR_preamble_ue {
   uint8_t num_preambles;
-  uint8_t *preamble_list;
+  uint8_t preamble_list[MAX_NUM_NR_PRACH_PREAMBLES];
 } NR_preamble_ue_t;
 
 typedef struct NR_sched_pdcch {
@@ -204,6 +215,8 @@ typedef struct {
   frame_t Msg3_frame;
   /// Msg3 time domain allocation index
   int Msg3_tda_id;
+  /// Msg3 beam matrix index
+  NR_beam_alloc_t Msg3_beam;
   /// harq_pid used for Msg4 transmission
   uint8_t harq_pid;
   /// UE RNTI allocated during RAR
@@ -264,10 +277,10 @@ typedef struct {
   /// Template for RA computations
   NR_RA_t ra[NR_NB_RA_PROC_MAX];
   /// VRB map for common channels
-  uint16_t vrb_map[275];
+  uint16_t vrb_map[MAX_NUM_BEAM_PERIODS][275];
   /// VRB map for common channels and PUSCH, dynamically allocated because
   /// length depends on number of slots and RBs
-  uint16_t *vrb_map_UL;
+  uint16_t *vrb_map_UL[MAX_NUM_BEAM_PERIODS];
   ///Number of active SSBs
   int num_active_ssb;
   //Total available prach occasions per configuration period
@@ -442,7 +455,7 @@ typedef struct NR_sched_pdsch {
   int8_t dl_harq_pid;
 
   // pucch format allocation
-  uint16_t pucch_allocation;
+  int16_t pucch_allocation;
 
   uint16_t pm_index;
   uint8_t nrOfLayers;
@@ -695,6 +708,8 @@ typedef struct NR_bler_options {
 } NR_bler_options_t;
 
 typedef struct nr_mac_rrc_ul_if_s {
+  f1_reset_du_initiated_func_t f1_reset;
+  f1_reset_acknowledge_cu_initiated_func_t f1_reset_acknowledge;
   f1_setup_request_func_t f1_setup_request;
   gnb_du_configuration_update_t gnb_du_configuration_update;
   ue_context_setup_response_func_t ue_context_setup_response;
@@ -770,6 +785,14 @@ typedef struct {
   uid_allocator_t uid_allocator;
 } NR_UEs_t;
 
+typedef struct {
+  /// list of allocated beams per period
+  int **beam_allocation;
+  int beam_duration; // in slots
+  int beams_per_period;
+  int beam_allocation_size;
+} NR_beam_info_t;
+
 #define UE_iterator(BaSe, VaR) NR_UE_info_t ** VaR##pptr=BaSe, *VaR; while ((VaR=*(VaR##pptr++)))
 
 typedef void (*nr_pp_impl_dl)(module_id_t mod_id,
@@ -793,6 +816,8 @@ typedef struct gNB_MAC_INST_s {
   char *f1u_addr;
   /// Ethernet parameters for fronthaul interface
   eth_params_t                    eth_params_s;
+  /// Nvipc parameters for FAPI interface with Aerial
+  nvipc_params_t nvipc_params_s;
   /// Module
   module_id_t                     Mod_id;
   /// timing advance group
@@ -867,8 +892,8 @@ typedef struct gNB_MAC_INST_s {
   time_stats_t rx_ulsch_sdu;  // include rlc_data_ind
   /// processing time of eNB PCH scheduler
   time_stats_t schedule_pch;
-  /// list of allocated beams per period
-  int16_t *tdd_beam_association;
+
+  NR_beam_info_t beam_info;
 
   /// bitmap of DLSCH slots, can hold up to 160 slots
   uint64_t dlsch_slot_bitmap[3];

@@ -161,8 +161,9 @@ void nr_phy_config_request_sim_pbchsim(PHY_VARS_gNB *gNB,
   if (mu>2) fp->nr_band = 257;
   else fp->nr_band = 78;
   fp->threequarter_fs= 0;
-
-  gNB_config->carrier_config.dl_bandwidth.value = get_supported_bw_mhz(fp->nr_band > 256 ? FR2 : FR1, mu, N_RB_DL);
+  frequency_range_t frequency_range = fp->nr_band > 256 ? FR2 : FR1;
+  int bw_index = get_supported_band_index(mu, frequency_range, N_RB_DL);
+  gNB_config->carrier_config.dl_bandwidth.value = get_supported_bw_mhz(frequency_range, bw_index);
 
   fp->ofdm_offset_divisor = UINT_MAX;
   nr_init_frame_parms(gNB_config, fp);
@@ -244,15 +245,20 @@ int main(int argc, char **argv)
     exit_fun("[NR_PBCHSIM] Error, configuration module init failed\n");
   }
 
-  while ((c = getopt (argc, argv, "--:F:g:hIL:m:M:n:N:o:O:P:r:R:s:S:x:y:z:")) != -1) {
+  while ((c = getopt (argc, argv, "--:O:c:F:g:hIL:m:M:n:N:o:P:r:R:s:S:x:y:z:")) != -1) {
 
-    /* ignore long options starting with '--' and their arguments that are handled by configmodule */
+    /* ignore long options starting with '--', option '-O' and their arguments that are handled by configmodule */
     /* with this opstring getopt returns 1 for non-option arguments, refer to 'man 3 getopt' */
-    if (c == 1 || c == '-')
+    if (c == 1 || c == '-' || c == 'O')
       continue;
 
     printf("handling optarg %c\n",c);
     switch (c) {
+
+    case 'c':
+      ssb_subcarrier_offset = atoi(optarg);
+      break;
+
     /*case 'f':
       write_output_file=1;
       output_fd = fopen(optarg,"w");
@@ -349,10 +355,6 @@ int main(int argc, char **argv)
       Nid_cell = atoi(optarg);
       break;
 
-    case 'O':
-      ssb_subcarrier_offset = atoi(optarg);
-      break;
-
     case 'o':
       cfo = atof(optarg);
 #ifdef DEBUG_NR_PBCHSIM
@@ -440,6 +442,7 @@ int main(int argc, char **argv)
       printf("%s -F input_filename -g channel_mod -h(elp) -I(nitial sync) -L log_lvl -n n_frames -M SSBs -n frames -N cell_id -o FO -P phase -r seed -R RBs -s snr0 -S snr1 -x transmission_mode -y TXant -z RXant\n",
              argv[0]);
       //printf("-A Interpolation_filname Run with Abstraction to generate Scatter plot using interpolation polynomial in file\n");
+      printf("-c SSB subcarrier offset\n");
       //printf("-C Generate Calibration information for Abstraction (effective SNR adjustment to remove Pe bias w.r.t. AWGN)\n");
       //printf("-d Use TDD\n");
       //printf("-f Output filename (.txt format) for Pe/SNR results\n");
@@ -455,7 +458,6 @@ int main(int argc, char **argv)
       printf("-n Number of frames to simulate\n");
       printf("-N Nid_cell\n");
       printf("-o Carrier frequency offset in Hz\n");
-      printf("-O SSB subcarrier offset\n");
       //printf("-O oversampling factor (1,2,4,8,16)\n");
       //printf("-p Use extended prefix mode\n");
       printf("-P PBCH phase, allowed values 0-3\n");
@@ -616,8 +618,6 @@ int main(int argc, char **argv)
     printf("Error at UE NR initialisation\n");
     exit(-1);
   }
-
-  nr_gold_pbch(UE->nr_gold_pbch, Nid_cell, frame_parms->Lmax);
 
   processingData_L1tx_t msgDataTx;
   // generate signal
@@ -802,7 +802,6 @@ int main(int argc, char **argv)
 
           nr_pbch_channel_estimation(&UE->frame_parms,
                                      &UE->SL_UE_PHY_PARAMS,
-                                     UE->nr_gold_pbch,
                                      estimateSz,
                                      dl_ch_estimates,
                                      dl_ch_estimates_time,

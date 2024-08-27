@@ -281,6 +281,14 @@ def GetParametersFromXML(action):
 			logging.error('test-case has wrong option ' + CiTestObj.iperf_options)
 			CiTestObj.iperf_options = 'check'
 
+	elif action == 'Iperf2_Unidir':
+		CiTestObj.iperf_args = test.findtext('iperf_args')
+		CiTestObj.ue_ids = test.findtext('id').split(' ')
+		CiTestObj.svr_id = test.findtext('svr_id') or None
+		CiTestObj.iperf_packetloss_threshold = test.findtext('iperf_packetloss_threshold')
+		CiTestObj.iperf_bitrate_threshold = test.findtext('iperf_bitrate_threshold') or '90'
+		CiTestObj.iperf_profile = test.findtext('iperf_profile') or 'balanced'
+
 	elif action == 'IdleSleep':
 		string_field = test.findtext('idle_sleep_time_in_sec')
 		if (string_field is None):
@@ -329,11 +337,13 @@ def GetParametersFromXML(action):
 		string_field = test.findtext('args')
 		if (string_field is not None):
 			EPC.cfgDeploy = string_field	
+		EPC.cnID = test.findtext('cn_id')
 
 	elif action == 'Terminate_5GCN':
 		string_field = test.findtext('args')
 		if (string_field is not None):
 			EPC.cfgUnDeploy = string_field	
+		EPC.cnID = test.findtext('cn_id')
 
 	elif action == 'Deploy_Object' or action == 'Undeploy_Object':
 		eNB_instance=test.findtext('eNB_instance')
@@ -770,6 +780,8 @@ elif re.match('^TesteNB$', mode, re.IGNORECASE) or re.match('^TestUE$', mode, re
 						CiTestObj.Ping(HTML,RAN,EPC,CONTAINERS)
 					elif action == 'Iperf':
 						CiTestObj.Iperf(HTML,RAN,EPC,CONTAINERS)
+					elif action == 'Iperf2_Unidir':
+						CiTestObj.Iperf2_Unidir(HTML,RAN,EPC,CONTAINERS)
 					elif action == 'Initialize_HSS':
 						EPC.InitializeHSS(HTML)
 					elif action == 'Terminate_HSS':

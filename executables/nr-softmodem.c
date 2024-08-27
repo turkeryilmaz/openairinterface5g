@@ -80,6 +80,7 @@ unsigned short config_frames[4] = {2,9,11,13};
 #include "nfapi/oai_integration/vendor_ext.h"
 #include "gnb_config.h"
 #include "openair2/E1AP/e1ap_common.h"
+#include "LAYER2/NR_MAC_gNB/nr_mac_gNB.h"
 #ifdef ENABLE_AERIAL
 #include "nfapi/oai_integration/aerial/fapi_nvIPC.h"
 #endif
@@ -107,7 +108,6 @@ int NB_UE_INST = 0;
 static int wait_for_sync = 0;
 
 unsigned int mmapped_dma=0;
-int single_thread_flag=1;
 
 uint64_t downlink_frequency[MAX_NUM_CCs][4];
 int32_t uplink_frequency_offset[MAX_NUM_CCs][4];
@@ -139,13 +139,7 @@ uint8_t dci_Format = 0;
 uint8_t nb_antenna_tx = 1;
 uint8_t nb_antenna_rx = 1;
 
-int rx_input_level_dBm;
-
 int otg_enabled;
-
-uint64_t num_missed_slots=0; // counter for the number of missed slots
-
-#include <SIMULATION/ETH_TRANSPORT/proto.h>
 
 extern void reset_opp_meas(void);
 extern void print_opp_meas(void);
@@ -156,9 +150,6 @@ int transmission_mode=1;
 int emulate_rf = 0;
 int numerology = 0;
 
-
-static char *parallel_config = NULL;
-static char *worker_config = NULL;
 
 /* struct for ethernet specific parameters given in eNB conf file */
 eth_params_t *eth_params;
@@ -435,10 +426,6 @@ static void get_options(configmodule_interface_t *cfg)
     NB_RU   = RC.nb_RU;
     printf("Configuration: nb_rrc_inst %d, nb_nr_L1_inst %d, nb_ru %hhu\n",NB_gNB_INST,RC.nb_nr_L1_inst,NB_RU);
   }
-
-  if(parallel_config != NULL) set_parallel_conf(parallel_config);
-
-  if(worker_config != NULL) set_worker_conf(worker_config);
 }
 
 void set_default_frame_parms(nfapi_nr_config_request_scf_t *config[MAX_NUM_CCs],
@@ -552,10 +539,8 @@ static  void wait_nfapi_init(char *thread_name) {
 }
 
 void init_pdcp(void) {
-  uint32_t pdcp_initmask = (IS_SOFTMODEM_NOS1) ?
-    PDCP_USE_NETLINK_BIT | LINK_ENB_PDCP_TO_IP_DRIVER_BIT | ENB_NAS_USE_TUN_BIT | SOFTMODEM_NOKRNMOD_BIT:
-    LINK_ENB_PDCP_TO_GTPV1U_BIT;
-  
+  uint32_t pdcp_initmask = IS_SOFTMODEM_NOS1 ? ENB_NAS_USE_TUN_BIT : LINK_ENB_PDCP_TO_GTPV1U_BIT;
+
   if (!NODE_IS_DU(get_node_type())) {
     nr_pdcp_layer_init(get_node_type() == ngran_gNB_CUCP);
     nr_pdcp_module_init(pdcp_initmask, 0);
@@ -664,17 +649,13 @@ int main( int argc, char **argv ) {
   itti_init(TASK_MAX, tasks_info);
   // initialize mscgen log after ITTI
   init_opt();
-  if(PDCP_USE_NETLINK && !IS_SOFTMODEM_NOS1) {
-    netlink_init();
-    if (get_softmodem_params()->nsa) {
-      init_pdcp();
-    }
-  }
+
 #ifndef PACKAGE_VERSION
 #define PACKAGE_VERSION "UNKNOWN-EXPERIMENTAL"
 #endif
   // strdup to put the sring in the core file for post mortem identification
-  LOG_I(HW, "Version: %s\n", strdup(PACKAGE_VERSION));
+  char *pckg = strdup(PACKAGE_VERSION);
+  LOG_I(HW, "Version: %s\n", pckg);
 
   // don't create if node doesn't connect to RRC/S1/GTP
   const ngran_node_t node_type = get_node_type();
@@ -703,8 +684,8 @@ int main( int argc, char **argv ) {
   printf("RC.nb_nr_L1_inst:%d\n", RC.nb_nr_L1_inst);
 
   if (RC.nb_nr_L1_inst > 0) {
-    printf("Initializing gNB threads single_thread_flag:%d wait_for_sync:%d\n", single_thread_flag,wait_for_sync);
-    init_gNB(single_thread_flag,wait_for_sync);
+    printf("Initializing gNB threads wait_for_sync:%d\n", wait_for_sync);
+    init_gNB(wait_for_sync);
   }
 
   printf("wait_gNBs()\n");
@@ -754,7 +735,8 @@ int main( int argc, char **argv ) {
   if (RC.nb_RU > 0)
     start_NR_RU();
 #ifdef ENABLE_AERIAL
-  nvIPC_Init();
+  gNB_MAC_INST *nrmac = RC.nrmac[0];
+  nvIPC_Init(nrmac->nvipc_params_s);
 #endif
   if (RC.nb_nr_L1_inst > 0) {
     printf("wait RUs\n");
@@ -773,15 +755,6 @@ int main( int argc, char **argv ) {
       p.gNB=RC.gNB[0];
       p.ru=RC.ru[0];
       load_softscope("nr",&p);
-    }
-
-    if(IS_SOFTMODEM_DOSCOPE_QT) {
-      scopeParms_t p;
-      p.argc = &argc;
-      p.argv = argv;
-      p.gNB  = RC.gNB[0];
-      p.ru   = RC.ru[0];
-      load_softscope("nrqt", &p);
     }
 
     if (NFAPI_MODE != NFAPI_MODE_PNF && NFAPI_MODE != NFAPI_MODE_VNF && NFAPI_MODE != NFAPI_MODE_AERIAL) {
@@ -837,6 +810,7 @@ int main( int argc, char **argv ) {
       RC.ru[ru_id]->ifdevice.trx_end_func(&RC.ru[ru_id]->ifdevice);
   }
 
+  free(pckg);
   logClean();
   printf("Bye.\n");
   return 0;

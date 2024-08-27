@@ -357,8 +357,6 @@ typedef struct {
   /// - first index: ? [0..3] (hard coded)
   /// - first index: ? [0..1179743] (hard coded)
   int16_t **llr_layers;
-  /// DMRS symbol index, to be updated every DMRS symbol within a slot.
-  uint8_t dmrs_symbol;
   // PTRS symbol index, to be updated every PTRS symbol within a slot.
   uint8_t ptrs_symbol_index;
   /// bit mask of PT-RS ofdm symbol indicies
@@ -545,7 +543,6 @@ typedef struct PHY_VARS_gNB_s {
   uint8_t              CC_id;
   uint8_t              configured;
   gNB_L1_proc_t        proc;
-  int                  single_thread_flag;
   int                  abstraction_flag;
   int                  num_RU;
   RU_t                 *RU_list[MAX_NUM_RU_PER_gNB];
@@ -607,23 +604,8 @@ typedef struct PHY_VARS_gNB_s {
   // PUCCH0 Look-up table for cyclic-shifts
   NR_gNB_PUCCH0_LUT_t pucch0_lut;
 
-  /// PBCH DMRS sequence
-  uint32_t nr_gold_pbch_dmrs[2][64][NR_PBCH_DMRS_LENGTH_DWORD];
-
   /// PBCH interleaver
   uint8_t nr_pbch_interleaver[NR_POLAR_PBCH_PAYLOAD_BITS];
-
-  /// PDCCH DMRS sequence
-  uint32_t ***nr_gold_pdcch_dmrs;
-
-  /// PDSCH DMRS sequence
-  uint32_t ****nr_gold_pdsch_dmrs;
-
-  /// PUSCH DMRS
-  uint32_t ****nr_gold_pusch_dmrs;
-
-  /// PRS sequence
-  uint32_t ****nr_gold_prs;
 
   /// PRACH root sequence
   c16_t X_u[64][839];
@@ -641,10 +623,6 @@ typedef struct PHY_VARS_gNB_s {
 
   /// counter to average prach energh over first 100 prach opportunities
   int prach_energy_counter;
-
-  int pdcch_gold_init;
-  int pdsch_gold_init[2];
-  int pusch_gold_init[2];
 
   int ap_N1;
   int ap_N2;

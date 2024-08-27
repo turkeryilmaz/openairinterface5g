@@ -82,19 +82,21 @@ void nr_common_signal_procedures(PHY_VARS_gNB *gNB,int frame,int slot, nfapi_nr_
     fp->print_ue_help_cmdline_log = false;
     if (fp->dl_CarrierFreq != fp->ul_CarrierFreq)
       LOG_A(PHY,
-            "Command line parameters for the UE: -C %lu --CO %ld -r %d --numerology %d --ssb %d\n",
+            "Command line parameters for OAI UE: -C %lu --CO %ld -r %d --numerology %d --ssb %d %s\n",
             fp->dl_CarrierFreq,
             fp->ul_CarrierFreq - fp->dl_CarrierFreq,
             fp->N_RB_DL,
             scs,
-            fp->ssb_start_subcarrier);
+            fp->ssb_start_subcarrier,
+            fp->threequarter_fs ? "-E" : "");
     else
       LOG_A(PHY,
-            "Command line parameters for the UE: -C %lu -r %d --numerology %d --ssb %d\n",
+            "Command line parameters for OAI UE: -C %lu -r %d --numerology %d --ssb %d %s\n",
             fp->dl_CarrierFreq,
             fp->N_RB_DL,
             scs,
-            fp->ssb_start_subcarrier);
+            fp->ssb_start_subcarrier,
+            fp->threequarter_fs ? "-E" : "");
   }
   LOG_D(PHY,
         "ssbOffsetPointA %d SSB SsbSubcarrierOffset %d  prb_offset %d sc_offset %d scs %d ssb_start_subcarrier %d\n",
@@ -109,20 +111,13 @@ void nr_common_signal_procedures(PHY_VARS_gNB *gNB,int frame,int slot, nfapi_nr_
   nr_generate_pss(&txdataF[0][txdataF_offset], gNB->TX_AMP, ssb_start_symbol, cfg, fp);
   nr_generate_sss(&txdataF[0][txdataF_offset], gNB->TX_AMP, ssb_start_symbol, cfg, fp);
 
-  if (fp->Lmax == 4)
-    nr_generate_pbch_dmrs(gNB->nr_gold_pbch_dmrs[n_hf][ssb_index & 7],
-                          &txdataF[0][txdataF_offset],
-                          gNB->TX_AMP,
-                          ssb_start_symbol,
-                          cfg,
-                          fp);
-  else
-    nr_generate_pbch_dmrs(gNB->nr_gold_pbch_dmrs[0][ssb_index & 7],
-                          &txdataF[0][txdataF_offset],
-                          gNB->TX_AMP,
-                          ssb_start_symbol,
-                          cfg,
-                          fp);
+  int hf = fp->Lmax == 4 ? n_hf : 0;
+  nr_generate_pbch_dmrs(nr_gold_pbch(fp->Lmax, gNB->gNB_config.cell_config.phy_cell_id.value, hf, ssb_index & 7),
+                        &txdataF[0][txdataF_offset],
+                        gNB->TX_AMP,
+                        ssb_start_symbol,
+                        cfg,
+                        fp);
 
 #if T_TRACER
   if (T_ACTIVE(T_GNB_PHY_MIB)) {
@@ -187,7 +182,7 @@ void phy_procedures_gNB_TX(processingData_L1tx_t *msgTx,
       {
         slot_prs = (slot - i*prs_config->PRSResourceTimeGap + fp->slots_per_frame)%fp->slots_per_frame;
         LOG_D(PHY,"gNB_TX: frame %d, slot %d, slot_prs %d, PRS Resource ID %d\n",frame, slot, slot_prs, rsc_id);
-        nr_generate_prs(gNB->nr_gold_prs[rsc_id][slot_prs],&gNB->common_vars.txdataF[0][txdataF_offset], AMP, prs_config, cfg, fp);
+        nr_generate_prs(slot_prs, &gNB->common_vars.txdataF[0][txdataF_offset], AMP, prs_config, cfg, fp);
       }
     }
   }
@@ -277,10 +272,12 @@ static void nr_postDecode(PHY_VARS_gNB *gNB, notifiedFIFO_elt_t *req)
   bool decodeSuccess = (rdata->decodeIterations <= rdata->decoderParms.numMaxIter);
   ulsch_harq->processedSegments++;
   LOG_D(PHY,
-        "processing result of segment: %d, processed %d/%d\n",
+        "processing result of segment: %d, processed %d/%d, %s\n",
         rdata->segment_r,
         ulsch_harq->processedSegments,
-        rdata->nbSegments);
+        rdata->nbSegments,
+        decodeSuccess ? "Decoded Successfully" : "Decoding Unsuccessful");
+
   if (decodeSuccess) {
     memcpy(ulsch_harq->b + rdata->offset, ulsch_harq->c[r], rdata->Kr_bytes - (ulsch_harq->F >> 3) - ((ulsch_harq->C > 1) ? 3 : 0));
 
@@ -467,11 +464,16 @@ void nr_fill_indication(PHY_VARS_gNB *gNB, int frame, int slot_rx, int ULSCH_id,
 
   // put timing advance command in 0..63 range
   timing_advance_update += 31;
+  timing_advance_update = max(timing_advance_update, 0);
+  timing_advance_update = min(timing_advance_update, 63);
 
-  if (timing_advance_update < 0)  timing_advance_update = 0;
-  if (timing_advance_update > 63) timing_advance_update = 63;
-
-  if (crc_flag == 0) LOG_D(PHY, "%d.%d : Received PUSCH : Estimated timing advance PUSCH is  = %d, timing_advance_update is %d \n", frame,slot_rx,sync_pos,timing_advance_update);
+  if (crc_flag == 0)
+    LOG_D(PHY,
+          "%d.%d : Received PUSCH : Estimated timing advance PUSCH is  = %d, timing_advance_update is %d \n",
+          frame,
+          slot_rx,
+          sync_pos,
+          timing_advance_update);
 
   // estimate UL_CQI for MAC
   int SNRtimes10 =
@@ -740,7 +742,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
         "frame %d, slot %d: UL signal energy %d\n",
         frame_rx,
         slot_rx,
-        signal_energy_nodc((int32_t *)&gNB->common_vars.rxdataF[0][soffset + offset + (47 * 12)], 12 * 18));
+        signal_energy_nodc(&gNB->common_vars.rxdataF[0][soffset + offset + (47 * 12)], 12 * 18));
 
   start_meas(&gNB->phy_proc_rx);
 
@@ -772,7 +774,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
                 "frame %d, slot %d: PUCCH signal energy %d\n",
                 frame_rx,
                 slot_rx,
-                signal_energy_nodc((int32_t *)&gNB->common_vars.rxdataF[0][soffset + offset], 12));
+                signal_energy_nodc(&gNB->common_vars.rxdataF[0][soffset + offset], 12));
 
           nr_decode_pucch0(gNB,
                            frame_rx,

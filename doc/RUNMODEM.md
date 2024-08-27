@@ -103,12 +103,15 @@ Command line parameters for UE in `--sa` mode:
 - `--ssb` : SSB start subcarrier (default value 516)
 
 **Optional parameters**:
+- `-E`: use three-quarter sampling for split 8 sample rate. Required for
+  certain radios (e.g., 40MHz with B210). If used on the gNB, it is a good idea
+  to use for the UE as well (and vice versa).
 - `--ue-scan-carrier` : scan for cells in current bandwidth. This option can be used if the SSB position of the gNB is unknown. If multiple cells are detected, the UE will try to connect to the first cell. By default, this option is disabled and the UE attempts to only decode SSB given by `--ssb`.
 
 To simplify the configuration for the user testing OAI UE with OAI gNB, the latter prints the following LOG that guides the user to correctly set some of the UE command line parameters.
 
 ```
-[PHY]   Command line parameters for the UE: -C 3319680000 -r 106 --numerology 1 --ssb 516
+[PHY]   Command line parameters for OAI UE: -C 3319680000 -r 106 --numerology 1 --ssb 516
 ```
 
 You can run this, using USRPs, on two separate machines:
@@ -182,10 +185,44 @@ Besides this, some timers, e.g. `sr_ProhibitTimer_v1700`, `t300`, `t301` and `t3
 ...
 ```
 
+To improve the achievable UL and DL throughput in conditions with large RTT, there is a feature defined in REL17 to disable HARQ feedback.
+This allows to reuse HARQ processes immediately, but it breaks compatibility with UEs not supporting this REL17 feature.
+To enable this feature, the `disable_harq` flag has to be added to the gNB conf file in the section `gNBs.[0]`
+```
+...
+    sib1_tda     = 5;
+    min_rxtxtime = 6;
+    disable_harq = 1; // <--
+
+    servingCellConfigCommon = (
+    {
+...
+```
+
 So with these modifications to the file `targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb.sa.band66.fr1.25PRB.usrpx300.conf` an example gNB command for FDD, 5 MHz BW, 15 kHz SCS, GEO satellite 5G NR NTN is this:
 ```
 cd cmake_targets
 sudo ./ran_build/build/nr-softmodem -O ../targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb.sa.band66.fr1.25PRB.usrpx300.conf --sa --rfsim --rfsimulator.prop_delay 238.74
+```
+
+To configure NTN gNB with 32 HARQ processes in downlink and uplink, add these settings in conf files under section `gNBs.[0]`
+```
+...
+    num_dlharq = 32;
+    num_ulharq = 32;
+...
+```
+
+### NR UE
+
+At UE side, there are two main parameters to cope with the large NTN propagation delay, cellSpecificKoffset and ta-Common.
+`cellSpecificKoffset` is the same as for gNB and can be provided to the UE via command line parameter `--ntn-koffset`.
+`ta-Common` is a common timong advance and can be provided to the UE via command line parameter `--ntn-ta-common` in milliseconds.
+
+So an example NR UE command for FDD, 5MHz BW, 15 kHz SCS, GEO satellite 5G NR NTN is this:
+```
+cd cmake_targets
+sudo ./ran_build/build/nr-uesoftmodem --band 66 -C 2152680000 --CO -400000000 -r 25 --numerology 0 --ssb 48 --sa --rfsim --rfsimulator.prop_delay 238.74 --ntn-koffset 478 --ntn-ta-common 477.48
 ```
 
 # Specific OAI modes
@@ -256,8 +293,8 @@ In do-ra mode it is possible to mimic the reception of UE Capabilities at gNB by
 To run using the RFsimulator:
 
 ```bash
-sudo ./nr-softmodem -O ../../../targets/PROJECTS/GENERIC-LTE-EPC/CONF/gnb.band78.tm1.106PRB.usrpn300.conf --do-ra --rfsim --parallel-config PARALLEL_SINGLE_THREAD
-sudo ./nr-uesoftmodem --do-ra --rfsim --rfsimulator.serveraddr 127.0.0.1 --parallel-config PARALLEL_SINGLE_THREAD
+sudo ./nr-softmodem -O ../../../targets/PROJECTS/GENERIC-LTE-EPC/CONF/gnb.band78.tm1.106PRB.usrpn300.conf --do-ra --rfsim
+sudo ./nr-uesoftmodem --do-ra --rfsim --rfsimulator.serveraddr 127.0.0.1
 ```
 
 Using USRPs:

@@ -43,7 +43,6 @@ NAMESPACE = "oaicicd-ran"
 OCUrl = "https://api.oai.cs.eurecom.fr:6443"
 OCRegistry = "default-route-openshift-image-registry.apps.oai.cs.eurecom.fr/"
 CI_OC_RAN_NAMESPACE = "oaicicd-ran"
-CI_OC_CORE_NAMESPACE = "oaicicd-core-for-ci-ran"
 CN_IMAGES = ["mysql", "oai-nrf", "oai-amf", "oai-smf", "oai-upf", "oai-ausf", "oai-udm", "oai-udr", "oai-traffic-server"]
 CN_CONTAINERS = ["", "-c nrf", "-c amf", "-c smf", "-c upf", "-c ausf", "-c udm", "-c udr", ""]
 
@@ -68,10 +67,9 @@ def OC_login(cmd, ocUserName, ocPassword, ocProjectName):
 def OC_logout(cmd):
 	cmd.run(f'oc logout')
 
-def OC_deploy_CN(cmd, ocUserName, ocPassword):
-	logging.debug('OC OAI CN5G: Deploying OAI CN5G on Openshift Cluster')
-	path = "/opt/oai-cn5g-fed-develop-2024-april-00102"
-	succeeded = OC_login(cmd, ocUserName, ocPassword, CI_OC_CORE_NAMESPACE)
+def OC_deploy_CN(cmd, ocUserName, ocPassword, ocNamespace, path):
+	logging.debug(f'OC OAI CN5G: Deploying OAI CN5G on Openshift Cluster: {ocNamespace}')
+	succeeded = OC_login(cmd, ocUserName, ocPassword, ocNamespace)
 	if not succeeded:
 		return False, CONST.OC_LOGIN_FAIL
 	cmd.run('helm uninstall oai5gcn --wait --timeout 60s')
@@ -84,10 +82,9 @@ def OC_deploy_CN(cmd, ocUserName, ocPassword):
 	OC_logout(cmd)
 	return True, report
 
-def OC_undeploy_CN(cmd, ocUserName, ocPassword):
-	logging.debug('OC OAI CN5G: Terminating CN on Openshift Cluster')
-	path = "/opt/oai-cn5g-fed-develop-2024-april-00102"
-	succeeded = OC_login(cmd, ocUserName, ocPassword, CI_OC_CORE_NAMESPACE)
+def OC_undeploy_CN(cmd, ocUserName, ocPassword, ocNamespace, path):
+	logging.debug(f'OC OAI CN5G: Terminating CN on Openshift Cluster: {ocNamespace}')
+	succeeded = OC_login(cmd, ocUserName, ocPassword, ocNamespace)
 	if not succeeded:
 		return False, CONST.OC_LOGIN_FAIL
 	cmd.run(f'rm -Rf {path}/logs')
@@ -460,6 +457,34 @@ class Cluster:
 			self.cmd.run(f'oc logs {nr_cuup_job} &> cmake_targets/log/oai-nr-cuup.log')
 			self.cmd.run(f'oc logs {lteue_job} &> cmake_targets/log/oai-lte-ue.log')
 			self.cmd.run(f'oc logs {nrue_job} &> cmake_targets/log/oai-nr-ue.log')
+			self.cmd.run(f'oc get pods.metrics.k8s.io &>> cmake_targets/log/build-metrics.log', '\$', 10)
+
+		if status:
+			self._recreate_is_tag('ran-build-fhi72', imageTag, 'openshift/ran-build-fhi72-is.yaml')
+			self._recreate_bc('ran-build-fhi72', imageTag, 'openshift/ran-build-fhi72-bc.yaml')
+			self._retag_image_statement('ran-base', 'image-registry.openshift-image-registry.svc:5000/oaicicd-ran/ran-base', baseTag, 'docker/Dockerfile.build.fhi72.rhel9')
+			ranbuildfhi72_job = self._start_build('ran-build-fhi72')
+			attemptedImages += ['ran-build-fhi72']
+
+			wait = ranbuildfhi72_job is not None and self._wait_build_end([ranbuildfhi72_job], 1200)
+			if not wait: logging.error('error during build of ranbuildfhi72_job')
+			status = status and wait
+			self.cmd.run(f'oc logs {ranbuildfhi72_job} &> cmake_targets/log/ran-build-fhi72.log')
+			self.cmd.run(f'oc get pods.metrics.k8s.io &>> cmake_targets/log/build-metrics.log', '\$', 10)
+
+		if status:
+			self._recreate_is_tag('oai-gnb-fhi72', imageTag, 'openshift/oai-gnb-fhi72-is.yaml')
+			self._recreate_bc('oai-gnb-fhi72', imageTag, 'openshift/oai-gnb-fhi72-bc.yaml')
+			self._retag_image_statement('ran-base', 'image-registry.openshift-image-registry.svc:5000/oaicicd-ran/ran-base', baseTag, 'docker/Dockerfile.gNB.fhi72.rhel9')
+			self._retag_image_statement('ran-build-fhi72', 'image-registry.openshift-image-registry.svc:5000/oaicicd-ran/ran-build-fhi72', imageTag, 'docker/Dockerfile.gNB.fhi72.rhel9')
+			gnb_fhi72_job = self._start_build('oai-gnb-fhi72')
+			attemptedImages += ['oai-gnb-fhi72']
+
+			wait = gnb_fhi72_job is not None and self._wait_build_end([gnb_fhi72_job], 600)
+			if not wait: logging.error('error during build of gNB-fhi72')
+			status = status and wait
+			# recover logs
+			self.cmd.run(f'oc logs {gnb_fhi72_job} &> cmake_targets/log/oai-gnb-fhi72.log')
 			self.cmd.run(f'oc get pods.metrics.k8s.io &>> cmake_targets/log/build-metrics.log', '\$', 10)
 
 		# split and analyze logs

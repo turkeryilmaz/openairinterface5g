@@ -32,7 +32,6 @@
 
 #include "LAYER2/NR_MAC_gNB/mac_proto.h"
 #include "common/utils/nr/nr_common.h"
-#include "openair1/PHY/defs_nr_common.h"
 #include <limits.h>
 #include <executables/softmodem-common.h>
 
@@ -467,7 +466,11 @@ NR_tda_info_t get_ul_tda_info(const NR_UE_UL_BWP_t *ul_bwp,
   AssertFatal(scs >= 0 &&  scs < 5, "Subcarrier spacing indicatior %d invalid value\n", scs);
   int j = scs == 0 ? 1 : scs;
   if (tdalist) {
-    AssertFatal(tda_index < tdalist->list.count, "TDA index from DCI %d exceeds TDA list array size %d\n", tda_index, tdalist->list.count);
+    tda_info.valid_tda = tda_index < tdalist->list.count;
+    if (!tda_info.valid_tda) {
+      LOG_E(NR_MAC, "TDA index from DCI %d exceeds TDA list array size %d\n", tda_index, tdalist->list.count);
+      return tda_info;
+    }
     NR_PUSCH_TimeDomainResourceAllocation_t *tda = tdalist->list.array[tda_index];
     tda_info.mapping_type = tda->mappingType;
     // As described in 38.331, when the field is absent the UE applies the value 1 when PUSCH SCS is 15/30KHz
@@ -479,6 +482,11 @@ NR_tda_info_t get_ul_tda_info(const NR_UE_UL_BWP_t *ul_bwp,
     tda_info.nrOfSymbols = L;
   } else {
     bool normal_CP = ul_bwp->cyclicprefix ? false : true;
+    tda_info.valid_tda = tda_index < 16;
+    if (!tda_info.valid_tda) {
+      LOG_E(NR_MAC, "TDA index from DCI %d exceeds default TDA list array size %d\n", tda_index, 16);
+      return tda_info;
+    }
     if (normal_CP) {
       tda_info.mapping_type = table_6_1_2_1_1_2[tda_index][0];
       tda_info.k2 = table_6_1_2_1_1_2[tda_index][1] + j;
@@ -500,6 +508,11 @@ NR_tda_info_t get_info_from_tda_tables(default_table_type_t table_type,
                                        int normal_CP)
 {
   NR_tda_info_t tda_info = {0};
+  tda_info.valid_tda = tda < 16;
+  if (!tda_info.valid_tda) {
+    LOG_E(NR_MAC, "TDA index from DCI %d exceeds default TDA list array size %d\n", tda, 16);
+    return tda_info;
+  }
   bool is_mapping_typeA;
   int k0 = 0;
   switch(table_type){
@@ -586,7 +599,11 @@ default_table_type_t get_default_table_type(int mux_pattern)
 NR_tda_info_t set_tda_info_from_list(NR_PDSCH_TimeDomainResourceAllocationList_t *tdalist, int tda_index)
 {
   NR_tda_info_t tda_info = {0};
-  AssertFatal(tda_index < tdalist->list.count, "TDA index from DCI %d exceeds TDA list array size %d\n", tda_index, tdalist->list.count);
+  tda_info.valid_tda = tda_index < tdalist->list.count;
+  if (!tda_info.valid_tda) {
+    LOG_E(NR_MAC, "TDA index from DCI %d exceeds TDA list array size %d\n", tda_index, tdalist->list.count);
+    return tda_info;
+  }
   NR_PDSCH_TimeDomainResourceAllocation_t *tda = tdalist->list.array[tda_index];
   tda_info.mapping_type = tda->mappingType;
   int S, L;
@@ -1770,8 +1787,8 @@ int get_nr_prach_info_from_index(uint8_t index,
                                  uint8_t *N_dur,
                                  uint16_t *RA_sfn_index,
                                  uint8_t *N_RA_slot,
-				 uint8_t *config_period) {
-
+                                 uint8_t *config_period)
+{
   int x,y;
   int64_t s_map;
   uint8_t format2 = 0xff;
@@ -1783,20 +1800,20 @@ int get_nr_prach_info_from_index(uint8_t index,
     y = table_6_3_3_2_4_prachConfig_Index[index][3];
     y2 = table_6_3_3_2_4_prachConfig_Index[index][4];
     // checking n_sfn mod x = y
-    if ( (frame%x)==y || (frame%x)==y2 ) {
-      slot_60khz = slot >> (mu-2); // in table slots are numbered wrt 60kHz
+    if ((frame % x) == y || (frame % x) == y2) {
+      slot_60khz = slot >> (mu - 2); // in table slots are numbered wrt 60kHz
       s_map = table_6_3_3_2_4_prachConfig_Index[index][5];
-      if ((s_map >> slot_60khz) & 0x01 ) {
+      if ((s_map >> slot_60khz) & 0x01) {
         for(int i = 0; i <= slot_60khz ;i++) {
-          if ( (s_map >> i) & 0x01) {
+          if ((s_map >> i) & 0x01) {
             (*RA_sfn_index)++;
           }
         }
       }
-      if ( ((s_map>>slot_60khz)&0x01) ) {
+      if (((s_map >> slot_60khz) & 0x01)) {
         *N_RA_slot = table_6_3_3_2_4_prachConfig_Index[index][7]; // Number of RACH slots within a subframe
         if (mu == 3) {
-          if ( (*N_RA_slot == 1) && (slot%2 == 0) )
+          if ((*N_RA_slot == 1) && (slot % 2 == 0) )
             return 0; // no prach in even slots @ 120kHz for 1 prach per 60khz slot
         }
         if (start_symbol != NULL && N_t_slot != NULL && N_dur != NULL && format != NULL){
@@ -1833,23 +1850,23 @@ int get_nr_prach_info_from_index(uint8_t index,
     if (unpaired) {
       x = table_6_3_3_2_3_prachConfig_Index[index][2];
       y = table_6_3_3_2_3_prachConfig_Index[index][3];
-      if ( (frame%x)==y ) {
+      if ((frame % x) == y) {
         subframe = slot >> mu;
         s_map = table_6_3_3_2_3_prachConfig_Index[index][4];
-        if ((s_map >> subframe) & 0x01 ) {
+        if ((s_map >> subframe) & 0x01) {
           for(int i = 0; i <= subframe ;i++) {
-            if ( (s_map >> i) & 0x01) {
+            if ((s_map >> i) & 0x01) {
               (*RA_sfn_index)++;
             }
           }
         }
-        if ( (s_map>>subframe)&0x01 ) {
+        if ((s_map >> subframe) & 0x01 ) {
          *N_RA_slot = table_6_3_3_2_3_prachConfig_Index[index][6]; // Number of RACH slots within a subframe
           if (mu == 1 && index >= 67) {
-            if ( (*N_RA_slot <= 1) && (slot%2 == 0) )
+            if ((*N_RA_slot <= 1) && (slot % 2 == 0))
               return 0; // no prach in even slots @ 30kHz for 1 prach per subframe 
           } 
-          if (start_symbol != NULL && N_t_slot != NULL && N_dur != NULL && format != NULL){
+          if (start_symbol != NULL && N_t_slot != NULL && N_dur != NULL && format != NULL) {
             *config_period = x;
             *start_symbol = table_6_3_3_2_3_prachConfig_Index[index][5];
             *N_t_slot = table_6_3_3_2_3_prachConfig_Index[index][7];
@@ -1857,17 +1874,19 @@ int get_nr_prach_info_from_index(uint8_t index,
             if (table_6_3_3_2_3_prachConfig_Index[index][1] != -1)
               format2 = (uint8_t) table_6_3_3_2_3_prachConfig_Index[index][1];
             *format = ((uint8_t) table_6_3_3_2_3_prachConfig_Index[index][0]) | (format2<<8);
-            LOG_D(MAC,"Frame %d slot %d: Getting PRACH info from index %d (col 6 %lu) absoluteFrequencyPointA %u mu %u frame_type %u start_symbol %u N_t_slot %u N_dur %u N_RA_slot %u RA_sfn_index %u \n", frame,
-              slot,
-              index, table_6_3_3_2_3_prachConfig_Index[index][6],
-              pointa,
-              mu,
-              unpaired,
-              *start_symbol,
-              *N_t_slot,
-              *N_dur,
-              *N_RA_slot,
-              *RA_sfn_index);
+            LOG_D(MAC,"Frame %d slot %d: Getting PRACH info from index %d (col 6 %lu) absoluteFrequencyPointA %u mu %u frame_type %u start_symbol %u N_t_slot %u N_dur %u N_RA_slot %u RA_sfn_index %u \n",
+                  frame,
+                  slot,
+                  index,
+                  table_6_3_3_2_3_prachConfig_Index[index][6],
+                  pointa,
+                  mu,
+                  unpaired,
+                  *start_symbol,
+                  *N_t_slot,
+                  *N_dur,
+                  *N_RA_slot,
+                  *RA_sfn_index);
           }
           return 1;
         }
@@ -1880,10 +1899,10 @@ int get_nr_prach_info_from_index(uint8_t index,
     else { // FDD
       x = table_6_3_3_2_2_prachConfig_Index[index][2];
       y = table_6_3_3_2_2_prachConfig_Index[index][3];
-      if ( (frame%x)==y ) {
+      if ((frame % x) == y) {
         subframe = slot >> mu;
         s_map = table_6_3_3_2_2_prachConfig_Index[index][4];
-        if ( (s_map>>subframe)&0x01 ) {
+        if ((s_map>>subframe) & 0x01) {
           *N_RA_slot = table_6_3_3_2_2_prachConfig_Index[index][6]; // Number of RACH slots within a subframe
           if (mu == 1) {
             if ((*N_RA_slot <= 1) && (slot % 2 == 0)){
@@ -1891,7 +1910,7 @@ int get_nr_prach_info_from_index(uint8_t index,
             }
           }
           for(int i = 0; i <= subframe ; i++) {
-            if ( (s_map >> i) & 0x01) {
+            if ((s_map >> i) & 0x01) {
               (*RA_sfn_index)++;
             }
           }
@@ -2455,25 +2474,26 @@ uint8_t getAntPortBitWidth(NR_SetupRelease_DMRS_DownlinkConfig_t *typeA, NR_Setu
 *
 *********************************************************************/
 
-uint8_t get_l0_ul(uint8_t mapping_type, uint8_t dmrs_typeA_position) {
-
+uint8_t get_l0_ul(uint8_t mapping_type, uint8_t dmrs_typeA_position)
+{
   return ((mapping_type==typeA)?dmrs_typeA_position:0);
-
 }
 
-int32_t get_l_prime(uint8_t duration_in_symbols, uint8_t mapping_type, pusch_dmrs_AdditionalPosition_t additional_pos, pusch_maxLength_t pusch_maxLength, uint8_t start_symbol, uint8_t dmrs_typeA_position) {
-
-  uint8_t row, colomn;
-  int32_t l_prime;
-
-  LOG_D(NR_MAC, "In %s: PUSCH NrofSymbols:%d, startSymbol:%d, mappingtype:%d, dmrs_TypeA_Position:%d additional_pos:%d, pusch_maxLength:%d\n",
-    __FUNCTION__,
-    duration_in_symbols,
-    start_symbol,
-    mapping_type,
-    dmrs_typeA_position,
-    additional_pos,
-    pusch_maxLength);
+int32_t get_l_prime(uint8_t duration_in_symbols,
+                    uint8_t mapping_type,
+                    pusch_dmrs_AdditionalPosition_t additional_pos,
+                    pusch_maxLength_t pusch_maxLength,
+                    uint8_t start_symbol,
+                    uint8_t dmrs_typeA_position)
+{
+  LOG_D(NR_MAC,
+        "PUSCH NrofSymbols:%d, startSymbol:%d, mappingtype:%d, dmrs_TypeA_Position:%d additional_pos:%d, pusch_maxLength:%d\n",
+        duration_in_symbols,
+        start_symbol,
+        mapping_type,
+        dmrs_typeA_position,
+        additional_pos,
+        pusch_maxLength);
 
   // Section 6.4.1.1.3 in Spec 38.211
   // For PDSCH Mapping TypeA, ld is duration between first OFDM of the slot and last OFDM symbol of the scheduled PUSCH resources
@@ -2481,16 +2501,18 @@ int32_t get_l_prime(uint8_t duration_in_symbols, uint8_t mapping_type, pusch_dmr
   uint8_t ld = (mapping_type == typeA) ? (duration_in_symbols + start_symbol) : duration_in_symbols;
   uint8_t l0 = (dmrs_typeA_position == NR_MIB__dmrs_TypeA_Position_pos2) ? 2 : 3 ;
 
-  colomn = additional_pos;
+  uint8_t colomn = additional_pos;
 
   if (mapping_type == typeB)
     colomn += 4;
 
+  uint8_t row;
   if (ld < 4)
     row = 0;
   else
     row = ld - 3;
 
+  uint32_t l_prime;
   if (pusch_maxLength == pusch_len1) {
     l_prime = table_6_4_1_1_3_3_pusch_dmrs_positions_l[row][colomn];
     l0 = 1 << l0;
@@ -2507,7 +2529,6 @@ int32_t get_l_prime(uint8_t duration_in_symbols, uint8_t mapping_type, pusch_dmr
   LOG_D(MAC, " PUSCH DMRS MASK in HEX:%x\n", l_prime);
 
   return l_prime;
-
 }
 
 /*******************************************************************
@@ -3093,6 +3114,58 @@ uint16_t get_rb_bwp_dci(nr_dci_format_t format,
   return N_RB;
 }
 
+// 32 HARQ processes supported in rel17, default is 8
+int get_nrofHARQ_ProcessesForPDSCH(const NR_UE_ServingCell_Info_t *sc_info)
+{
+  if (sc_info && sc_info->nrofHARQ_ProcessesForPDSCH_v1700)
+    return 32;
+
+  if (!sc_info || !sc_info->nrofHARQ_ProcessesForPDSCH)
+    return 8;
+
+  int IEvalues[] = {2, 4, 6, 10, 12, 16};
+  return IEvalues[*sc_info->nrofHARQ_ProcessesForPDSCH];
+}
+
+// 32 HARQ processes supported in rel17, default is 16
+int get_nrofHARQ_ProcessesForPUSCH(const NR_UE_ServingCell_Info_t *sc_info)
+{
+  if (sc_info && sc_info->nrofHARQ_ProcessesForPUSCH_r17)
+    return 32;
+
+  return 16;
+}
+
+static int get_nrofHARQ_bits_PDSCH(int dci_format, int num_dl_harq, NR_PDSCH_Config_t *dl_cfg)
+{
+  // IF DCI Format 1_0 - then use 4 bits. Refer to Spec 38.212 section 7.3.1.2.1
+  int harqbits = 4;
+  if (dl_cfg && dl_cfg->ext3) {
+    // 5 bits if higher layer parameter harq-ProcessNumberSizeDCI-1-1 is configured, otherwise 4 bits
+    // Refer to Spec 38.212 section 7.3.1.2.2
+    if (dci_format == NR_DL_DCI_FORMAT_1_1 && dl_cfg->ext3->harq_ProcessNumberSizeDCI_1_1_r17) {
+      harqbits = 5;
+      AssertFatal(num_dl_harq == 32, "Incorrect configuration of DL HARQ processes %d\n",num_dl_harq);
+    }
+  }
+  return harqbits;
+}
+
+static int get_nrofHARQ_bits_PUSCH(int dci_format, int num_ul_harq, NR_PUSCH_Config_t *ul_cfg)
+{
+  // IF DCI Format 0_0 - then use 4 bits. Refer to Spec 38.212 section 7.3.1.1.1
+  int harqbits = 4;
+  if (ul_cfg && ul_cfg->ext2) {
+    // 5 bits if higher layer parameter harq-ProcessNumberSizeDCI-0-1 is configured, otherwise 4 bits
+    // Refer to Spec 38.212 section 7.3.1.1.2
+    if (dci_format == NR_UL_DCI_FORMAT_0_1 && ul_cfg->ext2->harq_ProcessNumberSizeDCI_0_1_r17) {
+      harqbits = 5;
+      AssertFatal(num_ul_harq == 32, "Incorrect configuration of UL HARQ processes %d\n",num_ul_harq);
+    }
+  }
+  return harqbits;
+}
+
 uint16_t nr_dci_size(const NR_UE_DL_BWP_t *DL_BWP,
                      const NR_UE_UL_BWP_t *UL_BWP,
                      const NR_UE_ServingCell_Info_t *sc_info,
@@ -3126,10 +3199,17 @@ uint16_t nr_dci_size(const NR_UE_DL_BWP_t *DL_BWP,
                           sc_info->initial_ul_BWPSize,
                           sc_info->initial_dl_BWPSize);
 
+  const int num_dl_harq = get_nrofHARQ_ProcessesForPDSCH(sc_info);
+  const int num_ul_harq = get_nrofHARQ_ProcessesForPUSCH(sc_info);
+  const int num_dlharqbits = get_nrofHARQ_bits_PDSCH(format, num_dl_harq, pdsch_Config);
+  const int num_ulharqbits = get_nrofHARQ_bits_PUSCH(format, num_ul_harq, pusch_Config);
+
   switch(format) {
     case NR_UL_DCI_FORMAT_0_0:
       /// fixed: Format identifier 1, Hop flag 1, MCS 5, NDI 1, RV 2, HARQ PID 4, PUSCH TPC 2 Time Domain assgnmt 4 --20
       size += 20;
+      // HARQ pid - 4bits , Spec 38.212 section 7.3.1.1.1
+      dci_pdu->harq_pid.nbits = 4;
       dci_pdu->frequency_domain_assignment.nbits = (uint8_t)ceil(log2((N_RB * (N_RB + 1)) >>1)); // Freq domain assignment -- hopping scenario to be updated
       size += dci_pdu->frequency_domain_assignment.nbits;
       if(alt_size >= size)
@@ -3146,8 +3226,12 @@ uint16_t nr_dci_size(const NR_UE_DL_BWP_t *DL_BWP,
         LOG_E(NR_MAC, "Error! Not possible to configure DCI format 01 without UL BWP.\n");
         return 0;
       }
-      /// fixed: Format identifier 1, MCS 5, NDI 1, RV 2, HARQ PID 4, PUSCH TPC 2, ULSCH indicator 1 --16
-      size += 16;
+      /// fixed: Format identifier 1, MCS 5, NDI 1, RV 2, PUSCH TPC 2, ULSCH indicator 1 --12
+      size += 12;
+      // HARQ PID - 4/5 bits Spec 38.212 section 7.3.1.1.2
+      // 5 bits if higher layer parameter harq-ProcessNumberSizeDCI-0-1 is configured;otherwise 4 bits
+      dci_pdu->harq_pid.nbits = num_ulharqbits;
+      size += dci_pdu->harq_pid.nbits;
       // Carrier indicator
       if (sc_info->crossCarrierSchedulingConfig) {
         dci_pdu->carrier_indicator.nbits = 3;
@@ -3289,6 +3373,8 @@ uint16_t nr_dci_size(const NR_UE_DL_BWP_t *DL_BWP,
       // Size of DCI format 1_0 is given by the size of CORESET 0 if CORESET 0 is configured for the cell and the size
       // of initial DL bandwidth part if CORESET 0 is not configured for the cell
       size = 28;
+      // HARQ pid - 4 bits. Spec 38.212 section 7.3.1.2.1
+      dci_pdu->harq_pid.nbits = 4;
       dci_pdu->frequency_domain_assignment.nbits = (uint8_t)ceil(log2((N_RB * (N_RB + 1)) >> 1)); // Freq domain assignment
       size += dci_pdu->frequency_domain_assignment.nbits;
       if(ss_type == NR_SearchSpace__searchSpaceType_PR_ue_Specific && alt_size >= size)
@@ -3371,8 +3457,10 @@ uint16_t nr_dci_size(const NR_UE_DL_BWP_t *DL_BWP,
       if ((maxCWperDCI != NULL) && (*maxCWperDCI == 2)) {
         size += 8;
       }
-      // HARQ PID
-      size += 4;
+      // HARQ process number – 5 bits if higher layer parameter harq-ProcessNumberSizeDCI-1-1 is configured;
+      // otherwise 4 bits. Spec 38.212 Section 7.3.1.2.2
+      dci_pdu->harq_pid.nbits = num_dlharqbits;
+      size += dci_pdu->harq_pid.nbits;
       // DAI
       if (pdsch_HARQ_ACK_Codebook == NR_PhysicalCellGroupConfig__pdsch_HARQ_ACK_Codebook_dynamic) { // FIXME in case of more than one serving cell
         dci_pdu->dai[0].nbits = 2;
@@ -5200,9 +5288,9 @@ bool supported_bw_comparison(int bw_mhz, NR_SupportedBandwidth_t *supported_BW, 
   return false;
 }
 
-uint16_t compute_PDU_length(uint32_t num_TLV, uint16_t total_length)
+uint32_t compute_PDU_length(uint32_t num_TLV, uint32_t total_length)
 {
-  uint8_t pdu_length = 8; // 2 bytes PDU_Length + 2 bytes PDU_Index + 4 bytes num_TLV
+  uint32_t pdu_length = 8; // 2 bytes PDU_Length + 2 bytes PDU_Index + 4 bytes num_TLV
   // For each TLV, add 2 bytes tag + 2 bytes length + value size without padding
   pdu_length += (num_TLV * 4) + total_length;
   return pdu_length;
@@ -5222,4 +5310,15 @@ rnti_t nr_get_ra_rnti(uint8_t s_id, uint8_t t_id, uint8_t f_id, uint8_t ul_carri
   LOG_D(MAC, "f_id %d t_id %d s_id %d ul_carrier_id %d Computed RA_RNTI is 0x%04X\n", f_id, t_id, s_id, ul_carrier_id, ra_rnti);
 
   return ra_rnti;
+}
+
+int get_FeedbackDisabled(NR_DownlinkHARQ_FeedbackDisabled_r17_t *downlinkHARQ_FeedbackDisabled_r17, int harq_pid)
+{
+  if (downlinkHARQ_FeedbackDisabled_r17 == NULL)
+    return 0;
+
+  const int byte_index = harq_pid / 8;
+  const int bit_index = harq_pid % 8;
+
+  return (downlinkHARQ_FeedbackDisabled_r17->buf[byte_index] >> (7 - bit_index)) & 1;
 }

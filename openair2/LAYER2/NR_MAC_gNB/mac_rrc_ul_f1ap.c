@@ -53,6 +53,20 @@ static f1ap_net_config_t read_DU_IP_config(const eth_params_t* f1_params, const 
   return nc;
 }
 
+static void f1_reset_du_initiated_f1ap(const f1ap_reset_t *reset)
+{
+  (void) reset;
+  AssertFatal(false, "%s() not implemented yet\n", __func__);
+}
+
+static void f1_reset_acknowledge_cu_initiated_f1ap(const f1ap_reset_ack_t *ack)
+{
+  MessageDef *msg = itti_alloc_new_message(TASK_MAC_GNB, 0, F1AP_RESET_ACK);
+  f1ap_reset_ack_t *f1ap_msg = &F1AP_RESET_ACK(msg);
+  *f1ap_msg = *ack;
+  itti_send_msg_to_task(TASK_DU_F1, 0, msg);
+}
+
 static void f1_setup_request_f1ap(const f1ap_setup_req_t *req)
 {
   MessageDef *msg = itti_alloc_new_message(TASK_MAC_GNB, 0, F1AP_DU_REGISTER_REQ);
@@ -141,7 +155,7 @@ static void ue_context_setup_response_f1ap(const f1ap_ue_context_setup_t *req, c
   DevAssert(req->drbs_to_be_setup_length == resp->drbs_to_be_setup_length);
 
   DevAssert(req->srbs_to_be_setup_length == resp->srbs_to_be_setup_length);
-  MessageDef *msg = itti_alloc_new_message(TASK_MAC_GNB, 0, F1AP_UE_CONTEXT_SETUP_RESP);
+  MessageDef *msg = itti_alloc_new_message (TASK_MAC_GNB, 0, F1AP_UE_CONTEXT_SETUP_RESP);
   f1ap_ue_context_setup_t *f1ap_msg = &F1AP_UE_CONTEXT_SETUP_RESP(msg);
   /* copy all fields, but reallocate rrc_containers! */
   *f1ap_msg = *resp;
@@ -332,6 +346,8 @@ static void positioning_measurement_failure_indication_f1ap(const f1ap_measureme
 
 void mac_rrc_ul_f1ap_init(struct nr_mac_rrc_ul_if_s *mac_rrc)
 {
+  mac_rrc->f1_reset = f1_reset_du_initiated_f1ap;
+  mac_rrc->f1_reset_acknowledge = f1_reset_acknowledge_cu_initiated_f1ap;
   mac_rrc->f1_setup_request = f1_setup_request_f1ap;
   mac_rrc->gnb_du_configuration_update = gnb_du_configuration_update_f1ap;
   mac_rrc->ue_context_setup_response = ue_context_setup_response_f1ap;

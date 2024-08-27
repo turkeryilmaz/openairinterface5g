@@ -25,13 +25,13 @@
 #
 #---------------------------------------------------------------------
 
-FROM ran-base:latest as gnb-base
+FROM ran-base:latest AS gnb-base
 
 FROM ran-build:latest AS gnb-build
 
 
 #start from scratch for target executable
-FROM ubuntu:jammy as oai-gnb
+FROM ubuntu:jammy AS oai-gnb
 ARG BUILD_OPTION
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Europe
@@ -45,7 +45,6 @@ RUN apt-get update && \
         libsctp1 \
         tzdata \
         libblas3 \
-        libatlas3-base \
         libconfig9 \
         openssl \
         net-tools \
@@ -95,7 +94,18 @@ COPY --from=gnb-build /usr/local/lib/x86_64-linux-gnu /usr/local/lib/x86_64-linu
 COPY --from=gnb-build /usr/local/lib/flexric /usr/local/lib/flexric
 
 RUN ldconfig && \
-    ldd /opt/oai-gnb/bin/nr-softmodem
+    echo "---- ldd on nr-softmodem ----" && \
+    ldd /opt/oai-gnb/bin/nr-softmodem && \
+    echo "---- ldd on shared libraries ----" && \
+    ldd /usr/local/lib/librfsimulator.so \
+        /usr/local/lib/liboai_transpro.so \
+        /usr/local/lib/libcoding.so \
+        /usr/local/lib/libparams_libconfig.so \
+        /usr/local/lib/libdfts.so \
+        /usr/local/lib/libldpc*.so \
+        /usr/local/lib/libtelnetsrv.so \
+        /usr/local/lib/libtelnetsrv_ci.so \
+        /opt/phy/fhi_lib/lib/build/libxran.so
 
 WORKDIR /opt/oai-gnb
 COPY --from=gnb-base /tini /tini

@@ -25,12 +25,12 @@
 #
 #---------------------------------------------------------------------
 
-FROM ran-base:latestnrppa AS gnb-base
+FROM ran-base:latest AS gnb-base
 
-FROM ran-build:latestnrppa AS gnb-build
+FROM ran-build-fhi72:latest AS gnb-build
 
 #start from scratch for target executable
-FROM registry.access.redhat.com/ubi9/ubi:latest as oai-gnb
+FROM registry.access.redhat.com/ubi9/ubi:latest AS oai-gnb-fhi72
 ENV TZ=Europe/Paris
 
 # Copy the entitlements
@@ -44,7 +44,6 @@ RUN rm -f /etc/rhsm-host && \
         procps-ng \
         libXpm \
         libX11 \
-        atlas \
         lksctp-tools \
         xz \
         numactl-libs \
@@ -105,7 +104,20 @@ COPY --from=gnb-base \
     /lib64/libicuuc.so.67 \
     /lib64/
 
-RUN ldconfig
+RUN ldconfig && \
+    echo "---- ldd on executable nr-softmodem ----" && \
+    ldd /opt/oai-gnb/bin/nr-softmodem && \
+    echo "---- ldd on shared libraries ----" && \
+    ldd /usr/local/lib/librfsimulator.so \
+        /usr/local/lib/liboran_fhlib_5g.so \
+        /usr/local/lib/liboai_transpro.so \
+        /usr/local/lib/libcoding.so \
+        /usr/local/lib/libparams_libconfig.so \
+        /usr/local/lib/libdfts.so \
+        /usr/local/lib/libldpc*.so \
+        /usr/local/lib/libtelnetsrv.so \
+        /usr/local/lib/libtelnetsrv_ci.so \
+        /opt/phy/fhi_lib/lib/build/libxran.so
 
 WORKDIR /opt/oai-gnb
 COPY --from=gnb-base /tini /tini

@@ -105,6 +105,16 @@ int get_supported_band_index(int scs, frequency_range_t freq_range, int n_rbs)
   return (-1); // not found
 }
 
+int get_smallest_supported_bandwidth_index(int scs, frequency_range_t frequency_range, int n_rbs)
+{
+  int scs_index = scs + frequency_range;
+  for (int i = 0; i < 12; i++) {
+    if (n_rbs <= tables_5_3_2[scs_index][i])
+      return i;
+  }
+  return -1; // not found
+}
+
 // Table 5.2-1 NR operating bands in FR1 & FR2 (3GPP TS 38.101)
 // Table 5.4.2.3-1 Applicable NR-ARFCN per operating band in FR1 & FR2 (3GPP TS 38.101)
 // Notes:
@@ -299,65 +309,31 @@ void check_ssb_raster(uint64_t freq, int band, int scs)
               band);
 }
 
-int get_supported_bw_mhz(frequency_range_t frequency_range, int scs, int nb_rb)
+int get_supported_bw_mhz(frequency_range_t frequency_range, int bw_index)
 {
-  int bw_index = get_supported_band_index(scs, frequency_range, nb_rb);
   if (frequency_range == FR1) {
-    switch (bw_index) {
-      case 0 :
-        return 5; // 5MHz
-      case 1 :
-        return 10;
-      case 2 :
-        return 15;
-      case 3 :
-        return 20;
-      case 4 :
-        return 25;
-      case 5 :
-        return 30;
-      case 6 :
-        return 40;
-      case 7 :
-        return 50;
-      case 8 :
-        return 60;
-      case 9 :
-        return 80;
-      case 10 :
-        return 90;
-      case 11 :
-        return 100;
-      default :
-        AssertFatal(false, "Invalid band index for FR1 %d\n", bw_index);
-    }
-  }
-  else {
-    switch (bw_index) {
-      case 0 :
-        return 50; // 50MHz
-      case 1 :
-        return 100;
-      case 2 :
-        return 200;
-      case 3 :
-        return 400;
-      default :
-        AssertFatal(false, "Invalid band index for FR2 %d\n", bw_index);
-    }
+    int bandwidth_index_to_mhz[] = {5, 10, 15, 20, 25, 30, 40, 50, 60, 80, 90, 100};
+    AssertFatal(bw_index >= 0 && bw_index <= sizeofArray(bandwidth_index_to_mhz),
+                "Bandwidth index %d is invalid\n",
+                bw_index);
+    return bandwidth_index_to_mhz[bw_index];
+  } else {
+    int bandwidth_index_to_mhz[] = {50, 100, 200, 400};
+    AssertFatal(bw_index >= 0 && bw_index <= sizeofArray(bandwidth_index_to_mhz),
+                "Bandwidth index %d is invalid\n",
+                bw_index);
+    return bandwidth_index_to_mhz[bw_index];
   }
 }
 
-bool compare_relative_ul_channel_bw(int nr_band, int scs, int nb_ul, frame_type_t frame_type)
+bool compare_relative_ul_channel_bw(int nr_band, int scs, int channel_bandwidth, frame_type_t frame_type)
 {
   // 38.101-1 section 6.2.2
   // Relative channel bandwidth <= 4% for TDD bands and <= 3% for FDD bands
   int index = get_nr_table_idx(nr_band, scs);
-
-  int band_size_khz = get_supported_bw_mhz(nr_band > 256 ? FR2 : FR1, scs, nb_ul) * 1000;
   float limit = frame_type == TDD ? 0.04 : 0.03;
-  float rel_bw = (float) (2 * band_size_khz) / (float) (nr_bandtable[index].ul_max + nr_bandtable[index].ul_min);
-  return rel_bw <= limit;
+  float rel_bw = (float) (2 * channel_bandwidth * 1000) / (float) (nr_bandtable[index].ul_max - nr_bandtable[index].ul_min);
+  return rel_bw > limit;
 }
 
 uint16_t get_band(uint64_t downlink_frequency, int32_t delta_duplex)
@@ -389,7 +365,10 @@ uint16_t get_band(uint64_t downlink_frequency, int32_t delta_duplex)
   printf("DL frequency %"PRIu64": band %d, UL frequency %"PRIu64"\n",
         downlink_frequency, current_band, downlink_frequency+delta_duplex);
 
-  AssertFatal(current_band != 0, "Can't find EUTRA band for frequency %"PRIu64" and duplex_spacing %u\n", downlink_frequency, delta_duplex);
+  AssertFatal(current_band != 0,
+              "Can't find EUTRA band for frequency %" PRIu64 " and duplex_spacing %d\n",
+              downlink_frequency,
+              delta_duplex);
 
   return current_band;
 }
@@ -641,16 +620,9 @@ int get_dmrs_port(int nl, uint16_t dmrs_ports)
 
 frame_type_t get_frame_type(uint16_t current_band, uint8_t scs_index)
 {
-  frame_type_t current_type;
   int32_t delta_duplex = get_delta_duplex(current_band, scs_index);
-
-  if (delta_duplex == 0)
-    current_type = TDD;
-  else
-    current_type = FDD;
-
-  LOG_I(NR_MAC, "NR band %d, duplex mode %s, duplex spacing = %d KHz\n", current_band, duplex_mode[current_type], delta_duplex);
-
+  frame_type_t current_type = delta_duplex == 0 ? TDD : FDD;
+  LOG_D(NR_MAC, "NR band %d, duplex mode %s, duplex spacing = %d KHz\n", current_band, duplex_mode[current_type], delta_duplex);
   return current_type;
 }
 
@@ -661,7 +633,7 @@ int32_t get_delta_duplex(int nr_bandP, uint8_t scs_index)
 
   int32_t delta_duplex = (nr_bandtable[nr_table_idx].ul_min - nr_bandtable[nr_table_idx].dl_min);
 
-  LOG_I(NR_MAC, "NR band duplex spacing is %d KHz (nr_bandtable[%d].band = %d)\n", delta_duplex, nr_table_idx, nr_bandtable[nr_table_idx].band);
+  LOG_D(NR_MAC, "NR band duplex spacing is %d KHz (nr_bandtable[%d].band = %d)\n", delta_duplex, nr_table_idx, nr_bandtable[nr_table_idx].band);
 
   return delta_duplex;
 }
@@ -1030,13 +1002,13 @@ uint32_t get_ssb_offset_to_pointA(uint32_t absoluteFrequencySSB,
 static double get_start_freq(const double fc, const int nbRB, const int mu)
 {
   const int scs = MU_SCS(mu) * 1000;
-  return fc - (nbRB / 2 * NR_NB_SC_PER_RB * scs);
+  return fc - ((double)nbRB / 2 * NR_NB_SC_PER_RB * scs);
 }
 
 static double get_stop_freq(const double fc, const int nbRB, const int mu)
 {
   int scs = MU_SCS(mu) * 1000;
-  return fc + (nbRB / 2 * NR_NB_SC_PER_RB * scs);
+  return fc + ((double)nbRB / 2 * NR_NB_SC_PER_RB * scs);
 }
 
 static void compute_M_and_N(const int gscn, int *rM, int *rN)
@@ -1101,6 +1073,7 @@ static void find_gscn_to_scan(const double startFreq,
     *scanGscnStart = g;
     break;
   }
+  *scanGscnStop = *scanGscnStart;
 
   for (int g = gscn.last_gscn; g > gscn.first_gscn; g -= gscn.step_gscn) {
     const double centerSSBFreq = get_ssref_from_gscn(g);
@@ -1140,7 +1113,7 @@ int get_scan_ssb_first_sc(const double fc, const int nbRB, const int nrBand, con
   find_gscn_to_scan(startFreq, stopFreq, *tmpRaster, &scanGscnStart, &scanGscnStop);
 
   const double scs = MU_SCS(mu) * 1e3;
-  const double pointA = fc - (nbRB / 2 * scs * NR_NB_SC_PER_RB);
+  const double pointA = fc - ((double)nbRB / 2 * scs * NR_NB_SC_PER_RB);
   int numGscn = 0;
   for (int g = scanGscnStart; (g <= scanGscnStop) && (numGscn < MAX_GSCN_BAND); g += tmpRaster->step_gscn) {
     ssbInfo[numGscn].ssRef = get_ssref_from_gscn(g);

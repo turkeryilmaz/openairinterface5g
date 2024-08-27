@@ -24,6 +24,18 @@
 
 #include "mac_rrc_ul.h"
 
+static void f1_reset_du_initiated_direct(const f1ap_reset_t *reset)
+{
+  (void) reset;
+  AssertFatal(false, "%s() not implemented yet\n", __func__);
+}
+
+static void f1_reset_acknowledge_cu_initiated_direct(const f1ap_reset_ack_t *ack)
+{
+  (void) ack;
+  AssertFatal(false, "%s() not implemented yet\n", __func__);
+}
+
 static void f1_setup_request_direct(const f1ap_setup_req_t *req)
 {
   MessageDef *msg = itti_alloc_new_message(TASK_MAC_GNB, 0, F1AP_SETUP_REQ);
@@ -970,6 +982,8 @@ static void positioning_measurement_failure_indication(const f1ap_measurement_fa
 
 void mac_rrc_ul_direct_init(struct nr_mac_rrc_ul_if_s *mac_rrc)
 {
+  mac_rrc->f1_reset = f1_reset_du_initiated_direct;
+  mac_rrc->f1_reset_acknowledge = f1_reset_acknowledge_cu_initiated_direct;
   mac_rrc->f1_setup_request = f1_setup_request_direct;
   mac_rrc->gnb_du_configuration_update = gnb_du_configuration_update_direct;
   mac_rrc->ue_context_setup_response = ue_context_setup_response_direct;

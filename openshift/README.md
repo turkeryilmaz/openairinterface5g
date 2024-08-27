@@ -32,7 +32,7 @@ You first need to login. Do:
 oc login -u <username> -p <password> --server <url>
 ```
 
-Create a project/namespace where you will create your images 
+Create a project/namespace where you will create your images
 
 ```bash
 oc new-project oaicicd-ran
@@ -42,11 +42,15 @@ oc new-project oaicicd-ran
 
 ## RHEL9 Entitlements
 
-To build the RAN images, we use the `codeready-builder-for-rhel-9-x86_64-rpms` repository with all the proper development libraries. To access the library you will need `etc-pki-entitlement` inside the container image. 
+To build the RAN images, we use the `codeready-builder-for-rhel-9-x86_64-rpms`
+repository with all the proper development libraries. To access the library you
+will need `etc-pki-entitlement` inside the container image.
 
-To import `etc-pki-entitlement` in your project follow this [guide](https://docs.openshift.com/container-platform/4.14/cicd/builds/running-entitled-builds.html#builds-source-secrets-entitlements_running-entitled-builds) 
+To import `etc-pki-entitlement` in your project follow this
+[guide](https://docs.openshift.com/container-platform/4.14/cicd/builds/running-entitled-builds.html#builds-source-secrets-entitlements_running-entitled-builds)
 
-In case you have difficulties in following it then you can copy the certificates from an RHEL9 host 
+In case you have difficulties in following it then you can copy the
+certificates from an RHEL9 host
 
 ```bash
 oc create configmap rhsm-conf --from-file /etc/rhsm/rhsm.conf
