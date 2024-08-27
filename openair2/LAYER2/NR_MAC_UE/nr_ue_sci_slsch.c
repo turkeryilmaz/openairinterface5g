@@ -220,6 +220,7 @@ void fill_pssch_pscch_pdu(sl_nr_ue_mac_params_t *sl_mac_params,
   uint64_t *sci2_payload = (uint64_t *)nr_sl_pssch_pscch_pdu->sci2_payload;
   nr_sl_pssch_pscch_pdu->pscch_sci_payload_len = nr_sci_size(sl_res_pool,sci_pdu,format1);
   nr_sl_pssch_pscch_pdu->sci2_payload_len = nr_sci_size(sl_res_pool,sci2_pdu,format2);
+  nr_sl_pssch_pscch_pdu->harq_pid = sci2_pdu->harq_pid;
   int sci_size = nr_sl_pssch_pscch_pdu->pscch_sci_payload_len;
   int sci2_size = nr_sl_pssch_pscch_pdu->sci2_payload_len;
 
