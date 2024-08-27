@@ -41,7 +41,7 @@ int nr_ulsch_encoding_slot(PHY_VARS_NR_UE *ue,
                            uint8_t *harq_pids,
                            unsigned int *G)
 {
-  start_meas(&ue->ulsch_encoding_stats);
+  start_meas_nr_ue_phy(ue, ULSCH_ENCODING_STATS);
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_UE_ULSCH_ENCODING, VCD_FUNCTION_IN);
 
   notifiedFIFO_t nf;
@@ -107,7 +107,7 @@ int nr_ulsch_encoding_slot(PHY_VARS_NR_UE *ue,
     harq_process->BG = pusch_pdu->ldpcBaseGraph;
 
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_SEGMENTATION, VCD_FUNCTION_IN);
-    start_meas(&ue->ulsch_segmentation_stats);
+    start_meas_nr_ue_phy(ue, ULSCH_SEGMENTATION_STATS);
     TB_encoding_params->Kb = nr_segmentation(harq_process->payload_AB,
                                              harq_process->c,
                                              B,
@@ -125,7 +125,7 @@ int nr_ulsch_encoding_slot(PHY_VARS_NR_UE *ue,
       LOG_E(PHY, "nr_segmentation.c: too many segments %d, B %d\n", TB_encoding_params->C, B);
       return (-1);
     }
-    stop_meas(&ue->ulsch_segmentation_stats);
+    stop_meas_nr_ue_phy(ue, ULSCH_SEGMENTATION_STATS);
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_SEGMENTATION, VCD_FUNCTION_OUT);
     max_num_segments = max(max_num_segments, TB_encoding_params->C);
 
@@ -179,6 +179,6 @@ int nr_ulsch_encoding_slot(PHY_VARS_NR_UE *ue,
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_LDPC_ENCODER_OPTIM, VCD_FUNCTION_OUT);
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_UE_ULSCH_ENCODING, VCD_FUNCTION_OUT);
-  stop_meas(&ue->ulsch_encoding_stats);
+  stop_meas_nr_ue_phy(ue, ULSCH_LDPC_ENCODING_STATS);
   return 0;
 }
