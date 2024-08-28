@@ -260,7 +260,7 @@ int32_t nrLDPC_coding_init(void){
   paramdef_t LoaderParams[] = {
     {"segment_shlibversion", NULL, 0, .strptr = &segment_shlibversion, .defstrval = "", TYPE_STRING, 0, NULL}
   };
-  config_get(config_get_if(), LoaderParams, sizeofArray(LoaderParams), "nrLDPC_slot_demo");
+  config_get(config_get_if(), LoaderParams, sizeofArray(LoaderParams), "nrLDPC_coding_demo");
   load_LDPClib(segment_shlibversion, &ldpc_interface_demo);
 
   return 0;

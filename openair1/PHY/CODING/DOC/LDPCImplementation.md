@@ -228,7 +228,7 @@ shlib_path libldpc_slot_demo.so
 ```
 
 *Note: `libldpc_slot_demo.so` is just to showcase the slot coding interface and uses a segment coding library behind.*
-*The segment coding library is `libldpc.so` by default but it can be chosen with option `--nrLDPC_slot_demo.segment_shlibversion` followed by the library version - like with `--loder.ldpc.shlibversion` in the segment coding case above -*
+*The segment coding library is `libldpc.so` by default but it can be chosen with option `--nrLDPC_coding_demo.segment_shlibversion` followed by the library version - like with `--loder.ldpc.shlibversion` in the segment coding case above -*
 
 loading `libldpc_slot_t2.so` instead of `libldpc.so`:
 
