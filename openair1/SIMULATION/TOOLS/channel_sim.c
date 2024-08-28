@@ -19,26 +19,22 @@
  *      contact@openairinterface.org
  */
 
-#include <string.h>
-#include <math.h>
-#include <unistd.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <time.h>
-
-#include "SIMULATION/TOOLS/sim.h"
-#include "SIMULATION/RF/rf.h"
-#include "PHY/types.h"
-#include "PHY/defs_eNB.h"
-#include "PHY/phy_extern.h"
-#include "PHY/phy_extern_ue.h"
-
-#include "common/utils/LOG/log.h"
-#include "PHY_INTERFACE/phy_interface_extern.h"
-#include "UTIL/OPT/opt.h" // to test OPT
-#include "common/ran_context.h"
-
-#define RF
+#include <math.h>                       // for log10
+#include <pthread.h>                    // for pthread_mutex_lock, pthread_m...
+#include <stdint.h>                     // for int32_t, uint32_t, uint8_t
+#include <stdio.h>                      // for NULL
+#include <string.h>                     // for memset
+#include "PHY/TOOLS/tools_defs.h"       // for signal_energy_fp, dB_fixed
+#include "PHY/defs_RU.h"                // for RU_t_s, RU_COMMON
+#include "PHY/defs_UE.h"                // for PHY_VARS_UE, LTE_UE_COMMON
+#include "PHY/defs_common.h"            // for LTE_DL_FRAME_PARMS, OCM, LOG_D
+#include "PHY/phy_extern_ue.h"          // for PHY_vars_UE_g
+#include "SIMULATION/RF/rf.h"           // for dac_fixed_gain, adc, rf_rx_si...
+#include "SIMULATION/TOOLS/sim.h"       // for sim_t, channel_desc_t, multip...
+#include "assertions.h"                 // for AssertFatal
+#include "common/platform_constants.h"  // for UNUSED_VARIABLE
+#include "common/ran_context.h"         // for RAN_CONTEXT_t, RC
+#include "common/utils/T/T.h"           // for T_LEGACY_OCM_DEBUG
 
 //#define DEBUG_SIM 1
 

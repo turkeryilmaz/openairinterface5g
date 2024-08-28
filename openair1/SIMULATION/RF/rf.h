@@ -18,7 +18,7 @@
  * For more information about the OpenAirInterface (OAI) Software Alliance:
  *      contact@openairinterface.org
  */
-
+#include <stdint.h>  // for int32_t, uint8_t
 /** \brief Apply RF impairments to received signal
 @param r_re Double two-dimensional array of Real part of received signal
 @param r_im Double two-dimensional array of Imag part of received signal

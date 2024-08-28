@@ -28,30 +28,35 @@
  * When the opposite side switch from passive reading to active R+Write, the synchro is not fully deterministic
  */
 
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#include <arpa/inet.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <stdbool.h>
-#include <errno.h>
-#include <sys/epoll.h>
-#include <string.h>
-
-#include <common/utils/assertions.h>
-#include <common/utils/LOG/log.h>
-#include <common/utils/load_module_shlib.h>
-#include <common/utils/telnetsrv/telnetsrv.h>
-#include <common/config/config_userapi.h>
-#include "common_lib.h"
-#include <openair1/PHY/defs_eNB.h>
-#include "openair1/PHY/defs_UE.h"
 #define CHANNELMOD_DYNAMICLOAD
-#include <openair1/SIMULATION/TOOLS/sim.h>
-#include "rfsimulator.h"
+#include <arpa/inet.h>                         // for inet_addr
+#include <common/config/config_userapi.h>      // for config_get, config_par...
+#include <common/utils/LOG/log.h>              // for HW, LOG_E, LOG_D, LOG_I
+#include <common/utils/assertions.h>           // for AssertFatal
+#include <common/utils/load_module_shlib.h>    // for get_shlibmodule_fptr
+#include <common/utils/telnetsrv/telnetsrv.h>  // for cmdfunc_t, telnet_prin...
+#include <errno.h>                             // for errno, EAGAIN, EINTR
+#include <fcntl.h>                             // for fcntl, open, O_NONBLOCK
+#include <math.h>                              // for fabs, ceil
+#include <netinet/in.h>                        // for sockaddr_in, INADDR_ANY
+#include <openair1/SIMULATION/TOOLS/sim.h>     // for channel_desc_t, random...
+#include <pthread.h>                           // for pthread_mutex_lock
+#include <signal.h>                            // for signal, SIGPIPE, SIG_ERR
+#include <stdbool.h>                           // for false, true, bool
+#include <stdint.h>                            // for uint64_t, uint16_t
+#include <stdio.h>                             // for NULL, sscanf, ssize_t
+#include <stdlib.h>                            // for exit, free, calloc
+#include <string.h>                            // for memset, strcmp, memcpy
+#include <strings.h>                           // for strncasecmp
+#include <sys/epoll.h>                         // for epoll_event, epoll_ctl
+#include <sys/socket.h>                        // for setsockopt, socket
+#include <unistd.h>                            // for close, sleep, write
+#include "PHY/TOOLS/tools_defs.h"              // for signal_energy, c16_t
+#include "T.h"                                 // for T3, T_PUT_printf, T_he...
+#include "common/config/config_paramdesc.h"    // for paramdef_t, PARAMFLAG_...
+#include "common_lib.h"                        // for openair0_device, sampl...
+#include "rfsimulator.h"                       // for rxAddInput
+#include "utils.h"                             // for sizeofArray
 
 #define PORT 4043 //default TCP port for this simulator
 //

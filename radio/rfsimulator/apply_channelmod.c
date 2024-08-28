@@ -21,22 +21,14 @@
 *      contact@openairinterface.org
 */
 
-
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <stdbool.h>
-#include <errno.h>
-#include <complex.h>
-
-#include <common/utils/assertions.h>
-#include <common/utils/LOG/log.h>
-#include <common/config/config_userapi.h>
-#include <openair1/SIMULATION/TOOLS/sim.h>
-#include <common/utils/telnetsrv/telnetsrv.h>
-#include <common/utils/load_module_shlib.h>
-#include "rfsimulator.h"
+#include <common/utils/LOG/log.h>           // for HW, LOG_D, LOG_I
+#include <complex.h>                        // for cexp, cimag, creal, I
+#include <math.h>                           // for log10, sqrt, cos, lround
+#include <openair1/SIMULATION/TOOLS/sim.h>  // for channel_desc_t, gaussZigg...
+#include <stdint.h>                         // for int32_t, uint64_t, uint32_t
+#include "PHY/TOOLS/tools_defs.h"           // for complexd, signal_energy
+#include "T.h"                              // for T3, T_PUT_printf, T_header
+#include "rfsimulator.h"                    // for rxAddInput
 
 /*
   Legacy study:

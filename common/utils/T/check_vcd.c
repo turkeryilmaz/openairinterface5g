@@ -3,20 +3,16 @@
  * of the function 'main'.
  */
 
-#include <stdio.h>
-#include <string.h>
-#include <stdarg.h>
-
-#include "database.h"
-
-#define T_TRACER 1
-#include "T.h"
-
-/* VCD specific defines and includes
- * If the codebase changes, it may need to be updated
- */
+#include <stdarg.h>                    // for va_end, va_list, va_start
+#include <stdio.h>                     // for printf, NULL, getline, fclose
+#include <stdlib.h>                    // for free, exit, abort, EXIT_SUCCESS
+#include <string.h>                    // for strlen, strncmp, strcmp
 #define ENABLE_USE_CPU_EXECUTION_TIME
-#include "../LOG/vcd_signal_dumper.c"
+#include "../LOG/vcd_signal_dumper.c"  // for eurecomFunctionsNames, eurecom...
+#include "T_defs.h"                    // for VCD_NUM_FUNCTIONS, VCD_NUM_VAR...
+#include "common/platform_types.h"     // for exit_function
+#include "database.h"                  // for event_name_from_id, event_vcd_...
+
 
 /*
  * Dummy needed by assertions.h

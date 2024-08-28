@@ -19,12 +19,9 @@
  *      contact@openairinterface.org
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-#include <time.h>
-#include  "sim.h"
-
+#include <math.h>    // for sin, M_PI
+#include <stdint.h>  // for int16_t, uint16_t, int32_t, uint64_t
+#include "sim.h"     // for ResolSinCos, InitSinLUT, phase_noise
 
 static uint16_t LUTSin[ResolSinCos+1];
 /* linear phase noise model */

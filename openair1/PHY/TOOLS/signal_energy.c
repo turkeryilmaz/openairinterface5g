@@ -19,9 +19,14 @@
  *      contact@openairinterface.org
  */
 
-#include "tools_defs.h"
-#include "PHY/impl_defs_top.h"
-#include "PHY/sse_intrin.h"
+#include <limits.h>             // for SHRT_MIN
+#include <simde/x86/mmx.h>      // for simde__m64, simde_m_to_int, simde_mm_...
+#include <simde/x86/sse.h>      // for simde_mm_add_ps, simde_mm_setzero_ps
+#include <simde/x86/sse2.h>     // for simde_mm_cvtepi32_ps, simde__m128i
+#include <simde/x86/sse4.1.h>   // for simde_mm_cvtepi16_epi32, simde_mm_dp_ps
+#include <stdint.h>             // for int32_t, uint32_t, uint16_t
+#include "PHY/impl_defs_top.h"  // for AMP_SHIFT
+#include "tools_defs.h"         // for c16_t, complexd, interference_power
 
 // Compute Energy of a complex signal vector, removing the DC component!
 // input  : points to vector

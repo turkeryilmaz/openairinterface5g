@@ -19,14 +19,10 @@
  *      contact@openairinterface.org
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-#include <string.h>
-#include "nfapi_nr_interface_scf.h"
-#include "PHY/TOOLS/tools_defs.h"
-#include "SIMULATION/RF/rf.h"
-#include "sim.h"
+#include <math.h>                  // for sqrt, pow
+#include <stdint.h>                // for uint8_t, uint16_t, uint32_t, uint64_t
+#include "PHY/TOOLS/tools_defs.h"  // for complexd, c16_t
+#include "sim.h"                   // for channel_desc_t, gaussZiggurat, ran...
 
 //#define DEBUG_CH
 //#define DOPPLER_DEBUG

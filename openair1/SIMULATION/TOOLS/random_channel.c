@@ -19,27 +19,33 @@
  *      contact@openairinterface.org
  */
 
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <complex.h>
-
-
-#include "PHY/TOOLS/tools_defs.h"
-#include "sim.h"
-#include "scm_corrmat.h"
-#include "common/utils/LOG/log.h"
-#include "common/config/config_userapi.h"
-#include "common/utils/telnetsrv/telnetsrv.h"
-#include "common/utils/load_module_shlib.h"
-
+#include <complex.h>                           // for cexp, cimag, creal, I
+#include <limits.h>                            // for INT_MAX
+#include <math.h>                              // for M_PI, sqrt, log, pow, sin
+#include <simde/x86/sse2.h>                    // for simde__m128i
+#include <stdbool.h>                           // for false, true
+#include <stdint.h>                            // for uint8_t, uint16_t, uin...
+#include <stdio.h>                             // for NULL, snprintf, printf
+#include <stdlib.h>                            // for malloc, calloc, free
+#include <string.h>                            // for strcmp, memcpy, strdup
+#include <strings.h>                           // for bzero
+#include <time.h>                              // for clock_gettime, timespec
+#include "PHY/TOOLS/tools_defs.h"              // for complexd, cdMul, cd_t
+#include "PHY/defs_common.h"                   // for OCM, UTIL, map_int_to_str
+#include "assertions.h"                        // for AssertFatal, DevAssert
+#include "common/config/config_paramdesc.h"    // for paramdef_t, paramlist_...
+#include "common/config/config_userapi.h"      // for config_paramidx_fromname
+#include "common/utils/T/T.h"                  // for T_LEGACY_OCM_DEBUG
+#include "common/utils/load_module_shlib.h"    // for get_shlibmodule_fptr
+#include "common/utils/telnetsrv/telnetsrv.h"  // for webdatadef_t, acol_t
+#include "scm_corrmat.h"                       // for R22_sqrt, R12_sqrt
+#include "sim.h"                               // for channel_desc_t, gaussZ...
+#include "time_meas.h"                         // for reset_meas, stop_meas
+#include "utils.h"                             // for sizeofArray
 
 //#define DEBUG_CH
 //#define DEBUG_CH_POWER
 //#define DOPPLER_DEBUG
-
-#include "assertions.h"
 
 extern void print_shorts(char *s,simde__m128i *x);
 static mapping channelmod_names[] = {

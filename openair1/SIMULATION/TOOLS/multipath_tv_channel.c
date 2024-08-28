@@ -19,13 +19,11 @@
  *      contact@openairinterface.org
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-#include <string.h>
-#include "sim.h"
-#include "SIMULATION/RF/rf.h"
-#include <complex.h>
+#include <complex.h>  // for complex, cexp, cimag, creal, I
+#include <math.h>     // for sqrt, acos, cos, pow, M_PI
+#include <stdint.h>   // for uint32_t, uint64_t, uint8_t
+#include <stdlib.h>   // for free, malloc, calloc, rand, RAND_MAX
+#include "sim.h"      // for channel_desc_t, multipath_tv_channel
 
 void tv_channel(channel_desc_t *desc,double complex ***H,uint32_t length);
 double frand_a_b(double a, double b);

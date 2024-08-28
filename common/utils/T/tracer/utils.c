@@ -1,13 +1,14 @@
 #include "utils.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <pthread.h>
-#include <time.h>
-#include <unistd.h>
-#include <ctype.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <math.h>
+#include <arpa/inet.h>   // for inet_addr
+#include <ctype.h>       // for isprint
+#include <math.h>        // for floor, log10, pow, round
+#include <netinet/in.h>  // for sockaddr_in, htons, in_addr
+#include <pthread.h>     // for pthread_attr_destroy, pthread_attr_init, pth...
+#include <stdio.h>       // for perror, fprintf, printf, sprintf, NULL, stderr
+#include <stdlib.h>      // for exit, abort, calloc, free, realloc
+#include <sys/socket.h>  // for socket, AF_INET, accept, bind, connect, listen
+#include <time.h>        // for nanosleep, timespec
+#include <unistd.h>      // for close, read, sleep, write
 
 void new_thread(void *(*f)(void *), void *data) {
   pthread_t t;

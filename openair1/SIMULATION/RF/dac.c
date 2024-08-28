@@ -20,12 +20,12 @@
  */
 
 //#define DEBUG_DAC 1
-#include <math.h>
-#include <stdio.h>
-#include "PHY/TOOLS/tools_defs.h"
-#include "rf.h"
-#include "common/utils/LOG/log.h"
-
+#include <math.h>                  // for sqrt, pow
+#include <stdint.h>                // for uint32_t, int32_t, uint8_t
+#include <stdio.h>                 // for NULL
+#include "PHY/TOOLS/tools_defs.h"  // for signal_energy, signal_energy_fp
+#include "assertions.h"            // for AssertFatal
+#include "rf.h"                    // for dac, dac_fixed_gain
 
 void dac(double *s_re[2],
          double *s_im[2],

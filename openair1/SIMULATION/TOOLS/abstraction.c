@@ -19,15 +19,17 @@
  *      contact@openairinterface.org
  */
 
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <errno.h>
-
-#include "SIMULATION/TOOLS/sim.h"
-#include "PHY/TOOLS/tools_defs.h"
-#include "assertions.h"
+#include <errno.h>                 // for errno
+#include <math.h>                  // for pow, sqrt, log10, cos, sin, M_PI
+#include <stdint.h>                // for uint8_t, int16_t, uint16_t
+#include <stdio.h>                 // for printf, fprintf, fscanf, NULL, stderr
+#include <stdlib.h>                // for malloc, exit, strtod, EXIT_FAILURE
+#include <string.h>                // for strerror
+#include "PHY/TOOLS/tools_defs.h"  // for complexd
+#include "SIMULATION/TOOLS/sim.h"  // for channel_desc_t, NB_SAMPLES_CHANNEL...
+#include "assertions.h"            // for AssertFatal, DevAssert
+#include "time_meas.h"             // for start_meas, stop_meas
+#include "utils.h"                 // for free_and_zero
 
 // NEW code with lookup table for sin/cos based on delay profile (TO BE TESTED)
 

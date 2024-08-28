@@ -19,12 +19,14 @@
  *      contact@openairinterface.org
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-#include <time.h>
-
-#include  "sim.h"
+#include <errno.h>    // for errno
+#include <math.h>     // for exp, log, sqrt
+#include <stdbool.h>  // for true, bool, false
+#include <stdint.h>   // for uint32_t, INT32_MIN, int32_t
+#include <stdio.h>    // for fprintf, fclose, fopen, fread, printf, NULL
+#include <stdlib.h>   // for abort, abs, atoi, getenv
+#include <string.h>   // for strerror
+#include "sim.h"      // for fill_random, gaussZiggurat, gaussdouble, random...
 
 static unsigned int urseed, iy, ir[98]; /// uniformrandom
 static bool tableNordDone = false; /// gaussZiggurat
