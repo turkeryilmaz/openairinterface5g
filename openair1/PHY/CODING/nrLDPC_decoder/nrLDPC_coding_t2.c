@@ -937,9 +937,9 @@ int32_t nrLDPC_coding_init()
     {"dpdk_core_list", NULL, 0, .strptr = &dpdk_core_list, .defstrval = NULL, TYPE_STRING, 0, NULL},
     {"dpdk_file_prefix", NULL, 0, .strptr = &dpdk_file_prefix, .defstrval = "b6", TYPE_STRING, 0, NULL}
   };
-  config_get(config_get_if(), LoaderParams, sizeofArray(LoaderParams), "nrLDPC_slot_t2");
-  AssertFatal(dpdk_dev!=NULL, "nrLDPC_slot_t2.dpdk_dev was not provided");
-  AssertFatal(dpdk_core_list!=NULL, "nrLDPC_slot_t2.dpdk_core_list was not provided");
+  config_get(config_get_if(), LoaderParams, sizeofArray(LoaderParams), "nrLDPC_coding_t2");
+  AssertFatal(dpdk_dev!=NULL, "nrLDPC_coding_t2.dpdk_dev was not provided");
+  AssertFatal(dpdk_core_list!=NULL, "nrLDPC_coding_t2.dpdk_core_list was not provided");
   char *argv_re[] = {"bbdev", "-a", dpdk_dev, "-l", dpdk_core_list, "--file-prefix", dpdk_file_prefix, "--"};
   // EAL initialization, if already initialized (init in xran lib) try to probe DPDK device
   ret = rte_eal_init(sizeofArray(argv_re), argv_re);

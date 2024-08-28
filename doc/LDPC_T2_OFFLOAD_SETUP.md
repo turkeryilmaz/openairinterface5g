@@ -109,7 +109,7 @@ To configure T2-related DPDK Environment Abstraction Layer (EAL) parameters, you
 
 **Note:** These parameters can also be provided in a configuration file:
 ```
-nrLDPC_slot_t2 : {
+nrLDPC_coding_t2 : {
   dpdk_dev : "41:00.0";
   dpdk_core_list : "14-15";
 };
