@@ -526,6 +526,10 @@ void init_ws_task_manager(ws_task_manager_t* man, int* core_id, size_t num_threa
       rc = pthread_create(&man->t_arr[i], NULL, worker_thread, args);
       AssertFatal(rc == 0, "Error creating a thread");
     }
+
+    char name[64];
+    sprintf(name, "Tpool%ld_%d", i, core_id[i]);
+    pthread_setname_np(man->t_arr[i], name);
   }
 
   // Syncronize thread pool threads. All the threads started
