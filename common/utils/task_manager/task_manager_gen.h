@@ -46,7 +46,7 @@
 #elif THREAD_POOL_IMPLEMENTATION == THREAD_POOL_SINGLE_QUEUE
 
 /* Previous single queue OAI thread pool */
-#define task_manager_t tpool_t
+#define task_manager_t     tpool_t
 #define init_task_manager  init_sq_task_manager
 #define free_task_manager  free_sq_task_manager
 #define async_task_manager async_sq_task_manager
