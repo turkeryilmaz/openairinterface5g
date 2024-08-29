@@ -244,14 +244,17 @@ class StaticCodeAnalysis():
 		logDir = f'{lSourcePath}/cmake_targets/build_log_{self.testCase_id}'
 		cmd.run(f'mkdir -p {logDir}')
 		cmd.run('docker image rm oai-formatting-check:latest')
-		cmd.run(f'docker build --target oai-formatting-check --tag oai-formatting-check:latest {check_options} --file {lSourcePath}/ci-scripts/docker/Dockerfile.formatting.bionic {lSourcePath} > {logDir}/oai-formatting-check.txt 2>&1')
-
+		cmd.run(f'docker build --target oai-formatting-check --tag oai-formatting-check:latest {check_options} --file {lSourcePath}/ci-scripts/docker/Dockerfile.formatting.ubuntu22 {lSourcePath} > {logDir}/oai-formatting-check.txt 2>&1')
+		if self.ranAllowMerge:
+			clang_format_diff_cmd = f'git diff --unified=0 --no-color $(git merge-base {self.ranBranch} {self.ranTargetBranch if self.ranTargetBranch else "develop"})...{self.ranBranch} | clang-format-diff -p1'
+			cmd.run(f'docker run --rm oai-formatting-check:latest bash -c "{clang_format_diff_cmd}" > {logDir}/clang-format-check.txt 2>&1')
 		cmd.run('docker image rm oai-formatting-check:latest')
 		cmd.run('docker image prune --force')
 		cmd.run('docker volume prune --force')
 
 		# Analyzing the logs
 		cmd.copyin(f'{logDir}/oai-formatting-check.txt', 'oai-formatting-check.txt')
+		cmd.copyin(f'{logDir}/clang-format-check.txt', 'clang-format-check.txt')
 		cmd.close()
 
 		finalStatus = 0
@@ -355,5 +358,18 @@ class StaticCodeAnalysis():
 			finalStatus = -1
 			HTML.htmleNBFailureMsg = 'Could not access oai-formatting-check.txt file'
 			HTML.CreateHtmlTestRow('N/A', 'KO', CONST.ENB_PROCESS_NOLOGFILE_TO_ANALYZE)
+
+		if self.ranAllowMerge:
+			if (os.path.isfile('./clang-format-check.txt')):
+				num_lines = 0
+				with open('./clang-format-check.txt', 'r') as logfile:
+					for line in logfile:
+						num_lines += 1
+				if num_lines != 0:
+					HTML.CreateHtmlTestRowQueue('clang-format errors', 'OK', [f'non-emtpy error file: num lines {num_lines}'])
+			else:
+				finalStatus = -1
+				HTML.htmleNBFailureMsg = 'Could not access clang-format-check.txt file'
+				HTML.CreateHtmlTestRow('N/A', 'KO', CONST.ENB_PROCESS_NOLOGFILE_TO_ANALYZE)
 
 		return finalStatus
