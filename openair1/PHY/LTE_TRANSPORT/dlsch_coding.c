@@ -368,7 +368,7 @@ int dlsch_encoding(PHY_VARS_eNB *eNB,
     rdata->G=G;
 
     task_t t = {.func = TPencode, .args = rdata};
-    async_task_manager(proc->man, t);
+    async_task_manager(proc->thread_pool, t);
 
     int Qm=hadlsch->Qm;
     int C=hadlsch->C;
@@ -469,7 +469,7 @@ int dlsch_encoding_fembms_pmch(PHY_VARS_eNB *eNB,
     rdata->G=G;
 
     task_t t = {.func = TPencode, .args = rdata};
-    async_task_manager(proc->man, t);
+    async_task_manager(proc->thread_pool, t);
 
     int Qm=hadlsch->Qm;
     int C=hadlsch->C;

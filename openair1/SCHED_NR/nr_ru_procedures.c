@@ -348,7 +348,7 @@ void nr_feptx_tp(RU_t *ru, int frame_tx, int slot) {
         (ru->half_slot_parallelization > 0) ? ru->nr_frame_parms->symbols_per_slot >> 1 : ru->nr_frame_parms->symbols_per_slot;
 
     task_t t = {.func = nr_feptx, .args = feptx_cmd};
-    async_task_manager(&ru->man, t);
+    async_task_manager(&ru->thread_pool, t);
     nbfeptx++;
     if (ru->half_slot_parallelization > 0) {
       feptx_cmd_t *feptx_cmd = &arr[nbfeptx];
@@ -361,7 +361,7 @@ void nr_feptx_tp(RU_t *ru, int frame_tx, int slot) {
       feptx_cmd->numSymbols = ru->nr_frame_parms->symbols_per_slot >> 1;
 
       task_t t = {.func = nr_feptx, .args = feptx_cmd};
-      async_task_manager(&ru->man, t);
+      async_task_manager(&ru->thread_pool, t);
       nbfeptx++;
     }
   }
@@ -421,7 +421,7 @@ void nr_fep_tp(RU_t *ru, int slot) {
                                                                : (ru->nr_frame_parms->symbols_per_slot - 1);
 
     task_t t = {.func = nr_fep, .args = feprx_cmd};
-    async_task_manager(&ru->man, t);
+    async_task_manager(&ru->thread_pool, t);
     nbfeprx++;
     if (ru->half_slot_parallelization > 0) {
       feprx_cmd_t *feprx_cmd = &arr[nbfeprx];
@@ -434,7 +434,7 @@ void nr_fep_tp(RU_t *ru, int slot) {
       feprx_cmd->endSymbol = ru->nr_frame_parms->symbols_per_slot - 1;
 
       task_t t = {.func = nr_fep, .args = feprx_cmd};
-      async_task_manager(&ru->man, t);
+      async_task_manager(&ru->thread_pool, t);
 
       nbfeprx++;
     }

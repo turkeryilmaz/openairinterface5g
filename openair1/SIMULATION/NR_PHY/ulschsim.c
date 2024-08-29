@@ -417,7 +417,7 @@ int main(int argc, char **argv)
   //gNB_config = &gNB->gNB_config;
 
   int lst_core_id = -1;
-  init_task_manager(&gNB->man, &lst_core_id, 1);
+  init_task_manager(&gNB->thread_pool, &lst_core_id, 1);
 
   initNotifiedFIFO(&gNB->respDecode);
   frame_parms = &gNB->frame_parms; //to be initialized I suppose (maybe not necessary for PBCH)
@@ -639,7 +639,7 @@ int main(int argc, char **argv)
   free(gNB->gNB_config.tdd_table.max_tdd_periodicity_list);
 
   void (*clean)(task_t *args) = NULL;
-  free_task_manager(&gNB->man, clean);
+  free_task_manager(&gNB->thread_pool, clean);
 
   term_nr_ue_signal(UE, 1);
   free(UE);

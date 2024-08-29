@@ -363,7 +363,7 @@ void init_gNB_Tpool(int inst) {
   int core_id[128] = {0};
   span_core_id_t out = {.cap = 128, .core_id = core_id, .sz = 0};
   parse_num_threads(get_softmodem_params()->threadPoolConfig, &out);
-  init_task_manager(&gNB->man, out.core_id, out.sz);
+  init_task_manager(&gNB->thread_pool, out.core_id, out.sz);
 
   gNB_L1_proc_t *proc = &gNB->proc;
   // PUSCH symbols per thread need to be calculated by how many threads we have
@@ -410,7 +410,7 @@ void term_gNB_Tpool(int inst) {
   abortNotifiedFIFO(&gNB->L1_rx_out);
 
   void (*clean)(task_t *) = NULL;
-  free_task_manager(&gNB->man, clean);
+  free_task_manager(&gNB->thread_pool, clean);
 
   gNB_L1_proc_t *proc = &gNB->proc;
   if (!get_softmodem_params()->emulate_l1)

@@ -475,7 +475,7 @@ int nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
     rdata->tbslbrm = pusch_pdu->maintenance_parms_v3.tbSizeLbrmBytes;
 
     task_t t = {.func = &nr_processULSegment, .args = rdata};
-    async_task_manager(&phy_vars_gNB->man, t);
+    async_task_manager(&phy_vars_gNB->thread_pool, t);
 
     LOG_D(PHY, "Added a block to decode, in pipe: %d\n", r);
     r_offset += E;

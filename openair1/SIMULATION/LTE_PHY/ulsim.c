@@ -798,9 +798,9 @@ int main(int argc, char **argv) {
   proc_rxtx_ue->subframe_rx = (proc_rxtx->subframe_tx+6)%10;
 
   int lst_core_id = -1;
-  proc_rxtx->man = calloc(1, sizeof(task_manager_t));
-  AssertFatal(proc_rxtx->man != NULL, "Memory exhausted");
-  init_task_manager(proc_rxtx->man, &lst_core_id, 1);
+  proc_rxtx->thread_pool = calloc(1, sizeof(task_manager_t));
+  AssertFatal(proc_rxtx->thread_pool != NULL, "Memory exhausted");
+  init_task_manager(proc_rxtx->thread_pool, &lst_core_id, 1);
 
   proc_rxtx->respDecode = (notifiedFIFO_t *)malloc(sizeof(notifiedFIFO_t));
   initNotifiedFIFO(proc_rxtx->respDecode);

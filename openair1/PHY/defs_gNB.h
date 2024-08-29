@@ -701,7 +701,7 @@ typedef struct PHY_VARS_gNB_s {
   /// structure for analyzing high-level RT measurements
   rt_L1_profiling_t rt_L1_profiling;
 
-  task_manager_t man;
+  task_manager_t thread_pool;
 } PHY_VARS_gNB;
 
 struct puschSymbolReqId {

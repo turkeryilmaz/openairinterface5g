@@ -428,7 +428,7 @@ typedef enum {
 
 
 typedef struct RU_t_s {
-  task_manager_t man;
+  task_manager_t thread_pool;
   /// index of this ru
   uint32_t idx;
   /// pointer to first RU

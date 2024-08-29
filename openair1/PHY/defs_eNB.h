@@ -252,7 +252,7 @@ typedef struct {
   pthread_cond_t cond_RUs;
   /// mutex for RXn-TXnp4 processing thread
   pthread_mutex_t mutex_RUs;
-  task_manager_t *man; // non-owning ptr
+  task_manager_t *thread_pool; // non-owning ptr
   int nbDecode;
   notifiedFIFO_t *respDecode;
   pthread_mutex_t mutex_emulateRF;

@@ -1690,7 +1690,7 @@ int nr_rx_pusch_tp(PHY_VARS_gNB *gNB,
         nr_pusch_symbol_processing(rdata);
       } else {
         task_t t = {.func = &nr_pusch_symbol_processing, .args = rdata};
-        async_task_manager(&gNB->man, t);
+        async_task_manager(&gNB->thread_pool, t);
         nbSymb++;
       }
 

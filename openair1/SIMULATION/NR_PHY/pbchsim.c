@@ -512,7 +512,7 @@ int main(int argc, char **argv)
   int core_id[ssb_scan_threads];
   for (int i = 0; i < ssb_scan_threads; i++)
     core_id[i] = -1;
-  init_task_manager(&nrUE_params.man, core_id, ssb_scan_threads);
+  init_task_manager(&nrUE_params.thread_pool, core_id, ssb_scan_threads);
 
   int n_hf = 0;
   int cyclic_prefix_type = NFAPI_CP_NORMAL;
@@ -899,7 +899,7 @@ int main(int argc, char **argv)
   }
 
   void (*clean)(task_t *) = NULL;
-  free_task_manager(&nrUE_params.man, clean);
+  free_task_manager(&nrUE_params.thread_pool, clean);
 
   free(s_re);
   free(s_im);

@@ -406,7 +406,7 @@ int nr_dlsch_encoding(PHY_VARS_gNB *gNB,
       perJobImpp->ans = &ans[j];
 
       task_t t = {.func = ldpc8blocks, .args = perJobImpp};
-      async_task_manager(&gNB->man, t);
+      async_task_manager(&gNB->thread_pool, t);
     }
 
     join_task_ans(ans, n_seg);

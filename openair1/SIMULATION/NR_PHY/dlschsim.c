@@ -384,11 +384,11 @@ int main(int argc, char **argv)
   int core_id[128] = {0};
   span_core_id_t out = {.cap = 128, .core_id = core_id};
   parse_num_threads(gNBthreads, &out);
-  init_task_manager(&gNB->man, out.core_id, out.sz);
+  init_task_manager(&gNB->thread_pool, out.core_id, out.sz);
 
   int lst_core_id[8] = {-1, -1, -1, -1, -1, -1, -1, -1};
   DevAssert(dlsch_threads < 8);
-  init_task_manager(&nrUE_params.man, lst_core_id, max(dlsch_threads, 1));
+  init_task_manager(&nrUE_params.thread_pool, lst_core_id, max(dlsch_threads, 1));
 
   frame_parms = &gNB->frame_parms; // to be initialized I suppose (maybe not necessary for PBCH)
   frame_parms->nb_antennas_tx = n_tx;
@@ -670,8 +670,8 @@ int main(int argc, char **argv)
   free(gNB->gNB_config.tdd_table.max_tdd_periodicity_list);
 
   void (*clean)(task_t *) = NULL;
-  free_task_manager(&nrUE_params.man, clean);
-  free_task_manager(&gNB->man, clean);
+  free_task_manager(&nrUE_params.thread_pool, clean);
+  free_task_manager(&gNB->thread_pool, clean);
 
   phy_free_nr_gNB(gNB);
   free(RC.gNB[0]);

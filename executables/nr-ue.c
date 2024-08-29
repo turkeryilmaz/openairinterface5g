@@ -892,7 +892,7 @@ void *UE_thread(void *arg)
       memset(&syncMsg->proc, 0, sizeof(syncMsg->proc));
       syncMsg->elt = Msg;
       task_t t = {.func = UE_synch, .args = syncMsg};
-      async_task_manager(&(get_nrUE_params()->man), t);
+      async_task_manager(&(get_nrUE_params()->thread_pool), t);
 
       trashed_frames = 0;
       syncRunning = true;
@@ -1020,7 +1020,7 @@ void *UE_thread(void *arg)
     if (ret != INT_MAX)
       shiftForNextFrame = ret;
     task_t t = {.func = UE_dl_processing, .args = curMsgRx};
-    async_task_manager(&(get_nrUE_params()->man), t);
+    async_task_manager(&(get_nrUE_params()->thread_pool), t);
 
     // Start TX slot processing here. It runs in parallel with RX slot processing
     // in current code, DURATION_RX_TO_TX constant is the limit to get UL data to encode from a RX slot
@@ -1036,7 +1036,7 @@ void *UE_thread(void *arg)
     tx_wait_for_dlsch[curMsgTx->proc.nr_slot_tx] = 0;
     curMsgTx->elt = newTx;
     t = (task_t){.func = processSlotTX, .args = curMsgTx};
-    async_task_manager(&(get_nrUE_params()->man), t);
+    async_task_manager(&(get_nrUE_params()->thread_pool), t);
   }
 
   return NULL;

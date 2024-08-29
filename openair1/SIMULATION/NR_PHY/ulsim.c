@@ -569,7 +569,7 @@ int main(int argc, char *argv[])
     lst_core_id[i] = -1;
   }
   DevAssert(threadCnt < max_cid);
-  init_task_manager(&gNB->man, lst_core_id, max(threadCnt, 1));
+  init_task_manager(&gNB->thread_pool, lst_core_id, max(threadCnt, 1));
 
   initNotifiedFIFO(&gNB->respDecode);
 

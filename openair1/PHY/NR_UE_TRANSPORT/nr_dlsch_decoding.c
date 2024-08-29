@@ -452,7 +452,7 @@ uint32_t nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
     reset_meas(&rdata->ts_ldpc_decode);
 
     task_t t = {.args = rdata, .func = nr_processDLSegment};
-    async_task_manager(&get_nrUE_params()->man, t);
+    async_task_manager(&get_nrUE_params()->thread_pool, t);
     LOG_D(PHY, "Added a block to decode, in pipe: %d\n", r);
     r_offset += E;
     offset += (Kr_bytes - (harq_process->F>>3) - ((harq_process->C>1)?3:0));

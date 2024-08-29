@@ -866,7 +866,7 @@ int main(int argc, char **argv)
 
   int lst_core_id[8] = {-1, -1, -1, -1, -1, -1, -1, -1};
   DevAssert(dlsch_threads < 9);
-  init_task_manager(&nrUE_params.man, lst_core_id, max(1, dlsch_threads));
+  init_task_manager(&nrUE_params.thread_pool, lst_core_id, max(1, dlsch_threads));
 
   test_input_bit = (unsigned char *)malloc16(sizeof(unsigned char) * 16 * 68 * 384);
   estimated_output_bit = (unsigned char *) malloc16(sizeof(unsigned char) * 16 * 68 * 384);
@@ -898,7 +898,7 @@ int main(int argc, char **argv)
   int core_id[128] = {0};
   span_core_id_t out = {.cap = 128, .core_id = core_id};
   parse_num_threads(gNBthreads, &out);
-  init_task_manager(&gNB->man, out.core_id, out.sz);
+  init_task_manager(&gNB->thread_pool, out.core_id, out.sz);
 
   initNotifiedFIFO(&gNB->L1_tx_free);
   initNotifiedFIFO(&gNB->L1_tx_filled);
@@ -1283,8 +1283,8 @@ int main(int argc, char **argv)
   }
 
   void (*clean)(task_t *) = NULL;
-  free_task_manager(&nrUE_params.man, clean);
-  free_task_manager(&gNB->man, clean);
+  free_task_manager(&nrUE_params.thread_pool, clean);
+  free_task_manager(&gNB->thread_pool, clean);
 
   free(s_re);
   free(s_im);

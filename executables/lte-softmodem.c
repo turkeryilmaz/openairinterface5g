@@ -545,21 +545,21 @@ int main ( int argc, char **argv )
       L1_rxtx_proc_t *L1proctx = &RC.eNB[x][CC_id]->proc.L1_proc_tx;
       L1proc->respDecode=(notifiedFIFO_t*) malloc(sizeof(notifiedFIFO_t));
       if (strlen(get_softmodem_params()->threadPoolConfig) > 0) {
-        L1proc->man = calloc(1, sizeof(task_manager_t));
-        AssertFatal(L1proc->man != NULL, "Memory exhausted");
+        L1proc->thread_pool = calloc(1, sizeof(task_manager_t));
+        AssertFatal(L1proc->thread_pool != NULL, "Memory exhausted");
 
         int core_id[128] = {0};
         span_core_id_t out = {.cap = 128, .core_id = core_id};
         parse_num_threads(get_softmodem_params()->threadPoolConfig, &out);
-        init_task_manager(L1proc->man, out.core_id, out.sz);
+        init_task_manager(L1proc->thread_pool, out.core_id, out.sz);
       } else {
-        L1proc->man = calloc(1, sizeof(task_manager_t));
-        AssertFatal(L1proc->man != NULL, "Memory exhausted");
+        L1proc->thread_pool = calloc(1, sizeof(task_manager_t));
+        AssertFatal(L1proc->thread_pool != NULL, "Memory exhausted");
         int lst_core_id = -1;
-        init_task_manager(L1proc->man, &lst_core_id, 1);
+        init_task_manager(L1proc->thread_pool, &lst_core_id, 1);
       }
       initNotifiedFIFO(L1proc->respDecode);
-      L1proctx->man = L1proc->man;
+      L1proctx->thread_pool = L1proc->thread_pool;
     }
 
   printf("wait_eNBs()\n");

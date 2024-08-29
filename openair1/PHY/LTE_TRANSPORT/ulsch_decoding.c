@@ -366,7 +366,7 @@ static int ulsch_decoding_data(PHY_VARS_eNB *eNB,
     int sz=Kr_bytes - Fbytes - ((ulsch_harq->C>1)?3:0);
 
     task_t t = {.func = &processULSegment, .args = rdata};
-    async_task_manager(proc->man, t);
+    async_task_manager(proc->thread_pool, t);
 
     proc->nbDecode++;
     LOG_D(PHY,"Added a block to decode, in pipe: %d\n",proc->nbDecode);

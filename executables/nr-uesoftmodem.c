@@ -413,7 +413,7 @@ int main(int argc, char **argv)
   int core_id[128] = {0};
   span_core_id_t out = {.cap = 128, .core_id = core_id};
   parse_num_threads(get_softmodem_params()->threadPoolConfig, &out);
-  init_task_manager(&nrUE_params.man, out.core_id, out.sz);
+  init_task_manager(&nrUE_params.thread_pool, out.core_id, out.sz);
   //randominit (0);
   set_taus_seed (0);
 

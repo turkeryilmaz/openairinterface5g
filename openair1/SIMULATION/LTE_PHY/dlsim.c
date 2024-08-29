@@ -590,7 +590,7 @@ int main(int argc, char **argv) {
   nfapi_tx_request_t TX_req;
   Sched_Rsp_t sched_resp;
   int pa=dB0;
-  task_manager_t man = {0};
+  task_manager_t thread_pool = {0};
   cpu_freq_GHz = get_cpu_freq_GHz();
   printf("Detected cpu_freq %f GHz\n",cpu_freq_GHz);
   memset((void *)&sched_resp,0,sizeof(sched_resp));
@@ -1268,8 +1268,8 @@ int main(int argc, char **argv) {
   initNotifiedFIFO(proc_eNB->respDecode);
 
   int lst_core_id = -1;
-  init_task_manager(&man, &lst_core_id, 1);
-  proc_eNB->man = &man;
+  init_task_manager(&thread_pool, &lst_core_id, 1);
+  proc_eNB->thread_pool = &thread_pool;
 
   proc_eNB->frame_tx=0;
 
