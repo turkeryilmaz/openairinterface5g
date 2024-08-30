@@ -41,7 +41,7 @@ import cls_cmd
 IMAGE_REGISTRY_SERVICE_NAME = "image-registry.openshift-image-registry.svc"
 NAMESPACE = "oaicicd-ran"
 OCUrl = "https://api.oai.cs.eurecom.fr:6443"
-OCRegistry = "default-route-openshift-image-registry.apps.oai.cs.eurecom.fr/"
+OCRegistry = "default-route-openshift-image-registry.apps.oai.cs.eurecom.fr"
 CI_OC_RAN_NAMESPACE = "oaicicd-ran"
 CN_IMAGES = ["mysql", "oai-nrf", "oai-amf", "oai-smf", "oai-upf", "oai-ausf", "oai-udm", "oai-udr", "oai-traffic-server"]
 CN_CONTAINERS = ["", "-c nrf", "-c amf", "-c smf", "-c upf", "-c ausf", "-c udm", "-c udr", ""]
@@ -118,8 +118,8 @@ class Cluster:
 		self.OCUserName = ""
 		self.OCPassword = ""
 		self.OCProjectName = ""
-		self.OCUrl = "https://api.oai.cs.eurecom.fr:6443"
-		self.OCRegistry = "default-route-openshift-image-registry.apps.oai.cs.eurecom.fr/"
+		self.OCUrl = OCUrl
+		self.OCRegistry = OCRegistry
 		self.ranRepository = ""
 		self.ranBranch = ""
 		self.ranCommitID = ""
@@ -261,7 +261,7 @@ class Cluster:
 			HTML.CreateHtmlTestRow('N/A', 'KO', CONST.OC_LOGIN_FAIL)
 			return False
 		for image in self.imageToPull:
-			imagePrefix = f'{self.OCRegistry}{CI_OC_RAN_NAMESPACE}'
+			imagePrefix = f'{self.OCRegistry}/{CI_OC_RAN_NAMESPACE}'
 			imageTag = cls_containerize.ImageTagToUse(image, self.ranCommitID, self.ranBranch, self.ranAllowMerge)
 			ret = cmd.run(f'docker pull {imagePrefix}/{imageTag}')
 			if ret.returncode != 0:
