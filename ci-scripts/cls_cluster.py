@@ -51,8 +51,8 @@ def OC_login(cmd, ocUserName, ocPassword, ocProjectName):
 	if ocUserName == '' or ocPassword == '' or ocProjectName == '':
 		HELP.GenericHelp(CONST.Version)
 		sys.exit('Insufficient Parameter: no OC Credentials')
-	if OCRegistry.startswith("http") and not self.OCRegistry.endswith("/"):
-		sys.exit(f'ocRegistry {OCRegistry} should not start with http:// or https:// and end on a slash /')
+	if OCRegistry.startswith("http") or OCRegistry.endswith("/"):
+		sys.exit(f'ocRegistry {OCRegistry} should not start with http:// or https:// and not end on a slash /')
 	ret = cmd.run(f'oc login -u {ocUserName} -p {ocPassword} --server {OCUrl}')
 	if ret.returncode != 0:
 		logging.error('\u001B[1m OC Cluster Login Failed\u001B[0m')
@@ -248,6 +248,7 @@ class Cluster:
 		logging.debug(f'Pull OC image {self.imageToPull} to server {self.testSvrId}')
 		self.testCase_id = HTML.testCase_id
 		cmd = cls_cmd.getConnection(self.testSvrId)
+		logging.info(cmd.run('docker --version'))
 		succeeded = OC_login(cmd, self.OCUserName, self.OCPassword, CI_OC_RAN_NAMESPACE)
 		if not succeeded:
 			logging.error('\u001B[1m OC Cluster Login Failed\u001B[0m')
@@ -291,8 +292,8 @@ class Cluster:
 		if ocUserName == '' or ocPassword == '' or ocProjectName == '':
 			HELP.GenericHelp(CONST.Version)
 			sys.exit('Insufficient Parameter: no OC Credentials')
-		if self.OCRegistry.startswith("http") and not self.OCRegistry.endswith("/"):
-			sys.exit(f'ocRegistry {self.OCRegistry} should not start with http:// or https:// and end on a slash /')
+		if self.OCRegistry.startswith("http") or self.OCRegistry.endswith("/"):
+			sys.exit(f'ocRegistry {self.OCRegistry} should not start with http:// or https:// and not end on a slash /')
 
 		logging.debug(f'Building on cluster triggered from server: {lIpAddr}')
 		self.cmd = cls_cmd.RemoteCmd(lIpAddr)
