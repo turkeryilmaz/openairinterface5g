@@ -503,7 +503,16 @@ int main(int argc, char **argv)
   set_tdd_config_nr(&gNB->gNB_config, mu, 7, 6, 2, 4);
   phy_init_nr_gNB(gNB);
   frame_parms->ssb_start_subcarrier = 12 * gNB->gNB_config.ssb_table.ssb_offset_point_a.value + ssb_subcarrier_offset;
-  initFloatingCoresTpool(ssb_scan_threads, &nrUE_params.Tpool, false, "UE-tpool");
+
+  if (ssb_scan_threads <= 0) {
+    LOG_W(PHY, "ssb_scan_threads is %d, should be > 0, setting it to 1\n", ssb_scan_threads);
+    ssb_scan_threads = 1;
+  }
+
+  int core_id[ssb_scan_threads];
+  for (int i = 0; i < ssb_scan_threads; i++)
+    core_id[i] = -1;
+  init_task_manager(&nrUE_params.thread_pool, core_id, ssb_scan_threads);
 
   int n_hf = 0;
   int cyclic_prefix_type = NFAPI_CP_NORMAL;
@@ -888,6 +897,9 @@ int main(int argc, char **argv)
     free(r_im[i]);
     free(txdata[i]);
   }
+
+  void (*clean)(task_t *) = NULL;
+  free_task_manager(&nrUE_params.thread_pool, clean);
 
   free(s_re);
   free(s_im);

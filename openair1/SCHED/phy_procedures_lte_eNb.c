@@ -41,6 +41,7 @@
 #include <common/utils/system.h>
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include <nfapi/oai_integration/nfapi_pnf.h>
+#include "common/utils/task_manager/task_manager_gen.h"
 
 #include "assertions.h"
 
@@ -457,7 +458,7 @@ void phy_procedures_eNB_TX(PHY_VARS_eNB *eNB,
 
   // clear the transmit data array for the current subframe
   for (int aa = 0; aa < fp->nb_antenna_ports_eNB; aa++) {
-    if (eNB->use_DTX==0) 
+    if (eNB->use_DTX == 0)
       memcpy(&eNB->common_vars.txdataF[aa][subframe * fp->ofdm_symbol_size * (fp->symbols_per_tti)],
 	     &eNB->subframe_mask[aa][subframe*fp->ofdm_symbol_size*fp->symbols_per_tti],
 	     fp->ofdm_symbol_size * (fp->symbols_per_tti) * sizeof (int32_t));
@@ -679,7 +680,7 @@ void fill_sr_indication(int UEid, PHY_VARS_eNB *eNB,uint16_t rnti,int frame,int 
   pthread_mutex_lock(&eNB->UL_INFO_mutex);
   nfapi_sr_indication_t       *sr_ind =         &eNB->UL_INFO.sr_ind;
   nfapi_sr_indication_body_t  *sr_ind_body =    &sr_ind->sr_indication_body;
-  assert(sr_ind_body->number_of_srs <= NFAPI_SR_IND_MAX_PDU);
+  DevAssert(sr_ind_body->number_of_srs <= NFAPI_SR_IND_MAX_PDU);
   nfapi_sr_indication_pdu_t *pdu =   &sr_ind_body->sr_pdu_list[sr_ind_body->number_of_srs];
   sr_ind->sfn_sf = frame<<4|subframe;
   sr_ind->header.message_id = NFAPI_RX_SR_INDICATION;
@@ -723,7 +724,7 @@ uci_procedures(PHY_VARS_eNB *eNB,
   LTE_DL_FRAME_PARMS *fp = &(eNB->frame_parms);
 
   calc_pucch_1x_interference(eNB, frame, subframe, 0);
-  
+
   for (int i = 0; i < NUMBER_OF_UCI_MAX; i++) {
     uci = &(eNB->uci_vars[i]);
 
@@ -1232,14 +1233,12 @@ uci_procedures(PHY_VARS_eNB *eNB,
   } // end loop for (int i = 0; i < NUMBER_OF_UCI_MAX; i++) {
 }
 
-void postDecode(L1_rxtx_proc_t *proc, notifiedFIFO_elt_t *req)
+void postDecode(L1_rxtx_proc_t *proc, turboDecode_t *rdata)
 {
-  turboDecode_t * rdata=(turboDecode_t *) NotifiedFifoData(req);
-
   LTE_eNB_ULSCH_t *ulsch = rdata->eNB->ulsch[rdata->UEid];
   LTE_UL_eNB_HARQ_t *ulsch_harq = rdata->ulsch_harq;
   PHY_VARS_eNB *eNB=rdata->eNB;
-    
+
   bool decodeSucess=rdata->decodeIterations <= rdata->maxIterations;
   ulsch_harq->processedSegments++;
   LOG_D(PHY, "processing result of segment: %d, ue %d, processed %d/%d\n",
@@ -1282,7 +1281,7 @@ void postDecode(L1_rxtx_proc_t *proc, notifiedFIFO_elt_t *req)
 	      ulsch->Mlimit,
 	      ulsch_harq->o_ACK[0],
 	      ulsch_harq->o_ACK[1]);
-	  
+
 	if (ulsch_harq->round >= 3)  {
 	  ulsch_harq->status  = SCH_IDLE;
 	  ulsch_harq->handled = 0;
@@ -1330,9 +1329,13 @@ void pusch_procedures(PHY_VARS_eNB *eNB,L1_rxtx_proc_t *proc) {
   const int frame    = proc->frame_rx;
   uint32_t harq_pid0 = subframe2harq_pid(&eNB->frame_parms,frame,subframe);
 
+  turboDecode_t arr[64] = {0};
+  task_ans_t ans[64] = {0};
+  thread_info_tm_t t_info = {.ans = ans, .cap = 64, .len = 0, .buf = (uint8_t *)arr};
+
   for (i = 0; i < NUMBER_OF_ULSCH_MAX; i++) {
     ulsch = eNB->ulsch[i];
-    if (!ulsch) continue; 
+    if (!ulsch) continue;
 
     if (ulsch->ue_type > 0) harq_pid = 0;
     else harq_pid=harq_pid0;
@@ -1387,7 +1390,8 @@ void pusch_procedures(PHY_VARS_eNB *eNB,L1_rxtx_proc_t *proc) {
                      i,
                      0, // control_only_flag
                      ulsch_harq->V_UL_DAI,
-                     ulsch_harq->nb_rb > 20 ? 1 : 0);
+                     ulsch_harq->nb_rb > 20 ? 1 : 0,
+                     &t_info);
     }
     else if ((ulsch) &&
              (ulsch->rnti>0) &&
@@ -1404,14 +1408,12 @@ void pusch_procedures(PHY_VARS_eNB *eNB,L1_rxtx_proc_t *proc) {
   }   //   for (i=0; i<NUMBER_OF_ULSCH_MAX; i++)
 
   const bool decode = proc->nbDecode;
-  while (proc->nbDecode > 0) {
-    notifiedFIFO_elt_t *req=pullTpool(proc->respDecode, proc->threadPool);
-    if (req == NULL)
-      break; // Tpool has been stopped
-    postDecode(proc, req);
-    const time_stats_t ts = exec_time_stats_NotifiedFIFO(req);
-    merge_meas(&eNB->ulsch_turbo_decoding_stats, &ts);
-    delNotifiedFIFO_elt(req);
+  DevAssert(t_info.len == proc->nbDecode);
+  if (proc->nbDecode > 0) {
+    join_task_ans(t_info.ans, t_info.len);
+    for (size_t i = 0; i < t_info.len; ++i) {
+      postDecode(proc, &arr[i]);
+    }
   }
   if (decode)
     stop_meas(&eNB->ulsch_decoding_stats);
@@ -1437,7 +1439,7 @@ void fill_rx_indication(PHY_VARS_eNB *eNB,
   pthread_mutex_lock(&eNB->UL_INFO_mutex);
   eNB->UL_INFO.rx_ind.sfn_sf                    = frame<<4| subframe;
   eNB->UL_INFO.rx_ind.rx_indication_body.tl.tag = NFAPI_RX_INDICATION_BODY_TAG;
-  assert(eNB->UL_INFO.rx_ind.rx_indication_body.number_of_pdus <= NFAPI_RX_IND_MAX_PDU);
+  DevAssert(eNB->UL_INFO.rx_ind.rx_indication_body.number_of_pdus <= NFAPI_RX_IND_MAX_PDU);
   pdu                                    = &eNB->UL_INFO.rx_ind.rx_indication_body.rx_pdu_list[eNB->UL_INFO.rx_ind.rx_indication_body.number_of_pdus];
   //  pdu->rx_ue_information.handle          = eNB->ulsch[ULSCH_id]->handle;
   pdu->rx_ue_information.tl.tag          = NFAPI_RX_UE_INFORMATION_TAG;
@@ -1445,18 +1447,18 @@ void fill_rx_indication(PHY_VARS_eNB *eNB,
   pdu->rx_indication_rel8.tl.tag         = NFAPI_RX_INDICATION_REL8_TAG;
   pdu->rx_indication_rel8.length         = eNB->ulsch[ULSCH_id]->harq_processes[harq_pid]->TBS>>3;
   pdu->rx_indication_rel8.offset         = 1;   // DJP - I dont understand - but broken unless 1 ????  0;  // filled in at the end of the UL_INFO formation
-  assert(pdu->rx_indication_rel8.length <= NFAPI_RX_IND_DATA_MAX);
+  DevAssert(pdu->rx_indication_rel8.length <= NFAPI_RX_IND_DATA_MAX);
   memcpy(pdu->rx_ind_data,
          eNB->ulsch[ULSCH_id]->harq_processes[harq_pid]->decodedBytes,
          pdu->rx_indication_rel8.length);
 
   // estimate timing advance for MAC
   sync_pos                               = lte_est_timing_advance_pusch(&eNB->frame_parms, eNB->pusch_vars[ULSCH_id]->drs_ch_estimates_time);
-  timing_advance_update                  = sync_pos; 
+  timing_advance_update = sync_pos;
 
-  for (int i=0;i<NUMBER_OF_SCH_STATS_MAX;i++) 
-      if (eNB->ulsch_stats[i].rnti == eNB->ulsch[ULSCH_id]->rnti) 
-         eNB->ulsch_stats[i].timing_offset = sync_pos;
+  for (int i = 0; i < NUMBER_OF_SCH_STATS_MAX; i++)
+    if (eNB->ulsch_stats[i].rnti == eNB->ulsch[ULSCH_id]->rnti)
+      eNB->ulsch_stats[i].timing_offset = sync_pos;
   //  if (timing_advance_update > 10) { dump_ulsch(eNB,frame,subframe,ULSCH_id); exit(-1);}
   //  if (timing_advance_update < -10) { dump_ulsch(eNB,frame,subframe,ULSCH_id); exit(-1);}
   switch (eNB->frame_parms.N_RB_DL) {
@@ -1497,14 +1499,13 @@ void fill_rx_indication(PHY_VARS_eNB *eNB,
     timing_advance_update = 63;
 
   pdu->rx_indication_rel8.timing_advance = timing_advance_update;
-  // estimate UL_CQI for MAC 
-  int total_power=0, avg_noise_power=0;  
+  // estimate UL_CQI for MAC
+  int total_power = 0, avg_noise_power = 0;
   for (int i=0;i<eNB->frame_parms.nb_antennas_rx;i++) {
      total_power+=(eNB->pusch_vars[ULSCH_id]->ulsch_power[i]);
      avg_noise_power+=(eNB->pusch_vars[ULSCH_id]->ulsch_noise_power[i])/eNB->frame_parms.nb_antennas_rx;
   }
-  int SNRtimes10 = dB_fixed_x10(total_power) - 
-                   dB_fixed_x10(avg_noise_power);
+  int SNRtimes10 = dB_fixed_x10(total_power) - dB_fixed_x10(avg_noise_power);
 
   if (SNRtimes10 < -640)
     pdu->rx_indication_rel8.ul_cqi = 0;
@@ -1694,7 +1695,7 @@ int getM(PHY_VARS_eNB *eNB,int frame,int subframe) {
 
 void fill_ulsch_cqi_indication (PHY_VARS_eNB *eNB, uint16_t frame, uint8_t subframe, LTE_UL_eNB_HARQ_t *ulsch_harq, uint16_t rnti) {
   pthread_mutex_lock (&eNB->UL_INFO_mutex);
-  assert(eNB->UL_INFO.cqi_ind.cqi_indication_body.number_of_cqis <= NFAPI_CQI_IND_MAX_PDU);
+  DevAssert(eNB->UL_INFO.cqi_ind.cqi_indication_body.number_of_cqis <= NFAPI_CQI_IND_MAX_PDU);
   nfapi_cqi_indication_pdu_t *pdu         = &eNB->UL_INFO.cqi_ind.cqi_indication_body.cqi_pdu_list[eNB->UL_INFO.cqi_ind.cqi_indication_body.number_of_cqis];
   nfapi_cqi_indication_raw_pdu_t *raw_pdu = &eNB->UL_INFO.cqi_ind.cqi_indication_body.cqi_raw_pdu_list[eNB->UL_INFO.cqi_ind.cqi_indication_body.number_of_cqis];
   pdu->instance_length = 0;
@@ -1741,7 +1742,7 @@ void fill_ulsch_harq_indication (PHY_VARS_eNB *eNB, LTE_UL_eNB_HARQ_t *ulsch_har
 
   //AssertFatal(DLSCH_id>=0,"DLSCH_id doesn't exist\n");
   pthread_mutex_lock(&eNB->UL_INFO_mutex);
-  assert(eNB->UL_INFO.harq_ind.harq_indication_body.number_of_harqs <= NFAPI_HARQ_IND_MAX_PDU);
+  DevAssert(eNB->UL_INFO.harq_ind.harq_indication_body.number_of_harqs <= NFAPI_HARQ_IND_MAX_PDU);
   nfapi_harq_indication_pdu_t *pdu =   &eNB->UL_INFO.harq_ind.harq_indication_body.harq_pdu_list[eNB->UL_INFO.harq_ind.harq_indication_body.number_of_harqs];
   int M;
   int i;
@@ -1811,7 +1812,7 @@ void fill_uci_harq_indication (int UEid, PHY_VARS_eNB *eNB, LTE_eNB_UCI *uci, in
   bool goodPacket=true;
   nfapi_harq_indication_t *ind       = &eNB->UL_INFO.harq_ind;
   nfapi_harq_indication_body_t *body = &ind->harq_indication_body;
-  assert(eNB->UL_INFO.harq_ind.harq_indication_body.number_of_harqs <= NFAPI_HARQ_IND_MAX_PDU);
+  DevAssert(eNB->UL_INFO.harq_ind.harq_indication_body.number_of_harqs <= NFAPI_HARQ_IND_MAX_PDU);
   nfapi_harq_indication_pdu_t *pdu   = &body->harq_pdu_list[eNB->UL_INFO.harq_ind.harq_indication_body.number_of_harqs];
   ind->sfn_sf = frame<<4|subframe;
   ind->header.message_id = NFAPI_HARQ_INDICATION;
@@ -1987,7 +1988,7 @@ void fill_uci_harq_indication (int UEid, PHY_VARS_eNB *eNB, LTE_eNB_UCI *uci, in
             } else {
               pdu->harq_indication_tdd_rel13.harq_data[0].bundling.value_0 = 0;
             }
-	    
+
             break;
         }
 
@@ -1996,20 +1997,20 @@ void fill_uci_harq_indication (int UEid, PHY_VARS_eNB *eNB, LTE_eNB_UCI *uci, in
       }
     }
   }                             //TDD
-  
+
   if (goodPacket) {
     eNB->UL_INFO.harq_ind.harq_indication_body.number_of_harqs++;
     LOG_D(PHY,"Incremented eNB->UL_INFO.harq_ind.harq_indication_body.number_of_harqs:%d\n", eNB->UL_INFO.harq_ind.harq_indication_body.number_of_harqs);
   } else {
     LOG_W(PHY,"discarded a PUCCH because the decoded values are impossible\n");
   }
-    
+
   pthread_mutex_unlock(&eNB->UL_INFO_mutex);
 }
 
 void fill_crc_indication (PHY_VARS_eNB *eNB, int ULSCH_id, int frame, int subframe, uint8_t crc_flag) {
   pthread_mutex_lock(&eNB->UL_INFO_mutex);
-  assert(eNB->UL_INFO.crc_ind.crc_indication_body.number_of_crcs <= NFAPI_CRC_IND_MAX_PDU);
+  DevAssert(eNB->UL_INFO.crc_ind.crc_indication_body.number_of_crcs <= NFAPI_CRC_IND_MAX_PDU);
   nfapi_crc_indication_pdu_t *pdu =   &eNB->UL_INFO.crc_ind.crc_indication_body.crc_pdu_list[eNB->UL_INFO.crc_ind.crc_indication_body.number_of_crcs];
   eNB->UL_INFO.crc_ind.sfn_sf                         = frame<<4 | subframe;
   eNB->UL_INFO.crc_ind.header.message_id              = NFAPI_CRC_INDICATION;

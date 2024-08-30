@@ -55,6 +55,7 @@
 #include "PHY/LTE_ESTIMATION/lte_estimation.h"
 #include "openair1/PHY/LTE_TRANSPORT/dlsch_tbs_full.h"
 #include "PHY/phy_extern.h"
+#include "common/utils/task_manager/task_manager_gen.h"
 
 const char *__asan_default_options()
 {
@@ -795,9 +796,13 @@ int main(int argc, char **argv) {
   proc_rxtx_ue->frame_rx = (subframe<4)?(proc_rxtx->frame_tx-1):(proc_rxtx->frame_tx);
   proc_rxtx_ue->subframe_tx = proc_rxtx->subframe_rx;
   proc_rxtx_ue->subframe_rx = (proc_rxtx->subframe_tx+6)%10;
-  proc_rxtx->threadPool = (tpool_t *)malloc(sizeof(tpool_t));
-  proc_rxtx->respDecode=(notifiedFIFO_t*) malloc(sizeof(notifiedFIFO_t));
-  initTpool("n", proc_rxtx->threadPool, true);
+
+  int lst_core_id = -1;
+  proc_rxtx->thread_pool = calloc(1, sizeof(task_manager_t));
+  AssertFatal(proc_rxtx->thread_pool != NULL, "Memory exhausted");
+  init_task_manager(proc_rxtx->thread_pool, &lst_core_id, 1);
+
+  proc_rxtx->respDecode = (notifiedFIFO_t *)malloc(sizeof(notifiedFIFO_t));
   initNotifiedFIFO(proc_rxtx->respDecode);
 
   printf("Init UL hopping UE\n");

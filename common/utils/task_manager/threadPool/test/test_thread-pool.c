@@ -27,7 +27,7 @@
 #include <unistd.h>
 #include <ctype.h>
 #include <sys/sysinfo.h>
-#include <threadPool/thread-pool.h>
+#include <task_manager/threadPool/thread-pool.h>
 #include "log.h"
 
 void displayList(notifiedFIFO_t *nf)
@@ -105,7 +105,7 @@ int main()
   notifiedFIFO_t worker_back;
   initNotifiedFIFO(&worker_back);
 
-  //sleep(1);
+  // sleep(1);
   int cumulProcessTime = 0;
   struct timespec st, end;
   clock_gettime(CLOCK_MONOTONIC, &st);
@@ -116,6 +116,7 @@ int main()
       notifiedFIFO_elt_t *work = newNotifiedFIFO_elt(sizeof(struct testData), i, &worker_back, processing);
       struct testData *x = (struct testData *)NotifiedFifoData(work);
       x->id = i;
+      work->processingArg = NotifiedFifoData(work);
       pushTpool(&pool, work);
     }
     int sleepmax = 0;

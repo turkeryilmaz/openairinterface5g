@@ -38,7 +38,7 @@ include("cmake_targets/macros.cmake")
 option(CCACHE_ACTIVE "CCache" ON)
 find_program(CCACHE_FOUND ccache)
 if(CCACHE_FOUND AND CCACHE_ACTIVE)
-  if(${CMAKE_VERSION} VERSION_LESS "3.4.0") 
+  if(${CMAKE_VERSION} VERSION_LESS "3.4.0")
     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CCACHE_PROGRAM}")
     message(STATUS "Found ccache in ${CCACHE_FOUND}. Using ccache. CMake < 3.4")
   else()
@@ -101,13 +101,13 @@ add_list_string_option(CMAKE_BUILD_TYPE "RelWithDebInfo" "Choose the type of bui
 
 # in case /proc/cpuinfo exists we want to inspect available Intrinsics
 # -so not to go always through SIMDE emulation
-# -so to avoid AVX512 instructions generation by gcc   
+# -so to avoid AVX512 instructions generation by gcc
 if(EXISTS "/proc/cpuinfo" AND NOT CROSS_COMPILE)
   file(STRINGS "/proc/cpuinfo" CPUFLAGS REGEX flags LIMIT_COUNT 1)
 else()
   message(WARNING "did not find /proc/cpuinfo -- not setting any x86-specific compilation variables")
 endif()
- 
+
 eval_boolean(AUTODETECT_AVX512 DEFINED CPUFLAGS AND CPUFLAGS MATCHES "avx512")
 add_boolean_option(AVX512 ${AUTODETECT_AVX512} "Whether AVX512 intrinsics is available on the host processor" ON)
 
@@ -633,6 +633,14 @@ include_directories(${OPENAIR_DIR}/common/utils/hashtable)
 add_library(UTIL
   ${OPENAIR_DIR}/common/utils/LOG/vcd_signal_dumper.c
   ${OPENAIR2_DIR}/UTIL/OPT/probe.c
+  ${OPENAIR_DIR}/common/utils/task_manager/task.c
+  ${OPENAIR_DIR}/common/utils/task_manager/task_ans.c
+  ${OPENAIR_DIR}/common/utils/task_manager/thread_pool/task_manager.c
+  ${OPENAIR_DIR}/common/utils/task_manager/threadPool/thread-pool.c
+  ${OPENAIR_DIR}/common/utils/utils.c
+  ${OPENAIR_DIR}/common/utils/system.c
+  ${OPENAIR_DIR}/common/utils/time_meas.c
+  ${OPENAIR_DIR}/common/utils/time_stat.c
 )
 if (ENABLE_LTTNG)
   find_package(LTTngUST 2.3.8 EXACT REQUIRED)
@@ -1228,7 +1236,7 @@ set(NR_SDAP_SRC
   ${OPENAIR2_DIR}/SDAP/nr_sdap/nr_sdap.c
   ${OPENAIR2_DIR}/SDAP/nr_sdap/nr_sdap_entity.c
   )
-  
+
 set(L2_SRC
   ${PDCP_DIR}/pdcp.c
   ${PDCP_DIR}/pdcp_fifo.c
@@ -1907,7 +1915,7 @@ add_executable(nfapi_test
   )
 
 add_executable(measurement_display
-  ${OPENAIR_DIR}/common/utils/threadPool/measurement_display.c)
+  ${OPENAIR_DIR}/common/utils/task_manager/threadPool/measurement_display.c)
 target_link_libraries (measurement_display minimal_lib)
 
 add_executable(test5Gnas
@@ -2077,7 +2085,7 @@ if(E2_AGENT)
   target_link_libraries(nr-cuup PRIVATE e2_agent e2_agent_arg e2_ran_func_cuup)
   target_compile_definitions(nr-cuup PRIVATE ${E2AP_VERSION} ${KPM_VERSION} E2_AGENT)
 endif()
-                     
+
 # nr-uesoftmodem is  UE implementation
 #######################################
 
