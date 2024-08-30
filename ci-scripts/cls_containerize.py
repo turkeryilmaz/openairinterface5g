@@ -1021,6 +1021,7 @@ class Containerize():
 			HTML.CreateHtmlTestRow('Could not deploy', 'KO', CONST.ALL_PROCESSES_OK)
 			return
 		services_list = allServices if self.services[self.eNB_instance].split() == [] else self.services[self.eNB_instance].split()
+		cls_metrics.startcollection(mySSH, self.yamlPath, services_list)
 		status = True
 		imagesInfo=""
 		for svcName in services_list:
