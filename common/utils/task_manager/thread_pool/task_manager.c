@@ -235,9 +235,16 @@ static bool try_push_not_q(not_q_t* q, task_t t)
   DevAssert(t.func != NULL);
   DevAssert(t.args != NULL);
 
+#if 0
+  /* TODO: decide if it's a problem or not. For the moment, let's be quiet
+   * but keep this check to help debugging future problems.
+   * If something does not work well with the threadpool, activate this log,
+   * might be useful.
+   */
   if (q->t_id == pthread_self()) {
     printf("[TASK_MAN]: Cycle detected. Thread from tpool calling itself. Reentrancy should be forbidden. Most probably a bug \n");
   }
+#endif
 
   if (pthread_mutex_trylock(&q->mtx) != 0)
     return false;
