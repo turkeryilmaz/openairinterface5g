@@ -53,6 +53,7 @@ int sl_nr_slot_fep(PHY_VARS_NR_UE *ue,
   unsigned int nb_prefix_samples0 = frame_params->nb_prefix_samples0;
 
   dft_size_idx_t dftsize = get_dft(frame_params->ofdm_symbol_size);
+  uint32_t *scaling_sched = get_scaling(frame_parms->ofdm_symbol_size);
   // This is for misalignment issues
   int32_t tmp_dft_in[8192] __attribute__((aligned(32)));
 

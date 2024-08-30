@@ -527,6 +527,50 @@ void init_fft(uint16_t size,
   SZ_DEF(73728) \
   SZ_DEF(98304)
 
+extern uint32_t DFT_SCALING_128[2];
+extern uint32_t DFT_SCALING_256[2];
+extern uint32_t DFT_SCALING_512[3];
+extern uint32_t DFT_SCALING_768[3];
+extern uint32_t DFT_SCALING_1024[3];
+extern uint32_t DFT_SCALING_1536[3];
+extern uint32_t DFT_SCALING_2048[4];
+extern uint32_t DFT_SCALING_3072[4];
+extern uint32_t DFT_SCALING_4096[4];
+extern uint32_t DFT_SCALING_6144[5];
+extern uint32_t DFT_SCALING_8192[5];
+extern uint32_t DFT_SCALING_12288[5];
+extern uint32_t DFT_SCALING_16384[5];
+extern uint32_t DFT_SCALING_18432[6];
+extern uint32_t DFT_SCALING_24576[6];
+extern uint32_t DFT_SCALING_32768[6];
+extern uint32_t DFT_SCALING_36864[6];
+extern uint32_t DFT_SCALING_49152[6];
+extern uint32_t DFT_SCALING_65536[6];
+extern uint32_t DFT_SCALING_73728[7];
+extern uint32_t DFT_SCALINE_98304[7];
+
+extern uint32_t IDFT_SCALING_128[2];
+extern uint32_t IDFT_SCALING_256[2];
+extern uint32_t IDFT_SCALING_512[3];
+extern uint32_t IDFT_SCALING_768[3];
+extern uint32_t IDFT_SCALING_1024[3];
+extern uint32_t IDFT_SCALING_1536[3];
+extern uint32_t IDFT_SCALING_2048[4];
+extern uint32_t IDFT_SCALING_3072[4];
+extern uint32_t IDFT_SCALING_4096[4];
+extern uint32_t IDFT_SCALING_6144[5];
+extern uint32_t IDFT_SCALING_8192[5];
+extern uint32_t IDFT_SCALING_12288[5];
+extern uint32_t IDFT_SCALING_16384[5];
+extern uint32_t IDFT_SCALING_18432[6];
+extern uint32_t IDFT_SCALING_24576[6];
+extern uint32_t IDFT_SCALING_32768[6];
+extern uint32_t IDFT_SCALING_36864[6];
+extern uint32_t IDFT_SCALING_49152[6];
+extern uint32_t IDFT_SCALING_65536[6];
+extern uint32_t IDFT_SCALING_73728[7];
+extern uint32_t IDFT_SCALINE_98304[7];
+
 #ifdef OAIDFTS_MAIN
 typedef  void(*adftfunc_t)(int16_t *sigF,int16_t *sig,unsigned int *scale_flag);
 typedef  void(*aidftfunc_t)(int16_t *sigF,int16_t *sig,unsigned int *scale_flag);
@@ -622,6 +666,127 @@ dft_size_idx_t get_dft(int ofdm_symbol_size)
   return DFT_SIZE_IDXTABLESIZE; // never reached and will trigger assertion in idft function;
 }
 
+/*******************************************************************
+*
+* NAME :         get_dft_scaling
+*
+* PARAMETERS :   size of ofdm symbol
+*
+* RETURN :       pointer to default scaling schedule 
+*
+* DESCRIPTION :  return point to the default (best) scaling schedule for DFT of a given length
+*
+*********************************************************************/
+static inline
+uint32_t *get_dft_scaling(int ofdm_symbol_size)
+{
+  switch (ofdm_symbol_size) {
+    case 128:
+      return DFT_SCALING_128;
+    case 256:
+      return DFT_SCALING_256;
+    case 512:
+      return DFT_SCALING_512;
+    case 768:
+      return DFT_SCALING_768;
+    case 1024:
+      return DFT_SCALING_1024;
+    case 1536:
+      return DFT_SCALING_1536;
+    case 2048:
+      return DFT_SCALING_2048;
+    case 3072:
+      return DFT_SCALING_3072;
+    case 4096:
+      return DFT_SCALING_4096;
+    case 6144:
+      return DFT_SCALING_6144;
+    case 8192:
+      return DFT_SCALING_8192;
+    case 9216:
+      return DFT_SCALING_9216;
+    case 12288:
+      return DFT_SCALING_12288;
+    case 18432:
+      return DFT_SCALING_18432;
+    case 24576:
+      return DFT_SCALING_24576;
+    case 36864:
+      return DFT_SCALING_36864;
+    case 49152:
+      return DFT_SCALING_49152;
+    case 73728:
+      return DFT_SCALING_73728;
+    case 98304:
+      return DFT_SCALING_98304;
+    default:
+      printf("function get_dft : unsupported ofdm symbol size \n");
+      assert(0);
+      break;
+  }
+  return DFT_SCALING_98304; 
+}
+
+/*******************************************************************
+*
+* NAME :         get_idft_scaling
+*
+* PARAMETERS :   size of ofdm symbol
+*
+* RETURN :       pointer to default scaling schedule 
+*
+* DESCRIPTION :  return point to the default (best) scaling schedule for IDFT of a given length
+*
+*********************************************************************/
+static inline
+dft_size_idx_t get_idft_scaling(int ofdm_symbol_size)
+{
+  switch (ofdm_symbol_size) {
+    case 128:
+      return IDFT_SCALING_128;
+    case 256:
+      return IDFT_SCALING_256;
+    case 512:
+      return IDFT_SCALING_512;
+    case 768:
+      return IDFT_SCALING_768;
+    case 1024:
+      return IDFT_SCALING_1024;
+    case 1536:
+      return IDFT_SCALING_1536;
+    case 2048:
+      return IDFT_SCALING_2048;
+    case 3072:
+      return IDFT_SCALING_3072;
+    case 4096:
+      return IDFT_SCALING_4096;
+    case 6144:
+      return IDFT_SCALING_6144;
+    case 8192:
+      return IDFT_SCALING_8192;
+    case 9216:
+      return IDFT_SCALING_9216;
+    case 12288:
+      return IDFT_SCALING_12288;
+    case 18432:
+      return IDFT_SCALING_18432;
+    case 24576:
+      return IDFT_SCALING_24576;
+    case 36864:
+      return IDFT_SCALING_36864;
+    case 49152:
+      return IDFT_SCALING_49152;
+    case 73728:
+      return IDFT_SCALING_73728;
+    case 98304:
+      return IDFT_SCALING_98304;
+    default:
+      printf("function get_idft_scaling : unsupported ofdm symbol size \n");
+      assert(0);
+      break;
+  }
+  return DFT_SIZE_IDXTABLESIZE; // never reached and will trigger assertion in idft function;
+}
 typedef enum idft_size_idx {
   FOREACH_IDFTSZ(SZ_iENUM)
   IDFT_SIZE_IDXTABLESIZE

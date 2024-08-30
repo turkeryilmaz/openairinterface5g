@@ -53,6 +53,50 @@
 
 #include "tools_defs.h"
 
+uint32_t DFT_SCALING_128[2] = {2,2};
+uint32_t DFT_SCALING_256[2] = {2,2};
+uint32_t DFT_SCALING_512[3] = {1,2,2};
+uint32_t DFT_SCALING_768[3] = {1,2,2};
+uint32_t DFT_SCALING_1024[3] = {1,2,2};
+uint32_t DFT_SCALING_1536[3] = {1,2,2};
+uint32_t DFT_SCALING_2048[4] = {1,0,3,2};
+uint32_t DFT_SCALING_3072[4] = {1,0,3,2};
+uint32_t DFT_SCALING_4096[4] = {0,0,3,3};
+uint32_t DFT_SCALING_6144[5] = {1,0,0,3,3};
+uint32_t DFT_SCALING_8192[5] = {1,0,0,3,3};
+uint32_t DFT_SCALING_12288[5] = {1,0,0,3,3};
+uint32_t DFT_SCALING_16384[5] = {0,0,1,3,3};
+uint32_t DFT_SCALING_18432[6] = {1,1,0,0,3,3};
+uint32_t DFT_SCALING_24576[6] = {1,1,0,0,3,3};
+uint32_t DFT_SCALING_32768[6] = {1,0,0,1,3,3};
+uint32_t DFT_SCALING_36864[6] = {1,1,0,0,3,3};
+uint32_t DFT_SCALING_49152[6] = {1,0,0,1,3,3};
+uint32_t DFT_SCALING_65536[6] = {0,0,0,2,3,3};
+uint32_t DFT_SCALING_73728[7] = {1,1,1,0,0,3,3};
+uint32_t DFT_SCALING_98304[7] = {1,1,0,0,1,3,3};
+
+uint32_t IDFT_SCALING_128[2] = {2,2};
+uint32_t IDFT_SCALING_256[2] = {2,2};
+uint32_t IDFT_SCALING_512[3] = {1,2,2};
+uint32_t IDFT_SCALING_768[3] = {1,2,2};
+uint32_t IDFT_SCALING_1024[3] = {1,2,2};
+uint32_t IDFT_SCALING_1536[3] = {1,2,2};
+uint32_t IDFT_SCALING_2048[4] = {1,0,3,2};
+uint32_t IDFT_SCALING_3072[4] = {1,0,3,2};
+uint32_t IDFT_SCALING_4096[4] = {0,0,3,3};
+uint32_t IDFT_SCALING_6144[5] = {1,0,0,3,3};
+uint32_t IDFT_SCALING_8192[5] = {1,0,0,3,3};
+uint32_t IDFT_SCALING_12288[5] = {1,0,0,3,3};
+uint32_t IDFT_SCALING_16384[5] = {0,0,1,3,3};
+uint32_t IDFT_SCALING_18432[6] = {1,1,0,0,3,3};
+uint32_t IDFT_SCALING_24576[6] = {1,1,0,0,3,3};
+uint32_t IDFT_SCALING_32768[6] = {1,0,0,1,3,3};
+uint32_t IDFT_SCALING_36864[6] = {1,1,0,0,3,3};
+uint32_t IDFT_SCALING_49152[6] = {1,0,0,1,3,3};
+uint32_t IDFT_SCALING_65536[6] = {0,0,0,2,3,3};
+uint32_t IDFT_SCALING_73728[7] = {1,1,1,0,0,3,3};
+uint32_t IDFT_SCALING_98304[7] = {1,1,0,0,1,3,3};
+
 #define print_shorts(s,x) printf("%s %d,%d,%d,%d,%d,%d,%d,%d\n",s,(x)[0],(x)[1],(x)[2],(x)[3],(x)[4],(x)[5],(x)[6],(x)[7])
 #define print_shorts256(s,x) printf("%s %d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",s,(x)[0],(x)[1],(x)[2],(x)[3],(x)[4],(x)[5],(x)[6],(x)[7],(x)[8],(x)[9],(x)[10],(x)[11],(x)[12],(x)[13],(x)[14],(x)[15])
 
@@ -8882,6 +8926,25 @@ int main(int argc, char**argv)
 
   printf("4096 point IDFT SQNR (QPSK) : %f dB\n",10*log10(sqnr));
 
+  float sqrt2 = 0.70711;
+  float sqrt170 = 0.076696;
+
+  for (i=0;i<2400;i++) {
+    uint32_t n=taus();
+    ((int16_t*)x)[i]   = (short)((1-2*(n&1))*(8-(1-2*((n>>1)&1))*(4-(1-2*((n>>2)&1))*(2-(1-2*((n>>3)&1))))))*512*sqrt170*sqrt2;
+  }
+  for (i=2*(4096-1200);i<8192;i++) {
+    uint32_t n=taus();
+    ((int16_t*)x)[i]   = (short)((1-2*(n&1))*(8-(1-2*((n>>1)&1))*(4-(1-2*((n>>2)&1))*(2-(1-2*((n>>3)&1))))))*512*sqrt170*sqrt2;
+  }
+
+  uint32_t scale4096_tx256qam[4]={3,2,1,0};
+  idft4096((int16_t *)x,(int16_t *)y,scale4096_tx256qam);
+  LOG_M("y4096_256qam.m","y4096_256qam",y,4096,1,1);
+  LOG_M("x4096_256qam.m","x4096_256qam",x,4096,1,1);
+
+  sqnr = compute_error((int16_t*)x,(int16_t*)y,4096,bitrev4096,1);
+  printf("4096 point IDFT SQNR (256QAM) : %f dB\n",10*log10(sqnr));
 // NR 160Mhz, 434 PRB, 3/4 sampling
   memset((void*)x, 0, 6144*sizeof(int32_t));
   for (i=2;i<5010;i++) {
@@ -9052,7 +9115,7 @@ int main(int argc, char**argv)
       ((int16_t*)x)[i] = -364;
   }
   reset_meas(&ts);
-  uint32_t scale36864[7] = {1,1,1,1,1,1,3};
+  uint32_t scale36864[6] = {1,1,1,1,1,3};
   for (i=0; i<10000; i++) {
     start_meas(&ts);
     dft36864((int16_t *)x,(int16_t *)y,scale36864);
