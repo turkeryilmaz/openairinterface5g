@@ -459,7 +459,18 @@ static int nr_ulsch_procedures_slot(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx
     NR_UL_gNB_HARQ_t *ulsch_harq = ulsch->harq_process;
     nfapi_nr_pusch_pdu_t *pusch_pdu = &ulsch_harq->ulsch_pdu;
 
-    bool crc_valid = check_crc(ulsch_harq->b, lenWithCrc(1, (ulsch_harq->TBS) << 3), crcType(1, (ulsch_harq->TBS) << 3));
+    bool crc_valid = false;
+
+    // if all segments are done
+    if (ulsch_harq->processedSegments == ulsch_harq->C) {
+      if (ulsch_harq->C > 1) {
+        crc_valid = check_crc(ulsch_harq->b, lenWithCrc(1, (ulsch_harq->TBS) << 3), crcType(1, (ulsch_harq->TBS) << 3));
+      } else {
+        // When the number of code blocks is 1 (C = 1) and ulsch_harq->processedSegments = 1, we can assume a good TB because of the
+        // CRC check made by the LDPC for early termination, so, no need to perform CRC check twice for a single code block
+        crc_valid = true;
+      }
+    }
 
     if (crc_valid && !check_abort(&ulsch_harq->abort_decode) && !pusch->DTX) {
       LOG_D(NR_PHY,

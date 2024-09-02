@@ -263,6 +263,7 @@ int nr_ulsch_decoding_slot(PHY_VARS_gNB *phy_vars_gNB,
       nrLDPC_segment_decoding_parameters_t nrLDPC_segment_decoding_parameters = nrLDPC_TB_decoding_parameters.segments[r];
       // Copy c to b in case of decoding success
       if (nrLDPC_segment_decoding_parameters.decodeSuccess) {
+        harq_process->processedSegments++;
         memcpy(harq_process->b + offset, harq_process->c[r], (harq_process->K >> 3) - (harq_process->F >> 3) - ((harq_process->C > 1) ? 3 : 0));
       } else {
         LOG_D(PHY, "uplink segment error %d/%d\n", r, harq_process->C);
