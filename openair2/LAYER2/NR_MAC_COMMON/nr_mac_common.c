@@ -3678,14 +3678,21 @@ bool is_nr_mixed_slot(NR_TDD_UL_DL_ConfigCommon_t	*tdd_UL_DL_ConfigurationCommon
     // before receiving TDD information all slots should be considered to be DL
     return false;
 
-  bool is_mixed = is_nr_DL_slot(tdd_UL_DL_ConfigurationCommon, slot) && is_nr_UL_slot(tdd_UL_DL_ConfigurationCommon, slot, frame_type);
-  LOG_I(NR_MAC, "The slot is %s mixed slot\n", is_mixed ? "a" : "not a");
+  bool is_mixed =
+      is_nr_DL_slot(tdd_UL_DL_ConfigurationCommon, slot) && is_nr_UL_slot(tdd_UL_DL_ConfigurationCommon, slot, frame_type);
 
   return is_mixed;
 }
 
-bool is_nr_SPS_DL_slot(frame_t frame, slot_t slot, NR_SPS_Config_t *sps_config, long *cs_rnti, uint8_t scs, nr_sps_assignemnt_t *sps_info, NR_ServingCellConfigCommon_t *scc, frame_type_t frame_type) {
-  NR_TDD_UL_DL_ConfigCommon_t *tdd = scc->tdd_UL_DL_ConfigurationCommon;
+bool is_nr_SPS_DL_slot(frame_t frame,
+                       slot_t slot,
+                       NR_SPS_Config_t *sps_config,
+                       long *cs_rnti,
+                       uint8_t scs,
+                       nr_sps_assignemnt_t *sps_info,
+                       NR_TDD_UL_DL_ConfigCommon_t *tdd,
+                       frame_type_t frame_type)
+{
   const uint16_t num_slots_frame = nr_slots_per_frame[scs];
   int current_slot = (num_slots_frame * frame + slot) % (1024 * num_slots_frame);
   bool status = false;
@@ -3699,16 +3706,17 @@ bool is_nr_SPS_DL_slot(frame_t frame, slot_t slot, NR_SPS_Config_t *sps_config, 
     AssertFatal(periodicity - (int)periodicity == 0, "The sps periodicty of %f is not supported for the scs of %d khz\n", nr_get_periodicity_sps(sps_config->periodicity), 15 << scs);
     AssertFatal(periodicity > 0, "Number of slots are not valid\n");
 
-    float slot_diff = current_slot -sps_start_slot;
-    bool is_slot_sps = (slot_diff - (int)slot_diff == 0) && ((int)slot_diff % (int)periodicity == 0);
+    int slot_diff = current_slot - sps_start_slot < 0 ? current_slot - sps_start_slot + (1024 * num_slots_frame)
+                                                      : current_slot - sps_start_slot;
+    bool is_slot_sps = slot_diff % (int)periodicity == 0;
 
     /* check the type of current slot */
     bool is_current_mixed_slot = is_nr_mixed_slot(tdd, slot, frame_type);
 
     status = is_slot_sps && ((sps_info->is_mixed_slot == 0 && is_current_mixed_slot == 0) || (sps_info->is_mixed_slot == 1 && is_current_mixed_slot == 1) || (sps_info->is_mixed_slot == 1 && is_current_mixed_slot == 0));
-    
+
     if (status) {
-      int occasion = slot_diff/periodicity;
+      int occasion = abs(slot_diff) / periodicity;
       AssertFatal(occasion >= 0, "SPS occasion index must not be negative\n");
       sps_info->sps_assisgnment_index = occasion;
       LOG_I(NR_MAC, "[sps start: (%d.%d) and period %d]The %d sps occasion at frame %d and slot %d \n", sps_info->sps_start_frame, sps_info->sps_start_slot, (int)periodicity, sps_info->sps_assisgnment_index, frame, slot);
@@ -3716,7 +3724,6 @@ bool is_nr_SPS_DL_slot(frame_t frame, slot_t slot, NR_SPS_Config_t *sps_config, 
   }
   return status;
 }
-
 /*
 In the case of dynamic resource allocations, the HARQ process identity is specified within the DCl associated with each individual
 resource allocation. A UE docs not receive DCl for each individual transmission when using semi-persistent scheduling so 3GPP 
@@ -3729,7 +3736,10 @@ int get_harq_processid_sps(frame_t frame, slot_t slot, uint8_t scs, NR_SPS_Confi
   /* perodicity in slots as per bwp scs */
   float period_ms = nr_get_periodicity_sps(sps_config->periodicity);
   float periodicity = (num_slots_frame/10) * period_ms;
-  AssertFatal(periodicity - (int)periodicity == 0, "The sps periodicty of %f is not supported for the scs of %d khz\n", nr_get_periodicity_sps(sps_config->periodicity), 15 << scs);
+  AssertFatal(periodicity - (int)periodicity == 0,
+              "The sps periodicty of %f is not supported for the scs of %d khz\n",
+              period_ms,
+              15 << scs);
   AssertFatal(periodicity > 0, "Number of slots are not valid\n");
 
   int harq_processid_offset = sps_config->ext1->harq_ProcID_Offset_r16 ? *sps_config->ext1->harq_ProcID_Offset_r16 : 0;
@@ -5468,11 +5478,11 @@ float nr_get_periodicity_sps(long periodicity) {
     case NR_SPS_Config__periodicity_spare1:
       return 1;
     case NR_SPS_Config__periodicity_spare2:
-      return 2.5;
+      return 2;
     case NR_SPS_Config__periodicity_spare3:
       return 4;
     case NR_SPS_Config__periodicity_spare4: //
-      return 4.5;
+      return 4;
     case NR_SPS_Config__periodicity_spare5:
       return 7;
     case NR_SPS_Config__periodicity_spare6:

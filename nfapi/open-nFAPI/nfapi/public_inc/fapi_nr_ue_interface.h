@@ -410,6 +410,7 @@ typedef struct {
 
 typedef struct {
   uint16_t rnti;
+  uint16_t cs_rnti;
   uint16_t BWPSize;
   uint16_t BWPStart;
   uint8_t SubcarrierSpacing;

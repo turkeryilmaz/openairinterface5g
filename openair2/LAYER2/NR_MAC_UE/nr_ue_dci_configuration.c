@@ -230,6 +230,15 @@ void config_dci_pdu(NR_UE_MAC_INST_t *mac,
     case NR_RNTI_P:
       break;
     case NR_RNTI_CS:
+      // we use DL BWP dedicated
+      sps = current_DL_BWP->cyclicprefix ? 12 : 14;
+      // for SPS=14 8 MSBs in positions 13 down to 6
+      monitoringSymbolsWithinSlot =
+          (ss->monitoringSymbolsWithinSlot->buf[0] << (sps - 8)) | (ss->monitoringSymbolsWithinSlot->buf[1] >> (16 - sps));
+      rel15->cs_rnti = *current_DL_BWP->cs_rnti;
+      rel15->rnti = mac->crnti;
+      rel15->SubcarrierSpacing = current_DL_BWP->scs;
+      LOG_I(NR_MAC, "SPS with CS-RNTI %x\n", rel15->cs_rnti);
       break;
     case NR_RNTI_TC:
       // we use the initial DL BWP
@@ -496,8 +505,16 @@ void ue_dci_configuration(NR_UE_MAC_INST_t *mac, fapi_nr_dl_config_request_t *dl
       if (mac->BWP_searchspaces[i] != NULL) {
         found = true;
         NR_SearchSpace_t *ss = mac->BWP_searchspaces[i];
-        if (is_ss_monitor_occasion(frame, slot, slots_per_frame, ss))
+        // todo: monitor both??
+        if (is_ss_monitor_occasion(frame, slot, slots_per_frame, ss)) {
+          LOG_I(NR_MAC, "(%d.%d)Configuring DCI with C-RNTI %x\n", frame, slot, mac->crnti);
           config_dci_pdu(mac, dl_config, NR_RNTI_C, slot, ss);
+
+          if (mac->current_DL_BWP.cs_rnti != NULL) {
+            LOG_I(NR_MAC, "(%d.%d)Configuring DCI for SPS with CS-RNTI %x\n", frame, slot, (uint16_t)*mac->current_DL_BWP.cs_rnti);
+            config_dci_pdu(mac, dl_config, NR_RNTI_CS, slot, ss);
+          }
+        }
       }
     }
     if (!found && mac->ra_SS) {

@@ -2081,8 +2081,10 @@ void nr_ue_pucch_scheduler(module_id_t module_idP, frame_t frameP, int slotP, vo
 
   // CSI
   int csi_res = 0;
-  if (mac->state == UE_CONNECTED)
-    csi_res = nr_get_csi_measurements(mac, frameP, slotP, &pucch[num_res]);
+  if (mac->state == UE_CONNECTED) {
+    if (mac->current_DL_BWP.sps_ue_ctrl && !mac->current_DL_BWP.sps_ue_ctrl->valid_activate_ind_rec)
+      csi_res = nr_get_csi_measurements(mac, frameP, slotP, &pucch[num_res]);
+  }
   if (csi_res > 0) {
     num_res += csi_res;
   }
@@ -2099,7 +2101,7 @@ void nr_ue_pucch_scheduler(module_id_t module_idP, frame_t frameP, int slotP, vo
     return;
 
   if (num_res > 1)
-    multiplex_pucch_resource(mac, pucch, num_res);
+    multiplex_pucch_resource(mac, pucch, num_res); // todo sps: probably should look in to multiplexing??
   fapi_nr_ul_config_request_t *ul_config = get_ul_config_request(mac, slotP, 0);
   pthread_mutex_lock(&ul_config->mutex_ul_config);
   for (int j = 0; j < num_res; j++) {

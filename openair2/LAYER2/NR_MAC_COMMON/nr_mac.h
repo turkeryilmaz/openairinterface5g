@@ -39,6 +39,7 @@
 #include <stdbool.h>
 #include "common/utils/nr/nr_common.h"
 #include "NR_CellGroupConfig.h"
+#include "fapi_nr_ue_interface.h"
 
 #define NR_SHORT_BSR_TABLE_SIZE 32
 #define NR_LONG_BSR_TABLE_SIZE 256
@@ -564,16 +565,34 @@ typedef struct nr_sps_ctrl {
   bool avoid_sps_pdcch_pdu;  // for sps once pdcch is sent for activation, no need to sent pdcch until sps release
 } nr_sps_ctrl_t;
 
+typedef struct nr_sps_dci_params {
+  uint8_t pdsch_to_harq_feedback_timing_indicator;
+  uint8_t pucch_resource_indicator;
+  uint8_t dai[2];
+  uint8_t dci_format;
+  int n_CCE;
+  int N_CCE;
+} nr_sps_dci_params_t;
+
 typedef struct nr_ue_sps_ctrl {
   bool valid_activate_ind_rec;
-  bool valid_deactivate_ind_rec; 
+  bool valid_deactivate_ind_rec;
+  fapi_nr_dl_config_dlsch_pdu *initial_dlsch_config;
+  nr_sps_dci_params_t *initial_dci_config;
+  bool stored_initial_config;
+
+  /*
+  dci_pdu_rel15_t *initial_dci_pdu;  // still unclear whether initial configuration need to be stored or not??
+  // should these be moved out of mac interface??
+  fapi_nr_dci_indication_pdu_t *initial_dci_config;
+  */
 } nr_ue_sps_ctrl_t;
 
 typedef struct nr_sps_assignment {
   int sps_start_frame;
   int sps_start_slot;
-  int sps_assisgnment_index;  
-  int is_mixed_slot;  
+  int sps_assisgnment_index;
+  int is_mixed_slot;
 } nr_sps_assignemnt_t;
 
 typedef struct NR_UE_DL_BWP {
@@ -595,6 +614,8 @@ typedef struct NR_UE_DL_BWP {
   // sps config
   NR_SPS_Config_t *sps_config;
   nr_ue_sps_ctrl_t *sps_ue_ctrl;
+  nr_sps_assignemnt_t *sps_assign;
+  uint8_t total_sps_activations;
   long *cs_rnti;
 } NR_UE_DL_BWP_t;
 

@@ -300,6 +300,7 @@ void apply_nr_rotation_RX(NR_DL_FRAME_PARMS *frame_parms,
     LOG_D(PHY,"slot %d, symb_offset %d rotating by %d.%d\n", slot, symb_offset, rot2.r, rot2.i);
     c16_t *shift_rot = frame_parms->timeshift_symbol_rotation;
     c16_t *this_symbol = &rxdataF[soffset + (frame_parms->ofdm_symbol_size * symbol)];
+    LOG_D(PHY, "slot %d, symbol is %d with value %d.%d\n", slot, symbol, this_symbol->r, this_symbol->i);
 
     if (nb_rb & 1) {
       rotate_cpx_vector(this_symbol, &rot2, this_symbol,

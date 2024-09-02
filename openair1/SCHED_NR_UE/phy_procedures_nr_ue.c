@@ -466,8 +466,11 @@ int nr_ue_pdcch_procedures(PHY_VARS_NR_UE *ue,
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_DCI_DECODING, VCD_FUNCTION_OUT);
 
   for (int i=0; i<dci_cnt; i++) {
-    LOG_D(PHY,"[UE  %d] AbsSubFrame %d.%d: DCI %i of %d total DCIs found --> rnti %x : format %d\n",
-          ue->Mod_id,frame_rx%1024,nr_slot_rx,
+    LOG_I(PHY,
+          "[UE  %d] AbsSubFrame %d.%d: DCI %i of %d total DCIs found --> rnti %x : format %d\n",
+          ue->Mod_id,
+          frame_rx % 1024,
+          nr_slot_rx,
           i + 1,
           dci_cnt,
           dci_ind.dci_list[i].rnti,
@@ -743,6 +746,7 @@ bool nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue,
     dec = true;
 
   int ind_type = -1;
+  LOG_I(PHY, "The rnti type for PDU is %d\n", dlsch[0].rnti_type);
   switch(dlsch[0].rnti_type) {
     case _RA_RNTI_:
       ind_type = FAPI_NR_RX_PDU_TYPE_RAR;
@@ -753,9 +757,9 @@ bool nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue,
       break;
 
     case _C_RNTI_:
+    case _CS_RNTI_:
       ind_type = FAPI_NR_RX_PDU_TYPE_DLSCH;
       break;
-
     default:
       AssertFatal(true, "Invalid DLSCH type %d\n", dlsch[0].rnti_type);
       break;

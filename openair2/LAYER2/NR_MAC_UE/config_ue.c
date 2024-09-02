@@ -574,6 +574,11 @@ void configure_current_BWP(NR_UE_MAC_INST_t *mac,
     if (cell_group_config->physicalCellGroupConfig) {
       DL_BWP->pdsch_HARQ_ACK_Codebook = &cell_group_config->physicalCellGroupConfig->pdsch_HARQ_ACK_Codebook;
       UL_BWP->harq_ACK_SpatialBundlingPUCCH = cell_group_config->physicalCellGroupConfig->harq_ACK_SpatialBundlingPUCCH;
+      if (cell_group_config->physicalCellGroupConfig->cs_RNTI) {
+        DL_BWP->cs_rnti = &cell_group_config->physicalCellGroupConfig->cs_RNTI->choice.setup;
+        DL_BWP->sps_ue_ctrl = calloc(1, sizeof(*DL_BWP->sps_ue_ctrl));
+        DL_BWP->sps_assign = calloc(1, sizeof(*DL_BWP->sps_assign));
+      }
     }
     if (cell_group_config->spCellConfig &&
         cell_group_config->spCellConfig->spCellConfigDedicated) {
@@ -582,7 +587,9 @@ void configure_current_BWP(NR_UE_MAC_INST_t *mac,
       UL_BWP->pusch_servingcellconfig =
           spCellConfigDedicated->uplinkConfig && spCellConfigDedicated->uplinkConfig->pusch_ServingCellConfig ? spCellConfigDedicated->uplinkConfig->pusch_ServingCellConfig->choice.setup : NULL;
       DL_BWP->pdsch_servingcellconfig = spCellConfigDedicated->pdsch_ServingCellConfig ? spCellConfigDedicated->pdsch_ServingCellConfig->choice.setup : NULL;
-
+      DL_BWP->sps_config = spCellConfigDedicated->initialDownlinkBWP->sps_Config
+                               ? spCellConfigDedicated->initialDownlinkBWP->sps_Config->choice.setup
+                               : NULL;
       if (spCellConfigDedicated->firstActiveDownlinkBWP_Id)
         DL_BWP->bwp_id = *spCellConfigDedicated->firstActiveDownlinkBWP_Id;
       if (spCellConfigDedicated->uplinkConfig->firstActiveUplinkBWP_Id)

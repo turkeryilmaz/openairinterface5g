@@ -331,6 +331,7 @@ typedef struct {
 typedef struct {
   bool active;
   bool ack_received;
+  bool is_sps_transmission;
   uint8_t  pucch_resource_indicator;
   frame_t ul_frame;
   int ul_slot;

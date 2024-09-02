@@ -206,7 +206,7 @@ void init_downlink_harq_status(NR_DL_UE_HARQ_t *dl_harq)
 *********************************************************************/
 
 void downlink_harq_process(NR_DL_UE_HARQ_t *dl_harq, int harq_pid, int dci_ndi, int rv, uint8_t rnti_type) {
-
+  /* todo: this function needs to be reordered to minimize??*/
   if (rnti_type == _SI_RNTI_ ||
       rnti_type == _P_RNTI_ ||
       rnti_type == _RA_RNTI_) {
@@ -214,32 +214,58 @@ void downlink_harq_process(NR_DL_UE_HARQ_t *dl_harq, int harq_pid, int dci_ndi, 
     dl_harq->status = ACTIVE;
     dl_harq->first_rx = 1;
   }  else {
-    LOG_D(PHY,"receive harq process: %p harqPid=%d, rv=%d, ndi=%d, rntiType=%d new transmission= %s\n",
-	  dl_harq, harq_pid, rv, dci_ndi, rnti_type, dl_harq->Ndi != dci_ndi ? "yes":"no");
+    LOG_I(PHY, "The rv %d for harq process id %d rnti is %s\n", rv, harq_pid, rnti_type == 0 ? "CRNTI" : "CSRNTI");
     AssertFatal(rv<4 && rv>=0, "invalid redondancy version %d\n", rv);
-    if (dci_ndi!=dl_harq->Ndi) {
-      if (dl_harq->ack == DL_NACK)
-        LOG_D(PHY,"New transmission on a harq pid (%d) never acknowledged\n", harq_pid);
-      else
-         LOG_D(PHY,"Starting new transmission on a harq pid (%d)\n", harq_pid);
-    } else {
-      if (dl_harq->ack != DL_NACK)
-        LOG_D(PHY,"gNB asked for retransmission even if we sent ACK\n");
-      else
-        LOG_D(PHY,"Starting retransmission on a harq pid (%d), rv (%d)\n", harq_pid, rv);
+    if (rnti_type == _C_RNTI_) {
+      LOG_D(PHY,
+            "receive harq process: %p harqPid=%d, rv=%d, ndi=%d, rntiType=%d new transmission= %s\n",
+            dl_harq,
+            harq_pid,
+            rv,
+            dci_ndi,
+            rnti_type,
+            dl_harq->Ndi != dci_ndi ? "yes" : "no");
+      if (dci_ndi != dl_harq->Ndi) {
+        if (dl_harq->ack == DL_NACK)
+          LOG_D(PHY, "New transmission on a harq pid (%d) never acknowledged\n", harq_pid);
+        else
+          LOG_D(PHY, "Starting new transmission on a harq pid (%d)\n", harq_pid);
+      } else {
+        if (dl_harq->ack != DL_NACK)
+          LOG_D(PHY, "gNB asked for retransmission even if we sent ACK\n");
+        else
+          LOG_D(PHY, "Starting retransmission on a harq pid (%d), rv (%d)\n", harq_pid, rv);
+      }
+
+      if (dci_ndi != dl_harq->Ndi) {
+        dl_harq->first_rx = true;
+        dl_harq->DLround = 0;
+      } else {
+        dl_harq->first_rx = false;
+        dl_harq->DLround++;
+      }
+      dl_harq->Ndi = dci_ndi;
+    } else if (rnti_type == _CS_RNTI_) {
+      LOG_I(PHY,
+            "receive harq process: %p harqPid=%d, rv=%d, ndi=%d, round=%d, rntiType=%d new transmission= %s\n",
+            dl_harq,
+            harq_pid,
+            rv,
+            dci_ndi,
+            dl_harq->DLround,
+            rnti_type,
+            dci_ndi == 0 ? "yes" : "no");
+      if (dci_ndi == 0) {
+        dl_harq->first_rx = true;
+        dl_harq->DLround = 0;
+      } else {
+        dl_harq->first_rx = false;
+        dl_harq->DLround++;
+      }
     }
 
-    if (dci_ndi!=dl_harq->Ndi) {
-      dl_harq->first_rx = true;
-      dl_harq->DLround = 0;
-    } else {
-      dl_harq->first_rx = false;
-      dl_harq->DLround++;
-    }
-    
+    LOG_I(PHY, "receive harq process after increment: %p harqPid=%d, round=%d\n", dl_harq, harq_pid, dl_harq->DLround);
     dl_harq->status = ACTIVE;
-
-    dl_harq->Ndi = dci_ndi;
     //dl_harq->status = SCH_IDLE;
    }
 }

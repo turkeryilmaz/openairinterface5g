@@ -44,7 +44,7 @@
 
 extern PHY_VARS_NR_UE ***PHY_vars_UE_g;
 
-const char *const dl_pdu_type[] = {"DCI", "DLSCH", "RA_DLSCH", "SI_DLSCH", "P_DLSCH", "CSI_RS", "CSI_IM", "TA"};
+const char *const dl_pdu_type[] = {"DCI", "DLSCH", "RA_DLSCH", "SI_DLSCH", "P_DLSCH", "CSI_RS", "CSI_IM", "TA", "SPS_DLSCH"};
 const char *const ul_pdu_type[] = {"PRACH", "PUCCH", "PUSCH", "SRS"};
 queue_t nr_rx_ind_queue;
 queue_t nr_crc_ind_queue;
@@ -301,7 +301,7 @@ static void configure_dlsch(NR_UE_DLSCH_t *dlsch0,
   dlsch0->active = true;
   dlsch0->rnti = rnti;
 
-  LOG_D(PHY,"current_harq_pid = %d\n", current_harq_pid);
+  LOG_I(PHY, "current_harq_pid = %d\n", current_harq_pid);
 
   NR_DL_UE_HARQ_t *dlsch0_harq = &harq_list[current_harq_pid];
 
@@ -400,8 +400,13 @@ int8_t nr_ue_scheduled_response(nr_scheduled_response_t *scheduled_response){
       for (int i = 0; i < dl_config->number_pdus; ++i){
         AssertFatal(dl_config->number_pdus < FAPI_NR_DL_CONFIG_LIST_NUM,"dl_config->number_pdus %d out of bounds\n",dl_config->number_pdus);
         AssertFatal(dl_config->dl_config_list[i].pdu_type<=FAPI_NR_DL_CONFIG_TYPES,"pdu_type %d > 2\n",dl_config->dl_config_list[i].pdu_type);
-        LOG_D(PHY, "In %s: frame %d slot %d received 1 DL %s PDU of %d total DL PDUs:\n",
-              __FUNCTION__, scheduled_response->frame, slot, dl_pdu_type[dl_config->dl_config_list[i].pdu_type - 1], dl_config->number_pdus);
+        LOG_I(PHY,
+              "In %s: frame %d slot %d received 1 DL %s PDU of %d total DL PDUs:\n",
+              __FUNCTION__,
+              scheduled_response->frame,
+              slot,
+              dl_pdu_type[dl_config->dl_config_list[i].pdu_type - 1],
+              dl_config->number_pdus);
 
         switch(dl_config->dl_config_list[i].pdu_type) {
           case FAPI_NR_DL_CONFIG_TYPE_DCI:
@@ -414,7 +419,7 @@ int8_t nr_ue_scheduled_response(nr_scheduled_response_t *scheduled_response){
             phy_pdcch_config->nb_search_space = phy_pdcch_config->nb_search_space + 1;
             phy_pdcch_config->sfn = scheduled_response->frame;
             phy_pdcch_config->slot = slot;
-            LOG_D(PHY,"Number of DCI SearchSpaces %d\n",phy_pdcch_config->nb_search_space);
+            LOG_I(PHY, "Number of DCI SearchSpaces %d\n", phy_pdcch_config->nb_search_space);
             break;
           case FAPI_NR_DL_CONFIG_TYPE_CSI_IM:
             csiim_config_pdu = &dl_config->dl_config_list[i].csiim_config_pdu.csiim_config_rel15;
@@ -446,6 +451,17 @@ int8_t nr_ue_scheduled_response(nr_scheduled_response_t *scheduled_response){
             dlsch_config_pdu = &dl_config->dl_config_list[i].dlsch_config_pdu.dlsch_config_rel15;
             NR_UE_DLSCH_t *dlsch0 = &((nr_phy_data_t *)scheduled_response->phy_data)->dlsch[0];
             dlsch0->rnti_type = _C_RNTI_;
+            dlsch0->dlsch_config = *dlsch_config_pdu;
+            configure_dlsch(dlsch0,
+                            PHY_vars_UE_g[module_id][cc_id]->dl_harq_processes[0],
+                            dlsch_config_pdu,
+                            module_id,
+                            dl_config->dl_config_list[i].dlsch_config_pdu.rnti);
+          } break;
+          case FAPI_NR_DL_CONFIG_TYPE_SPS_DLSCH: {
+            dlsch_config_pdu = &dl_config->dl_config_list[i].dlsch_config_pdu.dlsch_config_rel15;
+            NR_UE_DLSCH_t *dlsch0 = &((nr_phy_data_t *)scheduled_response->phy_data)->dlsch[0];
+            dlsch0->rnti_type = _CS_RNTI_;
             dlsch0->dlsch_config = *dlsch_config_pdu;
             configure_dlsch(dlsch0, PHY_vars_UE_g[module_id][cc_id]->dl_harq_processes[0], dlsch_config_pdu, module_id,
                             dl_config->dl_config_list[i].dlsch_config_pdu.rnti);

@@ -1139,48 +1139,155 @@ int nr_ue_ul_indication(nr_uplink_indication_t *ul_info)
   return 0;
 }
 
+static int handle_sps_indication(nr_downlink_indication_t *dl_info)
+{
+  /* There will be no dci sent once SPS activation is received by UE so SPS should be handled  */
+  module_id_t module_id = dl_info->module_id;
+  NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
+  NR_UE_DL_BWP_t *dl_bwp = &mac->current_DL_BWP;
+  NR_UE_UL_BWP_t *ul_bwp = &mac->current_UL_BWP;
+  bool is_slot_sps = is_nr_SPS_DL_slot(dl_info->frame,
+                                       dl_info->slot,
+                                       dl_bwp->sps_config,
+                                       dl_bwp->cs_rnti,
+                                       dl_bwp->scs,
+                                       dl_bwp->sps_assign,
+                                       mac->tdd_UL_DL_ConfigurationCommon,
+                                       mac->frame_type);
+
+  if (!is_slot_sps)
+    return 0;
+
+  LOG_I(NR_MAC,
+        "[%d.%d] SPS PDSCH is scheduled without DCI indication (total activations %d)\n",
+        dl_info->frame,
+        dl_info->slot,
+        dl_bwp->total_sps_activations);
+
+  /*
+     todo sps: should be modified when multiple SPS activations are activation by searching for the sps config for this slot
+     same DCI received during SPS activation need to be used for all PDSCH ocassions until release
+  */
+  uint8_t feedback_val;
+  fapi_nr_dl_config_request_t *dl_config = get_dl_config_request(mac, dl_info->slot);
+  nr_ue_sps_ctrl_t *sps_ctrl = dl_bwp->sps_ue_ctrl;
+  nr_dci_format_t dci_format = sps_ctrl->initial_dci_config->dci_format;
+
+  fapi_nr_dl_config_request_pdu_t *dlsch_config_request_pdu = &dl_config->dl_config_list[dl_config->number_pdus];
+  memcpy(&dlsch_config_request_pdu->dlsch_config_pdu, sps_ctrl->initial_dlsch_config, sizeof(fapi_nr_dl_config_dlsch_pdu));
+  dlsch_config_request_pdu->pdu_type = FAPI_NR_DL_CONFIG_TYPE_SPS_DLSCH;
+  dl_config->number_pdus++;
+
+  // update the harq status depending on the slot and frame number
+  dlsch_config_request_pdu->dlsch_config_pdu.dlsch_config_rel15.harq_process_nbr =
+      get_harq_processid_sps(dl_info->frame, dl_info->slot, dl_bwp->scs, dl_bwp->sps_config);
+
+  LOG_I(NR_MAC, "The DCI format check at UE is %d\n", dci_format);
+  switch (dci_format) {
+    case NR_DL_DCI_FORMAT_1_0: {
+      feedback_val = 1 + sps_ctrl->initial_dci_config->pdsch_to_harq_feedback_timing_indicator;
+      break;
+    }
+    case NR_DL_DCI_FORMAT_1_1: {
+      /* PDSCH_TO_HARQ_FEEDBACK_TIME_IND */
+      // according to TS 38.213 Table 9.2.3-1
+      NR_PUCCH_Config_t *pucch_Config = ul_bwp->pucch_Config;
+      feedback_val =
+          pucch_Config->dl_DataToUL_ACK->list.array[sps_ctrl->initial_dci_config->pdsch_to_harq_feedback_timing_indicator][0];
+      AssertFatal(feedback_val > DURATION_RX_TO_TX,
+                  "PDSCH to HARQ feedback time (%d) needs to be higher than DURATION_RX_TO_TX (%d). Min feedback time set in "
+                  "config file (min_rxtxtime).\n",
+                  feedback_val,
+                  DURATION_RX_TO_TX);
+      break;
+    }
+    case NR_UL_DCI_FORMAT_0_0:
+    case NR_UL_DCI_FORMAT_0_1:
+    case NR_DL_DCI_FORMAT_2_0:
+    case NR_DL_DCI_FORMAT_2_1:
+    case NR_DL_DCI_FORMAT_2_2:
+    case NR_DL_DCI_FORMAT_2_3:
+      break;
+
+    default:
+      break;
+  }
+  set_harq_status(mac,
+                  sps_ctrl->initial_dci_config->pucch_resource_indicator,
+                  dlsch_config_request_pdu->dlsch_config_pdu.dlsch_config_rel15.harq_process_nbr,
+                  dlsch_config_request_pdu->dlsch_config_pdu.dlsch_config_rel15.accumulated_delta_PUCCH,
+                  feedback_val,
+                  sps_ctrl->initial_dci_config->dai[0],
+                  sps_ctrl->initial_dci_config->n_CCE,
+                  sps_ctrl->initial_dci_config->N_CCE,
+                  dl_info->frame,
+                  dl_info->slot);
+  return 0;
+}
+
 int nr_ue_dl_indication(nr_downlink_indication_t *dl_info)
 {
   pthread_mutex_lock(&mac_IF_mutex);
   uint32_t ret_mask = 0x0;
   module_id_t module_id = dl_info->module_id;
   NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
+  NR_UE_DL_BWP_t *dl_bwp = &mac->current_DL_BWP;
   if ((!dl_info->dci_ind && !dl_info->rx_ind)) {
     // UL indication to schedule DCI reception
     nr_ue_dl_scheduler(dl_info);
   } else {
     // UL indication after reception of DCI or DL PDU
-    if (dl_info && dl_info->dci_ind && dl_info->dci_ind->number_of_dcis) {
+    // todo sps
+    // sps fix: since there wont be any dci sent for sps after activation, in order to use the previous resources, increase the dci
+    // cnt here
+    if (dl_info && dl_info->dci_ind) {
       LOG_T(MAC,"[L2][IF MODULE][DL INDICATION][DCI_IND]\n");
-      for (int i = 0; i < dl_info->dci_ind->number_of_dcis; i++) {
-        LOG_T(MAC,">>>NR_IF_Module i=%d, dl_info->dci_ind->number_of_dcis=%d\n",i,dl_info->dci_ind->number_of_dcis);
+      uint16_t total_dcis = dl_info->dci_ind->number_of_dcis + dl_bwp->total_sps_activations;
+      LOG_I(MAC, ">>>dl_info->dci_ind->number_of_dcis=%d, total dcis=%d\n", dl_info->dci_ind->number_of_dcis, total_dcis);
+      for (int i = 0; i < total_dcis; i++) {
+        LOG_I(MAC, ">>>NR_IF_Module i=%d, dl_info->dci_ind->number_of_dcis=%d\n", i, dl_info->dci_ind->number_of_dcis);
         nr_scheduled_response_t scheduled_response;
-        int8_t ret = handle_dci(dl_info->module_id,
-                                dl_info->cc_id,
-                                dl_info->gNB_index,
-                                dl_info->frame,
-                                dl_info->slot,
-                                dl_info->dci_ind->dci_list+i);
-        if (ret < 0)
-          continue;
-        fapi_nr_dci_indication_pdu_t *dci_index = dl_info->dci_ind->dci_list+i;
-
-        /* The check below filters out UL_DCIs which are being processed as DL_DCIs. */
-        if (dci_index->dci_format != NR_DL_DCI_FORMAT_1_0 && dci_index->dci_format != NR_DL_DCI_FORMAT_1_1) {
-          LOG_D(NR_MAC, "We are filtering a UL_DCI to prevent it from being treated like a DL_DCI\n");
-          continue;
-        }
-        dci_pdu_rel15_t *def_dci_pdu_rel15 = &mac->def_dci_pdu_rel15[dl_info->slot][dci_index->dci_format];
-        g_harq_pid = def_dci_pdu_rel15->harq_pid;
-        LOG_T(NR_MAC, "Setting harq_pid = %d and dci_index = %d (based on format)\n", g_harq_pid, dci_index->dci_format);
-
-        ret_mask |= (ret << FAPI_NR_DCI_IND);
-        AssertFatal( nr_ue_if_module_inst[module_id] != NULL, "IF module is NULL!\n" );
-        AssertFatal( nr_ue_if_module_inst[module_id]->scheduled_response != NULL, "scheduled_response is NULL!\n" );
         fapi_nr_dl_config_request_t *dl_config = get_dl_config_request(mac, dl_info->slot);
+
+        if (i < dl_info->dci_ind->number_of_dcis) {
+          // when there is a active dci
+          int8_t ret = handle_dci(dl_info->module_id,
+                                  dl_info->cc_id,
+                                  dl_info->gNB_index,
+                                  dl_info->frame,
+                                  dl_info->slot,
+                                  dl_info->dci_ind->dci_list + i);
+          if (ret < 0)
+            continue;
+          fapi_nr_dci_indication_pdu_t *dci_index = dl_info->dci_ind->dci_list + i;
+
+          /* The check below filters out UL_DCIs which are being processed as DL_DCIs. */
+          if (dci_index->dci_format != NR_DL_DCI_FORMAT_1_0 && dci_index->dci_format != NR_DL_DCI_FORMAT_1_1) {
+            LOG_I(NR_MAC, "We are filtering a UL_DCI to prevent it from being treated like a DL_DCI\n");
+            continue;
+          }
+          dci_pdu_rel15_t *def_dci_pdu_rel15 = &mac->def_dci_pdu_rel15[dl_info->slot][dci_index->dci_format];
+          g_harq_pid = def_dci_pdu_rel15->harq_pid;
+          LOG_I(NR_MAC, "Setting harq_pid = %d and dci_index = %d (based on format)\n", g_harq_pid, dci_index->dci_format);
+
+          ret_mask |= (ret << FAPI_NR_DCI_IND);
+          AssertFatal(nr_ue_if_module_inst[module_id] != NULL, "IF module is NULL!\n");
+          AssertFatal(nr_ue_if_module_inst[module_id]->scheduled_response != NULL, "scheduled_response is NULL!\n");
+
+          // if there is already DCI scrambled with CS-RNTI, then it must be a retransmission, so no need to process the SPS PDSCH
+          // again todo sps: whn there are multiple sps configuration, i assume the cs-rnti need to be decided if that is an new
+          // activation or PDSCH occasion of already activated sps
+          if (get_rnti_type(mac, (dl_info->dci_ind->dci_list + i)->rnti) == NR_RNTI_CS) {
+            total_dcis--;
+            LOG_I(NR_MAC, "Decrement the total dcis by 1 to avoid the SPS PDSCH without DCI\n");
+          }
+          memset(def_dci_pdu_rel15, 0, sizeof(*def_dci_pdu_rel15));
+        } else {
+          handle_sps_indication(dl_info);
+        }
+
         fill_scheduled_response(&scheduled_response, dl_config, NULL, NULL, dl_info->module_id, dl_info->cc_id, dl_info->frame, dl_info->slot, dl_info->phy_data);
         nr_ue_if_module_inst[module_id]->scheduled_response(&scheduled_response);
-        memset(def_dci_pdu_rel15, 0, sizeof(*def_dci_pdu_rel15));
       }
       dl_info->dci_ind = NULL;
     }

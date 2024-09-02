@@ -620,7 +620,14 @@ static bool nr_acknack_scheduling_sps(gNB_MAC_INST *nrmac,
   const int nr_slots_period = tdd ? n_slots_frame / get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity) : n_slots_frame;
   const int first_ul_slot_period = tdd ? get_first_ul_slot(tdd->nrofDownlinkSlots, tdd->nrofDownlinkSymbols, tdd->nrofUplinkSymbols) : 0;
 
-  bool is_slot_sps = is_nr_SPS_DL_slot(frame, slot, sps_config, current_BWP->cs_rnti, current_BWP->scs, sched_sps->sps_assign, scc, nrmac->common_channels[0].frame_type);
+  bool is_slot_sps = is_nr_SPS_DL_slot(frame,
+                                       slot,
+                                       sps_config,
+                                       current_BWP->cs_rnti,
+                                       current_BWP->scs,
+                                       sched_sps->sps_assign,
+                                       scc->tdd_UL_DL_ConfigurationCommon,
+                                       nrmac->common_channels[0].frame_type);
   LOG_D(NR_MAC, "In %s, at frame %d slot %d is sps ? %d and sps occasion is %d\n", __func__, frame, slot, is_slot_sps, sched_sps->sps_assign ? sched_sps->sps_assign->sps_assisgnment_index: -1);
   bool status_dl = false;
   // update when to expect the ack nack for sps occasions (should take new puuch for retransmissions??)
@@ -866,7 +873,14 @@ static void pf_dl(module_id_t module_id,
     NR_sched_pdsch_t *sched_pdsch = &sched_ctrl->sched_pdsch;
     NR_sched_sps_t *sched_sps = &sched_ctrl->sched_sps;
     nr_sps_ctrl_t *sps_ctrl = &sched_ctrl->sps_ctrl;
-    bool is_slot_sps = is_nr_SPS_DL_slot(frame, slot, dl_bwp->sps_config, dl_bwp->cs_rnti, dl_bwp->scs, sched_sps->sps_assign, scc, mac->common_channels[0].frame_type);
+    bool is_slot_sps = is_nr_SPS_DL_slot(frame,
+                                         slot,
+                                         dl_bwp->sps_config,
+                                         dl_bwp->cs_rnti,
+                                         dl_bwp->scs,
+                                         sched_sps->sps_assign,
+                                         scc->tdd_UL_DL_ConfigurationCommon,
+                                         mac->common_channels[0].frame_type);
 
     /* for new transmissons if sps activation signal is assigned */
     rnti_t rnti_type = sps_ctrl->send_sps_activation || is_slot_sps ? NR_RNTI_CS : NR_RNTI_C;
@@ -1112,7 +1126,14 @@ static void nr_get_scheduling_resources(module_id_t module_id,
   NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
   AssertFatal(tdd || nrmac->common_channels[0].frame_type == FDD, "Dynamic TDD not handled yet\n");
 
-  bool is_slot_sps = is_nr_SPS_DL_slot(frame, slot, sps_config, current_BWP->cs_rnti, current_BWP->scs, sched_sps->sps_assign, scc, nrmac->common_channels[0].frame_type);
+  bool is_slot_sps = is_nr_SPS_DL_slot(frame,
+                                       slot,
+                                       sps_config,
+                                       current_BWP->cs_rnti,
+                                       current_BWP->scs,
+                                       sched_sps->sps_assign,
+                                       scc->tdd_UL_DL_ConfigurationCommon,
+                                       nrmac->common_channels[0].frame_type);
   int8_t current_harq_pid = sched_pdsch->dl_harq_pid;
 
   if (current_harq_pid < 0 && is_slot_sps) {
@@ -1157,7 +1178,14 @@ void nr_schedule_ue_spec(module_id_t module_id,
     NR_SPS_Config_t *sps_config = current_BWP->sps_config;
     NR_sched_sps_t *sched_sps = &sched_ctrl->sched_sps;
     nr_sps_ctrl_t *sps_ctrl = &sched_ctrl->sps_ctrl;
-    bool is_slot_sps = is_nr_SPS_DL_slot(frame, slot, sps_config, current_BWP->cs_rnti, current_BWP->scs, sched_sps->sps_assign, scc, gNB_mac->common_channels[0].frame_type);
+    bool is_slot_sps = is_nr_SPS_DL_slot(frame,
+                                         slot,
+                                         sps_config,
+                                         current_BWP->cs_rnti,
+                                         current_BWP->scs,
+                                         sched_sps->sps_assign,
+                                         scc->tdd_UL_DL_ConfigurationCommon,
+                                         gNB_mac->common_channels[0].frame_type);
 
     if (sched_ctrl->ul_failure && !get_softmodem_params()->phy_test) {
       LOG_I(NR_MAC, "[frame %d][slot %d] This particular slot is continuing because of ul failure\n", frame, slot);

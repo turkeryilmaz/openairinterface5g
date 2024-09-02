@@ -1986,6 +1986,10 @@ void nr_rrc_ue_process_ueCapabilityEnquiry(const protocol_ctxt_t *const ctxt_pP,
     nr_bandnr->bandNR = 1;
     asn1cSeqAdd(&UE_Capability_nr->rf_Parameters.supportedBandListNR.list,
                      nr_bandnr);
+
+    long enable_sps = 0;
+    asn1cCalloc(UE_Capability_nr->phy_Parameters.phy_ParametersCommon, nr_phy_params_common);
+    nr_phy_params_common->downlinkSPS = &enable_sps;
   }
   OAI_NR_UECapability_t *UECap;
   UECap = CALLOC(1,sizeof(OAI_NR_UECapability_t));
