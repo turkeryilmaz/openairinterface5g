@@ -558,7 +558,9 @@ set_ldpc_dec_op(struct rte_bbdev_dec_op **ops,
                                   RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_IN_ENABLE |
                                   RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE |
                                   RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE;
-      if (!nrLDPC_slot_decoding_parameters->TBs[h].segments[i].d_to_be_cleared) {
+      if (*nrLDPC_slot_decoding_parameters->TBs[h].segments[i].d_to_be_cleared) {
+        *nrLDPC_slot_decoding_parameters->TBs[h].segments[i].d_to_be_cleared = false;
+      } else {
         ops[j]->ldpc_dec.op_flags |= RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE;
       }
       if (nrLDPC_slot_decoding_parameters->TBs[h].C > 1) {
@@ -566,8 +568,8 @@ set_ldpc_dec_op(struct rte_bbdev_dec_op **ops,
         ops[j]->ldpc_dec.op_flags |= RTE_BBDEV_LDPC_CRC_TYPE_24B_CHECK;
       }
       ops[j]->ldpc_dec.code_block_mode = 1;
-      ops[j]->ldpc_dec.harq_combined_input.offset = h * NR_LDPC_MAX_NUM_CB * LDPC_MAX_CB_SIZE + i * LDPC_MAX_CB_SIZE;
-      ops[j]->ldpc_dec.harq_combined_output.offset = h * NR_LDPC_MAX_NUM_CB * LDPC_MAX_CB_SIZE + i * LDPC_MAX_CB_SIZE;
+      ops[j]->ldpc_dec.harq_combined_input.offset = nrLDPC_slot_decoding_parameters->TBs[h].xlsch_id * NR_LDPC_MAX_NUM_CB * LDPC_MAX_CB_SIZE + i * LDPC_MAX_CB_SIZE;
+      ops[j]->ldpc_dec.harq_combined_output.offset = nrLDPC_slot_decoding_parameters->TBs[h].xlsch_id * NR_LDPC_MAX_NUM_CB * LDPC_MAX_CB_SIZE + i * LDPC_MAX_CB_SIZE;
       if (bufs->hard_outputs != NULL)
         ops[j]->ldpc_dec.hard_output = bufs->hard_outputs[start_idx + j];
       if (bufs->inputs != NULL)
