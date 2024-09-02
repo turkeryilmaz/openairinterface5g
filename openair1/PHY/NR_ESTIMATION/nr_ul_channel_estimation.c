@@ -792,11 +792,11 @@ int nr_srs_channel_estimation(
             uint16_t subcarrier_cdm = subcarrier;
 
             for (int cdm_idx = 0; cdm_idx < fd_cdm; cdm_idx++) {
-              int16_t generated_real = srs_generated_signal[p_index][subcarrier_cdm].r;
-              int16_t generated_imag = srs_generated_signal[p_index][subcarrier_cdm].i;
+              int16_t generated_real = srs_generated_signal[p_index][subcarrier_cdm + srs_symbol_offset].r;
+              int16_t generated_imag = srs_generated_signal[p_index][subcarrier_cdm + srs_symbol_offset].i;
 
-              int16_t received_real = ((c16_t *)srs_received_signal[ant])[subcarrier_cdm].r;
-              int16_t received_imag = ((c16_t *)srs_received_signal[ant])[subcarrier_cdm].i;
+              int16_t received_real = ((c16_t *)srs_received_signal[ant])[subcarrier_cdm + srs_symbol_offset].r;
+              int16_t received_imag = ((c16_t *)srs_received_signal[ant])[subcarrier_cdm + srs_symbol_offset].i;
 
               // We know that nr_srs_info->srs_generated_signal_bits bits are enough to represent the generated_real and
               // generated_imag. So we only need a nr_srs_info->srs_generated_signal_bits shift to ensure that the result fits into
@@ -914,9 +914,9 @@ int nr_srs_channel_estimation(
       // Compute signal power
       uint32_t signal_power_ant = calc_power(&ch_real[base_idx], M_sc_b_SRS) + calc_power(&ch_imag[base_idx], M_sc_b_SRS);
 
-      //#ifdef SRS_DEBUG
+#ifdef SRS_DEBUG
       LOG_I(NR_PHY, "signal_power(p_index %d, ant %d) = %d dB\n", p_index, ant, dB_fixed(signal_power_ant));
-      //#endif
+#endif
 
 #ifdef SRS_DEBUG
       subcarrier = subcarrier_offset + nr_srs_info->k_0_p[p_index][0];
@@ -971,7 +971,7 @@ int nr_srs_channel_estimation(
   uint32_t signal_power = calc_power(ch_real, arr_len) + calc_power(ch_imag, arr_len);
 
 #ifdef SRS_DEBUG
-  LOG_I(NR_PHY, "signal_power(p_index %d, ant %d) = %d dB\n", p_index, ant, dB_fixed(signal_power));
+  LOG_I(NR_PHY, "signal_power = %d dB\n", dB_fixed(signal_power));
 #endif
 
   if (signal_power == 0) {
