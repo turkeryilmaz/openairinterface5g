@@ -98,6 +98,8 @@ int nr_ulsch_decoding_slot(PHY_VARS_gNB *phy_vars_gNB,
       LOG_E(PHY, "ulsch_decoding.c: NULL harq_process pointer\n");
       return -1;
     }
+
+    nrLDPC_TB_decoding_parameters.xlsch_id = ULSCH_id;
   
     // ------------------------------------------------------------------
     nrLDPC_TB_decoding_parameters.nb_rb = pusch_pdu->rb_size;

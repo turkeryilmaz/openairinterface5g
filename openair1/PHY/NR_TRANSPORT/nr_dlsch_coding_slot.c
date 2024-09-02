@@ -154,6 +154,7 @@ int nr_dlsch_encoding_slot(PHY_VARS_gNB *gNB,
 
     nrLDPC_TB_encoding_parameters_t nrLDPC_TB_encoding_parameters;
 
+    nrLDPC_TB_encoding_parameters.xlsch_id = dlsch_id;
     nrLDPC_TB_encoding_parameters.BG = rel15->maintenance_parms_v3.ldpcBaseGraph;
     nrLDPC_TB_encoding_parameters.Z = harq->Z;
     nrLDPC_TB_encoding_parameters.A = A;

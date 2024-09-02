@@ -54,6 +54,7 @@ typedef struct nrLDPC_segment_decoding_parameters_s{
  * \typedef nrLDPC_TB_decoding_parameters_t
  * \struct nrLDPC_TB_decoding_parameters_s
  * \brief decoding parameter of transport blocks
+ * \var xlsch_id ulsch or dlsch index
  * \var rnti RNTI
  * \var nb_rb number of resource blocks
  * \var Qm modulation order
@@ -73,6 +74,8 @@ typedef struct nrLDPC_segment_decoding_parameters_s{
  * \var segments array of segments parameters
  */
 typedef struct nrLDPC_TB_decoding_parameters_s{
+
+  uint8_t xlsch_id;
 
   uint16_t rnti;
   uint16_t nb_rb;
@@ -136,6 +139,7 @@ typedef struct nrLDPC_segment_encoding_parameters_s{
  * \typedef nrLDPC_TB_encoding_parameters_t
  * \struct nrLDPC_TB_encoding_parameters_s
  * \brief encoding parameter of transport blocks
+ * \var xlsch_id ulsch or dlsch index
  * \var rnti RNTI
  * \var nb_rb number of resource blocks
  * \var Qm modulation order
@@ -154,6 +158,8 @@ typedef struct nrLDPC_segment_encoding_parameters_s{
  * \var segments array of segments parameters
  */
 typedef struct nrLDPC_TB_encoding_parameters_s{
+
+  uint8_t xlsch_id;
 
   uint16_t rnti;
   uint16_t nb_rb;

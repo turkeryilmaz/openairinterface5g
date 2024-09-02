@@ -90,6 +90,8 @@ uint32_t nr_dlsch_decoding_slot(PHY_VARS_NR_UE *phy_vars_ue,
 
     nrLDPC_TB_decoding_parameters_t *TB_decoding_params = &TBs[pdsch_id];
 
+    TB_decoding_params->xlsch_id = DLSCH_id;
+
     // ------------------------------------------------------------------
     TB_decoding_params->G = G[DLSCH_id];
     TB_decoding_params->nb_rb = dlsch_config->number_rbs;

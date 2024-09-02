@@ -66,6 +66,7 @@ int nr_ulsch_encoding_slot(PHY_VARS_NR_UE *ue,
     uint8_t ULSCH_id = ULSCH_ids[pusch_id];
     uint8_t harq_pid = ulsch[ULSCH_id].pusch_pdu.pusch_data.harq_process_id;
     nrLDPC_TB_encoding_parameters_t *TB_encoding_params = &TBs[pusch_id];
+    TB_encoding_params->xlsch_id = ULSCH_id;
 
     /////////////////////////parameters and variables initialization/////////////////////////
 
