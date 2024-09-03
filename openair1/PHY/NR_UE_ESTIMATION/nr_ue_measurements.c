@@ -233,7 +233,8 @@ void nr_ue_ssb_rsrp_measurements(PHY_VARS_NR_UE *ue,
   ue->measurements.ssb_rsrp_dBm[ssb_index] = 10*log10(rsrp) - (int)ue->rfdevice.app_rx_gain[0];
 
   // to obtain non-integer dB value with a resoluion of 0.5dB
-  int SNRtimes10 = dB_fixed_x10(rsrp) - dB_fixed_x10(ue->measurements.n0_power_avg);
+  uint32_t signal_pwr = rsrp > ue->measurements.n0_power_avg ? rsrp - ue->measurements.n0_power_avg : 0;
+  int SNRtimes10 = dB_fixed_x10(signal_pwr) - dB_fixed_x10(ue->measurements.n0_power_avg);
   ue->measurements.ssb_sinr_dB[ssb_index] = SNRtimes10 / 10.0;
 
   LOG_D(PHY,
