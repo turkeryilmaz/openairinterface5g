@@ -39,7 +39,7 @@
   {"PST" ,                  CONFIG_HLP_PathStart,      0,                .u16ptr=&pathStartingTime,           .defintval=1050,                  TYPE_UINT16, 0},        \
   {"PET" ,                  CONFIG_HLP_PathEnd,        0,                .u16ptr=&pathEndingTime,             .defintval=1280,                  TYPE_UINT16, 0},        \
   {"ue_PosY" ,              CONFIG_HLP_uePosY,         0,                .iptr=&uePosY,                       .defintval=0,                     TYPE_INT,    0},        \
-  {"amc" ,                  CONFIG_HLP_AMC,            0,                .u8ptr=&amc_flag,                    .defdblval=0,                     TYPE_UINT8,  0},        \
+  {"amc" ,                  CONFIG_HLP_AMC,            PARAMFLAG_BOOL,   .u8ptr=&amc_flag,                    .defintval=0,                     TYPE_UINT8,  0},        \
   {"sinr-offset-dl" ,       CONFIG_HLP_SINR_OSET_DL,   0,                .dblptr=&sinr_offset_dl,             .defdblval=0,                     TYPE_DOUBLE, 0},        \
   {"sinr-offset-ul" ,       CONFIG_HLP_SINR_OSET_UL,   0,                .dblptr=&sinr_offset_ul,             .defdblval=0,                     TYPE_DOUBLE, 0}         \
 }
