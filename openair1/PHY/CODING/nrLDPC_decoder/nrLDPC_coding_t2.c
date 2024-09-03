@@ -560,6 +560,7 @@ set_ldpc_dec_op(struct rte_bbdev_dec_op **ops,
                                   RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE;
       if (*nrLDPC_slot_decoding_parameters->TBs[h].segments[i].d_to_be_cleared) {
         *nrLDPC_slot_decoding_parameters->TBs[h].segments[i].d_to_be_cleared = false;
+        *nrLDPC_slot_decoding_parameters->TBs[h].processedSegments = 0;
       } else {
         ops[j]->ldpc_dec.op_flags |= RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE;
       }
@@ -772,6 +773,10 @@ pmd_lcore_ldpc_dec(void *arg)
           uint32_t len_with_crc = lenWithCrc(nrLDPC_slot_decoding_parameters->TBs[h].C, nrLDPC_slot_decoding_parameters->TBs[h].A);
           *status = check_crc(decoded_bytes, len_with_crc, crc_type);
 
+        }
+
+        if (*status) {
+          *nrLDPC_slot_decoding_parameters->TBs[h].processedSegments = *nrLDPC_slot_decoding_parameters->TBs[h].processedSegments + 1;
         }
       
         ++j;

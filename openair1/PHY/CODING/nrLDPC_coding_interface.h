@@ -55,6 +55,10 @@ typedef struct nrLDPC_segment_decoding_parameters_s{
  * \struct nrLDPC_TB_decoding_parameters_s
  * \brief decoding parameter of transport blocks
  * \var xlsch_id ulsch or dlsch index
+ * \var processedSegments
+ * pointer to the number of succesfully decoded segments
+ * it initially holds the total number of segments decoded after the previous HARQ round
+ * it finally holds the total number of segments decoded after the current HARQ round
  * \var rnti RNTI
  * \var nb_rb number of resource blocks
  * \var Qm modulation order
@@ -76,6 +80,7 @@ typedef struct nrLDPC_segment_decoding_parameters_s{
 typedef struct nrLDPC_TB_decoding_parameters_s{
 
   uint8_t xlsch_id;
+  uint32_t *processedSegments;
 
   uint16_t rnti;
   uint16_t nb_rb;

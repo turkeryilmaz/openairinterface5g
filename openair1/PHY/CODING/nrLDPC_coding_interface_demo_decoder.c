@@ -111,6 +111,7 @@ typedef struct nrLDPC_decoding_parameters_s{
   bool *d_to_be_cleared;
   uint8_t *c;
   bool *decodeSuccess;
+  uint32_t *processedSegments;
 } nrLDPC_decoding_parameters_t;
 
 // Global var to limit the rework of the dirty legacy code
@@ -209,6 +210,7 @@ static void nr_process_decode_segment(void *arg)
   if (decodeIterations <= p_decoderParms->numMaxIter) {
     memcpy(rdata->c,llrProcBuf,  Kr>>3);
     *rdata->decodeSuccess = true;
+    *rdata->processedSegments = *rdata->processedSegments + 1;
   } else {
     *rdata->decodeSuccess = false;
   }
@@ -219,6 +221,7 @@ int nrLDPC_prepare_TB_decoding(nrLDPC_slot_decoding_parameters_t *nrLDPC_slot_de
 
   nrLDPC_TB_decoding_parameters_t *nrLDPC_TB_decoding_parameters = &nrLDPC_slot_decoding_parameters->TBs[pusch_id];
 
+  *nrLDPC_TB_decoding_parameters->processedSegments = 0;
   t_nrLDPC_dec_params decParams = {.check_crc = check_crc};
   decParams.BG = nrLDPC_TB_decoding_parameters->BG;
   decParams.Z = nrLDPC_TB_decoding_parameters->Z;
@@ -248,6 +251,7 @@ int nrLDPC_prepare_TB_decoding(nrLDPC_slot_decoding_parameters_t *nrLDPC_slot_de
     rdata->d_to_be_cleared = nrLDPC_TB_decoding_parameters->segments[r].d_to_be_cleared;
     rdata->c = nrLDPC_TB_decoding_parameters->segments[r].c;
     rdata->decodeSuccess = &nrLDPC_TB_decoding_parameters->segments[r].decodeSuccess;
+    rdata->processedSegments = nrLDPC_TB_decoding_parameters->processedSegments;
     pushTpool(nrLDPC_slot_decoding_parameters->threadPool, req);
     LOG_D(PHY, "Added a block to decode, in pipe: %d\n", r);
   }

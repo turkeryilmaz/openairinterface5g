@@ -102,6 +102,8 @@ uint32_t nr_dlsch_decoding_slot(PHY_VARS_NR_UE *phy_vars_ue,
     TB_decoding_params->A = dlsch_config->TBS;
     // ------------------------------------------------------------------
 
+    TB_decoding_params->processedSegments = &harq_process->processedSegments;
+
     float Coderate = (float)dlsch->dlsch_config.targetCodeRate / 10240.0f;
 
     LOG_D(
@@ -221,7 +223,6 @@ uint32_t nr_dlsch_decoding_slot(PHY_VARS_NR_UE *phy_vars_ue,
 
   // post decode
   for (uint8_t pdsch_id = 0; pdsch_id < nb_dlsch; pdsch_id++) {
-    int num_seg_ok = 0;
     uint8_t DLSCH_id = DLSCH_ids[pdsch_id];
     fapi_nr_dl_config_dlsch_pdu_rel15_t *dlsch_config = &dlsch[DLSCH_id].dlsch_config;
     int harq_pid = dlsch_config->harq_process_nbr;
@@ -236,7 +237,6 @@ uint32_t nr_dlsch_decoding_slot(PHY_VARS_NR_UE *phy_vars_ue,
         memcpy(b[DLSCH_id] + offset,
                harq_process->c[r],
                (harq_process->K >> 3) - (harq_process->F >> 3) - ((harq_process->C > 1) ? 3 : 0));
-        num_seg_ok++;
       } else {
         LOG_D(PHY, "downlink segment error %d/%d\n", r, harq_process->C);
         LOG_D(PHY, "DLSCH %d in error\n", DLSCH_id);
@@ -249,7 +249,7 @@ uint32_t nr_dlsch_decoding_slot(PHY_VARS_NR_UE *phy_vars_ue,
     kpiStructure.dl_mcs = dlsch_config->mcs;
     kpiStructure.nofRBs = dlsch_config->number_rbs;
 
-    if (num_seg_ok == harq_process->C) {
+    if (harq_process->processedSegments == harq_process->C) {
       if (harq_process->C > 1) {
         int A = dlsch_config->TBS;
         /* check global CRC */

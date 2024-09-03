@@ -264,6 +264,8 @@ int decoder_xdma(nrLDPC_TB_decoding_parameters_t *TB_params,
   // printf("Xilinx FPGA -> CB = %d\n", harq_process->C);
   // nrLDPC_decoder_FPGA_PYM((int8_t *)&temp_multi_indata[0], (int8_t *)&multi_outdata[0], dec_conf);
   // stop_meas(&phy_vars_gNB->ulsch_ldpc_decoding_stats);
+
+  *TB_params->processedSegments = 0;
   for (uint32_t r = 0; r < TB_params->C; r++) {
     // ------------------------------------------------------------
     // --------------------- copy FPGA output ---------------------
@@ -284,6 +286,9 @@ int decoder_xdma(nrLDPC_TB_decoding_parameters_t *TB_params,
       segment_params->c[i] = (uint8_t)multi_outdata[i + r * out_CBoffset];
     }
     segment_params->decodeSuccess = (no_iteration_ldpc <= TB_params->max_ldpc_iterations);
+    if (segment_params->decodeSuccess) {
+      *TB_params->processedSegments = *TB_params->processedSegments + 1;
+    }
   }
 
   return 0;
