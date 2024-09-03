@@ -916,7 +916,8 @@ void positioning_measurement_request(const f1ap_measurement_req_t *req)
   mac->nrppa_msg_info.routing_id_buffer = req->nrppa_msg_info.routing_id_buffer;
   mac->nrppa_msg_info.routing_id_length = req->nrppa_msg_info.routing_id_length;
 
-  mac->secondary_srs_configured = 1; //this is never reset
+  //FK 3.9.24 temporarily disabling non-ue-associated SRS measurements
+  //mac->secondary_srs_configured = 1; //this is never reset
   mac->do_srs_meas = 1;         //this is reset once the NRPPA measurement response is set
 }
 

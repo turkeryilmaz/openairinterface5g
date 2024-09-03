@@ -459,7 +459,9 @@ static void nr_configure_srs(nfapi_nr_srs_pdu_t *srs_pdu,
 
   // TODO: This should be completed
   srs_pdu->srs_parameters_v4.srs_bandwidth_size = m_SRS[srs_pdu->config_index];
-  srs_pdu->srs_parameters_v4.usage = 1<<srs_resource_set->usage;
+  // HACK: overwrite usage for localization
+  srs_pdu->srs_parameters_v4.usage = 1<<NFAPI_NR_SRS_LOCALIZATION;
+  //srs_pdu->srs_parameters_v4.usage = 1<<srs_resource_set->usage;
   srs_pdu->srs_parameters_v4.report_type[0] = 1;
   srs_pdu->srs_parameters_v4.iq_representation = 1;
   srs_pdu->srs_parameters_v4.prg_size = 1;
@@ -501,7 +503,7 @@ static void nr_configure_srs_f1ap(nfapi_nr_srs_pdu_t *srs_pdu,
   srs_pdu->config_index = srs_resource->c_SRS;
   srs_pdu->sequence_id = srs_resource->sequenceId;
   srs_pdu->bandwidth_index = srs_resource->b_SRS;
-  srs_pdu->comb_size = srs_resource->transmissionComb.present;
+  srs_pdu->comb_size = srs_resource->transmissionComb.present - 1;
 
   switch(srs_resource->transmissionComb.present) {
   case f1ap_transmission_comb_pr_n2:
@@ -520,7 +522,7 @@ static void nr_configure_srs_f1ap(nfapi_nr_srs_pdu_t *srs_pdu,
   srs_pdu->frequency_shift = srs_resource->freqDomainShift;
   srs_pdu->frequency_hopping = srs_resource->b_hop;
   srs_pdu->group_or_sequence_hopping = srs_resource->groupOrSequenceHopping;
-  srs_pdu->resource_type = srs_resource->resourceType.present;
+  srs_pdu->resource_type = srs_resource->resourceType.present - 1;
   srs_pdu->t_srs = srs_period[srs_resource->resourceType.choice.periodic.periodicity];
   srs_pdu->t_offset = srs_resource->resourceType.choice.periodic.offset;
 
@@ -537,7 +539,7 @@ static void nr_configure_srs_f1ap(nfapi_nr_srs_pdu_t *srs_pdu,
     srs_pdu->beamforming.prg_size = 1;
   }
 
-  uint16_t *vrb_map_UL = &RC.nrmac[module_id]->common_channels[CC_id].vrb_map_UL[buffer_index * MAX_BWP_SIZE];
+  uint16_t *vrb_map_UL = &RC.nrmac[module_id]->common_channels[CC_id].vrb_map_UL[0][buffer_index * MAX_BWP_SIZE];
   uint64_t mask = SL_to_bitmap(13 - srs_pdu->time_start_position, srs_pdu->num_symbols);
   for (int i = 0; i < srs_pdu->bwp_size; ++i)
     vrb_map_UL[i + srs_pdu->bwp_start] |= mask;

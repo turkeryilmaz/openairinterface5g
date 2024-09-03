@@ -917,8 +917,8 @@ static void positioning_measurement_response(const f1ap_measurement_resp_t *resp
 
   uint32_t Tc_inv = 4096 * 480000;
   uint16_t k = 1;
-  uint64_t T_inv = Tc_inv / (1 << k);
-  uint64_t T_ns_inv = 1000000000;
+  uint32_t T_inv = Tc_inv / (1 << k);
+  uint32_t T_ns_inv = 1000000000;
   for (int trp_i=0; trp_i < noOfTRPs; trp_i++){
     meas_res_list_item->tRPID =trp_i; // TODO: needs to be added to config file
     f1ap_pos_measurement_result_t *posMeasRes= &meas_res_list_item->posMeasurementResult;
@@ -930,16 +930,11 @@ static void positioning_measurement_response(const f1ap_measurement_resp_t *resp
     f1ap_measured_results_value_t *MeasResVal= &posMeasRes->pos_measurement_result_item->measuredResultsValue;
     MeasResVal->present = f1ap_measured_results_value_pr_ul_rtoa;
     MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.present = f1ap_ulrtoameas_pr_k1;
-    if (mac->meas_pos_info.toa_ns[trp_i] >=0) {
-      MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k1 =
-        (int32_t)(((int64_t)mac->meas_pos_info.toa_ns[trp_i] * (int64_t)T_inv) / T_ns_inv);
-    }
-    else{
-	    MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k1 = 0;
-        LOG_I(MAC,
-              "Extracting uL_RTOA info of MeasurementResponse, k1=%d \n",
-              MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k1);
-    }
+    MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k1 =
+        (int32_t)(((int64_t)mac->meas_pos_info.toa_ns[trp_i] * (int64_t)T_inv) / T_ns_inv) + 492512;
+    LOG_I(MAC,
+          "Extracting uL_RTOA info of MeasurementResponse, k1=%d \n",
+          MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k1);
     // IE timeStamp.measurementTime
     posMeasRes->pos_measurement_result_item->timeStamp.systemFrameNumber = mac->meas_pos_info.frame;// mac->frame;
     // IE timeStamp.slotIndex
