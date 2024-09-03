@@ -681,9 +681,11 @@ static void pf_dl(module_id_t module_id,
         float SINR = get_measured_sinr(sched_ctrl->CSI_report.ssb_cri_report.SINR);
         max_mcs = min(get_MCS_from_SINR(SINR + sinr_offset_dl), max_mcs);
         sched_pdsch->mcs = min(max_mcs, bo->max_mcs);
-      } else if (bo->harq_round_max == 1)
+        sched_ctrl->dl_bler_stats.mcs = sched_pdsch->mcs;
+      } else if (bo->harq_round_max == 1) {
         sched_pdsch->mcs = min(max_mcs, bo->max_mcs);
-      else
+        sched_ctrl->dl_bler_stats.mcs = sched_pdsch->mcs;
+      } else
         sched_pdsch->mcs = get_mcs_from_bler(bo, stats, &sched_ctrl->dl_bler_stats, max_mcs, frame);
       sched_pdsch->nrOfLayers = get_dl_nrOfLayers(sched_ctrl, current_BWP->dci_format);
       sched_pdsch->pm_index = mac->identity_pm ? 0 : get_pm_index(UE, sched_pdsch->nrOfLayers, mac->xp_pdsch_antenna_ports);

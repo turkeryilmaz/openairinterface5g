@@ -1720,9 +1720,11 @@ static void pf_ul(module_id_t module_id,
     if (amc_flag) {
       uint8_t MCS_temp = get_MCS_from_SINR(sched_ctrl->pusch_snrx10 / 10.0 + sinr_offset_ul);
       sched_pusch->mcs = min(MCS_temp, max_mcs);
-    } else if (bo->harq_round_max == 1)
+      sched_ctrl->ul_bler_stats.mcs = sched_pusch->mcs;
+    } else if (bo->harq_round_max == 1) {
       sched_pusch->mcs = max_mcs;
-    else
+      sched_ctrl->ul_bler_stats.mcs = sched_pusch->mcs;
+    } else
       sched_pusch->mcs = get_mcs_from_bler(bo, stats, &sched_ctrl->ul_bler_stats, max_mcs, frame);
 
     /* Schedule UE on SR or UL inactivity and no data (otherwise, will be scheduled
