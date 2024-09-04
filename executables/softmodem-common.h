@@ -32,6 +32,7 @@
 #ifndef SOFTMODEM_COMMON_H
 #define SOFTMODEM_COMMON_H
 #include "openair1/PHY/defs_common.h"
+#include "softmodem-bits.h"
 #ifdef __cplusplus
 extern "C"
 {
