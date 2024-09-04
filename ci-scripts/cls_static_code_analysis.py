@@ -246,7 +246,10 @@ class StaticCodeAnalysis():
 		cmd.run('docker image rm oai-formatting-check:latest')
 		cmd.run(f'docker build --target oai-formatting-check --tag oai-formatting-check:latest {check_options} --file {lSourcePath}/ci-scripts/docker/Dockerfile.formatting.ubuntu22 {lSourcePath} > {logDir}/oai-formatting-check.txt 2>&1')
 		if self.ranAllowMerge:
-			clang_format_diff_cmd = f'git diff --unified=0 --no-color $(git merge-base {self.ranBranch} {self.ranTargetBranch if self.ranTargetBranch else "develop"})...{self.ranBranch} | clang-format-diff -p1'
+			diff_command = f'$(git merge-base {self.ranBranch} {self.ranTargetBranch if self.ranTargetBranch else "origin/develop"})'
+			logging.debug(diff_command)
+			cmd.run(f'docker run --rm oai-formatting-check:latest bash -c "{diff_command}" > {logDir}/clang-format-check-1.txt 2>&1')
+			clang_format_diff_cmd = f'git diff --unified=0 --no-color {diff_command}...{self.ranBranch} | clang-format-diff -p1'
 			cmd.run(f'docker run --rm oai-formatting-check:latest bash -c "{clang_format_diff_cmd}" > {logDir}/clang-format-check.txt 2>&1')
 		cmd.run('docker image rm oai-formatting-check:latest')
 		cmd.run('docker image prune --force')
@@ -255,6 +258,7 @@ class StaticCodeAnalysis():
 		# Analyzing the logs
 		cmd.copyin(f'{logDir}/oai-formatting-check.txt', 'oai-formatting-check.txt')
 		cmd.copyin(f'{logDir}/clang-format-check.txt', 'clang-format-check.txt')
+		cmd.copyin(f'{logDir}/clang-format-check.txt', 'clang-format-check-1.txt')
 		cmd.close()
 
 		finalStatus = 0
