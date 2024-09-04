@@ -38,7 +38,7 @@ typedef union {
 } fapi_transaction_data_t;
 
 fapi_transaction_data_t *get_transaction_data(struct fapi_transactions_t *transactions, uint32_t transaction_id);
-int32_t get_transaction_id(struct fapi_transactions_t *transactions);
+int32_t allocate_transaction_id(struct fapi_transactions_t *transactions);
 struct fapi_transactions_t *init_fapi_transaction_data(void);
 
 #endif

@@ -67,7 +67,7 @@ fapi_transaction_data_t *get_transaction_data(struct fapi_transactions_t *transa
   return &transactions->transaction_data[transaction_id % MAX_CONCURRENT_TRANSACTIONS];
 }
 
-int32_t get_transaction_id(struct fapi_transactions_t *transactions)
+int32_t allocate_transaction_id(struct fapi_transactions_t *transactions)
 {
   return transactions->transaction_id++;
 }

@@ -108,7 +108,7 @@ fapi_nr_ul_config_request_pdu_t *lockGet_ul_config(NR_UE_MAC_INST_t *mac, frame_
   }
   fapi_nr_ul_config_request_pdu_t *pdu = ul_config->ul_config_list + ul_config->number_pdus++;
   pdu->pdu_type = pdu_type;
-  pdu->transaction_id = get_transaction_id(mac->fapi_transaction_data);
+  pdu->transaction_id = allocate_transaction_id(mac->fapi_transaction_data);
   pdu->lock = &ul_config->mutex_ul_config;
   pdu->privateNBpdus = &ul_config->number_pdus;
   LOG_D(NR_MAC, "Added ul pdu for %d.%d, type %d\n", frame_tx, slot_tx, pdu_type);
