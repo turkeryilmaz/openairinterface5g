@@ -361,6 +361,7 @@ endforeach()
 ####################################################################################
 set(default_ldpc "-O" "${CMAKE_CURRENT_SOURCE_DIR}/nrue.uicc.1.conf")
 set(slot_segment "-O" "${CMAKE_CURRENT_SOURCE_DIR}/nrue.uicc.1.slot_segment.conf")
+set(t2_offload "-O" "${CMAKE_CURRENT_SOURCE_DIR}/nrue.uicc.1.t2_offload.conf" "--ldpc-offload-enable")
 set(slot_t2 "-O" "${CMAKE_CURRENT_SOURCE_DIR}/nrue.uicc.1.slot_t2.conf")
 set(xdma "-O" "${CMAKE_CURRENT_SOURCE_DIR}/nrue.uicc.1.xdma.conf")
 
@@ -371,6 +372,7 @@ set(NR_UESOFTMODEM_OPTION_TO_TEST_LIST
 
 if (ENABLE_LDPC_T2)
   list(APPEND NR_UESOFTMODEM_OPTION_TO_TEST_LIST
+    t2_offload
     slot_t2
   )
 endif()
