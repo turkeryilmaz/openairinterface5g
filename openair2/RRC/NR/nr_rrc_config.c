@@ -745,8 +745,8 @@ static NR_SetupRelease_SRS_Config_t *get_config_srs(const NR_ServingCellConfigCo
   srs_res0->transmissionComb.choice.n2 = calloc(1,sizeof(*srs_res0->transmissionComb.choice.n2));
   srs_res0->transmissionComb.choice.n2->combOffset_n2 = 0;
   srs_res0->transmissionComb.choice.n2->cyclicShift_n2 = 0;
-  srs_res0->resourceMapping.startPosition = 1;
-  srs_res0->resourceMapping.nrofSymbols = NR_SRS_Resource__resourceMapping__nrofSymbols_n1;
+  srs_res0->resourceMapping.startPosition = 4;
+  srs_res0->resourceMapping.nrofSymbols = NR_SRS_Resource__resourceMapping__nrofSymbols_n4;
   srs_res0->resourceMapping.repetitionFactor = NR_SRS_Resource__resourceMapping__repetitionFactor_n1;
   srs_res0->freqDomainPosition = 0;
   srs_res0->freqDomainShift = 0;

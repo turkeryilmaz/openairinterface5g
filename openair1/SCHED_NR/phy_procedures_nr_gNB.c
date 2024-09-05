@@ -1000,7 +1000,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
 
 	uint8_t N_ap = 1<<srs_pdu->num_ant_ports;
 	uint8_t N_ant_rx = gNB->frame_parms.nb_antennas_rx;
-	int16_t srs_toa_ns[N_ant_rx];
+	int32_t srs_toa_ns[N_ant_rx];
 	
         start_meas(&gNB->srs_timing_advance_stats);
         srs_indication->timing_advance_offset = srs_est >= 0 ? nr_est_timing_advance_srs(frame_parms, N_ap, srs_estimated_channel_time[0]) : 0xFFFF;
