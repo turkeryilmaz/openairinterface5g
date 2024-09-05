@@ -29,6 +29,9 @@
 struct fapi_transactions_t;
 
 typedef union {
+  // For verification
+  int slot;
+  bool is_initialized;
   struct {
     int16_t P_CMAX;
   } ulsch_alloc_data;

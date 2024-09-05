@@ -69,7 +69,9 @@ fapi_transaction_data_t *get_transaction_data(struct fapi_transactions_t *transa
 
 int32_t allocate_transaction_id(struct fapi_transactions_t *transactions)
 {
-  return transactions->transaction_id++;
+  uint32_t transaction_id = transactions->transaction_id++;
+  memset(&transactions->transaction_data[transaction_id], 0, sizeof(transactions->transaction_data[transaction_id]));
+  return transaction_id;
 }
 
 struct fapi_transactions_t *init_fapi_transaction_data(void)

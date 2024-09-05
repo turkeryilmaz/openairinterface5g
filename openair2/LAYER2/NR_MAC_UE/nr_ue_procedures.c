@@ -1438,6 +1438,11 @@ nr_dci_format_t nr_ue_process_dci_indication_pdu(NR_UE_MAC_INST_t *mac,
 
   dci_pdu_rel15_t *def_dci_pdu_rel15_array =
       get_transaction_data(mac->fapi_transaction_data, transaction_id)->dci_decoding_data.def_dci_pdu_rel15;
+  AssertFatal(get_transaction_data(mac->fapi_transaction_data, transaction_id)->is_initialized == true,
+              "Not initialized transaction data, transaction_id =%u, slot = %d, transaction data slot = %d",
+              transaction_id,
+              slot,
+              get_transaction_data(mac->fapi_transaction_data, transaction_id)->slot);
   const nr_dci_format_t format = nr_extract_dci_info(mac,
                                                      dci->dci_format,
                                                      dci->payloadSize,
@@ -1450,6 +1455,7 @@ nr_dci_format_t nr_ue_process_dci_indication_pdu(NR_UE_MAC_INST_t *mac,
     return NR_DCI_NONE;
   dci_pdu_rel15_t *def_dci_pdu_rel15 = &def_dci_pdu_rel15_array[format];
   int ret = nr_ue_process_dci(mac, frame, slot, def_dci_pdu_rel15, dci, format);
+  get_transaction_data(mac->fapi_transaction_data, transaction_id)->is_initialized = false;
   if (ret < 0)
     return NR_DCI_NONE;
   return format;

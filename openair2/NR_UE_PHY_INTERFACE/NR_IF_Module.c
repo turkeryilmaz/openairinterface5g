@@ -1193,6 +1193,7 @@ static uint32_t nr_ue_dl_processing(nr_downlink_indication_t *dl_info)
                                                     .CC_id = dl_info->cc_id,
                                                     .phy_data = dl_info->phy_data};
       nr_ue_if_module_inst[dl_info->module_id]->scheduled_response(&scheduled_response);
+      memset(def_dci_pdu_rel15_array, 0, sizeof(*def_dci_pdu_rel15_array) * 8);
     }
     dl_info->dci_ind = NULL;
   }

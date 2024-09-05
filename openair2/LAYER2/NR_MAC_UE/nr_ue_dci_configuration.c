@@ -119,10 +119,12 @@ void config_dci_pdu(NR_UE_MAC_INST_t *mac,
   NR_BWP_PDCCH_t *pdcch_config = &mac->config_BWP_PDCCH[dl_bwp_id];
 
   fapi_nr_dl_config_dci_dl_pdu_rel15_t *rel15 = &dl_config->dl_config_list[dl_config->number_pdus].dci_config_pdu.dci_config_rel15;
-  uint32_t transaction_id = get_transaction_id(mac->fapi_transaction_data);
+  uint32_t transaction_id = allocate_transaction_id(mac->fapi_transaction_data);
   dci_pdu_rel15_t *def_dci_pdu_rel15_array =
       get_transaction_data(mac->fapi_transaction_data, transaction_id)->dci_decoding_data.def_dci_pdu_rel15;
   dl_config->dl_config_list[dl_config->number_pdus].transaction_id = transaction_id;
+  get_transaction_data(mac->fapi_transaction_data, transaction_id)->slot = slot;
+  get_transaction_data(mac->fapi_transaction_data, transaction_id)->is_initialized = true;
 
   const int coreset_id = *ss->controlResourceSetId;
   NR_ControlResourceSet_t *coreset;
