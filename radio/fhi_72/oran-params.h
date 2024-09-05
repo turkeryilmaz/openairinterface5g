@@ -82,8 +82,8 @@
   {ORAN_FH_CONFIG_T1A_CP_UL,    "T1a_cp_ul" ORAN_FH_HLP_CPLT,  PARAMFLAG_MANDATORY, .uptr=NULL, .defintarrayval=0, TYPE_UINTARRAY, 0}, \
   {ORAN_FH_CONFIG_T1A_UP,       "T1a_up" ORAN_FH_HLP_CPLT,     PARAMFLAG_MANDATORY, .uptr=NULL, .defintarrayval=0, TYPE_UINTARRAY, 0}, \
   {ORAN_FH_CONFIG_TA4,          "Ta4" ORAN_FH_HLP_CPLT,        PARAMFLAG_MANDATORY, .uptr=NULL, .defintarrayval=0, TYPE_UINTARRAY, 0}, \
-  {ORAN_FH_CONFIG_CP_VLAN_TAG,  "not used by xran",            0,                   .uptr=NULL, .defuintval=0,     TYPE_UINT,      0}, \
-  {ORAN_FH_CONFIG_UP_VLAN_TAG,  "not used by xran",            0,                   .uptr=NULL, .defuintval=0,     TYPE_UINT,      0}, \
+  {ORAN_FH_CONFIG_CP_VLAN_TAG,  "not used by xran",            0,                   .uptr=NULL, .defuintval=566,     TYPE_UINT,      0}, \
+  {ORAN_FH_CONFIG_UP_VLAN_TAG,  "not used by xran",            0,                   .uptr=NULL, .defuintval=566,     TYPE_UINT,      0}, \
 }
 // clang-format on
 
@@ -91,11 +91,13 @@
 
 #define ORAN_RU_CONFIG_IQWIDTH "iq_width"
 #define ORAN_RU_CONFIG_IQWIDTH_PRACH "iq_width_prach"
+#define ORAN_RU_CONFIG_FFT_SIZE "fft_size"
 
 // clang-format off
 #define ORAN_RU_DESC {\
   {ORAN_RU_CONFIG_IQWIDTH,       "sample IQ width (16=uncompressed)\n",       PARAMFLAG_MANDATORY, .u8ptr=NULL, .defuintval=16, TYPE_UINT8, 0}, \
   {ORAN_RU_CONFIG_IQWIDTH_PRACH, "PRACH sample IQ width (16=uncompressed)\n", PARAMFLAG_MANDATORY, .u8ptr=NULL, .defuintval=16, TYPE_UINT8, 0}, \
+  {ORAN_RU_CONFIG_FFT_SIZE,      "Size of FFT at RU\n",                       PARAMFLAG_MANDATORY, .u8ptr=NULL, .defuintval=12, TYPE_UINT8, 0}, \
 }
 // clang-format on
 

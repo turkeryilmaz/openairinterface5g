@@ -34,7 +34,7 @@
 static void print_fh_eowd_cmn(unsigned index, const struct xran_ecpri_del_meas_cmn *eowd_cmn)
 {
   printf("\
-    eowd_cmn[%u]:\n\
+    eowd_cmn[%d]:\n\
       initiator_en %d\n\
       numberOfSamples %d\n\
       filterType %d\n\
@@ -61,7 +61,7 @@ static void print_fh_eowd_cmn(unsigned index, const struct xran_ecpri_del_meas_c
 static void print_fh_eowd_port(unsigned index, unsigned vf, const struct xran_ecpri_del_meas_port *eowd_port)
 {
   printf("\
-    eowd_port[%u][%u]:\n\
+    eowd_port[%d][%d]:\n\
       t1 %ld\n\
       t2 %ld\n\
       tr %ld\n\
@@ -670,6 +670,8 @@ static enum xran_cp_filterindex get_prach_filterindex_fr1(duplex_mode_t mode, in
   return XRAN_FILTERINDEX_STANDARD;
 }
 
+
+
 // PRACH guard interval. Raymond: "[it] is not in the configuration, (i.e. it
 // is deterministic depending on others). LiteON must hard-code this in the
 // O-RU itself, benetel doesn't (as O-RAN specifies). So we will need to tell
@@ -690,7 +692,7 @@ static bool set_fh_prach_config(const openair0_config_t *oai0,
   prach_config->nPrachRestrictSet = 0;
   prach_config->nPrachRootSeqIdx = 0;
   prach_config->nPrachFreqStart = s7cfg->prach_freq_start;
-  prach_config->nPrachFreqOffset = (s7cfg->prach_freq_start * 12 - oai0->num_rb_dl * 6) * 2;
+  prach_config->nPrachFreqOffset = -796; //(s7cfg->prach_freq_start * 12 - oai0->num_rb_dl * 6) * 2 + 4;
   if (oai0->nr_band < 100)
     prach_config->nPrachFilterIdx = get_prach_filterindex_fr1(oai0->duplex_mode, s7cfg->prach_index);
   else
@@ -724,12 +726,15 @@ static bool set_fh_frame_config(const openair0_config_t *oai0, struct xran_frame
 
   struct xran_slot_config *sc = &frame_config->sSlotConfig[0];
   for (int slot = 0; slot < frame_config->nTddPeriod; ++slot)
-    for (int sym = 0; sym < 14; ++sym)
+    for (int sym = 0; sym < 14; ++sym){
       sc[slot].nSymbolType[sym] = s7cfg->slot_dirs[slot].sym_dir[sym];
+      if (sym > 7 && slot > 6) sc[slot].nSymbolType[sym] = 1; // LITEON FR2
+    }
+      
   return true;
 }
 
-static bool set_fh_ru_config(const paramdef_t *rup, uint16_t fftSize, int nru, struct xran_ru_config *ru_config)
+static bool set_fh_ru_config(const paramdef_t *rup, int nru, struct xran_ru_config *ru_config)
 {
   ru_config->xranTech = XRAN_RAN_5GNR;
   ru_config->xranCat = XRAN_CATEGORY_A;
@@ -740,8 +745,7 @@ static bool set_fh_ru_config(const paramdef_t *rup, uint16_t fftSize, int nru, s
   ru_config->iqWidth_PRACH = *gpd(rup, nru, ORAN_RU_CONFIG_IQWIDTH_PRACH)->uptr;
   AssertFatal(ru_config->iqWidth_PRACH <= 16, "IQ Width for PRACH cannot be > 16!\n");
   ru_config->compMeth_PRACH = ru_config->iqWidth_PRACH < 16 ? XRAN_COMPMETHOD_BLKFLOAT : XRAN_COMPMETHOD_NONE;
-  AssertFatal(fftSize > 0, "FFT size cannot be 0\n");
-  ru_config->fftSize = fftSize;
+  ru_config->fftSize = *gpd(rup, nru, ORAN_RU_CONFIG_FFT_SIZE)->uptr;
   ru_config->byteOrder = XRAN_NE_BE_BYTE_ORDER;
   ru_config->iqOrder = XRAN_I_Q_ORDER;
   ru_config->xran_max_frame = 0;
@@ -780,7 +784,6 @@ bool set_fh_config(int ru_idx, int num_rus, const openair0_config_t *oai0, struc
     DevAssert(oai0->rx_freq[0] == oai0->rx_freq[i]);
   DevAssert(oai0->nr_band > 0);
   DevAssert(oai0->nr_scs_for_raster > 0);
-  AssertFatal(oai0->threequarter_fs == 0, "cannot use three-quarter sampling with O-RAN 7.2 split\n");
 
   // we simply assume that the loading process provides function to_nrarfcn()
   // to calculate the ARFCN numbers from frequency. That is not clean, but the
@@ -825,12 +828,12 @@ bool set_fh_config(int ru_idx, int num_rus, const openair0_config_t *oai0, struc
   fh_config->neAxc = oai0->tx_num_channels / num_rus;
   fh_config->neAxcUl = oai0->rx_num_channels / num_rus;
   fh_config->nAntElmTRx = oai0->tx_num_channels / num_rus;
-  fh_config->nDLFftSize = 0;
-  fh_config->nULFftSize = 0;
+  fh_config->nDLFftSize = 1024;
+  fh_config->nULFftSize = 1024;
   fh_config->nDLRBs = oai0->num_rb_dl;
   fh_config->nULRBs = oai0->num_rb_dl;
-  fh_config->nDLAbsFrePointA = 0;
-  fh_config->nULAbsFrePointA = 0;
+  fh_config->nDLAbsFrePointA = 27968160;
+  fh_config->nULAbsFrePointA = 27968160;
   fh_config->nDLCenterFreqARFCN = nDLCenterFreqARFCN;
   fh_config->nULCenterFreqARFCN = nULCenterFreqARFCN;
   fh_config->ttiCb = NULL;
@@ -871,7 +874,7 @@ bool set_fh_config(int ru_idx, int num_rus, const openair0_config_t *oai0, struc
     return false;
   if (!set_fh_frame_config(oai0, &fh_config->frame_conf))
     return false;
-  if (!set_fh_ru_config(rup, oai0->split7.fftSize, nru, &fh_config->ru_conf))
+  if (!set_fh_ru_config(rup, nru, &fh_config->ru_conf))
     return false;
 
   fh_config->bbdev_enc = NULL;
@@ -881,8 +884,8 @@ bool set_fh_config(int ru_idx, int num_rus, const openair0_config_t *oai0, struc
   // fh_config->rx_cp_eAxC2Vf [not implemented by fhi_lib]
   // fh_config->rx_up_eAxC2Vf [not implemented by fhi_lib]
   fh_config->log_level = 1;
-  fh_config->max_sections_per_slot = 8;
-  fh_config->max_sections_per_symbol = 8;
+  fh_config->max_sections_per_slot = 14;
+  fh_config->max_sections_per_symbol = 14;
 
   return true;
 }

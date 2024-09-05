@@ -240,11 +240,12 @@ void sl_set_scs_parameters (NR_DL_FRAME_PARMS *fp, int mu, int N_RB_SL)
 uint32_t get_samples_per_slot(int slot, const NR_DL_FRAME_PARMS *fp)
 {
   uint32_t samp_count;
-
+  //printf("fp->slots_per_subframe  %d fp->samples_per_slotN0 %d fp->samples_per_slot0 %d \n",fp->slots_per_subframe,fp->samples_per_slotN0,fp->samples_per_slot0 );
   if(fp->numerology_index == 0)
     samp_count = fp->samples_per_subframe;
   else
     samp_count = (slot % (fp->slots_per_subframe / 2)) ? fp->samples_per_slotN0 : fp->samples_per_slot0;
+  //printf("samp_count  %d\n",samp_count );
 
   return samp_count;
 }

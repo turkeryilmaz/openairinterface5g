@@ -34,13 +34,15 @@
 #include "xran_common.h"
 #include "oaioran.h"
 #include <rte_ethdev.h>
-
+#include "time_meas.h"
 #include "oran-config.h" // for g_kbar
 
 #define USE_POLLING 1
 // Declare variable useful for the send buffer function
 volatile uint8_t first_call_set = 0;
 volatile uint8_t first_rx_set = 0;
+volatile uint8_t first_rx_set_beam = 0;
+
 volatile int first_read_set = 0;
 
 // Variable declaration useful for fill IQ samples from file
@@ -89,22 +91,17 @@ void oai_xran_fh_rx_callback(void *pCallbackTag, xran_status_t status)
   uint32_t rx_tti = callback_tag->slotiId;
 
   tti = xran_get_slot_idx_from_tti(rx_tti, &frame, &subframe, &slot, &second);
+  //tti = xran_get_slot_idx(0, &frame, &subframe, &slot, &second);
+  //printf("rx_sym %d rx_tti %d tti %d slot %d sf %d f %d rx_tti mod 8 = %d\n",rx_sym, rx_tti,tti , slot, subframe, frame, rx_tti%8 );
+  //printf("rx_sym %d frame %d slot %d\n",rx_sym, frame, subframe*8 + slot);
 
   rx_sym = callback_tag->symbol;
-  uint32_t ru_id = callback_tag->oXuId;
 
-  LOG_D(NR_PHY,
-        "rx_callback frame %d, subframe %d, slot %d, second %lld, rx_sym %d ru_id %d\n",
-        frame,
-        subframe,
-        slot,
-        (unsigned long long)second,
-        rx_sym,
-        ru_id);
+  uint32_t ru_id = callback_tag->oXuId;
   if (rx_sym == 7) {
     if (first_call_set) {
       if (!first_rx_set) {
-        LOG_I(NR_PHY, "first_rx is set (num_ports %d), first_read_set %d\n", num_ports, first_read_set);
+        LOG_I(NR_PHY, "first_rx is set (num_ports %d)\n", num_ports);
       }
       first_rx_set = 1;
       if (first_read_set == 1) {
@@ -178,7 +175,10 @@ int read_prach_data(ru_info_t *ru, int frame, int slot)
 {
   /* calculate tti and subframe_id from frame, slot num */
   int sym_idx = 0;
-
+        ////printf("am here 0\n");
+  //time_stats_t tmp_time;
+  //reset_meas(&tmp_time);
+  //start_meas(&tmp_time);
   struct xran_device_ctx *xran_ctx = xran_dev_get_ctx();
   struct xran_prach_cp_config *pPrachCPConfig = &(xran_ctx->PrachCPConfig);
   struct xran_ru_config *ru_conf = &(xran_ctx->fh_cfg.ru_conf);
@@ -190,6 +190,8 @@ int read_prach_data(ru_info_t *ru, int frame, int slot)
   uint32_t is_prach_slot = xran_is_prach_slot(0, subframe, (slot % slots_per_subframe));
 
   int nb_rx_per_ru = ru->nb_rx / xran_ctx->fh_init.xran_ports;
+          //printf("am here 1 %d.%d\n", frame, slot);
+
   /* If it is PRACH slot, copy prach IQ from XRAN PRACH buffer to OAI PRACH buffer */
   if (is_prach_slot) {
     for (sym_idx = 0; sym_idx < pPrachCPConfig->numSymbol; sym_idx++) {
@@ -198,9 +200,12 @@ int read_prach_data(ru_info_t *ru, int frame, int slot)
         int idx = 0;
         xran_ctx = xran_dev_get_ctx_by_id(aa / nb_rx_per_ru);
         dst = ru->prach_buf[aa]; // + (sym_idx*576));
+
+        //printf("am here 2 %d.%d.%d\n", frame, slot,sym_idx);
         src = (int16_t *)((uint8_t *)xran_ctx->sFHPrachRxBbuIoBufCtrlDecomp[tti % XRAN_N_FE_BUF_LEN][0][aa % nb_rx_per_ru]
                               .sBufferList.pBuffers[sym_idx]
                               .pData);
+        //printf("am here 3 %d.%d.%d\n", frame, slot,sym_idx);
 
         /* convert Network order to host order */
         if (ru_conf->compMeth_PRACH == XRAN_COMPMETHOD_NONE) {
@@ -214,6 +219,8 @@ int read_prach_data(ru_info_t *ru, int frame, int slot)
             }
           }
         } else if (ru_conf->compMeth_PRACH == XRAN_COMPMETHOD_BLKFLOAT) {
+        //printf("am here 4 %d.%d.%d\n", frame, slot,sym_idx);
+
           struct xranlib_decompress_request bfp_decom_req;
           struct xranlib_decompress_response bfp_decom_rsp;
 
@@ -232,20 +239,160 @@ int read_prach_data(ru_info_t *ru, int frame, int slot)
 
           bfp_decom_rsp.data_out = (int16_t *)local_dst;
           bfp_decom_rsp.len = 0;
+
           xranlib_decompress_avx512(&bfp_decom_req, &bfp_decom_rsp);
+
+        //printf("am here 5 %d.%d.%d\n", frame, slot,sym_idx);
+
+
           // note: this is hardwired for 139 point PRACH sequence, kbar=2
           if (sym_idx == 0) //
             for (idx = 0; idx < (139 * 2); idx++)
               dst[idx] = local_dst[idx + g_kbar];
+          /*if  (sym_idx > 8 && sym_idx < 10)
+            for (idx = 0; idx < (139 * 2); idx++)
+              dst[idx] += local_dst[idx + g_kbar]; */   
           else
             for (idx = 0; idx < (139 * 2); idx++)
               dst[idx] += (local_dst[idx + g_kbar]);
+
+        ////printf("am here 6 %d.%d.%d\n", frame, slot,sym_idx);
+
+          /*if (dst != NULL )
+          {
+            int energy_level = dB_fixed(signal_energy((int32_t*)local_dst,139));
+            if (energy_level>25) 
+            {
+            printf("PRACH tti %d slot %d symb %d energy level %d\n", tti, slot, sym_idx, energy_level);
+            }
+          }*/
         } // COMPMETHOD_BLKFLOAT
       } // aa
     } // symb_indx
   } // is_prach_slot
+
+    //stop_meas(&tmp_time);
+          //print_meas(&tmp_time, "PRACH_extraction", NULL, NULL);
+   
   return (0);
 }
+
+
+
+int check_buffer(int cc_id, int ant_id, int sym_idx, int frame, int slot )
+{
+    struct xran_device_ctx *xran_ctx = xran_dev_get_ctx();
+  void *ptr = NULL;
+
+int nb_rx_per_ru = 2;
+      xran_ctx = xran_dev_get_ctx_by_id(ant_id / nb_rx_per_ru);
+      const struct xran_fh_config *fh_config = &xran_ctx->fh_cfg;
+        int nPRBs = xran_ctx->fh_cfg.nULRBs;
+  const struct xran_fh_init *fh_init = &xran_ctx->fh_init;
+
+      // skip processing this slot if the last symbol in the slot is TX
+      // (no RX in this slot)
+      // This loop would better be more inner to avoid confusion and maybe also errors.
+  int slots_per_frame = 10 << xran_ctx->fh_cfg.frame_conf.nNumerology;
+  int slots_per_subframe = 1 << xran_ctx->fh_cfg.frame_conf.nNumerology;
+
+  int tti = slots_per_frame * (frame) + (slot);
+        uint8_t *pData;
+        uint8_t *pPrbMapData = xran_ctx->sFrontHaulRxPrbMapBbuIoBufCtrl[tti % XRAN_N_FE_BUF_LEN][cc_id][ant_id % nb_rx_per_ru]
+                                   .sBufferList.pBuffers->pData;
+        struct xran_prb_map *pPrbMap = (struct xran_prb_map *)pPrbMapData;
+        u_int8_t section_id_tmp = pPrbMap->nPrbElm < 10 ? sym_idx - 10: sym_idx; // Temporary hack for LiteON FR2 : receive UP section ID = 13
+
+        struct xran_prb_elm *pRbElm = &pPrbMap->prbMap[section_id_tmp];
+        struct xran_section_desc *p_sec_desc = pRbElm->p_sec_desc[/*sym_idx*/0][0];
+        uint32_t one_rb_size =
+            (((pRbElm->iqWidth == 0) || (pRbElm->iqWidth == 16)) ? (N_SC_PER_PRB * 2 * 2) : (3 * pRbElm->iqWidth + 1));
+        if (fh_init->mtu < pRbElm->nRBSize * one_rb_size)
+          pData = xran_ctx->sFrontHaulRxBbuIoBufCtrl[tti % XRAN_N_FE_BUF_LEN][cc_id][ant_id % nb_rx_per_ru]
+                      .sBufferList.pBuffers[sym_idx % XRAN_NUM_OF_SYMBOL_PER_SLOT]
+                      .pData;
+        else
+          pData = p_sec_desc->pData;
+        ptr = pData;
+        if (ptr == NULL)
+          return -1;
+
+        struct xran_prb_map *pRbMap = pPrbMap;
+
+        uint32_t idxElm = 0;
+        uint8_t *src = (uint8_t *)ptr;
+        int16_t payload_len = 0;
+
+
+        LOG_D(PHY, "pRbMap->nPrbElm %d\n", pRbMap->nPrbElm);
+        //for (idxElm = 0; idxElm < pRbMap->nPrbElm; idxElm++) {
+          LOG_D(PHY,
+                "prbMap[%d] : PRBstart %d nPRBs %d\n",
+                section_id_tmp,
+                pRbMap->prbMap[section_id_tmp].nRBStart,
+                pRbMap->prbMap[section_id_tmp].nRBSize);
+          pRbElm = &pRbMap->prbMap[section_id_tmp];
+          int pos_len = 0;
+          int neg_len = 0;
+
+          if (pRbElm->nRBStart < (nPRBs >> 1)) // there are PRBs left of DC
+            neg_len = min((nPRBs * 6) - (pRbElm->nRBStart * 12), pRbElm->nRBSize * N_SC_PER_PRB);
+          pos_len = (pRbElm->nRBSize * N_SC_PER_PRB) - neg_len;
+
+          src = pData;
+          // Calculation of the pointer for the section in the buffer.
+          // positive half
+
+          int32_t local_dst[pRbElm->nRBSize * N_SC_PER_PRB] __attribute__((aligned(64)));
+   if (pRbElm->compMethod == XRAN_COMPMETHOD_BLKFLOAT) {
+            struct xranlib_decompress_request bfp_decom_req;
+            struct xranlib_decompress_response bfp_decom_rsp;
+
+            payload_len = (3 * pRbElm->iqWidth + 1) * pRbElm->nRBSize;
+
+            memset(&bfp_decom_req, 0, sizeof(struct xranlib_decompress_request));
+            memset(&bfp_decom_rsp, 0, sizeof(struct xranlib_decompress_response));
+
+            bfp_decom_req.data_in = (int8_t *)src;
+            bfp_decom_req.numRBs = pRbElm->nRBSize;
+            bfp_decom_req.len = payload_len;
+            bfp_decom_req.compMethod = pRbElm->compMethod;
+            bfp_decom_req.iqWidth = pRbElm->iqWidth;
+
+            bfp_decom_rsp.data_out = (int16_t *)local_dst;
+            bfp_decom_rsp.len = 0;
+
+            xranlib_decompress_avx512(&bfp_decom_req, &bfp_decom_rsp);
+
+          if (local_dst != NULL )
+          {
+            int energy_level = dB_fixed(signal_energy((int32_t*)local_dst,(neg_len + pos_len)));
+            if (1/*energy_level> 30*/ ) 
+            {
+              //if (!(xran_ctx->check_sym12)) xran_ctx->check_sym12 = 1;
+            printf("check buffer PUSCH tti %d slot %d symb %d energy level %d ra %d beamid %d\n", tti, slot, sym_idx, energy_level,ant_id,pRbMap->prbMap[idxElm].nBeamIndex);
+            }else
+            return -2;
+          }
+          else return -1;
+          } else {
+            printf("pRbElm->compMethod == %d is not supported\n", pRbElm->compMethod);
+            exit(-1);
+          }
+          return 0;
+  
+
+}
+
+
+
+
+
+
+
+
+
+
 
 int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot)
 {
@@ -259,6 +406,7 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot)
   static int64_t old_tx_counter[XRAN_PORTS_NUM] = {0};
   struct xran_common_counters x_counters[XRAN_PORTS_NUM];
   static int outcnt = 0;
+
 #ifndef USE_POLLING
   // pull next even from oran_sync_fifo
   notifiedFIFO_elt_t *res = pollNotifiedFIFO(&oran_sync_fifo);
@@ -289,15 +437,27 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot)
   LOG_D(PHY, "cnt %d, Reading %d.%d\n", cnt, *frame, *slot);
   last_slot = *slot;
 #endif
-  // return(0);
+   //return(0);
 
   struct xran_device_ctx *xran_ctx = xran_dev_get_ctx();
+
+  if (/*first_rx_set_beam == 0 &&*/ ru->beamID){
+    xran_ctx->beamID = ru->beamID;
+    
+      //for (int i=0;i<2;i++){
+        //for (int s=0; s<80;s++){
+            //printf("slot %d port %d beam %d\n", *slot, 0, ru->beamID[0][*slot]);
+        //}
+      //}
+      //first_rx_set_beam = 1;
+    }
+
   int slots_per_frame = 10 << xran_ctx->fh_cfg.frame_conf.nNumerology;
 
   int tti = slots_per_frame * (*frame) + (*slot);
-
+ if (xran_ctx->fh_cfg.prachEnable)
   read_prach_data(ru, *frame, *slot);
-
+  //if (*slot %10 == 8) *slot = *slot - 1;
   const struct xran_fh_init *fh_init = &xran_ctx->fh_init;
   int nPRBs = xran_ctx->fh_cfg.nULRBs;
   int fftsize = 1 << xran_ctx->fh_cfg.ru_conf.fftSize;
@@ -306,6 +466,7 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot)
   uint32_t slot_size = 4 * 14 * fftsize;
   uint8_t *rx_data = (uint8_t *)ru->rxdataF[0];
   uint8_t *start_ptr = NULL;
+  int print_next = 0;
   int nb_rx_per_ru = ru->nb_rx / fh_init->xran_ports;
   for (uint16_t cc_id = 0; cc_id < 1 /*nSectorNum*/; cc_id++) { // OAI does not support multiple CC yet.
     for (uint8_t ant_id = 0; ant_id < ru->nb_rx; ant_id++) {
@@ -316,11 +477,12 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot)
       int tdd_period = fh_config->frame_conf.nTddPeriod;
       int slot_in_period = *slot % tdd_period;
       if (fh_config->frame_conf.sSlotConfig[slot_in_period].nSymbolType[XRAN_NUM_OF_SYMBOL_PER_SLOT - 1] == 0)
-        continue;
+        continue;  
       // skip processing this slot if the last symbol in the slot is TX
       // (no RX in this slot)
       // This loop would better be more inner to avoid confusion and maybe also errors.
-      for (int32_t sym_idx = 0; sym_idx < XRAN_NUM_OF_SYMBOL_PER_SLOT; sym_idx++) {
+      for (int32_t sym_idx_l = 0; sym_idx_l < XRAN_NUM_OF_SYMBOL_PER_SLOT; sym_idx_l++) {
+        int32_t sym_idx = sym_idx_l;
         /* the callback is for mixed and UL slots. In mixed, we have to
          * skip DL and guard symbols. */
         if (fh_config->frame_conf.sSlotConfig[slot_in_period].nSymbolType[sym_idx] != 1 /* UL */)
@@ -331,8 +493,11 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot)
                                    .sBufferList.pBuffers->pData;
         struct xran_prb_map *pPrbMap = (struct xran_prb_map *)pPrbMapData;
 
-        struct xran_prb_elm *pRbElm = &pPrbMap->prbMap[0];
-        struct xran_section_desc *p_sec_desc = pRbElm->p_sec_desc[sym_idx][0];
+        u_int8_t section_id_tmp = pPrbMap->nPrbElm < 8 ? sym_idx - 8: sym_idx; // Temporary hack for LiteON FR2 : receive UP section ID = 13
+        if (/**slot %10 == 7 && */sym_idx > 7/*7*/) sym_idx = sym_idx - 1; // LITEON FR2
+
+        struct xran_prb_elm *pRbElm = &pPrbMap->prbMap[section_id_tmp];
+        struct xran_section_desc *p_sec_desc = pRbElm->p_sec_desc[/*sym_idx*/0][0];
         uint32_t one_rb_size =
             (((pRbElm->iqWidth == 0) || (pRbElm->iqWidth == 16)) ? (N_SC_PER_PRB * 2 * 2) : (3 * pRbElm->iqWidth + 1));
         if (fh_init->mtu < pRbElm->nRBSize * one_rb_size)
@@ -342,7 +507,7 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot)
         else
           pData = p_sec_desc->pData;
         ptr = pData;
-        pos = (int32_t *)(start_ptr + (4 * sym_idx * fftsize));
+        pos = (int32_t *)(start_ptr + (4 * sym_idx_l * fftsize));
         if (ptr == NULL || pos == NULL)
           continue;
 
@@ -354,13 +519,13 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot)
 
 
         LOG_D(PHY, "pRbMap->nPrbElm %d\n", pRbMap->nPrbElm);
-        for (idxElm = 0; idxElm < pRbMap->nPrbElm; idxElm++) {
+        //for (idxElm = 0; idxElm < pRbMap->nPrbElm; idxElm++) {
           LOG_D(PHY,
                 "prbMap[%d] : PRBstart %d nPRBs %d\n",
-                idxElm,
-                pRbMap->prbMap[idxElm].nRBStart,
-                pRbMap->prbMap[idxElm].nRBSize);
-          pRbElm = &pRbMap->prbMap[idxElm];
+                section_id_tmp,
+                pRbMap->prbMap[section_id_tmp].nRBStart,
+                pRbMap->prbMap[section_id_tmp].nRBSize);
+          pRbElm = &pRbMap->prbMap[section_id_tmp];
           int pos_len = 0;
           int neg_len = 0;
 
@@ -403,11 +568,25 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot)
             memcpy((void *)dst2, (void *)local_dst, neg_len * 4);
             memcpy((void *)dst1, (void *)&local_dst[neg_len], pos_len * 4);
             outcnt++;
+          /*if (local_dst != NULL )
+          {
+            int energy_level = dB_fixed(signal_energy((int32_t*)local_dst,(neg_len + pos_len)));
+            if (energy_level> 30 || print_next) 
+            {
+              if (!print_next) {print_next = 1;} 
+
+            printf("PUSCH tti %d slot %d symb buffer %d symb OAI %d energy level %d ra %d beamid %d print_next %d\n", tti, *slot, sym_idx, sym_idx_l, energy_level,ant_id,pRbMap->prbMap[idxElm].nBeamIndex, print_next);
+            }//else
+            //print_next = 0;
+          }*/
+         //int check_buffer(int cc_id, int ant_id, int sym_idx, int frame, int slot )
+
+
           } else {
             printf("pRbElm->compMethod == %d is not supported\n", pRbElm->compMethod);
             exit(-1);
           }
-        }
+        //}
       } // sym_ind
     } // ant_ind
   } // vv_inf
@@ -444,7 +623,7 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot)
 
 int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp)
 {
-  int tti = /*frame*SUBFRAMES_PER_SYSTEMFRAME*SLOTNUM_PER_SUBFRAME+*/ 20 * frame
+  int tti = /*frame*SUBFRAMES_PER_SYSTEMFRAME*SLOTNUM_PER_SUBFRAME+*/ 80 * frame
             + slot; // commented out temporarily to check that compilation of oran 5g is working.
 
   void *ptr = NULL;
@@ -456,18 +635,29 @@ int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp)
   int nPRBs = xran_ctx->fh_cfg.nDLRBs;
   int fftsize = 1 << xran_ctx->fh_cfg.ru_conf.fftSize;
   int nb_tx_per_ru = ru->nb_tx / fh_init->xran_ports;
+    const struct xran_fh_config *fh_config = &xran_ctx->fh_cfg;
 
   for (uint16_t cc_id = 0; cc_id < 1 /*nSectorNum*/; cc_id++) { // OAI does not support multiple CC yet.
     for (uint8_t ant_id = 0; ant_id < ru->nb_tx; ant_id++) {
       xran_ctx = xran_dev_get_ctx_by_id(ant_id / nb_tx_per_ru);
       // This loop would better be more inner to avoid confusion and maybe also errors.
-      for (int32_t sym_idx = 0; sym_idx < XRAN_NUM_OF_SYMBOL_PER_SLOT; sym_idx++) {
-        uint8_t *pData = xran_ctx->sFrontHaulTxBbuIoBufCtrl[tti % XRAN_N_FE_BUF_LEN][cc_id][ant_id % nb_tx_per_ru]
-                             .sBufferList.pBuffers[sym_idx % XRAN_NUM_OF_SYMBOL_PER_SLOT]
-                             .pData;
+
+
+      for (int32_t sym_idx = 0; sym_idx < /*pPrbMap->nPrbElm*/ XRAN_NUM_OF_SYMBOL_PER_SLOT; sym_idx++) {
+
+      int tdd_period = fh_config->frame_conf.nTddPeriod;
+      int slot_in_period = slot % tdd_period;
+      if (fh_config->frame_conf.sSlotConfig[slot_in_period].nSymbolType[sym_idx] != 0)
+          continue;
+
         uint8_t *pPrbMapData = xran_ctx->sFrontHaulTxPrbMapBbuIoBufCtrl[tti % XRAN_N_FE_BUF_LEN][cc_id][ant_id % nb_tx_per_ru]
                                    .sBufferList.pBuffers->pData;
         struct xran_prb_map *pPrbMap = (struct xran_prb_map *)pPrbMapData;
+
+        uint8_t *pData = xran_ctx->sFrontHaulTxBbuIoBufCtrl[tti % XRAN_N_FE_BUF_LEN][cc_id][ant_id % nb_tx_per_ru]
+                             .sBufferList.pBuffers[sym_idx % XRAN_NUM_OF_SYMBOL_PER_SLOT]
+                             .pData;
+
         ptr = pData;
         pos = &ru->txdataF_BF[ant_id][sym_idx * fftsize];
 
@@ -482,20 +672,23 @@ int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp)
           uint8_t *dst = (uint8_t *)u8dptr;
 
           struct xran_prb_elm *p_prbMapElm = &pRbMap->prbMap[idxElm];
+        u_int8_t section_id_tmp = sym_id; // Temporary hack for LiteON FR2 : receive UP section ID = 13
+        //printf("section_id_tmp %d, sym_id %d, pRbMap->nPrbElm %d \n",section_id_tmp,sym_id, pRbMap->nPrbElm);
+        //printf("sending slot %d symbol %d\n", slot, sym_id);
 
-          for (idxElm = 0; idxElm < pRbMap->nPrbElm; idxElm++) {
+          //for (idxElm = 0; idxElm < pRbMap->nPrbElm; idxElm++) {
             struct xran_section_desc *p_sec_desc = NULL;
-            p_prbMapElm = &pRbMap->prbMap[idxElm];
+            p_prbMapElm = &pRbMap->prbMap[section_id_tmp];
             p_sec_desc =
                 // assumes one fragment per symbol
-                p_prbMapElm->p_sec_desc[sym_id][0];
+                p_prbMapElm->p_sec_desc[/*sym_id*/0][0];
 
             dst = xran_add_hdr_offset(dst, p_prbMapElm->compMethod);
 
-            if (p_sec_desc == NULL) {
+            /*if (p_sec_desc == NULL) {
               printf("p_sec_desc == NULL\n");
               exit(-1);
-            }
+            }*/
             uint16_t *dst16 = (uint16_t *)dst;
 
             int pos_len = 0;
@@ -513,6 +706,14 @@ int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp)
             uint32_t local_src[p_prbMapElm->nRBSize * N_SC_PER_PRB] __attribute__((aligned(64)));
             memcpy((void *)local_src, (void *)src2, neg_len * 4);
             memcpy((void *)&local_src[neg_len], (void *)src1, pos_len * 4);
+          /*if (local_src != NULL )
+          {
+            int energy_level = dB_fixed(signal_energy((int32_t*)local_src,(neg_len + pos_len)));
+            if (energy_level>-100) 
+            {
+            printf("PDSCH tti %d slot %d symb %d energy level %d ant %d beamid %d\n", tti, slot, sym_idx, energy_level,ant_id,p_prbMapElm->nBeamIndex);
+            }
+          }  */
             if (p_prbMapElm->compMethod == XRAN_COMPMETHOD_NONE) {
               payload_len = p_prbMapElm->nRBSize * N_SC_PER_PRB * 4L;
               /* convert to Network order */
@@ -541,13 +742,14 @@ int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp)
               printf("p_prbMapElm->compMethod == %d is not supported\n", p_prbMapElm->compMethod);
               exit(-1);
             }
-
+            if (p_sec_desc != NULL) {
             p_sec_desc->iq_buffer_offset = RTE_PTR_DIFF(dst, u8dptr);
             p_sec_desc->iq_buffer_len = payload_len;
+            }
 
             dst += payload_len;
             dst = xran_add_hdr_offset(dst, p_prbMapElm->compMethod);
-          }
+          //}
 
           // The tti should be updated as it increased.
           pRbMap->tti_id = tti;

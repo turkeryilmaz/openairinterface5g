@@ -1307,12 +1307,20 @@ void *ru_thread(void *param)
         reset_meas(&ru->tx_fhaul);
     }
     proc->timestamp_tx = proc->timestamp_rx;
+
+    //int sl=proc->tti_tx;
+    //for (int slidx=0;slidx<ru->sl_ahead;slidx++)
+       //proc->timestamp_tx += fp->get_samples_per_slot((sl+slidx)%fp->slots_per_frame,fp);
+    //proc->frame_tx = (proc->tti_rx > (fp->slots_per_frame - 1 - (ru->sl_ahead))) ? (proc->frame_rx + 1) & 1023 : proc->frame_rx;
+
+
     for (int i = proc->tti_rx; i < proc->tti_rx + ru->sl_ahead; i++)
       proc->timestamp_tx += fp->get_samples_per_slot(i % fp->slots_per_frame, fp);
     proc->tti_tx = (proc->tti_rx + ru->sl_ahead) % fp->slots_per_frame;
     proc->frame_tx = proc->tti_rx > proc->tti_tx ? (proc->frame_rx + 1) & 1023 : proc->frame_rx;
     int64_t absslot_rx = proc->timestamp_rx/fp->get_samples_per_slot(proc->tti_rx,fp);
     int rt_prof_idx = absslot_rx % RT_PROF_DEPTH;
+    //printf("proc->tti_tx %d proc->tti_rx  %d absslot_rx %d proc->timestamp_tx %d\n",proc->tti_tx, proc->tti_rx , absslot_rx,proc->timestamp_tx);
     clock_gettime(CLOCK_MONOTONIC,&ru->rt_ru_profiling.return_RU_south_in[rt_prof_idx]);
     LOG_D(PHY,"AFTER fh_south_in - SFN/SL:%d%d RU->proc[RX:%d.%d TX:%d.%d] RC.gNB[0]:[RX:%d%d TX(SFN):%d]\n",
           frame,slot,
