@@ -112,10 +112,10 @@ static void tx_func(processingData_L1tx_t *info)
   int64_t absslot_tx = info->timestamp_tx / info->gNB->frame_parms.get_samples_per_slot(slot_tx, &info->gNB->frame_parms);
   int64_t absslot_rx = absslot_tx - info->gNB->RU_list[0]->sl_ahead;
   //printf("absslot_rx %d slot tx %d rx %d info->timestamp_tx %d sps %d\n",absslot_rx, slot_tx, slot_rx, info->timestamp_tx, info->gNB->frame_parms.get_samples_per_slot(slot_tx, &info->gNB->frame_parms));
-  if (absslot_rx < 0) {
+  /*if (absslot_rx < 0) {
     LOG_W(NR_PHY, "Slot ahead %d is larger than absslot_tx %ld. Cannot start TX yet.info->timestamp_tx %d\n", info->gNB->RU_list[0]->sl_ahead, absslot_tx, info->timestamp_tx);
     return;
-  }
+  }*/
   LOG_D(NR_PHY, "%d.%d running tx_func\n", frame_tx, slot_tx);
   PHY_VARS_gNB *gNB = info->gNB;
   module_id_t module_id = gNB->Mod_id;

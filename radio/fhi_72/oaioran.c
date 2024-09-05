@@ -706,14 +706,14 @@ int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp)
             uint32_t local_src[p_prbMapElm->nRBSize * N_SC_PER_PRB] __attribute__((aligned(64)));
             memcpy((void *)local_src, (void *)src2, neg_len * 4);
             memcpy((void *)&local_src[neg_len], (void *)src1, pos_len * 4);
-          /*if (local_src != NULL )
+          if (local_src != NULL )
           {
             int energy_level = dB_fixed(signal_energy((int32_t*)local_src,(neg_len + pos_len)));
-            if (energy_level>-100) 
+            if (energy_level>80) 
             {
             printf("PDSCH tti %d slot %d symb %d energy level %d ant %d beamid %d\n", tti, slot, sym_idx, energy_level,ant_id,p_prbMapElm->nBeamIndex);
             }
-          }  */
+          }  
             if (p_prbMapElm->compMethod == XRAN_COMPMETHOD_NONE) {
               payload_len = p_prbMapElm->nRBSize * N_SC_PER_PRB * 4L;
               /* convert to Network order */
