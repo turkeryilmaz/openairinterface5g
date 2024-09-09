@@ -672,7 +672,7 @@ static int UE_dl_preprocessing(PHY_VARS_NR_UE *UE, const UE_nr_rxtx_proc_t *proc
   int64_t a4 = rdtsc_oai();
 
   if (a4 - a1 > 3000 * 200)
-    printf("total preprocessing %ld %ld %ld\n", a4-a3, a3-a2,a2-a1);
+    printf("total preprocessing %ld %ld %ld\n", (a4-a3)/3000, (a3-a2)/3000,(a2-a1)/3000);
   return sampleShift;
 }
 
