@@ -443,10 +443,10 @@ typedef struct nr_rrc_cuup_container_t {
 
 // Configuration parameters required for 5G Positioning
 typedef struct {
-    uint32_t TRPIDs[4];  //  user defined IDs for each TRP
-    uint32_t TRPxAxis[4];  //  x-axis values of each TRP
-    uint32_t TRPyAxis[4];  //  y-axis values of each TRP
-    uint32_t TRPzAxis[4];  //  z-axis values of each TRP
+    uint32_t TRPIDs[12];  //  user defined IDs for each TRP
+    uint32_t TRPxAxis[12];  //  x-axis values of each TRP
+    uint32_t TRPyAxis[12];  //  y-axis values of each TRP
+    uint32_t TRPzAxis[12];  //  z-axis values of each TRP
     uint8_t  NumTRPs;    // number of TRPs max to 4
 }positioning_config_rrc_t;
 
