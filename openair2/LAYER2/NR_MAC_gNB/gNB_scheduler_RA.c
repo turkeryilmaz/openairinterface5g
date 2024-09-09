@@ -1749,6 +1749,10 @@ static void nr_generate_Msg4(module_id_t module_idP,
   NR_COMMON_channels_t *cc = &nr_mac->common_channels[CC_id];
   NR_UE_DL_BWP_t *dl_bwp = &ra->DL_BWP;
 
+
+  if (slotP%10 != 3) return;
+
+
   // if it is a DL slot, if the RA is in MSG4 state
   if (is_xlsch_in_slot(nr_mac->dlsch_slot_bitmap[slotP / 64], slotP)) {
 

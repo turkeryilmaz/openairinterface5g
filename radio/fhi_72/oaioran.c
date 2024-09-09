@@ -494,7 +494,7 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot)
         struct xran_prb_map *pPrbMap = (struct xran_prb_map *)pPrbMapData;
 
         u_int8_t section_id_tmp = pPrbMap->nPrbElm < 8 ? sym_idx - 8: sym_idx; // Temporary hack for LiteON FR2 : receive UP section ID = 13
-        if (/**slot %10 == 7 && */sym_idx > 7/*7*/) sym_idx = sym_idx - 1; // LITEON FR2
+        if (/**slot %10 == 7 && */sym_idx > 1/*7*/) sym_idx = sym_idx - 1; // LITEON FR2
 
         struct xran_prb_elm *pRbElm = &pPrbMap->prbMap[section_id_tmp];
         struct xran_section_desc *p_sec_desc = pRbElm->p_sec_desc[/*sym_idx*/0][0];
@@ -706,14 +706,14 @@ int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp)
             uint32_t local_src[p_prbMapElm->nRBSize * N_SC_PER_PRB] __attribute__((aligned(64)));
             memcpy((void *)local_src, (void *)src2, neg_len * 4);
             memcpy((void *)&local_src[neg_len], (void *)src1, pos_len * 4);
-          if (local_src != NULL )
+          /*if (local_src != NULL )
           {
             int energy_level = dB_fixed(signal_energy((int32_t*)local_src,(neg_len + pos_len)));
-            if (energy_level>80) 
+            if (energy_level>40 ) 
             {
             printf("PDSCH tti %d slot %d symb %d energy level %d ant %d beamid %d\n", tti, slot, sym_idx, energy_level,ant_id,p_prbMapElm->nBeamIndex);
             }
-          }  
+          } */
             if (p_prbMapElm->compMethod == XRAN_COMPMETHOD_NONE) {
               payload_len = p_prbMapElm->nRBSize * N_SC_PER_PRB * 4L;
               /* convert to Network order */

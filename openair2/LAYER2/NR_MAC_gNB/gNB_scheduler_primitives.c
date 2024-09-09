@@ -3151,7 +3151,7 @@ void fapi_beam_index_allocation(NR_ServingCellConfigCommon_t *scc, gNB_MAC_INST 
         mac->fapi_beam_index = calloc(64, sizeof(uint32_t));
       for (int i = 0; i < 64; i++) {
         if ((scc->ssb_PositionsInBurst->choice.longBitmap.buf[i / 8] >> (7 - (i % 8))) & 0x01) {
-          mac->fapi_beam_index[i] = fapi_index;
+          mac->fapi_beam_index[i] = 0; // fapi_index;
           fapi_index++;
         }
         else

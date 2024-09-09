@@ -205,9 +205,11 @@ void nr_feptx_prec(RU_t *ru, int frame_tx, int tti_tx)
         }
     }
 
+
     if (ru->config.dbt_config.num_dig_beams == 0 || gNB->common_vars.analog_bf) {
+      //printf("COPY txdataF in txdataF_BF\n");
       for (int i = 0; i < ru->nb_log_antennas; ++i)
-        memcpy(ru->common.txdataF_BF[i], &gNB->common_vars.txdataF[i][txdataF_offset], fp->samples_per_slot_wCP * sizeof(int32_t));
+        memcpy(ru->common.txdataF_BF[i], &gNB->common_vars.txdataF[0][i][txdataF_offset], fp->samples_per_slot_wCP * sizeof(int32_t));
     }
     else {
       for(int i = 0; i < ru->nb_log_antennas; ++i) {
@@ -297,6 +299,7 @@ void nr_feptx(void *arg)
               (fp->symbols_per_slot) * sizeof(int));
       }
   }
+      //printf("TODOOOOOO COPY txdataF in txdataF_BF\n");
 
   // If there is no digital beamforming we just need to copy the data to RU
   if (ru->config.dbt_config.num_dig_beams == 0 || ru->gNB_list[0]->common_vars.analog_bf)

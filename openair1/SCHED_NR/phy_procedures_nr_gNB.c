@@ -50,6 +50,7 @@ int beam_index_allocation(int fapi_beam_index,
                           int start_symbol,
                           int nb_symbols)
 {
+  //return 0;
   if (!common_vars->beam_id)
     return 0;
 
@@ -128,12 +129,16 @@ void nr_common_signal_procedures(PHY_VARS_gNB *gNB, int frame, int slot, nfapi_n
   c16_t ***txdataF = gNB->common_vars.txdataF;
   int txdataF_offset = slot * fp->samples_per_slot_wCP;
   // beam number in a scenario with multiple concurrent beams
-  int beam_nb = beam_index_allocation(pb->prgs_list[0].dig_bf_interface_list[0].beam_idx,
+  int beam_nb =  beam_index_allocation(pb->prgs_list[0].dig_bf_interface_list[0].beam_idx,
                                       &gNB->common_vars,
                                       slot,
                                       fp->symbols_per_slot,
                                       ssb_start_symbol,
                                       4); // 4 ssb symbols
+
+  //LOG_I(PHY,"beam_idx from beam_index_allocation %d    pb->prgs_list[0].dig_bf_interface_list[0].beam_idx %d\n", beam_nb, pb->prgs_list[0].dig_bf_interface_list[0].beam_idx);
+
+    //printf("PSS/SSS beam_nb = %d\n",beam_nb);
 
   nr_generate_pss(&txdataF[beam_nb][0][txdataF_offset], gNB->TX_AMP, ssb_start_symbol, cfg, fp);
   nr_generate_sss(&txdataF[beam_nb][0][txdataF_offset], gNB->TX_AMP, ssb_start_symbol, cfg, fp);

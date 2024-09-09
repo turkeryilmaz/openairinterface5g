@@ -472,6 +472,8 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
                                         rel15->StartSymbolIndex,
                                         rel15->NrOfSymbols);
 
+    //printf("PDSCH beam_nb = %d\n",beam_nb);
+
     c16_t **txdataF = gNB->common_vars.txdataF[beam_nb];
 
     for (int ant = 0; ant < frame_parms->nb_antennas_tx; ant++) {
