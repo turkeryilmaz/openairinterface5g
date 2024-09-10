@@ -913,7 +913,7 @@ static void positioning_measurement_response(const f1ap_measurement_resp_t *resp
   measList->pos_measurement_result_list_item = malloc(noOfTRPs*sizeof(f1ap_pos_measurement_result_list_item_t));
   DevAssert(measList->pos_measurement_result_list_item);
   f1ap_pos_measurement_result_list_item_t *meas_res_list_item= measList->pos_measurement_result_list_item;
-  LOG_D(MAC, "Preparing pos_measurement_result_list for NRPPA noOfTRPs= %d", noOfTRPs);
+  LOG_I(MAC, "Preparing pos_measurement_result_list for NRPPA noOfTRPs= %d", noOfTRPs);
 
   uint32_t Tc_inv = 4096 * 480000;
   uint16_t k = 1;
@@ -932,7 +932,10 @@ static void positioning_measurement_response(const f1ap_measurement_resp_t *resp
     MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.present = f1ap_ulrtoameas_pr_k1;
     MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k1 =
         (int32_t)(((int64_t)mac->meas_pos_info.toa_ns[trp_i] * (int64_t)T_inv) / T_ns_inv) + 492512;
-    LOG_I(MAC,
+
+        LOG_I(MAC,"reported val[%d] = %d",trp_i,MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k1);
+        LOG_I(MAC,"ToA[%d] = %d",trp_i,mac->meas_pos_info.toa_ns[trp_i]);
+        LOG_I(MAC,
           "Extracting uL_RTOA info of MeasurementResponse, k1=%d \n",
           MeasResVal->choice.uL_RTOA.uL_RTOA_MeasurementItem.choice.k1);
     // IE timeStamp.measurementTime

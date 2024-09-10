@@ -739,7 +739,8 @@ typedef struct {
   uint8_t pos_report_characteristics; // (M) //	ondemand	= 0, periodic	= 1
   uint8_t pos_measurement_periodicity; //(C) if report characteristics periodic	ms120=0, ms240=1, ms480=2, ms640=3, ms1024=4, ms20
   uint8_t pos_report_valid; // (C) if report characteristics ondemand the request sets this to 1 and once response is sent its set back to 0
-  int16_t toa_ns[NB_ANTENNAS_RX]; // for the moment we only support toa measurements, others can be added here later
+  //int16_t toa_ns[NB_ANTENNAS_RX]; // for the moment we only support toa measurements, others can be added here later
+  int16_t toa_ns[8];
   uint32_t frame;
   uint32_t slot;
   uint8_t NumberofTRPs;
