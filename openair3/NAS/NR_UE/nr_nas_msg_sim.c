@@ -1444,7 +1444,7 @@ static void handle_registration_accept(nr_ue_nas_t *nas, const uint8_t *pdu_buff
   get_allowed_nssai(nas_allowed_nssai, pdu_buffer, msg_length);
 
   if(nas->guti)
-    send_nas_5gmm_ind(instance, nas->guti);
+    send_nas_5gmm_ind(nas->UE_id, nas->guti);
 
   as_nas_info_t initialNasMsg = {0};
   generateRegistrationComplete(nas, &initialNasMsg, NULL);
@@ -1467,9 +1467,9 @@ static void transfer_initial_ue_message(nr_ue_nas_t *nas, instance_t instance)
 {
   as_nas_info_t initialNasMsg = {0};
   // Send service request when GUTI is available in 5GMM IDLE
-  if (nas->fiveGMM_mode == FGS_IDLE && nas->guti != NULL)
-    generateServiceRequest(&initialNasMsg, nas);
-  else
+  // if (nas->fiveGMM_mode == FGS_IDLE && nas->guti != NULL)
+  //   generateServiceRequest(&initialNasMsg, nas);
+  // else
     generateRegistrationRequest(&initialNasMsg, nas);
   MessageDef *msg = itti_alloc_new_message(TASK_NAS_NRUE, 0, NAS_INITIAL_UE_MSG_IND);
   NasInitialUEMsgInd *ind = &NAS_INITIAL_UE_MSG_IND(msg);
@@ -1543,11 +1543,11 @@ void *nas_nrue(void *args_p)
       }
 
       case NR_NAS_CONN_ESTABLISH_IND: {
-        nr_ue_nas_t *nas = get_ue_nas_info(instance);
+        nr_ue_nas_t *nas = get_ue_nas_info(NR_NAS_CONN_ESTABLISH_IND(msg_p).UEid);
         nas->fiveGMM_mode = FGS_CONNECTED;
         LOG_I(NAS,
-              "[UE %ld] Received %s: UEid %u, asCause %u\n",
-              instance,
+              "[UE %u] Received %s: UEid %u, asCause %u\n",
+              NR_NAS_CONN_ESTABLISH_IND(msg_p).UEid,
               ITTI_MSG_NAME(msg_p),
               NR_NAS_CONN_ESTABLISH_IND(msg_p).UEid,
               NR_NAS_CONN_ESTABLISH_IND(msg_p).asCause);
@@ -1583,14 +1583,14 @@ void *nas_nrue(void *args_p)
       }
 
       case NR_NAS_CONN_RELEASE_IND: {
-        LOG_I(NAS, "[UE %ld] Received %s: cause %s\n",
-              instance, ITTI_MSG_NAME (msg_p), nr_release_cause_desc[NR_NAS_CONN_RELEASE_IND (msg_p).cause]);
-        nr_ue_nas_t *nas = get_ue_nas_info(instance);
+        LOG_I(NAS, "[UE %u] Received %s: cause %s\n",
+              NR_NAS_CONN_RELEASE_IND(msg_p).UEid, ITTI_MSG_NAME (msg_p), nr_release_cause_desc[NR_NAS_CONN_RELEASE_IND (msg_p).cause]);
+        nr_ue_nas_t *nas = get_ue_nas_info(NR_NAS_CONN_RELEASE_IND(msg_p).UEid);
         /* In N1 mode, upon indication from lower layers that the access stratum connection has been released,
            the UE shall enter 5GMM-IDLE mode and consider the N1 NAS signalling connection released (3GPP TS 24.501) */
         nas->fiveGMM_mode = FGS_IDLE;
         // Generate InitialUEMessage and transfer to RRC
-        transfer_initial_ue_message(nas, instance);
+        transfer_initial_ue_message(nas, NR_NAS_CONN_RELEASE_IND(msg_p).UEid);
         // TODO handle connection release
         if (nas->termination_procedure) {
           /* the following is not clean, but probably necessary: we need to give

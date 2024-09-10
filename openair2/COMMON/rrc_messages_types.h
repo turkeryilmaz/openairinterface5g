@@ -473,6 +473,7 @@ typedef enum NR_Release_Cause_e {
 } NR_Release_Cause_t;
 
 typedef struct nr_nas_conn_release_ind {
+  uint32_t UEid;          /* UE lower layer identifier    */
   NR_Release_Cause_t cause;
 } NRNasConnReleaseInd;
 

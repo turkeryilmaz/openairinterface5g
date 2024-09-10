@@ -2390,6 +2390,7 @@ void nr_rrc_going_to_IDLE(NR_UE_RRC_INST_t *rrc,
   // Indicate the release of the RRC connection to upper layers
   MessageDef *msg_p = itti_alloc_new_message(TASK_RRC_NRUE, rrc->ue_id, NR_NAS_CONN_RELEASE_IND);
   NR_NAS_CONN_RELEASE_IND(msg_p).cause = release_cause;
+  NR_NAS_CONN_RELEASE_IND(msg_p).UEid = rrc->ue_id;
   itti_send_msg_to_task(TASK_NAS_NRUE, rrc->ue_id, msg_p);
 }
 
