@@ -1017,7 +1017,7 @@ int pbch_pdcch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_
   phy_pdcch_config->nb_search_space = 0;
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_UE_SLOT_FEP_PDCCH, VCD_FUNCTION_OUT);
   uint64_t b=rdtsc_oai();
-  if (b-a>3000*100)
+  if (b-a>3000*150)
     printf("total pbch_pdcch_processing %ld\n", (b - a) / 3000);
   return sampleShift;
 }

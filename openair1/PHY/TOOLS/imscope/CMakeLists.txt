@@ -30,5 +30,5 @@ target_link_libraries(implot PUBLIC imgui)
 target_include_directories(implot PUBLIC ${implot_SOURCE_DIR})
 
 add_library(imscope MODULE imscope.cpp ../phy_scope_interface.c)
-target_link_libraries(imscope PUBLIC imgui_glfw_backend glfw imgui_opengl_renderer OpenGL::OpenGL implot UTIL)
+target_link_libraries(imscope PUBLIC imgui_glfw_backend glfw imgui_opengl_renderer asn1_nr_rrc_hdrs OpenGL::OpenGL implot UTIL)
 set_target_properties(imscope PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})

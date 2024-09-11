@@ -402,8 +402,9 @@ int8_t nr_ue_process_dci_freq_dom_resource_assignment(nfapi_nr_ue_pusch_pdu_t *p
           if (state == 0) {
             dlsch_config_pdu->start_rb = i;
             state = 1;
-          } else
-            AssertFatal(state == 1, "non-contiguous RB allocation in RB allocation type 0 not implemented");
+          } else 
+            if (state != 1) 
+               LOG_E(NR_MAC, "non-contiguous RB allocation in RB allocation type 0 not implemented\n");
         } else {
           if (state == 1) {
             state = 2;

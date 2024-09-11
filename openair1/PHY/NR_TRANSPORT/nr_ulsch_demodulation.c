@@ -1367,7 +1367,8 @@ int nr_rx_pusch_tp(PHY_VARS_gNB *gNB,
   start_meas(&gNB->ulsch_channel_estimation_stats);
   int max_ch = 0;
   uint32_t nvar = 0;
-  for(uint8_t symbol = rel15_ul->start_symbol_index; symbol < (rel15_ul->start_symbol_index + rel15_ul->nr_of_symbols); symbol++) {
+  int end_symbol = rel15_ul->start_symbol_index + rel15_ul->nr_of_symbols;
+  for(uint8_t symbol = rel15_ul->start_symbol_index; symbol < end_symbol; symbol++) {
     uint8_t dmrs_symbol_flag = (rel15_ul->ul_dmrs_symb_pos >> symbol) & 0x01;
     LOG_D(PHY, "symbol %d, dmrs_symbol_flag :%d\n", symbol, dmrs_symbol_flag);
     
