@@ -54,7 +54,7 @@ do {                                                        \
     }						\
 } while(0)
 
-#define AssertFatal(cOND, fORMAT, aRGS...)          _Assert_(cOND, _Assert_Exit_, fORMAT, ##aRGS)
+#define AssertFatal(cOND, fORMAT, aRGS...)    do{ if (!(cOND)) abort();}while(0)  //   _Assert_(cOND, _Assert_Exit_, fORMAT, ##aRGS)
 
 #define AssertError(cOND, aCTION, fORMAT, aRGS...)  _Assert_(cOND, aCTION, fORMAT, ##aRGS)
 
