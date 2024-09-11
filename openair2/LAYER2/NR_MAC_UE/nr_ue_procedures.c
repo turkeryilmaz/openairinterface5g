@@ -1029,7 +1029,7 @@ static int nr_ue_process_dci_dl_11(NR_UE_MAC_INST_t *mac,
   NR_PDSCH_Config_t *pdsch_Config = current_DL_BWP->pdsch_Config;
   fapi_nr_dl_config_request_t *dl_config = get_dl_config_request(mac, slot);
   fapi_nr_dl_config_request_pdu_t *dl_conf_req = &dl_config->dl_config_list[dl_config->number_pdus];
-
+  *dl_conf_req= (fapi_nr_dl_config_request_pdu_t){};
   dl_conf_req->dlsch_config_pdu.rnti = dci_ind->rnti;
 
   fapi_nr_dl_config_dlsch_pdu_rel15_t *dlsch_pdu = &dl_conf_req->dlsch_config_pdu.dlsch_config_rel15;
