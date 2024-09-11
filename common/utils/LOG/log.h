@@ -341,67 +341,67 @@ int32_t write_file_matlab(const char *fname, const char *vname, void *data, int 
 #  if T_TRACER
 #include "T.h"
 /* per component, level dependent macros */
-#define LOG_E(c, x...)                                                    \
-  do {                                                                    \
-    T(T_LEGACY_##c##_ERROR, T_PRINTF(x));                                 \
-    if (T_stdout) {                                                       \
-      if (g_log->log_component[c].level >= OAILOG_ERR)                    \
-        logRecord_mt(__FILE__, __FUNCTION__, __LINE__, c, OAILOG_ERR, x); \
-    }                                                                     \
+#define LOG_E(c, x...)                                                      \
+  do {                                                                      \
+    T(T_LEGACY_##c##_ERROR, T_PRINTF(x));                                   \
+    if (__builtin_expect(T_stdout, 1)) {                                    \
+      if (__builtin_expect(g_log->log_component[c].level >= OAILOG_ERR, 1)) \
+        logRecord_mt(__FILE__, __FUNCTION__, __LINE__, c, OAILOG_ERR, x);   \
+    }                                                                       \
   } while (0)
 
-#define LOG_W(c, x...)                                                        \
+#define LOG_W(c, x...)                                                          \
+  do {                                                                          \
+    T(T_LEGACY_##c##_WARNING, T_PRINTF(x));                                     \
+    if (__builtin_expect(T_stdout, 1)) {                                        \
+      if (__builtin_expect(g_log->log_component[c].level >= OAILOG_WARNING, 1)) \
+        logRecord_mt(__FILE__, __FUNCTION__, __LINE__, c, OAILOG_WARNING, x);   \
+    }                                                                           \
+  } while (0)
+
+#define LOG_A(c, x...)                                                           \
+  do {                                                                           \
+    T(T_LEGACY_##c##_INFO, T_PRINTF(x));                                         \
+    if (__builtin_expect(T_stdout, 0)) {                                         \
+      if (__builtin_expect(g_log->log_component[c].level >= OAILOG_ANALYSIS, 1)) \
+        logRecord_mt(__FILE__, __FUNCTION__, __LINE__, c, OAILOG_ANALYSIS, x);   \
+    }                                                                            \
+  } while (0)
+
+#define LOG_I(c, x...)                                                       \
+  do {                                                                       \
+    T(T_LEGACY_##c##_INFO, T_PRINTF(x));                                     \
+    if (__builtin_expect(T_stdout, 1)) {                                     \
+      if (__builtin_expect(g_log->log_component[c].level >= OAILOG_INFO, 1)) \
+        logRecord_mt(__FILE__, __FUNCTION__, __LINE__, c, OAILOG_INFO, x);   \
+    }                                                                        \
+  } while (0)
+
+#define LOG_D(c, x...)                                                        \
   do {                                                                        \
-    T(T_LEGACY_##c##_WARNING, T_PRINTF(x));                                   \
-    if (T_stdout) {                                                           \
-      if (g_log->log_component[c].level >= OAILOG_WARNING)                    \
-        logRecord_mt(__FILE__, __FUNCTION__, __LINE__, c, OAILOG_WARNING, x); \
+    T(T_LEGACY_##c##_DEBUG, T_PRINTF(x));                                     \
+    if (__builtin_expect(T_stdout, 1)) {                                      \
+      if (__builtin_expect(g_log->log_component[c].level >= OAILOG_DEBUG, 0)) \
+        logRecord_mt(__FILE__, __FUNCTION__, __LINE__, c, OAILOG_DEBUG, x);   \
     }                                                                         \
   } while (0)
 
-#define LOG_A(c, x...)                                                         \
-  do {                                                                         \
-    T(T_LEGACY_##c##_INFO, T_PRINTF(x));                                       \
-    if (T_stdout) {                                                            \
-      if (g_log->log_component[c].level >= OAILOG_ANALYSIS)                    \
-        logRecord_mt(__FILE__, __FUNCTION__, __LINE__, c, OAILOG_ANALYSIS, x); \
-    }                                                                          \
+#define LOG_DDUMP(c, b, s, f, x...)                                           \
+  do {                                                                        \
+    T(T_LEGACY_##c##_DEBUG, T_PRINTF(x));                                     \
+    if (__builtin_expect(T_stdout, 1)) {                                      \
+      if (__builtin_expect(g_log->log_component[c].level >= OAILOG_DEBUG, 0)) \
+        log_dump(c, b, s, f, x);                                              \
+    }                                                                         \
   } while (0)
 
-#define LOG_I(c, x...)                                                     \
-  do {                                                                     \
-    T(T_LEGACY_##c##_INFO, T_PRINTF(x));                                   \
-    if (T_stdout) {                                                        \
-      if (g_log->log_component[c].level >= OAILOG_INFO)                    \
-        logRecord_mt(__FILE__, __FUNCTION__, __LINE__, c, OAILOG_INFO, x); \
-    }                                                                      \
-  } while (0)
-
-#define LOG_D(c, x...)                                                      \
-  do {                                                                      \
-    T(T_LEGACY_##c##_DEBUG, T_PRINTF(x));                                   \
-    if (T_stdout) {                                                         \
-      if (g_log->log_component[c].level >= OAILOG_DEBUG)                    \
-        logRecord_mt(__FILE__, __FUNCTION__, __LINE__, c, OAILOG_DEBUG, x); \
-    }                                                                       \
-  } while (0)
-
-#define LOG_DDUMP(c, b, s, f, x...)                      \
-  do {                                                   \
-    T(T_LEGACY_##c##_DEBUG, T_PRINTF(x));                \
-    if (T_stdout) {                                      \
-      if (g_log->log_component[c].level >= OAILOG_DEBUG) \
-        log_dump(c, b, s, f, x);                         \
-    }                                                    \
-  } while (0)
-
-#define LOG_T(c, x...)                                                      \
-  do {                                                                      \
-    T(T_LEGACY_##c##_TRACE, T_PRINTF(x));                                   \
-    if (T_stdout) {                                                         \
-      if (g_log->log_component[c].level >= OAILOG_TRACE)                    \
-        logRecord_mt(__FILE__, __FUNCTION__, __LINE__, c, OAILOG_TRACE, x); \
-    }                                                                       \
+#define LOG_T(c, x...)                                                        \
+  do {                                                                        \
+    T(T_LEGACY_##c##_TRACE, T_PRINTF(x));                                     \
+    if (__builtin_expect(T_stdout, 1)) {                                      \
+      if (__builtin_expect(g_log->log_component[c].level >= OAILOG_TRACE, 0)) \
+        logRecord_mt(__FILE__, __FUNCTION__, __LINE__, c, OAILOG_TRACE, x);   \
+    }                                                                         \
   } while (0)
 
 #define VLOG(c, l, f, args)                                             \
@@ -476,46 +476,46 @@ int32_t write_file_matlab(const char *fname, const char *vname, void *data, int 
       log_dump(c, b, s, f, x);                         \
   } while (0)
 #else
-#define LOG_E(c, x...)                                                  \
-  do {                                                                  \
-    if (g_log->log_component[c].level >= OAILOG_ERR)                    \
-      logRecord_mt(__FILE__, __FUNCTION__, __LINE__, c, OAILOG_ERR, x); \
+#define LOG_E(c, x...)                                                    \
+  do {                                                                    \
+    if (__builtin_expect(g_log->log_component[c].level >= OAILOG_ERR, 1)) \
+      logRecord_mt(__FILE__, __FUNCTION__, __LINE__, c, OAILOG_ERR, x);   \
   } while (0)
 
-#define LOG_W(c, x...)                                                      \
+#define LOG_W(c, x...)                                                        \
+  do {                                                                        \
+    if (__builtin_expect(g_log->log_component[c].level >= OAILOG_WARNING, 1)) \
+      logRecord_mt(__FILE__, __FUNCTION__, __LINE__, c, OAILOG_WARNING, x);   \
+  } while (0)
+
+#define LOG_A(c, x...)                                                         \
+  do {                                                                         \
+    if (__builtin_expect(g_log->log_component[c].level >= OAILOG_ANALYSIS, 0)) \
+      logRecord_mt(__FILE__, __FUNCTION__, __LINE__, c, OAILOG_ANALYSIS, x);   \
+  } while (0)
+
+#define LOG_I(c, x...)                                                     \
+  do {                                                                     \
+    if (__builtin_expect(g_log->log_component[c].level >= OAILOG_INFO, 1)) \
+      logRecord_mt(__FILE__, __FUNCTION__, __LINE__, c, OAILOG_INFO, x);   \
+  } while (0)
+
+#define LOG_D(c, x...)                                                      \
   do {                                                                      \
-    if (g_log->log_component[c].level >= OAILOG_WARNING)                    \
-      logRecord_mt(__FILE__, __FUNCTION__, __LINE__, c, OAILOG_WARNING, x); \
+    if (__builtin_expect(g_log->log_component[c].level >= OAILOG_DEBUG, 0)) \
+      logRecord_mt(__FILE__, __FUNCTION__, __LINE__, c, OAILOG_DEBUG, x);   \
   } while (0)
 
-#define LOG_A(c, x...)                                                       \
-  do {                                                                       \
-    if (g_log->log_component[c].level >= OAILOG_ANALYSIS)                    \
-      logRecord_mt(__FILE__, __FUNCTION__, __LINE__, c, OAILOG_ANALYSIS, x); \
+#define LOG_DDUMP(c, b, s, f, x...)                                         \
+  do {                                                                      \
+    if (__builtin_expect(g_log->log_component[c].level >= OAILOG_DEBUG, 0)) \
+      log_dump(c, b, s, f, x);                                              \
   } while (0)
 
-#define LOG_I(c, x...)                                                   \
-  do {                                                                   \
-    if (g_log->log_component[c].level >= OAILOG_INFO)                    \
-      logRecord_mt(__FILE__, __FUNCTION__, __LINE__, c, OAILOG_INFO, x); \
-  } while (0)
-
-#define LOG_D(c, x...)                                                    \
-  do {                                                                    \
-    if (g_log->log_component[c].level >= OAILOG_DEBUG)                    \
-      logRecord_mt(__FILE__, __FUNCTION__, __LINE__, c, OAILOG_DEBUG, x); \
-  } while (0)
-
-#define LOG_DDUMP(c, b, s, f, x...)                    \
-  do {                                                 \
-    if (g_log->log_component[c].level >= OAILOG_DEBUG) \
-      log_dump(c, b, s, f, x);                         \
-  } while (0)
-
-#define LOG_T(c, x...)                                                    \
-  do {                                                                    \
-    if (g_log->log_component[c].level >= OAILOG_TRACE)                    \
-      logRecord_mt(__FILE__, __FUNCTION__, __LINE__, c, OAILOG_TRACE, x); \
+#define LOG_T(c, x...)                                                      \
+  do {                                                                      \
+    if (__builtin_expect(g_log->log_component[c].level >= OAILOG_TRACE, 0)) \
+      logRecord_mt(__FILE__, __FUNCTION__, __LINE__, c, OAILOG_TRACE, x);   \
   } while (0)
 #endif
 
