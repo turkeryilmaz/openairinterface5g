@@ -417,7 +417,7 @@ int nr_ue_pdcch_procedures(PHY_VARS_NR_UE *ue,
 
   nr_rx_pdcch(ue, proc, pdcch_est_size, pdcch_dl_ch_estimates, pdcch_e_rx, rel15, rxdataF);
 
-  fapi_nr_dci_indication_t dci_ind;
+  fapi_nr_dci_indication_t dci_ind={0};
   nr_dci_decoding_procedure(ue, proc, pdcch_e_rx, &dci_ind, rel15);
 
   for (int i = 0; i < dci_ind.number_of_dcis; i++) {
