@@ -324,6 +324,7 @@ static void config_csirs(const NR_ServingCellConfigCommon_t *servingcellconfigco
                          int do_csirs,
                          int id)
 {
+  gNB_MAC_INST *nrmac = RC.nrmac[0];
   if (do_csirs) {
 
     if(!csi_MeasConfig->nzp_CSI_RS_ResourceSetToAddModList)
@@ -338,13 +339,12 @@ static void config_csirs(const NR_ServingCellConfigCommon_t *servingcellconfigco
     nzpcsirs0->trs_Info = NULL;
     asn1cSeqAdd(&csi_MeasConfig->nzp_CSI_RS_ResourceSetToAddModList->list,nzpcsirs0);
 
-    const NR_TDD_UL_DL_Pattern_t *tdd = servingcellconfigcommon->tdd_UL_DL_ConfigurationCommon ?
-                                        &servingcellconfigcommon->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
+    const bool tdd = servingcellconfigcommon->tdd_UL_DL_ConfigurationCommon != NULL;
 
     const int n_slots_frame = slotsperframe[*servingcellconfigcommon->ssbSubcarrierSpacing];
-    const int nb_slots_per_period = tdd ? n_slots_frame/get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity): n_slots_frame;
-    const int nb_dl_slots_period = tdd ? tdd->nrofDownlinkSlots : n_slots_frame;
-    const int n_ul_slots_period = tdd ? (tdd->nrofUplinkSlots + (tdd->nrofUplinkSymbols > 0)) : n_slots_frame;
+    const int nb_slots_per_period = tdd ? n_slots_frame / nrmac->tdd_config.tdd_numb_period_frame : n_slots_frame;
+    const int nb_dl_slots_period = tdd ? nrmac->tdd_config.num_dl_slots : n_slots_frame;
+    const int n_ul_slots_period = tdd ? nrmac->tdd_config.num_dl_slots : n_slots_frame;
     const int ideal_period = set_ideal_period(nb_slots_per_period, n_ul_slots_period); // same periodicity as CSI measurement report
 
     if(!csi_MeasConfig->nzp_CSI_RS_ResourceToAddModList)
@@ -1511,18 +1511,51 @@ static void set_phr_config(NR_MAC_CellGroupConfig_t *mac_CellGroupConfig)
   mac_CellGroupConfig->phr_Config->choice.setup->phr_Tx_PowerFactorChange = NR_PHR_Config__phr_Tx_PowerFactorChange_dB1;
 }
 
+int get_first_ul_slot_new(const struct NR_TDD_UL_DL_ConfigCommon *tdd, bool pattern)
+{
+  if (pattern == false) {
+    return (tdd->pattern1.nrofDownlinkSlots + (tdd->pattern1.nrofDownlinkSymbols != 0 && tdd->pattern1.nrofUplinkSymbols == 0));
+  } else {
+    return (tdd->pattern1.nrofDownlinkSlots + (tdd->pattern1.nrofDownlinkSymbols != 0 || tdd->pattern1.nrofUplinkSlots != 0)
+            + tdd->pattern1.nrofUplinkSlots + tdd->pattern2->nrofDownlinkSlots
+            + (tdd->pattern2->nrofDownlinkSymbols != 0 && tdd->pattern2->nrofUplinkSlots == 0));
+  }
+}
 static void set_csi_meas_periodicity(const NR_ServingCellConfigCommon_t *scc, NR_CSI_ReportConfig_t *csirep, int uid, bool is_rsrp)
 {
-  const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
-  const int n_slots_frame = slotsperframe[*scc->ssbSubcarrierSpacing];
-  const int n_ul_slots_period = tdd ? (tdd->nrofUplinkSlots + (tdd->nrofUplinkSymbols > 0)) : n_slots_frame;
-  const int n_slots_period = tdd ? n_slots_frame / get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity) : n_slots_frame;
-  const int ideal_period = set_ideal_period(n_slots_period, n_ul_slots_period);
-  const int first_ul_slot_period = tdd ? get_first_ul_slot(tdd->nrofDownlinkSlots, tdd->nrofDownlinkSymbols, tdd->nrofUplinkSymbols) : 0;
-  const int idx = (uid << 1) + is_rsrp;
-  const int offset = first_ul_slot_period + idx % n_ul_slots_period + (idx / n_ul_slots_period) * n_slots_period;
-  AssertFatal(offset < 320, "Not enough UL slots to accomodate all possible UEs. Need to rework the implementation\n");
+  gNB_MAC_INST *nrmac = RC.nrmac[0];
 
+  const bool tdd = (scc->tdd_UL_DL_ConfigurationCommon != NULL);
+  const int n_slots_frame = slotsperframe[*scc->ssbSubcarrierSpacing];
+  const int n_ul_slots_period = tdd ? nrmac->tdd_config.num_ul_slots : n_slots_frame;
+  const int n_slots_period = tdd ? nrmac->tdd_config.tdd_numb_slots_period : n_slots_frame;
+  const int ideal_period = set_ideal_period(n_slots_period, n_ul_slots_period);
+  int first_ul_slot_period = 0;
+  const int idx = (uid << 1) + is_rsrp;
+  int offset = 0;
+
+  if (tdd) {
+    int ULslot_pattern1 = scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSlots
+                          + (scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSlots > 0);
+    if (ULslot_pattern1 && ((idx % n_ul_slots_period) <= ULslot_pattern1)) {
+      first_ul_slot_period = get_first_ul_slot_new(scc->tdd_UL_DL_ConfigurationCommon, 0);
+      offset = first_ul_slot_period + idx % n_ul_slots_period + (idx / n_ul_slots_period) * n_slots_period;
+      AssertFatal(offset < 320, "Not enough UL slots to accomodate all possible UEs. Need to rework the implementation\n");
+
+    } else if (scc->tdd_UL_DL_ConfigurationCommon->pattern2 != NULL) {
+      first_ul_slot_period = get_first_ul_slot_new(scc->tdd_UL_DL_ConfigurationCommon, 1);
+      offset = first_ul_slot_period + (idx % scc->tdd_UL_DL_ConfigurationCommon->pattern2->nrofUplinkSlots)
+               + (idx / n_ul_slots_period) * n_slots_period;
+      AssertFatal(offset < 320, "Not enough UL slots to accomodate all possible UEs. Need to rework the implementation\n");
+    }
+  }
+
+  LOG_I(NR_MAC,
+        "idx=%d, offset=%d, ideal_period=%d, first_ul_slot_period %d",
+        idx,
+        offset,
+        ideal_period,
+        first_ul_slot_period);
   if (ideal_period < 5) {
     csirep->reportConfigType.choice.periodic->reportSlotConfig.present = NR_CSI_ReportPeriodicityAndOffset_PR_slots4;
     csirep->reportConfigType.choice.periodic->reportSlotConfig.choice.slots4 = offset;
@@ -2390,10 +2423,16 @@ NR_BCCH_DL_SCH_Message_t *get_SIB1_NR(const NR_ServingCellConfigCommon_t *scc,
   ServCellCom->ssb_PeriodicityServingCell = *scc->ssb_periodicityServingCell;
   if (scc->tdd_UL_DL_ConfigurationCommon) {
     ServCellCom->tdd_UL_DL_ConfigurationCommon = CALLOC(1,sizeof(struct NR_TDD_UL_DL_ConfigCommon));
+    // ServCellCom->tdd_UL_DL_ConfigurationCommon->pattern2= CALLOC(1, sizeof(struct NR_TDD_UL_DL_Pattern));
     AssertFatal(ServCellCom->tdd_UL_DL_ConfigurationCommon != NULL, "out of memory\n");
     ServCellCom->tdd_UL_DL_ConfigurationCommon->referenceSubcarrierSpacing = scc->tdd_UL_DL_ConfigurationCommon->referenceSubcarrierSpacing;
     ServCellCom->tdd_UL_DL_ConfigurationCommon->pattern1 = scc->tdd_UL_DL_ConfigurationCommon->pattern1;
-    ServCellCom->tdd_UL_DL_ConfigurationCommon->pattern2 = scc->tdd_UL_DL_ConfigurationCommon->pattern2;
+    if (scc->tdd_UL_DL_ConfigurationCommon->pattern2) {
+      ServCellCom->tdd_UL_DL_ConfigurationCommon->pattern2 = CALLOC(1, sizeof(struct NR_TDD_UL_DL_Pattern));
+      *ServCellCom->tdd_UL_DL_ConfigurationCommon->pattern2 = *scc->tdd_UL_DL_ConfigurationCommon->pattern2;
+    }
+    // LOG_I(NR_MAC,"scc->tdd_UL_DL_ConfigurationCommon->pattern2
+    // %p\n",scc->tdd_UL_DL_ConfigurationCommon->pattern2->dl_UL_TransmissionPeriodicity);
   }
   ServCellCom->ss_PBCH_BlockPower = scc->ss_PBCH_BlockPower;
 
