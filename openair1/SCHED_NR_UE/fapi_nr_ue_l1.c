@@ -689,7 +689,7 @@ int8_t sl_handle_scheduled_response(nr_scheduled_response_t *scheduled_response)
   uint32_t slot = scheduled_response->slot;
   uint32_t frame = scheduled_response->frame;
   const char *sl_rx_action[] = {"NONE", "RX_PSBCH", "RX_PSCCH", "RX_SCI2_ON_PSSCH", "RX_SLSCH_ON_PSSCH", "RX_PSFCH", "RX_SLSCH_ON_PSSCH_CSI_RS"};
-  const char *sl_tx_action[] = {"TX_PSBCH", "TX_PSCCH_PSSCH", "TX_PSCCH_PSSCH_PSFCH", "TX_PSCCH_PSSCH_CSI_RS", "TX_PSCCH_PSSCH_PSFCH_CSI_RS"};
+  const char *sl_tx_action[] = {"TX_PSBCH", "TX_PSCCH_PSSCH", "TX_PSCCH_PSSCH_PSFCH", "TX_PSCCH_PSSCH_CSI_RS"};
   NR_UE_CSI_RS *csirs_vars = PHY_vars_UE_g[module_id][cc_id]->csirs_vars[0];
   if(scheduled_response->sl_rx_config != NULL) {
 
@@ -764,8 +764,7 @@ int8_t sl_handle_scheduled_response(nr_scheduled_response_t *scheduled_response)
         break;
       case SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH:
       case SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_CSI_RS:
-      case SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH:
-      case SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH_CSI_RS: {
+      case SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH: {
           sl_nr_tx_config_pscch_pssch_pdu_t *tx_config_pdu = &sl_tx_config->tx_config_list[0].tx_pscch_pssch_config_pdu;
           phy_data_tx->sl_tx_action = sl_tx_config->tx_config_list[0].pdu_type;
           phy_data_tx->nr_sl_pssch_pscch_pdu = *tx_config_pdu;
@@ -781,7 +780,7 @@ int8_t sl_handle_scheduled_response(nr_scheduled_response_t *scheduled_response)
                 (unsigned long long)*phy_data_tx->nr_sl_pssch_pscch_pdu.sci2_payload,
                 phy_data_tx->nr_sl_pssch_pscch_pdu.mcs,
                 phy_data_tx->nr_sl_pssch_pscch_pdu.tbslbrm);
-          if (phy_data_tx->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_CSI_RS || phy_data_tx->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH_CSI_RS) {
+          if (phy_data_tx->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_CSI_RS) {
             phy_data_tx->nr_sl_pssch_pscch_pdu.nr_sl_csi_rs_pdu = tx_config_pdu->nr_sl_csi_rs_pdu;
           }
           uint8_t current_harq_pid = tx_config_pdu->harq_pid;

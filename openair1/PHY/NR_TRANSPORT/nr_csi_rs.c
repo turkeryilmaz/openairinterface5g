@@ -102,6 +102,9 @@ void get_csi_rs_params_from_table(const nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *csi_
   int found = 0;
   uint8_t fi = 0;
   double rho, alpha;
+  if (get_softmodem_params()->sl_mode) {
+    AssertFatal(csi_params->row == 2 || csi_params->row == 3, "Row value can be only 2 or 3");
+  }
   switch (csi_params->row) {
     // implementation of table 7.4.1.5.3-1 of 38.211
     // lprime and kprime are the max value of l' and k'
@@ -673,7 +676,7 @@ void nr_generate_csi_rs(const NR_DL_FRAME_PARMS *frame_parms,
 
   // resource mapping according to 38.211 7.4.1.5.3
   for (n=csi_params->start_rb; n<(csi_params->start_rb+csi_params->nr_of_rbs); n++) {
-   if ( (csi_params->freq_density > 1) || get_softmodem_params()->sl_mode ? csi_params->freq_density : (csi_params->freq_density == (n%2))) {  // for freq density 0.5 checks if even or odd RB
+   if ( (csi_params->freq_density > 1) || (get_softmodem_params()->sl_mode ? csi_params->freq_density : (csi_params->freq_density == (n%2)))) {  // for freq density 0.5 checks if even or odd RB
     for (int ji=0; ji<size; ji++) { // loop over CDM groups
       for (int s=0 ; s<table_params.gs; s++)  { // loop over each CDM group size
         p = s+j[ji]*table_params.gs; // port index

@@ -2146,8 +2146,9 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
             csi_params->start_rb,
             csi_params->nr_of_rbs);
       if (phy_data->sl_rx_action == SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH_CSI_RS) {
+        // FIXIT: Reconsider index of csirs_vars[0] for multiple connected UEs case
         if (ue->csirs_vars[0]->active == 1) {
-          LOG_D(NR_PHY, "%d.%d CSI-RS Received\n", proc->frame_rx, proc->nr_slot_rx);
+          LOG_D(NR_PHY, "%d.%d Received CSI-RS\n", proc->frame_rx, proc->nr_slot_rx);
           nr_slot_fep(ue, frame_parms, proc, symbol, rxdataF, link_type_sl);
           nr_ue_csi_rs_procedures(ue, proc, rxdataF);
           ue->csirs_vars[0]->active = 0;
@@ -2401,8 +2402,8 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
                                  symbol,
                                  qam_mod_order);
             memcpy(&pusch_vars->llr_layers[aatx][rxdataF_ext_offset * qam_mod_order],
-                   temp_llr + (sci1_offset + sci2_cnt_thissymb) * sizeof(int32_t),
-                   (rb_size * NR_NB_SC_PER_RB - (sci1_offset + sci2_cnt_thissymb)) * sizeof(int32_t));
+                   temp_llr + (sci1_offset + sci2_cnt_thissymb) * qam_mod_order,
+                   (rb_size * NR_NB_SC_PER_RB - (sci1_offset + sci2_cnt_thissymb)) * 2 * qam_mod_order);
           } else {
             nr_ulsch_compute_llr(&pusch_vars->rxdataF_comp[aatx * frame_parms->nb_antennas_rx][symbol * (off + rb_size * NR_NB_SC_PER_RB) + sci1_offset + sci2_cnt_thissymb],
                                 pusch_vars->ul_ch_mag0[aatx * frame_parms->nb_antennas_rx],
