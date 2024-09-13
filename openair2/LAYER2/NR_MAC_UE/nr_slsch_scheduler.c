@@ -45,13 +45,6 @@
 
 const uint8_t nr_rv_round_map[4] = {0, 2, 3, 1};
 
-uint8_t scalled_mcs(uint8_t current_mcs) {
-  uint8_t orig_scale_min = 1, orig_scale_max = 28;
-  uint8_t new_scale_min = 1, new_scale_max = 16;
-  uint8_t scaled_mcs = new_scale_min + ((current_mcs - orig_scale_min) * (new_scale_max - new_scale_min)) / (orig_scale_max - orig_scale_min);
-  return scaled_mcs;
-}
-
 void reset_sl_harq_list(NR_SL_UE_sched_ctrl_t *sched_ctrl) {
   int harq;
   while ((harq = sched_ctrl->feedback_sl_harq.head) >= 0) {
@@ -71,13 +64,11 @@ void reset_sl_harq_list(NR_SL_UE_sched_ctrl_t *sched_ctrl) {
   }
 }
 
-static void abort_nr_ue_sl_harq(NR_UE_MAC_INST_t *mac, int8_t harq_pid)
+static void abort_nr_ue_sl_harq(NR_UE_MAC_INST_t *mac, int8_t harq_pid, NR_SL_UE_info_t *UE_info)
 {
-  NR_SL_UE_info_t *UE_info = (NR_SL_UE_info_t *)&mac->sl_info.list[0];
   NR_SL_UE_sched_ctrl_t *sched_ctrl = &UE_info->UE_sched_ctrl;
   NR_UE_sl_harq_t *harq = &sched_ctrl->sl_harq_processes[harq_pid];
 
-  harq->ndi ^= 1;
   harq->round = 0;
   UE_info->mac_sl_stats.sl.errors++;
   add_tail_nr_list(&sched_ctrl->available_sl_harq, harq_pid);
@@ -105,7 +96,7 @@ void handle_nr_ue_sl_harq(module_id_t mod_id,
   NR_SL_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
   NR_UE_sl_harq_t **matched_harqs = (NR_UE_sl_harq_t **) calloc(sched_ctrl->feedback_sl_harq.len, sizeof(NR_UE_sl_harq_t *));
   int k = find_current_slot_harqs(frame, slot, sched_ctrl, matched_harqs);
-
+  LOG_D(NR_MAC, "Found %d matching HARQ processes vs. num. of received acks %d\n", k, num_ack_rcvd);
   for (int i = 0; i < num_ack_rcvd; i++) {
     uint8_t ack_nack = rx_slsch_pdu->ack_nack_rcvd[i];
     uint8_t rx_harq_id = matched_harqs[i]->sl_harq_pid;
@@ -127,7 +118,7 @@ void handle_nr_ue_sl_harq(module_id_t mod_id,
       sched_ctrl->sl_harq_processes[harq_pid].is_waiting = false;
 
       if(sched_ctrl->sl_harq_processes[harq_pid].round >= (HARQ_ROUND_MAX - 1)) {
-        abort_nr_ue_sl_harq(mac, harq_pid);
+        abort_nr_ue_sl_harq(mac, harq_pid, UE);
       } else {
         sched_ctrl->sl_harq_processes[harq_pid].round++;
         add_tail_nr_list(&sched_ctrl->retrans_sl_harq, harq_pid);
@@ -140,7 +131,7 @@ void handle_nr_ue_sl_harq(module_id_t mod_id,
     harq->feedback_slot = -1;
     harq->is_waiting = false;
     if (!ack_nack) {
-      harq->ndi ^= 1;
+      UE->mac_sl_stats.cumul_round[harq->round]++;
       harq->round = 0;
       LOG_D(NR_MAC,
             "Ulharq id %d crc passed for src id %4d\n",
@@ -148,14 +139,14 @@ void handle_nr_ue_sl_harq(module_id_t mod_id,
             src_id);
       add_tail_nr_list(&sched_ctrl->available_sl_harq, harq_pid);
     } else if (harq->round >= (HARQ_ROUND_MAX - 1)) {
+      UE->mac_sl_stats.cumul_round[HARQ_ROUND_MAX]++;
       LOG_D(NR_MAC,
             "src id %4d, Slharq id %d crc failed in all rounds\n",
             src_id,
             harq_pid);
-      abort_nr_ue_sl_harq(mac, harq_pid);
+      abort_nr_ue_sl_harq(mac, harq_pid, UE);
     } else {
       harq->round++;
-      harq->ndi ^= 1;
       LOG_D(NR_MAC,
             "%4u.%2u Slharq id %d crc failed for src id %4d\n",
             frame,
@@ -172,8 +163,10 @@ void handle_nr_ue_sl_harq(module_id_t mod_id,
 
 void nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_t *sci_pdu,
                        nr_sci_pdu_t *sci2_pdu, nr_sci_format_t format2,
+                       NR_SL_UE_sched_ctrl_t *sched_ctrl,
                        uint16_t *slsch_pdu_length_max, NR_UE_sl_harq_t *cur_harq,
-                       mac_rlc_status_resp_t *rlc_status) {
+                       mac_rlc_status_resp_t *rlc_status,
+                       uid_t dest_id) {
 
   sl_nr_ue_mac_params_t *sl_mac = mac->SL_MAC_PARAMS;
   uint8_t mu = sl_mac->sl_phy_config.sl_config_req.sl_bwp_config.sl_scs;
@@ -185,28 +178,37 @@ void nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
                   mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16)
                   ? psfch_periods[*mac->sl_tx_res_pool->sl_PSFCH_Config_r16->choice.setup->sl_PSFCH_Period_r16] : 0;
   *slsch_pdu_length_max = 0;
+
+  NR_TDD_UL_DL_Pattern_t *tdd = &sl_mac->sl_TDD_config->pattern1;
+  int period = 0, offset = 0;
   bool csi_acq = !mac->SL_MAC_PARAMS->sl_CSI_Acquisition;
-  bool csi_req_slot = !((slots_per_frame * frameP + slotP - sl_mac->slot_offset) % sl_mac->slot_periodicity);
+  SL_CSI_Report_t *sl_csi_report = set_nr_ue_sl_csi_meas_periodicity(tdd, sched_ctrl, mac, dest_id, false);
+  nr_ue_sl_csi_period_offset(sl_csi_report,
+                             &period,
+                             &offset);
+  // Determine current slot is csi-rs schedule slot
+  bool csi_req_slot = !((slots_per_frame * frameP + slotP - offset) % period);
 
   uint8_t cqi_Table = 0;
-  int8_t mcs = 11, ri = 0;
-  uint16_t dest = mac->dest_id != -1 ? mac->dest_id : 0xabcd;
-  uint16_t indx = dest%CURRENT_NUM_UE_CONNECTIONS;
-  int8_t cqi = mac->dest_id != -1 ? mac->sl_info.list[indx]->UE_sched_ctrl.csi_report.cqi : -1;
-  if (cqi != -1) {
-  int mcs_tb_ind = 0;
-  if (sci_pdu->additional_mcs.nbits > 0)
-    mcs_tb_ind = sci_pdu->additional_mcs.val;
-  if (mcs_tb_ind == 0)
-    cqi_Table = NR_CSI_ReportConfig__cqi_Table_table1;
-  else if (mcs_tb_ind == 1)
-    cqi_Table = NR_CSI_ReportConfig__cqi_Table_table2;
-  else if (mcs_tb_ind == 2)
-    cqi_Table = NR_CSI_ReportConfig__cqi_Table_table3;
+  uint8_t mcs = sched_ctrl->sl_max_mcs, ri = 0;
+  uint8_t cqi = sched_ctrl->rx_csi_report.CQI;
 
-  mcs = get_mcs_from_cqi(mcs_tb_ind, cqi_Table, cqi);
-  mac->sl_info.list[indx]->UE_sched_ctrl.sl_max_mcs = scalled_mcs(mcs);
-  ri = mac->sl_info.list[indx]->UE_sched_ctrl.csi_report.ri;
+  // we are using as a flag to indicate if csi report was received
+  if (cqi) {
+    int mcs_tb_ind = 0;
+    if (sci_pdu->additional_mcs.nbits > 0)
+      mcs_tb_ind = sci_pdu->additional_mcs.val;
+    if (mcs_tb_ind == 0)
+      cqi_Table = NR_CSI_ReportConfig__cqi_Table_table1;
+    else if (mcs_tb_ind == 1)
+      cqi_Table = NR_CSI_ReportConfig__cqi_Table_table2;
+    else if (mcs_tb_ind == 2)
+      cqi_Table = NR_CSI_ReportConfig__cqi_Table_table3;
+
+    mcs = get_mcs_from_cqi(mcs_tb_ind, cqi_Table, cqi, get_nrUE_params()->mcs);
+
+    sched_ctrl->sl_max_mcs = mcs;
+    ri = sched_ctrl->rx_csi_report.RI;
   }
   // Fill SCI1A
   sci_pdu->priority = 0;
@@ -216,15 +218,17 @@ void nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
   sci_pdu->dmrs_pattern.val = 0;
   sci_pdu->second_stage_sci_format = 0;
   sci_pdu->number_of_dmrs_port = ri;
-  sci_pdu->mcs = mac->sl_info.list[indx]->UE_sched_ctrl.sl_max_mcs;
+  // we are using as a flag to indicate if csi report was received
+  sci_pdu->mcs = cqi ? mcs : get_nrUE_params()->mcs;
   sci_pdu->additional_mcs.val = 0;
-
+  if (frameP % 5 == 0)
+    LOG_D(NR_MAC, "cqi ---> %d Tx %4d.%2d dest: %d sci->mcs %i\n",
+          cqi, frameP, slotP, dest_id, sci_pdu->mcs);
   /*Following code will check whether SLSCH was received before and
   its feedback has scheduled for current slot
   */
   int scs = get_softmodem_params()->numerology;
   const int nr_slots_frame = nr_slots_per_frame[scs];
-  NR_TDD_UL_DL_Pattern_t *tdd = &sl_mac->sl_TDD_config->pattern1;
   const int n_ul_slots_period = tdd ? tdd->nrofUplinkSlots + (tdd->nrofUplinkSymbols > 0 ? 1 : 0) : nr_slots_frame;
 
   uint16_t num_subch = sl_get_num_subch(mac->sl_tx_res_pool);
@@ -240,9 +244,11 @@ void nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
   if ((slotP % psfch_period == 0) && (psfch_period == 2 || psfch_period == 4)) {
       if (is_feedback_slot) {
         sci_pdu->psfch_overhead.val =  1;
-        LOG_D(NR_MAC, "%4d.%2d Setting psfch_overhead\n", frameP, slotP);
-      } else
+        LOG_D(NR_MAC, "%4d.%2d Setting psfch_overhead 1\n", frameP, slotP);
+      } else {
           sci_pdu->psfch_overhead.val = 0;
+          LOG_D(NR_MAC, "%4d.%2d Setting psfch_overhead 0\n", frameP, slotP);
+      }
   } else if ((slotP % psfch_period != 0) && (psfch_period == 2 || psfch_period == 4))
     sci_pdu->psfch_overhead.val = 0;
 
@@ -250,15 +256,16 @@ void nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
   sci_pdu->conflict_information_receiver.val = 0;
   sci_pdu->beta_offset_indicator = 0;
   sci2_pdu->harq_pid = cur_harq->sl_harq_pid;
-  sci2_pdu->ndi = (1 - cur_harq->ndi) & 1;
+  sci2_pdu->ndi = cur_harq->ndi;
   sci2_pdu->rv_index = nr_rv_round_map[cur_harq->round % 4];
   sci2_pdu->source_id = mac->src_id;
-  sci2_pdu->dest_id = dest;
+  sci2_pdu->dest_id = dest_id;
   sci2_pdu->harq_feedback = cur_harq->is_waiting;
   LOG_D(NR_MAC, "%4d.%2d Comparing Setting harq_feedback %d bytes_in_buffer %d sl_harq_pid %d\n", frameP, slotP, sci2_pdu->harq_feedback, rlc_status->bytes_in_buffer, cur_harq ? cur_harq->sl_harq_pid : 0);
   sci2_pdu->cast_type = 1;
   if (format2 == NR_SL_SCI_FORMAT_2C || format2 == NR_SL_SCI_FORMAT_2A) {
     sci2_pdu->csi_req = (csi_acq && csi_req_slot) ? 1 : 0;
+    sci2_pdu->csi_req = (cur_harq->round > 0 || is_feedback_slot) ? 0 : sci2_pdu->csi_req;
     LOG_D(NR_MAC, "%4d.%2d Setting sci2_pdu->csi_req %d\n", frameP, slotP, sci2_pdu->csi_req);
   }
   if (format2 == NR_SL_SCI_FORMAT_2B)
@@ -280,3 +287,93 @@ void nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
   *slsch_pdu_length_max = rlc_status->bytes_in_buffer;
 }
 
+SL_CSI_Report_t* set_nr_ue_sl_csi_meas_periodicity(const NR_TDD_UL_DL_Pattern_t *tdd,
+                                                   NR_SL_UE_sched_ctrl_t *sched_ctrl,
+                                                   NR_UE_MAC_INST_t *mac,
+                                                   int uid,
+                                                   bool is_rsrp) {
+  sl_nr_ue_mac_params_t *sl_mac = mac->SL_MAC_PARAMS;
+  sl_nr_phy_config_request_t *sl_cfg = &sl_mac->sl_phy_config.sl_config_req;
+  uint8_t mu = sl_cfg->sl_bwp_config.sl_scs;
+  uint8_t n_slots_frame = nr_slots_per_frame[mu];
+  const int n_ul_slots_period = tdd ? tdd->nrofUplinkSlots + (tdd->nrofUplinkSymbols > 0 ? 1 : 0) : n_slots_frame;
+  const int nr_slots_period = tdd ? n_slots_frame / get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity) : n_slots_frame;
+  const int ideal_period = CUR_SL_UE_CONNECTIONS * nr_slots_period / n_ul_slots_period;
+  const int first_ul_slot_period = tdd ? get_first_ul_slot(tdd->nrofDownlinkSlots, tdd->nrofDownlinkSymbols, tdd->nrofUplinkSymbols) : 0;
+  const int idx = (uid << 1) + is_rsrp;
+  SL_CSI_Report_t *csi_report = &sched_ctrl->sched_csi_report;
+  const int offset = first_ul_slot_period + idx % n_ul_slots_period + (idx / n_ul_slots_period) * nr_slots_period;
+  AssertFatal(offset < 320, "Not enough UL slots to accomodate all possible UEs. Need to rework the implementation\n");
+  csi_report->slot_offset = offset;
+  if (ideal_period < 5) {
+    csi_report->slot_periodicity_offset = NR_UE_SL_CSI_ResourcePeriodicityAndOffset_PR_slots4;
+  } else if (ideal_period < 6) {
+    csi_report->slot_periodicity_offset = NR_UE_SL_CSI_ResourcePeriodicityAndOffset_PR_slots5;
+  } else if (ideal_period < 9) {
+    csi_report->slot_periodicity_offset = NR_UE_SL_CSI_ResourcePeriodicityAndOffset_PR_slots8;
+  } else if (ideal_period < 11) {
+    csi_report->slot_periodicity_offset = NR_UE_SL_CSI_ResourcePeriodicityAndOffset_PR_slots10;
+  } else if (ideal_period < 17) {
+    csi_report->slot_periodicity_offset = NR_UE_SL_CSI_ResourcePeriodicityAndOffset_PR_slots16;
+  } else if (ideal_period < 21) {
+    csi_report->slot_periodicity_offset = NR_UE_SL_CSI_ResourcePeriodicityAndOffset_PR_slots20;
+  } else if (ideal_period < 41) {
+    csi_report->slot_periodicity_offset = NR_UE_SL_CSI_ResourcePeriodicityAndOffset_PR_slots40;
+  } else if (ideal_period < 81) {
+    csi_report->slot_periodicity_offset = NR_UE_SL_CSI_ResourcePeriodicityAndOffset_PR_slots80;
+  } else if (ideal_period < 161) {
+    csi_report->slot_periodicity_offset = NR_UE_SL_CSI_ResourcePeriodicityAndOffset_PR_slots160;
+  } else {
+    csi_report->slot_periodicity_offset = NR_UE_SL_CSI_ResourcePeriodicityAndOffset_PR_slots320;
+  }
+  return csi_report;
+}
+
+void nr_ue_sl_csi_period_offset(SL_CSI_Report_t *sl_csi_report,
+                                int *period,
+                                int *offset) {
+  *offset = sl_csi_report->slot_offset;
+  switch(sl_csi_report->slot_periodicity_offset) {
+    case NR_UE_SL_CSI_ResourcePeriodicityAndOffset_PR_slots4:
+      *period = 4;
+      break;
+    case NR_UE_SL_CSI_ResourcePeriodicityAndOffset_PR_slots5:
+      *period = 5;
+      break;
+    case NR_UE_SL_CSI_ResourcePeriodicityAndOffset_PR_slots8:
+      *period = 8;
+      break;
+    case NR_UE_SL_CSI_ResourcePeriodicityAndOffset_PR_slots10:
+      *period = 10;
+      break;
+    case NR_UE_SL_CSI_ResourcePeriodicityAndOffset_PR_slots16:
+      *period = 16;
+      break;
+    case NR_UE_SL_CSI_ResourcePeriodicityAndOffset_PR_slots20:
+      *period = 20;
+      break;
+    case NR_UE_SL_CSI_ResourcePeriodicityAndOffset_PR_slots32:
+      *period = 32;
+      break;
+    case NR_UE_SL_CSI_ResourcePeriodicityAndOffset_PR_slots40:
+      *period = 40;
+      break;
+    case NR_UE_SL_CSI_ResourcePeriodicityAndOffset_PR_slots64:
+      *period = 64;
+      break;
+    case NR_UE_SL_CSI_ResourcePeriodicityAndOffset_PR_slots80:
+      *period = 80;
+      break;
+    case NR_UE_SL_CSI_ResourcePeriodicityAndOffset_PR_slots160:
+      *period = 160;
+      break;
+    case NR_UE_SL_CSI_ResourcePeriodicityAndOffset_PR_slots320:
+      *period = 320;
+      break;
+    case NR_UE_SL_CSI_ResourcePeriodicityAndOffset_PR_slots640:
+      *period = 640;
+      break;
+    default:
+      AssertFatal(1 == 0, "No periodicity and offset found in CSI resource");
+  }
+}

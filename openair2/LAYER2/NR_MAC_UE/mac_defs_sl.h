@@ -168,9 +168,7 @@ typedef struct sl_nr_ue_mac_params {
   uint8_t csi_type;
   uint8_t power_control_offset;
   uint8_t power_control_offset_ss;
-  uint8_t slot_offset;
-  uint8_t slot_periodicity;
-  uint8_t  freq_density;
+  uint8_t freq_density;
   uint8_t subcarrier_spacing;
   uint8_t cyclic_prefix;
   uint16_t start_rb;
@@ -180,6 +178,7 @@ typedef struct sl_nr_ue_mac_params {
   uint8_t cdm_type;
   uint16_t scramb_id;
   uint8_t measurement_bitmap;
+  uint8_t sl_LatencyBoundCSI_Report;
 
   // configured grant harq parameters
   uint8_t sl_Num_HARQ_Processes;
