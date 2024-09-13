@@ -137,11 +137,6 @@ int is_pbch_in_slot(fapi_nr_config_request_t *config, int frame, int slot, NR_DL
 int is_ssb_in_slot(fapi_nr_config_request_t *config, int frame, int slot, NR_DL_FRAME_PARMS *fp);
 bool is_csi_rs_in_symbol(fapi_nr_dl_config_csirs_pdu_rel15_t csirs_config_pdu, int symbol);
 
-int32_t sl_csi_rs_snr_estimation(PHY_VARS_NR_UE *ue,
-                                 UE_nr_rxtx_proc_t *proc,
-                                 const NR_DL_FRAME_PARMS *frame_parms,
-                                 c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP]);
-
 /*! \brief This function prepares the dl indication to pass to the MAC
     @param
     @param
