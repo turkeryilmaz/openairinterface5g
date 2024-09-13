@@ -193,6 +193,7 @@ void nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
   uint8_t mcs = sched_ctrl->sl_max_mcs, ri = 0;
   uint8_t cqi = sched_ctrl->rx_csi_report.CQI;
 
+  // we are using as a flag to indicate if csi report was received
   if (cqi) {
     int mcs_tb_ind = 0;
     if (sci_pdu->additional_mcs.nbits > 0)
@@ -204,7 +205,7 @@ void nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
     else if (mcs_tb_ind == 2)
       cqi_Table = NR_CSI_ReportConfig__cqi_Table_table3;
 
-    mcs = cqi == 2 ? 1 : get_mcs_from_cqi(mcs_tb_ind, cqi_Table, cqi, get_nrUE_params()->mcs);
+    mcs = get_mcs_from_cqi(mcs_tb_ind, cqi_Table, cqi, get_nrUE_params()->mcs);
 
     sched_ctrl->sl_max_mcs = mcs;
     ri = sched_ctrl->rx_csi_report.RI;
@@ -217,6 +218,7 @@ void nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
   sci_pdu->dmrs_pattern.val = 0;
   sci_pdu->second_stage_sci_format = 0;
   sci_pdu->number_of_dmrs_port = ri;
+  // we are using as a flag to indicate if csi report was received
   sci_pdu->mcs = cqi ? mcs : get_nrUE_params()->mcs;
   sci_pdu->additional_mcs.val = 0;
   if (frameP % 5 == 0)
