@@ -190,8 +190,8 @@ void nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
   bool csi_req_slot = !((slots_per_frame * frameP + slotP - offset) % period);
 
   uint8_t cqi_Table = 0;
-  int8_t mcs = sched_ctrl->sl_max_mcs, ri = 0;
-  int8_t cqi = sched_ctrl->rx_csi_report.CQI;
+  uint8_t mcs = sched_ctrl->sl_max_mcs, ri = 0;
+  uint8_t cqi = sched_ctrl->rx_csi_report.CQI;
 
   if (cqi) {
     int mcs_tb_ind = 0;
