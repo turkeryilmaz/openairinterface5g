@@ -3419,11 +3419,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
   if (slot > 9 && get_nrUE_params()->sync_ref) return is_resource_allocated;
 
   if (slot < 10 && !get_nrUE_params()->sync_ref) return is_resource_allocated;
-/*
-  if ((frame&127) > 0) return;
 
-  if ((slot % 10) != 6) return;
-*/
   LOG_D(NR_MAC,"[UE%d] SL-PSSCH SCHEDULER: Frame:SLOT %d:%d, slot_type:%d\n",
         sl_ind->module_id, frame, slot,sl_ind->slot_type);
 
