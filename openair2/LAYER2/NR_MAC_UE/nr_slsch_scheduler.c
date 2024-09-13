@@ -219,7 +219,7 @@ void nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
   sci_pdu->number_of_dmrs_port = ri;
   sci_pdu->mcs = cqi ? mcs : get_nrUE_params()->mcs;
   sci_pdu->additional_mcs.val = 0;
-  if (frameP % 5 == 0 && slotP == 19)
+  if (frameP % 5 == 0)
     LOG_D(NR_MAC, "cqi ---> %d Tx %4d.%2d dest: %d sci->mcs %i\n",
           cqi, frameP, slotP, dest_id, sci_pdu->mcs);
   /*Following code will check whether SLSCH was received before and
