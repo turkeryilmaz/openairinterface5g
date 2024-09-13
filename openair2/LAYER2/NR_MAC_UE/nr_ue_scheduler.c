@@ -3419,11 +3419,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
   if (slot > 9 && get_nrUE_params()->sync_ref) return is_resource_allocated;
 
   if (slot < 10 && !get_nrUE_params()->sync_ref) return is_resource_allocated;
-/*
-  if ((frame&127) > 0) return;
 
-  if ((slot % 10) != 6) return;
-*/
   LOG_D(NR_MAC,"[UE%d] SL-PSSCH SCHEDULER: Frame:SLOT %d:%d, slot_type:%d\n",
         sl_ind->module_id, frame, slot,sl_ind->slot_type);
 
@@ -3481,6 +3477,10 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
     else
       add_tail_nr_list(&sched_ctrl->available_sl_harq, harq_id);
     cur_harq->sl_harq_pid = harq_id;
+    /*
+    The encoder checks for a change in ndi value everytime, since sci2 changes with every transmission,
+    we oscillate the ndi value so the encoder treats the data as new data everytime.
+    */
     cur_harq->ndi ^= 1;
 
     nr_schedule_slsch(mac, frame, slot, &mac->sci1_pdu, &mac->sci2_pdu, NR_SL_SCI_FORMAT_2A,
@@ -3660,7 +3660,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
           (sched_ctrl->sched_csi_report.frame == frame) &&
           (sched_ctrl->sched_csi_report.slot == slot)) {
 
-        if (buflen_remain > sizeof_csi_report) {
+        if (buflen_remain >= sizeof_csi_report) {
           ((NR_MAC_SUBHEADER_FIXED *) pdu)->R = 0;
           ((NR_MAC_SUBHEADER_FIXED *) pdu)->LCID = SL_SCH_LCID_SL_CSI_REPORT;
           pdu++;
