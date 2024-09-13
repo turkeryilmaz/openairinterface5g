@@ -494,7 +494,9 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot)
         struct xran_prb_map *pPrbMap = (struct xran_prb_map *)pPrbMapData;
 
         u_int8_t section_id_tmp = pPrbMap->nPrbElm < 8 ? sym_idx - 8: sym_idx; // Temporary hack for LiteON FR2 : receive UP section ID = 13
-        if (/**slot %10 == 7 && */sym_idx > 1/*7*/) sym_idx = sym_idx - 1; // LITEON FR2
+        //if (sym_idx > 1/*7*/) sym_idx = sym_idx - 1; // LITEON FR2
+        if (*slot %10 == 7 && sym_idx > 1/*7*/) sym_idx = sym_idx - 1; // LITEON FR2
+        //if (*slot %10 == 9 && sym_idx > 2/*7*/) sym_idx = sym_idx - 2; // LITEON FR2
 
         struct xran_prb_elm *pRbElm = &pPrbMap->prbMap[section_id_tmp];
         struct xran_section_desc *p_sec_desc = pRbElm->p_sec_desc[/*sym_idx*/0][0];

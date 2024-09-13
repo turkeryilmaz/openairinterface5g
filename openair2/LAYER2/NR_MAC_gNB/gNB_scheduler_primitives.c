@@ -3272,7 +3272,7 @@ void nr_mac_trigger_ul_failure(NR_UE_sched_ctrl_t *sched_ctrl, NR_SubcarrierSpac
   }
   sched_ctrl->ul_failure = true;
   // 30 seconds till triggering release request
-  sched_ctrl->ul_failure_timer = 30000 << subcarrier_spacing;
+  sched_ctrl->ul_failure_timer = 10000 << subcarrier_spacing;
 }
 
 void nr_mac_reset_ul_failure(NR_UE_sched_ctrl_t *sched_ctrl)

@@ -527,6 +527,18 @@ void nr_fill_indication(PHY_VARS_gNB *gNB, int frame, int slot_rx, int ULSCH_id,
   else if (SNRtimes10 >  635) cqi=255;
   else                        cqi=(640+SNRtimes10)/5;
 
+
+
+        if (0 && sync_pos>-10 && sync_pos<10 && SNRtimes10 > 50 && slot_rx%10 == 9) {
+          int off = ((pusch_pdu->rb_size&1) == 1)? 4:0;
+
+          LOG_M("rxsigF0.m","rxsF0",&gNB->common_vars.rxdataF[0][0][(slot_rx%RU_RX_SLOT_DEPTH)*gNB->frame_parms.ofdm_symbol_size*gNB->frame_parms.symbols_per_slot],gNB->frame_parms.ofdm_symbol_size*gNB->frame_parms.symbols_per_slot,1,1);
+     
+          exit(-1);
+
+        }
+    
+
   // multiple threads might call this function at the same time, or while the
   // L2 reads the messages. Hence, if not protected, crc and rx indications
   // might not appear pairwise (in the same order) in the same slot, or even in

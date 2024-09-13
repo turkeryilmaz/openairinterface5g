@@ -686,8 +686,8 @@ static void pf_dl(module_id_t module_id,
       if (bo->harq_round_max == 1)
         sched_pdsch->mcs = max_mcs;
       else
-        sched_pdsch->mcs = get_mcs_from_bler(bo, stats, &sched_ctrl->dl_bler_stats, max_mcs, frame);
-      sched_pdsch->nrOfLayers = get_dl_nrOfLayers(sched_ctrl, current_BWP->dci_format);
+        sched_pdsch->mcs = max_mcs; //get_mcs_from_bler(bo, stats, &sched_ctrl->dl_bler_stats, max_mcs, frame);
+      sched_pdsch->nrOfLayers = 2; //get_dl_nrOfLayers(sched_ctrl, current_BWP->dci_format);
       sched_pdsch->pm_index =
           get_pm_index(mac, UE, current_BWP->dci_format, sched_pdsch->nrOfLayers, mac->radio_config.pdsch_AntennaPorts.XP);
       const uint8_t Qm = nr_get_Qm_dl(sched_pdsch->mcs, current_BWP->mcsTableIdx);
@@ -961,8 +961,8 @@ void nr_schedule_ue_spec(module_id_t module_id,
 
   if (!is_xlsch_in_slot(gNB_mac->dlsch_slot_bitmap[slot / 64], slot))
     return;
-  if (slot %10 > 2) return;  
-
+  if (slot %10 != 2 && slot %10 != 3 && slot%10!= 5) return;  
+  //if (slot %10 < 2) return;  
 
   /* PREPROCESSOR */
   gNB_mac->pre_processor_dl(module_id, frame, slot);

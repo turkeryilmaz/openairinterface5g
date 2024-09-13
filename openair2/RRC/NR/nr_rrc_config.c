@@ -883,7 +883,7 @@ void nr_rrc_config_ul_tda(NR_ServingCellConfigCommon_t *scc, int min_fb_delay){
   pusch_timedomainresourceallocation->k2 = CALLOC(1,sizeof(long));
   *pusch_timedomainresourceallocation->k2 = k2;
   pusch_timedomainresourceallocation->mappingType = NR_PUSCH_TimeDomainResourceAllocation__mappingType_typeB;
-  pusch_timedomainresourceallocation->startSymbolAndLength = get_SLIV(0, 13);
+  pusch_timedomainresourceallocation->startSymbolAndLength = get_SLIV(1, 13);
   asn1cSeqAdd(&scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList->list,pusch_timedomainresourceallocation); 
 
   // UL TDA index 1 in case of SRS
@@ -891,7 +891,7 @@ void nr_rrc_config_ul_tda(NR_ServingCellConfigCommon_t *scc, int min_fb_delay){
   pusch_timedomainresourceallocation1->k2 = CALLOC(1,sizeof(long));
   *pusch_timedomainresourceallocation1->k2 = k2;
   pusch_timedomainresourceallocation1->mappingType = NR_PUSCH_TimeDomainResourceAllocation__mappingType_typeB;
-  pusch_timedomainresourceallocation1->startSymbolAndLength = get_SLIV(0, 12);
+  pusch_timedomainresourceallocation1->startSymbolAndLength = get_SLIV(1, 12);
   asn1cSeqAdd(&scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList->list,pusch_timedomainresourceallocation1);
 
   if(frame_type==TDD) {
@@ -919,7 +919,7 @@ void nr_rrc_config_ul_tda(NR_ServingCellConfigCommon_t *scc, int min_fb_delay){
                   *pusch_timedomainresourceallocation_msg3->k2);
       pusch_timedomainresourceallocation_msg3->mappingType = NR_PUSCH_TimeDomainResourceAllocation__mappingType_typeB;
       if(no_mix_slot)
-        pusch_timedomainresourceallocation_msg3->startSymbolAndLength = get_SLIV(0, 13); // full allocation if there is no mixed slot
+        pusch_timedomainresourceallocation_msg3->startSymbolAndLength = get_SLIV(1, 13); // full allocation if there is no mixed slot
       else
         pusch_timedomainresourceallocation_msg3->startSymbolAndLength = get_SLIV(14 - ul_symb, ul_symb - 1); // starting in fist ul symbol til the last but one
       asn1cSeqAdd(&scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList->list,pusch_timedomainresourceallocation_msg3);

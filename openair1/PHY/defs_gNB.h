@@ -142,7 +142,7 @@ typedef struct {
   nfapi_nr_prach_pdu_t pdu;  
 } gNB_PRACH_list_t;
 
-#define NUMBER_OF_NR_PRACH_MAX 8
+#define NUMBER_OF_NR_PRACH_MAX 20
 
 typedef struct {
   /// \brief ?.
