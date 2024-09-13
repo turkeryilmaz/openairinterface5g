@@ -175,8 +175,7 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
   int sample_offsetF, N_RE_prime;
 
   bool is_csi_rs_slot = false;
-  if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_CSI_RS ||
-      phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH_CSI_RS)
+  if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_CSI_RS)
     is_csi_rs_slot = true;
   nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *csi_params = (nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *)&phy_data->nr_sl_pssch_pscch_pdu.nr_sl_csi_rs_pdu;
   LOG_D(NR_PHY, "Tx start_rb %i, cdm_type %i, csi_type %i, freq_density %i, nr_of_rbs %i, row %i\n", csi_params->start_rb, csi_params->cdm_type, csi_params->csi_type, csi_params->freq_density, csi_params->nr_of_rbs, csi_params->row);
@@ -226,7 +225,8 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
   //LOG_I(NR_PHY,"%s TX %x : start_rb %d nb_rb %d mod_order %d Nl %d Tpmi %d bwp_start %d start_sc %d start_symbol %d num_symbols %d cdmgrpsnodata %d num_dmrs %d dmrs_re_per_rb %d\n",pscch_pssch_pdu==NULL?"PUSCH":"PSSCH",
    //     rnti,start_rb,nb_rb,mod_order,Nl,Tpmi,pscch_pssch_pdu==NULL?pusch_pdu->bwp_start:0,start_sc,start_symbol,number_of_symbols,cdm_grps_no_data,number_dmrs_symbols,nb_dmrs_re_per_rb);
   // TbD num_of_mod_symbols is set but never used
-  N_RE_prime = NR_NB_SC_PER_RB*number_of_symbols - nb_dmrs_re_per_rb*number_dmrs_symbols - N_PRB_oh;
+  int num_RECSI_RS = is_csi_rs_slot ? get_nRECSI_RS(csi_params->freq_density, csi_params->nr_of_rbs) : 0;
+  N_RE_prime = NR_NB_SC_PER_RB * number_of_symbols - nb_dmrs_re_per_rb * number_dmrs_symbols - N_PRB_oh - (num_RECSI_RS/csi_params->nr_of_rbs);
   harq_process_ul_ue->num_of_mod_symbols = N_RE_prime*nb_rb;
 
   /////////////////////////ULSCH coding/////////////////////////
@@ -592,7 +592,8 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
             if (k == port_freq_indices[nl].k) {
               is_csi_rs = 1;
               csi_rs_rb++;
-              LOG_D(NR_PHY, "Tx port_freq_indices.p %i, port_freq_indices.k %d, is_csi_rs %d, k = %i, RE %i, csi_rs_rb %i\n", port_freq_indices[nl].p, port_freq_indices[nl].k, is_csi_rs, k, i, csi_rs_rb);
+              LOG_D(NR_PHY, "Tx port_freq_indices.p %i, port_freq_indices.k %d, is_csi_rs %d, k = %i, RE %i, csi_rs_rb %i\n",
+                    port_freq_indices[nl].p, port_freq_indices[nl].k, is_csi_rs, k, i, csi_rs_rb);
             }
             free(port_freq_indices);
             port_freq_indices = NULL;

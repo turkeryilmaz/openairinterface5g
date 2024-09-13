@@ -70,6 +70,7 @@ typedef struct NR_UE_sl_mac_stats {
   uint64_t slsch_total_bytes_scheduled;
   int cumul_rsrp;
   uint8_t num_rsrp_meas;
+  uint32_t cumul_round[5];
 } NR_UE_sl_mac_stats_t;
 
 typedef struct NR_bler_options {
@@ -190,7 +191,7 @@ uint8_t compute_nr_root_seq(NR_RACH_ConfigCommon_t *rach_config,
 
 int ul_ant_bits(NR_DMRS_UplinkConfig_t *NR_DMRS_UplinkConfig, long transformPrecoder);
 
-uint8_t get_mcs_from_cqi(int mcs_table, int cqi_table, int cqi_idx);
+uint8_t get_mcs_from_cqi(int mcs_table, int cqi_table, int cqi_idx, int default_mcs);
 
 uint8_t get_pdsch_mcs_table(long *mcs_Table, int dci_format, int rnti_type, int ss_type);
 

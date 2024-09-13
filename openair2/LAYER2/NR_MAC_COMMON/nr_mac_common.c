@@ -3838,16 +3838,16 @@ int16_t fill_dmrs_mask(const NR_PDSCH_Config_t *pdsch_Config,
   return l_prime;
 }
 
-uint8_t get_mcs_from_cqi(int mcs_table, int cqi_table, int cqi_idx)
+uint8_t get_mcs_from_cqi(int mcs_table, int cqi_table, int cqi_idx, int default_mcs)
 {
   if (cqi_idx <= 0) {
     LOG_E(NR_MAC, "invalid cqi_idx %d, default to MCS 9\n", cqi_idx);
-    return 9;
+    return default_mcs;
   }
 
   if (mcs_table != cqi_table) {
     LOG_E(NR_MAC, "indices of CQI (%d) and MCS (%d) tables don't correspond yet\n", cqi_table, mcs_table);
-    return 9;
+    return default_mcs;
   }
 
   uint16_t target_coderate, target_qm;
@@ -3876,7 +3876,7 @@ uint8_t get_mcs_from_cqi(int mcs_table, int cqi_table, int cqi_idx)
   }
 
   LOG_E(NR_MAC, "could not find maximum MCS from cqi_idx %d, default to 9\n", cqi_idx);
-  return 9;
+  return default_mcs;
 }
 
 uint8_t get_pdsch_mcs_table(long *mcs_Table, int dci_format, int rnti_type, int ss_type)

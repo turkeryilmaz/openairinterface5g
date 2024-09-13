@@ -234,6 +234,7 @@ int nr_slsch_procedures(PHY_VARS_NR_UE *ue, int frame_rx, int slot_rx, int SLSCH
   }
   pusch_pdu.maintenance_parms_v3.tbSizeLbrmBytes=slsch_pdu->tbslbrm>>3;
 
+  LOG_D(NR_PHY, "%4d.%2d Calling nr_ulsch_decoding\n", frame_rx, slot_rx);
   int nbDecode =
       nr_ulsch_decoding(NULL, ue, SLSCH_id, ue->pssch_vars[SLSCH_id].llr, fp, &pusch_pdu, frame_rx, slot_rx, harq_pid, G, proc, phy_data, ack_nack_rcvd, num_acks);
   return nbDecode;
@@ -740,8 +741,8 @@ int phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
   int frame_tx = proc->frame_tx;
   int tx_action = 0;
 
-  const char *sl_tx_actions[] = {"PSBCH", "PSCCH_PSSCH", "PSCCH_PSSCH_PSFCH", "PSCCH_PSSCH_CSI_RS", "PSCCH_PSSCH_PSFCH_CSI_RS"};
-  if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_CSI_RS || phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH_CSI_RS) {
+  const char *sl_tx_actions[] = {"PSBCH", "PSCCH_PSSCH", "PSCCH_PSSCH_PSFCH", "PSCCH_PSSCH_CSI_RS"};
+  if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_CSI_RS) {
     LOG_D(NR_PHY, "Generating %s (%d.%d)\n", sl_tx_actions[phy_data->sl_tx_action - SL_NR_CONFIG_TYPE_TX_PSBCH], frame_tx, slot_tx);
   }
   sl_nr_ue_phy_params_t *sl_phy_params = &ue->SL_UE_PHY_PARAMS;
@@ -770,10 +771,9 @@ int phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
   }
   else if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH ||
            phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_CSI_RS ||
-           phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH ||
-           phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH_CSI_RS) {
-    if (phy_data->sl_tx_action >= SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH && phy_data->sl_tx_action <= SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH_CSI_RS)
-      LOG_D(NR_PHY, "Generating %s (%d.%d)\n", sl_tx_actions[phy_data->sl_tx_action - SL_NR_CONFIG_TYPE_TX_PSBCH], frame_tx, slot_tx);
+           phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH) {
+    if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_CSI_RS && get_nrUE_params()->sync_ref)
+      LOG_I(NR_PHY, "Sending %s (%d.%d)\n", sl_tx_actions[phy_data->sl_tx_action - SL_NR_CONFIG_TYPE_TX_PSBCH], frame_tx, slot_tx);
     phy_data->pscch_Nid = nr_generate_sci1(ue, txdataF[0], fp, AMP, slot_tx, &phy_data->nr_sl_pssch_pscch_pdu) &0xFFFF;
     nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *csi_params = (nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *)&phy_data->nr_sl_pssch_pscch_pdu.nr_sl_csi_rs_pdu;
     csi_params->scramb_id = phy_data->pscch_Nid % (1 << 10);
@@ -786,8 +786,7 @@ int phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
     sl_phy_params->pscch.num_pscch_tx ++;
     sl_phy_params->pssch.num_pssch_sci2_tx ++;
     sl_phy_params->pssch.num_pssch_tx ++;
-    if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_CSI_RS ||
-        phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH_CSI_RS) {
+    if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_CSI_RS) {
       uint16_t beta_csirs = get_softmodem_params()->sl_mode ? (uint16_t)(AMP * (ceil(sqrt(phy_data->nr_sl_pssch_pscch_pdu.num_layers / fp->nb_antennas_tx)))) & 0xFFFF : AMP;
       LOG_D(NR_PHY, "Tx beta_csirs: %d, scramb_id %i (%d.%d)\n", beta_csirs, csi_params->scramb_id, frame_tx, slot_tx);
       nr_generate_csi_rs(fp,
@@ -805,8 +804,7 @@ int phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
                          NULL,
                          NULL);
     }
-    if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH ||
-        phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH_CSI_RS) {
+    if (phy_data->sl_tx_action == SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH_PSFCH) {
       for (int k = 0; k < phy_data->nr_sl_pssch_pscch_pdu.num_psfch_pdus; k++) {
         nr_generate_psfch0(ue,
                           txdataF,
