@@ -1064,8 +1064,7 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
   LOG_D(NR_PHY, "%4d.%2d Rx V %d R %d SRC %d DST %d\n", frame, slot, sl_sch_subheader->V, sl_sch_subheader->R, sl_sch_subheader->SRC, sl_sch_subheader->DST);
   pduP += sizeof(*sl_sch_subheader);
   pdu_len -= sizeof(*sl_sch_subheader);
-
-  if (get_nrUE_params()->sync_ref && ((NR_MAC_SUBHEADER_FIXED *)(pduP))->LCID == SL_SCH_LCID_SL_CSI_REPORT)
+  if (frame % 20 == 0)
     LOG_D(NR_PHY, "%4d.%2d Rx V %d R %d SRC %d DST %d\n", frame, slot, sl_sch_subheader->V, sl_sch_subheader->R, sl_sch_subheader->SRC, sl_sch_subheader->DST);
   while (!done && pdu_len > 0) {
     uint16_t mac_len = 0x0000;
@@ -1094,11 +1093,11 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
       case SL_SCH_LCID_SL_CSI_REPORT:
         {
           NR_MAC_SUBHEADER_FIXED* sub_pdu_header = (NR_MAC_SUBHEADER_FIXED*) pduP;
-          if (get_nrUE_params()->sync_ref)
+          if (frame % 20 == 0)
             LOG_D(NR_MAC, "\tLCID: %i, R: %i\n", sub_pdu_header->LCID, sub_pdu_header->R);
           mac_len = sizeof(*sub_pdu_header);
           nr_sl_csi_report_t* nr_sl_csi_report = (nr_sl_csi_report_t *) (pduP + mac_len);
-          if (get_nrUE_params()->sync_ref && frame % 20 == 0)
+          if (frame % 20 == 0)
             LOG_D(NR_MAC, "\tCQI: %i RI: %i\n", nr_sl_csi_report->CQI, nr_sl_csi_report->RI);
           sched_ctrl->rx_csi_report.CQI = nr_sl_csi_report->CQI;
           sched_ctrl->rx_csi_report.RI = nr_sl_csi_report->RI;
