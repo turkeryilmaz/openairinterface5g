@@ -1058,7 +1058,7 @@ void nr_ue_csi_rs_procedures(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, c16_t 
 
   // bit 3 in bitmap to indicate RI measurment
   if (csirs_config_pdu->measurement_bitmap & 8) {
-    // Sidelink mode 2 considers only N_ports = 1, in case of N_ports = 2, we need to revisit
+    // Sidelink mode 2 considers only one port (for now), in case of N_ports = 2, we need to revisit
     if (N_ports >= 2)
       nr_csi_rs_pmi_estimation(ue,
                               csirs_config_pdu,
