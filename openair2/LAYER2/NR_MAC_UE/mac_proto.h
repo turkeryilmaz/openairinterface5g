@@ -36,6 +36,7 @@
 #include <stdbool.h>
 #include "mac_defs.h"
 #include "RRC/NR_UE/rrc_defs.h"
+#include "executables/nr-uesoftmodem.h"
 
 #define NR_DL_MAX_DAI                            (4)                      /* TS 38.213 table 9.1.3-1 Value of counter DAI for DCI format 1_0 and 1_1 */
 #define NR_DL_MAX_NB_CW                          (2)                      /* number of downlink code word */
@@ -60,7 +61,7 @@ typedef struct psfch_params {
 
 /**\brief initialize the field in nr_mac instance
    \param module_id      module id */
-void nr_ue_init_mac(module_id_t module_idP);
+void nr_ue_init_mac(module_id_t module_idP, ueinfo_t* ueinfo);
 
 /**\brief apply default configuration values in nr_mac instance
    \param mac           mac instance */
@@ -113,7 +114,7 @@ void nr_rrc_mac_config_req_sib1(module_id_t module_id,
                                 NR_ServingCellConfigCommonSIB_t *scc);
 
 /**\brief initialization NR UE MAC instance(s), total number of MAC instance based on NB_NR_UE_MAC_INST*/
-NR_UE_MAC_INST_t * nr_l2_init_ue(NR_UE_RRC_INST_t* rrc_inst);
+NR_UE_MAC_INST_t * nr_l2_init_ue(NR_UE_RRC_INST_t* rrc_inst, ueinfo_t* ueinfo);
 
 /**\brief fetch MAC instance by module_id, within 0 - (NB_NR_UE_MAC_INST-1)
    \param module_id index of MAC instance(s)*/
@@ -456,8 +457,7 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
 
 int nr_rrc_mac_config_req_sl_preconfig(module_id_t module_id,
                                        NR_SL_PreconfigurationNR_r16_t *sl_preconfiguration,
-                                       uint8_t sync_source, 
-				       int srcid);
+                                       uint8_t sync_source);
 
 uint8_t count_on_bits(uint8_t* buf, size_t size);
 
@@ -487,6 +487,19 @@ uint8_t sl_determine_sci_1a_len(uint16_t *num_subchannels,
 void nr_ue_process_mac_sl_pdu(int module_idP,
                               sl_nr_rx_indication_t *rx_ind,
                               int pdu_id);
+
+NR_SL_UE_info_t* find_UE(NR_UE_MAC_INST_t *mac,
+                         uint16_t ue_id);
+
+int get_csi_reporting_frame_slot(NR_UE_MAC_INST_t *mac,
+                                 NR_TDD_UL_DL_Pattern_t *tdd,
+                                 uint8_t csi_offset,
+                                 const int nr_slots_frame,
+                                 uint32_t frame,
+                                 uint32_t slot,
+                                 uint32_t *csi_report_frame,
+                                 uint32_t *csi_report_slot);
+
 /** \brief This function checks nr UE slot for Sidelink direction : Sidelink
  *  @param cfg      : Sidelink config request
  *  @param nr_frame : frame number
@@ -513,15 +526,34 @@ void nr_mac_rrc_sl_mib_ind(const module_id_t module_id,
 void nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_t *sci_pdu,
                        nr_sci_pdu_t *sci2_pdu,
                        nr_sci_format_t format2,
+                       NR_SL_UE_sched_ctrl_t *sched_ctrl,
                        uint16_t *slsch_pdu_length,
                        NR_UE_sl_harq_t *cur_harq,
-                       mac_rlc_status_resp_t *rlc_status);
+                       mac_rlc_status_resp_t *rlc_status,
+                       uid_t dest_id);
+
+SL_CSI_Report_t* set_nr_ue_sl_csi_meas_periodicity(const NR_TDD_UL_DL_Pattern_t *tdd,
+                                                   NR_SL_UE_sched_ctrl_t *sched_ctrl,
+                                                   NR_UE_MAC_INST_t *mac,
+                                                   int uid,
+                                                   bool is_rsrp);
+
+void nr_ue_sl_csi_period_offset(SL_CSI_Report_t *sl_csi_report,
+                                int *period,
+                                int *offset);
 
 uint8_t nr_ue_sl_psbch_scheduler(nr_sidelink_indication_t *sl_ind,
                                  sl_nr_ue_mac_params_t *sl_mac_params,
                                  sl_nr_rx_config_request_t *rx_config,
                                  sl_nr_tx_config_request_t *tx_config,
                                  uint8_t *config_type);
+
+bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
+                              nr_sidelink_indication_t *sl_ind,
+                              const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp,
+                              const NR_SL_ResourcePool_r16_t *sl_res_pool,
+                              sl_nr_tx_config_request_t *tx_config,
+                              uint8_t *config_type);
 
 void nr_ue_sl_pscch_rx_scheduler(nr_sidelink_indication_t *sl_ind,
                                  const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp,
@@ -536,6 +568,11 @@ void nr_ue_sl_csi_rs_scheduler(NR_UE_MAC_INST_t *mac,
                                sl_nr_rx_config_request_t *rx_config,
                                uint8_t *config_type);
 
+void nr_ue_sl_csi_report_scheduling(int Mod_idP,
+                                    NR_SL_UE_sched_ctrl_t *sched_ctrl,
+                                    frame_t frame,
+                                    sub_frame_t slot);
+
 void fill_csi_rs_pdu(sl_nr_ue_mac_params_t *sl_mac,
                      sl_nr_tti_csi_rs_pdu_t *csi_rs_pdu,
                      const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp,
@@ -548,8 +585,7 @@ void nr_ue_sl_psfch_scheduler(NR_UE_MAC_INST_t *mac,
                               nr_sidelink_indication_t *sl_ind,
                               const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp,
                               sl_nr_tx_config_request_t *tx_config,
-                              uint8_t *config_type,
-                              bool is_csi_rs_sent);
+                              uint8_t *config_type);
 
 void config_pscch_pdu_rx(sl_nr_rx_config_pscch_pdu_t *nr_sl_pscch_pdu,
                          const NR_SL_BWP_ConfigCommon_r16_t *sl_bwp,

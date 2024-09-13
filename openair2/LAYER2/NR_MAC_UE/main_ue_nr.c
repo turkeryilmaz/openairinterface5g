@@ -36,6 +36,7 @@
 //#undef MALLOC
 #include "assertions.h"
 #include "executables/softmodem-common.h"
+#include "executables/nr-uesoftmodem.h"
 #include "openair2/LAYER2/nr_pdcp/nr_pdcp.h"
 #include "openair2/LAYER2/nr_pdcp/nr_pdcp_oai_api.h"
 #include "nr_rlc/nr_rlc_oai_api.h"
@@ -44,7 +45,7 @@
 
 static NR_UE_MAC_INST_t *nr_ue_mac_inst; 
 
-NR_UE_MAC_INST_t * nr_l2_init_ue(NR_UE_RRC_INST_t* rrc_inst) {
+NR_UE_MAC_INST_t* nr_l2_init_ue(NR_UE_RRC_INST_t* rrc_inst, ueinfo_t* ueinfo) {
 
     //LOG_I(MAC, "[MAIN] MAC_INIT_GLOBAL_PARAM IN...\n");
 
@@ -54,7 +55,7 @@ NR_UE_MAC_INST_t * nr_l2_init_ue(NR_UE_RRC_INST_t* rrc_inst) {
     nr_ue_mac_inst = (NR_UE_MAC_INST_t *)calloc(sizeof(NR_UE_MAC_INST_t), NB_NR_UE_MAC_INST);
 
     for (int j = 0; j < NB_NR_UE_MAC_INST; j++)
-      nr_ue_init_mac(j);
+      nr_ue_init_mac(j, ueinfo);
 
     int scs = get_softmodem_params()->sa ?
               get_softmodem_params()->numerology :

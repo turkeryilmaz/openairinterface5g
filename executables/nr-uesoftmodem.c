@@ -474,13 +474,6 @@ int main( int argc, char **argv ) {
 #endif
   LOG_I(HW, "Version: %s\n", PACKAGE_VERSION);
 
-  init_NR_UE(1,uecap_file,rrc_config_path);
-
-  int mode_offset = get_softmodem_params()->nsa ? NUMBER_OF_UE_MAX : 1;
-  uint16_t node_number = get_softmodem_params()->node_number;
-  ue_id_g = (node_number == 0) ? 0 : node_number - 2;
-  AssertFatal(ue_id_g >= 0, "UE id is expected to be nonnegative.\n");
-
   ueinfo_t ueinfo;
   char aprefix[MAX_OPTNAME_SIZE*2 + 8];
   paramdef_t SL_UEINFO[] = SL_UEINFO_DESC(ueinfo);
@@ -489,6 +482,13 @@ int main( int argc, char **argv ) {
   config_getlist(&SL_UEINFOList, NULL, 0, aprefix);
   sprintf(aprefix, "%s.[%i].%s.[%i]", SL_CONFIG_STRING_SL_PRECONFIGURATION, 0, SL_CONFIG_STRING_UEINFO, 0);
   config_get(SL_UEINFO, sizeof(SL_UEINFO)/sizeof(paramdef_t), aprefix);
+
+  init_NR_UE(1, uecap_file, rrc_config_path, &ueinfo);
+
+  int mode_offset = get_softmodem_params()->nsa ? NUMBER_OF_UE_MAX : 1;
+  uint16_t node_number = get_softmodem_params()->node_number;
+  ue_id_g = (node_number == 0) ? 0 : node_number - 2;
+  AssertFatal(ue_id_g >= 0, "UE id is expected to be nonnegative.\n");
 
   if(IS_SOFTMODEM_NOS1 || get_softmodem_params()->sa || get_softmodem_params()->nsa) {
     if(node_number == 0 && get_softmodem_params()->sl_mode == 0) {
