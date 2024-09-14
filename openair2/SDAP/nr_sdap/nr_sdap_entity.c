@@ -27,7 +27,6 @@
 #include <openair2/LAYER2/nr_pdcp/nr_pdcp_oai_api.h>
 #include <openair3/ocp-gtpu/gtp_itf.h>
 #include "openair2/LAYER2/nr_pdcp/nr_pdcp_ue_manager.h"
-//#include "common/utils/collection/queue.h"
 #include "sys/queue.h"
 
 #include <stdlib.h>
@@ -51,22 +50,20 @@ static pthread_mutex_t sdap_lock = PTHREAD_MUTEX_INITIALIZER;
 
 void nr_sdap_lock(nr_sdap_entity_t *ent, enum Sdap_Mutex_Type mutexType)
 {
-  if (ent != NULL) {
-    if (0 != pthread_mutex_lock(ent->mutex + mutexType))
-      LOG_E(SDAP, "Couldn't lock SDAP entity\n");
-  } else {
-    LOG_E(SDAP, "Entity is NULL\n");
-  }
+  if (mutexType == SDAP_NO_LOCK)
+    return;
+  DevAssert(ent != NULL);
+  const int rc = pthread_mutex_lock(ent->mutex + mutexType);
+  AssertFatal(rc == 0, "pthread_mutex_lock() returned %d\n", rc);
 }
 
 void nr_sdap_unlock(nr_sdap_entity_t *ent, enum Sdap_Mutex_Type mutexType)
 {
-  if (ent != NULL) {
-    if (0 != pthread_mutex_unlock(ent->mutex + mutexType))
-      LOG_E(SDAP, "Couldn't release SDAP entity\n");
-  } else {
-    LOG_E(SDAP, "Entity is NULL\n");
-  }
+  if (mutexType == SDAP_NO_LOCK)
+    return;
+  DevAssert(ent != NULL);
+  const int rc = pthread_mutex_unlock(ent->mutex + mutexType);
+  AssertFatal(rc == 0, "pthread_mutex_unlock() returned %d\n", rc);
 }
 
 instance_t *N3GTPUInst = NULL;
@@ -515,7 +512,7 @@ nr_sdap_entity_t *new_nr_sdap_entity(int is_gnb,
 {
   /* check whether the SDAP entity already exists and
      update QFI to DRB mapping rules in that case */
-  nr_sdap_entity_t *existing_sdap_entity = nr_sdap_get_entity(ue_id, pdusession_id);
+  nr_sdap_entity_t *existing_sdap_entity = nr_sdap_get_entity(ue_id, pdusession_id, SDAP_NO_LOCK);
   if (existing_sdap_entity) {
     LOG_E(SDAP, "SDAP Entity for UE already exists with RNTI/UE ID: %lu and PDU SESSION ID: %d\n", ue_id, pdusession_id);
     rb_id_t pdcp_entity = existing_sdap_entity->default_drb;
@@ -578,7 +575,7 @@ nr_sdap_entity_t *new_nr_sdap_entity(int is_gnb,
  * @note    There is one SDAP entity per PDU session.
  * @return  The pointer to the SDAP entity if existing, NULL otherwise
  */
-nr_sdap_entity_t *nr_sdap_get_entity(ue_id_t ue_id, int pdusession_id)
+nr_sdap_entity_t *nr_sdap_get_entity(ue_id_t ue_id, int pdusession_id, enum Sdap_Mutex_Type lock_type)
 {
   struct nr_sdap_entity_sl *el = NULL;
   nr_sdap_entity_t *sdap_entity = NULL;
@@ -591,6 +588,8 @@ nr_sdap_entity_t *nr_sdap_get_entity(ue_id_t ue_id, int pdusession_id)
       break;
     }
   }
+  // lock the entity so that another thread does not delete/modify before the caller releases it
+  nr_sdap_lock(sdap_entity, lock_type);
   pthread_mutex_unlock(&sdap_lock);
   return sdap_entity;
 }
@@ -598,8 +597,7 @@ nr_sdap_entity_t *nr_sdap_get_entity(ue_id_t ue_id, int pdusession_id)
 void nr_sdap_release_drb(ue_id_t ue_id, int drb_id, int pdusession_id)
 {
   // remove all QoS flow to DRB mappings associated with the released DRB
-  nr_sdap_entity_t *sdap = nr_sdap_get_entity(ue_id, pdusession_id);
-  nr_sdap_lock(sdap, SDAP_MUTEX_TX);
+  nr_sdap_entity_t *sdap = nr_sdap_get_entity(ue_id, pdusession_id, SDAP_MUTEX_TX);
   nr_sdap_lock(sdap, SDAP_MUTEX_RX);
   if (sdap) {
     for (int i = 0; i < SDAP_MAX_QFI; i++) {
@@ -701,8 +699,7 @@ void nr_reconfigure_sdap_entity(NR_SDAP_Config_t *sdap_config, ue_id_t ue_id, in
 {
   bool is_gnb = false;
   /* fetch SDAP entity */
-  nr_sdap_entity_t *sdap_entity = nr_sdap_get_entity(ue_id, pdusession_id);
-  nr_sdap_lock(sdap_entity, SDAP_MUTEX_TX);
+  nr_sdap_entity_t *sdap_entity = nr_sdap_get_entity(ue_id, pdusession_id, SDAP_MUTEX_TX);
   nr_sdap_lock(sdap_entity, SDAP_MUTEX_RX);
   AssertError(sdap_entity != NULL,
               return,
@@ -737,8 +734,7 @@ void nr_reconfigure_sdap_entity(NR_SDAP_Config_t *sdap_config, ue_id_t ue_id, in
 
 void set_qfi(uint8_t qfi, uint8_t pduid, ue_id_t ue_id)
 {
-  nr_sdap_entity_t *entity = nr_sdap_get_entity(ue_id, pduid);
-  nr_sdap_lock(entity, SDAP_MUTEX_TX);
+  nr_sdap_entity_t *entity = nr_sdap_get_entity(ue_id, pduid, SDAP_MUTEX_TX);
   nr_sdap_lock(entity, SDAP_MUTEX_RX);
   DevAssert(entity != NULL);
   entity->qfi = qfi;

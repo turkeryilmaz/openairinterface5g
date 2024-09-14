@@ -128,6 +128,7 @@ typedef struct nr_sdap_entity_s {
 enum Sdap_Mutex_Type {
   SDAP_MUTEX_TX,
   SDAP_MUTEX_RX,
+  SDAP_NO_LOCK,
 };
 
 /* QFI to DRB Mapping Related Function */
@@ -182,7 +183,7 @@ nr_sdap_entity_t *new_nr_sdap_entity(int is_gnb,
                                      uint8_t mappedQFIs2AddCount);
 
 /* Entity Handling Related Functions */
-nr_sdap_entity_t *nr_sdap_get_entity(ue_id_t ue_id, int pdusession_id);
+nr_sdap_entity_t *nr_sdap_get_entity(ue_id_t ue_id, int pdusession_id, enum Sdap_Mutex_Type lock_type);
 
 void nr_sdap_release_drb(ue_id_t ue_id, int drb_id, int pdusession_id);
 

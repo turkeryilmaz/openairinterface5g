@@ -90,7 +90,7 @@ void start_sdap_tun_gnb(int id)
   arg->sock_fd = tun_alloc(ifname);
   {
     // default ue id & pdu session id in nos1 mode
-    nr_sdap_entity_t *entity = nr_sdap_get_entity(1, get_softmodem_params()->default_pdu_session_id);
+    nr_sdap_entity_t *entity = nr_sdap_get_entity(1, get_softmodem_params()->default_pdu_session_id, SDAP_NO_LOCK);
     DevAssert(entity != NULL);
     entity->pdusession_sock = arg->sock_fd;
     arg->pdu_session_id = entity->pdusession_id;
@@ -125,26 +125,20 @@ static void *ue_tun_read_thread(void *arg)
 
     bool dc = SDAP_HDR_UL_DATA_PDU;
 
-    nr_sdap_entity_t *entity = nr_sdap_get_entity(UEid, pdu_session_id);
-    if (entity == NULL) {
-      break;
-    }
-    nr_sdap_lock(entity, SDAP_MUTEX_TX);
-    entity->tx_entity(entity,
-                      &ctxt,
-                      SRB_FLAG_NO,
-                      rb_id,
-                      RLC_MUI_UNDEFINED,
-                      RLC_SDU_CONFIRM_NO,
-                      len,
-                      (unsigned char *)rx_buf,
-                      PDCP_TRANSMISSION_MODE_DATA,
-                      NULL,
-                      NULL,
-                      entity->qfi,
-                      dc);
-    stop_thread = entity->stop_thread;
-    nr_sdap_unlock(entity, SDAP_MUTEX_TX);
+    sdap_data_req(&ctxt,
+                  UEid,
+                  SRB_FLAG_NO,
+                  rb_id,
+                  RLC_MUI_UNDEFINED,
+                  RLC_SDU_CONFIRM_NO,
+                  len,
+                  (unsigned char *)rx_buf,
+                  PDCP_TRANSMISSION_MODE_DATA,
+                  NULL,
+                  NULL,
+                  qfi,
+                  dc,
+                  pdu_session_id);
   }
   free(arg);
 
@@ -154,7 +148,7 @@ static void *ue_tun_read_thread(void *arg)
 void start_sdap_tun_ue(ue_id_t ue_id, int pdu_session_id, int sock)
 {
   struct thread_args *arg = malloc(sizeof(struct thread_args));
-  nr_sdap_entity_t *entity = nr_sdap_get_entity(ue_id, pdu_session_id);
+  nr_sdap_entity_t *entity = nr_sdap_get_entity(ue_id, pdu_session_id, SDAP_NO_LOCK);
   DevAssert(entity != NULL);
   arg->sock_fd = entity->pdusession_sock = sock;
   arg->ue_id = entity->ue_id;
@@ -181,20 +175,13 @@ bool sdap_data_req(protocol_ctxt_t *ctxt_p,
                    const bool rqi,
                    const int pdusession_id) {
   nr_sdap_entity_t *sdap_entity;
-  sdap_entity = nr_sdap_get_entity(ue_id, pdusession_id);
+  sdap_entity = nr_sdap_get_entity(ue_id, pdusession_id, SDAP_MUTEX_TX);
 
   if(sdap_entity == NULL) {
-    LOG_E(SDAP,
-          "%s:%d:%s: Entity not found with ue: 0x%" PRIx64 " and pdusession id: %d\n",
-          __FILE__,
-          __LINE__,
-          __FUNCTION__,
-          ue_id,
-          pdusession_id);
+    LOG_E(SDAP, "Entity not found with ue: 0x%" PRIx64 " and pdusession id: %d\n", ue_id, pdusession_id);
     return false;
   }
 
-  nr_sdap_lock(sdap_entity, SDAP_MUTEX_TX);
   bool ret = sdap_entity->tx_entity(sdap_entity,
                                     ctxt_p,
                                     srb_flag,
@@ -220,20 +207,13 @@ void sdap_data_ind(rb_id_t pdcp_entity,
                    char *buf,
                    int size) {
   nr_sdap_entity_t *sdap_entity;
-  sdap_entity = nr_sdap_get_entity(ue_id, pdusession_id);
+  sdap_entity = nr_sdap_get_entity(ue_id, pdusession_id, SDAP_MUTEX_RX);
 
   if (sdap_entity == NULL) {
-    LOG_E(SDAP,
-          "%s:%d:%s: Entity not found for ue rnti/ue_id: %lx and pdusession id: %d\n",
-          __FILE__,
-          __LINE__,
-          __FUNCTION__,
-          ue_id,
-          pdusession_id);
+    LOG_E(SDAP, "Entity not found for ue rnti/ue_id: %lx and pdusession id: %d\n", ue_id, pdusession_id);
     return;
   }
 
-  nr_sdap_lock(sdap_entity, SDAP_MUTEX_RX);
   sdap_entity->rx_entity(sdap_entity,
                          pdcp_entity,
                          is_gnb,
