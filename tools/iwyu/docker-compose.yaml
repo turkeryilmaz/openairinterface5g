@@ -1,0 +1,25 @@
+services:
+  iwyu:
+    image: iwyu
+    build:
+      dockerfile_inline: |
+        FROM ran-base
+        RUN DEBIAN_FRONTEND=noninteractive apt update && apt install -y git cmake build-essential clang-14 libclang-14-dev ninja-build libyaml-cpp-dev
+        WORKDIR /iwyu/
+        RUN git clone https://github.com/include-what-you-use/include-what-you-use.git
+        RUN cd /iwyu/include-what-you-use && \
+          git checkout origin/clang_14 && \
+          mkdir build && cd build && \
+          cmake -DCMAKE_CXX_COMPILER=g++ -DCMAKE_C_COMPILER=gcc ../ -G "Unix Makefiles" && \
+          make
+    volumes:
+      - ../../:/code/
+    command:
+      bash -c "git config --global --add safe.directory /code && \
+        mkdir -p iwyu-bin && cd iwyu-bin && \
+        cmake \
+        -DCMAKE_C_INCLUDE_WHAT_YOU_USE=/iwyu/include-what-you-use/build/bin/include-what-you-use \
+        -DCMAKE_CXX_INCLUDE_WHAT_YOU_USE=/iwyu/include-what-you-use/build/bin/include-what-you-use \
+        /code/ \
+        -GNinja && \
+        cmake --build . --target $TARGET"

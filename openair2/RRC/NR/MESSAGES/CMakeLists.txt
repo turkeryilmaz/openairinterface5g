@@ -36,6 +36,12 @@ target_link_libraries(asn1_nr_rrc PUBLIC asn1_nr_rrc_hdrs)
 target_compile_options(asn1_nr_rrc
                          PRIVATE -DASN_DISABLE_OER_SUPPORT -w
                          PUBLIC -DNR_RRC_VERSION=${NR_RRC_RELEASE})
+set_source_files_properties(${nr_rrc_source} PROPERTIES
+  SKIP_LINTING ON
+)
+set_source_files_properties(${nr_rrc_headers} PROPERTIES
+  SKIP_LINTING ON
+)
 if (ENABLE_TESTS)
   add_subdirectory(tests)
 endif()

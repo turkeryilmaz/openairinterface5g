@@ -14,7 +14,12 @@ add_custom_command(OUTPUT ${ngap_source} ${ngap_headers}
   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${NGAP_GRAMMAR}
   COMMENT "Generating NGAP source files from ${CMAKE_CURRENT_SOURCE_DIR}/${NGAP_GRAMMAR}"
 )
-
 add_library(asn1_ngap ${ngap_source})
+set_source_files_properties(${ngap_source} PROPERTIES
+  SKIP_LINTING ON
+)
+set_source_files_properties(${ngap_headers} PROPERTIES
+  SKIP_LINTING ON
+)
 target_include_directories(asn1_ngap PUBLIC "${CMAKE_CURRENT_BINARY_DIR}")
 target_compile_options(asn1_ngap PRIVATE -DASN_DISABLE_OER_SUPPORT -w)

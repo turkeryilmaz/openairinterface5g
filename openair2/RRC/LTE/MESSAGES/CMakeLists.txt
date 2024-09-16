@@ -31,6 +31,13 @@ add_library(asn1_lte_rrc_hdrs INTERFACE)
 add_dependencies(asn1_lte_rrc_hdrs gen_lte_rrc_hdrs)
 target_include_directories(asn1_lte_rrc_hdrs INTERFACE "${CMAKE_CURRENT_BINARY_DIR}")
 
+set_source_files_properties(${lte_rrc_headers} PROPERTIES
+  SKIP_LINTING ON
+)
+set_source_files_properties(${lte_rrc_source} PROPERTIES
+  SKIP_LINTING ON
+)
+
 add_library(asn1_lte_rrc ${lte_rrc_source})
 target_link_libraries(asn1_lte_rrc PUBLIC asn1_lte_rrc_hdrs)
 target_compile_options(asn1_lte_rrc

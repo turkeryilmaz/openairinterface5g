@@ -14,6 +14,13 @@ add_custom_command(OUTPUT ${f1ap_source} ${f1ap_headers}
   COMMENT "Generating F1AP source files from ${CMAKE_CURRENT_SOURCE_DIR}/${F1AP_GRAMMAR}"
 )
 
+set_source_files_properties(${f1ap_source} PROPERTIES
+  SKIP_LINTING ON
+)
+set_source_files_properties(${f1ap_headers} PROPERTIES
+  SKIP_LINTING ON
+)
+
 add_library(asn1_f1ap ${f1ap_source})
 target_include_directories(asn1_f1ap PUBLIC "${CMAKE_CURRENT_BINARY_DIR}")
 target_compile_options(asn1_f1ap PRIVATE -DASN_DISABLE_OER_SUPPORT -w)
