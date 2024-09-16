@@ -1328,7 +1328,7 @@ typedef struct
   uint8_t  dmrs_cyclic_shift;
 
   uint8_t  sr_flag;
-  uint8_t  bit_len_harq;
+  uint16_t bit_len_harq;
   uint16_t bit_len_csi_part1;
   uint16_t bit_len_csi_part2;
 
