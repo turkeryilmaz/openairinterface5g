@@ -1,0 +1,21 @@
+services:
+  build-ran-base:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile.base.ubuntu22
+      tags:
+        - ran-base:${OAI_TAG:-latest}
+  build-ran-build:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile.build.ubuntu22
+      tags:
+        - ran-build:${OAI_TAG:-latest}
+  build-gnb-image:
+    build:
+      context: ../../
+      dockerfile: docker/Dockerfile.gNB.ubuntu22
+      tags:
+        - oai-gnb:${OAI_TAG:-latest}
+    entrypoint: ""
+    command: echo "build successful"
