@@ -247,6 +247,7 @@ void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP, 
               // if start symbol is in current slot, schedule current SSB, fill VRB map and call get_type0_PDCCH_CSS_config_parameters
               if ((ssb_start_symbol / 14) == rel_slot) {
                 NR_beam_alloc_t beam = beam_allocation_procedure(&gNB->beam_info, frameP, slotP, beam_index, n_slots_frame);
+                //printf("scheduling MIB slot %d beam %d\n",slotP, beam_index);
                 AssertFatal(beam.idx >= 0, "Cannot allocate SSB %d in any available beam\n", i_ssb);
                 const int prb_offset = offset_pointa >> (scs-2); // reference 60kHz
                 schedule_ssb(frameP, slotP, scc, dl_req, i_ssb, beam_index, ssbSubcarrierOffset, offset_pointa, mib_pdu);

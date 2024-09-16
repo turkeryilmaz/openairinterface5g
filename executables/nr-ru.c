@@ -917,7 +917,6 @@ static void fill_split7_2_config(split7_config_t *split7, const nfapi_nr_config_
   const nfapi_nr_prach_config_t *prach_config = &config->prach_config;
   const nfapi_nr_tdd_table_t *tdd_table = &config->tdd_table;
   const nfapi_nr_cell_config_t *cell_config = &config->cell_config;
-
   DevAssert(prach_config->prach_ConfigurationIndex.tl.tag == NFAPI_NR_CONFIG_PRACH_CONFIG_INDEX_TAG);
   split7->prach_index = prach_config->prach_ConfigurationIndex.value;
   AssertFatal(prach_config->num_prach_fd_occasions.value == 1, "cannot handle more than one PRACH occasion\n");

@@ -1346,7 +1346,7 @@ void RCconfig_nr_macrlc(configmodule_interface_t *cfg)
       config.bw_list[b] = GNBParamList.paramarray[0][GNB_BEAMWEIGHTS_IDX].iptr[b];
     }
   }
-
+  
   NR_ServingCellConfigCommon_t *scc = get_scc_config(cfg, config.minRXTXTIME);
   //xer_fprint(stdout, &asn_DEF_NR_ServingCellConfigCommon, scc);
   NR_ServingCellConfig_t *scd = get_scd_config(cfg);

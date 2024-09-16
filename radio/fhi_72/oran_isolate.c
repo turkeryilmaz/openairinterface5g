@@ -196,21 +196,28 @@ void oran_fh_if4p5_south_in(RU_t *ru, int *frame, int *slot)
   ru_info.nb_rx = ru->nb_rx;
   ru_info.rxdataF = ru->common.rxdataF;
   ru_info.prach_buf = ru->prach_rxsigF[0]; // index: [prach_oca][ant_id]
+
+
+
       PHY_VARS_gNB **gNB_list = ru->gNB_list, *gNB;
-      if (ru->num_gNB == 1){
-        gNB = gNB_list[0];
+     // if (ru->num_gNB == 1){
+        //gNB = gNB_list[0];
         //printf(" #################################### COPY THE LIST OF BEAMS\n\n");
-        ru_info.beamID = gNB->common_vars.beam_id;
+        //ru_info.beamID = gNB->common_vars.beam_id;
         //printf("slot %d beam %d\n", *slot, ru_info.beamID[0][*slot*14]);
       /*for (int i=0;i<2;i++){
         for (int s=0; s<80;s++){
             printf("#slot %d port %d beam %u\n", s, i, ru_info.beamID[i][s]);
         }
       }*/
-      }
+      //}
+
   RU_proc_t *proc = &ru->proc;
   extern uint16_t sl_ahead;
   int f, sl;
+
+
+
   LOG_D(PHY, "Read rxdataF %p,%p\n", ru_info.rxdataF[0], ru_info.rxdataF[1]);
   start_meas(&ru->rx_fhaul);
   int ret = xran_fh_rx_read_slot(&ru_info, &f, &sl);
@@ -225,6 +232,22 @@ void oran_fh_if4p5_south_in(RU_t *ru, int *frame, int *slot)
   proc->frame_rx = f;
   proc->tti_tx = (sl + sl_ahead) % slots_per_frame;
   proc->frame_tx = (sl > (slots_per_frame - 1 - sl_ahead)) ? (f + 1) & 1023 : f;
+  /*if (ru->common.beam_id && proc->tti_tx %10 < 7){
+   //ru_info.beamID = ru->common.beam_id;  // ru->common.beam_id[i][slot_tx * fp->symbols_per_slot] //14 hardcoed for now
+    gNB = gNB_list[0];
+  for (int i = 0; i < 80*14; i++) //80 hardcoded for now
+  {
+    if (ru->common.beam_id[0][i] != -1){
+    nfapi_nr_dig_beam_t *beam = &gNB->gNB_config.dbt_config.dig_beam_list[ru->common.beam_id[0][i]];
+    //printf("before: ru->common.beam_id[0][%d] %d slot %d symbol %d \n", i, ru->common.beam_id[0][i], proc->tti_tx, i%14);
+    ru_info.beamID[0][i] = beam->txru_list[0].dig_beam_weight_Re;
+    //if (i%14 ==0 && ru->common.beam_id[0][i] == 1)
+    //printf("slot %d symbol %d beam index %d beam RU %d\n", proc->tti_tx , i%14, ru->common.beam_id[0][i], ru_info.beamID[0][i]);
+    }else
+    ru_info.beamID[0][i] = 1;
+  }
+     
+  }*/
   //printf("received %d.%d, expected %d.%d\n", proc->frame_rx,proc->tti_rx,*frame,*slot);
   if (proc->first_rx == 0) {
     if (proc->tti_rx != *slot) {
@@ -319,6 +342,7 @@ __attribute__((__visibility__("default"))) int transport_init(openair0_device *d
   eth->oran_priv = NULL; // define_oran_pointer();
   device->priv = eth;
   device->openair0_cfg = &openair0_cfg[0];
+  
 
   eth->last_msg = (rru_config_msg_type_t)-1;
 

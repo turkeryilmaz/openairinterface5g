@@ -136,9 +136,9 @@ void nr_common_signal_procedures(PHY_VARS_gNB *gNB, int frame, int slot, nfapi_n
                                       ssb_start_symbol,
                                       4); // 4 ssb symbols
 
-  //LOG_I(PHY,"beam_idx from beam_index_allocation %d    pb->prgs_list[0].dig_bf_interface_list[0].beam_idx %d\n", beam_nb, pb->prgs_list[0].dig_bf_interface_list[0].beam_idx);
+  LOG_D(PHY,"beam_idx from beam_index_allocation %d    pb->prgs_list[0].dig_bf_interface_list[0].beam_idx %d\n", beam_nb, pb->prgs_list[0].dig_bf_interface_list[0].beam_idx);
 
-    //printf("PSS/SSS beam_nb = %d\n",beam_nb);
+  //printf("slot %d PSS/SSS beam_nb = %d\n",slot, beam_nb);
 
   nr_generate_pss(&txdataF[beam_nb][0][txdataF_offset], gNB->TX_AMP, ssb_start_symbol, cfg, fp);
   nr_generate_sss(&txdataF[beam_nb][0][txdataF_offset], gNB->TX_AMP, ssb_start_symbol, cfg, fp);

@@ -43,8 +43,7 @@ typedef struct ru_info_s {
 
   // Needed for Prach
   int16_t **prach_buf;
-
-  uint8_t **beamID;
+  int beamID[2][80*14]; // 80 hardcoded for now
 } ru_info_t;
 
 int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot);

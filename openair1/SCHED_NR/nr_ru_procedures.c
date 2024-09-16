@@ -202,6 +202,10 @@ void nr_feptx_prec(RU_t *ru, int frame_tx, int tti_tx)
          memcpy((void*) &ru->common.beam_id[i][slot_tx * fp->symbols_per_slot],
                 (void*) &gNB->common_vars.beam_id[i][slot_tx * fp->symbols_per_slot],
                 (fp->symbols_per_slot) * sizeof(int));
+          /*for (int h=0; h<fp->symbols_per_slot; h++)
+          if (slot_tx < 3)    
+           printf("OAI slot %d symbol %d, beam %d\n", slot_tx,h, ru->common.beam_id[i][slot_tx*fp->symbols_per_slot + h]);*/
+       
         }
     }
 

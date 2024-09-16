@@ -769,6 +769,9 @@ static bool set_maxmin_pd(const paramdef_t *pd, int num, const char *name, uint1
 }
 
 extern uint32_t to_nrarfcn(int nr_bandP, uint64_t dl_CarrierFreq, uint8_t scs_index, uint32_t bw);
+
+
+
 bool set_fh_config(int ru_idx, int num_rus, const openair0_config_t *oai0, struct xran_fh_config *fh_config)
 {
   AssertFatal(num_rus == 1 || num_rus == 2, "only support 1 or 2 RUs as of now\n");
