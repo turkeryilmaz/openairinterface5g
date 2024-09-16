@@ -565,6 +565,13 @@ static void nr_rrc_ue_decode_NR_BCCH_BCH_Message(NR_UE_RRC_INST_t *rrc,
   return;
 }
 
+static void nr_use_other_SI(uint16_t ue_id, NR_UE_RRC_SI_INFO *SI_info)
+{
+  if (SI_info->SInfo_r17.sib19) {
+    nr_rrc_mac_config_req_sib19_r17(ue_id, SI_info->SInfo_r17.sib19);
+  }
+}
+
 static int nr_decode_SI(NR_UE_RRC_SI_INFO *SI_info, NR_SystemInformation_t *si)
 {
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME( VCD_SIGNAL_DUMPER_FUNCTIONS_RRC_UE_DECODE_SI, VCD_FUNCTION_IN );
@@ -859,6 +866,7 @@ static int8_t nr_rrc_ue_decode_NR_BCCH_DL_SCH_Message(NR_UE_RRC_INST_t *rrc,
         LOG_I(NR_RRC, "[UE %ld] Decoding SI\n", rrc->ue_id);
         NR_SystemInformation_t *si = bcch_message->message.choice.c1->choice.systemInformation;
         nr_decode_SI(SI_info, si);
+        nr_use_other_SI(rrc->ue_id, SI_info);
         break;
       case NR_BCCH_DL_SCH_MessageType__c1_PR_NOTHING:
       default:
