@@ -849,22 +849,26 @@ static void generateRegistrationComplete(nr_ue_nas_t *nas,
   }
 }
 
-void nr_ue_create_ip_if(const char *ifnameprefix, const char *ipv4, const char *ipv6, int ue_id, int pdu_session_id)
+static char *get_sdap_pdu_if_name(const unsigned int ue_id, const unsigned int pdusession_id, char buf[IF_NAMESIZE])
 {
-  char ifname[20];
-  char ifsuffix[10];
-  sprintf(ifsuffix, "p%d", pdu_session_id);
-  int default_pdu = get_softmodem_params()->default_pdu_session_id;
-  const char *p_ifsuffix = (pdu_session_id == default_pdu) ? NULL : ifsuffix;
-  snprintf(ifname, sizeof(ifname), "%s%d%s", ifnameprefix, ue_id, (p_ifsuffix) ? p_ifsuffix : "");
-  if (doesInterfaceExist(ifname)) {
+  char num[4];
+  snprintf(num, sizeof(num), "_p%d", pdusession_id);
+  const unsigned int default_pdu = get_softmodem_params()->default_pdu_session_id;
+  return get_network_if_name("oaitun_ue", ue_id, pdusession_id == default_pdu ? NULL : num, buf);
+}
+
+void nr_ue_create_ip_if(const char *ipv4, const char *ipv6, int ue_id, int pdu_session_id)
+{
+  char ifname[IF_NAMESIZE];
+  char *ifn = get_sdap_pdu_if_name(ue_id, pdu_session_id, ifname);
+  if (doesInterfaceExist(ifn)) {
     LOG_W(NAS, "Interface %s already exists. Do nothing.\n", ifname);
     return;
   }
-  const int sock = tun_alloc(ifname);
-  tun_config(ue_id, ipv4, ipv6, "oaitun_ue", p_ifsuffix);
-  setup_ue_ipv4_route(ue_id, pdu_session_id, ipv4, "oaitun_ue", p_ifsuffix);
-  start_sdap_tun_ue(ue_id - 1, pdu_session_id, sock); // interface name suffix is ue_id+1
+  const int sock = tun_alloc(ifn);
+  tun_config(ifn, ipv4, ipv6);
+  setup_ue_ipv4_route(get_ue_ipv4_table_id(ue_id, pdu_session_id), ipv4, ifn);
+  start_sdap_tun_ue(ue_id - 1, pdu_session_id, sock); // sdap entity is ue_id - 1
 }
 
 void decodeDownlinkNASTransport(as_nas_info_t *initialNasMsg, uint8_t * pdu_buffer, int instance)
@@ -876,7 +880,7 @@ void decodeDownlinkNASTransport(as_nas_info_t *initialNasMsg, uint8_t * pdu_buff
     sprintf(ip, "%d.%d.%d.%d", *(ip_p), *(ip_p + 1), *(ip_p + 2), *(ip_p + 3));
     LOG_A(NAS, "Received PDU Session Establishment Accept\n");
     const int pdu_session_id = *(pdu_buffer + 14);
-    nr_ue_create_ip_if("oaitun_ue", ip, NULL, instance + 1, pdu_session_id);
+    nr_ue_create_ip_if(ip, NULL, instance + 1, pdu_session_id);
   } else {
     LOG_E(NAS, "Received unexpected message in DLinformationTransfer %d\n", msg_type);
   }
@@ -1461,7 +1465,7 @@ void *nas_nrue(void *args_p)
                   char ip[20];
                   snprintf(ip, sizeof(ip), "%d.%d.%d.%d", *(ip_p), *(ip_p + 1), *(ip_p + 2), *(ip_p + 3));
                   LOG_I(NAS, "Received PDU Session Establishment Accept, UE IP: %s\n", ip);
-                  nr_ue_create_ip_if("oaitun_ue", ip, NULL, nas->UE_id + 1, pdu_session_id);
+                  nr_ue_create_ip_if(ip, NULL, nas->UE_id + 1, pdu_session_id);
                   break;
                 }
               }
@@ -1486,7 +1490,7 @@ void *nas_nrue(void *args_p)
         const int pdu_session_id = get_softmodem_params()->default_pdu_session_id;
         const char *ip = !get_softmodem_params()->nsa ? "10.0.1.2" : "10.0.1.3";
         const int qfi = 7;
-        nr_ue_create_ip_if("oaitun_ue", ip, NULL, nas->UE_id + 1, pdu_session_id);
+        nr_ue_create_ip_if(ip, NULL, nas->UE_id + 1, pdu_session_id);
         set_qfi(qfi, pdu_session_id, nas->UE_id);
         break;
       }
@@ -1494,7 +1498,7 @@ void *nas_nrue(void *args_p)
       case NAS_PDU_SESSION_REL: {
         // TODO: Initiate PDU session release request & send NAS signal to network
         nas_pdu_session_req_t *pdu_rel = &NAS_PDU_SESSION_REL(msg_p);
-        remove_ue_ip_if(nas->UE_id, pdu_rel->pdusession_id);
+        nr_sdap_delete_entity(nas->UE_id, pdu_rel->pdusession_id);
         break;
       }
 
