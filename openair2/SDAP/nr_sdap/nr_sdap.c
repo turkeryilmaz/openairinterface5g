@@ -86,8 +86,8 @@ void start_sdap_tun_gnb(int id)
   char *ifprefix = get_softmodem_params()->nsa ? "oaitun_gnb" : "oaitun_enb";
   char ifname[20];
   snprintf(ifname, sizeof(ifname), "%s%d", ifprefix, id);
+  tun_config(ifname, "10.0.1.1", NULL);
   arg->sock_fd = tun_alloc(ifname);
-  tun_config(id, "10.0.1.1", NULL, ifprefix, NULL);
   {
     // default ue id & pdu session id in nos1 mode
     nr_sdap_entity_t *entity = nr_sdap_get_entity(1, get_softmodem_params()->default_pdu_session_id);

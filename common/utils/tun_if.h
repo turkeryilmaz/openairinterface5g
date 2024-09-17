@@ -22,6 +22,7 @@
 #ifndef TUN_IF_H_
 #define TUN_IF_H_
 
+#include <net/if.h>
 #include <stdbool.h>
 
 int tun_alloc(char *dev);
@@ -34,21 +35,18 @@ int tun_init(const char *ifprefix, int num_if, int id);
 int tun_init_mbms(char *ifsuffix, int id);
 
 /*! \fn int  tun_config(char*, int, int)
- * \brief This function initializes the nasmesh interface using the basic values,
- * basic address, network mask and broadcast address, as the default configured
- * ones
- * \param[in] interface_id number of this interface, prepended after interface
+ * \brief This function initializes the nasmesh interface using the
+ * address and interface name
+ * \param[in] interfaceName Name of the interface to be created
  * name
  * \param[in] ipv4 IPv4 address of this interface as a string
  * \param[in] ipv6 IPv6 address of this interface as a string
- * \param[in] ifprefix interface name prefix to which an interface number will
- * \param[in] ifsuffix to differentiate multiple tun interfaces on the same UE
  * process
  * \return true on success, otherwise false
  * \note
  * @ingroup  _nas
  */
-bool tun_config(int interface_id, const char *ipv4, const char *ipv6, const char *ifprefix, const char *ifsuffix);
+bool tun_config(const char *interfaceName, const char *ipv4, const char *ipv6);
 
 /*!
  * \brief Setup a IPv4 rule in table (interface_id - 1 + 10000) and route to
@@ -62,8 +60,11 @@ bool tun_config(int interface_id, const char *ipv4, const char *ipv6, const char
  * \param[in] ifprefix interface name prefix to which an interface number will
  * be appended
  */
-void setup_ue_ipv4_route(int interface_id, int pdu_id, const char *ip, const char *ifpref, const char *ifsuffix);
+void setup_ue_ipv4_route(const unsigned int table_id, const char *ipv4, const char *ifname);
 
+bool tun_del(const int tun_fd);
 
+unsigned int get_ue_ipv4_table_id(const unsigned int interface_id, const unsigned int pdu_id);
 
+char *get_network_if_name(const char *prefix, const int ue_id, const char *suffix, char name_out[IF_NAMESIZE]);
 #endif /*TUN_IF_H_*/

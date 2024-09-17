@@ -22,7 +22,6 @@
 #include "nr_sdap_entity.h"
 #include "nr_sdap.h"
 #include "common/utils/LOG/log.h"
-#include "common/utils/tun_if.h"
 #include "executables/softmodem-common.h"
 #include "openair2/COMMON/as_message.h"
 #include <openair2/LAYER2/nr_pdcp/nr_pdcp_oai_api.h>
@@ -585,28 +584,14 @@ void nr_sdap_release_drb(ue_id_t ue_id, int drb_id, int pdusession_id)
     LOG_E(SDAP, "Couldn't find a SDAP entity associated with PDU session ID %d\n", pdusession_id);
 }
 
-void remove_ue_ip_if(ue_id_t ue_id, int pdusession_id)
+static void remove_ue_ip_if(nr_sdap_entity_t *entity)
 {
   nr_sdap_entity_t *entity = nr_sdap_get_entity(ue_id, pdusession_id);
   DevAssert(entity != NULL);
   // Stop the read thread
   entity->stop_thread = true;
   // Bring down the IP interface
-  char ifname[20];
-  char ifsuffix[10];
-  sprintf(ifsuffix, "p%d", pdusession_id);
-  int default_pdu = get_softmodem_params()->default_pdu_session_id;
-  const char *p_ifsuffix = (pdusession_id == default_pdu) ? NULL : ifsuffix;
-  snprintf(ifname, sizeof(ifname), "%s%ld%s", "oaitun_ue", ue_id, (p_ifsuffix) ? p_ifsuffix : "");
-  if (change_interface_state(entity->pdusession_sock, ifname, 0) == 0) {
-    // Close the socket associated with the interface
-    close(entity->pdusession_sock);
-    LOG_I(SDAP, "Interface %s is now down.\n", ifname);
-  } else {
-    LOG_E(SDAP, "Could not bring interface %s down.\n", ifname);
-    exit(1);
-  }
-  nr_sdap_delete_entity(ue_id, pdusession_id);
+  tun_del(entity->pdusession_sock);
 }
 
 bool nr_sdap_delete_entity(ue_id_t ue_id, int pdusession_id)

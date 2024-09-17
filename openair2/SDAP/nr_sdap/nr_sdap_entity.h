@@ -27,6 +27,7 @@
 #include "common/platform_types.h"
 #include "openair2/LAYER2/nr_pdcp/nr_pdcp_entity.h"
 #include "NR_RadioBearerConfig.h"
+#include "common/utils/tun_if.h"
 
 #define SDAP_BITMASK_DC             (0x80)
 #define SDAP_BITMASK_R              (0x40)
