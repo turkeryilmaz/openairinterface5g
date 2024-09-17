@@ -27,9 +27,6 @@
 
 FROM ran-base:latest AS gnb-base
 
-FROM ran-build-fhi72:latest AS gnb-build
-
-
 #start from scratch for target executable
 FROM ubuntu:jammy AS oai-gnb
 ARG BUILD_OPTION
