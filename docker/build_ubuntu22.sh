@@ -22,7 +22,9 @@ function get_log_path() {
 }
 function copy_out_log() {
   local image=$1 file=$2 dest=$3
-  docker run --rm -v ${dest}:/out ${image} /bin/sh -c "cp ${file} /out"
+  docker run --name copy-out -d ${image} /bin/true
+  docker cp copy-out:${file} ${dest}
+  docker rm -f copy-out
 }
 
 export OAI_BASE_TAG=latest
@@ -86,8 +88,8 @@ fi
 mkdir -p ${LOG_DIR}/ran-build/
 if [ -v BUILD_INCR ]; then
   # if no image yet, create initial one
-  if [ -n  "$(docker images -q ran-build:${OAI_BASE_TAG:-latest})" ]; then
-    docker compose -f ${CONFIG} --progress=plain build ran-build-incr
+  if [ -z  "$(docker images -q ran-build:${OAI_BASE_TAG:-latest})" ]; then
+    docker compose -f ${CONFIG} --progress=plain build ran-build-incr-init
   fi
   docker compose -f ${CONFIG} --progress=plain build ran-build-incr
   path="/oai-ran/cmake_targets/log/all.txt"
