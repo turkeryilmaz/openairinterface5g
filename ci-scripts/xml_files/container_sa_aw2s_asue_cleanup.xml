@@ -34,7 +34,7 @@
   <testCase id="111111">
     <class>Terminate_UE</class>
     <desc>Terminate UE</desc>
-    <id>amarisoft_ue</id>
+    <id>amarisoft_ue_aw2s_20</id>
   </testCase>
 
   <testCase id="222222">
