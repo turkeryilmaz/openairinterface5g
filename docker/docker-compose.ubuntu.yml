@@ -7,7 +7,7 @@ services:
         - ran-base:${OAI_BASE_TAG:-latest}
   ran-build:
     image: ${OAI_BUILD_BASE:-ran-base}:${OAI_BASE_TAG:-latest}
-    user: ${UID_GID:0:0}
+    user: $${UID_GID:0:0}
     environment:
       - CCACHE_DIR=/ccache
     volumes:
