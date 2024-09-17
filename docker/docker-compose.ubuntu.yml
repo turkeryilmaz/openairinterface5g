@@ -17,6 +17,18 @@ services:
       - ../:/oai-ran/
       - ./ran-build.sh:/oai-ran/ran-build.sh
     command: bash -c "/oai-ran/ran-build.sh ${BUILD_OPTS:-}"
+  ran-build-incr-init:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile.build.init
+      tags:
+        - ran-build:${OAI_BASE_TAG:-latest}
+  ran-build-incr:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile.build.ubuntu22
+      tags:
+        - ran-build:${OAI_BASE_TAG:-latest}
   oai-gnb:
     build:
       context: ../

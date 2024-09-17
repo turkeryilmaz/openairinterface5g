@@ -27,6 +27,8 @@
 
 FROM ran-base:latest AS gnb-base
 
+FROM ran-build:latest AS gnb-build
+
 COPY ./libori.so /usr/local/lib/
 
 # build AW2S fronthaul lib
@@ -59,18 +61,18 @@ RUN apt-get update && \
 COPY ./libori.so /usr/local/lib/
 
 WORKDIR /opt/oai-gnb-aw2s/bin
-COPY ./cmake_targets/ran_build/build/nr-softmodem ./
+COPY --from=gnb-build /oai-ran/cmake_targets/ran_build/build/nr-softmodem ./
 COPY ./docker/scripts/gnb-aw2s_entrypoint.sh /opt/oai-gnb-aw2s/bin/entrypoint.sh
 
 COPY --from=gnb-build \
-    ./cmake_targets/ran_build/build/liboai_eth_transpro.so \
-    ./cmake_targets/ran_build/build/librfsimulator.so \
-    ./cmake_targets/ran_build/build/libaw2sori_transpro.so \
-    ./cmake_targets/ran_build/build/libcoding.so \
-    ./cmake_targets/ran_build/build/libparams_libconfig.so \
-    ./cmake_targets/ran_build/build/libdfts.so \
-    ./cmake_targets/ran_build/build/libldpc*.so \
-    ./cmake_targets/ran_build/build/libtelnetsrv.so \
+    /oai-ran/cmake_targets/ran_build/build/liboai_eth_transpro.so \
+    /oai-ran/cmake_targets/ran_build/build/librfsimulator.so \
+    /oai-ran/cmake_targets/ran_build/build/libaw2sori_transpro.so \
+    /oai-ran/cmake_targets/ran_build/build/libcoding.so \
+    /oai-ran/cmake_targets/ran_build/build/libparams_libconfig.so \
+    /oai-ran/cmake_targets/ran_build/build/libdfts.so \
+    /oai-ran/cmake_targets/ran_build/build/libldpc*.so \
+    /oai-ran/cmake_targets/ran_build/build/libtelnetsrv.so \
     /usr/local/lib/
 
 

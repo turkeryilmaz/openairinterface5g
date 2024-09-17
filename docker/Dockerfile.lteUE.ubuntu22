@@ -27,6 +27,9 @@
 
 FROM ran-base:latest AS lte-ue-base
 
+FROM ran-build:latest AS lte-ue-build 
+
+
 #start from scratch for target executable
 FROM ubuntu:jammy AS oai-lte-ue
 ARG BUILD_OPTION
@@ -84,22 +87,22 @@ RUN apt-get update && \
 COPY --from=lte-ue-build /usr/lib/x86_64-linux-gnu/libasan.so.8.0.0 /usr/lib/x86_64-linux-gnu/
 
 WORKDIR /opt/oai-lte-ue/bin
-COPY \
-    ./cmake_targets/ran_build/build/lte-uesoftmodem \
-    ./cmake_targets/nas_sim_tools/build/conf2uedata \
-    ./cmake_targets/nas_sim_tools/build/nvram \
-    ./cmake_targets/nas_sim_tools/build/usim \
+COPY --from=lte-ue-build \
+    /oai-ran/cmake_targets/ran_build/build/lte-uesoftmodem \
+    /oai-ran/cmake_targets/nas_sim_tools/build/conf2uedata \
+    /oai-ran/cmake_targets/nas_sim_tools/build/nvram \
+    /oai-ran/cmake_targets/nas_sim_tools/build/usim \
     ./
 
 COPY ./docker/scripts/lte_ue_entrypoint.sh ./entrypoint.sh
-COPY \
-    ./cmake_targets/ran_build/build/liboai_eth_transpro.so \
-    ./cmake_targets/ran_build/build/librfsimulator.so \
-    ./cmake_targets/ran_build/build/liboai_usrpdevif.so \
-    ./cmake_targets/ran_build/build/libcoding.so \
-    ./cmake_targets/ran_build/build/libparams_libconfig.so \
-    ./cmake_targets/ran_build/build/libdfts.so \
-    ./cmake_targets/ran_build/build/libtelnetsrv.so \
+COPY --from=lte-ue-build \
+    /oai-ran/cmake_targets/ran_build/build/liboai_eth_transpro.so \
+    /oai-ran/cmake_targets/ran_build/build/librfsimulator.so \
+    /oai-ran/cmake_targets/ran_build/build/liboai_usrpdevif.so \
+    /oai-ran/cmake_targets/ran_build/build/libcoding.so \
+    /oai-ran/cmake_targets/ran_build/build/libparams_libconfig.so \
+    /oai-ran/cmake_targets/ran_build/build/libdfts.so \
+    /oai-ran/cmake_targets/ran_build/build/libtelnetsrv.so \
     /usr/local/lib/
 
 # Now we are copying from builder-image the UHD files.

@@ -31,12 +31,14 @@ export CCACHE_LOCATION=~/.cache/ccache/
 LOG_DIR=./logs
 CONFIG=docker-compose.ubuntu.yml
 unset FORCE_BUILD_BASE
+unset BUILD_INCR
 export UID_GID=$(id -u):$(id -g) # recommended to set manually
 
-while getopts ":c:fhl:r:t:T:" opt; do
+while getopts ":c:fhil:r:t:T:" opt; do
   case ${opt} in
     c) export CCACHE_LOCATION=${OPTARG};;
     h) usage;;
+    i) BUILD_INCR=0;;
     l) LOG_DIR=${OPTARG};;
     r) [[ ${OPTARG} =~ [0-9a-zA-Z.-_/]+/ ]] || die "invalid registry ${OPTARG}";
        export REGISTRY=${OPTARG};;
@@ -79,10 +81,23 @@ else
   echo "reusing previous ran-base:${OAI_BASE_TAG} image"
 fi
 
-export BUILD_OPTS="-c" # start with clean directory
+# check if we are asked to build incrementally, and if a ran-build image exists
+# in which case we use an existing ran-build as a basis to build the new one
 mkdir -p ${LOG_DIR}/ran-build/
-docker compose -f ${CONFIG} up ran-build --pull=never --no-log-prefix --exit-code-from ran-build --abort-on-container-exit | tee ${LOG_DIR}/ran-build.log
-docker compose -f ${CONFIG} cp ran-build:/oai-ran/cmake_targets/log/all.txt ${LOG_DIR}/ran-build/
+if [ -v BUILD_INCR ]; then
+  # if no image yet, create initial one
+  if [ -n  "$(docker images -q ran-build:${OAI_BASE_TAG:-latest})" ]; then
+    docker compose -f ${CONFIG} --progress=plain build ran-build-incr
+  fi
+  docker compose -f ${CONFIG} --progress=plain build ran-build-incr
+  path="/oai-ran/cmake_targets/log/all.txt"
+  copy_out_log ran-build:${OAI_BASE_TAG} ${path} ${LOG_DIR}/ran-base/
+else
+  die "this does not work here, docker file changes in this commit need to be reverted"
+  export BUILD_OPTS="-c" # start with clean directory
+  docker compose -f ${CONFIG} up ran-build --pull=never --no-log-prefix --exit-code-from ran-build --abort-on-container-exit | tee ${LOG_DIR}/ran-build.log
+  docker compose -f ${CONFIG} cp ran-build:/oai-ran/cmake_targets/log/all.txt ${LOG_DIR}/ran-build/
+fi
 
 docker compose -f ${CONFIG} --progress=plain build \
   oai-gnb oai-enb oai-nr-ue oai-lte-ue oai-lte-ru oai-nr-cuup

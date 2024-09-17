@@ -27,6 +27,9 @@
 
 FROM ran-base:latest AS gnb-base
 
+FROM ran-build:latest AS gnb-build
+
+
 FROM ubuntu:jammy AS oai-nr-cuup
 ARG BUILD_OPTION
 ENV DEBIAN_FRONTEND=noninteractive
@@ -51,14 +54,16 @@ RUN apt-get update && \
 # library version. Installing it above would install the wrong version. Hence,
 # copy the right version from ran-build. When upgrading to Ubuntu24, install
 # the correct one above!
-COPY --from=gnb-base /usr/lib/x86_64-linux-gnu/libasan.so.8.0.0 /usr/lib/x86_64-linux-gnu/
+COPY --from=gnb-build /usr/lib/x86_64-linux-gnu/libasan.so.8.0.0 /usr/lib/x86_64-linux-gnu/
 
 WORKDIR /opt/oai-gnb/bin
-COPY ./cmake_targets/ran_build/build/nr-cuup \ ./
+COPY --from=gnb-build \
+    /oai-ran/cmake_targets/ran_build/build/nr-cuup \
+    ./
 COPY ./docker/scripts/gnb_entrypoint.sh ./entrypoint.sh
-COPY \
-    ./cmake_targets/ran_build/build/libparams_libconfig.so \
-    ./cmake_targets/ran_build/build/libtelnetsrv.so \
+COPY --from=gnb-build \
+    /oai-ran/cmake_targets/ran_build/build/libparams_libconfig.so \
+    /oai-ran/cmake_targets/ran_build/build/libtelnetsrv.so \
     /usr/local/lib/
 
 RUN ldconfig && ldd /opt/oai-gnb/bin/nr-cuup

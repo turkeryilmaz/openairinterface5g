@@ -27,6 +27,9 @@
 
 FROM ran-base:latest AS nr-ue-base
 
+FROM ran-build:latest AS nr-ue-build
+
+
 #start from scratch for target executable
 FROM ubuntu:jammy AS oai-nr-ue
 ARG BUILD_OPTION
@@ -73,25 +76,27 @@ RUN apt-get update && \
 # library version. Installing it above would install the wrong version. Hence,
 # copy the right version from ran-build. When upgrading to Ubuntu24, install
 # the correct one above!
-COPY --from=nr-ue-base /usr/lib/x86_64-linux-gnu/libasan.so.8.0.0 /usr/lib/x86_64-linux-gnu/
+COPY --from=nr-ue-build /usr/lib/x86_64-linux-gnu/libasan.so.8.0.0 /usr/lib/x86_64-linux-gnu/
 
 WORKDIR /opt/oai-nr-ue/bin
-COPY ./cmake_targets/ran_build/build/nr-uesoftmodem \ ./
+COPY --from=nr-ue-build \
+    /oai-ran/cmake_targets/ran_build/build/nr-uesoftmodem \
+    ./
 
 COPY ./docker/scripts/nr_ue_entrypoint.sh ./entrypoint.sh
 WORKDIR /opt/oai-nr-ue/etc
 
-COPY \
-    ./cmake_targets/ran_build/build/liboai_eth_transpro.so \
-    ./cmake_targets/ran_build/build/librfsimulator.so \
-    ./cmake_targets/ran_build/build/liboai_usrpdevif.so \
-    ./cmake_targets/ran_build/build/libcoding.so \
-    ./cmake_targets/ran_build/build/libparams_libconfig.so \
-    ./cmake_targets/ran_build/build/libdfts.so \
-    ./cmake_targets/ran_build/build/libldpc*.so \
-    ./cmake_targets/ran_build/build/libtelnetsrv.so \
-    ./cmake_targets/ran_build/build/libtelnetsrv_ciUE.so \
-    ./cmake_targets/ran_build/build/libtelnetsrv_5Gue.so \
+COPY --from=nr-ue-build \
+    /oai-ran/cmake_targets/ran_build/build/liboai_eth_transpro.so \
+    /oai-ran/cmake_targets/ran_build/build/librfsimulator.so \
+    /oai-ran/cmake_targets/ran_build/build/liboai_usrpdevif.so \
+    /oai-ran/cmake_targets/ran_build/build/libcoding.so \
+    /oai-ran/cmake_targets/ran_build/build/libparams_libconfig.so \
+    /oai-ran/cmake_targets/ran_build/build/libdfts.so \
+    /oai-ran/cmake_targets/ran_build/build/libldpc*.so \
+    /oai-ran/cmake_targets/ran_build/build/libtelnetsrv.so \
+    /oai-ran/cmake_targets/ran_build/build/libtelnetsrv_ciUE.so \
+    /oai-ran/cmake_targets/ran_build/build/libtelnetsrv_5Gue.so \
     /usr/local/lib/
 
 # Now we are copying from builder-image the UHD files.
