@@ -783,7 +783,7 @@ class Containerize():
 		HTML.CreateHtmlTestRowQueue("Build unit tests", 'OK', [dockerfile])
 
 		# it worked, build and execute tests, and close connection
-		ret = cmd.run(f'docker run -a STDOUT --rm ran-unittests:{baseTag} ctest --output-on-failure --no-label-summary -j$(nproc)')
+		ret = cmd.run(f'docker run -a STDOUT -e LD_LIBRARY_PATH=. --rm ran-unittests:{baseTag} ctest --output-on-failure --no-label-summary -j$(nproc)')
 		cmd.run(f'docker rmi ran-unittests:{baseTag}')
 		build_log_name = f'build_log_{self.testCase_id}'
 		CopyLogsToExecutor(cmd, lSourcePath, build_log_name)
