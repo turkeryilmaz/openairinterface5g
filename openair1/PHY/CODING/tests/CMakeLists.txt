@@ -2,14 +2,14 @@
 ######                           nr_ulsim unit test                           ######
 ####################################################################################
 set(default_ldpc "")
-set(slot_demo "--loader.ldpc.shlibversion" "_slot_demo")
+set(slot_segment "-O" "${CMAKE_CURRENT_SOURCE_DIR}/slot_segment.conf")
 set(t2_offload_nr_ulsim "-o" "-O" "${CMAKE_CURRENT_SOURCE_DIR}/t2_offload.conf")
 set(slot_t2 "-O" "${CMAKE_CURRENT_SOURCE_DIR}/slot_t2.conf")
 set(xdma "-O" "${CMAKE_CURRENT_SOURCE_DIR}/xdma.conf")
 
 set(NR_ULSIM_OPTION_TO_TEST_LIST
   default_ldpc
-  slot_demo
+  slot_segment
 )
 
 if (ENABLE_LDPC_T2)
@@ -148,7 +148,7 @@ endforeach()
 
 set(NR_ULSCHSIM_OPTION_TO_TEST_LIST
   default_ldpc
-  slot_demo
+  slot_segment
 )
 
 if (ENABLE_LDPC_T2)
@@ -193,7 +193,7 @@ set(t2_offload_nr_dlsim "-c" "-O" "${CMAKE_CURRENT_SOURCE_DIR}/t2_offload.conf")
 
 set(NR_DLSIM_OPTION_TO_TEST_LIST
   default_ldpc
-  slot_demo
+  slot_segment
 )
 
 if (ENABLE_LDPC_T2)
@@ -284,7 +284,7 @@ endforeach()
 
 set(NR_DLSCHSIM_OPTION_TO_TEST_LIST
   default_ldpc
-  slot_demo
+  slot_segment
 )
 
 if (ENABLE_LDPC_T2)
@@ -324,14 +324,14 @@ endforeach()
 ######                         nr-softmodem unit test                         ######
 ####################################################################################
 set(default_ldpc "-O" "${CMAKE_CURRENT_SOURCE_DIR}/gnb.sa.band78.106prb.rfsim.2x2.conf")
-set(slot_demo "-O" "${CMAKE_CURRENT_SOURCE_DIR}/gnb.sa.band78.106prb.rfsim.2x2.conf" "--loader.ldpc.shlibversion" "_slot_demo")
+set(slot_segment "-O" "${CMAKE_CURRENT_SOURCE_DIR}/gnb.sa.band78.106prb.rfsim.2x2.slot_segment.conf")
 set(t2_offload "-O" "${CMAKE_CURRENT_SOURCE_DIR}/gnb.sa.band78.106prb.rfsim.2x2.t2_offload.conf" "--ldpc-offload-enable")
 set(slot_t2 "-O" "${CMAKE_CURRENT_SOURCE_DIR}/gnb.sa.band78.106prb.rfsim.2x2.slot_t2.conf")
 set(xdma "-O" "${CMAKE_CURRENT_SOURCE_DIR}/gnb.sa.band78.106prb.rfsim.2x2.xdma.conf")
 
 set(NR_SOFTMODEM_OPTION_TO_TEST_LIST
   default_ldpc
-  slot_demo
+  slot_segment
 )
 
 if (ENABLE_LDPC_T2)
@@ -360,13 +360,13 @@ endforeach()
 ######                        nr-uesoftmodem unit test                       ######
 ####################################################################################
 set(default_ldpc "-O" "${CMAKE_CURRENT_SOURCE_DIR}/nrue.uicc.1.conf")
-set(slot_demo "-O" "${CMAKE_CURRENT_SOURCE_DIR}/nrue.uicc.1.slot_demo.conf")
+set(slot_segment "-O" "${CMAKE_CURRENT_SOURCE_DIR}/nrue.uicc.1.slot_segment.conf")
 set(slot_t2 "-O" "${CMAKE_CURRENT_SOURCE_DIR}/nrue.uicc.1.slot_t2.conf")
 set(xdma "-O" "${CMAKE_CURRENT_SOURCE_DIR}/nrue.uicc.1.xdma.conf")
 
 set(NR_UESOFTMODEM_OPTION_TO_TEST_LIST
   default_ldpc
-  slot_demo
+  slot_segment
 )
 
 if (ENABLE_LDPC_T2)
