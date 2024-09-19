@@ -5,7 +5,7 @@ set(default_ldpc "")
 set(slot_demo "--loader.ldpc.shlibversion" "_slot_demo")
 set(t2_offload_nr_ulsim "-o" "-O" "${CMAKE_CURRENT_SOURCE_DIR}/t2_offload.conf")
 set(slot_t2 "-O" "${CMAKE_CURRENT_SOURCE_DIR}/slot_t2.conf")
-set(slot_xdma "-O" "${CMAKE_CURRENT_SOURCE_DIR}/slot_xdma.conf")
+set(xdma "-O" "${CMAKE_CURRENT_SOURCE_DIR}/xdma.conf")
 
 set(NR_ULSIM_OPTION_TO_TEST_LIST
   default_ldpc
@@ -21,7 +21,7 @@ endif()
 
 if (ENABLE_LDPC_XDMA)
   list(APPEND NR_ULSIM_OPTION_TO_TEST_LIST
-  slot_xdma
+  xdma
   )
 endif()
 
@@ -159,7 +159,7 @@ endif()
 
 if (ENABLE_LDPC_XDMA)
   list(APPEND NR_ULSCHSIM_OPTION_TO_TEST_LIST
-  slot_xdma
+  xdma
   )
 endif()
 
@@ -205,7 +205,7 @@ endif()
 
 if (ENABLE_LDPC_XDMA)
   list(APPEND NR_DLSIM_OPTION_TO_TEST_LIST
-  slot_xdma
+  xdma
   )
 endif()
 
@@ -295,7 +295,7 @@ endif()
 
 if (ENABLE_LDPC_XDMA)
   list(APPEND NR_DLSCHSIM_OPTION_TO_TEST_LIST
-  slot_xdma
+  xdma
   )
 endif()
 
@@ -327,7 +327,7 @@ set(default_ldpc "-O" "${CMAKE_CURRENT_SOURCE_DIR}/gnb.sa.band78.106prb.rfsim.2x
 set(slot_demo "-O" "${CMAKE_CURRENT_SOURCE_DIR}/gnb.sa.band78.106prb.rfsim.2x2.conf" "--loader.ldpc.shlibversion" "_slot_demo")
 set(t2_offload "-O" "${CMAKE_CURRENT_SOURCE_DIR}/gnb.sa.band78.106prb.rfsim.2x2.t2_offload.conf" "--ldpc-offload-enable")
 set(slot_t2 "-O" "${CMAKE_CURRENT_SOURCE_DIR}/gnb.sa.band78.106prb.rfsim.2x2.slot_t2.conf")
-set(slot_xdma "-O" "${CMAKE_CURRENT_SOURCE_DIR}/gnb.sa.band78.106prb.rfsim.2x2.slot_xdma.conf")
+set(xdma "-O" "${CMAKE_CURRENT_SOURCE_DIR}/gnb.sa.band78.106prb.rfsim.2x2.xdma.conf")
 
 set(NR_SOFTMODEM_OPTION_TO_TEST_LIST
   default_ldpc
@@ -343,7 +343,7 @@ endif()
 
 if (ENABLE_LDPC_XDMA)
   list(APPEND NR_SOFTMODEM_OPTION_TO_TEST_LIST
-  slot_xdma
+  xdma
   )
 endif()
 
@@ -362,7 +362,7 @@ endforeach()
 set(default_ldpc "-O" "${CMAKE_CURRENT_SOURCE_DIR}/nrue.uicc.1.conf")
 set(slot_demo "-O" "${CMAKE_CURRENT_SOURCE_DIR}/nrue.uicc.1.slot_demo.conf")
 set(slot_t2 "-O" "${CMAKE_CURRENT_SOURCE_DIR}/nrue.uicc.1.slot_t2.conf")
-set(slot_xdma "-O" "${CMAKE_CURRENT_SOURCE_DIR}/nrue.uicc.1.slot_xdma.conf")
+set(xdma "-O" "${CMAKE_CURRENT_SOURCE_DIR}/nrue.uicc.1.xdma.conf")
 
 set(NR_UESOFTMODEM_OPTION_TO_TEST_LIST
   default_ldpc
@@ -377,7 +377,7 @@ endif()
 
 if (ENABLE_LDPC_XDMA)
   list(APPEND NR_UESOFTMODEM_OPTION_TO_TEST_LIST
-  slot_xdma
+  xdma
   )
 endif()
 
