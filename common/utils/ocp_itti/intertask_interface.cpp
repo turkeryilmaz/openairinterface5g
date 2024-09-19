@@ -25,7 +25,8 @@
 #include <map>
 #include <sys/eventfd.h>
 #include <semaphore.h>
-
+#define TRACY_ENABLE
+//#include </data/tracy/public/TracyClient.cpp>
 
 extern "C" {
 #include <intertask_interface.h>
