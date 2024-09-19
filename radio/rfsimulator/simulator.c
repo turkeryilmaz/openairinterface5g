@@ -85,7 +85,7 @@
 // FD_SETSIE) and reduced to 125. This should allow for around 20 simultaeous UEs.
 //
 // #define MAX_FD_RFSIMU FD_SETSIZE
-#define MAX_FD_RFSIMU 250
+#define MAX_FD_RFSIMU 500
 #define SEND_BUFF_SIZE 100000000 // Socket buffer size
 
 // Simulator role
@@ -181,6 +181,7 @@ typedef struct {
 
 static int allocCirBuf(rfsimulator_state_t *bridge, int sock)
 {
+  AssertFatal(sock < MAX_FD_RFSIMU, "Enlarge MAX_FD_RFSIMU or use back the max fd in Linux\n");
   buffer_t *ptr=&bridge->buf[sock];
   ptr->circularBuf = calloc(1, sampleToByte(CirSize, 1));
   if (ptr->circularBuf == NULL) {
