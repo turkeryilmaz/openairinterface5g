@@ -43,6 +43,10 @@
 #include "NR_MAC_UE/mac_defs_sl.h"
 #include "NR_MAC_gNB/nr_mac_gNB.h"
 
+#define LOWER_BLER 0.2344
+#define UPPER_BLER 5.547
+#define MAX_MCS 28
+
 const uint8_t nr_rv_round_map[4] = {0, 2, 3, 1};
 
 void reset_sl_harq_list(NR_SL_UE_sched_ctrl_t *sched_ctrl) {
@@ -134,7 +138,9 @@ void handle_nr_ue_sl_harq(module_id_t mod_id,
       UE->mac_sl_stats.cumul_round[harq->round]++;
       harq->round = 0;
       LOG_D(NR_MAC,
-            "Ulharq id %d crc passed for src id %4d\n",
+            "%4u.%2u Slharq id %d crc passed for src id %4d\n",
+            frame,
+            slot,
             harq_pid,
             src_id);
       add_tail_nr_list(&sched_ctrl->available_sl_harq, harq_pid);
@@ -163,11 +169,13 @@ void handle_nr_ue_sl_harq(module_id_t mod_id,
 
 void nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_t *sci_pdu,
                        nr_sci_pdu_t *sci2_pdu, nr_sci_format_t format2,
-                       NR_SL_UE_sched_ctrl_t *sched_ctrl,
+                       NR_SL_UE_info_t *UE,
                        uint16_t *slsch_pdu_length_max, NR_UE_sl_harq_t *cur_harq,
-                       mac_rlc_status_resp_t *rlc_status,
-                       uid_t dest_id) {
-
+                       mac_rlc_status_resp_t *rlc_status) {
+  uid_t dest_id = UE->uid;
+  NR_SL_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
+  const NR_mac_dir_stats_t *stats = &UE->mac_sl_stats.sl;
+  NR_sched_pssch_t *sched_pssch = &sched_ctrl->sched_pssch;
   sl_nr_ue_mac_params_t *sl_mac = mac->SL_MAC_PARAMS;
   uint8_t mu = sl_mac->sl_phy_config.sl_config_req.sl_bwp_config.sl_scs;
   uint8_t slots_per_frame = nr_slots_per_frame[mu];
@@ -189,13 +197,14 @@ void nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
   // Determine current slot is csi-rs schedule slot
   bool csi_req_slot = !((slots_per_frame * frameP + slotP - offset) % period);
 
+  uint8_t ri = 0;
   uint8_t cqi_Table = 0;
-  uint8_t mcs = sched_ctrl->sl_max_mcs, ri = 0;
   uint8_t cqi = sched_ctrl->rx_csi_report.CQI;
+  sched_pssch->mcs = sched_ctrl->sl_max_mcs;
 
+  int mcs_tb_ind = 0;
   // we are using as a flag to indicate if csi report was received
   if (cqi) {
-    int mcs_tb_ind = 0;
     if (sci_pdu->additional_mcs.nbits > 0)
       mcs_tb_ind = sci_pdu->additional_mcs.val;
     if (mcs_tb_ind == 0)
@@ -205,10 +214,23 @@ void nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
     else if (mcs_tb_ind == 2)
       cqi_Table = NR_CSI_ReportConfig__cqi_Table_table3;
 
-    mcs = get_mcs_from_cqi(mcs_tb_ind, cqi_Table, cqi, get_nrUE_params()->mcs);
-
-    sched_ctrl->sl_max_mcs = mcs;
+    sched_pssch->mcs = get_mcs_from_cqi(mcs_tb_ind, cqi_Table, cqi, get_nrUE_params()->mcs);
+    sched_ctrl->sl_max_mcs = sched_pssch->mcs;
     ri = sched_ctrl->rx_csi_report.RI;
+  }
+
+  /* Calculate coeff */
+  NR_bler_options_t *sl_bo = &sl_mac->sl_bler;
+  sl_bo->lower = LOWER_BLER;
+  sl_bo->upper = UPPER_BLER;
+  sl_bo->max_mcs = MAX_MCS;
+
+  const int max_mcs_table = mcs_tb_ind == 1 ? 27 : 28;
+  int max_mcs = min(sched_ctrl->sl_max_mcs, max_mcs_table);
+  if (sl_bo->harq_round_max == 1)
+    sched_pssch->mcs = max_mcs;
+  else {
+    sched_pssch->mcs = get_mcs_from_bler(sl_bo, stats, &sched_ctrl->sl_bler_stats, max_mcs, frameP);
   }
   // Fill SCI1A
   sci_pdu->priority = 0;
@@ -219,10 +241,10 @@ void nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
   sci_pdu->second_stage_sci_format = 0;
   sci_pdu->number_of_dmrs_port = ri;
   // we are using as a flag to indicate if csi report was received
-  sci_pdu->mcs = cqi ? mcs : get_nrUE_params()->mcs;
+  sci_pdu->mcs = sched_pssch->mcs;
   sci_pdu->additional_mcs.val = 0;
   if (frameP % 5 == 0)
-    LOG_D(NR_MAC, "cqi ---> %d Tx %4d.%2d dest: %d sci->mcs %i\n",
+    LOG_D(NR_MAC, "cqi ---> %d Tx %4d.%2d dest: %d mcs %i\n",
           cqi, frameP, slotP, dest_id, sci_pdu->mcs);
   /*Following code will check whether SLSCH was received before and
   its feedback has scheduled for current slot
@@ -298,7 +320,7 @@ SL_CSI_Report_t* set_nr_ue_sl_csi_meas_periodicity(const NR_TDD_UL_DL_Pattern_t 
   uint8_t n_slots_frame = nr_slots_per_frame[mu];
   const int n_ul_slots_period = tdd ? tdd->nrofUplinkSlots + (tdd->nrofUplinkSymbols > 0 ? 1 : 0) : n_slots_frame;
   const int nr_slots_period = tdd ? n_slots_frame / get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity) : n_slots_frame;
-  const int ideal_period = CUR_SL_UE_CONNECTIONS * nr_slots_period / n_ul_slots_period;
+  const int ideal_period = (MAX_SL_UE_CONNECTIONS * nr_slots_period) / n_ul_slots_period;
   const int first_ul_slot_period = tdd ? get_first_ul_slot(tdd->nrofDownlinkSlots, tdd->nrofDownlinkSymbols, tdd->nrofUplinkSymbols) : 0;
   const int idx = (uid << 1) + is_rsrp;
   SL_CSI_Report_t *csi_report = &sched_ctrl->sched_csi_report;

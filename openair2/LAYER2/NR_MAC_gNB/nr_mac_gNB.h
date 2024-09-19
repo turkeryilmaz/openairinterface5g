@@ -610,19 +610,6 @@ typedef struct {
   uicc_t *uicc;
 } NRUEcontext_t;
 
-typedef struct NR_mac_dir_stats {
-  uint64_t lc_bytes[64];
-  uint64_t rounds[8];
-  uint64_t errors;
-  uint64_t total_bytes;
-  uint32_t current_bytes;
-  uint64_t total_sdu_bytes;
-  uint32_t total_rbs;
-  uint32_t total_rbs_retx;
-  uint32_t num_mac_sdu;
-  uint32_t current_rbs;
-} NR_mac_dir_stats_t;
-
 typedef struct NR_mac_stats {
   NR_mac_dir_stats_t dl;
   NR_mac_dir_stats_t ul;

@@ -3484,7 +3484,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
     cur_harq->ndi ^= 1;
 
     nr_schedule_slsch(mac, frame, slot, &mac->sci1_pdu, &mac->sci2_pdu, NR_SL_SCI_FORMAT_2A,
-                      sched_ctrl, &slsch_pdu_length_max, cur_harq, &sched_ctrl->rlc_status[lcid], UE->uid);
+                      UE, &slsch_pdu_length_max, cur_harq, &sched_ctrl->rlc_status[lcid]);
 
     *config_type = SL_NR_CONFIG_TYPE_TX_PSCCH_PSSCH;
     tx_config->number_pdus = 1;

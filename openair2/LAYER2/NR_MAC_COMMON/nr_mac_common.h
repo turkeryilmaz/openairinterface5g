@@ -51,7 +51,7 @@ typedef enum {
   pusch_len2 = 2
 } pusch_maxLength_t;
 
-typedef struct NR_UE_sl_mac_dir_stats {
+typedef struct NR_mac_dir_stats {
   uint64_t lc_bytes[64];
   uint64_t rounds[8];
   uint64_t errors;
@@ -62,10 +62,10 @@ typedef struct NR_UE_sl_mac_dir_stats {
   uint32_t total_rbs_retx;
   uint32_t num_mac_sdu;
   uint32_t current_rbs;
-} NR_UE_sl_mac_dir_stats_t;
+} NR_mac_dir_stats_t;
 
 typedef struct NR_UE_sl_mac_stats {
-  NR_UE_sl_mac_dir_stats_t sl;
+  NR_mac_dir_stats_t sl;
   uint32_t slsch_DTX;
   uint64_t slsch_total_bytes_scheduled;
   int cumul_rsrp;
@@ -192,6 +192,12 @@ uint8_t compute_nr_root_seq(NR_RACH_ConfigCommon_t *rach_config,
 int ul_ant_bits(NR_DMRS_UplinkConfig_t *NR_DMRS_UplinkConfig, long transformPrecoder);
 
 uint8_t get_mcs_from_cqi(int mcs_table, int cqi_table, int cqi_idx, int default_mcs);
+
+int get_mcs_from_bler(const NR_bler_options_t *bler_options,
+                      const NR_mac_dir_stats_t *stats,
+                      NR_bler_stats_t *bler_stats,
+                      int max_mcs,
+                      frame_t frame);
 
 uint8_t get_pdsch_mcs_table(long *mcs_Table, int dci_format, int rnti_type, int ss_type);
 
