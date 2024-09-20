@@ -802,7 +802,8 @@ void nr_dci_decoding_procedure(PHY_VARS_NR_UE *ue,
                                fapi_nr_dl_config_dci_dl_pdu_rel15_t *rel15)
 {
   int e_rx_cand_idx = 0;
-  *dci_ind = (fapi_nr_dci_indication_t){.SFN = proc->frame_rx, .slot = proc->nr_slot_rx};
+  dci_ind->SFN = proc->frame_rx;
+  dci_ind->slot = proc->nr_slot_rx;
 
   for (int j = 0; j < rel15->number_of_candidates; j++) {
     int CCEind = rel15->CCE[j];
