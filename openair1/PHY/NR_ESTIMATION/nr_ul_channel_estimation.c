@@ -82,8 +82,8 @@ static void nr_pusch_antenna_processing(void *arg)
   nfapi_nr_pusch_pdu_t *pusch_pdu = rdata->pusch_pdu;
   int *max_ch = rdata->max_ch;
   c16_t *pilot = rdata->pilot;
-  uint64_t *noise_amp2 = rdata->noise_amp2;
-  int *nest_count = rdata->nest_count;
+  uint64_t noise_amp2 = *(rdata->noise_amp2);
+  int nest_count = *(rdata->nest_count);
   delay_t *delay = rdata->delay;
 
   const int chest_freq = gNB->chest_freq;
@@ -203,15 +203,15 @@ static void nr_pusch_antenna_processing(void *arg)
           int k = pilot_cnt << 1;
           ul_ch[k] = c16mulShift(ul_ch[k], ul_inv_delay_table[k], 8);
           ul_ch[k + 1] = c16mulShift(ul_ch[k + 1], ul_inv_delay_table[k + 1], 8);
-          *(noise_amp2) += c16amp2(c16sub(ul_ls_est[k], ul_ch[k]));
-          *(noise_amp2) += c16amp2(c16sub(ul_ls_est[k + 1], ul_ch[k + 1]));
+          noise_amp2 += c16amp2(c16sub(ul_ls_est[k], ul_ch[k]));
+          noise_amp2 += c16amp2(c16sub(ul_ls_est[k + 1], ul_ch[k + 1]));
 
 #ifdef DEBUG_PUSCH
           re_offset = (k0 + (n << 2) + (k_line << 1)) % symbolSize;
           printf("ch -> (%4d,%4d), ch_inter -> (%4d,%4d)\n", ul_ls_est[k].r, ul_ls_est[k].i, ul_ch[k].r, ul_ch[k].i);
 #endif
           pilot_cnt++;
-          *(nest_count) += 2;
+          nest_count += 2;
         }
       }
 
@@ -230,8 +230,8 @@ static void nr_pusch_antenna_processing(void *arg)
         multadd_real_four_symbols_vector_complex_scalar(filt8_rep4, &ch, &ul_ls_est[n]);
         ul_ls_est[n + 4] = ch;
         ul_ls_est[n + 5] = ch;
-        *(noise_amp2) += c16amp2(c16sub(ch0, ch));
-        *(nest_count) += 1;
+        noise_amp2 += c16amp2(c16sub(ch0, ch));
+        nest_count += 1;
       }
 
       // Delay compensation
@@ -410,8 +410,8 @@ static void nr_pusch_antenna_processing(void *arg)
     }
 #endif
     // update the values inside the arrays
-    *(rdata->noise_amp2) = *(noise_amp2);
-    *(rdata->nest_count) = *(nest_count);
+    *(rdata->noise_amp2) = noise_amp2;
+    *(rdata->nest_count) = nest_count;
   }
 }
 
@@ -489,23 +489,16 @@ int nr_pusch_channel_estimation(PHY_VARS_gNB *gNB,
   memset(delay, 0, sizeof(*delay));
 
   int nb_antennas_rx = gNB->frame_parms.nb_antennas_rx;
-  delay_t *delay_arr[nb_antennas_rx];
-  uint64_t *noise_amp2_arr[nb_antennas_rx];
-  int *max_ch_arr[nb_antennas_rx];
-  int *nest_count_arr[nb_antennas_rx];
+  delay_t delay_arr[nb_antennas_rx];
+  uint64_t noise_amp2_arr[nb_antennas_rx];
+  int max_ch_arr[nb_antennas_rx];
+  int nest_count_arr[nb_antennas_rx];
 
   for (int i = 0; i < nb_antennas_rx; ++i) {
-    max_ch_arr[i] = malloc(sizeof(int));
-    *(max_ch_arr[i]) = *max_ch;
-
-    nest_count_arr[i] = malloc(sizeof(int));
-    *(nest_count_arr[i]) = nest_count;
-
-    noise_amp2_arr[i] = malloc(sizeof(uint64_t));
-    *(noise_amp2_arr[i]) = noise_amp2;
-
-    delay_arr[i] = malloc(sizeof(*delay));
-    *(delay_arr[i]) = *delay;
+    max_ch_arr[i] = *max_ch;
+    nest_count_arr[i] = nest_count;
+    noise_amp2_arr[i] = noise_amp2;
+    delay_arr[i] = *delay;
   }
 
   start_meas(&gNB->pusch_channel_estimation_antenna_processing_stats);
@@ -530,11 +523,11 @@ int nr_pusch_channel_estimation(PHY_VARS_gNB *gNB,
     rdata->ul_id = ul_id;
     rdata->bwp_start_subcarrier = bwp_start_subcarrier;
     rdata->pusch_pdu = pusch_pdu;
-    rdata->max_ch = max_ch_arr[rdata->aarx];
+    rdata->max_ch = &max_ch_arr[rdata->aarx];
     rdata->pilot = pilot;
-    rdata->nest_count = nest_count_arr[rdata->aarx];
-    rdata->noise_amp2 = noise_amp2_arr[rdata->aarx];
-    rdata->delay = delay_arr[rdata->aarx];
+    rdata->nest_count = &nest_count_arr[rdata->aarx];
+    rdata->noise_amp2 = &noise_amp2_arr[rdata->aarx];
+    rdata->delay = &delay_arr[rdata->aarx];
     // Call the nr_pusch_antenna_processing function
     pushTpool(&gNB->threadPool, req);
     gNB->nbAarx++;
@@ -550,15 +543,15 @@ int nr_pusch_channel_estimation(PHY_VARS_gNB *gNB,
 
   stop_meas(&gNB->pusch_channel_estimation_antenna_processing_stats);
   for (int aarx = 0; aarx < gNB->frame_parms.nb_antennas_rx; aarx++) {
-    *max_ch = max(*max_ch, *(max_ch_arr[aarx]));
-    noise_amp2 += *(noise_amp2_arr[aarx]);
-    nest_count += *(nest_count_arr[aarx]);
+    *max_ch = max(*max_ch, max_ch_arr[aarx]);
+    noise_amp2 += noise_amp2_arr[aarx];
+    nest_count += nest_count_arr[aarx];
   }
   // get the maximum delay
-  *delay = *(delay_arr[0]);
+  *delay = delay_arr[0];
   for (int aarx = 1; aarx < gNB->frame_parms.nb_antennas_rx; aarx++) {
-    if (delay_arr[aarx]->est_delay >= delay->est_delay) {
-      *delay = *(delay_arr[aarx]);
+    if (delay_arr[aarx].est_delay >= delay->est_delay) {
+      *delay = delay_arr[aarx];
     }
   }
 
@@ -568,14 +561,6 @@ int nr_pusch_channel_estimation(PHY_VARS_gNB *gNB,
 
   if (nvar && nest_count > 0) {
     *nvar = (uint32_t)(noise_amp2 / nest_count);
-  }
-
-  // free each element of the arrays
-  for (int i = 0; i < nb_antennas_rx; ++i) {
-    free(max_ch_arr[i]);
-    free(noise_amp2_arr[i]);
-    free(nest_count_arr[i]);
-    free(delay_arr[i]);
   }
 
   return 0;

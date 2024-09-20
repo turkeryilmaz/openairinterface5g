@@ -370,7 +370,6 @@ void init_gNB_Tpool(int inst) {
   // PUSCH channel estimation result FIFO
   initNotifiedFIFO(&gNB->respPuschAarx);
 
-
   // L1 RX result FIFO
   initNotifiedFIFO(&gNB->resp_L1);
   // L1 TX result FIFO 
