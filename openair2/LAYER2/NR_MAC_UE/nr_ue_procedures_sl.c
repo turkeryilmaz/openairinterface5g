@@ -891,8 +891,7 @@ void configure_psfch_params_rx(int module_idP,
 
   psfch_params_t *psfch_params = calloc(1, sizeof(psfch_params_t));
   compute_params(module_idP, psfch_params);
-  NR_SL_UE_info_t **UE_SL_temp = UE_info->list, *UE;
-  while((UE=*(UE_SL_temp++))) {
+  UE_iterator(UE_info->list, UE) {
     NR_SL_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
     NR_UE_sl_harq_t **matched_harqs = (NR_UE_sl_harq_t **) calloc(sched_ctrl->feedback_sl_harq.len, sizeof(NR_UE_sl_harq_t *));
     int matched_sz = find_current_slot_harqs(frame, slot, sched_ctrl, matched_harqs);
@@ -1027,7 +1026,7 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
     int r4 = UE->mac_sl_stats.cumul_round[4];
     int round_sum = r1 + 2 * r2 + 3 * r3 + 4 * r4;
     int total_tx = r0 + round_sum;
-    if (total_tx % 100 == 0 || (total_tx > 299 && total_tx < 305)) {
+    if (total_tx % 20 == 0 || (total_tx > 299 && total_tx < 305)) {
       LOG_I(NR_PHY, "[UE] %d:%d PSFCH Stats: RX round (%u %u %u %u %u), SumRetx %u TotalTx %u\n",
                                                       frame, slot,
                                                       UE->mac_sl_stats.cumul_round[0],
@@ -1038,12 +1037,22 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
                                                       round_sum, total_tx
                                                       );
     }
-
     return;
   }
 
   LOG_D(NR_MAC, "%4d.%2d ack_nack %d pdu_type %d mac->sci_pdu_rx.csi_req %d\n",
         frame, slot, rx_slsch_pdu->ack_nack, pdu_type, mac->sci_pdu_rx.csi_req);
+
+  static uint32_t count = 0, total = 0;
+  static bool printed = false;
+  if (rx_slsch_pdu->ack_nack)
+    count++;
+  total++;
+  if (total >= 1000 && !printed) {
+    LOG_I(NR_MAC, "snr: %lf: Errors %d total %d\n", get_nrUE_params()->snr, (total - count), total); // BLER = (total - count) / total
+    printed = true;
+  }
+
   if (rx_slsch_pdu->ack_nack == 0)
     return;
 
@@ -1179,8 +1188,7 @@ NR_SL_UE_info_t* find_UE(NR_UE_MAC_INST_t *mac,
     return NULL;
   }
 
-  NR_SL_UE_info_t **UE_SL_temp = UE_info->list, *UE;
-  while((UE = *(UE_SL_temp++))) {
+  UE_iterator(UE_info->list, UE) {
     LOG_D(NR_MAC, "%s: dest_id %d nearby id %d\n", __FUNCTION__, UE->uid, nearby_ue_id);
     if((UE->uid == nearby_ue_id)) {
       return UE;
