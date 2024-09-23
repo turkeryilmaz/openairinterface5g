@@ -50,7 +50,7 @@ int nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
                       uint8_t N_ap,
                       uint8_t N_symb_srs,
                       int32_t srs_estimated_channel_freq[N_arx][N_ap][frame_parms->ofdm_symbol_size * N_symb_srs],
-                      int32_t *srs_toa_ns)
+                      int16_t *srs_toa_ns)
 {
   int32_t chF_interpol[N_ap][NR_SRS_IDFT_OVERSAMP_FACTOR * frame_parms->ofdm_symbol_size] __attribute__((aligned(32)));
   int32_t chT_interpol[N_ap][NR_SRS_IDFT_OVERSAMP_FACTOR * frame_parms->ofdm_symbol_size] __attribute__((aligned(32)));

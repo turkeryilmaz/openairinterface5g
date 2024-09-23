@@ -1010,7 +1010,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
 
         uint8_t N_ap = 1 << srs_pdu->num_ant_ports;
         uint8_t N_ant_rx = gNB->frame_parms.nb_antennas_rx;
-        int32_t srs_toa_ns[N_ant_rx];
+        int16_t srs_toa_ns[N_ant_rx];
         // call ToA estimation function
         nr_est_toa_ns_srs(frame_parms, N_ant_rx, N_ap, N_symb_SRS, srs_estimated_channel_freq, srs_toa_ns);
 
@@ -1027,7 +1027,6 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
           T_INT(slot_rx),
           T_BUFFER(srs_toa_ns, N_ant_rx * sizeof(int32_t)));
 
-        //(int16_t)((((int32_t)srs_indication->timing_advance_offset - 31) * ((int32_t)TC_NSEC_x32768)) >> 15) : 0xFFFF;
         switch (srs_pdu->srs_parameters_v4.usage) {
           case 0:
             LOG_W(NR_PHY, "SRS report was not requested by MAC\n");
