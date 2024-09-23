@@ -166,7 +166,10 @@ int nr_slsch_procedures(PHY_VARS_NR_UE *ue, int frame_rx, int slot_rx, int SLSCH
                               pssch_pdu->subchannel_size,
                               pssch_pdu->targetCodeRate,
                               0);
-  uint16_t csi_rs_re = is_csi_rs_slot ? nr_of_rbs/freq_density : 0;
+
+  uint8_t nr_rbs_w_csi_rs = nr_of_rbs / freq_density;
+  uint8_t subcarriers_used = get_nrUE_params()->nb_antennas_tx > 2 ? 2 : get_nrUE_params()->nb_antennas_tx;
+  int num_CSI_REs = is_csi_rs_slot ? nr_rbs_w_csi_rs * subcarriers_used : 0;
   uint16_t sci1_re = pssch_pdu->pscch_numsym * pssch_pdu->pscch_numrbs * NR_NB_SC_PER_RB;
   uint32_t G = nr_get_G_SL(rb_size,
                            number_symbols,
@@ -176,7 +179,7 @@ int nr_slsch_procedures(PHY_VARS_NR_UE *ue, int frame_rx, int slot_rx, int SLSCH
                            sci1_re,
                            pssch_pdu->pscch_numrbs,
                            sci2_re,
-                           csi_rs_re,
+                           num_CSI_REs,
                            pssch_pdu->mod_order,
                            pssch_pdu->num_layers);
 
