@@ -108,33 +108,13 @@ int nr_est_toa_ns_srs(NR_DL_FRAME_PARMS *frame_parms,
 
     // Check for detection threshold
 
-    // LOG_I(PHY, "SRS ToA before (RX ant %d): max_val %d, mean_val %d, max_idx %d\n", arx_index, max_val, mean_val, max_idx);
     if ((mean_val != 0) && (max_val / mean_val > 100)) {
       srs_toa_ns[arx_index] = (max_idx * 1e9) / (NR_SRS_IDFT_OVERSAMP_FACTOR * frame_parms->samples_per_frame * 100);
     } else {
       srs_toa_ns[arx_index] = 0xFFFF;
     }
-    // LOG_I(PHY, "SRS ToA estimator (RX ant %d): toa %d ns\n",arx_index,srs_toa_ns[arx_index]);
+    LOG_D(PHY, "SRS estimatd ToA [RX ant %d]: %d ns (max_val %d, mean_val %d, max_idx %d)\n", arx_index, srs_toa_ns[arx_index], max_val, mean_val, max_idx);
   } // Antenna loop
-
-  // Add T tracer to log these chF and chT
-  /*
-  T(T_GNB_PHY_UL_FREQ_CHANNEL_ESTIMATE_OVER_SAMPLING,
-    T_INT(0),
-    T_INT(srs_pdu->rnti),
-    T_INT(frame),
-    T_INT(0),
-    T_INT(0),
-    T_BUFFER(chF_interpol[0][0], NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size * sizeof(int32_t)));
-
-  T(T_GNB_PHY_UL_TIME_CHANNEL_ESTIMATE_OVER_SAMPLING,
-    T_INT(0),
-    T_INT(srs_pdu->rnti),
-    T_INT(frame),
-    T_INT(0),
-    T_INT(0),
-    T_BUFFER(chT_interpol[0][0], NR_SRS_IDFT_OVERSAMP_FACTOR*frame_parms->ofdm_symbol_size * sizeof(int32_t)));
-  */
 
   return 0;
 }
@@ -911,10 +891,10 @@ int nr_srs_channel_estimation(
         }
       }
 
+#ifdef SRS_DEBUG
       // Compute signal power
       uint32_t signal_power_ant = calc_power(&ch_real[base_idx], M_sc_b_SRS) + calc_power(&ch_imag[base_idx], M_sc_b_SRS);
 
-#ifdef SRS_DEBUG
       LOG_I(NR_PHY, "signal_power(p_index %d, ant %d) = %d dB\n", p_index, ant, dB_fixed(signal_power_ant));
 #endif
 
