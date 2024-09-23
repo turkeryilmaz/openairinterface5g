@@ -961,7 +961,7 @@ void nr_schedule_ue_spec(module_id_t module_id,
 
   if (!is_xlsch_in_slot(gNB_mac->dlsch_slot_bitmap[slot / 64], slot))
     return;
-  if (slot %10 != 2 && slot %10 != 3 && slot%10!= 5) return;  
+  if (/*slot %10 != 2 &&*/ slot %10 != 3 && slot%10!= 5) return;  
   //if (slot %10 < 2) return;  
 
   /* PREPROCESSOR */
