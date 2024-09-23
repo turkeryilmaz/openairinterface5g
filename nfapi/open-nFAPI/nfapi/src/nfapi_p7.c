@@ -2442,12 +2442,10 @@ uint8_t pack_nr_timing_info(void *msg, uint8_t **ppWritePackedMsg, uint8_t *end,
 
 static uint8_t pack_nr_rx_data_indication_body(nfapi_nr_rx_data_pdu_t *value, uint8_t **ppWritePackedMsg, uint8_t *end)
 {
-  AssertFatal(value->pdu_length <= 0xFFFF,"RX_DATA.indication PDU_Length should be within 16 bit, according to SCF222.10.02");
   if(!(push32(value->handle, ppWritePackedMsg, end) &&
        push16(value->rnti, ppWritePackedMsg, end) &&
-       push8(value->harq_id, ppWritePackedMsg, end) &&
-       push16(value->pdu_length, ppWritePackedMsg, end) &&
-       push8(value->ul_cqi, ppWritePackedMsg, end) &&
+       push8(value->harq_id, ppWritePackedMsg, end) && push32(value->pdu_length, ppWritePackedMsg, end)
+        && push8(value->ul_cqi, ppWritePackedMsg, end) &&
        push16(value->timing_advance, ppWritePackedMsg, end) &&
        push16(value->rssi, ppWritePackedMsg, end)
   ))
@@ -4662,8 +4660,8 @@ static uint8_t unpack_nr_rx_data_indication_body(nfapi_nr_rx_data_pdu_t *value,
                                                  nfapi_p7_codec_config_t *config)
 {
 if (!(pull32(ppReadPackedMsg, &value->handle, end) && pull16(ppReadPackedMsg, &value->rnti, end)
-      && pull8(ppReadPackedMsg, &value->harq_id, end) && pull16(ppReadPackedMsg, (uint16_t *)&value->pdu_length, end)
-      && pull8(ppReadPackedMsg, &value->ul_cqi, end) && pull16(ppReadPackedMsg, &value->timing_advance, end)
+        && pull8(ppReadPackedMsg, &value->harq_id, end) && pull32(ppReadPackedMsg, &value->pdu_length, end)
+        && pull8(ppReadPackedMsg, &value->ul_cqi, end) && pull16(ppReadPackedMsg, &value->timing_advance, end)
       && pull16(ppReadPackedMsg, &value->rssi, end)))
       return 0;
 
