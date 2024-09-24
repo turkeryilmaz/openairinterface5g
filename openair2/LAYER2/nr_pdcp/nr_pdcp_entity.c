@@ -320,12 +320,12 @@ static bool nr_pdcp_entity_check_integrity(struct nr_pdcp_entity_t *entity,
 
   memcpy(b + header_size, buffer, buffer_size);
 
-  unsigned char mac[4];
+  unsigned char mac[PDCP_INTEGRITY_SIZE];
   entity->integrity(entity->integrity_context, mac,
                     b, buffer_size + header_size,
                     entity->rb_id, msg_integrity->count, entity->is_gnb ? 0 : 1);
 
-  return memcmp(mac, msg_integrity->mac, 4) == 0;
+  return memcmp(mac, msg_integrity->mac, PDCP_INTEGRITY_SIZE) == 0;
 }
 
 /* may be called several times, take care to clean previous settings */
