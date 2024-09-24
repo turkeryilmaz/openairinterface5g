@@ -412,7 +412,9 @@ void trigger_bearer_setup(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, int n, pdusession
   rrc->cucp_cuup.bearer_context_setup(assoc_id, &bearer_req);
 }
 
-//------------------------------------------------------------------------------
+/**
+ * @brief Initial Context Setup Request (8.3.1 of 3GPP TS 38.413)
+ */
 int rrc_gNB_process_NGAP_INITIAL_CONTEXT_SETUP_REQ(MessageDef *msg_p, instance_t instance)
 //------------------------------------------------------------------------------
 {

@@ -467,12 +467,10 @@ static void rrc_gNB_generate_RRCReject(module_id_t module_id, rrc_gNB_ue_context
   rrc->mac_rrc.dl_rrc_message_transfer(ue_data.du_assoc_id, &dl_rrc);
 }
 
-//-----------------------------------------------------------------------------
-/*
-* Process the rrc setup complete message from UE (SRB1 Active)
-*/
+/**
+ * @brief Process the RRCSetupComplete-IEs (SRB1 Active)
+ */
 static void rrc_gNB_process_RRCSetupComplete(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, NR_RRCSetupComplete_IEs_t *rrcSetupComplete)
-//-----------------------------------------------------------------------------
 {
   LOG_A(NR_RRC, "UE %d Processing NR_RRCSetupComplete from UE\n", UE->rrc_ue_id);
   UE->Srb[1].Active = 1;
