@@ -3854,10 +3854,10 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind) {
     frame = sl_ind->frame_tx;
     slot = sl_ind->slot_tx;
   }
+
   NR_UE_MAC_INST_t *mac = get_mac_inst(mod_id);
   sl_nr_ue_mac_params_t *sl_mac = mac->SL_MAC_PARAMS;
   sl_nr_phy_config_request_t *sl_cfg = &sl_mac->sl_phy_config.sl_config_req;
-
 
   uint8_t mu = sl_cfg->sl_bwp_config.sl_scs;
   uint8_t slots_per_frame = nr_slots_per_frame[mu];
