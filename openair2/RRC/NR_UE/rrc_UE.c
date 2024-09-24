@@ -1182,9 +1182,7 @@ static void nr_rrc_ue_process_securityModeCommand(NR_UE_RRC_INST_t *ue_rrc,
       nr_pdcp_config_set_security(ue_rrc->ue_id, i, true, &security_parameters);
   }
 
-  NR_UL_DCCH_Message_t ul_dcch_msg = {0};
-
-  ul_dcch_msg.message.present = NR_UL_DCCH_MessageType_PR_c1;
+  NR_UL_DCCH_Message_t ul_dcch_msg = {.message.present = NR_UL_DCCH_MessageType_PR_c1};
   asn1cCalloc(ul_dcch_msg.message.choice.c1, c1);
 
   // the SecurityModeCommand message needs to pass the integrity protection check
