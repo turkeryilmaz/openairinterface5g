@@ -76,7 +76,6 @@ static void abort_nr_ue_sl_harq(NR_UE_MAC_INST_t *mac, int8_t harq_pid, NR_SL_UE
   harq->round = 0;
   UE_info->mac_sl_stats.sl.errors++;
   add_tail_nr_list(&sched_ctrl->available_sl_harq, harq_pid);
-  LOG_D(NR_MAC, "%s Adding back harq_pid %d available harq list len %d\n", __FUNCTION__, harq_pid, sched_ctrl->available_sl_harq.len);
   /* the transmission failed: the UE won't send the data we expected initially,
    * so retrieve to correctly schedule after next BSR */
   sched_ctrl->sched_sl_bytes -= harq->sched_pssch.tb_size;
@@ -244,7 +243,7 @@ void nr_schedule_slsch(NR_UE_MAC_INST_t *mac, int frameP, int slotP, nr_sci_pdu_
   sci_pdu->mcs = sched_pssch->mcs;
   sci_pdu->additional_mcs.val = 0;
   if (frameP % 5 == 0)
-    LOG_I(NR_MAC, "cqi ---> %d Tx %4d.%2d dest: %d mcs %i\n",
+    LOG_D(NR_MAC, "cqi ---> %d Tx %4d.%2d dest: %d mcs %i\n",
           cqi, frameP, slotP, dest_id, sci_pdu->mcs);
   /*Following code will check whether SLSCH was received before and
   its feedback has scheduled for current slot

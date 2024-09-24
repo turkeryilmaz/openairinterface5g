@@ -41,7 +41,6 @@
 #include "nr_pdcp_e1_api.h"
 #include "gnb_config.h"
 #include "executables/softmodem-common.h"
-#include "executables/nr-uesoftmodem.h"
 #define TODO do { \
     printf("%s:%d:%s: todo\n", __FILE__, __LINE__, __FUNCTION__); \
     exit(1); \
@@ -464,18 +463,7 @@ static void *ue_tun_read_thread(void *_)
   pthread_setname_np( pthread_self(),"ue_tun_read"); 
   LOG_I(PDCP,"ue_tun_read_thread created on core %d\n",sched_getcpu());
   while (1) {
-    //len = read(nas_sock_fd[0], &rx_buf, NL_MAX_PAYLOAD);
-#if 1
-    usleep(100000);
-    char msg1[] = "Hello Nearby  UE (from SyncRef UE)";
-    char msg2[] = "Hello SyncRef UE (from Nearby UE)";
-    int len1 = sizeof(msg1)/sizeof(msg1[0]);
-    int len2 = sizeof(msg2)/sizeof(msg2[0]);
-    char *msg = (get_nrUE_params()->sync_ref) ? msg1 : msg2;
-    len = (get_nrUE_params()->sync_ref) ? len1 : len2;
-    memcpy(rx_buf, msg, len);
-    LOG_D(PDCP, "Sending %s\n", msg);
-#endif
+    len = read(nas_sock_fd[0], &rx_buf, NL_MAX_PAYLOAD);
     if (len == -1) {
       LOG_E(PDCP, "%s:%d:%s: fatal\n", __FILE__, __LINE__, __FUNCTION__);
       exit(1);

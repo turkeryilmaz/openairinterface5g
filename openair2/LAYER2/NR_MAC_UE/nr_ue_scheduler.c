@@ -3407,6 +3407,7 @@ bool nr_ue_sl_pssch_scheduler(NR_UE_MAC_INST_t *mac,
   uint8_t total_mac_pdu_header_len = 0;
   bool is_resource_allocated = false;
   *config_type = 0;
+
   sl_nr_ue_mac_params_t* sl_mac_params = mac->SL_MAC_PARAMS;
   if ((frame & 127) == 0 && slot == 0) {
     print_meas(&mac->rlc_data_req,"rlc_data_req",NULL,NULL);
@@ -3931,11 +3932,11 @@ void nr_ue_sidelink_scheduler(nr_sidelink_indication_t *sl_ind) {
     }
   }
 
-  // if (((slot % 20) == 6) && ((frame % 100) == 0)) {
-  //   char stats_output[16000] = {0};
-  //   dump_mac_stats_sl(mac, stats_output, sizeof(stats_output), true);
-  //   LOG_I(NR_MAC, "Frame.Slot %d.%d\n%s\n", frame, slot, stats_output);
-  // }
+  if (((slot % 20) == 6) && ((frame % 100) == 0)) {
+    char stats_output[16000] = {0};
+    dump_mac_stats_sl(mac, stats_output, sizeof(stats_output), true);
+    LOG_D(NR_MAC, "Frame.Slot %d.%d\n%s\n", frame, slot, stats_output);
+  }
 
   if (tti_action == SL_NR_CONFIG_TYPE_RX_PSBCH || tti_action == SL_NR_CONFIG_TYPE_RX_PSCCH || tti_action == SL_NR_CONFIG_TYPE_RX_PSSCH_SCI ||
       tti_action == SL_NR_CONFIG_TYPE_RX_PSSCH_SLSCH) {

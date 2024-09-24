@@ -118,17 +118,6 @@ size_t dump_mac_stats_sl(NR_UE_MAC_INST_t *mac, char *output, size_t strlen, boo
   UE_iterator(mac->sl_info.list, UE) {
     NR_SL_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
     NR_UE_sl_mac_stats_t *stats = &UE->mac_sl_stats;
-    //const int avg_rsrp = stats->num_rsrp_meas > 0 ? stats->cumul_rsrp / stats->num_rsrp_meas : 0;
-
-    // output += snprintf(output,
-    //                    end - output,
-    //                    "UE RNTI %04x (%d) PH %d dB PCMAX %d dBm, average RSRP %d (%d meas)\n",
-    //                    UE->rnti,
-    //                    num++,
-    //                    sched_ctrl->ph,
-    //                    sched_ctrl->pcmax,
-    //                    avg_rsrp,
-    //                    stats->num_rsrp_meas);
 
     if(sched_ctrl->print_csi_report) {
       output += snprintf(output,
@@ -151,10 +140,6 @@ size_t dump_mac_stats_sl(NR_UE_MAC_INST_t *mac, char *output, size_t strlen, boo
                        sched_ctrl->sl_bler_stats.bler,
                        sched_ctrl->sl_bler_stats.mcs);
 
-    if (reset_rsrp) {
-      stats->num_rsrp_meas = 0;
-      stats->cumul_rsrp = 0;
-    }
     output += snprintf(output,
                        end - output,
                        "UE %04x: slsch_total_bytes %"PRIu64"\n",

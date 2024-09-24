@@ -1037,22 +1037,12 @@ void nr_ue_process_mac_sl_pdu(int module_idP,
                                                       round_sum, total_tx
                                                       );
     }
+
     return;
   }
 
   LOG_D(NR_MAC, "%4d.%2d ack_nack %d pdu_type %d mac->sci_pdu_rx.csi_req %d\n",
         frame, slot, rx_slsch_pdu->ack_nack, pdu_type, mac->sci_pdu_rx.csi_req);
-
-  static uint32_t count = 0, total = 0;
-  static bool printed = false;
-  if (rx_slsch_pdu->ack_nack)
-    count++;
-  total++;
-  if (total >= 1000 && !printed) {
-    LOG_I(NR_MAC, "snr: %lf: Errors %d total %d\n", get_nrUE_params()->snr, (total - count), total); // BLER = (total - count) / total
-    printed = true;
-  }
-
   if (rx_slsch_pdu->ack_nack == 0)
     return;
 
