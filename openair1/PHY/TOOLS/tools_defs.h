@@ -538,6 +538,7 @@ extern uint32_t DFT_SCALING_3072[4];
 extern uint32_t DFT_SCALING_4096[4];
 extern uint32_t DFT_SCALING_6144[5];
 extern uint32_t DFT_SCALING_8192[5];
+extern uint32_t DFT_SCALING_9216[5];
 extern uint32_t DFT_SCALING_12288[5];
 extern uint32_t DFT_SCALING_16384[5];
 extern uint32_t DFT_SCALING_18432[6];
@@ -547,7 +548,7 @@ extern uint32_t DFT_SCALING_36864[6];
 extern uint32_t DFT_SCALING_49152[6];
 extern uint32_t DFT_SCALING_65536[6];
 extern uint32_t DFT_SCALING_73728[7];
-extern uint32_t DFT_SCALINE_98304[7];
+extern uint32_t DFT_SCALING_98304[7];
 
 extern uint32_t IDFT_SCALING_128[2];
 extern uint32_t IDFT_SCALING_256[2];
@@ -560,6 +561,7 @@ extern uint32_t IDFT_SCALING_3072[4];
 extern uint32_t IDFT_SCALING_4096[4];
 extern uint32_t IDFT_SCALING_6144[5];
 extern uint32_t IDFT_SCALING_8192[5];
+extern uint32_t IDFT_SCALING_9216[5];
 extern uint32_t IDFT_SCALING_12288[5];
 extern uint32_t IDFT_SCALING_16384[5];
 extern uint32_t IDFT_SCALING_18432[6];
@@ -569,7 +571,7 @@ extern uint32_t IDFT_SCALING_36864[6];
 extern uint32_t IDFT_SCALING_49152[6];
 extern uint32_t IDFT_SCALING_65536[6];
 extern uint32_t IDFT_SCALING_73728[7];
-extern uint32_t IDFT_SCALINE_98304[7];
+extern uint32_t IDFT_SCALING_98304[7];
 
 #ifdef OAIDFTS_MAIN
 typedef  void(*adftfunc_t)(int16_t *sigF,int16_t *sig,unsigned int *scale_flag);
@@ -724,7 +726,7 @@ uint32_t *get_dft_scaling(int ofdm_symbol_size)
       assert(0);
       break;
   }
-  return DFT_SCALING_98304; 
+  return NULL;
 }
 
 /*******************************************************************
@@ -739,7 +741,7 @@ uint32_t *get_dft_scaling(int ofdm_symbol_size)
 *
 *********************************************************************/
 static inline
-dft_size_idx_t get_idft_scaling(int ofdm_symbol_size)
+uint32_t *get_idft_scaling(int ofdm_symbol_size)
 {
   switch (ofdm_symbol_size) {
     case 128:
@@ -785,7 +787,7 @@ dft_size_idx_t get_idft_scaling(int ofdm_symbol_size)
       assert(0);
       break;
   }
-  return DFT_SIZE_IDXTABLESIZE; // never reached and will trigger assertion in idft function;
+  return NULL;
 }
 typedef enum idft_size_idx {
   FOREACH_IDFTSZ(SZ_iENUM)

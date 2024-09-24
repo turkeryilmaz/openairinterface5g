@@ -53,50 +53,6 @@
 
 #include "tools_defs.h"
 
-uint32_t DFT_SCALING_128[2] = {2,2};
-uint32_t DFT_SCALING_256[2] = {2,2};
-uint32_t DFT_SCALING_512[3] = {1,2,2};
-uint32_t DFT_SCALING_768[3] = {1,2,2};
-uint32_t DFT_SCALING_1024[3] = {1,2,2};
-uint32_t DFT_SCALING_1536[3] = {1,2,2};
-uint32_t DFT_SCALING_2048[4] = {1,0,3,2};
-uint32_t DFT_SCALING_3072[4] = {1,0,3,2};
-uint32_t DFT_SCALING_4096[4] = {0,0,3,3};
-uint32_t DFT_SCALING_6144[5] = {1,0,0,3,3};
-uint32_t DFT_SCALING_8192[5] = {1,0,0,3,3};
-uint32_t DFT_SCALING_12288[5] = {1,0,0,3,3};
-uint32_t DFT_SCALING_16384[5] = {0,0,1,3,3};
-uint32_t DFT_SCALING_18432[6] = {1,1,0,0,3,3};
-uint32_t DFT_SCALING_24576[6] = {1,1,0,0,3,3};
-uint32_t DFT_SCALING_32768[6] = {1,0,0,1,3,3};
-uint32_t DFT_SCALING_36864[6] = {1,1,0,0,3,3};
-uint32_t DFT_SCALING_49152[6] = {1,0,0,1,3,3};
-uint32_t DFT_SCALING_65536[6] = {0,0,0,2,3,3};
-uint32_t DFT_SCALING_73728[7] = {1,1,1,0,0,3,3};
-uint32_t DFT_SCALING_98304[7] = {1,1,0,0,1,3,3};
-
-uint32_t IDFT_SCALING_128[2] = {2,2};
-uint32_t IDFT_SCALING_256[2] = {2,2};
-uint32_t IDFT_SCALING_512[3] = {1,2,2};
-uint32_t IDFT_SCALING_768[3] = {1,2,2};
-uint32_t IDFT_SCALING_1024[3] = {1,2,2};
-uint32_t IDFT_SCALING_1536[3] = {1,2,2};
-uint32_t IDFT_SCALING_2048[4] = {1,0,3,2};
-uint32_t IDFT_SCALING_3072[4] = {1,0,3,2};
-uint32_t IDFT_SCALING_4096[4] = {0,0,3,3};
-uint32_t IDFT_SCALING_6144[5] = {1,0,0,3,3};
-uint32_t IDFT_SCALING_8192[5] = {1,0,0,3,3};
-uint32_t IDFT_SCALING_12288[5] = {1,0,0,3,3};
-uint32_t IDFT_SCALING_16384[5] = {0,0,1,3,3};
-uint32_t IDFT_SCALING_18432[6] = {1,1,0,0,3,3};
-uint32_t IDFT_SCALING_24576[6] = {1,1,0,0,3,3};
-uint32_t IDFT_SCALING_32768[6] = {1,0,0,1,3,3};
-uint32_t IDFT_SCALING_36864[6] = {1,1,0,0,3,3};
-uint32_t IDFT_SCALING_49152[6] = {1,0,0,1,3,3};
-uint32_t IDFT_SCALING_65536[6] = {0,0,0,2,3,3};
-uint32_t IDFT_SCALING_73728[7] = {1,1,1,0,0,3,3};
-uint32_t IDFT_SCALING_98304[7] = {1,1,0,0,1,3,3};
-
 #define print_shorts(s,x) printf("%s %d,%d,%d,%d,%d,%d,%d,%d\n",s,(x)[0],(x)[1],(x)[2],(x)[3],(x)[4],(x)[5],(x)[6],(x)[7])
 #define print_shorts256(s,x) printf("%s %d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",s,(x)[0],(x)[1],(x)[2],(x)[3],(x)[4],(x)[5],(x)[6],(x)[7],(x)[8],(x)[9],(x)[10],(x)[11],(x)[12],(x)[13],(x)[14],(x)[15])
 
@@ -1696,7 +1652,7 @@ void dft64(int16_t *x,int16_t *y,unsigned int *scale)
 
 
   if (scale && *scale>0) {
-    int scalec=*scale;
+    unsigned int scalec=*scale;
     y256[0]  = shiftright_int16_simd256(y256[0],scalec);
     y256[1]  = shiftright_int16_simd256(y256[1],scalec);
     y256[2]  = shiftright_int16_simd256(y256[2],scalec);
@@ -1796,7 +1752,7 @@ void idft64(int16_t *x,int16_t *y,unsigned int *scale)
 
 
   if (scale && *scale>0) {
-    int scalec = *scale;
+    unsigned int scalec = *scale;
     y256[0]  = shiftright_int16_simd256(y256[0],scalec);
     y256[1]  = shiftright_int16_simd256(y256[1],scalec);
     y256[2]  = shiftright_int16_simd256(y256[2],scalec);
@@ -1841,7 +1797,7 @@ void dft128(int16_t *x,int16_t *y,unsigned int *scale)
      LOG_M("dft128inb_256.m","dftinb",xtmp+8,64,1,1);
   }
 #endif
-  int *scale64=NULL;
+  unsigned int *scale64=NULL;
   if (scale) scale64=scale+1;
   dft64((int16_t*)(xtmp),(int16_t*)ytmp,scale64);
   dft64((int16_t*)(xtmp+8),(int16_t*)(ytmp+8),scale64);
@@ -1930,7 +1886,7 @@ void idft128(int16_t *x,int16_t *y,unsigned int *scale)
   transpose4_ooff_simd256(x256+12,xtmp+6,8);
   transpose4_ooff_simd256(x256+14,xtmp+7,8);
 
-  int *scale64=NULL;
+  unsigned int *scale64=NULL;
   if (scale) scale64=scale+1;
   idft64((int16_t*)(xtmp),(int16_t*)ytmp,scale64);
   idft64((int16_t*)(xtmp+8),(int16_t*)(ytmp+8),scale64);
@@ -2025,7 +1981,7 @@ void dft256(int16_t *x,int16_t *y,unsigned int *scale)
   }
   exit(-1);*/
  
-  int *scale64=NULL;
+  unsigned int *scale64=NULL;
   if (scale) scale64=scale+1;
   dft64((int16_t*)(xtmp),(int16_t*)(ytmp),scale64);
   dft64((int16_t*)(xtmp+8),(int16_t*)(ytmp+8),scale64);
@@ -2111,7 +2067,7 @@ void idft256(int16_t *x,int16_t *y,unsigned int *scale)
   transpose16_ooff_simd256(x256+24,xtmp+6,8);
   transpose16_ooff_simd256(x256+28,xtmp+7,8);
   
-  int *scale64=NULL;
+  unsigned int *scale64=NULL;
   if (scale) scale64=scale+1;
   idft64((int16_t*)(xtmp),(int16_t*)(ytmp),scale64);
   idft64((int16_t*)(xtmp+8),(int16_t*)(ytmp+8),scale64);
@@ -2230,7 +2186,7 @@ void dft512(int16_t *x,int16_t *y,unsigned int *scale)
   transpose4_ooff_simd256(x256+62,xtmp+31,32);
  
    
-  int *scale256=NULL;
+  unsigned int *scale256=NULL;
   if (scale) scale256=scale+1;
   dft256((int16_t*)(xtmp),(int16_t*)ytmp,scale256);
   dft256((int16_t*)(xtmp+32),(int16_t*)(ytmp+32),scale256);
@@ -2338,7 +2294,7 @@ void idft512(int16_t *x,int16_t *y,unsigned int *scale)
   transpose4_ooff_simd256(x256+60,xtmp+30,32);
   transpose4_ooff_simd256(x256+62,xtmp+31,32);
 
-  int *scale256=NULL;
+  unsigned int *scale256=NULL;
   if (scale) scale256=scale+1;
   idft256((int16_t*)(xtmp),(int16_t*)ytmp,scale256);
   idft256((int16_t*)(xtmp+32),(int16_t*)(ytmp+32),scale256);
@@ -2415,7 +2371,7 @@ void dft1024(int16_t *x,int16_t *y,unsigned int *scale)
   }
 
 
-  int *scale256=NULL;
+  unsigned int *scale256=NULL;
   if (scale) scale256=scale+1;
   dft256((int16_t*)(xtmp),(int16_t*)(ytmp),scale256);
   dft256((int16_t*)(xtmp+32),(int16_t*)(ytmp+32),scale256);
@@ -2472,7 +2428,7 @@ void idft1024(int16_t *x,int16_t *y,unsigned int *scale)
   }
 
 
-  int *scale256=NULL;
+  unsigned int *scale256=NULL;
   if (scale) scale256=scale+1;
   idft256((int16_t*)(xtmp),(int16_t*)(ytmp),scale256);
   idft256((int16_t*)(xtmp+32),(int16_t*)(ytmp+32),scale256);
@@ -2568,7 +2524,7 @@ void dft2048(int16_t *x,int16_t *y,unsigned int *scale)
     xtmpp+=32;
   }
 
-  int *scale1024=NULL;
+  unsigned int *scale1024=NULL;
   if (scale) scale1024=scale+1;
   dft1024((int16_t*)(xtmp),(int16_t*)ytmp,scale1024);
   dft1024((int16_t*)(xtmp+128),(int16_t*)(ytmp+128),scale1024);
@@ -2681,7 +2637,7 @@ void idft2048(int16_t *x,int16_t *y,unsigned int *scale)
     xtmpp+=32;
   }
 
-  int *scale1024=NULL;
+  unsigned int *scale1024=NULL;
   if (scale) scale1024=scale+1;
   idft1024((int16_t*)(xtmp),(int16_t*)ytmp,scale1024);
   idft1024((int16_t*)(xtmp+128),(int16_t*)(ytmp+128),scale1024);
@@ -2761,7 +2717,7 @@ void dft4096(int16_t *x,int16_t *y,unsigned int *scale)
   }
 
 
-  int *scale1024=NULL;
+  unsigned int *scale1024=NULL;
   if (scale) scale1024=scale+1;
   dft1024((int16_t*)(xtmp),(int16_t*)(ytmp),scale1024);
   dft1024((int16_t*)(xtmp+128),(int16_t*)(ytmp+128),scale1024);
@@ -2818,7 +2774,7 @@ void idft4096(int16_t *x,int16_t *y,unsigned int *scale)
   }
 
 
-  int *scale1024=NULL;
+  unsigned int *scale1024=NULL;
   if (scale) scale1024=scale+1;
   idft1024((int16_t*)(xtmp),(int16_t*)(ytmp),scale1024);
   idft1024((int16_t*)(xtmp+128),(int16_t*)(ytmp+128),scale1024);
@@ -2914,7 +2870,7 @@ void dft8192(int16_t *x,int16_t *y,unsigned int *scale)
     xtmpp+=32;
   }
 
-  int *scale4096=NULL;
+  unsigned int *scale4096=NULL;
   if (scale) scale4096=scale+1;
   dft4096((int16_t*)(xtmp),(int16_t*)ytmp,scale4096);
   dft4096((int16_t*)(xtmp+512),(int16_t*)(ytmp+512),scale4096);
@@ -3005,7 +2961,7 @@ void idft8192(int16_t *x,int16_t *y,unsigned int *scale)
     xtmpp+=32;
   }
 
-  int *scale4096=NULL;
+  unsigned int *scale4096=NULL;
   if (scale) scale4096=scale+1;
   idft4096((int16_t*)(xtmp),(int16_t*)ytmp,scale4096);
   idft4096((int16_t*)(xtmp+512),(int16_t*)(ytmp+512),scale4096);
@@ -3062,7 +3018,7 @@ void dft16384(int16_t *x,int16_t *y,unsigned int *scale)
   }
 
 
-  int *scale4096=NULL;
+  unsigned int *scale4096=NULL;
   if (scale) scale4096=scale+1;
   dft4096((int16_t*)(xtmp),(int16_t*)(ytmp),scale4096);
   dft4096((int16_t*)(xtmp+512),(int16_t*)(ytmp+512),scale4096);
@@ -3119,7 +3075,7 @@ void idft16384(int16_t *x,int16_t *y,unsigned int *scale)
   }
 
 
-  int *scale4096=NULL;
+  unsigned int *scale4096=NULL;
   if (scale) scale4096=scale+1;
   idft4096((int16_t*)(xtmp),(int16_t*)(ytmp),scale4096);
   idft4096((int16_t*)(xtmp+512),(int16_t*)(ytmp+512),scale4096);
@@ -3215,7 +3171,7 @@ void dft32768(int16_t *x,int16_t *y,unsigned int *scale)
     xtmpp+=32;
   }
 
-  int *scale16384=NULL;
+  unsigned int *scale16384=NULL;
   if (scale) scale16384=scale+1;
   dft16384((int16_t*)(xtmp),(int16_t*)ytmp,scale16384);
   dft16384((int16_t*)(xtmp+2048),(int16_t*)(ytmp+2048),scale16384);
@@ -3306,7 +3262,7 @@ void idft32768(int16_t *x,int16_t *y,unsigned int *scale)
     xtmpp+=32;
   }
 
-  int *scale16384=NULL;
+  unsigned int *scale16384=NULL;
   if (scale) scale16384=scale+1;
   idft16384((int16_t*)(xtmp),(int16_t*)ytmp,scale16384);
   idft16384((int16_t*)(xtmp+2048),(int16_t*)(ytmp+2048),scale16384);
@@ -3366,7 +3322,7 @@ void idft768(int16_t *input, int16_t *output, unsigned int *scale)
     tmp[2][i] = ((uint32_t *)input)[j++];
   }
 
-  int *scale256=NULL;
+  unsigned int *scale256=NULL;
   if (scale) scale256=scale+1;
   idft256((int16_t*)(tmp[0]),(int16_t*)(tmpo[0]),scale256);
   idft256((int16_t*)(tmp[1]),(int16_t*)(tmpo[1]),scale256);
@@ -3419,7 +3375,7 @@ void dft768(int16_t *input, int16_t *output, unsigned int *scale)
     tmp[2][i] = ((uint32_t *)input)[j++];
   }
 
-  int *scale256=NULL;
+  unsigned int *scale256=NULL;
   if (scale) scale256=scale+1;
   dft256((int16_t*)(tmp[0]),(int16_t*)(tmpo[0]),scale256);
   dft256((int16_t*)(tmp[1]),(int16_t*)(tmpo[1]),scale256);
@@ -3486,7 +3442,7 @@ void idft1536(int16_t *input, int16_t *output, unsigned int *scale)
     tmp[2][i] = ((uint32_t *)input)[j++];
   }
 
-  int *scale512=NULL;
+  unsigned int *scale512=NULL;
   if (scale) scale512=scale+1;
   idft512((int16_t*)(tmp[0]),(int16_t*)(tmpo[0]),scale512);
   idft512((int16_t*)(tmp[1]),(int16_t*)(tmpo[1]),scale512);
@@ -3539,7 +3495,7 @@ void dft1536(int16_t *input, int16_t *output, unsigned int *scale)
     tmp[2][i] = ((uint32_t *)input)[j++];
   }
 
-  int *scale512=NULL;
+  unsigned int *scale512=NULL;
   if (scale) scale512=scale+1;
   dft512((int16_t*)(tmp[0]),(int16_t*)(tmpo[0]),scale512);
   dft512((int16_t*)(tmp[1]),(int16_t*)(tmpo[1]),scale512);
@@ -3607,7 +3563,7 @@ void dft3072(int16_t *input, int16_t *output,unsigned int *scale)
     tmp[2][i] = ((uint32_t *)input)[j++];
   }
 
-  int *scale1024=NULL;
+  unsigned int *scale1024=NULL;
   if (scale) scale1024=scale+1;
   dft1024((int16_t*)(tmp[0]),(int16_t*)(tmpo[0]),scale1024);
   dft1024((int16_t*)(tmp[1]),(int16_t*)(tmpo[1]),scale1024);
@@ -3658,7 +3614,7 @@ void idft3072(int16_t *input, int16_t *output,unsigned int *scale)
     tmp[1][i] = ((uint32_t *)input)[j++];
     tmp[2][i] = ((uint32_t *)input)[j++];
   }
-  int *scale1024=NULL;
+  unsigned int *scale1024=NULL;
   if (scale) scale1024=scale+1;
   idft1024((int16_t*)(tmp[0]),(int16_t*)(tmpo[0]),scale1024);
   idft1024((int16_t*)(tmp[1]),(int16_t*)(tmpo[1]),scale1024);
@@ -3715,7 +3671,7 @@ void idft6144(int16_t *input, int16_t *output,unsigned int *scale)
     tmp[2][i] = ((uint32_t *)input)[j++];
   }
 
-  int *scale2048=NULL;
+  unsigned int *scale2048=NULL;
   if (scale) scale2048=scale+1;
   idft2048((int16_t*)(tmp[0]),(int16_t*)(tmpo[0]),scale2048);
   idft2048((int16_t*)(tmp[1]),(int16_t*)(tmpo[1]),scale2048);
@@ -3776,7 +3732,7 @@ void dft6144(int16_t *input, int16_t *output,unsigned int *scale)
     tmp[2][i] = ((uint32_t *)input)[j++];
   }
 
-  int *scale2048=NULL;
+  unsigned int *scale2048=NULL;
   if (scale) scale2048=scale+1;
   dft2048((int16_t*)(tmp[0]),(int16_t*)(tmpo[0]),scale2048);
   dft2048((int16_t*)(tmp[1]),(int16_t*)(tmpo[1]),scale2048);
@@ -3856,7 +3812,7 @@ void dft12288(int16_t *input, int16_t *output,unsigned int *scale)
     tmp[2][i] = ((uint32_t *)input)[j++];
   }
 
-  int *scale4096=NULL;
+  unsigned int *scale4096=NULL;
   if (scale) scale4096=scale+1;
   dft4096((int16_t*)(tmp[0]),(int16_t*)(tmpo[0]),scale4096);
   dft4096((int16_t*)(tmp[1]),(int16_t*)(tmpo[1]),scale4096);
@@ -3921,7 +3877,7 @@ void idft12288(int16_t *input, int16_t *output,unsigned int *scale)
 
 
 
-  int *scale4096=NULL;
+  unsigned int *scale4096=NULL;
   if (scale) scale4096=scale+1;
   idft4096((int16_t*)(tmp[0]),(int16_t*)(tmpo[0]),scale4096);
   idft4096((int16_t*)(tmp[1]),(int16_t*)(tmpo[1]),scale4096);
@@ -3987,7 +3943,7 @@ void dft18432(int16_t *input, int16_t *output,unsigned int *scale) {
     tmp[2][i] = ((uint32_t *)input)[j++];
   }
 
-  int *scale6144=NULL;
+  unsigned int *scale6144=NULL;
   if (scale) scale6144=scale+1;
   dft6144((int16_t*)(tmp[0]),(int16_t*)(tmpo[0]),scale6144);
   dft6144((int16_t*)(tmp[1]),(int16_t*)(tmpo[1]),scale6144);
@@ -4037,7 +3993,7 @@ void idft18432(int16_t *input, int16_t *output,unsigned int *scale) {
     tmp[2][i] = ((uint32_t *)input)[j++];
   }
 
-  int *scale6144=NULL;
+  unsigned int *scale6144=NULL;
   if (scale) scale6144=scale+1;
   idft6144((int16_t*)(tmp[0]),(int16_t*)(tmpo[0]),scale6144);
   idft6144((int16_t*)(tmp[1]),(int16_t*)(tmpo[1]),scale6144);
@@ -4091,7 +4047,7 @@ void dft24576(int16_t *input, int16_t *output,unsigned int *scale)
     tmp[2][i] = ((uint32_t *)input)[j++];
   }
 
-  int *scale8192=NULL;
+  unsigned int *scale8192=NULL;
   if (scale) scale8192=scale+1;
   dft8192((int16_t*)(tmp[0]),(int16_t*)(tmpo[0]),scale8192);
   dft8192((int16_t*)(tmp[1]),(int16_t*)(tmpo[1]),scale8192);
@@ -4160,7 +4116,7 @@ void idft24576(int16_t *input, int16_t *output,unsigned int *scale)
     tmp[2][i] = ((uint32_t *)input)[j++];
   }
 
-  int *scale8192=NULL;
+  unsigned int *scale8192=NULL;
   if (scale) scale8192=scale+1;
   idft8192((int16_t*)(tmp[0]),(int16_t*)(tmpo[0]),scale8192);
   idft8192((int16_t*)(tmp[1]),(int16_t*)(tmpo[1]),scale8192);
@@ -4226,7 +4182,7 @@ void dft36864(int16_t *input, int16_t *output,uint32_t *scale) {
     tmp[2][i] = ((uint32_t *)input)[j++];
   }
 
-  int *scale12288=NULL;
+  unsigned int *scale12288=NULL;
   if (scale) scale12288=scale+1;
   dft12288((int16_t*)(tmp[0]),(int16_t*)(tmpo[0]),scale12288);
   dft12288((int16_t*)(tmp[1]),(int16_t*)(tmpo[1]),scale12288);
@@ -4288,7 +4244,7 @@ void idft36864(int16_t *input, int16_t *output,uint32_t *scale) {
     tmp[2][i] = ((uint32_t *)input)[j++];
   }
 
-  int *scale12288=NULL;
+  unsigned int *scale12288=NULL;
   if (scale) scale12288=scale+1;
   idft12288((int16_t*)(tmp[0]),(int16_t*)(tmpo[0]),scale12288);
   idft12288((int16_t*)(tmp[1]),(int16_t*)(tmpo[1]),scale12288);
@@ -4342,7 +4298,7 @@ void dft49152(int16_t *input, int16_t *output,uint32_t *scale) {
     tmp[2][i] = ((uint32_t *)input)[j++];
   }
 
-  int *scale16384=NULL;
+  unsigned int *scale16384=NULL;
   if (scale) scale16384=scale+1;
   dft16384((int16_t*)(tmp[0]),(int16_t*)(tmpo[0]),scale16384);
   dft16384((int16_t*)(tmp[1]),(int16_t*)(tmpo[1]),scale16384);
@@ -4392,7 +4348,7 @@ void idft49152(int16_t *input, int16_t *output,uint32_t *scale) {
     tmp[2][i] = ((uint32_t *)input)[j++];
   }
 
-  int *scale16384=NULL;
+  unsigned int *scale16384=NULL;
   if (scale) scale16384=scale+1;
   idft16384((int16_t*)(tmp[0]),(int16_t*)(tmpo[0]),scale16384);
   idft16384((int16_t*)(tmp[1]),(int16_t*)(tmpo[1]),scale16384);
@@ -4442,7 +4398,7 @@ void idft65536(int16_t *x,int16_t *y,unsigned int *scale)
   }
 
 
-  int *scale16384=NULL;
+  unsigned int *scale16384=NULL;
   if (scale) scale16384=scale+1;
   idft16384((int16_t*)(xtmp),(int16_t*)(ytmp),scale16384);
   idft16384((int16_t*)(xtmp+2048),(int16_t*)(ytmp+2048),scale16384);
@@ -4518,7 +4474,7 @@ void dft98304(int16_t *input, int16_t *output,uint32_t *scale) {
     tmp[2][i] = ((uint32_t *)input)[j++];
   }
 
-  int *scale32768=NULL;
+  unsigned int *scale32768=NULL;
   if (scale) scale32768=scale+1;
   dft32768((int16_t*)(tmp[0]),(int16_t*)(tmpo[0]),scale32768);
   dft32768((int16_t*)(tmp[1]),(int16_t*)(tmpo[1]),scale32768);
@@ -4568,7 +4524,7 @@ void idft98304(int16_t *input, int16_t *output,uint32_t *scale) {
     tmp[2][i] = ((uint32_t *)input)[j++];
   }
 
-  int *scale32768=NULL;
+  unsigned int *scale32768=NULL;
   if (scale) scale32768=scale+1;
   idft32768((int16_t*)(tmp[0]),(int16_t*)(tmpo[0]),scale32768);
   idft32768((int16_t*)(tmp[1]),(int16_t*)(tmpo[1]),scale32768);

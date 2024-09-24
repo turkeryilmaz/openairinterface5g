@@ -53,7 +53,7 @@ int sl_nr_slot_fep(PHY_VARS_NR_UE *ue,
   unsigned int nb_prefix_samples0 = frame_params->nb_prefix_samples0;
 
   dft_size_idx_t dftsize = get_dft(frame_params->ofdm_symbol_size);
-  uint32_t *scaling_sched = get_scaling(frame_parms->ofdm_symbol_size);
+  uint32_t *scaling_sched = get_dft_scaling(frame_params->ofdm_symbol_size);
   // This is for misalignment issues
   int32_t tmp_dft_in[8192] __attribute__((aligned(32)));
 
@@ -92,7 +92,7 @@ int sl_nr_slot_fep(PHY_VARS_NR_UE *ue,
       rxdata_ptr = (int16_t *)tmp_dft_in;
     }
 
-    dft(dftsize, rxdata_ptr, (int16_t *)&rxdataF[aa][frame_params->ofdm_symbol_size * symbol], 1);
+    dft(dftsize, rxdata_ptr, (int16_t *)&rxdataF[aa][frame_params->ofdm_symbol_size * symbol], scaling_sched);
 
     int symb_offset = (Ns % frame_params->slots_per_subframe) * frame_params->symbols_per_slot;
     int32_t rot2 = ((uint32_t *)frame_params->symbol_rotation[2])[symbol + symb_offset];
@@ -155,6 +155,7 @@ int nr_slot_fep(PHY_VARS_NR_UE *ue,
   }
 
   dft_size_idx_t dftsize = get_dft(frame_parms->ofdm_symbol_size);
+  uint32_t *scaling_sched = get_dft_scaling(frame_parms->ofdm_symbol_size);
   // This is for misalignment issues
   int32_t tmp_dft_in[8192] __attribute__ ((aligned (32)));
 
@@ -190,7 +191,7 @@ int nr_slot_fep(PHY_VARS_NR_UE *ue,
     dft(dftsize,
         rxdata_ptr,
         (int16_t *)&rxdataF[aa][frame_parms->ofdm_symbol_size*symbol],
-        1);
+        scaling_sched);
 
     stop_meas(&ue->rx_dft_stats);
 
@@ -220,6 +221,7 @@ int nr_slot_fep_init_sync(const NR_DL_FRAME_PARMS *frame_parms,
   unsigned int frame_length_samples = frame_parms->samples_per_frame;
 
   dft_size_idx_t dftsize = get_dft(frame_parms->ofdm_symbol_size);
+  uint32_t *scaling_sched = get_dft_scaling(frame_parms->ofdm_symbol_size);
   // This is for misalignment issues
   int32_t tmp_dft_in[8192] __attribute__ ((aligned (32)));
 
@@ -263,7 +265,7 @@ int nr_slot_fep_init_sync(const NR_DL_FRAME_PARMS *frame_parms,
     dft(dftsize,
         rxdata_ptr,
         (int16_t *)&rxdataF[aa][frame_parms->ofdm_symbol_size*symbol],
-        1);
+        scaling_sched);
 
     int symb_offset = (Ns%frame_parms->slots_per_subframe)*frame_parms->symbols_per_slot;
     c16_t rot2 = frame_parms->symbol_rotation[link_type][symbol + symb_offset];
@@ -298,6 +300,7 @@ int nr_slot_fep_ul(NR_DL_FRAME_PARMS *frame_parms,
   unsigned int nb_prefix_samples0 = frame_parms->nb_prefix_samples0;
 
   dft_size_idx_t dftsize = get_dft(frame_parms->ofdm_symbol_size);
+  uint32_t *scaling_sched = get_dft_scaling(frame_parms->ofdm_symbol_size);
   // This is for misalignment issues
   int32_t tmp_dft_in[8192] __attribute__ ((aligned (32)));
 
@@ -341,7 +344,7 @@ int nr_slot_fep_ul(NR_DL_FRAME_PARMS *frame_parms,
   dft(dftsize,
       rxdata_ptr,
       (int16_t *)&rxdataF[symbol * frame_parms->ofdm_symbol_size],
-      1);
+      scaling_sched);
 
   return 0;
 }

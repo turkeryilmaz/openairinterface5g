@@ -40,6 +40,51 @@
 #include "common/config/config_userapi.h" 
 #include "common/utils/load_module_shlib.h" 
 
+uint32_t DFT_SCALING_128[2] = {2,2};
+uint32_t DFT_SCALING_256[2] = {2,2};
+uint32_t DFT_SCALING_512[3] = {1,2,2};
+uint32_t DFT_SCALING_768[3] = {1,2,2};
+uint32_t DFT_SCALING_1024[3] = {1,2,2};
+uint32_t DFT_SCALING_1536[3] = {1,2,2};
+uint32_t DFT_SCALING_2048[4] = {1,0,3,2};
+uint32_t DFT_SCALING_3072[4] = {1,0,3,2};
+uint32_t DFT_SCALING_4096[4] = {0,0,3,3};
+uint32_t DFT_SCALING_6144[5] = {1,0,0,3,3};
+uint32_t DFT_SCALING_8192[5] = {1,0,0,3,3};
+uint32_t DFT_SCALING_9216[5] = {1,0,0,3,3};
+uint32_t DFT_SCALING_12288[5] = {1,0,0,3,3};
+uint32_t DFT_SCALING_16384[5] = {0,0,1,3,3};
+uint32_t DFT_SCALING_18432[6] = {1,1,0,0,3,3};
+uint32_t DFT_SCALING_24576[6] = {1,1,0,0,3,3};
+uint32_t DFT_SCALING_32768[6] = {1,0,0,1,3,3};
+uint32_t DFT_SCALING_36864[6] = {1,1,0,0,3,3};
+uint32_t DFT_SCALING_49152[6] = {1,0,0,1,3,3};
+uint32_t DFT_SCALING_65536[6] = {0,0,0,2,3,3};
+uint32_t DFT_SCALING_73728[7] = {1,1,1,0,0,3,3};
+uint32_t DFT_SCALING_98304[7] = {1,1,0,0,1,3,3};
+
+uint32_t IDFT_SCALING_128[2] = {2,2};
+uint32_t IDFT_SCALING_256[2] = {2,2};
+uint32_t IDFT_SCALING_512[3] = {1,2,2};
+uint32_t IDFT_SCALING_768[3] = {1,2,2};
+uint32_t IDFT_SCALING_1024[3] = {1,2,2};
+uint32_t IDFT_SCALING_1536[3] = {1,2,2};
+uint32_t IDFT_SCALING_2048[4] = {1,0,3,2};
+uint32_t IDFT_SCALING_3072[4] = {1,0,3,2};
+uint32_t IDFT_SCALING_4096[4] = {0,0,3,3};
+uint32_t IDFT_SCALING_6144[5] = {1,0,0,3,3};
+uint32_t IDFT_SCALING_8192[5] = {1,0,0,3,3};
+uint32_t IDFT_SCALING_9216[5] = {1,0,0,3,3};
+uint32_t IDFT_SCALING_12288[5] = {1,0,0,3,3};
+uint32_t IDFT_SCALING_16384[5] = {0,0,1,3,3};
+uint32_t IDFT_SCALING_18432[6] = {1,1,0,0,3,3};
+uint32_t IDFT_SCALING_24576[6] = {1,1,0,0,3,3};
+uint32_t IDFT_SCALING_32768[6] = {1,0,0,1,3,3};
+uint32_t IDFT_SCALING_36864[6] = {1,1,0,0,3,3};
+uint32_t IDFT_SCALING_49152[6] = {1,0,0,1,3,3};
+uint32_t IDFT_SCALING_65536[6] = {0,0,0,2,3,3};
+uint32_t IDFT_SCALING_73728[7] = {1,1,1,0,0,3,3};
+uint32_t IDFT_SCALING_98304[7] = {1,1,0,0,1,3,3};
 
 /* function description array, to be used when loading the dfts/idfts lib */
 static loader_shlibfunc_t shlib_fdesc[2];

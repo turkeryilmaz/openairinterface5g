@@ -367,6 +367,7 @@ void rx_nr_prach_ru(RU_t *ru,
   }
 
   const dft_size_idx_t dftsize = get_dft(dftlen);
+  uint32_t *scaling_sched = get_dft_scaling(dftlen);
 
   // Do forward transform
   if (LOG_DEBUGFLAG(PRACH)) {
@@ -402,7 +403,7 @@ void rx_nr_prach_ru(RU_t *ru,
     // do DFT
     int16_t *prach2 = prach[aa] + (2*Ncp); // times 2 for complex samples
     for (int i = 0; i < reps; i++)
-      dft(dftsize, prach2 + 2*dftlen*i, rxsigF[aa] + 2*dftlen*i, 1);
+      dft(dftsize, prach2 + 2*dftlen*i, rxsigF[aa] + 2*dftlen*i, scaling_sched);
 
     //LOG_M("ru_rxsigF_tmp.m","rxsFtmp", rxsigF[aa], dftlen*2*reps, 1, 1);
 
@@ -629,12 +630,12 @@ void rx_nr_prach(PHY_VARS_gNB *gNB,
 	
 	       // Now do IFFT of size 1024 (N_ZC=839) or 256 (N_ZC=139)
 	       if (N_ZC == 839) {
-	         idft(IDFT_1024,prachF,prach_ifft_tmp,1);
+	         idft(IDFT_1024,prachF,prach_ifft_tmp,IDFT_SCALING_1024);
 	         // compute energy and accumulate over receive antennas
 	         for (i=0;i<1024;i++)
 	           prach_ifft[i] += (int32_t)prach_ifft_tmp[i<<1]*(int32_t)prach_ifft_tmp[i<<1] + (int32_t)prach_ifft_tmp[1+(i<<1)]*(int32_t)prach_ifft_tmp[1+(i<<1)];
 	       } else {
-	         idft(IDFT_256,prachF,prach_ifft_tmp,1);
+	         idft(IDFT_256,prachF,prach_ifft_tmp,IDFT_SCALING_256);
 	         log2_ifft_size = 8;
            // compute energy and accumulate over receive antennas and repetitions for BR
            for (i=0;i<256;i++)

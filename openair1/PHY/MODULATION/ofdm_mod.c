@@ -140,6 +140,7 @@ void PHY_ofdm_mod(int *input,                       /// pointer to complex input
 
   int *temp_ptr=(int*)0;
   idft_size_idx_t idft_size = get_idft(fftsize);
+  uint32_t *scaling_sched = get_idft_scaling(fftsize);
 
 #ifdef DEBUG_OFDM_MOD
   printf("[PHY] OFDM mod (size %d,prefix %d) Symbols %d, input %p, output %p\n",
@@ -155,7 +156,7 @@ void PHY_ofdm_mod(int *input,                       /// pointer to complex input
 #endif
 
     // on AVX2 need 256-bit alignment
-    idft(idft_size, (int16_t *)&input[i * fftsize], (int16_t *)temp, 1);
+    idft(idft_size, (int16_t *)&input[i * fftsize], (int16_t *)temp, scaling_sched);
 
     // Copy to frame buffer with Cyclic Extension
     // Note:  will have to adjust for synchronization offset!
