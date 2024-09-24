@@ -267,7 +267,8 @@ typedef struct gNB_RRC_UE_s {
 
   uint32_t                           rrc_ue_id;
   uint64_t amf_ue_ngap_id;
-  nr_rrc_guami_t                     ue_guami;
+  // Globally Unique AMF Identifier
+  guami_t ue_guami;
 
   ngap_security_capabilities_t       security_capabilities;
   //NSA block
